@@ -26,14 +26,20 @@ parameters:
 
 slots:
   discovery:
-    contract: read_only
-    description: Explores the problem space and produces a discovery artifact.
+    contract: write_pending
+    write_scope: "<base_path>/pending/"
+    write_types: [".md"]
+    description: Explores the problem space and writes discovery artifact to pending/.
   refinement:
-    contract: read_only
-    description: Reads the discovery artifact and produces a reviewed plan.
+    contract: write_analysis
+    write_scope:
+      - "<base_path>/"
+      - "<base_path>/refined/"
+    write_types: [".md"]
+    description: Reads discovery artifact, writes refined plan and any .md summaries.
   execution:
     contract: controlled
-    description: Executes the reviewed plan produced by the refinement slot.
+    description: Executes the refined plan. Approval gate required.
 
 preflight:
   - validate_slot_providers
@@ -87,7 +93,9 @@ stop_conditions:
   - slot_risk_mismatch
   - intake_conflict_unresolved
   - user_denies_execution
-  - side_quest_hunter_failed  # non-blocking: log and continue to Engineer
+  - side_quest_hunter_failed        # non-blocking: log and continue to Engineer
+  - slot_write_type_violation       # slot tried to write a non-.md file
+  - slot_write_scope_violation      # slot tried to write outside its declared scope
 
 result_schema: mission-result.schema.yaml
 
@@ -108,3 +116,6 @@ forbidden_behaviors:
   - run_housekeeping_scan_as_slot
   - skip_mini_approval_gate
   - invoke_side_quest_hunter_without_approval
+  - scout_writes_outside_pending
+  - engineer_writes_outside_analysis
+  - engineer_writes_non_md

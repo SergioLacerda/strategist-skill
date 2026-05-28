@@ -58,8 +58,14 @@ Load `roles/<roles_config>.yaml`. For each slot (scout, engineer, hunter):
 
 **2d. Validate slot risk contracts**
 
-- Scout (discovery) and Engineer (refinement) slots: `risk_score` MUST be `read_only`.
-- Hunter (execution) slot: `risk_score` MUST be `controlled`.
+- **Scout (discovery):** `risk_score` MUST be `write_pending`
+  - Authorized to create/overwrite `.md` files in `<base_path>/pending/` without a gate.
+  - Any write outside that scope or of a non-`.md` type: BLOCK `slot_write_scope_violation`.
+- **Engineer (refinement):** `risk_score` MUST be `write_analysis`
+  - Authorized to create/overwrite `.md` files in `<base_path>/` and `<base_path>/refined/` without a gate.
+  - Any write outside `<base_path>/` or of a non-`.md` type: BLOCK `slot_write_scope_violation`.
+- **Hunter (execution):** `risk_score` MUST be `controlled`
+  - Approval gate required before any execution.
 - If mismatch: emit blocked event with `reason=slot_risk_mismatch slot=<label>`, stop.
 
 **2e. Emit preflight done**
@@ -109,10 +115,12 @@ Invoke the discovery slot provider with:
 - User prompt
 - `mission_contract.planning_rules`
 - Dossier from context enrichment
+- Artifact path: `<base_path>/pending/<mission_id>-discovery.md`
 
-Discovery artifact path: `<base_path>/pending/<mission_id>-discovery.md`
+Scout writes the artifact directly (contract: `write_pending`). Strategist does not
+intermediate the write — it only waits for completion and emits the done event.
 
-Wait for completion. On success:
+On success:
 Emit: `[Strategist] phase=<scout_label> status=done artifact=<path>`
 
 On failure: emit blocked event with `reason=scout_failed`, present partial artifact if any.
@@ -214,17 +222,32 @@ Invoke the refinement slot provider with:
   > "Items listed under 'Itens excluídos da análise principal' are resolved. Do not treat them as pending. Base your analysis on the post-cleanup workspace state."
 - `mission_contract.planning_rules`
 - Dossier
+- Primary artifact path: `<base_path>/refined/<mission_id>-plan.md`
+- Secondary artifact scope: `<base_path>/` (Engineer may create additional `.md` summaries here)
 
-Refined plan artifact path: `<base_path>/refined/<mission_id>-plan.md`
+Engineer writes artifacts directly (contract: `write_analysis`). Strategist does not
+intermediate the write — it only waits for completion and emits the done event.
 
-Wait for completion. On success:
+On success:
 Emit: `[Strategist] phase=<engineer_label> status=done artifact=<path>`
 
 ---
 
 ## 6. Approval Gate (MANDATORY)
 
-After Engineer completes, STOP. Do not invoke Hunter without explicit user approval.
+After Engineer completes, evaluate the refined plan before presenting the gate:
+
+**If the plan requires no Hunter execution** (purely analytical mission, no writes outside
+`<base_path>/`): emit `[Strategist] phase=approval_gate status=plan_only`, return mission
+result with `status: plan_only`. Do NOT present the gate — the mission is complete.
+
+**If the plan requires Hunter to write only inside `<base_path>/`** (e.g., moving files
+to `done/`, creating a report): present the gate once with the full plan visible.
+
+**If the plan requires Hunter to write outside `<base_path>/`** (code, git, config, system):
+present the gate with an explicit external-scope warning.
+
+In all cases where the gate is presented: STOP. Do not invoke Hunter without explicit user approval.
 
 Present to the user:
 ```
