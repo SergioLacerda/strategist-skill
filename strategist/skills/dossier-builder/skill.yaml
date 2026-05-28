@@ -1,0 +1,40 @@
+id: dossier-builder
+version: "1.0.0"
+schema_version: "1"
+status: active
+risk_score: read_only
+category: assembly
+
+description: >
+  Assembles a minimal dossier from context-enrichment output and .strategist/ identity files.
+  The dossier is passed to slot providers as their knowledge context.
+  It MUST NOT include the full knowledge base — only relevant excerpts within token budget.
+
+input:
+  task_type: string
+  enrichment_output: object        # output of context-enrichment
+  identity_files: object           # loaded what-i-am.yaml + drift-patterns.yaml (if available)
+  token_budget: integer
+
+output:
+  dossier:
+    task_type: string
+    directives: string | null
+    good_examples: array           # max 2 items from enrichment
+    bad_examples: array            # max 1 item from enrichment
+    rubric: object | null
+    output_template: string | null
+    token_count: integer
+
+behavior:
+  - If enrichment_output is empty: produce minimal dossier with only task_type and output_template.
+  - Include directives from enrichment if available; otherwise omit.
+  - Include at most 2 good examples and 1 bad example, prioritized by relevance score.
+  - Include rubric if present.
+  - Respect token_budget: if assembling all sections would exceed the budget,
+    drop bad_examples first, then good_examples (keep highest-scored), then directives.
+  - Never include raw identity files (what-i-am.yaml, drift-patterns.yaml) in the dossier.
+    Those are for Strategist only.
+
+failure_modes:
+  - empty_enrichment: return minimal dossier (task_type + template only). Not an error.

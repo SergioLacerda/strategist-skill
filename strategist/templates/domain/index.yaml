@@ -1,0 +1,22 @@
+schema_version: "1"
+description: >
+  Controls selective file loading for the internal domain.
+  Strategist loads ONLY files referenced here — never scans the full .strategist/ directory.
+
+load_always:
+  - identity/what-i-am.yaml
+  - identity/drift-patterns.yaml
+  - directives/core.yaml
+
+load_by_task_type:
+  architecture_analysis:
+    - directives/by-task/architecture-analysis.yaml
+    - rubrics/architecture-analysis.yaml
+  refactor:
+    - directives/by-task/architecture-analysis.yaml   # re-used; add refactor-specific when needed
+    - rubrics/architecture-analysis.yaml
+
+load_on_demand:
+  - patterns/good/
+  - patterns/bad/
+  - memory/lessons.yaml

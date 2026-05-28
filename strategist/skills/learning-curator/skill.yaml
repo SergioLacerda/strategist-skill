@@ -1,0 +1,54 @@
+id: learning-curator
+version: "1.0.0"
+schema_version: "1"
+status: active
+risk_score: read_only
+category: learning
+
+description: >
+  Proposes entries for memory/outcomes.jsonl and memory/source-hints.yaml after each mission.
+  MUST present both proposals for user review before writing either file.
+  User may approve both, reject both, or approve/reject each independently.
+  Writing without user approval is FORBIDDEN.
+
+input:
+  mission_result: object           # from mission result
+  critic_evaluation: object        # from response-critic
+  task_type: string
+  outcomes_path: string            # memory/outcomes.jsonl
+  source_hints_path: string        # memory/source-hints.yaml
+
+output:
+  outcomes_entry: object | null    # proposed entry; null if no outcome worth recording
+  source_hints_entry: object | null  # proposed hint; null if no source adjustment suggested
+  user_approved_outcomes: boolean
+  user_approved_source_hints: boolean
+
+behavior:
+  - Derive an outcomes entry from the mission_result and critic_evaluation.
+    Include: mission_id, task_type, status, rubric score, timestamp.
+  - Derive source hints from critic_evaluation gaps — if a source was queried but its content
+    did not contribute to must_have items, propose a negative priority_adjustment.
+  - Present BOTH proposals in a learning checkpoint to the user. Format:
+    ```
+    Learning checkpoint:
+    1. Record mission outcome? [mission_id / task_type / score / status]
+       (yes / no)
+    2. Adjust source priority? [source_id / annotation / adjustment]
+       (yes / no)
+    ```
+  - Wait for user response before writing.
+  - Write outcomes entry ONLY if user approved outcomes.
+  - Write source hints entry ONLY if user approved source hints.
+  - If user approves outcomes but rejects source hints (or vice versa): honor each independently.
+  - If the learning phase times out or errors before the checkpoint: do not write anything.
+
+forbidden_behaviors:
+  - write_outcomes_without_approval
+  - write_source_hints_without_approval
+  - skip_checkpoint
+  - block_mission_result_on_learning_failure
+
+failure_modes:
+  - timeout: learning phase exceeded time limit. Return without writing. Not a mission error.
+  - user_declined: user declined both proposals. Write nothing. Not an error.

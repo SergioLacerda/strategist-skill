@@ -1,0 +1,13 @@
+# active.yaml — epic standalone template
+# Generated from: templates/epic-standalone.yaml
+# Mode: standalone (no SDD integration)
+
+mode: epic
+
+base_path: .analysis
+
+roles_config: default
+
+knowledge_index_path: knowledge.index.yaml
+
+# Override per-mission with: --mode pragmatic --roles spec-driven

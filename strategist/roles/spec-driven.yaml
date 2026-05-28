@@ -1,0 +1,6 @@
+# Spec-driven slot bindings.
+# Suitable for projects using OpenSpec/brainstorm workflows.
+
+discovery: brainstorm
+refinement: openspec
+execution: _injected_by_sdd   # resolved from sdd_injection.execution_provider at runtime

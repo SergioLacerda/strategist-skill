@@ -1,0 +1,15 @@
+.antigravity
+.claude
+.codex
+.cortex
+.cursor
+.gemini
+.github/prompts/
+.vscode
+
+.sdd
+generated/
+
+AGENTS.md
+CLAUDE.md
+GEMINI.md
