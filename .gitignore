@@ -12,6 +12,9 @@ generated/
 
 .strategist
 .analysis
+!.analysis/pending/
+!.analysis/refined/
+!.analysis/done/
 
 AGENTS.md
 CLAUDE.md
