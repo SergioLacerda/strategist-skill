@@ -1,0 +1,44 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate scripts
+        run: |
+          bash -n bootstrap.sh
+          bash -n strategist/install.sh
+
+      - name: Package release assets
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+
+          tar -czf "strategist-skill-${VERSION}.tar.gz" \
+            bootstrap.sh \
+            bootstrap.ps1 \
+            strategist/
+
+          zip -r "strategist-skill-${VERSION}.zip" \
+            bootstrap.sh \
+            bootstrap.ps1 \
+            strategist/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            strategist-skill-*.tar.gz
+            strategist-skill-*.zip
+          generate_release_notes: true
