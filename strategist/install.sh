@@ -107,6 +107,45 @@ scaffold_workspace() {
   echo "[Strategist] workspace directories ensured at: ${target}"
 }
 
+# ── provider validation ───────────────────────────────────────────────────────
+
+# validate_provider <name> <required_risk> <slot_label>
+# Returns 0 if valid, 1 if mismatch or not found.
+validate_provider() {
+  local name="$1" required="$2" label="$3"
+  local score=""
+
+  # 1. Check ~/.claude/skills/<name>/skill.yaml
+  local skill_yaml="${HOME}/.claude/skills/${name}/skill.yaml"
+  if [ -f "$skill_yaml" ]; then
+    score=$(grep -m1 '^risk_score:' "$skill_yaml" | awk '{print $2}')
+  fi
+
+  # 2. Fall back to templates/known-providers.yaml
+  if [ -z "$score" ]; then
+    local known="${SKILL_ROOT}/templates/known-providers.yaml"
+    if [ -f "$known" ]; then
+      score=$(grep -m1 "^  ${name}:" "$known" | awk '{print $2}')
+    fi
+  fi
+
+  # 3. Not found — prompt user
+  if [ -z "$score" ]; then
+    echo "  ⚠ risk_score for '${name}' not declared."
+    printf "  Enter value [write_pending/write_analysis/controlled/orchestrator]: "
+    read -r score
+  fi
+
+  # 4. Compare
+  if [ "$score" != "$required" ]; then
+    echo "  ✗ Slot ${label} requires '${required}', but '${name}' declares '${score}'."
+    return 1
+  fi
+
+  echo "  ✓ ${name} → ${score}"
+  return 0
+}
+
 # ── wizard TUI ───────────────────────────────────────────────────────────────
 
 run_wizard() {
@@ -140,24 +179,41 @@ run_wizard() {
   base_path="${base_path:-.analysis}"
 
   # Scout provider
-  printf "Scout (discovery) provider [sdd-diagnose]: "
-  read -r scout
-  scout="${scout:-sdd-diagnose}"
+  echo ""
+  echo "  Scout: descobre o espaço do problema → escreve discovery em pending/"
+  echo "  Provider recomendado: brainstorming (explora antes de decidir)"
+  while true; do
+    printf "Scout provider (write_pending) [brainstorming]: "
+    read -r scout
+    scout="${scout:-brainstorming}"
+    validate_provider "$scout" "write_pending" "Scout" && break
+    echo "  Enter a different provider name."
+  done
 
   # Engineer provider
-  printf "Engineer (refinement) provider [engineer]: "
-  read -r engineer
-  engineer="${engineer:-engineer}"
+  echo ""
+  echo "  Engineer: refina a descoberta → escreve proposal/design/tasks em refined/"
+  echo "  Provider recomendado: openspec-explore (gera estrutura OpenSpec)"
+  while true; do
+    printf "Engineer provider (write_analysis) [openspec-explore]: "
+    read -r engineer
+    engineer="${engineer:-openspec-explore}"
+    validate_provider "$engineer" "write_analysis" "Engineer" && break
+    echo "  Enter a different provider name."
+  done
 
   # Hunter provider
-  printf "Hunter (execution) provider: "
-  read -r hunter
-  hunter="${hunter:-}"
-
-  if [ -z "$hunter" ]; then
-    echo "Error: Hunter provider is required. Re-run the wizard or edit .strategist/roles/default.yaml."
-    exit 1
-  fi
+  echo ""
+  echo "  Hunter: executa o plano refinado → requer approval gate"
+  echo "  Provider recomendado: sdd-ask (execução governada)"
+  while true; do
+    printf "Hunter provider (controlled) [sdd-ask]: "
+    read -r hunter
+    hunter="${hunter:-sdd-ask}"
+    [ -n "$hunter" ] || { echo "  Error: Hunter provider is required."; continue; }
+    validate_provider "$hunter" "controlled" "Hunter" && break
+    echo "  Enter a different provider name."
+  done
 
   # Knowledge base
   printf "Knowledge base path (leave blank to create at .strategist/knowledge): "
