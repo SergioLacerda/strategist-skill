@@ -110,6 +110,9 @@ scaffold_workspace() {
 # ── wizard TUI ───────────────────────────────────────────────────────────────
 
 run_wizard() {
+  # Redirect stdin from terminal so read works even when script is piped (curl | bash)
+  exec < /dev/tty
+
   echo ""
   echo "Strategist Setup Wizard"
   echo "─────────────────────────────────────────────"

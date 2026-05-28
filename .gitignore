@@ -10,6 +10,9 @@
 .sdd
 generated/
 
+.strategist
+.analysis
+
 AGENTS.md
 CLAUDE.md
 GEMINI.md

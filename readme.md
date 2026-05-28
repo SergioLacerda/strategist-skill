@@ -20,17 +20,55 @@
 
 ---
 
-### Instalação
+### Quick Workflow
+
+**Linux / Mac / WSL — instalar (wizard por padrão):**
+```bash
+curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.sh | bash
+```
+
+**Windows PowerShell — instalar:**
+```powershell
+irm https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.ps1 | iex
+```
+
+**Atualizar configuração (re-rodar wizard):**
+```bash
+# Linux / Mac / WSL
+bash /path/to/strategist-skill/strategist/install.sh --wizard
+
+# Windows PowerShell
+.\bootstrap.ps1 -Silent  # baixa versão mais recente
+# depois edite: .strategist/roles/default.yaml
+```
+
+**Instalar sem wizard (silent):**
+```bash
+curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.sh | bash -s -- --silent
+```
+
+**Onde ficam os arquivos após instalação:**
+
+| Arquivo | Função |
+|---------|--------|
+| `.strategist/active.yaml` | Modo (pragmatic/epic), base_path, roles |
+| `.strategist/roles/default.yaml` | Slot providers: Scout, Engineer, Hunter |
+| `.strategist/knowledge.index.yaml` | Fontes de conhecimento por task_type |
+| `.analysis/` | Artefatos de missão (pending, refined, done) |
+
+---
+
+### Instalação local (sem curl)
 
 ```bash
 # silent: defaults pragmatic-standalone
-sh install.sh
+bash strategist/install.sh
 
-# wizard interativo (TUI)
-sh install.sh --wizard
+# wizard interativo
+bash strategist/install.sh --wizard
 
 # repositório alvo customizado
-sh install.sh --target /path/to/repo
+bash strategist/install.sh --target /path/to/repo
 ```
 
 ---

@@ -1,20 +1,18 @@
 # Strategist curl installer — Windows PowerShell
 #
+# Wizard runs by default. Use -Silent to skip interactive setup.
+#
 # Usage:
 #   irm https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.ps1 | iex
-#
-# With args (download first):
 #   Invoke-WebRequest -Uri https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.ps1 -OutFile bootstrap.ps1
-#   .\bootstrap.ps1 --wizard
-#   .\bootstrap.ps1 --target=C:\my\project
-#   .\bootstrap.ps1 --ref=v1.0.0
-#
-# PowerShell 7+ inline with args:
-#   & ([scriptblock]::Create((irm https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.ps1))) --wizard
+#   .\bootstrap.ps1              # wizard (default)
+#   .\bootstrap.ps1 -Silent      # skip wizard
+#   .\bootstrap.ps1 -Target C:\my\project
+#   .\bootstrap.ps1 -Ref v1.0.0
 
 [CmdletBinding()]
 param(
-    [switch]$Wizard,
+    [switch]$Silent,
     [string]$Target = "",
     [string]$Ref = ""
 )
@@ -96,9 +94,9 @@ try {
         exit 1
     }
 
-    # Build install.sh args
-    $installArgs = @()
-    if ($Wizard)  { $installArgs += "--wizard" }
+    # Build install.sh args — wizard is default, -Silent opts out
+    $installArgs = @("--wizard")
+    if ($Silent)  { $installArgs = @() }
     if ($Target)  { $installArgs += "--target=$Target" }
 
     # Find bash and execute

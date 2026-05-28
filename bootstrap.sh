@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Strategist curl installer — Linux / Mac / WSL
 #
+# Wizard runs by default. Use --silent to skip interactive setup.
+#
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.sh | bash
-#   curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.sh | bash -s -- --wizard
+#   curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.sh | bash -s -- --silent
 #   curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.sh | bash -s -- --target=/my/project
 #   curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.sh | bash -s -- --ref=v1.0.0
 
@@ -14,12 +16,13 @@ DEFAULT_REF="main"
 
 # ── arg parsing ───────────────────────────────────────────────────────────────
 
-INSTALL_ARGS=()
+INSTALL_ARGS=(--wizard)   # wizard by default; pass --silent to override
 REF=""
 
 for arg in "$@"; do
   case "$arg" in
     --ref=*) REF="${arg#--ref=}" ;;
+    --silent) INSTALL_ARGS=() ;;              # opt-out of wizard
     *) INSTALL_ARGS+=("$arg") ;;
   esac
 done
