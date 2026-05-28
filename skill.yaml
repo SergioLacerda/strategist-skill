@@ -1,0 +1,92 @@
+id: strategist
+version: "1.0.0"
+schema_version: "1"
+status: active
+risk_score: orchestrator
+category: orchestration
+
+description: >
+  Multi-phase mission orchestrator. Coordinates discovery, refinement, and execution
+  through three pluggable slots. Standalone by default; optionally integrates with SDD
+  as a registered analysis plugin.
+
+parameters:
+  - name: mode
+    type: string
+    default: null
+    description: >
+      Override active.yaml persona for this mission only.
+      Accepted values: pragmatic, epic.
+  - name: roles
+    type: string
+    default: default
+    description: >
+      Name of the roles config to load from roles/<name>.yaml.
+      Defaults to "default" (roles/default.yaml).
+
+slots:
+  discovery:
+    contract: read_only
+    description: Explores the problem space and produces a discovery artifact.
+  refinement:
+    contract: read_only
+    description: Reads the discovery artifact and produces a reviewed plan.
+  execution:
+    contract: controlled_write
+    description: Executes the reviewed plan produced by the refinement slot.
+
+preflight:
+  - validate_slot_providers
+  - load_internal_domain
+  - load_persona
+
+pipeline:
+  - stage: intake
+    skill: prompt-intake
+    produces: mission_contract
+  - stage: context_enrichment
+    skill: context-enrichment
+    produces: dossier
+  - stage: discovery
+    slot: discovery
+    input: mission_contract
+    artifact_path: "<base_path>/pending/<mission_id>-discovery.md"
+  - stage: refinement
+    slot: refinement
+    input: discovery_artifact
+    artifact_path: "<base_path>/refined/<mission_id>-plan.md"
+  - stage: approval_gate
+    type: mandatory_pause
+    description: Present refined plan path. Require explicit user approval before execution slot.
+  - stage: execution
+    slot: execution
+    input: refined_plan
+    artifact_path: "<base_path>/done/<mission_id>-report.md"
+    condition: approval_granted
+  - stage: learning
+    skill: learning-curator
+    blocking: false
+
+stop_conditions:
+  - preflight_failed
+  - slot_provider_not_found
+  - slot_risk_mismatch
+  - intake_conflict_unresolved
+  - user_denies_execution
+
+result_schema: mission-result.schema.yaml
+
+sdd_injection:
+  optional: true
+  fields:
+    - execution_provider
+    - base_path
+    - knowledge_paths
+    - governance_context
+
+forbidden_behaviors:
+  - invoke_execution_slot_without_approval
+  - write_config_to_target_repo
+  - perform_discovery_directly_instead_of_delegating
+  - skip_preflight
+  - load_knowledge_not_in_index
