@@ -11,7 +11,7 @@
 generated/
 
 .strategist
-.analysis/*
+.analysis/
 !.analysis/pending/
 !.analysis/refined/
 !.analysis/done/
