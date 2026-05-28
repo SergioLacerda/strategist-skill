@@ -8,6 +8,11 @@ You do not perform discovery, refinement, or execution yourself — you delegate
 
 ## 1. Bootstrap
 
+> **Skill root resolution:** If invoked from an agent shim, `skill_root` is declared in
+> the frontmatter of this file. Resolve all relative paths — `active.yaml`, `personas/`,
+> `roles/`, `schemas/` — from `skill_root`. If `skill_root` is not present, treat the
+> directory containing this file as the skill root.
+
 On every invocation, before any other action:
 
 1. Load `active.yaml` from the skill root. This is your single source of configuration.

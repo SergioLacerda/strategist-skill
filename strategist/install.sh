@@ -6,6 +6,8 @@
 #   sh install.sh                    # silent install with pragmatic defaults
 #   sh install.sh --wizard           # interactive TUI setup
 #   sh install.sh --target /path     # set target repo root (default: current dir)
+#
+# To uninstall agent shims: rm -rf ~/.claude/skills/strategist (and equivalent for other agents)
 
 set -euo pipefail
 
@@ -28,23 +30,81 @@ read_template() {
 
 write_active_yaml() {
   local template_name="$1"
-  read_template "$template_name" > "${SKILL_ROOT}/active.yaml"
+  read_template "$template_name" > "${TARGET_REPO}/.strategist/active.yaml"
   echo "[Strategist] active.yaml created from template: $template_name"
+}
+
+copy_skill_runtime() {
+  local dest="${TARGET_REPO}/.strategist"
+  mkdir -p "${dest}/memory"
+
+  for f in SKILL.md knowledge.index.yaml protocol.md; do
+    [ -f "${SKILL_ROOT}/${f}" ] && cp "${SKILL_ROOT}/${f}" "${dest}/${f}"
+  done
+
+  for d in personas roles schemas; do
+    [ -d "${SKILL_ROOT}/${d}" ] && cp -r "${SKILL_ROOT}/${d}" "${dest}/${d}"
+  done
+
+  # Copy internal domain templates — only if index.yaml not already present
+  local domain_src="${SKILL_ROOT}/templates/domain"
+  if [ -d "$domain_src" ] && [ ! -f "${dest}/index.yaml" ]; then
+    cp -r "${domain_src}/." "${dest}/"
+  fi
+
+  echo "[Strategist] runtime installed at: ${dest}"
+}
+
+install_agent_shims() {
+  local skill_root_abs
+  skill_root_abs="$(cd "${TARGET_REPO}/.strategist" && pwd)"
+
+  local description
+  description="$(awk '/^description:/{found=1; next} found && /^  /{sub(/^ +/,""); printf "%s ", $0; next} found{exit}' \
+    "${SKILL_ROOT}/skill.yaml" | tr -s ' ' | sed 's/ *$//' | cut -c1-120)"
+  [ -z "$description" ] && description="Multi-phase mission orchestrator."
+
+  local shim_content
+  shim_content="$(cat <<SHIM
+---
+name: strategist
+description: "${description}"
+skill_root: ${skill_root_abs}
+---
+
+# Strategist
+
+**SKILL_ROOT:** \`${skill_root_abs}\`
+
+Read full instructions from: \`${skill_root_abs}/SKILL.md\`
+
+All config paths (active.yaml, personas/, roles/, schemas/) resolve from skill_root.
+SHIM
+)"
+
+  local targets=(
+    "${HOME}/.claude/skills"
+    "${HOME}/.gemini/skills"
+    "${HOME}/.gemini/antigravity/skills"
+    "${HOME}/.codex/skills"
+  )
+
+  for base in "${targets[@]}"; do
+    if [ -d "$base" ]; then
+      mkdir -p "${base}/strategist"
+      printf '%s\n' "$shim_content" > "${base}/strategist/SKILL.md"
+      echo "[Strategist] shim registered: ${base}/strategist/SKILL.md"
+    else
+      echo "[Strategist] skipped (dir not found): ${base}"
+    fi
+  done
 }
 
 scaffold_workspace() {
   local base_path="$1"
   local target="${TARGET_REPO}/${base_path}"
-  mkdir -p "${target}/todo" "${target}/pending" "${target}/refined" "${target}/done" "${target}/.strategist"
-
-  # Copy internal domain templates into .strategist/ if not already present.
-  local domain_src="${SKILL_ROOT}/templates/domain"
-  if [ -d "$domain_src" ] && [ ! -f "${target}/.strategist/index.yaml" ]; then
-    cp -r "${domain_src}/." "${target}/.strategist/"
-    echo "[Strategist] workspace scaffolded at: ${target}"
-  else
-    echo "[Strategist] workspace directories ensured at: ${target}"
-  fi
+  mkdir -p "${target}/todo" "${target}/pending" "${target}/refined" "${target}/done"
+  echo "[Strategist] workspace directories ensured at: ${target}"
 }
 
 # ── wizard TUI ───────────────────────────────────────────────────────────────
@@ -92,21 +152,23 @@ run_wizard() {
   hunter="${hunter:-}"
 
   if [ -z "$hunter" ]; then
-    echo "Error: Hunter provider is required. Re-run the wizard or edit roles/default.yaml."
+    echo "Error: Hunter provider is required. Re-run the wizard or edit .strategist/roles/default.yaml."
     exit 1
   fi
 
   # Knowledge base
-  printf "Knowledge base path (leave blank to create at ${base_path}/.strategist/knowledge): "
+  printf "Knowledge base path (leave blank to create at .strategist/knowledge): "
   read -r knowledge_path
 
-  # Write active.yaml from chosen template then patch values
+  # Install runtime files first, then configure
+  copy_skill_runtime
   write_active_yaml "$TEMPLATE"
-  # Patch base_path
-  sed -i "s|^base_path:.*|base_path: ${base_path}|" "${SKILL_ROOT}/active.yaml"
 
-  # Write roles/default.yaml
-  cat > "${SKILL_ROOT}/roles/default.yaml" <<EOF
+  # Patch base_path in active.yaml
+  sed -i "s|^base_path:.*|base_path: ${base_path}|" "${TARGET_REPO}/.strategist/active.yaml"
+
+  # Write roles/default.yaml into .strategist/
+  cat > "${TARGET_REPO}/.strategist/roles/default.yaml" <<EOF
 scout: ${scout}
 engineer: ${engineer}
 hunter: ${hunter}
@@ -117,26 +179,31 @@ EOF
 
   # Handle knowledge base
   if [ -n "$knowledge_path" ]; then
-    sed -i "s|knowledge_index_path:.*|knowledge_index_path: ${SKILL_ROOT}/knowledge.index.yaml|" "${SKILL_ROOT}/active.yaml"
+    sed -i "s|knowledge_index_path:.*|knowledge_index_path: ${TARGET_REPO}/.strategist/knowledge.index.yaml|" \
+      "${TARGET_REPO}/.strategist/active.yaml"
     echo "[Strategist] knowledge base path recorded: ${knowledge_path}"
   else
-    local kb_path="${TARGET_REPO}/${base_path}/.strategist/knowledge"
+    local kb_path="${TARGET_REPO}/.strategist/knowledge"
     mkdir -p "$kb_path"
     echo "[Strategist] empty knowledge base initialized at: ${kb_path}"
   fi
 
+  install_agent_shims
+
   echo ""
-  echo "Setup complete. active.yaml written to: ${SKILL_ROOT}/active.yaml"
-  echo "Edit roles/default.yaml to change slot providers."
+  echo "Setup complete. active.yaml written to: ${TARGET_REPO}/.strategist/active.yaml"
+  echo "Edit .strategist/roles/default.yaml to change slot providers."
 }
 
 # ── silent install ────────────────────────────────────────────────────────────
 
 run_silent() {
+  copy_skill_runtime
   write_active_yaml "pragmatic-standalone.yaml"
   local base_path
-  base_path="$(grep '^base_path:' "${SKILL_ROOT}/active.yaml" | awk '{print $2}')"
+  base_path="$(grep '^base_path:' "${TARGET_REPO}/.strategist/active.yaml" | awk '{print $2}')"
   scaffold_workspace "$base_path"
+  install_agent_shims
   echo "[Strategist] install complete. Run with --wizard for interactive setup."
 }
 
