@@ -59,7 +59,7 @@ Load `roles/<roles_config>.yaml`. For each slot (scout, engineer, hunter):
 **2d. Validate slot risk contracts**
 
 - Scout (discovery) and Engineer (refinement) slots: `risk_score` MUST be `read_only`.
-- Hunter (execution) slot: `risk_score` MUST be `controlled_write`.
+- Hunter (execution) slot: `risk_score` MUST be `controlled`.
 - If mismatch: emit blocked event with `reason=slot_risk_mismatch slot=<label>`, stop.
 
 **2e. Emit preflight done**
@@ -99,6 +99,8 @@ nothing: dossier contains only `task_type` and `output_template`.
 
 ## 5. Mission Phases
 
+Pipeline: Scout → housekeeping_scan → [mini approval gate] → Hunter(side quests) → Engineer → approval gate → Hunter(main)
+
 ### 5a. Scout (discovery slot)
 
 Emit: `[Strategist] phase=<scout_label> status=running skill=<provider> checklist=0/3`
@@ -115,12 +117,101 @@ Emit: `[Strategist] phase=<scout_label> status=done artifact=<path>`
 
 On failure: emit blocked event with `reason=scout_failed`, present partial artifact if any.
 
-### 5b. Engineer (refinement slot)
+### 5b. Housekeeping Scan (internal — no slot)
+
+Emit: `[Strategist] phase=housekeeping_scan status=running`
+
+Execute a deterministic scan of `<base_path>/`. Do NOT delegate this to a slot provider.
+
+**Scan rules per directory:**
+
+| Directory | Check | Side quest type |
+|-----------|-------|----------------|
+| `todo/` | Does this spec have a corresponding implementation commit in git? | `move_to_done` |
+| `pending/` | Does this spec have a corresponding plan in `refined/`? | `promote` |
+| `refined/` | Does this plan have a corresponding report in `done/`? | `promote` |
+
+**Heuristic for `move_to_done`:** git log contains a commit referencing the spec slug (date + topic keyword) OR spec lists features that exist as code in the repo. When uncertain, list as a candidate — the user decides at the mini approval gate.
+
+Produce a **side quest manifest**: list of items with type, path, and reason.
+
+If manifest is empty:
+- Emit: `[Strategist] phase=housekeeping_scan status=done side_quests=0`
+- Skip 5c and 5d — proceed directly to 5e (Engineer).
+
+If manifest is non-empty:
+- Emit: `[Strategist] phase=housekeeping_scan status=done side_quests=N`
+- Proceed to 5c.
+
+### 5c. Mini Approval Gate (conditional — only if side_quests > 0)
+
+STOP. Do not move any file without explicit user approval.
+
+Present to the user:
+
+```
+[Strategist] Workspace scan encontrou N side quest(s) antes da análise principal:
+
+  [1] <origin_path> → <destination> (<type>)
+       Motivo: <reason>
+
+  [2] ...
+
+Aprovar todos? [yes / no / select]
+```
+
+Wait for response:
+- **yes**: proceed to 5d (Hunter executes all side quests).
+- **no**: discard manifest, proceed to 5e (Engineer) with workspace as-is.
+- **select**: user specifies items by number or name; Hunter executes only selected items.
+
+Invoking Hunter side quests without mini approval gate response is a **forbidden behavior**.
+
+### 5d. Hunter: Side Quest Execution (conditional — only if mini approval granted)
+
+Emit: `[Strategist] phase=side_quest_execution status=running`
+
+Invoke the execution slot provider with:
+- Side quest manifest (approved items only)
+- Instruction: execute file moves and status updates only; no other writes
+
+**Allowed operations:**
+- `mv <base_path>/todo/<file> <base_path>/done/<file>`
+- Update `Status:` field in markdown files
+- No writes outside `<base_path>/`
+
+On completion, Hunter produces a **side quest report** (markdown block):
+
+```markdown
+## Side Quest Report
+**Executado:** <date> | **Itens processados:** N
+
+### Movimentações
+- `<origin>` → `<destination>` (<reason>)
+
+### Estado atual do workspace (pós-limpeza)
+- `todo/`: N itens restantes
+- `pending/`: N itens
+- `refined/`: N itens
+- `done/`: N itens
+
+### Itens excluídos da análise principal
+<list of moved items — Engineer must not treat these as pending work>
+```
+
+If Hunter side quest fails: emit `[Strategist] phase=side_quest_execution status=failed reason=<error>`.
+This is **non-blocking** — log the failure, proceed to 5e with a partial or empty side quest report.
+
+Emit: `[Strategist] phase=side_quest_execution status=done`
+
+### 5e. Engineer (refinement slot)
 
 Emit: `[Strategist] phase=<engineer_label> status=running skill=<provider> checklist=1/3`
 
 Invoke the refinement slot provider with:
 - Discovery artifact path
+- Side quest report (if present) — injected as context with instruction:
+  > "Items listed under 'Itens excluídos da análise principal' are resolved. Do not treat them as pending. Base your analysis on the post-cleanup workspace state."
 - `mission_contract.planning_rules`
 - Dossier
 
@@ -192,6 +283,7 @@ mission_id: <id>
 status: completed | plan_only | blocked
 artifacts:
   discovery: <path>           # always present when scout ran
+  side_quest_report: inline   # present when side quests ran (inline block, not a file)
   refined_plan: <path>        # present when engineer ran
   execution_report: <path>    # present when hunter ran
 blockers: []                  # list of blocker codes if status=blocked
@@ -218,5 +310,7 @@ When `drift-patterns.yaml` is loaded, check for matching symptoms before each ph
 - `direct_execution`: You are about to perform slot work yourself. → Stop. Identify active slot. Invoke provider. Resume.
 - `silent_phase_advance`: You are about to start the next phase without emitting a done event. → Emit the done event first.
 - `approval_bypass`: You are about to invoke Hunter without asking the user. → Stop. Present approval gate prompt.
+- `side_quest_approval_bypass`: You are about to move files from housekeeping_scan without presenting the mini approval gate. → Stop. Present mini approval gate with the full manifest first.
 - `scope_expansion`: You are addressing something outside the user's mission. → Stop. Return to mission scope.
 - `hunter_provider_override`: You resolved Hunter from somewhere other than roles config or sdd_injection. → Stop. Re-resolve from declared source.
+- `housekeeping_scan_as_slot`: You are about to delegate the housekeeping scan to Scout or another slot. → Stop. Execute the scan directly as Strategist (deterministic, internal phase).

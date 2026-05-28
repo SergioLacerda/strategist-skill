@@ -32,7 +32,7 @@ slots:
     contract: read_only
     description: Reads the discovery artifact and produces a reviewed plan.
   execution:
-    contract: controlled_write
+    contract: controlled
     description: Executes the reviewed plan produced by the refinement slot.
 
 preflight:
@@ -51,9 +51,23 @@ pipeline:
     slot: discovery
     input: mission_contract
     artifact_path: "<base_path>/pending/<mission_id>-discovery.md"
+  - stage: housekeeping_scan
+    type: internal
+    description: Deterministic scan of base_path/ for misplaced or done items. No slot invoked.
+    produces: side_quest_manifest
+  - stage: side_quest_approval
+    type: conditional_pause
+    condition: side_quest_manifest.count > 0
+    description: Present side quest manifest. Require explicit approval before Hunter moves files.
+  - stage: side_quest_execution
+    slot: execution
+    condition: side_quest_approval_granted
+    input: side_quest_manifest
+    produces: side_quest_report
+    blocking: false
   - stage: refinement
     slot: refinement
-    input: discovery_artifact
+    input: [discovery_artifact, side_quest_report]
     artifact_path: "<base_path>/refined/<mission_id>-plan.md"
   - stage: approval_gate
     type: mandatory_pause
@@ -73,6 +87,7 @@ stop_conditions:
   - slot_risk_mismatch
   - intake_conflict_unresolved
   - user_denies_execution
+  - side_quest_hunter_failed  # non-blocking: log and continue to Engineer
 
 result_schema: mission-result.schema.yaml
 
@@ -90,3 +105,6 @@ forbidden_behaviors:
   - perform_discovery_directly_instead_of_delegating
   - skip_preflight
   - load_knowledge_not_in_index
+  - run_housekeeping_scan_as_slot
+  - skip_mini_approval_gate
+  - invoke_side_quest_hunter_without_approval
