@@ -1,0 +1,381 @@
+/* ============================================================
+   STRATEGIST — Dungeon RPG landing system
+   Aesthetic: arcane terminal / grimoire · amber CRT phosphor
+   Shared tokens + per-variation scopes (.va / .vb / .vc)
+   ============================================================ */
+
+:root {
+  --ink:        #0c0805;
+  --bg:         #14100a;
+  --bg2:        #1b1610;
+  --panel:      #211a11;
+  --panel2:     #2a2117;
+  --line:       rgba(232,194,90,.16);
+  --line-2:     rgba(232,194,90,.32);
+  --amber:      #e8c25a;
+  --amber-hi:   #f8df90;
+  --amber-dim:  #b8933f;
+  --orange:     #cf7a2c;
+  --rust:       #8a4128;
+  --green:      #74cf8e;   /* CRT green accent — used sparingly */
+  --green-dim:  #3f6e4f;
+  --text:       #d9c49a;
+  --muted:      #9b865d;
+  --faint:      #6c5c3e;
+  --mono: "IBM Plex Mono", "JetBrains Mono", ui-monospace, monospace;
+  --display: "Cinzel", Georgia, serif;
+  --grim: "Cinzel Decorative", "Cinzel", Georgia, serif;
+}
+
+* { box-sizing: border-box; }
+
+.page {
+  width: 1120px;
+  position: relative;
+  font-family: var(--mono);
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
+  overflow: hidden;
+}
+
+/* ---- CRT overlays (static) ---- */
+.crt::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0,0,0,0) 0px,
+    rgba(0,0,0,0) 2px,
+    rgba(0,0,0,.16) 3px,
+    rgba(0,0,0,.16) 4px
+  );
+  pointer-events: none; z-index: 50; mix-blend-mode: multiply;
+}
+.crt::after {
+  content: "";
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(120% 90% at 50% 30%, transparent 55%, rgba(0,0,0,.55) 100%),
+    radial-gradient(60% 50% at 50% 18%, rgba(232,194,90,.07), transparent 70%);
+  pointer-events: none; z-index: 49;
+}
+
+.glow   { text-shadow: 0 0 10px rgba(232,194,90,.45), 0 0 2px rgba(232,194,90,.6); }
+.glow-g { text-shadow: 0 0 10px rgba(116,207,142,.5); }
+.amber  { color: var(--amber); }
+.green  { color: var(--green); }
+.dim    { color: var(--muted); }
+.faint  { color: var(--faint); }
+
+/* generic helpers */
+.center { text-align: center; }
+.pre { white-space: pre; }
+.mono { font-family: var(--mono); }
+
+/* badges row */
+.badges { display: flex; flex-wrap: wrap; gap: 10px; }
+.badge {
+  display: inline-flex; align-items: stretch; font-family: var(--mono);
+  font-size: 12px; letter-spacing: .04em; border: 1px solid var(--line-2);
+  border-radius: 3px; overflow: hidden;
+}
+.badge b { background: rgba(232,194,90,.08); color: var(--muted); font-weight: 500; padding: 4px 9px; }
+.badge i { font-style: normal; padding: 4px 9px; font-weight: 600; }
+.badge.ok i  { color: var(--green);  background: rgba(116,207,142,.08); }
+.badge.amb i { color: var(--amber);  background: rgba(232,194,90,.08); }
+.badge.org i { color: var(--orange); background: rgba(207,122,44,.10); }
+
+/* ==========================================================
+   VARIATION A — TERMINAL CRAWL  (.va)
+   pure phosphor terminal, ascii box-drawing dungeon
+   ========================================================== */
+.va { background:
+    radial-gradient(140% 100% at 50% 0%, #1a140c 0%, #0d0a06 70%);
+  padding: 0;
+}
+.va .wrap { padding: 64px 72px 80px; position: relative; z-index: 2; }
+.va .winbar {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; color: var(--faint); border-bottom: 1px solid var(--line);
+  padding: 0 16px 14px; letter-spacing: .05em;
+}
+.va .winbar .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.va .winbar .dot.r { background: var(--rust); }
+.va .winbar .dot.y { background: var(--amber-dim); }
+.va .winbar .dot.g { background: var(--green-dim); }
+.va .prompt { color: var(--green); }
+.va .boot { font-size: 13px; color: var(--muted); margin: 22px 0 6px; }
+.va .boot .ok { color: var(--green); }
+.va .ascii {
+  font-family: var(--mono); color: var(--amber); font-size: 15px; line-height: 1.15;
+  text-shadow: 0 0 12px rgba(232,194,90,.4); margin: 6px 0; letter-spacing: 0;
+}
+.va .tagline { color: var(--text); font-size: 17px; margin-top: 14px; max-width: 760px; }
+.va .tagline b { color: var(--amber); font-weight: 600; }
+
+.va h2.sec {
+  font-family: var(--mono); font-size: 13px; letter-spacing: .35em; text-transform: uppercase;
+  color: var(--orange); margin: 48px 0 14px; font-weight: 600;
+}
+.va h2.sec::before { content: "// "; color: var(--faint); }
+
+.va .map {
+  font-family: var(--mono); font-size: 14px; line-height: 1.35; color: var(--amber-dim);
+  white-space: pre; border: 1px solid var(--line); background: rgba(0,0,0,.25);
+  padding: 22px 26px; border-radius: 4px; overflow: hidden;
+}
+.va .map .node { color: var(--amber); text-shadow: 0 0 8px rgba(232,194,90,.35); }
+.va .map .gate { color: var(--orange); }
+.va .map .lp   { color: var(--green); }
+
+.va .cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.va .card {
+  border: 1px solid var(--line-2); border-radius: 4px; background: rgba(0,0,0,.22);
+  padding: 18px 20px; position: relative;
+}
+.va .card .glyph { position: absolute; top: 14px; right: 18px; font-size: 26px; color: var(--amber-dim); opacity: .8; }
+.va .card .role { font-family: var(--display); font-size: 22px; color: var(--amber); letter-spacing: .04em; }
+.va .card .klass { font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: var(--orange); margin: 3px 0 12px; }
+.va .card .stats { display: flex; gap: 16px; margin-bottom: 12px; }
+.va .card .stat { font-size: 11px; color: var(--faint); }
+.va .card .stat b { display: block; color: var(--text); font-size: 15px; font-weight: 600; }
+.va .card p { font-size: 13.5px; color: var(--muted); margin: 0; }
+.va .card .bar { height: 4px; border-radius: 2px; background: rgba(232,194,90,.12); margin-top: 12px; overflow: hidden; }
+.va .card .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--rust), var(--amber)); }
+
+/* gate panel */
+.gate-panel {
+  border: 1px dashed var(--orange); border-radius: 4px; padding: 22px 26px;
+  background: linear-gradient(90deg, rgba(207,122,44,.10), rgba(207,122,44,.02));
+  display: flex; align-items: center; gap: 22px;
+}
+.gate-panel .lock { font-size: 40px; color: var(--orange); text-shadow: 0 0 16px rgba(207,122,44,.5); }
+.gate-panel h3 { font-family: var(--display); font-size: 22px; color: var(--amber-hi); margin: 0 0 4px; letter-spacing: .03em; }
+.gate-panel p { margin: 0; font-size: 13.5px; color: var(--muted); max-width: 640px; }
+.gate-panel .req { margin-top: 8px; font-size: 12px; color: var(--orange); letter-spacing: .04em; }
+
+/* install block */
+.install { border: 1px solid var(--line); border-radius: 4px; background: rgba(0,0,0,.3); overflow: hidden; }
+.install .ihead { padding: 8px 16px; font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--faint); border-bottom: 1px solid var(--line); }
+.install pre { margin: 0; padding: 16px 18px; font-size: 13px; color: var(--text); white-space: pre-wrap; word-break: break-all; }
+.install pre .c { color: var(--green); }
+.install pre .o { color: var(--muted); }
+
+.foot { margin-top: 46px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 12px; color: var(--faint); display: flex; justify-content: space-between; }
+
+/* ==========================================================
+   VARIATION B — ARCANE GRIMOIRE  (.vb)
+   ornate runic chambers, glowing sigils, descent
+   ========================================================== */
+.vb { background:
+    radial-gradient(100% 70% at 50% 0%, #241a10 0%, #160f08 55%, #0c0805 100%);
+}
+.vb .wrap { padding: 0; position: relative; z-index: 2; }
+.vb .hero { padding: 80px 80px 56px; text-align: center; position: relative; }
+.vb .crest { font-size: 40px; color: var(--amber); text-shadow: 0 0 22px rgba(232,194,90,.55); letter-spacing: .3em; }
+.vb .ornament { color: var(--amber-dim); letter-spacing: .5em; font-size: 14px; margin: 14px 0; }
+.vb h1.title {
+  font-family: var(--grim); font-weight: 700; font-size: 68px; line-height: .98;
+  color: var(--amber-hi); margin: 6px 0 6px; letter-spacing: .04em;
+  text-shadow: 0 0 30px rgba(232,194,90,.35);
+}
+.vb .sub { font-family: var(--display); font-size: 15px; letter-spacing: .42em; text-transform: uppercase; color: var(--orange); }
+.vb .lede { max-width: 700px; margin: 22px auto 0; font-size: 16px; color: var(--text); line-height: 1.7; }
+.vb .lede b { color: var(--amber); }
+.vb .badges { justify-content: center; margin-top: 26px; }
+
+/* CTA buttons (used on the hosted landing page) */
+.vb .cta { display: flex; gap: 14px; justify-content: center; margin-top: 28px; flex-wrap: wrap; }
+.btn {
+  display: inline-flex; align-items: center; gap: 9px; font-family: var(--mono);
+  font-size: 13px; letter-spacing: .1em; text-transform: uppercase; font-weight: 500;
+  padding: 12px 22px; border-radius: 4px; text-decoration: none;
+  border: 1px solid var(--line-2); color: var(--amber); background: rgba(232,194,90,.05);
+  transition: background .15s, border-color .15s, transform .1s, box-shadow .15s;
+}
+.btn:hover { background: rgba(232,194,90,.12); border-color: var(--amber); box-shadow: 0 0 18px rgba(232,194,90,.18); }
+.btn:active { transform: translateY(1px); }
+.btn.primary {
+  color: #1c1408; border-color: var(--amber);
+  background: linear-gradient(180deg, var(--amber-hi), var(--amber-dim));
+  text-shadow: none; box-shadow: 0 0 22px rgba(232,194,90,.3);
+}
+.btn.primary:hover { box-shadow: 0 0 30px rgba(232,194,90,.45); }
+
+.vb .scroll-sec { padding: 14px 80px 0; }
+.vb .seclabel {
+  font-family: var(--display); text-align: center; color: var(--orange);
+  letter-spacing: .4em; text-transform: uppercase; font-size: 13px; margin: 40px 0 6px;
+}
+.vb .secrule { text-align: center; color: var(--amber-dim); letter-spacing: .4em; font-size: 13px; margin-bottom: 26px; }
+
+/* chamber descent */
+.vb .chambers { display: flex; flex-direction: column; gap: 0; }
+.vb .chamber {
+  position: relative; border: 1px solid var(--line-2); border-radius: 6px;
+  background: linear-gradient(180deg, rgba(42,33,23,.6), rgba(20,15,9,.4));
+  padding: 26px 30px 26px 110px; box-shadow: inset 0 0 40px rgba(0,0,0,.45);
+}
+.vb .chamber + .corridor { height: 34px; width: 2px; margin: 0 auto;
+  background: repeating-linear-gradient(var(--line-2) 0 5px, transparent 5px 11px); }
+.vb .chamber .sigil {
+  position: absolute; left: 26px; top: 50%; transform: translateY(-50%);
+  width: 60px; height: 60px; border: 1px solid var(--line-2); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 30px;
+  color: var(--amber); background: radial-gradient(circle, rgba(232,194,90,.14), transparent 70%);
+  text-shadow: 0 0 14px rgba(232,194,90,.5);
+}
+.vb .chamber .no { position: absolute; left: 38px; top: 14px; font-size: 11px; color: var(--faint); letter-spacing: .1em; }
+.vb .chamber .role { font-family: var(--grim); font-size: 26px; color: var(--amber-hi); letter-spacing: .03em; }
+.vb .chamber .klass { font-size: 11px; letter-spacing: .24em; text-transform: uppercase; color: var(--orange); margin: 4px 0 10px; }
+.vb .chamber p { margin: 0; font-size: 14px; color: var(--muted); max-width: 720px; }
+.vb .chamber .tag { display: inline-block; margin-top: 12px; font-size: 11px; color: var(--amber-dim); border: 1px solid var(--line); border-radius: 999px; padding: 3px 12px; letter-spacing: .08em; }
+.vb .chamber.gate { border-color: var(--orange); border-style: dashed; background: linear-gradient(90deg, rgba(207,122,44,.12), transparent); }
+.vb .chamber.gate .sigil { color: var(--orange); border-color: var(--orange); text-shadow: 0 0 16px rgba(207,122,44,.6); }
+.vb .chamber.gate .role { color: var(--orange); }
+
+.vb .install-wrap { padding: 30px 80px 70px; }
+.vb .runefoot { text-align: center; color: var(--faint); font-size: 12px; letter-spacing: .2em; padding: 0 0 50px; }
+
+/* B — ASCII pipeline map (borrowed from A, grimoire-tuned) */
+.vb .mapwrap { text-align: center; padding: 0 40px; }
+.vb .map {
+  display: inline-block; text-align: left;
+  font-family: var(--mono); font-size: 14px; line-height: 1.4; color: var(--amber-dim);
+  white-space: pre; border: 1px solid var(--line-2); border-radius: 6px;
+  background: linear-gradient(180deg, rgba(42,33,23,.45), rgba(12,8,5,.55));
+  box-shadow: inset 0 0 40px rgba(0,0,0,.5); padding: 26px 34px; overflow: hidden;
+}
+.vb .map .node { color: var(--amber-hi); text-shadow: 0 0 10px rgba(232,194,90,.45); }
+.vb .map .gate { color: var(--orange); text-shadow: 0 0 10px rgba(207,122,44,.4); }
+.vb .map .lp   { color: var(--green); }
+
+/* B — role cards (borrowed from A, no stats / no footer bar) */
+.vb .cards-wrap { padding: 0 80px; }
+.vb .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.vb .card.feature { grid-column: 1 / -1; }
+.vb .card {
+  position: relative; border: 1px solid var(--line-2); border-radius: 6px;
+  background: linear-gradient(180deg, rgba(42,33,23,.55), rgba(20,15,9,.4));
+  box-shadow: inset 0 0 34px rgba(0,0,0,.4); padding: 22px 110px 22px 26px;
+}
+.vb .card .glyph {
+  position: absolute; left: 24px; top: 22px;
+  width: 52px; height: 52px; border: 1px solid var(--line-2); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 26px;
+  color: var(--amber); background: radial-gradient(circle, rgba(232,194,90,.14), transparent 70%);
+  text-shadow: 0 0 12px rgba(232,194,90,.5);
+}
+.vb .card.hasglyph { padding-left: 96px; }
+.vb .card .role { font-family: var(--grim); font-weight: 700; font-size: 23px; color: var(--amber-hi); letter-spacing: .03em; line-height: 1.05; }
+.vb .card .klass { font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: var(--orange); margin: 6px 0 10px; }
+.vb .card p { margin: 0; font-size: 13.5px; color: var(--muted); line-height: 1.55; }
+.vb .card p i { color: var(--amber); font-style: normal; }
+.vb .card.gate { border-style: dashed; border-color: var(--orange); background: linear-gradient(135deg, rgba(207,122,44,.12), transparent 70%); }
+.vb .card.gate .glyph { color: var(--orange); border-color: var(--orange); text-shadow: 0 0 14px rgba(207,122,44,.55); }
+.vb .card.gate .role { color: var(--orange); }
+
+/* B — invocation block (borrowed from C) */
+.vb .invoke-panel {
+  max-width: 660px; margin: 0 auto; border: 1px solid var(--line-2); border-radius: 6px;
+  background: rgba(0,0,0,.28); box-shadow: inset 0 0 30px rgba(0,0,0,.4); padding: 24px 28px;
+}
+.vb .invoke-panel .install { border: none; background: transparent; }
+.vb .invoke-panel .install .ihead { padding-left: 0; }
+.vb .invoke-panel .install pre { padding-left: 0; background: transparent; }
+.vb .invoke-panel .src { font-size: 11.5px; color: var(--faint); margin: 12px 0 0; text-align: center; letter-spacing: .04em; }
+
+/* B — Approval Gate as a sealed PORTAL (iron portcullis side walls) */
+.vb .gatewrap { padding: 0 80px; }
+.vb .gate-portal {
+  display: flex; align-items: stretch; border-radius: 6px; overflow: hidden;
+  border: 1px solid var(--orange);
+  background: linear-gradient(180deg, rgba(207,122,44,.10), rgba(20,15,9,.5));
+  box-shadow: inset 0 0 50px rgba(0,0,0,.55), 0 0 28px rgba(207,122,44,.12);
+}
+.vb .gate-wall {
+  flex: 0 0 46px; position: relative;
+  background:
+    repeating-linear-gradient(0deg, rgba(0,0,0,.55) 0 2px, transparent 2px 30px),
+    repeating-linear-gradient(90deg, #7a3f22 0 6px, #2b1810 6px 15px);
+  box-shadow: inset 0 0 14px rgba(0,0,0,.7);
+}
+.vb .gate-wall::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 9px;
+  background: linear-gradient(180deg, var(--rust), #2b1810);
+  border-bottom: 1px solid rgba(0,0,0,.5);
+}
+.vb .gate-wall::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 9px;
+  background: linear-gradient(0deg, var(--rust), #2b1810);
+  border-top: 1px solid rgba(0,0,0,.5);
+}
+.vb .gate-body { flex: 1; text-align: center; padding: 30px 40px; }
+.vb .gate-body .lock {
+  font-size: 42px; color: var(--orange); line-height: 1;
+  text-shadow: 0 0 20px rgba(207,122,44,.6); margin-bottom: 14px;
+}
+.vb .gate-body .req-head {
+  font-family: var(--mono); font-size: 17px; font-weight: 600; color: var(--amber-hi);
+  letter-spacing: .04em; text-shadow: 0 0 12px rgba(232,194,90,.4); margin-bottom: 12px;
+}
+.vb .gate-body .req-head b { color: var(--orange); font-weight: 600; }
+.vb .gate-body p { margin: 0 auto; max-width: 620px; font-size: 14px; color: var(--muted); line-height: 1.65; }
+
+/* ==========================================================
+   VARIATION C — DUNGEON CARTOGRAPH  (.vc)
+   2D tile map of stone rooms + corridors, side panels
+   ========================================================== */
+.vc { background:
+    radial-gradient(120% 80% at 70% 10%, #1d160d 0%, #100b06 60%); }
+.vc .wrap { padding: 56px 64px 72px; position: relative; z-index: 2; }
+.vc .top { display: flex; justify-content: space-between; align-items: flex-end; gap: 30px; margin-bottom: 12px; }
+.vc .brand { font-family: var(--display); font-size: 13px; letter-spacing: .4em; text-transform: uppercase; color: var(--orange); }
+.vc h1 { font-family: var(--display); font-size: 56px; color: var(--amber-hi); margin: 6px 0 0; letter-spacing: .03em; text-shadow: 0 0 24px rgba(232,194,90,.3); }
+.vc .lede { max-width: 560px; font-size: 14.5px; color: var(--muted); }
+.vc .lede b { color: var(--amber); }
+
+.vc .maparea {
+  margin-top: 26px; border: 1px solid var(--line-2); border-radius: 6px;
+  background:
+    linear-gradient(rgba(232,194,90,.05) 1px, transparent 1px) 0 0 / 100% 38px,
+    linear-gradient(90deg, rgba(232,194,90,.05) 1px, transparent 1px) 0 0 / 38px 100%,
+    radial-gradient(120% 100% at 50% 0%, #1a140c, #0c0805);
+  padding: 30px; position: relative;
+}
+.vc .legend { position: absolute; right: 18px; top: 16px; font-size: 11px; color: var(--faint); text-align: right; letter-spacing: .06em; }
+.vc .legend span { color: var(--amber-dim); }
+
+.vc .grid {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 0;
+  position: relative; z-index: 2;
+}
+.vc .room {
+  border: 1px solid var(--line-2); border-radius: 4px; background: rgba(20,15,9,.7);
+  padding: 16px 16px 14px; min-height: 156px; position: relative;
+  box-shadow: inset 0 0 26px rgba(0,0,0,.5);
+}
+.vc .room .sig { font-size: 24px; color: var(--amber); text-shadow: 0 0 12px rgba(232,194,90,.45); }
+.vc .room .role { font-family: var(--display); font-size: 18px; color: var(--amber-hi); margin-top: 8px; letter-spacing: .02em; }
+.vc .room .klass { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--orange); margin-top: 2px; }
+.vc .room p { font-size: 12px; color: var(--muted); margin: 9px 0 0; line-height: 1.45; }
+.vc .room .no { position: absolute; top: 10px; right: 12px; font-size: 10px; color: var(--faint); }
+.vc .room.master { border-color: var(--amber); background: linear-gradient(180deg, rgba(232,194,90,.1), rgba(20,15,9,.7)); }
+.vc .room.master .sig { color: var(--amber-hi); }
+.vc .room.gate { border-style: dashed; border-color: var(--orange); }
+.vc .room.gate .sig, .vc .room.gate .role { color: var(--orange); }
+
+/* connector cells in the grid */
+.vc .conn { display: flex; align-items: center; justify-content: center; color: var(--amber-dim); font-size: 20px; }
+.vc .conn.v { flex-direction: column; }
+
+.vc .panels { display: grid; grid-template-columns: 1.1fr 1fr; gap: 18px; margin-top: 24px; }
+.vc .panel { border: 1px solid var(--line); border-radius: 5px; background: rgba(0,0,0,.25); padding: 20px 22px; }
+.vc .panel h3 { font-family: var(--display); font-size: 16px; letter-spacing: .12em; text-transform: uppercase; color: var(--orange); margin: 0 0 12px; }
+.vc .flowline { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 12.5px; }
+.vc .flowline .step { border: 1px solid var(--line-2); border-radius: 3px; padding: 5px 10px; color: var(--amber); background: rgba(232,194,90,.06); }
+.vc .flowline .arr { color: var(--faint); }
+.vc .flowline .lock { color: var(--orange); border-color: var(--orange); background: rgba(207,122,44,.1); }
+.vc .panel .install pre { background: transparent; }

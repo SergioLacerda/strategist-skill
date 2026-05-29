@@ -1,7 +1,26 @@
+<p align="center">
+  <img src="pages/docs/banner.png" alt="Strategist — A experiência de suas demandas nunca serão a mesma" width="100%" />
+</p>
+
+<p align="center">
+  <a href="https://sergiolacerda.github.io/strategist-skill/">
+    <img src="https://img.shields.io/badge/⛨_Documentação_Épica-landing_page-e8c25a?style=for-the-badge&labelColor=1b1610" alt="Documentação Épica" />
+  </a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/CI-passing-3fae6f?style=flat-square&labelColor=1b1610" />
+  <img src="https://img.shields.io/badge/version-1.0-e8c25a?style=flat-square&labelColor=1b1610" />
+  <img src="https://img.shields.io/badge/license-CC_BY--NC_4.0-cf7a2c?style=flat-square&labelColor=1b1610" />
+  <img src="https://img.shields.io/badge/mode-pragmatic_·_epic-9b865d?style=flat-square&labelColor=1b1610" />
+</p>
+
+---
+
 # Strategist Skill + SDD Harness
 
 ![CI](https://img.shields.io/badge/CI-passing-brightgreen)
-![License](https://img.shields.io/badge/License-MIT-blue)
+![License](https://img.shields.io/badge/License-CC_BY--NC_4.0-blue)
 ![Docs](https://img.shields.io/badge/Docs-available-orange)
 ![Version](https://img.shields.io/badge/Version-1.0-yellow)
 
@@ -17,6 +36,19 @@
 - **Knowledge Index** – contexto seletivo por `task_type` antes de cada missão; prioridades ajustadas por learning loop.
 - **Learning Loop não-bloqueante** – registra outcomes e source-hints com aprovação humana; falha nunca bloqueia o resultado da missão.
 - **Integração SDD opcional** – A skill se submete a governança, registrável como plugin, Aderindo a mandates, rules e guidelines definidos externamente ao plugin.
+
+---
+
+### Side Quests · Ataque de oportunidade
+
+Antes da análise principal, o Strategist varre o workspace e despacha correções pontuais — sempre passando por um **mini approval gate** quando há itens detectados.
+
+| Fase | Função |
+|------|--------|
+| **Housekeeping Scan** _(Ataque de oportunidade)_ | Em ações podemos encontrar problemas; despachamos em *side quests* para solucioná-los. |
+| **Side Quest** | Missões pequenas com escopo simples — como mover tarefas prontas para a pasta correta ou hotfixes pontuais. |
+
+> Pipeline completo: `Ranger → housekeeping_scan → [mini approval gate] → Sniper(side quests) → Archivist → approval gate → Sniper(main)`
 
 ---
 
@@ -94,3 +126,16 @@ bash strategist/install.sh --target /path/to/repo
 | [strategist/protocol.md](strategist/protocol.md) | Regras de roteamento obrigatórias e stop conditions |
 | [strategist/skill.yaml](strategist/skill.yaml) | Contrato da skill (slots, pipeline, forbidden_behaviors) |
 | [strategist-mission-pipeline/design.md](strategist-mission-pipeline/design.md) | Decisões de design e rationale da implementação |
+
+---
+
+## 📄 Licença
+
+Este projeto está licenciado sob a **Creative Commons Atribuição-NãoComercial 4.0 Internacional (CC BY-NC 4.0)**.
+
+Você pode usar, estudar, modificar e replicar este projeto para fins não comerciais, desde que a atribuição ao autor original seja preservada.
+O uso comercial, revenda ou comercialização requer autorização prévia por escrito do titular dos direitos autorais.
+
+- **Repositório:** <https://github.com/SergioLacerda/strategist-skill>
+- **Documentação (GitHub Pages):** <https://sergiolacerda.github.io/strategist-skill/>
+- **Texto completo da licença:** [`LICENSE`](LICENSE)
