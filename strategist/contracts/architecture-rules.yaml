@@ -1,0 +1,37 @@
+id: architecture-dependency-direction
+version: "1.0"
+type: mandate
+severity: high
+
+description: >
+  Define a direção permitida de imports entre pacotes internos.
+  Violações indicam acoplamento indevido e devem ser bloqueadas no CI.
+
+allowed_directions:
+  - from: cmd/strategist
+    to: [internal/compile, internal/install, internal/stale, internal/embed]
+    rationale: cmd é o ponto de wiring; pode importar qualquer pacote interno
+  - from: internal/*
+    to: [internal/domain]
+    rationale: todos os pacotes de negócio dependem dos tipos e contratos do domain
+
+forbidden_directions:
+  - from: internal/domain
+    to: [internal/compile, internal/install, internal/stale, internal/embed]
+    reason: domain é camada pura — sem dependências de infraestrutura
+  - from: internal/compile
+    to: [internal/install, internal/stale, internal/embed]
+    reason: pacotes de negócio não devem se acoplar lateralmente
+  - from: internal/install
+    to: [internal/compile, internal/stale, internal/embed]
+    reason: pacotes de negócio não devem se acoplar lateralmente
+  - from: internal/stale
+    to: [internal/compile, internal/install, internal/embed]
+    reason: pacotes de negócio não devem se acoplar lateralmente
+
+enforcement:
+  - tool: depguard (golangci-lint)
+    scope: CI — bloqueia lint step
+  - tool: TestDomainIsolation + TestLateralIsolation (go test)
+    scope: CI — bloqueia test step
+    file: internal/domain/architecture_test.go

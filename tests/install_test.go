@@ -35,13 +35,13 @@ func (m *mockExtractor) Extract(targetDir string) error {
 	}
 
 	files := map[string]string{
-		filepath.Join(targetDir, "active.yaml"):                              "mode: full\n",
-		filepath.Join(targetDir, "SKILL.md"):                                 "# SKILL\n",
-		filepath.Join(targetDir, "knowledge.index.yaml"):                     "sources: []\n",
-		filepath.Join(targetDir, "index.yaml"):                               "load_always: []\nload_by_task_type: {}\n",
-		filepath.Join(targetDir, "personas", "epic.yaml"):                    "name: Epic\n",
-		filepath.Join(targetDir, "roles", "default.yaml"):                    "name: Default\n",
-		filepath.Join(targetDir, "templates", "pragmatic-standalone.yaml"):   "mode: pragmatic\nbase_path: .analysis\n",
+		filepath.Join(targetDir, "active.yaml"):                            "mode: full\n",
+		filepath.Join(targetDir, "SKILL.md"):                               "# SKILL\n",
+		filepath.Join(targetDir, "knowledge.index.yaml"):                   "sources: []\n",
+		filepath.Join(targetDir, "index.yaml"):                             "load_always: []\nload_by_task_type: {}\n",
+		filepath.Join(targetDir, "personas", "epic.yaml"):                  "name: Epic\n",
+		filepath.Join(targetDir, "roles", "default.yaml"):                  "name: Default\n",
+		filepath.Join(targetDir, "templates", "pragmatic-standalone.yaml"): "mode: pragmatic\nbase_path: .analysis\n",
 	}
 	for path, content := range files {
 		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {

@@ -11,9 +11,66 @@ linters:
     - exhaustive
     - gocognit
     - testifylint
+    - misspell
+    - dupl
+    - unconvert
+    - ineffassign
+    - gocritic
+    - contextcheck
+    - depguard
   settings:
     gocognit:
       min-complexity: 15
+    dupl:
+      threshold: 100
+    depguard:
+      rules:
+        domain-isolation:
+          list-mode: lax
+          deny:
+            - pkg: "github.com/SergioLacerda/strategist-skill/internal/compile"
+              desc: "domain must not import compile"
+            - pkg: "github.com/SergioLacerda/strategist-skill/internal/install"
+              desc: "domain must not import install"
+            - pkg: "github.com/SergioLacerda/strategist-skill/internal/stale"
+              desc: "domain must not import stale"
+            - pkg: "github.com/SergioLacerda/strategist-skill/internal/embed"
+              desc: "domain must not import embed"
+          files:
+            - "**/internal/domain/**"
+        compile-lateral:
+          list-mode: lax
+          deny:
+            - pkg: "github.com/SergioLacerda/strategist-skill/internal/install"
+              desc: "compile must not import install"
+            - pkg: "github.com/SergioLacerda/strategist-skill/internal/stale"
+              desc: "compile must not import stale"
+            - pkg: "github.com/SergioLacerda/strategist-skill/internal/embed"
+              desc: "compile must not import embed"
+          files:
+            - "**/internal/compile/**"
+        install-lateral:
+          list-mode: lax
+          deny:
+            - pkg: "github.com/SergioLacerda/strategist-skill/internal/compile"
+              desc: "install must not import compile"
+            - pkg: "github.com/SergioLacerda/strategist-skill/internal/stale"
+              desc: "install must not import stale"
+            - pkg: "github.com/SergioLacerda/strategist-skill/internal/embed"
+              desc: "install must not import embed"
+          files:
+            - "**/internal/install/**"
+        stale-lateral:
+          list-mode: lax
+          deny:
+            - pkg: "github.com/SergioLacerda/strategist-skill/internal/compile"
+              desc: "stale must not import compile"
+            - pkg: "github.com/SergioLacerda/strategist-skill/internal/install"
+              desc: "stale must not import install"
+            - pkg: "github.com/SergioLacerda/strategist-skill/internal/embed"
+              desc: "stale must not import embed"
+          files:
+            - "**/internal/stale/**"
     errcheck:
       check-type-assertions: true
       check-blank: true
@@ -32,3 +89,8 @@ linters:
           - wrapcheck
           - gosec
           - errcheck
+          - dupl
+      - path: internal/install/installer\.go
+        linters:
+          - contextcheck
+        text: "passes a context to"
