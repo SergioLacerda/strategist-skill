@@ -15,6 +15,7 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(installCmd)
+	rootCmd.AddCommand(installGlobalCmd)
 	rootCmd.AddCommand(compileCmd)
 	rootCmd.AddCommand(checkStaleCmd)
 	rootCmd.AddCommand(versionCmd)

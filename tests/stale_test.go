@@ -29,8 +29,8 @@ func TestIsStale(t *testing.T) {
 	checker := stale.Checker{}
 
 	tests := []struct {
-		name     string
-		setup    func(t *testing.T, dir string) string // returns artifact path
+		name      string
+		setup     func(t *testing.T, dir string) string // returns artifact path
 		wantStale bool
 	}{
 		{

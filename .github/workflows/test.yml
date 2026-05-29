@@ -42,5 +42,19 @@ jobs:
             awk -v pct="$pct" 'BEGIN { if (pct+0 < 90) { print "FAIL: " pct "% < 90%"; exit 1 } }'
           done
 
+      - name: Format check
+        run: test -z "$(gofmt -l .)"
+
+      - name: Module hygiene
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum
+          go mod verify
+
+      - name: Vulnerability check
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
       - name: Build
         run: go build ./...
