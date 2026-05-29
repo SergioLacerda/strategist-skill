@@ -42,7 +42,7 @@ copy_skill_runtime() {
     [ -f "${SKILL_ROOT}/${f}" ] && cp "${SKILL_ROOT}/${f}" "${dest}/${f}"
   done
 
-  for d in personas roles schemas; do
+  for d in personas roles schemas scripts; do
     [ -d "${SKILL_ROOT}/${d}" ] && cp -r "${SKILL_ROOT}/${d}" "${dest}/${d}"
   done
 
@@ -53,6 +53,38 @@ copy_skill_runtime() {
   fi
 
   echo "[Strategist] runtime installed at: ${dest}"
+}
+
+compile_artifacts() {
+  local dest="${TARGET_REPO}/.strategist"
+  local knowledge_index="${dest}/knowledge.index.yaml"
+  local scripts_dir="${dest}/scripts"
+
+  if ! command -v jq >/dev/null 2>&1 || ! command -v yq >/dev/null 2>&1 || ! command -v gzip >/dev/null 2>&1; then
+    echo "[Strategist] WARN: jq, yq, or gzip not found — skipping artifact compilation (YAML fallback will be used)"
+    return 0
+  fi
+
+  echo "[Strategist] compiling artifacts..."
+  if sh "${scripts_dir}/compile-all.sh" "$dest" "$knowledge_index" 2>&1; then
+    echo "[Strategist] compilation complete — fast path enabled"
+  else
+    echo "[Strategist] WARN: compilation failed — YAML fallback will be used (no action needed)"
+  fi
+}
+
+ensure_gitignore_entry() {
+  local gitignore="${TARGET_REPO}/.gitignore"
+  local entry=".strategist/.compiled/"
+  if [ -f "$gitignore" ]; then
+    grep -qF "$entry" "$gitignore" \
+      || printf '\n# Strategist compiled artifacts (generated, do not commit)\n%s\n' \
+           "$entry" >> "$gitignore"
+  else
+    printf '# Strategist compiled artifacts (generated, do not commit)\n%s\n' \
+      "$entry" > "$gitignore"
+  fi
+  echo "[Strategist] .gitignore updated"
 }
 
 install_agent_shims() {
@@ -248,6 +280,8 @@ EOF
   fi
 
   install_agent_shims
+  compile_artifacts
+  ensure_gitignore_entry
 
   echo ""
   echo "Setup complete. active.yaml written to: ${TARGET_REPO}/.strategist/active.yaml"
@@ -263,6 +297,8 @@ run_silent() {
   base_path="$(grep '^base_path:' "${TARGET_REPO}/.strategist/active.yaml" | awk '{print $2}')"
   scaffold_workspace "$base_path"
   install_agent_shims
+  compile_artifacts
+  ensure_gitignore_entry
   echo "[Strategist] install complete. Run with --wizard for interactive setup."
 }
 

@@ -12,7 +12,28 @@ You do not perform discovery, refinement, or execution yourself — you delegate
 
 ---
 
+## 0. Pre-Bootstrap: LearningBuffer Flush Check
+> **Contract:** `.strategist/contracts/learning-buffer.yaml`
+
+Before any other action, check the learning buffer:
+
+```sh
+wc -l < .strategist/memory/outcomes.tmp 2>/dev/null || echo 0
+```
+
+If count ≥ 20 (or `active.yaml learning_buffer_size`, default 20):
+```sh
+cat .strategist/memory/outcomes.tmp >> .strategist/memory/outcomes.jsonl
+: > .strategist/memory/outcomes.tmp
+```
+Emit: `[Strategist] learning_buffer=flushed count=<N>`
+
+If count < 20 or file absent: continue without flush.
+
+---
+
 ## 1. Bootstrap
+> **Contract:** `.strategist/contracts/bootstrap.yaml`
 
 > **Skill root resolution:** If invoked from an agent shim, `skill_root` is declared in
 > the frontmatter of this file. Resolve all relative paths — `active.yaml`, `personas/`,
@@ -20,6 +41,27 @@ You do not perform discovery, refinement, or execution yourself — you delegate
 > directory containing this file as the skill root.
 
 On every invocation, before any other action:
+
+**Fast path (if compiled artifacts are present and fresh):**
+
+```sh
+sh .strategist/scripts/check-stale.sh .strategist/.compiled/.config.gz
+```
+
+If exit code is `0` (fresh):
+- Load configuration: `gunzip -c .strategist/.compiled/.config.gz`
+- Parse the JSON. Extract:
+  - `active` → use as `active.yaml` content
+  - `personas[active.mode]` → use as persona content
+  - `roles[active.roles_config]` → use as roles content
+- Apply any `--mode` or `--roles` overrides to the extracted JSON data.
+- Check for SDD injection using `active.sdd_injection` from the parsed JSON.
+- Emit: `[Strategist] bootstrap=fast_path`
+- Skip steps 1–4 below. Proceed directly to step 5.
+
+**Standard path (fallback):**
+
+Emit: `[Strategist] bootstrap=standard_path`
 
 1. Load `active.yaml` from the skill root. This is your single source of configuration.
 2. Resolve persona: load `personas/<active.yaml.mode>.yaml`.
@@ -37,17 +79,36 @@ On every invocation, before any other action:
 ---
 
 ## 2. Preflight
+> **Contract:** `.strategist/contracts/preflight.yaml`
 
 Before invoking any slot or starting intake, run preflight in full. Stop on first failure.
 
 **2a. Load internal domain**
+
+**Fast path (if compiled artifacts are present and fresh):**
+
+```sh
+sh .strategist/scripts/check-stale.sh .strategist/.compiled/.domain.gz
+```
+
+If exit code is `0` (fresh):
+- Load domain: `gunzip -c .strategist/.compiled/.domain.gz`
+- Parse the JSON. Extract:
+  - `load_always` → all always-loaded files, pre-parsed
+  - `load_by_task_type[task_type]` → task-type-specific files, pre-parsed (populated after Intake)
+- Skip individual file reads in §2a and §2b. Proceed to §2c.
+- Emit: `[Strategist] preflight=fast_path`
+
+**Standard path (fallback):**
+
+Emit: `[Strategist] preflight=standard_path`
 
 Load `<base_path>/.strategist/index.yaml`. If the file does not exist, continue without
 internal domain — do not error. If it exists:
 - Load all files listed under `load_always`.
 - Do NOT load any file not referenced in `index.yaml`.
 
-**2b. Load identity files** (if internal domain loaded)
+**2b. Load identity files** (standard path only — skip if fast path succeeded)
 
 - `identity/what-i-am.yaml` — load `core_invariants`. These are active for the full mission.
 - `identity/drift-patterns.yaml` — load all patterns. Use for self-correction throughout.
@@ -78,6 +139,12 @@ Load `roles/<roles_config>.yaml`. For each slot (discovery, refinement, executio
 
 `[Strategist] phase=preflight status=done slots=ok`
 
+**2f. Contract validation (if contracts dir present)**
+
+If `.strategist/contracts/` exists, load the contract for the active phase before invoking it.
+Validate that all `required: true` inputs declared in the contract are present.
+If a required input is missing: emit blocked event with `reason=contract_input_missing module=<name>`, stop.
+
 ---
 
 ## 3. Intake
@@ -95,14 +162,34 @@ Store result as `mission_contract.planning_rules` — pass to all slot providers
 ---
 
 ## 4. Context Enrichment
+> **Contract:** `.strategist/contracts/context-enrichment.yaml`
 
 Invoke `context-enrichment` skill with `task_type` and the mission's token budget.
 
+**Fast path (if compiled index is present and fresh):**
+
+```sh
+sh .strategist/scripts/check-stale.sh .strategist/.compiled/.index.gz
+```
+
+If exit code is `0` (fresh):
+- Query inverted index: `gunzip -c .strategist/.compiled/.index.gz | jq -r '.tags["<task_type>"][]'`
+  Returns source IDs matching `task_type` in O(1). No linear scan needed.
+- Retrieve source metadata per ID: `gunzip -c .strategist/.compiled/.index.gz | jq '.source_meta["<source_id>"]'`
+- Emit: `[Strategist] context_enrichment=fast_path`
+- Skip linear scan of `knowledge.index.yaml`. Proceed with enrichment using retrieved sources.
+
+**Standard path (fallback):**
+
+Emit: `[Strategist] context_enrichment=standard_path`
+
 - Enrichment queries `knowledge.index.yaml` by matching `task_type` against source tags.
+
+In both paths:
 - `source-hints.yaml` priority overrides are applied before ranking.
 - If no sources match or knowledge index is empty: enrichment returns empty — continue.
 
-Load `<base_path>/.strategist/index.yaml` `load_by_task_type[task_type]` files (if index loaded).
+Load `load_by_task_type[task_type]` files from the domain (fast path: already in memory; standard path: from `index.yaml`).
 
 Invoke `dossier-builder` to assemble the dossier for slot providers. If enrichment returned
 nothing: dossier contains only `task_type` and `output_template`.
@@ -296,6 +383,7 @@ Emit: `[Strategist] phase=<sniper_label> status=done artifact=<path>`
 ---
 
 ## 8. Learning Phase (non-blocking)
+> **Contracts:** `.strategist/contracts/learning-curator.yaml`, `.strategist/contracts/learning-buffer.yaml`
 
 After mission completes (either `completed` or `plan_only`):
 
@@ -309,6 +397,24 @@ Invoke `learning-curator` with:
 Learning curator MUST present a checkpoint to the user before writing anything.
 If the learning phase fails or times out: log the failure, return the mission result unchanged.
 The mission result is NEVER blocked or modified by learning phase failure.
+
+**LearningBuffer write procedure:**
+
+After learning-curator completes (or if it fails — still append outcome):
+
+1. Append the mission outcome JSON line to:
+   `.strategist/memory/outcomes.tmp`
+
+2. The buffer is flushed at the START of the next mission (§0 Pre-Bootstrap), not here.
+   Do not flush at end of mission — this is intentional for crash safety.
+
+**Manual flush (if needed):**
+```sh
+cat .strategist/memory/outcomes.tmp >> .strategist/memory/outcomes.jsonl
+: > .strategist/memory/outcomes.tmp
+```
+
+**Rollback:** Delete `.strategist/.compiled/` to revert to YAML-only path. No code change needed.
 
 ---
 
