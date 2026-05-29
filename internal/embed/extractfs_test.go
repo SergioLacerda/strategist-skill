@@ -15,6 +15,7 @@ import (
 )
 
 func TestExtractFS_Basic(t *testing.T) {
+	t.Parallel()
 	memFS := fstest.MapFS{
 		"root/file.yaml": {Data: []byte("x: 1\n")},
 		"root/sub/a.md":  {Data: []byte("# A")},
@@ -26,6 +27,7 @@ func TestExtractFS_Basic(t *testing.T) {
 }
 
 func TestExtractFS_MkdirError(t *testing.T) {
+	t.Parallel()
 	if os.Getuid() == 0 {
 		t.Skip("permission tests do not apply when running as root")
 	}
@@ -42,6 +44,7 @@ func TestExtractFS_MkdirError(t *testing.T) {
 }
 
 func TestExtractFS_WriteError(t *testing.T) {
+	t.Parallel()
 	if os.Getuid() == 0 {
 		t.Skip("permission tests do not apply when running as root")
 	}
@@ -58,6 +61,7 @@ func TestExtractFS_WriteError(t *testing.T) {
 }
 
 func TestExtractFS_EmptyRoot(t *testing.T) {
+	t.Parallel()
 	memFS := fstest.MapFS{
 		"root": {Mode: os.ModeDir},
 	}
@@ -80,6 +84,7 @@ func (e errFS) ReadDir(name string) ([]fs.DirEntry, error) {
 }
 
 func TestExtractFS_WalkCallbackError(t *testing.T) {
+	t.Parallel()
 	// errFS makes WalkDir deliver an error for "root/broken" to the callback.
 	mem := errFS{
 		MapFS: fstest.MapFS{

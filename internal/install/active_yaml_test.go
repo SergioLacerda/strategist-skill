@@ -11,6 +11,7 @@ import (
 )
 
 func TestWriteActiveYAML(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		cfg      domain.WizardConfig
@@ -30,6 +31,7 @@ func TestWriteActiveYAML(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			dir := t.TempDir()
 			require.NoError(t, writeActiveYAML(dir, tt.cfg))
 			data, err := os.ReadFile(filepath.Join(dir, "active.yaml"))

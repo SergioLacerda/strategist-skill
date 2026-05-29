@@ -73,6 +73,7 @@ func newSvc(ext domain.FileExtractor, comp domain.Compiler) install.Service {
 // --- Install ---
 
 func TestInstall_Silent(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	ext := &mockExtractor{}
 	comp := &mockCompiler{}
@@ -95,6 +96,7 @@ func TestInstall_Silent(t *testing.T) {
 }
 
 func TestInstall_EnsuresGitignore(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	require.NoError(t, newSvc(&mockExtractor{}, &mockCompiler{}).Install(
 		context.Background(), domain.InstallConfig{Target: dir, Silent: true},
@@ -105,6 +107,7 @@ func TestInstall_EnsuresGitignore(t *testing.T) {
 }
 
 func TestInstall_GitignoreIdempotent(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	svc := newSvc(&mockExtractor{}, &mockCompiler{})
 	cfg := domain.InstallConfig{Target: dir, Silent: true}
@@ -126,6 +129,7 @@ func TestInstall_GitignoreIdempotent(t *testing.T) {
 }
 
 func TestInstall_ExtractorFailurePropagates(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	ext := &mockExtractor{failWith: os.ErrPermission}
 	err := newSvc(ext, &mockCompiler{}).Install(context.Background(), domain.InstallConfig{Target: dir})
@@ -134,6 +138,7 @@ func TestInstall_ExtractorFailurePropagates(t *testing.T) {
 }
 
 func TestInstall_CompileFailureIsNonFatal(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	comp := &mockCompiler{failErr: os.ErrNotExist}
 	// compile failure must not return an error — only a warning to stderr
@@ -142,6 +147,7 @@ func TestInstall_CompileFailureIsNonFatal(t *testing.T) {
 }
 
 func TestInstall_NewInstaller(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	inst := install.NewInstaller(&mockExtractor{}, &mockCompiler{})
 	err := inst.Install(domain.InstallConfig{Target: dir, Silent: true})

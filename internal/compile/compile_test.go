@@ -37,6 +37,7 @@ func minimalRoot(t *testing.T, dir string) {
 // --- CompileConfig ---
 
 func TestCompileConfig(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		setup   func(t *testing.T, dir string)
@@ -98,6 +99,7 @@ func TestCompileConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			dir := t.TempDir()
 			tt.setup(t, dir)
 			out := filepath.Join(dir, ".compiled", ".config.gz")
@@ -120,6 +122,7 @@ func TestCompileConfig(t *testing.T) {
 // --- CompileDomain ---
 
 func TestCompileDomain(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		setup   func(t *testing.T, dir string)
@@ -230,6 +233,7 @@ func TestCompileDomain(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			dir := t.TempDir()
 			tt.setup(t, dir)
 			out := filepath.Join(dir, ".compiled", ".domain.gz")
@@ -252,6 +256,7 @@ func TestCompileDomain(t *testing.T) {
 // --- CompileIndex ---
 
 func TestCompileIndex(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		content string
@@ -311,6 +316,7 @@ func TestCompileIndex(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			dir := t.TempDir()
 			out := filepath.Join(dir, ".compiled", ".index.gz")
 
@@ -341,7 +347,9 @@ func TestCompileIndex(t *testing.T) {
 // --- CompileAll ---
 
 func TestCompileAll(t *testing.T) {
+	t.Parallel()
 	t.Run("produces all four artifacts", func(t *testing.T) {
+		t.Parallel()
 		dir := t.TempDir()
 		minimalRoot(t, dir)
 		require.NoError(t, os.WriteFile(
@@ -362,6 +370,7 @@ func TestCompileAll(t *testing.T) {
 	})
 
 	t.Run("manifest contains sha256 for all artifacts", func(t *testing.T) {
+		t.Parallel()
 		dir := t.TempDir()
 		minimalRoot(t, dir)
 		require.NoError(t, os.WriteFile(
@@ -385,6 +394,7 @@ func TestCompileAll(t *testing.T) {
 	})
 
 	t.Run("fails if active.yaml missing — manifest not written", func(t *testing.T) {
+		t.Parallel()
 		dir := t.TempDir()
 		require.NoError(t, os.WriteFile(
 			filepath.Join(dir, "index.yaml"),
@@ -400,6 +410,7 @@ func TestCompileAll(t *testing.T) {
 	})
 
 	t.Run("fails if knowledge index missing", func(t *testing.T) {
+		t.Parallel()
 		dir := t.TempDir()
 		err := compile.Compiler{}.CompileAll(dir, filepath.Join(dir, "nonexistent.yaml"))
 		require.Error(t, err)
@@ -407,6 +418,7 @@ func TestCompileAll(t *testing.T) {
 	})
 
 	t.Run("fails if index.yaml missing (domain step)", func(t *testing.T) {
+		t.Parallel()
 		dir := t.TempDir()
 		// ki exists, but no index.yaml for domain compile
 		kiPath := filepath.Join(dir, "knowledge.index.yaml")
@@ -421,6 +433,7 @@ func TestCompileAll(t *testing.T) {
 // --- writeGzJSON error paths ---
 
 func TestWriteGzJSON_ReadOnlyDir(t *testing.T) {
+	t.Parallel()
 	if os.Getuid() == 0 {
 		t.Skip("permission tests do not apply when running as root")
 	}
@@ -436,6 +449,7 @@ func TestWriteGzJSON_ReadOnlyDir(t *testing.T) {
 // --- loadYAMLFile / yaml parse error ---
 
 func TestCompileConfig_InvalidActiveYAML(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
@@ -447,6 +461,7 @@ func TestCompileConfig_InvalidActiveYAML(t *testing.T) {
 }
 
 func TestCompileConfig_InvalidPersonaYAML(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
@@ -459,6 +474,7 @@ func TestCompileConfig_InvalidPersonaYAML(t *testing.T) {
 // --- writeGzJSON: output path is a directory (os.Create fails) ---
 
 func TestWriteGzJSON_OutputIsDirectory(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	minimalRoot(t, dir)
 	// Create a directory where the output file should go — os.Create fails
@@ -472,6 +488,7 @@ func TestWriteGzJSON_OutputIsDirectory(t *testing.T) {
 // --- compilePaths: non-ErrNotExist error from a bad YAML file ---
 
 func TestCompileDomain_InvalidYAMLInLoadAlways(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	// Write a file that exists but has invalid YAML
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "bad.yaml"), []byte(": invalid\n  yaml:"), 0o644))
@@ -487,6 +504,7 @@ func TestCompileDomain_InvalidYAMLInLoadAlways(t *testing.T) {
 // --- CompileIndex: invalid YAML parse ---
 
 func TestCompileIndex_InvalidYAML(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	kiPath := filepath.Join(dir, "knowledge.index.yaml")
 	require.NoError(t, os.WriteFile(kiPath, []byte("sources: [unclosed bracket"), 0o644))

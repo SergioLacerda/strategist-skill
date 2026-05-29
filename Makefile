@@ -1,5 +1,7 @@
 .PHONY: build test lint cover cover-gate cover-html install-local release clean
 
+GOLANGCI_LINT := $(shell which golangci-lint 2>/dev/null || echo $(shell go env GOPATH)/bin/golangci-lint)
+
 build:
 	go build -o bin/strategist ./cmd/strategist
 
@@ -7,7 +9,7 @@ test:
 	go test -race ./...
 
 lint:
-	golangci-lint run ./...
+	$(GOLANGCI_LINT) run ./...
 
 # cover shows per-package coverage (each package measured against itself).
 cover:
@@ -18,9 +20,10 @@ cover:
 	done
 
 # cover-gate fails the build if any internal package is below 90%.
+# Note: internal/domain is excluded (pure type declarations — no executable statements).
 cover-gate:
 	@fail=0; \
-	for pkg in internal/stale internal/compile internal/install internal/embed; do \
+	for pkg in internal/stale internal/compile internal/install internal/embed cmd/strategist; do \
 		pct=$$(go test -coverprofile=coverage.out -coverpkg=./$$pkg/... ./$$pkg/... 2>/dev/null \
 			| grep -o '[0-9.]*%' | tail -1 | tr -d '%'); \
 		printf "%-30s %s%%\n" "$$pkg" "$$pct"; \

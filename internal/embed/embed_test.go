@@ -11,6 +11,7 @@ import (
 )
 
 func TestExtractor_Extract_ReadOnlyTarget(t *testing.T) {
+	t.Parallel()
 	if os.Getuid() == 0 {
 		t.Skip("permission tests do not apply when running as root")
 	}
@@ -24,7 +25,9 @@ func TestExtractor_Extract_ReadOnlyTarget(t *testing.T) {
 }
 
 func TestExtractor_Extract(t *testing.T) {
+	t.Parallel()
 	t.Run("extracts defaults into target directory", func(t *testing.T) {
+		t.Parallel()
 		dir := t.TempDir()
 		ext := embedpkg.Extractor{}
 		require.NoError(t, ext.Extract(dir))
@@ -53,6 +56,7 @@ func TestExtractor_Extract(t *testing.T) {
 	})
 
 	t.Run("extract is idempotent", func(t *testing.T) {
+		t.Parallel()
 		dir := t.TempDir()
 		ext := embedpkg.Extractor{}
 		require.NoError(t, ext.Extract(dir))
@@ -60,6 +64,7 @@ func TestExtractor_Extract(t *testing.T) {
 	})
 
 	t.Run("extracted SKILL.md is non-empty", func(t *testing.T) {
+		t.Parallel()
 		dir := t.TempDir()
 		require.NoError(t, embedpkg.Extractor{}.Extract(dir))
 		data, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))

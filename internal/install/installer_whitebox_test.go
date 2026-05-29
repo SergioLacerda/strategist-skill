@@ -60,6 +60,7 @@ func newSvcW(wizardInput string) Service {
 // --- Wizard path ---
 
 func TestInstall_WizardPath(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	svc := newSvcW("minimal\n/workspace\nmy-provider\n")
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
@@ -73,6 +74,7 @@ func TestInstall_WizardPath(t *testing.T) {
 }
 
 func TestInstall_WizardPath_Defaults(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	svc := newSvcW("\n\n\n") // all defaults
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
@@ -85,6 +87,7 @@ func TestInstall_WizardPath_Defaults(t *testing.T) {
 // --- copyTemplate error path ---
 
 func TestInstall_CopyTemplateMissing(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	// Extractor that does NOT create the template file
 	svc := Service{
@@ -105,6 +108,7 @@ func (n *noTemplateExtractor) Extract(targetDir string) error {
 // --- ensureGitignore: no trailing newline edge case ---
 
 func TestEnsureGitignore_NoTrailingNewline(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	gi := filepath.Join(dir, ".gitignore")
 	// Write existing content WITHOUT trailing newline
@@ -116,6 +120,7 @@ func TestEnsureGitignore_NoTrailingNewline(t *testing.T) {
 }
 
 func TestEnsureGitignore_AlreadyPresent(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	gi := filepath.Join(dir, ".gitignore")
 	require.NoError(t, os.WriteFile(gi, []byte(".strategist/.compiled/\n"), 0o644))
@@ -127,6 +132,7 @@ func TestEnsureGitignore_AlreadyPresent(t *testing.T) {
 }
 
 func TestEnsureGitignore_ReadError(t *testing.T) {
+	t.Parallel()
 	if os.Getuid() == 0 {
 		t.Skip("permission tests do not apply when running as root")
 	}
@@ -141,6 +147,7 @@ func TestEnsureGitignore_ReadError(t *testing.T) {
 // --- writeActiveYAML error path ---
 
 func TestWriteActiveYAML_ReadOnlyDir(t *testing.T) {
+	t.Parallel()
 	if os.Getuid() == 0 {
 		t.Skip("permission tests do not apply when running as root")
 	}
@@ -154,6 +161,7 @@ func TestWriteActiveYAML_ReadOnlyDir(t *testing.T) {
 // --- copyTemplate error paths ---
 
 func TestCopyTemplate_MissingSource(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	err := copyTemplate(dir, "nonexistent/template.yaml", "active.yaml")
 	require.Error(t, err)
@@ -161,6 +169,7 @@ func TestCopyTemplate_MissingSource(t *testing.T) {
 }
 
 func TestCopyTemplate_WriteError(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	// Create template source
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "templates"), 0o755))
@@ -173,12 +182,14 @@ func TestCopyTemplate_WriteError(t *testing.T) {
 }
 
 func TestRunWizard_EOFOnFirstPrompt(t *testing.T) {
+	t.Parallel()
 	_, err := runWizard(strings.NewReader(""))
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "mode")
 }
 
 func TestRunWizard_EOFOnSecondPrompt(t *testing.T) {
+	t.Parallel()
 	// Mode succeeds, base_path prompt gets EOF
 	_, err := runWizard(strings.NewReader("full\n"))
 	require.Error(t, err)
@@ -186,6 +197,7 @@ func TestRunWizard_EOFOnSecondPrompt(t *testing.T) {
 }
 
 func TestRunWizard_EOFOnThirdPrompt(t *testing.T) {
+	t.Parallel()
 	// Mode and base_path succeed, provider prompt gets EOF
 	_, err := runWizard(strings.NewReader("full\n.\n"))
 	require.Error(t, err)
@@ -195,6 +207,7 @@ func TestRunWizard_EOFOnThirdPrompt(t *testing.T) {
 // --- installShimTo error paths ---
 
 func TestInstallShimTo_ReadOnlyParent(t *testing.T) {
+	t.Parallel()
 	if os.Getuid() == 0 {
 		t.Skip("permission tests do not apply when running as root")
 	}
@@ -207,6 +220,7 @@ func TestInstallShimTo_ReadOnlyParent(t *testing.T) {
 }
 
 func TestInstallShimTo_WriteError(t *testing.T) {
+	t.Parallel()
 	if os.Getuid() == 0 {
 		t.Skip("permission tests do not apply when running as root")
 	}
@@ -223,6 +237,7 @@ func TestInstallShimTo_WriteError(t *testing.T) {
 // --- Install: error propagation for gitignore and shim ---
 
 func TestInstall_ShimError(t *testing.T) {
+	t.Parallel()
 	if os.Getuid() == 0 {
 		t.Skip("permission tests do not apply when running as root")
 	}
@@ -242,6 +257,7 @@ func TestInstall_ShimError(t *testing.T) {
 }
 
 func TestInstall_GitignoreError(t *testing.T) {
+	t.Parallel()
 	if os.Getuid() == 0 {
 		t.Skip("permission tests do not apply when running as root")
 	}
