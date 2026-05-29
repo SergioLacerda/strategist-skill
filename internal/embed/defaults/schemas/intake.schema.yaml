@@ -1,0 +1,75 @@
+schema_version: "1"
+description: >
+  Defines recognized constraint fields and their accepted values with aliases.
+  Used by prompt-intake to extract mission_contract.planning_rules from the user prompt.
+
+fields:
+  delivery_strategy:
+    description: How the mission should be delivered across time.
+    default: sprint
+    values:
+      sprint:
+        description: Deliver in phases; backward-compatible changes preferred.
+        aliases:
+          - por sprint
+          - faseado
+          - iterativo
+          - incremental
+          - fase a fase
+          - entrega faseada
+      total:
+        description: Full delivery in one go; legacy compatibility not required.
+        aliases:
+          - big bang
+          - sem prazo
+          - entrega total
+          - tudo de uma vez
+          - de uma vez
+          - sem fases
+
+  legacy_compatibility:
+    description: Whether the output must maintain compatibility with existing interfaces.
+    default: required
+    values:
+      required:
+        description: Existing consumers must not break.
+        aliases:
+          - retrocompatível
+          - backwards compatible
+          - sem breaking changes
+          - não pode quebrar
+      not_required:
+        description: Breaking changes are acceptable.
+        aliases:
+          - sem retrocompatibilidade
+          - pode quebrar
+          - breaking ok
+          - clean break
+
+  execution_intent:
+    description: Whether the user intends to execute the plan after review.
+    default: review_only
+    values:
+      review_only:
+        description: User wants discovery and refinement only; will decide on execution later.
+        aliases:
+          - só análise
+          - sem execução
+          - apenas revisar
+          - só plano
+          - não executar
+      execute:
+        description: User intends to execute the plan after approval.
+        aliases:
+          - executar
+          - implementar
+          - aplicar
+          - rodar
+          - fazer
+
+confidence_threshold: 0.65
+
+conflict_behavior: >
+  When two aliases for mutually exclusive values of the same field are detected in the
+  same prompt, stop and ask the user to resolve the conflict before proceeding.
+  Do NOT apply defaults when a conflict is detected.

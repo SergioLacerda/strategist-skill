@@ -1,0 +1,50 @@
+module: context-enrichment
+type: agent_phase
+description: >
+  Queries knowledge index by task_type tag to retrieve relevant sources.
+  Returns a ranked source list for dossier-builder. Non-blocking — empty result is valid.
+
+contract:
+  input:
+    - name: task_type
+      type: string
+      required: true
+      description: Mission task type (e.g. architecture_analysis, refactor, general)
+    - name: token_budget
+      type: integer
+      required: true
+      description: Token budget for context loading
+    - name: knowledge_index_path
+      type: path
+      required: true
+      description: Path to knowledge.index.yaml
+
+  output:
+    - name: sources
+      type: list
+      description: Matched source objects [{id, type, path, priority, excerpt_length_tokens}]
+    - name: source_hints_applied
+      type: boolean
+      description: Whether source-hints.yaml overrides were applied
+
+  error_conditions:
+    - code: knowledge_index_empty
+      trigger: knowledge.index.yaml has no sources or is absent
+      behavior: Return empty sources list, continue (non-blocking)
+    - code: task_type_no_match
+      trigger: No source tagged with task_type in index
+      behavior: Return empty sources list, continue (non-blocking)
+    - code: compiled_artifact_corrupt
+      trigger: .compiled/.index.gz fails jq parse
+      behavior: Fall back to linear scan of knowledge.index.yaml, emit context_enrichment=standard_path
+
+  write_scope: read-only
+
+  owner: internal (orchestrator)
+
+  fast_path:
+    artifact: .strategist/.compiled/.index.gz
+    check: sh .strategist/scripts/check-stale.sh .strategist/.compiled/.index.gz
+    query: "gunzip -c .strategist/.compiled/.index.gz | jq -r '.tags[\"<task_type>\"][]'"
+    log_fresh: "[Strategist] context_enrichment=fast_path"
+    log_stale: "[Strategist] context_enrichment=standard_path"

@@ -1,0 +1,21 @@
+scenario: slot_risk_mismatch
+description: >
+  The discovery slot provider declares risk_score=controlled instead of write_pending.
+  Preflight must detect the mismatch and emit a blocked event.
+
+input:
+  active_yaml:
+    mode: pragmatic
+    base_path: .analysis
+    roles_config: default
+  roles_default_yaml:
+    discovery: bad-provider
+    refinement: openspec-explore
+    execution: sdd-ask
+  provider_skill_yaml:
+    name: bad-provider
+    risk_score: controlled
+
+trigger: run_preflight
+
+expected_event: "phase=preflight status=blocked reason=slot_risk_mismatch"

@@ -12,7 +12,7 @@ Strategist MUST stop immediately and emit a blocked event when any of the follow
 | Code | Condition | Resolution |
 |------|-----------|------------|
 | `slot_provider_not_found` | A slot provider's skill.yaml cannot be found at any resolution path. | Check skill root path. Verify provider id in roles config. |
-| `slot_risk_mismatch` | Discovery or refinement provider has `risk_score` other than `read_only`; or execution provider has `risk_score` other than `controlled_write`. | Replace provider with a correctly-scored skill. |
+| `slot_risk_mismatch` | Discovery provider has `risk_score` other than `write_pending`; refinement provider other than `write_analysis`; or execution provider other than `controlled`. | Replace provider with a correctly-scored skill. |
 | `intake_conflict_unresolved` | Two mutually exclusive constraint aliases were detected in the user prompt. | Ask user to clarify the conflicting constraint before proceeding. |
 | `preflight_failed` | Any preflight check did not pass. | See emitted reason code. |
 | `user_denies_execution` | User declined execution at the approval gate. | Return plan_only result. This is not an error. |
@@ -46,6 +46,19 @@ The following behaviors are **never permitted** regardless of context:
 - If **discovery** slot fails: stop. Do not invoke refinement. Surface the failure with the partial artifact path (if any).
 - If **refinement** slot fails: stop. Do not present the approval gate. Surface the failure.
 - If **execution** slot fails: emit `[Strategist] phase=<execution_label> status=blocked reason=execution_failed`. Return partial mission result with what was completed.
+
+---
+
+## Slot Failure Classification
+
+Slot failures are classified into two types. The slot provider declares the type via the `failure_type` field in its output (defined in `schemas/slot-output.schema.yaml`). If `failure_type` is absent, Strategist treats the failure as **permanent**.
+
+| Type | Examples | Strategist behavior |
+|------|----------|---------------------|
+| `transient` | Network timeout, LLM temporarily unavailable, API rate limit | Re-invoke the slot once, immediately. If it fails again: treat as permanent and stop. |
+| `permanent` | Contract violation, slot output invalid, configuration error, deliberate refusal | Stop immediately. Do not retry. |
+
+**Re-invocation rule:** Strategist may re-invoke a slot at most **once** on transient failure, with no delay. A second failure of any type is always permanent. This applies to discovery and refinement slots only — execution slot failures are never retried automatically.
 
 ---
 

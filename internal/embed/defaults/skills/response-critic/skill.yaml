@@ -1,0 +1,36 @@
+id: response-critic
+version: "1.0.0"
+schema_version: "1"
+status: active
+risk_score: read_only
+category: evaluation
+
+description: >
+  Evaluates slot output against the rubric for the current task_type.
+  Checks must_have items (present) and must_not items (absent).
+  Produces a pass/fail result with score and gap list.
+
+input:
+  slot_output: string              # content of the slot's output artifact
+  task_type: string
+  rubric: object | null            # from context-enrichment; if null, critic returns no_rubric
+
+output:
+  result: pass | fail | no_rubric
+  score: float                     # 0.0–1.0; null when result=no_rubric
+  must_have_present: array         # items that were found
+  must_have_missing: array         # items that were not found
+  must_not_present: array          # forbidden items that were found (violations)
+  notes: string | null
+
+behavior:
+  - If rubric is null: return result=no_rubric, no score. Do not fail the mission.
+  - For each must_have item: check if the slot output contains the expected section or evidence.
+  - For each must_not item: check if the slot output contains the forbidden content.
+  - Compute score as sum of weights for present must_have items.
+  - result=pass when score >= rubric.score_threshold AND must_not_present is empty.
+  - result=fail otherwise.
+
+failure_modes:
+  - no_rubric: rubric not available for task_type. Return result=no_rubric. Not an error.
+  - evaluation_inconclusive: cannot determine presence of a rubric item. Mark as missing (conservative).

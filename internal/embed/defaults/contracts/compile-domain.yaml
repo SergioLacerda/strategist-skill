@@ -1,0 +1,48 @@
+module: compile-domain
+type: shell_script
+description: >
+  Compiles all internal domain files referenced in index.yaml (load_always +
+  load_by_task_type) into a single gzipped JSON blob. Missing files are warned
+  and skipped — they do not abort the compile.
+
+contract:
+  input:
+    - name: strategist_root
+      type: path ($1)
+      required: true
+      description: Path to the .strategist/ directory
+    - name: output_path
+      type: path ($2)
+      required: true
+      description: Destination path for .compiled/.domain.gz
+
+  output:
+    - name: domain_gz
+      type: file
+      schema: strategist-compiled-domain/1.0
+      description: >
+        Gzipped JSON with fields: schema, compiled_at, sources,
+        load_always (rel_path → parsed YAML), load_by_task_type (task_type → rel_path → parsed YAML)
+
+  error_conditions:
+    - code: index_yaml_not_found
+      trigger: $1/index.yaml does not exist
+      behavior: Print error to stderr, exit 1
+    - code: source_file_missing
+      trigger: A file listed in index.yaml does not exist on disk
+      behavior: Print warning to stderr, skip file (non-blocking)
+    - code: dependency_missing
+      trigger: yq, jq, or gzip not in PATH
+      behavior: Command fails with shell error, exit non-zero
+
+  write_scope: $2 path only (creates parent directory if absent)
+
+  owner: install-time
+
+  idempotent: true
+  requires: [yq, jq, gzip, stat]
+
+  known_limitation: >
+    Adding a new file to index.yaml load_always or load_by_task_type after compile
+    will not be detected by check-stale.sh (new file not in sources block).
+    Requires re-run of compile-all.sh.

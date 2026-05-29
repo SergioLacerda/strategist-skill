@@ -1,0 +1,42 @@
+module: compile-knowledge-index
+type: shell_script
+description: >
+  Builds an inverted tag index from knowledge.index.yaml.
+  Writes a gzipped JSON artifact for O(1) tag lookups at mission time.
+
+contract:
+  input:
+    - name: knowledge_index_yaml
+      type: path ($1)
+      required: true
+      description: Path to knowledge.index.yaml
+    - name: output_path
+      type: path ($2)
+      required: true
+      description: Destination path for .compiled/.index.gz
+
+  output:
+    - name: index_gz
+      type: file
+      schema: strategist-compiled-index/1.0
+      description: >
+        Gzipped JSON with fields: schema, compiled_at, sources, tags (inverted index),
+        source_meta (id → full source object)
+
+  error_conditions:
+    - code: input_not_found
+      trigger: $1 file does not exist
+      behavior: Print error to stderr, exit 1
+    - code: dependency_missing
+      trigger: yq, jq, or gzip not in PATH
+      behavior: Command fails with shell error, exit non-zero
+    - code: yq_parse_failure
+      trigger: knowledge.index.yaml is invalid YAML
+      behavior: yq exits non-zero, propagated by set -eu, exit non-zero
+
+  write_scope: $2 path only (creates parent directory if absent)
+
+  owner: install-time
+
+  idempotent: true
+  requires: [yq, jq, gzip, stat]

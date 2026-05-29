@@ -1,0 +1,41 @@
+module: check-stale
+type: shell_script
+description: >
+  Determines whether a compiled artifact is fresh relative to its recorded source files.
+  Read-only. Used by the agent (via Bash tool) before each fast-path read.
+
+contract:
+  input:
+    - name: artifact_path
+      type: path ($1)
+      required: true
+      description: Path to a compiled .gz artifact
+
+  output:
+    - name: exit_code
+      type: integer
+      description: "0 = fresh, 1 = stale or absent"
+
+  error_conditions:
+    - code: artifact_absent
+      trigger: $1 file does not exist
+      behavior: exit 1
+    - code: manifest_absent
+      trigger: .manifest.gz not found in same directory as artifact
+      behavior: exit 1 (incomplete compile run — treat all as stale)
+    - code: source_gone
+      trigger: A source file recorded in the artifact's sources block no longer exists
+      behavior: exit 1
+    - code: source_newer
+      trigger: A source file's mtime is greater than the recorded mtime
+      behavior: exit 1
+    - code: jq_parse_failure
+      trigger: gunzip or jq fails to parse artifact
+      behavior: exit 1
+
+  write_scope: read-only
+
+  owner: mission-time (read path)
+
+  idempotent: true
+  requires: [jq, gzip, stat]

@@ -1,0 +1,34 @@
+version: "2"
+
+linters:
+  enable:
+    - errcheck
+    - gosec
+    - staticcheck
+    - govet
+    - revive
+    - wrapcheck
+    - exhaustive
+    - gocognit
+    - testifylint
+  settings:
+    gocognit:
+      min-complexity: 15
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    gosec:
+      excludes:
+        - G301 # CLI tool creates project dirs; 0755 is intentional
+        - G302 # CLI tool creates config files; 0644 is intentional
+        - G306 # CLI tool creates config files; 0644 is intentional
+    wrapcheck:
+      ignorePackageGlobs:
+        - github.com/SergioLacerda/strategist-skill/internal/domain
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - wrapcheck
+          - gosec
+          - errcheck

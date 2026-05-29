@@ -1,0 +1,55 @@
+id: archivist
+version: "1.0.0"
+schema_version: "1"
+status: active
+risk_score: read_only
+category: refinement
+
+description: >
+  Reads a discovery artifact and produces an implementation-ready reviewed plan.
+  Output contains all required sections for safe, executable handoff to Sniper.
+  Does NOT modify any file — reads input artifact, writes output artifact only.
+
+input:
+  discovery_artifact_path: string  # path to Ranger's output in <base_path>/pending/
+  base_path: string                # from Strategist (mission base directory)
+  mission_contract: object         # planning_rules from intake
+
+output:
+  reviewed_plan_path: string       # <base_path>/refined/<mission_id>-plan.md
+
+required_sections:
+  - executive_summary
+  - tasks_with_subitems
+  - technical_details
+  - modules_documents_index
+  - design:
+      - context
+      - goals
+      - non_goals
+      - do
+      - do_not
+  - execution_checklist
+  - hunter_instructions
+
+behavior:
+  - Load discovery artifact from discovery_artifact_path. If not found, stop with
+    reason=missing_discovery_artifact.
+  - Produce all required_sections. Every section must have non-empty content.
+  - If a section cannot be filled from discovery artifact evidence, mark it
+    [INSUFFICIENT EVIDENCE] and add a blocker note with the specific missing information.
+  - If a section would require speculation not grounded in the discovery artifact, mark it
+    [NEEDS CLARIFICATION] and list the specific questions.
+  - Write output to <base_path>/refined/<mission_id>-plan.md.
+
+forbidden_behaviors:
+  - invent_evidence_not_in_discovery_artifact
+  - add_speculative_architecture
+  - assume_constraints_not_stated_in_mission_contract
+  - produce_output_without_discovery_artifact
+
+failure_modes:
+  - missing_discovery_artifact: input path does not exist or is empty.
+    Stop. Emit reason=missing_discovery_artifact. Do not write output.
+  - insufficient_evidence: one or more required sections cannot be filled.
+    Mark sections with [INSUFFICIENT EVIDENCE]. Write partial output with blockers list.

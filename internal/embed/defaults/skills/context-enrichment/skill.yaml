@@ -1,0 +1,42 @@
+id: context-enrichment
+version: "1.0.0"
+schema_version: "1"
+status: active
+risk_score: read_only
+category: knowledge
+
+description: >
+  Queries knowledge.index.yaml by task_type tags. Applies source-hints.yaml priority
+  overrides. Returns ranked knowledge excerpts and the task-type rubric within the
+  configured token budget. Empty result is valid — pipeline continues without enrichment.
+
+input:
+  task_type: string
+  token_budget: integer
+  knowledge_index_path: string     # from active.yaml
+  source_hints_path: string        # memory/source-hints.yaml
+
+output:
+  excerpts:                        # ranked list, highest priority first
+    - source_id: string
+      path: string
+      content: string
+      priority: string             # high, medium, low (after hints applied)
+  rubric: object | null            # rubric for task_type from .strategist/rubrics/, or null
+  sources_queried: integer
+  sources_matched: integer
+
+behavior:
+  - Load knowledge_index_path. If missing or empty, return empty output immediately.
+  - Filter sources whose tags[] contain task_type OR contain "all".
+  - Load source-hints.yaml and apply priority_adjustment to matching source_ids.
+  - Rank matched sources by effective priority (high > medium > low).
+  - Load file excerpts from each source path within the token_budget. Stop when budget exhausted.
+  - Deduplicate by source id.
+  - Return at most 2 good examples and 1 bad example per task_type (from patterns/ if indexed).
+  - Load and return rubric for task_type if available (from .strategist/rubrics/).
+
+failure_modes:
+  - empty_result: no sources match task_type. Return empty excerpts, null rubric. Do not error.
+  - source_path_missing: a source path in the index does not exist. Skip and continue.
+  - token_budget_exceeded: stop loading excerpts when budget is reached. Return what was loaded.

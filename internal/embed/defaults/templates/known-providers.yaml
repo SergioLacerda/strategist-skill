@@ -1,0 +1,22 @@
+# Strategist provider risk registry
+# Consulted during preflight when a provider's SKILL.md or skill.yaml
+# does not declare risk_score.
+# Values: read_only | write_pending | write_analysis | controlled | orchestrator
+# Add entries here for any custom providers you use.
+
+providers:
+  brainstorming: write_pending
+  openspec-explore: write_analysis
+  openspec-propose: write_analysis
+  openspec-apply-change: controlled
+  openspec-archive-change: write_analysis
+  sdd-ask: controlled
+  sdd-ask-full: controlled
+  sdd-diagnose: write_analysis
+  sdd-converge: controlled
+  sdd-correct: controlled
+  sdd-stabilize: controlled
+  sdd-validate-governance: write_analysis
+  sdd-organize: write_analysis
+  sdd-review-architecture: write_analysis
+  archivist: write_analysis

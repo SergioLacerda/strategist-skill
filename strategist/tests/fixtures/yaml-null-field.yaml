@@ -1,0 +1,18 @@
+scenario: yaml_null_field
+description: >
+  active.yaml has base_path set to null. Preflight step 2a.validate must detect
+  the null field and emit a blocked event before loading identity or resolving slots.
+
+input:
+  active_yaml:
+    mode: pragmatic
+    base_path: null
+    roles_config: default
+  roles_default_yaml:
+    discovery: brainstorming
+    refinement: openspec-explore
+    execution: sdd-ask
+
+trigger: run_preflight
+
+expected_event: "phase=preflight status=blocked reason=yaml_validation_failed field=base_path"

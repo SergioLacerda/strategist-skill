@@ -1,0 +1,45 @@
+name: Test
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
+        with:
+          go-version: "1.22"
+          cache: true
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@4696a598e3c3cef2e3f807ddb0cf6a24de33d3df # v6
+        with:
+          version: latest
+
+      - name: Test (with race detector)
+        run: go test -race ./...
+
+      - name: Coverage gate (>90% per internal package)
+        run: |
+          fail=0
+          for pkg in internal/stale internal/compile internal/install internal/embed; do
+            pct=$(go test -coverprofile=/tmp/cov.out -coverpkg=./$pkg/... ./$pkg/... 2>/dev/null \
+                  | grep -o '[0-9.]*%' | tail -1 | tr -d '%')
+            echo "$pkg: ${pct}%"
+            awk -v pct="$pct" 'BEGIN { if (pct+0 < 90) { print "FAIL: " pct "% < 90%"; exit 1 } }'
+          done
+
+      - name: Build
+        run: go build ./...

@@ -1,83 +1,74 @@
 #!/usr/bin/env bash
-# Strategist curl installer — Linux / Mac / WSL
+# Strategist curl installer — Linux / macOS / WSL
 #
-# Wizard runs by default. Use --silent to skip interactive setup.
+# Downloads the strategist binary, verifies its SHA256 checksum, and runs
+# `strategist install` to set up the skill in the current directory.
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.sh | bash
-#   curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.sh | bash -s -- --silent
-#   curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.sh | bash -s -- --target=/my/project
-#   curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.sh | bash -s -- --ref=v1.0.0
+#   curl -fsSL .../bootstrap.sh | bash -s -- --silent
+#   curl -fsSL .../bootstrap.sh | bash -s -- --target=/my/project
 
 set -euo pipefail
 
 REPO="SergioLacerda/strategist-skill"
-DEFAULT_REF="main"
-
-# ── arg parsing ───────────────────────────────────────────────────────────────
-
-INSTALL_ARGS=(--wizard)   # wizard by default; pass --silent to override
-REF=""
+VERSION="${STRATEGIST_VERSION:-latest}"
+INSTALL_DIR="${HOME}/.local/bin"
+SILENT=false
+TARGET=""
 
 for arg in "$@"; do
   case "$arg" in
-    --ref=*) REF="${arg#--ref=}" ;;
-    --silent) INSTALL_ARGS=() ;;              # opt-out of wizard
-    *) INSTALL_ARGS+=("$arg") ;;
+    --silent) SILENT=true ;;
+    --target=*) TARGET="${arg#--target=}" ;;
+    --version=*) VERSION="${arg#--version=}" ;;
   esac
 done
 
+# ── detect platform ───────────────────────────────────────────────────────────
+
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m)
+case "$ARCH" in
+  x86_64)  ARCH="amd64" ;;
+  aarch64|arm64) ARCH="arm64" ;;
+  *) echo "[Strategist] ERROR: unsupported architecture: $ARCH" >&2; exit 1 ;;
+esac
+
 # ── resolve version ───────────────────────────────────────────────────────────
 
-resolve_ref() {
-  if [ -n "$REF" ]; then
-    echo "$REF"
-    return
-  fi
-
-  local latest
-  latest="$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null \
-    | grep '"tag_name"' \
-    | head -1 \
-    | sed 's/.*"tag_name": *"\([^"]*\)".*/\1/')" || true
-
-  if [ -n "$latest" ]; then
-    echo "$latest"
-  else
-    echo "[Strategist] No release found, using branch: ${DEFAULT_REF}" >&2
-    echo "$DEFAULT_REF"
-  fi
-}
-
-# ── download and extract ──────────────────────────────────────────────────────
-
-TMPDIR_INSTALL="$(mktemp -d)"
-trap 'rm -rf "$TMPDIR_INSTALL"' EXIT
-
-REF="$(resolve_ref)"
-
-# Tag refs get archive from /tags/; branch refs from /heads/
-if [[ "$REF" == v* ]]; then
-  ARCHIVE_URL="https://github.com/${REPO}/archive/refs/tags/${REF}.tar.gz"
-else
-  ARCHIVE_URL="https://github.com/${REPO}/archive/refs/heads/${REF}.tar.gz"
+if [ "$VERSION" = "latest" ]; then
+  VERSION=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
+    | grep '"tag_name"' | cut -d'"' -f4)
 fi
 
-echo "[Strategist] Downloading from ${ARCHIVE_URL} ..."
-curl -fsSL "$ARCHIVE_URL" -o "${TMPDIR_INSTALL}/strategist.tar.gz"
+BASE_URL="https://github.com/${REPO}/releases/download/${VERSION}"
+BIN_NAME="strategist-${OS}-${ARCH}"
 
-mkdir -p "${TMPDIR_INSTALL}/extracted"
-tar -xzf "${TMPDIR_INSTALL}/strategist.tar.gz" \
-  --strip-components=1 \
-  -C "${TMPDIR_INSTALL}/extracted"
+# ── download + verify ─────────────────────────────────────────────────────────
+
+TMP=$(mktemp -d)
+trap 'rm -rf "$TMP"' EXIT
+
+echo "[Strategist] Downloading ${BIN_NAME} ${VERSION}..."
+curl -fsSL "${BASE_URL}/${BIN_NAME}" -o "${TMP}/strategist"
+curl -fsSL "${BASE_URL}/SHA256SUMS" -o "${TMP}/SHA256SUMS"
+
+(cd "$TMP" && grep "$BIN_NAME" SHA256SUMS | sha256sum --check --status)
+echo "[Strategist] Checksum verified."
+
+# ── install binary ────────────────────────────────────────────────────────────
+
+mkdir -p "$INSTALL_DIR"
+install -m 755 "${TMP}/strategist" "${INSTALL_DIR}/strategist"
+echo "[Strategist] Binary installed → ${INSTALL_DIR}/strategist"
+
+export PATH="${INSTALL_DIR}:${PATH}"
 
 # ── run install ───────────────────────────────────────────────────────────────
 
-INSTALL_SCRIPT="${TMPDIR_INSTALL}/extracted/strategist/install.sh"
+INSTALL_ARGS="--silent"
+[ "$SILENT" = "false" ] && INSTALL_ARGS="--wizard"
+[ -n "$TARGET" ] && INSTALL_ARGS="$INSTALL_ARGS --target=${TARGET}"
 
-if [ ! -f "$INSTALL_SCRIPT" ]; then
-  echo "Error: install.sh not found in downloaded archive." >&2
-  exit 1
-fi
-
-bash "$INSTALL_SCRIPT" "${INSTALL_ARGS[@]+"${INSTALL_ARGS[@]}"}"
+strategist install $INSTALL_ARGS
