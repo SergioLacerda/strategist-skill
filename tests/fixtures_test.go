@@ -24,14 +24,15 @@ type fixture struct {
 var validEventFragment = regexp.MustCompile(`^\w+=\S+`)
 
 func TestFixtures_ValidFormat(t *testing.T) {
+	t.Parallel()
 	files, err := filepath.Glob(filepath.Join("fixtures", "*.yaml"))
 	require.NoError(t, err)
 	require.NotEmpty(t, files, "no fixtures found in tests/fixtures/")
 
 	for _, f := range files {
-		f := f // capture
 		name := strings.TrimSuffix(filepath.Base(f), ".yaml")
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			data, err := os.ReadFile(f)
 			require.NoError(t, err)
 

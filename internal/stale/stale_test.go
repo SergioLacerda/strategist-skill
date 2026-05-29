@@ -25,6 +25,7 @@ func writeGzJSON(t *testing.T, path string, v any) {
 }
 
 func TestIsStale(t *testing.T) {
+	t.Parallel()
 	checker := stale.Checker{}
 
 	tests := []struct {
@@ -162,6 +163,7 @@ func TestIsStale(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			dir := t.TempDir()
 			artifactPath := tt.setup(t, dir)
 			got, err := checker.IsStale(artifactPath)

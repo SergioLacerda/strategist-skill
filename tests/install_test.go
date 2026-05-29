@@ -62,6 +62,7 @@ func (m *mockCompiler) CompileAll(_, _ string) error {
 }
 
 func TestInstallSilent_ProducesExpectedStructure(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	extractor := &mockExtractor{}
 	compiler := &mockCompiler{}
@@ -104,6 +105,7 @@ func TestInstallSilent_ProducesExpectedStructure(t *testing.T) {
 }
 
 func TestInstallSilent_EnsuresGitignore(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	extractor := &mockExtractor{}
 	compiler := &mockCompiler{}

@@ -24,17 +24,18 @@ jobs:
         run: go vet ./...
 
       - name: Lint
-        uses: golangci/golangci-lint-action@4696a598e3c3cef2e3f807ddb0cf6a24de33d3df # v6
+        uses: golangci/golangci-lint-action@55c2c1448f86e01eaae002a5a3a9624417608d84 # v6
         with:
           version: latest
 
       - name: Test (with race detector)
         run: go test -race ./...
 
-      - name: Coverage gate (>90% per internal package)
+      - name: Coverage gate (>90% per package)
         run: |
           fail=0
-          for pkg in internal/stale internal/compile internal/install internal/embed; do
+          # internal/domain excluded: pure type declarations, no executable statements.
+          for pkg in internal/stale internal/compile internal/install internal/embed cmd/strategist; do
             pct=$(go test -coverprofile=/tmp/cov.out -coverpkg=./$pkg/... ./$pkg/... 2>/dev/null \
                   | grep -o '[0-9.]*%' | tail -1 | tr -d '%')
             echo "$pkg: ${pct}%"

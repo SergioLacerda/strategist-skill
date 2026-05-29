@@ -36,6 +36,7 @@ func minimalStrategistRoot(t *testing.T, dir string) {
 }
 
 func TestCompileConfig(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	minimalStrategistRoot(t, dir)
 	out := filepath.Join(dir, ".compiled", ".config.gz")
@@ -55,6 +56,7 @@ func TestCompileConfig(t *testing.T) {
 }
 
 func TestCompileDomain_EmptyIndex(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	indexYAML := "load_always: []\nload_by_task_type: {}\n"
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "index.yaml"), []byte(indexYAML), 0o644))
@@ -72,6 +74,7 @@ func TestCompileDomain_EmptyIndex(t *testing.T) {
 }
 
 func TestCompileIndex_EmptySources(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	kiPath := filepath.Join(dir, "knowledge.index.yaml")
 	require.NoError(t, os.WriteFile(kiPath, []byte("sources: []\n"), 0o644))
@@ -88,6 +91,7 @@ func TestCompileIndex_EmptySources(t *testing.T) {
 }
 
 func TestCompileAll_ProducesAllArtifacts(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	minimalStrategistRoot(t, dir)
 
