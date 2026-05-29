@@ -64,7 +64,7 @@ pipeline:
   - stage: side_quest_approval
     type: conditional_pause
     condition: side_quest_manifest.count > 0
-    description: Present side quest manifest. Require explicit approval before Hunter moves files.
+    description: Present side quest manifest. Require explicit approval before Sniper moves files.
   - stage: side_quest_execution
     slot: execution
     condition: side_quest_approval_granted
@@ -74,7 +74,11 @@ pipeline:
   - stage: refinement
     slot: refinement
     input: [discovery_artifact, side_quest_report]
-    artifact_path: "<base_path>/refined/<mission_id>-plan.md"
+    artifact_path: "<base_path>/refined/<mission_id>/"
+    produces:
+      - "<base_path>/refined/<mission_id>/proposal.md"
+      - "<base_path>/refined/<mission_id>/design.md"
+      - "<base_path>/refined/<mission_id>/tasks.md"
   - stage: approval_gate
     type: mandatory_pause
     description: Present refined plan path. Require explicit user approval before execution slot.
@@ -93,7 +97,7 @@ stop_conditions:
   - slot_risk_mismatch
   - intake_conflict_unresolved
   - user_denies_execution
-  - side_quest_hunter_failed        # non-blocking: log and continue to Engineer
+  - side_quest_sniper_failed        # non-blocking: log and continue to Archivist
   - slot_write_type_violation       # slot tried to write a non-.md file
   - slot_write_scope_violation      # slot tried to write outside its declared scope
 
@@ -115,7 +119,8 @@ forbidden_behaviors:
   - load_knowledge_not_in_index
   - run_housekeeping_scan_as_slot
   - skip_mini_approval_gate
-  - invoke_side_quest_hunter_without_approval
-  - scout_writes_outside_pending
+  - invoke_side_quest_sniper_without_approval
+  - ranger_writes_outside_pending
   - engineer_writes_outside_analysis
-  - engineer_writes_non_md
+  - archivist_writes_non_md
+  - delegate_analysis_creation_to_sniper

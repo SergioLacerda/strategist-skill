@@ -13,7 +13,7 @@ knowledge_index_path: knowledge.index.yaml
 sdd_injection:
   # These fields are populated at runtime by SDD when plugin is registered.
   # Values here serve as documentation of the expected shape.
-  execution_provider: sdd-ask          # overrides hunter slot
+  execution_provider: sdd-ask          # overrides Sniper slot
   base_path: .sdd/analysis             # overrides base_path above
   knowledge_paths:
     - .sdd/docs                        # appended to knowledge.index.yaml sources

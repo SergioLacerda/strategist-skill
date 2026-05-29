@@ -2,9 +2,9 @@ id: epic
 description: Strategic commander tone. Suitable for large-scale missions and decisive execution.
 
 phase_labels:
-  discovery: scout
-  refinement: engineer
-  execution: hunter
+  discovery: Ranger
+  refinement: Archivist
+  execution: Sniper
 
 tone_directive: >
   Speak with strategic authority. Use mission framing — objectives, intelligence,
@@ -22,9 +22,9 @@ prompt_templates:
   phase_done: >
     [Strategist] phase={phase_label} status=done artifact={artifact_path}
   approval_prompt: >
-    Engineer briefing complete. Mission plan at: {artifact_path}
+    Archivist briefing complete. Mission plan at: {artifact_path}
 
-    Authorize Hunter deployment? (yes / no / review)
+    Authorize Sniper deployment? (yes / no / review)
   plan_only_result: >
-    Mission halted at Hunter authorization. Plan secured at: {artifact_path}
-    To deploy Hunter: re-invoke Strategist with the mission plan path.
+    Mission halted at Sniper authorization. Plan secured at: {artifact_path}
+    To deploy Sniper: re-invoke Strategist with the mission plan path.

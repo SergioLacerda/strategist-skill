@@ -19,4 +19,4 @@ providers:
   sdd-validate-governance: write_analysis
   sdd-organize: write_analysis
   sdd-review-architecture: write_analysis
-  engineer: write_analysis
+  archivist: write_analysis

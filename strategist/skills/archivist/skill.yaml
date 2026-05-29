@@ -1,4 +1,4 @@
-id: engineer
+id: archivist
 version: "1.0.0"
 schema_version: "1"
 status: active
@@ -7,11 +7,11 @@ category: refinement
 
 description: >
   Reads a discovery artifact and produces an implementation-ready reviewed plan.
-  Output contains all required sections for safe, executable handoff to Hunter.
+  Output contains all required sections for safe, executable handoff to Sniper.
   Does NOT modify any file — reads input artifact, writes output artifact only.
 
 input:
-  discovery_artifact_path: string  # path to Scout's output in <base_path>/pending/
+  discovery_artifact_path: string  # path to Ranger's output in <base_path>/pending/
   base_path: string                # from Strategist (mission base directory)
   mission_contract: object         # planning_rules from intake
 

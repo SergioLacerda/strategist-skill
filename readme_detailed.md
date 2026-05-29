@@ -1,22 +1,24 @@
 # Strategist Skill — Documentação Técnica Detalhada
 
-## Runtime Cognitivo, Governança e Convergência de Agentes IA
+## Runtime Cognitivo, Autoaprendizado e Convergência de Agentes IA
 
 ---
 
 ## Visão Geral
 
-O **Strategist** é uma skill autônoma de orquestração de missões para agentes IA.
+O **Strategist** é uma skill autônoma de orquestração de implementação de funcionalidades(missões) para agentes IA.
 
-Ela coordena trabalho multi-fase através de três slots plugáveis:
+Ela coordena trabalho multi-fase através de três papeis(slots) plugáveis:
 
 ```
-Scout (discovery) → Engineer (refinement) → Hunter (execution)
+Ranger (discovery) -> Papel responsavel por explorar o escopo do problema apartir do prompt inicial
+Archivist (refinement) -> Papel responsavel por refinar o escopo do problema e criar um plano de execução
+Sniper (execution) -> Papel responsavel por executar o plano de execução
 ```
+Cada papel tem sua funcao definida, porem o interessante eh que voce pode dizer qual skill cumpre aquele papel.
+o Strategist orquestra o fluxo, valida contratos, emite eventos de progresso e impõe o approval gate.
 
-O Strategist não executa discovery, refinement ou execution diretamente — ele delega para os providers configurados em cada slot. Toda implementação concreta é feita pelos providers; o Strategist orquestra o fluxo, valida contratos, emite eventos de progresso e impõe o approval gate.
-
-É **standalone por padrão** e pode opcionalmente integrar ao **SDD** como plugin registrado.
+É **standalone por padrão** e pode opcionalmente integrar como plugin a modelos de governaça(harness engineering) como o **SDD Harness**
 
 ---
 
@@ -47,31 +49,17 @@ governança estrutural
 
 ## Instalação
 
-### Silent (padrão)
+### Wizard (interativo)
 
 ```bash
 sh install.sh
 ```
 
-Gera `active.yaml` a partir do template `pragmatic-standalone` e scaffolda o workspace no repositório alvo. Sem prompts. Ideal para automação e CI.
-
-### Wizard (interativo)
-
-```bash
-sh install.sh --wizard
-```
-
-TUI que permite selecionar template, base_path, providers dos três slots, e fonte de conhecimento. Gera `active.yaml` e escreve `roles/default.yaml` com os providers escolhidos.
-
-### Repositório alvo customizado
-
-```bash
-sh install.sh --target /path/to/repo
-```
+TUI que permite selecionar template, base_path, providers dos três slots(papeis), e fonte de conhecimento(opcional). Gera `active.yaml` e escreve `roles/default.yaml` com os providers escolhidos.
 
 ### Zero config no repositório alvo
 
-Toda configuração vive dentro da skill root (`active.yaml`, `personas/`, `roles/`, `memory/`, `knowledge.index.yaml`). O repositório alvo recebe apenas artefatos de missão.
+Toda configuração vive dentro da skill root (`active.yaml`, `personas/`, `roles/`, `memory/`, `knowledge.index.yaml`). O repositório alvo recebe apenas artefatos da skill.
 
 ---
 
@@ -88,11 +76,11 @@ strategist/
 │
 ├── personas/
 │   ├── pragmatic.yaml               ← tom analítico; labels: analysis/refinement/execution
-│   └── epic.yaml                    ← tom estratégico; labels: scout/engineer/hunter
+│   └── epic.yaml                    ← tom estratégico; labels: ranger/archivist/sniper
 │
 ├── roles/
 │   ├── default.yaml                 ← bindings padrão dos slots
-│   ├── mission.yaml                 ← bindings para SDD (hunter = _injected_by_sdd)
+│   ├── mission.yaml                 ← bindings para SDD (Sniper = _injected_by_sdd)
 │   └── spec-driven.yaml             ← bindings para fluxo spec-driven
 │
 ├── schemas/
@@ -120,7 +108,7 @@ strategist/
     ├── dossier-builder/             ← monta dossiê mínimo dentro do token budget
     ├── response-critic/             ← avalia output dos slots contra rubrica
     ├── learning-curator/            ← propõe entradas para outcomes + source-hints
-    └── engineer/                    ← skill de refinamento (Engineer slot padrão)
+    └── archivist/                    ← skill de refinamento (Archivist slot padrão)
         ├── skill.yaml
         └── SKILL.md
 ```
@@ -147,6 +135,220 @@ strategist/
 
 ## Pipeline de Missão
 
+Pipeline completo: Ranger → housekeeping_scan → [mini approval gate] → Sniper(side quests) → Archivist → approval gate → Sniper(main)
+
+### Fluxo de Negócio: Iteração entre Papéis
+
+```
+                    ┌─────────────────────────────────────────┐
+                    │              STRATEGIST                 │
+                    │      Orquestrador — não executa         │
+                    └──────────────────┬──────────────────────┘
+                                       │
+                         ┌─────────────▼──────────────┐
+                         │           RANGER           │
+                         │         (discovery)        │
+                         │  "O que precisa ser feito? │
+                         │   Qual o estado atual?"    │
+                         │  → pending/<id>-discovery  │
+                         └─────────────┬──────────────┘
+                                       │
+                         ┌─────────────▼──────────────┐
+                         │    Housekeeping Scan       │
+                         │  (Ataque de oportunidade)  │
+                         │  Detecta workspace stale:  │
+                         │  todo/ pending/ refined/   │
+                         └──────┬──────────────┬──────┘
+                     sem quests │              │ com side quests
+                                │     ┌────────▼────────────┐
+                                │     │   Mini Approval     │
+                                │     │      Gate           │
+                                │     └────────┬────────────┘
+                                │    aprovado  │
+                                │     ┌────────▼────────────┐
+                                │     │       SNIPER        │
+                                │     │   (side quests)     │
+                                │     │  Move / promove     │
+                                │     │  artefatos stale    │
+                                │     └────────┬────────────┘
+                                │              │ side quest report
+                                └──────────────┤
+                         ┌─────────────▼──────────────┐
+                         │         ARCHIVIST          │
+                         │        (refinement)        │
+                         │  "Como executar? Que       │
+                         │   decisões tomar?"         │
+                         │  → refined/<id>/           │
+                         │    proposal.md             │
+                         │    design.md               │
+                         │    tasks.md                │
+                         └─────────────┬──────────────┘
+                                       │
+                    ┌──────────────────▼──────────────────┐
+                    │           Approval Gate             │
+                    │   PARADA OBRIGATÓRIA (se tasks.md   │
+                    │   não estiver vazio)                │
+                    └──────────────────┬──────────────────┘
+                              aprovado │
+                         ┌─────────────▼──────────────┐
+                         │           SNIPER           │
+                         │         (execution)        │
+                         │  "Executar o plano         │
+                         │   aprovado."               │
+                         │  → done/<id>-report.md     │
+                         └─────────────┬──────────────┘
+                                       │
+                         ┌─────────────▼──────────────┐
+                         │       Learning Phase       │
+                         │      (não-bloqueante)      │
+                         │  Registra outcomes e       │
+                         │  source-hints com          │
+                         │  aprovação humana          │
+                         └────────────────────────────┘
+```
+
+#### Side Quests — Detalhe
+
+O Ataque de oportunidade(Housekeeping Scan) detecta artefatos em estado inconsistente **antes** de a análise principal começar. Isso evita que o Archivist trate como "pendente" algo que já foi resolvido.
+
+```
+              todo/spec.md ──────────► já implementado no git?
+                                              │ sim
+                                              ▼
+                                       move → done/
+
+           pending/discovery.md ──────► tem plano em refined/?
+                                              │ sim
+                                              ▼
+                                       promote → move pending → done
+
+            refined/plan/ ────────────► tem report em done/?
+                                              │ sim
+                                              ▼
+                                       promote → move refined → done
+```
+
+Cada operação de workspace requer aprovação no **mini gate** antes de o Sniper executar.
+
+---
+
+### Fluxo Técnico Interno
+
+```
+INVOCAÇÃO
+─────────────────────────────────────────────────────────────────────
+  prompt do usuário
+       │
+       ▼
+  ┌──────────────────────────────────────────────────────────────┐
+  │ 1. Bootstrap                                                 │
+  │    • Carrega active.yaml (fonte única de config)             │
+  │    • Resolve persona → tone_directive + phase_labels         │
+  │    • SDD injection (se plugin ativo): override Sniper slot,  │
+  │      base_path, knowledge_paths, governance_context          │
+  └──────────────────────────┬───────────────────────────────────┘
+                             │
+  ┌──────────────────────────▼───────────────────────────────────┐
+  │ 2. Preflight                              para na 1ª falha   │
+  │    2a. Carrega .strategist/index.yaml → arquivos load_always │
+  │    2b. Carrega identity/what-i-am.yaml + drift-patterns.yaml │
+  │    2c. Resolve slot providers (roles/<config>.yaml)          │
+  │        skill_root → .claude/skills → registry                │
+  │    2d. Valida contratos de risco:                            │
+  │        Ranger    → write_pending                             │
+  │        Archivist → write_analysis                            │
+  │        Sniper    → controlled                                │
+  │    emit: phase=preflight status=done                         │
+  └──────────────────────────┬───────────────────────────────────┘
+                             │
+  ┌──────────────────────────▼───────────────────────────────────┐
+  │ 3. Intake                                                    │
+  │    invoca prompt-intake skill                                │
+  │    → mission_contract: task_type, risk_level, constraints    │
+  └──────────────────────────┬───────────────────────────────────┘
+                             │
+  ┌──────────────────────────▼───────────────────────────────────┐
+  │ 4. Context Enrichment                                        │
+  │    invoca context-enrichment (knowledge.index.yaml + hints)  │
+  │    invoca dossier-builder → dossiê mínimo por token budget   │
+  └──────────────────────────┬───────────────────────────────────┘
+                             │
+FASES DA MISSÃO
+─────────────────────────────────────────────────────────────────────
+  ┌──────────────────────────▼───────────────────────────────────┐
+  │ 5a. RANGER (discovery slot)         contrato: write_pending  │
+  │     → pending/<mission_id>-discovery.md                      │
+  │     emit: phase=<ranger_label> status=done                   │
+  └──────────────────────────┬───────────────────────────────────┘
+                             │
+  ┌──────────────────────────▼───────────────────────────────────┐
+  │ 5b. Housekeeping Scan  (Strategist interno — não é slot)     │
+  │     varre: todo/ pending/ refined/                           │
+  │     produz: side quest manifest                              │
+  │     emit: phase=housekeeping_scan status=done side_quests=N  │
+  └────────────┬────────────────────────┬────────────────────────┘
+  N=0          │                        │ N>0
+  pula 5c/5d   │                        │
+               │         ┌─────────────▼──────────────────────┐
+               │         │ 5c. Mini Approval Gate (condicional)│
+               │         │     STOP — aguarda resposta         │
+               │         └─────────────┬──────────────────────┘
+               │                       │ yes/select
+               │         ┌─────────────▼──────────────────────┐
+               │         │ 5d. SNIPER side quests              │
+               │         │     contrato: controlled            │
+               │         │     mv todo→done / promove pending  │
+               │         │     produz: side quest report       │
+               │         │     falha: non-blocking             │
+               │         └─────────────┬──────────────────────┘
+               │                       │ side quest report
+               └───────────────────────┤
+  ┌──────────────────────────▼───────────────────────────────────┐
+  │ 5e. ARCHIVIST (refinement slot)   contrato: write_analysis   │
+  │     input: discovery artifact + side quest report            │
+  │     → refined/<mission_id>/                                  │
+  │         proposal.md  design.md  tasks.md                     │
+  │     emit: phase=<archivist_label> status=done                │
+  └──────────────────────────┬───────────────────────────────────┘
+                             │
+GATE E EXECUÇÃO
+─────────────────────────────────────────────────────────────────────
+  ┌──────────────────────────▼───────────────────────────────────┐
+  │ 6. Approval Gate                                             │
+  │    lê tasks.md:                                             │
+  │    • vazio → plan_only automático (sem gate)                 │
+  │    • interno → gate normal                                   │
+  │    • externo → gate + aviso de escopo                        │
+  │    STOP — aguarda resposta explícita                         │
+  └────────────┬──────────────────────────┬──────────────────────┘
+  no/decline   │                          │ yes/approve
+  plan_only    │                          │
+               │         ┌───────────────▼───────────────────┐
+               │         │ 7. SNIPER (execution slot)        │
+               │         │    contrato: controlled            │
+               │         │    input: refined plan (tasks.md)  │
+               │         │    → done/<mission_id>-report.md   │
+               │         │    emit: phase=<sniper_label> done  │
+               │         └───────────────┬───────────────────┘
+               │                         │
+               └─────────────────────────┤
+  ┌──────────────────────────▼───────────────────────────────────┐
+  │ 8. Learning Phase (non-blocking)                             │
+  │    invoca response-critic → invoca learning-curator          │
+  │    checkpoint ao usuário antes de qualquer escrita           │
+  │    falha: não bloqueia o resultado                           │
+  └──────────────────────────┬───────────────────────────────────┘
+                             │
+  ┌──────────────────────────▼───────────────────────────────────┐
+  │ 9. Mission Result                                            │
+  │    status: completed | plan_only | blocked                   │
+  │    artifacts: discovery, side_quest_report?,                 │
+  │               refined_plan, execution_report?                │
+  └──────────────────────────────────────────────────────────────┘
+```
+
+---
+
 ### Fluxo Principal
 
 ```
@@ -160,13 +362,19 @@ Intake (extrai mission_contract)
   ↓
 Context Enrichment (consulta knowledge index → monta dossiê)
   ↓
-Scout / análise (discovery slot)
+Ranger / discovery (discovery slot)
   ↓
-Engineer / refinement (refinement slot)
+Ataque de oportunidade / Housekeeping Scan (interno — sem slot)
   ↓
-Approval Gate ← PARADA OBRIGATÓRIA
+[Mini Approval Gate — somente se side quests > 0]
+  ↓ (se aprovado)
+Sniper / side quests (execution slot — operações de workspace)
+  ↓
+Archivist / refinement (refinement slot)
+  ↓
+Approval Gate ← PARADA OBRIGATÓRIA (se tasks.md não estiver vazio)
   ↓ (somente com aprovação explícita)
-Hunter / execution (execution slot)
+Sniper / execution (execution slot)
   ↓
 Learning Phase (não-bloqueante)
   ↓
@@ -184,7 +392,7 @@ Ao ser invocado, o agente:
 3. Se `--mode` foi passado, sobrescreve o modo apenas para esta missão.
 4. Se `--roles` foi passado, sobrescreve `roles_config` apenas para esta missão.
 5. Se `sdd_injection` está presente e o plugin está ativo em `.sdd/plugins/registry.yaml`:
-   - Sobrescreve o Hunter slot com `sdd_injection.execution_provider`
+   - Sobrescreve o Sniper slot com `sdd_injection.execution_provider`
    - Sobrescreve `base_path`
    - Adiciona `sdd_injection.knowledge_paths` às fontes do knowledge index (sem substituir)
    - Carrega `sdd_injection.governance_context` como contexto read-only adicional
@@ -207,7 +415,7 @@ Se existir, carrega apenas os arquivos listados em `load_always`. Nenhum arquivo
 
 **2c. Resolução de slot providers**
 
-Para cada slot (scout, engineer, hunter), tenta resolver o `skill.yaml` do provider na ordem:
+Para cada slot (discovery, refinement, execution), tenta resolver o `skill.yaml` do provider na ordem:
 1. `<skill_root>/<provider>/skill.yaml`
 2. `.claude/skills/<provider>/skill.yaml`
 3. Entrada no skill registry (se presente)
@@ -217,8 +425,9 @@ Se nenhum caminho resolve: emite evento bloqueado e para.
 
 **2d. Validação de contratos de risco**
 
-- Scout e Engineer: `risk_score` DEVE ser `read_only`
-- Hunter: `risk_score` DEVE ser `controlled_write`
+- Ranger: `risk_score` DEVE ser `write_pending`
+- Archivist: `risk_score` DEVE ser `write_analysis`
+- Sniper: `risk_score` DEVE ser `controlled`
 - Mismatch → evento bloqueado com `reason=slot_risk_mismatch`
 
 **Evento de conclusão:** `[Strategist] phase=preflight status=done slots=ok`
@@ -264,10 +473,10 @@ Invoca `dossier-builder` para montar o dossiê mínimo para os slot providers. S
 
 ### 5. Fases da Missão
 
-#### 5a. Scout (discovery slot)
+#### 5a. Ranger (discovery slot)
 
 ```
-[Strategist] phase=<scout_label> status=running skill=<provider> checklist=0/3
+[Strategist] phase=<ranger_label> status=running skill=<provider> checklist=0/3
 ```
 
 Invoca o provider do slot discovery com:
@@ -278,26 +487,80 @@ Invoca o provider do slot discovery com:
 Artefato produzido: `<base_path>/pending/<mission_id>-discovery.md`
 
 ```
-[Strategist] phase=<scout_label> status=done artifact=<path>
+[Strategist] phase=<ranger_label> status=done artifact=<path>
 ```
 
-Falha → evento bloqueado com `reason=scout_failed`. Não avança para Engineer.
+Falha → evento bloqueado com `reason=ranger_failed`. Não avança para Archivist.
 
-#### 5b. Engineer (refinement slot)
+#### 5b. Ataque de oportunidade / Housekeeping Scan (interno — sem slot)
+
+Após o Ranger concluir, o Strategist executa um scan determinístico de `<base_path>/`.
+**Não delega a um slot provider** — executa internamente.
+
+| Diretório | Verificação | Tipo de side quest |
+|-----------|-------------|-------------------|
+| `todo/` | Spec tem commit correspondente no git? | `move_to_done` |
+| `pending/` | Spec tem plano correspondente em `refined/`? | `promote` |
+| `refined/` | Plano tem relatório em `done/`? | `promote` |
+
+Produz um **side quest manifest** com os itens detectados.
+
+- Se manifest vazio: pula 5c e 5d, avança direto para 5e.
+- Se manifest não vazio: apresenta mini approval gate (5c).
+
+#### 5c. Mini Approval Gate (condicional — somente se side_quests > 0)
+
+STOP. Nenhum arquivo é movido sem aprovação explícita.
+
+Apresenta ao usuário:
 
 ```
-[Strategist] phase=<engineer_label> status=running skill=<provider> checklist=1/3
+[Strategist] Workspace scan encontrou N side quest(s) antes da análise principal:
+  [1] <origin_path> → <destination> (<type>)  Motivo: <reason>
+Aprovar todos? [yes / no / select]
+```
+
+Respostas:
+- **yes**: avança para 5d (Sniper executa todos os side quests).
+- **no**: descarta manifest, avança para 5e com workspace como está.
+- **select**: usuário especifica itens por número; Sniper executa apenas os selecionados.
+
+Invocar Sniper para side quests sem resposta ao mini gate é um **forbidden behavior**.
+
+#### 5d. Sniper: Side Quest Execution (condicional — somente se mini approval concedido)
+
+Invoca o execution slot provider com os itens aprovados do manifest. Operações permitidas:
+- `mv <base_path>/todo/<file> <base_path>/done/<file>`
+- Atualizar campo `Status:` em arquivos markdown
+- Nenhuma escrita fora de `<base_path>/`
+
+Produz um **side quest report** (bloco markdown inline — não é arquivo gravado em disco).
+
+Falha no side quest Sniper é **non-blocking**: registra a falha, avança para 5e com report parcial ou vazio.
+
+#### 5e. Archivist (refinement slot)
+
+```
+[Strategist] phase=<archivist_label> status=running skill=<provider> checklist=1/3
 ```
 
 Invoca o provider do slot refinement com:
 - Path do artefato de discovery
+- Side quest report (se presente) como contexto adicional — itens movidos não devem ser tratados como pendentes
 - `mission_contract.planning_rules`
 - Dossiê
 
-Artefato produzido: `<base_path>/refined/<mission_id>-plan.md`
+Artefato produzido: `<base_path>/refined/<mission_id>/` (subdiretório com três arquivos)
+- `proposal.md` — o quê e por quê (alimentado pelo artefato de discovery)
+- `design.md` — como (arquitetura, componentes afetados, decisões)
+- `tasks.md` — passos de implementação numerados (input do Sniper)
+
+Regras:
+- Archivist nunca produz um `.md` avulso em `refined/` — sempre o subdiretório com os três arquivos
+- Se `tasks.md` estiver vazio ou ausente após Archivist concluir, Sniper não é invocado
 
 ```
-[Strategist] phase=<engineer_label> status=done artifact=<path>
+[Strategist] phase=<archivist_label> status=done artifact=<path>
 ```
 
 Falha → evento bloqueado. Não apresenta approval gate.
@@ -306,29 +569,39 @@ Falha → evento bloqueado. Não apresenta approval gate.
 
 ### 6. Approval Gate (OBRIGATÓRIO)
 
-Após o Engineer concluir, **PARA**. Hunter não é invocado sem aprovação explícita.
+Após o Archivist concluir, o Strategist lê `tasks.md` antes de apresentar o gate:
+
+**Se `tasks.md` estiver vazio ou ausente:**
+  emite `[Strategist] phase=approval_gate status=plan_only`, retorna resultado `status: plan_only`.
+  O gate **não é apresentado** — a missão está completa.
+
+**Se `tasks.md` contiver tarefas apenas dentro de `<base_path>/`:**
+  apresenta o gate uma vez com o plano visível.
+
+**Se `tasks.md` contiver tarefas que escrevem fora de `<base_path>/` (código, git, config, sistema):**
+  apresenta o gate com aviso explícito de escopo externo.
 
 Apresenta ao usuário (template da persona ativa):
 
 ```
-Engineer briefing complete. Mission plan at: <artifact_path>
+Archivist briefing complete. Mission plan at: <artifact_path>
 
-Authorize Hunter deployment? (yes / no / review)
+Authorize Sniper deployment? (yes / no / review)
 ```
 
 Respostas:
-- **yes / approve / authorize** → avança para Hunter
+- **yes / approve / authorize** → avança para Sniper
 - **no / decline / stop** → emite `[Strategist] phase=approval_gate status=plan_only`, retorna resultado `status: plan_only` com paths dos artefatos de discovery e plano refinado
 - **review** → exibe conteúdo do plano, re-pergunta
 
-Invocar Hunter sem aprovação explícita é um **forbidden behavior**.
+Invocar Sniper sem aprovação explícita é um **forbidden behavior**.
 
 ---
 
-### 7. Hunter (execution slot)
+### 7. Sniper (execution slot)
 
 ```
-[Strategist] phase=<hunter_label> status=running skill=<provider> checklist=2/3
+[Strategist] phase=<sniper_label> status=running skill=<provider> checklist=2/3
 ```
 
 Invoca o provider do slot execution com:
@@ -338,7 +611,7 @@ Invoca o provider do slot execution com:
 Artefato produzido: `<base_path>/done/<mission_id>-report.md`
 
 ```
-[Strategist] phase=<hunter_label> status=done artifact=<path>
+[Strategist] phase=<sniper_label> status=done artifact=<path>
 ```
 
 ---
@@ -367,10 +640,11 @@ Ambos requerem aprovação explícita (podem ser aprovados/rejeitados individual
 mission_id: <id>
 status: completed | plan_only | blocked
 artifacts:
-  discovery: <path>         # presente se Scout executou
-  refined_plan: <path>      # presente se Engineer executou
-  execution_report: <path>  # presente se Hunter executou
-blockers: []                # códigos de bloqueio se status=blocked
+  discovery: <path>           # presente se Ranger executou
+  side_quest_report: inline   # presente se side quests executaram (bloco inline, não arquivo)
+  refined_plan: <path>        # presente se Archivist executou
+  execution_report: <path>    # presente se Sniper executou
+blockers: []                  # códigos de bloqueio se status=blocked
 ```
 
 ---
@@ -382,10 +656,10 @@ O Strategist tem dois modos com o **mesmo pipeline** e **voz diferente**.
 | Aspecto | Pragmatic | Epic |
 |---------|-----------|------|
 | **Tom** | Analítico, direto | Estratégico, decisivo |
-| **Label discovery** | `analysis` | `scout` |
-| **Label refinement** | `refinement` | `engineer` |
-| **Label execution** | `execution` | `hunter` |
-| **Approval prompt** | "Refinement complete. Proceed?" | "Authorize Hunter deployment?" |
+| **Label discovery** | `analysis` | `ranger` |
+| **Label refinement** | `refinement` | `archivist` |
+| **Label execution** | `execution` | `sniper` |
+| **Approval prompt** | "Refinement complete. Proceed?" | "Authorize Sniper deployment?" |
 | **Template padrão** | `pragmatic-standalone.yaml` | `epic-standalone.yaml` / `epic-sdd.yaml` |
 
 Seleção:
@@ -461,7 +735,7 @@ Cada arquivo `roles/<config>.yaml` declara os providers dos três slots:
 
 ```yaml
 discovery: sdd-diagnose
-refinement: engineer
+refinement: archivist
 execution: caveman
 ```
 
@@ -469,7 +743,7 @@ execution: caveman
 
 ```yaml
 discovery: diagnose
-refinement: engineer
+refinement: archivist
 execution: _injected_by_sdd   # resolvido de sdd_injection.execution_provider em runtime
 ```
 
@@ -485,7 +759,7 @@ Quando ativo, o SDD injeta em `active.yaml`:
 
 ```yaml
 sdd_injection:
-  execution_provider: sdd-ask       # sobrescreve hunter slot
+  execution_provider: sdd-ask       # sobrescreve Sniper slot
   base_path: .sdd/analysis          # sobrescreve base_path
   knowledge_paths:
     - .sdd/docs                     # adicionado ao knowledge index
@@ -506,12 +780,13 @@ Template para uso com SDD: `templates/epic-sdd.yaml`
 | Código | Condição | Resolução |
 |--------|----------|-----------|
 | `slot_provider_not_found` | skill.yaml do provider não encontrado | Verificar id em roles config e caminho do skill root |
-| `slot_risk_mismatch` | Discovery/refinement com `risk_score` ≠ `read_only`, ou execution ≠ `controlled_write` | Substituir provider |
+| `slot_risk_mismatch` | Ranger ≠ `write_pending`, Archivist ≠ `write_analysis`, ou Sniper ≠ `controlled` | Substituir provider |
 | `intake_conflict_unresolved` | Dois aliases de constraint mutuamente exclusivos no prompt | Usuário deve esclarecer |
 | `preflight_failed` | Qualquer checagem de preflight falhou | Ver reason code emitido |
 | `user_denies_execution` | Usuário recusou no approval gate | Retorna `plan_only` (não é erro) |
-| `discovery_failed` | Scout não produziu artefato | Não avança para Engineer |
-| `refinement_failed` | Engineer não produziu artefato | Não apresenta approval gate |
+| `ranger_failed` | Ranger não produziu artefato | Não avança para Archivist |
+| `refinement_failed` | Archivist não produziu artefato | Não apresenta approval gate |
+| `side_quest_sniper_failed` | Sniper falhou nos side quests | Non-blocking — avança para Archivist |
 
 ---
 
@@ -533,6 +808,12 @@ Os seguintes comportamentos são **nunca permitidos**:
 
 7. **Pular preflight** — preflight executa antes do intake, em toda invocação, inclusive re-invocações com a mesma config.
 
+8. **Invocar side quest Sniper sem apresentar mini approval gate** — o mini gate é obrigatório quando o housekeeping scan retorna itens. Avançar direto para execução de side quests é um bypass proibido.
+
+9. **Delegar housekeeping scan a um slot provider** — o scan é uma fase interna determinística do Strategist. Ranger, Archivist e Sniper não executam o scan.
+
+10. **Pedir ao Sniper para criar documentos, specs ou planos** — criação de artefatos de análise é responsabilidade do Archivist (contrato: `write_analysis`). Sniper executa; nunca escreve análises.
+
 ---
 
 ## Drift Self-Correction
@@ -543,9 +824,12 @@ Quando `drift-patterns.yaml` está carregado, o agente verifica padrões antes d
 |--------|---------|----------|
 | `direct_execution` | Prestes a executar trabalho de slot diretamente | Parar. Identificar slot ativo. Invocar provider. Retomar. |
 | `silent_phase_advance` | Prestes a iniciar próxima fase sem emitir evento `done` | Emitir evento `done` primeiro. |
-| `approval_bypass` | Prestes a invocar Hunter sem perguntar ao usuário | Parar. Apresentar approval gate prompt. |
+| `approval_bypass` | Prestes a invocar Sniper sem perguntar ao usuário | Parar. Apresentar approval gate prompt. |
 | `scope_expansion` | Endereçando algo fora da missão do usuário | Parar. Retornar ao escopo da missão. |
-| `hunter_provider_override` | Resolveu Hunter de fonte diferente de roles config ou sdd_injection | Parar. Re-resolver da fonte declarada. |
+| `sniper_provider_override` | Resolveu Sniper de fonte diferente de roles config ou sdd_injection | Parar. Re-resolver da fonte declarada. |
+| `side_quest_approval_bypass` | Prestes a mover arquivos do housekeeping_scan sem apresentar mini approval gate | Parar. Apresentar mini approval gate com o manifest completo. |
+| `route_plan_creation_to_sniper` | Prestes a pedir ao Sniper para criar documento, spec ou plano | Parar. Criação de artefatos é trabalho do Archivist. Retornar à fase 5e. |
+| `housekeeping_scan_as_slot` | Prestes a delegar o housekeeping scan ao Ranger ou outro slot | Parar. Executar o scan diretamente como Strategist (fase interna). |
 
 ---
 
@@ -561,7 +845,7 @@ Pragmatic e Epic compartilham o mesmo pipeline. A separação é apenas de vocab
 
 ### Preflight valida todos os slots antes de começar
 
-Falha rápida no preflight evita execução parcial. Descobrir um mismatch de risco após o Scout já ter rodado criaria estado de artefato órfão e situação de difícil recuperação.
+Falha rápida no preflight evita execução parcial. Descobrir um mismatch de risco após o Ranger já ter rodado criaria estado de artefato órfão e situação de difícil recuperação.
 
 ### Learning Loop não-bloqueante
 
@@ -583,13 +867,17 @@ Toda transição de fase emite exatamente um evento:
 
 ```
 [Strategist] phase=preflight status=done slots=ok
-[Strategist] phase=<scout_label> status=running skill=<provider> checklist=0/3
-[Strategist] phase=<scout_label> status=done artifact=<path>
-[Strategist] phase=<engineer_label> status=running skill=<provider> checklist=1/3
-[Strategist] phase=<engineer_label> status=done artifact=<path>
-[Strategist] phase=approval_gate status=waiting
-[Strategist] phase=<hunter_label> status=running skill=<provider> checklist=2/3
-[Strategist] phase=<hunter_label> status=done artifact=<path>
+[Strategist] phase=<ranger_label> status=running skill=<provider> checklist=0/3
+[Strategist] phase=<ranger_label> status=done artifact=<path>
+[Strategist] phase=housekeeping_scan status=running
+[Strategist] phase=housekeeping_scan status=done side_quests=N
+[Strategist] phase=side_quest_execution status=running          # somente se side_quests > 0 e aprovado
+[Strategist] phase=side_quest_execution status=done             # somente se side_quests > 0 e aprovado
+[Strategist] phase=<archivist_label> status=running skill=<provider> checklist=1/3
+[Strategist] phase=<archivist_label> status=done artifact=<path>
+[Strategist] phase=approval_gate status=waiting                 # somente se tasks.md não vazio
+[Strategist] phase=<sniper_label> status=running skill=<provider> checklist=2/3
+[Strategist] phase=<sniper_label> status=done artifact=<path>
 ```
 
 Emitir evento `running` e avançar para a próxima fase sem emitir `done` é uma violação do padrão `silent_phase_advance`.

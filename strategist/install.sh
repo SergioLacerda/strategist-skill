@@ -178,40 +178,40 @@ run_wizard() {
   read -r base_path
   base_path="${base_path:-.analysis}"
 
-  # Scout provider
+  # Ranger (discovery) provider
   echo ""
-  echo "  Scout: descobre o espaço do problema → escreve discovery em pending/"
+  echo "  Ranger: descobre o espaço do problema → escreve discovery em pending/"
   echo "  Provider recomendado: brainstorming (explora antes de decidir)"
   while true; do
-    printf "Scout provider (write_pending) [brainstorming]: "
-    read -r scout
-    scout="${scout:-brainstorming}"
-    validate_provider "$scout" "write_pending" "Scout" && break
+    printf "Ranger provider (discovery, write_pending) [brainstorming]: "
+    read -r ranger
+    ranger="${ranger:-brainstorming}"
+    validate_provider "$ranger" "write_pending" "Ranger" && break
     echo "  Enter a different provider name."
   done
 
-  # Engineer provider
+  # Archivist (refinement) provider
   echo ""
-  echo "  Engineer: refina a descoberta → escreve proposal/design/tasks em refined/"
+  echo "  Archivist: refina a descoberta → escreve proposal/design/tasks em refined/"
   echo "  Provider recomendado: openspec-explore (gera estrutura OpenSpec)"
   while true; do
-    printf "Engineer provider (write_analysis) [openspec-explore]: "
-    read -r engineer
-    engineer="${engineer:-openspec-explore}"
-    validate_provider "$engineer" "write_analysis" "Engineer" && break
+    printf "Archivist provider (refinement, write_analysis) [openspec-explore]: "
+    read -r archivist
+    archivist="${archivist:-openspec-explore}"
+    validate_provider "$archivist" "write_analysis" "Archivist" && break
     echo "  Enter a different provider name."
   done
 
-  # Hunter provider
+  # Sniper (execution) provider
   echo ""
-  echo "  Hunter: executa o plano refinado → requer approval gate"
+  echo "  Sniper: executa o plano refinado → requer approval gate"
   echo "  Provider recomendado: sdd-ask (execução governada)"
   while true; do
-    printf "Hunter provider (controlled) [sdd-ask]: "
-    read -r hunter
-    hunter="${hunter:-sdd-ask}"
-    [ -n "$hunter" ] || { echo "  Error: Hunter provider is required."; continue; }
-    validate_provider "$hunter" "controlled" "Hunter" && break
+    printf "Sniper provider (execution, controlled) [sdd-ask]: "
+    read -r sniper
+    sniper="${sniper:-sdd-ask}"
+    [ -n "$sniper" ] || { echo "  Error: Sniper provider is required."; continue; }
+    validate_provider "$sniper" "controlled" "Sniper" && break
     echo "  Enter a different provider name."
   done
 
@@ -228,9 +228,9 @@ run_wizard() {
 
   # Write roles/default.yaml into .strategist/
   cat > "${TARGET_REPO}/.strategist/roles/default.yaml" <<EOF
-scout: ${scout}
-engineer: ${engineer}
-hunter: ${hunter}
+discovery: ${ranger}
+refinement: ${archivist}
+execution: ${sniper}
 EOF
 
   # Scaffold workspace

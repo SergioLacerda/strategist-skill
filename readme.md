@@ -5,18 +5,18 @@
 ![Docs](https://img.shields.io/badge/Docs-available-orange)
 ![Version](https://img.shields.io/badge/Version-1.0-yellow)
 
-**Strategist** é uma skill autônoma que orquestra missões multi-fase através de três slots plugáveis — **Scout → Engineer → Hunter** — dentro de um fluxo governado com approval gate obrigatório. Standalone por padrão; integração opcional com o **SDD Harness**.
+**Strategist** é uma skill autônoma que explora, analisa, refina tarefas tecnicas e as executa, documentando cada etapa. Para isso, orquestra "missões" através de papeis(slots plugáveis) — **Ranger(ou discover) → Archivist(ou refinamento) → Sniper(ou agente executor)** — dentro de um fluxo governado com approval gate obrigatório. Standalone por padrão.
 
 ---
 
 ### Key Capabilities
 
-- **Slots plugáveis** – Scout (discovery), Engineer (refinement) e Hunter (execution) são providers configuráveis; o Strategist delega, nunca executa diretamente.
-- **Approval Gate obrigatório** – nunca invoca o Hunter sem aprovação humana explícita.
+- **Slots plugáveis** – Ranger (discovery), Archivist (refinement) e Sniper (execution) são providers configuráveis;
+- **Approval Gate obrigatório** – nunca implementa alterações sem aprovação humana explícita.
 - **Dois modos de operação** – `pragmatic` (tom analítico) e `epic` (tom estratégico); mesmo pipeline, vocabulário diferente.
 - **Knowledge Index** – contexto seletivo por `task_type` antes de cada missão; prioridades ajustadas por learning loop.
 - **Learning Loop não-bloqueante** – registra outcomes e source-hints com aprovação humana; falha nunca bloqueia o resultado da missão.
-- **Integração SDD opcional** – registrável como plugin; SDD injeta base_path, execution_provider e knowledge_paths sem alterar o pipeline.
+- **Integração SDD opcional** – A skill se submete a governança, registrável como plugin, Aderindo a mandates, rules e guidelines definidos externamente ao plugin.
 
 ---
 
@@ -42,7 +42,7 @@ bash /path/to/strategist-skill/strategist/install.sh --wizard
 # depois edite: .strategist/roles/default.yaml
 ```
 
-**Instalar sem wizard (silent):**
+**Instalação Local:**
 ```bash
 curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.sh | bash -s -- --silent
 ```
@@ -52,13 +52,13 @@ curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main
 | Arquivo | Função |
 |---------|--------|
 | `.strategist/active.yaml` | Modo (pragmatic/epic), base_path, roles |
-| `.strategist/roles/default.yaml` | Slot providers: Scout, Engineer, Hunter |
+| `.strategist/roles/default.yaml` | Slot providers: Ranger, Archivist, Sniper |
 | `.strategist/knowledge.index.yaml` | Fontes de conhecimento por task_type |
 | `.analysis/` | Artefatos de missão (pending, refined, done) |
 
 ---
 
-### Instalação local (sem curl)
+### Instalação local (sem curl / clone repo)
 
 ```bash
 # silent: defaults pragmatic-standalone
