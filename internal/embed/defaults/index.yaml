@@ -1,0 +1,4 @@
+# index.yaml — domain index for Strategist
+# List files to pre-load on every mission or selectively by task type.
+load_always: []
+load_by_task_type: {}

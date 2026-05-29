@@ -1,0 +1,15 @@
+schema_version: "1"
+description: >
+  Learned priority adjustments for knowledge sources. Maintained by learning-curator
+  with explicit human approval. Overlaid on knowledge.index.yaml at query time.
+  Each entry annotates a source_id with a priority adjustment derived from past missions.
+
+hints: []
+
+# Schema for each hint entry:
+#
+# hints:
+#   - source_id: <string>             # must match an id in knowledge.index.yaml
+#     annotation: <string>            # human-readable note about why this was adjusted
+#     priority_adjustment: <integer>  # positive = boost, negative = suppress
+#     derived_from_mission: <string>  # mission_id that produced this hint

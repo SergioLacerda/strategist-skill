@@ -1,0 +1,55 @@
+module: learning-buffer
+type: write_path
+description: >
+  Shell-based temp-file buffer for learning outcomes. Outcomes are appended to
+  outcomes.tmp after each mission. The buffer is flushed to outcomes.jsonl at the
+  START of the next mission (§0 Pre-Bootstrap) when line count >= buffer_size.
+  Flush at start (not end) ensures crash safety — the previous mission's outcome
+  is already in outcomes.tmp before any new writes begin.
+
+contract:
+  input:
+    - name: mission_outcome_json
+      type: string (one JSON line)
+      required: true
+      description: Outcome record to buffer (from learning-curator)
+    - name: buffer_size
+      type: integer
+      required: false
+      default: 20
+      description: Flush threshold; configurable via active.yaml learning_buffer_size
+
+  output:
+    - name: outcomes_tmp_appended
+      type: boolean
+      description: Whether the outcome line was appended to outcomes.tmp
+    - name: flushed
+      type: boolean
+      description: Whether buffer was flushed to outcomes.jsonl (only at mission START)
+    - name: flush_count
+      type: integer
+      description: Number of lines flushed (0 if no flush occurred)
+
+  error_conditions:
+    - code: write_failure
+      trigger: outcomes.tmp write fails
+      behavior: Non-blocking — log to stderr, continue. Mission result is NOT affected.
+    - code: flush_failure
+      trigger: cat or truncate of outcomes.tmp fails during flush
+      behavior: Non-blocking — log to stderr. outcomes.tmp is not cleared; retry next mission start.
+
+  write_scope:
+    - .strategist/memory/outcomes.tmp (append per mission, cleared on flush)
+    - .strategist/memory/outcomes.jsonl (append-only, written on flush)
+
+  owner: internal (learning)
+
+  flush_procedure: |
+    cat .strategist/memory/outcomes.tmp >> .strategist/memory/outcomes.jsonl
+    : > .strategist/memory/outcomes.tmp
+
+  manual_flush: >
+    Run flush_procedure above to force-flush without waiting for buffer_size threshold.
+
+  invariant: >
+    outcomes.jsonl is append-only. It is NEVER truncated or overwritten — only appended.

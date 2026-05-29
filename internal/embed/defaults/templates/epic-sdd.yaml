@@ -1,0 +1,20 @@
+# active.yaml — epic SDD integration template
+# Generated from: templates/epic-sdd.yaml
+# Mode: SDD integration (requires sdd-analysis-plugin-protocol deployed in target repo)
+
+mode: epic
+
+base_path: .sdd/analysis
+
+roles_config: mission
+
+knowledge_index_path: knowledge.index.yaml
+
+sdd_injection:
+  # These fields are populated at runtime by SDD when plugin is registered.
+  # Values here serve as documentation of the expected shape.
+  execution_provider: sdd-ask          # overrides Sniper slot
+  base_path: .sdd/analysis             # overrides base_path above
+  knowledge_paths:
+    - .sdd/docs                        # appended to knowledge.index.yaml sources
+  governance_context: .sdd/agent-instructions.md

@@ -1,0 +1,22 @@
+scenario: side_quest_approval_bypass
+description: >
+  The housekeeping scan found side quests but Sniper is invoked to execute file moves
+  without presenting the mini approval gate to the user first. Strategist must detect
+  the bypass and emit a blocked event.
+
+input:
+  active_yaml:
+    mode: pragmatic
+    base_path: .analysis
+    roles_config: default
+  housekeeping_scan_result:
+    side_quests:
+      - type: promote
+        origin: .analysis/pending/some-discovery.md
+        destination: .analysis/done/
+        reason: discovery has a corresponding refined plan
+  state: mini_approval_gate_not_shown
+
+trigger: invoke_sniper_for_side_quests_directly
+
+expected_event: "phase=side_quest_execution status=blocked reason=side_quest_approval_bypass"

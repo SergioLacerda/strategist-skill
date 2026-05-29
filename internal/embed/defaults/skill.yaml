@@ -1,0 +1,126 @@
+id: strategist
+version: "1.0.0"
+schema_version: "1"
+status: active
+risk_score: orchestrator
+category: orchestration
+
+description: >
+  Multi-phase mission orchestrator. Coordinates discovery, refinement, and execution
+  through three pluggable slots. Standalone by default; optionally integrates with SDD
+  as a registered analysis plugin.
+
+parameters:
+  - name: mode
+    type: string
+    default: null
+    description: >
+      Override active.yaml persona for this mission only.
+      Accepted values: pragmatic, epic.
+  - name: roles
+    type: string
+    default: default
+    description: >
+      Name of the roles config to load from roles/<name>.yaml.
+      Defaults to "default" (roles/default.yaml).
+
+slots:
+  discovery:
+    contract: write_pending
+    write_scope: "<base_path>/pending/"
+    write_types: [".md"]
+    description: Explores the problem space and writes discovery artifact to pending/.
+  refinement:
+    contract: write_analysis
+    write_scope:
+      - "<base_path>/"
+      - "<base_path>/refined/"
+    write_types: [".md"]
+    description: Reads discovery artifact, writes refined plan and any .md summaries.
+  execution:
+    contract: controlled
+    description: Executes the refined plan. Approval gate required.
+
+preflight:
+  - validate_slot_providers
+  - load_internal_domain
+  - load_persona
+
+pipeline:
+  - stage: intake
+    skill: prompt-intake
+    produces: mission_contract
+  - stage: context_enrichment
+    skill: context-enrichment
+    produces: dossier
+  - stage: discovery
+    slot: discovery
+    input: mission_contract
+    artifact_path: "<base_path>/pending/<mission_id>-discovery.md"
+  - stage: housekeeping_scan
+    type: internal
+    description: Deterministic scan of base_path/ for misplaced or done items. No slot invoked.
+    produces: side_quest_manifest
+  - stage: side_quest_approval
+    type: conditional_pause
+    condition: side_quest_manifest.count > 0
+    description: Present side quest manifest. Require explicit approval before Sniper moves files.
+  - stage: side_quest_execution
+    slot: execution
+    condition: side_quest_approval_granted
+    input: side_quest_manifest
+    produces: side_quest_report
+    blocking: false
+  - stage: refinement
+    slot: refinement
+    input: [discovery_artifact, side_quest_report]
+    artifact_path: "<base_path>/refined/<mission_id>/"
+    produces:
+      - "<base_path>/refined/<mission_id>/proposal.md"
+      - "<base_path>/refined/<mission_id>/design.md"
+      - "<base_path>/refined/<mission_id>/tasks.md"
+  - stage: approval_gate
+    type: mandatory_pause
+    description: Present refined plan path. Require explicit user approval before execution slot.
+  - stage: execution
+    slot: execution
+    input: refined_plan
+    artifact_path: "<base_path>/done/<mission_id>-report.md"
+    condition: approval_granted
+  - stage: learning
+    skill: learning-curator
+    blocking: false
+
+stop_conditions:
+  - preflight_failed
+  - slot_provider_not_found
+  - slot_risk_mismatch
+  - intake_conflict_unresolved
+  - user_denies_execution
+  - side_quest_sniper_failed        # non-blocking: log and continue to Archivist
+  - slot_write_type_violation       # slot tried to write a non-.md file
+  - slot_write_scope_violation      # slot tried to write outside its declared scope
+
+result_schema: mission-result.schema.yaml
+
+sdd_injection:
+  optional: true
+  fields:
+    - execution_provider
+    - base_path
+    - knowledge_paths
+    - governance_context
+
+forbidden_behaviors:
+  - invoke_execution_slot_without_approval
+  - write_config_to_target_repo
+  - perform_discovery_directly_instead_of_delegating
+  - skip_preflight
+  - load_knowledge_not_in_index
+  - run_housekeeping_scan_as_slot
+  - skip_mini_approval_gate
+  - invoke_side_quest_sniper_without_approval
+  - ranger_writes_outside_pending
+  - engineer_writes_outside_analysis
+  - archivist_writes_non_md
+  - delegate_analysis_creation_to_sniper

@@ -1,0 +1,50 @@
+module: compile-all
+type: shell_script
+description: >
+  Orchestrates all three compile scripts in sequence. Writes .manifest.gz only
+  on full success — an absent manifest signals an incomplete or failed compile run.
+  Called by install.sh. Non-blocking from install.sh perspective (failure warns, continues).
+
+contract:
+  input:
+    - name: strategist_root
+      type: path ($1)
+      required: true
+      description: Path to the .strategist/ directory
+    - name: knowledge_index_yaml
+      type: path ($2)
+      required: true
+      description: Path to knowledge.index.yaml
+
+  output:
+    - name: index_gz
+      type: file
+      description: .compiled/.index.gz (written by compile-knowledge-index.sh)
+    - name: domain_gz
+      type: file
+      description: .compiled/.domain.gz (written by compile-domain.sh)
+    - name: config_gz
+      type: file
+      description: .compiled/.config.gz (written by compile-config.sh)
+    - name: manifest_gz
+      type: file
+      schema: strategist-compiled-manifest/1.0
+      description: >
+        Written last. Contains SHA-256 checksums of all three artifacts.
+        Absence signals incomplete compile — check-stale.sh treats all artifacts as stale.
+
+  error_conditions:
+    - code: compile_step_failed
+      trigger: Any of the three compile scripts exits non-zero
+      behavior: compile-all.sh exits non-zero; no manifest is written; partial artifacts may exist
+    - code: sha256_unavailable
+      trigger: Neither sha256sum nor shasum -a 256 found in PATH
+      behavior: Checksum field set to "unavailable"; manifest is still written
+
+  write_scope: $1/.compiled/ only
+
+  owner: install-time
+
+  idempotent: true
+  requires: [yq, jq, gzip, stat, sh]
+  optional_requires: [sha256sum or shasum]

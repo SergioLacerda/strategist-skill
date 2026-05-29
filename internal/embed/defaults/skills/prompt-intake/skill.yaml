@@ -1,0 +1,36 @@
+id: prompt-intake
+version: "1.0.0"
+schema_version: "1"
+status: active
+risk_score: read_only
+category: classification
+
+description: >
+  Classifies the user prompt into task_type, risk_level, and intake constraints
+  (delivery_strategy, legacy_compatibility, execution_intent).
+  Runs before the pipeline starts. Output feeds context-enrichment and mission_contract.
+
+input:
+  user_prompt: string
+  intake_schema_path: string    # path to intake.schema.yaml
+
+output:
+  task_type: string             # e.g., architecture_analysis, refactor, general
+  risk_level: string            # low, medium, high
+  constraints:
+    delivery_strategy: string
+    legacy_compatibility: string
+    execution_intent: string
+
+behavior:
+  - Classify task_type from the user prompt using semantic matching.
+    If no pattern matches with sufficient confidence, return task_type=general.
+  - Extract each constraint field independently using intake.schema.yaml aliases.
+  - Apply default for any constraint whose confidence is below threshold (0.65).
+  - If two mutually exclusive aliases for the same field are detected, return
+    conflict=true with the conflicting field name. Do not apply defaults on conflict.
+  - risk_level is assessed independently from delivery_strategy.
+
+failure_modes:
+  - classification_failed: task_type cannot be determined. Return task_type=general, do not stop pipeline.
+  - conflict_detected: two mutually exclusive constraints found. Return conflict=true, field=<name>.

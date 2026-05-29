@@ -1,0 +1,45 @@
+module: learning-curator
+type: agent_phase
+description: >
+  Receives critic evaluation and mission result, presents a checkpoint to the user,
+  then appends the outcome to the LearningBuffer. Non-blocking — failure never
+  modifies the mission result.
+
+contract:
+  input:
+    - name: critic_evaluation
+      type: object
+      required: true
+      description: Output from response-critic (rubric scores, observations)
+    - name: mission_result
+      type: object
+      required: true
+      description: Final mission result (mission_id, status, artifacts)
+    - name: task_type
+      type: string
+      required: true
+      description: Mission task type for rubric selection
+
+  output:
+    - name: checkpoint_presented
+      type: boolean
+      description: Whether user checkpoint was shown before any write
+    - name: outcome_buffered
+      type: boolean
+      description: Whether outcome was appended to outcomes.tmp
+
+  error_conditions:
+    - code: write_failure
+      trigger: outcomes.tmp write fails (disk full, permission denied)
+      behavior: Log failure, return mission result unchanged (non-blocking)
+    - code: curator_timeout
+      trigger: learning-curator fails or times out
+      behavior: Log failure, return mission result unchanged (non-blocking)
+
+  write_scope: .strategist/memory/outcomes.tmp (append-only)
+
+  owner: internal (learning)
+
+  invariant: >
+    The mission result is NEVER blocked or modified by learning-curator failure.
+    Checkpoint MUST be presented to user before any write occurs.

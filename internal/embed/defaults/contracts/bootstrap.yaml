@@ -1,0 +1,56 @@
+module: bootstrap
+type: agent_phase
+description: >
+  Loads active configuration (mode, persona, roles) from compiled artifact or YAML files.
+  Runs before every mission. Must complete before Preflight is invoked.
+
+contract:
+  input:
+    - name: skill_root
+      type: path
+      required: true
+      description: Directory containing active.yaml, personas/, roles/
+    - name: mode_override
+      type: string
+      required: false
+      description: --mode flag value; overrides active.yaml.mode for this mission only
+    - name: roles_override
+      type: string
+      required: false
+      description: --roles flag value; overrides active.yaml.roles_config for this mission only
+
+  output:
+    - name: active
+      type: object
+      description: Parsed active.yaml content (mode, base_path, roles_config, knowledge_index_path)
+    - name: persona
+      type: object
+      description: Resolved persona content (tone_directive, phase_labels, prompt_templates)
+    - name: roles
+      type: object
+      description: Resolved roles content (discovery, refinement, execution provider names)
+    - name: sdd_injection
+      type: object
+      required: false
+      description: SDD injection overrides if sdd_injection block is active
+
+  error_conditions:
+    - code: active_yaml_not_found
+      trigger: active.yaml absent from skill_root
+      behavior: Emit blocked event, stop mission
+    - code: persona_not_found
+      trigger: personas/<mode>.yaml absent
+      behavior: Emit blocked event, stop mission
+    - code: compiled_artifact_corrupt
+      trigger: .compiled/.config.gz fails jq parse
+      behavior: Fall back to standard path (load YAML directly), emit bootstrap=standard_path
+
+  write_scope: read-only
+
+  owner: internal (orchestrator)
+
+  fast_path:
+    artifact: .strategist/.compiled/.config.gz
+    check: sh .strategist/scripts/check-stale.sh .strategist/.compiled/.config.gz
+    log_fresh: "[Strategist] bootstrap=fast_path"
+    log_stale: "[Strategist] bootstrap=standard_path"

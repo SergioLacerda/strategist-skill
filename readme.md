@@ -26,6 +26,8 @@
 
 **Strategist** é uma skill autônoma que explora, analisa, refina tarefas tecnicas e as executa, documentando cada etapa. Para isso, orquestra "missões" através de papeis(slots plugáveis) — **Ranger(ou discover) → Archivist(ou refinamento) → Sniper(ou agente executor)** — dentro de um fluxo governado com approval gate obrigatório. Standalone por padrão.
 
+Para o pipeline detalhado, fases, schemas e configuração de providers: [readme_detailed.md](readme_detailed.md).
+
 ---
 
 ### Key Capabilities
@@ -83,27 +85,19 @@ Antes da análise principal, o Strategist varre o workspace e despacha correçõ
 curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.sh | bash
 ```
 
-**Windows PowerShell — instalar:**
-```powershell
-irm https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.ps1 | iex
+> O bootstrap baixa o binário `strategist`, verifica o SHA256 e executa `strategist install`. Sem dependências externas (sem jq, yq, python3).
+
+**Aviso de segurança:** use sempre uma versão fixada com checksum verificado:
+```bash
+curl -fsSL .../bootstrap.sh | bash -s -- --version=v1.0.0
 ```
 
 **Atualizar configuração (re-rodar wizard):**
 ```bash
-# Linux / Mac / WSL
-bash /path/to/strategist-skill/strategist/install.sh --wizard
-
-# Windows PowerShell
-.\bootstrap.ps1 -Silent  # baixa versão mais recente
-# depois edite: .strategist/roles/default.yaml
+strategist install --wizard
 ```
 
 ---
-
-**Instalação Local:**
-```bash
-curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.sh | bash -s -- --silent
-```
 
 **Onde ficam os arquivos após instalação:**
 
@@ -114,22 +108,57 @@ curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main
 | `.strategist/knowledge.index.yaml` | Fontes de conhecimento por task_type |
 | `.analysis/` | Artefatos de missão (pending, refined, done) |
 
+
+
 ---
 
-### Instalação local (sem curl / clone repo)
+## 🧪 Testes
+
+### Pré-requisitos
 
 ```bash
-# silent: defaults pragmatic-standalone
-bash strategist/install.sh
+# Go 1.22+
+go version
 
-# wizard interativo
-bash strategist/install.sh --wizard
-
-# repositório alvo customizado
-bash strategist/install.sh --target /path/to/repo
+# Instalar dependências
+go mod tidy
 ```
 
+Sem jq, yq ou pyyaml. A suite de testes usa apenas `go test`.
 
+---
+
+### Rodar os testes
+
+```bash
+# Todos os testes (com race detector)
+go test -race ./...
+
+# Ou via Makefile
+make test
+
+# Com relatório de cobertura
+make cover
+```
+
+---
+
+### Suites
+
+| Suite | Arquivo | Cobre |
+|-------|---------|-------|
+| Stale checker | `tests/stale_test.go` | 5 casos: absent, no manifest, fresh, stale source, source gone |
+| Compile | `tests/compile_test.go` | Config, Domain, Index, All (4 artifacts + manifest) |
+| Install | `tests/install_test.go` | Silent mode, gitignore |
+| Fixtures | `tests/fixtures_test.go` | Formato dos 5 fixtures de invariantes de segurança |
+
+---
+
+### BDD Specs
+
+`strategist/tests/specs/*.feature` — especificações formais dos invariantes de segurança (approval gate, slot contracts, forbidden behaviors, LearningBuffer). Documentação executável — não requerem runner separado.
+
+---
 
 ## 📄 Licença
 

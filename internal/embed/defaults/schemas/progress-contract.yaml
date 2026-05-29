@@ -1,0 +1,45 @@
+schema_version: "1"
+description: >
+  Defines the mandatory progress event format emitted by Strategist on every
+  phase transition, start, and end. Labels are sourced from the active persona.
+
+prefix: "[Strategist]"
+
+event_format: "[Strategist] phase=<phase_label> status=<status> [fields...]"
+
+phase_labels:
+  source: active_persona
+  note: >
+    phase labels are resolved from the active persona at runtime.
+    pragmatic: analysis / refinement / execution
+    epic: Ranger / Archivist / Sniper
+    Internal role names (Ranger/Archivist/Sniper) appear in SKILL.md prose and persona labels;
+    external slot keys (discovery/refinement/execution) appear in roles YAML and progress events.
+
+statuses:
+  running:
+    description: Phase has started.
+    required_fields: [phase, status, skill, checklist]
+  done:
+    description: Phase completed successfully.
+    required_fields: [phase, status, artifact]
+  blocked:
+    description: Phase cannot continue.
+    required_fields: [phase, status, reason, action]
+  plan_only:
+    description: Mission stopped at approval gate; execution was declined.
+    required_fields: [phase, status]
+
+event_examples:
+  - "[Strategist] phase=preflight status=done slots=ok"
+  - "[Strategist] phase=discovery status=running skill=sdd-diagnose checklist=0/3"
+  - "[Strategist] phase=discovery status=done artifact=.analysis/pending/abc123-discovery.md"
+  - "[Strategist] phase=preflight status=blocked reason=slot_provider_not_found action=check_skill_root"
+  - "[Strategist] phase=refinement status=running skill=archivist checklist=1/3"
+  - "[Strategist] phase=approval_gate status=blocked reason=user_declined action=none"
+  - "[Strategist] phase=execution status=done artifact=.analysis/done/abc123-report.md"
+
+output_paths:
+  discovery: "<base_path>/pending/<mission_id>-discovery.md"
+  refined_plan: "<base_path>/refined/<mission_id>-plan.md"
+  execution_report: "<base_path>/done/<mission_id>-report.md"

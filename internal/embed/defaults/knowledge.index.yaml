@@ -1,0 +1,28 @@
+schema_version: "1"
+description: >
+  Multi-source knowledge index. Each source is queried by task_type tags before
+  each mission. context-enrichment loads excerpts within the configured token budget.
+  source-hints.yaml overlays learned priority adjustments from past missions.
+
+sources: []
+
+# Example entries (uncomment and customize):
+#
+# sources:
+#   - id: project-architecture
+#     type: docs
+#     path: /abs/path/to/docs/architecture
+#     tags: [architecture, system-design, architecture_analysis]
+#     priority: high
+#
+#   - id: past-good-examples
+#     type: examples
+#     path: .analysis/.strategist/patterns/good
+#     tags: [examples, patterns, refactor, architecture_analysis]
+#     priority: medium
+#
+#   - id: team-directives
+#     type: directives
+#     path: /abs/path/to/team-directives.md
+#     tags: [all]
+#     priority: high
