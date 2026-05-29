@@ -52,6 +52,30 @@ Antes da análise principal, o Strategist varre o workspace e despacha correçõ
 
 ---
 
+### Fluxo Geral
+
+![General Flow](docs/fluxo-geral.png)
+
+---
+
+### Fluxo de Integração SDD
+
+![Integration Flow](docs/fluxo-integracao.png)
+
+---
+
+### Documentação
+
+| Documento | Descrição |
+|-----------|-----------|
+| [readme_detailed.md](readme_detailed.md) | Documentação técnica completa: pipeline, slots, personas, knowledge system, SDD integration, forbidden behaviors |
+| [strategist/SKILL.md](strategist/SKILL.md) | Instruções completas do agente |
+| [strategist/protocol.md](strategist/protocol.md) | Regras de roteamento obrigatórias e stop conditions |
+| [strategist/skill.yaml](strategist/skill.yaml) | Contrato da skill (slots, pipeline, forbidden_behaviors) |
+| [strategist-mission-pipeline/design.md](strategist-mission-pipeline/design.md) | Decisões de design e rationale da implementação |
+
+---
+
 ### Quick Workflow
 
 **Linux / Mac / WSL — instalar (wizard por padrão):**
@@ -73,6 +97,8 @@ bash /path/to/strategist-skill/strategist/install.sh --wizard
 .\bootstrap.ps1 -Silent  # baixa versão mais recente
 # depois edite: .strategist/roles/default.yaml
 ```
+
+---
 
 **Instalação Local:**
 ```bash
@@ -103,31 +129,7 @@ bash strategist/install.sh --wizard
 bash strategist/install.sh --target /path/to/repo
 ```
 
----
 
-### Fluxo Geral
-
-![General Flow](docs/fluxo-geral.png)
-
----
-
-### Fluxo de Integração SDD
-
-![Integration Flow](docs/fluxo-integracao.png)
-
----
-
-### Documentação
-
-| Documento | Descrição |
-|-----------|-----------|
-| [readme_detailed.md](readme_detailed.md) | Documentação técnica completa: pipeline, slots, personas, knowledge system, SDD integration, forbidden behaviors |
-| [strategist/SKILL.md](strategist/SKILL.md) | Instruções completas do agente |
-| [strategist/protocol.md](strategist/protocol.md) | Regras de roteamento obrigatórias e stop conditions |
-| [strategist/skill.yaml](strategist/skill.yaml) | Contrato da skill (slots, pipeline, forbidden_behaviors) |
-| [strategist-mission-pipeline/design.md](strategist-mission-pipeline/design.md) | Decisões de design e rationale da implementação |
-
----
 
 ## 📄 Licença
 
