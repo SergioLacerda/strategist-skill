@@ -16,16 +16,17 @@ language: pt
 adr_enabled: true
 
 # Slot providers — which skill fills each mission role.
-# The execution slot is overridden at runtime by sdd_injection.execution_provider
+# The execution slot is overridden at runtime by governance_injection.execution_provider
 # when the SDD plugin is active. The value here is the fallback.
 slots:
   discovery: brainstorming      # Ranger  — write_pending contract
   refinement: openspec-explore  # Arquivista — write_analysis contract
-  execution: sdd-ask            # Sniper  — overridden by sdd_injection at runtime
+  execution: sdd-ask            # Sniper  — overridden by governance_injection at runtime
 
-sdd_injection:
-  # These fields are populated at runtime by SDD when plugin is registered.
-  # Values here serve as documentation of the expected shape.
+# governance_injection — populated by SDD at runtime when plugin is registered.
+# This block is SDD-specific: paths use .sdd/ conventions.
+# Other governance systems should populate this block with their own values.
+governance_injection:
   execution_provider: sdd-ask          # overrides slots.execution
   base_path: .sdd/analysis             # overrides base_path above
   knowledge_paths:

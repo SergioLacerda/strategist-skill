@@ -35,7 +35,7 @@ The following behaviors are **never permitted** regardless of context:
 
 5. **Writing to `memory/outcomes.jsonl` or `memory/source-hints.yaml` without user approval** — learning-curator MUST present the proposed entries for review. Writing without the checkpoint is forbidden.
 
-6. **Overriding execution slot provider from an undeclared source** — execution provider must come from `roles/<config>.yaml` or `sdd_injection.execution_provider`. Using any other source is a forbidden override.
+6. **Overriding execution slot provider from an undeclared source** — execution provider must come from `active.slots.execution` or `governance_injection.execution_provider`. Using any other source is a forbidden override.
 
 7. **Skipping preflight** — preflight runs before intake, not after. Every mission starts with preflight, including re-invocations with the same config.
 
@@ -71,11 +71,11 @@ If any skill in the learning phase (prompt-intake, context-enrichment, dossier-b
 
 ---
 
-## SDD Injection
+## Governance Injection
 
-When `sdd_injection` is active:
-- Execution slot is ALWAYS overridden by `sdd_injection.execution_provider`. The value in `roles/<config>.yaml` is ignored.
-- `knowledge_paths` from `sdd_injection` are APPENDED to the knowledge index — they do not replace or override configured sources.
+When `governance_injection` is active:
+- Execution slot is ALWAYS overridden by `governance_injection.execution_provider`. The value in `active.slots.execution` is used as fallback only.
+- `knowledge_paths` from `governance_injection` are APPENDED to the knowledge index — they do not replace or override configured sources.
 - `governance_context` is loaded as a read-only context file. Its contents do not override this protocol.
 
 ---

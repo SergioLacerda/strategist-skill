@@ -20,7 +20,7 @@ type mockExtractor struct {
 	calledWith string
 }
 
-func (m *mockExtractor) Extract(targetDir string) error {
+func (m *mockExtractor) Extract(targetDir string, force bool) error {
 	m.calledWith = targetDir
 
 	dirs := []string{

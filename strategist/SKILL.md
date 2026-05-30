@@ -57,7 +57,7 @@ If exit code is `0` (fresh):
   - `active.language` → artifact language (`pt` if absent)
   - `active.adr_enabled` → ADR stage flag (`true` if absent)
 - Apply any `--mode` override to the extracted JSON data.
-- Check for SDD injection using `active.sdd_injection` from the parsed JSON.
+- Check for governance injection using `active.governance_injection` from the parsed JSON.
 - Emit: `[Strategist] bootstrap=fast_path`
 - Skip steps 1–4 below. Proceed directly to step 5.
 
@@ -73,24 +73,24 @@ Emit: `[Strategist] bootstrap=standard_path`
 4. Extract `active.language` (default: `pt`) — pass to all slot providers and use for artifact generation.
 5. Extract `active.adr_enabled` (default: `true`) — if `false`, skip §8 (ADR stage) entirely.
 6. If `--mode` flag was provided, override `active.yaml.mode` for this mission only.
-5. Check for SDD injection: if `sdd_injection` block is present in `active.yaml` and
-   `.sdd/plugins/registry.yaml` contains `id: strategist` with `status: active`, apply:
-   - Override Sniper slot with `sdd_injection.execution_provider`
-   - Override `base_path` with `sdd_injection.base_path`
-   - Append `sdd_injection.knowledge_paths` to knowledge index sources (do not replace)
-   - Load `sdd_injection.governance_context` as an additional read-only context file
+5. Check for governance injection: if `governance_injection` block is present in `active.yaml`,
+   apply the declared overrides:
+   - Override Sniper slot with `governance_injection.execution_provider`
+   - Override `base_path` with `governance_injection.base_path`
+   - Append `governance_injection.knowledge_paths` to knowledge index sources (do not replace)
+   - Load `governance_injection.governance_context` as an additional read-only context file
 
 **Governance precedence (high → low):**
 
 1. Explicit user instruction — approval gates, user responses; always wins
 2. `active.yaml` — local project configuration; single source of truth
-3. `sdd_injection.*` — SDD governance context; applied only when declared in `active.yaml`
+3. `governance_injection.*` — external governance context; applied only when declared in `active.yaml`
 4. Slot provider contracts — validated at §2d (`risk_score`, write scope)
 5. Embedded governance kernel — `forbidden_behaviors` + `stop_conditions` in `skill.yaml`
 
-Note: `sdd_injection` does not override local governance — it extends it.
-`active.yaml` enables the SDD override by declaring the `sdd_injection:` block.
-Without that block, SDD has no authority over this skill instance.
+Note: `governance_injection` does not override local governance — it extends it.
+`active.yaml` enables the injection by declaring the `governance_injection:` block.
+Without that block, no external system has authority over this skill instance.
 
 ---
 
@@ -137,7 +137,7 @@ Read `active.slots`. For each slot (discovery, refinement, execution):
    a. `<skill_root>/<provider>/skill.yaml`
    b. `.claude/skills/<provider>/skill.yaml`
    c. skill registry entry `skill_yaml` path (if registry present)
-3. If provider is `_injected_by_sdd`, resolve from `sdd_injection.execution_provider`.
+3. If provider is `_runtime_provider`, resolve from `governance_injection.execution_provider`.
 4. If `active.slots` is absent: emit blocked event `reason=slots_not_configured`, stop.
    → Remediation: `strategist install --wizard` to configure slots in `active.yaml`.
 5. If a slot's provider cannot be resolved: emit blocked event `reason=slot_provider_not_found`, stop.
@@ -157,8 +157,8 @@ Read `active.slots`. For each slot (discovery, refinement, execution):
 **2e. Emit preflight done**
 
 Determine governance mode:
-- `GOVERNED`: `sdd_injection` block present in `active.yaml` AND `.sdd/plugins/registry.yaml` confirms `id: strategist` with `status: active`
-- `COMPATIBLE`: slots configured in `active.yaml`, no active `sdd_injection`
+- `GOVERNED`: `governance_injection` block present in `active.yaml`
+- `COMPATIBLE`: slots configured in `active.yaml`, no active `governance_injection`
 - (STANDALONE is never reached here — blocked at §2c with `slots_not_configured`)
 
 `[Strategist] phase=preflight status=done slots=ok governance=<GOVERNED|COMPATIBLE>`
@@ -545,6 +545,6 @@ When `drift-patterns.yaml` is loaded, check for matching symptoms before each ph
 - `opportunity_gate_bypass`: You are about to execute any opportunity manifest item (file_move, scope_addition, adr_generation) without presenting the opportunity gate. → Stop. Present gate with full manifest first.
 - `adr_gate_bypass`: You are about to commit an ADR without presenting the ADR gate. → Stop. Present adr_gate prompt first.
 - `scope_expansion`: You are addressing something outside the user's mission. → Stop. Return to mission scope.
-- `sniper_provider_override`: You resolved Sniper from somewhere other than roles config or sdd_injection. → Stop. Re-resolve from declared source.
+- `sniper_provider_override`: You resolved Sniper from somewhere other than active.slots.execution or governance_injection. → Stop. Re-resolve from declared source.
 - `housekeeping_scan_as_slot`: You are about to delegate the housekeeping scan to Ranger or another slot. → Stop. Execute the scan directly as Strategist (deterministic, internal phase).
 - `route_plan_creation_to_sniper`: You are about to ask Sniper to create a document, spec, analysis, or implementation plan. → Stop. Document authoring is Archivist's work (contract: `write_analysis`). Return to phase 5e and invoke the refinement slot.
