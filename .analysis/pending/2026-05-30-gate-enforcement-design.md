@@ -121,14 +121,56 @@ refined/<mission_id>/                 ← Archivist (estrutura livre)
 done/<mission_id>-report.md           ← Sniper
 ```
 
-### Consulta offline de Ranger e Sniper
+### Dois níveis de contexto offline
 
-Quando Archivist é invocado, recebe como contexto adicional (leitura, sem invocar):
-- `skill.yaml` + `SKILL.md` da skill que ocupa o papel de **Ranger**
-- `skill.yaml` + `SKILL.md` da skill que ocupa o papel de **Sniper**
+#### Nível 1 — Contexto do projeto (passivo, leitura)
 
-Archivist usa essas definições para calibrar o nível de detalhe das tarefas e produzir
-instruções compatíveis com o que Sniper consegue executar.
+Declarado em `active.yaml` ou `mission_contract` como `mission_docs_dir`. Pode conter:
+- integrações com ferramentas externas
+- base de conhecimento interna do projeto
+- documentação técnica, ADRs, guias de estilo
+- qualquer material que ajude a convergir a análise para a realidade do projeto
+
+**Quem usa:** Ranger é o principal consumidor. Ele deve usar todas as ferramentas
+disponíveis — leitura de arquivos, busca no codebase, consulta ao `mission_docs_dir` —
+para produzir uma discovery com máxima profundidade antes de passar o artefato adiante.
+O conhecimento do Nível 1 chega ao Archivist já "mastigado" dentro do artefato de
+discovery — não é necessário recarregar a mesma fonte.
+
+**Instrução explícita ao Ranger:** o `SKILL.md` do Ranger deve conter mandato de usar
+todas as ferramentas disponíveis, incluindo o `mission_docs_dir`, antes de concluir a
+fase de discovery. A discovery incompleta por falta de consulta ao contexto disponível
+é um erro de Ranger, não uma limitação do pipeline.
+
+#### Nível 2 — Peer review do Sniper (ativo, consulta estruturada)
+
+O Ranger e o Sniper são assimétricos nesse nível:
+
+- **Ranger → Archivist**: fluxo normal do pipeline. O conhecimento do Ranger —
+  mandates, boas práticas, contexto L1 — já está materializado no artefato de
+  discovery. Consultar o Ranger separadamente seria redundante.
+
+- **Archivist → Sniper**: consulta de pré-execução. O Sniper é o único ator
+  com **olhos frescos** — nunca viu a análise. Tem mandates, regras de governança
+  e restrições operacionais que podem bloquear execução. Consultá-lo antes do gate
+  evita surpresas pós-aprovação.
+
+**Como o Archivist consulta o Sniper:**
+
+Após rascunhar o plano, o Archivist apresenta ao Sniper:
+- as tasks propostas (resumo estruturado, não o plano completo)
+- pergunta explícita: "Você consegue executar essas tasks dentro dos seus mandates?
+  Alguma task vai te bloquear por regra de governança ou restrição operacional?"
+
+O Sniper responde com: sim/não por task + motivo quando há bloqueio + sugestão de
+reformulação quando aplicável.
+
+O Archivist incorpora o feedback e finaliza o plano. O que chega ao gate já foi
+validado pelo executor — o usuário aprova um plano que o Sniper disse "consigo fazer".
+
+**Quem resolve os paths para a consulta:** o orquestrador Strategist, que já resolveu
+todos os providers no preflight (seção 2c), injeta os paths de `skill.yaml` e `SKILL.md`
+do Sniper como contexto adicional ao invocar o Archivist.
 
 ### Correções de contrato no archivist atual
 
@@ -187,14 +229,15 @@ Adicionar:
 | `.strategist/skill.yaml` | Atualizar `pipeline`, remover `side_quest_approval`, adicionar `forbidden_behaviors` |
 | `.strategist/identity/drift-patterns.yaml` | Adicionar `ranger_to_sniper_shortcut` e `gate_artifact_absent_silent` |
 | `.strategist/skills/archivist/skill.yaml` | Corrigir `risk_score`, atualizar `output` |
-| `.strategist/skills/archivist/SKILL.md` | Atualizar path de saída, adicionar seção side quests |
+| `.strategist/skills/archivist/SKILL.md` | Atualizar path de saída, adicionar seção side quests, adicionar instrução de peer review com Sniper |
 | `.strategist/personas/pragmatic.yaml` | Atualizar `approval_prompt` para o formato do gate único |
+| `.strategist/skills/<ranger-skill>/SKILL.md` | Adicionar mandato explícito de usar todas as ferramentas disponíveis + `mission_docs_dir` antes de concluir discovery |
 
 ---
 
 ## Não-objetivos
 
 - Não alterar a estrutura interna do output do Archivist atual (openspec)
-- Não mudar o comportamento do Ranger
 - Não adicionar gates adicionais além dos dois HARD-GATEs
 - Não modificar o mecanismo de aprendizado (learning phase)
+- Não fazer o Archivist recarregar o `mission_docs_dir` — esse contexto chega via artefato do Ranger
