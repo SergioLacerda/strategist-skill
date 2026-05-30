@@ -18,7 +18,7 @@ import (
 // minimalExtractor creates the minimum .strategist/ layout needed by Install.
 type minimalExtractor struct{}
 
-func (m minimalExtractor) Extract(targetDir string) error {
+func (m minimalExtractor) Extract(targetDir string, _ bool) error {
 	dirs := []string{
 		filepath.Join(targetDir, "personas"),
 		filepath.Join(targetDir, "roles"),
@@ -101,7 +101,7 @@ func TestInstall_CopyTemplateMissing(t *testing.T) {
 
 type noTemplateExtractor struct{}
 
-func (n *noTemplateExtractor) Extract(targetDir string) error {
+func (n *noTemplateExtractor) Extract(targetDir string, _ bool) error {
 	return os.MkdirAll(targetDir, 0o755)
 }
 

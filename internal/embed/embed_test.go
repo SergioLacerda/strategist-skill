@@ -20,7 +20,7 @@ func TestExtractor_Extract_ReadOnlyTarget(t *testing.T) {
 	require.NoError(t, os.Chmod(dir, 0o444))
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
 
-	err := embedpkg.Extractor{}.Extract(dir)
+	err := embedpkg.Extractor{}.Extract(dir, false)
 	require.Error(t, err)
 }
 
@@ -30,7 +30,7 @@ func TestExtractor_Extract(t *testing.T) {
 		t.Parallel()
 		dir := t.TempDir()
 		ext := embedpkg.Extractor{}
-		require.NoError(t, ext.Extract(dir))
+		require.NoError(t, ext.Extract(dir, false))
 
 		// Core files that must always be extracted
 		expectedFiles := []string{
@@ -59,14 +59,14 @@ func TestExtractor_Extract(t *testing.T) {
 		t.Parallel()
 		dir := t.TempDir()
 		ext := embedpkg.Extractor{}
-		require.NoError(t, ext.Extract(dir))
-		require.NoError(t, ext.Extract(dir), "second extract should not fail")
+		require.NoError(t, ext.Extract(dir, false))
+		require.NoError(t, ext.Extract(dir, false), "second extract should not fail")
 	})
 
 	t.Run("extracted SKILL.md is non-empty", func(t *testing.T) {
 		t.Parallel()
 		dir := t.TempDir()
-		require.NoError(t, embedpkg.Extractor{}.Extract(dir))
+		require.NoError(t, embedpkg.Extractor{}.Extract(dir, false))
 		data, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
 		require.NoError(t, err)
 		assert.NotEmpty(t, data)

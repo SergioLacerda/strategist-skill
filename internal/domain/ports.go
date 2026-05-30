@@ -16,6 +16,8 @@ type Installer interface {
 }
 
 // FileExtractor extracts embedded default files into a target directory.
+// When force is false, files that already exist and differ from the embedded
+// default are preserved (merge mode). When force is true, all files are overwritten.
 type FileExtractor interface {
-	Extract(targetDir string) error
+	Extract(targetDir string, force bool) error
 }

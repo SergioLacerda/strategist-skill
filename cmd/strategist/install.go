@@ -21,6 +21,7 @@ var (
 	installTarget string
 	installSilent bool
 	installWizard bool
+	installForce  bool
 )
 
 var installCmd = &cobra.Command{
@@ -60,6 +61,7 @@ func runInstall(cmd *cobra.Command, _ []string) (retErr error) {
 		Target: installTarget,
 		Silent: installSilent,
 		Wizard: installWizard,
+		Force:  installForce,
 	}
 
 	if err := svc.Install(context.Background(), cfg); err != nil {
@@ -75,4 +77,5 @@ func init() {
 	installCmd.Flags().StringVar(&installTarget, "target", "", "target repository root (default: current directory)")
 	installCmd.Flags().BoolVar(&installSilent, "silent", false, "silent install with pragmatic defaults (default)")
 	installCmd.Flags().BoolVar(&installWizard, "wizard", false, "interactive wizard for configuration")
+	installCmd.Flags().BoolVar(&installForce, "force", false, "overwrite all files, including user-modified ones (default: preserve customizations)")
 }
