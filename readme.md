@@ -19,11 +19,6 @@
 
 # Strategist Skill + SDD Harness
 
-![CI](https://img.shields.io/badge/CI-passing-brightgreen)
-![License](https://img.shields.io/badge/License-CC_BY--NC_4.0-blue)
-![Docs](https://img.shields.io/badge/Docs-available-orange)
-![Version](https://img.shields.io/badge/Version-1.0-yellow)
-
 **Strategist** é uma skill autônoma que explora, analisa, refina tarefas tecnicas e as executa, documentando cada etapa. Para isso, orquestra "missões" através de papeis(slots plugáveis) — **Ranger(ou discover) → Archivist(ou refinamento) → Sniper(ou agente executor)** — dentro de um fluxo governado com approval gate obrigatório. Standalone por padrão.
 
 Para o pipeline detalhado, fases, schemas e configuração de providers: [readme_detailed.md](readme_detailed.md).
@@ -43,14 +38,14 @@ Para o pipeline detalhado, fases, schemas e configuração de providers: [readme
 
 ### Side Quests · Ataque de oportunidade
 
-Antes da análise principal, o Strategist varre o workspace e despacha correções pontuais — sempre passando por um **mini approval gate** quando há itens detectados.
+Antes da análise principal, o Strategist varre o workspace detectando artefatos inconsistentes. O resultado vai para o Archivist como contexto — a execução das side quests acontece quando o Sniper é liberado pelo gate principal (junto com a missão principal).
 
 | Fase | Função |
 |------|--------|
-| **Housekeeping Scan** _(Ataque de oportunidade)_ | Em ações podemos encontrar problemas; despachamos em *side quests* para solucioná-los. |
-| **Side Quest** | Missões pequenas com escopo simples — como mover tarefas prontas para a pasta correta ou hotfixes pontuais. |
+| **Housekeeping Scan** _(Ataque de oportunidade)_ | Detecta artefatos stale em `todo/`, `pending/`, `refined/` e monta um manifesto de side quests. |
+| **Side Quest** | Missões pequenas executadas pelo Sniper após aprovação no gate principal — mover tarefas prontas, promover artefatos, hotfixes pontuais. |
 
-> Pipeline completo: `Ranger → housekeeping_scan → [mini approval gate] → Sniper(side quests) → Archivist → approval gate → Sniper(main)`
+> Pipeline completo: `Ranger → housekeeping_scan → Archivist → approval gate → Sniper(side quests + main)`
 
 ---
 
@@ -119,7 +114,7 @@ strategist install --wizard
 ### Pré-requisitos
 
 ```bash
-# Go 1.22+
+# Go 1.26+
 go version
 
 # Instalar dependências
@@ -151,7 +146,7 @@ make cover
 |-------|---------|-------|
 | Stale checker | `tests/stale_test.go` | 5 casos: absent, no manifest, fresh, stale source, source gone |
 | Compile | `tests/compile_test.go` | Config, Domain, Index, All (4 artifacts + manifest) |
-| Install | `tests/install_test.go` | Silent mode, gitignore |
+| Install | `tests/install_test.go` · `internal/install/installer_whitebox_test.go` | Silent mode, gitignore, whitebox (ensureGitignore, error propagation) |
 | Fixtures | `tests/fixtures_test.go` | Formato dos 5 fixtures de invariantes de segurança |
 
 ---
