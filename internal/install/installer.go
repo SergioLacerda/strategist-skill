@@ -26,25 +26,59 @@ type Service struct {
 // and writes active.yaml from the pragmatic template. In wizard mode it prompts
 // the user for configuration before writing active.yaml.
 //
+// On failure, Install removes any files and directories it created, restoring the
+// workspace to its pre-install state (best-effort: non-empty directories are skipped).
+//
 // The context is threaded through for future cancellation support.
 func (s Service) Install(_ context.Context, cfg domain.InstallConfig) error {
 	strategistDir := filepath.Join(cfg.Target, ".strategist")
+	var manifest []string // tracks created paths for rollback
+
+	succeeded := false
+	defer func() {
+		if succeeded {
+			return
+		}
+		// Rollback in reverse order: files first, then directories.
+		for i := len(manifest) - 1; i >= 0; i-- {
+			p := manifest[i]
+			if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+				// For non-empty directories Remove returns an error — that's intentional:
+				// we only remove what we created, leaving pre-existing content intact.
+				_ = err
+			}
+		}
+		fmt.Fprintf(os.Stderr, "[Strategist] WARN: install rolled back — workspace restored to previous state.\n")
+	}()
 
 	if err := s.Extractor.Extract(strategistDir); err != nil {
 		return fmt.Errorf("install: extract defaults: %w", err)
 	}
+	manifest = append(manifest, strategistDir)
 
 	if err := s.applyConfig(strategistDir, cfg); err != nil {
 		return err
 	}
+	manifest = append(manifest, filepath.Join(strategistDir, "active.yaml"))
 
+	gitignorePath := filepath.Join(cfg.Target, ".gitignore")
+	gitignoreExisted := fileExists(gitignorePath)
 	if err := ensureGitignore(cfg.Target); err != nil {
 		return fmt.Errorf("install: gitignore: %w", err)
 	}
+	if !gitignoreExisted {
+		manifest = append(manifest, gitignorePath)
+	}
 
+	shimPath, err := s.resolveShimPath()
+	if err != nil {
+		return fmt.Errorf("install: resolve shim path: %w", err)
+	}
 	if err := s.installShimFor(cfg.Target); err != nil {
 		return fmt.Errorf("install: shim: %w", err)
 	}
+	manifest = append(manifest, shimPath)
+	manifest = append(manifest, filepath.Dir(shimPath)) // shim dir — removed only if empty
 
 	// Compile after install; non-fatal — warn but do not abort.
 	kiPath := filepath.Join(strategistDir, "knowledge.index.yaml")
@@ -52,6 +86,7 @@ func (s Service) Install(_ context.Context, cfg domain.InstallConfig) error {
 		fmt.Fprintf(os.Stderr, "[Strategist] WARN: compile failed: %v\n", compileErr)
 	}
 
+	succeeded = true
 	return nil
 }
 
@@ -85,6 +120,26 @@ func (s Service) installShimFor(target string) error {
 		return installShimTo(s.ShimHomeDir)
 	}
 	return installShim(target)
+}
+
+// resolveShimPath returns the path of the SKILL.md shim that will be installed,
+// without actually installing it. Used to track the shim in the rollback manifest.
+func (s Service) resolveShimPath() (string, error) {
+	homeDir := s.ShimHomeDir
+	if homeDir == "" {
+		var err error
+		homeDir, err = os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("home dir: %w", err)
+		}
+	}
+	return filepath.Join(homeDir, ".claude", "skills", "strategist", "SKILL.md"), nil
+}
+
+// fileExists reports whether path exists (any type).
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
 
 // Ensure Service satisfies the domain interface via the adapter method below.
