@@ -21,17 +21,10 @@ prompt_templates:
     [Strategist] phase={phase_label} status=running skill={provider} checklist={n}/{total}
   phase_done: >
     [Strategist] phase={phase_label} status=done artifact={artifact_path}
-  approval_prompt: |
-    [Strategist] Refinamento concluído.
-    Plano: {artifact_path}
+  approval_prompt: >
+    Refinement complete. Reviewed plan at: {artifact_path}
 
-    Missão principal:
-    {mission_tasks_summary}
-
-    Side quests identificados pelo Ranger:
-    {side_quests_list}
-
-    Aprovar execução? (yes / no / review)
+    Proceed to execution? (yes / no / review)
   plan_only_result: >
-    [Strategist] Missão concluída (apenas plano). Plano refinado: {artifact_path}
-    Para executar depois: invocar Strategist com o path do plano refinado.
+    Mission complete (plan only). Reviewed plan: {artifact_path}
+    To execute later: invoke Strategist with the refined plan path.

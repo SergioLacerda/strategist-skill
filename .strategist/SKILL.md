@@ -123,12 +123,6 @@ Load `roles/<roles_config>.yaml`. For each slot (discovery, refinement, executio
 2. If provider is `_injected_by_sdd`, resolve from `sdd_injection.execution_provider`.
 3. If no path resolves: emit blocked event, stop.
 
-After resolving all providers, store the Sniper's resolved paths:
-- `sniper_skill_yaml_path` — absolute path to the execution provider's `skill.yaml`
-- `sniper_skill_md_path` — absolute path to the execution provider's `SKILL.md`
-
-These are injected into Archivist at invocation time (§5b). They are never passed to Ranger or Sniper.
-
 **2d. Validate slot risk contracts**
 
 - **Ranger (discovery):** `risk_score` MUST be `write_pending`
@@ -204,11 +198,7 @@ nothing: dossier contains only `task_type` and `output_template`.
 
 ## 5. Mission Phases
 
-Pipeline: Ranger → [HARD-GATE A] → Archivist → [HARD-GATE B / gate único] → Sniper
-
-Side quests are identified by Ranger in the discovery artifact and presented at the
-unified gate alongside the main mission tasks. There is no separate mini gate or
-side quest execution phase.
+Pipeline: Ranger → housekeeping_scan → [mini approval gate] → Sniper(side quests) → Archivist → approval gate → Sniper(main)
 
 ### 5a. Ranger (discovery slot)
 
@@ -219,9 +209,6 @@ Invoke the discovery slot provider with:
 - `mission_contract.planning_rules`
 - Dossier from context enrichment
 - Artifact path: `<base_path>/pending/<mission_id>-discovery.md`
-- `mission_docs_dir` (if declared in `active.yaml` or `mission_contract`) — the Ranger
-  must use all available tools, including this directory, before concluding discovery.
-  Incomplete discovery due to failure to consult available context is a Ranger error.
 
 Ranger writes the artifact directly (contract: `write_pending`). Strategist does not
 intermediate the write — it only waits for completion and emits the done event.
@@ -231,86 +218,150 @@ Emit: `[Strategist] phase=<ranger_label> status=done artifact=<path>`
 
 On failure: emit blocked event with `reason=ranger_failed`, present partial artifact if any.
 
-<HARD-GATE>
-Ranger concluiu. PROIBIDO invocar Archivist ou qualquer outro slot agora.
-PROIBIDO executar qualquer tarefa identificada pelo Ranger.
-Ação permitida: emitir o evento done do Ranger acima. Depois: invocar Archivist (§5b).
-Esta parada não tem exceção — nem para missões simples, nem para side quests óbvios.
-</HARD-GATE>
+### 5b. Housekeeping Scan (internal — no slot)
 
-### 5b. Archivist (refinement slot)
+Emit: `[Strategist] phase=housekeeping_scan status=running`
+
+Execute a deterministic scan of `<base_path>/`. Do NOT delegate this to a slot provider.
+
+**Scan rules per directory:**
+
+| Directory | Check | Side quest type |
+|-----------|-------|----------------|
+| `todo/` | Does this spec have a corresponding implementation commit in git? | `move_to_done` |
+| `pending/` | Does this spec have a corresponding plan in `refined/`? | `promote` |
+| `refined/` | Does this plan have a corresponding report in `done/`? | `promote` |
+
+**Heuristic for `move_to_done`:** git log contains a commit referencing the spec slug (date + topic keyword) OR spec lists features that exist as code in the repo. When uncertain, list as a candidate — the user decides at the mini approval gate.
+
+Produce a **side quest manifest**: list of items with type, path, and reason.
+
+If manifest is empty:
+- Emit: `[Strategist] phase=housekeeping_scan status=done side_quests=0`
+- Skip 5c and 5d — proceed directly to 5e (Archivist).
+
+If manifest is non-empty:
+- Emit: `[Strategist] phase=housekeeping_scan status=done side_quests=N`
+- Proceed to 5c.
+
+### 5c. Mini Approval Gate (conditional — only if side_quests > 0)
+
+STOP. Do not move any file without explicit user approval.
+
+Present to the user:
+
+```
+[Strategist] Workspace scan encontrou N side quest(s) antes da análise principal:
+
+  [1] <origin_path> → <destination> (<type>)
+       Motivo: <reason>
+
+  [2] ...
+
+Aprovar todos? [yes / no / select]
+```
+
+Wait for response:
+- **yes**: proceed to 5d (Sniper executes all side quests).
+- **no**: discard manifest, proceed to 5e (Archivist) with workspace as-is.
+- **select**: user specifies items by number or name; Sniper executes only selected items.
+
+Invoking Sniper side quests without mini approval gate response is a **forbidden behavior**.
+
+### 5d. Sniper: Side Quest Execution (conditional — only if mini approval granted)
+
+Emit: `[Strategist] phase=side_quest_execution status=running`
+
+Invoke the execution slot provider with:
+- Side quest manifest (approved items only)
+- Instruction: execute file moves and status updates only; no other writes
+
+**Allowed operations:**
+- `mv <base_path>/todo/<file> <base_path>/done/<file>`
+- Update `Status:` field in markdown files
+- No writes outside `<base_path>/`
+
+On completion, Sniper produces a **side quest report** (markdown block):
+
+```markdown
+## Side Quest Report
+**Executado:** <date> | **Itens processados:** N
+
+### Movimentações
+- `<origin>` → `<destination>` (<reason>)
+
+### Estado atual do workspace (pós-limpeza)
+- `todo/`: N itens restantes
+- `pending/`: N itens
+- `refined/`: N itens
+- `done/`: N itens
+
+### Itens excluídos da análise principal
+<list of moved items — Archivist must not treat these as pending work>
+```
+
+If Sniper side quest fails: emit `[Strategist] phase=side_quest_execution status=failed reason=<error>`.
+This is **non-blocking** — log the failure, proceed to 5e with a partial or empty side quest report.
+
+Emit: `[Strategist] phase=side_quest_execution status=done`
+
+### 5e. Archivist (refinement slot)
 
 Emit: `[Strategist] phase=<archivist_label> status=running skill=<provider> checklist=1/3`
 
 Invoke the refinement slot provider with:
-- `discovery_artifact_path`: `<base_path>/pending/<mission_id>-discovery.md`
-- `base_path`: mission base directory
-- `mission_id`: unique mission identifier
-- `mission_contract`: planning_rules from intake
-- `sniper_skill_yaml`: `sniper_skill_yaml_path` (resolved at §2c)
-- `sniper_skill_md`: `sniper_skill_md_path` (resolved at §2c)
-- `mission_docs_dir`: if declared in `active.yaml` or `mission_contract` (optional)
+- Discovery artifact path
+- Side quest report (if present) — injected as context with instruction:
+  > "Items listed under 'Itens excluídos da análise principal' are resolved. Do not treat them as pending. Base your analysis on the post-cleanup workspace state."
+- `mission_contract.planning_rules`
+- Dossier
+- Artifact path: `<base_path>/refined/<mission_id>/` (subdirectory)
+  - `proposal.md` — what and why (fed by Ranger's discovery artifact)
+  - `design.md` — how (architecture, affected components, decisions)
+  - `tasks.md` — numbered implementation steps (Sniper's input contract)
 
-Archivist writes to `<base_path>/refined/<mission_id>/` (directory). The internal file
-structure is defined by the skill occupying the refinement role. Strategist does not
-prescribe filenames or sections — it only waits for completion and checks the directory.
+**Rules:**
+- Archivist NEVER produces a standalone `.md` in `refined/` — always the three-file subdirectory
+- If `tasks.md` is empty or absent after Archivist completes, Sniper is not invoked
+- Archivist writes all three files directly (contract: `write_analysis`), no gate
 
 Archivist writes artifacts directly (contract: `write_analysis`). Strategist does not
 intermediate the write — it only waits for completion and emits the done event.
 
 On success:
-Emit: `[Strategist] phase=<archivist_label> status=done artifact=<base_path>/refined/<mission_id>/`
-
-On failure or missing output: emit blocked event with `reason=archivist_failed`. Do NOT
-return `plan_only` silently — absence of Archivist output is always an error, never a
-valid result.
+Emit: `[Strategist] phase=<archivist_label> status=done artifact=<path>`
 
 ---
 
 ## 6. Approval Gate (MANDATORY)
 
-<HARD-GATE>
-Archivist concluiu. PROIBIDO invocar Sniper agora.
-PROIBIDO executar qualquer tarefa do plano refinado.
-Ação permitida: verificar o artefato do Archivist e apresentar o gate ao usuário.
-Esta parada não tem exceção — nem se o plano parece simples ou óbvio.
-</HARD-GATE>
+After Archivist completes, evaluate the refined plan before presenting the gate:
 
-After Archivist completes, before presenting the gate:
+Read `<base_path>/refined/<mission_id>/tasks.md` before deciding:
 
-**1. Verify Archivist output:**
-Check that `<base_path>/refined/<mission_id>/` exists and is non-empty.
-- If directory is missing or empty: emit blocked event with `reason=archivist_failed`.
-  Do NOT return `plan_only` silently — this is a pipeline error, not a valid result.
+**If `tasks.md` is empty or absent:**
+  emit `[Strategist] phase=approval_gate status=plan_only`, return mission result
+  with `status: plan_only`. Do NOT present the gate — the mission is complete.
 
-**2. Extract mission tasks summary:**
-Read the Archivist's output directory. Extract a summary of the main mission tasks
-(however the Archivist structured its output). If the Archivist flagged blockers
-(`[NEEDS CLARIFICATION]`, `[INSUFFICIENT EVIDENCE]`, `[SNIPER REVIEW]`), include them.
+**If `tasks.md` contains tasks scoped only to `<base_path>/`:**
+  present the gate once with the full plan visible.
 
-**3. Extract side quests:**
-Read the discovery artifact at `<base_path>/pending/<mission_id>-discovery.md`.
-Extract any side quests the Ranger identified (small incidental items, file moves,
-housekeeping). If none: use "nenhum".
+**If `tasks.md` contains tasks that write outside `<base_path>/` (code, git, config, system):**
+  present the gate with an explicit external-scope warning.
 
-**4. Present the unified gate:**
+In all cases where the gate is presented: STOP. Do not invoke Sniper without explicit user approval.
 
+Present to the user:
 ```
 <persona.prompt_templates.approval_prompt>
 ```
+With `{artifact_path}` = the refined plan path.
 
-With:
-- `{artifact_path}` = `<base_path>/refined/<mission_id>/`
-- `{mission_tasks_summary}` = numbered list of main mission tasks
-- `{side_quests_list}` = numbered list of Ranger's side quests, or "nenhum"
-
-STOP. Wait for explicit user response.
-
-**5. Handle response:**
-- **yes / approve / authorize**: proceed to Sniper (§7).
+Wait for response:
+- **yes / approve / authorize**: proceed to Sniper.
 - **no / decline / stop**: emit `[Strategist] phase=approval_gate status=plan_only`,
-  return mission result with `status: plan_only`.
-- **review**: present the full contents of `refined/<mission_id>/`, then re-present the gate.
+  return mission result with `status: plan_only`, artifact paths for discovery and refined plan.
+- **review**: present the refined plan content, then re-ask.
 
 Invoking Sniper without receiving explicit approval is a **forbidden behavior**.
 
@@ -376,7 +427,8 @@ mission_id: <id>
 status: completed | plan_only | blocked
 artifacts:
   discovery: <path>           # always present when Ranger ran
-  refined_plan: <path>        # present when Archivist ran (directory path)
+  side_quest_report: inline   # present when side quests ran (inline block, not a file)
+  refined_plan: <path>        # present when Archivist ran
   execution_report: <path>    # present when Sniper ran
 blockers: []                  # list of blocker codes if status=blocked
 ```
@@ -402,8 +454,8 @@ When `drift-patterns.yaml` is loaded, check for matching symptoms before each ph
 - `direct_execution`: You are about to perform slot work yourself. → Stop. Identify active slot. Invoke provider. Resume.
 - `silent_phase_advance`: You are about to start the next phase without emitting a done event. → Emit the done event first.
 - `approval_bypass`: You are about to invoke Sniper without asking the user. → Stop. Present approval gate prompt.
-- `ranger_to_sniper_shortcut`: You are about to invoke Sniper right after Ranger without invoking Archivist. → Stop. Invoke Archivist with all required inputs (§5b). Only then present the gate.
-- `gate_artifact_absent_silent`: Archivist output directory is missing and you are about to return plan_only silently. → Stop. This is a pipeline error. Emit blocked with reason=archivist_failed.
+- `side_quest_approval_bypass`: You are about to move files from housekeeping_scan without presenting the mini approval gate. → Stop. Present mini approval gate with the full manifest first.
 - `scope_expansion`: You are addressing something outside the user's mission. → Stop. Return to mission scope.
-- `execution_provider_override`: You resolved Sniper from somewhere other than roles config or sdd_injection. → Stop. Re-resolve from declared source.
-- `route_plan_creation_to_sniper`: You are about to ask Sniper to create a document, spec, analysis, or implementation plan. → Stop. Document authoring is Archivist's work (contract: `write_analysis`). Return to phase 5b and invoke the refinement slot.
+- `sniper_provider_override`: You resolved Sniper from somewhere other than roles config or sdd_injection. → Stop. Re-resolve from declared source.
+- `housekeeping_scan_as_slot`: You are about to delegate the housekeeping scan to Ranger or another slot. → Stop. Execute the scan directly as Strategist (deterministic, internal phase).
+- `route_plan_creation_to_sniper`: You are about to ask Sniper to create a document, spec, analysis, or implementation plan. → Stop. Document authoring is Archivist's work (contract: `write_analysis`). Return to phase 5e and invoke the refinement slot.

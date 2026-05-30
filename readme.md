@@ -114,6 +114,30 @@ strategist install --wizard
 
 ---
 
+### Instalação local (build from source)
+
+Para contribuir ou usar a versão mais recente do repositório sem aguardar um release:
+
+```bash
+# 1. Compilar o binário (embute os defaults atuais de strategist/ no binário)
+make build          # → bin/strategist
+
+# 2. Instalar no PATH
+make install-local  # → ~/.local/bin/strategist
+
+# 3. Garantir que ~/.local/bin está no PATH (adicione ao .bashrc/.zshrc se necessário)
+export PATH="$HOME/.local/bin:$PATH"
+
+# 4. Instalar a skill no repositório atual
+strategist install --wizard
+```
+
+> **Por que `make build` antes do `install`?** O binário embute os arquivos de `strategist/` em tempo de compilação (`embed.FS`). Sem rebuild, o `strategist install` instala os defaults da versão anterior do binário, não os do repositório local.
+
+> O Quick Workflow (`curl | bash`) não precisa desse passo — o bootstrap baixa um binário pré-compilado da release do GitHub.
+
+---
+
 ## 🧪 Testes
 
 ### Pré-requisitos
