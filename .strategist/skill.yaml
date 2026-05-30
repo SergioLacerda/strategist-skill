@@ -1,5 +1,5 @@
 id: strategist
-version: "1.1.0"
+version: "1.0.0"
 schema_version: "1"
 status: active
 risk_score: orchestrator
@@ -33,18 +33,16 @@ slots:
   refinement:
     contract: write_analysis
     write_scope:
+      - "<base_path>/"
       - "<base_path>/refined/"
     write_types: [".md"]
-    description: >
-      Reads discovery artifact and Sniper skill definition. Writes refined plan to
-      refined/<mission_id>/. Internal structure is defined by the skill occupying this role.
+    description: Reads discovery artifact, writes refined plan and any .md summaries.
   execution:
     contract: controlled
     description: Executes the refined plan. Approval gate required.
 
 preflight:
   - validate_slot_providers
-  - resolve_sniper_skill_paths   # store skill.yaml + SKILL.md paths for Archivist injection
   - load_internal_domain
   - load_persona
 
@@ -57,29 +55,33 @@ pipeline:
     produces: dossier
   - stage: discovery
     slot: discovery
-    input:
-      - mission_contract
-      - mission_docs_dir  # optional — declared in active.yaml or mission_contract
+    input: mission_contract
     artifact_path: "<base_path>/pending/<mission_id>-discovery.md"
+  - stage: housekeeping_scan
+    type: internal
+    description: Deterministic scan of base_path/ for misplaced or done items. No slot invoked.
+    produces: side_quest_manifest
+  - stage: side_quest_approval
+    type: conditional_pause
+    condition: side_quest_manifest.count > 0
+    description: Present side quest manifest. Require explicit approval before Sniper moves files.
+  - stage: side_quest_execution
+    slot: execution
+    condition: side_quest_approval_granted
+    input: side_quest_manifest
+    produces: side_quest_report
+    blocking: false
   - stage: refinement
     slot: refinement
-    input:
-      - discovery_artifact
-      - sniper_skill_yaml   # resolved at preflight
-      - sniper_skill_md     # resolved at preflight
-      - mission_docs_dir    # optional
-      - mission_contract
+    input: [discovery_artifact, side_quest_report]
     artifact_path: "<base_path>/refined/<mission_id>/"
-    produces: "<base_path>/refined/<mission_id>/"
+    produces:
+      - "<base_path>/refined/<mission_id>/proposal.md"
+      - "<base_path>/refined/<mission_id>/design.md"
+      - "<base_path>/refined/<mission_id>/tasks.md"
   - stage: approval_gate
     type: mandatory_pause
-    checks:
-      - refined_dir_exists: "<base_path>/refined/<mission_id>/"
-      - refined_dir_non_empty: true
-    on_missing: blocked
-    description: >
-      Present unified gate: refined plan summary + side quests from discovery artifact.
-      Require explicit user approval before invoking execution slot.
+    description: Present refined plan path. Require explicit user approval before execution slot.
   - stage: execution
     slot: execution
     input: refined_plan
@@ -95,9 +97,9 @@ stop_conditions:
   - slot_risk_mismatch
   - intake_conflict_unresolved
   - user_denies_execution
-  - archivist_failed             # refined dir absent or empty after Archivist ran
-  - slot_write_type_violation
-  - slot_write_scope_violation
+  - side_quest_sniper_failed        # non-blocking: log and continue to Archivist
+  - slot_write_type_violation       # slot tried to write a non-.md file
+  - slot_write_scope_violation      # slot tried to write outside its declared scope
 
 result_schema: mission-result.schema.yaml
 
@@ -108,17 +110,17 @@ sdd_injection:
     - base_path
     - knowledge_paths
     - governance_context
-    - mission_docs_dir
 
 forbidden_behaviors:
   - invoke_execution_slot_without_approval
-  - invoke_sniper_before_archivist
-  - skip_archivist_for_simple_missions
-  - silent_plan_only_on_missing_artifact
   - write_config_to_target_repo
   - perform_discovery_directly_instead_of_delegating
   - skip_preflight
   - load_knowledge_not_in_index
+  - run_housekeeping_scan_as_slot
+  - skip_mini_approval_gate
+  - invoke_side_quest_sniper_without_approval
   - ranger_writes_outside_pending
+  - engineer_writes_outside_analysis
   - archivist_writes_non_md
   - delegate_analysis_creation_to_sniper
