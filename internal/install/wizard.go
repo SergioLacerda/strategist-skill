@@ -26,7 +26,7 @@ func runWizard(r io.Reader) (domain.WizardConfig, error) {
 		return domain.WizardConfig{}, fmt.Errorf("wizard: mode: %w", err)
 	}
 
-	basePath, err := prompt(br, "Base path for .analysis/ workspace [.]: ", ".")
+	basePath, err := prompt(br, "Base path for analysis workspace [.analysis]: ", ".analysis")
 	if err != nil {
 		return domain.WizardConfig{}, fmt.Errorf("wizard: base_path: %w", err)
 	}
@@ -36,10 +36,23 @@ func runWizard(r io.Reader) (domain.WizardConfig, error) {
 		return domain.WizardConfig{}, fmt.Errorf("wizard: provider: %w", err)
 	}
 
+	language, err := promptValidated(br, "Artifact language (pt/en) [pt]: ", "pt", []string{"pt", "en"})
+	if err != nil {
+		return domain.WizardConfig{}, fmt.Errorf("wizard: language: %w", err)
+	}
+
+	adrRaw, err := promptValidated(br, "Enable ADR generation at mission end? (yes/no) [yes]: ", "yes", []string{"yes", "no", "y", "n"})
+	if err != nil {
+		return domain.WizardConfig{}, fmt.Errorf("wizard: adr_enabled: %w", err)
+	}
+	adrEnabled := adrRaw == "yes" || adrRaw == "y"
+
 	return domain.WizardConfig{
-		Mode:     mode,
-		BasePath: basePath,
-		Provider: provider,
+		Mode:       mode,
+		BasePath:   basePath,
+		Provider:   provider,
+		Language:   language,
+		AdrEnabled: adrEnabled,
 	}, nil
 }
 
@@ -56,4 +69,21 @@ func prompt(r *bufio.Reader, question, defaultVal string) (string, error) {
 		return defaultVal, nil
 	}
 	return line, nil
+}
+
+// promptValidated prompts and retries until the user provides one of the accepted values
+// or submits an empty line (returning defaultVal).
+func promptValidated(r *bufio.Reader, question, defaultVal string, accepted []string) (string, error) {
+	for {
+		val, err := prompt(r, question, defaultVal)
+		if err != nil {
+			return "", err
+		}
+		for _, a := range accepted {
+			if strings.EqualFold(val, a) {
+				return strings.ToLower(val), nil
+			}
+		}
+		fmt.Printf("  Invalid value %q. Accepted: %s\n", val, strings.Join(accepted, ", "))
+	}
 }

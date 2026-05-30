@@ -49,8 +49,9 @@ type InstallConfig struct {
 
 // WizardConfig holds values collected from the interactive install wizard.
 type WizardConfig struct {
-	Mode        string
-	BasePath    string
-	Provider    string
-	RolesConfig map[string]any
+	Mode       string
+	BasePath   string
+	Provider   string
+	Language   string // pt | en — language for generated artifacts
+	AdrEnabled bool   // whether to enable the ADR opportunity stage
 }
