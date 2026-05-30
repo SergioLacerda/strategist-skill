@@ -1,22 +1,25 @@
 id: archivist
-version: "1.0.0"
+version: "1.1.0"
 schema_version: "1"
 status: active
-risk_score: read_only
+risk_score: write_analysis
 category: refinement
 
 description: >
   Reads a discovery artifact and produces an implementation-ready reviewed plan.
   Output contains all required sections for safe, executable handoff to Sniper.
-  Does NOT modify any file — reads input artifact, writes output artifact only.
+  Does NOT modify any file — reads input artifact, writes output to a dedicated
+  mission directory under <base_path>/refined/<mission_id>/.
 
 input:
   discovery_artifact_path: string  # path to Ranger's output in <base_path>/pending/
   base_path: string                # from Strategist (mission base directory)
+  mission_id: string               # unique mission identifier (e.g. bigbang-go-20260529)
   mission_contract: object         # planning_rules from intake
 
 output:
-  reviewed_plan_path: string       # <base_path>/refined/<mission_id>-plan.md
+  reviewed_plan_dir: string        # <base_path>/refined/<mission_id>/
+  reviewed_plan_path: string       # <base_path>/refined/<mission_id>/plan.md
 
 required_sections:
   - executive_summary
@@ -40,7 +43,8 @@ behavior:
     [INSUFFICIENT EVIDENCE] and add a blocker note with the specific missing information.
   - If a section would require speculation not grounded in the discovery artifact, mark it
     [NEEDS CLARIFICATION] and list the specific questions.
-  - Write output to <base_path>/refined/<mission_id>-plan.md.
+  - Create directory <base_path>/refined/<mission_id>/ if it does not exist.
+  - Write plan to <base_path>/refined/<mission_id>/plan.md.
 
 forbidden_behaviors:
   - invent_evidence_not_in_discovery_artifact

@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -14,11 +15,16 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
+	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, _ []string) error {
+		cmd.SetContext(context.Background())
+		return nil
+	}
 	rootCmd.AddCommand(installCmd)
 	rootCmd.AddCommand(installGlobalCmd)
 	rootCmd.AddCommand(compileCmd)
 	rootCmd.AddCommand(checkStaleCmd)
 	rootCmd.AddCommand(validateCmd)
+	rootCmd.AddCommand(syncGovernanceCmd)
 	rootCmd.AddCommand(versionCmd)
 }
 

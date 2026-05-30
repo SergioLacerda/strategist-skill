@@ -17,13 +17,14 @@ O binário **não executa missões**. Ele prepara o ambiente para que o agente (
 
 ```
 cmd/strategist/          Comandos CLI (cobra)
-  main.go                Entrypoint; chama execute()
-  root.go                Registra todos os subcomandos
+  main.go                Entrypoint; inicializa OTel + chama execute()
+  root.go                Registra todos os subcomandos; injeta context via PersistentPreRunE
   install.go             strategist install
   install_global.go      strategist install-global
   compile.go             strategist compile
   check_stale.go         strategist check-stale
   validate.go            strategist validate
+  sync_governance.go     strategist sync-governance
   version.go             strategist version
 
 internal/
@@ -57,6 +58,13 @@ internal/
 
   stale/                 Detecção de artefatos obsoletos
     check.go             Checker.IsStale — compara mtime das fontes com o registrado no artefato
+
+  telemetry/             Setup OTel providers e helpers de conveniência
+    config.go            Config{Endpoint,ServiceName,Insecure} + FromEnv() — lê variáveis OTel padrão
+    setup.go             Init(cfg) — registra TracerProvider (real ou noop); bridge slog→OTel
+    tracer.go            Tracer() trace.Tracer — acessa o tracer global do pacote
+    schema.go            Constantes de atributos: strategist.phase, strategist.cache.hit, etc.
+                         No-op automático quando OTEL_EXPORTER_OTLP_ENDPOINT não definido.
 
   testutil/              Helpers compartilhados para testes
     testutil.go          MinimalRoot, fixtures de diretório temporário

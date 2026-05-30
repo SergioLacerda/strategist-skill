@@ -111,6 +111,35 @@ sdd_injection:
     - knowledge_paths
     - governance_context
 
+# Governance compliance — synced via `strategist sync-governance`
+compliance:
+  mandates: [M001, M002, M003, M016]   # mandates fully satisfied
+  partial: [M005, M007, M008, M015]    # mandates partially satisfied (see sync-governance)
+  validated_by: self                   # "sdd-governance" when registered in SDD registry
+
+validation_policy:
+  require_preflight: true
+  require_postcheck: false             # learning phase is non-blocking; postcheck not enforced
+
+budget_policy:
+  token_budget: high                   # orchestrator — multi-phase, multiple slot invocations
+  timeout_seconds: 600                 # 10 min ceiling; individual slots have their own budgets
+  max_retries: 1                       # transient slot failures: one retry, then permanent
+
+telemetry_policy:
+  emit_runtime_event: true
+  event_format: "[Strategist] phase=<phase> status=<status> [fields]"
+  otel_required_if_enabled: true
+
+# External provider compliance contract (used in preflight when sdd_injection is active)
+# Provider skill.yaml should declare:
+#   compliance:
+#     mandates: [M007, M015, ...]
+#     validated_by: sdd-governance
+provider_compliance:
+  sdd_injection_trust: auto            # providers from sdd_injection are trusted without re-validation
+  external_trust: risk_score_only      # non-SDD providers: validate risk_score only (current behavior)
+
 forbidden_behaviors:
   - invoke_execution_slot_without_approval
   - write_config_to_target_repo

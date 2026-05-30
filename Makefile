@@ -3,7 +3,7 @@
 GOLANGCI_LINT := $(shell which golangci-lint 2>/dev/null || echo $(shell go env GOPATH)/bin/golangci-lint)
 
 build:
-	go build -o bin/strategist ./cmd/strategist
+	go build -ldflags="-s -w" -o bin/strategist ./cmd/strategist
 
 test:
 	go test -race $$(go list ./... | grep -v '/testutil')
@@ -29,7 +29,7 @@ cover:
 # Note: internal/domain is excluded (pure type declarations — no executable statements).
 cover-gate:
 	@fail=0; \
-	for pkg in internal/stale internal/compile internal/install internal/embed cmd/strategist; do \
+	for pkg in internal/stale internal/compile internal/install internal/embed internal/telemetry cmd/strategist; do \
 		pct=$$(go test -coverprofile=coverage.out -coverpkg=./$$pkg/... ./$$pkg/... 2>/dev/null \
 			| grep -o '[0-9.]*%' | tail -1 | tr -d '%'); \
 		printf "%-30s %s%%\n" "$$pkg" "$$pct"; \
