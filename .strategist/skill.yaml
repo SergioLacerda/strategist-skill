@@ -1,0 +1,124 @@
+id: strategist
+version: "1.1.0"
+schema_version: "1"
+status: active
+risk_score: orchestrator
+category: orchestration
+
+description: >
+  Multi-phase mission orchestrator. Coordinates discovery, refinement, and execution
+  through three pluggable slots. Standalone by default; optionally integrates with SDD
+  as a registered analysis plugin.
+
+parameters:
+  - name: mode
+    type: string
+    default: null
+    description: >
+      Override active.yaml persona for this mission only.
+      Accepted values: pragmatic, epic.
+  - name: roles
+    type: string
+    default: default
+    description: >
+      Name of the roles config to load from roles/<name>.yaml.
+      Defaults to "default" (roles/default.yaml).
+
+slots:
+  discovery:
+    contract: write_pending
+    write_scope: "<base_path>/pending/"
+    write_types: [".md"]
+    description: Explores the problem space and writes discovery artifact to pending/.
+  refinement:
+    contract: write_analysis
+    write_scope:
+      - "<base_path>/refined/"
+    write_types: [".md"]
+    description: >
+      Reads discovery artifact and Sniper skill definition. Writes refined plan to
+      refined/<mission_id>/. Internal structure is defined by the skill occupying this role.
+  execution:
+    contract: controlled
+    description: Executes the refined plan. Approval gate required.
+
+preflight:
+  - validate_slot_providers
+  - resolve_sniper_skill_paths   # store skill.yaml + SKILL.md paths for Archivist injection
+  - load_internal_domain
+  - load_persona
+
+pipeline:
+  - stage: intake
+    skill: prompt-intake
+    produces: mission_contract
+  - stage: context_enrichment
+    skill: context-enrichment
+    produces: dossier
+  - stage: discovery
+    slot: discovery
+    input:
+      - mission_contract
+      - mission_docs_dir  # optional — declared in active.yaml or mission_contract
+    artifact_path: "<base_path>/pending/<mission_id>-discovery.md"
+  - stage: refinement
+    slot: refinement
+    input:
+      - discovery_artifact
+      - sniper_skill_yaml   # resolved at preflight
+      - sniper_skill_md     # resolved at preflight
+      - mission_docs_dir    # optional
+      - mission_contract
+    artifact_path: "<base_path>/refined/<mission_id>/"
+    produces: "<base_path>/refined/<mission_id>/"
+  - stage: approval_gate
+    type: mandatory_pause
+    checks:
+      - refined_dir_exists: "<base_path>/refined/<mission_id>/"
+      - refined_dir_non_empty: true
+    on_missing: blocked
+    description: >
+      Present unified gate: refined plan summary + side quests from discovery artifact.
+      Require explicit user approval before invoking execution slot.
+  - stage: execution
+    slot: execution
+    input: refined_plan
+    artifact_path: "<base_path>/done/<mission_id>-report.md"
+    condition: approval_granted
+  - stage: learning
+    skill: learning-curator
+    blocking: false
+
+stop_conditions:
+  - preflight_failed
+  - slot_provider_not_found
+  - slot_risk_mismatch
+  - intake_conflict_unresolved
+  - user_denies_execution
+  - archivist_failed             # refined dir absent or empty after Archivist ran
+  - slot_write_type_violation
+  - slot_write_scope_violation
+
+result_schema: mission-result.schema.yaml
+
+sdd_injection:
+  optional: true
+  fields:
+    - execution_provider
+    - base_path
+    - knowledge_paths
+    - governance_context
+    - mission_docs_dir
+
+forbidden_behaviors:
+  - invoke_execution_slot_without_approval
+  - invoke_sniper_before_archivist
+  - skip_archivist_for_simple_missions
+  - silent_plan_only_on_missing_artifact
+  - write_config_to_target_repo
+  - perform_discovery_directly_instead_of_delegating
+  - skip_preflight
+  - load_knowledge_not_in_index
+  - ranger_writes_outside_pending
+  - archivist_writes_non_md
+  - delegate_analysis_creation_to_sniper
