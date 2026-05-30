@@ -127,6 +127,7 @@ Read `active.slots`. For each slot (discovery, refinement, execution):
    c. skill registry entry `skill_yaml` path (if registry present)
 3. If provider is `_injected_by_sdd`, resolve from `sdd_injection.execution_provider`.
 4. If `active.slots` is absent: emit blocked event `reason=slots_not_configured`, stop.
+   → Remediation: `strategist install --wizard` to configure slots in `active.yaml`.
 5. If a slot's provider cannot be resolved: emit blocked event `reason=slot_provider_not_found`, stop.
 
 **2d. Validate slot risk contracts**
@@ -143,7 +144,12 @@ Read `active.slots`. For each slot (discovery, refinement, execution):
 
 **2e. Emit preflight done**
 
-`[Strategist] phase=preflight status=done slots=ok`
+Determine governance mode:
+- `GOVERNED`: `sdd_injection` block present in `active.yaml` AND `.sdd/plugins/registry.yaml` confirms `id: strategist` with `status: active`
+- `COMPATIBLE`: slots configured in `active.yaml`, no active `sdd_injection`
+- (STANDALONE is never reached here — blocked at §2c with `slots_not_configured`)
+
+`[Strategist] phase=preflight status=done slots=ok governance=<GOVERNED|COMPATIBLE>`
 
 **2f. Contract validation (if contracts dir present)**
 
