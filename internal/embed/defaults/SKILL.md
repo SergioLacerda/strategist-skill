@@ -45,7 +45,7 @@ On every invocation, before any other action:
 **Fast path (if compiled artifacts are present and fresh):**
 
 ```sh
-strategist check-stale .strategist/.compiled/.config.gz
+sh .strategist/scripts/check-stale.sh .strategist/.compiled/.config.gz
 ```
 
 If exit code is `0` (fresh):
@@ -53,8 +53,10 @@ If exit code is `0` (fresh):
 - Parse the JSON. Extract:
   - `active` → use as `active.yaml` content
   - `personas[active.mode]` → use as persona content
-  - `roles[active.roles_config]` → use as roles content
-- Apply any `--mode` or `--roles` overrides to the extracted JSON data.
+  - `active.slots` → slot provider map (`discovery`, `refinement`, `execution`)
+  - `active.language` → artifact language (`pt` if absent)
+  - `active.adr_enabled` → ADR stage flag (`true` if absent)
+- Apply any `--mode` override to the extracted JSON data.
 - Check for SDD injection using `active.sdd_injection` from the parsed JSON.
 - Emit: `[Strategist] bootstrap=fast_path`
 - Skip steps 1–4 below. Proceed directly to step 5.
@@ -67,8 +69,10 @@ Emit: `[Strategist] bootstrap=standard_path`
 2. Resolve persona: load `personas/<active.yaml.mode>.yaml`.
    - Apply `tone_directive` for all user-facing communication.
    - Store `phase_labels` — these are the labels you use in all progress events and prompts.
-3. If `--mode` flag was provided, override `active.yaml.mode` for this mission only.
-4. If `--roles` flag was provided, override `active.yaml.roles_config` for this mission only.
+3. Extract `active.slots` — slot provider map. Keys: `discovery`, `refinement`, `execution`.
+4. Extract `active.language` (default: `pt`) — pass to all slot providers and use for artifact generation.
+5. Extract `active.adr_enabled` (default: `true`) — if `false`, skip §8 (ADR stage) entirely.
+6. If `--mode` flag was provided, override `active.yaml.mode` for this mission only.
 5. Check for SDD injection: if `sdd_injection` block is present in `active.yaml` and
    `.sdd/plugins/registry.yaml` contains `id: strategist` with `status: active`, apply:
    - Override Sniper slot with `sdd_injection.execution_provider`
@@ -88,7 +92,7 @@ Before invoking any slot or starting intake, run preflight in full. Stop on firs
 **Fast path (if compiled artifacts are present and fresh):**
 
 ```sh
-strategist check-stale .strategist/.compiled/.domain.gz
+sh .strategist/scripts/check-stale.sh .strategist/.compiled/.domain.gz
 ```
 
 If exit code is `0` (fresh):
@@ -115,13 +119,16 @@ internal domain — do not error. If it exists:
 
 **2c. Resolve slot providers**
 
-Load `roles/<roles_config>.yaml`. For each slot (discovery, refinement, execution):
-1. Resolve provider skill.yaml using this order:
+Read `active.slots`. For each slot (discovery, refinement, execution):
+1. Get provider id from `active.slots.<slot>`.
+2. Resolve provider skill.yaml using this order:
    a. `<skill_root>/<provider>/skill.yaml`
    b. `.claude/skills/<provider>/skill.yaml`
    c. skill registry entry `skill_yaml` path (if registry present)
-2. If provider is `_injected_by_sdd`, resolve from `sdd_injection.execution_provider`.
-3. If no path resolves: emit blocked event, stop.
+3. If provider is `_injected_by_sdd`, resolve from `sdd_injection.execution_provider`.
+4. If `active.slots` is absent: emit blocked event `reason=slots_not_configured`, stop.
+   → Remediation: `strategist install --wizard` to configure slots in `active.yaml`.
+5. If a slot's provider cannot be resolved: emit blocked event `reason=slot_provider_not_found`, stop.
 
 **2d. Validate slot risk contracts**
 
@@ -137,7 +144,12 @@ Load `roles/<roles_config>.yaml`. For each slot (discovery, refinement, executio
 
 **2e. Emit preflight done**
 
-`[Strategist] phase=preflight status=done slots=ok`
+Determine governance mode:
+- `GOVERNED`: `sdd_injection` block present in `active.yaml` AND `.sdd/plugins/registry.yaml` confirms `id: strategist` with `status: active`
+- `COMPATIBLE`: slots configured in `active.yaml`, no active `sdd_injection`
+- (STANDALONE is never reached here — blocked at §2c with `slots_not_configured`)
+
+`[Strategist] phase=preflight status=done slots=ok governance=<GOVERNED|COMPATIBLE>`
 
 **2f. Contract validation (if contracts dir present)**
 
@@ -169,7 +181,7 @@ Invoke `context-enrichment` skill with `task_type` and the mission's token budge
 **Fast path (if compiled index is present and fresh):**
 
 ```sh
-strategist check-stale .strategist/.compiled/.index.gz
+sh .strategist/scripts/check-stale.sh .strategist/.compiled/.index.gz
 ```
 
 If exit code is `0` (fresh):
@@ -202,7 +214,7 @@ Pipeline: Ranger → housekeeping_scan → [mini approval gate] → Sniper(side 
 
 ### 5a. Ranger (discovery slot)
 
-Emit: `[Strategist] phase=<ranger_label> status=running skill=<provider> checklist=0/3`
+Emit via `persona.prompt_templates.ranger_start` (substitui `{provider}` com o skill id do provider).
 
 Invoke the discovery slot provider with:
 - User prompt
@@ -214,13 +226,11 @@ Ranger writes the artifact directly (contract: `write_pending`). Strategist does
 intermediate the write — it only waits for completion and emits the done event.
 
 On success:
-Emit: `[Strategist] phase=<ranger_label> status=done artifact=<path>`
+Emit via `persona.prompt_templates.ranger_done` (substitui `{artifact_path}`).
 
-On failure: emit blocked event with `reason=ranger_failed`, present partial artifact if any.
+On failure: emit `[Strategist] phase=ranger status=blocked reason=ranger_failed`, present partial artifact if any.
 
-### 5b. Housekeeping Scan (internal — no slot)
-
-Emit: `[Strategist] phase=housekeeping_scan status=running`
+### 5b. Ataque de Oportunidade — Housekeeping Scan (internal — no slot)
 
 Execute a deterministic scan of `<base_path>/`. Do NOT delegate this to a slot provider.
 
@@ -228,86 +238,88 @@ Execute a deterministic scan of `<base_path>/`. Do NOT delegate this to a slot p
 
 | Directory | Check | Side quest type |
 |-----------|-------|----------------|
-| `todo/` | Does this spec have a corresponding implementation commit in git? | `move_to_done` |
-| `pending/` | Does this spec have a corresponding plan in `refined/`? | `promote` |
-| `refined/` | Does this plan have a corresponding report in `done/`? | `promote` |
+| `todo/` | Does this spec have a corresponding implementation commit in git? | `file_move` |
+| `pending/` | Does this spec have a corresponding plan in `refined/`? | `file_move` |
+| `refined/` | Does this plan have a corresponding report in `done/`? | `file_move` |
 
-**Heuristic for `move_to_done`:** git log contains a commit referencing the spec slug (date + topic keyword) OR spec lists features that exist as code in the repo. When uncertain, list as a candidate — the user decides at the mini approval gate.
+**Heuristic for `file_move`:** git log contains a commit referencing the spec slug (date + topic keyword) OR spec lists features that exist as code in the repo. When uncertain, list as a candidate — the user decides at the gate.
 
-Produce a **side quest manifest**: list of items with type, path, and reason.
+Produce an **opportunity manifest**: list of items with `type`, `origin_path`, `destination`, and `reason`.
 
 If manifest is empty:
-- Emit: `[Strategist] phase=housekeeping_scan status=done side_quests=0`
 - Skip 5c and 5d — proceed directly to 5e (Archivist).
 
 If manifest is non-empty:
-- Emit: `[Strategist] phase=housekeeping_scan status=done side_quests=N`
+- Emit via `persona.prompt_templates.opportunity_detected`:
+  - `{count}` = number of items
+  - `{items_brief}` = one line per item: `→ <slug> reason: <motivo>`
 - Proceed to 5c.
 
-### 5c. Mini Approval Gate (conditional — only if side_quests > 0)
+### 5c. Gate de Oportunidade (conditional — only if opportunity manifest is non-empty)
 
 STOP. Do not move any file without explicit user approval.
 
-Present to the user:
-
-```
-[Strategist] Workspace scan encontrou N side quest(s) antes da análise principal:
-
-  [1] <origin_path> → <destination> (<type>)
-       Motivo: <reason>
-
-  [2] ...
-
-Aprovar todos? [yes / no / select]
-```
+Emit via `persona.prompt_templates.opportunity_gate`:
+- `{manifest}` = numbered list of items:
+  ```
+    [1] <origin_path> → <destination> (type: file_move)
+         Motivo: <reason>
+    [2] ...
+  ```
 
 Wait for response:
-- **yes**: proceed to 5d (Sniper executes all side quests).
+- **yes**: proceed to 5d (Sniper executes all items).
 - **no**: discard manifest, proceed to 5e (Archivist) with workspace as-is.
-- **select**: user specifies items by number or name; Sniper executes only selected items.
+- **select**: user specifies items by number; Sniper executes only selected items.
 
-Invoking Sniper side quests without mini approval gate response is a **forbidden behavior**.
+Invoking Sniper side quests without gate response is a **forbidden behavior**.
 
-### 5d. Sniper: Side Quest Execution (conditional — only if mini approval granted)
+### 5d. Sniper: Execução de Oportunidades (conditional — only if opportunity gate approved)
 
-Emit: `[Strategist] phase=side_quest_execution status=running`
+Emit via `persona.prompt_templates.sniper_start`.
 
 Invoke the execution slot provider with:
-- Side quest manifest (approved items only)
-- Instruction: execute file moves and status updates only; no other writes
+- Opportunity manifest (approved items only)
+- Instruction: execute conforme o tipo de cada item — apenas operações listadas abaixo
 
-**Allowed operations:**
-- `mv <base_path>/todo/<file> <base_path>/done/<file>`
-- Update `Status:` field in markdown files
-- No writes outside `<base_path>/`
+**Operações permitidas por tipo:**
 
-On completion, Sniper produces a **side quest report** (markdown block):
+| Tipo | Operação permitida |
+|------|--------------------|
+| `file_move` | `mv <origin_path> <destination>` + atualizar campo `Status:` no markdown |
+| `scope_addition` | Criar `<base_path>/todo/<slug>.md` com o escopo adicional detectado (missão futura) |
+| `adr_generation` | Invocar Arquivista sub-task para rascunho de ADR em `<base_path>/done/<mission_id>-adr.md` |
+
+Sem writes fora de `<base_path>/`.
+
+On completion, Sniper produces an **opportunity report** (markdown block):
 
 ```markdown
-## Side Quest Report
+## Opportunity Report
 **Executado:** <date> | **Itens processados:** N
 
-### Movimentações
-- `<origin>` → `<destination>` (<reason>)
+### Operações realizadas
+- `<origin>` → `<destination>` (file_move)
+- `<slug>.md` criado em todo/ (scope_addition)
 
 ### Estado atual do workspace (pós-limpeza)
-- `todo/`: N itens restantes
+- `todo/`: N itens
 - `pending/`: N itens
 - `refined/`: N itens
 - `done/`: N itens
 
 ### Itens excluídos da análise principal
-<list of moved items — Archivist must not treat these as pending work>
+<list — Archivist must not treat these as pending work>
 ```
 
-If Sniper side quest fails: emit `[Strategist] phase=side_quest_execution status=failed reason=<error>`.
-This is **non-blocking** — log the failure, proceed to 5e with a partial or empty side quest report.
+If Sniper opportunity execution fails: emit `[Strategist] phase=opportunity_execution status=blocked reason=<error>`.
+This is **non-blocking** — log the failure, proceed to 5e with a partial or empty opportunity report.
 
-Emit: `[Strategist] phase=side_quest_execution status=done`
+Emit via `persona.prompt_templates.sniper_done` (com `{artifact_path}` = inline report).
 
 ### 5e. Archivist (refinement slot)
 
-Emit: `[Strategist] phase=<archivist_label> status=running skill=<provider> checklist=1/3`
+Emit via `persona.prompt_templates.archivist_start` (substitui `{provider}`).
 
 Invoke the refinement slot provider with:
 - Discovery artifact path
@@ -329,7 +341,7 @@ Archivist writes artifacts directly (contract: `write_analysis`). Strategist doe
 intermediate the write — it only waits for completion and emits the done event.
 
 On success:
-Emit: `[Strategist] phase=<archivist_label> status=done artifact=<path>`
+Emit via `persona.prompt_templates.archivist_done` (substitui `{artifact_path}`).
 
 ---
 
@@ -351,11 +363,7 @@ Read `<base_path>/refined/<mission_id>/tasks.md` before deciding:
 
 In all cases where the gate is presented: STOP. Do not invoke Sniper without explicit user approval.
 
-Present to the user:
-```
-<persona.prompt_templates.approval_prompt>
-```
-With `{artifact_path}` = the refined plan path.
+Emit via `persona.prompt_templates.approval_prompt` (substitui `{artifact_path}`).
 
 Wait for response:
 - **yes / approve / authorize**: proceed to Sniper.
@@ -369,7 +377,7 @@ Invoking Sniper without receiving explicit approval is a **forbidden behavior**.
 
 ## 7. Sniper (execution slot)
 
-Emit: `[Strategist] phase=<sniper_label> status=running skill=<provider> checklist=2/3`
+Emit via `persona.prompt_templates.sniper_start`.
 
 Invoke the execution slot provider with:
 - Refined plan artifact path
@@ -378,11 +386,78 @@ Invoke the execution slot provider with:
 Execution report artifact path: `<base_path>/done/<mission_id>-report.md`
 
 Wait for completion. On success:
-Emit: `[Strategist] phase=<sniper_label> status=done artifact=<path>`
+Emit via `persona.prompt_templates.sniper_done` (substitui `{artifact_path}`).
 
 ---
 
-## 8. Learning Phase (non-blocking)
+## 8. ADR Opportunity (pós-missão, condicional)
+
+**Skip this entire section if `active.adr_enabled` is `false`.** Proceed directly to §9.
+
+After Sniper completes (`status=completed`) OR at approval gate decline (`status=plan_only`):
+
+**Critérios de ativação — avaliar se a missão contém decisões arquiteturais:**
+
+| Critério | Sinal |
+|----------|-------|
+| Novo padrão introduzido | Interface, contrato, schema, ou abstração nova |
+| Breaking change (mesmo controlada) | Campo removido, assinatura alterada, comportamento mudado |
+| Trade-off documentado | `tasks.md` / `design.md` descrevem escolha com alternativas descartadas |
+| Nova dependência externa | Biblioteca, serviço, ou protocolo adicionado |
+
+Se nenhum critério for atendido: pular diretamente para §9 (Learning Phase).
+
+Se algum critério for atendido:
+
+Emit via `persona.prompt_templates.adr_opportunity` (substitui `{mission_id}`).
+
+**Gate 1 — Gerar rascunho?** STOP. Aguardar resposta:
+- **no**: Registrar na learning phase como "ADR recusado (gate 1)". Continuar para §9.
+- **yes**: Arquivista escreve rascunho E **apresenta o conteúdo completo no chat**:
+  ```markdown
+  ---
+  📚 **Arquivista — rascunho de ADR:**
+
+  {conteúdo completo do ADR conforme template abaixo}
+  ---
+  ```
+  Artefato também escrito em `<base_path>/done/<mission_id>-adr.md`.
+
+  Emit via `persona.prompt_templates.adr_gate` com `{draft_content}`.
+
+  **Gate 2 — Aprovar conteúdo?** STOP. Aguardar resposta:
+  - **yes**: Sniper commita o ADR. `mission_result.adr = <path>`. Continuar para §9.
+  - **no**: ADR descartado (arquivo removido). `mission_result.status = completed` (sem ADR). Continuar para §9.
+  - **edit**: User quer ajustar o conteúdo. Aceitar edições inline e re-apresentar o draft. Re-abrir gate 2.
+
+Não há gate depois do Sniper — a aprovação do conteúdo acontece ANTES do commit, não depois.
+
+**Instrução de idioma para Arquivista:** gerar o ADR no idioma definido em `active.language`.
+- `language: pt` → conteúdo em português
+- `language: en` → conteúdo em inglês
+
+**Estrutura mínima do ADR (template para Arquivista):**
+
+```markdown
+# ADR: {titulo}
+**Data:** {date} | **Status:** accepted
+**Missão:** {mission_id}
+
+## Contexto
+{problem statement derivado de proposal.md ou tasks.md}
+
+## Decisão
+{o que foi escolhido e por quê}
+
+## Consequências
+{trade-offs aceitos; o que fica mais difícil; o que fica mais fácil}
+```
+
+O template acima é em PT por padrão. Se `language: en`, Arquivista usa `Context`, `Decision`, `Consequences`.
+
+---
+
+## 9. Learning Phase (non-blocking)
 > **Contracts:** `.strategist/contracts/learning-curator.yaml`, `.strategist/contracts/learning-buffer.yaml`
 
 After mission completes (either `completed` or `plan_only`):
@@ -418,7 +493,7 @@ cat .strategist/memory/outcomes.tmp >> .strategist/memory/outcomes.jsonl
 
 ---
 
-## 9. Mission Result
+## 10. Mission Result
 
 Return a result conforming to `mission-result.schema.yaml`:
 
@@ -426,11 +501,12 @@ Return a result conforming to `mission-result.schema.yaml`:
 mission_id: <id>
 status: completed | plan_only | blocked
 artifacts:
-  discovery: <path>           # always present when Ranger ran
-  side_quest_report: inline   # present when side quests ran (inline block, not a file)
-  refined_plan: <path>        # present when Archivist ran
-  execution_report: <path>    # present when Sniper ran
-blockers: []                  # list of blocker codes if status=blocked
+  discovery: <path>             # always present when Ranger ran
+  opportunity_report: inline    # present when opportunity execution ran (inline block)
+  refined_plan: <path>          # present when Archivist ran
+  execution_report: <path>      # present when Sniper ran
+  adr: <path>                   # present when ADR was generated and committed
+blockers: []                    # list of blocker codes if status=blocked
 ```
 
 ---
@@ -442,7 +518,7 @@ blockers: []                  # list of blocker codes if status=blocked
 - `<base_path>/.strategist/` — internal domain (templates populated at init)
 
 Config stays in skill root:
-- `active.yaml`, `personas/`, `roles/`, `memory/`, `knowledge.index.yaml`
+- `active.yaml`, `personas/`, `memory/`, `knowledge.index.yaml`
 
 Writing any config file to the target repo root is a **forbidden behavior**.
 
@@ -454,7 +530,8 @@ When `drift-patterns.yaml` is loaded, check for matching symptoms before each ph
 - `direct_execution`: You are about to perform slot work yourself. → Stop. Identify active slot. Invoke provider. Resume.
 - `silent_phase_advance`: You are about to start the next phase without emitting a done event. → Emit the done event first.
 - `approval_bypass`: You are about to invoke Sniper without asking the user. → Stop. Present approval gate prompt.
-- `side_quest_approval_bypass`: You are about to move files from housekeeping_scan without presenting the mini approval gate. → Stop. Present mini approval gate with the full manifest first.
+- `opportunity_gate_bypass`: You are about to execute any opportunity manifest item (file_move, scope_addition, adr_generation) without presenting the opportunity gate. → Stop. Present gate with full manifest first.
+- `adr_gate_bypass`: You are about to commit an ADR without presenting the ADR gate. → Stop. Present adr_gate prompt first.
 - `scope_expansion`: You are addressing something outside the user's mission. → Stop. Return to mission scope.
 - `sniper_provider_override`: You resolved Sniper from somewhere other than roles config or sdd_injection. → Stop. Re-resolve from declared source.
 - `housekeeping_scan_as_slot`: You are about to delegate the housekeeping scan to Ranger or another slot. → Stop. Execute the scan directly as Strategist (deterministic, internal phase).
