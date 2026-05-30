@@ -6,7 +6,7 @@ build:
 	go build -o bin/strategist ./cmd/strategist
 
 test:
-	go test -race ./...
+	go test -race $$(go list ./... | grep -v '/testutil')
 
 lint:
 	$(GOLANGCI_LINT) run ./...
