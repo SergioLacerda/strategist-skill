@@ -24,6 +24,22 @@ parameters:
       Name of the roles config to load from roles/<name>.yaml.
       Defaults to "default" (roles/default.yaml).
 
+# active.yaml config fields recognized by this skill
+active_config:
+  language:
+    type: string
+    default: pt
+    values: [pt, en]
+    description: >
+      Language for all generated artifacts: discovery docs, ADRs, analysis files.
+      Passed to all slot providers. Does not affect prompt_templates (controlled by persona).
+  adr_enabled:
+    type: boolean
+    default: true
+    description: >
+      When false, the adr_opportunity stage is skipped entirely.
+      No ADR gate is presented after mission completion.
+
 slots:
   discovery:
     contract: write_pending
@@ -93,11 +109,12 @@ pipeline:
     condition: approval_granted
   - stage: adr_opportunity
     type: conditional_pause
-    condition: adr_criteria_met
+    condition: adr_criteria_met AND active.adr_enabled
     description: >
       Evaluate if the mission contains architectural decisions worth recording.
-      If yes, emit adr_opportunity prompt and gate. Arquivista writes ADR draft,
-      then a second gate authorizes Sniper to commit.
+      Skipped entirely when active.adr_enabled is false.
+      If yes: gate 1 (generate?), Arquivista writes+presents draft, gate 2 (approve content?),
+      Sniper commits on approval. ADR language follows active.language.
     produces: adr_artifact
   - stage: learning
     skill: learning-curator

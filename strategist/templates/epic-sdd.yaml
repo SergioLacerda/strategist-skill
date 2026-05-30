@@ -10,6 +10,13 @@ roles_config: mission
 
 knowledge_index_path: knowledge.index.yaml
 
+# Language for all generated artifacts (discovery docs, ADRs, analysis files).
+# Values: pt | en
+language: pt
+
+# Set to false to disable the ADR opportunity stage entirely.
+adr_enabled: true
+
 sdd_injection:
   # These fields are populated at runtime by SDD when plugin is registered.
   # Values here serve as documentation of the expected shape.
