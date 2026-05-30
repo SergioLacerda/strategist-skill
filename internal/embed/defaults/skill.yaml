@@ -47,6 +47,10 @@ slots:
     contract: write_pending
     write_scope: "<base_path>/pending/"
     write_types: [".md"]
+    canonical:
+      - find_unexpected_items       # surface items outside declared mission scope
+      - consult_treasure_chests     # if chests scoped to discovery present, consult before LLM
+      - output_format: "<base_path>/pending/<mission_id>-discovery.md"
     description: Explores the problem space and writes discovery artifact to pending/.
   refinement:
     contract: write_analysis
@@ -54,10 +58,27 @@ slots:
       - "<base_path>/"
       - "<base_path>/refined/"
     write_types: [".md"]
+    canonical:
+      - consult_treasure_chests     # if chests scoped to refinement present, consult before LLM
+      - output_format:
+          - "<base_path>/refined/<mission_id>/proposal.md"
+          - "<base_path>/refined/<mission_id>/design.md"
+          - "<base_path>/refined/<mission_id>/tasks.md"
     description: Reads discovery artifact, writes refined plan and any .md summaries.
   execution:
     contract: controlled
+    canonical:
+      - requires_approval_gate      # Strategist enforces — documented here for slot awareness
+      - consult_treasure_chests     # if chests scoped to execution present, consult before acting
     description: Executes the refined plan. Approval gate required.
+
+# Treasure chests — scoped knowledge sources passed to slots at invocation time.
+# Declared in active.yaml under treasure_chests:. Each slot receives only the chests
+# whose scope includes its role. The slot skill decides how to use the chest.
+# scope values: all | discovery | refinement | execution (list or single string)
+treasure_chest_schema:
+  fields: [id, path, scope, description]
+  scope_values: [all, discovery, refinement, execution]
 
 preflight:
   - validate_slot_providers

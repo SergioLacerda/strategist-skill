@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -30,7 +31,7 @@ type Service struct {
 // workspace to its pre-install state (best-effort: non-empty directories are skipped).
 //
 // The context is threaded through for future cancellation support.
-func (s Service) Install(_ context.Context, cfg domain.InstallConfig) error {
+func (s Service) Install(ctx context.Context, cfg domain.InstallConfig) error {
 	strategistDir := filepath.Join(cfg.Target, ".strategist")
 	var manifest []string // tracks created paths for rollback
 
@@ -48,7 +49,7 @@ func (s Service) Install(_ context.Context, cfg domain.InstallConfig) error {
 				_ = err
 			}
 		}
-		fmt.Fprintf(os.Stderr, "[Strategist] WARN: install rolled back — workspace restored to previous state.\n")
+		slog.WarnContext(ctx, "[Strategist] install rolled back", "workspace", "restored")
 	}()
 
 	if err := s.Extractor.Extract(strategistDir, cfg.Force); err != nil {
@@ -83,7 +84,7 @@ func (s Service) Install(_ context.Context, cfg domain.InstallConfig) error {
 	// Compile after install; non-fatal — warn but do not abort.
 	kiPath := filepath.Join(strategistDir, "knowledge.index.yaml")
 	if compileErr := s.Compiler.CompileAll(strategistDir, kiPath); compileErr != nil {
-		fmt.Fprintf(os.Stderr, "[Strategist] WARN: compile failed: %v\n", compileErr)
+		slog.WarnContext(ctx, "[Strategist] compile warning", "error", compileErr)
 	}
 
 	succeeded = true

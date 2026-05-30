@@ -2,8 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"os"
+	"log/slog"
 
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
@@ -12,7 +11,7 @@ func main() {
 	cfg := telemetry.FromEnv()
 	shutdown, err := telemetry.Init(cfg)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[Strategist] WARN: telemetry init failed: %v\n", err)
+		slog.Warn("[Strategist] telemetry init failed", "error", err)
 	} else {
 		defer shutdown(context.Background()) //nolint:errcheck // best-effort shutdown
 	}

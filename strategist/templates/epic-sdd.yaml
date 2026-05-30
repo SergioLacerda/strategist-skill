@@ -23,6 +23,14 @@ slots:
   refinement: openspec-explore  # Arquivista — write_analysis contract
   execution: sdd-ask            # Sniper  — overridden by governance_injection at runtime
 
+# Treasure chests — SDD governance docs available to all slots.
+# Even without governance_injection active, slots can read these sources directly.
+treasure_chests:
+  - id: sdd-governance
+    path: .sdd/source
+    scope: all
+    description: SDD governance mandates, directives, and source documents
+
 # governance_injection — populated by SDD at runtime when plugin is registered.
 # This block is SDD-specific: paths use .sdd/ conventions.
 # Other governance systems should populate this block with their own values.

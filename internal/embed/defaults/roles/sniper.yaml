@@ -1,0 +1,17 @@
+role: sniper
+slot: execution
+
+# Comportamentos canônicos — read-only, fonte em skill.yaml.
+canonical:
+  - requires_approval_gate      # enforced by Strategist — documented here for awareness
+  - consult_treasure_chests     # consult chests scoped to execution before acting
+
+# Instruções adicionais para o Sniper nesta instalação.
+# Strategist appenda este bloco ao role brief na invocação, após os canônicos.
+# Se vazio ou ausente, apenas os canônicos são usados.
+#
+# Exemplos:
+#   custom_brief: |
+#     Sempre execute testes antes de commitar.
+#     Prefira commits atômicos por task do tasks.md.
+custom_brief: ""

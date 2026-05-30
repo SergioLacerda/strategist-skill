@@ -17,18 +17,40 @@ parameters:
     description: >
       Override active.yaml persona for this mission only.
       Accepted values: pragmatic, epic.
-  - name: roles
-    type: string
-    default: default
+
+# active.yaml config fields recognized by this skill
+active_config:
+  slots:
+    type: object
+    required: true
+    fields: [discovery, refinement, execution]
     description: >
-      Name of the roles config to load from roles/<name>.yaml.
-      Defaults to "default" (roles/default.yaml).
+      Slot provider assignments. Each value is a skill id resolved at preflight.
+      discovery → Ranger (write_pending), refinement → Arquivista (write_analysis),
+      execution → Sniper (controlled).
+  language:
+    type: string
+    default: pt
+    values: [pt, en]
+    description: >
+      Language for all generated artifacts: discovery docs, ADRs, analysis files.
+      Passed to all slot providers. Does not affect prompt_templates (controlled by persona).
+  adr_enabled:
+    type: boolean
+    default: true
+    description: >
+      When false, the adr_opportunity stage is skipped entirely.
+      No ADR gate is presented after mission completion.
 
 slots:
   discovery:
     contract: write_pending
     write_scope: "<base_path>/pending/"
     write_types: [".md"]
+    canonical:
+      - find_unexpected_items       # surface items outside declared mission scope
+      - consult_treasure_chests     # if chests scoped to discovery present, consult before LLM
+      - output_format: "<base_path>/pending/<mission_id>-discovery.md"
     description: Explores the problem space and writes discovery artifact to pending/.
   refinement:
     contract: write_analysis
@@ -36,10 +58,27 @@ slots:
       - "<base_path>/"
       - "<base_path>/refined/"
     write_types: [".md"]
+    canonical:
+      - consult_treasure_chests     # if chests scoped to refinement present, consult before LLM
+      - output_format:
+          - "<base_path>/refined/<mission_id>/proposal.md"
+          - "<base_path>/refined/<mission_id>/design.md"
+          - "<base_path>/refined/<mission_id>/tasks.md"
     description: Reads discovery artifact, writes refined plan and any .md summaries.
   execution:
     contract: controlled
+    canonical:
+      - requires_approval_gate      # Strategist enforces — documented here for slot awareness
+      - consult_treasure_chests     # if chests scoped to execution present, consult before acting
     description: Executes the refined plan. Approval gate required.
+
+# Treasure chests — scoped knowledge sources passed to slots at invocation time.
+# Declared in active.yaml under treasure_chests:. Each slot receives only the chests
+# whose scope includes its role. The slot skill decides how to use the chest.
+# scope values: all | discovery | refinement | execution (list or single string)
+treasure_chest_schema:
+  fields: [id, path, scope, description]
+  scope_values: [all, discovery, refinement, execution]
 
 preflight:
   - validate_slot_providers
@@ -59,21 +98,25 @@ pipeline:
     artifact_path: "<base_path>/pending/<mission_id>-discovery.md"
   - stage: housekeeping_scan
     type: internal
-    description: Deterministic scan of base_path/ for misplaced or done items. No slot invoked.
-    produces: side_quest_manifest
-  - stage: side_quest_approval
+    description: >
+      Deterministic scan of base_path/ for misplaced or done items. No slot invoked.
+      Produces opportunity_manifest with typed items: file_move, scope_addition, adr_generation.
+    produces: opportunity_manifest
+  - stage: opportunity_gate
     type: conditional_pause
-    condition: side_quest_manifest.count > 0
-    description: Present side quest manifest. Require explicit approval before Sniper moves files.
-  - stage: side_quest_execution
+    condition: opportunity_manifest.count > 0
+    description: >
+      Present opportunity manifest (Ataque de Oportunidade). Require explicit approval
+      before Sniper executes any item. Gate applies to all item types.
+  - stage: opportunity_execution
     slot: execution
-    condition: side_quest_approval_granted
-    input: side_quest_manifest
-    produces: side_quest_report
+    condition: opportunity_gate_granted
+    input: opportunity_manifest
+    produces: opportunity_report
     blocking: false
   - stage: refinement
     slot: refinement
-    input: [discovery_artifact, side_quest_report]
+    input: [discovery_artifact, opportunity_report]
     artifact_path: "<base_path>/refined/<mission_id>/"
     produces:
       - "<base_path>/refined/<mission_id>/proposal.md"
@@ -87,29 +130,68 @@ pipeline:
     input: refined_plan
     artifact_path: "<base_path>/done/<mission_id>-report.md"
     condition: approval_granted
+  - stage: adr_opportunity
+    type: conditional_pause
+    condition: adr_criteria_met AND active.adr_enabled
+    description: >
+      Evaluate if the mission contains architectural decisions worth recording.
+      Skipped entirely when active.adr_enabled is false.
+      If yes: gate 1 (generate?), Arquivista writes+presents draft, gate 2 (approve content?),
+      Sniper commits on approval. ADR language follows active.language.
+    produces: adr_artifact
   - stage: learning
     skill: learning-curator
     blocking: false
 
 stop_conditions:
   - preflight_failed
+  - slots_not_configured        # active.slots absent or empty
   - slot_provider_not_found
   - slot_risk_mismatch
   - intake_conflict_unresolved
   - user_denies_execution
-  - side_quest_sniper_failed        # non-blocking: log and continue to Archivist
+  - opportunity_sniper_failed       # non-blocking: log and continue to Archivist
   - slot_write_type_violation       # slot tried to write a non-.md file
   - slot_write_scope_violation      # slot tried to write outside its declared scope
 
 result_schema: mission-result.schema.yaml
 
-sdd_injection:
+governance_injection:
   optional: true
   fields:
     - execution_provider
     - base_path
     - knowledge_paths
     - governance_context
+
+# Governance compliance — synced via `strategist sync-governance`
+compliance:
+  mandates: [M001, M002, M003, M016]   # mandates fully satisfied
+  partial: [M005, M007, M008, M015]    # mandates partially satisfied (see sync-governance)
+  validated_by: self                   # "sdd-governance" when registered in SDD registry
+
+validation_policy:
+  require_preflight: true
+  require_postcheck: false             # learning phase is non-blocking; postcheck not enforced
+
+budget_policy:
+  token_budget: high                   # orchestrator — multi-phase, multiple slot invocations
+  timeout_seconds: 600                 # 10 min ceiling; individual slots have their own budgets
+  max_retries: 1                       # transient slot failures: one retry, then permanent
+
+telemetry_policy:
+  emit_runtime_event: true
+  event_format: "[Strategist] phase=<phase> status=<status> [fields]"
+  otel_required_if_enabled: true
+
+# External provider compliance contract (used in preflight when governance_injection is active)
+# Provider skill.yaml should declare:
+#   compliance:
+#     mandates: [M007, M015, ...]
+#     validated_by: sdd-governance
+provider_compliance:
+  governance_injection_trust: auto     # providers from governance_injection are trusted without re-validation
+  external_trust: risk_score_only      # non-SDD providers: validate risk_score only (current behavior)
 
 forbidden_behaviors:
   - invoke_execution_slot_without_approval
@@ -118,8 +200,10 @@ forbidden_behaviors:
   - skip_preflight
   - load_knowledge_not_in_index
   - run_housekeeping_scan_as_slot
-  - skip_mini_approval_gate
-  - invoke_side_quest_sniper_without_approval
+  - skip_opportunity_gate
+  - invoke_opportunity_sniper_without_approval
+  - skip_adr_gate
+  - commit_adr_without_adr_gate_approval
   - ranger_writes_outside_pending
   - engineer_writes_outside_analysis
   - archivist_writes_non_md

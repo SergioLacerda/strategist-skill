@@ -10,6 +10,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestTreasureChestID(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		path string
+		want string
+	}{
+		{".sdd/source", "source"},
+		{"source", "source"},
+		{"/absolute/path/to/chest", "chest"},
+		{"trailing/slash/", "slash"},
+		{"nodslash", "nodslash"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, treasureChestID(tt.path))
+		})
+	}
+}
+
 func TestWriteActiveYAML(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -58,6 +78,25 @@ func TestWriteActiveYAML(t *testing.T) {
 				"execution: sdd-ask-full",
 			},
 			wantAbsent: []string{"roles_config"},
+		},
+		{
+			name: "with treasure chest path",
+			cfg: domain.WizardConfig{
+				Mode:              "full",
+				BasePath:          ".analysis",
+				Language:          "pt",
+				AdrEnabled:        true,
+				DiscoveryProvider: "brainstorming",
+				RefinementProvider: "openspec-explore",
+				ExecutionProvider: "sdd-ask",
+				TreasureChestPath: ".sdd/source",
+			},
+			wantContain: []string{
+				"treasure_chests:",
+				"id: source",
+				"path: .sdd/source",
+				"scope: all",
+			},
 		},
 	}
 

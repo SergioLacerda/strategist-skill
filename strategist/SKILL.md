@@ -56,6 +56,7 @@ If exit code is `0` (fresh):
   - `active.slots` → slot provider map (`discovery`, `refinement`, `execution`)
   - `active.language` → artifact language (`pt` if absent)
   - `active.adr_enabled` → ADR stage flag (`true` if absent)
+  - `active.treasure_chests` → list of `{id, path, scope, description}` (empty list if absent)
 - Apply any `--mode` override to the extracted JSON data.
 - Check for governance injection using `active.governance_injection` from the parsed JSON.
 - Emit: `[Strategist] bootstrap=fast_path`
@@ -72,6 +73,9 @@ Emit: `[Strategist] bootstrap=standard_path`
 3. Extract `active.slots` — slot provider map. Keys: `discovery`, `refinement`, `execution`.
 4. Extract `active.language` (default: `pt`) — pass to all slot providers and use for artifact generation.
 5. Extract `active.adr_enabled` (default: `true`) — if `false`, skip §8 (ADR stage) entirely.
+6. Extract `active.treasure_chests` (default: `[]`) — scoped knowledge sources. For each slot
+   invocation, filter chests where `scope` contains the slot's role name or `"all"`.
+   Filtering may yield an empty list — this is non-blocking; the slot skips consultation and proceeds.
 6. If `--mode` flag was provided, override `active.yaml.mode` for this mission only.
 5. Check for governance injection: if `governance_injection` block is present in `active.yaml`,
    apply the declared overrides:
@@ -233,6 +237,18 @@ Invoke the discovery slot provider with:
 - `mission_contract.planning_rules`
 - Dossier from context enrichment
 - Artifact path: `<base_path>/pending/<mission_id>-discovery.md`
+- **Role brief — Ranger** (canonical behaviors, always included):
+  - `find_unexpected_items`: Surface anything outside the declared mission scope as an addendum
+  - `consult_treasure_chests`: Mandatory step — consult all passed chests before generating the artifact. If chest list is empty, proceed.
+  - Output format: single discovery artifact at the artifact path above
+- **Custom brief** (from `roles/ranger.yaml → custom_brief`):
+  Load `<skill_root>/roles/ranger.yaml`. If `custom_brief` is non-empty: append verbatim after
+  the canonical behaviors above. If file absent or `custom_brief` is empty: omit.
+- **Treasure chests** — mandatory step (chests where scope = `discovery` or `all`):
+  Pass filtered list: `[{id}] path={path} — {description}` for each match.
+  If no chests match this scope: pass empty list. Ranger skips the consultation step and proceeds without blocking.
+
+The skill decides HOW to use each chest — Strategist only passes the path and description.
 
 Ranger writes the artifact directly (contract: `write_pending`). Strategist does not
 intermediate the write — it only waits for completion and emits the done event.
@@ -245,6 +261,11 @@ On failure: emit `[Strategist] phase=ranger status=blocked reason=ranger_failed`
 ### 5b. Ataque de Oportunidade — Housekeeping Scan (internal — no slot)
 
 Execute a deterministic scan of `<base_path>/`. Do NOT delegate this to a slot provider.
+
+**Treasure chests — preliminary step (mandatory, non-blocking):**
+Before executing the scan, if treasure chests with scope `all` or `discovery` are present,
+consult them for project conventions or patterns that may inform the housekeeping analysis.
+If no chests are available or none yield relevant context: proceed with the scan unchanged.
 
 **Scan rules per directory:**
 
@@ -293,6 +314,13 @@ Emit via `persona.prompt_templates.sniper_start`.
 Invoke the execution slot provider with:
 - Opportunity manifest (approved items only)
 - Instruction: execute conforme o tipo de cada item — apenas operações listadas abaixo
+- **Role brief — Sniper** (canonical behaviors):
+  - `requires_approval_gate`: gate was already granted for these items
+  - `consult_treasure_chests`: Mandatory step — consult all passed chests before acting. If chest list is empty, proceed.
+- **Custom brief** (from `roles/sniper.yaml → custom_brief`):
+  Load `<skill_root>/roles/sniper.yaml`. If `custom_brief` is non-empty: append verbatim. If absent or empty: omit.
+- **Treasure chests** — mandatory step (chests where scope = `execution` or `all`):
+  Pass filtered list: `[{id}] path={path}` for each match. If no chests match: pass empty list; Sniper skips consultation and proceeds.
 
 **Operações permitidas por tipo:**
 
@@ -339,6 +367,13 @@ Invoke the refinement slot provider with:
   > "Items listed under 'Itens excluídos da análise principal' are resolved. Do not treat them as pending. Base your analysis on the post-cleanup workspace state."
 - `mission_contract.planning_rules`
 - Dossier
+- **Role brief — Archivist** (canonical behaviors):
+  - `consult_treasure_chests`: Mandatory step — consult all passed chests before analyzing. If chest list is empty, proceed.
+  - Output format: `proposal.md` + `design.md` + `tasks.md` in the artifact subdirectory
+- **Custom brief** (from `roles/archivist.yaml → custom_brief`):
+  Load `<skill_root>/roles/archivist.yaml`. If `custom_brief` is non-empty: append verbatim. If absent or empty: omit.
+- **Treasure chests** — mandatory step (chests where scope = `refinement` or `all`):
+  Pass filtered list: `[{id}] path={path} — {description}` for each match. If no chests match: pass empty list; Archivist skips consultation and proceeds.
 - Artifact path: `<base_path>/refined/<mission_id>/` (subdirectory)
   - `proposal.md` — what and why (fed by Ranger's discovery artifact)
   - `design.md` — how (architecture, affected components, decisions)
@@ -394,6 +429,13 @@ Emit via `persona.prompt_templates.sniper_start`.
 Invoke the execution slot provider with:
 - Refined plan artifact path
 - `mission_contract.planning_rules`
+- **Role brief — Sniper** (canonical behaviors):
+  - `requires_approval_gate`: approval was granted at §6 — proceed
+  - `consult_treasure_chests`: Mandatory step — consult all passed chests before acting. If chest list is empty, proceed.
+- **Custom brief** (from `roles/sniper.yaml → custom_brief`):
+  Load `<skill_root>/roles/sniper.yaml`. If `custom_brief` is non-empty: append verbatim. If absent or empty: omit.
+- **Treasure chests** — mandatory step (chests where scope = `execution` or `all`):
+  Pass filtered list: `[{id}] path={path}` for each match. If no chests match: pass empty list; Sniper skips consultation and proceeds. (omit if none)
 
 Execution report artifact path: `<base_path>/done/<mission_id>-report.md`
 

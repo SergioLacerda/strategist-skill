@@ -47,6 +47,16 @@ type InstallConfig struct {
 	Force bool
 }
 
+// TreasureChest is a scoped knowledge source passed to slot providers at invocation time.
+// Each slot receives only the chests whose Scope includes its role.
+// The skill decides how to use the chest — Strategist only passes the path and metadata.
+type TreasureChest struct {
+	ID          string   `yaml:"id"`
+	Path        string   `yaml:"path"`
+	Scope       []string `yaml:"scope"` // "all" | "discovery" | "refinement" | "execution"
+	Description string   `yaml:"description,omitempty"`
+}
+
 // WizardConfig holds values collected from the interactive install wizard.
 type WizardConfig struct {
 	Mode               string
@@ -56,4 +66,5 @@ type WizardConfig struct {
 	DiscoveryProvider  string // skill id for the Ranger (discovery) slot
 	RefinementProvider string // skill id for the Arquivista (refinement) slot
 	ExecutionProvider  string // skill id for the Sniper (execution) slot
+	TreasureChestPath  string // optional: path to a knowledge source (e.g. .sdd/source)
 }

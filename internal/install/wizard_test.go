@@ -25,10 +25,11 @@ func TestRunWizard(t *testing.T) {
 		wantDiscovery  string
 		wantRefinement string
 		wantExecution  string
+		wantChestPath  string
 	}{
 		{
 			name:           "all defaults (empty lines)",
-			input:          "\n\n\n\n\n\n\n",
+			input:          "\n\n\n\n\n\n\n\n", // 8 prompts: mode/base/lang/adr/discovery/refinement/execution/chest
 			wantMode:       "full",
 			wantBase:       ".analysis",
 			wantLanguage:   "pt",
@@ -36,10 +37,11 @@ func TestRunWizard(t *testing.T) {
 			wantDiscovery:  "brainstorming",
 			wantRefinement: "openspec-explore",
 			wantExecution:  "sdd-ask",
+			wantChestPath:  "",
 		},
 		{
-			name:           "custom slots",
-			input:          "lightweight\n/workspace\npt\nyes\nbrainstorming\narchivist\nsdd-ask-full\n",
+			name:           "custom slots with chest",
+			input:          "lightweight\n/workspace\npt\nyes\nbrainstorming\narchivist\nsdd-ask-full\n.sdd/source\n",
 			wantMode:       "lightweight",
 			wantBase:       "/workspace",
 			wantLanguage:   "pt",
@@ -47,10 +49,11 @@ func TestRunWizard(t *testing.T) {
 			wantDiscovery:  "brainstorming",
 			wantRefinement: "archivist",
 			wantExecution:  "sdd-ask-full",
+			wantChestPath:  ".sdd/source",
 		},
 		{
 			name:           "english language ADR disabled",
-			input:          "minimal\n.\nen\nno\n\n\n\n",
+			input:          "minimal\n.\nen\nno\n\n\n\n\n",
 			wantMode:       "minimal",
 			wantBase:       ".",
 			wantLanguage:   "en",
@@ -58,10 +61,11 @@ func TestRunWizard(t *testing.T) {
 			wantDiscovery:  "brainstorming",
 			wantRefinement: "openspec-explore",
 			wantExecution:  "sdd-ask",
+			wantChestPath:  "",
 		},
 		{
 			name:           "short form y accepted for adr",
-			input:          "full\n.\npt\ny\n\n\n\n",
+			input:          "full\n.\npt\ny\n\n\n\n\n",
 			wantMode:       "full",
 			wantBase:       ".",
 			wantLanguage:   "pt",
@@ -69,6 +73,7 @@ func TestRunWizard(t *testing.T) {
 			wantDiscovery:  "brainstorming",
 			wantRefinement: "openspec-explore",
 			wantExecution:  "sdd-ask",
+			wantChestPath:  "",
 		},
 	}
 
@@ -84,6 +89,7 @@ func TestRunWizard(t *testing.T) {
 			assert.Equal(t, tt.wantDiscovery, wc.DiscoveryProvider)
 			assert.Equal(t, tt.wantRefinement, wc.RefinementProvider)
 			assert.Equal(t, tt.wantExecution, wc.ExecutionProvider)
+			assert.Equal(t, tt.wantChestPath, wc.TreasureChestPath)
 		})
 	}
 }

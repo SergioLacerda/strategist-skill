@@ -1,0 +1,1300 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>compile: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/SergioLacerda/strategist-skill/internal/compile/all.go (93.3%)</option>
+				
+				<option value="file1">github.com/SergioLacerda/strategist-skill/internal/compile/config.go (93.8%)</option>
+				
+				<option value="file2">github.com/SergioLacerda/strategist-skill/internal/compile/domain.go (91.2%)</option>
+				
+				<option value="file3">github.com/SergioLacerda/strategist-skill/internal/compile/helpers.go (92.9%)</option>
+				
+				<option value="file4">github.com/SergioLacerda/strategist-skill/internal/compile/index.go (89.5%)</option>
+				
+				<option value="file5">github.com/SergioLacerda/strategist-skill/internal/compile/yaml.go (100.0%)</option>
+				
+				<option value="file6">github.com/SergioLacerda/strategist-skill/internal/embed/defaults.go (93.5%)</option>
+				
+				<option value="file7">github.com/SergioLacerda/strategist-skill/internal/install/active_yaml.go (100.0%)</option>
+				
+				<option value="file8">github.com/SergioLacerda/strategist-skill/internal/install/gitignore.go (88.2%)</option>
+				
+				<option value="file9">github.com/SergioLacerda/strategist-skill/internal/install/installer.go (93.5%)</option>
+				
+				<option value="file10">github.com/SergioLacerda/strategist-skill/internal/install/shim.go (91.7%)</option>
+				
+				<option value="file11">github.com/SergioLacerda/strategist-skill/internal/install/template.go (100.0%)</option>
+				
+				<option value="file12">github.com/SergioLacerda/strategist-skill/internal/install/wizard.go (95.7%)</option>
+				
+				<option value="file13">github.com/SergioLacerda/strategist-skill/internal/stale/check.go (91.4%)</option>
+				
+				<option value="file14">github.com/SergioLacerda/strategist-skill/internal/telemetry/config.go (100.0%)</option>
+				
+				<option value="file15">github.com/SergioLacerda/strategist-skill/internal/telemetry/setup.go (88.9%)</option>
+				
+				<option value="file16">github.com/SergioLacerda/strategist-skill/internal/telemetry/tracer.go (100.0%)</option>
+				
+				<option value="file17">github.com/SergioLacerda/strategist-skill/internal/testutil/testutil.go (100.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">no coverage</span>
+				<span class="cov1">low coverage</span>
+				<span class="cov2">*</span>
+				<span class="cov3">*</span>
+				<span class="cov4">*</span>
+				<span class="cov5">*</span>
+				<span class="cov6">*</span>
+				<span class="cov7">*</span>
+				<span class="cov8">*</span>
+				<span class="cov9">*</span>
+				<span class="cov10">high coverage</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">// Package compile compiles Strategist skill artifacts from YAML sources into gzip-compressed JSON.
+package compile
+
+import (
+        "fmt"
+        "path/filepath"
+        "time"
+
+        "github.com/SergioLacerda/strategist-skill/internal/domain"
+)
+
+// Compiler implements domain.Compiler.
+type Compiler struct{}
+
+// CompileAll orchestrates Index, Domain, and Config in sequence,
+// writing .manifest.gz only when all three succeed.
+// It mirrors the logic of compile-all.sh exactly.
+func (c Compiler) CompileAll(root, indexPath string) error <span class="cov10" title="5">{
+        compiledDir := filepath.Join(root, ".compiled")
+
+        indexOut := filepath.Join(compiledDir, ".index.gz")
+        if err := Index(indexPath, indexOut); err != nil </span><span class="cov1" title="1">{
+                return fmt.Errorf("compile all: index: %w", err)
+        }</span>
+
+        <span class="cov8" title="4">domainOut := filepath.Join(compiledDir, ".domain.gz")
+        if err := Domain(root, domainOut); err != nil </span><span class="cov1" title="1">{
+                return fmt.Errorf("compile all: domain: %w", err)
+        }</span>
+
+        <span class="cov7" title="3">configOut := filepath.Join(compiledDir, ".config.gz")
+        if err := Config(root, configOut); err != nil </span><span class="cov1" title="1">{
+                return fmt.Errorf("compile all: config: %w", err)
+        }</span>
+
+        <span class="cov4" title="2">manifest := compiledManifest{
+                Schema:      "strategist-compiled-manifest/1.0",
+                GeneratedAt: time.Now().Unix(),
+                Artifacts: map[string]string{
+                        ".index.gz":  sha256Artifact(indexOut),
+                        ".domain.gz": sha256Artifact(domainOut),
+                        ".config.gz": sha256Artifact(configOut),
+                },
+        }
+
+        manifestOut := filepath.Join(compiledDir, ".manifest.gz")
+        if err := writeGzJSON(manifestOut, manifest); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("compile all: manifest: %w", err)
+        }</span>
+
+        <span class="cov4" title="2">return nil</span>
+}
+
+// Ensure Compiler satisfies the domain interface at compile time.
+var _ domain.Compiler = Compiler{}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package compile
+
+import (
+        "fmt"
+        "os"
+        "path/filepath"
+        "strings"
+        "time"
+)
+
+// Config reads active.yaml, personas/*.yaml and roles/*.yaml from root
+// and writes a gzip-compressed JSON artifact to outputPath.
+// It mirrors the logic of compile-config.sh exactly.
+func Config(root, outputPath string) error <span class="cov9" title="18">{
+        activePath := filepath.Join(root, "active.yaml")
+        active, err := loadYAMLFile(activePath)
+        if err != nil </span><span class="cov6" title="7">{
+                return fmt.Errorf("compile config: %w", err)
+        }</span>
+
+        <span class="cov7" title="11">sources := map[string]int64{activePath: mtime(activePath)}
+
+        personas, err := compileYAMLDir(filepath.Join(root, "personas"), sources)
+        if err != nil </span><span class="cov1" title="1">{
+                return fmt.Errorf("compile config: personas: %w", err)
+        }</span>
+
+        <span class="cov7" title="10">roles, err := compileYAMLDir(filepath.Join(root, "roles"), sources)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("compile config: roles: %w", err)
+        }</span>
+
+        <span class="cov7" title="10">artifact := compiledConfig{
+                Schema:     "strategist-compiled-config/1.0",
+                CompiledAt: time.Now().Unix(),
+                Sources:    sources,
+                Active:     active,
+                Personas:   personas,
+                Roles:      roles,
+        }
+
+        if err := writeGzJSON(outputPath, artifact); err != nil </span><span class="cov1" title="1">{
+                return fmt.Errorf("compile config: write %s: %w", outputPath, err)
+        }</span>
+        <span class="cov7" title="9">return nil</span>
+}
+
+// compileYAMLDir reads all *.yaml files from dir, adding each to sources,
+// and returns a map of basename-without-ext → parsed content.
+func compileYAMLDir(dir string, sources map[string]int64) (map[string]any, error) <span class="cov10" title="22">{
+        entries, err := os.ReadDir(dir)
+        if os.IsNotExist(err) </span><span class="cov0" title="0">{
+                return map[string]any{}, nil
+        }</span>
+        <span class="cov10" title="22">if err != nil </span><span class="cov1" title="1">{
+                return nil, fmt.Errorf("read dir %s: %w", dir, err)
+        }</span>
+
+        <span class="cov9" title="21">result := make(map[string]any, len(entries))
+        for _, e := range entries </span><span class="cov8" title="12">{
+                if e.IsDir() || !strings.HasSuffix(e.Name(), ".yaml") </span><span class="cov1" title="1">{
+                        continue</span>
+                }
+                <span class="cov7" title="11">path := filepath.Join(dir, e.Name())
+                content, loadErr := loadYAMLFile(path)
+                if loadErr != nil </span><span class="cov1" title="1">{
+                        return nil, loadErr
+                }</span>
+                <span class="cov7" title="10">sources[path] = mtime(path)
+                name := strings.TrimSuffix(e.Name(), ".yaml")
+                result[name] = content</span>
+        }
+        <span class="cov9" title="20">return result, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package compile
+
+import (
+        "errors"
+        "fmt"
+        "os"
+        "path/filepath"
+        "strings"
+        "time"
+
+        "gopkg.in/yaml.v3"
+)
+
+// Domain reads the domain index.yaml from root and compiles load_always
+// and load_by_task_type files into a gzip-compressed JSON artifact at outputPath.
+// It mirrors the logic of compile-domain.sh exactly.
+func Domain(root, outputPath string) error <span class="cov10" title="12">{
+        indexPath := filepath.Join(root, "index.yaml")
+        indexData, err := os.ReadFile(indexPath) //nolint:gosec // G304: path derived from strategistDir root
+        if err != nil </span><span class="cov3" title="2">{
+                return fmt.Errorf("compile domain: read index.yaml: %w", err)
+        }</span>
+
+        <span class="cov9" title="10">var idx domainIndex
+        if err := yaml.Unmarshal(indexData, &amp;idx); err != nil </span><span class="cov1" title="1">{
+                return fmt.Errorf("compile domain: parse index.yaml: %w", err)
+        }</span>
+
+        <span class="cov8" title="9">sources := map[string]int64{indexPath: mtime(indexPath)}
+
+        loadAlways, err := compilePaths(root, idx.LoadAlways, sources)
+        if err != nil </span><span class="cov1" title="1">{
+                return fmt.Errorf("compile domain: load_always: %w", err)
+        }</span>
+
+        <span class="cov8" title="8">loadByTaskType := make(map[string]map[string]any, len(idx.LoadByTaskType))
+        for taskType, paths := range idx.LoadByTaskType </span><span class="cov3" title="2">{
+                files, typeErr := compilePaths(root, paths, sources)
+                if typeErr != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("compile domain: load_by_task_type[%s]: %w", taskType, typeErr)
+                }</span>
+                <span class="cov3" title="2">loadByTaskType[taskType] = files</span>
+        }
+
+        <span class="cov8" title="8">artifact := compiledDomain{
+                Schema:         "strategist-compiled-domain/1.0",
+                CompiledAt:     time.Now().Unix(),
+                Sources:        sources,
+                LoadAlways:     loadAlways,
+                LoadByTaskType: loadByTaskType,
+        }
+
+        if err := writeGzJSON(outputPath, artifact); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("compile domain: write %s: %w", outputPath, err)
+        }</span>
+        <span class="cov8" title="8">return nil</span>
+}
+
+// compilePaths loads each relative path from root, records its mtime in sources,
+// and returns a map of relPath → parsed YAML content.
+func compilePaths(root string, relPaths []string, sources map[string]int64) (map[string]any, error) <span class="cov9" title="11">{
+        result := make(map[string]any, len(relPaths))
+        for _, rel := range relPaths </span><span class="cov6" title="5">{
+                if strings.TrimSpace(rel) == "" </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+                <span class="cov6" title="5">full := filepath.Join(root, rel)
+                content, err := loadYAMLFile(full)
+                if errors.Is(err, os.ErrNotExist) </span><span class="cov3" title="2">{
+                        // mirrors compile-domain.sh behaviour: WARN and skip
+                        continue</span>
+                }
+                <span class="cov4" title="3">if err != nil </span><span class="cov1" title="1">{
+                        return nil, err
+                }</span>
+                <span class="cov3" title="2">sources[full] = mtime(full)
+                result[rel] = content</span>
+        }
+        <span class="cov9" title="10">return result, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package compile
+
+import (
+        "compress/gzip"
+        "crypto/sha256"
+        "encoding/json"
+        "fmt"
+        "os"
+        "path/filepath"
+)
+
+// mtime returns the Unix mtime of path in seconds, or 0 on error.
+func mtime(path string) int64 <span class="cov10" title="43">{
+        info, err := os.Stat(path)
+        if err != nil </span><span class="cov1" title="1">{
+                return 0
+        }</span>
+        <span class="cov9" title="42">return info.ModTime().Unix()</span>
+}
+
+// writeGzJSON encodes v as JSON and writes the gzip-compressed result to outputPath.
+// The parent directory is created if it does not exist.
+func writeGzJSON(outputPath string, v any) error <span class="cov9" title="31">{
+        if err := os.MkdirAll(filepath.Dir(outputPath), 0o755); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("mkdir: %w", err)
+        }</span>
+
+        <span class="cov9" title="31">f, err := os.Create(outputPath) //nolint:gosec // G304: path derived from strategistDir, not user input
+        if err != nil </span><span class="cov1" title="1">{
+                return fmt.Errorf("create: %w", err)
+        }</span>
+        <span class="cov9" title="30">defer f.Close() //nolint:errcheck // write errors surfaced via gz.Close below
+
+        gz := gzip.NewWriter(f)
+        if err := json.NewEncoder(gz).Encode(v); err != nil </span><span class="cov1" title="1">{
+                return fmt.Errorf("json encode: %w", err)
+        }</span>
+        <span class="cov9" title="29">if err := gz.Close(); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("gzip close: %w", err)
+        }</span>
+        <span class="cov9" title="29">return nil</span>
+}
+
+// sha256Artifact returns "sha256:&lt;hex&gt;" for the file at path, or "unavailable" on error.
+func sha256Artifact(path string) string <span class="cov5" title="7">{
+        data, err := os.ReadFile(path) //nolint:gosec // G304: path is a compiled artifact path
+        if err != nil </span><span class="cov1" title="1">{
+                return "unavailable"
+        }</span>
+        <span class="cov5" title="6">sum := sha256.Sum256(data)
+        return fmt.Sprintf("sha256:%x", sum)</span>
+}
+
+// loadYAMLFile reads a YAML file and returns its content as a generic map.
+// Uses the yaml.v3 package.
+func loadYAMLFile(path string) (map[string]any, error) <span class="cov9" title="34">{
+        data, err := os.ReadFile(path) //nolint:gosec // G304: path derived from strategistDir
+        if err != nil </span><span class="cov4" title="5">{
+                return nil, fmt.Errorf("read %s: %w", path, err)
+        }</span>
+        <span class="cov9" title="29">var out map[string]any
+        if err := unmarshalYAML(data, &amp;out); err != nil </span><span class="cov5" title="6">{
+                return nil, fmt.Errorf("parse yaml %s: %w", path, err)
+        }</span>
+        <span class="cov8" title="23">return out, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package compile
+
+import (
+        "fmt"
+        "os"
+        "path/filepath"
+        "time"
+
+        "gopkg.in/yaml.v3"
+)
+
+// Index reads knowledge.index.yaml and produces a gzip-compressed JSON
+// artifact at outputPath containing an inverted tag index.
+// It mirrors the logic of compile-knowledge-index.sh exactly.
+func Index(knowledgeIndexPath, outputPath string) error <span class="cov10" title="16">{
+        data, err := os.ReadFile(knowledgeIndexPath) //nolint:gosec // G304: path derived from strategistDir root
+        if err != nil </span><span class="cov4" title="3">{
+                return fmt.Errorf("compile index: read %s: %w", knowledgeIndexPath, err)
+        }</span>
+
+        <span class="cov9" title="13">var ki knowledgeIndex
+        if err := yaml.Unmarshal(data, &amp;ki); err != nil </span><span class="cov4" title="3">{
+                return fmt.Errorf("compile index: parse yaml: %w", err)
+        }</span>
+
+        <span class="cov8" title="10">absSource, err := filepath.Abs(knowledgeIndexPath)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("compile index: abs path: %w", err)
+        }</span>
+
+        // Build inverted tag index: tag → []sourceID
+        <span class="cov8" title="10">tagIndex := make(map[string][]string)
+        // Build source_meta: id → full source object
+        sourceMeta := make(map[string]any, len(ki.Sources))
+
+        for _, src := range ki.Sources </span><span class="cov5" title="4">{
+                sourceMeta[src.ID] = src
+                for _, tag := range src.Tags </span><span class="cov7" title="7">{
+                        tagIndex[tag] = append(tagIndex[tag], src.ID)
+                }</span>
+        }
+
+        <span class="cov8" title="10">artifact := compiledIndex{
+                Schema:     "strategist-compiled-index/1.0",
+                CompiledAt: time.Now().Unix(),
+                Sources:    map[string]int64{absSource: mtime(knowledgeIndexPath)},
+                Tags:       tagIndex,
+                SourceMeta: sourceMeta,
+        }
+
+        if err := writeGzJSON(outputPath, artifact); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("compile index: write %s: %w", outputPath, err)
+        }</span>
+        <span class="cov8" title="10">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package compile
+
+import (
+        "fmt"
+
+        "gopkg.in/yaml.v3"
+)
+
+// unmarshalYAML wraps yaml.Unmarshal so helpers.go does not import yaml directly.
+func unmarshalYAML(data []byte, v any) error <span class="cov10" title="29">{
+        if err := yaml.Unmarshal(data, v); err != nil </span><span class="cov5" title="6">{
+                return fmt.Errorf("yaml: %w", err)
+        }</span>
+        <span class="cov9" title="23">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">// Package embed provides the embedded default Strategist skill files and the extractor to install them.
+package embed
+
+import (
+        "crypto/sha256"
+        "embed"
+        "fmt"
+        "io/fs"
+        "os"
+        "path/filepath"
+        "strings"
+)
+
+//go:embed all:defaults
+var defaultsFS embed.FS
+
+// Extractor implements domain.FileExtractor using the embedded defaults.
+type Extractor struct{}
+
+// Extract copies all embedded defaults into targetDir, preserving the directory
+// structure but stripping the leading "defaults/" path prefix.
+//
+// When force is false (merge mode), files that already exist on disk and whose
+// content differs from the embedded default are skipped — the user's customizations
+// are preserved. Files that match the embedded default are overwritten (idempotent).
+// When force is true, all files are overwritten unconditionally.
+func (e Extractor) Extract(targetDir string, force bool) error <span class="cov3" title="5">{
+        return extractFS(defaultsFS, "defaults", targetDir, force)
+}</span>
+
+// extractFS copies files from src under root into targetDir.
+// Separated from Extract to allow injecting arbitrary fs.FS in tests.
+func extractFS(src fs.FS, root, targetDir string, force bool) error <span class="cov5" title="17">{
+        if err := fs.WalkDir(src, root, makeWalkFn(src, root, targetDir, force)); err != nil </span><span class="cov3" title="4">{
+                return fmt.Errorf("embed: %w", err)
+        }</span>
+        <span class="cov5" title="13">return nil</span>
+}
+
+func makeWalkFn(src fs.FS, root, targetDir string, force bool) fs.WalkDirFunc <span class="cov5" title="17">{
+        return func(path string, d fs.DirEntry, err error) error </span><span class="cov10" title="268">{
+                if err != nil </span><span class="cov1" title="1">{
+                        return fmt.Errorf("embed: walk %s: %w", path, err)
+                }</span>
+                <span class="cov9" title="267">rel := strings.TrimPrefix(path, root+"/")
+                if rel == root || rel == "" </span><span class="cov5" title="17">{
+                        return nil
+                }</span>
+                <span class="cov9" title="250">dst := filepath.Join(targetDir, rel)
+                if d.IsDir() </span><span class="cov8" title="83">{
+                        if mkErr := os.MkdirAll(dst, 0o755); mkErr != nil </span><span class="cov1" title="1">{
+                                return fmt.Errorf("embed: mkdir %s: %w", dst, mkErr)
+                        }</span>
+                        <span class="cov8" title="82">return nil</span>
+                }
+                <span class="cov9" title="167">return writeEmbedFile(src, path, dst, force)</span>
+        }
+}
+
+// writeEmbedFile writes embedded file src/path to dst.
+// In merge mode (!force), if dst already exists and its content differs from the
+// embedded version, the file is skipped to preserve user customizations.
+func writeEmbedFile(src fs.FS, path, dst string, force bool) error <span class="cov9" title="167">{
+        data, readErr := fs.ReadFile(src, path)
+        if readErr != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("embed: read %s: %w", path, readErr)
+        }</span>
+        <span class="cov9" title="167">if mkErr := os.MkdirAll(filepath.Dir(dst), 0o755); mkErr != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("embed: mkdir parent %s: %w", filepath.Dir(dst), mkErr)
+        }</span>
+        <span class="cov9" title="167">if !force </span><span class="cov9" title="166">{
+                if userModified(dst, data) </span><span class="cov2" title="2">{
+                        return nil // preserve user's version
+                }</span>
+        }
+        <span class="cov9" title="165">if writeErr := os.WriteFile(dst, data, 0o644); writeErr != nil </span><span class="cov2" title="2">{
+                return fmt.Errorf("embed: write %s: %w", dst, writeErr)
+        }</span>
+        <span class="cov9" title="163">return nil</span>
+}
+
+// userModified reports true when dst exists on disk AND its content differs
+// from the embedded bytes — meaning the user has customized the file.
+func userModified(dst string, embedded []byte) bool <span class="cov9" title="167">{
+        existing, err := os.ReadFile(dst)
+        if err != nil </span><span class="cov8" title="125">{
+                return false // file doesn't exist — not user-modified
+        }</span>
+        <span class="cov7" title="42">return sha256.Sum256(existing) != sha256.Sum256(embedded)</span>
+}
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">// Package install orchestrates the Strategist skill installation into a target repository.
+package install
+
+import (
+        "fmt"
+        "os"
+        "path/filepath"
+        "strings"
+
+        "github.com/SergioLacerda/strategist-skill/internal/domain"
+)
+
+// writeActiveYAML writes active.yaml to strategistDir from wizard config values.
+// In silent mode (no wizard), the extract step already copied the template
+// active.yaml from defaults, so nothing extra is needed.
+func writeActiveYAML(strategistDir string, wc domain.WizardConfig) error <span class="cov5" title="6">{
+        adrEnabled := "true"
+        if !wc.AdrEnabled </span><span class="cov1" title="1">{
+                adrEnabled = "false"
+        }</span>
+
+        <span class="cov5" title="6">content := fmt.Sprintf(`mode: %s
+base_path: %s
+knowledge_index_path: knowledge.index.yaml
+language: %s
+adr_enabled: %s
+
+slots:
+  discovery: %s
+  refinement: %s
+  execution: %s
+`,
+                wc.Mode, wc.BasePath, wc.Language, adrEnabled,
+                wc.DiscoveryProvider, wc.RefinementProvider, wc.ExecutionProvider,
+        )
+
+        if wc.TreasureChestPath != "" </span><span class="cov1" title="1">{
+                id := treasureChestID(wc.TreasureChestPath)
+                content += fmt.Sprintf(`
+treasure_chests:
+  - id: %s
+    path: %s
+    scope: all
+`, id, wc.TreasureChestPath)
+        }</span>
+
+        <span class="cov5" title="6">path := filepath.Join(strategistDir, "active.yaml")
+        if err := os.WriteFile(path, []byte(content), 0o644); err != nil </span><span class="cov1" title="1">{
+                return fmt.Errorf("write active.yaml: %w", err)
+        }</span>
+        <span class="cov4" title="5">return nil</span>
+}
+
+// treasureChestID derives a stable id from a path by taking the last non-empty segment.
+func treasureChestID(path string) string <span class="cov5" title="6">{
+        path = strings.TrimRight(path, "/")
+        for i := len(path) - 1; i &gt;= 0; i-- </span><span class="cov10" title="40">{
+                if path[i] == '/' </span><span class="cov4" title="4">{
+                        return path[i+1:]
+                }</span>
+        }
+        <span class="cov2" title="2">return path</span>
+}
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">package install
+
+import (
+        "errors"
+        "fmt"
+        "os"
+        "path/filepath"
+        "strings"
+)
+
+const gitignoreEntry = ".strategist/.compiled/"
+
+// ensureGitignore adds the .strategist/.compiled/ entry to target/.gitignore
+// if it is not already present.
+func ensureGitignore(target string) error <span class="cov10" title="14">{
+        path := filepath.Join(target, ".gitignore")
+
+        existing, err := os.ReadFile(path) //nolint:gosec // G304: path is constructed from cfg.Target, not user input
+        if err != nil &amp;&amp; !os.IsNotExist(err) </span><span class="cov3" title="2">{
+                return fmt.Errorf("read .gitignore: %w", err)
+        }</span>
+
+        <span class="cov9" title="12">if strings.Contains(string(existing), gitignoreEntry) </span><span class="cov3" title="2">{
+                return nil
+        }</span>
+
+        <span class="cov8" title="10">f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644) //nolint:gosec // G304: path is constructed from cfg.Target
+        if err != nil </span><span class="cov1" title="1">{
+                return fmt.Errorf("open .gitignore: %w", err)
+        }</span>
+        <span class="cov8" title="9">line := gitignoreEntry
+        if len(existing) &gt; 0 &amp;&amp; !strings.HasSuffix(string(existing), "\n") </span><span class="cov1" title="1">{
+                line = "\n" + line
+        }</span>
+        <span class="cov8" title="9">if _, err := fmt.Fprintln(f, line); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("write .gitignore: %w", errors.Join(err, f.Close()))
+        }</span>
+        <span class="cov8" title="9">if err := f.Close(); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("close .gitignore: %w", err)
+        }</span>
+        <span class="cov8" title="9">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file9" style="display: none">package install
+
+import (
+        "context"
+        "fmt"
+        "io"
+        "log/slog"
+        "os"
+        "path/filepath"
+
+        "github.com/SergioLacerda/strategist-skill/internal/domain"
+)
+
+// Service implements domain.Installer.
+type Service struct {
+        Extractor domain.FileExtractor
+        Compiler  domain.Compiler
+        // WizardReader overrides os.Stdin for wizard prompts. Nil means use os.Stdin.
+        // Set this in tests to provide scripted input without blocking on stdin.
+        WizardReader io.Reader
+        // ShimHomeDir overrides os.UserHomeDir() for shim installation. Nil means use real home.
+        // Set this in tests to install the shim in a temporary directory.
+        ShimHomeDir string
+}
+
+// Install installs the skill into cfg.Target. In silent mode it extracts defaults
+// and writes active.yaml from the pragmatic template. In wizard mode it prompts
+// the user for configuration before writing active.yaml.
+//
+// On failure, Install removes any files and directories it created, restoring the
+// workspace to its pre-install state (best-effort: non-empty directories are skipped).
+//
+// The context is threaded through for future cancellation support.
+func (s Service) Install(ctx context.Context, cfg domain.InstallConfig) error <span class="cov10" title="12">{
+        strategistDir := filepath.Join(cfg.Target, ".strategist")
+        var manifest []string // tracks created paths for rollback
+
+        succeeded := false
+        defer func() </span><span class="cov10" title="12">{
+                if succeeded </span><span class="cov8" title="8">{
+                        return
+                }</span>
+                // Rollback in reverse order: files first, then directories.
+                <span class="cov6" title="4">for i := len(manifest) - 1; i &gt;= 0; i-- </span><span class="cov7" title="6">{
+                        p := manifest[i]
+                        if err := os.Remove(p); err != nil &amp;&amp; !os.IsNotExist(err) </span><span class="cov3" title="2">{
+                                // For non-empty directories Remove returns an error — that's intentional:
+                                // we only remove what we created, leaving pre-existing content intact.
+                                _ = err
+                        }</span>
+                }
+                <span class="cov6" title="4">slog.WarnContext(ctx, "[Strategist] install rolled back", "workspace", "restored")</span>
+        }()
+
+        <span class="cov10" title="12">if err := s.Extractor.Extract(strategistDir, cfg.Force); err != nil </span><span class="cov1" title="1">{
+                return fmt.Errorf("install: extract defaults: %w", err)
+        }</span>
+        <span class="cov9" title="11">manifest = append(manifest, strategistDir)
+
+        if err := s.applyConfig(strategistDir, cfg); err != nil </span><span class="cov1" title="1">{
+                return err
+        }</span>
+        <span class="cov9" title="10">manifest = append(manifest, filepath.Join(strategistDir, "active.yaml"))
+
+        gitignorePath := filepath.Join(cfg.Target, ".gitignore")
+        gitignoreExisted := fileExists(gitignorePath)
+        if err := ensureGitignore(cfg.Target); err != nil </span><span class="cov1" title="1">{
+                return fmt.Errorf("install: gitignore: %w", err)
+        }</span>
+        <span class="cov8" title="9">if !gitignoreExisted </span><span class="cov8" title="8">{
+                manifest = append(manifest, gitignorePath)
+        }</span>
+
+        <span class="cov8" title="9">shimPath, err := s.resolveShimPath()
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("install: resolve shim path: %w", err)
+        }</span>
+        <span class="cov8" title="9">if err := s.installShimFor(cfg.Target); err != nil </span><span class="cov1" title="1">{
+                return fmt.Errorf("install: shim: %w", err)
+        }</span>
+        <span class="cov8" title="8">manifest = append(manifest, shimPath)
+        manifest = append(manifest, filepath.Dir(shimPath)) // shim dir — removed only if empty
+
+        // Compile after install; non-fatal — warn but do not abort.
+        kiPath := filepath.Join(strategistDir, "knowledge.index.yaml")
+        if compileErr := s.Compiler.CompileAll(strategistDir, kiPath); compileErr != nil </span><span class="cov1" title="1">{
+                slog.WarnContext(ctx, "[Strategist] compile warning", "error", compileErr)
+        }</span>
+
+        <span class="cov8" title="8">succeeded = true
+        return nil</span>
+}
+
+// applyConfig writes active.yaml either from the pragmatic template (silent) or
+// from wizard input.
+func (s Service) applyConfig(strategistDir string, cfg domain.InstallConfig) error <span class="cov9" title="11">{
+        if !cfg.Wizard </span><span class="cov8" title="9">{
+                if err := copyTemplate(strategistDir, "templates/pragmatic-standalone.yaml", "active.yaml"); err != nil </span><span class="cov1" title="1">{
+                        return fmt.Errorf("install: copy template: %w", err)
+                }</span>
+                <span class="cov8" title="8">return nil</span>
+        }
+
+        <span class="cov3" title="2">r := io.Reader(os.Stdin)
+        if s.WizardReader != nil </span><span class="cov3" title="2">{
+                r = s.WizardReader
+        }</span>
+        <span class="cov3" title="2">wc, err := runWizard(r)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("install: wizard: %w", err)
+        }</span>
+        <span class="cov3" title="2">if err := writeActiveYAML(strategistDir, wc); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("install: write active.yaml: %w", err)
+        }</span>
+        <span class="cov3" title="2">return nil</span>
+}
+
+// installShimFor installs the shim, using ShimHomeDir if set (for tests).
+func (s Service) installShimFor(target string) error <span class="cov8" title="9">{
+        if s.ShimHomeDir != "" </span><span class="cov1" title="1">{
+                return installShimTo(s.ShimHomeDir)
+        }</span>
+        <span class="cov8" title="8">return installShim(target)</span>
+}
+
+// resolveShimPath returns the path of the SKILL.md shim that will be installed,
+// without actually installing it. Used to track the shim in the rollback manifest.
+func (s Service) resolveShimPath() (string, error) <span class="cov8" title="9">{
+        homeDir := s.ShimHomeDir
+        if homeDir == "" </span><span class="cov8" title="8">{
+                var err error
+                homeDir, err = os.UserHomeDir()
+                if err != nil </span><span class="cov0" title="0">{
+                        return "", fmt.Errorf("home dir: %w", err)
+                }</span>
+        }
+        <span class="cov8" title="9">return filepath.Join(homeDir, ".claude", "skills", "strategist", "SKILL.md"), nil</span>
+}
+
+// fileExists reports whether path exists (any type).
+func fileExists(path string) bool <span class="cov9" title="10">{
+        _, err := os.Stat(path)
+        return err == nil
+}</span>
+
+// Ensure Service satisfies the domain interface via the adapter method below.
+// Note: domain.Installer has Install(cfg InstallConfig) error — we expose a
+// context-aware variant and adapt via the wrapper.
+var _ domain.Installer = &amp;serviceAdapter{}
+
+// serviceAdapter wraps Service to satisfy domain.Installer (context-free signature).
+type serviceAdapter struct{ svc Service }
+
+func (a *serviceAdapter) Install(cfg domain.InstallConfig) error <span class="cov1" title="1">{
+        return a.svc.Install(context.Background(), cfg)
+}</span>
+
+// NewInstaller returns a domain.Installer backed by Service.
+func NewInstaller(extractor domain.FileExtractor, compiler domain.Compiler) domain.Installer <span class="cov1" title="1">{
+        return &amp;serviceAdapter{svc: Service{Extractor: extractor, Compiler: compiler}}
+}</span>
+</pre>
+		
+		<pre class="file" id="file10" style="display: none">package install
+
+import (
+        "fmt"
+        "os"
+        "path/filepath"
+)
+
+const shimContent = `# Strategist skill — agent shim
+# Installed by: strategist install
+# This file registers the Strategist skill with your Claude agent.
+# Do not edit this file manually.
+
+skill: strategist
+source: ~/.strategist
+`
+
+// installShim creates ~/.claude/skills/strategist/SKILL.md pointing to the
+// installed skill, mirroring the behaviour of install_agent_shims() in install.sh.
+func installShim(target string) error <span class="cov8" title="8">{
+        _ = target // reserved for future multi-root shim support
+
+        home, err := os.UserHomeDir()
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("home dir: %w", err)
+        }</span>
+        <span class="cov8" title="8">return installShimTo(home)</span>
+}
+
+// installShimTo writes the shim files under homeDir. Separated from installShim
+// to allow injecting an arbitrary home directory in tests.
+func installShimTo(homeDir string) error <span class="cov10" title="11">{
+        shimDir := filepath.Join(homeDir, ".claude", "skills", "strategist")
+        if err := os.MkdirAll(shimDir, 0o755); err != nil </span><span class="cov3" title="2">{
+                return fmt.Errorf("mkdir shim dir: %w", err)
+        }</span>
+
+        <span class="cov9" title="9">shimPath := filepath.Join(shimDir, "SKILL.md")
+        if err := os.WriteFile(shimPath, []byte(shimContent), 0o644); err != nil </span><span class="cov1" title="1">{
+                return fmt.Errorf("write shim: %w", err)
+        }</span>
+
+        <span class="cov8" title="8">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file11" style="display: none">package install
+
+import (
+        "fmt"
+        "os"
+        "path/filepath"
+)
+
+// copyTemplate copies src (relative path inside strategistDir) to dst (filename inside strategistDir).
+func copyTemplate(strategistDir, src, dst string) error <span class="cov10" title="11">{
+        srcPath := filepath.Join(strategistDir, src)
+        data, err := os.ReadFile(srcPath) //nolint:gosec // G304: path is constructed from install config, not user input
+        if err != nil </span><span class="cov3" title="2">{
+                return fmt.Errorf("read template %s: %w", src, err)
+        }</span>
+        <span class="cov9" title="9">dstPath := filepath.Join(strategistDir, dst)
+        if err := os.WriteFile(dstPath, data, 0o644); err != nil </span><span class="cov1" title="1">{ //nolint:gosec // G703: path derived from trusted install config
+                return fmt.Errorf("write %s: %w", dst, err)
+        }</span>
+        <span class="cov8" title="8">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file12" style="display: none">package install
+
+import (
+        "bufio"
+        "fmt"
+        "io"
+        "os"
+        "strings"
+
+        "github.com/SergioLacerda/strategist-skill/internal/domain"
+)
+
+// RunWizard prompts the user interactively for install configuration.
+// Uses simple stdin prompts as a reliable fallback; replace with charmbracelet/huh
+// for a richer TUI when desired.
+func RunWizard() (domain.WizardConfig, error) <span class="cov0" title="0">{
+        return runWizard(os.Stdin)
+}</span>
+
+// runWizard is the testable core of RunWizard, reading from r instead of os.Stdin.
+func runWizard(r io.Reader) (domain.WizardConfig, error) <span class="cov6" title="13">{
+        br := bufio.NewReader(r)
+
+        mode, err := prompt(br, "Mode (full/lightweight/minimal) [full]: ", "full")
+        if err != nil </span><span class="cov1" title="1">{
+                return domain.WizardConfig{}, fmt.Errorf("wizard: mode: %w", err)
+        }</span>
+
+        <span class="cov6" title="12">basePath, err := prompt(br, "Base path for analysis workspace [.analysis]: ", ".analysis")
+        if err != nil </span><span class="cov1" title="1">{
+                return domain.WizardConfig{}, fmt.Errorf("wizard: base_path: %w", err)
+        }</span>
+
+        <span class="cov5" title="11">language, err := promptValidated(br, "Artifact language (pt/en) [pt]: ", "pt", []string{"pt", "en"})
+        if err != nil </span><span class="cov1" title="1">{
+                return domain.WizardConfig{}, fmt.Errorf("wizard: language: %w", err)
+        }</span>
+
+        <span class="cov5" title="10">adrRaw, err := promptValidated(br, "Enable ADR generation at mission end? (yes/no) [yes]: ", "yes", []string{"yes", "no", "y", "n"})
+        if err != nil </span><span class="cov1" title="1">{
+                return domain.WizardConfig{}, fmt.Errorf("wizard: adr_enabled: %w", err)
+        }</span>
+        <span class="cov5" title="9">adrEnabled := adrRaw == "yes" || adrRaw == "y"
+
+        fmt.Println("\nSlot providers — which skill fills each mission role:")
+
+        discovery, err := prompt(br, "  Ranger / discovery provider [brainstorming]: ", "brainstorming")
+        if err != nil </span><span class="cov1" title="1">{
+                return domain.WizardConfig{}, fmt.Errorf("wizard: discovery: %w", err)
+        }</span>
+
+        <span class="cov5" title="8">refinement, err := prompt(br, "  Arquivista / refinement provider [openspec-explore]: ", "openspec-explore")
+        if err != nil </span><span class="cov1" title="1">{
+                return domain.WizardConfig{}, fmt.Errorf("wizard: refinement: %w", err)
+        }</span>
+
+        <span class="cov4" title="7">execution, err := prompt(br, "  Sniper / execution provider [sdd-ask]: ", "sdd-ask")
+        if err != nil </span><span class="cov1" title="1">{
+                return domain.WizardConfig{}, fmt.Errorf("wizard: execution: %w", err)
+        }</span>
+
+        <span class="cov4" title="6">fmt.Println("\nTreasure chest — optional offline knowledge source for all slots:")
+
+        chestPath, err := prompt(br, "  Knowledge source path (e.g. .sdd/source) [leave empty to skip]: ", "")
+        if err != nil </span><span class="cov0" title="0">{
+                return domain.WizardConfig{}, fmt.Errorf("wizard: treasure_chest: %w", err)
+        }</span>
+
+        <span class="cov4" title="6">return domain.WizardConfig{
+                Mode:               mode,
+                BasePath:           basePath,
+                Language:           language,
+                AdrEnabled:         adrEnabled,
+                DiscoveryProvider:  discovery,
+                RefinementProvider: refinement,
+                ExecutionProvider:  execution,
+                TreasureChestPath:  chestPath,
+        }, nil</span>
+}
+
+// prompt writes question to stdout and reads a trimmed line from r.
+// Returns defaultVal if the user submits an empty line.
+func prompt(r *bufio.Reader, question, defaultVal string) (string, error) <span class="cov10" title="80">{
+        fmt.Print(question)
+        line, err := r.ReadString('\n')
+        if err != nil </span><span class="cov4" title="7">{
+                return "", fmt.Errorf("read: %w", err)
+        }</span>
+        <span class="cov9" title="73">line = strings.TrimSpace(line)
+        if line == "" </span><span class="cov7" title="26">{
+                return defaultVal, nil
+        }</span>
+        <span class="cov8" title="47">return line, nil</span>
+}
+
+// promptValidated prompts and retries until the user provides one of the accepted values
+// or submits an empty line (returning defaultVal).
+func promptValidated(r *bufio.Reader, question, defaultVal string, accepted []string) (string, error) <span class="cov7" title="23">{
+        for </span><span class="cov7" title="25">{
+                val, err := prompt(r, question, defaultVal)
+                if err != nil </span><span class="cov2" title="2">{
+                        return "", err
+                }</span>
+                <span class="cov7" title="23">for _, a := range accepted </span><span class="cov7" title="30">{
+                        if strings.EqualFold(val, a) </span><span class="cov7" title="21">{
+                                return strings.ToLower(val), nil
+                        }</span>
+                }
+                <span class="cov2" title="2">fmt.Printf("  Invalid value %q. Accepted: %s\n", val, strings.Join(accepted, ", "))</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file13" style="display: none">// Package stale implements the stale-artifact checker for compiled Strategist artifacts.
+package stale
+
+import (
+        "compress/gzip"
+        "encoding/json"
+        "fmt"
+        "os"
+        "path/filepath"
+
+        "github.com/SergioLacerda/strategist-skill/internal/domain"
+)
+
+// Checker implements domain.StaleChecker.
+type Checker struct{}
+
+// IsStale reports whether the compiled artifact at artifactPath is absent, stale,
+// or has a missing manifest. It mirrors the logic of check-stale.sh exactly:
+//
+//  1. Artifact file must exist.
+//  2. .manifest.gz must exist in the same directory.
+//  3. Every source file listed in artifact.sources must exist and have an mtime
+//     no newer than the recorded value.
+func (c Checker) IsStale(artifactPath string) (bool, error) <span class="cov10" title="9">{
+        if _, err := os.Stat(artifactPath); os.IsNotExist(err) </span><span class="cov1" title="1">{
+                return true, nil
+        }</span> else<span class="cov9" title="8"> if err != nil </span><span class="cov1" title="1">{
+                return false, fmt.Errorf("stale: stat artifact: %w", err)
+        }</span>
+
+        <span class="cov8" title="7">manifestPath := filepath.Join(filepath.Dir(artifactPath), ".manifest.gz")
+        if _, err := os.Stat(manifestPath); os.IsNotExist(err) </span><span class="cov1" title="1">{
+                return true, nil
+        }</span> else<span class="cov8" title="6"> if err != nil </span><span class="cov0" title="0">{
+                return false, fmt.Errorf("stale: stat manifest: %w", err)
+        }</span>
+
+        <span class="cov8" title="6">sources, err := readSources(artifactPath)
+        if err != nil </span><span class="cov3" title="2">{
+                return false, fmt.Errorf("stale: read sources: %w", err)
+        }</span>
+
+        <span class="cov6" title="4">for path, recorded := range sources </span><span class="cov3" title="2">{
+                info, statErr := os.Stat(path)
+                if os.IsNotExist(statErr) </span><span class="cov1" title="1">{
+                        return true, nil
+                }</span>
+                <span class="cov1" title="1">if statErr != nil </span><span class="cov0" title="0">{
+                        return false, fmt.Errorf("stale: stat source %s: %w", path, statErr)
+                }</span>
+                <span class="cov1" title="1">if info.ModTime().Unix() &gt; recorded </span><span class="cov1" title="1">{
+                        return true, nil
+                }</span>
+        }
+
+        <span class="cov3" title="2">return false, nil</span>
+}
+
+// readSources decompresses a gzipped JSON artifact and extracts the sources map.
+func readSources(artifactPath string) (map[string]int64, error) <span class="cov8" title="6">{
+        f, err := os.Open(artifactPath) //nolint:gosec // G304: path comes from CLI caller — expected behavior
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("open: %w", err)
+        }</span>
+        <span class="cov8" title="6">defer f.Close() //nolint:errcheck // best-effort close on read-only file
+
+        gz, err := gzip.NewReader(f)
+        if err != nil </span><span class="cov1" title="1">{
+                return nil, fmt.Errorf("gzip reader: %w", err)
+        }</span>
+        <span class="cov7" title="5">defer gz.Close() //nolint:errcheck // best-effort close
+
+        var artifact struct {
+                Sources map[string]int64 `json:"sources"`
+        }
+        if err := json.NewDecoder(gz).Decode(&amp;artifact); err != nil </span><span class="cov1" title="1">{
+                return nil, fmt.Errorf("json decode: %w", err)
+        }</span>
+
+        <span class="cov6" title="4">if artifact.Sources == nil </span><span class="cov1" title="1">{
+                return map[string]int64{}, nil
+        }</span>
+
+        <span class="cov5" title="3">return artifact.Sources, nil</span>
+}
+
+// Ensure Checker satisfies the domain interface at compile time.
+var _ domain.StaleChecker = Checker{}
+</pre>
+		
+		<pre class="file" id="file14" style="display: none">// Package telemetry provides OpenTelemetry setup and helpers for the strategist CLI.
+package telemetry
+
+import "os"
+
+// Config holds telemetry configuration read from standard OTel environment variables.
+type Config struct {
+        Endpoint    string // OTEL_EXPORTER_OTLP_ENDPOINT
+        ServiceName string // OTEL_SERVICE_NAME
+        Insecure    bool   // OTEL_EXPORTER_OTLP_INSECURE (default true for dev)
+}
+
+// FromEnv reads OTel configuration from environment variables.
+// If OTEL_SERVICE_NAME is unset, defaults to "strategist".
+// If OTEL_EXPORTER_OTLP_INSECURE is unset or any non-"false" value, insecure is true.
+func FromEnv() Config <span class="cov4" title="2">{
+        svcName := os.Getenv("OTEL_SERVICE_NAME")
+        if svcName == "" </span><span class="cov1" title="1">{
+                svcName = "strategist"
+        }</span>
+        <span class="cov4" title="2">insecure := os.Getenv("OTEL_EXPORTER_OTLP_INSECURE") != "false"
+        return Config{
+                Endpoint:    os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
+                ServiceName: svcName,
+                Insecure:    insecure,
+        }</span>
+}
+
+// Enabled reports whether an OTel collector endpoint is configured.
+// When false, Init installs a noop provider with zero overhead.
+func (c Config) Enabled() bool <span class="cov10" title="5">{
+        return c.Endpoint != ""
+}</span>
+</pre>
+		
+		<pre class="file" id="file15" style="display: none">package telemetry
+
+import (
+        "context"
+        "fmt"
+        "log/slog"
+
+        "go.opentelemetry.io/contrib/bridges/otelslog"
+        "go.opentelemetry.io/otel"
+        "go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+        "go.opentelemetry.io/otel/sdk/resource"
+        sdktrace "go.opentelemetry.io/otel/sdk/trace"
+        semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+        "go.opentelemetry.io/otel/trace/noop"
+)
+
+// Init initializes the global OTel providers from cfg.
+// Returns a shutdown function that must be deferred before process exit.
+// If cfg.Enabled() is false, installs noop providers — no network connections opened.
+func Init(cfg Config) (shutdown func(context.Context) error, err error) <span class="cov10" title="3">{
+        if !cfg.Enabled() </span><span class="cov6" title="2">{
+                otel.SetTracerProvider(noop.NewTracerProvider())
+                return func(context.Context) error </span><span class="cov1" title="1">{ return nil }</span>, nil
+        }
+
+        <span class="cov1" title="1">opts := []otlptracegrpc.Option{
+                otlptracegrpc.WithEndpoint(cfg.Endpoint),
+        }
+        if cfg.Insecure </span><span class="cov1" title="1">{
+                opts = append(opts, otlptracegrpc.WithInsecure()) //nolint:staticcheck // intentional for dev/self-hosted
+        }</span>
+
+        <span class="cov1" title="1">exp, err := otlptracegrpc.New(context.Background(), opts...)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("telemetry: exporter: %w", err)
+        }</span>
+
+        <span class="cov1" title="1">res, err := resource.New(context.Background(),
+                resource.WithAttributes(semconv.ServiceName(cfg.ServiceName)),
+        )
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("telemetry: resource: %w", err)
+        }</span>
+
+        <span class="cov1" title="1">tp := sdktrace.NewTracerProvider(
+                sdktrace.WithBatcher(exp),
+                sdktrace.WithResource(res),
+        )
+        otel.SetTracerProvider(tp)
+
+        // Bridge slog to OTel log pipeline so [Strategist] progress events are forwarded.
+        handler := otelslog.NewHandler(instrumentationName)
+        slog.SetDefault(slog.New(handler))
+
+        return tp.Shutdown, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file16" style="display: none">package telemetry
+
+import (
+        "go.opentelemetry.io/otel"
+        "go.opentelemetry.io/otel/trace"
+)
+
+const instrumentationName = "github.com/SergioLacerda/strategist-skill"
+
+// Tracer returns the package-level tracer using the global TracerProvider.
+// Always non-nil; returns a noop tracer when Init has not been called or
+// when no OTel endpoint is configured.
+func Tracer() trace.Tracer <span class="cov10" title="2">{
+        return otel.Tracer(instrumentationName)
+}</span>
+</pre>
+		
+		<pre class="file" id="file17" style="display: none">// Package testutil provides shared test helpers for the strategist-skill module.
+// Import this package in test files using the standard Go test helper pattern.
+package testutil
+
+import (
+        "compress/gzip"
+        "encoding/json"
+        "os"
+        "path/filepath"
+        "testing"
+
+        "github.com/stretchr/testify/require"
+)
+
+// WriteGzJSON writes v as gzip-compressed JSON to path, creating parent dirs as needed.
+func WriteGzJSON(t testing.TB, path string, v any) <span class="cov10" title="13">{
+        t.Helper()
+        require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+        f, err := os.Create(path)
+        require.NoError(t, err)
+        gz := gzip.NewWriter(f)
+        require.NoError(t, json.NewEncoder(gz).Encode(v))
+        require.NoError(t, gz.Close())
+        require.NoError(t, f.Close())
+}</span>
+
+// ReadGzJSON decompresses a gzipped JSON artifact at path into v.
+func ReadGzJSON(t testing.TB, path string, v any) <span class="cov10" title="13">{
+        t.Helper()
+        f, err := os.Open(path)
+        require.NoError(t, err, "open artifact %s", path)
+        defer f.Close() //nolint:errcheck
+        gz, err := gzip.NewReader(f)
+        require.NoError(t, err, "gzip reader")
+        defer gz.Close() //nolint:errcheck
+        require.NoError(t, json.NewDecoder(gz).Decode(v), "json decode")
+}</span>
+
+// MinimalRoot creates a minimal .strategist/-like directory tree in dir suitable
+// for compile.Config, compile.Domain, compile.Index, and compile.All:
+// active.yaml, personas/epic.yaml, roles/default.yaml, index.yaml, knowledge.index.yaml.
+func MinimalRoot(t testing.TB, dir string) <span class="cov5" title="4">{
+        t.Helper()
+        require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
+        require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
+        require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte("mode: full\n"), 0o644))
+        require.NoError(t, os.WriteFile(filepath.Join(dir, "personas", "epic.yaml"), []byte("name: Epic\n"), 0o644))
+        require.NoError(t, os.WriteFile(filepath.Join(dir, "roles", "default.yaml"), []byte("name: Default\n"), 0o644))
+        require.NoError(t, os.WriteFile(filepath.Join(dir, "index.yaml"), []byte("load_always: []\nload_by_task_type: {}\n"), 0o644))
+        require.NoError(t, os.WriteFile(filepath.Join(dir, "knowledge.index.yaml"), []byte("sources: []\n"), 0o644))
+}</span>
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

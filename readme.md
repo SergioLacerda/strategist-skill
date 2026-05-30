@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="pages/docs/banner.png" alt="Strategist — A experiência de suas demandas nunca serão a mesma" width="100%" />
+  <img src="pages/docs/banner.png" alt="Strategist — A experiência com suas demandas nunca será a mesma." width="100%" />
 </p>
 
 <p align="center">

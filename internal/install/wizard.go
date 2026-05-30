@@ -59,6 +59,13 @@ func runWizard(r io.Reader) (domain.WizardConfig, error) {
 		return domain.WizardConfig{}, fmt.Errorf("wizard: execution: %w", err)
 	}
 
+	fmt.Println("\nTreasure chest — optional offline knowledge source for all slots:")
+
+	chestPath, err := prompt(br, "  Knowledge source path (e.g. .sdd/source) [leave empty to skip]: ", "")
+	if err != nil {
+		return domain.WizardConfig{}, fmt.Errorf("wizard: treasure_chest: %w", err)
+	}
+
 	return domain.WizardConfig{
 		Mode:               mode,
 		BasePath:           basePath,
@@ -67,6 +74,7 @@ func runWizard(r io.Reader) (domain.WizardConfig, error) {
 		DiscoveryProvider:  discovery,
 		RefinementProvider: refinement,
 		ExecutionProvider:  execution,
+		TreasureChestPath:  chestPath,
 	}, nil
 }
 
