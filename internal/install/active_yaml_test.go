@@ -82,14 +82,14 @@ func TestWriteActiveYAML(t *testing.T) {
 		{
 			name: "with treasure chest path",
 			cfg: domain.WizardConfig{
-				Mode:              "full",
-				BasePath:          ".analysis",
-				Language:          "pt",
-				AdrEnabled:        true,
-				DiscoveryProvider: "brainstorming",
+				Mode:               "full",
+				BasePath:           ".analysis",
+				Language:           "pt",
+				AdrEnabled:         true,
+				DiscoveryProvider:  "brainstorming",
 				RefinementProvider: "openspec-explore",
-				ExecutionProvider: "sdd-ask",
-				TreasureChestPath: ".sdd/source",
+				ExecutionProvider:  "sdd-ask",
+				TreasureChestPath:  ".sdd/source",
 			},
 			wantContain: []string{
 				"treasure_chests:",
