@@ -296,6 +296,206 @@ func TestInstallGlobalCmd_DefaultTarget(t *testing.T) {
 	assert.Equal(t, readOnly, installGlobalTarget) // default was resolved and set
 }
 
+// --- validate ---
+
+// minimalValidateRoot creates a .strategist/-like tree suitable for validateCmd:
+// active.yaml, personas/pragmatic.yaml, roles/default.yaml.
+func minimalValidateRoot(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"),
+		[]byte("mode: pragmatic\nroles_config: default\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "personas", "pragmatic.yaml"),
+		[]byte("tone_directive: precise\nphase_labels:\n  discovery: analysis\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "roles", "default.yaml"),
+		[]byte("discovery: brainstorming\nrefinement: archivist\nexecution: caveman\n"), 0o644))
+	return dir
+}
+
+func TestValidateCmd_Success(t *testing.T) {
+	dir := minimalValidateRoot(t)
+
+	orig := validateRoot
+	t.Cleanup(func() { validateRoot = orig })
+	validateRoot = dir
+
+	out := captureStdout(t, func() {
+		err := validateCmd.RunE(validateCmd, nil)
+		require.NoError(t, err)
+	})
+	assert.Contains(t, out, "validate OK")
+	assert.Contains(t, out, dir)
+}
+
+func TestValidateCmd_WithKnowledgeIndex(t *testing.T) {
+	dir := minimalValidateRoot(t)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "knowledge.index.yaml"),
+		[]byte("schema_version: \"1\"\nsources: []\n"), 0o644))
+
+	orig := validateRoot
+	t.Cleanup(func() { validateRoot = orig })
+	validateRoot = dir
+
+	out := captureStdout(t, func() {
+		err := validateCmd.RunE(validateCmd, nil)
+		require.NoError(t, err)
+	})
+	assert.Contains(t, out, "validate OK")
+}
+
+func TestValidateCmd_MissingRoot(t *testing.T) {
+	orig := validateRoot
+	t.Cleanup(func() { validateRoot = orig })
+	validateRoot = filepath.Join(t.TempDir(), "nonexistent")
+
+	err := validateCmd.RunE(validateCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "validate")
+}
+
+func TestValidateCmd_MissingActiveYAML(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
+
+	orig := validateRoot
+	t.Cleanup(func() { validateRoot = orig })
+	validateRoot = dir
+
+	err := validateCmd.RunE(validateCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "validate")
+}
+
+func TestValidateCmd_InvalidMode(t *testing.T) {
+	dir := minimalValidateRoot(t)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"),
+		[]byte("mode: invalid_mode\nroles_config: default\n"), 0o644))
+
+	orig := validateRoot
+	t.Cleanup(func() { validateRoot = orig })
+	validateRoot = dir
+
+	err := validateCmd.RunE(validateCmd, nil)
+	require.Error(t, err)
+}
+
+func TestValidateCmd_MissingSlot(t *testing.T) {
+	dir := minimalValidateRoot(t)
+	// overwrite roles/default.yaml without the required slots
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "roles", "default.yaml"),
+		[]byte("discovery: brainstorming\n"), 0o644))
+
+	orig := validateRoot
+	t.Cleanup(func() { validateRoot = orig })
+	validateRoot = dir
+
+	err := validateCmd.RunE(validateCmd, nil)
+	require.Error(t, err)
+}
+
+func TestValidateCmd_InvalidActiveYAML(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"),
+		[]byte(": invalid: yaml: content:\n"), 0o644))
+
+	orig := validateRoot
+	t.Cleanup(func() { validateRoot = orig })
+	validateRoot = dir
+
+	err := validateCmd.RunE(validateCmd, nil)
+	require.Error(t, err)
+}
+
+func TestValidateCmd_MissingRequiredField(t *testing.T) {
+	dir := minimalValidateRoot(t)
+	// active.yaml missing roles_config
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"),
+		[]byte("mode: pragmatic\n"), 0o644))
+
+	orig := validateRoot
+	t.Cleanup(func() { validateRoot = orig })
+	validateRoot = dir
+
+	err := validateCmd.RunE(validateCmd, nil)
+	require.Error(t, err)
+}
+
+func TestValidateCmd_InvalidPersonaYAML(t *testing.T) {
+	dir := minimalValidateRoot(t)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "personas", "bad.yaml"),
+		[]byte(": not: valid: yaml:\n"), 0o644))
+
+	orig := validateRoot
+	t.Cleanup(func() { validateRoot = orig })
+	validateRoot = dir
+
+	err := validateCmd.RunE(validateCmd, nil)
+	require.Error(t, err)
+}
+
+func TestValidateCmd_PersonaMissingField(t *testing.T) {
+	dir := minimalValidateRoot(t)
+	// persona without phase_labels
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "personas", "minimal.yaml"),
+		[]byte("tone_directive: brief\n"), 0o644))
+
+	orig := validateRoot
+	t.Cleanup(func() { validateRoot = orig })
+	validateRoot = dir
+
+	err := validateCmd.RunE(validateCmd, nil)
+	require.Error(t, err)
+}
+
+func TestValidateCmd_InvalidRoleYAML(t *testing.T) {
+	dir := minimalValidateRoot(t)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "roles", "bad.yaml"),
+		[]byte(": not: valid: yaml:\n"), 0o644))
+
+	orig := validateRoot
+	t.Cleanup(func() { validateRoot = orig })
+	validateRoot = dir
+
+	err := validateCmd.RunE(validateCmd, nil)
+	require.Error(t, err)
+}
+
+func TestValidateCmd_InvalidKnowledgeIndex(t *testing.T) {
+	dir := minimalValidateRoot(t)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "knowledge.index.yaml"),
+		[]byte(": not: valid: yaml:\n"), 0o644))
+
+	orig := validateRoot
+	t.Cleanup(func() { validateRoot = orig })
+	validateRoot = dir
+
+	err := validateCmd.RunE(validateCmd, nil)
+	require.Error(t, err)
+}
+
+func TestValidateCmd_DefaultRoot(t *testing.T) {
+	// When validateRoot is empty it defaults to ".strategist".
+	// Change to a temp dir where ".strategist" doesn't exist so it errors out,
+	// but the default-resolution branch is covered.
+	orig := validateRoot
+	t.Cleanup(func() { validateRoot = orig })
+	validateRoot = ""
+
+	oldWd, err := os.Getwd()
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.Chdir(oldWd) })
+	require.NoError(t, os.Chdir(t.TempDir()))
+
+	err = validateCmd.RunE(validateCmd, nil)
+	require.Error(t, err)
+	assert.Equal(t, ".strategist", validateRoot)
+}
+
 // TestCompileCmd_PrintsCompletion verifies the success message path.
 func TestCompileCmd_PrintsCompletion(t *testing.T) {
 	dir := t.TempDir()
