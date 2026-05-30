@@ -66,3 +66,8 @@ jobs:
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
           govulncheck ./...
+
+      - name: Fixture and schema validation
+        run: |
+          pip install pyyaml --quiet
+          bash strategist/tests/run-tests.sh

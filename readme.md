@@ -87,10 +87,12 @@ curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main
 
 > O bootstrap baixa o binário `strategist`, verifica o SHA256 e executa `strategist install`. Sem dependências externas (sem jq, yq, python3).
 
-**Aviso de segurança:** use sempre uma versão fixada com checksum verificado:
+> **Risco de segurança — piping curl direto:** executar `curl | bash` sem especificar uma versão instala a última versão do branch `main`, sem garantia de integridade. Um ataque de supply chain ou MITM poderia substituir o script em trânsito. **Em ambientes de produção, sempre use uma versão fixada:**
 ```bash
-curl -fsSL .../bootstrap.sh | bash -s -- --version=v1.0.0
+curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.sh \
+  | bash -s -- --version=v1.0.0
 ```
+> A versão fixada baixa o binário de uma release tagged no GitHub e verifica o SHA256 antes de instalar. O piping direto sem `--version` é aceitável em ambientes efêmeros (CI, dev containers), mas não em máquinas compartilhadas ou com acesso privilegiado.
 
 **Atualizar configuração (re-rodar wizard):**
 ```bash

@@ -25,6 +25,20 @@ for arg in "$@"; do
   esac
 done
 
+# ── dependency check ──────────────────────────────────────────────────────────
+
+require_cmd() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    echo "[Strategist] ERROR: required command not found: $1" >&2
+    echo "[Strategist] Install $1 and re-run the installer." >&2
+    exit 1
+  fi
+}
+
+require_cmd curl
+require_cmd tar
+require_cmd sha256sum
+
 # ── detect platform ───────────────────────────────────────────────────────────
 
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -38,8 +52,24 @@ esac
 # ── resolve version ───────────────────────────────────────────────────────────
 
 if [ "$VERSION" = "latest" ]; then
-  VERSION=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
-    | grep '"tag_name"' | cut -d'"' -f4)
+  RESPONSE=$(curl -fsSL -w "\n%{http_code}" "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null)
+  HTTP_STATUS=$(echo "$RESPONSE" | tail -1)
+  BODY=$(echo "$RESPONSE" | head -n -1)
+
+  case "$HTTP_STATUS" in
+    200)
+      VERSION=$(echo "$BODY" | grep '"tag_name"' | cut -d'"' -f4)
+      ;;
+    403|429)
+      echo "[Strategist] WARN: GitHub API rate limit hit (HTTP ${HTTP_STATUS}). Falling back to main branch." >&2
+      echo "[Strategist] WARN: For reproducible installs, use --version=vX.Y.Z." >&2
+      VERSION="main"
+      ;;
+    *)
+      echo "[Strategist] WARN: GitHub API returned HTTP ${HTTP_STATUS}. Falling back to main branch." >&2
+      VERSION="main"
+      ;;
+  esac
 fi
 
 BASE_URL="https://github.com/${REPO}/releases/download/${VERSION}"
