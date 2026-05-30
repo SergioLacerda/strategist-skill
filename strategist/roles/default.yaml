@@ -2,6 +2,6 @@
 # Slot keys: discovery, refinement, execution (external names — Ranger, Archivist, Sniper internally).
 # Edit this file to change providers. Run preflight to validate.
 
-discovery: sdd-diagnose
-refinement: archivist
-execution: caveman
+discovery: brainstorm
+refinement: openspec-explore
+execution: sdd-ask

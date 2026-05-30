@@ -18,6 +18,7 @@ func init() {
 	rootCmd.AddCommand(installGlobalCmd)
 	rootCmd.AddCommand(compileCmd)
 	rootCmd.AddCommand(checkStaleCmd)
+	rootCmd.AddCommand(validateCmd)
 	rootCmd.AddCommand(versionCmd)
 }
 
