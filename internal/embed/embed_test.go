@@ -46,7 +46,6 @@ func TestExtractor_Extract(t *testing.T) {
 		// Core directories
 		expectedDirs := []string{
 			"personas",
-			"roles",
 			"schemas",
 			"templates",
 		}

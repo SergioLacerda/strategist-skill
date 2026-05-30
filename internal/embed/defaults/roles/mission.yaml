@@ -1,7 +1,0 @@
-# Mission slot bindings.
-# Execution provider is injected at runtime via sdd_injection.execution_provider.
-# Use with: --roles mission (or set roles_config: mission in active.yaml)
-
-discovery: diagnose
-refinement: archivist
-execution: _injected_by_sdd   # resolved from sdd_injection.execution_provider at runtime

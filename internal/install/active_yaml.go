@@ -18,13 +18,20 @@ func writeActiveYAML(strategistDir string, wc domain.WizardConfig) error {
 		adrEnabled = "false"
 	}
 
-	content := fmt.Sprintf(
-		"mode: %s\nbase_path: %s\nroles_config: default\nknowledge_index_path: knowledge.index.yaml\nlanguage: %s\nadr_enabled: %s\n",
+	content := fmt.Sprintf(`mode: %s
+base_path: %s
+knowledge_index_path: knowledge.index.yaml
+language: %s
+adr_enabled: %s
+
+slots:
+  discovery: %s
+  refinement: %s
+  execution: %s
+`,
 		wc.Mode, wc.BasePath, wc.Language, adrEnabled,
+		wc.DiscoveryProvider, wc.RefinementProvider, wc.ExecutionProvider,
 	)
-	if wc.Provider != "" {
-		content += fmt.Sprintf("provider: %s\n", wc.Provider)
-	}
 
 	path := filepath.Join(strategistDir, "active.yaml")
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {

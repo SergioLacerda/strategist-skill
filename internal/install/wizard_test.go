@@ -20,45 +20,55 @@ func TestRunWizard(t *testing.T) {
 		input          string
 		wantMode       string
 		wantBase       string
-		wantProv       string
 		wantLanguage   string
 		wantAdrEnabled bool
+		wantDiscovery  string
+		wantRefinement string
+		wantExecution  string
 	}{
 		{
 			name:           "all defaults (empty lines)",
-			input:          "\n\n\n\n\n",
+			input:          "\n\n\n\n\n\n\n",
 			wantMode:       "full",
 			wantBase:       ".analysis",
-			wantProv:       "",
 			wantLanguage:   "pt",
 			wantAdrEnabled: true,
+			wantDiscovery:  "brainstorming",
+			wantRefinement: "openspec-explore",
+			wantExecution:  "sdd-ask",
 		},
 		{
-			name:           "custom values PT ADR enabled",
-			input:          "lightweight\n/workspace\nclaude\npt\nyes\n",
+			name:           "custom slots",
+			input:          "lightweight\n/workspace\npt\nyes\nbrainstorming\narchivist\nsdd-ask-full\n",
 			wantMode:       "lightweight",
 			wantBase:       "/workspace",
-			wantProv:       "claude",
 			wantLanguage:   "pt",
 			wantAdrEnabled: true,
+			wantDiscovery:  "brainstorming",
+			wantRefinement: "archivist",
+			wantExecution:  "sdd-ask-full",
 		},
 		{
 			name:           "english language ADR disabled",
-			input:          "minimal\n.\n\nen\nno\n",
+			input:          "minimal\n.\nen\nno\n\n\n\n",
 			wantMode:       "minimal",
 			wantBase:       ".",
-			wantProv:       "",
 			wantLanguage:   "en",
 			wantAdrEnabled: false,
+			wantDiscovery:  "brainstorming",
+			wantRefinement: "openspec-explore",
+			wantExecution:  "sdd-ask",
 		},
 		{
-			name:           "short form y/n accepted",
-			input:          "full\n.\n\npt\ny\n",
+			name:           "short form y accepted for adr",
+			input:          "full\n.\npt\ny\n\n\n\n",
 			wantMode:       "full",
 			wantBase:       ".",
-			wantProv:       "",
 			wantLanguage:   "pt",
 			wantAdrEnabled: true,
+			wantDiscovery:  "brainstorming",
+			wantRefinement: "openspec-explore",
+			wantExecution:  "sdd-ask",
 		},
 	}
 
@@ -69,9 +79,11 @@ func TestRunWizard(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantMode, wc.Mode)
 			assert.Equal(t, tt.wantBase, wc.BasePath)
-			assert.Equal(t, tt.wantProv, wc.Provider)
 			assert.Equal(t, tt.wantLanguage, wc.Language)
 			assert.Equal(t, tt.wantAdrEnabled, wc.AdrEnabled)
+			assert.Equal(t, tt.wantDiscovery, wc.DiscoveryProvider)
+			assert.Equal(t, tt.wantRefinement, wc.RefinementProvider)
+			assert.Equal(t, tt.wantExecution, wc.ExecutionProvider)
 		})
 	}
 }
