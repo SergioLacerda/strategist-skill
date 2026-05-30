@@ -80,6 +80,18 @@ Emit: `[Strategist] bootstrap=standard_path`
    - Append `sdd_injection.knowledge_paths` to knowledge index sources (do not replace)
    - Load `sdd_injection.governance_context` as an additional read-only context file
 
+**Governance precedence (high → low):**
+
+1. Explicit user instruction — approval gates, user responses; always wins
+2. `active.yaml` — local project configuration; single source of truth
+3. `sdd_injection.*` — SDD governance context; applied only when declared in `active.yaml`
+4. Slot provider contracts — validated at §2d (`risk_score`, write scope)
+5. Embedded governance kernel — `forbidden_behaviors` + `stop_conditions` in `skill.yaml`
+
+Note: `sdd_injection` does not override local governance — it extends it.
+`active.yaml` enables the SDD override by declaring the `sdd_injection:` block.
+Without that block, SDD has no authority over this skill instance.
+
 ---
 
 ## 2. Preflight
