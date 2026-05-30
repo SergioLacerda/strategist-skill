@@ -1,6 +1,7 @@
 package install
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -27,14 +28,15 @@ func ensureGitignore(target string) error {
 	if err != nil {
 		return fmt.Errorf("open .gitignore: %w", err)
 	}
-	defer f.Close() //nolint:errcheck
-
 	line := gitignoreEntry
 	if len(existing) > 0 && !strings.HasSuffix(string(existing), "\n") {
 		line = "\n" + line
 	}
 	if _, err := fmt.Fprintln(f, line); err != nil {
-		return fmt.Errorf("write .gitignore: %w", err)
+		return fmt.Errorf("write .gitignore: %w", errors.Join(err, f.Close()))
+	}
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("close .gitignore: %w", err)
 	}
 	return nil
 }
