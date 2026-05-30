@@ -105,12 +105,42 @@ strategist install --wizard
 
 | Arquivo | Função |
 |---------|--------|
-| `.strategist/active.yaml` | Modo (pragmatic/epic), base_path, roles |
+| `.strategist/active.yaml` | Modo (pragmatic/epic), base_path, roles, language, adr_enabled |
 | `.strategist/roles/default.yaml` | Slot providers: Ranger, Archivist, Sniper |
 | `.strategist/knowledge.index.yaml` | Fontes de conhecimento por task_type |
 | `.analysis/` | Artefatos de missão (pending, refined, done) |
 
+---
 
+**Configurando os papéis (slots):**
+
+Cada papel da missão é uma skill plugável. O arquivo `.strategist/roles/default.yaml` define qual skill assume cada slot:
+
+```yaml
+# .strategist/roles/default.yaml
+discovery: brainstorming      # Ranger — explora e documenta o problema
+refinement: openspec-explore  # Arquivista — refina e estrutura o plano
+execution: sdd-ask            # Sniper — executa o plano aprovado
+```
+
+Para trocar um provider, edite o arquivo e aponte para qualquer skill disponível no seu ambiente. O preflight valida os contratos (`risk_score`) antes de iniciar a missão.
+
+**Providers disponíveis por slot:**
+
+| Slot | Contract exigido | Providers testados |
+|------|-----------------|-------------------|
+| Ranger (discovery) | `write_pending` | `brainstorming` |
+| Arquivista (refinement) | `write_analysis` | `openspec-explore`, `openspec-propose`, `archivist`, `sdd-diagnose`, `sdd-review-architecture` |
+| Sniper (execution) | `controlled` | `sdd-ask`, `sdd-ask-full`, `openspec-apply-change`, `sdd-converge`, `sdd-correct` |
+
+Novos providers podem ser registrados em `.strategist/templates/known-providers.yaml` caso não declarem `risk_score` no próprio `skill.yaml`.
+
+Para usar um conjunto diferente de providers sem alterar o `default.yaml`, aponte `roles_config` em `active.yaml` para outro arquivo de roles:
+
+```yaml
+# .strategist/active.yaml
+roles_config: mission   # carrega roles/mission.yaml
+```
 
 ---
 
