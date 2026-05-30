@@ -53,10 +53,10 @@ If exit code is `0` (fresh):
 - Parse the JSON. Extract:
   - `active` → use as `active.yaml` content
   - `personas[active.mode]` → use as persona content
-  - `roles[active.roles_config]` → use as roles content
+  - `active.slots` → slot provider map (`discovery`, `refinement`, `execution`)
   - `active.language` → artifact language (`pt` if absent)
   - `active.adr_enabled` → ADR stage flag (`true` if absent)
-- Apply any `--mode` or `--roles` overrides to the extracted JSON data.
+- Apply any `--mode` override to the extracted JSON data.
 - Check for SDD injection using `active.sdd_injection` from the parsed JSON.
 - Emit: `[Strategist] bootstrap=fast_path`
 - Skip steps 1–4 below. Proceed directly to step 5.
@@ -69,10 +69,10 @@ Emit: `[Strategist] bootstrap=standard_path`
 2. Resolve persona: load `personas/<active.yaml.mode>.yaml`.
    - Apply `tone_directive` for all user-facing communication.
    - Store `phase_labels` — these are the labels you use in all progress events and prompts.
-3. Extract `active.language` (default: `pt`) — pass to all slot providers and use for artifact generation.
-4. Extract `active.adr_enabled` (default: `true`) — if `false`, skip §8 (ADR stage) entirely.
-5. If `--mode` flag was provided, override `active.yaml.mode` for this mission only.
-6. If `--roles` flag was provided, override `active.yaml.roles_config` for this mission only.
+3. Extract `active.slots` — slot provider map. Keys: `discovery`, `refinement`, `execution`.
+4. Extract `active.language` (default: `pt`) — pass to all slot providers and use for artifact generation.
+5. Extract `active.adr_enabled` (default: `true`) — if `false`, skip §8 (ADR stage) entirely.
+6. If `--mode` flag was provided, override `active.yaml.mode` for this mission only.
 5. Check for SDD injection: if `sdd_injection` block is present in `active.yaml` and
    `.sdd/plugins/registry.yaml` contains `id: strategist` with `status: active`, apply:
    - Override Sniper slot with `sdd_injection.execution_provider`
@@ -119,13 +119,15 @@ internal domain — do not error. If it exists:
 
 **2c. Resolve slot providers**
 
-Load `roles/<roles_config>.yaml`. For each slot (discovery, refinement, execution):
-1. Resolve provider skill.yaml using this order:
+Read `active.slots`. For each slot (discovery, refinement, execution):
+1. Get provider id from `active.slots.<slot>`.
+2. Resolve provider skill.yaml using this order:
    a. `<skill_root>/<provider>/skill.yaml`
    b. `.claude/skills/<provider>/skill.yaml`
    c. skill registry entry `skill_yaml` path (if registry present)
-2. If provider is `_injected_by_sdd`, resolve from `sdd_injection.execution_provider`.
-3. If no path resolves: emit blocked event, stop.
+3. If provider is `_injected_by_sdd`, resolve from `sdd_injection.execution_provider`.
+4. If `active.slots` is absent: emit blocked event `reason=slots_not_configured`, stop.
+5. If a slot's provider cannot be resolved: emit blocked event `reason=slot_provider_not_found`, stop.
 
 **2d. Validate slot risk contracts**
 
@@ -510,7 +512,7 @@ blockers: []                    # list of blocker codes if status=blocked
 - `<base_path>/.strategist/` — internal domain (templates populated at init)
 
 Config stays in skill root:
-- `active.yaml`, `personas/`, `roles/`, `memory/`, `knowledge.index.yaml`
+- `active.yaml`, `personas/`, `memory/`, `knowledge.index.yaml`
 
 Writing any config file to the target repo root is a **forbidden behavior**.
 

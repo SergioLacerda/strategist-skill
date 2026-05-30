@@ -62,30 +62,39 @@ func newSvcW(wizardInput string) Service {
 func TestInstall_WizardPath(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	svc := newSvcW("minimal\n/workspace\nmy-provider\npt\nyes\n")
+	// mode, base_path, language, adr, discovery, refinement, execution
+	svc := newSvcW("minimal\n/workspace\npt\nyes\nbrainstorming\narchivist\nsdd-ask\n")
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
 	require.NoError(t, err)
 
 	data, readErr := os.ReadFile(filepath.Join(dir, ".strategist", "active.yaml"))
 	require.NoError(t, readErr)
-	assert.Contains(t, string(data), "mode: minimal")
-	assert.Contains(t, string(data), "base_path: /workspace")
-	assert.Contains(t, string(data), "provider: my-provider")
-	assert.Contains(t, string(data), "language: pt")
-	assert.Contains(t, string(data), "adr_enabled: true")
+	s := string(data)
+	assert.Contains(t, s, "mode: minimal")
+	assert.Contains(t, s, "base_path: /workspace")
+	assert.Contains(t, s, "language: pt")
+	assert.Contains(t, s, "adr_enabled: true")
+	assert.Contains(t, s, "discovery: brainstorming")
+	assert.Contains(t, s, "refinement: archivist")
+	assert.Contains(t, s, "execution: sdd-ask")
+	assert.NotContains(t, s, "roles_config")
 }
 
 func TestInstall_WizardPath_Defaults(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	svc := newSvcW("\n\n\n\n\n") // all defaults (5 prompts)
+	svc := newSvcW("\n\n\n\n\n\n\n") // all defaults (7 prompts)
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
 	require.NoError(t, err)
 
 	data, _ := os.ReadFile(filepath.Join(dir, ".strategist", "active.yaml"))
-	assert.Contains(t, string(data), "mode: full")
-	assert.Contains(t, string(data), "language: pt")
-	assert.Contains(t, string(data), "adr_enabled: true")
+	s := string(data)
+	assert.Contains(t, s, "mode: full")
+	assert.Contains(t, s, "language: pt")
+	assert.Contains(t, s, "adr_enabled: true")
+	assert.Contains(t, s, "discovery: brainstorming")
+	assert.Contains(t, s, "refinement: openspec-explore")
+	assert.Contains(t, s, "execution: sdd-ask")
 }
 
 // --- copyTemplate error path ---
@@ -158,7 +167,10 @@ func TestWriteActiveYAML_ReadOnlyDir(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.Chmod(dir, 0o444))
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
-	err := writeActiveYAML(dir, domain.WizardConfig{Mode: "full", BasePath: "."})
+	err := writeActiveYAML(dir, domain.WizardConfig{
+		Mode: "full", BasePath: ".", Language: "pt", AdrEnabled: true,
+		DiscoveryProvider: "brainstorming", RefinementProvider: "openspec-explore", ExecutionProvider: "sdd-ask",
+	})
 	require.Error(t, err)
 }
 
@@ -199,25 +211,39 @@ func TestRunWizard_EOFOnSecondPrompt(t *testing.T) {
 	assert.ErrorContains(t, err, "base_path")
 }
 
-func TestRunWizard_EOFOnThirdPrompt(t *testing.T) {
+func TestRunWizard_EOFOnThirdPrompt_Language(t *testing.T) {
 	t.Parallel()
 	_, err := runWizard(strings.NewReader("full\n.\n"))
-	require.Error(t, err)
-	assert.ErrorContains(t, err, "provider")
-}
-
-func TestRunWizard_EOFOnFourthPrompt(t *testing.T) {
-	t.Parallel()
-	_, err := runWizard(strings.NewReader("full\n.\n\n"))
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "language")
 }
 
-func TestRunWizard_EOFOnFifthPrompt(t *testing.T) {
+func TestRunWizard_EOFOnFourthPrompt_Adr(t *testing.T) {
 	t.Parallel()
-	_, err := runWizard(strings.NewReader("full\n.\n\npt\n"))
+	_, err := runWizard(strings.NewReader("full\n.\npt\n"))
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "adr_enabled")
+}
+
+func TestRunWizard_EOFOnFifthPrompt_Discovery(t *testing.T) {
+	t.Parallel()
+	_, err := runWizard(strings.NewReader("full\n.\npt\nyes\n"))
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "discovery")
+}
+
+func TestRunWizard_EOFOnSixthPrompt_Refinement(t *testing.T) {
+	t.Parallel()
+	_, err := runWizard(strings.NewReader("full\n.\npt\nyes\nbrainstorming\n"))
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "refinement")
+}
+
+func TestRunWizard_EOFOnSeventhPrompt_Execution(t *testing.T) {
+	t.Parallel()
+	_, err := runWizard(strings.NewReader("full\n.\npt\nyes\nbrainstorming\nopenspec-explore\n"))
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "execution")
 }
 
 // --- installShimTo error paths ---

@@ -49,9 +49,11 @@ type InstallConfig struct {
 
 // WizardConfig holds values collected from the interactive install wizard.
 type WizardConfig struct {
-	Mode       string
-	BasePath   string
-	Provider   string
-	Language   string // pt | en — language for generated artifacts
-	AdrEnabled bool   // whether to enable the ADR opportunity stage
+	Mode               string
+	BasePath           string
+	Language           string // pt | en — language for generated artifacts
+	AdrEnabled         bool   // whether to enable the ADR opportunity stage
+	DiscoveryProvider  string // skill id for the Ranger (discovery) slot
+	RefinementProvider string // skill id for the Arquivista (refinement) slot
+	ExecutionProvider  string // skill id for the Sniper (execution) slot
 }

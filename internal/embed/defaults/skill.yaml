@@ -17,15 +17,17 @@ parameters:
     description: >
       Override active.yaml persona for this mission only.
       Accepted values: pragmatic, epic.
-  - name: roles
-    type: string
-    default: default
-    description: >
-      Name of the roles config to load from roles/<name>.yaml.
-      Defaults to "default" (roles/default.yaml).
 
 # active.yaml config fields recognized by this skill
 active_config:
+  slots:
+    type: object
+    required: true
+    fields: [discovery, refinement, execution]
+    description: >
+      Slot provider assignments. Each value is a skill id resolved at preflight.
+      discovery → Ranger (write_pending), refinement → Arquivista (write_analysis),
+      execution → Sniper (controlled).
   language:
     type: string
     default: pt
@@ -122,6 +124,7 @@ pipeline:
 
 stop_conditions:
   - preflight_failed
+  - slots_not_configured        # active.slots absent or empty
   - slot_provider_not_found
   - slot_risk_mismatch
   - intake_conflict_unresolved

@@ -105,8 +105,7 @@ strategist install --wizard
 
 | Arquivo | Função |
 |---------|--------|
-| `.strategist/active.yaml` | Modo (pragmatic/epic), base_path, roles, language, adr_enabled |
-| `.strategist/roles/default.yaml` | Slot providers: Ranger, Archivist, Sniper |
+| `.strategist/active.yaml` | Modo, base_path, slots, language, adr_enabled |
 | `.strategist/knowledge.index.yaml` | Fontes de conhecimento por task_type |
 | `.analysis/` | Artefatos de missão (pending, refined, done) |
 
@@ -114,16 +113,17 @@ strategist install --wizard
 
 **Configurando os papéis (slots):**
 
-Cada papel da missão é uma skill plugável. O arquivo `.strategist/roles/default.yaml` define qual skill assume cada slot:
+Cada papel da missão é uma skill plugável. Os providers ficam diretamente em `active.yaml`, na chave `slots`:
 
 ```yaml
-# .strategist/roles/default.yaml
-discovery: brainstorming      # Ranger — explora e documenta o problema
-refinement: openspec-explore  # Arquivista — refina e estrutura o plano
-execution: sdd-ask            # Sniper — executa o plano aprovado
+# .strategist/active.yaml
+slots:
+  discovery: brainstorming      # Ranger  — explora e documenta o problema
+  refinement: openspec-explore  # Arquivista — refina e estrutura o plano
+  execution: sdd-ask            # Sniper  — executa o plano aprovado
 ```
 
-Para trocar um provider, edite o arquivo e aponte para qualquer skill disponível no seu ambiente. O preflight valida os contratos (`risk_score`) antes de iniciar a missão.
+Para trocar um provider, edite `active.yaml` e aponte para qualquer skill disponível no seu ambiente. O preflight valida os contratos (`risk_score`) antes de iniciar a missão.
 
 **Providers disponíveis por slot:**
 
@@ -134,13 +134,6 @@ Para trocar um provider, edite o arquivo e aponte para qualquer skill disponíve
 | Sniper (execution) | `controlled` | `sdd-ask`, `sdd-ask-full`, `openspec-apply-change`, `sdd-converge`, `sdd-correct` |
 
 Novos providers podem ser registrados em `.strategist/templates/known-providers.yaml` caso não declarem `risk_score` no próprio `skill.yaml`.
-
-Para usar um conjunto diferente de providers sem alterar o `default.yaml`, aponte `roles_config` em `active.yaml` para outro arquivo de roles:
-
-```yaml
-# .strategist/active.yaml
-roles_config: mission   # carrega roles/mission.yaml
-```
 
 ---
 

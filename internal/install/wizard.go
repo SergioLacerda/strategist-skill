@@ -31,11 +31,6 @@ func runWizard(r io.Reader) (domain.WizardConfig, error) {
 		return domain.WizardConfig{}, fmt.Errorf("wizard: base_path: %w", err)
 	}
 
-	provider, err := prompt(br, "Default provider (leave blank to skip): ", "")
-	if err != nil {
-		return domain.WizardConfig{}, fmt.Errorf("wizard: provider: %w", err)
-	}
-
 	language, err := promptValidated(br, "Artifact language (pt/en) [pt]: ", "pt", []string{"pt", "en"})
 	if err != nil {
 		return domain.WizardConfig{}, fmt.Errorf("wizard: language: %w", err)
@@ -47,12 +42,31 @@ func runWizard(r io.Reader) (domain.WizardConfig, error) {
 	}
 	adrEnabled := adrRaw == "yes" || adrRaw == "y"
 
+	fmt.Println("\nSlot providers — which skill fills each mission role:")
+
+	discovery, err := prompt(br, "  Ranger / discovery provider [brainstorming]: ", "brainstorming")
+	if err != nil {
+		return domain.WizardConfig{}, fmt.Errorf("wizard: discovery: %w", err)
+	}
+
+	refinement, err := prompt(br, "  Arquivista / refinement provider [openspec-explore]: ", "openspec-explore")
+	if err != nil {
+		return domain.WizardConfig{}, fmt.Errorf("wizard: refinement: %w", err)
+	}
+
+	execution, err := prompt(br, "  Sniper / execution provider [sdd-ask]: ", "sdd-ask")
+	if err != nil {
+		return domain.WizardConfig{}, fmt.Errorf("wizard: execution: %w", err)
+	}
+
 	return domain.WizardConfig{
-		Mode:       mode,
-		BasePath:   basePath,
-		Provider:   provider,
-		Language:   language,
-		AdrEnabled: adrEnabled,
+		Mode:               mode,
+		BasePath:           basePath,
+		Language:           language,
+		AdrEnabled:         adrEnabled,
+		DiscoveryProvider:  discovery,
+		RefinementProvider: refinement,
+		ExecutionProvider:  execution,
 	}, nil
 }
 

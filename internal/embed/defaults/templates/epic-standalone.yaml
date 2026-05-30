@@ -6,8 +6,6 @@ mode: epic
 
 base_path: .analysis
 
-roles_config: default
-
 knowledge_index_path: knowledge.index.yaml
 
 # Language for all generated artifacts (discovery docs, ADRs, analysis files).
@@ -15,7 +13,13 @@ knowledge_index_path: knowledge.index.yaml
 language: pt
 
 # Set to false to disable the ADR opportunity stage entirely.
-# When false, no ADR gate is presented after mission completion.
 adr_enabled: true
 
-# Override per-mission with: --mode pragmatic --roles spec-driven
+# Slot providers — which skill fills each mission role.
+# Edit here to change providers. Preflight validates risk_score contracts.
+slots:
+  discovery: brainstorming      # Ranger  — write_pending contract
+  refinement: openspec-explore  # Arquivista — write_analysis contract
+  execution: sdd-ask            # Sniper  — controlled contract
+
+# Override per-mission with: --mode pragmatic
