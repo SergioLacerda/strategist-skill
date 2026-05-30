@@ -101,4 +101,4 @@ INSTALL_ARGS="--silent"
 [ "$SILENT" = "false" ] && INSTALL_ARGS="--wizard"
 [ -n "$TARGET" ] && INSTALL_ARGS="$INSTALL_ARGS --target=${TARGET}"
 
-strategist install $INSTALL_ARGS
+strategist install "$INSTALL_ARGS"
