@@ -12,6 +12,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// installGlobalTarget is the base directory for the global install (defaults to $HOME).
+var installGlobalTarget string
+
 var installGlobalCmd = &cobra.Command{
 	Use:   "install-global",
 	Short: "Install the Strategist skill globally into ~/.strategist/",
@@ -19,9 +22,14 @@ var installGlobalCmd = &cobra.Command{
 (~/.claude/skills/strategist/SKILL.md) can resolve the skill root globally,
 outside of any specific project directory.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return fmt.Errorf("install-global: resolve home dir: %w", err)
+		target := installGlobalTarget
+		if target == "" {
+			home, err := os.UserHomeDir()
+			if err != nil {
+				return fmt.Errorf("install-global: resolve home dir: %w", err)
+			}
+			target = home
+			installGlobalTarget = target
 		}
 
 		svc := install.Service{
@@ -30,7 +38,7 @@ outside of any specific project directory.`,
 		}
 
 		cfg := domain.InstallConfig{
-			Target: home,
+			Target: target,
 			Silent: true,
 		}
 
@@ -38,7 +46,7 @@ outside of any specific project directory.`,
 			return fmt.Errorf("install-global: %w", err)
 		}
 
-		fmt.Printf("[Strategist] global install complete — skill root: %s/.strategist/\n", home)
+		fmt.Printf("[Strategist] global install complete — skill root: %s/.strategist/\n", target)
 		return nil
 	},
 }
