@@ -99,10 +99,10 @@ func TestInstallConfig_Fields(t *testing.T) {
 
 func TestWizardConfig_Fields(t *testing.T) {
 	t.Parallel()
-	wc := domain.WizardConfig{Mode: "minimal", BasePath: ".", Provider: "openai"}
+	wc := domain.WizardConfig{Mode: "minimal", BasePath: ".", Provider: "openai", Language: "pt", AdrEnabled: true}
 	assert.Equal(t, "minimal", wc.Mode)
 	assert.Equal(t, ".", wc.BasePath)
 	assert.Equal(t, "openai", wc.Provider)
-	wc.RolesConfig = map[string]any{"k": "v"}
-	assert.Len(t, wc.RolesConfig, 1)
+	assert.Equal(t, "pt", wc.Language)
+	assert.True(t, wc.AdrEnabled)
 }

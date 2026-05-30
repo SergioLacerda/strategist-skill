@@ -13,7 +13,15 @@ import (
 // In silent mode (no wizard), the extract step already copied the template
 // active.yaml from defaults, so nothing extra is needed.
 func writeActiveYAML(strategistDir string, wc domain.WizardConfig) error {
-	content := fmt.Sprintf("mode: %s\nbase_path: %s\n", wc.Mode, wc.BasePath)
+	adrEnabled := "true"
+	if !wc.AdrEnabled {
+		adrEnabled = "false"
+	}
+
+	content := fmt.Sprintf(
+		"mode: %s\nbase_path: %s\nroles_config: default\nknowledge_index_path: knowledge.index.yaml\nlanguage: %s\nadr_enabled: %s\n",
+		wc.Mode, wc.BasePath, wc.Language, adrEnabled,
+	)
 	if wc.Provider != "" {
 		content += fmt.Sprintf("provider: %s\n", wc.Provider)
 	}

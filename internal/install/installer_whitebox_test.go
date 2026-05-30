@@ -62,7 +62,7 @@ func newSvcW(wizardInput string) Service {
 func TestInstall_WizardPath(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	svc := newSvcW("minimal\n/workspace\nmy-provider\n")
+	svc := newSvcW("minimal\n/workspace\nmy-provider\npt\nyes\n")
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
 	require.NoError(t, err)
 
@@ -71,17 +71,21 @@ func TestInstall_WizardPath(t *testing.T) {
 	assert.Contains(t, string(data), "mode: minimal")
 	assert.Contains(t, string(data), "base_path: /workspace")
 	assert.Contains(t, string(data), "provider: my-provider")
+	assert.Contains(t, string(data), "language: pt")
+	assert.Contains(t, string(data), "adr_enabled: true")
 }
 
 func TestInstall_WizardPath_Defaults(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	svc := newSvcW("\n\n\n") // all defaults
+	svc := newSvcW("\n\n\n\n\n") // all defaults (5 prompts)
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
 	require.NoError(t, err)
 
 	data, _ := os.ReadFile(filepath.Join(dir, ".strategist", "active.yaml"))
 	assert.Contains(t, string(data), "mode: full")
+	assert.Contains(t, string(data), "language: pt")
+	assert.Contains(t, string(data), "adr_enabled: true")
 }
 
 // --- copyTemplate error path ---
@@ -190,7 +194,6 @@ func TestRunWizard_EOFOnFirstPrompt(t *testing.T) {
 
 func TestRunWizard_EOFOnSecondPrompt(t *testing.T) {
 	t.Parallel()
-	// Mode succeeds, base_path prompt gets EOF
 	_, err := runWizard(strings.NewReader("full\n"))
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "base_path")
@@ -198,10 +201,23 @@ func TestRunWizard_EOFOnSecondPrompt(t *testing.T) {
 
 func TestRunWizard_EOFOnThirdPrompt(t *testing.T) {
 	t.Parallel()
-	// Mode and base_path succeed, provider prompt gets EOF
 	_, err := runWizard(strings.NewReader("full\n.\n"))
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "provider")
+}
+
+func TestRunWizard_EOFOnFourthPrompt(t *testing.T) {
+	t.Parallel()
+	_, err := runWizard(strings.NewReader("full\n.\n\n"))
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "language")
+}
+
+func TestRunWizard_EOFOnFifthPrompt(t *testing.T) {
+	t.Parallel()
+	_, err := runWizard(strings.NewReader("full\n.\n\npt\n"))
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "adr_enabled")
 }
 
 // --- installShimTo error paths ---
