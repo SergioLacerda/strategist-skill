@@ -10,4 +10,12 @@ roles_config: default
 
 knowledge_index_path: knowledge.index.yaml
 
+# Language for all generated artifacts (discovery docs, ADRs, analysis files).
+# Values: pt | en
+language: pt
+
+# Set to false to disable the ADR opportunity stage entirely.
+# When false, no ADR gate is presented after mission completion.
+adr_enabled: true
+
 # Override per-mission with: --mode pragmatic --roles spec-driven

@@ -54,6 +54,8 @@ If exit code is `0` (fresh):
   - `active` → use as `active.yaml` content
   - `personas[active.mode]` → use as persona content
   - `roles[active.roles_config]` → use as roles content
+  - `active.language` → artifact language (`pt` if absent)
+  - `active.adr_enabled` → ADR stage flag (`true` if absent)
 - Apply any `--mode` or `--roles` overrides to the extracted JSON data.
 - Check for SDD injection using `active.sdd_injection` from the parsed JSON.
 - Emit: `[Strategist] bootstrap=fast_path`
@@ -67,8 +69,10 @@ Emit: `[Strategist] bootstrap=standard_path`
 2. Resolve persona: load `personas/<active.yaml.mode>.yaml`.
    - Apply `tone_directive` for all user-facing communication.
    - Store `phase_labels` — these are the labels you use in all progress events and prompts.
-3. If `--mode` flag was provided, override `active.yaml.mode` for this mission only.
-4. If `--roles` flag was provided, override `active.yaml.roles_config` for this mission only.
+3. Extract `active.language` (default: `pt`) — pass to all slot providers and use for artifact generation.
+4. Extract `active.adr_enabled` (default: `true`) — if `false`, skip §8 (ADR stage) entirely.
+5. If `--mode` flag was provided, override `active.yaml.mode` for this mission only.
+6. If `--roles` flag was provided, override `active.yaml.roles_config` for this mission only.
 5. Check for SDD injection: if `sdd_injection` block is present in `active.yaml` and
    `.sdd/plugins/registry.yaml` contains `id: strategist` with `status: active`, apply:
    - Override Sniper slot with `sdd_injection.execution_provider`
@@ -380,6 +384,8 @@ Emit via `persona.prompt_templates.sniper_done` (substitui `{artifact_path}`).
 
 ## 8. ADR Opportunity (pós-missão, condicional)
 
+**Skip this entire section if `active.adr_enabled` is `false`.** Proceed directly to §9.
+
 After Sniper completes (`status=completed`) OR at approval gate decline (`status=plan_only`):
 
 **Critérios de ativação — avaliar se a missão contém decisões arquiteturais:**
@@ -414,8 +420,13 @@ Emit via `persona.prompt_templates.adr_opportunity` (substitui `{mission_id}`).
   **Gate 2 — Aprovar conteúdo?** STOP. Aguardar resposta:
   - **yes**: Sniper commita o ADR. `mission_result.adr = <path>`. Continuar para §9.
   - **no**: ADR descartado (arquivo removido). `mission_result.status = completed` (sem ADR). Continuar para §9.
+  - **edit**: User quer ajustar o conteúdo. Aceitar edições inline e re-apresentar o draft. Re-abrir gate 2.
 
 Não há gate depois do Sniper — a aprovação do conteúdo acontece ANTES do commit, não depois.
+
+**Instrução de idioma para Arquivista:** gerar o ADR no idioma definido em `active.language`.
+- `language: pt` → conteúdo em português
+- `language: en` → conteúdo em inglês
 
 **Estrutura mínima do ADR (template para Arquivista):**
 
@@ -433,6 +444,8 @@ Não há gate depois do Sniper — a aprovação do conteúdo acontece ANTES do 
 ## Consequências
 {trade-offs aceitos; o que fica mais difícil; o que fica mais fácil}
 ```
+
+O template acima é em PT por padrão. Se `language: en`, Arquivista usa `Context`, `Decision`, `Consequences`.
 
 ---
 
