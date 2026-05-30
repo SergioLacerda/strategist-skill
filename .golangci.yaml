@@ -78,6 +78,7 @@ linters:
       excludes:
         - G301 # CLI tool creates project dirs; 0755 is intentional
         - G302 # CLI tool creates config files; 0644 is intentional
+        - G304 # CLI tool reads local config files; paths are constructed, not raw user input
         - G306 # CLI tool creates config files; 0644 is intentional
     wrapcheck:
       ignorePackageGlobs:
