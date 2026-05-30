@@ -19,7 +19,7 @@ type mockExtractor struct {
 	failWith   error
 }
 
-func (m *mockExtractor) Extract(targetDir string) error {
+func (m *mockExtractor) Extract(targetDir string, _ bool) error {
 	if m.failWith != nil {
 		return m.failWith
 	}

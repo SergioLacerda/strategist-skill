@@ -42,6 +42,9 @@ type InstallConfig struct {
 	Target string
 	Silent bool
 	Wizard bool
+	// Force overwrites all files, including user-modified ones.
+	// When false (default), files that differ from the embedded default are preserved.
+	Force bool
 }
 
 // WizardConfig holds values collected from the interactive install wizard.

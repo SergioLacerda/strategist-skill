@@ -51,7 +51,7 @@ func (s Service) Install(_ context.Context, cfg domain.InstallConfig) error {
 		fmt.Fprintf(os.Stderr, "[Strategist] WARN: install rolled back — workspace restored to previous state.\n")
 	}()
 
-	if err := s.Extractor.Extract(strategistDir); err != nil {
+	if err := s.Extractor.Extract(strategistDir, cfg.Force); err != nil {
 		return fmt.Errorf("install: extract defaults: %w", err)
 	}
 	manifest = append(manifest, strategistDir)
