@@ -1,0 +1,41 @@
+id: archivist
+version: "1.1.0"
+schema_version: "1"
+status: active
+risk_score: write_analysis
+category: refinement
+
+description: >
+  Reads a discovery artifact and produces an implementation-ready refined plan in a
+  subdirectory of refined/. Consults the Sniper's skill definition before finalizing
+  to ensure tasks are executable within Sniper's mandates. Output structure is defined
+  by the skill occupying this role — the orchestrator only requires the output directory.
+
+input:
+  discovery_artifact_path: string  # path to Ranger's output in <base_path>/pending/
+  base_path: string                # from Strategist (mission base directory)
+  mission_id: string               # unique mission identifier (<YYYYMMDD>-<slug>)
+  mission_contract: object         # planning_rules from intake
+  sniper_skill_yaml: string        # path to execution slot provider's skill.yaml
+  sniper_skill_md: string          # path to execution slot provider's SKILL.md
+  mission_docs_dir: string         # optional — project base documentation directory
+
+output:
+  output_dir: string               # <base_path>/refined/<mission_id>/ (directory — internal structure free)
+
+forbidden_behaviors:
+  - invent_evidence_not_in_discovery_artifact
+  - add_speculative_architecture
+  - assume_constraints_not_stated_in_mission_contract
+  - produce_output_without_discovery_artifact
+  - write_outside_output_dir
+  - skip_sniper_peer_review
+  - reload_mission_docs_dir  # L1 context already materialized in Ranger's discovery artifact
+
+failure_modes:
+  - missing_discovery_artifact: input path does not exist or is empty.
+    Stop. Emit reason=missing_discovery_artifact. Do not write output.
+  - sniper_peer_review_failed: could not read sniper skill files.
+    Log warning. Continue without peer review. Note in output: "peer_review=skipped reason=skill_files_unavailable".
+  - output_dir_write_failed: could not write to output_dir.
+    Stop. Emit reason=output_dir_write_failed.
