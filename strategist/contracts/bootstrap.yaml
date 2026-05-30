@@ -29,10 +29,10 @@ contract:
     - name: roles
       type: object
       description: Resolved roles content (discovery, refinement, execution provider names)
-    - name: sdd_injection
+    - name: governance_injection
       type: object
       required: false
-      description: SDD injection overrides if sdd_injection block is active
+      description: Governance injection overrides if governance_injection block is active
 
   error_conditions:
     - code: active_yaml_not_found

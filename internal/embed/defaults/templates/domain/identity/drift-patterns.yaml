@@ -37,10 +37,10 @@ patterns:
 
   - id: execution_provider_override
     symptom: >
-      I have resolved the execution slot provider from a source other than roles/<config>.yaml
-      or sdd_injection.execution_provider (e.g., inferred from context, user message,
+      I have resolved the execution slot provider from a source other than active.slots.execution
+      or governance_injection.execution_provider (e.g., inferred from context, user message,
       or a hardcoded value).
     correction: >
-      Stop. Re-resolve the execution provider from the declared source: roles/<config>.yaml or
-      sdd_injection.execution_provider. If neither declares a valid provider, run preflight
-      again and emit slot_provider_not_found.
+      Stop. Re-resolve the execution provider from the declared source: active.slots.execution or
+      governance_injection.execution_provider (if the governance_injection block is active).
+      If neither declares a valid provider, run preflight again and emit slot_provider_not_found.

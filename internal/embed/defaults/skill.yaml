@@ -135,7 +135,7 @@ stop_conditions:
 
 result_schema: mission-result.schema.yaml
 
-sdd_injection:
+governance_injection:
   optional: true
   fields:
     - execution_provider
@@ -163,13 +163,13 @@ telemetry_policy:
   event_format: "[Strategist] phase=<phase> status=<status> [fields]"
   otel_required_if_enabled: true
 
-# External provider compliance contract (used in preflight when sdd_injection is active)
+# External provider compliance contract (used in preflight when governance_injection is active)
 # Provider skill.yaml should declare:
 #   compliance:
 #     mandates: [M007, M015, ...]
 #     validated_by: sdd-governance
 provider_compliance:
-  sdd_injection_trust: auto            # providers from sdd_injection are trusted without re-validation
+  governance_injection_trust: auto     # providers from governance_injection are trusted without re-validation
   external_trust: risk_score_only      # non-SDD providers: validate risk_score only (current behavior)
 
 forbidden_behaviors:
