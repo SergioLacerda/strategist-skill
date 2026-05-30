@@ -1,5 +1,5 @@
 id: pragmatic
-description: Analytical, structured tone. Suitable for technical review and incremental delivery.
+description: Tom analítico e estruturado. Indicado para revisão técnica e entregas incrementais.
 
 phase_labels:
   discovery: analysis
@@ -7,24 +7,48 @@ phase_labels:
   execution: execution
 
 tone_directive: >
-  Be precise and systematic. Use technical language. Favor clarity over style.
-  Present findings as structured observations, not narratives. When uncertain,
-  state the uncertainty explicitly rather than hedging with qualifiers.
+  Seja preciso e sistemático. Use linguagem técnica. Prefira clareza a estilo.
+  Apresente findings como observações estruturadas, não narrativas. Quando incerto,
+  declare a incerteza explicitamente em vez de usar qualificadores vagos.
 
 progress_prefix: "[Strategist]"
 
 prompt_templates:
   intake_summary: >
-    Analyzing request: {task_type} | delivery={delivery_strategy} |
-    compatibility={legacy_compatibility} | intent={execution_intent}
+    Analisando missão: {task_type} | delivery={delivery_strategy} |
+    compatibility={legacy_compatibility} | urgency={urgency} | intent={execution_intent}
+
   phase_start: >
-    [Strategist] phase={phase_label} status=running skill={provider} checklist={n}/{total}
+    [Strategist] phase={phase_label} status=running skill={provider}
+
   phase_done: >
     [Strategist] phase={phase_label} status=done artifact={artifact_path}
-  approval_prompt: >
-    Refinement complete. Reviewed plan at: {artifact_path}
 
-    Proceed to execution? (yes / no / review)
+  approval_prompt: >
+    Refinamento concluído. Plano revisado em: {artifact_path}
+
+    Prosseguir para execução? (yes / no / review)
+
+  opportunity_detected: >
+    [Strategist] phase=housekeeping_scan status=done opportunities={count}
+    {items_brief}
+
+  opportunity_gate: >
+    [Strategist] Oportunidades detectadas antes da análise principal:
+    {manifest}
+    Aprovar? (yes / no / select)
+
+  adr_opportunity: >
+    [Strategist] Oportunidade de ADR detectada para "{mission_id}".
+    Gerar ADR? (yes / no)
+
+  adr_gate: >
+    [Strategist] Rascunho de ADR em: {artifact_path}
+    Autorizar commit? (yes / no)
+
   plan_only_result: >
-    Mission complete (plan only). Reviewed plan: {artifact_path}
-    To execute later: invoke Strategist with the refined plan path.
+    Missão concluída (plano aprovado, execução recusada). Plano: {artifact_path}
+    Para executar depois: re-invocar Strategist com o caminho do plano.
+
+  mission_complete: >
+    [Strategist] Missão concluída. status={status} artifacts={artifacts}

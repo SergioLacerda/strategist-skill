@@ -59,21 +59,25 @@ pipeline:
     artifact_path: "<base_path>/pending/<mission_id>-discovery.md"
   - stage: housekeeping_scan
     type: internal
-    description: Deterministic scan of base_path/ for misplaced or done items. No slot invoked.
-    produces: side_quest_manifest
-  - stage: side_quest_approval
+    description: >
+      Deterministic scan of base_path/ for misplaced or done items. No slot invoked.
+      Produces opportunity_manifest with typed items: file_move, scope_addition, adr_generation.
+    produces: opportunity_manifest
+  - stage: opportunity_gate
     type: conditional_pause
-    condition: side_quest_manifest.count > 0
-    description: Present side quest manifest. Require explicit approval before Sniper moves files.
-  - stage: side_quest_execution
+    condition: opportunity_manifest.count > 0
+    description: >
+      Present opportunity manifest (Ataque de Oportunidade). Require explicit approval
+      before Sniper executes any item. Gate applies to all item types.
+  - stage: opportunity_execution
     slot: execution
-    condition: side_quest_approval_granted
-    input: side_quest_manifest
-    produces: side_quest_report
+    condition: opportunity_gate_granted
+    input: opportunity_manifest
+    produces: opportunity_report
     blocking: false
   - stage: refinement
     slot: refinement
-    input: [discovery_artifact, side_quest_report]
+    input: [discovery_artifact, opportunity_report]
     artifact_path: "<base_path>/refined/<mission_id>/"
     produces:
       - "<base_path>/refined/<mission_id>/proposal.md"
@@ -87,6 +91,14 @@ pipeline:
     input: refined_plan
     artifact_path: "<base_path>/done/<mission_id>-report.md"
     condition: approval_granted
+  - stage: adr_opportunity
+    type: conditional_pause
+    condition: adr_criteria_met
+    description: >
+      Evaluate if the mission contains architectural decisions worth recording.
+      If yes, emit adr_opportunity prompt and gate. Arquivista writes ADR draft,
+      then a second gate authorizes Sniper to commit.
+    produces: adr_artifact
   - stage: learning
     skill: learning-curator
     blocking: false
@@ -97,7 +109,7 @@ stop_conditions:
   - slot_risk_mismatch
   - intake_conflict_unresolved
   - user_denies_execution
-  - side_quest_sniper_failed        # non-blocking: log and continue to Archivist
+  - opportunity_sniper_failed       # non-blocking: log and continue to Archivist
   - slot_write_type_violation       # slot tried to write a non-.md file
   - slot_write_scope_violation      # slot tried to write outside its declared scope
 
@@ -147,8 +159,10 @@ forbidden_behaviors:
   - skip_preflight
   - load_knowledge_not_in_index
   - run_housekeeping_scan_as_slot
-  - skip_mini_approval_gate
-  - invoke_side_quest_sniper_without_approval
+  - skip_opportunity_gate
+  - invoke_opportunity_sniper_without_approval
+  - skip_adr_gate
+  - commit_adr_without_adr_gate_approval
   - ranger_writes_outside_pending
   - engineer_writes_outside_analysis
   - archivist_writes_non_md
