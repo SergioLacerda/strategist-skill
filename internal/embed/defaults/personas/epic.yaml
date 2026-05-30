@@ -74,11 +74,15 @@ prompt_templates:
 
     Gerar ADR para "{mission_id}"? (yes / no)
   adr_gate: >
+    📚 **Arquivista — rascunho de ADR:**
+
+    ---
+    {draft_content}
+    ---
+
     🚦 **Gate ADR:** AGUARDANDO CONFIRMAÇÃO
 
-    Rascunho em: {artifact_path}
-
-    Autorizar Sniper para commitar ADR? (yes / no)
+    Este ADR está correto? (yes / no)
 
   # Resultados finais
   plan_only_result: >

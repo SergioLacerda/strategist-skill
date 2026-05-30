@@ -397,13 +397,25 @@ Se algum critério for atendido:
 
 Emit via `persona.prompt_templates.adr_opportunity` (substitui `{mission_id}`).
 
-**Gate ADR:** STOP. Aguardar resposta:
-- **yes**: Arquivista escreve rascunho de ADR em `<base_path>/done/<mission_id>-adr.md`.
-  Emit via `persona.prompt_templates.adr_gate` com `{artifact_path}`.
-  **Gate final ADR:** STOP. Aguardar resposta:
-  - **yes**: Sniper commita o ADR. `mission_result.status = completed` (ADR incluído).
-  - **no**: ADR descartado. `mission_result.status = completed` (sem ADR).
-- **no**: Registrar na learning phase como "ADR recusado pelo usuário". Continuar.
+**Gate 1 — Gerar rascunho?** STOP. Aguardar resposta:
+- **no**: Registrar na learning phase como "ADR recusado (gate 1)". Continuar para §9.
+- **yes**: Arquivista escreve rascunho E **apresenta o conteúdo completo no chat**:
+  ```markdown
+  ---
+  📚 **Arquivista — rascunho de ADR:**
+
+  {conteúdo completo do ADR conforme template abaixo}
+  ---
+  ```
+  Artefato também escrito em `<base_path>/done/<mission_id>-adr.md`.
+
+  Emit via `persona.prompt_templates.adr_gate` com `{draft_content}`.
+
+  **Gate 2 — Aprovar conteúdo?** STOP. Aguardar resposta:
+  - **yes**: Sniper commita o ADR. `mission_result.adr = <path>`. Continuar para §9.
+  - **no**: ADR descartado (arquivo removido). `mission_result.status = completed` (sem ADR). Continuar para §9.
+
+Não há gate depois do Sniper — a aprovação do conteúdo acontece ANTES do commit, não depois.
 
 **Estrutura mínima do ADR (template para Arquivista):**
 

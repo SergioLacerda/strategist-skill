@@ -43,8 +43,11 @@ prompt_templates:
     Gerar ADR? (yes / no)
 
   adr_gate: >
-    [Strategist] Rascunho de ADR em: {artifact_path}
-    Autorizar commit? (yes / no)
+    [Strategist] Rascunho de ADR:
+
+    {draft_content}
+
+    Aprovar e commitar? (yes / no)
 
   plan_only_result: >
     Missão concluída (plano aprovado, execução recusada). Plano: {artifact_path}
