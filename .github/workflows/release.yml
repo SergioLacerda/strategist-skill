@@ -30,3 +30,12 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          artifact-name: strategist-${{ github.ref_name }}-sbom.cdx.json
+          output-file: strategist-sbom.cdx.json
+          format: cyclonedx-json
+          upload-release-assets: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
