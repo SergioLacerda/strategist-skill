@@ -101,4 +101,5 @@ INSTALL_ARGS="--silent"
 [ "$SILENT" = "false" ] && INSTALL_ARGS="--wizard"
 [ -n "$TARGET" ] && INSTALL_ARGS="$INSTALL_ARGS --target=${TARGET}"
 
-strategist install "$INSTALL_ARGS"
+# shellcheck disable=SC2086  # intentional word splitting for multi-flag INSTALL_ARGS
+strategist install $INSTALL_ARGS
