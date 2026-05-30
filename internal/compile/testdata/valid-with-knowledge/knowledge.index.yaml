@@ -1,0 +1,4 @@
+sources:
+  - id: doc
+    tags: [go]
+    path: doc.yaml

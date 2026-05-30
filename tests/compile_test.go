@@ -1,51 +1,29 @@
+//go:build integration
+
 package tests_test
 
 import (
-	"compress/gzip"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/compile"
+	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// readGzJSON decompresses a gzipped JSON file into v.
-func readGzJSON(t *testing.T, path string, v interface{}) {
-	t.Helper()
-	f, err := os.Open(path)
-	require.NoError(t, err, "open artifact")
-	defer f.Close() //nolint:errcheck
-	gz, err := gzip.NewReader(f)
-	require.NoError(t, err, "gzip reader")
-	defer gz.Close() //nolint:errcheck
-	require.NoError(t, json.NewDecoder(gz).Decode(v), "json decode")
-}
-
-// minimalStrategistRoot creates a minimal .strategist/-like directory
-// with active.yaml, personas/, and roles/ inside dir.
-func minimalStrategistRoot(t *testing.T, dir string) {
-	t.Helper()
-	require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
-	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte("mode: full\n"), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "personas", "epic.yaml"), []byte("name: Epic\n"), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "roles", "default.yaml"), []byte("name: Default\n"), 0o644))
-}
-
 func TestCompileConfig(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	minimalStrategistRoot(t, dir)
+	testutil.MinimalRoot(t, dir)
 	out := filepath.Join(dir, ".compiled", ".config.gz")
 
 	require.NoError(t, compile.Config(dir, out))
 	require.FileExists(t, out)
 
 	var artifact map[string]interface{}
-	readGzJSON(t, out, &artifact)
+	testutil.ReadGzJSON(t, out, &artifact)
 
 	assert.Equal(t, "strategist-compiled-config/1.0", artifact["schema"])
 	assert.NotNil(t, artifact["compiled_at"])
@@ -66,7 +44,7 @@ func TestCompileDomain_EmptyIndex(t *testing.T) {
 	require.FileExists(t, out)
 
 	var artifact map[string]interface{}
-	readGzJSON(t, out, &artifact)
+	testutil.ReadGzJSON(t, out, &artifact)
 
 	assert.Equal(t, "strategist-compiled-domain/1.0", artifact["schema"])
 	assert.NotNil(t, artifact["load_always"])
@@ -84,7 +62,7 @@ func TestCompileIndex_EmptySources(t *testing.T) {
 	require.FileExists(t, out)
 
 	var artifact map[string]interface{}
-	readGzJSON(t, out, &artifact)
+	testutil.ReadGzJSON(t, out, &artifact)
 
 	assert.Equal(t, "strategist-compiled-index/1.0", artifact["schema"])
 	assert.NotNil(t, artifact["tags"])
@@ -93,7 +71,7 @@ func TestCompileIndex_EmptySources(t *testing.T) {
 func TestCompileAll_ProducesAllArtifacts(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	minimalStrategistRoot(t, dir)
+	testutil.MinimalRoot(t, dir)
 
 	// domain index
 	require.NoError(t, os.WriteFile(
@@ -115,7 +93,7 @@ func TestCompileAll_ProducesAllArtifacts(t *testing.T) {
 
 	// Manifest must reference all three artifact checksums
 	var manifest map[string]interface{}
-	readGzJSON(t, filepath.Join(compiledDir, ".manifest.gz"), &manifest)
+	testutil.ReadGzJSON(t, filepath.Join(compiledDir, ".manifest.gz"), &manifest)
 	artifacts, ok := manifest["artifacts"].(map[string]interface{})
 	require.True(t, ok, "manifest.artifacts must be an object")
 	assert.Contains(t, artifacts, ".config.gz")
