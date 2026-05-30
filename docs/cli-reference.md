@@ -200,6 +200,41 @@ strategist v1.0.0
 
 ---
 
+## Observabilidade (OpenTelemetry)
+
+Todos os comandos (`install`, `compile`, `check-stale`, `sync-governance`) emitem spans OTel quando um collector está configurado. Sem configuração, o binário usa um provider no-op — zero overhead e zero conexões de rede abertas.
+
+| Variável | Padrão | Descrição |
+|----------|--------|-----------|
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `""` | Endpoint gRPC do collector (ex: `localhost:4317`). Vazio → no-op. |
+| `OTEL_SERVICE_NAME` | `strategist` | Nome do serviço nos traces. |
+| `OTEL_EXPORTER_OTLP_INSECURE` | `true` | TLS desabilitado por padrão. Em produção: `false`. |
+
+**Exemplo com collector local:**
+
+```bash
+# Subir Jaeger all-in-one (aceita gRPC na porta 4317)
+docker run -d -p 16686:16686 -p 4317:4317 jaegertracing/all-in-one
+
+# Executar com OTel habilitado
+OTEL_EXPORTER_OTLP_ENDPOINT=localhost:4317 \
+OTEL_SERVICE_NAME=strategist \
+strategist install --target .
+
+# Ver traces em http://localhost:16686
+```
+
+**Atributos dos spans:**
+
+| Span | Atributos |
+|------|-----------|
+| `strategist.install` | `strategist.target` |
+| `strategist.compile` | `strategist.target` |
+| `strategist.check_stale` | `strategist.artifact`, `strategist.cache.hit` |
+| `strategist.sync_governance` | `strategist.mandates.count`, `strategist.mandates.missing` |
+
+---
+
 ## Instalação local (build from source)
 
 ```bash
