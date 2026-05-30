@@ -7,24 +7,84 @@ phase_labels:
   execution: Sniper
 
 tone_directive: >
-  Speak with strategic authority. Use mission framing — objectives, intelligence,
-  action orders. Be decisive. Present ambiguities as risks to be resolved, not open
-  questions. Every phase output is a briefing for the next phase commander.
+  Fale com autoridade estratégica. Use framing de missão — objetivos, inteligência,
+  ordens de ação. Seja decisivo. Apresente ambiguidades como riscos a resolver, não
+  questões em aberto. Cada output de fase é um briefing para o próximo comandante.
 
 progress_prefix: "[Strategist]"
 
+# Emojis fixos por personagem — imutáveis
+role_emoji:
+  ranger: "🎯"
+  archivist: "📚"
+  sniper: "🎯"
+  gate: "🚦"
+  opportunity: "⚔️"
+
 prompt_templates:
   intake_summary: >
-    Mission received: {task_type} | delivery={delivery_strategy} |
-    compatibility={legacy_compatibility} | intent={execution_intent}
-  phase_start: >
-    [Strategist] phase={phase_label} status=running skill={provider} checklist={n}/{total}
-  phase_done: >
-    [Strategist] phase={phase_label} status=done artifact={artifact_path}
-  approval_prompt: >
-    Archivist briefing complete. Mission plan at: {artifact_path}
+    Missão recebida: {task_type} | delivery={delivery_strategy} |
+    compatibility={legacy_compatibility} | urgency={urgency} | intent={execution_intent}
 
-    Authorize Sniper deployment? (yes / no / review)
+  # Ranger
+  ranger_start: >
+    🎯 **Ranger:** iniciando reconhecimento. skill={provider}
+  ranger_done: >
+    🎯 **Ranger:** missão de reconhecimento concluída.
+    Artefato em: {artifact_path}
+
+  # Arquivista
+  archivist_start: >
+    📚 **Arquivista:** iniciando análise e refinamento. skill={provider}
+  archivist_done: >
+    📚 **Arquivista:** análise refinada.
+    Artefatos em: {artifact_path}
+
+  # Sniper
+  sniper_start: >
+    🎯 **Sniper:** iniciando implementação!
+  sniper_done: >
+    🎯 **Sniper:** execução concluída.
+    Relatório em: {artifact_path}
+
+  # Gate principal (pós-Archivist)
+  approval_prompt: >
+    🚦 **Gate:** AGUARDANDO CONFIRMAÇÃO
+
+    Plano em: {artifact_path}
+
+    Autorizar Sniper? (yes / no / review)
+
+  # Gate de side quests / ataque de oportunidade
+  opportunity_detected: >
+    ⚔️ **Ataque de Oportunidade** — {count} item(s) detectado(s)
+    {items_brief}
+  opportunity_gate: >
+    ⚔️ **Side Quests disponíveis:**
+    {manifest}
+
+    Aprovar? (yes / no / select)
+
+  # Gate de ADR pós-missão
+  adr_opportunity: >
+    ⚔️ **Ataque de Oportunidade → ADR**
+
+    Esta missão contém decisões arquiteturais que merecem registro.
+    Side quest: Arquivista escreve ADR → Gate → Sniper commita.
+
+    Gerar ADR para "{mission_id}"? (yes / no)
+  adr_gate: >
+    🚦 **Gate ADR:** AGUARDANDO CONFIRMAÇÃO
+
+    Rascunho em: {artifact_path}
+
+    Autorizar Sniper para commitar ADR? (yes / no)
+
+  # Resultados finais
   plan_only_result: >
-    Mission halted at Sniper authorization. Plan secured at: {artifact_path}
-    To deploy Sniper: re-invoke Strategist with the mission plan path.
+    Missão encerrada (plano aprovado, execução recusada).
+    Plano em: {artifact_path}
+    Para executar depois: re-invocar Strategist com o caminho do plano.
+  mission_complete: >
+    🎯 Missão concluída. Status: {status}
+    Artefatos: {artifacts}

@@ -21,6 +21,7 @@ output:
     delivery_strategy: string
     legacy_compatibility: string
     execution_intent: string
+    urgency: string             # normal, urgent, deferred
 
 behavior:
   - Classify task_type from the user prompt using semantic matching.
@@ -30,6 +31,8 @@ behavior:
   - If two mutually exclusive aliases for the same field are detected, return
     conflict=true with the conflicting field name. Do not apply defaults on conflict.
   - risk_level is assessed independently from delivery_strategy.
+  - urgency is extracted from explicit time signals ("urgente", "para ontem", "tem prazo",
+    "pode esperar") or temporal context clues in the prompt.
 
 failure_modes:
   - classification_failed: task_type cannot be determined. Return task_type=general, do not stop pipeline.

@@ -67,6 +67,36 @@ fields:
           - rodar
           - fazer
 
+  urgency:
+    description: Urgência da missão — impacta priorização e trade-offs de qualidade.
+    default: normal
+    values:
+      normal:
+        description: Sem prazo específico. Qualidade prioritária sobre velocidade.
+        aliases:
+          - sem pressa
+          - quando puder
+          - normal
+          - sem urgência
+      urgent:
+        description: Prazo curto. Trade-offs de qualidade controlados são aceitáveis.
+        aliases:
+          - urgente
+          - para ontem
+          - precisa hoje
+          - precisa essa semana
+          - deadline curto
+          - com prazo
+          - tem prazo
+      deferred:
+        description: Baixa prioridade. Pode aguardar outras missões.
+        aliases:
+          - pode esperar
+          - baixa prioridade
+          - deferred
+          - depois
+          - sem prioridade
+
 confidence_threshold: 0.65
 
 conflict_behavior: >
