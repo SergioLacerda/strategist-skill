@@ -66,10 +66,15 @@ Antes da análise principal, o Strategist varre o workspace detectando artefatos
 | Documento | Descrição |
 |-----------|-----------|
 | [readme_detailed.md](readme_detailed.md) | Documentação técnica completa: pipeline, slots, personas, knowledge system, SDD integration, forbidden behaviors |
+| [docs/architecture.md](docs/architecture.md) | Arquitetura Go: mapa de pacotes, fluxo de instalação, pipeline de compilação, interfaces de domínio |
+| [docs/cli-reference.md](docs/cli-reference.md) | Referência de todos os comandos CLI com flags e exemplos |
+| [docs/configuration.md](docs/configuration.md) | Schemas completos: active.yaml, roles, personas, knowledge index |
+| [docs/skill-internals.md](docs/skill-internals.md) | Sub-skills, contratos de fase, schemas de intake/progress, write scopes |
+| [docs/c4-diagrams.md](docs/c4-diagrams.md) | Diagramas C4: contexto, containers, componentes Go e pipeline do runtime |
+| [docs/adr/](docs/adr/) | Architecture Decision Records: 5 decisões fundamentais do projeto |
 | [strategist/SKILL.md](strategist/SKILL.md) | Instruções completas do agente |
 | [strategist/protocol.md](strategist/protocol.md) | Regras de roteamento obrigatórias e stop conditions |
 | [strategist/skill.yaml](strategist/skill.yaml) | Contrato da skill (slots, pipeline, forbidden_behaviors) |
-| [.analysis/refined/bigbang-go-20260529/design.md](.analysis/refined/bigbang-go-20260529/design.md) | Decisões de design e rationale da implementação Go |
 
 ---
 
