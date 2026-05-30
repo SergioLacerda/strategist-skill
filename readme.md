@@ -74,7 +74,7 @@ Antes da análise principal, o Strategist varre o workspace e despacha correçõ
 | [strategist/SKILL.md](strategist/SKILL.md) | Instruções completas do agente |
 | [strategist/protocol.md](strategist/protocol.md) | Regras de roteamento obrigatórias e stop conditions |
 | [strategist/skill.yaml](strategist/skill.yaml) | Contrato da skill (slots, pipeline, forbidden_behaviors) |
-| [strategist-mission-pipeline/design.md](strategist-mission-pipeline/design.md) | Decisões de design e rationale da implementação |
+| [.analysis/refined/bigbang-go-20260529/design.md](.analysis/refined/bigbang-go-20260529/design.md) | Decisões de design e rationale da implementação Go |
 
 ---
 
