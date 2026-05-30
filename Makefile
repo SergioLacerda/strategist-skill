@@ -1,4 +1,4 @@
-.PHONY: build test lint vuln cover cover-gate cover-html install-local release clean
+.PHONY: build test lint vuln bench cover cover-gate cover-html install-local release clean
 
 GOLANGCI_LINT := $(shell which golangci-lint 2>/dev/null || echo $(shell go env GOPATH)/bin/golangci-lint)
 
@@ -13,6 +13,9 @@ lint:
 
 vuln:
 	govulncheck ./...
+
+bench:
+	go test -bench=. -benchmem ./...
 
 # cover shows per-package coverage (each package measured against itself).
 cover:

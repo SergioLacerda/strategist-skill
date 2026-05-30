@@ -2,27 +2,16 @@ package stale_test
 
 import (
 	"compress/gzip"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/stale"
+	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func writeGzJSON(t *testing.T, path string, v any) {
-	t.Helper()
-	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
-	f, err := os.Create(path)
-	require.NoError(t, err)
-	gz := gzip.NewWriter(f)
-	require.NoError(t, json.NewEncoder(gz).Encode(v))
-	require.NoError(t, gz.Close())
-	require.NoError(t, f.Close())
-}
 
 func TestIsStale(t *testing.T) {
 	t.Parallel()
@@ -47,7 +36,7 @@ func TestIsStale(t *testing.T) {
 			setup: func(t *testing.T, dir string) string {
 				t.Helper()
 				art := filepath.Join(dir, ".config.gz")
-				writeGzJSON(t, art, map[string]any{"sources": map[string]int64{}})
+				testutil.WriteGzJSON(t, art, map[string]any{"sources": map[string]int64{}})
 				return art
 			},
 			wantStale: true,
@@ -57,8 +46,8 @@ func TestIsStale(t *testing.T) {
 			setup: func(t *testing.T, dir string) string {
 				t.Helper()
 				art := filepath.Join(dir, ".config.gz")
-				writeGzJSON(t, art, map[string]any{"sources": map[string]int64{}})
-				writeGzJSON(t, filepath.Join(dir, ".manifest.gz"), map[string]any{})
+				testutil.WriteGzJSON(t, art, map[string]any{"sources": map[string]int64{}})
+				testutil.WriteGzJSON(t, filepath.Join(dir, ".manifest.gz"), map[string]any{})
 				return art
 			},
 			wantStale: false,
@@ -69,8 +58,8 @@ func TestIsStale(t *testing.T) {
 				t.Helper()
 				art := filepath.Join(dir, ".config.gz")
 				// No "sources" key at all — should be treated as empty
-				writeGzJSON(t, art, map[string]any{})
-				writeGzJSON(t, filepath.Join(dir, ".manifest.gz"), map[string]any{})
+				testutil.WriteGzJSON(t, art, map[string]any{})
+				testutil.WriteGzJSON(t, filepath.Join(dir, ".manifest.gz"), map[string]any{})
 				return art
 			},
 			wantStale: false,
@@ -86,10 +75,10 @@ func TestIsStale(t *testing.T) {
 				now := time.Now()
 				require.NoError(t, os.Chtimes(src, now, now))
 				art := filepath.Join(dir, ".config.gz")
-				writeGzJSON(t, art, map[string]any{
+				testutil.WriteGzJSON(t, art, map[string]any{
 					"sources": map[string]int64{src: past.Unix()},
 				})
-				writeGzJSON(t, filepath.Join(dir, ".manifest.gz"), map[string]any{})
+				testutil.WriteGzJSON(t, filepath.Join(dir, ".manifest.gz"), map[string]any{})
 				return art
 			},
 			wantStale: true,
@@ -100,10 +89,10 @@ func TestIsStale(t *testing.T) {
 				t.Helper()
 				src := filepath.Join(dir, "gone.yaml")
 				art := filepath.Join(dir, ".config.gz")
-				writeGzJSON(t, art, map[string]any{
+				testutil.WriteGzJSON(t, art, map[string]any{
 					"sources": map[string]int64{src: time.Now().Unix()},
 				})
-				writeGzJSON(t, filepath.Join(dir, ".manifest.gz"), map[string]any{})
+				testutil.WriteGzJSON(t, filepath.Join(dir, ".manifest.gz"), map[string]any{})
 				return art
 			},
 			wantStale: true,
@@ -114,7 +103,7 @@ func TestIsStale(t *testing.T) {
 				t.Helper()
 				art := filepath.Join(dir, ".config.gz")
 				require.NoError(t, os.WriteFile(art, []byte("not gzip data"), 0o644))
-				writeGzJSON(t, filepath.Join(dir, ".manifest.gz"), map[string]any{})
+				testutil.WriteGzJSON(t, filepath.Join(dir, ".manifest.gz"), map[string]any{})
 				return art
 			},
 			wantStale: false,
@@ -133,7 +122,7 @@ func TestIsStale(t *testing.T) {
 				require.NoError(t, err)
 				require.NoError(t, gz.Close())
 				require.NoError(t, f.Close())
-				writeGzJSON(t, filepath.Join(dir, ".manifest.gz"), map[string]any{})
+				testutil.WriteGzJSON(t, filepath.Join(dir, ".manifest.gz"), map[string]any{})
 				return art
 			},
 			wantStale: false,
@@ -149,8 +138,8 @@ func TestIsStale(t *testing.T) {
 				subdir := filepath.Join(dir, "locked")
 				require.NoError(t, os.Mkdir(subdir, 0o755))
 				art := filepath.Join(subdir, ".config.gz")
-				writeGzJSON(t, art, map[string]any{"sources": map[string]int64{}})
-				writeGzJSON(t, filepath.Join(subdir, ".manifest.gz"), map[string]any{})
+				testutil.WriteGzJSON(t, art, map[string]any{"sources": map[string]int64{}})
+				testutil.WriteGzJSON(t, filepath.Join(subdir, ".manifest.gz"), map[string]any{})
 				// Remove execute permission so stat of files inside fails with EACCES
 				require.NoError(t, os.Chmod(subdir, 0o000))
 				t.Cleanup(func() { _ = os.Chmod(subdir, 0o755) })

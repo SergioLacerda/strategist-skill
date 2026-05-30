@@ -1,37 +1,37 @@
 package compile_test
 
 import (
-	"compress/gzip"
-	"encoding/json"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/compile"
+	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// readGzJSON decompresses a gzipped JSON artifact into v.
-func readGzJSON(t *testing.T, path string, v any) {
+// copyTestdata copies the tree rooted at testdata/<fixture> into dst.
+func copyTestdata(t testing.TB, fixture, dst string) {
 	t.Helper()
-	f, err := os.Open(path)
-	require.NoError(t, err, "open artifact %s", path)
-	defer f.Close() //nolint:errcheck
-	gz, err := gzip.NewReader(f)
-	require.NoError(t, err, "gzip reader")
-	defer gz.Close() //nolint:errcheck
-	require.NoError(t, json.NewDecoder(gz).Decode(v), "json decode")
-}
-
-// minimalRoot creates a minimal .strategist/-like directory in dir.
-func minimalRoot(t *testing.T, dir string) {
-	t.Helper()
-	require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
-	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte("mode: full\n"), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "personas", "epic.yaml"), []byte("name: Epic\n"), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "roles", "default.yaml"), []byte("name: Default\n"), 0o644))
+	src := filepath.Join("testdata", fixture)
+	err := filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, _ := filepath.Rel(src, path)
+		target := filepath.Join(dst, rel)
+		if d.IsDir() {
+			return os.MkdirAll(target, 0o755)
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(target, data, 0o644)
+	})
+	require.NoError(t, err)
 }
 
 // --- CompileConfig ---
@@ -40,13 +40,13 @@ func TestCompileConfig(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name    string
-		setup   func(t *testing.T, dir string)
+		setup   func(t testing.TB, dir string)
 		wantErr bool
 		check   func(t *testing.T, artifact map[string]any)
 	}{
 		{
 			name:  "minimal valid root produces artifact",
-			setup: minimalRoot,
+			setup: testutil.MinimalRoot,
 			check: func(t *testing.T, a map[string]any) {
 				assert.Equal(t, "strategist-compiled-config/1.0", a["schema"])
 				assert.NotNil(t, a["compiled_at"])
@@ -62,7 +62,7 @@ func TestCompileConfig(t *testing.T) {
 		},
 		{
 			name: "missing active.yaml returns error",
-			setup: func(t *testing.T, _ string) {
+			setup: func(t testing.TB, _ string) {
 				t.Helper()
 				// no files
 			},
@@ -70,7 +70,7 @@ func TestCompileConfig(t *testing.T) {
 		},
 		{
 			name: "empty personas and roles dirs are valid",
-			setup: func(t *testing.T, dir string) {
+			setup: func(t testing.TB, dir string) {
 				t.Helper()
 				require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
 				require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
@@ -81,8 +81,21 @@ func TestCompileConfig(t *testing.T) {
 			},
 		},
 		{
+			name: "testdata: valid-minimal fixture",
+			setup: func(t testing.TB, dir string) {
+				t.Helper()
+				copyTestdata(t, "valid-minimal", dir)
+			},
+			check: func(t *testing.T, a map[string]any) {
+				assert.Equal(t, "strategist-compiled-config/1.0", a["schema"])
+				personas, ok := a["personas"].(map[string]any)
+				require.True(t, ok)
+				assert.Contains(t, personas, "epic")
+			},
+		},
+		{
 			name: "non-yaml files in personas dir are ignored",
-			setup: func(t *testing.T, dir string) {
+			setup: func(t testing.TB, dir string) {
 				t.Helper()
 				require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
 				require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
@@ -111,7 +124,7 @@ func TestCompileConfig(t *testing.T) {
 			require.NoError(t, err)
 			require.FileExists(t, out)
 			var artifact map[string]any
-			readGzJSON(t, out, &artifact)
+			testutil.ReadGzJSON(t, out, &artifact)
 			if tt.check != nil {
 				tt.check(t, artifact)
 			}
@@ -125,13 +138,13 @@ func TestCompileDomain(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name    string
-		setup   func(t *testing.T, dir string)
+		setup   func(t testing.TB, dir string)
 		wantErr bool
 		check   func(t *testing.T, artifact map[string]any)
 	}{
 		{
 			name: "empty load_always and load_by_task_type",
-			setup: func(t *testing.T, dir string) {
+			setup: func(t testing.TB, dir string) {
 				t.Helper()
 				require.NoError(t, os.WriteFile(
 					filepath.Join(dir, "index.yaml"),
@@ -147,7 +160,7 @@ func TestCompileDomain(t *testing.T) {
 		},
 		{
 			name: "load_always with existing file",
-			setup: func(t *testing.T, dir string) {
+			setup: func(t testing.TB, dir string) {
 				t.Helper()
 				require.NoError(t, os.WriteFile(filepath.Join(dir, "roles.yaml"), []byte("roles: true\n"), 0o644))
 				require.NoError(t, os.WriteFile(
@@ -164,7 +177,7 @@ func TestCompileDomain(t *testing.T) {
 		},
 		{
 			name: "missing file in load_always is skipped",
-			setup: func(t *testing.T, dir string) {
+			setup: func(t testing.TB, dir string) {
 				t.Helper()
 				require.NoError(t, os.WriteFile(
 					filepath.Join(dir, "index.yaml"),
@@ -180,7 +193,7 @@ func TestCompileDomain(t *testing.T) {
 		},
 		{
 			name: "load_by_task_type with task types",
-			setup: func(t *testing.T, dir string) {
+			setup: func(t testing.TB, dir string) {
 				t.Helper()
 				require.NoError(t, os.WriteFile(filepath.Join(dir, "arch.yaml"), []byte("arch: true\n"), 0o644))
 				require.NoError(t, os.WriteFile(
@@ -196,14 +209,14 @@ func TestCompileDomain(t *testing.T) {
 		},
 		{
 			name: "missing index.yaml returns error",
-			setup: func(t *testing.T, _ string) {
+			setup: func(t testing.TB, _ string) {
 				t.Helper()
 			},
 			wantErr: true,
 		},
 		{
 			name: "invalid YAML in index.yaml returns error",
-			setup: func(t *testing.T, dir string) {
+			setup: func(t testing.TB, dir string) {
 				t.Helper()
 				require.NoError(t, os.WriteFile(
 					filepath.Join(dir, "index.yaml"),
@@ -215,7 +228,7 @@ func TestCompileDomain(t *testing.T) {
 		},
 		{
 			name: "load_by_task_type with missing file is skipped",
-			setup: func(t *testing.T, dir string) {
+			setup: func(t testing.TB, dir string) {
 				t.Helper()
 				require.NoError(t, os.WriteFile(
 					filepath.Join(dir, "index.yaml"),
@@ -245,7 +258,7 @@ func TestCompileDomain(t *testing.T) {
 			require.NoError(t, err)
 			require.FileExists(t, out)
 			var artifact map[string]any
-			readGzJSON(t, out, &artifact)
+			testutil.ReadGzJSON(t, out, &artifact)
 			if tt.check != nil {
 				tt.check(t, artifact)
 			}
@@ -336,7 +349,7 @@ func TestCompileIndex(t *testing.T) {
 			require.NoError(t, err)
 			require.FileExists(t, out)
 			var artifact map[string]any
-			readGzJSON(t, out, &artifact)
+			testutil.ReadGzJSON(t, out, &artifact)
 			if tt.check != nil {
 				tt.check(t, artifact)
 			}
@@ -351,7 +364,7 @@ func TestCompileAll(t *testing.T) {
 	t.Run("produces all four artifacts", func(t *testing.T) {
 		t.Parallel()
 		dir := t.TempDir()
-		minimalRoot(t, dir)
+		testutil.MinimalRoot(t, dir)
 		require.NoError(t, os.WriteFile(
 			filepath.Join(dir, "index.yaml"),
 			[]byte("load_always: []\nload_by_task_type: {}\n"),
@@ -372,7 +385,7 @@ func TestCompileAll(t *testing.T) {
 	t.Run("manifest contains sha256 for all artifacts", func(t *testing.T) {
 		t.Parallel()
 		dir := t.TempDir()
-		minimalRoot(t, dir)
+		testutil.MinimalRoot(t, dir)
 		require.NoError(t, os.WriteFile(
 			filepath.Join(dir, "index.yaml"),
 			[]byte("load_always: []\nload_by_task_type: {}\n"),
@@ -384,7 +397,7 @@ func TestCompileAll(t *testing.T) {
 		require.NoError(t, compile.Compiler{}.CompileAll(dir, kiPath))
 
 		var manifest map[string]any
-		readGzJSON(t, filepath.Join(dir, ".compiled", ".manifest.gz"), &manifest)
+		testutil.ReadGzJSON(t, filepath.Join(dir, ".compiled", ".manifest.gz"), &manifest)
 		artifacts := manifest["artifacts"].(map[string]any)
 		for _, name := range []string{".config.gz", ".domain.gz", ".index.gz"} {
 			sha, ok := artifacts[name].(string)
@@ -476,7 +489,7 @@ func TestCompileConfig_InvalidPersonaYAML(t *testing.T) {
 func TestWriteGzJSON_OutputIsDirectory(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	minimalRoot(t, dir)
+	testutil.MinimalRoot(t, dir)
 	// Create a directory where the output file should go — os.Create fails
 	outPath := filepath.Join(dir, ".compiled")
 	require.NoError(t, os.MkdirAll(outPath, 0o755))

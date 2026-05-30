@@ -6,42 +6,18 @@ package main
 
 import (
 	"bytes"
-	"compress/gzip"
-	"encoding/json"
 	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 // --- helpers ---
-
-// minimalStrategistRoot builds the minimal layout that CompileAll requires.
-func minimalStrategistRoot(t *testing.T, dir string) string {
-	t.Helper()
-	require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
-	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte("mode: full\n"), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "knowledge.index.yaml"), []byte("sources: []\n"), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "index.yaml"), []byte("load_always: []\nload_by_task_type: {}\n"), 0o644))
-	return dir
-}
-
-// writeGzJSON writes v as gzip-compressed JSON to path.
-func writeGzJSON(t *testing.T, path string, v any) {
-	t.Helper()
-	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
-	f, err := os.Create(path)
-	require.NoError(t, err)
-	defer f.Close() //nolint:errcheck
-	gz := gzip.NewWriter(f)
-	require.NoError(t, json.NewEncoder(gz).Encode(v))
-	require.NoError(t, gz.Close())
-}
 
 // freshArtifactDir creates an artifact + manifest pair with no sources
 // (= always considered fresh by IsStale).
@@ -49,8 +25,8 @@ func freshArtifactDir(t *testing.T) (dir, artifactPath string) {
 	t.Helper()
 	dir = t.TempDir()
 	artifactPath = filepath.Join(dir, "artifact.gz")
-	writeGzJSON(t, artifactPath, map[string]any{"sources": map[string]int64{}})
-	writeGzJSON(t, filepath.Join(dir, ".manifest.gz"), map[string]any{"generated_at": 0})
+	testutil.WriteGzJSON(t, artifactPath, map[string]any{"sources": map[string]int64{}})
+	testutil.WriteGzJSON(t, filepath.Join(dir, ".manifest.gz"), map[string]any{"generated_at": 0})
 	return dir, artifactPath
 }
 
@@ -88,7 +64,7 @@ func TestVersionCmd_PrintsVersion(t *testing.T) {
 
 func TestCompileCmd_Success(t *testing.T) {
 	dir := t.TempDir()
-	minimalStrategistRoot(t, dir)
+	testutil.MinimalRoot(t, dir)
 
 	orig := compileRoot
 	t.Cleanup(func() { compileRoot = orig })
@@ -131,7 +107,7 @@ func TestCheckStaleCmd_CorruptArtifact(t *testing.T) {
 	dir := t.TempDir()
 	art := filepath.Join(dir, "artifact.gz")
 	require.NoError(t, os.WriteFile(art, []byte("not gzip"), 0o644))
-	writeGzJSON(t, filepath.Join(dir, ".manifest.gz"), map[string]any{})
+	testutil.WriteGzJSON(t, filepath.Join(dir, ".manifest.gz"), map[string]any{})
 
 	err := checkStaleCmd.RunE(checkStaleCmd, []string{art})
 	require.Error(t, err)
@@ -323,7 +299,7 @@ func TestInstallGlobalCmd_DefaultTarget(t *testing.T) {
 // TestCompileCmd_PrintsCompletion verifies the success message path.
 func TestCompileCmd_PrintsCompletion(t *testing.T) {
 	dir := t.TempDir()
-	minimalStrategistRoot(t, dir)
+	testutil.MinimalRoot(t, dir)
 
 	orig := compileRoot
 	t.Cleanup(func() { compileRoot = orig })
