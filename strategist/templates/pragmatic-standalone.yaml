@@ -22,4 +22,13 @@ slots:
   refinement: openspec-explore  # Arquivista — write_analysis contract
   execution: sdd-ask            # Sniper  — controlled contract
 
+# Treasure chests — scoped knowledge sources passed to each slot at invocation.
+# Uncomment and configure to add offline knowledge (e.g. governance docs, examples).
+# scope: all | discovery | refinement | execution
+# treasure_chests:
+#   - id: knowledge-base
+#     path: docs/knowledge
+#     scope: all
+#     description: Project knowledge base
+
 # Override per-mission with: --mode epic

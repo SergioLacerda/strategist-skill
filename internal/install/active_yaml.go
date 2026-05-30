@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
@@ -33,9 +34,30 @@ slots:
 		wc.DiscoveryProvider, wc.RefinementProvider, wc.ExecutionProvider,
 	)
 
+	if wc.TreasureChestPath != "" {
+		id := treasureChestID(wc.TreasureChestPath)
+		content += fmt.Sprintf(`
+treasure_chests:
+  - id: %s
+    path: %s
+    scope: all
+`, id, wc.TreasureChestPath)
+	}
+
 	path := filepath.Join(strategistDir, "active.yaml")
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		return fmt.Errorf("write active.yaml: %w", err)
 	}
 	return nil
+}
+
+// treasureChestID derives a stable id from a path by taking the last non-empty segment.
+func treasureChestID(path string) string {
+	path = strings.TrimRight(path, "/")
+	for i := len(path) - 1; i >= 0; i-- {
+		if path[i] == '/' {
+			return path[i+1:]
+		}
+	}
+	return path
 }

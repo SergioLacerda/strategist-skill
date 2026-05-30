@@ -62,8 +62,8 @@ func newSvcW(wizardInput string) Service {
 func TestInstall_WizardPath(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	// mode, base_path, language, adr, discovery, refinement, execution
-	svc := newSvcW("minimal\n/workspace\npt\nyes\nbrainstorming\narchivist\nsdd-ask\n")
+	// mode, base_path, language, adr, discovery, refinement, execution, chest
+	svc := newSvcW("minimal\n/workspace\npt\nyes\nbrainstorming\narchivist\nsdd-ask\n\n")
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
 	require.NoError(t, err)
 
@@ -83,7 +83,7 @@ func TestInstall_WizardPath(t *testing.T) {
 func TestInstall_WizardPath_Defaults(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	svc := newSvcW("\n\n\n\n\n\n\n") // all defaults (7 prompts)
+	svc := newSvcW("\n\n\n\n\n\n\n\n") // all defaults (8 prompts)
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
 	require.NoError(t, err)
 
@@ -142,6 +142,20 @@ func TestEnsureGitignore_AlreadyPresent(t *testing.T) {
 	require.NoError(t, err)
 	// Must not duplicate the entry
 	assert.Equal(t, 1, strings.Count(string(data), ".strategist/.compiled/"))
+}
+
+func TestEnsureGitignore_OpenError(t *testing.T) {
+	t.Parallel()
+	if os.Getuid() == 0 {
+		t.Skip("permission tests do not apply when running as root")
+	}
+	// .gitignore does not exist; make parent dir read-only so OpenFile fails.
+	dir := t.TempDir()
+	require.NoError(t, os.Chmod(dir, 0o555))
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+	err := ensureGitignore(dir)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "open .gitignore")
 }
 
 func TestEnsureGitignore_ReadError(t *testing.T) {

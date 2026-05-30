@@ -1,6 +1,8 @@
-.PHONY: build test lint vuln bench cover cover-gate cover-html install-local release clean
+.PHONY: build test lint vuln bench cover cover-gate cover-html install-local release snapshot clean
 
 GOLANGCI_LINT := $(shell which golangci-lint 2>/dev/null || echo $(shell go env GOPATH)/bin/golangci-lint)
+GOVULNCHECK   := $(shell which govulncheck 2>/dev/null || echo $(shell go env GOPATH)/bin/govulncheck)
+GORELEASER    := $(shell which goreleaser 2>/dev/null || echo $(shell go env GOPATH)/bin/goreleaser)
 
 build:
 	go build -ldflags="-s -w" -o bin/strategist ./cmd/strategist
@@ -12,7 +14,7 @@ lint:
 	$(GOLANGCI_LINT) run ./...
 
 vuln:
-	govulncheck ./...
+	$(GOVULNCHECK) ./...
 
 bench:
 	go test -bench=. -benchmem ./...
@@ -38,16 +40,22 @@ cover-gate:
 	done; \
 	exit $$fail
 
-# cover-html opens an HTML report for all internal packages combined.
+# cover-html writes coverage.html without opening a browser.
 cover-html:
 	go test -race -coverprofile=coverage.out -coverpkg=./internal/... ./internal/... ./tests/...
-	go tool cover -html=coverage.out
+	go tool cover -html=coverage.out -o coverage.html
+	@echo "report written to coverage.html"
 
 install-local: build
 	install -m 755 bin/strategist ~/.local/bin/strategist
 
+# release publishes to GitHub — requires GITHUB_TOKEN.
 release:
-	goreleaser release --clean
+	$(GORELEASER) release --clean
+
+# snapshot builds release artifacts locally without publishing (no token needed).
+snapshot:
+	$(GORELEASER) release --snapshot --clean --skip=publish
 
 clean:
 	rm -rf bin/ dist/ coverage.out
