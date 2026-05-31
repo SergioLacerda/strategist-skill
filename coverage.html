@@ -79,7 +79,7 @@
 				
 				<option value="file11">github.com/SergioLacerda/strategist-skill/internal/install/template.go (100.0%)</option>
 				
-				<option value="file12">github.com/SergioLacerda/strategist-skill/internal/install/wizard.go (95.7%)</option>
+				<option value="file12">github.com/SergioLacerda/strategist-skill/internal/install/wizard.go (97.0%)</option>
 				
 				<option value="file13">github.com/SergioLacerda/strategist-skill/internal/stale/check.go (91.4%)</option>
 				
@@ -509,55 +509,55 @@ func extractFS(src fs.FS, root, targetDir string, force bool) error <span class=
 }
 
 func makeWalkFn(src fs.FS, root, targetDir string, force bool) fs.WalkDirFunc <span class="cov5" title="17">{
-        return func(path string, d fs.DirEntry, err error) error </span><span class="cov10" title="268">{
+        return func(path string, d fs.DirEntry, err error) error </span><span class="cov10" title="284">{
                 if err != nil </span><span class="cov1" title="1">{
                         return fmt.Errorf("embed: walk %s: %w", path, err)
                 }</span>
-                <span class="cov9" title="267">rel := strings.TrimPrefix(path, root+"/")
+                <span class="cov9" title="283">rel := strings.TrimPrefix(path, root+"/")
                 if rel == root || rel == "" </span><span class="cov5" title="17">{
                         return nil
                 }</span>
-                <span class="cov9" title="250">dst := filepath.Join(targetDir, rel)
-                if d.IsDir() </span><span class="cov8" title="83">{
+                <span class="cov9" title="266">dst := filepath.Join(targetDir, rel)
+                if d.IsDir() </span><span class="cov8" title="87">{
                         if mkErr := os.MkdirAll(dst, 0o755); mkErr != nil </span><span class="cov1" title="1">{
                                 return fmt.Errorf("embed: mkdir %s: %w", dst, mkErr)
                         }</span>
-                        <span class="cov8" title="82">return nil</span>
+                        <span class="cov8" title="86">return nil</span>
                 }
-                <span class="cov9" title="167">return writeEmbedFile(src, path, dst, force)</span>
+                <span class="cov9" title="179">return writeEmbedFile(src, path, dst, force)</span>
         }
 }
 
 // writeEmbedFile writes embedded file src/path to dst.
 // In merge mode (!force), if dst already exists and its content differs from the
 // embedded version, the file is skipped to preserve user customizations.
-func writeEmbedFile(src fs.FS, path, dst string, force bool) error <span class="cov9" title="167">{
+func writeEmbedFile(src fs.FS, path, dst string, force bool) error <span class="cov9" title="179">{
         data, readErr := fs.ReadFile(src, path)
         if readErr != nil </span><span class="cov0" title="0">{
                 return fmt.Errorf("embed: read %s: %w", path, readErr)
         }</span>
-        <span class="cov9" title="167">if mkErr := os.MkdirAll(filepath.Dir(dst), 0o755); mkErr != nil </span><span class="cov0" title="0">{
+        <span class="cov9" title="179">if mkErr := os.MkdirAll(filepath.Dir(dst), 0o755); mkErr != nil </span><span class="cov0" title="0">{
                 return fmt.Errorf("embed: mkdir parent %s: %w", filepath.Dir(dst), mkErr)
         }</span>
-        <span class="cov9" title="167">if !force </span><span class="cov9" title="166">{
+        <span class="cov9" title="179">if !force </span><span class="cov9" title="178">{
                 if userModified(dst, data) </span><span class="cov2" title="2">{
                         return nil // preserve user's version
                 }</span>
         }
-        <span class="cov9" title="165">if writeErr := os.WriteFile(dst, data, 0o644); writeErr != nil </span><span class="cov2" title="2">{
+        <span class="cov9" title="177">if writeErr := os.WriteFile(dst, data, 0o644); writeErr != nil </span><span class="cov2" title="2">{
                 return fmt.Errorf("embed: write %s: %w", dst, writeErr)
         }</span>
-        <span class="cov9" title="163">return nil</span>
+        <span class="cov9" title="175">return nil</span>
 }
 
 // userModified reports true when dst exists on disk AND its content differs
 // from the embedded bytes — meaning the user has customized the file.
-func userModified(dst string, embedded []byte) bool <span class="cov9" title="167">{
+func userModified(dst string, embedded []byte) bool <span class="cov9" title="179">{
         existing, err := os.ReadFile(dst)
-        if err != nil </span><span class="cov8" title="125">{
+        if err != nil </span><span class="cov8" title="134">{
                 return false // file doesn't exist — not user-modified
         }</span>
-        <span class="cov7" title="42">return sha256.Sum256(existing) != sha256.Sum256(embedded)</span>
+        <span class="cov7" title="45">return sha256.Sum256(existing) != sha256.Sum256(embedded)</span>
 }
 </pre>
 		
@@ -585,7 +585,11 @@ func writeActiveYAML(strategistDir string, wc domain.WizardConfig) error <span c
         <span class="cov5" title="6">content := fmt.Sprintf(`mode: %s
 base_path: %s
 knowledge_index_path: knowledge.index.yaml
-language: %s
+language:
+  ui: %s
+  docs: %s
+  chat: %s
+  code: %s
 adr_enabled: %s
 
 slots:
@@ -593,7 +597,9 @@ slots:
   refinement: %s
   execution: %s
 `,
-                wc.Mode, wc.BasePath, wc.Language, adrEnabled,
+                wc.Mode, wc.BasePath,
+                wc.UILanguage, wc.DocLanguage, wc.ChatLanguage, wc.CodeLanguage,
+                adrEnabled,
                 wc.DiscoveryProvider, wc.RefinementProvider, wc.ExecutionProvider,
         )
 
@@ -914,58 +920,135 @@ import (
         "github.com/SergioLacerda/strategist-skill/internal/domain"
 )
 
+type wizardStrings struct {
+        PromptDocLang    string
+        PromptChatLang   string
+        PromptCodeLang   string
+        PromptMode       string
+        PromptBasePath   string
+        PromptAdr        string
+        HeaderSlots      string
+        PromptDiscovery  string
+        PromptRefinement string
+        PromptExecution  string
+        HeaderChest      string
+        PromptChestPath  string
+        ErrInvalidVal    string
+}
+
+var bundleEN = wizardStrings{
+        PromptDocLang:    "Documentation language (en/pt-BR) [en]: ",
+        PromptChatLang:   "Chat/interaction language (en/pt-BR) [en]: ",
+        PromptCodeLang:   "Code language (en/pt-BR) [en]: ",
+        PromptMode:       "Mode (full/lightweight/minimal) [full]: ",
+        PromptBasePath:   "Base path for analysis workspace [.analysis]: ",
+        PromptAdr:        "Enable ADR generation at mission end? (yes/no) [yes]: ",
+        HeaderSlots:      "\nSlot providers — which skill fills each mission role:",
+        PromptDiscovery:  "  Ranger / discovery provider [brainstorming]: ",
+        PromptRefinement: "  Arquivista / refinement provider [openspec-explore]: ",
+        PromptExecution:  "  Sniper / execution provider [sdd-ask]: ",
+        HeaderChest:      "\nTreasure chest — optional offline knowledge source for all slots:",
+        PromptChestPath:  "  Knowledge source path (e.g. .sdd/source) [leave empty to skip]: ",
+        ErrInvalidVal:    "  Invalid value %q. Accepted: %s\n",
+}
+
+var bundlePTBR = wizardStrings{
+        PromptDocLang:    "Idioma da documentação (en/pt-BR) [en]: ",
+        PromptChatLang:   "Idioma do chat/interação (en/pt-BR) [en]: ",
+        PromptCodeLang:   "Idioma do código (en/pt-BR) [en]: ",
+        PromptMode:       "Modo (full/lightweight/minimal) [full]: ",
+        PromptBasePath:   "Caminho base do workspace de análise [.analysis]: ",
+        PromptAdr:        "Habilitar geração de ADR ao final da missão? (yes/no) [yes]: ",
+        HeaderSlots:      "\nProvedores de slot — qual skill preenche cada papel da missão:",
+        PromptDiscovery:  "  Ranger / provedor de descoberta [brainstorming]: ",
+        PromptRefinement: "  Arquivista / provedor de refinamento [openspec-explore]: ",
+        PromptExecution:  "  Sniper / provedor de execução [sdd-ask]: ",
+        HeaderChest:      "\nBaú do tesouro — base de conhecimento offline opcional para todos os slots:",
+        PromptChestPath:  "  Caminho da base de conhecimento (ex: .sdd/source) [deixar vazio para pular]: ",
+        ErrInvalidVal:    "  Valor inválido %q. Aceitos: %s\n",
+}
+
+func bundleFor(lang string) wizardStrings <span class="cov6" title="15">{
+        if strings.EqualFold(lang, "pt-BR") || strings.EqualFold(lang, "pt-br") </span><span class="cov1" title="1">{
+                return bundlePTBR
+        }</span>
+        <span class="cov5" title="14">return bundleEN</span>
+}
+
 // RunWizard prompts the user interactively for install configuration.
-// Uses simple stdin prompts as a reliable fallback; replace with charmbracelet/huh
-// for a richer TUI when desired.
 func RunWizard() (domain.WizardConfig, error) <span class="cov0" title="0">{
         return runWizard(os.Stdin)
 }</span>
 
 // runWizard is the testable core of RunWizard, reading from r instead of os.Stdin.
-func runWizard(r io.Reader) (domain.WizardConfig, error) <span class="cov6" title="13">{
+func runWizard(r io.Reader) (domain.WizardConfig, error) <span class="cov6" title="16">{
         br := bufio.NewReader(r)
 
-        mode, err := prompt(br, "Mode (full/lightweight/minimal) [full]: ", "full")
+        // Prompt 1 — bilingual, bundle not yet chosen
+        uiLangRaw, err := promptValidated(br, "Preferred language / Idioma preferido (en/pt-BR) [en]: ", "en", []string{"en", "pt-BR", "pt-br"})
+        if err != nil </span><span class="cov1" title="1">{
+                return domain.WizardConfig{}, fmt.Errorf("wizard: ui_language: %w", err)
+        }</span>
+        <span class="cov6" title="15">uiLang := normLang(uiLangRaw)
+
+        b := bundleFor(uiLang)
+
+        // Language dimensions
+        docLangRaw, err := promptValidated(br, b.PromptDocLang, "en", []string{"en", "pt-BR", "pt-br"})
+        if err != nil </span><span class="cov1" title="1">{
+                return domain.WizardConfig{}, fmt.Errorf("wizard: doc_language: %w", err)
+        }</span>
+        <span class="cov5" title="14">docLang := normLang(docLangRaw)
+
+        chatLangRaw, err := promptValidated(br, b.PromptChatLang, "en", []string{"en", "pt-BR", "pt-br"})
+        if err != nil </span><span class="cov1" title="1">{
+                return domain.WizardConfig{}, fmt.Errorf("wizard: chat_language: %w", err)
+        }</span>
+        <span class="cov5" title="13">chatLang := normLang(chatLangRaw)
+
+        codeLangRaw, err := promptValidated(br, b.PromptCodeLang, "en", []string{"en", "pt-BR", "pt-br"})
+        if err != nil </span><span class="cov1" title="1">{
+                return domain.WizardConfig{}, fmt.Errorf("wizard: code_language: %w", err)
+        }</span>
+        <span class="cov5" title="12">codeLang := normLang(codeLangRaw)
+
+        // Operational config
+        mode, err := prompt(br, b.PromptMode, "full")
         if err != nil </span><span class="cov1" title="1">{
                 return domain.WizardConfig{}, fmt.Errorf("wizard: mode: %w", err)
         }</span>
 
-        <span class="cov6" title="12">basePath, err := prompt(br, "Base path for analysis workspace [.analysis]: ", ".analysis")
+        <span class="cov5" title="11">basePath, err := prompt(br, b.PromptBasePath, ".analysis")
         if err != nil </span><span class="cov1" title="1">{
                 return domain.WizardConfig{}, fmt.Errorf("wizard: base_path: %w", err)
         }</span>
 
-        <span class="cov5" title="11">language, err := promptValidated(br, "Artifact language (pt/en) [pt]: ", "pt", []string{"pt", "en"})
-        if err != nil </span><span class="cov1" title="1">{
-                return domain.WizardConfig{}, fmt.Errorf("wizard: language: %w", err)
-        }</span>
-
-        <span class="cov5" title="10">adrRaw, err := promptValidated(br, "Enable ADR generation at mission end? (yes/no) [yes]: ", "yes", []string{"yes", "no", "y", "n"})
+        <span class="cov5" title="10">adrRaw, err := promptValidated(br, b.PromptAdr, "yes", []string{"yes", "no", "y", "n"})
         if err != nil </span><span class="cov1" title="1">{
                 return domain.WizardConfig{}, fmt.Errorf("wizard: adr_enabled: %w", err)
         }</span>
         <span class="cov5" title="9">adrEnabled := adrRaw == "yes" || adrRaw == "y"
 
-        fmt.Println("\nSlot providers — which skill fills each mission role:")
+        fmt.Println(b.HeaderSlots)
 
-        discovery, err := prompt(br, "  Ranger / discovery provider [brainstorming]: ", "brainstorming")
+        discovery, err := prompt(br, b.PromptDiscovery, "brainstorming")
         if err != nil </span><span class="cov1" title="1">{
                 return domain.WizardConfig{}, fmt.Errorf("wizard: discovery: %w", err)
         }</span>
 
-        <span class="cov5" title="8">refinement, err := prompt(br, "  Arquivista / refinement provider [openspec-explore]: ", "openspec-explore")
+        <span class="cov4" title="8">refinement, err := prompt(br, b.PromptRefinement, "openspec-explore")
         if err != nil </span><span class="cov1" title="1">{
                 return domain.WizardConfig{}, fmt.Errorf("wizard: refinement: %w", err)
         }</span>
 
-        <span class="cov4" title="7">execution, err := prompt(br, "  Sniper / execution provider [sdd-ask]: ", "sdd-ask")
+        <span class="cov4" title="7">execution, err := prompt(br, b.PromptExecution, "sdd-ask")
         if err != nil </span><span class="cov1" title="1">{
                 return domain.WizardConfig{}, fmt.Errorf("wizard: execution: %w", err)
         }</span>
 
-        <span class="cov4" title="6">fmt.Println("\nTreasure chest — optional offline knowledge source for all slots:")
+        <span class="cov4" title="6">fmt.Println(b.HeaderChest)
 
-        chestPath, err := prompt(br, "  Knowledge source path (e.g. .sdd/source) [leave empty to skip]: ", "")
+        chestPath, err := prompt(br, b.PromptChestPath, "")
         if err != nil </span><span class="cov0" title="0">{
                 return domain.WizardConfig{}, fmt.Errorf("wizard: treasure_chest: %w", err)
         }</span>
@@ -973,7 +1056,10 @@ func runWizard(r io.Reader) (domain.WizardConfig, error) <span class="cov6" titl
         <span class="cov4" title="6">return domain.WizardConfig{
                 Mode:               mode,
                 BasePath:           basePath,
-                Language:           language,
+                UILanguage:         uiLang,
+                DocLanguage:        docLang,
+                ChatLanguage:       chatLang,
+                CodeLanguage:       codeLang,
                 AdrEnabled:         adrEnabled,
                 DiscoveryProvider:  discovery,
                 RefinementProvider: refinement,
@@ -982,31 +1068,40 @@ func runWizard(r io.Reader) (domain.WizardConfig, error) <span class="cov6" titl
         }, nil</span>
 }
 
+// normLang normalises language input to canonical form: "en" or "pt-BR".
+// promptValidated already lowercases the accepted value, so "pt-br" arrives here lowercased.
+func normLang(raw string) string <span class="cov8" title="54">{
+        if raw == "pt-br" </span><span class="cov3" title="4">{
+                return "pt-BR"
+        }</span>
+        <span class="cov8" title="50">return raw</span>
+}
+
 // prompt writes question to stdout and reads a trimmed line from r.
 // Returns defaultVal if the user submits an empty line.
-func prompt(r *bufio.Reader, question, defaultVal string) (string, error) <span class="cov10" title="80">{
+func prompt(r *bufio.Reader, question, defaultVal string) (string, error) <span class="cov10" title="125">{
         fmt.Print(question)
         line, err := r.ReadString('\n')
-        if err != nil </span><span class="cov4" title="7">{
+        if err != nil </span><span class="cov5" title="10">{
                 return "", fmt.Errorf("read: %w", err)
         }</span>
-        <span class="cov9" title="73">line = strings.TrimSpace(line)
-        if line == "" </span><span class="cov7" title="26">{
+        <span class="cov9" title="115">line = strings.TrimSpace(line)
+        if line == "" </span><span class="cov7" title="36">{
                 return defaultVal, nil
         }</span>
-        <span class="cov8" title="47">return line, nil</span>
+        <span class="cov9" title="79">return line, nil</span>
 }
 
 // promptValidated prompts and retries until the user provides one of the accepted values
 // or submits an empty line (returning defaultVal).
-func promptValidated(r *bufio.Reader, question, defaultVal string, accepted []string) (string, error) <span class="cov7" title="23">{
-        for </span><span class="cov7" title="25">{
+func promptValidated(r *bufio.Reader, question, defaultVal string, accepted []string) (string, error) <span class="cov8" title="70">{
+        for </span><span class="cov8" title="72">{
                 val, err := prompt(r, question, defaultVal)
-                if err != nil </span><span class="cov2" title="2">{
+                if err != nil </span><span class="cov4" title="5">{
                         return "", err
                 }</span>
-                <span class="cov7" title="23">for _, a := range accepted </span><span class="cov7" title="30">{
-                        if strings.EqualFold(val, a) </span><span class="cov7" title="21">{
+                <span class="cov8" title="67">for _, a := range accepted </span><span class="cov9" title="77">{
+                        if strings.EqualFold(val, a) </span><span class="cov8" title="65">{
                                 return strings.ToLower(val), nil
                         }</span>
                 }
