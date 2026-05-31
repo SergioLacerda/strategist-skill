@@ -261,6 +261,20 @@ nothing: dossier contains only `task_type` and `output_template`.
 
 Pipeline: Ranger → opportunity_attack → [mini approval gate] → Sniper(side quests) → Archivist → approval gate → Sniper(main)
 
+### 5.-1 Mandatory Opportunity Sweep Invariant
+
+In every mission phase, Strategist MUST perform and report:
+- `opportunity_scan=done`
+- `treasure_check=done`
+- `sidequest_manifest=updated|empty`
+
+This invariant applies even for narrow prompts (single-file/single-target refinement).
+"Foco em alvo único" is NOT a valid reason to skip sweeps.
+
+If a sweep cannot run due to technical error, emit:
+`[Strategist] phase=<phase_label> status=blocked reason=opportunity_sweep_failed`
+and stop.
+
 ### 5.0 Quick Draw Side Quest (conditional)
 
 When §3.1 matched, run:
@@ -296,6 +310,11 @@ adicionar ideia? (sim/nao)
 Wait for response:
 - `sim`: proceed to Sniper append.
 - `nao`: return without writing.
+
+Before append, evaluate guarded transition group `finalize_analysis` with effective policy.
+Emit canonical event:
+`[Strategist] phase=policy_eval status=<allowed|blocked> mission=<id> mode=<mode> can_execute=<bool> transition_group=finalize_analysis`.
+If blocked, stop with `reason=policy_blocked`.
 
 #### 5.0d Sniper (quick_draw append)
 
@@ -384,6 +403,11 @@ Wait for response:
 - **yes**: proceed to 5d (Sniper executes all items).
 - **no**: discard manifest, proceed to 5e (Archivist) with workspace as-is.
 - **select**: user specifies items by number; Sniper executes only selected items.
+
+Before 5d, evaluate guarded transition group `execution` with effective policy.
+Emit canonical event:
+`[Strategist] phase=policy_eval status=<allowed|blocked> mission=<id> mode=<mode> can_execute=<bool> transition_group=execution`.
+If blocked, skip opportunity execution and continue to 5e with `execution_skipped_by_policy`.
 
 Invoking Sniper side quests without gate response is a **forbidden behavior**.
 
