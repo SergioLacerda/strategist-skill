@@ -59,7 +59,7 @@ user_facing_signals:
       fields: [description]
     opportunity_signal:
       template: opportunity_signal
-      trigger: Housekeeping scan produces non-empty manifest
+      trigger: Ataque de Oportunidade produces non-empty manifest
       fields: [count]
     mission_checkpoint:
       template: mission_checkpoint

@@ -10,7 +10,7 @@ import (
 
 func TestFSMAnaliseNeverExecutes(t *testing.T) {
 	t.Parallel()
-	policy := domain.NewMissionPolicy(domain.MissionModeAnalise)
+	policy := domain.NewMissionPolicy(domain.MissionModeAnalysis)
 	state := domain.StateInit
 	events := []domain.TransitionEvent{
 		domain.EventManifestNonEmpty,
@@ -27,8 +27,8 @@ func TestFSMAnaliseNeverExecutes(t *testing.T) {
 
 func TestOpportunityGatePolicyLocked(t *testing.T) {
 	t.Parallel()
-	for _, mode := range []string{domain.MissionModeAnalise, domain.MissionModeEntregaRevisada} {
-		state := domain.RunStateMachine(domain.StateHousekeeping,
+	for _, mode := range []string{domain.MissionModeAnalysis, domain.MissionModeRevisedDelivery} {
+		state := domain.RunStateMachine(domain.StateOpportunityAttack,
 			[]domain.TransitionEvent{domain.EventManifestNonEmpty, domain.EventGateApproved},
 			domain.NewMissionPolicy(mode),
 		)
@@ -50,11 +50,11 @@ func TestFSMSafetyPropertyLike(t *testing.T) {
 	}
 
 	for i := 0; i < 400; i++ {
-		mode := domain.MissionModeEntregaExecutada
+		mode := domain.MissionModeExecutedDelivery
 		if rng.Intn(3) == 0 {
-			mode = domain.MissionModeAnalise
+			mode = domain.MissionModeAnalysis
 		} else if rng.Intn(2) == 0 {
-			mode = domain.MissionModeEntregaRevisada
+			mode = domain.MissionModeRevisedDelivery
 		}
 		policy := domain.NewMissionPolicy(mode)
 		state := domain.StateInit

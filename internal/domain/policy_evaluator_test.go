@@ -11,7 +11,7 @@ func TestGuardedTransitionRequiresGate(t *testing.T) {
 	t.Parallel()
 
 	decision := domain.EvaluateGuardedTransition(
-		domain.MissionPolicy{DoneScope: domain.DoneScopeEntrega, ApplyChanges: true},
+		domain.MissionPolicy{DoneScope: domain.DoneScopeDelivery, ApplyChanges: true},
 		domain.TransitionGroupExecution,
 		false,
 	)
@@ -31,14 +31,14 @@ func TestDefaultMissionModePreservesLegacyExecution(t *testing.T) {
 
 	assert.True(t, decision.Allowed)
 	assert.Equal(t, "allowed", decision.Reason)
-	assert.Equal(t, domain.MissionModeEntregaExecutada, decision.Policy.Mode)
+	assert.Equal(t, domain.MissionModeExecutedDelivery, decision.Policy.Mode)
 }
 
 func TestDoneAnaliseSkipsExecution(t *testing.T) {
 	t.Parallel()
 
 	decision := domain.EvaluateGuardedTransition(
-		domain.MissionPolicy{DoneScope: domain.DoneScopeAnalise, ApplyChanges: true},
+		domain.MissionPolicy{DoneScope: domain.DoneScopeAnalysis, ApplyChanges: true},
 		domain.TransitionGroupExecution,
 		true,
 	)
@@ -51,7 +51,7 @@ func TestExecutionAllowedWhenEntregaAndApplyChanges(t *testing.T) {
 	t.Parallel()
 
 	decision := domain.EvaluateGuardedTransition(
-		domain.MissionPolicy{DoneScope: domain.DoneScopeEntrega, ApplyChanges: true},
+		domain.MissionPolicy{DoneScope: domain.DoneScopeDelivery, ApplyChanges: true},
 		domain.TransitionGroupExecution,
 		true,
 	)
@@ -64,7 +64,7 @@ func TestFinalizeAnalysisAllowedWithGate(t *testing.T) {
 	t.Parallel()
 
 	decision := domain.EvaluateGuardedTransition(
-		domain.MissionPolicy{DoneScope: domain.DoneScopeAnalise, ApplyChanges: false},
+		domain.MissionPolicy{DoneScope: domain.DoneScopeAnalysis, ApplyChanges: false},
 		domain.TransitionGroupFinalizeAnalysis,
 		true,
 	)
@@ -78,7 +78,7 @@ func TestIncidentUXStratetist(t *testing.T) {
 
 	// Regression: no explicit approval must never allow execution-like transition.
 	decision := domain.EvaluateGuardedTransition(
-		domain.MissionPolicy{DoneScope: domain.DoneScopeEntrega, ApplyChanges: true},
+		domain.MissionPolicy{DoneScope: domain.DoneScopeDelivery, ApplyChanges: true},
 		domain.TransitionGroupExecution,
 		false,
 	)
@@ -92,7 +92,7 @@ func TestQuickDrawPolicyLockedForAnalysisMode(t *testing.T) {
 
 	// Quick draw execution is an execution-like guarded transition.
 	decision := domain.EvaluateGuardedTransition(
-		domain.NewMissionPolicy(domain.MissionModeAnalise),
+		domain.NewMissionPolicy(domain.MissionModeAnalysis),
 		domain.TransitionGroupExecution,
 		true,
 	)
@@ -105,7 +105,7 @@ func TestQuickDrawAllowedForEntregaExecutadaWithGate(t *testing.T) {
 	t.Parallel()
 
 	decision := domain.EvaluateGuardedTransition(
-		domain.NewMissionPolicy(domain.MissionModeEntregaExecutada),
+		domain.NewMissionPolicy(domain.MissionModeExecutedDelivery),
 		domain.TransitionGroupExecution,
 		true,
 	)

@@ -1,8 +1,9 @@
-.PHONY: build test lint vuln bench cover cover-gate cover-html analysis-structure-gate install-local release snapshot clean
+.PHONY: build test lint vuln bench cover cover-gate cover-html analysis-structure-gate install release snapshot clean
 
 GOLANGCI_LINT := $(shell which golangci-lint 2>/dev/null || echo $(shell go env GOPATH)/bin/golangci-lint)
 GOVULNCHECK   := $(shell which govulncheck 2>/dev/null || echo $(shell go env GOPATH)/bin/govulncheck)
 GORELEASER    := $(shell which goreleaser 2>/dev/null || echo $(shell go env GOPATH)/bin/goreleaser)
+COVERAGE_PKGS := internal/stale internal/compile internal/install internal/embed internal/telemetry cmd/strategist
 
 build:
 	go build -ldflags="-s -w" -o bin/strategist ./cmd/strategist
@@ -22,7 +23,7 @@ bench:
 
 # cover shows per-package coverage (each package measured against itself).
 cover:
-	@for pkg in internal/stale internal/compile internal/install internal/embed; do \
+	@for pkg in $(COVERAGE_PKGS); do \
 		echo "=== $$pkg ==="; \
 		go test -race -coverprofile=coverage.out -coverpkg=./$$pkg/... ./$$pkg/... 2>/dev/null; \
 		go tool cover -func=coverage.out | tail -1; \
@@ -32,7 +33,7 @@ cover:
 # Note: internal/domain is excluded (pure type declarations — no executable statements).
 cover-gate:
 	@fail=0; \
-	for pkg in internal/stale internal/compile internal/install internal/embed internal/telemetry cmd/strategist; do \
+	for pkg in $(COVERAGE_PKGS); do \
 		pct=$$(go test -coverprofile=coverage.out -coverpkg=./$$pkg/... ./$$pkg/... 2>/dev/null \
 			| grep -o '[0-9.]*%' | tail -1 | tr -d '%'); \
 		printf "%-30s %s%%\n" "$$pkg" "$$pct"; \
@@ -50,8 +51,10 @@ cover-html:
 analysis-structure-gate:
 	bash scripts/check-refined-structure.sh
 
-install-local: build
+install: build
+	mkdir -p ~/.local/bin
 	install -m 755 bin/strategist ~/.local/bin/strategist
+	~/.local/bin/strategist install
 
 # release publishes to GitHub — requires GITHUB_TOKEN.
 release:
@@ -62,4 +65,4 @@ snapshot:
 	$(GORELEASER) release --snapshot --clean --skip=publish
 
 clean:
-	rm -rf bin/ dist/ coverage.out
+	rm -rf bin/ dist/ coverage.out coverage.html

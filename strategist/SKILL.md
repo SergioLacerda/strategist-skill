@@ -319,6 +319,7 @@ Invoke the discovery slot provider with:
   - `find_unexpected_items`: Surface anything outside the declared mission scope as an addendum
   - `consult_treasure_chests`: Mandatory step — consult all passed chests before generating the artifact. If chest list is empty, proceed.
   - Output format: single discovery artifact at the artifact path above
+  - Mandatory section in artifact: `Checklist de Missão e Fases por Papel` with entries for Ranger, Archivist, Sniper using status markers `[x]` (concluído), `[ ]` (pendente), `[-]` (não aplicável/sem evidência ainda)
 - **Treasure chests** — mandatory step (chests where scope = `discovery` or `all`):
   Pass filtered list: `[{id}] path={path} — {description}` for each match.
   If no chests match this scope: pass empty list. Ranger skips the consultation step and proceeds without blocking.
@@ -342,7 +343,7 @@ Execute a deterministic scan of `<base_path>/`. Do NOT delegate this to a slot p
 
 **Treasure chests — preliminary step (mandatory, non-blocking):**
 Before executing the scan, if treasure chests with scope `all` or `discovery` are present,
-consult them for project conventions or patterns that may inform the housekeeping analysis.
+consult them for project conventions or patterns that may inform the ataque de oportunidade analysis.
 If no chests are available or none yield relevant context: proceed with the scan unchanged.
 
 **Scan rules per directory:**
