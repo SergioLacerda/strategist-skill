@@ -22,7 +22,11 @@ func writeActiveYAML(strategistDir string, wc domain.WizardConfig) error {
 	content := fmt.Sprintf(`mode: %s
 base_path: %s
 knowledge_index_path: knowledge.index.yaml
-language: %s
+language:
+  ui: %s
+  docs: %s
+  chat: %s
+  code: %s
 adr_enabled: %s
 
 slots:
@@ -30,7 +34,9 @@ slots:
   refinement: %s
   execution: %s
 `,
-		wc.Mode, wc.BasePath, wc.Language, adrEnabled,
+		wc.Mode, wc.BasePath,
+		wc.UILanguage, wc.DocLanguage, wc.ChatLanguage, wc.CodeLanguage,
+		adrEnabled,
 		wc.DiscoveryProvider, wc.RefinementProvider, wc.ExecutionProvider,
 	)
 

@@ -61,7 +61,10 @@ type TreasureChest struct {
 type WizardConfig struct {
 	Mode               string
 	BasePath           string
-	Language           string // pt | en — language for generated artifacts
+	UILanguage         string // en | pt-BR — wizard interface + ongoing interactions
+	DocLanguage        string // en | pt-BR — generated documentation
+	ChatLanguage       string // en | pt-BR — AI chat responses
+	CodeLanguage       string // en | pt-BR — internal code (default: en)
 	AdrEnabled         bool   // whether to enable the ADR opportunity stage
 	DiscoveryProvider  string // skill id for the Ranger (discovery) slot
 	RefinementProvider string // skill id for the Arquivista (refinement) slot

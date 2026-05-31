@@ -102,7 +102,10 @@ func TestWizardConfig_Fields(t *testing.T) {
 	wc := domain.WizardConfig{
 		Mode:               "minimal",
 		BasePath:           ".",
-		Language:           "pt",
+		UILanguage:         "pt",
+		DocLanguage:        "pt",
+		ChatLanguage:       "pt",
+		CodeLanguage:       "pt",
 		AdrEnabled:         true,
 		DiscoveryProvider:  "brainstorming",
 		RefinementProvider: "openspec-explore",
@@ -110,7 +113,7 @@ func TestWizardConfig_Fields(t *testing.T) {
 	}
 	assert.Equal(t, "minimal", wc.Mode)
 	assert.Equal(t, ".", wc.BasePath)
-	assert.Equal(t, "pt", wc.Language)
+	assert.Equal(t, "pt", wc.UILanguage)
 	assert.True(t, wc.AdrEnabled)
 	assert.Equal(t, "brainstorming", wc.DiscoveryProvider)
 	assert.Equal(t, "openspec-explore", wc.RefinementProvider)

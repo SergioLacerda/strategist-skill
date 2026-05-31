@@ -1,20 +1,18 @@
 role: archivist
 slot: refinement
 
-# Comportamentos canônicos — read-only, fonte em skill.yaml.
+# Canonical behaviors — read-only, source in skill.yaml.
+# Listed here for reference when writing custom_brief below.
 canonical:
   - consult_treasure_chests     # consult chests scoped to refinement before analyzing
-  - output_format:
-      - "<base_path>/refined/<mission_id>/proposal.md"
-      - "<base_path>/refined/<mission_id>/design.md"
-      - "<base_path>/refined/<mission_id>/tasks.md"
+  - emit_completion_signal      # must emit has_execution_tasks: true|false after writing artifacts
 
-# Instruções adicionais para o Arquivista nesta instalação.
-# Strategist appenda este bloco ao role brief na invocação, após os canônicos.
-# Se vazio ou ausente, apenas os canônicos são usados.
+# Additional instructions for the Archivist in this installation.
+# Strategist appends this block to the role brief at invocation, after canonical behaviors.
+# If empty or absent, only canonical behaviors are used.
 #
-# Exemplos:
+# Examples:
 #   custom_brief: |
-#     Consulte os ADRs existentes em done/ antes de propor uma solução.
-#     Se a missão envolver banco de dados, inclua rollback no tasks.md.
+#     Consult existing ADRs in done/ before proposing a solution.
+#     If the mission involves a database, include a rollback step in the tasks artifact.
 custom_brief: ""
