@@ -29,6 +29,20 @@ statuses:
   plan_only:
     description: Mission stopped at approval gate; execution was declined.
     required_fields: [phase, status]
+  skipped:
+    description: Phase intentionally skipped by policy (expected behavior).
+    required_fields: [phase, status, reason]
+
+policy_fields:
+  description: Fields required for policy-relevant events.
+  required_fields: [mission, mode, can_execute]
+
+policy_phases:
+  - policy_bootstrap
+  - policy_eval
+  - state_transition
+  - approval_gate
+  - execution
 
 event_examples:
   - "[Strategist] phase=preflight status=done slots=ok"
@@ -38,6 +52,9 @@ event_examples:
   - "[Strategist] phase=refinement status=running skill=archivist checklist=1/3"
   - "[Strategist] phase=approval_gate status=blocked reason=user_declined action=none"
   - "[Strategist] phase=execution status=done artifact=.analysis/done/abc123-report.md"
+  - "[Strategist] phase=policy_bootstrap status=done mission=abc123 mode=entrega_executada can_execute=true"
+  - "[Strategist] phase=policy_eval status=blocked mission=abc123 mode=analise can_execute=false reason=policy_blocked"
+  - "[Strategist] phase=execution status=skipped mission=abc123 mode=entrega_revisada can_execute=false reason=policy_blocked"
 
 output_paths:
   discovery: "<base_path>/pending/<mission_id>-discovery.md"

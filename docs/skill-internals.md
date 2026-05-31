@@ -168,11 +168,15 @@ Os contratos em `strategist/contracts/` definem o contrato formal de cada fase i
 
 ### Sinais funcionais no pipeline único
 
-`quick_draw` (saque rápido), `opportunity attack` (side quests) e `treasure_chests`
+`quick_draw` (saque rápido), `opportunist attack` (side quests) e `treasure_chests`
 não abrem pipelines paralelos. Eles são detectados ao longo da missão e encaixados
 no fluxo único `Ranger -> Archivist -> approval gate -> Sniper`.
 
 Guardrail principal: nenhuma escrita/execução ocorre sem aprovação no gate da missão.
+Invariante adicional: cada fase deve registrar sweep de oportunidade
+(`opportunity_scan=done`, `treasure_check=done`, `sidequest_manifest=updated|empty`),
+inclusive em missões de alvo único. A restrição de escopo aplica-se somente para
+impedir implementação fora do escopo aprovado.
 
 ### Treasure Chests (baú do tesouro)
 

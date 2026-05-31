@@ -14,9 +14,19 @@ import (
 // In silent mode (no wizard), the extract step already copied the template
 // active.yaml from defaults, so nothing extra is needed.
 func writeActiveYAML(strategistDir string, wc domain.WizardConfig) error {
+	missionMode := wc.MissionMode
+	if missionMode == "" {
+		missionMode = domain.MissionModeFromLegacy(wc.DoneScope, wc.ApplyChanges)
+	}
+	policy := domain.NewMissionPolicy(missionMode)
+
 	adrEnabled := "true"
 	if !wc.AdrEnabled {
 		adrEnabled = "false"
+	}
+	applyChanges := "false"
+	if policy.ApplyChanges {
+		applyChanges = "true"
 	}
 
 	content := fmt.Sprintf(`mode: %s
@@ -28,6 +38,9 @@ language:
   chat: %s
   code: %s
 adr_enabled: %s
+mission_mode: %s
+escopo_done: %s
+aplicar_alteracoes: %s
 
 slots:
   discovery: %s
@@ -37,6 +50,9 @@ slots:
 		wc.Mode, wc.BasePath,
 		wc.UILanguage, wc.DocLanguage, wc.ChatLanguage, wc.CodeLanguage,
 		adrEnabled,
+		policy.Mode,
+		policy.DoneScope,
+		applyChanges,
 		wc.DiscoveryProvider, wc.RefinementProvider, wc.ExecutionProvider,
 	)
 

@@ -236,7 +236,21 @@ nothing: dossier contains only `task_type` and `output_template`.
 
 ## 5. Mission Phases
 
-Pipeline: Ranger → housekeeping_scan → [mini approval gate] → Sniper(side quests) → Archivist → approval gate → Sniper(main)
+Pipeline: Ranger → opportunity_attack → [mini approval gate] → Sniper(side quests) → Archivist → approval gate → Sniper(main)
+
+### 5.-1 Mandatory Opportunity Sweep Invariant
+
+In every mission phase, Strategist MUST perform and report:
+- `opportunity_scan=done`
+- `treasure_check=done`
+- `sidequest_manifest=updated|empty`
+
+This invariant applies even for narrow prompts (single-file/single-target refinement).
+"Foco em alvo único" is NOT a valid reason to skip sweeps.
+
+If a sweep cannot run due to technical error, emit:
+`[Strategist] phase=<phase_label> status=blocked reason=opportunity_sweep_failed`
+and stop.
 
 ### 5.0 Quick Draw Side Quest (conditional)
 
@@ -274,6 +288,11 @@ Wait for response:
 - `sim`: proceed to Sniper append.
 - `nao`: return without writing.
 
+Before append, evaluate guarded transition group `finalize_analysis` with effective policy.
+Emit canonical event:
+`[Strategist] phase=policy_eval status=<allowed|blocked> mission=<id> mode=<mode> can_execute=<bool> transition_group=finalize_analysis`.
+If blocked, stop with `reason=policy_blocked`.
+
 #### 5.0d Sniper (quick_draw append)
 
 - Append a new entry to `<base_path>/todo/<tema>.md`.
@@ -310,7 +329,7 @@ Emit via `persona.prompt_templates.ranger_done` (substitui `{artifact_path}`).
 
 On failure: emit `[Strategist] phase=ranger status=blocked reason=ranger_failed`, present partial artifact if any.
 
-### 5b. Ataque de Oportunidade — Housekeeping Scan (internal — no slot)
+### 5b. Ataque de Oportunidade — Opportunist Attack (internal — no slot)
 
 Execute a deterministic scan of `<base_path>/`. Do NOT delegate this to a slot provider.
 
@@ -356,6 +375,11 @@ Wait for response:
 - **yes**: proceed to 5d (Sniper executes all items).
 - **no**: discard manifest, proceed to 5e (Archivist) with workspace as-is.
 - **select**: user specifies items by number; Sniper executes only selected items.
+
+Before 5d, evaluate guarded transition group `execution` with effective policy.
+Emit canonical event:
+`[Strategist] phase=policy_eval status=<allowed|blocked> mission=<id> mode=<mode> can_execute=<bool> transition_group=execution`.
+If blocked, skip opportunity execution and continue to 5e with `execution_skipped_by_policy`.
 
 Invoking Sniper side quests without gate response is a **forbidden behavior**.
 
@@ -438,6 +462,10 @@ intermediate the write — it only waits for completion and emits the done event
 On success:
 Emit via `persona.prompt_templates.archivist_done` (substitui `{artifact_path}`).
 
+Before concluding refinement, Strategist MUST still emit/report mandatory sweep markers
+for the phase (`opportunity_scan`, `treasure_check`, `sidequest_manifest`), even when
+no additional side quests are found (`sidequest_manifest=empty`).
+
 ---
 
 ## 6. Approval Gate (MANDATORY)
@@ -457,6 +485,10 @@ Read `<base_path>/refined/<mission_id>/tasks.md` before deciding:
   present the gate with an explicit external-scope warning.
 
 In all cases where the gate is presented: STOP. Do not invoke Sniper without explicit user approval.
+
+Before invoking Sniper in §7, Strategist MUST evaluate guarded transition group `execution`
+and emit canonical policy event with snapshot fields (`mission`, `mode`, `can_execute`).
+Denied decisions MUST return `plan_only`/`execution_skipped_by_policy` without invoking Sniper.
 
 Emit via `persona.prompt_templates.approval_prompt` (substitui `{artifact_path}`).
 
@@ -634,5 +666,5 @@ When `drift-patterns.yaml` is loaded, check for matching symptoms before each ph
 - `adr_gate_bypass`: You are about to commit an ADR without presenting the ADR gate. → Stop. Present adr_gate prompt first.
 - `scope_expansion`: You are addressing something outside the user's mission. → Stop. Return to mission scope.
 - `sniper_provider_override`: You resolved Sniper from somewhere other than active.slots.execution or governance_injection. → Stop. Re-resolve from declared source.
-- `housekeeping_scan_as_slot`: You are about to delegate the housekeeping scan to Ranger or another slot. → Stop. Execute the scan directly as Strategist (deterministic, internal phase).
+- `opportunity_attack_as_slot`: You are about to delegate the opportunist attack to Ranger or another slot. → Stop. Execute the scan directly as Strategist (deterministic, internal phase).
 - `route_plan_creation_to_sniper`: You are about to ask Sniper to create a document, spec, analysis, or implementation plan. → Stop. Document authoring is Archivist's work (contract: `write_analysis`). Return to phase 5e and invoke the refinement slot.

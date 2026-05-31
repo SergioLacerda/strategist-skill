@@ -120,8 +120,11 @@ func TestWriteActiveYAML(t *testing.T) {
 		{
 			name: "full mode with custom slots",
 			cfg: domain.WizardConfig{
-				Mode:               "full",
+				Mode:               "pragmatic",
 				BasePath:           ".analysis",
+				MissionMode:        "analise",
+				DoneScope:          "analise",
+				ApplyChanges:       true, // should be normalized to false for analise
 				UILanguage:         "en",
 				DocLanguage:        "en",
 				ChatLanguage:       "pt-BR",
@@ -132,7 +135,7 @@ func TestWriteActiveYAML(t *testing.T) {
 				ExecutionProvider:  "sdd-ask",
 			},
 			wantContain: []string{
-				"mode: full",
+				"mode: pragmatic",
 				"base_path: .analysis",
 				"language:",
 				"  ui: en",
@@ -140,6 +143,9 @@ func TestWriteActiveYAML(t *testing.T) {
 				"  chat: pt-BR",
 				"  code: en",
 				"adr_enabled: true",
+				"mission_mode: analise",
+				"escopo_done: analise",
+				"aplicar_alteracoes: false",
 				"discovery: brainstorming",
 				"refinement: openspec-explore",
 				"execution: sdd-ask",
@@ -148,8 +154,11 @@ func TestWriteActiveYAML(t *testing.T) {
 		{
 			name: "minimal mode ADR disabled english",
 			cfg: domain.WizardConfig{
-				Mode:               "minimal",
+				Mode:               "epic",
 				BasePath:           ".",
+				MissionMode:        "entrega_executada",
+				DoneScope:          "entrega",
+				ApplyChanges:       true,
 				UILanguage:         "en",
 				DocLanguage:        "en",
 				ChatLanguage:       "en",
@@ -160,10 +169,13 @@ func TestWriteActiveYAML(t *testing.T) {
 				ExecutionProvider:  "sdd-ask-full",
 			},
 			wantContain: []string{
-				"mode: minimal",
+				"mode: epic",
 				"language:",
 				"  ui: en",
 				"adr_enabled: false",
+				"mission_mode: entrega_executada",
+				"escopo_done: entrega",
+				"aplicar_alteracoes: true",
 				"refinement: archivist",
 				"execution: sdd-ask-full",
 			},
@@ -172,8 +184,11 @@ func TestWriteActiveYAML(t *testing.T) {
 		{
 			name: "with treasure chest path",
 			cfg: domain.WizardConfig{
-				Mode:               "full",
+				Mode:               "pragmatic",
 				BasePath:           ".analysis",
+				MissionMode:        "analise",
+				DoneScope:          "analise",
+				ApplyChanges:       false,
 				UILanguage:         "en",
 				DocLanguage:        "en",
 				ChatLanguage:       "pt-BR",

@@ -8,6 +8,39 @@
 
 ---
 
+## How To Read This Document
+
+This detailed README is structured for two audiences:
+
+- **Quick pass (5-10 min)**: `Overview` → `Mission Pipeline` → `Stop Conditions` → `Forbidden Behaviors`.
+- **Implementation/Operations**: follow the full order from `Installation` → `File Structure` → `Technical Flow` → `Slot Configuration` → `SDD Integration`.
+
+### Quick Index
+
+- [Overview](#overview)
+- [Problem](#problem)
+- [Installation](#installation)
+- [File Structure](#file-structure)
+- [Mission Pipeline](#mission-pipeline)
+- [Internal Technical Flow](#internal-technical-flow)
+- [Operation Modes (Personas)](#operation-modes-personas)
+- [Knowledge System](#knowledge-system)
+- [Slot Configuration (roles)](#slot-configuration-roles)
+- [SDD Integration (Optional)](#sdd-integration-optional)
+- [Stop Conditions](#stop-conditions)
+- [Forbidden Behaviors](#forbidden-behaviors)
+- [Drift Self-Correction](#drift-self-correction)
+- [Architectural Decisions](#architectural-decisions)
+- [Progress Flow](#progress-flow)
+
+### Executive Summary
+
+- Multi-phase orchestrator with pluggable slots: Ranger, Archivist, and Sniper.
+- Single pipeline with **mandatory approval gate** before execution.
+- Selective knowledge system via `knowledge.index.yaml` + `source-hints`.
+- Non-blocking learning loop (learning failures do not block mission result).
+- Strong safety constraints: stop conditions, forbidden behaviors, and drift self-correction.
+
 ## Overview
 
 **Strategist** is an autonomous skill for orchestrating feature implementation missions for AI agents.
@@ -163,8 +196,8 @@ Complete pipeline: Ranger → Archivist → approval gate → Sniper
                          └─────────────┬──────────────┘
                                        │
                          ┌─────────────▼──────────────┐
-                         │    Housekeeping Scan       │
-                         │  (Opportunity attack)      │
+                         │    Opportunist Attack       │
+                         │  (Opportunist Attack)      │
                          │  Detects stale workspace:  │
                          │  todo/ pending/ refined/   │
                          │  → side quest manifest     │
@@ -189,7 +222,7 @@ Complete pipeline: Ranger → Archivist → approval gate → Sniper
                     │   MANDATORY STOP (if tasks.md is    │
                     │   not empty).                       │
                     │   Also covers pending side quests   │
-                    │   from the housekeeping scan.       │
+                    │   from the opportunist attack.       │
                     └──────────────────┬──────────────────┘
                               approved │
                          ┌─────────────▼──────────────┐
@@ -212,7 +245,7 @@ Complete pipeline: Ranger → Archivist → approval gate → Sniper
 
 #### Side Quests — Detail
 
-The housekeeping scan detects artifacts in an inconsistent state and builds a manifest for Archivist to incorporate into the proposal.
+The opportunist attack detects artifacts in an inconsistent state and builds a manifest for Archivist to incorporate into the proposal.
 
 ```
               todo/spec.md ──────────► already implemented in git?
@@ -309,10 +342,10 @@ MISSION PHASES
   └──────────────────────────┬───────────────────────────────────┘
                              │
   ┌──────────────────────────▼───────────────────────────────────┐
-  │ 5b. Housekeeping Scan  (internal Strategist — not a slot)    │
+  │ 5b. Opportunist Attack  (internal Strategist — not a slot)    │
   │     scans: todo/ pending/ refined/                           │
   │     produces: side quest manifest (context for Archivist)    │
-  │     emit: phase=housekeeping_scan status=done side_quests=N  │
+  │     emit: phase=opportunity_attack status=done side_quests=N  │
   └──────────────────────────┬───────────────────────────────────┘
                              │ manifest (passed to Archivist as context)
   ┌──────────────────────────▼───────────────────────────────────┐
@@ -331,7 +364,7 @@ GATE AND EXECUTION
   │    • empty → automatic plan_only (no gate)                   │
   │    • internal → normal gate                                  │
   │    • external → gate + external scope warning                │
-  │    Also covers pending side quests from the housekeeping scan│
+  │    Also covers pending side quests from the opportunist attack│
   │    STOP — waits for explicit response                        │
   └────────────┬──────────────────────────┬──────────────────────┘
   no/decline   │                          │ yes/approve
@@ -379,14 +412,14 @@ Context Enrichment (queries knowledge index → assembles dossier)
   ↓
 Ranger / discovery (discovery slot)
   ↓
-Opportunity attack / Housekeeping Scan (internal — no slot)
+Opportunist Attack (internal — no slot)
   → produces side quest manifest (0..N items)
   ↓
 Archivist / refinement (refinement slot)
   input: discovery artifact + side quest manifest (context)
   ↓
 Approval Gate ← MANDATORY STOP (if tasks.md is not empty)
-  also covers pending side quests from the housekeeping scan
+  also covers pending side quests from the opportunist attack
   ↓ (only with explicit approval)
 Sniper / execution (execution slot)
   1. Approved side quests (move/promote stale artifacts)
@@ -508,7 +541,7 @@ Artifact produced: `<base_path>/pending/<mission_id>-discovery.md`
 
 Failure → blocked event with `reason=ranger_failed`. Does not advance to Archivist.
 
-#### 5b. Opportunity attack / Housekeeping Scan (internal — no slot)
+#### 5b. Opportunist Attack (internal — no slot)
 
 After the Ranger completes, Strategist performs a deterministic scan of `<base_path>/`.
 **Does not delegate to a slot provider** — executes internally.
@@ -569,7 +602,7 @@ After the Archivist completes, Strategist reads `tasks.md` before presenting the
 **If `tasks.md` contains tasks that write outside `<base_path>/` (code, git, config, system):**
   presents the gate with an explicit external scope warning.
 
-The gate also covers pending side quests from the housekeeping scan — upon approval, the Sniper first executes side quests and then the main plan.
+The gate also covers pending side quests from the opportunist attack — upon approval, the Sniper first executes side quests and then the main plan.
 
 Presents to the user (active persona template):
 
@@ -805,7 +838,7 @@ The following behaviors are **never allowed**:
 
 7. **Skip preflight** — preflight runs before intake, on every invocation, including re-invocations with the same config.
 
-8. **Delegate housekeeping scan to a slot provider** — the scan is a deterministic internal phase of Strategist. Ranger, Archivist, and Sniper do not run the scan.
+8. **Delegate opportunist attack to a slot provider** — the scan is a deterministic internal phase of Strategist. Ranger, Archivist, and Sniper do not run the scan.
 
 9. **Ask the Sniper to create documents, specs, or plans** — creation of analysis artifacts is the Archivist's responsibility (contract: `write_analysis`). Sniper executes; it never writes analyses.
 
@@ -824,9 +857,9 @@ When `drift-patterns.yaml` is loaded, the agent checks patterns before each phas
 | `approval_bypass` | About to invoke Sniper without asking the user | Stop. Present approval gate prompt. |
 | `scope_expansion` | Addressing something outside the user's mission | Stop. Return to mission scope. |
 | `sniper_provider_override` | Resolved Sniper from a source other than roles config or sdd_injection | Stop. Re-resolve from declared source. |
-| `side_quest_approval_bypass` | About to move files from housekeeping_scan without passing through the main gate | Stop. Side quests only execute after explicit approval at the main gate. |
+| `side_quest_approval_bypass` | About to move files from opportunity_attack without passing through the main gate | Stop. Side quests only execute after explicit approval at the main gate. |
 | `route_plan_creation_to_sniper` | About to ask Sniper to create a document, spec, or plan | Stop. Artifact creation is Archivist's work. Return to phase 5c. |
-| `housekeeping_scan_as_slot` | About to delegate the housekeeping scan to Ranger or another slot | Stop. Execute the scan directly as Strategist (internal phase). |
+| `opportunity_attack_as_slot` | About to delegate the opportunist attack to Ranger or another slot | Stop. Execute the scan directly as Strategist (internal phase). |
 
 ---
 
@@ -866,8 +899,8 @@ Every phase transition emits exactly one event:
 [Strategist] phase=preflight status=done slots=ok
 [Strategist] phase=<ranger_label> status=running skill=<provider> checklist=0/3
 [Strategist] phase=<ranger_label> status=done artifact=<path>
-[Strategist] phase=housekeeping_scan status=running
-[Strategist] phase=housekeeping_scan status=done side_quests=N
+[Strategist] phase=opportunity_attack status=running
+[Strategist] phase=opportunity_attack status=done side_quests=N
 [Strategist] phase=<archivist_label> status=running skill=<provider> checklist=1/3
 [Strategist] phase=<archivist_label> status=done artifact=<path>
 [Strategist] phase=approval_gate status=waiting                 # only if tasks.md is non-empty

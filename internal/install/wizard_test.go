@@ -20,6 +20,9 @@ func TestRunWizard(t *testing.T) {
 		wantMode         string
 		wantBase         string
 		wantAdrEnabled   bool
+		wantDoneScope    string
+		wantApplyChanges bool
+		wantMissionMode  string
 		wantDiscovery    string
 		wantRefinement   string
 		wantExecution    string
@@ -27,15 +30,19 @@ func TestRunWizard(t *testing.T) {
 	}{
 		{
 			name: "all defaults (empty lines)",
-			// 11 prompts: uiLang/docLang/chatLang/codeLang/mode/base/adr/discovery/refinement/execution/chest
-			input:            "\n\n\n\n\n\n\n\n\n\n\n",
+			// 12 prompts:
+			// ui/doc/chat/code/mode/base/adr/missionMode/discovery/refinement/execution/chest
+			input:            "\n\n\n\n\n\n\n\n\n\n\n\n",
 			wantUILanguage:   "en",
 			wantDocLanguage:  "en",
 			wantChatLanguage: "en",
 			wantCodeLanguage: "en",
-			wantMode:         "full",
+			wantMode:         "pragmatic",
 			wantBase:         ".analysis",
 			wantAdrEnabled:   true,
+			wantMissionMode:  "entrega_executada",
+			wantDoneScope:    "entrega",
+			wantApplyChanges: true,
 			wantDiscovery:    "brainstorming",
 			wantRefinement:   "openspec-explore",
 			wantExecution:    "sdd-ask",
@@ -43,14 +50,17 @@ func TestRunWizard(t *testing.T) {
 		},
 		{
 			name:             "en ui, custom languages and slots with chest",
-			input:            "en\nen\npt-BR\nen\nlightweight\n/workspace\nyes\nbrainstorming\narchivist\nsdd-ask-full\n.sdd/source\n",
+			input:            "en\nen\npt-BR\nen\nepic\n/workspace\nyes\nentrega_revisada\nbrainstorming\narchivist\nsdd-ask-full\n.sdd/source\n",
 			wantUILanguage:   "en",
 			wantDocLanguage:  "en",
 			wantChatLanguage: "pt-BR",
 			wantCodeLanguage: "en",
-			wantMode:         "lightweight",
+			wantMode:         "epic",
 			wantBase:         "/workspace",
 			wantAdrEnabled:   true,
+			wantMissionMode:  "entrega_revisada",
+			wantDoneScope:    "entrega",
+			wantApplyChanges: false,
 			wantDiscovery:    "brainstorming",
 			wantRefinement:   "archivist",
 			wantExecution:    "sdd-ask-full",
@@ -58,14 +68,17 @@ func TestRunWizard(t *testing.T) {
 		},
 		{
 			name:             "pt-BR ui language, ADR disabled",
-			input:            "pt-BR\nen\npt-BR\nen\nminimal\n.\nno\n\n\n\n\n",
+			input:            "pt-BR\nen\npt-BR\nen\npragmatic\n.\nno\nanalise\n\n\n\n\n",
 			wantUILanguage:   "pt-BR",
 			wantDocLanguage:  "en",
 			wantChatLanguage: "pt-BR",
 			wantCodeLanguage: "en",
-			wantMode:         "minimal",
+			wantMode:         "pragmatic",
 			wantBase:         ".",
 			wantAdrEnabled:   false,
+			wantMissionMode:  "analise",
+			wantDoneScope:    "analise",
+			wantApplyChanges: false,
 			wantDiscovery:    "brainstorming",
 			wantRefinement:   "openspec-explore",
 			wantExecution:    "sdd-ask",
@@ -85,6 +98,9 @@ func TestRunWizard(t *testing.T) {
 			assert.Equal(t, tt.wantMode, wc.Mode)
 			assert.Equal(t, tt.wantBase, wc.BasePath)
 			assert.Equal(t, tt.wantAdrEnabled, wc.AdrEnabled)
+			assert.Equal(t, tt.wantMissionMode, wc.MissionMode)
+			assert.Equal(t, tt.wantDoneScope, wc.DoneScope)
+			assert.Equal(t, tt.wantApplyChanges, wc.ApplyChanges)
 			assert.Equal(t, tt.wantDiscovery, wc.DiscoveryProvider)
 			assert.Equal(t, tt.wantRefinement, wc.RefinementProvider)
 			assert.Equal(t, tt.wantExecution, wc.ExecutionProvider)

@@ -61,6 +61,9 @@ type TreasureChest struct {
 type WizardConfig struct {
 	Mode               string
 	BasePath           string
+	MissionMode        string // analise | entrega_revisada | entrega_executada
+	DoneScope          string // analise | entrega
+	ApplyChanges       bool   // false by default; forced false when DoneScope=analise
 	UILanguage         string // en | pt-BR — wizard interface + ongoing interactions
 	DocLanguage        string // en | pt-BR — generated documentation
 	ChatLanguage       string // en | pt-BR — AI chat responses

@@ -1,6 +1,6 @@
 scenario: side_quest_approval_bypass
 description: >
-  The housekeeping scan found side quests but Sniper is invoked to execute file moves
+  The opportunist attack found side quests but Sniper is invoked to execute file moves
   without presenting the mini approval gate to the user first. Strategist must detect
   the bypass and emit a blocked event.
 
@@ -9,7 +9,7 @@ input:
     mode: pragmatic
     base_path: .analysis
     roles_config: default
-  housekeeping_scan_result:
+  opportunity_attack_result:
     side_quests:
       - type: promote
         origin: .analysis/pending/some-discovery.md

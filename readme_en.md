@@ -30,7 +30,7 @@
   </sub>
 </p>
 
-<a href="https://sergiolacerda.github.io/strategist-skill/index_en.html?lang=en">
+<a href="https://sergiolacerda.github.io/strategist-skill/index.html?lang=en">
   <img src="https://img.shields.io/badge/⛨_Epic_Documentation-landing_page-e8c25a?style=for-the-badge&labelColor=1b1610" alt="Epic Documentation" />
 </a>
 
@@ -43,218 +43,106 @@
 
 # Strategist Skill
 
-**Strategist** is an autonomous skill that explores, analyzes, refines technical tasks and executes them, documenting every step. To do so, it orchestrates "missions" through pluggable roles (slots) — **Ranger (or discover) → Archivist (or refinement) → Sniper (or executor agent)** — within a governed flow with a mandatory approval gate. Standalone by default.
+## What it is
 
-For the detailed pipeline, phases, schemas, and provider configuration: [readme_detailed_en.md](readme_detailed_en.md).
+**Strategist** turns a technical request into a governed mission: discovery, refinement, and execution only with explicit human approval.
 
----
+Canonical pipeline:
+`Ranger → Archivist → approval gate → Sniper`
 
-### Key Capabilities
+For full pipeline/contracts/schema details: [readme_detailed_en.md](readme_detailed_en.md).
 
-- **Pluggable slots** – Ranger (discovery), Archivist (refinement), and Sniper (execution) are configurable providers;
-- **Mandatory approval gate** – never implements changes without explicit human approval.
-- **Two operating modes** – `pragmatic` (analytical tone) and `epic` (strategic tone); same pipeline, different vocabulary.
-- **Knowledge index** – selective context by `task_type` before each mission; priorities adjusted by learning loop.
-- **Non-blocking learning loop** – records outcomes and source-hints with human approval; failure never blocks the mission result.
-- **Optional SDD integration** – The skill submits to governance, registerable as a plugin, adhering to mandates, rules, and guidelines defined externally to the plugin.
+## Why use it
 
----
+- Discovery and refinement before execution.
+- Mandatory approval gate for writes/implementation.
+- Pluggable slots (`discovery`, `refinement`, `execution`).
+- Mission policy through `mission_mode` (analysis vs delivery).
+- Quick Draw, Opportunist Attack, and Treasure Chests in the same flow.
 
-### Side Quests · Opportunity Attack
+## How it works
 
-Before the main analysis, Strategist scans the workspace detecting inconsistent artifacts. The result is passed to the Archivist as context — side quest execution happens when the Sniper is released by the main gate (alongside the main mission).
+- **Ranger**: explores context and produces discovery.
+- **Archivist**: turns discovery into proposal, design, and tasks.
+- **Sniper**: executes only after gate + policy checks.
+- **Opportunist Attack**: finds side quests without parallel pipelines.
+- **Treasure Chests**: offline scoped context sources.
 
-| Phase | Function |
-|-------|----------|
-| **Housekeeping Scan** _(Opportunity Attack)_ | Detects stale artifacts in `todo/`, `pending/`, `refined/` and assembles a side quest manifest. |
-| **Side Quest** | Small missions detected from any role and executed by Sniper after approval at the main gate — move completed tasks, promote artifacts, targeted hotfixes. |
+## Quick install
 
-> Full pipeline: `Ranger → Archivist → approval gate → Sniper`
+Linux / macOS / WSL:
 
-### Quick Draw
-
-For rapid idea capture (TODOs) without creating a parallel flow:
-
-1. Strategist detects `quick draw` / rapid note intent in the prompt.
-2. Ranger only normalizes the idea (`idea: ...`) without scope expansion.
-3. Archivist classifies theme and destination in `.analysis/todo/<theme>.md`.
-4. The idea is included in the Archivist proposal and goes through the **main gate**.
-5. After approval, Sniper appends the entry and returns `total ideas` and `similar ideas`.
-
-### Treasure Chests
-
-You can declare offline knowledge sources in `active.yaml` via `treasure_chests`.
-Signals can be found in any role, but all execution still follows the same pipeline and the main approval gate.
-
----
-
-### General Flow
-
-![General Flow](docs/fluxo-geral_en.png)
-
----
-
-### SDD Integration Flow
-
-![SDD Integration Flow](docs/fluxo-integracao_en.png)
-
----
-
-### Documentation
-
-| Document | Description |
-|----------|-------------|
-| [readme_detailed_en.md](readme_detailed_en.md) | Complete technical documentation: pipeline, slots, personas, knowledge system, SDD integration, forbidden behaviors |
-| [docs/architecture.md](docs/architecture.md) | Go architecture: package map, installation flow, compilation pipeline, domain interfaces |
-| [docs/cli-reference.md](docs/cli-reference.md) | Reference for all CLI commands with flags and examples |
-| [docs/configuration.md](docs/configuration.md) | Complete schemas: active.yaml, roles, personas, knowledge index |
-| [docs/skill-internals.md](docs/skill-internals.md) | Sub-skills, phase contracts, intake/progress schemas, write scopes |
-| [docs/c4-diagrams.md](docs/c4-diagrams.md) | C4 diagrams: context, containers, Go components, and runtime pipeline |
-| [docs/adr/](docs/adr/) | Architecture Decision Records: 5 fundamental project decisions |
-| [strategist/SKILL.md](strategist/SKILL.md) | Complete agent instructions |
-| [strategist/protocol.md](strategist/protocol.md) | Mandatory routing rules and stop conditions |
-| [strategist/skill.yaml](strategist/skill.yaml) | Skill contract (slots, pipeline, forbidden_behaviors) |
-
----
-
-### Quick Workflow
-
-**Linux / Mac / WSL — install (wizard by default):**
 ```bash
 curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.sh | bash
 ```
 
-> The bootstrap downloads the `strategist` binary, verifies the SHA256, and runs `strategist install`. No external dependencies (no jq, yq, python3).
+Pinned version (recommended for sensitive environments):
 
-> **Security risk — piping curl directly:** running `curl | bash` without specifying a version installs the latest version from the `main` branch, with no integrity guarantee. A supply chain attack or MITM could replace the script in transit. **In production environments, always use a pinned version:**
 ```bash
 curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.sh \
   | bash -s -- --version=v1.0.0
 ```
-> The pinned version downloads the binary from a tagged GitHub release and verifies the SHA256 before installing. Direct piping without `--version` is acceptable in ephemeral environments (CI, dev containers), but not on shared machines or those with privileged access.
 
-**Update configuration (re-run wizard):**
+Reconfigure:
+
 ```bash
 strategist install --wizard
 ```
 
----
+## Generated files
 
-**Where files are stored after installation:**
+| Path | Purpose |
+|---|---|
+| `.strategist/active.yaml` | mode, language, slots, mission policy |
+| `.strategist/knowledge.index.yaml` | sources by `task_type` |
+| `.analysis/` | `pending`, `refined`, `done` artifacts |
 
-| File | Function |
-|------|----------|
-| `.strategist/active.yaml` | Mode, base_path, slots, language, adr_enabled |
-| `.strategist/knowledge.index.yaml` | Knowledge sources by task_type |
-| `.analysis/` | Mission artifacts (pending, refined, done) |
-
----
-
-**Configuring the roles (slots):**
-
-Each mission role is a pluggable skill. Providers are set directly in `active.yaml`, under the `slots` key:
+## Minimal slot configuration
 
 ```yaml
-# .strategist/active.yaml
 slots:
-  discovery: brainstorming      # Ranger  — explores and documents the problem
-  refinement: openspec-explore  # Archivist — refines and structures the plan
-  execution: sdd-ask            # Sniper  — executes the approved plan
+  discovery: brainstorming
+  refinement: openspec-explore
+  execution: sdd-ask
 ```
 
-To swap a provider, edit `active.yaml` and point to any skill available in your environment. The preflight validates the contracts (`risk_score`) before starting the mission.
+Expected contracts:
+- Ranger: `write_pending`
+- Archivist: `write_analysis`
+- Sniper: `controlled`
 
-**Available providers per slot:**
+## General Flow
 
-| Slot | Required contract | Tested providers |
-|------|-------------------|-----------------|
-| Ranger (discovery) | `write_pending` | `brainstorming` |
-| Archivist (refinement) | `write_analysis` | `openspec-explore`, `openspec-propose`, `archivist`, `sdd-diagnose`, `sdd-review-architecture` |
-| Sniper (execution) | `controlled` | `sdd-ask`, `sdd-ask-full`, `openspec-apply-change`, `sdd-converge`, `sdd-correct` |
+![General Flow](docs/fluxo-geral_en.png)
 
-New providers can be registered in `.strategist/templates/known-providers.yaml` if they do not declare `risk_score` in their own `skill.yaml`.
+## SDD Integration Flow
 
----
+![SDD Integration Flow](docs/fluxo-integracao_en.png)
 
-### Local Installation (build from source)
+## Explore more
 
-To contribute or use the latest version from the repository without waiting for a release:
+- [readme_detailed_en.md](readme_detailed_en.md)
+- [docs/configuration.md](docs/configuration.md)
+- [docs/cli-reference.md](docs/cli-reference.md)
+- [docs/architecture.md](docs/architecture.md)
+- [docs/skill-internals.md](docs/skill-internals.md)
+- [docs/c4-diagrams.md](docs/c4-diagrams.md)
+- [docs/adr/](docs/adr/)
+- [strategist/SKILL.md](strategist/SKILL.md)
+- [strategist/protocol.md](strategist/protocol.md)
 
-```bash
-# 1. Compile the binary (embeds the current strategist/ defaults into the binary)
-make build          # → bin/strategist
-
-# 2. Install to PATH
-make install-local  # → ~/.local/bin/strategist
-
-# 3. Ensure ~/.local/bin is in PATH (add to .bashrc/.zshrc if needed)
-export PATH="$HOME/.local/bin:$PATH"
-
-# 4. Install the skill in the current repository
-strategist install --wizard
-```
-
-> **Why `make build` before `install`?** The binary embeds files from `strategist/` at compile time (`embed.FS`). Without a rebuild, `strategist install` installs the defaults from the previous binary version, not from the local repository.
-
-> The Quick Workflow (`curl | bash`) does not need this step — the bootstrap downloads a pre-compiled binary from the GitHub release.
-
----
-
-## 🧪 Tests
-
-### Prerequisites
+## Development and tests
 
 ```bash
-# Go 1.26+
-go version
-
-# Install dependencies
-go mod tidy
-```
-
-No jq, yq, or pyyaml. The test suite uses only `go test`.
-
----
-
-### Running Tests
-
-```bash
-# All tests (with race detector)
-go test -race ./...
-
-# Or via Makefile
+make build
 make test
-
-# With coverage report
 make cover
 ```
 
----
+## License
 
-### Suites
+CC BY-NC 4.0. Commercial use requires prior authorization.
 
-| Suite | File | Covers |
-|-------|------|--------|
-| Stale checker | `tests/stale_test.go` | 5 cases: absent, no manifest, fresh, stale source, source gone |
-| Compile | `tests/compile_test.go` | Config, Domain, Index, All (4 artifacts + manifest) |
-| Install | `tests/install_test.go` · `internal/install/installer_whitebox_test.go` | Silent mode, gitignore, whitebox (ensureGitignore, error propagation) |
-| Fixtures | `tests/fixtures_test.go` | Format of the 5 security invariant fixtures |
-
----
-
-### BDD Specs
-
-`strategist/tests/specs/*.feature` — formal specifications of security invariants (approval gate, slot contracts, forbidden behaviors, LearningBuffer). Executable documentation — no separate runner required.
-
----
-
-## 📄 License
-
-This project is licensed under the **Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)**.
-
-You may use, study, modify, and replicate this project for non-commercial purposes, provided that attribution to the original author is preserved.
-Commercial use, resale, or commercialization requires prior written authorization from the copyright holder.
-
-- **Repository:** <https://github.com/SergioLacerda/strategist-skill>
-- **Documentation (GitHub Pages):** <https://sergiolacerda.github.io/strategist-skill/index_en.html?lang=en>
-- **Full license text:** [`LICENSE`](LICENSE)
+- Repository: <https://github.com/SergioLacerda/strategist-skill>
+- Documentation: <https://sergiolacerda.github.io/strategist-skill/index.html?lang=en>
+- Full text: [LICENSE](LICENSE)

@@ -27,12 +27,19 @@ Feature: Forbidden Behavior Detection and Self-Correction
     And waits for user response before proceeding
 
   Scenario: side_quest_approval_bypass — housekeeping moves without mini gate
-    Given housekeeping_scan produced a non-empty side quest manifest
+    Given opportunity_attack produced a non-empty side quest manifest
     When Strategist begins executing file moves without presenting the mini approval gate
     Then Strategist detects drift pattern "side_quest_approval_bypass"
     And stops immediately
     And presents the mini approval gate with the full manifest
     And waits for user response
+
+  Scenario: single_target_sweep_bypass — skipping sweeps due to narrow scope
+    Given the mission request targets a single file refinement
+    When Strategist skips opportunist attack, treasure check, or sidequest manifest update because of narrow focus
+    Then Strategist detects drift pattern "single_target_sweep_bypass"
+    And emits blocked event reason=opportunity_sweep_failed
+    And does not proceed to next phase until sweep invariants are satisfied
 
   Scenario: scope_expansion — addressing work outside the mission
     Given an active mission with a specific task_type

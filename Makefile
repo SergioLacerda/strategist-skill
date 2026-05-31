@@ -1,4 +1,4 @@
-.PHONY: build test lint vuln bench cover cover-gate cover-html install-local release snapshot clean
+.PHONY: build test lint vuln bench cover cover-gate cover-html analysis-structure-gate install-local release snapshot clean
 
 GOLANGCI_LINT := $(shell which golangci-lint 2>/dev/null || echo $(shell go env GOPATH)/bin/golangci-lint)
 GOVULNCHECK   := $(shell which govulncheck 2>/dev/null || echo $(shell go env GOPATH)/bin/govulncheck)
@@ -46,6 +46,9 @@ cover-html:
 	go test -race -coverprofile=coverage.out -coverpkg=./internal/... ./internal/... ./tests/...
 	go tool cover -html=coverage.out -o coverage.html
 	@echo "report written to coverage.html"
+
+analysis-structure-gate:
+	bash scripts/check-refined-structure.sh
 
 install-local: build
 	install -m 755 bin/strategist ~/.local/bin/strategist

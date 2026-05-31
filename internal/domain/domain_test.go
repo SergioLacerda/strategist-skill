@@ -100,8 +100,11 @@ func TestInstallConfig_Fields(t *testing.T) {
 func TestWizardConfig_Fields(t *testing.T) {
 	t.Parallel()
 	wc := domain.WizardConfig{
-		Mode:               "minimal",
+		Mode:               "pragmatic",
 		BasePath:           ".",
+		MissionMode:        "analise",
+		DoneScope:          "analise",
+		ApplyChanges:       false,
 		UILanguage:         "pt",
 		DocLanguage:        "pt",
 		ChatLanguage:       "pt",
@@ -111,8 +114,11 @@ func TestWizardConfig_Fields(t *testing.T) {
 		RefinementProvider: "openspec-explore",
 		ExecutionProvider:  "sdd-ask",
 	}
-	assert.Equal(t, "minimal", wc.Mode)
+	assert.Equal(t, "pragmatic", wc.Mode)
 	assert.Equal(t, ".", wc.BasePath)
+	assert.Equal(t, "analise", wc.MissionMode)
+	assert.Equal(t, "analise", wc.DoneScope)
+	assert.False(t, wc.ApplyChanges)
 	assert.Equal(t, "pt", wc.UILanguage)
 	assert.True(t, wc.AdrEnabled)
 	assert.Equal(t, "brainstorming", wc.DiscoveryProvider)
