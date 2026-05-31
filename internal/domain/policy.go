@@ -2,15 +2,15 @@ package domain
 
 // Legacy done scopes.
 const (
-	DoneScopeAnalise = "analise"
-	DoneScopeEntrega = "entrega"
+	DoneScopeAnalysis = "analise"
+	DoneScopeDelivery = "entrega"
 )
 
 // Mission modes (single user-facing control).
 const (
-	MissionModeAnalise          = "analise"
-	MissionModeEntregaRevisada  = "entrega_revisada"
-	MissionModeEntregaExecutada = "entrega_executada"
+	MissionModeAnalysis         = "analise"
+	MissionModeRevisedDelivery  = "entrega_revisada"
+	MissionModeExecutedDelivery = "entrega_executada"
 )
 
 // Transition groups classify sensitive mission-state changes.
@@ -24,16 +24,16 @@ type MissionState string
 
 // Orchestrator finite-state machine states.
 const (
-	StateInit            MissionState = "INIT"
-	StateHousekeeping    MissionState = "HOUSEKEEPING"
-	StateOpportunityGate MissionState = "OPPORTUNITY_GATE"
-	StateOpportunityExec MissionState = "OPPORTUNITY_EXEC"
-	StateRefinement      MissionState = "REFINEMENT"
-	StateApprovalGate    MissionState = "APPROVAL_GATE"
-	StateExecution       MissionState = "EXECUTION"
-	StateDoneAnalise     MissionState = "DONE_ANALISE"
-	StateDoneEntrega     MissionState = "DONE_ENTREGA"
-	StateBlocked         MissionState = "BLOCKED"
+	StateInit              MissionState = "INIT"
+	StateOpportunityAttack MissionState = "OPPORTUNITY_ATTACK"
+	StateOpportunityGate   MissionState = "OPPORTUNITY_GATE"
+	StateOpportunityExec   MissionState = "OPPORTUNITY_EXEC"
+	StateRefinement        MissionState = "REFINEMENT"
+	StateApprovalGate      MissionState = "APPROVAL_GATE"
+	StateExecution         MissionState = "EXECUTION"
+	StateDoneAnalysis      MissionState = "DONE_ANALYSIS"
+	StateDoneDelivery      MissionState = "DONE_DELIVERY"
+	StateBlocked           MissionState = "BLOCKED"
 )
 
 // TransitionEvent represents FSM/evaluator inputs.
@@ -70,27 +70,27 @@ type TransitionDecision struct {
 
 // MissionModeFromLegacy maps the former 2-knob model to mission_mode.
 func MissionModeFromLegacy(doneScope string, applyChanges bool) string {
-	if doneScope == DoneScopeAnalise {
-		return MissionModeAnalise
+	if doneScope == DoneScopeAnalysis {
+		return MissionModeAnalysis
 	}
 	if applyChanges {
-		return MissionModeEntregaExecutada
+		return MissionModeExecutedDelivery
 	}
-	return MissionModeEntregaRevisada
+	return MissionModeRevisedDelivery
 }
 
 // NewMissionPolicy builds canonical policy from mission_mode.
 func NewMissionPolicy(mode string) MissionPolicy {
 	switch mode {
-	case MissionModeAnalise:
-		return MissionPolicy{Mode: mode, CanExecute: false, ExpectsDelivery: DoneScopeAnalise, DoneScope: DoneScopeAnalise, ApplyChanges: false}
-	case MissionModeEntregaRevisada:
-		return MissionPolicy{Mode: mode, CanExecute: false, ExpectsDelivery: DoneScopeEntrega, DoneScope: DoneScopeEntrega, ApplyChanges: false}
-	case MissionModeEntregaExecutada:
-		return MissionPolicy{Mode: mode, CanExecute: true, ExpectsDelivery: DoneScopeEntrega, DoneScope: DoneScopeEntrega, ApplyChanges: true}
+	case MissionModeAnalysis:
+		return MissionPolicy{Mode: mode, CanExecute: false, ExpectsDelivery: DoneScopeAnalysis, DoneScope: DoneScopeAnalysis, ApplyChanges: false}
+	case MissionModeRevisedDelivery:
+		return MissionPolicy{Mode: mode, CanExecute: false, ExpectsDelivery: DoneScopeDelivery, DoneScope: DoneScopeDelivery, ApplyChanges: false}
+	case MissionModeExecutedDelivery:
+		return MissionPolicy{Mode: mode, CanExecute: true, ExpectsDelivery: DoneScopeDelivery, DoneScope: DoneScopeDelivery, ApplyChanges: true}
 	default:
 		// Backward compatibility default preserves historical behavior.
-		return NewMissionPolicy(MissionModeEntregaExecutada)
+		return NewMissionPolicy(MissionModeExecutedDelivery)
 	}
 }
 
@@ -100,7 +100,7 @@ func NormalizePolicy(p MissionPolicy) MissionPolicy {
 		if p.DoneScope != "" || p.ApplyChanges {
 			p.Mode = MissionModeFromLegacy(p.DoneScope, p.ApplyChanges)
 		} else {
-			p.Mode = MissionModeEntregaExecutada
+			p.Mode = MissionModeExecutedDelivery
 		}
 	}
 	return NewMissionPolicy(p.Mode)

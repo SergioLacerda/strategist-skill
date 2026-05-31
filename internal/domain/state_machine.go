@@ -7,8 +7,8 @@ func NextState(current MissionState, event TransitionEvent, policy MissionPolicy
 	switch current {
 	case StateInit:
 		return nextFromInit(event)
-	case StateHousekeeping:
-		return nextFromHousekeeping(event)
+	case StateOpportunityAttack:
+		return nextFromOpportunityAttack(event)
 	case StateOpportunityGate:
 		return nextFromOpportunityGate(event, p)
 	case StateOpportunityExec:
@@ -19,10 +19,10 @@ func NextState(current MissionState, event TransitionEvent, policy MissionPolicy
 		return nextFromApprovalGate(event, p)
 	case StateExecution:
 		return nextFromExecution(event)
-	case StateDoneAnalise:
-		return StateDoneAnalise
-	case StateDoneEntrega:
-		return StateDoneEntrega
+	case StateDoneAnalysis:
+		return StateDoneAnalysis
+	case StateDoneDelivery:
+		return StateDoneDelivery
 	case StateBlocked:
 		return StateBlocked
 	}
@@ -33,23 +33,23 @@ func NextState(current MissionState, event TransitionEvent, policy MissionPolicy
 func nextFromInit(event TransitionEvent) MissionState {
 	switch event {
 	case EventManifestEmpty, EventManifestNonEmpty:
-		return StateHousekeeping
+		return StateOpportunityAttack
 	case EventGateApproved, EventGateDenied, EventSniperDone, EventArchivistNoTasks, EventArchivistTasks:
 		return StateInit
 	}
 	return StateInit
 }
 
-func nextFromHousekeeping(event TransitionEvent) MissionState {
+func nextFromOpportunityAttack(event TransitionEvent) MissionState {
 	switch event {
 	case EventManifestEmpty:
 		return StateRefinement
 	case EventManifestNonEmpty:
 		return StateOpportunityGate
 	case EventGateApproved, EventGateDenied, EventSniperDone, EventArchivistNoTasks, EventArchivistTasks:
-		return StateHousekeeping
+		return StateOpportunityAttack
 	}
-	return StateHousekeeping
+	return StateOpportunityAttack
 }
 
 func nextFromOpportunityGate(event TransitionEvent, p MissionPolicy) MissionState {
@@ -80,10 +80,10 @@ func nextFromOpportunityExec(event TransitionEvent) MissionState {
 func nextFromRefinement(event TransitionEvent, p MissionPolicy) MissionState {
 	switch event {
 	case EventArchivistNoTasks:
-		return StateDoneAnalise
+		return StateDoneAnalysis
 	case EventArchivistTasks:
-		if p.Mode == MissionModeAnalise {
-			return StateDoneAnalise
+		if p.Mode == MissionModeAnalysis {
+			return StateDoneAnalysis
 		}
 		return StateApprovalGate
 	case EventManifestEmpty, EventManifestNonEmpty, EventGateApproved, EventGateDenied, EventSniperDone:
@@ -95,12 +95,12 @@ func nextFromRefinement(event TransitionEvent, p MissionPolicy) MissionState {
 func nextFromApprovalGate(event TransitionEvent, p MissionPolicy) MissionState {
 	switch event {
 	case EventGateDenied:
-		return StateDoneAnalise
+		return StateDoneAnalysis
 	case EventGateApproved:
 		if p.CanExecute {
 			return StateExecution
 		}
-		return StateDoneEntrega
+		return StateDoneDelivery
 	case EventManifestEmpty, EventManifestNonEmpty, EventSniperDone, EventArchivistNoTasks, EventArchivistTasks:
 		return StateApprovalGate
 	}
@@ -110,7 +110,7 @@ func nextFromApprovalGate(event TransitionEvent, p MissionPolicy) MissionState {
 func nextFromExecution(event TransitionEvent) MissionState {
 	switch event {
 	case EventSniperDone:
-		return StateDoneEntrega
+		return StateDoneDelivery
 	case EventManifestEmpty, EventManifestNonEmpty, EventGateApproved, EventGateDenied, EventArchivistNoTasks, EventArchivistTasks:
 		return StateExecution
 	}

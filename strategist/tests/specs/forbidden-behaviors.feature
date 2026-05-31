@@ -26,7 +26,7 @@ Feature: Forbidden Behavior Detection and Self-Correction
     And presents the approval gate prompt
     And waits for user response before proceeding
 
-  Scenario: side_quest_approval_bypass — housekeeping moves without mini gate
+  Scenario: side_quest_approval_bypass — ataque de oportunidade moves without mini gate
     Given opportunity_attack produced a non-empty side quest manifest
     When Strategist begins executing file moves without presenting the mini approval gate
     Then Strategist detects drift pattern "side_quest_approval_bypass"

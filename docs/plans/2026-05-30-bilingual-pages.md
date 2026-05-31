@@ -158,7 +158,7 @@ Start from `pages/index.html` and apply:
 3. Translate `<meta property="og:description" content="...">` to English
 4. Rename section ID: `id="invocacao"` → `id="invocation"`, update all `href="#invocacao"` → `href="#invocation"`
 5. Translate all visible text (headings, paragraphs, button labels, table cells, tooltip text, footer)
-6. Keep unchanged: `Ranger`, `Archivist`, `Sniper`, `slots`, `approval gate`, `knowledge index`, `side quest`, `housekeeping scan`, `skill`, `provider`, all CSS class names, all `href` to external URLs, all code/YAML/bash blocks
+6. Keep unchanged: `Ranger`, `Archivist`, `Sniper`, `slots`, `approval gate`, `knowledge index`, `side quest`, `ataque de oportunidade`, `skill`, `provider`, all CSS class names, all `href` to external URLs, all code/YAML/bash blocks
 7. Language switcher in runefoot — reversed:
    ```html
    <a href="index.html" style="color:var(--amber-dim);text-decoration:none">🇧🇷 Português</a> | 🇺🇸 English
