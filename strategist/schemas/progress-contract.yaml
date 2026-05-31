@@ -38,6 +38,37 @@ event_examples:
   - "[Strategist] phase=refinement status=running skill=archivist checklist=1/3"
   - "[Strategist] phase=approval_gate status=blocked reason=user_declined action=none"
   - "[Strategist] phase=execution status=done artifact=.analysis/done/abc123-report.md"
+  - "[Strategist] event=treasure_chest_found chest=my-chest phase=discovery"
+  - "[Strategist] event=side_quest_detected type=quick_draw phase=intake"
+  - "[Strategist] event=side_quest_detected type=adr_opportunity phase=post_execution"
+  - "[Strategist] phase=execution task=2 status=running"
+  - "[Strategist] phase=execution task=2 status=done"
+
+user_facing_signals:
+  description: >
+    User-facing signals emitted via persona templates (not progress events).
+    These produce visible chat output; progress events are machine-readable only.
+  signals:
+    treasure_chest_found:
+      template: treasure_chest_found
+      trigger: Non-empty chest list being passed to any slot
+      fields: [chest_id, description]
+    side_quest_detected:
+      template: side_quest_detected
+      trigger: Quick draw route matched, or ADR criteria met
+      fields: [description]
+    opportunity_signal:
+      template: opportunity_signal
+      trigger: Housekeeping scan produces non-empty manifest
+      fields: [count]
+    mission_checkpoint:
+      template: mission_checkpoint
+      trigger: After intake and at every phase transition
+      fields: [mission_id, step_1_icon, step_2_icon, step_3_icon, step_4_icon]
+    execution_task_line:
+      template: execution_task_line
+      trigger: Before Sniper invocation and after each task=done event
+      fields: [status_icon, index, task_title]
 
 output_paths:
   discovery: "<base_path>/pending/<mission_id>-discovery.md"

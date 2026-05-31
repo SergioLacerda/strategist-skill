@@ -84,6 +84,29 @@ prompt_templates:
     total de ideias: {total_ideas}
     ideias similares (mesmo tema): {similar_ideas}
 
+  # Sinais de descoberta — emitidos pelo Strategist quando personagens encontram itens
+  treasure_chest_found: >
+    🎁 **Baú do tesouro encontrado!** [{chest_id}] — {description}
+  side_quest_detected: >
+    🗺️ **Side quest encontrada!** {description}
+  opportunity_signal: >
+    ⚔️ **Ataque de oportunidade!** {count} item(s) detectado(s) — detalhes no gate.
+
+  # Checkpoint da missão — pipeline TODO re-emitido a cada transição de fase
+  # Icons: ⏳ = running, ✅ = done, ⬜ = pending
+  mission_checkpoint: |
+    **Checkpoint — {mission_id}**
+    {step_1_icon} 1 — Ranger
+    {step_2_icon} 2 — Arquivista
+    {step_3_icon} 3 — Gate
+    {step_4_icon} 4 — Execução
+
+  # Lista de tarefas da execução (Sniper) — re-emitida a cada tarefa concluída
+  execution_tasks_header: >
+    🗡️ **Sniper — executando {total} tarefa(s):**
+  execution_task_line: >
+    {status_icon} {index} — {task_title}
+
   # Gate de ADR pós-missão
   adr_opportunity: >
     ⚔️ **Ataque de Oportunidade → ADR**

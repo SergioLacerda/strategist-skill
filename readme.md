@@ -1,27 +1,47 @@
-<p align="center">
-  <img src="pages/docs/banner.png" alt="Strategist — A experiência com suas demandas nunca será a mesma." width="100%" />
+<div align="center">
+
+<br/>
+
+<img src="https://img.shields.io/badge/CI-passing-3fae6f?style=flat-square&labelColor=1b1610" />
+<img src="https://img.shields.io/badge/version-1.0-e8c25a?style=flat-square&labelColor=1b1610" />
+<img src="https://img.shields.io/badge/license-CC_BY--NC_4.0-cf7a2c?style=flat-square&labelColor=1b1610" />
+<img src="https://img.shields.io/badge/mode-pragmatic_·_epic-9b865d?style=flat-square&labelColor=1b1610" />
+
+<br/>
+<br/>
+
+### ────── ✦ ──────
+
+# STRATEGIST
+### *A experiência com suas demandas nunca será a mesma.*
+
+<p>
+  Uma skill autônoma que <strong>orquestra missões multi-fase</strong><br/>
+  através de papéis plugáveis, baús de contexto e portões de aprovação.
 </p>
 
-<p align="center">
-  <a href="https://sergiolacerda.github.io/strategist-skill/">
-    <img src="https://img.shields.io/badge/⛨_Documentação_Épica-landing_page-e8c25a?style=for-the-badge&labelColor=1b1610" alt="Documentação Épica" />
-  </a>
-</p>
+### ────── ⟡ ──────
 
 <p align="center">
-  <img src="https://img.shields.io/badge/CI-passing-3fae6f?style=flat-square&labelColor=1b1610" />
-  <img src="https://img.shields.io/badge/version-1.0-e8c25a?style=flat-square&labelColor=1b1610" />
-  <img src="https://img.shields.io/badge/license-CC_BY--NC_4.0-cf7a2c?style=flat-square&labelColor=1b1610" />
-  <img src="https://img.shields.io/badge/mode-pragmatic_·_epic-9b865d?style=flat-square&labelColor=1b1610" />
+  <sub>
+    🇧🇷 <strong><code>Português</code></strong>
+    &nbsp;│&nbsp;
+    🇺🇸 <a href="./readme_en.md"><code>English</code></a>
+  </sub>
 </p>
 
-<p align="center">
-🇧🇷 Português | <a href="readme_en.md">🇺🇸 English</a>
-</p>
+<a href="https://sergiolacerda.github.io/strategist-skill/index.html?lang=pt">
+  <img src="https://img.shields.io/badge/⛨_Documentação_Épica-landing_page-e8c25a?style=for-the-badge&labelColor=1b1610" alt="Documentação Épica" />
+</a>
+
+<br/>
+
+<p><strong>Autores</strong> · Sergio Lacerda & Raphael Vernil</p>
+</div>
 
 ---
 
-# Strategist Skill + SDD Harness
+# Strategist Skill 
 
 **Strategist** é uma skill autônoma que explora, analisa, refina tarefas tecnicas e as executa, documentando cada etapa. Para isso, orquestra "missões" através de papeis(slots plugáveis) — **Ranger(ou discover) → Archivist(ou refinamento) → Sniper(ou agente executor)** — dentro de um fluxo governado com approval gate obrigatório. Standalone por padrão.
 
@@ -236,5 +256,5 @@ Você pode usar, estudar, modificar e replicar este projeto para fins não comer
 O uso comercial, revenda ou comercialização requer autorização prévia por escrito do titular dos direitos autorais.
 
 - **Repositório:** <https://github.com/SergioLacerda/strategist-skill>
-- **Documentação (GitHub Pages):** <https://sergiolacerda.github.io/strategist-skill/>
+- **Documentação (GitHub Pages):** <https://sergiolacerda.github.io/strategist-skill/index.html?lang=pt>
 - **Texto completo da licença:** [`LICENSE`](LICENSE)
