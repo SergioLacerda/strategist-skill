@@ -65,6 +65,29 @@ prompt_templates:
     total de ideias: {total_ideas}
     ideias similares (mesmo tema): {similar_ideas}
 
+  # Sinais de descoberta
+  treasure_chest_found: >
+    📦 Baú: [{chest_id}] — {description}
+  side_quest_detected: >
+    Side quest: {description}
+  opportunity_signal: >
+    {count} oportunidade(s) detectada(s).
+
+  # Pipeline checkpoint — re-emitido a cada transição de fase
+  # Icons: ⏳ = running, ✅ = done, ⬜ = pending
+  mission_checkpoint: |
+    Pipeline — {mission_id}
+    {step_1_icon} 1 — levantamento
+    {step_2_icon} 2 — refinamento
+    {step_3_icon} 3 — gate
+    {step_4_icon} 4 — execução
+
+  # Execution task list
+  execution_tasks_header: >
+    Executando {total} tarefa(s):
+  execution_task_line: >
+    {status_icon} {index} — {task_title}
+
   # ADR pós-sprint
   adr_opportunity: >
     ADR disponível para "{mission_id}". Gerar? (yes / no)

@@ -187,10 +187,33 @@ Apply defaults for any missing constraint field per `intake.schema.yaml`.
 
 Store result as `mission_contract.planning_rules` — pass to all slot providers.
 
+### 3.2 Mission Checkpoint
+
+After intake completes, initialize and emit the mission pipeline checkpoint using
+`persona.prompt_templates.mission_checkpoint` with:
+- `{mission_id}` = the generated mission id
+- `{step_1_icon}` = `⏳` (Ranger about to start), `{step_2_icon}` = `{step_3_icon}` = `{step_4_icon}` = `⬜`
+
+Re-emit the checkpoint at each phase transition, updating icons to reflect current state:
+
+| After phase | step_1 | step_2 | step_3 | step_4 |
+|-------------|--------|--------|--------|--------|
+| Intake | ⏳ | ⬜ | ⬜ | ⬜ |
+| Ranger done | ✅ | ⏳ | ⬜ | ⬜ |
+| Archivist done | ✅ | ✅ | ⏳ | ⬜ |
+| Gate approved | ✅ | ✅ | ✅ | ⏳ |
+| Sniper done | ✅ | ✅ | ✅ | ✅ |
+
+Icons: `⏳` = running, `✅` = done, `⬜` = pending.
+Skip the checkpoint re-emit when the mission ends at `plan_only` (gate declined).
+
 ### 3.1 Quick Draw Route (Saque Rapido)
 
 If the user explicitly requests quick capture (examples: `quick draw`, `saque rapido`,
 `TODO` as rapid note), route to a dedicated side-quest flow.
+
+Emit via `persona.prompt_templates.side_quest_detected` with
+`{description}` = `"Quick Draw — captura rápida de ideia."` before routing.
 
 Important:
 - Do NOT depend on additional intake classification for this route.
@@ -299,6 +322,9 @@ Invoke the discovery slot provider with:
 - **Treasure chests** — mandatory step (chests where scope = `discovery` or `all`):
   Pass filtered list: `[{id}] path={path} — {description}` for each match.
   If no chests match this scope: pass empty list. Ranger skips the consultation step and proceeds without blocking.
+  **Sinalização de baú:** Before passing the filtered list to Ranger, for each chest in the list
+  emit `persona.prompt_templates.treasure_chest_found` with `{chest_id}` = chest id and
+  `{description}` = chest description. Skip if the list is empty.
 
 The skill decides HOW to use each chest — Strategist only passes the path and description.
 
@@ -335,6 +361,7 @@ If manifest is empty:
 - Skip 5c and 5d — proceed directly to 5e (Archivist).
 
 If manifest is non-empty:
+- Emit via `persona.prompt_templates.opportunity_signal` with `{count}` = item count.
 - Emit via `persona.prompt_templates.opportunity_detected`:
   - `{count}` = number of items
   - `{items_brief}` = one line per item: `→ <slug> reason: <motivo>`
@@ -371,6 +398,8 @@ Invoke the execution slot provider with:
   - `consult_treasure_chests`: Mandatory step — consult all passed chests before acting. If chest list is empty, proceed.
 - **Treasure chests** — mandatory step (chests where scope = `execution` or `all`):
   Pass filtered list: `[{id}] path={path}` for each match. If no chests match: pass empty list; Sniper skips consultation and proceeds.
+  **Sinalização de baú:** Before passing the list to Sniper, emit `persona.prompt_templates.treasure_chest_found`
+  for each chest in the list with `{chest_id}` = chest id and `{description}` = chest description. Skip if empty.
 
 **Operações permitidas por tipo:**
 
@@ -422,6 +451,8 @@ Invoke the refinement slot provider with:
   - Output format: `proposal.md` + `design.md` + `tasks.md` in the artifact subdirectory
 - **Treasure chests** — mandatory step (chests where scope = `refinement` or `all`):
   Pass filtered list: `[{id}] path={path} — {description}` for each match. If no chests match: pass empty list; Archivist skips consultation and proceeds.
+  **Sinalização de baú:** Before passing the list to Archivist, emit `persona.prompt_templates.treasure_chest_found`
+  for each chest in the list with `{chest_id}` = chest id and `{description}` = chest description. Skip if empty.
 - Artifact path: `<base_path>/refined/<mission_id>/` (subdirectory)
   - `proposal.md` — what and why (fed by Ranger's discovery artifact)
   - `design.md` — how (architecture, affected components, decisions)
@@ -461,7 +492,7 @@ In all cases where the gate is presented: STOP. Do not invoke Sniper without exp
 Emit via `persona.prompt_templates.approval_prompt` (substitui `{artifact_path}`).
 
 Wait for response:
-- **yes / approve / authorize**: proceed to Sniper.
+- **yes / approve / authorize**: re-emit checkpoint with step_3_icon=✅, step_4_icon=⏳. Proceed to Sniper.
 - **no / decline / stop**: emit `[Strategist] phase=approval_gate status=plan_only`,
   return mission result with `status: plan_only`, artifact paths for discovery and refined plan.
 - **review**: present the refined plan content, then re-ask.
@@ -474,6 +505,24 @@ Invoking Sniper without receiving explicit approval is a **forbidden behavior**.
 
 Emit via `persona.prompt_templates.sniper_start`.
 
+### 7a. Execution Task List
+
+Before invoking the slot, read `<base_path>/refined/<mission_id>/tasks.md` and parse the numbered tasks.
+
+Emit via `persona.prompt_templates.execution_tasks_header` with `{total}` = number of tasks.
+
+Then emit each task via `persona.prompt_templates.execution_task_line` with:
+- `{status_icon}` = `⬜` (all pending initially)
+- `{index}` = task number (e.g. `1`, `2`)
+- `{task_title}` = first line of the task description
+
+Instruct the execution slot to emit per-task progress events as it works:
+`[Strategist] phase=execution task=<N> status=running|done`
+
+On receiving `task=<N> status=running`: re-emit the full task list with task N marked `⏳` and all prior tasks `✅`.
+On receiving `task=<N> status=done`: re-emit the full task list with task N marked `✅` and task N+1 marked `⏳` (if not last).
+On all tasks done: re-emit with all tasks `✅`.
+
 Invoke the execution slot provider with:
 - Refined plan artifact path
 - `mission_contract.planning_rules`
@@ -482,6 +531,8 @@ Invoke the execution slot provider with:
   - `consult_treasure_chests`: Mandatory step — consult all passed chests before acting. If chest list is empty, proceed.
 - **Treasure chests** — mandatory step (chests where scope = `execution` or `all`):
   Pass filtered list: `[{id}] path={path}` for each match. If no chests match: pass empty list; Sniper skips consultation and proceeds. (omit if none)
+  **Sinalização de baú:** Before passing the list to Sniper, emit `persona.prompt_templates.treasure_chest_found`
+  for each chest in the list with `{chest_id}` = chest id and `{description}` = chest description. Skip if empty.
 
 Execution report artifact path: `<base_path>/done/<mission_id>-report.md`
 
@@ -508,6 +559,9 @@ After Sniper completes (`status=completed`) OR at approval gate decline (`status
 Se nenhum critério for atendido: pular diretamente para §9 (Learning Phase).
 
 Se algum critério for atendido:
+
+Emit via `persona.prompt_templates.side_quest_detected` with
+`{description}` = `"ADR — oportunidade de documentar decisão arquitetural."` before presenting the gate.
 
 Emit via `persona.prompt_templates.adr_opportunity` (substitui `{mission_id}`).
 
