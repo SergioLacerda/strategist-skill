@@ -10,47 +10,59 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
 
-// wizardStrings holds all user-facing prompt text for a single language.
 type wizardStrings struct {
-	langPrompt       string
-	modePrompt       string
-	basePathPrompt   string
-	languagePrompt   string
-	adrPrompt        string
-	slotsHeader      string
-	discoveryPrompt  string
-	refinementPrompt string
-	executionPrompt  string
-	chestHeader      string
-	chestPrompt      string
+	PromptDocLang    string
+	PromptChatLang   string
+	PromptCodeLang   string
+	PromptMode       string
+	PromptBasePath   string
+	PromptAdr        string
+	HeaderSlots      string
+	PromptDiscovery  string
+	PromptRefinement string
+	PromptExecution  string
+	HeaderChest      string
+	PromptChestPath  string
+	ErrInvalidVal    string
 }
 
-var stringsEN = wizardStrings{
-	langPrompt:       "Language / Idioma? (en / pt-br) [en]: ",
-	modePrompt:       "Mode (full/lightweight/minimal) [full]: ",
-	basePathPrompt:   "Analysis workspace path [.analysis]: ",
-	languagePrompt:   "Artifact language (pt/en) [pt]: ",
-	adrPrompt:        "Enable ADR generation at mission end? (yes/no) [yes]: ",
-	slotsHeader:      "\nSlot providers — which skill fills each mission role:",
-	discoveryPrompt:  "  Ranger / discovery provider [brainstorming]: ",
-	refinementPrompt: "  Archivist / refinement provider [openspec-explore]: ",
-	executionPrompt:  "  Sniper / execution provider [sdd-ask]: ",
-	chestHeader:      "\nTreasure chest — optional offline knowledge source for all slots:",
-	chestPrompt:      "  Knowledge source path (e.g. docs/knowledge) [leave empty to skip]: ",
+var bundleEN = wizardStrings{
+	PromptDocLang:    "Documentation language (en/pt-BR) [en]: ",
+	PromptChatLang:   "Chat/interaction language (en/pt-BR) [en]: ",
+	PromptCodeLang:   "Code language (en/pt-BR) [en]: ",
+	PromptMode:       "Mode (full/lightweight/minimal) [full]: ",
+	PromptBasePath:   "Base path for analysis workspace [.analysis]: ",
+	PromptAdr:        "Enable ADR generation at mission end? (yes/no) [yes]: ",
+	HeaderSlots:      "\nSlot providers — which skill fills each mission role:",
+	PromptDiscovery:  "  Ranger / discovery provider [brainstorming]: ",
+	PromptRefinement: "  Arquivista / refinement provider [openspec-explore]: ",
+	PromptExecution:  "  Sniper / execution provider [sdd-ask]: ",
+	HeaderChest:      "\nTreasure chest — optional offline knowledge source for all slots:",
+	PromptChestPath:  "  Knowledge source path (e.g. .sdd/source) [leave empty to skip]: ",
+	ErrInvalidVal:    "  Invalid value %q. Accepted: %s\n",
 }
 
-var stringsPTBR = wizardStrings{
-	langPrompt:       "Language / Idioma? (en / pt-br) [en]: ",
-	modePrompt:       "Modo (full/lightweight/minimal) [full]: ",
-	basePathPrompt:   "Caminho do workspace de análise [.analysis]: ",
-	languagePrompt:   "Idioma dos artefatos (pt/en) [pt]: ",
-	adrPrompt:        "Habilitar geração de ADR ao final da missão? (yes/no) [yes]: ",
-	slotsHeader:      "\nSlot providers — qual skill preenche cada papel da missão:",
-	discoveryPrompt:  "  Ranger / provider de descoberta [brainstorming]: ",
-	refinementPrompt: "  Arquivista / provider de refinamento [openspec-explore]: ",
-	executionPrompt:  "  Sniper / provider de execução [sdd-ask]: ",
-	chestHeader:      "\nTreasure chest — base de conhecimento offline opcional para todos os slots:",
-	chestPrompt:      "  Caminho da base de conhecimento (ex. docs/knowledge) [deixar vazio para pular]: ",
+var bundlePTBR = wizardStrings{
+	PromptDocLang:    "Idioma da documentação (en/pt-BR) [en]: ",
+	PromptChatLang:   "Idioma do chat/interação (en/pt-BR) [en]: ",
+	PromptCodeLang:   "Idioma do código (en/pt-BR) [en]: ",
+	PromptMode:       "Modo (full/lightweight/minimal) [full]: ",
+	PromptBasePath:   "Caminho base do workspace de análise [.analysis]: ",
+	PromptAdr:        "Habilitar geração de ADR ao final da missão? (yes/no) [yes]: ",
+	HeaderSlots:      "\nProvedores de slot — qual skill preenche cada papel da missão:",
+	PromptDiscovery:  "  Ranger / provedor de descoberta [brainstorming]: ",
+	PromptRefinement: "  Arquivista / provedor de refinamento [openspec-explore]: ",
+	PromptExecution:  "  Sniper / provedor de execução [sdd-ask]: ",
+	HeaderChest:      "\nBaú do tesouro — base de conhecimento offline opcional para todos os slots:",
+	PromptChestPath:  "  Caminho da base de conhecimento (ex: .sdd/source) [deixar vazio para pular]: ",
+	ErrInvalidVal:    "  Valor inválido %q. Aceitos: %s\n",
+}
+
+func bundleFor(lang string) wizardStrings {
+	if strings.EqualFold(lang, "pt-BR") || strings.EqualFold(lang, "pt-br") {
+		return bundlePTBR
+	}
+	return bundleEN
 }
 
 // RunWizard prompts the user interactively for install configuration.
@@ -62,57 +74,71 @@ func RunWizard() (domain.WizardConfig, error) {
 func runWizard(r io.Reader) (domain.WizardConfig, error) {
 	br := bufio.NewReader(r)
 
-	// Language selection — bilingual prompt regardless of choice
-	langRaw, err := promptValidated(br, stringsEN.langPrompt, "en", []string{"en", "pt-br", "pt"})
+	// Prompt 1 — bilingual, bundle not yet chosen
+	uiLangRaw, err := promptValidated(br, "Preferred language / Idioma preferido (en/pt-BR) [en]: ", "en", []string{"en", "pt-BR", "pt-br"})
 	if err != nil {
-		return domain.WizardConfig{}, fmt.Errorf("wizard: language_ui: %w", err)
+		return domain.WizardConfig{}, fmt.Errorf("wizard: ui_language: %w", err)
 	}
-	s := stringsEN
-	if langRaw == "pt-br" || langRaw == "pt" {
-		s = stringsPTBR
-	}
+	uiLang := normLang(uiLangRaw)
 
-	mode, err := prompt(br, s.modePrompt, "full")
+	b := bundleFor(uiLang)
+
+	// Language dimensions
+	docLangRaw, err := promptValidated(br, b.PromptDocLang, "en", []string{"en", "pt-BR", "pt-br"})
+	if err != nil {
+		return domain.WizardConfig{}, fmt.Errorf("wizard: doc_language: %w", err)
+	}
+	docLang := normLang(docLangRaw)
+
+	chatLangRaw, err := promptValidated(br, b.PromptChatLang, "en", []string{"en", "pt-BR", "pt-br"})
+	if err != nil {
+		return domain.WizardConfig{}, fmt.Errorf("wizard: chat_language: %w", err)
+	}
+	chatLang := normLang(chatLangRaw)
+
+	codeLangRaw, err := promptValidated(br, b.PromptCodeLang, "en", []string{"en", "pt-BR", "pt-br"})
+	if err != nil {
+		return domain.WizardConfig{}, fmt.Errorf("wizard: code_language: %w", err)
+	}
+	codeLang := normLang(codeLangRaw)
+
+	// Operational config
+	mode, err := prompt(br, b.PromptMode, "full")
 	if err != nil {
 		return domain.WizardConfig{}, fmt.Errorf("wizard: mode: %w", err)
 	}
 
-	basePath, err := prompt(br, s.basePathPrompt, ".analysis")
+	basePath, err := prompt(br, b.PromptBasePath, ".analysis")
 	if err != nil {
 		return domain.WizardConfig{}, fmt.Errorf("wizard: base_path: %w", err)
 	}
 
-	language, err := promptValidated(br, s.languagePrompt, "pt", []string{"pt", "en"})
-	if err != nil {
-		return domain.WizardConfig{}, fmt.Errorf("wizard: language: %w", err)
-	}
-
-	adrRaw, err := promptValidated(br, s.adrPrompt, "yes", []string{"yes", "no", "y", "n"})
+	adrRaw, err := promptValidated(br, b.PromptAdr, "yes", []string{"yes", "no", "y", "n"})
 	if err != nil {
 		return domain.WizardConfig{}, fmt.Errorf("wizard: adr_enabled: %w", err)
 	}
 	adrEnabled := adrRaw == "yes" || adrRaw == "y"
 
-	fmt.Println(s.slotsHeader)
+	fmt.Println(b.HeaderSlots)
 
-	discovery, err := prompt(br, s.discoveryPrompt, "brainstorming")
+	discovery, err := prompt(br, b.PromptDiscovery, "brainstorming")
 	if err != nil {
 		return domain.WizardConfig{}, fmt.Errorf("wizard: discovery: %w", err)
 	}
 
-	refinement, err := prompt(br, s.refinementPrompt, "openspec-explore")
+	refinement, err := prompt(br, b.PromptRefinement, "openspec-explore")
 	if err != nil {
 		return domain.WizardConfig{}, fmt.Errorf("wizard: refinement: %w", err)
 	}
 
-	execution, err := prompt(br, s.executionPrompt, "sdd-ask")
+	execution, err := prompt(br, b.PromptExecution, "sdd-ask")
 	if err != nil {
 		return domain.WizardConfig{}, fmt.Errorf("wizard: execution: %w", err)
 	}
 
-	fmt.Println(s.chestHeader)
+	fmt.Println(b.HeaderChest)
 
-	chestPath, err := prompt(br, s.chestPrompt, "")
+	chestPath, err := prompt(br, b.PromptChestPath, "")
 	if err != nil {
 		return domain.WizardConfig{}, fmt.Errorf("wizard: treasure_chest: %w", err)
 	}
@@ -120,16 +146,25 @@ func runWizard(r io.Reader) (domain.WizardConfig, error) {
 	return domain.WizardConfig{
 		Mode:               mode,
 		BasePath:           basePath,
-		UILanguage:         language,
-		DocLanguage:        language,
-		ChatLanguage:       language,
-		CodeLanguage:       language,
+		UILanguage:         uiLang,
+		DocLanguage:        docLang,
+		ChatLanguage:       chatLang,
+		CodeLanguage:       codeLang,
 		AdrEnabled:         adrEnabled,
 		DiscoveryProvider:  discovery,
 		RefinementProvider: refinement,
 		ExecutionProvider:  execution,
 		TreasureChestPath:  chestPath,
 	}, nil
+}
+
+// normLang normalises language input to canonical form: "en" or "pt-BR".
+// promptValidated already lowercases the accepted value, so "pt-br" arrives here lowercased.
+func normLang(raw string) string {
+	if raw == "pt-br" {
+		return "pt-BR"
+	}
+	return raw
 }
 
 // prompt writes question to stdout and reads a trimmed line from r.
