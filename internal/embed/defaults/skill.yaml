@@ -54,17 +54,12 @@ slots:
     description: Explores the problem space and writes discovery artifact to pending/.
   refinement:
     contract: write_analysis
-    write_scope:
-      - "<base_path>/"
-      - "<base_path>/refined/"
+    write_scope: "<base_path>/refined/<mission_id>/"
     write_types: [".md"]
     canonical:
       - consult_treasure_chests     # if chests scoped to refinement present, consult before LLM
-      - output_format:
-          - "<base_path>/refined/<mission_id>/proposal.md"
-          - "<base_path>/refined/<mission_id>/design.md"
-          - "<base_path>/refined/<mission_id>/tasks.md"
-    description: Reads discovery artifact, writes refined plan and any .md summaries.
+      - emit_completion_signal      # must emit has_execution_tasks: true|false after writing
+    description: Reads discovery artifact, writes refined artifacts to <base_path>/refined/<mission_id>/. Filenames are the skill's choice.
   execution:
     contract: controlled
     canonical:
@@ -117,14 +112,12 @@ pipeline:
   - stage: refinement
     slot: refinement
     input: [discovery_artifact, opportunity_report]
-    artifact_path: "<base_path>/refined/<mission_id>/"
-    produces:
-      - "<base_path>/refined/<mission_id>/proposal.md"
-      - "<base_path>/refined/<mission_id>/design.md"
-      - "<base_path>/refined/<mission_id>/tasks.md"
+    artifact_dir: "<base_path>/refined/<mission_id>/"
+    produces: skill_defined            # filenames within artifact_dir are determined by the skill
+    completion_signal: has_execution_tasks
   - stage: approval_gate
     type: mandatory_pause
-    description: Present refined plan path. Require explicit user approval before execution slot.
+    description: Read has_execution_tasks from Archivist completion signal. Require explicit user approval before execution slot.
   - stage: execution
     slot: execution
     input: refined_plan
@@ -136,7 +129,7 @@ pipeline:
     description: >
       Evaluate if the mission contains architectural decisions worth recording.
       Skipped entirely when active.adr_enabled is false.
-      If yes: gate 1 (generate?), Arquivista writes+presents draft, gate 2 (approve content?),
+      If yes: gate 1 (generate?), Archivist writes+presents draft, gate 2 (approve content?),
       Sniper commits on approval. ADR language follows active.language.
     produces: adr_artifact
   - stage: learning

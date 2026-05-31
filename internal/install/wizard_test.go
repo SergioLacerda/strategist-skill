@@ -28,8 +28,9 @@ func TestRunWizard(t *testing.T) {
 		wantChestPath  string
 	}{
 		{
-			name:           "all defaults (empty lines)",
-			input:          "\n\n\n\n\n\n\n\n", // 8 prompts: mode/base/lang/adr/discovery/refinement/execution/chest
+			name: "all defaults (empty lines)",
+			// 9 prompts: lang/mode/base/language/adr/discovery/refinement/execution/chest
+			input:          "\n\n\n\n\n\n\n\n\n",
 			wantMode:       "full",
 			wantBase:       ".analysis",
 			wantLanguage:   "pt",
@@ -40,8 +41,8 @@ func TestRunWizard(t *testing.T) {
 			wantChestPath:  "",
 		},
 		{
-			name:           "custom slots with chest",
-			input:          "lightweight\n/workspace\npt\nyes\nbrainstorming\narchivist\nsdd-ask-full\n.sdd/source\n",
+			name:           "english ui language, custom slots with chest",
+			input:          "en\nlightweight\n/workspace\npt\nyes\nbrainstorming\narchivist\nsdd-ask-full\n.sdd/source\n",
 			wantMode:       "lightweight",
 			wantBase:       "/workspace",
 			wantLanguage:   "pt",
@@ -52,8 +53,8 @@ func TestRunWizard(t *testing.T) {
 			wantChestPath:  ".sdd/source",
 		},
 		{
-			name:           "english language ADR disabled",
-			input:          "minimal\n.\nen\nno\n\n\n\n\n",
+			name:           "pt-br ui language",
+			input:          "pt-br\nminimal\n.\nen\nno\n\n\n\n\n",
 			wantMode:       "minimal",
 			wantBase:       ".",
 			wantLanguage:   "en",
@@ -65,7 +66,7 @@ func TestRunWizard(t *testing.T) {
 		},
 		{
 			name:           "short form y accepted for adr",
-			input:          "full\n.\npt\ny\n\n\n\n\n",
+			input:          "\nfull\n.\npt\ny\n\n\n\n\n",
 			wantMode:       "full",
 			wantBase:       ".",
 			wantLanguage:   "pt",
@@ -84,7 +85,7 @@ func TestRunWizard(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantMode, wc.Mode)
 			assert.Equal(t, tt.wantBase, wc.BasePath)
-			assert.Equal(t, tt.wantLanguage, wc.Language)
+			assert.Equal(t, tt.wantLanguage, wc.UILanguage)
 			assert.Equal(t, tt.wantAdrEnabled, wc.AdrEnabled)
 			assert.Equal(t, tt.wantDiscovery, wc.DiscoveryProvider)
 			assert.Equal(t, tt.wantRefinement, wc.RefinementProvider)
@@ -96,7 +97,7 @@ func TestRunWizard(t *testing.T) {
 
 func TestPromptValidated_RejectsInvalidThenAccepts(t *testing.T) {
 	t.Parallel()
-	// First two inputs are invalid; third is valid.
+	// Primeiros dois inputs são inválidos; o terceiro é válido.
 	input := "invalid\nbad\nen\n"
 	br := newBufReader(input)
 	val, err := promptValidated(br, "lang: ", "pt", []string{"pt", "en"})

@@ -1,19 +1,19 @@
 role: ranger
 slot: discovery
 
-# Comportamentos canônicos — read-only, fonte em skill.yaml.
-# Listados aqui como referência ao escrever o custom_brief abaixo.
+# Canonical behaviors — read-only, source in skill.yaml.
+# Listed here for reference when writing custom_brief below.
 canonical:
   - find_unexpected_items       # surface items outside declared mission scope
   - consult_treasure_chests     # consult chests scoped to discovery before generating artifact
   - output_format: "<base_path>/pending/<mission_id>-discovery.md"
 
-# Instruções adicionais para o Ranger nesta instalação.
-# Strategist appenda este bloco ao role brief na invocação, após os canônicos.
-# Se vazio ou ausente, apenas os canônicos são usados.
+# Additional instructions for the Ranger in this installation.
+# Strategist appends this block to the role brief at invocation, after canonical behaviors.
+# If empty or absent, only canonical behaviors are used.
 #
-# Exemplos:
+# Examples:
 #   custom_brief: |
-#     Pesquise o codebase por padrões similares ao escopo da missão.
-#     Verifique issues abertas relacionadas antes de fechar a varredura.
+#     Search the codebase for patterns similar to the mission scope.
+#     Check open related issues before closing the discovery artifact.
 custom_brief: ""
