@@ -1,178 +1,30 @@
-# Consolidated English Standardization + Embed Sync Implementation Plan
+# Consolidated English Standardization + Embed Sync — Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Synchronize `strategist/` source-of-truth into `internal/embed/defaults/`, rename PT-BR Go identifiers to English, extract the wizard i18n bundle into a proper package, restructure personas with bilingual `content_by_lang` blocks, and rewrite SKILL.md to English-primary with language-aware bucket resolution.
+**Goal:** Standardize the codebase to English at every code/skill level while preserving PT-BR reserved words as an explicit bilingual protocol, and fix the embed sync gap that delivers a stale skill to users.
 
-**Architecture:** Five tasks in dependency order — embed sync first (all later tasks operate on embed), then Go constant renames (pure refactor, no behavior change), then i18n package extraction, then persona restructure (adds EN content block alongside existing PT-BR), then SKILL.md rewrite (updates template resolution path and bucket i18n). Each task is independently compilable and testable.
+**Architecture:** Four independent streams. Stream 1 (Go domain constants) and Stream 2 (i18n package) have no dependencies. Stream 3 (personas `content_by_lang`) must complete before Stream 4 (SKILL.md rewrite), because SKILL.md references the persona template access pattern. All streams commit separately; merge is a no-conflict rewrite of separate files.
 
-**Tech Stack:** Go 1.22+, gopkg.in/yaml.v3, testify/assert, reflect (for struct completeness tests), bash for file sync verification.
-
----
-
-## Task 1: Sync `strategist/` → `internal/embed/defaults/`
-
-**Why first:** tasks 4 and 5 operate on `internal/embed/defaults/`. Must be current before restructuring.
-
-**Files:**
-- Modify: `internal/embed/defaults/personas/epic.yaml`
-- Modify: `internal/embed/defaults/personas/pragmatic.yaml`
-- Modify: `internal/embed/defaults/SKILL.md`
-
-**Context:** `strategist/personas/epic.yaml` has 6 templates that `internal/embed/defaults/personas/epic.yaml` is missing. Same for pragmatic. `strategist/SKILL.md` has §3.2 Mission Checkpoint and a `side_quest_detected` emit in §3.1 that embed is missing.
+**Tech Stack:** Go 1.21+, `github.com/stretchr/testify/assert`, YAML, `go test ./...`, `go build ./...`
 
 ---
 
-### Step 1: Add 6 missing templates to `internal/embed/defaults/personas/epic.yaml`
+## Source of Truth Chain
 
-The embed epic persona ends at line 86 with `adr_gate`, `plan_only_result`, `mission_complete`. Add the 6 missing templates **before** the `adr_opportunity` block (after `quick_draw_success`, before `adr_opportunity`).
-
-Open `internal/embed/defaults/personas/epic.yaml`. After the `quick_draw_success` block (around line 81–85), insert:
-
-```yaml
-  # Discovery signals — emitted by Strategist when characters find items
-  treasure_chest_found: >
-    🎁 **Baú do tesouro encontrado!** [{chest_id}] — {description}
-  side_quest_detected: >
-    🗺️ **Side quest encontrada!** {description}
-  opportunity_signal: >
-    ⚔️ **Ataque de oportunidade!** {count} item(s) detectado(s) — detalhes no gate.
-
-  # Mission checkpoint — pipeline status re-emitted at each phase transition
-  # Icons: ⏳ = running, ✅ = done, ⬜ = pending
-  mission_checkpoint: |
-    **Checkpoint — {mission_id}**
-    {step_1_icon} 1 — Ranger
-    {step_2_icon} 2 — Arquivista
-    {step_3_icon} 3 — Gate
-    {step_4_icon} 4 — Execução
-
-  # Execution task list — re-emitted after each completed task
-  execution_tasks_header: >
-    🗡️ **Sniper — executando {total} tarefa(s):**
-  execution_task_line: >
-    {status_icon} {index} — {task_title}
+```
+strategist/           ← vendor canonical source (edit here first)
+      ↓
+internal/embed/defaults/   ← embedded default (copy from strategist after validation)
+      ↓
+.strategist/          ← user runtime deployment (copy from strategist after validation)
 ```
 
----
-
-### Step 2: Add 6 missing templates to `internal/embed/defaults/personas/pragmatic.yaml`
-
-Open `internal/embed/defaults/personas/pragmatic.yaml`. After `quick_draw_success` (around line 63–66), insert:
-
-```yaml
-  # Discovery signals
-  treasure_chest_found: >
-    📦 Baú: [{chest_id}] — {description}
-  side_quest_detected: >
-    Side quest: {description}
-  opportunity_signal: >
-    {count} oportunidade(s) detectada(s).
-
-  # Pipeline checkpoint — re-emitted at each phase transition
-  # Icons: ⏳ = running, ✅ = done, ⬜ = pending
-  mission_checkpoint: |
-    Pipeline — {mission_id}
-    {step_1_icon} 1 — levantamento
-    {step_2_icon} 2 — refinamento
-    {step_3_icon} 3 — gate
-    {step_4_icon} 4 — execução
-
-  # Execution task list
-  execution_tasks_header: >
-    Executando {total} tarefa(s):
-  execution_task_line: >
-    {status_icon} {index} — {task_title}
-```
+`internal/embed/defaults/` and `.strategist/` are outputs, never sources.
 
 ---
 
-### Step 3: Add §3.2 and `side_quest_detected` emit to `internal/embed/defaults/SKILL.md`
-
-Open `internal/embed/defaults/SKILL.md`. Current line 188–199:
-
-```markdown
-Store result as `mission_contract.planning_rules` — pass to all slot providers.
-
-### 3.1 Quick Draw Route (Saque Rapido)
-
-If the user explicitly requests quick capture (examples: `quick draw`, `saque rapido`,
-`TODO` as rapid note), route to a dedicated side-quest flow.
-
-Important:
-- Do NOT depend on additional intake classification for this route.
-- Strategist invocation + explicit quick-capture intent is sufficient.
-- Skip regular mission phases and execute only the quick_draw pipeline.
-```
-
-Replace with:
-
-```markdown
-Store result as `mission_contract.planning_rules` — pass to all slot providers.
-
-### 3.2 Mission Checkpoint
-
-After intake completes, initialize and emit the mission pipeline checkpoint using
-`persona.prompt_templates.mission_checkpoint` with:
-- `{mission_id}` = the generated mission id
-- `{step_1_icon}` = `⏳` (Ranger about to start), `{step_2_icon}` = `{step_3_icon}` = `{step_4_icon}` = `⬜`
-
-Re-emit the checkpoint at each phase transition, updating icons to reflect current state:
-
-| After phase    | step_1 | step_2 | step_3 | step_4 |
-|----------------|--------|--------|--------|--------|
-| Intake         | ⏳     | ⬜     | ⬜     | ⬜     |
-| Ranger done    | ✅     | ⏳     | ⬜     | ⬜     |
-| Archivist done | ✅     | ✅     | ⏳     | ⬜     |
-| Gate approved  | ✅     | ✅     | ✅     | ⏳     |
-| Sniper done    | ✅     | ✅     | ✅     | ✅     |
-
-Icons: `⏳` = running, `✅` = done, `⬜` = pending.
-Skip the checkpoint re-emit when the mission ends at `plan_only` (gate declined).
-
-### 3.1 Quick Draw Route (Saque Rapido)
-
-If the user explicitly requests quick capture (examples: `quick draw`, `saque rapido`,
-`TODO` as rapid note), route to a dedicated side-quest flow.
-
-Emit via `persona.prompt_templates.side_quest_detected` with
-`{description}` = `"Quick Draw — captura rápida de ideia."` before routing.
-
-Important:
-- Do NOT depend on additional intake classification for this route.
-- Strategist invocation + explicit quick-capture intent is sufficient.
-- Skip regular mission phases and execute only the quick_draw pipeline.
-```
-
----
-
-### Step 4: Verify embed tests pass
-
-```bash
-go test ./internal/embed/...
-```
-
-Expected: PASS (embed tests parse YAML and validate structure).
-
----
-
-### Step 5: Commit
-
-```bash
-git add internal/embed/defaults/personas/epic.yaml \
-        internal/embed/defaults/personas/pragmatic.yaml \
-        internal/embed/defaults/SKILL.md
-git commit -m "feat: sync embed defaults with strategist source-of-truth
-
-Add 6 missing persona templates (treasure_chest_found, side_quest_detected,
-opportunity_signal, mission_checkpoint, execution_tasks_header, execution_task_line)
-to epic and pragmatic personas. Add §3.2 Mission Checkpoint and side_quest_detected
-emit to SKILL.md §3.1."
-```
-
----
-
-## Task 2: Rename PT-BR Go Identifiers
+## Task 1: Rename PT-BR Go Domain Constants
 
 **Files:**
 - Modify: `internal/domain/policy.go`
@@ -180,183 +32,497 @@ emit to SKILL.md §3.1."
 - Modify: `internal/domain/state_machine_test.go`
 - Modify: `internal/domain/policy_evaluator_test.go`
 
-**Rule:** rename identifier names only. String values are PT-BR reserved words — do NOT change them.
+**Rename table:**
 
-| Before | After | String value (unchanged) |
-|---|---|---|
-| `DoneScopeAnalise` | `DoneScopeAnalysis` | `"analise"` |
-| `DoneScopeEntrega` | `DoneScopeDelivery` | `"entrega"` |
-| `MissionModeAnalise` | `MissionModeAnalysis` | `"analise"` |
-| `MissionModeEntregaRevisada` | `MissionModeRevisedDelivery` | `"entrega_revisada"` |
-| `MissionModeEntregaExecutada` | `MissionModeExecutedDelivery` | `"entrega_executada"` |
-| `StateDoneAnalise` | `StateDoneAnalysis` | `"DONE_ANALISE"` |
-| `StateDoneEntrega` | `StateDoneDelivery` | `"DONE_ENTREGA"` |
+| Before | After | Value before | Value after | Note |
+|---|---|---|---|---|
+| `DoneScopeAnalise` | `DoneScopeAnalysis` | `"analise"` | `"analise"` | reserved word |
+| `DoneScopeEntrega` | `DoneScopeDelivery` | `"entrega"` | `"entrega"` | reserved word |
+| `MissionModeAnalise` | `MissionModeAnalysis` | `"analise"` | `"analise"` | reserved word |
+| `MissionModeEntregaRevisada` | `MissionModeRevisedDelivery` | `"entrega_revisada"` | `"entrega_revisada"` | reserved word |
+| `MissionModeEntregaExecutada` | `MissionModeExecutedDelivery` | `"entrega_executada"` | `"entrega_executada"` | reserved word |
+| `StateDoneAnalise` | `StateDoneAnalysis` | `"DONE_ANALISE"` | `"DONE_ANALYSIS"` | internal FSM state |
+| `StateDoneEntrega` | `StateDoneDelivery` | `"DONE_ENTREGA"` | `"DONE_DELIVERY"` | internal FSM state |
 
----
+**Rule:** Reserved word values (`"analise"`, `"entrega"`, etc.) are part of the agent protocol — never change. Internal FSM state values (`"DONE_ANALISE"`) are code internals — always English.
 
-### Step 1: Rename constants in `internal/domain/policy.go`
+### Step 1: Rewrite `internal/domain/policy.go`
 
-Current lines 4–7 (done scopes):
+Replace the entire file content:
+
 ```go
+package domain
+
+// Legacy done scopes.
 const (
-    DoneScopeAnalise = "analise"
-    DoneScopeEntrega = "entrega"
+	DoneScopeAnalysis = "analise"
+	DoneScopeDelivery = "entrega"
 )
-```
 
-Replace with:
-```go
+// Mission modes (single user-facing control).
 const (
-    DoneScopeAnalysis = "analise"
-    DoneScopeDelivery = "entrega"
+	MissionModeAnalysis         = "analise"
+	MissionModeRevisedDelivery  = "entrega_revisada"
+	MissionModeExecutedDelivery = "entrega_executada"
 )
-```
 
-Current lines 10–14 (mission modes):
-```go
+// Transition groups classify sensitive mission-state changes.
 const (
-    MissionModeAnalise          = "analise"
-    MissionModeEntregaRevisada  = "entrega_revisada"
-    MissionModeEntregaExecutada = "entrega_executada"
+	TransitionGroupFinalizeAnalysis = "finalize_analysis" // pending/refined -> done
+	TransitionGroupExecution        = "execution"         // sniper/code/git/config writes
 )
-```
 
-Replace with:
-```go
+// MissionState represents the orchestrator FSM state.
+type MissionState string
+
+// Orchestrator finite-state machine states.
 const (
-    MissionModeAnalysis        = "analise"
-    MissionModeRevisedDelivery = "entrega_revisada"
-    MissionModeExecutedDelivery = "entrega_executada"
+	StateInit              MissionState = "INIT"
+	StateOpportunityAttack MissionState = "OPPORTUNITY_ATTACK"
+	StateOpportunityGate   MissionState = "OPPORTUNITY_GATE"
+	StateOpportunityExec   MissionState = "OPPORTUNITY_EXEC"
+	StateRefinement        MissionState = "REFINEMENT"
+	StateApprovalGate      MissionState = "APPROVAL_GATE"
+	StateExecution         MissionState = "EXECUTION"
+	StateDoneAnalysis      MissionState = "DONE_ANALYSIS"
+	StateDoneDelivery      MissionState = "DONE_DELIVERY"
+	StateBlocked           MissionState = "BLOCKED"
 )
-```
 
-Current lines 34–35 (FSM states):
-```go
-    StateDoneAnalise       MissionState = "DONE_ANALISE"
-    StateDoneEntrega       MissionState = "DONE_ENTREGA"
-```
+// TransitionEvent represents FSM/evaluator inputs.
+type TransitionEvent string
 
-Replace with:
-```go
-    StateDoneAnalysis  MissionState = "DONE_ANALISE"
-    StateDoneDelivery  MissionState = "DONE_ENTREGA"
-```
+// Transition events accepted by the orchestrator state machine.
+const (
+	EventManifestEmpty    TransitionEvent = "manifest_empty"
+	EventManifestNonEmpty TransitionEvent = "manifest_non_empty"
+	EventGateApproved     TransitionEvent = "gate_approved"
+	EventGateDenied       TransitionEvent = "gate_denied"
+	EventSniperDone       TransitionEvent = "sniper_done"
+	EventArchivistNoTasks TransitionEvent = "archivist_done_no_tasks"
+	EventArchivistTasks   TransitionEvent = "archivist_done_has_tasks"
+)
 
-Update all references inside `policy.go` functions (`MissionModeFromLegacy`, `NewMissionPolicy`, `NormalizePolicy`) — replace every old name with the new name. String values are untouched.
+// MissionPolicy controls whether guarded transitions are allowed.
+// MissionMode is canonical. DoneScope/ApplyChanges are derived for compatibility.
+type MissionPolicy struct {
+	Mode            string // analise | entrega_revisada | entrega_executada
+	CanExecute      bool
+	ExpectsDelivery string // analise | entrega
+	DoneScope       string
+	ApplyChanges    bool
+}
 
-Full updated `MissionModeFromLegacy`:
-```go
+// TransitionDecision is the deterministic result of policy evaluation.
+type TransitionDecision struct {
+	Allowed bool
+	Reason  string
+	Status  string // allowed | policy_blocked | approval_required
+	Policy  MissionPolicy
+}
+
+// MissionModeFromLegacy maps the former 2-knob model to mission_mode.
 func MissionModeFromLegacy(doneScope string, applyChanges bool) string {
-    if doneScope == DoneScopeAnalysis {
-        return MissionModeAnalysis
-    }
-    if applyChanges {
-        return MissionModeExecutedDelivery
-    }
-    return MissionModeRevisedDelivery
+	if doneScope == DoneScopeAnalysis {
+		return MissionModeAnalysis
+	}
+	if applyChanges {
+		return MissionModeExecutedDelivery
+	}
+	return MissionModeRevisedDelivery
 }
-```
 
-Full updated `NewMissionPolicy`:
-```go
+// NewMissionPolicy builds canonical policy from mission_mode.
 func NewMissionPolicy(mode string) MissionPolicy {
-    switch mode {
-    case MissionModeAnalysis:
-        return MissionPolicy{Mode: mode, CanExecute: false, ExpectsDelivery: DoneScopeAnalysis, DoneScope: DoneScopeAnalysis, ApplyChanges: false}
-    case MissionModeRevisedDelivery:
-        return MissionPolicy{Mode: mode, CanExecute: false, ExpectsDelivery: DoneScopeDelivery, DoneScope: DoneScopeDelivery, ApplyChanges: false}
-    case MissionModeExecutedDelivery:
-        return MissionPolicy{Mode: mode, CanExecute: true, ExpectsDelivery: DoneScopeDelivery, DoneScope: DoneScopeDelivery, ApplyChanges: true}
-    default:
-        return NewMissionPolicy(MissionModeExecutedDelivery)
-    }
+	switch mode {
+	case MissionModeAnalysis:
+		return MissionPolicy{Mode: mode, CanExecute: false, ExpectsDelivery: DoneScopeAnalysis, DoneScope: DoneScopeAnalysis, ApplyChanges: false}
+	case MissionModeRevisedDelivery:
+		return MissionPolicy{Mode: mode, CanExecute: false, ExpectsDelivery: DoneScopeDelivery, DoneScope: DoneScopeDelivery, ApplyChanges: false}
+	case MissionModeExecutedDelivery:
+		return MissionPolicy{Mode: mode, CanExecute: true, ExpectsDelivery: DoneScopeDelivery, DoneScope: DoneScopeDelivery, ApplyChanges: true}
+	default:
+		// Backward compatibility default preserves historical behavior.
+		return NewMissionPolicy(MissionModeExecutedDelivery)
+	}
 }
-```
 
-Full updated `NormalizePolicy`:
-```go
+// NormalizePolicy applies backward-compatible defaults/coherence.
 func NormalizePolicy(p MissionPolicy) MissionPolicy {
-    if p.Mode == "" {
-        if p.DoneScope != "" || p.ApplyChanges {
-            p.Mode = MissionModeFromLegacy(p.DoneScope, p.ApplyChanges)
-        } else {
-            p.Mode = MissionModeExecutedDelivery
-        }
-    }
-    return NewMissionPolicy(p.Mode)
+	if p.Mode == "" {
+		if p.DoneScope != "" || p.ApplyChanges {
+			p.Mode = MissionModeFromLegacy(p.DoneScope, p.ApplyChanges)
+		} else {
+			p.Mode = MissionModeExecutedDelivery
+		}
+	}
+	return NewMissionPolicy(p.Mode)
 }
 ```
 
----
+### Step 2: Rewrite `internal/domain/state_machine.go`
 
-### Step 2: Update `internal/domain/state_machine.go`
+```go
+package domain
 
-Replace all 7 occurrences:
-- `StateDoneAnalise` → `StateDoneAnalysis` (lines 22, 23, 83, 86, 98)
-- `StateDoneEntrega` → `StateDoneDelivery` (lines 24, 25, 103, 113)
-- `MissionModeAnalise` → `MissionModeAnalysis` (line 85)
+// NextState applies a single transition event to the current state using policy guards.
+func NextState(current MissionState, event TransitionEvent, policy MissionPolicy) MissionState {
+	p := NormalizePolicy(policy)
 
----
+	switch current {
+	case StateInit:
+		return nextFromInit(event)
+	case StateOpportunityAttack:
+		return nextFromOpportunityAttack(event)
+	case StateOpportunityGate:
+		return nextFromOpportunityGate(event, p)
+	case StateOpportunityExec:
+		return nextFromOpportunityExec(event)
+	case StateRefinement:
+		return nextFromRefinement(event, p)
+	case StateApprovalGate:
+		return nextFromApprovalGate(event, p)
+	case StateExecution:
+		return nextFromExecution(event)
+	case StateDoneAnalysis:
+		return StateDoneAnalysis
+	case StateDoneDelivery:
+		return StateDoneDelivery
+	case StateBlocked:
+		return StateBlocked
+	}
 
-### Step 3: Update `internal/domain/state_machine_test.go`
+	return current
+}
 
-Replace all occurrences:
-- `domain.MissionModeAnalise` → `domain.MissionModeAnalysis`
-- `domain.MissionModeEntregaRevisada` → `domain.MissionModeRevisedDelivery`
-- `domain.MissionModeEntregaExecutada` → `domain.MissionModeExecutedDelivery`
+func nextFromInit(event TransitionEvent) MissionState {
+	switch event {
+	case EventManifestEmpty, EventManifestNonEmpty:
+		return StateOpportunityAttack
+	case EventGateApproved, EventGateDenied, EventSniperDone, EventArchivistNoTasks, EventArchivistTasks:
+		return StateInit
+	}
+	return StateInit
+}
 
----
+func nextFromOpportunityAttack(event TransitionEvent) MissionState {
+	switch event {
+	case EventManifestEmpty:
+		return StateRefinement
+	case EventManifestNonEmpty:
+		return StateOpportunityGate
+	case EventGateApproved, EventGateDenied, EventSniperDone, EventArchivistNoTasks, EventArchivistTasks:
+		return StateOpportunityAttack
+	}
+	return StateOpportunityAttack
+}
 
-### Step 4: Update `internal/domain/policy_evaluator_test.go`
+func nextFromOpportunityGate(event TransitionEvent, p MissionPolicy) MissionState {
+	switch event {
+	case EventGateDenied:
+		return StateRefinement
+	case EventGateApproved:
+		if p.CanExecute {
+			return StateOpportunityExec
+		}
+		return StateRefinement
+	case EventManifestEmpty, EventManifestNonEmpty, EventSniperDone, EventArchivistNoTasks, EventArchivistTasks:
+		return StateOpportunityGate
+	}
+	return StateOpportunityGate
+}
 
-Replace all occurrences:
-- `domain.DoneScopeAnalise` → `domain.DoneScopeAnalysis`
-- `domain.DoneScopeEntrega` → `domain.DoneScopeDelivery`
-- `domain.MissionModeAnalise` → `domain.MissionModeAnalysis`
-- `domain.MissionModeEntregaExecutada` → `domain.MissionModeExecutedDelivery`
+func nextFromOpportunityExec(event TransitionEvent) MissionState {
+	switch event {
+	case EventSniperDone:
+		return StateRefinement
+	case EventManifestEmpty, EventManifestNonEmpty, EventGateApproved, EventGateDenied, EventArchivistNoTasks, EventArchivistTasks:
+		return StateOpportunityExec
+	}
+	return StateOpportunityExec
+}
 
----
+func nextFromRefinement(event TransitionEvent, p MissionPolicy) MissionState {
+	switch event {
+	case EventArchivistNoTasks:
+		return StateDoneAnalysis
+	case EventArchivistTasks:
+		if p.Mode == MissionModeAnalysis {
+			return StateDoneAnalysis
+		}
+		return StateApprovalGate
+	case EventManifestEmpty, EventManifestNonEmpty, EventGateApproved, EventGateDenied, EventSniperDone:
+		return StateRefinement
+	}
+	return StateRefinement
+}
 
-### Step 5: Verify build and tests
+func nextFromApprovalGate(event TransitionEvent, p MissionPolicy) MissionState {
+	switch event {
+	case EventGateDenied:
+		return StateDoneAnalysis
+	case EventGateApproved:
+		if p.CanExecute {
+			return StateExecution
+		}
+		return StateDoneDelivery
+	case EventManifestEmpty, EventManifestNonEmpty, EventSniperDone, EventArchivistNoTasks, EventArchivistTasks:
+		return StateApprovalGate
+	}
+	return StateApprovalGate
+}
+
+func nextFromExecution(event TransitionEvent) MissionState {
+	switch event {
+	case EventSniperDone:
+		return StateDoneDelivery
+	case EventManifestEmpty, EventManifestNonEmpty, EventGateApproved, EventGateDenied, EventArchivistNoTasks, EventArchivistTasks:
+		return StateExecution
+	}
+	return StateExecution
+}
+
+// RunStateMachine folds a sequence of events from a starting state.
+func RunStateMachine(start MissionState, events []TransitionEvent, policy MissionPolicy) MissionState {
+	state := start
+	for _, ev := range events {
+		state = NextState(state, ev, policy)
+	}
+	return state
+}
+```
+
+### Step 3: Rewrite `internal/domain/state_machine_test.go`
+
+```go
+package domain_test
+
+import (
+	"math/rand"
+	"testing"
+
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestFSMAnaliseNeverExecutes(t *testing.T) {
+	t.Parallel()
+	policy := domain.NewMissionPolicy(domain.MissionModeAnalysis)
+	state := domain.StateInit
+	events := []domain.TransitionEvent{
+		domain.EventManifestNonEmpty,
+		domain.EventGateApproved,
+		domain.EventArchivistTasks,
+		domain.EventGateApproved,
+		domain.EventSniperDone,
+	}
+	for _, ev := range events {
+		state = domain.NextState(state, ev, policy)
+		assert.NotEqual(t, domain.StateExecution, state)
+	}
+}
+
+func TestOpportunityGatePolicyLocked(t *testing.T) {
+	t.Parallel()
+	for _, mode := range []string{domain.MissionModeAnalysis, domain.MissionModeRevisedDelivery} {
+		state := domain.RunStateMachine(domain.StateOpportunityAttack,
+			[]domain.TransitionEvent{domain.EventManifestNonEmpty, domain.EventGateApproved},
+			domain.NewMissionPolicy(mode),
+		)
+		assert.Equal(t, domain.StateRefinement, state)
+	}
+}
+
+func TestFSMSafetyPropertyLike(t *testing.T) {
+	t.Parallel()
+	rng := rand.New(rand.NewSource(31))
+	allEvents := []domain.TransitionEvent{
+		domain.EventManifestEmpty,
+		domain.EventManifestNonEmpty,
+		domain.EventGateApproved,
+		domain.EventGateDenied,
+		domain.EventSniperDone,
+		domain.EventArchivistNoTasks,
+		domain.EventArchivistTasks,
+	}
+
+	for i := 0; i < 400; i++ {
+		mode := domain.MissionModeExecutedDelivery
+		if rng.Intn(3) == 0 {
+			mode = domain.MissionModeAnalysis
+		} else if rng.Intn(2) == 0 {
+			mode = domain.MissionModeRevisedDelivery
+		}
+		policy := domain.NewMissionPolicy(mode)
+		state := domain.StateInit
+		seenGateApproved := false
+		for j := 0; j < 14; j++ {
+			ev := allEvents[rng.Intn(len(allEvents))]
+			if ev == domain.EventGateApproved {
+				seenGateApproved = true
+			}
+			state = domain.NextState(state, ev, policy)
+			if state == domain.StateExecution {
+				assert.True(t, seenGateApproved)
+				assert.True(t, policy.CanExecute)
+			}
+		}
+	}
+}
+```
+
+### Step 4: Rewrite `internal/domain/policy_evaluator_test.go`
+
+```go
+package domain_test
+
+import (
+	"testing"
+
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestGuardedTransitionRequiresGate(t *testing.T) {
+	t.Parallel()
+
+	decision := domain.EvaluateGuardedTransition(
+		domain.MissionPolicy{DoneScope: domain.DoneScopeDelivery, ApplyChanges: true},
+		domain.TransitionGroupExecution,
+		false,
+	)
+
+	assert.False(t, decision.Allowed)
+	assert.Equal(t, "approval_required", decision.Reason)
+}
+
+func TestDefaultMissionModePreservesLegacyExecution(t *testing.T) {
+	t.Parallel()
+
+	decision := domain.EvaluateGuardedTransition(
+		domain.MissionPolicy{},
+		domain.TransitionGroupExecution,
+		true,
+	)
+
+	assert.True(t, decision.Allowed)
+	assert.Equal(t, "allowed", decision.Reason)
+	assert.Equal(t, domain.MissionModeExecutedDelivery, decision.Policy.Mode)
+}
+
+func TestDoneAnaliseSkipsExecution(t *testing.T) {
+	t.Parallel()
+
+	decision := domain.EvaluateGuardedTransition(
+		domain.MissionPolicy{DoneScope: domain.DoneScopeAnalysis, ApplyChanges: true},
+		domain.TransitionGroupExecution,
+		true,
+	)
+
+	assert.False(t, decision.Allowed)
+	assert.Equal(t, "policy_blocked", decision.Reason)
+}
+
+func TestExecutionAllowedWhenEntregaAndApplyChanges(t *testing.T) {
+	t.Parallel()
+
+	decision := domain.EvaluateGuardedTransition(
+		domain.MissionPolicy{DoneScope: domain.DoneScopeDelivery, ApplyChanges: true},
+		domain.TransitionGroupExecution,
+		true,
+	)
+
+	assert.True(t, decision.Allowed)
+	assert.Equal(t, "allowed", decision.Reason)
+}
+
+func TestFinalizeAnalysisAllowedWithGate(t *testing.T) {
+	t.Parallel()
+
+	decision := domain.EvaluateGuardedTransition(
+		domain.MissionPolicy{DoneScope: domain.DoneScopeAnalysis, ApplyChanges: false},
+		domain.TransitionGroupFinalizeAnalysis,
+		true,
+	)
+
+	assert.True(t, decision.Allowed)
+	assert.Equal(t, "allowed", decision.Reason)
+}
+
+func TestIncidentUXStratetist(t *testing.T) {
+	t.Parallel()
+
+	// Regression: no explicit approval must never allow execution-like transition.
+	decision := domain.EvaluateGuardedTransition(
+		domain.MissionPolicy{DoneScope: domain.DoneScopeDelivery, ApplyChanges: true},
+		domain.TransitionGroupExecution,
+		false,
+	)
+
+	assert.False(t, decision.Allowed)
+	assert.Equal(t, "approval_required", decision.Reason)
+}
+
+func TestQuickDrawPolicyLockedForAnalysisMode(t *testing.T) {
+	t.Parallel()
+
+	// Quick draw execution is an execution-like guarded transition.
+	decision := domain.EvaluateGuardedTransition(
+		domain.NewMissionPolicy(domain.MissionModeAnalysis),
+		domain.TransitionGroupExecution,
+		true,
+	)
+
+	assert.False(t, decision.Allowed)
+	assert.Equal(t, "policy_blocked", decision.Reason)
+}
+
+func TestQuickDrawAllowedForEntregaExecutadaWithGate(t *testing.T) {
+	t.Parallel()
+
+	decision := domain.EvaluateGuardedTransition(
+		domain.NewMissionPolicy(domain.MissionModeExecutedDelivery),
+		domain.TransitionGroupExecution,
+		true,
+	)
+
+	assert.True(t, decision.Allowed)
+	assert.Equal(t, "allowed", decision.Reason)
+}
+```
+
+### Step 5: Build and test
 
 ```bash
 go build ./...
-go test ./...
+go test ./internal/domain/...
 ```
 
-Expected: PASS on all packages. If any reference was missed, the compiler will point directly to it.
+Expected: all tests pass, zero compile errors.
 
----
-
-### Step 6: Commit
+### Step 6: Commit Task 1
 
 ```bash
-git add internal/domain/policy.go \
-        internal/domain/state_machine.go \
-        internal/domain/state_machine_test.go \
-        internal/domain/policy_evaluator_test.go
-git commit -m "refactor: rename PT-BR Go identifiers to English
+git add internal/domain/policy.go internal/domain/state_machine.go \
+        internal/domain/state_machine_test.go internal/domain/policy_evaluator_test.go
+git commit -m "refactor: rename PT-BR Go domain identifiers to English
 
-Rename constant identifiers only — string values (analise, entrega,
-entrega_revisada, entrega_executada) are reserved words and unchanged.
-DoneScopeAnalise→DoneScopeAnalysis, MissionModeAnalise→MissionModeAnalysis,
-StateDoneAnalise→StateDoneAnalysis, etc."
+Constants renamed; reserved word string values preserved.
+StateDone* values updated from DONE_ANALISE/DONE_ENTREGA to DONE_ANALYSIS/DONE_DELIVERY
+(internal FSM states, never persisted to YAML)."
 ```
 
 ---
 
-## Task 3: Extract `internal/i18n/` Package
+## Task 2: Create `internal/i18n/` Package
 
 **Files:**
-- Create: `internal/i18n/wizard.go`
 - Create: `internal/i18n/wizard_test.go`
+- Create: `internal/i18n/wizard.go`
+- Create: `internal/i18n/reserved.go`
 - Modify: `internal/install/wizard.go`
 
-**Context:** `internal/install/wizard.go` has an unexported `wizardStrings` struct, `bundleEN`, `bundlePTBR`, and `bundleFor()` inside the `install` package. One field is missing from the bundle: `LabelCustomInput` is hardcoded as `"(digitar outro...)"` at line 123 outside the bundle. This task extracts the bundle to a proper package and adds the missing field.
-
----
-
-### Step 1: Write the failing test
+### Step 1: Write the failing test first
 
 Create `internal/i18n/wizard_test.go`:
 
@@ -364,59 +530,61 @@ Create `internal/i18n/wizard_test.go`:
 package i18n_test
 
 import (
-    "reflect"
-    "testing"
+	"reflect"
+	"testing"
 
-    "github.com/SergioLacerda/strategist-skill/internal/i18n"
-    "github.com/stretchr/testify/assert"
+	"github.com/SergioLacerda/strategist-skill/internal/i18n"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestBundleForPTBR(t *testing.T) {
-    b := i18n.BundleFor("pt-BR")
-    assert.Equal(t, "(digitar outro...)", b.LabelCustomInput)
-    assert.Equal(t, "Idioma da documentação", b.PromptDocLang)
+	b := i18n.BundleFor("pt-BR")
+	assert.Equal(t, "(digitar outro...)", b.LabelCustomInput)
+	assert.Equal(t, "Idioma da documentação", b.PromptDocLang)
 }
 
 func TestBundleForEN(t *testing.T) {
-    b := i18n.BundleFor("en")
-    assert.Equal(t, "(enter other...)", b.LabelCustomInput)
-    assert.Equal(t, "Documentation language", b.PromptDocLang)
+	b := i18n.BundleFor("en")
+	assert.Equal(t, "(enter other...)", b.LabelCustomInput)
+	assert.Equal(t, "Documentation language", b.PromptDocLang)
 }
 
 func TestBundleForUnknownDefaultsToEN(t *testing.T) {
-    b := i18n.BundleFor("fr")
-    assert.Equal(t, "(enter other...)", b.LabelCustomInput)
+	b := i18n.BundleFor("fr")
+	assert.Equal(t, "(enter other...)", b.LabelCustomInput)
 }
 
-func TestAllFieldsNonEmpty(t *testing.T) {
-    for _, tc := range []struct {
-        lang string
-        b    i18n.WizardStrings
-    }{
-        {"en", i18n.BundleFor("en")},
-        {"pt-BR", i18n.BundleFor("pt-BR")},
-    } {
-        v := reflect.ValueOf(tc.b)
-        for i := range v.NumField() {
-            field := v.Type().Field(i).Name
-            val := v.Field(i).String()
-            assert.NotEmpty(t, val, "lang=%s field=%s must not be empty", tc.lang, field)
-        }
-    }
+func TestBundleForCaseInsensitive(t *testing.T) {
+	assert.Equal(t, i18n.BundleFor("pt-BR"), i18n.BundleFor("PT-BR"))
+	assert.Equal(t, i18n.BundleFor("pt-BR"), i18n.BundleFor("pt-br"))
+}
+
+func TestAllFieldsNonEmptyEN(t *testing.T) {
+	b := i18n.EN
+	v := reflect.ValueOf(b)
+	for i := 0; i < v.NumField(); i++ {
+		field := v.Type().Field(i).Name
+		assert.NotEmpty(t, v.Field(i).String(), "EN.%s must not be empty", field)
+	}
+}
+
+func TestAllFieldsNonEmptyPT(t *testing.T) {
+	b := i18n.PT
+	v := reflect.ValueOf(b)
+	for i := 0; i < v.NumField(); i++ {
+		field := v.Type().Field(i).Name
+		assert.NotEmpty(t, v.Field(i).String(), "PT.%s must not be empty", field)
+	}
 }
 ```
 
----
-
-### Step 2: Run test to verify it fails
+### Step 2: Run test — expect compile failure
 
 ```bash
 go test ./internal/i18n/...
 ```
 
-Expected: FAIL — `package i18n not found`.
-
----
+Expected: `cannot find package "github.com/SergioLacerda/strategist-skill/internal/i18n"`
 
 ### Step 3: Create `internal/i18n/wizard.go`
 
@@ -443,7 +611,7 @@ type WizardStrings struct {
 	LabelCustomInput  string
 }
 
-// EN is the English wizard bundle.
+// EN is the English wizard string bundle.
 var EN = WizardStrings{
 	PromptDocLang:     "Documentation language",
 	PromptChatLang:    "Chat/interaction language",
@@ -461,7 +629,7 @@ var EN = WizardStrings{
 	LabelCustomInput:  "(enter other...)",
 }
 
-// PT is the Brazilian Portuguese wizard bundle.
+// PT is the Portuguese wizard string bundle.
 var PT = WizardStrings{
 	PromptDocLang:     "Idioma da documentação",
 	PromptChatLang:    "Idioma do chat/interação",
@@ -489,99 +657,203 @@ func BundleFor(lang string) WizardStrings {
 }
 ```
 
----
+### Step 4: Create `internal/i18n/reserved.go`
 
-### Step 4: Run tests to verify they pass
+```go
+package i18n
+
+// PT-BR reserved words used as agent match tokens and YAML config values.
+// These are NOT user-visible strings — they are part of the bilingual protocol
+// between the user, active.yaml, and the agent. Do not translate.
+const (
+	// MissionMode values — written to active.yaml, matched by the agent.
+	ReservedMissionModeAnalysis        = "analise"
+	ReservedMissionModeRevisedDelivery = "entrega_revisada"
+	ReservedMissionModeExecDelivery    = "entrega_executada"
+	ReservedDoneScopeDelivery          = "entrega"
+
+	// Gate responses — typed by the user, matched by the agent.
+	ReservedGateYes = "sim"
+	ReservedGateNo  = "nao"
+
+	// Quick draw triggers — typed by the user, matched by the agent.
+	ReservedQuickDrawPT = "saque rapido"
+	ReservedQuickDrawEN = "quick draw"
+)
+```
+
+### Step 5: Run tests — expect pass
 
 ```bash
 go test ./internal/i18n/...
 ```
 
-Expected: PASS.
+Expected: all 6 tests pass.
 
----
+### Step 6: Update `internal/install/wizard.go`
 
-### Step 5: Update `internal/install/wizard.go`
+Changes:
+- Remove lines 10–63: `wizardStrings` struct, `bundleEN`, `bundlePTBR`, `bundleFor()`
+- Add import: `"github.com/SergioLacerda/strategist-skill/internal/i18n"`
+- Change `b := bundleFor(uiLang)` → `b := i18n.BundleFor(uiLang)`
+- Remove `customLabel := "(digitar outro...")`
+- In all three `SelectOrInput` calls, replace `customLabel` → `b.LabelCustomInput`
 
-Remove the following from `internal/install/wizard.go` (lines 10–63):
-- The `wizardStrings` struct definition
-- `var bundleEN = wizardStrings{...}`
-- `var bundlePTBR = wizardStrings{...}`
-- `func bundleFor(lang string) wizardStrings {...}`
-
-Add import `"github.com/SergioLacerda/strategist-skill/internal/i18n"` to the import block.
-
-Change line 76: `b := bundleFor(uiLang)` → `b := i18n.BundleFor(uiLang)`
-
-Remove line 123: `customLabel := "(digitar outro...)"` — deleted entirely.
-
-Change lines 125, 130, 135 — replace `customLabel` argument with `b.LabelCustomInput`:
+Complete `internal/install/wizard.go` after changes:
 
 ```go
-discovery, err := p.SelectOrInput(b.PromptDiscovery, "brainstorming", []string{"brainstorming"}, b.LabelCustomInput)
+package install
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/i18n"
+)
+
+var langOptions = []string{"en", "pt-BR"}
+
+// runWizard collects install configuration through p.
+func runWizard(p Prompter) (domain.WizardConfig, error) {
+	// Prompt 1 — bilingual, bundle not yet chosen
+	uiLang, err := p.Select("Preferred language / Idioma preferido", "en", langOptions)
+	if err != nil {
+		return domain.WizardConfig{}, fmt.Errorf("wizard: ui_language: %w", err)
+	}
+	uiLang = normLang(uiLang)
+
+	b := i18n.BundleFor(uiLang)
+
+	docLang, err := p.Select(b.PromptDocLang, "en", langOptions)
+	if err != nil {
+		return domain.WizardConfig{}, fmt.Errorf("wizard: doc_language: %w", err)
+	}
+	docLang = normLang(docLang)
+
+	chatLang, err := p.Select(b.PromptChatLang, "en", langOptions)
+	if err != nil {
+		return domain.WizardConfig{}, fmt.Errorf("wizard: chat_language: %w", err)
+	}
+	chatLang = normLang(chatLang)
+
+	codeLang, err := p.Select(b.PromptCodeLang, "en", langOptions)
+	if err != nil {
+		return domain.WizardConfig{}, fmt.Errorf("wizard: code_language: %w", err)
+	}
+	codeLang = normLang(codeLang)
+
+	mode, err := p.Select(b.PromptMode, "pragmatic", []string{"pragmatic", "epic"})
+	if err != nil {
+		return domain.WizardConfig{}, fmt.Errorf("wizard: mode: %w", err)
+	}
+
+	basePath, err := p.Input(b.PromptBasePath, ".analysis")
+	if err != nil {
+		return domain.WizardConfig{}, fmt.Errorf("wizard: base_path: %w", err)
+	}
+
+	adrRaw, err := p.Select(b.PromptAdr, "yes", []string{"yes", "no"})
+	if err != nil {
+		return domain.WizardConfig{}, fmt.Errorf("wizard: adr_enabled: %w", err)
+	}
+	adrEnabled := adrRaw == "yes"
+
+	missionMode, err := p.Select(b.PromptMissionMode, "entrega_executada", []string{"analise", "entrega_revisada", "entrega_executada"})
+	if err != nil {
+		return domain.WizardConfig{}, fmt.Errorf("wizard: mission_mode: %w", err)
+	}
+
+	policy := domain.NewMissionPolicy(missionMode)
+	doneScope := policy.DoneScope
+	applyChanges := policy.ApplyChanges
+
+	fmt.Println(b.HeaderSlots)
+
+	discovery, err := p.SelectOrInput(b.PromptDiscovery, "brainstorming", []string{"brainstorming"}, b.LabelCustomInput)
+	if err != nil {
+		return domain.WizardConfig{}, fmt.Errorf("wizard: discovery: %w", err)
+	}
+
+	refinement, err := p.SelectOrInput(b.PromptRefinement, "openspec-explore", []string{"openspec-explore"}, b.LabelCustomInput)
+	if err != nil {
+		return domain.WizardConfig{}, fmt.Errorf("wizard: refinement: %w", err)
+	}
+
+	execution, err := p.SelectOrInput(b.PromptExecution, "sdd-ask", []string{"sdd-ask", "sdd-ask-full"}, b.LabelCustomInput)
+	if err != nil {
+		return domain.WizardConfig{}, fmt.Errorf("wizard: execution: %w", err)
+	}
+
+	fmt.Println(b.HeaderChest)
+
+	chestPath, err := p.Input(b.PromptChestPath, "")
+	if err != nil {
+		return domain.WizardConfig{}, fmt.Errorf("wizard: treasure_chest: %w", err)
+	}
+
+	return domain.WizardConfig{
+		Mode:               mode,
+		BasePath:           basePath,
+		MissionMode:        missionMode,
+		DoneScope:          doneScope,
+		ApplyChanges:       applyChanges,
+		UILanguage:         uiLang,
+		DocLanguage:        docLang,
+		ChatLanguage:       chatLang,
+		CodeLanguage:       codeLang,
+		AdrEnabled:         adrEnabled,
+		DiscoveryProvider:  discovery,
+		RefinementProvider: refinement,
+		ExecutionProvider:  execution,
+		TreasureChestPath:  chestPath,
+	}, nil
+}
+
+// normLang normalises language input to canonical form: "en" or "pt-BR".
+func normLang(raw string) string {
+	if strings.EqualFold(raw, "pt-BR") {
+		return "pt-BR"
+	}
+	return raw
+}
 ```
 
-```go
-refinement, err := p.SelectOrInput(b.PromptRefinement, "openspec-explore", []string{"openspec-explore"}, b.LabelCustomInput)
-```
-
-```go
-execution, err := p.SelectOrInput(b.PromptExecution, "sdd-ask", []string{"sdd-ask", "sdd-ask-full"}, b.LabelCustomInput)
-```
-
----
-
-### Step 6: Verify no PT-BR string remains in wizard.go
+### Step 7: Verify
 
 ```bash
-grep "digitar outro" internal/install/wizard.go
-```
-
-Expected: no output.
-
----
-
-### Step 7: Run all install tests
-
-```bash
+go build ./...
 go test ./internal/i18n/... ./internal/install/...
+
+# No hardcoded PT-BR label in wizard
+grep -n "digitar outro" internal/install/wizard.go
 ```
 
-Expected: PASS.
+Expected: tests pass, grep returns no output.
 
----
-
-### Step 8: Commit
+### Step 8: Commit Task 2
 
 ```bash
-git add internal/i18n/wizard.go \
-        internal/i18n/wizard_test.go \
-        internal/install/wizard.go
-git commit -m "feat: extract wizard i18n bundle to internal/i18n package
+git add internal/i18n/ internal/install/wizard.go
+git commit -m "feat: extract internal/i18n package with WizardStrings and PT-BR reserved words
 
-Promote unexported wizardStrings/bundleEN/bundlePTBR from install package
-to exported internal/i18n.WizardStrings with BundleFor(). Add missing
-LabelCustomInput field — was hardcoded PT-BR string in wizard.go."
+Moves wizard i18n bundle from unexported install package to exported i18n package.
+Adds LabelCustomInput field (was hardcoded PT-BR in wizard.go).
+Adds reserved.go documenting PT-BR protocol tokens that must never be translated."
 ```
 
 ---
 
-## Task 4: Personas — `content_by_lang` Restructure
+## Task 3: Persona `content_by_lang` Restructure
 
 **Files:**
-- Modify: `internal/embed/defaults/personas/epic.yaml`
-- Modify: `internal/embed/defaults/personas/pragmatic.yaml`
-- Sync to: `strategist/personas/epic.yaml` and `strategist/personas/pragmatic.yaml`
+- Rewrite: `internal/embed/defaults/personas/epic.yaml`
+- Rewrite: `internal/embed/defaults/personas/pragmatic.yaml`
+- Sync: copy both to `strategist/personas/`
 
-**Context:** Both personas now have all templates (after Task 1) under a flat `prompt_templates:` key in PT-BR only. This task wraps all templates under `content_by_lang: { en: {...}, pt-BR: {...} }`. The PT-BR content is moved verbatim; EN content is translated. Top-level fields (`phase_labels`, `role_emoji`, `tone_directive`, `progress_prefix`) stay flat.
-
-**Important:** `quick_draw_gate` in both language blocks keeps `(sim/nao)` — it is a runtime reserved word the user types, not a UI string.
-
----
+**Note on `quick_draw_gate`:** `(sim/nao)` is kept in BOTH language blocks — it is a runtime reserved word the user types, not a UI string.
 
 ### Step 1: Rewrite `internal/embed/defaults/personas/epic.yaml`
-
-Full replacement content:
 
 ```yaml
 id: epic
@@ -595,17 +867,16 @@ phase_labels:
   execution: Sniper
 
 tone_directive: >
-  Arquiteto sênior que viveu o suficiente para saber que o trabalho é duro — e escolheu
-  encontrar alegria nisso mesmo assim. Acredita que a era de agentes humanos e digitais
-  colaborando é uma das maiores aventuras que a engenharia já proporcionou. Narra as fases
-  com energia genuína: Ranger, Arquivista, Sniper — cada papel tem seu momento. Mantém o
-  vocabulário técnico (commit, análise, implementação, missão) — a épica está nos papeis
-  e na narrativa, não na substituição do vocabulário. Mantém o time unido. Quando algo
-  falha, é um boss difícil, não uma tragédia.
+  Senior architect who has lived long enough to know the work is hard — and chose
+  to find joy in it anyway. Believes the era of human and digital agents collaborating
+  is one of the greatest adventures engineering has ever seen. Narrates phases with
+  genuine energy: Ranger, Archivist, Sniper — each role has its moment. Keeps
+  technical vocabulary (commit, analysis, implementation, mission) — the epic is in
+  the roles and the narrative, not in replacing vocabulary. Keeps the team together.
+  When something fails, it is a tough boss, not a tragedy.
 
 progress_prefix: "[Strategist]"
 
-# Fixed emojis per character — immutable
 role_emoji:
   ranger: "🎯"
   archivist: "📚"
@@ -618,27 +889,29 @@ content_by_lang:
     intake_summary: >
       Mission received: {task_type} | delivery={delivery_strategy} |
       compatibility={legacy_compatibility} | urgency={urgency} | intent={execution_intent}
+
     ranger_start: >
       🎯 **Ranger:** starting reconnaissance. skill={provider}
     ranger_done: >
-      🎯 **Ranger:** reconnaissance complete.
-      Artifact at: {artifact_path}
+      🎯 **Ranger:** reconnaissance complete. Artifact at: {artifact_path}
+
     archivist_start: >
       📚 **Archivist:** starting analysis and refinement. skill={provider}
     archivist_done: >
-      📚 **Archivist:** analysis refined.
-      Artifacts at: {artifact_path}
+      📚 **Archivist:** analysis refined. Artifacts at: {artifact_path}
+
     sniper_start: >
       🗡️ **Sniper:** mission approved — starting implementation.
     sniper_done: >
-      🗡️ **Sniper:** implementation complete.
-      Report at: {artifact_path}
+      🗡️ **Sniper:** implementation complete. Report at: {artifact_path}
+
     approval_prompt: >
       🚦 **Gate:** AWAITING CONFIRMATION
 
       Plan at: {artifact_path}
 
       Authorize Sniper? (yes / no / review)
+
     opportunity_detected: >
       ⚔️ **Opportunity Attack** — {count} item(s) detected
       {items_brief}
@@ -647,6 +920,7 @@ content_by_lang:
       {manifest}
 
       Approve? (yes / no / select)
+
     quick_draw_detected: >
       ⚔️ **Quick Draw** detected. Short side quest started (Ranger -> Archivist -> Gate).
     quick_draw_gate: >
@@ -660,22 +934,26 @@ content_by_lang:
       success: idea added at {destination_path}
       total ideas: {total_ideas}
       similar ideas (same theme): {similar_ideas}
+
     treasure_chest_found: >
       🎁 **Treasure chest found!** [{chest_id}] — {description}
     side_quest_detected: >
       🗺️ **Side quest detected!** {description}
     opportunity_signal: >
       ⚔️ **Opportunity Attack!** {count} item(s) detected — details at gate.
+
     mission_checkpoint: |
       **Checkpoint — {mission_id}**
       {step_1_icon} 1 — Ranger
       {step_2_icon} 2 — Archivist
       {step_3_icon} 3 — Gate
       {step_4_icon} 4 — Execution
+
     execution_tasks_header: >
       🗡️ **Sniper — executing {total} task(s):**
     execution_task_line: >
       {status_icon} {index} — {task_title}
+
     adr_opportunity: >
       ⚔️ **Opportunity Attack → ADR**
 
@@ -693,6 +971,7 @@ content_by_lang:
       🚦 **ADR Gate:** AWAITING CONFIRMATION
 
       Commit? (yes / no)
+
     plan_only_result: >
       Mission closed (plan approved, execution declined).
       Plan at: {artifact_path}
@@ -700,31 +979,37 @@ content_by_lang:
     mission_complete: >
       🗡️ Mission complete. Status: {status}
       Artifacts: {artifacts}
+
   pt-BR:
     intake_summary: >
       Missão recebida: {task_type} | delivery={delivery_strategy} |
       compatibility={legacy_compatibility} | urgency={urgency} | intent={execution_intent}
+
     ranger_start: >
       🎯 **Ranger:** iniciando reconhecimento. skill={provider}
     ranger_done: >
       🎯 **Ranger:** missão de reconhecimento concluída.
       Artefato em: {artifact_path}
+
     archivist_start: >
       📚 **Arquivista:** iniciando análise e refinamento. skill={provider}
     archivist_done: >
       📚 **Arquivista:** análise refinada.
       Artefatos em: {artifact_path}
+
     sniper_start: >
       🗡️ **Sniper:** missão aprovada — iniciando implementação.
     sniper_done: >
       🗡️ **Sniper:** implementação concluída.
       Relatório em: {artifact_path}
+
     approval_prompt: >
       🚦 **Gate:** AGUARDANDO CONFIRMAÇÃO
 
       Plano em: {artifact_path}
 
       Autorizar Sniper? (yes / no / review)
+
     opportunity_detected: >
       ⚔️ **Ataque de Oportunidade** — {count} item(s) detectado(s)
       {items_brief}
@@ -733,6 +1018,7 @@ content_by_lang:
       {manifest}
 
       Aprovar? (yes / no / select)
+
     quick_draw_detected: >
       ⚔️ **Quick Draw** detectado. Side quest curta iniciada (Ranger -> Archivist -> Gate).
     quick_draw_gate: >
@@ -746,22 +1032,26 @@ content_by_lang:
       sucesso: ideia adicionada em {destination_path}
       total de ideias: {total_ideas}
       ideias similares (mesmo tema): {similar_ideas}
+
     treasure_chest_found: >
       🎁 **Baú do tesouro encontrado!** [{chest_id}] — {description}
     side_quest_detected: >
       🗺️ **Side quest encontrada!** {description}
     opportunity_signal: >
       ⚔️ **Ataque de oportunidade!** {count} item(s) detectado(s) — detalhes no gate.
+
     mission_checkpoint: |
       **Checkpoint — {mission_id}**
       {step_1_icon} 1 — Ranger
       {step_2_icon} 2 — Arquivista
       {step_3_icon} 3 — Gate
       {step_4_icon} 4 — Execução
+
     execution_tasks_header: >
       🗡️ **Sniper — executando {total} tarefa(s):**
     execution_task_line: >
       {status_icon} {index} — {task_title}
+
     adr_opportunity: >
       ⚔️ **Ataque de Oportunidade → ADR**
 
@@ -779,6 +1069,7 @@ content_by_lang:
       🚦 **Gate ADR:** AGUARDANDO CONFIRMAÇÃO
 
       Commitar? (yes / no)
+
     plan_only_result: >
       Missão encerrada (plano aprovado, execução recusada).
       Plano em: {artifact_path}
@@ -788,27 +1079,24 @@ content_by_lang:
       Artefatos: {artifacts}
 ```
 
----
-
 ### Step 2: Rewrite `internal/embed/defaults/personas/pragmatic.yaml`
-
-Full replacement content:
 
 ```yaml
 id: pragmatic
-description: Senior architect — direct, no fluff. For those who prefer facts over narrative.
+description: >
+  Senior architect — direct, no fluff. For those who prefer facts over narrative.
 
 phase_labels:
-  discovery: levantamento
-  refinement: refinamento
-  execution: desenvolvimento
+  discovery: analyst
+  refinement: analyst
+  execution: developer
 
 tone_directive: >
-  Arquiteto sênior, quinze anos de cicatriz. Narra as fases porque alguém precisa
-  orquestrar — não porque gosta. Sem gamificação, sem euforia, sem adjetivos elogiosos.
-  Fala nos papéis como analista (levantamento e análise) e desenvolvedor (execução).
-  "Sprint" no lugar de "missão". Linguagem curta: sujeito + verbo + artefato. Problemas
-  são problemas — sem drama, sem suavização. Uma linha por evento quando possível.
+  Senior architect, fifteen years of scars. Narrates phases because someone has to
+  orchestrate — not because they enjoy it. No gamification, no euphoria, no flattering
+  adjectives. Speaks of roles as analyst (discovery and analysis) and developer
+  (execution). "Sprint" instead of "mission". Short language: subject + verb + artifact.
+  Problems are problems — no drama, no softening. One line per event where possible.
 
 progress_prefix: "[Strategist]"
 
@@ -817,31 +1105,37 @@ content_by_lang:
     intake_summary: >
       Sprint: {task_type} | delivery={delivery_strategy} | compat={legacy_compatibility} |
       urgency={urgency} | intent={execution_intent}
+
     ranger_start: >
       Analyst started discovery. Provider: {provider}.
     ranger_done: >
-      Discovery complete. Artifact: {artifact_path}
+      Discovery done. Artifact: {artifact_path}
+
     archivist_start: >
       Analyst started refinement. Provider: {provider}.
     archivist_done: >
       Refinement done. Artifacts: {artifact_path}
+
     sniper_start: >
       Developer executing.
     sniper_done: >
-      Implementation complete. Report: {artifact_path}
+      Implementation done. Report: {artifact_path}
+
     approval_prompt: >
       Plan at: {artifact_path}
 
       Implement? (yes / no / review)
+
     opportunity_detected: >
       {count} pending item(s) detected before analysis:
       {items_brief}
     opportunity_gate: >
-      Pending items:
+      Pending:
       {manifest}
       Approve? (yes / no / select)
+
     quick_draw_detected: >
-      Quick draw detected. Short side quest started (Ranger -> Archivist -> Gate).
+      Quick draw detected. Short side quest started (Analyst -> Analyst -> Gate).
     quick_draw_gate: >
       idea: {idea}
 
@@ -850,22 +1144,26 @@ content_by_lang:
       success: idea added at {destination_path}
       total ideas: {total_ideas}
       similar ideas (same theme): {similar_ideas}
+
     treasure_chest_found: >
-      📦 Chest: [{chest_id}] — {description}
+      Chest: [{chest_id}] — {description}
     side_quest_detected: >
       Side quest: {description}
     opportunity_signal: >
-      {count} opportunity item(s) detected.
+      {count} opportunity(ies) detected.
+
     mission_checkpoint: |
       Pipeline — {mission_id}
-      {step_1_icon} 1 — discovery
-      {step_2_icon} 2 — refinement
+      {step_1_icon} 1 — analyst
+      {step_2_icon} 2 — analyst
       {step_3_icon} 3 — gate
-      {step_4_icon} 4 — execution
+      {step_4_icon} 4 — developer
+
     execution_tasks_header: >
       Executing {total} task(s):
     execution_task_line: >
       {status_icon} {index} — {task_title}
+
     adr_opportunity: >
       ADR available for "{mission_id}". Generate? (yes / no)
     adr_gate: >
@@ -874,30 +1172,37 @@ content_by_lang:
       {draft_content}
 
       Commit? (yes / no)
+
     plan_only_result: >
       Plan saved: {artifact_path}. Execution pending.
     mission_complete: >
-      Sprint complete. status={status} artifacts={artifacts}
+      Sprint done. status={status} artifacts={artifacts}
+
   pt-BR:
     intake_summary: >
       Sprint: {task_type} | delivery={delivery_strategy} | compat={legacy_compatibility} |
       urgency={urgency} | intent={execution_intent}
+
     ranger_start: >
       Analista assumiu o levantamento. Provider: {provider}.
     ranger_done: >
       Levantamento encerrado. Artefato: {artifact_path}
+
     archivist_start: >
       Analista assumiu o refinamento. Provider: {provider}.
     archivist_done: >
       Refinamento pronto. Artefatos: {artifact_path}
+
     sniper_start: >
       Desenvolvedor executando.
     sniper_done: >
       Implementação encerrada. Relatório: {artifact_path}
+
     approval_prompt: >
       Plano em: {artifact_path}
 
       Implementar? (yes / no / review)
+
     opportunity_detected: >
       {count} pendência(s) detectada(s) antes da análise:
       {items_brief}
@@ -905,6 +1210,7 @@ content_by_lang:
       Pendências:
       {manifest}
       Aprovar? (yes / no / select)
+
     quick_draw_detected: >
       Saque rapido detectado. Side quest curta iniciada (Ranger -> Archivist -> Gate).
     quick_draw_gate: >
@@ -915,22 +1221,26 @@ content_by_lang:
       sucesso: ideia adicionada em {destination_path}
       total de ideias: {total_ideas}
       ideias similares (mesmo tema): {similar_ideas}
+
     treasure_chest_found: >
       📦 Baú: [{chest_id}] — {description}
     side_quest_detected: >
       Side quest: {description}
     opportunity_signal: >
       {count} oportunidade(s) detectada(s).
+
     mission_checkpoint: |
       Pipeline — {mission_id}
       {step_1_icon} 1 — levantamento
       {step_2_icon} 2 — refinamento
       {step_3_icon} 3 — gate
       {step_4_icon} 4 — execução
+
     execution_tasks_header: >
       Executando {total} tarefa(s):
     execution_task_line: >
       {status_icon} {index} — {task_title}
+
     adr_opportunity: >
       ADR disponível para "{mission_id}". Gerar? (yes / no)
     adr_gate: >
@@ -939,327 +1249,357 @@ content_by_lang:
       {draft_content}
 
       Commitar? (yes / no)
+
     plan_only_result: >
       Plano salvo: {artifact_path}. Execução pendente.
     mission_complete: >
       Sprint encerrada. status={status} artifacts={artifacts}
 ```
 
----
-
-### Step 3: Run embed tests
-
-```bash
-go test ./internal/embed/...
-```
-
-Expected: PASS.
-
----
-
-### Step 4: Sync to `strategist/personas/`
+### Step 3: Sync to `strategist/personas/`
 
 ```bash
 cp internal/embed/defaults/personas/epic.yaml strategist/personas/epic.yaml
 cp internal/embed/defaults/personas/pragmatic.yaml strategist/personas/pragmatic.yaml
 ```
 
-Verify they are identical:
+### Step 4: Verify byte-identical
 
 ```bash
 diff internal/embed/defaults/personas/epic.yaml strategist/personas/epic.yaml
 diff internal/embed/defaults/personas/pragmatic.yaml strategist/personas/pragmatic.yaml
 ```
 
-Expected: no output (byte-identical).
+Expected: no output.
 
----
-
-### Step 5: Commit
+### Step 5: Build check
 
 ```bash
-git add internal/embed/defaults/personas/epic.yaml \
-        internal/embed/defaults/personas/pragmatic.yaml \
-        strategist/personas/epic.yaml \
-        strategist/personas/pragmatic.yaml
-git commit -m "feat: add EN content block to personas via content_by_lang
+go build ./...
+go test ./internal/embed/...
+```
 
-Restructure prompt_templates into content_by_lang with en and pt-BR blocks.
-All 21 templates present in both languages. Top-level fields (phase_labels,
-role_emoji, tone_directive) remain language-neutral. sim/nao preserved in
-both quick_draw_gate blocks as runtime reserved word."
+Expected: pass.
+
+### Step 6: Commit Task 3
+
+```bash
+git add internal/embed/defaults/personas/ strategist/personas/
+git commit -m "feat: restructure personas to content_by_lang with EN and PT-BR blocks
+
+Adds English chat template set to both epic and pragmatic personas.
+Translates description and tone_directive to English (agent instructions).
+PT-BR templates preserved verbatim under content_by_lang.pt-BR.
+Syncs strategist/personas/ to embed/defaults/personas/ (byte-identical)."
 ```
 
 ---
 
-## Task 5: SKILL.md Full English Rewrite + Bucket i18n
+## Task 4: SKILL.md Bidirectional Merge + Full English Rewrite
 
-**Files:**
-- Modify: `internal/embed/defaults/SKILL.md`
-- Sync to: `strategist/SKILL.md` and `.strategist/SKILL.md`
+**Canonical file:** `strategist/SKILL.md` (edit here; propagate to embed/ and .strategist/ at end)
 
-**Context:** SKILL.md has 5 types of issues to fix: (a) `active.language` treated as scalar; (b) `persona.prompt_templates.*` path ignores `content_by_lang`; (c) PT-BR bucket names in §5.0b; (d) 24 PT-BR prose fragments; (e) 3 copies out of sync.
+**Sub-task A** merges the three blocks that exist only in `internal/embed/defaults/SKILL.md` into `strategist/SKILL.md`.  
+**Sub-task B** does the full English rewrite and `content_by_lang` migration on the merged file.
 
----
+### Sub-task A: Merge embed-exclusive content into `strategist/SKILL.md`
 
-### Step 1: Fix bootstrap — `active.language` as object
+#### Step A1: Find §5.0 insertion point
 
-In `internal/embed/defaults/SKILL.md`:
-
-**Fast path block (around line 57):**
-
-Find:
-```
-  - `active.language` → artifact language (`pt` if absent)
+```bash
+grep -n "^### 5\.0 Quick Draw\|^## 5\. Mission" strategist/SKILL.md | head -5
 ```
 
-Replace with:
-```
-  - `active.language` → object with keys `ui`, `docs`, `chat`, `code`; use `active.language.chat` for persona template selection (default: `pt-BR`)
-```
+Note the line number where `### 5.0 Quick Draw Side Quest (conditional)` begins.
 
-**Standard path block (around line 74):**
+#### Step A2: Insert §5.-1 before §5.0
 
-Find:
-```
-4. Extract `active.language` (default: `pt`) — pass to all slot providers and use for artifact generation.
-```
+Immediately before the `### 5.0 Quick Draw Side Quest` line, insert:
 
-Replace with:
-```
-4. Extract `active.language` (object with keys: `ui`, `docs`, `chat`, `code`). Pass `active.language.docs` to slot providers for artifact generation. Use `active.language.chat` for persona template selection (default: `pt-BR`).
-```
-
----
-
-### Step 2: Fix all `persona.prompt_templates.*` references
-
-Find every occurrence of `persona.prompt_templates.<key>` and replace with `persona.content_by_lang[active.language.chat].<key>` (fallback: `pt-BR`).
-
-There are 13 occurrences. Full list with replacements:
-
-| Find | Replace |
-|---|---|
-| `persona.prompt_templates.ranger_start` | `persona.content_by_lang[active.language.chat].ranger_start` |
-| `persona.prompt_templates.ranger_done` | `persona.content_by_lang[active.language.chat].ranger_done` |
-| `persona.prompt_templates.opportunity_detected` | `persona.content_by_lang[active.language.chat].opportunity_detected` |
-| `persona.prompt_templates.opportunity_gate` | `persona.content_by_lang[active.language.chat].opportunity_gate` |
-| `persona.prompt_templates.sniper_start` (×2) | `persona.content_by_lang[active.language.chat].sniper_start` |
-| `persona.prompt_templates.sniper_done` (×2) | `persona.content_by_lang[active.language.chat].sniper_done` |
-| `persona.prompt_templates.archivist_start` | `persona.content_by_lang[active.language.chat].archivist_start` |
-| `persona.prompt_templates.archivist_done` | `persona.content_by_lang[active.language.chat].archivist_done` |
-| `persona.prompt_templates.approval_prompt` | `persona.content_by_lang[active.language.chat].approval_prompt` |
-| `persona.prompt_templates.adr_opportunity` | `persona.content_by_lang[active.language.chat].adr_opportunity` |
-| `persona.prompt_templates.adr_gate` | `persona.content_by_lang[active.language.chat].adr_gate` |
-| `persona.prompt_templates.mission_checkpoint` | `persona.content_by_lang[active.language.chat].mission_checkpoint` |
-| `persona.prompt_templates.side_quest_detected` | `persona.content_by_lang[active.language.chat].side_quest_detected` |
-
-Also add a single fallback note after the first template resolution reference (near §3.2 Mission Checkpoint):
-```
-Template resolution: `persona.content_by_lang[active.language.chat]`, fallback `pt-BR`.
-```
-
----
-
-### Step 3: Fix bucket i18n in §5.0b
-
-Find (around line 270–273):
 ```markdown
+### 5.-1 Mandatory Opportunity Sweep Invariant
+
+In every mission phase, Strategist MUST perform and report:
+- `opportunity_scan=done`
+- `treasure_check=done`
+- `sidequest_manifest=updated|empty`
+
+This invariant applies even for narrow prompts (single-file/single-target refinement).
+"Foco em alvo único" is NOT a valid reason to skip sweeps.
+
+If a sweep cannot run due to technical error, emit:
+`[Strategist] phase=<phase_label> status=blocked reason=opportunity_sweep_failed`
+and stop.
+
+```
+
+#### Step A3: Find §5.0b Archivist append location
+
+```bash
+grep -n "scope_addition\|Sniper.*append\|quick_draw.*append\|5\.0d\|step.*append" strategist/SKILL.md | head -10
+```
+
+Find the line in §5.0b where the Archivist appends the idea (`scope_addition` operation). Insert this block immediately before the append instruction:
+
+```markdown
+Before append, evaluate guarded transition group `finalize_analysis` with effective policy.
+Emit canonical event:
+`[Strategist] phase=policy_eval status=<allowed|blocked> mission=<id> mode=<mode> can_execute=<bool> transition_group=finalize_analysis`.
+If blocked, stop with `reason=policy_blocked`.
+
+```
+
+#### Step A4: Find §5d opportunity execution location
+
+```bash
+grep -n "^### 5d\|^#### 5d\|Gate de Oportunidade\|Execução de Oportun\|opportunity.*execu" strategist/SKILL.md | head -5
+```
+
+Find the §5d heading (opportunity execution). Insert this block immediately before it:
+
+```markdown
+Before 5d, evaluate guarded transition group `execution` with effective policy.
+Emit canonical event:
+`[Strategist] phase=policy_eval status=<allowed|blocked> mission=<id> mode=<mode> can_execute=<bool> transition_group=execution`.
+If blocked, skip opportunity execution and continue to 5e with `execution_skipped_by_policy`.
+
+```
+
+#### Step A5: Verify merge
+
+```bash
+grep -c "opportunity_sweep_failed\|transition_group=finalize_analysis\|transition_group=execution" strategist/SKILL.md
+```
+
+Expected: `3`
+
+#### Step A6: Commit merge
+
+```bash
+git add strategist/SKILL.md
+git commit -m "chore: merge embed-exclusive SKILL.md content into strategist/ canonical source
+
+Adds §5.-1 Mandatory Opportunity Sweep Invariant and policy_eval emit events
+for finalize_analysis and execution transition groups."
+```
+
+### Sub-task B: Full English Rewrite
+
+#### Step B1: Fix `active.language` scalar references
+
+```bash
+grep -n "active\.language[^.]" strategist/SKILL.md
+```
+
+Two occurrences in the bootstrap section. Replace:
+
+```
+active.language → artifact language (pt if absent)
+```
+→
+```
+active.language.chat → chat language for persona template selection (default: pt-BR)
+```
+
+```
+Extract active.language (default: pt) — pass to all slot providers and use for artifact generation.
+```
+→
+```
+Extract active.language (object with keys: ui, docs, chat, code).
+Pass active.language.docs to slot providers for artifact generation.
+Use active.language.chat for persona template selection (default: pt-BR if absent).
+```
+
+#### Step B2: Add persona access note and replace all `prompt_templates`
+
+After the `## 3.` header (or §3.1 start), add one note block:
+
+```
+> **Persona template access:** `persona.content_by_lang[active.language.chat].<key>`.
+> Fallback: if `active.language.chat` is absent or has no matching block, use `pt-BR`.
+```
+
+Count occurrences before:
+
+```bash
+grep -c "prompt_templates" strategist/SKILL.md
+```
+
+Replace every occurrence of `persona.prompt_templates.` with `persona.content_by_lang[active.language.chat].`
+
+Verify:
+
+```bash
+grep -c "prompt_templates" strategist/SKILL.md
+```
+
+Expected: `0`
+
+#### Step B3: Bucket i18n in §5.0b
+
+```bash
+grep -n "arquitetura\|seguranca\|analise.*geral\|todo/<tema" strategist/SKILL.md
+```
+
+Replace the hardcoded PT-BR bucket block:
+
+```
 - Determine theme from lightweight buckets:
   - `arquitetura`, `seguranca`, `analise`, `geral`
 - Resolve destination path:
   - `<base_path>/todo/<tema>.md` (e.g. `.analysis/todo/arquitetura.md`)
 ```
 
-Replace with:
-```markdown
+With:
+
+```
 - Determine theme bucket based on `active.language.chat`:
-  - `pt-BR`: `arquitetura` | `seguranca` | `analise` | `geral`
-  - `en`: `architecture` | `security` | `analysis` | `general`
+  - pt-BR: `arquitetura` | `seguranca` | `analise` | `geral`
+  - en:    `architecture` | `security` | `analysis` | `general`
 - Resolve destination path: `<base_path>/todo/<bucket>.md`
   - pt-BR example: `.analysis/todo/arquitetura.md`
   - en example: `.analysis/todo/architecture.md`
 ```
 
-Also update §5.0c and §5.0d which reference `<tema>.md` — replace `<tema>` with `<bucket>`:
+Apply the same i18n note to any other `todo/<slug>.md` reference with PT-BR bucket names.
 
-Find in §5.0d:
-```
-- Append a new entry to `<base_path>/todo/<tema>.md`.
-```
-Replace with:
-```
-- Append a new entry to `<base_path>/todo/<bucket>.md`.
-```
+#### Step B4: Translate PT-BR prose
 
-Find in §5.0d return block:
-```
-  - `sucesso: ideia adicionada em <path>`
-  - `total de ideias: X`
-  - `ideias similares (mesmo tema): Y`
-```
-Replace with:
-```
-  - `success: idea added at <path>`
-  - `total ideas: X`
-  - `similar ideas (same theme): Y`
-```
-
----
-
-### Step 4: Translate remaining PT-BR prose
-
-Apply these replacements throughout the file:
+Find and replace each entry. Search with `grep -n` first to confirm location, then edit:
 
 | Find | Replace |
 |---|---|
-| `(substitui `{provider}` com o skill id do provider)` | `(substitute `{provider}` with the slot provider skill id)` |
-| `(substitui `{artifact_path}`)` | `(substitute `{artifact_path}`)` |
-| `(substitui `{mission_id}`)` | `(substitute `{mission_id}`)` |
-| `(com `{draft_content}`)` | `(with `{draft_content}`)` |
-| `(com `{artifact_path}` = inline report)` | `(with `{artifact_path}` = inline report)` |
-| `## 8. ADR Opportunity (pós-missão, condicional)` | `## 8. ADR Opportunity (post-mission, conditional)` |
-| `**Critérios de ativação — avaliar se a missão contém decisões arquiteturais:**` | `**Activation criteria — evaluate if the mission contains architectural decisions:**` |
-| `Critério` (table header) | `Criterion` |
-| `Sinal` (table header) | `Signal` |
-| `Novo padrão introduzido` | `New pattern introduced` |
-| `Interface, contrato, schema, ou abstração nova` | `New interface, contract, schema, or abstraction` |
-| `Breaking change (mesmo controlada)` | `Breaking change (even controlled)` |
-| `Campo removido, assinatura alterada, comportamento mudado` | `Field removed, signature changed, behavior changed` |
-| `Trade-off documentado` | `Documented trade-off` |
-| `` `tasks.md` / `design.md` descrevem escolha com alternativas descartadas `` | `` `tasks.md` / `design.md` describe a choice with discarded alternatives `` |
-| `Nova dependência externa` | `New external dependency` |
-| `Biblioteca, serviço, ou protocolo adicionado` | `Library, service, or protocol added` |
-| `Se nenhum critério for atendido: pular diretamente para §9` | `If no criterion is met: skip directly to §9` |
-| `Se algum critério for atendido:` | `If any criterion is met:` |
-| `**Gate 1 — Gerar rascunho?** STOP. Aguardar resposta:` | `**Gate 1 — Generate draft?** STOP. Wait for response:` |
-| `**yes**: Arquivista escreve rascunho E **apresenta o conteúdo completo no chat**:` | `**yes**: Archivist writes draft AND **presents full content in chat**:` |
-| `{conteúdo completo do ADR conforme template abaixo}` | `{full ADR content per template below}` |
-| `Artefato também escrito em` | `Artifact also written to` |
-| `**Gate 2 — Aprovar conteúdo?** STOP. Aguardar resposta:` | `**Gate 2 — Approve content?** STOP. Wait for response:` |
-| `**edit**: User quer ajustar o conteúdo. Aceitar edições inline e re-apresentar o draft. Re-abrir gate 2.` | `**edit**: User wants to adjust content. Accept inline edits and re-present draft. Re-open gate 2.` |
-| `Não há gate depois do Sniper — a aprovação do conteúdo acontece ANTES do commit, não depois.` | `No gate after Sniper — content approval happens BEFORE commit, not after.` |
-| `**Instrução de idioma para Arquivista:** gerar o ADR no idioma definido em `active.language`.` | `**Language instruction for Archivist:** generate ADR in the language defined by `active.language.docs`.` |
-| `` - `language: pt` → conteúdo em português `` | `` - `docs: pt-BR` → content in Portuguese `` |
-| `` - `language: en` → conteúdo em inglês `` | `` - `docs: en` → content in English `` |
-| `**Estrutura mínima do ADR (template para Arquivista):**` | `**Minimum ADR structure (template for Archivist):**` |
-| `**Missão:** {mission_id}` | `**Mission:** {mission_id}` |
-| `## Contexto` | `## Context` |
-| `{problem statement derivado de proposal.md ou tasks.md}` | `{problem statement derived from proposal.md or tasks.md}` |
-| `## Decisão` | `## Decision` |
-| `{o que foi escolhido e por quê}` | `{what was chosen and why}` |
-| `## Consequências` | `## Consequences` |
-| `{trade-offs aceitos; o que fica mais difícil; o que fica mais fácil}` | `{accepted trade-offs; what becomes harder; what becomes easier}` |
-| `O template acima é em PT por padrão. Se `language: en`, Arquivista usa `Context`, `Decision`, `Consequences`.` | `The template above uses English headers. Archivist uses the same structure regardless of language.` |
-| `### 5b. Ataque de Oportunidade — Opportunist Attack (internal — no slot)` (if present) | `### 5b. Opportunist Attack (internal — no slot)` |
-| `### 5d. Sniper: Execução de Oportunidades` | `### 5d. Sniper: Opportunity Execution` |
-| `**Operações permitidas por tipo:**` | `**Allowed operations by type:**` |
-| `Tipo` (table header) | `Type` |
-| `Operação permitida` (table header) | `Allowed operation` |
-| `` `file_move` \| `mv <origin_path> <destination>` + atualizar campo `Status:` no markdown `` | `` `file_move` \| `mv <origin_path> <destination>` + update `Status:` field in markdown `` |
-| `` `scope_addition` \| Criar `<base_path>/todo/<slug>.md` com o escopo adicional detectado (missão futura) `` | `` `scope_addition` \| Create `<base_path>/todo/<slug>.md` with the detected additional scope (future mission) `` |
-| `` `adr_generation` \| Invocar Arquivista sub-task para rascunho de ADR `` | `` `adr_generation` \| Invoke Archivist sub-task for ADR draft `` |
-| `Sem writes fora de `<base_path>/`.` | `No writes outside `<base_path>/`.` |
-| `**Executado:** <date>` | `**Executed:** <date>` |
-| `**Itens processados:** N` | `**Items processed:** N` |
-| `### Operações realizadas` | `### Operations performed` |
-| `### Estado atual do workspace (pós-limpeza)` | `### Current workspace state (post-cleanup)` |
-| `### Itens excluídos da análise principal` | `### Items excluded from main analysis` |
-| `Mandatory section in artifact: `Checklist de Missão e Fases por Papel`` | `Mandatory section in artifact: `Mission Checklist and Phase Roles`` |
-| `` status markers `[x]` (concluído), `[ ]` (pendente), `[-]` (não aplicável/sem evidência ainda) `` | `` status markers `[x]` (done), `[ ]` (pending), `[-]` (not applicable/no evidence yet) `` |
-| `Instruction: execute conforme o tipo de cada item — apenas operações listadas abaixo` | `Instruction: execute according to each item type — only operations listed below` |
-| `consult them for project conventions or patterns that may inform the ataque de oportunidade analysis.` | `consult them for project conventions or patterns that may inform the opportunist attack analysis.` |
+| `substitui {provider} com o skill id do provider` | `substitute {provider} with the slot provider skill id` |
+| `substitui {artifact_path}` | `substitute {artifact_path}` |
+| `substitui {mission_id}` | `substitute {mission_id}` |
+| `com {artifact_path}` | `with {artifact_path}` |
+| `Sinalização de baú:` | `Chest signal:` |
+| `Instrução de idioma para Arquivista:` | `Language instruction for Archivist:` |
+| `gerar o ADR no idioma definido em` | `generate the ADR in the language defined by` |
+| `Critérios de ativação — avaliar se a missão contém decisões arquiteturais` | `Activation criteria — evaluate if the mission contains architectural decisions` |
+| `rascunho de ADR` | `ADR draft` |
+| `Commitar? (yes / no)` | `Commit? (yes / no)` |
+| `Checklist de Missão e Fases por Papel` | `Mission Checklist and Phase Roles` |
+| `concluído` | `done` |
+| `pendente` | `pending` |
+| `não aplicável` | `not applicable` |
+| `pós-missão, condicional` | `post-mission, conditional` |
+| `(missão futura)` | `(future mission)` |
+| `Criar <base_path>/todo/<slug>.md com o escopo adicional detectado` | `Create <base_path>/todo/<slug>.md with the detected additional scope` |
+| `Missão encerrada` | `Mission closed` |
+| `Aguardar resposta` | `Wait for response` |
 
----
+#### Step B5: Update §3.2 Mission Checkpoint section header and table
 
-### Step 5: Verify no PT-BR prose remains
+Ensure the section reads:
 
-```bash
-grep -n "substitui\|Missão\|missão\|Artefato\|artefato\|conteúdo\|rascunho\|Aguardar\|Instrução\|Critério\|Critérios\|Arquivista\|pós-missão\|Operações\|Execução\|Executado\|Tipo.*Operação\|Itens.*processados" \
-     internal/embed/defaults/SKILL.md
+```markdown
+### 3.2 Mission Checkpoint
+
+After intake completes, initialize and emit the mission pipeline checkpoint using
+`persona.content_by_lang[active.language.chat].mission_checkpoint` with:
+- `{mission_id}` = the generated mission id
+- `{step_1_icon}` = `⏳` (Ranger about to start), `{step_2_icon}` = `{step_3_icon}` = `{step_4_icon}` = `⬜`
+
+Re-emit the checkpoint at each phase transition, updating icons:
+
+| After phase    | step_1 | step_2 | step_3 | step_4 |
+|----------------|--------|--------|--------|--------|
+| Intake         | ⏳     | ⬜     | ⬜     | ⬜     |
+| Ranger done    | ✅     | ⏳     | ⬜     | ⬜     |
+| Archivist done | ✅     | ✅     | ⏳     | ⬜     |
+| Gate approved  | ✅     | ✅     | ✅     | ⏳     |
+| Sniper done    | ✅     | ✅     | ✅     | ✅     |
+
+Icons: `⏳` = running, `✅` = done, `⬜` = pending.
+Skip re-emit when mission ends at `plan_only` (gate declined).
 ```
 
-Expected: zero matches (reserved words like `analise`, `sim/nao`, `saque rapido` are intentional — do not grep for those).
-
-Verify all `prompt_templates` replaced:
+#### Step B6: Verify clean
 
 ```bash
-grep "prompt_templates" internal/embed/defaults/SKILL.md
+# No prompt_templates
+grep -c "prompt_templates" strategist/SKILL.md
+
+# No scalar active.language
+grep -n "active\.language[^.]" strategist/SKILL.md
+
+# No PT-BR prose (reserved words allowed: sim/nao, saque rapido, analise, entrega*)
+grep -in "Missão\|missão\|Artefato em\|Aguardar\|Sinalização\|concluído\|não aplicável\|Commitar\|pós-missão\|missão futura\|Instrução de idioma\|Critérios de ativação\|rascunho de ADR" strategist/SKILL.md
 ```
 
-Expected: zero matches.
+Expected for each: `0` / no output.
 
-Verify no scalar `active.language` remains (object references like `active.language.chat` are correct):
+#### Step B7: Propagate
 
 ```bash
-grep "active\.language[^.]" internal/embed/defaults/SKILL.md
+cp strategist/SKILL.md internal/embed/defaults/SKILL.md
+cp strategist/SKILL.md .strategist/SKILL.md
 ```
 
-Expected: zero matches.
-
----
-
-### Step 6: Sync three copies
+#### Step B8: Verify byte-identical
 
 ```bash
-cp internal/embed/defaults/SKILL.md .strategist/SKILL.md
-cp internal/embed/defaults/SKILL.md strategist/SKILL.md
+md5sum strategist/SKILL.md internal/embed/defaults/SKILL.md .strategist/SKILL.md
 ```
 
-Verify byte-identical:
+Expected: all three hashes match.
+
+#### Step B9: Final build and test
 
 ```bash
-diff internal/embed/defaults/SKILL.md .strategist/SKILL.md
-diff internal/embed/defaults/SKILL.md strategist/SKILL.md
-```
-
-Expected: no output.
-
----
-
-### Step 7: Run full test suite
-
-```bash
+go build ./...
 go test ./...
 ```
 
-Expected: PASS on all packages.
+Expected: all tests pass.
 
----
-
-### Step 8: Commit
+#### Step B10: Commit
 
 ```bash
-git add internal/embed/defaults/SKILL.md \
-        strategist/SKILL.md \
-        .strategist/SKILL.md
-git commit -m "docs: rewrite SKILL.md to English-primary with bilingual bucket resolution
+git add strategist/SKILL.md internal/embed/defaults/SKILL.md .strategist/SKILL.md
+git commit -m "feat: rewrite SKILL.md to English with content_by_lang and bucket i18n
 
-Fix active.language scalar reference → object with .chat/.docs keys.
-Replace all prompt_templates.* → content_by_lang[active.language.chat].*.
-Add language-aware bucket names in §5.0b (architecture/arquitetura, etc.).
-Translate 24 PT-BR prose fragments. Sync all three SKILL.md copies to be
-byte-identical. Reserved words (sim/nao, saque rapido, analise) preserved."
+All instructional prose translated to English.
+active.language scalar references replaced with object form (.chat/.docs).
+prompt_templates replaced with content_by_lang[active.language.chat].
+Bucket names now language-aware via active.language.chat.
+Three SKILL.md copies synced to byte-identical state."
 ```
 
 ---
 
-## Final Verification
+## Final Verification Checklist
 
 ```bash
-# All tests green
+# 1. Build clean
+go build ./...
+
+# 2. All tests pass
 go test ./...
 
-# No prompt_templates references in SKILL.md files
-grep -r "prompt_templates" internal/embed/defaults/SKILL.md strategist/SKILL.md .strategist/SKILL.md
+# 3. No PT-BR identifiers in Go domain code
+grep -rn "Analise\|Entrega\b" --include="*.go" internal/domain/
 
-# No digitar outro in Go files
-grep -r "digitar outro" --include="*.go" .
+# 4. No hardcoded PT-BR in wizard
+grep -n "digitar outro" internal/install/wizard.go
 
-# Three SKILL.md copies identical
-md5sum internal/embed/defaults/SKILL.md strategist/SKILL.md .strategist/SKILL.md
+# 5. No prompt_templates in any SKILL.md
+grep -c "prompt_templates" strategist/SKILL.md internal/embed/defaults/SKILL.md .strategist/SKILL.md
 
-# Both persona pairs identical
-diff internal/embed/defaults/personas/epic.yaml strategist/personas/epic.yaml
-diff internal/embed/defaults/personas/pragmatic.yaml strategist/personas/pragmatic.yaml
+# 6. No scalar active.language in SKILL.md
+grep -n "active\.language[^.]" strategist/SKILL.md
+
+# 7. Three SKILL.md copies byte-identical
+md5sum strategist/SKILL.md internal/embed/defaults/SKILL.md .strategist/SKILL.md
+
+# 8. Both personas byte-identical between strategist/ and embed/
+diff strategist/personas/epic.yaml internal/embed/defaults/personas/epic.yaml
+diff strategist/personas/pragmatic.yaml internal/embed/defaults/personas/pragmatic.yaml
+
+# 9. i18n reserved.go in place
+grep -c "ReservedMissionModeAnalysis\|ReservedGateYes\|ReservedQuickDrawPT" internal/i18n/reserved.go
 ```
+
+All expected outputs: `0` / no diff / count of `3` for step 9.
