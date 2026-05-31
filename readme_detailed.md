@@ -2,6 +2,10 @@
 
 ## Runtime Cognitivo, Autoaprendizado e Convergência de Agentes IA
 
+<p align="center">
+🇧🇷 Português | <a href="readme_detailed_en.md">🇺🇸 English</a>
+</p>
+
 ---
 
 ## Visão Geral

@@ -15,6 +15,10 @@
   <img src="https://img.shields.io/badge/mode-pragmatic_·_epic-9b865d?style=flat-square&labelColor=1b1610" />
 </p>
 
+<p align="center">
+🇧🇷 Português | <a href="readme_en.md">🇺🇸 English</a>
+</p>
+
 ---
 
 # Strategist Skill + SDD Harness
