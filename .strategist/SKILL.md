@@ -54,7 +54,7 @@ If exit code is `0` (fresh):
   - `active` → use as `active.yaml` content
   - `personas[active.mode]` → use as persona content
   - `active.slots` → slot provider map (`discovery`, `refinement`, `execution`)
-  - `active.language` → artifact language (`pt` if absent)
+  - `active.language.chat` → chat language for persona template selection (default: pt-BR)
   - `active.adr_enabled` → ADR stage flag (`true` if absent)
   - `active.treasure_chests` → list of `{id, path, scope, description}` (empty list if absent)
 - Apply any `--mode` override to the extracted JSON data.
@@ -71,7 +71,9 @@ Emit: `[Strategist] bootstrap=standard_path`
    - Apply `tone_directive` for all user-facing communication.
    - Store `phase_labels` — these are the labels you use in all progress events and prompts.
 3. Extract `active.slots` — slot provider map. Keys: `discovery`, `refinement`, `execution`.
-4. Extract `active.language` (default: `pt`) — pass to all slot providers and use for artifact generation.
+4. Extract `active.language` (object with keys: ui, docs, chat, code).
+   Pass `active.language.docs` to slot providers for artifact generation.
+   Use `active.language.chat` for persona template selection (default: pt-BR if absent).
 5. Extract `active.adr_enabled` (default: `true`) — if `false`, skip §8 (ADR stage) entirely.
 6. Extract `active.treasure_chests` (default: `[]`) — scoped knowledge sources. For each slot
    invocation, filter chests where `scope` contains the slot's role name or `"all"`.
@@ -177,6 +179,9 @@ If a required input is missing: emit blocked event with `reason=contract_input_m
 
 ## 3. Intake
 
+> **Persona template access:** `persona.content_by_lang[active.language.chat].<key>`.
+> Fallback: if `active.language.chat` is absent or has no matching block, use `pt-BR`.
+
 Invoke `prompt-intake` skill with the user's full prompt. Receive:
 - `task_type`: classification (e.g., `architecture_analysis`, `refactor`, `general`)
 - `risk_level`: estimated risk of the mission
@@ -187,10 +192,33 @@ Apply defaults for any missing constraint field per `intake.schema.yaml`.
 
 Store result as `mission_contract.planning_rules` — pass to all slot providers.
 
+### 3.2 Mission Checkpoint
+
+After intake completes, initialize and emit the mission pipeline checkpoint using
+`persona.content_by_lang[active.language.chat].mission_checkpoint` with:
+- `{mission_id}` = the generated mission id
+- `{step_1_icon}` = `⏳` (Ranger about to start), `{step_2_icon}` = `{step_3_icon}` = `{step_4_icon}` = `⬜`
+
+Re-emit the checkpoint at each phase transition, updating icons to reflect current state:
+
+| After phase | step_1 | step_2 | step_3 | step_4 |
+|-------------|--------|--------|--------|--------|
+| Intake | ⏳ | ⬜ | ⬜ | ⬜ |
+| Ranger done | ✅ | ⏳ | ⬜ | ⬜ |
+| Archivist done | ✅ | ✅ | ⏳ | ⬜ |
+| Gate approved | ✅ | ✅ | ✅ | ⏳ |
+| Sniper done | ✅ | ✅ | ✅ | ✅ |
+
+Icons: `⏳` = running, `✅` = done, `⬜` = pending.
+Skip the checkpoint re-emit when the mission ends at `plan_only` (gate declined).
+
 ### 3.1 Quick Draw Route (Saque Rapido)
 
 If the user explicitly requests quick capture (examples: `quick draw`, `saque rapido`,
 `TODO` as rapid note), route to a dedicated side-quest flow.
+
+Emit via `persona.content_by_lang[active.language.chat].side_quest_detected` with
+`{description}` = `"Quick Draw — rapid idea capture."` before routing.
 
 Important:
 - Do NOT depend on additional intake classification for this route.
@@ -267,10 +295,12 @@ Ranger (organize only) → Archivist (theme/path/counts) → quick_draw gate →
 
 #### 5.0b Archivist (quick_draw)
 
-- Determine theme from lightweight buckets:
-  - `arquitetura`, `seguranca`, `analise`, `geral`
-- Resolve destination path:
-  - `<base_path>/todo/<tema>.md` (e.g. `.analysis/todo/arquitetura.md`)
+- Determine theme bucket based on `active.language.chat`:
+  - pt-BR: `arquitetura` | `seguranca` | `analise` | `geral`
+  - en:    `architecture` | `security` | `analysis` | `general`
+- Resolve destination path: `<base_path>/todo/<bucket>.md`
+  - pt-BR example: `.analysis/todo/arquitetura.md`
+  - en example: `.analysis/todo/architecture.md`
 - Inspect existing file content (if present) and compute:
   - `total_ideas`: total idea entries in the destination theme file
   - `similar_ideas`: ideas in the same theme with textual similarity to the normalized idea
@@ -304,7 +334,7 @@ If blocked, stop with `reason=policy_blocked`.
 
 ### 5a. Ranger (discovery slot)
 
-Emit via `persona.prompt_templates.ranger_start` (substitui `{provider}` com o skill id do provider).
+Emit via `persona.content_by_lang[active.language.chat].ranger_start` (substitute `{provider}` with the slot provider skill id).
 
 Invoke the discovery slot provider with:
 - User prompt
@@ -315,10 +345,13 @@ Invoke the discovery slot provider with:
   - `find_unexpected_items`: Surface anything outside the declared mission scope as an addendum
   - `consult_treasure_chests`: Mandatory step — consult all passed chests before generating the artifact. If chest list is empty, proceed.
   - Output format: single discovery artifact at the artifact path above
-  - Mandatory section in artifact: `Checklist de Missão e Fases por Papel` with entries for Ranger, Archivist, Sniper using status markers `[x]` (concluído), `[ ]` (pendente), `[-]` (não aplicável/sem evidência ainda)
+  - Mandatory section in artifact: `Mission Checklist and Phase Roles` with entries for Ranger, Archivist, Sniper using status markers `[x]` (done), `[ ]` (pending), `[-]` (not applicable/no evidence yet)
 - **Treasure chests** — mandatory step (chests where scope = `discovery` or `all`):
   Pass filtered list: `[{id}] path={path} — {description}` for each match.
   If no chests match this scope: pass empty list. Ranger skips the consultation step and proceeds without blocking.
+  **Chest signal:** Before passing the filtered list to Ranger, for each chest in the list
+  emit `persona.content_by_lang[active.language.chat].treasure_chest_found` with `{chest_id}` = chest id and
+  `{description}` = chest description. Skip if the list is empty.
 
 The skill decides HOW to use each chest — Strategist only passes the path and description.
 
@@ -326,7 +359,7 @@ Ranger writes the artifact directly (contract: `write_pending`). Strategist does
 intermediate the write — it only waits for completion and emits the done event.
 
 On success:
-Emit via `persona.prompt_templates.ranger_done` (substitui `{artifact_path}`).
+Emit via `persona.content_by_lang[active.language.chat].ranger_done` (with `{artifact_path}`).
 
 On failure: emit `[Strategist] phase=ranger status=blocked reason=ranger_failed`, present partial artifact if any.
 
@@ -336,7 +369,7 @@ Execute a deterministic scan of `<base_path>/`. Do NOT delegate this to a slot p
 
 **Treasure chests — preliminary step (mandatory, non-blocking):**
 Before executing the scan, if treasure chests with scope `all` or `discovery` are present,
-consult them for project conventions or patterns that may inform the ataque de oportunidade analysis.
+consult them for project conventions or patterns that may inform the opportunity attack analysis.
 If no chests are available or none yield relevant context: proceed with the scan unchanged.
 
 **Scan rules per directory:**
@@ -355,7 +388,8 @@ If manifest is empty:
 - Skip 5c and 5d — proceed directly to 5e (Archivist).
 
 If manifest is non-empty:
-- Emit via `persona.prompt_templates.opportunity_detected`:
+- Emit via `persona.content_by_lang[active.language.chat].opportunity_signal` with `{count}` = item count.
+- Emit via `persona.content_by_lang[active.language.chat].opportunity_detected`:
   - `{count}` = number of items
   - `{items_brief}` = one line per item: `→ <slug> reason: <motivo>`
 - Proceed to 5c.
@@ -364,11 +398,11 @@ If manifest is non-empty:
 
 STOP. Do not move any file without explicit user approval.
 
-Emit via `persona.prompt_templates.opportunity_gate`:
+Emit via `persona.content_by_lang[active.language.chat].opportunity_gate`:
 - `{manifest}` = numbered list of items:
   ```
     [1] <origin_path> → <destination> (type: file_move)
-         Motivo: <reason>
+         Reason: <reason>
     [2] ...
   ```
 
@@ -386,60 +420,62 @@ Invoking Sniper side quests without gate response is a **forbidden behavior**.
 
 ### 5d. Sniper: Execução de Oportunidades (conditional — only if opportunity gate approved)
 
-Emit via `persona.prompt_templates.sniper_start`.
+Emit via `persona.content_by_lang[active.language.chat].sniper_start`.
 
 Invoke the execution slot provider with:
 - Opportunity manifest (approved items only)
-- Instruction: execute conforme o tipo de cada item — apenas operações listadas abaixo
+- Instruction: execute according to each item type — only the operations listed below
 - **Role brief — Sniper** (canonical behaviors):
   - `requires_approval_gate`: gate was already granted for these items
   - `consult_treasure_chests`: Mandatory step — consult all passed chests before acting. If chest list is empty, proceed.
 - **Treasure chests** — mandatory step (chests where scope = `execution` or `all`):
   Pass filtered list: `[{id}] path={path}` for each match. If no chests match: pass empty list; Sniper skips consultation and proceeds.
+  **Chest signal:** Before passing the list to Sniper, emit `persona.content_by_lang[active.language.chat].treasure_chest_found`
+  for each chest in the list with `{chest_id}` = chest id and `{description}` = chest description. Skip if empty.
 
 **Operações permitidas por tipo:**
 
 | Tipo | Operação permitida |
 |------|--------------------|
 | `file_move` | `mv <origin_path> <destination>` + atualizar campo `Status:` no markdown |
-| `scope_addition` | Criar `<base_path>/todo/<slug>.md` com o escopo adicional detectado (missão futura) |
-| `adr_generation` | Invocar Arquivista sub-task para rascunho de ADR em `<base_path>/done/<mission_id>-adr.md` |
+| `scope_addition` | Create `<base_path>/todo/<slug>.md` with the detected additional scope (future mission) |
+| `adr_generation` | Invoke Archivist sub-task for ADR draft at `<base_path>/done/<mission_id>-adr.md` |
 
-Sem writes fora de `<base_path>/`.
+No writes outside `<base_path>/`.
 
 On completion, Sniper produces an **opportunity report** (markdown block):
 
 ```markdown
 ## Opportunity Report
-**Executado:** <date> | **Itens processados:** N
+**Executed:** <date> | **Items processed:** N
 
-### Operações realizadas
+### Operations performed
 - `<origin>` → `<destination>` (file_move)
-- `<slug>.md` criado em todo/ (scope_addition)
+- `<slug>.md` created in todo/ (scope_addition)
 
-### Estado atual do workspace (pós-limpeza)
-- `todo/`: N itens
-- `pending/`: N itens
-- `refined/`: N itens
-- `done/`: N itens
+### Workspace state (post-cleanup)
+- `todo/`: N items
+- `pending/`: N items
+- `refined/`: N items
+- `done/`: N items
 
-### Itens excluídos da análise principal
+### Items excluded from main analysis
 <list — Archivist must not treat these as pending work>
 ```
 
 If Sniper opportunity execution fails: emit `[Strategist] phase=opportunity_execution status=blocked reason=<error>`.
 This is **non-blocking** — log the failure, proceed to 5e with a partial or empty opportunity report.
 
-Emit via `persona.prompt_templates.sniper_done` (com `{artifact_path}` = inline report).
+Emit via `persona.content_by_lang[active.language.chat].sniper_done` (com `{artifact_path}` = inline report).
 
 ### 5e. Archivist (refinement slot)
 
-Emit via `persona.prompt_templates.archivist_start` (substitui `{provider}`).
+Emit via `persona.content_by_lang[active.language.chat].archivist_start` (with `{provider}`).
 
 Invoke the refinement slot provider with:
 - Discovery artifact path
 - Side quest report (if present) — injected as context with instruction:
-  > "Items listed under 'Itens excluídos da análise principal' are resolved. Do not treat them as pending. Base your analysis on the post-cleanup workspace state."
+  > "Items listed under 'Items excluded from main analysis' are resolved. Do not treat them as pending. Base your analysis on the post-cleanup workspace state."
 - `mission_contract.planning_rules`
 - Dossier
 - **Role brief — Archivist** (canonical behaviors):
@@ -447,6 +483,8 @@ Invoke the refinement slot provider with:
   - Output format: `proposal.md` + `design.md` + `tasks.md` in the artifact subdirectory
 - **Treasure chests** — mandatory step (chests where scope = `refinement` or `all`):
   Pass filtered list: `[{id}] path={path} — {description}` for each match. If no chests match: pass empty list; Archivist skips consultation and proceeds.
+  **Chest signal:** Before passing the list to Archivist, emit `persona.content_by_lang[active.language.chat].treasure_chest_found`
+  for each chest in the list with `{chest_id}` = chest id and `{description}` = chest description. Skip if empty.
 - Artifact path: `<base_path>/refined/<mission_id>/` (subdirectory)
   - `proposal.md` — what and why (fed by Ranger's discovery artifact)
   - `design.md` — how (architecture, affected components, decisions)
@@ -461,11 +499,7 @@ Archivist writes artifacts directly (contract: `write_analysis`). Strategist doe
 intermediate the write — it only waits for completion and emits the done event.
 
 On success:
-Emit via `persona.prompt_templates.archivist_done` (substitui `{artifact_path}`).
-
-Before concluding refinement, Strategist MUST still emit/report mandatory sweep markers
-for the phase (`opportunity_scan`, `treasure_check`, `sidequest_manifest`), even when
-no additional side quests are found (`sidequest_manifest=empty`).
+Emit via `persona.content_by_lang[active.language.chat].archivist_done` (with `{artifact_path}`).
 
 ---
 
@@ -487,14 +521,10 @@ Read `<base_path>/refined/<mission_id>/tasks.md` before deciding:
 
 In all cases where the gate is presented: STOP. Do not invoke Sniper without explicit user approval.
 
-Before invoking Sniper in §7, Strategist MUST evaluate guarded transition group `execution`
-and emit canonical policy event with snapshot fields (`mission`, `mode`, `can_execute`).
-Denied decisions MUST return `plan_only`/`execution_skipped_by_policy` without invoking Sniper.
-
-Emit via `persona.prompt_templates.approval_prompt` (substitui `{artifact_path}`).
+Emit via `persona.content_by_lang[active.language.chat].approval_prompt` (with `{artifact_path}`).
 
 Wait for response:
-- **yes / approve / authorize**: proceed to Sniper.
+- **yes / approve / authorize**: re-emit checkpoint with step_3_icon=✅, step_4_icon=⏳. Proceed to Sniper.
 - **no / decline / stop**: emit `[Strategist] phase=approval_gate status=plan_only`,
   return mission result with `status: plan_only`, artifact paths for discovery and refined plan.
 - **review**: present the refined plan content, then re-ask.
@@ -505,7 +535,25 @@ Invoking Sniper without receiving explicit approval is a **forbidden behavior**.
 
 ## 7. Sniper (execution slot)
 
-Emit via `persona.prompt_templates.sniper_start`.
+Emit via `persona.content_by_lang[active.language.chat].sniper_start`.
+
+### 7a. Execution Task List
+
+Before invoking the slot, read `<base_path>/refined/<mission_id>/tasks.md` and parse the numbered tasks.
+
+Emit via `persona.content_by_lang[active.language.chat].execution_tasks_header` with `{total}` = number of tasks.
+
+Then emit each task via `persona.content_by_lang[active.language.chat].execution_task_line` with:
+- `{status_icon}` = `⬜` (all pending initially)
+- `{index}` = task number (e.g. `1`, `2`)
+- `{task_title}` = first line of the task description
+
+Instruct the execution slot to emit per-task progress events as it works:
+`[Strategist] phase=execution task=<N> status=running|done`
+
+On receiving `task=<N> status=running`: re-emit the full task list with task N marked `⏳` and all prior tasks `✅`.
+On receiving `task=<N> status=done`: re-emit the full task list with task N marked `✅` and task N+1 marked `⏳` (if not last).
+On all tasks done: re-emit with all tasks `✅`.
 
 Invoke the execution slot provider with:
 - Refined plan artifact path
@@ -515,78 +563,83 @@ Invoke the execution slot provider with:
   - `consult_treasure_chests`: Mandatory step — consult all passed chests before acting. If chest list is empty, proceed.
 - **Treasure chests** — mandatory step (chests where scope = `execution` or `all`):
   Pass filtered list: `[{id}] path={path}` for each match. If no chests match: pass empty list; Sniper skips consultation and proceeds. (omit if none)
+  **Chest signal:** Before passing the list to Sniper, emit `persona.content_by_lang[active.language.chat].treasure_chest_found`
+  for each chest in the list with `{chest_id}` = chest id and `{description}` = chest description. Skip if empty.
 
 Execution report artifact path: `<base_path>/done/<mission_id>-report.md`
 
 Wait for completion. On success:
-Emit via `persona.prompt_templates.sniper_done` (substitui `{artifact_path}`).
+Emit via `persona.content_by_lang[active.language.chat].sniper_done` (with `{artifact_path}`).
 
 ---
 
-## 8. ADR Opportunity (pós-missão, condicional)
+## 8. ADR Opportunity (post-mission, conditional)
 
 **Skip this entire section if `active.adr_enabled` is `false`.** Proceed directly to §9.
 
 After Sniper completes (`status=completed`) OR at approval gate decline (`status=plan_only`):
 
-**Critérios de ativação — avaliar se a missão contém decisões arquiteturais:**
+**Activation criteria — evaluate if the mission contains architectural decisions:**
 
-| Critério | Sinal |
-|----------|-------|
-| Novo padrão introduzido | Interface, contrato, schema, ou abstração nova |
-| Breaking change (mesmo controlada) | Campo removido, assinatura alterada, comportamento mudado |
-| Trade-off documentado | `tasks.md` / `design.md` descrevem escolha com alternativas descartadas |
-| Nova dependência externa | Biblioteca, serviço, ou protocolo adicionado |
+| Criterion | Signal |
+|-----------|--------|
+| New pattern introduced | New interface, contract, schema, or abstraction |
+| Breaking change (even controlled) | Field removed, signature changed, behavior changed |
+| Documented trade-off | `tasks.md` / `design.md` describe a choice with discarded alternatives |
+| New external dependency | Library, service, or protocol added |
 
-Se nenhum critério for atendido: pular diretamente para §9 (Learning Phase).
+If no criterion is met: skip directly to §9 (Learning Phase).
 
-Se algum critério for atendido:
+If any criterion is met:
 
-Emit via `persona.prompt_templates.adr_opportunity` (substitui `{mission_id}`).
+Emit via `persona.content_by_lang[active.language.chat].side_quest_detected` with
+`{description}` = `"ADR — opportunity to document architectural decision."` before presenting the gate.
 
-**Gate 1 — Gerar rascunho?** STOP. Aguardar resposta:
-- **no**: Registrar na learning phase como "ADR recusado (gate 1)". Continuar para §9.
-- **yes**: Arquivista escreve rascunho E **apresenta o conteúdo completo no chat**:
+Emit via `persona.content_by_lang[active.language.chat].adr_opportunity` with `{mission_id}`.
+
+**Gate 1 — Generate draft?** STOP. Wait for response:
+- **no**: Log in learning phase as "ADR declined (gate 1)". Continue to §9.
+- **yes**: Archivist writes draft AND **presents the full content in chat**:
   ```markdown
   ---
-  📚 **Arquivista — rascunho de ADR:**
+  📚 **Archivist — ADR draft:**
 
-  {conteúdo completo do ADR conforme template abaixo}
+  {full ADR content per template below}
   ---
   ```
-  Artefato também escrito em `<base_path>/done/<mission_id>-adr.md`.
+  Artifact also written to `<base_path>/done/<mission_id>-adr.md`.
 
-  Emit via `persona.prompt_templates.adr_gate` com `{draft_content}`.
+  Emit via `persona.content_by_lang[active.language.chat].adr_gate` with `{draft_content}`.
 
-  **Gate 2 — Aprovar conteúdo?** STOP. Aguardar resposta:
-  - **yes**: Sniper commita o ADR. `mission_result.adr = <path>`. Continuar para §9.
-  - **no**: ADR descartado (arquivo removido). `mission_result.status = completed` (sem ADR). Continuar para §9.
-  - **edit**: User quer ajustar o conteúdo. Aceitar edições inline e re-apresentar o draft. Re-abrir gate 2.
+  **Gate 2 — Approve content?** STOP. Wait for response:
+  - **yes**: Sniper commits the ADR. `mission_result.adr = <path>`. Continue to §9.
+  - **no**: ADR discarded (file removed). `mission_result.status = completed` (no ADR). Continue to §9.
+  - **edit**: User wants to adjust the content. Accept inline edits and re-present the draft. Re-open gate 2.
 
-Não há gate depois do Sniper — a aprovação do conteúdo acontece ANTES do commit, não depois.
+No gate after Sniper — content approval happens BEFORE the commit, not after.
 
-**Instrução de idioma para Arquivista:** gerar o ADR no idioma definido em `active.language`.
-- `language: pt` → conteúdo em português
-- `language: en` → conteúdo em inglês
+**Language instruction for Archivist:** generate the ADR in the language defined by `active.language.docs`.
+- `docs: pt-BR` → content in Portuguese
+- `docs: en` → content in English
 
-**Estrutura mínima do ADR (template para Arquivista):**
+**Minimum ADR structure (template for Archivist):**
 
 ```markdown
-# ADR: {titulo}
-**Data:** {date} | **Status:** accepted
-**Missão:** {mission_id}
+# ADR: {title}
+**Date:** {date} | **Status:** accepted
+**Mission:** {mission_id}
 
-## Contexto
-{problem statement derivado de proposal.md ou tasks.md}
+## Context
+{problem statement derived from proposal.md or tasks.md}
 
-## Decisão
-{o que foi escolhido e por quê}
+## Decision
+{what was chosen and why}
 
-## Consequências
-{trade-offs aceitos; o que fica mais difícil; o que fica mais fácil}
+## Consequences
+{accepted trade-offs; what becomes harder; what becomes easier}
 ```
 
-O template acima é em PT por padrão. Se `language: en`, Arquivista usa `Context`, `Decision`, `Consequences`.
+The template above uses English section names. If `docs: pt-BR`, Archivist uses `Contexto`, `Decisão`, `Consequências`.
 
 ---
 

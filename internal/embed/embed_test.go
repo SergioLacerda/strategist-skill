@@ -140,9 +140,9 @@ func TestExtractor_Extract(t *testing.T) {
 		skillMD, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
 		require.NoError(t, err)
 		doc := string(skillMD)
-		assert.Contains(t, doc, "language: pt")
-		assert.Contains(t, doc, "language: en")
-		assert.Contains(t, doc, "Arquivista")
-		assert.Contains(t, doc, "Instrução de idioma para Arquivista")
+		assert.Contains(t, doc, "docs: pt-BR")
+		assert.Contains(t, doc, "docs: en")
+		assert.Contains(t, doc, "Archivist")
+		assert.Contains(t, doc, "Language instruction for Archivist")
 	})
 }
