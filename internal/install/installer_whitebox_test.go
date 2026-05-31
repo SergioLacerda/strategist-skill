@@ -62,8 +62,8 @@ func newSvcW(wizardInput string) Service {
 func TestInstall_WizardPath(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	// lang_ui, mode, base_path, language, adr, discovery, refinement, execution, chest
-	svc := newSvcW("en\nminimal\n/workspace\npt\nyes\nbrainstorming\narchivist\nsdd-ask\n\n")
+	// 11 prompts: uiLang/docLang/chatLang/codeLang/mode/basePath/adr/discovery/refinement/execution/chest
+	svc := newSvcW("en\nen\npt-BR\nen\nminimal\n/workspace\nyes\nbrainstorming\narchivist\nsdd-ask\n\n")
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
 	require.NoError(t, err)
 
@@ -72,7 +72,10 @@ func TestInstall_WizardPath(t *testing.T) {
 	s := string(data)
 	assert.Contains(t, s, "mode: minimal")
 	assert.Contains(t, s, "base_path: /workspace")
-	assert.Contains(t, s, "language: pt")
+	assert.Contains(t, s, "ui: en")
+	assert.Contains(t, s, "docs: en")
+	assert.Contains(t, s, "chat: pt-BR")
+	assert.Contains(t, s, "code: en")
 	assert.Contains(t, s, "adr_enabled: true")
 	assert.Contains(t, s, "discovery: brainstorming")
 	assert.Contains(t, s, "refinement: archivist")
@@ -83,14 +86,17 @@ func TestInstall_WizardPath(t *testing.T) {
 func TestInstall_WizardPath_Defaults(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	svc := newSvcW("\n\n\n\n\n\n\n\n\n") // all defaults (9 prompts)
+	svc := newSvcW("\n\n\n\n\n\n\n\n\n\n\n") // all defaults (11 prompts)
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
 	require.NoError(t, err)
 
 	data, _ := os.ReadFile(filepath.Join(dir, ".strategist", "active.yaml"))
 	s := string(data)
 	assert.Contains(t, s, "mode: full")
-	assert.Contains(t, s, "language: pt")
+	assert.Contains(t, s, "ui: en")
+	assert.Contains(t, s, "docs: en")
+	assert.Contains(t, s, "chat: en")
+	assert.Contains(t, s, "code: en")
 	assert.Contains(t, s, "adr_enabled: true")
 	assert.Contains(t, s, "discovery: brainstorming")
 	assert.Contains(t, s, "refinement: openspec-explore")
@@ -215,54 +221,72 @@ func TestRunWizard_EOFOnFirstPrompt(t *testing.T) {
 	t.Parallel()
 	_, err := runWizard(strings.NewReader(""))
 	require.Error(t, err)
-	assert.ErrorContains(t, err, "language_ui")
+	assert.ErrorContains(t, err, "ui_language")
 }
 
 func TestRunWizard_EOFOnSecondPrompt(t *testing.T) {
 	t.Parallel()
+	// uiLang done; EOF on docLang
 	_, err := runWizard(strings.NewReader("en\n"))
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "doc_language")
+}
+
+func TestRunWizard_EOFOnThirdPrompt_ChatLang(t *testing.T) {
+	t.Parallel()
+	// uiLang + docLang done; EOF on chatLang
+	_, err := runWizard(strings.NewReader("en\nen\n"))
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "chat_language")
+}
+
+func TestRunWizard_EOFOnFourthPrompt_CodeLang(t *testing.T) {
+	t.Parallel()
+	// uiLang + docLang + chatLang done; EOF on codeLang
+	_, err := runWizard(strings.NewReader("en\nen\nen\n"))
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "code_language")
+}
+
+func TestRunWizard_EOFOnFifthPrompt_Mode(t *testing.T) {
+	t.Parallel()
+	// 4 language prompts done; EOF on mode
+	_, err := runWizard(strings.NewReader("en\nen\nen\nen\n"))
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "mode")
 }
 
-func TestRunWizard_EOFOnThirdPrompt_BasePath(t *testing.T) {
+func TestRunWizard_EOFOnSixthPrompt_BasePath(t *testing.T) {
 	t.Parallel()
-	_, err := runWizard(strings.NewReader("en\nfull\n"))
+	_, err := runWizard(strings.NewReader("en\nen\nen\nen\nfull\n"))
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "base_path")
 }
 
-func TestRunWizard_EOFOnFourthPrompt_Language(t *testing.T) {
+func TestRunWizard_EOFOnSeventhPrompt_Adr(t *testing.T) {
 	t.Parallel()
-	_, err := runWizard(strings.NewReader("en\nfull\n.\n"))
-	require.Error(t, err)
-	assert.ErrorContains(t, err, "language")
-}
-
-func TestRunWizard_EOFOnFifthPrompt_Adr(t *testing.T) {
-	t.Parallel()
-	_, err := runWizard(strings.NewReader("en\nfull\n.\npt\n"))
+	_, err := runWizard(strings.NewReader("en\nen\nen\nen\nfull\n.\n"))
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "adr_enabled")
 }
 
-func TestRunWizard_EOFOnSixthPrompt_Discovery(t *testing.T) {
+func TestRunWizard_EOFOnEighthPrompt_Discovery(t *testing.T) {
 	t.Parallel()
-	_, err := runWizard(strings.NewReader("en\nfull\n.\npt\nyes\n"))
+	_, err := runWizard(strings.NewReader("en\nen\nen\nen\nfull\n.\nyes\n"))
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "discovery")
 }
 
-func TestRunWizard_EOFOnSeventhPrompt_Refinement(t *testing.T) {
+func TestRunWizard_EOFOnNinthPrompt_Refinement(t *testing.T) {
 	t.Parallel()
-	_, err := runWizard(strings.NewReader("en\nfull\n.\npt\nyes\nbrainstorming\n"))
+	_, err := runWizard(strings.NewReader("en\nen\nen\nen\nfull\n.\nyes\nbrainstorming\n"))
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "refinement")
 }
 
-func TestRunWizard_EOFOnEighthPrompt_Execution(t *testing.T) {
+func TestRunWizard_EOFOnTenthPrompt_Execution(t *testing.T) {
 	t.Parallel()
-	_, err := runWizard(strings.NewReader("en\nfull\n.\npt\nyes\nbrainstorming\nopenspec-explore\n"))
+	_, err := runWizard(strings.NewReader("en\nen\nen\nen\nfull\n.\nyes\nbrainstorming\nopenspec-explore\n"))
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "execution")
 }
