@@ -34,7 +34,7 @@ func TestDefaultMissionModePreservesLegacyExecution(t *testing.T) {
 	assert.Equal(t, domain.MissionModeExecutedDelivery, decision.Policy.Mode)
 }
 
-func TestDoneAnaliseSkipsExecution(t *testing.T) {
+func TestDoneAnalysisSkipsExecution(t *testing.T) {
 	t.Parallel()
 
 	decision := domain.EvaluateGuardedTransition(

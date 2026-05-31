@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestFSMAnaliseNeverExecutes(t *testing.T) {
+func TestFSMAnalysisNeverExecutes(t *testing.T) {
 	t.Parallel()
 	policy := domain.NewMissionPolicy(domain.MissionModeAnalysis)
 	state := domain.StateInit
