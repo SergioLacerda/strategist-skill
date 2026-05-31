@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -52,9 +53,15 @@ func runInstall(cmd *cobra.Command, _ []string) (retErr error) {
 
 	slog.InfoContext(ctx, "[Strategist] install running", "target", installTarget)
 
+	shimHome, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("install: resolve home dir: %w", err)
+	}
+
 	svc := install.Service{
-		Extractor: embedpkg.Extractor{},
-		Compiler:  compile.Compiler{},
+		Extractor:   embedpkg.Extractor{},
+		Compiler:    compile.Compiler{},
+		ShimHomeDir: shimHome,
 	}
 
 	cfg := domain.InstallConfig{

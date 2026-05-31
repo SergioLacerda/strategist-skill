@@ -89,11 +89,47 @@ pipeline:
   - stage: intake
     skill: prompt-intake
     produces: mission_contract
+  - stage: quick_draw_detection
+    type: conditional_route
+    condition: explicit_quick_draw_request
+    description: >
+      If the user explicitly asks for "quick draw" / "saque rapido" / quick TODO capture,
+      route to the quick_draw side-quest pipeline and skip the main mission pipeline.
+    produces: quick_draw_contract
+  - stage: quick_draw_discovery
+    slot: discovery
+    condition: quick_draw_detection.matched
+    input: quick_draw_contract
+    artifact_path: "<base_path>/pending/<mission_id>-quick-draw.md"
+  - stage: quick_draw_refinement
+    slot: refinement
+    condition: quick_draw_detection.matched
+    input: quick_draw_discovery
+    artifact_path: "<base_path>/refined/<mission_id>-quick-draw.md"
+    produces:
+      - idea
+      - theme
+      - destination_path
+      - total_ideas
+      - similar_ideas
+  - stage: quick_draw_gate
+    type: mandatory_pause
+    condition: quick_draw_detection.matched
+    description: >
+      Present "ideia: <texto>" and ask "adicionar ideia? (sim/nao)" before any write.
+  - stage: quick_draw_execution
+    slot: execution
+    condition: quick_draw_gate_granted
+    input: quick_draw_refinement
+    artifact_path: "<base_path>/todo/<tema>.md"
+    produces: quick_draw_result
   - stage: context_enrichment
     skill: context-enrichment
+    condition: "!quick_draw_detection.matched"
     produces: dossier
   - stage: discovery
     slot: discovery
+    condition: "!quick_draw_detection.matched"
     input: mission_contract
     artifact_path: "<base_path>/pending/<mission_id>-discovery.md"
   - stage: housekeeping_scan
@@ -194,6 +230,7 @@ provider_compliance:
   external_trust: risk_score_only      # non-SDD providers: validate risk_score only (current behavior)
 
 forbidden_behaviors:
+  - write_quick_draw_without_gate
   - invoke_execution_slot_without_approval
   - write_config_to_target_repo
   - perform_discovery_directly_instead_of_delegating

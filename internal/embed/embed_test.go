@@ -70,4 +70,79 @@ func TestExtractor_Extract(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotEmpty(t, data)
 	})
+
+	t.Run("extracted defaults include quick_draw pipeline and prompts", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		require.NoError(t, embedpkg.Extractor{}.Extract(dir, false))
+
+		skillYAML, err := os.ReadFile(filepath.Join(dir, "skill.yaml"))
+		require.NoError(t, err)
+		skill := string(skillYAML)
+		assert.Contains(t, skill, "stage: quick_draw_detection")
+		assert.Contains(t, skill, "stage: quick_draw_gate")
+		assert.Contains(t, skill, "write_quick_draw_without_gate")
+		assert.Contains(t, skill, "<base_path>/todo/<tema>.md")
+
+		skillMD, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
+		require.NoError(t, err)
+		doc := string(skillMD)
+		assert.Contains(t, doc, "Quick Draw Route (Saque Rapido)")
+		assert.Contains(t, doc, "adicionar ideia? (sim/nao)")
+
+		pragmatic, err := os.ReadFile(filepath.Join(dir, "personas", "pragmatic.yaml"))
+		require.NoError(t, err)
+		assert.Contains(t, string(pragmatic), "quick_draw_gate")
+		assert.Contains(t, string(pragmatic), "quick_draw_success")
+
+		epic, err := os.ReadFile(filepath.Join(dir, "personas", "epic.yaml"))
+		require.NoError(t, err)
+		assert.Contains(t, string(epic), "quick_draw_gate")
+		assert.Contains(t, string(epic), "quick_draw_success")
+	})
+
+	t.Run("extracted defaults include opportunity attack and chest scope contracts", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		require.NoError(t, embedpkg.Extractor{}.Extract(dir, false))
+
+		skillYAML, err := os.ReadFile(filepath.Join(dir, "skill.yaml"))
+		require.NoError(t, err)
+		skill := string(skillYAML)
+		assert.Contains(t, skill, "stage: opportunity_gate")
+		assert.Contains(t, skill, "condition: opportunity_manifest.count > 0")
+		assert.Contains(t, skill, "stage: opportunity_execution")
+		assert.Contains(t, skill, "condition: opportunity_gate_granted")
+		assert.Contains(t, skill, "skip_opportunity_gate")
+		assert.Contains(t, skill, "invoke_opportunity_sniper_without_approval")
+		assert.Contains(t, skill, "scope_values: [all, discovery, refinement, execution]")
+
+		pragmatic, err := os.ReadFile(filepath.Join(dir, "personas", "pragmatic.yaml"))
+		require.NoError(t, err)
+		p := string(pragmatic)
+		assert.Contains(t, p, "opportunity_detected")
+		assert.Contains(t, p, "opportunity_gate")
+		assert.Contains(t, p, "Aprovar? (yes / no / select)")
+
+		epic, err := os.ReadFile(filepath.Join(dir, "personas", "epic.yaml"))
+		require.NoError(t, err)
+		e := string(epic)
+		assert.Contains(t, e, "opportunity_detected")
+		assert.Contains(t, e, "opportunity_gate")
+		assert.Contains(t, e, "Aprovar? (yes / no / select)")
+	})
+
+	t.Run("extracted defaults include ADR language instruction", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		require.NoError(t, embedpkg.Extractor{}.Extract(dir, false))
+
+		skillMD, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
+		require.NoError(t, err)
+		doc := string(skillMD)
+		assert.Contains(t, doc, "language: pt")
+		assert.Contains(t, doc, "language: en")
+		assert.Contains(t, doc, "Arquivista")
+		assert.Contains(t, doc, "Instrução de idioma para Arquivista")
+	})
 }

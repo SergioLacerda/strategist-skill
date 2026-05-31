@@ -9,18 +9,25 @@ import (
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"golang.org/x/term"
 )
 
 // Service implements domain.Installer.
 type Service struct {
 	Extractor domain.FileExtractor
 	Compiler  domain.Compiler
-	// WizardReader overrides os.Stdin for wizard prompts. Nil means use os.Stdin.
+	// WizardPrompter overrides the auto-detected Prompter for wizard prompts.
+	// Nil means auto-detect: TUIPrompter when stdin is a TTY, TextPrompter otherwise.
 	// Set this in tests to provide scripted input without blocking on stdin.
-	WizardReader io.Reader
+	WizardPrompter Prompter
 	// ShimHomeDir overrides os.UserHomeDir() for shim installation. Nil means use real home.
 	// Set this in tests to install the shim in a temporary directory.
 	ShimHomeDir string
+	// terminalDetector overrides TTY detection for tests. Nil means use term.IsTerminal.
+	terminalDetector func() bool
+	// stdinReader overrides os.Stdin for the TextPrompter fallback. Nil means use os.Stdin.
+	// Set this in tests to avoid blocking on a real terminal.
+	stdinReader io.Reader
 }
 
 // Install installs the skill into cfg.Target. In silent mode it extracts defaults
@@ -101,16 +108,31 @@ func (s Service) applyConfig(strategistDir string, cfg domain.InstallConfig) err
 		return nil
 	}
 
-	r := io.Reader(os.Stdin)
-	if s.WizardReader != nil {
-		r = s.WizardReader
+	p := s.WizardPrompter
+	if p == nil {
+		isTTY := s.terminalDetector
+		if isTTY == nil {
+			isTTY = func() bool { return term.IsTerminal(int(os.Stdin.Fd())) }
+		}
+		if isTTY() {
+			p = NewTUIPrompter()
+		} else {
+			stdin := s.stdinReader
+			if stdin == nil {
+				stdin = os.Stdin
+			}
+			p = NewTextPrompter(stdin)
+		}
 	}
-	wc, err := runWizard(r)
+	wc, err := runWizard(p)
 	if err != nil {
 		return fmt.Errorf("install: wizard: %w", err)
 	}
 	if err := writeActiveYAML(strategistDir, wc); err != nil {
 		return fmt.Errorf("install: write active.yaml: %w", err)
+	}
+	if err := writeKnowledgeIndexSource(strategistDir, wc); err != nil {
+		return fmt.Errorf("install: write knowledge.index.yaml: %w", err)
 	}
 	return nil
 }

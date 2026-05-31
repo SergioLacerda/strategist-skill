@@ -69,6 +69,21 @@ prompt_templates:
 
     Aprovar? (yes / no / select)
 
+  # Quick draw (saque rapido)
+  quick_draw_detected: >
+    ⚔️ **Quick Draw** detectado. Side quest curta iniciada (Ranger -> Archivist -> Gate).
+  quick_draw_gate: >
+    🚦 **Gate Quick Draw**
+
+    ideia: {idea}
+
+    adicionar ideia? (sim/nao)
+  quick_draw_success: >
+    ⚔️ Quick Draw concluido.
+    sucesso: ideia adicionada em {destination_path}
+    total de ideias: {total_ideas}
+    ideias similares (mesmo tema): {similar_ideas}
+
   # Gate de ADR pós-missão
   adr_opportunity: >
     ⚔️ **Ataque de Oportunidade → ADR**

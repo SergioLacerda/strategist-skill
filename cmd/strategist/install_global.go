@@ -33,8 +33,9 @@ outside of any specific project directory.`,
 		}
 
 		svc := install.Service{
-			Extractor: embedpkg.Extractor{},
-			Compiler:  compile.Compiler{},
+			Extractor:   embedpkg.Extractor{},
+			Compiler:    compile.Compiler{},
+			ShimHomeDir: target,
 		}
 
 		cfg := domain.InstallConfig{

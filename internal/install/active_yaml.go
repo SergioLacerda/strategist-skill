@@ -57,6 +57,28 @@ treasure_chests:
 	return nil
 }
 
+// writeKnowledgeIndexSource updates knowledge.index.yaml to include a source entry
+// for the wizard's TreasureChestPath. It replaces the "sources: []" placeholder
+// in the extracted template, preserving surrounding comments.
+// No-op when TreasureChestPath is empty.
+func writeKnowledgeIndexSource(strategistDir string, wc domain.WizardConfig) error {
+	if wc.TreasureChestPath == "" {
+		return nil
+	}
+	kiPath := filepath.Join(strategistDir, "knowledge.index.yaml")
+	data, err := os.ReadFile(kiPath) //nolint:gosec // G304: path constructed from install config
+	if err != nil {
+		return fmt.Errorf("read knowledge.index.yaml: %w", err)
+	}
+	id := treasureChestID(wc.TreasureChestPath)
+	entry := fmt.Sprintf("sources:\n  - id: %s\n    path: %s\n    tags: [all]", id, wc.TreasureChestPath)
+	updated := strings.Replace(string(data), "sources: []", entry, 1)
+	if err := os.WriteFile(kiPath, []byte(updated), 0o644); err != nil { //nolint:gosec // G703: path from install config
+		return fmt.Errorf("write knowledge.index.yaml: %w", err)
+	}
+	return nil
+}
+
 // treasureChestID derives a stable id from a path by taking the last non-empty segment.
 func treasureChestID(path string) string {
 	path = strings.TrimRight(path, "/")

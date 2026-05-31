@@ -66,8 +66,9 @@ func (m *mockCompiler) CompileAll(_, _ string) error {
 	return m.failErr
 }
 
-func newSvc(ext domain.FileExtractor, comp domain.Compiler) install.Service {
-	return install.Service{Extractor: ext, Compiler: comp}
+func newSvc(t *testing.T, ext domain.FileExtractor, comp domain.Compiler) install.Service {
+	t.Helper()
+	return install.Service{Extractor: ext, Compiler: comp, ShimHomeDir: t.TempDir()}
 }
 
 // --- Install ---
@@ -78,7 +79,7 @@ func TestInstall_Silent(t *testing.T) {
 	ext := &mockExtractor{}
 	comp := &mockCompiler{}
 
-	require.NoError(t, newSvc(ext, comp).Install(context.Background(), domain.InstallConfig{
+	require.NoError(t, newSvc(t, ext, comp).Install(context.Background(), domain.InstallConfig{
 		Target: dir,
 		Silent: true,
 	}))
@@ -98,7 +99,7 @@ func TestInstall_Silent(t *testing.T) {
 func TestInstall_EnsuresGitignore(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	require.NoError(t, newSvc(&mockExtractor{}, &mockCompiler{}).Install(
+	require.NoError(t, newSvc(t, &mockExtractor{}, &mockCompiler{}).Install(
 		context.Background(), domain.InstallConfig{Target: dir, Silent: true},
 	))
 	data, err := os.ReadFile(filepath.Join(dir, ".gitignore"))
@@ -109,7 +110,7 @@ func TestInstall_EnsuresGitignore(t *testing.T) {
 func TestInstall_GitignoreIdempotent(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	svc := newSvc(&mockExtractor{}, &mockCompiler{})
+	svc := newSvc(t, &mockExtractor{}, &mockCompiler{})
 	cfg := domain.InstallConfig{Target: dir, Silent: true}
 
 	// Run twice — gitignore entry must appear exactly once
@@ -132,7 +133,7 @@ func TestInstall_ExtractorFailurePropagates(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	ext := &mockExtractor{failWith: os.ErrPermission}
-	err := newSvc(ext, &mockCompiler{}).Install(context.Background(), domain.InstallConfig{Target: dir})
+	err := newSvc(t, ext, &mockCompiler{}).Install(context.Background(), domain.InstallConfig{Target: dir})
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "extract defaults")
 }
@@ -142,13 +143,13 @@ func TestInstall_CompileFailureIsNonFatal(t *testing.T) {
 	dir := t.TempDir()
 	comp := &mockCompiler{failErr: os.ErrNotExist}
 	// compile failure must not return an error — only a warning to stderr
-	err := newSvc(&mockExtractor{}, comp).Install(context.Background(), domain.InstallConfig{Target: dir, Silent: true})
+	err := newSvc(t, &mockExtractor{}, comp).Install(context.Background(), domain.InstallConfig{Target: dir, Silent: true})
 	require.NoError(t, err, "compile failure must be non-fatal")
 }
 
 func TestInstall_NewInstaller(t *testing.T) {
-	t.Parallel()
 	dir := t.TempDir()
+	t.Setenv("HOME", t.TempDir())
 	inst := install.NewInstaller(&mockExtractor{}, &mockCompiler{})
 	err := inst.Install(domain.InstallConfig{Target: dir, Silent: true})
 	require.NoError(t, err)

@@ -143,7 +143,7 @@ strategist/
 
 ## Mission Pipeline
 
-Complete pipeline: Ranger → housekeeping_scan → Archivist → approval gate → Sniper (side quests + main)
+Complete pipeline: Ranger → Archivist → approval gate → Sniper
 
 ### Business Flow: Iteration Between Roles
 
@@ -212,7 +212,7 @@ Complete pipeline: Ranger → housekeeping_scan → Archivist → approval gate 
 
 #### Side Quests — Detail
 
-The housekeeping scan detects artifacts in an inconsistent state and passes the manifest to the Archivist as context — this prevents the Archivist from treating something already resolved as "pending". Side quest execution happens in the Sniper, after approval at the main gate.
+The housekeeping scan detects artifacts in an inconsistent state and builds a manifest for Archivist to incorporate into the proposal.
 
 ```
               todo/spec.md ──────────► already implemented in git?
@@ -231,7 +231,31 @@ The housekeeping scan detects artifacts in an inconsistent state and passes the 
                                        promote → move refined → done
 ```
 
-Each workspace operation requires approval at the **main gate** — the Sniper executes side quests as a first step, before the main plan.
+Each workspace operation requires approval at the **main gate** — no execution occurs outside this step.
+
+#### Quick Draw — Detail
+
+`quick_draw` is a rapid-note intent signal within the same mission:
+
+- **Input:** explicit quick draw / rapid TODO capture prompt.
+- **Ranger:** only normalizes the sentence into `idea: ...` without expanding scope.
+- **Archivist:** assigns theme (`architecture`, `security`, `analysis`, `general`) and destination `.analysis/todo/<theme>.md`; computes total and similar ideas.
+- **Gate:** approval at the main mission gate.
+- **Sniper:** appends to the themed file and returns `total ideas` + `similar ideas`.
+
+Without main-gate approval, nothing is written.
+
+#### Treasure Chests — Scope
+
+`active.yaml` can declare `treasure_chests` as optional offline knowledge sources.
+Strategist filters by scope and passes them to each slot:
+
+- `discovery` → Ranger
+- `refinement` → Archivist
+- `execution` → Sniper
+- `all` → all slots
+
+If no scope match exists, the slot continues without blocking.
 
 ---
 
@@ -497,10 +521,10 @@ After the Ranger completes, Strategist performs a deterministic scan of `<base_p
 
 Produces a **side quest manifest** with the detected items.
 
-- If manifest is empty: advances directly to 5c (Archivist) with no side quest context.
-- If manifest is non-empty: passes the manifest to Archivist as context — execution happens in the Sniper after approval at the main gate.
+- If manifest is empty: advances directly to 5d (Archivist).
+- If manifest is non-empty: passes the manifest to Archivist as context and execution proposal.
 
-There is no gate before the Archivist. Side quests are executed by the Sniper (§7), covered by the main approval gate (§6).
+There is no separate gate before Archivist. Approval happens at the main mission gate.
 
 #### 5c. Archivist (refinement slot)
 
@@ -800,7 +824,7 @@ When `drift-patterns.yaml` is loaded, the agent checks patterns before each phas
 | `approval_bypass` | About to invoke Sniper without asking the user | Stop. Present approval gate prompt. |
 | `scope_expansion` | Addressing something outside the user's mission | Stop. Return to mission scope. |
 | `sniper_provider_override` | Resolved Sniper from a source other than roles config or sdd_injection | Stop. Re-resolve from declared source. |
-| `side_quest_approval_bypass` | About to move files from housekeeping_scan without passing through the main gate | Stop. Side quests only execute in Sniper, after approval at the main gate. |
+| `side_quest_approval_bypass` | About to move files from housekeeping_scan without passing through the main gate | Stop. Side quests only execute after explicit approval at the main gate. |
 | `route_plan_creation_to_sniper` | About to ask Sniper to create a document, spec, or plan | Stop. Artifact creation is Archivist's work. Return to phase 5c. |
 | `housekeeping_scan_as_slot` | About to delegate the housekeeping scan to Ranger or another slot | Stop. Execute the scan directly as Strategist (internal phase). |
 

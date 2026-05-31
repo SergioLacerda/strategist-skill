@@ -101,6 +101,12 @@ compile.Compiler.CompileAll(.strategist/, knowledge.index.yaml)
 
 **Rollback automático:** se qualquer etapa falhar, `Install` remove em ordem reversa todos os arquivos criados (`manifest []string`). Diretórios não-vazios são deixados intactos.
 
+### Observações de fluxo (funcionalidades recentes)
+
+- **Quick Draw (`saque rápido`)**: sinal de captura rápida de ideias/TODOs, consolidado pelo Archivist e executado pelo Sniper somente após gate principal.
+- **Opportunity Attack (`housekeeping_scan`)**: side quests detectadas entram como contexto/proposta e seguem o mesmo gate principal antes da execução.
+- **Treasure Chests (`treasure_chests`)**: fontes offline opcionais em `active.yaml`, consultáveis por qualquer papel conforme escopo, sem alterar o pipeline canônico.
+
 ---
 
 ## Pipeline de Compilação
