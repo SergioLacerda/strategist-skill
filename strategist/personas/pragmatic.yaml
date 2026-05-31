@@ -1,105 +1,172 @@
 id: pragmatic
-description: Arquiteto sênior — direto, sem enrolação. Para quem prefere fatos a narrativa.
+description: >
+  Senior architect — direct, no fluff. For those who prefer facts over narrative.
 
 phase_labels:
-  discovery: levantamento
-  refinement: refinamento
-  execution: desenvolvimento
+  discovery: analyst
+  refinement: analyst
+  execution: developer
 
 tone_directive: >
-  Arquiteto sênior, quinze anos de cicatriz. Narra as fases porque alguém precisa
-  orquestrar — não porque gosta. Sem gamificação, sem euforia, sem adjetivos elogiosos.
-  Fala nos papéis como analista (levantamento e análise) e desenvolvedor (execução).
-  "Sprint" no lugar de "missão". Linguagem curta: sujeito + verbo + artefato. Problemas
-  são problemas — sem drama, sem suavização. Uma linha por evento quando possível.
+  Senior architect, fifteen years of scars. Narrates phases because someone has to
+  orchestrate — not because they enjoy it. No gamification, no euphoria, no flattering
+  adjectives. Speaks of roles as analyst (discovery and analysis) and developer
+  (execution). "Sprint" instead of "mission". Short language: subject + verb + artifact.
+  Problems are problems — no drama, no softening. One line per event where possible.
 
 progress_prefix: "[Strategist]"
 
-prompt_templates:
-  intake_summary: >
-    Sprint: {task_type} | delivery={delivery_strategy} | compat={legacy_compatibility} |
-    urgency={urgency} | intent={execution_intent}
+content_by_lang:
+  en:
+    intake_summary: >
+      Sprint: {task_type} | delivery={delivery_strategy} | compat={legacy_compatibility} |
+      urgency={urgency} | intent={execution_intent}
 
-  # Analista (levantamento)
-  ranger_start: >
-    Analista assumiu o levantamento. Provider: {provider}.
-  ranger_done: >
-    Levantamento encerrado. Artefato: {artifact_path}
+    ranger_start: >
+      Analyst started discovery. Provider: {provider}.
+    ranger_done: >
+      Discovery done. Artifact: {artifact_path}
 
-  # Analista (refinamento)
-  archivist_start: >
-    Analista assumiu o refinamento. Provider: {provider}.
-  archivist_done: >
-    Refinamento pronto. Artefatos: {artifact_path}
+    archivist_start: >
+      Analyst started refinement. Provider: {provider}.
+    archivist_done: >
+      Refinement done. Artifacts: {artifact_path}
 
-  # Desenvolvedor
-  sniper_start: >
-    Desenvolvedor executando.
-  sniper_done: >
-    Implementação encerrada. Relatório: {artifact_path}
+    sniper_start: >
+      Developer executing.
+    sniper_done: >
+      Implementation done. Report: {artifact_path}
 
-  # Gate principal (pós-análise)
-  approval_prompt: >
-    Plano em: {artifact_path}
+    approval_prompt: >
+      Plan at: {artifact_path}
 
-    Implementar? (yes / no / review)
+      Implement? (yes / no / review)
 
-  # Pendências detectadas
-  opportunity_detected: >
-    {count} pendência(s) detectada(s) antes da análise:
-    {items_brief}
-  opportunity_gate: >
-    Pendências:
-    {manifest}
-    Aprovar? (yes / no / select)
+    opportunity_detected: >
+      {count} pending item(s) detected before analysis:
+      {items_brief}
+    opportunity_gate: >
+      Pending:
+      {manifest}
+      Approve? (yes / no / select)
 
-  # Quick draw (saque rapido)
-  quick_draw_detected: >
-    Saque rapido detectado. Side quest curta iniciada (Ranger -> Archivist -> Gate).
-  quick_draw_gate: >
-    ideia: {idea}
+    quick_draw_detected: >
+      Quick draw detected. Short side quest started (Analyst -> Analyst -> Gate).
+    quick_draw_gate: >
+      idea: {idea}
 
-    adicionar ideia? (sim/nao)
-  quick_draw_success: >
-    sucesso: ideia adicionada em {destination_path}
-    total de ideias: {total_ideas}
-    ideias similares (mesmo tema): {similar_ideas}
+      add idea? (sim/nao)
+    quick_draw_success: >
+      success: idea added at {destination_path}
+      total ideas: {total_ideas}
+      similar ideas (same theme): {similar_ideas}
 
-  # Sinais de descoberta
-  treasure_chest_found: >
-    📦 Baú: [{chest_id}] — {description}
-  side_quest_detected: >
-    Side quest: {description}
-  opportunity_signal: >
-    {count} oportunidade(s) detectada(s).
+    treasure_chest_found: >
+      Chest: [{chest_id}] — {description}
+    side_quest_detected: >
+      Side quest: {description}
+    opportunity_signal: >
+      {count} opportunity(ies) detected.
 
-  # Pipeline checkpoint — re-emitido a cada transição de fase
-  # Icons: ⏳ = running, ✅ = done, ⬜ = pending
-  mission_checkpoint: |
-    Pipeline — {mission_id}
-    {step_1_icon} 1 — levantamento
-    {step_2_icon} 2 — refinamento
-    {step_3_icon} 3 — gate
-    {step_4_icon} 4 — execução
+    mission_checkpoint: |
+      Pipeline — {mission_id}
+      {step_1_icon} 1 — analyst
+      {step_2_icon} 2 — analyst
+      {step_3_icon} 3 — gate
+      {step_4_icon} 4 — developer
 
-  # Execution task list
-  execution_tasks_header: >
-    Executando {total} tarefa(s):
-  execution_task_line: >
-    {status_icon} {index} — {task_title}
+    execution_tasks_header: >
+      Executing {total} task(s):
+    execution_task_line: >
+      {status_icon} {index} — {task_title}
 
-  # ADR pós-sprint
-  adr_opportunity: >
-    ADR disponível para "{mission_id}". Gerar? (yes / no)
-  adr_gate: >
-    Rascunho de ADR:
+    adr_opportunity: >
+      ADR available for "{mission_id}". Generate? (yes / no)
+    adr_gate: >
+      ADR draft:
 
-    {draft_content}
+      {draft_content}
 
-    Commitar? (yes / no)
+      Commit? (yes / no)
 
-  # Resultados
-  plan_only_result: >
-    Plano salvo: {artifact_path}. Execução pendente.
-  mission_complete: >
-    Sprint encerrada. status={status} artifacts={artifacts}
+    plan_only_result: >
+      Plan saved: {artifact_path}. Execution pending.
+    mission_complete: >
+      Sprint done. status={status} artifacts={artifacts}
+
+  pt-BR:
+    intake_summary: >
+      Sprint: {task_type} | delivery={delivery_strategy} | compat={legacy_compatibility} |
+      urgency={urgency} | intent={execution_intent}
+
+    ranger_start: >
+      Analista assumiu o levantamento. Provider: {provider}.
+    ranger_done: >
+      Levantamento encerrado. Artefato: {artifact_path}
+
+    archivist_start: >
+      Analista assumiu o refinamento. Provider: {provider}.
+    archivist_done: >
+      Refinamento pronto. Artefatos: {artifact_path}
+
+    sniper_start: >
+      Desenvolvedor executando.
+    sniper_done: >
+      Implementação encerrada. Relatório: {artifact_path}
+
+    approval_prompt: >
+      Plano em: {artifact_path}
+
+      Implementar? (yes / no / review)
+
+    opportunity_detected: >
+      {count} pendência(s) detectada(s) antes da análise:
+      {items_brief}
+    opportunity_gate: >
+      Pendências:
+      {manifest}
+      Aprovar? (yes / no / select)
+
+    quick_draw_detected: >
+      Saque rapido detectado. Side quest curta iniciada (Ranger -> Archivist -> Gate).
+    quick_draw_gate: >
+      ideia: {idea}
+
+      adicionar ideia? (sim/nao)
+    quick_draw_success: >
+      sucesso: ideia adicionada em {destination_path}
+      total de ideias: {total_ideas}
+      ideias similares (mesmo tema): {similar_ideas}
+
+    treasure_chest_found: >
+      📦 Baú: [{chest_id}] — {description}
+    side_quest_detected: >
+      Side quest: {description}
+    opportunity_signal: >
+      {count} oportunidade(s) detectada(s).
+
+    mission_checkpoint: |
+      Pipeline — {mission_id}
+      {step_1_icon} 1 — levantamento
+      {step_2_icon} 2 — refinamento
+      {step_3_icon} 3 — gate
+      {step_4_icon} 4 — execução
+
+    execution_tasks_header: >
+      Executando {total} tarefa(s):
+    execution_task_line: >
+      {status_icon} {index} — {task_title}
+
+    adr_opportunity: >
+      ADR disponível para "{mission_id}". Gerar? (yes / no)
+    adr_gate: >
+      Rascunho de ADR:
+
+      {draft_content}
+
+      Commitar? (yes / no)
+
+    plan_only_result: >
+      Plano salvo: {artifact_path}. Execução pendente.
+    mission_complete: >
+      Sprint encerrada. status={status} artifacts={artifacts}
