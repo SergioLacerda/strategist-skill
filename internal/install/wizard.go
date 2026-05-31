@@ -5,62 +5,8 @@ import (
 	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/i18n"
 )
-
-type wizardStrings struct {
-	PromptDocLang     string
-	PromptChatLang    string
-	PromptCodeLang    string
-	PromptMode        string
-	PromptMissionMode string
-	PromptBasePath    string
-	PromptAdr         string
-	HeaderSlots       string
-	PromptDiscovery   string
-	PromptRefinement  string
-	PromptExecution   string
-	HeaderChest       string
-	PromptChestPath   string
-}
-
-var bundleEN = wizardStrings{
-	PromptDocLang:     "Documentation language",
-	PromptChatLang:    "Chat/interaction language",
-	PromptCodeLang:    "Code language",
-	PromptMode:        "Mode",
-	PromptMissionMode: "DONE scope (analysis-only or analysis + implementation)\n  analise = analysis-only\n  entrega_revisada = analysis + handoff (no implementation)\n  entrega_executada = analysis + implementation",
-	PromptBasePath:    "Base path for analysis workspace",
-	PromptAdr:         "Enable ADR generation at mission end?",
-	HeaderSlots:       "\nSlot providers — which skill fills each mission role:",
-	PromptDiscovery:   "  Ranger / discovery provider",
-	PromptRefinement:  "  Arquivista / refinement provider",
-	PromptExecution:   "  Sniper / execution provider",
-	HeaderChest:       "\nTreasure chest — optional offline knowledge source for all slots:",
-	PromptChestPath:   "  Knowledge source path (e.g. .sdd/source)",
-}
-
-var bundlePTBR = wizardStrings{
-	PromptDocLang:     "Idioma da documentação",
-	PromptChatLang:    "Idioma do chat/interação",
-	PromptCodeLang:    "Idioma do código",
-	PromptMode:        "Modo",
-	PromptMissionMode: "Escopo do DONE (apenas análise ou análise + implementação)\n  analise = apenas análise\n  entrega_revisada = análise + handoff (sem implementação)\n  entrega_executada = análise + implementação",
-	PromptBasePath:    "Caminho base do workspace de análise",
-	PromptAdr:         "Habilitar geração de ADR ao final da missão?",
-	HeaderSlots:       "\nProvedores de slot — qual skill preenche cada papel da missão:",
-	PromptDiscovery:   "  Ranger / provedor de descoberta",
-	PromptRefinement:  "  Arquivista / provedor de refinamento",
-	PromptExecution:   "  Sniper / provedor de execução",
-	HeaderChest:       "\nBaú do tesouro — base de conhecimento offline opcional para todos os slots:",
-	PromptChestPath:   "  Caminho da base de conhecimento (ex: .sdd/source)",
-}
-
-func bundleFor(lang string) wizardStrings {
-	if strings.EqualFold(lang, "pt-BR") || strings.EqualFold(lang, "pt-br") {
-		return bundlePTBR
-	}
-	return bundleEN
-}
 
 var langOptions = []string{"en", "pt-BR"}
 
@@ -73,7 +19,7 @@ func runWizard(p Prompter) (domain.WizardConfig, error) {
 	}
 	uiLang = normLang(uiLang)
 
-	b := bundleFor(uiLang)
+	b := i18n.BundleFor(uiLang)
 
 	docLang, err := p.Select(b.PromptDocLang, "en", langOptions)
 	if err != nil {
@@ -120,19 +66,17 @@ func runWizard(p Prompter) (domain.WizardConfig, error) {
 
 	fmt.Println(b.HeaderSlots)
 
-	customLabel := "(digitar outro...)"
-
-	discovery, err := p.SelectOrInput(b.PromptDiscovery, "brainstorming", []string{"brainstorming"}, customLabel)
+	discovery, err := p.SelectOrInput(b.PromptDiscovery, "brainstorming", []string{"brainstorming"}, b.LabelCustomInput)
 	if err != nil {
 		return domain.WizardConfig{}, fmt.Errorf("wizard: discovery: %w", err)
 	}
 
-	refinement, err := p.SelectOrInput(b.PromptRefinement, "openspec-explore", []string{"openspec-explore"}, customLabel)
+	refinement, err := p.SelectOrInput(b.PromptRefinement, "openspec-explore", []string{"openspec-explore"}, b.LabelCustomInput)
 	if err != nil {
 		return domain.WizardConfig{}, fmt.Errorf("wizard: refinement: %w", err)
 	}
 
-	execution, err := p.SelectOrInput(b.PromptExecution, "sdd-ask", []string{"sdd-ask", "sdd-ask-full"}, customLabel)
+	execution, err := p.SelectOrInput(b.PromptExecution, "sdd-ask", []string{"sdd-ask", "sdd-ask-full"}, b.LabelCustomInput)
 	if err != nil {
 		return domain.WizardConfig{}, fmt.Errorf("wizard: execution: %w", err)
 	}
