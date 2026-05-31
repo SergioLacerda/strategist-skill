@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cinzel+Decorative:wght@700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="dungeon.css" />
+<style>
+  html, body { margin: 0; background: #0c0805; }
+  .banner {
+    width: 100vw; aspect-ratio: 1280 / 420; position: relative; overflow: hidden;
+    background:
+      radial-gradient(90% 130% at 50% -20%, #2a1d10 0%, #160f08 55%, #0c0805 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-family: var(--mono); color: var(--text); gap: 18px;
+  }
+  /* scanlines + vignette */
+  .banner::before { content:""; position:absolute; inset:0; z-index:2; pointer-events:none;
+    background: repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0 2px, rgba(0,0,0,.15) 3px 4px); mix-blend-mode:multiply; }
+  .banner::after { content:""; position:absolute; inset:0; z-index:2; pointer-events:none;
+    background: radial-gradient(120% 100% at 50% 35%, transparent 52%, rgba(0,0,0,.6) 100%); }
+  .banner > * { position: relative; z-index: 3; }
+
+  .crest { font-size: 30px; color: var(--amber); letter-spacing: .4em; text-shadow: 0 0 22px rgba(232,194,90,.55); }
+  .ttl { font-family: var(--grim); font-weight: 700; font-size: 86px; line-height: .9; color: var(--amber-hi);
+    letter-spacing: .05em; text-shadow: 0 0 34px rgba(232,194,90,.4); margin: 0; }
+  .sub { font-family: var(--display); font-size: 17px; letter-spacing: .12em; color: var(--orange); margin-top: 2px; font-style: italic; }
+
+  .pipe { display: flex; align-items: center; gap: 14px; margin-top: 8px; font-family: var(--mono); font-size: 15px; flex-wrap: nowrap; }
+  .pipe .n { color: var(--amber-hi); text-shadow: 0 0 10px rgba(232,194,90,.4); letter-spacing: .04em; }
+  .pipe .g { color: var(--orange); }
+  .pipe .a { color: var(--faint); }
+
+  .badges2 { display: flex; gap: 12px; margin-top: 10px; }
+  .b2 { font-size: 12px; letter-spacing: .06em; border: 1px solid var(--line-2); border-radius: 3px; overflow: hidden; display: inline-flex; }
+  .b2 b { background: rgba(232,194,90,.08); color: var(--muted); font-weight: 500; padding: 4px 9px; }
+  .b2 i { font-style: normal; padding: 4px 9px; font-weight: 600; color: var(--amber); }
+  .b2.g i { color: var(--green); }
+  .b2.o i { color: var(--orange); }
+  .authors2 { margin-top: 14px; font-family: var(--grim); font-weight: 700; font-size: 15px; color: var(--amber-dim); letter-spacing: .04em; text-shadow: 0 0 12px rgba(232,194,90,.2); }
+  .authors2 span { color: var(--faint); font-family: var(--mono); font-weight: 500; font-size: 11px; letter-spacing: .22em; text-transform: uppercase; }
+</style>
+</head>
+<body>
+<div class="banner">
+  <div class="crest">━━━ ✦ ━━━</div>
+  <h1 class="ttl">STRATEGIST</h1>
+  <div class="sub">The way you handle your demands will never be the same.</div>
+  <div class="badges2">
+    <span class="b2 g"><b>CI</b><i>passing</i></span>
+    <span class="b2"><b>version</b><i>1.0</i></span>
+    <span class="b2 o"><b>license</b><i>CC BY-NC 4.0</i></span>
+    <span class="b2"><b>mode</b><i>pragmatic · epic</i></span>
+  </div>
+  <div class="authors2"><span>Authors ·</span> Sergio Lacerda &amp; Raphael Vernil</div>
+  <div style="position:absolute;bottom:12px;right:18px;z-index:10;font-family:var(--mono);font-size:11px;color:var(--faint)"><a href="banner.html" style="color:var(--amber-dim);text-decoration:none">🇧🇷 Português</a> | 🇺🇸 English</div>
+</div>
+</body>
+</html>
