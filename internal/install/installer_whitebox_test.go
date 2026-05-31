@@ -336,18 +336,16 @@ func TestApplyConfig_NilPrompter_NonTTY_FailsOnEmptyStdin(t *testing.T) {
 }
 
 func TestApplyConfig_NilPrompter_TTY_FailsOnNoTerminal(t *testing.T) {
-	if term.IsTerminal(int(os.Stdin.Fd())) {
-		t.Skip("skipped in interactive terminal: TUIPrompter would block waiting for user input")
-	}
 	t.Parallel()
 	dir := t.TempDir()
 	svc := Service{
 		Extractor:        minimalExtractor{},
 		Compiler:         nopCompiler{},
 		ShimHomeDir:      t.TempDir(),
-		terminalDetector: func() bool { return true }, // force TTY path → NewTUIPrompter
+		terminalDetector: func() bool { return true }, // force TTY path
+		// Use errRun so the test is deterministic and never blocks on a real or open-pipe stdin.
+		tuiPrompterFn: func() Prompter { return &TUIPrompter{runFn: errRun} },
 	}
-	// TUIPrompter.Select fails because stdout is not a real terminal (CI/pipe).
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "wizard")

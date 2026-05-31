@@ -11,6 +11,7 @@ test:
 	go test -race $$(go list ./... | grep -v '/testutil')
 
 lint:
+	gofmt -w .
 	$(GOLANGCI_LINT) run ./...
 
 vuln:
