@@ -1,0 +1,2 @@
+scenario: policy_guardrails_e2e
+expected_event: "phase=policy_eval status=blocked mission=m-guard mode=analise can_execute=false transition_group=execution"

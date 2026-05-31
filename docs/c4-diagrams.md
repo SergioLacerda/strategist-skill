@@ -120,7 +120,7 @@ flowchart TD
 
     subgraph discovery["🔭 Discovery — Ranger"]
         D1["Slot: discovery\nProvider configurável em roles/\nEscreve em pending/"]
-        D2["housekeeping_scan\n(interno — sem slot)\nVarre pending/, refined/, done/\nproduz side_quest_manifest"]
+        D2["opportunity_attack\n(interno — sem slot)\nVarre pending/, refined/, done/\nproduz side_quest_manifest"]
         D1 --> D2
     end
 
@@ -173,7 +173,7 @@ flowchart TD
 | `context-enrichment` | sub-skill interna | `read_only` | — |
 | `dossier-builder` | sub-skill interna | `read_only` | — |
 | Slot `discovery` (Ranger) | plugável | `write_pending` | `<base_path>/pending/` |
-| `housekeeping_scan` | interno (sem slot) | — | — |
+| `opportunity_attack` | interno (sem slot) | — | — |
 | Slot `refinement` (Archivist) | plugável | `write_analysis` | `<base_path>/refined/` |
 | Slot `execution` (Sniper) | plugável | `controlled` | `<base_path>/done/` |
 | `response-critic` | sub-skill interna | `read_only` | — |

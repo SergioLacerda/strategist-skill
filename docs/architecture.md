@@ -104,7 +104,7 @@ compile.Compiler.CompileAll(.strategist/, knowledge.index.yaml)
 ### Observações de fluxo (funcionalidades recentes)
 
 - **Quick Draw (`saque rápido`)**: sinal de captura rápida de ideias/TODOs, consolidado pelo Archivist e executado pelo Sniper somente após gate principal.
-- **Opportunity Attack (`housekeeping_scan`)**: side quests detectadas entram como contexto/proposta e seguem o mesmo gate principal antes da execução.
+- **Opportunist Attack (`opportunity_attack`)**: side quests detectadas entram como contexto/proposta e seguem o mesmo gate principal antes da execução.
 - **Treasure Chests (`treasure_chests`)**: fontes offline opcionais em `active.yaml`, consultáveis por qualquer papel conforme escopo, sem alterar o pipeline canônico.
 
 ---

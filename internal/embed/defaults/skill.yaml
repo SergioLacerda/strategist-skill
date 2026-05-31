@@ -132,7 +132,7 @@ pipeline:
     condition: "!quick_draw_detection.matched"
     input: mission_contract
     artifact_path: "<base_path>/pending/<mission_id>-discovery.md"
-  - stage: housekeeping_scan
+  - stage: opportunity_attack
     type: internal
     description: >
       Deterministic scan of base_path/ for misplaced or done items. No slot invoked.
@@ -236,9 +236,10 @@ forbidden_behaviors:
   - perform_discovery_directly_instead_of_delegating
   - skip_preflight
   - load_knowledge_not_in_index
-  - run_housekeeping_scan_as_slot
+  - run_opportunity_attack_as_slot
   - skip_opportunity_gate
   - invoke_opportunity_sniper_without_approval
+  - skip_opportunity_sweep_single_target
   - skip_adr_gate
   - commit_adr_without_adr_gate_approval
   - ranger_writes_outside_pending

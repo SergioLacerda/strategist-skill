@@ -101,7 +101,7 @@ func TestExtractor_Extract(t *testing.T) {
 		assert.Contains(t, string(epic), "quick_draw_success")
 	})
 
-	t.Run("extracted defaults include opportunity attack and chest scope contracts", func(t *testing.T) {
+	t.Run("extracted defaults include opportunist attack and chest scope contracts", func(t *testing.T) {
 		t.Parallel()
 		dir := t.TempDir()
 		require.NoError(t, embedpkg.Extractor{}.Extract(dir, false))

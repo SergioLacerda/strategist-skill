@@ -44,3 +44,12 @@ patterns:
       Stop. Re-resolve the execution provider from the declared source: active.slots.execution or
       governance_injection.execution_provider (if the governance_injection block is active).
       If neither declares a valid provider, run preflight again and emit slot_provider_not_found.
+
+  - id: single_target_sweep_bypass
+    symptom: >
+      I am about to skip opportunist attack, treasure check, or sidequest manifest
+      update because the mission appears narrow (single target / single file).
+    correction: >
+      Stop. Narrow scope is not a valid bypass. Run mandatory sweep invariants:
+      opportunity_scan=done, treasure_check=done, sidequest_manifest=updated|empty.
+      If sweep fails due to technical error, emit blocked reason=opportunity_sweep_failed.

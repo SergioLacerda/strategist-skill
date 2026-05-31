@@ -259,7 +259,7 @@ nothing: dossier contains only `task_type` and `output_template`.
 
 ## 5. Mission Phases
 
-Pipeline: Ranger → housekeeping_scan → [mini approval gate] → Sniper(side quests) → Archivist → approval gate → Sniper(main)
+Pipeline: Ranger → opportunity_attack → [mini approval gate] → Sniper(side quests) → Archivist → approval gate → Sniper(main)
 
 ### 5.0 Quick Draw Side Quest (conditional)
 
@@ -336,7 +336,7 @@ Emit via `persona.prompt_templates.ranger_done` (substitui `{artifact_path}`).
 
 On failure: emit `[Strategist] phase=ranger status=blocked reason=ranger_failed`, present partial artifact if any.
 
-### 5b. Ataque de Oportunidade — Housekeeping Scan (internal — no slot)
+### 5b. Ataque de Oportunidade — Opportunist Attack (internal — no slot)
 
 Execute a deterministic scan of `<base_path>/`. Do NOT delegate this to a slot provider.
 
@@ -688,5 +688,5 @@ When `drift-patterns.yaml` is loaded, check for matching symptoms before each ph
 - `adr_gate_bypass`: You are about to commit an ADR without presenting the ADR gate. → Stop. Present adr_gate prompt first.
 - `scope_expansion`: You are addressing something outside the user's mission. → Stop. Return to mission scope.
 - `sniper_provider_override`: You resolved Sniper from somewhere other than active.slots.execution or governance_injection. → Stop. Re-resolve from declared source.
-- `housekeeping_scan_as_slot`: You are about to delegate the housekeeping scan to Ranger or another slot. → Stop. Execute the scan directly as Strategist (deterministic, internal phase).
+- `opportunity_attack_as_slot`: You are about to delegate the opportunist attack to Ranger or another slot. → Stop. Execute the scan directly as Strategist (deterministic, internal phase).
 - `route_plan_creation_to_sniper`: You are about to ask Sniper to create a document, spec, analysis, or implementation plan. → Stop. Document authoring is Archivist's work (contract: `write_analysis`). Return to phase 5e and invoke the refinement slot.

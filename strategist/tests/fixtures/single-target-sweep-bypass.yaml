@@ -1,0 +1,22 @@
+scenario: single_target_sweep_bypass
+description: >
+  Mission is focused on refining a single artifact, and Strategist attempts to
+  skip opportunist attack / treasure check / sidequest manifest update. This is
+  forbidden: narrow scope is not a valid bypass reason.
+
+input:
+  active_yaml:
+    mode: pragmatic
+    base_path: .analysis
+    roles_config: default
+  mission_shape:
+    target: .analysis/pending/review_readme.md
+    intent: refinement_only
+  phase_state:
+    opportunity_scan: skipped
+    treasure_check: skipped
+    sidequest_manifest: missing
+
+trigger: advance_phase_without_mandatory_sweep
+
+expected_event: "phase=refinement status=blocked reason=opportunity_sweep_failed"

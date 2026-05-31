@@ -33,7 +33,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Architecture and integration flow diagrams (`docs/`)
 - `validate_provider()` function and context hints to install wizard
 - Slot write contracts: `write_pending` (Ranger) and `write_analysis` (Archivist)
-- `housekeeping_scan` phase and side quest pipeline (phases 5b–5d)
+- `opportunity_attack` phase and side quest pipeline (phases 5b–5d)
 - Design spec for side quest housekeeping pipeline
 - Design spec for slot risk contract fix and known-providers registry
 - Curl installer (`bootstrap.sh` / `bootstrap.ps1`) with GitHub Actions release workflow (`release.yml`)
