@@ -28,6 +28,9 @@ type Service struct {
 	// stdinReader overrides os.Stdin for the TextPrompter fallback. Nil means use os.Stdin.
 	// Set this in tests to avoid blocking on a real terminal.
 	stdinReader io.Reader
+	// tuiPrompterFn overrides NewTUIPrompter for tests. Nil means use NewTUIPrompter.
+	// Set this in tests to avoid huh.Run blocking on a real or open-pipe stdin.
+	tuiPrompterFn func() Prompter
 }
 
 // Install installs the skill into cfg.Target. In silent mode it extracts defaults
@@ -108,22 +111,7 @@ func (s Service) applyConfig(strategistDir string, cfg domain.InstallConfig) err
 		return nil
 	}
 
-	p := s.WizardPrompter
-	if p == nil {
-		isTTY := s.terminalDetector
-		if isTTY == nil {
-			isTTY = func() bool { return term.IsTerminal(int(os.Stdin.Fd())) }
-		}
-		if isTTY() {
-			p = NewTUIPrompter()
-		} else {
-			stdin := s.stdinReader
-			if stdin == nil {
-				stdin = os.Stdin
-			}
-			p = NewTextPrompter(stdin)
-		}
-	}
+	p := s.resolvePrompter()
 	wc, err := runWizard(p)
 	if err != nil {
 		return fmt.Errorf("install: wizard: %w", err)
@@ -135,6 +123,30 @@ func (s Service) applyConfig(strategistDir string, cfg domain.InstallConfig) err
 		return fmt.Errorf("install: write knowledge.index.yaml: %w", err)
 	}
 	return nil
+}
+
+// resolvePrompter returns the Prompter to use for wizard mode.
+// Precedence: WizardPrompter (explicit) → TUIPrompter (TTY) → TextPrompter (non-TTY).
+func (s Service) resolvePrompter() Prompter {
+	if s.WizardPrompter != nil {
+		return s.WizardPrompter
+	}
+	isTTY := s.terminalDetector
+	if isTTY == nil {
+		isTTY = func() bool { return term.IsTerminal(int(os.Stdin.Fd())) }
+	}
+	if isTTY() {
+		newTUI := s.tuiPrompterFn
+		if newTUI == nil {
+			newTUI = NewTUIPrompter
+		}
+		return newTUI()
+	}
+	stdin := s.stdinReader
+	if stdin == nil {
+		stdin = os.Stdin
+	}
+	return NewTextPrompter(stdin)
 }
 
 // installShimFor installs the shim, using ShimHomeDir if set (for tests).
