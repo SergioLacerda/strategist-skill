@@ -13,6 +13,7 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/term"
 )
 
 // minimalExtractor creates the minimum .strategist/ layout needed by Install.
@@ -49,11 +50,13 @@ type nopCompiler struct{}
 
 func (nopCompiler) CompileAll(_, _ string) error { return nil }
 
-func newSvcW(wizardInput string) Service {
+func newSvcW(t *testing.T, wizardInput string) Service {
+	t.Helper()
 	return Service{
-		Extractor:    minimalExtractor{},
-		Compiler:     nopCompiler{},
-		WizardReader: strings.NewReader(wizardInput),
+		Extractor:      minimalExtractor{},
+		Compiler:       nopCompiler{},
+		WizardPrompter: NewTextPrompter(strings.NewReader(wizardInput)),
+		ShimHomeDir:    t.TempDir(),
 	}
 }
 
@@ -63,7 +66,7 @@ func TestInstall_WizardPath(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	// 11 prompts: uiLang/docLang/chatLang/codeLang/mode/basePath/adr/discovery/refinement/execution/chest
-	svc := newSvcW("en\nen\npt-BR\nen\nminimal\n/workspace\nyes\nbrainstorming\narchivist\nsdd-ask\n\n")
+	svc := newSvcW(t, "en\nen\npt-BR\nen\nminimal\n/workspace\nyes\nbrainstorming\narchivist\nsdd-ask\n\n")
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
 	require.NoError(t, err)
 
@@ -83,10 +86,27 @@ func TestInstall_WizardPath(t *testing.T) {
 	assert.NotContains(t, s, "roles_config")
 }
 
+func TestInstall_WizardPath_WithChest(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	// 11 prompts: uiLang/docLang/chatLang/codeLang/mode/basePath/adr/discovery/refinement/execution/chest
+	svc := newSvcW(t, "en\nen\nen\nen\nfull\n.analysis\nyes\nbrainstorming\nopenspec-explore\nsdd-ask\n.sdd/source\n")
+	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
+	require.NoError(t, err)
+
+	ki, readErr := os.ReadFile(filepath.Join(dir, ".strategist", "knowledge.index.yaml"))
+	require.NoError(t, readErr)
+	s := string(ki)
+	assert.Contains(t, s, "id: source")
+	assert.Contains(t, s, "path: .sdd/source")
+	assert.Contains(t, s, "tags: [all]")
+	assert.NotContains(t, s, "sources: []")
+}
+
 func TestInstall_WizardPath_Defaults(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	svc := newSvcW("\n\n\n\n\n\n\n\n\n\n\n") // all defaults (11 prompts)
+	svc := newSvcW(t, "\n\n\n\n\n\n\n\n\n\n\n") // all defaults (11 prompts)
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
 	require.NoError(t, err)
 
@@ -110,8 +130,9 @@ func TestInstall_CopyTemplateMissing(t *testing.T) {
 	dir := t.TempDir()
 	// Extractor that does NOT create the template file
 	svc := Service{
-		Extractor: &noTemplateExtractor{},
-		Compiler:  nopCompiler{},
+		Extractor:   &noTemplateExtractor{},
+		Compiler:    nopCompiler{},
+		ShimHomeDir: t.TempDir(),
 	}
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Silent: true})
 	require.Error(t, err)
@@ -217,78 +238,139 @@ func TestCopyTemplate_WriteError(t *testing.T) {
 	assert.ErrorContains(t, err, "write")
 }
 
+func p(input string) Prompter { return NewTextPrompter(strings.NewReader(input)) }
+
 func TestRunWizard_EOFOnFirstPrompt(t *testing.T) {
 	t.Parallel()
-	_, err := runWizard(strings.NewReader(""))
+	_, err := runWizard(p(""))
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "ui_language")
 }
 
 func TestRunWizard_EOFOnSecondPrompt(t *testing.T) {
 	t.Parallel()
-	// uiLang done; EOF on docLang
-	_, err := runWizard(strings.NewReader("en\n"))
+	_, err := runWizard(p("en\n"))
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "doc_language")
 }
 
 func TestRunWizard_EOFOnThirdPrompt_ChatLang(t *testing.T) {
 	t.Parallel()
-	// uiLang + docLang done; EOF on chatLang
-	_, err := runWizard(strings.NewReader("en\nen\n"))
+	_, err := runWizard(p("en\nen\n"))
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "chat_language")
 }
 
 func TestRunWizard_EOFOnFourthPrompt_CodeLang(t *testing.T) {
 	t.Parallel()
-	// uiLang + docLang + chatLang done; EOF on codeLang
-	_, err := runWizard(strings.NewReader("en\nen\nen\n"))
+	_, err := runWizard(p("en\nen\nen\n"))
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "code_language")
 }
 
 func TestRunWizard_EOFOnFifthPrompt_Mode(t *testing.T) {
 	t.Parallel()
-	// 4 language prompts done; EOF on mode
-	_, err := runWizard(strings.NewReader("en\nen\nen\nen\n"))
+	_, err := runWizard(p("en\nen\nen\nen\n"))
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "mode")
 }
 
 func TestRunWizard_EOFOnSixthPrompt_BasePath(t *testing.T) {
 	t.Parallel()
-	_, err := runWizard(strings.NewReader("en\nen\nen\nen\nfull\n"))
+	_, err := runWizard(p("en\nen\nen\nen\nfull\n"))
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "base_path")
 }
 
 func TestRunWizard_EOFOnSeventhPrompt_Adr(t *testing.T) {
 	t.Parallel()
-	_, err := runWizard(strings.NewReader("en\nen\nen\nen\nfull\n.\n"))
+	_, err := runWizard(p("en\nen\nen\nen\nfull\n.\n"))
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "adr_enabled")
 }
 
 func TestRunWizard_EOFOnEighthPrompt_Discovery(t *testing.T) {
 	t.Parallel()
-	_, err := runWizard(strings.NewReader("en\nen\nen\nen\nfull\n.\nyes\n"))
+	_, err := runWizard(p("en\nen\nen\nen\nfull\n.\nyes\n"))
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "discovery")
 }
 
 func TestRunWizard_EOFOnNinthPrompt_Refinement(t *testing.T) {
 	t.Parallel()
-	_, err := runWizard(strings.NewReader("en\nen\nen\nen\nfull\n.\nyes\nbrainstorming\n"))
+	_, err := runWizard(p("en\nen\nen\nen\nfull\n.\nyes\nbrainstorming\n"))
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "refinement")
 }
 
 func TestRunWizard_EOFOnTenthPrompt_Execution(t *testing.T) {
 	t.Parallel()
-	_, err := runWizard(strings.NewReader("en\nen\nen\nen\nfull\n.\nyes\nbrainstorming\nopenspec-explore\n"))
+	_, err := runWizard(p("en\nen\nen\nen\nfull\n.\nyes\nbrainstorming\nopenspec-explore\n"))
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "execution")
+}
+
+func TestRunWizard_EOFOnEleventhPrompt_ChestPath(t *testing.T) {
+	t.Parallel()
+	// All 10 prompts answered; EOF on chest path (11th)
+	_, err := runWizard(p("en\nen\nen\nen\nfull\n.\nyes\nbrainstorming\nopenspec-explore\nsdd-ask\n"))
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "treasure_chest")
+}
+
+// --- applyConfig: nil WizardPrompter with non-TTY detection ---
+
+func TestApplyConfig_NilPrompter_NonTTY_FailsOnEmptyStdin(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	svc := Service{
+		Extractor:        minimalExtractor{},
+		Compiler:         nopCompiler{},
+		ShimHomeDir:      t.TempDir(),
+		terminalDetector: func() bool { return false }, // force non-TTY path
+		stdinReader:      strings.NewReader(""),        // empty stdin → EOF immediately
+	}
+	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "wizard")
+}
+
+func TestApplyConfig_NilPrompter_TTY_FailsOnNoTerminal(t *testing.T) {
+	if term.IsTerminal(int(os.Stdin.Fd())) {
+		t.Skip("skipped in interactive terminal: TUIPrompter would block waiting for user input")
+	}
+	t.Parallel()
+	dir := t.TempDir()
+	svc := Service{
+		Extractor:        minimalExtractor{},
+		Compiler:         nopCompiler{},
+		ShimHomeDir:      t.TempDir(),
+		terminalDetector: func() bool { return true }, // force TTY path → NewTUIPrompter
+	}
+	// TUIPrompter.Select fails because stdout is not a real terminal (CI/pipe).
+	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "wizard")
+}
+
+func TestApplyConfig_NilPrompter_NilDetector_UsesRealTTYCheck(t *testing.T) {
+	if term.IsTerminal(int(os.Stdin.Fd())) {
+		t.Skip("skipped in interactive terminal: real TTY detection would route to TUIPrompter which blocks")
+	}
+	t.Parallel()
+	dir := t.TempDir()
+	svc := Service{
+		Extractor:   minimalExtractor{},
+		Compiler:    nopCompiler{},
+		ShimHomeDir: t.TempDir(),
+		stdinReader: strings.NewReader(""), // empty stdin → EOF immediately
+		// Both WizardPrompter and terminalDetector are nil — exercises the real
+		// term.IsTerminal path. In CI stdin is not a TTY, so it falls through to
+		// NewTextPrompter(stdinReader) and hits EOF immediately.
+	}
+	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "wizard")
 }
 
 // --- installShimTo error paths ---
@@ -354,7 +436,7 @@ func TestInstall_GitignoreError(t *testing.T) {
 	require.NoError(t, os.WriteFile(gi, []byte(""), 0o000))
 	t.Cleanup(func() { _ = os.Chmod(gi, 0o644) })
 
-	svc := Service{Extractor: minimalExtractor{}, Compiler: nopCompiler{}}
+	svc := Service{Extractor: minimalExtractor{}, Compiler: nopCompiler{}, ShimHomeDir: t.TempDir()}
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Silent: true})
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "gitignore")

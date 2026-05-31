@@ -47,9 +47,24 @@ Antes da análise principal, o Strategist varre o workspace detectando artefatos
 | Fase | Função |
 |------|--------|
 | **Housekeeping Scan** _(Ataque de oportunidade)_ | Detecta artefatos stale em `todo/`, `pending/`, `refined/` e monta um manifesto de side quests. |
-| **Side Quest** | Missões pequenas executadas pelo Sniper após aprovação no gate principal — mover tarefas prontas, promover artefatos, hotfixes pontuais. |
+| **Side Quest** | Missões pequenas detectadas em qualquer papel e executadas pelo Sniper após aprovação no gate principal — mover tarefas prontas, promover artefatos, hotfixes pontuais. |
 
-> Pipeline completo: `Ranger → housekeeping_scan → Archivist → approval gate → Sniper(side quests + main)`
+> Pipeline completo: `Ranger → Archivist → approval gate → Sniper`
+
+### Saque Rápido · Quick Draw
+
+Para capturar ideias rápidas (TODOs) sem abrir fluxo paralelo:
+
+1. Strategist detecta `quick draw` / `saque rápido` no prompt.
+2. Ranger apenas organiza a ideia (`ideia: ...`) sem expandir escopo.
+3. Archivist classifica tema e destino em `.analysis/todo/<tema>.md`.
+4. A ideia entra na proposta do Archivist e segue para o **gate principal**.
+5. Com aprovação, Sniper adiciona a entrada e retorna `total de ideias` e `ideias similares`.
+
+### Baú do Tesouro (Treasure Chests)
+
+Você pode declarar fontes offline em `active.yaml` via `treasure_chests`.
+Os insights podem aparecer em qualquer papel, mas entram no mesmo fluxo e sempre passam pelo gate principal antes de execução.
 
 ---
 

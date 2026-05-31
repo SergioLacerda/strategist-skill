@@ -1,17 +1,12 @@
 package install
 
 import (
-	"bufio"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func newBufReader(s string) *bufio.Reader {
-	return bufio.NewReader(strings.NewReader(s))
-}
 
 func TestRunWizard(t *testing.T) {
 	t.Parallel()
@@ -76,27 +71,12 @@ func TestRunWizard(t *testing.T) {
 			wantExecution:    "sdd-ask",
 			wantChestPath:    "",
 		},
-		{
-			name:             "short form y accepted for adr",
-			input:            "\n\n\n\nfull\n.\ny\n\n\n\n\n",
-			wantUILanguage:   "en",
-			wantDocLanguage:  "en",
-			wantChatLanguage: "en",
-			wantCodeLanguage: "en",
-			wantMode:         "full",
-			wantBase:         ".",
-			wantAdrEnabled:   true,
-			wantDiscovery:    "brainstorming",
-			wantRefinement:   "openspec-explore",
-			wantExecution:    "sdd-ask",
-			wantChestPath:    "",
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			wc, err := runWizard(strings.NewReader(tt.input))
+			wc, err := runWizard(NewTextPrompter(strings.NewReader(tt.input)))
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantUILanguage, wc.UILanguage)
 			assert.Equal(t, tt.wantDocLanguage, wc.DocLanguage)
@@ -111,22 +91,4 @@ func TestRunWizard(t *testing.T) {
 			assert.Equal(t, tt.wantChestPath, wc.TreasureChestPath)
 		})
 	}
-}
-
-func TestPromptValidated_RejectsInvalidThenAccepts(t *testing.T) {
-	t.Parallel()
-	// Primeiros dois inputs são inválidos; o terceiro é válido.
-	input := "invalid\nbad\nen\n"
-	br := newBufReader(input)
-	val, err := promptValidated(br, "lang: ", "pt", []string{"pt", "en"})
-	require.NoError(t, err)
-	assert.Equal(t, "en", val)
-}
-
-func TestPromptValidated_DefaultOnEmpty(t *testing.T) {
-	t.Parallel()
-	br := newBufReader("\n")
-	val, err := promptValidated(br, "lang: ", "pt", []string{"pt", "en"})
-	require.NoError(t, err)
-	assert.Equal(t, "pt", val)
 }

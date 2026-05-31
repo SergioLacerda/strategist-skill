@@ -187,6 +187,16 @@ Apply defaults for any missing constraint field per `intake.schema.yaml`.
 
 Store result as `mission_contract.planning_rules` — pass to all slot providers.
 
+### 3.1 Quick Draw Route (Saque Rapido)
+
+If the user explicitly requests quick capture (examples: `quick draw`, `saque rapido`,
+`TODO` as rapid note), route to a dedicated side-quest flow.
+
+Important:
+- Do NOT depend on additional intake classification for this route.
+- Strategist invocation + explicit quick-capture intent is sufficient.
+- Skip regular mission phases and execute only the quick_draw pipeline.
+
 ---
 
 ## 4. Context Enrichment
@@ -227,6 +237,51 @@ nothing: dossier contains only `task_type` and `output_template`.
 ## 5. Mission Phases
 
 Pipeline: Ranger → housekeeping_scan → [mini approval gate] → Sniper(side quests) → Archivist → approval gate → Sniper(main)
+
+### 5.0 Quick Draw Side Quest (conditional)
+
+When §3.1 matched, run:
+
+Ranger (organize only) → Archivist (theme/path/counts) → quick_draw gate → Sniper append
+
+#### 5.0a Ranger (quick_draw)
+
+- Input: original quick note prompt
+- Output: one normalized line, preserving context:
+  - `ideia: <formalizacao sem expandir escopo>`
+- Ranger must not add requirements, milestones, or implementation details.
+
+#### 5.0b Archivist (quick_draw)
+
+- Determine theme from lightweight buckets:
+  - `arquitetura`, `seguranca`, `analise`, `geral`
+- Resolve destination path:
+  - `<base_path>/todo/<tema>.md` (e.g. `.analysis/todo/arquitetura.md`)
+- Inspect existing file content (if present) and compute:
+  - `total_ideas`: total idea entries in the destination theme file
+  - `similar_ideas`: ideas in the same theme with textual similarity to the normalized idea
+
+#### 5.0c Quick Draw Gate (mandatory)
+
+STOP. Show exactly:
+
+```text
+ideia: <texto_normalizado>
+adicionar ideia? (sim/nao)
+```
+
+Wait for response:
+- `sim`: proceed to Sniper append.
+- `nao`: return without writing.
+
+#### 5.0d Sniper (quick_draw append)
+
+- Append a new entry to `<base_path>/todo/<tema>.md`.
+- Entry includes timestamp + normalized idea.
+- Return:
+  - `sucesso: ideia adicionada em <path>`
+  - `total de ideias: X`
+  - `ideias similares (mesmo tema): Y`
 
 ### 5a. Ranger (discovery slot)
 

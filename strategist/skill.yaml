@@ -54,12 +54,17 @@ slots:
     description: Explores the problem space and writes discovery artifact to pending/.
   refinement:
     contract: write_analysis
-    write_scope: "<base_path>/refined/<mission_id>/"
+    write_scope:
+      - "<base_path>/"
+      - "<base_path>/refined/"
     write_types: [".md"]
     canonical:
       - consult_treasure_chests     # if chests scoped to refinement present, consult before LLM
-      - emit_completion_signal      # must emit has_execution_tasks: true|false after writing
-    description: Reads discovery artifact, writes refined artifacts to <base_path>/refined/<mission_id>/. Filenames are the skill's choice.
+      - output_format:
+          - "<base_path>/refined/<mission_id>/proposal.md"
+          - "<base_path>/refined/<mission_id>/design.md"
+          - "<base_path>/refined/<mission_id>/tasks.md"
+    description: Reads discovery artifact, writes refined plan and any .md summaries.
   execution:
     contract: controlled
     canonical:
@@ -84,11 +89,47 @@ pipeline:
   - stage: intake
     skill: prompt-intake
     produces: mission_contract
+  - stage: quick_draw_detection
+    type: conditional_route
+    condition: explicit_quick_draw_request
+    description: >
+      If the user explicitly asks for "quick draw" / "saque rapido" / quick TODO capture,
+      route to the quick_draw side-quest pipeline and skip the main mission pipeline.
+    produces: quick_draw_contract
+  - stage: quick_draw_discovery
+    slot: discovery
+    condition: quick_draw_detection.matched
+    input: quick_draw_contract
+    artifact_path: "<base_path>/pending/<mission_id>-quick-draw.md"
+  - stage: quick_draw_refinement
+    slot: refinement
+    condition: quick_draw_detection.matched
+    input: quick_draw_discovery
+    artifact_path: "<base_path>/refined/<mission_id>-quick-draw.md"
+    produces:
+      - idea
+      - theme
+      - destination_path
+      - total_ideas
+      - similar_ideas
+  - stage: quick_draw_gate
+    type: mandatory_pause
+    condition: quick_draw_detection.matched
+    description: >
+      Present "ideia: <texto>" and ask "adicionar ideia? (sim/nao)" before any write.
+  - stage: quick_draw_execution
+    slot: execution
+    condition: quick_draw_gate_granted
+    input: quick_draw_refinement
+    artifact_path: "<base_path>/todo/<tema>.md"
+    produces: quick_draw_result
   - stage: context_enrichment
     skill: context-enrichment
+    condition: "!quick_draw_detection.matched"
     produces: dossier
   - stage: discovery
     slot: discovery
+    condition: "!quick_draw_detection.matched"
     input: mission_contract
     artifact_path: "<base_path>/pending/<mission_id>-discovery.md"
   - stage: housekeeping_scan
@@ -112,12 +153,14 @@ pipeline:
   - stage: refinement
     slot: refinement
     input: [discovery_artifact, opportunity_report]
-    artifact_dir: "<base_path>/refined/<mission_id>/"
-    produces: skill_defined            # filenames within artifact_dir are determined by the skill
-    completion_signal: has_execution_tasks
+    artifact_path: "<base_path>/refined/<mission_id>/"
+    produces:
+      - "<base_path>/refined/<mission_id>/proposal.md"
+      - "<base_path>/refined/<mission_id>/design.md"
+      - "<base_path>/refined/<mission_id>/tasks.md"
   - stage: approval_gate
     type: mandatory_pause
-    description: Read has_execution_tasks from Archivist completion signal. Require explicit user approval before execution slot.
+    description: Present refined plan path. Require explicit user approval before execution slot.
   - stage: execution
     slot: execution
     input: refined_plan
@@ -129,7 +172,7 @@ pipeline:
     description: >
       Evaluate if the mission contains architectural decisions worth recording.
       Skipped entirely when active.adr_enabled is false.
-      If yes: gate 1 (generate?), Archivist writes+presents draft, gate 2 (approve content?),
+      If yes: gate 1 (generate?), Arquivista writes+presents draft, gate 2 (approve content?),
       Sniper commits on approval. ADR language follows active.language.
     produces: adr_artifact
   - stage: learning
@@ -187,6 +230,7 @@ provider_compliance:
   external_trust: risk_score_only      # non-SDD providers: validate risk_score only (current behavior)
 
 forbidden_behaviors:
+  - write_quick_draw_without_gate
   - invoke_execution_slot_without_approval
   - write_config_to_target_repo
   - perform_discovery_directly_instead_of_delegating

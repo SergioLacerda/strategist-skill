@@ -53,6 +53,18 @@ prompt_templates:
     {manifest}
     Aprovar? (yes / no / select)
 
+  # Quick draw (saque rapido)
+  quick_draw_detected: >
+    Saque rapido detectado. Side quest curta iniciada (Ranger -> Archivist -> Gate).
+  quick_draw_gate: >
+    ideia: {idea}
+
+    adicionar ideia? (sim/nao)
+  quick_draw_success: >
+    sucesso: ideia adicionada em {destination_path}
+    total de ideias: {total_ideas}
+    ideias similares (mesmo tema): {similar_ideas}
+
   # ADR pós-sprint
   adr_opportunity: >
     ADR disponível para "{mission_id}". Gerar? (yes / no)

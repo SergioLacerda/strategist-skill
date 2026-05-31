@@ -166,6 +166,26 @@ Aprovação é independente para cada item — o usuário pode aprovar outcomes 
 
 Os contratos em `strategist/contracts/` definem o contrato formal de cada fase interna do orchestrador.
 
+### Sinais funcionais no pipeline único
+
+`quick_draw` (saque rápido), `opportunity attack` (side quests) e `treasure_chests`
+não abrem pipelines paralelos. Eles são detectados ao longo da missão e encaixados
+no fluxo único `Ranger -> Archivist -> approval gate -> Sniper`.
+
+Guardrail principal: nenhuma escrita/execução ocorre sem aprovação no gate da missão.
+
+### Treasure Chests (baú do tesouro)
+
+`treasure_chests` são fontes de conhecimento offline declaradas em `active.yaml`.
+O Strategist só repassa ao slot os baús com escopo compatível:
+
+- `discovery` → Ranger
+- `refinement` → Archivist
+- `execution` → Sniper
+- `all` → todos os slots
+
+Ausência de baú aplicável não bloqueia a missão.
+
 ### bootstrap
 
 Carrega a configuração ativa (`active.yaml`, persona, roles) antes de qualquer missão.

@@ -47,9 +47,24 @@ Before the main analysis, Strategist scans the workspace detecting inconsistent 
 | Phase | Function |
 |-------|----------|
 | **Housekeeping Scan** _(Opportunity Attack)_ | Detects stale artifacts in `todo/`, `pending/`, `refined/` and assembles a side quest manifest. |
-| **Side Quest** | Small missions executed by the Sniper after approval at the main gate — move completed tasks, promote artifacts, targeted hotfixes. |
+| **Side Quest** | Small missions detected from any role and executed by Sniper after approval at the main gate — move completed tasks, promote artifacts, targeted hotfixes. |
 
-> Full pipeline: `Ranger → housekeeping_scan → Archivist → approval gate → Sniper(side quests + main)`
+> Full pipeline: `Ranger → Archivist → approval gate → Sniper`
+
+### Quick Draw
+
+For rapid idea capture (TODOs) without creating a parallel flow:
+
+1. Strategist detects `quick draw` / rapid note intent in the prompt.
+2. Ranger only normalizes the idea (`idea: ...`) without scope expansion.
+3. Archivist classifies theme and destination in `.analysis/todo/<theme>.md`.
+4. The idea is included in the Archivist proposal and goes through the **main gate**.
+5. After approval, Sniper appends the entry and returns `total ideas` and `similar ideas`.
+
+### Treasure Chests
+
+You can declare offline knowledge sources in `active.yaml` via `treasure_chests`.
+Signals can be found in any role, but all execution still follows the same pipeline and the main approval gate.
 
 ---
 
