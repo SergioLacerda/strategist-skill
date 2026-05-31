@@ -1,9 +1,9 @@
 <p align="center">
-  <img src="pages/docs/banner.png" alt="Strategist — Your experience with your demands will never be the same." width="100%" />
+  <img src="pages/docs/banner_en.png" alt="Strategist — Your experience with your demands will never be the same." width="100%" />
 </p>
 
 <p align="center">
-  <a href="https://sergiolacerda.github.io/strategist-skill/">
+  <a href="https://sergiolacerda.github.io/strategist-skill/index_en.html">
     <img src="https://img.shields.io/badge/⛨_Epic_Documentation-landing_page-e8c25a?style=for-the-badge&labelColor=1b1610" alt="Epic Documentation" />
   </a>
 </p>
