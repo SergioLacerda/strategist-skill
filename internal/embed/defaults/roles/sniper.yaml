@@ -16,3 +16,58 @@ canonical:
 #     Always run tests before committing.
 #     Prefer atomic commits per task from the refinement artifact.
 custom_brief: ""
+
+phase_procedure:
+  emit_start_key: sniper_start
+  emit_start_level: INFO
+
+  precondition: approval_gate status=approved (never invoked without prior gate approval)
+
+  invoke_slot: execution
+  slot_inputs:
+    - refined_plan_artifact_path: "<base_path>/refined/<mission_id>/"
+    - mission_contract.planning_rules
+
+  task_list:
+    read_from: "<base_path>/refined/<mission_id>/tasks.md"
+    emit_header_key: execution_tasks_header
+    emit_header_level: INFO
+    emit_line_key: execution_task_line
+    emit_line_level: INFO
+    initial_icon: "⬜"
+    progress_events:
+      running_format: "[Strategist] phase=execution task=<N> status=running"
+      done_format:    "[Strategist] phase=execution task=<N> status=done"
+      on_running: re-emit full list with task N=⏳, prior tasks=✅
+      on_done:    re-emit full list with task N=✅, task N+1=⏳ (if not last)
+      on_all_done: re-emit with all tasks=✅
+
+  treasure_chests:
+    scope_filter: [execution, all]
+    emit_key: treasure_chest_found
+    emit_level: DEBUG
+    empty_list_behavior: skip consultation, proceed
+
+  opportunity_attack:
+    runs_during: execution (mid-implementation)
+    trigger: side_quest or out-of-scope item surfaces
+    on_trigger:
+      action: STOP execution immediately
+      emit_format: "[Strategist] phase=sniper opportunity_attack=triggered items=<N>"
+      emit_level: TRACE
+      report: type, description, reason per item
+      resume_condition: Archivist reviews AND user approves
+    on_clean:
+      emit_format: "[Strategist] phase=sniper opportunity_attack=done items=0"
+      emit_level: TRACE
+
+  forbidden:
+    - creating specs, plans, analysis documents, or design files
+    - deciding side_quest strategy (Archivist's responsibility)
+
+  artifact_path: "<base_path>/done/<mission_id>-report.md"
+
+  on_success:
+    emit_key: sniper_done
+    emit_level: INFO
+    variables: "{artifact_path}"

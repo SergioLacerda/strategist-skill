@@ -28,7 +28,7 @@ contract:
       description: Resolved slot provider skill.yaml paths for discovery, refinement, execution
     - name: preflight_status
       type: string
-      description: "done" on success
+      description: done on success
 
   error_conditions:
     - code: index_yaml_not_found
@@ -57,3 +57,28 @@ contract:
   validation_rule: >
     If .strategist/contracts/ exists, load this contract file before executing preflight.
     Validate that all declared inputs are present before proceeding.
+
+  slot_risk_contracts:
+    ranger:
+      expected_risk: write_pending
+      authorized_write: ".md files in <base_path>/pending/"
+      violation: any write outside that scope or non-.md type → BLOCK slot_write_scope_violation
+    archivist:
+      expected_risk: write_analysis
+      authorized_write: ".md files in <base_path>/ and <base_path>/refined/"
+      violation: any write outside <base_path>/ or non-.md type → BLOCK slot_write_scope_violation
+    sniper:
+      expected_risk: controlled
+      requirement: approval gate required before any execution (no exceptions)
+
+  provider_resolution_order:
+    1: "<skill_root>/<provider>/skill.yaml"
+    2: ".claude/skills/<provider>/skill.yaml"
+    3: "skill registry entry skill_yaml path (if registry present)"
+    special: "_runtime_provider → resolve from governance_injection.execution_provider"
+
+  governance_mode_determination:
+    GOVERNED: governance_injection block present in active.yaml
+    COMPATIBLE: slots configured in active.yaml, no active governance_injection
+    done_emit_format: "[Strategist] phase=preflight status=done slots=ok governance=<GOVERNED|COMPATIBLE>"
+    done_emit_level: TRACE

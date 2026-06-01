@@ -1,0 +1,44 @@
+subject: roles/archivist.yaml
+version: "1.0"
+
+invariants:
+  - id: opportunity_attack_mandatory
+    description: Archivist always runs opportunity attack (side_quest detection)
+    rule: archivist_done → opportunity_attack=done side_quests=<N> emitted
+
+  - id: three_file_output
+    description: Archivist always produces the three-file subdirectory — never a standalone .md
+    rule: output must be proposal.md + design.md + tasks.md in <base_path>/refined/<mission_id>/
+
+  - id: sniper_blocked_on_empty_tasks
+    description: Sniper is not invoked when tasks.md is empty or absent
+    rule: tasks.md empty or absent after archivist → do not invoke Sniper
+
+  - id: emit_on_completion
+    description: Archivist emits done event with artifact path
+    rule: on success → emit via archivist_done persona key with artifact_path
+
+  - id: treasure_chests_mandatory
+    description: Archivist must consult chests scoped to refinement or all
+    rule: chests where scope=refinement|all → consult before analyzing; empty list is non-blocking
+
+cases:
+  - name: no_side_quests
+    given:
+      side_quests: 0
+    expect:
+      emit: "[Strategist] phase=archivist opportunity_attack=done side_quests=0"
+      next_phase: approval_gate
+
+  - name: side_quest_detected
+    given:
+      side_quests: 1
+    expect:
+      emit: "[Strategist] phase=archivist opportunity_attack=done side_quests=1"
+      action: add Side Quests section to approval gate presentation
+
+  - name: empty_tasks
+    given:
+      tasks_md: empty
+    expect:
+      action: do not invoke Sniper

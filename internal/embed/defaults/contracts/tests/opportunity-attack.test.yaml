@@ -1,0 +1,65 @@
+subject: contracts/opportunity-attack.yaml
+version: "1.0"
+
+invariants:
+  - id: runs_inside_every_role
+    description: Opportunity attack is mandatory inside Ranger, Archivist, and Sniper
+    rule: roles [ranger, archivist, sniper] must each invoke opportunity_attack
+
+  - id: emit_always_produced
+    description: Emit is produced even when items=0
+    rule: after opportunity_attack completes → emit phase=<role> opportunity_attack=done|failed
+
+  - id: non_blocking_on_error
+    description: Technical failure does not stop the pipeline
+    rule: opportunity_attack_failed → emit failed reason=<why>, continue to next step
+
+  - id: narrow_scope_no_exception
+    description: Single-file missions do not skip opportunity attack
+    rule: '"foco em alvo único" is not a valid skip reason'
+
+cases:
+  - name: ranger_no_items
+    given:
+      role: ranger
+      items_found: 0
+    expect:
+      emit: "[Strategist] phase=ranger opportunity_attack=done items=0"
+
+  - name: ranger_with_items
+    given:
+      role: ranger
+      items_found: 3
+    expect:
+      emit: "[Strategist] phase=ranger opportunity_attack=done items=3"
+      action: present items via opportunity_detected persona key
+
+  - name: archivist_side_quests
+    given:
+      role: archivist
+      side_quests_found: 2
+    expect:
+      emit: "[Strategist] phase=archivist opportunity_attack=done side_quests=2"
+
+  - name: archivist_no_side_quests
+    given:
+      role: archivist
+      side_quests_found: 0
+    expect:
+      emit: "[Strategist] phase=archivist opportunity_attack=done side_quests=0"
+
+  - name: sniper_triggered
+    given:
+      role: sniper
+      side_quest_mid_execution: true
+      items: 1
+    expect:
+      emit: "[Strategist] phase=sniper opportunity_attack=triggered items=1"
+
+  - name: technical_error
+    given:
+      role: sniper
+      error: "file not found"
+    expect:
+      emit: "[Strategist] phase=sniper opportunity_attack=failed reason=file not found"
+      pipeline: continues

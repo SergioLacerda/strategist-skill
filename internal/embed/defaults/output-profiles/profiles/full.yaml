@@ -1,0 +1,3 @@
+profile: full
+level_threshold: TRACE
+description: All output including [Strategist] pipeline telemetry lines.

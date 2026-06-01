@@ -1,0 +1,44 @@
+subject: output-profiles/emit-taxonomy.yaml
+version: "1.0"
+
+invariants:
+  - id: all_keys_have_level
+    description: Every emit key must declare a severity level
+    rule: for all keys in emits — level is present and non-empty
+
+  - id: valid_levels_only
+    description: Only TRACE, DEBUG, or INFO are valid levels
+    rule: emits[*].level in [TRACE, DEBUG, INFO]
+
+  - id: compliance_summary_is_info
+    description: compliance_summary is always visible regardless of output profile
+    rule: emits.compliance_summary == INFO
+
+  - id: phase_status_is_trace
+    description: Pipeline telemetry lines are TRACE — suppressed in default mode
+    rule: emits.phase_status == TRACE
+
+  - id: pipeline_starting_is_info
+    description: Mission start is always visible
+    rule: emits.pipeline_starting == INFO
+
+cases:
+  - name: default_profile_hides_telemetry
+    given:
+      output_threshold: INFO
+    expect:
+      visible: [pipeline_starting, ranger_start, archivist_done, compliance_summary]
+      hidden: [phase_status, opportunity_attack_done, bootstrap_path]
+
+  - name: verbose_profile_shows_narrative
+    given:
+      output_threshold: DEBUG
+    expect:
+      visible: [opportunity_attack_header, side_quest_none_found, treasure_chest_found]
+      hidden: [phase_status, opportunity_attack_done]
+
+  - name: full_profile_shows_everything
+    given:
+      output_threshold: TRACE
+    expect:
+      visible: [phase_status, opportunity_attack_done, bootstrap_path, pipeline_starting]

@@ -1,0 +1,55 @@
+subject: contracts/bootstrap.yaml
+version: "1.0"
+
+invariants:
+  - id: output_profile_loaded_at_bootstrap
+    description: Output threshold resolved from --output flag during bootstrap
+    rule: bootstrap reads --output flag → loads output-profiles/profiles/<name>.yaml → stores output_threshold
+
+  - id: fast_path_on_fresh_artifact
+    description: Fast path taken when .compiled/.config.gz is fresh
+    rule: check-stale exit=0 → emit bootstrap=fast_path, skip YAML reads
+
+  - id: standard_path_on_stale
+    description: Standard path taken when artifact is stale or absent
+    rule: check-stale exit!=0 → emit bootstrap=standard_path, load YAML directly
+
+  - id: blocked_on_missing_slot
+    description: Missing slot configuration stops the mission
+    rule: active.slots absent → emit blocked reason=slots_not_configured
+
+  - id: governance_precedence_respected
+    description: User instruction always wins over any configuration
+    rule: explicit user response always wins over active.yaml, governance_injection, slot contracts, kernel
+
+  - id: output_profile_fallback
+    description: Missing profile file falls back to INFO threshold
+    rule: profile file missing → use INFO threshold, continue (non-blocking)
+
+cases:
+  - name: fast_path_with_output_flag
+    given:
+      compiled_config_fresh: true
+      output_flag: verbose
+    expect:
+      emit: "[Strategist] bootstrap=fast_path"
+      output_threshold: DEBUG
+
+  - name: standard_path_no_output_flag
+    given:
+      compiled_config_fresh: false
+    expect:
+      emit: "[Strategist] bootstrap=standard_path"
+      output_threshold: INFO
+
+  - name: full_output_flag
+    given:
+      output_flag: full
+    expect:
+      output_threshold: TRACE
+
+  - name: missing_slots
+    given:
+      active_yaml_has_slots: false
+    expect:
+      emit: "[Strategist] phase=bootstrap status=blocked reason=slots_not_configured"

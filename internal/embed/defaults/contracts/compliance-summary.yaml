@@ -1,0 +1,34 @@
+module: compliance-summary
+type: mandatory_emit
+description: >
+  Mandatory block appended as the final element of every response, regardless
+  of pipeline outcome (completed, plan_only, blocked, or early termination).
+  Always emitted at INFO level — never suppressed by output profile.
+
+contract:
+  emit_level: INFO
+  emit_timing: after_all_phases
+  emit_also_on: [early_termination, blocked, plan_only]
+
+  emit_format: |
+    ---
+    [Strategist] response_complete
+      pipeline_compliant: yes | no
+      phases_run: <comma-separated list of phases that ran>
+      phases_skipped: <list or none>
+      opportunity_attack: ranger=<N> archivist=<N> sniper=<N|triggered|n/a>
+      treasure_chests_consulted: yes | no | none_configured
+      gate_presented: yes | no | n/a
+
+  on_non_compliant:
+    include_field: reason
+    format: "  reason: <which phases were skipped and why>"
+
+  invariants:
+    - emitted on every response without exception
+    - emit_level is always INFO — cannot be overridden by output profile
+    - pipeline_compliant=no must include reason field
+    - compliance_summary is the last element before mission_result
+
+  write_scope: read-only
+  owner: internal (orchestrator)

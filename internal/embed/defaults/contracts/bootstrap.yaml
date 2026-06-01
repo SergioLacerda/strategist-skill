@@ -45,6 +45,26 @@ contract:
       trigger: .compiled/.config.gz fails jq parse
       behavior: Fall back to standard path (load YAML directly), emit bootstrap=standard_path
 
+  output_profile:
+    description: Output verbosity resolved from --output flag at bootstrap time
+    flag: --output
+    valid_values: [default, verbose, full]
+    default: default
+    load_from: output-profiles/profiles/<flag_value>.yaml
+    stores: output_threshold (level_threshold value from profile)
+    fallback: if profile file missing, use INFO threshold and continue (non-blocking)
+
+  governance_precedence:
+    order:
+      1: explicit user instruction (approval gates, user responses — always wins)
+      2: active.yaml (local project configuration — single source of truth)
+      3: governance_injection.* (external context, only when declared in active.yaml)
+      4: slot provider contracts (risk_score, write scope)
+      5: embedded kernel (forbidden_behaviors, stop_conditions in skill.yaml)
+    note: >
+      governance_injection does not override active.yaml — it extends it.
+      active.yaml enables injection by declaring the governance_injection: block.
+
   write_scope: read-only
 
   owner: internal (orchestrator)

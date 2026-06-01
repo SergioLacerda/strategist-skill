@@ -1,0 +1,45 @@
+subject: contracts/approval-gate.yaml
+version: "1.0"
+
+invariants:
+  - id: gate_cannot_be_skipped
+    description: Sniper must never be invoked without approval gate completing first
+    rule: phase=approval_gate must emit status=approved or status=plan_only before sniper starts
+
+  - id: plan_only_not_blocked
+    description: Declining the gate is plan_only, not an error
+    rule: response=no|decline → status=plan_only (not status=blocked)
+
+  - id: checkpoint_update_on_approve
+    description: Mission checkpoint updates when gate is approved
+    rule: gate approved → re-emit checkpoint with step_3=✅ step_4=⏳
+
+cases:
+  - name: user_approves
+    given:
+      gate_response: "yes"
+    expect:
+      emit: "[Strategist] phase=approval_gate status=approved"
+      checkpoint_update: { step_3_icon: "✅", step_4_icon: "⏳" }
+      next_phase: sniper
+
+  - name: user_declines
+    given:
+      gate_response: "no"
+    expect:
+      emit: "[Strategist] phase=approval_gate status=plan_only"
+      next_phase: adr_opportunity
+      mission_result_status: plan_only
+
+  - name: user_declines_alternate_phrasing
+    given:
+      gate_response: "decline"
+    expect:
+      emit: "[Strategist] phase=approval_gate status=plan_only"
+
+  - name: user_approves_pt_br
+    given:
+      gate_response: "sim"
+    expect:
+      emit: "[Strategist] phase=approval_gate status=approved"
+      next_phase: sniper

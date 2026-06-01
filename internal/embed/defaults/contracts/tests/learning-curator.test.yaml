@@ -1,0 +1,40 @@
+subject: contracts/learning-curator.yaml
+version: "1.0"
+
+invariants:
+  - id: checkpoint_before_write
+    description: Learning curator must present checkpoint before writing anything
+    rule: show checkpoint → wait for user → then write
+
+  - id: failure_non_blocking
+    description: Learning phase failure never affects mission result
+    rule: learning_phase_fails → log failure, mission_result unchanged
+
+  - id: outcome_always_appended
+    description: Outcome is appended even on curator failure
+    rule: after learning_curator completes or fails → append to outcomes.tmp
+
+cases:
+  - name: curator_success
+    given:
+      critic_evaluation: present
+      mission_result: completed
+    expect:
+      action: present checkpoint, wait for user, write
+      checkpoint_presented: true
+      outcomes_tmp: appended
+
+  - name: curator_timeout
+    given:
+      learning_phase: timeout
+    expect:
+      action: log failure
+      mission_result: unchanged
+      outcomes_tmp: appended
+
+  - name: write_failure
+    given:
+      outcomes_tmp_write: fails
+    expect:
+      action: log failure to stderr
+      mission_result: unchanged
