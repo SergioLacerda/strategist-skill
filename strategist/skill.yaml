@@ -50,7 +50,9 @@ slots:
     canonical:
       - find_unexpected_items       # surface items outside declared mission scope
       - consult_treasure_chests     # if chests scoped to discovery present, consult before LLM
+      - opportunity_attack          # routine: detect treasure_chests + side_quests, surface in response
       - output_format: "<base_path>/pending/<mission_id>-discovery.md"
+      - handoff_contract: "schemas/handoff-ranger-to-archivist.schema.yaml"
     description: Explores the problem space and writes discovery artifact to pending/.
   refinement:
     contract: write_analysis
@@ -60,16 +62,20 @@ slots:
     write_types: [".md"]
     canonical:
       - consult_treasure_chests     # if chests scoped to refinement present, consult before LLM
+      - opportunity_attack          # routine: detect side_quests, decide strategy, include in approval gate
+      - emit_completion_signal      # must emit has_execution_tasks: true|false after writing artifacts
       - output_format:
           - "<base_path>/refined/<mission_id>/proposal.md"
           - "<base_path>/refined/<mission_id>/design.md"
           - "<base_path>/refined/<mission_id>/tasks.md"
+      - handoff_contract: "schemas/handoff-archivist-to-hunter.schema.yaml"
     description: Reads discovery artifact, writes refined plan and any .md summaries.
   execution:
     contract: controlled
     canonical:
       - requires_approval_gate      # Strategist enforces — documented here for slot awareness
       - consult_treasure_chests     # if chests scoped to execution present, consult before acting
+      - opportunity_attack          # routine: detect side_quests, stop_and_report only (no strategy decision)
     description: Executes the refined plan. Approval gate required.
 
 # Treasure chests — scoped knowledge sources passed to slots at invocation time.
@@ -77,8 +83,13 @@ slots:
 # whose scope includes its role. The slot skill decides how to use the chest.
 # scope values: all | discovery | refinement | execution (list or single string)
 treasure_chest_schema:
-  fields: [id, path, scope, description]
+  manifest: "strategist/treasure-chests.yaml"    # full governance manifest (trust, routing, budget)
+  source_card_schema: "strategist/schemas/source-card.schema.yaml"
+  legacy_fields: [id, path, scope, description]  # supported in active.yaml declarations
   scope_values: [all, discovery, refinement, execution]
+  note: >
+    Chests in active.yaml use legacy_fields. Chests in treasure-chests.yaml have full governance.
+    treasure-chests.yaml sources take precedence on conflict.
 
 preflight:
   - validate_slot_providers
@@ -88,7 +99,13 @@ preflight:
 pipeline:
   - stage: intake
     skill: prompt-intake
-    produces: mission_contract
+    produces: mission_contract    # includes token_strategy block (mode, pressure_score, triage_gate)
+  - stage: triage_gate
+    type: conditional_pause
+    condition: "mission_contract.token_strategy.triage_gate.blocked == true"
+    description: >
+      Present the single unblocking question from token_strategy.triage_gate.blocking_question.
+      Do not advance to context_enrichment until user answers. Re-run intake after answer.
   - stage: quick_draw_detection
     type: conditional_route
     condition: explicit_quick_draw_request
@@ -126,33 +143,30 @@ pipeline:
   - stage: context_enrichment
     skill: context-enrichment
     condition: "!quick_draw_detection.matched"
+    input:
+      task_type: mission_contract.task_type
+      token_strategy: mission_contract.token_strategy    # drives budget limits by mode
     produces: dossier
+  - stage: compression_metrics
+    type: internal
+    condition: "!quick_draw_detection.matched"
+    description: >
+      Log dossier compression_metrics to .strategist/memory/chest-usage.jsonl. Non-blocking.
+      Format: JSON lines with mission_id, mode, sources_seen, sources_selected,
+      cards_created, tokens_estimated, provider_used.
+    blocking: false
   - stage: discovery
     slot: discovery
     condition: "!quick_draw_detection.matched"
     input: mission_contract
     artifact_path: "<base_path>/pending/<mission_id>-discovery.md"
-  - stage: opportunity_attack
-    type: internal
-    description: >
-      Deterministic scan of base_path/ for misplaced or done items. No slot invoked.
-      Produces opportunity_manifest with typed items: file_move, scope_addition, adr_generation.
-    produces: opportunity_manifest
-  - stage: opportunity_gate
-    type: conditional_pause
-    condition: opportunity_manifest.count > 0
-    description: >
-      Present opportunity manifest (Ataque de Oportunidade). Require explicit approval
-      before Sniper executes any item. Gate applies to all item types.
-  - stage: opportunity_execution
-    slot: execution
-    condition: opportunity_gate_granted
-    input: opportunity_manifest
-    produces: opportunity_report
-    blocking: false
   - stage: refinement
     slot: refinement
-    input: [discovery_artifact, opportunity_report]
+    input: discovery_artifact
+    note: >
+      Opportunity Attack runs as a routine inside Ranger (discovery) and Archivist (refinement).
+      Treasure chests and side quests are included in handoff contract fields.
+      Results are surfaced to the user inside each role response and at the approval_gate.
     artifact_path: "<base_path>/refined/<mission_id>/"
     produces:
       - "<base_path>/refined/<mission_id>/proposal.md"
@@ -215,6 +229,68 @@ budget_policy:
   timeout_seconds: 600                 # 10 min ceiling; individual slots have their own budgets
   max_retries: 1                       # transient slot failures: one retry, then permanent
 
+compression_policy:
+  description: >
+    Governs how context-enrichment and dossier-builder select and compress sources.
+    Driven by token_strategy.mode from mission_contract.
+  default_provider: builtin-structural
+  modes:
+    lean:
+      max_sources: 2
+      max_cards: 5
+      max_dossier_tokens: 900
+      external_provider: false
+    balanced:
+      max_sources: 4
+      max_cards: 10
+      max_dossier_tokens: 2200
+      external_provider: optional
+    deep:
+      max_sources: 8
+      max_cards: 20
+      max_dossier_tokens: 5000
+      external_provider: preferred
+  providers:
+    - id: builtin-structural
+      type: internal
+      required: true
+      capabilities: [normalize, deduplicate, rank, filter, chunk, source_cards, dossier]
+    - id: semantic-context-server
+      type: external
+      required: false
+      endpoint: "http://localhost:8711"
+    - id: caveman
+      type: external
+      required: false
+      command: "caveman compress"
+  fallback:
+    on_provider_missing: builtin-structural
+    on_provider_error: builtin-structural
+  security:
+    external_provider_may_return: [dossier, source_cards, ranking, metrics, warnings]
+    external_provider_may_not: [scope_decisions, execution, side_quest_approval, mission_contract_changes]
+  metrics_log: ".strategist/memory/chest-usage.jsonl"
+
+token_economy_stop_conditions:
+  - id: ambiguous_task_no_criteria
+    trigger: task_is_ambiguous and acceptance_criteria_missing
+    action: generate_one_minimum_unblocking_question
+    blocks: discovery
+  - id: source_no_justification
+    trigger: source_has_no_relevance_justification
+    action: do_not_load_source
+  - id: plan_exceeds_scope
+    trigger: execution_plan_exceeds_declared_scope
+    action: split_into_separate_missions
+  - id: hunter_context_gap
+    trigger: sniper_needs_context_not_in_handoff
+    action: return_to_archivist
+    blocks: re_reading_full_discovery
+  - id: unrelated_side_quest
+    trigger: side_quest_is_unrelated
+    action: record_in_backlog_only
+    blocks: refine_in_current_mission
+
 telemetry_policy:
   emit_runtime_event: true
   event_format: "[Strategist] phase=<phase> status=<status> [fields]"
@@ -236,9 +312,11 @@ forbidden_behaviors:
   - perform_discovery_directly_instead_of_delegating
   - skip_preflight
   - load_knowledge_not_in_index
-  - run_opportunity_attack_as_slot
-  - skip_opportunity_gate
-  - invoke_opportunity_sniper_without_approval
+  - skip_opportunity_attack_routine          # each slot MUST run opportunity_attack
+  - suppress_opportunity_attack_feedback     # findings MUST be surfaced to user in response
+  - hunter_decides_side_quest_strategy       # only Archivist decides; Hunter reports only
+  - skip_triage_gate                         # triage_gate.blocked=true must pause pipeline
+  - open_discovery_while_triage_blocked      # context_enrichment must not run while blocked
   - skip_adr_gate
   - commit_adr_without_adr_gate_approval
   - ranger_writes_outside_pending

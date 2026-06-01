@@ -1,0 +1,2 @@
+scenario: triage_gate_blocked
+expected_event: "[Strategist] phase=intake status=blocked reason=triage_gate"

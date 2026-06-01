@@ -44,17 +44,36 @@ func TestOpportunityBypassFixtureAlignedWithForbiddenBehaviorsSpec(t *testing.T)
 	feature := readFile(t, featurePath)
 	fixture := readFixture(t, fixturePath)
 
-	if !strings.Contains(feature, "side_quest_approval_bypass") {
-		t.Fatalf("%s missing scenario side_quest_approval_bypass", featurePath)
+	if !strings.Contains(feature, "skip_opportunity_attack_routine") {
+		t.Fatalf("%s missing scenario skip_opportunity_attack_routine", featurePath)
 	}
-	if !strings.Contains(feature, "mini approval gate") {
-		t.Fatalf("%s missing mini approval gate behavior", featurePath)
+	if !strings.Contains(feature, "opportunity_attack") {
+		t.Fatalf("%s missing opportunity_attack routine reference", featurePath)
 	}
-	if fixture.Scenario != "side_quest_approval_bypass" {
-		t.Fatalf("%s scenario must be side_quest_approval_bypass, got: %q", fixturePath, fixture.Scenario)
+	if fixture.Scenario != "skip_opportunity_attack_routine" {
+		t.Fatalf("%s scenario must be skip_opportunity_attack_routine, got: %q", fixturePath, fixture.Scenario)
+	}
+	if !strings.Contains(fixture.ExpectedEvent, "drift") {
+		t.Fatalf("%s expected_event must contain drift, got: %q", fixturePath, fixture.ExpectedEvent)
+	}
+}
+
+func TestTriageGateFixtureAlignedWithTokenEconomySpec(t *testing.T) {
+	t.Parallel()
+	featurePath := filepath.Join("specs", "token-economy.feature")
+	fixturePath := filepath.Join("fixtures", "triage-gate-blocked.yaml")
+
+	feature := readFile(t, featurePath)
+	fixture := readFixture(t, fixturePath)
+
+	if !strings.Contains(feature, "triage_gate_blocked") {
+		t.Fatalf("%s missing scenario triage_gate_blocked", featurePath)
+	}
+	if fixture.Scenario != "triage_gate_blocked" {
+		t.Fatalf("%s scenario must be triage_gate_blocked, got: %q", fixturePath, fixture.Scenario)
 	}
 	if !strings.Contains(fixture.ExpectedEvent, "blocked") {
-		t.Fatalf("%s expected_event must be blocked, got: %q", fixturePath, fixture.ExpectedEvent)
+		t.Fatalf("%s expected_event must contain blocked, got: %q", fixturePath, fixture.ExpectedEvent)
 	}
 }
 

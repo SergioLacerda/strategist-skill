@@ -5,15 +5,30 @@ slot: discovery
 # Listed here for reference when writing custom_brief below.
 canonical:
   - find_unexpected_items       # surface items outside declared mission scope
-  - consult_treasure_chests     # consult chests scoped to discovery before generating artifact
+  - consult_treasure_chests     # consult T0/T1 chests scoped to discovery before generating artifact
+  - opportunity_attack:         # cross-cutting routine — mandatory
+      detect: [treasure_chests, side_quests]
+      output: include_in_discovery_artifact
+      feedback: surface_in_response    # show to user before handing off to Archivist
+  - compress_findings           # format: evidence → interpretation → impact (source cards)
   - output_format: "<base_path>/pending/<mission_id>-discovery.md"
+  - handoff_contract: "schemas/handoff-ranger-to-archivist.schema.yaml"
 
-# Additional instructions for the Ranger in this installation.
+# Contract
+must:
+  - load mission_contract and respect token_strategy.mode for context budget
+  - separate facts, hypotheses, and ambiguities clearly
+  - surface opportunity_attack findings in the response to the user before finishing
+  - include all handoff contract fields in the discovery artifact
+  - use discovery-artifact.md as format reference
+
+must_not:
+  - propose a final plan as if it were approved
+  - execute any changes
+  - pass raw context to Archivist (compress to evidence cards)
+  - hide ambiguities or uncertainties
+
+# Additional instructions for this installation.
 # Strategist appends this block to the role brief at invocation, after canonical behaviors.
 # If empty or absent, only canonical behaviors are used.
-#
-# Examples:
-#   custom_brief: |
-#     Search the codebase for patterns similar to the mission scope.
-#     Check open related issues before closing the discovery artifact.
 custom_brief: ""
