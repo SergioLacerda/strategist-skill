@@ -26,17 +26,30 @@ Feature: Forbidden Behavior Detection and Self-Correction
     And presents the approval gate prompt
     And waits for user response before proceeding
 
-  Scenario: side_quest_approval_bypass — ataque de oportunidade moves without mini gate
-    Given opportunity_attack produced a non-empty side quest manifest
-    When Strategist begins executing file moves without presenting the mini approval gate
-    Then Strategist detects drift pattern "side_quest_approval_bypass"
-    And stops immediately
-    And presents the mini approval gate with the full manifest
-    And waits for user response
+  Scenario: skip_opportunity_attack_routine — role completes without running the routine
+    Given the Ranger has completed discovery
+    When the Ranger response does not include an Opportunity Attack section
+    Then Strategist detects drift pattern "skip_opportunity_attack_routine"
+    And surfaces the missing check to the user
+    And requests Ranger to re-run before passing to Archivist
+
+  Scenario: suppress_opportunity_attack_feedback — findings hidden from user
+    Given Ranger ran opportunity_attack and detected side quests
+    When Strategist advances to Archivist without showing opportunity_attack findings to the user
+    Then Strategist detects drift pattern "suppress_opportunity_attack_feedback"
+    And stops the handoff
+    And presents the opportunity_attack findings to the user
+
+  Scenario: hunter_decides_side_quest_strategy — Hunter sets side quest strategy
+    Given Hunter detected a side quest during execution
+    When Hunter sets side_quest.strategy without returning to Archivist
+    Then Strategist detects drift pattern "hunter_decides_side_quest_strategy"
+    And voids the Hunter decision
+    And routes the side quest to Archivist for strategy decision
 
   Scenario: single_target_sweep_bypass — skipping sweeps due to narrow scope
     Given the mission request targets a single file refinement
-    When Strategist skips opportunist attack, treasure check, or sidequest manifest update because of narrow focus
+    When Strategist skips opportunity_attack routine because of narrow focus
     Then Strategist detects drift pattern "single_target_sweep_bypass"
     And emits blocked event reason=opportunity_sweep_failed
     And does not proceed to next phase until sweep invariants are satisfied
