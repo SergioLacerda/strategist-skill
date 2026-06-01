@@ -394,7 +394,7 @@ func TestInstallShimTo_ReadOnlyParent(t *testing.T) {
 	home := t.TempDir()
 	require.NoError(t, os.Chmod(home, 0o444))
 	t.Cleanup(func() { _ = os.Chmod(home, 0o755) })
-	err := installShimTo(home)
+	err := installShimTo(home, "")
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "mkdir shim dir")
 }
@@ -409,9 +409,21 @@ func TestInstallShimTo_WriteError(t *testing.T) {
 	require.NoError(t, os.MkdirAll(shimDir, 0o755))
 	// Make SKILL.md a directory so WriteFile to it fails (EISDIR)
 	require.NoError(t, os.Mkdir(filepath.Join(shimDir, "SKILL.md"), 0o755))
-	err := installShimTo(home)
+	err := installShimTo(home, "")
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "write shim")
+}
+
+func TestReadGlobalSKILLMD_FileAbsent(t *testing.T) {
+	t.Parallel()
+	svc := Service{
+		Extractor:   minimalExtractor{},
+		Compiler:    nopCompiler{},
+		ShimHomeDir: t.TempDir(), // .strategist/SKILL.md does not exist here
+	}
+	_, err := svc.readGlobalSKILLMD(context.Background())
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "read global SKILL.md")
 }
 
 // --- Install: error propagation for gitignore and shim ---
@@ -423,8 +435,13 @@ func TestInstall_ShimError(t *testing.T) {
 	}
 	dir := t.TempDir()
 	shimHome := t.TempDir()
-	require.NoError(t, os.Chmod(shimHome, 0o444))
-	t.Cleanup(func() { _ = os.Chmod(shimHome, 0o755) })
+
+	// Pre-create the global runtime dir so installGlobalRuntime succeeds.
+	// Then make the .claude parent unwritable so only the shim step fails.
+	require.NoError(t, os.MkdirAll(filepath.Join(shimHome, ".strategist"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(shimHome, ".claude"), 0o755))
+	require.NoError(t, os.Chmod(filepath.Join(shimHome, ".claude"), 0o444))
+	t.Cleanup(func() { _ = os.Chmod(filepath.Join(shimHome, ".claude"), 0o755) })
 
 	svc := Service{
 		Extractor:   minimalExtractor{},

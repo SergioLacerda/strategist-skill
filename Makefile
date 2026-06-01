@@ -54,7 +54,7 @@ analysis-structure-gate:
 install: build
 	mkdir -p ~/.local/bin
 	install -m 755 bin/strategist ~/.local/bin/strategist
-	~/.local/bin/strategist install
+	@echo "[Strategist] binary installed. Run: strategist install --wizard"
 
 # release publishes to GitHub — requires GITHUB_TOKEN.
 release:

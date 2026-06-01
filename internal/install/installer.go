@@ -2,6 +2,7 @@ package install
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -47,19 +48,9 @@ func (s Service) Install(ctx context.Context, cfg domain.InstallConfig) error {
 
 	succeeded := false
 	defer func() {
-		if succeeded {
-			return
+		if !succeeded {
+			rollbackManifest(ctx, manifest)
 		}
-		// Rollback in reverse order: files first, then directories.
-		for i := len(manifest) - 1; i >= 0; i-- {
-			p := manifest[i]
-			if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
-				// For non-empty directories Remove returns an error — that's intentional:
-				// we only remove what we created, leaving pre-existing content intact.
-				_ = err
-			}
-		}
-		slog.WarnContext(ctx, "[Strategist] install rolled back", "workspace", "restored")
 	}()
 
 	if err := s.Extractor.Extract(strategistDir, cfg.Force); err != nil {
@@ -81,12 +72,17 @@ func (s Service) Install(ctx context.Context, cfg domain.InstallConfig) error {
 		manifest = append(manifest, gitignorePath)
 	}
 
-	shimPath, err := s.resolveShimPath()
+	globalDir, globalDirCreated, err := s.installGlobalRuntime(ctx)
 	if err != nil {
-		return fmt.Errorf("install: resolve shim path: %w", err)
+		return fmt.Errorf("install: global runtime: %w", err)
 	}
-	if err := s.installShimFor(cfg.Target); err != nil {
-		return fmt.Errorf("install: shim: %w", err)
+	if globalDirCreated {
+		manifest = append(manifest, globalDir)
+	}
+
+	shimPath, err := s.installShimStep(ctx, cfg.Target)
+	if err != nil {
+		return err
 	}
 	manifest = append(manifest, shimPath)
 	manifest = append(manifest, filepath.Dir(shimPath)) // shim dir — removed only if empty
@@ -149,10 +145,69 @@ func (s Service) resolvePrompter() Prompter {
 	return NewTextPrompter(stdin)
 }
 
+// installGlobalRuntime populates ~/.strategist/ with the skill runtime files so
+// the agent shim can resolve SKILL.md, contracts/, and related directories.
+// Called on every install because the shim always points to ~/.strategist/;
+// an absent directory leaves the shim broken.
+// Returns the global dir path, whether it was newly created, and any error.
+func (s Service) installGlobalRuntime(ctx context.Context) (globalDir string, created bool, err error) {
+	homeDir := s.ShimHomeDir
+	if homeDir == "" {
+		homeDir, err = os.UserHomeDir()
+		if err != nil {
+			return "", false, fmt.Errorf("home dir: %w", err)
+		}
+	}
+	globalDir = filepath.Join(homeDir, ".strategist")
+	alreadyExisted := fileExists(globalDir)
+	if err = s.Extractor.Extract(globalDir, true); err != nil {
+		return globalDir, !alreadyExisted, fmt.Errorf("extract global runtime: %w", err)
+	}
+	slog.InfoContext(ctx, "[Strategist] global runtime installed", "dir", globalDir)
+	return globalDir, !alreadyExisted, nil
+}
+
+// installShimStep reads ~/.strategist/SKILL.md and writes the full shim.
+// Returns the shim path for rollback tracking.
+func (s Service) installShimStep(ctx context.Context, target string) (string, error) {
+	skillContent, err := s.readGlobalSKILLMD(ctx)
+	if err != nil {
+		return "", fmt.Errorf("install: read SKILL.md: %w", err)
+	}
+	shimPath, err := s.resolveShimPath()
+	if err != nil {
+		return "", fmt.Errorf("install: resolve shim path: %w", err)
+	}
+	if err := s.installShimFor(target, skillContent); err != nil {
+		return "", fmt.Errorf("install: shim: %w", err)
+	}
+	return shimPath, nil
+}
+
+// readGlobalSKILLMD reads the SKILL.md that installGlobalRuntime just extracted.
+// Returns a fatal error if the file is absent — installGlobalRuntime must have created it.
+func (s Service) readGlobalSKILLMD(ctx context.Context) (string, error) {
+	homeDir := s.ShimHomeDir
+	if homeDir == "" {
+		var err error
+		homeDir, err = os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("home dir: %w", err)
+		}
+	}
+	path := filepath.Join(homeDir, ".strategist", "SKILL.md")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("read global SKILL.md: %w", err)
+	}
+	slog.InfoContext(ctx, "[Strategist] SKILL.md read for shim", "path", path)
+	return string(data), nil
+}
+
 // installShimFor installs the shim, using ShimHomeDir if set (for tests).
-func (s Service) installShimFor(target string) error {
+func (s Service) installShimFor(target, skillContent string) error {
 	if s.ShimHomeDir != "" {
-		return installShimTo(s.ShimHomeDir)
+		return installShimTo(s.ShimHomeDir, skillContent)
 	}
 	return installShim(target)
 }
@@ -169,6 +224,17 @@ func (s Service) resolveShimPath() (string, error) {
 		}
 	}
 	return filepath.Join(homeDir, ".claude", "skills", "strategist", "SKILL.md"), nil
+}
+
+// rollbackManifest removes created paths in reverse order (best-effort).
+// Non-empty directories are silently skipped — Remove only removes empty dirs.
+func rollbackManifest(ctx context.Context, manifest []string) {
+	for i := len(manifest) - 1; i >= 0; i-- {
+		if err := os.Remove(manifest[i]); err != nil && !errors.Is(err, os.ErrNotExist) {
+			slog.WarnContext(ctx, "[Strategist] rollback remove failed", "path", manifest[i], "error", err)
+		}
+	}
+	slog.WarnContext(ctx, "[Strategist] install rolled back", "workspace", "restored")
 }
 
 // fileExists reports whether path exists (any type).
