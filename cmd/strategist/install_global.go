@@ -20,7 +20,10 @@ var installGlobalCmd = &cobra.Command{
 	Short: "Install the Strategist skill globally into ~/.strategist/",
 	Long: `Installs the Strategist skill defaults into ~/.strategist/ so the agent shim
 (~/.claude/skills/strategist/SKILL.md) can resolve the skill root globally,
-outside of any specific project directory.`,
+outside of any specific project directory.
+
+Note: strategist install already runs this step automatically. Use install-global
+only to refresh the global runtime independently of a local install.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		target := installGlobalTarget
 		if target == "" {
