@@ -1,0 +1,47 @@
+subject: roles/sniper.yaml
+version: "1.0"
+
+invariants:
+  - id: opportunity_attack_mandatory
+    description: Sniper runs opportunity attack during execution — surfaces mid-execution scope drift
+    rule: side_quest surfaces → emit opportunity_attack=triggered items=<N>, STOP, wait for approval
+
+  - id: task_progress_events
+    description: Sniper emits per-task progress events and re-emits full task list on each change
+    rule: task=<N> status=running → re-emit list with N=⏳; task=<N> status=done → re-emit with N=✅
+
+  - id: no_document_authoring
+    description: Sniper does not create specs, plans, analysis, or design documents
+    rule: document authoring detected → stop, return to Archivist (contract write_analysis)
+
+  - id: approval_was_granted
+    description: Sniper only runs after approval gate approved
+    rule: Sniper invocation requires prior approval_gate status=approved
+
+  - id: treasure_chests_mandatory
+    description: Sniper must consult chests scoped to execution or all
+    rule: chests where scope=execution|all → consult before acting; empty list is non-blocking
+
+cases:
+  - name: clean_execution_no_side_quests
+    given:
+      tasks: 3
+      side_quests_during_execution: 0
+    expect:
+      emit: "[Strategist] phase=sniper opportunity_attack=done items=0"
+      artifact: "<base_path>/done/<mission_id>-report.md"
+
+  - name: side_quest_mid_execution
+    given:
+      side_quest_detected: true
+      items: 2
+    expect:
+      emit: "[Strategist] phase=sniper opportunity_attack=triggered items=2"
+      action: STOP, report to user, wait for Archivist review and user approval
+
+  - name: task_progress
+    given:
+      task_n: 2
+      event: running
+    expect:
+      action: re-emit full task list with task 2 marked ⏳, prior tasks ✅

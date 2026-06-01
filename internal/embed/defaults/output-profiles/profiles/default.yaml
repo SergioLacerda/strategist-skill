@@ -1,0 +1,3 @@
+profile: default
+level_threshold: INFO
+description: Key milestones visible to user. Pipeline telemetry suppressed.

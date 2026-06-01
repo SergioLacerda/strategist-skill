@@ -16,3 +16,45 @@ canonical:
 #     Consult existing ADRs in done/ before proposing a solution.
 #     If the mission involves a database, include a rollback step in the tasks artifact.
 custom_brief: ""
+
+phase_procedure:
+  emit_start_key: archivist_start
+  emit_start_level: INFO
+
+  invoke_slot: refinement
+  slot_inputs:
+    - discovery_artifact_path
+    - side_quest_report: >
+        inject as context with instruction: "Items listed under 'Items excluded from
+        main analysis' are resolved. Do not treat them as pending."
+    - mission_contract.planning_rules
+    - dossier
+
+  treasure_chests:
+    scope_filter: [refinement, all]
+    emit_key: treasure_chest_found
+    emit_level: DEBUG
+    empty_list_behavior: skip consultation, proceed
+
+  artifact_requirements:
+    output_path: "<base_path>/refined/<mission_id>/"
+    files:
+      proposal.md: what and why (fed by Ranger discovery artifact)
+      design.md: how (architecture, affected components, decisions)
+      tasks.md: numbered implementation steps (Sniper input contract)
+    never_produce: standalone .md in refined/ (always the three-file subdirectory)
+    skip_sniper_when: tasks.md is empty or absent after Archivist completes
+
+  opportunity_attack:
+    runs_during: refinement (before approval gate)
+    detect: side_quests (work adjacent to mission scope, out of scope for this mission)
+    classify_each: backlog | split_mission | defer
+    presentation: add Side Quests section to approval gate
+    emit_format: "[Strategist] phase=archivist opportunity_attack=done side_quests=<N>"
+    emit_level: TRACE
+    side_quest_strategy: Archivist decides — Sniper never decides side_quest strategy
+
+  on_success:
+    emit_key: archivist_done
+    emit_level: INFO
+    variables: "{artifact_path}"

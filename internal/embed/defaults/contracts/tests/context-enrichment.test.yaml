@@ -1,0 +1,48 @@
+subject: contracts/context-enrichment.yaml
+version: "1.0"
+
+invariants:
+  - id: fast_path_on_fresh_index
+    description: Compiled index used when fresh, skipping linear scan
+    rule: check-stale .compiled/.index.gz exit=0 → emit context_enrichment=fast_path
+
+  - id: empty_enrichment_non_blocking
+    description: No matching sources is not an error — pipeline continues
+    rule: enrichment returns empty → dossier contains only task_type and output_template, continue
+
+  - id: treasure_chest_signal_emitted
+    description: Chest consultation triggers treasure_chest_found emit
+    rule: chest consulted → emit treasure_chest_found chest_id=<id>
+
+  - id: source_hints_applied_before_ranking
+    description: source-hints.yaml priority overrides are applied before final ranking
+    rule: source_hints_applied=true when source-hints.yaml has matching entries
+
+cases:
+  - name: fast_path_with_matches
+    given:
+      index_fresh: true
+      task_type: architecture_analysis
+    expect:
+      emit: "[Strategist] context_enrichment=fast_path"
+      sources: non-empty
+
+  - name: standard_path
+    given:
+      index_fresh: false
+      task_type: refactor
+    expect:
+      emit: "[Strategist] context_enrichment=standard_path"
+
+  - name: no_matching_sources
+    given:
+      task_type: unknown_type
+    expect:
+      sources: []
+      pipeline: continues
+
+  - name: treasure_chest_consulted
+    given:
+      treasure_chests: [{id: source, scope: all}]
+    expect:
+      emit: "[Strategist] treasure_chest_found"

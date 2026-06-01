@@ -1,0 +1,54 @@
+subject: contracts/learning-buffer.yaml
+version: "1.0"
+
+invariants:
+  - id: absent_file_is_skip_not_error
+    description: Missing outcomes.tmp is normal for first run — not an error
+    rule: outcomes.tmp absent → status=skipped reason=buffer_empty, continue
+
+  - id: flush_threshold_is_20
+    description: Flush occurs only when buffer reaches 20 lines (configurable)
+    rule: line_count >= learning_buffer_size → flush; line_count < threshold → skip
+
+  - id: flush_does_not_block
+    description: Flush failure is non-blocking — mission continues
+    rule: flush_failure → log to stderr, continue
+
+  - id: outcomes_jsonl_append_only
+    description: outcomes.jsonl is never truncated or overwritten
+    rule: flush procedure only appends to outcomes.jsonl, never overwrites
+
+  - id: flush_at_start_not_end
+    description: Buffer is flushed at mission START (§0), not at mission end
+    rule: flush timing = pre-bootstrap of NEXT mission (crash-safe design)
+
+cases:
+  - name: absent_file
+    given:
+      outcomes_tmp_exists: false
+    expect:
+      status: skipped
+      reason: buffer_empty
+
+  - name: below_threshold
+    given:
+      line_count: 5
+      buffer_size: 20
+    expect:
+      action: skip flush
+      status: skipped
+
+  - name: at_threshold
+    given:
+      line_count: 20
+      buffer_size: 20
+    expect:
+      action: flush to outcomes.jsonl
+      emit: "[Strategist] learning_buffer=flushed count=20"
+
+  - name: custom_threshold
+    given:
+      line_count: 10
+      buffer_size: 10
+    expect:
+      action: flush to outcomes.jsonl

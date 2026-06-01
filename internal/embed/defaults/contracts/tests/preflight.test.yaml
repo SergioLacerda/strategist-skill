@@ -1,0 +1,46 @@
+subject: contracts/preflight.yaml
+version: "1.0"
+
+invariants:
+  - id: slot_resolution_order
+    description: Provider resolution uses declared order — skill_root first
+    rule: resolve provider in order — skill_root/ → .claude/skills/ → registry
+
+  - id: risk_mismatch_blocks
+    description: Slot with wrong risk_score stops the mission
+    rule: slot.risk_score != expected → emit blocked reason=slot_risk_mismatch
+
+  - id: governance_mode_declared
+    description: Governance mode always declared in preflight done event
+    rule: emit phase=preflight status=done governance=GOVERNED|COMPATIBLE
+
+  - id: missing_index_non_blocking
+    description: Absent index.yaml is not an error — continue without internal domain
+    rule: index.yaml absent → continue, do not emit blocked
+
+cases:
+  - name: governed_mode
+    given:
+      governance_injection_present: true
+      slots_valid: true
+    expect:
+      emit: "[Strategist] phase=preflight status=done slots=ok governance=GOVERNED"
+
+  - name: compatible_mode
+    given:
+      governance_injection_present: false
+      slots_valid: true
+    expect:
+      emit: "[Strategist] phase=preflight status=done slots=ok governance=COMPATIBLE"
+
+  - name: risk_mismatch_ranger
+    given:
+      ranger_risk_score: controlled
+    expect:
+      emit: "[Strategist] phase=preflight status=blocked reason=slot_risk_mismatch slot=discovery"
+
+  - name: provider_not_found
+    given:
+      execution_provider_resolvable: false
+    expect:
+      emit: "[Strategist] phase=preflight status=blocked reason=slot_provider_not_found"

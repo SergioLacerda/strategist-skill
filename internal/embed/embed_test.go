@@ -84,11 +84,18 @@ func TestExtractor_Extract(t *testing.T) {
 		assert.Contains(t, skill, "write_quick_draw_without_gate")
 		assert.Contains(t, skill, "<base_path>/todo/<tema>.md")
 
+		// Quick Draw procedure detail lives in contracts/quick-draw.yaml (refactored from SKILL.md)
+		quickDraw, err := os.ReadFile(filepath.Join(dir, "contracts", "quick-draw.yaml"))
+		require.NoError(t, err)
+		qd := string(quickDraw)
+		assert.Contains(t, qd, "quick-draw")
+		assert.Contains(t, qd, "sim/nao")
+
+		// SKILL.md retains the Quick Draw routing reference
 		skillMD, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
 		require.NoError(t, err)
 		doc := string(skillMD)
-		assert.Contains(t, doc, "Quick Draw Route (Saque Rapido)")
-		assert.Contains(t, doc, "adicionar ideia? (sim/nao)")
+		assert.Contains(t, doc, "Quick Draw")
 
 		pragmatic, err := os.ReadFile(filepath.Join(dir, "personas", "pragmatic.yaml"))
 		require.NoError(t, err)
@@ -137,12 +144,19 @@ func TestExtractor_Extract(t *testing.T) {
 		dir := t.TempDir()
 		require.NoError(t, embedpkg.Extractor{}.Extract(dir, false))
 
+		// ADR language instruction detail lives in contracts/adr.yaml (refactored from SKILL.md)
+		adrYAML, err := os.ReadFile(filepath.Join(dir, "contracts", "adr.yaml"))
+		require.NoError(t, err)
+		adr := string(adrYAML)
+		assert.Contains(t, adr, "pt-BR")
+		assert.Contains(t, adr, "en")
+		assert.Contains(t, adr, "language_source")
+
+		// SKILL.md retains the ADR routing reference
 		skillMD, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
 		require.NoError(t, err)
 		doc := string(skillMD)
-		assert.Contains(t, doc, "docs: pt-BR")
-		assert.Contains(t, doc, "docs: en")
 		assert.Contains(t, doc, "Archivist")
-		assert.Contains(t, doc, "Language instruction for Archivist")
+		assert.Contains(t, doc, "contracts/adr.yaml")
 	})
 }

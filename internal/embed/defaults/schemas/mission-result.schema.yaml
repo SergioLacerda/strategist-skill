@@ -1,0 +1,50 @@
+schema: mission-result
+version: "1.0"
+description: Shape of the object returned at the end of every Strategist mission.
+
+fields:
+  mission_id:
+    type: string
+    required: true
+    description: Unique identifier generated during intake
+
+  status:
+    type: enum
+    values: [completed, plan_only, blocked]
+    required: true
+    description: >
+      completed  — Sniper ran and finished
+      plan_only  — Approval gate declined; plan artifacts present, no execution
+      blocked    — Pipeline stopped due to a blocker before completion
+
+  artifacts:
+    type: object
+    required: false
+    description: Paths to produced artifacts (only fields present when the phase ran)
+    fields:
+      discovery:
+        type: path
+        present_when: Ranger ran
+        path_template: "<base_path>/pending/<mission_id>-discovery.md"
+      opportunity_report:
+        type: string
+        value: inline
+        present_when: opportunity execution ran (items > 0 and user approved)
+      refined_plan:
+        type: path
+        present_when: Archivist ran
+        path_template: "<base_path>/refined/<mission_id>/"
+      execution_report:
+        type: path
+        present_when: Sniper ran
+        path_template: "<base_path>/done/<mission_id>-report.md"
+      adr:
+        type: path
+        present_when: ADR generated and committed (gate_2 approved)
+        path_template: "<base_path>/done/<mission_id>-adr.md"
+
+  blockers:
+    type: array
+    items: string
+    default: []
+    description: List of blocker codes when status=blocked

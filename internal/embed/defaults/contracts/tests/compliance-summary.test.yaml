@@ -1,0 +1,48 @@
+subject: contracts/compliance-summary.yaml
+version: "1.0"
+
+invariants:
+  - id: emitted_every_response
+    description: Compliance summary must be the final element of every response
+    rule: every pipeline termination (completed|plan_only|blocked) emits compliance_summary
+
+  - id: always_info_level
+    description: Compliance summary is always visible regardless of output profile
+    rule: compliance_summary emit_level == INFO
+
+  - id: non_compliant_includes_reason
+    description: pipeline_compliant=no must include a reason field
+    rule: pipeline_compliant=no → reason field present and non-empty
+
+cases:
+  - name: full_pipeline_compliant
+    given:
+      phases_run: [learning_buffer, bootstrap, preflight, intake, context_enrichment, ranger, archivist, sniper]
+      phases_skipped: []
+    expect:
+      pipeline_compliant: yes
+      reason: absent
+
+  - name: phase_skipped_with_reason
+    given:
+      phases_skipped: [adr_opportunity]
+      skip_reason: adr_enabled=false
+    expect:
+      pipeline_compliant: yes
+      phases_skipped: "adr_opportunity"
+
+  - name: phase_silently_omitted
+    given:
+      phases_run: [bootstrap, intake, sniper]
+      phases_skipped: []
+    expect:
+      pipeline_compliant: no
+      reason: present
+
+  - name: early_termination_blocked
+    given:
+      pipeline_terminated: blocked
+    expect:
+      compliance_summary: emitted
+      pipeline_compliant: no
+      reason: present

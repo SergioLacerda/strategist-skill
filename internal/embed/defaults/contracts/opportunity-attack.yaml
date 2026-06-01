@@ -1,0 +1,37 @@
+module: opportunity-attack
+type: invariant
+description: >
+  Mandatory routine that runs INSIDE each role (Ranger, Archivist, Sniper).
+  Surfaces items outside the declared mission scope. Not a standalone phase —
+  it is a subsection within each role's execution.
+
+contract:
+  roles_that_must_run: [ranger, archivist, sniper]
+
+  per_role_emit:
+    ranger:
+      format: "[Strategist] phase=ranger opportunity_attack=done items=<N>"
+      emit_level: TRACE
+      on_items_gt_0: present to user via opportunity_detected persona key
+    archivist:
+      format: "[Strategist] phase=archivist opportunity_attack=done side_quests=<N>"
+      emit_level: TRACE
+      on_side_quests_gt_0: present gate via side_quest_detected persona key
+    sniper:
+      done_format:      "[Strategist] phase=sniper opportunity_attack=done items=0"
+      triggered_format: "[Strategist] phase=sniper opportunity_attack=triggered items=<N>"
+      emit_level: TRACE
+
+  error_emit:
+    format: "[Strategist] phase=<role> opportunity_attack=failed reason=<why>"
+    emit_level: TRACE
+    behavior: non-blocking — log and continue
+
+  invariants:
+    - emit always produced after opportunity_attack (items=0 is valid; silence is not)
+    - technical failure is non-blocking — log reason and continue pipeline
+    - '"foco em alvo único" is NOT a valid reason to skip opportunity attack'
+    - narrow scope (single-file/single-target) does not exempt any role
+
+  write_scope: read-only
+  owner: internal (orchestrator)

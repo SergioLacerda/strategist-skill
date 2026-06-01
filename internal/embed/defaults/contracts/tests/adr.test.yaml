@@ -1,0 +1,79 @@
+subject: contracts/adr.yaml
+version: "1.0"
+
+invariants:
+  - id: skip_when_disabled
+    description: Entire ADR stage skipped when adr_enabled=false
+    rule: active.adr_enabled=false → skip §8, proceed directly to §9
+
+  - id: two_gate_flow
+    description: ADR requires two explicit gates — generate and approve
+    rule: gate_1 (generate?) must precede gate_2 (approve content?)
+
+  - id: rollback_on_gate2_decline
+    description: Declining gate 2 removes the artifact file
+    rule: gate_2=no → delete artifact, mission_result.adr absent
+
+  - id: language_from_docs
+    description: ADR content language follows active.language.docs
+    rule: docs=pt-BR → Portuguese sections; docs=en → English sections
+
+  - id: skip_when_no_criteria
+    description: ADR stage skipped when no activation criterion is met
+    rule: criteria_matched=[] → skip to §9
+
+cases:
+  - name: adr_disabled
+    given:
+      adr_enabled: false
+    expect:
+      action: skip entirely
+      next_phase: learning_phase
+
+  - name: no_criteria_met
+    given:
+      criteria_matched: []
+    expect:
+      action: skip to learning_phase
+
+  - name: gate1_declined
+    given:
+      criteria_matched: [new_pattern]
+      gate_1_response: "no"
+    expect:
+      action: log "ADR declined (gate 1)"
+      next_phase: learning_phase
+
+  - name: gate2_approved
+    given:
+      gate_1_response: "yes"
+      gate_2_response: "yes"
+      language_docs: en
+    expect:
+      action: sniper commits ADR
+      mission_result.adr: present
+      adr_sections: [Context, Decision, Consequences]
+
+  - name: gate2_declined
+    given:
+      gate_1_response: "yes"
+      gate_2_response: "no"
+    expect:
+      action: delete artifact
+      mission_result.adr: absent
+      mission_result.status: completed
+
+  - name: gate2_edit
+    given:
+      gate_1_response: "yes"
+      gate_2_response: "edit"
+    expect:
+      action: accept edits, re-present draft, re-open gate_2
+
+  - name: language_pt_br
+    given:
+      gate_1_response: "yes"
+      gate_2_response: "yes"
+      language_docs: pt-BR
+    expect:
+      adr_sections: [Contexto, Decisão, Consequências]
