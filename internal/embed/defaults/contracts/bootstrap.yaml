@@ -41,6 +41,13 @@ contract:
     - code: persona_not_found
       trigger: personas/<mode>.yaml absent
       behavior: Emit blocked event, stop mission
+    - code: invalid_local_profile
+      trigger: >
+        active.yaml present but fails schema validation: field `mode` absent or empty,
+        `base_path` absent, or `roles_config` absent.
+      behavior: >
+        Emit: "[Strategist] phase=bootstrap status=blocked reason=invalid_local_profile file=<path> field=<field>"
+        Stop mission. No fallback to global profile.
     - code: compiled_artifact_corrupt
       trigger: .compiled/.config.gz fails jq parse
       behavior: Fall back to standard path (load YAML directly), emit bootstrap=standard_path

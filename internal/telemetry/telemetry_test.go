@@ -102,6 +102,8 @@ func TestSchema_constants(t *testing.T) {
 	constants := []string{
 		AttrPhase, AttrStatus, AttrSkill, AttrArtifact,
 		AttrReason, AttrCacheHit, AttrTarget, AttrMandates,
+		AttrMission, AttrStartToIntakeMS, AttrIntakeToRangerMS,
+		AttrTotalWallTimeMS, AttrTokensIn, AttrTokensOut, AttrLinesEmitted,
 	}
 	for _, c := range constants {
 		if c == "" {

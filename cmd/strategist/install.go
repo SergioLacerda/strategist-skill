@@ -49,6 +49,10 @@ func runInstall(cmd *cobra.Command, _ []string) (retErr error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	run := telemetry.MissionRunFromContext(ctx)
+	if run != nil {
+		run.MarkRanger()
+	}
 	ctx, span := telemetry.Tracer().Start(ctx, "strategist.install",
 		trace.WithAttributes(attribute.String(telemetry.AttrTarget, installTarget)),
 	)
@@ -60,6 +64,9 @@ func runInstall(cmd *cobra.Command, _ []string) (retErr error) {
 		span.End()
 	}()
 
+	if run != nil {
+		run.AddLines(1)
+	}
 	slog.InfoContext(ctx, "[Strategist] install running", "target", installTarget)
 
 	shimHome, err := os.UserHomeDir()
@@ -85,6 +92,9 @@ func runInstall(cmd *cobra.Command, _ []string) (retErr error) {
 		return fmt.Errorf("install: %w", err)
 	}
 
+	if run != nil {
+		run.AddLines(2)
+	}
 	slog.InfoContext(ctx, "[Strategist] install complete", "target", installTarget)
 	fmt.Println("[Strategist] install complete →", installTarget)
 	return nil

@@ -2,166 +2,192 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Garantir que o `/strategist` reflita no chat a execução real do pipeline, com resolução de perfil determinística (local/global) e telemetria obrigatória por fase/papel.
+**Goal:** Fazer o `/strategist` refletir no chat a execução real do pipeline local, com origem de perfil explícita, `mission_checkpoint` e `mission_metrics`, sem fallback silencioso e sem sucesso quando a telemetria obrigatória faltar.
 
-**Architecture:** Introduzir um resolvedor de perfil com modo `auto|local|global`, unificar emissão semântica de eventos obrigatórios em runtime e aplicar renderização por persona (`pragmatic` técnico, `epic` com emojis) sem alterar o contrato semântico. A validação final bloqueia missões com eventos obrigatórios ausentes.
+**Architecture:** Manter a resolução local deterministica de perfil, ligar o tracker de missao ao runtime real do CLI, e centralizar a emissao dos eventos obrigatorios de pipeline/fase/papel/gate/oportunidade/tesouro/compliance. A renderizacao por persona continua variando na apresentacao, mas nao no contrato semantico.
 
-**Tech Stack:** Go (cmd/internal), YAML contracts (`.strategist` e defaults embed), testes Go existentes em `internal/install` e `strategist/tests`.
+**Tech Stack:** Go (`cmd/strategist`, `internal/telemetry`), YAML de contratos/personas em `.strategist` e `internal/embed/defaults`, testes existentes em `strategist/tests` e `cmd/strategist/*_test.go`.
 
----
+## What Is Already Covered
 
-### Task 1: Mapear pontos de entrada e emissão atuais
+These pieces are already present and should be treated as baseline, not reopened as design work:
+
+- `pipeline=starting` is emitted by the CLI root.
+- `mission_checkpoint` exists in the skill docs, personas, and intake/progress contracts.
+- `mission_metrics` exists in the contracts, docs, personas, telemetry schema, and tracker helpers.
+- `internal/telemetry/mission_run.go` tracks `start`, `intake`, `ranger`, `lines_emitted`, and token counters.
+- `internal/telemetry/mission_metrics.go` formats the metrics payload.
+- `cmd/strategist/root.go` already creates and closes a mission tracker.
+- Existing commands already mark visible output and first-action timings.
+- Baseline benchmarks and performance notes already exist in the analysis/docs layer.
+- Contract alignment tests already assert the presence of `profile`, `mode`, `speed`, and `mission_metrics` keys.
+
+## What Is Still Missing In Runtime
+
+These are the runtime gaps the implementation still has to close:
+
+- The pipeline still does not have a single, explicit mission orchestrator that emits every required event in order.
+- The current telemetry is command-level; it is not yet the full semantic pipeline contract for a mission run.
+- `tokens_in` and `tokens_out` are tracked structurally, but there is no real source wired from the executor/model layer yet.
+- Role events, gate events, opportunity events, treasure events, and compliance footer events still need a canonical runtime emission path.
+- Missing required telemetry does not yet behave like a hard runtime blocker everywhere it should.
+- The runtime does not yet guarantee that `epic` and `pragmatic` render the same semantics with different presentation.
+
+## Implementation Plan
+
+### Task 1: Freeze the runtime contract against the current covered surface
 
 **Files:**
-- Read: `cmd/strategist/install.go`
-- Read: `internal/install/installer.go`
-- Read: `internal/install/shim.go`
-- Read: `.strategist/SKILL.md`
-- Read: `.strategist/skill.yaml`
+- Update: `.analysis/pending/2026-06-01-strategist-pipeline-adesao-runtime-design.md`
+- Update: `docs/skill-internals.md`
+- Update: `strategist/SKILL.md`
+- Update: `internal/embed/defaults/SKILL.md`
+- Update: `strategist/tests/spec_alignment_test.go`
 
-**Step 1: Listar onde profile/path é resolvido hoje**
-- Identificar funções e structs responsáveis pela carga de config.
+**Checklist**
+- [ ] Record the current baseline explicitly.
+  - Document that `pipeline=starting`, `mission_checkpoint`, and `mission_metrics` are already covered.
+  - Document that the remaining work is runtime orchestration, not schema invention.
+- [ ] Tighten the acceptance language.
+  - Make the design and docs say that missing required telemetry must block the mission.
+  - Keep the local-only profile rule explicit.
+- [ ] Expand alignment tests.
+  - Assert the contract still exposes the already covered signals.
+  - Add a guard that fails if the runtime docs regress to a fallback/global assumption.
 
-**Step 2: Listar onde eventos são emitidos hoje**
-- Inventariar eventos atuais de pipeline, gate, opportunity e persona.
+**Acceptance Criteria**
+- The plan/docs now describe the current baseline as covered, not pending.
+- The local-only rule remains explicit.
+- Tests fail if fallback/global assumptions reappear in the runtime contract text.
 
-**Step 3: Registrar gaps contra o design aprovado**
-- Gerar checklist local (working notes) com faltas: profile_source, role_events, compliance_footer etc.
-
-**Step 4: Validar baseline sem alterações**
-Run: `go test ./internal/install ./strategist/tests`
-Expected: suíte baseline passa (ou falhas conhecidas documentadas no output).
-
-### Task 2: Implementar resolução de perfil `--profile=auto|local|global`
+### Task 2: Introduce a canonical runtime mission emitter
 
 **Files:**
+- Modify: `internal/telemetry/mission_run.go`
+- Modify: `internal/telemetry/mission_metrics.go`
+- Modify: `cmd/strategist/root.go`
 - Modify: `cmd/strategist/install.go`
-- Modify: `internal/install/installer.go`
-- Modify: `internal/install/active_yaml.go`
-- Test: `internal/install/active_yaml_test.go`
-- Test: `internal/install/install_test.go`
+- Modify: `cmd/strategist/compile.go`
+- Modify: `cmd/strategist/check_stale.go`
+- Modify: `cmd/strategist/validate.go`
+- Modify: `cmd/strategist/sync_governance.go`
+- Add/modify tests under `internal/telemetry` and `cmd/strategist`
 
-**Step 1: Escrever testes que falham para seleção de perfil**
-- Cobrir: `auto(local ok)`, `auto(fallback global)`, `local inválido => blocked`, `global forçado`.
+**Checklist**
+- [ ] Define the mission event order.
+  - Emit a stable header first.
+  - Emit phase/role/gate/opportunity/treasure/compliance events in a single canonical path.
+- [ ] Centralize emission helpers.
+  - Reuse the tracker for timestamps and counts.
+  - Add helpers so commands do not each invent their own event format.
+- [ ] Mark the runtime boundary.
+  - Separate "command output" from "mission evidence" so the final footer can validate completeness.
+- [ ] Add tests for the canonical emitter.
+  - Cover happy path, skipped path, and blocked path.
+  - Assert the emitted order and required fields.
 
-**Step 2: Rodar testes para garantir falha inicial**
-Run: `go test ./internal/install -run Profile -v`
-Expected: FAIL por comportamento ainda não implementado.
+**Acceptance Criteria**
+- A single helper path can emit the mission evidence set in order.
+- The footer can validate completeness from emitted evidence, not from ad hoc command output.
+- Tests cover the canonical emitter for success, skip, and block cases.
 
-**Step 3: Implementar resolvedor determinístico**
-- Adicionar parsing de flag `--profile`.
-- Implementar ordem: shim skill_root -> `./.strategist` -> `~/.strategist` em `auto`.
-- Implementar erro bloqueante para `local` inválido.
-
-**Step 4: Expor metadados de origem para emissão**
-- Garantir disponibilidade de `profile_source`, `profile_path`, `active_yaml`, `roles_config` no runtime.
-
-**Step 5: Re-rodar testes de profile**
-Run: `go test ./internal/install -run Profile -v`
-Expected: PASS.
-
-### Task 3: Definir contrato de eventos obrigatórios no runtime
-
-**Files:**
-- Modify: `.strategist/SKILL.md`
-- Modify: `.strategist/skill.yaml`
-- Modify: `internal/embed/defaults/SKILL.md`
-- Modify: `internal/embed/defaults/skill.yaml` (se existir; se não, ajustar origem equivalente embed)
-- Test: `strategist/tests/specs/approval-gate.feature`
-- Test: `strategist/tests/specs/slot-contracts.feature`
-
-**Step 1: Escrever cenários de contrato para eventos obrigatórios**
-- Cenários: presença de pipeline_header, phase_events, role_events, gate_events, opportunity_events, treasure_events, compliance_footer.
-
-**Step 2: Rodar cenários para falhar inicialmente**
-Run: `go test ./strategist/tests -run SpecAlignment -v`
-Expected: FAIL em missing required telemetry.
-
-**Step 3: Atualizar contrato canônico**
-- Inserir regra explícita de `blocked reason=missing_required_telemetry` quando faltarem eventos.
-
-**Step 4: Ajustar camada runtime para completar emissão mínima**
-- Garantir evento explícito para itens não aplicáveis (`none`/`skipped` + `reason`).
-
-**Step 5: Revalidar testes de contrato**
-Run: `go test ./strategist/tests -v`
-Expected: PASS para os novos cenários.
-
-### Task 4: Implementar renderização por persona sem alterar semântica
+### Task 3: Wire required semantic events into the live pipeline
 
 **Files:**
-- Modify: `.strategist/personas/pragmatic.yaml`
-- Modify: `.strategist/personas/epic.yaml`
-- Modify: `internal/embed/defaults/personas/pragmatic.yaml`
-- Modify: `internal/embed/defaults/personas/epic.yaml`
-- Test: `strategist/tests/spec_alignment_test.go`
+- Modify: the runtime path that composes the Strategist mission flow
+- Modify: persona templates if a field is missing from the rendered output
+- Add tests/fixtures for the runtime flow
 
-**Step 1: Criar teste de equivalência semântica entre personas**
-- Mesmo conjunto de eventos exigidos, mensagens com estilo distinto.
+**Checklist**
+- [ ] Emit pipeline header and profile origin.
+  - Keep `profile_mode`, `profile_path`, `active_yaml`, `persona_resolved`, `reason`, and `output_profile` visible.
+- [ ] Emit role events.
+  - Make `ranger`, `archivist`, and `sniper` transitions explicit when they exist.
+- [ ] Emit gate events.
+  - Show gate prompts and outcomes.
+  - Record `approved`, `declined`, or `review` explicitly.
+- [ ] Emit opportunity and treasure events.
+  - Emit explicit `items=0` or `none` when nothing is applicable.
+  - Do not omit these sections silently.
+- [ ] Emit compliance footer.
+  - Report expected, executed, and missing counts at the end of the mission.
 
-**Step 2: Rodar teste para falhar inicialmente**
-Run: `go test ./strategist/tests -run Persona -v`
-Expected: FAIL por ausência de campos/eventos em uma das personas.
+**Acceptance Criteria**
+- Every mission emits the profile/origin header.
+- Role, gate, opportunity, treasure, and compliance evidence are visible when applicable, and explicit `none`/`0` when not.
+- The live runtime path does not silently skip required evidence sections.
 
-**Step 3: Atualizar templates de mensagem**
-- `pragmatic`: bloco técnico explícito.
-- `epic`: mensagens com emojis mantendo campos semânticos equivalentes.
-
-**Step 4: Re-rodar teste de persona**
-Run: `go test ./strategist/tests -run Persona -v`
-Expected: PASS.
-
-### Task 5: Integrar Ataque de Oportunidade e Baú do Tesouro na trilha de evidência
-
-**Files:**
-- Modify: `.strategist/SKILL.md`
-- Modify: `.strategist/skill.yaml`
-- Modify: `strategist/tests/fixtures/*.yaml` (casos existentes + novos)
-- Modify: `strategist/tests/run-tests.sh` (se necessário)
-
-**Step 1: Criar fixtures para casos aplicável/não aplicável**
-- `opportunity_attack items>0`
-- `opportunity_attack items=0`
-- `treasure_chest_loaded ids=...`
-- `treasure_chest_loaded none`
-
-**Step 2: Rodar harness para falhar inicialmente**
-Run: `bash strategist/tests/run-tests.sh`
-Expected: FAIL em expected_event não emitido.
-
-**Step 3: Implementar emissão explícita em todos os ramos**
-- Sem ramos silenciosos para esses mecanismos.
-
-**Step 4: Re-rodar harness**
-Run: `bash strategist/tests/run-tests.sh`
-Expected: PASS.
-
-### Task 6: End-to-end de regressão e critérios de aceite
+### Task 4: Enforce hard failure on missing telemetry
 
 **Files:**
-- Modify: `.analysis/refined/2026-06-01-analise-pendencias-em-aberto.md` (apenas status/evidência, se desejado)
-- Optional docs: `readme.md` (se CLI flag `--profile` for exposta ao usuário)
+- Modify: `cmd/strategist/root.go`
+- Modify: runtime validation code near mission completion
+- Add tests for blocked completion cases
 
-**Step 1: Rodar suíte combinada**
-Run: `go test ./internal/install ./strategist/tests ./internal/embed ./internal/domain`
-Expected: PASS.
+**Checklist**
+- [ ] Make telemetry completeness part of completion criteria.
+  - If a required block is missing, the mission ends as blocked.
+- [ ] Preserve partial diagnostics.
+  - The runtime should still print what happened before the block.
+  - Do not collapse failures into a silent success path.
+- [ ] Add regression tests.
+  - Cover missing `mission_metrics`.
+  - Cover missing phase/role/gate sections.
+  - Cover the explicit blocked footer.
 
-**Step 2: Validar critérios de aceite manualmente**
-- Invocar `/strategist` com profile local/global e verificar presença de bloco de evidência.
-- Validar diferenças de apresentação entre `pragmatic` e `epic`.
+**Acceptance Criteria**
+- Missing required telemetry always results in blocked completion.
+- Partial output remains visible for diagnosis.
+- Regression tests fail if the runtime can still report success without the required evidence.
 
-**Step 3: Registrar evidências de execução**
-- Anotar comandos e resultados no artefato de análise/refined.
+### Task 5: Source token counts from a real runtime boundary
 
-**Step 4: Encerrar sem git commit (preferência do usuário)**
-- Não executar comandos `git commit`.
+**Files:**
+- Modify: `internal/telemetry/mission_run.go`
+- Modify: the executor/model integration point when available
+- Add tests for token accounting behavior
 
----
+**Checklist**
+- [ ] Define the token source.
+  - Identify the authoritative boundary for input and output tokens.
+- [ ] Feed the tracker from that boundary.
+  - Keep the helper fallback-safe until the real source is wired.
+  - Avoid fabricating values in the runtime path.
+- [ ] Verify metrics remain stable.
+  - Ensure token counts are present when data exists and stay zero only when the source is genuinely unavailable.
 
-## Definition of Done
+**Acceptance Criteria**
+- Token accounting has a named authoritative source.
+- The runtime never invents token counts.
+- Zero values are explainable by genuine source absence, not by missing plumbing.
 
-- `--profile=auto|local|global` funcional com comportamento conforme design.
-- `/strategist` sempre emite evidência mínima obrigatória no chat.
-- Ausência de evento obrigatório bloqueia missão com `missing_required_telemetry`.
-- `epic` usa mensagens com emoji sem quebrar contrato semântico.
-- Ataque de Oportunidade e Baú do Tesouro aparecem sempre como evento (ou `none`).
+### Task 6: Close the loop with end-to-end tests and docs
+
+**Files:**
+- Modify: `strategist/tests/spec_alignment_test.go`
+- Add/update runtime fixtures
+- Update `docs/skill-internals.md` if the emitted contract changes
+
+**Checklist**
+- [ ] Add end-to-end coverage.
+  - Validate the final chat output contains the mandatory evidence block.
+- [ ] Add persona coverage.
+  - Confirm `pragmatic` and `epic` preserve the same semantics.
+- [ ] Validate the blocked path.
+  - Ensure missing telemetry never reports success.
+- [ ] Re-run governance validation.
+  - Confirm the repo stays aligned with SDD and the skill contracts.
+
+**Acceptance Criteria**
+- End-to-end tests validate the mandatory evidence block.
+- Persona-specific rendering remains semantically equivalent.
+- Governance validation passes after the runtime changes.
+
+## Definition Of Done
+
+- The runtime emits a complete mission evidence block in the chat.
+- `mission_checkpoint` and `mission_metrics` remain present and validated.
+- Missing required telemetry blocks mission completion.
+- The current local-only profile behavior stays explicit and deterministic.
+- `epic` and `pragmatic` differ in presentation only, not in meaning.
+- Token metrics are wired to a real source, or clearly remain unavailable without being faked.

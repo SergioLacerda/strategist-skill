@@ -29,6 +29,11 @@ func runCheckStale(cmd *cobra.Command, args []string) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	run := telemetry.MissionRunFromContext(ctx)
+	if run != nil {
+		run.MarkRanger()
+		run.AddLines(1)
+	}
 	ctx, span := telemetry.Tracer().Start(ctx, "strategist.check_stale",
 		trace.WithAttributes(attribute.String(telemetry.AttrArtifact, artifactPath)),
 	)

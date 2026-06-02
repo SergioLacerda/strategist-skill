@@ -221,6 +221,8 @@ After intake completes, initialize and emit the mission pipeline checkpoint usin
 - `{mission_id}` = the generated mission id
 - `{step_1_icon}` = `⏳` (Ranger about to start), `{step_2_icon}` = `{step_3_icon}` = `{step_4_icon}` = `⬜`
 
+Emit `persona.content_by_lang[active.language.chat].mission_metrics` at the same checkpoint and again at each phase transition so timing and volume data stay visible with the mission state.
+
 Re-emit the checkpoint at each phase transition, updating icons to reflect current state:
 
 | After phase | step_1 | step_2 | step_3 | step_4 |
