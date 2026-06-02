@@ -5,67 +5,30 @@ slot: discovery
 # Listed here for reference when writing custom_brief below.
 canonical:
   - find_unexpected_items       # surface items outside declared mission scope
-  - consult_treasure_chests     # consult chests scoped to discovery before generating artifact
+  - consult_treasure_chests     # consult T0/T1 chests scoped to discovery before generating artifact
+  - opportunity_attack:         # cross-cutting routine — mandatory
+      detect: [treasure_chests, side_quests]
+      output: include_in_discovery_artifact
+      feedback: surface_in_response    # show to user before handing off to Archivist
+  - compress_findings           # format: evidence → interpretation → impact (source cards)
   - output_format: "<base_path>/pending/<mission_id>-discovery.md"
+  - handoff_contract: "schemas/handoff-ranger-to-archivist.schema.yaml"
 
-# Additional instructions for the Ranger in this installation.
+# Contract
+must:
+  - load mission_contract and respect token_strategy.mode for context budget
+  - separate facts, hypotheses, and ambiguities clearly
+  - surface opportunity_attack findings in the response to the user before finishing
+  - include all handoff contract fields in the discovery artifact
+  - use discovery-artifact.md as format reference
+
+must_not:
+  - propose a final plan as if it were approved
+  - execute any changes
+  - pass raw context to Archivist (compress to evidence cards)
+  - hide ambiguities or uncertainties
+
+# Additional instructions for this installation.
 # Strategist appends this block to the role brief at invocation, after canonical behaviors.
 # If empty or absent, only canonical behaviors are used.
-#
-# Examples:
-#   custom_brief: |
-#     Search the codebase for patterns similar to the mission scope.
-#     Check open related issues before closing the discovery artifact.
 custom_brief: ""
-
-phase_procedure:
-  emit_start_key: ranger_start
-  emit_start_level: INFO
-
-  invoke_slot: discovery
-  slot_inputs:
-    - user_prompt
-    - mission_contract.planning_rules
-    - dossier (from context enrichment)
-    - artifact_path: "<base_path>/pending/<mission_id>-discovery.md"
-
-  treasure_chests:
-    scope_filter: [discovery, all]
-    emit_key: treasure_chest_found
-    emit_level: DEBUG
-    empty_list_behavior: skip consultation, proceed
-
-  artifact_requirements:
-    mandatory_section: "Mission Checklist and Phase Roles"
-    section_entries: [Ranger, Archivist, Sniper]
-    status_markers: {"done": "[x]", "pending": "[ ]", "not_applicable": "[-]"}
-
-  opportunity_attack:
-    runs_after: artifact_written
-    scan_dirs:
-      pending: does this spec have a corresponding plan in refined/?
-      refined: does this plan have a corresponding report in done/?
-      todo: does this spec have an implementation commit in git?
-    heuristic: >
-      git log contains a commit referencing the spec slug OR spec lists features
-      that exist as code in the repo. When uncertain, list as candidate — user decides.
-    manifest_fields: [type, origin_path, destination, reason]
-    emit_format: "[Strategist] phase=ranger opportunity_attack=done items=<N>"
-    emit_level: TRACE
-    on_items_gt_0:
-      emit_key: opportunity_detected
-      variables: "{count} {items_brief}"
-      wait_for_response: true
-      responses:
-        yes: proceed to Archivist (manifest deferred to Sniper after main gate)
-        no: discard manifest, proceed to Archivist
-        select: user picks items by number; defer selected items only
-
-  on_success:
-    emit_key: ranger_done
-    emit_level: INFO
-    variables: "{artifact_path}"
-
-  on_failure:
-    emit_format: "[Strategist] phase=ranger status=blocked reason=ranger_failed"
-    action: present partial artifact if any

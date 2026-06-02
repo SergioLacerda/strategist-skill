@@ -1,73 +1,42 @@
 role: sniper
 slot: execution
 
+# Note: "sniper" is the implementation alias; "hunter" is the spec alias.
+# Both names refer to the same execution role.
+
 # Canonical behaviors — read-only, source in skill.yaml.
 # Listed here for reference when writing custom_brief below.
 canonical:
-  - requires_approval_gate      # enforced by Strategist — documented here for awareness
-  - consult_treasure_chests     # consult chests scoped to execution before acting
+  - requires_approval_gate           # enforced by Strategist — slot cannot bypass
+  - load_archivist_handoff           # read handoff contract fields + approved scope
+  - consult_treasure_chests          # consult chests scoped to execution before acting
+  - execute_one_task_per_loop        # never batch multiple tasks
+  - opportunity_attack:              # cross-cutting routine — mandatory
+      detect: [side_quests]
+      action: stop_and_report        # Hunter DOES NOT decide — reports only, pauses execution
+      feedback: surface_immediately_pause_execution
+  - update_checklist_before_advancing
+  - handoff_contract_consumed: "schemas/handoff-archivist-to-hunter.schema.yaml"
 
-# Additional instructions for the Sniper in this installation.
+# Contract
+must:
+  - declare the active task at the start of each loop
+  - execute only the single declared active task
+  - run targeted validation after each task
+  - update the task checklist before advancing to the next task
+  - stop immediately and report if scope drift, ambiguity, or validation failure is detected
+  - surface opportunity_attack findings immediately and pause execution
+
+must_not:
+  - execute without the approval gate having been granted
+  - execute multiple tasks in a single loop
+  - modify files outside the approved_scope.allowed list
+  - re-open or re-read full discovery history
+  - write a new plan — return to Archivist instead
+  - decide side quest strategy (report only, Archivist decides)
+  - load context not present in the Archivist handoff (return to Archivist if needed)
+
+# Additional instructions for this installation.
 # Strategist appends this block to the role brief at invocation, after canonical behaviors.
 # If empty or absent, only canonical behaviors are used.
-#
-# Examples:
-#   custom_brief: |
-#     Always run tests before committing.
-#     Prefer atomic commits per task from the refinement artifact.
 custom_brief: ""
-
-phase_procedure:
-  emit_start_key: sniper_start
-  emit_start_level: INFO
-
-  precondition: approval_gate status=approved (never invoked without prior gate approval)
-
-  invoke_slot: execution
-  slot_inputs:
-    - refined_plan_artifact_path: "<base_path>/refined/<mission_id>/"
-    - mission_contract.planning_rules
-
-  task_list:
-    read_from: "<base_path>/refined/<mission_id>/tasks.md"
-    emit_header_key: execution_tasks_header
-    emit_header_level: INFO
-    emit_line_key: execution_task_line
-    emit_line_level: INFO
-    initial_icon: "⬜"
-    progress_events:
-      running_format: "[Strategist] phase=execution task=<N> status=running"
-      done_format:    "[Strategist] phase=execution task=<N> status=done"
-      on_running: re-emit full list with task N=⏳, prior tasks=✅
-      on_done:    re-emit full list with task N=✅, task N+1=⏳ (if not last)
-      on_all_done: re-emit with all tasks=✅
-
-  treasure_chests:
-    scope_filter: [execution, all]
-    emit_key: treasure_chest_found
-    emit_level: DEBUG
-    empty_list_behavior: skip consultation, proceed
-
-  opportunity_attack:
-    runs_during: execution (mid-implementation)
-    trigger: side_quest or out-of-scope item surfaces
-    on_trigger:
-      action: STOP execution immediately
-      emit_format: "[Strategist] phase=sniper opportunity_attack=triggered items=<N>"
-      emit_level: TRACE
-      report: type, description, reason per item
-      resume_condition: Archivist reviews AND user approves
-    on_clean:
-      emit_format: "[Strategist] phase=sniper opportunity_attack=done items=0"
-      emit_level: TRACE
-
-  forbidden:
-    - creating specs, plans, analysis documents, or design files
-    - deciding side_quest strategy (Archivist's responsibility)
-
-  artifact_path: "<base_path>/done/<mission_id>-report.md"
-
-  on_success:
-    emit_key: sniper_done
-    emit_level: INFO
-    variables: "{artifact_path}"

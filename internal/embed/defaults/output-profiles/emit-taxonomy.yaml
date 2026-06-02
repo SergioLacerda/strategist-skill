@@ -1,6 +1,10 @@
 # Severity levels align with sdd_telemetry/constants.py (TRACE=1, DEBUG=5, INFO=9)
 # and internal/telemetry/schema.go (strategist.* attribute namespace).
 # OTEL export is never filtered — this taxonomy controls stdout only.
+# Speed policy bridge:
+# - fast -> compact mission flow, keep visibility at the default profile threshold
+# - balanced -> default mission flow, default profile threshold
+# - full -> full telemetry profile and complete pipeline output
 
 version: "1.0"
 

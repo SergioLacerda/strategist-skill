@@ -1,0 +1,44 @@
+schema_version: "1"
+description: >
+  Handoff contract from Archivist (refinement) to Hunter/Sniper (execution).
+  These fields are REQUIRED in the refinement artifact, regardless of format.
+  The implementing skill decides the file format.
+
+required_fields:
+  mission_id:
+    type: string
+    required: true
+  approved_scope:
+    type: object
+    required: true
+    fields:
+      allowed:
+        type: list
+        description: Glob patterns of paths Hunter may touch
+      forbidden:
+        type: list
+        description: Glob patterns Hunter must not touch
+  implementation_plan:
+    type: list
+    required: true
+    item_fields:
+      id: string
+      objective: string
+      scope: list           # files or paths
+      validation: list      # commands or checks
+  side_quests_approved:
+    type: list
+    description: Side quest strategy decisions made by Archivist — surfaced at approval gate
+    required: false
+    item_fields: [id, strategy]
+    item_values:
+      strategy: [execute_together, execute_later, separate_mission, discard]
+  acceptance_checks:
+    type: list
+    required: true
+    description: Conditions that must be true for the mission to be considered complete
+  stop_conditions:
+    type: list
+    required: true
+    known_values: [scope_drift, missing_file, validation_failure, ambiguity]
+    description: Conditions under which Hunter must stop and report, not decide

@@ -1,4 +1,4 @@
-.PHONY: build test lint vuln bench cover cover-gate cover-html analysis-structure-gate install release snapshot clean
+.PHONY: build test lint vuln bench cover cover-gate cover-html analysis-structure-gate install sync-embed release snapshot clean
 
 GOLANGCI_LINT := $(shell which golangci-lint 2>/dev/null || echo $(shell go env GOPATH)/bin/golangci-lint)
 GOVULNCHECK   := $(shell which govulncheck 2>/dev/null || echo $(shell go env GOPATH)/bin/govulncheck)
@@ -55,6 +55,24 @@ install: build
 	mkdir -p ~/.local/bin
 	install -m 755 bin/strategist ~/.local/bin/strategist
 	@echo "[Strategist] binary installed. Run: strategist install --wizard"
+
+# sync-embed copies updated YAML artifacts from strategist/ to internal/embed/defaults/
+# so the next `make build` embeds the latest versions.
+# Run this whenever you edit files under strategist/ that should ship in the binary.
+# After sync-embed, run: make build && ./bin/strategist install --target <project>
+sync-embed:
+	@echo "[Strategist] syncing strategist/ → internal/embed/defaults/"
+	cp -f strategist/schemas/intake.schema.yaml                        internal/embed/defaults/schemas/
+	cp -f strategist/schemas/handoff-ranger-to-archivist.schema.yaml   internal/embed/defaults/schemas/
+	cp -f strategist/schemas/handoff-archivist-to-hunter.schema.yaml   internal/embed/defaults/schemas/
+	cp -f strategist/schemas/source-card.schema.yaml                   internal/embed/defaults/schemas/
+	cp -f strategist/skill.yaml                                        internal/embed/defaults/skill.yaml
+	cp -f strategist/treasure-chests.yaml                              internal/embed/defaults/treasure-chests.yaml
+	cp -f strategist/templates/discovery-artifact.md                   internal/embed/defaults/templates/
+	cp -f strategist/roles/ranger.yaml                                 internal/embed/defaults/roles/ranger.yaml
+	cp -f strategist/roles/archivist.yaml                              internal/embed/defaults/roles/archivist.yaml
+	cp -f strategist/roles/sniper.yaml                                 internal/embed/defaults/roles/sniper.yaml
+	@echo "[Strategist] sync done. Next: make build && ./bin/strategist install --target <project>"
 
 # release publishes to GitHub — requires GITHUB_TOKEN.
 release:
