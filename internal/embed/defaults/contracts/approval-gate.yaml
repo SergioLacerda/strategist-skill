@@ -25,6 +25,14 @@ contract:
     approve_aliases: [yes, approve, authorize, sim, autorizar]
     decline_aliases:  [no, decline, stop, nao, cancelar]
 
+  # approval_policy controls who can approve the gate.
+  # mode: any           — any positive alias is accepted (default, backward-compatible)
+  # mode: explicit_confirm — requires a confirmation phrase after the positive alias
+  #                          phrase: "confirmo execução de {mission_id}"
+  # mode: human_only    — heuristic detection of automated responses (phase 2, not yet enforced)
+  approval_policy:
+    mode: any
+
   on_approve:
     emit_format: "[Strategist] phase=approval_gate status=approved"
     emit_level: TRACE

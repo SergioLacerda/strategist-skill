@@ -39,6 +39,26 @@ contracts:
         type: file
         must_exist: true
 
+execution_slot:
+  optional_fields:
+    gates:
+      type: array
+      description: >
+        Audit trail of gates approved during the mission. Each entry captures the gate
+        type, the ISO 8601 timestamp when the approval was received, and the verbatim
+        user response. Written by the agent when recording outcomes.tmp.
+      items:
+        type: object
+        fields:
+          type:
+            type: enum
+            values: [approval_gate, adr_gate, quick_draw_gate]
+          approved_at:
+            type: string
+            format: iso8601
+          response:
+            type: string
+
 failure_output:
   description: >
     Optional fields emitted by a slot provider when it fails. Used by Strategist

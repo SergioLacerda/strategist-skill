@@ -5,6 +5,7 @@ package tests_test
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/compile"
@@ -14,6 +15,23 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func testDir(t *testing.T) string {
+	t.Helper()
+
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+
+	return filepath.Dir(file)
+}
+
+func repoRoot(t *testing.T) string {
+	t.Helper()
+
+	return filepath.Clean(filepath.Join(testDir(t), ".."))
+}
 
 func prepareE2ERoot(t *testing.T) string {
 	t.Helper()

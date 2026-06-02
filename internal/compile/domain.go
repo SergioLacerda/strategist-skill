@@ -21,7 +21,7 @@ func Domain(root, outputPath string) error {
 		return fmt.Errorf("compile domain: read index.yaml: %w", err)
 	}
 
-	var idx domainIndex
+	var idx DomainIndex
 	if err := yaml.Unmarshal(indexData, &idx); err != nil {
 		return fmt.Errorf("compile domain: parse index.yaml: %w", err)
 	}
