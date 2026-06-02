@@ -235,7 +235,7 @@ func TestEmitTaxonomyMandatoryVisibilityLevels(t *testing.T) {
 
 func TestBootstrapContractDefinesInvalidLocalProfileErrorCode(t *testing.T) {
 	t.Parallel()
-	bootstrapPath := filepath.Join(repoRoot(t), ".strategist", "contracts", "bootstrap.yaml")
+	bootstrapPath := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "bootstrap.yaml")
 	content := readFile(t, bootstrapPath)
 	if !strings.Contains(content, "invalid_local_profile") {
 		t.Fatalf("%s missing error_condition code \"invalid_local_profile\"", bootstrapPath)
@@ -245,7 +245,6 @@ func TestBootstrapContractDefinesInvalidLocalProfileErrorCode(t *testing.T) {
 func TestSkillDefinesMissingProfileDiagnosticsBlock(t *testing.T) {
 	t.Parallel()
 	for _, p := range []string{
-		filepath.Join(repoRoot(t), ".strategist", "skill.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "skill.yaml"),
 	} {
 		content := readFile(t, p)
@@ -258,7 +257,6 @@ func TestSkillDefinesMissingProfileDiagnosticsBlock(t *testing.T) {
 func TestSkillDefinesPersonaRenderMismatchForbiddenBehavior(t *testing.T) {
 	t.Parallel()
 	for _, p := range []string{
-		filepath.Join(repoRoot(t), ".strategist", "skill.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "skill.yaml"),
 	} {
 		content := readFile(t, p)
@@ -271,7 +269,6 @@ func TestSkillDefinesPersonaRenderMismatchForbiddenBehavior(t *testing.T) {
 func TestApprovalGateContractDefinesEmitOnShow(t *testing.T) {
 	t.Parallel()
 	for _, p := range []string{
-		filepath.Join(repoRoot(t), ".strategist", "contracts", "approval-gate.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "approval-gate.yaml"),
 	} {
 		content := readFile(t, p)
@@ -284,7 +281,6 @@ func TestApprovalGateContractDefinesEmitOnShow(t *testing.T) {
 func TestContextEnrichmentDefinesTreasureChestLoadedNone(t *testing.T) {
 	t.Parallel()
 	for _, p := range []string{
-		filepath.Join(repoRoot(t), ".strategist", "contracts", "context-enrichment.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "context-enrichment.yaml"),
 	} {
 		content := readFile(t, p)
@@ -297,7 +293,6 @@ func TestContextEnrichmentDefinesTreasureChestLoadedNone(t *testing.T) {
 func TestComplianceSummaryDefinesPhaseCounters(t *testing.T) {
 	t.Parallel()
 	for _, p := range []string{
-		filepath.Join(repoRoot(t), ".strategist", "contracts", "compliance-summary.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "compliance-summary.yaml"),
 	} {
 		content := readFile(t, p)
@@ -315,7 +310,6 @@ func TestMissionMetricsSignalPresent(t *testing.T) {
 	files := []string{
 		filepath.Join(testDir(t), "..", "schemas", "progress-contract.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "schemas", "progress-contract.yaml"),
-		filepath.Join(repoRoot(t), ".strategist", "contracts", "intake.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "intake.yaml"),
 	}
 	for _, path := range files {
