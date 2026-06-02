@@ -20,4 +20,8 @@ type Installer interface {
 // default are preserved (merge mode). When force is true, all files are overwritten.
 type FileExtractor interface {
 	Extract(targetDir string, force bool) error
+	// ReadFile reads a single file from the embedded default FS without touching disk.
+	// relPath is relative to the defaults root (e.g. "templates/epic-standalone.yaml").
+	// Use this instead of reading from .strategist/ — that directory is write-only.
+	ReadFile(relPath string) ([]byte, error)
 }
