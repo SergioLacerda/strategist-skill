@@ -97,6 +97,43 @@ fields:
           - depois
           - sem prioridade
 
+  token_strategy:
+    description: >
+      Execution mode inferred by prompt-intake from task_type and uncertainty signals.
+      Never set by the user. Determines context budget, chest limits, and triage gate.
+    inferred: true
+    fields:
+      mode:
+        values: [lean, balanced, deep]
+        default: balanced
+        description: >
+          lean = simple bug/task, balanced = common feature (default), deep = ambiguous/architecture
+      uncertainty_level:
+        values: [low, medium, high]
+        default: medium
+      pressure_score:
+        type: integer
+        description: Sum of uncertainty signals triggered. Auditable.
+      signals_triggered:
+        type: list
+        description: Which signal rules fired during inference.
+      context_policy:
+        fields:
+          max_sources:
+            lean: 2
+            balanced: 4
+            deep: 8
+          max_excerpt_tokens: 450
+          require_source_justification: true
+      triage_gate:
+        fields:
+          blocked:
+            type: boolean
+            default: false
+          blocking_question:
+            type: string
+            description: Present only when blocked=true. One question, highest-priority missing item.
+
 confidence_threshold: 0.65
 
 conflict_behavior: >

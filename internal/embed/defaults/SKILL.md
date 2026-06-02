@@ -33,7 +33,10 @@ You do not perform discovery, refinement, or execution yourself — you delegate
 > **Taxonomy:** `output-profiles/emit-taxonomy.yaml`
 > **Profiles:** `output-profiles/profiles/<name>.yaml`
 
-Flag `--output=default|verbose|full` (loaded at §1 Bootstrap). Before each emit, check:
+Flag `--speed=fast|balanced|full` controls mission pacing. `balanced` is the default. `fast`
+minimizes narrative and skips non-blocking phases. `full` keeps complete telemetry.
+
+Flag `--output=default|verbose|full` (loaded at §1 Bootstrap) still controls visibility. Before each emit, check:
 `if emit_level >= output_threshold: emit`. OTEL export is **never** filtered.
 
 | Profile | Threshold | Visible |

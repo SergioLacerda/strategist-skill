@@ -259,6 +259,21 @@ Define os campos de restrição reconhecidos pelo `prompt-intake` e seus aliases
 `execution_intent: execute` → "executar", "implementar", "aplicar", "rodar", "fazer"  
 `execution_intent: review_only` → "só análise", "sem execução", "apenas revisar", "só plano"
 
+---
+
+## Métricas de performance e baseline
+
+As métricas canônicas para otimização de performance do Strategist são:
+
+- `t_start_to_intake_ms`
+- `t_intake_to_ranger_ms`
+- `total_wall_time_ms`
+- `tokens_in`
+- `tokens_out`
+- `lines_emitted`
+
+O baseline atual deve ser registrado em `.analysis/refined/2026-06-01-performance-baseline-metrics.md` e atualizado sempre que houver mudança de contrato, telemetria ou política de emissão que possa alterar custo percebido.
+
 `confidence_threshold: 0.65` — aliases com confiança abaixo deste valor recebem o default.
 
 ### progress-contract.yaml

@@ -171,10 +171,11 @@ func TestSkillProfileResolutionContractPresent(t *testing.T) {
 		"name: profile",
 		"default: local",
 		"allowed: [local]",
-		"missing_required_telemetry",
-		"missing_profile_diagnostics",
-		"persona_render_mismatch",
-		"required_chat_evidence:",
+		"name: mode",
+		"name: speed",
+		"default: balanced",
+		"values: [fast, balanced, full]",
+		"speed_mode:",
 	}
 	for _, needle := range mustContain {
 		if !strings.Contains(skill, needle) {
@@ -219,6 +220,8 @@ func TestEmitTaxonomyMandatoryVisibilityLevels(t *testing.T) {
 		"opportunity_attack_done:     INFO",
 		"treasure_chest_found:        INFO",
 		"compliance_summary:          INFO",
+		"Speed policy bridge:",
+		"- balanced -> default mission flow, default profile threshold",
 	}
 	for _, line := range assertions {
 		if !strings.Contains(content, line) {
