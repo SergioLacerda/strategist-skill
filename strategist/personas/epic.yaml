@@ -19,6 +19,13 @@ tone_directive: >
 
 progress_prefix: "[Strategist]"
 
+diagnostics:
+  format: compact
+  pipeline_header: |
+    ⚔️  [Strategist] pipeline=starting mission_id={id} profile_mode={mode} persona=epic output={output}
+  bootstrap_origin: |
+    [Strategist] profile_path={path} active_yaml={active} reason={reason}
+
 role_emoji:
   ranger: "🎯"
   archivist: "📚"
