@@ -50,7 +50,7 @@ contract:
 
   fast_path:
     artifact: .strategist/.compiled/.domain.gz
-    check: sh .strategist/scripts/check-stale.sh .strategist/.compiled/.domain.gz
+    check: strategist check-stale .strategist/.compiled/.domain.gz
     log_fresh: "[Strategist] preflight=fast_path"
     log_stale: "[Strategist] preflight=standard_path"
 

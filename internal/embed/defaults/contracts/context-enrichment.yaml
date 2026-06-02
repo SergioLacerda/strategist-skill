@@ -72,7 +72,7 @@ contract:
 
   fast_path:
     artifact: .strategist/.compiled/.index.gz
-    check: sh .strategist/scripts/check-stale.sh .strategist/.compiled/.index.gz
+    check: strategist check-stale .strategist/.compiled/.index.gz
     query: "gunzip -c .strategist/.compiled/.index.gz | jq -r '.tags[\"<task_type>\"][]'"
     log_fresh: "[Strategist] context_enrichment=fast_path"
     log_stale: "[Strategist] context_enrichment=standard_path"

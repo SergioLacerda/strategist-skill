@@ -190,6 +190,43 @@ func TestForceMode_OverwritesUserModified(t *testing.T) {
 	assert.Equal(t, embedded, got, "force mode must overwrite user-modified files")
 }
 
+// errOpenFS wraps MapFS but makes Open return an error for a specific file path,
+// so fs.ReadFile fails inside writeEmbedFile while WalkDir still enumerates the entry.
+type errOpenFS struct {
+	fstest.MapFS
+	failPath string
+}
+
+func (e errOpenFS) Open(name string) (fs.File, error) {
+	if name == e.failPath {
+		return nil, os.ErrPermission
+	}
+	return e.MapFS.Open(name)
+}
+
+// ReadFile overrides the promoted MapFS.ReadFile so that fs.ReadFile (which prefers
+// ReadFileFS) also hits the error path for failPath.
+func (e errOpenFS) ReadFile(name string) ([]byte, error) {
+	if name == e.failPath {
+		return nil, os.ErrPermission
+	}
+	return e.MapFS.ReadFile(name)
+}
+
+func TestWriteEmbedFile_ReadError(t *testing.T) {
+	t.Parallel()
+	mem := errOpenFS{
+		MapFS: fstest.MapFS{
+			"root/file.yaml": {Data: []byte("x: 1\n")},
+		},
+		failPath: "root/file.yaml",
+	}
+	dir := t.TempDir()
+	err := extractFS(mem, "root", dir, false)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "embed: read")
+}
+
 // TestUserModified_NonExistent verifies userModified returns false for a file that
 // doesn't exist on disk (not yet installed — not a user modification).
 func TestUserModified_NonExistent(t *testing.T) {

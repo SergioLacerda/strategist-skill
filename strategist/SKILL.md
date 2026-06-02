@@ -67,7 +67,7 @@ On every invocation, before any other action:
 **Fast path (if compiled artifacts are present and fresh):**
 
 ```sh
-sh .strategist/scripts/check-stale.sh .strategist/.compiled/.config.gz
+strategist check-stale .strategist/.compiled/.config.gz
 ```
 
 If exit code is `0` (fresh):
@@ -132,7 +132,7 @@ Before invoking any slot or starting intake, run preflight in full. Stop on firs
 **Fast path (if compiled artifacts are present and fresh):**
 
 ```sh
-sh .strategist/scripts/check-stale.sh .strategist/.compiled/.domain.gz
+strategist check-stale .strategist/.compiled/.domain.gz
 ```
 
 If exit code is `0` (fresh):
@@ -259,7 +259,7 @@ Invoke `context-enrichment` skill with `task_type` and the mission's token budge
 **Fast path (if compiled index is present and fresh):**
 
 ```sh
-sh .strategist/scripts/check-stale.sh .strategist/.compiled/.index.gz
+strategist check-stale .strategist/.compiled/.index.gz
 ```
 
 If exit code is `0` (fresh):

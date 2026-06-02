@@ -492,6 +492,39 @@ func TestInstall_ShimError(t *testing.T) {
 	assert.ErrorContains(t, err, "shim")
 }
 
+func TestInstallOptionalShims_GeminiAndCodex(t *testing.T) {
+	t.Parallel()
+	home := t.TempDir()
+	// Pre-create ~/.gemini/ and ~/.codex/ to trigger optional shim installation.
+	require.NoError(t, os.MkdirAll(filepath.Join(home, ".gemini"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(home, ".codex"), 0o755))
+
+	installOptionalShims(home, "# SKILL", "")
+
+	expectedPaths := []string{
+		filepath.Join(home, ".gemini", "skills", "strategist", "SKILL.md"),
+		filepath.Join(home, ".gemini", "antigravity", "skills", "strategist", "SKILL.md"),
+		filepath.Join(home, ".codex", "skills", "strategist", "SKILL.md"),
+	}
+	for _, p := range expectedPaths {
+		data, err := os.ReadFile(p)
+		require.NoError(t, err, "shim should exist at %s", p)
+		assert.Contains(t, string(data), "# SKILL", "shim content at %s", p)
+	}
+}
+
+func TestInstallOptionalShims_SkipsWhenDirAbsent(t *testing.T) {
+	t.Parallel()
+	home := t.TempDir() // no .gemini or .codex dirs
+
+	installOptionalShims(home, "# SKILL", "")
+
+	for _, dir := range []string{".gemini", ".codex"} {
+		_, err := os.Stat(filepath.Join(home, dir))
+		assert.True(t, os.IsNotExist(err), "optional dir %s should not be created", dir)
+	}
+}
+
 func TestInstall_GitignoreError(t *testing.T) {
 	t.Parallel()
 	if os.Getuid() == 0 {
