@@ -10,6 +10,41 @@ import (
 
 var langOptions = []string{"en", "pt-BR"}
 
+// knownProviderRisk maps provider ids to their declared risk_score.
+// Kept in sync with strategist/templates/known-providers.yaml.
+var knownProviderRisk = map[string]string{
+	"brainstorming":           "write_pending",
+	"openspec-explore":        "write_analysis",
+	"openspec-propose":        "write_analysis",
+	"openspec-apply-change":   "controlled",
+	"openspec-archive-change": "write_analysis",
+	"sdd-ask":                 "controlled",
+	"sdd-ask-full":            "controlled",
+	"sdd-diagnose":            "write_analysis",
+	"sdd-converge":            "controlled",
+	"sdd-correct":             "controlled",
+	"sdd-stabilize":           "controlled",
+	"sdd-validate-governance": "write_analysis",
+	"sdd-organize":            "write_analysis",
+	"sdd-review-architecture": "write_analysis",
+	"archivist":               "write_analysis",
+}
+
+// validateProvider returns a non-empty warning if provider is unknown or its
+// declared risk_score does not match the expected risk for the slot.
+func validateProvider(provider, expectedRisk string) string {
+	risk, ok := knownProviderRisk[provider]
+	if !ok {
+		return fmt.Sprintf("⚠  provider %q is not in the known-providers registry — "+
+			"ensure its skill.yaml declares risk_score: %s", provider, expectedRisk)
+	}
+	if risk != expectedRisk {
+		return fmt.Sprintf("⚠  provider %q has risk_score %q but slot requires %q — "+
+			"preflight will block at runtime", provider, risk, expectedRisk)
+	}
+	return ""
+}
+
 // runWizard collects install configuration through p.
 func runWizard(p Prompter) (domain.WizardConfig, error) {
 	// Prompt 1 — bilingual, bundle not yet chosen
@@ -70,15 +105,24 @@ func runWizard(p Prompter) (domain.WizardConfig, error) {
 	if err != nil {
 		return domain.WizardConfig{}, fmt.Errorf("wizard: discovery: %w", err)
 	}
+	if w := validateProvider(discovery, "write_pending"); w != "" {
+		fmt.Println(w)
+	}
 
 	refinement, err := p.SelectOrInput(b.PromptRefinement, "openspec-explore", []string{"openspec-explore"}, b.LabelCustomInput)
 	if err != nil {
 		return domain.WizardConfig{}, fmt.Errorf("wizard: refinement: %w", err)
 	}
+	if w := validateProvider(refinement, "write_analysis"); w != "" {
+		fmt.Println(w)
+	}
 
 	execution, err := p.SelectOrInput(b.PromptExecution, "sdd-ask", []string{"sdd-ask", "sdd-ask-full"}, b.LabelCustomInput)
 	if err != nil {
 		return domain.WizardConfig{}, fmt.Errorf("wizard: execution: %w", err)
+	}
+	if w := validateProvider(execution, "controlled"); w != "" {
+		fmt.Println(w)
 	}
 
 	fmt.Println(b.HeaderChest)

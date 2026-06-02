@@ -10,6 +10,30 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestExtractor_ReadFile(t *testing.T) {
+	t.Parallel()
+	t.Run("reads embedded file successfully", func(t *testing.T) {
+		t.Parallel()
+		data, err := embedpkg.Extractor{}.ReadFile("SKILL.md")
+		require.NoError(t, err)
+		assert.NotEmpty(t, data)
+	})
+
+	t.Run("returns error for missing file", func(t *testing.T) {
+		t.Parallel()
+		_, err := embedpkg.Extractor{}.ReadFile("nonexistent/file.yaml")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "embed: read")
+	})
+
+	t.Run("reads template file successfully", func(t *testing.T) {
+		t.Parallel()
+		data, err := embedpkg.Extractor{}.ReadFile("templates/epic-standalone.yaml")
+		require.NoError(t, err)
+		assert.Contains(t, string(data), "mode:")
+	})
+}
+
 func TestExtractor_Extract_ReadOnlyTarget(t *testing.T) {
 	t.Parallel()
 	if os.Getuid() == 0 {

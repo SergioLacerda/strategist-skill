@@ -78,6 +78,6 @@ contract:
 
   fast_path:
     artifact: .strategist/.compiled/.config.gz
-    check: sh .strategist/scripts/check-stale.sh .strategist/.compiled/.config.gz
+    check: strategist check-stale .strategist/.compiled/.config.gz
     log_fresh: "[Strategist] bootstrap=fast_path"
     log_stale: "[Strategist] bootstrap=standard_path"
