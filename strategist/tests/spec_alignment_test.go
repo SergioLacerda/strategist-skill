@@ -330,3 +330,43 @@ func TestMissionMetricsSignalPresent(t *testing.T) {
 		}
 	}
 }
+
+func TestE2EFeatureFilesCoverHappyPathContracts(t *testing.T) {
+	t.Parallel()
+
+	files := map[string][]string{
+		filepath.Join(testDir(t), "specs", "e2e-happy-path.feature"): []string{
+			"Ranger consults treasure chests",
+			"Ranger runs opportunity attack",
+			"Archivist runs opportunity attack",
+			"approval gate",
+		},
+		filepath.Join(testDir(t), "specs", "e2e-approval-gate.feature"): []string{
+			"mission result is completed",
+			"plan_only",
+			"Sniper is not invoked",
+		},
+		filepath.Join(testDir(t), "specs", "e2e-treasure-chests.feature"): []string{
+			"treasure chests",
+			"treasure_chests=none",
+		},
+		filepath.Join(testDir(t), "specs", "e2e-opportunity-attack.feature"): []string{
+			"opportunity attack",
+			"approval gate",
+		},
+		filepath.Join(testDir(t), "specs", "e2e-install-compile.feature"): []string{
+			"customized active.yaml",
+			"--force",
+			"check-stale reports the compiled config as fresh",
+		},
+	}
+
+	for path, needles := range files {
+		content := readFile(t, path)
+		for _, needle := range needles {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing %q", path, needle)
+			}
+		}
+	}
+}
