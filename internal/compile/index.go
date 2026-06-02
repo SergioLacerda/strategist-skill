@@ -18,7 +18,7 @@ func Index(knowledgeIndexPath, outputPath string) error {
 		return fmt.Errorf("compile index: read %s: %w", knowledgeIndexPath, err)
 	}
 
-	var ki knowledgeIndex
+	var ki KnowledgeIndex
 	if err := yaml.Unmarshal(data, &ki); err != nil {
 		return fmt.Errorf("compile index: parse yaml: %w", err)
 	}

@@ -62,6 +62,99 @@ Slot failures are classified into two types. The slot provider declares the type
 
 ---
 
+## Recovery Playbook
+
+### Retry event
+
+When a slot fails with `failure_type=transient`, Strategist emits before re-invocation:
+
+```
+[Strategist] phase=<slot> status=retrying attempt=1 reason=transient
+```
+
+If the second invocation fails:
+
+```
+[Strategist] phase=<slot> status=blocked reason=<failure_type> retry_exhausted=true
+```
+
+### State after Sniper mid-execution failure
+
+If Sniper fails during execution, the resulting state is `execution_partial`. Strategist emits:
+
+```
+[Strategist] phase=sniper status=blocked tasks_completed=N tasks_total=M reason=<code>
+```
+
+Sniper is **not** retried automatically. To continue: diagnose the root cause, correct if
+needed, then re-invoke Sniper with explicit approval on the remaining tasks.
+
+### Troubleshooting by block code
+
+| Code | Likely cause | User action |
+|------|--------------|-------------|
+| `slot_provider_not_found` | skill.yaml missing or provider not installed | `strategist install --wizard` |
+| `slot_write_scope_violation` | slot attempted write outside authorized scope | review tasks.md; report if unexpected |
+| `contract_input_missing` | required input not provided at mission start | re-invoke with full context |
+| `slot_risk_mismatch` | provider has incorrect risk_score for the slot | check skill.yaml of the provider |
+
+---
+
+## Approval Policy
+
+The `approval_policy` field in `approval-gate.yaml` controls what constitutes a valid approval.
+Three modes are defined:
+
+| Mode | Behavior | Default? |
+|------|----------|----------|
+| `any` | Any positive alias is accepted — current behavior | yes |
+| `explicit_confirm` | Requires a specific confirmation phrase after the alias | no (opt-in) |
+| `human_only` | Heuristic detection of automated responses — phase 2, not enforced yet | no |
+
+### `explicit_confirm` dialog
+
+When `approval_policy.mode: explicit_confirm`, after a positive alias response the gate
+re-prompts:
+
+```
+Para confirmar, escreva: confirmo execução de <mission_id>
+```
+
+- If the phrase matches: gate approved, proceed to Sniper.
+- If the phrase does not match: gate re-prompts (maximum 2 attempts total).
+- After 2 failed confirmation attempts: mission closes with `plan_only` status.
+
+The confirmation phrase can be overridden via `approval_policy.explicit_phrase` in the contract.
+
+### `human_only` (phase 2 — not yet enforced)
+
+Planned heuristics: bot-origin header detection, response latency < 500ms.
+These are optional and configurable — never block by default in current implementation.
+
+---
+
+## Learning Phase
+
+When a mission completes (regardless of whether Sniper ran), the agent records an outcome
+entry in `.strategist/memory/outcomes.tmp`. The entry MUST be valid JSON on a single line.
+
+**Required fields:** `mission_id`, `status`, `timestamp` (ISO 8601).
+
+**Gate audit fields:** include a `gates` array with one entry per gate that was approved
+during the mission. Each entry must have:
+- `type`: one of `approval_gate`, `adr_gate`, `quick_draw_gate`
+- `approved_at`: ISO 8601 timestamp captured at the moment the user response was received
+- `response`: verbatim user response (e.g. `"sim"`, `"yes"`)
+
+Example:
+```json
+{"mission_id": "20260602-example", "status": "completed", "timestamp": "2026-06-02T12:00:00Z", "gates": [{"type": "approval_gate", "approved_at": "2026-06-02T12:01:30Z", "response": "sim"}]}
+```
+
+If no gates were approved (e.g. plan_only missions), omit the `gates` field or use `[]`.
+
+---
+
 ## Learning Phase Failure
 
 If any skill in the learning phase (prompt-intake, context-enrichment, dossier-builder, response-critic, learning-curator) fails or times out:
