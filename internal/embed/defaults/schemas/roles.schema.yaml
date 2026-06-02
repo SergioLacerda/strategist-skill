@@ -1,0 +1,23 @@
+schema: roles-config
+version: "1.0"
+description: Required fields for roles configuration used by Strategist.
+
+required_fields:
+  - discovery
+  - refinement
+  - execution
+
+field_rules:
+  discovery:
+    type: string
+    non_empty: true
+  refinement:
+    type: string
+    non_empty: true
+  execution:
+    type: string
+    non_empty: true
+
+on_validation_error:
+  emit_format: "[Strategist] phase=preflight status=blocked reason=yaml_validation_failed file=<path> field=<field>"
+  action: stop

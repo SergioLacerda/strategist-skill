@@ -22,6 +22,7 @@ var (
 	installTarget string
 	installSilent bool
 	installWizard bool
+	installGlobal bool
 	installForce  bool
 )
 
@@ -32,7 +33,15 @@ var installCmd = &cobra.Command{
 }
 
 func runInstall(cmd *cobra.Command, _ []string) (retErr error) {
-	if installTarget == "" {
+	if installGlobal {
+		if installTarget == "" {
+			home, err := os.UserHomeDir()
+			if err != nil {
+				return fmt.Errorf("install: resolve home dir: %w", err)
+			}
+			installTarget = home
+		}
+	} else if installTarget == "" {
 		installTarget = "."
 	}
 
@@ -68,6 +77,7 @@ func runInstall(cmd *cobra.Command, _ []string) (retErr error) {
 		Target: installTarget,
 		Silent: installSilent,
 		Wizard: installWizard,
+		Global: installGlobal,
 		Force:  installForce,
 	}
 
@@ -82,7 +92,8 @@ func runInstall(cmd *cobra.Command, _ []string) (retErr error) {
 
 func init() {
 	installCmd.Flags().StringVar(&installTarget, "target", "", "target repository root (default: current directory)")
-	installCmd.Flags().BoolVar(&installSilent, "silent", false, "silent install with pragmatic defaults (default)")
+	installCmd.Flags().BoolVar(&installSilent, "silent", false, "silent install with epic defaults (default)")
 	installCmd.Flags().BoolVar(&installWizard, "wizard", false, "interactive wizard for configuration")
+	installCmd.Flags().BoolVar(&installGlobal, "global", false, "install into global root (default: local project)")
 	installCmd.Flags().BoolVar(&installForce, "force", false, "overwrite all files, including user-modified ones (default: preserve customizations)")
 }

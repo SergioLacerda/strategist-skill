@@ -70,6 +70,9 @@ curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main
   | bash -s -- --version=v1.0.0
 ```
 
+> Aviso de segurança: `curl | bash` executa código remoto diretamente.
+> Em produção, prefira sempre instalar com versão fixada (`--version=vX.Y.Z`) para manter verificabilidade.
+
 Reconfigurar:
 
 ```bash

@@ -79,7 +79,7 @@ C4Component
         Component(stale_pkg, "internal/stale", "Go", "Checker.IsStale: abre o .gz, lê sources map, compara mtime de cada fonte com o valor registrado")
     }
 
-    Rel(cmd, install_pkg, "install, install-global → Service.Install(InstallConfig)")
+    Rel(cmd, install_pkg, "install → Service.Install(InstallConfig)")
     Rel(cmd, compile_pkg, "compile → Compiler.CompileAll(root, indexPath)")
     Rel(cmd, stale_pkg, "check-stale → Checker.IsStale(artifactPath)")
     Rel(cmd, domain, "constrói InstallConfig, WizardConfig")

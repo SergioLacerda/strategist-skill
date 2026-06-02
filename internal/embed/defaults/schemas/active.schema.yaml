@@ -1,0 +1,26 @@
+schema: active-config
+version: "1.0"
+description: Required fields for `.strategist/active.yaml` preflight validation.
+
+file: .strategist/active.yaml
+
+required_fields:
+  - mode
+  - base_path
+  - roles_config
+
+field_rules:
+  mode:
+    type: string
+    non_empty: true
+  base_path:
+    type: string
+    non_empty: true
+  roles_config:
+    type: string
+    non_empty: true
+    description: Relative path to the roles mapping YAML used by Strategist.
+
+on_validation_error:
+  emit_format: "[Strategist] phase=preflight status=blocked reason=yaml_validation_failed file=<path> field=<field>"
+  action: stop

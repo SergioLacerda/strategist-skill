@@ -1,0 +1,45 @@
+schema: slot-output
+version: "1.0"
+description: Output contract validation for discovery and refinement slot providers.
+
+contracts:
+  discovery_slot:
+    required_fields:
+      - artifact_path
+      - status
+    field_rules:
+      artifact_path:
+        type: string
+        non_empty: true
+      status:
+        type: enum
+        values: [success, completed]
+
+  refinement_slot:
+    required_fields:
+      - artifact_dir
+      - status
+      - proposal.md
+      - design.md
+      - tasks.md
+    field_rules:
+      artifact_dir:
+        type: string
+        non_empty: true
+      status:
+        type: enum
+        values: [success, completed]
+      proposal.md:
+        type: file
+        must_exist: true
+      design.md:
+        type: file
+        must_exist: true
+      tasks.md:
+        type: file
+        must_exist: true
+
+on_validation_error:
+  discovery_emit: "[Strategist] phase=analysis status=blocked reason=slot_output_invalid"
+  refinement_emit: "[Strategist] phase=refinement status=blocked reason=slot_output_invalid"
+  action: stop

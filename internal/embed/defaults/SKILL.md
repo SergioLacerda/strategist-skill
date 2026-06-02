@@ -54,7 +54,25 @@ Check buffer and flush if threshold reached. Absent file → skip (not an error)
 ## §1 Bootstrap
 > **Contract:** `contracts/bootstrap.yaml`
 
+### Config Source Precedence
+
+Configuration source is resolved in this order:
+1. `skill_root` from shim frontmatter (project-local profile when provided)
+2. Directory containing this `SKILL.md`
+
+Profile flag behavior:
+- `--profile=local` (default): requires a valid local profile; if invalid, emit blocked and stop
+
+All relative config paths (`active.yaml`, `personas/`, `roles/`, `schemas/`) resolve from the chosen source.
+
 Load config, persona, slots. Read `--output` flag → load output profile → store `output_threshold`.
+Emit runtime source evidence at startup:
+- `profile_mode=<local>`
+- `profile_path=<abs_path>`
+- `active_yaml=<abs_path>`
+- `persona_resolved=<epic|pragmatic>`
+- `reason=<local_default|explicit_global_flag>`
+- `roles_config=<resolved_value>`
 On failure: emit blocked event, stop.
 
 ---
@@ -63,6 +81,12 @@ On failure: emit blocked event, stop.
 > **Contract:** `contracts/preflight.yaml`
 
 Resolve slot providers, validate risk contracts, declare governance mode.
+Run `2a.validate` immediately after config load:
+- validate `active.yaml` against `schemas/active.schema.yaml` (`mode`, `base_path`, `roles_config`)
+- validate roles mapping against `schemas/roles.schema.yaml` (`discovery`, `refinement`, `execution`)
+If validation fails, emit:
+`[Strategist] phase=preflight status=blocked reason=yaml_validation_failed file=<path> field=<field>`
+and STOP.
 On failure: emit blocked event, stop.
 
 ---
@@ -105,6 +129,11 @@ Gate is mandatory — no write before sim/nao response.
 > **Treasure chests:** scope=`discovery` or `all`
 
 Emit `ranger_start`. Invoke discovery slot. Write artifact. Run opportunity attack.
+Before `ranger_done`, validate slot output against
+`schemas/slot-output.schema.yaml#contracts.discovery_slot`.
+If invalid, emit:
+`[Strategist] phase=analysis status=blocked reason=slot_output_invalid`
+and STOP.
 Emit `ranger_done`.
 
 ### §5e Archivist
@@ -112,6 +141,11 @@ Emit `ranger_done`.
 > **Treasure chests:** scope=`refinement` or `all`
 
 Emit `archivist_start`. Invoke refinement slot. Write three-file artifact subdirectory.
+Before `archivist_done`, validate slot output against
+`schemas/slot-output.schema.yaml#contracts.refinement_slot`.
+If invalid, emit:
+`[Strategist] phase=refinement status=blocked reason=slot_output_invalid`
+and STOP.
 Run opportunity attack (side_quest detection). Emit `archivist_done`.
 If `tasks.md` empty after Archivist: **do not invoke Sniper**.
 
@@ -121,6 +155,10 @@ If `tasks.md` empty after Archivist: **do not invoke Sniper**.
 > **Contract:** `contracts/approval-gate.yaml`
 
 **STOP. Present plan. Wait for response.** Sniper is **never** invoked without this gate.
+Gate payload must include:
+- `artifact_path`
+- `mission_tasks_summary` (checklist/todo summary from `tasks.md`)
+- `side_quests_list` (or `none`)
 
 - `yes/approve/sim` → emit approved, update checkpoint, proceed to Sniper
 - `no/decline/nao` → emit `plan_only`, proceed to §8 ADR (mission ends as `plan_only`)
@@ -157,6 +195,9 @@ Failure never affects mission result.
 > **Contract:** `contracts/compliance-summary.yaml`
 
 Always emitted. Always INFO level. Final element before mission result.
+If required evidence is missing, emit:
+`[Strategist] phase=compliance status=blocked reason=missing_required_telemetry`
+and mark mission as blocked.
 
 ---
 

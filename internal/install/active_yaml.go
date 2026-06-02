@@ -11,7 +11,7 @@ import (
 )
 
 // writeActiveYAML writes active.yaml to strategistDir from wizard config values.
-// In silent mode (no wizard), the extract step already copied the template
+// In silent mode (no wizard), the extract step already copied the selected template
 // active.yaml from defaults, so nothing extra is needed.
 func writeActiveYAML(strategistDir string, wc domain.WizardConfig) error {
 	missionMode := wc.MissionMode
@@ -31,6 +31,7 @@ func writeActiveYAML(strategistDir string, wc domain.WizardConfig) error {
 
 	content := fmt.Sprintf(`mode: %s
 base_path: %s
+roles_config: roles/default.yaml
 knowledge_index_path: knowledge.index.yaml
 language:
   ui: %s

@@ -35,7 +35,7 @@ type Service struct {
 }
 
 // Install installs the skill into cfg.Target. In silent mode it extracts defaults
-// and writes active.yaml from the pragmatic template. In wizard mode it prompts
+// and writes active.yaml from the epic template. In wizard mode it prompts
 // the user for configuration before writing active.yaml.
 //
 // On failure, Install removes any files and directories it created, restoring the
@@ -63,21 +63,15 @@ func (s Service) Install(ctx context.Context, cfg domain.InstallConfig) error {
 	}
 	manifest = append(manifest, filepath.Join(strategistDir, "active.yaml"))
 
-	gitignorePath := filepath.Join(cfg.Target, ".gitignore")
-	gitignoreExisted := fileExists(gitignorePath)
-	if err := ensureGitignore(cfg.Target); err != nil {
-		return fmt.Errorf("install: gitignore: %w", err)
-	}
-	if !gitignoreExisted {
-		manifest = append(manifest, gitignorePath)
-	}
-
-	globalDir, globalDirCreated, err := s.installGlobalRuntime(ctx)
-	if err != nil {
-		return fmt.Errorf("install: global runtime: %w", err)
-	}
-	if globalDirCreated {
-		manifest = append(manifest, globalDir)
+	if !cfg.Global {
+		gitignorePath := filepath.Join(cfg.Target, ".gitignore")
+		gitignoreExisted := fileExists(gitignorePath)
+		if err := ensureGitignore(cfg.Target); err != nil {
+			return fmt.Errorf("install: gitignore: %w", err)
+		}
+		if !gitignoreExisted {
+			manifest = append(manifest, gitignorePath)
+		}
 	}
 
 	shimPath, err := s.installShimStep(ctx, cfg.Target)
@@ -97,11 +91,11 @@ func (s Service) Install(ctx context.Context, cfg domain.InstallConfig) error {
 	return nil
 }
 
-// applyConfig writes active.yaml either from the pragmatic template (silent) or
+// applyConfig writes active.yaml either from the epic template (silent) or
 // from wizard input.
 func (s Service) applyConfig(strategistDir string, cfg domain.InstallConfig) error {
 	if !cfg.Wizard {
-		if err := copyTemplate(strategistDir, "templates/pragmatic-standalone.yaml", "active.yaml"); err != nil {
+		if err := copyTemplate(strategistDir, "templates/epic-standalone.yaml", "active.yaml"); err != nil {
 			return fmt.Errorf("install: copy template: %w", err)
 		}
 		return nil
@@ -145,32 +139,10 @@ func (s Service) resolvePrompter() Prompter {
 	return NewTextPrompter(stdin)
 }
 
-// installGlobalRuntime populates ~/.strategist/ with the skill runtime files so
-// the agent shim can resolve SKILL.md, contracts/, and related directories.
-// Called on every install because the shim always points to ~/.strategist/;
-// an absent directory leaves the shim broken.
-// Returns the global dir path, whether it was newly created, and any error.
-func (s Service) installGlobalRuntime(ctx context.Context) (globalDir string, created bool, err error) {
-	homeDir := s.ShimHomeDir
-	if homeDir == "" {
-		homeDir, err = os.UserHomeDir()
-		if err != nil {
-			return "", false, fmt.Errorf("home dir: %w", err)
-		}
-	}
-	globalDir = filepath.Join(homeDir, ".strategist")
-	alreadyExisted := fileExists(globalDir)
-	if err = s.Extractor.Extract(globalDir, true); err != nil {
-		return globalDir, !alreadyExisted, fmt.Errorf("extract global runtime: %w", err)
-	}
-	slog.InfoContext(ctx, "[Strategist] global runtime installed", "dir", globalDir)
-	return globalDir, !alreadyExisted, nil
-}
-
-// installShimStep reads ~/.strategist/SKILL.md and writes the full shim.
+// installShimStep reads target/.strategist/SKILL.md and writes the full shim.
 // Returns the shim path for rollback tracking.
 func (s Service) installShimStep(ctx context.Context, target string) (string, error) {
-	skillContent, err := s.readGlobalSKILLMD(ctx)
+	skillContent, err := s.readLocalSKILLMD(ctx, target)
 	if err != nil {
 		return "", fmt.Errorf("install: read SKILL.md: %w", err)
 	}
@@ -184,21 +156,12 @@ func (s Service) installShimStep(ctx context.Context, target string) (string, er
 	return shimPath, nil
 }
 
-// readGlobalSKILLMD reads the SKILL.md that installGlobalRuntime just extracted.
-// Returns a fatal error if the file is absent — installGlobalRuntime must have created it.
-func (s Service) readGlobalSKILLMD(ctx context.Context) (string, error) {
-	homeDir := s.ShimHomeDir
-	if homeDir == "" {
-		var err error
-		homeDir, err = os.UserHomeDir()
-		if err != nil {
-			return "", fmt.Errorf("home dir: %w", err)
-		}
-	}
-	path := filepath.Join(homeDir, ".strategist", "SKILL.md")
+// readLocalSKILLMD reads target/.strategist/SKILL.md extracted in this install run.
+func (s Service) readLocalSKILLMD(ctx context.Context, target string) (string, error) {
+	path := filepath.Join(target, ".strategist", "SKILL.md")
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return "", fmt.Errorf("read global SKILL.md: %w", err)
+		return "", fmt.Errorf("read local SKILL.md: %w", err)
 	}
 	slog.InfoContext(ctx, "[Strategist] SKILL.md read for shim", "path", path)
 	return string(data), nil
@@ -207,7 +170,15 @@ func (s Service) readGlobalSKILLMD(ctx context.Context) (string, error) {
 // installShimFor installs the shim, using ShimHomeDir if set (for tests).
 func (s Service) installShimFor(target, skillContent string) error {
 	if s.ShimHomeDir != "" {
-		return installShimTo(s.ShimHomeDir, skillContent)
+		skillRoot := ""
+		if target != "" {
+			absTarget, err := filepath.Abs(target)
+			if err != nil {
+				return fmt.Errorf("resolve target: %w", err)
+			}
+			skillRoot = filepath.Join(absTarget, ".strategist")
+		}
+		return installShimTo(s.ShimHomeDir, skillContent, skillRoot)
 	}
 	return installShim(target)
 }

@@ -42,6 +42,9 @@ type InstallConfig struct {
 	Target string
 	Silent bool
 	Wizard bool
+	// Global installs to a global root and skips project-local behaviors
+	// such as writing target/.gitignore.
+	Global bool
 	// Force overwrites all files, including user-modified ones.
 	// When false (default), files that differ from the embedded default are preserved.
 	Force bool

@@ -37,6 +37,7 @@ func (m minimalExtractor) Extract(targetDir string, _ bool) error {
 		filepath.Join(targetDir, "knowledge.index.yaml"):                   "sources: []\n",
 		filepath.Join(targetDir, "index.yaml"):                             "load_always: []\nload_by_task_type: {}\n",
 		filepath.Join(targetDir, "templates", "pragmatic-standalone.yaml"): "mode: pragmatic\nbase_path: .analysis\n",
+		filepath.Join(targetDir, "templates", "epic-standalone.yaml"):      "mode: epic\nbase_path: .analysis\n",
 	}
 	for path, content := range files {
 		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
@@ -75,6 +76,7 @@ func TestInstall_WizardPath(t *testing.T) {
 	s := string(data)
 	assert.Contains(t, s, "mode: epic")
 	assert.Contains(t, s, "base_path: /workspace")
+	assert.Contains(t, s, "roles_config: roles/default.yaml")
 	assert.Contains(t, s, "ui: en")
 	assert.Contains(t, s, "docs: en")
 	assert.Contains(t, s, "chat: pt-BR")
@@ -86,7 +88,6 @@ func TestInstall_WizardPath(t *testing.T) {
 	assert.Contains(t, s, "discovery: brainstorming")
 	assert.Contains(t, s, "refinement: archivist")
 	assert.Contains(t, s, "execution: sdd-ask")
-	assert.NotContains(t, s, "roles_config")
 }
 
 func TestInstall_WizardPath_WithChest(t *testing.T) {
@@ -115,7 +116,8 @@ func TestInstall_WizardPath_Defaults(t *testing.T) {
 
 	data, _ := os.ReadFile(filepath.Join(dir, ".strategist", "active.yaml"))
 	s := string(data)
-	assert.Contains(t, s, "mode: pragmatic")
+	assert.Contains(t, s, "mode: epic")
+	assert.Contains(t, s, "roles_config: roles/default.yaml")
 	assert.Contains(t, s, "ui: en")
 	assert.Contains(t, s, "docs: en")
 	assert.Contains(t, s, "chat: en")
@@ -394,7 +396,7 @@ func TestInstallShimTo_ReadOnlyParent(t *testing.T) {
 	home := t.TempDir()
 	require.NoError(t, os.Chmod(home, 0o444))
 	t.Cleanup(func() { _ = os.Chmod(home, 0o755) })
-	err := installShimTo(home, "")
+	err := installShimTo(home, "", "")
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "mkdir shim dir")
 }
@@ -409,21 +411,21 @@ func TestInstallShimTo_WriteError(t *testing.T) {
 	require.NoError(t, os.MkdirAll(shimDir, 0o755))
 	// Make SKILL.md a directory so WriteFile to it fails (EISDIR)
 	require.NoError(t, os.Mkdir(filepath.Join(shimDir, "SKILL.md"), 0o755))
-	err := installShimTo(home, "")
+	err := installShimTo(home, "", "")
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "write shim")
 }
 
-func TestReadGlobalSKILLMD_FileAbsent(t *testing.T) {
+func TestReadLocalSKILLMD_FileAbsent(t *testing.T) {
 	t.Parallel()
 	svc := Service{
 		Extractor:   minimalExtractor{},
 		Compiler:    nopCompiler{},
-		ShimHomeDir: t.TempDir(), // .strategist/SKILL.md does not exist here
+		ShimHomeDir: t.TempDir(),
 	}
-	_, err := svc.readGlobalSKILLMD(context.Background())
+	_, err := svc.readLocalSKILLMD(context.Background(), t.TempDir())
 	require.Error(t, err)
-	assert.ErrorContains(t, err, "read global SKILL.md")
+	assert.ErrorContains(t, err, "read local SKILL.md")
 }
 
 // --- Install: error propagation for gitignore and shim ---
@@ -436,9 +438,7 @@ func TestInstall_ShimError(t *testing.T) {
 	dir := t.TempDir()
 	shimHome := t.TempDir()
 
-	// Pre-create the global runtime dir so installGlobalRuntime succeeds.
-	// Then make the .claude parent unwritable so only the shim step fails.
-	require.NoError(t, os.MkdirAll(filepath.Join(shimHome, ".strategist"), 0o755))
+	// Make the .claude parent unwritable so shim installation fails.
 	require.NoError(t, os.MkdirAll(filepath.Join(shimHome, ".claude"), 0o755))
 	require.NoError(t, os.Chmod(filepath.Join(shimHome, ".claude"), 0o444))
 	t.Cleanup(func() { _ = os.Chmod(filepath.Join(shimHome, ".claude"), 0o755) })

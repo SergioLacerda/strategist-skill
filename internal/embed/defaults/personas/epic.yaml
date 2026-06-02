@@ -28,6 +28,11 @@ role_emoji:
 
 content_by_lang:
   en:
+    pipeline_starting: >
+      🧭 **Pipeline online:** mission={mission_id} | profile_mode={profile_mode}
+      source={profile_source_path} | active={active_yaml_path}
+      persona={persona_resolved} | reason={reason} | output={output_profile}
+
     intake_summary: >
       Mission received: {task_type} | delivery={delivery_strategy} |
       compatibility={legacy_compatibility} | urgency={urgency} | intent={execution_intent}
@@ -51,6 +56,10 @@ content_by_lang:
       🚦 **Gate:** AWAITING CONFIRMATION
 
       Plan at: {artifact_path}
+      Main mission tasks:
+      {mission_tasks_summary}
+      Side quests:
+      {side_quests_list}
 
       Authorize Sniper? (yes / no / review)
 
@@ -121,8 +130,15 @@ content_by_lang:
     mission_complete: >
       🗡️ Mission complete. Status: {status}
       Artifacts: {artifacts}
+    compliance_summary: >
+      🛡️ **Compliance:** expected={expected_phases} | executed={executed_phases} | missing={missing}
 
   pt-BR:
+    pipeline_starting: >
+      🧭 **Pipeline ativo:** missão={mission_id} | profile_mode={profile_mode}
+      source={profile_source_path} | active={active_yaml_path}
+      persona={persona_resolved} | reason={reason} | output={output_profile}
+
     intake_summary: >
       Missão recebida: {task_type} | delivery={delivery_strategy} |
       compatibility={legacy_compatibility} | urgency={urgency} | intent={execution_intent}
@@ -149,6 +165,10 @@ content_by_lang:
       🚦 **Gate:** AGUARDANDO CONFIRMAÇÃO
 
       Plano em: {artifact_path}
+      Tarefas da missão principal:
+      {mission_tasks_summary}
+      Side quests:
+      {side_quests_list}
 
       Autorizar Sniper? (yes / no / review)
 
@@ -219,3 +239,5 @@ content_by_lang:
     mission_complete: >
       🗡️ Missão concluída. Status: {status}
       Artefatos: {artifacts}
+    compliance_summary: >
+      🛡️ **Compliance:** esperado={expected_phases} | executado={executed_phases} | faltando={missing}

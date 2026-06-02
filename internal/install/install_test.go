@@ -46,6 +46,7 @@ func (m *mockExtractor) Extract(targetDir string, _ bool) error {
 		filepath.Join(targetDir, "personas", "epic.yaml"):                  "name: Epic\n",
 		filepath.Join(targetDir, "roles", "default.yaml"):                  "name: Default\n",
 		filepath.Join(targetDir, "templates", "pragmatic-standalone.yaml"): "mode: pragmatic\nbase_path: .analysis\n",
+		filepath.Join(targetDir, "templates", "epic-standalone.yaml"):      "mode: epic\nbase_path: .analysis\n",
 	}
 	for path, content := range files {
 		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
@@ -101,6 +102,7 @@ func TestInstall_Silent(t *testing.T) {
 	require.NoError(t, err)
 	shimStr := string(shimData)
 	assert.Contains(t, shimStr, "name: strategist", "shim must have frontmatter")
+	assert.Contains(t, shimStr, "skill_root: "+filepath.Join(dir, ".strategist"), "shim must pin project-local skill_root")
 	assert.Contains(t, shimStr, "# SKILL", "shim must contain SKILL.md content from extractor")
 }
 
@@ -113,6 +115,19 @@ func TestInstall_EnsuresGitignore(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(dir, ".gitignore"))
 	require.NoError(t, err)
 	assert.Contains(t, string(data), ".strategist/.compiled/")
+}
+
+func TestInstall_GlobalMode_DoesNotWriteGitignore(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	svc := newSvc(t, &mockExtractor{}, &mockCompiler{})
+	require.NoError(t, svc.Install(context.Background(), domain.InstallConfig{
+		Target: dir,
+		Silent: true,
+		Global: true,
+	}))
+	_, err := os.Stat(filepath.Join(dir, ".gitignore"))
+	assert.ErrorIs(t, err, os.ErrNotExist)
 }
 
 func TestInstall_GitignoreIdempotent(t *testing.T) {
@@ -155,7 +170,7 @@ func TestInstall_CompileFailureIsNonFatal(t *testing.T) {
 	require.NoError(t, err, "compile failure must be non-fatal")
 }
 
-func TestInstall_GlobalRuntimePopulated(t *testing.T) {
+func TestInstall_DoesNotPopulateGlobalRuntimeByDefault(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	ext := &mockExtractor{}
@@ -168,35 +183,25 @@ func TestInstall_GlobalRuntimePopulated(t *testing.T) {
 	}))
 
 	globalDir := filepath.Join(svc.ShimHomeDir, ".strategist")
-	assert.DirExists(t, globalDir, "global runtime dir must be created")
-	assert.FileExists(t, filepath.Join(globalDir, "SKILL.md"), "SKILL.md must be present in global runtime dir")
-	assert.Len(t, ext.calledPaths, 2, "extractor must be called once for local and once for global")
-	assert.Equal(t, globalDir, ext.calledPaths[1], "second extract call must target global dir")
+	_, statErr := os.Stat(globalDir)
+	require.ErrorIs(t, statErr, os.ErrNotExist, "default install must not create global runtime dir")
+	assert.Len(t, ext.calledPaths, 1, "extractor must be called only once for local install")
 }
 
-func TestInstall_GlobalRuntime_PreexistingDirPreserved(t *testing.T) {
+func TestInstall_PreexistingGlobalDirUntouched(t *testing.T) {
 	t.Parallel()
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
 	dir := t.TempDir()
 	shimHome := t.TempDir()
 
-	// Pre-create global dir so it exists before install.
+	// Pre-create global dir and assert install does not mutate or remove it.
 	globalDir := filepath.Join(shimHome, ".strategist")
 	require.NoError(t, os.MkdirAll(globalDir, 0o755))
-
-	// Make the shim dir parent read-only so shim installation fails.
-	require.NoError(t, os.MkdirAll(filepath.Join(shimHome, ".claude"), 0o755))
-	require.NoError(t, os.Chmod(filepath.Join(shimHome, ".claude"), 0o444))
-	t.Cleanup(func() { _ = os.Chmod(filepath.Join(shimHome, ".claude"), 0o755) })
+	require.NoError(t, os.WriteFile(filepath.Join(globalDir, "SENTINEL"), []byte("keep"), 0o644))
 
 	svc := install.Service{Extractor: &mockExtractor{}, Compiler: &mockCompiler{}, ShimHomeDir: shimHome}
-	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Silent: true})
-	require.Error(t, err)
-
-	// Global dir existed before install — must still exist after rollback.
-	assert.DirExists(t, globalDir, "pre-existing global dir must not be removed on rollback")
+	require.NoError(t, svc.Install(context.Background(), domain.InstallConfig{Target: dir, Silent: true}))
+	assert.DirExists(t, globalDir, "pre-existing global dir must remain untouched")
+	assert.FileExists(t, filepath.Join(globalDir, "SENTINEL"), "global dir contents must be preserved")
 }
 
 func TestInstall_NewInstaller(t *testing.T) {
