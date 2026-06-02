@@ -28,6 +28,16 @@ func (e Extractor) Extract(targetDir string, force bool) error {
 	return extractFS(defaultsFS, "defaults", targetDir, force)
 }
 
+// ReadFile reads a single file from the embedded default FS without touching disk.
+// relPath is relative to the defaults root (e.g. "templates/epic-standalone.yaml").
+func (e Extractor) ReadFile(relPath string) ([]byte, error) {
+	data, err := fs.ReadFile(defaultsFS, "defaults/"+relPath)
+	if err != nil {
+		return nil, fmt.Errorf("embed: read %s: %w", relPath, err)
+	}
+	return data, nil
+}
+
 // extractFS copies files from src under root into targetDir.
 // Separated from Extract to allow injecting arbitrary fs.FS in tests.
 func extractFS(src fs.FS, root, targetDir string, force bool) error {

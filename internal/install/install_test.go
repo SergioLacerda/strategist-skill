@@ -2,6 +2,7 @@ package install_test
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -39,7 +40,6 @@ func (m *mockExtractor) Extract(targetDir string, _ bool) error {
 	}
 
 	files := map[string]string{
-		filepath.Join(targetDir, "active.yaml"):                            "mode: full\n",
 		filepath.Join(targetDir, "SKILL.md"):                               "# SKILL\n",
 		filepath.Join(targetDir, "knowledge.index.yaml"):                   "sources: []\n",
 		filepath.Join(targetDir, "index.yaml"):                             "load_always: []\nload_by_task_type: {}\n",
@@ -54,6 +54,17 @@ func (m *mockExtractor) Extract(targetDir string, _ bool) error {
 		}
 	}
 	return nil
+}
+
+func (m *mockExtractor) ReadFile(relPath string) ([]byte, error) {
+	switch relPath {
+	case "templates/epic-standalone.yaml":
+		return []byte("mode: epic\nbase_path: .analysis\n"), nil
+	case "SKILL.md":
+		return []byte("# SKILL\n"), nil
+	default:
+		return nil, fmt.Errorf("mockExtractor: file not found: %s", relPath)
+	}
 }
 
 // mockCompiler implements domain.Compiler.

@@ -5,6 +5,7 @@ package install
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,7 +33,6 @@ func (m minimalExtractor) Extract(targetDir string, _ bool) error {
 		}
 	}
 	files := map[string]string{
-		filepath.Join(targetDir, "active.yaml"):                            "mode: full\n",
 		filepath.Join(targetDir, "SKILL.md"):                               "# SKILL\n",
 		filepath.Join(targetDir, "knowledge.index.yaml"):                   "sources: []\n",
 		filepath.Join(targetDir, "index.yaml"):                             "load_always: []\nload_by_task_type: {}\n",
@@ -45,6 +45,17 @@ func (m minimalExtractor) Extract(targetDir string, _ bool) error {
 		}
 	}
 	return nil
+}
+
+func (m minimalExtractor) ReadFile(relPath string) ([]byte, error) {
+	switch relPath {
+	case "templates/epic-standalone.yaml":
+		return []byte("mode: epic\nbase_path: .analysis\n"), nil
+	case "SKILL.md":
+		return []byte("# SKILL\n"), nil
+	default:
+		return nil, fmt.Errorf("minimalExtractor: file not found: %s", relPath)
+	}
 }
 
 type nopCompiler struct{}
@@ -131,26 +142,77 @@ func TestInstall_WizardPath_Defaults(t *testing.T) {
 	assert.Contains(t, s, "execution: sdd-ask")
 }
 
-// --- copyTemplate error path ---
+// --- applyConfig: active.yaml preservation and force-overwrite ---
 
-func TestInstall_CopyTemplateMissing(t *testing.T) {
+func TestApplyConfig_PreservesExistingActiveYAML(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	// Extractor that does NOT create the template file
 	svc := Service{
-		Extractor:   &noTemplateExtractor{},
+		Extractor:   minimalExtractor{},
+		Compiler:    nopCompiler{},
+		ShimHomeDir: t.TempDir(),
+	}
+	// First install writes active.yaml from embedded template.
+	require.NoError(t, svc.Install(context.Background(), domain.InstallConfig{Target: dir, Silent: true}))
+
+	// Simulate user customization.
+	customContent := "mode: epic\nbase_path: .custom\n"
+	activeYAMLPath := filepath.Join(dir, ".strategist", "active.yaml")
+	require.NoError(t, os.WriteFile(activeYAMLPath, []byte(customContent), 0o644))
+
+	// Re-install without --force must preserve the customized file.
+	require.NoError(t, svc.Install(context.Background(), domain.InstallConfig{Target: dir, Silent: true}))
+
+	got, err := os.ReadFile(activeYAMLPath)
+	require.NoError(t, err)
+	assert.Equal(t, customContent, string(got), "re-install must not overwrite user-customized active.yaml")
+}
+
+func TestApplyConfig_ForceOverwritesActiveYAML(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	svc := Service{
+		Extractor:   minimalExtractor{},
+		Compiler:    nopCompiler{},
+		ShimHomeDir: t.TempDir(),
+	}
+	// First install.
+	require.NoError(t, svc.Install(context.Background(), domain.InstallConfig{Target: dir, Silent: true}))
+
+	// Simulate user customization.
+	activeYAMLPath := filepath.Join(dir, ".strategist", "active.yaml")
+	require.NoError(t, os.WriteFile(activeYAMLPath, []byte("mode: epic\nbase_path: .custom\n"), 0o644))
+
+	// Re-install with --force must overwrite with the embedded template.
+	require.NoError(t, svc.Install(context.Background(), domain.InstallConfig{Target: dir, Silent: true, Force: true}))
+
+	got, err := os.ReadFile(activeYAMLPath)
+	require.NoError(t, err)
+	assert.Equal(t, "mode: epic\nbase_path: .analysis\n", string(got), "--force must overwrite active.yaml with embedded template")
+}
+
+func TestApplyConfig_ReadFileFails(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	svc := Service{
+		Extractor:   &errReadExtractor{},
 		Compiler:    nopCompiler{},
 		ShimHomeDir: t.TempDir(),
 	}
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Silent: true})
 	require.Error(t, err)
-	assert.ErrorContains(t, err, "copy template")
+	assert.ErrorContains(t, err, "read template")
 }
 
-type noTemplateExtractor struct{}
+// errReadExtractor creates the .strategist/ dir but returns an error from ReadFile.
+type errReadExtractor struct{}
 
-func (n *noTemplateExtractor) Extract(targetDir string, _ bool) error {
+func (e *errReadExtractor) Extract(targetDir string, _ bool) error {
 	return os.MkdirAll(targetDir, 0o755)
+}
+
+func (e *errReadExtractor) ReadFile(relPath string) ([]byte, error) {
+	return nil, fmt.Errorf("errReadExtractor: read error for %s", relPath)
 }
 
 // --- ensureGitignore: no trailing newline edge case ---
@@ -221,29 +283,6 @@ func TestWriteActiveYAML_ReadOnlyDir(t *testing.T) {
 		DiscoveryProvider: "brainstorming", RefinementProvider: "openspec-explore", ExecutionProvider: "sdd-ask",
 	})
 	require.Error(t, err)
-}
-
-// --- copyTemplate error paths ---
-
-func TestCopyTemplate_MissingSource(t *testing.T) {
-	t.Parallel()
-	dir := t.TempDir()
-	err := copyTemplate(dir, "nonexistent/template.yaml", "active.yaml")
-	require.Error(t, err)
-	assert.ErrorContains(t, err, "read template")
-}
-
-func TestCopyTemplate_WriteError(t *testing.T) {
-	t.Parallel()
-	dir := t.TempDir()
-	// Create template source
-	require.NoError(t, os.MkdirAll(filepath.Join(dir, "templates"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "templates", "src.yaml"), []byte("x: 1\n"), 0o644))
-	// Make the destination a directory so os.WriteFile to it fails (EISDIR)
-	require.NoError(t, os.Mkdir(filepath.Join(dir, "active.yaml"), 0o755))
-	err := copyTemplate(dir, "templates/src.yaml", "active.yaml")
-	require.Error(t, err)
-	assert.ErrorContains(t, err, "write")
 }
 
 func p(input string) Prompter { return NewTextPrompter(strings.NewReader(input)) }
@@ -416,16 +455,16 @@ func TestInstallShimTo_WriteError(t *testing.T) {
 	assert.ErrorContains(t, err, "write shim")
 }
 
-func TestReadLocalSKILLMD_FileAbsent(t *testing.T) {
+func TestReadLocalSKILLMD_ReadFileFails(t *testing.T) {
 	t.Parallel()
 	svc := Service{
-		Extractor:   minimalExtractor{},
+		Extractor:   &errReadExtractor{},
 		Compiler:    nopCompiler{},
 		ShimHomeDir: t.TempDir(),
 	}
 	_, err := svc.readLocalSKILLMD(context.Background(), t.TempDir())
 	require.Error(t, err)
-	assert.ErrorContains(t, err, "read local SKILL.md")
+	assert.ErrorContains(t, err, "read embedded SKILL.md")
 }
 
 // --- Install: error propagation for gitignore and shim ---

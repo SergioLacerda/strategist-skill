@@ -93,10 +93,22 @@ func (s Service) Install(ctx context.Context, cfg domain.InstallConfig) error {
 
 // applyConfig writes active.yaml either from the epic template (silent) or
 // from wizard input.
+//
+// In silent mode, active.yaml is only written when it does not already exist
+// (first install) or when cfg.Force is true. This preserves any customizations
+// the user has made after the initial install.
 func (s Service) applyConfig(strategistDir string, cfg domain.InstallConfig) error {
 	if !cfg.Wizard {
-		if err := copyTemplate(strategistDir, "templates/epic-standalone.yaml", "active.yaml"); err != nil {
-			return fmt.Errorf("install: copy template: %w", err)
+		activeYAMLPath := filepath.Join(strategistDir, "active.yaml")
+		if !cfg.Force && fileExists(activeYAMLPath) {
+			return nil // preserve user customizations
+		}
+		data, err := s.Extractor.ReadFile("templates/epic-standalone.yaml")
+		if err != nil {
+			return fmt.Errorf("install: read template: %w", err)
+		}
+		if err := os.WriteFile(activeYAMLPath, data, 0o644); err != nil {
+			return fmt.Errorf("install: write active.yaml: %w", err)
 		}
 		return nil
 	}
@@ -156,14 +168,14 @@ func (s Service) installShimStep(ctx context.Context, target string) (string, er
 	return shimPath, nil
 }
 
-// readLocalSKILLMD reads target/.strategist/SKILL.md extracted in this install run.
-func (s Service) readLocalSKILLMD(ctx context.Context, target string) (string, error) {
-	path := filepath.Join(target, ".strategist", "SKILL.md")
-	data, err := os.ReadFile(path)
+// readLocalSKILLMD reads SKILL.md from the embedded FS.
+// .strategist/ is write-only — we never read back from it.
+func (s Service) readLocalSKILLMD(ctx context.Context, _ string) (string, error) {
+	data, err := s.Extractor.ReadFile("SKILL.md")
 	if err != nil {
-		return "", fmt.Errorf("read local SKILL.md: %w", err)
+		return "", fmt.Errorf("read embedded SKILL.md: %w", err)
 	}
-	slog.InfoContext(ctx, "[Strategist] SKILL.md read for shim", "path", path)
+	slog.InfoContext(ctx, "[Strategist] SKILL.md read from embedded FS")
 	return string(data), nil
 }
 
