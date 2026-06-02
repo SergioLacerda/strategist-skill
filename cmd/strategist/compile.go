@@ -32,6 +32,10 @@ func runCompile(cmd *cobra.Command, _ []string) (retErr error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	run := telemetry.MissionRunFromContext(ctx)
+	if run != nil {
+		run.MarkRanger()
+	}
 	ctx, span := telemetry.Tracer().Start(ctx, "strategist.compile",
 		trace.WithAttributes(attribute.String(telemetry.AttrTarget, compileRoot)),
 	)
@@ -43,6 +47,9 @@ func runCompile(cmd *cobra.Command, _ []string) (retErr error) {
 		span.End()
 	}()
 
+	if run != nil {
+		run.AddLines(1)
+	}
 	slog.InfoContext(ctx, "[Strategist] compile running", "root", compileRoot)
 
 	indexPath := filepath.Join(compileRoot, "knowledge.index.yaml")
@@ -51,6 +58,9 @@ func runCompile(cmd *cobra.Command, _ []string) (retErr error) {
 		return fmt.Errorf("compile: %w", err)
 	}
 
+	if run != nil {
+		run.AddLines(2)
+	}
 	slog.InfoContext(ctx, "[Strategist] compile complete", "root", compileRoot)
 	fmt.Printf("[Strategist] compile complete → %s/.compiled/\n", compileRoot)
 	return nil

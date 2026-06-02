@@ -197,6 +197,9 @@ func TestPersonasExposeMandatoryRuntimeEvidenceKeys(t *testing.T) {
 		if !strings.Contains(content, "compliance_summary:") {
 			t.Fatalf("%s missing compliance_summary key", p)
 		}
+		if !strings.Contains(content, "mission_metrics:") {
+			t.Fatalf("%s missing mission_metrics key", p)
+		}
 		for _, key := range []string{
 			"profile_mode",
 			"profile_source_path",
@@ -226,6 +229,69 @@ func TestEmitTaxonomyMandatoryVisibilityLevels(t *testing.T) {
 	for _, line := range assertions {
 		if !strings.Contains(content, line) {
 			t.Fatalf("%s missing expected line %q", path, line)
+		}
+	}
+}
+
+func TestBootstrapContractDefinesInvalidLocalProfileErrorCode(t *testing.T) {
+	t.Parallel()
+	bootstrapPath := filepath.Join(repoRoot(t), ".strategist", "contracts", "bootstrap.yaml")
+	content := readFile(t, bootstrapPath)
+	if !strings.Contains(content, "invalid_local_profile") {
+		t.Fatalf("%s missing error_condition code \"invalid_local_profile\"", bootstrapPath)
+	}
+}
+
+func TestSkillDefinesMissingProfileDiagnosticsBlock(t *testing.T) {
+	t.Parallel()
+	for _, p := range []string{
+		filepath.Join(repoRoot(t), ".strategist", "skill.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "skill.yaml"),
+	} {
+		content := readFile(t, p)
+		if !strings.Contains(content, "missing_profile_diagnostics") {
+			t.Fatalf("%s missing compliance enforcement for \"missing_profile_diagnostics\"", p)
+		}
+	}
+}
+
+func TestSkillDefinesPersonaRenderMismatchForbiddenBehavior(t *testing.T) {
+	t.Parallel()
+	for _, p := range []string{
+		filepath.Join(repoRoot(t), ".strategist", "skill.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "skill.yaml"),
+	} {
+		content := readFile(t, p)
+		if !strings.Contains(content, "persona_render_mismatch") {
+			t.Fatalf("%s missing forbidden_behavior \"persona_render_mismatch\"", p)
+		}
+	}
+}
+
+func TestMissionMetricsSignalPresent(t *testing.T) {
+	t.Parallel()
+
+	files := []string{
+		filepath.Join(testDir(t), "..", "schemas", "progress-contract.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "schemas", "progress-contract.yaml"),
+		filepath.Join(repoRoot(t), ".strategist", "contracts", "intake.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "intake.yaml"),
+	}
+	for _, path := range files {
+		content := readFile(t, path)
+		needles := []string{
+			"mission_metrics:",
+			"t_start_to_intake_ms",
+			"t_intake_to_ranger_ms",
+			"total_wall_time_ms",
+			"tokens_in",
+			"tokens_out",
+			"lines_emitted",
+		}
+		for _, needle := range needles {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing %q", path, needle)
+			}
 		}
 	}
 }

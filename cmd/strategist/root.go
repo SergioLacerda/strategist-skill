@@ -3,8 +3,11 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"time"
 
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
 )
 
@@ -16,7 +19,18 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, _ []string) error {
-		cmd.SetContext(context.Background())
+		ctx := context.Background()
+		run := telemetry.NewMissionRun(fmt.Sprintf("%s-%d", cmd.Name(), time.Now().UnixNano()))
+		ctx = telemetry.WithMissionRun(ctx, run)
+		run.MarkIntake()
+		run.AddLines(1)
+		slogLine := run.StartLine("local", ".strategist", ".strategist/active.yaml", "unknown", "local_default", "default")
+		fmt.Println(slogLine)
+		cmd.SetContext(ctx)
+		return nil
+	}
+	rootCmd.PersistentPostRunE = func(cmd *cobra.Command, _ []string) error {
+		telemetry.FinishMission(cmd.Context())
 		return nil
 	}
 	rootCmd.AddCommand(installCmd)

@@ -65,6 +65,19 @@ user_facing_signals:
       template: mission_checkpoint
       trigger: After intake and at every phase transition
       fields: [mission_id, step_1_icon, step_2_icon, step_3_icon, step_4_icon]
+    mission_metrics:
+      template: mission_metrics
+      trigger: After intake and at each phase transition checkpoint
+      fields:
+        [
+          mission_id,
+          t_start_to_intake_ms,
+          t_intake_to_ranger_ms,
+          total_wall_time_ms,
+          tokens_in,
+          tokens_out,
+          lines_emitted,
+        ]
     execution_task_line:
       template: execution_task_line
       trigger: Before Sniper invocation and after each task=done event

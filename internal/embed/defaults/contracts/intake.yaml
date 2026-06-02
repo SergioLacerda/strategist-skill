@@ -66,6 +66,22 @@ contract:
       after_sniper_done:    { step_1: "✅", step_2: "✅", step_3: "✅", step_4: "✅" }
     skip_reemit_on: plan_only
 
+  mission_metrics:
+    emit_key: mission_metrics
+    emit_level: INFO
+    after: intake_complete_and_each_phase_transition
+    fields:
+      - mission_id
+      - t_start_to_intake_ms
+      - t_intake_to_ranger_ms
+      - total_wall_time_ms
+      - tokens_in
+      - tokens_out
+      - lines_emitted
+    note: >
+      Timing and volume metrics are emitted alongside the checkpoint so the
+      mission can be measured without changing the visible phase flow.
+
   persona_template_access: "persona.content_by_lang[active.language.chat].<key>"
   persona_fallback: pt-BR
 

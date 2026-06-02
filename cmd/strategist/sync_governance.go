@@ -50,6 +50,10 @@ func runSyncGovernanceCmd(cmd *cobra.Command, _ []string) (retErr error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	run := telemetry.MissionRunFromContext(ctx)
+	if run != nil {
+		run.MarkRanger()
+	}
 	ctx, span := telemetry.Tracer().Start(ctx, "strategist.sync_governance")
 	defer func() {
 		if retErr != nil {
@@ -68,13 +72,16 @@ func runSyncGovernanceCmd(cmd *cobra.Command, _ []string) (retErr error) {
 		attribute.Int(telemetry.AttrMandates, len(report.MandatesActive)),
 		attribute.StringSlice("strategist.mandates.missing", report.MandatesMissing),
 	)
+	if run != nil {
+		run.AddLines(1)
+	}
 	slog.InfoContext(ctx, "[Strategist] sync-governance complete",
 		"fingerprint", report.GovernanceFingerprint,
 		"active", len(report.MandatesActive),
 		"missing", len(report.MandatesMissing),
 	)
 
-	printSyncReport(report)
+	printSyncReport(report, run)
 	return nil
 }
 
@@ -220,19 +227,30 @@ func applyMissingFields(skill map[string]any, report *syncReport) (changed bool)
 	return changed
 }
 
-func printSyncReport(r syncReport) {
+func addLine(run *telemetry.MissionRun) {
+	if run != nil {
+		run.AddLines(1)
+	}
+}
+
+func printSyncReport(r syncReport, run *telemetry.MissionRun) {
+	addLine(run)
 	fmt.Printf("[Strategist] sync-governance fingerprint=%s\n", r.GovernanceFingerprint)
+	addLine(run)
 	fmt.Printf("[Strategist] mandates active=%d compliant=%d partial=%d missing=%d\n",
 		len(r.MandatesActive), len(r.MandatesCompliant), len(r.MandatesPartial), len(r.MandatesMissing))
 
 	if len(r.MandatesMissing) > 0 {
+		addLine(run)
 		fmt.Printf("[Strategist] mandates not covered:")
 		for _, m := range r.MandatesMissing {
+			addLine(run)
 			fmt.Printf(" %s", m)
 		}
 		fmt.Println()
 	}
 
+	addLine(run)
 	if len(r.FieldsApplied) == 0 {
 		fmt.Println("[Strategist] sync-governance status=ok — skill.yaml already compliant")
 		return

@@ -100,6 +100,13 @@ content_by_lang:
       {step_3_icon} 3 — Gate
       {step_4_icon} 4 — Execution
 
+
+    mission_metrics: >
+      🧭 **Metrics — {mission_id}** | t_start_to_intake_ms={t_start_to_intake_ms}ms |
+      t_intake_to_ranger_ms={t_intake_to_ranger_ms}ms |
+      total_wall_time_ms={total_wall_time_ms}ms | tokens_in={tokens_in} |
+      tokens_out={tokens_out} | lines_emitted={lines_emitted}
+
     execution_tasks_header: >
       🗡️ **Sniper — executing {total} task(s):**
     execution_task_line: >
@@ -208,6 +215,13 @@ content_by_lang:
       {step_2_icon} 2 — Arquivista
       {step_3_icon} 3 — Gate
       {step_4_icon} 4 — Execução
+
+
+    mission_metrics: >
+      🧭 **Metrics — {mission_id}** | t_start_to_intake_ms={t_start_to_intake_ms}ms |
+      t_intake_to_ranger_ms={t_intake_to_ranger_ms}ms |
+      total_wall_time_ms={total_wall_time_ms}ms | tokens_in={tokens_in} |
+      tokens_out={tokens_out} | lines_emitted={lines_emitted}
 
     execution_tasks_header: >
       🗡️ **Sniper — executando {total} tarefa(s):**

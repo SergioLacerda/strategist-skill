@@ -41,7 +41,7 @@ func TestFormatPolicyEvent_WithReason(t *testing.T) {
 }
 
 func TestEmitPolicyEvent_LogsLine(t *testing.T) {
-	t.Parallel()
+	// no t.Parallel() — test mutates slog.Default() global state
 	var buf bytes.Buffer
 	h := slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo})
 	prev := slog.Default()

@@ -138,7 +138,7 @@ func TestApplyMissingFields_PartiallyPresent(t *testing.T) {
 
 func TestPrintSyncReport_Compliant(t *testing.T) {
 	out := captureStdout(t, func() {
-		printSyncReport(syncReport{GovernanceFingerprint: "fp1"})
+		printSyncReport(syncReport{GovernanceFingerprint: "fp1"}, nil)
 	})
 	assert.Contains(t, out, "fp1")
 	assert.Contains(t, out, "status=ok")
@@ -150,14 +150,14 @@ func TestPrintSyncReport_WithMissing(t *testing.T) {
 			GovernanceFingerprint: "fp2",
 			MandatesActive:        []string{"M001", "M002"},
 			MandatesMissing:       []string{"M002"},
-		})
+		}, nil)
 	})
 	assert.Contains(t, out, "M002")
 }
 
 func TestPrintSyncReport_DryRun(t *testing.T) {
 	out := captureStdout(t, func() {
-		printSyncReport(syncReport{FieldsApplied: []string{"validation_policy"}, DryRun: true})
+		printSyncReport(syncReport{FieldsApplied: []string{"validation_policy"}, DryRun: true}, nil)
 	})
 	assert.Contains(t, out, "dry-run")
 	assert.Contains(t, out, "validation_policy")
@@ -165,7 +165,7 @@ func TestPrintSyncReport_DryRun(t *testing.T) {
 
 func TestPrintSyncReport_Applied(t *testing.T) {
 	out := captureStdout(t, func() {
-		printSyncReport(syncReport{FieldsApplied: []string{"budget_policy"}, DryRun: false})
+		printSyncReport(syncReport{FieldsApplied: []string{"budget_policy"}, DryRun: false}, nil)
 	})
 	assert.Contains(t, out, "applied")
 	assert.Contains(t, out, "budget_policy")

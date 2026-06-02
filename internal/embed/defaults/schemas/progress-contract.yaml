@@ -56,6 +56,29 @@ event_examples:
   - "[Strategist] phase=policy_eval status=blocked mission=abc123 mode=analise can_execute=false reason=policy_blocked"
   - "[Strategist] phase=execution status=skipped mission=abc123 mode=entrega_revisada can_execute=false reason=policy_blocked"
 
+user_facing_signals:
+  description: >
+    User-facing signals emitted via persona templates (not progress events).
+    These produce visible chat output; progress events are machine-readable only.
+  signals:
+    mission_checkpoint:
+      template: mission_checkpoint
+      trigger: After intake and at every phase transition
+      fields: [mission_id, step_1_icon, step_2_icon, step_3_icon, step_4_icon]
+    mission_metrics:
+      template: mission_metrics
+      trigger: After intake and at each phase transition checkpoint
+      fields:
+        [
+          mission_id,
+          t_start_to_intake_ms,
+          t_intake_to_ranger_ms,
+          total_wall_time_ms,
+          tokens_in,
+          tokens_out,
+          lines_emitted,
+        ]
+
 output_paths:
   discovery: "<base_path>/pending/<mission_id>-discovery.md"
   refined_plan: "<base_path>/refined/<mission_id>-plan.md"

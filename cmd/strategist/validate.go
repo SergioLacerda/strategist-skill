@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -22,9 +24,17 @@ Checks performed:
   - personas/*.yaml: each has tone_directive and phase_labels
   - roles/*.yaml: each has discovery, refinement, execution slots
   - knowledge.index.yaml: if present, valid YAML`,
-	RunE: func(_ *cobra.Command, _ []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		if validateRoot == "" {
 			validateRoot = ".strategist"
+		}
+		ctx := cmd.Context()
+		if ctx == nil {
+			ctx = context.Background()
+		}
+		run := telemetry.MissionRunFromContext(ctx)
+		if run != nil {
+			run.MarkRanger()
 		}
 
 		var errs []string
@@ -63,6 +73,9 @@ Checks performed:
 			return fmt.Errorf("validate: %d error(s) in %s", len(errs), validateRoot)
 		}
 
+		if run != nil {
+			run.AddLines(1)
+		}
 		fmt.Printf("[Strategist] validate OK — %d check(s) passed (%s)\n", checks, validateRoot)
 		return nil
 	},

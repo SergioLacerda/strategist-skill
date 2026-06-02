@@ -274,6 +274,8 @@ As métricas canônicas para otimização de performance do Strategist são:
 
 O baseline atual deve ser registrado em `.analysis/refined/2026-06-01-performance-baseline-metrics.md` e atualizado sempre que houver mudança de contrato, telemetria ou política de emissão que possa alterar custo percebido.
 
+As métricas são expostas pelo sinal de saída `mission_metrics` no checkpoint de intake e em cada transição de fase. Isso mantém a telemetria de custo disponível sem alterar a ordem visível do pipeline.
+
 `confidence_threshold: 0.65` — aliases com confiança abaixo deste valor recebem o default.
 
 ### progress-contract.yaml

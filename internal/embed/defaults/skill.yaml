@@ -352,3 +352,19 @@ forbidden_behaviors:
   - engineer_writes_outside_analysis
   - archivist_writes_non_md
   - delegate_analysis_creation_to_sniper
+  - id: missing_profile_diagnostics
+    description: >
+      Bootstrap completed but mandatory diagnostic block was not emitted.
+      Required fields: profile_mode, profile_source_path, active_yaml_path,
+      persona_resolved, reason. All 5 must appear before the first mission phase.
+    emit: "[Strategist] phase=compliance status=blocked reason=missing_profile_diagnostics"
+    action: block
+  - id: persona_render_mismatch
+    description: >
+      persona_resolved=epic but pipeline emits text without epic style in first
+      3 phase emissions (missing phase emoji or Ranger/Archivist/Sniper labels).
+      Also applies inversely: persona_resolved=pragmatic with epic narrative.
+    emit: >
+      "[Strategist] phase=compliance status=blocked reason=persona_render_mismatch
+       persona_resolved={persona_resolved} detected_style={detected_style}"
+    action: block
