@@ -1,4 +1,4 @@
-.PHONY: build test integration lint vuln bench cover cover-gate cover-html analysis-structure-gate install sync-embed release snapshot clean
+.PHONY: build test test-all integration lint vuln bench cover cover-gate cover-html analysis-structure-gate install sync-embed release snapshot clean
 
 GOLANGCI_LINT := $(shell which golangci-lint 2>/dev/null || echo $(shell go env GOPATH)/bin/golangci-lint)
 GOVULNCHECK   := $(shell which govulncheck 2>/dev/null || echo $(shell go env GOPATH)/bin/govulncheck)
@@ -10,6 +10,8 @@ build:
 
 test:
 	go test -race $$(go list ./... | grep -v '/testutil')
+
+test-all: test integration
 
 integration:
 	go test -race -tags=integration ./tests/...

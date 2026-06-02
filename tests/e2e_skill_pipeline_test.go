@@ -5,7 +5,6 @@ package tests_test
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/compile"
@@ -16,23 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func testDir(t *testing.T) string {
-	t.Helper()
-
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller failed")
-	}
-
-	return filepath.Dir(file)
-}
-
-func repoRoot(t *testing.T) string {
-	t.Helper()
-
-	return filepath.Clean(filepath.Join(testDir(t), ".."))
-}
-
 func prepareE2ERoot(t *testing.T) string {
 	t.Helper()
 
@@ -40,9 +22,30 @@ func prepareE2ERoot(t *testing.T) string {
 	extractor := embedpkg.Extractor{}
 	require.NoError(t, extractor.Extract(root, false))
 
-	activeSource := filepath.Join(repoRoot(t), ".strategist", "active.yaml")
-	activeData, err := os.ReadFile(activeSource)
-	require.NoError(t, err, "read %s", activeSource)
+	activeData := []byte(`mode: epic
+base_path: .analysis
+roles_config: roles/default.yaml
+knowledge_index_path: knowledge.index.yaml
+language:
+  ui: pt-BR
+  docs: en
+  chat: pt-BR
+  code: en
+adr_enabled: true
+mission_mode: entrega_revisada
+escopo_done: entrega
+aplicar_alteracoes: false
+
+slots:
+  discovery: brainstorming
+  refinement: openspec-explore
+  execution: sdd-ask
+
+treasure_chests:
+  - id: source
+    path: .sdd/source
+    scope: all
+`)
 	require.NoError(t, os.WriteFile(filepath.Join(root, "active.yaml"), activeData, 0o644))
 
 	return root
