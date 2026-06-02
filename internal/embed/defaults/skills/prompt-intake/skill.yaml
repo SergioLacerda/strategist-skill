@@ -6,9 +6,9 @@ risk_score: read_only
 category: classification
 
 description: >
-  Classifies the user prompt into task_type, risk_level, and intake constraints
-  (delivery_strategy, legacy_compatibility, execution_intent).
+  Classifies the user prompt into task_type, risk_level, intake constraints, and token_strategy.
   Runs before the pipeline starts. Output feeds context-enrichment and mission_contract.
+  Also runs economic triage gate: blocks discovery if critical mission items are missing.
 
 input:
   user_prompt: string
@@ -22,6 +22,18 @@ output:
     legacy_compatibility: string
     execution_intent: string
     urgency: string             # normal, urgent, deferred
+  token_strategy:
+    mode: string                # lean | balanced | deep
+    uncertainty_level: string   # low | medium | high
+    pressure_score: integer     # sum of uncertainty signals triggered (auditable)
+    signals_triggered: list     # which signal rules fired (auditable)
+    context_policy:
+      max_sources: integer      # by mode: lean=2, balanced=4, deep=8
+      max_excerpt_tokens: integer  # default: 450
+      require_source_justification: boolean  # always true
+    triage_gate:
+      blocked: boolean          # true if critical item missing
+      blocking_question: string # present only when blocked=true
 
 behavior:
   - Classify task_type from the user prompt using semantic matching.
@@ -33,7 +45,44 @@ behavior:
   - risk_level is assessed independently from delivery_strategy.
   - urgency is extracted from explicit time signals ("urgente", "para ontem", "tem prazo",
     "pode esperar") or temporal context clues in the prompt.
+  - Infer token_strategy using this deterministic algorithm (runs after task_type classification):
+      Step 1 — base mode from task_type:
+        bugfix, docs                 → lean
+        feature, refactor, general   → balanced  (default)
+        architecture_analysis, epic  → deep
+      Step 2 — apply uncertainty pressure signals (cumulative score):
+        +2 if acceptance criteria absent from prompt
+        +1 if prompt mentions multiple systems or scopes
+        +1 if ambiguous language detected (maybe, something like, not sure, algo assim, talvez)
+        +1 if prompt word count < 15 AND task_type != bugfix
+        -1 if acceptance criteria explicitly present
+        -1 if scope clearly declared
+      Step 3 — upgrade mode if pressure_score >= 2:
+        lean → balanced
+        balanced → deep
+      Step 4 — economic triage gate (check in priority order):
+        Priority 1 — acceptance criteria present?
+        Priority 2 — scope bounded?
+        Priority 3 — request clear?
+        If highest-priority missing item found, set triage_gate.blocked=true.
+        Generate ONE blocking_question for that item only. Do NOT ask multiple questions.
+        Use the question template matching the highest-priority missing item (see triage_questions below).
+  - Record all signals_triggered and pressure_score in token_strategy output (auditable).
+  - When triage_gate.blocked is true, do NOT advance to context_enrichment. Surface the
+    blocking_question to user. Wait for answer. Re-run triage after user responds.
+
+triage_questions:
+  acceptance_criteria_missing: >
+    I need to confirm one thing before opening the mission — what should be different
+    when this is done, and how will we know it worked?
+  scope_missing: >
+    I need to confirm one thing before opening the mission — should this change be
+    limited to the inferred scope, or does it touch other systems too?
+  clarity_missing: >
+    I need to confirm one thing before opening the mission — what exactly should be
+    different when this task is complete?
 
 failure_modes:
   - classification_failed: task_type cannot be determined. Return task_type=general, do not stop pipeline.
   - conflict_detected: two mutually exclusive constraints found. Return conflict=true, field=<name>.
+  - triage_blocked: critical mission item missing. Return triage_gate.blocked=true, blocking_question set.

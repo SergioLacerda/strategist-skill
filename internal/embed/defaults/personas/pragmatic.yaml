@@ -16,13 +16,16 @@ tone_directive: >
 
 progress_prefix: "[Strategist]"
 
+runtime_evidence:
+  pipeline_starting: >
+    [Strategist] pipeline=starting profile_mode={profile_mode} profile_source_path={profile_source_path} active_yaml_path={active_yaml_path} persona_resolved={persona_resolved} reason={reason}
+  compliance_summary: >
+    [Strategist] phase=compliance status={status} mission_id={mission_id}
+  mission_metrics: >
+    [Strategist] mission_metrics start_to_intake={t_start_to_intake_ms} intake_to_ranger={t_intake_to_ranger_ms} total_wall_time={total_wall_time_ms} tokens_in={tokens_in} tokens_out={tokens_out} lines_emitted={lines_emitted}
+
 content_by_lang:
   en:
-    pipeline_starting: >
-      [Strategist] pipeline=starting mission_id={mission_id} profile_mode={profile_mode}
-      profile_source_path={profile_source_path} active_yaml_path={active_yaml_path}
-      persona_resolved={persona_resolved} reason={reason} output={output_profile}
-
     intake_summary: >
       Sprint: {task_type} | delivery={delivery_strategy} | compat={legacy_compatibility} |
       urgency={urgency} | intent={execution_intent}
@@ -44,10 +47,6 @@ content_by_lang:
 
     approval_prompt: >
       Plan at: {artifact_path}
-      Tasks:
-      {mission_tasks_summary}
-      Side quests:
-      {side_quests_list}
 
       Implement? (yes / no / review)
 
@@ -84,12 +83,6 @@ content_by_lang:
       {step_3_icon} 3 — gate
       {step_4_icon} 4 — developer
 
-    mission_metrics: >
-      Metrics — {mission_id} | t_start_to_intake_ms={t_start_to_intake_ms}ms |
-      t_intake_to_ranger_ms={t_intake_to_ranger_ms}ms |
-      total_wall_time_ms={total_wall_time_ms}ms | tokens_in={tokens_in} |
-      tokens_out={tokens_out} | lines_emitted={lines_emitted}
-
     execution_tasks_header: >
       Executing {total} task(s):
     execution_task_line: >
@@ -108,16 +101,8 @@ content_by_lang:
       Plan saved: {artifact_path}. Execution pending.
     mission_complete: >
       Sprint done. status={status} artifacts={artifacts}
-    compliance_summary: >
-      [Strategist] compliance expected_phases={expected_phases} executed_phases={executed_phases}
-      missing={missing}
 
   pt-BR:
-    pipeline_starting: >
-      [Strategist] pipeline=starting mission_id={mission_id} profile_mode={profile_mode}
-      profile_source_path={profile_source_path} active_yaml_path={active_yaml_path}
-      persona_resolved={persona_resolved} reason={reason} output={output_profile}
-
     intake_summary: >
       Sprint: {task_type} | delivery={delivery_strategy} | compat={legacy_compatibility} |
       urgency={urgency} | intent={execution_intent}
@@ -139,10 +124,6 @@ content_by_lang:
 
     approval_prompt: >
       Plano em: {artifact_path}
-      Tarefas:
-      {mission_tasks_summary}
-      Side quests:
-      {side_quests_list}
 
       Implementar? (yes / no / review)
 
@@ -179,12 +160,6 @@ content_by_lang:
       {step_3_icon} 3 — gate
       {step_4_icon} 4 — execução
 
-    mission_metrics: >
-      Métricas — {mission_id} | t_start_to_intake_ms={t_start_to_intake_ms}ms |
-      t_intake_to_ranger_ms={t_intake_to_ranger_ms}ms |
-      total_wall_time_ms={total_wall_time_ms}ms | tokens_in={tokens_in} |
-      tokens_out={tokens_out} | lines_emitted={lines_emitted}
-
     execution_tasks_header: >
       Executando {total} tarefa(s):
     execution_task_line: >
@@ -203,6 +178,3 @@ content_by_lang:
       Plano salvo: {artifact_path}. Execução pendente.
     mission_complete: >
       Sprint encerrada. status={status} artifacts={artifacts}
-    compliance_summary: >
-      [Strategist] compliance expected_phases={expected_phases} executed_phases={executed_phases}
-      missing={missing}

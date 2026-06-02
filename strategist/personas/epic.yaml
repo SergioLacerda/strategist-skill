@@ -26,6 +26,14 @@ role_emoji:
   gate: "🚦"
   opportunity: "⚔️"
 
+runtime_evidence:
+  pipeline_starting: >
+    [Strategist] pipeline=starting profile_mode={profile_mode} profile_source_path={profile_source_path} active_yaml_path={active_yaml_path} persona_resolved={persona_resolved} reason={reason}
+  compliance_summary: >
+    [Strategist] phase=compliance status={status} mission_id={mission_id}
+  mission_metrics: >
+    [Strategist] mission_metrics start_to_intake={t_start_to_intake_ms} intake_to_ranger={t_intake_to_ranger_ms} total_wall_time={total_wall_time_ms} tokens_in={tokens_in} tokens_out={tokens_out} lines_emitted={lines_emitted}
+
 content_by_lang:
   en:
     intake_summary: >

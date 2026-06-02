@@ -268,6 +268,47 @@ func TestSkillDefinesPersonaRenderMismatchForbiddenBehavior(t *testing.T) {
 	}
 }
 
+func TestApprovalGateContractDefinesEmitOnShow(t *testing.T) {
+	t.Parallel()
+	for _, p := range []string{
+		filepath.Join(repoRoot(t), ".strategist", "contracts", "approval-gate.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "approval-gate.yaml"),
+	} {
+		content := readFile(t, p)
+		if !strings.Contains(content, "emit_on_show") {
+			t.Fatalf("%s missing \"emit_on_show\" — approval gate must log when shown to user", p)
+		}
+	}
+}
+
+func TestContextEnrichmentDefinesTreasureChestLoadedNone(t *testing.T) {
+	t.Parallel()
+	for _, p := range []string{
+		filepath.Join(repoRoot(t), ".strategist", "contracts", "context-enrichment.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "context-enrichment.yaml"),
+	} {
+		content := readFile(t, p)
+		if !strings.Contains(content, "treasure_chest_loaded none") {
+			t.Fatalf("%s missing \"treasure_chest_loaded none\" emit for empty chest list", p)
+		}
+	}
+}
+
+func TestComplianceSummaryDefinesPhaseCounters(t *testing.T) {
+	t.Parallel()
+	for _, p := range []string{
+		filepath.Join(repoRoot(t), ".strategist", "contracts", "compliance-summary.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "compliance-summary.yaml"),
+	} {
+		content := readFile(t, p)
+		for _, needle := range []string{"expected_phases", "executed_phases"} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing %q counter field in compliance emit_format", p, needle)
+			}
+		}
+	}
+}
+
 func TestMissionMetricsSignalPresent(t *testing.T) {
 	t.Parallel()
 

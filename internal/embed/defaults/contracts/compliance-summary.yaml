@@ -14,6 +14,9 @@ contract:
     ---
     [Strategist] response_complete
       pipeline_compliant: yes | no
+      expected_phases: <n>
+      executed_phases: <n>
+      missing: <n>
       phases_run: <comma-separated list of phases that ran>
       phases_skipped: <list or none>
       opportunity_attack: ranger=<N> archivist=<N> sniper=<N|triggered|n/a>

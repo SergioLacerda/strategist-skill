@@ -5,7 +5,6 @@
 mode: epic
 
 base_path: .analysis
-roles_config: roles/default.yaml
 
 knowledge_index_path: knowledge.index.yaml
 
@@ -15,12 +14,6 @@ language: pt
 
 # Set to false to disable the ADR opportunity stage entirely.
 adr_enabled: true
-
-# Mission policy (single control):
-# - analise            : analysis-only, no execution
-# - entrega_revisada   : delivery planning/handoff, no execution
-# - entrega_executada  : delivery with execution after approval gate
-mission_mode: entrega_executada
 
 # Slot providers — which skill fills each mission role.
 # Edit here to change providers. Preflight validates risk_score contracts.
