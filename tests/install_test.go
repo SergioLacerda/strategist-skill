@@ -44,6 +44,7 @@ func (m *mockExtractor) Extract(targetDir string, force bool) error {
 		filepath.Join(targetDir, "personas", "epic.yaml"):                  "name: Epic\n",
 		filepath.Join(targetDir, "roles", "default.yaml"):                  "name: Default\n",
 		filepath.Join(targetDir, "templates", "pragmatic-standalone.yaml"): "mode: pragmatic\nbase_path: .analysis\n",
+		filepath.Join(targetDir, "templates", "epic-standalone.yaml"):      "mode: epic\nbase_path: .analysis\n",
 	}
 	for path, content := range files {
 		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
@@ -70,8 +71,9 @@ func TestInstallSilent_ProducesExpectedStructure(t *testing.T) {
 	compiler := &mockCompiler{}
 
 	svc := install.Service{
-		Extractor: extractor,
-		Compiler:  compiler,
+		Extractor:   extractor,
+		Compiler:    compiler,
+		ShimHomeDir: t.TempDir(),
 	}
 
 	cfg := domain.InstallConfig{
@@ -112,7 +114,7 @@ func TestInstallSilent_EnsuresGitignore(t *testing.T) {
 	extractor := &mockExtractor{}
 	compiler := &mockCompiler{}
 
-	svc := install.Service{Extractor: extractor, Compiler: compiler}
+	svc := install.Service{Extractor: extractor, Compiler: compiler, ShimHomeDir: t.TempDir()}
 	cfg := domain.InstallConfig{Target: dir, Silent: true}
 
 	require.NoError(t, svc.Install(context.Background(), cfg))
