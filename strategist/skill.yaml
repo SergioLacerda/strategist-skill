@@ -11,12 +11,26 @@ description: >
   as a registered analysis plugin.
 
 parameters:
+  - name: profile
+    type: string
+    default: local
+    allowed: [local]
+    description: >
+      Runtime profile resolution mode for this mission. Only the local profile is
+      accepted in this workspace.
   - name: mode
     type: string
     default: null
     description: >
       Override active.yaml persona for this mission only.
       Accepted values: pragmatic, epic.
+  - name: speed
+    type: string
+    default: balanced
+    values: [fast, balanced, full]
+    description: >
+      Mission speed policy. fast minimizes narrative and skips non-blocking phases,
+      balanced keeps the current default flow, and full preserves complete telemetry.
 
 # active.yaml config fields recognized by this skill
 active_config:
@@ -295,6 +309,19 @@ telemetry_policy:
   emit_runtime_event: true
   event_format: "[Strategist] phase=<phase> status=<status> [fields]"
   otel_required_if_enabled: true
+  speed_mode:
+    default: balanced
+    profiles:
+      fast:
+        output_profile: default
+        suppress_learning_phase: true
+        suppress_non_blocking_narrative: true
+      balanced:
+        output_profile: default
+        suppress_learning_phase: false
+        suppress_non_blocking_narrative: false
+      full:
+        output_profile: full
 
 # External provider compliance contract (used in preflight when governance_injection is active)
 # Provider skill.yaml should declare:
@@ -323,3 +350,19 @@ forbidden_behaviors:
   - engineer_writes_outside_analysis
   - archivist_writes_non_md
   - delegate_analysis_creation_to_sniper
+  - id: missing_profile_diagnostics
+    description: >
+      Bootstrap completed but mandatory diagnostic block was not emitted.
+      Required fields: profile_mode, profile_source_path, active_yaml_path,
+      persona_resolved, reason. All 5 must appear before the first mission phase.
+    emit: "[Strategist] phase=compliance status=blocked reason=missing_profile_diagnostics"
+    action: block
+  - id: persona_render_mismatch
+    description: >
+      persona_resolved=epic but pipeline emits text without epic style in first
+      3 phase emissions (missing phase emoji or Ranger/Archivist/Sniper labels).
+      Also applies inversely: persona_resolved=pragmatic with epic narrative.
+    emit: >
+      "[Strategist] phase=compliance status=blocked reason=persona_render_mismatch
+       persona_resolved={persona_resolved} detected_style={detected_style}"
+    action: block

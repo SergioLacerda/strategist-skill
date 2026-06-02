@@ -602,6 +602,7 @@ No gate after Sniper — content approval happens BEFORE the commit, not after.
 **Language instruction for Archivist:** generate the ADR in the language defined by `active.language.docs`.
 - `docs: pt-BR` → content in Portuguese
 - `docs: en` → content in English
+- Canonical contract: `contracts/adr.yaml`
 
 **Minimum ADR structure (template for Archivist):**
 

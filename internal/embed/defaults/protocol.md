@@ -16,11 +16,8 @@ Strategist MUST stop immediately and emit a blocked event when any of the follow
 | `intake_conflict_unresolved` | Two mutually exclusive constraint aliases were detected in the user prompt. | Ask user to clarify the conflicting constraint before proceeding. |
 | `preflight_failed` | Any preflight check did not pass. | See emitted reason code. |
 | `user_denies_execution` | User declined execution at the approval gate. | Return plan_only result. This is not an error. |
-| `approval_required` | Guarded transition attempted without explicit approval. | Present approval gate and wait for explicit response. |
-| `policy_blocked` | Guarded transition violates effective mission policy. | Keep plan_only flow; do not invoke execution slot. |
 | `discovery_failed` | Discovery slot did not produce an artifact. | Surface failure. Do not proceed to refinement. |
 | `refinement_failed` | Refinement slot did not produce an artifact. | Surface failure. Do not proceed to approval gate. |
-| `opportunity_sweep_failed` | Mandatory opportunity/treasure/side-quest sweep could not run due to technical error. | Emit blocked with reason and stop; "single-target focus" is not a valid skip reason. |
 
 ---
 
@@ -41,10 +38,6 @@ The following behaviors are **never permitted** regardless of context:
 6. **Overriding execution slot provider from an undeclared source** — execution provider must come from `active.slots.execution` or `governance_injection.execution_provider`. Using any other source is a forbidden override.
 
 7. **Skipping preflight** — preflight runs before intake, not after. Every mission starts with preflight, including re-invocations with the same config.
-
-8. **Executing guarded transitions outside mission policy** — transitions in groups `finalize_analysis` and `execution` MUST be evaluated against effective policy (`mission_mode`, with legacy `escopo_done`/`aplicar_alteracoes` derivation) and explicit gate approval before applying.
-
-9. **Skipping mandatory opportunity sweep because mission focus is narrow** — every phase must run opportunist attack + treasure check + side-quest manifest update (manifest may be empty). "Foco em alvo único" is not a valid bypass.
 
 ---
 

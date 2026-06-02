@@ -47,9 +47,12 @@ contract:
       For each slot invocation, filter active.treasure_chests where scope contains
       the slot role name or "all". Empty list is non-blocking.
     emit_on_consult:
-      key: treasure_chest_found
+      key: treasure_chest_loaded
       emit_level: DEBUG
-      format: emit treasure_chest_found with chest_id=<id>
+      format: "[Strategist] treasure_chest_loaded ids={chest_ids_joined}"
+    emit_on_none:
+      emit_level: DEBUG
+      format: "[Strategist] treasure_chest_loaded none"
 
   dossier_builder:
     invoked_after: enrichment

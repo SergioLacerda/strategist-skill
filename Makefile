@@ -62,16 +62,23 @@ install: build
 # After sync-embed, run: make build && ./bin/strategist install --target <project>
 sync-embed:
 	@echo "[Strategist] syncing strategist/ → internal/embed/defaults/"
-	cp -f strategist/schemas/intake.schema.yaml                        internal/embed/defaults/schemas/
-	cp -f strategist/schemas/handoff-ranger-to-archivist.schema.yaml   internal/embed/defaults/schemas/
-	cp -f strategist/schemas/handoff-archivist-to-hunter.schema.yaml   internal/embed/defaults/schemas/
-	cp -f strategist/schemas/source-card.schema.yaml                   internal/embed/defaults/schemas/
-	cp -f strategist/skill.yaml                                        internal/embed/defaults/skill.yaml
-	cp -f strategist/treasure-chests.yaml                              internal/embed/defaults/treasure-chests.yaml
-	cp -f strategist/templates/discovery-artifact.md                   internal/embed/defaults/templates/
-	cp -f strategist/roles/ranger.yaml                                 internal/embed/defaults/roles/ranger.yaml
-	cp -f strategist/roles/archivist.yaml                              internal/embed/defaults/roles/archivist.yaml
-	cp -f strategist/roles/sniper.yaml                                 internal/embed/defaults/roles/sniper.yaml
+	rsync -a --delete \
+		--exclude 'active.schema.yaml' \
+		--exclude 'mission-result.schema.yaml' \
+		--exclude 'roles.schema.yaml' \
+		--exclude 'slot-output.schema.yaml' \
+		strategist/schemas/ internal/embed/defaults/schemas/
+	rsync -a --delete \
+		--exclude 'default.yaml' \
+		strategist/roles/ internal/embed/defaults/roles/
+	rsync -a --delete strategist/templates/ internal/embed/defaults/templates/
+	rsync -a --delete strategist/personas/ internal/embed/defaults/personas/
+	@if [ -d strategist/output-profiles ]; then rsync -a --delete strategist/output-profiles/ internal/embed/defaults/output-profiles/; fi
+	rsync -a --delete strategist/skills/ internal/embed/defaults/skills/
+	rsync -a --delete strategist/SKILL.md internal/embed/defaults/SKILL.md
+	rsync -a --delete strategist/protocol.md internal/embed/defaults/protocol.md
+	rsync -a --delete strategist/skill.yaml internal/embed/defaults/skill.yaml
+	rsync -a --delete strategist/treasure-chests.yaml internal/embed/defaults/treasure-chests.yaml
 	@echo "[Strategist] sync done. Next: make build && ./bin/strategist install --target <project>"
 
 # release publishes to GitHub — requires GITHUB_TOKEN.

@@ -15,6 +15,9 @@ contract:
   gate:
     emit_prompt_key: approval_prompt
     emit_level: INFO
+    emit_on_show:
+      format: "[Strategist] phase=approval_gate status=shown artifact_path={artifact_path}"
+      emit_level: INFO
     stop: true
     wait_for_response: true
 
