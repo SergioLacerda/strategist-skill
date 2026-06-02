@@ -17,6 +17,12 @@ parameters:
     description: >
       Override active.yaml persona for this mission only.
       Accepted values: pragmatic, epic.
+  - name: profile
+    type: string
+    default: local
+    description: >
+      Runtime profile resolution mode.
+      Accepted values: local.
 
 # active.yaml config fields recognized by this skill
 active_config:
@@ -84,6 +90,15 @@ preflight:
   - validate_slot_providers
   - load_internal_domain
   - load_persona
+
+profile_resolution:
+  default: local
+  allowed: [local]
+  order_local:
+    - project_local_strategist_dir
+  failure_policy:
+    local_invalid: blocked
+    local_fallback_to_global: forbidden
 
 pipeline:
   - stage: intake
@@ -189,6 +204,9 @@ stop_conditions:
   - opportunity_sniper_failed       # non-blocking: log and continue to Archivist
   - slot_write_type_violation       # slot tried to write a non-.md file
   - slot_write_scope_violation      # slot tried to write outside its declared scope
+  - missing_required_telemetry      # required chat evidence missing for this mission
+  - missing_profile_diagnostics     # required profile/persona diagnostics missing
+  - persona_render_mismatch         # persona_resolved does not match rendered style
 
 result_schema: mission-result.schema.yaml
 
@@ -219,6 +237,14 @@ telemetry_policy:
   emit_runtime_event: true
   event_format: "[Strategist] phase=<phase> status=<status> [fields]"
   otel_required_if_enabled: true
+  required_chat_evidence:
+    - pipeline_header
+    - phase_events
+    - role_events
+    - gate_events
+    - opportunity_events
+    - treasure_events
+    - compliance_footer
 
 # External provider compliance contract (used in preflight when governance_injection is active)
 # Provider skill.yaml should declare:

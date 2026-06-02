@@ -39,7 +39,7 @@ func runWizard(p Prompter) (domain.WizardConfig, error) {
 	}
 	codeLang = normLang(codeLang)
 
-	mode, err := p.Select(b.PromptMode, "pragmatic", []string{"pragmatic", "epic"})
+	mode, err := p.Select(b.PromptMode, "epic", []string{"pragmatic", "epic"})
 	if err != nil {
 		return domain.WizardConfig{}, fmt.Errorf("wizard: mode: %w", err)
 	}

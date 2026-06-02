@@ -18,6 +18,11 @@ progress_prefix: "[Strategist]"
 
 content_by_lang:
   en:
+    pipeline_starting: >
+      [Strategist] pipeline=starting mission_id={mission_id} profile_mode={profile_mode}
+      profile_source_path={profile_source_path} active_yaml_path={active_yaml_path}
+      persona_resolved={persona_resolved} reason={reason} output={output_profile}
+
     intake_summary: >
       Sprint: {task_type} | delivery={delivery_strategy} | compat={legacy_compatibility} |
       urgency={urgency} | intent={execution_intent}
@@ -39,6 +44,10 @@ content_by_lang:
 
     approval_prompt: >
       Plan at: {artifact_path}
+      Tasks:
+      {mission_tasks_summary}
+      Side quests:
+      {side_quests_list}
 
       Implement? (yes / no / review)
 
@@ -93,8 +102,16 @@ content_by_lang:
       Plan saved: {artifact_path}. Execution pending.
     mission_complete: >
       Sprint done. status={status} artifacts={artifacts}
+    compliance_summary: >
+      [Strategist] compliance expected_phases={expected_phases} executed_phases={executed_phases}
+      missing={missing}
 
   pt-BR:
+    pipeline_starting: >
+      [Strategist] pipeline=starting mission_id={mission_id} profile_mode={profile_mode}
+      profile_source_path={profile_source_path} active_yaml_path={active_yaml_path}
+      persona_resolved={persona_resolved} reason={reason} output={output_profile}
+
     intake_summary: >
       Sprint: {task_type} | delivery={delivery_strategy} | compat={legacy_compatibility} |
       urgency={urgency} | intent={execution_intent}
@@ -116,6 +133,10 @@ content_by_lang:
 
     approval_prompt: >
       Plano em: {artifact_path}
+      Tarefas:
+      {mission_tasks_summary}
+      Side quests:
+      {side_quests_list}
 
       Implementar? (yes / no / review)
 
@@ -170,3 +191,6 @@ content_by_lang:
       Plano salvo: {artifact_path}. Execução pendente.
     mission_complete: >
       Sprint encerrada. status={status} artifacts={artifacts}
+    compliance_summary: >
+      [Strategist] compliance expected_phases={expected_phases} executed_phases={executed_phases}
+      missing={missing}

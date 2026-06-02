@@ -3,6 +3,7 @@ package tests
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -12,6 +13,20 @@ import (
 type fixture struct {
 	Scenario      string `yaml:"scenario"`
 	ExpectedEvent string `yaml:"expected_event"`
+}
+
+func testDir(t *testing.T) string {
+	t.Helper()
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	return filepath.Dir(file)
+}
+
+func repoRoot(t *testing.T) string {
+	t.Helper()
+	return filepath.Clean(filepath.Join(testDir(t), "..", ".."))
 }
 
 func readFile(t *testing.T, path string) string {
@@ -38,8 +53,8 @@ func readFixture(t *testing.T, path string) fixture {
 
 func TestOpportunityBypassFixtureAlignedWithForbiddenBehaviorsSpec(t *testing.T) {
 	t.Parallel()
-	featurePath := filepath.Join("specs", "forbidden-behaviors.feature")
-	fixturePath := filepath.Join("fixtures", "side-quest-bypass.yaml")
+	featurePath := filepath.Join(testDir(t), "specs", "forbidden-behaviors.feature")
+	fixturePath := filepath.Join(testDir(t), "fixtures", "side-quest-bypass.yaml")
 
 	feature := readFile(t, featurePath)
 	fixture := readFixture(t, fixturePath)
@@ -60,8 +75,8 @@ func TestOpportunityBypassFixtureAlignedWithForbiddenBehaviorsSpec(t *testing.T)
 
 func TestTriageGateFixtureAlignedWithTokenEconomySpec(t *testing.T) {
 	t.Parallel()
-	featurePath := filepath.Join("specs", "token-economy.feature")
-	fixturePath := filepath.Join("fixtures", "triage-gate-blocked.yaml")
+	featurePath := filepath.Join(testDir(t), "specs", "token-economy.feature")
+	fixturePath := filepath.Join(testDir(t), "fixtures", "triage-gate-blocked.yaml")
 
 	feature := readFile(t, featurePath)
 	fixture := readFixture(t, fixturePath)
@@ -79,8 +94,8 @@ func TestTriageGateFixtureAlignedWithTokenEconomySpec(t *testing.T) {
 
 func TestApprovalBypassFixtureAlignedWithApprovalGateSpec(t *testing.T) {
 	t.Parallel()
-	featurePath := filepath.Join("specs", "approval-gate.feature")
-	fixturePath := filepath.Join("fixtures", "approval-bypass.yaml")
+	featurePath := filepath.Join(testDir(t), "specs", "approval-gate.feature")
+	fixturePath := filepath.Join(testDir(t), "fixtures", "approval-bypass.yaml")
 
 	feature := readFile(t, featurePath)
 	fixture := readFixture(t, fixturePath)
@@ -101,8 +116,8 @@ func TestApprovalBypassFixtureAlignedWithApprovalGateSpec(t *testing.T) {
 
 func TestSingleTargetSweepBypassFixtureAlignedWithForbiddenBehaviorsSpec(t *testing.T) {
 	t.Parallel()
-	featurePath := filepath.Join("specs", "forbidden-behaviors.feature")
-	fixturePath := filepath.Join("fixtures", "single-target-sweep-bypass.yaml")
+	featurePath := filepath.Join(testDir(t), "specs", "forbidden-behaviors.feature")
+	fixturePath := filepath.Join(testDir(t), "fixtures", "single-target-sweep-bypass.yaml")
 
 	feature := readFile(t, featurePath)
 	fixture := readFixture(t, fixturePath)
@@ -123,8 +138,8 @@ func TestSingleTargetSweepBypassFixtureAlignedWithForbiddenBehaviorsSpec(t *test
 
 func TestPolicyGuardrailsSpecAlignedWithFixture(t *testing.T) {
 	t.Parallel()
-	featurePath := filepath.Join("specs", "policy-guardrails.feature")
-	fixturePath := filepath.Join("fixtures", "policy-guardrails-e2e.yaml")
+	featurePath := filepath.Join(testDir(t), "specs", "policy-guardrails.feature")
+	fixturePath := filepath.Join(testDir(t), "fixtures", "policy-guardrails-e2e.yaml")
 
 	feature := readFile(t, featurePath)
 	fixture := readFixture(t, fixturePath)
@@ -144,5 +159,70 @@ func TestPolicyGuardrailsSpecAlignedWithFixture(t *testing.T) {
 	if !strings.Contains(fixture.ExpectedEvent, "phase=policy_eval status=blocked") ||
 		!strings.Contains(fixture.ExpectedEvent, "transition_group=execution") {
 		t.Fatalf("%s expected_event must include blocked policy_eval for execution, got: %q", fixturePath, fixture.ExpectedEvent)
+	}
+}
+
+func TestSkillProfileResolutionContractPresent(t *testing.T) {
+	t.Parallel()
+	skillPath := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "skill.yaml")
+	skill := readFile(t, skillPath)
+
+	mustContain := []string{
+		"name: profile",
+		"default: local",
+		"allowed: [local]",
+		"missing_required_telemetry",
+		"missing_profile_diagnostics",
+		"persona_render_mismatch",
+		"required_chat_evidence:",
+	}
+	for _, needle := range mustContain {
+		if !strings.Contains(skill, needle) {
+			t.Fatalf("%s must contain %q", skillPath, needle)
+		}
+	}
+}
+
+func TestPersonasExposeMandatoryRuntimeEvidenceKeys(t *testing.T) {
+	t.Parallel()
+	pragmaticPath := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "personas", "pragmatic.yaml")
+	epicPath := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "personas", "epic.yaml")
+
+	for _, p := range []string{pragmaticPath, epicPath} {
+		content := readFile(t, p)
+		if !strings.Contains(content, "pipeline_starting:") {
+			t.Fatalf("%s missing pipeline_starting key", p)
+		}
+		if !strings.Contains(content, "compliance_summary:") {
+			t.Fatalf("%s missing compliance_summary key", p)
+		}
+		for _, key := range []string{
+			"profile_mode",
+			"profile_source_path",
+			"active_yaml_path",
+			"persona_resolved",
+			"reason",
+		} {
+			if !strings.Contains(content, key) {
+				t.Fatalf("%s missing runtime diagnostic key %q", p, key)
+			}
+		}
+	}
+}
+
+func TestEmitTaxonomyMandatoryVisibilityLevels(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "output-profiles", "emit-taxonomy.yaml")
+	content := readFile(t, path)
+
+	assertions := []string{
+		"opportunity_attack_done:     INFO",
+		"treasure_chest_found:        INFO",
+		"compliance_summary:          INFO",
+	}
+	for _, line := range assertions {
+		if !strings.Contains(content, line) {
+			t.Fatalf("%s missing expected line %q", path, line)
+		}
 	}
 }

@@ -54,31 +54,6 @@ curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main
 
 ---
 
-## install-global
-
-Instala a skill globalmente em `~/.strategist/`, sem vínculo a um repositório específico.
-
-```
-strategist install-global [--target=<dir>]
-```
-
-**Flags:**
-
-| Flag | Padrão | Descrição |
-|------|--------|-----------|
-| `--target` | `$HOME` | Diretório base onde `~/.strategist/` será criado |
-
-**Uso:** quando o agente precisa resolver a skill fora de qualquer diretório de projeto. O shim `~/.claude/skills/strategist/SKILL.md` aponta para `~/.strategist/` como raiz global.
-
-Sempre roda em modo silent (sem wizard).
-
-**Saída em sucesso:**
-```
-[Strategist] global install complete — skill root: /home/user/.strategist/
-```
-
----
-
 ## compile
 
 Compila todos os artefatos YAML da skill para gzip+JSON.

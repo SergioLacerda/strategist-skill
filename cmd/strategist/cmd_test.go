@@ -143,10 +143,12 @@ func TestInstallCmd_DefaultTarget(t *testing.T) {
 	origTarget := installTarget
 	origSilent := installSilent
 	origWizard := installWizard
+	origGlobal := installGlobal
 	t.Cleanup(func() {
 		installTarget = origTarget
 		installSilent = origSilent
 		installWizard = origWizard
+		installGlobal = origGlobal
 	})
 
 	readOnly := t.TempDir()
@@ -161,6 +163,7 @@ func TestInstallCmd_DefaultTarget(t *testing.T) {
 	installTarget = "" // triggers the default "." branch
 	installSilent = true
 	installWizard = false
+	installGlobal = false
 
 	err = installCmd.RunE(installCmd, nil)
 	require.Error(t, err) // extraction into read-only "." fails
@@ -234,66 +237,6 @@ func TestExecute_ErrorPath(t *testing.T) {
 		t.Fatalf("expected exit error, got: %v", err)
 	}
 	assert.Equal(t, 1, exitErr.ExitCode())
-}
-
-// --- install-global ---
-
-func TestInstallGlobalCmd_Success(t *testing.T) {
-	dir := t.TempDir()
-
-	orig := installGlobalTarget
-	t.Cleanup(func() { installGlobalTarget = orig })
-	installGlobalTarget = dir
-
-	out := captureStdout(t, func() {
-		err := installGlobalCmd.RunE(installGlobalCmd, nil)
-		require.NoError(t, err)
-	})
-	assert.Contains(t, out, "global install complete")
-	assert.Contains(t, out, dir)
-}
-
-func TestInstallGlobalCmd_ErrorPath(t *testing.T) {
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
-	dir := t.TempDir()
-	require.NoError(t, os.Chmod(dir, 0o444))
-	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
-
-	orig := installGlobalTarget
-	t.Cleanup(func() { installGlobalTarget = orig })
-	installGlobalTarget = dir
-
-	err := installGlobalCmd.RunE(installGlobalCmd, nil)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "install-global")
-}
-
-func TestInstallGlobalCmd_DefaultTarget(t *testing.T) {
-	// When installGlobalTarget is empty the RunE resolves $HOME and sets it.
-	// We can't safely install to real $HOME, so point it at a read-only dir to
-	// abort early while still exercising the default-resolution branch.
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
-	orig := installGlobalTarget
-	t.Cleanup(func() { installGlobalTarget = orig })
-
-	readOnly := t.TempDir()
-	require.NoError(t, os.Chmod(readOnly, 0o444))
-	t.Cleanup(func() { _ = os.Chmod(readOnly, 0o755) })
-
-	// Temporarily override HOME so UserHomeDir() returns our read-only temp dir.
-	origHome := os.Getenv("HOME")
-	t.Setenv("HOME", readOnly)
-	t.Cleanup(func() { _ = os.Setenv("HOME", origHome) })
-
-	installGlobalTarget = "" // trigger default-resolution path
-
-	err := installGlobalCmd.RunE(installGlobalCmd, nil)
-	require.Error(t, err)
-	assert.Equal(t, readOnly, installGlobalTarget) // default was resolved and set
 }
 
 // --- validate ---
@@ -519,14 +462,17 @@ func TestInstallCmd_PrintsCompletion(t *testing.T) {
 	origTarget := installTarget
 	origSilent := installSilent
 	origWizard := installWizard
+	origGlobal := installGlobal
 	t.Cleanup(func() {
 		installTarget = origTarget
 		installSilent = origSilent
 		installWizard = origWizard
+		installGlobal = origGlobal
 	})
 	installTarget = dir
 	installSilent = true
 	installWizard = false
+	installGlobal = false
 
 	out := captureStdout(t, func() {
 		err := installCmd.RunE(installCmd, nil)
@@ -537,4 +483,28 @@ func TestInstallCmd_PrintsCompletion(t *testing.T) {
 		}
 	})
 	_ = out
+}
+
+func TestInstallCmd_GlobalFlag_ResolvesHomeDefault(t *testing.T) {
+	origTarget := installTarget
+	origSilent := installSilent
+	origWizard := installWizard
+	origGlobal := installGlobal
+	t.Cleanup(func() {
+		installTarget = origTarget
+		installSilent = origSilent
+		installWizard = origWizard
+		installGlobal = origGlobal
+	})
+
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	installTarget = ""
+	installSilent = true
+	installWizard = false
+	installGlobal = true
+
+	err := installCmd.RunE(installCmd, nil)
+	require.NoError(t, err)
+	assert.Equal(t, home, installTarget)
 }

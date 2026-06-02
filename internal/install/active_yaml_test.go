@@ -137,6 +137,7 @@ func TestWriteActiveYAML(t *testing.T) {
 			wantContain: []string{
 				"mode: pragmatic",
 				"base_path: .analysis",
+				"roles_config: roles/default.yaml",
 				"language:",
 				"  ui: en",
 				"  docs: en",
@@ -170,6 +171,7 @@ func TestWriteActiveYAML(t *testing.T) {
 			},
 			wantContain: []string{
 				"mode: epic",
+				"roles_config: roles/default.yaml",
 				"language:",
 				"  ui: en",
 				"adr_enabled: false",
@@ -179,7 +181,7 @@ func TestWriteActiveYAML(t *testing.T) {
 				"refinement: archivist",
 				"execution: sdd-ask-full",
 			},
-			wantAbsent: []string{"roles_config", "language: en"},
+			wantAbsent: []string{"language: en"},
 		},
 		{
 			name: "with treasure chest path",

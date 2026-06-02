@@ -20,7 +20,6 @@ cmd/strategist/          Comandos CLI (cobra)
   main.go                Entrypoint; inicializa OTel + chama execute()
   root.go                Registra todos os subcomandos; injeta context via PersistentPreRunE
   install.go             strategist install
-  install_global.go      strategist install-global
   compile.go             strategist compile
   check_stale.go         strategist check-stale
   validate.go            strategist validate

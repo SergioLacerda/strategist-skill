@@ -1,4 +1,7 @@
 # index.yaml — domain index for Strategist
 # List files to pre-load on every mission or selectively by task type.
-load_always: []
+load_always:
+  - schemas/active.schema.yaml
+  - schemas/roles.schema.yaml
+  - schemas/slot-output.schema.yaml
 load_by_task_type: {}

@@ -12,6 +12,7 @@
 set -euo pipefail
 
 REPO="SergioLacerda/strategist-skill"
+DEFAULT_REF="main"
 VERSION="${STRATEGIST_VERSION:-latest}"
 INSTALL_DIR="${HOME}/.local/bin"
 SILENT=false
@@ -61,13 +62,16 @@ if [ "$VERSION" = "latest" ]; then
       VERSION=$(echo "$BODY" | grep '"tag_name"' | cut -d'"' -f4)
       ;;
     403|429)
-      echo "[Strategist] WARN: GitHub API rate limit hit (HTTP ${HTTP_STATUS}). Falling back to main branch." >&2
-      echo "[Strategist] WARN: For reproducible installs, use --version=vX.Y.Z." >&2
-      VERSION="main"
+      echo "[Strategist] WARN: GitHub API rate limit hit (HTTP ${HTTP_STATUS})." >&2
+      echo "[Strategist] AVISO DE SEGURANCA: instalando de branch '${DEFAULT_REF}' sem verificacao de integridade." >&2
+      echo "[Strategist] Use --version=vX.Y.Z para instalacao verificada." >&2
+      VERSION="${DEFAULT_REF}"
       ;;
     *)
-      echo "[Strategist] WARN: GitHub API returned HTTP ${HTTP_STATUS}. Falling back to main branch." >&2
-      VERSION="main"
+      echo "[Strategist] WARN: GitHub API returned HTTP ${HTTP_STATUS}." >&2
+      echo "[Strategist] AVISO DE SEGURANCA: instalando de branch '${DEFAULT_REF}' sem verificacao de integridade." >&2
+      echo "[Strategist] Use --version=vX.Y.Z para instalacao verificada." >&2
+      VERSION="${DEFAULT_REF}"
       ;;
   esac
 fi

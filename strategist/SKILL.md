@@ -57,6 +57,11 @@ If count < 20 or file absent: continue without flush.
 > `roles/`, `schemas/` — from `skill_root`. If `skill_root` is not present, treat the
 > directory containing this file as the skill root.
 
+> **Config source precedence:**
+> 1) `skill_root` from shim frontmatter (project-local profile),
+> 2) directory containing this `SKILL.md`,
+> 3) no global fallback — local profile is mandatory.
+
 On every invocation, before any other action:
 
 **Fast path (if compiled artifacts are present and fresh):**
@@ -480,7 +485,10 @@ Read `<base_path>/refined/<mission_id>/tasks.md` before deciding:
 
 In all cases where the gate is presented: STOP. Do not invoke Sniper without explicit user approval.
 
-Emit via `persona.content_by_lang[active.language.chat].approval_prompt` (with `{artifact_path}`).
+Emit via `persona.content_by_lang[active.language.chat].approval_prompt` with:
+- `{artifact_path}`
+- `{mission_tasks_summary}` (checklist/todo summary from `tasks.md`)
+- `{side_quests_list}` (`none` when empty)
 
 Wait for response:
 - **yes / approve / authorize**: re-emit checkpoint with step_3_icon=✅, step_4_icon=⏳. Proceed to Sniper.

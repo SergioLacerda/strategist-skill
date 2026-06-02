@@ -20,7 +20,6 @@ func init() {
 		return nil
 	}
 	rootCmd.AddCommand(installCmd)
-	rootCmd.AddCommand(installGlobalCmd)
 	rootCmd.AddCommand(compileCmd)
 	rootCmd.AddCommand(checkStaleCmd)
 	rootCmd.AddCommand(validateCmd)

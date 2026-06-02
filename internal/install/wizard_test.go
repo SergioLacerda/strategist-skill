@@ -37,7 +37,7 @@ func TestRunWizard(t *testing.T) {
 			wantDocLanguage:  "en",
 			wantChatLanguage: "en",
 			wantCodeLanguage: "en",
-			wantMode:         "pragmatic",
+			wantMode:         "epic",
 			wantBase:         ".analysis",
 			wantAdrEnabled:   true,
 			wantMissionMode:  "entrega_executada",

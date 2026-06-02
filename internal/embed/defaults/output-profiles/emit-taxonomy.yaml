@@ -9,7 +9,7 @@ emits:
   # Suppressed in default and verbose output profiles.
   phase_status:                TRACE
   phase_skipped:               TRACE
-  opportunity_attack_done:     TRACE
+  opportunity_attack_done:     INFO
   learning_buffer_flushed:     TRACE
   bootstrap_path:              TRACE
   preflight_path:              TRACE
@@ -22,7 +22,7 @@ emits:
   opportunity_attack_header:   DEBUG
   side_quest_none_found:       DEBUG
   side_quest_detected:         DEBUG
-  treasure_chest_found:        DEBUG
+  treasure_chest_found:        INFO
   adr_opportunity:             DEBUG
 
   # INFO — always visible to user regardless of output profile
@@ -37,3 +37,5 @@ emits:
   execution_task_line:         INFO
   mission_checkpoint:          INFO
   compliance_summary:          INFO
+  approval_gate_result:        INFO
+  profile_source:              INFO
