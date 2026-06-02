@@ -2,8 +2,10 @@
 package compile
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -12,25 +14,46 @@ import (
 // Compiler implements domain.Compiler.
 type Compiler struct{}
 
-// CompileAll orchestrates Index, Domain, and Config in sequence,
-// writing .manifest.gz only when all three succeed.
-// It mirrors the logic of compile-all.sh exactly.
+// CompileAll runs Index, Domain, and Config in parallel and writes .manifest.gz
+// only when all three succeed. All errors are collected and joined — a partial
+// failure reports every failing step, not just the first.
 func (c Compiler) CompileAll(root, indexPath string) error {
 	compiledDir := filepath.Join(root, ".compiled")
 
 	indexOut := filepath.Join(compiledDir, ".index.gz")
-	if err := Index(indexPath, indexOut); err != nil {
-		return fmt.Errorf("compile all: index: %w", err)
-	}
-
 	domainOut := filepath.Join(compiledDir, ".domain.gz")
-	if err := Domain(root, domainOut); err != nil {
-		return fmt.Errorf("compile all: domain: %w", err)
+	configOut := filepath.Join(compiledDir, ".config.gz")
+
+	steps := []struct {
+		name string
+		fn   func() error
+	}{
+		{"index", func() error { return Index(indexPath, indexOut) }},
+		{"domain", func() error { return Domain(root, domainOut) }},
+		{"config", func() error { return Config(root, configOut) }},
 	}
 
-	configOut := filepath.Join(compiledDir, ".config.gz")
-	if err := Config(root, configOut); err != nil {
-		return fmt.Errorf("compile all: config: %w", err)
+	var (
+		mu   sync.Mutex
+		errs []error
+		wg   sync.WaitGroup
+	)
+	wg.Add(len(steps))
+	for _, s := range steps {
+		s := s
+		go func() {
+			defer wg.Done()
+			if err := s.fn(); err != nil {
+				mu.Lock()
+				errs = append(errs, fmt.Errorf("compile all: %s: %w", s.name, err))
+				mu.Unlock()
+			}
+		}()
+	}
+	wg.Wait()
+
+	if len(errs) > 0 {
+		return errors.Join(errs...)
 	}
 
 	manifest := compiledManifest{

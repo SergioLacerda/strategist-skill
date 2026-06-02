@@ -16,6 +16,13 @@ tone_directive: >
 
 progress_prefix: "[Strategist]"
 
+diagnostics:
+  format: compact
+  pipeline_header: |
+    [Strategist] pipeline=starting mission_id={id} profile_mode={mode} persona={persona} output={output}
+  bootstrap_origin: |
+    [Strategist] profile_path={path} active_yaml={active} reason={reason}
+
 runtime_evidence:
   pipeline_starting: >
     [Strategist] pipeline=starting profile_mode={profile_mode} profile_source_path={profile_source_path} active_yaml_path={active_yaml_path} persona_resolved={persona_resolved} reason={reason}
