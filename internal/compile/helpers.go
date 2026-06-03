@@ -54,13 +54,21 @@ func sha256Artifact(path string) string {
 // loadYAMLFile reads a YAML file and returns its content as a generic map.
 // Uses the yaml.v3 package.
 func loadYAMLFile(path string) (map[string]any, error) {
-	data, err := os.ReadFile(path) //nolint:gosec // G304: path derived from strategistDir
-	if err != nil {
-		return nil, fmt.Errorf("read %s: %w", path, err)
-	}
 	var out map[string]any
-	if err := unmarshalYAML(data, &out); err != nil {
-		return nil, fmt.Errorf("parse yaml %s: %w", path, err)
+	if err := loadYAMLInto(path, &out); err != nil {
+		return nil, err
 	}
 	return out, nil
+}
+
+// loadYAMLInto reads a YAML file into v.
+func loadYAMLInto(path string, v any) error {
+	data, err := os.ReadFile(path) //nolint:gosec // G304: path derived from strategistDir
+	if err != nil {
+		return fmt.Errorf("read %s: %w", path, err)
+	}
+	if err := unmarshalYAML(data, v); err != nil {
+		return fmt.Errorf("parse yaml %s: %w", path, err)
+	}
+	return nil
 }

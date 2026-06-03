@@ -1,0 +1,53 @@
+internal/telemetry/checkpoint.go:70:3: Error return value of `tmp.Close` is not checked (errcheck)
+                _ = tmp.Close()
+                ^
+internal/telemetry/checkpoint.go:71:3: Error return value of `os.Remove` is not checked (errcheck)
+                _ = os.Remove(tmpName)
+                ^
+internal/telemetry/checkpoint.go:75:3: Error return value of `os.Remove` is not checked (errcheck)
+                _ = os.Remove(tmpName)
+                ^
+internal/telemetry/checkpoint.go:79:3: Error return value of `os.Remove` is not checked (errcheck)
+                _ = os.Remove(tmpName)
+                ^
+internal/telemetry/outcome.go:55:15: Error return value of `f.Close` is not checked (errcheck)
+        defer f.Close()
+                     ^
+internal/domain/state_machine.go:44:2: missing cases in switch of type domain.TransitionEvent: domain.EventGateApproved, domain.EventGateDenied, domain.EventSniperDone, domain.EventArchivistNoTasks, domain.EventArchivistTasks, domain.EventQuickDrawApprove, domain.EventQuickDrawDecline, domain.EventADRCriterionMet, domain.EventADRApproved, domain.EventADRDeclined, domain.EventSlotTransient, domain.EventSlotPermanent, domain.EventSniperOA (exhaustive)
+        switch event {
+        ^
+internal/domain/state_machine.go:54:2: missing cases in switch of type domain.TransitionEvent: domain.EventQuickDrawIntent, domain.EventQuickDrawApprove, domain.EventQuickDrawDecline, domain.EventADRCriterionMet, domain.EventADRApproved, domain.EventADRDeclined, domain.EventSlotTransient, domain.EventSlotPermanent, domain.EventSniperOA (exhaustive)
+        switch event {
+        ^
+internal/domain/state_machine.go:66:2: missing cases in switch of type domain.TransitionEvent: domain.EventQuickDrawIntent, domain.EventQuickDrawApprove, domain.EventQuickDrawDecline, domain.EventADRCriterionMet, domain.EventADRApproved, domain.EventADRDeclined, domain.EventSlotTransient, domain.EventSlotPermanent, domain.EventSniperOA (exhaustive)
+        switch event {
+        ^
+internal/domain/state_machine.go:81:2: missing cases in switch of type domain.TransitionEvent: domain.EventQuickDrawIntent, domain.EventQuickDrawApprove, domain.EventQuickDrawDecline, domain.EventADRCriterionMet, domain.EventADRApproved, domain.EventADRDeclined, domain.EventSlotTransient, domain.EventSlotPermanent, domain.EventSniperOA (exhaustive)
+        switch event {
+        ^
+internal/domain/state_machine.go:91:2: missing cases in switch of type domain.TransitionEvent: domain.EventQuickDrawIntent, domain.EventQuickDrawApprove, domain.EventQuickDrawDecline, domain.EventADRCriterionMet, domain.EventADRApproved, domain.EventADRDeclined, domain.EventSniperOA (exhaustive)
+        switch event {
+        ^
+internal/domain/state_machine.go:125:2: missing cases in switch of type domain.TransitionEvent: domain.EventQuickDrawIntent, domain.EventQuickDrawApprove, domain.EventQuickDrawDecline, domain.EventADRCriterionMet, domain.EventADRApproved, domain.EventADRDeclined (exhaustive)
+        switch event {
+        ^
+internal/domain/state_machine.go:158:2: missing cases in switch of type domain.TransitionEvent: domain.EventManifestEmpty, domain.EventGateApproved, domain.EventGateDenied, domain.EventSniperDone, domain.EventArchivistNoTasks, domain.EventArchivistTasks, domain.EventQuickDrawIntent, domain.EventQuickDrawApprove, domain.EventQuickDrawDecline, domain.EventADRCriterionMet, domain.EventADRApproved, domain.EventADRDeclined, domain.EventSniperOA (exhaustive)
+        switch event {
+        ^
+internal/domain/state_machine.go:168:2: missing cases in switch of type domain.TransitionEvent: domain.EventGateApproved, domain.EventGateDenied, domain.EventSniperDone, domain.EventArchivistNoTasks, domain.EventArchivistTasks, domain.EventQuickDrawIntent, domain.EventQuickDrawApprove, domain.EventQuickDrawDecline, domain.EventADRCriterionMet, domain.EventADRApproved, domain.EventADRDeclined, domain.EventSlotTransient, domain.EventSlotPermanent, domain.EventSniperOA (exhaustive)
+        switch event {
+        ^
+internal/domain/state_machine.go:178:2: missing cases in switch of type domain.TransitionEvent: domain.EventManifestEmpty, domain.EventManifestNonEmpty, domain.EventGateApproved, domain.EventGateDenied, domain.EventSniperDone, domain.EventArchivistNoTasks, domain.EventArchivistTasks, domain.EventQuickDrawIntent, domain.EventADRCriterionMet, domain.EventADRApproved, domain.EventADRDeclined, domain.EventSlotTransient, domain.EventSlotPermanent, domain.EventSniperOA (exhaustive)
+        switch event {
+        ^
+internal/domain/state_machine.go:186:2: missing cases in switch of type domain.TransitionEvent: domain.EventManifestEmpty, domain.EventManifestNonEmpty, domain.EventGateApproved, domain.EventGateDenied, domain.EventSniperDone, domain.EventArchivistNoTasks, domain.EventArchivistTasks, domain.EventQuickDrawIntent, domain.EventQuickDrawApprove, domain.EventQuickDrawDecline, domain.EventADRCriterionMet, domain.EventSlotTransient, domain.EventSlotPermanent, domain.EventSniperOA (exhaustive)
+        switch event {
+        ^
+internal/domain/state_machine.go:196:2: missing cases in switch of type domain.TransitionEvent: domain.EventManifestEmpty, domain.EventManifestNonEmpty, domain.EventGateApproved, domain.EventGateDenied, domain.EventSniperDone, domain.EventArchivistNoTasks, domain.EventArchivistTasks, domain.EventQuickDrawIntent, domain.EventQuickDrawApprove, domain.EventQuickDrawDecline, domain.EventADRCriterionMet, domain.EventSlotTransient, domain.EventSlotPermanent, domain.EventSniperOA (exhaustive)
+        switch event {
+        ^
+internal/domain/state_machine.go:157:46: unused-parameter: parameter 'p' seems to be unused, consider removing or renaming it as _ (revive)
+func nextFromRetrying(event TransitionEvent, p MissionPolicy) MissionState {
+                                             ^
+internal/telemetry/checkpoint.go:92:9: error returned from external package is unwrapped: sig: func os.Remove(name string) error (wrapcheck)
+        return err

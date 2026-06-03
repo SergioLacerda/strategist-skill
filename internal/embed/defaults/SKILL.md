@@ -5,7 +5,7 @@
 Is the prompt a note, idea, or quick capture?
 (signals: `quick draw`, `saque rapido`, `TODO:`, `ideia:`, `nota:`)
 
-→ **YES → Route A (Quick Draw):** go to §3.1 → §5.0. Full Quick Draw pipeline runs.
+→ **YES → Route A (Quick Draw):** go to §5.0 (Quick Draw pipeline). Full Quick Draw pipeline runs.
 → **NO → Main pipeline (Routes B/C/D):** run §0→§11 in order. No phase is skipped.
    Opportunity attack and treasure chests fire at every phase — no exceptions.
 
@@ -17,8 +17,8 @@ Identify the context to know which sections deserve special attention:
 
 | Route | Context | Key sections |
 |-------|---------|--------------|
-| **B — Analysis + Execution** | full mission: analysis + implementation in one sprint | §5a (Ranger), §5e (Archivist), §6 (Gate), §7 (Sniper) |
-| **C — Consult / Analysis** | question, `avaliar`, `conseguimos`, analysis without immediate execution | §5a (Ranger), §5e (Archivist) — gate will decide |
+| **B — Analysis + Execution** | full mission: analysis + implementation in one sprint | §5.1 (Ranger), §5.2 (Archivist), §6 (Gate), §7 (Sniper) |
+| **C — Consult / Analysis** | question, `avaliar`, `conseguimos`, analysis without immediate execution | §5.1 (Ranger), §5.2 (Archivist) — gate will decide |
 | **D — Standard** | any other prompt | all sections equally |
 
 These are focus hints only — the complete pipeline always runs regardless of context.
@@ -263,7 +263,7 @@ Re-emit the checkpoint at each phase transition, updating icons to reflect curre
 Icons: `⏳` = running, `✅` = done, `⬜` = pending.
 Skip the checkpoint re-emit when the mission ends at `plan_only` (gate declined).
 
-### 3.1 Quick Draw Route (Saque Rapido)
+### 3.1 Quick Draw Detection (Saque Rapido)
 
 If the user explicitly requests quick capture (examples: `quick draw`, `saque rapido`,
 `TODO` as rapid note), route to a dedicated side-quest flow.
@@ -317,10 +317,10 @@ nothing: dossier contains only `task_type` and `output_template`.
 
 Pipeline: Ranger (+ opportunity_attack) → Archivist (+ opportunity_attack + side_quest gate) → approval gate → Sniper (+ opportunity_attack)
 
-### 5.-1 Mandatory Opportunity Attack Invariant
+### Invariant — Opportunity Attack
 
 Opportunity attack runs as a mandatory routine INSIDE each role — Ranger, Archivist, Sniper.
-It is not a standalone stage. Each role section (§5a, §5e, §7) has an explicit
+It is not a standalone stage. Each role section (§5.1, §5.2, §7) has an explicit
 Opportunity Attack subsection that MUST be executed and emitted.
 
 Required emissions per role:
@@ -335,7 +335,7 @@ If a role cannot run opportunity attack due to technical error, emit:
 `[Strategist] phase=<role> opportunity_attack=failed reason=<why>`
 This is non-blocking — log and continue. Do not stop the pipeline.
 
-### 5.0 Quick Draw Side Quest (conditional)
+### 5.0 Quick Draw Execution (conditional)
 
 When §3.1 matched, run:
 
@@ -387,7 +387,7 @@ If blocked, stop with `reason=policy_blocked`.
   - `total de ideias: X`
   - `ideias similares (mesmo tema): Y`
 
-### 5a. Ranger (discovery slot)
+### 5.1 Ranger (discovery slot)
 
 Emit via `persona.content_by_lang[active.language.chat].ranger_start` (substitute `{provider}` with the slot provider skill id).
 
@@ -442,12 +442,12 @@ Then:
 Ranger surfaces items only — does not decide strategy for side_quests.
 If manifest is non-empty: present to user via `persona.content_by_lang[active.language.chat].opportunity_detected`
 with `{count}` = N and `{items_brief}` = one line per item (`→ <slug> reason: <reason>`).
-Wait for user response before proceeding to §5e (Archivist):
+Wait for user response before proceeding to §5.2 (Archivist):
 - **yes**: proceed to Archivist (file moves deferred to Sniper after main gate)
 - **no**: discard manifest, proceed to Archivist with workspace as-is
 - **select**: user picks items by number; defer selected items only
 
-### 5e. Archivist (refinement slot)
+### 5.2 Archivist (refinement slot)
 
 Emit via `persona.content_by_lang[active.language.chat].archivist_start` (with `{provider}`).
 

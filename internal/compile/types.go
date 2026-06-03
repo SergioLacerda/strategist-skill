@@ -1,6 +1,12 @@
 package compile
 
+import (
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
+)
+
 // compiledConfig is the in-memory representation of a compiled config artifact.
+// Active and Personas are raw maps so all YAML fields (including unknown/extended ones
+// like content_by_lang or treasure_chests) are preserved verbatim in the artifact.
 type compiledConfig struct {
 	Schema     string           `json:"schema"`
 	CompiledAt int64            `json:"compiled_at"`
@@ -52,35 +58,14 @@ type DomainIndex struct {
 	LoadByTaskType map[string][]string `yaml:"load_by_task_type"`
 }
 
-// PhaseLabels holds the display name for each mission phase.
-type PhaseLabels struct {
-	Discovery  string `yaml:"discovery"`
-	Refinement string `yaml:"refinement"`
-	Execution  string `yaml:"execution"`
-}
+// PhaseLabels is a re-export of domain.PhaseLabels for compile-package consumers.
+type PhaseLabels = domain.PhaseLabels
 
-// ActiveConfig is the structure of a standalone active.yaml template.
-type ActiveConfig struct {
-	Mode               string            `yaml:"mode"`
-	BasePath           string            `yaml:"base_path"`
-	KnowledgeIndexPath string            `yaml:"knowledge_index_path"`
-	Language           any               `yaml:"language,omitempty"`
-	AdrEnabled         bool              `yaml:"adr_enabled"`
-	Slots              map[string]string `yaml:"slots"`
-}
+// ActiveConfig is a re-export of domain.ActiveConfig for compile-package consumers.
+type ActiveConfig = domain.ActiveConfig
 
-// PersonaConfig is the structure of a persona yaml file (personas/*.yaml).
-type PersonaConfig struct {
-	ID             string      `yaml:"id"`
-	Description    string      `yaml:"description"`
-	PhaseLabels    PhaseLabels `yaml:"phase_labels"`
-	ToneDirective  string      `yaml:"tone_directive"`
-	ProgressPrefix string      `yaml:"progress_prefix"`
-}
+// PersonaConfig is a re-export of domain.PersonaConfig for compile-package consumers.
+type PersonaConfig = domain.PersonaConfig
 
-// ApprovalGateContract is the structure of contracts/approval-gate.yaml.
-type ApprovalGateContract struct {
-	Module      string `yaml:"module"`
-	Type        string `yaml:"type"`
-	Description string `yaml:"description"`
-}
+// ApprovalGateContract is a re-export of domain.ApprovalGateContract for compile-package consumers.
+type ApprovalGateContract = domain.ApprovalGateContract

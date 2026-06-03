@@ -20,6 +20,11 @@ func TestMissionRun_SnapshotAndContext(t *testing.T) {
 	run.MarkIntake()
 	time.Sleep(1 * time.Millisecond)
 	run.MarkRanger()
+	run.MarkArchivist()
+	run.MarkGatePresented()
+	time.Sleep(1 * time.Millisecond)
+	run.MarkGateResponse()
+	run.MarkSniper()
 	run.AddLines(3)
 	run.SetTokens(11, 22)
 
@@ -27,14 +32,43 @@ func TestMissionRun_SnapshotAndContext(t *testing.T) {
 	if snap.MissionID != "m-1" {
 		t.Fatalf("unexpected mission id: %s", snap.MissionID)
 	}
-	if snap.TStartToIntakeMS < 0 || snap.TIntakeToRangerMS < 0 || snap.TotalWallTimeMS < 0 {
-		t.Fatalf("expected non-negative timings: %#v", snap)
+	allTimings := []int64{
+		snap.TStartToIntakeMS, snap.TIntakeToRangerMS, snap.TRangerToArchivistMS,
+		snap.TArchivistToGateMS, snap.TGateWaitMS, snap.TGateToSniperMS,
+		snap.TSniperToDoneMS, snap.TotalWallTimeMS,
+	}
+	for _, v := range allTimings {
+		if v < 0 {
+			t.Fatalf("expected non-negative timings: %#v", snap)
+		}
+	}
+	if snap.TGateWaitMS < 1 {
+		t.Fatalf("gate wait must reflect sleep: got %d ms", snap.TGateWaitMS)
 	}
 	if snap.LinesEmitted != 3 {
 		t.Fatalf("unexpected lines emitted: %d", snap.LinesEmitted)
 	}
 	if snap.TokensIn != 11 || snap.TokensOut != 22 {
 		t.Fatalf("unexpected tokens: %#v", snap)
+	}
+}
+
+func TestMissionRun_PhaseMarks_Idempotent(t *testing.T) {
+	t.Parallel()
+	run := NewMissionRun("m-idem")
+	run.MarkArchivist()
+	run.MarkArchivist() // second call must be a no-op
+	run.MarkGatePresented()
+	run.MarkGatePresented()
+	run.MarkGateResponse()
+	run.MarkGateResponse()
+	run.MarkSniper()
+	run.MarkSniper()
+	snap := run.Snapshot()
+	for _, v := range []int64{snap.TRangerToArchivistMS, snap.TArchivistToGateMS, snap.TGateWaitMS, snap.TGateToSniperMS} {
+		if v < 0 {
+			t.Fatalf("expected non-negative phase timing: %#v", snap)
+		}
 	}
 }
 

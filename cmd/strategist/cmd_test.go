@@ -249,9 +249,9 @@ func minimalValidateRoot(t *testing.T) string {
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"),
-		[]byte("mode: pragmatic\nroles_config: default\n"), 0o644))
+		[]byte("mode: pragmatic\nbase_path: .analysis\nroles_config: default\nslots:\n  discovery: brainstorming\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "personas", "pragmatic.yaml"),
-		[]byte("tone_directive: precise\nphase_labels:\n  discovery: analysis\n"), 0o644))
+		[]byte("id: pragmatic\ntone_directive: precise\nphase_labels:\n  discovery: analysis\n  refinement: refinement\n  execution: execution\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "roles", "default.yaml"),
 		[]byte("discovery: brainstorming\nrefinement: archivist\nexecution: caveman\n"), 0o644))
 	return dir
@@ -315,7 +315,7 @@ func TestValidateCmd_MissingActiveYAML(t *testing.T) {
 func TestValidateCmd_InvalidMode(t *testing.T) {
 	dir := minimalValidateRoot(t)
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"),
-		[]byte("mode: invalid_mode\nroles_config: default\n"), 0o644))
+		[]byte("mode: invalid_mode\nbase_path: .analysis\nroles_config: default\nslots:\n  discovery: brainstorming\n"), 0o644))
 
 	orig := validateRoot
 	t.Cleanup(func() { validateRoot = orig })
@@ -358,7 +358,7 @@ func TestValidateCmd_MissingRequiredField(t *testing.T) {
 	dir := minimalValidateRoot(t)
 	// active.yaml missing roles_config
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"),
-		[]byte("mode: pragmatic\n"), 0o644))
+		[]byte("mode: pragmatic\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n"), 0o644))
 
 	orig := validateRoot
 	t.Cleanup(func() { validateRoot = orig })
@@ -385,7 +385,7 @@ func TestValidateCmd_PersonaMissingField(t *testing.T) {
 	dir := minimalValidateRoot(t)
 	// persona without phase_labels
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "personas", "minimal.yaml"),
-		[]byte("tone_directive: brief\n"), 0o644))
+		[]byte("id: minimal\ntone_directive: brief\n"), 0o644))
 
 	orig := validateRoot
 	t.Cleanup(func() { validateRoot = orig })

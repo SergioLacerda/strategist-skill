@@ -123,10 +123,26 @@ Contratos esperados:
 
 ## Desenvolvimento e testes
 
+- `make build` — compila o binário local em `bin/strategist`
+- `make test-lite` — executa os conjuntos isolados que não baixam novas dependências
+- `make test` — executa os testes unitários e de pacote
+- `make integration` — executa os testes E2E/integration com `-tags=integration`
+- `make test-all` — executa `test` + `integration`
+- `make bench` — executa benchmarks
+- `make cover` — gera cobertura por pacote
+- `make cover-gate` — falha se algum pacote interno ficar abaixo de 90% de cobertura
+- `make cover-html` — gera `coverage.html` com a cobertura consolidada
+
 ```bash
 make build
+make test-lite
 make test
+make integration
+make test-all
+make bench
 make cover
+make cover-gate
+make cover-html
 ```
 
 ## Licença

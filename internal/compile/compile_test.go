@@ -74,7 +74,7 @@ func TestCompileConfig(t *testing.T) {
 				t.Helper()
 				require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
 				require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
-				require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte("mode: lite\n"), 0o644))
+				require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte("mode: lite\nbase_path: .analysis\nroles_config: roles/default.yaml\nslots:\n  discovery: brainstorming\n"), 0o644))
 			},
 			check: func(t *testing.T, a map[string]any) {
 				assert.Equal(t, "strategist-compiled-config/1.0", a["schema"])
@@ -99,7 +99,7 @@ func TestCompileConfig(t *testing.T) {
 				t.Helper()
 				require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
 				require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
-				require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte("mode: full\n"), 0o644))
+				require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte("mode: full\nbase_path: .analysis\nroles_config: roles/default.yaml\nslots:\n  discovery: brainstorming\n"), 0o644))
 				require.NoError(t, os.WriteFile(filepath.Join(dir, "personas", "README.md"), []byte("# readme"), 0o644))
 			},
 			check: func(t *testing.T, a map[string]any) {
@@ -478,7 +478,7 @@ func TestCompileConfig_InvalidPersonaYAML(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte("mode: full\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte("mode: full\nbase_path: .analysis\nroles_config: roles/default.yaml\nslots:\n  discovery: brainstorming\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "personas", "bad.yaml"), []byte(": invalid\n  yaml: here"), 0o644))
 	err := compile.Config(dir, filepath.Join(dir, ".compiled", ".config.gz"))
 	require.Error(t, err)
