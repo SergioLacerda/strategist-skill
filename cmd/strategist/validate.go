@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -90,23 +91,19 @@ func validateActiveYAML(path string) error {
 		return fmt.Errorf("read: %w", err)
 	}
 
-	var cfg map[string]any
+	var cfg domain.ActiveConfig
 	if err := yaml.Unmarshal(raw, &cfg); err != nil {
 		return fmt.Errorf("invalid YAML: %w", err)
 	}
-
-	for _, field := range []string{"mode", "roles_config"} {
-		if _, ok := cfg[field]; !ok {
-			return fmt.Errorf("missing required field: %s", field)
-		}
+	if cfg.Mode == "" {
+		return fmt.Errorf("missing required field: mode")
 	}
-
-	if mode, ok := cfg["mode"].(string); ok {
-		if mode != "pragmatic" && mode != "epic" {
-			return fmt.Errorf("invalid mode %q (must be pragmatic or epic)", mode)
-		}
+	if cfg.RolesConfig == "" {
+		return fmt.Errorf("missing required field: roles_config")
 	}
-
+	if cfg.Mode != "pragmatic" && cfg.Mode != "epic" {
+		return fmt.Errorf("invalid mode %q (must be pragmatic or epic)", cfg.Mode)
+	}
 	return nil
 }
 
@@ -127,15 +124,16 @@ func validatePersonasDir(dir string) (errs []string, checks int) {
 			errs = append(errs, fmt.Sprintf("personas/%s: read: %v", e.Name(), err))
 			continue
 		}
-		var p map[string]any
+		var p domain.PersonaConfig
 		if err := yaml.Unmarshal(raw, &p); err != nil {
 			errs = append(errs, fmt.Sprintf("personas/%s: invalid YAML: %v", e.Name(), err))
 			continue
 		}
-		for _, field := range []string{"tone_directive", "phase_labels"} {
-			if _, ok := p[field]; !ok {
-				errs = append(errs, fmt.Sprintf("personas/%s: missing field: %s", e.Name(), field))
-			}
+		if p.ToneDirective == "" {
+			errs = append(errs, fmt.Sprintf("personas/%s: missing required field: tone_directive", e.Name()))
+		}
+		if p.PhaseLabels.Discovery == "" && p.PhaseLabels.Refinement == "" && p.PhaseLabels.Execution == "" {
+			errs = append(errs, fmt.Sprintf("personas/%s: missing required field: phase_labels", e.Name()))
 		}
 	}
 	return errs, checks

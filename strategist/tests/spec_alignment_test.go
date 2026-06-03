@@ -242,6 +242,47 @@ func TestBootstrapContractDefinesInvalidLocalProfileErrorCode(t *testing.T) {
 	}
 }
 
+func TestStrategistBootstrapContractKeepsContractValidation(t *testing.T) {
+	t.Parallel()
+	bootstrapPath := filepath.Join(repoRoot(t), "strategist", "contracts", "bootstrap.md")
+	content := readFile(t, bootstrapPath)
+
+	if !strings.Contains(content, "## 2f. Contract validation") {
+		t.Fatalf("%s missing contract validation section", bootstrapPath)
+	}
+	if !strings.Contains(content, "required: true") {
+		t.Fatalf("%s missing required field validation rule", bootstrapPath)
+	}
+	if !strings.Contains(content, "contract_input_missing") {
+		t.Fatalf("%s missing contract_input_missing stop condition", bootstrapPath)
+	}
+}
+
+func TestStrategistResponseContractIsExternalized(t *testing.T) {
+	t.Parallel()
+	protocolPath := filepath.Join(repoRoot(t), "strategist", "protocol.md")
+	skillPath := filepath.Join(repoRoot(t), "strategist", "SKILL.md")
+
+	protocol := readFile(t, protocolPath)
+	skill := readFile(t, skillPath)
+
+	if !strings.Contains(protocol, "## Response Contract") {
+		t.Fatalf("%s missing Response Contract section", protocolPath)
+	}
+	if !strings.Contains(protocol, "## Compliance Summary") {
+		t.Fatalf("%s missing Compliance Summary section", protocolPath)
+	}
+	if !strings.Contains(protocol, "## Mission Result") {
+		t.Fatalf("%s missing Mission Result section", protocolPath)
+	}
+	if !strings.Contains(skill, "See `strategist/protocol.md#response-contract`") {
+		t.Fatalf("%s must reference strategist/protocol.md#response-contract", skillPath)
+	}
+	if strings.Contains(skill, "## 11. Mission Result") {
+		t.Fatalf("%s still embeds Mission Result inline", skillPath)
+	}
+}
+
 func TestSkillDefinesMissingProfileDiagnosticsBlock(t *testing.T) {
 	t.Parallel()
 	for _, p := range []string{

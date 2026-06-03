@@ -47,9 +47,19 @@ func TestCompiledConfig_JSONTags(t *testing.T) {
 		Schema:     "strategist-compiled-config/1.0",
 		CompiledAt: "123",
 		Sources:    map[string]int64{"/a": 100},
-		Active:     map[string]any{"mode": "full"},
-		Personas:   map[string]any{"epic": "yes"},
-		Roles:      map[string]any{"default": "yes"},
+		Active: domain.ActiveConfig{
+			Mode:        "full",
+			BasePath:    ".analysis",
+			RolesConfig: "roles/default.yaml",
+			Slots:       map[string]string{"discovery": "brainstorming"},
+		},
+		Personas: map[string]domain.PersonaConfig{
+			"epic": {
+				ID:            "epic",
+				ToneDirective: "be precise",
+			},
+		},
+		Roles: map[string]any{"default": "yes"},
 	}
 	data, err := json.Marshal(cc)
 	require.NoError(t, err)

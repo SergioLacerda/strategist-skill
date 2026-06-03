@@ -11,14 +11,18 @@ type missionRunKey struct{}
 
 // MissionRun tracks end-to-end mission timing and visible output volume.
 type MissionRun struct {
-	mu        sync.Mutex
-	MissionID string
-	startedAt time.Time
-	intakeAt  time.Time
-	rangerAt  time.Time
-	linesOut  int64
-	tokensIn  int64
-	tokensOut int64
+	mu            sync.Mutex
+	MissionID     string
+	startedAt     time.Time
+	intakeAt      time.Time
+	rangerAt      time.Time
+	archivistAt   time.Time
+	gateAt        time.Time
+	gateRespondAt time.Time
+	sniperAt      time.Time
+	linesOut      int64
+	tokensIn      int64
+	tokensOut     int64
 }
 
 // NewMissionRun initializes a mission tracker.
@@ -64,6 +68,43 @@ func (m *MissionRun) MarkRanger() {
 	}
 }
 
+// MarkArchivist records when the refinement slot starts.
+func (m *MissionRun) MarkArchivist() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.archivistAt.IsZero() {
+		m.archivistAt = time.Now()
+	}
+}
+
+// MarkGatePresented records when the approval gate is shown to the user.
+func (m *MissionRun) MarkGatePresented() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.gateAt.IsZero() {
+		m.gateAt = time.Now()
+	}
+}
+
+// MarkGateResponse records when the user responds to the approval gate.
+// TGateWaitMS = MarkGateResponse − MarkGatePresented (human latency).
+func (m *MissionRun) MarkGateResponse() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.gateRespondAt.IsZero() {
+		m.gateRespondAt = time.Now()
+	}
+}
+
+// MarkSniper records when the execution slot starts.
+func (m *MissionRun) MarkSniper() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.sniperAt.IsZero() {
+		m.sniperAt = time.Now()
+	}
+}
+
 // AddLines increments the visible output counter.
 func (m *MissionRun) AddLines(n int64) {
 	if n <= 0 {
@@ -96,15 +137,36 @@ func (m *MissionRun) Snapshot() MissionMetrics {
 	if rangerAt.IsZero() {
 		rangerAt = intakeAt
 	}
+	archivistAt := m.archivistAt
+	if archivistAt.IsZero() {
+		archivistAt = rangerAt
+	}
+	gateAt := m.gateAt
+	if gateAt.IsZero() {
+		gateAt = archivistAt
+	}
+	gateRespondAt := m.gateRespondAt
+	if gateRespondAt.IsZero() {
+		gateRespondAt = gateAt
+	}
+	sniperAt := m.sniperAt
+	if sniperAt.IsZero() {
+		sniperAt = gateRespondAt
+	}
 
 	return MissionMetrics{
-		MissionID:         m.MissionID,
-		TStartToIntakeMS:  intakeAt.Sub(m.startedAt).Milliseconds(),
-		TIntakeToRangerMS: rangerAt.Sub(intakeAt).Milliseconds(),
-		TotalWallTimeMS:   now.Sub(m.startedAt).Milliseconds(),
-		TokensIn:          m.tokensIn,
-		TokensOut:         m.tokensOut,
-		LinesEmitted:      m.linesOut,
+		MissionID:            m.MissionID,
+		TStartToIntakeMS:     intakeAt.Sub(m.startedAt).Milliseconds(),
+		TIntakeToRangerMS:    rangerAt.Sub(intakeAt).Milliseconds(),
+		TRangerToArchivistMS: archivistAt.Sub(rangerAt).Milliseconds(),
+		TArchivistToGateMS:   gateAt.Sub(archivistAt).Milliseconds(),
+		TGateWaitMS:          gateRespondAt.Sub(gateAt).Milliseconds(),
+		TGateToSniperMS:      sniperAt.Sub(gateRespondAt).Milliseconds(),
+		TSniperToDoneMS:      now.Sub(sniperAt).Milliseconds(),
+		TotalWallTimeMS:      now.Sub(m.startedAt).Milliseconds(),
+		TokensIn:             m.tokensIn,
+		TokensOut:            m.tokensOut,
+		LinesEmitted:         m.linesOut,
 	}
 }
 

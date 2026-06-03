@@ -1,4 +1,4 @@
-.PHONY: build test test-all integration lint vuln bench cover cover-gate cover-html analysis-structure-gate install sync-embed release snapshot clean
+.PHONY: build test test-all integration test-lite test-telemetry-lite test-compile-cache test-domain-architecture lint vuln bench cover cover-gate cover-html analysis-structure-gate install sync-embed release snapshot clean
 
 GOLANGCI_LINT := $(shell which golangci-lint 2>/dev/null || echo $(shell go env GOPATH)/bin/golangci-lint)
 GOVULNCHECK   := $(shell which govulncheck 2>/dev/null || echo $(shell go env GOPATH)/bin/govulncheck)
@@ -15,6 +15,21 @@ test-all: test integration
 
 integration:
 	go test -race -tags=integration ./tests/...
+
+# test-lite runs the isolated test slices that do not require downloading new modules.
+test-lite: test-telemetry-lite test-compile-cache test-domain-architecture
+
+# test-telemetry-lite runs the telemetry subset that only depends on stdlib + local code.
+test-telemetry-lite:
+	go test -race internal/telemetry/policy_event.go internal/telemetry/mission_run.go internal/telemetry/mission_metrics.go internal/telemetry/policy_event_test.go internal/telemetry/mission_run_test.go internal/telemetry/mission_metrics_test.go
+
+# test-compile-cache runs the compile cache tests without the rest of the compile package suite.
+test-compile-cache:
+	go test -race internal/compile/cache.go internal/compile/cache_test.go
+
+# test-domain-architecture runs the dependency-isolation smoke test without the rest of the domain suite.
+test-domain-architecture:
+	go test -race internal/domain/architecture_test.go
 
 lint:
 	gofmt -w .

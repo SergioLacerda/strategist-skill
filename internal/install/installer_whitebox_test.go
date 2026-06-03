@@ -36,8 +36,8 @@ func (m minimalExtractor) Extract(targetDir string, _ bool) error {
 		filepath.Join(targetDir, "SKILL.md"):                               "# SKILL\n",
 		filepath.Join(targetDir, "knowledge.index.yaml"):                   "sources: []\n",
 		filepath.Join(targetDir, "index.yaml"):                             "load_always: []\nload_by_task_type: {}\n",
-		filepath.Join(targetDir, "templates", "pragmatic-standalone.yaml"): "mode: pragmatic\nbase_path: .analysis\n",
-		filepath.Join(targetDir, "templates", "epic-standalone.yaml"):      "mode: epic\nbase_path: .analysis\n",
+		filepath.Join(targetDir, "templates", "pragmatic-standalone.yaml"): "mode: pragmatic\nbase_path: .analysis\nroles_config: roles/default.yaml\n",
+		filepath.Join(targetDir, "templates", "epic-standalone.yaml"):      "mode: epic\nbase_path: .analysis\nroles_config: roles/default.yaml\n",
 	}
 	for path, content := range files {
 		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
@@ -50,7 +50,7 @@ func (m minimalExtractor) Extract(targetDir string, _ bool) error {
 func (m minimalExtractor) ReadFile(relPath string) ([]byte, error) {
 	switch relPath {
 	case "templates/epic-standalone.yaml":
-		return []byte("mode: epic\nbase_path: .analysis\n"), nil
+		return []byte("mode: epic\nbase_path: .analysis\nroles_config: roles/default.yaml\n"), nil
 	case "SKILL.md":
 		return []byte("# SKILL\n"), nil
 	default:
@@ -188,7 +188,7 @@ func TestApplyConfig_ForceOverwritesActiveYAML(t *testing.T) {
 
 	got, err := os.ReadFile(activeYAMLPath)
 	require.NoError(t, err)
-	assert.Equal(t, "mode: epic\nbase_path: .analysis\n", string(got), "--force must overwrite active.yaml with embedded template")
+	assert.Equal(t, "mode: epic\nbase_path: .analysis\nroles_config: roles/default.yaml\n", string(got), "--force must overwrite active.yaml with embedded template")
 }
 
 func TestApplyConfig_ReadFileFails(t *testing.T) {

@@ -181,3 +181,49 @@ Every phase transition MUST emit exactly one progress event:
 - Phase failure → `status=blocked`
 
 Emitting a start event and then advancing to the next phase without emitting a done event is a violation of the silent_phase_advance drift pattern. Self-correct immediately.
+
+---
+
+## Response Contract
+
+Strategist responses MUST end with this envelope, in order:
+
+1. progress / pipeline evidence
+2. compliance summary
+3. mission result
+
+### Compliance Summary
+
+Append this block as the final evidence section before the mission result:
+
+```text
+---
+[Strategist] response_complete
+  pipeline_compliant: yes | no
+  phases_run: <comma-separated list of phases that ran>
+  phases_skipped: <list or none>
+  opportunity_attack: ranger=<N> archivist=<N> sniper=<N|triggered|n/a>
+  treasure_chests_consulted: yes | no | none_configured
+  gate_presented: yes | no | n/a
+```
+
+If `pipeline_compliant=no`, also include:
+```text
+  reason: <which phases were skipped and why>
+```
+
+### Mission Result
+
+Return a result conforming to `mission-result.schema.yaml`:
+
+```yaml
+mission_id: <id>
+status: completed | plan_only | blocked
+artifacts:
+  discovery: <path>             # always present when Ranger ran
+  opportunity_report: inline    # present when opportunity execution ran (inline block)
+  refined_plan: <path>          # present when Archivist ran
+  execution_report: <path>      # present when Sniper ran
+  adr: <path>                   # present when ADR was generated and committed
+blockers: []                    # list of blocker codes if status=blocked
+```

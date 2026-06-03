@@ -36,6 +36,96 @@ func TestOpportunityGatePolicyLocked(t *testing.T) {
 	}
 }
 
+func TestFSMQuickDrawRoute(t *testing.T) {
+	t.Parallel()
+	policy := domain.NewMissionPolicy(domain.MissionModeExecutedDelivery)
+
+	// Intent detected → QuickDraw state
+	s := domain.NextState(domain.StateInit, domain.EventQuickDrawIntent, policy)
+	assert.Equal(t, domain.StateQuickDraw, s)
+
+	// Normalize note → gate
+	s = domain.NextState(s, domain.EventManifestNonEmpty, policy)
+	assert.Equal(t, domain.StateQuickDrawGate, s)
+
+	// User approves → done
+	s = domain.NextState(s, domain.EventQuickDrawApprove, policy)
+	assert.Equal(t, domain.StateQuickDrawDone, s)
+
+	// Done is absorbing
+	s = domain.NextState(s, domain.EventManifestNonEmpty, policy)
+	assert.Equal(t, domain.StateQuickDrawDone, s)
+}
+
+func TestFSMQuickDrawDecline(t *testing.T) {
+	t.Parallel()
+	policy := domain.NewMissionPolicy(domain.MissionModeExecutedDelivery)
+	s := domain.RunStateMachine(domain.StateQuickDrawGate,
+		[]domain.TransitionEvent{domain.EventQuickDrawDecline},
+		policy,
+	)
+	assert.Equal(t, domain.StateQuickDrawDone, s)
+}
+
+func TestFSMADRRoute(t *testing.T) {
+	t.Parallel()
+	policy := domain.NewMissionPolicy(domain.MissionModeExecutedDelivery)
+
+	for _, start := range []domain.MissionState{domain.StateDoneAnalysis, domain.StateDoneDelivery} {
+		s := domain.NextState(start, domain.EventADRCriterionMet, policy)
+		assert.Equal(t, domain.StateADRGate1, s, "from %s", start)
+
+		s = domain.NextState(s, domain.EventADRApproved, policy)
+		assert.Equal(t, domain.StateADRGate2, s)
+
+		s = domain.NextState(s, domain.EventADRApproved, policy)
+		assert.Equal(t, domain.StateADRDone, s)
+	}
+}
+
+func TestFSMADRDeclineAtGate1(t *testing.T) {
+	t.Parallel()
+	policy := domain.NewMissionPolicy(domain.MissionModeExecutedDelivery)
+	s := domain.RunStateMachine(domain.StateADRGate1,
+		[]domain.TransitionEvent{domain.EventADRDeclined},
+		policy,
+	)
+	assert.Equal(t, domain.StateADRDone, s)
+}
+
+func TestFSMRetryTransient(t *testing.T) {
+	t.Parallel()
+	policy := domain.NewMissionPolicy(domain.MissionModeExecutedDelivery)
+
+	// Transient failure in refinement → retrying
+	s := domain.NextState(domain.StateRefinement, domain.EventSlotTransient, policy)
+	assert.Equal(t, domain.StateRetrying, s)
+
+	// Retry succeeds (manifest non-empty = slot returned artifact)
+	s = domain.NextState(s, domain.EventManifestNonEmpty, policy)
+	assert.Equal(t, domain.StateRefinement, s)
+}
+
+func TestFSMRetryExhausted(t *testing.T) {
+	t.Parallel()
+	policy := domain.NewMissionPolicy(domain.MissionModeExecutedDelivery)
+
+	s := domain.NextState(domain.StateRetrying, domain.EventSlotTransient, policy)
+	assert.Equal(t, domain.StateBlocked, s)
+
+	s = domain.NextState(domain.StateRetrying, domain.EventSlotPermanent, policy)
+	assert.Equal(t, domain.StateBlocked, s)
+}
+
+func TestFSMSniperOARoute(t *testing.T) {
+	t.Parallel()
+	policy := domain.NewMissionPolicy(domain.MissionModeExecutedDelivery)
+
+	// Mid-execution OA surfaces → pause at opportunity gate
+	s := domain.NextState(domain.StateExecution, domain.EventSniperOA, policy)
+	assert.Equal(t, domain.StateOpportunityGate, s)
+}
+
 func TestFSMSafetyPropertyLike(t *testing.T) {
 	t.Parallel()
 	rng := rand.New(rand.NewSource(31))
