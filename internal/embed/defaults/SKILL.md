@@ -7,7 +7,7 @@ See the focused contract files for the mission contract set:
 - `strategist/contracts/intake.md`
 - `strategist/contracts/mission-phases.md`
 - `strategist/contracts/approval-gate.md`
-- `strategist/contracts/adr.md`
+- `strategist/contracts/adr.yaml`
 - `strategist/contracts/learning.md`
 
 The main pipeline still runs in the same order.
@@ -41,11 +41,13 @@ The routing, bootstrap, preflight, intake, checkpoint, and context-enrichment ru
 ---
 
 ## 5. Mission Phases
-See the focused contract files for the mission-phase behaviors:
+For Quick Draw (rapid idea capture) side-quest routing, see `contracts/quick-draw.yaml`.
+
+See the focused contract files for the main mission-phase behaviors:
 
 - `strategist/contracts/mission-phases.md`
 - `strategist/contracts/approval-gate.md`
-- `strategist/contracts/adr.md`
+- `strategist/contracts/adr.yaml`
 - `strategist/contracts/learning.md`
 
 ---
@@ -61,7 +63,7 @@ See `strategist/contracts/mission-phases.md`.
 ---
 
 ## 8. ADR Opportunity (post-mission, conditional)
-See `strategist/contracts/adr.md`.
+See `strategist/contracts/adr.yaml`.
 
 ---
 
