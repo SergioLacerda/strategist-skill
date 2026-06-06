@@ -47,7 +47,7 @@ jobs:
         run: go test -race $(go list ./... | grep -v '/testutil')
 
       - name: Integration tests
-        run: go test -tags=integration -race ./tests/...
+        run: go test -tags=integration -race ./tests/integration/...
 
       - name: Coverage gate (>90% per package)
         run: |
@@ -73,7 +73,7 @@ jobs:
       - name: Fixture and schema validation
         run: |
           pip install pyyaml --quiet
-          bash strategist/tests/run-tests.sh
+          bash tests/spec/run-tests.sh
 
       - name: Analysis refined structure gate
         run: make analysis-structure-gate

@@ -1,6 +1,6 @@
 //go:build integration
 
-package tests_test
+package integration_test
 
 import (
 	"testing"
