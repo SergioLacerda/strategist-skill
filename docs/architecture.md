@@ -1,5 +1,8 @@
 # Arquitetura — Strategist Skill
 
+**Status:** Accepted
+**Last Updated:** 2026-06-06
+
 ## Visão Geral
 
 O projeto é composto por duas camadas independentes:

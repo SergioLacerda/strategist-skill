@@ -1,8 +1,11 @@
 # Internals da Skill — Sub-skills, Contratos e Schemas
 
+**Status:** Accepted
+**Last Updated:** 2026-06-06
+
 Este documento descreve os componentes internos do runtime da skill Strategist: as sub-skills invocadas automaticamente pelo orchestrador, os contratos de fase, e os schemas de entrada/saída.
 
-Para o pipeline geral e comportamento dos slots, veja [readme_detailed.md](../readme_detailed.md).  
+Para o pipeline geral e comportamento dos slots, consulte `docs/architecture.md`.
 Para configuração, veja [configuration.md](configuration.md).
 
 ---

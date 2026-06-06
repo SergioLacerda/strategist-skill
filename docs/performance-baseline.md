@@ -1,5 +1,6 @@
 # Performance Baseline
 
+**Status:** Accepted
 **Date:** 2026-06-02  
 **Hardware:** Intel Core i5-4460 @ 3.20GHz, 4 cores  
 **Go:** run `go version` to confirm  

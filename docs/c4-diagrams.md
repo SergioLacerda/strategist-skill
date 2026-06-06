@@ -1,5 +1,8 @@
 # Diagramas C4 — Strategist Skill
 
+**Status:** Accepted
+**Last Updated:** 2026-06-06
+
 Documentação arquitetural em 4 níveis do modelo C4. Renderizado pelo GitHub via Mermaid.
 
 ---
