@@ -1,5 +1,8 @@
 # Referência CLI — strategist
 
+**Status:** Accepted
+**Last Updated:** 2026-06-06
+
 O binário `strategist` é construído em Go com [cobra](https://github.com/spf13/cobra). Todos os comandos seguem o padrão:
 
 ```

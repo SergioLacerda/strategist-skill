@@ -1,5 +1,8 @@
 # Referência de Configuração — Strategist Skill
 
+**Status:** Accepted
+**Last Updated:** 2026-06-06
+
 Todos os arquivos de configuração ficam em `.strategist/` dentro do repositório instalado. Edições manuais requerem recompilação (`strategist compile`) para que o agente use a versão atualizada.
 
 ---
