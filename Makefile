@@ -1,4 +1,4 @@
-.PHONY: build test test-all integration spec test-lite test-telemetry-lite test-compile-cache test-domain-architecture lint vuln bench cover cover-gate cover-html analysis-structure-gate install sync-embed release snapshot clean
+.PHONY: build test test-all integration spec test-lite test-telemetry-lite test-compile-cache test-domain-architecture lint vuln bench cover cover-gate cover-html analysis-structure-gate docs-governance-gate install sync-embed release snapshot clean
 
 GOLANGCI_LINT := $(shell which golangci-lint 2>/dev/null || echo $(shell go env GOPATH)/bin/golangci-lint)
 GOVULNCHECK   := $(shell which govulncheck 2>/dev/null || echo $(shell go env GOPATH)/bin/govulncheck)
@@ -73,6 +73,9 @@ cover-html:
 
 analysis-structure-gate:
 	bash scripts/check-refined-structure.sh
+
+docs-governance-gate:
+	bash scripts/check-docs-governance.sh
 
 install: build
 	mkdir -p ~/.local/bin
