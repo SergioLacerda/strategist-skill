@@ -77,3 +77,6 @@ jobs:
 
       - name: Analysis refined structure gate
         run: make analysis-structure-gate
+
+      - name: Docs governance gate
+        run: make docs-governance-gate
