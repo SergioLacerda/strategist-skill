@@ -1,4 +1,6 @@
-package tests
+//go:build spec
+
+package spec_test
 
 import (
 	"os"
@@ -349,7 +351,7 @@ func TestMissionMetricsSignalPresent(t *testing.T) {
 	t.Parallel()
 
 	files := []string{
-		filepath.Join(testDir(t), "..", "schemas", "progress-contract.yaml"),
+		filepath.Join(repoRoot(t), "strategist", "schemas", "progress-contract.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "schemas", "progress-contract.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "intake.yaml"),
 	}

@@ -1,4 +1,4 @@
-.PHONY: build test test-all integration test-lite test-telemetry-lite test-compile-cache test-domain-architecture lint vuln bench cover cover-gate cover-html analysis-structure-gate install sync-embed release snapshot clean
+.PHONY: build test test-all integration spec test-lite test-telemetry-lite test-compile-cache test-domain-architecture lint vuln bench cover cover-gate cover-html analysis-structure-gate install sync-embed release snapshot clean
 
 GOLANGCI_LINT := $(shell which golangci-lint 2>/dev/null || echo $(shell go env GOPATH)/bin/golangci-lint)
 GOVULNCHECK   := $(shell which govulncheck 2>/dev/null || echo $(shell go env GOPATH)/bin/govulncheck)
@@ -11,10 +11,13 @@ build:
 test:
 	go test -race $$(go list ./... | grep -v '/testutil')
 
-test-all: test integration
+test-all: test spec integration
 
 integration:
-	go test -race -tags=integration ./tests/...
+	go test -race -tags=integration ./tests/integration/...
+
+spec:
+	go test -race -tags=spec ./tests/spec/...
 
 # test-lite runs the isolated test slices that do not require downloading new modules.
 test-lite: test-telemetry-lite test-compile-cache test-domain-architecture
@@ -64,7 +67,7 @@ cover-gate:
 
 # cover-html writes coverage.html without opening a browser.
 cover-html:
-	go test -race -coverprofile=coverage.out -coverpkg=./internal/... ./internal/... ./tests/...
+	go test -race -coverprofile=coverage.out -coverpkg=./internal/... ./internal/... ./tests/integration/...
 	go tool cover -html=coverage.out -o coverage.html
 	@echo "report written to coverage.html"
 

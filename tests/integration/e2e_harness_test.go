@@ -1,6 +1,6 @@
 //go:build integration
 
-package tests_test
+package integration_test
 
 import (
 	"bytes"
@@ -37,7 +37,7 @@ func repoRoot(t *testing.T) string {
 		t.Fatal("runtime.Caller failed")
 	}
 
-	return filepath.Clean(filepath.Join(filepath.Dir(file), ".."))
+	return filepath.Clean(filepath.Join(filepath.Dir(file), "../.."))
 }
 
 func buildStrategistBinary(t *testing.T) string {
