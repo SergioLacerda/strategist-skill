@@ -112,7 +112,7 @@ Scan `<base_path>/`:
 | Dir      | Check                                                   | Type      |
 |----------|---------------------------------------------------------|-----------|
 | pending/ | Does this spec have a corresponding plan in refined/?   | file_move |
-| refined/ | Does this plan have a corresponding report in done/?    | file_move |
+| refined/ | Does this plan have a corresponding report in archived/? | file_move |
 | todo/    | Does this spec have an implementation commit in git?    | file_move |
 
 **Heuristic for file_move:** git log contains a commit referencing the spec slug (date + topic keyword) OR spec lists features that exist as code in the repo. When uncertain, list as a candidate — the user decides.
@@ -145,6 +145,10 @@ Invoke the refinement slot provider with:
 - `mission_contract.planning_rules`
 - Dossier
 - **Role brief — Archivist** (canonical behaviors):
+  - `artifact_language`: Use `active.language.docs` for artifact body content
+    (proposal.md, design.md, tasks.md). If `language.docs` differs from `language.chat`,
+    write artifacts in `language.docs` and all user-facing communication in `language.chat`.
+    If both are equal, no distinction is needed.
   - `consult_treasure_chests`: Mandatory step — consult all passed chests before analyzing. If chest list is empty, proceed.
   - Output format: `proposal.md` + `design.md` + `tasks.md` in the artifact subdirectory
 - **Treasure chests** — mandatory step (chests where scope = `refinement` or `all`):

@@ -18,6 +18,10 @@ invariants:
     description: source-hints.yaml priority overrides are applied before final ranking
     rule: source_hints_applied=true when source-hints.yaml has matching entries
 
+  - id: semantic_retrieval_never_required
+    description: Context enrichment must still work without semantic retrieval
+    rule: semantic_index_unavailable → fallback_to_tags_or_lexical, continue
+
 cases:
   - name: fast_path_with_matches
     given:
@@ -46,3 +50,11 @@ cases:
       treasure_chests: [{id: source, scope: all}]
     expect:
       emit: "[Strategist] treasure_chest_found"
+
+  - name: semantic_index_unavailable
+    given:
+      semantic_index: unavailable
+      task_type: implementation
+    expect:
+      retrieval_strategy: lexical_or_tags
+      pipeline: continues

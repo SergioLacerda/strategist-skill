@@ -78,7 +78,7 @@ Invoke the execution slot provider with:
   **Chest signal:** Before passing the list to Sniper, emit `persona.content_by_lang[active.language.chat].treasure_chest_found`
   for each chest in the list with `{chest_id}` = chest id and `{description}` = chest description. Skip if empty.
 
-Execution report artifact path: `<base_path>/done/<mission_id>-report.md`
+Execution report artifact path: `<base_path>/archived/<mission_id>-report.md`
 
 Wait for completion. On success:
 Emit via `persona.content_by_lang[active.language.chat].sniper_done` (with `{artifact_path}`).

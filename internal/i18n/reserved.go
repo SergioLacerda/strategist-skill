@@ -5,11 +5,11 @@ package i18n
 // These are NOT user-visible strings — they are part of the bilingual protocol
 // between the user, active.yaml, and the agent. Do not translate.
 const (
-	// MissionMode values — written to active.yaml, matched by the agent.
-	ReservedMissionModeAnalysis        = "analise"
-	ReservedMissionModeRevisedDelivery = "entrega_revisada"
-	ReservedMissionModeExecDelivery    = "entrega_executada"
-	ReservedDoneScopeDelivery          = "entrega"
+	// Canonical execution and git persistence values — written to active.yaml, matched by the agent.
+	ReservedExecutionModePlanOnly       = "plan_only"
+	ReservedExecutionModeApplyWorkspace = "apply_workspace"
+	ReservedGitModeForbidden            = "forbidden"
+	ReservedGitModeExplicitCommit       = "explicit_commit"
 
 	// Gate responses — typed by the user, matched by the agent.
 	ReservedGateYes = "sim"

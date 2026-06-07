@@ -1,16 +1,17 @@
 package domain
 
-// Legacy done scopes.
+import "fmt"
+
+// Execution mode constants control whether the Sniper may apply changes to the workspace.
 const (
-	DoneScopeAnalysis = "analise"
-	DoneScopeDelivery = "entrega"
+	ExecutionModePlanOnly       = "plan_only"
+	ExecutionModeApplyWorkspace = "apply_workspace"
 )
 
-// Mission modes (single user-facing control).
+// Git persistence mode constants control whether mutable Git commands are allowed.
 const (
-	MissionModeAnalysis         = "analise"
-	MissionModeRevisedDelivery  = "entrega_revisada"
-	MissionModeExecutedDelivery = "entrega_executada"
+	GitPersistenceModeForbidden      = "forbidden"
+	GitPersistenceModeExplicitCommit = "explicit_commit"
 )
 
 // Transition groups classify sensitive mission-state changes.
@@ -81,13 +82,10 @@ const (
 )
 
 // MissionPolicy controls whether guarded transitions are allowed.
-// MissionMode is canonical. DoneScope/ApplyChanges are derived for compatibility.
 type MissionPolicy struct {
-	Mode            string // analise | entrega_revisada | entrega_executada
-	CanExecute      bool
-	ExpectsDelivery string // analise | entrega
-	DoneScope       string
-	ApplyChanges    bool
+	ExecutionMode      string // plan_only | apply_workspace
+	GitPersistenceMode string // forbidden | explicit_commit
+	CanExecute         bool
 }
 
 // TransitionDecision is the deterministic result of policy evaluation.
@@ -98,40 +96,42 @@ type TransitionDecision struct {
 	Policy  MissionPolicy
 }
 
-// MissionModeFromLegacy maps the former 2-knob model to mission_mode.
-func MissionModeFromLegacy(doneScope string, applyChanges bool) string {
-	if doneScope == DoneScopeAnalysis {
-		return MissionModeAnalysis
-	}
-	if applyChanges {
-		return MissionModeExecutedDelivery
-	}
-	return MissionModeRevisedDelivery
-}
-
-// NewMissionPolicy builds canonical policy from mission_mode.
-func NewMissionPolicy(mode string) MissionPolicy {
-	switch mode {
-	case MissionModeAnalysis:
-		return MissionPolicy{Mode: mode, CanExecute: false, ExpectsDelivery: DoneScopeAnalysis, DoneScope: DoneScopeAnalysis, ApplyChanges: false}
-	case MissionModeRevisedDelivery:
-		return MissionPolicy{Mode: mode, CanExecute: false, ExpectsDelivery: DoneScopeDelivery, DoneScope: DoneScopeDelivery, ApplyChanges: false}
-	case MissionModeExecutedDelivery:
-		return MissionPolicy{Mode: mode, CanExecute: true, ExpectsDelivery: DoneScopeDelivery, DoneScope: DoneScopeDelivery, ApplyChanges: true}
-	default:
-		// Backward compatibility default preserves historical behavior.
-		return NewMissionPolicy(MissionModeExecutedDelivery)
+// NewMissionPolicy builds canonical policy from execution and git persistence modes.
+func NewMissionPolicy(executionMode, gitPersistenceMode string) MissionPolicy {
+	return MissionPolicy{
+		ExecutionMode:      executionMode,
+		GitPersistenceMode: gitPersistenceMode,
+		CanExecute:         executionMode == ExecutionModeApplyWorkspace,
 	}
 }
 
-// NormalizePolicy applies backward-compatible defaults/coherence.
-func NormalizePolicy(p MissionPolicy) MissionPolicy {
-	if p.Mode == "" {
-		if p.DoneScope != "" || p.ApplyChanges {
-			p.Mode = MissionModeFromLegacy(p.DoneScope, p.ApplyChanges)
-		} else {
-			p.Mode = MissionModeExecutedDelivery
+// Validate ensures the canonical policy does not contain ambiguous combinations.
+func (p MissionPolicy) Validate() error {
+	switch p.ExecutionMode {
+	case ExecutionModePlanOnly:
+		if p.GitPersistenceMode != GitPersistenceModeForbidden {
+			return fmt.Errorf("plan_only requires git_persistence_mode=forbidden")
 		}
+	case ExecutionModeApplyWorkspace:
+		switch p.GitPersistenceMode {
+		case GitPersistenceModeForbidden, GitPersistenceModeExplicitCommit:
+		default:
+			return fmt.Errorf("apply_workspace requires valid git_persistence_mode")
+		}
+	default:
+		return fmt.Errorf("invalid execution_mode: %s", p.ExecutionMode)
 	}
-	return NewMissionPolicy(p.Mode)
+	return nil
+}
+
+// NormalizePolicy applies canonical defaults/coherence.
+func NormalizePolicy(p MissionPolicy) MissionPolicy {
+	if p.ExecutionMode == "" {
+		p.ExecutionMode = ExecutionModePlanOnly
+	}
+	if p.GitPersistenceMode == "" {
+		p.GitPersistenceMode = GitPersistenceModeForbidden
+	}
+	p.CanExecute = p.ExecutionMode == ExecutionModeApplyWorkspace
+	return p
 }

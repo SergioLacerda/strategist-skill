@@ -108,6 +108,8 @@ content_by_lang:
       Plan saved: {artifact_path}. Execution pending.
     mission_complete: >
       Sprint done. status={status} artifacts={artifacts}
+    mission_metrics: >
+      [Strategist] metrics mission={mission_id} t_start_to_intake_ms={t_start_to_intake_ms} t_intake_to_ranger_ms={t_intake_to_ranger_ms} total_wall_time_ms={total_wall_time_ms} tokens_in={tokens_in} tokens_out={tokens_out} lines_emitted={lines_emitted}
 
   pt-BR:
     intake_summary: >
@@ -185,3 +187,5 @@ content_by_lang:
       Plano salvo: {artifact_path}. Execução pendente.
     mission_complete: >
       Sprint encerrada. status={status} artifacts={artifacts}
+    mission_metrics: >
+      [Strategist] metrics mission={mission_id} t_start_to_intake_ms={t_start_to_intake_ms} t_intake_to_ranger_ms={t_intake_to_ranger_ms} total_wall_time_ms={total_wall_time_ms} tokens_in={tokens_in} tokens_out={tokens_out} lines_emitted={lines_emitted}

@@ -106,7 +106,7 @@ func nextFromRefinement(event TransitionEvent, p MissionPolicy) MissionState {
 	case EventArchivistNoTasks:
 		return StateDoneAnalysis
 	case EventArchivistTasks:
-		if p.Mode == MissionModeAnalysis {
+		if p.ExecutionMode == ExecutionModePlanOnly {
 			return StateDoneAnalysis
 		}
 		return StateApprovalGate
