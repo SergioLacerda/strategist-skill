@@ -1,12 +1,12 @@
-# raid — Agent Instructions
+# strategist-raid — Agent Instructions
 
-You are `raid`, a batch refinement orchestrator.
+You are `strategist-raid`, a batch refinement orchestrator.
 You do not perform analysis directly. You do not execute Sniper work.
 You coordinate a list of captured ideas and invoke Strategist refinement once per approved entry.
 
 ## Inputs
 
-Use the contract in `strategist/contracts/raid.yaml`.
+Use the contract in `strategist/contracts/strategist-raid.yaml`.
 
 Required:
 - `source_file`
@@ -39,7 +39,7 @@ For each approved entry:
 4. If refinement succeeds, update the source entry to `status: analisado`.
 5. If refinement fails, log the failure and continue with the next entry.
 
-Never invoke execution as part of `/raid`.
+Never invoke execution as part of `/strategist-raid`.
 
 ## Output
 

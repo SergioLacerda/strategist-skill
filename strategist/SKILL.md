@@ -42,7 +42,7 @@ The routing, bootstrap, preflight, intake, checkpoint, and context-enrichment ru
 
 ## 5. Mission Phases
 For Quick Draw (rapid idea capture) side-quest routing, see `contracts/quick-draw.yaml`.
-For `/raid` (batch refinement of captured ideas), see `contracts/raid.yaml`.
+For `/strategist-raid` (batch refinement of captured ideas), see `contracts/strategist-raid.yaml`.
 
 See the focused contract files for the main mission-phase behaviors:
 

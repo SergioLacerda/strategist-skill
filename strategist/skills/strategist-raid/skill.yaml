@@ -1,4 +1,4 @@
-id: raid
+id: strategist-raid
 version: "0.1.0"
 schema_version: "1"
 status: active
@@ -22,7 +22,7 @@ output:
   errors: array
 
 entry_point:
-  contract: strategist/contracts/raid.yaml
+  contract: strategist/contracts/strategist-raid.yaml
 
 behavior:
   - Load the source_file and collect entries whose status matches filter_status
