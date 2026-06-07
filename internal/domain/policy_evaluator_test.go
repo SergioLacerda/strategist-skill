@@ -11,7 +11,7 @@ func TestGuardedTransitionRequiresGate(t *testing.T) {
 	t.Parallel()
 
 	decision := domain.EvaluateGuardedTransition(
-		domain.MissionPolicy{DoneScope: domain.DoneScopeDelivery, ApplyChanges: true},
+		domain.NewMissionPolicy(domain.ExecutionModeApplyWorkspace, domain.GitPersistenceModeForbidden),
 		domain.TransitionGroupExecution,
 		false,
 	)
@@ -20,7 +20,7 @@ func TestGuardedTransitionRequiresGate(t *testing.T) {
 	assert.Equal(t, "approval_required", decision.Reason)
 }
 
-func TestDefaultMissionModePreservesLegacyExecution(t *testing.T) {
+func TestDefaultPolicyIsPlanOnly(t *testing.T) {
 	t.Parallel()
 
 	decision := domain.EvaluateGuardedTransition(
@@ -29,16 +29,16 @@ func TestDefaultMissionModePreservesLegacyExecution(t *testing.T) {
 		true,
 	)
 
-	assert.True(t, decision.Allowed)
-	assert.Equal(t, "allowed", decision.Reason)
-	assert.Equal(t, domain.MissionModeExecutedDelivery, decision.Policy.Mode)
+	assert.False(t, decision.Allowed)
+	assert.Equal(t, "policy_blocked", decision.Reason)
+	assert.Equal(t, domain.ExecutionModePlanOnly, decision.Policy.ExecutionMode)
 }
 
-func TestDoneAnalysisSkipsExecution(t *testing.T) {
+func TestPlanOnlySkipsExecution(t *testing.T) {
 	t.Parallel()
 
 	decision := domain.EvaluateGuardedTransition(
-		domain.MissionPolicy{DoneScope: domain.DoneScopeAnalysis, ApplyChanges: true},
+		domain.NewMissionPolicy(domain.ExecutionModePlanOnly, domain.GitPersistenceModeForbidden),
 		domain.TransitionGroupExecution,
 		true,
 	)
@@ -47,11 +47,11 @@ func TestDoneAnalysisSkipsExecution(t *testing.T) {
 	assert.Equal(t, "policy_blocked", decision.Reason)
 }
 
-func TestExecutionAllowedWhenEntregaAndApplyChanges(t *testing.T) {
+func TestExecutionAllowedWhenApplyWorkspace(t *testing.T) {
 	t.Parallel()
 
 	decision := domain.EvaluateGuardedTransition(
-		domain.MissionPolicy{DoneScope: domain.DoneScopeDelivery, ApplyChanges: true},
+		domain.NewMissionPolicy(domain.ExecutionModeApplyWorkspace, domain.GitPersistenceModeForbidden),
 		domain.TransitionGroupExecution,
 		true,
 	)
@@ -64,7 +64,7 @@ func TestFinalizeAnalysisAllowedWithGate(t *testing.T) {
 	t.Parallel()
 
 	decision := domain.EvaluateGuardedTransition(
-		domain.MissionPolicy{DoneScope: domain.DoneScopeAnalysis, ApplyChanges: false},
+		domain.NewMissionPolicy(domain.ExecutionModePlanOnly, domain.GitPersistenceModeForbidden),
 		domain.TransitionGroupFinalizeAnalysis,
 		true,
 	)
@@ -78,7 +78,7 @@ func TestIncidentUXStratetist(t *testing.T) {
 
 	// Regression: no explicit approval must never allow execution-like transition.
 	decision := domain.EvaluateGuardedTransition(
-		domain.MissionPolicy{DoneScope: domain.DoneScopeDelivery, ApplyChanges: true},
+		domain.NewMissionPolicy(domain.ExecutionModeApplyWorkspace, domain.GitPersistenceModeForbidden),
 		domain.TransitionGroupExecution,
 		false,
 	)
@@ -92,7 +92,7 @@ func TestQuickDrawPolicyLockedForAnalysisMode(t *testing.T) {
 
 	// Quick draw execution is an execution-like guarded transition.
 	decision := domain.EvaluateGuardedTransition(
-		domain.NewMissionPolicy(domain.MissionModeAnalysis),
+		domain.NewMissionPolicy(domain.ExecutionModePlanOnly, domain.GitPersistenceModeForbidden),
 		domain.TransitionGroupExecution,
 		true,
 	)
@@ -101,15 +101,28 @@ func TestQuickDrawPolicyLockedForAnalysisMode(t *testing.T) {
 	assert.Equal(t, "policy_blocked", decision.Reason)
 }
 
-func TestQuickDrawAllowedForEntregaExecutadaWithGate(t *testing.T) {
+func TestQuickDrawAllowedForApplyWorkspaceWithGate(t *testing.T) {
 	t.Parallel()
 
 	decision := domain.EvaluateGuardedTransition(
-		domain.NewMissionPolicy(domain.MissionModeExecutedDelivery),
+		domain.NewMissionPolicy(domain.ExecutionModeApplyWorkspace, domain.GitPersistenceModeExplicitCommit),
 		domain.TransitionGroupExecution,
 		true,
 	)
 
 	assert.True(t, decision.Allowed)
 	assert.Equal(t, "allowed", decision.Reason)
+}
+
+func TestInvalidGitModeCombinationBlocked(t *testing.T) {
+	t.Parallel()
+
+	decision := domain.EvaluateGuardedTransition(
+		domain.NewMissionPolicy(domain.ExecutionModePlanOnly, domain.GitPersistenceModeExplicitCommit),
+		domain.TransitionGroupFinalizeAnalysis,
+		true,
+	)
+
+	assert.False(t, decision.Allowed)
+	assert.Contains(t, decision.Reason, "plan_only requires")
 }

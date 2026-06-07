@@ -20,6 +20,8 @@ type ActiveConfig struct {
 	KnowledgeIndexPath string            `yaml:"knowledge_index_path"`
 	Language           any               `yaml:"language,omitempty"`
 	AdrEnabled         bool              `yaml:"adr_enabled"`
+	ExecutionMode      string            `yaml:"execution_mode"`
+	GitPersistenceMode string            `yaml:"git_persistence_mode"`
 	Slots              map[string]string `yaml:"slots"`
 }
 
@@ -91,6 +93,9 @@ func (a ActiveConfig) Validate() error {
 	if len(a.Slots) == 0 {
 		errs = append(errs, "slots must have at least one entry")
 	}
+	if err := NormalizePolicy(NewMissionPolicy(a.ExecutionMode, a.GitPersistenceMode)).Validate(); err != nil {
+		errs = append(errs, err.Error())
+	}
 	if len(errs) == 0 {
 		return nil
 	}
@@ -140,9 +145,8 @@ type TreasureChest struct {
 type WizardConfig struct {
 	Mode               string
 	BasePath           string
-	MissionMode        string // analise | entrega_revisada | entrega_executada
-	DoneScope          string // analise | entrega
-	ApplyChanges       bool   // false by default; forced false when DoneScope=analise
+	ExecutionMode      string // plan_only | apply_workspace
+	GitPersistenceMode string // forbidden | explicit_commit
 	UILanguage         string // en | pt-BR — wizard interface + ongoing interactions
 	DocLanguage        string // en | pt-BR — generated documentation
 	ChatLanguage       string // en | pt-BR — AI chat responses

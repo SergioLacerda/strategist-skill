@@ -5,14 +5,18 @@ description: >
   outcomes.tmp after each mission. The buffer is flushed to outcomes.jsonl at the
   START of the next mission (§0 Pre-Bootstrap) when line count >= buffer_size.
   Flush at start (not end) ensures crash safety — the previous mission's outcome
-  is already in outcomes.tmp before any new writes begin.
+  is already in outcomes.tmp before any new writes begin. outcomes.jsonl remains
+  the canonical historical source of truth for any future retrieval strategy.
 
 contract:
   input:
     - name: mission_outcome_json
       type: string (one JSON line)
       required: true
-      description: Outcome record to buffer (from learning-curator)
+      description: >
+        Outcome record to buffer (from learning-curator). Minimum required fields:
+        mission_id, status, timestamp. Preferred richer shape is defined in
+        strategist/schemas/outcome-entry.schema.yaml.
     - name: buffer_size
       type: integer
       required: false
@@ -53,3 +57,7 @@ contract:
 
   invariant: >
     outcomes.jsonl is append-only. It is NEVER truncated or overwritten — only appended.
+
+  retrieval_policy: >
+    Any lexical or semantic retrieval index derived from outcomes.jsonl is optional,
+    rebuildable, and disposable. Derived indexes MUST NOT become the sole source of truth.

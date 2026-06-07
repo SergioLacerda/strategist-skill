@@ -1,18 +1,15 @@
 # GitHub Copilot Governance Bootstrap
-# Governance fingerprint: a3d875a1
-# Active mandates: 1 (M001)
-# Generated: 2026-06-06T22:37:48.245346Z
-# Drift check: fingerprint must match .sdd/metadata.json → governance_fingerprint
 
 You are operating in a workspace governed by **Spec Driven Development (SDD)**.
 
-## Entrypoint Contract
+## Critical Instruction
 
-1. You must learn commands and skills from your custom folder path:
-   - `.github/prompts/`
-2. You are under governance. Always resolve instructions from `.sdd`.
-   Initial reference:
-   - `.sdd/agent-instructions.md`
+Read and adhere to the canonical governance rules in:
+```
+.sdd/agent-instructions.md
+```
+
+This file is the **single source of truth** for all governance policies in this workspace.
 
 ## Commands And Skills (Source Of Truth)
 
@@ -27,15 +24,6 @@ You are operating in a workspace governed by **Spec Driven Development (SDD)**.
 5. Precedence rule:
    - Local path (`.github/prompts/*`) is for context and ergonomics.
    - `.sdd` is authoritative for routing/policy and wins conflicts.
-
-## Critical Instruction
-
-Read and adhere to the canonical governance rules in:
-```
-.sdd/agent-instructions.md
-```
-
-This file is the **single source of truth** for all governance policies in this workspace.
 
 ## Quick Reference
 

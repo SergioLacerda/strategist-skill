@@ -192,7 +192,7 @@ pipeline:
   - stage: execution
     slot: execution
     input: refined_plan
-    artifact_path: "<base_path>/done/<mission_id>-report.md"
+    artifact_path: "<base_path>/archived/<mission_id>-report.md"
     condition: approval_granted
   - stage: adr_opportunity
     type: conditional_pause

@@ -40,7 +40,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Design spec for curl installer and GitHub Actions release CI/CD
 - `install.sh` generates `.strategist/` runtime and registers agent shims across Claude, Gemini, Codex
 - Implementation plan and design spec for multi-agent skill registration via `.strategist install`
-- `.analysis/` workspace directories tracked in git (`pending/`, `refined/`, `done/`)
+- `.analysis/` workspace directories tracked in git (`pending/`, `refined/`, `archived/`)
 
 ### Changed
 - Renamed core persona roles: Scout → Ranger, Engineer → Archivist, Hunter → Sniper
@@ -50,7 +50,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 - Pinned all GitHub Actions to commit SHA to prevent supply-chain attacks
 - Set executable permission on `bootstrap.sh` and `bootstrap.ps1`
-- `.gitignore` updated to allow tracking `.analysis/pending/`, `refined/`, `done/`
+- `.gitignore` updated to allow tracking `.analysis/pending/`, `refined/`, `archived/`
 
 ### Removed
 - Obsolete strategist-mission-pipeline design docs and specifications

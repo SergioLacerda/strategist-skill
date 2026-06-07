@@ -60,73 +60,39 @@ func runWizard(p Prompter) (domain.WizardConfig, error) {
 	if err != nil {
 		return domain.WizardConfig{}, fmt.Errorf("wizard: doc_language: %w", err)
 	}
-	docLang = normLang(docLang)
-
 	chatLang, err := p.Select(b.PromptChatLang, "en", langOptions)
 	if err != nil {
 		return domain.WizardConfig{}, fmt.Errorf("wizard: chat_language: %w", err)
 	}
-	chatLang = normLang(chatLang)
-
 	codeLang, err := p.Select(b.PromptCodeLang, "en", langOptions)
 	if err != nil {
 		return domain.WizardConfig{}, fmt.Errorf("wizard: code_language: %w", err)
 	}
-	codeLang = normLang(codeLang)
 
 	mode, err := p.Select(b.PromptMode, "epic", []string{"pragmatic", "epic"})
 	if err != nil {
 		return domain.WizardConfig{}, fmt.Errorf("wizard: mode: %w", err)
 	}
-
 	basePath, err := p.Input(b.PromptBasePath, ".analysis")
 	if err != nil {
 		return domain.WizardConfig{}, fmt.Errorf("wizard: base_path: %w", err)
 	}
-
 	adrRaw, err := p.Select(b.PromptAdr, "yes", []string{"yes", "no"})
 	if err != nil {
 		return domain.WizardConfig{}, fmt.Errorf("wizard: adr_enabled: %w", err)
 	}
-	adrEnabled := adrRaw == "yes"
 
-	missionMode, err := p.Select(b.PromptMissionMode, "entrega_executada", []string{"analise", "entrega_revisada", "entrega_executada"})
+	executionMode, gitPersistenceMode, err := promptPolicyAndGit(p, b)
 	if err != nil {
-		return domain.WizardConfig{}, fmt.Errorf("wizard: mission_mode: %w", err)
+		return domain.WizardConfig{}, err
 	}
 
-	policy := domain.NewMissionPolicy(missionMode)
-	doneScope := policy.DoneScope
-	applyChanges := policy.ApplyChanges
-
-	fmt.Println(b.HeaderSlots)
-
-	discovery, err := p.SelectOrInput(b.PromptDiscovery, "brainstorming", []string{"brainstorming"}, b.LabelCustomInput)
+	discovery, refinement, execution, err := promptSlots(p, b)
 	if err != nil {
-		return domain.WizardConfig{}, fmt.Errorf("wizard: discovery: %w", err)
-	}
-	if w := validateProvider(discovery, "write_pending"); w != "" {
-		fmt.Println(w)
-	}
-
-	refinement, err := p.SelectOrInput(b.PromptRefinement, "openspec-explore", []string{"openspec-explore"}, b.LabelCustomInput)
-	if err != nil {
-		return domain.WizardConfig{}, fmt.Errorf("wizard: refinement: %w", err)
-	}
-	if w := validateProvider(refinement, "write_analysis"); w != "" {
-		fmt.Println(w)
-	}
-
-	execution, err := p.SelectOrInput(b.PromptExecution, "sdd-ask", []string{"sdd-ask", "sdd-ask-full"}, b.LabelCustomInput)
-	if err != nil {
-		return domain.WizardConfig{}, fmt.Errorf("wizard: execution: %w", err)
-	}
-	if w := validateProvider(execution, "controlled"); w != "" {
-		fmt.Println(w)
+		return domain.WizardConfig{}, err
 	}
 
 	fmt.Println(b.HeaderChest)
-
 	chestPath, err := p.Input(b.PromptChestPath, "")
 	if err != nil {
 		return domain.WizardConfig{}, fmt.Errorf("wizard: treasure_chest: %w", err)
@@ -135,19 +101,65 @@ func runWizard(p Prompter) (domain.WizardConfig, error) {
 	return domain.WizardConfig{
 		Mode:               mode,
 		BasePath:           basePath,
-		MissionMode:        missionMode,
-		DoneScope:          doneScope,
-		ApplyChanges:       applyChanges,
+		ExecutionMode:      executionMode,
+		GitPersistenceMode: gitPersistenceMode,
 		UILanguage:         uiLang,
-		DocLanguage:        docLang,
-		ChatLanguage:       chatLang,
-		CodeLanguage:       codeLang,
-		AdrEnabled:         adrEnabled,
+		DocLanguage:        normLang(docLang),
+		ChatLanguage:       normLang(chatLang),
+		CodeLanguage:       normLang(codeLang),
+		AdrEnabled:         adrRaw == "yes",
 		DiscoveryProvider:  discovery,
 		RefinementProvider: refinement,
 		ExecutionProvider:  execution,
 		TreasureChestPath:  chestPath,
 	}, nil
+}
+
+// promptPolicyAndGit collects execution mode and git persistence mode, validates the policy.
+func promptPolicyAndGit(p Prompter, b i18n.WizardStrings) (executionMode, gitPersistenceMode string, err error) {
+	executionMode, err = p.Select(b.PromptExecutionMode, "plan_only", []string{"plan_only", "apply_workspace"})
+	if err != nil {
+		return "", "", fmt.Errorf("wizard: execution_mode: %w", err)
+	}
+	gitOptions := []string{"forbidden"}
+	if executionMode == domain.ExecutionModeApplyWorkspace {
+		gitOptions = []string{"forbidden", "explicit_commit"}
+	}
+	gitPersistenceMode, err = p.Select(b.PromptGitMode, "forbidden", gitOptions)
+	if err != nil {
+		return "", "", fmt.Errorf("wizard: git_persistence_mode: %w", err)
+	}
+	if err = domain.NewMissionPolicy(executionMode, gitPersistenceMode).Validate(); err != nil {
+		return "", "", fmt.Errorf("wizard: policy: %w", err)
+	}
+	return executionMode, gitPersistenceMode, nil
+}
+
+// promptSlots collects discovery, refinement and execution slot providers.
+func promptSlots(p Prompter, b i18n.WizardStrings) (discovery, refinement, execution string, err error) {
+	fmt.Println(b.HeaderSlots)
+	discovery, err = p.SelectOrInput(b.PromptDiscovery, "brainstorming", []string{"brainstorming"}, b.LabelCustomInput)
+	if err != nil {
+		return "", "", "", fmt.Errorf("wizard: discovery: %w", err)
+	}
+	if w := validateProvider(discovery, "write_pending"); w != "" {
+		fmt.Println(w)
+	}
+	refinement, err = p.SelectOrInput(b.PromptRefinement, "openspec-explore", []string{"openspec-explore"}, b.LabelCustomInput)
+	if err != nil {
+		return "", "", "", fmt.Errorf("wizard: refinement: %w", err)
+	}
+	if w := validateProvider(refinement, "write_analysis"); w != "" {
+		fmt.Println(w)
+	}
+	execution, err = p.SelectOrInput(b.PromptExecution, "sdd-ask", []string{"sdd-ask", "sdd-ask-full"}, b.LabelCustomInput)
+	if err != nil {
+		return "", "", "", fmt.Errorf("wizard: execution: %w", err)
+	}
+	if w := validateProvider(execution, "controlled"); w != "" {
+		fmt.Println(w)
+	}
+	return discovery, refinement, execution, nil
 }
 
 // normLang normalises language input to canonical form: "en" or "pt-BR".

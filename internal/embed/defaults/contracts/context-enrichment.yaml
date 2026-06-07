@@ -3,6 +3,8 @@ type: agent_phase
 description: >
   Queries knowledge index by task_type tag to retrieve relevant sources.
   Returns a ranked source list for dossier-builder. Non-blocking — empty result is valid.
+  Historical learning retrieval, when used, must preserve a fallback order where
+  structured outcomes and lexical/tag retrieval remain available without semantic indexing.
 
 contract:
   input:
@@ -65,7 +67,7 @@ contract:
     short_circuit_confidence: 0.85
 
   task_type_priority:
-    analysis_review:   [refined, done]
+    analysis_review:   [refined, archived]
     code_fix:          [contracts, schemas]
     implementation:    [contracts, roles, schemas]
     quick_draw:        []
@@ -76,3 +78,9 @@ contract:
     query: "gunzip -c .strategist/.compiled/.index.gz | jq -r '.tags[\"<task_type>\"][]'"
     log_fresh: "[Strategist] context_enrichment=fast_path"
     log_stale: "[Strategist] context_enrichment=standard_path"
+
+  retrieval_fallback_order:
+    - trusted_chests_and_explicit_docs
+    - tag_based_structured_outcomes
+    - lexical_search_on_outcomes_jsonl
+    - semantic_retrieval_if_explicitly_enabled_and_healthy

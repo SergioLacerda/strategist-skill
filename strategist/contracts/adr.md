@@ -34,7 +34,7 @@ Emit via `persona.content_by_lang[active.language.chat].adr_opportunity` with `{
   {full ADR content per template below}
   ---
   ```
-  Artifact also written to `<base_path>/done/<mission_id>-adr.md`.
+  Artifact also written to `<base_path>/archived/<mission_id>-adr.md`.
 
   Emit via `persona.content_by_lang[active.language.chat].adr_gate` with `{draft_content}`.
 

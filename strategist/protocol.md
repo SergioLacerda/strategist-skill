@@ -139,6 +139,7 @@ When a mission completes (regardless of whether Sniper ran), the agent records a
 entry in `.strategist/memory/outcomes.tmp`. The entry MUST be valid JSON on a single line.
 
 **Required fields:** `mission_id`, `status`, `timestamp` (ISO 8601).
+**Preferred structured schema:** `strategist/schemas/outcome-entry.schema.yaml`.
 
 **Gate audit fields:** include a `gates` array with one entry per gate that was approved
 during the mission. Each entry must have:
@@ -152,6 +153,14 @@ Example:
 ```
 
 If no gates were approved (e.g. plan_only missions), omit the `gates` field or use `[]`.
+
+`outcomes.jsonl` remains the historical source of truth for retrieval. Any future
+semantic index is optional, local, rebuildable, and must never become mandatory for
+context-enrichment. Fallback order is:
+1. trusted chests and explicit docs
+2. tag-based retrieval from structured outcomes
+3. lexical search on `outcomes.jsonl`
+4. semantic retrieval only if explicitly enabled and healthy
 
 ---
 

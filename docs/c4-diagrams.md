@@ -47,7 +47,7 @@ C4Container
         Container(binary, "strategist", "Go binary", "CLI: install, compile, check-stale, validate, version")
         Container(skill_root, ".strategist/", "YAML + gzip/JSON", "Configs (active.yaml, personas/, roles/), artefatos compilados (.compiled/), memória (memory/)")
         Container(shim, "~/.claude/skills/strategist/SKILL.md", "Markdown", "Registro da skill no Claude Agent — aponta para o skill root")
-        Container(analysis, ".analysis/", "Markdown", "Artefatos de missão: pending/ (discovery), refined/ (planos), done/ (reports)")
+        Container(analysis, ".analysis/", "Markdown", "Artefatos de missão: pending/ (discovery), refined/ (planos), archived/ (reports)")
     }
 
     System_Ext(claude, "Claude Agent (LLM)", "Executa o runtime da skill")
@@ -123,7 +123,7 @@ flowchart TD
 
     subgraph discovery["🔭 Discovery — Ranger"]
         D1["Slot: discovery\nProvider configurável em roles/\nEscreve em pending/"]
-        D2["opportunity_attack\n(interno — sem slot)\nVarre pending/, refined/, done/\nproduz side_quest_manifest"]
+        D2["opportunity_attack\n(interno — sem slot)\nVarre pending/, refined/, archived/\nproduz side_quest_manifest"]
         D1 --> D2
     end
 
@@ -147,7 +147,7 @@ flowchart TD
         L1 --> L2
     end
 
-    RESULT(["✅ Resultado da missão\n.analysis/done/<id>-report.md"])
+    RESULT(["✅ Resultado da missão\n.analysis/archived/<id>-report.md"])
     PLAN_ONLY(["📄 Plan only\n.analysis/refined/<id>-plan.md"])
 
     bootstrap --> preflight --> intake --> discovery --> refinement --> gate
@@ -178,7 +178,7 @@ flowchart TD
 | Slot `discovery` (Ranger) | plugável | `write_pending` | `<base_path>/pending/` |
 | `opportunity_attack` | interno (sem slot) | — | — |
 | Slot `refinement` (Archivist) | plugável | `write_analysis` | `<base_path>/refined/` |
-| Slot `execution` (Sniper) | plugável | `controlled` | `<base_path>/done/` |
+| Slot `execution` (Sniper) | plugável | `controlled` | `<base_path>/archived/` |
 | `response-critic` | sub-skill interna | `read_only` | — |
 | `learning-curator` | sub-skill interna | `read_only` | `memory/` (com aprovação) |
 

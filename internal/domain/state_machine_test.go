@@ -10,7 +10,7 @@ import (
 
 func TestFSMAnalysisNeverExecutes(t *testing.T) {
 	t.Parallel()
-	policy := domain.NewMissionPolicy(domain.MissionModeAnalysis)
+	policy := domain.NewMissionPolicy(domain.ExecutionModePlanOnly, domain.GitPersistenceModeForbidden)
 	state := domain.StateInit
 	events := []domain.TransitionEvent{
 		domain.EventManifestNonEmpty,
@@ -27,10 +27,12 @@ func TestFSMAnalysisNeverExecutes(t *testing.T) {
 
 func TestOpportunityGatePolicyLocked(t *testing.T) {
 	t.Parallel()
-	for _, mode := range []string{domain.MissionModeAnalysis, domain.MissionModeRevisedDelivery} {
+	for _, policy := range []domain.MissionPolicy{
+		domain.NewMissionPolicy(domain.ExecutionModePlanOnly, domain.GitPersistenceModeForbidden),
+	} {
 		state := domain.RunStateMachine(domain.StateOpportunityAttack,
 			[]domain.TransitionEvent{domain.EventManifestNonEmpty, domain.EventGateApproved},
-			domain.NewMissionPolicy(mode),
+			policy,
 		)
 		assert.Equal(t, domain.StateRefinement, state)
 	}
@@ -38,7 +40,7 @@ func TestOpportunityGatePolicyLocked(t *testing.T) {
 
 func TestFSMQuickDrawRoute(t *testing.T) {
 	t.Parallel()
-	policy := domain.NewMissionPolicy(domain.MissionModeExecutedDelivery)
+	policy := domain.NewMissionPolicy(domain.ExecutionModeApplyWorkspace, domain.GitPersistenceModeForbidden)
 
 	// Intent detected → QuickDraw state
 	s := domain.NextState(domain.StateInit, domain.EventQuickDrawIntent, policy)
@@ -59,7 +61,7 @@ func TestFSMQuickDrawRoute(t *testing.T) {
 
 func TestFSMQuickDrawDecline(t *testing.T) {
 	t.Parallel()
-	policy := domain.NewMissionPolicy(domain.MissionModeExecutedDelivery)
+	policy := domain.NewMissionPolicy(domain.ExecutionModeApplyWorkspace, domain.GitPersistenceModeForbidden)
 	s := domain.RunStateMachine(domain.StateQuickDrawGate,
 		[]domain.TransitionEvent{domain.EventQuickDrawDecline},
 		policy,
@@ -69,7 +71,7 @@ func TestFSMQuickDrawDecline(t *testing.T) {
 
 func TestFSMADRRoute(t *testing.T) {
 	t.Parallel()
-	policy := domain.NewMissionPolicy(domain.MissionModeExecutedDelivery)
+	policy := domain.NewMissionPolicy(domain.ExecutionModeApplyWorkspace, domain.GitPersistenceModeForbidden)
 
 	for _, start := range []domain.MissionState{domain.StateDoneAnalysis, domain.StateDoneDelivery} {
 		s := domain.NextState(start, domain.EventADRCriterionMet, policy)
@@ -85,7 +87,7 @@ func TestFSMADRRoute(t *testing.T) {
 
 func TestFSMADRDeclineAtGate1(t *testing.T) {
 	t.Parallel()
-	policy := domain.NewMissionPolicy(domain.MissionModeExecutedDelivery)
+	policy := domain.NewMissionPolicy(domain.ExecutionModeApplyWorkspace, domain.GitPersistenceModeForbidden)
 	s := domain.RunStateMachine(domain.StateADRGate1,
 		[]domain.TransitionEvent{domain.EventADRDeclined},
 		policy,
@@ -95,7 +97,7 @@ func TestFSMADRDeclineAtGate1(t *testing.T) {
 
 func TestFSMRetryTransient(t *testing.T) {
 	t.Parallel()
-	policy := domain.NewMissionPolicy(domain.MissionModeExecutedDelivery)
+	policy := domain.NewMissionPolicy(domain.ExecutionModeApplyWorkspace, domain.GitPersistenceModeForbidden)
 
 	// Transient failure in refinement → retrying
 	s := domain.NextState(domain.StateRefinement, domain.EventSlotTransient, policy)
@@ -108,7 +110,7 @@ func TestFSMRetryTransient(t *testing.T) {
 
 func TestFSMRetryExhausted(t *testing.T) {
 	t.Parallel()
-	policy := domain.NewMissionPolicy(domain.MissionModeExecutedDelivery)
+	policy := domain.NewMissionPolicy(domain.ExecutionModeApplyWorkspace, domain.GitPersistenceModeForbidden)
 
 	s := domain.NextState(domain.StateRetrying, domain.EventSlotTransient, policy)
 	assert.Equal(t, domain.StateBlocked, s)
@@ -119,7 +121,7 @@ func TestFSMRetryExhausted(t *testing.T) {
 
 func TestFSMSniperOARoute(t *testing.T) {
 	t.Parallel()
-	policy := domain.NewMissionPolicy(domain.MissionModeExecutedDelivery)
+	policy := domain.NewMissionPolicy(domain.ExecutionModeApplyWorkspace, domain.GitPersistenceModeForbidden)
 
 	// Mid-execution OA surfaces → pause at opportunity gate
 	s := domain.NextState(domain.StateExecution, domain.EventSniperOA, policy)
@@ -140,13 +142,10 @@ func TestFSMSafetyPropertyLike(t *testing.T) {
 	}
 
 	for i := 0; i < 400; i++ {
-		mode := domain.MissionModeExecutedDelivery
+		policy := domain.NewMissionPolicy(domain.ExecutionModeApplyWorkspace, domain.GitPersistenceModeForbidden)
 		if rng.Intn(3) == 0 {
-			mode = domain.MissionModeAnalysis
-		} else if rng.Intn(2) == 0 {
-			mode = domain.MissionModeRevisedDelivery
+			policy = domain.NewMissionPolicy(domain.ExecutionModePlanOnly, domain.GitPersistenceModeForbidden)
 		}
-		policy := domain.NewMissionPolicy(mode)
 		state := domain.StateInit
 		seenGateApproved := false
 		for j := 0; j < 14; j++ {

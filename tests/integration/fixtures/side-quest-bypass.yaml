@@ -13,7 +13,7 @@ input:
     side_quests:
       - type: promote
         origin: .analysis/pending/some-discovery.md
-        destination: .analysis/done/
+        destination: .analysis/archived/
         reason: discovery has a corresponding refined plan
   state: mini_approval_gate_not_shown
 

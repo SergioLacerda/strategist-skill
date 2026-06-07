@@ -37,7 +37,7 @@ contract:
 
   policy_eval:
     transition_group: finalize_analysis
-    emit_format: "[Strategist] phase=policy_eval status=<allowed|blocked> mission=<id> mode=<mode> can_execute=<bool> transition_group=finalize_analysis"
+    emit_format: "[Strategist] phase=policy_eval status=<allowed|blocked> mission=<id> execution_mode=<execution_mode> git_persistence_mode=<git_persistence_mode> can_execute=<bool> transition_group=finalize_analysis"
     emit_level: TRACE
     on_blocked: stop with reason=policy_blocked
 

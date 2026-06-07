@@ -1,0 +1,37 @@
+module: raid
+type: batch_orchestration
+version: "0.1"
+
+description: >
+  Skill /raid — orquestração em lote de análises capturadas.
+  Dado um arquivo de ideias, processa em lote todas as entradas com status: capturada,
+  invocando o Strategist em modo refinamento para cada uma.
+
+inputs:
+  source_file:
+    required: true
+    description: Caminho para arquivo .md com entradas de ideias capturadas
+  filter_status:
+    default: capturada
+    description: Filtrar entradas por status
+
+gate:
+  pre_batch:
+    show: lista de entradas a processar (id, ideia, origem)
+    responses:
+      sim: processar todas
+      select: "N,M,... — processar selecionadas"
+      nao: cancelar
+
+per_entry:
+  invoke: strategist --task refinar --input <entry_text>
+  artifact_dir: "<base_path>/refined/<slug>/"
+  on_success: update source entry status → analisado
+  on_failure: skip, log, continue
+
+output:
+  summary: "N refinadas, M puladas, erros listados"
+
+constraints:
+  - must_not: invoke recursively if already inside a Strategist mission
+  - must_not: execute (Sniper) without separate gate per entry
