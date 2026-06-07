@@ -15,6 +15,18 @@ Apply defaults for any missing constraint field per `intake.schema.yaml`.
 
 Store result as `mission_contract.planning_rules` — pass to all slot providers.
 
+### 3.1a Mission ID Uniqueness
+
+After generating `mission_id` (`<date>-<topic-slug>`), verify it does not already exist:
+
+- Check: `.analysis/pending/<mission_id>-discovery.md`
+- Check: `.analysis/refined/<mission_id>/` (directory)
+- Check: `.analysis/done/<mission_id>-report.md`
+
+If any path exists, append a 4-character hex suffix derived from the current timestamp and re-check. Repeat until a unique ID is found (max 3 attempts; on failure, emit a warning and continue with the suffixed ID).
+
+This prevents silent data overwrite when two sessions start missions with the same topic on the same day.
+
 ### 3.2 Mission Checkpoint
 
 After intake completes, initialize and emit the mission pipeline checkpoint using

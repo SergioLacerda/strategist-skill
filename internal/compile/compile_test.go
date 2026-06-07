@@ -484,6 +484,27 @@ func TestCompileConfig_InvalidPersonaYAML(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestCompileConfig_PersonaFailsValidation(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "active.yaml"),
+		[]byte("mode: full\nbase_path: .analysis\nroles_config: roles/default.yaml\nslots:\n  discovery: brainstorming\n"),
+		0o644,
+	))
+	// Valid YAML but missing required PersonaConfig fields (id and tone_directive) — passes raw load, fails Validate
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "personas", "noid.yaml"),
+		[]byte("name: no-id-persona\nsome_field: value\n"),
+		0o644,
+	))
+	err := compile.Config(dir, filepath.Join(dir, ".compiled", ".config.gz"))
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "personas")
+}
+
 // --- writeGzJSON: output path is a directory (os.Create fails) ---
 
 func TestWriteGzJSON_OutputIsDirectory(t *testing.T) {

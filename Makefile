@@ -1,4 +1,4 @@
-.PHONY: build test test-all integration spec test-lite test-telemetry-lite test-compile-cache test-domain-architecture lint vuln bench cover cover-gate cover-html analysis-structure-gate docs-governance-gate install sync-embed release snapshot clean
+.PHONY: build test test-all integration spec test-lite test-telemetry-lite test-compile-cache test-domain-architecture lint vuln bench cover cover-gate cover-html analysis-structure-gate docs-governance-gate install sync-embed release snapshot clean compile-skill
 
 GOLANGCI_LINT := $(shell which golangci-lint 2>/dev/null || echo $(shell go env GOPATH)/bin/golangci-lint)
 GOVULNCHECK   := $(shell which govulncheck 2>/dev/null || echo $(shell go env GOPATH)/bin/govulncheck)
@@ -117,3 +117,8 @@ snapshot:
 
 clean:
 	rm -rf bin/ dist/ coverage.out coverage.html
+
+# compile-skill regenerates the compiled bootstrap artifacts in .strategist/.compiled/.
+# Run after editing any file under .strategist/ to keep the fast-path active.
+compile-skill:
+	strategist compile --root .strategist

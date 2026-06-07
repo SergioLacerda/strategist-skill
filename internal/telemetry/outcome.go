@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"syscall"
 )
 
 // OutcomeEntry is the canonical JSON structure written to outcomes.tmp per mission.
@@ -43,7 +44,9 @@ func ValidateOutcomeLine(line string) error {
 
 // AppendOutcomeLine validates line and appends it with a newline to path.
 // If validation fails the line is not written and the error is returned.
-// The file is created if absent; append-only so concurrent writers are safe.
+// The file is created if absent. A shared flock is held during the write so
+// concurrent appenders remain compatible while a flush's exclusive lock blocks
+// new appends until the cat+truncate sequence completes.
 func AppendOutcomeLine(path, line string) (err error) {
 	if err = ValidateOutcomeLine(line); err != nil {
 		return fmt.Errorf("outcome validation failed: %w", err)
@@ -55,6 +58,14 @@ func AppendOutcomeLine(path, line string) (err error) {
 	defer func() {
 		if cerr := f.Close(); cerr != nil && err == nil {
 			err = fmt.Errorf("close outcomes file: %w", cerr)
+		}
+	}()
+	if err = syscall.Flock(int(f.Fd()), syscall.LOCK_SH); err != nil {
+		return fmt.Errorf("lock outcomes file: %w", err)
+	}
+	defer func() {
+		if unlockErr := syscall.Flock(int(f.Fd()), syscall.LOCK_UN); unlockErr != nil && err == nil {
+			err = fmt.Errorf("unlock outcomes file: %w", unlockErr)
 		}
 	}()
 	if _, err = fmt.Fprintln(f, line); err != nil {

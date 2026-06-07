@@ -20,23 +20,35 @@ func mtime(path string) int64 {
 
 // writeGzJSON encodes v as JSON and writes the gzip-compressed result to outputPath.
 // The parent directory is created if it does not exist.
+// The write is atomic: data is written to a temp file and renamed into place so
+// concurrent readers never observe a partially-written archive.
 func writeGzJSON(outputPath string, v any) error {
 	if err := os.MkdirAll(filepath.Dir(outputPath), 0o755); err != nil {
 		return fmt.Errorf("mkdir: %w", err)
 	}
 
-	f, err := os.Create(outputPath) //nolint:gosec // G304: path derived from strategistDir, not user input
+	tmp := outputPath + ".tmp"
+	f, err := os.Create(tmp) //nolint:gosec // G304: path derived from strategistDir, not user input
 	if err != nil {
-		return fmt.Errorf("create: %w", err)
+		return fmt.Errorf("create tmp: %w", err)
 	}
-	defer f.Close() //nolint:errcheck // write errors surfaced via gz.Close below
 
 	gz := gzip.NewWriter(f)
 	if err := json.NewEncoder(gz).Encode(v); err != nil {
+		_ = os.Remove(tmp) //nolint:errcheck // best-effort cleanup on encode failure
 		return fmt.Errorf("json encode: %w", err)
 	}
 	if err := gz.Close(); err != nil {
+		_ = os.Remove(tmp) //nolint:errcheck // best-effort cleanup on gzip failure
 		return fmt.Errorf("gzip close: %w", err)
+	}
+	if err := f.Close(); err != nil {
+		_ = os.Remove(tmp) //nolint:errcheck
+		return fmt.Errorf("file close: %w", err)
+	}
+	if err := os.Rename(tmp, outputPath); err != nil {
+		_ = os.Remove(tmp) //nolint:errcheck
+		return fmt.Errorf("rename: %w", err)
 	}
 	return nil
 }

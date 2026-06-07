@@ -63,7 +63,7 @@ content_by_lang:
       🗡️ **Sniper:** implementation complete. Report at: {artifact_path}
 
     approval_prompt: >
-      🚦 **Gate:** AWAITING CONFIRMATION
+      🚦 **Gate [{mission_id}]:** AWAITING CONFIRMATION
 
       Plan at: {artifact_path}
 
@@ -161,7 +161,7 @@ content_by_lang:
       Relatório em: {artifact_path}
 
     approval_prompt: >
-      🚦 **Gate:** AGUARDANDO CONFIRMAÇÃO
+      🚦 **Gate [{mission_id}]:** AGUARDANDO CONFIRMAÇÃO
 
       Plano em: {artifact_path}
 
