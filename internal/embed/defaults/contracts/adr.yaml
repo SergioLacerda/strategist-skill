@@ -30,7 +30,7 @@ contract:
           📚 **Archivist — ADR draft:**
           {full ADR content per template}
           ---
-        artifact_path: "<base_path>/done/<mission_id>-adr.md"
+        artifact_path: "<base_path>/archived/<mission_id>-adr.md"
 
     gate_2:
       emit_key: adr_gate
@@ -56,5 +56,5 @@ contract:
     required_fields: [title, date, status, mission_id]
     status_value: accepted
 
-  write_scope: "<base_path>/done/ (conditional on gate_2 approval)"
+  write_scope: "<base_path>/archived/ (conditional on gate_2 approval)"
   owner: internal (post-mission)

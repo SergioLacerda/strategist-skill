@@ -10,7 +10,7 @@ import (
 )
 
 // GenerateMissionID returns a date-prefixed mission ID from slug.
-// If a file with the same slug already exists in pending/, refined/, or done/
+// If a file with the same slug already exists in pending/, refined/, or archived/
 // under basePath, a short random suffix is appended to avoid collision.
 func GenerateMissionID(basePath, slug string, now time.Time) string {
 	date := now.Format("20060102")
@@ -41,7 +41,7 @@ func sanitizeSlug(slug string) string {
 // missionIDCollides checks whether any artifact named after id already exists
 // in the three canonical analysis directories.
 func missionIDCollides(basePath, id string) bool {
-	dirs := []string{"pending", "refined", "done"}
+	dirs := []string{"pending", "refined", "archived"}
 	for _, dir := range dirs {
 		pattern := filepath.Join(basePath, dir, id+"*")
 		matches, err := filepath.Glob(pattern)

@@ -6,6 +6,9 @@ package domain
 // - Execution transitions require can_execute=true.
 func EvaluateGuardedTransition(policy MissionPolicy, transitionGroup string, gateApproved bool) TransitionDecision {
 	p := NormalizePolicy(policy)
+	if err := p.Validate(); err != nil {
+		return TransitionDecision{Allowed: false, Reason: err.Error(), Status: "policy_blocked", Policy: p}
+	}
 
 	if !gateApproved {
 		return TransitionDecision{Allowed: false, Reason: "approval_required", Status: "approval_required", Policy: p}

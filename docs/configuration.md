@@ -49,7 +49,7 @@ knowledge_index_path: .strategist/knowledge.index.yaml  # Caminho para o índice
 | Campo | Tipo | Obrigatório | Padrão | Descrição |
 |-------|------|-------------|--------|-----------|
 | `mode` | string | sim | — | Persona ativa. Aceita `pragmatic` ou `epic`. |
-| `base_path` | string | não | `.analysis` | Raiz onde `pending/`, `refined/` e `done/` são criados. |
+| `base_path` | string | não | `.analysis` | Raiz onde `pending/`, `refined/` e `archived/` são criados. |
 | `roles_config` | string | sim | `default` | Nome do arquivo de roles a carregar de `roles/<nome>.yaml`. |
 | `knowledge_index_path` | string | não | `.strategist/knowledge.index.yaml` | Caminho do knowledge index. |
 

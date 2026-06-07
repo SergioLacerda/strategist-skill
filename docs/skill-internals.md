@@ -305,7 +305,7 @@ Define o formato obrigatório dos eventos de progresso emitidos pelo Strategist 
 [Strategist] phase=discovery status=running skill=brainstorm checklist=0/3
 [Strategist] phase=discovery status=done artifact=.analysis/pending/abc123-discovery.md
 [Strategist] phase=approval_gate status=blocked reason=user_declined action=none
-[Strategist] phase=execution status=done artifact=.analysis/done/abc123-report.md
+[Strategist] phase=execution status=done artifact=.analysis/archived/abc123-report.md
 ```
 
 **Caminhos de artefatos:**
@@ -314,7 +314,7 @@ Define o formato obrigatório dos eventos de progresso emitidos pelo Strategist 
 |------|---------|
 | discovery | `<base_path>/pending/<mission_id>-discovery.md` |
 | refinement | `<base_path>/refined/<mission_id>-plan.md` |
-| execution | `<base_path>/done/<mission_id>-report.md` |
+| execution | `<base_path>/archived/<mission_id>-report.md` |
 
 Os `phase_labels` (Ranger/Archivist/Sniper vs análise/refinamento/execução) são resolvidos da persona ativa em runtime — o schema define apenas os campos obrigatórios, não os valores dos labels.
 

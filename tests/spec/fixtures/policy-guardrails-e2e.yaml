@@ -1,2 +1,2 @@
 scenario: policy_guardrails_e2e
-expected_event: "phase=policy_eval status=blocked mission=m-guard mode=analise can_execute=false transition_group=execution"
+expected_event: "phase=policy_eval status=blocked mission=m-guard execution_mode=plan_only git_persistence_mode=forbidden can_execute=false transition_group=execution"

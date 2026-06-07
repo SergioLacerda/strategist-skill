@@ -37,11 +37,11 @@ fields:
       execution_report:
         type: path
         present_when: Sniper ran
-        path_template: "<base_path>/done/<mission_id>-report.md"
+        path_template: "<base_path>/archived/<mission_id>-report.md"
       adr:
         type: path
         present_when: ADR generated and committed (gate_2 approved)
-        path_template: "<base_path>/done/<mission_id>-adr.md"
+        path_template: "<base_path>/archived/<mission_id>-adr.md"
 
   blockers:
     type: array
