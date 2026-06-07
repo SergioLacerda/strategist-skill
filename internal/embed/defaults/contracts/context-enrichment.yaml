@@ -55,6 +55,7 @@ contract:
     emit_on_none:
       emit_level: DEBUG
       format: "[Strategist] treasure_chest_loaded none"
+    render_policy: debug_bypass
 
   dossier_builder:
     invoked_after: enrichment

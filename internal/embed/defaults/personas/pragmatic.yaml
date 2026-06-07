@@ -23,6 +23,15 @@ diagnostics:
   bootstrap_origin: |
     [Strategist] profile_path={path} active_yaml={active} reason={reason}
 
+rendering_policy:
+  profile_rendered_levels: [INFO, WARN, ERROR, FATAL]
+  telemetry_levels: [DEBUG, TRACE]
+  runtime_evidence_level: DEBUG
+  runtime_evidence_profile_rendered: false
+  note: >
+    runtime_evidence emits structured telemetry payloads. The active persona does
+    not rewrite or stylize these events.
+
 runtime_evidence:
   pipeline_starting: >
     [Strategist] pipeline=starting profile_mode={profile_mode} profile_source_path={profile_source_path} active_yaml_path={active_yaml_path} persona_resolved={persona_resolved} reason={reason}
