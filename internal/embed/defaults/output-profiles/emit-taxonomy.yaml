@@ -1,6 +1,9 @@
 # Severity levels align with sdd_telemetry/constants.py (TRACE=1, DEBUG=5, INFO=9)
 # and internal/telemetry/schema.go (strategist.* attribute namespace).
-# OTEL export is never filtered — this taxonomy controls stdout only.
+# OTEL export is never filtered — this taxonomy controls agent-side stdout only.
+# INFO events are rendered through the active profile.
+# DEBUG/TRACE events bypass persona rendering, but still respect the selected
+# output threshold for visibility on normal console output.
 # Speed policy bridge:
 # - fast -> compact mission flow, keep visibility at the default profile threshold
 # - balanced -> default mission flow, default profile threshold
@@ -21,16 +24,19 @@ emits:
   policy_eval:                 TRACE
   phase_blocked:               TRACE
 
-  # DEBUG — internal narrative events (opportunity attack, side quests)
-  # Visible in verbose and full profiles. Hidden in default.
+  # DEBUG — structured telemetry and internal diagnostics
+  # Bypass persona rendering. Visible in verbose and full profiles.
   opportunity_attack_header:   DEBUG
   side_quest_none_found:       DEBUG
   side_quest_detected:         DEBUG
+  pipeline_starting:           DEBUG
+  compliance_summary:          DEBUG
+  mission_metrics:             DEBUG
+  profile_source:              DEBUG
   treasure_chest_found:        INFO
   adr_opportunity:             DEBUG
 
-  # INFO — always visible to user regardless of output profile
-  pipeline_starting:           INFO
+  # INFO — rendered through the active profile and visible in all output modes
   ranger_start:                INFO
   ranger_done:                 INFO
   archivist_start:             INFO
@@ -40,6 +46,4 @@ emits:
   execution_tasks_header:      INFO
   execution_task_line:         INFO
   mission_checkpoint:          INFO
-  compliance_summary:          INFO
   approval_gate_result:        INFO
-  profile_source:              INFO
