@@ -53,7 +53,7 @@ content_by_lang:
       Implementation done. Report: {artifact_path}
 
     approval_prompt: >
-      Plan at: {artifact_path}
+      [{mission_id}] Plan at: {artifact_path}
 
       Implement? (yes / no / review)
 
@@ -130,7 +130,7 @@ content_by_lang:
       Implementação encerrada. Relatório: {artifact_path}
 
     approval_prompt: >
-      Plano em: {artifact_path}
+      [{mission_id}] Plano em: {artifact_path}
 
       Implementar? (yes / no / review)
 

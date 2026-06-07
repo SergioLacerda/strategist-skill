@@ -6,6 +6,7 @@
 .gemini
 .github/prompts/
 .vscode
+.github/copilot-instructions.md
 
 .sdd
 generated/

@@ -150,24 +150,33 @@ func validateRolesDir(dir string) (errs []string, checks int) {
 			continue
 		}
 		checks++
-		path := filepath.Join(dir, e.Name())
-		raw, err := os.ReadFile(path)
-		if err != nil {
-			errs = append(errs, fmt.Sprintf("roles/%s: read: %v", e.Name(), err))
-			continue
-		}
-		var r map[string]any
-		if err := yaml.Unmarshal(raw, &r); err != nil {
-			errs = append(errs, fmt.Sprintf("roles/%s: invalid YAML: %v", e.Name(), err))
-			continue
-		}
-		for _, slot := range []string{"discovery", "refinement", "execution"} {
-			if _, ok := r[slot]; !ok {
-				errs = append(errs, fmt.Sprintf("roles/%s: missing slot: %s", e.Name(), slot))
-			}
-		}
+		errs = append(errs, validateRoleFile(dir, e.Name())...)
 	}
 	return errs, checks
+}
+
+func validateRoleFile(dir, name string) (errs []string) {
+	path := filepath.Join(dir, name)
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return []string{fmt.Sprintf("roles/%s: read: %v", name, err)}
+	}
+
+	var role map[string]any
+	if err := yaml.Unmarshal(raw, &role); err != nil {
+		return []string{fmt.Sprintf("roles/%s: invalid YAML: %v", name, err)}
+	}
+
+	if _, isRoleDef := role["role"]; isRoleDef {
+		return nil
+	}
+
+	for _, slot := range []string{"discovery", "refinement", "execution"} {
+		if _, ok := role[slot]; !ok {
+			errs = append(errs, fmt.Sprintf("roles/%s: missing slot: %s", name, slot))
+		}
+	}
+	return errs
 }
 
 func validateYAMLFile(path string) error {
