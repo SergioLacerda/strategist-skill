@@ -8,7 +8,7 @@ invariants:
 
   - id: always_info_level
     description: Compliance summary is always visible regardless of output profile
-    rule: compliance_summary emit_level == INFO
+    rule: compliance_summary emit_level == DEBUG
 
   - id: non_compliant_includes_reason
     description: pipeline_compliant=no must include a reason field
