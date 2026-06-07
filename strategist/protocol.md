@@ -193,6 +193,31 @@ Emitting a start event and then advancing to the next phase without emitting a d
 
 ---
 
+## Console Feedback and Telemetry Rendering Policy
+
+This policy governs agent-side console output. Go runtime logging (`internal/telemetry`)
+is configured independently via OTel environment variables.
+
+The runtime MUST separate human feedback rendering from structured telemetry.
+
+INFO, WARN, ERROR, and FATAL events MUST be rendered through the active output profile.
+
+DEBUG and TRACE events MUST bypass profile rendering and MUST be emitted as complete
+structured telemetry events.
+
+The active profile MUST NOT alter DEBUG or TRACE payloads.
+
+Profiles are intended for human-facing feedback only.
+
+Telemetry events MUST preserve the complete canonical event payload, including phase,
+status, component, correlation id, mission id, artifact paths, selected skill, runtime
+mode, and relevant metadata.
+
+Normal console output MUST NOT show DEBUG or TRACE events unless debug mode is
+explicitly enabled via the active output threshold.
+
+---
+
 ## Response Contract
 
 Strategist responses MUST end with this envelope, in order:

@@ -84,7 +84,7 @@ Emit: `[Strategist] bootstrap=standard_path`
 4. Extract `active.language` (object with keys: ui, docs, chat, code).
    - `language.ui` — language for CLI/progress output visible to the user (e.g. `[Strategist]` events, progress prefix). Currently consumed by the runtime/CLI layer; the agent uses `language.chat` instead.
    - `language.chat` — language for persona template selection and all agent-to-user messages. Use `pt-BR` as fallback if absent.
-   - `language.docs` — language for artifact generation (discovery, refined, done files). Passed to slot providers.
+   - `language.docs` — language for artifact generation (discovery, refined, archived files). Passed to slot providers.
    - `language.code` — language for inline code comments and identifiers. Passed to slot providers as a style hint.
    Pass `active.language.docs` to slot providers for artifact generation.
    Use `active.language.chat` for persona template selection (default: pt-BR if absent).

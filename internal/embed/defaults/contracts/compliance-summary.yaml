@@ -3,10 +3,11 @@ type: mandatory_emit
 description: >
   Mandatory block appended as the final element of every response, regardless
   of pipeline outcome (completed, plan_only, blocked, or early termination).
-  Always emitted at INFO level — never suppressed by output profile.
+  Emitted as structured DEBUG telemetry. The payload is mandatory, but normal
+  console visibility still depends on the active output threshold.
 
 contract:
-  emit_level: INFO
+  emit_level: DEBUG
   emit_timing: after_all_phases
   emit_also_on: [early_termination, blocked, plan_only]
 
@@ -29,7 +30,7 @@ contract:
 
   invariants:
     - emitted on every response without exception
-    - emit_level is always INFO — cannot be overridden by output profile
+    - emit_level is always DEBUG — persona rendering does not alter payload
     - pipeline_compliant=no must include reason field
     - compliance_summary is the last element before mission_result
 

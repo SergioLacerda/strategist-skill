@@ -224,7 +224,9 @@ func TestEmitTaxonomyMandatoryVisibilityLevels(t *testing.T) {
 	assertions := []string{
 		"opportunity_attack_done:     INFO",
 		"treasure_chest_found:        INFO",
-		"compliance_summary:          INFO",
+		"compliance_summary:          DEBUG",
+		"pipeline_starting:           DEBUG",
+		"mission_metrics:             DEBUG",
 		"Speed policy bridge:",
 		"- balanced -> default mission flow, default profile threshold",
 	}

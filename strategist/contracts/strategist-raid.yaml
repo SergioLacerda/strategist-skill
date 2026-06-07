@@ -1,9 +1,9 @@
-module: raid
+module: strategist-raid
 type: batch_orchestration
 version: "0.1"
 
 description: >
-  Skill /raid — orquestração em lote de análises capturadas.
+  Skill /strategist-raid — orquestração em lote de análises capturadas.
   Dado um arquivo de ideias, processa em lote todas as entradas com status: capturada,
   invocando o Strategist em modo refinamento para cada uma.
 

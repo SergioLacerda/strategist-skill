@@ -80,9 +80,6 @@ linters:
         - G302 # CLI tool creates config files; 0644 is intentional
         - G304 # CLI tool reads local config files; paths are constructed, not raw user input
         - G306 # CLI tool creates config files; 0644 is intentional
-    wrapcheck:
-      ignorePackageGlobs:
-        - github.com/SergioLacerda/strategist-skill/internal/domain
   exclusions:
     rules:
       - path: _test\.go
