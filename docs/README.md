@@ -18,7 +18,7 @@ Este é o ponto de entrada para toda a documentação da skill. Use a tabela aba
 | Usar o CLI | [`docs/cli-reference.md`](cli-reference.md) |
 | Ver diagramas C4 | [`docs/c4-diagrams.md`](c4-diagrams.md) |
 | Ver baseline de performance | [`docs/performance-baseline.md`](performance-baseline.md) |
-| Navegar análises concluídas | `<base_path>/done/` |
+| Entender o learning pipeline | [`docs/learning-pipeline.md`](learning-pipeline.md) |
 
 ---
 

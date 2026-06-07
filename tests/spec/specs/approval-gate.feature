@@ -18,7 +18,7 @@ Feature: Approval Gate Enforcement
     When user responds with "yes"
     Then Strategist emits "[Strategist] phase=sniper status=running"
     And the execution slot provider is invoked
-    And a report artifact is written to .analysis/done/
+    And a report artifact is written to .analysis/archived/
 
   Scenario: Mission ends as plan_only after "no"
     Given the approval gate prompt has been presented

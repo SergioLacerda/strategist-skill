@@ -21,7 +21,7 @@ After generating `mission_id` (`<date>-<topic-slug>`), verify it does not alread
 
 - Check: `.analysis/pending/<mission_id>-discovery.md`
 - Check: `.analysis/refined/<mission_id>/` (directory)
-- Check: `.analysis/done/<mission_id>-report.md`
+- Check: `.analysis/archived/<mission_id>-report.md`
 
 If any path exists, append a 4-character hex suffix derived from the current timestamp and re-check. Repeat until a unique ID is found (max 3 attempts; on failure, emit a warning and continue with the suffixed ID).
 

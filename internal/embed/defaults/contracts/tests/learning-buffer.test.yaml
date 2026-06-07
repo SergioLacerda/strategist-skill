@@ -18,6 +18,10 @@ invariants:
     description: outcomes.jsonl is never truncated or overwritten
     rule: flush procedure only appends to outcomes.jsonl, never overwrites
 
+  - id: outcomes_jsonl_is_source_of_truth
+    description: outcomes.jsonl remains canonical even if derived indexes exist
+    rule: semantic_or_lexical_index_present → outcomes.jsonl still authoritative
+
   - id: flush_at_start_not_end
     description: Buffer is flushed at mission START (§0), not at mission end
     rule: flush timing = pre-bootstrap of NEXT mission (crash-safe design)
@@ -52,3 +56,10 @@ cases:
       buffer_size: 10
     expect:
       action: flush to outcomes.jsonl
+
+  - name: derived_index_unavailable
+    given:
+      semantic_index: unavailable
+    expect:
+      source_of_truth: outcomes.jsonl
+      pipeline: continues

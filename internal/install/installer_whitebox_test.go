@@ -77,8 +77,8 @@ func newSvcW(t *testing.T, wizardInput string) Service {
 func TestInstall_WizardPath(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	// 12 prompts: ui/doc/chat/code/mode/base/adr/missionMode/discovery/refinement/execution/chest
-	svc := newSvcW(t, "en\nen\npt-BR\nen\nepic\n/workspace\nyes\nentrega_executada\nbrainstorming\narchivist\nsdd-ask\n\n")
+	// 13 prompts: ui/doc/chat/code/mode/base/adr/executionMode/gitMode/discovery/refinement/execution/chest
+	svc := newSvcW(t, "en\nen\npt-BR\nen\nepic\n/workspace\nyes\napply_workspace\nexplicit_commit\nbrainstorming\narchivist\nsdd-ask\n\n")
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
 	require.NoError(t, err)
 
@@ -93,9 +93,8 @@ func TestInstall_WizardPath(t *testing.T) {
 	assert.Contains(t, s, "chat: pt-BR")
 	assert.Contains(t, s, "code: en")
 	assert.Contains(t, s, "adr_enabled: true")
-	assert.Contains(t, s, "mission_mode: entrega_executada")
-	assert.Contains(t, s, "escopo_done: entrega")
-	assert.Contains(t, s, "aplicar_alteracoes: true")
+	assert.Contains(t, s, "execution_mode: apply_workspace")
+	assert.Contains(t, s, "git_persistence_mode: explicit_commit")
 	assert.Contains(t, s, "discovery: brainstorming")
 	assert.Contains(t, s, "refinement: archivist")
 	assert.Contains(t, s, "execution: sdd-ask")
@@ -104,8 +103,8 @@ func TestInstall_WizardPath(t *testing.T) {
 func TestInstall_WizardPath_WithChest(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	// 12 prompts
-	svc := newSvcW(t, "en\nen\nen\nen\npragmatic\n.analysis\nyes\nanalise\nbrainstorming\nopenspec-explore\nsdd-ask\n.sdd/source\n")
+	// 13 prompts
+	svc := newSvcW(t, "en\nen\nen\nen\npragmatic\n.analysis\nyes\nplan_only\n\nbrainstorming\nopenspec-explore\nsdd-ask\n.sdd/source\n")
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
 	require.NoError(t, err)
 
@@ -121,7 +120,7 @@ func TestInstall_WizardPath_WithChest(t *testing.T) {
 func TestInstall_WizardPath_Defaults(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	svc := newSvcW(t, "\n\n\n\n\n\n\n\n\n\n\n\n") // all defaults (12 prompts)
+	svc := newSvcW(t, "\n\n\n\n\n\n\n\n\n\n\n\n\n") // all defaults (13 prompts)
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
 	require.NoError(t, err)
 
@@ -134,9 +133,8 @@ func TestInstall_WizardPath_Defaults(t *testing.T) {
 	assert.Contains(t, s, "chat: en")
 	assert.Contains(t, s, "code: en")
 	assert.Contains(t, s, "adr_enabled: true")
-	assert.Contains(t, s, "mission_mode: entrega_executada")
-	assert.Contains(t, s, "escopo_done: entrega")
-	assert.Contains(t, s, "aplicar_alteracoes: true")
+	assert.Contains(t, s, "execution_mode: plan_only")
+	assert.Contains(t, s, "git_persistence_mode: forbidden")
 	assert.Contains(t, s, "discovery: brainstorming")
 	assert.Contains(t, s, "refinement: openspec-explore")
 	assert.Contains(t, s, "execution: sdd-ask")
@@ -279,7 +277,7 @@ func TestWriteActiveYAML_ReadOnlyDir(t *testing.T) {
 	require.NoError(t, os.Chmod(dir, 0o444))
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
 	err := writeActiveYAML(dir, domain.WizardConfig{
-		Mode: "pragmatic", BasePath: ".", MissionMode: "analise", DoneScope: "analise", ApplyChanges: false, UILanguage: "pt", DocLanguage: "pt", ChatLanguage: "pt", CodeLanguage: "pt", AdrEnabled: true,
+		Mode: "pragmatic", BasePath: ".", ExecutionMode: domain.ExecutionModePlanOnly, GitPersistenceMode: domain.GitPersistenceModeForbidden, UILanguage: "pt", DocLanguage: "pt", ChatLanguage: "pt", CodeLanguage: "pt", AdrEnabled: true,
 		DiscoveryProvider: "brainstorming", RefinementProvider: "openspec-explore", ExecutionProvider: "sdd-ask",
 	})
 	require.Error(t, err)
@@ -340,34 +338,41 @@ func TestRunWizard_EOFOnEighthPrompt_Discovery(t *testing.T) {
 	t.Parallel()
 	_, err := runWizard(p("en\nen\nen\nen\npragmatic\n.\nyes\n"))
 	require.Error(t, err)
-	assert.ErrorContains(t, err, "mission_mode")
+	assert.ErrorContains(t, err, "execution_mode")
 }
 
-func TestRunWizard_EOFOnNinthPrompt_DiscoveryAfterMissionMode(t *testing.T) {
+func TestRunWizard_EOFOnNinthPrompt_GitMode(t *testing.T) {
 	t.Parallel()
-	_, err := runWizard(p("en\nen\nen\nen\npragmatic\n.\nyes\nanalise\n"))
+	_, err := runWizard(p("en\nen\nen\nen\npragmatic\n.\nyes\napply_workspace\n"))
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "git_persistence_mode")
+}
+
+func TestRunWizard_EOFOnTenthPrompt_DiscoveryAfterModes(t *testing.T) {
+	t.Parallel()
+	_, err := runWizard(p("en\nen\nen\nen\npragmatic\n.\nyes\nplan_only\n\n"))
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "discovery")
 }
 
-func TestRunWizard_EOFOnTenthPrompt_Refinement(t *testing.T) {
+func TestRunWizard_EOFOnEleventhPrompt_Refinement(t *testing.T) {
 	t.Parallel()
-	_, err := runWizard(p("en\nen\nen\nen\npragmatic\n.\nyes\nanalise\nbrainstorming\n"))
+	_, err := runWizard(p("en\nen\nen\nen\npragmatic\n.\nyes\nplan_only\n\nbrainstorming\n"))
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "refinement")
 }
 
-func TestRunWizard_EOFOnEleventhPrompt_Execution(t *testing.T) {
+func TestRunWizard_EOFOnTwelfthPrompt_Execution(t *testing.T) {
 	t.Parallel()
-	_, err := runWizard(p("en\nen\nen\nen\npragmatic\n.\nyes\nanalise\nbrainstorming\nopenspec-explore\n"))
+	_, err := runWizard(p("en\nen\nen\nen\npragmatic\n.\nyes\nplan_only\n\nbrainstorming\nopenspec-explore\n"))
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "execution")
 }
 
-func TestRunWizard_EOFOnTwelfthPrompt_ChestPath(t *testing.T) {
+func TestRunWizard_EOFOnThirteenthPrompt_ChestPath(t *testing.T) {
 	t.Parallel()
-	// All prompts answered except chest path (12th)
-	_, err := runWizard(p("en\nen\nen\nen\npragmatic\n.\nyes\nanalise\nbrainstorming\nopenspec-explore\nsdd-ask\n"))
+	// All prompts answered except chest path (13th)
+	_, err := runWizard(p("en\nen\nen\nen\npragmatic\n.\nyes\nplan_only\n\nbrainstorming\nopenspec-explore\nsdd-ask\n"))
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "treasure_chest")
 }

@@ -81,7 +81,7 @@ See `strategist/protocol.md#response-contract`.
 ## Footprint Rule
 
 **Zero config in target repo.** Only workspace artifacts go into the target repo:
-- `<base_path>/todo/`, `pending/`, `refined/`, `done/` — mission artifacts
+- `<base_path>/todo/`, `pending/`, `refined/`, `archived/` — mission artifacts
 - `<base_path>/.strategist/` — internal domain (templates populated at init)
 
 Config stays in skill root:

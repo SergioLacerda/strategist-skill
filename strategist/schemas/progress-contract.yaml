@@ -37,7 +37,7 @@ event_examples:
   - "[Strategist] phase=preflight status=blocked reason=slot_provider_not_found action=check_skill_root"
   - "[Strategist] phase=refinement status=running skill=archivist checklist=1/3"
   - "[Strategist] phase=approval_gate status=blocked reason=user_declined action=none"
-  - "[Strategist] phase=execution status=done artifact=.analysis/done/abc123-report.md"
+  - "[Strategist] phase=execution status=done artifact=.analysis/archived/abc123-report.md"
   - "[Strategist] event=treasure_chest_found chest=my-chest phase=discovery"
   - "[Strategist] event=side_quest_detected type=quick_draw phase=intake"
   - "[Strategist] event=side_quest_detected type=adr_opportunity phase=post_execution"
@@ -86,4 +86,4 @@ user_facing_signals:
 output_paths:
   discovery: "<base_path>/pending/<mission_id>-discovery.md"
   refined_plan: "<base_path>/refined/<mission_id>-plan.md"
-  execution_report: "<base_path>/done/<mission_id>-report.md"
+  execution_report: "<base_path>/archived/<mission_id>-report.md"
