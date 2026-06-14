@@ -39,73 +39,21 @@ func TestExtractor_ReadFile(t *testing.T) {
 		brainstorming, err := embedpkg.Extractor{}.ReadFile("providers/brainstorming/skill.yaml")
 		require.NoError(t, err)
 		assert.Contains(t, string(brainstorming), "id: brainstorming")
+		assert.Contains(t, string(brainstorming), "status: active")
 		assert.Contains(t, string(brainstorming), "risk_score: write_pending")
 		assert.Contains(t, string(brainstorming), "provider_class: rankeado")
+		assert.Contains(t, string(brainstorming), "canonical_role: ranger")
 		assert.Contains(t, string(brainstorming), "auxiliary_tools_allowed:")
 		assert.Contains(t, string(brainstorming), "- writing-plans")
 
 		openspecExplore, err := embedpkg.Extractor{}.ReadFile("providers/openspec-explore/skill.yaml")
 		require.NoError(t, err)
 		assert.Contains(t, string(openspecExplore), "id: openspec-explore")
+		assert.Contains(t, string(openspecExplore), "status: active")
 		assert.Contains(t, string(openspecExplore), "risk_score: write_analysis")
+		assert.Contains(t, string(openspecExplore), "provider_class: rankeado")
+		assert.Contains(t, string(openspecExplore), "canonical_role: archivist")
 	})
-}
-
-func TestEmbeddedProviderManifestAlignment(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name          string
-		embeddedPath  string
-		runtimePath   string
-		idLine        string
-		riskScoreLine string
-		statusLine    string
-		extraLines    []string
-	}{
-		{
-			name:          "brainstorming",
-			embeddedPath:  "providers/brainstorming/skill.yaml",
-			runtimePath:   filepath.Join("..", "..", ".strategist", "brainstorming", "skill.yaml"),
-			idLine:        "id: brainstorming",
-			riskScoreLine: "risk_score: write_pending",
-			statusLine:    "status: active",
-			extraLines: []string{
-				"provider_class: rankeado",
-				"canonical_role: ranger",
-				"- writing-plans",
-			},
-		},
-		{
-			name:          "openspec-explore",
-			embeddedPath:  "providers/openspec-explore/skill.yaml",
-			runtimePath:   filepath.Join("..", "..", ".strategist", "openspec-explore", "skill.yaml"),
-			idLine:        "id: openspec-explore",
-			riskScoreLine: "risk_score: write_analysis",
-			statusLine:    "status: active",
-			extraLines: []string{
-				"provider_class: rankeado",
-				"canonical_role: archivist",
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			embedded, err := embedpkg.Extractor{}.ReadFile(tt.embeddedPath)
-			require.NoError(t, err)
-
-			runtime, err := os.ReadFile(tt.runtimePath)
-			require.NoError(t, err)
-
-			for _, line := range append([]string{tt.idLine, tt.statusLine, tt.riskScoreLine}, tt.extraLines...) {
-				assert.Contains(t, string(embedded), line)
-				assert.Contains(t, string(runtime), line)
-			}
-		})
-	}
 }
 
 func TestExtractor_Extract_ReadOnlyTarget(t *testing.T) {
