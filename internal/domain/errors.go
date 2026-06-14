@@ -12,4 +12,7 @@ var (
 
 	// ErrSourceStale is returned when a source file was modified after the artifact was compiled.
 	ErrSourceStale = errors.New("source file modified after artifact")
+
+	// ErrPipelineBypassDetected is returned when execution attempts to mutate the repo outside the canonical pipeline.
+	ErrPipelineBypassDetected = errors.New("pipeline bypass detected")
 )

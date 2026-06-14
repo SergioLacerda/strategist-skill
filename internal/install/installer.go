@@ -121,9 +121,40 @@ func (s Service) applyConfig(strategistDir string, cfg domain.InstallConfig) err
 	if err := writeActiveYAML(strategistDir, wc); err != nil {
 		return fmt.Errorf("install: write active.yaml: %w", err)
 	}
+	if err := s.writeSelectedProviderManifests(strategistDir, wc); err != nil {
+		return fmt.Errorf("install: write provider manifests: %w", err)
+	}
 	if err := writeKnowledgeIndexSource(strategistDir, wc); err != nil {
 		return fmt.Errorf("install: write knowledge.index.yaml: %w", err)
 	}
+	return nil
+}
+
+func (s Service) writeSelectedProviderManifests(strategistDir string, wc domain.WizardConfig) error {
+	selectedProviders := []string{wc.DiscoveryProvider, wc.RefinementProvider}
+
+	for _, provider := range selectedProviders {
+		manifestPath, ok := installableDefaultProviders[provider]
+		if !ok {
+			continue
+		}
+
+		data, err := s.Extractor.ReadFile(manifestPath)
+		if err != nil {
+			return fmt.Errorf("read %s: %w", manifestPath, err)
+		}
+
+		providerDir := filepath.Join(strategistDir, provider)
+		if err := os.MkdirAll(providerDir, 0o755); err != nil {
+			return fmt.Errorf("mkdir %s: %w", providerDir, err)
+		}
+
+		targetPath := filepath.Join(providerDir, "skill.yaml")
+		if err := os.WriteFile(targetPath, data, 0o644); err != nil {
+			return fmt.Errorf("write %s: %w", targetPath, err)
+		}
+	}
+
 	return nil
 }
 

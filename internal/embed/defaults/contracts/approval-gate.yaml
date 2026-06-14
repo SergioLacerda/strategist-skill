@@ -3,7 +3,9 @@ type: gate
 description: >
   Mandatory gate between Archivist and Sniper. User must explicitly approve
   before any execution occurs. Declining results in plan_only mission status —
-  not an error. Gate cannot be bypassed under any circumstance.
+  not an error. Gate cannot be bypassed under any circumstance. Any direct
+  repository mutation attempted before approval must fail with
+  `pipeline_bypass_detected`.
 
 contract:
   input:
@@ -51,6 +53,8 @@ contract:
     - gate must emit status=approved or status=plan_only before sniper is invoked
     - plan_only is a valid terminal state, not an error
     - checkpoint is re-emitted on approve (not on decline)
+    - direct repository mutation before approval emits reason=pipeline_bypass_detected
+    - pipeline_bypass_detected must include expected_phase=approval_gate and missing_evidence=approval_gate:approved
 
   write_scope: read-only
   owner: internal (orchestrator)

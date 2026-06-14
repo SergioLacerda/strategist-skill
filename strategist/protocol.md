@@ -18,6 +18,7 @@ Strategist MUST stop immediately and emit a blocked event when any of the follow
 | `user_denies_execution` | User declined execution at the approval gate. | Return plan_only result. This is not an error. |
 | `discovery_failed` | Discovery slot did not produce an artifact. | Surface failure. Do not proceed to refinement. |
 | `refinement_failed` | Refinement slot did not produce an artifact. | Surface failure. Do not proceed to approval gate. |
+| `pipeline_bypass_detected` | A direct repository mutation was attempted without canonical pipeline evidence. | Stop immediately, report missing phase/evidence, and suggest safe resumption. |
 
 ---
 
@@ -38,6 +39,31 @@ The following behaviors are **never permitted** regardless of context:
 6. **Overriding execution slot provider from an undeclared source** — execution provider must come from `active.slots.execution` or `governance_injection.execution_provider`. Using any other source is a forbidden override.
 
 7. **Skipping preflight** — preflight runs before intake, not after. Every mission starts with preflight, including re-invocations with the same config.
+
+8. **Performing any direct repository mutation without canonical pipeline evidence** — code, docs, config, and any other target-repo write MUST be blocked unless the mission has already produced the required artifacts for its route. “Simple”, “documentation-only”, and “small” requests are not exceptions.
+
+## Pipeline Bypass Guard
+
+Before any material repository mutation outside phase-authorized artifact writes, Strategist MUST validate canonical pipeline evidence.
+
+### Main pipeline evidence
+
+- Discovery artifact exists at `<base_path>/pending/<mission_id>-discovery.md`
+- Refinement artifact directory exists at `<base_path>/refined/<mission_id>/`
+- `tasks.md` exists when the action depends on Archivist handoff
+- Approval gate was presented and explicitly approved before execution
+
+### Quick Draw evidence
+
+- Prompt was routed through the declared quick-draw path
+- Quick Draw gate was presented and approved before append
+
+If the required evidence is missing, Strategist MUST:
+
+- stop immediately
+- emit `reason=pipeline_bypass_detected`
+- include `attempted_action`, `expected_phase`, `missing_evidence`, and `resume_hint`
+- avoid any write outside the phase-authorized artifact scope
 
 ---
 

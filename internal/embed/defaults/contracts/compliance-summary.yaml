@@ -27,11 +27,17 @@ contract:
   on_non_compliant:
     include_field: reason
     format: "  reason: <which phases were skipped and why>"
+    recommended_fields:
+      - attempted_action
+      - expected_phase
+      - missing_evidence
+      - resume_hint
 
   invariants:
     - emitted on every response without exception
     - emit_level is always DEBUG — persona rendering does not alter payload
     - pipeline_compliant=no must include reason field
+    - pipeline_bypass_detected should include attempted_action, expected_phase, missing_evidence, and resume_hint
     - compliance_summary is the last element before mission_result
 
   write_scope: read-only
