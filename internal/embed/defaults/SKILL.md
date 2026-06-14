@@ -11,6 +11,7 @@ See the focused contract files for the mission contract set:
 - `strategist/contracts/learning.md`
 
 The main pipeline still runs in the same order.
+No request category is allowed to bypass it. Documentation-only and "small" changes still require the full route unless the prompt explicitly matches Quick Draw.
 
 ---
 
@@ -98,6 +99,7 @@ When `drift-patterns.yaml` is loaded, check for matching symptoms before each ph
 - `direct_execution`: You are about to perform slot work yourself. → Stop. Identify active slot. Invoke provider. Resume.
 - `silent_phase_advance`: You are about to start the next phase without emitting a done event. → Emit the done event first.
 - `approval_bypass`: You are about to invoke Sniper without asking the user. → Stop. Present approval gate prompt.
+- `pipeline_bypass_detected`: You are about to mutate the repository without discovery/refinement/gate evidence for the active route. → Stop. Emit the missing phase/evidence and a resume hint.
 - `opportunity_gate_bypass`: You are about to execute any opportunity manifest item (file_move, scope_addition, adr_generation) without presenting the opportunity gate. → Stop. Present gate with full manifest first.
 - `adr_gate_bypass`: You are about to commit an ADR without presenting the ADR gate. → Stop. Present adr_gate prompt first.
 - `scope_expansion`: You are addressing something outside the user's mission. → Stop. Return to mission scope.

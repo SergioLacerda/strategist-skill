@@ -53,6 +53,10 @@ func (m minimalExtractor) ReadFile(relPath string) ([]byte, error) {
 		return []byte("mode: epic\nbase_path: .analysis\nroles_config: roles/default.yaml\n"), nil
 	case "SKILL.md":
 		return []byte("# SKILL\n"), nil
+	case "providers/brainstorming/skill.yaml":
+		return []byte("id: brainstorming\nstatus: active\nrisk_score: write_pending\nprovider_class: rankeado\nspecialization_taxonomy:\n  canonical_role: ranger\n  provider_class: rankeado\nauxiliary_tools_allowed:\n  - writing-plans\n"), nil
+	case "providers/openspec-explore/skill.yaml":
+		return []byte("id: openspec-explore\nstatus: active\nrisk_score: write_analysis\n"), nil
 	default:
 		return nil, fmt.Errorf("minimalExtractor: file not found: %s", relPath)
 	}
@@ -98,6 +102,13 @@ func TestInstall_WizardPath(t *testing.T) {
 	assert.Contains(t, s, "discovery: brainstorming")
 	assert.Contains(t, s, "refinement: archivist")
 	assert.Contains(t, s, "execution: sdd-ask")
+
+	brainstorming, err := os.ReadFile(filepath.Join(dir, ".strategist", "brainstorming", "skill.yaml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(brainstorming), "risk_score: write_pending")
+
+	_, err = os.Stat(filepath.Join(dir, ".strategist", "openspec-explore", "skill.yaml"))
+	require.ErrorIs(t, err, os.ErrNotExist)
 }
 
 func TestInstall_WizardPath_WithChest(t *testing.T) {
@@ -138,6 +149,33 @@ func TestInstall_WizardPath_Defaults(t *testing.T) {
 	assert.Contains(t, s, "discovery: brainstorming")
 	assert.Contains(t, s, "refinement: openspec-explore")
 	assert.Contains(t, s, "execution: sdd-ask")
+
+	brainstorming, err := os.ReadFile(filepath.Join(dir, ".strategist", "brainstorming", "skill.yaml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(brainstorming), "id: brainstorming")
+	assert.Contains(t, string(brainstorming), "risk_score: write_pending")
+
+	openspecExplore, err := os.ReadFile(filepath.Join(dir, ".strategist", "openspec-explore", "skill.yaml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(openspecExplore), "id: openspec-explore")
+	assert.Contains(t, string(openspecExplore), "risk_score: write_analysis")
+}
+
+func TestInstall_WizardPath_ExplicitDefaultProvidersMaterializeManifests(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	svc := newSvcW(t, "en\nen\nen\nen\nepic\n.analysis\nyes\nplan_only\n\nbrainstorming\nopenspec-explore\nsdd-ask\n\n")
+	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
+	require.NoError(t, err)
+
+	brainstorming, err := os.ReadFile(filepath.Join(dir, ".strategist", "brainstorming", "skill.yaml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(brainstorming), "risk_score: write_pending")
+
+	openspecExplore, err := os.ReadFile(filepath.Join(dir, ".strategist", "openspec-explore", "skill.yaml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(openspecExplore), "risk_score: write_analysis")
 }
 
 // --- applyConfig: active.yaml preservation and force-overwrite ---

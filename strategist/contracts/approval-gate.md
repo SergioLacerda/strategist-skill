@@ -18,6 +18,12 @@ Read `<base_path>/refined/<mission_id>/tasks.md` before deciding:
 
 In all cases where the gate is presented: STOP. Do not invoke Sniper without explicit user approval.
 
+Any attempt to mutate repository files directly before this gate completes with approval is a hard failure:
+- emit `reason=pipeline_bypass_detected`
+- include `expected_phase=approval_gate`
+- include the missing evidence (`approval_gate:approved`)
+- stop immediately and provide a short resume hint
+
 Emit via `persona.content_by_lang[active.language.chat].approval_prompt` with:
 - `{artifact_path}`
 - `{mission_tasks_summary}` (checklist/todo summary from `tasks.md`)

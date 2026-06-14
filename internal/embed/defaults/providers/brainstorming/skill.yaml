@@ -1,0 +1,19 @@
+id: brainstorming
+version: "1.0.0"
+schema_version: "1"
+status: active
+risk_score: write_pending
+category: discovery
+provider_class: rankeado
+
+description: >
+  Discovery provider for Strategist. Explores the mission space, separates evidence
+  from ambiguity, and writes a pending discovery artifact within the Strategist
+  write_pending boundary.
+
+specialization_taxonomy:
+  canonical_role: ranger
+  provider_class: rankeado
+
+auxiliary_tools_allowed:
+  - writing-plans
