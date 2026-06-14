@@ -129,6 +129,7 @@ Expected contracts:
 - `make cover` — generates per-package coverage
 - `make cover-gate` — fails if any internal package is below 90% coverage
 - `make cover-html` — generates a consolidated `coverage.html` report
+- When contributing external skills used as wizard default providers, preserve attribution to the upstream project and include an installable canonical manifest at `.strategist/<provider>/skill.yaml`.
 
 ```bash
 make build
@@ -141,6 +142,29 @@ make cover
 make cover-gate
 make cover-html
 ```
+
+## Credits and attribution
+
+`strategist` acts as an orchestration layer for governed workflows and may integrate external skills as specialized role providers.
+
+### Recognized base skills
+
+- `brainstorming` — project `obra/superpowers`  
+  Source: <https://claudemarketplaces.com/skills/obra/superpowers/brainstorming>
+- `openspec` — project `itechmeat/llm-code`  
+  Source: <https://claudemarketplaces.com/skills/itechmeat/llm-code/openspec>
+
+### Role in the flow
+
+- `brainstorming` is referenced as the basis for structured exploration in the `Ranger` role, including option discovery, risks, trade-offs, and early clarification.
+- `openspec` is referenced as the basis for convergent formalization in the `Archivist` role, including change proposal, design, tasks, and acceptance criteria.
+- When installed as wizard default providers, these skills remain independent; `strategist` only orchestrates their use inside the pipeline.
+
+### Attribution policy
+
+- Preserve the name, upstream project, and public URL whenever an external skill is integrated as a provider.
+- Do not imply ownership over upstream prompts, artifacts, or implementation.
+- Prefer canonical manifests/adapters in `.strategist/<provider>/skill.yaml` instead of duplicating upstream content.
 
 ## License
 

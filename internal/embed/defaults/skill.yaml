@@ -335,6 +335,7 @@ provider_compliance:
 forbidden_behaviors:
   - write_quick_draw_without_gate
   - invoke_execution_slot_without_approval
+  - direct_repository_mutation_without_pipeline_evidence
   - write_config_to_target_repo
   - perform_discovery_directly_instead_of_delegating
   - skip_preflight
@@ -350,6 +351,17 @@ forbidden_behaviors:
   - engineer_writes_outside_analysis
   - archivist_writes_non_md
   - delegate_analysis_creation_to_sniper
+  - id: pipeline_bypass_detected
+    description: >
+      A direct repository mutation was attempted without the canonical evidence
+      required by the active route. Main pipeline requires discovery artifact,
+      refined artifacts, and approval gate evidence. Quick Draw requires quick
+      draw gate approval before append.
+    emit: >
+      "[Strategist] phase=compliance status=blocked reason=pipeline_bypass_detected
+       attempted_action={attempted_action} expected_phase={expected_phase}
+       missing_evidence={missing_evidence} resume_hint={resume_hint}"
+    action: block
   - id: missing_profile_diagnostics
     description: >
       Bootstrap completed but mandatory diagnostic block was not emitted.

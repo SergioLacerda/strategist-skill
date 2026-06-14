@@ -132,6 +132,7 @@ Contratos esperados:
 - `make cover` — gera cobertura por pacote
 - `make cover-gate` — falha se algum pacote interno ficar abaixo de 90% de cobertura
 - `make cover-html` — gera `coverage.html` com a cobertura consolidada
+- Ao contribuir com skills externas usadas como providers padrão do wizard, preserve a atribuição do projeto original e inclua um manifest canônico instalável em `.strategist/<provider>/skill.yaml`.
 
 ```bash
 make build
@@ -144,6 +145,29 @@ make cover
 make cover-gate
 make cover-html
 ```
+
+## Créditos e atribuição
+
+O `strategist` atua como camada de orquestração para workflows governados e pode integrar skills externas como providers especializados por papel.
+
+### Skills base reconhecidas
+
+- `brainstorming` — projeto `obra/superpowers`  
+  Fonte: <https://claudemarketplaces.com/skills/obra/superpowers/brainstorming>
+- `openspec` — projeto `itechmeat/llm-code`  
+  Fonte: <https://claudemarketplaces.com/skills/itechmeat/llm-code/openspec>
+
+### Papel no fluxo
+
+- `brainstorming` é referenciado como base para exploração estruturada no papel de `Ranger`, incluindo descoberta de opções, riscos, trade-offs e clarificação inicial.
+- `openspec` é referenciado como base para formalização convergente no papel de `Archivist`, incluindo proposta de mudança, design, tarefas e critérios de aceite.
+- Quando instaladas como providers padrão do wizard, essas skills permanecem independentes; `strategist` apenas orquestra seu uso dentro do pipeline.
+
+### Política de atribuição
+
+- Preserve nome, projeto de origem e URL pública sempre que uma skill externa for integrada como provider.
+- Não implique propriedade sobre prompts, artefatos ou implementação upstream.
+- Prefira manifests/adapters canônicos em `.strategist/<provider>/skill.yaml` em vez de duplicar conteúdo upstream.
 
 ## Licença
 
