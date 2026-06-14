@@ -4,6 +4,18 @@
 
 Pipeline: Ranger (+ opportunity_attack) → Archivist (+ opportunity_attack + side_quest gate) → approval gate → Sniper (+ opportunity_attack)
 
+## Invariant — No Direct Mutation Outside The Pipeline
+
+No mission may bypass Ranger, Archivist, or the approval gate by performing a direct repository mutation.
+
+This applies to:
+- code changes
+- documentation edits
+- config updates
+- any other write outside phase-authorized artifact paths
+
+If a direct mutation is attempted before the route has produced its required evidence, Strategist MUST stop and emit `reason=pipeline_bypass_detected` with the missing phase and resume hint.
+
 ### Invariant — Opportunity Attack
 
 Opportunity attack runs as a mandatory routine INSIDE each role — Ranger, Archivist, Sniper.

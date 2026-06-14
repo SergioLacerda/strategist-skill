@@ -32,6 +32,28 @@ func TestExtractor_ReadFile(t *testing.T) {
 		require.NoError(t, err)
 		assert.Contains(t, string(data), "mode:")
 	})
+
+	t.Run("reads embedded default provider manifests", func(t *testing.T) {
+		t.Parallel()
+
+		brainstorming, err := embedpkg.Extractor{}.ReadFile("providers/brainstorming/skill.yaml")
+		require.NoError(t, err)
+		assert.Contains(t, string(brainstorming), "id: brainstorming")
+		assert.Contains(t, string(brainstorming), "status: active")
+		assert.Contains(t, string(brainstorming), "risk_score: write_pending")
+		assert.Contains(t, string(brainstorming), "provider_class: rankeado")
+		assert.Contains(t, string(brainstorming), "canonical_role: ranger")
+		assert.Contains(t, string(brainstorming), "auxiliary_tools_allowed:")
+		assert.Contains(t, string(brainstorming), "- writing-plans")
+
+		openspecExplore, err := embedpkg.Extractor{}.ReadFile("providers/openspec-explore/skill.yaml")
+		require.NoError(t, err)
+		assert.Contains(t, string(openspecExplore), "id: openspec-explore")
+		assert.Contains(t, string(openspecExplore), "status: active")
+		assert.Contains(t, string(openspecExplore), "risk_score: write_analysis")
+		assert.Contains(t, string(openspecExplore), "provider_class: rankeado")
+		assert.Contains(t, string(openspecExplore), "canonical_role: archivist")
+	})
 }
 
 func TestExtractor_Extract_ReadOnlyTarget(t *testing.T) {
@@ -159,6 +181,30 @@ func TestExtractor_Extract(t *testing.T) {
 		assert.Contains(t, e, "opportunity_detected")
 		assert.Contains(t, e, "opportunity_gate")
 		assert.Contains(t, e, "Aprovar? (yes / no / select)")
+	})
+
+	t.Run("extracted defaults include pipeline bypass hardening", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		require.NoError(t, embedpkg.Extractor{}.Extract(dir, false))
+
+		skillYAML, err := os.ReadFile(filepath.Join(dir, "skill.yaml"))
+		require.NoError(t, err)
+		skill := string(skillYAML)
+		assert.Contains(t, skill, "direct_repository_mutation_without_pipeline_evidence")
+		assert.Contains(t, skill, "reason=pipeline_bypass_detected")
+		assert.Contains(t, skill, "expected_phase={expected_phase}")
+		assert.Contains(t, skill, "missing_evidence={missing_evidence}")
+
+		protocol, err := os.ReadFile(filepath.Join(dir, "protocol.md"))
+		require.NoError(t, err)
+		assert.Contains(t, string(protocol), "pipeline_bypass_detected")
+		assert.Contains(t, string(protocol), "direct repository mutation")
+
+		approvalGate, err := os.ReadFile(filepath.Join(dir, "contracts", "approval-gate.yaml"))
+		require.NoError(t, err)
+		assert.Contains(t, string(approvalGate), "pipeline_bypass_detected")
+		assert.Contains(t, string(approvalGate), "missing_evidence=approval_gate:approved")
 	})
 
 	t.Run("extracted defaults include ADR language instruction", func(t *testing.T) {

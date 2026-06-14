@@ -16,6 +16,7 @@ func TestErrors_NotNil(t *testing.T) {
 	require.Error(t, domain.ErrArtifactAbsent)
 	require.Error(t, domain.ErrManifestMissing)
 	require.Error(t, domain.ErrSourceStale)
+	require.Error(t, domain.ErrPipelineBypassDetected)
 }
 
 func TestErrors_Messages(t *testing.T) {
@@ -23,11 +24,12 @@ func TestErrors_Messages(t *testing.T) {
 	assert.Equal(t, "artifact does not exist", domain.ErrArtifactAbsent.Error())
 	assert.Equal(t, "manifest not found", domain.ErrManifestMissing.Error())
 	assert.Equal(t, "source file modified after artifact", domain.ErrSourceStale.Error())
+	assert.Equal(t, "pipeline bypass detected", domain.ErrPipelineBypassDetected.Error())
 }
 
 func TestErrors_AreDistinct(t *testing.T) {
 	t.Parallel()
-	errs := []error{domain.ErrArtifactAbsent, domain.ErrManifestMissing, domain.ErrSourceStale}
+	errs := []error{domain.ErrArtifactAbsent, domain.ErrManifestMissing, domain.ErrSourceStale, domain.ErrPipelineBypassDetected}
 	for i, a := range errs {
 		for j, b := range errs {
 			if i == j {
