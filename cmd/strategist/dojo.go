@@ -120,7 +120,11 @@ func resolveDojoRoots(root string) (strategistRoot, basePath string, err error) 
 	if cfg.BasePath == "" {
 		return "", "", fmt.Errorf("dojo: active.yaml: base_path is empty")
 	}
-	return strategistRoot, cfg.BasePath, nil
+	basePath = cfg.BasePath
+	if !filepath.IsAbs(basePath) {
+		basePath = filepath.Join(filepath.Dir(strategistRoot), basePath)
+	}
+	return strategistRoot, basePath, nil
 }
 
 func dojoItemLine(item domain.DojoCheckItem) string {
