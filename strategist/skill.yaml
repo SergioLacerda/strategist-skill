@@ -40,7 +40,7 @@ active_config:
     fields: [discovery, refinement, execution]
     description: >
       Slot provider assignments. Each value is a skill id resolved at preflight.
-      discovery → Ranger (write_pending), refinement → Arquivista (write_analysis),
+      discovery → Ranger (write_analysis), refinement → Arquivista (write_analysis),
       execution → Sniper (controlled).
   language:
     type: string
@@ -58,16 +58,16 @@ active_config:
 
 slots:
   discovery:
-    contract: write_pending
-    write_scope: "<base_path>/pending/"
+    contract: write_analysis
+    write_scope: "<base_path>/refined/"
     write_types: [".md"]
     canonical:
       - find_unexpected_items       # surface items outside declared mission scope
       - consult_treasure_chests     # if chests scoped to discovery present, consult before LLM
       - opportunity_attack          # routine: detect treasure_chests + side_quests, surface in response
-      - output_format: "<base_path>/pending/<mission_id>-discovery.md"
+      - output_format: "<base_path>/refined/<mission_id>-analysis.md"
       - handoff_contract: "schemas/handoff-ranger-to-archivist.schema.yaml"
-    description: Explores the problem space and writes discovery artifact to pending/.
+    description: Explores the problem space and writes the canonical analysis handoff artifact.
   refinement:
     contract: write_analysis
     write_scope:
@@ -83,14 +83,14 @@ slots:
           - "<base_path>/refined/<mission_id>/design.md"
           - "<base_path>/refined/<mission_id>/tasks.md"
       - handoff_contract: "schemas/handoff-archivist-to-hunter.schema.yaml"
-    description: Reads discovery artifact, writes refined plan and any .md summaries.
+    description: Reads the Ranger analysis artifact and writes the refined package and related .md summaries.
   execution:
     contract: controlled
     canonical:
       - requires_approval_gate      # Strategist enforces — documented here for slot awareness
       - consult_treasure_chests     # if chests scoped to execution present, consult before acting
       - opportunity_attack          # routine: detect side_quests, stop_and_report only (no strategy decision)
-    description: Executes the refined plan. Approval gate required.
+    description: Executes the approved refined package. Approval gate required.
 
 # Treasure chests — scoped knowledge sources passed to slots at invocation time.
 # Declared in active.yaml under treasure_chests:. Each slot receives only the chests
@@ -147,7 +147,7 @@ pipeline:
     type: mandatory_pause
     condition: quick_draw_detection.matched
     description: >
-      Present "ideia: <texto>" and ask "adicionar ideia? (sim/nao)" before any write.
+      Present "ideia: <texto>" and ask "adicionar ideia? (sim / nao)" before any write.
   - stage: quick_draw_execution
     slot: execution
     condition: quick_draw_gate_granted
@@ -173,10 +173,10 @@ pipeline:
     slot: discovery
     condition: "!quick_draw_detection.matched"
     input: mission_contract
-    artifact_path: "<base_path>/pending/<mission_id>-discovery.md"
+    artifact_path: "<base_path>/refined/<mission_id>-analysis.md"
   - stage: refinement
     slot: refinement
-    input: discovery_artifact
+    input: analysis_artifact
     note: >
       Opportunity Attack runs as a routine inside Ranger (discovery) and Archivist (refinement).
       Treasure chests and side quests are included in handoff contract fields.
@@ -188,7 +188,7 @@ pipeline:
       - "<base_path>/refined/<mission_id>/tasks.md"
   - stage: approval_gate
     type: mandatory_pause
-    description: Present refined plan path. Require explicit user approval before execution slot.
+    description: Present the refined package paths. Require explicit user approval before execution slot.
   - stage: execution
     slot: execution
     input: refined_plan
@@ -354,7 +354,7 @@ forbidden_behaviors:
   - id: pipeline_bypass_detected
     description: >
       A direct repository mutation was attempted without the canonical evidence
-      required by the active route. Main pipeline requires discovery artifact,
+      required by the active route. Main pipeline requires Ranger analysis artifact,
       refined artifacts, and approval gate evidence. Quick Draw requires quick
       draw gate approval before append.
     emit: >

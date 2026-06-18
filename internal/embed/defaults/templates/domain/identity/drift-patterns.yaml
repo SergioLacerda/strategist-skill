@@ -24,7 +24,7 @@ patterns:
       I am about to invoke the execution slot and have not yet received
       explicit user approval at the approval gate.
     correction: >
-      Stop. Present the approval gate prompt with the refined plan path.
+      Stop. Present the approval gate prompt with the refined package paths.
       Wait for the user's response before proceeding.
 
   - id: scope_expansion

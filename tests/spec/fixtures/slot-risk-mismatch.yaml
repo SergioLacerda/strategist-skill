@@ -1,6 +1,6 @@
 scenario: slot_risk_mismatch
 description: >
-  The discovery slot provider declares risk_score=controlled instead of write_pending.
+  The discovery slot provider declares risk_score=controlled instead of write_analysis.
   Preflight must detect the mismatch and emit a blocked event.
 
 input:

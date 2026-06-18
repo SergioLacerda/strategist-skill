@@ -73,7 +73,7 @@ Define quais providers são usados em cada slot do pipeline. O install gera `rol
 **Schema:**
 
 ```yaml
-discovery: <provider_id>       # Provider do slot Ranger. risk_score deve ser write_pending.
+discovery: <provider_id>       # Provider do slot Ranger. risk_score deve ser write_analysis.
 refinement: <provider_id>      # Provider do slot Archivist. risk_score deve ser write_analysis.
 execution: <provider_id>       # Provider do slot Sniper. risk_score deve ser controlled.
 ```
@@ -83,7 +83,7 @@ execution: <provider_id>       # Provider do slot Sniper. risk_score deve ser co
 ```yaml
 # Slot keys: discovery, refinement, execution
 # Nomes internos: Ranger, Archivist, Sniper (epic) / análise, refinamento, execução (pragmatic)
-discovery: brainstorm
+discovery: brainstorming
 refinement: openspec-explore
 execution: sdd-ask
 ```
@@ -94,7 +94,7 @@ execution: sdd-ask
 
 | Slot | risk_score exigido |
 |------|-------------------|
-| `discovery` | `write_pending` |
+| `discovery` | `write_analysis` |
 | `refinement` | `write_analysis` |
 | `execution` | `controlled` |
 
@@ -102,7 +102,7 @@ execution: sdd-ask
 
 | Arquivo | Uso |
 |---------|-----|
-| `default.yaml` | Configuração gerada pelo install (brainstorm + openspec-explore + sdd-ask) |
+| `default.yaml` | Configuração gerada pelo install (`brainstorming` + `openspec-explore` + `sdd-ask`) |
 | `mission.yaml` | Configuração otimizada para missões de alta complexidade |
 | `spec-driven.yaml` | Fluxo orientado a especificação (útil com SDD) |
 

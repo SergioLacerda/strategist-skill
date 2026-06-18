@@ -18,7 +18,7 @@ adr_enabled: true
 # Slot providers — which skill fills each mission role.
 # Edit here to change providers. Preflight validates risk_score contracts.
 slots:
-  discovery: brainstorming      # Ranger  — write_pending contract
+  discovery: brainstorming      # Ranger  — write_analysis contract
   refinement: openspec-explore  # Arquivista — write_analysis contract
   execution: sdd-ask            # Sniper  — controlled contract
 

@@ -1,4 +1,4 @@
-subject: contracts/adr.yaml
+subject: contracts/07-adr.md
 version: "1.0"
 
 invariants:

@@ -37,7 +37,12 @@ func runCompile(cmd *cobra.Command, _ []string) (retErr error) {
 		run.MarkRanger()
 	}
 	ctx, span := telemetry.Tracer().Start(ctx, "strategist.compile",
-		trace.WithAttributes(attribute.String(telemetry.AttrTarget, compileRoot)),
+		trace.WithAttributes(
+			attribute.String(telemetry.AttrComponent, "compile"),
+			attribute.String(telemetry.AttrRuntimeMode, "cli"),
+			attribute.String(telemetry.AttrOutputProfile, "default"),
+			attribute.String(telemetry.AttrTarget, compileRoot),
+		),
 	)
 	defer func() {
 		if retErr != nil {
@@ -50,7 +55,12 @@ func runCompile(cmd *cobra.Command, _ []string) (retErr error) {
 	if run != nil {
 		run.AddLines(1)
 	}
-	slog.InfoContext(ctx, "[Strategist] compile running", "root", compileRoot)
+	slog.InfoContext(ctx, "[Strategist] compile running",
+		telemetry.AttrComponent, "compile",
+		telemetry.AttrRuntimeMode, "cli",
+		telemetry.AttrOutputProfile, "default",
+		telemetry.AttrTarget, compileRoot,
+	)
 
 	indexPath := filepath.Join(compileRoot, "knowledge.index.yaml")
 	c := compile.Compiler{}
@@ -61,7 +71,12 @@ func runCompile(cmd *cobra.Command, _ []string) (retErr error) {
 	if run != nil {
 		run.AddLines(2)
 	}
-	slog.InfoContext(ctx, "[Strategist] compile complete", "root", compileRoot)
+	slog.InfoContext(ctx, "[Strategist] compile complete",
+		telemetry.AttrComponent, "compile",
+		telemetry.AttrRuntimeMode, "cli",
+		telemetry.AttrOutputProfile, "default",
+		telemetry.AttrTarget, compileRoot,
+	)
 	fmt.Printf("[Strategist] compile complete → %s/.compiled/\n", compileRoot)
 	return nil
 }

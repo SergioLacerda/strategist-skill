@@ -43,5 +43,19 @@ func FormatMissionMetrics(m MissionMetrics) string {
 
 // EmitMissionMetrics logs a canonical mission metrics line through slog.
 func EmitMissionMetrics(m MissionMetrics) {
-	slog.Info(FormatMissionMetrics(m))
+	slog.Info(
+		FormatMissionMetrics(m),
+		AttrMissionID, m.MissionID,
+		AttrStartToIntakeMS, m.TStartToIntakeMS,
+		AttrIntakeToRangerMS, m.TIntakeToRangerMS,
+		"strategist.metrics.t_ranger_to_archivist_ms", m.TRangerToArchivistMS,
+		"strategist.metrics.t_archivist_to_gate_ms", m.TArchivistToGateMS,
+		"strategist.metrics.t_gate_wait_ms", m.TGateWaitMS,
+		"strategist.metrics.t_gate_to_sniper_ms", m.TGateToSniperMS,
+		"strategist.metrics.t_sniper_to_done_ms", m.TSniperToDoneMS,
+		AttrTotalWallTimeMS, m.TotalWallTimeMS,
+		AttrTokensIn, m.TokensIn,
+		AttrTokensOut, m.TokensOut,
+		AttrLinesEmitted, m.LinesEmitted,
+	)
 }

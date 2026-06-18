@@ -19,9 +19,9 @@ Store result as `mission_contract.planning_rules` — pass to all slot providers
 
 After generating `mission_id` (`<date>-<topic-slug>`), verify it does not already exist:
 
-- Check: `.analysis/pending/<mission_id>-discovery.md`
-- Check: `.analysis/refined/<mission_id>/` (directory)
-- Check: `.analysis/archived/<mission_id>-report.md`
+- Check: `<base_path>/refined/<mission_id>-analysis.md`
+- Check: `<base_path>/refined/<mission_id>/` (directory)
+- Check: `<base_path>/archived/<mission_id>-report.md`
 
 If any path exists, append a 4-character hex suffix derived from the current timestamp and re-check. Repeat until a unique ID is found (max 3 attempts; on failure, emit a warning and continue with the suffixed ID).
 

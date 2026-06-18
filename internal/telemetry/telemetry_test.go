@@ -123,9 +123,12 @@ func TestTracer_returns_nonnnil(t *testing.T) {
 
 func TestSchema_constants(t *testing.T) {
 	constants := []string{
-		AttrPhase, AttrStatus, AttrSkill, AttrArtifact,
-		AttrReason, AttrCacheHit, AttrTarget, AttrMandates,
-		AttrMission, AttrStartToIntakeMS, AttrIntakeToRangerMS,
+		AttrPhase, AttrStatus, AttrComponent, AttrSkill, AttrSelectedSkill,
+		AttrArtifact, AttrArtifactPath, AttrReason, AttrCacheHit, AttrTarget,
+		AttrMandates, AttrMission, AttrMissionID, AttrCorrelationID,
+		AttrRuntimeMode, AttrOutputProfile, AttrGateType, AttrGateStatus,
+		AttrGateResponse, AttrApprovalPolicy, AttrTransitionGroup,
+		AttrCheckpointPath, AttrStartToIntakeMS, AttrIntakeToRangerMS,
 		AttrTotalWallTimeMS, AttrTokensIn, AttrTokensOut, AttrLinesEmitted,
 	}
 	for _, c := range constants {

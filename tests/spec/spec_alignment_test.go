@@ -216,6 +216,42 @@ func TestPersonasExposeMandatoryRuntimeEvidenceKeys(t *testing.T) {
 	}
 }
 
+func TestPersonasExposeVisibleComplianceAndNextAction(t *testing.T) {
+	t.Parallel()
+	pragmaticPath := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "personas", "pragmatic.yaml")
+	epicPath := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "personas", "epic.yaml")
+
+	for _, p := range []string{pragmaticPath, epicPath} {
+		content := readFile(t, p)
+		if !strings.Contains(content, "content_by_lang:") {
+			t.Fatalf("%s missing content_by_lang", p)
+		}
+		if !strings.Contains(content, "compliance_summary: >") {
+			t.Fatalf("%s missing visible compliance_summary template", p)
+		}
+		if !strings.Contains(content, "next_action={next_action}") &&
+			!strings.Contains(content, "Next action: {next_action}") &&
+			!strings.Contains(content, "Próxima ação: {next_action}") {
+			t.Fatalf("%s missing next_action in mission_complete template", p)
+		}
+	}
+}
+
+func TestPragmaticPersonaUsesDistinctPhaseLabels(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "personas", "pragmatic.yaml")
+	content := readFile(t, path)
+	for _, needle := range []string{
+		"discovery: analysis",
+		"refinement: refinement",
+		"execution: execution",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("%s missing %q", path, needle)
+		}
+	}
+}
+
 func TestEmitTaxonomyMandatoryVisibilityLevels(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "output-profiles", "emit-taxonomy.yaml")

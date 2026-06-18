@@ -19,7 +19,7 @@ adr_enabled: true
 # The execution slot is overridden at runtime by governance_injection.execution_provider
 # when the SDD plugin is active. The value here is the fallback.
 slots:
-  discovery: brainstorming      # Ranger  — write_pending contract
+  discovery: brainstorming      # Ranger  — write_analysis contract
   refinement: openspec-explore  # Arquivista — write_analysis contract
   execution: sdd-ask            # Sniper  — overridden by governance_injection at runtime
 
