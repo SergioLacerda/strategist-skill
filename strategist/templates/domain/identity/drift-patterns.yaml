@@ -24,7 +24,7 @@ patterns:
       I am about to invoke the execution slot and have not yet received
       explicit user approval at the approval gate.
     correction: >
-      Stop. Present the approval gate prompt with the refined plan path.
+      Stop. Present the approval gate prompt with the refined package paths.
       Wait for the user's response before proceeding.
 
   - id: scope_expansion
@@ -44,3 +44,36 @@ patterns:
       Stop. Re-resolve the execution provider from the declared source: active.slots.execution or
       governance_injection.execution_provider (if the governance_injection block is active).
       If neither declares a valid provider, run preflight again and emit slot_provider_not_found.
+
+  - id: pipeline_bypass_detected
+    symptom: >
+      I am about to mutate the repository — code change, documentation edit, config update,
+      or any other write outside phase-authorized artifact paths — without Ranger, Archivist,
+      or approval gate evidence for the active route.
+    correction: >
+      Stop. Emit reason=pipeline_bypass_detected with the name of the missing phase and a
+      resume hint. Do not proceed with the mutation until the missing phase has completed.
+
+  - id: opportunity_gate_bypass
+    symptom: >
+      I am about to execute an opportunity manifest item (file_move, scope_addition,
+      adr_generation) without having presented the opportunity gate to the user first.
+    correction: >
+      Stop. Present the opportunity gate with the full manifest.
+      Wait for user response (yes / no / select) before proceeding with any manifest item.
+
+  - id: adr_gate_bypass
+    symptom: >
+      I am about to commit an ADR artifact without having presented the ADR gate
+      and received explicit user approval for the content.
+    correction: >
+      Stop. Present the adr_gate prompt with the ADR draft.
+      Wait for user approval before committing the ADR.
+
+  - id: route_plan_creation_to_sniper
+    symptom: >
+      I am about to ask Sniper to create a document, spec, analysis, or implementation
+      plan — work that belongs to the refinement slot (Archivist).
+    correction: >
+      Stop. Document authoring is Archivist's work (contract: write_analysis).
+      Return to phase 5e and invoke the refinement slot provider.
