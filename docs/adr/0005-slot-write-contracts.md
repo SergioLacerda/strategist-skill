@@ -1,4 +1,4 @@
-# ADR-0005 — Contratos de escrita por slot (write_pending / write_analysis / controlled)
+# ADR-0005 — Contratos de escrita por slot (read_only / write_analysis / controlled)
 
 **Status:** Accepted  
 **Data:** 2026-05-28  
@@ -26,14 +26,17 @@ Três níveis de contrato de escrita, declarados no `skill.yaml` e validados pel
 | Contrato | Escopo de escrita | Tipos permitidos | Approval gate |
 |----------|-------------------|-----------------|---------------|
 | `read_only` | nenhum | — | não aplicável |
-| `write_pending` | `<base_path>/pending/` apenas | `.md` | não |
-| `write_analysis` | `<base_path>/` e `<base_path>/refined/` | `.md` | não |
+| `write_analysis` | `<base_path>/` e derivados (`pending/`, `refined/`, `archived/`, `todo/`) | `.md` | não |
 | `controlled` | qualquer lugar | qualquer tipo | **obrigatório** |
 
 O `risk_score` do provider (declarado em `skill.yaml` do provider) deve corresponder ao contrato exigido pelo slot. Mismatch bloqueia em preflight com `slot_risk_mismatch`.
 
+O contrato `write_pending` foi descontinuado. O discovery passou a produzir o artefato
+canônico `refined/<mission_id>-analysis.md`, portanto o menor contrato compatível para
+Ranger também é `write_analysis`.
+
 Violações em runtime:
-- Escrita de tipo não-`.md` por `write_pending` ou `write_analysis` → `slot_write_type_violation`
+- Escrita de tipo não-`.md` por `write_analysis` → `slot_write_type_violation`
 - Escrita fora do escopo declarado → `slot_write_scope_violation`
 
 ## Consequências
@@ -46,5 +49,5 @@ Violações em runtime:
 
 **Negativas:**
 - Dois pontos de verificação de escopo: preflight (risk_score) e runtime (escrita real) — podem divergir se o provider não respeitar seu contrato declarado
-- Provider malicioso com `risk_score: write_pending` poderia tentar escrever fora do escopo; a validação em runtime é necessária mas depende do orchestrador detectar a violação
+- Provider malicioso com `risk_score: write_analysis` poderia tentar escrever fora do escopo; a validação em runtime é necessária mas depende do orchestrador detectar a violação
 - `known-providers.yaml` precisa ser mantido atualizado para providers que não declaram `risk_score` em seu `skill.yaml` — caso contrário, preflight não consegue validar

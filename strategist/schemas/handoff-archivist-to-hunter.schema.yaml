@@ -8,6 +8,18 @@ required_fields:
   mission_id:
     type: string
     required: true
+  analysis_artifact_path:
+    type: string
+    required: true
+  proposal_path:
+    type: string
+    required: true
+  design_path:
+    type: string
+    required: true
+  tasks_path:
+    type: string
+    required: true
   approved_scope:
     type: object
     required: true

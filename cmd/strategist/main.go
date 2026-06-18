@@ -11,7 +11,12 @@ func main() {
 	cfg := telemetry.FromEnv()
 	shutdown, err := telemetry.Init(cfg)
 	if err != nil {
-		slog.Warn("[Strategist] telemetry init failed", "error", err)
+		slog.Warn("[Strategist] telemetry init failed",
+			"error", err,
+			telemetry.AttrComponent, "main",
+			telemetry.AttrRuntimeMode, "cli",
+			telemetry.AttrOutputProfile, "default",
+		)
 	} else {
 		defer shutdown(context.Background()) //nolint:errcheck // best-effort shutdown
 	}

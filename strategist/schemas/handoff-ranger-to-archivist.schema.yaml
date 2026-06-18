@@ -1,7 +1,7 @@
 schema_version: "1"
 description: >
   Handoff contract from Ranger (discovery) to Archivist (refinement).
-  These fields are REQUIRED in the discovery artifact, regardless of format.
+  These fields are REQUIRED in the analysis artifact, regardless of format.
   The implementing skill (brainstorming, openspec, custom) decides the file format.
   Fields may live as YAML frontmatter, embedded sections, or separate files —
   the orchestrator must be able to locate them.
@@ -10,7 +10,13 @@ required_fields:
   mission_id:
     type: string
     required: true
+  analysis_artifact_path:
+    type: string
+    required: true
   objective:
+    type: string
+    required: true
+  analysis_summary:
     type: string
     required: true
   confidence_score:
@@ -42,3 +48,10 @@ required_fields:
     type: list
     required: false
     description: Bullet points guiding the Archivist on where to focus
+  narrative_state:
+    type: object
+    required: false
+    description: Mission framing used for user-facing continuity between slots
+    fields:
+      mission_open: boolean
+      active_phase: string

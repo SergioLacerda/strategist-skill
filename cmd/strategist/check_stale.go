@@ -35,7 +35,13 @@ func runCheckStale(cmd *cobra.Command, args []string) error {
 		run.AddLines(1)
 	}
 	ctx, span := telemetry.Tracer().Start(ctx, "strategist.check_stale",
-		trace.WithAttributes(attribute.String(telemetry.AttrArtifact, artifactPath)),
+		trace.WithAttributes(
+			attribute.String(telemetry.AttrComponent, "check_stale"),
+			attribute.String(telemetry.AttrRuntimeMode, "cli"),
+			attribute.String(telemetry.AttrOutputProfile, "default"),
+			attribute.String(telemetry.AttrArtifact, artifactPath),
+			attribute.String(telemetry.AttrArtifactPath, artifactPath),
+		),
 	)
 
 	isStale, err := stale.Checker{}.IsStale(artifactPath)
@@ -48,7 +54,10 @@ func runCheckStale(cmd *cobra.Command, args []string) error {
 
 	span.SetAttributes(attribute.Bool(telemetry.AttrCacheHit, !isStale))
 	slog.InfoContext(ctx, "[Strategist] check-stale result",
-		"artifact", artifactPath,
+		telemetry.AttrComponent, "check_stale",
+		telemetry.AttrRuntimeMode, "cli",
+		telemetry.AttrOutputProfile, "default",
+		telemetry.AttrArtifactPath, artifactPath,
 		"stale", isStale,
 	)
 	span.End()

@@ -1,0 +1,40 @@
+schema_version: "1"
+description: >
+  Canonical structured telemetry fields for Strategist mission events. Runtime
+  implementations may emit a subset temporarily, but the contract defines the
+  target shape.
+
+fields:
+  phase:
+    type: string
+  status:
+    type: string
+  component:
+    type: string
+  mission_id:
+    type: string
+  artifact_path:
+    type: string
+    required: false
+  selected_skill:
+    type: string
+    required: false
+  runtime_mode:
+    type: string
+    required: false
+  output_profile:
+    type: string
+    required: false
+  gate:
+    type: object
+    required: false
+    fields:
+      type: string
+      status: string
+      response: string
+  transition_group:
+    type: string
+    required: false
+  reason:
+    type: string
+    required: false

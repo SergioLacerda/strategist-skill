@@ -54,7 +54,12 @@ func runInstall(cmd *cobra.Command, _ []string) (retErr error) {
 		run.MarkRanger()
 	}
 	ctx, span := telemetry.Tracer().Start(ctx, "strategist.install",
-		trace.WithAttributes(attribute.String(telemetry.AttrTarget, installTarget)),
+		trace.WithAttributes(
+			attribute.String(telemetry.AttrComponent, "install"),
+			attribute.String(telemetry.AttrRuntimeMode, "cli"),
+			attribute.String(telemetry.AttrOutputProfile, "default"),
+			attribute.String(telemetry.AttrTarget, installTarget),
+		),
 	)
 	defer func() {
 		if retErr != nil {
@@ -67,7 +72,12 @@ func runInstall(cmd *cobra.Command, _ []string) (retErr error) {
 	if run != nil {
 		run.AddLines(1)
 	}
-	slog.InfoContext(ctx, "[Strategist] install running", "target", installTarget)
+	slog.InfoContext(ctx, "[Strategist] install running",
+		telemetry.AttrComponent, "install",
+		telemetry.AttrRuntimeMode, "cli",
+		telemetry.AttrOutputProfile, "default",
+		telemetry.AttrTarget, installTarget,
+	)
 
 	shimHome, err := os.UserHomeDir()
 	if err != nil {
@@ -88,14 +98,19 @@ func runInstall(cmd *cobra.Command, _ []string) (retErr error) {
 		Force:  installForce,
 	}
 
-	if err := svc.Install(context.Background(), cfg); err != nil {
+	if err := svc.Install(ctx, cfg); err != nil {
 		return fmt.Errorf("install: %w", err)
 	}
 
 	if run != nil {
 		run.AddLines(2)
 	}
-	slog.InfoContext(ctx, "[Strategist] install complete", "target", installTarget)
+	slog.InfoContext(ctx, "[Strategist] install complete",
+		telemetry.AttrComponent, "install",
+		telemetry.AttrRuntimeMode, "cli",
+		telemetry.AttrOutputProfile, "default",
+		telemetry.AttrTarget, installTarget,
+	)
 	fmt.Println("[Strategist] install complete →", installTarget)
 	return nil
 }

@@ -11,11 +11,11 @@ import (
 func TestValidateProvider(t *testing.T) {
 	t.Parallel()
 
-	assert.Empty(t, validateProvider("brainstorming", "write_pending"))
+	assert.Empty(t, validateProvider("brainstorming", "write_analysis"))
 	assert.Empty(t, validateProvider("openspec-explore", "write_analysis"))
 	assert.Empty(t, validateProvider("sdd-ask", "controlled"))
 	assert.Contains(t, validateProvider("brainstorming", "controlled"), "preflight will block at runtime")
-	assert.Contains(t, validateProvider("unknown-provider", "write_pending"), "is not in the known-providers registry")
+	assert.Contains(t, validateProvider("unknown-provider", "write_analysis"), "is not in the known-providers registry")
 }
 
 func TestInstallableDefaultProviders(t *testing.T) {

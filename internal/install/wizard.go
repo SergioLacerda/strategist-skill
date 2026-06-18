@@ -18,7 +18,7 @@ var installableDefaultProviders = map[string]string{
 // knownProviderRisk maps provider ids to their declared risk_score.
 // Kept in sync with strategist/templates/known-providers.yaml.
 var knownProviderRisk = map[string]string{
-	"brainstorming":           "write_pending",
+	"brainstorming":           "write_analysis",
 	"openspec-explore":        "write_analysis",
 	"openspec-propose":        "write_analysis",
 	"openspec-apply-change":   "controlled",
@@ -147,7 +147,7 @@ func promptSlots(p Prompter, b i18n.WizardStrings) (discovery, refinement, execu
 	if err != nil {
 		return "", "", "", fmt.Errorf("wizard: discovery: %w", err)
 	}
-	if w := validateProvider(discovery, "write_pending"); w != "" {
+	if w := validateProvider(discovery, "write_analysis"); w != "" {
 		fmt.Println(w)
 	}
 	refinement, err = p.SelectOrInput(b.PromptRefinement, "openspec-explore", []string{"openspec-explore"}, b.LabelCustomInput)
