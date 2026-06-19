@@ -1,11 +1,12 @@
 # Internals da Skill — Sub-skills, Contratos e Schemas
 
 **Status:** Accepted
-**Last Updated:** 2026-06-06
+**Last Updated:** 2026-06-18
 
 Este documento descreve os componentes internos do runtime da skill Strategist: as sub-skills invocadas automaticamente pelo orchestrador, os contratos de fase, e os schemas de entrada/saída.
 
 Para o pipeline geral e comportamento dos slots, consulte `docs/architecture.md`.
+Para a ordem canônica de leitura dos contratos, consulte `strategist/SKILL.md` e `docs/adr/0010-ordered-contracts-and-mission-observability.md`.
 Para configuração, veja [configuration.md](configuration.md).
 
 ---
@@ -87,6 +88,32 @@ token_count: integer
 
 ---
 
+### ranger (slot de discovery)
+
+**Categoria:** discovery  
+**Quando:** fase de discovery (slot configurável)
+
+Produz o artefato canônico de análise que abre a missão formalmente para o usuário e serve de base direta para o Archivist.
+
+**Entrada:**
+- `user_prompt`
+- `mission_contract`
+- `dossier`
+- `treasure_chests`
+
+**Saída:**
+- `analysis_artifact_path` — `<base_path>/refined/<mission_id>-analysis.md`
+
+**Contrato obrigatório no artefato:**
+- `mission_id`
+- `objective`
+- `analysis_summary`
+- `known_facts`
+- `uncertainties`
+- `recommended_refinement_focus`
+
+---
+
 ### archivist (slot de refinement)
 
 **Categoria:** refinamento  
@@ -95,23 +122,16 @@ token_count: integer
 Lê o artefato de discovery e produz um plano revisado e implementável. É o provider padrão do slot `refinement`.
 
 **Entrada:**
-- `discovery_artifact_path` — caminho para o artefato do Ranger em `pending/`
+- `analysis_artifact_path` — caminho para o artefato canônico do Ranger em `refined/`
 - `base_path` — diretório base da missão
 - `mission_contract` — `planning_rules` extraído pelo prompt-intake
 
 **Saída:**
-- `reviewed_plan_path` — `<base_path>/refined/<mission_id>-plan.md`
+- `proposal.md` — `<base_path>/refined/<mission_id>/proposal.md`
+- `design.md` — `<base_path>/refined/<mission_id>/design.md`
+- `tasks.md` — `<base_path>/refined/<mission_id>/tasks.md`
 
-**Seções obrigatórias no plano de saída:**
-- `executive_summary`
-- `tasks_with_subitems`
-- `technical_details`
-- `modules_documents_index`
-- `design` (context, goals, non_goals, do, do_not)
-- `execution_checklist`
-- `hunter_instructions`
-
-Se uma seção não puder ser preenchida com evidências do artefato de discovery, é marcada com `[INSUFFICIENT EVIDENCE]` + nota de bloqueio. Especulação não fundamentada é proibida.
+O output canônico do refinement agora é um pacote de três artefatos. `refined/<mission_id>-plan.md` é drift histórico, não o contrato atual.
 
 ---
 
@@ -275,13 +295,11 @@ As métricas canônicas para otimização de performance do Strategist são:
 - `tokens_out`
 - `lines_emitted`
 
-O baseline atual deve ser registrado em `.analysis/refined/2026-06-01-performance-baseline-metrics.md` e atualizado sempre que houver mudança de contrato, telemetria ou política de emissão que possa alterar custo percebido.
+O baseline atual deve ser registrado em `<base_path>/refined/2026-06-01-performance-baseline-metrics.md` e atualizado sempre que houver mudança de contrato, telemetria ou política de emissão que possa alterar custo percebido.
 
 As métricas são expostas pelo sinal de saída `mission_metrics` no checkpoint de intake e em cada transição de fase. Isso mantém a telemetria de custo disponível sem alterar a ordem visível do pipeline.
 
 `confidence_threshold: 0.65` — aliases com confiança abaixo deste valor recebem o default.
-
-### progress-contract.yaml
 
 Define o formato obrigatório dos eventos de progresso emitidos pelo Strategist em cada transição de fase.
 
@@ -303,7 +321,7 @@ Define o formato obrigatório dos eventos de progresso emitidos pelo Strategist 
 ```
 [Strategist] phase=preflight status=done slots=ok
 [Strategist] phase=discovery status=running skill=brainstorm checklist=0/3
-[Strategist] phase=discovery status=done artifact=.analysis/pending/abc123-discovery.md
+[Strategist] phase=discovery status=done artifact=.analysis/refined/abc123-analysis.md
 [Strategist] phase=approval_gate status=blocked reason=user_declined action=none
 [Strategist] phase=execution status=done artifact=.analysis/archived/abc123-report.md
 ```
@@ -312,9 +330,29 @@ Define o formato obrigatório dos eventos de progresso emitidos pelo Strategist 
 
 | Fase | Caminho |
 |------|---------|
-| discovery | `<base_path>/pending/<mission_id>-discovery.md` |
-| refinement | `<base_path>/refined/<mission_id>-plan.md` |
+| discovery | `<base_path>/refined/<mission_id>-analysis.md` |
+| refinement | `<base_path>/refined/<mission_id>/` |
 | execution | `<base_path>/archived/<mission_id>-report.md` |
+
+## OTEL e contrato rico
+
+O contrato rico de telemetria agora cobre:
+
+- `phase`
+- `status`
+- `component`
+- `mission_id`
+- `artifact_path`
+- `selected_skill`
+- `runtime_mode`
+- `output_profile`
+- `gate.type`
+- `gate.status`
+- `gate.response`
+- `transition_group`
+- `reason`
+
+O namespace canônico fica em `internal/telemetry/schema.go` e o shape-alvo está em `strategist/schemas/telemetry-event.schema.yaml`.
 
 Os `phase_labels` (Ranger/Archivist/Sniper vs análise/refinamento/execução) são resolvidos da persona ativa em runtime — o schema define apenas os campos obrigatórios, não os valores dos labels.
 
@@ -326,7 +364,7 @@ Cada slot tem um escopo de escrita declarado no `skill.yaml`. Escrever fora do e
 
 | Slot | Escopo de escrita | Tipos permitidos |
 |------|------------------|-----------------|
-| `discovery` | `<base_path>/pending/` | `.md` |
+| `discovery` | `<base_path>/` | `.md` |
 | `refinement` | `<base_path>/` e `<base_path>/refined/` | `.md` |
 | `execution` | Declarado pelo provider (`controlled`) | definido pelo provider |
 

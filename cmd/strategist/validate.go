@@ -3,9 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
@@ -37,6 +42,15 @@ Checks performed:
 		if run != nil {
 			run.MarkRanger()
 		}
+		ctx, span := telemetry.Tracer().Start(ctx, "strategist.validate",
+			trace.WithAttributes(
+				attribute.String(telemetry.AttrComponent, "validate"),
+				attribute.String(telemetry.AttrRuntimeMode, "cli"),
+				attribute.String(telemetry.AttrOutputProfile, "default"),
+				attribute.String(telemetry.AttrTarget, validateRoot),
+			),
+		)
+		defer span.End()
 
 		var errs []string
 		checks := 0
@@ -68,6 +82,8 @@ Checks performed:
 		}
 
 		if len(errs) > 0 {
+			span.SetStatus(codes.Error, "validation failed")
+			span.SetAttributes(attribute.StringSlice("strategist.validation.errors", errs))
 			for _, e := range errs {
 				fmt.Fprintf(os.Stderr, "  ✗ %s\n", e)
 			}
@@ -77,6 +93,13 @@ Checks performed:
 		if run != nil {
 			run.AddLines(1)
 		}
+		slog.InfoContext(ctx, "[Strategist] validate complete",
+			telemetry.AttrComponent, "validate",
+			telemetry.AttrRuntimeMode, "cli",
+			telemetry.AttrOutputProfile, "default",
+			telemetry.AttrTarget, validateRoot,
+			"checks", checks,
+		)
 		fmt.Printf("[Strategist] validate OK — %d check(s) passed (%s)\n", checks, validateRoot)
 		return nil
 	},

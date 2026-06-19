@@ -8,10 +8,10 @@ canonical:
   - consult_treasure_chests     # consult T0/T1 chests scoped to discovery before generating artifact
   - opportunity_attack:         # cross-cutting routine — mandatory
       detect: [treasure_chests, side_quests]
-      output: include_in_discovery_artifact
+      output: include_in_analysis_artifact
       feedback: surface_in_response    # show to user before handing off to Archivist
   - compress_findings           # format: evidence → interpretation → impact (source cards)
-  - output_format: "<base_path>/pending/<mission_id>-discovery.md"
+  - output_format: "<base_path>/refined/<mission_id>-analysis.md"
   - handoff_contract: "schemas/handoff-ranger-to-archivist.schema.yaml"
 
 # Contract
@@ -19,7 +19,7 @@ must:
   - load mission_contract and respect token_strategy.mode for context budget
   - separate facts, hypotheses, and ambiguities clearly
   - surface opportunity_attack findings in the response to the user before finishing
-  - include all handoff contract fields in the discovery artifact
+  - include all handoff contract fields in the analysis artifact
   - use discovery-artifact.md as format reference
 
 must_not:

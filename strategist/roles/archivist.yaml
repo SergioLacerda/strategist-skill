@@ -4,7 +4,7 @@ slot: refinement
 # Canonical behaviors — read-only, source in skill.yaml.
 # Listed here for reference when writing custom_brief below.
 canonical:
-  - load_ranger_discovery_artifact   # read handoff contract fields only; do NOT re-read full history
+  - load_ranger_analysis_artifact    # read handoff contract fields only; do NOT re-read full history
   - consult_treasure_chests          # consult chests scoped to refinement
   - opportunity_attack:              # cross-cutting routine — mandatory
       detect: [side_quests]          # Archivist may find more side quests during refinement
@@ -20,7 +20,7 @@ canonical:
 
 # Contract
 must:
-  - load only the Ranger discovery artifact (do NOT re-read full discovery history)
+  - load only the Ranger analysis artifact (do NOT re-read full history)
   - decide side_quest_strategy for every side quest received in the handoff
   - convert ambiguities into decisions or explicit blockers
   - produce numbered tasks with scope and validation steps
@@ -29,7 +29,7 @@ must:
   - include opportunity_attack findings in the approval gate response
 
 must_not:
-  - invent evidence not present in the Ranger artifact
+  - invent evidence not present in the Ranger analysis artifact
   - execute tasks
   - expand scope without marking it as an explicit decision
 

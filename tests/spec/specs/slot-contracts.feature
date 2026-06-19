@@ -1,12 +1,12 @@
 Feature: Slot Write Scope Contracts
   Invariant: Each slot may only write to its declared scope.
-  Source: SKILL.md §2d — "Any write outside that scope: BLOCK slot_write_scope_violation."
-  Roles: Ranger=write_pending, Archivist=write_analysis, Sniper=controlled
+  Source: discovery/refinement contracts — write outside declared scope blocks with slot_write_scope_violation.
+  Roles: Ranger=write_analysis, Archivist=write_analysis, Sniper=controlled
 
-  Scenario: Ranger respects write_pending boundary
+  Scenario: Ranger respects write_analysis boundary
     Given Ranger (discovery slot) is executing
-    And Ranger is declared with write_scope = "write_pending"
-    When Ranger attempts to write a file to .analysis/refined/
+    And Ranger is declared with write_scope = "write_analysis"
+    When Ranger attempts to write a file outside .analysis/refined/<mission_id>-analysis.md
     Then Strategist emits "slot_write_scope_violation"
     And event.slot = "discovery"
     And the write is blocked
@@ -14,7 +14,7 @@ Feature: Slot Write Scope Contracts
 
   Scenario: Ranger blocked from writing non-.md files
     Given Ranger (discovery slot) is executing
-    When Ranger attempts to write a .sh file to .analysis/pending/
+    When Ranger attempts to write a .sh file to .analysis/refined/
     Then Strategist emits "slot_write_scope_violation"
     And event.reason contains "non-.md type"
     And the write is blocked
@@ -29,7 +29,8 @@ Feature: Slot Write Scope Contracts
 
   Scenario: Archivist writes three-file subdirectory correctly
     Given Archivist (refinement slot) is executing
-    When Archivist writes proposal.md, design.md, tasks.md to .analysis/refined/<mission_id>/
+    When Archivist reads .analysis/refined/<mission_id>-analysis.md
+    And Archivist writes proposal.md, design.md, tasks.md to .analysis/refined/<mission_id>/
     Then no slot_write_scope_violation is emitted
     And all three files are present after completion
 

@@ -8,7 +8,7 @@ invariants:
 
   - id: no_strategy_decisions
     description: Ranger surfaces items only — does not decide strategy for side_quests
-    rule: ranger outputs discovery artifact and opportunity manifest only; strategy is deferred
+    rule: ranger outputs analysis artifact and opportunity manifest only; strategy is deferred
 
   - id: emit_on_completion
     description: Ranger emits done event with artifact path via persona key
@@ -28,7 +28,7 @@ cases:
       opportunity_items: 0
     expect:
       emit: "[Strategist] phase=ranger opportunity_attack=done items=0"
-      artifact: "<base_path>/pending/<mission_id>-discovery.md"
+      artifact: "<base_path>/refined/<mission_id>-analysis.md"
 
   - name: items_found_user_approves
     given:

@@ -14,7 +14,7 @@ input:
       - type: promote
         origin: .analysis/pending/some-discovery.md
         destination: .analysis/archived/
-        reason: discovery has a corresponding refined plan
+        reason: analysis has a corresponding refined package
   state: mini_approval_gate_not_shown
 
 trigger: invoke_sniper_for_side_quests_directly

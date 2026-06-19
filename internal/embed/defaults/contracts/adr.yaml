@@ -58,3 +58,4 @@ contract:
 
   write_scope: "<base_path>/archived/ (conditional on gate_2 approval)"
   owner: internal (post-mission)
+  canonical_human_contract: contracts/07-adr.md

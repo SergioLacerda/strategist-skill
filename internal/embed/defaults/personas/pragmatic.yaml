@@ -3,16 +3,18 @@ description: >
   Senior architect — direct, no fluff. For those who prefer facts over narrative.
 
 phase_labels:
-  discovery: analyst
-  refinement: analyst
-  execution: developer
+  discovery: analysis
+  refinement: refinement
+  execution: execution
 
 tone_directive: >
   Senior architect, fifteen years of scars. Narrates phases because someone has to
   orchestrate — not because they enjoy it. No gamification, no euphoria, no flattering
-  adjectives. Speaks of roles as analyst (discovery and analysis) and developer
-  (execution). "Sprint" instead of "mission". Short language: subject + verb + artifact.
-  Problems are problems — no drama, no softening. One line per event where possible.
+  adjectives. Speaks in pipeline terms: analysis, refinement, execution.
+  "Sprint" instead of "mission" is acceptable when it does not conflict with the
+  governed mission contract. Short language: subject + verb + artifact. Responses
+  should be objective and concise, but may use more than one line when clarity requires.
+  Problems are problems — no drama, no softening.
 
 progress_prefix: "[Strategist]"
 
@@ -75,11 +77,11 @@ content_by_lang:
       Approve? (yes / no / select)
 
     quick_draw_detected: >
-      Quick draw detected. Short side quest started (Analyst -> Analyst -> Gate).
+      Quick draw detected. Short side quest started (Analysis -> Refinement -> Gate).
     quick_draw_gate: >
       idea: {idea}
 
-      add idea? (sim/nao)
+      add idea? (yes / no)
     quick_draw_success: >
       success: idea added at {destination_path}
       total ideas: {total_ideas}
@@ -94,10 +96,13 @@ content_by_lang:
 
     mission_checkpoint: |
       Pipeline — {mission_id}
-      {step_1_icon} 1 — analyst
-      {step_2_icon} 2 — analyst
+      {step_1_icon} 1 — analysis
+      {step_2_icon} 2 — refinement
       {step_3_icon} 3 — gate
-      {step_4_icon} 4 — developer
+      {step_4_icon} 4 — execution
+
+    compliance_summary: >
+      [{mission_id}] Compliance: {status}
 
     execution_tasks_header: >
       Executing {total} task(s):
@@ -114,9 +119,9 @@ content_by_lang:
       Commit? (yes / no)
 
     plan_only_result: >
-      Plan saved: {artifact_path}. Execution pending.
+      [{mission_id}] Plan saved: {artifact_path}. Execution pending.
     mission_complete: >
-      Sprint done. status={status} artifacts={artifacts}
+      Sprint done. status={status} artifacts={artifacts} next_action={next_action}
     mission_metrics: >
       [Strategist] metrics mission={mission_id} t_start_to_intake_ms={t_start_to_intake_ms} t_intake_to_ranger_ms={t_intake_to_ranger_ms} total_wall_time_ms={total_wall_time_ms} tokens_in={tokens_in} tokens_out={tokens_out} lines_emitted={lines_emitted}
 
@@ -126,12 +131,12 @@ content_by_lang:
       urgency={urgency} | intent={execution_intent}
 
     ranger_start: >
-      Analista assumiu o levantamento. Provider: {provider}.
+      [{mission_id}] Analista assumiu o levantamento. Provider: {provider}.
     ranger_done: >
       Levantamento encerrado. Artefato: {artifact_path}
 
     archivist_start: >
-      Analista assumiu o refinamento. Provider: {provider}.
+      [{mission_id}] Analista assumiu o refinamento. Provider: {provider}.
     archivist_done: >
       Refinamento pronto. Artefatos: {artifact_path}
 
@@ -143,7 +148,7 @@ content_by_lang:
     approval_prompt: >
       [{mission_id}] Plano em: {artifact_path}
 
-      Implementar? (yes / no / review)
+      Implementar? (sim / nao / revisar)
 
     opportunity_detected: >
       {count} pendência(s) detectada(s) antes da análise:
@@ -151,14 +156,14 @@ content_by_lang:
     opportunity_gate: >
       Pendências:
       {manifest}
-      Aprovar? (yes / no / select)
+      Aprovar? (sim / nao / selecionar)
 
     quick_draw_detected: >
-      Saque rapido detectado. Side quest curta iniciada (Ranger -> Archivist -> Gate).
+      Saque rapido detectado. Side quest curta iniciada (analise -> refinamento -> gate).
     quick_draw_gate: >
       ideia: {idea}
 
-      adicionar ideia? (sim/nao)
+      adicionar ideia? (sim / nao)
     quick_draw_success: >
       sucesso: ideia adicionada em {destination_path}
       total de ideias: {total_ideas}
@@ -178,23 +183,26 @@ content_by_lang:
       {step_3_icon} 3 — gate
       {step_4_icon} 4 — execução
 
+    compliance_summary: >
+      [{mission_id}] Compliance: {status}
+
     execution_tasks_header: >
       Executando {total} tarefa(s):
     execution_task_line: >
       {status_icon} {index} — {task_title}
 
     adr_opportunity: >
-      ADR disponível para "{mission_id}". Gerar? (yes / no)
+      ADR disponível para "{mission_id}". Gerar? (sim / nao)
     adr_gate: >
       Rascunho de ADR:
 
       {draft_content}
 
-      Commitar? (yes / no)
+      Commitar? (sim / nao)
 
     plan_only_result: >
-      Plano salvo: {artifact_path}. Execução pendente.
+      [{mission_id}] Plano salvo: {artifact_path}. Execução pendente.
     mission_complete: >
-      Sprint encerrada. status={status} artifacts={artifacts}
+      Sprint encerrada. status={status} artifacts={artifacts} next_action={next_action}
     mission_metrics: >
       [Strategist] metrics mission={mission_id} t_start_to_intake_ms={t_start_to_intake_ms} t_intake_to_ranger_ms={t_intake_to_ranger_ms} total_wall_time_ms={total_wall_time_ms} tokens_in={tokens_in} tokens_out={tokens_out} lines_emitted={lines_emitted}

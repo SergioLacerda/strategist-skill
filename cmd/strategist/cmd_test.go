@@ -7,6 +7,7 @@ package main
 import (
 	"bytes"
 	"errors"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -58,6 +59,26 @@ func TestVersionCmd_PrintsVersion(t *testing.T) {
 	})
 	assert.Contains(t, out, "1.2.3-test")
 	assert.Contains(t, out, "strategist")
+}
+
+func TestVersionCmd_EmitsStructuredTelemetry(t *testing.T) {
+	orig := Version
+	t.Cleanup(func() { Version = orig })
+	Version = "1.2.3-test"
+
+	var buf bytes.Buffer
+	h := slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo})
+	prev := slog.Default()
+	slog.SetDefault(slog.New(h))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+
+	versionCmd.Run(versionCmd, nil)
+
+	out := buf.String()
+	assert.Contains(t, out, "strategist.component=version")
+	assert.Contains(t, out, "strategist.runtime_mode=cli")
+	assert.Contains(t, out, "strategist.output_profile=default")
+	assert.Contains(t, out, "strategist.version=1.2.3-test")
 }
 
 // --- compile ---
@@ -270,6 +291,29 @@ func TestValidateCmd_Success(t *testing.T) {
 	})
 	assert.Contains(t, out, "validate OK")
 	assert.Contains(t, out, dir)
+}
+
+func TestValidateCmd_EmitsStructuredTelemetry(t *testing.T) {
+	root := minimalValidateRoot(t)
+
+	orig := validateRoot
+	t.Cleanup(func() { validateRoot = orig })
+	validateRoot = root
+
+	var buf bytes.Buffer
+	h := slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo})
+	prev := slog.Default()
+	slog.SetDefault(slog.New(h))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+
+	err := validateCmd.RunE(validateCmd, nil)
+	require.NoError(t, err)
+
+	out := buf.String()
+	assert.Contains(t, out, "strategist.component=validate")
+	assert.Contains(t, out, "strategist.runtime_mode=cli")
+	assert.Contains(t, out, "strategist.output_profile=default")
+	assert.Contains(t, out, "strategist.target="+root)
 }
 
 func TestValidateCmd_WithKnowledgeIndex(t *testing.T) {
@@ -485,6 +529,108 @@ func TestInstallCmd_PrintsCompletion(t *testing.T) {
 	_ = out
 }
 
+// --- providers ---
+
+func TestInitiativeCmd_ShowsAllSlots(t *testing.T) {
+	dir := t.TempDir()
+	testutil.MinimalRoot(t, dir)
+
+	orig := initiativeRoot
+	t.Cleanup(func() { initiativeRoot = orig })
+	initiativeRoot = dir
+
+	out := captureStdout(t, func() {
+		require.NoError(t, initiativeCmd.RunE(initiativeCmd, nil))
+	})
+	assert.Contains(t, out, "discovery")
+	assert.Contains(t, out, "brainstorming")
+	assert.Contains(t, out, "refinement")
+	assert.Contains(t, out, "openspec-explore")
+	assert.Contains(t, out, "execution")
+	assert.Contains(t, out, "sdd-ask")
+	// no manifests in minimal root → all show absent
+	assert.Contains(t, out, "⚠ manifest ausente")
+}
+
+func TestInitiativeCmd_ShowsManifestOK(t *testing.T) {
+	dir := t.TempDir()
+	testutil.MinimalRoot(t, dir)
+
+	// write a minimal provider manifest for brainstorming
+	provDir := filepath.Join(dir, "brainstorming")
+	require.NoError(t, os.MkdirAll(provDir, 0o755))
+	manifest := []byte("id: brainstorming\nstatus: active\nrisk_score: write_analysis\nprovider_class: rankeado\nspecialization_taxonomy:\n  canonical_role: ranger\n  provider_class: rankeado\n")
+	require.NoError(t, os.WriteFile(filepath.Join(provDir, "skill.yaml"), manifest, 0o644))
+
+	orig := initiativeRoot
+	t.Cleanup(func() { initiativeRoot = orig })
+	initiativeRoot = dir
+
+	out := captureStdout(t, func() {
+		require.NoError(t, initiativeCmd.RunE(initiativeCmd, nil))
+	})
+	assert.Contains(t, out, "Ranger rankeado")
+	assert.Contains(t, out, "✓ manifest OK")
+}
+
+func TestInitiativeCmd_MissingActiveYAML(t *testing.T) {
+	dir := t.TempDir() // empty — no active.yaml
+
+	orig := initiativeRoot
+	t.Cleanup(func() { initiativeRoot = orig })
+	initiativeRoot = dir
+
+	err := initiativeCmd.RunE(initiativeCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "active.yaml")
+}
+
+func TestInitiativeCmd_DefaultRootFallback(t *testing.T) {
+	orig := initiativeRoot
+	t.Cleanup(func() { initiativeRoot = orig })
+	initiativeRoot = "" // reset so RunE sets the default
+
+	// RunE will try to open ".strategist/active.yaml" — fine if it fails;
+	// we only assert it sets the default before attempting.
+	_ = initiativeCmd.RunE(initiativeCmd, nil)
+	assert.Equal(t, ".strategist", initiativeRoot)
+}
+
+func TestProviderRow_FallbackRoles(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir() // no manifests
+
+	role, class, status := providerRow(dir, "discovery", "custom-ranger")
+	assert.Equal(t, "Ranger", role)
+	assert.Equal(t, "(base)", class)
+	assert.Equal(t, "⚠ manifest ausente", status)
+
+	role, _, _ = providerRow(dir, "refinement", "custom-arch")
+	assert.Equal(t, "Archivist", role)
+
+	role, _, _ = providerRow(dir, "execution", "custom-sniper")
+	assert.Equal(t, "Sniper", role)
+
+	role, _, _ = providerRow(dir, "custom-slot", "some-provider")
+	assert.Equal(t, "Custom-slot", role) // unknown slot → title-case of slot name
+}
+
+func TestCanonicalRoleLabel(t *testing.T) {
+	t.Parallel()
+	cases := []struct{ input, want string }{
+		{"ranger", "Ranger"},
+		{"RANGER", "Ranger"},
+		{"archivist", "Archivist"},
+		{"Archivist", "Archivist"},
+		{"sniper", "Sniper"},
+		{"custom", "Custom"},
+		{"", ""},
+	}
+	for _, tc := range cases {
+		assert.Equal(t, tc.want, canonicalRoleLabel(tc.input), "input=%q", tc.input)
+	}
+}
+
 func TestInstallCmd_GlobalFlag_ResolvesHomeDefault(t *testing.T) {
 	origTarget := installTarget
 	origSilent := installSilent
@@ -507,4 +653,186 @@ func TestInstallCmd_GlobalFlag_ResolvesHomeDefault(t *testing.T) {
 	err := installCmd.RunE(installCmd, nil)
 	require.NoError(t, err)
 	assert.Equal(t, home, installTarget)
+}
+
+// --- dojo ---
+
+func setupDojoScenario(t *testing.T, scenario, criteria, runContent string) string {
+	t.Helper()
+	dir := t.TempDir()
+
+	strategistRoot := filepath.Join(dir, ".strategist")
+	require.NoError(t, os.MkdirAll(strategistRoot, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(strategistRoot, "active.yaml"),
+		[]byte("mode: epic\nbase_path: .analysis\nroles_config: roles/default.yaml\nslots:\n  discovery: brainstorming\n"), 0o644))
+
+	scenarioDir := filepath.Join(dir, ".analysis", "dojo", scenario)
+	require.NoError(t, os.MkdirAll(scenarioDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(scenarioDir, "criteria.yaml"), []byte(criteria), 0o644))
+
+	if runContent != "" {
+		runDir := filepath.Join(dir, ".analysis", "dojo", "run", "todo")
+		require.NoError(t, os.MkdirAll(runDir, 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(runDir, "geral.md"), []byte(runContent), 0o644))
+	}
+	return strategistRoot
+}
+
+func TestDojoCheckCmd_AllPass(t *testing.T) {
+	root := setupDojoScenario(t, "quick-draw",
+		"scenario: quick-draw\nrun_dir: dojo/run\nfiles_created:\n  - path: todo/geral.md\n    must_contain: [KATA_RAPIDO]\n",
+		"ideia: KATA_RAPIDO test\n",
+	)
+
+	orig := dojoRoot
+	t.Cleanup(func() { dojoRoot = orig })
+	dojoRoot = root
+
+	out := captureStdout(t, func() {
+		err := dojoCheckCmd.RunE(dojoCheckCmd, []string{"quick-draw"})
+		require.NoError(t, err)
+	})
+	assert.Contains(t, out, "PASS")
+	assert.Contains(t, out, "KATA_RAPIDO")
+}
+
+func TestDojoCheckCmd_FileMissing(t *testing.T) {
+	root := setupDojoScenario(t, "quick-draw",
+		"scenario: quick-draw\nrun_dir: dojo/run\nfiles_created:\n  - path: todo/geral.md\n",
+		"",
+	)
+
+	orig := dojoRoot
+	t.Cleanup(func() { dojoRoot = orig })
+	dojoRoot = root
+
+	out := captureStdout(t, func() {
+		err := dojoCheckCmd.RunE(dojoCheckCmd, []string{"quick-draw"})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed")
+	})
+	assert.Contains(t, out, "FAIL")
+}
+
+func TestDojoCheckCmd_MissingActiveYAML(t *testing.T) {
+	orig := dojoRoot
+	t.Cleanup(func() { dojoRoot = orig })
+	dojoRoot = filepath.Join(t.TempDir(), "nonexistent")
+
+	err := dojoCheckCmd.RunE(dojoCheckCmd, []string{"quick-draw"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "active.yaml")
+}
+
+func TestDojoCheckCmd_MissingCriteria(t *testing.T) {
+	root := setupDojoScenario(t, "quick-draw", "scenario: quick-draw\n", "")
+	orig := dojoRoot
+	t.Cleanup(func() { dojoRoot = orig })
+	dojoRoot = root
+
+	err := dojoCheckCmd.RunE(dojoCheckCmd, []string{"nonexistent-scenario"})
+	require.Error(t, err)
+}
+
+func TestDojoCheckCmd_FilesOnlySkipsEmitLog(t *testing.T) {
+	root := setupDojoScenario(t, "quick-draw",
+		"scenario: quick-draw\nrun_dir: dojo/run\nfiles_created:\n  - path: todo/geral.md\nemit_log:\n  must_contain: [ranger_start]\n",
+		"ideia: content\n",
+	)
+
+	orig := dojoRoot
+	origFilesOnly := dojoFilesOnly
+	t.Cleanup(func() { dojoRoot = orig; dojoFilesOnly = origFilesOnly })
+	dojoRoot = root
+	dojoFilesOnly = true
+
+	out := captureStdout(t, func() {
+		err := dojoCheckCmd.RunE(dojoCheckCmd, []string{"quick-draw"})
+		require.NoError(t, err)
+	})
+	assert.Contains(t, out, "PASS")
+	assert.NotContains(t, out, "emit.log not found")
+}
+
+func TestDojoCheckCmd_EmptyBasePath(t *testing.T) {
+	dir := t.TempDir()
+	strategistRoot := filepath.Join(dir, ".strategist")
+	require.NoError(t, os.MkdirAll(strategistRoot, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(strategistRoot, "active.yaml"),
+		[]byte("mode: epic\nroles_config: x\nslots:\n  discovery: brainstorming\n"), 0o644))
+
+	orig := dojoRoot
+	t.Cleanup(func() { dojoRoot = orig })
+	dojoRoot = strategistRoot
+
+	err := dojoCheckCmd.RunE(dojoCheckCmd, []string{"quick-draw"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "base_path")
+}
+
+func TestDojoListCmd_ListsScenarios(t *testing.T) {
+	root := setupDojoScenario(t, "quick-draw",
+		"scenario: quick-draw\ndescription: \"Quick Draw test\"\n", "")
+
+	// root is .strategist; project root is its parent; dojo dir is <project>/.analysis/dojo
+	projectRoot := filepath.Dir(root)
+	s2 := filepath.Join(projectRoot, ".analysis", "dojo", "ranger-weapons")
+	require.NoError(t, os.MkdirAll(s2, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(s2, "criteria.yaml"),
+		[]byte("scenario: ranger-weapons\ndescription: \"Ranger weapons test\"\n"), 0o644))
+
+	orig := dojoRoot
+	t.Cleanup(func() { dojoRoot = orig })
+	dojoRoot = root
+
+	out := captureStdout(t, func() {
+		err := dojoListCmd.RunE(dojoListCmd, nil)
+		require.NoError(t, err)
+	})
+	assert.Contains(t, out, "quick-draw")
+}
+
+func TestDojoListCmd_EmptyDojo(t *testing.T) {
+	dir := t.TempDir()
+	strategistRoot := filepath.Join(dir, ".strategist")
+	require.NoError(t, os.MkdirAll(strategistRoot, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(strategistRoot, "active.yaml"),
+		[]byte("mode: epic\nbase_path: .analysis\nroles_config: roles/default.yaml\nslots:\n  discovery: brainstorming\n"), 0o644))
+	// base_path resolves to <dir>/.analysis (parent of strategistRoot is dir)
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, ".analysis", "dojo"), 0o755))
+
+	orig := dojoRoot
+	t.Cleanup(func() { dojoRoot = orig })
+	dojoRoot = strategistRoot
+
+	out := captureStdout(t, func() {
+		err := dojoListCmd.RunE(dojoListCmd, nil)
+		require.NoError(t, err)
+	})
+	assert.Empty(t, out)
+}
+
+func TestDojoListCmd_MissingDojoDir(t *testing.T) {
+	dir := t.TempDir()
+	strategistRoot := filepath.Join(dir, ".strategist")
+	require.NoError(t, os.MkdirAll(strategistRoot, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(strategistRoot, "active.yaml"),
+		[]byte("mode: epic\nbase_path: .analysis\nroles_config: roles/default.yaml\nslots:\n  discovery: brainstorming\n"), 0o644))
+
+	orig := dojoRoot
+	t.Cleanup(func() { dojoRoot = orig })
+	dojoRoot = strategistRoot
+
+	err := dojoListCmd.RunE(dojoListCmd, nil)
+	require.Error(t, err)
+}
+
+func TestDojoListCmd_MissingActiveYAML(t *testing.T) {
+	orig := dojoRoot
+	t.Cleanup(func() { dojoRoot = orig })
+	dojoRoot = filepath.Join(t.TempDir(), "nonexistent")
+
+	err := dojoListCmd.RunE(dojoListCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "active.yaml")
 }

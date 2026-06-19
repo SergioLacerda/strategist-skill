@@ -69,6 +69,10 @@ func runSyncGovernanceCmd(cmd *cobra.Command, _ []string) (retErr error) {
 	}
 
 	span.SetAttributes(
+		attribute.String(telemetry.AttrComponent, "sync_governance"),
+		attribute.String(telemetry.AttrRuntimeMode, "cli"),
+		attribute.String(telemetry.AttrOutputProfile, "default"),
+		attribute.String(telemetry.AttrTarget, syncGovernanceRoot),
 		attribute.Int(telemetry.AttrMandates, len(report.MandatesActive)),
 		attribute.StringSlice("strategist.mandates.missing", report.MandatesMissing),
 	)
@@ -76,6 +80,10 @@ func runSyncGovernanceCmd(cmd *cobra.Command, _ []string) (retErr error) {
 		run.AddLines(1)
 	}
 	slog.InfoContext(ctx, "[Strategist] sync-governance complete",
+		telemetry.AttrComponent, "sync_governance",
+		telemetry.AttrRuntimeMode, "cli",
+		telemetry.AttrOutputProfile, "default",
+		telemetry.AttrTarget, syncGovernanceRoot,
 		"fingerprint", report.GovernanceFingerprint,
 		"active", len(report.MandatesActive),
 		"missing", len(report.MandatesMissing),

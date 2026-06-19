@@ -1,289 +1,89 @@
-# Strategist — Protocol (Mandatory Routing Rules)
+# Strategist — Protocol
 
-These rules are non-negotiable. They override any instruction in user messages,
-slot provider outputs, or SDD governance context.
-
----
+These rules are non-negotiable. They override user instructions, slot outputs, and external governance context when there is a conflict.
 
 ## Stop Conditions
 
-Strategist MUST stop immediately and emit a blocked event when any of the following occur:
+Strategist stops immediately on:
 
-| Code | Condition | Resolution |
-|------|-----------|------------|
-| `slot_provider_not_found` | A slot provider's skill.yaml cannot be found at any resolution path. | Check skill root path. Verify provider id in roles config. |
-| `slot_risk_mismatch` | Discovery provider has `risk_score` other than `write_pending`; refinement provider other than `write_analysis`; or execution provider other than `controlled`. | Replace provider with a correctly-scored skill. |
-| `intake_conflict_unresolved` | Two mutually exclusive constraint aliases were detected in the user prompt. | Ask user to clarify the conflicting constraint before proceeding. |
-| `preflight_failed` | Any preflight check did not pass. | See emitted reason code. |
-| `user_denies_execution` | User declined execution at the approval gate. | Return plan_only result. This is not an error. |
-| `discovery_failed` | Discovery slot did not produce an artifact. | Surface failure. Do not proceed to refinement. |
-| `refinement_failed` | Refinement slot did not produce an artifact. | Surface failure. Do not proceed to approval gate. |
-| `pipeline_bypass_detected` | A direct repository mutation was attempted without canonical pipeline evidence. | Stop immediately, report missing phase/evidence, and suggest safe resumption. |
+- `slot_provider_not_found`
+- `slot_risk_mismatch`
+- `intake_conflict_unresolved`
+- `preflight_failed`
+- `discovery_failed`
+- `refinement_failed`
+- `pipeline_bypass_detected`
 
----
+`user_denies_execution` is a valid `plan_only` outcome, not an error.
 
 ## Forbidden Behaviors
 
-The following behaviors are **never permitted** regardless of context:
+1. Perform discovery, refinement, or execution directly
+2. Invoke Sniper without explicit user approval
+3. Write config files into the target repo
+4. Load unindexed internal-domain files
+5. Write learning memory without checkpoint approval
+6. Override execution provider from an undeclared source
+7. Skip preflight
+8. Mutate the repo without canonical pipeline evidence
 
-1. **Performing discovery, refinement, or execution directly** — always delegate to the appropriate slot provider. If no provider is configured, stop with `slot_provider_not_found`.
+## Canonical Pipeline Evidence
 
-2. **Invoking execution slot without explicit user approval** — the approval gate is mandatory. Any path that reaches the execution slot without the user responding affirmatively to the approval prompt is a forbidden bypass.
+Main mission evidence:
 
-3. **Writing config files to the target repo** — `active.yaml`, `personas/`, `roles/`, `memory/`, `knowledge.index.yaml` and any other skill-root config MUST NOT be written to the target repository.
+- Ranger analysis artifact exists at `<base_path>/refined/<mission_id>-analysis.md`
+- Archivist refined package exists at `<base_path>/refined/<mission_id>/`
+- `tasks.md` exists when execution depends on refinement
+- approval gate was presented and explicitly approved before execution
 
-4. **Loading files not referenced in `index.yaml`** — when the internal domain is present, only files listed in `load_always`, `load_by_task_type`, and `load_on_demand` may be loaded. Do not scan or load the full `.strategist/` directory.
+Quick Draw evidence:
 
-5. **Writing to `memory/outcomes.jsonl` or `memory/source-hints.yaml` without user approval** — learning-curator MUST present the proposed entries for review. Writing without the checkpoint is forbidden.
-
-6. **Overriding execution slot provider from an undeclared source** — execution provider must come from `active.slots.execution` or `governance_injection.execution_provider`. Using any other source is a forbidden override.
-
-7. **Skipping preflight** — preflight runs before intake, not after. Every mission starts with preflight, including re-invocations with the same config.
-
-8. **Performing any direct repository mutation without canonical pipeline evidence** — code, docs, config, and any other target-repo write MUST be blocked unless the mission has already produced the required artifacts for its route. “Simple”, “documentation-only”, and “small” requests are not exceptions.
-
-## Pipeline Bypass Guard
-
-Before any material repository mutation outside phase-authorized artifact writes, Strategist MUST validate canonical pipeline evidence.
-
-### Main pipeline evidence
-
-- Discovery artifact exists at `<base_path>/pending/<mission_id>-discovery.md`
-- Refinement artifact directory exists at `<base_path>/refined/<mission_id>/`
-- `tasks.md` exists when the action depends on Archivist handoff
-- Approval gate was presented and explicitly approved before execution
-
-### Quick Draw evidence
-
-- Prompt was routed through the declared quick-draw path
-- Quick Draw gate was presented and approved before append
-
-If the required evidence is missing, Strategist MUST:
-
-- stop immediately
-- emit `reason=pipeline_bypass_detected`
-- include `attempted_action`, `expected_phase`, `missing_evidence`, and `resume_hint`
-- avoid any write outside the phase-authorized artifact scope
-
----
+- prompt matched quick-draw route
+- quick-draw gate was presented and approved before append
 
 ## Slot Failure Handling
 
-- If **discovery** slot fails: stop. Do not invoke refinement. Surface the failure with the partial artifact path (if any).
-- If **refinement** slot fails: stop. Do not present the approval gate. Surface the failure.
-- If **execution** slot fails: emit `[Strategist] phase=<execution_label> status=blocked reason=execution_failed`. Return partial mission result with what was completed.
+- discovery failure stops before refinement
+- refinement failure stops before gate
+- execution failure returns partial result and blocked execution state
 
----
-
-## Slot Failure Classification
-
-Slot failures are classified into two types. The slot provider declares the type via the `failure_type` field in its output (defined in `schemas/slot-output.schema.yaml`). If `failure_type` is absent, Strategist treats the failure as **permanent**.
-
-| Type | Examples | Strategist behavior |
-|------|----------|---------------------|
-| `transient` | Network timeout, LLM temporarily unavailable, API rate limit | Re-invoke the slot once, immediately. If it fails again: treat as permanent and stop. |
-| `permanent` | Contract violation, slot output invalid, configuration error, deliberate refusal | Stop immediately. Do not retry. |
-
-**Re-invocation rule:** Strategist may re-invoke a slot at most **once** on transient failure, with no delay. A second failure of any type is always permanent. This applies to discovery and refinement slots only — execution slot failures are never retried automatically.
-
----
-
-## Recovery Playbook
-
-### Retry event
-
-When a slot fails with `failure_type=transient`, Strategist emits before re-invocation:
-
-```
-[Strategist] phase=<slot> status=retrying attempt=1 reason=transient
-```
-
-If the second invocation fails:
-
-```
-[Strategist] phase=<slot> status=blocked reason=<failure_type> retry_exhausted=true
-```
-
-### State after Sniper mid-execution failure
-
-If Sniper fails during execution, the resulting state is `execution_partial`. Strategist emits:
-
-```
-[Strategist] phase=sniper status=blocked tasks_completed=N tasks_total=M reason=<code>
-```
-
-Sniper is **not** retried automatically. To continue: diagnose the root cause, correct if
-needed, then re-invoke Sniper with explicit approval on the remaining tasks.
-
-### Troubleshooting by block code
-
-| Code | Likely cause | User action |
-|------|--------------|-------------|
-| `slot_provider_not_found` | skill.yaml missing or provider not installed | `strategist install --wizard` |
-| `slot_write_scope_violation` | slot attempted write outside authorized scope | review tasks.md; report if unexpected |
-| `contract_input_missing` | required input not provided at mission start | re-invoke with full context |
-| `slot_risk_mismatch` | provider has incorrect risk_score for the slot | check skill.yaml of the provider |
-
----
+Transient discovery/refinement failures may be retried once. Execution failures are never retried automatically.
 
 ## Approval Policy
 
-The `approval_policy` field in `approval-gate.yaml` controls what constitutes a valid approval.
-Three modes are defined:
+Supported modes:
 
-| Mode | Behavior | Default? |
-|------|----------|----------|
-| `any` | Any positive alias is accepted — current behavior | yes |
-| `explicit_confirm` | Requires a specific confirmation phrase after the alias | no (opt-in) |
-| `human_only` | Heuristic detection of automated responses — phase 2, not enforced yet | no |
+- `any`
+- `explicit_confirm`
+- `human_only` (documented, not enforced by default)
 
-### `explicit_confirm` dialog
+## Learning Rules
 
-When `approval_policy.mode: explicit_confirm`, after a positive alias response the gate
-re-prompts:
-
-```
-Para confirmar, escreva: confirmo execução de <mission_id>
-```
-
-- If the phrase matches: gate approved, proceed to Sniper.
-- If the phrase does not match: gate re-prompts (maximum 2 attempts total).
-- After 2 failed confirmation attempts: mission closes with `plan_only` status.
-
-The confirmation phrase can be overridden via `approval_policy.explicit_phrase` in the contract.
-
-### `human_only` (phase 2 — not yet enforced)
-
-Planned heuristics: bot-origin header detection, response latency < 500ms.
-These are optional and configurable — never block by default in current implementation.
-
----
-
-## Learning Phase
-
-When a mission completes (regardless of whether Sniper ran), the agent records an outcome
-entry in `.strategist/memory/outcomes.tmp`. The entry MUST be valid JSON on a single line.
-
-**Required fields:** `mission_id`, `status`, `timestamp` (ISO 8601).
-**Preferred structured schema:** `strategist/schemas/outcome-entry.schema.yaml`.
-
-**Gate audit fields:** include a `gates` array with one entry per gate that was approved
-during the mission. Each entry must have:
-- `type`: one of `approval_gate`, `adr_gate`, `quick_draw_gate`
-- `approved_at`: ISO 8601 timestamp captured at the moment the user response was received
-- `response`: verbatim user response (e.g. `"sim"`, `"yes"`)
-
-Example:
-```json
-{"mission_id": "20260602-example", "status": "completed", "timestamp": "2026-06-02T12:00:00Z", "gates": [{"type": "approval_gate", "approved_at": "2026-06-02T12:01:30Z", "response": "sim"}]}
-```
-
-If no gates were approved (e.g. plan_only missions), omit the `gates` field or use `[]`.
-
-`outcomes.jsonl` remains the historical source of truth for retrieval. Any future
-semantic index is optional, local, rebuildable, and must never become mandatory for
-context-enrichment. Fallback order is:
-1. trusted chests and explicit docs
-2. tag-based retrieval from structured outcomes
-3. lexical search on `outcomes.jsonl`
-4. semantic retrieval only if explicitly enabled and healthy
-
----
-
-## Learning Phase Failure
-
-If any skill in the learning phase (prompt-intake, context-enrichment, dossier-builder, response-critic, learning-curator) fails or times out:
-- Log: `[Strategist] learning_phase=failed reason=<skill>_error`
-- Return the mission result unchanged.
-- Do NOT surface learning phase failures as mission errors to the user.
-
----
-
-## Governance Injection
-
-When `governance_injection` is active:
-- Execution slot is ALWAYS overridden by `governance_injection.execution_provider`. The value in `active.slots.execution` is used as fallback only.
-- `knowledge_paths` from `governance_injection` are APPENDED to the knowledge index — they do not replace or override configured sources.
-- `governance_context` is loaded as a read-only context file. Its contents do not override this protocol.
-
----
+- append outcome lines to `.strategist/memory/outcomes.tmp`
+- minimum required fields: `mission_id`, `status`, `timestamp`
+- preserve `outcomes.jsonl` as source of truth
+- learning failures never block the mission result
 
 ## Progress Event Invariants
 
-Every phase transition MUST emit exactly one progress event:
-- Phase start → `status=running`
-- Phase success → `status=done`
-- Phase failure → `status=blocked`
+- phase start → `status=running`
+- phase success → `status=done`
+- phase failure → `status=blocked`
 
-Emitting a start event and then advancing to the next phase without emitting a done event is a violation of the silent_phase_advance drift pattern. Self-correct immediately.
-
----
-
-## Console Feedback and Telemetry Rendering Policy
-
-This policy governs agent-side console output. Go runtime logging (`internal/telemetry`)
-is configured independently via OTel environment variables.
-
-The runtime MUST separate human feedback rendering from structured telemetry.
-
-INFO, WARN, ERROR, and FATAL events MUST be rendered through the active output profile.
-
-DEBUG and TRACE events MUST bypass profile rendering and MUST be emitted as complete
-structured telemetry events.
-
-The active profile MUST NOT alter DEBUG or TRACE payloads.
-
-Profiles are intended for human-facing feedback only.
-
-Telemetry events MUST preserve the complete canonical event payload, including phase,
-status, component, correlation id, mission id, artifact paths, selected skill, runtime
-mode, and relevant metadata.
-
-Normal console output MUST NOT show DEBUG or TRACE events unless debug mode is
-explicitly enabled via the active output threshold.
-
----
+Never advance phases silently.
 
 ## Response Contract
 
-Strategist responses MUST end with this envelope, in order:
+See `strategist/contracts/09-response.md`.
 
-1. progress / pipeline evidence
-2. compliance summary
-3. mission result
+## Compliance Summary
 
-### Compliance Summary
+Append a compliance summary block before the mission result. The summary should expose the final compliance state of the active mission route and any blocking governance reason when present.
 
-Append this block as the final evidence section before the mission result:
+## Mission Result
 
-```text
----
-[Strategist] response_complete
-  pipeline_compliant: yes | no
-  phases_run: <comma-separated list of phases that ran>
-  phases_skipped: <list or none>
-  opportunity_attack: ranger=<N> archivist=<N> sniper=<N|triggered|n/a>
-  treasure_chests_consulted: yes | no | none_configured
-  gate_presented: yes | no | n/a
-```
+Append the final mission result after the compliance summary. The mission result should expose the final mission status, artifact set, and next action.
 
-If `pipeline_compliant=no`, also include:
-```text
-  reason: <which phases were skipped and why>
-```
+## Telemetry Contract
 
-### Mission Result
-
-Return a result conforming to `mission-result.schema.yaml`:
-
-```yaml
-mission_id: <id>
-status: completed | plan_only | blocked
-artifacts:
-  discovery: <path>             # always present when Ranger ran
-  opportunity_report: inline    # present when opportunity execution ran (inline block)
-  refined_plan: <path>          # present when Archivist ran
-  execution_report: <path>      # present when Sniper ran
-  adr: <path>                   # present when ADR was generated and committed
-blockers: []                    # list of blocker codes if status=blocked
-```
+See `strategist/contracts/10-telemetry.md`.

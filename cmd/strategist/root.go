@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"time"
 
@@ -26,6 +27,12 @@ func init() {
 		run.AddLines(1)
 		slogLine := run.StartLine("local", ".strategist", ".strategist/active.yaml", "unknown", "local_default", "default")
 		fmt.Println(slogLine)
+		slog.InfoContext(ctx, slogLine,
+			telemetry.AttrComponent, "root",
+			telemetry.AttrRuntimeMode, "cli",
+			telemetry.AttrOutputProfile, "default",
+			telemetry.AttrMissionID, run.MissionID,
+		)
 		cmd.SetContext(ctx)
 		return nil
 	}

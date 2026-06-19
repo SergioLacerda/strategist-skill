@@ -40,7 +40,7 @@ func TestExtractor_ReadFile(t *testing.T) {
 		require.NoError(t, err)
 		assert.Contains(t, string(brainstorming), "id: brainstorming")
 		assert.Contains(t, string(brainstorming), "status: active")
-		assert.Contains(t, string(brainstorming), "risk_score: write_pending")
+		assert.Contains(t, string(brainstorming), "risk_score: write_analysis")
 		assert.Contains(t, string(brainstorming), "provider_class: rankeado")
 		assert.Contains(t, string(brainstorming), "canonical_role: ranger")
 		assert.Contains(t, string(brainstorming), "auxiliary_tools_allowed:")
@@ -173,14 +173,14 @@ func TestExtractor_Extract(t *testing.T) {
 		p := string(pragmatic)
 		assert.Contains(t, p, "opportunity_detected")
 		assert.Contains(t, p, "opportunity_gate")
-		assert.Contains(t, p, "Aprovar? (yes / no / select)")
+		assert.Contains(t, p, "Aprovar? (sim / nao / selecionar)")
 
 		epic, err := os.ReadFile(filepath.Join(dir, "personas", "epic.yaml"))
 		require.NoError(t, err)
 		e := string(epic)
 		assert.Contains(t, e, "opportunity_detected")
 		assert.Contains(t, e, "opportunity_gate")
-		assert.Contains(t, e, "Aprovar? (yes / no / select)")
+		assert.Contains(t, e, "Aprovar? (sim / nao / selecionar)")
 	})
 
 	t.Run("extracted defaults include pipeline bypass hardening", func(t *testing.T) {
@@ -199,7 +199,7 @@ func TestExtractor_Extract(t *testing.T) {
 		protocol, err := os.ReadFile(filepath.Join(dir, "protocol.md"))
 		require.NoError(t, err)
 		assert.Contains(t, string(protocol), "pipeline_bypass_detected")
-		assert.Contains(t, string(protocol), "direct repository mutation")
+		assert.Contains(t, string(protocol), "Mutate the repo without canonical pipeline evidence")
 
 		approvalGate, err := os.ReadFile(filepath.Join(dir, "contracts", "approval-gate.yaml"))
 		require.NoError(t, err)
@@ -212,19 +212,19 @@ func TestExtractor_Extract(t *testing.T) {
 		dir := t.TempDir()
 		require.NoError(t, embedpkg.Extractor{}.Extract(dir, false))
 
-		// ADR language instruction detail lives in contracts/adr.yaml (refactored from SKILL.md)
-		adrYAML, err := os.ReadFile(filepath.Join(dir, "contracts", "adr.yaml"))
+		// ADR language instruction detail lives in contracts/07-adr.md
+		adrYAML, err := os.ReadFile(filepath.Join(dir, "contracts", "07-adr.md"))
 		require.NoError(t, err)
 		adr := string(adrYAML)
 		assert.Contains(t, adr, "pt-BR")
 		assert.Contains(t, adr, "en")
-		assert.Contains(t, adr, "language_source")
+		assert.Contains(t, adr, "active.language.docs")
 
 		// SKILL.md retains the ADR routing reference
 		skillMD, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
 		require.NoError(t, err)
 		doc := string(skillMD)
 		assert.Contains(t, doc, "Archivist")
-		assert.Contains(t, doc, "contracts/adr.yaml")
+		assert.Contains(t, doc, "contracts/07-adr.md")
 	})
 }

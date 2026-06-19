@@ -1,0 +1,15 @@
+schema_version: "1"
+description: >
+  Canonical envelope for the final Strategist response. Used to keep mission
+  evidence, compliance summary, and mission result in a stable order.
+
+required_sections:
+  - progress_evidence
+  - compliance_summary
+  - mission_result
+
+mission_result_required_fields:
+  - mission_id
+  - status
+  - artifacts
+  - next_action
