@@ -35,7 +35,7 @@ test-lite: test-telemetry-lite test-compile-cache test-domain-architecture
 
 # test-telemetry-lite runs the telemetry subset that only depends on stdlib + local code.
 test-telemetry-lite:
-	GOCACHE=$(GOCACHE) go test -race internal/telemetry/policy_event.go internal/telemetry/mission_run.go internal/telemetry/mission_metrics.go internal/telemetry/policy_event_test.go internal/telemetry/mission_run_test.go internal/telemetry/mission_metrics_test.go
+	GOCACHE=$(GOCACHE) go test -race internal/telemetry/schema.go internal/telemetry/policy_event.go internal/telemetry/mission_run.go internal/telemetry/mission_metrics.go internal/telemetry/policy_event_test.go internal/telemetry/mission_run_test.go internal/telemetry/mission_metrics_test.go
 
 # test-compile-cache runs the compile cache tests without the rest of the compile package suite.
 test-compile-cache:
