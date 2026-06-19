@@ -1,7 +1,7 @@
 # Diagramas C4 — Strategist Skill
 
 **Status:** Accepted
-**Last Updated:** 2026-06-06
+**Last Updated:** 2026-06-18
 
 Documentação arquitetural em 4 níveis do modelo C4. Renderizado pelo GitHub via Mermaid.
 
@@ -21,12 +21,12 @@ C4Context
 
     System_Ext(claude, "Claude Agent (LLM)", "Executa o runtime da skill via conversa")
     System_Ext(github, "GitHub", "Hospeda código-fonte, CI/CD e releases do binário")
-    System_Ext(target_repo, "Target Repository", "Repositório onde a skill é instalada e onde os artefatos de missão são escritos")
+    System_Ext(target_repo, "Target Repository", "Repositório onde a skill é instalada e onde os artefatos de missão são escritos em <base_path>/")
 
     Rel(dev, claude, "Invoca missões via chat")
     Rel(dev, strategist, "Instala e configura via CLI (strategist install)")
     Rel(claude, strategist, "Carrega SKILL.md e executa o pipeline de missão")
-    Rel(strategist, target_repo, "Lê/escreve artefatos em .analysis/")
+    Rel(strategist, target_repo, "Lê/escreve artefatos em <base_path>/")
     Rel(github, strategist, "bootstrap.sh baixa o binário de GitHub Releases")
     Rel(strategist, github, "CI publica releases e verifica SHA256")
 ```
@@ -47,7 +47,7 @@ C4Container
         Container(binary, "strategist", "Go binary", "CLI: install, compile, check-stale, validate, version")
         Container(skill_root, ".strategist/", "YAML + gzip/JSON", "Configs (active.yaml, personas/, roles/), artefatos compilados (.compiled/), memória (memory/)")
         Container(shim, "~/.claude/skills/strategist/SKILL.md", "Markdown", "Registro da skill no Claude Agent — aponta para o skill root")
-        Container(analysis, ".analysis/", "Markdown", "Artefatos de missão: pending/ (discovery), refined/ (planos), archived/ (reports)")
+        Container(analysis, "<base_path>/", "Markdown", "Artefatos de missão: refined/<id>-analysis.md, refined/<id>/, archived/")
     }
 
     System_Ext(claude, "Claude Agent (LLM)", "Executa o runtime da skill")
@@ -122,13 +122,13 @@ flowchart TD
     end
 
     subgraph discovery["🔭 Discovery — Ranger"]
-        D1["Slot: discovery\nProvider configurável em roles/\nEscreve em pending/"]
+        D1["Slot: discovery\nProvider configurável em roles/\nEscreve refined/<id>-analysis.md"]
         D2["opportunity_attack\n(interno — sem slot)\nVarre pending/, refined/, archived/\nproduz side_quest_manifest"]
         D1 --> D2
     end
 
     subgraph refinement["📐 Refinement — Archivist"]
-        R1["Slot: refinement\nLê artefato de discovery\nProduz plano revisado em refined/"]
+        R1["Slot: refinement\nLê refined/<id>-analysis.md\nProduz proposal.md + design.md + tasks.md"]
     end
 
     subgraph gate["🚦 Approval Gate (obrigatório)"]
@@ -147,8 +147,8 @@ flowchart TD
         L1 --> L2
     end
 
-    RESULT(["✅ Resultado da missão\n.analysis/archived/<id>-report.md"])
-    PLAN_ONLY(["📄 Plan only\n.analysis/refined/<id>-plan.md"])
+    RESULT(["✅ Resultado da missão\n<base_path>/archived/<id>-report.md"])
+    PLAN_ONLY(["📄 Plan only\n<base_path>/refined/<id>/"])
 
     bootstrap --> preflight --> intake --> discovery --> refinement --> gate
     gate -- "sim" --> execution --> learning --> RESULT
@@ -175,12 +175,34 @@ flowchart TD
 | `prompt-intake` | sub-skill interna | `read_only` | — |
 | `context-enrichment` | sub-skill interna | `read_only` | — |
 | `dossier-builder` | sub-skill interna | `read_only` | — |
-| Slot `discovery` (Ranger) | plugável | `write_pending` | `<base_path>/pending/` |
+| Slot `discovery` (Ranger) | plugável | `write_analysis` | `<base_path>/refined/<mission_id>-analysis.md` |
 | `opportunity_attack` | interno (sem slot) | — | — |
 | Slot `refinement` (Archivist) | plugável | `write_analysis` | `<base_path>/refined/` |
 | Slot `execution` (Sniper) | plugável | `controlled` | `<base_path>/archived/` |
 | `response-critic` | sub-skill interna | `read_only` | — |
 | `learning-curator` | sub-skill interna | `read_only` | `memory/` (com aprovação) |
+
+---
+
+## Diagrama de Estados — Missão
+
+```mermaid
+stateDiagram-v2
+    [*] --> Bootstrap
+    Bootstrap --> Preflight
+    Preflight --> Intake
+    Intake --> Discovery
+    Discovery --> Refinement
+    Refinement --> ApprovalGate
+    ApprovalGate --> PlanOnly: no / empty tasks
+    ApprovalGate --> Execution: yes
+    Execution --> Adr
+    PlanOnly --> Adr
+    Adr --> Learning
+    Execution --> Learning: no ADR
+    Learning --> Completed
+    Completed --> [*]
+```
 
 ---
 

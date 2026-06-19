@@ -54,6 +54,15 @@ On every invocation, before any other action:
 
 **Fast path (if compiled artifacts are present and fresh):**
 
+> **Fast path prerequisite:** `.strategist/.compiled/` must exist and be fresh.
+> Generate with: `strategist compile-all`
+> Without compiled artifacts, `strategist check-stale` returns exit:1 and the
+> standard path runs automatically — this is safe and correct behavior.
+> Activate the fast path only after configuring a recompile trigger (pre-commit
+> hook or CI step) that runs `strategist compile-all` whenever `active.yaml` or
+> contracts change. Without this automation, stale artifacts would be silently
+> served, which is worse than always using the standard path.
+
 ```sh
 strategist check-stale .strategist/.compiled/.config.gz
 ```
@@ -164,8 +173,8 @@ Read `active.slots`. For each slot (discovery, refinement, execution):
 
 **2d. Validate slot risk contracts**
 
-- **Ranger (discovery):** `risk_score` MUST be `write_pending`
-  - Authorized to create/overwrite `.md` files in `<base_path>/pending/` without a gate.
+- **Ranger (discovery):** `risk_score` MUST be `write_analysis`
+  - Authorized to create/overwrite `.md` files in `<base_path>/` without a gate.
   - Any write outside that scope or of a non-`.md` type: BLOCK `slot_write_scope_violation`.
 - **Archivist (refinement):** `risk_score` MUST be `write_analysis`
   - Authorized to create/overwrite `.md` files in `<base_path>/` and `<base_path>/refined/` without a gate.

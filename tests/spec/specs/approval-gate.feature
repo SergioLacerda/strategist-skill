@@ -4,7 +4,7 @@ Feature: Approval Gate Enforcement
 
   Background:
     Given Archivist has completed successfully
-    And tasks.md contains tasks that write outside .analysis/
+    And tasks.md contains tasks that write outside <base_path>/
     And the approval gate has been evaluated
 
   Scenario: Sniper blocked before approval response
@@ -16,9 +16,9 @@ Feature: Approval Gate Enforcement
   Scenario: Sniper proceeds after explicit "yes"
     Given the approval gate prompt has been presented
     When user responds with "yes"
-    Then Strategist emits "[Strategist] phase=sniper status=running"
+    Then Strategist emits "[Strategist] phase=execution status=running"
     And the execution slot provider is invoked
-    And a report artifact is written to .analysis/archived/
+    And a report artifact is written to <base_path>/archived/
 
   Scenario: Mission ends as plan_only after "no"
     Given the approval gate prompt has been presented
@@ -26,7 +26,7 @@ Feature: Approval Gate Enforcement
     Then Strategist emits "[Strategist] phase=approval_gate status=plan_only"
     And Sniper is never invoked
     And mission result has status=plan_only
-    And discovery and refined plan artifacts are returned
+    And analysis and refined package artifacts are returned
 
   Scenario: "review" causes plan presentation before re-asking
     Given the approval gate prompt has been presented

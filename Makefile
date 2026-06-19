@@ -1,4 +1,6 @@
-.PHONY: build test test-all integration spec test-lite test-telemetry-lite test-compile-cache test-domain-architecture lint vuln bench cover cover-gate cover-html analysis-structure-gate docs-governance-gate install sync-embed release snapshot clean compile-skill
+.PHONY: build test test-all integration spec validate-expanded validate-all test-lite test-telemetry-lite test-compile-cache test-domain-architecture lint vuln bench cover cover-gate cover-html analysis-structure-gate docs-governance-gate install sync-embed release snapshot clean compile-skill
+
+GOCACHE ?= /tmp/go-build-cache
 
 GOLANGCI_LINT := $(shell which golangci-lint 2>/dev/null || echo $(shell go env GOPATH)/bin/golangci-lint)
 GOVULNCHECK   := $(shell which govulncheck 2>/dev/null || echo $(shell go env GOPATH)/bin/govulncheck)
@@ -9,30 +11,39 @@ build:
 	go build -ldflags="-s -w" -o bin/strategist ./cmd/strategist
 
 test:
-	go test -race $$(go list ./... | grep -v '/testutil')
+	GOCACHE=$(GOCACHE) go test -race $$(go list ./... | grep -v '/testutil')
 
 test-all: test spec integration
 
 integration:
-	go test -race -tags=integration ./tests/integration/...
+	GOCACHE=$(GOCACHE) go test -race -tags=integration ./tests/integration/...
 
 spec:
-	go test -race -tags=spec ./tests/spec/...
+	GOCACHE=$(GOCACHE) go test -race -tags=spec ./tests/spec/...
+
+validate-expanded:
+	GOCACHE=$(GOCACHE) go test ./internal/telemetry ./internal/embed
+	GOCACHE=$(GOCACHE) go test -tags=spec ./tests/spec/...
+	GOCACHE=$(GOCACHE) go test -tags=integration ./tests/integration/...
+
+validate-all:
+	GOCACHE=$(GOCACHE) go test ./cmd/strategist
+	$(MAKE) validate-expanded
 
 # test-lite runs the isolated test slices that do not require downloading new modules.
 test-lite: test-telemetry-lite test-compile-cache test-domain-architecture
 
 # test-telemetry-lite runs the telemetry subset that only depends on stdlib + local code.
 test-telemetry-lite:
-	go test -race internal/telemetry/policy_event.go internal/telemetry/mission_run.go internal/telemetry/mission_metrics.go internal/telemetry/policy_event_test.go internal/telemetry/mission_run_test.go internal/telemetry/mission_metrics_test.go
+	GOCACHE=$(GOCACHE) go test -race internal/telemetry/schema.go internal/telemetry/policy_event.go internal/telemetry/mission_run.go internal/telemetry/mission_metrics.go internal/telemetry/policy_event_test.go internal/telemetry/mission_run_test.go internal/telemetry/mission_metrics_test.go
 
 # test-compile-cache runs the compile cache tests without the rest of the compile package suite.
 test-compile-cache:
-	go test -race internal/compile/cache.go internal/compile/cache_test.go
+	GOCACHE=$(GOCACHE) go test -race internal/compile/cache.go internal/compile/cache_test.go
 
 # test-domain-architecture runs the dependency-isolation smoke test without the rest of the domain suite.
 test-domain-architecture:
-	go test -race internal/domain/architecture_test.go
+	GOCACHE=$(GOCACHE) go test -race internal/domain/architecture_test.go
 
 lint:
 	gofmt -w .

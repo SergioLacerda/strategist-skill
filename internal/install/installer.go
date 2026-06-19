@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"golang.org/x/term"
 )
 
@@ -84,7 +85,13 @@ func (s Service) Install(ctx context.Context, cfg domain.InstallConfig) error {
 	// Compile after install; non-fatal — warn but do not abort.
 	kiPath := filepath.Join(strategistDir, "knowledge.index.yaml")
 	if compileErr := s.Compiler.CompileAll(strategistDir, kiPath); compileErr != nil {
-		slog.WarnContext(ctx, "[Strategist] compile warning", "error", compileErr)
+		slog.WarnContext(ctx, "[Strategist] compile warning",
+			"error", compileErr,
+			telemetry.AttrComponent, "install",
+			telemetry.AttrRuntimeMode, "cli",
+			telemetry.AttrOutputProfile, "default",
+			telemetry.AttrTarget, strategistDir,
+		)
 	}
 
 	succeeded = true
@@ -206,7 +213,11 @@ func (s Service) readLocalSKILLMD(ctx context.Context, _ string) (string, error)
 	if err != nil {
 		return "", fmt.Errorf("read embedded SKILL.md: %w", err)
 	}
-	slog.InfoContext(ctx, "[Strategist] SKILL.md read from embedded FS")
+	slog.InfoContext(ctx, "[Strategist] SKILL.md read from embedded FS",
+		telemetry.AttrComponent, "install",
+		telemetry.AttrRuntimeMode, "cli",
+		telemetry.AttrOutputProfile, "default",
+	)
 	return string(data), nil
 }
 
@@ -245,10 +256,22 @@ func (s Service) resolveShimPath() (string, error) {
 func rollbackManifest(ctx context.Context, manifest []string) {
 	for i := len(manifest) - 1; i >= 0; i-- {
 		if err := os.Remove(manifest[i]); err != nil && !errors.Is(err, os.ErrNotExist) {
-			slog.WarnContext(ctx, "[Strategist] rollback remove failed", "path", manifest[i], "error", err)
+			slog.WarnContext(ctx, "[Strategist] rollback remove failed",
+				"path", manifest[i],
+				"error", err,
+				telemetry.AttrComponent, "install",
+				telemetry.AttrRuntimeMode, "cli",
+				telemetry.AttrOutputProfile, "default",
+				telemetry.AttrTarget, manifest[i],
+			)
 		}
 	}
-	slog.WarnContext(ctx, "[Strategist] install rolled back", "workspace", "restored")
+	slog.WarnContext(ctx, "[Strategist] install rolled back",
+		"workspace", "restored",
+		telemetry.AttrComponent, "install",
+		telemetry.AttrRuntimeMode, "cli",
+		telemetry.AttrOutputProfile, "default",
+	)
 }
 
 // fileExists reports whether path exists (any type).

@@ -1,7 +1,7 @@
 # Arquitetura — Strategist Skill
 
 **Status:** Accepted
-**Last Updated:** 2026-06-06
+**Last Updated:** 2026-06-18
 
 ## Visão Geral
 
@@ -105,9 +105,17 @@ compile.Compiler.CompileAll(.strategist/, knowledge.index.yaml)
 
 ### Observações de fluxo (funcionalidades recentes)
 
+- **Discovery handoff canônico**: Ranger produz `refined/<mission_id>-analysis.md`; Archivist consome esse artefato e gera o pacote refinado em `refined/<mission_id>/`.
 - **Quick Draw (`saque rápido`)**: sinal de captura rápida de ideias/TODOs, consolidado pelo Archivist e executado pelo Sniper somente após gate principal.
 - **Opportunist Attack (`opportunity_attack`)**: side quests detectadas entram como contexto/proposta e seguem o mesmo gate principal antes da execução.
 - **Treasure Chests (`treasure_chests`)**: fontes offline opcionais em `active.yaml`, consultáveis por qualquer papel conforme escopo, sem alterar o pipeline canônico.
+
+### Contratos humanos canônicos
+
+O runtime humano da skill não deve mais depender de leitura difusa entre arquivos soltos.
+O ponto de entrada é `strategist/SKILL.md`, que roteia para a sequência numerada em
+`strategist/contracts/`. A decisão arquitetural dessa ordenação está consolidada em
+`docs/adr/0010-ordered-contracts-and-mission-observability.md`.
 
 ---
 

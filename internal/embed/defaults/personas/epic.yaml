@@ -57,19 +57,19 @@ content_by_lang:
       compatibility={legacy_compatibility} | urgency={urgency} | intent={execution_intent}
 
     ranger_start: >
-      🎯 **Ranger:** starting reconnaissance. skill={provider}
+      🎯 **Ranger [{mission_id}]:** starting reconnaissance. skill={provider}
     ranger_done: >
-      🎯 **Ranger:** reconnaissance complete. Artifact at: {artifact_path}
+      🎯 **Ranger [{mission_id}]:** reconnaissance complete. Artifact at: {artifact_path}
 
     archivist_start: >
-      📚 **Archivist:** starting analysis and refinement. skill={provider}
+      📚 **Archivist [{mission_id}]:** starting analysis and refinement. skill={provider}
     archivist_done: >
-      📚 **Archivist:** analysis refined. Artifacts at: {artifact_path}
+      📚 **Archivist [{mission_id}]:** analysis refined. Artifacts at: {artifact_path}
 
     sniper_start: >
-      🗡️ **Sniper:** mission approved — starting implementation.
+      🗡️ **Sniper [{mission_id}]:** mission approved — starting implementation.
     sniper_done: >
-      🗡️ **Sniper:** implementation complete. Report at: {artifact_path}
+      🗡️ **Sniper [{mission_id}]:** implementation complete. Report at: {artifact_path}
 
     approval_prompt: >
       🚦 **Gate [{mission_id}]:** AWAITING CONFIRMATION
@@ -94,7 +94,7 @@ content_by_lang:
 
       idea: {idea}
 
-      add idea? (sim/nao)
+      add idea? (yes / no)
     quick_draw_success: >
       ⚔️ Quick Draw complete.
       success: idea added at {destination_path}
@@ -114,6 +114,9 @@ content_by_lang:
       {step_2_icon} 2 — Archivist
       {step_3_icon} 3 — Gate
       {step_4_icon} 4 — Execution
+
+    compliance_summary: >
+      ⚖️ **Compliance [{mission_id}]:** {status}
 
     execution_tasks_header: >
       🗡️ **Sniper — executing {total} task(s):**
@@ -139,12 +142,13 @@ content_by_lang:
       Commit? (yes / no)
 
     plan_only_result: >
-      Mission closed (plan approved, execution declined).
+      Mission [{mission_id}] closed (plan approved, execution declined).
       Plan at: {artifact_path}
       To execute later: re-invoke Strategist with the plan path.
     mission_complete: >
       🗡️ Mission complete. Status: {status}
       Artifacts: {artifacts}
+      Next action: {next_action}
     mission_metrics: >
       [Strategist] metrics mission={mission_id} t_start_to_intake_ms={t_start_to_intake_ms} t_intake_to_ranger_ms={t_intake_to_ranger_ms} total_wall_time_ms={total_wall_time_ms} tokens_in={tokens_in} tokens_out={tokens_out} lines_emitted={lines_emitted}
 
@@ -154,21 +158,21 @@ content_by_lang:
       compatibility={legacy_compatibility} | urgency={urgency} | intent={execution_intent}
 
     ranger_start: >
-      🎯 **Ranger:** iniciando reconhecimento. skill={provider}
+      🎯 **Ranger [{mission_id}]:** iniciando reconhecimento. skill={provider}
     ranger_done: >
-      🎯 **Ranger:** missão de reconhecimento concluída.
+      🎯 **Ranger [{mission_id}]:** missão de reconhecimento concluída.
       Artefato em: {artifact_path}
 
     archivist_start: >
-      📚 **Arquivista:** iniciando análise e refinamento. skill={provider}
+      📚 **Arquivista [{mission_id}]:** iniciando análise e refinamento. skill={provider}
     archivist_done: >
-      📚 **Arquivista:** análise refinada.
+      📚 **Arquivista [{mission_id}]:** análise refinada.
       Artefatos em: {artifact_path}
 
     sniper_start: >
-      🗡️ **Sniper:** missão aprovada — iniciando implementação.
+      🗡️ **Sniper [{mission_id}]:** missão aprovada — iniciando implementação.
     sniper_done: >
-      🗡️ **Sniper:** implementação concluída.
+      🗡️ **Sniper [{mission_id}]:** implementação concluída.
       Relatório em: {artifact_path}
 
     approval_prompt: >
@@ -176,7 +180,7 @@ content_by_lang:
 
       Plano em: {artifact_path}
 
-      Autorizar Sniper? (yes / no / review)
+      Autorizar Sniper? (sim / nao / revisar)
 
     opportunity_detected: >
       ⚔️ **Ataque de Oportunidade** — {count} item(s) detectado(s)
@@ -185,7 +189,7 @@ content_by_lang:
       ⚔️ **Side Quests disponíveis:**
       {manifest}
 
-      Aprovar? (yes / no / select)
+      Aprovar? (sim / nao / selecionar)
 
     quick_draw_detected: >
       ⚔️ **Quick Draw** detectado. Side quest curta iniciada (Ranger -> Archivist -> Gate).
@@ -194,7 +198,7 @@ content_by_lang:
 
       ideia: {idea}
 
-      adicionar ideia? (sim/nao)
+      adicionar ideia? (sim / nao)
     quick_draw_success: >
       ⚔️ Quick Draw concluido.
       sucesso: ideia adicionada em {destination_path}
@@ -215,6 +219,9 @@ content_by_lang:
       {step_3_icon} 3 — Gate
       {step_4_icon} 4 — Execução
 
+    compliance_summary: >
+      ⚖️ **Compliance [{mission_id}]:** {status}
+
     execution_tasks_header: >
       🗡️ **Sniper — executando {total} tarefa(s):**
     execution_task_line: >
@@ -226,7 +233,7 @@ content_by_lang:
       Esta missão contém decisões arquiteturais que merecem registro.
       Side quest: Arquivista escreve ADR → Gate → Sniper commita.
 
-      Gerar ADR para "{mission_id}"? (yes / no)
+      Gerar ADR para "{mission_id}"? (sim / nao)
     adr_gate: >
       📚 **Arquivista — rascunho de ADR:**
 
@@ -236,14 +243,15 @@ content_by_lang:
 
       🚦 **Gate ADR:** AGUARDANDO CONFIRMAÇÃO
 
-      Commitar? (yes / no)
+      Commitar? (sim / nao)
 
     plan_only_result: >
-      Missão encerrada (plano aprovado, execução recusada).
+      Missão [{mission_id}] encerrada (plano aprovado, execução recusada).
       Plano em: {artifact_path}
       Para executar depois: re-invocar Strategist com o caminho do plano.
     mission_complete: >
       🗡️ Missão concluída. Status: {status}
       Artefatos: {artifacts}
+      Próxima ação: {next_action}
     mission_metrics: >
       [Strategist] metrics mission={mission_id} t_start_to_intake_ms={t_start_to_intake_ms} t_intake_to_ranger_ms={t_intake_to_ranger_ms} total_wall_time_ms={total_wall_time_ms} tokens_in={tokens_in} tokens_out={tokens_out} lines_emitted={lines_emitted}

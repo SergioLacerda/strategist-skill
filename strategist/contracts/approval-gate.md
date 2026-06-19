@@ -2,7 +2,7 @@
 
 ## 6. Approval Gate (MANDATORY)
 
-After Archivist completes, evaluate the refined plan before presenting the gate:
+After Archivist completes, evaluate the refined package before presenting the gate:
 
 Read `<base_path>/refined/<mission_id>/tasks.md` before deciding:
 
@@ -32,8 +32,8 @@ Emit via `persona.content_by_lang[active.language.chat].approval_prompt` with:
 Wait for response:
 - **yes / approve / authorize**: re-emit checkpoint with step_3_icon=✅, step_4_icon=⏳. Proceed to Sniper.
 - **no / decline / stop**: emit `[Strategist] phase=approval_gate status=plan_only`,
-  return mission result with `status: plan_only`, artifact paths for discovery and refined plan.
-- **review**: present the refined plan content, then re-ask.
+  return mission result with `status: plan_only`, artifact paths for analysis and refined package.
+- **review**: present the refined package content, then re-ask.
 
 Invoking Sniper without receiving explicit approval is a **forbidden behavior**.
 
