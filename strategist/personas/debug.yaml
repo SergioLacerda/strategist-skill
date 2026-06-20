@@ -1,0 +1,39 @@
+id: debug
+description: >
+  JSONL renderer for runtime/CI contexts. Bypasses all profile rendering.
+  Every event is emitted as a structured JSON line to stdout.
+
+phase_labels:
+  discovery: discovery
+  refinement: refinement
+  execution: execution
+
+tone_directive: >
+  No tone. No narration. Structured output only.
+
+progress_prefix: ""
+
+diagnostics:
+  format: jsonl
+
+rendering_policy:
+  profile_rendered_levels: []
+  telemetry_levels: [DEBUG, TRACE, INFO, WARN, ERROR, FATAL]
+  runtime_evidence_level: INFO
+  runtime_evidence_profile_rendered: false
+
+console_policy:
+  show_raw_events: false
+  emit_jsonl_telemetry: true
+  bypass_profile_renderer: true
+
+jsonl_event_schema:
+  fields:
+    - level
+    - component
+    - event_type
+    - mission_id
+    - profile
+    - payload
+  example: >
+    {"level":"info","component":"strategist","event_type":"mission_done","mission_id":"example-id","profile":"debug","payload":{"status":"complete"}}

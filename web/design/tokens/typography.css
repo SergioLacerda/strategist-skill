@@ -1,0 +1,50 @@
+/* ============================================================
+   STRATEGIST · TYPOGRAPHY
+   Three voices:
+     · grimoire — Cinzel Decorative — hero titles, the brand mark
+     · display  — Cinzel            — section headings, role names
+     · mono     — IBM Plex Mono     — everything else (terminal body)
+   Letter-spacing is wide and deliberate; labels are uppercased.
+   ============================================================ */
+
+:root {
+  /* —— Families —— */
+  --font-grimoire: "Cinzel Decorative", "Cinzel", Georgia, serif;
+  --font-display:  "Cinzel", Georgia, serif;
+  --font-mono:     "IBM Plex Mono", "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* —— Type scale (px) —— */
+  --fs-hero:     68px;   /* grimoire hero title */
+  --fs-h1:       56px;   /* display page title */
+  --fs-h2:       26px;   /* role / chamber name */
+  --fs-h3:       20px;   /* card / panel heading */
+  --fs-lede:     16px;   /* intro paragraph */
+  --fs-body:     14px;   /* default body / terminal */
+  --fs-sm:       13px;   /* dense body */
+  --fs-label:    12px;   /* uppercase section + badge labels */
+  --fs-caption:  11px;   /* klass tags, scaffolding captions */
+  --fs-micro:    10px;   /* corner credits, room numbers */
+
+  /* —— Weights —— */
+  --fw-regular:  400;  /* @kind font */
+  --fw-medium:   500;  /* @kind font */
+  --fw-semibold: 600;  /* @kind font */
+  --fw-bold:     700;  /* @kind font */
+
+  /* —— Line heights —— */
+  --lh-tight:    1.05;   /* @kind font */
+  --lh-snug:     1.35;   /* @kind font */
+  --lh-body:     1.55;   /* @kind font */
+  --lh-loose:    1.7;    /* @kind font */
+
+  /* —— Letter-spacing (the arcane signature) —— */
+  --ls-tight:    .02em;
+  --ls-wide:     .1em;    /* buttons */
+  --ls-label:    .22em;   /* klass / badge labels */
+  --ls-section:  .4em;    /* section labels, ornaments */
+
+  /* —— Semantic roles —— */
+  --text-hero:     var(--fw-bold) var(--fs-hero)/var(--lh-tight) var(--font-grimoire);
+  --text-title:    var(--fw-semibold) var(--fs-h1)/var(--lh-tight) var(--font-display);
+  --text-role:     var(--fw-bold) var(--fs-h2)/var(--lh-tight) var(--font-grimoire);
+}

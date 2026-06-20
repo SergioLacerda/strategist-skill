@@ -1,0 +1,338 @@
+{
+  "plugins": [
+    "react",
+    "import"
+  ],
+  "rules": {
+    "react/forbid-elements": [
+      "warn",
+      {
+        "forbid": []
+      }
+    ],
+    "no-restricted-imports": [
+      "warn",
+      {
+        "patterns": [
+          {
+            "group": [
+              "components/brand/**",
+              "components/core/**",
+              "components/mission/**",
+              "components/party/**",
+              "ui_kits/console/**",
+              "ui_kits/landing/**"
+            ],
+            "message": "Import design-system components from 'index.js', not component internals."
+          }
+        ]
+      }
+    ],
+    "no-restricted-syntax": [
+      "warn",
+      {
+        "selector": "Literal[value=/#[0-9a-fA-F]{3,8}\\b/]",
+        "message": "Raw hex color — use a design-system color token via var()."
+      },
+      {
+        "selector": "Literal[value=/\\b\\d+px\\b/]",
+        "message": "Raw px value — use a design-system spacing token via var()."
+      },
+      {
+        "selector": "Literal[value=/font-family\\s*:\\s*(?!['\\\"]?(?:Cinzel|Cinzel Decorative|IBM Plex Mono))/i]",
+        "message": "Font not provided by the design system. Available: Cinzel, Cinzel Decorative, IBM Plex Mono."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Badge'] > JSXAttribute > JSXIdentifier[name!=/^(?:label|value|tone|style|key|ref|className|style|children)$/]",
+        "message": "<Badge> doesn't accept that prop. Declared props: label, value, tone, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Badge'] > JSXAttribute[name.name='tone'] > Literal[value!=/^(?:ok|amber|orange)$/]",
+        "message": "<Badge> tone must be one of 'ok' | 'amber' | 'orange'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Button'] > JSXAttribute > JSXIdentifier[name!=/^(?:children|variant|href|icon|disabled|onClick|style|key|ref|className|style|children)$/]",
+        "message": "<Button> doesn't accept that prop. Declared props: children, variant, href, icon, disabled, onClick, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Button'] > JSXAttribute[name.name='variant'] > Literal[value!=/^(?:primary|secondary|ghost)$/]",
+        "message": "<Button> variant must be one of 'primary' | 'secondary' | 'ghost'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='GatePanel'] > JSXAttribute > JSXIdentifier[name!=/^(?:lock|heading|children|style|key|ref|className|style|children)$/]",
+        "message": "<GatePanel> doesn't accept that prop. Declared props: lock, heading, children, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='InstallCommand'] > JSXAttribute > JSXIdentifier[name!=/^(?:label|command|key|ref|className|style|children)$/]",
+        "message": "<InstallCommand> doesn't accept that prop. Declared props: label, command."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Logo'] > JSXAttribute > JSXIdentifier[name!=/^(?:variant|size|tagline|style|key|ref|className|style|children)$/]",
+        "message": "<Logo> doesn't accept that prop. Declared props: variant, size, tagline, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Logo'] > JSXAttribute[name.name='variant'] > Literal[value!=/^(?:lockup|mark|wordmark)$/]",
+        "message": "<Logo> variant must be one of 'lockup' | 'mark' | 'wordmark'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='RoleCard'] > JSXAttribute > JSXIdentifier[name!=/^(?:glyph|role|klass|children|gate|feature|style|key|ref|className|style|children)$/]",
+        "message": "<RoleCard> doesn't accept that prop. Declared props: glyph, role, klass, children, gate, feature, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='SectionLabel'] > JSXAttribute > JSXIdentifier[name!=/^(?:children|rule|align|style|key|ref|className|style|children)$/]",
+        "message": "<SectionLabel> doesn't accept that prop. Declared props: children, rule, align, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='SectionLabel'] > JSXAttribute[name.name='align'] > Literal[value!=/^(?:left|center|right)$/]",
+        "message": "<SectionLabel> align must be one of 'left' | 'center' | 'right'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='SkillPanel'] > JSXAttribute > JSXIdentifier[name!=/^(?:icon|eyebrow|title|children|style|key|ref|className|style|children)$/]",
+        "message": "<SkillPanel> doesn't accept that prop. Declared props: icon, eyebrow, title, children, style."
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": [
+        "**/index.js"
+      ],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    }
+  ],
+  "x-omelette": {
+    "components": {
+      "Badge": {
+        "replaces": []
+      },
+      "Button": {
+        "replaces": []
+      },
+      "GatePanel": {
+        "replaces": []
+      },
+      "InstallCommand": {
+        "replaces": []
+      },
+      "Logo": {
+        "replaces": []
+      },
+      "RoleCard": {
+        "replaces": []
+      },
+      "SectionLabel": {
+        "replaces": []
+      },
+      "SkillPanel": {
+        "replaces": []
+      }
+    },
+    "tokens": [
+      "--accent",
+      "--accent-ember",
+      "--accent-hi",
+      "--accent-ok",
+      "--amber",
+      "--amber-dim",
+      "--amber-hi",
+      "--bg",
+      "--bg-2",
+      "--border-gate",
+      "--border-hairline",
+      "--border-strong",
+      "--bw-gate",
+      "--bw-hair",
+      "--dur",
+      "--dur-fast",
+      "--ease",
+      "--faint",
+      "--font-display",
+      "--font-grimoire",
+      "--font-mono",
+      "--fs-body",
+      "--fs-caption",
+      "--fs-h1",
+      "--fs-h2",
+      "--fs-h3",
+      "--fs-hero",
+      "--fs-label",
+      "--fs-lede",
+      "--fs-micro",
+      "--fs-sm",
+      "--fw-bold",
+      "--fw-medium",
+      "--fw-regular",
+      "--fw-semibold",
+      "--glow-amber",
+      "--glow-amber-hi",
+      "--glow-amber-soft",
+      "--glow-green",
+      "--glow-orange",
+      "--grad-amber-btn",
+      "--grad-bar",
+      "--grad-page",
+      "--grad-panel",
+      "--green",
+      "--green-dim",
+      "--gutter",
+      "--ink",
+      "--lh-body",
+      "--lh-loose",
+      "--lh-snug",
+      "--lh-tight",
+      "--line",
+      "--line-2",
+      "--ls-label",
+      "--ls-section",
+      "--ls-tight",
+      "--ls-wide",
+      "--muted",
+      "--orange",
+      "--page-max",
+      "--panel",
+      "--panel-2",
+      "--radius-md",
+      "--radius-pill",
+      "--radius-sm",
+      "--radius-xs",
+      "--rust",
+      "--shadow-btn-amber",
+      "--shadow-gate",
+      "--shadow-inset",
+      "--shadow-inset-sm",
+      "--shadow-lift",
+      "--space-1",
+      "--space-10",
+      "--space-2",
+      "--space-3",
+      "--space-4",
+      "--space-5",
+      "--space-6",
+      "--space-7",
+      "--space-8",
+      "--space-9",
+      "--surface-card",
+      "--surface-card-2",
+      "--surface-page",
+      "--surface-raised",
+      "--surface-sunken",
+      "--text",
+      "--text-accent",
+      "--text-body",
+      "--text-faint",
+      "--text-heading",
+      "--text-hero",
+      "--text-label",
+      "--text-muted",
+      "--text-role",
+      "--text-title"
+    ],
+    "tokenKinds": {
+      "--ink": "color",
+      "--bg": "color",
+      "--bg-2": "color",
+      "--panel": "color",
+      "--panel-2": "color",
+      "--amber": "color",
+      "--amber-hi": "color",
+      "--amber-dim": "color",
+      "--orange": "color",
+      "--rust": "color",
+      "--green": "color",
+      "--green-dim": "color",
+      "--text": "font",
+      "--muted": "color",
+      "--faint": "color",
+      "--line": "color",
+      "--line-2": "color",
+      "--surface-page": "color",
+      "--surface-raised": "color",
+      "--surface-card": "color",
+      "--surface-card-2": "color",
+      "--surface-sunken": "color",
+      "--text-body": "font",
+      "--text-muted": "font",
+      "--text-faint": "font",
+      "--text-heading": "font",
+      "--text-accent": "font",
+      "--text-label": "font",
+      "--border-hairline": "color",
+      "--border-strong": "color",
+      "--border-gate": "color",
+      "--accent": "color",
+      "--accent-hi": "color",
+      "--accent-ember": "color",
+      "--accent-ok": "color",
+      "--font-grimoire": "font",
+      "--font-display": "font",
+      "--font-mono": "font",
+      "--fs-hero": "spacing",
+      "--fs-h1": "spacing",
+      "--fs-h2": "spacing",
+      "--fs-h3": "spacing",
+      "--fs-lede": "spacing",
+      "--fs-body": "spacing",
+      "--fs-sm": "spacing",
+      "--fs-label": "spacing",
+      "--fs-caption": "spacing",
+      "--fs-micro": "spacing",
+      "--fw-regular": "font",
+      "--fw-medium": "font",
+      "--fw-semibold": "font",
+      "--fw-bold": "font",
+      "--lh-tight": "font",
+      "--lh-snug": "font",
+      "--lh-body": "font",
+      "--lh-loose": "font",
+      "--ls-tight": "spacing",
+      "--ls-wide": "spacing",
+      "--ls-label": "spacing",
+      "--ls-section": "spacing",
+      "--text-hero": "font",
+      "--text-title": "font",
+      "--text-role": "font",
+      "--space-1": "spacing",
+      "--space-2": "spacing",
+      "--space-3": "spacing",
+      "--space-4": "spacing",
+      "--space-5": "spacing",
+      "--space-6": "spacing",
+      "--space-7": "spacing",
+      "--space-8": "spacing",
+      "--space-9": "spacing",
+      "--space-10": "spacing",
+      "--radius-xs": "radius",
+      "--radius-sm": "radius",
+      "--radius-md": "radius",
+      "--radius-pill": "radius",
+      "--bw-hair": "spacing",
+      "--bw-gate": "spacing",
+      "--page-max": "spacing",
+      "--gutter": "spacing",
+      "--glow-amber": "shadow",
+      "--glow-amber-soft": "shadow",
+      "--glow-amber-hi": "shadow",
+      "--glow-orange": "shadow",
+      "--glow-green": "shadow",
+      "--shadow-inset": "shadow",
+      "--shadow-inset-sm": "shadow",
+      "--shadow-lift": "shadow",
+      "--shadow-btn-amber": "shadow",
+      "--shadow-gate": "shadow",
+      "--grad-page": "color",
+      "--grad-panel": "color",
+      "--grad-amber-btn": "color",
+      "--grad-bar": "color",
+      "--ease": "other",
+      "--dur-fast": "other",
+      "--dur": "other"
+    },
+    "fontFamilies": [
+      "Cinzel",
+      "Cinzel Decorative",
+      "IBM Plex Mono"
+    ]
+  }
+}

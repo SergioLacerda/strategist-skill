@@ -1,0 +1,53 @@
+<!-- @dsCard group="Components" viewport="700x420" name="Party — Role cards & Skills" subtitle="Role/party cards with sigils + dashed skill panels" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  html, body { margin: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-mono); padding: 28px 30px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 22px; }
+  .lbl { font-size: 10px; letter-spacing: .22em; text-transform: uppercase; color: var(--faint); margin-bottom: 12px; }
+</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="../../_ds_bundle.js"></script>
+  <script type="text/babel">
+    const { RoleCard, SkillPanel } = window.StrategistDesignSystem_88a8a0;
+    function Demo() {
+      return (
+        <>
+          <div className="lbl">Role cards</div>
+          <div className="grid2">
+            <RoleCard glyph="☉" role="Strategist" klass="Master · Orchestrator">
+              Leads the mission end to end. Selects knowledge by task_type and guards the approval gate.
+            </RoleCard>
+            <RoleCard glyph="⌖" role="Ranger" klass="Scout · Discovery">
+              Explores the terrain: gathers requirements, maps context, returns a discovery report.
+            </RoleCard>
+            <RoleCard glyph="❒" role="Archivist" klass="Archivist · Refinement">
+              Turns discovery into an actionable spec and inscribes each decision in .analysis/.
+            </RoleCard>
+            <RoleCard glyph="✜" role="Sniper" klass="Executor · Implementation" gate>
+              Executes refined implementation only after human approval and policy check.
+            </RoleCard>
+          </div>
+          <div className="lbl" style={{marginTop: "22px"}}>Skill panels</div>
+          <div className="grid3">
+            <SkillPanel icon="⚲" title="Opportunist Attack">Unforeseen problems or treasure chests found mid-action.</SkillPanel>
+            <SkillPanel icon="❖" eyebrow="offline source" title="Treasure Chest">Scoped documentation that enriches the analysis.</SkillPanel>
+            <SkillPanel icon="⚡" title="Quick Draw">Ideas appear fast as lightning — ready to write down.</SkillPanel>
+          </div>
+        </>
+      );
+    }
+    ReactDOM.createRoot(document.getElementById("root")).render(<Demo />);
+  </script>
+</body>
+</html>

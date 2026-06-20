@@ -1,0 +1,62 @@
+/* ============================================================
+   STRATEGIST · COLOR SYSTEM
+   Arcane terminal / grimoire — amber CRT phosphor on dark resin.
+   Base palette + semantic aliases. All values lifted verbatim
+   from the canonical landing page (pages/index.html).
+   ============================================================ */
+
+:root {
+  /* —— Base · backgrounds (deep resin browns) —— */
+  --ink:        #0c0805;   /* deepest — used behind panels */
+  --bg:         #14100a;   /* page background */
+  --bg-2:       #1b1610;   /* raised surface / badge label */
+  --panel:      #211a11;   /* panel fill */
+  --panel-2:    #2a2117;   /* panel fill, lighter */
+
+  /* —— Base · amber phosphor (the brand voice) —— */
+  --amber:      #e8c25a;   /* primary amber — links, sigils, accents */
+  --amber-hi:   #f8df90;   /* highlight amber — titles, hover glow */
+  --amber-dim:  #b8933f;   /* dimmed amber — secondary glyphs, rules */
+
+  /* —— Base · ember (warm secondary) —— */
+  --orange:     #cf7a2c;   /* orange — section labels, gate, klass */
+  --rust:       #8a4128;   /* rust — portcullis walls, gradient base */
+
+  /* —— Base · CRT green (used sparingly for "OK / live") —— */
+  --green:      #74cf8e;   /* phosphor green — success, prompt, learning loop */
+  --green-dim:  #3f6e4f;   /* dimmed green */
+
+  /* —— Base · text (parchment) —— */
+  --text:       #d9c49a;   /* body text */
+  --muted:      #9b865d;   /* muted / secondary copy */
+  --faint:      #6c5c3e;   /* faint — captions, prompts, scaffolding */
+
+  /* —— Base · hairlines (amber at low alpha) —— */
+  --line:       rgba(232, 194, 90, .16);  /* default 1px hairline */
+  --line-2:     rgba(232, 194, 90, .32);  /* stronger hairline / card border */
+
+  /* ============================================================
+     SEMANTIC ALIASES — prefer these in components
+     ============================================================ */
+  --surface-page:     var(--bg);
+  --surface-raised:   var(--bg-2);
+  --surface-card:     var(--panel);
+  --surface-card-2:   var(--panel-2);
+  --surface-sunken:   rgba(0, 0, 0, .25);   /* inset terminal wells */
+
+  --text-body:        var(--text);
+  --text-muted:       var(--muted);
+  --text-faint:       var(--faint);
+  --text-heading:     var(--amber-hi);
+  --text-accent:      var(--amber);
+  --text-label:       var(--orange);   /* uppercase section labels / klass */
+
+  --border-hairline:  var(--line);
+  --border-strong:    var(--line-2);
+  --border-gate:      var(--orange);   /* the inviolable approval gate */
+
+  --accent:           var(--amber);
+  --accent-hi:        var(--amber-hi);
+  --accent-ember:     var(--orange);
+  --accent-ok:        var(--green);    /* success / passing / live */
+}

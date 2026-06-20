@@ -1,0 +1,22 @@
+---
+export interface Props {
+  variant?: 'primary' | 'secondary' | 'ghost';
+  href?: string;
+  icon?: string;
+  disabled?: boolean;
+  'data-tab'?: string;
+}
+const { variant = 'secondary', href, icon, disabled = false } = Astro.props;
+const dataTab = Astro.props['data-tab'];
+
+const base = `display:inline-flex; align-items:center; gap:9px; font-family:var(--font-mono); font-size:var(--fs-sm); letter-spacing:var(--ls-wide); text-transform:uppercase; font-weight:var(--fw-medium); padding:12px 22px; border-radius:var(--radius-sm); text-decoration:none; cursor:pointer; border:1px solid var(--border-strong); color:var(--accent); background:rgba(232,194,90,.05); opacity:${disabled ? 0.45 : 1}; transition:background var(--dur),border-color var(--dur),transform var(--dur-fast),box-shadow var(--dur);`;
+const primaryExtra = `color:#1c1408; border-color:var(--accent); background:var(--grad-amber-btn); text-shadow:none; box-shadow:var(--shadow-btn-amber);`;
+const ghostExtra = `border:1px solid transparent; background:transparent;`;
+
+const style = variant === 'primary' ? base + primaryExtra : variant === 'ghost' ? base + ghostExtra : base;
+---
+{href ? (
+  <a href={href} style={style} data-tab={dataTab}><Fragment>{icon && <span aria-hidden="true">{icon}</span>}<slot /></Fragment></a>
+) : (
+  <button type="button" style={style} disabled={disabled} data-tab={dataTab}><Fragment>{icon && <span aria-hidden="true">{icon}</span>}<slot /></Fragment></button>
+)}

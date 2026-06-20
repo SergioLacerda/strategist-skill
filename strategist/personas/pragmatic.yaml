@@ -34,6 +34,14 @@ rendering_policy:
     runtime_evidence emits structured telemetry payloads. The active persona does
     not rewrite or stylize these events.
 
+console_policy:
+  show_raw_events: true
+  show_skill_identity: false
+  show_mission_envelope: false
+  show_phase_timeline: false
+  show_artifacts: false
+  emit_jsonl_telemetry: false
+
 runtime_evidence:
   pipeline_starting: >
     [Strategist] pipeline=starting profile_mode={profile_mode} profile_source_path={profile_source_path} active_yaml_path={active_yaml_path} persona_resolved={persona_resolved} reason={reason}

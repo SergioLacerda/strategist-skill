@@ -1,4 +1,4 @@
-.PHONY: build test test-all integration spec validate-expanded validate-all test-lite test-telemetry-lite test-compile-cache test-domain-architecture lint vuln bench cover cover-gate cover-html analysis-structure-gate docs-governance-gate install sync-embed release snapshot clean compile-skill
+.PHONY: build test test-all integration spec validate-expanded validate-all test-lite test-telemetry-lite test-compile-cache test-domain-architecture lint vuln bench cover cover-gate cover-html analysis-structure-gate docs-governance-gate install sync-embed release snapshot clean compile-skill build-site build-all
 
 GOCACHE ?= /tmp/go-build-cache
 
@@ -133,3 +133,8 @@ clean:
 # Run after editing any file under .strategist/ to keep the fast-path active.
 compile-skill:
 	strategist compile --root .strategist
+
+build-site:
+	cd web/landing && npm ci && npm run build
+
+build-all: build build-site
