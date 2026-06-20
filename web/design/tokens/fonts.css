@@ -1,0 +1,12 @@
+/* ============================================================
+   STRATEGIST · WEBFONTS
+   Cinzel (display) · Cinzel Decorative (grimoire titles) ·
+   IBM Plex Mono (terminal body). Served from Google Fonts.
+
+   NOTE → these three are sourced from Google Fonts via @import
+   rather than self-hosted .woff2 binaries. If you need fully
+   offline / self-hosted fonts, drop the files in assets/fonts/
+   and replace this @import with local @font-face rules.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Cinzel+Decorative:wght@400;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap');

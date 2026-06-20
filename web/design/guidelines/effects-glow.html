@@ -1,0 +1,25 @@
+<!-- @dsCard group="Effects" viewport="700x200" name="Phosphor glow & CRT" subtitle="Light leaks off amber · scanline + vignette overlay" -->
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8" /><link rel="stylesheet" href="../styles.css" />
+<style>
+  html,body{margin:0}
+  body{background:var(--bg);font-family:var(--font-mono);padding:0}
+  .stage{position:relative;padding:28px 30px;display:flex;gap:24px;align-items:center;overflow:hidden}
+  .glyph{font-size:46px}
+  .col{display:flex;flex-direction:column;gap:14px}
+  .cap{font-size:11px;color:var(--faint)}
+  .panel{flex:1;border:1px solid var(--line-2);border-radius:var(--radius-md);background:var(--grad-panel);box-shadow:var(--shadow-inset);padding:18px 20px;color:var(--muted);font-size:12.5px}
+</style></head>
+<body>
+  <div class="stage crt">
+    <div class="col">
+      <div class="glyph" style="color:var(--amber);text-shadow:var(--glow-amber)">✦</div>
+      <div class="cap">--glow-amber</div>
+    </div>
+    <div class="col">
+      <div class="glyph" style="color:var(--orange);text-shadow:var(--glow-orange)">⛨</div>
+      <div class="cap">--glow-orange</div>
+    </div>
+    <div class="panel">Sunken panel · --shadow-inset over --grad-panel, wrapped in the .crt scanline + vignette overlay.</div>
+  </div>
+</body></html>

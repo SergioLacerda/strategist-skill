@@ -1,0 +1,56 @@
+---
+export interface Props {
+  variant?: 'lockup' | 'mark' | 'wordmark';
+  size?: number;
+  tagline?: boolean;
+}
+const { variant = 'lockup', size = 40, tagline = false } = Astro.props;
+const markSize = size;
+const fontSize = Math.round(size * 0.52);
+const tagFontSize = Math.max(9, Math.round(size * 0.2));
+const tagMarginTop = Math.round(size * 0.12);
+const gap = Math.round(size * 0.32);
+---
+{(variant === 'lockup' || variant === 'mark') && (
+  <svg
+    width={markSize}
+    height={markSize}
+    viewBox="0 0 100 100"
+    role="img"
+    aria-label="Strategist seal"
+    style={`filter: drop-shadow(0 0 10px rgba(232,194,90,.45)); flex: none; display: block;`}
+  >
+    <defs>
+      <linearGradient id="stg-grad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#f8df90" />
+        <stop offset="1" stop-color="#b8933f" />
+      </linearGradient>
+    </defs>
+    <path d="M50 5 L95 50 L50 95 L5 50 Z" fill="none" stroke="#b8933f" stroke-width="1.6" />
+    <path d="M50 14 L86 50 L50 86 L14 50 Z" fill="none" stroke="rgba(232,194,90,.28)" stroke-width="1" />
+    <circle cx="50" cy="50" r="29" fill="none" stroke="rgba(232,194,90,.55)" stroke-width="1" />
+    <g stroke="rgba(232,194,90,.22)" stroke-width="1">
+      <line x1="50" y1="5" x2="50" y2="95" />
+      <line x1="5" y1="50" x2="95" y2="50" />
+    </g>
+    <path d="M50 17 L57 43 L83 50 L57 57 L50 83 L43 57 L17 50 L43 43 Z" fill="url(#stg-grad)" />
+    <path d="M50 50 L68 32 M50 50 L32 32 M50 50 L68 68 M50 50 L32 68" stroke="rgba(232,194,90,.35)" stroke-width="1" />
+    <circle cx="50" cy="50" r="3.4" fill="#14100a" stroke="#b8933f" stroke-width="1" />
+  </svg>
+)}
+
+{variant === 'lockup' && (
+  <span style={`display: inline-flex; align-items: center; gap: ${gap}px;`}>
+    <!-- mark already rendered above, wordmark below -->
+    <span style="display: flex; flex-direction: column; justify-content: center; line-height: 1;">
+      <span style={`font-family: var(--font-grimoire); font-weight: 700; font-size: ${fontSize}px; color: var(--amber-hi); letter-spacing: .06em; text-shadow: 0 0 18px rgba(232,194,90,.3);`}>Strategist</span>
+      {tagline && <span style={`font-family: var(--font-mono); font-size: ${tagFontSize}px; letter-spacing: .34em; text-transform: uppercase; color: var(--orange); margin-top: ${tagMarginTop}px;`}>autonomous mission skill</span>}
+    </span>
+  </span>
+)}
+
+{variant === 'wordmark' && (
+  <span style="display: inline-flex;">
+    <span style={`font-family: var(--font-grimoire); font-weight: 700; font-size: ${fontSize}px; color: var(--amber-hi); letter-spacing: .06em; text-shadow: 0 0 18px rgba(232,194,90,.3);`}>Strategist</span>
+  </span>
+)}
