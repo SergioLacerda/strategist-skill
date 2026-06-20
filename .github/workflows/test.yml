@@ -127,5 +127,11 @@ jobs:
       - name: Install dependencies
         run: cd web/landing && npm ci
 
+      - name: Lint (astro check)
+        run: cd web/landing && npm run lint
+
+      - name: Test
+        run: cd web/landing && npm run test
+
       - name: Build
         run: cd web/landing && npm run build

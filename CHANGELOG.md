@@ -8,6 +8,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Security
+
+- **BREAKING:** `OTEL_EXPORTER_OTLP_INSECURE` now defaults to `false` (TLS required).
+  If you send telemetry to a plaintext gRPC endpoint, add `OTEL_EXPORTER_OTLP_INSECURE=true`
+  to your environment. This change closes a security finding where telemetry data could be
+  intercepted on networks without TLS.
+- Release binaries are now signed with cosign keyless (Sigstore). `.bundle` files are uploaded
+  alongside each binary for offline verification via `cosign verify-blob`.
+- Config integrity check: CLI emits a warning to stderr when `active.yaml` is modified
+  outside the CLI. Lock file written at `install` time; checked on every CLI startup.
+- Added `SECURITY.md` with responsible disclosure policy, release verification instructions,
+  and recommended branch protection settings.
+
 ### Added
 - SHA256 checksum verification in `bootstrap.sh` for versioned releases
 - Security warning when installing from branch ref without integrity check

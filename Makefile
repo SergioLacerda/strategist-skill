@@ -1,4 +1,4 @@
-.PHONY: build test test-all integration spec validate-expanded validate-all test-lite test-telemetry-lite test-compile-cache test-domain-architecture lint vuln bench cover cover-gate cover-html analysis-structure-gate docs-governance-gate install sync-embed release snapshot clean compile-skill build-site build-all
+.PHONY: build test test-all integration spec validate-expanded validate-all test-lite test-telemetry-lite test-compile-cache test-domain-architecture lint vuln bench cover cover-gate cover-html analysis-structure-gate docs-governance-gate install sync-embed release snapshot clean compile-skill build-site build-all install-web lint-web test-web cover-web
 
 GOCACHE ?= /tmp/go-build-cache
 
@@ -134,7 +134,19 @@ clean:
 compile-skill:
 	strategist compile --root .strategist
 
-build-site:
-	cd web/landing && npm ci && npm run build
+install-web:
+	cd web/landing && npm ci
+
+build-site: install-web
+	cd web/landing && npm run build
 
 build-all: build build-site
+
+lint-web:
+	cd web/landing && npm run lint
+
+test-web:
+	cd web/landing && npm run test
+
+cover-web:
+	cd web/landing && npm run cover
