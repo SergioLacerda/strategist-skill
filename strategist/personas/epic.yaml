@@ -42,6 +42,33 @@ rendering_policy:
     runtime_evidence emits structured telemetry payloads. The active persona does
     not rewrite or stylize these events.
 
+console_policy:
+  show_raw_events: false
+  show_skill_identity: true
+  show_mission_envelope: true
+  show_phase_timeline: true
+  show_artifacts: true
+  emit_jsonl_telemetry: false
+  forbidden_in_output:
+    - pattern: "\\[Strategist\\] \\w+=\\S+"
+      reason: "raw key=value event leaked — use content_by_lang template instead"
+
+mission_envelope:
+  open: |
+    ╔══════════════════════════════════════════════════════════╗
+    ║  STRATEGIST SKILL                                       ║
+    ║  Missão: {mission_id}                                   ║
+    ║  Perfil: {profile} · Governança: {governance}           ║
+    ╚══════════════════════════════════════════════════════════╝
+  close: |
+    ╔══════════════════════════════════════════════════════════╗
+    ║  STRATEGIST SKILL · {status_label}                      ║
+    ╠══════════════════════════════════════════════════════════╣
+    {phase_timeline}
+    {artifact_block}
+    🎯 {conclusion_text}
+    ╚══════════════════════════════════════════════════════════╝
+
 runtime_evidence:
   pipeline_starting: >
     [Strategist] pipeline=starting profile_mode={profile_mode} profile_source_path={profile_source_path} active_yaml_path={active_yaml_path} persona_resolved={persona_resolved} reason={reason}
@@ -250,8 +277,8 @@ content_by_lang:
       Plano em: {artifact_path}
       Para executar depois: re-invocar Strategist com o caminho do plano.
     mission_complete: >
-      🗡️ Missão concluída. Status: {status}
-      Artefatos: {artifacts}
-      Próxima ação: {next_action}
+      use mission_envelope.close with status_label="MISSÃO CONCLUÍDA"
+      phase_timeline={checkpoint_lines} artifact_block={artifact_list}
+      conclusion_text="Missão {mission_id} concluída. Próxima ação: {next_action}"
     mission_metrics: >
       [Strategist] metrics mission={mission_id} t_start_to_intake_ms={t_start_to_intake_ms} t_intake_to_ranger_ms={t_intake_to_ranger_ms} total_wall_time_ms={total_wall_time_ms} tokens_in={tokens_in} tokens_out={tokens_out} lines_emitted={lines_emitted}

@@ -26,6 +26,11 @@ Strategist stops immediately on:
 6. Override execution provider from an undeclared source
 7. Skip preflight
 8. Mutate the repo without canonical pipeline evidence
+9. Emit raw `[Strategist] key=value` events to the user console when `profile=epic`
+
+   Raw runtime-evidence lines are classified as DEBUG. When `profile=epic`, all
+   user-facing output MUST use `content_by_lang` templates or `mission_envelope`.
+   DEBUG-level events are routed to telemetry only, never to the console.
 
 ## Canonical Pipeline Evidence
 

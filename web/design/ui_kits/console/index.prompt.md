@@ -1,0 +1,1 @@
+Excelente, eu havia comentado sobre melhora o icone no layout antigo, podemos ter icones para cada etapa: Lupa para o discovery, Um "scroll" com uma pena(denotando escrita) para refinamento, portal para "gate de aprovacao",  uma mira para execucao

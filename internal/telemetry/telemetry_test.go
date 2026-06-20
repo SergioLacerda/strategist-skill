@@ -15,11 +15,19 @@ func TestFromEnv_defaults(t *testing.T) {
 	if cfg.ServiceName != "strategist" {
 		t.Errorf("expected default ServiceName=strategist, got %q", cfg.ServiceName)
 	}
-	if cfg.Insecure != true {
-		t.Error("expected Insecure=true by default")
+	if cfg.Insecure != false {
+		t.Error("expected Insecure=false by default (TLS required)")
 	}
 	if cfg.Endpoint != "" {
 		t.Errorf("expected empty Endpoint, got %q", cfg.Endpoint)
+	}
+}
+
+func TestFromEnv_insecure_explicit_optin(t *testing.T) {
+	t.Setenv("OTEL_EXPORTER_OTLP_INSECURE", "true")
+	cfg := FromEnv()
+	if !cfg.Insecure {
+		t.Error("expected Insecure=true when env is 'true'")
 	}
 }
 

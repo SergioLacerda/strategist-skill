@@ -1,5 +1,7 @@
 package telemetry
 
+import "path/filepath"
+
 // Attribute key constants for Strategist OTel spans and log records.
 const (
 	AttrPhase            = "strategist.phase"
@@ -31,3 +33,15 @@ const (
 	AttrTokensOut        = "strategist.metrics.tokens_out"
 	AttrLinesEmitted     = "strategist.metrics.lines_emitted"
 )
+
+const redactedPath = "<redacted-path>"
+
+// SanitizePath replaces absolute paths with a sentinel before use as a span attribute.
+// Call this on any string that may originate from user filesystem input before
+// attaching it to a trace span.
+func SanitizePath(p string) string {
+	if filepath.IsAbs(p) {
+		return redactedPath
+	}
+	return p
+}

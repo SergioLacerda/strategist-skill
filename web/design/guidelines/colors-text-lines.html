@@ -1,0 +1,24 @@
+<!-- @dsCard group="Colors" viewport="700x180" name="Text & hairlines" subtitle="Parchment text ramp + amber hairlines on dark" -->
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8" /><link rel="stylesheet" href="../styles.css" />
+<style>
+  html,body{margin:0}
+  body{background:var(--bg);font-family:var(--font-mono);padding:24px 26px}
+  .ramp{display:flex;flex-direction:column;gap:7px;margin-bottom:18px}
+  .ramp div{font-size:15px}
+  .lines{display:flex;gap:16px}
+  .lcard{flex:1;height:52px;border-radius:var(--radius-sm);background:var(--panel)}
+  .l1{border:1px solid var(--line)} .l2{border:1px solid var(--line-2)}
+  .cap{font-size:11px;color:var(--faint);margin-top:6px}
+</style></head>
+<body>
+  <div class="ramp">
+    <div style="color:var(--text)">--text · #d9c49a — body parchment</div>
+    <div style="color:var(--muted)">--muted · #9b865d — secondary copy</div>
+    <div style="color:var(--faint)">--faint · #6c5c3e — captions, scaffolding</div>
+  </div>
+  <div class="lines">
+    <div style="flex:1"><div class="lcard l1"></div><div class="cap">--line · rgba(232,194,90,.16)</div></div>
+    <div style="flex:1"><div class="lcard l2"></div><div class="cap">--line-2 · rgba(232,194,90,.32)</div></div>
+  </div>
+</body></html>

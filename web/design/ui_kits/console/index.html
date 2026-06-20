@@ -1,0 +1,416 @@
+<!-- @dsCard group="Console" viewport="1180x720" name="Strategist Console (v2)" subtitle="Tabbed console — Overview / Roles+Arsenal / Skills / Mission flow / Invoke · PT-EN" -->
+<!-- @startingPoint section="Console" subtitle="Strategist tabbed console — professional, segmented by tabs" viewport="1180x860" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Strategist · Governed AI Mission Orchestrator</title>
+<meta name="description" content="Strategist is an AI orchestration skill that turns requests into governed missions: discovery, refinement, a mandatory human approval gate, and controlled execution through pluggable roles." />
+<meta name="theme-color" content="#14100a" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Strategist · Governed AI Mission Orchestrator" />
+<meta property="og:description" content="Orchestrate AI agents through discovery, refinement, approval gates and controlled execution — reducing improvisation, drift and risk in AI workflows." />
+<meta property="og:url" content="https://sergiolacerda.github.io/strategist-skill/" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Strategist · Governed AI Mission Orchestrator" />
+<meta name="twitter:description" content="Discovery → refinement → approval gate → controlled execution, through pluggable roles." />
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  html, body { margin: 0; background: var(--bg); }
+  .stage { display: flex; justify-content: center; background: var(--bg); min-height: 100vh; }
+  @media (max-width: 1220px) { .stage { overflow-x: auto; } }
+
+  .app {
+    width: 1180px; position: relative; overflow: hidden;
+    font-family: var(--font-mono); color: var(--text);
+    background: var(--grad-page); -webkit-font-smoothing: antialiased; min-height: 100vh;
+  }
+
+  /* ---- top bar ---- */
+  .topbar {
+    position: sticky; top: 0; z-index: 30;
+    display: flex; align-items: center; justify-content: space-between; gap: 24px;
+    padding: 16px 36px;
+    background: rgba(12, 8, 5, .82); backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line-2);
+  }
+  .nav { display: flex; gap: 4px; }
+  .nav button {
+    font-family: var(--font-mono); font-size: 12.5px; letter-spacing: .12em; text-transform: uppercase;
+    background: transparent; border: none; color: var(--muted); cursor: pointer;
+    padding: 9px 15px; border-radius: var(--radius-sm); position: relative;
+    transition: color var(--dur), background var(--dur);
+  }
+  .nav button:hover { color: var(--amber); background: rgba(232,194,90,.05); }
+  .nav button.active { color: var(--amber-hi); text-shadow: 0 0 10px rgba(232,194,90,.35); }
+  .nav button.active::after {
+    content: ""; position: absolute; left: 15px; right: 15px; bottom: 2px; height: 1px;
+    background: var(--amber); box-shadow: 0 0 8px rgba(232,194,90,.6);
+  }
+  .langbar { display: flex; gap: 6px; }
+  .langbar button {
+    font-family: var(--font-mono); font-size: 11.5px; background: rgba(20,15,9,.7);
+    border: 1px solid var(--line-2); color: var(--muted); border-radius: var(--radius-sm);
+    padding: 6px 10px; cursor: pointer; transition: color var(--dur), border-color var(--dur);
+  }
+  .langbar button.active { color: var(--amber-hi); border-color: var(--amber); }
+  .rightcluster { display: flex; align-items: center; gap: 14px; }
+  .gh { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border: 1px solid var(--line-2); border-radius: var(--radius-sm); color: var(--amber-dim); transition: color var(--dur), border-color var(--dur), box-shadow var(--dur); }
+  .gh:hover { color: var(--amber-hi); border-color: var(--amber); box-shadow: 0 0 14px rgba(232,194,90,.18); }
+
+  /* ---- content ---- */
+  .main { max-width: 1080px; margin: 0 auto; padding: 46px 40px 64px; }
+  .panel-head { margin-bottom: 30px; }
+  .eyebrow { font-family: var(--font-display); color: var(--orange); letter-spacing: .4em; text-transform: uppercase; font-size: 12px; }
+  .ptitle { font-family: var(--font-grimoire); font-weight: 700; font-size: 38px; color: var(--amber-hi); letter-spacing: .03em; margin: 8px 0 10px; text-shadow: 0 0 22px rgba(232,194,90,.28); }
+  .pdesc { max-width: 640px; font-size: 14px; color: var(--muted); line-height: var(--lh-body); }
+  .subhead { display: flex; align-items: baseline; gap: 14px; margin: 44px 0 20px; }
+  .subhead .h { font-family: var(--font-display); font-size: 17px; letter-spacing: .12em; text-transform: uppercase; color: var(--amber); white-space: nowrap; }
+  .subhead .rule { flex: 1; height: 1px; background: var(--line-2); }
+  .subhead .meta { font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--faint); }
+  .subhead.center .h { white-space: nowrap; flex: none; }
+
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 18px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 18px; }
+
+  /* ---- overview hero ---- */
+  .hero { text-align: center; padding: 30px 0 8px; position: relative; }
+  .hero .ornament { color: var(--amber-dim); letter-spacing: .5em; font-size: 14px; margin: 20px 0 16px; }
+  .hero .tagline { font-family: var(--font-display); font-size: 14px; letter-spacing: .42em; text-transform: uppercase; color: var(--orange); }
+  .hero .lede { max-width: 660px; margin: 22px auto 0; font-size: 15.5px; color: var(--text); line-height: 1.7; }
+  .hero .lede b { color: var(--amber); }
+  .badges { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 24px; }
+  .pill { font-family: var(--font-mono); font-size: 12px; letter-spacing: .06em; color: var(--amber); border: 1px solid var(--line-2); background: rgba(232,194,90,.06); border-radius: 999px; padding: 7px 15px; display: inline-flex; align-items: center; gap: 8px; }
+  .pill span { color: var(--orange); }
+  .cta { display: flex; gap: 14px; justify-content: center; margin-top: 26px; flex-wrap: wrap; }
+
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 50px; }
+  .tile {
+    text-align: left; cursor: pointer; padding: 20px; border-radius: var(--radius-md);
+    border: 1px solid var(--line-2); background: var(--grad-panel); box-shadow: inset 0 0 30px rgba(0,0,0,.35);
+    transition: border-color var(--dur), box-shadow var(--dur), transform var(--dur-fast); font-family: var(--font-mono);
+  }
+  .tile:hover { border-color: var(--amber); box-shadow: inset 0 0 30px rgba(0,0,0,.35), 0 0 18px rgba(232,194,90,.15); transform: translateY(-2px); }
+  .tile .tg { font-size: 26px; color: var(--amber); text-shadow: var(--glow-amber); }
+  .tile .tl { font-size: 14px; color: var(--amber-hi); margin-top: 16px; line-height: 1.35; letter-spacing: .02em; }
+  .tile .ts { font-size: 12px; color: var(--faint); margin-top: 8px; line-height: 1.5; }
+
+  /* ---- weapon / pending cards ---- */
+  .wcard {
+    position: relative; border: 1px dashed var(--line-2); border-radius: var(--radius-md);
+    background: linear-gradient(180deg, rgba(42,33,23,.32), rgba(20,15,9,.3));
+    padding: 20px 20px 18px; text-align: center;
+  }
+  .wcard .wg { font-size: 28px; color: var(--amber); text-shadow: var(--glow-amber-soft); }
+  .wcard .we { font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: var(--orange); margin-top: 10px; }
+  .wcard .wn { font-family: var(--font-grimoire); font-weight: 700; font-size: 16px; color: var(--amber-hi); margin: 5px 0 8px; }
+  .wcard .wp { font-size: 12px; color: var(--faint); font-style: italic; }
+  .tagchip {
+    position: absolute; top: 12px; right: 12px; font-size: 9px; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--orange); border: 1px solid var(--orange); border-radius: var(--radius-pill); padding: 3px 8px;
+  }
+  .tagchip.newt { color: var(--green); border-color: var(--green-dim); }
+
+  /* ---- mission phases ---- */
+  .phases { display: flex; flex-direction: column; gap: 12px; margin-bottom: 34px; }
+  .phase {
+    display: grid; grid-template-columns: 52px 1fr auto; align-items: center; gap: 20px;
+    border: 1px solid var(--line); border-left: 2px solid var(--amber-dim); border-radius: var(--radius-sm);
+    background: var(--grad-panel); padding: 16px 22px;
+  }
+  .phase.gate { border-left-color: var(--orange); border-style: dashed; background: linear-gradient(180deg, rgba(207,122,44,.10), rgba(20,15,9,.4)); }
+  .phase .pico { width: 48px; height: 48px; border: 1px solid var(--line-2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; color: var(--amber); background: radial-gradient(circle, rgba(232,194,90,.14), transparent 70%); text-shadow: var(--glow-amber-soft); }
+  .phase.gate .pico { color: var(--orange); border-color: var(--orange); text-shadow: 0 0 12px rgba(207,122,44,.5); }
+  .phase .pnum { font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: var(--faint); margin-bottom: 3px; }
+  .phase .pname { font-family: var(--font-display); font-size: 18px; letter-spacing: .06em; color: var(--amber-hi); }
+  .phase .pd { font-size: 13px; color: var(--muted); margin-top: 3px; }
+  .phase .pwho { font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: var(--orange); border: 1px solid var(--line-2); border-radius: var(--radius-pill); padding: 5px 12px; white-space: nowrap; }
+
+  /* mechanism blocks + ranked-skill examples */
+  .mblock { border: 1px solid var(--line-2); border-radius: var(--radius-md); background: var(--grad-panel); box-shadow: inset 0 0 30px rgba(0,0,0,.35); padding: 22px 24px; }
+  .mblock .mg { font-size: 26px; color: var(--amber); text-shadow: var(--glow-amber-soft); }
+  .mblock .mh { font-family: var(--font-grimoire); font-weight: 700; font-size: 18px; color: var(--amber-hi); margin: 12px 0 8px; }
+  .mblock .mp { font-size: 13px; color: var(--muted); line-height: var(--lh-body); margin: 0; }
+  .mblock .mp b { color: var(--amber); }
+  .excard { border: 1px solid var(--line-2); border-radius: var(--radius-md); background: var(--grad-panel); box-shadow: inset 0 0 30px rgba(0,0,0,.35); padding: 20px 22px; }
+  .exhead { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .exmed { width: 42px; height: 42px; flex: none; border: 1px solid var(--line-2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; color: var(--amber); background: radial-gradient(circle, rgba(232,194,90,.14), transparent 70%); text-shadow: var(--glow-amber-soft); }
+  .exrole { font-family: var(--font-grimoire); font-weight: 700; font-size: 18px; color: var(--amber-hi); flex: 1; }
+  .rankbadge { font-size: 9.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--green); border: 1px solid var(--green-dim); border-radius: var(--radius-pill); padding: 4px 10px; }
+  .exrow { display: flex; align-items: flex-start; gap: 14px; padding: 9px 0; border-top: 1px solid var(--line); }
+  .exlbl { width: 50px; flex: none; font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--faint); padding-top: 6px; }
+  .skillchip { font-size: 13px; color: var(--amber-hi); background: rgba(232,194,90,.08); border: 1px solid var(--line-2); border-radius: var(--radius-xs); padding: 5px 11px; }
+  .wchips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .wchip { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text); background: rgba(0,0,0,.25); border: 1px solid var(--line); border-radius: var(--radius-xs); padding: 5px 10px; }
+  .wchip span { color: var(--amber); }
+
+  .mapwrap { text-align: center; margin: 12px 0 34px; }
+  .map { display: inline-block; text-align: left; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.4; color: var(--amber-dim); white-space: pre; border: 1px solid var(--line-2); border-radius: 6px; background: linear-gradient(180deg, rgba(42,33,23,.45), rgba(12,8,5,.55)); box-shadow: inset 0 0 40px rgba(0,0,0,.5); padding: 24px 30px; overflow: hidden; }
+  .map .node { color: var(--amber-hi); text-shadow: 0 0 10px rgba(232,194,90,.45); }
+  .map .gate { color: var(--orange); text-shadow: 0 0 10px rgba(207,122,44,.4); }
+  .map .lp { color: var(--green); }
+  .map .g1 { display: inline-block; width: 1ch; text-align: center; }
+
+  .invoke-panel { max-width: 100%; }
+  .invoke-panel pre { white-space: pre !important; overflow-x: auto; word-break: normal !important; }
+  .footer { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 22px; text-align: center; color: var(--faint); font-size: 12px; letter-spacing: .12em; }
+  .footer a { color: var(--amber-dim); text-decoration: none; }
+</style>
+</head>
+<body>
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <rect width="100" height="100" fill="#14100a"/>
+    <g transform="translate(50,50)">
+      <path d="M0 -33 L33 0 L0 33 L-33 0 Z" fill="none" stroke="#b8933f" stroke-width="2"/>
+      <circle r="20" fill="none" stroke="#e8c25a" stroke-width="1.4" opacity=".6"/>
+      <path d="M0 -22 L5 -5 L22 0 L5 5 L0 22 L-5 5 L-22 0 L-5 -5 Z" fill="#e8c25a"/>
+    </g>
+  </svg>
+</template>
+<div class="stage">
+  <div class="app crt" id="app">
+    <div id="root"></div>
+    <noscript>
+      <div style="max-width:760px;margin:0 auto;padding:64px 32px;font-family:var(--font-mono);color:var(--text);line-height:1.6">
+        <h1 style="font-family:var(--font-grimoire);color:var(--amber-hi);font-size:40px;margin:0 0 6px">Strategist</h1>
+        <p style="color:var(--orange);letter-spacing:.3em;text-transform:uppercase;font-size:12px;margin:0 0 20px">Governed AI Mission Orchestrator</p>
+        <p>Strategist turns an ambiguous request into a <strong>governed mission</strong>. An orchestrator coordinates three pluggable roles — <strong>Ranger</strong> (discovery), <strong>Archivist</strong> (refinement) and <strong>Sniper</strong> (execution) — separated by a mandatory <strong>human approval gate</strong>. It never executes without explicit approval.</p>
+        <h2 style="color:var(--amber);font-size:18px;margin:24px 0 8px">Mission flow</h2>
+        <p>Discovery → Refinement → Approval Gate → Execution, with a non-blocking learning loop. Discovery and refinement run autonomously; execution proceeds only after the gate.</p>
+        <h2 style="color:var(--amber);font-size:18px;margin:24px 0 8px">Install</h2>
+        <pre style="background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:4px;padding:14px;overflow:auto">curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.sh | bash
+strategist install --wizard</pre>
+        <p style="margin-top:24px"><a href="https://github.com/SergioLacerda/strategist-skill" style="color:var(--amber)">github.com/SergioLacerda/strategist-skill</a> · CC BY-NC 4.0</p>
+        <p style="color:var(--faint);font-size:12px">This interactive console requires JavaScript. The text above is the no-script summary.</p>
+      </div>
+    </noscript>
+  </div>
+</div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<script src="i18n.js"></script>
+
+<script type="text/babel">
+  const DS = window.StrategistDesignSystem_88a8a0;
+  const { Logo, Badge, Button, RoleCard, SkillPanel, GatePanel, InstallBlock } = DS;
+
+  const TABS = ["overview", "roles", "skills", "mission", "invoke"];
+  const html = (s) => ({ dangerouslySetInnerHTML: { __html: s } });
+
+  function PanelHead({ eyebrow, title, desc }) {
+    return (
+      <div className="panel-head">
+        <div className="eyebrow">{eyebrow}</div>
+        <h1 className="ptitle">{title}</h1>
+        <p className="pdesc">{desc}</p>
+      </div>
+    );
+  }
+  function SubHead({ children, meta, center }) {
+    if (center) {
+      return (
+        <div className="subhead center">
+          <span className="rule" />
+          <span className="h">{children}</span>
+          <span className="rule" />
+        </div>
+      );
+    }
+    return (
+      <div className="subhead">
+        <span className="h">{children}</span>
+        <span className="rule" />
+        {meta && <span className="meta">{meta}</span>}
+      </div>
+    );
+  }
+
+  function Overview({ t, go }) {
+    return (
+      <div>
+        <div className="hero">
+          <Logo variant="mark" size={72} style={{ display: "flex", justifyContent: "center", width: "100%" }} />
+          <div className="ornament">━━━━━━ ⟡ ━━━━━━</div>
+          <Logo variant="wordmark" size={62} style={{ display: "flex", justifyContent: "center", width: "100%" }} />
+          <div className="tagline" style={{ marginTop: 14 }}>{t.tagline}</div>
+          <p className="lede" {...html(t.lede)} />
+          <div className="badges">
+            {t.heroBadges.map((b, i) => (
+              <span key={i} className="pill"><span>◆</span>{b}</span>
+            ))}
+          </div>
+          <div className="cta">
+            <Button variant="primary" icon="❯" onClick={() => go("invoke")}>{t.ctaPrimary}</Button>
+            <Button onClick={() => go("mission")}>{t.ctaSecondary}</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function Roles({ t }) {
+    return (
+      <div>
+        <PanelHead eyebrow={t.rolesEyebrow} title={t.rolesTitle} desc={t.rolesDesc} />
+        <div className="cards">
+          {t.roles.map((r, i) => (
+            <RoleCard key={i} glyph={r.glyph} role={r.role} klass={r.klass} feature={r.feature}>
+              <span {...html(r.desc)} />
+            </RoleCard>
+          ))}
+        </div>
+        <SubHead meta={t.mechEyebrow}>{t.mechTitle}</SubHead>
+        <p className="pdesc" style={{ marginTop: -8, marginBottom: 22 }}>{t.mechDesc}</p>
+        <div className="cards">
+          {t.mech.map((m, i) => (
+            <div key={i} className="mblock">
+              <div className="mg">{m.glyph}</div>
+              <div className="mh">{m.title}</div>
+              <p className="mp" {...html(m.desc)} />
+            </div>
+          ))}
+        </div>
+        <SubHead meta={t.examplesEyebrow}>{t.examplesTitle}</SubHead>
+        <div className="cards">
+          {t.examples.map((ex, i) => (
+            <div key={i} className="excard">
+              <div className="exhead">
+                <div className="exmed">{ex.glyph}</div>
+                <div className="exrole">{ex.role}</div>
+                <span className="rankbadge">{t.rankLabel}</span>
+              </div>
+              <div className="exrow">
+                <span className="exlbl">{t.skillLabel}</span>
+                <span className="skillchip">{ex.skill}</span>
+              </div>
+              <div className="exrow">
+                <span className="exlbl">{t.weaponsLabel}</span>
+                <div className="wchips">
+                  {ex.weapons.map((w, j) => (
+                    <span key={j} className="wchip"><span>†</span>{w}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  function Skills({ t }) {
+    return (
+      <div>
+        <PanelHead eyebrow={t.skillsEyebrow} title={t.skillsTitle} desc={t.skillsDesc} />
+        <div className="grid3">
+          {t.skills.map((s, i) => (
+            <SkillPanel key={i} icon={s.icon} title={s.title}>
+              <span {...html(s.desc)} />
+            </SkillPanel>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  function Mission({ t }) {
+    return (
+      <div>
+        <PanelHead eyebrow={t.missionEyebrow} title={t.missionTitle} desc={t.missionDesc} />
+        <div className="phases">
+          {t.phases.map((p, i) => (
+            <div key={i} className={"phase" + (p.gate ? " gate" : "")}>
+              <div className="pico">{p.glyph}</div>
+              <div>
+                <div className="pnum">{t.phaseLabel} {p.n}</div>
+                <div className="pname">{p.name}</div>
+                <div className="pd">{p.desc}</div>
+              </div>
+              <div className="pwho">{p.who}</div>
+            </div>
+          ))}
+        </div>
+        <SubHead>{t.diagramLabel}</SubHead>
+        <div className="mapwrap"><div className="map" {...html(t.pipeline)} /></div>
+        <SubHead center>{t.gateTitle}</SubHead>
+        <GatePanel heading={<span {...html(t.gateHead)} />}>{t.gateP}</GatePanel>
+      </div>
+    );
+  }
+
+  function Invoke({ t }) {
+    return (
+      <div>
+        <PanelHead eyebrow={t.invokeEyebrow} title={t.invokeTitle} desc={t.invokeDesc} />
+        <div className="invoke-panel">
+          <SubHead meta={t.step1Meta}>{t.step1Title}</SubHead>
+          <InstallBlock
+            commands={[
+              { label: "Linux / macOS / WSL", command: "curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.sh | bash" },
+              { label: "Windows PowerShell", command: "irm https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.ps1 | iex" },
+            ]}
+            source="raw.githubusercontent.com/SergioLacerda/strategist-skill/main/"
+          />
+          <SubHead meta={t.step2Meta}>{t.step2Title}</SubHead>
+          <p className="pdesc" style={{ marginTop: -8, marginBottom: 18 }}>{t.step2Desc}</p>
+          <InstallBlock label={t.cliLabel} command="strategist install --wizard" />
+        </div>
+      </div>
+    );
+  }
+
+  function App() {
+    const read = (k, d) => { try { return localStorage.getItem(k) || d; } catch (e) { return d; } };
+    const [lang, setLang] = React.useState(read("strategist_console_lang", "pt"));
+    const [tab, setTab] = React.useState(read("strategist_console_tab", "overview"));
+    const t = window.CONSOLE_I18N[lang];
+
+    React.useEffect(() => { try { localStorage.setItem("strategist_console_lang", lang); } catch (e) {} }, [lang]);
+    React.useEffect(() => {
+      try { localStorage.setItem("strategist_console_tab", tab); } catch (e) {}
+      const m = document.querySelector(".main"); if (m) m.scrollTop = 0;
+      window.scrollTo({ top: 0 });
+    }, [tab]);
+
+    const go = (x) => setTab(x);
+    const Panel = { overview: Overview, roles: Roles, skills: Skills, mission: Mission, invoke: Invoke }[tab];
+
+    return (
+      <div>
+        <div className="topbar">
+          <Logo size={34} />
+          <div className="nav">
+            {TABS.map((x) => (
+              <button key={x} className={x === tab ? "active" : ""} onClick={() => go(x)}>{t.nav[x]}</button>
+            ))}
+          </div>
+          <div className="rightcluster">
+            <a className="gh" href="https://github.com/SergioLacerda/strategist-skill" target="_blank" rel="noopener" title="GitHub" aria-label="GitHub">
+              <svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+            </a>
+            <div className="langbar">
+              <button className={lang === "pt" ? "active" : ""} onClick={() => setLang("pt")}>🇧🇷 PT</button>
+              <button className={lang === "en" ? "active" : ""} onClick={() => setLang("en")}>🇺🇸 EN</button>
+            </div>
+          </div>
+        </div>
+        <div className="main">
+          <Panel t={t} go={go} />
+          <div className="footer">
+            strategist-skill &nbsp;·&nbsp; Sergio Lacerda &amp; Raphael Vernil &nbsp;·&nbsp; CC BY-NC 4.0
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

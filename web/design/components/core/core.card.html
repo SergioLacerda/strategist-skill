@@ -1,0 +1,61 @@
+<!-- @dsCard group="Components" viewport="700x380" name="Core — Button · Badge · Section" subtitle="Buttons, status badges, ornamental section labels" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: var(--font-mono);
+    padding: 28px 30px;
+    display: flex; flex-direction: column; gap: 24px;
+  }
+  .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .lbl { font-size: 10px; letter-spacing: .22em; text-transform: uppercase; color: var(--faint); margin-bottom: 10px; }
+  .block { border-top: 1px solid var(--line); padding-top: 16px; }
+</style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="../../_ds_bundle.js"></script>
+
+  <script type="text/babel">
+    const { Button, Badge, SectionLabel } = window.StrategistDesignSystem_88a8a0;
+    function Demo() {
+      return (
+        <>
+          <div>
+            <div className="lbl">Buttons</div>
+            <div className="row">
+              <Button variant="primary" icon="❯">Invoke the skill</Button>
+              <Button>View on GitHub ↗</Button>
+              <Button variant="ghost">Cancel</Button>
+              <Button disabled>Locked</Button>
+            </div>
+          </div>
+          <div className="block">
+            <div className="lbl">Badges</div>
+            <div className="row">
+              <Badge label="CI" value="passing" tone="ok" />
+              <Badge label="version" value="1.0" tone="amber" />
+              <Badge label="license" value="CC BY-NC 4.0" tone="orange" />
+              <Badge label="mode" value="pragmatic · epic" tone="ok" />
+            </div>
+          </div>
+          <div className="block">
+            <div className="lbl">Section label</div>
+            <SectionLabel>mission pipeline</SectionLabel>
+          </div>
+        </>
+      );
+    }
+    ReactDOM.createRoot(document.getElementById("root")).render(<Demo />);
+  </script>
+</body>
+</html>

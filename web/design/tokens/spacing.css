@@ -1,0 +1,33 @@
+/* ============================================================
+   STRATEGIST · SPACING, RADII, BORDERS
+   Compact, panel-driven rhythm. Radii are small (3–6px) — this
+   is a terminal/grimoire, not a soft consumer app.
+   ============================================================ */
+
+:root {
+  /* —— Spacing scale (px) —— */
+  --space-1:   4px;
+  --space-2:   8px;
+  --space-3:   12px;
+  --space-4:   16px;
+  --space-5:   20px;
+  --space-6:   26px;
+  --space-7:   34px;
+  --space-8:   48px;
+  --space-9:   64px;
+  --space-10:  80px;   /* hero / section gutters */
+
+  /* —— Radii (kept small + sharp) —— */
+  --radius-xs:  3px;   /* badges, terminal chips */
+  --radius-sm:  4px;   /* buttons, cards, install blocks */
+  --radius-md:  6px;   /* panels, chambers, portals */
+  --radius-pill: 999px;/* klass tags */
+
+  /* —— Border widths —— */
+  --bw-hair:  1px;
+  --bw-gate:  1px;     /* gate uses dashed 1px in --border-gate */
+
+  /* —— Layout —— */
+  --page-max:   1120px;   /* canonical fixed page width */
+  --gutter:     80px;     /* hero / section horizontal padding */
+}

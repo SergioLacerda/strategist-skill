@@ -1,0 +1,173 @@
+<!-- @dsCard group="Landing" viewport="1120x680" name="Strategist — landing" subtitle="Full landing recreation · PT/EN toggle, composed from DS components" -->
+<!-- @startingPoint section="Landing" subtitle="Strategist grimoire landing page" viewport="1120x900" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Strategist · landing</title>
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  html, body { margin: 0; background: var(--bg); }
+  .stage { display: flex; justify-content: center; background: var(--bg); min-height: 100vh; }
+  @media (max-width: 1160px) { .stage { overflow-x: auto; } }
+
+  .page {
+    width: 1120px; position: relative; overflow: hidden;
+    font-family: var(--font-mono); color: var(--text);
+    background: var(--grad-page); -webkit-font-smoothing: antialiased; line-height: 1.5;
+  }
+
+  .hero { padding: 80px 80px 56px; text-align: center; position: relative; }
+  .authors { position: absolute; top: 26px; left: 30px; text-align: left; line-height: 1.35; }
+  .authors .lbl { font-size: 10px; letter-spacing: .24em; text-transform: uppercase; color: var(--faint); }
+  .authors .names { font-family: var(--font-grimoire); font-weight: 700; font-size: 14px; color: var(--amber-dim); letter-spacing: .03em; }
+  .crest { font-size: 40px; color: var(--amber); text-shadow: 0 0 22px rgba(232,194,90,.55); letter-spacing: .3em; }
+  .ornament { color: var(--amber-dim); letter-spacing: .5em; font-size: 14px; margin: 14px 0; }
+  .title { font-family: var(--font-grimoire); font-weight: 700; font-size: 68px; line-height: .98; color: var(--amber-hi); margin: 6px 0; letter-spacing: .04em; text-shadow: 0 0 30px rgba(232,194,90,.35); }
+  .sub { font-family: var(--font-display); font-size: 15px; letter-spacing: .42em; text-transform: uppercase; color: var(--orange); }
+  .lede { max-width: 700px; margin: 22px auto 0; font-size: 16px; color: var(--text); line-height: 1.7; }
+  .lede b { color: var(--amber); }
+  .badges { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 26px; }
+  .cta { display: flex; gap: 14px; justify-content: center; margin-top: 28px; flex-wrap: wrap; }
+
+  .scroll-sec { padding: 14px 80px 0; }
+  .seclabel { font-family: var(--font-display); text-align: center; color: var(--orange); letter-spacing: .4em; text-transform: uppercase; font-size: 13px; margin: 40px 0 6px; }
+  .secrule { text-align: center; color: var(--amber-dim); letter-spacing: .4em; font-size: 13px; margin-bottom: 26px; }
+
+  .mapwrap { text-align: center; padding: 0 40px; }
+  .map { display: inline-block; text-align: left; font-family: var(--font-mono); font-size: 14px; line-height: 1.4; color: var(--amber-dim); white-space: pre; border: 1px solid var(--line-2); border-radius: 6px; background: linear-gradient(180deg, rgba(42,33,23,.45), rgba(12,8,5,.55)); box-shadow: inset 0 0 40px rgba(0,0,0,.5); padding: 26px 34px; overflow: hidden; }
+  .map .node { color: var(--amber-hi); text-shadow: 0 0 10px rgba(232,194,90,.45); }
+  .map .gate { color: var(--orange); text-shadow: 0 0 10px rgba(207,122,44,.4); }
+  .map .lp { color: var(--green); }
+  .map .g1 { display: inline-block; width: 1ch; text-align: center; }
+
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .sq-row { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 18px; }
+  .gatewrap { padding: 0 80px; }
+  .invoke-panel { max-width: 660px; margin: 0 auto; }
+  .runefoot { text-align: center; color: var(--faint); font-size: 12px; letter-spacing: .2em; padding: 38px 0 50px; }
+  .runefoot a { color: var(--amber-dim); text-decoration: none; }
+  .runefoot a[data-lang].active { color: var(--amber-hi); text-shadow: 0 0 10px rgba(232,194,90,.3); }
+
+  .langbar { position: absolute; top: 18px; right: 22px; z-index: 9; display: flex; gap: 8px; font-size: 12px; }
+  .langbar button { font-family: var(--font-mono); background: rgba(20,15,9,.7); border: 1px solid var(--line-2); color: var(--muted); border-radius: 4px; padding: 5px 10px; cursor: pointer; }
+  .langbar button.active { color: var(--amber-hi); border-color: var(--amber); }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="page crt" id="page">
+    <div class="langbar">
+      <button data-lang="pt">🇧🇷 PT</button>
+      <button data-lang="en">🇺🇸 EN</button>
+    </div>
+    <div id="root"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<script src="i18n.js"></script>
+<script type="text/babel" src="Hero.jsx"></script>
+<script type="text/babel" src="PipelineMap.jsx"></script>
+
+<script type="text/babel">
+  const { RoleCard, SkillPanel, GatePanel, InstallBlock, SectionLabel } = window.StrategistDesignSystem_88a8a0;
+
+  function Landing() {
+    const init = (() => {
+      try { return localStorage.getItem("strategist_kit_lang") || "en"; } catch (e) { return "en"; }
+    })();
+    const [lang, setLang] = React.useState(init);
+    const t = window.LANDING_I18N[lang];
+
+    React.useEffect(() => {
+      try { localStorage.setItem("strategist_kit_lang", lang); } catch (e) {}
+      document.querySelectorAll(".langbar button").forEach((b) =>
+        b.classList.toggle("active", b.getAttribute("data-lang") === lang)
+      );
+    }, [lang]);
+
+    React.useEffect(() => {
+      const onClick = (e) => {
+        const b = e.target.closest("[data-lang]");
+        if (b) setLang(b.getAttribute("data-lang"));
+      };
+      document.addEventListener("click", onClick);
+      return () => document.removeEventListener("click", onClick);
+    }, []);
+
+    const scrollToInvoke = () => {
+      const el = document.getElementById("invocation");
+      if (el) window.scrollTo({ top: el.offsetTop - 40, behavior: "smooth" });
+    };
+
+    return (
+      <div>
+        <window.Hero lang={lang} onInvoke={scrollToInvoke} />
+
+        <div className="scroll-sec">
+          <SectionLabel>{t.secPipeline}</SectionLabel>
+          <window.PipelineMap lang={lang} />
+        </div>
+
+        <div className="scroll-sec">
+          <SectionLabel>{t.secRoles}</SectionLabel>
+          <div className="cards">
+            {t.roles.map((r, i) => (
+              <RoleCard key={i} glyph={r.glyph} role={r.role} klass={r.klass} feature={r.feature}>
+                <span dangerouslySetInnerHTML={{ __html: r.desc }} />
+              </RoleCard>
+            ))}
+          </div>
+        </div>
+
+        <div className="scroll-sec">
+          <SectionLabel>{t.secSkills}</SectionLabel>
+          <div className="sq-row">
+            {t.skills.map((s, i) => (
+              <SkillPanel key={i} icon={s.icon} title={s.title}>
+                <span dangerouslySetInnerHTML={{ __html: s.desc }} />
+              </SkillPanel>
+            ))}
+          </div>
+        </div>
+
+        <div className="scroll-sec">
+          <SectionLabel>{t.secGate}</SectionLabel>
+          <div className="gatewrap">
+            <GatePanel heading={<span dangerouslySetInnerHTML={{ __html: t.gateHead }} />}>
+              {t.gateP}
+            </GatePanel>
+          </div>
+        </div>
+
+        <div className="scroll-sec" id="invocation">
+          <SectionLabel>{t.secInvoke}</SectionLabel>
+          <div className="invoke-panel">
+            <InstallBlock
+              commands={[
+                { label: "Linux / macOS / WSL", command: "curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.sh | bash" },
+                { label: "Windows PowerShell", command: "irm https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.ps1 | iex" },
+              ]}
+              source="raw.githubusercontent.com/SergioLacerda/strategist-skill/main/"
+            />
+          </div>
+        </div>
+
+        <div className="runefoot">
+          <a href="https://github.com/SergioLacerda/strategist-skill" target="_blank" rel="noopener">strategist-skill</a>
+          &nbsp;·&nbsp;
+          <a href="#" data-lang="pt">🇧🇷 Português</a> | <a href="#" data-lang="en">🇺🇸 English</a>
+        </div>
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById("root")).render(<Landing />);
+</script>
+</body>
+</html>

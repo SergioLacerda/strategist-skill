@@ -146,6 +146,23 @@ make cover-gate
 make cover-html
 ```
 
+## Verificando releases
+
+Cada binário de release é assinado e atestado. Veja [SECURITY.md](SECURITY.md) para instruções completas de verificação.
+
+**Verificação rápida com SLSA provenance:**
+```bash
+gh attestation verify strategist-linux-amd64 --owner SergioLacerda
+```
+
+**Verificação rápida com cosign:**
+```bash
+cosign verify-blob strategist-linux-amd64 \
+  --bundle strategist-linux-amd64.bundle \
+  --certificate-identity-regexp "https://github.com/SergioLacerda/strategist-skill/.*" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+```
+
 ## Créditos e atribuição
 
 O `strategist` atua como camada de orquestração para workflows governados e pode integrar skills externas como providers especializados por papel.
