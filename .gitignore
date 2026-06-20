@@ -20,3 +20,9 @@ generated/
 AGENTS.md
 CLAUDE.md
 GEMINI.md
+
+
+web/landing/node_modules
+web/landing/dist/
+web/landing/.astro/
+web/landing/coverage/

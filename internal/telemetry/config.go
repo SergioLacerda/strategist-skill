@@ -7,18 +7,20 @@ import "os"
 type Config struct {
 	Endpoint    string // OTEL_EXPORTER_OTLP_ENDPOINT
 	ServiceName string // OTEL_SERVICE_NAME
-	Insecure    bool   // OTEL_EXPORTER_OTLP_INSECURE (default true for dev)
+	Insecure    bool   // OTEL_EXPORTER_OTLP_INSECURE — default false (TLS required).
+	// Set to "true" to allow plaintext gRPC (dev/self-hosted only).
 }
 
 // FromEnv reads OTel configuration from environment variables.
 // If OTEL_SERVICE_NAME is unset, defaults to "strategist".
-// If OTEL_EXPORTER_OTLP_INSECURE is unset or any non-"false" value, insecure is true.
+// If OTEL_EXPORTER_OTLP_INSECURE is unset, insecure is false (TLS required).
+// Set OTEL_EXPORTER_OTLP_INSECURE=true to allow plaintext connections.
 func FromEnv() Config {
 	svcName := os.Getenv("OTEL_SERVICE_NAME")
 	if svcName == "" {
 		svcName = "strategist"
 	}
-	insecure := os.Getenv("OTEL_EXPORTER_OTLP_INSECURE") != "false"
+	insecure := os.Getenv("OTEL_EXPORTER_OTLP_INSECURE") == "true"
 	return Config{
 		Endpoint:    os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
 		ServiceName: svcName,

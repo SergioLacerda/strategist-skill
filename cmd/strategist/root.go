@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/SergioLacerda/strategist-skill/internal/integrity"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
 )
@@ -34,6 +35,11 @@ func init() {
 			telemetry.AttrMissionID, run.MissionID,
 		)
 		cmd.SetContext(ctx)
+		if modified, err := integrity.IsModified(".strategist/active.yaml", ".strategist/.config.lock"); err == nil && modified {
+			fmt.Fprintf(os.Stderr,
+				"[Strategist] WARN: active.yaml was modified outside the CLI.\n"+
+					"             Config integrity unverified. Re-run `strategist install` to acknowledge.\n")
+		}
 		return nil
 	}
 	rootCmd.PersistentPostRunE = func(cmd *cobra.Command, _ []string) error {

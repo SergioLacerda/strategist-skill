@@ -1,0 +1,26 @@
+---
+export interface Props {
+  lock?: string;
+  heading?: string;
+}
+const { lock = '⛨', heading } = Astro.props;
+---
+<div style="position:relative; border:1px dashed var(--border-gate); border-radius:var(--radius-md); background:linear-gradient(180deg,rgba(207,122,44,.10),rgba(20,15,9,.55)); box-shadow:var(--shadow-gate); padding:34px 76px 30px; text-align:center; overflow:hidden;">
+  <!-- stone jambs -->
+  <div aria-hidden="true" style="position:absolute; top:0; bottom:0; left:0; width:46px; background:repeating-linear-gradient(0deg,rgba(0,0,0,.55) 0 2px,transparent 2px 28px),repeating-linear-gradient(90deg,#7a3f22 0 6px,#2b1810 6px 15px); box-shadow:inset 0 0 16px rgba(0,0,0,.7);"></div>
+  <div aria-hidden="true" style="position:absolute; top:0; bottom:0; right:0; width:46px; background:repeating-linear-gradient(0deg,rgba(0,0,0,.55) 0 2px,transparent 2px 28px),repeating-linear-gradient(90deg,#7a3f22 0 6px,#2b1810 6px 15px); box-shadow:inset 0 0 16px rgba(0,0,0,.7);"></div>
+
+  <!-- arched portcullis -->
+  <div
+    aria-hidden="true"
+    style="position:relative; width:212px; height:228px; margin:4px auto 0; border:2px solid var(--amber-dim); border-bottom:none; border-top-left-radius:106px; border-top-right-radius:106px; background:radial-gradient(120% 90% at 50% 18%,rgba(207,122,44,.12),transparent 60%),repeating-linear-gradient(90deg,rgba(232,194,90,.32) 0 2px,transparent 2px 22px),repeating-linear-gradient(0deg,rgba(232,194,90,.20) 0 2px,transparent 2px 30px),rgba(0,0,0,.5); box-shadow:inset 0 0 40px rgba(0,0,0,.75),0 0 22px rgba(207,122,44,.12);"
+  >
+    <!-- keystone -->
+    <div style="position:absolute; top:-13px; left:50%; transform:translateX(-50%) rotate(45deg); width:20px; height:20px; background:linear-gradient(135deg,#cf7a2c,#7a3f22); border:1px solid var(--amber-dim);"></div>
+    <!-- central lock -->
+    <div style="position:absolute; left:50%; top:46%; transform:translate(-50%,-50%); width:74px; height:74px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:1px solid var(--border-gate); background:radial-gradient(circle,rgba(207,122,44,.22),rgba(12,8,5,.85) 72%); color:var(--orange); font-size:36px; text-shadow:0 0 20px rgba(207,122,44,.7); box-shadow:0 0 26px rgba(207,122,44,.25);">{lock}</div>
+  </div>
+
+  {heading && <div style="font-family:var(--font-mono); font-size:16px; font-weight:600; color:var(--amber-hi); letter-spacing:.04em; text-shadow:0 0 12px rgba(232,194,90,.4); margin:22px 0 10px;" set:html={heading}></div>}
+  <p style="margin:0 auto; max-width:560px; font-size:var(--fs-body); color:var(--muted); line-height:var(--lh-loose);"><slot /></p>
+</div>

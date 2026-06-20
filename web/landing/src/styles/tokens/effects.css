@@ -1,0 +1,58 @@
+/* ============================================================
+   STRATEGIST · EFFECTS
+   Phosphor glows, CRT overlays, vignettes, shadows. These are
+   the soul of the brand — light leaks off every amber element.
+   ============================================================ */
+
+:root {
+  /* —— Phosphor glows (text-shadow) —— */
+  --glow-amber:     0 0 10px rgba(232, 194, 90, .45), 0 0 2px rgba(232, 194, 90, .6);
+  --glow-amber-soft:0 0 12px rgba(232, 194, 90, .35);
+  --glow-amber-hi:  0 0 30px rgba(232, 194, 90, .35);
+  --glow-orange:    0 0 16px rgba(207, 122, 44, .5);
+  --glow-green:     0 0 10px rgba(116, 207, 142, .5);
+
+  /* —— Box glows / lifts —— */
+  --shadow-inset:   inset 0 0 40px rgba(0, 0, 0, .45);   /* sunken panel interior */
+  --shadow-inset-sm:inset 0 0 26px rgba(0, 0, 0, .5);
+  --shadow-lift:    0 6px 22px rgba(0, 0, 0, .45);        /* floating UI (toasts, fixed bars) */
+  --shadow-btn-amber:0 0 22px rgba(232, 194, 90, .3);
+  --shadow-gate:    inset 0 0 50px rgba(0, 0, 0, .55), 0 0 28px rgba(207, 122, 44, .12);
+
+  /* —— Gradients —— */
+  --grad-page:      radial-gradient(100% 70% at 50% 0%, #241a10 0%, #160f08 55%, #0c0805 100%); /* @kind color */
+  --grad-panel:     linear-gradient(180deg, rgba(42, 33, 23, .6), rgba(20, 15, 9, .4)); /* @kind color */
+  --grad-amber-btn: linear-gradient(180deg, var(--amber-hi), var(--amber-dim)); /* @kind color */
+  --grad-bar:       linear-gradient(90deg, var(--rust), var(--amber)); /* @kind color */
+
+  /* —— Motion —— */
+  --ease:           cubic-bezier(.4, 0, .2, 1); /* @kind other */
+  --dur-fast:       .1s; /* @kind other */
+  --dur:            .15s; /* @kind other */
+}
+
+/* ------------------------------------------------------------
+   CRT overlay — apply .crt to a positioned container.
+   ::before = scanlines · ::after = vignette + top phosphor bloom
+   ------------------------------------------------------------ */
+.crt { position: relative; }
+.crt::before {
+  content: ""; position: absolute; inset: 0; z-index: 50;
+  pointer-events: none; mix-blend-mode: multiply;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px,
+    rgba(0,0,0,.16) 3px, rgba(0,0,0,.16) 4px
+  );
+}
+.crt::after {
+  content: ""; position: absolute; inset: 0; z-index: 49; pointer-events: none;
+  background:
+    radial-gradient(120% 90% at 50% 30%, transparent 55%, rgba(0,0,0,.55) 100%),
+    radial-gradient(60% 50% at 50% 18%, rgba(232,194,90,.07), transparent 70%);
+}
+
+/* —— Glow utility classes —— */
+.glow   { text-shadow: var(--glow-amber); }
+.glow-g { text-shadow: var(--glow-green); }
+.glow-o { text-shadow: var(--glow-orange); }

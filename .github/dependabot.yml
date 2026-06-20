@@ -24,3 +24,15 @@ updates:
     groups:
       go-deps:
         patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: /web/landing
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      npm-deps:
+        patterns: ["*"]

@@ -1,0 +1,36 @@
+/* ============================================================
+   STRATEGIST · WEBFONTS (self-hosted woff2)
+   Files in public/fonts/ — served at /strategist-skill/fonts/
+   ============================================================ */
+
+/* Cinzel: variable font — one file covers weights 400-700 */
+@font-face {
+  font-family: 'Cinzel';
+  src: url('/strategist-skill/fonts/cinzel-latin.woff2') format('woff2');
+  font-weight: 400 700; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Cinzel Decorative';
+  src: url('/strategist-skill/fonts/cinzel-decorative-400.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Cinzel Decorative';
+  src: url('/strategist-skill/fonts/cinzel-decorative-700.woff2') format('woff2');
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('/strategist-skill/fonts/ibm-plex-mono-400.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('/strategist-skill/fonts/ibm-plex-mono-500.woff2') format('woff2');
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('/strategist-skill/fonts/ibm-plex-mono-600.woff2') format('woff2');
+  font-weight: 600; font-style: normal; font-display: swap;
+}
