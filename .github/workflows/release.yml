@@ -33,6 +33,27 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Sign release binaries (keyless)
+        run: |
+          for f in dist/strategist-*; do
+            [[ "$f" == *.bundle ]] && continue
+            cosign sign-blob --yes "$f" --bundle "${f}.bundle"
+          done
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+
+      - name: Upload cosign bundles to release
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          for bundle in dist/strategist-*.bundle; do
+            gh release upload "$TAG" "$bundle" --clobber
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Generate SBOM
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
         with:

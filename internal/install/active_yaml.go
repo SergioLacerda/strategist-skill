@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/integrity"
 )
 
 // writeActiveYAML writes active.yaml to strategistDir from wizard config values.
@@ -63,6 +64,10 @@ treasure_chests:
 	path := filepath.Join(strategistDir, "active.yaml")
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		return fmt.Errorf("write active.yaml: %w", err)
+	}
+	lockPath := filepath.Join(strategistDir, ".config.lock")
+	if err := integrity.WriteLock(path, lockPath); err != nil {
+		fmt.Fprintf(os.Stderr, "[Strategist] WARN: could not write config lock: %v\n", err)
 	}
 	return nil
 }
