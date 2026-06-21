@@ -1,6 +1,10 @@
 # Strategist Skill
 
-A governed AI mission orchestrator for Claude Code. Coordinates multi-phase work through three pluggable slots: Ranger (discovery) → Archivist (refinement) → Sniper (execution).
+[![Release](https://img.shields.io/github/v/release/SergioLacerda/strategist-skill?label=release)](https://github.com/SergioLacerda/strategist-skill/releases)
+[![Go](https://img.shields.io/badge/Go-1.26-blue)](https://go.dev)
+[![License](https://img.shields.io/github/license/SergioLacerda/strategist-skill)](LICENSE)
+
+A governed AI mission orchestrator. Coordinates multi-phase work through three pluggable slots: Ranger (discovery) → Archivist (refinement) → Sniper (execution).
 
 ## Choose your journey
 
