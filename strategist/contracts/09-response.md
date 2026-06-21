@@ -27,7 +27,7 @@ Every Strategist response must close in this order:
 
 ## Artifact Contract
 
-- Ranger analysis: `<base_path>/refined/<mission_id>-analysis.md`
+- Ranger analysis: `<base_path>/refined/<mission_id>/analysis.md`
 - Archivist package: `<base_path>/refined/<mission_id>/`
 - Sniper report: `<base_path>/archived/<mission_id>-report.md`
 - optional ADR: `<base_path>/archived/<mission_id>-adr.md`
@@ -42,3 +42,60 @@ Rules:
 - `emit_jsonl_telemetry: true` → bypass `content_by_lang`; emit all events as JSONL
 
 Violation detection: if a raw `[Strategist] \w+=\S+` pattern appears in user-facing output while `profile=epic`, this is `forbidden_behavior #9`. Self-correct by re-emitting the event via the appropriate `content_by_lang` template.
+
+## Input/Output Contract — `mission_envelope.close`
+
+**Inputs required:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `status_label` | string | e.g., `"MISSÃO CONCLUÍDA"` / `"MISSION COMPLETE"` |
+| `phase_timeline` | string | Lines built from `phase_timeline_entry` template, one per executed phase |
+| `artifact_block` | string | Lines built from `artifact_entry` template, one per produced artifact |
+| `conclusion_text` | string | Final sentence with `{mission_id}` and `{next_action}` |
+
+**`phase_timeline_entry`:** `"  {icon} {phase_label} → {result_label}"`
+
+**`artifact_entry`:** `"  📁 {key}: {path}"`
+
+**Output:** the box rendered with all sections filled — no raw fields outside the box.
+
+## Mission Close Sequence (profile=epic)
+
+Emit in this order:
+
+1. `content_by_lang.*.response_complete` — 1-line compliance summary
+2. `content_by_lang.*.mission_complete` — renders `mission_envelope.close`
+
+## Output Examples
+
+**✅ CONFORME:**
+```
+⚖️ **Compliance [20260620-cicd-landing]:** pipeline_compliant=yes | fases=5
+
+╔══════════════════════════════════════════════════════════╗
+║  STRATEGIST SKILL · MISSÃO CONCLUÍDA                   ║
+╠══════════════════════════════════════════════════════════╣
+  ✅ Ranger      → reconhecimento concluído
+  ✅ Arquivista  → análise refinada
+  ✅ Gate        → aprovação concedida
+  ✅ Sniper      → implementação concluída
+╠══════════════════════════════════════════════════════════╣
+  📁 discovery:  .analysis/refined/ID/analysis.md
+  📁 refined:    .analysis/refined/ID/
+  📁 report:     .analysis/archived/ID-report.md
+╚══════════════════════════════════════════════════════════╝
+🎯 Missão ID concluída. Próxima ação: push para main.
+```
+
+**❌ VIOLAÇÃO (forbidden_behavior #9):**
+```
+[Strategist] phase=sniper status=done          ← raw progress event no console
+
+[Strategist] response_complete                 ← padrão ad-hoc não existe
+  pipeline_compliant: yes
+  phases_run: preflight, intake, ...
+
+mission_id: ID                                 ← campos YAML soltos fora do envelope
+status: completed
+```

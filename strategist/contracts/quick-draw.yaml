@@ -20,12 +20,25 @@ detection:
 # --- Pipeline: §5.0 of mission-phases contract ---
 
 pipeline:
+  - phase: pre_scan             # §5.0pre — scan pending missions before capture
   - phase: ranger_quick_draw    # §5.0a
   - phase: archivist_quick_draw # §5.0b
   - phase: gate                 # §5.0c — mandatory stop
   - phase: sniper_quick_draw    # §5.0d — conditional on gate approval
 
 phases:
+  pre_scan:
+    description: >
+      Scan analysis files for missions awaiting action before starting capture.
+      Informational only — does not block Quick Draw.
+    action:
+      - scan: "<base_path>/refined/*/analysis.md"
+      - filter_by_status: [gate_approval, gate_pending]
+      - if_found:
+          emit: pending_missions_found count=N ids=[list]
+          include_in_gate: "⚠️ {N} missão(ões) pendente(s): {ids}"
+      - if_not_found: continue silently
+
   ranger_quick_draw:
     input: original_prompt
     output: one normalized line
@@ -33,6 +46,18 @@ phases:
     constraints:
       - must_not: add requirements, milestones, or implementation details
       - must_not: expand scope beyond the captured note
+    scope_enforcement:
+      signals_of_expansion:
+        - mentions specific files to edit or create
+        - contains execution steps ("rodar", "instalar", "atualizar X para Y", "commitar")
+        - references dependency changes
+        - implies multi-step implementation
+      on_expansion_detected:
+        mark: scope_expansion=true
+        action: capture idea headline only — drop implementation details
+        gate_warning: "⚠️ expansão de escopo detectada — registrando apenas a ideia"
+        gate_extra_option:
+          escalar: route to full Strategist pipeline with new mission_id
 
   archivist_quick_draw:
     theme_buckets:
@@ -53,6 +78,7 @@ phases:
     responses:
       sim: proceed_to_sniper
       nao: return_without_writing
+      escalar: escalate_to_full_mission    # only shown when scope_expansion=true
     policy_eval:
       transition_group: finalize_analysis
       emit: "[Strategist] phase=policy_eval status={status} mission={id} mode={mode} can_execute={bool} transition_group=finalize_analysis"
@@ -66,9 +92,19 @@ phases:
       - total_ideas
       - similar_ideas
 
+# --- Escalation: full mission pipeline ---
+
+escalation:
+  trigger: gate response == "escalar"
+  action:
+    - generate new mission_id (derived from quick draw idea + timestamp)
+    - route to main Strategist pipeline (bootstrap → preflight → intake → discovery → ...)
+    - the quick draw idea becomes the mission prompt
+
 # --- Persona keys used ---
 
 persona_keys:
   - quick_draw_detected   # emitted when detection matches
   - quick_draw_gate       # gate prompt shown to user
   - quick_draw_success    # confirmation after successful append
+  - pending_missions_found  # emitted by pre_scan when gate_approval/gate_pending missions exist

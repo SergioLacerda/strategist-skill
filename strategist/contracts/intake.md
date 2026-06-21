@@ -19,7 +19,7 @@ Store result as `mission_contract.planning_rules` — pass to all slot providers
 
 After generating `mission_id` (`<date>-<topic-slug>`), verify it does not already exist:
 
-- Check: `<base_path>/refined/<mission_id>-analysis.md`
+- Check: `<base_path>/pending/<mission_id>-analysis.md`
 - Check: `<base_path>/refined/<mission_id>/` (directory)
 - Check: `<base_path>/archived/<mission_id>-report.md`
 

@@ -33,3 +33,5 @@ When operating inside the main mission, consult contracts in this order:
 - No direct repository mutation without canonical pipeline evidence
 - No execution without explicit approval
 - No slot work performed by Strategist itself
+- External governance (any adapter) may block or permit execution — it does NOT replace the canonical pipeline sequence once Strategist is invoked
+- `execution_gate=allowed` from governance never substitutes the persona gate (explicit user approval)

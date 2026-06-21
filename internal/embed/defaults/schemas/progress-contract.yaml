@@ -84,6 +84,6 @@ user_facing_signals:
       fields: [status_icon, index, task_title]
 
 output_paths:
-  discovery_analysis: "<base_path>/refined/<mission_id>-analysis.md"
+  discovery_analysis: "<base_path>/refined/<mission_id>/analysis.md"
   refined_plan_dir: "<base_path>/refined/<mission_id>/"
   execution_report: "<base_path>/archived/<mission_id>-report.md"

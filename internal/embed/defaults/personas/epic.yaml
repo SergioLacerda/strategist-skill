@@ -42,6 +42,33 @@ rendering_policy:
     runtime_evidence emits structured telemetry payloads. The active persona does
     not rewrite or stylize these events.
 
+console_policy:
+  show_raw_events: false
+  show_skill_identity: true
+  show_mission_envelope: true
+  show_phase_timeline: true
+  show_artifacts: true
+  emit_jsonl_telemetry: false
+  forbidden_in_output:
+    - pattern: "\\[Strategist\\] \\w+=\\S+"
+      reason: "raw key=value event leaked — use content_by_lang template instead"
+
+mission_envelope:
+  open: |
+    ╔══════════════════════════════════════════════════════════╗
+    ║  STRATEGIST SKILL                                       ║
+    ║  Missão: {mission_id}                                   ║
+    ║  Perfil: {profile} · Governança: {governance}           ║
+    ╚══════════════════════════════════════════════════════════╝
+  close: |
+    ╔══════════════════════════════════════════════════════════╗
+    ║  STRATEGIST SKILL · {status_label}                      ║
+    ╠══════════════════════════════════════════════════════════╣
+    {phase_timeline}
+    {artifact_block}
+    🎯 {conclusion_text}
+    ╚══════════════════════════════════════════════════════════╝
+
 runtime_evidence:
   pipeline_starting: >
     [Strategist] pipeline=starting profile_mode={profile_mode} profile_source_path={profile_source_path} active_yaml_path={active_yaml_path} persona_resolved={persona_resolved} reason={reason}
@@ -58,21 +85,31 @@ content_by_lang:
 
     ranger_start: >
       🎯 **Ranger [{mission_id}]:** starting reconnaissance. skill={provider}
-    ranger_done: >
-      🎯 **Ranger [{mission_id}]:** reconnaissance complete. Artifact at: {artifact_path}
+    ranger_done: |
+      🎯 **Ranger [{mission_id}]:** reconnaissance complete.
+        ✶ channeling mana  ████████▓░░░░░░░░░░░░░░░░░░░  25% · Ranger ✓
+      Artifact at: {artifact_path}
 
     archivist_start: >
       📚 **Archivist [{mission_id}]:** starting analysis and refinement. skill={provider}
-    archivist_done: >
-      📚 **Archivist [{mission_id}]:** analysis refined. Artifacts at: {artifact_path}
+    archivist_done: |
+      📚 **Archivist [{mission_id}]:** analysis refined.
+        ✶ channeling mana  ████████████████▓░░░░░░░░░░░  50% · Archivist ✓
+      Artifacts at: {artifact_path}
 
     sniper_start: >
       🗡️ **Sniper [{mission_id}]:** mission approved — starting implementation.
-    sniper_done: >
-      🗡️ **Sniper [{mission_id}]:** implementation complete. Report at: {artifact_path}
+    sniper_task_done: |
+      🗡️ **Sniper [{mission_id}]:** task {done}/{total} done — {task_title}
+        ✶ channeling mana  {bar}  {pct}%
+    sniper_done: |
+      🗡️ **Sniper [{mission_id}]:** implementation complete.
+        ✶ channeling mana  ████████████████████████████  100% ✓
+      Report at: {artifact_path}
 
-    approval_prompt: >
+    approval_prompt: |
       🚦 **Gate [{mission_id}]:** AWAITING CONFIRMATION
+        ✶ channeling mana  ████████████████████████▓░░░  75% · awaiting approval
 
       Plan at: {artifact_path}
 
@@ -145,10 +182,38 @@ content_by_lang:
       Mission [{mission_id}] closed (plan approved, execution declined).
       Plan at: {artifact_path}
       To execute later: re-invoke Strategist with the plan path.
-    mission_complete: >
-      🗡️ Mission complete. Status: {status}
-      Artifacts: {artifacts}
-      Next action: {next_action}
+
+    phase_timeline_entry: "  {icon} {phase_label} → {result_label}"
+    artifact_entry: "  📁 {key}: {path}"
+
+    response_complete: >
+      ⚖️ **Compliance [{mission_id}]:** pipeline_compliant={pipeline_compliant} | phases={phases_run}
+
+    mission_complete: |
+      [render mission_envelope.close with the following values]
+
+      status_label: "MISSION COMPLETE"
+      phase_timeline: one phase_timeline_entry line per executed phase
+      artifact_block: one artifact_entry line per produced artifact
+      conclusion_text: "Mission {mission_id} complete. Next action: {next_action}"
+
+      Expected output:
+      ╔══════���═══════════════════════════════════════════════════╗
+      ║  STRATEGIST SKILL · MISSION COMPLETE                   ║
+      ╠═════���═════════════════���═══════════════════════════���══════╣
+        ✅ Ranger      → reconnaissance complete
+        ✅ Archivist   → analysis refined
+        ✅ Gate        → approval granted
+        ✅ Sniper      → implementation complete
+      ╠══���═══════════════════════════════════════════════════════╣
+        📁 discovery:  .analysis/refined/{mission_id}/analysis.md
+        📁 refined:    .analysis/refined/{mission_id}/
+        📁 report:     .analysis/archived/{mission_id}-report.md
+      ╚═════════════��════════════════════════════════════════════╝
+      🎯 Mission {mission_id} complete. Next action: {next_action}
+
+      ENFORCEMENT: emit response_complete FIRST (1 line), then mission_complete box.
+      NEVER emit raw [Strategist] key=value lines in user-facing output (forbidden_behavior #9).
     mission_metrics: >
       [Strategist] metrics mission={mission_id} t_start_to_intake_ms={t_start_to_intake_ms} t_intake_to_ranger_ms={t_intake_to_ranger_ms} total_wall_time_ms={total_wall_time_ms} tokens_in={tokens_in} tokens_out={tokens_out} lines_emitted={lines_emitted}
 
@@ -159,24 +224,31 @@ content_by_lang:
 
     ranger_start: >
       🎯 **Ranger [{mission_id}]:** iniciando reconhecimento. skill={provider}
-    ranger_done: >
+    ranger_done: |
       🎯 **Ranger [{mission_id}]:** missão de reconhecimento concluída.
+        ✶ channeling mana  ████████▓░░░░░░░░░░░░░░░░░░░  25% · Ranger ✓
       Artefato em: {artifact_path}
 
     archivist_start: >
       📚 **Arquivista [{mission_id}]:** iniciando análise e refinamento. skill={provider}
-    archivist_done: >
+    archivist_done: |
       📚 **Arquivista [{mission_id}]:** análise refinada.
+        ✶ channeling mana  ████████████████▓░░░░░░░░░░░  50% · Archivist ✓
       Artefatos em: {artifact_path}
 
     sniper_start: >
       🗡️ **Sniper [{mission_id}]:** missão aprovada — iniciando implementação.
-    sniper_done: >
+    sniper_task_done: |
+      🗡️ **Sniper [{mission_id}]:** tarefa {done}/{total} concluída — {task_title}
+        ✶ channeling mana  {bar}  {pct}%
+    sniper_done: |
       🗡️ **Sniper [{mission_id}]:** implementação concluída.
+        ✶ channeling mana  ████████████████████████████  100% ✓
       Relatório em: {artifact_path}
 
-    approval_prompt: >
+    approval_prompt: |
       🚦 **Gate [{mission_id}]:** AGUARDANDO CONFIRMAÇÃO
+        ✶ channeling mana  ████████████████████████▓░░░  75% · aguardando aprovação
 
       Plano em: {artifact_path}
 
@@ -249,9 +321,37 @@ content_by_lang:
       Missão [{mission_id}] encerrada (plano aprovado, execução recusada).
       Plano em: {artifact_path}
       Para executar depois: re-invocar Strategist com o caminho do plano.
-    mission_complete: >
-      🗡️ Missão concluída. Status: {status}
-      Artefatos: {artifacts}
-      Próxima ação: {next_action}
+
+    phase_timeline_entry: "  {icon} {phase_label} → {result_label}"
+    artifact_entry: "  📁 {key}: {path}"
+
+    response_complete: >
+      ⚖️ **Compliance [{mission_id}]:** pipeline_compliant={pipeline_compliant} | fases={phases_run}
+
+    mission_complete: |
+      [renderizar mission_envelope.close com os seguintes valores]
+
+      status_label: "MISSÃO CONCLUÍDA"
+      phase_timeline: uma linha phase_timeline_entry por fase executada
+      artifact_block: uma linha artifact_entry por artefato produzido
+      conclusion_text: "Missão {mission_id} concluída. Próxima ação: {next_action}"
+
+      Saída esperada:
+      ╔══════════════════════════════════════════════════════════╗
+      ║  STRATEGIST SKILL · MISSÃO CONCLUÍDA                   ║
+      ╠══════════════════════════════════════════════════════════╣
+        ✅ Ranger      → reconhecimento concluído
+        ✅ Arquivista  → análise refinada
+        ✅ Gate        → aprovação concedida
+        ✅ Sniper      → implementação concluída
+      ╠══════════════════════════════════════════════════════════╣
+        📁 discovery:  .analysis/refined/{mission_id}/analysis.md
+        📁 refined:    .analysis/refined/{mission_id}/
+        📁 report:     .analysis/archived/{mission_id}-report.md
+      ╚══════════════════════════════════════════════════════════╝
+      🎯 Missão {mission_id} concluída. Próxima ação: {next_action}
+
+      ENFORCEMENT: emitir response_complete PRIMEIRO (1 linha), depois o box mission_complete.
+      NUNCA emitir linhas raw [Strategist] key=value no output do usuário (forbidden_behavior #9).
     mission_metrics: >
       [Strategist] metrics mission={mission_id} t_start_to_intake_ms={t_start_to_intake_ms} t_intake_to_ranger_ms={t_intake_to_ranger_ms} total_wall_time_ms={total_wall_time_ms} tokens_in={tokens_in} tokens_out={tokens_out} lines_emitted={lines_emitted}

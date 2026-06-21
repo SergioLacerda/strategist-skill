@@ -3,11 +3,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"time"
 
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/integrity"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
@@ -56,6 +58,24 @@ func init() {
 
 func execute() {
 	if err := rootCmd.Execute(); err != nil {
-		os.Exit(1)
+		os.Exit(exitCodeFor(err))
+	}
+}
+
+// exitCodeFor maps known error categories to distinct exit codes so that
+// CI/CD pipelines can distinguish policy violations from generic failures.
+//
+//	0 — success
+//	1 — generic / unknown error
+//	2 — governance / policy violation
+//	3 — stale artifact or config integrity error
+func exitCodeFor(err error) int {
+	switch {
+	case errors.Is(err, domain.ErrPipelineBypassDetected):
+		return 2
+	case errors.Is(err, domain.ErrSourceStale), errors.Is(err, domain.ErrArtifactAbsent), errors.Is(err, domain.ErrManifestMissing):
+		return 3
+	default:
+		return 1
 	}
 }

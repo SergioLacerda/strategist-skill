@@ -68,16 +68,26 @@ Config stays in skill root:
 
 Writing config files to the target repo root is forbidden behavior.
 
+## Governance Precedence
+
+External governance (SDD or any other adapter) may inject provider, base path, and context via `governance_injection`. It may permit or block execution. It does NOT:
+- change the pipeline sequence after Strategist is invoked
+- substitute the persona gate (explicit user approval)
+- control artifact persistence, evidence requirements, or slot delegation
+
+SDD is a concrete adapter example — not the normative governance model.
+
 ## Drift Self-Correction
 
-When `drift-patterns.yaml` is loaded, check for matching symptoms before each phase:
+Patterns loaded from `identity/drift-patterns.yaml` at preflight (§2b).
+Quick reference — IDs only. Authoritative source is the yaml; do not add descriptions here.
 
-- `direct_execution`: stop, identify active slot, invoke provider, resume
-- `silent_phase_advance`: emit the missing done event before moving on
-- `approval_bypass`: stop and present the approval gate
-- `pipeline_bypass_detected`: stop and report missing evidence with resume hint
-- `opportunity_gate_bypass`: stop and present full opportunity manifest
-- `adr_gate_bypass`: stop and present ADR gate
-- `scope_expansion`: stop and return to mission scope
-- `sniper_provider_override`: stop and re-resolve execution provider from declared source
-- `route_plan_creation_to_sniper`: stop and return document authoring to Archivist
+- `direct_execution` — performing slot work directly instead of delegating
+- `silent_phase_advance` — starting next phase without emitting done event
+- `approval_bypass` — invoking Sniper without user approval
+- `pipeline_bypass_detected` — mutating repo without phase evidence
+- `opportunity_gate_bypass` — executing manifest items without presenting gate
+- `adr_gate_bypass` — committing ADR without gate approval
+- `scope_expansion` — addressing work outside declared mission scope
+- `execution_provider_override` — resolving execution slot from undeclared source
+- `route_plan_creation_to_sniper` — asking Sniper to author documents

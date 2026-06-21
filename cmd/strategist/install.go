@@ -15,6 +15,7 @@ import (
 	embedpkg "github.com/SergioLacerda/strategist-skill/internal/embed"
 	"github.com/SergioLacerda/strategist-skill/internal/install"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
+	"github.com/SergioLacerda/strategist-skill/internal/terminal"
 	"github.com/spf13/cobra"
 )
 
@@ -84,12 +85,6 @@ func runInstall(cmd *cobra.Command, _ []string) (retErr error) {
 		return fmt.Errorf("install: resolve home dir: %w", err)
 	}
 
-	svc := install.Service{
-		Extractor:   embedpkg.Extractor{},
-		Compiler:    compile.Compiler{},
-		ShimHomeDir: shimHome,
-	}
-
 	cfg := domain.InstallConfig{
 		Target: installTarget,
 		Silent: installSilent,
@@ -98,8 +93,18 @@ func runInstall(cmd *cobra.Command, _ []string) (retErr error) {
 		Force:  installForce,
 	}
 
-	if err := svc.Install(ctx, cfg); err != nil {
-		return fmt.Errorf("install: %w", err)
+	svc := install.Service{
+		Extractor:   embedpkg.Extractor{},
+		Compiler:    compile.Compiler{},
+		ShimHomeDir: shimHome,
+	}
+
+	installErr := terminal.RunSpellCharge(ctx, "install", 4, func(send terminal.SendFn) error {
+		svc.ProgressFn = func(done, total int) { send(done, total) }
+		return svc.Install(ctx, cfg)
+	})
+	if installErr != nil {
+		return fmt.Errorf("install: %w", installErr)
 	}
 
 	if run != nil {

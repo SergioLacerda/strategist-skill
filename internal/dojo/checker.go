@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -171,12 +172,73 @@ func CheckManifests(criteria domain.DojoCriteria, strategistDir string) []domain
 	return items
 }
 
+// CheckTiming validates wall-time performance from a timing_criteria block.
+// It reads total_wall_time_ms=<value> from the emit log.
+// If timing_criteria is nil, returns empty (no check performed).
+func CheckTiming(criteria domain.DojoCriteria, logPath string) []domain.DojoCheckItem {
+	if criteria.TimingCriteria == nil {
+		return nil
+	}
+	tc := criteria.TimingCriteria
+
+	if !fileExists(logPath) {
+		return []domain.DojoCheckItem{{
+			Label:  "timing total_wall_time_ms",
+			Passed: false,
+			Detail: "emit.log not found — run the LLM scenario first",
+		}}
+	}
+
+	raw, err := os.ReadFile(logPath)
+	if err != nil {
+		return []domain.DojoCheckItem{{
+			Label:  "timing total_wall_time_ms",
+			Passed: false,
+			Detail: err.Error(),
+		}}
+	}
+
+	log := string(raw)
+	const field = "total_wall_time_ms="
+	idx := strings.Index(log, field)
+	if idx < 0 {
+		return []domain.DojoCheckItem{{
+			Label:  "timing total_wall_time_ms",
+			Passed: false,
+			Detail: "total_wall_time_ms not found in emit.log",
+		}}
+	}
+
+	rest := log[idx+len(field):]
+	end := strings.IndexAny(rest, " \t\n\r")
+	if end < 0 {
+		end = len(rest)
+	}
+	valStr := rest[:end]
+	val, err := strconv.Atoi(valStr)
+	if err != nil {
+		return []domain.DojoCheckItem{{
+			Label:  "timing total_wall_time_ms",
+			Passed: false,
+			Detail: fmt.Sprintf("cannot parse total_wall_time_ms=%q: %v", valStr, err),
+		}}
+	}
+
+	passed := val <= tc.MaxWallTimeMs
+	return []domain.DojoCheckItem{{
+		Label:  "timing total_wall_time_ms",
+		Passed: passed,
+		Detail: ifFail(passed, fmt.Sprintf("wall time %d ms exceeds max %d ms", val, tc.MaxWallTimeMs)),
+	}}
+}
+
 // Run executes all checks for a scenario and returns the aggregated result.
 func Run(criteria domain.DojoCriteria, basePath, strategistDir, emitLogPath string, filesOnly bool) domain.DojoCheckResult {
 	result := domain.DojoCheckResult{Scenario: criteria.Scenario}
 	result.Items = append(result.Items, CheckFiles(criteria, basePath)...)
 	result.Items = append(result.Items, CheckEmitLog(criteria, emitLogPath, filesOnly)...)
 	result.Items = append(result.Items, CheckManifests(criteria, strategistDir)...)
+	result.Items = append(result.Items, CheckTiming(criteria, emitLogPath)...)
 	return result
 }
 

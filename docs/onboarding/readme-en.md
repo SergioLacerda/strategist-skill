@@ -37,7 +37,7 @@
 Canonical pipeline:
 `Ranger → Archivist → approval gate → Sniper`
 
-For full pipeline/contracts/schema details: [readme_detailed_en.md](readme_detailed_en.md).
+For full pipeline/contracts/schema details: [readme-detailed-en.md](readme-detailed-en.md).
 
 ## Why use it
 
@@ -54,27 +54,6 @@ For full pipeline/contracts/schema details: [readme_detailed_en.md](readme_detai
 - **Sniper**: executes only after gate + policy checks.
 - **Opportunist Attack**: finds side quests without parallel pipelines.
 - **Treasure Chests**: offline scoped context sources.
-
-## Quick install
-
-Linux / macOS / WSL:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.sh | bash
-```
-
-Pinned version (recommended for sensitive environments):
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.sh \
-  | bash -s -- --version=v1.0.0
-```
-
-Reconfigure:
-
-```bash
-strategist install --wizard
-```
 
 ## Generated files
 
@@ -100,23 +79,23 @@ Expected contracts:
 
 ## General Flow
 
-![General Flow](docs/fluxo-geral_en.png)
+![General Flow](fluxo-geral_en.png)
 
 ## SDD Integration Flow
 
-![SDD Integration Flow](docs/fluxo-integracao_en.png)
+![SDD Integration Flow](fluxo-integracao_en.png)
 
 ## Explore more
 
-- [readme_detailed_en.md](readme_detailed_en.md)
-- [docs/configuration.md](docs/configuration.md)
-- [docs/cli-reference.md](docs/cli-reference.md)
-- [docs/architecture.md](docs/architecture.md)
-- [docs/skill-internals.md](docs/skill-internals.md)
-- [docs/c4-diagrams.md](docs/c4-diagrams.md)
-- [docs/adr/](docs/adr/)
-- [strategist/SKILL.md](strategist/SKILL.md)
-- [strategist/protocol.md](strategist/protocol.md)
+- [readme-detailed-en.md](readme-detailed-en.md)
+- [configuration.md](../configuration.md)
+- [cli-reference.md](../cli-reference.md)
+- [architecture.md](../architecture.md)
+- [skill-internals.md](../skill-internals.md)
+- [c4-diagrams.md](../c4-diagrams.md)
+- [adr/](../adr/)
+- [strategist/SKILL.md](../../strategist/SKILL.md)
+- [strategist/protocol.md](../../strategist/protocol.md)
 
 ## Development and tests
 
@@ -143,33 +122,8 @@ make cover-gate
 make cover-html
 ```
 
-## Credits and attribution
-
-`strategist` acts as an orchestration layer for governed workflows and may integrate external skills as specialized role providers.
-
-### Recognized base skills
-
-- `brainstorming` — project `obra/superpowers`  
-  Source: <https://claudemarketplaces.com/skills/obra/superpowers/brainstorming>
-- `openspec` — project `itechmeat/llm-code`  
-  Source: <https://claudemarketplaces.com/skills/itechmeat/llm-code/openspec>
-
 ### Role in the flow
 
 - `brainstorming` is referenced as the basis for structured exploration in the `Ranger` role, including option discovery, risks, trade-offs, and early clarification.
 - `openspec` is referenced as the basis for convergent formalization in the `Archivist` role, including change proposal, design, tasks, and acceptance criteria.
 - When installed as wizard default providers, these skills remain independent; `strategist` only orchestrates their use inside the pipeline.
-
-### Attribution policy
-
-- Preserve the name, upstream project, and public URL whenever an external skill is integrated as a provider.
-- Do not imply ownership over upstream prompts, artifacts, or implementation.
-- Prefer canonical manifests/adapters in `.strategist/<provider>/skill.yaml` instead of duplicating upstream content.
-
-## License
-
-CC BY-NC 4.0. Commercial use requires prior authorization.
-
-- Repository: <https://github.com/SergioLacerda/strategist-skill>
-- Documentation: <https://sergiolacerda.github.io/strategist-skill/index.html?lang=en>
-- Full text: [LICENSE](LICENSE)

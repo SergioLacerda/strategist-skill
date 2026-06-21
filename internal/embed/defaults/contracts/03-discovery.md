@@ -13,7 +13,7 @@ Ranger (`discovery`)
 
 ## Outputs
 
-- analysis handoff artifact: `<base_path>/refined/<mission_id>-analysis.md`
+- transient analysis handoff artifact: `<base_path>/pending/<mission_id>-analysis.md`
 - handoff fields validated by `strategist/schemas/handoff-ranger-to-archivist.schema.yaml`
 - opportunity manifest summary when present
 
@@ -32,10 +32,11 @@ Ranger (`discovery`)
 
 ## Write Scope
 
-- authorized path: `<base_path>/refined/<mission_id>-analysis.md`
+- authorized path: `<base_path>/pending/<mission_id>-analysis.md`
 - type: `.md`
 
 ## Notes
 
-- `pending/` may still exist for legacy artifacts, but the canonical Ranger output for the main mission is the analysis handoff in `refined/`
-- this artifact is the authoritative input for Archivist
+- `pending/` is the canonical transient location for Ranger output during discovery
+- Archivist reads this transient artifact, then promotes it to `<base_path>/refined/<mission_id>/analysis.md`
+- this transient artifact is the authoritative input for Archivist
