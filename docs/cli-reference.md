@@ -213,6 +213,41 @@ strategist install --target .
 
 ---
 
+## Exit codes
+
+Todos os comandos retornam um código de saída padronizado. Útil para CI/CD e scripts.
+
+| Código | Significado | Exemplo de causa |
+|--------|-------------|-----------------|
+| `0` | Sucesso | Comando completou sem erros |
+| `1` | Erro genérico / desconhecido | YAML inválido, arquivo não encontrado |
+| `2` | Violação de governança / política | Pipeline bypass detectado sem aprovação |
+| `3` | Artefato stale ou erro de integridade de config | `.compiled/` desatualizado, manifest ausente |
+
+**Exemplo em script:**
+
+```bash
+strategist validate --root .strategist
+code=$?
+
+case $code in
+  0) echo "OK";;
+  2) echo "Governance violation — check pipeline state" >&2; exit 1;;
+  3) echo "Config stale — run: strategist compile" >&2; exit 1;;
+  *) echo "Error ($code)" >&2; exit 1;;
+esac
+```
+
+**Exemplo em CI (GitHub Actions):**
+
+```yaml
+- name: Validate strategist config
+  run: strategist validate --root .strategist
+  # Exits 2 if governance bypassed, 3 if compiled artifacts are stale
+```
+
+---
+
 ## Instalação local (build from source)
 
 ```bash
