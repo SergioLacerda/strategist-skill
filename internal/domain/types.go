@@ -185,6 +185,12 @@ type DojoManifestCheck struct {
 	FieldsPresent    []string `yaml:"fields_present"`
 }
 
+// DojoTimingCriteria specifies wall-time performance constraints for a scenario.
+// MaxWallTimeMs is extracted from the total_wall_time_ms= field in emit.log.
+type DojoTimingCriteria struct {
+	MaxWallTimeMs int `yaml:"max_wall_time_ms"`
+}
+
 // DojoCriteria is the deserialized form of a scenario's criteria.yaml.
 type DojoCriteria struct {
 	Scenario       string              `yaml:"scenario"`
@@ -195,6 +201,7 @@ type DojoCriteria struct {
 	Pipeline       DojoPipeline        `yaml:"pipeline"`
 	EmitLog        DojoEmitLog         `yaml:"emit_log"`
 	ManifestChecks []DojoManifestCheck `yaml:"manifest_checks"`
+	TimingCriteria *DojoTimingCriteria `yaml:"timing_criteria,omitempty"`
 }
 
 // DojoCheckItem is the result of one individual check within a scenario run.

@@ -48,6 +48,11 @@ const (
 
 	// Retry state for transient slot failures (protocol §Slot Failure Classification).
 	StateRetrying MissionState = "RETRYING"
+
+	// Critical Hit route states — fast path for low-risk doc/content tasks.
+	StateDirectGate MissionState = "DIRECT_GATE"
+	StateDirectExec MissionState = "DIRECT_EXEC"
+	StateDirectDone MissionState = "DIRECT_DONE"
 )
 
 // TransitionEvent represents FSM/evaluator inputs.
@@ -79,6 +84,11 @@ const (
 
 	// Sniper opportunity attack surfaced mid-execution (§7 Opportunity Attack).
 	EventSniperOA TransitionEvent = "sniper_opportunity_attack"
+
+	// Critical Hit route events — fast path gate for direct_execute route.
+	EventDirectHitIntent    TransitionEvent = "direct_hit_intent"
+	EventDirectGateApproved TransitionEvent = "direct_gate_approved"
+	EventDirectGateDeclined TransitionEvent = "direct_gate_declined"
 )
 
 // MissionPolicy controls whether guarded transitions are allowed.

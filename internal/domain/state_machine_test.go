@@ -161,3 +161,42 @@ func TestFSMSafetyPropertyLike(t *testing.T) {
 		}
 	}
 }
+
+func TestFSMCriticalHitRoute(t *testing.T) {
+	t.Parallel()
+	policy := domain.NewMissionPolicy(domain.ExecutionModeApplyWorkspace, domain.GitPersistenceModeExplicitCommit)
+
+	s := domain.NextState(domain.StateInit, domain.EventDirectHitIntent, policy)
+	assert.Equal(t, domain.StateDirectGate, s)
+
+	s = domain.NextState(s, domain.EventDirectGateApproved, policy)
+	assert.Equal(t, domain.StateDirectExec, s)
+
+	s = domain.NextState(s, domain.EventSniperDone, policy)
+	assert.Equal(t, domain.StateDirectDone, s)
+
+	s = domain.NextState(s, domain.EventManifestNonEmpty, policy)
+	assert.Equal(t, domain.StateDirectDone, s)
+}
+
+func TestFSMCriticalHitDeclinedGoesToDoneAnalysis(t *testing.T) {
+	t.Parallel()
+	policy := domain.NewMissionPolicy(domain.ExecutionModeApplyWorkspace, domain.GitPersistenceModeExplicitCommit)
+
+	s := domain.NextState(domain.StateInit, domain.EventDirectHitIntent, policy)
+	assert.Equal(t, domain.StateDirectGate, s)
+
+	s = domain.NextState(s, domain.EventDirectGateDeclined, policy)
+	assert.Equal(t, domain.StateDoneAnalysis, s)
+}
+
+func TestFSMCriticalHitNeverRunsInPlanOnly(t *testing.T) {
+	t.Parallel()
+	policy := domain.NewMissionPolicy(domain.ExecutionModePlanOnly, domain.GitPersistenceModeForbidden)
+
+	s := domain.NextState(domain.StateInit, domain.EventDirectHitIntent, policy)
+	assert.Equal(t, domain.StateDirectGate, s)
+
+	s = domain.NextState(s, domain.EventDirectGateApproved, policy)
+	assert.Equal(t, domain.StateDoneAnalysis, s)
+}

@@ -1,0 +1,63 @@
+module: critical-hit
+type: routing_decision
+version: "0.1"
+
+description: >
+  Ponto de decisão entre fluxo completo (main_mission) e fluxo direto (direct_execute).
+  Executado após intake, antes de qualquer slot provider.
+  Quando condições de Critical Hit são satisfeitas, bypassa Ranger e Archivist,
+  substituindo o approval_gate padrão por um gate inline de confirmação direta.
+
+trigger_conditions:
+  all_of:
+    - task_type: [doc_edit, content_update, readme_update, comment_update]
+    - risk_level: low
+    - file_count: "<= 5"
+    - no_cross_module_deps: true
+    - no_adr_required: true
+    - no_architectural_decision: true
+  none_of:
+    - keywords: [investigar, propor, auditar, projetar, redesenhar, arquitetura, refatorar]
+    - task_type: [architecture_analysis, refactor, security_audit, new_feature]
+
+route_assigned: direct_execute
+
+pipeline:
+  omitted_phases: [discovery, refinement, opportunity_attack]
+  artifacts_written: none
+  gate_style: inline
+
+inline_gate:
+  display: |
+    Critical Hit detectado.
+    Tarefa: <task_description>
+    Arquivos: <file_list>
+    Confirma execução direta? (sim/nao)
+  stop: true
+  wait_for_response: true
+  responses:
+    sim: proceed to sniper
+    yes: proceed to sniper
+    nao: resolve as plan_only (no artifacts written)
+    no:  resolve as plan_only (no artifacts written)
+
+emit:
+  on_trigger:
+    format: "[Strategist] phase=critical_hit status=triggered task_type={task_type} file_count={file_count}"
+    level: INFO
+  on_gate_approved:
+    format: "[Strategist] phase=critical_hit status=gate_approved"
+    level: TRACE
+  on_gate_declined:
+    format: "[Strategist] phase=critical_hit status=gate_declined"
+    level: TRACE
+
+write_scope: read-only (gate phase only; Sniper write scope applies after approval)
+owner: internal (orchestrator)
+
+invariants:
+  - Critical Hit NEVER fires when risk_level != low
+  - Critical Hit NEVER fires for tasks with cross-module dependencies
+  - Critical Hit NEVER fires when any none_of keyword is present in the prompt
+  - If in doubt, route to main_mission — conservatism is the safe default
+  - Approval gate cannot be bypassed even in Critical Hit route
