@@ -102,3 +102,31 @@ func TestEvaluatePipelineBypass_QuickDrawCompatibility(t *testing.T) {
 	})
 	assert.True(t, allowed.Allowed)
 }
+
+func TestEvaluatePipelineBypass_DirectExecuteBlockedWithoutGate(t *testing.T) {
+	t.Parallel()
+	decision := domain.EvaluatePipelineBypass(domain.PipelineEvidence{
+		Route:           domain.MissionRouteDirectExecute,
+		BasePath:        ".analysis",
+		MissionID:       "m-readme",
+		AttemptedAction: "edit readme.md directly",
+	})
+	assert.False(t, decision.Allowed)
+	assert.Equal(t, domain.PipelineBypassDetectedReason, decision.Reason)
+	assert.Equal(t, "direct_gate", decision.ExpectedPhase)
+	assert.Contains(t, decision.MissingEvidence, "direct_gate:approved")
+	assert.Contains(t, decision.ResumeHint, "Critical Hit")
+}
+
+func TestEvaluatePipelineBypass_DirectExecuteAllowedAfterGate(t *testing.T) {
+	t.Parallel()
+	decision := domain.EvaluatePipelineBypass(domain.PipelineEvidence{
+		Route:              domain.MissionRouteDirectExecute,
+		BasePath:           ".analysis",
+		MissionID:          "m-readme",
+		AttemptedAction:    "edit readme.md directly",
+		DirectGateApproved: true,
+	})
+	assert.True(t, decision.Allowed)
+	assert.Empty(t, decision.Reason)
+}

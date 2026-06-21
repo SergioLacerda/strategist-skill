@@ -35,6 +35,12 @@ func NextState(current MissionState, event TransitionEvent, policy MissionPolicy
 		return nextFromDoneDelivery(event)
 	case StateQuickDrawDone, StateADRDone, StateBlocked:
 		return current
+	case StateDirectGate:
+		return nextFromDirectGate(event, p)
+	case StateDirectExec:
+		return nextFromDirectExec(event)
+	case StateDirectDone:
+		return current
 	}
 
 	return current
@@ -44,12 +50,15 @@ func nextFromInit(event TransitionEvent) MissionState {
 	switch event {
 	case EventQuickDrawIntent:
 		return StateQuickDraw
+	case EventDirectHitIntent:
+		return StateDirectGate
 	case EventManifestEmpty, EventManifestNonEmpty:
 		return StateOpportunityAttack
 	case EventGateApproved, EventGateDenied, EventSniperDone, EventArchivistNoTasks, EventArchivistTasks,
 		EventQuickDrawApprove, EventQuickDrawDecline,
 		EventADRCriterionMet, EventADRApproved, EventADRDeclined,
-		EventSlotTransient, EventSlotPermanent, EventSniperOA:
+		EventSlotTransient, EventSlotPermanent, EventSniperOA,
+		EventDirectGateApproved, EventDirectGateDeclined:
 		return StateInit
 	}
 	return StateInit
@@ -64,7 +73,8 @@ func nextFromOpportunityAttack(event TransitionEvent) MissionState {
 	case EventGateApproved, EventGateDenied, EventSniperDone, EventArchivistNoTasks, EventArchivistTasks,
 		EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
 		EventADRCriterionMet, EventADRApproved, EventADRDeclined,
-		EventSlotTransient, EventSlotPermanent, EventSniperOA:
+		EventSlotTransient, EventSlotPermanent, EventSniperOA,
+		EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:
 		return StateOpportunityAttack
 	}
 	return StateOpportunityAttack
@@ -82,7 +92,8 @@ func nextFromOpportunityGate(event TransitionEvent, p MissionPolicy) MissionStat
 	case EventManifestEmpty, EventManifestNonEmpty, EventSniperDone, EventArchivistNoTasks, EventArchivistTasks,
 		EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
 		EventADRCriterionMet, EventADRApproved, EventADRDeclined,
-		EventSlotTransient, EventSlotPermanent, EventSniperOA:
+		EventSlotTransient, EventSlotPermanent, EventSniperOA,
+		EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:
 		return StateOpportunityGate
 	}
 	return StateOpportunityGate
@@ -95,7 +106,8 @@ func nextFromOpportunityExec(event TransitionEvent) MissionState {
 	case EventManifestEmpty, EventManifestNonEmpty, EventGateApproved, EventGateDenied, EventArchivistNoTasks, EventArchivistTasks,
 		EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
 		EventADRCriterionMet, EventADRApproved, EventADRDeclined,
-		EventSlotTransient, EventSlotPermanent, EventSniperOA:
+		EventSlotTransient, EventSlotPermanent, EventSniperOA,
+		EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:
 		return StateOpportunityExec
 	}
 	return StateOpportunityExec
@@ -116,7 +128,8 @@ func nextFromRefinement(event TransitionEvent, p MissionPolicy) MissionState {
 		return StateBlocked
 	case EventManifestEmpty, EventManifestNonEmpty, EventGateApproved, EventGateDenied, EventSniperDone,
 		EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
-		EventADRCriterionMet, EventADRApproved, EventADRDeclined, EventSniperOA:
+		EventADRCriterionMet, EventADRApproved, EventADRDeclined, EventSniperOA,
+		EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:
 		return StateRefinement
 	}
 	return StateRefinement
@@ -134,7 +147,8 @@ func nextFromApprovalGate(event TransitionEvent, p MissionPolicy) MissionState {
 	case EventManifestEmpty, EventManifestNonEmpty, EventSniperDone, EventArchivistNoTasks, EventArchivistTasks,
 		EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
 		EventADRCriterionMet, EventADRApproved, EventADRDeclined,
-		EventSlotTransient, EventSlotPermanent, EventSniperOA:
+		EventSlotTransient, EventSlotPermanent, EventSniperOA,
+		EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:
 		return StateApprovalGate
 	}
 	return StateApprovalGate
@@ -153,7 +167,8 @@ func nextFromExecution(event TransitionEvent) MissionState {
 		return StateBlocked
 	case EventManifestEmpty, EventManifestNonEmpty, EventGateApproved, EventGateDenied, EventArchivistNoTasks, EventArchivistTasks,
 		EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
-		EventADRCriterionMet, EventADRApproved, EventADRDeclined:
+		EventADRCriterionMet, EventADRApproved, EventADRDeclined,
+		EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:
 		return StateExecution
 	}
 	return StateExecution
@@ -183,7 +198,8 @@ func nextFromRetrying(event TransitionEvent, _ MissionPolicy) MissionState {
 		return StateBlocked
 	case EventManifestEmpty, EventGateApproved, EventGateDenied, EventSniperDone, EventArchivistNoTasks, EventArchivistTasks,
 		EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
-		EventADRCriterionMet, EventADRApproved, EventADRDeclined, EventSniperOA:
+		EventADRCriterionMet, EventADRApproved, EventADRDeclined, EventSniperOA,
+		EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:
 		return StateRetrying
 	}
 	return StateRetrying
@@ -198,7 +214,8 @@ func nextFromQuickDraw(event TransitionEvent) MissionState {
 	case EventGateApproved, EventGateDenied, EventSniperDone, EventArchivistNoTasks, EventArchivistTasks,
 		EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
 		EventADRCriterionMet, EventADRApproved, EventADRDeclined,
-		EventSlotTransient, EventSlotPermanent, EventSniperOA:
+		EventSlotTransient, EventSlotPermanent, EventSniperOA,
+		EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:
 		return StateQuickDraw
 	}
 	return StateQuickDraw
@@ -211,7 +228,8 @@ func nextFromQuickDrawGate(event TransitionEvent) MissionState {
 	case EventManifestEmpty, EventManifestNonEmpty, EventGateApproved, EventGateDenied, EventSniperDone,
 		EventArchivistNoTasks, EventArchivistTasks, EventQuickDrawIntent,
 		EventADRCriterionMet, EventADRApproved, EventADRDeclined,
-		EventSlotTransient, EventSlotPermanent, EventSniperOA:
+		EventSlotTransient, EventSlotPermanent, EventSniperOA,
+		EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:
 		return StateQuickDrawGate
 	}
 	return StateQuickDrawGate
@@ -226,7 +244,8 @@ func nextFromADRGate1(event TransitionEvent) MissionState {
 	case EventManifestEmpty, EventManifestNonEmpty, EventGateApproved, EventGateDenied, EventSniperDone,
 		EventArchivistNoTasks, EventArchivistTasks, EventADRCriterionMet,
 		EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
-		EventSlotTransient, EventSlotPermanent, EventSniperOA:
+		EventSlotTransient, EventSlotPermanent, EventSniperOA,
+		EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:
 		return StateADRGate1
 	}
 	return StateADRGate1
@@ -239,10 +258,46 @@ func nextFromADRGate2(event TransitionEvent) MissionState {
 	case EventManifestEmpty, EventManifestNonEmpty, EventGateApproved, EventGateDenied, EventSniperDone,
 		EventArchivistNoTasks, EventArchivistTasks, EventADRCriterionMet,
 		EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
-		EventSlotTransient, EventSlotPermanent, EventSniperOA:
+		EventSlotTransient, EventSlotPermanent, EventSniperOA,
+		EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:
 		return StateADRGate2
 	}
 	return StateADRGate2
+}
+
+func nextFromDirectGate(event TransitionEvent, p MissionPolicy) MissionState {
+	switch event {
+	case EventDirectGateApproved:
+		if p.CanExecute {
+			return StateDirectExec
+		}
+		return StateDoneAnalysis
+	case EventDirectGateDeclined:
+		return StateDoneAnalysis
+	case EventManifestEmpty, EventManifestNonEmpty, EventGateApproved, EventGateDenied, EventSniperDone,
+		EventArchivistNoTasks, EventArchivistTasks, EventADRCriterionMet, EventADRApproved, EventADRDeclined,
+		EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
+		EventSlotTransient, EventSlotPermanent, EventSniperOA, EventDirectHitIntent:
+		return StateDirectGate
+	}
+	return StateDirectGate
+}
+
+func nextFromDirectExec(event TransitionEvent) MissionState {
+	switch event {
+	case EventSniperDone:
+		return StateDirectDone
+	case EventSlotTransient:
+		return StateRetrying
+	case EventSlotPermanent:
+		return StateBlocked
+	case EventManifestEmpty, EventManifestNonEmpty, EventGateApproved, EventGateDenied,
+		EventArchivistNoTasks, EventArchivistTasks, EventADRCriterionMet, EventADRApproved, EventADRDeclined,
+		EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
+		EventSniperOA, EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:
+		return StateDirectExec
+	}
+	return StateDirectExec
 }
 
 // RunStateMachine folds a sequence of events from a starting state.
