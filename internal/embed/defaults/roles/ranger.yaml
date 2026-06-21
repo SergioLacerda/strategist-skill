@@ -11,7 +11,7 @@ canonical:
       output: include_in_analysis_artifact
       feedback: surface_in_response    # show to user before handing off to Archivist
   - compress_findings           # format: evidence → interpretation → impact (source cards)
-  - output_format: "<base_path>/refined/<mission_id>-analysis.md"
+  - output_format: "<base_path>/pending/<mission_id>-analysis.md"
   - handoff_contract: "schemas/handoff-ranger-to-archivist.schema.yaml"
 
 # Contract

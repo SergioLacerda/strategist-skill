@@ -18,7 +18,7 @@ func TestEvaluatePipelineBypass_BlocksWithoutDiscovery(t *testing.T) {
 	assert.False(t, decision.Allowed)
 	assert.Equal(t, domain.PipelineBypassDetectedReason, decision.Reason)
 	assert.Equal(t, "ranger", decision.ExpectedPhase)
-	assert.Equal(t, ".analysis/refined/m-readme-analysis.md", decision.MissingEvidence)
+	assert.Equal(t, ".analysis/refined/m-readme/analysis.md", decision.MissingEvidence)
 	assert.Contains(t, decision.ResumeHint, "Ranger")
 }
 

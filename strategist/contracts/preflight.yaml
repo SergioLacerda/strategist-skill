@@ -43,6 +43,22 @@ contract:
     - code: compiled_artifact_corrupt
       trigger: .compiled/.domain.gz fails jq parse
       behavior: Fall back to standard path (load YAML directly), emit preflight=standard_path
+    - code: identity_files_missing
+      trigger: >
+        identity/drift-patterns.yaml or identity/what-i-am.yaml absent
+        after index.yaml load attempt
+      behavior: >
+        Non-blocking. Emit:
+          "[Strategist] phase=preflight status=warn reason=identity_files_missing"
+          "[Strategist] phase=preflight identity=degraded files_missing=[<list>]"
+        Remediation hint: "Run `strategist compile-domain` to deploy identity files."
+        Continue. Agent operates in degraded mode; SKILL.md patterns serve as fallback.
+    - code: directives_missing
+      trigger: directives/core.yaml absent after index.yaml load attempt
+      behavior: >
+        Non-blocking. Emit:
+          "[Strategist] phase=preflight status=warn reason=directives_missing"
+        Continue without behavioral directives.
 
   write_scope: read-only
 

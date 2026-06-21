@@ -36,7 +36,7 @@ Strategist stops immediately on:
 
 Main mission evidence:
 
-- Ranger analysis artifact exists at `<base_path>/refined/<mission_id>-analysis.md`
+- Ranger analysis artifact exists at `<base_path>/refined/<mission_id>/analysis.md`
 - Archivist refined package exists at `<base_path>/refined/<mission_id>/`
 - `tasks.md` exists when execution depends on refinement
 - approval gate was presented and explicitly approved before execution
@@ -61,6 +61,29 @@ Supported modes:
 - `any`
 - `explicit_confirm`
 - `human_only` (documented, not enforced by default)
+
+## Governance Precedence
+
+External governance (SDD or any other adapter) controls three things only:
+- whether execution is **permitted, blocked, or conditioned**
+- which **provider, base path, and knowledge paths** are injected (via `governance_injection`)
+- which **governance context** documents are made available to slots
+
+The Strategist controls everything else: pipeline sequence, artifact persistence, evidence requirements, and slot delegation. External governance cannot substitute the canonical mission sequence after invocation.
+
+## Governance Gate vs. Persona Gate
+
+These are two independent checks, both required before execution:
+
+1. **Governance gate** (`execution_gate=allowed/blocked`) — reported by the active governance adapter (e.g., SDD CLI, or any adapter that populates `governance_injection`).
+   Determines whether the governance policy *permits* execution.
+   `allowed` means "not blocked by policy." It is NOT user approval.
+
+2. **Persona gate** (the 🚦 Gate prompt shown to the user) — the explicit confirmation
+   the user types in the conversation. Required regardless of governance gate state.
+
+`execution_gate=allowed` + no persona gate = `approval_bypass` drift.
+Both must be satisfied before Sniper starts.
 
 ## Learning Rules
 

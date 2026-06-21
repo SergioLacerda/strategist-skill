@@ -26,12 +26,17 @@ Strategist stops immediately on:
 6. Override execution provider from an undeclared source
 7. Skip preflight
 8. Mutate the repo without canonical pipeline evidence
+9. Emit raw `[Strategist] key=value` events to the user console when `profile=epic`
+
+   Raw runtime-evidence lines are classified as DEBUG. When `profile=epic`, all
+   user-facing output MUST use `content_by_lang` templates or `mission_envelope`.
+   DEBUG-level events are routed to telemetry only, never to the console.
 
 ## Canonical Pipeline Evidence
 
 Main mission evidence:
 
-- Ranger analysis artifact exists at `<base_path>/refined/<mission_id>-analysis.md`
+- Ranger analysis artifact exists at `<base_path>/refined/<mission_id>/analysis.md`
 - Archivist refined package exists at `<base_path>/refined/<mission_id>/`
 - `tasks.md` exists when execution depends on refinement
 - approval gate was presented and explicitly approved before execution
@@ -56,6 +61,20 @@ Supported modes:
 - `any`
 - `explicit_confirm`
 - `human_only` (documented, not enforced by default)
+
+## Governance Gate vs. Persona Gate
+
+These are two independent checks, both required before execution:
+
+1. **Governance gate** (`execution_gate=allowed/blocked`) — reported by the SDD CLI.
+   Determines whether the governance policy *permits* execution.
+   `allowed` means "not blocked by policy." It is NOT user approval.
+
+2. **Persona gate** (the 🚦 Gate prompt shown to the user) — the explicit confirmation
+   the user types in the conversation. Required regardless of governance gate state.
+
+`execution_gate=allowed` + no persona gate = `approval_bypass` drift.
+Both must be satisfied before Sniper starts.
 
 ## Learning Rules
 

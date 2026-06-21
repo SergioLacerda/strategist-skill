@@ -3,13 +3,24 @@
 # does not declare risk_score.
 # Values: read_only | write_analysis | controlled | orchestrator
 # Add entries here for any custom providers you use.
+#
+# Provider categories:
+#   neutral  — no external governance dependency; usable in standalone mode
+#   sdd      — SDD-specific; require sdd-analysis-plugin-protocol in target repo
+#
+# The Strategist core does not enforce category — it is informational only.
+# Use neutral providers in standalone templates; sdd providers via governance_injection.
 
 providers:
+  # neutral — governance-agnostic providers
   brainstorming: write_analysis
   openspec-explore: write_analysis
   openspec-propose: write_analysis
   openspec-apply-change: controlled
   openspec-archive-change: write_analysis
+  archivist: write_analysis
+
+  # sdd — concrete SDD adapter providers
   sdd-ask: controlled
   sdd-ask-full: controlled
   sdd-diagnose: write_analysis
@@ -19,4 +30,3 @@ providers:
   sdd-validate-governance: write_analysis
   sdd-organize: write_analysis
   sdd-review-architecture: write_analysis
-  archivist: write_analysis

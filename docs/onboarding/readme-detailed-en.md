@@ -3,7 +3,7 @@
 ## Cognitive Runtime, Self-Learning and AI Agent Convergence
 
 <p align="center">
-<a href="readme_detailed.md">🇧🇷 Português</a> | 🇺🇸 English
+<a href="readme-detailed.md">🇧🇷 Português</a> | 🇺🇸 English
 </p>
 
 ---
@@ -81,26 +81,6 @@ structural governance
 + non-blocking learning loop
 + drift self-correction
 ```
-
----
-
-## Installation
-
-### Wizard (interactive)
-
-```bash
-strategist install --wizard
-```
-
-TUI that lets you select the template, base_path, providers for the three slots (roles), and a knowledge source (optional). Generates `active.yaml` and writes `roles/default.yaml` with the chosen providers. To install the `strategist` binary first, use the bootstrap:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.sh | bash
-```
-
-### Zero config in the target repository
-
-All configuration lives inside the skill root (`active.yaml`, `personas/`, `roles/`, `memory/`, `knowledge.index.yaml`). The target repository only receives skill artifacts.
 
 ---
 
@@ -914,6 +894,6 @@ Emitting a `running` event and advancing to the next phase without emitting `don
 
 ---
 
-For complete agent instructions, see [`strategist/SKILL.md`](strategist/SKILL.md).
-For mandatory routing rules, see [`strategist/protocol.md`](strategist/protocol.md).
-For the complete skill contract, see [`strategist/skill.yaml`](strategist/skill.yaml).
+For complete agent instructions, see [`strategist/SKILL.md`](../../strategist/SKILL.md).
+For mandatory routing rules, see [`strategist/protocol.md`](../../strategist/protocol.md).
+For the complete skill contract, see [`strategist/skill.yaml`](../../strategist/skill.yaml).

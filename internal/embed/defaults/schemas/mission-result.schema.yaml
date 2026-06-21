@@ -25,7 +25,7 @@ fields:
       discovery:
         type: path
         present_when: Ranger ran
-        path_template: "<base_path>/refined/<mission_id>-analysis.md"
+        path_template: "<base_path>/refined/<mission_id>/analysis.md"
       opportunity_report:
         type: string
         value: inline

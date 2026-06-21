@@ -59,15 +59,15 @@ active_config:
 slots:
   discovery:
     contract: write_analysis
-    write_scope: "<base_path>/refined/"
+    write_scope: "<base_path>/pending/"
     write_types: [".md"]
     canonical:
       - find_unexpected_items       # surface items outside declared mission scope
       - consult_treasure_chests     # if chests scoped to discovery present, consult before LLM
       - opportunity_attack          # routine: detect treasure_chests + side_quests, surface in response
-      - output_format: "<base_path>/refined/<mission_id>-analysis.md"
+      - output_format: "<base_path>/pending/<mission_id>-analysis.md"
       - handoff_contract: "schemas/handoff-ranger-to-archivist.schema.yaml"
-    description: Explores the problem space and writes the canonical analysis handoff artifact.
+    description: Explores the problem space and writes the transient analysis handoff artifact.
   refinement:
     contract: write_analysis
     write_scope:
@@ -79,11 +79,12 @@ slots:
       - opportunity_attack          # routine: detect side_quests, decide strategy, include in approval gate
       - emit_completion_signal      # must emit has_execution_tasks: true|false after writing artifacts
       - output_format:
+          - "<base_path>/refined/<mission_id>/analysis.md"
           - "<base_path>/refined/<mission_id>/proposal.md"
           - "<base_path>/refined/<mission_id>/design.md"
           - "<base_path>/refined/<mission_id>/tasks.md"
       - handoff_contract: "schemas/handoff-archivist-to-hunter.schema.yaml"
-    description: Reads the Ranger analysis artifact and writes the refined package and related .md summaries.
+    description: Reads the Ranger transient analysis artifact, promotes it into the mission directory, and writes the refined package.
   execution:
     contract: controlled
     canonical:
@@ -136,7 +137,7 @@ pipeline:
     slot: refinement
     condition: quick_draw_detection.matched
     input: quick_draw_discovery
-    artifact_path: "<base_path>/refined/<mission_id>-quick-draw.md"
+    artifact_path: "<base_path>/pending/<mission_id>-quick-draw.md"
     produces:
       - idea
       - theme
@@ -173,7 +174,7 @@ pipeline:
     slot: discovery
     condition: "!quick_draw_detection.matched"
     input: mission_contract
-    artifact_path: "<base_path>/refined/<mission_id>-analysis.md"
+    artifact_path: "<base_path>/pending/<mission_id>-analysis.md"
   - stage: refinement
     slot: refinement
     input: analysis_artifact
@@ -183,6 +184,7 @@ pipeline:
       Results are surfaced to the user inside each role response and at the approval_gate.
     artifact_path: "<base_path>/refined/<mission_id>/"
     produces:
+      - "<base_path>/refined/<mission_id>/analysis.md"
       - "<base_path>/refined/<mission_id>/proposal.md"
       - "<base_path>/refined/<mission_id>/design.md"
       - "<base_path>/refined/<mission_id>/tasks.md"
@@ -222,6 +224,11 @@ result_schema: mission-result.schema.yaml
 
 governance_injection:
   optional: true
+  description: >
+    The only declared extension point for external governance. Any governance adapter
+    (SDD or otherwise) MUST route its context through these fields only.
+    Governance injection does not alter pipeline sequence, approval requirements,
+    or artifact persistence — it only injects provider, paths, and context.
   fields:
     - execution_provider
     - base_path
