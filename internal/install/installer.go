@@ -33,9 +33,6 @@ type Service struct {
 	// tuiPrompterFn overrides NewTUIPrompter for tests. Nil means use NewTUIPrompter.
 	// Set this in tests to avoid huh.Run blocking on a real or open-pipe stdin.
 	tuiPrompterFn func() Prompter
-	// ProgressFn is called after each major install step with (done, total).
-	// Nil means no progress reporting. Set by the CLI to drive the Spell Charge bar.
-	ProgressFn func(done, total int)
 }
 
 // Install installs the skill into cfg.Target. In silent mode it extracts defaults
@@ -70,7 +67,6 @@ func (s Service) Install(ctx context.Context, cfg domain.InstallConfig) error {
 		return fmt.Errorf("install: extract defaults: %w", err)
 	}
 	manifest = append(manifest, strategistDir)
-	s.reportProgress(1, 4)
 
 	slog.InfoContext(ctx, "[Strategist] install applying-config",
 		telemetry.AttrComponent, "install",
@@ -80,7 +76,6 @@ func (s Service) Install(ctx context.Context, cfg domain.InstallConfig) error {
 		return err
 	}
 	manifest = append(manifest, filepath.Join(strategistDir, "active.yaml"))
-	s.reportProgress(2, 4)
 
 	if !cfg.Global {
 		gitignorePath := filepath.Join(cfg.Target, ".gitignore")
@@ -103,7 +98,6 @@ func (s Service) Install(ctx context.Context, cfg domain.InstallConfig) error {
 	}
 	manifest = append(manifest, shimPath)
 	manifest = append(manifest, filepath.Dir(shimPath)) // shim dir — removed only if empty
-	s.reportProgress(3, 4)
 
 	// Compile after install; non-fatal — warn but do not abort.
 	kiPath := filepath.Join(strategistDir, "knowledge.index.yaml")
@@ -118,18 +112,11 @@ func (s Service) Install(ctx context.Context, cfg domain.InstallConfig) error {
 	}
 
 	succeeded = true
-	s.reportProgress(4, 4)
 	slog.InfoContext(ctx, "[Strategist] install complete",
 		telemetry.AttrComponent, "install",
 		telemetry.AttrTarget, telemetry.SanitizePath(cfg.Target),
 	)
 	return nil
-}
-
-func (s Service) reportProgress(done, total int) {
-	if s.ProgressFn != nil {
-		s.ProgressFn(done, total)
-	}
 }
 
 // applyConfig writes active.yaml either from the epic template (silent) or

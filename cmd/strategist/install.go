@@ -15,7 +15,6 @@ import (
 	embedpkg "github.com/SergioLacerda/strategist-skill/internal/embed"
 	"github.com/SergioLacerda/strategist-skill/internal/install"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
-	"github.com/SergioLacerda/strategist-skill/internal/terminal"
 	"github.com/spf13/cobra"
 )
 
@@ -99,12 +98,8 @@ func runInstall(cmd *cobra.Command, _ []string) (retErr error) {
 		ShimHomeDir: shimHome,
 	}
 
-	installErr := terminal.RunSpellCharge(ctx, "install", 4, func(send terminal.SendFn) error {
-		svc.ProgressFn = func(done, total int) { send(done, total) }
-		return svc.Install(ctx, cfg)
-	})
-	if installErr != nil {
-		return fmt.Errorf("install: %w", installErr)
+	if err := svc.Install(ctx, cfg); err != nil {
+		return fmt.Errorf("install: %w", err)
 	}
 
 	if run != nil {

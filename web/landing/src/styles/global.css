@@ -142,7 +142,7 @@ html, body {
 
 /* ---- pipeline diagram ---- */
 .mapwrap { text-align: center; margin: 12px 0 34px; }
-.map { display: inline-block; text-align: left; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.4; color: var(--amber-dim); white-space: pre; border: 1px solid var(--line-2); border-radius: 6px; background: linear-gradient(180deg, rgba(42,33,23,.45), rgba(12,8,5,.55)); box-shadow: inset 0 0 40px rgba(0,0,0,.5); padding: 24px 30px; overflow: hidden; }
+.map { display: inline-block; text-align: left; font-family: var(--font-mono); font-size: 14px; line-height: 1.4; color: var(--amber-dim); white-space: pre; border: 1px solid var(--line-2); border-radius: 6px; background: linear-gradient(180deg, rgba(42,33,23,.45), rgba(12,8,5,.55)); box-shadow: inset 0 0 40px rgba(0,0,0,.5); padding: 24px 30px; overflow-x: auto; }
 .map .node { color: var(--amber-hi); text-shadow: 0 0 10px rgba(232,194,90,.45); }
 .map .gate { color: var(--orange); text-shadow: 0 0 10px rgba(207,122,44,.4); }
 .map .lp { color: var(--green); }
