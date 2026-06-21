@@ -36,9 +36,6 @@ Before touching any file or running any command, Sniper MUST:
   Explicit approval evidence = user confirmed at the persona gate (🚦 prompt).
 - read numbered tasks from `tasks.md`
 - emit task-level running/done updates
-- after each task completes, emit `sniper_task_done` with `done`, `total`, `task_title`,
-  and the Spell Charge bar computed as `done * 28 / total` filled cells (`█`), one leading
-  edge cell (`▓`), remainder track cells (`░`), and percentage `done * 100 / total`
 - stop and report when a new side quest emerges
 
 ## Status Transitions (Sniper)

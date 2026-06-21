@@ -6,21 +6,13 @@ delivered in two interchangeable targets:
 | File | Target | Dependencies |
 |------|--------|--------------|
 | `phosphor-type.sh` | Bash (any POSIX shell) | none |
-| `spell-charge.sh`  | Bash (any POSIX shell) | `awk` (token meter only) |
 | `phosphor_type.go` | Go — Bubble Tea + Lip Gloss | `bubbletea`, `lipgloss` |
-| `spell_charge.go`  | Go — Bubble Tea + Lip Gloss | `bubbletea`, `lipgloss` |
 
-Two loaders are included:
+One loader is included:
 
 - **Phosphor Type** — a typewriter stream. Text appears character by character in
   phosphor green with a blinking block cursor (`█`). Use while the agent is
   "thinking" / streaming, when you have no measurable progress.
-- **Spell Charge** — a determinate progress bar (`█ ▓ ░`) with a percentage and a
-  live token meter (`↑ 12.3k tokens`). Use when you *can* measure progress
-  (steps done / total, bytes, tokens).
-
----
-
 ## How it works (the mechanism)
 
 Both targets paint the **same** picture; only the rendering host differs. The core
@@ -52,7 +44,7 @@ There is no "update element". To animate a single line you:
 4. Sleep a few tens of milliseconds. Repeat.
 
 Because every frame is the same width, each redraw fully overwrites the previous
-one. This is why the progress bar appears to "fill in place".
+one.
 
 > The cursor is hidden (`\e[?25l`) during animation so it doesn't flicker at the
 > end of the line, and restored (`\e[?25h`) on exit — including on Ctrl-C, via a
@@ -68,30 +60,13 @@ one. This is why the progress bar appears to "fill in place".
 - Once the full string is typed, the cursor alternates between `█` and a space on a
   timer to **blink**.
 
-### 4. Spell Charge — the bar + meter
-
-For a bar of `width` cells and progress `p`:
-
-```
-cell i < p   → █   (filled,  amber)
-cell i == p  → ▓   (leading,  ember  — the "charging" edge)
-cell i > p   → ░   (track,    dim)
-```
-
-- Percentage is `p * 100 / width`.
-- The **token meter** after the percentage is a counter that grows with progress
-  (`p * 4400` here as a stand-in), formatted to `k` past 1000. **Swap this for your
-  real token count** when wiring it into strategist (see below).
-
-### 5. Color palette (matches the design tokens)
+### 4. Color palette (matches the design tokens)
 
 256-color indices were chosen to match the Strategist grimoire palette:
 
 | Role | ANSI 256 | Hex (design) |
 |------|----------|--------------|
 | phosphor green | `114` | `#74cf8e` |
-| amber (resin)  | `179` | `#e8c25a` |
-| ember (edge)   | `173` | `#cf7a2c` |
 | track / dim    | `94`  | `#5a4a2a` |
 
 ---
@@ -101,9 +76,8 @@ cell i > p   → ░   (track,    dim)
 Bash (no build step):
 
 ```bash
-chmod +x phosphor-type.sh spell-charge.sh
+chmod +x phosphor-type.sh
 ./phosphor-type.sh
-./spell-charge.sh
 ```
 
 Go (each file is its own `package main` — run from separate folders, or merge):
@@ -111,7 +85,6 @@ Go (each file is its own `package main` — run from separate folders, or merge)
 ```bash
 go get github.com/charmbracelet/bubbletea github.com/charmbracelet/lipgloss
 go run ./phosphor_type.go     # any key quits
-go run ./spell_charge.go      # any key quits
 ```
 
 ---
@@ -120,20 +93,6 @@ go run ./spell_charge.go      # any key quits
 
 The demos loop forever for preview purposes. In production you drive them from
 **real** state.
-
-### Determinate work (Spell Charge)
-
-Render the bar from your actual progress instead of a frame counter:
-
-```go
-// p := currentStep ; width := totalSteps
-// tokens := llmClient.TokensUsed()
-```
-
-Pattern: run the work, and after each unit completes, recompute `p`/`tokens` and
-redraw. With Bubble Tea, send a custom `progressMsg{done, total, tokens}` from your
-worker goroutine via `program.Send(...)` and update the model from it — drop the
-synthetic `tickMsg` entirely.
 
 ### Indeterminate work (Phosphor Type)
 
@@ -171,9 +130,7 @@ teardown for you.
 terminal/
 ├── README.md          ← this file
 ├── phosphor-type.sh   ← typewriter stream  (bash)
-├── spell-charge.sh    ← progress + meter   (bash)
-├── phosphor_type.go   ← typewriter stream  (Go / Bubble Tea)
-└── spell_charge.go    ← progress + meter   (Go / Bubble Tea)
+└── phosphor_type.go   ← typewriter stream  (Go / Bubble Tea)
 ```
 
 A live HTML preview of both (faithful to the terminal output) lives in
