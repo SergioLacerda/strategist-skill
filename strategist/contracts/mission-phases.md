@@ -94,11 +94,11 @@ Invoke the discovery slot provider with:
 - User prompt
 - `mission_contract.planning_rules`
 - Dossier from context enrichment
-- Artifact path: `<base_path>/refined/<mission_id>-analysis.md`
+- Artifact path: `<base_path>/pending/<mission_id>-analysis.md`
 - **Role brief — Ranger** (canonical behaviors, always included):
   - `find_unexpected_items`: Surface anything outside the declared mission scope as an addendum
   - `consult_treasure_chests`: Mandatory step — consult all passed chests before generating the artifact. If chest list is empty, proceed.
-  - Output format: single analysis handoff artifact at the artifact path above
+  - Output format: single transient analysis handoff artifact at the artifact path above
   - Mandatory section in artifact: `Mission Checklist and Phase Roles` with entries for Ranger, Archivist, Sniper using status markers `[x]` (done), `[ ]` (pending), `[-]` (not applicable/no evidence yet)
 - **Treasure chests** — mandatory step (chests where scope = `discovery` or `all`):
   Pass filtered list: `[{id}] path={path} — {description}` for each match.
@@ -168,12 +168,14 @@ Invoke the refinement slot provider with:
   **Chest signal:** Before passing the list to Archivist, emit `persona.content_by_lang[active.language.chat].treasure_chest_found`
   for each chest in the list with `{chest_id}` = chest id and `{description}` = chest description. Skip if empty.
 - Artifact path: `<base_path>/refined/<mission_id>/` (subdirectory)
+  - `analysis.md` — promoted Ranger analysis artifact with mission frontmatter preserved
   - `proposal.md` — what and why (fed by Ranger's analysis artifact)
   - `design.md` — how (architecture, affected components, decisions)
   - `tasks.md` — numbered implementation steps (Sniper's input contract)
 
 **Rules:**
-- Archivist NEVER produces a standalone `.md` in `refined/` — always the three-file subdirectory
+- Archivist NEVER produces a standalone `.md` in `refined/` — always the mission subdirectory
+- Archivist promotes the transient Ranger artifact from `pending/` into `analysis.md` inside the mission subdirectory
 - If `tasks.md` is empty or absent after Archivist completes, Sniper is not invoked
 - Archivist writes all three files directly (contract: `write_analysis`), no gate
 

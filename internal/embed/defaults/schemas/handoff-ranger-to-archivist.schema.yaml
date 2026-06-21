@@ -10,6 +10,23 @@ required_fields:
   mission_id:
     type: string
     required: true
+  mission_status:
+    type: string
+    required: true
+    allowed_values:
+      - ranger_pending
+      - ranger_done
+      - archivist_pending
+      - archivist_done
+      - gate_pending
+      - gate_approval
+      - sniper_running
+      - execution_done
+    description: >
+      Runtime isolation marker set in the analysis file frontmatter.
+      Each phase writes its own status on start and completion.
+      gate_approval is the only "unclaimed" state — any Sniper may claim it.
+      Sniper MUST verify mission_id and mission_status before executing.
   analysis_artifact_path:
     type: string
     required: true

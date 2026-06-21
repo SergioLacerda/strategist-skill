@@ -24,3 +24,15 @@
 - `awaiting_confirmation`
 - `approved`
 - `declined`
+
+## Status Transitions (Gate)
+
+| Moment | Action |
+|--------|--------|
+| Gate presented to user | Update analysis frontmatter → `gate_pending` |
+| User approves + Sniper executes immediately | Update frontmatter → `gate_approval` |
+| User approves + analysis-only mode (no Sniper) | Update frontmatter → `gate_approval` — **no thread lock**; any Sniper may claim later |
+| User declines / `plan_only` | Keep frontmatter at `gate_pending` — signals "pending decision, available for retry" |
+
+> `gate_approval` is the only unclaimed state. When set without an immediate Sniper,
+> the mission card is available for any future Sniper to discover and execute.

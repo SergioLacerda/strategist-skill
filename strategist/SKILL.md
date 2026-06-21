@@ -68,6 +68,15 @@ Config stays in skill root:
 
 Writing config files to the target repo root is forbidden behavior.
 
+## Governance Precedence
+
+External governance (SDD or any other adapter) may inject provider, base path, and context via `governance_injection`. It may permit or block execution. It does NOT:
+- change the pipeline sequence after Strategist is invoked
+- substitute the persona gate (explicit user approval)
+- control artifact persistence, evidence requirements, or slot delegation
+
+SDD is a concrete adapter example — not the normative governance model.
+
 ## Drift Self-Correction
 
 Patterns loaded from `identity/drift-patterns.yaml` at preflight (§2b).

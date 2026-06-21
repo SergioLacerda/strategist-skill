@@ -27,7 +27,7 @@ Every Strategist response must close in this order:
 
 ## Artifact Contract
 
-- Ranger analysis: `<base_path>/refined/<mission_id>-analysis.md`
+- Ranger analysis: `<base_path>/refined/<mission_id>/analysis.md`
 - Archivist package: `<base_path>/refined/<mission_id>/`
 - Sniper report: `<base_path>/archived/<mission_id>-report.md`
 - optional ADR: `<base_path>/archived/<mission_id>-adr.md`

@@ -28,7 +28,7 @@ cases:
       opportunity_items: 0
     expect:
       emit: "[Strategist] phase=ranger opportunity_attack=done items=0"
-      artifact: "<base_path>/refined/<mission_id>-analysis.md"
+      artifact: "<base_path>/pending/<mission_id>-analysis.md"
 
   - name: items_found_user_approves
     given:

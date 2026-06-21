@@ -1,0 +1,356 @@
+---
+import Logo from '../components/Logo.astro';
+import RoleCard from '../components/RoleCard.astro';
+import SkillPanel from '../components/SkillPanel.astro';
+import GatePanel from '../components/GatePanel.astro';
+import InstallBlock from '../components/InstallBlock.astro';
+import TabSwitcher from '../components/TabSwitcher';
+import LangToggle from '../components/LangToggle';
+import CopyButtons from '../components/CopyButton';
+import '../styles/global.css';
+
+const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+const PIPELINE_PT = ` <span class="node">[ WIZARD ]</span> ──────────<span class='g1'>▶</span> <span class="node">[ ESTRATEGISTA ]</span>
+ mago/install           mestre · orquestra
+                               │ delega
+      ┌─────────────────────┬──┘
+      <span class='g1'>▼</span>                     <span class='g1'>▼</span>
+  <span class="node">[ RANGER ]</span> ───────<span class='g1'>▶</span> <span class="node">[ ARCHIVIST ]</span> ──<span class='g1'>▶</span> <span class="gate">╔═ APPROVAL GATE ══╗</span>
+  discovery           refinamento       <span class="gate">║ aprovação humana ║</span>
+                                        <span class="gate">╚══════════════════╝</span>
+                                                 │
+                                                 <span class='g1'>▼</span>
+                                            <span class="node">[ SNIPER ]</span>
+                                             execução
+ <span class="lp">└╌╌╌╌╌╌╌ learning loop · feedback não-bloqueante ╌╌╌╌╌╌╌╌┘</span>`;
+---
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Strategist · Governed AI Mission Orchestrator</title>
+  <meta name="description" content="Strategist is an AI orchestration skill that turns requests into governed missions: discovery, refinement, a mandatory human approval gate, and controlled execution through pluggable roles." />
+  <meta name="theme-color" content="#14100a" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Strategist · Governed AI Mission Orchestrator" />
+  <meta property="og:description" content="Orchestrate AI agents through discovery, refinement, approval gates and controlled execution — reducing improvisation, drift and risk in AI workflows." />
+  <meta property="og:url" content="https://sergiolacerda.github.io/strategist-skill/" />
+  <meta name="twitter:card" content="summary_large_image" />
+</head>
+<body>
+<div class="stage">
+  <div class="app crt" id="app">
+
+    <!-- ═══ TOP BAR ═══ -->
+    <header class="topbar">
+      <a href={base} aria-label="Strategist home" style="display:inline-flex; align-items:center; text-decoration:none;">
+        <Logo size={34} />
+      </a>
+
+      <!-- Tab switcher island -->
+      <TabSwitcher client:load lang="pt" />
+
+      <div class="rightcluster">
+        <a href={base} style="font-family:var(--font-mono); font-size:var(--fs-xs); letter-spacing:var(--ls-wide); color:var(--amber-dim); text-decoration:none; opacity:.75;" title="Escolher modo">‹ modos</a>
+        <a class="gh" href="https://github.com/SergioLacerda/strategist-skill" target="_blank" rel="noopener" title="GitHub" aria-label="GitHub">
+          <svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        </a>
+        <!-- Lang toggle island -->
+        <LangToggle client:load />
+      </div>
+    </header>
+
+    <!-- ═══ MAIN ═══ -->
+    <main class="main">
+
+      <!-- ── OVERVIEW ── -->
+      <section class="panel active" data-panel="overview" aria-label="Visão Geral">
+        <div class="hero">
+          <Logo variant="mark" size={72} />
+          <div class="ornament">━━━━━━ ⟡ ━━━━━━</div>
+          <Logo variant="wordmark" size={62} />
+          <div class="tagline" style="margin-top:14px;"
+            data-pt="A experiência com suas demandas nunca será a mesma."
+            data-en="Your experience with your demands will never be the same."
+          >A experiência com suas demandas nunca será a mesma.</div>
+          <p class="lede"
+            data-pt="Transforme demandas ambíguas em <b>missões governadas</b> para agentes IA. O Strategist orquestra discovery, refinamento, approval gate e execução controlada através de papéis plugáveis — reduzindo improviso, drift e risco em workflows com IA."
+            data-en="Turn ambiguous demands into <b>governed missions</b> for AI agents. Strategist orchestrates discovery, refinement, approval gate and controlled execution through pluggable roles — reducing improvisation, drift and risk in AI workflows."
+          >Transforme demandas ambíguas em <b>missões governadas</b> para agentes IA. O Strategist orquestra discovery, refinamento, approval gate e execução controlada através de papéis plugáveis — reduzindo improviso, drift e risco em workflows com IA.</p>
+          <div class="badges">
+            <span class="pill"><span>◆</span><span data-pt="Workflow de IA Governado" data-en="Governed AI Workflow">Workflow de IA Governado</span></span>
+            <span class="pill"><span>◆</span><span data-pt="Gate de Aprovação Humana" data-en="Human Approval Gate">Gate de Aprovação Humana</span></span>
+            <span class="pill"><span>◆</span><span data-pt="Pronto para Plugins" data-en="Plugin-ready">Pronto para Plugins</span></span>
+            <span class="pill"><span>◆</span><span data-pt="Compatível com SDD" data-en="SDD-compatible">Compatível com SDD</span></span>
+          </div>
+          <div class="cta">
+            <button class="btn-primary" data-tab="invoke" style="display:inline-flex; align-items:center; gap:9px; font-family:var(--font-mono); font-size:var(--fs-sm); letter-spacing:var(--ls-wide); text-transform:uppercase; font-weight:var(--fw-medium); padding:12px 22px; border-radius:var(--radius-sm); cursor:pointer; color:#1c1408; border:1px solid var(--accent); background:var(--grad-amber-btn); text-shadow:none; box-shadow:var(--shadow-btn-amber);">
+              <span aria-hidden="true">❯</span>
+              <span data-pt="Instalar Strategist" data-en="Install Strategist">Instalar Strategist</span>
+            </button>
+            <button class="btn-secondary" data-tab="mission" style="display:inline-flex; align-items:center; gap:9px; font-family:var(--font-mono); font-size:var(--fs-sm); letter-spacing:var(--ls-wide); text-transform:uppercase; font-weight:var(--fw-medium); padding:12px 22px; border-radius:var(--radius-sm); cursor:pointer; border:1px solid var(--border-strong); color:var(--accent); background:rgba(232,194,90,.05);">
+              <span data-pt="Ver arquitetura" data-en="View architecture">Ver arquitetura</span>
+            </button>
+          </div>
+        </div>
+        <div class="tiles">
+          <button class="tile" data-tab="roles">
+            <div class="tg">☉</div>
+            <div class="tl" data-pt="Customize os papéis" data-en="Customize the roles">Customize os papéis</div>
+            <div class="ts" data-pt="Defina o grupo que conduz cada missão." data-en="Define the party that leads each mission.">Defina o grupo que conduz cada missão.</div>
+          </button>
+          <button class="tile" data-tab="roles">
+            <div class="tg">‡</div>
+            <div class="tl" data-pt="Especialize papéis com múltiplas skills" data-en="Specialize roles with multiple skills">Especialize papéis com múltiplas skills</div>
+            <div class="ts" data-pt="Rankeie classes e arme-as com sub-skills." data-en="Rank classes and arm them with sub-skills.">Rankeie classes e arme-as com sub-skills.</div>
+          </button>
+          <button class="tile" data-tab="mission">
+            <div class="tg">⛨</div>
+            <div class="tl" data-pt="Integração com modelos de governança" data-en="Integration with governance models">Integração com modelos de governança</div>
+            <div class="ts" data-pt="Approval gate e políticas dentro do fluxo." data-en="Approval gate and policies inside the flow.">Approval gate e políticas dentro do fluxo.</div>
+          </button>
+          <button class="tile" data-tab="mission">
+            <div class="tg">❒</div>
+            <div class="tl" data-pt="Documentação gerada conforme seus padrões" data-en="Documentation generated to your standards">Documentação gerada conforme seus padrões</div>
+            <div class="ts" data-pt="Determine o padrão e o agente cumpre." data-en="Define the standard and the agent follows it.">Determine o padrão e o agente cumpre.</div>
+          </button>
+        </div>
+      </section>
+
+      <!-- ── ROLES ── -->
+      <section class="panel" data-panel="roles" aria-label="Papéis">
+        <div class="panel-head">
+          <div class="eyebrow" data-pt="a grupo" data-en="the party">a grupo</div>
+          <h1 class="ptitle" data-pt="Papéis" data-en="Roles">Papéis</h1>
+          <p class="pdesc" data-pt="Cada Skill(IA agent) atua em um papel(persona), sob orientação do estrategista, que define responsabilidade e limites de atuação." data-en="Each Skill(AI agent) acts in a role(persona), under the Strategist's guidance, which defines responsibility and operating boundaries.">Cada Skill(IA agent) atua em um papel(persona), sob orientação do estrategista, que define responsabilidade e limites de atuação.</p>
+        </div>
+        <div class="cards">
+          <RoleCard glyph="🧠" role="Estrategista" klass="Mestre · Orquestrador" feature={true}>
+            <span data-pt="Orquestra a missão de ponta a ponta. Delegando e monitorando os papéis, reunindo o time e documentação para aguardar usuário no gate de aprovação." data-en="Orchestrates the mission end to end. Delegating and monitoring the roles, assembling the team and documentation while waiting for the user at the approval gate.">Orquestra a missão de ponta a ponta. Delegando e monitorando os papéis, reunindo o time e documentação para aguardar usuário no gate de aprovação.</span>
+          </RoleCard>
+          <RoleCard glyph="⌕" role="Ranger" klass="Batedor · Discovery">
+            <span data-pt="Levanta requisitos, mapeia o contexto e devolve um relatório de discovery." data-en="Gathers requirements, maps context and returns a discovery report.">Levanta requisitos, mapeia o contexto e devolve um relatório de discovery.</span>
+          </RoleCard>
+          <RoleCard glyph="✎" role="Archivist" klass="Arquivista · Refinamento">
+            <span data-pt="Aprofunda o relatório do Ranger em especificação acionável e análise detalhada." data-en="Deepens the Ranger's report into actionable specification and detailed analysis.">Aprofunda o relatório do Ranger em especificação acionável e análise detalhada.</span>
+          </RoleCard>
+          <RoleCard glyph="⌖" role="Sniper" klass="Executor · Implementação">
+            <span data-pt="Somente após aprovação humana explícita, executa a implementação refinada quando o escopo inclui entrega." data-en="Only after explicit human approval, executes the refined implementation when scope includes delivery.">Somente após aprovação humana explícita, executa a implementação refinada quando o escopo inclui entrega.</span>
+          </RoleCard>
+          <RoleCard glyph="✶" role="Wizard" klass="Invocador · Instalador">
+            <span data-pt="Conjura o grupo no repositório-alvo. Obtém o binário via go install ou GitHub Releases, depois configura com --wizard." data-en="Conjures the party into the target repository. Gets the binary via go install or GitHub Releases, then configures with --wizard.">Conjura o grupo no repositório-alvo. Obtém o binário via <i>go install</i> ou GitHub Releases, depois configura com <i>--wizard</i>.</span>
+          </RoleCard>
+        </div>
+
+        <div class="subhead">
+          <span class="h" data-pt="Rank & Armas" data-en="Rank & Weapons">Rank &amp; Armas</span>
+          <span class="rule"></span>
+          <span class="meta" data-pt="mecânica" data-en="mechanics">mecânica</span>
+        </div>
+        <p class="pdesc" style="margin-top:-8px; margin-bottom:22px;" data-pt="Como o contrato define o papel, o provider rankeado e as armas de cada slot." data-en="How the role is defined by contract, how a provider becomes ranked, and which weapons each slot wields.">Como o contrato define o papel, o provider rankeado e as armas de cada slot.</p>
+        <div class="cards">
+          <div class="mblock">
+            <div class="mg">❖</div>
+            <div class="mh" data-pt="Rank / Especialização" data-en="Rank / Specialization">Rank / Especialização</div>
+            <p class="mp" data-pt="Quando o provider declara <b>canonical_role</b> e <b>provider_class: rankeado</b>, ele se torna <b>rankeado</b> — uma especialização reconhecida para aquele papel, sem ganhar permissões extras." data-en="When a provider declares <b>canonical_role</b> and <b>provider_class: rankeado</b>, it becomes <b>ranked</b> — a specialization recognized for that role, without gaining extra permissions.">Quando o provider declara <b>canonical_role</b> e <b>provider_class: rankeado</b>, ele se torna <b>rankeado</b> — uma especialização reconhecida para aquele papel, sem ganhar permissões extras.</p>
+          </div>
+          <div class="mblock">
+            <div class="mg">⚔</div>
+            <div class="mh" data-pt="Armas" data-en="Weapons">Armas</div>
+            <p class="mp" data-pt="As <b>armas</b> são os providers concretos configurados em cada <i>slot</i>. O papel é o guerreiro; a arma é a skill que ele empunha para executar discovery, refinement ou execution." data-en="<b>Weapons</b> are the concrete providers configured in each <i>slot</i>. The role is the warrior; the weapon is the skill it wields to execute discovery, refinement or execution.">As <b>armas</b> são os providers concretos configurados em cada <i>slot</i>. O papel é o guerreiro; a arma é a skill que ele empunha para executar discovery, refinement ou execution.</p>
+          </div>
+        </div>
+
+        <div class="subhead">
+          <span class="h" data-pt="Skills rankeadas" data-en="Ranked skills">Skills rankeadas</span>
+          <span class="rule"></span>
+          <span class="meta" data-pt="exemplos" data-en="examples">exemplos</span>
+        </div>
+        <div class="cards">
+          <div class="excard">
+            <div class="exhead">
+              <div class="exmed">⌕</div>
+              <div class="exrole">Ranger</div>
+              <span class="rankbadge" data-pt="rank" data-en="rank">rank</span>
+            </div>
+            <div class="exrow">
+              <span class="exlbl" data-pt="skill" data-en="skill">skill</span>
+              <span class="skillchip">brainstorming</span>
+            </div>
+            <div class="exrow">
+              <span class="exlbl" data-pt="armas" data-en="weapons">armas</span>
+              <div class="wchips">
+                <span class="wchip"><span>†</span>writing-skills</span>
+              </div>
+            </div>
+          </div>
+          <div class="excard">
+            <div class="exhead">
+              <div class="exmed">✎</div>
+              <div class="exrole">Archivist</div>
+              <span class="rankbadge" data-pt="rank" data-en="rank">rank</span>
+            </div>
+            <div class="exrow">
+              <span class="exlbl" data-pt="skill" data-en="skill">skill</span>
+              <span class="skillchip">openspec-explore</span>
+            </div>
+            <div class="exrow">
+              <span class="exlbl" data-pt="armas" data-en="weapons">armas</span>
+              <div class="wchips">
+                <span class="wchip"><span>†</span>openspec-propose</span>
+                <span class="wchip"><span>†</span>openspec-apply-change</span>
+                <span class="wchip"><span>†</span>openspec-archive-change</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── SKILLS ── -->
+      <section class="panel" data-panel="skills" aria-label="Habilidades">
+        <div class="panel-head">
+          <div class="eyebrow" data-pt="ações especiais" data-en="special actions">ações especiais</div>
+          <h1 class="ptitle" data-pt="Habilidades" data-en="Skills">Habilidades</h1>
+          <p class="pdesc" data-pt="Capacidades especiais que o grupo pode acionar durante a missão." data-en="Special capabilities the party can trigger during a mission.">Capacidades especiais que o grupo pode acionar durante a missão.</p>
+        </div>
+        <div class="grid3">
+          <SkillPanel icon="⚔" title="Ataque de oportunidade">
+            <span data-pt="Em ações podemos encontrar problemas não previstos ou <i>baús de tesouros</i>." data-en="During actions we may encounter unforeseen problems or <i>treasure chests</i>.">Em ações podemos encontrar problemas não previstos ou <i>baús de tesouros</i>.</span>
+          </SkillPanel>
+          <SkillPanel icon="⚑" title="Missão opcional">
+            <span data-pt="Missões pequenas — mover tarefas prontas para a pasta correta ou hotfixes pontuais." data-en="Small missions — moving completed tasks to the correct folder or targeted hotfixes.">Missões pequenas — mover tarefas prontas para a pasta correta ou hotfixes pontuais.</span>
+          </SkillPanel>
+          <SkillPanel icon="❖" title="Baú de tesouro">
+            <span data-pt="Em cada estágio podemos encontrar fontes de documentação para enriquecer a análise." data-en="At each stage we may find documentation sources to enrich the analysis.">Em cada estágio podemos encontrar fontes de documentação para enriquecer a análise.</span>
+          </SkillPanel>
+          <SkillPanel icon="⚡" title="Saque rápido">
+            <span data-pt="Ideias aparecem rápidas como um raio, estamos prontos para anotar." data-en="Ideas appear fast as lightning, we are ready to write them down.">Ideias aparecem rápidas como um raio, estamos prontos para anotar.</span>
+          </SkillPanel>
+          <SkillPanel icon="⧗" title="Iniciativa">
+            <span data-pt="Avalie seu time antes de começar suas missões." data-en="Assess your team before starting your missions.">Avalie seu time antes de começar suas missões.</span>
+          </SkillPanel>
+          <SkillPanel icon="⛩" title="Dojo">
+            <span data-pt="Ambiente controlado para testar suas habilidades." data-en="A controlled environment to test your skills.">Ambiente controlado para testar suas habilidades.</span>
+          </SkillPanel>
+        </div>
+      </section>
+
+      <!-- ── MISSION FLOW ── -->
+      <section class="panel" data-panel="mission" aria-label="Fluxo da Missão">
+        <div class="panel-head">
+          <div class="eyebrow" data-pt="pipeline" data-en="pipeline">pipeline</div>
+          <h1 class="ptitle" data-pt="Fluxo da Missão" data-en="Mission Flow">Fluxo da Missão</h1>
+          <p class="pdesc" data-pt="Discovery e refinamento rodam autonomamente; a execução só avança após o portão de aprovação." data-en="Discovery and refinement run autonomously; execution proceeds only after the approval gate.">Discovery e refinamento rodam autonomamente; a execução só avança após o portão de aprovação.</p>
+        </div>
+        <div class="phases">
+          <div class="phase">
+            <div class="pico">⌕</div>
+            <div>
+              <div class="pnum" data-pt="fase 01" data-en="phase 01">fase 01</div>
+              <div class="pname" data-pt="Discovery" data-en="Discovery">Discovery</div>
+              <div class="pd" data-pt="Levanta requisitos e mapeia o contexto." data-en="Gathers requirements and maps the context.">Levanta requisitos e mapeia o contexto.</div>
+            </div>
+            <div class="pwho">Ranger</div>
+          </div>
+          <div class="phase">
+            <div class="pico">✎</div>
+            <div>
+              <div class="pnum" data-pt="fase 02" data-en="phase 02">fase 02</div>
+              <div class="pname" data-pt="Refinamento" data-en="Refinement">Refinamento</div>
+              <div class="pd" data-pt="Transforma o relatório em especificação acionável." data-en="Turns the report into an actionable specification.">Transforma o relatório em especificação acionável.</div>
+            </div>
+            <div class="pwho">Archivist</div>
+          </div>
+          <div class="phase gate">
+            <div class="pico">⛨</div>
+            <div>
+              <div class="pnum" data-pt="fase 03" data-en="phase 03">fase 03</div>
+              <div class="pname" data-pt="Approval Gate" data-en="Approval Gate">Approval Gate</div>
+              <div class="pd" data-pt="Confirmação humana obrigatória — sem exceções." data-en="Human confirmation required — no exceptions.">Confirmação humana obrigatória — sem exceções.</div>
+            </div>
+            <div class="pwho" data-pt="Humano" data-en="Human">Humano</div>
+          </div>
+          <div class="phase">
+            <div class="pico">⌖</div>
+            <div>
+              <div class="pnum" data-pt="fase 04" data-en="phase 04">fase 04</div>
+              <div class="pname" data-pt="Execução" data-en="Execution">Execução</div>
+              <div class="pd" data-pt="Implementa o escopo refinado e aprovado." data-en="Implements the refined, approved scope.">Implementa o escopo refinado e aprovado.</div>
+            </div>
+            <div class="pwho">Sniper</div>
+          </div>
+        </div>
+
+        <div class="subhead">
+          <span class="h" data-pt="diagrama" data-en="diagram">diagrama</span>
+          <span class="rule"></span>
+        </div>
+        <div class="mapwrap">
+          <div class="map" set:html={PIPELINE_PT}></div>
+        </div>
+
+        <div class="subhead center">
+          <span class="rule"></span>
+          <span class="h" data-pt="portão de aprovação" data-en="approval gate">portão de aprovação</span>
+          <span class="rule"></span>
+        </div>
+        <GatePanel heading="<b>REQUER ::</b> confirmação humana · sem exceções">
+          <span data-pt="Discovery e refinamento ocorrem autonomamente. Com aprovação humana ao gate: finalizamos a missão de reconhecimento ou seguimos com a execução da implementação." data-en="Discovery and refinement run autonomously. With human approval at the gate, we either conclude the reconnaissance mission or proceed with implementation execution.">Discovery e refinamento ocorrem autonomamente. Com aprovação humana ao gate: finalizamos a missão de reconhecimento ou seguimos com a execução da implementação.</span>
+        </GatePanel>
+      </section>
+
+      <!-- ── INVOKE ── -->
+      <section class="panel" data-panel="invoke" aria-label="Invocação">
+        <div class="panel-head">
+          <div class="eyebrow" data-pt="o feitiço de invocação" data-en="the invocation spell">o feitiço de invocação</div>
+          <h1 class="ptitle" data-pt="Invocação" data-en="Invoke">Invocação</h1>
+          <p class="pdesc" data-pt="Conjure o grupo no repositório-alvo. Um comando e a aventura começa." data-en="Conjure the party into the target repository. One command and the adventure begins.">Conjure o grupo no repositório-alvo. Um comando e a aventura começa.</p>
+        </div>
+        <div class="invoke-panel">
+          <div class="subhead">
+            <span class="h" data-pt="obter o binário" data-en="get the binary">obter o binário</span>
+            <span class="rule"></span>
+            <span class="meta" data-pt="passo 1" data-en="step 1">passo 1</span>
+          </div>
+          <InstallBlock
+            commands={[
+              { label: 'go install (recomendado)', command: 'go install github.com/SergioLacerda/strategist-skill/cmd/strategist@latest' },
+              { label: 'curl · Linux / macOS / WSL', command: 'curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.sh | bash' },
+              { label: 'Windows · GitHub Releases', command: 'https://github.com/SergioLacerda/strategist-skill/releases' },
+            ]}
+            source="Windows: baixe strategist-windows-amd64.zip nos Releases, extraia e adicione ao PATH."
+          />
+          <div class="subhead" style="margin-top:34px;">
+            <span class="h" data-pt="configurar o skill" data-en="configure the skill">configurar o skill</span>
+            <span class="rule"></span>
+            <span class="meta" data-pt="passo 2" data-en="step 2">passo 2</span>
+          </div>
+          <p class="pdesc" style="margin-top:-8px; margin-bottom:18px;" data-pt="No repositório-alvo, invoque o wizard:" data-en="In the target repository, invoke the wizard:">No repositório-alvo, invoque o wizard:</p>
+          <InstallBlock label="Strategist CLI" command="strategist install --wizard" />
+        </div>
+      </section>
+
+      <footer class="footer">
+        strategist-skill &nbsp;·&nbsp; Sergio Lacerda &amp; Raphael Vernil &nbsp;·&nbsp;
+        <a href="https://github.com/SergioLacerda/strategist-skill">github.com/SergioLacerda/strategist-skill</a>
+        &nbsp;·&nbsp; CC BY-NC 4.0
+      </footer>
+    </main>
+  </div>
+</div>
+
+<!-- Copy feedback island -->
+<CopyButtons client:visible />
+
+<!-- Tab/tile click wiring (no-framework, minimal) -->
+<script>
+  document.addEventListener('click', (e) => {
+    const el = (e.target as HTMLElement).closest<HTMLElement>('[data-tab]');
+    if (!el) return;
+    const tab = el.dataset.tab;
+    if (tab) window.dispatchEvent(new CustomEvent('strategist:tab', { detail: tab }));
+  });
+</script>
+</body>
+</html>

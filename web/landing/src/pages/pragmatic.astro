@@ -1,0 +1,279 @@
+---
+const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+---
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Strategist · Guia técnico</title>
+<meta name="description" content="Strategist — guia técnico: pipeline de discovery → spec → execução com approval gate humano obrigatório. Suporta qualquer LLM que respeite o contrato." />
+<meta name="theme-color" content="#14100a" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Strategist · Guia técnico" />
+<meta property="og:description" content="Strategist — guia técnico: pipeline de discovery → spec → execução com approval gate humano obrigatório." />
+<meta property="og:url" content="https://sergiolacerda.github.io/strategist-skill/pragmatic/" />
+<meta name="twitter:card" content="summary_large_image" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --bg:#14100a; --bg2:#1b1610; --panel:#1d1710; --panel2:#231c12;
+  --line:rgba(232,194,90,.14); --line2:rgba(232,194,90,.28);
+  --amber:#e8c25a; --amber-hi:#f8df90; --amber-dim:#b8933f;
+  --orange:#cf7a2c; --green:#74cf8e;
+  --text:#d9c49a; --muted:#9b865d; --faint:#6c5c3e;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+  --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;background:var(--bg);}
+body{font-family:var(--sans);color:var(--text);line-height:1.65;-webkit-font-smoothing:antialiased;}
+a{color:var(--amber);}
+code{font-family:var(--mono);font-size:.92em;color:var(--amber);background:rgba(232,194,90,.08);border:1px solid var(--line);border-radius:4px;padding:1px 6px;}
+.wrap{max-width:840px;margin:0 auto;padding:0 28px;}
+
+/* top bar */
+.topbar{position:sticky;top:0;z-index:20;backdrop-filter:blur(8px);background:rgba(20,16,10,.82);border-bottom:1px solid var(--line);}
+.topbar .wrap{display:flex;align-items:center;justify-content:space-between;height:56px;}
+.topbar .brand{font-family:var(--mono);font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--amber-dim);text-decoration:none;}
+.topbar .right{display:flex;align-items:center;gap:18px;}
+.topbar a.nav{font-family:var(--mono);font-size:12.5px;color:var(--muted);text-decoration:none;letter-spacing:.04em;}
+.topbar a.nav:hover{color:var(--amber);}
+.langsw{display:inline-flex;border:1px solid var(--line2);border-radius:5px;overflow:hidden;font-family:var(--mono);}
+.langsw button{appearance:none;border:0;background:transparent;color:var(--faint);font:inherit;font-size:12px;padding:5px 10px;cursor:pointer;}
+.langsw button.active{background:rgba(232,194,90,.14);color:var(--amber-hi);}
+
+/* skip link (a11y) */
+.skip{position:absolute;left:-9999px;top:0;}
+.skip:focus{left:8px;top:8px;z-index:50;background:var(--amber);color:#1c1408;padding:8px 14px;border-radius:5px;font-family:var(--mono);}
+
+/* hero */
+.hero{padding:64px 0 40px;border-bottom:1px solid var(--line);}
+.kicker{font-family:var(--mono);font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--orange);}
+h1{font-family:var(--mono);font-weight:600;font-size:46px;letter-spacing:.01em;color:var(--amber-hi);margin:14px 0 0;}
+.tagline{font-size:18px;color:var(--text);max-width:680px;margin:16px 0 0;}
+.cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:26px;}
+.btn{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:13px;letter-spacing:.04em;font-weight:500;padding:11px 18px;border-radius:6px;text-decoration:none;border:1px solid var(--line2);color:var(--amber);background:rgba(232,194,90,.05);transition:background .15s,border-color .15s;}
+.btn:hover{background:rgba(232,194,90,.12);border-color:var(--amber);}
+.btn.primary{color:#1c1408;border-color:var(--amber);background:linear-gradient(180deg,var(--amber-hi),var(--amber-dim));}
+.note{display:flex;gap:12px;margin-top:28px;padding:14px 16px;border:1px solid var(--line);border-left:3px solid var(--orange);border-radius:6px;background:rgba(207,122,44,.06);font-size:14px;color:var(--muted);}
+.note .i{color:var(--orange);font-family:var(--mono);font-weight:600;flex:none;}
+
+/* sections */
+section{padding:46px 0;border-bottom:1px solid var(--line);}
+h2{font-family:var(--mono);font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--orange);margin:0 0 6px;}
+h2::before{content:"";display:inline-block;width:22px;height:1px;background:var(--orange);vertical-align:middle;margin-right:10px;opacity:.7;}
+.lead{font-size:15.5px;color:var(--text);margin:0 0 22px;max-width:720px;}
+.muted{color:var(--muted);font-size:14px;margin:0 0 20px;max-width:720px;}
+p{text-wrap:pretty;}
+
+/* pipeline */
+.flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap;}
+.flow .step{flex:1;min-width:150px;border:1px solid var(--line2);border-radius:8px;background:var(--panel);padding:16px 16px 14px;}
+.flow .step.gate{border-color:var(--orange);border-style:dashed;background:linear-gradient(180deg,rgba(207,122,44,.12),transparent);}
+.flow .num{font-family:var(--mono);font-size:11px;color:var(--faint);}
+.flow .name{font-family:var(--mono);font-size:15px;color:var(--amber-hi);margin-top:4px;font-weight:500;}
+.flow .gate .name{color:var(--orange);}
+.flow .desc{font-size:12.5px;color:var(--muted);margin-top:5px;line-height:1.45;}
+.flow .arrow{display:flex;align-items:center;justify-content:center;color:var(--amber-dim);font-family:var(--mono);font-size:18px;width:30px;flex:none;}
+
+/* roles table */
+table{width:100%;border-collapse:collapse;font-size:14px;}
+thead th{text-align:left;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:500;padding:0 14px 10px;border-bottom:1px solid var(--line2);}
+tbody td{padding:14px;border-bottom:1px solid var(--line);vertical-align:top;}
+tbody tr:last-child td{border-bottom:0;}
+td .rname{font-family:var(--mono);color:var(--amber-hi);font-size:14.5px;font-weight:500;}
+td .ralias{font-family:var(--mono);color:var(--muted);font-size:13px;}
+td .rdesc{color:var(--muted);}
+
+/* steps */
+.steps{list-style:none;margin:0;padding:0;counter-reset:s;}
+.steps li{position:relative;padding:0 0 22px 52px;counter-increment:s;}
+.steps li:last-child{padding-bottom:0;}
+.steps li::before{content:counter(s);position:absolute;left:0;top:0;width:34px;height:34px;border-radius:50%;border:1px solid var(--line2);background:var(--panel2);color:var(--amber);font-family:var(--mono);font-size:14px;display:flex;align-items:center;justify-content:center;}
+.steps li:not(:last-child)::after{content:"";position:absolute;left:16.5px;top:34px;bottom:6px;width:1px;background:var(--line);}
+.steps .st{font-family:var(--mono);font-size:15px;color:var(--amber-hi);font-weight:500;}
+.steps .sd{font-size:14px;color:var(--muted);margin-top:4px;}
+
+/* code block */
+pre{font-family:var(--mono);font-size:13px;background:#0d0a06;border:1px solid var(--line2);border-radius:8px;padding:14px 16px;overflow-x:auto;color:var(--text);margin:12px 0 0;}
+pre .c{color:var(--green);} pre .o{color:var(--muted);}
+
+/* gate callout */
+.gatebox{border:1px solid var(--orange);border-radius:10px;background:linear-gradient(180deg,rgba(207,122,44,.1),rgba(20,15,9,.4));padding:24px 26px;display:flex;gap:18px;align-items:flex-start;}
+.gatebox .lock{font-size:34px;color:var(--orange);line-height:1;flex:none;}
+.gatebox p{margin:0;color:var(--text);font-size:15px;}
+
+/* aliases chips */
+.aliases{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;}
+.alias{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;font-family:var(--mono);font-size:13px;border:1px solid var(--line);border-radius:6px;background:var(--panel);padding:10px 12px;}
+.alias .k{color:var(--orange);}
+.alias .eq{color:var(--faint);}
+.alias .v{color:var(--amber);}
+
+/* footer */
+footer{padding:32px 0 60px;}
+footer .wrap{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;font-family:var(--mono);font-size:12.5px;color:var(--faint);}
+footer a{color:var(--amber-dim);text-decoration:none;}
+footer a:hover{color:var(--amber);}
+
+@media(max-width:680px){
+  h1{font-size:34px;}
+  .flow .arrow{display:none;}
+  .flow .step{min-width:0;flex:1 1 100%;}
+}
+</style>
+</head>
+<body>
+
+<a href="#quickstart" class="skip" data-i18n="skip">Pular para o Quickstart</a>
+
+<div class="topbar">
+  <div class="wrap">
+    <a class="brand" href={base} data-i18n="brand">STRATEGIST</a>
+    <div class="right">
+      <a class="nav" href={`${base}epic/`} data-i18n="epicLink">Versão épica ↗</a>
+      <a class="nav" href="https://github.com/SergioLacerda/strategist-skill" target="_blank" rel="noopener" data-i18n="ctaGh">Repositório ↗</a>
+      <div class="langsw">
+        <button data-lang="pt">PT</button><button data-lang="en">EN</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<main>
+<div class="wrap">
+
+  <div class="hero">
+    <div class="kicker" data-i18n="kicker">Guia técnico · modo pragmático</div>
+    <h1 data-i18n="title">Strategist</h1>
+    <p class="tagline" data-i18n="tagline">Pipeline autônomo de discovery → especificação → execução, com um portão de aprovação humano obrigatório antes de qualquer escrita de código.</p>
+    <div class="cta">
+      <a class="btn primary" href="#quickstart" data-i18n="ctaQuick">Quickstart (5 min)</a>
+      <a class="btn" href="https://github.com/SergioLacerda/strategist-skill" target="_blank" rel="noopener" data-i18n="ctaGh">Repositório ↗</a>
+    </div>
+    <div class="note"><span class="i">i</span><span data-i18n="note">Skill agnóstica de provider. Os exemplos usam o Claude, mas o sistema funciona com qualquer LLM/skill que respeite o contrato de entrada/saída de cada papel.</span></div>
+  </div>
+
+  <section>
+    <h2 data-i18n="s_what">O que é</h2>
+    <p class="lead" data-i18n-html="whatP">Strategist é uma skill de orquestração. Um papel coordenador divide uma tarefa em fases, delega cada fase a um especialista e bloqueia no approval gate até a confirmação humana. Cada fase grava artefatos versionáveis em <code>.analysis/</code>, então o processo é auditável e retomável.</p>
+  </section>
+
+  <section>
+    <h2 data-i18n="s_flow">Pipeline</h2>
+    <p class="muted" data-i18n="flowNote">Cada seta é um handoff de artefato. Nada passa do refinamento para a execução sem aprovação humana.</p>
+    <div class="flow">
+      <div class="step"><div class="num">01</div><div class="name" data-i18n="f1">Discovery</div><div class="desc" data-i18n="f1d">levantar requisitos + contexto</div></div>
+      <div class="arrow">→</div>
+      <div class="step"><div class="num">02</div><div class="name" data-i18n="f2">Spec</div><div class="desc" data-i18n="f2d">refinar em especificação acionável</div></div>
+      <div class="arrow">→</div>
+      <div class="step gate"><div class="num">03</div><div class="name" data-i18n="f3">Approval Gate</div><div class="desc" data-i18n="f3d">confirmação humana — obrigatória</div></div>
+      <div class="arrow">→</div>
+      <div class="step"><div class="num">04</div><div class="name" data-i18n="f4">Execução</div><div class="desc" data-i18n="f4d">implementar a spec aprovada</div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-i18n="s_roles">Papéis</h2>
+    <p class="muted" data-i18n="rolesNote">Nomes neutros usados neste guia. Entre parênteses, o alias temático equivalente — ambos funcionam nos templates.</p>
+    <table>
+      <thead><tr><th data-i18n="th_role">Papel</th><th data-i18n="th_alias">Alias</th><th data-i18n="th_resp">Responsabilidade</th></tr></thead>
+      <tbody>
+        <tr><td><span class="rname" data-i18n="r1">Orchestrator</span></td><td><span class="ralias" data-i18n="r1a">Strategist</span></td><td><span class="rdesc" data-i18n="r1d">Coordena a missão, seleciona conhecimento por task_type, delega e guarda o approval gate.</span></td></tr>
+        <tr><td><span class="rname" data-i18n="r2">Discoverer</span></td><td><span class="ralias" data-i18n="r2a">Ranger</span></td><td><span class="rdesc" data-i18n="r2d">Explora o terreno: levanta requisitos, mapeia o contexto e devolve um relatório de discovery.</span></td></tr>
+        <tr><td><span class="rname" data-i18n="r3">Spec Writer</span></td><td><span class="ralias" data-i18n="r3a">Archivist</span></td><td><span class="rdesc" data-i18n="r3d">Refina o relatório em especificação acionável; registra cada decisão em .analysis/.</span></td></tr>
+        <tr><td><span class="rname" data-i18n="r4">Executor</span></td><td><span class="ralias" data-i18n="r4a">Sniper</span></td><td><span class="rdesc" data-i18n="r4d">Após a aprovação, implementa a spec com mudanças mínimas e cirúrgicas.</span></td></tr>
+        <tr><td><span class="rname" data-i18n="r5">Installer</span></td><td><span class="ralias" data-i18n="r5a">Wizard</span></td><td><span class="rdesc" data-i18n="r5d">Instala a party no repo-alvo e roda o wizard de configuração.</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="quickstart">
+    <h2 data-i18n="s_quick">Quickstart</h2>
+    <p class="muted" data-i18n="quickNote">Fluxo mínimo, sem lore. Cinco passos do zero à primeira missão.</p>
+    <ol class="steps">
+      <li><div class="st" data-i18n="q1">Obter o binário</div><div class="sd" data-i18n-html="q1d">Com Go instalado (recomendado):</div>
+        <pre><span class="c">go</span> install github.com/SergioLacerda/strategist-skill/cmd/strategist@latest</pre>
+        <div class="sd" data-i18n-html="q1alt">Sem Go? Baixe o binário pré-compilado nos <a href="https://github.com/SergioLacerda/strategist-skill/releases">GitHub Releases</a> (Linux, macOS, Windows).</div>
+      </li>
+      <li><div class="st" data-i18n="q2">Configurar o skill</div><div class="sd" data-i18n-html="q2d">No repositório-alvo, rode o wizard. Ele cria <code>.strategist/</code> com a configuração da party.</div>
+        <pre><span class="c">strategist</span> install --wizard</pre>
+      </li>
+      <li><div class="st" data-i18n="q3">Iniciar discovery</div><div class="sd" data-i18n-html="q3d">Descreva a tarefa. O Discoverer levanta requisitos e grava o relatório em <code>.analysis/</code>.</div></li>
+      <li><div class="st" data-i18n="q4">Revisar a spec</div><div class="sd" data-i18n-html="q4d">O Spec Writer entrega a especificação. <b>Aqui está o approval gate:</b> revise e aprove antes de qualquer código.</div></li>
+      <li><div class="st" data-i18n="q5">Executar</div><div class="sd" data-i18n-html="q5d">Após aprovar, o Executor implementa exatamente a spec aprovada.</div></li>
+    </ol>
+  </section>
+
+  <section>
+    <h2 data-i18n="s_gate">Approval Gate</h2>
+    <div class="gatebox"><div class="lock">⛨</div><p data-i18n="gateP">Discovery e refinamento rodam de forma autônoma. A execução não. Nenhuma mudança de código acontece sem confirmação humana explícita — sem exceções. É a única regra inviolável do sistema.</p></div>
+  </section>
+
+  <section>
+    <h2 data-i18n="s_aliases">Aliases nos templates</h2>
+    <p class="muted" data-i18n="aliasesNote">Os templates aceitam tanto o nome neutro quanto o temático. Use o que preferir — são intercambiáveis.</p>
+    <div class="aliases">
+      <div class="alias"><span class="k">discovery:</span><span class="v">discoverer</span><span class="eq">·</span><span class="v">ranger</span></div>
+      <div class="alias"><span class="k">spec:</span><span class="v">spec_writer</span><span class="eq">·</span><span class="v">archivist</span></div>
+      <div class="alias"><span class="k">execution:</span><span class="v">executor</span><span class="eq">·</span><span class="v">sniper</span></div>
+      <div class="alias"><span class="k">orchestrator:</span><span class="v">orchestrator</span><span class="eq">·</span><span class="v">strategist</span></div>
+      <div class="alias"><span class="k">install:</span><span class="v">installer</span><span class="eq">·</span><span class="v">wizard</span></div>
+    </div>
+  </section>
+
+  <section style="border-bottom:0;">
+    <h2 data-i18n="s_provider">Suporte a LLMs</h2>
+    <p class="lead" data-i18n="providerP">Os exemplos iniciais usam providers do Claude, mas o sistema suporta qualquer LLM/skill que respeite o contrato. Cada papel define um contrato de entrada/saída; qualquer modelo que o cumpra pode ocupar o slot.</p>
+  </section>
+
+</div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a href={base} data-i18n="foot_modes">‹ escolher modo</a>
+    <span><a href="https://github.com/SergioLacerda/strategist-skill" target="_blank" rel="noopener">strategist-skill</a> · Sergio Lacerda &amp; Raphael Vernil</span>
+  </div>
+</footer>
+
+<script>
+const T = {"pt":{"_lang":"pt-BR","_title":"Strategist · Guia técnico","_desc":"Strategist — guia técnico: pipeline de discovery → spec → execução com approval gate humano obrigatório. Suporta qualquer LLM que respeite o contrato.","brand":"STRATEGIST","epicLink":"Versão épica ↗","skip":"Pular para o Quickstart","kicker":"Guia técnico · modo pragmático","title":"Strategist","tagline":"Pipeline autônomo de discovery → especificação → execução, com um portão de aprovação humano obrigatório antes de qualquer escrita de código.","ctaQuick":"Quickstart (5 min)","ctaGh":"Repositório ↗","note":"Skill agnóstica de provider. Os exemplos usam o Claude, mas o sistema funciona com qualquer LLM/skill que respeite o contrato de entrada/saída de cada papel.","s_what":"O que é","whatP":"Strategist é uma skill de orquestração. Um papel coordenador divide uma tarefa em fases, delega cada fase a um especialista e bloqueia no approval gate até a confirmação humana. Cada fase grava artefatos versionáveis em <code>.analysis/</code>, então o processo é auditável e retomável.","s_flow":"Pipeline","flowNote":"Cada seta é um handoff de artefato. Nada passa do refinamento para a execução sem aprovação humana.","f1":"Discovery","f1d":"levantar requisitos + contexto","f2":"Spec","f2d":"refinar em especificação acionável","f3":"Approval Gate","f3d":"confirmação humana — obrigatória","f4":"Execução","f4d":"implementar a spec aprovada","s_roles":"Papéis","rolesNote":"Nomes neutros usados neste guia. Entre parênteses, o alias temático equivalente — ambos funcionam nos templates.","th_role":"Papel","th_alias":"Alias","th_resp":"Responsabilidade","r1":"Orchestrator","r1a":"Strategist","r1d":"Coordena a missão, seleciona conhecimento por task_type, delega e guarda o approval gate.","r2":"Discoverer","r2a":"Ranger","r2d":"Explora o terreno: levanta requisitos, mapeia o contexto e devolve um relatório de discovery.","r3":"Spec Writer","r3a":"Archivist","r3d":"Refina o relatório em especificação acionável; registra cada decisão em .analysis/.","r4":"Executor","r4a":"Sniper","r4d":"Após a aprovação, implementa a spec com mudanças mínimas e cirúrgicas.","r5":"Installer","r5a":"Wizard","r5d":"Instala a party no repo-alvo e roda o wizard de configuração.","s_quick":"Quickstart","quickNote":"Fluxo mínimo, sem lore. Cinco passos do zero à primeira missão.","q1":"Obter o binário","q1d":"Com Go instalado (recomendado):","q1alt":"Sem Go? Baixe o binário pré-compilado nos <a href=\"https://github.com/SergioLacerda/strategist-skill/releases\">GitHub Releases</a> (Linux, macOS, Windows).","q2":"Configurar o skill","q2d":"No repositório-alvo, rode o wizard. Ele cria <code>.strategist/</code> com a configuração da party.","q3":"Iniciar discovery","q3d":"Descreva a tarefa. O Discoverer levanta requisitos e grava o relatório em <code>.analysis/</code>.","q4":"Revisar a spec","q4d":"O Spec Writer entrega a especificação. <b>Aqui está o approval gate:</b> revise e aprove antes de qualquer código.","q5":"Executar","q5d":"Após aprovar, o Executor implementa exatamente a spec aprovada.","s_gate":"Approval Gate","gateP":"Discovery e refinamento rodam de forma autônoma. A execução não. Nenhuma mudança de código acontece sem confirmação humana explícita — sem exceções. É a única regra inviolável do sistema.","s_aliases":"Aliases nos templates","aliasesNote":"Os templates aceitam tanto o nome neutro quanto o temático. Use o que preferir — são intercambiáveis.","s_provider":"Suporte a LLMs","providerP":"Os exemplos iniciais usam providers do Claude, mas o sistema suporta qualquer LLM/skill que respeite o contrato. Cada papel define um contrato de entrada/saída; qualquer modelo que o cumpra pode ocupar o slot.","foot_modes":"‹ escolher modo"},"en":{"_lang":"en","_title":"Strategist · Technical guide","_desc":"Strategist — technical guide: discovery → spec → execution pipeline with a mandatory human approval gate. Works with any LLM that respects the contract.","brand":"STRATEGIST","epicLink":"Epic version ↗","skip":"Skip to Quickstart","kicker":"Technical guide · pragmatic mode","title":"Strategist","tagline":"An autonomous discovery → specification → execution pipeline, with a mandatory human approval gate before any code is written.","ctaQuick":"Quickstart (5 min)","ctaGh":"Repository ↗","note":"Provider-agnostic skill. Examples use Claude, but the system works with any LLM/skill that respects each role's input/output contract.","s_what":"What it is","whatP":"Strategist is an orchestration skill. A coordinator role splits a task into phases, delegates each phase to a specialist, and blocks at the approval gate until a human confirms. Each phase writes versionable artifacts to <code>.analysis/</code>, so the process is auditable and resumable.","s_flow":"Pipeline","flowNote":"Each arrow is an artifact handoff. Nothing moves from refinement to execution without human approval.","f1":"Discovery","f1d":"gather requirements + context","f2":"Spec","f2d":"refine into an actionable spec","f3":"Approval Gate","f3d":"human confirmation — mandatory","f4":"Execution","f4d":"implement the approved spec","s_roles":"Roles","rolesNote":"Neutral names used in this guide. In parentheses, the equivalent themed alias — both work in the templates.","th_role":"Role","th_alias":"Alias","th_resp":"Responsibility","r1":"Orchestrator","r1a":"Strategist","r1d":"Coordinates the mission, selects knowledge by task_type, delegates, and guards the approval gate.","r2":"Discoverer","r2a":"Ranger","r2d":"Explores the terrain: gathers requirements, maps context, returns a discovery report.","r3":"Spec Writer","r3a":"Archivist","r3d":"Refines the report into an actionable spec; records each decision in .analysis/.","r4":"Executor","r4a":"Sniper","r4d":"After approval, implements the spec with minimal, surgical changes.","r5":"Installer","r5a":"Wizard","r5d":"Installs the party into the target repo and runs the configuration wizard.","s_quick":"Quickstart","quickNote":"Minimal flow, no lore. Five steps from zero to first mission.","q1":"Get the binary","q1d":"With Go installed (recommended):","q1alt":"No Go? Download a pre-built binary from <a href=\"https://github.com/SergioLacerda/strategist-skill/releases\">GitHub Releases</a> (Linux, macOS, Windows).","q2":"Configure the skill","q2d":"In your target repository, run the wizard. It creates <code>.strategist/</code> with the agent config.","q3":"Start discovery","q3d":"Describe the task. The Discoverer gathers requirements and writes the report to <code>.analysis/</code>.","q4":"Review the spec","q4d":"The Spec Writer delivers the specification. <b>This is the approval gate:</b> review and approve before any code.","q5":"Execute","q5d":"Once approved, the Executor implements exactly the approved spec.","s_gate":"Approval Gate","gateP":"Discovery and refinement run autonomously. Execution does not. No code change happens without explicit human confirmation — no exceptions. It is the one inviolable rule of the system.","s_aliases":"Template aliases","aliasesNote":"Templates accept both the neutral and the themed name. Use whichever you prefer — they are interchangeable.","s_provider":"LLM support","providerP":"Initial examples use Claude providers, but the system supports any LLM/skill that respects the contract. Each role defines an input/output contract; any model that meets it can fill the slot.","foot_modes":"‹ choose mode"}};
+type LangKey = keyof typeof T;
+function applyLang(lang: string): void {
+  if(!T[lang as LangKey]) lang='pt';
+  const dict=T[lang as LangKey];
+  document.documentElement.lang=dict._lang;
+  document.title=dict._title;
+  const meta=document.querySelector('meta[name="description"]');
+  if(meta) meta.setAttribute('content',dict._desc);
+  document.querySelectorAll('[data-i18n]').forEach(function(el){
+    const k=el.getAttribute('data-i18n'); if(k!=null&&dict[k as keyof typeof dict]!=null) el.textContent=dict[k as keyof typeof dict] as string;
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach(function(el){
+    const k=el.getAttribute('data-i18n-html'); if(k!=null&&dict[k as keyof typeof dict]!=null) (el as HTMLElement).innerHTML=dict[k as keyof typeof dict] as string;
+  });
+  document.querySelectorAll('.langsw button').forEach(function(b){
+    b.classList.toggle('active', b.getAttribute('data-lang')===lang);
+  });
+  try{localStorage.setItem('strategist_lang',lang);}catch(e){}
+  const u=new URL(location.href); u.searchParams.set('lang',lang); history.replaceState(null,'',u);
+}
+function initLang(): void {
+  let lang: string|null=null;
+  try{lang=new URL(location.href).searchParams.get('lang');}catch(e){}
+  if(!lang){try{lang=localStorage.getItem('strategist_lang');}catch(e){}}
+  if(!lang){lang=(navigator.language||'').toLowerCase().indexOf('pt')===0?'pt':'en';}
+  applyLang(T[lang as LangKey]?lang:'pt');
+}
+document.addEventListener('click',function(e){
+  const b=(e.target as Element|null)?.closest('.langsw button');
+  if(b){applyLang(b.getAttribute('data-lang') as string);}
+});
+initLang();
+</script>
+</body>
+</html>

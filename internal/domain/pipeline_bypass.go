@@ -53,8 +53,8 @@ func EvaluatePipelineBypass(e PipelineEvidence) PipelineBypassDecision {
 		return blockedBypassDecision(
 			e,
 			"ranger",
-			fmt.Sprintf("%s/refined/%s-analysis.md", e.BasePath, e.MissionID),
-			fmt.Sprintf("re-invoke the mission through the full pipeline so Ranger can produce %s/refined/%s-analysis.md", e.BasePath, e.MissionID),
+			fmt.Sprintf("%s/refined/%s/analysis.md", e.BasePath, e.MissionID),
+			fmt.Sprintf("re-invoke the mission through the full pipeline so Ranger and Archivist can produce %s/refined/%s/analysis.md", e.BasePath, e.MissionID),
 		)
 	}
 	if !e.RefinementPresent || !e.TasksPresent {
