@@ -12,6 +12,7 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/compile"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
+	"github.com/SergioLacerda/strategist-skill/internal/terminal"
 	"github.com/spf13/cobra"
 )
 
@@ -64,8 +65,15 @@ func runCompile(cmd *cobra.Command, _ []string) (retErr error) {
 
 	indexPath := filepath.Join(compileRoot, "knowledge.index.yaml")
 	c := compile.Compiler{}
-	if err := c.CompileAll(compileRoot, indexPath); err != nil {
-		return fmt.Errorf("compile: %w", err)
+	compileErr := terminal.RunSpellCharge(ctx, "compile --spell", 1, func(send terminal.SendFn) error {
+		if err := c.CompileAll(compileRoot, indexPath); err != nil {
+			return fmt.Errorf("compile all: %w", err)
+		}
+		send(1, 1)
+		return nil
+	})
+	if compileErr != nil {
+		return fmt.Errorf("compile: %w", compileErr)
 	}
 
 	if run != nil {

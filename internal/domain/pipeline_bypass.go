@@ -7,6 +7,7 @@ const (
 	PipelineBypassDetectedReason = "pipeline_bypass_detected"
 	MissionRouteMain             = "main"
 	MissionRouteQuickDraw        = "quick_draw"
+	MissionRouteDirectExecute    = "direct_execute"
 )
 
 // PipelineEvidence captures the mission state used to detect pipeline bypass attempts.
@@ -22,6 +23,7 @@ type PipelineEvidence struct {
 	GateApproved       bool
 	QuickDrawPresented bool
 	QuickDrawApproved  bool
+	DirectGateApproved bool
 }
 
 // PipelineBypassDecision reports whether an attempted action is allowed to proceed
@@ -49,12 +51,15 @@ func EvaluatePipelineBypass(e PipelineEvidence) PipelineBypassDecision {
 	if e.Route == MissionRouteQuickDraw {
 		return evaluateQuickDrawBypass(e)
 	}
+	if e.Route == MissionRouteDirectExecute {
+		return evaluateDirectExecuteBypass(e)
+	}
 	if !e.DiscoveryPresent {
 		return blockedBypassDecision(
 			e,
 			"ranger",
-			fmt.Sprintf("%s/refined/%s-analysis.md", e.BasePath, e.MissionID),
-			fmt.Sprintf("re-invoke the mission through the full pipeline so Ranger can produce %s/refined/%s-analysis.md", e.BasePath, e.MissionID),
+			fmt.Sprintf("%s/refined/%s/analysis.md", e.BasePath, e.MissionID),
+			fmt.Sprintf("re-invoke the mission through the full pipeline so Ranger and Archivist can produce %s/refined/%s/analysis.md", e.BasePath, e.MissionID),
 		)
 	}
 	if !e.RefinementPresent || !e.TasksPresent {
@@ -75,6 +80,18 @@ func EvaluatePipelineBypass(e PipelineEvidence) PipelineBypassDecision {
 			"approval_gate",
 			"approval_gate:approved",
 			fmt.Sprintf("present the approval gate for mission %s and wait for explicit user approval before execution", e.MissionID),
+		)
+	}
+	return PipelineBypassDecision{Allowed: true}
+}
+
+func evaluateDirectExecuteBypass(e PipelineEvidence) PipelineBypassDecision {
+	if !e.DirectGateApproved {
+		return blockedBypassDecision(
+			e,
+			"direct_gate",
+			fmt.Sprintf("direct_gate:approved (mission %s)", e.MissionID),
+			fmt.Sprintf("present the Critical Hit gate for mission %s and wait for user confirmation before writing", e.MissionID),
 		)
 	}
 	return PipelineBypassDecision{Allowed: true}

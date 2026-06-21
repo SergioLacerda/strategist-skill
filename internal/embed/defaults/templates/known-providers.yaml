@@ -3,8 +3,6 @@
 # does not declare risk_score.
 # Values: read_only | write_analysis | controlled | orchestrator
 # Add entries here for any custom providers you use.
-# Providers used as wizard defaults must also ship an installable canonical
-# manifest that can be materialized into .strategist/<provider>/skill.yaml.
 
 providers:
   brainstorming: write_analysis

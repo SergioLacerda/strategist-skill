@@ -32,7 +32,7 @@ contract:
       description: Generated unique mission identifier
     - name: route
       type: enum
-      values: [standard, quick_draw]
+      values: [standard, quick_draw, direct_execute]
       description: Determines which pipeline to run
 
   error_conditions:
@@ -49,6 +49,22 @@ contract:
     If any trigger matches: emit side_quest_detected with description="Quick Draw — rapid idea
     capture." before routing. Do NOT run regular intake classification. Skip §4–§7.
     Execute only quick_draw pipeline (§5.0).
+
+  routing_matrix:
+    evaluation_order:
+      1: quick_draw      # keyword-based, explicit user signal — checked first
+      2: direct_execute  # automatic classifier (Critical Hit) — checked second
+      3: main_mission    # default, always safe
+    critical_hit_conditions:
+      task_type_allow: [doc_edit, content_update, readme_update, comment_update]
+      risk_level_require: low
+      file_count_max: 5
+      keyword_deny: [investigar, propor, auditar, projetar, redesenhar, arquitetura, refatorar]
+      task_type_deny: [architecture_analysis, refactor, security_audit, new_feature]
+      tie_break: main_mission
+    emit_on_route_selected:
+      format: "[Strategist] phase=intake route_selected={route} task_type={task_type} risk_level={risk_level}"
+      level: INFO
 
   mission_checkpoint:
     emit_key: mission_checkpoint

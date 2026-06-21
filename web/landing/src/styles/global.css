@@ -95,10 +95,10 @@ html, body {
 .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 18px; }
 
 /* ---- hero ---- */
-.hero { text-align: center; padding: 30px 0 8px; position: relative; }
+.hero { text-align: center; padding: 30px 0 8px; position: relative; display: flex; flex-direction: column; align-items: center; }
 .hero .ornament { color: var(--amber-dim); letter-spacing: .5em; font-size: 14px; margin: 20px 0 16px; }
 .hero .tagline { font-family: var(--font-display); font-size: 14px; letter-spacing: .42em; text-transform: uppercase; color: var(--orange); }
-.hero .lede { max-width: 660px; margin: 22px auto 0; font-size: 15.5px; color: var(--text); line-height: 1.7; }
+.hero .lede { max-width: 660px; margin-top: 22px; font-size: 15.5px; color: var(--text); line-height: 1.7; }
 .hero .lede b { color: var(--amber); }
 .badges { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 24px; }
 .pill { font-family: var(--font-mono); font-size: 12px; letter-spacing: .06em; color: var(--amber); border: 1px solid var(--line-2); background: rgba(232,194,90,.06); border-radius: 999px; padding: 7px 15px; display: inline-flex; align-items: center; gap: 8px; }
