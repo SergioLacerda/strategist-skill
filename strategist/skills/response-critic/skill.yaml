@@ -4,6 +4,7 @@ schema_version: "1"
 status: active
 risk_score: read_only
 category: evaluation
+skill_type: validation
 
 description: >
   Evaluates slot output against the rubric for the current task_type.

@@ -69,15 +69,15 @@
 				
 				<option value="file6">github.com/SergioLacerda/strategist-skill/internal/compile/yaml.go (100.0%)</option>
 				
-				<option value="file7">github.com/SergioLacerda/strategist-skill/internal/dojo/checker.go (94.7%)</option>
+				<option value="file7">github.com/SergioLacerda/strategist-skill/internal/dojo/checker.go (93.0%)</option>
 				
-				<option value="file8">github.com/SergioLacerda/strategist-skill/internal/domain/pipeline_bypass.go (88.0%)</option>
+				<option value="file8">github.com/SergioLacerda/strategist-skill/internal/domain/pipeline_bypass.go (90.0%)</option>
 				
 				<option value="file9">github.com/SergioLacerda/strategist-skill/internal/domain/policy.go (85.7%)</option>
 				
 				<option value="file10">github.com/SergioLacerda/strategist-skill/internal/domain/policy_evaluator.go (90.9%)</option>
 				
-				<option value="file11">github.com/SergioLacerda/strategist-skill/internal/domain/state_machine.go (75.8%)</option>
+				<option value="file11">github.com/SergioLacerda/strategist-skill/internal/domain/state_machine.go (74.1%)</option>
 				
 				<option value="file12">github.com/SergioLacerda/strategist-skill/internal/domain/types.go (96.8%)</option>
 				
@@ -85,17 +85,17 @@
 				
 				<option value="file14">github.com/SergioLacerda/strategist-skill/internal/i18n/wizard.go (100.0%)</option>
 				
-				<option value="file15">github.com/SergioLacerda/strategist-skill/internal/install/active_yaml.go (94.1%)</option>
+				<option value="file15">github.com/SergioLacerda/strategist-skill/internal/install/active_yaml.go (91.3%)</option>
 				
 				<option value="file16">github.com/SergioLacerda/strategist-skill/internal/install/gitignore.go (88.2%)</option>
 				
-				<option value="file17">github.com/SergioLacerda/strategist-skill/internal/install/installer.go (89.0%)</option>
+				<option value="file17">github.com/SergioLacerda/strategist-skill/internal/install/installer.go (88.9%)</option>
 				
 				<option value="file18">github.com/SergioLacerda/strategist-skill/internal/install/mission_id.go (96.0%)</option>
 				
 				<option value="file19">github.com/SergioLacerda/strategist-skill/internal/install/prompter.go (100.0%)</option>
 				
-				<option value="file20">github.com/SergioLacerda/strategist-skill/internal/install/shim.go (88.9%)</option>
+				<option value="file20">github.com/SergioLacerda/strategist-skill/internal/install/shim.go (77.3%)</option>
 				
 				<option value="file21">github.com/SergioLacerda/strategist-skill/internal/install/tui.go (96.0%)</option>
 				
@@ -115,15 +115,17 @@
 				
 				<option value="file29">github.com/SergioLacerda/strategist-skill/internal/telemetry/outcome.go (85.2%)</option>
 				
-				<option value="file30">github.com/SergioLacerda/strategist-skill/internal/telemetry/policy_event.go (100.0%)</option>
+				<option value="file30">github.com/SergioLacerda/strategist-skill/internal/telemetry/outcome_unix.go (66.7%)</option>
 				
-				<option value="file31">github.com/SergioLacerda/strategist-skill/internal/telemetry/schema.go (100.0%)</option>
+				<option value="file31">github.com/SergioLacerda/strategist-skill/internal/telemetry/policy_event.go (100.0%)</option>
 				
-				<option value="file32">github.com/SergioLacerda/strategist-skill/internal/telemetry/setup.go (88.9%)</option>
+				<option value="file32">github.com/SergioLacerda/strategist-skill/internal/telemetry/schema.go (100.0%)</option>
 				
-				<option value="file33">github.com/SergioLacerda/strategist-skill/internal/telemetry/tracer.go (100.0%)</option>
+				<option value="file33">github.com/SergioLacerda/strategist-skill/internal/telemetry/setup.go (88.9%)</option>
 				
-				<option value="file34">github.com/SergioLacerda/strategist-skill/internal/testutil/testutil.go (100.0%)</option>
+				<option value="file34">github.com/SergioLacerda/strategist-skill/internal/telemetry/tracer.go (100.0%)</option>
+				
+				<option value="file35">github.com/SergioLacerda/strategist-skill/internal/testutil/testutil.go (100.0%)</option>
 				
 				</select>
 			</div>
@@ -703,6 +705,7 @@ import (
         "fmt"
         "os"
         "path/filepath"
+        "strconv"
         "strings"
 
         "github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -727,7 +730,7 @@ func CheckFiles(criteria domain.DojoCriteria, basePath string) []domain.DojoChec
         var items []domain.DojoCheckItem
         runDir := filepath.Join(basePath, criteria.RunDir)
 
-        for _, fc := range criteria.FilesCreated </span><span class="cov6" title="6">{
+        for _, fc := range criteria.FilesCreated </span><span class="cov5" title="6">{
                 full := filepath.Join(runDir, fc.Path)
                 exists := fileExists(full)
                 items = append(items, domain.DojoCheckItem{
@@ -832,7 +835,7 @@ func CheckEmitLog(criteria domain.DojoCriteria, logPath string, filesOnly bool) 
 
 // CheckManifests validates the manifest_checks section of criteria.
 // strategistDir is the path to the .strategist/ directory.
-func CheckManifests(criteria domain.DojoCriteria, strategistDir string) []domain.DojoCheckItem <span class="cov6" title="6">{
+func CheckManifests(criteria domain.DojoCriteria, strategistDir string) []domain.DojoCheckItem <span class="cov5" title="6">{
         var items []domain.DojoCheckItem
 
         for _, mc := range criteria.ManifestChecks </span><span class="cov4" title="4">{
@@ -866,7 +869,67 @@ func CheckManifests(criteria domain.DojoCriteria, strategistDir string) []domain
                         })
                 }</span>
         }
-        <span class="cov6" title="6">return items</span>
+        <span class="cov5" title="6">return items</span>
+}
+
+// CheckTiming validates wall-time performance from a timing_criteria block.
+// It reads total_wall_time_ms=&lt;value&gt; from the emit log.
+// If timing_criteria is nil, returns empty (no check performed).
+func CheckTiming(criteria domain.DojoCriteria, logPath string) []domain.DojoCheckItem <span class="cov5" title="6">{
+        if criteria.TimingCriteria == nil </span><span class="cov2" title="2">{
+                return nil
+        }</span>
+        <span class="cov4" title="4">tc := criteria.TimingCriteria
+
+        if !fileExists(logPath) </span><span class="cov1" title="1">{
+                return []domain.DojoCheckItem{{
+                        Label:  "timing total_wall_time_ms",
+                        Passed: false,
+                        Detail: "emit.log not found — run the LLM scenario first",
+                }}
+        }</span>
+
+        <span class="cov4" title="3">raw, err := os.ReadFile(logPath)
+        if err != nil </span><span class="cov0" title="0">{
+                return []domain.DojoCheckItem{{
+                        Label:  "timing total_wall_time_ms",
+                        Passed: false,
+                        Detail: err.Error(),
+                }}
+        }</span>
+
+        <span class="cov4" title="3">log := string(raw)
+        const field = "total_wall_time_ms="
+        idx := strings.Index(log, field)
+        if idx &lt; 0 </span><span class="cov1" title="1">{
+                return []domain.DojoCheckItem{{
+                        Label:  "timing total_wall_time_ms",
+                        Passed: false,
+                        Detail: "total_wall_time_ms not found in emit.log",
+                }}
+        }</span>
+
+        <span class="cov2" title="2">rest := log[idx+len(field):]
+        end := strings.IndexAny(rest, " \t\n\r")
+        if end &lt; 0 </span><span class="cov0" title="0">{
+                end = len(rest)
+        }</span>
+        <span class="cov2" title="2">valStr := rest[:end]
+        val, err := strconv.Atoi(valStr)
+        if err != nil </span><span class="cov0" title="0">{
+                return []domain.DojoCheckItem{{
+                        Label:  "timing total_wall_time_ms",
+                        Passed: false,
+                        Detail: fmt.Sprintf("cannot parse total_wall_time_ms=%q: %v", valStr, err),
+                }}
+        }</span>
+
+        <span class="cov2" title="2">passed := val &lt;= tc.MaxWallTimeMs
+        return []domain.DojoCheckItem{{
+                Label:  "timing total_wall_time_ms",
+                Passed: passed,
+                Detail: ifFail(passed, fmt.Sprintf("wall time %d ms exceeds max %d ms", val, tc.MaxWallTimeMs)),
+        }}</span>
 }
 
 // Run executes all checks for a scenario and returns the aggregated result.
@@ -875,19 +938,20 @@ func Run(criteria domain.DojoCriteria, basePath, strategistDir, emitLogPath stri
         result.Items = append(result.Items, CheckFiles(criteria, basePath)...)
         result.Items = append(result.Items, CheckEmitLog(criteria, emitLogPath, filesOnly)...)
         result.Items = append(result.Items, CheckManifests(criteria, strategistDir)...)
+        result.Items = append(result.Items, CheckTiming(criteria, emitLogPath)...)
         return result
 }</span>
 
-func fileExists(path string) bool <span class="cov8" title="17">{
+func fileExists(path string) bool <span class="cov9" title="21">{
         _, err := os.Stat(path)
         return err == nil
 }</span>
 
-func ifFail(passed bool, detail string) string <span class="cov10" title="25">{
-        if passed </span><span class="cov8" title="17">{
+func ifFail(passed bool, detail string) string <span class="cov10" title="27">{
+        if passed </span><span class="cov8" title="18">{
                 return ""
         }</span>
-        <span class="cov6" title="8">return detail</span>
+        <span class="cov7" title="9">return detail</span>
 }
 </pre>
 		
@@ -900,6 +964,7 @@ const (
         PipelineBypassDetectedReason = "pipeline_bypass_detected"
         MissionRouteMain             = "main"
         MissionRouteQuickDraw        = "quick_draw"
+        MissionRouteDirectExecute    = "direct_execute"
 )
 
 // PipelineEvidence captures the mission state used to detect pipeline bypass attempts.
@@ -915,6 +980,7 @@ type PipelineEvidence struct {
         GateApproved       bool
         QuickDrawPresented bool
         QuickDrawApproved  bool
+        DirectGateApproved bool
 }
 
 // PipelineBypassDecision reports whether an attempted action is allowed to proceed
@@ -937,32 +1003,35 @@ func (d PipelineBypassDecision) Error() string <span class="cov0" title="0">{
 
 // EvaluatePipelineBypass determines whether the given mission evidence indicates
 // a pipeline bypass and, if so, returns the expected phase and resume hint.
-func EvaluatePipelineBypass(e PipelineEvidence) PipelineBypassDecision <span class="cov10" title="7">{
+func EvaluatePipelineBypass(e PipelineEvidence) PipelineBypassDecision <span class="cov10" title="9">{
         e = normalizePipelineEvidence(e)
-        if e.Route == MissionRouteQuickDraw </span><span class="cov4" title="2">{
+        if e.Route == MissionRouteQuickDraw </span><span class="cov3" title="2">{
                 return evaluateQuickDrawBypass(e)
         }</span>
-        <span class="cov8" title="5">if !e.DiscoveryPresent </span><span class="cov1" title="1">{
+        <span class="cov8" title="7">if e.Route == MissionRouteDirectExecute </span><span class="cov3" title="2">{
+                return evaluateDirectExecuteBypass(e)
+        }</span>
+        <span class="cov7" title="5">if !e.DiscoveryPresent </span><span class="cov1" title="1">{
                 return blockedBypassDecision(
                         e,
                         "ranger",
-                        fmt.Sprintf("%s/refined/%s-analysis.md", e.BasePath, e.MissionID),
-                        fmt.Sprintf("re-invoke the mission through the full pipeline so Ranger can produce %s/refined/%s-analysis.md", e.BasePath, e.MissionID),
+                        fmt.Sprintf("%s/refined/%s/analysis.md", e.BasePath, e.MissionID),
+                        fmt.Sprintf("re-invoke the mission through the full pipeline so Ranger and Archivist can produce %s/refined/%s/analysis.md", e.BasePath, e.MissionID),
                 )
         }</span>
-        <span class="cov7" title="4">if !e.RefinementPresent || !e.TasksPresent </span><span class="cov4" title="2">{
+        <span class="cov6" title="4">if !e.RefinementPresent || !e.TasksPresent </span><span class="cov3" title="2">{
                 missing := fmt.Sprintf("%s/refined/%s/tasks.md", e.BasePath, e.MissionID)
                 if !e.RefinementPresent </span><span class="cov1" title="1">{
                         missing = fmt.Sprintf("%s/refined/%s/", e.BasePath, e.MissionID)
                 }</span>
-                <span class="cov4" title="2">return blockedBypassDecision(
+                <span class="cov3" title="2">return blockedBypassDecision(
                         e,
                         "archivist",
                         missing,
                         fmt.Sprintf("resume at Archivist by generating the refined plan under %s/refined/%s/", e.BasePath, e.MissionID),
                 )</span>
         }
-        <span class="cov4" title="2">if !e.GatePresented || !e.GateApproved </span><span class="cov1" title="1">{
+        <span class="cov3" title="2">if !e.GatePresented || !e.GateApproved </span><span class="cov1" title="1">{
                 return blockedBypassDecision(
                         e,
                         "approval_gate",
@@ -973,7 +1042,19 @@ func EvaluatePipelineBypass(e PipelineEvidence) PipelineBypassDecision <span cla
         <span class="cov1" title="1">return PipelineBypassDecision{Allowed: true}</span>
 }
 
-func evaluateQuickDrawBypass(e PipelineEvidence) PipelineBypassDecision <span class="cov4" title="2">{
+func evaluateDirectExecuteBypass(e PipelineEvidence) PipelineBypassDecision <span class="cov3" title="2">{
+        if !e.DirectGateApproved </span><span class="cov1" title="1">{
+                return blockedBypassDecision(
+                        e,
+                        "direct_gate",
+                        fmt.Sprintf("direct_gate:approved (mission %s)", e.MissionID),
+                        fmt.Sprintf("present the Critical Hit gate for mission %s and wait for user confirmation before writing", e.MissionID),
+                )
+        }</span>
+        <span class="cov1" title="1">return PipelineBypassDecision{Allowed: true}</span>
+}
+
+func evaluateQuickDrawBypass(e PipelineEvidence) PipelineBypassDecision <span class="cov3" title="2">{
         if !e.QuickDrawPresented || !e.QuickDrawApproved </span><span class="cov1" title="1">{
                 return blockedBypassDecision(
                         e,
@@ -985,7 +1066,7 @@ func evaluateQuickDrawBypass(e PipelineEvidence) PipelineBypassDecision <span cl
         <span class="cov1" title="1">return PipelineBypassDecision{Allowed: true}</span>
 }
 
-func blockedBypassDecision(e PipelineEvidence, expectedPhase, missingEvidence, resumeHint string) PipelineBypassDecision <span class="cov8" title="5">{
+func blockedBypassDecision(e PipelineEvidence, expectedPhase, missingEvidence, resumeHint string) PipelineBypassDecision <span class="cov8" title="6">{
         return PipelineBypassDecision{
                 Allowed:         false,
                 Reason:          PipelineBypassDetectedReason,
@@ -996,17 +1077,17 @@ func blockedBypassDecision(e PipelineEvidence, expectedPhase, missingEvidence, r
         }
 }</span>
 
-func normalizePipelineEvidence(e PipelineEvidence) PipelineEvidence <span class="cov10" title="7">{
-        if e.Route == "" </span><span class="cov8" title="5">{
+func normalizePipelineEvidence(e PipelineEvidence) PipelineEvidence <span class="cov10" title="9">{
+        if e.Route == "" </span><span class="cov7" title="5">{
                 e.Route = MissionRouteMain
         }</span>
-        <span class="cov10" title="7">if e.BasePath == "" </span><span class="cov0" title="0">{
+        <span class="cov10" title="9">if e.BasePath == "" </span><span class="cov0" title="0">{
                 e.BasePath = ".analysis"
         }</span>
-        <span class="cov10" title="7">if e.AttemptedAction == "" </span><span class="cov0" title="0">{
+        <span class="cov10" title="9">if e.AttemptedAction == "" </span><span class="cov0" title="0">{
                 e.AttemptedAction = "direct repository mutation"
         }</span>
-        <span class="cov10" title="7">return e</span>
+        <span class="cov10" title="9">return e</span>
 }
 </pre>
 		
@@ -1060,6 +1141,11 @@ const (
 
         // Retry state for transient slot failures (protocol §Slot Failure Classification).
         StateRetrying MissionState = "RETRYING"
+
+        // Critical Hit route states — fast path for low-risk doc/content tasks.
+        StateDirectGate MissionState = "DIRECT_GATE"
+        StateDirectExec MissionState = "DIRECT_EXEC"
+        StateDirectDone MissionState = "DIRECT_DONE"
 )
 
 // TransitionEvent represents FSM/evaluator inputs.
@@ -1091,6 +1177,11 @@ const (
 
         // Sniper opportunity attack surfaced mid-execution (§7 Opportunity Attack).
         EventSniperOA TransitionEvent = "sniper_opportunity_attack"
+
+        // Critical Hit route events — fast path gate for direct_execute route.
+        EventDirectHitIntent    TransitionEvent = "direct_hit_intent"
+        EventDirectGateApproved TransitionEvent = "direct_gate_approved"
+        EventDirectGateDeclined TransitionEvent = "direct_gate_declined"
 )
 
 // MissionPolicy controls whether guarded transitions are allowed.
@@ -1109,7 +1200,7 @@ type TransitionDecision struct {
 }
 
 // NewMissionPolicy builds canonical policy from execution and git persistence modes.
-func NewMissionPolicy(executionMode, gitPersistenceMode string) MissionPolicy <span class="cov7" title="603">{
+func NewMissionPolicy(executionMode, gitPersistenceMode string) MissionPolicy <span class="cov7" title="606">{
         return MissionPolicy{
                 ExecutionMode:      executionMode,
                 GitPersistenceMode: gitPersistenceMode,
@@ -1137,14 +1228,14 @@ func (p MissionPolicy) Validate() error <span class="cov4" title="45">{
 }
 
 // NormalizePolicy applies canonical defaults/coherence.
-func NormalizePolicy(p MissionPolicy) MissionPolicy <span class="cov10" title="5650">{
+func NormalizePolicy(p MissionPolicy) MissionPolicy <span class="cov10" title="5658">{
         if p.ExecutionMode == "" </span><span class="cov4" title="18">{
                 p.ExecutionMode = ExecutionModePlanOnly
         }</span>
-        <span class="cov10" title="5650">if p.GitPersistenceMode == "" </span><span class="cov4" title="18">{
+        <span class="cov10" title="5658">if p.GitPersistenceMode == "" </span><span class="cov4" title="18">{
                 p.GitPersistenceMode = GitPersistenceModeForbidden
         }</span>
-        <span class="cov10" title="5650">p.CanExecute = p.ExecutionMode == ExecutionModeApplyWorkspace
+        <span class="cov10" title="5658">p.CanExecute = p.ExecutionMode == ExecutionModeApplyWorkspace
         return p</span>
 }
 </pre>
@@ -1182,11 +1273,11 @@ func EvaluateGuardedTransition(policy MissionPolicy, transitionGroup string, gat
 		<pre class="file" id="file11" style="display: none">package domain
 
 // NextState applies a single transition event to the current state using policy guards.
-func NextState(current MissionState, event TransitionEvent, policy MissionPolicy) MissionState <span class="cov10" title="5624">{
+func NextState(current MissionState, event TransitionEvent, policy MissionPolicy) MissionState <span class="cov10" title="5632">{
         p := NormalizePolicy(policy)
 
         switch current </span>{
-        case StateInit:<span class="cov8" title="1318">
+        case StateInit:<span class="cov8" title="1321">
                 return nextFromInit(event)</span>
         case StateOpportunityAttack:<span class="cov8" title="1367">
                 return nextFromOpportunityAttack(event)</span>
@@ -1216,21 +1307,30 @@ func NextState(current MissionState, event TransitionEvent, policy MissionPolicy
                 return nextFromDoneDelivery(event)</span>
         case StateQuickDrawDone, StateADRDone, StateBlocked:<span class="cov1" title="1">
                 return current</span>
+        case StateDirectGate:<span class="cov2" title="3">
+                return nextFromDirectGate(event, p)</span>
+        case StateDirectExec:<span class="cov1" title="1">
+                return nextFromDirectExec(event)</span>
+        case StateDirectDone:<span class="cov1" title="1">
+                return current</span>
         }
 
         <span class="cov0" title="0">return current</span>
 }
 
-func nextFromInit(event TransitionEvent) MissionState <span class="cov8" title="1318">{
+func nextFromInit(event TransitionEvent) MissionState <span class="cov8" title="1321">{
         switch event </span>{
         case EventQuickDrawIntent:<span class="cov1" title="1">
                 return StateQuickDraw</span>
+        case EventDirectHitIntent:<span class="cov2" title="3">
+                return StateDirectGate</span>
         case EventManifestEmpty, EventManifestNonEmpty:<span class="cov7" title="398">
                 return StateOpportunityAttack</span>
         case EventGateApproved, EventGateDenied, EventSniperDone, EventArchivistNoTasks, EventArchivistTasks,
                 EventQuickDrawApprove, EventQuickDrawDecline,
                 EventADRCriterionMet, EventADRApproved, EventADRDeclined,
-                EventSlotTransient, EventSlotPermanent, EventSniperOA:<span class="cov8" title="919">
+                EventSlotTransient, EventSlotPermanent, EventSniperOA,
+                EventDirectGateApproved, EventDirectGateDeclined:<span class="cov8" title="919">
                 return StateInit</span>
         }
         <span class="cov0" title="0">return StateInit</span>
@@ -1245,7 +1345,8 @@ func nextFromOpportunityAttack(event TransitionEvent) MissionState <span class="
         case EventGateApproved, EventGateDenied, EventSniperDone, EventArchivistNoTasks, EventArchivistTasks,
                 EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
                 EventADRCriterionMet, EventADRApproved, EventADRDeclined,
-                EventSlotTransient, EventSlotPermanent, EventSniperOA:<span class="cov8" title="990">
+                EventSlotTransient, EventSlotPermanent, EventSniperOA,
+                EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:<span class="cov8" title="990">
                 return StateOpportunityAttack</span>
         }
         <span class="cov0" title="0">return StateOpportunityAttack</span>
@@ -1263,7 +1364,8 @@ func nextFromOpportunityGate(event TransitionEvent, p MissionPolicy) MissionStat
         case EventManifestEmpty, EventManifestNonEmpty, EventSniperDone, EventArchivistNoTasks, EventArchivistTasks,
                 EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
                 EventADRCriterionMet, EventADRApproved, EventADRDeclined,
-                EventSlotTransient, EventSlotPermanent, EventSniperOA:<span class="cov7" title="381">
+                EventSlotTransient, EventSlotPermanent, EventSniperOA,
+                EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:<span class="cov7" title="381">
                 return StateOpportunityGate</span>
         }
         <span class="cov0" title="0">return StateOpportunityGate</span>
@@ -1276,7 +1378,8 @@ func nextFromOpportunityExec(event TransitionEvent) MissionState <span class="co
         case EventManifestEmpty, EventManifestNonEmpty, EventGateApproved, EventGateDenied, EventArchivistNoTasks, EventArchivistTasks,
                 EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
                 EventADRCriterionMet, EventADRApproved, EventADRDeclined,
-                EventSlotTransient, EventSlotPermanent, EventSniperOA:<span class="cov6" title="177">
+                EventSlotTransient, EventSlotPermanent, EventSniperOA,
+                EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:<span class="cov6" title="177">
                 return StateOpportunityExec</span>
         }
         <span class="cov0" title="0">return StateOpportunityExec</span>
@@ -1297,7 +1400,8 @@ func nextFromRefinement(event TransitionEvent, p MissionPolicy) MissionState <sp
                 return StateBlocked</span>
         case EventManifestEmpty, EventManifestNonEmpty, EventGateApproved, EventGateDenied, EventSniperDone,
                 EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
-                EventADRCriterionMet, EventADRApproved, EventADRDeclined, EventSniperOA:<span class="cov7" title="681">
+                EventADRCriterionMet, EventADRApproved, EventADRDeclined, EventSniperOA,
+                EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:<span class="cov7" title="681">
                 return StateRefinement</span>
         }
         <span class="cov0" title="0">return StateRefinement</span>
@@ -1315,7 +1419,8 @@ func nextFromApprovalGate(event TransitionEvent, p MissionPolicy) MissionState <
         case EventManifestEmpty, EventManifestNonEmpty, EventSniperDone, EventArchivistNoTasks, EventArchivistTasks,
                 EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
                 EventADRCriterionMet, EventADRApproved, EventADRDeclined,
-                EventSlotTransient, EventSlotPermanent, EventSniperOA:<span class="cov6" title="125">
+                EventSlotTransient, EventSlotPermanent, EventSniperOA,
+                EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:<span class="cov6" title="125">
                 return StateApprovalGate</span>
         }
         <span class="cov0" title="0">return StateApprovalGate</span>
@@ -1334,7 +1439,8 @@ func nextFromExecution(event TransitionEvent) MissionState <span class="cov5" ti
                 return StateBlocked</span>
         case EventManifestEmpty, EventManifestNonEmpty, EventGateApproved, EventGateDenied, EventArchivistNoTasks, EventArchivistTasks,
                 EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
-                EventADRCriterionMet, EventADRApproved, EventADRDeclined:<span class="cov5" title="64">
+                EventADRCriterionMet, EventADRApproved, EventADRDeclined,
+                EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:<span class="cov5" title="64">
                 return StateExecution</span>
         }
         <span class="cov0" title="0">return StateExecution</span>
@@ -1364,7 +1470,8 @@ func nextFromRetrying(event TransitionEvent, _ MissionPolicy) MissionState <span
                 return StateBlocked</span>
         case EventManifestEmpty, EventGateApproved, EventGateDenied, EventSniperDone, EventArchivistNoTasks, EventArchivistTasks,
                 EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
-                EventADRCriterionMet, EventADRApproved, EventADRDeclined, EventSniperOA:<span class="cov0" title="0">
+                EventADRCriterionMet, EventADRApproved, EventADRDeclined, EventSniperOA,
+                EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:<span class="cov0" title="0">
                 return StateRetrying</span>
         }
         <span class="cov0" title="0">return StateRetrying</span>
@@ -1379,7 +1486,8 @@ func nextFromQuickDraw(event TransitionEvent) MissionState <span class="cov1" ti
         case EventGateApproved, EventGateDenied, EventSniperDone, EventArchivistNoTasks, EventArchivistTasks,
                 EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
                 EventADRCriterionMet, EventADRApproved, EventADRDeclined,
-                EventSlotTransient, EventSlotPermanent, EventSniperOA:<span class="cov0" title="0">
+                EventSlotTransient, EventSlotPermanent, EventSniperOA,
+                EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:<span class="cov0" title="0">
                 return StateQuickDraw</span>
         }
         <span class="cov0" title="0">return StateQuickDraw</span>
@@ -1392,7 +1500,8 @@ func nextFromQuickDrawGate(event TransitionEvent) MissionState <span class="cov1
         case EventManifestEmpty, EventManifestNonEmpty, EventGateApproved, EventGateDenied, EventSniperDone,
                 EventArchivistNoTasks, EventArchivistTasks, EventQuickDrawIntent,
                 EventADRCriterionMet, EventADRApproved, EventADRDeclined,
-                EventSlotTransient, EventSlotPermanent, EventSniperOA:<span class="cov0" title="0">
+                EventSlotTransient, EventSlotPermanent, EventSniperOA,
+                EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:<span class="cov0" title="0">
                 return StateQuickDrawGate</span>
         }
         <span class="cov0" title="0">return StateQuickDrawGate</span>
@@ -1407,7 +1516,8 @@ func nextFromADRGate1(event TransitionEvent) MissionState <span class="cov2" tit
         case EventManifestEmpty, EventManifestNonEmpty, EventGateApproved, EventGateDenied, EventSniperDone,
                 EventArchivistNoTasks, EventArchivistTasks, EventADRCriterionMet,
                 EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
-                EventSlotTransient, EventSlotPermanent, EventSniperOA:<span class="cov0" title="0">
+                EventSlotTransient, EventSlotPermanent, EventSniperOA,
+                EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:<span class="cov0" title="0">
                 return StateADRGate1</span>
         }
         <span class="cov0" title="0">return StateADRGate1</span>
@@ -1420,10 +1530,46 @@ func nextFromADRGate2(event TransitionEvent) MissionState <span class="cov1" tit
         case EventManifestEmpty, EventManifestNonEmpty, EventGateApproved, EventGateDenied, EventSniperDone,
                 EventArchivistNoTasks, EventArchivistTasks, EventADRCriterionMet,
                 EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
-                EventSlotTransient, EventSlotPermanent, EventSniperOA:<span class="cov0" title="0">
+                EventSlotTransient, EventSlotPermanent, EventSniperOA,
+                EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:<span class="cov0" title="0">
                 return StateADRGate2</span>
         }
         <span class="cov0" title="0">return StateADRGate2</span>
+}
+
+func nextFromDirectGate(event TransitionEvent, p MissionPolicy) MissionState <span class="cov2" title="3">{
+        switch event </span>{
+        case EventDirectGateApproved:<span class="cov1" title="2">
+                if p.CanExecute </span><span class="cov1" title="1">{
+                        return StateDirectExec
+                }</span>
+                <span class="cov1" title="1">return StateDoneAnalysis</span>
+        case EventDirectGateDeclined:<span class="cov1" title="1">
+                return StateDoneAnalysis</span>
+        case EventManifestEmpty, EventManifestNonEmpty, EventGateApproved, EventGateDenied, EventSniperDone,
+                EventArchivistNoTasks, EventArchivistTasks, EventADRCriterionMet, EventADRApproved, EventADRDeclined,
+                EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
+                EventSlotTransient, EventSlotPermanent, EventSniperOA, EventDirectHitIntent:<span class="cov0" title="0">
+                return StateDirectGate</span>
+        }
+        <span class="cov0" title="0">return StateDirectGate</span>
+}
+
+func nextFromDirectExec(event TransitionEvent) MissionState <span class="cov1" title="1">{
+        switch event </span>{
+        case EventSniperDone:<span class="cov1" title="1">
+                return StateDirectDone</span>
+        case EventSlotTransient:<span class="cov0" title="0">
+                return StateRetrying</span>
+        case EventSlotPermanent:<span class="cov0" title="0">
+                return StateBlocked</span>
+        case EventManifestEmpty, EventManifestNonEmpty, EventGateApproved, EventGateDenied,
+                EventArchivistNoTasks, EventArchivistTasks, EventADRCriterionMet, EventADRApproved, EventADRDeclined,
+                EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
+                EventSniperOA, EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:<span class="cov0" title="0">
+                return StateDirectExec</span>
+        }
+        <span class="cov0" title="0">return StateDirectExec</span>
 }
 
 // RunStateMachine folds a sequence of events from a starting state.
@@ -1623,6 +1769,12 @@ type DojoManifestCheck struct {
         FieldsPresent    []string `yaml:"fields_present"`
 }
 
+// DojoTimingCriteria specifies wall-time performance constraints for a scenario.
+// MaxWallTimeMs is extracted from the total_wall_time_ms= field in emit.log.
+type DojoTimingCriteria struct {
+        MaxWallTimeMs int `yaml:"max_wall_time_ms"`
+}
+
 // DojoCriteria is the deserialized form of a scenario's criteria.yaml.
 type DojoCriteria struct {
         Scenario       string              `yaml:"scenario"`
@@ -1633,6 +1785,7 @@ type DojoCriteria struct {
         Pipeline       DojoPipeline        `yaml:"pipeline"`
         EmitLog        DojoEmitLog         `yaml:"emit_log"`
         ManifestChecks []DojoManifestCheck `yaml:"manifest_checks"`
+        TimingCriteria *DojoTimingCriteria `yaml:"timing_criteria,omitempty"`
 }
 
 // DojoCheckItem is the result of one individual check within a scenario run.
@@ -1729,63 +1882,63 @@ func (e Extractor) ReadFile(relPath string) ([]byte, error) <span class="cov3" t
 
 // extractFS copies files from src under root into targetDir.
 // Separated from Extract to allow injecting arbitrary fs.FS in tests.
-func extractFS(src fs.FS, root, targetDir string, force bool) error <span class="cov5" title="22">{
+func extractFS(src fs.FS, root, targetDir string, force bool) error <span class="cov4" title="22">{
         if err := fs.WalkDir(src, root, makeWalkFn(src, root, targetDir, force)); err != nil </span><span class="cov3" title="5">{
                 return fmt.Errorf("embed: %w", err)
         }</span>
         <span class="cov4" title="17">return nil</span>
 }
 
-func makeWalkFn(src fs.FS, root, targetDir string, force bool) fs.WalkDirFunc <span class="cov5" title="22">{
-        return func(path string, d fs.DirEntry, err error) error </span><span class="cov10" title="1022">{
+func makeWalkFn(src fs.FS, root, targetDir string, force bool) fs.WalkDirFunc <span class="cov4" title="22">{
+        return func(path string, d fs.DirEntry, err error) error </span><span class="cov10" title="1118">{
                 if err != nil </span><span class="cov1" title="1">{
                         return fmt.Errorf("embed: walk %s: %w", path, err)
                 }</span>
-                <span class="cov9" title="1021">rel := strings.TrimPrefix(path, root+"/")
-                if rel == root || rel == "" </span><span class="cov5" title="22">{
+                <span class="cov9" title="1117">rel := strings.TrimPrefix(path, root+"/")
+                if rel == root || rel == "" </span><span class="cov4" title="22">{
                         return nil
                 }</span>
-                <span class="cov9" title="999">dst := filepath.Join(targetDir, rel)
-                if d.IsDir() </span><span class="cov8" title="227">{
+                <span class="cov9" title="1095">dst := filepath.Join(targetDir, rel)
+                if d.IsDir() </span><span class="cov8" title="259">{
                         if mkErr := os.MkdirAll(dst, 0o755); mkErr != nil </span><span class="cov1" title="1">{
                                 return fmt.Errorf("embed: mkdir %s: %w", dst, mkErr)
                         }</span>
-                        <span class="cov8" title="226">return nil</span>
+                        <span class="cov8" title="258">return nil</span>
                 }
-                <span class="cov9" title="772">return writeEmbedFile(src, path, dst, force)</span>
+                <span class="cov9" title="836">return writeEmbedFile(src, path, dst, force)</span>
         }
 }
 
 // writeEmbedFile writes embedded file src/path to dst.
 // In merge mode (!force), if dst already exists and its content differs from the
 // embedded version, the file is skipped to preserve user customizations.
-func writeEmbedFile(src fs.FS, path, dst string, force bool) error <span class="cov9" title="772">{
+func writeEmbedFile(src fs.FS, path, dst string, force bool) error <span class="cov9" title="836">{
         data, readErr := fs.ReadFile(src, path)
         if readErr != nil </span><span class="cov1" title="1">{
                 return fmt.Errorf("embed: read %s: %w", path, readErr)
         }</span>
-        <span class="cov9" title="771">if mkErr := os.MkdirAll(filepath.Dir(dst), 0o755); mkErr != nil </span><span class="cov0" title="0">{
+        <span class="cov9" title="835">if mkErr := os.MkdirAll(filepath.Dir(dst), 0o755); mkErr != nil </span><span class="cov0" title="0">{
                 return fmt.Errorf("embed: mkdir parent %s: %w", filepath.Dir(dst), mkErr)
         }</span>
-        <span class="cov9" title="771">if !force </span><span class="cov9" title="770">{
+        <span class="cov9" title="835">if !force </span><span class="cov9" title="834">{
                 if userModified(dst, data) </span><span class="cov1" title="2">{
                         return nil // preserve user's version
                 }</span>
         }
-        <span class="cov9" title="769">if writeErr := os.WriteFile(dst, data, 0o644); writeErr != nil </span><span class="cov1" title="2">{
+        <span class="cov9" title="833">if writeErr := os.WriteFile(dst, data, 0o644); writeErr != nil </span><span class="cov1" title="2">{
                 return fmt.Errorf("embed: write %s: %w", dst, writeErr)
         }</span>
-        <span class="cov9" title="767">return nil</span>
+        <span class="cov9" title="831">return nil</span>
 }
 
 // userModified reports true when dst exists on disk AND its content differs
 // from the embedded bytes — meaning the user has customized the file.
-func userModified(dst string, embedded []byte) bool <span class="cov9" title="771">{
+func userModified(dst string, embedded []byte) bool <span class="cov9" title="835">{
         existing, err := os.ReadFile(dst)
-        if err != nil </span><span class="cov9" title="673">{
+        if err != nil </span><span class="cov9" title="729">{
                 return false // file doesn't exist — not user-modified
         }</span>
-        <span class="cov6" title="98">return sha256.Sum256(existing) != sha256.Sum256(embedded)</span>
+        <span class="cov6" title="106">return sha256.Sum256(existing) != sha256.Sum256(embedded)</span>
 }
 </pre>
 		
@@ -1927,11 +2080,11 @@ treasure_chests:
         if err := os.WriteFile(path, []byte(content), 0o644); err != nil </span><span class="cov1" title="1">{
                 return fmt.Errorf("write active.yaml: %w", err)
         }</span>
-        <span class="cov5" title="7">lockPath := filepath.Join(strategistDir, ".config.lock")
+        <span class="cov4" title="7">lockPath := filepath.Join(strategistDir, ".config.lock")
         if err := integrity.WriteLock(path, lockPath); err != nil </span><span class="cov0" title="0">{
                 fmt.Fprintf(os.Stderr, "[Strategist] WARN: could not write config lock: %v\n", err)
         }</span>
-        <span class="cov5" title="7">return nil</span>
+        <span class="cov4" title="7">return nil</span>
 }
 
 // writeKnowledgeIndexSource updates knowledge.index.yaml to include a source entry
@@ -1956,11 +2109,43 @@ func writeKnowledgeIndexSource(strategistDir string, wc domain.WizardConfig) err
         <span class="cov3" title="3">return nil</span>
 }
 
+// writeTreasureChestManifest populates the chests: [] placeholder in treasure-chests.yaml
+// with a T1 chest entry for the wizard's TreasureChestPath. No-op when path is empty.
+func writeTreasureChestManifest(strategistDir string, wc domain.WizardConfig) error <span class="cov3" title="4">{
+        if wc.TreasureChestPath == "" </span><span class="cov3" title="3">{
+                return nil
+        }</span>
+        <span class="cov1" title="1">tcPath := filepath.Join(strategistDir, "treasure-chests.yaml")
+        data, err := os.ReadFile(tcPath) //nolint:gosec // G304: path constructed from install config
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("read treasure-chests.yaml: %w", err)
+        }</span>
+        <span class="cov1" title="1">id := treasureChestID(wc.TreasureChestPath)
+        entry := fmt.Sprintf(`chests:
+  - id: %s
+    title: %s
+    path: %s
+    trust:
+      tier: T1
+      reviewed_by: human
+    routing:
+      task_types: [all]
+    retrieval:
+      strategy: selective
+      require_relevance_reason: true
+      allow_full_load: false`, id, id, wc.TreasureChestPath)
+        updated := strings.Replace(string(data), "chests: []", entry, 1)
+        if err := os.WriteFile(tcPath, []byte(updated), 0o644); err != nil </span><span class="cov0" title="0">{ //nolint:gosec // G703: path from install config
+                return fmt.Errorf("write treasure-chests.yaml: %w", err)
+        }</span>
+        <span class="cov1" title="1">return nil</span>
+}
+
 // treasureChestID derives a stable id from a path by taking the last non-empty segment.
-func treasureChestID(path string) string <span class="cov6" title="11">{
+func treasureChestID(path string) string <span class="cov6" title="12">{
         path = strings.TrimRight(path, "/")
-        for i := len(path) - 1; i &gt;= 0; i-- </span><span class="cov10" title="74">{
-                if path[i] == '/' </span><span class="cov5" title="9">{
+        for i := len(path) - 1; i &gt;= 0; i-- </span><span class="cov10" title="81">{
+                if path[i] == '/' </span><span class="cov5" title="10">{
                         return path[i+1:]
                 }</span>
         }
@@ -2061,6 +2246,11 @@ func (s Service) Install(ctx context.Context, cfg domain.InstallConfig) error <s
         strategistDir := filepath.Join(cfg.Target, ".strategist")
         var manifest []string // tracks created paths for rollback
 
+        slog.InfoContext(ctx, "[Strategist] install starting",
+                telemetry.AttrComponent, "install",
+                telemetry.AttrTarget, telemetry.SanitizePath(cfg.Target),
+        )
+
         succeeded := false
         defer func() </span><span class="cov9" title="24">{
                 if !succeeded </span><span class="cov6" title="7">{
@@ -2068,11 +2258,19 @@ func (s Service) Install(ctx context.Context, cfg domain.InstallConfig) error <s
                 }</span>
         }()
 
-        <span class="cov9" title="24">if err := s.Extractor.Extract(strategistDir, cfg.Force); err != nil </span><span class="cov1" title="1">{
+        <span class="cov9" title="24">slog.InfoContext(ctx, "[Strategist] install extracting-defaults",
+                telemetry.AttrComponent, "install",
+                telemetry.AttrTarget, telemetry.SanitizePath(strategistDir),
+        )
+        if err := s.Extractor.Extract(strategistDir, cfg.Force); err != nil </span><span class="cov1" title="1">{
                 return fmt.Errorf("install: extract defaults: %w", err)
         }</span>
         <span class="cov9" title="23">manifest = append(manifest, strategistDir)
 
+        slog.InfoContext(ctx, "[Strategist] install applying-config",
+                telemetry.AttrComponent, "install",
+                "wizard", cfg.Wizard,
+        )
         if err := s.applyConfig(strategistDir, cfg); err != nil </span><span class="cov4" title="4">{
                 return err
         }</span>
@@ -2089,7 +2287,11 @@ func (s Service) Install(ctx context.Context, cfg domain.InstallConfig) error <s
                 }</span>
         }
 
-        <span class="cov8" title="18">shimPath, err := s.installShimStep(ctx, cfg.Target)
+        <span class="cov8" title="18">slog.InfoContext(ctx, "[Strategist] install shim-step",
+                telemetry.AttrComponent, "install",
+                telemetry.AttrTarget, telemetry.SanitizePath(cfg.Target),
+        )
+        shimPath, err := s.installShimStep(ctx, cfg.Target)
         if err != nil </span><span class="cov1" title="1">{
                 return err
         }</span>
@@ -2109,6 +2311,10 @@ func (s Service) Install(ctx context.Context, cfg domain.InstallConfig) error <s
         }</span>
 
         <span class="cov8" title="17">succeeded = true
+        slog.InfoContext(ctx, "[Strategist] install complete",
+                telemetry.AttrComponent, "install",
+                telemetry.AttrTarget, telemetry.SanitizePath(cfg.Target),
+        )
         return nil</span>
 }
 
@@ -2148,10 +2354,18 @@ func (s Service) applyConfig(strategistDir string, cfg domain.InstallConfig) err
         <span class="cov4" title="4">if err := writeKnowledgeIndexSource(strategistDir, wc); err != nil </span><span class="cov0" title="0">{
                 return fmt.Errorf("install: write knowledge.index.yaml: %w", err)
         }</span>
+        <span class="cov4" title="4">if err := writeTreasureChestManifest(strategistDir, wc); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("install: write treasure-chests.yaml: %w", err)
+        }</span>
         <span class="cov4" title="4">return nil</span>
 }
 
 func (s Service) writeSelectedProviderManifests(strategistDir string, wc domain.WizardConfig) error <span class="cov4" title="4">{
+        slog.Info("[Strategist] install writing-manifests",
+                telemetry.AttrComponent, "install",
+                "discovery_provider", wc.DiscoveryProvider,
+                "refinement_provider", wc.RefinementProvider,
+        )
         selectedProviders := []string{wc.DiscoveryProvider, wc.RefinementProvider}
 
         for _, provider := range selectedProviders </span><span class="cov6" title="8">{
@@ -2165,7 +2379,7 @@ func (s Service) writeSelectedProviderManifests(strategistDir string, wc domain.
                         return fmt.Errorf("read %s: %w", manifestPath, err)
                 }</span>
 
-                <span class="cov6" title="7">providerDir := filepath.Join(strategistDir, provider)
+                <span class="cov6" title="7">providerDir := filepath.Join(strategistDir, "skills", provider)
                 if err := os.MkdirAll(providerDir, 0o755); err != nil </span><span class="cov0" title="0">{
                         return fmt.Errorf("mkdir %s: %w", providerDir, err)
                 }</span>
@@ -2457,6 +2671,7 @@ import (
         "fmt"
         "os"
         "path/filepath"
+        "strings"
 )
 
 func generateShimContent(skillContent, skillRoot string) string <span class="cov9" title="21">{
@@ -2470,7 +2685,25 @@ description: "Multi-phase mission orchestrator. Coordinates discovery, refinemen
         <span class="cov9" title="21">frontmatter += `---
 
 `
-        return frontmatter + skillContent</span>
+        return frontmatter + stripFrontmatter(skillContent)</span>
+}
+
+// stripFrontmatter removes a leading YAML frontmatter block (---...---) from s,
+// if present. Guards against embedded SKILL.md files that were accidentally
+// committed with a frontmatter block from a previous install.
+func stripFrontmatter(s string) string <span class="cov9" title="21">{
+        if !strings.HasPrefix(s, "---") </span><span class="cov9" title="21">{
+                return s
+        }</span>
+        // Find the closing --- after the opening one.
+        <span class="cov0" title="0">rest := s[3:]
+        idx := strings.Index(rest, "\n---")
+        if idx == -1 </span><span class="cov0" title="0">{
+                return s
+        }</span>
+        // Skip past the closing --- and any trailing newline.
+        <span class="cov0" title="0">after := rest[idx+4:]
+        return strings.TrimLeft(after, "\n")</span>
 }
 
 // installShim creates ~/.claude/skills/strategist/SKILL.md containing the full
@@ -2649,8 +2882,8 @@ import (
 var langOptions = []string{"en", "pt-BR"}
 
 var installableDefaultProviders = map[string]string{
-        "brainstorming":    "providers/brainstorming/skill.yaml",
-        "openspec-explore": "providers/openspec-explore/skill.yaml",
+        "brainstorming":    "skills/brainstorming/skill.yaml",
+        "openspec-explore": "skills/openspec-explore/skill.yaml",
 }
 
 // knownProviderRisk maps provider ids to their declared risk_score.
@@ -3365,7 +3598,6 @@ import (
         "errors"
         "fmt"
         "os"
-        "syscall"
 )
 
 // OutcomeEntry is the canonical JSON structure written to outcomes.tmp per mission.
@@ -3420,11 +3652,11 @@ func AppendOutcomeLine(path, line string) (err error) <span class="cov7" title="
                         err = fmt.Errorf("close outcomes file: %w", cerr)
                 }</span>
         }()
-        <span class="cov5" title="4">if err = syscall.Flock(int(f.Fd()), syscall.LOCK_SH); err != nil </span><span class="cov0" title="0">{
+        <span class="cov5" title="4">if err = lockFile(f); err != nil </span><span class="cov0" title="0">{
                 return fmt.Errorf("lock outcomes file: %w", err)
         }</span>
         <span class="cov5" title="4">defer func() </span><span class="cov5" title="4">{
-                if unlockErr := syscall.Flock(int(f.Fd()), syscall.LOCK_UN); unlockErr != nil &amp;&amp; err == nil </span><span class="cov0" title="0">{
+                if unlockErr := unlockFile(f); unlockErr != nil &amp;&amp; err == nil </span><span class="cov0" title="0">{
                         err = fmt.Errorf("unlock outcomes file: %w", unlockErr)
                 }</span>
         }()
@@ -3435,7 +3667,32 @@ func AppendOutcomeLine(path, line string) (err error) <span class="cov7" title="
 }
 </pre>
 		
-		<pre class="file" id="file30" style="display: none">package telemetry
+		<pre class="file" id="file30" style="display: none">//go:build !windows
+
+package telemetry
+
+import (
+        "fmt"
+        "os"
+        "syscall"
+)
+
+func lockFile(f *os.File) error <span class="cov10" title="4">{
+        if err := syscall.Flock(int(f.Fd()), syscall.LOCK_SH); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("flock lock: %w", err)
+        }</span>
+        <span class="cov10" title="4">return nil</span>
+}
+
+func unlockFile(f *os.File) error <span class="cov10" title="4">{
+        if err := syscall.Flock(int(f.Fd()), syscall.LOCK_UN); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("flock unlock: %w", err)
+        }</span>
+        <span class="cov10" title="4">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file31" style="display: none">package telemetry
 
 import (
         "fmt"
@@ -3493,7 +3750,7 @@ func EmitPolicyEvent(ev PolicyEvent) <span class="cov1" title="1">{
 }
 </pre>
 		
-		<pre class="file" id="file31" style="display: none">package telemetry
+		<pre class="file" id="file32" style="display: none">package telemetry
 
 import "path/filepath"
 
@@ -3534,15 +3791,15 @@ const redactedPath = "&lt;redacted-path&gt;"
 // SanitizePath replaces absolute paths with a sentinel before use as a span attribute.
 // Call this on any string that may originate from user filesystem input before
 // attaching it to a trace span.
-func SanitizePath(p string) string <span class="cov10" title="3">{
-        if filepath.IsAbs(p) </span><span class="cov1" title="1">{
+func SanitizePath(p string) string <span class="cov10" title="86">{
+        if filepath.IsAbs(p) </span><span class="cov9" title="84">{
                 return redactedPath
         }</span>
-        <span class="cov6" title="2">return p</span>
+        <span class="cov2" title="2">return p</span>
 }
 </pre>
 		
-		<pre class="file" id="file32" style="display: none">package telemetry
+		<pre class="file" id="file33" style="display: none">package telemetry
 
 import (
         "context"
@@ -3600,7 +3857,7 @@ func Init(cfg Config) (shutdown func(context.Context) error, err error) <span cl
 }
 </pre>
 		
-		<pre class="file" id="file33" style="display: none">package telemetry
+		<pre class="file" id="file34" style="display: none">package telemetry
 
 import (
         "go.opentelemetry.io/otel"
@@ -3617,7 +3874,7 @@ func Tracer() trace.Tracer <span class="cov10" title="2">{
 }</span>
 </pre>
 		
-		<pre class="file" id="file34" style="display: none">// Package testutil provides shared test helpers for the strategist-skill module.
+		<pre class="file" id="file35" style="display: none">// Package testutil provides shared test helpers for the strategist-skill module.
 // Import this package in test files using the standard Go test helper pattern.
 package testutil
 

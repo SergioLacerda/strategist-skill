@@ -57,10 +57,17 @@ required_fields:
     type: list
     description: From opportunity_attack routine — adjacent work detected during discovery
     required: false
-    item_fields: [id, description, relation, suggested_strategy]
+    item_fields: [id, description, relation, suggested_strategy, estimated_impact, dependencies, status]
     item_values:
       relation: [related, unrelated, duplicate]
       suggested_strategy: [execute_together, execute_later, separate_mission, discard]
+      estimated_impact: [low, medium, high]
+      status: [sq_pending, sq_backlog, sq_done]
+    field_descriptions:
+      id: "SQ-NNN format — unique within the mission"
+      estimated_impact: "scope of effort if executed"
+      dependencies: "list of other SQ ids or mission ids this depends on"
+      status: "sq_pending when presented at gate; sq_backlog if not selected"
   recommended_refinement_focus:
     type: list
     required: false

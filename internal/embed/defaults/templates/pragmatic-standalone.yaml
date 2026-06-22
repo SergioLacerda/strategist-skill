@@ -18,9 +18,9 @@ adr_enabled: true
 # Slot providers — which skill fills each mission role.
 # Edit here to change providers. Preflight validates risk_score contracts.
 slots:
-  discovery: brainstorming      # Ranger  — write_analysis contract
-  refinement: openspec-explore  # Arquivista — write_analysis contract
-  execution: sdd-ask            # Sniper  — controlled contract
+  discovery: brainstorming         # Ranger  — write_analysis contract
+  refinement: openspec-explore     # Arquivista — write_analysis contract
+  execution: openspec-apply-change # Sniper  — controlled contract (no SDD dependency)
 
 # Treasure chests — scoped knowledge sources passed to each slot at invocation.
 # Uncomment and configure to add offline knowledge (e.g. governance docs, examples).

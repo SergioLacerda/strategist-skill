@@ -1,5 +1,8 @@
 # Strategist — Conceitos Fundamentais
 
+**Status:** Accepted
+**Last Updated:** 2026-06-22
+
 Referência dos cinco conceitos centrais da Strategist skill: papel, papel rankeado, armas, iniciativa e dojo.
 
 ---

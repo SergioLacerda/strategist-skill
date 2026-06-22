@@ -1,3 +1,10 @@
+---
+phase: bootstrap
+requires_approval: false
+slot: null
+contract: null
+---
+
 # Strategist — Contract 01: Bootstrap
 
 ## Inputs

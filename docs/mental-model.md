@@ -1,5 +1,8 @@
 # Strategist — Mental Model
 
+**Status:** Accepted
+**Last Updated:** 2026-06-22
+
 ## One sentence
 
 Strategist is a **project manager for AI agents**: it breaks your request into phases,

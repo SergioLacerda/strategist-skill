@@ -1,3 +1,10 @@
+---
+phase: discovery
+requires_approval: false
+slot: discovery
+contract: write_analysis
+---
+
 # Strategist — Contract 03: Discovery
 
 ## Owner

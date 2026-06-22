@@ -1,3 +1,10 @@
+---
+phase: critical_hit
+requires_approval: true
+slot: execution
+contract: controlled
+---
+
 # Strategist — Contract 11: Critical Hit
 
 ## Purpose

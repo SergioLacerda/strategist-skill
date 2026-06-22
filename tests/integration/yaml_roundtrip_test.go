@@ -114,7 +114,7 @@ func TestRoundtrip_PersonaEpic(t *testing.T) {
 func TestRoundtrip_ApprovalGateContract(t *testing.T) {
 	t.Parallel()
 
-	data := mustReadEmbed(t, "contracts/approval-gate.yaml")
+	data := mustReadEmbed(t, "contracts/machine/approval-gate.yaml")
 
 	var s compile.ApprovalGateContract
 	require.NoError(t, yaml.Unmarshal(data, &s))

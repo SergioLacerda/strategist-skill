@@ -62,11 +62,20 @@ Supported modes:
 - `explicit_confirm`
 - `human_only` (documented, not enforced by default)
 
+## Governance Precedence
+
+External governance (SDD or any other adapter) controls three things only:
+- whether execution is **permitted, blocked, or conditioned**
+- which **provider, base path, and knowledge paths** are injected (via `governance_injection`)
+- which **governance context** documents are made available to slots
+
+The Strategist controls everything else: pipeline sequence, artifact persistence, evidence requirements, and slot delegation. External governance cannot substitute the canonical mission sequence after invocation.
+
 ## Governance Gate vs. Persona Gate
 
 These are two independent checks, both required before execution:
 
-1. **Governance gate** (`execution_gate=allowed/blocked`) — reported by the SDD CLI.
+1. **Governance gate** (`execution_gate=allowed/blocked`) — reported by the active governance adapter (e.g., SDD CLI, or any adapter that populates `governance_injection`).
    Determines whether the governance policy *permits* execution.
    `allowed` means "not blocked by policy." It is NOT user approval.
 

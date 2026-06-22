@@ -275,7 +275,7 @@ func TestEmitTaxonomyMandatoryVisibilityLevels(t *testing.T) {
 
 func TestBootstrapContractDefinesInvalidLocalProfileErrorCode(t *testing.T) {
 	t.Parallel()
-	bootstrapPath := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "bootstrap.yaml")
+	bootstrapPath := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "bootstrap.yaml")
 	content := readFile(t, bootstrapPath)
 	if !strings.Contains(content, "invalid_local_profile") {
 		t.Fatalf("%s missing error_condition code \"invalid_local_profile\"", bootstrapPath)
@@ -315,8 +315,8 @@ func TestStrategistResponseContractIsExternalized(t *testing.T) {
 	if !strings.Contains(protocol, "## Mission Result") {
 		t.Fatalf("%s missing Mission Result section", protocolPath)
 	}
-	if !strings.Contains(skill, "See `strategist/protocol.md#response-contract`") {
-		t.Fatalf("%s must reference strategist/protocol.md#response-contract", skillPath)
+	if !strings.Contains(skill, "See `.strategist/protocol.md#response-contract`") {
+		t.Fatalf("%s must reference .strategist/protocol.md#response-contract", skillPath)
 	}
 	if strings.Contains(skill, "## 11. Mission Result") {
 		t.Fatalf("%s still embeds Mission Result inline", skillPath)
@@ -350,7 +350,7 @@ func TestSkillDefinesPersonaRenderMismatchForbiddenBehavior(t *testing.T) {
 func TestApprovalGateContractDefinesEmitOnShow(t *testing.T) {
 	t.Parallel()
 	for _, p := range []string{
-		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "approval-gate.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "approval-gate.yaml"),
 	} {
 		content := readFile(t, p)
 		if !strings.Contains(content, "emit_on_show") {
@@ -362,7 +362,7 @@ func TestApprovalGateContractDefinesEmitOnShow(t *testing.T) {
 func TestContextEnrichmentDefinesTreasureChestLoadedNone(t *testing.T) {
 	t.Parallel()
 	for _, p := range []string{
-		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "context-enrichment.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "context-enrichment.yaml"),
 	} {
 		content := readFile(t, p)
 		if !strings.Contains(content, "treasure_chest_loaded none") {
@@ -374,7 +374,7 @@ func TestContextEnrichmentDefinesTreasureChestLoadedNone(t *testing.T) {
 func TestComplianceSummaryDefinesPhaseCounters(t *testing.T) {
 	t.Parallel()
 	for _, p := range []string{
-		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "compliance-summary.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "compliance-summary.yaml"),
 	} {
 		content := readFile(t, p)
 		for _, needle := range []string{"expected_phases", "executed_phases"} {
@@ -391,7 +391,7 @@ func TestMissionMetricsSignalPresent(t *testing.T) {
 	files := []string{
 		filepath.Join(repoRoot(t), "strategist", "schemas", "progress-contract.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "schemas", "progress-contract.yaml"),
-		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "intake.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "intake.yaml"),
 	}
 	for _, path := range files {
 		content := readFile(t, path)

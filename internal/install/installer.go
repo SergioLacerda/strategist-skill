@@ -155,6 +155,9 @@ func (s Service) applyConfig(strategistDir string, cfg domain.InstallConfig) err
 	if err := writeKnowledgeIndexSource(strategistDir, wc); err != nil {
 		return fmt.Errorf("install: write knowledge.index.yaml: %w", err)
 	}
+	if err := writeTreasureChestManifest(strategistDir, wc); err != nil {
+		return fmt.Errorf("install: write treasure-chests.yaml: %w", err)
+	}
 	return nil
 }
 
