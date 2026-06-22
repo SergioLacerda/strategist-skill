@@ -53,9 +53,9 @@ func (m minimalExtractor) ReadFile(relPath string) ([]byte, error) {
 		return []byte("mode: epic\nbase_path: .analysis\nroles_config: roles/default.yaml\n"), nil
 	case "SKILL.md":
 		return []byte("# SKILL\n"), nil
-	case "providers/brainstorming/skill.yaml":
+	case "skills/brainstorming/skill.yaml":
 		return []byte("id: brainstorming\nstatus: active\nrisk_score: write_analysis\nprovider_class: rankeado\nspecialization_taxonomy:\n  canonical_role: ranger\n  provider_class: rankeado\nauxiliary_tools_allowed:\n  - writing-plans\n"), nil
-	case "providers/openspec-explore/skill.yaml":
+	case "skills/openspec-explore/skill.yaml":
 		return []byte("id: openspec-explore\nstatus: active\nrisk_score: write_analysis\n"), nil
 	default:
 		return nil, fmt.Errorf("minimalExtractor: file not found: %s", relPath)
@@ -103,11 +103,11 @@ func TestInstall_WizardPath(t *testing.T) {
 	assert.Contains(t, s, "refinement: archivist")
 	assert.Contains(t, s, "execution: sdd-ask")
 
-	brainstorming, err := os.ReadFile(filepath.Join(dir, ".strategist", "brainstorming", "skill.yaml"))
+	brainstorming, err := os.ReadFile(filepath.Join(dir, ".strategist", "skills", "brainstorming", "skill.yaml"))
 	require.NoError(t, err)
 	assert.Contains(t, string(brainstorming), "risk_score: write_analysis")
 
-	_, err = os.Stat(filepath.Join(dir, ".strategist", "openspec-explore", "skill.yaml"))
+	_, err = os.Stat(filepath.Join(dir, ".strategist", "skills", "openspec-explore", "skill.yaml"))
 	require.ErrorIs(t, err, os.ErrNotExist)
 }
 
@@ -150,12 +150,12 @@ func TestInstall_WizardPath_Defaults(t *testing.T) {
 	assert.Contains(t, s, "refinement: openspec-explore")
 	assert.Contains(t, s, "execution: sdd-ask")
 
-	brainstorming, err := os.ReadFile(filepath.Join(dir, ".strategist", "brainstorming", "skill.yaml"))
+	brainstorming, err := os.ReadFile(filepath.Join(dir, ".strategist", "skills", "brainstorming", "skill.yaml"))
 	require.NoError(t, err)
 	assert.Contains(t, string(brainstorming), "id: brainstorming")
 	assert.Contains(t, string(brainstorming), "risk_score: write_analysis")
 
-	openspecExplore, err := os.ReadFile(filepath.Join(dir, ".strategist", "openspec-explore", "skill.yaml"))
+	openspecExplore, err := os.ReadFile(filepath.Join(dir, ".strategist", "skills", "openspec-explore", "skill.yaml"))
 	require.NoError(t, err)
 	assert.Contains(t, string(openspecExplore), "id: openspec-explore")
 	assert.Contains(t, string(openspecExplore), "risk_score: write_analysis")
@@ -169,11 +169,11 @@ func TestInstall_WizardPath_ExplicitDefaultProvidersMaterializeManifests(t *test
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
 	require.NoError(t, err)
 
-	brainstorming, err := os.ReadFile(filepath.Join(dir, ".strategist", "brainstorming", "skill.yaml"))
+	brainstorming, err := os.ReadFile(filepath.Join(dir, ".strategist", "skills", "brainstorming", "skill.yaml"))
 	require.NoError(t, err)
 	assert.Contains(t, string(brainstorming), "risk_score: write_analysis")
 
-	openspecExplore, err := os.ReadFile(filepath.Join(dir, ".strategist", "openspec-explore", "skill.yaml"))
+	openspecExplore, err := os.ReadFile(filepath.Join(dir, ".strategist", "skills", "openspec-explore", "skill.yaml"))
 	require.NoError(t, err)
 	assert.Contains(t, string(openspecExplore), "risk_score: write_analysis")
 }

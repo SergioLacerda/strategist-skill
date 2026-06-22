@@ -11,8 +11,8 @@ import (
 var langOptions = []string{"en", "pt-BR"}
 
 var installableDefaultProviders = map[string]string{
-	"brainstorming":    "providers/brainstorming/skill.yaml",
-	"openspec-explore": "providers/openspec-explore/skill.yaml",
+	"brainstorming":    "skills/brainstorming/skill.yaml",
+	"openspec-explore": "skills/openspec-explore/skill.yaml",
 }
 
 // knownProviderRisk maps provider ids to their declared risk_score.

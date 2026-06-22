@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"syscall"
 )
 
 // OutcomeEntry is the canonical JSON structure written to outcomes.tmp per mission.
@@ -60,11 +59,11 @@ func AppendOutcomeLine(path, line string) (err error) {
 			err = fmt.Errorf("close outcomes file: %w", cerr)
 		}
 	}()
-	if err = syscall.Flock(int(f.Fd()), syscall.LOCK_SH); err != nil {
+	if err = lockFile(f); err != nil {
 		return fmt.Errorf("lock outcomes file: %w", err)
 	}
 	defer func() {
-		if unlockErr := syscall.Flock(int(f.Fd()), syscall.LOCK_UN); unlockErr != nil && err == nil {
+		if unlockErr := unlockFile(f); unlockErr != nil && err == nil {
 			err = fmt.Errorf("unlock outcomes file: %w", unlockErr)
 		}
 	}()
