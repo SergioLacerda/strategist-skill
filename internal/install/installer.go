@@ -177,7 +177,7 @@ func (s Service) writeSelectedProviderManifests(strategistDir string, wc domain.
 			return fmt.Errorf("read %s: %w", manifestPath, err)
 		}
 
-		providerDir := filepath.Join(strategistDir, provider)
+		providerDir := filepath.Join(strategistDir, "skills", provider)
 		if err := os.MkdirAll(providerDir, 0o755); err != nil {
 			return fmt.Errorf("mkdir %s: %w", providerDir, err)
 		}

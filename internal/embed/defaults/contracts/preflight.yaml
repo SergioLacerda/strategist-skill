@@ -72,9 +72,10 @@ contract:
       requirement: approval gate required before any execution (no exceptions)
 
   provider_resolution_order:
-    1: "<skill_root>/<provider>/skill.yaml"
-    2: ".claude/skills/<provider>/skill.yaml"
-    3: "skill registry entry skill_yaml path (if registry present)"
+    1: "<skill_root>/skills/<provider>/skill.yaml"
+    2: "<skill_root>/<provider>/skill.yaml"
+    3: ".claude/skills/<provider>/skill.yaml"
+    4: "skill registry entry skill_yaml path (if registry present)"
     special: "_runtime_provider → resolve from governance_injection.execution_provider"
 
   governance_mode_determination:

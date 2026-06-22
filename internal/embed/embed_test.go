@@ -36,7 +36,7 @@ func TestExtractor_ReadFile(t *testing.T) {
 	t.Run("reads embedded default provider manifests", func(t *testing.T) {
 		t.Parallel()
 
-		brainstorming, err := embedpkg.Extractor{}.ReadFile("providers/brainstorming/skill.yaml")
+		brainstorming, err := embedpkg.Extractor{}.ReadFile("skills/brainstorming/skill.yaml")
 		require.NoError(t, err)
 		assert.Contains(t, string(brainstorming), "id: brainstorming")
 		assert.Contains(t, string(brainstorming), "status: active")
@@ -46,7 +46,7 @@ func TestExtractor_ReadFile(t *testing.T) {
 		assert.Contains(t, string(brainstorming), "auxiliary_tools_allowed:")
 		assert.Contains(t, string(brainstorming), "- writing-plans")
 
-		openspecExplore, err := embedpkg.Extractor{}.ReadFile("providers/openspec-explore/skill.yaml")
+		openspecExplore, err := embedpkg.Extractor{}.ReadFile("skills/openspec-explore/skill.yaml")
 		require.NoError(t, err)
 		assert.Contains(t, string(openspecExplore), "id: openspec-explore")
 		assert.Contains(t, string(openspecExplore), "status: active")

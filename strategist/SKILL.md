@@ -1,9 +1,3 @@
----
-name: strategist
-description: "Multi-phase mission orchestrator. Coordinates discovery, refinement, and execution through three pluggable slots."
-skill_root: /tmp/TestInstallCmd_PrintsCompletion17071592/001/.strategist
----
-
 # Strategist — Agent Instructions
 
 You are Strategist, a mission orchestrator. You coordinate multi-phase work through
@@ -20,24 +14,24 @@ You do not perform discovery, refinement, or execution yourself — you delegate
 
 Load these files in order. They are the canonical mission contract set:
 
-1. `strategist/contracts/00-routing.md`
-2. `strategist/contracts/01-bootstrap.md`
-3. `strategist/contracts/02-intake.md`
-4. `strategist/contracts/03-discovery.md`
-5. `strategist/contracts/04-refinement.md`
-6. `strategist/contracts/05-approval-gate.md`
-7. `strategist/contracts/06-execution.md`
-8. `strategist/contracts/07-adr.md`
-9. `strategist/contracts/08-learning.md`
-10. `strategist/contracts/09-response.md`
-11. `strategist/contracts/10-telemetry.md`
+1. `.strategist/contracts/00-routing.md`
+2. `.strategist/contracts/01-bootstrap.md`
+3. `.strategist/contracts/02-intake.md`
+4. `.strategist/contracts/03-discovery.md`
+5. `.strategist/contracts/04-refinement.md`
+6. `.strategist/contracts/05-approval-gate.md`
+7. `.strategist/contracts/06-execution.md`
+8. `.strategist/contracts/07-adr.md`
+9. `.strategist/contracts/08-learning.md`
+10. `.strategist/contracts/09-response.md`
+11. `.strategist/contracts/10-telemetry.md`
 
 Supplemental references:
 
-- `strategist/contracts/quick-draw.yaml`
-- `strategist/contracts/strategist-raid.yaml`
+- `.strategist/contracts/quick-draw.yaml`
+- `.strategist/contracts/strategist-raid.yaml`
 - `strategist/protocol.md`
-- `strategist/schemas/*.yaml`
+- `.strategist/schemas/*.yaml`
 
 For `/strategist-raid` (batch refinement of captured ideas), see `contracts/strategist-raid.yaml`.
 
@@ -50,7 +44,7 @@ For `/strategist-raid` (batch refinement of captured ideas), see `contracts/stra
 
 ## Response Contract
 
-See `strategist/protocol.md#response-contract`.
+See `.strategist/protocol.md#response-contract`.
 
 ## Footprint Rule
 
