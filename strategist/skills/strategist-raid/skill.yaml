@@ -4,6 +4,7 @@ schema_version: "1"
 status: active
 risk_score: write_analysis
 category: batch_orchestration
+skill_type: utility
 
 description: >
   Batch refinement orchestration for captured ideas in todo files.

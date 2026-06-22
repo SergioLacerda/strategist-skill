@@ -7,11 +7,24 @@ Resolve the route before any mission work starts.
 ## Routes
 
 - **Quick Draw** — only for explicit quick capture / note append requests
-- **Main mission** — every other request
+- **Critical Hit** — fast path for low-risk doc/content edits (see `critical-hit.yaml`)
+- **Main Mission** — every other request
+
+## Route Selection Order
+
+1. Quick Draw keywords detected → Quick Draw
+2. Critical Hit conditions satisfied (see `critical-hit.yaml`) → Critical Hit
+3. Default → Main Mission
+
+**When in doubt → Main Mission. Conservatism is the safe default.**
 
 ## Main Mission Sequence
 
 `bootstrap → preflight → intake → discovery → refinement → approval_gate → execution? → adr? → learning`
+
+## Critical Hit Sequence
+
+`bootstrap → preflight → intake → critical_hit_gate → execution → learning`
 
 ## Contract Lookup
 

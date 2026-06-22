@@ -35,6 +35,7 @@ func (m minimalExtractor) Extract(targetDir string, _ bool) error {
 	files := map[string]string{
 		filepath.Join(targetDir, "SKILL.md"):                               "# SKILL\n",
 		filepath.Join(targetDir, "knowledge.index.yaml"):                   "sources: []\n",
+		filepath.Join(targetDir, "treasure-chests.yaml"):                   "chests: []\n",
 		filepath.Join(targetDir, "index.yaml"):                             "load_always: []\nload_by_task_type: {}\n",
 		filepath.Join(targetDir, "templates", "pragmatic-standalone.yaml"): "mode: pragmatic\nbase_path: .analysis\nroles_config: roles/default.yaml\n",
 		filepath.Join(targetDir, "templates", "epic-standalone.yaml"):      "mode: epic\nbase_path: .analysis\nroles_config: roles/default.yaml\n",

@@ -4,6 +4,7 @@ schema_version: "1"
 status: active
 risk_score: read_only
 category: assembly
+skill_type: support
 
 description: >
   Assembles a minimal dossier from context-enrichment output and .strategist/ identity files.

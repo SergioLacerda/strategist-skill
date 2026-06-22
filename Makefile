@@ -111,7 +111,7 @@ sync-embed:
 	rsync -a --delete strategist/templates/ internal/embed/defaults/templates/
 	rsync -a --delete strategist/personas/ internal/embed/defaults/personas/
 	@if [ -d strategist/output-profiles ]; then rsync -a --delete strategist/output-profiles/ internal/embed/defaults/output-profiles/; fi
-	rsync -a --delete strategist/skills/ internal/embed/defaults/skills/
+	rsync -a --delete strategist/skills/ internal/embed/defaults/internal_skills/
 	rsync -a --delete strategist/SKILL.md internal/embed/defaults/SKILL.md
 	rsync -a --delete strategist/protocol.md internal/embed/defaults/protocol.md
 	rsync -a --delete strategist/skill.yaml internal/embed/defaults/skill.yaml

@@ -1,3 +1,10 @@
+---
+phase: approval_gate
+requires_approval: true
+slot: null
+contract: null
+---
+
 # Strategist — Contract 05: Approval Gate
 
 ## Inputs

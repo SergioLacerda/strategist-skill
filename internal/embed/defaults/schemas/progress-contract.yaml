@@ -33,7 +33,7 @@ statuses:
 event_examples:
   - "[Strategist] phase=preflight status=done slots=ok"
   - "[Strategist] phase=discovery status=running skill=sdd-diagnose checklist=0/3"
-  - "[Strategist] phase=discovery status=done artifact=.analysis/refined/abc123-analysis.md"
+  - "[Strategist] phase=discovery status=done artifact=.analysis/pending/abc123-analysis.md"
   - "[Strategist] phase=preflight status=blocked reason=slot_provider_not_found action=check_skill_root"
   - "[Strategist] phase=refinement status=running skill=archivist checklist=1/3"
   - "[Strategist] phase=approval_gate status=blocked reason=user_declined action=none"

@@ -4,6 +4,7 @@ schema_version: "1"
 status: active
 risk_score: read_only
 category: knowledge
+skill_type: support
 
 description: >
   Queries knowledge.index.yaml and treasure-chests.yaml by task_type tags. Applies

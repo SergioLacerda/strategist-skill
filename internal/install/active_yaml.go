@@ -94,6 +94,38 @@ func writeKnowledgeIndexSource(strategistDir string, wc domain.WizardConfig) err
 	return nil
 }
 
+// writeTreasureChestManifest populates the chests: [] placeholder in treasure-chests.yaml
+// with a T1 chest entry for the wizard's TreasureChestPath. No-op when path is empty.
+func writeTreasureChestManifest(strategistDir string, wc domain.WizardConfig) error {
+	if wc.TreasureChestPath == "" {
+		return nil
+	}
+	tcPath := filepath.Join(strategistDir, "treasure-chests.yaml")
+	data, err := os.ReadFile(tcPath) //nolint:gosec // G304: path constructed from install config
+	if err != nil {
+		return fmt.Errorf("read treasure-chests.yaml: %w", err)
+	}
+	id := treasureChestID(wc.TreasureChestPath)
+	entry := fmt.Sprintf(`chests:
+  - id: %s
+    title: %s
+    path: %s
+    trust:
+      tier: T1
+      reviewed_by: human
+    routing:
+      task_types: [all]
+    retrieval:
+      strategy: selective
+      require_relevance_reason: true
+      allow_full_load: false`, id, id, wc.TreasureChestPath)
+	updated := strings.Replace(string(data), "chests: []", entry, 1)
+	if err := os.WriteFile(tcPath, []byte(updated), 0o644); err != nil { //nolint:gosec // G703: path from install config
+		return fmt.Errorf("write treasure-chests.yaml: %w", err)
+	}
+	return nil
+}
+
 // treasureChestID derives a stable id from a path by taking the last non-empty segment.
 func treasureChestID(path string) string {
 	path = strings.TrimRight(path, "/")

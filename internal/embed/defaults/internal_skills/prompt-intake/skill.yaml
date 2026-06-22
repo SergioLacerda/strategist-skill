@@ -4,6 +4,7 @@ schema_version: "1"
 status: active
 risk_score: read_only
 category: classification
+skill_type: utility
 
 description: >
   Classifies the user prompt into task_type, risk_level, intake constraints, and token_strategy.

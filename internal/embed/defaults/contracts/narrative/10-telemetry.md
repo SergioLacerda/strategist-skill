@@ -1,3 +1,10 @@
+---
+phase: telemetry
+requires_approval: false
+slot: null
+contract: null
+---
+
 # Strategist — Contract 10: Telemetry
 
 ## Goal
