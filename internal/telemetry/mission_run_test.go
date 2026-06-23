@@ -142,3 +142,15 @@ func TestFinishMission_WithRun(t *testing.T) {
 		t.Fatalf("FinishMission must call AddLines(1): got %d lines emitted", snap.LinesEmitted)
 	}
 }
+
+func TestStartLine_SanitizesPaths(t *testing.T) {
+	t.Parallel()
+	run := NewMissionRun("test-sanitize-123")
+	line := run.StartLine("epic", "/home/user/.config/active.yaml", "/home/user/project/.strategist/active.yaml", "epic", "test", "local")
+	if strings.Contains(line, "/home/user") {
+		t.Errorf("StartLine must not emit raw filesystem paths; got: %s", line)
+	}
+	if !strings.Contains(line, "<redacted-path>") {
+		t.Errorf("StartLine must contain <redacted-path> sentinel; got: %s", line)
+	}
+}

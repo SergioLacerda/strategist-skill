@@ -1,4 +1,4 @@
-.PHONY: build test test-all integration spec validate-expanded validate-all test-lite test-telemetry-lite test-compile-cache test-domain-architecture lint vuln bench cover cover-gate cover-html analysis-structure-gate docs-governance-gate install sync-embed release snapshot clean compile-skill build-site build-all install-web lint-web test-web cover-web
+.PHONY: build test test-all integration spec validate-expanded validate-all test-lite test-telemetry-lite test-compile-cache test-domain-architecture lint vuln bench cover cover-gate cover-html analysis-structure-gate docs-governance-gate governance-check install sync-embed release snapshot clean compile-skill build-site build-all install-web lint-web test-web cover-web
 
 GOCACHE ?= /tmp/go-build-cache
 
@@ -87,6 +87,14 @@ analysis-structure-gate:
 
 docs-governance-gate:
 	bash scripts/check-docs-governance.sh
+
+governance-check:
+	@echo "Checking governance redirectors..."
+	@for f in CLAUDE.md AGENTS.md GEMINI.md; do \
+		grep -q "Governance fingerprint:" "$$f" || (echo "DRIFT: $$f missing governance fingerprint header"; exit 1); \
+		grep -q "agent-instructions.md" "$$f" || (echo "DRIFT: $$f missing .sdd/agent-instructions.md reference"; exit 1); \
+	done
+	@echo "Governance redirectors: OK"
 
 install: build
 	mkdir -p ~/.local/bin
