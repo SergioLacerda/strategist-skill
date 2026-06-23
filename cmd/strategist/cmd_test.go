@@ -7,12 +7,15 @@ package main
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -111,7 +114,7 @@ func TestCompileCmd_DefaultRoot(t *testing.T) {
 
 	err = compileCmd.RunE(compileCmd, nil)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "compile")
+	assert.Contains(t, err.Error(), "not_installed")
 	// After the run, compileRoot must be the default value.
 	assert.Equal(t, ".strategist", compileRoot)
 }
@@ -835,4 +838,181 @@ func TestDojoListCmd_MissingActiveYAML(t *testing.T) {
 	err := dojoListCmd.RunE(dojoListCmd, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "active.yaml")
+}
+
+// --- check ---
+
+// minimalCheckRoot creates a .strategist/ tree suitable for checkCmd with all
+// three slot providers installed.
+func minimalCheckRoot(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	for _, provider := range []struct {
+		name      string
+		riskScore string
+	}{
+		{"brainstorming", "write_analysis"},
+		{"openspec-explore", "write_analysis"},
+		{"sdd-ask", "controlled"},
+	} {
+		provDir := filepath.Join(dir, "skills", provider.name)
+		require.NoError(t, os.MkdirAll(provDir, 0o755))
+		require.NoError(t, os.WriteFile(
+			filepath.Join(provDir, "skill.yaml"),
+			[]byte("id: "+provider.name+"\nrisk_score: "+provider.riskScore+"\n"),
+			0o644,
+		))
+	}
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "active.yaml"),
+		[]byte("mode: epic\nbase_path: .analysis\nroles_config: roles/default.yaml\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: sdd-ask\n"),
+		0o644,
+	))
+	return dir
+}
+
+func TestCheckCmd_Success(t *testing.T) {
+	dir := minimalCheckRoot(t)
+
+	orig := checkRoot
+	t.Cleanup(func() { checkRoot = orig })
+	checkRoot = dir
+
+	out := captureStdout(t, func() {
+		err := checkCmd.RunE(checkCmd, nil)
+		require.NoError(t, err)
+	})
+	assert.Contains(t, out, "check=ok")
+	assert.Contains(t, out, "brainstorming")
+	assert.Contains(t, out, "openspec-explore")
+	assert.Contains(t, out, "sdd-ask")
+}
+
+func TestCheckCmd_MissingActiveYAML(t *testing.T) {
+	orig := checkRoot
+	t.Cleanup(func() { checkRoot = orig })
+	checkRoot = filepath.Join(t.TempDir(), "nonexistent")
+
+	err := checkCmd.RunE(checkCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "active_yaml_not_found")
+}
+
+func TestCheckCmd_ProviderNotInstalled(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "active.yaml"),
+		[]byte("mode: epic\nbase_path: .analysis\nroles_config: roles/default.yaml\nslots:\n  discovery: missing-provider\n  refinement: openspec-explore\n  execution: sdd-ask\n"),
+		0o644,
+	))
+
+	orig := checkRoot
+	t.Cleanup(func() { checkRoot = orig })
+	checkRoot = dir
+
+	err := checkCmd.RunE(checkCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "check=failed")
+}
+
+func TestCheckCmd_WrongRiskScore(t *testing.T) {
+	dir := minimalCheckRoot(t)
+	// overwrite brainstorming with wrong risk_score
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "skills", "brainstorming", "skill.yaml"),
+		[]byte("id: brainstorming\nrisk_score: controlled\n"),
+		0o644,
+	))
+
+	orig := checkRoot
+	t.Cleanup(func() { checkRoot = orig })
+	checkRoot = dir
+
+	err := checkCmd.RunE(checkCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "check=failed")
+}
+
+func TestCheckCmd_DefaultRoot(t *testing.T) {
+	orig := checkRoot
+	t.Cleanup(func() { checkRoot = orig })
+	checkRoot = ""
+
+	oldWd, err := os.Getwd()
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.Chdir(oldWd) })
+	require.NoError(t, os.Chdir(t.TempDir()))
+
+	err = checkCmd.RunE(checkCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "active_yaml_not_found")
+}
+
+// --- exitCodeFor ---
+
+func TestExitCodeFor(t *testing.T) {
+	t.Parallel()
+	assert.Equal(t, 2, exitCodeFor(domain.ErrPipelineBypassDetected))
+	assert.Equal(t, 3, exitCodeFor(domain.ErrSourceStale))
+	assert.Equal(t, 3, exitCodeFor(domain.ErrArtifactAbsent))
+	assert.Equal(t, 3, exitCodeFor(domain.ErrManifestMissing))
+	assert.Equal(t, 1, exitCodeFor(errors.New("some generic error")))
+	assert.Equal(t, 2, exitCodeFor(fmt.Errorf("wrapped: %w", domain.ErrPipelineBypassDetected)))
+}
+
+// --- requireStrategistDir ---
+
+func TestRequireStrategistDir_FileExists(t *testing.T) {
+	oldWd, err := os.Getwd()
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.Chdir(oldWd) })
+
+	dir := t.TempDir()
+	require.NoError(t, os.Chdir(dir))
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, ".strategist"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".strategist", "active.yaml"), []byte("mode: epic\n"), 0o644))
+
+	assert.NoError(t, requireStrategistDir())
+}
+
+// --- addLine ---
+
+func TestAddLine_NilRun(t *testing.T) {
+	t.Parallel()
+	// addLine must not panic when run is nil.
+	assert.NotPanics(t, func() { addLine(nil) })
+}
+
+func TestAddLine_NonNilRun(t *testing.T) {
+	t.Parallel()
+	run := telemetry.NewMissionRun("test-add-line")
+	// addLine must not panic and must update snapshot metrics.
+	assert.NotPanics(t, func() { addLine(run) })
+	snap := run.Snapshot()
+	assert.Equal(t, int64(1), snap.LinesEmitted)
+}
+
+// --- dojoItemLine ---
+
+func TestDojoItemLine_Passed(t *testing.T) {
+	t.Parallel()
+	item := domain.DojoCheckItem{Label: "file-exists", Passed: true}
+	line := dojoItemLine(item)
+	assert.Contains(t, line, "✓")
+	assert.Contains(t, line, "file-exists")
+}
+
+func TestDojoItemLine_FailedWithDetail(t *testing.T) {
+	t.Parallel()
+	item := domain.DojoCheckItem{Label: "file-exists", Passed: false, Detail: "missing"}
+	line := dojoItemLine(item)
+	assert.Contains(t, line, "✗")
+	assert.Contains(t, line, "missing")
+}
+
+func TestDojoItemLine_FailedWithoutDetail(t *testing.T) {
+	t.Parallel()
+	item := domain.DojoCheckItem{Label: "file-exists", Passed: false}
+	line := dojoItemLine(item)
+	assert.Contains(t, line, "FAIL")
 }

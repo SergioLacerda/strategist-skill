@@ -1,0 +1,14 @@
+scenario: governance_gate_blocked
+expected_event: "execution_gate=blocked"
+description: >
+  Simulates SDD governance returning execution_gate: blocked.
+  Strategist must stop before invoking Sniper and surface gate_reason to the user.
+governance_injection:
+  execution_gate: blocked
+  gate_reason: "policy_blocked: governance adapter denied execution for this mission"
+  intake_index_mode: none
+expected_behavior:
+  sniper_invoked: false
+  mission_result: plan_only
+  event_emitted: "execution_gate=blocked"
+  gate_reason_surfaced: true

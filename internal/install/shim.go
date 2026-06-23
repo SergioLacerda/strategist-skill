@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func generateShimContent(skillContent, skillRoot string) string {
@@ -17,7 +18,25 @@ description: "Multi-phase mission orchestrator. Coordinates discovery, refinemen
 	frontmatter += `---
 
 `
-	return frontmatter + skillContent
+	return frontmatter + stripFrontmatter(skillContent)
+}
+
+// stripFrontmatter removes a leading YAML frontmatter block (---...---) from s,
+// if present. Guards against embedded SKILL.md files that were accidentally
+// committed with a frontmatter block from a previous install.
+func stripFrontmatter(s string) string {
+	if !strings.HasPrefix(s, "---") {
+		return s
+	}
+	// Find the closing --- after the opening one.
+	rest := s[3:]
+	idx := strings.Index(rest, "\n---")
+	if idx == -1 {
+		return s
+	}
+	// Skip past the closing --- and any trailing newline.
+	after := rest[idx+4:]
+	return strings.TrimLeft(after, "\n")
 }
 
 // installShim creates ~/.claude/skills/strategist/SKILL.md containing the full

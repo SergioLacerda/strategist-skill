@@ -1,6 +1,7 @@
 # active.yaml — epic SDD integration template
 # Generated from: templates/epic-sdd.yaml
-# Mode: SDD integration (requires sdd-analysis-plugin-protocol deployed in target repo)
+# Mode: SDD integration — concrete adapter example. Requires sdd-analysis-plugin-protocol deployed.
+# This template is provider-specific. For standalone use (no SDD), see epic-standalone.yaml.
 
 mode: epic
 

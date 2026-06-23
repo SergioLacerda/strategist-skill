@@ -187,6 +187,6 @@ func FinishMission(ctx context.Context) {
 func (m *MissionRun) StartLine(profileMode, profilePath, activeYAMLPath, personaResolved, reason, outputProfile string) string {
 	return fmt.Sprintf(
 		"[Strategist] pipeline=starting mission_id=%s profile_mode=%s profile_path=%s active_yaml_path=%s persona_resolved=%s reason=%s output=%s",
-		m.MissionID, profileMode, profilePath, activeYAMLPath, personaResolved, reason, outputProfile,
+		m.MissionID, profileMode, SanitizePath(profilePath), SanitizePath(activeYAMLPath), personaResolved, reason, outputProfile,
 	)
 }

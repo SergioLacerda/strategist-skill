@@ -1,4 +1,4 @@
-.PHONY: build test test-all integration spec validate-expanded validate-all test-lite test-telemetry-lite test-compile-cache test-domain-architecture lint vuln bench cover cover-gate cover-html analysis-structure-gate docs-governance-gate install sync-embed release snapshot clean compile-skill build-site build-all install-web lint-web test-web cover-web
+.PHONY: build test test-all integration spec validate-expanded validate-all test-lite test-telemetry-lite test-compile-cache test-domain-architecture lint vuln bench cover cover-gate cover-html analysis-structure-gate docs-governance-gate governance-check install sync-embed release snapshot clean compile-skill build-site build-all install-web lint-web test-web cover-web
 
 GOCACHE ?= /tmp/go-build-cache
 
@@ -88,6 +88,14 @@ analysis-structure-gate:
 docs-governance-gate:
 	bash scripts/check-docs-governance.sh
 
+governance-check:
+	@echo "Checking governance redirectors..."
+	@for f in CLAUDE.md AGENTS.md GEMINI.md; do \
+		grep -q "Governance fingerprint:" "$$f" || (echo "DRIFT: $$f missing governance fingerprint header"; exit 1); \
+		grep -q "agent-instructions.md" "$$f" || (echo "DRIFT: $$f missing .sdd/agent-instructions.md reference"; exit 1); \
+	done
+	@echo "Governance redirectors: OK"
+
 install: build
 	mkdir -p ~/.local/bin
 	install -m 755 bin/strategist ~/.local/bin/strategist
@@ -111,7 +119,10 @@ sync-embed:
 	rsync -a --delete strategist/templates/ internal/embed/defaults/templates/
 	rsync -a --delete strategist/personas/ internal/embed/defaults/personas/
 	@if [ -d strategist/output-profiles ]; then rsync -a --delete strategist/output-profiles/ internal/embed/defaults/output-profiles/; fi
-	rsync -a --delete strategist/skills/ internal/embed/defaults/skills/
+	rsync -a --delete strategist/skills/ internal/embed/defaults/internal_skills/
+	rsync -a --delete strategist/contracts/narrative/ internal/embed/defaults/contracts/narrative/
+	rsync -a --delete strategist/contracts/machine/   internal/embed/defaults/contracts/machine/
+	rsync -a          strategist/contracts/index.yaml  internal/embed/defaults/contracts/index.yaml
 	rsync -a --delete strategist/SKILL.md internal/embed/defaults/SKILL.md
 	rsync -a --delete strategist/protocol.md internal/embed/defaults/protocol.md
 	rsync -a --delete strategist/skill.yaml internal/embed/defaults/skill.yaml

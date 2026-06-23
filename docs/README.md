@@ -19,6 +19,9 @@ Este é o ponto de entrada para toda a documentação da skill. Use a tabela aba
 | Ver diagramas C4 | [`docs/c4-diagrams.md`](c4-diagrams.md) |
 | Ver baseline de performance | [`docs/performance-baseline.md`](performance-baseline.md) |
 | Entender o learning pipeline | [`docs/learning-pipeline.md`](learning-pipeline.md) |
+| Entender o modelo mental da skill | [`docs/mental-model.md`](mental-model.md) |
+| Consumir telemetria e observability | [`docs/observability-contract.md`](observability-contract.md) |
+| Referência de conceitos fundamentais | [`docs/strategist-concepts.md`](strategist-concepts.md) |
 
 ---
 

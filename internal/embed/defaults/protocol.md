@@ -26,11 +26,14 @@ Strategist stops immediately on:
 6. Override execution provider from an undeclared source
 7. Skip preflight
 8. Mutate the repo without canonical pipeline evidence
-9. Emit raw `[Strategist] key=value` events to the user console when `profile=epic`
+9. Emit raw `[Strategist] key=value` events in epic mode without the corresponding
+   `phase_announcements` wrapper line.
 
-   Raw runtime-evidence lines are classified as DEBUG. When `profile=epic`, all
-   user-facing output MUST use `content_by_lang` templates or `mission_envelope`.
-   DEBUG-level events are routed to telemetry only, never to the console.
+   In epic mode, raw progress events are intentional and visible. Each raw event
+   MUST be preceded by the matching `phase_announcements[lang][event_key]` line.
+   The wrapper provides role context and character voice; the raw line preserves
+   machine observability. Emitting the raw event alone (without the wrapper) is
+   the violation.
 
 ## Canonical Pipeline Evidence
 
@@ -52,7 +55,15 @@ Quick Draw evidence:
 - refinement failure stops before gate
 - execution failure returns partial result and blocked execution state
 
-Transient discovery/refinement failures may be retried once. Execution failures are never retried automatically.
+Transient discovery/refinement failures may be retried once. Transient execution failures may be retried once (the FSM supports `StateExecution → EventSlotTransient → StateRetrying`). Permanent failures are never retried.
+
+## Slot Provider Governance Compliance
+
+If a slot provider ignores `governance_injection.execution_gate = blocked`:
+- The provider has no write authorization in the repository. Strategist's FSM prevents reaching execution state (code-enforced via `nextFromApprovalGate` checking `CanExecute`).
+- Any direct mutation attempt by a non-compliant provider triggers `pipeline_bypass_detected`.
+- Strategist reports `slot_risk_mismatch` for a provider that violates its declared contract.
+- The provider is considered non-compliant; future missions will be blocked at preflight until the provider is replaced or corrected.
 
 ## Approval Policy
 
@@ -62,11 +73,20 @@ Supported modes:
 - `explicit_confirm`
 - `human_only` (documented, not enforced by default)
 
+## Governance Precedence
+
+External governance (SDD or any other adapter) controls three things only:
+- whether execution is **permitted, blocked, or conditioned**
+- which **provider, base path, and knowledge paths** are injected (via `governance_injection`)
+- which **governance context** documents are made available to slots
+
+The Strategist controls everything else: pipeline sequence, artifact persistence, evidence requirements, and slot delegation. External governance cannot substitute the canonical mission sequence after invocation.
+
 ## Governance Gate vs. Persona Gate
 
 These are two independent checks, both required before execution:
 
-1. **Governance gate** (`execution_gate=allowed/blocked`) — reported by the SDD CLI.
+1. **Governance gate** (`execution_gate=allowed/blocked`) — reported by the active governance adapter (e.g., SDD CLI, or any adapter that populates `governance_injection`).
    Determines whether the governance policy *permits* execution.
    `allowed` means "not blocked by policy." It is NOT user approval.
 

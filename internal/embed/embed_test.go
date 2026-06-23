@@ -36,7 +36,7 @@ func TestExtractor_ReadFile(t *testing.T) {
 	t.Run("reads embedded default provider manifests", func(t *testing.T) {
 		t.Parallel()
 
-		brainstorming, err := embedpkg.Extractor{}.ReadFile("providers/brainstorming/skill.yaml")
+		brainstorming, err := embedpkg.Extractor{}.ReadFile("skills/brainstorming/skill.yaml")
 		require.NoError(t, err)
 		assert.Contains(t, string(brainstorming), "id: brainstorming")
 		assert.Contains(t, string(brainstorming), "status: active")
@@ -46,7 +46,7 @@ func TestExtractor_ReadFile(t *testing.T) {
 		assert.Contains(t, string(brainstorming), "auxiliary_tools_allowed:")
 		assert.Contains(t, string(brainstorming), "- writing-plans")
 
-		openspecExplore, err := embedpkg.Extractor{}.ReadFile("providers/openspec-explore/skill.yaml")
+		openspecExplore, err := embedpkg.Extractor{}.ReadFile("skills/openspec-explore/skill.yaml")
 		require.NoError(t, err)
 		assert.Contains(t, string(openspecExplore), "id: openspec-explore")
 		assert.Contains(t, string(openspecExplore), "status: active")
@@ -130,12 +130,12 @@ func TestExtractor_Extract(t *testing.T) {
 		assert.Contains(t, skill, "write_quick_draw_without_gate")
 		assert.Contains(t, skill, "<base_path>/todo/<tema>.md")
 
-		// Quick Draw procedure detail lives in contracts/quick-draw.yaml (refactored from SKILL.md)
-		quickDraw, err := os.ReadFile(filepath.Join(dir, "contracts", "quick-draw.yaml"))
+		// Quick Draw procedure detail lives in contracts/machine/quick-draw.yaml
+		quickDraw, err := os.ReadFile(filepath.Join(dir, "contracts", "machine", "quick-draw.yaml"))
 		require.NoError(t, err)
 		qd := string(quickDraw)
 		assert.Contains(t, qd, "quick-draw")
-		assert.Contains(t, qd, "sim/nao")
+		assert.Contains(t, qd, "sim: proceed_to_sniper")
 
 		// SKILL.md retains the Quick Draw routing reference
 		skillMD, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
@@ -201,7 +201,7 @@ func TestExtractor_Extract(t *testing.T) {
 		assert.Contains(t, string(protocol), "pipeline_bypass_detected")
 		assert.Contains(t, string(protocol), "Mutate the repo without canonical pipeline evidence")
 
-		approvalGate, err := os.ReadFile(filepath.Join(dir, "contracts", "approval-gate.yaml"))
+		approvalGate, err := os.ReadFile(filepath.Join(dir, "contracts", "machine", "approval-gate.yaml"))
 		require.NoError(t, err)
 		assert.Contains(t, string(approvalGate), "pipeline_bypass_detected")
 		assert.Contains(t, string(approvalGate), "missing_evidence=approval_gate:approved")
@@ -212,19 +212,19 @@ func TestExtractor_Extract(t *testing.T) {
 		dir := t.TempDir()
 		require.NoError(t, embedpkg.Extractor{}.Extract(dir, false))
 
-		// ADR language instruction detail lives in contracts/07-adr.md
-		adrYAML, err := os.ReadFile(filepath.Join(dir, "contracts", "07-adr.md"))
+		// ADR language instruction detail lives in contracts/narrative/07-adr.md
+		adrYAML, err := os.ReadFile(filepath.Join(dir, "contracts", "narrative", "07-adr.md"))
 		require.NoError(t, err)
 		adr := string(adrYAML)
 		assert.Contains(t, adr, "pt-BR")
 		assert.Contains(t, adr, "en")
 		assert.Contains(t, adr, "active.language.docs")
 
-		// SKILL.md retains the ADR routing reference
+		// SKILL.md retains the ADR routing reference (now with narrative/ subdir)
 		skillMD, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
 		require.NoError(t, err)
 		doc := string(skillMD)
 		assert.Contains(t, doc, "Archivist")
-		assert.Contains(t, doc, "contracts/07-adr.md")
+		assert.Contains(t, doc, "contracts/narrative/07-adr.md")
 	})
 }

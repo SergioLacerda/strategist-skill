@@ -116,3 +116,25 @@ func TestAppendOutcomeLine_Idempotent_MultipleLines(t *testing.T) {
 		t.Fatalf("expected 3 lines, got %d", lineCount)
 	}
 }
+
+func TestAppendOutcomeLineSafe_DoesNotPanicOnBadPath(t *testing.T) {
+	t.Parallel()
+	// Must not panic or return error — learning failures are non-blocking.
+	validLine := `{"mission_id":"m-safe","status":"completed","timestamp":"2026-06-23T00:00:00Z"}`
+	AppendOutcomeLineSafe("/nonexistent/path/that/cannot/exist/outcomes.jsonl", validLine)
+}
+
+func TestAppendOutcomeLineSafe_WritesOnValidPath(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "outcomes.jsonl")
+	line := `{"mission_id":"m-safe-2","status":"completed","timestamp":"2026-06-23T00:00:00Z"}`
+	AppendOutcomeLineSafe(path, line)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("expected file to be written: %v", err)
+	}
+	if !strings.Contains(string(data), "m-safe-2") {
+		t.Errorf("expected written content, got: %s", string(data))
+	}
+}

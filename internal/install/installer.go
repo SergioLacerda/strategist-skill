@@ -142,7 +142,7 @@ func (s Service) applyConfig(strategistDir string, cfg domain.InstallConfig) err
 	}
 
 	p := s.resolvePrompter()
-	wc, err := runWizard(p)
+	wc, err := runWizard(p, s.Extractor)
 	if err != nil {
 		return fmt.Errorf("install: wizard: %w", err)
 	}
@@ -154,6 +154,9 @@ func (s Service) applyConfig(strategistDir string, cfg domain.InstallConfig) err
 	}
 	if err := writeKnowledgeIndexSource(strategistDir, wc); err != nil {
 		return fmt.Errorf("install: write knowledge.index.yaml: %w", err)
+	}
+	if err := writeTreasureChestManifest(strategistDir, wc); err != nil {
+		return fmt.Errorf("install: write treasure-chests.yaml: %w", err)
 	}
 	return nil
 }
@@ -177,7 +180,7 @@ func (s Service) writeSelectedProviderManifests(strategistDir string, wc domain.
 			return fmt.Errorf("read %s: %w", manifestPath, err)
 		}
 
-		providerDir := filepath.Join(strategistDir, provider)
+		providerDir := filepath.Join(strategistDir, "skills", provider)
 		if err := os.MkdirAll(providerDir, 0o755); err != nil {
 			return fmt.Errorf("mkdir %s: %w", providerDir, err)
 		}
