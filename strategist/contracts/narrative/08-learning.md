@@ -1,3 +1,9 @@
+---
+phase: learning
+slot: learning-curator
+requires_approval: false
+contract: null
+---
 # Strategist — Contract 08: Learning
 
 ## Inputs

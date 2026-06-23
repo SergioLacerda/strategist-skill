@@ -1,10 +1,9 @@
 ---
 phase: intake
-requires_approval: false
 slot: prompt-intake
+requires_approval: false
 contract: null
 ---
-
 # Strategist — Contract 02: Intake
 
 ## Inputs
@@ -28,11 +27,6 @@ contract: null
 - generate unique `mission_id`
 - emit mission checkpoint immediately after intake
 - emit mission metrics with the checkpoint
-- evaluate `routing_matrix` after classification (see `intake.yaml` §routing_matrix):
-  - if Quick Draw triggers match → route `quick_draw`
-  - else if Critical Hit conditions all satisfied → route `direct_execute` (emit `critical_hit_triggered`)
-  - else → route `standard` (main_mission)
-- emit `route_selected` event with the resolved route name
 
 ## Narrative Rule
 

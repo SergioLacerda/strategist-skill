@@ -1,3 +1,9 @@
+---
+phase: execution
+slot: execution
+requires_approval: true
+contract: controlled
+---
 # Strategist — Contract 06: Execution
 
 ## Owner

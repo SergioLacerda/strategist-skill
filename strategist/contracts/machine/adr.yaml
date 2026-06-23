@@ -1,0 +1,61 @@
+module: adr
+type: agent_phase
+description: >
+  Post-mission stage (conditional). Detects architectural decisions in the completed
+  mission and offers to document them as ADRs. Two-gate flow: gate_1 confirms generation,
+  gate_2 confirms content. Skipped entirely when adr_enabled=false or no criteria met.
+
+contract:
+  skip_condition: active.adr_enabled == false
+
+  activation_criteria:
+    new_pattern: new interface, contract, schema, or abstraction introduced
+    breaking_change: field removed, signature changed, behavior changed
+    documented_tradeoff: tasks.md/design.md describe a choice with discarded alternatives
+    new_external_dependency: library, service, or protocol added
+  skip_when_criteria_empty: true
+
+  flow:
+    gate_1:
+      emit_key: adr_opportunity
+      emit_level: DEBUG
+      stop: true
+      on_no:
+        action: log "ADR declined (gate 1)"
+        next_phase: learning_phase
+      on_yes:
+        action: archivist writes draft AND presents full content in chat
+        draft_display_format: |
+          ---
+          📚 **Archivist — ADR draft:**
+          {full ADR content per template}
+          ---
+        artifact_path: "<base_path>/archived/<mission_id>-adr.md"
+
+    gate_2:
+      emit_key: adr_gate
+      emit_level: INFO
+      stop: true
+      on_yes:
+        action: sniper commits ADR
+        set: mission_result.adr = <path>
+        next_phase: learning_phase
+      on_no:
+        action: delete artifact
+        set: mission_result.adr = absent
+        mission_result_status: completed
+        next_phase: learning_phase
+      on_edit:
+        action: accept inline edits, re-present draft, re-open gate_2
+
+  template:
+    language_source: active.language.docs
+    sections:
+      en:    [Context, Decision, Consequences]
+      pt-BR: [Contexto, Decisão, Consequências]
+    required_fields: [title, date, status, mission_id]
+    status_value: accepted
+
+  write_scope: "<base_path>/archived/ (conditional on gate_2 approval)"
+  owner: internal (post-mission)
+  canonical_human_contract: contracts/07-adr.md

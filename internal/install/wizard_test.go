@@ -1,6 +1,7 @@
 package install
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -8,14 +9,68 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// skillYAMLExtractor returns a synthetic skill.yaml with the given active_config values.
+type skillYAMLExtractor struct {
+	langValues []string
+	modeValues []string
+}
+
+func (s skillYAMLExtractor) Extract(_ string, _ bool) error { return nil }
+func (s skillYAMLExtractor) ReadFile(relPath string) ([]byte, error) {
+	if relPath != "skill.yaml" {
+		return nil, fmt.Errorf("skillYAMLExtractor: not found: %s", relPath)
+	}
+	langs := strings.Join(s.langValues, ", ")
+	modes := strings.Join(s.modeValues, ", ")
+	yaml := fmt.Sprintf("active_config:\n  language:\n    values: [%s]\n  mode:\n    values: [%s]\n", langs, modes)
+	return []byte(yaml), nil
+}
+
+func TestLoadSkillConfig(t *testing.T) {
+	t.Parallel()
+
+	t.Run("reads lang and mode values from skill.yaml", func(t *testing.T) {
+		t.Parallel()
+		cfg := loadSkillConfig(skillYAMLExtractor{
+			langValues: []string{"pt", "en"},
+			modeValues: []string{"pragmatic", "epic"},
+		})
+		assert.Equal(t, []string{"pt", "en"}, cfg.LangOptions)
+		assert.Equal(t, []string{"pragmatic", "epic"}, cfg.ModeOptions)
+	})
+
+	t.Run("falls back to defaults when extractor fails", func(t *testing.T) {
+		t.Parallel()
+		cfg := loadSkillConfig(minimalExtractor{})
+		assert.Equal(t, defaultLangOptions, cfg.LangOptions)
+		assert.Equal(t, defaultModeOptions, cfg.ModeOptions)
+	})
+
+	t.Run("falls back to defaults when yaml is malformed", func(t *testing.T) {
+		t.Parallel()
+		cfg := loadSkillConfig(skillYAMLExtractor{langValues: nil, modeValues: nil})
+		assert.Equal(t, defaultLangOptions, cfg.LangOptions)
+		assert.Equal(t, defaultModeOptions, cfg.ModeOptions)
+	})
+}
+
+func TestNormLang(t *testing.T) {
+	t.Parallel()
+	assert.Equal(t, "pt-BR", normLang("pt"))
+	assert.Equal(t, "pt-BR", normLang("pt-BR"))
+	assert.Equal(t, "pt-BR", normLang("PT-BR"))
+	assert.Equal(t, "en", normLang("en"))
+	assert.Equal(t, "fr", normLang("fr"))
+}
+
 func TestValidateProvider(t *testing.T) {
 	t.Parallel()
 
-	assert.Empty(t, validateProvider("brainstorming", "write_analysis"))
-	assert.Empty(t, validateProvider("openspec-explore", "write_analysis"))
-	assert.Empty(t, validateProvider("sdd-ask", "controlled"))
-	assert.Contains(t, validateProvider("brainstorming", "controlled"), "preflight will block at runtime")
-	assert.Contains(t, validateProvider("unknown-provider", "write_analysis"), "is not in the known-providers registry")
+	assert.Empty(t, validateProvider(knownProviderRisk, "brainstorming", "write_analysis"))
+	assert.Empty(t, validateProvider(knownProviderRisk, "openspec-explore", "write_analysis"))
+	assert.Empty(t, validateProvider(knownProviderRisk, "sdd-ask", "controlled"))
+	assert.Contains(t, validateProvider(knownProviderRisk, "brainstorming", "controlled"), "preflight will block at runtime")
+	assert.Contains(t, validateProvider(knownProviderRisk, "unknown-provider", "write_analysis"), "is not in the known-providers registry")
 }
 
 func TestInstallableDefaultProviders(t *testing.T) {
@@ -102,7 +157,7 @@ func TestRunWizard(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			wc, err := runWizard(NewTextPrompter(strings.NewReader(tt.input)))
+			wc, err := runWizard(NewTextPrompter(strings.NewReader(tt.input)), minimalExtractor{})
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantUILanguage, wc.UILanguage)
 			assert.Equal(t, tt.wantDocLanguage, wc.DocLanguage)

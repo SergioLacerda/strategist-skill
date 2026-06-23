@@ -1,3 +1,9 @@
+---
+phase: refinement
+slot: refinement
+requires_approval: false
+contract: write_analysis
+---
 # Strategist — Contract 04: Refinement
 
 ## Owner

@@ -1,3 +1,9 @@
+---
+phase: response
+slot: null
+requires_approval: false
+contract: null
+---
 # Strategist — Contract 09: Response
 
 ## Goal

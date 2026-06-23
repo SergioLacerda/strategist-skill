@@ -1,3 +1,9 @@
+---
+phase: intake
+slot: prompt-intake
+requires_approval: false
+contract: null
+---
 # Strategist — Contract 02: Intake
 
 ## Inputs

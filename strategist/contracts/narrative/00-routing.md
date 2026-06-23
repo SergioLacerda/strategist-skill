@@ -1,3 +1,9 @@
+---
+phase: routing
+slot: null
+requires_approval: false
+contract: null
+---
 # Strategist — Contract 00: Routing
 
 ## Purpose

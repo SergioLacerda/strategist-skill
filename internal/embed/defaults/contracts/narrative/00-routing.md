@@ -1,10 +1,9 @@
 ---
 phase: routing
-requires_approval: false
 slot: null
+requires_approval: false
 contract: null
 ---
-
 # Strategist — Contract 00: Routing
 
 ## Purpose
@@ -14,13 +13,13 @@ Resolve the route before any mission work starts.
 ## Routes
 
 - **Quick Draw** — only for explicit quick capture / note append requests
-- **Critical Hit** — fast path for low-risk doc/content edits (see `critical-hit.yaml` and `11-critical-hit.md`)
+- **Critical Hit** — fast path for low-risk doc/content edits (see `critical-hit.yaml`)
 - **Main Mission** — every other request
 
 ## Route Selection Order
 
 1. Quick Draw keywords detected → Quick Draw
-2. Critical Hit conditions satisfied (see `critical-hit.yaml`) → Critical Hit (`direct_execute`)
+2. Critical Hit conditions satisfied (see `critical-hit.yaml`) → Critical Hit
 3. Default → Main Mission
 
 **When in doubt → Main Mission. Conservatism is the safe default.**
@@ -47,10 +46,11 @@ When operating inside the main mission, consult contracts in this order:
 8. `08-learning.md`
 9. `09-response.md`
 10. `10-telemetry.md`
-11. `11-critical-hit.md` ← consult when evaluating Critical Hit eligibility
 
 ## Invariants
 
 - No direct repository mutation without canonical pipeline evidence
-- No execution without explicit approval (applies to ALL routes including Critical Hit)
+- No execution without explicit approval
 - No slot work performed by Strategist itself
+- External governance (any adapter) may block or permit execution — it does NOT replace the canonical pipeline sequence once Strategist is invoked
+- `execution_gate=allowed` from governance never substitutes the persona gate (explicit user approval)

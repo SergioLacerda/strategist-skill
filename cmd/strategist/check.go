@@ -1,0 +1,109 @@
+package main
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
+)
+
+var checkRoot string
+
+// slotContract maps slot names to their required risk_score contract.
+var slotContract = map[string]string{
+	"discovery":  "write_analysis",
+	"refinement": "write_analysis",
+	"execution":  "controlled",
+}
+
+var checkCmd = &cobra.Command{
+	Use:   "check",
+	Short: "Pre-mission slot validation",
+	Long: `Validate that slot providers declared in active.yaml are installed and
+satisfy their risk_score contracts.
+
+Checks performed:
+  - active.yaml is present and parseable
+  - For each slot (discovery, refinement, execution):
+      • skills/<provider>/skill.yaml exists
+      • skill.yaml declares the correct risk_score for the slot contract
+        discovery/refinement → write_analysis, execution → controlled`,
+	RunE: func(_ *cobra.Command, _ []string) error {
+		root := checkRoot
+		if root == "" {
+			root = ".strategist"
+		}
+
+		activeYAML := filepath.Join(root, "active.yaml")
+		raw, err := os.ReadFile(activeYAML)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return fmt.Errorf("[Strategist] check=blocked reason=active_yaml_not_found\n→ Run: strategist install")
+			}
+			return fmt.Errorf("[Strategist] check=blocked reason=active_yaml_read_error: %w", err)
+		}
+
+		var cfg domain.ActiveConfig
+		if err := yaml.Unmarshal(raw, &cfg); err != nil {
+			return fmt.Errorf("[Strategist] check=blocked reason=active_yaml_invalid_yaml: %w", err)
+		}
+
+		providers := map[string]string{
+			"discovery":  cfg.Slots["discovery"],
+			"refinement": cfg.Slots["refinement"],
+			"execution":  cfg.Slots["execution"],
+		}
+
+		var errs []string
+		for _, slot := range []string{"discovery", "refinement", "execution"} {
+			provider := providers[slot]
+			if provider == "" {
+				errs = append(errs, fmt.Sprintf("slot %s: no provider configured in active.yaml", slot))
+				continue
+			}
+
+			skillPath := filepath.Join(root, "skills", provider, "skill.yaml")
+			skillRaw, readErr := os.ReadFile(skillPath)
+			if readErr != nil {
+				if os.IsNotExist(readErr) {
+					errs = append(errs, fmt.Sprintf("slot %s: provider %q not installed (missing %s)", slot, provider, skillPath))
+				} else {
+					errs = append(errs, fmt.Sprintf("slot %s: read %s: %v", slot, skillPath, readErr))
+				}
+				continue
+			}
+
+			var skillDef struct {
+				RiskScore string `yaml:"risk_score"`
+			}
+			if yamlErr := yaml.Unmarshal(skillRaw, &skillDef); yamlErr != nil {
+				errs = append(errs, fmt.Sprintf("slot %s: provider %q skill.yaml invalid: %v", slot, provider, yamlErr))
+				continue
+			}
+
+			required := slotContract[slot]
+			if skillDef.RiskScore != required {
+				errs = append(errs, fmt.Sprintf("slot %s: provider %q has risk_score=%q but slot requires %q — preflight will block", slot, provider, skillDef.RiskScore, required))
+			}
+		}
+
+		if len(errs) > 0 {
+			for _, e := range errs {
+				fmt.Fprintf(os.Stderr, "  ✗ %s\n", e)
+			}
+			return fmt.Errorf("[Strategist] check=failed errors=%d root=%s", len(errs), root)
+		}
+
+		fmt.Printf("[Strategist] check=ok slots=[discovery:%s, refinement:%s, execution:%s] root=%s\n",
+			providers["discovery"], providers["refinement"], providers["execution"], root)
+		return nil
+	},
+}
+
+func init() {
+	checkCmd.Flags().StringVar(&checkRoot, "root", "", "path to .strategist/ root (default: .strategist)")
+	rootCmd.AddCommand(checkCmd)
+}

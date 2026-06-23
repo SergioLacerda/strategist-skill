@@ -1,3 +1,9 @@
+---
+phase: adr
+slot: null
+requires_approval: true
+contract: null
+---
 # Strategist — Contract 07: ADR
 
 ## Purpose
