@@ -18,6 +18,7 @@ type WizardStrings struct {
 	PromptExecution     string
 	HeaderChest         string
 	PromptChestPath     string
+	SkipChestHint       string
 	LabelCustomInput    string
 }
 
@@ -37,6 +38,7 @@ var EN = WizardStrings{
 	PromptExecution:     "  Sniper / execution provider",
 	HeaderChest:         "\nTreasure chest — optional offline knowledge source for all slots:",
 	PromptChestPath:     "  Knowledge source path (e.g. .sdd/source)",
+	SkipChestHint:       "  (skipped — edit .strategist/knowledge.index.yaml later to add sources)",
 	LabelCustomInput:    "(enter other...)",
 }
 
@@ -56,6 +58,7 @@ var PT = WizardStrings{
 	PromptExecution:     "  Sniper / provedor de execução",
 	HeaderChest:         "\nBaú do tesouro — base de conhecimento offline opcional para todos os slots:",
 	PromptChestPath:     "  Caminho da base de conhecimento (ex: .sdd/source)",
+	SkipChestHint:       "  (ignorado — edite .strategist/knowledge.index.yaml para adicionar fontes depois)",
 	LabelCustomInput:    "(digitar outro...)",
 }
 

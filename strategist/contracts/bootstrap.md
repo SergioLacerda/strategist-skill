@@ -1,5 +1,9 @@
 # Strategist — Bootstrap Contract
 
+> **Note:** This is a human-readable bootstrap reference for developers. Agents running in an
+> installed workspace read the numbered narrative contracts at `.strategist/contracts/narrative/`.
+> This file is NOT embedded in the installed runtime and is maintained as developer documentation only.
+
 ## ⚠️ MANDATORY — BEFORE ANY RESPONSE
 
 DO NOT generate content until you have:
@@ -163,7 +167,7 @@ internal domain — do not error. If it exists:
 Read `active.slots`. For each slot (discovery, refinement, execution):
 1. Get provider id from `active.slots.<slot>`.
 2. Resolve provider skill.yaml using this order:
-   a. `<skill_root>/<provider>/skill.yaml`
+   a. `<skill_root>/skills/<provider>/skill.yaml`  ← installed runtime path
    b. `.claude/skills/<provider>/skill.yaml`
    c. skill registry entry `skill_yaml` path (if registry present)
 3. If provider is `_runtime_provider`, resolve from `governance_injection.execution_provider`.

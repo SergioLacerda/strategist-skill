@@ -1,4 +1,4 @@
-.PHONY: build test test-all integration spec validate-expanded validate-all test-lite test-telemetry-lite test-compile-cache test-domain-architecture lint vuln bench cover cover-gate cover-html analysis-structure-gate docs-governance-gate governance-check install sync-embed release snapshot clean compile-skill build-site build-all install-web lint-web test-web cover-web
+.PHONY: build test test-all integration spec validate-expanded validate-all test-lite test-telemetry-lite test-compile-cache test-domain-architecture lint vuln bench cover cover-gate cover-html analysis-structure-gate docs-governance-gate governance-check convergence-check install sync-embed release snapshot clean compile-skill build-site build-all install-web lint-web test-web cover-web
 
 GOCACHE ?= /tmp/go-build-cache
 
@@ -87,6 +87,16 @@ analysis-structure-gate:
 
 docs-governance-gate:
 	bash scripts/check-docs-governance.sh
+
+convergence-check:
+	@echo "Checking runtime/package-boundary convergence..."
+	@grep -q 'skills.*ExpectedProvider\|"skills".*ExpectedProvider' internal/dojo/checker.go \
+		|| (echo "DRIFT: dojo/checker.go uses old provider path (not skills/<provider>/skill.yaml)"; exit 1)
+	@grep -q '"skills".*"brainstorming"\|skills.*brainstorming' internal/dojo/checker_test.go \
+		|| (echo "DRIFT: dojo/checker_test.go uses old provider path"; exit 1)
+	@grep -q '"skills".*providerID\|skills.*providerID' cmd/strategist/initiative.go \
+		|| (echo "DRIFT: initiative.go uses old provider path (not skills/<provider>/skill.yaml)"; exit 1)
+	@echo "Convergence check: OK"
 
 governance-check:
 	@echo "Checking governance redirectors..."
