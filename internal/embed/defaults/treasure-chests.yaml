@@ -74,3 +74,19 @@ stop_conditions:
 #   allow_full_load: false          # default: false
 
 chests: []
+
+# Example entry (uncomment and customize):
+#
+# chests:
+#   - id: project-docs
+#     title: Project Documentation
+#     path: /abs/path/to/docs
+#     trust:
+#       tier: T1
+#       reviewed_by: human
+#       last_reviewed: 2026-01-01
+#     routing:
+#       task_types: [all]
+#     retrieval:
+#       strategy: selective
+#       require_relevance_reason: true

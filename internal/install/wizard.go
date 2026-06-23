@@ -158,6 +158,9 @@ func runWizard(p Prompter, extractor domain.FileExtractor) (domain.WizardConfig,
 	if err != nil {
 		return domain.WizardConfig{}, fmt.Errorf("wizard: treasure_chest: %w", err)
 	}
+	if chestPath == "" {
+		fmt.Println(b.SkipChestHint)
+	}
 
 	return domain.WizardConfig{
 		Mode:               mode,

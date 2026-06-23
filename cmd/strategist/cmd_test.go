@@ -560,7 +560,7 @@ func TestInitiativeCmd_ShowsManifestOK(t *testing.T) {
 	testutil.MinimalRoot(t, dir)
 
 	// write a minimal provider manifest for brainstorming
-	provDir := filepath.Join(dir, "brainstorming")
+	provDir := filepath.Join(dir, "skills", "brainstorming")
 	require.NoError(t, os.MkdirAll(provDir, 0o755))
 	manifest := []byte("id: brainstorming\nstatus: active\nrisk_score: write_analysis\nprovider_class: rankeado\nspecialization_taxonomy:\n  canonical_role: ranger\n  provider_class: rankeado\n")
 	require.NoError(t, os.WriteFile(filepath.Join(provDir, "skill.yaml"), manifest, 0o644))
