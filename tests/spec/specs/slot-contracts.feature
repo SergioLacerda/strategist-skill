@@ -49,3 +49,13 @@ Feature: Slot Write Scope Contracts
     When preflight attempts to resolve the risk_score
     Then Strategist emits blocked event reason=slot_risk_mismatch
     And mission stops at preflight
+
+  Scenario: Sniper executes exactly one task per loop iteration
+    Given Archivist produced tasks.md with 3 tasks
+    And the approval gate has been granted
+    When Sniper begins an execution loop iteration for task 1
+    Then Sniper emits task=1 status=running
+    And Sniper emits task=1 status=done
+    And Sniper does NOT emit task=2 status=running in the same loop iteration
+    And Sniper does NOT emit task=3 status=running in the same loop iteration
+    And Strategist updates the task checklist before invoking Sniper again for task 2

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 )
 
@@ -71,4 +72,12 @@ func AppendOutcomeLine(path, line string) (err error) {
 		return fmt.Errorf("write outcome line: %w", err)
 	}
 	return nil
+}
+
+// AppendOutcomeLineSafe calls AppendOutcomeLine and logs errors without propagating them.
+// Use this at all call sites where learning failures must not block the mission result.
+func AppendOutcomeLineSafe(path, line string) {
+	if err := AppendOutcomeLine(path, line); err != nil {
+		slog.Warn("outcome write failed (non-blocking)", "error", err)
+	}
 }

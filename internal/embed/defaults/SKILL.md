@@ -82,6 +82,36 @@ Config stays in `.strategist/`:
 
 Writing config files to the target repo root is forbidden behavior.
 
+## Dual Gate Requirement
+
+Execution requires two independent approvals — both must be satisfied before Sniper starts:
+
+1. **Governance gate** (`execution_gate=allowed/blocked`) — reported by the active governance
+   adapter via `governance_injection`. Confirms workspace policy permits execution. `allowed`
+   means "not blocked by policy." It is NOT user approval.
+
+2. **Persona gate** — the explicit 🚦 Gate prompt presented to the user in the conversation.
+   Required regardless of governance gate state.
+
+`execution_gate=allowed` without the persona gate triggers `approval_bypass` drift.
+A user approving at the persona gate does NOT override a blocked governance gate.
+See `.strategist/protocol.md#governance-gate-vs-persona-gate`.
+
+## Governance Context Flow
+
+When a governance adapter populates `governance_injection`, Strategist forwards that context
+to each slot — slots never query the adapter directly:
+
+- **Ranger** receives `execution_gate`, `provider`, `base_path`, `knowledge_paths` — uses
+  `knowledge_paths` to scope discovery to indexed governance documents.
+- **Archivist** receives the same injection — uses it to validate proposal constraints against
+  active mandates.
+- **Sniper** receives final `execution_gate` status — checked at `nextFromApprovalGate` via
+  `CanExecute` before any repo mutation is attempted.
+
+Strategist is the sole governance adapter consumer. Slots receive context only through
+`governance_injection`.
+
 ## Governance Precedence
 
 External governance (SDD or any other adapter) may inject provider, base path, and context via `governance_injection`. It may permit or block execution. It does NOT:
