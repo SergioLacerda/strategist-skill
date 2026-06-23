@@ -243,7 +243,7 @@ func TestCheckEmitLog_ReadError(t *testing.T) {
 
 func TestCheckManifests_Pass(t *testing.T) {
 	strategistDir := t.TempDir()
-	providerDir := filepath.Join(strategistDir, "brainstorming")
+	providerDir := filepath.Join(strategistDir, "skills", "brainstorming")
 	require.NoError(t, os.MkdirAll(providerDir, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(providerDir, "skill.yaml"),
 		[]byte("canonical_role: ranger\nprovider_class: rankeado\n"), 0o644))
@@ -288,7 +288,7 @@ func TestCheckManifests_ManifestExpectedAbsent_IsAbsent(t *testing.T) {
 
 func TestCheckManifests_FieldMissing(t *testing.T) {
 	strategistDir := t.TempDir()
-	providerDir := filepath.Join(strategistDir, "brainstorming")
+	providerDir := filepath.Join(strategistDir, "skills", "brainstorming")
 	require.NoError(t, os.MkdirAll(providerDir, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(providerDir, "skill.yaml"),
 		[]byte("id: brainstorming\n"), 0o644))

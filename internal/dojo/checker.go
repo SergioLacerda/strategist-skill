@@ -139,10 +139,10 @@ func CheckManifests(criteria domain.DojoCriteria, strategistDir string) []domain
 	var items []domain.DojoCheckItem
 
 	for _, mc := range criteria.ManifestChecks {
-		manifestPath := filepath.Join(strategistDir, mc.ExpectedProvider, "skill.yaml")
+		manifestPath := filepath.Join(strategistDir, "skills", mc.ExpectedProvider, "skill.yaml")
 		exists := fileExists(manifestPath)
 		items = append(items, domain.DojoCheckItem{
-			Label:  fmt.Sprintf("manifest %s/%s/skill.yaml", mc.Slot, mc.ExpectedProvider),
+			Label:  fmt.Sprintf("manifest %s/skills/%s/skill.yaml", mc.Slot, mc.ExpectedProvider),
 			Passed: exists == mc.ManifestExists,
 			Detail: ifFail(exists == mc.ManifestExists, fmt.Sprintf("manifest_exists=%v but got %v", mc.ManifestExists, exists)),
 		})
@@ -163,7 +163,7 @@ func CheckManifests(criteria domain.DojoCriteria, strategistDir string) []domain
 		for _, field := range mc.FieldsPresent {
 			found := strings.Contains(text, field+":")
 			items = append(items, domain.DojoCheckItem{
-				Label:  fmt.Sprintf("manifest field %q in %s/skill.yaml", field, mc.ExpectedProvider),
+				Label:  fmt.Sprintf("manifest field %q in skills/%s/skill.yaml", field, mc.ExpectedProvider),
 				Passed: found,
 				Detail: ifFail(found, fmt.Sprintf("field %q not found in manifest", field)),
 			})

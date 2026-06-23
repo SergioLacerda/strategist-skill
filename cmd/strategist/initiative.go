@@ -22,7 +22,7 @@ var initiativeCmd = &cobra.Command{
 For each slot the command reports:
   - provider id
   - canonical role and specialization class (rankeado or base)
-  - whether the local provider manifest exists at .strategist/<provider>/skill.yaml`,
+  - whether the local provider manifest exists at .strategist/skills/<provider>/skill.yaml`,
 	RunE: runInitiative,
 }
 
@@ -94,7 +94,7 @@ func providerRow(strategistDir, slot, providerID string) (role, class, manifestS
 		return
 	}
 
-	data, err := os.ReadFile(filepath.Join(strategistDir, providerID, "skill.yaml"))
+	data, err := os.ReadFile(filepath.Join(strategistDir, "skills", providerID, "skill.yaml"))
 	if err != nil {
 		return
 	}
