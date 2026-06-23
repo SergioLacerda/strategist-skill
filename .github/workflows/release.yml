@@ -38,7 +38,9 @@ jobs:
 
       - name: Sign release binaries (keyless)
         run: |
+          shopt -s nullglob
           for f in dist/strategist-*; do
+            [[ -f "$f" ]] || continue
             [[ "$f" == *.bundle ]] && continue
             cosign sign-blob --yes "$f" --bundle "${f}.bundle"
           done
@@ -47,6 +49,7 @@ jobs:
 
       - name: Upload cosign bundles to release
         run: |
+          shopt -s nullglob
           TAG="${GITHUB_REF_NAME}"
           for bundle in dist/strategist-*.bundle; do
             gh release upload "$TAG" "$bundle" --clobber
