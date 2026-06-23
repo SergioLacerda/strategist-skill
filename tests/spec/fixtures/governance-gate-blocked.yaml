@@ -1,4 +1,5 @@
 scenario: governance_gate_blocked
+expected_event: "execution_gate=blocked"
 description: >
   Simulates SDD governance returning execution_gate: blocked.
   Strategist must stop before invoking Sniper and surface gate_reason to the user.

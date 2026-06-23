@@ -43,11 +43,16 @@ Every Strategist response must close in this order:
 Before emitting any user-facing text, the active persona's `console_policy` must be loaded.
 
 Rules:
-- `show_raw_events: false` → use `content_by_lang` or `mission_envelope` exclusively; never emit `[Strategist] key=value` lines to the user console
+- `show_raw_events: true` (epic mode) → emit raw `[Strategist] key=value` progress lines,
+  each preceded by the corresponding `phase_announcements[lang][event_key]` wrapper line.
+  `content_by_lang` templates remain in use for events without a raw log equivalent
+  (approval prompts, mission complete, etc.)
 - `show_mission_envelope: true` → wrap mission start with `mission_envelope.open` and mission end with `mission_envelope.close`
 - `emit_jsonl_telemetry: true` → bypass `content_by_lang`; emit all events as JSONL
 
-Violation detection: if a raw `[Strategist] \w+=\S+` pattern appears in user-facing output while `profile=epic`, this is `forbidden_behavior #9`. Self-correct by re-emitting the event via the appropriate `content_by_lang` template.
+Violation detection: if a raw `[Strategist] \w+=\S+` event appears in epic output WITHOUT
+a preceding `phase_announcements` wrapper line, this is `forbidden_behavior #9`. Self-correct
+by re-emitting with the announcement prefix.
 
 ## Input/Output Contract — `mission_envelope.close`
 
@@ -96,7 +101,7 @@ Emit in this order:
 
 **❌ VIOLAÇÃO (forbidden_behavior #9):**
 ```
-[Strategist] phase=sniper status=done          ← raw progress event no console
+[Strategist] phase=sniper status=done          ← raw event sem phase_announcements wrapper
 
 [Strategist] response_complete                 ← padrão ad-hoc não existe
   pipeline_compliant: yes
@@ -104,4 +109,10 @@ Emit in this order:
 
 mission_id: ID                                 ← campos YAML soltos fora do envelope
 status: completed
+```
+
+**✅ CONFORME (epic raw event com wrapper):**
+```
+🗡️ **Sniper:** Alvo confirmado. Silêncio — executando.
+[Strategist] phase=execution status=starting
 ```
