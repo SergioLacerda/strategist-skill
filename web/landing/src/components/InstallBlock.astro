@@ -7,6 +7,7 @@ export interface Props {
 }
 const { commands, label, command, source } = Astro.props;
 const rows = commands || [{ label, command }];
+const isUrl = (s: string | undefined) => typeof s === 'string' && /^https?:\/\//.test(s);
 ---
 <div style="border:1px solid var(--border-hairline); border-radius:var(--radius-sm); background:rgba(0,0,0,.3); overflow:hidden;">
   {rows.map((r, i) => (
@@ -17,13 +18,27 @@ const rows = commands || [{ label, command }];
         </div>
       )}
       <div style="display:flex; align-items:center; gap:12px; padding:0 12px 0 0;">
-        <pre style="margin:0; padding:16px 18px; font-size:var(--fs-sm); font-family:var(--font-mono); color:var(--text); white-space:pre; overflow-x:auto; flex:1;">{r.command}</pre>
-        <button
-          class="copy-btn"
-          data-command={r.command}
-          aria-label="Copy command"
-          style="flex:none; font-family:var(--font-mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; background:rgba(232,194,90,.06); border:1px solid var(--line-2); color:var(--amber-dim); border-radius:var(--radius-xs); padding:6px 10px; cursor:pointer; transition:color var(--dur),border-color var(--dur);"
-        >copy</button>
+        <pre style="margin:0; padding:16px 18px; font-size:var(--fs-sm); font-family:var(--font-mono); color:var(--text); white-space:pre; overflow-x:auto; flex:1;">
+          {isUrl(r.command)
+            ? <a href={r.command} target="_blank" rel="noopener noreferrer" style="color:inherit; text-decoration:underline; text-underline-offset:3px;">{r.command}</a>
+            : r.command}
+        </pre>
+        {isUrl(r.command)
+          ? <a
+              href={r.command}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Open link"
+              class="open-link-btn"
+              style="flex:none; font-family:var(--font-mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; background:rgba(232,194,90,.06); border:1px solid var(--line-2); color:var(--amber-dim); border-radius:var(--radius-xs); padding:6px 10px; cursor:pointer; transition:color var(--dur),border-color var(--dur); text-decoration:none; display:inline-block;"
+            >open ↗</a>
+          : <button
+              class="copy-btn"
+              data-command={r.command}
+              aria-label="Copy command"
+              style="flex:none; font-family:var(--font-mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; background:rgba(232,194,90,.06); border:1px solid var(--line-2); color:var(--amber-dim); border-radius:var(--radius-xs); padding:6px 10px; cursor:pointer; transition:color var(--dur),border-color var(--dur);"
+            >copy</button>
+        }
       </div>
     </div>
   ))}

@@ -56,6 +56,15 @@ func init() {
 	rootCmd.AddCommand(versionCmd)
 }
 
+// requireStrategistDir returns an error if .strategist/active.yaml is absent in
+// the current directory. Used by subcommands that depend on an installed workspace.
+func requireStrategistDir() error {
+	if _, err := os.Stat(".strategist/active.yaml"); os.IsNotExist(err) {
+		return fmt.Errorf("[Strategist] error=not_installed\n→ Run: strategist install")
+	}
+	return nil
+}
+
 func execute() {
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(exitCodeFor(err))

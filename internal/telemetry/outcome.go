@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
-	"syscall"
 )
 
 // OutcomeEntry is the canonical JSON structure written to outcomes.tmp per mission.
@@ -60,11 +60,11 @@ func AppendOutcomeLine(path, line string) (err error) {
 			err = fmt.Errorf("close outcomes file: %w", cerr)
 		}
 	}()
-	if err = syscall.Flock(int(f.Fd()), syscall.LOCK_SH); err != nil {
+	if err = lockFile(f); err != nil {
 		return fmt.Errorf("lock outcomes file: %w", err)
 	}
 	defer func() {
-		if unlockErr := syscall.Flock(int(f.Fd()), syscall.LOCK_UN); unlockErr != nil && err == nil {
+		if unlockErr := unlockFile(f); unlockErr != nil && err == nil {
 			err = fmt.Errorf("unlock outcomes file: %w", unlockErr)
 		}
 	}()
@@ -72,4 +72,12 @@ func AppendOutcomeLine(path, line string) (err error) {
 		return fmt.Errorf("write outcome line: %w", err)
 	}
 	return nil
+}
+
+// AppendOutcomeLineSafe calls AppendOutcomeLine and logs errors without propagating them.
+// Use this at all call sites where learning failures must not block the mission result.
+func AppendOutcomeLineSafe(path, line string) {
+	if err := AppendOutcomeLine(path, line); err != nil {
+		slog.Warn("outcome write failed (non-blocking)", "error", err)
+	}
 }

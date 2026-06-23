@@ -10,6 +10,19 @@ description: >
   through three pluggable slots. Standalone by default; optionally integrates with SDD
   as a registered analysis plugin.
 
+orchestration:
+  model: master_skill
+  slot_hierarchy:
+    discovery:
+      skill: ranger
+      may_delegate_to: [brainstorming, writing-plans]
+    refinement:
+      skill: archivist
+      may_delegate_to: [openspec-explore, dossier-builder, context-enrichment]
+    execution:
+      skill: sniper
+      may_delegate_to: [sdd-ask]
+
 parameters:
   - name: profile
     type: string
@@ -49,6 +62,13 @@ active_config:
     description: >
       Language for all generated artifacts: discovery docs, ADRs, analysis files.
       Passed to all slot providers. Does not affect prompt_templates (controlled by persona).
+  mode:
+    type: string
+    default: epic
+    values: [pragmatic, epic]
+    description: >
+      Persona used for this installation. Controls tone, verbosity, and phase labels.
+      pragmatic is terse; epic is narrative. Set in active.yaml as the `mode` field.
   adr_enabled:
     type: boolean
     default: true
@@ -59,8 +79,14 @@ active_config:
 slots:
   discovery:
     contract: write_analysis
+    requires_config: true       # must be set in active.yaml; no built-in default
+    default_skill: null         # explicit null: no implicit fallback — preflight fails if absent
     write_scope: "<base_path>/pending/"
     write_types: [".md"]
+    output_format_note: >
+      Default output for normal missions is <base_path>/pending/<mission_id>-analysis.md.
+      Pipeline stages may declare artifact_path to override for specialized routes (e.g. quick-draw).
+      The pipeline stage artifact_path always takes precedence over slot output_format.
     canonical:
       - find_unexpected_items       # surface items outside declared mission scope
       - consult_treasure_chests     # if chests scoped to discovery present, consult before LLM
@@ -70,6 +96,8 @@ slots:
     description: Explores the problem space and writes the transient analysis handoff artifact.
   refinement:
     contract: write_analysis
+    requires_config: false      # optional: archivist is the built-in default
+    default_skill: archivist
     write_scope:
       - "<base_path>/"
       - "<base_path>/refined/"
@@ -87,6 +115,8 @@ slots:
     description: Reads the Ranger transient analysis artifact, promotes it into the mission directory, and writes the refined package.
   execution:
     contract: controlled
+    requires_config: true       # must be set in active.yaml; no built-in default
+    default_skill: null
     canonical:
       - requires_approval_gate      # Strategist enforces — documented here for slot awareness
       - consult_treasure_chests     # if chests scoped to execution present, consult before acting
@@ -208,6 +238,8 @@ pipeline:
   - stage: learning
     skill: learning-curator
     blocking: false
+    runs_after: execution         # runs after execution completes; does not gate the response
+    on_failure: log_and_continue  # learning failure never aborts the mission
 
 stop_conditions:
   - preflight_failed
@@ -224,6 +256,11 @@ result_schema: mission-result.schema.yaml
 
 governance_injection:
   optional: true
+  description: >
+    The only declared extension point for external governance. Any governance adapter
+    (SDD or otherwise) MUST route its context through these fields only.
+    Governance injection does not alter pipeline sequence, approval requirements,
+    or artifact persistence — it only injects provider, paths, and context.
   fields:
     - execution_provider
     - base_path
@@ -266,19 +303,14 @@ compression_policy:
       max_cards: 20
       max_dossier_tokens: 5000
       external_provider: preferred
+      builtin_fallback_tokens: 2200   # cap when external provider absent
   providers:
     - id: builtin-structural
       type: internal
       required: true
       capabilities: [normalize, deduplicate, rank, filter, chunk, source_cards, dossier]
-    - id: semantic-context-server
-      type: external
-      required: false
-      endpoint: "http://localhost:8711"
-    - id: caveman
-      type: external
-      required: false
-      command: "caveman compress"
+    # Add external providers here when available.
+    # Format: id, type: external, required: false, endpoint or command.
   fallback:
     on_provider_missing: builtin-structural
     on_provider_error: builtin-structural
@@ -380,3 +412,44 @@ forbidden_behaviors:
       "[Strategist] phase=compliance status=blocked reason=persona_render_mismatch
        persona_resolved={persona_resolved} detected_style={detected_style}"
     action: block
+
+runtime_model:
+  description: >
+    Two-path model. The canonical source (strategist/) is a development-time template
+    embedded in the Go binary. The runtime instance (.strategist/) is the stamped copy
+    in the user workspace. The agent MUST read exclusively from .strategist/ during
+    mission execution. Reading from strategist/ directly is path drift.
+  canonical_source:
+    location: "<skill-repo>/strategist/"
+    role: development template, embedded in Go binary
+    owner: this repository
+    mutated_by: [code review, PR, release]
+  runtime_instance:
+    location: "<user-workspace>/.strategist/"
+    role: single source of truth for all runtime reads
+    owner: strategist install command
+    mutated_by: [strategist install, strategist compile, user manual edits + recompile]
+    always_present:
+      - active.yaml           # required: slot config, persona, base_path
+      - contracts/            # required: stamped contract set
+      - .compiled/            # required: compiled artifacts (domain.gz)
+      - roles/                # required: slot provider bindings
+      - personas/             # required: persona definitions
+    optional:
+      - memory/               # created on first learning phase
+      - knowledge.index.yaml  # empty until user populates
+      - treasure-chests.yaml  # populated by wizard or user
+  path_rule: >
+    ALL contract, schema, role, persona, and knowledge reads during a mission
+    MUST use paths rooted at .strategist/. The path strategist/* is NEVER a
+    valid read target during mission execution — it is a documentation error.
+  validation:
+    preflight_check: ".strategist/active.yaml must exist before any phase begins"
+    error_if_missing: "emit error=not_installed, stop, hint: run strategist install"
+
+agent_directives:
+  primary_rule: "Delegate, never execute directly."
+  delegation_model: master_skill
+  drift_patterns_file: "identity/drift-patterns.yaml"
+  footprint_rule: "Write only to <base_path>/ subdirs and .strategist/ internals. No config in target repo root."
+  path_rule: "Read from .strategist/ only. strategist/ is the canonical source — never a runtime read target."

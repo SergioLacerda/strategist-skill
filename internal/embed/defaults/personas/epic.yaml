@@ -33,6 +33,27 @@ role_emoji:
   gate: "🚦"
   opportunity: "⚔️"
 
+phase_announcements:
+  pt-BR:
+    discovery_starting:   "🎯 **Ranger:** Entrei em campo. O reconhecimento começa agora."
+    discovery_done:       "🎯 **Ranger:** Missão de campo concluída. Passando o dossiê ao Archivist."
+    refinement_starting:  "📚 **Archivist:** Dossiê recebido. Iniciando análise sistemática."
+    refinement_done:      "📚 **Archivist:** Refinamento completo. O plano está pronto para julgamento."
+    approval_gate_shown:  "🚦 **Gate:** O trabalho está feito. A decisão é sua — o que construímos merece execução?"
+    execution_starting:   "🗡️ **Sniper:** Alvo confirmado. Silêncio — executando."
+    execution_task_done:  "🗡️ **Sniper:** Tarefa {done}/{total} encerrada."
+    execution_done:       "🗡️ **Sniper:** Feito. Relatório entregue."
+
+  en:
+    discovery_starting:   "🎯 **Ranger:** I'm in the field. Reconnaissance starts now."
+    discovery_done:       "🎯 **Ranger:** Field mission done. Handing the dossier to Archivist."
+    refinement_starting:  "📚 **Archivist:** Dossier received. Starting systematic analysis."
+    refinement_done:      "📚 **Archivist:** Refinement complete. The plan is ready for judgment."
+    approval_gate_shown:  "🚦 **Gate:** The work is done. The decision is yours — does what we built deserve execution?"
+    execution_starting:   "🗡️ **Sniper:** Target confirmed. Silence — executing."
+    execution_task_done:  "🗡️ **Sniper:** Task {done}/{total} done."
+    execution_done:       "🗡️ **Sniper:** Done. Report delivered."
+
 rendering_policy:
   profile_rendered_levels: [INFO, WARN, ERROR, FATAL]
   telemetry_levels: [DEBUG, TRACE]
@@ -43,15 +64,12 @@ rendering_policy:
     not rewrite or stylize these events.
 
 console_policy:
-  show_raw_events: false
+  show_raw_events: true
   show_skill_identity: true
   show_mission_envelope: true
   show_phase_timeline: true
   show_artifacts: true
   emit_jsonl_telemetry: false
-  forbidden_in_output:
-    - pattern: "\\[Strategist\\] \\w+=\\S+"
-      reason: "raw key=value event leaked — use content_by_lang template instead"
 
 mission_envelope:
   open: |
@@ -82,6 +100,11 @@ content_by_lang:
     intake_summary: >
       Mission received: {task_type} | delivery={delivery_strategy} |
       compatibility={legacy_compatibility} | urgency={urgency} | intent={execution_intent}
+
+    intake_index_mode_none: >
+      ⚠️ **Governance note:** `intake_index_mode: none` — no governance context was indexed
+      for this query. This is separate from the execution gate. Current execution_gate: {execution_gate}.
+      Consider re-running with additional context if governance documents are needed.
 
     ranger_start: >
       🎯 **Ranger [{mission_id}]:** starting reconnaissance. skill={provider}
@@ -221,6 +244,12 @@ content_by_lang:
     intake_summary: >
       Missão recebida: {task_type} | delivery={delivery_strategy} |
       compatibility={legacy_compatibility} | urgency={urgency} | intent={execution_intent}
+
+    intake_index_mode_none: >
+      ⚠️ **Nota de governança:** `intake_index_mode: none` — nenhum contexto de governança
+      foi indexado para esta query. Isso é separado do gate de execução. Status atual do
+      execution_gate: {execution_gate}. Considere re-executar com contexto adicional se
+      documentos de governança forem necessários.
 
     ranger_start: >
       🎯 **Ranger [{mission_id}]:** iniciando reconhecimento. skill={provider}

@@ -1,5 +1,8 @@
 # Strategist — Observability Contract
 
+**Status:** Accepted
+**Last Updated:** 2026-06-22
+
 This document defines the canonical set of attributes, event sequences, and
 integration patterns for consuming Strategist telemetry in CI/CD pipelines and
 observability platforms.

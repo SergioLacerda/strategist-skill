@@ -17,8 +17,8 @@ func TestStrategistRaidSkillArtifactsPresent(t *testing.T) {
 		filepath.Join(root, "strategist", "contracts", "strategist-raid.yaml"),
 		filepath.Join(root, "strategist", "skills", "strategist-raid", "skill.yaml"),
 		filepath.Join(root, "strategist", "skills", "strategist-raid", "SKILL.md"),
-		filepath.Join(root, "internal", "embed", "defaults", "skills", "strategist-raid", "skill.yaml"),
-		filepath.Join(root, "internal", "embed", "defaults", "skills", "strategist-raid", "SKILL.md"),
+		filepath.Join(root, "internal", "embed", "defaults", "internal_skills", "strategist-raid", "skill.yaml"),
+		filepath.Join(root, "internal", "embed", "defaults", "internal_skills", "strategist-raid", "SKILL.md"),
 	}
 
 	for _, path := range paths {

@@ -150,6 +150,7 @@ html, body {
 
 /* ---- invoke ---- */
 .invoke-panel pre { white-space: pre !important; overflow-x: auto; word-break: normal !important; }
+.copy-btn:hover, .open-link-btn:hover { color: var(--amber-hi); border-color: var(--amber); }
 
 /* ---- footer ---- */
 .footer { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 22px; text-align: center; color: var(--faint); font-size: 12px; letter-spacing: .12em; }

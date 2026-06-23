@@ -1,0 +1,75 @@
+module: preflight
+type: agent_phase
+description: >
+  Loads internal domain (identity, directives) and validates slot providers.
+  Runs after Bootstrap. Must emit status=done before Intake begins.
+
+contract:
+  input:
+    - name: active
+      type: object
+      required: true
+      description: Active config from Bootstrap (mode, base_path, roles_config)
+    - name: persona
+      type: object
+      required: true
+      description: Resolved persona from Bootstrap
+    - name: roles
+      type: object
+      required: true
+      description: Slot providers map from Bootstrap
+
+  output:
+    - name: domain
+      type: object
+      description: Loaded internal domain (core_invariants, drift_patterns, directives)
+    - name: slot_providers
+      type: object
+      description: Resolved slot provider skill.yaml paths for discovery, refinement, execution
+    - name: preflight_status
+      type: string
+      description: "done" on success
+
+  error_conditions:
+    - code: index_yaml_not_found
+      trigger: <base_path>/.strategist/index.yaml absent
+      behavior: Continue without internal domain (non-blocking)
+    - code: slot_provider_not_found
+      trigger: Provider skill.yaml cannot be resolved from any search path
+      behavior: Emit blocked event with reason=slot_provider_not_found, stop mission
+    - code: slot_risk_mismatch
+      trigger: Provider risk_score does not match required contract for slot
+      behavior: Emit blocked event with reason=slot_risk_mismatch slot=<label>, stop mission
+    - code: compiled_artifact_corrupt
+      trigger: .compiled/.domain.gz fails jq parse
+      behavior: Fall back to standard path (load YAML directly), emit preflight=standard_path
+    - code: identity_files_missing
+      trigger: >
+        identity/drift-patterns.yaml or identity/what-i-am.yaml absent
+        after index.yaml load attempt
+      behavior: >
+        Non-blocking. Emit:
+          "[Strategist] phase=preflight status=warn reason=identity_files_missing"
+          "[Strategist] phase=preflight identity=degraded files_missing=[<list>]"
+        Remediation hint: "Run `strategist compile-domain` to deploy identity files."
+        Continue. Agent operates in degraded mode; SKILL.md patterns serve as fallback.
+    - code: directives_missing
+      trigger: directives/core.yaml absent after index.yaml load attempt
+      behavior: >
+        Non-blocking. Emit:
+          "[Strategist] phase=preflight status=warn reason=directives_missing"
+        Continue without behavioral directives.
+
+  write_scope: read-only
+
+  owner: internal (orchestrator)
+
+  fast_path:
+    artifact: .strategist/.compiled/.domain.gz
+    check: strategist check-stale .strategist/.compiled/.domain.gz
+    log_fresh: "[Strategist] preflight=fast_path"
+    log_stale: "[Strategist] preflight=standard_path"
+
+  validation_rule: >
+    If .strategist/contracts/ exists, load this contract file before executing preflight.
+    Validate that all declared inputs are present before proceeding.

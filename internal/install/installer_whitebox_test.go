@@ -35,6 +35,7 @@ func (m minimalExtractor) Extract(targetDir string, _ bool) error {
 	files := map[string]string{
 		filepath.Join(targetDir, "SKILL.md"):                               "# SKILL\n",
 		filepath.Join(targetDir, "knowledge.index.yaml"):                   "sources: []\n",
+		filepath.Join(targetDir, "treasure-chests.yaml"):                   "chests: []\n",
 		filepath.Join(targetDir, "index.yaml"):                             "load_always: []\nload_by_task_type: {}\n",
 		filepath.Join(targetDir, "templates", "pragmatic-standalone.yaml"): "mode: pragmatic\nbase_path: .analysis\nroles_config: roles/default.yaml\n",
 		filepath.Join(targetDir, "templates", "epic-standalone.yaml"):      "mode: epic\nbase_path: .analysis\nroles_config: roles/default.yaml\n",
@@ -53,9 +54,9 @@ func (m minimalExtractor) ReadFile(relPath string) ([]byte, error) {
 		return []byte("mode: epic\nbase_path: .analysis\nroles_config: roles/default.yaml\n"), nil
 	case "SKILL.md":
 		return []byte("# SKILL\n"), nil
-	case "providers/brainstorming/skill.yaml":
+	case "skills/brainstorming/skill.yaml":
 		return []byte("id: brainstorming\nstatus: active\nrisk_score: write_analysis\nprovider_class: rankeado\nspecialization_taxonomy:\n  canonical_role: ranger\n  provider_class: rankeado\nauxiliary_tools_allowed:\n  - writing-plans\n"), nil
-	case "providers/openspec-explore/skill.yaml":
+	case "skills/openspec-explore/skill.yaml":
 		return []byte("id: openspec-explore\nstatus: active\nrisk_score: write_analysis\n"), nil
 	default:
 		return nil, fmt.Errorf("minimalExtractor: file not found: %s", relPath)
@@ -103,11 +104,11 @@ func TestInstall_WizardPath(t *testing.T) {
 	assert.Contains(t, s, "refinement: archivist")
 	assert.Contains(t, s, "execution: sdd-ask")
 
-	brainstorming, err := os.ReadFile(filepath.Join(dir, ".strategist", "brainstorming", "skill.yaml"))
+	brainstorming, err := os.ReadFile(filepath.Join(dir, ".strategist", "skills", "brainstorming", "skill.yaml"))
 	require.NoError(t, err)
 	assert.Contains(t, string(brainstorming), "risk_score: write_analysis")
 
-	_, err = os.Stat(filepath.Join(dir, ".strategist", "openspec-explore", "skill.yaml"))
+	_, err = os.Stat(filepath.Join(dir, ".strategist", "skills", "openspec-explore", "skill.yaml"))
 	require.ErrorIs(t, err, os.ErrNotExist)
 }
 
@@ -150,12 +151,12 @@ func TestInstall_WizardPath_Defaults(t *testing.T) {
 	assert.Contains(t, s, "refinement: openspec-explore")
 	assert.Contains(t, s, "execution: sdd-ask")
 
-	brainstorming, err := os.ReadFile(filepath.Join(dir, ".strategist", "brainstorming", "skill.yaml"))
+	brainstorming, err := os.ReadFile(filepath.Join(dir, ".strategist", "skills", "brainstorming", "skill.yaml"))
 	require.NoError(t, err)
 	assert.Contains(t, string(brainstorming), "id: brainstorming")
 	assert.Contains(t, string(brainstorming), "risk_score: write_analysis")
 
-	openspecExplore, err := os.ReadFile(filepath.Join(dir, ".strategist", "openspec-explore", "skill.yaml"))
+	openspecExplore, err := os.ReadFile(filepath.Join(dir, ".strategist", "skills", "openspec-explore", "skill.yaml"))
 	require.NoError(t, err)
 	assert.Contains(t, string(openspecExplore), "id: openspec-explore")
 	assert.Contains(t, string(openspecExplore), "risk_score: write_analysis")
@@ -169,11 +170,11 @@ func TestInstall_WizardPath_ExplicitDefaultProvidersMaterializeManifests(t *test
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
 	require.NoError(t, err)
 
-	brainstorming, err := os.ReadFile(filepath.Join(dir, ".strategist", "brainstorming", "skill.yaml"))
+	brainstorming, err := os.ReadFile(filepath.Join(dir, ".strategist", "skills", "brainstorming", "skill.yaml"))
 	require.NoError(t, err)
 	assert.Contains(t, string(brainstorming), "risk_score: write_analysis")
 
-	openspecExplore, err := os.ReadFile(filepath.Join(dir, ".strategist", "openspec-explore", "skill.yaml"))
+	openspecExplore, err := os.ReadFile(filepath.Join(dir, ".strategist", "skills", "openspec-explore", "skill.yaml"))
 	require.NoError(t, err)
 	assert.Contains(t, string(openspecExplore), "risk_score: write_analysis")
 }
@@ -325,84 +326,84 @@ func p(input string) Prompter { return NewTextPrompter(strings.NewReader(input))
 
 func TestRunWizard_EOFOnFirstPrompt(t *testing.T) {
 	t.Parallel()
-	_, err := runWizard(p(""))
+	_, err := runWizard(p(""), minimalExtractor{})
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "ui_language")
 }
 
 func TestRunWizard_EOFOnSecondPrompt(t *testing.T) {
 	t.Parallel()
-	_, err := runWizard(p("en\n"))
+	_, err := runWizard(p("en\n"), minimalExtractor{})
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "doc_language")
 }
 
 func TestRunWizard_EOFOnThirdPrompt_ChatLang(t *testing.T) {
 	t.Parallel()
-	_, err := runWizard(p("en\nen\n"))
+	_, err := runWizard(p("en\nen\n"), minimalExtractor{})
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "chat_language")
 }
 
 func TestRunWizard_EOFOnFourthPrompt_CodeLang(t *testing.T) {
 	t.Parallel()
-	_, err := runWizard(p("en\nen\nen\n"))
+	_, err := runWizard(p("en\nen\nen\n"), minimalExtractor{})
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "code_language")
 }
 
 func TestRunWizard_EOFOnFifthPrompt_Mode(t *testing.T) {
 	t.Parallel()
-	_, err := runWizard(p("en\nen\nen\nen\n"))
+	_, err := runWizard(p("en\nen\nen\nen\n"), minimalExtractor{})
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "mode")
 }
 
 func TestRunWizard_EOFOnSixthPrompt_BasePath(t *testing.T) {
 	t.Parallel()
-	_, err := runWizard(p("en\nen\nen\nen\npragmatic\n"))
+	_, err := runWizard(p("en\nen\nen\nen\npragmatic\n"), minimalExtractor{})
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "base_path")
 }
 
 func TestRunWizard_EOFOnSeventhPrompt_Adr(t *testing.T) {
 	t.Parallel()
-	_, err := runWizard(p("en\nen\nen\nen\npragmatic\n.\n"))
+	_, err := runWizard(p("en\nen\nen\nen\npragmatic\n.\n"), minimalExtractor{})
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "adr_enabled")
 }
 
 func TestRunWizard_EOFOnEighthPrompt_Discovery(t *testing.T) {
 	t.Parallel()
-	_, err := runWizard(p("en\nen\nen\nen\npragmatic\n.\nyes\n"))
+	_, err := runWizard(p("en\nen\nen\nen\npragmatic\n.\nyes\n"), minimalExtractor{})
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "execution_mode")
 }
 
 func TestRunWizard_EOFOnNinthPrompt_GitMode(t *testing.T) {
 	t.Parallel()
-	_, err := runWizard(p("en\nen\nen\nen\npragmatic\n.\nyes\napply_workspace\n"))
+	_, err := runWizard(p("en\nen\nen\nen\npragmatic\n.\nyes\napply_workspace\n"), minimalExtractor{})
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "git_persistence_mode")
 }
 
 func TestRunWizard_EOFOnTenthPrompt_DiscoveryAfterModes(t *testing.T) {
 	t.Parallel()
-	_, err := runWizard(p("en\nen\nen\nen\npragmatic\n.\nyes\nplan_only\n\n"))
+	_, err := runWizard(p("en\nen\nen\nen\npragmatic\n.\nyes\nplan_only\n\n"), minimalExtractor{})
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "discovery")
 }
 
 func TestRunWizard_EOFOnEleventhPrompt_Refinement(t *testing.T) {
 	t.Parallel()
-	_, err := runWizard(p("en\nen\nen\nen\npragmatic\n.\nyes\nplan_only\n\nbrainstorming\n"))
+	_, err := runWizard(p("en\nen\nen\nen\npragmatic\n.\nyes\nplan_only\n\nbrainstorming\n"), minimalExtractor{})
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "refinement")
 }
 
 func TestRunWizard_EOFOnTwelfthPrompt_Execution(t *testing.T) {
 	t.Parallel()
-	_, err := runWizard(p("en\nen\nen\nen\npragmatic\n.\nyes\nplan_only\n\nbrainstorming\nopenspec-explore\n"))
+	_, err := runWizard(p("en\nen\nen\nen\npragmatic\n.\nyes\nplan_only\n\nbrainstorming\nopenspec-explore\n"), minimalExtractor{})
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "execution")
 }
@@ -410,7 +411,7 @@ func TestRunWizard_EOFOnTwelfthPrompt_Execution(t *testing.T) {
 func TestRunWizard_EOFOnThirteenthPrompt_ChestPath(t *testing.T) {
 	t.Parallel()
 	// All prompts answered except chest path (13th)
-	_, err := runWizard(p("en\nen\nen\nen\npragmatic\n.\nyes\nplan_only\n\nbrainstorming\nopenspec-explore\nsdd-ask\n"))
+	_, err := runWizard(p("en\nen\nen\nen\npragmatic\n.\nyes\nplan_only\n\nbrainstorming\nopenspec-explore\nsdd-ask\n"), minimalExtractor{})
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "treasure_chest")
 }
@@ -583,4 +584,114 @@ func TestInstall_GitignoreError(t *testing.T) {
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Silent: true})
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "gitignore")
+}
+
+// --- stripFrontmatter ---
+
+func TestStripFrontmatter(t *testing.T) {
+	t.Parallel()
+
+	t.Run("no frontmatter returns string unchanged", func(t *testing.T) {
+		t.Parallel()
+		input := "# SKILL\nsome content\n"
+		assert.Equal(t, input, stripFrontmatter(input))
+	})
+
+	t.Run("strips frontmatter block", func(t *testing.T) {
+		t.Parallel()
+		input := "---\nname: strategist\n---\n\n# SKILL\nbody\n"
+		want := "# SKILL\nbody\n"
+		assert.Equal(t, want, stripFrontmatter(input))
+	})
+
+	t.Run("unclosed frontmatter returns string unchanged", func(t *testing.T) {
+		t.Parallel()
+		input := "---\nname: strategist\nno closing marker\n"
+		assert.Equal(t, input, stripFrontmatter(input))
+	})
+}
+
+// --- loadKnownProviders ---
+
+// knownProvidersExtractor serves a synthetic templates/known-providers.yaml.
+type knownProvidersExtractor struct {
+	yaml string
+}
+
+func (k knownProvidersExtractor) Extract(_ string, _ bool) error { return nil }
+func (k knownProvidersExtractor) ReadFile(relPath string) ([]byte, error) {
+	if relPath == "templates/known-providers.yaml" {
+		return []byte(k.yaml), nil
+	}
+	return nil, fmt.Errorf("not found: %s", relPath)
+}
+
+func TestLoadKnownProviders(t *testing.T) {
+	t.Parallel()
+
+	t.Run("reads valid providers yaml", func(t *testing.T) {
+		t.Parallel()
+		ext := knownProvidersExtractor{yaml: "providers:\n  brainstorming: write_analysis\n  sdd-ask: controlled\n"}
+		got := loadKnownProviders(ext)
+		assert.Equal(t, "write_analysis", got["brainstorming"])
+		assert.Equal(t, "controlled", got["sdd-ask"])
+	})
+
+	t.Run("falls back to static map when providers map is empty", func(t *testing.T) {
+		t.Parallel()
+		ext := knownProvidersExtractor{yaml: "providers: {}\n"}
+		got := loadKnownProviders(ext)
+		assert.Equal(t, knownProviderRisk, got)
+	})
+
+	t.Run("falls back to static map on invalid yaml", func(t *testing.T) {
+		t.Parallel()
+		ext := knownProvidersExtractor{yaml: ": invalid: yaml:\n"}
+		got := loadKnownProviders(ext)
+		assert.Equal(t, knownProviderRisk, got)
+	})
+}
+
+// --- writeSelectedProviderManifests: ReadFile error path ---
+
+// partialExtractor serves minimalExtractor files but fails for the given path.
+type partialExtractor struct {
+	failPath string
+}
+
+func (p partialExtractor) Extract(targetDir string, overwrite bool) error {
+	return minimalExtractor{}.Extract(targetDir, overwrite)
+}
+func (p partialExtractor) ReadFile(relPath string) ([]byte, error) {
+	if relPath == p.failPath {
+		return nil, fmt.Errorf("partialExtractor: injected failure for %s", relPath)
+	}
+	return minimalExtractor{}.ReadFile(relPath)
+}
+
+func TestWriteSelectedProviderManifests_ReadFileFails(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	svc := Service{
+		Extractor:   partialExtractor{failPath: "skills/brainstorming/skill.yaml"},
+		Compiler:    nopCompiler{},
+		ShimHomeDir: t.TempDir(),
+		WizardPrompter: NewTextPrompter(strings.NewReader(
+			"en\nen\nen\nen\nepic\n.analysis\nyes\nplan_only\n\nbrainstorming\nopenspec-explore\nsdd-ask\n\n",
+		)),
+	}
+	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "brainstorming")
+}
+
+// --- promptSlots: warning printed for unknown provider ---
+
+func TestPromptSlots_UnknownProviderPrintsWarning(t *testing.T) {
+	t.Parallel()
+	// Use a custom provider that is NOT in knownProviderRisk → warning is emitted.
+	input := "en\nen\nen\nen\nepic\n.analysis\nyes\nplan_only\n\ncustom-ranger\nopenspec-explore\nsdd-ask\n\n"
+	wc, err := runWizard(NewTextPrompter(strings.NewReader(input)), minimalExtractor{})
+	require.NoError(t, err)
+	assert.Equal(t, "custom-ranger", wc.DiscoveryProvider)
 }
