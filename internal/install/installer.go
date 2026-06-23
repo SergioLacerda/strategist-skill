@@ -142,7 +142,7 @@ func (s Service) applyConfig(strategistDir string, cfg domain.InstallConfig) err
 	}
 
 	p := s.resolvePrompter()
-	wc, err := runWizard(p)
+	wc, err := runWizard(p, s.Extractor)
 	if err != nil {
 		return fmt.Errorf("install: wizard: %w", err)
 	}

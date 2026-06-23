@@ -26,6 +26,9 @@ var compileCmd = &cobra.Command{
 func runCompile(cmd *cobra.Command, _ []string) (retErr error) {
 	if compileRoot == "" {
 		compileRoot = ".strategist"
+		if err := requireStrategistDir(); err != nil {
+			return err
+		}
 	}
 
 	ctx := cmd.Context()

@@ -49,16 +49,8 @@ contract:
   owner: internal (learning)
 
   flush_procedure: |
-    flock -x .strategist/memory/outcomes.tmp \
-      sh -c 'cat .strategist/memory/outcomes.tmp >> .strategist/memory/outcomes.jsonl && : > .strategist/memory/outcomes.tmp'
-
-  flush_concurrency_note: >
-    The flush_procedure MUST use flock -x to hold an exclusive lock for the
-    duration of the cat + truncate sequence. Without the lock, a concurrent
-    session appending to outcomes.tmp between the cat and the truncate will
-    lose its line. Append operations use flock -s (shared lock) to coordinate
-    with flush. If flock is unavailable (non-POSIX environment), the flush is
-    non-atomic — document the limitation and continue.
+    cat .strategist/memory/outcomes.tmp >> .strategist/memory/outcomes.jsonl
+    : > .strategist/memory/outcomes.tmp
 
   manual_flush: >
     Run flush_procedure above to force-flush without waiting for buffer_size threshold.

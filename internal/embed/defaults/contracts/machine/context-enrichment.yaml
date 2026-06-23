@@ -40,10 +40,6 @@ contract:
       trigger: .compiled/.index.gz fails jq parse
       behavior: Fall back to linear scan of knowledge.index.yaml, emit context_enrichment=standard_path
 
-  write_scope: read-only
-
-  owner: internal (orchestrator)
-
   treasure_chests:
     description: >
       For each slot invocation, filter active.treasure_chests where scope contains
@@ -57,21 +53,9 @@ contract:
       format: "[Strategist] treasure_chest_loaded none"
     render_policy: debug_bypass
 
-  dossier_builder:
-    invoked_after: enrichment
-    empty_enrichment_behavior: dossier contains only task_type and output_template
+  write_scope: read-only
 
-  load_policy:
-    mode: minimal
-    top_k: 3
-    max_chars_per_source: 2000
-    short_circuit_confidence: 0.85
-
-  task_type_priority:
-    analysis_review:   [refined, archived]
-    code_fix:          [contracts, schemas]
-    implementation:    [contracts, roles, schemas]
-    quick_draw:        []
+  owner: internal (orchestrator)
 
   fast_path:
     artifact: .strategist/.compiled/.index.gz

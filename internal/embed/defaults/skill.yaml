@@ -62,6 +62,13 @@ active_config:
     description: >
       Language for all generated artifacts: discovery docs, ADRs, analysis files.
       Passed to all slot providers. Does not affect prompt_templates (controlled by persona).
+  mode:
+    type: string
+    default: epic
+    values: [pragmatic, epic]
+    description: >
+      Persona used for this installation. Controls tone, verbosity, and phase labels.
+      pragmatic is terse; epic is narrative. Set in active.yaml as the `mode` field.
   adr_enabled:
     type: boolean
     default: true

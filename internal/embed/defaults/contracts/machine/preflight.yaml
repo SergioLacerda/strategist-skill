@@ -28,7 +28,7 @@ contract:
       description: Resolved slot provider skill.yaml paths for discovery, refinement, execution
     - name: preflight_status
       type: string
-      description: done on success
+      description: "done" on success
 
   error_conditions:
     - code: index_yaml_not_found
@@ -43,6 +43,22 @@ contract:
     - code: compiled_artifact_corrupt
       trigger: .compiled/.domain.gz fails jq parse
       behavior: Fall back to standard path (load YAML directly), emit preflight=standard_path
+    - code: identity_files_missing
+      trigger: >
+        identity/drift-patterns.yaml or identity/what-i-am.yaml absent
+        after index.yaml load attempt
+      behavior: >
+        Non-blocking. Emit:
+          "[Strategist] phase=preflight status=warn reason=identity_files_missing"
+          "[Strategist] phase=preflight identity=degraded files_missing=[<list>]"
+        Remediation hint: "Run `strategist compile-domain` to deploy identity files."
+        Continue. Agent operates in degraded mode; SKILL.md patterns serve as fallback.
+    - code: directives_missing
+      trigger: directives/core.yaml absent after index.yaml load attempt
+      behavior: >
+        Non-blocking. Emit:
+          "[Strategist] phase=preflight status=warn reason=directives_missing"
+        Continue without behavioral directives.
 
   write_scope: read-only
 
@@ -57,29 +73,3 @@ contract:
   validation_rule: >
     If .strategist/contracts/ exists, load this contract file before executing preflight.
     Validate that all declared inputs are present before proceeding.
-
-  slot_risk_contracts:
-    ranger:
-      expected_risk: write_analysis
-      authorized_write: ".md files in <base_path>/"
-      violation: any write outside that scope or non-.md type → BLOCK slot_write_scope_violation
-    archivist:
-      expected_risk: write_analysis
-      authorized_write: ".md files in <base_path>/ and <base_path>/refined/"
-      violation: any write outside <base_path>/ or non-.md type → BLOCK slot_write_scope_violation
-    sniper:
-      expected_risk: controlled
-      requirement: approval gate required before any execution (no exceptions)
-
-  provider_resolution_order:
-    1: "<skill_root>/skills/<provider>/skill.yaml"
-    2: "<skill_root>/<provider>/skill.yaml"
-    3: ".claude/skills/<provider>/skill.yaml"
-    4: "skill registry entry skill_yaml path (if registry present)"
-    special: "_runtime_provider → resolve from governance_injection.execution_provider"
-
-  governance_mode_determination:
-    GOVERNED: governance_injection block present in active.yaml
-    COMPATIBLE: slots configured in active.yaml, no active governance_injection
-    done_emit_format: "[Strategist] phase=preflight status=done slots=ok governance=<GOVERNED|COMPATIBLE>"
-    done_emit_level: TRACE

@@ -135,7 +135,7 @@ func TestExtractor_Extract(t *testing.T) {
 		require.NoError(t, err)
 		qd := string(quickDraw)
 		assert.Contains(t, qd, "quick-draw")
-		assert.Contains(t, qd, "sim/nao")
+		assert.Contains(t, qd, "sim: proceed_to_sniper")
 
 		// SKILL.md retains the Quick Draw routing reference
 		skillMD, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
