@@ -445,7 +445,7 @@ If found, loads only the files listed under `load_always`. No file outside the i
 **2c. Slot provider resolution**
 
 For each slot (discovery, refinement, execution), attempts to resolve the provider's `skill.yaml` in order:
-1. `<skill_root>/<provider>/skill.yaml`
+1. `<skill_root>/skills/<provider>/skill.yaml`
 2. `.claude/skills/<provider>/skill.yaml`
 3. Entry in the skill registry (if present)
 
