@@ -53,6 +53,39 @@ func readFixture(t *testing.T, path string) fixture {
 	return f
 }
 
+func TestPrimaryRuntimeContractsDoNotHardcodeAnalysisAsInvariant(t *testing.T) {
+	t.Parallel()
+
+	files := []string{
+		filepath.Join(repoRoot(t), "strategist", "SKILL.md"),
+		filepath.Join(repoRoot(t), "strategist", "skill.yaml"),
+		filepath.Join(repoRoot(t), "strategist", "protocol.md"),
+	}
+
+	for _, path := range files {
+		content := readFile(t, path)
+		if strings.Contains(content, "the invariant Strategist workspace root is .analysis/") {
+			t.Fatalf("%s hardcodes .analysis/ as invariant runtime root", path)
+		}
+	}
+}
+
+func TestProtocolReferencesUseRuntimeTreeNotSourceTree(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(repoRoot(t), "strategist", "protocol.md")
+	content := readFile(t, path)
+
+	for _, needle := range []string{
+		".strategist/",
+		"base_path",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("%s missing runtime path marker %q", path, needle)
+		}
+	}
+}
+
 func TestStrategistSkillDeclaresRuntimeAndWorkspacePathContracts(t *testing.T) {
 	t.Parallel()
 
