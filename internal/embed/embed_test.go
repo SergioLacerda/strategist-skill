@@ -207,6 +207,25 @@ func TestExtractor_Extract(t *testing.T) {
 		assert.Contains(t, string(approvalGate), "missing_evidence=approval_gate:approved")
 	})
 
+	t.Run("extracted runtime docs preserve runtime-only path contract", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		require.NoError(t, embedpkg.Extractor{}.Extract(dir, false))
+
+		skillMD, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
+		require.NoError(t, err)
+		doc := string(skillMD)
+		assert.Contains(t, doc, "source-only")
+		assert.Contains(t, doc, "only operational read target")
+		assert.Contains(t, doc, "base_path")
+		assert.Contains(t, doc, "not a hardcoded `.analysis/`")
+
+		protocol, err := os.ReadFile(filepath.Join(dir, "protocol.md"))
+		require.NoError(t, err)
+		assert.Contains(t, string(protocol), ".strategist/")
+		assert.Contains(t, string(protocol), "base_path")
+	})
+
 	t.Run("extracted defaults include ADR language instruction", func(t *testing.T) {
 		t.Parallel()
 		dir := t.TempDir()
