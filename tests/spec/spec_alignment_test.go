@@ -95,7 +95,7 @@ func TestStrategistSkillDeclaresRuntimeAndWorkspacePathContracts(t *testing.T) {
 	for _, needle := range []string{
 		"`strategist/` — source-only",
 		"`.strategist/` — runtime instance",
-		"ONLY read target",
+		"only operational read target",
 		"`base_path`",
 		"not a hardcoded `.analysis/`",
 	} {

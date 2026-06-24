@@ -14,7 +14,7 @@ Do not re-derive a table here — read the YAML.
 This skill operates on a two-path model:
 
 - `strategist/` — source-only authoring tree in this repository. It exists to generate the runtime package and is never a runtime read target.
-- `.strategist/` — runtime instance in the user's workspace. This is your ONLY read target during mission execution.
+- `.strategist/` — runtime instance in the user's workspace. This is the only operational read target during mission execution.
 
 All contract references, role files, schemas, and personas are read from `.strategist/`.
 If you see a path beginning with `strategist/` (without the leading dot), it is a documentation error — read from `.strategist/` instead.

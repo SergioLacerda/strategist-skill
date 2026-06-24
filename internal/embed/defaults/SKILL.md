@@ -13,11 +13,14 @@ Do not re-derive a table here — read the YAML.
 
 This skill operates on a two-path model:
 
-- `strategist/` — canonical source (in the skill development repo). You NEVER read from this path during a mission.
-- `.strategist/` — runtime instance (in the user's workspace). This is your ONLY read target.
+- `strategist/` — source-only authoring tree in this repository. It exists to generate the runtime package and is never a runtime read target.
+- `.strategist/` — runtime instance in the user's workspace. This is the only operational read target during mission execution.
 
 All contract references, role files, schemas, and personas are read from `.strategist/`.
 If you see a path beginning with `strategist/` (without the leading dot), it is a documentation error — read from `.strategist/` instead.
+
+Workspace artifacts resolve through `base_path` from `.strategist/active.yaml`.
+`.analysis/` is only a repository-local example/default when configured as `base_path`; it is not a hardcoded `.analysis/` fixed runtime path.
 
 **Single source of truth**: `.strategist/active.yaml` governs the current mission. If it is absent, emit `error=not_installed` and stop.
 
