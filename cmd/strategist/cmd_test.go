@@ -469,9 +469,8 @@ func TestValidateCmd_InvalidKnowledgeIndex(t *testing.T) {
 }
 
 func TestValidateCmd_DefaultRoot(t *testing.T) {
-	// When validateRoot is empty it defaults to ".strategist".
-	// Change to a temp dir where ".strategist" doesn't exist so it errors out,
-	// but the default-resolution branch is covered.
+	// When validateRoot is empty, auto-discovery walks up from CWD.
+	// In an empty temp dir (no .strategist/), it returns a "runtime not found" error.
 	orig := validateRoot
 	t.Cleanup(func() { validateRoot = orig })
 	validateRoot = ""
@@ -483,7 +482,7 @@ func TestValidateCmd_DefaultRoot(t *testing.T) {
 
 	err = validateCmd.RunE(validateCmd, nil)
 	require.Error(t, err)
-	assert.Equal(t, ".strategist", validateRoot)
+	assert.Contains(t, err.Error(), "runtime not found")
 }
 
 // TestCompileCmd_PrintsCompletion verifies the success message path.
@@ -589,14 +588,21 @@ func TestInitiativeCmd_MissingActiveYAML(t *testing.T) {
 }
 
 func TestInitiativeCmd_DefaultRootFallback(t *testing.T) {
+	// When --root is empty, RunE auto-discovers via findStrategistRoot.
+	// In a tmpdir with no .strategist/, it should return an error containing "not found".
 	orig := initiativeRoot
 	t.Cleanup(func() { initiativeRoot = orig })
-	initiativeRoot = "" // reset so RunE sets the default
+	initiativeRoot = ""
 
-	// RunE will try to open ".strategist/active.yaml" — fine if it fails;
-	// we only assert it sets the default before attempting.
-	_ = initiativeCmd.RunE(initiativeCmd, nil)
-	assert.Equal(t, ".strategist", initiativeRoot)
+	// Change CWD to an isolated temp dir so we don't accidentally pick up the real runtime.
+	tmp := t.TempDir()
+	origWd, _ := os.Getwd()
+	require.NoError(t, os.Chdir(tmp))
+	t.Cleanup(func() { _ = os.Chdir(origWd) })
+
+	err := initiativeCmd.RunE(initiativeCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not found")
 }
 
 func TestProviderRow_FallbackRoles(t *testing.T) {
@@ -945,7 +951,7 @@ func TestCheckCmd_DefaultRoot(t *testing.T) {
 
 	err = checkCmd.RunE(checkCmd, nil)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "active_yaml_not_found")
+	assert.Contains(t, err.Error(), "runtime_not_found")
 }
 
 // --- exitCodeFor ---

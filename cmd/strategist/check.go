@@ -34,7 +34,15 @@ Checks performed:
 	RunE: func(_ *cobra.Command, _ []string) error {
 		root := checkRoot
 		if root == "" {
-			root = ".strategist"
+			cwd, cwdErr := os.Getwd()
+			if cwdErr != nil {
+				return fmt.Errorf("[Strategist] check=blocked reason=cwd_error: %w", cwdErr)
+			}
+			discovered, _, discErr := findStrategistRoot(cwd)
+			if discErr != nil {
+				return fmt.Errorf("[Strategist] check=blocked reason=runtime_not_found\n→ Run: strategist install")
+			}
+			root = discovered
 		}
 
 		activeYAML := filepath.Join(root, "active.yaml")
