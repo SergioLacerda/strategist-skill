@@ -142,7 +142,7 @@ type TreasureChest struct {
 }
 
 // ProviderManifest is the structure of a provider skill manifest at
-// .strategist/<provider>/skill.yaml, materialized by the installer for
+// .strategist/skills/<provider>/skill.yaml, materialized by the installer for
 // default providers or placed manually for custom ones.
 type ProviderManifest struct {
 	ID                     string `yaml:"id"`

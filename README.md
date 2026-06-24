@@ -103,7 +103,7 @@ See [SECURITY.md](SECURITY.md) for the vulnerability disclosure policy.
 
 - Preserve the name, upstream project, and public URL whenever an external skill is integrated as a provider.
 - Do not imply ownership over upstream prompts, artifacts, or implementation.
-- Prefer canonical manifests/adapters in `.strategist/<provider>/skill.yaml` instead of duplicating upstream content.
+- Prefer canonical manifests/adapters in `.strategist/skills/<provider>/skill.yaml` instead of duplicating upstream content.
 
 ## Documentation
 

@@ -108,7 +108,7 @@ Expected contracts:
 - `make cover` — generates per-package coverage
 - `make cover-gate` — fails if any internal package is below 90% coverage
 - `make cover-html` — generates a consolidated `coverage.html` report
-- When contributing external skills used as wizard default providers, preserve attribution to the upstream project and include an installable canonical manifest at `.strategist/<provider>/skill.yaml`.
+- When contributing external skills used as wizard default providers, preserve attribution to the upstream project and include an installable canonical manifest at `.strategist/skills/<provider>/skill.yaml`.
 
 ```bash
 make build
