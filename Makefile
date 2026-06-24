@@ -1,9 +1,10 @@
-.PHONY: build test test-all integration spec validate-expanded validate-all test-lite test-telemetry-lite test-compile-cache test-domain-architecture lint vuln bench cover cover-gate cover-html analysis-structure-gate docs-governance-gate governance-check convergence-check install sync-embed release snapshot clean compile-skill build-site build-all install-web lint-web test-web cover-web
+.PHONY: build test test-all integration spec validate-expanded validate-all test-lite test-telemetry-lite test-compile-cache test-domain-architecture lint complexity-report vuln bench cover cover-gate cover-html analysis-structure-gate docs-governance-gate governance-check convergence-check install sync-embed release snapshot clean compile-skill build-site build-all install-web lint-web test-web cover-web
 
 GOCACHE ?= /tmp/go-build-cache
 
 GOLANGCI_LINT := $(shell which golangci-lint 2>/dev/null || echo $(shell go env GOPATH)/bin/golangci-lint)
 GOVULNCHECK   := $(shell which govulncheck 2>/dev/null || echo $(shell go env GOPATH)/bin/govulncheck)
+GOCOGNIT      := $(shell which gocognit 2>/dev/null || echo $(shell go env GOPATH)/bin/gocognit)
 GORELEASER    := $(shell which goreleaser 2>/dev/null || echo $(shell go env GOPATH)/bin/goreleaser)
 COVERAGE_PKGS := internal/stale internal/compile internal/install internal/embed internal/telemetry cmd/strategist
 
@@ -48,6 +49,23 @@ test-domain-architecture:
 lint:
 	gofmt -w .
 	$(GOLANGCI_LINT) run ./...
+	@$(MAKE) complexity-report
+
+# complexity-report lists files that contain functions with cognitive complexity > 7.
+# Informational only — does not fail the build.
+complexity-report:
+	@command -v $(GOCOGNIT) >/dev/null 2>&1 || go install github.com/uudashr/gocognit/cmd/gocognit@latest
+	@echo "=== Cognitive Complexity > 7 ==="
+	@$(GOCOGNIT) -over 7 ./cmd ./internal \
+		| awk '{split($$NF,a,":"); print a[1]}' \
+		| sort -u \
+		| sed 's|$(CURDIR)/||' \
+		|| true
+	@echo ""
+	@$(GOCOGNIT) -over 7 ./cmd ./internal \
+		| sort -t' ' -k1 -rn \
+		| sed 's|$(CURDIR)/||' \
+		|| true
 
 vuln:
 	$(GOVULNCHECK) ./...

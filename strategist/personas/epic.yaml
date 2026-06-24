@@ -74,13 +74,13 @@ console_policy:
 mission_envelope:
   open: |
     ╔══════════════════════════════════════════════════════════╗
-    ║  STRATEGIST SKILL                                       ║
-    ║  Missão: {mission_id}                                   ║
-    ║  Perfil: {profile} · Governança: {governance}           ║
+    ║  STRATEGIST SKILL                                        ║
+    ║  Missão: {mission_id}                                    ║
+    ║  Perfil: {profile} · Governança: {governance}            ║
     ╚══════════════════════════════════════════════════════════╝
   close: |
     ╔══════════════════════════════════════════════════════════╗
-    ║  STRATEGIST SKILL · {status_label}                      ║
+    ║  STRATEGIST SKILL · {status_label}                       ║
     ╠══════════════════════════════════════════════════════════╣
     {phase_timeline}
     {artifact_block}
@@ -222,8 +222,8 @@ content_by_lang:
 
       Expected output:
       ╔══════���═══════════════════════════════════════════════════╗
-      ║  STRATEGIST SKILL · MISSION COMPLETE                   ║
-      ╠═════���═════════════════���═══════════════════════════���══════╣
+      ║  STRATEGIST SKILL · MISSION COMPLETE                       ║
+      ╠═════���═════════════════���═══════════════════════���══════╣
         ✅ Ranger      → reconnaissance complete
         ✅ Archivist   → analysis refined
         ✅ Gate        → approval granted
@@ -232,7 +232,7 @@ content_by_lang:
         📁 discovery:  .analysis/refined/{mission_id}/analysis.md
         📁 refined:    .analysis/refined/{mission_id}/
         📁 report:     .analysis/archived/{mission_id}-report.md
-      ╚═════════════��════════════════════════════════════════════╝
+      ╚═════════════��═════════════════════════════════════════════╝
       🎯 Mission {mission_id} complete. Next action: {next_action}
 
       ENFORCEMENT: emit response_complete FIRST (1 line), then mission_complete box.
@@ -367,7 +367,7 @@ content_by_lang:
 
       Saída esperada:
       ╔══════════════════════════════════════════════════════════╗
-      ║  STRATEGIST SKILL · MISSÃO CONCLUÍDA                   ║
+      ║  STRATEGIST SKILL · MISSÃO CONCLUÍDA                     ║
       ╠══════════════════════════════════════════════════════════╣
         ✅ Ranger      → reconhecimento concluído
         ✅ Arquivista  → análise refinada

@@ -53,6 +53,25 @@ func readFixture(t *testing.T, path string) fixture {
 	return f
 }
 
+func TestStrategistSkillDeclaresRuntimeAndWorkspacePathContracts(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(repoRoot(t), "strategist", "SKILL.md")
+	content := readFile(t, path)
+
+	for _, needle := range []string{
+		"`strategist/` — source-only",
+		"`.strategist/` — runtime instance",
+		"ONLY read target",
+		"`base_path`",
+		"not a hardcoded `.analysis/`",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("%s missing %q", path, needle)
+		}
+	}
+}
+
 func TestOpportunityBypassFixtureAlignedWithForbiddenBehaviorsSpec(t *testing.T) {
 	t.Parallel()
 	featurePath := filepath.Join(testDir(t), "specs", "forbidden-behaviors.feature")
