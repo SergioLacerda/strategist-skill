@@ -113,14 +113,11 @@ func nextFromOpportunityExec(event TransitionEvent) MissionState {
 	return StateOpportunityExec
 }
 
-func nextFromRefinement(event TransitionEvent, p MissionPolicy) MissionState {
+func nextFromRefinement(event TransitionEvent, _ MissionPolicy) MissionState {
 	switch event {
 	case EventArchivistNoTasks:
 		return StateDoneAnalysis
 	case EventArchivistTasks:
-		if p.ExecutionMode == ExecutionModePlanOnly {
-			return StateDoneAnalysis
-		}
 		return StateApprovalGate
 	case EventSlotTransient:
 		return StateRetrying

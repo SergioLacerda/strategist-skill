@@ -166,10 +166,8 @@ internal domain — do not error. If it exists:
 
 Read `active.slots`. For each slot (discovery, refinement, execution):
 1. Get provider id from `active.slots.<slot>`.
-2. Resolve provider skill.yaml using this order:
-   a. `<skill_root>/skills/<provider>/skill.yaml`  ← installed runtime path
-   b. `.claude/skills/<provider>/skill.yaml`
-   c. skill registry entry `skill_yaml` path (if registry present)
+2. Resolve provider skill.yaml:
+   `<skill_root>/skills/<provider>/skill.yaml`  ← single canonical installed runtime path, no fallback chain
 3. If provider is `_runtime_provider`, resolve from `governance_injection.execution_provider`.
 4. If `active.slots` is absent: emit blocked event `reason=slots_not_configured`, stop.
    → Remediation: `strategist install --wizard` to configure slots in `active.yaml`.

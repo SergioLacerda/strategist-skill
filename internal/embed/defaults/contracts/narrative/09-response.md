@@ -92,9 +92,9 @@ Emit in this order:
   ✅ Gate        → aprovação concedida
   ✅ Sniper      → implementação concluída
 ╠══════════════════════════════════════════════════════════╣
-  📁 discovery:  .analysis/refined/ID/analysis.md
-  📁 refined:    .analysis/refined/ID/
-  📁 report:     .analysis/archived/ID-report.md
+  📁 discovery:  <base_path>/refined/ID/analysis.md
+  📁 refined:    <base_path>/refined/ID/
+  📁 report:     <base_path>/archived/ID-report.md
 ╚══════════════════════════════════════════════════════════╝
 🎯 Missão ID concluída. Próxima ação: push para main.
 ```

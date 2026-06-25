@@ -385,6 +385,13 @@ forbidden_behaviors:
   - engineer_writes_outside_analysis
   - archivist_writes_non_md
   - delegate_analysis_creation_to_sniper
+  - id: code_file_mutation
+    description: >
+      Sniper attempted to mutate a code file. Sniper write scope is strictly
+      limited to workspace files (<base_path>/**) and documentation files (*.md).
+      Code mutation is always forbidden regardless of approval gate state.
+    emit: "[Strategist] phase=compliance status=blocked reason=code_file_mutation attempted_path={path}"
+    action: block
   - id: pipeline_bypass_detected
     description: >
       A direct repository mutation was attempted without the canonical evidence

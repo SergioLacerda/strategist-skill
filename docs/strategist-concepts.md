@@ -52,7 +52,7 @@ O Sniper requer aprovação explícita do usuário antes de qualquer execução 
 Um papel rankeado é um provider que declara `provider_class: rankeado` em seu `skill.yaml`.
 
 ```yaml
-# .strategist/brainstorming/skill.yaml
+# .strategist/skills/brainstorming/skill.yaml
 specialization_taxonomy:
   canonical_role: ranger
   provider_class: rankeado     # ← papel rankeado

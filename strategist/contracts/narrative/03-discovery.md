@@ -20,7 +20,7 @@ Ranger (`discovery`)
 ## Outputs
 
 - transient analysis handoff artifact: `<base_path>/pending/<mission_id>-analysis.md`
-- handoff fields validated by `strategist/schemas/handoff-ranger-to-archivist.schema.yaml`
+- handoff fields validated by `.strategist/schemas/handoff-ranger-to-archivist.schema.yaml`
 - opportunity manifest summary when present
 
 ## Required Behavior

@@ -123,7 +123,7 @@ strategist/
 │   ├── outcomes.jsonl               ← mission history (gitignore'd)
 │   └── source-hints.yaml            ← learned priority adjustments (gitignore'd)
 │
-└── skills/
+└── internal_skills/
     ├── prompt-intake/               ← classifies task_type, risk_level, constraints
     ├── context-enrichment/          ← queries knowledge index, applies source-hints
     ├── dossier-builder/             ← assembles minimal dossier within the token budget
@@ -444,10 +444,8 @@ If found, loads only the files listed under `load_always`. No file outside the i
 
 **2c. Slot provider resolution**
 
-For each slot (discovery, refinement, execution), attempts to resolve the provider's `skill.yaml` in order:
-1. `<skill_root>/skills/<provider>/skill.yaml`
-2. `.claude/skills/<provider>/skill.yaml`
-3. Entry in the skill registry (if present)
+For each slot (discovery, refinement, execution), resolves the provider's `skill.yaml` from:
+`<skill_root>/skills/<provider>/skill.yaml` — single canonical path, no fallback chain.
 
 If the provider is `_injected_by_sdd`, resolves from `sdd_injection.execution_provider`.
 If no path resolves: emits a blocked event and stops.

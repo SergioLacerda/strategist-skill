@@ -15,11 +15,6 @@ import (
 // In silent mode (no wizard), the extract step already copied the selected template
 // active.yaml from defaults, so nothing extra is needed.
 func writeActiveYAML(strategistDir string, wc domain.WizardConfig) error {
-	policy := domain.NewMissionPolicy(wc.ExecutionMode, wc.GitPersistenceMode)
-	if err := policy.Validate(); err != nil {
-		return fmt.Errorf("write active.yaml: %w", err)
-	}
-
 	adrEnabled := "true"
 	if !wc.AdrEnabled {
 		adrEnabled = "false"
@@ -35,8 +30,6 @@ language:
   chat: %s
   code: %s
 adr_enabled: %s
-execution_mode: %s
-git_persistence_mode: %s
 
 slots:
   discovery: %s
@@ -46,8 +39,6 @@ slots:
 		wc.Mode, wc.BasePath,
 		wc.UILanguage, wc.DocLanguage, wc.ChatLanguage, wc.CodeLanguage,
 		adrEnabled,
-		policy.ExecutionMode,
-		policy.GitPersistenceMode,
 		wc.DiscoveryProvider, wc.RefinementProvider, wc.ExecutionProvider,
 	)
 

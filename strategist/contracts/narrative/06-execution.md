@@ -51,4 +51,4 @@ If `mission_status` is not `gate_approval` → emit `reason=gate_approval_missin
 ## Write Scope
 
 - report artifact path: `<base_path>/archived/<mission_id>-report.md`
-- code or docs mutations only after approval
+- workspace files under `<base_path>/` and documentation files (`.md`) anywhere — code mutation is always forbidden

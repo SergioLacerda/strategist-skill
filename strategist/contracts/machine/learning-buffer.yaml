@@ -16,7 +16,7 @@ contract:
       description: >
         Outcome record to buffer (from learning-curator). Minimum required fields:
         mission_id, status, timestamp. Preferred richer shape is defined in
-        strategist/schemas/outcome-entry.schema.yaml.
+        .strategist/schemas/outcome-entry.schema.yaml.
     - name: buffer_size
       type: integer
       required: false
