@@ -23,6 +23,7 @@ type MissionRun struct {
 	linesOut      int64
 	tokensIn      int64
 	tokensOut     int64
+	silent        bool // when true, Finish skips EmitMissionMetrics
 }
 
 // NewMissionRun initializes a mission tracker.
@@ -170,8 +171,22 @@ func (m *MissionRun) Snapshot() MissionMetrics {
 	}
 }
 
-// Finish emits the current metrics snapshot.
+// SetSilent suppresses the metrics emission in Finish. Call this for
+// interactive/wizard commands where all-zero metrics add no signal.
+func (m *MissionRun) SetSilent() {
+	m.mu.Lock()
+	m.silent = true
+	m.mu.Unlock()
+}
+
+// Finish emits the current metrics snapshot (unless SetSilent was called).
 func (m *MissionRun) Finish() {
+	m.mu.Lock()
+	silent := m.silent
+	m.mu.Unlock()
+	if silent {
+		return
+	}
 	m.AddLines(1)
 	EmitMissionMetrics(m.Snapshot())
 }

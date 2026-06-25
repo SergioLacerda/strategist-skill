@@ -24,7 +24,7 @@ After learning-curator completes (or if it fails — still append outcome):
    `.strategist/memory/outcomes.tmp`
 
    - Minimum required fields remain: `mission_id`, `status`, `timestamp`.
-   - Preferred structured shape is defined in `strategist/schemas/outcome-entry.schema.yaml`.
+   - Preferred structured shape is defined in `.strategist/schemas/outcome-entry.schema.yaml`.
    - Producers SHOULD populate `task_type`, `outcome_summary`, `tags`, `lessons`, and `files_touched`
      when that data is available without additional inference work.
 

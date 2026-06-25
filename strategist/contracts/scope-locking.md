@@ -10,7 +10,7 @@ requerem pausa e nova aprovação — nunca são executadas inline.
 - Sniper executa apenas o que está em `tasks.md` aprovado no approval gate
 - Qualquer arquivo fora do escopo declarado requer pausa + mini approval
 - Melhorias de oportunidade descobertas durante execução vão para um novo item
-  em `.analysis/todo/`, não são executadas no mesmo Sniper run
+  em `<base_path>/todo/`, não são executadas no mesmo Sniper run
 - "Enquanto estou aqui vou também..." é scope expansion — requer gate
 - Refatorações adjacentes ao escopo aprovado são scope expansion — requer gate
 

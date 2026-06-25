@@ -14,14 +14,16 @@ type PhaseLabels struct {
 
 // ActiveConfig is the structure of a standalone active.yaml template.
 type ActiveConfig struct {
-	Mode               string            `yaml:"mode"`
-	BasePath           string            `yaml:"base_path"`
-	RolesConfig        string            `yaml:"roles_config"`
-	KnowledgeIndexPath string            `yaml:"knowledge_index_path"`
-	Language           any               `yaml:"language,omitempty"`
-	AdrEnabled         bool              `yaml:"adr_enabled"`
-	ExecutionMode      string            `yaml:"execution_mode"`
-	GitPersistenceMode string            `yaml:"git_persistence_mode"`
+	Mode               string `yaml:"mode"`
+	BasePath           string `yaml:"base_path"`
+	RolesConfig        string `yaml:"roles_config"`
+	KnowledgeIndexPath string `yaml:"knowledge_index_path"`
+	Language           any    `yaml:"language,omitempty"`
+	AdrEnabled         bool   `yaml:"adr_enabled"`
+	// Deprecated: execution_mode and git_persistence_mode are no longer written by install.
+	// Kept for backwards compat — existing runtimes with these fields parse without error.
+	ExecutionMode      string            `yaml:"execution_mode,omitempty"`
+	GitPersistenceMode string            `yaml:"git_persistence_mode,omitempty"`
 	Slots              map[string]string `yaml:"slots"`
 }
 
@@ -93,9 +95,7 @@ func (a ActiveConfig) Validate() error {
 	if len(a.Slots) == 0 {
 		errs = append(errs, "slots must have at least one entry")
 	}
-	if err := NormalizePolicy(NewMissionPolicy(a.ExecutionMode, a.GitPersistenceMode)).Validate(); err != nil {
-		errs = append(errs, err.Error())
-	}
+	// Execution policy is fixed — no per-config validation needed.
 	if len(errs) == 0 {
 		return nil
 	}
@@ -242,8 +242,6 @@ func (r DojoCheckResult) FailCount() int {
 type WizardConfig struct {
 	Mode               string
 	BasePath           string
-	ExecutionMode      string // plan_only | apply_workspace
-	GitPersistenceMode string // forbidden | explicit_commit
 	UILanguage         string // en | pt-BR — wizard interface + ongoing interactions
 	DocLanguage        string // en | pt-BR — generated documentation
 	ChatLanguage       string // en | pt-BR — AI chat responses

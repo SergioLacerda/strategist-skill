@@ -23,7 +23,7 @@ Archivist (`refinement`)
 - `<base_path>/refined/<mission_id>/proposal.md`
 - `<base_path>/refined/<mission_id>/design.md`
 - `<base_path>/refined/<mission_id>/tasks.md`
-- execution handoff fields validated by `strategist/schemas/handoff-archivist-to-hunter.schema.yaml`
+- execution handoff fields validated by `.strategist/schemas/handoff-archivist-to-hunter.schema.yaml`
 
 ## Required Behavior
 

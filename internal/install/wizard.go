@@ -143,11 +143,6 @@ func runWizard(p Prompter, extractor domain.FileExtractor) (domain.WizardConfig,
 		return domain.WizardConfig{}, fmt.Errorf("wizard: adr_enabled: %w", err)
 	}
 
-	executionMode, gitPersistenceMode, err := promptPolicyAndGit(p, b)
-	if err != nil {
-		return domain.WizardConfig{}, err
-	}
-
 	discovery, refinement, execution, err := promptSlots(p, b, providerRisk)
 	if err != nil {
 		return domain.WizardConfig{}, err
@@ -165,8 +160,6 @@ func runWizard(p Prompter, extractor domain.FileExtractor) (domain.WizardConfig,
 	return domain.WizardConfig{
 		Mode:               mode,
 		BasePath:           basePath,
-		ExecutionMode:      executionMode,
-		GitPersistenceMode: gitPersistenceMode,
 		UILanguage:         uiLang,
 		DocLanguage:        normLang(docLang),
 		ChatLanguage:       normLang(chatLang),
@@ -177,26 +170,6 @@ func runWizard(p Prompter, extractor domain.FileExtractor) (domain.WizardConfig,
 		ExecutionProvider:  execution,
 		TreasureChestPath:  chestPath,
 	}, nil
-}
-
-// promptPolicyAndGit collects execution mode and git persistence mode, validates the policy.
-func promptPolicyAndGit(p Prompter, b i18n.WizardStrings) (executionMode, gitPersistenceMode string, err error) {
-	executionMode, err = p.Select(b.PromptExecutionMode, "plan_only", []string{"plan_only", "apply_workspace"})
-	if err != nil {
-		return "", "", fmt.Errorf("wizard: execution_mode: %w", err)
-	}
-	gitOptions := []string{"forbidden"}
-	if executionMode == domain.ExecutionModeApplyWorkspace {
-		gitOptions = []string{"forbidden", "explicit_commit"}
-	}
-	gitPersistenceMode, err = p.Select(b.PromptGitMode, "forbidden", gitOptions)
-	if err != nil {
-		return "", "", fmt.Errorf("wizard: git_persistence_mode: %w", err)
-	}
-	if err = domain.NewMissionPolicy(executionMode, gitPersistenceMode).Validate(); err != nil {
-		return "", "", fmt.Errorf("wizard: policy: %w", err)
-	}
-	return executionMode, gitPersistenceMode, nil
 }
 
 // promptSlots collects discovery, refinement and execution slot providers.

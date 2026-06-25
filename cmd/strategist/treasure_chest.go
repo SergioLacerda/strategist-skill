@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/compile"
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -111,7 +112,11 @@ Use --include-historical with --index to opt in to indexing T2/T3 sources.`,
 	RunE: runTreasureChest,
 }
 
-func runTreasureChest(_ *cobra.Command, _ []string) error {
+func runTreasureChest(cmd *cobra.Command, _ []string) error {
+	if run := telemetryRunFromCmd(cmd); run != nil {
+		run.SetSilent()
+	}
+
 	cwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("treasure-chest: get cwd: %w", err)
@@ -138,20 +143,30 @@ func runTreasureChest(_ *cobra.Command, _ []string) error {
 		return runTreasureChestIndex(root, rows)
 	}
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	if err := renderChestsSection(w, rows); err != nil {
+	printTreasureChestBanner()
+
+	// Chests and Index sections each get their own tabwriter so column widths
+	// are scoped per section (warnings would inflate column 0 if shared).
+	wc := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
+	if err := renderChestsSection(wc, rows); err != nil {
 		return err
 	}
-	if err := renderIndexSection(w, root, compiledAt, compErr); err != nil {
+	if err := wc.Flush(); err != nil {
+		return fmt.Errorf("flush chests: %w", err)
+	}
+	fmt.Println()
+
+	wi := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
+	if err := renderIndexSection(wi, root, compiledAt, compErr); err != nil {
 		return err
 	}
+	if err := wi.Flush(); err != nil {
+		return fmt.Errorf("flush index: %w", err)
+	}
+
 	warnings := collectWarnings(rows, govErr, idxErr, compErr, compiledAt)
-	if err := renderWarningsSection(w, warnings); err != nil {
-		return err
-	}
-	if err := w.Flush(); err != nil {
-		return fmt.Errorf("flush: %w", err)
-	}
+	renderWarningsSection(warnings)
+	fmt.Println()
 	return nil
 }
 
@@ -366,11 +381,11 @@ func deriveDrift(r chestRow) []string {
 // --- rendering ---
 
 func renderChestsSection(w *tabwriter.Writer, rows []chestRow) error {
-	if _, err := fmt.Fprintln(w, "CHESTS\t\t\t\t\t"); err != nil {
+	if _, err := fmt.Fprintln(w, "  CHESTS\t\t\t\t\t"); err != nil {
 		return fmt.Errorf("treasure-chest: write header: %w", err)
 	}
-	if _, err := fmt.Fprintf(w, "%-20s\t%-30s\t%-24s\t%-5s\t%-9s\t%s\n",
-		"id", "path", "scope", "trust", "freshness", "drift"); err != nil {
+	if _, err := fmt.Fprintf(w, "  %s\t%s\t%s\t%s\t%s\t%s\n",
+		"ID", "PATH", "SCOPE", "TRUST", "FRESHNESS", "DRIFT"); err != nil {
 		return fmt.Errorf("treasure-chest: write column header: %w", err)
 	}
 	for _, r := range rows {
@@ -386,7 +401,7 @@ func renderChestsSection(w *tabwriter.Writer, rows []chestRow) error {
 		if len(r.drift) > 0 {
 			drift = strings.Join(r.drift, " ")
 		}
-		if _, err := fmt.Fprintf(w, "%-20s\t%-30s\t%-24s\t%-5s\t%-9s\t%s\n",
+		if _, err := fmt.Fprintf(w, "  %s\t%s\t%s\t%s\t%s\t%s\n",
 			r.id, r.path, scope, trust, r.freshness, drift); err != nil {
 			return fmt.Errorf("treasure-chest: write row: %w", err)
 		}
@@ -395,10 +410,7 @@ func renderChestsSection(w *tabwriter.Writer, rows []chestRow) error {
 }
 
 func renderIndexSection(w *tabwriter.Writer, root string, compiledAt int64, compErr error) error {
-	if _, err := fmt.Fprintln(w, "\t\t\t\t\t"); err != nil {
-		return fmt.Errorf("treasure-chest: write separator: %w", err)
-	}
-	if _, err := fmt.Fprintln(w, "INDEX\t\t\t\t\t"); err != nil {
+	if _, err := fmt.Fprintln(w, "  INDEX\t\t\t\t\t"); err != nil {
 		return fmt.Errorf("treasure-chest: write header: %w", err)
 	}
 
@@ -418,9 +430,9 @@ func renderIndexSection(w *tabwriter.Writer, root string, compiledAt int64, comp
 	}
 
 	rows := []struct{ k, v string }{
-		{"artifact", indexPath},
-		{"health", health},
-		{"compiled_at", ts},
+		{"  artifact", indexPath},
+		{"  health", health},
+		{"  compiled_at", ts},
 	}
 	for _, row := range rows {
 		if _, err := fmt.Fprintf(w, "%s\t%s\t\t\t\t\n", row.k, row.v); err != nil {
@@ -430,22 +442,15 @@ func renderIndexSection(w *tabwriter.Writer, root string, compiledAt int64, comp
 	return nil
 }
 
-func renderWarningsSection(w *tabwriter.Writer, warnings []string) error {
+func renderWarningsSection(warnings []string) {
 	if len(warnings) == 0 {
-		return nil
+		return
 	}
-	if _, err := fmt.Fprintln(w, "\t\t\t\t\t"); err != nil {
-		return fmt.Errorf("treasure-chest: write separator: %w", err)
-	}
-	if _, err := fmt.Fprintln(w, "WARNINGS\t\t\t\t\t"); err != nil {
-		return fmt.Errorf("treasure-chest: write header: %w", err)
-	}
+	fmt.Println()
+	fmt.Println("  WARNINGS")
 	for _, warn := range warnings {
-		if _, err := fmt.Fprintf(w, "%s\t\t\t\t\t\n", warn); err != nil {
-			return fmt.Errorf("treasure-chest: write warning: %w", err)
-		}
+		fmt.Println("  " + warn)
 	}
-	return nil
 }
 
 func collectWarnings(rows []chestRow, govErr, idxErr, compErr error, compiledAt int64) []string {
@@ -483,6 +488,27 @@ func collectWarnings(rows []chestRow, govErr, idxErr, compErr error, compiledAt 
 		w = append(w, "⚠ historical sources missing last_reviewed (freshness=unknown): "+strings.Join(historicalMissing, ", "))
 	}
 	return w
+}
+
+// telemetryRunFromCmd extracts the MissionRun from the command context, if any.
+func telemetryRunFromCmd(cmd *cobra.Command) *telemetry.MissionRun {
+	if cmd == nil {
+		return nil
+	}
+	ctx := cmd.Context()
+	if ctx == nil {
+		return nil
+	}
+	return telemetry.MissionRunFromContext(ctx)
+}
+
+// printTreasureChestBanner prints the ASCII header for the treasure-chest command.
+func printTreasureChestBanner() {
+	fmt.Println()
+	fmt.Println("  ┌─────────────────────────────────────────────────────────────────────┐")
+	fmt.Println("  │  STRATEGIST  ◆  treasure-chest                                     │")
+	fmt.Println("  └─────────────────────────────────────────────────────────────────────┘")
+	fmt.Println()
 }
 
 func init() {

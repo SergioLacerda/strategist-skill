@@ -229,9 +229,9 @@ content_by_lang:
         ✅ Gate        → approval granted
         ✅ Sniper      → implementation complete
       ╠══���═══════════════════════════════════════════════════════╣
-        📁 discovery:  .analysis/refined/{mission_id}/analysis.md
-        📁 refined:    .analysis/refined/{mission_id}/
-        📁 report:     .analysis/archived/{mission_id}-report.md
+        📁 discovery:  {base_path}/refined/{mission_id}/analysis.md
+        📁 refined:    {base_path}/refined/{mission_id}/
+        📁 report:     {base_path}/archived/{mission_id}-report.md
       ╚═════════════��═════════════════════════════════════════════╝
       🎯 Mission {mission_id} complete. Next action: {next_action}
 
@@ -374,9 +374,9 @@ content_by_lang:
         ✅ Gate        → aprovação concedida
         ✅ Sniper      → implementação concluída
       ╠══════════════════════════════════════════════════════════╣
-        📁 discovery:  .analysis/refined/{mission_id}/analysis.md
-        📁 refined:    .analysis/refined/{mission_id}/
-        📁 report:     .analysis/archived/{mission_id}-report.md
+        📁 discovery:  {base_path}/refined/{mission_id}/analysis.md
+        📁 refined:    {base_path}/refined/{mission_id}/
+        📁 report:     {base_path}/archived/{mission_id}-report.md
       ╚══════════════════════════════════════════════════════════╝
       🎯 Missão {mission_id} concluída. Próxima ação: {next_action}
 

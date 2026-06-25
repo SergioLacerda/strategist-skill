@@ -7,20 +7,18 @@ import (
 
 // PolicyEvent describes a canonical Strategist policy event payload.
 type PolicyEvent struct {
-	Phase              string
-	Status             string
-	Mission            string
-	ExecutionMode      string
-	GitPersistenceMode string
-	TransitionGroup    string
-	CorrelationID      string
-	CanExecute         bool
-	Reason             string
+	Phase           string
+	Status          string
+	Mission         string
+	TransitionGroup string
+	CorrelationID   string
+	CanExecute      bool
+	Reason          string
 }
 
 // FormatPolicyEvent returns a progress-contract compliant event line.
 func FormatPolicyEvent(ev PolicyEvent) string {
-	line := fmt.Sprintf("[Strategist] phase=%s status=%s mission=%s execution_mode=%s git_persistence_mode=%s can_execute=%t", ev.Phase, ev.Status, ev.Mission, ev.ExecutionMode, ev.GitPersistenceMode, ev.CanExecute)
+	line := fmt.Sprintf("[Strategist] phase=%s status=%s mission=%s write_scope=workspace_and_docs can_execute=%t", ev.Phase, ev.Status, ev.Mission, ev.CanExecute)
 	if ev.TransitionGroup != "" {
 		line += " transition_group=" + ev.TransitionGroup
 	}
@@ -39,8 +37,7 @@ func EmitPolicyEvent(ev PolicyEvent) {
 		AttrPhase, ev.Phase,
 		AttrStatus, ev.Status,
 		AttrMissionID, ev.Mission,
-		AttrRuntimeMode, ev.ExecutionMode,
-		"strategist.git_persistence_mode", ev.GitPersistenceMode,
+		"strategist.write_scope", "workspace_and_docs",
 		"strategist.can_execute", ev.CanExecute,
 	}
 	if ev.TransitionGroup != "" {

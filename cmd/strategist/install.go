@@ -69,6 +69,9 @@ func runInstall(cmd *cobra.Command, _ []string) (retErr error) {
 	run := telemetry.MissionRunFromContext(ctx)
 	if run != nil {
 		run.MarkRanger()
+		if installWizard {
+			run.SetSilent()
+		}
 	}
 	ctx, span := telemetry.Tracer().Start(ctx, "strategist.install",
 		trace.WithAttributes(
@@ -128,8 +131,23 @@ func runInstall(cmd *cobra.Command, _ []string) (retErr error) {
 		telemetry.AttrOutputProfile, "default",
 		telemetry.AttrTarget, installTarget,
 	)
-	fmt.Println("[Strategist] install complete →", installTarget)
+	printInstallCompleteBanner(installTarget, installWizard)
 	return nil
+}
+
+func printInstallCompleteBanner(target string, wizard bool) {
+	mode := "silent"
+	if wizard {
+		mode = "wizard"
+	}
+	fmt.Println()
+	fmt.Println("  ┌─────────────────────────────────────────────────────────────────────┐")
+	fmt.Println("  │  STRATEGIST  ◆  install complete                                    │")
+	fmt.Println("  └─────────────────────────────────────────────────────────────────────┘")
+	fmt.Println()
+	fmt.Printf("     target  %s\n", target)
+	fmt.Printf("     mode    %s\n", mode)
+	fmt.Println()
 }
 
 func init() {
