@@ -167,7 +167,6 @@ func TestFSMSafetyPropertyLike(t *testing.T) {
 			state = domain.NextState(state, ev, policy)
 			if state == domain.StateExecution {
 				assert.True(t, seenGateApproved)
-				assert.True(t, policy.CanExecute)
 			}
 		}
 	}

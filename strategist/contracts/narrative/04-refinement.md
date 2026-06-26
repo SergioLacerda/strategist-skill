@@ -35,7 +35,7 @@ Archivist (`refinement`)
 - when the mission type is evaluation or audit and the Ranger discovers completed work
   requiring cleanup (archiving finished missions, removing obsolete files): treat that
   cleanup as an opportunity attack, not a main task. The main mission resolves as
-  `plan_only`. The cleanup is offered via `opportunity_gate` manifest.
+  `analysis_delivered`. The cleanup is offered via `opportunity_gate` manifest.
 - never emit a single-file refined artifact as the canonical result
 
 ## Write Scope
@@ -48,7 +48,7 @@ Archivist (`refinement`)
 
 ## Gate Condition
 
-- if `tasks.md` is empty or absent, mission resolves as `plan_only`
+- if `tasks.md` is empty or absent, mission resolves as `analysis_delivered`
 
 ## Status Transitions (Archivist)
 

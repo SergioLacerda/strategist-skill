@@ -4,7 +4,7 @@ version: "1.0"
 invariants:
   - id: emitted_every_response
     description: Compliance summary must be the final element of every response
-    rule: every pipeline termination (completed|plan_only|blocked) emits compliance_summary
+    rule: every pipeline termination (documentation_applied|analysis_delivered|rejected|revision_requested|blocked) emits compliance_summary
 
   - id: always_info_level
     description: Compliance summary is always visible regardless of output profile

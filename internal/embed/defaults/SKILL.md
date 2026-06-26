@@ -1,13 +1,13 @@
 # Strategist — Agent Instructions
 
-## ENTRYPOINT — execute antes de qualquer coisa
+## ENTRYPOINT — execute before anything else
 
-1. Verificar `.strategist/` existe no workspace → se não: emitir `error=not_installed` e parar
-2. Executar `strategist check` → se falhar: parar com output do CLI
-3. Ler `.strategist/agent-protocol.md` → este arquivo define o protocolo completo de delegação e pipeline
-4. Só então processar o request
+1. Verify `.strategist/` exists in the workspace → if not: emit `error=not_installed` and stop
+2. Run `strategist check` → if it fails: stop with the CLI output
+3. Read `.strategist/agent-protocol.md` → this file defines the complete delegation and pipeline protocol
+4. Only then process the request
 
-**Não processe nenhum request antes de completar os 4 passos acima.**
+**Do not process any request before completing all 4 steps above.**
 
 ---
 
@@ -120,8 +120,7 @@ to each slot — slots never query the adapter directly:
   `knowledge_paths` to scope discovery to indexed governance documents.
 - **Archivist** receives the same injection — uses it to validate proposal constraints against
   active mandates.
-- **Sniper** receives final `execution_gate` status — checked at `nextFromApprovalGate` via
-  `CanExecute` before any repo mutation is attempted.
+- **Sniper** receives approval gate acceptance status — verified at `nextFromApprovalGate` before any documentation write is attempted.
 
 Strategist is the sole governance adapter consumer. Slots receive context only through
 `governance_injection`.

@@ -18,6 +18,13 @@ import (
 type Service struct {
 	Extractor domain.FileExtractor
 	Compiler  domain.Compiler
+	// AwarenessRefresher generates agent-protocol.md and updates per-agent entrypoint
+	// files. Called after CompileAll on every install (wizard and silent). Nil means skip.
+	// Returns true if agent-protocol.md was successfully written; false on partial failure.
+	// All failures are non-blocking: the refresher logs warnings internally.
+	AwarenessRefresher func(strategistRoot, projectRoot, version string) bool
+	// Version is passed to AwarenessRefresher to stamp agent-protocol.md.
+	Version string
 	// WizardPrompter overrides the auto-detected Prompter for wizard prompts.
 	// Nil means auto-detect: TUIPrompter when stdin is a TTY, TextPrompter otherwise.
 	// Set this in tests to provide scripted input without blocking on stdin.
@@ -109,6 +116,12 @@ func (s Service) Install(ctx context.Context, cfg domain.InstallConfig) error {
 			telemetry.AttrOutputProfile, "default",
 			telemetry.AttrTarget, strategistDir,
 		)
+	}
+
+	// Agent awareness refresh: generate agent-protocol.md and update per-agent entrypoints.
+	// Non-fatal — failures are logged internally by the refresher.
+	if s.AwarenessRefresher != nil {
+		s.AwarenessRefresher(strategistDir, cfg.Target, s.Version)
 	}
 
 	succeeded = true

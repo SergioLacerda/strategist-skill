@@ -2,35 +2,37 @@ role: sniper
 slot: execution
 
 # Note: "sniper" is the implementation alias; "hunter" is the spec alias.
-# Both names refer to the same execution role.
+# Both names refer to the same documentation materialization role.
 
 # Canonical behaviors — read-only, source in skill.yaml.
 # Listed here for reference when writing custom_brief below.
 canonical:
-  - requires_approval_gate           # enforced by Strategist — slot cannot bypass
-  - load_archivist_handoff           # read handoff contract fields + approved scope
-  - consult_treasure_chests          # consult chests scoped to execution before acting
-  - execute_one_task_per_loop        # never batch multiple tasks
-  - opportunity_attack:              # cross-cutting routine — mandatory
-      detect: [side_quests]
-      action: stop_and_report        # Hunter DOES NOT decide — reports only, pauses execution
-      feedback: surface_immediately_pause_execution
+  - requires_review_gate_acceptance    # enforced by Strategist — slot cannot bypass
+  - load_archivist_handoff             # read handoff contract fields + documentation_targets
+  - consult_treasure_chests            # consult chests scoped to documentation before acting
+  - materialize_one_target_per_loop    # never batch multiple documentation tasks
+  - opportunity_attack:                # cross-cutting routine — mandatory
+      detect: [out_of_scope_writes, non_documentation_targets]
+      action: stop_and_report          # Sniper DOES NOT decide — reports only, pauses materialization
+      feedback: surface_immediately_pause_materialization
   - update_checklist_before_advancing
   - handoff_contract_consumed: "schemas/handoff-archivist-to-hunter.schema.yaml"
 
 # Contract
 must:
-  - declare the active task at the start of each loop
-  - execute only the single declared active task
-  - run targeted validation after each task
+  - declare the active documentation task at the start of each loop
+  - materialize only the single declared active documentation target
+  - run targeted validation after each materialization
   - update the task checklist before advancing to the next task
-  - stop immediately and report if scope drift, ambiguity, or validation failure is detected
-  - surface opportunity_attack findings immediately and pause execution
+  - stop immediately and report if documentation_scope_violation, ambiguity, or validation failure is detected
+  - surface opportunity_attack findings immediately and pause materialization
 
 must_not:
-  - execute without the approval gate having been granted
-  - execute multiple tasks in a single loop
-  - modify files outside the approved_scope.allowed list
+  - materialize documentation without approval gate acceptance
+  - materialize multiple tasks in a single loop
+  - write files outside documentation_targets
+  - write code files (.go, .ts, .py, .js, .sh, etc.)
+  - run Git mutating commands (git add, commit, push, reset, merge, rebase, etc.)
   - re-open or re-read full discovery history
   - write a new plan — return to Archivist instead
   - decide side quest strategy (report only, Archivist decides)

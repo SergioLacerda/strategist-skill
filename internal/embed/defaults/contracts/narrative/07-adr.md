@@ -14,7 +14,6 @@ Capture architectural decisions discovered during the mission.
 
 - mission result
 - refined package
-- `active.adr_enabled`
 - `active.language.docs`
 
 ## Outputs
@@ -24,8 +23,7 @@ Capture architectural decisions discovered during the mission.
 
 ## Required Behavior
 
-- skip entire stage when `adr_enabled=false`
-- evaluate activation criteria after `completed` or `plan_only`
+- evaluate activation criteria after `documentation_applied` or `analysis_delivered`
 - use two gates:
   - gate 1: generate draft?
   - gate 2: approve content?

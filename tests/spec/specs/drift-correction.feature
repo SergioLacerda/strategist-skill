@@ -30,7 +30,7 @@ Feature: Drift Self-Correction via outcomes.jsonl
     And mission result is NOT affected by the failure
 
   Scenario: outcome appended after mission completes
-    Given a mission has completed (status=completed or plan_only)
+    Given a mission has completed (status=documentation_applied or analysis_delivered)
     When the Learning Phase runs (§8)
     Then learning-curator presents a checkpoint to the user
     And after user confirmation, appends one JSON line to outcomes.tmp

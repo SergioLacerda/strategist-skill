@@ -12,13 +12,12 @@ type PolicyEvent struct {
 	Mission         string
 	TransitionGroup string
 	CorrelationID   string
-	CanExecute      bool
 	Reason          string
 }
 
 // FormatPolicyEvent returns a progress-contract compliant event line.
 func FormatPolicyEvent(ev PolicyEvent) string {
-	line := fmt.Sprintf("[Strategist] phase=%s status=%s mission=%s write_scope=workspace_and_docs can_execute=%t", ev.Phase, ev.Status, ev.Mission, ev.CanExecute)
+	line := fmt.Sprintf("[Strategist] phase=%s status=%s mission=%s documentation_scope=approved_targets", ev.Phase, ev.Status, ev.Mission)
 	if ev.TransitionGroup != "" {
 		line += " transition_group=" + ev.TransitionGroup
 	}
@@ -37,8 +36,7 @@ func EmitPolicyEvent(ev PolicyEvent) {
 		AttrPhase, ev.Phase,
 		AttrStatus, ev.Status,
 		AttrMissionID, ev.Mission,
-		"strategist.write_scope", "workspace_and_docs",
-		"strategist.can_execute", ev.CanExecute,
+		"strategist.documentation_scope", "approved_targets",
 	}
 	if ev.TransitionGroup != "" {
 		attrs = append(attrs, AttrTransitionGroup, ev.TransitionGroup)

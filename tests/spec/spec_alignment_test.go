@@ -299,8 +299,10 @@ func TestApprovalBypassFixtureAlignedWithApprovalGateSpec(t *testing.T) {
 	if !strings.Contains(feature, "phase=approval_gate status=pending") {
 		t.Fatalf("%s missing approval_gate pending assertion", featurePath)
 	}
-	if !strings.Contains(feature, "status=plan_only") {
-		t.Fatalf("%s missing plan_only assertions", featurePath)
+	for _, term := range []string{"analysis_accepted", "revision_requested", "rejected"} {
+		if !strings.Contains(feature, term) {
+			t.Fatalf("%s missing review gate response %q", featurePath, term)
+		}
 	}
 	if fixture.Scenario != "approval_bypass" {
 		t.Fatalf("%s scenario must be approval_bypass, got: %q", fixturePath, fixture.Scenario)
@@ -353,8 +355,8 @@ func TestPolicyGuardrailsSpecAlignedWithFixture(t *testing.T) {
 		t.Fatalf("%s scenario must be policy_guardrails_e2e, got: %q", fixturePath, fixture.Scenario)
 	}
 	if !strings.Contains(fixture.ExpectedEvent, "phase=policy_eval status=blocked") ||
-		!strings.Contains(fixture.ExpectedEvent, "transition_group=execution") {
-		t.Fatalf("%s expected_event must include blocked policy_eval for execution, got: %q", fixturePath, fixture.ExpectedEvent)
+		!strings.Contains(fixture.ExpectedEvent, "transition_group=documentation_materialization") {
+		t.Fatalf("%s expected_event must include blocked policy_eval for documentation_materialization, got: %q", fixturePath, fixture.ExpectedEvent)
 	}
 }
 
@@ -438,7 +440,7 @@ func TestPragmaticPersonaUsesDistinctPhaseLabels(t *testing.T) {
 	for _, needle := range []string{
 		"discovery: analysis",
 		"refinement: refinement",
-		"execution: execution",
+		"execution: materialization",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("%s missing %q", path, needle)
@@ -732,8 +734,8 @@ func TestE2EFeatureFilesCoverHappyPathContracts(t *testing.T) {
 			"approval gate",
 		},
 		filepath.Join(testDir(t), "specs", "e2e-approval-gate.feature"): []string{
-			"mission result is completed",
-			"plan_only",
+			"mission result is documentation_applied",
+			"analysis_delivered",
 			"Sniper is not invoked",
 		},
 		filepath.Join(testDir(t), "specs", "e2e-treasure-chests.feature"): []string{
@@ -898,6 +900,298 @@ func TestActiveYAMLTemplatesDoNotContainLegacyPolicyFields(t *testing.T) {
 					t.Errorf("template %s contains legacy policy field %q", path, term)
 				}
 			}
+		}
+	}
+}
+
+func TestStandaloneTemplatesDefaultExecutionToSniper(t *testing.T) {
+	t.Parallel()
+
+	// Standalone active.yaml templates must ship with sniper as the default execution
+	// provider. This ensures both silent install and wizard defaults align.
+	standaloneTemplates := []string{
+		filepath.Join(repoRoot(t), "strategist", "templates", "epic-standalone.yaml"),
+		filepath.Join(repoRoot(t), "strategist", "templates", "pragmatic-standalone.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "epic-standalone.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "pragmatic-standalone.yaml"),
+	}
+
+	for _, path := range standaloneTemplates {
+		content := readFile(t, path)
+		if !strings.Contains(content, "execution: sniper") {
+			t.Errorf("template %s must default to execution: sniper", path)
+		}
+		if strings.Contains(content, "execution: openspec-apply-change") {
+			t.Errorf("template %s must not default to execution: openspec-apply-change — use sniper instead", path)
+		}
+	}
+}
+
+// assertNoToken fails if the file at path contains token.
+func assertNoToken(t *testing.T, path, token string) {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	if strings.Contains(string(data), token) {
+		t.Fatalf("%s must not contain %q", path, token)
+	}
+}
+
+func TestSchemaFilesDoNotContainLegacyPlanOnly(t *testing.T) {
+	t.Parallel()
+	root := repoRoot(t)
+
+	assertNoToken(t, filepath.Join(root, "strategist", "schemas", "mission-result.schema.yaml"), "plan_only")
+	assertNoToken(t, filepath.Join(root, "strategist", "schemas", "outcome-entry.schema.yaml"), "plan_only")
+	assertNoToken(t, filepath.Join(root, "strategist", "schemas", "progress-contract.yaml"), "plan_only")
+	assertNoToken(t, filepath.Join(root, "internal", "embed", "defaults", "schemas", "outcome-entry.schema.yaml"), "plan_only")
+	assertNoToken(t, filepath.Join(root, "internal", "embed", "defaults", "schemas", "progress-contract.yaml"), "plan_only")
+}
+
+func TestApprovalGateContractUsesReviewGateSemantics(t *testing.T) {
+	t.Parallel()
+	root := repoRoot(t)
+
+	paths := []string{
+		filepath.Join(root, "strategist", "contracts", "machine", "approval-gate.yaml"),
+		filepath.Join(root, "internal", "embed", "defaults", "contracts", "machine", "approval-gate.yaml"),
+	}
+
+	for _, path := range paths {
+		content := readFile(t, path)
+		assertNoToken(t, path, "plan_only")
+		for _, needle := range []string{"analysis_accepted", "revision_requested", "rejected"} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing review gate response %q", path, needle)
+			}
+		}
+	}
+}
+
+func TestSniperIsDocumentationMaterializerNotExecutionSkill(t *testing.T) {
+	t.Parallel()
+	root := repoRoot(t)
+
+	paths := []string{
+		filepath.Join(root, "strategist", "internal_skills", "sniper", "SKILL.md"),
+		filepath.Join(root, "internal", "embed", "defaults", "internal_skills", "sniper", "SKILL.md"),
+	}
+	forbidden := []string{
+		"Execution Skill",
+		"execute the approved refined package",
+		"execution_done",
+	}
+	required := []string{
+		"documentation materialization",
+		"documentation_applied",
+		"documentation_targets",
+		"Git mutating commands are forbidden",
+	}
+
+	for _, path := range paths {
+		content := readFile(t, path)
+		for _, bad := range forbidden {
+			if strings.Contains(content, bad) {
+				t.Fatalf("%s must not contain %q", path, bad)
+			}
+		}
+		for _, needle := range required {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing required documentation phrase %q", path, needle)
+			}
+		}
+	}
+}
+
+func TestDocumentationPipelineDoesNotContainLegacyExecutionTerms(t *testing.T) {
+	t.Parallel()
+	root := repoRoot(t)
+
+	forbidden := []string{"apply_workspace", "execution_mode", "git_persistence_mode", "CanExecute"}
+	paths := []string{
+		filepath.Join(root, "strategist", "SKILL.md"),
+		filepath.Join(root, "strategist", "skill.yaml"),
+		filepath.Join(root, "strategist", "protocol.md"),
+		filepath.Join(root, "internal", "embed", "defaults", "SKILL.md"),
+		filepath.Join(root, "internal", "embed", "defaults", "protocol.md"),
+	}
+
+	for _, path := range paths {
+		for _, term := range forbidden {
+			assertNoToken(t, path, term)
+		}
+	}
+}
+
+// TestStrategistSourceTreeEnglishOnly scans strategist/ for Portuguese prose markers.
+//
+// Allowlisted paths and fields that legitimately contain non-English data:
+//   - strategist/schemas/intake.schema.yaml — user input aliases (não pode quebrar, etc.)
+//     are intent-matching tokens, not prose (design non-goal: preserve Portuguese input tokens).
+//   - strategist/contracts/machine/quick-draw.yaml — pt-BR bucket name list (data).
+//   - strategist/contracts/machine/adr.yaml — pt-BR section name list (data).
+//   - strategist/contracts/narrative/07-adr.md — pt-BR language mapping (data).
+//   - strategist/contracts/adr.md — docs: pt-BR language mapping (data).
+//   - strategist/contracts/machine/critical-hit.yaml — reserved input tokens with inline doc.
+//   - strategist/contracts/strategist-raid.yaml — reserved input tokens sim/nao with inline doc.
+func TestStrategistSourceTreeEnglishOnly(t *testing.T) {
+	t.Parallel()
+	root := repoRoot(t)
+	strategistDir := filepath.Join(root, "strategist")
+
+	// Portuguese prose markers that must NOT appear in canonical strategist/ files.
+	// These are not language-code data — they are prose fragments in Portuguese.
+	forbiddenProse := []string{
+		"Não processe",
+		"execute antes de qualquer coisa",
+		"execute exatamente nessa ordem",
+		"fluxo completo",
+		"fluxo direto",
+		"orquestração em lote",
+		"análises capturadas",
+		"Caminho para arquivo",
+		"processar todas",
+		"pacotes de negócio",
+		"camada pura",
+		"ponto de wiring",
+		"Nunca executar",
+		"Nunca ler de",
+		"Nunca pular",
+		"Nunca invocar",
+		"Missão: {mission_id}",
+		"Perfil: {profile}",
+		"Arquivista →",
+		"aprovação concedida",
+		"reconhecimento concluído",
+		"implementação concluída",
+		"Autorizar Sniper",
+		"Aguardando confirmação",
+		"Commitar?",
+	}
+
+	err := filepath.WalkDir(strategistDir, func(path string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		ext := filepath.Ext(path)
+		if ext != ".md" && ext != ".yaml" {
+			return nil
+		}
+		data, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return readErr
+		}
+		content := string(data)
+		for _, marker := range forbiddenProse {
+			if strings.Contains(content, marker) {
+				t.Errorf("strategist/ prose violation: %s contains Portuguese prose marker %q", path, marker)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk strategist/: %v", err)
+	}
+}
+
+// TestStrategistNoLegacyExecutionTerminology scans strategist/ for forbidden legacy terms
+// that were replaced by documentation-materialization semantics.
+func TestStrategistNoLegacyExecutionTerminology(t *testing.T) {
+	t.Parallel()
+	root := repoRoot(t)
+	strategistDir := filepath.Join(root, "strategist")
+
+	// Forbidden legacy terms. See design doc: 2026-06-25-strategist-english-canonical-i18n-design.md.
+	forbidden := []string{
+		"plan_only",
+		"apply_workspace",
+		"execution_mode",
+		"git_persistence_mode",
+		"CanExecute",
+		"Commit?",
+		"Implement?",
+		"Authorize Sniper?",
+	}
+
+	err := filepath.WalkDir(strategistDir, func(path string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		ext := filepath.Ext(path)
+		if ext != ".md" && ext != ".yaml" {
+			return nil
+		}
+		data, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return readErr
+		}
+		content := string(data)
+		for _, term := range forbidden {
+			if strings.Contains(content, term) {
+				t.Errorf("legacy terminology violation: %s contains forbidden term %q", path, term)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk strategist/: %v", err)
+	}
+}
+
+// TestPersonaFilesHaveNoPtBRContentBlocks verifies that persona YAML files
+// contain no pt-BR localized content_by_lang blocks. Localized strings live
+// in internal/i18n/strategist_messages.go.
+func TestPersonaFilesHaveNoPtBRContentBlocks(t *testing.T) {
+	t.Parallel()
+	root := repoRoot(t)
+
+	personaPaths := []string{
+		filepath.Join(root, "strategist", "personas", "epic.yaml"),
+		filepath.Join(root, "strategist", "personas", "pragmatic.yaml"),
+		filepath.Join(root, "internal", "embed", "defaults", "personas", "epic.yaml"),
+		filepath.Join(root, "internal", "embed", "defaults", "personas", "pragmatic.yaml"),
+	}
+
+	forbidden := []string{
+		"phase_announcements:\n  pt-BR:",
+		"content_by_lang:\n  pt-BR:",
+		"  pt-BR:\n    intake_summary",
+		"  pt-BR:\n    ranger_start",
+	}
+
+	for _, path := range personaPaths {
+		content := readFile(t, path)
+		for _, marker := range forbidden {
+			if strings.Contains(content, marker) {
+				t.Errorf("%s must not contain pt-BR localized content block: found %q", path, marker)
+			}
+		}
+		// Must have English canonical content
+		if !strings.Contains(content, "content_by_lang:\n  en:") {
+			t.Errorf("%s must contain content_by_lang.en canonical block", path)
+		}
+	}
+}
+
+// TestPersonasUsereviewGateSemantics verifies personas use review_gate_prompt
+// rather than the legacy approval_prompt key.
+func TestPersonasUseReviewGateSemantics(t *testing.T) {
+	t.Parallel()
+	root := repoRoot(t)
+
+	paths := []string{
+		filepath.Join(root, "strategist", "personas", "epic.yaml"),
+		filepath.Join(root, "strategist", "personas", "pragmatic.yaml"),
+		filepath.Join(root, "internal", "embed", "defaults", "personas", "epic.yaml"),
+		filepath.Join(root, "internal", "embed", "defaults", "personas", "pragmatic.yaml"),
+	}
+
+	for _, path := range paths {
+		content := readFile(t, path)
+		if strings.Contains(content, "approval_prompt:") {
+			t.Errorf("%s must not contain legacy key 'approval_prompt:' — use 'review_gate_prompt:' instead", path)
 		}
 	}
 }

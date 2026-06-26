@@ -4,7 +4,7 @@
 
 **Skip this entire section if `active.adr_enabled` is `false`.** Proceed directly to §9.
 
-After Sniper completes (`status=completed`) OR at approval gate decline (`status=plan_only`):
+After Sniper completes (`status=documentation_applied`) OR after approval gate (`status=analysis_delivered`, `revision_requested`, or `rejected`):
 
 **Activation criteria — evaluate if the mission contains architectural decisions:**
 
@@ -40,7 +40,7 @@ Emit via `persona.content_by_lang[active.language.chat].adr_opportunity` with `{
 
   **Gate 2 — Approve content?** STOP. Wait for response:
   - **yes**: Sniper commits the ADR. `mission_result.adr = <path>`. Continue to §9.
-  - **no**: ADR discarded (file removed). `mission_result.status = completed` (no ADR). Continue to §9.
+  - **no**: ADR discarded (file removed). `mission_result.status = documentation_applied` (no ADR). Continue to §9.
   - **edit**: User wants to adjust the content. Accept inline edits and re-present the draft. Re-open gate 2.
 
 No gate after Sniper — content approval happens BEFORE the commit, not after.

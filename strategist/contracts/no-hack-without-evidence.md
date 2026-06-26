@@ -2,30 +2,30 @@
 id: no-hack-without-evidence
 severity: high
 
-Hacks são proibidos por padrão. Qualquer exceção exige os 5 itens obrigatórios:
+Hacks are forbidden by default. Any exception requires all 5 mandatory items:
 
-1. **diagnosis** — o que foi investigado antes de escolher o hack
-2. **evidence** — por que a abordagem correta não funciona neste caso
-3. **explicit trade-off** — o que se perde com o hack
-4. **temporary marker** — `// HACK: <reason>` com issue ou task associada no mesmo comentário
-5. **follow-up task** — issue registrada para resolver a causa raiz
+1. **diagnosis** — what was investigated before choosing the hack
+2. **evidence** — why the correct approach does not work in this case
+3. **explicit trade-off** — what is lost by using the hack
+4. **temporary marker** — `// HACK: <reason>` with issue or task referenced in the same comment
+5. **follow-up task** — issue registered to resolve the root cause
 
-> Hack pode existir como exceção. Nunca invisível.
+> A hack may exist as an exception. Never invisible.
 
-## Comportamentos proibidos sem evidência
+## Behaviors Forbidden Without Evidence
 
-- Suprimir erros sem diagnose
-- Enfraquecer testes para fazer o código passar
-- `recover()` ou error handling silencioso genérico
-- `_ = err` sem comentário explicando por que o erro é seguro de ignorar
-- Alterar contratos públicos sem escalação
-- Adicionar abstrações sem evidência de necessidade
-- Bypassar camadas arquiteturais
-- Desabilitar linters, testes ou checks
-- Introduzir estado global mutável
-- Adicionar dependências sem aprovação
+- Suppressing errors without diagnosis
+- Weakening tests to make code pass
+- `recover()` or generic silent error handling
+- `_ = err` without a comment explaining why the error is safe to ignore
+- Altering public contracts without escalation
+- Adding abstractions without evidence of need
+- Bypassing architectural layers
+- Disabling linters, tests, or checks
+- Introducing mutable global state
+- Adding dependencies without approval
 
 ## Enforcement
 
-Este mandate é verificado pelo Archivist durante refinamento e pelo response-critic
-após execução. Violações detectadas são reportadas como bloqueadores no learning loop.
+This mandate is validated by Archivist during refinement and by response-critic
+after materialization. Detected violations are reported as blockers in the learning loop.

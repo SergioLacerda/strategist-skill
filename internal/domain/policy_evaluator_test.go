@@ -12,7 +12,7 @@ func TestGuardedTransitionRequiresGate(t *testing.T) {
 
 	decision := domain.EvaluateGuardedTransition(
 		domain.DefaultMissionPolicy(),
-		domain.TransitionGroupExecution,
+		domain.TransitionGroupDocumentation,
 		false, // gate not approved
 	)
 
@@ -20,12 +20,25 @@ func TestGuardedTransitionRequiresGate(t *testing.T) {
 	assert.Equal(t, "approval_required", decision.Reason)
 }
 
-func TestExecutionAllowedAfterGateApproval(t *testing.T) {
+func TestDocumentationAllowedAfterReviewAcceptance(t *testing.T) {
 	t.Parallel()
 
 	decision := domain.EvaluateGuardedTransition(
 		domain.DefaultMissionPolicy(),
-		domain.TransitionGroupExecution,
+		domain.TransitionGroupDocumentation,
+		true,
+	)
+
+	assert.True(t, decision.Allowed)
+	assert.Equal(t, "allowed", decision.Reason)
+}
+
+func TestReviewGateAllowedAfterAcceptance(t *testing.T) {
+	t.Parallel()
+
+	decision := domain.EvaluateGuardedTransition(
+		domain.DefaultMissionPolicy(),
+		domain.TransitionGroupReviewGate,
 		true,
 	)
 
@@ -59,19 +72,18 @@ func TestFinalizeAnalysisRequiresGate(t *testing.T) {
 	assert.Equal(t, "approval_required", decision.Reason)
 }
 
-func TestNormalizePolicySetsCanExecuteTrue(t *testing.T) {
+func TestNormalizePolicyIsNoOp(t *testing.T) {
 	t.Parallel()
 
-	// Even a zero-value MissionPolicy (CanExecute=false) is normalized to true.
 	p := domain.NormalizePolicy(domain.MissionPolicy{})
-	assert.True(t, p.CanExecute)
+	assert.Equal(t, domain.MissionPolicy{}, p)
 }
 
-func TestDefaultMissionPolicyCanExecute(t *testing.T) {
+func TestDefaultMissionPolicyIsEmpty(t *testing.T) {
 	t.Parallel()
 
 	p := domain.DefaultMissionPolicy()
-	assert.True(t, p.CanExecute)
+	assert.Equal(t, domain.MissionPolicy{}, p)
 }
 
 func TestUnknownTransitionGroupBlocked(t *testing.T) {
@@ -87,13 +99,13 @@ func TestUnknownTransitionGroupBlocked(t *testing.T) {
 	assert.Equal(t, "unknown_transition_group", decision.Reason)
 }
 
-func TestIncidentUXStratetist(t *testing.T) {
+func TestDocumentationRequiresReviewGateAcceptance(t *testing.T) {
 	t.Parallel()
 
-	// Regression: no explicit approval must never allow execution-like transition.
+	// Regression: no explicit review acceptance must never allow documentation materialization.
 	decision := domain.EvaluateGuardedTransition(
 		domain.DefaultMissionPolicy(),
-		domain.TransitionGroupExecution,
+		domain.TransitionGroupDocumentation,
 		false,
 	)
 

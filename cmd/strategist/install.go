@@ -116,6 +116,14 @@ func runInstall(cmd *cobra.Command, _ []string) (retErr error) {
 		Extractor:   embedpkg.Extractor{},
 		Compiler:    compile.Compiler{},
 		ShimHomeDir: shimHome,
+		AwarenessRefresher: func(strategistRoot, projectRoot, version string) bool {
+			tplBytes, err := embedpkg.Extractor{}.ReadFile("templates/agent-protocol.md")
+			if err != nil {
+				tplBytes = nil
+			}
+			return compile.RefreshAgentAwareness(strategistRoot, projectRoot, version, tplBytes)
+		},
+		Version: Version,
 	}
 
 	if err := svc.Install(ctx, cfg); err != nil {

@@ -26,8 +26,14 @@ statuses:
   blocked:
     description: Phase cannot continue.
     required_fields: [phase, status, reason, action]
-  plan_only:
-    description: Mission stopped at approval gate; execution was declined.
+  analysis_delivered:
+    description: Approval gate accepted analysis without documentation materialization.
+    required_fields: [phase, status]
+  revision_requested:
+    description: User identified a missing item; Archivist must revisit.
+    required_fields: [phase, status]
+  rejected:
+    description: User rejected analysis as not matching the request.
     required_fields: [phase, status]
 
 event_examples:
