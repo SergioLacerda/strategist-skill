@@ -15,8 +15,8 @@ func TestStrategistRaidSkillArtifactsPresent(t *testing.T) {
 	root := repoRoot(t)
 	paths := []string{
 		filepath.Join(root, "strategist", "contracts", "strategist-raid.yaml"),
-		filepath.Join(root, "strategist", "skills", "strategist-raid", "skill.yaml"),
-		filepath.Join(root, "strategist", "skills", "strategist-raid", "SKILL.md"),
+		filepath.Join(root, "strategist", "internal_skills", "strategist-raid", "skill.yaml"),
+		filepath.Join(root, "strategist", "internal_skills", "strategist-raid", "SKILL.md"),
 		filepath.Join(root, "internal", "embed", "defaults", "internal_skills", "strategist-raid", "skill.yaml"),
 		filepath.Join(root, "internal", "embed", "defaults", "internal_skills", "strategist-raid", "SKILL.md"),
 	}

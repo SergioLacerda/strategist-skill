@@ -14,7 +14,7 @@ Strategist stops immediately on:
 - `refinement_failed`
 - `pipeline_bypass_detected`
 
-`user_denies_execution` is a valid `plan_only` outcome, not an error.
+`user_requests_revision` is a valid `revision_requested` outcome, not an error. `user_rejects_analysis` is a valid `rejected` outcome, not an error.
 
 ## Forbidden Behaviors
 
@@ -60,7 +60,7 @@ Transient discovery/refinement failures may be retried once. Transient execution
 ## Slot Provider Governance Compliance
 
 If a slot provider ignores `governance_injection.execution_gate = blocked`:
-- The provider has no write authorization in the repository. Strategist's FSM prevents reaching execution state (code-enforced via `nextFromApprovalGate` checking `CanExecute`).
+- The provider has no write authorization in the repository. Strategist's FSM prevents reaching documentation state (code-enforced via `nextFromApprovalGate` requiring approval gate acceptance).
 - Any direct mutation attempt by a non-compliant provider triggers `pipeline_bypass_detected`.
 - Strategist reports `slot_risk_mismatch` for a provider that violates its declared contract.
 - The provider is considered non-compliant; future missions will be blocked at preflight until the provider is replaced or corrected.

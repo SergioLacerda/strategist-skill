@@ -60,7 +60,7 @@ by re-emitting with the announcement prefix.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `status_label` | string | e.g., `"MISSÃO CONCLUÍDA"` / `"MISSION COMPLETE"` |
+| `status_label` | string | e.g., `"MISSION COMPLETE"` (localized via i18n bundle) |
 | `phase_timeline` | string | Lines built from `phase_timeline_entry` template, one per executed phase |
 | `artifact_block` | string | Lines built from `artifact_entry` template, one per produced artifact |
 | `conclusion_text` | string | Final sentence with `{mission_id}` and `{next_action}` |
@@ -80,39 +80,39 @@ Emit in this order:
 
 ## Output Examples
 
-**✅ CONFORME:**
+**✅ COMPLIANT:**
 ```
-⚖️ **Compliance [20260620-cicd-landing]:** pipeline_compliant=yes | fases=5
+⚖️ **Compliance [20260620-cicd-landing]:** pipeline_compliant=yes | phases=5
 
 ╔══════════════════════════════════════════════════════════╗
-║  STRATEGIST SKILL · MISSÃO CONCLUÍDA                   ║
+║  STRATEGIST SKILL · MISSION COMPLETE                     ║
 ╠══════════════════════════════════════════════════════════╣
-  ✅ Ranger      → reconhecimento concluído
-  ✅ Arquivista  → análise refinada
-  ✅ Gate        → aprovação concedida
-  ✅ Sniper      → implementação concluída
+  ✅ Ranger      → reconnaissance complete
+  ✅ Archivist   → analysis refined
+  ✅ Gate        → review accepted
+  ✅ Sniper      → documentation materialization complete
 ╠══════════════════════════════════════════════════════════╣
-  📁 discovery:  .analysis/refined/ID/analysis.md
-  📁 refined:    .analysis/refined/ID/
-  📁 report:     .analysis/archived/ID-report.md
+  📁 discovery:  <base_path>/refined/ID/analysis.md
+  📁 refined:    <base_path>/refined/ID/
+  📁 report:     <base_path>/archived/ID-report.md
 ╚══════════════════════════════════════════════════════════╝
-🎯 Missão ID concluída. Próxima ação: push para main.
+🎯 Mission ID complete. Next action: push to main.
 ```
 
-**❌ VIOLAÇÃO (forbidden_behavior #9):**
+**❌ VIOLATION (forbidden_behavior #9):**
 ```
-[Strategist] phase=sniper status=done          ← raw event sem phase_announcements wrapper
+[Strategist] phase=sniper status=done          ← raw event without phase_announcements wrapper
 
-[Strategist] response_complete                 ← padrão ad-hoc não existe
+[Strategist] response_complete                 ← ad-hoc format does not exist
   pipeline_compliant: yes
   phases_run: preflight, intake, ...
 
-mission_id: ID                                 ← campos YAML soltos fora do envelope
+mission_id: ID                                 ← loose YAML fields outside the envelope
 status: completed
 ```
 
-**✅ CONFORME (epic raw event com wrapper):**
+**✅ COMPLIANT (epic raw event with wrapper):**
 ```
-🗡️ **Sniper:** Alvo confirmado. Silêncio — executando.
-[Strategist] phase=execution status=starting
+🗡️ **Sniper:** Target confirmed. Silence — materializing documentation.
+[Strategist] phase=materialization status=starting
 ```

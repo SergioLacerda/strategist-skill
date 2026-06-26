@@ -21,7 +21,11 @@ const PIPELINE_PT = ` <span class="node">[ WIZARD ]</span> ───────
                                                  │
                                                  <span class='g1'>▼</span>
                                             <span class="node">[ SNIPER ]</span>
-                                             execução
+                                         documentation mission
+                                                 │
+                                                 <span class='g1'>▼</span>
+                                       <span class="node">[ EXTERNAL EXECUTOR ]</span>
+                                        implementation lives here
  <span class="lp">└╌╌╌╌╌╌╌ learning loop · feedback não-bloqueante ╌╌╌╌╌╌╌╌┘</span>`;
 ---
 <!DOCTYPE html>
@@ -30,11 +34,11 @@ const PIPELINE_PT = ` <span class="node">[ WIZARD ]</span> ───────
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Strategist · Governed AI Mission Orchestrator</title>
-  <meta name="description" content="Strategist is an AI orchestration skill that turns requests into governed missions: discovery, refinement, a mandatory human approval gate, and controlled execution through pluggable roles." />
+  <meta name="description" content="Strategist is an AI orchestration skill that turns requests into governed missions: discovery, refinement, Approval Gate, documentation materialization, and executor-ready handoff." />
   <meta name="theme-color" content="#14100a" />
   <meta property="og:type" content="website" />
   <meta property="og:title" content="Strategist · Governed AI Mission Orchestrator" />
-  <meta property="og:description" content="Orchestrate AI agents through discovery, refinement, approval gates and controlled execution — reducing improvisation, drift and risk in AI workflows." />
+  <meta property="og:description" content="Orchestrate AI agents through discovery, refinement, Approval Gate, and documentation materialization — governed analysis, approved artifacts, executor-ready handoff." />
   <meta property="og:url" content="https://sergiolacerda.github.io/strategist-skill/" />
   <meta name="twitter:card" content="summary_large_image" />
 </head>
@@ -75,9 +79,9 @@ const PIPELINE_PT = ` <span class="node">[ WIZARD ]</span> ───────
             data-en="Your experience with your demands will never be the same."
           >A experiência com suas demandas nunca será a mesma.</div>
           <p class="lede"
-            data-pt="Transforme demandas ambíguas em <b>missões governadas</b> para agentes IA. O Strategist orquestra discovery, refinamento, approval gate e execução controlada através de papéis plugáveis — reduzindo improviso, drift e risco em workflows com IA."
-            data-en="Turn ambiguous demands into <b>governed missions</b> for AI agents. Strategist orchestrates discovery, refinement, approval gate and controlled execution through pluggable roles — reducing improvisation, drift and risk in AI workflows."
-          >Transforme demandas ambíguas em <b>missões governadas</b> para agentes IA. O Strategist orquestra discovery, refinamento, approval gate e execução controlada através de papéis plugáveis — reduzindo improviso, drift e risco em workflows com IA.</p>
+            data-pt="Transforme demandas ambíguas em <b>missões governadas</b> para agentes IA. O Strategist orquestra discovery, refinamento e Approval Gate, produzindo artefatos documentais aprovados e handoffs prontos para executor — sem alterar código-fonte."
+            data-en="Turn ambiguous demands into <b>governed missions</b> for AI agents. Strategist orchestrates discovery, refinement, and Approval Gate, producing approved documentation artifacts and executor-ready handoffs — without mutating source code."
+          >Transforme demandas ambíguas em <b>missões governadas</b> para agentes IA. O Strategist orquestra discovery, refinamento e Approval Gate, produzindo artefatos documentais aprovados e handoffs prontos para executor — sem alterar código-fonte.</p>
           <div class="badges">
             <span class="pill"><span>◆</span><span data-pt="Workflow de IA Governado" data-en="Governed AI Workflow">Workflow de IA Governado</span></span>
             <span class="pill"><span>◆</span><span data-pt="Gate de Aprovação Humana" data-en="Human Approval Gate">Gate de Aprovação Humana</span></span>
@@ -107,13 +111,13 @@ const PIPELINE_PT = ` <span class="node">[ WIZARD ]</span> ───────
           </button>
           <button class="tile" data-tab="mission">
             <div class="tg">⛨</div>
-            <div class="tl" data-pt="Integração com modelos de governança" data-en="Integration with governance models">Integração com modelos de governança</div>
-            <div class="ts" data-pt="Approval gate e políticas dentro do fluxo." data-en="Approval gate and policies inside the flow.">Approval gate e políticas dentro do fluxo.</div>
+            <div class="tl" data-pt="Approval Gate dentro do fluxo" data-en="Approval Gate inside the flow">Approval Gate dentro do fluxo</div>
+            <div class="ts" data-pt="Nenhuma materialização sem aprovação humana." data-en="No materialization without human approval.">Nenhuma materialização sem aprovação humana.</div>
           </button>
           <button class="tile" data-tab="mission">
             <div class="tg">❒</div>
-            <div class="tl" data-pt="Documentação gerada conforme seus padrões" data-en="Documentation generated to your standards">Documentação gerada conforme seus padrões</div>
-            <div class="ts" data-pt="Determine o padrão e o agente cumpre." data-en="Define the standard and the agent follows it.">Determine o padrão e o agente cumpre.</div>
+            <div class="tl" data-pt="Sem mutação de código-fonte" data-en="No source-code mutation">Sem mutação de código-fonte</div>
+            <div class="ts" data-pt="Artefatos documentais + handoff pronto para executor." data-en="Documentation artifacts + executor-ready handoff.">Artefatos documentais + handoff pronto para executor.</div>
           </button>
         </div>
       </section>
@@ -133,10 +137,10 @@ const PIPELINE_PT = ` <span class="node">[ WIZARD ]</span> ───────
             <span data-pt="Levanta requisitos, mapeia o contexto e devolve um relatório de discovery." data-en="Gathers requirements, maps context and returns a discovery report.">Levanta requisitos, mapeia o contexto e devolve um relatório de discovery.</span>
           </RoleCard>
           <RoleCard glyph="✎" role="Archivist" klass="Arquivista · Refinamento">
-            <span data-pt="Aprofunda o relatório do Ranger em especificação acionável e análise detalhada." data-en="Deepens the Ranger's report into actionable specification and detailed analysis.">Aprofunda o relatório do Ranger em especificação acionável e análise detalhada.</span>
+            <span data-pt="Refina o relatório do Ranger em pacote documental e requisitos prontos para executor." data-en="Refines Ranger's report into a documentation package and executor-ready requirements.">Refina o relatório do Ranger em pacote documental e requisitos prontos para executor.</span>
           </RoleCard>
-          <RoleCard glyph="⌖" role="Sniper" klass="Executor · Implementação">
-            <span data-pt="Somente após aprovação humana explícita, executa a implementação refinada quando o escopo inclui entrega." data-en="Only after explicit human approval, executes the refined implementation when scope includes delivery.">Somente após aprovação humana explícita, executa a implementação refinada quando o escopo inclui entrega.</span>
+          <RoleCard glyph="⌖" role="Sniper" klass="Executor Documental · Materialização">
+            <span data-pt="Executa a missão documental aprovada: materializa artefatos, arquiva a análise e prepara o executor handoff. Não implementa código-fonte." data-en="Executes the approved documentation mission: materializes artifacts, archives analysis, and prepares the executor handoff. It does not implement source code.">Executa a missão documental aprovada: materializa artefatos, arquiva a análise e prepara o executor handoff. Não implementa código-fonte.</span>
           </RoleCard>
           <RoleCard glyph="✶" role="Wizard" klass="Invocador · Instalador">
             <span data-pt="Conjura o grupo no repositório-alvo. Obtém o binário via go install ou GitHub Releases, depois configura com --wizard." data-en="Conjures the party into the target repository. Gets the binary via go install or GitHub Releases, then configures with --wizard.">Conjura o grupo no repositório-alvo. Obtém o binário via <i>go install</i> ou GitHub Releases, depois configura com <i>--wizard</i>.</span>
@@ -158,7 +162,7 @@ const PIPELINE_PT = ` <span class="node">[ WIZARD ]</span> ───────
           <div class="mblock">
             <div class="mg">⚔</div>
             <div class="mh" data-pt="Armas" data-en="Weapons">Armas</div>
-            <p class="mp" data-pt="As <b>armas</b> são os providers concretos configurados em cada <i>slot</i>. O papel é o guerreiro; a arma é a skill que ele empunha para executar discovery, refinement ou execution." data-en="<b>Weapons</b> are the concrete providers configured in each <i>slot</i>. The role is the warrior; the weapon is the skill it wields to execute discovery, refinement or execution.">As <b>armas</b> são os providers concretos configurados em cada <i>slot</i>. O papel é o guerreiro; a arma é a skill que ele empunha para executar discovery, refinement ou execution.</p>
+            <p class="mp" data-pt="As <b>armas</b> são os providers concretos configurados em cada <i>slot</i>. O papel é o especialista; a arma é a skill que ele empunha para produzir o artefato de fase." data-en="<b>Weapons</b> are the concrete providers configured in each <i>slot</i>. The role is the specialist; the provider is the skill assigned to produce that phase artifact.">As <b>armas</b> são os providers concretos configurados em cada <i>slot</i>. O papel é o especialista; a arma é a skill que ele empunha para produzir o artefato de fase.</p>
           </div>
         </div>
 
@@ -216,10 +220,10 @@ const PIPELINE_PT = ` <span class="node">[ WIZARD ]</span> ───────
         </div>
         <div class="grid3">
           <SkillPanel icon="⚔" title="Ataque de oportunidade">
-            <span data-pt="Podemos encontrar problemas não previstos." data-en="During actions we may encounter unforeseen problems or <i>treasure chests</i>.">Podemos encontrar problemas não previstos.</span>
+            <span data-pt="Superficia escopo adjacente antes da materialização." data-en="Surfaces adjacent scope before materialization.">Superficia escopo adjacente antes da materialização.</span>
           </SkillPanel>
           <SkillPanel icon="⚑" title="Missão opcional">
-            <span data-pt="Missões pequenas — Qualquer demanda encontrada não relacionada a missao principal" data-en="Small missions — Any demand found unrelated to the main mission.">Missões pequenas — Qualquer demanda encontrada não relacionada a missao principal</span>
+            <span data-pt="Escopo documental opcional descoberto fora da missão principal." data-en="Optional documentation scope discovered outside the main mission.">Escopo documental opcional descoberto fora da missão principal.</span>
           </SkillPanel>
           <SkillPanel icon="❖" title="Baú de tesouro">
             <span data-pt="Em cada estágio podemos encontrar fontes de documentação para enriquecer a análise." data-en="At each stage we may find documentation sources to enrich the analysis.">Em cada estágio podemos encontrar fontes de documentação para enriquecer a análise.</span>
@@ -231,7 +235,7 @@ const PIPELINE_PT = ` <span class="node">[ WIZARD ]</span> ───────
             <span data-pt="Avalie seu time antes de começar suas missões." data-en="Assess your team before starting your missions.">Avalie seu time antes de começar suas missões.</span>
           </SkillPanel>
           <SkillPanel icon="✦" title="Acerto crítico">
-            <span data-pt="Execução simplificada para tarefas simples." data-en="Simplified execution for simple tasks.">Execução simplificada para tarefas simples.</span>
+            <span data-pt="Caminho rápido para missões documentais simples." data-en="Fast path for simple documentation missions.">Caminho rápido para missões documentais simples.</span>
           </SkillPanel>
           <div style="grid-column: 2">
             <SkillPanel icon="⛩" title="Dojo">
@@ -280,10 +284,19 @@ const PIPELINE_PT = ` <span class="node">[ WIZARD ]</span> ───────
             <div class="pico">⌖</div>
             <div>
               <div class="pnum" data-pt="fase 04" data-en="phase 04">fase 04</div>
-              <div class="pname" data-pt="Execução" data-en="Execution">Execução</div>
-              <div class="pd" data-pt="Implementa o escopo refinado e aprovado." data-en="Implements the refined, approved scope.">Implementa o escopo refinado e aprovado.</div>
+              <div class="pname" data-pt="Materialização" data-en="Materialization">Materialização</div>
+              <div class="pd" data-pt="Materializa documentação aprovada e prepara o executor handoff." data-en="Materializes approved documentation and prepares the executor handoff.">Materializa documentação aprovada e prepara o executor handoff.</div>
             </div>
             <div class="pwho">Sniper</div>
+          </div>
+          <div class="phase">
+            <div class="pico">⚙</div>
+            <div>
+              <div class="pnum" data-pt="fase 05" data-en="phase 05">fase 05</div>
+              <div class="pname" data-pt="Executor Externo" data-en="External Executor">Executor Externo</div>
+              <div class="pd" data-pt="Consome o handoff e é dono da implementação." data-en="Consumes the handoff and owns implementation.">Consome o handoff e é dono da implementação.</div>
+            </div>
+            <div class="pwho" data-pt="SDD / CI / Humano" data-en="SDD / CI / Human">SDD / CI / Humano</div>
           </div>
         </div>
 
@@ -300,9 +313,18 @@ const PIPELINE_PT = ` <span class="node">[ WIZARD ]</span> ───────
           <span class="h" data-pt="portão de aprovação" data-en="approval gate">portão de aprovação</span>
           <span class="rule"></span>
         </div>
-        <GatePanel heading="<b>REQUER ::</b> confirmação humana · sem exceções">
-          <span data-pt="Discovery e refinamento ocorrem autonomamente. Com aprovação humana ao gate: finalizamos a missão de reconhecimento ou seguimos com a execução da implementação." data-en="Discovery and refinement run autonomously. With human approval at the gate, we either conclude the reconnaissance mission or proceed with implementation execution.">Discovery e refinamento ocorrem autonomamente. Com aprovação humana ao gate: finalizamos a missão de reconhecimento ou seguimos com a execução da implementação.</span>
+        <GatePanel heading="<b>REQUIRES ::</b> human acceptance · no source-code mutation">
+          <span data-pt="Discovery e refinamento rodam autonomamente. No Approval Gate, o usuário aceita a análise, adiciona itens faltantes ou rejeita o escopo. Só então Sniper pode materializar documentação ou preparar o executor handoff." data-en="Discovery and refinement run autonomously. At the Approval Gate, the user accepts the analysis, adds missing items, or rejects the scope. Only then can Sniper materialize documentation or prepare the executor handoff.">Discovery e refinamento rodam autonomamente. No Approval Gate, o usuário aceita a análise, adiciona itens faltantes ou rejeita o escopo. Só então Sniper pode materializar documentação ou preparar o executor handoff.</span>
         </GatePanel>
+
+        <div class="subhead" style="margin-top:32px;">
+          <span class="h" data-pt="artefatos da quest" data-en="quest artifacts">artefatos da quest</span>
+          <span class="rule"></span>
+        </div>
+        <p class="pdesc"
+          data-pt="Cada quest deixa artefatos: reconhecimento pendente, dossier refinado, documentação aprovada, relatório arquivado e executor handoff."
+          data-en="Every quest leaves artifacts: pending reconnaissance, refined dossier, approved documentation, archived report, and executor handoff."
+        >Cada quest deixa artefatos: reconhecimento pendente, dossier refinado, documentação aprovada, relatório arquivado e executor handoff.</p>
       </section>
 
       <!-- ── INVOKE ── -->

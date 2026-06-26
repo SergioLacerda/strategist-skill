@@ -8,39 +8,55 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestFSMAnalysisNeverExecutes(t *testing.T) {
+func TestFSMNominalRoute(t *testing.T) {
 	t.Parallel()
-	policy := domain.NewMissionPolicy(domain.ExecutionModePlanOnly, domain.GitPersistenceModeForbidden)
-	state := domain.StateInit
+	// Init → OpportunityAttack (non-empty) → OpportunityAttack (no opp, empty) → Refinement → ApprovalGate → Execution → DoneDelivery
+	policy := domain.DefaultMissionPolicy()
 	events := []domain.TransitionEvent{
-		domain.EventManifestNonEmpty,
-		domain.EventGateApproved,
-		domain.EventArchivistTasks,
-		domain.EventGateApproved,
-		domain.EventSniperDone,
+		domain.EventManifestNonEmpty, // Init → OpportunityAttack
+		domain.EventManifestEmpty,    // OpportunityAttack → Refinement (no opportunities)
+		domain.EventArchivistTasks,   // Refinement → ApprovalGate
+		domain.EventGateApproved,     // ApprovalGate → Execution
+		domain.EventSniperDone,       // Execution → DoneDelivery
 	}
+	state := domain.StateInit
 	for _, ev := range events {
 		state = domain.NextState(state, ev, policy)
-		assert.NotEqual(t, domain.StateExecution, state)
 	}
+	assert.Equal(t, domain.StateDoneDelivery, state)
 }
 
-func TestOpportunityGatePolicyLocked(t *testing.T) {
+func TestFSMGateDeniedTerminatesAnalysis(t *testing.T) {
 	t.Parallel()
-	for _, policy := range []domain.MissionPolicy{
-		domain.NewMissionPolicy(domain.ExecutionModePlanOnly, domain.GitPersistenceModeForbidden),
-	} {
-		state := domain.RunStateMachine(domain.StateOpportunityAttack,
-			[]domain.TransitionEvent{domain.EventManifestNonEmpty, domain.EventGateApproved},
-			policy,
-		)
-		assert.Equal(t, domain.StateRefinement, state)
-	}
+	policy := domain.DefaultMissionPolicy()
+	state := domain.RunStateMachine(domain.StateApprovalGate,
+		[]domain.TransitionEvent{domain.EventGateDenied},
+		policy,
+	)
+	assert.Equal(t, domain.StateDoneAnalysis, state)
+}
+
+func TestOpportunityGateApproved_GoesToExec(t *testing.T) {
+	t.Parallel()
+	state := domain.RunStateMachine(domain.StateOpportunityAttack,
+		[]domain.TransitionEvent{domain.EventManifestNonEmpty, domain.EventGateApproved},
+		domain.DefaultMissionPolicy(),
+	)
+	assert.Equal(t, domain.StateOpportunityExec, state)
+}
+
+func TestOpportunityGateDenied_GoesToRefinement(t *testing.T) {
+	t.Parallel()
+	state := domain.RunStateMachine(domain.StateOpportunityGate,
+		[]domain.TransitionEvent{domain.EventGateDenied},
+		domain.DefaultMissionPolicy(),
+	)
+	assert.Equal(t, domain.StateRefinement, state)
 }
 
 func TestFSMQuickDrawRoute(t *testing.T) {
 	t.Parallel()
-	policy := domain.NewMissionPolicy(domain.ExecutionModeApplyWorkspace, domain.GitPersistenceModeForbidden)
+	policy := domain.DefaultMissionPolicy()
 
 	// Intent detected → QuickDraw state
 	s := domain.NextState(domain.StateInit, domain.EventQuickDrawIntent, policy)
@@ -61,17 +77,16 @@ func TestFSMQuickDrawRoute(t *testing.T) {
 
 func TestFSMQuickDrawDecline(t *testing.T) {
 	t.Parallel()
-	policy := domain.NewMissionPolicy(domain.ExecutionModeApplyWorkspace, domain.GitPersistenceModeForbidden)
 	s := domain.RunStateMachine(domain.StateQuickDrawGate,
 		[]domain.TransitionEvent{domain.EventQuickDrawDecline},
-		policy,
+		domain.DefaultMissionPolicy(),
 	)
 	assert.Equal(t, domain.StateQuickDrawDone, s)
 }
 
 func TestFSMADRRoute(t *testing.T) {
 	t.Parallel()
-	policy := domain.NewMissionPolicy(domain.ExecutionModeApplyWorkspace, domain.GitPersistenceModeForbidden)
+	policy := domain.DefaultMissionPolicy()
 
 	for _, start := range []domain.MissionState{domain.StateDoneAnalysis, domain.StateDoneDelivery} {
 		s := domain.NextState(start, domain.EventADRCriterionMet, policy)
@@ -87,17 +102,16 @@ func TestFSMADRRoute(t *testing.T) {
 
 func TestFSMADRDeclineAtGate1(t *testing.T) {
 	t.Parallel()
-	policy := domain.NewMissionPolicy(domain.ExecutionModeApplyWorkspace, domain.GitPersistenceModeForbidden)
 	s := domain.RunStateMachine(domain.StateADRGate1,
 		[]domain.TransitionEvent{domain.EventADRDeclined},
-		policy,
+		domain.DefaultMissionPolicy(),
 	)
 	assert.Equal(t, domain.StateADRDone, s)
 }
 
 func TestFSMRetryTransient(t *testing.T) {
 	t.Parallel()
-	policy := domain.NewMissionPolicy(domain.ExecutionModeApplyWorkspace, domain.GitPersistenceModeForbidden)
+	policy := domain.DefaultMissionPolicy()
 
 	// Transient failure in refinement → retrying
 	s := domain.NextState(domain.StateRefinement, domain.EventSlotTransient, policy)
@@ -110,7 +124,7 @@ func TestFSMRetryTransient(t *testing.T) {
 
 func TestFSMRetryExhausted(t *testing.T) {
 	t.Parallel()
-	policy := domain.NewMissionPolicy(domain.ExecutionModeApplyWorkspace, domain.GitPersistenceModeForbidden)
+	policy := domain.DefaultMissionPolicy()
 
 	s := domain.NextState(domain.StateRetrying, domain.EventSlotTransient, policy)
 	assert.Equal(t, domain.StateBlocked, s)
@@ -121,7 +135,7 @@ func TestFSMRetryExhausted(t *testing.T) {
 
 func TestFSMSniperOARoute(t *testing.T) {
 	t.Parallel()
-	policy := domain.NewMissionPolicy(domain.ExecutionModeApplyWorkspace, domain.GitPersistenceModeForbidden)
+	policy := domain.DefaultMissionPolicy()
 
 	// Mid-execution OA surfaces → pause at opportunity gate
 	s := domain.NextState(domain.StateExecution, domain.EventSniperOA, policy)
@@ -142,10 +156,7 @@ func TestFSMSafetyPropertyLike(t *testing.T) {
 	}
 
 	for i := 0; i < 400; i++ {
-		policy := domain.NewMissionPolicy(domain.ExecutionModeApplyWorkspace, domain.GitPersistenceModeForbidden)
-		if rng.Intn(3) == 0 {
-			policy = domain.NewMissionPolicy(domain.ExecutionModePlanOnly, domain.GitPersistenceModeForbidden)
-		}
+		policy := domain.DefaultMissionPolicy()
 		state := domain.StateInit
 		seenGateApproved := false
 		for j := 0; j < 14; j++ {
@@ -156,7 +167,6 @@ func TestFSMSafetyPropertyLike(t *testing.T) {
 			state = domain.NextState(state, ev, policy)
 			if state == domain.StateExecution {
 				assert.True(t, seenGateApproved)
-				assert.True(t, policy.CanExecute)
 			}
 		}
 	}
@@ -164,7 +174,7 @@ func TestFSMSafetyPropertyLike(t *testing.T) {
 
 func TestFSMCriticalHitRoute(t *testing.T) {
 	t.Parallel()
-	policy := domain.NewMissionPolicy(domain.ExecutionModeApplyWorkspace, domain.GitPersistenceModeExplicitCommit)
+	policy := domain.DefaultMissionPolicy()
 
 	s := domain.NextState(domain.StateInit, domain.EventDirectHitIntent, policy)
 	assert.Equal(t, domain.StateDirectGate, s)
@@ -181,22 +191,11 @@ func TestFSMCriticalHitRoute(t *testing.T) {
 
 func TestFSMCriticalHitDeclinedGoesToDoneAnalysis(t *testing.T) {
 	t.Parallel()
-	policy := domain.NewMissionPolicy(domain.ExecutionModeApplyWorkspace, domain.GitPersistenceModeExplicitCommit)
+	policy := domain.DefaultMissionPolicy()
 
 	s := domain.NextState(domain.StateInit, domain.EventDirectHitIntent, policy)
 	assert.Equal(t, domain.StateDirectGate, s)
 
 	s = domain.NextState(s, domain.EventDirectGateDeclined, policy)
-	assert.Equal(t, domain.StateDoneAnalysis, s)
-}
-
-func TestFSMCriticalHitNeverRunsInPlanOnly(t *testing.T) {
-	t.Parallel()
-	policy := domain.NewMissionPolicy(domain.ExecutionModePlanOnly, domain.GitPersistenceModeForbidden)
-
-	s := domain.NextState(domain.StateInit, domain.EventDirectHitIntent, policy)
-	assert.Equal(t, domain.StateDirectGate, s)
-
-	s = domain.NextState(s, domain.EventDirectGateApproved, policy)
 	assert.Equal(t, domain.StateDoneAnalysis, s)
 }

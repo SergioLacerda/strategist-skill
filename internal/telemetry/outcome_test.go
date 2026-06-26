@@ -11,7 +11,7 @@ func TestValidateOutcomeLine_Valid(t *testing.T) {
 	t.Parallel()
 	cases := []string{
 		`{"mission_id":"m-1","status":"completed","timestamp":"2026-06-02T12:00:00Z"}`,
-		`{"mission_id":"m-2","status":"plan_only","timestamp":"2026-06-02T13:00:00Z","gates":[{"type":"approval_gate","approved_at":"2026-06-02T13:01:00Z","response":"sim"}]}`,
+		`{"mission_id":"m-2","status":"analysis_delivered","timestamp":"2026-06-02T13:00:00Z","gates":[{"type":"approval_gate","approved_at":"2026-06-02T13:01:00Z","response":"sim"}]}`,
 	}
 	for _, line := range cases {
 		if err := ValidateOutcomeLine(line); err != nil {

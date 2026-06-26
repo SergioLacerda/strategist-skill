@@ -12,6 +12,9 @@
 # Use neutral providers in standalone templates; sdd providers via governance_injection.
 
 providers:
+  # native roles — built-in execution roles resolved via roles/<name>.yaml
+  sniper: controlled
+
   # neutral — governance-agnostic providers
   brainstorming: write_analysis
   openspec-explore: write_analysis
@@ -22,7 +25,7 @@ providers:
 
   # sdd — concrete SDD adapter providers
   sdd-ask: controlled
-  sdd-ask-full: controlled
+  batata: controlled
   sdd-diagnose: write_analysis
   sdd-converge: controlled
   sdd-correct: controlled

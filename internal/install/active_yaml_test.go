@@ -122,13 +122,10 @@ func TestWriteActiveYAML(t *testing.T) {
 			cfg: domain.WizardConfig{
 				Mode:               "pragmatic",
 				BasePath:           ".analysis",
-				ExecutionMode:      domain.ExecutionModePlanOnly,
-				GitPersistenceMode: domain.GitPersistenceModeForbidden,
 				UILanguage:         "en",
 				DocLanguage:        "en",
 				ChatLanguage:       "pt-BR",
 				CodeLanguage:       "en",
-				AdrEnabled:         true,
 				DiscoveryProvider:  "brainstorming",
 				RefinementProvider: "openspec-explore",
 				ExecutionProvider:  "sdd-ask",
@@ -142,55 +139,21 @@ func TestWriteActiveYAML(t *testing.T) {
 				"  docs: en",
 				"  chat: pt-BR",
 				"  code: en",
-				"adr_enabled: true",
-				"execution_mode: plan_only",
-				"git_persistence_mode: forbidden",
 				"discovery: brainstorming",
 				"refinement: openspec-explore",
 				"execution: sdd-ask",
 			},
-		},
-		{
-			name: "minimal mode ADR disabled english",
-			cfg: domain.WizardConfig{
-				Mode:               "epic",
-				BasePath:           ".",
-				ExecutionMode:      domain.ExecutionModeApplyWorkspace,
-				GitPersistenceMode: domain.GitPersistenceModeExplicitCommit,
-				UILanguage:         "en",
-				DocLanguage:        "en",
-				ChatLanguage:       "en",
-				CodeLanguage:       "en",
-				AdrEnabled:         false,
-				DiscoveryProvider:  "brainstorming",
-				RefinementProvider: "archivist",
-				ExecutionProvider:  "sdd-ask-full",
-			},
-			wantContain: []string{
-				"mode: epic",
-				"roles_config: roles/default.yaml",
-				"language:",
-				"  ui: en",
-				"adr_enabled: false",
-				"execution_mode: apply_workspace",
-				"git_persistence_mode: explicit_commit",
-				"refinement: archivist",
-				"execution: sdd-ask-full",
-			},
-			wantAbsent: []string{"language: en"},
+			wantAbsent: []string{"execution_mode", "git_persistence_mode", "adr_enabled"},
 		},
 		{
 			name: "with treasure chest path",
 			cfg: domain.WizardConfig{
 				Mode:               "pragmatic",
 				BasePath:           ".analysis",
-				ExecutionMode:      domain.ExecutionModePlanOnly,
-				GitPersistenceMode: domain.GitPersistenceModeForbidden,
 				UILanguage:         "en",
 				DocLanguage:        "en",
 				ChatLanguage:       "pt-BR",
 				CodeLanguage:       "en",
-				AdrEnabled:         true,
 				DiscoveryProvider:  "brainstorming",
 				RefinementProvider: "openspec-explore",
 				ExecutionProvider:  "sdd-ask",
@@ -221,4 +184,27 @@ func TestWriteActiveYAML(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestWriteActiveYAML_DoesNotEmitExecutionMode(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	cfg := domain.WizardConfig{
+		Mode:               "epic",
+		BasePath:           ".analysis",
+		UILanguage:         "en",
+		DocLanguage:        "en",
+		ChatLanguage:       "en",
+		CodeLanguage:       "en",
+		DiscoveryProvider:  "brainstorming",
+		RefinementProvider: "openspec-explore",
+		ExecutionProvider:  "sdd-ask",
+	}
+	require.NoError(t, writeActiveYAML(dir, cfg))
+	data, err := os.ReadFile(filepath.Join(dir, "active.yaml"))
+	require.NoError(t, err)
+	s := string(data)
+	assert.NotContains(t, s, "execution_mode")
+	assert.NotContains(t, s, "git_persistence_mode")
+	assert.NotContains(t, s, "adr_enabled")
 }

@@ -28,12 +28,22 @@ func init() {
 		ctx = telemetry.WithMissionRun(ctx, run)
 		run.MarkIntake()
 		run.AddLines(1)
-		slogLine := run.StartLine("local", ".strategist", ".strategist/active.yaml", "unknown", "local_default", "default")
+
+		cwd, err := os.Getwd()
+		if err != nil {
+			cwd = "."
+		}
+		strategistDir, _, _ := findStrategistRoot(cwd) //nolint:errcheck
+		if strategistDir == "" {
+			strategistDir = ".strategist"
+		}
+		profile := resolveRuntimeProfile(strategistDir)
+		slogLine := run.StartLine(profile.ProfileMode, profile.ProfilePath, profile.ActiveYAMLPath, profile.PersonaResolved, profile.Reason, profile.OutputProfile)
 		fmt.Println(slogLine)
 		slog.InfoContext(ctx, slogLine,
 			telemetry.AttrComponent, "root",
 			telemetry.AttrRuntimeMode, "cli",
-			telemetry.AttrOutputProfile, "default",
+			telemetry.AttrOutputProfile, profile.OutputProfile,
 			telemetry.AttrMissionID, run.MissionID,
 		)
 		cmd.SetContext(ctx)

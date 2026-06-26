@@ -3,7 +3,7 @@
 ## 3. Intake
 
 > **Persona template access:** `persona.content_by_lang[active.language.chat].<key>`.
-> Fallback: if `active.language.chat` is absent or has no matching block, use `pt-BR`.
+> Fallback: if `active.language.chat` is absent or has no matching block, use `en`.
 
 Invoke `prompt-intake` skill with the user's full prompt. Receive:
 - `task_type`: classification (e.g., `architecture_analysis`, `refactor`, `general`)

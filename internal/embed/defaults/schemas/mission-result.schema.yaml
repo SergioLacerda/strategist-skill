@@ -10,12 +10,14 @@ fields:
 
   status:
     type: enum
-    values: [completed, plan_only, blocked]
+    values: [analysis_delivered, documentation_applied, revision_requested, rejected, blocked]
     required: true
     description: >
-      completed  — Sniper ran and finished
-      plan_only  — Approval gate declined; plan artifacts present, no execution
-      blocked    — Pipeline stopped due to a blocker before completion
+      analysis_delivered      — refined analysis delivered; approval gate did not result in documentation
+      documentation_applied   — Sniper materialized all approved documentation targets
+      revision_requested      — user identified a missing item; Archivist must revisit
+      rejected                — user rejected analysis as not matching the request
+      blocked                 — pipeline stopped due to a blocker before completion
 
   artifacts:
     type: object
@@ -34,9 +36,9 @@ fields:
         type: path
         present_when: Archivist ran
         path_template: "<base_path>/refined/<mission_id>/"
-      execution_report:
+      documentation_report:
         type: path
-        present_when: Sniper ran
+        present_when: Sniper ran and documentation materialization completed
         path_template: "<base_path>/archived/<mission_id>-report.md"
       adr:
         type: path

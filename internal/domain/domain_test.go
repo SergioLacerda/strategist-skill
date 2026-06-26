@@ -50,12 +50,10 @@ func TestCompiledConfig_JSONTags(t *testing.T) {
 		CompiledAt: "123",
 		Sources:    map[string]int64{"/a": 100},
 		Active: domain.ActiveConfig{
-			Mode:               "full",
-			BasePath:           ".analysis",
-			RolesConfig:        "roles/default.yaml",
-			ExecutionMode:      domain.ExecutionModePlanOnly,
-			GitPersistenceMode: domain.GitPersistenceModeForbidden,
-			Slots:              map[string]string{"discovery": "brainstorming"},
+			Mode:        "full",
+			BasePath:    ".analysis",
+			RolesConfig: "roles/default.yaml",
+			Slots:       map[string]string{"discovery": "brainstorming"},
 		},
 		Personas: map[string]domain.PersonaConfig{
 			"epic": {
@@ -116,23 +114,17 @@ func TestWizardConfig_Fields(t *testing.T) {
 	wc := domain.WizardConfig{
 		Mode:               "pragmatic",
 		BasePath:           ".",
-		ExecutionMode:      domain.ExecutionModePlanOnly,
-		GitPersistenceMode: domain.GitPersistenceModeForbidden,
 		UILanguage:         "pt",
 		DocLanguage:        "pt",
 		ChatLanguage:       "pt",
 		CodeLanguage:       "pt",
-		AdrEnabled:         true,
 		DiscoveryProvider:  "brainstorming",
 		RefinementProvider: "openspec-explore",
 		ExecutionProvider:  "sdd-ask",
 	}
 	assert.Equal(t, "pragmatic", wc.Mode)
 	assert.Equal(t, ".", wc.BasePath)
-	assert.Equal(t, domain.ExecutionModePlanOnly, wc.ExecutionMode)
-	assert.Equal(t, domain.GitPersistenceModeForbidden, wc.GitPersistenceMode)
 	assert.Equal(t, "pt", wc.UILanguage)
-	assert.True(t, wc.AdrEnabled)
 	assert.Equal(t, "brainstorming", wc.DiscoveryProvider)
 	assert.Equal(t, "openspec-explore", wc.RefinementProvider)
 	assert.Equal(t, "sdd-ask", wc.ExecutionProvider)
