@@ -39,7 +39,7 @@ phase_announcements:
     discovery_done:                "🎯 **Ranger:** Field mission done. Handing the dossier to Archivist."
     refinement_starting:           "📚 **Archivist:** Dossier received. Starting systematic analysis."
     refinement_done:               "📚 **Archivist:** Refinement complete. The plan is ready for judgment."
-    review_gate_shown:             "🚦 **Gate:** The work is done. The decision is yours — does what we built merit documentation materialization?"
+    approval_gate_shown:             "🚦 **Gate:** The work is done. The decision is yours — does what we built merit documentation materialization?"
     documentation_starting:        "🗡️ **Sniper:** Target confirmed. Silence — materializing documentation."
     documentation_target_done:     "🗡️ **Sniper:** Target {done}/{total} done."
     documentation_done:            "🗡️ **Sniper:** Done. Report delivered."
@@ -121,7 +121,7 @@ content_by_lang:
         ✶ channeling mana  ████████████████████████████  100% ✓
       Report at: {artifact_path}
 
-    review_gate_prompt: |
+    approval_gate_prompt: |
       🚦 **Gate [{mission_id}]:** AWAITING CONFIRMATION
         ✶ channeling mana  ████████████████████████▓░░░  75% · awaiting review
 

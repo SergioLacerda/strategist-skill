@@ -51,8 +51,8 @@ func TestReservedTokensAreNotInENRuntime(t *testing.T) {
 // TestPTBRRuntimeHasPortugueseReviewGate verifies the PTBR bundle uses Portuguese gate prompt.
 func TestPTBRRuntimeHasPortugueseReviewGate(t *testing.T) {
 	t.Parallel()
-	assert.Contains(t, i18n.PTBRRuntime.ReviewGatePrompt, "sim / nao")
-	assert.NotContains(t, i18n.ENRuntime.ReviewGatePrompt, "sim / nao")
+	assert.Contains(t, i18n.PTBRRuntime.ApprovalGatePrompt, "sim / nao")
+	assert.NotContains(t, i18n.ENRuntime.ApprovalGatePrompt, "sim / nao")
 }
 
 // TestENRuntimeHasDocumentationMaterializationSemantics verifies the EN bundle uses
@@ -62,8 +62,8 @@ func TestENRuntimeHasDocumentationMaterializationSemantics(t *testing.T) {
 
 	forbidden := []string{"Authorize Sniper?", "Implement?", "implementation complete"}
 	for _, bad := range forbidden {
-		assert.NotContains(t, i18n.ENRuntime.ReviewGatePrompt, bad,
-			"ENRuntime.ReviewGatePrompt must not contain legacy execution term %q", bad)
+		assert.NotContains(t, i18n.ENRuntime.ApprovalGatePrompt, bad,
+			"ENRuntime.ApprovalGatePrompt must not contain legacy execution term %q", bad)
 		assert.NotContains(t, i18n.ENRuntime.SniperDone, bad,
 			"ENRuntime.SniperDone must not contain legacy execution term %q", bad)
 	}

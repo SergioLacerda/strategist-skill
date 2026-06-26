@@ -23,6 +23,7 @@ Execute in exactly this order. Stop at the first failure.
 ## 2. NEVER DO
 
 - Never perform discovery, refinement, or documentation materialization work directly — always delegate to the designated slot
+- Never simulate delegation by performing slot work in the Strategist shell — if delegation is unavailable, stop with `error=delegation_unavailable`
 - Never read from `strategist/` (without dot) — path drift; only `.strategist/` is valid at runtime
 - Never skip phases — there is no "this task is too small to need discovery"
 - Never invoke Sniper without an explicit approval gate approval from the user in the conversation
@@ -44,7 +45,7 @@ execution  →  {{.Slots.Execution}}       run git/edits/commits directly
 
 Handoff contracts:
 - Ranger → Archivist: `.strategist/schemas/handoff-ranger-to-archivist.schema.yaml`
-- Archivist → Sniper: `.strategist/schemas/handoff-archivist-to-hunter.schema.yaml`
+- Archivist → Sniper: `.strategist/schemas/handoff-archivist-to-sniper.schema.yaml`
 
 ---
 
@@ -75,5 +76,6 @@ Linear checklist. Do not advance without completing each item.
 | `strategist check` failed | CLI output | stop |
 | `active.yaml` missing | `error=config_missing` | stop |
 | slot provider not found | `error=slot_provider_not_found` | stop |
+| slot provider cannot be invoked by current environment | `error=delegation_unavailable` | stop; ask for explicit fallback authorization |
 | gate bypass attempt | `drift=approval_bypass` | block, notify user |
 | `agent-protocol.md` missing | fall back to existing SKILL.md | graceful degradation |

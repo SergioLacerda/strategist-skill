@@ -16,7 +16,7 @@ canonical:
       - "<base_path>/refined/<mission_id>/proposal.md"
       - "<base_path>/refined/<mission_id>/design.md"
       - "<base_path>/refined/<mission_id>/tasks.md"
-  - handoff_contract: "schemas/handoff-archivist-to-hunter.schema.yaml"
+  - handoff_contract: "schemas/handoff-archivist-to-sniper.schema.yaml"
 
 # Contract
 must:
