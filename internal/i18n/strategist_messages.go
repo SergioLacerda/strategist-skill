@@ -139,6 +139,43 @@ var ENRuntime = RuntimeMessages{ //nolint:dupl
 	ArtifactEntry:      "  📁 {key}: {path}",
 }
 
+// ToMap converts the RuntimeMessages struct to a map[string]any with snake_case keys
+// matching the content_by_lang.en conventions used in persona YAML files.
+func (m RuntimeMessages) ToMap() map[string]any {
+	return map[string]any{
+		"intake_summary":            m.IntakeSummary,
+		"intake_index_mode_none":    m.IntakeIndexModeNone,
+		"ranger_start":              m.RangerStart,
+		"ranger_done":               m.RangerDone,
+		"archivist_start":           m.ArchivistStart,
+		"archivist_done":            m.ArchivistDone,
+		"sniper_start":              m.SniperStart,
+		"sniper_task_done":          m.SniperTaskDone,
+		"sniper_done":               m.SniperDone,
+		"approval_gate_prompt":      m.ApprovalGatePrompt,
+		"opportunity_detected":      m.OpportunityDetected,
+		"opportunity_gate":          m.OpportunityGate,
+		"opportunity_signal":        m.OpportunitySignal,
+		"quick_draw_detected":       m.QuickDrawDetected,
+		"quick_draw_gate":           m.QuickDrawGate,
+		"quick_draw_success":        m.QuickDrawSuccess,
+		"treasure_chest_found":      m.TreasureChestFound,
+		"side_quest_detected":       m.SideQuestDetected,
+		"mission_checkpoint":        m.MissionCheckpoint,
+		"compliance_summary":        m.ComplianceSummary,
+		"execution_tasks_header":    m.ExecutionTasksHeader,
+		"execution_task_line":       m.ExecutionTaskLine,
+		"adr_opportunity":           m.AdrOpportunity,
+		"adr_gate":                  m.AdrGate,
+		"analysis_delivered_result": m.AnalysisDeliveredResult,
+		"response_complete":         m.ResponseComplete,
+		"mission_complete":          m.MissionComplete,
+		"mission_metrics":           m.MissionMetrics,
+		"phase_timeline_entry":      m.PhaseTimelineEntry,
+		"artifact_entry":            m.ArtifactEntry,
+	}
+}
+
 // PTBRRuntime is the Portuguese (pt-BR) runtime message bundle.
 var PTBRRuntime = RuntimeMessages{ //nolint:dupl
 	IntakeSummary: "Missão recebida: {task_type} | delivery={delivery_strategy} |" +
