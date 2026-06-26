@@ -1,9 +1,10 @@
-.PHONY: build test test-all integration spec validate-expanded validate-all test-lite test-telemetry-lite test-compile-cache test-domain-architecture lint vuln bench cover cover-gate cover-html analysis-structure-gate docs-governance-gate governance-check convergence-check install sync-embed release snapshot clean compile-skill build-site build-all install-web lint-web test-web cover-web
+.PHONY: build test test-all integration spec validate-expanded validate-all test-lite test-telemetry-lite test-compile-cache test-domain-architecture lint complexity-report go-file-size-report vuln bench cover cover-gate cover-html analysis-structure-gate docs-governance-gate governance-check convergence-check install sync-embed release snapshot clean compile-skill build-site build-all install-web lint-web test-web cover-web
 
 GOCACHE ?= /tmp/go-build-cache
 
 GOLANGCI_LINT := $(shell which golangci-lint 2>/dev/null || echo $(shell go env GOPATH)/bin/golangci-lint)
 GOVULNCHECK   := $(shell which govulncheck 2>/dev/null || echo $(shell go env GOPATH)/bin/govulncheck)
+GOCOGNIT      := $(shell which gocognit 2>/dev/null || echo $(shell go env GOPATH)/bin/gocognit)
 GORELEASER    := $(shell which goreleaser 2>/dev/null || echo $(shell go env GOPATH)/bin/goreleaser)
 COVERAGE_PKGS := internal/stale internal/compile internal/install internal/embed internal/telemetry cmd/strategist
 
@@ -48,6 +49,37 @@ test-domain-architecture:
 lint:
 	gofmt -w .
 	$(GOLANGCI_LINT) run ./...
+	@$(MAKE) complexity-report
+	@$(MAKE) go-file-size-report
+
+# complexity-report lists files that contain functions with cognitive complexity > 7.
+# Informational only — does not fail the build.
+complexity-report:
+	@command -v $(GOCOGNIT) >/dev/null 2>&1 || go install github.com/uudashr/gocognit/cmd/gocognit@latest
+	@echo "=== Cognitive Complexity > 7 ==="
+	@$(GOCOGNIT) -over 7 ./cmd ./internal \
+		| awk '{split($$NF,a,":"); print a[1]}' \
+		| sort -u \
+		| sed 's|$(CURDIR)/||' \
+		|| true
+	@echo ""
+	@$(GOCOGNIT) -over 7 ./cmd ./internal \
+		| sort -t' ' -k1 -rn \
+		| sed 's|$(CURDIR)/||' \
+		|| true
+
+# go-file-size-report lists primary Go source files over 200 lines.
+# Informational only — does not fail the build.
+go-file-size-report:
+	@echo "=== Go Files > 200 Lines ==="
+	@files=$$(find cmd internal -type f -name '*.go' \
+		! -name '*_test.go' \
+		! -path 'internal/embed/defaults/*' | sort); \
+	results=$$(for f in $$files; do \
+		lines=$$(wc -l < "$$f" | tr -d ' '); \
+		if [ "$$lines" -gt 200 ]; then printf "%s %s\n" "$$f" "$$lines"; fi; \
+	done | sort -k2,2nr -k1,1); \
+	if [ -n "$$results" ]; then printf "%s\n" "$$results"; else echo "none"; fi
 
 vuln:
 	$(GOVULNCHECK) ./...
@@ -96,6 +128,10 @@ convergence-check:
 		|| (echo "DRIFT: dojo/checker_test.go uses old provider path"; exit 1)
 	@grep -q '"skills".*providerID\|skills.*providerID' cmd/strategist/initiative.go \
 		|| (echo "DRIFT: initiative.go uses old provider path (not skills/<provider>/skill.yaml)"; exit 1)
+	@test -d strategist/internal_skills \
+		|| (echo "DRIFT: strategist/internal_skills/ missing — source-authoring boundary broken"; exit 1)
+	@test -d internal/embed/defaults/internal_skills \
+		|| (echo "DRIFT: internal/embed/defaults/internal_skills/ missing — embed sync broken"; exit 1)
 	@echo "Convergence check: OK"
 
 governance-check:
@@ -129,7 +165,7 @@ sync-embed:
 	rsync -a --delete strategist/templates/ internal/embed/defaults/templates/
 	rsync -a --delete strategist/personas/ internal/embed/defaults/personas/
 	@if [ -d strategist/output-profiles ]; then rsync -a --delete strategist/output-profiles/ internal/embed/defaults/output-profiles/; fi
-	rsync -a --delete strategist/skills/ internal/embed/defaults/internal_skills/
+	rsync -a --delete strategist/internal_skills/ internal/embed/defaults/internal_skills/
 	rsync -a --delete strategist/contracts/narrative/ internal/embed/defaults/contracts/narrative/
 	rsync -a --delete strategist/contracts/machine/   internal/embed/defaults/contracts/machine/
 	rsync -a          strategist/contracts/index.yaml  internal/embed/defaults/contracts/index.yaml

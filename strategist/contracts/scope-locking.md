@@ -2,27 +2,27 @@
 id: scope-locking
 severity: medium
 
-Toda mudança declara escopo antes de iniciar. Expansões durante execução
-requerem pausa e nova aprovação — nunca são executadas inline.
+Every change declares scope before starting. Expansions during documentation materialization
+require a pause and a new approval — never executed inline.
 
-## Regras
+## Rules
 
-- Sniper executa apenas o que está em `tasks.md` aprovado no approval gate
-- Qualquer arquivo fora do escopo declarado requer pausa + mini approval
-- Melhorias de oportunidade descobertas durante execução vão para um novo item
-  em `.analysis/todo/`, não são executadas no mesmo Sniper run
-- "Enquanto estou aqui vou também..." é scope expansion — requer gate
-- Refatorações adjacentes ao escopo aprovado são scope expansion — requer gate
+- Sniper materializes only what is listed in the `tasks.md` approved at the approval gate
+- Any file outside the declared scope requires a pause + mini approval
+- Opportunity improvements discovered during materialization go to a new item
+  in `<base_path>/todo/`, not executed in the same Sniper run
+- "While I'm here I'll also..." is scope expansion — requires gate
+- Adjacent refactors to approved scope are scope expansion — requires gate
 
-## Quando pausar
+## When to Pause
 
-O Sniper deve pausar e sinalizar ao Strategist quando:
-- Um arquivo não listado em `tasks.md` precisaria ser modificado para completar a task
-- Uma task revela uma dependência não mapeada no design
-- A implementação exigiria mudança de contrato público
+Sniper must pause and signal Strategist when:
+- A file not listed in `tasks.md` would need to be modified to complete the task
+- A task reveals a dependency not mapped in the design
+- Materialization would require changing a public contract
 
 ## Enforcement
 
-Strategist verifica `tasks.md` antes de invocar o Sniper.
-O approval gate inclui aviso explícito quando tasks.md contém writes fora de `<base_path>/`.
-response-critic sinaliza scope drift detectado após execução.
+Strategist validates `tasks.md` before invoking Sniper.
+The approval gate includes an explicit warning when `tasks.md` contains writes outside `<base_path>/`.
+response-critic signals scope drift detected after materialization.

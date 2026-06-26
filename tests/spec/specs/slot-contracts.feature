@@ -1,7 +1,7 @@
 Feature: Slot Write Scope Contracts
   Invariant: Each slot may only write to its declared scope.
   Source: discovery/refinement contracts — write outside declared scope blocks with slot_write_scope_violation.
-  Roles: Ranger=write_analysis, Archivist=write_analysis, Sniper=controlled
+  Roles: Ranger=write_analysis, Archivist=write_analysis, Sniper=controlled (documentation only)
 
   Scenario: Ranger respects write_analysis boundary
     Given Ranger (discovery slot) is executing
@@ -50,12 +50,24 @@ Feature: Slot Write Scope Contracts
     Then Strategist emits blocked event reason=slot_risk_mismatch
     And mission stops at preflight
 
-  Scenario: Sniper executes exactly one task per loop iteration
-    Given Archivist produced tasks.md with 3 tasks
-    And the approval gate has been granted
-    When Sniper begins an execution loop iteration for task 1
+  Scenario: Sniper materializes exactly one documentation target per loop iteration
+    Given Archivist produced tasks.md with 3 documentation tasks
+    And the review gate has been accepted
+    When Sniper begins a documentation materialization loop iteration for task 1
     Then Sniper emits task=1 status=running
     And Sniper emits task=1 status=done
     And Sniper does NOT emit task=2 status=running in the same loop iteration
     And Sniper does NOT emit task=3 status=running in the same loop iteration
     And Strategist updates the task checklist before invoking Sniper again for task 2
+
+  Scenario: Sniper blocked from writing code files
+    Given the review gate has been accepted
+    When Sniper attempts to write a .go file
+    Then Strategist emits documentation_scope_violation reason=code_file_forbidden
+    And the write is blocked
+
+  Scenario: Sniper blocked from running Git mutating commands
+    Given the review gate has been accepted
+    When Sniper attempts to run git commit
+    Then Strategist emits documentation_scope_violation reason=git_mutation_forbidden
+    And the command is blocked

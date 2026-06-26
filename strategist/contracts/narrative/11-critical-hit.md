@@ -9,7 +9,7 @@ contract: controlled
 
 ## Purpose
 
-Decision point between **fluxo completo** (main_mission) and **fluxo direto** (direct_execute).
+Decision point between **full pipeline** (main_mission) and **direct route** (direct_execute).
 Evaluated after Intake, before any slot provider is invoked.
 
 ## When to Apply
@@ -25,7 +25,8 @@ Critical Hit fires when **all** conditions are true:
 
 And **none** of these are true:
 
-- Prompt contains keywords: `investigar`, `propor`, `auditar`, `projetar`, `redesenhar`, `arquitetura`, `refatorar`
+- Prompt contains keywords: `investigate`, `propose`, `audit`, `design`, `redesign`, `architecture`, `refactor`
+  (also matched in Portuguese: `investigar`, `propor`, `auditar`, `projetar`, `redesenhar`, `arquitetura`, `refatorar`)
 - `task_type` is: `architecture_analysis`, `refactor`, `security_audit`, `new_feature`
 
 **When in doubt → main_mission. Conservatism is the safe default.**
@@ -44,14 +45,14 @@ And **none** of these are true:
 ## Inline Gate
 
 ```
-Critical Hit detectado.
-Tarefa: <descrição da tarefa>
-Arquivos: <lista de arquivos>
-Confirma execução direta? (sim/nao)
+Critical Hit detected.
+Task: <task description>
+Files: <file list>
+Confirm direct materialization? (yes / no)
 ```
 
-- `sim/yes` → proceed to Sniper
-- `nao/no` → resolve as `plan_only` (nothing written)
+- `yes` → proceed to Sniper
+- `no` → resolve as `analysis_delivered` (nothing written)
 
 ## Emit Events
 
@@ -63,8 +64,8 @@ Confirma execução direta? (sim/nao)
 
 ```
 StateInit → [EventDirectHitIntent] → StateDirectGate
-StateDirectGate → [EventDirectGateApproved + CanExecute] → StateDirectExec
-StateDirectGate → [EventDirectGateApproved + plan_only] → StateDoneAnalysis
+StateDirectGate → [EventDirectGateApproved] → StateDirectExec
+StateDirectGate → [EventDirectGateDeclined/analysis_delivered] → StateDoneAnalysis
 StateDirectGate → [EventDirectGateDeclined] → StateDoneAnalysis
 StateDirectExec → [EventSniperDone] → StateDirectDone
 StateDirectExec → [EventSlotTransient] → StateRetrying

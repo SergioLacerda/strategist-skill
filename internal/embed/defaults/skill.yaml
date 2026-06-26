@@ -53,7 +53,7 @@ active_config:
     fields: [discovery, refinement, execution]
     description: >
       Slot provider assignments. Each value is a skill id resolved at preflight.
-      discovery → Ranger (write_analysis), refinement → Arquivista (write_analysis),
+      discovery → Ranger (write_analysis), refinement → Archivist (write_analysis),
       execution → Sniper (controlled).
   language:
     type: string
@@ -69,13 +69,6 @@ active_config:
     description: >
       Persona used for this installation. Controls tone, verbosity, and phase labels.
       pragmatic is terse; epic is narrative. Set in active.yaml as the `mode` field.
-  adr_enabled:
-    type: boolean
-    default: true
-    description: >
-      When false, the adr_opportunity stage is skipped entirely.
-      No ADR gate is presented after mission completion.
-
 slots:
   discovery:
     contract: write_analysis
@@ -111,17 +104,17 @@ slots:
           - "<base_path>/refined/<mission_id>/proposal.md"
           - "<base_path>/refined/<mission_id>/design.md"
           - "<base_path>/refined/<mission_id>/tasks.md"
-      - handoff_contract: "schemas/handoff-archivist-to-hunter.schema.yaml"
+      - handoff_contract: "schemas/handoff-archivist-to-sniper.schema.yaml"
     description: Reads the Ranger transient analysis artifact, promotes it into the mission directory, and writes the refined package.
   execution:
     contract: controlled
     requires_config: true       # must be set in active.yaml; no built-in default
     default_skill: null
     canonical:
-      - requires_approval_gate      # Strategist enforces — documented here for slot awareness
-      - consult_treasure_chests     # if chests scoped to execution present, consult before acting
-      - opportunity_attack          # routine: detect side_quests, stop_and_report only (no strategy decision)
-    description: Executes the approved refined package. Approval gate required.
+      - requires_review_gate_acceptance  # Strategist enforces — documented here for slot awareness
+      - consult_treasure_chests          # if chests scoped to execution present, consult before acting
+      - opportunity_attack               # routine: detect out-of-scope writes, stop_and_report only
+    description: Materializes approved documentation_targets. Approval gate acceptance required.
 
 # Treasure chests — scoped knowledge sources passed to slots at invocation time.
 # Declared in active.yaml under treasure_chests:. Each slot receives only the chests
@@ -178,7 +171,8 @@ pipeline:
     type: mandatory_pause
     condition: quick_draw_detection.matched
     description: >
-      Present "ideia: <texto>" and ask "adicionar ideia? (sim / nao)" before any write.
+      Present the normalized idea and ask for confirmation before any write.
+      Use reserved input tokens: yes/no (en) or sim/nao (pt-BR, see internal/i18n/reserved.go).
   - stage: quick_draw_execution
     slot: execution
     condition: quick_draw_gate_granted
@@ -220,7 +214,7 @@ pipeline:
       - "<base_path>/refined/<mission_id>/tasks.md"
   - stage: approval_gate
     type: mandatory_pause
-    description: Present the refined package paths. Require explicit user approval before execution slot.
+    description: Present the refined analysis. Require explicit user review acceptance before documentation materialization slot.
   - stage: execution
     slot: execution
     input: refined_plan
@@ -228,11 +222,10 @@ pipeline:
     condition: approval_granted
   - stage: adr_opportunity
     type: conditional_pause
-    condition: adr_criteria_met AND active.adr_enabled
+    condition: adr_criteria_met
     description: >
       Evaluate if the mission contains architectural decisions worth recording.
-      Skipped entirely when active.adr_enabled is false.
-      If yes: gate 1 (generate?), Arquivista writes+presents draft, gate 2 (approve content?),
+      If yes: gate 1 (generate?), Archivist writes+presents draft, gate 2 (approve content?),
       Sniper commits on approval. ADR language follows active.language.
     produces: adr_artifact
   - stage: learning
@@ -247,7 +240,8 @@ stop_conditions:
   - slot_provider_not_found
   - slot_risk_mismatch
   - intake_conflict_unresolved
-  - user_denies_execution
+  - user_requests_revision
+  - user_rejects_analysis
   - opportunity_sniper_failed       # non-blocking: log and continue to Archivist
   - slot_write_type_violation       # slot tried to write a non-.md file
   - slot_write_scope_violation      # slot tried to write outside its declared scope
@@ -368,7 +362,7 @@ provider_compliance:
 
 forbidden_behaviors:
   - write_quick_draw_without_gate
-  - invoke_execution_slot_without_approval
+  - materialize_documentation_without_review_acceptance
   - direct_repository_mutation_without_pipeline_evidence
   - write_config_to_target_repo
   - perform_discovery_directly_instead_of_delegating
@@ -385,6 +379,13 @@ forbidden_behaviors:
   - engineer_writes_outside_analysis
   - archivist_writes_non_md
   - delegate_analysis_creation_to_sniper
+  - id: non_documentation_write
+    description: >
+      Sniper attempted to write a non-documentation file. Sniper write scope is strictly
+      limited to documentation_targets declared in the approved analysis and base_path docs.
+      Code files and Git mutating commands are always forbidden regardless of approval gate state.
+    emit: "[Strategist] phase=compliance status=blocked reason=non_documentation_write attempted_path={path}"
+    action: block
   - id: pipeline_bypass_detected
     description: >
       A direct repository mutation was attempted without the canonical evidence

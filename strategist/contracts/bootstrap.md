@@ -77,7 +77,7 @@ If exit code is `0` (fresh):
   - `active` → use as `active.yaml` content
   - `personas[active.mode]` → use as persona content
   - `active.slots` → slot provider map (`discovery`, `refinement`, `execution`)
-  - `active.language.chat` → chat language for persona template selection (default: pt-BR)
+  - `active.language.chat` → chat language for persona template selection (default: en)
   - `active.adr_enabled` → ADR stage flag (`true` if absent)
   - `active.treasure_chests` → list of `{id, path, scope, description}` (empty list if absent)
 - Apply any `--mode` override to the extracted JSON data.
@@ -96,11 +96,11 @@ Emit: `[Strategist] bootstrap=standard_path`
 3. Extract `active.slots` — slot provider map. Keys: `discovery`, `refinement`, `execution`.
 4. Extract `active.language` (object with keys: ui, docs, chat, code).
    - `language.ui` — language for CLI/progress output visible to the user (e.g. `[Strategist]` events, progress prefix). Currently consumed by the runtime/CLI layer; the agent uses `language.chat` instead.
-   - `language.chat` — language for persona template selection and all agent-to-user messages. Use `pt-BR` as fallback if absent.
+   - `language.chat` — language for persona template selection and all agent-to-user messages. Use `en` as fallback if absent.
    - `language.docs` — language for artifact generation (discovery, refined, archived files). Passed to slot providers.
    - `language.code` — language for inline code comments and identifiers. Passed to slot providers as a style hint.
    Pass `active.language.docs` to slot providers for artifact generation.
-   Use `active.language.chat` for persona template selection (default: pt-BR if absent).
+   Use `active.language.chat` for persona template selection (default: en if absent).
 5. Extract `active.adr_enabled` (default: `true`) — if `false`, skip §8 (ADR stage) entirely.
 6. Extract `active.treasure_chests` (default: `[]`) — scoped knowledge sources. For each slot
    invocation, filter chests where `scope` contains the slot's role name or `"all"`.
@@ -166,10 +166,8 @@ internal domain — do not error. If it exists:
 
 Read `active.slots`. For each slot (discovery, refinement, execution):
 1. Get provider id from `active.slots.<slot>`.
-2. Resolve provider skill.yaml using this order:
-   a. `<skill_root>/skills/<provider>/skill.yaml`  ← installed runtime path
-   b. `.claude/skills/<provider>/skill.yaml`
-   c. skill registry entry `skill_yaml` path (if registry present)
+2. Resolve provider skill.yaml:
+   `<skill_root>/skills/<provider>/skill.yaml`  ← single canonical installed runtime path, no fallback chain
 3. If provider is `_runtime_provider`, resolve from `governance_injection.execution_provider`.
 4. If `active.slots` is absent: emit blocked event `reason=slots_not_configured`, stop.
    → Remediation: `strategist install --wizard` to configure slots in `active.yaml`.

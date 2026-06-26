@@ -2,14 +2,14 @@ module: compliance-summary
 type: mandatory_emit
 description: >
   Mandatory block appended as the final element of every response, regardless
-  of pipeline outcome (completed, plan_only, blocked, or early termination).
+  of pipeline outcome (documentation_applied, analysis_delivered, rejected, revision_requested, blocked, or early termination).
   Emitted as structured DEBUG telemetry. The payload is mandatory, but normal
   console visibility still depends on the active output threshold.
 
 contract:
   emit_level: DEBUG
   emit_timing: after_all_phases
-  emit_also_on: [early_termination, blocked, plan_only]
+  emit_also_on: [early_termination, blocked, analysis_delivered, revision_requested, rejected]
 
   emit_format: |
     ---

@@ -143,6 +143,17 @@ func TestFinishMission_WithRun(t *testing.T) {
 	}
 }
 
+func TestMissionRun_SetSilent_SuppressesFinish(t *testing.T) {
+	// no t.Parallel() — shares slog global; also validates no metrics line is emitted
+	run := NewMissionRun("m-silent")
+	run.SetSilent()
+	run.Finish()
+	// Finish must be a no-op: AddLines(1) must NOT have been called
+	if snap := run.Snapshot(); snap.LinesEmitted != 0 {
+		t.Fatalf("SetSilent: Finish must not call AddLines; got LinesEmitted=%d", snap.LinesEmitted)
+	}
+}
+
 func TestStartLine_SanitizesPaths(t *testing.T) {
 	t.Parallel()
 	run := NewMissionRun("test-sanitize-123")

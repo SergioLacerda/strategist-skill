@@ -8,56 +8,63 @@ contract: null
 
 ## Inputs
 
-- refined package under `<base_path>/refined/<mission_id>/`
+- refined analysis under `<base_path>/refined/<mission_id>/`
+- optional documentation targets outside `<base_path>`
 - optional side quest summary
 
 ## Outputs
 
-- explicit approval decision
-- gate audit entry when approved
-- `plan_only` when declined or when no executable tasks exist
+- explicit review decision
+- gate audit entry when accepted
+- `analysis_delivered` when revision/rejection ends the mission without documentation
+- `documentation_applied` when Sniper materializes all documentation targets
 
 ## Required Behavior
 
 - read `tasks.md` before deciding whether to present the gate
-- stop and wait for explicit user approval before Sniper
-- re-present plan content on `review`
-- re-emit mission checkpoint when execution is approved
+- stop and wait for explicit user review response before Sniper
+- re-present analysis content on `review`
+- re-emit mission checkpoint when documentation targets are accepted
 
 ## Side Quests at the Gate
 
 If Archivist identified side quests in `opportunity_manifest`:
 
-1. Present list after the main mission block
+1. Present list after the main analysis block
 2. Assign each a unique ID (SQ-NNN)
 3. Show estimated impact and dependencies
-4. User may select a subset for execution
+4. User may select a subset for documentation
 5. Unselected side quests are recorded as `sq_backlog` — not discarded
-6. Partial approval is valid — Sniper executes only the approved items
+6. Partial acceptance is valid — Sniper materializes only the accepted items
 
 Gate display format:
 
 ```
-📋 MAIN MISSION
-   Proposal:  refined/<mission_id>/proposal.md
-   Tasks:     refined/<mission_id>/tasks.md — N task(s)
+📋 MAIN ANALYSIS
+   Proposal:    refined/<mission_id>/proposal.md
+   Tasks:       refined/<mission_id>/tasks.md — N task(s)
+
+📄 DOCUMENTATION TARGETS (outside <base_path>, if any)
+   <path> — <description>
 
 📦 SIDE QUESTS (if any)
    [SQ-001] <description> — impact: <low|medium|high>
    [SQ-002] <description> — impact: <low|medium|high>
 
-Approve? (yes / no / select IDs)
+Is the analysis correct?  (accept / review / reject)
 ```
 
 ## Status Transitions
 
 - Gate presented → frontmatter: `gate_pending`
-- Gate approved → frontmatter: `gate_approval`
-- Gate declined → frontmatter remains `gate_pending` (`plan_only` state — valid, not error)
+- Analysis accepted → frontmatter: `gate_analysis_accepted`
+- Revision requested → frontmatter: `gate_revision_requested` (valid, not error — Archivist revisits)
+- Rejected → frontmatter: `gate_rejected` (valid, not error)
 
 ## Gate States
 
-- `plan_only`
-- `awaiting_confirmation`
-- `approved`
-- `declined`
+- `analysis_delivered`
+- `revision_requested`
+- `rejected`
+- `awaiting_review`
+- `analysis_accepted`

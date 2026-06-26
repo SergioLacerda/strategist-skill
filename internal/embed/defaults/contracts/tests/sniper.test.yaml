@@ -54,22 +54,18 @@ cases:
     expect:
       action: re-emit full task list with task 2 marked ⏳, prior tasks ✅
 
-  - name: git_commit_requires_exact_approval
+  - name: git_commit_always_blocked
     given:
-      execution_mode: apply_workspace
-      git_persistence_mode: explicit_commit
+      documentation_mode: true
       mutating_git_command: "git commit"
-      user_approved_exact_command: false
     expect:
-      emit: "[Strategist] phase=execution status=blocked reason=unauthorized_git_mutation"
-      action: STOP, ask for exact command approval
+      emit: "[Strategist] phase=execution status=blocked reason=git_mutation_forbidden"
+      action: STOP immediately — Git mutating commands are forbidden
 
-  - name: git_reset_blocked_without_explicit_approval
+  - name: git_reset_always_blocked
     given:
-      execution_mode: apply_workspace
-      git_persistence_mode: explicit_commit
+      documentation_mode: true
       mutating_git_command: "git reset --hard"
-      user_approved_exact_command: false
     expect:
-      emit: "[Strategist] phase=execution status=blocked reason=unauthorized_git_mutation"
+      emit: "[Strategist] phase=execution status=blocked reason=git_mutation_forbidden"
       action: STOP, do not mutate repository state

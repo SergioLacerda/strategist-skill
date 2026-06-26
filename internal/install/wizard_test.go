@@ -83,74 +83,61 @@ func TestInstallableDefaultProviders(t *testing.T) {
 func TestRunWizard(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name              string
-		input             string
-		wantUILanguage    string
-		wantDocLanguage   string
-		wantChatLanguage  string
-		wantCodeLanguage  string
-		wantMode          string
-		wantBase          string
-		wantAdrEnabled    bool
-		wantExecutionMode string
-		wantGitMode       string
-		wantDiscovery     string
-		wantRefinement    string
-		wantExecution     string
-		wantChestPath     string
+		name           string
+		input          string
+		wantUILanguage string
+		wantDocLang    string
+		wantChatLang   string
+		wantCodeLang   string
+		wantMode       string
+		wantBase       string
+		wantDiscovery  string
+		wantRefinement string
+		wantExecution  string
+		wantChestPath  string
 	}{
 		{
 			name: "all defaults (empty lines)",
-			// 13 prompts:
-			// ui/doc/chat/code/mode/base/adr/executionMode/gitMode/discovery/refinement/execution/chest
-			input:             "\n\n\n\n\n\n\n\n\n\n\n\n\n",
-			wantUILanguage:    "en",
-			wantDocLanguage:   "en",
-			wantChatLanguage:  "en",
-			wantCodeLanguage:  "en",
-			wantMode:          "epic",
-			wantBase:          ".analysis",
-			wantAdrEnabled:    true,
-			wantExecutionMode: "plan_only",
-			wantGitMode:       "forbidden",
-			wantDiscovery:     "brainstorming",
-			wantRefinement:    "openspec-explore",
-			wantExecution:     "sdd-ask",
-			wantChestPath:     "",
+			// 10 prompts: ui/doc/chat/code/mode/base/discovery/refinement/execution/chest
+			input:          "\n\n\n\n\n\n\n\n\n\n",
+			wantUILanguage: "en",
+			wantDocLang:    "en",
+			wantChatLang:   "en",
+			wantCodeLang:   "en",
+			wantMode:       "epic",
+			wantBase:       ".analysis",
+			wantDiscovery:  "brainstorming",
+			wantRefinement: "openspec-explore",
+			wantExecution:  "sniper",
+			wantChestPath:  "",
 		},
 		{
-			name:              "en ui, custom languages and slots with chest",
-			input:             "en\nen\npt-BR\nen\nepic\n/workspace\nyes\napply_workspace\nexplicit_commit\nbrainstorming\narchivist\nsdd-ask-full\n.sdd/source\n",
-			wantUILanguage:    "en",
-			wantDocLanguage:   "en",
-			wantChatLanguage:  "pt-BR",
-			wantCodeLanguage:  "en",
-			wantMode:          "epic",
-			wantBase:          "/workspace",
-			wantAdrEnabled:    true,
-			wantExecutionMode: "apply_workspace",
-			wantGitMode:       "explicit_commit",
-			wantDiscovery:     "brainstorming",
-			wantRefinement:    "archivist",
-			wantExecution:     "sdd-ask-full",
-			wantChestPath:     ".sdd/source",
+			name:           "en ui, custom languages and slots with chest",
+			input:          "en\nen\npt-BR\nen\nepic\n/workspace\nbrainstorming\narchivist\nbatata\n.sdd/source\n",
+			wantUILanguage: "en",
+			wantDocLang:    "en",
+			wantChatLang:   "pt-BR",
+			wantCodeLang:   "en",
+			wantMode:       "epic",
+			wantBase:       "/workspace",
+			wantDiscovery:  "brainstorming",
+			wantRefinement: "archivist",
+			wantExecution:  "batata",
+			wantChestPath:  ".sdd/source",
 		},
 		{
-			name:              "pt-BR ui language, ADR disabled",
-			input:             "pt-BR\nen\npt-BR\nen\npragmatic\n.\nno\nplan_only\n\n\n\n\n\n",
-			wantUILanguage:    "pt-BR",
-			wantDocLanguage:   "en",
-			wantChatLanguage:  "pt-BR",
-			wantCodeLanguage:  "en",
-			wantMode:          "pragmatic",
-			wantBase:          ".",
-			wantAdrEnabled:    false,
-			wantExecutionMode: "plan_only",
-			wantGitMode:       "forbidden",
-			wantDiscovery:     "brainstorming",
-			wantRefinement:    "openspec-explore",
-			wantExecution:     "sdd-ask",
-			wantChestPath:     "",
+			name:           "pt-BR ui language",
+			input:          "pt-BR\nen\npt-BR\nen\npragmatic\n.\n\n\n\n\n",
+			wantUILanguage: "pt-BR",
+			wantDocLang:    "en",
+			wantChatLang:   "pt-BR",
+			wantCodeLang:   "en",
+			wantMode:       "pragmatic",
+			wantBase:       ".",
+			wantDiscovery:  "brainstorming",
+			wantRefinement: "openspec-explore",
+			wantExecution:  "sniper",
+			wantChestPath:  "",
 		},
 	}
 
@@ -160,18 +147,27 @@ func TestRunWizard(t *testing.T) {
 			wc, err := runWizard(NewTextPrompter(strings.NewReader(tt.input)), minimalExtractor{})
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantUILanguage, wc.UILanguage)
-			assert.Equal(t, tt.wantDocLanguage, wc.DocLanguage)
-			assert.Equal(t, tt.wantChatLanguage, wc.ChatLanguage)
-			assert.Equal(t, tt.wantCodeLanguage, wc.CodeLanguage)
+			assert.Equal(t, tt.wantDocLang, wc.DocLanguage)
+			assert.Equal(t, tt.wantChatLang, wc.ChatLanguage)
+			assert.Equal(t, tt.wantCodeLang, wc.CodeLanguage)
 			assert.Equal(t, tt.wantMode, wc.Mode)
 			assert.Equal(t, tt.wantBase, wc.BasePath)
-			assert.Equal(t, tt.wantAdrEnabled, wc.AdrEnabled)
-			assert.Equal(t, tt.wantExecutionMode, wc.ExecutionMode)
-			assert.Equal(t, tt.wantGitMode, wc.GitPersistenceMode)
 			assert.Equal(t, tt.wantDiscovery, wc.DiscoveryProvider)
 			assert.Equal(t, tt.wantRefinement, wc.RefinementProvider)
 			assert.Equal(t, tt.wantExecution, wc.ExecutionProvider)
 			assert.Equal(t, tt.wantChestPath, wc.TreasureChestPath)
 		})
 	}
+}
+
+func TestWizardDoesNotAskPermissionLevel(t *testing.T) {
+	t.Parallel()
+	// Input has no legacy execution_mode / apply_workspace / git_persistence_mode / adr tokens.
+	// 10 prompts: ui/doc/chat/code/mode/base/discovery/refinement/execution/chest
+	// If the wizard still prompts for execution mode or ADR, the input will be exhausted and the test errors.
+	input := "en\nen\npt-BR\nen\nepic\n.analysis\nbrainstorming\nopenspec-explore\nsdd-ask\n\n"
+	wc, err := runWizard(NewTextPrompter(strings.NewReader(input)), minimalExtractor{})
+	require.NoError(t, err)
+	assert.Equal(t, "epic", wc.Mode)
+	assert.Equal(t, "brainstorming", wc.DiscoveryProvider)
 }

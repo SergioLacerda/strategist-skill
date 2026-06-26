@@ -3,10 +3,10 @@ type: routing_decision
 version: "0.1"
 
 description: >
-  Ponto de decisão entre fluxo completo (main_mission) e fluxo direto (direct_execute).
-  Executado após intake, antes de qualquer slot provider.
-  Quando condições de Critical Hit são satisfeitas, bypassa Ranger e Archivist,
-  substituindo o approval_gate padrão por um gate inline de confirmação direta.
+  Decision point between full pipeline (main_mission) and direct route (direct_execute).
+  Evaluated after intake, before any slot provider.
+  When Critical Hit conditions are met, bypasses Ranger and Archivist,
+  replacing the standard approval gate with an inline confirmation gate.
 
 trigger_conditions:
   all_of:
@@ -17,7 +17,9 @@ trigger_conditions:
     - no_adr_required: true
     - no_architectural_decision: true
   none_of:
-    - keywords: [investigar, propor, auditar, projetar, redesenhar, arquitetura, refatorar]
+    # Keywords matched in both English and Portuguese (reserved tokens in internal/i18n/reserved.go)
+    - keywords: [investigate, propose, audit, design, redesign, architecture, refactor,
+                 investigar, propor, auditar, projetar, redesenhar, arquitetura, refatorar]
     - task_type: [architecture_analysis, refactor, security_audit, new_feature]
 
 route_assigned: direct_execute
@@ -29,17 +31,17 @@ pipeline:
 
 inline_gate:
   display: |
-    Critical Hit detectado.
-    Tarefa: <task_description>
-    Arquivos: <file_list>
-    Confirma execução direta? (sim/nao)
+    Critical Hit detected.
+    Task: <task_description>
+    Files: <file_list>
+    Confirm direct materialization? (yes / no)
   stop: true
   wait_for_response: true
   responses:
-    sim: proceed to sniper
     yes: proceed to sniper
-    nao: resolve as plan_only (no artifacts written)
-    no:  resolve as plan_only (no artifacts written)
+    sim: proceed to sniper   # reserved Portuguese input token (see internal/i18n/reserved.go)
+    no:  resolve as analysis_delivered (no documentation written)
+    nao: resolve as analysis_delivered (no documentation written)  # reserved Portuguese token
 
 emit:
   on_trigger:

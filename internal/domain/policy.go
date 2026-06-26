@@ -1,23 +1,10 @@
 package domain
 
-import "fmt"
-
-// Execution mode constants control whether the Sniper may apply changes to the workspace.
-const (
-	ExecutionModePlanOnly       = "plan_only"
-	ExecutionModeApplyWorkspace = "apply_workspace"
-)
-
-// Git persistence mode constants control whether mutable Git commands are allowed.
-const (
-	GitPersistenceModeForbidden      = "forbidden"
-	GitPersistenceModeExplicitCommit = "explicit_commit"
-)
-
 // Transition groups classify sensitive mission-state changes.
 const (
-	TransitionGroupFinalizeAnalysis = "finalize_analysis" // pending/refined -> done
-	TransitionGroupExecution        = "execution"         // sniper/code/git/config writes
+	TransitionGroupFinalizeAnalysis = "finalize_analysis"             // pending/refined -> done
+	TransitionGroupReviewGate       = "review_gate"                   // analysis review before documentation
+	TransitionGroupDocumentation    = "documentation_materialization" // sniper documentation writes
 )
 
 // MissionState represents the orchestrator FSM state.
@@ -82,7 +69,7 @@ const (
 	EventSlotTransient TransitionEvent = "slot_transient_failure"
 	EventSlotPermanent TransitionEvent = "slot_permanent_failure"
 
-	// Sniper opportunity attack surfaced mid-execution (§7 Opportunity Attack).
+	// Sniper opportunity attack surfaced mid-documentation (§7 Opportunity Attack).
 	EventSniperOA TransitionEvent = "sniper_opportunity_attack"
 
 	// Critical Hit route events — fast path gate for direct_execute route.
@@ -92,11 +79,9 @@ const (
 )
 
 // MissionPolicy controls whether guarded transitions are allowed.
-type MissionPolicy struct {
-	ExecutionMode      string // plan_only | apply_workspace
-	GitPersistenceMode string // forbidden | explicit_commit
-	CanExecute         bool
-}
+// Sniper write scope is fixed by contract: documentation files only.
+// Documentation materialization is always permitted after review gate acceptance.
+type MissionPolicy struct{}
 
 // TransitionDecision is the deterministic result of policy evaluation.
 type TransitionDecision struct {
@@ -106,42 +91,12 @@ type TransitionDecision struct {
 	Policy  MissionPolicy
 }
 
-// NewMissionPolicy builds canonical policy from execution and git persistence modes.
-func NewMissionPolicy(executionMode, gitPersistenceMode string) MissionPolicy {
-	return MissionPolicy{
-		ExecutionMode:      executionMode,
-		GitPersistenceMode: gitPersistenceMode,
-		CanExecute:         executionMode == ExecutionModeApplyWorkspace,
-	}
+// DefaultMissionPolicy returns the fixed documentation policy for this skill.
+func DefaultMissionPolicy() MissionPolicy {
+	return MissionPolicy{}
 }
 
-// Validate ensures the canonical policy does not contain ambiguous combinations.
-func (p MissionPolicy) Validate() error {
-	switch p.ExecutionMode {
-	case ExecutionModePlanOnly:
-		if p.GitPersistenceMode != GitPersistenceModeForbidden {
-			return fmt.Errorf("plan_only requires git_persistence_mode=forbidden")
-		}
-	case ExecutionModeApplyWorkspace:
-		switch p.GitPersistenceMode {
-		case GitPersistenceModeForbidden, GitPersistenceModeExplicitCommit:
-		default:
-			return fmt.Errorf("apply_workspace requires valid git_persistence_mode")
-		}
-	default:
-		return fmt.Errorf("invalid execution_mode: %s", p.ExecutionMode)
-	}
-	return nil
-}
-
-// NormalizePolicy applies canonical defaults/coherence.
+// NormalizePolicy is a no-op kept for call-site compatibility.
 func NormalizePolicy(p MissionPolicy) MissionPolicy {
-	if p.ExecutionMode == "" {
-		p.ExecutionMode = ExecutionModePlanOnly
-	}
-	if p.GitPersistenceMode == "" {
-		p.GitPersistenceMode = GitPersistenceModeForbidden
-	}
-	p.CanExecute = p.ExecutionMode == ExecutionModeApplyWorkspace
 	return p
 }

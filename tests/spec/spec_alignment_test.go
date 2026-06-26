@@ -53,6 +53,200 @@ func readFixture(t *testing.T, path string) fixture {
 	return f
 }
 
+func TestPrimaryContractsDoNotHardcodeAnalysisAsArtifactRoot(t *testing.T) {
+	t.Parallel()
+
+	// These normative runtime contracts and persona templates must use <base_path> or {base_path}
+	// for artifact paths, not a hardcoded .analysis/ root.
+	type fileCheck struct {
+		path      string
+		forbidden []string
+	}
+	checks := []fileCheck{
+		{
+			path:      filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "09-response.md"),
+			forbidden: []string{"📁 discovery:  .analysis/", "📁 refined:    .analysis/", "📁 report:     .analysis/"},
+		},
+		{
+			path:      filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "09-response.md"),
+			forbidden: []string{"📁 discovery:  .analysis/", "📁 refined:    .analysis/", "📁 report:     .analysis/"},
+		},
+		{
+			path:      filepath.Join(repoRoot(t), "strategist", "contracts", "scope-locking.md"),
+			forbidden: []string{"em `.analysis/todo/`"},
+		},
+		{
+			path:      filepath.Join(repoRoot(t), "strategist", "personas", "epic.yaml"),
+			forbidden: []string{"📁 discovery:  .analysis/", "📁 refined:    .analysis/", "📁 report:     .analysis/"},
+		},
+		{
+			path:      filepath.Join(repoRoot(t), "internal", "embed", "defaults", "personas", "epic.yaml"),
+			forbidden: []string{"📁 discovery:  .analysis/", "📁 refined:    .analysis/", "📁 report:     .analysis/"},
+		},
+	}
+	for _, c := range checks {
+		content := readFile(t, c.path)
+		for _, bad := range c.forbidden {
+			if strings.Contains(content, bad) {
+				t.Fatalf("%s hardcodes .analysis/ as artifact root (found %q); use <base_path>/{base_path} instead", c.path, bad)
+			}
+		}
+	}
+}
+
+func TestRuntimeContractsDoNotReferenceSourceTreeSchemas(t *testing.T) {
+	t.Parallel()
+
+	// Runtime-facing contracts must reference .strategist/schemas/ (runtime tree),
+	// not strategist/schemas/ (source tree).
+	pairs := [][2]string{
+		{
+			filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "02-intake.md"),
+			filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "02-intake.md"),
+		},
+		{
+			filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "03-discovery.md"),
+			filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "03-discovery.md"),
+		},
+		{
+			filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "04-refinement.md"),
+			filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "04-refinement.md"),
+		},
+		{
+			filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "learning-buffer.yaml"),
+			filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "learning-buffer.yaml"),
+		},
+	}
+	for _, pair := range pairs {
+		for _, path := range pair {
+			content := readFile(t, path)
+			if strings.Contains(content, "`strategist/schemas/") || strings.Contains(content, " strategist/schemas/") {
+				t.Fatalf("%s references source-tree schema path strategist/schemas/; use .strategist/schemas/ instead", path)
+			}
+		}
+	}
+}
+
+func TestCanonicalProviderPathIsSkillsSubdirectory(t *testing.T) {
+	t.Parallel()
+
+	// Guard canonical runtime path in normative surfaces — no root-level .strategist/<provider>/ lookup.
+	mustContainCanonical := []string{
+		filepath.Join(repoRoot(t), "cmd", "strategist", "initiative.go"),
+		filepath.Join(repoRoot(t), "docs", "strategist-concepts.md"),
+		filepath.Join(repoRoot(t), "internal", "domain", "types.go"),
+	}
+	for _, path := range mustContainCanonical {
+		content := readFile(t, path)
+		if !strings.Contains(content, "skills/<provider>/skill.yaml") {
+			t.Fatalf("%s missing canonical provider path skills/<provider>/skill.yaml", path)
+		}
+	}
+
+	// Guard that no normative doc instructs users to inspect the legacy root-level path.
+	mustNotContainLegacy := []string{
+		filepath.Join(repoRoot(t), "README.md"),
+		filepath.Join(repoRoot(t), "docs", "strategist-concepts.md"),
+		filepath.Join(repoRoot(t), "docs", "onboarding", "readme-en.md"),
+		filepath.Join(repoRoot(t), "internal", "domain", "types.go"),
+	}
+	for _, path := range mustNotContainLegacy {
+		content := readFile(t, path)
+		if strings.Contains(content, ".strategist/<provider>/skill.yaml") {
+			t.Fatalf("%s still references legacy root-level provider path .strategist/<provider>/skill.yaml", path)
+		}
+	}
+}
+
+func TestSourceInternalSkillsDirMirrorsRuntimeLayout(t *testing.T) {
+	t.Parallel()
+
+	// Source authoring dir must be internal_skills/, not skills/, so it maps directly to runtime.
+	sourceDir := filepath.Join(repoRoot(t), "strategist", "internal_skills")
+	if _, err := os.Stat(sourceDir); os.IsNotExist(err) {
+		t.Fatalf("strategist/internal_skills/ must exist as the source-authoring directory for internal skills")
+	}
+
+	// Legacy source directory must not exist.
+	legacyDir := filepath.Join(repoRoot(t), "strategist", "skills")
+	if _, err := os.Stat(legacyDir); !os.IsNotExist(err) {
+		t.Fatalf("strategist/skills/ still exists — internal skills must be authored under strategist/internal_skills/")
+	}
+
+	// Makefile sync must target the renamed source directory.
+	makefile := readFile(t, filepath.Join(repoRoot(t), "Makefile"))
+	if !strings.Contains(makefile, "strategist/internal_skills/") {
+		t.Fatalf("Makefile does not sync strategist/internal_skills/ — embed sync is broken")
+	}
+}
+
+func TestRemedationLabelPointsToCanonicalSkillsDir(t *testing.T) {
+	t.Parallel()
+
+	files := []string{
+		filepath.Join(repoRoot(t), "strategist", "schemas", "progress-contract.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "schemas", "progress-contract.yaml"),
+	}
+	for _, path := range files {
+		content := readFile(t, path)
+		if strings.Contains(content, "action=check_skill_root") {
+			t.Fatalf("%s still uses stale action=check_skill_root remediation label", path)
+		}
+	}
+}
+
+func TestPrimaryRuntimeContractsDoNotHardcodeAnalysisAsInvariant(t *testing.T) {
+	t.Parallel()
+
+	files := []string{
+		filepath.Join(repoRoot(t), "strategist", "SKILL.md"),
+		filepath.Join(repoRoot(t), "strategist", "skill.yaml"),
+		filepath.Join(repoRoot(t), "strategist", "protocol.md"),
+	}
+
+	for _, path := range files {
+		content := readFile(t, path)
+		if strings.Contains(content, "the invariant Strategist workspace root is .analysis/") {
+			t.Fatalf("%s hardcodes .analysis/ as invariant runtime root", path)
+		}
+	}
+}
+
+func TestProtocolReferencesUseRuntimeTreeNotSourceTree(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(repoRoot(t), "strategist", "protocol.md")
+	content := readFile(t, path)
+
+	for _, needle := range []string{
+		".strategist/",
+		"base_path",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("%s missing runtime path marker %q", path, needle)
+		}
+	}
+}
+
+func TestStrategistSkillDeclaresRuntimeAndWorkspacePathContracts(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(repoRoot(t), "strategist", "SKILL.md")
+	content := readFile(t, path)
+
+	for _, needle := range []string{
+		"`strategist/` — source-only",
+		"`.strategist/` — runtime instance",
+		"only operational read target",
+		"`base_path`",
+		"not a hardcoded `.analysis/`",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("%s missing %q", path, needle)
+		}
+	}
+}
+
 func TestOpportunityBypassFixtureAlignedWithForbiddenBehaviorsSpec(t *testing.T) {
 	t.Parallel()
 	featurePath := filepath.Join(testDir(t), "specs", "forbidden-behaviors.feature")
@@ -105,8 +299,10 @@ func TestApprovalBypassFixtureAlignedWithApprovalGateSpec(t *testing.T) {
 	if !strings.Contains(feature, "phase=approval_gate status=pending") {
 		t.Fatalf("%s missing approval_gate pending assertion", featurePath)
 	}
-	if !strings.Contains(feature, "status=plan_only") {
-		t.Fatalf("%s missing plan_only assertions", featurePath)
+	for _, term := range []string{"analysis_accepted", "revision_requested", "rejected"} {
+		if !strings.Contains(feature, term) {
+			t.Fatalf("%s missing review gate response %q", featurePath, term)
+		}
 	}
 	if fixture.Scenario != "approval_bypass" {
 		t.Fatalf("%s scenario must be approval_bypass, got: %q", fixturePath, fixture.Scenario)
@@ -159,8 +355,8 @@ func TestPolicyGuardrailsSpecAlignedWithFixture(t *testing.T) {
 		t.Fatalf("%s scenario must be policy_guardrails_e2e, got: %q", fixturePath, fixture.Scenario)
 	}
 	if !strings.Contains(fixture.ExpectedEvent, "phase=policy_eval status=blocked") ||
-		!strings.Contains(fixture.ExpectedEvent, "transition_group=execution") {
-		t.Fatalf("%s expected_event must include blocked policy_eval for execution, got: %q", fixturePath, fixture.ExpectedEvent)
+		!strings.Contains(fixture.ExpectedEvent, "transition_group=documentation_materialization") {
+		t.Fatalf("%s expected_event must include blocked policy_eval for documentation_materialization, got: %q", fixturePath, fixture.ExpectedEvent)
 	}
 }
 
@@ -244,7 +440,7 @@ func TestPragmaticPersonaUsesDistinctPhaseLabels(t *testing.T) {
 	for _, needle := range []string{
 		"discovery: analysis",
 		"refinement: refinement",
-		"execution: execution",
+		"execution: materialization",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("%s missing %q", path, needle)
@@ -385,6 +581,121 @@ func TestComplianceSummaryDefinesPhaseCounters(t *testing.T) {
 	}
 }
 
+// --- Provider discovery conformance tests ---
+
+// providerBootstrapFiles lists all provider bootstrap surfaces that must declare
+// Strategist runtime discovery semantics.
+func providerBootstrapFiles(t *testing.T) []string {
+	t.Helper()
+	root := repoRoot(t)
+	return []string{
+		filepath.Join(root, ".codex", "commands.md"),
+		filepath.Join(root, ".claude", "claude-instructions.md"),
+		filepath.Join(root, ".antigravity", "antigravity-instructions.md"),
+		filepath.Join(root, "AGENTS.md"),
+		filepath.Join(root, "GEMINI.md"),
+	}
+}
+
+func TestProviderBootstrapsRequireStrategistRuntimeFiles(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range providerBootstrapFiles(t) {
+		path := path
+		t.Run(filepath.Base(path), func(t *testing.T) {
+			t.Parallel()
+			content := readFile(t, path)
+			for _, needle := range []string{
+				".strategist/SKILL.md",
+				".strategist/skill.yaml",
+			} {
+				if !strings.Contains(content, needle) {
+					t.Fatalf("%s missing required Strategist runtime file reference %q", path, needle)
+				}
+			}
+		})
+	}
+}
+
+func TestProviderBootstrapsDoNotTreatSddAsStrategistRuntime(t *testing.T) {
+	t.Parallel()
+
+	// These phrases indicate a provider is treating .sdd/ as the Strategist
+	// runtime source rather than keeping governance and runtime separate.
+	forbidden := []string{
+		"load .sdd/ as Strategist runtime",
+		"resolve Strategist from .sdd/",
+		"sdd/ provides the Strategist pipeline",
+	}
+
+	for _, path := range providerBootstrapFiles(t) {
+		path := path
+		t.Run(filepath.Base(path), func(t *testing.T) {
+			t.Parallel()
+			content := readFile(t, path)
+			for _, bad := range forbidden {
+				if strings.Contains(content, bad) {
+					t.Fatalf("%s contains forbidden phrase %q — .sdd/ must not be treated as Strategist runtime", path, bad)
+				}
+			}
+		})
+	}
+}
+
+func TestProviderBootstrapsDoNotLoadFromSourceTree(t *testing.T) {
+	t.Parallel()
+
+	// Provider bootstrap files must not instruct loading from the source tree
+	// path "strategist/" (without the leading dot).
+	for _, path := range providerBootstrapFiles(t) {
+		path := path
+		t.Run(filepath.Base(path), func(t *testing.T) {
+			t.Parallel()
+			content := readFile(t, path)
+			if strings.Contains(content, "strategist/SKILL.md") &&
+				!strings.Contains(content, ".strategist/SKILL.md") {
+				t.Fatalf("%s references source-tree strategist/SKILL.md without leading dot", path)
+			}
+		})
+	}
+}
+
+func TestCommonDiscoveryContractExists(t *testing.T) {
+	t.Parallel()
+
+	// The common discovery contract must exist in both the source tree and the
+	// embedded defaults so it is available after install.
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "provider-discovery.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "provider-discovery.md"),
+	} {
+		if _, err := os.Stat(path); err != nil {
+			t.Fatalf("common discovery contract missing at %s: %v", path, err)
+		}
+	}
+}
+
+func TestCommonDiscoveryContractDefinesMandatoryFields(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "provider-discovery.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "provider-discovery.md"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			".strategist/SKILL.md",
+			".strategist/skill.yaml",
+			"error=not_installed",
+			"Forbidden Behaviors",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing required discovery contract field %q", path, needle)
+			}
+		}
+	}
+}
+
 func TestMissionMetricsSignalPresent(t *testing.T) {
 	t.Parallel()
 
@@ -423,8 +734,8 @@ func TestE2EFeatureFilesCoverHappyPathContracts(t *testing.T) {
 			"approval gate",
 		},
 		filepath.Join(testDir(t), "specs", "e2e-approval-gate.feature"): []string{
-			"mission result is completed",
-			"plan_only",
+			"mission result is documentation_applied",
+			"analysis_delivered",
 			"Sniper is not invoked",
 		},
 		filepath.Join(testDir(t), "specs", "e2e-treasure-chests.feature"): []string{
@@ -448,6 +759,477 @@ func TestE2EFeatureFilesCoverHappyPathContracts(t *testing.T) {
 			if !strings.Contains(content, needle) {
 				t.Fatalf("%s missing %q", path, needle)
 			}
+		}
+	}
+}
+
+// TestNoRootLevelProviderLookupInCode ensures resolver-facing code never references
+// a root-level .strategist/<provider>/skill.yaml without the skills/ subdirectory.
+// This guards the canonical runtime layout contract: all external provider manifests
+// must resolve from .strategist/skills/<provider>/skill.yaml.
+func TestNoRootLevelProviderLookupInCode(t *testing.T) {
+	t.Parallel()
+
+	// These files contain the resolver logic; they must use the skills/ subdirectory.
+	files := []string{
+		filepath.Join(repoRoot(t), "cmd", "strategist", "check.go"),
+		filepath.Join(repoRoot(t), "internal", "dojo", "checker.go"),
+		filepath.Join(repoRoot(t), "cmd", "strategist", "initiative.go"),
+	}
+
+	// Forbidden: join(root, provider, "skill.yaml") without the "skills" segment.
+	// Canonical: join(root, "skills", provider, "skill.yaml").
+	forbidden := []string{
+		`filepath.Join(root, provider,`,
+		`filepath.Join(strategistDir, provider,`,
+	}
+
+	for _, path := range files {
+		content := readFile(t, path)
+		for _, pattern := range forbidden {
+			if strings.Contains(content, pattern) {
+				t.Fatalf("%s contains root-level provider lookup %q — must use skills/<provider>/skill.yaml", path, pattern)
+			}
+		}
+	}
+}
+
+// TestInternalSkillsSourceBoundarySymmetric ensures the source-authoring tree and
+// embed directory both contain an internal_skills/ folder, confirming the direct
+// mapping without a semantic remap in the build pipeline.
+func TestInternalSkillsSourceBoundarySymmetric(t *testing.T) {
+	t.Parallel()
+
+	dirs := []string{
+		filepath.Join(repoRoot(t), "strategist", "internal_skills"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "internal_skills"),
+	}
+
+	for _, dir := range dirs {
+		if _, err := os.Stat(dir); os.IsNotExist(err) {
+			t.Fatalf("internal_skills directory missing: %s — source/embed boundary broken", dir)
+		}
+	}
+}
+
+// TestPreflightContractNoFallbackChain verifies that preflight test contracts
+// describe the actual single-path resolution rule with no .claude/skills/ fallback.
+func TestPreflightContractNoFallbackChain(t *testing.T) {
+	t.Parallel()
+
+	files := []string{
+		filepath.Join(repoRoot(t), ".strategist", "contracts", "tests", "preflight.test.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "tests", "preflight.test.yaml"),
+	}
+
+	forbidden := ".claude/skills/"
+
+	for _, path := range files {
+		content := readFile(t, path)
+		if strings.Contains(content, forbidden) {
+			t.Fatalf("%s still references stale fallback %q in slot_resolution_order invariant", path, forbidden)
+		}
+	}
+}
+
+func TestSniperWriteScopeIsWorkspaceAndDocs(t *testing.T) {
+	t.Parallel()
+
+	// The execution contract must declare that Sniper write scope is workspace files
+	// and documentation files only — code mutation is always forbidden.
+	files := []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "06-execution.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "06-execution.md"),
+	}
+
+	requiredPhrases := []string{
+		"workspace",
+		"documentation",
+		"code mutation",
+	}
+	forbidden := []string{
+		"execution_mode",
+		"git_persistence_mode",
+		"plan_only",
+		"apply_workspace",
+	}
+
+	for _, path := range files {
+		content := readFile(t, path)
+		for _, phrase := range requiredPhrases {
+			if !strings.Contains(content, phrase) {
+				t.Errorf("%s missing required write-scope phrase %q", path, phrase)
+			}
+		}
+		for _, term := range forbidden {
+			if strings.Contains(content, term) {
+				t.Errorf("%s still references removed policy term %q", path, term)
+			}
+		}
+	}
+}
+
+func TestActiveYAMLTemplatesDoNotContainLegacyPolicyFields(t *testing.T) {
+	t.Parallel()
+
+	// All active.yaml templates in the embed tree must not contain legacy execution_mode
+	// or git_persistence_mode fields — they were removed in the scope simplification.
+	templateDirs := []string{
+		filepath.Join(repoRoot(t), "strategist", "templates"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates"),
+	}
+
+	forbidden := []string{"execution_mode", "git_persistence_mode"}
+
+	for _, dir := range templateDirs {
+		entries, err := os.ReadDir(dir)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			t.Fatalf("read dir %s: %v", dir, err)
+		}
+		for _, e := range entries {
+			if e.IsDir() || !strings.HasSuffix(e.Name(), ".yaml") {
+				continue
+			}
+			path := filepath.Join(dir, e.Name())
+			content := readFile(t, path)
+			for _, term := range forbidden {
+				if strings.Contains(content, term) {
+					t.Errorf("template %s contains legacy policy field %q", path, term)
+				}
+			}
+		}
+	}
+}
+
+func TestStandaloneTemplatesDefaultExecutionToSniper(t *testing.T) {
+	t.Parallel()
+
+	// Standalone active.yaml templates must ship with sniper as the default execution
+	// provider. This ensures both silent install and wizard defaults align.
+	standaloneTemplates := []string{
+		filepath.Join(repoRoot(t), "strategist", "templates", "epic-standalone.yaml"),
+		filepath.Join(repoRoot(t), "strategist", "templates", "pragmatic-standalone.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "epic-standalone.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "pragmatic-standalone.yaml"),
+	}
+
+	for _, path := range standaloneTemplates {
+		content := readFile(t, path)
+		if !strings.Contains(content, "execution: sniper") {
+			t.Errorf("template %s must default to execution: sniper", path)
+		}
+		if strings.Contains(content, "execution: openspec-apply-change") {
+			t.Errorf("template %s must not default to execution: openspec-apply-change — use sniper instead", path)
+		}
+	}
+}
+
+// assertNoToken fails if the file at path contains token.
+func assertNoToken(t *testing.T, path, token string) {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	if strings.Contains(string(data), token) {
+		t.Fatalf("%s must not contain %q", path, token)
+	}
+}
+
+func TestSchemaFilesDoNotContainLegacyPlanOnly(t *testing.T) {
+	t.Parallel()
+	root := repoRoot(t)
+
+	assertNoToken(t, filepath.Join(root, "strategist", "schemas", "mission-result.schema.yaml"), "plan_only")
+	assertNoToken(t, filepath.Join(root, "strategist", "schemas", "outcome-entry.schema.yaml"), "plan_only")
+	assertNoToken(t, filepath.Join(root, "strategist", "schemas", "progress-contract.yaml"), "plan_only")
+	assertNoToken(t, filepath.Join(root, "internal", "embed", "defaults", "schemas", "outcome-entry.schema.yaml"), "plan_only")
+	assertNoToken(t, filepath.Join(root, "internal", "embed", "defaults", "schemas", "progress-contract.yaml"), "plan_only")
+}
+
+func TestApprovalGateContractUsesReviewGateSemantics(t *testing.T) {
+	t.Parallel()
+	root := repoRoot(t)
+
+	paths := []string{
+		filepath.Join(root, "strategist", "contracts", "machine", "approval-gate.yaml"),
+		filepath.Join(root, "internal", "embed", "defaults", "contracts", "machine", "approval-gate.yaml"),
+	}
+
+	for _, path := range paths {
+		content := readFile(t, path)
+		assertNoToken(t, path, "plan_only")
+		for _, needle := range []string{"analysis_accepted", "revision_requested", "rejected"} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing review gate response %q", path, needle)
+			}
+		}
+	}
+}
+
+func TestSniperIsDocumentationMaterializerNotExecutionSkill(t *testing.T) {
+	t.Parallel()
+	root := repoRoot(t)
+
+	paths := []string{
+		filepath.Join(root, "strategist", "internal_skills", "sniper", "SKILL.md"),
+		filepath.Join(root, "internal", "embed", "defaults", "internal_skills", "sniper", "SKILL.md"),
+	}
+	forbidden := []string{
+		"Execution Skill",
+		"execute the approved refined package",
+		"execution_done",
+	}
+	required := []string{
+		"documentation materialization",
+		"documentation_applied",
+		"documentation_targets",
+		"Git mutating commands are forbidden",
+	}
+
+	for _, path := range paths {
+		content := readFile(t, path)
+		for _, bad := range forbidden {
+			if strings.Contains(content, bad) {
+				t.Fatalf("%s must not contain %q", path, bad)
+			}
+		}
+		for _, needle := range required {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing required documentation phrase %q", path, needle)
+			}
+		}
+	}
+}
+
+func TestDocumentationPipelineDoesNotContainLegacyExecutionTerms(t *testing.T) {
+	t.Parallel()
+	root := repoRoot(t)
+
+	forbidden := []string{"apply_workspace", "execution_mode", "git_persistence_mode", "CanExecute"}
+	paths := []string{
+		filepath.Join(root, "strategist", "SKILL.md"),
+		filepath.Join(root, "strategist", "skill.yaml"),
+		filepath.Join(root, "strategist", "protocol.md"),
+		filepath.Join(root, "internal", "embed", "defaults", "SKILL.md"),
+		filepath.Join(root, "internal", "embed", "defaults", "protocol.md"),
+	}
+
+	for _, path := range paths {
+		for _, term := range forbidden {
+			assertNoToken(t, path, term)
+		}
+	}
+}
+
+// TestStrategistSourceTreeEnglishOnly scans strategist/ for Portuguese prose markers.
+//
+// Allowlisted paths and fields that legitimately contain non-English data:
+//   - strategist/schemas/intake.schema.yaml — user input aliases (não pode quebrar, etc.)
+//     are intent-matching tokens, not prose (design non-goal: preserve Portuguese input tokens).
+//   - strategist/contracts/machine/quick-draw.yaml — pt-BR bucket name list (data).
+//   - strategist/contracts/machine/adr.yaml — pt-BR section name list (data).
+//   - strategist/contracts/narrative/07-adr.md — pt-BR language mapping (data).
+//   - strategist/contracts/adr.md — docs: pt-BR language mapping (data).
+//   - strategist/contracts/machine/critical-hit.yaml — reserved input tokens with inline doc.
+//   - strategist/contracts/strategist-raid.yaml — reserved input tokens sim/nao with inline doc.
+func TestStrategistSourceTreeEnglishOnly(t *testing.T) {
+	t.Parallel()
+	root := repoRoot(t)
+	strategistDir := filepath.Join(root, "strategist")
+
+	// Portuguese prose markers that must NOT appear in canonical strategist/ files.
+	// These are not language-code data — they are prose fragments in Portuguese.
+	forbiddenProse := []string{
+		"Não processe",
+		"execute antes de qualquer coisa",
+		"execute exatamente nessa ordem",
+		"fluxo completo",
+		"fluxo direto",
+		"orquestração em lote",
+		"análises capturadas",
+		"Caminho para arquivo",
+		"processar todas",
+		"pacotes de negócio",
+		"camada pura",
+		"ponto de wiring",
+		"Nunca executar",
+		"Nunca ler de",
+		"Nunca pular",
+		"Nunca invocar",
+		"Missão: {mission_id}",
+		"Perfil: {profile}",
+		"Arquivista →",
+		"aprovação concedida",
+		"reconhecimento concluído",
+		"implementação concluída",
+		"Autorizar Sniper",
+		"Aguardando confirmação",
+		"Commitar?",
+	}
+
+	err := filepath.WalkDir(strategistDir, func(path string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		ext := filepath.Ext(path)
+		if ext != ".md" && ext != ".yaml" {
+			return nil
+		}
+		data, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return readErr
+		}
+		content := string(data)
+		for _, marker := range forbiddenProse {
+			if strings.Contains(content, marker) {
+				t.Errorf("strategist/ prose violation: %s contains Portuguese prose marker %q", path, marker)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk strategist/: %v", err)
+	}
+}
+
+func TestDelegationUnavailableContractPresent(t *testing.T) {
+	t.Parallel()
+
+	// agent-protocol.md templates must declare delegation_unavailable as a named error state
+	// and forbid direct simulation of delegation.
+	templatePaths := []string{
+		filepath.Join(repoRoot(t), "strategist", "templates", "agent-protocol.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "agent-protocol.md"),
+	}
+	for _, path := range templatePaths {
+		content := readFile(t, path)
+		if !strings.Contains(content, "delegation_unavailable") {
+			t.Fatalf("%s missing error state \"delegation_unavailable\"", path)
+		}
+		if !strings.Contains(content, "simulate delegation") {
+			t.Fatalf("%s missing NEVER DO rule about simulating delegation", path)
+		}
+	}
+
+	// drift-patterns.yaml files must include a delegation_unavailable pattern
+	driftPaths := []string{
+		filepath.Join(repoRoot(t), "strategist", "templates", "domain", "identity", "drift-patterns.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "domain", "identity", "drift-patterns.yaml"),
+	}
+	for _, path := range driftPaths {
+		content := readFile(t, path)
+		if !strings.Contains(content, "id: delegation_unavailable") {
+			t.Fatalf("%s missing drift pattern \"delegation_unavailable\"", path)
+		}
+		if !strings.Contains(content, "delegation_unavailable") {
+			t.Fatalf("%s direct_execution correction must reference delegation_unavailable", path)
+		}
+	}
+}
+
+// TestStrategistNoLegacyExecutionTerminology scans strategist/ for forbidden legacy terms
+// that were replaced by documentation-materialization semantics.
+func TestStrategistNoLegacyExecutionTerminology(t *testing.T) {
+	t.Parallel()
+	root := repoRoot(t)
+	strategistDir := filepath.Join(root, "strategist")
+
+	// Forbidden legacy terms. See design doc: 2026-06-25-strategist-english-canonical-i18n-design.md.
+	forbidden := []string{
+		"plan_only",
+		"apply_workspace",
+		"execution_mode",
+		"git_persistence_mode",
+		"CanExecute",
+		"Commit?",
+		"Implement?",
+		"Authorize Sniper?",
+	}
+
+	err := filepath.WalkDir(strategistDir, func(path string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		ext := filepath.Ext(path)
+		if ext != ".md" && ext != ".yaml" {
+			return nil
+		}
+		data, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return readErr
+		}
+		content := string(data)
+		for _, term := range forbidden {
+			if strings.Contains(content, term) {
+				t.Errorf("legacy terminology violation: %s contains forbidden term %q", path, term)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk strategist/: %v", err)
+	}
+}
+
+// TestPersonaFilesHaveNoPtBRContentBlocks verifies that persona YAML files
+// contain no pt-BR localized content_by_lang blocks. Localized strings live
+// in internal/i18n/strategist_messages.go.
+func TestPersonaFilesHaveNoPtBRContentBlocks(t *testing.T) {
+	t.Parallel()
+	root := repoRoot(t)
+
+	personaPaths := []string{
+		filepath.Join(root, "strategist", "personas", "epic.yaml"),
+		filepath.Join(root, "strategist", "personas", "pragmatic.yaml"),
+		filepath.Join(root, "internal", "embed", "defaults", "personas", "epic.yaml"),
+		filepath.Join(root, "internal", "embed", "defaults", "personas", "pragmatic.yaml"),
+	}
+
+	forbidden := []string{
+		"phase_announcements:\n  pt-BR:",
+		"content_by_lang:\n  pt-BR:",
+		"  pt-BR:\n    intake_summary",
+		"  pt-BR:\n    ranger_start",
+	}
+
+	for _, path := range personaPaths {
+		content := readFile(t, path)
+		for _, marker := range forbidden {
+			if strings.Contains(content, marker) {
+				t.Errorf("%s must not contain pt-BR localized content block: found %q", path, marker)
+			}
+		}
+		// Must have English canonical content
+		if !strings.Contains(content, "content_by_lang:\n  en:") {
+			t.Errorf("%s must contain content_by_lang.en canonical block", path)
+		}
+	}
+}
+
+// TestPersonasUseApprovalGateSemantics verifies personas use approval_gate_prompt
+// and do not contain the legacy approval_prompt key (renamed during i18n cleanup).
+func TestPersonasUseApprovalGateSemantics(t *testing.T) {
+	t.Parallel()
+	root := repoRoot(t)
+
+	paths := []string{
+		filepath.Join(root, "strategist", "personas", "epic.yaml"),
+		filepath.Join(root, "strategist", "personas", "pragmatic.yaml"),
+		filepath.Join(root, "internal", "embed", "defaults", "personas", "epic.yaml"),
+		filepath.Join(root, "internal", "embed", "defaults", "personas", "pragmatic.yaml"),
+	}
+
+	for _, path := range paths {
+		content := readFile(t, path)
+		if strings.Contains(content, "approval_prompt:") {
+			t.Errorf("%s must not contain legacy key 'approval_prompt:' — use 'approval_gate_prompt:' instead", path)
+		}
+		if !strings.Contains(content, "approval_gate_prompt:") {
+			t.Errorf("%s must define 'approval_gate_prompt:' key", path)
 		}
 	}
 }

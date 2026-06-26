@@ -32,7 +32,15 @@ Checks performed:
   - knowledge.index.yaml: if present, valid YAML`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		if validateRoot == "" {
-			validateRoot = ".strategist"
+			cwd, cwdErr := os.Getwd()
+			if cwdErr != nil {
+				return fmt.Errorf("validate: get cwd: %w", cwdErr)
+			}
+			discovered, _, discErr := findStrategistRoot(cwd)
+			if discErr != nil {
+				return fmt.Errorf("validate: runtime not found — run: strategist install")
+			}
+			validateRoot = discovered
 		}
 		ctx := cmd.Context()
 		if ctx == nil {

@@ -77,7 +77,12 @@ body{
     linear-gradient(180deg,rgba(42,33,23,.55),rgba(20,15,9,.4));
 }
 
-.foot{margin-top:40px;text-align:center;font-size:12px;color:var(--faint);letter-spacing:.06em;}
+.trust{margin-top:32px;display:flex;flex-wrap:wrap;justify-content:center;gap:8px 20px;font-size:11.5px;color:var(--faint);letter-spacing:.06em;max-width:680px;margin-left:auto;margin-right:auto;}
+.trust span{white-space:nowrap;}
+.trust span::before{content:"·";margin-right:8px;color:var(--amber-dim);}
+.trust span:first-child::before{display:none;}
+
+.foot{margin-top:28px;text-align:center;font-size:12px;color:var(--faint);letter-spacing:.06em;}
 .foot a{color:var(--amber-dim);text-decoration:none;}
 .foot a:hover{color:var(--amber);}
 
@@ -94,12 +99,12 @@ body{
 <div class="head">
   <div class="crest">✦</div>
   <div class="kicker" data-i18n="kicker">Strategist</div>
-  <div class="tagline" data-i18n="tagline">A experiência com suas demandas nunca será a mesma.</div>
+  <div class="tagline" data-i18n="tagline">Da demanda vaga ao handoff aprovado.</div>
   <div class="rule">━━━━━━ ⟡ ━━━━━━</div>
 </div>
 
-<div class="choose" data-i18n="choose">Escolha sua jornada</div>
-<p class="sub" data-i18n="sub">Dois caminhos para a mesma skill. Escolha como prefere conhecê-la.</p>
+<div class="choose" data-i18n="choose">Escolha como explorar o pipeline</div>
+<p class="sub" data-i18n="sub">Dois caminhos para a mesma skill de documentação. Escolha como prefere conhecê-la.</p>
 
 <div class="cards">
   <a class="card pragmatic" href={`${base}pragmatic/`}>
@@ -108,7 +113,7 @@ body{
       <div class="glyph">⌗</div>
       <h2 data-i18n="pragTitle">Modo Pragmático</h2>
     </div>
-    <p data-i18n="pragDesc">Direto ao ponto. Guia técnico com pipeline, papéis em termos neutros, quickstart de 5 minutos e suporte a qualquer LLM.</p>
+    <p data-i18n="pragDesc">Guia técnico do pipeline, artefatos, Approval Gate e handoff pronto para executor.</p>
     <div class="go" data-i18n="pragCta">Abrir guia técnico →</div>
   </a>
   <a class="card epic" href={`${base}epic/`}>
@@ -117,15 +122,21 @@ body{
       <div class="glyph">⚜</div>
       <h2 data-i18n="epicTitle">Modo Épico</h2>
     </div>
-    <p data-i18n="epicDesc">A narrativa completa. Landing imersiva estilo dungeon RPG, com a party de papéis, o approval gate selado e a lore do sistema.</p>
+    <p data-i18n="epicDesc">Console narrativo do mesmo pipeline documentation-first via Ranger, Archivist e Sniper.</p>
     <div class="go" data-i18n="epicCta">Entrar na masmorra →</div>
   </a>
 </div>
 
+<div class="trust" data-i18n-trust="trust">
+  <span data-i18n="trust1">Sem mutação de código</span>
+  <span data-i18n="trust2">Approval Gate antes da materialização</span>
+  <span data-i18n="trust3">Handoff agnóstico de executor</span>
+  <span data-i18n="trust4">Artefatos auditáveis</span>
+</div>
 <div class="foot"><a href="https://github.com/SergioLacerda/strategist-skill" target="_blank" rel="noopener">strategist-skill</a> · <span data-i18n="foot">Documentação · Sergio Lacerda &amp; Raphael Vernil</span></div>
 
 <script>
-const P={"pt":{"_lang":"pt-BR","_title":"Strategist · Escolha sua jornada","_desc":"Strategist — escolha sua jornada: modo pragmático (guia técnico direto) ou modo épico (a experiência narrativa completa).","kicker":"Strategist","tagline":"A experiência com suas demandas nunca será a mesma.","choose":"Escolha sua jornada","sub":"Dois caminhos para a mesma skill. Escolha como prefere conhecê-la.","pragTag":"Recomendado para a maioria","pragTitle":"Modo Pragmático","pragDesc":"Direto ao ponto. Guia técnico com pipeline, papéis em termos neutros, quickstart de 5 minutos e suporte a qualquer LLM.","pragCta":"Abrir guia técnico →","epicTag":"Experiência completa","epicTitle":"Modo Épico","epicDesc":"A narrativa completa. Landing imersiva estilo dungeon RPG, com a party de papéis, o approval gate selado e a lore do sistema.","epicCta":"Entrar na masmorra →","foot":"Documentação · Sergio Lacerda & Raphael Vernil"},"en":{"_lang":"en","_title":"Strategist · Choose your journey","_desc":"Strategist — choose your journey: pragmatic mode (a direct technical guide) or epic mode (the full narrative experience).","kicker":"Strategist","tagline":"Your experience with your demands will never be the same.","choose":"Choose your journey","sub":"Two paths to the same skill. Pick how you'd like to get to know it.","pragTag":"Recommended for most","pragTitle":"Pragmatic Mode","pragDesc":"Straight to the point. Technical guide with the pipeline, neutral role names, a 5-minute quickstart, and any-LLM support.","pragCta":"Open technical guide →","epicTag":"Full experience","epicTitle":"Epic Mode","epicDesc":"The full narrative. Immersive dungeon-RPG landing, with the party of roles, the sealed approval gate, and the system's lore.","epicCta":"Enter the dungeon →","foot":"Documentation · Sergio Lacerda & Raphael Vernil"}};
+const P={"pt":{"_lang":"pt-BR","_title":"Strategist · Da demanda vaga ao handoff aprovado","_desc":"Strategist transforma demandas ambíguas em análise governada, artefatos documentais aprovados e handoffs prontos para executor sem alterar código-fonte.","kicker":"Strategist","tagline":"Da demanda vaga ao handoff aprovado.","choose":"Escolha como explorar o pipeline","sub":"Dois caminhos para a mesma skill de documentação. Escolha como prefere conhecê-la.","pragTag":"Recomendado para a maioria","pragTitle":"Modo Pragmático","pragDesc":"Guia técnico do pipeline, artefatos, Approval Gate e handoff pronto para executor.","pragCta":"Abrir guia técnico →","epicTag":"Experiência completa","epicTitle":"Modo Épico","epicDesc":"Console narrativo do mesmo pipeline documentation-first via Ranger, Archivist e Sniper.","epicCta":"Entrar na masmorra →","trust1":"Sem mutação de código","trust2":"Approval Gate antes da materialização","trust3":"Handoff agnóstico de executor","trust4":"Artefatos auditáveis","foot":"Documentação · Sergio Lacerda & Raphael Vernil"},"en":{"_lang":"en","_title":"Strategist · From vague demand to approved handoff","_desc":"Strategist turns ambiguous requests into governed analysis, approved documentation artifacts, and executor-ready handoffs without mutating source code.","kicker":"Strategist","tagline":"From vague demand to approved handoff.","choose":"Choose how to explore the pipeline","sub":"Two paths to the same documentation-first skill. Pick how you'd like to get to know it.","pragTag":"Recommended for most","pragTitle":"Pragmatic Mode","pragDesc":"Technical guide for the pipeline, artifacts, Approval Gate, and executor-ready handoff.","pragCta":"Open technical guide →","epicTag":"Full experience","epicTitle":"Epic Mode","epicDesc":"Narrative console for the same documentation-first pipeline through Ranger, Archivist, and Sniper.","epicCta":"Enter the dungeon →","trust1":"No code mutation","trust2":"Approval Gate before materialization","trust3":"Executor-agnostic handoff","trust4":"Auditable artifacts","foot":"Documentation · Sergio Lacerda & Raphael Vernil"}};
 type LangKey = keyof typeof P;
 function applyLang(lang: string): void {
   if(!P[lang as LangKey])lang='pt';

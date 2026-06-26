@@ -1,0 +1,478 @@
+package main
+
+// Whitebox tests for low-coverage helpers in treasure_chest.go and initiative.go.
+
+import (
+	"compress/gzip"
+	"encoding/json"
+	"errors"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+	"text/tabwriter"
+
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/testutil"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+// --- readLastMissionID ---
+
+func TestReadLastMissionID_FileAbsent(t *testing.T) {
+	t.Parallel()
+	result := readLastMissionID(filepath.Join(t.TempDir(), "nonexistent.jsonl"))
+	assert.Equal(t, "—", result)
+}
+
+func TestReadLastMissionID_WithMissionID(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "outcomes.jsonl")
+	line := `{"mission_id":"m-001","status":"done"}`
+	require.NoError(t, os.WriteFile(path, []byte(line+"\n"), 0o644))
+	assert.Equal(t, "m-001", readLastMissionID(path))
+}
+
+func TestReadLastMissionID_LastLineUsed(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "outcomes.jsonl")
+	content := `{"mission_id":"m-001"}` + "\n" + `{"mission_id":"m-002"}` + "\n"
+	require.NoError(t, os.WriteFile(path, []byte(content), 0o644))
+	assert.Equal(t, "m-002", readLastMissionID(path))
+}
+
+func TestReadLastMissionID_EmptyLines(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "outcomes.jsonl")
+	require.NoError(t, os.WriteFile(path, []byte("\n\n"), 0o644))
+	assert.Equal(t, "—", readLastMissionID(path))
+}
+
+func TestReadLastMissionID_InvalidJSON(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "outcomes.jsonl")
+	require.NoError(t, os.WriteFile(path, []byte("not-json\n"), 0o644))
+	assert.Equal(t, "—", readLastMissionID(path))
+}
+
+func TestReadLastMissionID_NoMissionIDField(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "outcomes.jsonl")
+	require.NoError(t, os.WriteFile(path, []byte(`{"status":"done"}`+"\n"), 0o644))
+	assert.Equal(t, "—", readLastMissionID(path))
+}
+
+func TestReadLastMissionID_EmptyMissionID(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "outcomes.jsonl")
+	require.NoError(t, os.WriteFile(path, []byte(`{"mission_id":""}`+"\n"), 0o644))
+	assert.Equal(t, "—", readLastMissionID(path))
+}
+
+// --- loadCompiledIndex ---
+
+func writeIndexGz(t *testing.T, path string, compiledAt int64, sourceIDs ...string) {
+	t.Helper()
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+	f, err := os.Create(path)
+	require.NoError(t, err)
+	gz := gzip.NewWriter(f)
+	meta := make(map[string]any)
+	for _, id := range sourceIDs {
+		meta[id] = map[string]any{"id": id}
+	}
+	require.NoError(t, json.NewEncoder(gz).Encode(map[string]any{
+		"compiled_at": compiledAt,
+		"source_meta": meta,
+	}))
+	require.NoError(t, gz.Close())
+	require.NoError(t, f.Close())
+}
+
+func TestLoadCompiledIndex_NotExist(t *testing.T) {
+	t.Parallel()
+	ids, ts, err := loadCompiledIndex(t.TempDir())
+	require.NoError(t, err)
+	assert.Nil(t, ids)
+	assert.Zero(t, ts)
+}
+
+func TestLoadCompiledIndex_CorruptGzip(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	path := filepath.Join(dir, ".compiled", ".index.gz")
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+	require.NoError(t, os.WriteFile(path, []byte("not gzip"), 0o644))
+
+	_, _, err := loadCompiledIndex(dir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "decompress")
+}
+
+func TestLoadCompiledIndex_Success(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	path := filepath.Join(dir, ".compiled", ".index.gz")
+	writeIndexGz(t, path, 1700000000, "chest-a", "chest-b")
+
+	ids, ts, err := loadCompiledIndex(dir)
+	require.NoError(t, err)
+	assert.EqualValues(t, 1700000000, ts)
+	assert.True(t, ids["chest-a"])
+	assert.True(t, ids["chest-b"])
+	assert.False(t, ids["chest-c"])
+}
+
+// --- loadIndexed ---
+
+func TestLoadIndexed_NotExist(t *testing.T) {
+	t.Parallel()
+	result, err := loadIndexed(t.TempDir())
+	require.NoError(t, err)
+	assert.Nil(t, result)
+}
+
+func TestLoadIndexed_CorruptYAML(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "knowledge.index.yaml"),
+		[]byte(": not: valid:\n"), 0o644))
+
+	_, err := loadIndexed(dir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "knowledge.index.yaml")
+}
+
+func TestLoadIndexed_Success(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "knowledge.index.yaml"),
+		[]byte("sources:\n  - id: chest-x\n  - id: chest-y\n"), 0o644))
+
+	result, err := loadIndexed(dir)
+	require.NoError(t, err)
+	assert.True(t, result["chest-x"])
+	assert.True(t, result["chest-y"])
+}
+
+// --- mergeChestRows ---
+
+func TestMergeChestRows_GovernedNotInActive(t *testing.T) {
+	t.Parallel()
+	governed := map[string]govChest{
+		"gov-only": {ID: "gov-only", Path: "/some/path", Trust: govTrust{Tier: "T1"}},
+	}
+	rows := mergeChestRows(nil, governed, nil, nil)
+	require.Len(t, rows, 1)
+	r := rows[0]
+	assert.Equal(t, "gov-only", r.id)
+	assert.True(t, r.governed)
+	assert.False(t, r.configured)
+	assert.Contains(t, r.drift, "unscoped")
+}
+
+func TestMergeChestRows_IndexedNotDeclared(t *testing.T) {
+	t.Parallel()
+	indexed := map[string]bool{"idx-only": true}
+	rows := mergeChestRows(nil, nil, indexed, nil)
+	require.Len(t, rows, 1)
+	r := rows[0]
+	assert.Equal(t, "idx-only", r.id)
+	assert.True(t, r.indexed)
+	assert.False(t, r.governed)
+	assert.False(t, r.configured)
+	assert.Equal(t, "unknown", r.freshness)
+	assert.Contains(t, r.drift, "unscoped")
+}
+
+func TestMergeChestRows_FullMerge(t *testing.T) {
+	t.Parallel()
+	active := []activeChestEntry{
+		{ID: "chest-a", Path: "/a", Scope: []string{"discovery"}},
+	}
+	governed := map[string]govChest{
+		"chest-a":  {ID: "chest-a", Trust: govTrust{Tier: "T1", LastReviewed: "2026-01-01"}},
+		"gov-only": {ID: "gov-only", Path: "/b", Trust: govTrust{Tier: "T2"}},
+	}
+	indexed := map[string]bool{"chest-a": true, "idx-only": true}
+	compiled := map[string]bool{"chest-a": true}
+
+	rows := mergeChestRows(active, governed, indexed, compiled)
+	assert.Len(t, rows, 3)
+
+	byID := make(map[string]chestRow)
+	for _, r := range rows {
+		byID[r.id] = r
+	}
+
+	a := byID["chest-a"]
+	assert.True(t, a.configured)
+	assert.True(t, a.governed)
+	assert.True(t, a.indexed)
+	assert.True(t, a.compiled)
+	assert.Equal(t, "fresh", a.freshness)
+	assert.Empty(t, a.drift)
+
+	govOnly := byID["gov-only"]
+	assert.False(t, govOnly.configured)
+	assert.True(t, govOnly.governed)
+	assert.Contains(t, govOnly.drift, "unscoped")
+
+	idxOnly := byID["idx-only"]
+	assert.False(t, idxOnly.configured)
+	assert.True(t, idxOnly.indexed)
+}
+
+// --- renderIndexSection ---
+
+func TestRenderIndexSection_CompError(t *testing.T) {
+	t.Parallel()
+	var buf strings.Builder
+	w := tabwriter.NewWriter(&buf, 0, 0, 3, ' ', 0)
+	err := renderIndexSection(w, t.TempDir(), 0, errors.New("decompress failed"))
+	require.NoError(t, err)
+	require.NoError(t, w.Flush())
+	out := buf.String()
+	assert.Contains(t, out, "corrupt")
+	assert.Contains(t, out, "—")
+}
+
+func TestRenderIndexSection_Absent(t *testing.T) {
+	t.Parallel()
+	var buf strings.Builder
+	w := tabwriter.NewWriter(&buf, 0, 0, 3, ' ', 0)
+	err := renderIndexSection(w, t.TempDir(), 0, nil)
+	require.NoError(t, err)
+	require.NoError(t, w.Flush())
+	out := buf.String()
+	assert.Contains(t, out, "absent")
+	assert.Contains(t, out, "—")
+}
+
+func TestRenderIndexSection_OK(t *testing.T) {
+	t.Parallel()
+	var buf strings.Builder
+	w := tabwriter.NewWriter(&buf, 0, 0, 3, ' ', 0)
+	err := renderIndexSection(w, t.TempDir(), 1700000000, nil)
+	require.NoError(t, err)
+	require.NoError(t, w.Flush())
+	out := buf.String()
+	assert.Contains(t, out, "ok")
+	assert.Contains(t, out, "UTC")
+}
+
+// --- telemetryRunFromCmd ---
+
+func TestTelemetryRunFromCmd_NilCmd(t *testing.T) {
+	t.Parallel()
+	assert.Nil(t, telemetryRunFromCmd(nil))
+}
+
+func TestTelemetryRunFromCmd_NilContext(t *testing.T) {
+	t.Parallel()
+	// A cobra.Command with no context set → cmd.Context() returns nil.
+	// Use the actual treasureChestCmd which starts without a context.
+	assert.Nil(t, telemetryRunFromCmd(treasureChestCmd))
+}
+
+// --- treasure-chest integration: loadGoverned ---
+
+func TestLoadGoverned_NotExist(t *testing.T) {
+	t.Parallel()
+	result, err := loadGoverned(t.TempDir())
+	require.NoError(t, err)
+	assert.Nil(t, result)
+}
+
+func TestLoadGoverned_Success(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	content := "chests:\n  - id: chest-one\n    title: Chest One\n    path: /some/path\n    trust:\n      tier: T1\n      reviewed_by: user@example.com\n      last_reviewed: '2026-01-01'\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "treasure-chests.yaml"), []byte(content), 0o644))
+
+	result, err := loadGoverned(dir)
+	require.NoError(t, err)
+	require.Contains(t, result, "chest-one")
+	assert.Equal(t, "T1", result["chest-one"].Trust.Tier)
+}
+
+// --- initiative: readLastMissionID via writeWorkspaceSection ---
+
+func TestInitiativeCmd_WithOutcomesFile(t *testing.T) {
+	dir := t.TempDir()
+	testutil.MinimalRoot(t, dir)
+
+	// Write a memory/outcomes.jsonl file with a known mission_id.
+	memDir := filepath.Join(dir, "memory")
+	require.NoError(t, os.MkdirAll(memDir, 0o755))
+	line := `{"mission_id":"m-test-123","status":"done"}`
+	require.NoError(t, os.WriteFile(filepath.Join(memDir, "outcomes.jsonl"), []byte(line+"\n"), 0o644))
+
+	orig := initiativeRoot
+	t.Cleanup(func() { initiativeRoot = orig })
+	initiativeRoot = dir
+
+	out := captureStdout(t, func() {
+		require.NoError(t, initiativeCmd.RunE(initiativeCmd, nil))
+	})
+	assert.Contains(t, out, "m-test-123")
+}
+
+// --- loadGoverned ---
+
+func TestLoadGoverned_CorruptYAML(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "treasure-chests.yaml"),
+		[]byte(": not: valid: yaml:\n"), 0o644))
+
+	_, err := loadGoverned(dir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "treasure-chests.yaml")
+}
+
+// --- collectWarnings ---
+
+func TestCollectWarnings_AllWarnings(t *testing.T) {
+	t.Parallel()
+	rows := []chestRow{
+		{id: "drift-chest", configured: true, governed: false, indexed: false,
+			drift: []string{"missing_governance", "missing_index"}},
+		{id: "historical-chest", trustTier: "T2", lastReviewed: ""},
+	}
+	warnings := collectWarnings(rows,
+		errors.New("gov load error"),
+		errors.New("idx load error"),
+		errors.New("corrupt"),
+		0,
+	)
+	assert.Contains(t, strings.Join(warnings, "\n"), "treasure-chests.yaml unavailable")
+	assert.Contains(t, strings.Join(warnings, "\n"), "knowledge.index.yaml unavailable")
+	assert.Contains(t, strings.Join(warnings, "\n"), "corrupt")
+	assert.Contains(t, strings.Join(warnings, "\n"), "drift detected")
+	assert.Contains(t, strings.Join(warnings, "\n"), "historical")
+}
+
+func TestCollectWarnings_AbsentIndex(t *testing.T) {
+	t.Parallel()
+	warnings := collectWarnings(nil, nil, nil, nil, 0)
+	assert.Len(t, warnings, 1)
+	assert.Contains(t, warnings[0], "absent")
+}
+
+func TestCollectWarnings_DriftWithCompiledAt(t *testing.T) {
+	t.Parallel()
+	rows := []chestRow{
+		{id: "chest-a", configured: true, governed: false,
+			drift: []string{"missing_governance"}},
+	}
+	warnings := collectWarnings(rows, nil, nil, nil, 1700000000)
+	combined := strings.Join(warnings, "\n")
+	assert.Contains(t, combined, "drift detected")
+	assert.Contains(t, combined, "→ run: strategist treasure-chest --index to refresh")
+}
+
+// --- renderWarningsSection ---
+
+func TestRenderWarningsSection_Empty(t *testing.T) {
+	out := captureStdout(t, func() {
+		renderWarningsSection(nil)
+	})
+	assert.Empty(t, out)
+}
+
+func TestRenderWarningsSection_WithWarnings(t *testing.T) {
+	out := captureStdout(t, func() {
+		renderWarningsSection([]string{"⚠ first warning", "⚠ second warning"})
+	})
+	assert.Contains(t, out, "WARNINGS")
+	assert.Contains(t, out, "first warning")
+	assert.Contains(t, out, "second warning")
+}
+
+// --- renderChestsSection ---
+
+func TestRenderChestsSection_WithRows(t *testing.T) {
+	t.Parallel()
+	rows := []chestRow{
+		{id: "chest-a", path: "/path/a", scope: []string{"discovery"}, trustTier: "T1",
+			freshness: "fresh", drift: nil},
+		{id: "chest-b", scope: nil, trustTier: "", freshness: "unknown",
+			drift: []string{"missing_governance"}},
+	}
+	var buf strings.Builder
+	w := tabwriter.NewWriter(&buf, 0, 0, 3, ' ', 0)
+	err := renderChestsSection(w, rows)
+	require.NoError(t, err)
+	require.NoError(t, w.Flush())
+	out := buf.String()
+	assert.Contains(t, out, "chest-a")
+	assert.Contains(t, out, "chest-b")
+	assert.Contains(t, out, "T1")
+	assert.Contains(t, out, "missing_governance")
+	assert.Contains(t, out, "none") // chest-a has no drift
+}
+
+// --- writeWorkspaceSection with empty base_path ---
+
+func TestWriteWorkspaceSection_EmptyBasePath(t *testing.T) {
+	var buf strings.Builder
+	w := tabwriter.NewWriter(&buf, 0, 0, 3, ' ', 0)
+
+	dir := t.TempDir()
+	cfg := domain.ActiveConfig{
+		Mode:     "full",
+		BasePath: "", // triggers the defaulting branch
+	}
+	err := writeWorkspaceSection(w, cfg, dir, dir)
+	require.NoError(t, err)
+	require.NoError(t, w.Flush())
+	out := buf.String()
+	assert.Contains(t, out, ".analysis") // default base_path
+}
+
+// --- telemetryRunFromCmd with non-nil context ---
+
+func TestTelemetryRunFromCmd_WithNonNilContext(t *testing.T) {
+	t.Parallel()
+	// Create a fresh command with a non-nil context that has no MissionRun embedded.
+	cmd := treasureChestCmd
+	// Set a background context so cmd.Context() returns non-nil.
+	cmd.SetContext(t.Context())
+	result := telemetryRunFromCmd(cmd)
+	// MissionRunFromContext returns nil when ctx has no embedded run.
+	assert.Nil(t, result)
+}
+
+// --- loadActiveChests with corrupt YAML ---
+
+func TestLoadActiveChests_CorruptYAML(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"),
+		[]byte(": not: valid: yaml:\n"), 0o644))
+
+	_, err := loadActiveChests(dir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "active.yaml")
+}
+
+// --- formatCount ---
+
+func TestFormatCount_NegativeReturnsEmpty(t *testing.T) {
+	t.Parallel()
+	assert.Equal(t, "—", formatCount(-1, "card"))
+}
+
+func TestFormatCount_One(t *testing.T) {
+	t.Parallel()
+	assert.Equal(t, "1 card", formatCount(1, "card"))
+	assert.Equal(t, "1 missão", formatCount(1, "missão"))
+}
+
+func TestFormatCount_Many(t *testing.T) {
+	t.Parallel()
+	assert.Equal(t, "3 cards", formatCount(3, "card"))
+	assert.Equal(t, "2 missões", formatCount(2, "missão"))
+}

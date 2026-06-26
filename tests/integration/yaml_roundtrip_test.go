@@ -82,7 +82,6 @@ func TestRoundtrip_ActiveYAML(t *testing.T) {
 	assert.Equal(t, s.Mode, s2.Mode, "mode survived round-trip")
 	assert.Equal(t, s.BasePath, s2.BasePath, "base_path survived round-trip")
 	assert.Equal(t, s.Slots, s2.Slots, "slots survived round-trip")
-	assert.Equal(t, s.AdrEnabled, s2.AdrEnabled, "adr_enabled survived round-trip")
 }
 
 func TestRoundtrip_PersonaEpic(t *testing.T) {

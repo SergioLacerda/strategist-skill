@@ -52,7 +52,7 @@ O Sniper requer aprovação explícita do usuário antes de qualquer execução 
 Um papel rankeado é um provider que declara `provider_class: rankeado` em seu `skill.yaml`.
 
 ```yaml
-# .strategist/brainstorming/skill.yaml
+# .strategist/skills/brainstorming/skill.yaml
 specialization_taxonomy:
   canonical_role: ranger
   provider_class: rankeado     # ← papel rankeado
@@ -99,7 +99,7 @@ Cada arma é um skill com seu próprio `skill.yaml` resolvido em preflight pelo 
 | refinement | `write_analysis` |
 | execution | `controlled` |
 
-Para trocar uma arma, basta alterar o valor do slot em `active.yaml` e garantir que o `skill.yaml` do novo provider exista em `.strategist/<provider>/skill.yaml`.
+Para trocar uma arma, basta alterar o valor do slot em `active.yaml` e garantir que o `skill.yaml` do novo provider exista em `.strategist/skills/<provider>/skill.yaml`.
 
 ---
 
@@ -123,7 +123,7 @@ Colunas:
 | provider | ID do skill configurado em `active.yaml` |
 | canonical_role | Papel canônico declarado no manifest (`ranger`, `archivist`, `sniper`) |
 | class | `rankeado` se `provider_class: rankeado`, senão `(base)` |
-| manifest status | `✓ manifest OK` se `.strategist/<provider>/skill.yaml` existe e é válido; `⚠ manifest ausente` caso contrário |
+| manifest status | `✓ manifest OK` se `.strategist/skills/<provider>/skill.yaml` existe e é válido; `⚠ manifest ausente` caso contrário |
 
 O comando não faz chamadas ao LLM — lê apenas `active.yaml` e os arquivos `skill.yaml` locais. Útil para verificar rapidamente se a workspace está íntegra antes de iniciar uma missão.
 

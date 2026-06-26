@@ -22,7 +22,7 @@ make build          # builds the CLI binary to bin/strategist
 | `make build` | Build the CLI binary |
 | `make test` | Run unit tests |
 | `make test-all` | Unit + spec + integration tests |
-| `make lint` | Run golangci-lint |
+| `make lint` | Run formatting, golangci-lint, and informational source-size reports |
 | `make cover` | Run tests with coverage report |
 | `make cover-html` | Open coverage report in browser |
 | `make sync-embed` | Sync embedded YAML files into the binary |

@@ -4,42 +4,52 @@ version: "1.0"
 invariants:
   - id: gate_cannot_be_skipped
     description: Sniper must never be invoked without approval gate completing first
-    rule: phase=approval_gate must emit status=approved or status=plan_only before sniper starts
+    rule: phase=approval_gate must emit status=analysis_accepted, status=analysis_delivered, or status=rejected before sniper starts
 
-  - id: plan_only_not_blocked
-    description: Declining the gate is plan_only, not an error
-    rule: response=no|decline → status=plan_only (not status=blocked)
+  - id: analysis_delivered_not_blocked
+    description: Rejecting or not having documentation targets is analysis_delivered, not an error
+    rule: response=reject|no|nao → status=rejected (not status=blocked); empty tasks → status=analysis_delivered
 
-  - id: checkpoint_update_on_approve
-    description: Mission checkpoint updates when gate is approved
-    rule: gate approved → re-emit checkpoint with step_3=✅ step_4=⏳
+  - id: checkpoint_update_on_accept
+    description: Mission checkpoint updates when analysis is accepted
+    rule: gate accepted → re-emit checkpoint with step_3=✅ step_4=⏳
 
 cases:
-  - name: user_approves
-    given:
-      gate_response: "yes"
-    expect:
-      emit: "[Strategist] phase=approval_gate status=approved"
-      checkpoint_update: { step_3_icon: "✅", step_4_icon: "⏳" }
-      next_phase: sniper
-
-  - name: user_declines
-    given:
-      gate_response: "no"
-    expect:
-      emit: "[Strategist] phase=approval_gate status=plan_only"
-      next_phase: adr_opportunity
-      mission_result_status: plan_only
-
-  - name: user_declines_alternate_phrasing
-    given:
-      gate_response: "decline"
-    expect:
-      emit: "[Strategist] phase=approval_gate status=plan_only"
-
-  - name: user_approves_pt_br
+  - name: user_accepts
     given:
       gate_response: "sim"
     expect:
-      emit: "[Strategist] phase=approval_gate status=approved"
+      emit: "[Strategist] phase=approval_gate status=analysis_accepted"
+      checkpoint_update: { step_3_icon: "✅", step_4_icon: "⏳" }
       next_phase: sniper
+
+  - name: user_rejects
+    given:
+      gate_response: "reject"
+    expect:
+      emit: "[Strategist] phase=approval_gate status=rejected"
+      next_phase: adr_opportunity
+      mission_result_status: rejected
+
+  - name: user_requests_revision
+    given:
+      gate_response: "missing_item"
+    expect:
+      emit: "[Strategist] phase=approval_gate status=revision_requested"
+      next_phase: archivist
+      mission_result_status: revision_requested
+
+  - name: user_accepts_pt_br
+    given:
+      gate_response: "concordo"
+    expect:
+      emit: "[Strategist] phase=approval_gate status=analysis_accepted"
+      next_phase: sniper
+
+  - name: empty_tasks_analysis_delivered
+    given:
+      tasks_md: absent
+    expect:
+      emit: "[Strategist] phase=approval_gate status=analysis_delivered"
+      next_phase: adr_opportunity
+      mission_result_status: analysis_delivered

@@ -11,6 +11,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/SergioLacerda/strategist-skill/internal/compile"
+	embedpkg "github.com/SergioLacerda/strategist-skill/internal/embed"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
 )
@@ -81,6 +82,18 @@ func runCompile(cmd *cobra.Command, _ []string) (retErr error) {
 		telemetry.AttrTarget, compileRoot,
 	)
 	fmt.Printf("[Strategist] compile complete → %s/.compiled/\n", compileRoot)
+
+	projectRoot := filepath.Dir(compileRoot)
+	tplBytes, err := embedpkg.Extractor{}.ReadFile("templates/agent-protocol.md")
+	if err != nil {
+		slog.WarnContext(ctx, "[Strategist] agent-protocol template missing", "error", err)
+		tplBytes = nil
+	}
+	if protocolOK := compile.RefreshAgentAwareness(compileRoot, projectRoot, Version, tplBytes); protocolOK {
+		fmt.Printf("[Strategist] agent-protocol → %s/agent-protocol.md\n", compileRoot)
+	}
+	fmt.Printf("[Strategist] agent-awareness pass complete → %s\n", projectRoot)
+
 	return nil
 }
 

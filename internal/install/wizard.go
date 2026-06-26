@@ -25,8 +25,9 @@ var knownProviderRisk = map[string]string{
 	"openspec-propose":        "write_analysis",
 	"openspec-apply-change":   "controlled",
 	"openspec-archive-change": "write_analysis",
+	"sniper":                  "controlled",
 	"sdd-ask":                 "controlled",
-	"sdd-ask-full":            "controlled",
+	"batata":                  "controlled",
 	"sdd-diagnose":            "write_analysis",
 	"sdd-converge":            "controlled",
 	"sdd-correct":             "controlled",
@@ -138,16 +139,6 @@ func runWizard(p Prompter, extractor domain.FileExtractor) (domain.WizardConfig,
 	if err != nil {
 		return domain.WizardConfig{}, fmt.Errorf("wizard: base_path: %w", err)
 	}
-	adrRaw, err := p.Select(b.PromptAdr, "yes", []string{"yes", "no"})
-	if err != nil {
-		return domain.WizardConfig{}, fmt.Errorf("wizard: adr_enabled: %w", err)
-	}
-
-	executionMode, gitPersistenceMode, err := promptPolicyAndGit(p, b)
-	if err != nil {
-		return domain.WizardConfig{}, err
-	}
-
 	discovery, refinement, execution, err := promptSlots(p, b, providerRisk)
 	if err != nil {
 		return domain.WizardConfig{}, err
@@ -165,38 +156,15 @@ func runWizard(p Prompter, extractor domain.FileExtractor) (domain.WizardConfig,
 	return domain.WizardConfig{
 		Mode:               mode,
 		BasePath:           basePath,
-		ExecutionMode:      executionMode,
-		GitPersistenceMode: gitPersistenceMode,
 		UILanguage:         uiLang,
 		DocLanguage:        normLang(docLang),
 		ChatLanguage:       normLang(chatLang),
 		CodeLanguage:       normLang(codeLang),
-		AdrEnabled:         adrRaw == "yes",
 		DiscoveryProvider:  discovery,
 		RefinementProvider: refinement,
 		ExecutionProvider:  execution,
 		TreasureChestPath:  chestPath,
 	}, nil
-}
-
-// promptPolicyAndGit collects execution mode and git persistence mode, validates the policy.
-func promptPolicyAndGit(p Prompter, b i18n.WizardStrings) (executionMode, gitPersistenceMode string, err error) {
-	executionMode, err = p.Select(b.PromptExecutionMode, "plan_only", []string{"plan_only", "apply_workspace"})
-	if err != nil {
-		return "", "", fmt.Errorf("wizard: execution_mode: %w", err)
-	}
-	gitOptions := []string{"forbidden"}
-	if executionMode == domain.ExecutionModeApplyWorkspace {
-		gitOptions = []string{"forbidden", "explicit_commit"}
-	}
-	gitPersistenceMode, err = p.Select(b.PromptGitMode, "forbidden", gitOptions)
-	if err != nil {
-		return "", "", fmt.Errorf("wizard: git_persistence_mode: %w", err)
-	}
-	if err = domain.NewMissionPolicy(executionMode, gitPersistenceMode).Validate(); err != nil {
-		return "", "", fmt.Errorf("wizard: policy: %w", err)
-	}
-	return executionMode, gitPersistenceMode, nil
 }
 
 // promptSlots collects discovery, refinement and execution slot providers.
@@ -216,7 +184,7 @@ func promptSlots(p Prompter, b i18n.WizardStrings, providerRisk map[string]strin
 	if w := validateProvider(providerRisk, refinement, "write_analysis"); w != "" {
 		fmt.Println(w)
 	}
-	execution, err = p.SelectOrInput(b.PromptExecution, "sdd-ask", []string{"sdd-ask", "sdd-ask-full"}, b.LabelCustomInput)
+	execution, err = p.SelectOrInput(b.PromptExecution, "sniper", []string{"sniper", "openspec-apply-change"}, b.LabelCustomInput)
 	if err != nil {
 		return "", "", "", fmt.Errorf("wizard: execution: %w", err)
 	}

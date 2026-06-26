@@ -80,7 +80,7 @@ contract:
       after_archivist_done: { step_1: "✅", step_2: "✅", step_3: "⏳" }
       after_gate_approved:  { step_1: "✅", step_2: "✅", step_3: "✅", step_4: "⏳" }
       after_sniper_done:    { step_1: "✅", step_2: "✅", step_3: "✅", step_4: "✅" }
-    skip_reemit_on: plan_only
+    skip_reemit_on: [analysis_delivered, revision_requested, rejected]
 
   mission_metrics:
     emit_key: mission_metrics
@@ -99,7 +99,7 @@ contract:
       mission can be measured without changing the visible phase flow.
 
   persona_template_access: "persona.content_by_lang[active.language.chat].<key>"
-  persona_fallback: pt-BR
+  persona_fallback: en
 
   write_scope: read-only
   owner: internal (orchestrator)

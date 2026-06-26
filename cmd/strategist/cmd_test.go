@@ -97,6 +97,7 @@ func TestCompileCmd_Success(t *testing.T) {
 	err := compileCmd.RunE(compileCmd, nil)
 	require.NoError(t, err)
 	assert.FileExists(t, filepath.Join(dir, ".compiled", ".manifest.gz"))
+	assert.FileExists(t, filepath.Join(dir, "agent-protocol.md"), "compile must generate agent-protocol.md via RefreshAgentAwareness")
 }
 
 func TestCompileCmd_DefaultRoot(t *testing.T) {
@@ -469,9 +470,8 @@ func TestValidateCmd_InvalidKnowledgeIndex(t *testing.T) {
 }
 
 func TestValidateCmd_DefaultRoot(t *testing.T) {
-	// When validateRoot is empty it defaults to ".strategist".
-	// Change to a temp dir where ".strategist" doesn't exist so it errors out,
-	// but the default-resolution branch is covered.
+	// When validateRoot is empty, auto-discovery walks up from CWD.
+	// In an empty temp dir (no .strategist/), it returns a "runtime not found" error.
 	orig := validateRoot
 	t.Cleanup(func() { validateRoot = orig })
 	validateRoot = ""
@@ -483,7 +483,7 @@ func TestValidateCmd_DefaultRoot(t *testing.T) {
 
 	err = validateCmd.RunE(validateCmd, nil)
 	require.Error(t, err)
-	assert.Equal(t, ".strategist", validateRoot)
+	assert.Contains(t, err.Error(), "runtime not found")
 }
 
 // TestCompileCmd_PrintsCompletion verifies the success message path.
@@ -589,14 +589,21 @@ func TestInitiativeCmd_MissingActiveYAML(t *testing.T) {
 }
 
 func TestInitiativeCmd_DefaultRootFallback(t *testing.T) {
+	// When --root is empty, RunE auto-discovers via findStrategistRoot.
+	// In a tmpdir with no .strategist/, it should return an error containing "not found".
 	orig := initiativeRoot
 	t.Cleanup(func() { initiativeRoot = orig })
-	initiativeRoot = "" // reset so RunE sets the default
+	initiativeRoot = ""
 
-	// RunE will try to open ".strategist/active.yaml" — fine if it fails;
-	// we only assert it sets the default before attempting.
-	_ = initiativeCmd.RunE(initiativeCmd, nil)
-	assert.Equal(t, ".strategist", initiativeRoot)
+	// Change CWD to an isolated temp dir so we don't accidentally pick up the real runtime.
+	tmp := t.TempDir()
+	origWd, _ := os.Getwd()
+	require.NoError(t, os.Chdir(tmp))
+	t.Cleanup(func() { _ = os.Chdir(origWd) })
+
+	err := initiativeCmd.RunE(initiativeCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not found")
 }
 
 func TestProviderRow_FallbackRoles(t *testing.T) {
@@ -842,8 +849,19 @@ func TestDojoListCmd_MissingActiveYAML(t *testing.T) {
 
 // --- check ---
 
+const minimalPersonaYAML = `id: epic
+tone_directive: test tone
+phase_labels:
+  discovery: Ranger
+  refinement: Archivist
+  execution: Sniper
+diagnostics:
+  pipeline_header: "[Strategist] pipeline=starting mission_id={id} persona=epic\n"
+  bootstrap_origin: "[Strategist] profile_path={path} active_yaml={active} reason={reason}\n"
+`
+
 // minimalCheckRoot creates a .strategist/ tree suitable for checkCmd with all
-// three slot providers installed.
+// three slot providers installed plus a valid epic persona.
 func minimalCheckRoot(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
@@ -863,6 +881,12 @@ func minimalCheckRoot(t *testing.T) string {
 			0o644,
 		))
 	}
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "personas", "epic.yaml"),
+		[]byte(minimalPersonaYAML),
+		0o644,
+	))
 	require.NoError(t, os.WriteFile(
 		filepath.Join(dir, "active.yaml"),
 		[]byte("mode: epic\nbase_path: .analysis\nroles_config: roles/default.yaml\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: sdd-ask\n"),
@@ -886,6 +910,55 @@ func TestCheckCmd_Success(t *testing.T) {
 	assert.Contains(t, out, "brainstorming")
 	assert.Contains(t, out, "openspec-explore")
 	assert.Contains(t, out, "sdd-ask")
+	assert.Contains(t, out, "persona=epic")
+}
+
+func TestCheckCmd_PersonaMissing(t *testing.T) {
+	dir := minimalCheckRoot(t)
+	require.NoError(t, os.Remove(filepath.Join(dir, "personas", "epic.yaml")))
+
+	orig := checkRoot
+	t.Cleanup(func() { checkRoot = orig })
+	checkRoot = dir
+
+	err := checkCmd.RunE(checkCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "check=failed")
+}
+
+func TestCheckCmd_PersonaMissingDiagnosticsField(t *testing.T) {
+	dir := minimalCheckRoot(t)
+	// Overwrite persona without diagnostics.
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "personas", "epic.yaml"),
+		[]byte("id: epic\ntone_directive: test\nphase_labels:\n  discovery: Ranger\n  refinement: Archivist\n  execution: Sniper\n"),
+		0o644,
+	))
+
+	orig := checkRoot
+	t.Cleanup(func() { checkRoot = orig })
+	checkRoot = dir
+
+	err := checkCmd.RunE(checkCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "check=failed")
+}
+
+func TestCheckCmd_EmptyMode(t *testing.T) {
+	dir := minimalCheckRoot(t)
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "active.yaml"),
+		[]byte("base_path: .analysis\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: sdd-ask\n"),
+		0o644,
+	))
+
+	orig := checkRoot
+	t.Cleanup(func() { checkRoot = orig })
+	checkRoot = dir
+
+	err := checkCmd.RunE(checkCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "check=failed")
 }
 
 func TestCheckCmd_MissingActiveYAML(t *testing.T) {
@@ -933,6 +1006,94 @@ func TestCheckCmd_WrongRiskScore(t *testing.T) {
 	assert.Contains(t, err.Error(), "check=failed")
 }
 
+func TestCheckCmd_NativeRole_Sniper(t *testing.T) {
+	dir := t.TempDir()
+	// Install skill providers for discovery and refinement.
+	for _, p := range []struct {
+		name      string
+		riskScore string
+	}{
+		{"brainstorming", "write_analysis"},
+		{"openspec-explore", "write_analysis"},
+	} {
+		provDir := filepath.Join(dir, "skills", p.name)
+		require.NoError(t, os.MkdirAll(provDir, 0o755))
+		require.NoError(t, os.WriteFile(
+			filepath.Join(provDir, "skill.yaml"),
+			[]byte("id: "+p.name+"\nrisk_score: "+p.riskScore+"\n"),
+			0o644,
+		))
+	}
+	// Install sniper as a native role (no skills/sniper/skill.yaml).
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "roles", "sniper.yaml"),
+		[]byte("role: sniper\nslot: execution\n"),
+		0o644,
+	))
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "personas", "epic.yaml"),
+		[]byte(minimalPersonaYAML),
+		0o644,
+	))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "active.yaml"),
+		[]byte("mode: epic\nbase_path: .analysis\nroles_config: roles/default.yaml\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: sniper\n"),
+		0o644,
+	))
+
+	orig := checkRoot
+	t.Cleanup(func() { checkRoot = orig })
+	checkRoot = dir
+
+	out := captureStdout(t, func() {
+		err := checkCmd.RunE(checkCmd, nil)
+		require.NoError(t, err)
+	})
+	assert.Contains(t, out, "check=ok")
+	assert.Contains(t, out, "sniper")
+}
+
+func TestCheckCmd_NativeRole_SlotMismatch(t *testing.T) {
+	dir := t.TempDir()
+	for _, p := range []struct {
+		name      string
+		riskScore string
+	}{
+		{"brainstorming", "write_analysis"},
+		{"openspec-explore", "write_analysis"},
+	} {
+		provDir := filepath.Join(dir, "skills", p.name)
+		require.NoError(t, os.MkdirAll(provDir, 0o755))
+		require.NoError(t, os.WriteFile(
+			filepath.Join(provDir, "skill.yaml"),
+			[]byte("id: "+p.name+"\nrisk_score: "+p.riskScore+"\n"),
+			0o644,
+		))
+	}
+	// Role declares slot=discovery but active.yaml puts it in execution.
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "roles", "wrong-role.yaml"),
+		[]byte("role: wrong-role\nslot: discovery\n"),
+		0o644,
+	))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "active.yaml"),
+		[]byte("mode: epic\nbase_path: .analysis\nroles_config: roles/default.yaml\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: wrong-role\n"),
+		0o644,
+	))
+
+	orig := checkRoot
+	t.Cleanup(func() { checkRoot = orig })
+	checkRoot = dir
+
+	err := checkCmd.RunE(checkCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "check=failed")
+}
+
 func TestCheckCmd_DefaultRoot(t *testing.T) {
 	orig := checkRoot
 	t.Cleanup(func() { checkRoot = orig })
@@ -945,7 +1106,89 @@ func TestCheckCmd_DefaultRoot(t *testing.T) {
 
 	err = checkCmd.RunE(checkCmd, nil)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "active_yaml_not_found")
+	assert.Contains(t, err.Error(), "runtime_not_found")
+}
+
+// --- resolveRuntimeProfile ---
+
+func TestResolveRuntimeProfile_ValidPersona(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "active.yaml"),
+		[]byte("mode: epic\nbase_path: .analysis\n"),
+		0o644,
+	))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "personas", "epic.yaml"),
+		[]byte(minimalPersonaYAML),
+		0o644,
+	))
+
+	profile := resolveRuntimeProfile(dir)
+	assert.Equal(t, "epic", profile.PersonaResolved)
+	assert.Equal(t, "active_yaml", profile.Reason)
+	assert.Equal(t, "local", profile.ProfileMode)
+}
+
+func TestResolveRuntimeProfile_MissingActiveYAML(t *testing.T) {
+	t.Parallel()
+	profile := resolveRuntimeProfile(t.TempDir())
+	assert.Equal(t, "unknown", profile.PersonaResolved)
+	assert.Equal(t, "active_yaml_missing", profile.Reason)
+}
+
+func TestResolveRuntimeProfile_MissingPersonaFile(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "active.yaml"),
+		[]byte("mode: epic\nbase_path: .analysis\n"),
+		0o644,
+	))
+	profile := resolveRuntimeProfile(dir)
+	assert.Equal(t, "unknown", profile.PersonaResolved)
+	assert.Equal(t, "persona_file_missing", profile.Reason)
+}
+
+func TestResolveRuntimeProfile_MissingMode(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "active.yaml"),
+		[]byte("base_path: .analysis\n"),
+		0o644,
+	))
+	profile := resolveRuntimeProfile(dir)
+	assert.Equal(t, "unknown", profile.PersonaResolved)
+	assert.Equal(t, "mode_missing", profile.Reason)
+}
+
+func TestResolveRuntimeProfile_PersonaMissingDiagnostics(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "active.yaml"),
+		[]byte("mode: pragmatic\nbase_path: .analysis\n"),
+		0o644,
+	))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "personas", "pragmatic.yaml"),
+		[]byte("id: pragmatic\ntone_directive: test\n"),
+		0o644,
+	))
+	profile := resolveRuntimeProfile(dir)
+	assert.Equal(t, "unknown", profile.PersonaResolved)
+	assert.Equal(t, "persona_diagnostics_missing", profile.Reason)
+}
+
+func TestRenderPersonaHeader(t *testing.T) {
+	t.Parallel()
+	tpl := "⚔️  [Strategist] pipeline=starting mission_id={id} persona={persona} output={output}\n"
+	got := renderPersonaHeader(tpl, "mission-123", "epic", "default")
+	assert.Equal(t, "⚔️  [Strategist] pipeline=starting mission_id=mission-123 persona=epic output=default", got)
 }
 
 // --- exitCodeFor ---
@@ -990,6 +1233,79 @@ func TestAddLine_NonNilRun(t *testing.T) {
 	assert.NotPanics(t, func() { addLine(run) })
 	snap := run.Snapshot()
 	assert.Equal(t, int64(1), snap.LinesEmitted)
+}
+
+// --- go-file-size-report (Makefile contract) ---
+
+func writeLines(t *testing.T, path string, count int) {
+	t.Helper()
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+	f, err := os.Create(path)
+	require.NoError(t, err)
+	defer f.Close()
+	for i := 0; i < count; i++ {
+		_, err = fmt.Fprintf(f, "// line %d\n", i+1)
+		require.NoError(t, err)
+	}
+}
+
+func copyMakefile(t *testing.T, dstRoot string) {
+	t.Helper()
+	src, err := filepath.Abs("../../Makefile")
+	require.NoError(t, err)
+	data, err := os.ReadFile(src)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(dstRoot, "Makefile"), data, 0o644))
+}
+
+func TestMakeGoFileSizeReport_PrimarySourcesOnly(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "cmd", "app"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "internal", "pkg"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "internal", "embed", "defaults"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(root, ".strategist"), 0o755))
+
+	writeLines(t, filepath.Join(root, "cmd", "app", "main.go"), 205)
+	writeLines(t, filepath.Join(root, "internal", "pkg", "service.go"), 240)
+	writeLines(t, filepath.Join(root, "internal", "pkg", "service_test.go"), 260)
+	writeLines(t, filepath.Join(root, "internal", "embed", "defaults", "generated.go"), 300)
+	writeLines(t, filepath.Join(root, ".strategist", "runtime.go"), 400)
+	copyMakefile(t, root)
+
+	cmd := exec.Command("make", "go-file-size-report")
+	cmd.Dir = root
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, string(out))
+
+	output := string(out)
+	assert.Contains(t, output, "=== Go Files > 200 Lines ===")
+	assert.Contains(t, output, "internal/pkg/service.go 240")
+	assert.Contains(t, output, "cmd/app/main.go 205")
+	assert.NotContains(t, output, "service_test.go")
+	assert.NotContains(t, output, "internal/embed/defaults/generated.go")
+	assert.NotContains(t, output, ".strategist/runtime.go")
+}
+
+func TestMakeGoFileSizeReport_PrintsNoneWhenNoLargeFilesExist(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "cmd", "app"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "internal", "pkg"), 0o755))
+	writeLines(t, filepath.Join(root, "cmd", "app", "main.go"), 40)
+	writeLines(t, filepath.Join(root, "internal", "pkg", "service.go"), 120)
+	copyMakefile(t, root)
+
+	cmd := exec.Command("make", "go-file-size-report")
+	cmd.Dir = root
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, string(out))
+
+	output := string(out)
+	assert.Contains(t, output, "=== Go Files > 200 Lines ===")
+	assert.Contains(t, output, "none")
 }
 
 // --- dojoItemLine ---

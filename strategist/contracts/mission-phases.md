@@ -28,7 +28,7 @@ Required emissions per role:
 - Sniper: `[Strategist] phase=sniper opportunity_attack=done items=0` OR `triggered items=<N>`
 
 This invariant applies even for narrow prompts (single-file/single-target refinement).
-"Foco em alvo único" is NOT a valid reason to skip opportunity attack.
+"Single-target focus" is NOT a valid reason to skip opportunity attack.
 
 If a role cannot run opportunity attack due to technical error, emit:
 `[Strategist] phase=<role> opportunity_attack=failed reason=<why>`
@@ -44,33 +44,35 @@ Ranger (organize only) → Archivist (theme/path/counts) → quick_draw gate →
 
 - Input: original quick note prompt
 - Output: one normalized line, preserving context:
-  - `ideia: <formalizacao sem expandir escopo>`
+  - `idea: <normalized text without expanding scope>`
 - Ranger must not add requirements, milestones, or implementation details.
 
 #### 5.0b Archivist (quick_draw)
 
 - Determine theme bucket based on `active.language.chat`:
-  - pt-BR: `arquitetura` | `seguranca` | `analise` | `geral`
   - en:    `architecture` | `security` | `analysis` | `general`
+  - pt-BR: `arquitetura` | `seguranca` | `analise` | `geral`
 - Resolve destination path: `<base_path>/todo/<bucket>.md`
-  - pt-BR example: `.analysis/todo/arquitetura.md`
   - en example: `.analysis/todo/architecture.md`
+  - pt-BR example: `.analysis/todo/arquitetura.md`
 - Inspect existing file content (if present) and compute:
   - `total_ideas`: total idea entries in the destination theme file
   - `similar_ideas`: ideas in the same theme with textual similarity to the normalized idea
 
 #### 5.0c Quick Draw Gate (mandatory)
 
-STOP. Show exactly:
+STOP. Show exactly (using `content_by_lang[active.language.chat].quick_draw_gate` template):
 
 ```text
-ideia: <texto_normalizado>
-adicionar ideia? (sim / nao)
+idea: <normalized text>
+add idea? (yes / no)
 ```
 
+Accepted input tokens: `yes` / `no` (English) or reserved tokens `sim` / `nao` (see `internal/i18n/reserved.go`).
+
 Wait for response:
-- `sim`: proceed to Sniper append.
-- `nao`: return without writing.
+- `yes` / `sim`: proceed to Sniper append.
+- `no` / `nao`: return without writing.
 
 Before append, evaluate guarded transition group `finalize_analysis` with effective policy.
 Emit canonical event:
@@ -79,12 +81,12 @@ If blocked, stop with `reason=policy_blocked`.
 
 #### 5.0d Sniper (quick_draw append)
 
-- Append a new entry to `<base_path>/todo/<tema>.md`.
+- Append a new entry to `<base_path>/todo/<bucket>.md`.
 - Entry includes timestamp + normalized idea.
-- Return:
-  - `sucesso: ideia adicionada em <path>`
-  - `total de ideias: X`
-  - `ideias similares (mesmo tema): Y`
+- Emit `content_by_lang[active.language.chat].quick_draw_success` with:
+  - `{destination_path}`: the bucket file path
+  - `{total_ideas}`: total idea count in the file
+  - `{similar_ideas}`: ideas with textual similarity to the appended idea
 
 ### 5.1 Ranger (discovery slot)
 

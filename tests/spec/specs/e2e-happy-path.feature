@@ -16,9 +16,9 @@ Feature: Strategist Happy Path E2E
     And Archivist finds no actionable side quests
     And Strategist presents the approval gate
 
-  Scenario: gate decline ends the mission as plan_only
-    Given the approval gate has been presented
-    When the user responds with "no"
-    Then Strategist ends the mission as plan_only
+  Scenario: gate rejection ends the mission as analysis_delivered
+    Given the review gate has been presented
+    When the user responds with "reject"
+    Then Strategist ends the mission as analysis_delivered
     And Sniper is not invoked
 

@@ -3,8 +3,8 @@ version: "1.0"
 
 invariants:
   - id: slot_resolution_order
-    description: Provider resolution uses declared order — skill_root first
-    rule: resolve provider in order — skill_root/ → .claude/skills/ → registry
+    description: Provider resolved from strategist runtime skills directory — no fallback chain
+    rule: resolve provider from skill_root/skills/<provider>/skill.yaml — single lookup, no fallback
 
   - id: risk_mismatch_blocks
     description: Slot with wrong risk_score stops the mission

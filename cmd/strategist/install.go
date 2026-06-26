@@ -32,18 +32,35 @@ var installCmd = &cobra.Command{
 	RunE:  runInstall,
 }
 
-func runInstall(cmd *cobra.Command, _ []string) (retErr error) {
-	if installGlobal {
-		if installTarget == "" {
-			home, err := os.UserHomeDir()
-			if err != nil {
-				return fmt.Errorf("install: resolve home dir: %w", err)
-			}
-			installTarget = home
-		}
-	} else if installTarget == "" {
-		installTarget = "."
+// resolveInstallTarget returns the effective install target path.
+// For global installs, returns the user home dir.
+// For local installs with no explicit target, walks up from CWD to find an
+// existing .strategist/ and updates in-place; falls back to "." otherwise.
+func resolveInstallTarget(explicit string, global bool) (string, error) {
+	if explicit != "" {
+		return explicit, nil
 	}
+	if global {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("install: resolve home dir: %w", err)
+		}
+		return home, nil
+	}
+	if cwd, err := os.Getwd(); err == nil {
+		if _, projRoot, discErr := findStrategistRoot(cwd); discErr == nil {
+			return projRoot, nil
+		}
+	}
+	return ".", nil
+}
+
+func runInstall(cmd *cobra.Command, _ []string) (retErr error) {
+	target, err := resolveInstallTarget(installTarget, installGlobal)
+	if err != nil {
+		return err
+	}
+	installTarget = target
 
 	ctx := cmd.Context()
 	if ctx == nil {
@@ -52,6 +69,9 @@ func runInstall(cmd *cobra.Command, _ []string) (retErr error) {
 	run := telemetry.MissionRunFromContext(ctx)
 	if run != nil {
 		run.MarkRanger()
+		if installWizard {
+			run.SetSilent()
+		}
 	}
 	ctx, span := telemetry.Tracer().Start(ctx, "strategist.install",
 		trace.WithAttributes(
@@ -96,6 +116,14 @@ func runInstall(cmd *cobra.Command, _ []string) (retErr error) {
 		Extractor:   embedpkg.Extractor{},
 		Compiler:    compile.Compiler{},
 		ShimHomeDir: shimHome,
+		AwarenessRefresher: func(strategistRoot, projectRoot, version string) bool {
+			tplBytes, err := embedpkg.Extractor{}.ReadFile("templates/agent-protocol.md")
+			if err != nil {
+				tplBytes = nil
+			}
+			return compile.RefreshAgentAwareness(strategistRoot, projectRoot, version, tplBytes)
+		},
+		Version: Version,
 	}
 
 	if err := svc.Install(ctx, cfg); err != nil {
@@ -111,8 +139,23 @@ func runInstall(cmd *cobra.Command, _ []string) (retErr error) {
 		telemetry.AttrOutputProfile, "default",
 		telemetry.AttrTarget, installTarget,
 	)
-	fmt.Println("[Strategist] install complete →", installTarget)
+	printInstallCompleteBanner(installTarget, installWizard)
 	return nil
+}
+
+func printInstallCompleteBanner(target string, wizard bool) {
+	mode := "silent"
+	if wizard {
+		mode = "wizard"
+	}
+	fmt.Println()
+	fmt.Println("  ┌─────────────────────────────────────────────────────────────────────┐")
+	fmt.Println("  │  STRATEGIST  ◆  install complete                                    │")
+	fmt.Println("  └─────────────────────────────────────────────────────────────────────┘")
+	fmt.Println()
+	fmt.Printf("     target  %s\n", target)
+	fmt.Printf("     mode    %s\n", mode)
+	fmt.Println()
 }
 
 func init() {

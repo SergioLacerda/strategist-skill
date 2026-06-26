@@ -3,11 +3,9 @@ type: agent_phase
 description: >
   Post-mission stage (conditional). Detects architectural decisions in the completed
   mission and offers to document them as ADRs. Two-gate flow: gate_1 confirms generation,
-  gate_2 confirms content. Skipped entirely when adr_enabled=false or no criteria met.
+  gate_2 confirms content. Skipped when no criteria met.
 
 contract:
-  skip_condition: active.adr_enabled == false
-
   activation_criteria:
     new_pattern: new interface, contract, schema, or abstraction introduced
     breaking_change: field removed, signature changed, behavior changed

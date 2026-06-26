@@ -9,7 +9,7 @@ contract: null
 ## Inputs
 
 - full user prompt
-- `strategist/schemas/intake.schema.yaml`
+- `.strategist/schemas/intake.schema.yaml`
 
 ## Outputs
 

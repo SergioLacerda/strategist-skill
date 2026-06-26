@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/SergioLacerda/strategist-skill/internal/i18n"
 )
 
 // Config reads active.yaml, personas/*.yaml and roles/*.yaml from root
@@ -45,6 +47,22 @@ func Config(root, outputPath string) error {
 		if err := persona.Validate(); err != nil {
 			return fmt.Errorf("compile config: personas/%s: %w", name, err)
 		}
+	}
+
+	// Inject pt-BR locale into each persona that has a content_by_lang map.
+	// The canonical English wording lives in the persona YAML; pt-BR is provided
+	// by the i18n package so it doesn't bloat every persona file.
+	ptBR := i18n.PTBRRuntime.ToMap()
+	for _, raw := range personasRaw {
+		personaMap, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		cbl, ok := personaMap["content_by_lang"].(map[string]any)
+		if !ok {
+			continue
+		}
+		cbl["pt-BR"] = ptBR
 	}
 
 	roles, err := compileYAMLDir(filepath.Join(root, "roles"), sources)
