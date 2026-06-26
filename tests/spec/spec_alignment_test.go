@@ -1096,6 +1096,41 @@ func TestStrategistSourceTreeEnglishOnly(t *testing.T) {
 	}
 }
 
+func TestDelegationUnavailableContractPresent(t *testing.T) {
+	t.Parallel()
+
+	// agent-protocol.md templates must declare delegation_unavailable as a named error state
+	// and forbid direct simulation of delegation.
+	templatePaths := []string{
+		filepath.Join(repoRoot(t), "strategist", "templates", "agent-protocol.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "agent-protocol.md"),
+	}
+	for _, path := range templatePaths {
+		content := readFile(t, path)
+		if !strings.Contains(content, "delegation_unavailable") {
+			t.Fatalf("%s missing error state \"delegation_unavailable\"", path)
+		}
+		if !strings.Contains(content, "simulate delegation") {
+			t.Fatalf("%s missing NEVER DO rule about simulating delegation", path)
+		}
+	}
+
+	// drift-patterns.yaml files must include a delegation_unavailable pattern
+	driftPaths := []string{
+		filepath.Join(repoRoot(t), "strategist", "templates", "domain", "identity", "drift-patterns.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "domain", "identity", "drift-patterns.yaml"),
+	}
+	for _, path := range driftPaths {
+		content := readFile(t, path)
+		if !strings.Contains(content, "id: delegation_unavailable") {
+			t.Fatalf("%s missing drift pattern \"delegation_unavailable\"", path)
+		}
+		if !strings.Contains(content, "delegation_unavailable") {
+			t.Fatalf("%s direct_execution correction must reference delegation_unavailable", path)
+		}
+	}
+}
+
 // TestStrategistNoLegacyExecutionTerminology scans strategist/ for forbidden legacy terms
 // that were replaced by documentation-materialization semantics.
 func TestStrategistNoLegacyExecutionTerminology(t *testing.T) {
@@ -1175,9 +1210,9 @@ func TestPersonaFilesHaveNoPtBRContentBlocks(t *testing.T) {
 	}
 }
 
-// TestPersonasUsereviewGateSemantics verifies personas use review_gate_prompt
-// rather than the legacy approval_prompt key.
-func TestPersonasUseReviewGateSemantics(t *testing.T) {
+// TestPersonasUseApprovalGateSemantics verifies personas use approval_gate_prompt
+// and do not contain the legacy approval_prompt key (renamed during i18n cleanup).
+func TestPersonasUseApprovalGateSemantics(t *testing.T) {
 	t.Parallel()
 	root := repoRoot(t)
 
@@ -1191,7 +1226,10 @@ func TestPersonasUseReviewGateSemantics(t *testing.T) {
 	for _, path := range paths {
 		content := readFile(t, path)
 		if strings.Contains(content, "approval_prompt:") {
-			t.Errorf("%s must not contain legacy key 'approval_prompt:' — use 'review_gate_prompt:' instead", path)
+			t.Errorf("%s must not contain legacy key 'approval_prompt:' — use 'approval_gate_prompt:' instead", path)
+		}
+		if !strings.Contains(content, "approval_gate_prompt:") {
+			t.Errorf("%s must define 'approval_gate_prompt:' key", path)
 		}
 	}
 }

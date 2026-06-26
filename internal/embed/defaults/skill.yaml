@@ -104,7 +104,7 @@ slots:
           - "<base_path>/refined/<mission_id>/proposal.md"
           - "<base_path>/refined/<mission_id>/design.md"
           - "<base_path>/refined/<mission_id>/tasks.md"
-      - handoff_contract: "schemas/handoff-archivist-to-hunter.schema.yaml"
+      - handoff_contract: "schemas/handoff-archivist-to-sniper.schema.yaml"
     description: Reads the Ranger transient analysis artifact, promotes it into the mission directory, and writes the refined package.
   execution:
     contract: controlled

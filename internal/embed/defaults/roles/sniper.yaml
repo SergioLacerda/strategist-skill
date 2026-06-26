@@ -1,13 +1,11 @@
 role: sniper
 slot: execution
 
-# Note: "sniper" is the implementation alias; "hunter" is the spec alias.
-# Both names refer to the same documentation materialization role.
 
 # Canonical behaviors — read-only, source in skill.yaml.
 # Listed here for reference when writing custom_brief below.
 canonical:
-  - requires_review_gate_acceptance    # enforced by Strategist — slot cannot bypass
+  - requires_approval_gate_acceptance    # enforced by Strategist — slot cannot bypass
   - load_archivist_handoff             # read handoff contract fields + documentation_targets
   - consult_treasure_chests            # consult chests scoped to documentation before acting
   - materialize_one_target_per_loop    # never batch multiple documentation tasks
@@ -16,7 +14,7 @@ canonical:
       action: stop_and_report          # Sniper DOES NOT decide — reports only, pauses materialization
       feedback: surface_immediately_pause_materialization
   - update_checklist_before_advancing
-  - handoff_contract_consumed: "schemas/handoff-archivist-to-hunter.schema.yaml"
+  - handoff_contract_consumed: "schemas/handoff-archivist-to-sniper.schema.yaml"
 
 # Contract
 must:

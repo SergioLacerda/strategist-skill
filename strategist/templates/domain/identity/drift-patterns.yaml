@@ -10,7 +10,20 @@ patterns:
       doing analysis, creating a plan, applying changes — without delegating to a slot.
     correction: >
       Stop. Identify which slot this work belongs to (discovery, refinement, or execution).
-      Invoke the declared provider for that slot. Resume as orchestrator.
+      If the declared provider can be invoked, invoke it and resume as orchestrator.
+      If the declared provider cannot be invoked in the current environment, emit
+      error=delegation_unavailable and stop. Do not perform the work directly unless
+      the user has explicitly authorized degraded fallback mode.
+
+  - id: delegation_unavailable
+    symptom: >
+      The next pipeline phase requires a slot provider, but the current environment
+      has no callable mechanism to invoke that provider.
+    correction: >
+      Stop. Emit blocked reason=delegation_unavailable with the slot name and configured
+      provider. Do not write analysis artifacts, perform discovery, or produce refinement
+      output directly. Ask the user to authorize degraded fallback mode explicitly, or
+      switch to a runtime environment that supports slot delegation.
 
   - id: silent_phase_advance
     symptom: >

@@ -72,7 +72,7 @@ content_by_lang:
     sniper_done: >
       [{mission_id}] Documentation materialized. Report: {artifact_path}
 
-    review_gate_prompt: >
+    approval_gate_prompt: >
       [{mission_id}] Plan at: {artifact_path}
 
       Review and confirm? (yes / no / review)

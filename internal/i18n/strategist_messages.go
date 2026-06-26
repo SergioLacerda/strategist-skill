@@ -22,8 +22,8 @@ type RuntimeMessages struct {
 	SniperTaskDone string
 	SniperDone     string
 
-	// Review gate (approval gate replacement)
-	ReviewGatePrompt string
+	// Approval gate
+	ApprovalGatePrompt string
 
 	// Opportunity attack
 	OpportunityDetected string
@@ -88,7 +88,7 @@ var ENRuntime = RuntimeMessages{ //nolint:dupl
 		"  ✶ channeling mana  ████████████████████████████  100% ✓\n" +
 		"Report at: {artifact_path}",
 
-	ReviewGatePrompt: "🚦 **Gate [{mission_id}]:** AWAITING CONFIRMATION\n" +
+	ApprovalGatePrompt: "🚦 **Gate [{mission_id}]:** AWAITING CONFIRMATION\n" +
 		"  ✶ channeling mana  ████████████████████████▓░░░  75% · awaiting review\n\n" +
 		"Plan at: {artifact_path}\n\n" +
 		"Review and confirm? (yes / no / review)",
@@ -127,7 +127,7 @@ var ENRuntime = RuntimeMessages{ //nolint:dupl
 
 	AnalysisDeliveredResult: "Mission [{mission_id}] closed — analysis delivered.\n" +
 		"Analysis at: {artifact_path}\n" +
-		"To materialize documentation: re-invoke Strategist and accept the review gate.",
+		"To materialize documentation: re-invoke Strategist and accept the approval gate.",
 
 	ResponseComplete: "⚖️ **Compliance [{mission_id}]:** pipeline_compliant={pipeline_compliant} | phases={phases_run}",
 	MissionComplete:  "[render mission_envelope.close — status_label: MISSION COMPLETE]",
@@ -162,7 +162,7 @@ var PTBRRuntime = RuntimeMessages{ //nolint:dupl
 		"  ✶ channeling mana  ████████████████████████████  100% ✓\n" +
 		"Relatório em: {artifact_path}",
 
-	ReviewGatePrompt: "🚦 **Gate [{mission_id}]:** AGUARDANDO CONFIRMAÇÃO\n" +
+	ApprovalGatePrompt: "🚦 **Gate [{mission_id}]:** AGUARDANDO CONFIRMAÇÃO\n" +
 		"  ✶ channeling mana  ████████████████████████▓░░░  75% · aguardando revisão\n\n" +
 		"Plano em: {artifact_path}\n\n" +
 		"Revisar e confirmar? (sim / nao / revisar)",
