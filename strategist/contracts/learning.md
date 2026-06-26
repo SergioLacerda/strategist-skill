@@ -3,7 +3,7 @@
 ## 9. Learning Phase (non-blocking)
 > **Contracts:** `.strategist/contracts/learning-curator.yaml`, `.strategist/contracts/learning-buffer.yaml`
 
-After mission completes (either `completed` or `plan_only`):
+After mission completes (either `documentation_applied`, `analysis_delivered`, `revision_requested`, or `rejected`):
 
 Invoke `response-critic` with the slot outputs and the task-type rubric.
 

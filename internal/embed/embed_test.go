@@ -173,14 +173,14 @@ func TestExtractor_Extract(t *testing.T) {
 		p := string(pragmatic)
 		assert.Contains(t, p, "opportunity_detected")
 		assert.Contains(t, p, "opportunity_gate")
-		assert.Contains(t, p, "Aprovar? (sim / nao / selecionar)")
+		assert.Contains(t, p, "Approve? (yes / no / select)")
 
 		epic, err := os.ReadFile(filepath.Join(dir, "personas", "epic.yaml"))
 		require.NoError(t, err)
 		e := string(epic)
 		assert.Contains(t, e, "opportunity_detected")
 		assert.Contains(t, e, "opportunity_gate")
-		assert.Contains(t, e, "Aprovar? (sim / nao / selecionar)")
+		assert.Contains(t, e, "Approve? (yes / no / select)")
 	})
 
 	t.Run("extracted defaults include pipeline bypass hardening", func(t *testing.T) {
@@ -204,7 +204,7 @@ func TestExtractor_Extract(t *testing.T) {
 		approvalGate, err := os.ReadFile(filepath.Join(dir, "contracts", "machine", "approval-gate.yaml"))
 		require.NoError(t, err)
 		assert.Contains(t, string(approvalGate), "pipeline_bypass_detected")
-		assert.Contains(t, string(approvalGate), "missing_evidence=approval_gate:approved")
+		assert.Contains(t, string(approvalGate), "missing_evidence=approval_gate:analysis_accepted")
 	})
 
 	t.Run("extracted runtime docs preserve runtime-only path contract", func(t *testing.T) {

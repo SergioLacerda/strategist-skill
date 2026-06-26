@@ -2,28 +2,28 @@
 id: test-integrity
 severity: high
 
-Testes são a especificação executável do comportamento esperado.
-O código se adapta ao teste — nunca o contrário.
+Tests are the executable specification of expected behavior.
+Code adapts to the test — never the other way around.
 
-## Proibido
+## Forbidden
 
-- Enfraquecer uma assertion para fazer o teste passar
-  (`assert.Equal` → `assert.NotNil` sem justificativa)
-- Remover um caso de teste sem documentar o motivo
-- Atualizar golden file ou snapshot sem diff explicado no commit
-- Escrever um teste que não falha quando o comportamento que testa quebra
-- Teste dependente de ordem de execução
-- `time.Sleep` arbitrário em teste — usar `testify/assert.Eventually` ou channels
-- Mock que torna o teste insensível a mudanças reais de comportamento
-- Teste que só valida detalhes de implementação interna (não comportamento observável)
+- Weakening an assertion to make the test pass
+  (`assert.Equal` → `assert.NotNil` without justification)
+- Removing a test case without documenting the reason
+- Updating a golden file or snapshot without an explained diff in the commit
+- Writing a test that does not fail when the behavior it tests breaks
+- Test dependent on execution order
+- Arbitrary `time.Sleep` in tests — use `testify/assert.Eventually` or channels
+- Mock that makes the test insensitive to real behavior changes
+- Test that only validates internal implementation details (not observable behavior)
 
-## Obrigatório ao modificar testes
+## Required When Modifying Tests
 
-Qualquer modificação em arquivo `*_test.go` que enfraqueça cobertura ou remova
-casos de teste requer comentário explicando o motivo no mesmo commit.
+Any modification to a `*_test.go` file that weakens coverage or removes test cases
+requires a comment explaining the reason in the same commit.
 
 ## Enforcement
 
-`testifylint` em golangci-lint detecta má-uso de assertions testify.
-Coverage gate (90%) detecta regressão de cobertura.
-response-critic avalia integridade dos testes após cada execução do Sniper.
+`testifylint` in golangci-lint detects misuse of testify assertions.
+Coverage gate (90%) detects coverage regression.
+response-critic evaluates test integrity after each Sniper run.

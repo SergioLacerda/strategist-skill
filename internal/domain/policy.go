@@ -2,8 +2,9 @@ package domain
 
 // Transition groups classify sensitive mission-state changes.
 const (
-	TransitionGroupFinalizeAnalysis = "finalize_analysis" // pending/refined -> done
-	TransitionGroupExecution        = "execution"         // sniper workspace and docs writes
+	TransitionGroupFinalizeAnalysis = "finalize_analysis"             // pending/refined -> done
+	TransitionGroupReviewGate       = "review_gate"                   // analysis review before documentation
+	TransitionGroupDocumentation    = "documentation_materialization" // sniper documentation writes
 )
 
 // MissionState represents the orchestrator FSM state.
@@ -68,7 +69,7 @@ const (
 	EventSlotTransient TransitionEvent = "slot_transient_failure"
 	EventSlotPermanent TransitionEvent = "slot_permanent_failure"
 
-	// Sniper opportunity attack surfaced mid-execution (§7 Opportunity Attack).
+	// Sniper opportunity attack surfaced mid-documentation (§7 Opportunity Attack).
 	EventSniperOA TransitionEvent = "sniper_opportunity_attack"
 
 	// Critical Hit route events — fast path gate for direct_execute route.
@@ -78,11 +79,9 @@ const (
 )
 
 // MissionPolicy controls whether guarded transitions are allowed.
-// Sniper write scope is fixed by contract: workspace files + documentation files only.
-// There is no configurable execution mode — CanExecute is always true after approval.
-type MissionPolicy struct {
-	CanExecute bool
-}
+// Sniper write scope is fixed by contract: documentation files only.
+// Documentation materialization is always permitted after review gate acceptance.
+type MissionPolicy struct{}
 
 // TransitionDecision is the deterministic result of policy evaluation.
 type TransitionDecision struct {
@@ -92,15 +91,12 @@ type TransitionDecision struct {
 	Policy  MissionPolicy
 }
 
-// DefaultMissionPolicy returns the fixed execution policy for this skill.
-// Sniper always executes after approval gate; write scope is enforced by contract.
+// DefaultMissionPolicy returns the fixed documentation policy for this skill.
 func DefaultMissionPolicy() MissionPolicy {
-	return MissionPolicy{CanExecute: true}
+	return MissionPolicy{}
 }
 
-// NormalizePolicy ensures CanExecute=true. Legacy active.yaml files with
-// execution_mode/git_persistence_mode fields are handled transparently.
+// NormalizePolicy is a no-op kept for call-site compatibility.
 func NormalizePolicy(p MissionPolicy) MissionPolicy {
-	p.CanExecute = true
 	return p
 }

@@ -4,34 +4,34 @@ type: mandate
 severity: high
 
 description: >
-  Define a direção permitida de imports entre pacotes internos.
-  Violações indicam acoplamento indevido e devem ser bloqueadas no CI.
+  Defines the allowed import directions between internal packages.
+  Violations indicate improper coupling and must be blocked in CI.
 
 allowed_directions:
   - from: cmd/strategist
     to: [internal/compile, internal/install, internal/stale, internal/embed]
-    rationale: cmd é o ponto de wiring; pode importar qualquer pacote interno
+    rationale: cmd is the wiring point; may import any internal package
   - from: internal/*
     to: [internal/domain]
-    rationale: todos os pacotes de negócio dependem dos tipos e contratos do domain
+    rationale: all business packages depend on domain types and contracts
 
 forbidden_directions:
   - from: internal/domain
     to: [internal/compile, internal/install, internal/stale, internal/embed]
-    reason: domain é camada pura — sem dependências de infraestrutura
+    reason: domain is a pure layer — no infrastructure dependencies
   - from: internal/compile
     to: [internal/install, internal/stale, internal/embed]
-    reason: pacotes de negócio não devem se acoplar lateralmente
+    reason: business packages must not couple laterally
   - from: internal/install
     to: [internal/compile, internal/stale, internal/embed]
-    reason: pacotes de negócio não devem se acoplar lateralmente
+    reason: business packages must not couple laterally
   - from: internal/stale
     to: [internal/compile, internal/install, internal/embed]
-    reason: pacotes de negócio não devem se acoplar lateralmente
+    reason: business packages must not couple laterally
 
 enforcement:
   - tool: depguard (golangci-lint)
-    scope: CI — bloqueia lint step
+    scope: CI — blocks lint step
   - tool: TestDomainIsolation + TestLateralIsolation (go test)
-    scope: CI — bloqueia test step
+    scope: CI — blocks test step
     file: internal/domain/architecture_test.go

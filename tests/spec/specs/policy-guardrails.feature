@@ -21,4 +21,4 @@ Feature: Policy Guardrails Across Side Paths
     And user approved in the main approval gate
     When Strategist evaluates execution transition before Sniper
     Then Strategist invokes Sniper only if policy_eval status is allowed
-    And blocked decisions return plan_only or execution_skipped_by_policy
+    And blocked decisions return analysis_delivered or documentation_skipped_by_policy

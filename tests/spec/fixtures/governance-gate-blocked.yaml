@@ -9,6 +9,6 @@ governance_injection:
   intake_index_mode: none
 expected_behavior:
   sniper_invoked: false
-  mission_result: plan_only
+  mission_result: analysis_delivered
   event_emitted: "execution_gate=blocked"
   gate_reason_surfaced: true

@@ -17,7 +17,7 @@ field_rules:
     non_empty: true
   status:
     type: enum
-    values: [completed, plan_only, blocked]
+    values: [analysis_delivered, documentation_applied, revision_requested, rejected, blocked]
   timestamp:
     type: string
     format: iso8601

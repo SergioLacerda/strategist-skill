@@ -118,7 +118,6 @@ func TestWizardConfig_Fields(t *testing.T) {
 		DocLanguage:        "pt",
 		ChatLanguage:       "pt",
 		CodeLanguage:       "pt",
-		AdrEnabled:         true,
 		DiscoveryProvider:  "brainstorming",
 		RefinementProvider: "openspec-explore",
 		ExecutionProvider:  "sdd-ask",
@@ -126,7 +125,6 @@ func TestWizardConfig_Fields(t *testing.T) {
 	assert.Equal(t, "pragmatic", wc.Mode)
 	assert.Equal(t, ".", wc.BasePath)
 	assert.Equal(t, "pt", wc.UILanguage)
-	assert.True(t, wc.AdrEnabled)
 	assert.Equal(t, "brainstorming", wc.DiscoveryProvider)
 	assert.Equal(t, "openspec-explore", wc.RefinementProvider)
 	assert.Equal(t, "sdd-ask", wc.ExecutionProvider)

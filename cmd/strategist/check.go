@@ -28,9 +28,11 @@ satisfy their risk_score contracts.
 Checks performed:
   - active.yaml is present and parseable
   - For each slot (discovery, refinement, execution):
-      • skills/<provider>/skill.yaml exists
-      • skill.yaml declares the correct risk_score for the slot contract
-        discovery/refinement → write_analysis, execution → controlled`,
+      • skills/<provider>/skill.yaml exists (skill provider), OR
+        roles/<provider>.yaml exists with matching slot field (native role)
+      • skill providers must declare the correct risk_score for the slot contract:
+        discovery/refinement → write_analysis, execution → controlled
+      • native roles are accepted by slot field match; no risk_score check`,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		root := checkRoot
 		if root == "" {
@@ -77,6 +79,21 @@ Checks performed:
 			skillRaw, readErr := os.ReadFile(skillPath)
 			if readErr != nil {
 				if os.IsNotExist(readErr) {
+					// Fallback: accept native roles declared in roles/<provider>.yaml.
+					rolePath := filepath.Join(root, "roles", provider+".yaml")
+					roleRaw, roleErr := os.ReadFile(rolePath)
+					if roleErr == nil {
+						var roleDef struct {
+							Slot string `yaml:"slot"`
+						}
+						if yamlErr := yaml.Unmarshal(roleRaw, &roleDef); yamlErr == nil {
+							if roleDef.Slot == slot {
+								continue // valid native role for this slot
+							}
+							errs = append(errs, fmt.Sprintf("slot %s: role %q declares slot=%q (mismatch)", slot, provider, roleDef.Slot))
+							continue
+						}
+					}
 					errs = append(errs, fmt.Sprintf("slot %s: provider %q not installed (missing %s)", slot, provider, skillPath))
 				} else {
 					errs = append(errs, fmt.Sprintf("slot %s: read %s: %v", slot, skillPath, readErr))
@@ -98,6 +115,24 @@ Checks performed:
 			}
 		}
 
+		// Validate active persona.
+		if cfg.Mode == "" {
+			errs = append(errs, "active.yaml: mode is empty — must be epic or pragmatic")
+		} else {
+			personaPath := filepath.Join(root, "personas", cfg.Mode+".yaml")
+			personaRaw, personaErr := os.ReadFile(personaPath)
+			if personaErr != nil {
+				errs = append(errs, fmt.Sprintf("persona: mode=%q file missing (%s)", cfg.Mode, personaPath))
+			} else {
+				var persona domain.PersonaConfig
+				if yamlErr := yaml.Unmarshal(personaRaw, &persona); yamlErr != nil {
+					errs = append(errs, fmt.Sprintf("persona: mode=%q invalid yaml: %v", cfg.Mode, yamlErr))
+				} else if rtErr := persona.ValidateForRuntime(); rtErr != nil {
+					errs = append(errs, fmt.Sprintf("persona: mode=%q %v", cfg.Mode, rtErr))
+				}
+			}
+		}
+
 		if len(errs) > 0 {
 			for _, e := range errs {
 				fmt.Fprintf(os.Stderr, "  ✗ %s\n", e)
@@ -105,8 +140,8 @@ Checks performed:
 			return fmt.Errorf("[Strategist] check=failed errors=%d root=%s", len(errs), root)
 		}
 
-		fmt.Printf("[Strategist] check=ok slots=[discovery:%s, refinement:%s, execution:%s] root=%s\n",
-			providers["discovery"], providers["refinement"], providers["execution"], root)
+		fmt.Printf("[Strategist] check=ok slots=[discovery:%s, refinement:%s, execution:%s] persona=%s root=%s\n",
+			providers["discovery"], providers["refinement"], providers["execution"], cfg.Mode, root)
 		return nil
 	},
 }

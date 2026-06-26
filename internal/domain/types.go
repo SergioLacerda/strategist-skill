@@ -19,21 +19,63 @@ type ActiveConfig struct {
 	RolesConfig        string `yaml:"roles_config"`
 	KnowledgeIndexPath string `yaml:"knowledge_index_path"`
 	Language           any    `yaml:"language,omitempty"`
-	AdrEnabled         bool   `yaml:"adr_enabled"`
-	// Deprecated: execution_mode and git_persistence_mode are no longer written by install.
-	// Kept for backwards compat — existing runtimes with these fields parse without error.
+	// Legacy fields — parsed to detect stale active.yaml files. ValidateNoLegacyFields returns
+	// an error if either is set, directing users to remove them.
 	ExecutionMode      string            `yaml:"execution_mode,omitempty"`
 	GitPersistenceMode string            `yaml:"git_persistence_mode,omitempty"`
 	Slots              map[string]string `yaml:"slots"`
 }
 
+// ValidateNoLegacyFields returns an error if the config contains removed fields.
+func (c ActiveConfig) ValidateNoLegacyFields() error {
+	if c.ExecutionMode != "" {
+		return fmt.Errorf("legacy field execution_mode is no longer supported; remove it from active.yaml")
+	}
+	if c.GitPersistenceMode != "" {
+		return fmt.Errorf("legacy field git_persistence_mode is no longer supported; remove it from active.yaml")
+	}
+	return nil
+}
+
+// PersonaDiagnostics holds the bootstrap banner templates from a persona file.
+type PersonaDiagnostics struct {
+	Format          string `yaml:"format"`
+	PipelineHeader  string `yaml:"pipeline_header"`
+	BootstrapOrigin string `yaml:"bootstrap_origin"`
+}
+
 // PersonaConfig is the structure of a persona yaml file (personas/*.yaml).
 type PersonaConfig struct {
-	ID             string      `yaml:"id"`
-	Description    string      `yaml:"description"`
-	PhaseLabels    PhaseLabels `yaml:"phase_labels"`
-	ToneDirective  string      `yaml:"tone_directive"`
-	ProgressPrefix string      `yaml:"progress_prefix"`
+	ID             string             `yaml:"id"`
+	Description    string             `yaml:"description"`
+	PhaseLabels    PhaseLabels        `yaml:"phase_labels"`
+	ToneDirective  string             `yaml:"tone_directive"`
+	ProgressPrefix string             `yaml:"progress_prefix"`
+	Diagnostics    PersonaDiagnostics `yaml:"diagnostics"`
+}
+
+// ValidateForRuntime checks all fields required for CLI bootstrap and check validation.
+func (p PersonaConfig) ValidateForRuntime() error {
+	var errs []string
+	if p.ID == "" {
+		errs = append(errs, "id is required")
+	}
+	if p.ToneDirective == "" {
+		errs = append(errs, "tone_directive is required")
+	}
+	if p.PhaseLabels.Discovery == "" || p.PhaseLabels.Refinement == "" || p.PhaseLabels.Execution == "" {
+		errs = append(errs, "phase_labels.discovery/refinement/execution are required")
+	}
+	if p.Diagnostics.PipelineHeader == "" {
+		errs = append(errs, "diagnostics.pipeline_header is required")
+	}
+	if p.Diagnostics.BootstrapOrigin == "" {
+		errs = append(errs, "diagnostics.bootstrap_origin is required")
+	}
+	if len(errs) == 0 {
+		return nil
+	}
+	return fmt.Errorf("persona config invalid: %s", strings.Join(errs, "; "))
 }
 
 // ApprovalGateContract is the structure of contracts/approval-gate.yaml.
@@ -81,18 +123,18 @@ type CompiledManifest struct {
 
 // Validate returns an error if any required field is missing or invalid.
 // Called after unmarshal in the bootstrap fast path to catch config drift early.
-func (a ActiveConfig) Validate() error {
+func (c ActiveConfig) Validate() error {
 	var errs []string
-	if a.Mode == "" {
+	if c.Mode == "" {
 		errs = append(errs, "mode is required")
 	}
-	if a.BasePath == "" {
+	if c.BasePath == "" {
 		errs = append(errs, "base_path is required")
 	}
-	if a.RolesConfig == "" {
+	if c.RolesConfig == "" {
 		errs = append(errs, "roles_config is required")
 	}
-	if len(a.Slots) == 0 {
+	if len(c.Slots) == 0 {
 		errs = append(errs, "slots must have at least one entry")
 	}
 	// Execution policy is fixed — no per-config validation needed.
@@ -246,7 +288,6 @@ type WizardConfig struct {
 	DocLanguage        string // en | pt-BR — generated documentation
 	ChatLanguage       string // en | pt-BR — AI chat responses
 	CodeLanguage       string // en | pt-BR — internal code (default: en)
-	AdrEnabled         bool   // whether to enable the ADR opportunity stage
 	DiscoveryProvider  string // skill id for the Ranger (discovery) slot
 	RefinementProvider string // skill id for the Arquivista (refinement) slot
 	ExecutionProvider  string // skill id for the Sniper (execution) slot

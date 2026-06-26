@@ -126,7 +126,6 @@ func TestWriteActiveYAML(t *testing.T) {
 				DocLanguage:        "en",
 				ChatLanguage:       "pt-BR",
 				CodeLanguage:       "en",
-				AdrEnabled:         true,
 				DiscoveryProvider:  "brainstorming",
 				RefinementProvider: "openspec-explore",
 				ExecutionProvider:  "sdd-ask",
@@ -140,37 +139,11 @@ func TestWriteActiveYAML(t *testing.T) {
 				"  docs: en",
 				"  chat: pt-BR",
 				"  code: en",
-				"adr_enabled: true",
 				"discovery: brainstorming",
 				"refinement: openspec-explore",
 				"execution: sdd-ask",
 			},
-			wantAbsent: []string{"execution_mode", "git_persistence_mode"},
-		},
-		{
-			name: "minimal mode ADR disabled",
-			cfg: domain.WizardConfig{
-				Mode:               "epic",
-				BasePath:           ".",
-				UILanguage:         "en",
-				DocLanguage:        "en",
-				ChatLanguage:       "en",
-				CodeLanguage:       "en",
-				AdrEnabled:         false,
-				DiscoveryProvider:  "brainstorming",
-				RefinementProvider: "archivist",
-				ExecutionProvider:  "sdd-ask-full",
-			},
-			wantContain: []string{
-				"mode: epic",
-				"roles_config: roles/default.yaml",
-				"language:",
-				"  ui: en",
-				"adr_enabled: false",
-				"refinement: archivist",
-				"execution: sdd-ask-full",
-			},
-			wantAbsent: []string{"language: en", "execution_mode", "git_persistence_mode"},
+			wantAbsent: []string{"execution_mode", "git_persistence_mode", "adr_enabled"},
 		},
 		{
 			name: "with treasure chest path",
@@ -181,7 +154,6 @@ func TestWriteActiveYAML(t *testing.T) {
 				DocLanguage:        "en",
 				ChatLanguage:       "pt-BR",
 				CodeLanguage:       "en",
-				AdrEnabled:         true,
 				DiscoveryProvider:  "brainstorming",
 				RefinementProvider: "openspec-explore",
 				ExecutionProvider:  "sdd-ask",
@@ -224,7 +196,6 @@ func TestWriteActiveYAML_DoesNotEmitExecutionMode(t *testing.T) {
 		DocLanguage:        "en",
 		ChatLanguage:       "en",
 		CodeLanguage:       "en",
-		AdrEnabled:         true,
 		DiscoveryProvider:  "brainstorming",
 		RefinementProvider: "openspec-explore",
 		ExecutionProvider:  "sdd-ask",
@@ -235,4 +206,5 @@ func TestWriteActiveYAML_DoesNotEmitExecutionMode(t *testing.T) {
 	s := string(data)
 	assert.NotContains(t, s, "execution_mode")
 	assert.NotContains(t, s, "git_persistence_mode")
+	assert.NotContains(t, s, "adr_enabled")
 }

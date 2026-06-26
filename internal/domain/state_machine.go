@@ -80,15 +80,12 @@ func nextFromOpportunityAttack(event TransitionEvent) MissionState {
 	return StateOpportunityAttack
 }
 
-func nextFromOpportunityGate(event TransitionEvent, p MissionPolicy) MissionState {
+func nextFromOpportunityGate(event TransitionEvent, _ MissionPolicy) MissionState {
 	switch event {
 	case EventGateDenied:
 		return StateRefinement
 	case EventGateApproved:
-		if p.CanExecute {
-			return StateOpportunityExec
-		}
-		return StateRefinement
+		return StateOpportunityExec
 	case EventManifestEmpty, EventManifestNonEmpty, EventSniperDone, EventArchivistNoTasks, EventArchivistTasks,
 		EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
 		EventADRCriterionMet, EventADRApproved, EventADRDeclined,
@@ -132,15 +129,12 @@ func nextFromRefinement(event TransitionEvent, _ MissionPolicy) MissionState {
 	return StateRefinement
 }
 
-func nextFromApprovalGate(event TransitionEvent, p MissionPolicy) MissionState {
+func nextFromApprovalGate(event TransitionEvent, _ MissionPolicy) MissionState {
 	switch event {
 	case EventGateDenied:
 		return StateDoneAnalysis
 	case EventGateApproved:
-		if p.CanExecute {
-			return StateExecution
-		}
-		return StateDoneDelivery
+		return StateExecution
 	case EventManifestEmpty, EventManifestNonEmpty, EventSniperDone, EventArchivistNoTasks, EventArchivistTasks,
 		EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
 		EventADRCriterionMet, EventADRApproved, EventADRDeclined,
@@ -262,13 +256,10 @@ func nextFromADRGate2(event TransitionEvent) MissionState {
 	return StateADRGate2
 }
 
-func nextFromDirectGate(event TransitionEvent, p MissionPolicy) MissionState {
+func nextFromDirectGate(event TransitionEvent, _ MissionPolicy) MissionState {
 	switch event {
 	case EventDirectGateApproved:
-		if p.CanExecute {
-			return StateDirectExec
-		}
-		return StateDoneAnalysis
+		return StateDirectExec
 	case EventDirectGateDeclined:
 		return StateDoneAnalysis
 	case EventManifestEmpty, EventManifestNonEmpty, EventGateApproved, EventGateDenied, EventSniperDone,

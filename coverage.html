@@ -2930,7 +2930,7 @@ var knownProviderRisk = map[string]string{
         "openspec-apply-change":   "controlled",
         "openspec-archive-change": "write_analysis",
         "sdd-ask":                 "controlled",
-        "sdd-ask-full":            "controlled",
+        "batata":            "controlled",
         "sdd-diagnose":            "write_analysis",
         "sdd-converge":            "controlled",
         "sdd-correct":             "controlled",
@@ -3117,7 +3117,7 @@ func promptSlots(p Prompter, b i18n.WizardStrings, providerRisk map[string]strin
         <span class="cov6" title="11">if w := validateProvider(providerRisk, refinement, "write_analysis"); w != "" </span><span class="cov0" title="0">{
                 fmt.Println(w)
         }</span>
-        <span class="cov6" title="11">execution, err = p.SelectOrInput(b.PromptExecution, "sdd-ask", []string{"sdd-ask", "sdd-ask-full"}, b.LabelCustomInput)
+        <span class="cov6" title="11">execution, err = p.SelectOrInput(b.PromptExecution, "sdd-ask", []string{"sdd-ask", "batata"}, b.LabelCustomInput)
         if err != nil </span><span class="cov1" title="1">{
                 return "", "", "", fmt.Errorf("wizard: execution: %w", err)
         }</span>

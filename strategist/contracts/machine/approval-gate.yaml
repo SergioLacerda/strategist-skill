@@ -1,10 +1,11 @@
 module: approval-gate
 type: gate
 description: >
-  Mandatory gate between Archivist and Sniper. User must explicitly approve
-  before any execution occurs. Declining results in plan_only mission status —
-  not an error. Gate cannot be bypassed under any circumstance. Any direct
-  repository mutation attempted before approval must fail with
+  Approval gate between Archivist and Sniper. User reviews the refined analysis and
+  decides to accept, request revision, or reject. Accepting triggers documentation
+  materialization by Sniper. Revision or rejection returns control to Archivist or
+  ends the mission. Gate cannot be bypassed under any circumstance. Any direct
+  repository mutation attempted before acceptance must fail with
   `pipeline_bypass_detected`.
 
 contract:
@@ -12,10 +13,14 @@ contract:
     - name: artifact_path
       type: path
       required: true
-      description: Path to the refined package artifact set to present to the user
+      description: Path to the refined analysis artifact set to present to the user
+    - name: documentation_targets
+      type: array
+      required: false
+      description: Documentation files Sniper will materialize if analysis is accepted
 
   gate:
-    emit_prompt_key: approval_prompt
+    emit_prompt_key: review_prompt
     emit_level: INFO
     emit_on_show:
       format: "[Strategist] phase=approval_gate status=shown artifact_path={artifact_path}"
@@ -24,37 +29,36 @@ contract:
     wait_for_response: true
 
   responses:
-    approve_aliases: [yes, approve, authorize, sim, autorizar]
-    decline_aliases:  [no, decline, stop, nao, cancelar]
+    accept_aliases: [agree, accepted, approve_analysis, sim, concordo, yes, approve, authorize, autorizar]
+    revision_aliases: [missing_item, forgot_item, esqueci, faltou, revision, revisao]
+    reject_aliases: [reject, wrong_request, nao_esta_bom, pedi_outra_coisa, no, nao, cancelar]
 
-  # approval_policy controls who can approve the gate.
-  # mode: any           — any positive alias is accepted (default, backward-compatible)
-  # mode: explicit_confirm — requires a confirmation phrase after the positive alias
-  #                          phrase: "confirmo execução de {mission_id}"
-  # mode: human_only    — heuristic detection of automated responses (phase 2, not yet enforced)
-  approval_policy:
-    mode: any
-
-  on_approve:
-    emit_format: "[Strategist] phase=approval_gate status=approved"
+  on_accept:
+    emit_format: "[Strategist] phase=approval_gate status=analysis_accepted"
     emit_level: TRACE
     checkpoint_update:
       step_3_icon: "✅"
       step_4_icon: "⏳"
     next_phase: sniper
 
-  on_decline:
-    emit_format: "[Strategist] phase=approval_gate status=plan_only"
+  on_revision_requested:
+    emit_format: "[Strategist] phase=approval_gate status=revision_requested"
     emit_level: TRACE
-    mission_result_status: plan_only
+    mission_result_status: revision_requested
+    next_phase: archivist
+
+  on_reject:
+    emit_format: "[Strategist] phase=approval_gate status=rejected"
+    emit_level: TRACE
+    mission_result_status: rejected
     next_phase: adr_opportunity
 
   invariants:
-    - gate must emit status=approved or status=plan_only before sniper is invoked
-    - plan_only is a valid terminal state, not an error
-    - checkpoint is re-emitted on approve (not on decline)
-    - direct repository mutation before approval emits reason=pipeline_bypass_detected
-    - pipeline_bypass_detected must include expected_phase=approval_gate and missing_evidence=approval_gate:approved
+    - gate must emit status=analysis_accepted, status=revision_requested, or status=rejected before sniper is invoked
+    - analysis_delivered is a valid terminal state when no documentation_targets exist
+    - checkpoint is re-emitted on accept (not on revision or reject)
+    - direct repository mutation before acceptance emits reason=pipeline_bypass_detected
+    - pipeline_bypass_detected must include expected_phase=approval_gate and missing_evidence=approval_gate:analysis_accepted
 
   write_scope: read-only
   owner: internal (orchestrator)

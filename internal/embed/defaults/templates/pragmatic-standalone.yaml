@@ -12,15 +12,12 @@ knowledge_index_path: knowledge.index.yaml
 # Values: pt | en
 language: pt
 
-# Set to false to disable the ADR opportunity stage entirely.
-adr_enabled: true
-
 # Slot providers — which skill fills each mission role.
 # Edit here to change providers. Preflight validates risk_score contracts.
 slots:
   discovery: brainstorming         # Ranger  — write_analysis contract
-  refinement: openspec-explore     # Arquivista — write_analysis contract
-  execution: openspec-apply-change # Sniper  — controlled contract (no SDD dependency)
+  refinement: openspec-explore     # Archivist — write_analysis contract
+  execution: sniper                # Sniper  — built-in generic role (customize to swap provider)
 
 # Treasure chests — scoped knowledge sources passed to each slot at invocation.
 # Uncomment and configure to add offline knowledge (e.g. governance docs, examples).

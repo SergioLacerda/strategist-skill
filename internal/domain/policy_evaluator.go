@@ -1,9 +1,9 @@
 package domain
 
-// EvaluateGuardedTransition applies mission policy + approval gate status.
+// EvaluateGuardedTransition applies review gate status to guarded transitions.
 // Invariants:
-// - Any guarded transition requires explicit approval.
-// - Execution transitions require can_execute=true.
+// - Any guarded transition requires explicit review gate acceptance.
+// - Documentation materialization is always permitted after review gate acceptance.
 func EvaluateGuardedTransition(policy MissionPolicy, transitionGroup string, gateApproved bool) TransitionDecision {
 	p := NormalizePolicy(policy)
 
@@ -12,12 +12,7 @@ func EvaluateGuardedTransition(policy MissionPolicy, transitionGroup string, gat
 	}
 
 	switch transitionGroup {
-	case TransitionGroupExecution:
-		if !p.CanExecute {
-			return TransitionDecision{Allowed: false, Reason: "policy_blocked", Status: "policy_blocked", Policy: p}
-		}
-		return TransitionDecision{Allowed: true, Reason: "allowed", Status: "allowed", Policy: p}
-	case TransitionGroupFinalizeAnalysis:
+	case TransitionGroupDocumentation, TransitionGroupReviewGate, TransitionGroupFinalizeAnalysis:
 		return TransitionDecision{Allowed: true, Reason: "allowed", Status: "allowed", Policy: p}
 	default:
 		return TransitionDecision{Allowed: false, Reason: "unknown_transition_group", Status: "policy_blocked", Policy: p}
