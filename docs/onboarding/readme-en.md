@@ -32,7 +32,8 @@
 
 ## What it is
 
-**Strategist** turns a technical request into a governed mission: discovery, refinement, and execution only with explicit human approval.
+**Strategist** turns a technical request into a governed documentation mission:
+discovery, refinement, and approved documentation/handoff materialization.
 
 Canonical pipeline:
 `Ranger → Archivist → approval gate → Sniper`
@@ -42,7 +43,7 @@ For full pipeline/contracts/schema details: [readme-detailed-en.md](readme-detai
 ## Why use it
 
 - Discovery and refinement before execution.
-- Mandatory approval gate for writes/implementation.
+- Mandatory approval gate before Sniper materializes approved documentation or handoff work.
 - Pluggable slots (`discovery`, `refinement`, `execution`).
 - Mission policy through `mission_mode` (analysis vs delivery).
 - Quick Draw, Opportunist Attack, and Treasure Chests in the same flow.
@@ -51,7 +52,7 @@ For full pipeline/contracts/schema details: [readme-detailed-en.md](readme-detai
 
 - **Ranger**: explores context and produces discovery.
 - **Archivist**: turns discovery into proposal, design, and tasks.
-- **Sniper**: executes only after gate + policy checks.
+- **Sniper**: materializes approved documentation/handoff work only after gate + policy checks.
 - **Opportunist Attack**: finds side quests without parallel pipelines.
 - **Treasure Chests**: offline scoped context sources.
 
@@ -61,7 +62,7 @@ For full pipeline/contracts/schema details: [readme-detailed-en.md](readme-detai
 |---|---|
 | `.strategist/active.yaml` | mode, language, slots, mission policy |
 | `.strategist/knowledge.index.yaml` | sources by `task_type` |
-| `.analysis/` | `pending`, `refined`, `done` artifacts |
+| `.analysis/` | `pending`, `refined`, `archived` artifacts |
 
 ## Minimal slot configuration
 
@@ -69,11 +70,11 @@ For full pipeline/contracts/schema details: [readme-detailed-en.md](readme-detai
 slots:
   discovery: brainstorming
   refinement: openspec-explore
-  execution: sdd-ask
+  execution: sniper
 ```
 
 Expected contracts:
-- Ranger: `write_pending`
+- Ranger: `write_analysis`
 - Archivist: `write_analysis`
 - Sniper: `controlled`
 

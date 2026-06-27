@@ -8,7 +8,26 @@ contract: controlled
 
 ## Owner
 
-Sniper (`execution`)
+Sniper (`execution`) — invoked via the resolved execution provider, never executed directly by the Strategist shell.
+
+## Execution Provider Resolution
+
+Before invoking the execution slot, Strategist resolves the execution provider:
+
+```
+if local_execution_context.execution_provider is present:
+  execution_provider = local_execution_context.execution_provider
+  resolution_reason = local_context           # delegated invocation
+else:
+  execution_provider = active.slots.execution
+  resolution_reason = standalone_config       # direct invocation
+```
+
+- **Delegated invocation**: provider comes from `local_execution_context.execution_provider`. If missing, emit `local_execution_provider_missing` and stop.
+- **Direct invocation**: provider comes from `active.slots.execution`. Per-request override via prompt or user message is not permitted.
+- If the resolved provider cannot be invoked in the current environment: emit `execution_provider_unavailable` and stop.
+
+Strategist never executes documentation materialization work directly. Missing or uncallable provider is a blocked state, not a reason for direct execution.
 
 ## Inputs
 

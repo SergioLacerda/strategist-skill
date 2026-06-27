@@ -4,6 +4,10 @@
 **Data:** 2026-05-28  
 **Contexto:** Slot write contracts design (2026-05-28-slot-write-contracts-design.md)
 
+> 2026-06-26 note: this ADR records the slot write-contract model. The current
+> Strategist execution slot is restricted to approved documentation,
+> diagrams, analysis artifacts, and handoffs; source-code mutation is forbidden.
+
 ---
 
 ## Contexto
@@ -27,13 +31,13 @@ Três níveis de contrato de escrita, declarados no `skill.yaml` e validados pel
 |----------|-------------------|-----------------|---------------|
 | `read_only` | nenhum | — | não aplicável |
 | `write_analysis` | `<base_path>/` e derivados (`pending/`, `refined/`, `archived/`, `todo/`) | `.md` | não |
-| `controlled` | qualquer lugar | qualquer tipo | **obrigatório** |
+| `controlled` | `<base_path>/archived/` e documentação `.md` aprovada | `.md` | **obrigatório** |
 
 O `risk_score` do provider (declarado em `skill.yaml` do provider) deve corresponder ao contrato exigido pelo slot. Mismatch bloqueia em preflight com `slot_risk_mismatch`.
 
 O contrato `write_pending` foi descontinuado. O discovery passou a produzir o artefato
-canônico `refined/<mission_id>-analysis.md`, portanto o menor contrato compatível para
-Ranger também é `write_analysis`.
+canônico `<base_path>/pending/<mission_id>-analysis.md`, portanto o menor contrato
+compatível para Ranger também é `write_analysis`.
 
 Violações em runtime:
 - Escrita de tipo não-`.md` por `write_analysis` → `slot_write_type_violation`

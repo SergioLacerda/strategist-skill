@@ -1,7 +1,7 @@
 # Referência CLI — strategist
 
 **Status:** Accepted
-**Last Updated:** 2026-06-06
+**Last Updated:** 2026-06-26
 
 O binário `strategist` é construído em Go com [cobra](https://github.com/spf13/cobra). Todos os comandos seguem o padrão:
 
@@ -178,9 +178,206 @@ strategist v1.0.0
 
 ---
 
+## check
+
+Valida que os slot providers declarados em `active.yaml` estão instalados e satisfazem seus contratos de `risk_score`. Use antes de iniciar uma missão para garantir que o workspace está íntegro.
+
+```
+strategist check [--root=<dir>]
+```
+
+**Flags:**
+
+| Flag | Padrão | Descrição |
+|------|--------|-----------|
+| `--root` | `.strategist` | Caminho para a raiz `.strategist/` |
+
+**Verificações realizadas:**
+
+- `active.yaml` presente e parseável
+- Para cada slot (`discovery`, `refinement`, `execution`):
+  - `skills/<provider>/skill.yaml` existe (provider skill), **ou** `roles/<provider>.yaml` existe com o campo do slot (native role)
+  - Providers skill devem declarar o `risk_score` correto: `discovery`/`refinement` → `write_analysis`; `execution` → `controlled`
+  - Native roles são aceitos por correspondência de campo; sem verificação de `risk_score`
+
+**Saída em sucesso:**
+```
+[Strategist] check=ok slots=[discovery:brainstorming, refinement:openspec-explore, execution:sniper] persona=epic root=.strategist
+```
+
+**Saída em falha:**
+```
+[Strategist] check=failed reason=slot_provider_not_found slot=execution
+```
+
+---
+
+## initiative
+
+Exibe os slot providers configurados e o estado atual do workspace. Leitura imediata sem chamada ao LLM.
+
+```
+strategist initiative [--root=<dir>]
+```
+
+**Flags:**
+
+| Flag | Padrão | Descrição |
+|------|--------|-----------|
+| `--root` | `.strategist` (auto-discovered) | Caminho para a raiz `.strategist/` |
+
+**Saída:**
+
+```
+SLOTS                                                  
+discovery      brainstorming      Ranger rankeado      ✓ manifest OK
+refinement     openspec-explore   Archivist rankeado   ✓ manifest OK
+execution      sniper             Sniper (base)        ✓ manifest OK
+                                                       
+WORKSPACE                                              
+mode           epic                                    
+base_path      .analysis                               
+pending        0 cards                                 
+done           49 missões                              
+last mission   —                                       
+```
+
+A seção **SLOTS** exibe, para cada slot: provider configurado, papel canônico, classe (`rankeado` ou `base`) e status do manifest local em `.strategist/skills/<provider>/skill.yaml`.
+
+A seção **WORKSPACE** exibe: `mode` e `base_path` de `active.yaml`, contagens de cards pendentes e missões concluídas, e o ID da última missão registrada em `memory/outcomes.jsonl` (se presente).
+
+---
+
+## dojo
+
+Sistema de health-check da Strategist skill — valida que a skill está instalada, configurada e operando corretamente.
+
+```
+strategist dojo check <scenario> [--root=<dir>] [--files-only]
+strategist dojo list
+```
+
+**Subcomandos:**
+
+| Subcomando | Descrição |
+|------------|-----------|
+| `dojo check <scenario>` | Executa checks offline para um cenário |
+| `dojo list` | Lista cenários disponíveis |
+
+**Flags de `dojo check`:**
+
+| Flag | Padrão | Descrição |
+|------|--------|-----------|
+| `--root` | `.strategist` | Caminho para a raiz `.strategist/` |
+| `--files-only` | `false` | Pula validação do `emit_log`; verifica apenas arquivos |
+
+**Cenários disponíveis** (via `strategist dojo list`):
+
+| Cenário | O que valida |
+|---------|-------------|
+| `critical-hit` | Edição de doc via fast path — Ranger e Archivist não invocados, gate inline apresentado, Sniper escreve apenas o arquivo alvo |
+| `quick-draw` | Ideia bruta convertida em item pendente no todo, gate apresentado, execução não invocada |
+| `ranger-weapons` | Lista providers disponíveis para o slot discovery e valida manifests |
+| `treasure-chest` | Treasure chest encontrado e conteúdo incorporado na análise |
+
+**Exemplo:**
+
+```bash
+# Validar cenário offline
+strategist dojo check quick-draw
+
+# Verificar apenas arquivos (sem emit log)
+strategist dojo check quick-draw --files-only
+
+# Listar cenários disponíveis
+strategist dojo list
+```
+
+Para execução do pipeline completo com input sintético, use o skill `/strategist dojo <scenario>` via Claude Agent. Consulte `docs/strategist-concepts.md#dojo`.
+
+---
+
+## treasure-chest
+
+Exibe o status dos treasure chests configurados, políticas de governance, e saúde do knowledge index compilado.
+
+```
+strategist treasure-chest [flags]
+```
+
+**Flags:**
+
+| Flag | Padrão | Descrição |
+|------|--------|-----------|
+| `--root` | `.strategist` (auto-discovered) | Caminho para a raiz `.strategist/` |
+| `--scope` | `""` | Filtra saída por escopo de slot (`discovery`, `refinement`, `execution`) |
+| `--index` | `false` | Reconstrói o knowledge index compilado a partir das fontes declaradas |
+| `--include-historical` | `false` | Inclui fontes T2/T3 históricas na reconstrução (requer `--index`) |
+| `--format` | `table` | Formato de saída: `table` ou `json` |
+
+**Fontes consultadas:**
+
+- `.strategist/active.yaml` — chests configurados e seus escopos
+- `.strategist/treasure-chests.yaml` — políticas de trust e roteamento
+- `.strategist/knowledge.index.yaml` — fontes de retrieval indexadas
+- `.strategist/.compiled/.index.gz` — artefato compilado (fast-path)
+
+**Exemplo de saída:**
+
+```
+CHESTS                                             
+ID       PATH          SCOPE   TRUST   FRESHNESS   DRIFT
+source   .sdd/source   all     T1      unknown     none
+
+INDEX                                                       
+artifact      .strategist/.compiled/.index.gz               
+health        ok                                            
+compiled_at   2026-06-26 18:19:47 UTC                       
+```
+
+---
+
+## sync-governance
+
+Sincroniza `.strategist/skill.yaml` com os mandates de governança SDD ativos.
+
+```
+strategist sync-governance [flags]
+```
+
+**Flags:**
+
+| Flag | Padrão | Descrição |
+|------|--------|-----------|
+| `--root` | `.strategist` | Caminho para a raiz `.strategist/` |
+| `--sdd` | `.sdd` | Caminho para o diretório `.sdd/` |
+| `--dry-run` | `false` | Exibe as mudanças sem escrever |
+
+**O que faz:**
+
+1. Lê `.sdd/metadata.json` para verificar o fingerprint de governança
+2. Lê `.sdd/source/governance-core.json` para extrair mandates ativos
+3. Compara mandates ativos contra `compliance.mandates` em `skill.yaml`
+4. Aplica campos de governança ausentes (`validation_policy`, `budget_policy`, `telemetry_policy`)
+5. Reporta drift antes de aplicar mudanças
+
+**Exemplo:**
+
+```bash
+# Verificar drift sem escrever
+strategist sync-governance --dry-run
+
+# Aplicar sincronização
+strategist sync-governance
+```
+
+Requer que `.sdd/` esteja presente no repositório (SDD governance). Sem `.sdd/`, o comando retorna erro.
+
+---
+
 ## Observabilidade (OpenTelemetry)
 
-Todos os comandos (`install`, `compile`, `check-stale`, `sync-governance`) emitem spans OTel quando um collector está configurado. Sem configuração, o binário usa um provider no-op — zero overhead e zero conexões de rede abertas.
+Todos os comandos emitem spans OTel quando um collector está configurado. Sem configuração, o binário usa um provider no-op — zero overhead e zero conexões de rede abertas.
 
 | Variável | Padrão | Descrição |
 |----------|--------|-----------|
@@ -210,6 +407,8 @@ strategist install --target .
 | `strategist.compile` | `strategist.target` |
 | `strategist.check_stale` | `strategist.artifact`, `strategist.cache.hit` |
 | `strategist.sync_governance` | `strategist.mandates.count`, `strategist.mandates.missing` |
+| `strategist.check` | `strategist.target` |
+| `strategist.initiative` | `strategist.target` |
 
 ---
 

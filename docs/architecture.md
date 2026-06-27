@@ -1,7 +1,7 @@
 # Arquitetura — Strategist Skill
 
 **Status:** Accepted
-**Last Updated:** 2026-06-18
+**Last Updated:** 2026-06-26
 
 ## Visão Geral
 
@@ -10,9 +10,10 @@ O projeto é composto por duas camadas independentes:
 | Camada | Localização | Responsabilidade |
 |--------|-------------|------------------|
 | **Binário Go** | `cmd/` + `internal/` | Instalar, compilar e validar artefatos da skill |
-| **Runtime da Skill** | `strategist/` | Instruções ao agente: pipeline, slots, personas, contratos |
+| **Runtime source** | `strategist/` | Source-only authoring tree used to generate the runtime package |
+| **Runtime instance** | `.strategist/` | Operational instructions read by the agent: pipeline, slots, personas, contracts |
 
-O binário **não executa missões**. Ele prepara o ambiente para que o agente (Claude) execute a skill corretamente.
+O binário **não executa missões**. Ele prepara o ambiente para que o agente execute a skill corretamente. Durante uma missão, o agente lê `.strategist/`; `strategist/` é fonte de build/documentação, não alvo runtime.
 
 ---
 
@@ -28,6 +29,12 @@ cmd/strategist/          Comandos CLI (cobra)
   validate.go            strategist validate
   sync_governance.go     strategist sync-governance
   version.go             strategist version
+  check.go               strategist check
+  initiative.go          strategist initiative
+  dojo.go                strategist dojo
+  treasure_chest.go      strategist treasure-chest
+  root_discovery.go      root-level .strategist/ discovery (CWD walk)
+  runtime_profile.go     output profile resolution (default/epic/pragmatic)
 
 internal/
   domain/                Tipos centrais e interfaces (ports)
@@ -105,16 +112,17 @@ compile.Compiler.CompileAll(.strategist/, knowledge.index.yaml)
 
 ### Observações de fluxo (funcionalidades recentes)
 
-- **Discovery handoff canônico**: Ranger produz `refined/<mission_id>-analysis.md`; Archivist consome esse artefato e gera o pacote refinado em `refined/<mission_id>/`.
-- **Quick Draw (`saque rápido`)**: sinal de captura rápida de ideias/TODOs, consolidado pelo Archivist e executado pelo Sniper somente após gate principal.
+- **Discovery handoff canônico**: Ranger produz `<base_path>/pending/<mission_id>-analysis.md`; Archivist consome esse artefato e promove o pacote refinado para `<base_path>/refined/<mission_id>/`.
+- **Documentation-only execution**: Sniper mantém a narrativa de executor, mas sua execução atual é materialização de documentação, diagramas, análises e handoffs aprovados. Alteração de código-fonte está fora do contrato.
+- **Quick Draw (`saque rápido`)**: sinal de captura rápida de ideias/TODOs, consolidado pelo Archivist e materializado pelo Sniper somente após gate principal.
 - **Opportunist Attack (`opportunity_attack`)**: side quests detectadas entram como contexto/proposta e seguem o mesmo gate principal antes da execução.
 - **Treasure Chests (`treasure_chests`)**: fontes offline opcionais em `active.yaml`, consultáveis por qualquer papel conforme escopo, sem alterar o pipeline canônico.
 
 ### Contratos humanos canônicos
 
 O runtime humano da skill não deve mais depender de leitura difusa entre arquivos soltos.
-O ponto de entrada é `strategist/SKILL.md`, que roteia para a sequência numerada em
-`strategist/contracts/`. A decisão arquitetural dessa ordenação está consolidada em
+O ponto de entrada runtime é `.strategist/SKILL.md`, que roteia para a sequência numerada em
+`.strategist/contracts/`. A árvore `strategist/` contém a fonte que gera esse runtime. A decisão arquitetural dessa ordenação está consolidada em
 `docs/adr/0010-ordered-contracts-and-mission-observability.md`.
 
 ---

@@ -57,7 +57,7 @@ essa sequência e para skills derivadas específicas.
 
 O fluxo oficial entre discovery e refinement passa a ser:
 
-- Ranger gera `refined/<mission_id>-analysis.md`
+- Ranger gera `<base_path>/pending/<mission_id>-analysis.md`
 - Archivist usa esse artefato como base obrigatória
 - Archivist gera o pacote:
   - `refined/<mission_id>/proposal.md`
