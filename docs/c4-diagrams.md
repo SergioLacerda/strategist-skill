@@ -1,7 +1,7 @@
 # Diagramas C4 — Strategist Skill
 
 **Status:** Accepted
-**Last Updated:** 2026-06-18
+**Last Updated:** 2026-06-26
 
 Documentação arquitetural em 4 níveis do modelo C4. Renderizado pelo GitHub via Mermaid.
 
@@ -44,10 +44,10 @@ C4Container
     Person(dev, "Desenvolvedor", "")
 
     System_Boundary(sys, "Strategist Skill") {
-        Container(binary, "strategist", "Go binary", "CLI: install, compile, check-stale, validate, version")
+        Container(binary, "strategist", "Go binary", "CLI: install, compile, check-stale, validate, check, initiative, dojo, treasure-chest, sync-governance, version")
         Container(skill_root, ".strategist/", "YAML + gzip/JSON", "Configs (active.yaml, personas/, roles/), artefatos compilados (.compiled/), memória (memory/)")
         Container(shim, "~/.claude/skills/strategist/SKILL.md", "Markdown", "Registro da skill no Claude Agent — aponta para o skill root")
-        Container(analysis, "<base_path>/", "Markdown", "Artefatos de missão: refined/<id>-analysis.md, refined/<id>/, archived/")
+        Container(analysis, "<base_path>/", "Markdown", "Artefatos de missão: pending/<id>-analysis.md, refined/<id>/, archived/")
     }
 
     System_Ext(claude, "Claude Agent (LLM)", "Executa o runtime da skill")
@@ -122,13 +122,13 @@ flowchart TD
     end
 
     subgraph discovery["🔭 Discovery — Ranger"]
-        D1["Slot: discovery\nProvider configurável em roles/\nEscreve refined/<id>-analysis.md"]
+        D1["Slot: discovery\nProvider configurável em active.yaml\nEscreve pending/<id>-analysis.md"]
         D2["opportunity_attack\n(interno — sem slot)\nVarre pending/, refined/, archived/\nproduz side_quest_manifest"]
         D1 --> D2
     end
 
     subgraph refinement["📐 Refinement — Archivist"]
-        R1["Slot: refinement\nLê refined/<id>-analysis.md\nProduz proposal.md + design.md + tasks.md"]
+        R1["Slot: refinement\nLê pending/<id>-analysis.md\nProduz analysis.md + proposal.md + design.md + tasks.md"]
     end
 
     subgraph gate["🚦 Approval Gate (obrigatório)"]
@@ -137,7 +137,7 @@ flowchart TD
 
     subgraph execution["⚡ Execution — Sniper"]
         E1["Side quests (se houver)\nnão-bloqueante — falha continua"]
-        E2["Plano principal\nSlot: execution"]
+        E2["Documentação/handoff aprovado\nSlot: execution"]
         E1 --> E2
     end
 
@@ -148,11 +148,11 @@ flowchart TD
     end
 
     RESULT(["✅ Resultado da missão\n<base_path>/archived/<id>-report.md"])
-    PLAN_ONLY(["📄 Plan only\n<base_path>/refined/<id>/"])
+    NO_EXEC(["📄 Delivered analysis\n<base_path>/refined/<id>/"])
 
     bootstrap --> preflight --> intake --> discovery --> refinement --> gate
     gate -- "sim" --> execution --> learning --> RESULT
-    gate -- "não" --> PLAN_ONLY
+    gate -- "não" --> NO_EXEC
 
     style bootstrap fill:#1e2a3a,color:#ccc
     style preflight fill:#1e2a3a,color:#ccc
@@ -163,7 +163,7 @@ flowchart TD
     style execution fill:#3a1e1e,color:#ccc
     style learning fill:#1e1e3a,color:#ccc
     style RESULT fill:#1e3a1e,color:#ccc
-    style PLAN_ONLY fill:#2a2a2a,color:#ccc
+    style NO_EXEC fill:#2a2a2a,color:#ccc
 ```
 
 ---
@@ -175,10 +175,10 @@ flowchart TD
 | `prompt-intake` | sub-skill interna | `read_only` | — |
 | `context-enrichment` | sub-skill interna | `read_only` | — |
 | `dossier-builder` | sub-skill interna | `read_only` | — |
-| Slot `discovery` (Ranger) | plugável | `write_analysis` | `<base_path>/refined/<mission_id>-analysis.md` |
+| Slot `discovery` (Ranger) | plugável | `write_analysis` | `<base_path>/pending/<mission_id>-analysis.md` |
 | `opportunity_attack` | interno (sem slot) | — | — |
 | Slot `refinement` (Archivist) | plugável | `write_analysis` | `<base_path>/refined/` |
-| Slot `execution` (Sniper) | plugável | `controlled` | `<base_path>/archived/` |
+| Slot `execution` (Sniper) | plugável | `controlled` | `<base_path>/archived/` e documentação `.md` aprovada |
 | `response-critic` | sub-skill interna | `read_only` | — |
 | `learning-curator` | sub-skill interna | `read_only` | `memory/` (com aprovação) |
 
@@ -194,10 +194,10 @@ stateDiagram-v2
     Intake --> Discovery
     Discovery --> Refinement
     Refinement --> ApprovalGate
-    ApprovalGate --> PlanOnly: no / empty tasks
+    ApprovalGate --> DeliveredAnalysis: no / no materialization tasks
     ApprovalGate --> Execution: yes
     Execution --> Adr
-    PlanOnly --> Adr
+    DeliveredAnalysis --> Adr
     Adr --> Learning
     Execution --> Learning: no ADR
     Learning --> Completed

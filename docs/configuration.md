@@ -1,7 +1,7 @@
 # Referência de Configuração — Strategist Skill
 
 **Status:** Accepted
-**Last Updated:** 2026-06-06
+**Last Updated:** 2026-06-26
 
 Todos os arquivos de configuração ficam em `.strategist/` dentro do repositório instalado. Edições manuais requerem recompilação (`strategist compile`) para que o agente use a versão atualizada.
 
@@ -40,8 +40,24 @@ Arquivo central que define o modo de operação e o binding de configuração.
 ```yaml
 mode: pragmatic | epic          # Persona ativa. Obrigatório.
 base_path: .analysis            # Diretório onde artefatos de missão são escritos.
-roles_config: default           # Nome do arquivo em roles/ (sem .yaml).
-knowledge_index_path: .strategist/knowledge.index.yaml  # Caminho para o índice de conhecimento.
+roles_config: roles/default.yaml  # Caminho relativo ao arquivo de roles (dentro de .strategist/).
+knowledge_index_path: knowledge.index.yaml  # Caminho do knowledge index (relativo a .strategist/).
+
+language:                       # Configuração de idioma (opcional).
+  ui: pt-BR                     # Idioma da interface do usuário.
+  docs: en                      # Idioma dos artefatos de documentação.
+  chat: pt-BR                   # Idioma das mensagens de chat do agente.
+  code: en                      # Idioma dos artefatos de código.
+
+slots:                          # Binding explícito de providers por slot (obrigatório).
+  discovery: brainstorming
+  refinement: openspec-explore
+  execution: sniper
+
+# treasure_chests:              # Fontes de conhecimento offline (opcional).
+# - id: <identificador>
+#   path: <caminho>
+#   scope: all | discovery | refinement | execution
 ```
 
 **Campos:**
@@ -50,19 +66,31 @@ knowledge_index_path: .strategist/knowledge.index.yaml  # Caminho para o índice
 |-------|------|-------------|--------|-----------|
 | `mode` | string | sim | — | Persona ativa. Aceita `pragmatic` ou `epic`. |
 | `base_path` | string | não | `.analysis` | Raiz onde `pending/`, `refined/` e `archived/` são criados. |
-| `roles_config` | string | sim | `default` | Nome do arquivo de roles a carregar de `roles/<nome>.yaml`. |
-| `knowledge_index_path` | string | não | `.strategist/knowledge.index.yaml` | Caminho do knowledge index. |
+| `roles_config` | string | sim | `roles/default.yaml` | Caminho relativo ao arquivo de roles dentro de `.strategist/`. |
+| `knowledge_index_path` | string | não | `knowledge.index.yaml` | Caminho do knowledge index relativo a `.strategist/`. |
+| `language` | object | não | — | Configuração de idioma: `ui`, `docs`, `chat`, `code`. |
+| `slots` | object | sim | — | Binding de providers: `discovery`, `refinement`, `execution`. |
+| `treasure_chests` | array | não | — | Fontes de conhecimento offline com `id`, `path` e `scope`. |
 
 **Exemplo gerado pelo install (modo pragmatic):**
 
 ```yaml
 mode: pragmatic
 base_path: .analysis
-roles_config: default
-knowledge_index_path: .strategist/knowledge.index.yaml
+roles_config: roles/default.yaml
+knowledge_index_path: knowledge.index.yaml
+
+slots:
+  discovery: brainstorming
+  refinement: openspec-explore
+  execution: sniper
 ```
 
 O `mode` pode ser sobrescrito por missão via parâmetro `--mode=epic` sem alterar este arquivo.
+
+O `slots:` define o binding explícito de providers e é obrigatório. É equivalente a declarar providers em `roles_config`, mas tem precedência quando ambos estão presentes.
+
+O campo `treasure_chests` é opcional. Cada entrada requer `id`, `path` e `scope`. O escopo `all` repassa o chest a todos os slots; escopos específicos (`discovery`, `refinement`, `execution`) restringem quais slots recebem o chest.
 
 ---
 
@@ -85,7 +113,7 @@ execution: <provider_id>       # Provider do slot Sniper. risk_score deve ser co
 # Nomes internos: Ranger, Archivist, Sniper (epic) / análise, refinamento, execução (pragmatic)
 discovery: brainstorming
 refinement: openspec-explore
-execution: sdd-ask
+execution: sniper
 ```
 
 **Resolução de provider:** o Strategist busca `<provider_id>/skill.yaml` nos caminhos configurados. Se não encontrar, para com `slot_provider_not_found`.
@@ -102,7 +130,7 @@ execution: sdd-ask
 
 | Arquivo | Uso |
 |---------|-----|
-| `default.yaml` | Configuração gerada pelo install (`brainstorming` + `openspec-explore` + `sdd-ask`) |
+| `default.yaml` | Configuração gerada pelo install (`brainstorming` + `openspec-explore` + `sniper`) |
 | `mission.yaml` | Configuração otimizada para missões de alta complexidade |
 | `spec-driven.yaml` | Fluxo orientado a especificação (útil com SDD) |
 
@@ -136,7 +164,7 @@ prompt_templates:               # Templates interpolados em runtime
     <template com {phase_label}, {artifact_path}>
   approval_prompt: >
     <template com {artifact_path}>
-  plan_only_result: >
+  analysis_delivered_result: >
     <template com {artifact_path}>
 ```
 

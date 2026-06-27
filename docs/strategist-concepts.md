@@ -1,7 +1,7 @@
 # Strategist — Conceitos Fundamentais
 
 **Status:** Accepted
-**Last Updated:** 2026-06-22
+**Last Updated:** 2026-06-26
 
 Referência dos cinco conceitos centrais da Strategist skill: papel, papel rankeado, armas, iniciativa e dojo.
 
@@ -25,9 +25,9 @@ Um papel é a combinação de um slot com seu contrato de comportamento. Existem
 
 | Papel | Slot | Contrato | Escrita autorizada |
 |-------|------|----------|--------------------|
-| **Ranger** | `discovery` | `write_pending` | `.md` em `<base_path>/pending/` |
-| **Archivist** | `refinement` | `write_analysis` | `.md` em `<base_path>/` e `refined/` |
-| **Sniper** | `execution` | `controlled` | Somente após approval gate |
+| **Ranger** | `discovery` | `write_analysis` | `.md` em `<base_path>/pending/` |
+| **Archivist** | `refinement` | `write_analysis` | `.md` em `<base_path>/refined/` |
+| **Sniper** | `execution` | `controlled` | Documentação/handoff aprovado, somente após approval gate |
 
 Cada papel tem um contrato declarado em `.strategist/roles/<papel>.yaml` com cláusulas `must` e `must_not`. Exemplo (Ranger):
 
@@ -43,7 +43,7 @@ must_not:
   - passar contexto bruto ao Archivist (comprimir em evidence cards)
 ```
 
-O Sniper requer aprovação explícita do usuário antes de qualquer execução — sem exceções.
+O Sniper requer aprovação explícita do usuário antes de qualquer execução — sem exceções. No contrato atual, execução significa materializar documentação, diagramas, análises ou handoffs aprovados; não significa alterar código-fonte.
 
 ---
 
@@ -88,14 +88,14 @@ Configuração em `.strategist/active.yaml`:
 slots:
   discovery: brainstorming       # arma do Ranger
   refinement: openspec-explore   # arma do Archivist
-  execution: sdd-ask             # arma do Sniper
+  execution: sniper              # arma do Sniper
 ```
 
 Cada arma é um skill com seu próprio `skill.yaml` resolvido em preflight pelo Strategist. O contrato de risco (`risk_score`) da arma deve corresponder ao contrato do slot:
 
 | Slot | risk_score esperado |
 |------|---------------------|
-| discovery | `write_pending` |
+| discovery | `write_analysis` |
 | refinement | `write_analysis` |
 | execution | `controlled` |
 
@@ -110,12 +110,20 @@ Para trocar uma arma, basta alterar o valor do slot em `active.yaml` e garantir 
 ```bash
 $ strategist initiative
 
-discovery    brainstorming      Ranger    rankeado   ✓ manifest OK
-refinement   openspec-explore   Archivist rankeado   ✓ manifest OK
-execution    sdd-ask            Sniper    (base)     ✓ manifest OK
+SLOTS                                                  
+discovery      brainstorming      Ranger rankeado      ✓ manifest OK
+refinement     openspec-explore   Archivist rankeado   ✓ manifest OK
+execution      sniper             Sniper (base)        ✓ manifest OK
+                                                       
+WORKSPACE                                              
+mode           epic                                    
+base_path      .analysis                               
+pending        0 cards                                 
+done           49 missões                              
+last mission   20260620-feature-xyz                    
 ```
 
-Colunas:
+A seção **SLOTS** exibe, para cada slot:
 
 | Coluna | Significado |
 |--------|-------------|
@@ -124,6 +132,8 @@ Colunas:
 | canonical_role | Papel canônico declarado no manifest (`ranger`, `archivist`, `sniper`) |
 | class | `rankeado` se `provider_class: rankeado`, senão `(base)` |
 | manifest status | `✓ manifest OK` se `.strategist/skills/<provider>/skill.yaml` existe e é válido; `⚠ manifest ausente` caso contrário |
+
+A seção **WORKSPACE** exibe: `mode` e `base_path` de `active.yaml`, contagens de cards pendentes e missões concluídas, e o ID da última missão em `memory/outcomes.jsonl`.
 
 O comando não faz chamadas ao LLM — lê apenas `active.yaml` e os arquivos `skill.yaml` locais. Útil para verificar rapidamente se a workspace está íntegra antes de iniciar uma missão.
 
@@ -157,7 +167,7 @@ Lê o `criteria.yaml` do cenário e verifica:
 /strategist dojo <scenario>
 ```
 
-Executa o pipeline completo com input de `.analysis/dojo/<scenario>/input.yaml`, escreve artefatos em `.analysis/dojo/run/` (isolado da produção) e ao final chama automaticamente a camada 1.
+Executa o pipeline completo com input de `<base_path>/dojo/<scenario>/input.yaml`, escreve artefatos em `<base_path>/dojo/run/` (isolado da produção) e ao final chama automaticamente a camada 1.
 
 ### Cenários disponíveis
 
@@ -170,7 +180,7 @@ Executa o pipeline completo com input de `.analysis/dojo/<scenario>/input.yaml`,
 ### Estrutura de um cenário
 
 ```
-.analysis/dojo/<scenario>/
+<base_path>/dojo/<scenario>/
 ├── input.yaml      # input sintético para a camada LLM
 ├── criteria.yaml   # contrato de validação (files, emit, manifests)
 ├── golden/         # artefatos de referência (opcional)
@@ -183,7 +193,7 @@ Todo `input.yaml` do dojo deve ser inócuo: ideia prefixada com `[dojo-fixture]`
 
 ### Adicionando um novo cenário
 
-1. Criar `.analysis/dojo/<nome>/`
+1. Criar `<base_path>/dojo/<nome>/`
 2. Escrever `input.yaml` com ideia inócua e canary string única
 3. Escrever `criteria.yaml` referenciando o canary em `must_contain`
 4. Validar sintaxe: `strategist dojo check <nome> --files-only`

@@ -4,6 +4,10 @@
 **Data:** 2026-05-28  
 **Contexto:** Guardrails de segurança do agente (guardrails-20260529)
 
+> 2026-06-26 note: the gate remains mandatory, but current Strategist execution is
+> documentation/materialization/handoff work. Source-code mutation is outside the
+> Strategist contract even after approval.
+
 ---
 
 ## Contexto
@@ -26,7 +30,7 @@ forbidden_behaviors:
   - invoke_execution_slot_without_approval
 ```
 
-Qualquer caminho no código que alcança o slot de execution sem resposta afirmativa do usuário é um bug, não um feature. O único resultado válido de um gate negado é `plan_only` — retornar o plano sem executar.
+Qualquer caminho que alcança o slot de execution sem resposta afirmativa do usuário é um bug, não um feature. Se o gate for negado ou não houver tarefas de materialização, o resultado válido é entregar a análise/refinamento sem executar Sniper.
 
 A única exceção prevista é `sdd_injection`, que pode injetar o provider de execução mas não pode remover o gate.
 

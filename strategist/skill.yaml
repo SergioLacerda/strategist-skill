@@ -138,6 +138,27 @@ pipeline:
   - stage: intake
     skill: prompt-intake
     produces: mission_contract    # includes token_strategy block (mode, pressure_score, triage_gate)
+  - stage: implementation_context_validation
+    type: conditional_route
+    condition: "implementation_intent AND context_sufficient"
+    description: >
+      Short route for implementation/materialization requests that already arrive with enough
+      local context to skip full discovery/refinement expansion. Conditions:
+      - request explicitly asks for implementation/materialization
+      - local context or user prompt provides enough scope (no unresolved ambiguity)
+      - documentation/materialization targets are clear
+      - code mutation is not required; Git mutation is not required
+      If any condition fails, fall through to full main mission pipeline.
+      This route NEVER skips the Strategist Approval Gate.
+    short_route_sequence: >
+      bootstrap → preflight → intake → implementation_context_validation
+      → approval_gate → execution_provider_resolution → execution/materialization → learning
+    produces: executable_refined_context
+    invariant:
+      - approval_gate_required
+      - execution_provider_resolution_required
+      - no_code_mutation
+      - no_git_mutation
   - stage: triage_gate
     type: conditional_pause
     condition: "mission_contract.token_strategy.triage_gate.blocked == true"
@@ -236,30 +257,65 @@ pipeline:
 
 stop_conditions:
   - preflight_failed
-  - slots_not_configured        # active.slots absent or empty
+  - slots_not_configured              # active.slots absent or empty
   - slot_provider_not_found
   - slot_risk_mismatch
   - intake_conflict_unresolved
   - user_requests_revision
   - user_rejects_analysis
-  - opportunity_sniper_failed       # non-blocking: log and continue to Archivist
-  - slot_write_type_violation       # slot tried to write a non-.md file
-  - slot_write_scope_violation      # slot tried to write outside its declared scope
+  - opportunity_sniper_failed         # non-blocking: log and continue to Archivist
+  - slot_write_type_violation         # slot tried to write a non-.md file
+  - slot_write_scope_violation        # slot tried to write outside its declared scope
+  - local_execution_provider_missing  # delegated invocation did not provide execution_provider
+  - execution_provider_unavailable    # resolved provider cannot be invoked in this environment
 
 result_schema: mission-result.schema.yaml
 
 governance_injection:
   optional: true
+  wire_field: governance_injection
+  preferred_semantic_term: local_execution_context
   description: >
-    The only declared extension point for external governance. Any governance adapter
-    (SDD or otherwise) MUST route its context through these fields only.
-    Governance injection does not alter pipeline sequence, approval requirements,
-    or artifact persistence — it only injects provider, paths, and context.
+    The only declared extension point for an invoking local context. Any governance adapter,
+    parent orchestrator, harness, or policy adapter MUST route its context through these fields only.
+    This block is provider-agnostic — it is not coupled to any specific governance system.
+    It does not alter pipeline sequence, Strategist Approval Gate requirements,
+    or artifact persistence — it only injects provider, paths, policy gate, and context.
   fields:
     - execution_provider
     - base_path
     - knowledge_paths
     - governance_context
+    - invocation_mode       # direct | delegated (default: direct if absent)
+    - execution_gate        # allowed | blocked (default: allowed if absent)
+    - implementation_intent # boolean: true if request is already an impl/materialization request
+
+execution_provider_resolution:
+  direct_invocation:
+    source: active.slots.execution
+    description: >
+      Standalone invocation: resolve execution provider from the slot config only.
+      No per-request execution provider override is permitted.
+  delegated_invocation:
+    source: local_execution_context.execution_provider
+    required: true
+    fallback: none
+    on_missing: blocked
+    error: local_execution_provider_missing
+  invariants:
+    - strategist_approval_gate_required           # gate always required, regardless of invocation mode
+    - no_direct_shell_execution                   # Strategist never executes Sniper tasks directly
+    - no_code_mutation                            # execution slot is documentation-only
+    - local_context_wins_provider_only            # local context overrides only the provider; pipeline unchanged
+  blocked_states:
+    - id: local_execution_provider_missing
+      condition: invocation_mode=delegated AND execution_provider is null
+      action: block
+      message: "delegated invocation did not provide execution_provider; provide local execution context or use direct invocation"
+    - id: execution_provider_unavailable
+      condition: resolved_provider cannot be invoked in current environment
+      action: block
+      message: "resolved execution_provider cannot be invoked; use a runtime with provider delegation or reconfigure provider"
 
 # Governance compliance — synced via `strategist sync-governance`
 compliance:

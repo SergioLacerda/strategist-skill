@@ -62,7 +62,7 @@ All attributes are namespaced under `strategist.*`. Defined in `internal/telemet
 | Key | Type | Description |
 |-----|------|-------------|
 | `strategist.gate.type` | string | Gate type: `approval`, `opportunity`, `adr` |
-| `strategist.gate.status` | string | `pending`, `approved`, `declined`, `plan_only` |
+| `strategist.gate.status` | string | `pending`, `approved`, `declined`, `analysis_delivered` |
 | `strategist.gate.response` | string | Raw user response at the gate |
 | `strategist.approval_policy` | string | Policy that governed this gate decision |
 | `strategist.transition_group` | string | Transition group key (e.g. `finalize_analysis`) |
@@ -355,4 +355,4 @@ ADR-0010 (`docs/adr/0010-ordered-contracts-and-mission-observability.md`) establ
 ADR-0010 does **not** guarantee:
 - Specific token counts (model-dependent)
 - Timing attributes in non-CLI modes
-- Checkpoint file presence when a mission is in `plan_only` mode
+- Checkpoint file presence when a mission is delivered without materialization

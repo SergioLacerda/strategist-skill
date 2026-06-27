@@ -1,7 +1,7 @@
 # Internals da Skill — Sub-skills, Contratos e Schemas
 
 **Status:** Accepted
-**Last Updated:** 2026-06-18
+**Last Updated:** 2026-06-26
 
 Este documento descreve os componentes internos do runtime da skill Strategist: as sub-skills invocadas automaticamente pelo orchestrador, os contratos de fase, e os schemas de entrada/saída.
 
@@ -102,7 +102,7 @@ Produz o artefato canônico de análise que abre a missão formalmente para o us
 - `treasure_chests`
 
 **Saída:**
-- `analysis_artifact_path` — `<base_path>/refined/<mission_id>-analysis.md`
+- `analysis_artifact_path` — `<base_path>/pending/<mission_id>-analysis.md`
 
 **Contrato obrigatório no artefato:**
 - `mission_id`
@@ -187,7 +187,7 @@ Aprovação é independente para cada item — o usuário pode aprovar outcomes 
 
 ## Contratos de Fase
 
-Os contratos em `strategist/contracts/` definem o contrato formal de cada fase interna do orchestrador.
+Os contratos em `.strategist/contracts/` definem o contrato formal de cada fase interna do orchestrador.
 
 ### Sinais funcionais no pipeline único
 
@@ -195,11 +195,11 @@ Os contratos em `strategist/contracts/` definem o contrato formal de cada fase i
 não abrem pipelines paralelos. Eles são detectados ao longo da missão e encaixados
 no fluxo único `Ranger -> Archivist -> approval gate -> Sniper`.
 
-Guardrail principal: nenhuma escrita/execução ocorre sem aprovação no gate da missão.
+Guardrail principal: nenhuma materialização aprovada ocorre sem aprovação no gate da missão.
 Invariante adicional: cada fase deve registrar sweep de oportunidade
 (`opportunity_scan=done`, `treasure_check=done`, `sidequest_manifest=updated|empty`),
 inclusive em missões de alvo único. A restrição de escopo aplica-se somente para
-impedir implementação fora do escopo aprovado.
+impedir materialização documental fora do escopo aprovado.
 
 ### Treasure Chests (baú do tesouro)
 
@@ -295,7 +295,7 @@ As métricas canônicas para otimização de performance do Strategist são:
 - `tokens_out`
 - `lines_emitted`
 
-O baseline atual deve ser registrado em `<base_path>/refined/2026-06-01-performance-baseline-metrics.md` e atualizado sempre que houver mudança de contrato, telemetria ou política de emissão que possa alterar custo percebido.
+O baseline atual está registrado em `docs/performance-baseline.md` e deve ser atualizado sempre que houver mudança de contrato, telemetria ou política de emissão que possa alterar custo percebido.
 
 As métricas são expostas pelo sinal de saída `mission_metrics` no checkpoint de intake e em cada transição de fase. Isso mantém a telemetria de custo disponível sem alterar a ordem visível do pipeline.
 
@@ -315,13 +315,13 @@ Define o formato obrigatório dos eventos de progresso emitidos pelo Strategist 
 | `running` | `phase`, `status`, `skill`, `checklist` | Fase iniciou |
 | `done` | `phase`, `status`, `artifact` | Fase completou com sucesso |
 | `blocked` | `phase`, `status`, `reason`, `action` | Fase não pode continuar |
-| `plan_only` | `phase`, `status` | Missão parou no approval gate |
+| `analysis_delivered` | `phase`, `status` | Missão entregou análise/refinamento sem materialização |
 
 **Exemplos:**
 ```
 [Strategist] phase=preflight status=done slots=ok
 [Strategist] phase=discovery status=running skill=brainstorm checklist=0/3
-[Strategist] phase=discovery status=done artifact=.analysis/refined/abc123-analysis.md
+[Strategist] phase=discovery status=done artifact=.analysis/pending/abc123-analysis.md
 [Strategist] phase=approval_gate status=blocked reason=user_declined action=none
 [Strategist] phase=execution status=done artifact=.analysis/archived/abc123-report.md
 ```
@@ -330,7 +330,7 @@ Define o formato obrigatório dos eventos de progresso emitidos pelo Strategist 
 
 | Fase | Caminho |
 |------|---------|
-| discovery | `<base_path>/refined/<mission_id>-analysis.md` |
+| discovery | `<base_path>/pending/<mission_id>-analysis.md` |
 | refinement | `<base_path>/refined/<mission_id>/` |
 | execution | `<base_path>/archived/<mission_id>-report.md` |
 
@@ -366,7 +366,7 @@ Cada slot tem um escopo de escrita declarado no `skill.yaml`. Escrever fora do e
 |------|------------------|-----------------|
 | `discovery` | `<base_path>/` | `.md` |
 | `refinement` | `<base_path>/` e `<base_path>/refined/` | `.md` |
-| `execution` | Declarado pelo provider (`controlled`) | definido pelo provider |
+| `execution` | `<base_path>/archived/` e documentação `.md` aprovada | `.md` |
 
 ---
 
