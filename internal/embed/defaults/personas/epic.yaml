@@ -148,9 +148,7 @@ content_by_lang:
       add idea? (yes / no)
     quick_draw_success: >
       ⚔️ Quick Draw complete.
-      success: idea added at {destination_path}
-      total ideas: {total_ideas}
-      similar ideas (same theme): {similar_ideas}
+      success: {ideas_added} idea(s) added at {destination_path}
 
     treasure_chest_found: >
       🎁 **Treasure chest found!** [{chest_id}] — {description}
@@ -178,19 +176,7 @@ content_by_lang:
       ⚔️ **Opportunity Attack → ADR**
 
       This mission contains architectural decisions worth recording.
-      Side quest: Archivist writes ADR → Gate → Sniper archives.
-
-      Generate ADR for "{mission_id}"? (yes / no)
-    adr_gate: >
-      📚 **Archivist — ADR draft:**
-
-      ---
-      {draft_content}
-      ---
-
-      🚦 **ADR Gate:** AWAITING CONFIRMATION
-
-      Archive ADR? (yes / no)
+      [OA-ADR-{mission_id}] Create ADR — impact: medium
 
     analysis_delivered_result: >
       Mission [{mission_id}] closed — analysis delivered.

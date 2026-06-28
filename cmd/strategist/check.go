@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	embedpkg "github.com/SergioLacerda/strategist-skill/internal/embed"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -17,6 +18,17 @@ var slotContract = map[string]string{
 	"discovery":  "write_analysis",
 	"refinement": "write_analysis",
 	"execution":  "controlled",
+}
+
+var normativeRuntimeDefaultFiles = []string{
+	"SKILL.md",
+	"skill.yaml",
+	"protocol.md",
+	"templates/agent-protocol.md",
+	"contracts/machine/preflight.yaml",
+	"contracts/narrative/05-approval-gate.md",
+	"contracts/narrative/06-execution.md",
+	"templates/domain/identity/drift-patterns.yaml",
 }
 
 var checkCmd = &cobra.Command{
@@ -133,6 +145,8 @@ Checks performed:
 			}
 		}
 
+		errs = append(errs, validateRuntimeDefaultParity(root)...)
+
 		if len(errs) > 0 {
 			for _, e := range errs {
 				fmt.Fprintf(os.Stderr, "  ✗ %s\n", e)
@@ -144,6 +158,35 @@ Checks performed:
 			providers["discovery"], providers["refinement"], providers["execution"], cfg.Mode, root)
 		return nil
 	},
+}
+
+func validateRuntimeDefaultParity(root string) []string {
+	extractor := embedpkg.Extractor{}
+	var errs []string
+
+	for _, rel := range normativeRuntimeDefaultFiles {
+		runtimePath := filepath.Join(root, filepath.FromSlash(rel))
+		runtimeRaw, readErr := os.ReadFile(runtimePath)
+		if readErr != nil {
+			if os.IsNotExist(readErr) {
+				continue
+			}
+			errs = append(errs, fmt.Sprintf("runtime_stale: read %s: %v", runtimePath, readErr))
+			continue
+		}
+
+		embeddedRaw, embedErr := extractor.ReadFile(rel)
+		if embedErr != nil {
+			errs = append(errs, fmt.Sprintf("runtime_stale: embedded default %q unreadable: %v", rel, embedErr))
+			continue
+		}
+
+		if string(runtimeRaw) != string(embeddedRaw) {
+			errs = append(errs, fmt.Sprintf("runtime_stale: normative file %q differs from embedded default — run strategist install --force", rel))
+		}
+	}
+
+	return errs
 }
 
 func init() {

@@ -8,12 +8,14 @@ skill_type: role_filler
 inherits_role: archivist
 
 description: >
-  Reads the Ranger analysis artifact and produces an implementation-ready refined package.
-  Writes all output to <base_path>/refined/<mission_id>/ as proposal.md, design.md,
-  and tasks.md. Must emit a completion signal declaring has_execution_tasks after writing.
+  Reads the Ranger analysis artifact from <base_path>/pending/ and produces an
+  implementation-ready refined package. Promotes analysis.md from pending into
+  <base_path>/refined/<mission_id>/ alongside proposal.md, design.md, and tasks.md.
+  Removes the pending artifact after successful four-file promotion.
+  Must emit a completion signal declaring has_execution_tasks after writing.
 
 input:
-  analysis_artifact_path: string   # path to Ranger's canonical output in <base_path>/refined/
+  analysis_artifact_path: string   # path to Ranger's canonical output in <base_path>/pending/
   base_path: string                # from Strategist (mission base directory)
   mission_id: string               # unique mission identifier
   mission_contract: object         # planning_rules from intake
@@ -21,6 +23,7 @@ input:
 output:
   artifact_dir: string             # <base_path>/refined/<mission_id>/
   has_execution_tasks: boolean     # true if the refined package contains tasks for Sniper
+  opportunity_manifest: object     # optional; present when ADR criteria met (opportunity_attack result)
 
 completion_signal:
   format: |
@@ -50,7 +53,14 @@ behavior:
     [INSUFFICIENT EVIDENCE] and add a blocker note with the specific missing information.
   - If a section would require speculation not grounded in the analysis artifact, mark it
     [NEEDS CLARIFICATION] and list the specific questions.
-  - Write artifacts to <base_path>/refined/<mission_id>/ as proposal.md, design.md, and tasks.md.
+  - Before writing any output, update pending artifact frontmatter to mission_status=archivist_pending.
+  - Promote analysis artifact: copy <base_path>/pending/<mission_id>-analysis.md verbatim to
+    <base_path>/refined/<mission_id>/analysis.md.
+  - Write proposal.md, design.md, and tasks.md to <base_path>/refined/<mission_id>/.
+  - After all four files are written, update analysis.md frontmatter to mission_status=archivist_done.
+  - Remove <base_path>/pending/<mission_id>-analysis.md only after all four files exist.
+  - Detect missions unrelated to the current scope and add them to the side_quests section of the analysis artifact.
+  - After writing all four refined artifacts, run opportunity_attack: evaluate if the refined work warrants an ADR using criteria in machine/opportunity-attack.yaml. Include result in opportunity_manifest.
   - Emit completion signal with has_execution_tasks: true if sniper_instructions has tasks, false otherwise.
 
 forbidden_behaviors:
@@ -59,6 +69,7 @@ forbidden_behaviors:
   - assume_constraints_not_stated_in_mission_contract
   - produce_output_without_analysis_artifact
   - omit_completion_signal
+  - omit_opportunity_attack_evaluation   # must run ADR evaluation after all four refined artifacts are written
 
 failure_modes:
   - missing_analysis_artifact: input path does not exist or is empty.

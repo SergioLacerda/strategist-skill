@@ -13,7 +13,7 @@ Resolve the route before any mission work starts.
 ## Routes
 
 - **Quick Draw** — only for explicit quick capture / note append requests
-- **Critical Hit** — fast path for low-risk doc/content edits (see `critical-hit.yaml`)
+- **Critical Hit** — fast path for moving `.md` analysis artifacts between `pending/`, `refined/`, `archived/` (see `critical-hit.yaml`)
 - **Implementation Short Route** — for already-refined implementation/materialization requests
 - **Main Mission** — every other request
 

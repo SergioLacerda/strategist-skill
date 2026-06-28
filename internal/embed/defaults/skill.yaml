@@ -83,7 +83,6 @@ slots:
     canonical:
       - find_unexpected_items       # surface items outside declared mission scope
       - consult_treasure_chests     # if chests scoped to discovery present, consult before LLM
-      - opportunity_attack          # routine: detect treasure_chests + side_quests, surface in response
       - output_format: "<base_path>/pending/<mission_id>-analysis.md"
       - handoff_contract: "schemas/handoff-ranger-to-archivist.schema.yaml"
     description: Explores the problem space and writes the transient analysis handoff artifact.
@@ -97,7 +96,7 @@ slots:
     write_types: [".md"]
     canonical:
       - consult_treasure_chests     # if chests scoped to refinement present, consult before LLM
-      - opportunity_attack          # routine: detect side_quests, decide strategy, include in approval gate
+      - opportunity_attack          # routine: evaluate ADR necessity after writing refined artifacts, include in opportunity_manifest
       - emit_completion_signal      # must emit has_execution_tasks: true|false after writing artifacts
       - output_format:
           - "<base_path>/refined/<mission_id>/analysis.md"
@@ -113,7 +112,6 @@ slots:
     canonical:
       - requires_review_gate_acceptance  # Strategist enforces — documented here for slot awareness
       - consult_treasure_chests          # if chests scoped to execution present, consult before acting
-      - opportunity_attack               # routine: detect out-of-scope writes, stop_and_report only
     description: Materializes approved documentation_targets. Approval gate acceptance required.
 
 # Treasure chests — scoped knowledge sources passed to slots at invocation time.
@@ -131,6 +129,7 @@ treasure_chest_schema:
 
 preflight:
   - validate_slot_providers
+  - delegation_capability_check    # verify current environment can invoke each slot provider; emit delegation_unavailable and stop if not
   - load_internal_domain
   - load_persona
 
@@ -203,9 +202,9 @@ pipeline:
     slot: refinement
     input: analysis_artifact
     note: >
-      Opportunity Attack runs as a routine inside Ranger (discovery) and Archivist (refinement).
-      Treasure chests and side quests are included in handoff contract fields.
-      Results are surfaced to the user inside each role response and at the approval_gate.
+      Opportunity Attack runs as a routine inside Archivist (refinement) only.
+      Evaluates ADR necessity after all four refined artifacts are written.
+      ADR side quest (if warranted) is surfaced at the approval_gate.
     artifact_path: "<base_path>/refined/<mission_id>/"
     produces:
       - "<base_path>/refined/<mission_id>/analysis.md"
@@ -220,14 +219,6 @@ pipeline:
     input: refined_plan
     artifact_path: "<base_path>/archived/<mission_id>-report.md"
     condition: approval_granted
-  - stage: adr_opportunity
-    type: conditional_pause
-    condition: adr_criteria_met
-    description: >
-      Evaluate if the mission contains architectural decisions worth recording.
-      If yes: gate 1 (generate?), Archivist writes+presents draft, gate 2 (approve content?),
-      Sniper commits on approval. ADR language follows active.language.
-    produces: adr_artifact
   - stage: learning
     skill: learning-curator
     blocking: false
@@ -236,30 +227,65 @@ pipeline:
 
 stop_conditions:
   - preflight_failed
-  - slots_not_configured        # active.slots absent or empty
+  - slots_not_configured              # active.slots absent or empty
   - slot_provider_not_found
   - slot_risk_mismatch
   - intake_conflict_unresolved
   - user_requests_revision
   - user_rejects_analysis
-  - opportunity_sniper_failed       # non-blocking: log and continue to Archivist
-  - slot_write_type_violation       # slot tried to write a non-.md file
-  - slot_write_scope_violation      # slot tried to write outside its declared scope
+  - opportunity_sniper_failed         # non-blocking: log and continue to Archivist
+  - slot_write_type_violation         # slot tried to write a non-.md file
+  - slot_write_scope_violation        # slot tried to write outside its declared scope
+  - local_execution_provider_missing  # delegated invocation did not provide execution_provider
+  - execution_provider_unavailable    # resolved provider cannot be invoked in this environment
 
 result_schema: mission-result.schema.yaml
 
 governance_injection:
   optional: true
+  wire_field: governance_injection
+  preferred_semantic_term: local_execution_context
   description: >
-    The only declared extension point for external governance. Any governance adapter
-    (SDD or otherwise) MUST route its context through these fields only.
-    Governance injection does not alter pipeline sequence, approval requirements,
-    or artifact persistence — it only injects provider, paths, and context.
+    The only declared extension point for an invoking local context. Any governance adapter,
+    parent orchestrator, harness, or policy adapter MUST route its context through these fields only.
+    This block is provider-agnostic — it is not coupled to any specific governance system.
+    It does not alter pipeline sequence, Strategist Approval Gate requirements,
+    or artifact persistence — it only injects provider, paths, policy gate, and context.
   fields:
     - execution_provider
     - base_path
     - knowledge_paths
     - governance_context
+    - invocation_mode       # direct | delegated (default: direct if absent)
+    - execution_gate        # allowed | blocked (default: allowed if absent)
+    - request_intent        # read-only classifier context; never authorizes pipeline bypass
+
+execution_provider_resolution:
+  direct_invocation:
+    source: active.slots.execution
+    description: >
+      Standalone invocation: resolve execution provider from the slot config only.
+      No per-request execution provider override is permitted.
+  delegated_invocation:
+    source: local_execution_context.execution_provider
+    required: true
+    fallback: none
+    on_missing: blocked
+    error: local_execution_provider_missing
+  invariants:
+    - strategist_approval_gate_required           # gate always required, regardless of invocation mode
+    - no_direct_shell_execution                   # Strategist never executes Sniper tasks directly
+    - no_code_mutation                            # execution slot is documentation-only
+    - local_context_wins_provider_only            # local context overrides only the provider; pipeline unchanged
+  blocked_states:
+    - id: local_execution_provider_missing
+      condition: invocation_mode=delegated AND execution_provider is null
+      action: block
+      message: "delegated invocation did not provide execution_provider; provide local execution context or use direct invocation"
+    - id: execution_provider_unavailable
+      condition: resolved_provider cannot be invoked in current environment
+      action: block
+      message: "resolved execution_provider cannot be invoked; use a runtime with provider delegation or reconfigure provider"
 
 # Governance compliance — synced via `strategist sync-governance`
 compliance:
@@ -368,13 +394,11 @@ forbidden_behaviors:
   - perform_discovery_directly_instead_of_delegating
   - skip_preflight
   - load_knowledge_not_in_index
-  - skip_opportunity_attack_routine          # each slot MUST run opportunity_attack
-  - suppress_opportunity_attack_feedback     # findings MUST be surfaced to user in response
+  - skip_opportunity_attack_routine          # Archivist MUST run opportunity_attack (ADR evaluation) after writing all four refined artifacts
+  - suppress_opportunity_attack_feedback     # if ADR criteria met, Archivist MUST surface ADR side quest at gate
   - hunter_decides_side_quest_strategy       # only Archivist decides; Hunter reports only
   - skip_triage_gate                         # triage_gate.blocked=true must pause pipeline
   - open_discovery_while_triage_blocked      # context_enrichment must not run while blocked
-  - skip_adr_gate
-  - commit_adr_without_adr_gate_approval
   - ranger_writes_outside_pending
   - engineer_writes_outside_analysis
   - archivist_writes_non_md

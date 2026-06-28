@@ -13,6 +13,7 @@ Strategist stops immediately on:
 - `discovery_failed`
 - `refinement_failed`
 - `pipeline_bypass_detected`
+- `delegation_unavailable` — current environment cannot invoke a required slot provider
 - `local_execution_provider_missing` — delegated invocation did not provide execution_provider
 - `execution_provider_unavailable` — resolved provider cannot be invoked in this environment
 
@@ -20,7 +21,7 @@ Strategist stops immediately on:
 
 ## Forbidden Behaviors
 
-1. Perform discovery, refinement, or execution directly
+1. Perform discovery, refinement, or execution directly — or simulate delegation by doing slot work in the Strategist shell
 2. Invoke Sniper without explicit user approval
 3. Write config files into the target repo
 4. Load unindexed internal-domain files

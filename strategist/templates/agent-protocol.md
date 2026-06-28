@@ -66,8 +66,7 @@ Linear checklist. Do not advance without completing each item.
 [ ] 6. refinement → invoke {{.Slots.Refinement}}
 [ ] 7. approval gate  ← MANDATORY PAUSE — do not advance without explicit user response
 [ ] 8. materialization → invoke {{.Slots.Execution}}  ← only after gate approved
-[ ] 9. adr opportunity (if adr_enabled=true and criteria met)
-[ ] 10. learning (non-blocking)
+[ ] 9. learning (non-blocking)
 ```
 
 ---

@@ -1,50 +1,13 @@
 module: adr
-type: agent_phase
+type: execution_task
 description: >
-  Post-mission stage (conditional). Detects architectural decisions in the completed
-  mission and offers to document them as ADRs. Two-gate flow: gate_1 confirms generation,
-  gate_2 confirms content. Skipped when no criteria met.
+  ADR creation task executed by Sniper when the user approves the ADR side quest
+  at the approval gate. Triggered by opportunity_attack evaluation inside Archivist.
+  ADR approval happens at the main gate as a side quest — no separate post-execution phase.
 
 contract:
-  activation_criteria:
-    new_pattern: new interface, contract, schema, or abstraction introduced
-    breaking_change: field removed, signature changed, behavior changed
-    documented_tradeoff: tasks.md/design.md describe a choice with discarded alternatives
-    new_external_dependency: library, service, or protocol added
-  skip_when_criteria_empty: true
-
-  flow:
-    gate_1:
-      emit_key: adr_opportunity
-      emit_level: DEBUG
-      stop: true
-      on_no:
-        action: log "ADR declined (gate 1)"
-        next_phase: learning_phase
-      on_yes:
-        action: archivist writes draft AND presents full content in chat
-        draft_display_format: |
-          ---
-          📚 **Archivist — ADR draft:**
-          {full ADR content per template}
-          ---
-        artifact_path: "<base_path>/archived/<mission_id>-adr.md"
-
-    gate_2:
-      emit_key: adr_gate
-      emit_level: INFO
-      stop: true
-      on_yes:
-        action: sniper commits ADR
-        set: mission_result.adr = <path>
-        next_phase: learning_phase
-      on_no:
-        action: delete artifact
-        set: mission_result.adr = absent
-        mission_result_status: completed
-        next_phase: learning_phase
-      on_edit:
-        action: accept inline edits, re-present draft, re-open gate_2
+  trigger: gate_approval of OA-ADR side quest
+  executor: sniper
 
   template:
     language_source: active.language.docs
@@ -54,6 +17,6 @@ contract:
     required_fields: [title, date, status, mission_id]
     status_value: accepted
 
-  write_scope: "<base_path>/archived/ (conditional on gate_2 approval)"
-  owner: internal (post-mission)
-  canonical_human_contract: contracts/07-adr.md
+  write_scope: "<base_path>/archived/<mission_id>-adr.md"
+  owner: sniper (on gate approval)
+  canonical_human_contract: contracts/narrative/07-adr.md
