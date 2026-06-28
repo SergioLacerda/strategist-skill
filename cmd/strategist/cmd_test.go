@@ -922,11 +922,12 @@ func TestCheckCmd_Success(t *testing.T) {
 		err := checkCmd.RunE(checkCmd, nil)
 		require.NoError(t, err)
 	})
-	assert.Contains(t, out, "check=ok")
+	assert.Contains(t, out, "STRATEGIST :: check")
+	assert.Contains(t, out, "ok")
 	assert.Contains(t, out, "brainstorming")
 	assert.Contains(t, out, "openspec-explore")
 	assert.Contains(t, out, "sdd-ask")
-	assert.Contains(t, out, "persona=epic")
+	assert.Contains(t, out, "epic")
 }
 
 func TestCheckCmd_PersonaMissing(t *testing.T) {
@@ -1085,7 +1086,7 @@ func TestCheckCmd_NativeRole_Sniper(t *testing.T) {
 		err := checkCmd.RunE(checkCmd, nil)
 		require.NoError(t, err)
 	})
-	assert.Contains(t, out, "check=ok")
+	assert.Contains(t, out, "STRATEGIST :: check")
 	assert.Contains(t, out, "sniper")
 }
 

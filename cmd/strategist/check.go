@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"text/tabwriter"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	embedpkg "github.com/SergioLacerda/strategist-skill/internal/embed"
@@ -154,8 +155,38 @@ Checks performed:
 			return fmt.Errorf("[Strategist] check=failed errors=%d root=%s", len(errs), root)
 		}
 
-		fmt.Printf("[Strategist] check=ok slots=[discovery:%s, refinement:%s, execution:%s] persona=%s root=%s\n",
-			providers["discovery"], providers["refinement"], providers["execution"], cfg.Mode, root)
+		printStatusBanner("check")
+
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
+		if _, err := fmt.Fprintln(w, "STATUS\t"); err != nil {
+			return fmt.Errorf("check: write status header: %w", err)
+		}
+		if _, err := fmt.Fprintf(w, "  ok\troot=%s\n", root); err != nil {
+			return fmt.Errorf("check: write status row: %w", err)
+		}
+		if _, err := fmt.Fprintln(w, "\t"); err != nil {
+			return fmt.Errorf("check: write separator: %w", err)
+		}
+		if _, err := fmt.Fprintln(w, "SLOTS\t"); err != nil {
+			return fmt.Errorf("check: write slots header: %w", err)
+		}
+		for _, slot := range []string{"discovery", "refinement", "execution"} {
+			if _, err := fmt.Fprintf(w, "  %-12s\t%s\n", slot, providers[slot]); err != nil {
+				return fmt.Errorf("check: write slot row: %w", err)
+			}
+		}
+		if _, err := fmt.Fprintln(w, "\t"); err != nil {
+			return fmt.Errorf("check: write separator: %w", err)
+		}
+		if _, err := fmt.Fprintln(w, "PERSONA\t"); err != nil {
+			return fmt.Errorf("check: write persona header: %w", err)
+		}
+		if _, err := fmt.Fprintf(w, "  mode\t%s\n", cfg.Mode); err != nil {
+			return fmt.Errorf("check: write persona row: %w", err)
+		}
+		if err := w.Flush(); err != nil {
+			return fmt.Errorf("check: flush output: %w", err)
+		}
 		return nil
 	},
 }

@@ -127,11 +127,14 @@ Lê o artefato de discovery e produz um plano revisado e implementável. É o pr
 - `mission_contract` — `planning_rules` extraído pelo prompt-intake
 
 **Saída:**
+- `analysis.md` — `<base_path>/refined/<mission_id>/analysis.md`
 - `proposal.md` — `<base_path>/refined/<mission_id>/proposal.md`
 - `design.md` — `<base_path>/refined/<mission_id>/design.md`
 - `tasks.md` — `<base_path>/refined/<mission_id>/tasks.md`
 
-O output canônico do refinement agora é um pacote de três artefatos. `refined/<mission_id>-plan.md` é drift histórico, não o contrato atual.
+O output canônico do refinement é um pacote de quatro artefatos. `refined/<mission_id>-plan.md` é drift histórico, não o contrato atual.
+
+Após escrever os quatro artefatos, o Archivist executa a **Opportunity Attack** (avaliação ADR): verifica se os artefatos refinados justificam a abertura de um ADR. Essa avaliação é interna ao Archivist — não é delegada a slot.
 
 ---
 
@@ -191,15 +194,17 @@ Os contratos em `.strategist/contracts/` definem o contrato formal de cada fase 
 
 ### Sinais funcionais no pipeline único
 
-`quick_draw` (saque rápido), `opportunist attack` (side quests) e `treasure_chests`
-não abrem pipelines paralelos. Eles são detectados ao longo da missão e encaixados
-no fluxo único `Ranger -> Archivist -> approval gate -> Sniper`.
+`quick_draw`, `opportunity_attack`, `critical_hit`, side quests e `treasure_chests`
+não abrem pipelines paralelos. Eles se encaixam no fluxo único
+`Ranger -> Archivist -> approval gate -> Sniper`.
+
+- **Quick Draw**: captura rápida de ideia/TODO via rota dedicada; escreve somente após gate; `todo/` é write-only do ponto de vista da skill.
+- **Opportunity Attack**: avaliação ADR executada pelo Archivist após escrever os quatro artefatos refinados. Não é delegada a slot.
+- **Critical Hit**: rota de gerenciamento de artefatos de análise (`.md`) dentro das pastas `pending/`, `refined/` e `archived/` do `<base_path>`.
+- **Side Quests**: observações de escopo detectadas durante qualquer fase; Ranger, Archivist e Sniper podem detectar; Archivist consolida no gate; Sniper reporta side quests recém-descobertas.
 
 Guardrail principal: nenhuma materialização aprovada ocorre sem aprovação no gate da missão.
-Invariante adicional: cada fase deve registrar sweep de oportunidade
-(`opportunity_scan=done`, `treasure_check=done`, `sidequest_manifest=updated|empty`),
-inclusive em missões de alvo único. A restrição de escopo aplica-se somente para
-impedir materialização documental fora do escopo aprovado.
+A restrição de escopo aplica-se somente para impedir materialização documental fora do escopo aprovado.
 
 ### Treasure Chests (baú do tesouro)
 

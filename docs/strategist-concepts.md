@@ -35,13 +35,20 @@ Cada papel tem um contrato declarado em `.strategist/roles/<papel>.yaml` com cl�
 must:
   - separar fatos, hipóteses e ambiguidades
   - incluir todos os campos do handoff contract no artefato
-  - executar opportunity_attack e surfaçar resultados
+  - reportar side quests detectadas durante a discovery
 
 must_not:
   - propor plano final como se aprovado
   - executar mudanças
   - passar contexto bruto ao Archivist (comprimir em evidence cards)
+  - executar opportunity_attack (responsabilidade do Archivist após os quatro artefatos refinados)
 ```
+
+Responsabilidades canônicas por papel:
+
+- **Ranger** captures discovery and may report side quests. Does not run Opportunity Attack.
+- **Archivist** classifies side quests from discovery, writes four refined artifacts (`analysis.md`, `proposal.md`, `design.md`, `tasks.md`), and runs Opportunity Attack (ADR evaluation) after all four are written.
+- **Sniper** materializes approved tasks and reports newly discovered side quests. Does not run analyses or ADR evaluations.
 
 O Sniper requer aprovação explícita do usuário antes de qualquer execução — sem exceções. No contrato atual, execução significa materializar documentação, diagramas, análises ou handoffs aprovados; não significa alterar código-fonte.
 
