@@ -114,8 +114,10 @@ compile.Compiler.CompileAll(.strategist/, knowledge.index.yaml)
 
 - **Discovery handoff canônico**: Ranger produz `<base_path>/pending/<mission_id>-analysis.md`; Archivist consome esse artefato e promove o pacote refinado para `<base_path>/refined/<mission_id>/`.
 - **Documentation-only execution**: Sniper mantém a narrativa de executor, mas sua execução atual é materialização de documentação, diagramas, análises e handoffs aprovados. Alteração de código-fonte está fora do contrato.
-- **Quick Draw (`saque rápido`)**: sinal de captura rápida de ideias/TODOs, consolidado pelo Archivist e materializado pelo Sniper somente após gate principal.
-- **Opportunist Attack (`opportunity_attack`)**: side quests detectadas entram como contexto/proposta e seguem o mesmo gate principal antes da execução.
+- **Quick Draw (`saque rápido`)**: quick idea/TODO capture; writes only after gate; `todo/` is write-only from the skill perspective.
+- **Opportunity Attack (`opportunity_attack`)**: Archivist-owned ADR evaluation after all four refined artifacts (`analysis.md`, `proposal.md`, `design.md`, `tasks.md`) are written.
+- **Critical Hit**: analysis file management route for moving `.md` artifacts within `pending/`, `refined/`, and `archived/` inside `<base_path>`.
+- **Side Quests**: cross-phase scope observations; Ranger, Archivist, and Sniper may detect them; Archivist consolidates pre-execution findings at the gate; Sniper reports newly discovered side quests.
 - **Treasure Chests (`treasure_chests`)**: fontes offline opcionais em `active.yaml`, consultáveis por qualquer papel conforme escopo, sem alterar o pipeline canônico.
 
 ### Contratos humanos canônicos

@@ -15,6 +15,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// humanStatusCommands are commands whose default output is a human-readable
+// status display. They suppress the pipeline startup line and metrics.
+var humanStatusCommands = map[string]bool{
+	"initiative":     true,
+	"check":          true,
+	"treasure-chest": true,
+}
+
 var rootCmd = &cobra.Command{
 	Use:   "strategist",
 	Short: "Strategist skill CLI",
@@ -28,6 +36,17 @@ func init() {
 		ctx = telemetry.WithMissionRun(ctx, run)
 		run.MarkIntake()
 		run.AddLines(1)
+
+		if humanStatusCommands[cmd.Name()] {
+			run.SetSilent()
+			cmd.SetContext(ctx)
+			if modified, err := integrity.IsModified(".strategist/active.yaml", ".strategist/.config.lock"); err == nil && modified {
+				fmt.Fprintf(os.Stderr,
+					"[Strategist] WARN: active.yaml was modified outside the CLI.\n"+
+						"             Config integrity unverified. Re-run `strategist install` to acknowledge.\n")
+			}
+			return nil
+		}
 
 		cwd, err := os.Getwd()
 		if err != nil {

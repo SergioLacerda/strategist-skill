@@ -122,13 +122,13 @@ flowchart TD
     end
 
     subgraph discovery["🔭 Discovery — Ranger"]
-        D1["Slot: discovery\nProvider configurável em active.yaml\nEscreve pending/<id>-analysis.md"]
-        D2["opportunity_attack\n(interno — sem slot)\nVarre pending/, refined/, archived/\nproduz side_quest_manifest"]
-        D1 --> D2
+        D1["Slot: discovery\nProvider configurável em active.yaml\nEscreve pending/<id>-analysis.md\nPode detectar side quests"]
     end
 
     subgraph refinement["📐 Refinement — Archivist"]
         R1["Slot: refinement\nLê pending/<id>-analysis.md\nProduz analysis.md + proposal.md + design.md + tasks.md"]
+        R2["Opportunity Attack\n(interno — Archivist)\nAvaliação ADR após 4 artefatos refinados"]
+        R1 --> R2
     end
 
     subgraph gate["🚦 Approval Gate (obrigatório)"]
@@ -176,7 +176,7 @@ flowchart TD
 | `context-enrichment` | sub-skill interna | `read_only` | — |
 | `dossier-builder` | sub-skill interna | `read_only` | — |
 | Slot `discovery` (Ranger) | plugável | `write_analysis` | `<base_path>/pending/<mission_id>-analysis.md` |
-| `opportunity_attack` | interno (sem slot) | — | — |
+| `opportunity_attack` | Archivist routine / ADR evaluation | — | — |
 | Slot `refinement` (Archivist) | plugável | `write_analysis` | `<base_path>/refined/` |
 | Slot `execution` (Sniper) | plugável | `controlled` | `<base_path>/archived/` e documentação `.md` aprovada |
 | `response-critic` | sub-skill interna | `read_only` | — |
@@ -196,10 +196,8 @@ stateDiagram-v2
     Refinement --> ApprovalGate
     ApprovalGate --> DeliveredAnalysis: no / no materialization tasks
     ApprovalGate --> Execution: yes
-    Execution --> Adr
-    DeliveredAnalysis --> Adr
-    Adr --> Learning
-    Execution --> Learning: no ADR
+    Execution --> Learning
+    DeliveredAnalysis --> Learning
     Learning --> Completed
     Completed --> [*]
 ```

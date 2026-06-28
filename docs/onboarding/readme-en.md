@@ -46,14 +46,16 @@ For full pipeline/contracts/schema details: [readme-detailed-en.md](readme-detai
 - Mandatory approval gate before Sniper materializes approved documentation or handoff work.
 - Pluggable slots (`discovery`, `refinement`, `execution`).
 - Mission policy through `mission_mode` (analysis vs delivery).
-- Quick Draw, Opportunist Attack, and Treasure Chests in the same flow.
+- Quick Draw, Opportunity Attack, Side Quests, Critical Hit, and Treasure Chests in the same flow.
 
 ## How it works
 
 - **Ranger**: explores context and produces discovery.
 - **Archivist**: turns discovery into proposal, design, and tasks.
 - **Sniper**: materializes approved documentation/handoff work only after gate + policy checks.
-- **Opportunist Attack**: finds side quests without parallel pipelines.
+- **Opportunity Attack**: Archivist-owned ADR evaluation after all four refined artifacts are written.
+- **Side Quests**: cross-phase scope observations; Archivist consolidates and presents at the approval gate; Sniper reports newly discovered ones.
+- **Critical Hit**: analysis `.md` movement route within `<base_path>` folders (`pending/`, `refined/`, `archived/`).
 - **Treasure Chests**: offline scoped context sources.
 
 ## Generated files
