@@ -69,8 +69,7 @@ phases:
       en: [architecture, security, analysis, analysis-technical, analysis-business, general]
     destination: "<base_path>/todo/<bucket>.md"
     compute:
-      - total_ideas: total idea entries in destination file
-      - similar_ideas: ideas in same theme with textual similarity to normalized idea
+      - ideas_added: 1   # count of entries written in this operation; no reads from todo/
 
   gate:
     template_key: quick_draw_gate          # persona.content_by_lang[lang].quick_draw_gate
@@ -89,8 +88,7 @@ phases:
     entry_format: "timestamp + normalized idea"
     return_keys:
       - destination_path
-      - total_ideas
-      - similar_ideas
+      - ideas_added
 
 # --- Escalation: full mission pipeline ---
 

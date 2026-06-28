@@ -5,6 +5,10 @@ description: >
   Documentation-pipeline semantics replace legacy single-mode execution concepts.
 
 field_rules:
+  mission_id:
+    type: string
+    required: true
+    description: Unique identifier generated during intake. Required for parallel mission support.
   status:
     type: enum
     values: [analysis_delivered, documentation_applied, revision_requested, rejected, blocked]

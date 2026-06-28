@@ -40,6 +40,19 @@ func readFile(t *testing.T, path string) string {
 	return string(b)
 }
 
+func normativeRuntimeFiles() []string {
+	return []string{
+		"SKILL.md",
+		"skill.yaml",
+		"protocol.md",
+		"templates/agent-protocol.md",
+		"contracts/machine/preflight.yaml",
+		"contracts/narrative/05-approval-gate.md",
+		"contracts/narrative/06-execution.md",
+		"templates/domain/identity/drift-patterns.yaml",
+	}
+}
+
 func readFixture(t *testing.T, path string) fixture {
 	t.Helper()
 	b, err := os.ReadFile(path)
@@ -243,6 +256,73 @@ func TestStrategistSkillDeclaresRuntimeAndWorkspacePathContracts(t *testing.T) {
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("%s missing %q", path, needle)
+		}
+	}
+}
+
+func TestNormativeRuntimeFilesMirrorEmbeddedDefaults(t *testing.T) {
+	t.Parallel()
+
+	root := repoRoot(t)
+	for _, rel := range normativeRuntimeFiles() {
+		rel := rel
+		t.Run(rel, func(t *testing.T) {
+			t.Parallel()
+			sourcePath := filepath.Join(root, "strategist", filepath.FromSlash(rel))
+			embedPath := filepath.Join(root, "internal", "embed", "defaults", filepath.FromSlash(rel))
+
+			source := readFile(t, sourcePath)
+			embedded := readFile(t, embedPath)
+			if source != embedded {
+				t.Fatalf("%s drifted from embedded default %s; run make sync-embed after changing normative Strategist runtime files", sourcePath, embedPath)
+			}
+		})
+	}
+}
+
+func TestLocalRuntimeMirrorsCanonicalNormativeFilesWhenPresent(t *testing.T) {
+	t.Parallel()
+
+	root := repoRoot(t)
+	runtimeRoot := filepath.Join(root, ".strategist")
+	if _, err := os.Stat(runtimeRoot); os.IsNotExist(err) {
+		t.Skip(".strategist runtime not installed in this workspace")
+	}
+
+	for _, rel := range normativeRuntimeFiles() {
+		rel := rel
+		t.Run(rel, func(t *testing.T) {
+			t.Parallel()
+			sourcePath := filepath.Join(root, "strategist", filepath.FromSlash(rel))
+			runtimePath := filepath.Join(runtimeRoot, filepath.FromSlash(rel))
+
+			source := readFile(t, sourcePath)
+			runtime := readFile(t, runtimePath)
+			if source != runtime {
+				t.Fatalf("%s drifted from canonical source %s; regenerate runtime from strategist/ defaults", runtimePath, sourcePath)
+			}
+		})
+	}
+}
+
+func TestStrategistPipelineHasNoImplementationShortRoute(t *testing.T) {
+	t.Parallel()
+
+	for _, rel := range []string{
+		filepath.Join("strategist", "skill.yaml"),
+		filepath.Join("internal", "embed", "defaults", "skill.yaml"),
+	} {
+		path := filepath.Join(repoRoot(t), rel)
+		content := readFile(t, path)
+		for _, forbidden := range []string{
+			"implementation_context_validation",
+			"skip full discovery/refinement expansion",
+			"Implementation Short Route",
+			"implementation_intent",
+		} {
+			if strings.Contains(content, forbidden) {
+				t.Fatalf("%s still contains pipeline bypass marker %q", path, forbidden)
+			}
 		}
 	}
 }
@@ -1230,6 +1310,85 @@ func TestPersonasUseApprovalGateSemantics(t *testing.T) {
 		}
 		if !strings.Contains(content, "approval_gate_prompt:") {
 			t.Errorf("%s must define 'approval_gate_prompt:' key", path)
+		}
+	}
+}
+
+// TestDelegationCapabilityGateInSKILLMD verifies that SKILL.md declares
+// the delegation capability gate and the distinction between strategist check
+// and actual delegation capability.
+func TestDelegationCapabilityGateInSKILLMD(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(repoRoot(t), "strategist", "SKILL.md")
+	content := readFile(t, path)
+
+	required := []string{
+		"Delegation Capability Gate",
+		"delegation_unavailable",
+		"strategist check",
+		"simulate delegation",
+	}
+	for _, needle := range required {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("%s missing required delegation gate term %q", path, needle)
+		}
+	}
+}
+
+// TestProtocolDeclaresSimulationForbidden verifies that protocol.md explicitly
+// forbids simulating delegation (performing slot work in the Strategist shell).
+func TestProtocolDeclaresSimulationForbidden(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(repoRoot(t), "strategist", "protocol.md")
+	content := readFile(t, path)
+
+	for _, needle := range []string{
+		"delegation_unavailable",
+		"simulate delegation",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("%s missing required delegation rule %q", path, needle)
+		}
+	}
+}
+
+// TestDriftPatternsIncludeApprovalAndRuntimePatterns verifies both source and
+// embedded drift-patterns files declare the two new patterns added in the
+// direct-execution drift correction.
+func TestDriftPatternsIncludeApprovalAndRuntimePatterns(t *testing.T) {
+	t.Parallel()
+
+	paths := []string{
+		filepath.Join(repoRoot(t), "strategist", "templates", "domain", "identity", "drift-patterns.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "domain", "identity", "drift-patterns.yaml"),
+	}
+	required := []string{
+		"id: approval_design_confused_with_approval_gate",
+		"id: runtime_source_confusion",
+	}
+	for _, path := range paths {
+		content := readFile(t, path)
+		for _, needle := range required {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing drift pattern %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestPreflightContractDeclaresCapabilityCheck verifies the preflight machine
+// contract declares delegation_unavailable as a named error condition.
+func TestPreflightContractDeclaresCapabilityCheck(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "preflight.yaml")
+	content := readFile(t, path)
+
+	for _, needle := range []string{
+		"code: delegation_unavailable",
+		"delegation_capability_check",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("%s missing delegation capability check term %q", path, needle)
 		}
 	}
 }

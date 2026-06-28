@@ -1,6 +1,8 @@
 package domain
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -92,6 +94,66 @@ func TestValidateSlotWrite_ArchivistScope(t *testing.T) {
 	err := ValidateSlotWrite(archivistScope, "SKILL.md")
 	if err == nil {
 		t.Fatal("Archivist must not write to repo root")
+	}
+}
+
+func TestValidateArchivistPackage_AllFilesPresent(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	for _, f := range []string{"analysis.md", "proposal.md", "design.md", "tasks.md"} {
+		if err := os.WriteFile(filepath.Join(dir, f), []byte("content"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := ValidateArchivistPackage(dir); err != nil {
+		t.Errorf("expected nil for complete package, got: %v", err)
+	}
+}
+
+func TestValidateArchivistPackage_MissingAnalysis(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	for _, f := range []string{"proposal.md", "design.md", "tasks.md"} {
+		if err := os.WriteFile(filepath.Join(dir, f), []byte("content"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	err := ValidateArchivistPackage(dir)
+	if err == nil {
+		t.Fatal("expected error when analysis.md is missing")
+	}
+	if !strings.Contains(err.Error(), "archivist_package_incomplete") {
+		t.Errorf("error must contain 'archivist_package_incomplete', got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "analysis.md") {
+		t.Errorf("error must name the missing file 'analysis.md', got: %v", err)
+	}
+}
+
+func TestValidateArchivistPackage_MissingMultipleFiles(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "proposal.md"), []byte("content"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := ValidateArchivistPackage(dir)
+	if err == nil {
+		t.Fatal("expected error when multiple files are missing")
+	}
+	if !strings.Contains(err.Error(), "archivist_package_incomplete") {
+		t.Errorf("error must contain 'archivist_package_incomplete', got: %v", err)
+	}
+}
+
+func TestValidateArchivistPackage_EmptyDir(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	err := ValidateArchivistPackage(dir)
+	if err == nil {
+		t.Fatal("expected error for empty directory")
+	}
+	if !strings.Contains(err.Error(), "archivist_package_incomplete") {
+		t.Errorf("error must contain 'archivist_package_incomplete', got: %v", err)
 	}
 }
 

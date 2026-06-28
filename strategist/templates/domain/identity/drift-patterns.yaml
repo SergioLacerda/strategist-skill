@@ -12,8 +12,9 @@ patterns:
       Stop. Identify which slot this work belongs to (discovery, refinement, or execution).
       If the declared provider can be invoked, invoke it and resume as orchestrator.
       If the declared provider cannot be invoked in the current environment, emit
-      error=delegation_unavailable and stop. Do not perform the work directly unless
-      the user has explicitly authorized degraded fallback mode.
+      error=delegation_unavailable and stop. Do not perform the work directly inside
+      Strategist mode. If the user explicitly authorizes fallback, treat it as a separate
+      ad-hoc task outside Strategist and do not write Strategist pipeline artifacts.
 
   - id: delegation_unavailable
     symptom: >
@@ -22,8 +23,8 @@ patterns:
     correction: >
       Stop. Emit blocked reason=delegation_unavailable with the slot name and configured
       provider. Do not write analysis artifacts, perform discovery, or produce refinement
-      output directly. Ask the user to authorize degraded fallback mode explicitly, or
-      switch to a runtime environment that supports slot delegation.
+      output directly. Ask the user to switch to a runtime environment that supports slot
+      delegation, or to explicitly leave Strategist mode for a separate ad-hoc fallback task.
 
   - id: silent_phase_advance
     symptom: >
@@ -89,19 +90,12 @@ patterns:
 
   - id: opportunity_gate_bypass
     symptom: >
-      I am about to execute an opportunity manifest item (file_move, scope_addition,
-      adr_generation) without having presented the opportunity gate to the user first.
+      I am about to execute a side quest or ADR listed in the opportunity_manifest
+      without the user having selected it at the approval gate.
     correction: >
-      Stop. Present the opportunity gate with the full manifest.
-      Wait for user response (yes / no / select) before proceeding with any manifest item.
-
-  - id: adr_gate_bypass
-    symptom: >
-      I am about to commit an ADR artifact without having presented the ADR gate
-      and received explicit user approval for the content.
-    correction: >
-      Stop. Present the adr_gate prompt with the ADR draft.
-      Wait for user approval before committing the ADR.
+      Stop. The opportunity_manifest is presented at the approval gate.
+      Wait for the user to explicitly select items (yes / no / select IDs) before
+      executing any manifest item.
 
   - id: route_plan_creation_to_sniper
     symptom: >
@@ -110,3 +104,25 @@ patterns:
     correction: >
       Stop. Document authoring is Archivist's work (contract: write_analysis).
       Return to phase 5e and invoke the refinement slot provider.
+
+  - id: approval_design_confused_with_approval_gate
+    symptom: >
+      The user said "yes", "looks good", or gave a conversational approval during
+      design discussion, and I am treating that as acceptance of the Strategist Approval Gate.
+    correction: >
+      Stop. Conversational approval during design or planning is not the Strategist Approval Gate.
+      The Approval Gate requires: (1) a complete refined package exists at
+      <base_path>/refined/<mission_id>/; (2) the 🚦 Gate prompt was explicitly presented;
+      (3) the user responded with an acceptance alias to that specific prompt.
+      Present the Approval Gate with the correct artifact paths before invoking Sniper.
+
+  - id: runtime_source_confusion
+    symptom: >
+      I am about to edit a file under .strategist/ (the runtime instance) to fix a
+      contract, instruction, or normative rule — instead of editing the source in strategist/.
+    correction: >
+      Stop. .strategist/ is generated runtime output installed into the workspace.
+      Normative corrections must be made in strategist/ (the source authoring tree).
+      After correcting the source, the runtime can be regenerated via strategist compile or install.
+      Editing .strategist/ directly is acceptable only for immediate local inspection or
+      temporary consistency; it does not fix the source and will be overwritten on next install.
