@@ -114,7 +114,7 @@ compile.Compiler.CompileAll(.strategist/, knowledge.index.yaml)
 
 - **Canonical discovery handoff**: Ranger produces `<base_path>/pending/<mission_id>-analysis.md`; Archivist consumes that artifact and promotes the refined package to `<base_path>/refined/<mission_id>/`.
 - **Documentation-only execution**: Sniper maintains the executor narrative, but its current execution is materialization of documentation, diagrams, analyses, and approved handoffs. Source code changes are outside the contract.
-- **Quick Draw (`saque rápido`)**: quick idea/TODO capture; writes only after gate; `todo/` is write-only from the skill perspective.
+- **Quick Draw (`saque rápido`)**: quick idea/task capture; writes only after gate; `todo/` is write-only from the skill perspective.
 - **Opportunity Attack (`opportunity_attack`)**: Archivist-owned ADR evaluation after all four refined artifacts (`analysis.md`, `proposal.md`, `design.md`, `tasks.md`) are written.
 - **Critical Hit**: analysis file management route for moving `.md` artifacts within `pending/`, `refined/`, and `archived/` inside `<base_path>`.
 - **Side Quests**: cross-phase scope observations; Ranger, Archivist, and Sniper may detect them; Archivist consolidates pre-execution findings at the gate; Sniper reports newly discovered side quests.
