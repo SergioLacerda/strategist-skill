@@ -198,7 +198,7 @@ The contracts in `.strategist/contracts/` define the formal contract for each in
 do not open parallel pipelines. They fit into the single flow
 `Ranger -> Archivist -> approval gate -> Sniper`.
 
-- **Quick Draw**: fast idea/TODO capture via dedicated route; writes only after gate; `todo/` is write-only from the skill's perspective.
+- **Quick Draw**: fast idea/task capture via dedicated route; writes only after gate; `todo/` is write-only from the skill's perspective.
 - **Opportunity Attack**: ADR evaluation run by the Archivist after writing the four refined artifacts. Not delegated to a slot.
 - **Critical Hit**: analysis artifact management route (`.md` files) within the `pending/`, `refined/`, and `archived/` folders in `<base_path>`.
 - **Side Quests**: scope observations detected during any phase; Ranger, Archivist, and Sniper may detect them; Archivist consolidates at the gate; Sniper reports newly discovered side quests.
