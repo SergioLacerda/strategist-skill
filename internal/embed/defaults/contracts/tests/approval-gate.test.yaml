@@ -28,7 +28,7 @@ cases:
       gate_response: "reject"
     expect:
       emit: "[Strategist] phase=approval_gate status=rejected"
-      next_phase: adr_opportunity
+      next_phase: closed
       mission_result_status: rejected
 
   - name: user_requests_revision
@@ -51,5 +51,5 @@ cases:
       tasks_md: absent
     expect:
       emit: "[Strategist] phase=approval_gate status=analysis_delivered"
-      next_phase: adr_opportunity
+      next_phase: closed
       mission_result_status: analysis_delivered

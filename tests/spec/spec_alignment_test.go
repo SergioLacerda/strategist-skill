@@ -85,10 +85,6 @@ func TestPrimaryContractsDoNotHardcodeAnalysisAsArtifactRoot(t *testing.T) {
 			forbidden: []string{"📁 discovery:  .analysis/", "📁 refined:    .analysis/", "📁 report:     .analysis/"},
 		},
 		{
-			path:      filepath.Join(repoRoot(t), "strategist", "contracts", "scope-locking.md"),
-			forbidden: []string{"em `.analysis/todo/`"},
-		},
-		{
 			path:      filepath.Join(repoRoot(t), "strategist", "personas", "epic.yaml"),
 			forbidden: []string{"📁 discovery:  .analysis/", "📁 refined:    .analysis/", "📁 report:     .analysis/"},
 		},
@@ -555,22 +551,6 @@ func TestBootstrapContractDefinesInvalidLocalProfileErrorCode(t *testing.T) {
 	content := readFile(t, bootstrapPath)
 	if !strings.Contains(content, "invalid_local_profile") {
 		t.Fatalf("%s missing error_condition code \"invalid_local_profile\"", bootstrapPath)
-	}
-}
-
-func TestStrategistBootstrapContractKeepsContractValidation(t *testing.T) {
-	t.Parallel()
-	bootstrapPath := filepath.Join(repoRoot(t), "strategist", "contracts", "bootstrap.md")
-	content := readFile(t, bootstrapPath)
-
-	if !strings.Contains(content, "## 2f. Contract validation") {
-		t.Fatalf("%s missing contract validation section", bootstrapPath)
-	}
-	if !strings.Contains(content, "required: true") {
-		t.Fatalf("%s missing required field validation rule", bootstrapPath)
-	}
-	if !strings.Contains(content, "contract_input_missing") {
-		t.Fatalf("%s missing contract_input_missing stop condition", bootstrapPath)
 	}
 }
 

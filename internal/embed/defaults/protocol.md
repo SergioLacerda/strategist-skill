@@ -114,7 +114,7 @@ When another local context invokes Strategist (delegated invocation), it passes 
 - `knowledge_paths` — extra context sources scoped to discovery
 - `governance_context` — read-only policy/mandate context forwarded to slots
 - `invocation_mode` — `direct` or `delegated`
-- `implementation_intent` — whether the request is already framed as implementation/materialization
+- `request_intent` — whether the request is already framed as implementation/materialization
 
 The local execution context constrains only provider resolution and policy context. It does not:
 - alter the pipeline sequence after Strategist is invoked

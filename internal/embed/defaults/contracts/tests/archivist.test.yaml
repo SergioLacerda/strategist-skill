@@ -1,10 +1,10 @@
 subject: roles/archivist.yaml
-version: "1.0"
+version: "2.0"
 
 invariants:
   - id: opportunity_attack_mandatory
-    description: Archivist always runs opportunity attack (side_quest detection)
-    rule: archivist_done → opportunity_attack=done side_quests=<N> emitted
+    description: Archivist runs opportunity_attack (ADR evaluation) after all four refined artifacts are written
+    rule: four_refined_artifacts_written → opportunity_attack=done adr_warranted=<bool> emitted
 
   - id: four_file_output
     description: Archivist always produces the four-file subdirectory — never a standalone .md, never missing analysis.md
@@ -23,19 +23,19 @@ invariants:
     rule: chests where scope=refinement|all → consult before analyzing; empty list is non-blocking
 
 cases:
-  - name: no_side_quests
+  - name: no_adr_warranted
     given:
-      side_quests: 0
+      adr_criteria_met: false
     expect:
-      emit: "[Strategist] phase=archivist opportunity_attack=done side_quests=0"
+      emit: "[Strategist] phase=archivist opportunity_attack=done adr_warranted=false"
       next_phase: approval_gate
 
-  - name: side_quest_detected
+  - name: adr_warranted
     given:
-      side_quests: 1
+      adr_criteria_met: true
     expect:
-      emit: "[Strategist] phase=archivist opportunity_attack=done side_quests=1"
-      action: add Side Quests section to approval gate presentation
+      emit: "[Strategist] phase=archivist opportunity_attack=done adr_warranted=true"
+      action: surface OA-ADR side quest at approval gate
 
   - name: empty_tasks
     given:

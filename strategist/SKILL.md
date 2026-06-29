@@ -208,7 +208,6 @@ Quick reference — IDs only. Authoritative source is the yaml; do not add descr
 - `approval_bypass` — invoking Sniper without user approval
 - `pipeline_bypass_detected` — mutating repo without phase evidence
 - `opportunity_gate_bypass` — executing manifest items without presenting gate
-- `adr_gate_bypass` — committing ADR without gate approval
 - `scope_expansion` — addressing work outside declared mission scope
 - `execution_provider_override` — resolving execution slot from undeclared source
 - `route_plan_creation_to_sniper` — asking Sniper to author documents

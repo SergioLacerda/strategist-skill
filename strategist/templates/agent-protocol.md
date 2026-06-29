@@ -97,7 +97,7 @@ base_path             — artifact root override
 knowledge_paths       — extra context sources for discovery
 governance_context    — read-only policy context forwarded to slots
 invocation_mode       — direct | delegated
-implementation_intent — true if request is already impl/materialization
+request_intent        — true if request is already impl/materialization
 ```
 
 Provider resolution order:
