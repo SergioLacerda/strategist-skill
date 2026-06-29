@@ -6,7 +6,7 @@ Feature: Slot Write Scope Contracts
   Scenario: Ranger respects write_analysis boundary
     Given Ranger (discovery slot) is executing
     And Ranger is declared with write_scope = "write_analysis"
-    When Ranger attempts to write a file outside .analysis/refined/<mission_id>-analysis.md
+    When Ranger attempts to write a file outside .analysis/pending/<mission_id>-analysis.md
     Then Strategist emits "slot_write_scope_violation"
     And event.slot = "discovery"
     And the write is blocked
@@ -27,12 +27,13 @@ Feature: Slot Write Scope Contracts
     And event.slot = "refinement"
     And the write is blocked
 
-  Scenario: Archivist writes three-file subdirectory correctly
+  Scenario: Archivist writes four-file subdirectory correctly
     Given Archivist (refinement slot) is executing
-    When Archivist reads .analysis/refined/<mission_id>-analysis.md
-    And Archivist writes proposal.md, design.md, tasks.md to .analysis/refined/<mission_id>/
+    When Archivist reads .analysis/pending/<mission_id>-analysis.md
+    And Archivist writes analysis.md, proposal.md, design.md, tasks.md to .analysis/refined/<mission_id>/
     Then no slot_write_scope_violation is emitted
-    And all three files are present after completion
+    And all four files are present after completion
+    And .analysis/pending/<mission_id>-analysis.md is removed after completion
 
   Scenario: Sniper requires controlled risk_score at preflight
     Given Sniper is declared in roles config

@@ -54,6 +54,8 @@ func runInitiative(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("initiative: parse active.yaml: %w", err)
 	}
 
+	printStatusBanner("initiative")
+
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
 
 	if _, err := fmt.Fprintln(w, "SLOTS\t\t\t"); err != nil {

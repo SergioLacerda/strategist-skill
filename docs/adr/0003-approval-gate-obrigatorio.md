@@ -1,44 +1,48 @@
-# ADR-0003 — Approval gate obrigatório e jamais contornável
+# ADR-0003 — Approval gate mandatory and never bypassable
 
 **Status:** Accepted  
-**Data:** 2026-05-28  
-**Contexto:** Guardrails de segurança do agente (guardrails-20260529)
+**Date:** 2026-05-28  
+**Context:** Agent security guardrails (guardrails-20260529)
+
+> 2026-06-26 note: the gate remains mandatory, but current Strategist execution is
+> documentation/materialization/handoff work. Source-code mutation is outside the
+> Strategist contract even after approval.
 
 ---
 
-## Contexto
+## Context
 
-O Strategist orquestra um agente de execução (Sniper) que opera em repositórios de código com potencial de alterar arquivos, executar scripts e modificar configurações. Sem controle, qualquer input do usuário poderia disparar execução imediata.
+The Strategist orchestrates an execution agent (Sniper) that operates in code repositories with the potential to modify files, run scripts, and change configurations. Without control, any user input could trigger immediate execution.
 
-A questão central: o approval gate deve ser uma **preferência configurável** ou um **invariante do sistema**?
+The central question: should the approval gate be a **configurable preference** or a **system invariant**?
 
-Alternativas consideradas:
-- **Gate configurável** — permitir `auto_approve: true` em `active.yaml` para pipelines de CI
-- **Gate por risk_score** — gates apenas para execuções de alto risco, livres para baixo risco
-- **Gate sempre obrigatório** — nenhuma execução sem aprovação humana explícita, sem exceção
+Alternatives considered:
+- **Configurable gate** — allow `auto_approve: true` in `active.yaml` for CI pipelines
+- **Gate by risk_score** — gates only for high-risk executions, free for low risk
+- **Always mandatory gate** — no execution without explicit human approval, no exceptions
 
-## Decisão
+## Decision
 
-O approval gate é **mandatory_pause** — invariante do sistema, não configuração. Está declarado como `type: mandatory_pause` no `skill.yaml` e como forbidden behavior em `protocol.md`:
+The approval gate is **mandatory_pause** — a system invariant, not a configuration. It is declared as `type: mandatory_pause` in `skill.yaml` and as a forbidden behavior in `protocol.md`:
 
 ```yaml
 forbidden_behaviors:
   - invoke_execution_slot_without_approval
 ```
 
-Qualquer caminho no código que alcança o slot de execution sem resposta afirmativa do usuário é um bug, não um feature. O único resultado válido de um gate negado é `plan_only` — retornar o plano sem executar.
+Any path that reaches the execution slot without an affirmative user response is a bug, not a feature. If the gate is denied or there are no materialization tasks, the valid result is to deliver the analysis/refinement without executing Sniper.
 
-A única exceção prevista é `sdd_injection`, que pode injetar o provider de execução mas não pode remover o gate.
+The only foreseen exception is `sdd_injection`, which can inject the execution provider but cannot remove the gate.
 
-## Consequências
+## Consequences
 
-**Positivas:**
-- Elimina toda uma classe de bugs de "execução indesejada" — o agente nunca pode agir sem que o humano tenha visto o plano
-- Comportamento previsível independente do provider configurado no slot de execution
-- Simplifica raciocínio sobre segurança: qualquer path que chega em Sniper sem gate explícito é detectável como violação
-- Fixtures de teste (`approval-bypass.yaml`) codificam o invariante como spec executável
+**Positive:**
+- Eliminates an entire class of "unintended execution" bugs — the agent can never act without the human having seen the plan
+- Predictable behavior regardless of the provider configured in the execution slot
+- Simplifies security reasoning: any path that reaches Sniper without an explicit gate is detectable as a violation
+- Test fixtures (`approval-bypass.yaml`) encode the invariant as executable spec
 
-**Negativas:**
-- CI/CD totalmente automatizado não é possível com a skill em modo padrão — requer intervenção humana em cada missão
-- Fluxos de "batch processing" precisam de outra abordagem — o Strategist não é a ferramenta certa para automação sem supervisão
-- Pode parecer excessivo para tarefas pequenas, mas o custo de um "yes" é menor que o custo de uma execução indesejada
+**Negative:**
+- Fully automated CI/CD is not possible with the skill in default mode — requires human intervention on every mission
+- "Batch processing" flows need a different approach — the Strategist is not the right tool for unsupervised automation
+- May seem excessive for small tasks, but the cost of a "yes" is less than the cost of an unintended execution

@@ -13,14 +13,16 @@ Resolve the route before any mission work starts.
 ## Routes
 
 - **Quick Draw** — only for explicit quick capture / note append requests
-- **Critical Hit** — fast path for low-risk doc/content edits (see `critical-hit.yaml`)
+- **Critical Hit** — fast path for moving `.md` analysis artifacts between `pending/`, `refined/`, `archived/` (see `critical-hit.yaml`)
+- **Implementation Short Route** — for already-refined implementation/materialization requests
 - **Main Mission** — every other request
 
 ## Route Selection Order
 
 1. Quick Draw keywords detected → Quick Draw
 2. Critical Hit conditions satisfied (see `critical-hit.yaml`) → Critical Hit
-3. Default → Main Mission
+3. Implementation Short Route conditions satisfied → Implementation Short Route
+4. Default → Main Mission
 
 **When in doubt → Main Mission. Conservatism is the safe default.**
 
@@ -31,6 +33,24 @@ Resolve the route before any mission work starts.
 ## Critical Hit Sequence
 
 `bootstrap → preflight → intake → critical_hit_gate → execution → learning`
+
+## Implementation Short Route
+
+For requests that are already framed as implementation/materialization and arrive with sufficient context:
+
+`bootstrap → preflight → intake → implementation_context_validation → approval_gate → execution_provider_resolution → execution/materialization → learning`
+
+Short route conditions (ALL must hold):
+- request explicitly asks for implementation/materialization
+- local context or user prompt provides enough scope to avoid full discovery
+- documentation/materialization targets are clear
+- no unresolved ambiguity
+- code mutation is not required
+- Git mutation is not required
+
+This route skips full Ranger/Archivist expansion only when context is already refined enough. It does NOT skip the Strategist Approval Gate. If any condition fails, fall through to Main Mission.
+
+Still delegates execution to the resolved provider. Direct execution by the Strategist shell is never permitted.
 
 ## Contract Lookup
 
@@ -50,7 +70,9 @@ When operating inside the main mission, consult contracts in this order:
 ## Invariants
 
 - No direct repository mutation without canonical pipeline evidence
-- No execution without explicit approval
+- No execution without explicit Strategist Approval Gate acceptance
 - No slot work performed by Strategist itself
-- External governance (any adapter) may block or permit execution — it does NOT replace the canonical pipeline sequence once Strategist is invoked
-- `execution_gate=allowed` from governance never substitutes the persona gate (explicit user approval)
+- The invoking local context (any adapter, orchestrator, or harness) may block or permit execution — it does NOT replace the canonical pipeline sequence once Strategist is invoked
+- `execution_gate=allowed` from local context never substitutes the Strategist Approval Gate (explicit user approval)
+- The Strategist Approval Gate is required on all routes: Quick Draw, Critical Hit, Implementation Short Route, and Main Mission
+- A missing or uncallable resolved execution provider is a blocked state — never a reason for direct execution

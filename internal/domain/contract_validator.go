@@ -2,6 +2,7 @@ package domain
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -11,6 +12,26 @@ type SlotWriteScope struct {
 	SlotName      string // e.g. "discovery", "refinement", "execution"
 	AllowedPrefix string // e.g. ".analysis/pending/"
 	AllowedExt    string // e.g. ".md" — empty means any extension is allowed
+}
+
+// requiredArchivistFiles lists the four files Archivist must produce in the refined package.
+var requiredArchivistFiles = []string{"analysis.md", "proposal.md", "design.md", "tasks.md"}
+
+// ValidateArchivistPackage returns an error if the refined package directory is missing
+// any of the four required files. This enforces the four-file completeness invariant:
+// a package with analysis.md absent is incomplete even if the other three files exist.
+func ValidateArchivistPackage(refinedDir string) error {
+	var missing []string
+	for _, f := range requiredArchivistFiles {
+		path := filepath.Join(refinedDir, f)
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			missing = append(missing, f)
+		}
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("archivist_package_incomplete: missing files in %s: %v", refinedDir, missing)
+	}
+	return nil
 }
 
 // ValidateSlotWrite returns an error if attemptedPath violates the declared scope.

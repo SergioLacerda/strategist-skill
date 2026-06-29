@@ -1,37 +1,52 @@
 module: opportunity-attack
-type: invariant
+type: archivist_routine
 description: >
-  Mandatory routine that runs INSIDE each role (Ranger, Archivist, Sniper).
-  Surfaces items outside the declared mission scope. Not a standalone phase —
-  it is a subsection within each role's execution.
+  ADR evaluation routine that runs INSIDE the Archivist, after all four refined
+  artifacts are written. Evaluates whether the refined work warrants an ADR.
+  Not a standalone phase — it is a post-refinement subsection before the completion signal.
 
 contract:
-  roles_that_must_run: [ranger, archivist, sniper]
+  owner: archivist
+  runs_after: all_four_refined_artifacts_written
+  runs_before: completion_signal
 
-  per_role_emit:
-    ranger:
-      format: "[Strategist] phase=ranger opportunity_attack=done items=<N>"
-      emit_level: TRACE
-      on_items_gt_0: present to user via opportunity_detected persona key
-    archivist:
-      format: "[Strategist] phase=archivist opportunity_attack=done side_quests=<N>"
-      emit_level: TRACE
-      on_side_quests_gt_0: present gate via side_quest_detected persona key
-    sniper:
-      done_format:      "[Strategist] phase=sniper opportunity_attack=done items=0"
-      triggered_format: "[Strategist] phase=sniper opportunity_attack=triggered items=<N>"
-      emit_level: TRACE
+  activation_criteria:
+    new_pattern: new interface, contract, schema, or abstraction introduced
+    breaking_change: field removed, signature changed, behavior changed
+    documented_tradeoff: tasks.md/design.md describe a choice with discarded alternatives
+    new_external_dependency: library, service, or protocol added
 
-  error_emit:
-    format: "[Strategist] phase=<role> opportunity_attack=failed reason=<why>"
+  on_criteria_met:
+    action: add_adr_side_quest_to_opportunity_manifest
+    side_quest_id_format: "OA-ADR-{mission_id}"
+    gate_display: >
+      ⚔️ Opportunity Attack → ADR
+      This mission contains architectural decisions worth recording.
+      [OA-ADR-{mission_id}] Create ADR — impact: medium
+    archivist_writes_draft: false   # draft is written by Sniper if approved at gate
+
+  on_criteria_not_met:
+    action: emit_done_no_adr
+    emit: "[Strategist] phase=archivist opportunity_attack=done adr_warranted=false"
+
+  on_approved_at_gate:
+    action: sniper_creates_adr_as_execution_task
+    artifact_path: "<base_path>/archived/<mission_id>-adr.md"
+
+  on_declined_at_gate:
+    action: log_declined
+    emit: "[Strategist] phase=gate opportunity_attack=adr_declined"
+
+  emit:
+    format: "[Strategist] phase=archivist opportunity_attack=done adr_warranted={bool}"
     emit_level: TRACE
-    behavior: non-blocking — log and continue
 
   invariants:
-    - emit always produced after opportunity_attack (items=0 is valid; silence is not)
+    - emit always produced after evaluation (adr_warranted=false is valid; silence is not)
     - technical failure is non-blocking — log reason and continue pipeline
-    - '"foco em alvo único" is NOT a valid reason to skip opportunity attack'
-    - narrow scope (single-file/single-target) does not exempt any role
+    - criteria evaluation is based solely on the written refined artifacts, not on speculation
+    - Archivist does NOT write the ADR draft — only evaluates and surfaces at gate
+    - ADR creation is Sniper's responsibility when approved at gate
 
-  write_scope: read-only
-  owner: internal (orchestrator)
+  write_scope: read-only (archivist reads its own artifacts to evaluate)
+  owner: archivist

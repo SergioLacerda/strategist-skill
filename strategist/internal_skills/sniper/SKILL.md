@@ -31,11 +31,11 @@ For each documentation task in `tasks.md`:
 3. **Validate** after materialization (confirm file written, format correct)
 4. **Update** the checklist before advancing to next task
 
-## Opportunity Attack
+## Scope Observation
 
-Run opportunity_attack as a mandatory routine:
+Surface any out-of-scope writes or non-documentation targets that emerge during materialization:
 
-- Detect: out-of-scope writes or non-documentation targets that emerge during materialization
+- Detect: writes to files outside `documentation_targets`, non-documentation targets
 - Action: `stop_and_report` — surface immediately and **pause materialization**
 - Do NOT decide strategy — report to user, let Archivist decide
 

@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"text/tabwriter"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	embedpkg "github.com/SergioLacerda/strategist-skill/internal/embed"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -17,6 +19,17 @@ var slotContract = map[string]string{
 	"discovery":  "write_analysis",
 	"refinement": "write_analysis",
 	"execution":  "controlled",
+}
+
+var normativeRuntimeDefaultFiles = []string{
+	"SKILL.md",
+	"skill.yaml",
+	"protocol.md",
+	"templates/agent-protocol.md",
+	"contracts/machine/preflight.yaml",
+	"contracts/narrative/05-approval-gate.md",
+	"contracts/narrative/06-execution.md",
+	"templates/domain/identity/drift-patterns.yaml",
 }
 
 var checkCmd = &cobra.Command{
@@ -133,6 +146,8 @@ Checks performed:
 			}
 		}
 
+		errs = append(errs, validateRuntimeDefaultParity(root)...)
+
 		if len(errs) > 0 {
 			for _, e := range errs {
 				fmt.Fprintf(os.Stderr, "  ✗ %s\n", e)
@@ -140,10 +155,69 @@ Checks performed:
 			return fmt.Errorf("[Strategist] check=failed errors=%d root=%s", len(errs), root)
 		}
 
-		fmt.Printf("[Strategist] check=ok slots=[discovery:%s, refinement:%s, execution:%s] persona=%s root=%s\n",
-			providers["discovery"], providers["refinement"], providers["execution"], cfg.Mode, root)
+		printStatusBanner("check")
+
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
+		if _, err := fmt.Fprintln(w, "STATUS\t"); err != nil {
+			return fmt.Errorf("check: write status header: %w", err)
+		}
+		if _, err := fmt.Fprintf(w, "  ok\troot=%s\n", root); err != nil {
+			return fmt.Errorf("check: write status row: %w", err)
+		}
+		if _, err := fmt.Fprintln(w, "\t"); err != nil {
+			return fmt.Errorf("check: write separator: %w", err)
+		}
+		if _, err := fmt.Fprintln(w, "SLOTS\t"); err != nil {
+			return fmt.Errorf("check: write slots header: %w", err)
+		}
+		for _, slot := range []string{"discovery", "refinement", "execution"} {
+			if _, err := fmt.Fprintf(w, "  %-12s\t%s\n", slot, providers[slot]); err != nil {
+				return fmt.Errorf("check: write slot row: %w", err)
+			}
+		}
+		if _, err := fmt.Fprintln(w, "\t"); err != nil {
+			return fmt.Errorf("check: write separator: %w", err)
+		}
+		if _, err := fmt.Fprintln(w, "PERSONA\t"); err != nil {
+			return fmt.Errorf("check: write persona header: %w", err)
+		}
+		if _, err := fmt.Fprintf(w, "  mode\t%s\n", cfg.Mode); err != nil {
+			return fmt.Errorf("check: write persona row: %w", err)
+		}
+		if err := w.Flush(); err != nil {
+			return fmt.Errorf("check: flush output: %w", err)
+		}
 		return nil
 	},
+}
+
+func validateRuntimeDefaultParity(root string) []string {
+	extractor := embedpkg.Extractor{}
+	var errs []string
+
+	for _, rel := range normativeRuntimeDefaultFiles {
+		runtimePath := filepath.Join(root, filepath.FromSlash(rel))
+		runtimeRaw, readErr := os.ReadFile(runtimePath)
+		if readErr != nil {
+			if os.IsNotExist(readErr) {
+				continue
+			}
+			errs = append(errs, fmt.Sprintf("runtime_stale: read %s: %v", runtimePath, readErr))
+			continue
+		}
+
+		embeddedRaw, embedErr := extractor.ReadFile(rel)
+		if embedErr != nil {
+			errs = append(errs, fmt.Sprintf("runtime_stale: embedded default %q unreadable: %v", rel, embedErr))
+			continue
+		}
+
+		if string(runtimeRaw) != string(embeddedRaw) {
+			errs = append(errs, fmt.Sprintf("runtime_stale: normative file %q differs from embedded default — run strategist install --force", rel))
+		}
+	}
+
+	return errs
 }
 
 func init() {

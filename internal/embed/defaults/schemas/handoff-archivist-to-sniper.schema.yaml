@@ -1,6 +1,6 @@
 schema_version: "1"
 description: >
-  Handoff contract from Archivist (refinement) to Hunter/Sniper (execution).
+  Handoff contract from Archivist (refinement) to Sniper (execution).
   These fields are REQUIRED in the refinement artifact, regardless of format.
   The implementing skill decides the file format.
 
@@ -26,10 +26,10 @@ required_fields:
     fields:
       allowed:
         type: list
-        description: Glob patterns of paths Hunter may touch
+        description: Glob patterns of paths Sniper may touch
       forbidden:
         type: list
-        description: Glob patterns Hunter must not touch
+        description: Glob patterns Sniper must not touch
   implementation_plan:
     type: list
     required: true
@@ -61,4 +61,4 @@ required_fields:
     type: list
     required: true
     known_values: [scope_drift, missing_file, validation_failure, ambiguity]
-    description: Conditions under which Hunter must stop and report, not decide
+    description: Conditions under which Sniper must stop and report, not decide

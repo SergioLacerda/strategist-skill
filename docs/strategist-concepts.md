@@ -1,134 +1,151 @@
-# Strategist — Conceitos Fundamentais
+# Strategist — Core Concepts
 
 **Status:** Accepted
-**Last Updated:** 2026-06-22
+**Last Updated:** 2026-06-26
 
-Referência dos cinco conceitos centrais da Strategist skill: papel, papel rankeado, armas, iniciativa e dojo.
+Reference for the five central concepts of the Strategist skill: role, ranked role, weapons, initiative, and dojo.
 
 ---
 
-## Visão Geral do Pipeline
+## Pipeline Overview
 
-O Strategist orquestra trabalho em três fases sequenciais, cada uma delegada a um **slot**:
+The Strategist orchestrates work in three sequential phases, each delegated to a **slot**:
 
 ```
 Ranger (discovery) → Archivist (refinement) → [gate] → Sniper (execution)
 ```
 
-O Strategist nunca executa trabalho diretamente — ele delega. Cada slot recebe um **provider** (arma) configurado em `active.yaml`. O conjunto provider + slot + contrato define um **papel**.
+The Strategist never executes work directly — it delegates. Each slot receives a **provider** (weapon) configured in `active.yaml`. The combination of provider + slot + contract defines a **role**.
 
 ---
 
-## Papel (Role)
+## Role
 
-Um papel é a combinação de um slot com seu contrato de comportamento. Existem três papéis canônicos:
+A role is the combination of a slot with its behavior contract. There are three canonical roles:
 
-| Papel | Slot | Contrato | Escrita autorizada |
-|-------|------|----------|--------------------|
-| **Ranger** | `discovery` | `write_pending` | `.md` em `<base_path>/pending/` |
-| **Archivist** | `refinement` | `write_analysis` | `.md` em `<base_path>/` e `refined/` |
-| **Sniper** | `execution` | `controlled` | Somente após approval gate |
+| Role | Slot | Contract | Authorized writes |
+|------|------|----------|------------------|
+| **Ranger** | `discovery` | `write_analysis` | `.md` in `<base_path>/pending/` |
+| **Archivist** | `refinement` | `write_analysis` | `.md` in `<base_path>/refined/` |
+| **Sniper** | `execution` | `controlled` | Approved documentation/handoff, only after approval gate |
 
-Cada papel tem um contrato declarado em `.strategist/roles/<papel>.yaml` com cláusulas `must` e `must_not`. Exemplo (Ranger):
+Each role has a contract declared in `.strategist/roles/<role>.yaml` with `must` and `must_not` clauses. Example (Ranger):
 
 ```yaml
 must:
-  - separar fatos, hipóteses e ambiguidades
-  - incluir todos os campos do handoff contract no artefato
-  - executar opportunity_attack e surfaçar resultados
+  - separate facts, hypotheses, and ambiguities clearly
+  - include all handoff contract fields in the analysis artifact
+  - surface scope_observations (side quests and unexpected items) in the response to the user
 
 must_not:
-  - propor plano final como se aprovado
-  - executar mudanças
-  - passar contexto bruto ao Archivist (comprimir em evidence cards)
+  - propose a final plan as if it were approved
+  - execute any changes
+  - pass raw context to Archivist (compress to evidence cards)
+  - run opportunity_attack (Archivist responsibility after the four refined artifacts)
 ```
 
-O Sniper requer aprovação explícita do usuário antes de qualquer execução — sem exceções.
+Canonical responsibilities by role:
+
+- **Ranger** captures discovery and may report side quests. Does not run Opportunity Attack.
+- **Archivist** classifies side quests from discovery, writes four refined artifacts (`analysis.md`, `proposal.md`, `design.md`, `tasks.md`), and runs Opportunity Attack (ADR evaluation) after all four are written.
+- **Sniper** materializes approved tasks and reports newly discovered side quests. Does not run analyses or ADR evaluations.
+
+Sniper requires explicit user approval before any execution — no exceptions. Under the current contract, execution means materializing documentation, diagrams, analyses, or approved handoffs; it does not mean changing source code.
 
 ---
 
-## Papel Rankeado
+## Ranked Role
 
-Um papel rankeado é um provider que declara `provider_class: rankeado` em seu `skill.yaml`.
+A ranked role is a provider that declares `provider_class: rankeado` in its `skill.yaml`.
 
 ```yaml
 # .strategist/skills/brainstorming/skill.yaml
 specialization_taxonomy:
   canonical_role: ranger
-  provider_class: rankeado     # ← papel rankeado
+  provider_class: rankeado     # ← ranked role
 ```
 
-A diferença em relação a um provider `(base)`:
+The difference from a `(base)` provider:
 
-| | Base | Rankeado |
-|---|------|---------|
-| `provider_class` | ausente ou `base` | `rankeado` |
-| `specialization_taxonomy` | não declarado | `canonical_role` + `provider_class` preenchidos |
-| Exibição em `initiative` | `(base)` | `rankeado` |
-| Significado | Implementação genérica | Provider especializado, alinhado com o papel canônico |
+| | Base | Ranked |
+|---|------|--------|
+| `provider_class` | absent or `base` | `rankeado` |
+| `specialization_taxonomy` | not declared | `canonical_role` + `provider_class` filled in |
+| Display in `initiative` | `(base)` | `rankeado` |
+| Meaning | Generic implementation | Specialized provider, aligned with the canonical role |
 
-Um provider rankeado não ganha permissões extras — a distinção é semântica e visível no comando `initiative`. Serve para comunicar que o provider foi projetado especificamente para aquele papel, não apenas plugado nele.
+A ranked provider gains no extra permissions — the distinction is semantic and visible in the `initiative` command. It communicates that the provider was designed specifically for that role, not just plugged into it.
 
-Providers rankeados instalados nesta workspace:
+Ranked providers installed in this workspace:
 
-| Provider | Slot | Papel canônico |
+| Provider | Slot | Canonical role |
 |----------|------|---------------|
 | `brainstorming` | discovery | Ranger |
 | `openspec-explore` | refinement | Archivist |
 
 ---
 
-## Armas (Weapons)
+## Weapons
 
-Armas são os providers concretos configurados em cada slot. A metáfora é: o papel (Ranger, Archivist, Sniper) é o guerreiro; a arma é a skill que ele empunha para executar seu trabalho.
+Weapons are the concrete providers configured in each slot. The metaphor: the role (Ranger, Archivist, Sniper) is the warrior; the weapon is the skill they wield to do their work.
 
-Configuração em `.strategist/active.yaml`:
+Configuration in `.strategist/active.yaml`:
 
 ```yaml
 slots:
-  discovery: brainstorming       # arma do Ranger
-  refinement: openspec-explore   # arma do Archivist
-  execution: sdd-ask             # arma do Sniper
+  discovery: brainstorming       # Ranger's weapon
+  refinement: openspec-explore   # Archivist's weapon
+  execution: sniper              # Sniper's weapon
 ```
 
-Cada arma é um skill com seu próprio `skill.yaml` resolvido em preflight pelo Strategist. O contrato de risco (`risk_score`) da arma deve corresponder ao contrato do slot:
+Each weapon is a skill with its own `skill.yaml` resolved in preflight by the Strategist. The weapon's risk contract (`risk_score`) must match the slot contract:
 
-| Slot | risk_score esperado |
+| Slot | Expected risk_score |
 |------|---------------------|
-| discovery | `write_pending` |
+| discovery | `write_analysis` |
 | refinement | `write_analysis` |
 | execution | `controlled` |
 
-Para trocar uma arma, basta alterar o valor do slot em `active.yaml` e garantir que o `skill.yaml` do novo provider exista em `.strategist/skills/<provider>/skill.yaml`.
+To swap a weapon, change the slot value in `active.yaml` and ensure the new provider's `skill.yaml` exists at `.strategist/skills/<provider>/skill.yaml`.
 
 ---
 
-## Iniciativa
+## Initiative
 
-`strategist initiative` é o comando CLI que responde: *"quem está armado em cada slot agora?"*
+`strategist initiative` is the CLI command that answers: *"who is armed in each slot right now?"*
 
 ```bash
 $ strategist initiative
 
-discovery    brainstorming      Ranger    rankeado   ✓ manifest OK
-refinement   openspec-explore   Archivist rankeado   ✓ manifest OK
-execution    sdd-ask            Sniper    (base)     ✓ manifest OK
+SLOTS                                                  
+discovery      brainstorming      Ranger rankeado      ✓ manifest OK
+refinement     openspec-explore   Archivist rankeado   ✓ manifest OK
+execution      sniper             Sniper (base)        ✓ manifest OK
+                                                       
+WORKSPACE                                              
+mode           epic                                    
+base_path      .analysis                               
+pending        0 cards                                 
+done           49 missions                              
+last mission   20260620-feature-xyz                    
 ```
 
-Colunas:
+The **SLOTS** section displays, for each slot:
 
-| Coluna | Significado |
-|--------|-------------|
+| Column | Meaning |
+|--------|---------|
 | slot | `discovery`, `refinement`, `execution` |
-| provider | ID do skill configurado em `active.yaml` |
-| canonical_role | Papel canônico declarado no manifest (`ranger`, `archivist`, `sniper`) |
-| class | `rankeado` se `provider_class: rankeado`, senão `(base)` |
-| manifest status | `✓ manifest OK` se `.strategist/skills/<provider>/skill.yaml` existe e é válido; `⚠ manifest ausente` caso contrário |
+| provider | ID of the skill configured in `active.yaml` |
+| canonical_role | Canonical role declared in the manifest (`ranger`, `archivist`, `sniper`) |
+| class | `rankeado` if `provider_class: rankeado`, otherwise `(base)` |
+| manifest status | `✓ manifest OK` if `.strategist/skills/<provider>/skill.yaml` exists and is valid; `⚠ manifest missing` otherwise |
 
-O comando não faz chamadas ao LLM — lê apenas `active.yaml` e os arquivos `skill.yaml` locais. Útil para verificar rapidamente se a workspace está íntegra antes de iniciar uma missão.
+The **WORKSPACE** section displays: `mode` and `base_path` from `active.yaml`, counts of pending cards and completed missions, and the ID of the last mission from `memory/outcomes.jsonl`.
+
+The command makes no LLM calls — it only reads `active.yaml` and local `skill.yaml` files. Useful for quickly verifying the workspace is healthy before starting a mission.
 
 ```bash
-# Com root customizado
+# With custom root
 strategist initiative --root /path/to/.strategist
 ```
 
@@ -136,54 +153,54 @@ strategist initiative --root /path/to/.strategist
 
 ## Dojo
 
-O Dojo é o sistema de treino da Strategist skill — um health-check em duas camadas que valida se a skill está instalada, se os papéis estão preenchidos e se o pipeline opera corretamente.
+The Dojo is the Strategist skill's training system — a two-layer health check that validates whether the skill is installed, whether roles are filled, and whether the pipeline operates correctly.
 
-### Camada 1 — Offline (zero LLM)
+### Layer 1 — Offline (zero LLM)
 
 ```bash
-strategist dojo check <scenario>            # valida artefatos, emit log e manifests
-strategist dojo check <scenario> --files-only  # valida apenas arquivos (sem emit log)
-strategist dojo list                        # lista cenários disponíveis
+strategist dojo check <scenario>            # validates artifacts, emit log, and manifests
+strategist dojo check <scenario> --files-only  # validates files only (no emit log)
+strategist dojo list                        # lists available scenarios
 ```
 
-Lê o `criteria.yaml` do cenário e verifica:
-- **files_created**: arquivos existem, contêm seções obrigatórias e canary strings
-- **emit_log**: eventos OTEL esperados presentes/ausentes no `.last-run/<scenario>/emit.log`
-- **manifest_checks**: manifests de providers existem com campos obrigatórios
+Reads the scenario's `criteria.yaml` and verifies:
+- **files_created**: files exist, contain required sections and canary strings
+- **emit_log**: expected OTEL events present/absent in `.last-run/<scenario>/emit.log`
+- **manifest_checks**: provider manifests exist with required fields
 
-### Camada 2 — LLM (pipeline real com input sintético)
+### Layer 2 — LLM (real pipeline with synthetic input)
 
 ```
 /strategist dojo <scenario>
 ```
 
-Executa o pipeline completo com input de `.analysis/dojo/<scenario>/input.yaml`, escreve artefatos em `.analysis/dojo/run/` (isolado da produção) e ao final chama automaticamente a camada 1.
+Runs the full pipeline with input from `<base_path>/dojo/<scenario>/input.yaml`, writes artifacts to `<base_path>/dojo/run/` (isolated from production), and automatically calls Layer 1 at the end.
 
-### Cenários disponíveis
+### Available scenarios
 
-| Cenário | O que valida |
-|---------|-------------|
-| `quick-draw` | Ideia bruta convertida em item no todo com canary `KATA_RAPIDO`; pipeline para no gate |
-| `treasure-chest` | Chest plantado encontrado e canary `TORNEIO_DO_DOJO` incorporado na análise |
-| `ranger-weapons` | Manifest do provider de discovery existe com campos `canonical_role` e `provider_class` |
+| Scenario | What it validates |
+|----------|------------------|
+| `quick-draw` | Raw idea converted to a todo item with canary `KATA_RAPIDO`; pipeline stops at gate |
+| `treasure-chest` | Planted chest found and canary `TORNEIO_DO_DOJO` incorporated in the analysis |
+| `ranger-weapons` | Discovery provider manifest exists with `canonical_role` and `provider_class` fields |
 
-### Estrutura de um cenário
+### Scenario structure
 
 ```
-.analysis/dojo/<scenario>/
-├── input.yaml      # input sintético para a camada LLM
-├── criteria.yaml   # contrato de validação (files, emit, manifests)
-├── golden/         # artefatos de referência (opcional)
-└── chests/         # treasure chests plantados (cenário treasure-chest)
+<base_path>/dojo/<scenario>/
+├── input.yaml      # synthetic input for the LLM layer
+├── criteria.yaml   # validation contract (files, emit, manifests)
+├── golden/         # reference artifacts (optional)
+└── chests/         # planted treasure chests (treasure-chest scenario)
 ```
 
-### Regra de inocuidade
+### Harmlessness rule
 
-Todo `input.yaml` do dojo deve ser inócuo: ideia prefixada com `[dojo-fixture]`, targeting paths novos (ex: `docs/dojo/`). Se o Sniper disparar acidentalmente, nenhum código de produção é tocado.
+Every dojo `input.yaml` must be harmless: idea prefixed with `[dojo-fixture]`, targeting new paths (e.g. `docs/dojo/`). If Sniper fires accidentally, no production code is touched.
 
-### Adicionando um novo cenário
+### Adding a new scenario
 
-1. Criar `.analysis/dojo/<nome>/`
-2. Escrever `input.yaml` com ideia inócua e canary string única
-3. Escrever `criteria.yaml` referenciando o canary em `must_contain`
-4. Validar sintaxe: `strategist dojo check <nome> --files-only`
+1. Create `<base_path>/dojo/<name>/`
+2. Write `input.yaml` with a harmless idea and a unique canary string
+3. Write `criteria.yaml` referencing the canary in `must_contain`
+4. Validate syntax: `strategist dojo check <name> --files-only`

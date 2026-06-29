@@ -6,11 +6,10 @@ slot: refinement
 canonical:
   - load_ranger_analysis_artifact    # read handoff contract fields only; do NOT re-read full history
   - consult_treasure_chests          # consult chests scoped to refinement
-  - opportunity_attack:              # cross-cutting routine — mandatory
-      detect: [side_quests]          # Archivist may find more side quests during refinement
-      decide: side_quest_strategy    # execute_together | execute_later | separate_mission | discard
-      output: include_in_refinement_artifact
-      feedback: include_in_approval_gate   # shown to user alongside the plan
+  - opportunity_attack:              # Archivist ADR evaluation routine — mandatory after four refined artifacts
+      detect: [adr_criteria]         # evaluate after all four refined artifacts are written
+      output: add_to_opportunity_manifest_if_criteria_met
+      feedback: include_in_approval_gate   # surfaced as OA-ADR side quest at gate
   - emit_completion_signal           # must emit has_execution_tasks: true|false after writing artifacts
   - output_format:
       - "<base_path>/refined/<mission_id>/proposal.md"

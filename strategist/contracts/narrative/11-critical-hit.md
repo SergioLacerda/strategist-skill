@@ -9,36 +9,43 @@ contract: controlled
 
 ## Purpose
 
-Decision point between **full pipeline** (main_mission) and **direct route** (direct_execute).
-Evaluated after Intake, before any slot provider is invoked.
+Fast path for analysis file management — moving `.md` artifacts between the analysis folders (`pending/`, `refined/`, `archived/`) without going through full Ranger/Archivist discovery.
 
 ## When to Apply
 
 Critical Hit fires when **all** conditions are true:
 
-- `task_type` is one of: `doc_edit`, `content_update`, `readme_update`, `comment_update`
+- `task_type` is `analysis_move`
+- Source path is within `<base_path>/pending/`, `<base_path>/refined/`, or `<base_path>/archived/`
+- Target path is within `<base_path>/pending/`, `<base_path>/refined/`, or `<base_path>/archived/`
+- Files are `.md` only
 - `risk_level` is `low`
-- Number of affected files ≤ 5
-- No cross-module dependencies
-- No ADR required
-- No architectural decision involved
+- Number of files ≤ 5
 
 And **none** of these are true:
 
-- Prompt contains keywords: `investigate`, `propose`, `audit`, `design`, `redesign`, `architecture`, `refactor`
-  (also matched in Portuguese: `investigar`, `propor`, `auditar`, `projetar`, `redesenhar`, `arquitetura`, `refatorar`)
-- `task_type` is: `architecture_analysis`, `refactor`, `security_audit`, `new_feature`
+- Source or target is outside `<base_path>`
+- Files include non-`.md` types
 
 **When in doubt → main_mission. Conservatism is the safe default.**
 
+## Valid Moves
+
+| From | To | Use case |
+|------|----|----------|
+| `pending/<id>-analysis.md` | `archived/` | Abandon a stale pending analysis |
+| `refined/<id>/` | `archived/` | Archive a completed refined set |
+| `archived/<id>-*.md` | `pending/` | Reopen an archived analysis (rare) |
+| Any `.md` within the three folders | Any of the three folders | General artifact management |
+
 ## Pipeline Difference
 
-| Phase | main_mission | direct_execute (Critical Hit) |
-|-------|-------------|-------------------------------|
+| Phase | main_mission | Critical Hit |
+|-------|-------------|--------------|
 | Ranger discovery | ✅ | ❌ skipped |
 | Archivist refinement | ✅ | ❌ skipped |
 | Opportunity attack | ✅ | ❌ skipped |
-| Approval gate | Full gate (reads tasks.md) | Inline gate (single message) |
+| Approval gate | Full gate | Inline gate |
 | Sniper execution | ✅ | ✅ |
 | Artifacts written | analysis.md, proposal.md, design.md, tasks.md | none |
 
@@ -46,13 +53,13 @@ And **none** of these are true:
 
 ```
 Critical Hit detected.
-Task: <task description>
-Files: <file list>
-Confirm direct materialization? (yes / no)
+Move: <source_path>
+    → <target_path>
+Confirm? (sim / nao)
 ```
 
-- `yes` → proceed to Sniper
-- `no` → resolve as `analysis_delivered` (nothing written)
+- `sim/yes` → proceed to Sniper
+- `nao/no` → resolve as `analysis_delivered` (nothing moved)
 
 ## Emit Events
 
@@ -63,19 +70,18 @@ Confirm direct materialization? (yes / no)
 ## FSM States
 
 ```
-StateInit → [EventDirectHitIntent] → StateDirectGate
-StateDirectGate → [EventDirectGateApproved] → StateDirectExec
-StateDirectGate → [EventDirectGateDeclined/analysis_delivered] → StateDoneAnalysis
-StateDirectGate → [EventDirectGateDeclined] → StateDoneAnalysis
-StateDirectExec → [EventSniperDone] → StateDirectDone
-StateDirectExec → [EventSlotTransient] → StateRetrying
-StateDirectExec → [EventSlotPermanent] → StateBlocked
+StateInit         → [EventCriticalHitIntent]                      → StateDirectGate
+StateDirectGate   → [EventDirectGateApproved + execution_authorized] → StateDirectExec
+StateDirectGate   → [EventDirectGateDeclined]                     → StateDoneAnalysis
+StateDirectExec   → [EventSniperDone]                             → StateDirectDone
+StateDirectExec   → [EventSlotTransient]                          → StateRetrying
+StateDirectExec   → [EventSlotPermanent]                          → StateBlocked
 ```
 
 ## Invariants
 
-- Cannot fire when `risk_level != low`
-- Cannot fire for cross-module or architectural tasks
+- Cannot fire for `task_type` other than `analysis_move`
+- Cannot fire when source or target is outside `<base_path>` analysis folders
 - Approval is still required (inline gate is not auto-approve)
 - If any condition is ambiguous, fall back to `main_mission`
 - `StateDirectDone` is absorbing — no further transitions
