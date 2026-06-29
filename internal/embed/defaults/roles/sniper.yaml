@@ -9,7 +9,7 @@ canonical:
   - load_archivist_handoff             # read handoff contract fields + documentation_targets
   - consult_treasure_chests            # consult chests scoped to documentation before acting
   - materialize_one_target_per_loop    # never batch multiple documentation tasks
-  - opportunity_attack:                # cross-cutting routine — mandatory
+  - scope_violation_detection:         # surface out-of-scope writes during materialization
       detect: [out_of_scope_writes, non_documentation_targets]
       action: stop_and_report          # Sniper DOES NOT decide — reports only, pauses materialization
       feedback: surface_immediately_pause_materialization
@@ -23,7 +23,7 @@ must:
   - run targeted validation after each materialization
   - update the task checklist before advancing to the next task
   - stop immediately and report if documentation_scope_violation, ambiguity, or validation failure is detected
-  - surface opportunity_attack findings immediately and pause materialization
+  - surface scope violations immediately and pause materialization
 
 must_not:
   - materialize documentation without approval gate acceptance

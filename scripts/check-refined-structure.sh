@@ -8,6 +8,11 @@ if [ ! -d "$ROOT" ]; then
   exit 0
 fi
 
+if git check-ignore -q "$ROOT" 2>/dev/null; then
+  echo "OK: $ROOT is git-ignored, skipping check"
+  exit 0
+fi
+
 violations=0
 
 # Rule 1: no standalone markdown files directly under refined/

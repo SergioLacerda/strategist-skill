@@ -6,9 +6,9 @@ slot: discovery
 canonical:
   - find_unexpected_items       # surface items outside declared mission scope
   - consult_treasure_chests     # consult T0/T1 chests scoped to discovery before generating artifact
-  - opportunity_attack:         # cross-cutting routine — mandatory
+  - scope_observation:          # surface side quests and unexpected items during exploration
       detect: [treasure_chests, side_quests]
-      output: include_in_analysis_artifact
+      output: include_in_scope_observations
       feedback: surface_in_response    # show to user before handing off to Archivist
   - compress_findings           # format: evidence → interpretation → impact (source cards)
   - output_format: "<base_path>/pending/<mission_id>-analysis.md"
@@ -18,7 +18,7 @@ canonical:
 must:
   - load mission_contract and respect token_strategy.mode for context budget
   - separate facts, hypotheses, and ambiguities clearly
-  - surface opportunity_attack findings in the response to the user before finishing
+  - surface scope_observations (side quests and unexpected items) in the response to the user before finishing
   - include all handoff contract fields in the analysis artifact
   - use discovery-artifact.md as format reference
 

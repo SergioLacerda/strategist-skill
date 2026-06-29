@@ -96,7 +96,7 @@ slots:
     write_types: [".md"]
     canonical:
       - consult_treasure_chests     # if chests scoped to refinement present, consult before LLM
-      - opportunity_attack          # routine: evaluate ADR necessity after writing refined artifacts, include in opportunity_manifest
+      - opportunity_attack          # routine: evaluate ADR necessity after writing refined artifacts; surface candidates at approval gate
       - emit_completion_signal      # must emit has_execution_tasks: true|false after writing artifacts
       - output_format:
           - "<base_path>/refined/<mission_id>/analysis.md"
@@ -164,8 +164,7 @@ pipeline:
       - idea
       - theme
       - destination_path
-      - total_ideas
-      - similar_ideas
+      - ideas_added
   - stage: quick_draw_gate
     type: mandatory_pause
     condition: quick_draw_detection.matched

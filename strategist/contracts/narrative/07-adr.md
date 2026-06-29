@@ -22,7 +22,7 @@ Create an ADR (Architectural Decision Record) when the refined work contains dec
 ## Required Behavior
 
 - **Archivist** evaluates ADR necessity after writing all four refined artifacts, using the criteria in `machine/opportunity-attack.yaml`
-- If criteria met → Archivist adds `[OA-ADR-{mission_id}]` to `opportunity_manifest` and surfaces it at the approval gate as a side quest
+- If criteria met → Archivist surfaces `[OA-ADR-{mission_id}]` at the approval gate as a side quest
 - If user approves at gate → **Sniper** creates the ADR as an execution task
 - If user declines at gate → ADR is not created; outcome logged
 

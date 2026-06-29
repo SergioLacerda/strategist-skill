@@ -587,7 +587,7 @@ Invoking Sniper without explicit approval is a **forbidden behavior**.
 ```
 
 Invokes the execution slot provider with:
-- Approved side quest manifest (if any) — executes workspace operations first
+- Approved side quest items (if any) — items surfaced during discovery or refinement and approved at the gate; Sniper executes these alongside primary targets
 - Path to the approved refined plan
 - `mission_contract.planning_rules`
 

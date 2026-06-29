@@ -1339,6 +1339,7 @@ func ifFail(passed bool, detail string) string <span class="cov10" title="27">{
 
 import (
         "fmt"
+        "os"
         "path/filepath"
         "strings"
 )
@@ -1350,10 +1351,30 @@ type SlotWriteScope struct {
         AllowedExt    string // e.g. ".md" — empty means any extension is allowed
 }
 
+// requiredArchivistFiles lists the four files Archivist must produce in the refined package.
+var requiredArchivistFiles = []string{"analysis.md", "proposal.md", "design.md", "tasks.md"}
+
+// ValidateArchivistPackage returns an error if the refined package directory is missing
+// any of the four required files. This enforces the four-file completeness invariant:
+// a package with analysis.md absent is incomplete even if the other three files exist.
+func ValidateArchivistPackage(refinedDir string) error <span class="cov5" title="4">{
+        var missing []string
+        for _, f := range requiredArchivistFiles </span><span class="cov10" title="16">{
+                path := filepath.Join(refinedDir, f)
+                if _, err := os.Stat(path); os.IsNotExist(err) </span><span class="cov7" title="8">{
+                        missing = append(missing, f)
+                }</span>
+        }
+        <span class="cov5" title="4">if len(missing) &gt; 0 </span><span class="cov4" title="3">{
+                return fmt.Errorf("archivist_package_incomplete: missing files in %s: %v", refinedDir, missing)
+        }</span>
+        <span class="cov1" title="1">return nil</span>
+}
+
 // ValidateSlotWrite returns an error if attemptedPath violates the declared scope.
 // The error message always contains "slot_write_scope_violation" so callers and
 // BDD scenarios can match on that token.
-func ValidateSlotWrite(scope SlotWriteScope, attemptedPath string) error <span class="cov10" title="12">{
+func ValidateSlotWrite(scope SlotWriteScope, attemptedPath string) error <span class="cov9" title="12">{
         if !strings.HasPrefix(attemptedPath, scope.AllowedPrefix) </span><span class="cov4" title="3">{
                 return fmt.Errorf("slot_write_scope_violation: %s attempted write to %q (allowed prefix: %q)",
                         scope.SlotName, attemptedPath, scope.AllowedPrefix)
@@ -1362,7 +1383,7 @@ func ValidateSlotWrite(scope SlotWriteScope, attemptedPath string) error <span c
                 return fmt.Errorf("slot_write_scope_violation: %s non-%s type at %q",
                         scope.SlotName, scope.AllowedExt, attemptedPath)
         }</span>
-        <span class="cov8" title="8">return nil</span>
+        <span class="cov7" title="8">return nil</span>
 }
 </pre>
 		

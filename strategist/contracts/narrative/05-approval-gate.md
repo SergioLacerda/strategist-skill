@@ -28,7 +28,7 @@ contract: null
 
 ## Side Quests at the Gate
 
-If Archivist identified side quests in `opportunity_manifest`:
+If Archivist identified side quests during refinement:
 
 1. Present list after the main analysis block
 2. Assign each a unique ID (SQ-NNN)

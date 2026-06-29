@@ -1,14 +1,14 @@
 subject: roles/ranger.yaml
-version: "1.0"
+version: "2.0"
 
 invariants:
-  - id: opportunity_attack_mandatory
-    description: Ranger always runs opportunity attack after artifact is written
-    rule: ranger_done → opportunity_attack_done items=<N> emitted (even if N=0)
+  - id: scope_observation_not_opportunity_attack
+    description: Ranger records side quests and scope observations — does not invoke opportunity_attack
+    rule: ranger_done → scope_observations section present in artifact (even if empty); no opportunity_attack emit
 
   - id: no_strategy_decisions
     description: Ranger surfaces items only — does not decide strategy for side_quests
-    rule: ranger outputs analysis artifact and opportunity manifest only; strategy is deferred
+    rule: ranger outputs analysis artifact only; strategy is deferred to Archivist
 
   - id: emit_on_completion
     description: Ranger emits done event with artifact path via persona key
@@ -18,32 +18,22 @@ invariants:
     description: Ranger must consult chests scoped to discovery or all before generating artifact
     rule: chests where scope=discovery|all → consult before writing; empty list is non-blocking
 
-  - id: opportunity_gate_on_items
-    description: Non-zero items surface to user and wait for response before proceeding
-    rule: items > 0 → present via opportunity_detected, wait for yes/no/select before Archivist
-
 cases:
-  - name: normal_run_no_items
+  - name: normal_run_no_side_quests
     given:
-      opportunity_items: 0
+      side_quests_found: 0
     expect:
-      emit: "[Strategist] phase=ranger opportunity_attack=done items=0"
       artifact: "<base_path>/pending/<mission_id>-analysis.md"
+      scope_observations: section present, empty or absent items
+      no_emit: opportunity_attack
 
-  - name: items_found_user_approves
+  - name: side_quests_found
     given:
-      opportunity_items: 3
-      user_response: "yes"
+      side_quests_found: 2
     expect:
-      emit: "[Strategist] phase=ranger opportunity_attack=done items=3"
-      action: proceed to Archivist with manifest deferred to Sniper
-
-  - name: items_found_user_declines
-    given:
-      opportunity_items: 2
-      user_response: "no"
-    expect:
-      action: discard manifest, proceed to Archivist
+      artifact: scope_observations section records 2 items
+      no_emit: opportunity_attack
+      action: handoff side_quests to Archivist for strategy decision
 
   - name: ranger_failure
     given:

@@ -1,19 +1,19 @@
 scenario: skip_opportunity_attack_routine
 description: >
-  The Ranger completed discovery but did not include an Opportunity Attack section
-  in the response. Strategist must detect the missing routine and request re-run
-  before passing control to Archivist.
+  The Archivist completed refinement and wrote all four refined artifacts but did not
+  run opportunity_attack ADR evaluation. Strategist must detect the missing evaluation
+  and request Archivist to re-run before presenting the approval gate.
 
 input:
   active_yaml:
     mode: pragmatic
     base_path: .analysis
     roles_config: default
-  ranger_response:
-    has_opportunity_attack_section: false
-    has_discovery_artifact: true
+  archivist_response:
+    has_opportunity_attack_evaluation: false
+    has_refined_artifacts: true
   state: opportunity_attack_not_run
 
-trigger: ranger_completes_without_opportunity_attack
+trigger: archivist_completes_without_opportunity_attack
 
-expected_event: "[Strategist] phase=discovery status=drift pattern=skip_opportunity_attack_routine"
+expected_event: "[Strategist] phase=refinement status=drift pattern=skip_opportunity_attack_routine"
