@@ -1,41 +1,41 @@
-# ADR-0001 — Artefatos compilados em gzip+JSON com fast path
+# ADR-0001 — Compiled artifacts in gzip+JSON with fast path
 
 **Status:** Accepted  
-**Data:** 2026-05-29  
-**Contexto:** Migração para Go (bigbang-go-20260529)
+**Date:** 2026-05-29  
+**Context:** Migration to Go (bigbang-go-20260529)
 
 ---
 
-## Contexto
+## Context
 
-O agente precisa carregar a configuração da skill (active.yaml, personas, roles, domain templates) no início de **cada missão**. Com arquivos YAML separados, esse carregamento envolve múltiplas leituras de disco, parse de YAML e merge de estruturas — operação repetida a cada invocação.
+The agent needs to load the skill configuration (active.yaml, personas, roles, domain templates) at the start of **every mission**. With separate YAML files, this loading involves multiple disk reads, YAML parsing, and structure merging — an operation repeated on every invocation.
 
-A alternativa mais simples seria ler os YAMLs diretamente sempre, sem pré-processamento.
+The simplest alternative would be to read the YAMLs directly every time, without preprocessing.
 
-## Decisão
+## Decision
 
-Compilar as fontes YAML em artefatos **gzip+JSON** armazenados em `.strategist/.compiled/`:
+Compile the YAML sources into **gzip+JSON** artifacts stored in `.strategist/.compiled/`:
 
-| Artefato | Fontes |
-|----------|--------|
+| Artifact | Sources |
+|----------|---------|
 | `.config.gz` | `active.yaml` + `personas/` + `roles/` |
 | `.domain.gz` | `templates/domain/` |
 | `.index.gz` | `knowledge.index.yaml` |
-| `.manifest.gz` | SHA256 dos 3 artefatos acima |
+| `.manifest.gz` | SHA256 of the 3 artifacts above |
 
-Cada artefato inclui um campo `sources: map[path → mtime]` que permite detectar staleness sem recompilar.
+Each artifact includes a `sources: map[path → mtime]` field that allows staleness detection without recompiling.
 
-O agente implementa um **fast path**: se o artefato existe e não está stale (`check-stale`), faz `gunzip + JSON parse` em vez de ler e parsear múltiplos YAMLs. O **standard path** (ler YAMLs direto) funciona como fallback em caso de corrupção.
+The agent implements a **fast path**: if the artifact exists and is not stale (`check-stale`), it does `gunzip + JSON parse` instead of reading and parsing multiple YAMLs. The **standard path** (reading YAMLs directly) works as a fallback in case of corruption.
 
-## Consequências
+## Consequences
 
-**Positivas:**
-- Carregamento de configuração em uma única operação (decompress + decode JSON)
-- Artefato corrompido tem fallback automático para standard path — sem parada de missão
-- `strategist check-stale` permite CI verificar se recompilação é necessária sem carregar nada
-- Formato único para todos os tipos de config — sem lógica de merge espalhada
+**Positive:**
+- Configuration loading in a single operation (decompress + decode JSON)
+- Corrupted artifact has automatic fallback to standard path — no mission stop
+- `strategist check-stale` allows CI to verify whether recompilation is needed without loading anything
+- Single format for all config types — no scattered merge logic
 
-**Negativas:**
-- Requer `strategist compile` após edições manuais nos YAMLs (processo extra que pode ser esquecido)
-- `.strategist/.compiled/` precisa estar no `.gitignore` — instalação garante isso via `ensureGitignore`
-- Dois caminhos de carregamento para manter sincronizados (fast path e standard path)
+**Negative:**
+- Requires `strategist compile` after manual YAML edits (an extra step that can be forgotten)
+- `.strategist/.compiled/` must be in `.gitignore` — installation ensures this via `ensureGitignore`
+- Two loading paths to keep in sync (fast path and standard path)

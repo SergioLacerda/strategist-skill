@@ -349,7 +349,7 @@ token_economy_stop_conditions:
   - id: plan_exceeds_scope
     trigger: execution_plan_exceeds_declared_scope
     action: split_into_separate_missions
-  - id: hunter_context_gap
+  - id: sniper_context_gap
     trigger: sniper_needs_context_not_in_handoff
     action: return_to_archivist
     blocks: re_reading_full_discovery
@@ -395,7 +395,7 @@ forbidden_behaviors:
   - load_knowledge_not_in_index
   - skip_opportunity_attack_routine          # Archivist MUST run opportunity_attack (ADR evaluation) after writing all four refined artifacts
   - suppress_opportunity_attack_feedback     # if ADR criteria met, Archivist MUST surface ADR side quest at gate
-  - hunter_decides_side_quest_strategy       # only Archivist decides; Hunter reports only
+  - sniper_decides_side_quest_strategy       # only Archivist decides; Sniper reports only
   - skip_triage_gate                         # triage_gate.blocked=true must pause pipeline
   - open_discovery_while_triage_blocked      # context_enrichment must not run while blocked
   - ranger_writes_outside_pending

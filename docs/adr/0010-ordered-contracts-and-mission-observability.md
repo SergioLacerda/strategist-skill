@@ -1,42 +1,41 @@
-# ADR-0010 — Contratos ordenados e observabilidade da missão
+# ADR-0010 — Ordered contracts and mission observability
 
 **Status:** Accepted  
-**Data:** 2026-06-18
+**Date:** 2026-06-18
 
 ---
 
-## Contexto
+## Context
 
-O Strategist acumulou regras operacionais distribuídas entre `SKILL.md`, contratos
-soltos, schemas, personas e documentação auxiliar. Esse formato gerou três tipos
-de drift:
+The Strategist had accumulated operational rules distributed across `SKILL.md`, loose contracts,
+schemas, personas, and auxiliary documentation. This format produced three types of drift:
 
-- dificuldade para identificar a ordem canônica de leitura dos contratos
-- ambiguidade no handoff entre discovery e refinement
-- observabilidade parcial sobre identidade da missão, artefatos gerados e gates
+- difficulty identifying the canonical reading order of contracts
+- ambiguity in the handoff between discovery and refinement
+- partial observability over mission identity, generated artifacts, and gates
 
-Também havia um objetivo explícito de tornar a experiência do usuário mais
-determinística: a resposta precisa deixar claro que o agente está “dentro da
-missão”, qual contrato está sendo seguido e quais artefatos são parte do fluxo.
+There was also an explicit goal of making the user experience more
+deterministic: the response needs to make it clear that the agent is "inside the
+mission", which contract is being followed, and which artifacts are part of the flow.
 
-Por fim, os contratos de input/output precisavam ficar alinhados com baseline de
-telemetria compatível com OpenTelemetry, sem obrigar o consumidor a inferir
-campos semânticos a partir de texto livre.
+Finally, the input/output contracts needed to align with a telemetry baseline
+compatible with OpenTelemetry, without forcing the consumer to infer
+semantic fields from free text.
 
-## Decisão
+## Decision
 
-O baseline canônico do Strategist passa a ser:
+The canonical Strategist baseline becomes:
 
-1. `strategist/SKILL.md` atua como shell fino de roteamento
-2. contratos operacionais são lidos sob demanda, em ordem explícita e estável
-3. o fluxo discovery → refinement usa artefatos canônicos e não ambíguos
-4. o envelope de resposta da missão fica externalizado em contrato dedicado
-5. eventos e logs estruturados carregam atributos estáveis compatíveis com OTEL
+1. `strategist/SKILL.md` acts as a thin routing shell
+2. operational contracts are read on demand, in an explicit and stable order
+3. the discovery → refinement flow uses canonical, unambiguous artifacts
+4. the mission response envelope is externalized in a dedicated contract
+5. structured events and logs carry stable attributes compatible with OTEL
 
-### 1. Contratos ordenados
+### 1. Ordered contracts
 
-Os contratos humanos ficam particionados e numerados em `strategist/contracts/`
-como sequência canônica de leitura:
+Human contracts are partitioned and numbered in `strategist/contracts/`
+as the canonical reading sequence:
 
 1. `00-routing.md`
 2. `01-bootstrap.md`
@@ -50,55 +49,54 @@ como sequência canônica de leitura:
 10. `09-response.md`
 11. `10-telemetry.md`
 
-`SKILL.md` não duplica a regra operacional detalhada. Ele apenas roteia para
-essa sequência e para skills derivadas específicas.
+`SKILL.md` does not duplicate the detailed operational rule. It only routes to
+this sequence and to specific derived skills.
 
-### 2. Handoff canônico entre Ranger e Archivist
+### 2. Canonical handoff between Ranger and Archivist
 
-O fluxo oficial entre discovery e refinement passa a ser:
+The official flow between discovery and refinement becomes:
 
-- Ranger gera `<base_path>/pending/<mission_id>-analysis.md`
-- Archivist usa esse artefato como base obrigatória
-- Archivist gera o pacote:
+- Ranger generates `<base_path>/pending/<mission_id>-analysis.md`
+- Archivist uses that artifact as its mandatory base
+- Archivist generates the package:
   - `refined/<mission_id>/proposal.md`
   - `refined/<mission_id>/design.md`
   - `refined/<mission_id>/tasks.md`
 
-`pending/` deixa de ser o artefato principal desse handoff. Qualquer referência
-anterior que tratava discovery como produtor de rascunho em `pending/` é drift.
+`pending/` is no longer the main artifact for this handoff. Any prior reference
+that treated discovery as a draft producer in `pending/` is drift.
 
-### 3. Contrato de resposta da missão
+### 3. Mission response contract
 
-O contrato narrativo e estrutural da resposta fica externalizado em
-`strategist/protocol.md#response-contract` e operacionalizado por
+The narrative and structural contract for the response is externalized in
+`strategist/protocol.md#response-contract` and operationalized by
 `strategist/contracts/09-response.md`.
 
-Toda resposta final da missão deve:
+Every final mission response must:
 
-- identificar explicitamente a missão ou seu contexto operacional
-- deixar claro o resultado da missão
-- expor resumo de compliance do fluxo quando aplicável
-- refletir o estado da missão sem exigir inferência pelo usuário
+- explicitly identify the mission or its operational context
+- make the mission result clear
+- expose a flow compliance summary when applicable
+- reflect the mission state without requiring inference by the user
 
-### 4. Contratos ricos de input/output
+### 4. Rich input/output contracts
 
-Inputs e outputs deixam de ser apenas convenções implícitas em texto corrido.
-Eles passam a ser descritos por contratos dedicados e reforçados por schemas de
-handoff, envelope de resposta e telemetria.
+Inputs and outputs are no longer just implicit conventions in flowing text.
+They are now described by dedicated contracts and enforced by handoff schemas, response envelope, and telemetry.
 
-O objetivo não é maximizar número de campos, e sim produzir contratos ricos o
-suficiente para:
+The goal is not to maximize the number of fields, but to produce contracts rich
+enough to:
 
-- reduzir drift entre persona, runtime e documentação
-- permitir validação automatizada
-- preservar leitura humana rápida sob consulta
+- reduce drift between persona, runtime, and documentation
+- enable automated validation
+- preserve quick human readability under query
 
-### 5. Baseline de observabilidade compatível com OTEL
+### 5. OTEL-compatible observability baseline
 
-Logs, eventos e spans do Strategist passam a privilegiar atributos estruturados
-estáveis para missão, componente, gate, artefato e correlação.
+Strategist logs, events, and spans now prioritize stable structured attributes
+for mission, component, gate, artifact, and correlation.
 
-O baseline inclui, quando aplicável:
+The baseline includes, where applicable:
 
 - `mission_id`
 - `correlation_id`
@@ -114,33 +112,31 @@ O baseline inclui, quando aplicável:
 - `transition_group`
 - `checkpoint_path`
 
-Texto livre continua permitido como mensagem de operador, mas não substitui os
-atributos estruturados necessários para correlação, auditoria e análise.
+Free text continues to be allowed as an operator message, but does not replace
+the structured attributes required for correlation, audit, and analysis.
 
-## Consequências
+## Consequences
 
-**Positivas:**
+**Positive:**
 
-- reduz custo cognitivo para localizar a regra certa da skill
-- elimina ambiguidade no handoff Ranger → Archivist
-- torna a narrativa da resposta previsível e auditável
-- melhora aderência entre contratos humanos, schemas e runtime
-- fortalece compatibilidade com pipelines de observabilidade baseados em OTEL
+- reduces cognitive cost of locating the correct skill rule
+- eliminates ambiguity in the Ranger → Archivist handoff
+- makes the response narrative predictable and auditable
+- improves adherence between human contracts, schemas, and runtime
+- strengthens compatibility with OTEL-based observability pipelines
 
-**Negativas:**
+**Negative:**
 
-- aumenta a disciplina necessária para manter contratos, schemas e embeds
-sincronizados
-- qualquer mudança futura no fluxo precisa atualizar múltiplas superfícies
-canônicas
-- consumidores legados que esperavam artefatos em `pending/` podem precisar de
-ajuste
+- increases the discipline needed to keep contracts, schemas, and embeds
+  synchronized
+- any future flow change must update multiple canonical surfaces
+- legacy consumers that expected artifacts in `pending/` may need adjustment
 
-## Regras de manutenção
+## Maintenance rules
 
-Mudanças futuras nesse fluxo devem respeitar:
+Future changes to this flow must respect:
 
-1. ADRs vigentes antes de reinterpretar contratos
-2. `strategist/contracts/` como fonte humana ordenada
-3. schemas e embeds como espelhos executáveis do mesmo contrato
-4. telemetria estruturada como requisito de runtime, não como detalhe opcional
+1. Active ADRs before reinterpreting contracts
+2. `strategist/contracts/` as the ordered human source
+3. schemas and embeds as executable mirrors of the same contract
+4. structured telemetry as a runtime requirement, not an optional detail

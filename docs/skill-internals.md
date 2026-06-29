@@ -1,110 +1,110 @@
-# Internals da Skill — Sub-skills, Contratos e Schemas
+# Skill Internals — Sub-skills, Contracts, and Schemas
 
 **Status:** Accepted
 **Last Updated:** 2026-06-26
 
-Este documento descreve os componentes internos do runtime da skill Strategist: as sub-skills invocadas automaticamente pelo orchestrador, os contratos de fase, e os schemas de entrada/saída.
+This document describes the internal components of the Strategist skill runtime: the sub-skills automatically invoked by the orchestrator, the phase contracts, and the input/output schemas.
 
-Para o pipeline geral e comportamento dos slots, consulte `docs/architecture.md`.
-Para a ordem canônica de leitura dos contratos, consulte `strategist/SKILL.md` e `docs/adr/0010-ordered-contracts-and-mission-observability.md`.
-Para configuração, veja [configuration.md](configuration.md).
+For the general pipeline and slot behavior, see `docs/architecture.md`.
+For the canonical reading order of contracts, see `strategist/SKILL.md` and `docs/adr/0010-ordered-contracts-and-mission-observability.md`.
+For configuration, see [configuration.md](configuration.md).
 
 ---
 
-## Sub-skills internas
+## Internal Sub-skills
 
-O Strategist invoca 6 sub-skills internas em cada missão. Todas têm `risk_score: read_only` — não escrevem em disco diretamente, exceto `learning-curator` (com aprovação obrigatória).
+The Strategist invokes 6 internal sub-skills on every mission. All have `risk_score: read_only` — they do not write to disk directly, except `learning-curator` (which requires explicit user approval).
 
 ### prompt-intake
 
-**Categoria:** classificação  
-**Quando:** antes do pipeline, logo após o bootstrap
+**Category:** classification  
+**When:** before the pipeline, immediately after bootstrap
 
-Classifica o prompt do usuário em `task_type`, `risk_level` e extrai as restrições de missão (`delivery_strategy`, `legacy_compatibility`, `execution_intent`).
+Classifies the user prompt into `task_type`, `risk_level`, and extracts mission constraints (`delivery_strategy`, `legacy_compatibility`, `execution_intent`).
 
-**Entrada:**
-- `user_prompt` — texto livre do usuário
-- `intake_schema_path` — caminho para `schemas/intake.schema.yaml`
+**Input:**
+- `user_prompt` — free-form user text
+- `intake_schema_path` — path to `schemas/intake.schema.yaml`
 
-**Saída:**
-- `task_type` — tipo da tarefa (ex: `architecture_analysis`, `refactor`, `general`)
-- `risk_level` — `low`, `medium` ou `high`
-- `constraints` — objeto com os 3 campos de restrição
+**Output:**
+- `task_type` — task type (e.g. `architecture_analysis`, `refactor`, `general`)
+- `risk_level` — `low`, `medium`, or `high`
+- `constraints` — object with the 3 constraint fields
 
-**Comportamento especial:** se dois aliases mutuamente exclusivos para o mesmo campo forem detectados no prompt, retorna `conflict=true` com o campo conflitante. O pipeline para e pede ao usuário que resolva o conflito antes de prosseguir.
+**Special behavior:** if two mutually exclusive aliases for the same field are detected in the prompt, returns `conflict=true` with the conflicting field. The pipeline stops and asks the user to resolve the conflict before proceeding.
 
 ---
 
 ### context-enrichment
 
-**Categoria:** conhecimento  
-**Quando:** após prompt-intake, antes de discovery
+**Category:** knowledge  
+**When:** after prompt-intake, before discovery
 
-Consulta `knowledge.index.yaml` pelo `task_type` da missão. Aplica ajustes de `source-hints.yaml`. Retorna excerpts ranqueados dentro do token budget configurado.
+Queries `knowledge.index.yaml` by the mission's `task_type`. Applies adjustments from `source-hints.yaml`. Returns ranked excerpts within the configured token budget.
 
-**Entrada:**
-- `task_type` — da saída do prompt-intake
-- `token_budget` — número máximo de tokens para excerpts
-- `knowledge_index_path` — caminho do index
-- `source_hints_path` — caminho de `memory/source-hints.yaml`
+**Input:**
+- `task_type` — from prompt-intake output
+- `token_budget` — maximum number of tokens for excerpts
+- `knowledge_index_path` — path to the index
+- `source_hints_path` — path to `memory/source-hints.yaml`
 
-**Saída:**
-- `excerpts` — lista ranqueada de excerpts (highest priority first)
-- `rubric` — rubrica do task_type (de `.strategist/rubrics/`) ou `null`
-- `sources_queried` / `sources_matched` — contadores
+**Output:**
+- `excerpts` — ranked list of excerpts (highest priority first)
+- `rubric` — task_type rubric (from `.strategist/rubrics/`) or `null`
+- `sources_queried` / `sources_matched` — counters
 
-**Resultado vazio é válido:** se nenhuma fonte corresponder ao `task_type`, retorna `excerpts: []` e o pipeline continua normalmente.
+**Empty result is valid:** if no source matches the `task_type`, returns `excerpts: []` and the pipeline continues normally.
 
-Prioridade efetiva = prioridade declarada no index + `priority_adjustment` do source-hints.
+Effective priority = declared priority in the index + `priority_adjustment` from source-hints.
 
 ---
 
 ### dossier-builder
 
-**Categoria:** assembly  
-**Quando:** após context-enrichment, antes de discovery
+**Category:** assembly  
+**When:** after context-enrichment, before discovery
 
-Monta o dossier que é passado aos slot providers como contexto de conhecimento. Garante que o dossier não exceda o token budget e nunca inclui os arquivos de identidade brutos (`what-i-am.yaml`, `drift-patterns.yaml`).
+Assembles the dossier that is passed to slot providers as knowledge context. Ensures the dossier does not exceed the token budget and never includes the raw identity files (`what-i-am.yaml`, `drift-patterns.yaml`).
 
-**Entrada:**
+**Input:**
 - `task_type`
-- `enrichment_output` — saída do context-enrichment
-- `identity_files` — `what-i-am.yaml` + `drift-patterns.yaml` (se disponíveis)
+- `enrichment_output` — output from context-enrichment
+- `identity_files` — `what-i-am.yaml` + `drift-patterns.yaml` (if available)
 - `token_budget`
 
-**Saída — estrutura do dossier:**
+**Output — dossier structure:**
 
 ```yaml
 task_type: string
 directives: string | null
-good_examples: array          # máximo 2 itens
-bad_examples: array           # máximo 1 item
+good_examples: array          # maximum 2 items
+bad_examples: array           # maximum 1 item
 rubric: object | null
 output_template: string | null
 token_count: integer
 ```
 
-**Ordem de corte quando budget é ultrapassado:** bad_examples → good_examples (mantém o de maior score) → directives. `task_type` e `output_template` nunca são cortados.
+**Trim order when budget is exceeded:** bad_examples → good_examples (keeps the highest-score one) → directives. `task_type` and `output_template` are never trimmed.
 
 ---
 
-### ranger (slot de discovery)
+### ranger (discovery slot)
 
-**Categoria:** discovery  
-**Quando:** fase de discovery (slot configurável)
+**Category:** discovery  
+**When:** discovery phase (configurable slot)
 
-Produz o artefato canônico de análise que abre a missão formalmente para o usuário e serve de base direta para o Archivist.
+Produces the canonical analysis artifact that formally opens the mission for the user and serves as the direct basis for the Archivist.
 
-**Entrada:**
+**Input:**
 - `user_prompt`
 - `mission_contract`
 - `dossier`
 - `treasure_chests`
 
-**Saída:**
+**Output:**
 - `analysis_artifact_path` — `<base_path>/pending/<mission_id>-analysis.md`
 
-**Contrato obrigatório no artefato:**
+**Required contract fields in the artifact:**
 - `mission_id`
 - `objective`
 - `analysis_summary`
@@ -114,66 +114,66 @@ Produz o artefato canônico de análise que abre a missão formalmente para o us
 
 ---
 
-### archivist (slot de refinement)
+### archivist (refinement slot)
 
-**Categoria:** refinamento  
-**Quando:** fase de refinement (slot configurável)
+**Category:** refinement  
+**When:** refinement phase (configurable slot)
 
-Lê o artefato de discovery e produz um plano revisado e implementável. É o provider padrão do slot `refinement`.
+Reads the discovery artifact and produces a revised, implementable plan. It is the default provider for the `refinement` slot.
 
-**Entrada:**
-- `analysis_artifact_path` — caminho para o artefato canônico do Ranger em `refined/`
-- `base_path` — diretório base da missão
-- `mission_contract` — `planning_rules` extraído pelo prompt-intake
+**Input:**
+- `analysis_artifact_path` — path to the canonical Ranger artifact in `refined/`
+- `base_path` — mission base directory
+- `mission_contract` — `planning_rules` extracted by prompt-intake
 
-**Saída:**
+**Output:**
 - `analysis.md` — `<base_path>/refined/<mission_id>/analysis.md`
 - `proposal.md` — `<base_path>/refined/<mission_id>/proposal.md`
 - `design.md` — `<base_path>/refined/<mission_id>/design.md`
 - `tasks.md` — `<base_path>/refined/<mission_id>/tasks.md`
 
-O output canônico do refinement é um pacote de quatro artefatos. `refined/<mission_id>-plan.md` é drift histórico, não o contrato atual.
+The canonical refinement output is a four-artifact package. `refined/<mission_id>-plan.md` is historical drift, not the current contract.
 
-Após escrever os quatro artefatos, o Archivist executa a **Opportunity Attack** (avaliação ADR): verifica se os artefatos refinados justificam a abertura de um ADR. Essa avaliação é interna ao Archivist — não é delegada a slot.
+After writing the four artifacts, the Archivist runs the **Opportunity Attack** (ADR evaluation): checks whether the refined artifacts justify opening an ADR. This evaluation is internal to the Archivist — it is not delegated to a slot.
 
 ---
 
 ### response-critic
 
-**Categoria:** avaliação  
-**Quando:** fase de learning (não-bloqueante)
+**Category:** evaluation  
+**When:** learning phase (non-blocking)
 
-Avalia a saída do slot contra a rubrica do `task_type`. Produz score e lista de gaps — alimenta o `learning-curator`.
+Evaluates the slot output against the `task_type` rubric. Produces a score and a list of gaps — feeds the `learning-curator`.
 
-**Entrada:**
-- `slot_output` — conteúdo do artefato de saída do slot
+**Input:**
+- `slot_output` — content of the slot output artifact
 - `task_type`
-- `rubric` — do context-enrichment; se `null`, retorna `result=no_rubric`
+- `rubric` — from context-enrichment; if `null`, returns `result=no_rubric`
 
-**Saída:**
-- `result` — `pass`, `fail` ou `no_rubric`
-- `score` — 0.0–1.0 (null quando `no_rubric`)
-- `must_have_present` / `must_have_missing` — itens da rubrica encontrados/ausentes
-- `must_not_present` — itens proibidos encontrados (violações)
+**Output:**
+- `result` — `pass`, `fail`, or `no_rubric`
+- `score` — 0.0–1.0 (null when `no_rubric`)
+- `must_have_present` / `must_have_missing` — rubric items found/missing
+- `must_not_present` — forbidden items found (violations)
 
-`result=pass` quando `score >= rubric.score_threshold` E `must_not_present` está vazio.
+`result=pass` when `score >= rubric.score_threshold` AND `must_not_present` is empty.
 
 ---
 
 ### learning-curator
 
-**Categoria:** aprendizado  
-**Quando:** fase de learning, após execution (não-bloqueante)
+**Category:** learning  
+**When:** learning phase, after execution (non-blocking)
 
-Propõe entradas para `memory/outcomes.jsonl` e `memory/source-hints.yaml`. **Não escreve nada sem aprovação explícita do usuário.**
+Proposes entries for `memory/outcomes.jsonl` and `memory/source-hints.yaml`. **Writes nothing without explicit user approval.**
 
-**Entrada:**
-- `mission_result` — resultado da missão
-- `critic_evaluation` — saída do response-critic
+**Input:**
+- `mission_result` — mission result
+- `critic_evaluation` — response-critic output
 - `task_type`
-- `outcomes_path` e `source_hints_path`
+- `outcomes_path` and `source_hints_path`
 
-**Checkpoint obrigatório:**
+**Required checkpoint:**
 ```
 Learning checkpoint:
 1. Record mission outcome? [mission_id / task_type / score / status]
@@ -182,83 +182,83 @@ Learning checkpoint:
    (yes / no)
 ```
 
-Aprovação é independente para cada item — o usuário pode aprovar outcomes e rejeitar source hints (e vice-versa).
+Approval is independent for each item — the user can approve outcomes and reject source hints (and vice versa).
 
-**Falha na fase de learning nunca bloqueia o resultado da missão.** Se o checkpoint expirar ou a fase falhar, nada é escrito e a missão retorna normalmente.
+**Failure in the learning phase never blocks the mission result.** If the checkpoint expires or the phase fails, nothing is written and the mission returns normally.
 
 ---
 
-## Contratos de Fase
+## Phase Contracts
 
-Os contratos em `.strategist/contracts/` definem o contrato formal de cada fase interna do orchestrador.
+The contracts in `.strategist/contracts/` define the formal contract for each internal orchestrator phase.
 
-### Sinais funcionais no pipeline único
+### Functional signals in the single pipeline
 
-`quick_draw`, `opportunity_attack`, `critical_hit`, side quests e `treasure_chests`
-não abrem pipelines paralelos. Eles se encaixam no fluxo único
+`quick_draw`, `opportunity_attack`, `critical_hit`, side quests, and `treasure_chests`
+do not open parallel pipelines. They fit into the single flow
 `Ranger -> Archivist -> approval gate -> Sniper`.
 
-- **Quick Draw**: captura rápida de ideia/TODO via rota dedicada; escreve somente após gate; `todo/` é write-only do ponto de vista da skill.
-- **Opportunity Attack**: avaliação ADR executada pelo Archivist após escrever os quatro artefatos refinados. Não é delegada a slot.
-- **Critical Hit**: rota de gerenciamento de artefatos de análise (`.md`) dentro das pastas `pending/`, `refined/` e `archived/` do `<base_path>`.
-- **Side Quests**: observações de escopo detectadas durante qualquer fase; Ranger, Archivist e Sniper podem detectar; Archivist consolida no gate; Sniper reporta side quests recém-descobertas.
+- **Quick Draw**: fast idea/TODO capture via dedicated route; writes only after gate; `todo/` is write-only from the skill's perspective.
+- **Opportunity Attack**: ADR evaluation run by the Archivist after writing the four refined artifacts. Not delegated to a slot.
+- **Critical Hit**: analysis artifact management route (`.md` files) within the `pending/`, `refined/`, and `archived/` folders in `<base_path>`.
+- **Side Quests**: scope observations detected during any phase; Ranger, Archivist, and Sniper may detect them; Archivist consolidates at the gate; Sniper reports newly discovered side quests.
 
-Guardrail principal: nenhuma materialização aprovada ocorre sem aprovação no gate da missão.
-A restrição de escopo aplica-se somente para impedir materialização documental fora do escopo aprovado.
+Main guardrail: no approved materialization occurs without approval at the mission gate.
+The scope restriction applies only to prevent documentary materialization outside the approved scope.
 
-### Treasure Chests (baú do tesouro)
+### Treasure Chests
 
-`treasure_chests` são fontes de conhecimento offline declaradas em `active.yaml`.
-O Strategist só repassa ao slot os baús com escopo compatível:
+`treasure_chests` are offline knowledge sources declared in `active.yaml`.
+The Strategist passes to each slot only the chests with compatible scope:
 
 - `discovery` → Ranger
 - `refinement` → Archivist
 - `execution` → Sniper
-- `all` → todos os slots
+- `all` → all slots
 
-Ausência de baú aplicável não bloqueia a missão.
+Absence of an applicable chest does not block the mission.
 
 ### bootstrap
 
-Carrega a configuração ativa (`active.yaml`, persona, roles) antes de qualquer missão.
+Loads the active configuration (`active.yaml`, persona, roles) before any mission.
 
 | | |
 |-|-|
-| **Entradas** | `skill_root`, `mode_override` (opcional), `roles_override` (opcional) |
-| **Saídas** | `active`, `persona`, `roles`, `sdd_injection` (opcional) |
-| **Fast path** | `.strategist/.compiled/.config.gz` — se fresco, carrega o artefato compilado diretamente |
-| **Fallback** | Se `.config.gz` estiver corrompido: carrega YAML diretamente, emite `bootstrap=standard_path` |
+| **Inputs** | `skill_root`, `mode_override` (optional), `roles_override` (optional) |
+| **Outputs** | `active`, `persona`, `roles`, `sdd_injection` (optional) |
+| **Fast path** | `.strategist/.compiled/.config.gz` — if fresh, loads the compiled artifact directly |
+| **Fallback** | If `.config.gz` is corrupted: loads YAML directly, emits `bootstrap=standard_path` |
 
-Erros que param: `active_yaml_not_found`, `persona_not_found`.
+Errors that stop: `active_yaml_not_found`, `persona_not_found`.
 
 ### preflight
 
-Valida providers dos slots e carrega o domínio interno. Roda após bootstrap, antes do intake.
+Validates slot providers and loads the internal domain. Runs after bootstrap, before intake.
 
 | | |
 |-|-|
-| **Entradas** | `active`, `persona`, `roles` |
-| **Saídas** | `domain`, `slot_providers`, `preflight_status` |
+| **Inputs** | `active`, `persona`, `roles` |
+| **Outputs** | `domain`, `slot_providers`, `preflight_status` |
 | **Fast path** | `.strategist/.compiled/.domain.gz` |
 | **Write scope** | Read-only |
 
-Erros que param: `slot_provider_not_found`, `slot_risk_mismatch`.  
-`index_yaml_not_found` é não-bloqueante — pipeline continua sem domínio interno.
+Errors that stop: `slot_provider_not_found`, `slot_risk_mismatch`.  
+`index_yaml_not_found` is non-blocking — pipeline continues without internal domain.
 
-### Demais contratos
+### Other contracts
 
-| Contrato | O que garante |
-|----------|--------------|
-| `check-stale.yaml` | Formato e comportamento do check de staleness |
-| `compile-config.yaml` | Fontes e schema do `.config.gz` |
-| `compile-domain.yaml` | Fontes e schema do `.domain.gz` |
-| `compile-knowledge-index.yaml` | Fontes e schema do `.index.gz` |
-| `compile-all.yaml` | Sequência e dependências da compilação completa |
-| `context-enrichment.yaml` | Contrato de entrada/saída do context-enrichment |
-| `learning-buffer.yaml` | Comportamento do buffer de outcomes (tamanho máximo, flush) |
-| `learning-curator.yaml` | Checkpoint obrigatório antes de escrever em memory/ |
-| `preflight.yaml` | Validação de slots e carregamento do domínio |
-| `bootstrap.yaml` | Carregamento de active.yaml, persona e roles |
+| Contract | What it guarantees |
+|----------|-------------------|
+| `check-stale.yaml` | Format and behavior of the staleness check |
+| `compile-config.yaml` | Sources and schema of `.config.gz` |
+| `compile-domain.yaml` | Sources and schema of `.domain.gz` |
+| `compile-knowledge-index.yaml` | Sources and schema of `.index.gz` |
+| `compile-all.yaml` | Sequence and dependencies of the full compilation |
+| `context-enrichment.yaml` | Input/output contract for context-enrichment |
+| `learning-buffer.yaml` | Outcomes buffer behavior (maximum size, flush) |
+| `learning-curator.yaml` | Required checkpoint before writing to memory/ |
+| `preflight.yaml` | Slot validation and domain loading |
+| `bootstrap.yaml` | Loading of active.yaml, persona, and roles |
 
 ---
 
@@ -266,17 +266,17 @@ Erros que param: `slot_provider_not_found`, `slot_risk_mismatch`.
 
 ### intake.schema.yaml
 
-Define os campos de restrição reconhecidos pelo `prompt-intake` e seus aliases em linguagem natural.
+Defines the constraint fields recognized by `prompt-intake` and their natural language aliases.
 
-**Campos:**
+**Fields:**
 
-| Campo | Default | Valores aceitos |
-|-------|---------|-----------------|
+| Field | Default | Accepted values |
+|-------|---------|----------------|
 | `delivery_strategy` | `sprint` | `sprint`, `total` |
 | `legacy_compatibility` | `required` | `required`, `not_required` |
 | `execution_intent` | `review_only` | `review_only`, `execute` |
 
-**Aliases por valor:**
+**Aliases by value:**
 
 `delivery_strategy: sprint` → "por sprint", "faseado", "iterativo", "incremental", "fase a fase", "entrega faseada"  
 `delivery_strategy: total` → "big bang", "sem prazo", "entrega total", "tudo de uma vez"
@@ -289,9 +289,9 @@ Define os campos de restrição reconhecidos pelo `prompt-intake` e seus aliases
 
 ---
 
-## Métricas de performance e baseline
+## Performance Metrics and Baseline
 
-As métricas canônicas para otimização de performance do Strategist são:
+The canonical metrics for Strategist performance optimization are:
 
 - `t_start_to_intake_ms`
 - `t_intake_to_ranger_ms`
@@ -300,29 +300,29 @@ As métricas canônicas para otimização de performance do Strategist são:
 - `tokens_out`
 - `lines_emitted`
 
-O baseline atual está registrado em `docs/performance-baseline.md` e deve ser atualizado sempre que houver mudança de contrato, telemetria ou política de emissão que possa alterar custo percebido.
+The current baseline is recorded in `docs/performance-baseline.md` and must be updated whenever there is a contract, telemetry, or emission policy change that could alter perceived cost.
 
-As métricas são expostas pelo sinal de saída `mission_metrics` no checkpoint de intake e em cada transição de fase. Isso mantém a telemetria de custo disponível sem alterar a ordem visível do pipeline.
+Metrics are exposed by the `mission_metrics` output signal at the intake checkpoint and at each phase transition. This keeps cost telemetry available without altering the visible pipeline order.
 
-`confidence_threshold: 0.65` — aliases com confiança abaixo deste valor recebem o default.
+`confidence_threshold: 0.65` — aliases with confidence below this value receive the default.
 
-Define o formato obrigatório dos eventos de progresso emitidos pelo Strategist em cada transição de fase.
+Defines the required format for progress events emitted by the Strategist at each phase transition.
 
-**Formato:**
+**Format:**
 ```
-[Strategist] phase=<phase_label> status=<status> [campos adicionais]
+[Strategist] phase=<phase_label> status=<status> [additional fields]
 ```
 
 **Statuses:**
 
-| Status | Campos obrigatórios | Quando |
-|--------|---------------------|--------|
-| `running` | `phase`, `status`, `skill`, `checklist` | Fase iniciou |
-| `done` | `phase`, `status`, `artifact` | Fase completou com sucesso |
-| `blocked` | `phase`, `status`, `reason`, `action` | Fase não pode continuar |
-| `analysis_delivered` | `phase`, `status` | Missão entregou análise/refinamento sem materialização |
+| Status | Required fields | When |
+|--------|----------------|------|
+| `running` | `phase`, `status`, `skill`, `checklist` | Phase started |
+| `done` | `phase`, `status`, `artifact` | Phase completed successfully |
+| `blocked` | `phase`, `status`, `reason`, `action` | Phase cannot continue |
+| `analysis_delivered` | `phase`, `status` | Mission delivered analysis/refinement without materialization |
 
-**Exemplos:**
+**Examples:**
 ```
 [Strategist] phase=preflight status=done slots=ok
 [Strategist] phase=discovery status=running skill=brainstorm checklist=0/3
@@ -331,17 +331,17 @@ Define o formato obrigatório dos eventos de progresso emitidos pelo Strategist 
 [Strategist] phase=execution status=done artifact=.analysis/archived/abc123-report.md
 ```
 
-**Caminhos de artefatos:**
+**Artifact paths:**
 
-| Fase | Caminho |
-|------|---------|
+| Phase | Path |
+|-------|------|
 | discovery | `<base_path>/pending/<mission_id>-analysis.md` |
 | refinement | `<base_path>/refined/<mission_id>/` |
 | execution | `<base_path>/archived/<mission_id>-report.md` |
 
-## OTEL e contrato rico
+## OTEL and Rich Contract
 
-O contrato rico de telemetria agora cobre:
+The rich telemetry contract now covers:
 
 - `phase`
 - `status`
@@ -357,32 +357,32 @@ O contrato rico de telemetria agora cobre:
 - `transition_group`
 - `reason`
 
-O namespace canônico fica em `internal/telemetry/schema.go` e o shape-alvo está em `strategist/schemas/telemetry-event.schema.yaml`.
+The canonical namespace is in `internal/telemetry/schema.go` and the target shape is in `strategist/schemas/telemetry-event.schema.yaml`.
 
-Os `phase_labels` (Ranger/Archivist/Sniper vs análise/refinamento/execução) são resolvidos da persona ativa em runtime — o schema define apenas os campos obrigatórios, não os valores dos labels.
+The `phase_labels` (Ranger/Archivist/Sniper vs analysis/refinement/execution) are resolved from the active persona at runtime — the schema defines only the required fields, not the label values.
 
 ---
 
-## Write Scopes dos Slots
+## Slot Write Scopes
 
-Cada slot tem um escopo de escrita declarado no `skill.yaml`. Escrever fora do escopo para a missão com `slot_write_scope_violation`.
+Each slot has a write scope declared in `skill.yaml`. Writing outside scope fails the mission with `slot_write_scope_violation`.
 
-| Slot | Escopo de escrita | Tipos permitidos |
-|------|------------------|-----------------|
+| Slot | Write scope | Allowed types |
+|------|------------|--------------|
 | `discovery` | `<base_path>/` | `.md` |
-| `refinement` | `<base_path>/` e `<base_path>/refined/` | `.md` |
-| `execution` | `<base_path>/archived/` e documentação `.md` aprovada | `.md` |
+| `refinement` | `<base_path>/` and `<base_path>/refined/` | `.md` |
+| `execution` | `<base_path>/archived/` and approved `.md` documentation | `.md` |
 
 ---
 
-## Fixtures de Teste de Segurança
+## Security Test Fixtures
 
-Os fixtures em `strategist/tests/fixtures/` representam cenários de violação dos invariantes de segurança. São usados pelos testes de formato (`tests/fixtures_test.go`) e servem como documentação executável dos comportamentos proibidos.
+The fixtures in `strategist/tests/fixtures/` represent violation scenarios for security invariants. They are used by the format tests (`tests/fixtures_test.go`) and serve as executable documentation of forbidden behaviors.
 
-| Fixture | Invariante testado |
-|---------|-------------------|
-| `approval-bypass.yaml` | Invocação do execution slot sem aprovação |
-| `side-quest-bypass.yaml` | Side quest executada sem passar pelo approval gate |
-| `slot-risk-mismatch.yaml` | Provider com risk_score incorreto para o slot |
-| `discovery-failed.yaml` | Prosseguir para refinement após falha no discovery |
-| `yaml-null-field.yaml` | Campo YAML nulo em posição obrigatória |
+| Fixture | Invariant tested |
+|---------|-----------------|
+| `approval-bypass.yaml` | Invocation of the execution slot without approval |
+| `side-quest-bypass.yaml` | Side quest executed without passing through the approval gate |
+| `slot-risk-mismatch.yaml` | Provider with incorrect risk_score for the slot |
+| `discovery-failed.yaml` | Proceeding to refinement after a discovery failure |
+| `yaml-null-field.yaml` | Null YAML field in a required position |

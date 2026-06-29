@@ -1,8 +1,8 @@
-# ADR-0005 — Contratos de escrita por slot (read_only / write_analysis / controlled)
+# ADR-0005 — Per-slot write contracts (read_only / write_analysis / controlled)
 
 **Status:** Accepted  
-**Data:** 2026-05-28  
-**Contexto:** Slot write contracts design (2026-05-28-slot-write-contracts-design.md)
+**Date:** 2026-05-28  
+**Context:** Slot write contracts design (2026-05-28-slot-write-contracts-design.md)
 
 > 2026-06-26 note: this ADR records the slot write-contract model. The current
 > Strategist execution slot is restricted to approved documentation,
@@ -10,48 +10,48 @@
 
 ---
 
-## Contexto
+## Context
 
-Os slots de discovery (Ranger) e refinement (Archivist) precisam escrever artefatos em `.analysis/` como parte do fluxo normal da missão. Com o modelo original onde todos os slots eram `read_only` exceto Sniper (`controlled`), **qualquer escrita de artefato — mesmo um `.md` local em `pending/` — precisava passar pelo approval gate**.
+The discovery (Ranger) and refinement (Archivist) slots need to write artifacts to `.analysis/` as part of the normal mission flow. With the original model where all slots were `read_only` except Sniper (`controlled`), **any artifact write — even a local `.md` in `pending/` — required passing through the approval gate**.
 
-Isso tornava o fluxo excessivamente interativo: criar `.analysis/pending/discovery.md` exigia um "yes" explícito do usuário, mesmo sendo uma operação de baixo risco sem impacto em código.
+This made the flow excessively interactive: creating `.analysis/pending/discovery.md` required an explicit "yes" from the user, even for a low-risk operation with no impact on code.
 
-A questão: como diferenciar escritas de baixo risco (artefatos locais de análise) de escritas de alto risco (código, configs, arquivos do sistema)?
+The question: how to differentiate low-risk writes (local analysis artifacts) from high-risk writes (code, configs, system files)?
 
-Alternativas consideradas:
-- **Gate para tudo** — manter todos os slots como `read_only` + gate universal
-- **Sem gate** — confiar nos providers para não escrever em lugares errados
-- **Contratos de escopo** — declarar escopo e tipo de escrita permitidos por slot, validados em preflight
+Alternatives considered:
+- **Gate for everything** — keep all slots as `read_only` + universal gate
+- **No gate** — trust providers not to write in the wrong places
+- **Scope contracts** — declare allowed write scope and type per slot, validated in preflight
 
-## Decisão
+## Decision
 
-Três níveis de contrato de escrita, declarados no `skill.yaml` e validados pelo Strategist em preflight:
+Three write contract levels, declared in `skill.yaml` and validated by the Strategist in preflight:
 
-| Contrato | Escopo de escrita | Tipos permitidos | Approval gate |
-|----------|-------------------|-----------------|---------------|
-| `read_only` | nenhum | — | não aplicável |
-| `write_analysis` | `<base_path>/` e derivados (`pending/`, `refined/`, `archived/`, `todo/`) | `.md` | não |
-| `controlled` | `<base_path>/archived/` e documentação `.md` aprovada | `.md` | **obrigatório** |
+| Contract | Write scope | Allowed types | Approval gate |
+|----------|------------|--------------|--------------|
+| `read_only` | none | — | not applicable |
+| `write_analysis` | `<base_path>/` and derivatives (`pending/`, `refined/`, `archived/`, `todo/`) | `.md` | no |
+| `controlled` | `<base_path>/archived/` and approved `.md` documentation | `.md` | **mandatory** |
 
-O `risk_score` do provider (declarado em `skill.yaml` do provider) deve corresponder ao contrato exigido pelo slot. Mismatch bloqueia em preflight com `slot_risk_mismatch`.
+The provider's `risk_score` (declared in the provider's `skill.yaml`) must match the contract required by the slot. Mismatch blocks in preflight with `slot_risk_mismatch`.
 
-O contrato `write_pending` foi descontinuado. O discovery passou a produzir o artefato
-canônico `<base_path>/pending/<mission_id>-analysis.md`, portanto o menor contrato
-compatível para Ranger também é `write_analysis`.
+The `write_pending` contract was discontinued. Discovery now produces the canonical artifact
+`<base_path>/pending/<mission_id>-analysis.md`, so the minimum compatible contract
+for Ranger is also `write_analysis`.
 
-Violações em runtime:
-- Escrita de tipo não-`.md` por `write_analysis` → `slot_write_type_violation`
-- Escrita fora do escopo declarado → `slot_write_scope_violation`
+Runtime violations:
+- Non-`.md` type write by `write_analysis` → `slot_write_type_violation`
+- Write outside the declared scope → `slot_write_scope_violation`
 
-## Consequências
+## Consequences
 
-**Positivas:**
-- Discovery e refinement escrevem artefatos silenciosamente — fluxo natural sem interrupções desnecessárias
-- Approval gate preservado apenas onde realmente importa (Sniper / slot `controlled`)
-- Contratos verificados em preflight — erros de configuração detectados antes do início da missão, não no meio
-- Modelo extensível: novos contratos podem ser adicionados sem alterar o pipeline principal
+**Positive:**
+- Discovery and refinement write artifacts silently — natural flow without unnecessary interruptions
+- Approval gate preserved only where it truly matters (Sniper / `controlled` slot)
+- Contracts verified in preflight — configuration errors detected before the mission starts, not in the middle
+- Extensible model: new contracts can be added without changing the main pipeline
 
-**Negativas:**
-- Dois pontos de verificação de escopo: preflight (risk_score) e runtime (escrita real) — podem divergir se o provider não respeitar seu contrato declarado
-- Provider malicioso com `risk_score: write_analysis` poderia tentar escrever fora do escopo; a validação em runtime é necessária mas depende do orchestrador detectar a violação
-- `known-providers.yaml` precisa ser mantido atualizado para providers que não declaram `risk_score` em seu `skill.yaml` — caso contrário, preflight não consegue validar
+**Negative:**
+- Two scope verification points: preflight (risk_score) and runtime (actual write) — these can diverge if the provider does not honor its declared contract
+- A malicious provider with `risk_score: write_analysis` could attempt to write outside scope; runtime validation is necessary but depends on the orchestrator detecting the violation
+- `known-providers.yaml` must be kept up to date for providers that do not declare `risk_score` in their `skill.yaml` — otherwise preflight cannot validate

@@ -1,40 +1,40 @@
-# ADR-0002 — Defaults embutidos no binário via embed.FS
+# ADR-0002 — Defaults embedded in the binary via embed.FS
 
 **Status:** Accepted  
-**Data:** 2026-05-29  
-**Contexto:** Migração para Go (bigbang-go-20260529)
+**Date:** 2026-05-29  
+**Context:** Migration to Go (bigbang-go-20260529)
 
 ---
 
-## Contexto
+## Context
 
-O comando `strategist install` precisa copiar ~60 arquivos (SKILL.md, personas, roles, schemas, contratos, templates) para o diretório `.strategist/` do repositório-alvo. Esses arquivos precisam estar disponíveis em qualquer ambiente onde o binário é executado.
+The `strategist install` command needs to copy ~60 files (SKILL.md, personas, roles, schemas, contracts, templates) to the `.strategist/` directory of the target repository. These files must be available in any environment where the binary is executed.
 
-Alternativas consideradas:
-- **Fetch da rede** — baixar os arquivos do GitHub no momento do install
-- **Bundling externo** — distribuir um tarball junto com o binário
-- **embed.FS** — embutir os arquivos no próprio binário em tempo de compilação
+Alternatives considered:
+- **Network fetch** — download files from GitHub at install time
+- **External bundling** — distribute a tarball alongside the binary
+- **embed.FS** — embed the files directly in the binary at compile time
 
-## Decisão
+## Decision
 
-Embutir todos os defaults em `internal/embed/defaults/` usando `//go:embed all:defaults`. O pacote `embed.Extractor` implementa `domain.FileExtractor` e copia a FS embutida para disco via `fs.WalkDir`, preservando a estrutura de diretórios.
+Embed all defaults in `internal/embed/defaults/` using `//go:embed all:defaults`. The `embed.Extractor` package implements `domain.FileExtractor` and copies the embedded FS to disk via `fs.WalkDir`, preserving the directory structure.
 
 ```go
 //go:embed all:defaults
 var defaultsFS embed.FS
 ```
 
-`internal/embed/defaults/` é uma cópia exata de `strategist/` — qualquer mudança no runtime da skill precisa ser refletida em ambos.
+`internal/embed/defaults/` is an exact copy of `strategist/` — any change to the skill runtime must be reflected in both.
 
-## Consequências
+## Consequences
 
-**Positivas:**
-- `strategist install` funciona **offline** e sem dependências externas (sem curl, jq, git)
-- Bootstrap via `curl | bash` baixa um único binário self-contained — sem assets separados
-- Sem falhas de rede silenciosas no momento do install
-- Versão dos defaults está fixada à versão do binário — sem drift entre binário e runtime
+**Positive:**
+- `strategist install` works **offline** and without external dependencies (no curl, jq, git)
+- Bootstrap via `curl | bash` downloads a single self-contained binary — no separate assets
+- No silent network failures at install time
+- Defaults version is fixed to the binary version — no drift between binary and runtime
 
-**Negativas:**
-- `strategist/` e `internal/embed/defaults/` precisam ser mantidos em sincronia — drift é detectável via diff, mas não automaticamente bloqueado em CI
-- Binário cresce com os defaults embutidos (~alguns KB de YAML comprimido)
-- Editar defaults requer recompilar o binário — não é possível atualizar só os arquivos YAML em produção sem um novo release
+**Negative:**
+- `strategist/` and `internal/embed/defaults/` must be kept in sync — drift is detectable via diff, but not automatically blocked in CI
+- Binary grows with the embedded defaults (~a few KB of compressed YAML)
+- Editing defaults requires recompiling the binary — it is not possible to update only the YAML files in production without a new release

@@ -1,158 +1,158 @@
-# Diagramas C4 — Strategist Skill
+# C4 Diagrams — Strategist Skill
 
 **Status:** Accepted
 **Last Updated:** 2026-06-26
 
-Documentação arquitetural em 4 níveis do modelo C4. Renderizado pelo GitHub via Mermaid.
+Architectural documentation at 4 levels of the C4 model. Rendered by GitHub via Mermaid.
 
 ---
 
-## Nível 1 — Contexto do Sistema
+## Level 1 — System Context
 
-Mostra o Strategist Skill no ecossistema: quem usa o sistema e como ele se relaciona com sistemas externos.
+Shows the Strategist Skill in the ecosystem: who uses the system and how it relates to external systems.
 
 ```mermaid
 C4Context
-    title Nível 1 — Contexto do Sistema
+    title Level 1 — System Context
 
-    Person(dev, "Desenvolvedor", "Cria e invoca missões de software via CLI e chat")
+    Person(dev, "Developer", "Creates and invokes software missions via CLI and chat")
 
-    System(strategist, "Strategist Skill", "Orquestra missões via discovery → refinamento → execução com approval gate obrigatório")
+    System(strategist, "Strategist Skill", "Orchestrates missions via discovery → refinement → execution with a mandatory approval gate")
 
-    System_Ext(claude, "Claude Agent (LLM)", "Executa o runtime da skill via conversa")
-    System_Ext(github, "GitHub", "Hospeda código-fonte, CI/CD e releases do binário")
-    System_Ext(target_repo, "Target Repository", "Repositório onde a skill é instalada e onde os artefatos de missão são escritos em <base_path>/")
+    System_Ext(claude, "Claude Agent (LLM)", "Executes the skill runtime via conversation")
+    System_Ext(github, "GitHub", "Hosts source code, CI/CD, and binary releases")
+    System_Ext(target_repo, "Target Repository", "Repository where the skill is installed and where mission artifacts are written under <base_path>/")
 
-    Rel(dev, claude, "Invoca missões via chat")
-    Rel(dev, strategist, "Instala e configura via CLI (strategist install)")
-    Rel(claude, strategist, "Carrega SKILL.md e executa o pipeline de missão")
-    Rel(strategist, target_repo, "Lê/escreve artefatos em <base_path>/")
-    Rel(github, strategist, "bootstrap.sh baixa o binário de GitHub Releases")
-    Rel(strategist, github, "CI publica releases e verifica SHA256")
+    Rel(dev, claude, "Invokes missions via chat")
+    Rel(dev, strategist, "Installs and configures via CLI (strategist install)")
+    Rel(claude, strategist, "Loads SKILL.md and executes the mission pipeline")
+    Rel(strategist, target_repo, "Reads/writes artifacts in <base_path>/")
+    Rel(github, strategist, "bootstrap.sh downloads the binary from GitHub Releases")
+    Rel(strategist, github, "CI publishes releases and verifies SHA256")
 ```
 
 ---
 
-## Nível 2 — Containers
+## Level 2 — Containers
 
-Mostra os containers (unidades executáveis e de armazenamento) dentro do sistema Strategist.
+Shows the containers (executable and storage units) within the Strategist system.
 
 ```mermaid
 C4Container
-    title Nível 2 — Containers
+    title Level 2 — Containers
 
-    Person(dev, "Desenvolvedor", "")
+    Person(dev, "Developer", "")
 
     System_Boundary(sys, "Strategist Skill") {
         Container(binary, "strategist", "Go binary", "CLI: install, compile, check-stale, validate, check, initiative, dojo, treasure-chest, sync-governance, version")
-        Container(skill_root, ".strategist/", "YAML + gzip/JSON", "Configs (active.yaml, personas/, roles/), artefatos compilados (.compiled/), memória (memory/)")
-        Container(shim, "~/.claude/skills/strategist/SKILL.md", "Markdown", "Registro da skill no Claude Agent — aponta para o skill root")
-        Container(analysis, "<base_path>/", "Markdown", "Artefatos de missão: pending/<id>-analysis.md, refined/<id>/, archived/")
+        Container(skill_root, ".strategist/", "YAML + gzip/JSON", "Configs (active.yaml, personas/, roles/), compiled artifacts (.compiled/), memory (memory/)")
+        Container(shim, "~/.claude/skills/strategist/SKILL.md", "Markdown", "Skill registration in Claude Agent — points to the skill root")
+        Container(analysis, "<base_path>/", "Markdown", "Mission artifacts: pending/<id>-analysis.md, refined/<id>/, archived/")
     }
 
-    System_Ext(claude, "Claude Agent (LLM)", "Executa o runtime da skill")
-    System_Ext(github, "GitHub Releases", "Hospeda binário e bootstrap.sh")
+    System_Ext(claude, "Claude Agent (LLM)", "Executes the skill runtime")
+    System_Ext(github, "GitHub Releases", "Hosts binary and bootstrap.sh")
 
-    Rel(dev, binary, "Executa comandos CLI", "shell")
-    Rel(dev, claude, "Invoca missões via chat", "linguagem natural")
-    Rel(binary, skill_root, "Extrai defaults embutidos e gera .compiled/", "fs.WalkDir + gzip+JSON")
-    Rel(binary, shim, "Instala o shim após install", "os.WriteFile")
-    Rel(claude, shim, "Resolve o skill root via source: declarado no shim")
-    Rel(claude, skill_root, "Lê SKILL.md, protocol.md e artefatos .compiled/", "fs read")
-    Rel(claude, analysis, "Escreve artefatos de missão via slots", "Ranger/Archivist/Sniper")
-    Rel(github, binary, "bootstrap.sh baixa e verifica SHA256", "curl + sha256sum")
+    Rel(dev, binary, "Executes CLI commands", "shell")
+    Rel(dev, claude, "Invokes missions via chat", "natural language")
+    Rel(binary, skill_root, "Extracts embedded defaults and generates .compiled/", "fs.WalkDir + gzip+JSON")
+    Rel(binary, shim, "Installs the shim after install", "os.WriteFile")
+    Rel(claude, shim, "Resolves the skill root via source: declared in the shim")
+    Rel(claude, skill_root, "Reads SKILL.md, protocol.md and .compiled/ artifacts", "fs read")
+    Rel(claude, analysis, "Writes mission artifacts via slots", "Ranger/Archivist/Sniper")
+    Rel(github, binary, "bootstrap.sh downloads and verifies SHA256", "curl + sha256sum")
 ```
 
 ---
 
-## Nível 3a — Componentes do Binário Go
+## Level 3a — Go Binary Components
 
-Detalha os pacotes internos do binário `strategist` e suas dependências.
+Details the internal packages of the `strategist` binary and their dependencies.
 
 ```mermaid
 C4Component
-    title Nível 3a — Componentes do Binário Go
+    title Level 3a — Go Binary Components
 
     Container_Boundary(bin, "strategist (Go binary)") {
-        Component(cmd, "cmd/strategist", "Go · cobra", "6 comandos CLI. Recebe flags, constrói configs e delega para internal/")
-        Component(domain, "internal/domain", "Go · interfaces", "Types centrais (InstallConfig, WizardConfig, CompiledConfig) e ports (Installer, Compiler, StaleChecker, FileExtractor)")
-        Component(embed_pkg, "internal/embed", "Go · embed.FS", "Defaults embutidos no binário em tempo de compilação. Extractor copia a FS para disco via fs.WalkDir")
-        Component(install_pkg, "internal/install", "Go", "Service.Install: extract → applyConfig → ensureGitignore → installShim → CompileAll. Rollback automático em falha")
-        Component(compile_pkg, "internal/compile", "Go · gzip/JSON", "Compiler.CompileAll: gera .index.gz, .domain.gz, .config.gz e .manifest.gz a partir dos YAMLs")
-        Component(stale_pkg, "internal/stale", "Go", "Checker.IsStale: abre o .gz, lê sources map, compara mtime de cada fonte com o valor registrado")
+        Component(cmd, "cmd/strategist", "Go · cobra", "6 CLI commands. Receives flags, builds configs, and delegates to internal/")
+        Component(domain, "internal/domain", "Go · interfaces", "Core types (InstallConfig, WizardConfig, CompiledConfig) and ports (Installer, Compiler, StaleChecker, FileExtractor)")
+        Component(embed_pkg, "internal/embed", "Go · embed.FS", "Defaults embedded in the binary at compile time. Extractor copies the FS to disk via fs.WalkDir")
+        Component(install_pkg, "internal/install", "Go", "Service.Install: extract → applyConfig → ensureGitignore → installShim → CompileAll. Automatic rollback on failure")
+        Component(compile_pkg, "internal/compile", "Go · gzip/JSON", "Compiler.CompileAll: generates .index.gz, .domain.gz, .config.gz and .manifest.gz from YAMLs")
+        Component(stale_pkg, "internal/stale", "Go", "Checker.IsStale: opens the .gz, reads sources map, compares each source's mtime against the recorded value")
     }
 
     Rel(cmd, install_pkg, "install → Service.Install(InstallConfig)")
     Rel(cmd, compile_pkg, "compile → Compiler.CompileAll(root, indexPath)")
     Rel(cmd, stale_pkg, "check-stale → Checker.IsStale(artifactPath)")
-    Rel(cmd, domain, "constrói InstallConfig, WizardConfig")
-    Rel(install_pkg, embed_pkg, "Extractor.Extract(strategistDir) — copia defaults")
-    Rel(install_pkg, compile_pkg, "CompileAll após extração — não-fatal em falha")
-    Rel(install_pkg, domain, "implementa domain.Installer via serviceAdapter")
-    Rel(compile_pkg, domain, "implementa domain.Compiler; produz CompiledConfig, CompiledDomain, CompiledIndex")
-    Rel(stale_pkg, domain, "implementa domain.StaleChecker")
-    Rel(embed_pkg, domain, "implementa domain.FileExtractor")
+    Rel(cmd, domain, "builds InstallConfig, WizardConfig")
+    Rel(install_pkg, embed_pkg, "Extractor.Extract(strategistDir) — copies defaults")
+    Rel(install_pkg, compile_pkg, "CompileAll after extraction — non-fatal on failure")
+    Rel(install_pkg, domain, "implements domain.Installer via serviceAdapter")
+    Rel(compile_pkg, domain, "implements domain.Compiler; produces CompiledConfig, CompiledDomain, CompiledIndex")
+    Rel(stale_pkg, domain, "implements domain.StaleChecker")
+    Rel(embed_pkg, domain, "implements domain.FileExtractor")
 ```
 
 ---
 
-## Nível 3b — Pipeline do Runtime da Skill
+## Level 3b — Skill Runtime Pipeline
 
-Detalha as fases e sub-skills executadas pelo Claude Agent ao orquestrar uma missão.
+Details the phases and sub-skills executed by the Claude Agent when orchestrating a mission.
 
 ```mermaid
 flowchart TD
     subgraph bootstrap["⚙️ Bootstrap"]
-        B1["LearningBuffer flush check\n(se outcomes.tmp ≥ 20 linhas)"]
-        B2["Carrega .compiled/.config.gz\nou active.yaml + personas/ + roles/"]
+        B1["LearningBuffer flush check\n(if outcomes.tmp ≥ 20 lines)"]
+        B2["Loads .compiled/.config.gz\nor active.yaml + personas/ + roles/"]
         B1 --> B2
     end
 
     subgraph preflight["🔍 Preflight"]
-        P1["Valida providers dos slots\n(risk_score por slot)"]
-        P2["Carrega domain interno\n(.compiled/.domain.gz ou templates/domain/)"]
+        P1["Validates slot providers\n(risk_score per slot)"]
+        P2["Loads internal domain\n(.compiled/.domain.gz or templates/domain/)"]
         P1 --> P2
     end
 
     subgraph intake["📋 Intake"]
-        I1["prompt-intake\nClassifica task_type, risk_level\nextra restrições da missão"]
-        I2["context-enrichment\nConsulta knowledge.index.yaml\npor task_type + source-hints"]
-        I3["dossier-builder\nMonta dossier dentro do token budget\npara passar aos slot providers"]
+        I1["prompt-intake\nClassifies task_type, risk_level\nextra mission constraints"]
+        I2["context-enrichment\nQueries knowledge.index.yaml\nby task_type + source-hints"]
+        I3["dossier-builder\nAssembles dossier within token budget\nto pass to slot providers"]
         I1 --> I2 --> I3
     end
 
     subgraph discovery["🔭 Discovery — Ranger"]
-        D1["Slot: discovery\nProvider configurável em active.yaml\nEscreve pending/<id>-analysis.md\nPode detectar side quests"]
+        D1["Slot: discovery\nConfigurable provider in active.yaml\nWrites pending/<id>-analysis.md\nMay detect side quests"]
     end
 
     subgraph refinement["📐 Refinement — Archivist"]
-        R1["Slot: refinement\nLê pending/<id>-analysis.md\nProduz analysis.md + proposal.md + design.md + tasks.md"]
-        R2["Opportunity Attack\n(interno — Archivist)\nAvaliação ADR após 4 artefatos refinados"]
+        R1["Slot: refinement\nReads pending/<id>-analysis.md\nProduces analysis.md + proposal.md + design.md + tasks.md"]
+        R2["Opportunity Attack\n(internal — Archivist)\nADR evaluation after 4 refined artifacts"]
         R1 --> R2
     end
 
-    subgraph gate["🚦 Approval Gate (obrigatório)"]
-        AG{"Usuário aprova\no plano refinado?"}
+    subgraph gate["🚦 Approval Gate (mandatory)"]
+        AG{"User approves\nthe refined plan?"}
     end
 
     subgraph execution["⚡ Execution — Sniper"]
-        E1["Side quests (se houver)\nnão-bloqueante — falha continua"]
-        E2["Documentação/handoff aprovado\nSlot: execution"]
+        E1["Side quests (if any)\nnon-blocking — failure continues"]
+        E2["Approved documentation/handoff\nSlot: execution"]
         E1 --> E2
     end
 
-    subgraph learning["📚 Learning (não-bloqueante)"]
-        L1["response-critic\nAvalia output vs rubrica\ndo task_type"]
-        L2["learning-curator\nPropõe entries para outcomes.jsonl\ne source-hints.yaml\n⚠️ requer aprovação do usuário"]
+    subgraph learning["📚 Learning (non-blocking)"]
+        L1["response-critic\nEvaluates output vs rubric\nfor task_type"]
+        L2["learning-curator\nProposes entries for outcomes.jsonl\nand source-hints.yaml\n⚠️ requires user approval"]
         L1 --> L2
     end
 
-    RESULT(["✅ Resultado da missão\n<base_path>/archived/<id>-report.md"])
+    RESULT(["✅ Mission result\n<base_path>/archived/<id>-report.md"])
     NO_EXEC(["📄 Delivered analysis\n<base_path>/refined/<id>/"])
 
     bootstrap --> preflight --> intake --> discovery --> refinement --> gate
-    gate -- "sim" --> execution --> learning --> RESULT
-    gate -- "não" --> NO_EXEC
+    gate -- "yes" --> execution --> learning --> RESULT
+    gate -- "no" --> NO_EXEC
 
     style bootstrap fill:#1e2a3a,color:#ccc
     style preflight fill:#1e2a3a,color:#ccc
@@ -168,23 +168,23 @@ flowchart TD
 
 ---
 
-## Referência rápida — Slots e Sub-skills
+## Quick Reference — Slots and Sub-skills
 
-| Componente | Tipo | risk_score | Escreve em |
-|------------|------|-----------|-----------|
-| `prompt-intake` | sub-skill interna | `read_only` | — |
-| `context-enrichment` | sub-skill interna | `read_only` | — |
-| `dossier-builder` | sub-skill interna | `read_only` | — |
-| Slot `discovery` (Ranger) | plugável | `write_analysis` | `<base_path>/pending/<mission_id>-analysis.md` |
+| Component | Type | risk_score | Writes to |
+|-----------|------|-----------|----------|
+| `prompt-intake` | internal sub-skill | `read_only` | — |
+| `context-enrichment` | internal sub-skill | `read_only` | — |
+| `dossier-builder` | internal sub-skill | `read_only` | — |
+| Slot `discovery` (Ranger) | pluggable | `write_analysis` | `<base_path>/pending/<mission_id>-analysis.md` |
 | `opportunity_attack` | Archivist routine / ADR evaluation | — | — |
-| Slot `refinement` (Archivist) | plugável | `write_analysis` | `<base_path>/refined/` |
-| Slot `execution` (Sniper) | plugável | `controlled` | `<base_path>/archived/` e documentação `.md` aprovada |
-| `response-critic` | sub-skill interna | `read_only` | — |
-| `learning-curator` | sub-skill interna | `read_only` | `memory/` (com aprovação) |
+| Slot `refinement` (Archivist) | pluggable | `write_analysis` | `<base_path>/refined/` |
+| Slot `execution` (Sniper) | pluggable | `controlled` | `<base_path>/archived/` and approved `.md` documentation |
+| `response-critic` | internal sub-skill | `read_only` | — |
+| `learning-curator` | internal sub-skill | `read_only` | `memory/` (with approval) |
 
 ---
 
-## Diagrama de Estados — Missão
+## State Diagram — Mission
 
 ```mermaid
 stateDiagram-v2
@@ -206,16 +206,16 @@ stateDiagram-v2
 
 ## Stop Conditions
 
-O pipeline para imediatamente em qualquer destas condições:
+The pipeline stops immediately on any of these conditions:
 
-| Código | Causa |
-|--------|-------|
-| `preflight_failed` | Qualquer check de preflight falhou |
-| `slot_provider_not_found` | skill.yaml do provider não encontrado |
-| `slot_risk_mismatch` | risk_score do provider incorreto para o slot |
-| `intake_conflict_unresolved` | Dois aliases mutuamente exclusivos no prompt |
-| `user_denies_execution` | Usuário recusou no approval gate (não é erro) |
-| `discovery_failed` | Slot discovery não produziu artefato |
-| `refinement_failed` | Slot refinement não produziu artefato |
-| `slot_write_type_violation` | Slot tentou escrever tipo de arquivo não-`.md` |
-| `slot_write_scope_violation` | Slot tentou escrever fora do escopo declarado |
+| Code | Cause |
+|------|-------|
+| `preflight_failed` | Any preflight check failed |
+| `slot_provider_not_found` | Provider skill.yaml not found |
+| `slot_risk_mismatch` | Provider risk_score incorrect for the slot |
+| `intake_conflict_unresolved` | Two mutually exclusive aliases in the prompt |
+| `user_denies_execution` | User declined at the approval gate (not an error) |
+| `discovery_failed` | Discovery slot produced no artifact |
+| `refinement_failed` | Refinement slot produced no artifact |
+| `slot_write_type_violation` | Slot attempted to write a non-`.md` file type |
+| `slot_write_scope_violation` | Slot attempted to write outside the declared scope |
