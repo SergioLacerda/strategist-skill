@@ -1,26 +1,29 @@
 module: critical-hit
 type: routing_decision
-version: "0.1"
+version: "0.2"
 
 description: >
-  Decision point between full pipeline (main_mission) and direct route (direct_execute).
-  Evaluated after intake, before any slot provider.
-  When Critical Hit conditions are met, bypasses Ranger and Archivist,
-  replacing the standard approval gate with an inline confirmation gate.
+  Decision point for analysis file management requests. When conditions are met,
+  routes directly to Sniper for a file move without Ranger/Archivist phases.
+  Exclusively handles moving .md analysis artifacts between base_path analysis folders.
 
 trigger_conditions:
   all_of:
-    - task_type: [doc_edit, content_update, readme_update, comment_update]
+    - task_type: analysis_move
+    - source_path_within: ["<base_path>/pending/", "<base_path>/refined/", "<base_path>/archived/"]
+    - target_path_within: ["<base_path>/pending/", "<base_path>/refined/", "<base_path>/archived/"]
+    - file_types: [".md"]
     - risk_level: low
     - file_count: "<= 5"
-    - no_cross_module_deps: true
-    - no_adr_required: true
-    - no_architectural_decision: true
   none_of:
-    # Keywords matched in both English and Portuguese (reserved tokens in internal/i18n/reserved.go)
-    - keywords: [investigate, propose, audit, design, redesign, architecture, refactor,
-                 investigar, propor, auditar, projetar, redesenhar, arquitetura, refatorar]
-    - task_type: [architecture_analysis, refactor, security_audit, new_feature]
+    - source_path_outside_base_path: true
+    - target_path_outside_base_path: true
+
+valid_moves:
+  - "pending/<id>-analysis.md → archived/  # abandon pending analysis"
+  - "refined/<id>/             → archived/  # archive completed refined set"
+  - "archived/<id>-*.md        → pending/   # reopen archived (rare)"
+  - "any .md within pending/, refined/, archived/ between those three folders"
 
 route_assigned: direct_execute
 
@@ -32,20 +35,20 @@ pipeline:
 inline_gate:
   display: |
     Critical Hit detected.
-    Task: <task_description>
-    Files: <file_list>
-    Confirm direct materialization? (yes / no)
+    Move: <source_path>
+        → <target_path>
+    Confirm? (sim / nao)
   stop: true
   wait_for_response: true
   responses:
     yes: proceed to sniper
     sim: proceed to sniper   # reserved Portuguese input token (see internal/i18n/reserved.go)
-    no:  resolve as analysis_delivered (no documentation written)
-    nao: resolve as analysis_delivered (no documentation written)  # reserved Portuguese token
+    no:  resolve as analysis_delivered
+    nao: resolve as analysis_delivered  # reserved Portuguese token
 
 emit:
   on_trigger:
-    format: "[Strategist] phase=critical_hit status=triggered task_type={task_type} file_count={file_count}"
+    format: "[Strategist] phase=critical_hit status=triggered task_type=analysis_move source={source} target={target}"
     level: INFO
   on_gate_approved:
     format: "[Strategist] phase=critical_hit status=gate_approved"
@@ -58,8 +61,7 @@ write_scope: read-only (gate phase only; Sniper write scope applies after approv
 owner: internal (orchestrator)
 
 invariants:
-  - Critical Hit NEVER fires when risk_level != low
-  - Critical Hit NEVER fires for tasks with cross-module dependencies
-  - Critical Hit NEVER fires when any none_of keyword is present in the prompt
-  - If in doubt, route to main_mission — conservatism is the safe default
+  - Critical Hit ONLY fires for task_type: analysis_move
+  - Source and target MUST both be within <base_path> analysis folders (pending/, refined/, archived/)
+  - If any condition is ambiguous, route to main_mission — conservatism is the safe default
   - Approval gate cannot be bypassed even in Critical Hit route

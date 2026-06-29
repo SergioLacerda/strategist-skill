@@ -85,10 +85,22 @@ Every claim in the refined package must be traceable to the analysis artifact.
 
 Write all artifacts to: `<base_path>/refined/<mission_id>/`
 
-Write exactly these files:
+Write exactly these four files:
+- `analysis.md` — promoted directly from `<base_path>/pending/<mission_id>-analysis.md` (copy content verbatim; do not synthesize or summarize)
 - `proposal.md`
 - `design.md`
 - `tasks.md`
+
+### Status Transitions
+
+Before writing any output:
+1. Update the pending artifact frontmatter: set `mission_status: archivist_pending`.
+
+After all four files are written successfully:
+2. Update the promoted `analysis.md` frontmatter: set `mission_status: archivist_done`.
+3. Remove `<base_path>/pending/<mission_id>-analysis.md` (the transient Ranger handoff artifact).
+
+`archivist_done` MUST NOT be set until all four files exist and the pending artifact is removed. Treat promotion as all-or-nothing: if any file fails, do not remove the pending artifact.
 
 Ensure the Sniper Instructions section is clearly delimited so Strategist and Sniper can locate it.
 

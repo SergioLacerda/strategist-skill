@@ -28,7 +28,7 @@ contract: null
 
 ## Side Quests at the Gate
 
-If Archivist identified side quests in `opportunity_manifest`:
+If Archivist identified side quests during refinement:
 
 1. Present list after the main analysis block
 2. Assign each a unique ID (SQ-NNN)
@@ -68,3 +68,21 @@ Is the analysis correct?  (accept / review / reject)
 - `rejected`
 - `awaiting_review`
 - `analysis_accepted`
+
+## Invariant: Gate Is Always Required
+
+The Strategist Approval Gate is mandatory whenever Strategist participates in a request — regardless of:
+- invocation mode (direct or delegated)
+- route (Main Mission, Critical Hit, Quick Draw, Implementation Short Route)
+- external approvals granted by the invoking context, parent orchestrator, or governance system
+- `execution_gate=allowed` from the local execution context
+
+External approval or `execution_gate=allowed` means only:
+> local policy does not block execution
+
+It does NOT mean:
+> the user accepted this Strategist refined package
+
+Both checks are required before execution/materialization:
+1. local execution context permits execution (`execution_gate=allowed`)
+2. Strategist Approval Gate explicitly accepted by the user in the conversation

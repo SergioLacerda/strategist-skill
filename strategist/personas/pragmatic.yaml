@@ -93,8 +93,7 @@ content_by_lang:
       add idea? (yes / no)
     quick_draw_success: >
       success: idea added at {destination_path}
-      total ideas: {total_ideas}
-      similar ideas (same theme): {similar_ideas}
+      ideas added: {ideas_added}
 
     treasure_chest_found: >
       Chest: [{chest_id}] — {description}

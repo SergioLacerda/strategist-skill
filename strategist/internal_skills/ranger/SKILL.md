@@ -29,7 +29,7 @@ Required sections (all must be non-empty):
 3. `uncertainties` — what you cannot determine from available evidence
 4. `affected_scope` — files, modules, systems involved
 5. `side_quests` — items detected outside declared mission scope (empty if none)
-6. `opportunity_manifest` — treasure chests and side quests found during exploration
+6. `scope_observations` — treasure chests and side quests surfaced during exploration
 7. `recommended_refinement_focus` — what Archivist should prioritize
 
 ## Pre-Creation Checklist
@@ -45,13 +45,13 @@ Before writing the artifact:
 | Exists + status `gate_approval` | Skip to Sniper claim |
 | Exists + status `execution_done` | Emit warning, do not reprocess |
 
-## Opportunity Attack
+## Scope Observations
 
-Run opportunity_attack as a mandatory routine:
+Surface cross-phase observations during exploration:
 
 - Detect: treasure chests not declared in active.yaml but relevant to mission
 - Detect: side quests — valid tasks outside the current mission scope
-- Record in `side_quests` and `opportunity_manifest` sections
+- Record in `side_quests` and `scope_observations` sections
 - **Do NOT execute or expand scope** — record only
 - Surface findings in your response before finishing
 

@@ -1,39 +1,44 @@
 ---
 phase: adr
-slot: null
+slot: execution
 requires_approval: true
-contract: null
+contract: execution_task
 ---
 # Strategist — Contract 07: ADR
 
 ## Purpose
 
-Capture architectural decisions discovered during the mission.
+Create an ADR (Architectural Decision Record) when the refined work contains decisions worth documenting. Evaluated by Archivist during refinement; approved and executed at the main gate.
 
 ## Inputs
 
-- mission result
-- refined package
-- `active.language.docs`
+- refined package under `<base_path>/refined/<mission_id>/`
+- gate approval of the `[OA-ADR-{mission_id}]` side quest
 
 ## Outputs
 
-- optional ADR draft
-- optional committed ADR artifact at `<base_path>/archived/<mission_id>-adr.md`
+- optional ADR artifact at `<base_path>/archived/<mission_id>-adr.md`
 
 ## Required Behavior
 
-- evaluate activation criteria after `documentation_applied` or `analysis_delivered`
-- use two gates:
-  - gate 1: generate draft?
-  - gate 2: approve content?
-- write ADR in `active.language.docs`
+- **Archivist** evaluates ADR necessity after writing all four refined artifacts, using the criteria in `machine/opportunity-attack.yaml`
+- If criteria met → Archivist surfaces `[OA-ADR-{mission_id}]` at the approval gate as a side quest
+- If user approves at gate → **Sniper** creates the ADR as an execution task
+- If user declines at gate → ADR is not created; outcome logged
+
+## ADR Activation Criteria (evaluated by Archivist)
+
+- `new_pattern`: new interface, contract, schema, or abstraction introduced
+- `breaking_change`: field removed, signature changed, behavior changed
+- `documented_tradeoff`: tasks.md/design.md describe a choice with discarded alternatives
+- `new_external_dependency`: library, service, or protocol added
 
 ## Language Mapping
 
+- Generate ADR headings and body content using the language selected by `active.language.docs`.
 - `pt-BR` → `Contexto`, `Decisão`, `Consequências`
 - `en` → `Context`, `Decision`, `Consequences`
 
-## Canonical File
+## Canonical Machine Contract
 
-The ADR contract is this file. References to `adr.yaml` are obsolete drift.
+`contracts/machine/adr.yaml`

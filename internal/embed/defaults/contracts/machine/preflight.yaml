@@ -40,6 +40,19 @@ contract:
     - code: slot_risk_mismatch
       trigger: Provider risk_score does not match required contract for slot
       behavior: Emit blocked event with reason=slot_risk_mismatch slot=<label>, stop mission
+    - code: delegation_unavailable
+      trigger: >
+        delegation_capability_check determines the current runtime environment cannot invoke
+        the declared slot provider as an isolated delegated agent.
+        Note: strategist check passing does NOT satisfy this check.
+        strategist check verifies the runtime is installed and configured.
+        delegation_capability_check verifies the current environment can actually call the provider.
+      behavior: >
+        Emit:
+          "[Strategist] phase=preflight status=blocked reason=delegation_unavailable
+           slot=<slot_name> provider=<provider_id>"
+        Stop mission. Do not begin any phase work.
+        Hint: use a runtime with slot delegation support, or explicitly leave Strategist mode for a separate fallback task.
     - code: compiled_artifact_corrupt
       trigger: .compiled/.domain.gz fails jq parse
       behavior: Fall back to standard path (load YAML directly), emit preflight=standard_path

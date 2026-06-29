@@ -9,8 +9,8 @@ inherits_role: ranger
 
 description: >
   Discovery skill for the Strategist pipeline. Explores the mission space,
-  separates facts from ambiguity, runs opportunity attack, and writes the
-  canonical analysis artifact. Operates within the write_analysis boundary.
+  separates facts from ambiguity, and writes the canonical analysis artifact.
+  Operates within the write_analysis boundary.
 
 input:
   user_prompt: string
@@ -36,15 +36,12 @@ required_artifact_sections:
   - uncertainties
   - affected_scope
   - side_quests
-  - opportunity_manifest
   - recommended_refinement_focus
 
 behavior:
   - Check mission_status in artifact frontmatter before writing. See pre-creation checklist in 03-discovery.md.
   - Consult treasure chests scoped to discovery before generating content.
   - Separate facts, hypotheses, and ambiguities explicitly.
-  - Run opportunity_attack: detect side_quests and unscoped treasure_chests, include in artifact.
-  - Surface opportunity_attack findings in the response to the user before finishing.
   - Write artifact to <base_path>/pending/<mission_id>-analysis.md.
   - Update frontmatter mission_status from ranger_pending to ranger_done on completion.
 
@@ -54,7 +51,6 @@ forbidden_behaviors:
   - pass_raw_context_to_archivist
   - hide_ambiguities
   - write_outside_pending_dir
-  - omit_opportunity_attack
 
 failure_modes:
   - mission_in_progress: artifact exists with active status. Emit blocked reason=mission_in_progress. STOP.

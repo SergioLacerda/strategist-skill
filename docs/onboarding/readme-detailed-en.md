@@ -1,5 +1,12 @@
 # Strategist Skill — Detailed Technical Documentation
 
+> Current behavior note (2026-06-26): Strategist now operates as a
+> documentation, diagram, and analysis orchestrator. Sniper remains the executor
+> in the lore, but execution means approved documentation/handoff materialization,
+> not source-code implementation. This detailed onboarding file is being
+> consolidated; when it conflicts with `docs/mental-model.md`,
+> `docs/configuration.md`, or `.strategist/agent-protocol.md`, those sources win.
+
 ## Cognitive Runtime, Self-Learning and AI Agent Convergence
 
 <p align="center">
@@ -43,14 +50,15 @@ This detailed README is structured for two audiences:
 
 ## Overview
 
-**Strategist** is an autonomous skill for orchestrating feature implementation missions for AI agents.
+**Strategist** is an autonomous skill for orchestrating documentation, diagram,
+and analysis missions for AI agents.
 
 It coordinates multi-phase work through three pluggable roles (slots):
 
 ```
 Ranger (discovery) -> Role responsible for exploring the problem scope from the initial prompt
 Archivist (refinement) -> Role responsible for refining the problem scope and creating an execution plan
-Sniper (execution) -> Role responsible for executing the execution plan
+Sniper (execution) -> Role responsible for materializing the approved documentation/handoff plan
 ```
 Each role has a defined function, but the interesting part is that you can specify which skill fulfills that role.
 Strategist orchestrates the flow, validates contracts, emits progress events, and enforces the approval gate.
@@ -100,7 +108,7 @@ strategist/
 │
 ├── roles/
 │   ├── default.yaml                 ← default slot bindings
-│   ├── mission.yaml                 ← bindings for SDD (Sniper = _injected_by_sdd)
+│   ├── mission.yaml                 ← mission-specific bindings
 │   └── spec-driven.yaml             ← bindings for spec-driven flow
 │
 ├── schemas/
@@ -141,7 +149,7 @@ strategist/
 ├── todo/                            ← missions awaiting execution
 ├── pending/                         ← discovery artifacts in progress
 ├── refined/                         ← reviewed plans ready for approval
-├── done/                            ← completed execution reports
+├── archived/                        ← completed execution reports
 └── .strategist/                     ← internal domain (copied from templates/domain/)
     ├── index.yaml                   ← controls selective file loading
     ├── identity/
@@ -172,29 +180,22 @@ Complete pipeline: Ranger → Archivist → approval gate → Sniper
                          │  "What needs to be done?   │
                          │   What is the current      │
                          │   state?"                  │
-                         │  → pending/<id>-discovery  │
+                         │  → pending/<id>-analysis   │
                          └─────────────┬──────────────┘
                                        │
-                         ┌─────────────▼──────────────┐
-                         │    Opportunist Attack       │
-                         │  (Opportunist Attack)      │
-                         │  Detects stale workspace:  │
-                         │  todo/ pending/ refined/   │
-                         │  → side quest manifest     │
-                         │    (context for Archivist) │
-                         └─────────────┬──────────────┘
-                                       │ manifest (0..N items)
                          ┌─────────────▼──────────────┐
                          │         ARCHIVIST          │
                          │        (refinement)        │
                          │  "How to execute? What     │
                          │   decisions to make?"      │
-                         │  input: side quest         │
-                         │    manifest (context)      │
                          │  → refined/<id>/           │
+                         │    analysis.md             │
                          │    proposal.md             │
                          │    design.md               │
                          │    tasks.md                │
+                         │  → Opportunity Attack      │
+                         │    (ADR evaluation after   │
+                         │     4 artifacts written)   │
                          └─────────────┬──────────────┘
                                        │
                     ┌──────────────────▼──────────────────┐
@@ -202,7 +203,7 @@ Complete pipeline: Ranger → Archivist → approval gate → Sniper
                     │   MANDATORY STOP (if tasks.md is    │
                     │   not empty).                       │
                     │   Also covers pending side quests   │
-                    │   from the opportunist attack.       │
+                    │   consolidated by the Archivist.    │
                     └──────────────────┬──────────────────┘
                               approved │
                          ┌─────────────▼──────────────┐
@@ -211,7 +212,7 @@ Complete pipeline: Ranger → Archivist → approval gate → Sniper
                          │  1. Side quests (if any)   │
                          │     mv/promotes artifacts  │
                          │  2. Main plan              │
-                         │  → done/<id>-report.md     │
+                         │  → archived/<id>-report.md │
                          └─────────────┬──────────────┘
                                        │
                          ┌─────────────▼──────────────┐
@@ -225,26 +226,27 @@ Complete pipeline: Ranger → Archivist → approval gate → Sniper
 
 #### Side Quests — Detail
 
-The opportunist attack detects artifacts in an inconsistent state and builds a manifest for Archivist to incorporate into the proposal.
+Side quests are cross-phase scope observations. Any slot (Ranger, Archivist, Sniper) may detect them during their work. Archivist consolidates pre-execution side quest findings before presenting the approval gate. Sniper reports newly discovered side quests after execution.
 
+Side quests surface at the approval gate alongside the main plan. Each workspace operation requires approval at the **main gate** — no execution occurs outside this step.
+
+Examples of side quest patterns:
 ```
               todo/spec.md ──────────► already implemented in git?
                                               │ yes
                                               ▼
-                                       move → done/
+                                       propose → move → archived/
 
            pending/discovery.md ──────► has a plan in refined/?
                                               │ yes
                                               ▼
-                                       promote → move pending → done
+                                       propose → promote → archived
 
-            refined/plan/ ────────────► has a report in done/?
+            refined/plan/ ────────────► has a report in archived/?
                                               │ yes
                                               ▼
-                                       promote → move refined → done
+                                       propose → promote → archived
 ```
-
-Each workspace operation requires approval at the **main gate** — no execution occurs outside this step.
 
 #### Quick Draw — Detail
 
@@ -252,9 +254,9 @@ Each workspace operation requires approval at the **main gate** — no execution
 
 - **Input:** explicit quick draw / rapid TODO capture prompt.
 - **Ranger:** only normalizes the sentence into `idea: ...` without expanding scope.
-- **Archivist:** assigns theme (`architecture`, `security`, `analysis`, `general`) and destination `.analysis/todo/<theme>.md`; computes total and similar ideas.
+- **Archivist:** assigns theme (`architecture`, `security`, `analysis`, `general`) and destination `.analysis/todo/<theme>.md`; computes `ideas_added`.
 - **Gate:** approval at the main mission gate.
-- **Sniper:** appends to the themed file and returns `total ideas` + `similar ideas`.
+- **Sniper:** appends to the themed file; `todo/` is write-only from the skill perspective; returns `ideas_added`.
 
 Without main-gate approval, nothing is written.
 
@@ -295,7 +297,7 @@ INVOCATION
   │    2c. Resolves slot providers (roles/<config>.yaml)         │
   │        skill_root → .claude/skills → registry                │
   │    2d. Validates risk contracts:                             │
-  │        Ranger    → write_pending                             │
+  │        Ranger    → write_analysis                            │
   │        Archivist → write_analysis                            │
   │        Sniper    → controlled                                │
   │    emit: phase=preflight status=done                         │
@@ -316,23 +318,18 @@ INVOCATION
 MISSION PHASES
 ─────────────────────────────────────────────────────────────────────
   ┌──────────────────────────▼───────────────────────────────────┐
-  │ 5a. RANGER (discovery slot)         contract: write_pending  │
-  │     → pending/<mission_id>-discovery.md                      │
+  │ 5a. RANGER (discovery slot)         contract: write_analysis │
+  │     → pending/<mission_id>-analysis.md                       │
   │     emit: phase=<ranger_label> status=done                   │
   └──────────────────────────┬───────────────────────────────────┘
                              │
   ┌──────────────────────────▼───────────────────────────────────┐
-  │ 5b. Opportunist Attack  (internal Strategist — not a slot)    │
-  │     scans: todo/ pending/ refined/                           │
-  │     produces: side quest manifest (context for Archivist)    │
-  │     emit: phase=opportunity_attack status=done side_quests=N  │
-  └──────────────────────────┬───────────────────────────────────┘
-                             │ manifest (passed to Archivist as context)
-  ┌──────────────────────────▼───────────────────────────────────┐
-  │ 5c. ARCHIVIST (refinement slot)   contract: write_analysis   │
-  │     input: discovery artifact + side quest manifest (ctx)    │
+  │ 5b. ARCHIVIST (refinement slot)   contract: write_analysis   │
+  │     input: discovery artifact + any side quests detected     │
   │     → refined/<mission_id>/                                  │
-  │         proposal.md  design.md  tasks.md                     │
+  │         analysis.md  proposal.md  design.md  tasks.md        │
+  │     → Opportunity Attack (ADR evaluation — internal to       │
+  │         Archivist, after all 4 artifacts are written)        │
   │     emit: phase=<archivist_label> status=done                │
   └──────────────────────────┬───────────────────────────────────┘
                              │
@@ -341,21 +338,22 @@ GATE AND EXECUTION
   ┌──────────────────────────▼───────────────────────────────────┐
   │ 6. Approval Gate                                             │
   │    reads tasks.md:                                           │
-  │    • empty → automatic plan_only (no gate)                   │
+  │    • empty → analysis_delivered (no materialization)         │
   │    • internal → normal gate                                  │
   │    • external → gate + external scope warning                │
-  │    Also covers pending side quests from the opportunist attack│
+  │    Also covers pending side quests consolidated by Archivist  │
   │    STOP — waits for explicit response                        │
   └────────────┬──────────────────────────┬──────────────────────┘
   no/decline   │                          │ yes/approve
-  plan_only    │                          │
+  analysis     │                          │
+  delivered    │                          │
                │         ┌───────────────▼───────────────────┐
                │         │ 7. SNIPER (execution slot)        │
                │         │    contract: controlled            │
                │         │    1. Side quests (if any):        │
                │         │       mv/promotes stale artifacts  │
                │         │    2. Main plan (tasks.md)         │
-               │         │    → done/<mission_id>-report.md   │
+               │         │    → archived/<mission_id>-report.md │
                │         │    emit: phase=<sniper_label> done  │
                │         └───────────────┬───────────────────┘
                │                         │
@@ -369,7 +367,7 @@ GATE AND EXECUTION
                              │
   ┌──────────────────────────▼───────────────────────────────────┐
   │ 9. Mission Result                                            │
-  │    status: completed | plan_only | blocked                   │
+  │    status: execution_done | analysis_delivered | blocked     │
   │    artifacts: discovery, side_quest_report?,                 │
   │               refined_plan, execution_report?                │
   └──────────────────────────────────────────────────────────────┘
@@ -391,15 +389,14 @@ Intake (extracts mission_contract)
 Context Enrichment (queries knowledge index → assembles dossier)
   ↓
 Ranger / discovery (discovery slot)
-  ↓
-Opportunist Attack (internal — no slot)
-  → produces side quest manifest (0..N items)
+  → may detect side quests
   ↓
 Archivist / refinement (refinement slot)
-  input: discovery artifact + side quest manifest (context)
+  → analysis.md, proposal.md, design.md, tasks.md
+  → Opportunity Attack (ADR evaluation — internal to Archivist, after 4 artifacts)
   ↓
 Approval Gate ← MANDATORY STOP (if tasks.md is not empty)
-  also covers pending side quests from the opportunist attack
+  also covers pending side quests consolidated by Archivist
   ↓ (only with explicit approval)
 Sniper / execution (execution slot)
   1. Approved side quests (move/promote stale artifacts)
@@ -420,11 +417,11 @@ When invoked, the agent:
 2. Resolves the persona (`personas/<mode>.yaml`) and applies `tone_directive` and `phase_labels`.
 3. If `--mode` was passed, overrides the mode for this mission only.
 4. If `--roles` was passed, overrides `roles_config` for this mission only.
-5. If `sdd_injection` is present and the plugin is active in `.sdd/plugins/registry.yaml`:
-   - Overrides the Sniper slot with `sdd_injection.execution_provider`
-   - Overrides `base_path`
-   - Adds `sdd_injection.knowledge_paths` to the knowledge index sources (without replacing)
-   - Loads `sdd_injection.governance_context` as additional read-only context
+5. If `governance_injection` is present:
+   - Reports the governance gate as policy context
+   - May provide `base_path` and knowledge paths
+   - Does not replace the persona approval gate
+   - Does not override the pipeline sequence or slot delegation
 
 ---
 
@@ -447,12 +444,11 @@ If found, loads only the files listed under `load_always`. No file outside the i
 For each slot (discovery, refinement, execution), resolves the provider's `skill.yaml` from:
 `<skill_root>/skills/<provider>/skill.yaml` — single canonical path, no fallback chain.
 
-If the provider is `_injected_by_sdd`, resolves from `sdd_injection.execution_provider`.
 If no path resolves: emits a blocked event and stops.
 
 **2d. Risk contract validation**
 
-- Ranger: `risk_score` MUST be `write_pending`
+- Ranger: `risk_score` MUST be `write_analysis`
 - Archivist: `risk_score` MUST be `write_analysis`
 - Sniper: `risk_score` MUST be `controlled`
 - Mismatch → blocked event with `reason=slot_risk_mismatch`
@@ -473,7 +469,7 @@ risk_level: low | medium | high
 constraints:
   delivery_strategy: incremental | total
   legacy_compatibility: required | not_required
-  execution_intent: plan_only | plan_then_execute
+  execution_intent: review_only | execute
 ```
 
 Constraint conflicts → stops and asks the user for clarification.
@@ -511,7 +507,7 @@ Invokes the discovery slot provider with:
 - `mission_contract.planning_rules`
 - Context enrichment dossier
 
-Artifact produced: `<base_path>/pending/<mission_id>-discovery.md`
+Artifact produced: `<base_path>/pending/<mission_id>-analysis.md`
 
 ```
 [Strategist] phase=<ranger_label> status=done artifact=<path>
@@ -519,25 +515,7 @@ Artifact produced: `<base_path>/pending/<mission_id>-discovery.md`
 
 Failure → blocked event with `reason=ranger_failed`. Does not advance to Archivist.
 
-#### 5b. Opportunist Attack (internal — no slot)
-
-After the Ranger completes, Strategist performs a deterministic scan of `<base_path>/`.
-**Does not delegate to a slot provider** — executes internally.
-
-| Directory | Check | Side quest type |
-|-----------|-------|----------------|
-| `todo/` | Does the spec have a corresponding commit in git? | `move_to_done` |
-| `pending/` | Does the spec have a corresponding plan in `refined/`? | `promote` |
-| `refined/` | Does the plan have a report in `done/`? | `promote` |
-
-Produces a **side quest manifest** with the detected items.
-
-- If manifest is empty: advances directly to 5d (Archivist).
-- If manifest is non-empty: passes the manifest to Archivist as context and execution proposal.
-
-There is no separate gate before Archivist. Approval happens at the main mission gate.
-
-#### 5c. Archivist (refinement slot)
+#### 5b. Archivist (refinement slot)
 
 ```
 [Strategist] phase=<archivist_label> status=running skill=<provider> checklist=1/3
@@ -545,17 +523,20 @@ There is no separate gate before Archivist. Approval happens at the main mission
 
 Invokes the refinement slot provider with:
 - Path to the discovery artifact
-- Side quest manifest (if present) as context — the listed items inform the analysis; Archivist does not treat them as pending work for the main mission
+- Any side quests detected by Ranger
 - `mission_contract.planning_rules`
 - Dossier
 
-Artifact produced: `<base_path>/refined/<mission_id>/` (subdirectory with three files)
-- `proposal.md` — what and why (fed by the discovery artifact)
+Artifact produced: `<base_path>/refined/<mission_id>/` (subdirectory with four files)
+- `analysis.md` — structured analysis of the discovery artifact
+- `proposal.md` — what and why
 - `design.md` — how (architecture, affected components, decisions)
-- `tasks.md` — numbered implementation steps (Sniper input)
+- `tasks.md` — numbered documentation/materialization steps (Sniper input)
+
+After writing all four artifacts, Archivist runs **Opportunity Attack** (ADR evaluation): assesses whether the refined artifacts justify opening an ADR. This is internal to the Archivist — not delegated to a slot.
 
 Rules:
-- Archivist never produces a standalone `.md` in `refined/` — always the subdirectory with the three files
+- Archivist never produces a standalone `.md` in `refined/` — always the subdirectory with the four files
 - If `tasks.md` is empty or absent after Archivist completes, Sniper is not invoked
 
 ```
@@ -571,16 +552,16 @@ Failure → blocked event. Does not present the approval gate.
 After the Archivist completes, Strategist reads `tasks.md` before presenting the gate:
 
 **If `tasks.md` is empty or absent:**
-  emits `[Strategist] phase=approval_gate status=plan_only`, returns result `status: plan_only`.
+  emits `[Strategist] phase=approval_gate status=analysis_delivered`, returns result `status: analysis_delivered`.
   The gate **is not presented** — the mission is complete.
 
 **If `tasks.md` contains tasks only within `<base_path>/`:**
   presents the gate once with the visible plan.
 
-**If `tasks.md` contains tasks that write outside `<base_path>/` (code, git, config, system):**
-  presents the gate with an explicit external scope warning.
+**If `tasks.md` contains tasks that mutate source code, git state, system config, or non-documentation files:**
+  blocks the mission and returns to Archivist for a documentation-only refinement.
 
-The gate also covers pending side quests from the opportunist attack — upon approval, the Sniper first executes side quests and then the main plan.
+The gate also covers pending side quests consolidated by the Archivist — upon approval, the Sniper first executes side quests and then the main plan.
 
 Presents to the user (active persona template):
 
@@ -592,7 +573,7 @@ Authorize Sniper deployment? (yes / no / review)
 
 Responses:
 - **yes / approve / authorize** → advances to Sniper
-- **no / decline / stop** → emits `[Strategist] phase=approval_gate status=plan_only`, returns result `status: plan_only` with paths to discovery and refined plan artifacts
+- **no / decline / stop** → emits `[Strategist] phase=approval_gate status=analysis_delivered`, returns result `status: analysis_delivered` with paths to discovery and refined plan artifacts
 - **review** → displays plan content, re-prompts
 
 Invoking Sniper without explicit approval is a **forbidden behavior**.
@@ -606,7 +587,7 @@ Invoking Sniper without explicit approval is a **forbidden behavior**.
 ```
 
 Invokes the execution slot provider with:
-- Approved side quest manifest (if any) — executes workspace operations first
+- Approved side quest items (if any) — items surfaced during discovery or refinement and approved at the gate; Sniper executes these alongside primary targets
 - Path to the approved refined plan
 - `mission_contract.planning_rules`
 
@@ -616,7 +597,7 @@ Invokes the execution slot provider with:
 
 Side quest failure is **non-blocking** — records the failure, continues with the main plan.
 
-Artifact produced: `<base_path>/done/<mission_id>-report.md`
+Artifact produced: `<base_path>/archived/<mission_id>-report.md`
 
 ```
 [Strategist] phase=<sniper_label> status=done artifact=<path>
@@ -626,7 +607,7 @@ Artifact produced: `<base_path>/done/<mission_id>-report.md`
 
 ### 8. Learning Phase (non-blocking)
 
-After the mission completes (status `completed` or `plan_only`):
+After the mission completes (status `execution_done` or `analysis_delivered`):
 
 1. Invokes `response-critic` with slot outputs and the `task_type` rubric
 2. Invokes `learning-curator` with the critic evaluation, mission result, and `task_type`
@@ -646,7 +627,7 @@ Both require explicit approval (can be approved/rejected individually).
 
 ```yaml
 mission_id: <id>
-status: completed | plan_only | blocked
+status: execution_done | analysis_delivered | blocked
 artifacts:
   discovery: <path>           # present if Ranger executed
   side_quest_report: inline   # present if side quests executed (inline block, not a file)
@@ -742,17 +723,17 @@ Each `roles/<config>.yaml` file declares the providers for the three slots:
 ### roles/default.yaml (standalone)
 
 ```yaml
-discovery: brainstorm
+discovery: brainstorming
 refinement: openspec-explore
-execution: sdd-ask
+execution: sniper
 ```
 
-### roles/mission.yaml (SDD integration)
+### roles/mission.yaml (mission-specific)
 
 ```yaml
-discovery: diagnose
+discovery: brainstorming
 refinement: archivist
-execution: _injected_by_sdd   # resolved from sdd_injection.execution_provider at runtime
+execution: sniper
 ```
 
 Per-mission override: `--roles mission`
@@ -761,23 +742,24 @@ Per-mission override: `--roles mission`
 
 ## SDD Integration (Optional)
 
-Strategist can be registered as a plugin in the SDD Harness via `.sdd/plugins/registry.yaml`.
+Strategist can receive governance context from SDD or another governance adapter.
 
-When active, SDD injects into `active.yaml`:
+When active, a governance adapter may inject policy context:
 
 ```yaml
-sdd_injection:
-  execution_provider: sdd-ask       # overrides Sniper slot
+governance_injection:
+  provider: sdd
+  execution_gate: allowed
   base_path: .sdd/analysis          # overrides base_path
   knowledge_paths:
     - .sdd/docs                     # added to knowledge index
-  governance_context: .sdd/agent-instructions.md
 ```
 
 **Rules:**
-- Execution slot is **always** overridden by `sdd_injection.execution_provider`
+- Governance does not override the Sniper slot
+- Governance does not replace the explicit Approval Gate
 - `knowledge_paths` are **added** to sources, not replaced
-- `governance_context` is read-only and does not override `protocol.md`
+- governance context is read-only and does not override `protocol.md`
 
 Template for use with SDD: `templates/epic-sdd.yaml`
 
@@ -788,10 +770,10 @@ Template for use with SDD: `templates/epic-sdd.yaml`
 | Code | Condition | Resolution |
 |------|-----------|------------|
 | `slot_provider_not_found` | Provider's skill.yaml not found | Check id in roles config and skill root path |
-| `slot_risk_mismatch` | Ranger ≠ `write_pending`, Archivist ≠ `write_analysis`, or Sniper ≠ `controlled` | Replace provider |
+| `slot_risk_mismatch` | Ranger ≠ `write_analysis`, Archivist ≠ `write_analysis`, or Sniper ≠ `controlled` | Replace provider |
 | `intake_conflict_unresolved` | Two mutually exclusive constraint aliases in the prompt | User must clarify |
 | `preflight_failed` | Any preflight check failed | See emitted reason code |
-| `user_denies_execution` | User declined at the approval gate | Returns `plan_only` (not an error) |
+| `user_denies_execution` | User declined at the approval gate | Returns `analysis_delivered` (not an error) |
 | `ranger_failed` | Ranger did not produce an artifact | Does not advance to Archivist |
 | `refinement_failed` | Archivist did not produce an artifact | Does not present the approval gate |
 | `side_quest_sniper_failed` | Sniper failed on side quests | Non-blocking — continues with the main plan |
@@ -816,7 +798,7 @@ The following behaviors are **never allowed**:
 
 7. **Skip preflight** — preflight runs before intake, on every invocation, including re-invocations with the same config.
 
-8. **Delegate opportunist attack to a slot provider** — the scan is a deterministic internal phase of Strategist. Ranger, Archivist, and Sniper do not run the scan.
+8. **Delegate Opportunity Attack to a slot provider** — ADR evaluation is internal to the Archivist after writing the four refined artifacts. It is not a separate Strategist phase and is not delegated to Ranger or Sniper.
 
 9. **Ask the Sniper to create documents, specs, or plans** — creation of analysis artifacts is the Archivist's responsibility (contract: `write_analysis`). Sniper executes; it never writes analyses.
 
@@ -837,7 +819,7 @@ When `drift-patterns.yaml` is loaded, the agent checks patterns before each phas
 | `sniper_provider_override` | Resolved Sniper from a source other than roles config or sdd_injection | Stop. Re-resolve from declared source. |
 | `side_quest_approval_bypass` | About to move files from opportunity_attack without passing through the main gate | Stop. Side quests only execute after explicit approval at the main gate. |
 | `route_plan_creation_to_sniper` | About to ask Sniper to create a document, spec, or plan | Stop. Artifact creation is Archivist's work. Return to phase 5c. |
-| `opportunity_attack_as_slot` | About to delegate the opportunist attack to Ranger or another slot | Stop. Execute the scan directly as Strategist (internal phase). |
+| `opportunity_attack_as_slot` | About to delegate Opportunity Attack (ADR evaluation) to Ranger or Sniper | Stop. Opportunity Attack is internal to Archivist — run it after the four refined artifacts are written. |
 
 ---
 
@@ -892,6 +874,6 @@ Emitting a `running` event and advancing to the next phase without emitting `don
 
 ---
 
-For complete agent instructions, see [`strategist/SKILL.md`](../../strategist/SKILL.md).
-For mandatory routing rules, see [`strategist/protocol.md`](../../strategist/protocol.md).
-For the complete skill contract, see [`strategist/skill.yaml`](../../strategist/skill.yaml).
+For complete agent instructions, see `.strategist/SKILL.md`.
+For mandatory routing rules, see `.strategist/protocol.md`.
+For the complete skill contract, see `.strategist/skill.yaml`.

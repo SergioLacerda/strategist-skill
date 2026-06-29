@@ -46,7 +46,7 @@ event_examples:
   - "[Strategist] phase=execution status=done artifact=.analysis/archived/abc123-report.md"
   - "[Strategist] event=treasure_chest_found chest=my-chest phase=discovery"
   - "[Strategist] event=side_quest_detected type=quick_draw phase=intake"
-  - "[Strategist] event=side_quest_detected type=adr_opportunity phase=post_execution"
+  - "[Strategist] event=scope_observation type=side_quest phase=refinement"
   - "[Strategist] phase=execution task=2 status=running"
   - "[Strategist] phase=execution task=2 status=done"
 

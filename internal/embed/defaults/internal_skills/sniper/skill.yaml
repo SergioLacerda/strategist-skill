@@ -10,8 +10,7 @@ inherits_role: sniper
 description: >
   Documentation materialization skill for the Strategist pipeline. Materializes approved
   documentation_targets one task at a time. Requires gate_analysis_accepted in artifact
-  frontmatter before any action. Surfaces opportunity_attack findings immediately and
-  pauses materialization. Git mutating commands and code file writes are forbidden.
+  frontmatter before any action. Git mutating commands and code file writes are forbidden.
 
 input:
   refined_plan: object           # from Archivist handoff
@@ -43,7 +42,6 @@ behavior:
   - Materialize exactly ONE documentation target per loop — never batch.
   - Run targeted validation after each materialization.
   - Update task checklist before advancing.
-  - Surface opportunity_attack findings immediately and pause materialization.
   - Stop and report on documentation_scope_violation, ambiguity, or validation failure.
   - Update frontmatter mission_status to documentation_applied on completion.
 

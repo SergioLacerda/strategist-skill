@@ -26,33 +26,33 @@ Feature: Forbidden Behavior Detection and Self-Correction
     And presents the approval gate prompt
     And waits for user response before proceeding
 
-  Scenario: skip_opportunity_attack_routine — role completes without running the routine
-    Given the Ranger has completed discovery
-    When the Ranger response does not include an Opportunity Attack section
+  Scenario: skip_opportunity_attack_routine — Archivist skips ADR evaluation after refinement
+    Given the Archivist has written all four refined artifacts
+    When the Archivist response does not include an opportunity_attack ADR evaluation
     Then Strategist detects drift pattern "skip_opportunity_attack_routine"
-    And surfaces the missing check to the user
-    And requests Ranger to re-run before passing to Archivist
+    And surfaces the missing evaluation to the user
+    And requests Archivist to re-run opportunity_attack before presenting the approval gate
 
-  Scenario: suppress_opportunity_attack_feedback — findings hidden from user
-    Given Ranger ran opportunity_attack and detected side quests
-    When Strategist advances to Archivist without showing opportunity_attack findings to the user
+  Scenario: suppress_opportunity_attack_feedback — ADR side quest hidden from gate
+    Given Archivist ran opportunity_attack and ADR criteria were met
+    When the approval gate is presented without the ADR side quest in the opportunity_manifest
     Then Strategist detects drift pattern "suppress_opportunity_attack_feedback"
-    And stops the handoff
-    And presents the opportunity_attack findings to the user
+    And stops gate presentation
+    And ensures the ADR side quest is surfaced in the opportunity_manifest at gate
 
-  Scenario: hunter_decides_side_quest_strategy — Hunter sets side quest strategy
-    Given Hunter detected a side quest during execution
-    When Hunter sets side_quest.strategy without returning to Archivist
-    Then Strategist detects drift pattern "hunter_decides_side_quest_strategy"
-    And voids the Hunter decision
+  Scenario: sniper_decides_side_quest_strategy — Sniper sets side quest strategy
+    Given Sniper detected a side quest during execution
+    When Sniper sets side_quest.strategy without returning to Archivist
+    Then Strategist detects drift pattern "sniper_decides_side_quest_strategy"
+    And voids the Sniper decision
     And routes the side quest to Archivist for strategy decision
 
-  Scenario: single_target_sweep_bypass — skipping sweeps due to narrow scope
-    Given the mission request targets a single file refinement
-    When Strategist skips opportunity_attack routine because of narrow focus
+  Scenario: single_target_sweep_bypass — skipping OA evaluation due to narrow scope
+    Given the mission targets a single artifact refinement
+    When Archivist skips opportunity_attack evaluation because of narrow focus
     Then Strategist detects drift pattern "single_target_sweep_bypass"
     And emits blocked event reason=opportunity_sweep_failed
-    And does not proceed to next phase until sweep invariants are satisfied
+    And does not proceed to approval gate until opportunity_attack evaluation is complete
 
   Scenario: scope_expansion — addressing work outside the mission
     Given an active mission with a specific task_type

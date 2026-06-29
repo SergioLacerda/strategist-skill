@@ -20,7 +20,7 @@ contract:
       missing: <n>
       phases_run: <comma-separated list of phases that ran>
       phases_skipped: <list or none>
-      opportunity_attack: ranger=<N> archivist=<N> sniper=<N|triggered|n/a>
+      opportunity_attack: archivist=<N|n/a>
       treasure_chests_consulted: yes | no | none_configured
       gate_presented: yes | no | n/a
 

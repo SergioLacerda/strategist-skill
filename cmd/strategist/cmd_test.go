@@ -50,6 +50,22 @@ func captureStdout(t *testing.T, fn func()) string {
 	return buf.String()
 }
 
+// captureStderr replaces os.Stderr with a pipe and returns whatever was written.
+func captureStderr(t *testing.T, fn func()) string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	old := os.Stderr
+	os.Stderr = w
+	fn()
+	require.NoError(t, w.Close())
+	os.Stderr = old
+	var buf bytes.Buffer
+	_, err = buf.ReadFrom(r)
+	require.NoError(t, err)
+	return buf.String()
+}
+
 // --- version ---
 
 func TestVersionCmd_PrintsVersion(t *testing.T) {
@@ -906,11 +922,12 @@ func TestCheckCmd_Success(t *testing.T) {
 		err := checkCmd.RunE(checkCmd, nil)
 		require.NoError(t, err)
 	})
-	assert.Contains(t, out, "check=ok")
+	assert.Contains(t, out, "STRATEGIST :: check")
+	assert.Contains(t, out, "ok")
 	assert.Contains(t, out, "brainstorming")
 	assert.Contains(t, out, "openspec-explore")
 	assert.Contains(t, out, "sdd-ask")
-	assert.Contains(t, out, "persona=epic")
+	assert.Contains(t, out, "epic")
 }
 
 func TestCheckCmd_PersonaMissing(t *testing.T) {
@@ -924,6 +941,24 @@ func TestCheckCmd_PersonaMissing(t *testing.T) {
 	err := checkCmd.RunE(checkCmd, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "check=failed")
+}
+
+func TestCheckCmd_RuntimeNormativeFileStale(t *testing.T) {
+	dir := minimalCheckRoot(t)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte("stale runtime\n"), 0o644))
+
+	orig := checkRoot
+	t.Cleanup(func() { checkRoot = orig })
+	checkRoot = dir
+
+	var runErr error
+	stderr := captureStderr(t, func() {
+		runErr = checkCmd.RunE(checkCmd, nil)
+	})
+	require.Error(t, runErr)
+	assert.Contains(t, runErr.Error(), "check=failed")
+	assert.Contains(t, stderr, "runtime_stale")
+	assert.Contains(t, stderr, "SKILL.md")
 }
 
 func TestCheckCmd_PersonaMissingDiagnosticsField(t *testing.T) {
@@ -1051,7 +1086,7 @@ func TestCheckCmd_NativeRole_Sniper(t *testing.T) {
 		err := checkCmd.RunE(checkCmd, nil)
 		require.NoError(t, err)
 	})
-	assert.Contains(t, out, "check=ok")
+	assert.Contains(t, out, "STRATEGIST :: check")
 	assert.Contains(t, out, "sniper")
 }
 

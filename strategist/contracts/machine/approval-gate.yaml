@@ -51,7 +51,7 @@ contract:
     emit_format: "[Strategist] phase=approval_gate status=rejected"
     emit_level: TRACE
     mission_result_status: rejected
-    next_phase: adr_opportunity
+    next_phase: closed
 
   invariants:
     - gate must emit status=analysis_accepted, status=revision_requested, or status=rejected before sniper is invoked

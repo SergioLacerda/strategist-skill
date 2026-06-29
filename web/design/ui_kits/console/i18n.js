@@ -50,11 +50,12 @@ window.CONSOLE_I18N = {
     skillsTitle: "Habilidades",
     skillsDesc: "Capacidades especiais que o grupo pode acionar durante a missão.",
     skills: [
-      { icon: "⚔", title: "Ataque de oportunidade", desc: "Em ações podemos encontrar problemas não previstos ou <i>baús de tesouros</i>." },
-      { icon: "⚑", title: "Missão opcional", desc: "Missões pequenas — mover tarefas prontas para a pasta correta ou hotfixes pontuais." },
-      { icon: "❖", title: "Baú de tesouro", desc: "Em cada estágio podemos encontrar fontes de documentação para enriquecer a análise." },
-      { icon: "⚡", title: "Saque rápido", desc: "Ideias aparecem rápidas como um raio, estamos prontos para anotar." },
+      { icon: "⚔", title: "Ataque de oportunidade", desc: "Avalia se a missão principal merece ADR; quando cabe, propõe a ADR como side quest no Approval Gate." },
+      { icon: "⚑", title: "Side quests", desc: "Outras missões fora do escopo principal; são notificadas no Approval Gate antes de qualquer materialização." },
+      { icon: "❖", title: "Baú do tesouro", desc: "Fontes offline já indexáveis e listáveis por comando, usadas para enriquecer a missão com contexto local." },
+      { icon: "⚡", title: "Saque rápido", desc: "Anota ideias no todo do workspace. A pasta de ideias fica para consulta do usuário, não da skill." },
       { icon: "⧗", title: "Iniciativa", desc: "Avalie seu time antes de começar suas missões." },
+      { icon: "✦", title: "Acerto crítico", desc: "Resolve demandas pequenas de organização, movendo análises concluídas, refinadas ou pendentes para as pastas corretas." },
       { icon: "⛩", title: "Dojo", desc: "Ambiente controlado para testar suas habilidades." },
     ],
 
@@ -134,11 +135,12 @@ window.CONSOLE_I18N = {
     skillsTitle: "Skills",
     skillsDesc: "Special capabilities the party can trigger during a mission.",
     skills: [
-      { icon: "⚔", title: "Opportunist Attack", desc: "During actions we may encounter unforeseen problems or <i>treasure chests</i>." },
-      { icon: "⚑", title: "Side Quest", desc: "Small missions — moving completed tasks to the correct folder or targeted hotfixes." },
-      { icon: "❖", title: "Treasure Chest", desc: "At each stage we may find documentation sources to enrich the analysis." },
-      { icon: "⚡", title: "Quick Draw", desc: "Ideas appear fast as lightning, we are ready to write them down." },
+      { icon: "⚔", title: "Opportunity Attack", desc: "Evaluates whether the main mission deserves an ADR; when it fits, proposes the ADR as a side quest at the Approval Gate." },
+      { icon: "⚑", title: "Side Quests", desc: "Other missions outside the main scope; they are reported at the Approval Gate before any materialization." },
+      { icon: "❖", title: "Treasure Chest", desc: "Offline sources that can already be indexed and listed by command, used to enrich the mission with local context." },
+      { icon: "⚡", title: "Quick Draw", desc: "Captures ideas in the workspace todo. The idea folder is for the user to consult, not the skill." },
       { icon: "⧗", title: "Initiative", desc: "Assess your team before starting your missions." },
+      { icon: "✦", title: "Critical Hit", desc: "Handles small organization requests by moving completed, refined, or pending analyses into the correct folders." },
       { icon: "⛩", title: "Dojo", desc: "A controlled environment to test your skills." },
     ],
 
