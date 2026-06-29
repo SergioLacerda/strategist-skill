@@ -1,19 +1,19 @@
-# Referência CLI — strategist
+# CLI Reference — strategist
 
 **Status:** Accepted
 **Last Updated:** 2026-06-26
 
-O binário `strategist` é construído em Go com [cobra](https://github.com/spf13/cobra). Todos os comandos seguem o padrão:
+The `strategist` binary is built in Go with [cobra](https://github.com/spf13/cobra). All commands follow the pattern:
 
 ```
-strategist <comando> [flags]
+strategist <command> [flags]
 ```
 
 ---
 
 ## install
 
-Instala a skill Strategist em um repositório-alvo.
+Installs the Strategist skill in a target repository.
 
 ```
 strategist install [--target=<dir>] [--wizard] [--silent]
@@ -21,36 +21,36 @@ strategist install [--target=<dir>] [--wizard] [--silent]
 
 **Flags:**
 
-| Flag | Padrão | Descrição |
-|------|--------|-----------|
-| `--target` | `.` (diretório atual) | Raiz do repositório onde `.strategist/` será criado |
-| `--wizard` | `false` | Modo interativo: coleta mode, base_path e provider via prompts |
-| `--silent` | `false` | Instalação sem prompts com defaults pragmatic (comportamento padrão quando nenhum flag é passado) |
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--target` | `.` (current directory) | Repository root where `.strategist/` will be created |
+| `--wizard` | `false` | Interactive mode: collects mode, base_path, and provider via prompts |
+| `--silent` | `false` | Installation without prompts using pragmatic defaults (default behavior when no flag is passed) |
 
-**O que faz:**
+**What it does:**
 
-1. Extrai os defaults embutidos para `<target>/.strategist/`
-2. Gera `active.yaml` (wizard ou template pragmatic)
-3. Adiciona `.strategist/.compiled/` ao `.gitignore`
-4. Instala o shim em `~/.claude/skills/strategist/SKILL.md`
-5. Compila todos os artefatos para `.strategist/.compiled/`
+1. Extracts embedded defaults to `<target>/.strategist/`
+2. Generates `active.yaml` (wizard or pragmatic template)
+3. Adds `.strategist/.compiled/` to `.gitignore`
+4. Installs the shim at `~/.claude/skills/strategist/SKILL.md`
+5. Compiles all artifacts to `.strategist/.compiled/`
 
-**Rollback:** se qualquer etapa falhar, os arquivos criados são removidos e o workspace é restaurado ao estado anterior.
+**Rollback:** if any step fails, created files are removed and the workspace is restored to its previous state.
 
-**Exemplos:**
+**Examples:**
 
 ```bash
-# Instalar com wizard no diretório atual
+# Install with wizard in the current directory
 strategist install --wizard
 
-# Instalar silenciosamente em outro repositório
+# Silently install in another repository
 strategist install --target=/path/to/project
 
-# Via bootstrap (recomendado para primeira instalação)
+# Via bootstrap (recommended for first installation)
 curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.sh | bash
 ```
 
-**Saída em sucesso:**
+**Success output:**
 ```
 [Strategist] install complete → .
 ```
@@ -59,7 +59,7 @@ curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main
 
 ## compile
 
-Compila todos os artefatos YAML da skill para gzip+JSON.
+Compiles all skill YAML artifacts to gzip+JSON.
 
 ```
 strategist compile [--root=<dir>]
@@ -67,22 +67,22 @@ strategist compile [--root=<dir>]
 
 **Flags:**
 
-| Flag | Padrão | Descrição |
-|------|--------|-----------|
-| `--root` | `.strategist` | Caminho para a raiz `.strategist/` |
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--root` | `.strategist` | Path to the `.strategist/` root |
 
-**Artefatos gerados em `<root>/.compiled/`:**
+**Artifacts generated in `<root>/.compiled/`:**
 
-| Arquivo | Conteúdo |
-|---------|----------|
-| `.index.gz` | `knowledge.index.yaml` compilado |
-| `.domain.gz` | Templates de domínio (`templates/domain/`) compilados |
-| `.config.gz` | `active.yaml` + `personas/` + `roles/` compilados |
-| `.manifest.gz` | SHA256 dos 3 artefatos acima |
+| File | Content |
+|------|---------|
+| `.index.gz` | Compiled `knowledge.index.yaml` |
+| `.domain.gz` | Compiled domain templates (`templates/domain/`) |
+| `.config.gz` | Compiled `active.yaml` + `personas/` + `roles/` |
+| `.manifest.gz` | SHA256 of the 3 artifacts above |
 
-Recompe sempre que arquivos YAML de configuração forem editados manualmente.
+Run after any manual edits to YAML configuration files.
 
-**Saída em sucesso:**
+**Success output:**
 ```
 [Strategist] compile complete → .strategist/.compiled/
 ```
@@ -91,22 +91,22 @@ Recompe sempre que arquivos YAML de configuração forem editados manualmente.
 
 ## check-stale
 
-Verifica se um artefato compilado está obsoleto em relação às suas fontes YAML.
+Checks whether a compiled artifact is stale relative to its YAML sources.
 
 ```
 strategist check-stale <artifact.gz>
 ```
 
-**Argumento:** caminho para um arquivo `.gz` em `.strategist/.compiled/`.
+**Argument:** path to a `.gz` file in `.strategist/.compiled/`.
 
-**Códigos de saída:**
+**Exit codes:**
 
-| Código | Significado |
-|--------|-------------|
-| `0` | Artefato fresco — fontes não foram modificadas |
-| `1` | Artefato stale — pelo menos uma fonte foi modificada, ou o artefato/manifest não existe |
+| Code | Meaning |
+|------|---------|
+| `0` | Artifact is fresh — sources were not modified |
+| `1` | Artifact is stale — at least one source was modified, or the artifact/manifest does not exist |
 
-**Projetado para uso em CI/scripts:**
+**Designed for use in CI/scripts:**
 
 ```bash
 if ! strategist check-stale .strategist/.compiled/.config.gz; then
@@ -114,17 +114,17 @@ if ! strategist check-stale .strategist/.compiled/.config.gz; then
 fi
 ```
 
-Um artefato é considerado stale quando:
-- O arquivo `.gz` não existe
-- `.manifest.gz` não existe no mesmo diretório
-- Qualquer fonte listada em `artifact.sources` foi modificada após a compilação
-- Qualquer fonte listada não existe mais no disco
+An artifact is considered stale when:
+- The `.gz` file does not exist
+- `.manifest.gz` does not exist in the same directory
+- Any source listed in `artifact.sources` was modified after compilation
+- Any listed source no longer exists on disk
 
 ---
 
 ## validate
 
-Valida a árvore de configuração `.strategist/`.
+Validates the `.strategist/` configuration tree.
 
 ```
 strategist validate [--root=<dir>]
@@ -132,46 +132,46 @@ strategist validate [--root=<dir>]
 
 **Flags:**
 
-| Flag | Padrão | Descrição |
-|------|--------|-----------|
-| `--root` | `.strategist` | Caminho para a raiz `.strategist/` |
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--root` | `.strategist` | Path to the `.strategist/` root |
 
-**Verificações realizadas:**
+**Checks performed:**
 
-| Arquivo | O que é verificado |
-|---------|-------------------|
-| `active.yaml` | Existe, YAML válido, campos `mode` e `roles_config` presentes, `mode` é `pragmatic` ou `epic` |
-| `personas/*.yaml` | Cada arquivo tem `tone_directive` e `phase_labels` |
-| `roles/*.yaml` | Cada arquivo tem os slots `discovery`, `refinement` e `execution` |
-| `knowledge.index.yaml` | Se presente, YAML válido |
+| File | What is checked |
+|------|----------------|
+| `active.yaml` | Exists, valid YAML, `mode` and `roles_config` fields present, `mode` is `pragmatic` or `epic` |
+| `personas/*.yaml` | Each file has `tone_directive` and `phase_labels` |
+| `roles/*.yaml` | Each file has the `discovery`, `refinement`, and `execution` slots |
+| `knowledge.index.yaml` | If present, valid YAML |
 
-**Saída em sucesso:**
+**Success output:**
 ```
 [Strategist] validate OK — 7 check(s) passed (.strategist)
 ```
 
-**Saída em falha:**
+**Failure output:**
 ```
   ✗ active.yaml: invalid mode "custom" (must be pragmatic or epic)
   ✗ roles/custom.yaml: missing slot: execution
 validate: 2 error(s) in .strategist
 ```
 
-Útil em CI para garantir que edições manuais na configuração não introduziram erros de schema.
+Useful in CI to ensure that manual configuration edits have not introduced schema errors.
 
 ---
 
 ## version
 
-Exibe a versão do binário.
+Displays the binary version.
 
 ```
 strategist version
 ```
 
-A versão é injetada em tempo de build via `-ldflags "-X main.Version=x.y.z"`. Em builds locais sem ldflags, exibe `strategist dev`.
+The version is injected at build time via `-ldflags "-X main.Version=x.y.z"`. In local builds without ldflags, displays `strategist dev`.
 
-**Saída:**
+**Output:**
 ```
 strategist v1.0.0
 ```
@@ -180,7 +180,7 @@ strategist v1.0.0
 
 ## check
 
-Valida que os slot providers declarados em `active.yaml` estão instalados e satisfazem seus contratos de `risk_score`. Use antes de iniciar uma missão para garantir que o workspace está íntegro.
+Validates that the slot providers declared in `active.yaml` are installed and satisfy their `risk_score` contracts. Use before starting a mission to ensure the workspace is healthy.
 
 ```
 strategist check [--root=<dir>]
@@ -188,24 +188,24 @@ strategist check [--root=<dir>]
 
 **Flags:**
 
-| Flag | Padrão | Descrição |
-|------|--------|-----------|
-| `--root` | `.strategist` | Caminho para a raiz `.strategist/` |
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--root` | `.strategist` | Path to the `.strategist/` root |
 
-**Verificações realizadas:**
+**Checks performed:**
 
-- `active.yaml` presente e parseável
-- Para cada slot (`discovery`, `refinement`, `execution`):
-  - `skills/<provider>/skill.yaml` existe (provider skill), **ou** `roles/<provider>.yaml` existe com o campo do slot (native role)
-  - Providers skill devem declarar o `risk_score` correto: `discovery`/`refinement` → `write_analysis`; `execution` → `controlled`
-  - Native roles são aceitos por correspondência de campo; sem verificação de `risk_score`
+- `active.yaml` present and parseable
+- For each slot (`discovery`, `refinement`, `execution`):
+  - `skills/<provider>/skill.yaml` exists (provider skill), **or** `roles/<provider>.yaml` exists with the slot field (native role)
+  - Provider skills must declare the correct `risk_score`: `discovery`/`refinement` → `write_analysis`; `execution` → `controlled`
+  - Native roles are accepted by field match; no `risk_score` verification
 
-**Saída em sucesso:**
+**Success output:**
 ```
 [Strategist] check=ok slots=[discovery:brainstorming, refinement:openspec-explore, execution:sniper] persona=epic root=.strategist
 ```
 
-**Saída em falha:**
+**Failure output:**
 ```
 [Strategist] check=failed reason=slot_provider_not_found slot=execution
 ```
@@ -214,7 +214,7 @@ strategist check [--root=<dir>]
 
 ## initiative
 
-Exibe os slot providers configurados e o estado atual do workspace. Leitura imediata sem chamada ao LLM.
+Displays the configured slot providers and the current workspace state. Immediate read with no LLM call.
 
 ```
 strategist initiative [--root=<dir>]
@@ -222,11 +222,11 @@ strategist initiative [--root=<dir>]
 
 **Flags:**
 
-| Flag | Padrão | Descrição |
-|------|--------|-----------|
-| `--root` | `.strategist` (auto-discovered) | Caminho para a raiz `.strategist/` |
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--root` | `.strategist` (auto-discovered) | Path to the `.strategist/` root |
 
-**Saída:**
+**Output:**
 
 ```
 SLOTS                                                  
@@ -238,68 +238,68 @@ WORKSPACE
 mode           epic                                    
 base_path      .analysis                               
 pending        0 cards                                 
-done           49 missões                              
+done           49 missions                             
 last mission   —                                       
 ```
 
-A seção **SLOTS** exibe, para cada slot: provider configurado, papel canônico, classe (`rankeado` ou `base`) e status do manifest local em `.strategist/skills/<provider>/skill.yaml`.
+The **SLOTS** section displays, for each slot: configured provider, canonical role, class (`rankeado` or `base`), and status of the local manifest at `.strategist/skills/<provider>/skill.yaml`.
 
-A seção **WORKSPACE** exibe: `mode` e `base_path` de `active.yaml`, contagens de cards pendentes e missões concluídas, e o ID da última missão registrada em `memory/outcomes.jsonl` (se presente).
+The **WORKSPACE** section displays: `mode` and `base_path` from `active.yaml`, counts of pending cards and completed missions, and the ID of the last mission recorded in `memory/outcomes.jsonl` (if present).
 
 ---
 
 ## dojo
 
-Sistema de health-check da Strategist skill — valida que a skill está instalada, configurada e operando corretamente.
+Health-check system for the Strategist skill — validates that the skill is installed, configured, and operating correctly.
 
 ```
 strategist dojo check <scenario> [--root=<dir>] [--files-only]
 strategist dojo list
 ```
 
-**Subcomandos:**
+**Subcommands:**
 
-| Subcomando | Descrição |
-|------------|-----------|
-| `dojo check <scenario>` | Executa checks offline para um cenário |
-| `dojo list` | Lista cenários disponíveis |
+| Subcommand | Description |
+|------------|-------------|
+| `dojo check <scenario>` | Runs offline checks for a scenario |
+| `dojo list` | Lists available scenarios |
 
-**Flags de `dojo check`:**
+**Flags for `dojo check`:**
 
-| Flag | Padrão | Descrição |
-|------|--------|-----------|
-| `--root` | `.strategist` | Caminho para a raiz `.strategist/` |
-| `--files-only` | `false` | Pula validação do `emit_log`; verifica apenas arquivos |
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--root` | `.strategist` | Path to the `.strategist/` root |
+| `--files-only` | `false` | Skips `emit_log` validation; checks files only |
 
-**Cenários disponíveis** (via `strategist dojo list`):
+**Available scenarios** (via `strategist dojo list`):
 
-| Cenário | O que valida |
-|---------|-------------|
-| `critical-hit` | Edição de doc via fast path — Ranger e Archivist não invocados, gate inline apresentado, Sniper escreve apenas o arquivo alvo |
-| `quick-draw` | Ideia bruta convertida em item pendente no todo, gate apresentado, execução não invocada |
-| `ranger-weapons` | Lista providers disponíveis para o slot discovery e valida manifests |
-| `treasure-chest` | Treasure chest encontrado e conteúdo incorporado na análise |
+| Scenario | What it validates |
+|----------|------------------|
+| `critical-hit` | Doc edit via fast path — Ranger and Archivist not invoked, inline gate presented, Sniper writes only the target file |
+| `quick-draw` | Raw idea converted to a pending todo item, gate presented, execution not invoked |
+| `ranger-weapons` | Lists available providers for the discovery slot and validates manifests |
+| `treasure-chest` | Treasure chest found and content incorporated in the analysis |
 
-**Exemplo:**
+**Example:**
 
 ```bash
-# Validar cenário offline
+# Validate a scenario offline
 strategist dojo check quick-draw
 
-# Verificar apenas arquivos (sem emit log)
+# Check files only (no emit log)
 strategist dojo check quick-draw --files-only
 
-# Listar cenários disponíveis
+# List available scenarios
 strategist dojo list
 ```
 
-Para execução do pipeline completo com input sintético, use o skill `/strategist dojo <scenario>` via Claude Agent. Consulte `docs/strategist-concepts.md#dojo`.
+For full pipeline execution with synthetic input, use the `/strategist dojo <scenario>` skill via Claude Agent. See `docs/strategist-concepts.md#dojo`.
 
 ---
 
 ## treasure-chest
 
-Exibe o status dos treasure chests configurados, políticas de governance, e saúde do knowledge index compilado.
+Displays the status of configured treasure chests, governance policies, and compiled knowledge index health.
 
 ```
 strategist treasure-chest [flags]
@@ -307,22 +307,22 @@ strategist treasure-chest [flags]
 
 **Flags:**
 
-| Flag | Padrão | Descrição |
-|------|--------|-----------|
-| `--root` | `.strategist` (auto-discovered) | Caminho para a raiz `.strategist/` |
-| `--scope` | `""` | Filtra saída por escopo de slot (`discovery`, `refinement`, `execution`) |
-| `--index` | `false` | Reconstrói o knowledge index compilado a partir das fontes declaradas |
-| `--include-historical` | `false` | Inclui fontes T2/T3 históricas na reconstrução (requer `--index`) |
-| `--format` | `table` | Formato de saída: `table` ou `json` |
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--root` | `.strategist` (auto-discovered) | Path to the `.strategist/` root |
+| `--scope` | `""` | Filters output by slot scope (`discovery`, `refinement`, `execution`) |
+| `--index` | `false` | Rebuilds the compiled knowledge index from declared sources |
+| `--include-historical` | `false` | Includes historical T2/T3 sources in the rebuild (requires `--index`) |
+| `--format` | `table` | Output format: `table` or `json` |
 
-**Fontes consultadas:**
+**Sources consulted:**
 
-- `.strategist/active.yaml` — chests configurados e seus escopos
-- `.strategist/treasure-chests.yaml` — políticas de trust e roteamento
-- `.strategist/knowledge.index.yaml` — fontes de retrieval indexadas
-- `.strategist/.compiled/.index.gz` — artefato compilado (fast-path)
+- `.strategist/active.yaml` — configured chests and their scopes
+- `.strategist/treasure-chests.yaml` — trust and routing policies
+- `.strategist/knowledge.index.yaml` — indexed retrieval sources
+- `.strategist/.compiled/.index.gz` — compiled artifact (fast-path)
 
-**Exemplo de saída:**
+**Example output:**
 
 ```
 CHESTS                                             
@@ -339,7 +339,7 @@ compiled_at   2026-06-26 18:19:47 UTC
 
 ## sync-governance
 
-Sincroniza `.strategist/skill.yaml` com os mandates de governança SDD ativos.
+Synchronizes `.strategist/skill.yaml` with the active SDD governance mandates.
 
 ```
 strategist sync-governance [flags]
@@ -347,61 +347,61 @@ strategist sync-governance [flags]
 
 **Flags:**
 
-| Flag | Padrão | Descrição |
-|------|--------|-----------|
-| `--root` | `.strategist` | Caminho para a raiz `.strategist/` |
-| `--sdd` | `.sdd` | Caminho para o diretório `.sdd/` |
-| `--dry-run` | `false` | Exibe as mudanças sem escrever |
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--root` | `.strategist` | Path to the `.strategist/` root |
+| `--sdd` | `.sdd` | Path to the `.sdd/` directory |
+| `--dry-run` | `false` | Displays changes without writing |
 
-**O que faz:**
+**What it does:**
 
-1. Lê `.sdd/metadata.json` para verificar o fingerprint de governança
-2. Lê `.sdd/source/governance-core.json` para extrair mandates ativos
-3. Compara mandates ativos contra `compliance.mandates` em `skill.yaml`
-4. Aplica campos de governança ausentes (`validation_policy`, `budget_policy`, `telemetry_policy`)
-5. Reporta drift antes de aplicar mudanças
+1. Reads `.sdd/metadata.json` to verify the governance fingerprint
+2. Reads `.sdd/source/governance-core.json` to extract active mandates
+3. Compares active mandates against `compliance.mandates` in `skill.yaml`
+4. Applies missing governance fields (`validation_policy`, `budget_policy`, `telemetry_policy`)
+5. Reports drift before applying changes
 
-**Exemplo:**
+**Example:**
 
 ```bash
-# Verificar drift sem escrever
+# Check drift without writing
 strategist sync-governance --dry-run
 
-# Aplicar sincronização
+# Apply synchronization
 strategist sync-governance
 ```
 
-Requer que `.sdd/` esteja presente no repositório (SDD governance). Sem `.sdd/`, o comando retorna erro.
+Requires `.sdd/` to be present in the repository (SDD governance). Without `.sdd/`, the command returns an error.
 
 ---
 
-## Observabilidade (OpenTelemetry)
+## Observability (OpenTelemetry)
 
-Todos os comandos emitem spans OTel quando um collector está configurado. Sem configuração, o binário usa um provider no-op — zero overhead e zero conexões de rede abertas.
+All commands emit OTel spans when a collector is configured. Without configuration, the binary uses a no-op provider — zero overhead and zero open network connections.
 
-| Variável | Padrão | Descrição |
-|----------|--------|-----------|
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | `""` | Endpoint gRPC do collector (ex: `localhost:4317`). Vazio → no-op. |
-| `OTEL_SERVICE_NAME` | `strategist` | Nome do serviço nos traces. |
-| `OTEL_EXPORTER_OTLP_INSECURE` | `true` | TLS desabilitado por padrão. Em produção: `false`. |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `""` | Collector gRPC endpoint (e.g. `localhost:4317`). Empty → no-op. |
+| `OTEL_SERVICE_NAME` | `strategist` | Service name in traces. |
+| `OTEL_EXPORTER_OTLP_INSECURE` | `true` | TLS disabled by default. In production: `false`. |
 
-**Exemplo com collector local:**
+**Example with local collector:**
 
 ```bash
-# Subir Jaeger all-in-one (aceita gRPC na porta 4317)
+# Start Jaeger all-in-one (accepts gRPC on port 4317)
 docker run -d -p 16686:16686 -p 4317:4317 jaegertracing/all-in-one
 
-# Executar com OTel habilitado
+# Run with OTel enabled
 OTEL_EXPORTER_OTLP_ENDPOINT=localhost:4317 \
 OTEL_SERVICE_NAME=strategist \
 strategist install --target .
 
-# Ver traces em http://localhost:16686
+# View traces at http://localhost:16686
 ```
 
-**Atributos dos spans:**
+**Span attributes:**
 
-| Span | Atributos |
+| Span | Attributes |
 |------|-----------|
 | `strategist.install` | `strategist.target` |
 | `strategist.compile` | `strategist.target` |
@@ -414,16 +414,16 @@ strategist install --target .
 
 ## Exit codes
 
-Todos os comandos retornam um código de saída padronizado. Útil para CI/CD e scripts.
+All commands return a standardized exit code. Useful for CI/CD and scripts.
 
-| Código | Significado | Exemplo de causa |
-|--------|-------------|-----------------|
-| `0` | Sucesso | Comando completou sem erros |
-| `1` | Erro genérico / desconhecido | YAML inválido, arquivo não encontrado |
-| `2` | Violação de governança / política | Pipeline bypass detectado sem aprovação |
-| `3` | Artefato stale ou erro de integridade de config | `.compiled/` desatualizado, manifest ausente |
+| Code | Meaning | Example cause |
+|------|---------|--------------|
+| `0` | Success | Command completed without errors |
+| `1` | Generic / unknown error | Invalid YAML, file not found |
+| `2` | Governance / policy violation | Pipeline bypass detected without approval |
+| `3` | Stale artifact or config integrity error | `.compiled/` out of date, manifest missing |
 
-**Exemplo em script:**
+**Example in script:**
 
 ```bash
 strategist validate --root .strategist
@@ -437,7 +437,7 @@ case $code in
 esac
 ```
 
-**Exemplo em CI (GitHub Actions):**
+**Example in CI (GitHub Actions):**
 
 ```yaml
 - name: Validate strategist config
@@ -447,22 +447,22 @@ esac
 
 ---
 
-## Instalação local (build from source)
+## Local installation (build from source)
 
 ```bash
-# Clonar e compilar
+# Clone and build
 git clone https://github.com/SergioLacerda/strategist-skill
 cd strategist-skill
 
 # Build
 make build          # → bin/strategist
 
-# Instalar no PATH (~/.local/bin/)
-make install-local  # equivale a: install -m 755 bin/strategist ~/.local/bin/strategist
+# Install to PATH (~/.local/bin/)
+make install-local  # equivalent to: install -m 755 bin/strategist ~/.local/bin/strategist
 
-# Garantir que ~/.local/bin está no PATH
+# Ensure ~/.local/bin is in PATH
 export PATH="$HOME/.local/bin:$PATH"
 
-# Verificar
+# Verify
 strategist version
 ```

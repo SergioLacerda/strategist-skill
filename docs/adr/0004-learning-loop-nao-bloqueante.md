@@ -1,48 +1,48 @@
-# ADR-0004 — Learning loop não-bloqueante
+# ADR-0004 — Non-blocking learning loop
 
 **Status:** Accepted  
-**Data:** 2026-05-28  
-**Contexto:** Design da fase de learning e learning-curator
+**Date:** 2026-05-28  
+**Context:** Learning phase and learning-curator design
 
 ---
 
-## Contexto
+## Context
 
-Após cada missão, o Strategist propõe registrar o outcome (`memory/outcomes.jsonl`) e ajustar prioridades de fontes de conhecimento (`memory/source-hints.yaml`). Essa fase envolve: executar `response-critic`, executar `learning-curator`, apresentar checkpoint ao usuário e aguardar resposta.
+After each mission, the Strategist proposes recording the outcome (`memory/outcomes.jsonl`) and adjusting knowledge source priorities (`memory/source-hints.yaml`). This phase involves: running `response-critic`, running `learning-curator`, presenting a checkpoint to the user, and waiting for a response.
 
-Qualquer uma dessas etapas pode falhar: timeout do LLM, usuário ignora o checkpoint, sub-skill retorna erro, arquivo de memória corrompido.
+Any of these steps can fail: LLM timeout, user ignores the checkpoint, sub-skill returns an error, memory file is corrupted.
 
-A questão: se o learning falhar, o que acontece com o resultado da missão?
+The question: if learning fails, what happens to the mission result?
 
-Alternativas consideradas:
-- **Bloqueante** — missão só retorna após learning completo; falha de learning falha a missão
-- **Opcional configurável** — usuário escolhe se quer learning via `active.yaml`
-- **Não-bloqueante** — learning roda após a missão; falha não altera o resultado entregue ao usuário
+Alternatives considered:
+- **Blocking** — mission only returns after learning is complete; learning failure fails the mission
+- **Configurable optional** — user chooses whether to enable learning via `active.yaml`
+- **Non-blocking** — learning runs after the mission; failure does not alter the result delivered to the user
 
-## Decisão
+## Decision
 
-A fase de learning é **não-bloqueante**: roda após execution, mas qualquer falha (timeout, erro de sub-skill, usuário recusa o checkpoint) resulta em log e retorno do resultado da missão sem alteração.
+The learning phase is **non-blocking**: it runs after execution, but any failure (timeout, sub-skill error, user declines the checkpoint) results in a log and the mission result being returned unchanged.
 
-Declarado em `protocol.md` e `skill.yaml`:
+Declared in `protocol.md` and `skill.yaml`:
 ```yaml
 - stage: learning
   skill: learning-curator
   blocking: false
 ```
 
-`learning-curator` tem forbidden behavior `block_mission_result_on_learning_failure` — a sub-skill não pode reter o resultado da missão aguardando o learning.
+`learning-curator` has forbidden behavior `block_mission_result_on_learning_failure` — the sub-skill cannot withhold the mission result while waiting for learning.
 
-O learning buffer (`memory/outcomes.tmp`) tem limite de 20 entradas antes de ser flushed para `outcomes.jsonl` — proteção contra acúmulo infinito se o flush principal nunca ocorrer.
+The learning buffer (`memory/outcomes.tmp`) has a limit of 20 entries before being flushed to `outcomes.jsonl` — protection against infinite accumulation if the main flush never occurs.
 
-## Consequências
+## Consequences
 
-**Positivas:**
-- O usuário sempre recebe o resultado da missão — falha de infraestrutura de memória nunca bloqueia o trabalho
-- Simplifica raciocínio sobre missões: o resultado é determinístico independente do estado da memória
-- Learning é um benefício acumulado, não um requisito para funcionamento — system degraded gracefully
-- Falhas de learning são observáveis via log sem impactar o fluxo principal
+**Positive:**
+- The user always receives the mission result — memory infrastructure failure never blocks work
+- Simplifies mission reasoning: the result is deterministic regardless of the memory state
+- Learning is an accumulated benefit, not a requirement for operation — system degrades gracefully
+- Learning failures are observable via log without impacting the main flow
 
-**Negativas:**
-- Se o learning falha sistematicamente (ex: arquivo de memória corrompido), o problema pode passar despercebido por muitas missões sem que o usuário perceba
-- O learning buffer é uma segunda via de escrita de outcomes — dois caminhos para o mesmo dado podem causar duplicatas se o flush principal e o buffer flush coincidirem
-- Usuário que ignora o checkpoint repetidamente perde o benefício acumulado do knowledge system sem feedback explícito
+**Negative:**
+- If learning fails systematically (e.g. corrupted memory file), the problem may go unnoticed across many missions without the user realizing
+- The learning buffer is a second write path for outcomes — two paths to the same data can cause duplicates if the main flush and buffer flush coincide
+- A user who repeatedly ignores the checkpoint loses the accumulated benefit of the knowledge system without explicit feedback

@@ -40,10 +40,10 @@ Feature: Forbidden Behavior Detection and Self-Correction
     And stops gate presentation
     And ensures the ADR side quest is surfaced in the opportunity_manifest at gate
 
-  Scenario: hunter_decides_side_quest_strategy — Sniper sets side quest strategy
+  Scenario: sniper_decides_side_quest_strategy — Sniper sets side quest strategy
     Given Sniper detected a side quest during execution
     When Sniper sets side_quest.strategy without returning to Archivist
-    Then Strategist detects drift pattern "hunter_decides_side_quest_strategy"
+    Then Strategist detects drift pattern "sniper_decides_side_quest_strategy"
     And voids the Sniper decision
     And routes the side quest to Archivist for strategy decision
 

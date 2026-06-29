@@ -52,10 +52,10 @@ And **none** of these are true:
 ## Inline Gate
 
 ```
-Acerto Crítico detectado.
-Mover: <source_path>
+Critical Hit detected.
+Move: <source_path>
     → <target_path>
-Confirma? (sim / nao)
+Confirm? (sim / nao)
 ```
 
 - `sim/yes` → proceed to Sniper
