@@ -9,7 +9,15 @@ contract: controlled
 
 ## Purpose
 
-Fast path for analysis file management — moving `.md` artifacts between the analysis folders (`pending/`, `refined/`, `archived/`) without going through full Ranger/Archivist discovery.
+Rota direta para **manutenção de artefatos de análise e documentação** — mover,
+arquivar ou reabrir arquivos `.md` entre as pastas do workspace (`pending/`, `refined/`, `archived/`)
+sem passar pelo pipeline completo de Ranger/Archivist.
+
+Critical Hit não realiza análise. O conteúdo dos documentos não é avaliado —
+apenas movido ou organizado dentro do escopo do workspace.
+
+A rota é selecionada internamente pela camada de routing após o intake.
+O delegatário não precisa solicitar Critical Hit explicitamente.
 
 ## When to Apply
 

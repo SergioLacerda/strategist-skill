@@ -11,20 +11,19 @@ patterns:
     correction: >
       Stop. Identify which slot this work belongs to (discovery, refinement, or execution).
       If the declared provider can be invoked, invoke it and resume as orchestrator.
-      If the declared provider cannot be invoked in the current environment, emit
-      error=delegation_unavailable and stop. Do not perform the work directly inside
-      Strategist mode. If the user explicitly authorizes fallback, treat it as a separate
-      ad-hoc task outside Strategist and do not write Strategist pipeline artifacts.
+      If the declared provider cannot be invoked by the installed runtime, emit
+      error=role_invocation_failed and stop. Do not perform the work directly inside
+      Strategist mode.
 
-  - id: delegation_unavailable
+  - id: role_invocation_failed
     symptom: >
-      The next pipeline phase requires a slot provider, but the current environment
-      has no callable mechanism to invoke that provider.
+      The next pipeline phase requires a configured role/provider, but Strategist
+      cannot invoke that provider from the installed runtime.
     correction: >
-      Stop. Emit blocked reason=delegation_unavailable with the slot name and configured
+      Stop. Emit blocked reason=role_invocation_failed with the slot name and configured
       provider. Do not write analysis artifacts, perform discovery, or produce refinement
-      output directly. Ask the user to switch to a runtime environment that supports slot
-      delegation, or to explicitly leave Strategist mode for a separate ad-hoc fallback task.
+      output directly. Instruct the user to fix provider configuration or runtime installation,
+      then rerun strategist check.
 
   - id: silent_phase_advance
     symptom: >

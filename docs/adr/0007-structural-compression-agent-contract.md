@@ -5,38 +5,38 @@
 
 ---
 
-## Contexto
+## Context
 
-O design de token economy especificou a Phase 4 como uma interface Go `CompressionProvider` com um provider `builtin-structural`. Esse componente ficaria entre a recuperação de fontes e a invocação do LLM, produzindo scored source cards de forma determinística.
+The token economy design specified Phase 4 as a Go `CompressionProvider` interface with a `builtin-structural` provider. This component would sit between source retrieval and LLM invocation, deterministically producing scored source cards.
 
-Na época da decisão, o `context-enrichment/skill.yaml` já declarava `source_cards` e `compression_metrics` como campos de saída no contrato do agente. Nenhuma implementação Go existia em `internal/`.
+At decision time, `context-enrichment/skill.yaml` already declared `source_cards` and `compression_metrics` as output fields in the agent contract. No Go implementation existed in `internal/`.
 
-O contexto que levou à avaliação: o pipeline de enriquecimento de contexto busca fontes de conhecimento por `task_type` e as entrega ao LLM. Sem compressão estruturada, o LLM recebe todas as fontes dentro do orçamento de tokens e decide internamente quais priorizar. A alternativa seria um componente Go que scorea e filtra as fontes antes de passá-las — garantindo determinismo e auditabilidade ao custo de complexidade de manutenção.
+Context that led to the evaluation: the context-enrichment pipeline fetches knowledge sources by `task_type` and delivers them to the LLM. Without structured compression, the LLM receives all sources within the token budget and decides internally which to prioritize. The alternative would be a Go component that scores and filters sources before passing them along — guaranteeing determinism and auditability at the cost of maintenance complexity.
 
-## Decisão
+## Decision
 
-A Phase 4 foi adiada. A compressão estrutural é implementada como **contrato comportamental do agente** via `context-enrichment/skill.yaml`, e não como runtime Go.
+Phase 4 was deferred. Structural compression is implemented as a **behavioral agent contract** via `context-enrichment/skill.yaml`, not as Go runtime.
 
-O LLM implementa compressão semântica nativamente ao seguir o contrato da skill (score por `task_type` match, trust tier, keyword overlap; aplicar budget limits por mode; produzir source cards no formato evidence → interpretation → impact).
+The LLM implements semantic compression natively by following the skill contract (score by `task_type` match, trust tier, keyword overlap; apply budget limits per mode; produce source cards in evidence → interpretation → impact format).
 
-A interface Go `CompressionProvider` permanece no backlog — a ser considerada quando:
-1. A Phase 2 (chest index files) estiver completa e fornecer inputs de ranking determinísticos
-2. Compressão não-determinística do agente causar regressão de qualidade mensurável
-3. Requisitos de auditoria/testabilidade exigirem compressão reproduzível
+The Go `CompressionProvider` interface remains in the backlog — to be considered when:
+1. Phase 2 (chest index files) is complete and provides deterministic ranking inputs
+2. Non-deterministic agent compression causes measurable quality regression
+3. Audit/testability requirements demand reproducible compression
 
-## Consequências
+## Consequences
 
-**Trade-offs aceitos:**
-- Comportamento de compressão é não-determinístico e não é unit-testável
-- Sem garantia de fallback se o LLM ignorar o contrato
-- Métricas em `chest-usage.jsonl` são auto-reportadas pelo agente, não computadas
+**Accepted trade-offs:**
+- Compression behavior is non-deterministic and not unit-testable
+- No fallback guarantee if the LLM ignores the contract
+- Metrics in `chest-usage.jsonl` are self-reported by the agent, not computed
 
-**O que fica mais fácil:**
-- Zero custo de manutenção Go para compressão
-- Contrato evolui em YAML sem recompilação
-- Funciona com todos os providers LLM que seguem o contrato da skill
+**What gets easier:**
+- Zero Go maintenance cost for compression
+- Contract evolves in YAML without recompilation
+- Works with all LLM providers that follow the skill contract
 
-**O que fica mais difícil:**
-- Auditar exatamente quais fontes foram selecionadas e por quê
-- Testar regressão de qualidade de compressão
-- Comportamento offline determinístico (sem rede/LLM)
+**What gets harder:**
+- Auditing exactly which sources were selected and why
+- Testing compression quality regression
+- Deterministic offline behavior (no network/LLM)
