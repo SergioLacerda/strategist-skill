@@ -56,9 +56,11 @@ contract:
       2: direct_execute  # automatic classifier (Critical Hit) — checked second
       3: main_mission    # default, always safe
     critical_hit_conditions:
-      task_type_allow: [doc_edit, content_update, readme_update, comment_update]
+      task_type_allow: [analysis_move]
       risk_level_require: low
       file_count_max: 5
+      source_path_require: ["<base_path>/pending/", "<base_path>/refined/", "<base_path>/archived/"]
+      target_path_require: ["<base_path>/pending/", "<base_path>/refined/", "<base_path>/archived/"]
       keyword_deny: [investigar, propor, auditar, projetar, redesenhar, arquitetura, refatorar]
       task_type_deny: [architecture_analysis, refactor, security_audit, new_feature]
       tie_break: main_mission

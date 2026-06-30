@@ -6,9 +6,28 @@ risk_score: orchestrator
 category: orchestration
 
 description: >
-  Multi-phase mission orchestrator. Coordinates discovery, refinement, and execution
-  through three pluggable slots. Standalone by default; optionally integrates with SDD
-  as a registered analysis plugin.
+  Analysis and documentation skill. Evaluates problems, verifies implemented demands,
+  detects gaps between requirements and delivery, and updates requirements.
+  Produces analysis and documentation only — never mutates code.
+  Route selection (full pipeline or Critical Hit) is handled internally.
+  Internal role work follows the configured providers — Strategist never performs
+  discovery, refinement, or execution directly.
+
+capability:
+  produces: [analysis, documentation, implementation_handoff]
+  never_produces: [code_mutation, git_mutation, direct_execution]
+  resolution_paths:
+    full_pipeline:
+      sequence: [intake, discovery, refinement, approval_gate, execution]
+      when: complex analysis, ambiguous demands, new requirements
+    critical_hit:
+      sequence: [intake, inline_gate, execution]
+      when: artifact management within workspace folders (analysis_move)
+    quick_draw:
+      sequence: [intake, ranger_qd, archivist_qd, gate, sniper_qd]
+      when: rapid note/idea capture
+  route_decision: internal (intake routing layer)
+  delegating_agent_contract: invoke with request context — route is resolved internally
 
 orchestration:
   model: master_skill
@@ -129,7 +148,7 @@ treasure_chest_schema:
 
 preflight:
   - validate_slot_providers
-  - delegation_capability_check    # verify current environment can invoke each slot provider; emit delegation_unavailable and stop if not
+  - validate_role_invocation       # role/provider invocation failures are internal skill errors
   - load_internal_domain
   - load_persona
 
@@ -284,7 +303,7 @@ execution_provider_resolution:
     - id: execution_provider_unavailable
       condition: resolved_provider cannot be invoked in current environment
       action: block
-      message: "resolved execution_provider cannot be invoked; use a runtime with provider delegation or reconfigure provider"
+      message: "resolved execution_provider cannot be invoked; fix provider configuration or runtime installation"
 
 # Governance compliance — synced via `strategist sync-governance`
 compliance:
@@ -473,7 +492,7 @@ runtime_model:
 
 agent_directives:
   primary_rule: "Delegate, never execute directly."
-  delegation_model: master_skill
+  role_invocation_model: master_skill
   drift_patterns_file: "identity/drift-patterns.yaml"
   footprint_rule: "Write only to <base_path>/ subdirs and .strategist/ internals. No config in target repo root."
   path_rule: "Read from .strategist/ only. strategist/ is the canonical source — never a runtime read target."
