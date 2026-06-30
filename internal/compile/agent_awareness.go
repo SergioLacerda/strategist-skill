@@ -13,22 +13,23 @@ import (
 
 const strategistRuntimeDiscoverySection = `## Strategist Runtime Discovery
 
-Quando ` + "`" + `.strategist/` + "`" + ` está presente no workspace:
+When ` + "`" + `.strategist/` + "`" + ` is present in the workspace:
 
-1. Executar ` + "`" + `strategist check` + "`" + ` — se falhar: emitir output do CLI e parar
-2. Ler ` + "`" + `.strategist/agent-protocol.md` + "`" + ` — protocolo completo de delegação e pipeline
-3. Ler ` + "`" + `.strategist/SKILL.md` + "`" + ` — contratos e path model
-4. Ler ` + "`" + `.strategist/skill.yaml` + "`" + ` — slot mapping
+1. Run ` + "`" + `strategist check` + "`" + ` — if it fails: emit the CLI output and stop
+2. Read ` + "`" + `.strategist/agent-protocol.md` + "`" + ` — full delegation and pipeline protocol
+3. Read ` + "`" + `.strategist/SKILL.md` + "`" + ` — contracts and path model
+4. Read ` + "`" + `.strategist/skill.yaml` + "`" + ` — slot mapping
 
-Restrições obrigatórias após o bootstrap:
-- Não pular fases: discovery, refinement, approval gate e execution são obrigatórios
-- Não executar trabalho diretamente — delegar ao slot designado pelo protocolo
+Mandatory restrictions after bootstrap:
+- Do not skip phases unless the internal routing contract selected Quick Draw or Critical Hit
+- Do not perform source-code mutation; Strategist produces analysis, documentation, and handoff artifacts
+- Route selection is internal to Strategist; invoke the skill with the request context
 
-Quando ` + "`" + `.strategist/` + "`" + ` está ausente:
-→ emitir ` + "`" + `error=not_installed` + "`" + `, instruir o usuário a rodar ` + "`" + `strategist install` + "`" + `, parar.
+When ` + "`" + `.strategist/` + "`" + ` is absent:
+→ emit ` + "`" + `error=not_installed` + "`" + `, instruct the user to run ` + "`" + `strategist install` + "`" + `, stop.
 
-` + "`" + `.sdd/` + "`" + ` é governance — não faz parte do Strategist runtime.
-` + "`" + `.strategist/agent-protocol.md` + "`" + ` é a autoridade de runtime para comportamento do agente.
+` + "`" + `.sdd/` + "`" + ` is governance — it is not part of the Strategist runtime.
+` + "`" + `.strategist/agent-protocol.md` + "`" + ` is the runtime authority for agent behavior.
 Discovery contract: ` + "`" + `.strategist/provider-discovery.md` + "`"
 
 // AgentAwareness upserts per-agent entrypoint files at projectRoot if they already exist.

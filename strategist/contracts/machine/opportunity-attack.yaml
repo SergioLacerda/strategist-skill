@@ -5,6 +5,11 @@ description: >
   artifacts are written. Evaluates whether the refined work warrants an ADR.
   Not a standalone phase — it is a post-refinement subsection before the completion signal.
 
+routing_note: >
+  Opportunity Attack does not choose between short and full route.
+  Routing is owned by the intake/routing layer (00-routing.md, intake.yaml).
+  Opportunity Attack only fires inside the Archivist phase of the full pipeline.
+
 contract:
   owner: archivist
   runs_after: all_four_refined_artifacts_written

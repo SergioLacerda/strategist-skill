@@ -1,9 +1,42 @@
 # Strategist — Core Concepts
 
 **Status:** Accepted
-**Last Updated:** 2026-06-26
+**Last Updated:** 2026-06-30
 
-Reference for the five central concepts of the Strategist skill: role, ranked role, weapons, initiative, and dojo.
+Reference for the core concepts of the Strategist skill: what it is, how it routes work internally, and the roles, weapons, initiative, and dojo that make up its architecture.
+
+---
+
+## What Strategist Is
+
+Strategist is an **analysis and documentation skill**. It evaluates demands, detects gaps between requirements and delivery, refines requirements, and produces approved documentation or implementation handoffs. Strategist never mutates source code.
+
+Callers delegate a request to Strategist as a single skill. Strategist decides the route internally — callers do not need to name a route, slot, or role.
+
+**No code mutation, ever.** "Execution" in Strategist means materializing documentation, handoffs, or analysis artifacts. It never means changing source code or running git mutations.
+
+---
+
+## Routing
+
+When a request arrives, the intake/routing layer classifies it and selects one of four routes:
+
+| Route | When | Sequence |
+|-------|------|----------|
+| **Quick Draw** | Explicit quick-capture / note-append | `intake → ranger_qd → archivist_qd → gate → sniper_qd` |
+| **Critical Hit** | Move/archive `.md` artifacts inside `<base_path>` | `intake → inline_gate → sniper` |
+| **Implementation Short Route** | Already-refined materialization with sufficient context | `intake → validation → approval_gate → execution` |
+| **Main Mission** | Everything else (default) | `intake → discovery → refinement → approval_gate → execution` |
+
+The caller does not specify a route. When in doubt, Strategist defaults to **Main Mission** (conservatism is the safe default).
+
+### Critical Hit
+
+Critical Hit is a narrow short route for **artifact maintenance** only — moving, archiving, or reopening `.md` files within the workspace folders (`pending/`, `refined/`, `archived/`). It does **not** perform analysis, evaluate implementation, detect gaps, or redesign requirements. Those tasks always go through Main Mission.
+
+### Opportunity Attack
+
+Opportunity Attack is an **Archivist routine** that evaluates ADR necessity after all four refined artifacts are written. It is not a route selector — it does not decide between short and full route. Routing is owned by the intake/routing layer.
 
 ---
 
@@ -107,8 +140,6 @@ Each weapon is a skill with its own `skill.yaml` resolved in preflight by the St
 | execution | `controlled` |
 
 To swap a weapon, change the slot value in `active.yaml` and ensure the new provider's `skill.yaml` exists at `.strategist/skills/<provider>/skill.yaml`.
-
----
 
 ## Initiative
 

@@ -928,6 +928,8 @@ func TestCheckCmd_Success(t *testing.T) {
 	assert.Contains(t, out, "openspec-explore")
 	assert.Contains(t, out, "sdd-ask")
 	assert.Contains(t, out, "epic")
+	assert.NotContains(t, out, "DELEGATION")
+	assert.NotContains(t, out, "delegation_capability")
 }
 
 func TestCheckCmd_PersonaMissing(t *testing.T) {

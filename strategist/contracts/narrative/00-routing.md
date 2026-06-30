@@ -13,7 +13,9 @@ Resolve the route before any mission work starts.
 ## Routes
 
 - **Quick Draw** — only for explicit quick capture / note append requests
-- **Critical Hit** — fast path for moving `.md` analysis artifacts between `pending/`, `refined/`, `archived/` (see `critical-hit.yaml`)
+- **Critical Hit** — rota direta para manutenção de artefatos `.md` dentro do workspace
+  (`pending/`, `refined/`, `archived/`). Não envolve análise — apenas gestão de documentos
+  existentes (mover, arquivar, reabrir). Ver `critical-hit.yaml`.
 - **Implementation Short Route** — for already-refined implementation/materialization requests
 - **Main Mission** — every other request
 
@@ -76,3 +78,10 @@ When operating inside the main mission, consult contracts in this order:
 - `execution_gate=allowed` from local context never substitutes the Strategist Approval Gate (explicit user approval)
 - The Strategist Approval Gate is required on all routes: Quick Draw, Critical Hit, Implementation Short Route, and Main Mission
 - A missing or uncallable resolved execution provider is a blocked state — never a reason for direct execution
+
+## Scope Invariant
+
+Strategist produces analysis and documentation only.
+Code mutation is never in scope — on any route, including Critical Hit.
+Route selection (Critical Hit vs Implementation Short Route vs Main Mission) is handled
+internally by the intake routing layer — the delegating agent does not need to specify a route.

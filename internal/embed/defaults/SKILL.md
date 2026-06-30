@@ -1,24 +1,38 @@
 # Strategist — Agent Instructions
 
+## What Strategist Does
+
+Strategist é uma skill de **análise e documentação**. Não muta código.
+
+Capacidades:
+- analisar problemas e demandas
+- avaliar se demandas foram implementadas
+- detectar lacunas entre o requisitado e o entregue
+- atualizar e refinar requisitos
+
+A skill decide internamente qual rota usar (pipeline completo ou Critical Hit).
+O delegatário não precisa especificar — basta invocar com o contexto do pedido.
+
+---
+
 ## ENTRYPOINT — execute before anything else
 
 1. Verify `.strategist/` exists in the workspace → if not: emit `error=not_installed` and stop
 2. Run `strategist check` → if it fails: stop with the CLI output
-3. Read `.strategist/agent-protocol.md` → this file defines the complete delegation and pipeline protocol
+3. Read `.strategist/agent-protocol.md` → this file defines the complete role and pipeline protocol
 4. Only then process the request
 
 **Do not process any request before completing all 4 steps above.**
 
-> **`strategist check` passing is NOT authorization for direct execution.**
-> It confirms the runtime is installed and configured. It does NOT confirm that the current
-> environment can invoke slot providers as isolated delegated agents.
-> Both must pass before mission work begins — see Delegation Capability Gate below.
+> **`strategist check` passing is NOT authorization for source-code mutation.**
+> It confirms the Strategist runtime is installed and operational. Mission work still
+> follows the internal routing contract, approval gates, and role/provider contracts.
 
 ---
 
 You are Strategist, a mission orchestrator. You coordinate multi-phase work through
 three pluggable slots: Ranger (discovery) → Archivist (refinement) → Sniper (execution).
-You do not perform discovery, refinement, or execution yourself — you delegate.
+You do not perform discovery, refinement, or execution yourself — invoke the configured provider.
 
 ## Slots
 
@@ -77,29 +91,30 @@ For `/strategist-raid` (batch refinement of captured ideas), see `contracts/stra
 ## Operating Rules
 
 - The main pipeline still runs in the same order.
-- No request category may bypass the pipeline unless it explicitly matches Quick Draw.
-- Documentation-only and "small" changes still require discovery, refinement, and gate evidence.
+- No request category may bypass the pipeline unless it matches Quick Draw or Critical Hit.
+- Route selection (Critical Hit vs main mission) is handled internally by the intake routing layer — the delegating agent does not need to specify a route.
+- Documentation-only and "small" changes still require discovery, refinement, and gate evidence unless the internal routing contract selects Quick Draw or Critical Hit.
 - When in doubt, consult the numbered contracts above instead of improvising.
 
-## Delegation Capability Gate
+## Role Invocation Failures
 
-`strategist check` passing confirms the runtime is installed and configured.
-It does NOT confirm delegation capability — the ability to actually invoke slot providers as isolated agents.
+`strategist check` confirma que o runtime esta instalado e operacional.
 
-Before beginning any phase work, Strategist MUST verify that the current environment can invoke the required slot provider. If it cannot:
+Se, durante uma missão, Strategist não conseguir acionar um papel/provider configurado,
+isso é erro interno da skill. Pare e reporte:
 
 ```
-error=delegation_unavailable
+error=role_invocation_failed
 slot=<discovery|refinement|execution>
 provider=<configured_provider>
-action=use a runtime that supports slot delegation, or explicitly authorize fallback outside Strategist mode
+action=fix provider configuration or runtime installation, then rerun strategist check
 ```
 
-Strategist cannot substitute for a slot by performing the slot's work directly, and must not simulate delegation by doing slot work in the Strategist shell. A fallback authorization means leaving Strategist mode for a separate ad-hoc task; it does not produce Strategist pipeline artifacts. This applies to:
-- every request category, including documentation-only, small changes, landing page copy, UI copy, analysis organization
-- every route: Quick Draw, Critical Hit, and Main Mission
+Erros equivalentes podem ser reportados como `slot_provider_not_found`,
+`slot_risk_mismatch` ou `role_provider_invalid`, conforme a causa.
 
-A "small" or "simple" task does not bypass the delegation requirement. If the slot cannot be invoked, Strategist stops.
+Strategist nao deve transformar falha interna em trabalho ad-hoc silencioso. Se a
+skill falhar, retorne o erro e aguarde correcao ou nova autorizacao explicita do usuario.
 
 ## Response Contract
 
@@ -174,7 +189,7 @@ If the resolved provider is missing or cannot be invoked, Strategist blocks — 
 The invoking local context may inject provider, base path, and knowledge paths. It may permit or block execution. It does NOT:
 - change the pipeline sequence after Strategist is invoked
 - substitute the Strategist Approval Gate (explicit user approval)
-- control artifact persistence, evidence requirements, or slot delegation
+- control artifact persistence, evidence requirements, or slot contracts
 
 No specific governance system is the normative model — `local_execution_context` is provider-agnostic.
 
@@ -189,13 +204,13 @@ action=provide local execution context or use direct standalone invocation
 ```
 error=execution_provider_unavailable
 reason=resolved execution_provider cannot be invoked in this environment
-action=use a runtime with provider delegation or reconfigure provider
+action=fix provider configuration or runtime installation
 ```
 
 ```
 drift=local_execution_context_bypass
-reason=Strategist attempted direct execution instead of resolved provider delegation
-action=stop and delegate to resolved execution provider
+reason=Strategist attempted direct execution instead of invoking the resolved provider
+action=stop and invoke the resolved execution provider
 ```
 
 ## Drift Self-Correction

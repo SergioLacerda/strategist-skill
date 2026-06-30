@@ -5,30 +5,30 @@
 
 ---
 
-## Contexto
+## Context
 
-A skill Strategist foi projetada para operar com uma única sessão ativa por workspace. Quando duas sessões Claude rodam simultaneamente contra os mesmos diretórios `.strategist/` e `.analysis/`, cinco classes de falha emergem (ver análise em `.analysis/refined/conflito_multi_thread/design.md`).
+The Strategist skill was designed to operate with a single active session per workspace. When two Claude sessions run simultaneously against the same `.strategist/` and `.analysis/` directories, five classes of failure emerge (see analysis in `.analysis/refined/conflito_multi_thread/design.md`).
 
-Três dessas falhas foram mitigadas:
+Three of these failures were mitigated:
 
-- **F4** (partial `.config.gz` read): resolvido com atomic write via `os.Rename` em `writeGzJSON`
-- **F1** (mission ID collision): mitigado por existence check no intake contract
-- **F5** (gate sem identidade de sessão): resolvido adicionando `{mission_id}` ao `approval_prompt` das personas
+- **F4** (partial `.config.gz` read): resolved with atomic write via `os.Rename` in `writeGzJSON`
+- **F1** (mission ID collision): mitigated via existence check in the intake contract
+- **F5** (gate without session identity): resolved by adding `{mission_id}` to the personas' `approval_prompt`
 
-Uma falha permanece intencionalmente não mitigada:
+One failure remains intentionally unmitigated:
 
-**F3 — Sniper cross-session blind spot:** Se Mission A e Mission B têm Sniper apontando para o mesmo arquivo, o segundo Sniper não detecta o conflito da outra sessão. O resultado é sobrescrita silenciosa no nível da skill — a colisão aparece como git conflict no momento do commit, não antes.
+**F3 — Sniper cross-session blind spot:** If Mission A and Mission B have a Sniper pointing at the same file, the second Sniper does not detect the other session's conflict. The result is a silent overwrite at the skill level — the collision surfaces as a git conflict at commit time, not before.
 
-## Decisão
+## Decision
 
-F3 é aceito como limitação conhecida da arquitetura single-session. A skill não implementa um lock registry cross-session ou coordenação de escrita entre sessões.
+F3 is accepted as a known limitation of the single-session architecture. The skill does not implement a cross-session lock registry or write coordination between sessions.
 
-**Razão:** A complexidade de um lock registry distribuído (arquivo de lock, timeout, detecção de sessão morta, rollback) excede o benefício para um caso de uso que já tem mitigação adequada via git. O git conflict é visível, recuperável e ocorre antes de qualquer push.
+**Rationale:** The complexity of a distributed lock registry (lock file, timeout, dead-session detection, rollback) exceeds the benefit for a use case that already has adequate mitigation via git. The git conflict is visible, recoverable, and occurs before any push.
 
-**Recomendação para usuários:** Ao executar múltiplas sessões em paralelo, evitar que dois Snipers editem o mesmo arquivo na mesma janela de tempo. Fazer commits frequentes entre sessões para minimizar a janela de conflito.
+**Recommendation for users:** When running multiple sessions in parallel, avoid having two Snipers edit the same file in the same time window. Commit frequently between sessions to minimize the conflict window.
 
-## Consequências
+## Consequences
 
-- A skill documenta explicitamente que paralelismo de sessões não é garantido como seguro para escrita concorrente no mesmo arquivo.
-- Usuários que precisam de paralelismo completo devem usar worktrees git separados.
-- F3 pode ser revisitado se casos de uso de paralelismo se tornarem mais frequentes e o custo de git conflicts se tornar inaceitável.
+- The skill explicitly documents that session parallelism is not guaranteed safe for concurrent writes to the same file.
+- Users who need full parallelism should use separate git worktrees.
+- F3 may be revisited if parallel-session use cases become more frequent and the cost of git conflicts becomes unacceptable.

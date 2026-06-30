@@ -180,7 +180,9 @@ strategist v1.0.0
 
 ## check
 
-Validates that the slot providers declared in `active.yaml` are installed and satisfy their `risk_score` contracts. Use before starting a mission to ensure the workspace is healthy.
+Validates operational readiness of the Strategist runtime — confirms the skill is installed, providers are configured, and persona is valid. Use before starting a mission.
+
+`check` does **not** test whether the environment can invoke external agents. It confirms the runtime is installed and configured. If a slot provider fails to be invoked during a mission, Strategist reports `role_invocation_failed` as an internal skill error — not a `check` failure.
 
 ```
 strategist check [--root=<dir>]
@@ -199,15 +201,27 @@ strategist check [--root=<dir>]
   - `skills/<provider>/skill.yaml` exists (provider skill), **or** `roles/<provider>.yaml` exists with the slot field (native role)
   - Provider skills must declare the correct `risk_score`: `discovery`/`refinement` → `write_analysis`; `execution` → `controlled`
   - Native roles are accepted by field match; no `risk_score` verification
+- Active persona file exists and contains required fields
+- Normative runtime files match embedded defaults (detects stale installs)
 
 **Success output:**
 ```
-[Strategist] check=ok slots=[discovery:brainstorming, refinement:openspec-explore, execution:sniper] persona=epic root=.strategist
+STATUS   
+  ok   root=.strategist
+
+SLOTS   
+  discovery    brainstorming
+  refinement   openspec-explore
+  execution    sniper
+
+PERSONA   
+  mode   epic
 ```
 
 **Failure output:**
 ```
-[Strategist] check=failed reason=slot_provider_not_found slot=execution
+  ✗ slot execution: provider "sniper" not installed (missing .strategist/skills/sniper/skill.yaml)
+[Strategist] check=failed errors=1 root=.strategist
 ```
 
 ---
