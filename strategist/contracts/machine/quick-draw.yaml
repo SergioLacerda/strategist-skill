@@ -36,35 +36,35 @@ phases:
       - filter_by_status: [gate_approval, gate_pending]
       - if_found:
           emit: pending_missions_found count=N ids=[list]
-          include_in_gate: "⚠️ {N} missão(ões) pendente(s): {ids}"
+          include_in_gate: "⚠️ {N} pending mission(s): {ids}"
       - if_not_found: continue silently
 
   ranger_quick_draw:
     input: original_prompt
     output: one normalized line
-    format: "ideia: <formalizacao sem expandir escopo>"
+    format: "idea: <formalization without expanding scope>"
     constraints:
       - must_not: add requirements, milestones, or implementation details
       - must_not: expand scope beyond the captured note
     scope_enforcement:
       signals_of_expansion:
         - mentions specific files to edit or create
-        - contains execution steps ("rodar", "instalar", "atualizar X para Y", "commitar")
+        - contains execution steps ("run", "install", "update X to Y", "commit")
         - references dependency changes
         - implies multi-step implementation
       on_expansion_detected:
         mark: scope_expansion=true
         action: capture idea headline only — drop implementation details
-        gate_warning: "⚠️ expansão de escopo detectada — registrando apenas a ideia"
+        gate_warning: "⚠️ scope expansion detected — recording the idea only"
         gate_extra_option:
           escalar: route to full Strategist pipeline with new mission_id
 
   archivist_quick_draw:
     theme_buckets:
-      # Critério de roteamento:
-      # analise-tecnica: testes, coverage, schema, CI, refactor, arquitetura de código
-      # analise-negocios: produto, roadmap, priorização, UX, trade-offs de valor
-      # analise: fallback para entradas ambíguas
+      # Routing criteria:
+      # analise-tecnica: tests, coverage, schema, CI, refactor, code architecture
+      # analise-negocios: product, roadmap, prioritization, UX, value trade-offs
+      # analise: fallback for ambiguous entries
       pt-BR: [arquitetura, seguranca, analise, analise-tecnica, analise-negocios, geral]
       en: [architecture, security, analysis, analysis-technical, analysis-business, general]
     destination: "<base_path>/todo/<bucket>.md"

@@ -1156,37 +1156,37 @@ func TestStrategistSourceTreeEnglishOnly(t *testing.T) {
 	}
 }
 
-func TestDelegationUnavailableContractPresent(t *testing.T) {
+func TestRoleInvocationFailureContractPresent(t *testing.T) {
 	t.Parallel()
 
-	// agent-protocol.md templates must declare delegation_unavailable as a named error state
-	// and forbid direct simulation of delegation.
+	// agent-protocol.md templates must declare role_invocation_failed as a named internal
+	// error state and forbid direct simulation of role work.
 	templatePaths := []string{
 		filepath.Join(repoRoot(t), "strategist", "templates", "agent-protocol.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "agent-protocol.md"),
 	}
 	for _, path := range templatePaths {
 		content := readFile(t, path)
-		if !strings.Contains(content, "delegation_unavailable") {
-			t.Fatalf("%s missing error state \"delegation_unavailable\"", path)
+		if !strings.Contains(content, "role_invocation_failed") {
+			t.Fatalf("%s missing error state \"role_invocation_failed\"", path)
 		}
-		if !strings.Contains(content, "simulate delegation") {
-			t.Fatalf("%s missing NEVER DO rule about simulating delegation", path)
+		if !strings.Contains(content, "simulate role work") {
+			t.Fatalf("%s missing NEVER DO rule about simulating role work", path)
 		}
 	}
 
-	// drift-patterns.yaml files must include a delegation_unavailable pattern
+	// drift-patterns.yaml files must include a role_invocation_failed pattern.
 	driftPaths := []string{
 		filepath.Join(repoRoot(t), "strategist", "templates", "domain", "identity", "drift-patterns.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "domain", "identity", "drift-patterns.yaml"),
 	}
 	for _, path := range driftPaths {
 		content := readFile(t, path)
-		if !strings.Contains(content, "id: delegation_unavailable") {
-			t.Fatalf("%s missing drift pattern \"delegation_unavailable\"", path)
+		if !strings.Contains(content, "id: role_invocation_failed") {
+			t.Fatalf("%s missing drift pattern \"role_invocation_failed\"", path)
 		}
-		if !strings.Contains(content, "delegation_unavailable") {
-			t.Fatalf("%s direct_execution correction must reference delegation_unavailable", path)
+		if !strings.Contains(content, "role_invocation_failed") {
+			t.Fatalf("%s direct_execution correction must reference role_invocation_failed", path)
 		}
 	}
 }
@@ -1294,40 +1294,41 @@ func TestPersonasUseApprovalGateSemantics(t *testing.T) {
 	}
 }
 
-// TestDelegationCapabilityGateInSKILLMD verifies that SKILL.md declares
-// the delegation capability gate and the distinction between strategist check
-// and actual delegation capability.
-func TestDelegationCapabilityGateInSKILLMD(t *testing.T) {
+// TestRoleInvocationFailuresInSKILLMD verifies that SKILL.md declares role
+// invocation failures as internal skill errors, not caller delegation gates.
+func TestRoleInvocationFailuresInSKILLMD(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(repoRoot(t), "strategist", "SKILL.md")
 	content := readFile(t, path)
 
 	required := []string{
-		"Delegation Capability Gate",
-		"delegation_unavailable",
+		"Role Invocation Failures",
+		"role_invocation_failed",
 		"strategist check",
-		"simulate delegation",
+		"slot_provider_not_found",
+		"slot_risk_mismatch",
+		"role_provider_invalid",
 	}
 	for _, needle := range required {
 		if !strings.Contains(content, needle) {
-			t.Fatalf("%s missing required delegation gate term %q", path, needle)
+			t.Fatalf("%s missing required role invocation term %q", path, needle)
 		}
 	}
 }
 
-// TestProtocolDeclaresSimulationForbidden verifies that protocol.md explicitly
-// forbids simulating delegation (performing slot work in the Strategist shell).
-func TestProtocolDeclaresSimulationForbidden(t *testing.T) {
+// TestProtocolDeclaresRoleSimulationForbidden verifies that protocol.md explicitly
+// forbids simulating role work (performing slot work in the Strategist shell).
+func TestProtocolDeclaresRoleSimulationForbidden(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(repoRoot(t), "strategist", "protocol.md")
 	content := readFile(t, path)
 
 	for _, needle := range []string{
-		"delegation_unavailable",
-		"simulate delegation",
+		"role_invocation_failed",
+		"simulate role work",
 	} {
 		if !strings.Contains(content, needle) {
-			t.Fatalf("%s missing required delegation rule %q", path, needle)
+			t.Fatalf("%s missing required role invocation rule %q", path, needle)
 		}
 	}
 }
@@ -1356,19 +1357,21 @@ func TestDriftPatternsIncludeApprovalAndRuntimePatterns(t *testing.T) {
 	}
 }
 
-// TestPreflightContractDeclaresCapabilityCheck verifies the preflight machine
-// contract declares delegation_unavailable as a named error condition.
-func TestPreflightContractDeclaresCapabilityCheck(t *testing.T) {
+// TestPreflightContractDeclaresRoleInvocationFailure verifies the preflight
+// machine contract declares role_invocation_failed as a named error condition.
+func TestPreflightContractDeclaresRoleInvocationFailure(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "preflight.yaml")
 	content := readFile(t, path)
 
 	for _, needle := range []string{
-		"code: delegation_unavailable",
-		"delegation_capability_check",
+		"code: role_invocation_failed",
+		"slot=<slot_name>",
+		"provider=<provider_id>",
+		"strategist check",
 	} {
 		if !strings.Contains(content, needle) {
-			t.Fatalf("%s missing delegation capability check term %q", path, needle)
+			t.Fatalf("%s missing role invocation failure term %q", path, needle)
 		}
 	}
 }

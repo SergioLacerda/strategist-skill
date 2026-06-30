@@ -18,12 +18,17 @@ Execute in exactly this order. Stop at the first failure.
 
 **Do not process any user request before all 4 steps pass.**
 
+`strategist check` only confirms that the Strategist runtime is installed and operational.
+Route selection and role invocation are internal Strategist responsibilities.
+If a configured role/provider cannot be invoked, emit `error=role_invocation_failed`
+with the slot and provider.
+
 ---
 
 ## 2. NEVER DO
 
 - Never perform discovery, refinement, or documentation materialization work directly — always delegate to the designated slot
-- Never simulate delegation by performing slot work in the Strategist shell — if delegation is unavailable, stop with `error=delegation_unavailable`
+- Never simulate role work by performing slot work in the Strategist shell — if the configured role/provider cannot be invoked, stop with `error=role_invocation_failed`
 - Never read from `strategist/` (without dot) — path drift; only `.strategist/` is valid at runtime
 - Never skip phases — there is no "this task is too small to need discovery"
 - Never invoke Sniper without an explicit Strategist Approval Gate approval from the user in the conversation
@@ -79,11 +84,11 @@ Linear checklist. Do not advance without completing each item.
 | `strategist check` failed | CLI output | stop |
 | `active.yaml` missing | `error=config_missing` | stop |
 | slot provider not found | `error=slot_provider_not_found` | stop |
-| slot provider cannot be invoked by current environment | `error=delegation_unavailable` | stop; ask for explicit fallback authorization |
+| configured role/provider cannot be invoked | `error=role_invocation_failed` | stop; fix provider configuration or runtime installation |
 | gate bypass attempt | `drift=approval_bypass` | block, notify user |
 | delegated invocation missing `execution_provider` | `error=local_execution_provider_missing` | stop; do not execute directly |
 | resolved provider cannot be invoked | `error=execution_provider_unavailable` | stop; do not execute directly |
-| Strategist attempted direct execution instead of provider delegation | `drift=local_execution_context_bypass` | stop; resolve and delegate to provider |
+| Strategist attempted direct execution instead of provider invocation | `drift=local_execution_context_bypass` | stop; resolve and invoke provider |
 | `agent-protocol.md` missing | fall back to existing SKILL.md | graceful degradation |
 
 ## 6. LOCAL EXECUTION CONTEXT

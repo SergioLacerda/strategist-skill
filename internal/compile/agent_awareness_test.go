@@ -40,6 +40,8 @@ func TestAgentAwareness(t *testing.T) {
 		assert.Contains(t, s, "agent-protocol.md")
 		assert.Contains(t, s, "## Other Section")
 		assert.Contains(t, s, "Keep this.")
+		assert.Contains(t, s, "Route selection is internal to Strategist")
+		assert.Contains(t, s, "Strategist produces analysis, documentation, and handoff artifacts")
 	})
 
 	t.Run("appends strategist section to antigravity when section absent", func(t *testing.T) {

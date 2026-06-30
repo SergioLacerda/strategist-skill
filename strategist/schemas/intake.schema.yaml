@@ -68,18 +68,18 @@ fields:
           - fazer
 
   urgency:
-    description: Urgência da missão — impacta priorização e trade-offs de qualidade.
+    description: Mission urgency — affects prioritization and quality trade-offs.
     default: normal
     values:
       normal:
-        description: Sem prazo específico. Qualidade prioritária sobre velocidade.
+        description: No specific deadline. Quality takes priority over speed.
         aliases:
           - sem pressa
           - quando puder
           - normal
           - sem urgência
       urgent:
-        description: Prazo curto. Trade-offs de qualidade controlados são aceitáveis.
+        description: Short deadline. Controlled quality trade-offs are acceptable.
         aliases:
           - urgente
           - para ontem
@@ -89,7 +89,7 @@ fields:
           - com prazo
           - tem prazo
       deferred:
-        description: Baixa prioridade. Pode aguardar outras missões.
+        description: Low priority. Can wait for other missions.
         aliases:
           - pode esperar
           - baixa prioridade
