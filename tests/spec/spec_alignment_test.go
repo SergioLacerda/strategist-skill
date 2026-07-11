@@ -1375,3 +1375,93 @@ func TestPreflightContractDeclaresRoleInvocationFailure(t *testing.T) {
 		}
 	}
 }
+
+// TestSkillDeclaresRoleLockForParentAgent verifies SKILL.md contains the
+// hard role-lock sentence that forbids the parent agent from solving the
+// user's task directly instead of invoking configured slot providers.
+func TestSkillDeclaresRoleLockForParentAgent(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "SKILL.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "SKILL.md"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"When this skill is invoked, the parent agent MUST NOT solve the user's task directly.",
+			"role_invocation_failed",
+			"replace a missing provider with its own built-in capabilities",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing role-lock term %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestAgentProtocolDeclaresParentAgentBoundary verifies agent-protocol.md
+// states that direct phase work without invoking the configured provider is
+// direct_execution drift, even when the parent agent's own answer is correct.
+func TestAgentProtocolDeclaresParentAgentBoundary(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "templates", "agent-protocol.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "agent-protocol.md"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"PARENT AGENT BOUNDARY",
+			"`direct_execution` drift, even if the output is correct",
+			"Correctness of the parent agent's independent answer does not repair the drift",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing parent-agent boundary term %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestRoutingContractExcludesCodeMutationFromCriticalHit verifies the routing
+// contract explicitly classifies code/test mutation requests as
+// implementation/materialization, never Critical Hit.
+func TestRoutingContractExcludesCodeMutationFromCriticalHit(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "00-routing.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "00-routing.md"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"Requests to remove, edit, merge, or refactor source files or tests are not Critical Hit",
+			"The default Sniper contract does not",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing code-mutation routing term %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestExecutionContractForbidsParentAgentMutationBypass verifies the execution
+// contract states that Sniper's code/test mutation prohibition cannot be
+// bypassed by the parent agent performing the mutation directly.
+func TestExecutionContractForbidsParentAgentMutationBypass(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "06-execution.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "06-execution.md"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"be bypassed by the parent agent performing the mutation directly",
+			"produces analysis/handoff only",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing mutation-bypass term %q", path, needle)
+			}
+		}
+	}
+}

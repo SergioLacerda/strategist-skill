@@ -421,7 +421,7 @@ When invoked, the agent:
    - Reports the governance gate as policy context
    - May provide `base_path` and knowledge paths
    - Does not replace the persona approval gate
-   - Does not override the pipeline sequence or slot delegation
+   - Does not override the pipeline sequence or slot contracts
 
 ---
 
@@ -784,7 +784,7 @@ Template for use with SDD: `templates/epic-sdd.yaml`
 
 The following behaviors are **never allowed**:
 
-1. **Execute discovery, refinement, or execution directly** — always delegate to the configured slot provider. If no provider exists, stop with `slot_provider_not_found`.
+1. **Execute discovery, refinement, or execution directly** — always invoke the configured slot provider. If no provider exists, stop with `slot_provider_not_found`.
 
 2. **Invoke the execution slot without explicit user approval** — the approval gate is mandatory. Any path that reaches the execution slot without an affirmative response to the approval prompt is a prohibited bypass.
 
