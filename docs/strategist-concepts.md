@@ -87,6 +87,31 @@ Sniper requires explicit user approval before any execution — no exceptions. U
 
 ---
 
+## Parent Agent Role Lock
+
+When Strategist is invoked, the parent agent (Codex, Claude, or any host) becomes a
+constrained orchestrator shell — it must not solve the user's task directly. See the
+"Role Lock" section in `SKILL.md` and "Parent Agent Boundary" in `agent-protocol.md`
+for the normative rules. Examples of correct and incorrect behavior:
+
+- **Read-only analysis request** — user asks Strategist to evaluate a proposal. The
+  parent agent bootstraps, invokes the discovery/refinement providers, presents the
+  gate, and relays their output. It never inspects or judges the code itself.
+- **Code/test mutation request** — user asks Strategist to "clean up duplicated
+  tests." The parent agent produces analysis/handoff artifacts only; it does not edit
+  the test files, because the default Sniper contract forbids code/test mutation.
+  Implementation happens outside Strategist or through a separately configured
+  execution provider whose contract permits mutation.
+- **Unavailable provider** — the configured discovery provider cannot be invoked. The
+  parent agent stops and emits `error=role_invocation_failed slot=discovery
+  provider=<configured_provider>`. It does not perform discovery itself to "help."
+- **Anti-example (drift)** — the parent agent reads `SKILL.md` and `agent-protocol.md`,
+  then performs discovery, refinement, or execution itself instead of invoking the
+  configured provider. This is `direct_execution` drift even if the resulting answer
+  is correct — correctness does not repair the drift.
+
+---
+
 ## Ranked Role
 
 A ranked role is a provider that declares `provider_class: rankeado` in its `skill.yaml`.

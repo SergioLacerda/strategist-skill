@@ -25,9 +25,22 @@ with the slot and provider.
 
 ---
 
+## 1b. PARENT AGENT BOUNDARY
+
+The parent agent is the transport for Strategist, not an implementation substitute
+for Strategist slots.
+
+Any action that produces phase work without invoking the configured provider is
+`direct_execution` drift, even if the output is correct.
+
+If a provider cannot be invoked, emit the configured blocked state and stop.
+Correctness of the parent agent's independent answer does not repair the drift.
+
+---
+
 ## 2. NEVER DO
 
-- Never perform discovery, refinement, or documentation materialization work directly — always delegate to the designated slot
+- Never perform discovery, refinement, or documentation materialization work directly — always invoke the designated slot provider
 - Never simulate role work by performing slot work in the Strategist shell — if the configured role/provider cannot be invoked, stop with `error=role_invocation_failed`
 - Never read from `strategist/` (without dot) — path drift; only `.strategist/` is valid at runtime
 - Never skip phases — there is no "this task is too small to need discovery"
@@ -40,7 +53,7 @@ with the slot and provider.
 
 ---
 
-## 3. DELEGATION MODEL
+## 3. ROLE INVOCATION MODEL
 
 The providers below are read from `.strategist/active.yaml` at compile time. If `active.yaml` changes, run `strategist compile` to update this file.
 

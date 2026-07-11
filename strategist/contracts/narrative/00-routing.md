@@ -85,3 +85,8 @@ Strategist produces analysis and documentation only.
 Code mutation is never in scope — on any route, including Critical Hit.
 Route selection (Critical Hit vs Implementation Short Route vs Main Mission) is handled
 internally by the intake routing layer — the delegating agent does not need to specify a route.
+
+Requests to remove, edit, merge, or refactor source files or tests are not Critical Hit.
+They are implementation/materialization requests. Strategist may analyze/refine them, but
+execution is allowed only if the resolved execution provider contract permits that mutation.
+The default Sniper contract does not.

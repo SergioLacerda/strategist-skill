@@ -78,3 +78,9 @@ Sniper write scope is limited to workspace documentation files and declared docu
 - files outside `<base_path>/` only when explicitly declared by Archivist and accepted at the approval gate
 - **code files are forbidden** — no code mutation: no `.go`, `.ts`, `.py`, `.js`, `.sh`, or other source code
 - **Git mutating commands are forbidden** — no `git add`, `git commit`, `git push`, `git reset`, `git merge`, or any other state-modifying Git operation
+
+The default Sniper contract cannot mutate code or test files, and this restriction cannot
+be bypassed by the parent agent performing the mutation directly instead of Sniper. A
+request for code/test mutation while Strategist is active produces analysis/handoff only,
+unless a separately configured execution provider whose contract explicitly permits
+mutation is resolved in its place.

@@ -13,10 +13,12 @@ import (
 
 const strategistRuntimeDiscoverySection = `## Strategist Runtime Discovery
 
-When ` + "`" + `.strategist/` + "`" + ` is present in the workspace:
+When ` + "`" + `.strategist/` + "`" + ` is present in the workspace, Strategist is active. The parent
+agent MUST NOT solve the user's task directly — it is the orchestrator shell, not the
+implementer:
 
 1. Run ` + "`" + `strategist check` + "`" + ` — if it fails: emit the CLI output and stop
-2. Read ` + "`" + `.strategist/agent-protocol.md` + "`" + ` — full delegation and pipeline protocol
+2. Read ` + "`" + `.strategist/agent-protocol.md` + "`" + ` — full role and pipeline protocol
 3. Read ` + "`" + `.strategist/SKILL.md` + "`" + ` — contracts and path model
 4. Read ` + "`" + `.strategist/skill.yaml` + "`" + ` — slot mapping
 
@@ -24,6 +26,7 @@ Mandatory restrictions after bootstrap:
 - Do not skip phases unless the internal routing contract selected Quick Draw or Critical Hit
 - Do not perform source-code mutation; Strategist produces analysis, documentation, and handoff artifacts
 - Route selection is internal to Strategist; invoke the skill with the request context
+- If a configured slot/provider cannot be invoked, emit ` + "`" + `error=role_invocation_failed` + "`" + ` with slot and provider — do not fall back to solving the phase directly
 
 When ` + "`" + `.strategist/` + "`" + ` is absent:
 → emit ` + "`" + `error=not_installed` + "`" + `, instruct the user to run ` + "`" + `strategist install` + "`" + `, stop.
@@ -163,9 +166,13 @@ func upsertCodexSeed(path string) error {
 	seed["required_context"] = ctx
 
 	seed["on_strategist_invoke"] = map[string]any{
-		"preflight":        "strategist check",
-		"protocol":         ".strategist/agent-protocol.md",
-		"on_not_installed": "emit error=not_installed and stop",
+		"preflight":                 "strategist check",
+		"protocol":                  ".strategist/agent-protocol.md",
+		"on_not_installed":          "emit error=not_installed and stop",
+		"role_lock":                 "you are the Strategist orchestrator, not a general coding agent for this turn — do not solve the task directly",
+		"allowed_actions":           []any{"bootstrap", "route", "invoke_providers", "present_gates", "relay_outputs", "report_blocked_states"},
+		"forbidden_actions":         []any{"direct_discovery", "direct_refinement", "direct_execution", "code_or_test_mutation", "git_mutation", "provider_fallback"},
+		"on_role_invocation_failed": "emit error=role_invocation_failed with slot and provider, then stop",
 	}
 
 	out, err := marshalSortedJSON(seed)
