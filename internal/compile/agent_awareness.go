@@ -166,6 +166,7 @@ func upsertCodexSeed(path string) error {
 	seed["required_context"] = ctx
 
 	seed["on_strategist_invoke"] = map[string]any{
+		"header":                    "Strategist Active",
 		"preflight":                 "strategist check",
 		"protocol":                  ".strategist/agent-protocol.md",
 		"on_not_installed":          "emit error=not_installed and stop",
