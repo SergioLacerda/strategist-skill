@@ -14,6 +14,7 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/testutil"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -163,7 +164,7 @@ func TestMergeChestRows_GovernedNotInActive(t *testing.T) {
 	governed := map[string]govChest{
 		"gov-only": {ID: "gov-only", Path: "/some/path", Trust: govTrust{Tier: "T1"}},
 	}
-	rows := mergeChestRows(nil, governed, nil, nil)
+	rows := mergeChestRows(nil, governed, nil, nil, nil)
 	require.Len(t, rows, 1)
 	r := rows[0]
 	assert.Equal(t, "gov-only", r.id)
@@ -175,7 +176,7 @@ func TestMergeChestRows_GovernedNotInActive(t *testing.T) {
 func TestMergeChestRows_IndexedNotDeclared(t *testing.T) {
 	t.Parallel()
 	indexed := map[string]bool{"idx-only": true}
-	rows := mergeChestRows(nil, nil, indexed, nil)
+	rows := mergeChestRows(nil, nil, indexed, nil, nil)
 	require.Len(t, rows, 1)
 	r := rows[0]
 	assert.Equal(t, "idx-only", r.id)
@@ -198,7 +199,7 @@ func TestMergeChestRows_FullMerge(t *testing.T) {
 	indexed := map[string]bool{"chest-a": true, "idx-only": true}
 	compiled := map[string]bool{"chest-a": true}
 
-	rows := mergeChestRows(active, governed, indexed, compiled)
+	rows := mergeChestRows(active, governed, indexed, compiled, nil)
 	assert.Len(t, rows, 3)
 
 	byID := make(map[string]chestRow)
@@ -295,6 +296,31 @@ func TestLoadGoverned_Success(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, result, "chest-one")
 	assert.Equal(t, "T1", result["chest-one"].Trust.Tier)
+}
+
+func TestLoadGoverned_WithValidGrade(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	content := "chests:\n  - id: chest-one\n    path: /some/path\n    trust:\n      tier: T1\n    grade:\n      source_grade: A\n      reuse_value: high\n      implementation_status: implemented\n    open_gaps: [\"missing tests\"]\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "treasure-chests.yaml"), []byte(content), 0o644))
+
+	result, err := loadGoverned(dir)
+	require.NoError(t, err)
+	require.Contains(t, result, "chest-one")
+	assert.Equal(t, "A", result["chest-one"].Grade.SourceGrade)
+	assert.Equal(t, "high", result["chest-one"].Grade.ReuseValue)
+	assert.Equal(t, []string{"missing tests"}, result["chest-one"].OpenGaps)
+}
+
+func TestLoadGoverned_WithInvalidGrade(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	content := "chests:\n  - id: chest-one\n    path: /some/path\n    trust:\n      tier: T1\n    grade:\n      source_grade: Z\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "treasure-chests.yaml"), []byte(content), 0o644))
+
+	_, err := loadGoverned(dir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "source_grade")
 }
 
 // --- initiative: readLastMissionID via writeWorkspaceSection ---
@@ -436,8 +462,10 @@ func TestWriteWorkspaceSection_EmptyBasePath(t *testing.T) {
 
 func TestTelemetryRunFromCmd_WithNonNilContext(t *testing.T) {
 	t.Parallel()
-	// Create a fresh command with a non-nil context that has no MissionRun embedded.
-	cmd := treasureChestCmd
+	// Use a private *cobra.Command, not a shared package-level command var — other
+	// parallel tests read package-level commands' Context() concurrently, and
+	// SetContext on a shared command races with those reads.
+	cmd := &cobra.Command{}
 	// Set a background context so cmd.Context() returns non-nil.
 	cmd.SetContext(t.Context())
 	result := telemetryRunFromCmd(cmd)

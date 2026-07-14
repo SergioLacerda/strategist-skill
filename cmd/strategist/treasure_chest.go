@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/compile"
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -50,11 +51,25 @@ type govTrust struct {
 	LastReviewed string `yaml:"last_reviewed"`
 }
 
+// govGrade holds SQ-002 (Track T-G) source grading fields. All fields are
+// human-reviewed only in this pass — no derived or learned values.
+type govGrade struct {
+	SourceGrade          string `yaml:"source_grade"`
+	ReuseValue           string `yaml:"reuse_value"`
+	ImplementationStatus string `yaml:"implementation_status"`
+	Provenance           string `yaml:"provenance"`
+}
+
 type govChest struct {
-	ID    string   `yaml:"id"`
-	Title string   `yaml:"title"`
-	Path  string   `yaml:"path"`
-	Trust govTrust `yaml:"trust"`
+	ID       string   `yaml:"id"`
+	Title    string   `yaml:"title"`
+	Path     string   `yaml:"path"`
+	Trust    govTrust `yaml:"trust"`
+	Grade    govGrade `yaml:"grade"`
+	OpenGaps []string `yaml:"open_gaps"`
+	// Status is the SQ-006 tombstone marker: "" or "active" means active,
+	// "inactive" means removed via `treasure-chest remove` but retained for audit.
+	Status string `yaml:"status"`
 }
 
 type govManifest struct {
@@ -84,6 +99,10 @@ type chestRow struct {
 	compiled     bool // present in .compiled/.index.gz source_meta
 	freshness    string
 	drift        []string
+	sourceGrade  string   // SQ-002: source_grade (A|B|C), human-reviewed
+	reuseValue   string   // SQ-002: reuse_value (high|medium|low), human-reviewed
+	openGaps     []string // SQ-002: known gaps in this source, human-reviewed
+	jewelCount   int      // SQ-009: count of non-deprecated jewels for this chest
 }
 
 // --- command flags ---
@@ -136,11 +155,26 @@ func runTreasureChest(cmd *cobra.Command, _ []string) error {
 	governed, govErr := loadGoverned(root)
 	indexed, idxErr := loadIndexed(root)
 	compiledIDs, compiledAt, compErr := loadCompiledIndex(root)
+	jewels, jewelErr := loadJewels(root, governed)
+	if jewelErr != nil {
+		return fmt.Errorf("treasure-chest: %w", jewelErr)
+	}
 
-	rows := mergeChestRows(activeChests, governed, indexed, compiledIDs)
+	rows := mergeChestRows(activeChests, governed, indexed, compiledIDs, jewels)
 
 	if treasureChestDoIndex {
 		return runTreasureChestIndex(root, rows)
+	}
+
+	rows = filterRowsByScope(rows, treasureChestScope)
+
+	switch treasureChestFormat {
+	case "", "table":
+		// fall through to table rendering below
+	case "json":
+		return renderTreasureChestJSON(os.Stdout, root, rows, compErr, govErr, idxErr, compiledAt)
+	default:
+		return fmt.Errorf("treasure-chest: unknown --format %q (want table or json)", treasureChestFormat)
 	}
 
 	printTreasureChestBanner()
@@ -229,6 +263,13 @@ func loadGoverned(root string) (map[string]govChest, error) { //nolint:dupl
 	}
 	out := make(map[string]govChest, len(m.Chests))
 	for _, c := range m.Chests {
+		if err := domain.ValidateChestGrade(c.ID, domain.ChestGrade{
+			SourceGrade:          c.Grade.SourceGrade,
+			ReuseValue:           c.Grade.ReuseValue,
+			ImplementationStatus: c.Grade.ImplementationStatus,
+		}); err != nil {
+			return nil, fmt.Errorf("treasure-chests.yaml: %w", err)
+		}
 		out[c.ID] = c
 	}
 	return out, nil
@@ -292,6 +333,7 @@ func mergeChestRows(
 	governed map[string]govChest,
 	indexed map[string]bool,
 	compiledIDs map[string]bool,
+	jewels map[string][]jewelEntry,
 ) []chestRow {
 	seen := make(map[string]bool)
 	var rows []chestRow
@@ -304,12 +346,16 @@ func mergeChestRows(
 			configured: true,
 			indexed:    indexed[ac.ID],
 			compiled:   compiledIDs[ac.ID],
+			jewelCount: activeJewelCount(jewels[ac.ID]),
 		}
 		if gc, ok := governed[ac.ID]; ok {
 			row.governed = true
 			row.trustTier = gc.Trust.Tier
 			row.reviewedBy = gc.Trust.ReviewedBy
 			row.lastReviewed = gc.Trust.LastReviewed
+			row.sourceGrade = gc.Grade.SourceGrade
+			row.reuseValue = gc.Grade.ReuseValue
+			row.openGaps = gc.OpenGaps
 		}
 		row.freshness = deriveFreshness(row)
 		row.drift = deriveDrift(row)
@@ -329,8 +375,12 @@ func mergeChestRows(
 			trustTier:    gc.Trust.Tier,
 			reviewedBy:   gc.Trust.ReviewedBy,
 			lastReviewed: gc.Trust.LastReviewed,
+			sourceGrade:  gc.Grade.SourceGrade,
+			reuseValue:   gc.Grade.ReuseValue,
+			openGaps:     gc.OpenGaps,
 			indexed:      indexed[id],
 			compiled:     compiledIDs[id],
+			jewelCount:   activeJewelCount(jewels[id]),
 		}
 		row.freshness = deriveFreshness(row)
 		row.drift = deriveDrift(row)
@@ -378,14 +428,103 @@ func deriveDrift(r chestRow) []string {
 	return d
 }
 
+// --- scope filtering ---
+
+// filterRowsByScope keeps rows whose scope contains value or "all". Rows with
+// no declared scope (not configured in active.yaml) are excluded from a
+// scoped view since they state no applicability. Empty value is a no-op.
+func filterRowsByScope(rows []chestRow, value string) []chestRow {
+	if value == "" {
+		return rows
+	}
+	out := make([]chestRow, 0, len(rows))
+	for _, r := range rows {
+		for _, s := range r.scope {
+			if s == value || s == "all" {
+				out = append(out, r)
+				break
+			}
+		}
+	}
+	return out
+}
+
+// --- json output ---
+
+type jsonChestRow struct {
+	ID          string   `json:"id"`
+	Path        string   `json:"path"`
+	Scope       []string `json:"scope"`
+	Trust       string   `json:"trust,omitempty"`
+	Freshness   string   `json:"freshness"`
+	Drift       []string `json:"drift,omitempty"`
+	SourceGrade string   `json:"source_grade,omitempty"` // SQ-002/SQ-001
+	ReuseValue  string   `json:"reuse_value,omitempty"`  // SQ-002/SQ-001
+	OpenGaps    []string `json:"open_gaps,omitempty"`    // SQ-002/SQ-001
+	JewelCount  int      `json:"jewel_count,omitempty"`  // SQ-009
+}
+
+type jsonIndex struct {
+	Artifact   string `json:"artifact"`
+	Health     string `json:"health"`
+	CompiledAt string `json:"compiled_at,omitempty"`
+}
+
+type jsonTreasureChestOutput struct {
+	Chests   []jsonChestRow `json:"chests"`
+	Index    jsonIndex      `json:"index"`
+	Warnings []string       `json:"warnings,omitempty"`
+}
+
+func renderTreasureChestJSON(w *os.File, root string, rows []chestRow, compErr, govErr, idxErr error, compiledAt int64) error {
+	indexPath := filepath.Join(root, ".compiled", ".index.gz")
+	var health, ts string
+	switch {
+	case compErr != nil:
+		health = "corrupt"
+	case compiledAt == 0:
+		health = "absent"
+	default:
+		health = "ok"
+		ts = time.Unix(compiledAt, 0).UTC().Format("2006-01-02 15:04:05 UTC")
+	}
+
+	out := jsonTreasureChestOutput{
+		Chests:   make([]jsonChestRow, 0, len(rows)),
+		Index:    jsonIndex{Artifact: indexPath, Health: health, CompiledAt: ts},
+		Warnings: collectWarnings(rows, govErr, idxErr, compErr, compiledAt),
+	}
+	for _, r := range rows {
+		out.Chests = append(out.Chests, jsonChestRow{
+			ID:          r.id,
+			Path:        r.path,
+			Scope:       r.scope,
+			Trust:       r.trustTier,
+			Freshness:   r.freshness,
+			Drift:       r.drift,
+			SourceGrade: r.sourceGrade,
+			ReuseValue:  r.reuseValue,
+			OpenGaps:    r.openGaps,
+			JewelCount:  r.jewelCount,
+		})
+	}
+
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(out); err != nil {
+		return fmt.Errorf("treasure-chest: encode json: %w", err)
+	}
+	return nil
+}
+
 // --- rendering ---
 
 func renderChestsSection(w *tabwriter.Writer, rows []chestRow) error {
 	if _, err := fmt.Fprintln(w, "  CHESTS\t\t\t\t\t"); err != nil {
 		return fmt.Errorf("treasure-chest: write header: %w", err)
 	}
-	if _, err := fmt.Fprintf(w, "  %s\t%s\t%s\t%s\t%s\t%s\n",
-		"ID", "PATH", "SCOPE", "TRUST", "FRESHNESS", "DRIFT"); err != nil {
+	if _, err := fmt.Fprintf(w, "  %s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+		"ID", "PATH", "SCOPE", "TRUST", "FRESHNESS", "DRIFT", "GRADE", "REUSE", "GAPS", "JEWELS"); err != nil {
 		return fmt.Errorf("treasure-chest: write column header: %w", err)
 	}
 	for _, r := range rows {
@@ -401,12 +540,29 @@ func renderChestsSection(w *tabwriter.Writer, rows []chestRow) error {
 		if len(r.drift) > 0 {
 			drift = strings.Join(r.drift, " ")
 		}
-		if _, err := fmt.Fprintf(w, "  %s\t%s\t%s\t%s\t%s\t%s\n",
-			r.id, r.path, scope, trust, r.freshness, drift); err != nil {
+		grade := dashIfEmpty(r.sourceGrade)
+		reuse := dashIfEmpty(r.reuseValue)
+		gaps := "—"
+		if len(r.openGaps) > 0 {
+			gaps = fmt.Sprintf("%d", len(r.openGaps))
+		}
+		jewels := "—"
+		if r.jewelCount > 0 {
+			jewels = fmt.Sprintf("%d", r.jewelCount)
+		}
+		if _, err := fmt.Fprintf(w, "  %s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+			r.id, r.path, scope, trust, r.freshness, drift, grade, reuse, gaps, jewels); err != nil {
 			return fmt.Errorf("treasure-chest: write row: %w", err)
 		}
 	}
 	return nil
+}
+
+func dashIfEmpty(v string) string {
+	if v == "" {
+		return "—"
+	}
+	return v
 }
 
 func renderIndexSection(w *tabwriter.Writer, root string, compiledAt int64, compErr error) error {
@@ -512,7 +668,7 @@ func printTreasureChestBanner() {
 }
 
 func init() {
-	treasureChestCmd.Flags().StringVar(&treasureChestRoot, "root", "", "path to .strategist/ root (default: auto-discovered from CWD)")
+	treasureChestCmd.PersistentFlags().StringVar(&treasureChestRoot, "root", "", "path to .strategist/ root (default: auto-discovered from CWD)")
 	treasureChestCmd.Flags().BoolVar(&treasureChestDoIndex, "index", false, "rebuild compiled knowledge index from declared sources")
 	treasureChestCmd.Flags().BoolVar(&treasureChestIncludeHistorical, "include-historical", false, "include T2/T3 historical sources in index rebuild (requires --index)")
 	treasureChestCmd.Flags().StringVar(&treasureChestFormat, "format", "table", "output format: table or json")

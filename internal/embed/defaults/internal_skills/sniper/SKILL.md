@@ -22,6 +22,28 @@ Before any action, you MUST execute the claim protocol:
 
 If `mission_status` is not `gate_analysis_accepted`, emit `reason=gate_approval_missing` and **STOP**.
 
+## Pre-Materialization Scan
+
+Before starting the materialization loop, scan `tasks.md` / `implementation_plan` for
+forbidden implementation indicators: any item tagged `task_type: implementation_handoff`,
+target files with source-code extensions (`.go`, `.py`, `.sh`, `.js`, `.ts`, etc.) not
+declared as `documentation_target` assets, source/Git-mutating commands, or items described
+as implementation, refactor, hook changes, test creation, or code edits.
+
+If any such item is present and is not explicitly a `documentation_target`, **STOP** before
+materializing anything:
+
+```text
+blocked reason=documentation_scope_violation
+details=tasks.md contains implementation handoff items
+```
+
+Gate acceptance of the refined package is not authorization to execute these items —
+acceptance approves the analysis and any `documentation_target` items only. If the package
+mixes `documentation_target` and `implementation_handoff` items, materialize only the
+`documentation_target` items and report the `implementation_handoff` items as out of scope
+in the completion report.
+
 ## Documentation Materialization Loop
 
 For each documentation task in `tasks.md`:

@@ -70,6 +70,12 @@ func installShimTo(homeDir, skillContent, skillRoot string) error {
 	return nil
 }
 
+// installShimToPath writes the Claude shim to an explicit path, bypassing the
+// default ~/.claude/skills/strategist/SKILL.md location. Used for --shim-path.
+func installShimToPath(shimPath, skillContent, skillRoot string) error {
+	return writeShimFile(shimPath, skillContent, skillRoot)
+}
+
 // writeShimFile creates parent directories and writes a SKILL.md shim file.
 func writeShimFile(shimPath, skillContent, skillRoot string) error {
 	if err := os.MkdirAll(filepath.Dir(shimPath), 0o755); err != nil {

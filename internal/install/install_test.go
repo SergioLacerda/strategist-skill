@@ -181,6 +181,92 @@ func TestInstall_CompileFailureIsNonFatal(t *testing.T) {
 	require.NoError(t, err, "compile failure must be non-fatal")
 }
 
+func TestInstall_StrictCompileMakesFailureFatal(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	comp := &mockCompiler{failErr: os.ErrNotExist}
+	err := newSvc(t, &mockExtractor{}, comp).Install(context.Background(), domain.InstallConfig{
+		Target: dir, Silent: true, StrictCompile: true,
+	})
+	require.Error(t, err, "strict-compile install must fail on a CompileAll error")
+	require.ErrorContains(t, err, "strict compile")
+
+	strategistDir := filepath.Join(dir, ".strategist")
+	_, statErr := os.Stat(strategistDir)
+	assert.ErrorIs(t, statErr, os.ErrNotExist, "fresh install must be fully rolled back on strict-compile failure")
+}
+
+func TestInstall_RollbackRemovesFullTreeOnFreshInstallFailure(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	// Fail after extraction+shim, during compile with StrictCompile — exercises the
+	// full manifest (active.yaml, gitignore, shim) plus the fresh-tree RemoveAll path.
+	comp := &mockCompiler{failErr: os.ErrNotExist}
+	err := newSvc(t, &mockExtractor{}, comp).Install(context.Background(), domain.InstallConfig{
+		Target: dir, Silent: true, StrictCompile: true,
+	})
+	require.Error(t, err)
+
+	strategistDir := filepath.Join(dir, ".strategist")
+	_, statErr := os.Stat(strategistDir)
+	assert.ErrorIs(t, statErr, os.ErrNotExist, ".strategist/ must be fully removed, not left partially extracted")
+}
+
+func TestInstall_RollbackPreservesPreexistingStrategistDir(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	strategistDir := filepath.Join(dir, ".strategist")
+	require.NoError(t, os.MkdirAll(strategistDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(strategistDir, "SENTINEL"), []byte("keep"), 0o644))
+
+	comp := &mockCompiler{failErr: os.ErrNotExist}
+	err := newSvc(t, &mockExtractor{}, comp).Install(context.Background(), domain.InstallConfig{
+		Target: dir, Silent: true, Force: true, StrictCompile: true,
+	})
+	require.Error(t, err)
+	assert.FileExists(t, filepath.Join(strategistDir, "SENTINEL"), "reinstall over an existing tree must never delete pre-existing content on rollback")
+}
+
+func TestInstall_NoShim_SkipsShimWrite(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	svc := newSvc(t, &mockExtractor{}, &mockCompiler{})
+	require.NoError(t, svc.Install(context.Background(), domain.InstallConfig{
+		Target: dir, Silent: true, NoShim: true,
+	}))
+	shimPath := filepath.Join(svc.ShimHomeDir, ".claude", "skills", "strategist", "SKILL.md")
+	_, err := os.Stat(shimPath)
+	assert.ErrorIs(t, err, os.ErrNotExist, "--no-shim must not write under the home shim path")
+}
+
+func TestInstall_ShimPath_WritesToCustomPath(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	customShim := filepath.Join(t.TempDir(), "custom", "SKILL.md")
+	svc := newSvc(t, &mockExtractor{}, &mockCompiler{})
+	require.NoError(t, svc.Install(context.Background(), domain.InstallConfig{
+		Target: dir, Silent: true, ShimPath: customShim,
+	}))
+	assert.FileExists(t, customShim)
+
+	defaultShim := filepath.Join(svc.ShimHomeDir, ".claude", "skills", "strategist", "SKILL.md")
+	_, err := os.Stat(defaultShim)
+	assert.ErrorIs(t, err, os.ErrNotExist, "--shim-path must not also write the default home shim path")
+}
+
+func TestInstall_ShimPath_RollsBackOnLaterFailure(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	customShim := filepath.Join(t.TempDir(), "custom", "SKILL.md")
+	comp := &mockCompiler{failErr: os.ErrNotExist}
+	err := newSvc(t, &mockExtractor{}, comp).Install(context.Background(), domain.InstallConfig{
+		Target: dir, Silent: true, ShimPath: customShim, StrictCompile: true,
+	})
+	require.Error(t, err)
+	_, statErr := os.Stat(customShim)
+	assert.ErrorIs(t, statErr, os.ErrNotExist, "custom shim path must be rolled back on later fatal failure")
+}
+
 func TestInstall_DoesNotPopulateGlobalRuntimeByDefault(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()

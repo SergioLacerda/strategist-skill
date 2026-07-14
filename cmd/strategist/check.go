@@ -1,18 +1,29 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"text/tabwriter"
 
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
+
+	"github.com/SergioLacerda/strategist-skill/internal/compile"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	embedpkg "github.com/SergioLacerda/strategist-skill/internal/embed"
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
 
-var checkRoot string
+var (
+	checkRoot     string
+	checkStrict   bool
+	checkSimulate bool
+)
 
 // slotContract maps slot names to their required risk_score contract.
 var slotContract = map[string]string{
@@ -46,7 +57,7 @@ Checks performed:
       • skill providers must declare the correct risk_score for the slot contract:
         discovery/refinement → write_analysis, execution → controlled
       • native roles are accepted by slot field match; no risk_score check`,
-	RunE: func(_ *cobra.Command, _ []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) (retErr error) {
 		root := checkRoot
 		if root == "" {
 			cwd, cwdErr := os.Getwd()
@@ -59,6 +70,24 @@ Checks performed:
 			}
 			root = discovered
 		}
+
+		ctx := cmd.Context()
+		if ctx == nil {
+			ctx = context.Background()
+		}
+		_, span := telemetry.Tracer().Start(ctx, "strategist.check",
+			trace.WithAttributes(
+				attribute.String(telemetry.AttrComponent, "check"),
+				attribute.String(telemetry.AttrTarget, telemetry.SanitizePath(root)),
+			),
+		)
+		defer func() {
+			if retErr != nil {
+				span.RecordError(retErr)
+				span.SetStatus(codes.Error, retErr.Error())
+			}
+			span.End()
+		}()
 
 		activeYAML := filepath.Join(root, "active.yaml")
 		raw, err := os.ReadFile(activeYAML)
@@ -96,10 +125,12 @@ Checks performed:
 					rolePath := filepath.Join(root, "roles", provider+".yaml")
 					roleRaw, roleErr := os.ReadFile(rolePath)
 					if roleErr == nil {
-						var roleDef struct {
-							Slot string `yaml:"slot"`
-						}
+						var roleDef domain.RoleConfig
 						if yamlErr := yaml.Unmarshal(roleRaw, &roleDef); yamlErr == nil {
+							if valErr := roleDef.Validate(); valErr != nil {
+								errs = append(errs, fmt.Sprintf("slot %s: role %q invalid: %v", slot, provider, valErr))
+								continue
+							}
 							if roleDef.Slot == slot {
 								continue // valid native role for this slot
 							}
@@ -148,6 +179,29 @@ Checks performed:
 
 		errs = append(errs, validateRuntimeDefaultParity(root)...)
 
+		if checkStrict {
+			errs = append(errs, runStrictChecks(root)...)
+		}
+
+		decisionReason := "all_slots_ready"
+		for _, slot := range []string{"discovery", "refinement", "execution"} {
+			if providers[slot] == "" {
+				decisionReason = "slot_provider_missing:" + slot
+				break
+			}
+		}
+		if decisionReason == "all_slots_ready" && len(errs) > 0 {
+			decisionReason = "validation_failed"
+		}
+		span.SetAttributes(
+			attribute.String(telemetry.AttrPipelineRoute, "main"),
+			attribute.String(telemetry.AttrDecisionReason, decisionReason),
+		)
+
+		if checkSimulate {
+			return printSimulateReport(root, providers, cfg.Mode, decisionReason, errs)
+		}
+
 		if len(errs) > 0 {
 			for _, e := range errs {
 				fmt.Fprintf(os.Stderr, "  ✗ %s\n", e)
@@ -191,6 +245,108 @@ Checks performed:
 	},
 }
 
+// runStrictChecks composes the additional checks --strict adds on top of the
+// base check: required compiled artifacts must exist, and their recorded
+// manifest hashes must match the artifacts on disk.
+func runStrictChecks(root string) []string {
+	var errs []string
+	compiledDir := filepath.Join(root, ".compiled")
+
+	requiredArtifacts := []string{".index.gz", ".domain.gz", ".config.gz", ".manifest.gz"}
+	for _, name := range requiredArtifacts {
+		artifactPath := filepath.Join(compiledDir, name)
+		if _, statErr := os.Stat(artifactPath); os.IsNotExist(statErr) {
+			errs = append(errs, fmt.Sprintf("strict: missing compiled artifact %s — run strategist compile", name))
+		}
+	}
+
+	drift, err := compile.VerifyManifest(compiledDir)
+	if err != nil {
+		errs = append(errs, fmt.Sprintf("strict: verify manifest: %v", err))
+	}
+	for _, d := range drift {
+		errs = append(errs, "strict: "+d)
+	}
+
+	return errs
+}
+
+// printSimulateReport prints the --simulate readiness report. It performs no
+// provider invocation and no workspace mutation — it only reads the already
+// materialized errs computed by the caller's checks and reports them as a
+// per-slot/persona readiness table instead of the terse pass/fail banner.
+func printSimulateReport(root string, providers map[string]string, mode, decisionReason string, errs []string) error {
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
+	if err := writeSimulateReport(w, root, providers, mode, decisionReason, errs); err != nil {
+		return err
+	}
+	if err := w.Flush(); err != nil {
+		return fmt.Errorf("check --simulate: flush output: %w", err)
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("[Strategist] check=failed errors=%d root=%s (simulate)", len(errs), root)
+	}
+	return nil
+}
+
+// simReportWriter accumulates tabwriter output, short-circuiting after the
+// first write error so callers can emit a flat sequence of lines without a
+// branch per line.
+type simReportWriter struct {
+	w   *tabwriter.Writer
+	err error
+}
+
+func (s *simReportWriter) line(format string, args ...any) {
+	if s.err != nil {
+		return
+	}
+	if _, err := fmt.Fprintf(s.w, format, args...); err != nil {
+		s.err = fmt.Errorf("check --simulate: write output: %w", err)
+	}
+}
+
+// writeSimulateReport writes the --simulate readiness table to w, returning the
+// first write error encountered (if any) wrapped with context.
+func writeSimulateReport(w *tabwriter.Writer, root string, providers map[string]string, mode, decisionReason string, errs []string) error {
+	sw := &simReportWriter{w: w}
+
+	sw.line("READINESS\t\n")
+	sw.line("  root\t%s\n", root)
+	sw.line("  pipeline_route\tmain\n")
+	sw.line("  decision_reason\t%s\n", decisionReason)
+	sw.line("\t\n")
+	sw.line("SLOTS\t\n")
+	writeSimulateSlots(sw, providers)
+	sw.line("\t\n")
+	sw.line("PERSONA\t\n")
+	sw.line("  mode\t%s\n", mode)
+	writeSimulateBlockers(sw, errs)
+
+	return sw.err
+}
+
+func writeSimulateSlots(sw *simReportWriter, providers map[string]string) {
+	for _, slot := range []string{"discovery", "refinement", "execution"} {
+		status := "ready"
+		if providers[slot] == "" {
+			status = "missing_provider"
+		}
+		sw.line("  %-12s\tprovider=%s\tstatus=%s\n", slot, providers[slot], status)
+	}
+}
+
+func writeSimulateBlockers(sw *simReportWriter, errs []string) {
+	if len(errs) == 0 {
+		return
+	}
+	sw.line("\t\n")
+	sw.line("BLOCKERS\t\n")
+	for _, e := range errs {
+		sw.line("  ✗\t%s\n", e)
+	}
+}
+
 func validateRuntimeDefaultParity(root string) []string {
 	extractor := embedpkg.Extractor{}
 	var errs []string
@@ -222,5 +378,7 @@ func validateRuntimeDefaultParity(root string) []string {
 
 func init() {
 	checkCmd.Flags().StringVar(&checkRoot, "root", "", "path to .strategist/ root (default: .strategist)")
+	checkCmd.Flags().BoolVar(&checkStrict, "strict", false, "additionally require compiled artifacts to exist and match the recorded manifest hashes")
+	checkCmd.Flags().BoolVar(&checkSimulate, "simulate", false, "print a readiness report (per-slot/persona status) instead of the pass/fail banner; never invokes providers or mutates state")
 	rootCmd.AddCommand(checkCmd)
 }

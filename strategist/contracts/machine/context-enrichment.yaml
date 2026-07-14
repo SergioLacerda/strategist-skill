@@ -69,3 +69,48 @@ contract:
     - tag_based_structured_outcomes
     - lexical_search_on_outcomes_jsonl
     - semantic_retrieval_if_explicitly_enabled_and_healthy
+
+  evidence_pack:
+    description: >
+      A mission Evidence Pack is an optional artifact that serializes the source_cards
+      already selected by dossier-builder for this mission. It is mission-scoped audit
+      evidence, not a generic knowledge base — it never loads raw chest contents and
+      never introduces a new retrieval unit. It is generated downstream by dossier-builder
+      (see internal_skills/dossier-builder/skill.yaml) from dossier.source_cards.
+    fields:
+      - mission_id
+      - task_type            # when available
+      - selected_source_count
+      - compression_metrics  # when available, from dossier-builder output
+      - per_card: [chest, trust, relevance, interpretation, impact, excerpt]  # bounded excerpt only
+    empty_state:
+      trigger: dossier.source_cards is empty
+      behavior: Do not generate an Evidence Pack file. Non-blocking. evidence_pack_path is null.
+    artifact_path: "<base_path>/<state>/<mission_id>-evidence-pack.md"
+
+  jewel_generation:
+    description: >
+      When consulting a chest, the analyzing agent (Ranger during discovery, Archivist during
+      refinement) may generate at most one jewel per chest per consultation, judging relevance
+      by its own analysis. No pre-approval gate — the trust-tier ceiling
+      (jewel.trust <= chest.trust.tier) is the safeguard, not human review. See
+      .analysis/refined/bau-tesouro-sq003-004-007/design.md for the full rationale and
+      .analysis/refined/bau-tesouro-sq009-jewels-runtime/design.md for this contract's origin.
+    trigger: ranger_discovery_consultation | archivist_refinement_consultation
+    cap_per_consultation: 1
+    write_target: .strategist/jewels.yaml
+    fields: [id, chest_id, statement, source_refs, trust, status, reviewed_by, last_reviewed]
+    forbidden:
+      - generating a jewel with trust exceeding the parent chest's trust.tier
+      - generating a jewel without at least one source_ref
+
+  planned_score_selection_transparency:
+    status: not_implemented
+    description: >
+      Track T-K / SQ-008. Today, selection reasons are implicit: trust tier ordering
+      (T0 > T1 > T2 > T3), chest_stop_conditions, and mode budget limits determine which
+      sources become source_cards, but no explicit numeric score or ranked-reason list is
+      exposed to Ranger/Archivist. A future refinement may expose selection as explicit
+      scores or ranked reasons instead of selected/not-selected only. Recorded here so the
+      idea is not silently dropped — no semantic/vector retrieval or unbounded ranking is
+      implied or authorized by this note.

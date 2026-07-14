@@ -25,6 +25,45 @@ contract: null
 - stop and wait for explicit user review response before Sniper
 - re-present analysis content on `review`
 - re-emit mission checkpoint when documentation targets are accepted
+- if `implementation_plan` contains any `task_type: implementation_handoff` item, state this
+  explicitly in the gate prompt (see Gate Display With Implementation Handoff below)
+
+## Gate Acceptance Is Not Code Mutation Approval
+
+Approval Gate acceptance means the refined analysis is correct and, if the package contains
+`documentation_target` items, that Sniper may materialize them. It never means:
+
+- code implementation is authorized;
+- `implementation_handoff` items may be executed by Sniper or by the parent agent directly;
+- the pipeline may continue past the gate into source-code mutation because the user said
+  `sim`/`accept`/`yes` to the refined package as a whole.
+
+If the accepted package contains `implementation_handoff` items, those items remain
+outside Strategist after the gate. The mission may resolve as `analysis_delivered` or
+`implementation_handoff_ready` (if `documentation_target` items also exist and are
+accepted, Sniper still materializes only those). Executing the `implementation_handoff`
+items requires a separate coding task outside Strategist mode — the Approval Gate does
+not grant that authorization, regardless of `execution_gate=allowed` or how emphatically
+the user accepted the package.
+
+## Gate Display With Implementation Handoff
+
+When the refined package contains `implementation_handoff` items, the gate prompt must
+say so before asking for acceptance:
+
+```
+📋 MAIN ANALYSIS
+   Proposal:    refined/<mission_id>/proposal.md
+   Tasks:       refined/<mission_id>/tasks.md — N task(s)
+
+⚠️  IMPLEMENTATION HANDOFF (outside Sniper/Strategist scope)
+   <task id> — <objective>  (code/hook/config/test mutation)
+   ...
+   Accepting this package does not authorize executing these items. They require a
+   separate coding task outside Strategist.
+
+Is the analysis correct?  (accept / review / reject)
+```
 
 ## Side Quests at the Gate
 

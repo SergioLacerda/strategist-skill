@@ -1,0 +1,97 @@
+module: scout-routing
+type: routing_decision
+version: "0.1"
+
+description: >
+  Machine contract for Scout, the internal pre-pipeline Intake Router. Scout
+  classifies each request immediately after intake (and after quick_draw_detection
+  finds no match) and selects one of critical_hit, implementation_short_route, or
+  full_pipeline. Scout emits a compact route_decision (see
+  schemas/scout-route-decision.schema.yaml) — it never performs discovery itself,
+  never invokes Sniper directly, never bypasses the Strategist Approval Gate, and
+  never replaces Ranger when evidence review is required.
+
+trigger_conditions:
+  critical_hit_candidate:
+    description: >
+      Scout defers entirely to critical-hit.yaml's own trigger_conditions
+      (plain_move and closure_move). Scout does not redefine these conditions —
+      it only detects whether they are satisfied and, if so, selects
+      selected_route=critical_hit.
+    defers_to: "contracts/machine/critical-hit.yaml#trigger_conditions"
+  implementation_short_route_candidate:
+    all_of:
+      - request_explicitly_asks_for_implementation_or_materialization: true
+      - local_context_or_prompt_scope_sufficient: true
+      - documentation_or_materialization_targets_clear: true
+      - unresolved_ambiguity: false
+      - code_mutation_required: false
+      - git_mutation_required: false
+    none_of:
+      - status_annotation_requires_broad_investigation: true
+  full_pipeline_default:
+    description: >
+      Selected whenever neither critical_hit_candidate nor
+      implementation_short_route_candidate conditions are fully satisfied, or when
+      route_confidence is below the threshold. This is the conservative fallback.
+    always_available: true
+
+route_confidence_threshold: 0.6
+
+evidence_state_classification:
+  explicit: >
+    Evidence sufficient to annotate/close/short-route without discovery is already
+    supplied in the request or already present in the target artifact.
+  insufficient: >
+    The request lacks enough detail to route narrowly, but does not necessarily
+    require deep discovery — treated as full_pipeline with discovery_subtype
+    determined by request_category.
+  requires_discovery: >
+    Evidence must be gathered by Ranger. selected_route=full_pipeline and
+    discovery_subtype MUST be set.
+
+emit:
+  on_route_selected:
+    format: >
+      "[Strategist] phase=intake status=route_selected component=scout
+       route={route} route_reason={reason} route_confidence={confidence}
+       evidence_state={evidence_state}"
+    level: INFO
+  on_fallback_to_full_pipeline:
+    format: >
+      "[Strategist] phase=intake status=fallback component=scout
+       reason={reason} route_confidence={confidence}"
+    level: INFO
+
+owner: internal (orchestrator)
+write_scope: read-only (classification only — Scout never writes mission artifacts)
+
+invariants:
+  - Scout NEVER performs deep discovery or reads implementation surfaces beyond what
+    is explicitly supplied in the request or mission_contract
+  - Scout NEVER invokes Sniper directly
+  - Scout NEVER bypasses the Strategist Approval Gate on any route
+  - Scout NEVER replaces Ranger when evidence_state=requires_discovery
+  - Scout NEVER infers evidence that was not explicitly supplied
+  - If route_confidence < route_confidence_threshold, selected_route=full_pipeline
+  - If any condition is ambiguous, route to full_pipeline — conservatism is the safe default
+  - gate_required is always true, regardless of selected_route
+
+post_route_discovery_handoff:
+  description: >
+    Runs immediately after route_decision is emitted with
+    evidence_state: requires_discovery, and before Ranger starts. This is Scout's
+    routing responsibility, not a weapon-capability check.
+  timing: before_ranger_invocation
+  check: >
+    Do not inspect discovery_subtype_support on the configured discovery weapon.
+    discovery_subtype is Ranger behavior, not weapon behavior. The configured
+    discovery provider is Ranger's weapon and is validated only by the standard
+    preflight checks: provider manifest exists, provider is invocable, and risk_score
+    matches the discovery slot's write_analysis contract.
+  emit:
+    on_handoff:
+      format: >
+        "[Strategist] phase=intake status=handoff component=scout target=ranger
+         weapon={weapon_id} subtype={discovery_subtype}"
+      level: INFO

@@ -19,6 +19,8 @@ contract: null
 - `mission_contract.planning_rules`
 - `token_strategy`
 - initial mission checkpoint
+- `route_decision` — emitted by Scout, see `00-routing.md` § Scout — Intake Router and
+  `schemas/scout-route-decision.schema.yaml`
 
 ## Required Behavior
 
@@ -27,6 +29,9 @@ contract: null
 - generate unique `mission_id`
 - emit mission checkpoint immediately after intake
 - emit mission metrics with the checkpoint
+- invoke Scout immediately after `prompt-intake`, and before `context_enrichment`/discovery,
+  whenever `quick_draw_detection` did not match — Scout resolves `route_decision` before any
+  further pipeline stage runs
 
 ## Narrative Rule
 

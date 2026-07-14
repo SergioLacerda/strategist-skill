@@ -21,6 +21,8 @@ must:
   - surface scope_observations (side quests and unexpected items) in the response to the user before finishing
   - include all handoff contract fields in the analysis artifact
   - use discovery-artifact.md as format reference
+  - when discovery_subtype is evaluation, classify implementation status as
+    implemented/partially_implemented/not_implemented and record evaluation_verdict
 
 must_not:
   - propose a final plan as if it were approved
