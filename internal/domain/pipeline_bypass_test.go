@@ -130,3 +130,25 @@ func TestEvaluatePipelineBypass_DirectExecuteAllowedAfterGate(t *testing.T) {
 	assert.True(t, decision.Allowed)
 	assert.Empty(t, decision.Reason)
 }
+
+func TestPipelineBypassDecision_Error(t *testing.T) {
+	t.Parallel()
+	decision := domain.EvaluatePipelineBypass(domain.PipelineEvidence{
+		BasePath:        ".analysis",
+		MissionID:       "m-readme",
+		AttemptedAction: "edit readme.md directly",
+	})
+	msg := decision.Error()
+	assert.Contains(t, msg, domain.PipelineBypassDetectedReason)
+	assert.Contains(t, msg, "attempted_action=edit readme.md directly")
+	assert.Contains(t, msg, "expected_phase=ranger")
+}
+
+func TestEvaluatePipelineBypass_NormalizesEmptyEvidence(t *testing.T) {
+	t.Parallel()
+	decision := domain.EvaluatePipelineBypass(domain.PipelineEvidence{})
+
+	assert.False(t, decision.Allowed)
+	assert.Equal(t, "direct repository mutation", decision.AttemptedAction)
+	assert.Contains(t, decision.MissingEvidence, ".analysis/refined/")
+}
