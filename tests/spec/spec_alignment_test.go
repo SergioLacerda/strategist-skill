@@ -1375,3 +1375,1073 @@ func TestPreflightContractDeclaresRoleInvocationFailure(t *testing.T) {
 		}
 	}
 }
+
+// TestSkillDeclaresRoleLockForParentAgent verifies SKILL.md contains the
+// hard role-lock sentence that forbids the parent agent from solving the
+// user's task directly instead of invoking configured slot providers.
+func TestSkillDeclaresRoleLockForParentAgent(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "SKILL.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "SKILL.md"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"When this skill is invoked, the parent agent MUST NOT solve the user's task directly.",
+			"role_invocation_failed",
+			"replace a missing provider with its own built-in capabilities",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing role-lock term %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestAgentProtocolDeclaresParentAgentBoundary verifies agent-protocol.md
+// states that direct phase work without invoking the configured provider is
+// direct_execution drift, even when the parent agent's own answer is correct.
+func TestAgentProtocolDeclaresParentAgentBoundary(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "templates", "agent-protocol.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "agent-protocol.md"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"PARENT AGENT BOUNDARY",
+			"`direct_execution` drift, even if the output is correct",
+			"Correctness of the parent agent's independent answer does not repair the drift",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing parent-agent boundary term %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestRoutingContractExcludesCodeMutationFromCriticalHit verifies the routing
+// contract explicitly classifies code/test mutation requests as
+// implementation/materialization, never Critical Hit.
+func TestRoutingContractExcludesCodeMutationFromCriticalHit(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "00-routing.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "00-routing.md"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"Requests to remove, edit, merge, or refactor source files or tests are not Critical Hit",
+			"The default Sniper contract does not",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing code-mutation routing term %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestExecutionContractForbidsParentAgentMutationBypass verifies the execution
+// contract states that Sniper's code/test mutation prohibition cannot be
+// bypassed by the parent agent performing the mutation directly.
+func TestExecutionContractForbidsParentAgentMutationBypass(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "06-execution.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "06-execution.md"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"be bypassed by the parent agent performing the mutation directly",
+			"produces analysis/handoff only",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing mutation-bypass term %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestCriticalHitSupportsEvidenceGatedClosureIntoDone verifies Critical Hit's
+// narrative and machine contracts describe a closure move into done/ that
+// requires an explicit completion claim and a supplied evidence summary, and
+// never infers completion from code alone. Close Card was folded into
+// Critical Hit as a second mode rather than kept as a separate route.
+func TestCriticalHitSupportsEvidenceGatedClosureIntoDone(t *testing.T) {
+	t.Parallel()
+
+	narrativePaths := []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "11-critical-hit.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "11-critical-hit.md"),
+	}
+	for _, path := range narrativePaths {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"Closure move",
+			"`<base_path>/done/<id>`",
+			"evidence summary is available",
+			"never infers completion",
+			"Stale Card Detection",
+			"Discovery (Ranger)",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing closure-move term %q", path, needle)
+			}
+		}
+		if strings.Contains(content, "close-card.md") || strings.Contains(content, "12-close-card") {
+			t.Fatalf("%s still references a separate close-card file after consolidation", path)
+		}
+	}
+
+	machinePaths := []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "critical-hit.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "critical-hit.yaml"),
+	}
+	for _, path := range machinePaths {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"closure_move",
+			"evidence_summary_present: true",
+			"completion_inferred_from_code_only",
+			"stale_card_detection",
+			"on: discovery",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing closure-move term %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestCloseCardIsNotASeparateRoute verifies close-card.yaml and
+// 12-close-card.md were removed as standalone files (source and embedded
+// defaults) after Close Card was consolidated into Critical Hit, and that no
+// other contract or skill.yaml still refers to close_card as an independent
+// resolution path.
+func TestCloseCardIsNotASeparateRoute(t *testing.T) {
+	t.Parallel()
+
+	root := repoRoot(t)
+	for _, rel := range []string{
+		filepath.Join("strategist", "contracts", "narrative", "12-close-card.md"),
+		filepath.Join("strategist", "contracts", "machine", "close-card.yaml"),
+		filepath.Join("internal", "embed", "defaults", "contracts", "narrative", "12-close-card.md"),
+		filepath.Join("internal", "embed", "defaults", "contracts", "machine", "close-card.yaml"),
+	} {
+		if _, err := os.Stat(filepath.Join(root, rel)); err == nil {
+			t.Fatalf("%s should not exist — close-card was folded into critical-hit.yaml/11-critical-hit.md", rel)
+		}
+	}
+
+	for _, path := range []string{
+		filepath.Join(root, "strategist", "skill.yaml"),
+		filepath.Join(root, "internal", "embed", "defaults", "skill.yaml"),
+	} {
+		content := readFile(t, path)
+		if strings.Contains(content, "close_card:") {
+			t.Fatalf("%s still declares close_card as a separate resolution path", path)
+		}
+	}
+}
+
+// TestDocumentationAppliedDoesNotTriggerClosure verifies the corrected
+// lifecycle model: reaching documentation_applied at the end of a
+// main_mission is documentation completion only, does not trigger a Critical
+// Hit closure candidacy check, and does not imply the package should move to
+// done/. A completed main_mission ending with its package in refined/ is the
+// normal, expected terminal state — not a gap the pipeline auto-corrects.
+// This supersedes the earlier (incorrect) auto-closure-check design.
+func TestDocumentationAppliedDoesNotTriggerClosure(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "06-execution.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "06-execution.md"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"is documentation completion, not implementation or validation evidence",
+			"does not by itself trigger Critical Hit closure",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing corrected documentation_applied term %q", path, needle)
+			}
+		}
+		if strings.Contains(content, "triggers Critical Hit's stale-card detection") {
+			t.Fatalf("%s still contains the superseded auto-closure-check wiring", path)
+		}
+	}
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "00-routing.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "00-routing.md"),
+	} {
+		content := readFile(t, path)
+		if strings.Contains(content, "closure_check") {
+			t.Fatalf("%s still contains the superseded closure_check step in the Main Mission Sequence", path)
+		}
+		if !strings.Contains(content, "Main mission completion does not imply implementation completion") {
+			t.Fatalf("%s missing the corrected main-mission-completion statement", path)
+		}
+	}
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "critical-hit.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "critical-hit.yaml"),
+	} {
+		content := readFile(t, path)
+		if strings.Contains(content, "main_mission_execution_complete") {
+			t.Fatalf("%s still contains the superseded main_mission_execution_complete trigger", path)
+		}
+		if !strings.Contains(content, "insufficient_evidence") {
+			t.Fatalf("%s missing insufficient_evidence list", path)
+		}
+	}
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "11-critical-hit.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "11-critical-hit.md"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"Insufficient Evidence",
+			"does NOT trigger a closure candidacy check",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing corrected Critical Hit term %q", path, needle)
+			}
+		}
+	}
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "skill.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "skill.yaml"),
+	} {
+		content := readFile(t, path)
+		if strings.Contains(content, "Fires\n        automatically at end of main_mission execution") ||
+			strings.Contains(content, "Fires automatically at end of main_mission execution") {
+			t.Fatalf("%s still claims critical_hit fires automatically at end of main_mission execution", path)
+		}
+	}
+}
+
+// TestApprovalGateAcceptanceDoesNotAuthorizeCodeMutation verifies the approval
+// gate contract explicitly states that gate acceptance approves the refined
+// analysis and documentation_target items only, never code/hook/config/test
+// mutation — closing the drift where a prior mission treated gate acceptance
+// as permission to edit source files directly.
+func TestApprovalGateAcceptanceDoesNotAuthorizeCodeMutation(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "05-approval-gate.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "05-approval-gate.md"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"Gate Acceptance Is Not Code Mutation Approval",
+			"implementation_handoff",
+			"requires a separate coding task outside Strategist mode",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing gate/code-mutation term %q", path, needle)
+			}
+		}
+	}
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "templates", "agent-protocol.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "agent-protocol.md"),
+	} {
+		content := readFile(t, path)
+		if !strings.Contains(content, "Never treat Strategist Approval Gate acceptance") {
+			t.Fatalf("%s missing NEVER DO bullet for gate-acceptance/code-mutation confusion", path)
+		}
+	}
+}
+
+// TestSniperBlocksImplementationHandoffInTasks verifies the execution
+// contract and the Sniper internal skill both require a pre-materialization
+// scan of tasks.md/implementation_plan for code-changing items, and block
+// with documentation_scope_violation instead of executing them.
+func TestSniperBlocksImplementationHandoffInTasks(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "06-execution.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "06-execution.md"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"Pre-Materialization Scan",
+			"blocked reason=documentation_scope_violation",
+			"details=tasks.md contains implementation handoff items",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing pre-materialization scan term %q", path, needle)
+			}
+		}
+	}
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "internal_skills", "sniper", "SKILL.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "internal_skills", "sniper", "SKILL.md"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"Pre-Materialization Scan",
+			"documentation_scope_violation",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing pre-materialization scan term %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestArchivistClassifiesTaskTypeForSniperScope verifies the refinement
+// contract and handoff schema require Archivist to classify every task by
+// task_type, and that only documentation_target items are Sniper-executable —
+// this is what lets Sniper's pre-materialization scan and the approval gate
+// distinguish documentation work from implementation handoff.
+func TestArchivistClassifiesTaskTypeForSniperScope(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "04-refinement.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "04-refinement.md"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"task_type",
+			"documentation_target",
+			"implementation_handoff",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing task_type classification term %q", path, needle)
+			}
+		}
+	}
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "schemas", "handoff-archivist-to-sniper.schema.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "schemas", "handoff-archivist-to-sniper.schema.yaml"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"task_type",
+			"[documentation_target, analysis_artifact, implementation_handoff, out_of_scope]",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing task_type enum term %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestDriftPatternsIncludeApprovalGateCodeExecutionConfusion verifies the
+// drift-patterns template declares the approval_gate_code_execution_confusion
+// pattern so the agent self-corrects instead of re-reading full governance.
+func TestDriftPatternsIncludeApprovalGateCodeExecutionConfusion(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "templates", "domain", "identity", "drift-patterns.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "domain", "identity", "drift-patterns.yaml"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"id: approval_gate_code_execution_confusion",
+			"never authorizes code mutation",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing drift pattern term %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestEvidencePackContractDefinesNonBlockingEmptyState verifies the Evidence Pack
+// contract (Track T-A) declares its fields and the empty-state non-blocking behavior,
+// and never turns evidence packs into a raw-chest-load or new retrieval unit.
+func TestEvidencePackContractDefinesNonBlockingEmptyState(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "context-enrichment.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "context-enrichment.yaml"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"evidence_pack:",
+			"never loads raw chest contents",
+			"never introduces a new retrieval unit",
+			"Non-blocking. evidence_pack_path is null.",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing evidence_pack contract term %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestDossierBuilderGeneratesEvidencePackFromSourceCards verifies dossier-builder
+// declares evidence_pack_path in its output and the empty_source_cards failure mode
+// leaves it null without writing a pack file.
+func TestDossierBuilderGeneratesEvidencePackFromSourceCards(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "internal_skills", "dossier-builder", "skill.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "internal_skills", "dossier-builder", "skill.yaml"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"evidence_pack_path: string | null",
+			"write a mission Evidence Pack artifact",
+			"evidence_pack_path is null; no Evidence Pack file is written",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing evidence pack generation term %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestRangerAndArchivistThreadEvidencePackPath verifies Ranger cites evidence_pack_path
+// in the analysis artifact when present, and Archivist preserves it through promotion
+// without adding a fifth file to the refined package.
+func TestRangerAndArchivistThreadEvidencePackPath(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "internal_skills", "ranger", "skill.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "internal_skills", "ranger", "skill.yaml"),
+	} {
+		content := readFile(t, path)
+		if !strings.Contains(content, "evidence_pack_path: string | null") {
+			t.Fatalf("%s missing evidence_pack_path output field", path)
+		}
+	}
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "internal_skills", "archivist", "skill.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "internal_skills", "archivist", "skill.yaml"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"evidence_pack_path: string | null",
+			"Never add a fifth file to the refined package for it",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing evidence_pack_path propagation term %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestTelemetryContractDocumentsChestEventDistinction verifies the telemetry contract
+// (Track T-D1) documents treasure_chest_loaded vs treasure_chest_found as intentionally
+// distinct events rather than leaving them as unexplained naming drift.
+func TestTelemetryContractDocumentsChestEventDistinction(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "10-telemetry.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "10-telemetry.md"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"Chest Event Naming",
+			"intentionally distinct events",
+			"No rename or consolidation without an explicit approval-gate extension",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing chest event naming classification term %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestScoutRouteDecisionSchemaExists verifies the Scout route-decision schema
+// file exists in both the canonical source tree and the embedded defaults tree.
+func TestScoutRouteDecisionSchemaExists(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "schemas", "scout-route-decision.schema.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "schemas", "scout-route-decision.schema.yaml"),
+	} {
+		if _, err := os.Stat(path); err != nil {
+			t.Fatalf("expected scout route decision schema at %s: %v", path, err)
+		}
+	}
+}
+
+// TestScoutRouteDecisionSchemaDefinesRequiredFields verifies the schema declares
+// the full route_decision field contract, including the evidence_state enum.
+func TestScoutRouteDecisionSchemaDefinesRequiredFields(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "schemas", "scout-route-decision.schema.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "schemas", "scout-route-decision.schema.yaml"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"role:",
+			"component:",
+			"request_category:",
+			"selected_route:",
+			"route_reason:",
+			"route_confidence:",
+			"evidence_state:",
+			"discovery_subtype:",
+			"fallback_route:",
+			"gate_required:",
+			"explicit",
+			"insufficient",
+			"requires_discovery",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing scout route decision field %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestRoutingContractNamesScoutAsRouteOwner verifies 00-routing.md names Scout
+// as the owner of route selection and cross-references the Intake Router label.
+func TestRoutingContractNamesScoutAsRouteOwner(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "00-routing.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "00-routing.md"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"Scout",
+			"Intake Router",
+			"scout-route-decision.schema.yaml",
+			"scout-routing.yaml",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing scout route owner term %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestScoutRoutingMachineContractFallsBackToFullPipeline verifies the Scout
+// machine contract defines the conservative full_pipeline fallback and never
+// substitutes for the Strategist Approval Gate.
+func TestScoutRoutingMachineContractFallsBackToFullPipeline(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "scout-routing.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "scout-routing.yaml"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"full_pipeline_default",
+			"conservatism is the safe default",
+			"route_confidence_threshold",
+			"Scout NEVER bypasses the Strategist Approval Gate",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing scout routing machine contract term %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestScoutSkillFilesExist verifies the Scout internal skill (SKILL.md + skill.yaml)
+// exists in both the canonical source tree and the embedded defaults tree.
+func TestScoutSkillFilesExist(t *testing.T) {
+	t.Parallel()
+
+	for _, rel := range []string{
+		filepath.Join("internal_skills", "scout", "SKILL.md"),
+		filepath.Join("internal_skills", "scout", "skill.yaml"),
+	} {
+		for _, root := range []string{
+			filepath.Join(repoRoot(t), "strategist"),
+			filepath.Join(repoRoot(t), "internal", "embed", "defaults"),
+		} {
+			path := filepath.Join(root, rel)
+			if _, err := os.Stat(path); err != nil {
+				t.Fatalf("expected scout skill file at %s: %v", path, err)
+			}
+		}
+	}
+}
+
+// TestScoutSkillDeclaresForbiddenBehaviors verifies Scout's skill.yaml declares
+// the boundaries that keep it from becoming a mini-Ranger.
+func TestScoutSkillDeclaresForbiddenBehaviors(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "internal_skills", "scout", "skill.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "internal_skills", "scout", "skill.yaml"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"perform_deep_discovery",
+			"invoke_sniper_directly",
+			"bypass_approval_gate",
+			"replace_ranger",
+			"set_gate_required_false",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing scout forbidden behavior %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestSkillYamlPipelineIncludesScoutRoutingStage verifies the master pipeline
+// wires in the scout_routing stage before discovery, and that Scout is
+// documented as never being a configurable slot.
+func TestSkillYamlPipelineIncludesScoutRoutingStage(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "skill.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "skill.yaml"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"stage: scout_routing",
+			"skill: scout",
+			"scout-route-decision.schema.yaml",
+			"never_a_slot: true",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing scout pipeline wiring term %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestRoleLockForbidsSkippingScout verifies the parent-agent Role Lock contract
+// forbids performing Scout's classification directly or skipping Scout entirely.
+func TestRoleLockForbidsSkippingScout(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "SKILL.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "SKILL.md"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"Scout's route classification",
+			"skip Scout",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing role lock scout term %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestDiscoveryContractDefinesSubtypeVocabulary verifies 03-discovery.md defines
+// the four discovery_subtype values and the evaluation_verdict vocabulary.
+func TestDiscoveryContractDefinesSubtypeVocabulary(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "03-discovery.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "03-discovery.md"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"creative",
+			"evaluation",
+			"diagnostic",
+			"closure_evidence",
+			"evaluation_verdict",
+			"implemented",
+			"partially_implemented",
+			"not_implemented",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing discovery subtype vocabulary term %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestRangerHandoffSchemaSupportsEvaluationVerdict verifies the Ranger→Archivist
+// handoff schema carries discovery_subtype and evaluation_verdict fields.
+func TestRangerHandoffSchemaSupportsEvaluationVerdict(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "schemas", "handoff-ranger-to-archivist.schema.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "schemas", "handoff-ranger-to-archivist.schema.yaml"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"discovery_subtype:",
+			"evaluation_verdict:",
+			"partially_implemented",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing evaluation verdict field %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestRangerRoleFileReferencesEvaluationVerdict verifies roles/ranger.yaml
+// instructs Ranger to record evaluation_verdict for evaluation-subtype discovery.
+func TestRangerRoleFileReferencesEvaluationVerdict(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "roles", "ranger.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "roles", "ranger.yaml"),
+	} {
+		content := readFile(t, path)
+		if !strings.Contains(content, "evaluation_verdict") {
+			t.Fatalf("%s missing evaluation_verdict reference", path)
+		}
+	}
+}
+
+// TestShortRouteAnnotationRequiresExplicitEvidence verifies 00-routing.md
+// narrows Implementation Short Route's ability to annotate implementation status
+// to cases with explicit, narrow evidence, falling back to full_pipeline otherwise.
+func TestShortRouteAnnotationRequiresExplicitEvidence(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "00-routing.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "00-routing.md"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"Annotation Limits",
+			"evidence_state: explicit",
+			"discovery_subtype: evaluation",
+			"Short Route must not infer it",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing short route annotation limit term %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestCriticalHitClosureCrossReferencesEvidenceState verifies the critical-hit
+// narrative and machine contracts tie closure evidence to Scout's evidence_state
+// vocabulary without weakening the existing Insufficient Evidence invariants.
+func TestCriticalHitClosureCrossReferencesEvidenceState(t *testing.T) {
+	t.Parallel()
+
+	narrativePaths := []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "11-critical-hit.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "11-critical-hit.md"),
+	}
+	for _, path := range narrativePaths {
+		content := readFile(t, path)
+		if !strings.Contains(content, "evidence_state: explicit") {
+			t.Fatalf("%s missing evidence_state cross-reference", path)
+		}
+	}
+
+	machinePaths := []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "critical-hit.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "critical-hit.yaml"),
+	}
+	for _, path := range machinePaths {
+		content := readFile(t, path)
+		if !strings.Contains(content, "evidence_state: explicit") {
+			t.Fatalf("%s missing evidence_state cross-reference", path)
+		}
+	}
+}
+
+// TestBrainstormingProviderIsWeaponNotSubtypeOwner verifies the brainstorming
+// provider manifest remains a Ranger weapon manifest and does not claim ownership
+// of Ranger's discovery_subtype behavior. .strategist/ is a generated runtime
+// artifact, so this only asserts the embedded-defaults copy — the canonical source
+// for what strategist install stamps into a workspace.
+func TestBrainstormingProviderIsWeaponNotSubtypeOwner(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "skills", "brainstorming", "skill.yaml")
+	content := readFile(t, path)
+	for _, needle := range []string{
+		"canonical_role: ranger",
+		"provider_class: rankeado",
+		"risk_score: write_analysis",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("%s missing brainstorming weapon term %q", path, needle)
+		}
+	}
+	for _, forbidden := range []string{
+		"discovery_subtype_support:",
+		"adapter_wording:",
+		"evaluation: adapter",
+	} {
+		if strings.Contains(content, forbidden) {
+			t.Fatalf("%s must not declare subtype adapter term %q", path, forbidden)
+		}
+	}
+}
+
+// TestEvaluationDiscoveryDoesNotRequireCreativeObligations verifies
+// 03-discovery.md explicitly states evaluation discovery is exempt from
+// creative-only obligations.
+func TestEvaluationDiscoveryDoesNotRequireCreativeObligations(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "03-discovery.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "03-discovery.md"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"does not require design-option exploration",
+			"writing-plans` handoff",
+			"design-doc commit",
+			"creative`-subtype obligations only",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing evaluation-exemption term %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestRoleLockKeepsSubtypeOwnershipWithRanger verifies the parent-agent Role Lock
+// treats the configured discovery provider as Ranger's weapon, not as the owner of
+// discovery_subtype behavior.
+func TestRoleLockKeepsSubtypeOwnershipWithRanger(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "SKILL.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "SKILL.md"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"Discovery subtypes are owned by Ranger",
+			"weapon is missing, invalid, risk-incompatible, or unavailable",
+			"role directives control subtype behavior",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing Ranger subtype ownership term %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestPreflightContractDoesNotDefineProviderCapabilityMismatch verifies preflight.yaml
+// no longer blocks discovery based on weapon subtype metadata.
+func TestPreflightContractDoesNotDefineProviderCapabilityMismatch(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "preflight.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "preflight.yaml"),
+	} {
+		content := readFile(t, path)
+		if strings.Contains(content, "provider_capability_mismatch") {
+			t.Fatalf("%s must not define provider_capability_mismatch", path)
+		}
+	}
+}
+
+// TestDriftPatternsDoNotCoverProviderCapabilityMismatch verifies the normative
+// drift-patterns.yaml no longer teaches subtype-capability blocking on weapons.
+func TestDriftPatternsDoNotCoverProviderCapabilityMismatch(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "templates", "domain", "identity", "drift-patterns.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "domain", "identity", "drift-patterns.yaml"),
+	} {
+		content := readFile(t, path)
+		if strings.Contains(content, "provider_capability_mismatch") {
+			t.Fatalf("%s must not define provider_capability_mismatch drift pattern", path)
+		}
+	}
+}
+
+// TestSkillYamlStopConditionsExcludeProviderCapabilityMismatch verifies the
+// master pipeline no longer declares provider_capability_mismatch as a stop condition.
+func TestSkillYamlStopConditionsExcludeProviderCapabilityMismatch(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "skill.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "skill.yaml"),
+	} {
+		content := readFile(t, path)
+		if strings.Contains(content, "provider_capability_mismatch") {
+			t.Fatalf("%s stop_conditions must not include provider_capability_mismatch", path)
+		}
+	}
+}
+
+// TestTelemetryContractDefinesScoutFields verifies 10-telemetry.md's canonical
+// event payload lists Scout's route-decision fields and distinguishes them from
+// Ranger's discovery-result events.
+func TestTelemetryContractDefinesScoutFields(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "10-telemetry.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "10-telemetry.md"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"`role`",
+			"`route`",
+			"`route_reason`",
+			"`route_confidence`",
+			"`evidence_state`",
+			"`discovery_subtype`",
+			"`provider`",
+			"component: scout",
+			"component: ranger",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing scout telemetry field %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestRoutingContractDefinesPostRouteDiscoveryHandoff verifies 00-routing.md
+// describes Scout handing requires_discovery routes to Ranger without checking
+// subtype metadata on the configured weapon.
+func TestRoutingContractDefinesPostRouteDiscoveryHandoff(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "00-routing.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "00-routing.md"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"Post-Route Discovery Handoff",
+			"Ranger is the internal discovery persona",
+			"standard preflight checks",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing post-route discovery handoff term %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestScoutRoutingMachineContractDefinesPostRouteDiscoveryHandoff verifies
+// scout-routing.yaml defines the post_route_discovery_handoff block that hands
+// requires_discovery routes to Ranger without checking discovery_subtype_support.
+func TestScoutRoutingMachineContractDefinesPostRouteDiscoveryHandoff(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "scout-routing.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "scout-routing.yaml"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"post_route_discovery_handoff:",
+			"before_ranger_invocation",
+			"discovery_subtype is Ranger behavior",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing post_route_discovery_handoff term %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestJewelGenerationContractDefinesTrustCeiling verifies the jewel_generation contract
+// (Track T-J / SQ-009) caps generation per consultation and enforces the trust-tier ceiling
+// that replaced the human pre-approval gate for agent-generated jewels.
+func TestJewelGenerationContractDefinesTrustCeiling(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "context-enrichment.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "context-enrichment.yaml"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"jewel_generation:",
+			"cap_per_consultation: 1",
+			"write_target: .strategist/jewels.yaml",
+			"generating a jewel with trust exceeding the parent chest's trust.tier",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing jewel_generation contract term %q", path, needle)
+			}
+		}
+	}
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "internal_skills", "ranger", "skill.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "internal_skills", "ranger", "skill.yaml"),
+		filepath.Join(repoRoot(t), "strategist", "internal_skills", "archivist", "skill.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "internal_skills", "archivist", "skill.yaml"),
+	} {
+		content := readFile(t, path)
+		if !strings.Contains(content, "jewel_generation contract") {
+			t.Fatalf("%s missing reference to the jewel_generation contract", path)
+		}
+	}
+}
+
+// TestJewelRetrievalContractDefinesMandatoryFallback verifies the jewel_retrieval contract
+// (Track T-J2, jewels-retrieval-precedence) wires jewel consultation into the retrieval
+// fallback order as a ranking hint and enforces the mandatory fallback to full source_cards
+// assembly when a jewel is stale, disputed, missing, or insufficient.
+func TestJewelRetrievalContractDefinesMandatoryFallback(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "context-enrichment.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "context-enrichment.yaml"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"jewel_consultation_as_ranking_hint",
+			"jewel_retrieval:",
+			"condition: jewel is stale | disputed | missing | insufficient",
+			"action: proceed with full source_cards assembly unchanged",
+			"jewels_consulted: [id, chest_id, trust, statement]",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing jewel_retrieval contract term %q", path, needle)
+			}
+		}
+	}
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "internal_skills", "dossier-builder", "skill.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "internal_skills", "dossier-builder", "skill.yaml"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"jewel_retrieval contract",
+			"jewels_consulted",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing reference to jewel_retrieval / jewels_consulted", path)
+			}
+		}
+	}
+}

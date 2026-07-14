@@ -24,6 +24,7 @@ output:
   artifact_dir: string             # <base_path>/refined/<mission_id>/
   has_execution_tasks: boolean     # true if the refined package contains tasks for Sniper
   opportunity_manifest: object     # optional; present when ADR criteria met (opportunity_attack result)
+  evidence_pack_path: string | null  # passed through from the Ranger analysis artifact when present; never regenerated
 
 completion_signal:
   format: |
@@ -57,6 +58,10 @@ behavior:
   - Promote analysis artifact: copy <base_path>/pending/<mission_id>-analysis.md verbatim to
     <base_path>/refined/<mission_id>/analysis.md.
   - Write proposal.md, design.md, and tasks.md to <base_path>/refined/<mission_id>/.
+  - If the Ranger analysis artifact carries evidence_pack_path, preserve it in the promoted
+    analysis.md / completion signal. Never add a fifth file to the refined package for it.
+  - May generate at most one jewel per consulted chest, trust-capped at the chest's own
+    trust.tier, per the jewel_generation contract in machine/context-enrichment.yaml.
   - After all four files are written, update analysis.md frontmatter to mission_status=archivist_done.
   - Remove <base_path>/pending/<mission_id>-analysis.md only after all four files exist.
   - Detect missions unrelated to the current scope and add them to the side_quests section of the analysis artifact.

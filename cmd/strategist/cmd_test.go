@@ -292,7 +292,7 @@ func minimalValidateRoot(t *testing.T) string {
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"),
 		[]byte("mode: pragmatic\nbase_path: .analysis\nroles_config: default\nslots:\n  discovery: brainstorming\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "personas", "pragmatic.yaml"),
-		[]byte("id: pragmatic\ntone_directive: precise\nphase_labels:\n  discovery: analysis\n  refinement: refinement\n  execution: execution\n"), 0o644))
+		[]byte("id: pragmatic\ntone_directive: precise\nphase_labels:\n  discovery: analysis\n  refinement: refinement\n  execution: execution\ndiagnostics:\n  pipeline_header: \"[Strategist] pipeline=starting\"\n  bootstrap_origin: \"[Strategist] profile_path={path}\"\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "roles", "default.yaml"),
 		[]byte("discovery: brainstorming\nrefinement: archivist\nexecution: caveman\n"), 0o644))
 	return dir
@@ -470,6 +470,45 @@ func TestValidateCmd_InvalidRoleYAML(t *testing.T) {
 
 	err := validateCmd.RunE(validateCmd, nil)
 	require.Error(t, err)
+}
+
+func TestValidateCmd_RoleFileInvalidSlotValue(t *testing.T) {
+	dir := minimalValidateRoot(t)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "roles", "sniper.yaml"),
+		[]byte("role: sniper\nslot: bogus\n"), 0o644))
+
+	orig := validateRoot
+	t.Cleanup(func() { validateRoot = orig })
+	validateRoot = dir
+
+	err := validateCmd.RunE(validateCmd, nil)
+	require.Error(t, err, "validate must reject a role file declaring an unknown slot")
+}
+
+func TestValidateCmd_RoleFileMissingSlot(t *testing.T) {
+	dir := minimalValidateRoot(t)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "roles", "sniper.yaml"),
+		[]byte("role: sniper\n"), 0o644))
+
+	orig := validateRoot
+	t.Cleanup(func() { validateRoot = orig })
+	validateRoot = dir
+
+	err := validateCmd.RunE(validateCmd, nil)
+	require.Error(t, err, "validate must reject a role definition missing slot")
+}
+
+func TestValidateCmd_RoleSlotMapMissingEntry(t *testing.T) {
+	dir := minimalValidateRoot(t)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "roles", "default.yaml"),
+		[]byte("discovery: brainstorming\n"), 0o644))
+
+	orig := validateRoot
+	t.Cleanup(func() { validateRoot = orig })
+	validateRoot = dir
+
+	err := validateCmd.RunE(validateCmd, nil)
+	require.Error(t, err, "validate must reject a slot map missing refinement/execution")
 }
 
 func TestValidateCmd_InvalidKnowledgeIndex(t *testing.T) {
@@ -1090,6 +1129,51 @@ func TestCheckCmd_NativeRole_Sniper(t *testing.T) {
 	})
 	assert.Contains(t, out, "STRATEGIST :: check")
 	assert.Contains(t, out, "sniper")
+}
+
+func TestCheckCmd_NativeRole_InvalidRoleDefinition(t *testing.T) {
+	dir := t.TempDir()
+	for _, p := range []struct {
+		name      string
+		riskScore string
+	}{
+		{"brainstorming", "write_analysis"},
+		{"openspec-explore", "write_analysis"},
+	} {
+		provDir := filepath.Join(dir, "skills", p.name)
+		require.NoError(t, os.MkdirAll(provDir, 0o755))
+		require.NoError(t, os.WriteFile(
+			filepath.Join(provDir, "skill.yaml"),
+			[]byte("id: "+p.name+"\nrisk_score: "+p.riskScore+"\n"),
+			0o644,
+		))
+	}
+	// Native role missing the required `slot` field.
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "roles", "sniper.yaml"),
+		[]byte("role: sniper\n"),
+		0o644,
+	))
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "personas", "epic.yaml"),
+		[]byte(minimalPersonaYAML),
+		0o644,
+	))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "active.yaml"),
+		[]byte("mode: epic\nbase_path: .analysis\nroles_config: roles/default.yaml\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: sniper\n"),
+		0o644,
+	))
+
+	orig := checkRoot
+	t.Cleanup(func() { checkRoot = orig })
+	checkRoot = dir
+
+	err := checkCmd.RunE(checkCmd, nil)
+	require.Error(t, err, "check must reject a native role definition missing the required slot field")
+	assert.Contains(t, err.Error(), "check=failed")
 }
 
 func TestCheckCmd_NativeRole_SlotMismatch(t *testing.T) {

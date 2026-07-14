@@ -12,6 +12,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// ValidMinimalPersonaYAML returns the smallest persona fixture accepted by runtime validation.
+func ValidMinimalPersonaYAML() []byte {
+	return []byte(`id: epic
+tone_directive: be precise
+phase_labels:
+  discovery: analysis
+  refinement: refinement
+  execution: execution
+diagnostics:
+  pipeline_header: "[Strategist] pipeline=starting mission_id={id}"
+  bootstrap_origin: "[Strategist] profile_path={path} active_yaml={active} reason={reason}"
+`)
+}
+
 // WriteGzJSON writes v as gzip-compressed JSON to path, creating parent dirs as needed.
 func WriteGzJSON(t testing.TB, path string, v any) {
 	t.Helper()
@@ -44,7 +58,7 @@ func MinimalRoot(t testing.TB, dir string) {
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte("mode: full\nbase_path: .analysis\nroles_config: roles/default.yaml\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: sdd-ask\n"), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "personas", "epic.yaml"), []byte("id: epic\ntone_directive: be precise\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "personas", "epic.yaml"), ValidMinimalPersonaYAML(), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "roles", "default.yaml"), []byte("name: Default\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "index.yaml"), []byte("load_always: []\nload_by_task_type: {}\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "knowledge.index.yaml"), []byte("sources: []\n"), 0o644))

@@ -22,24 +22,51 @@ capability:
       when: complex analysis, ambiguous demands, new requirements
     critical_hit:
       sequence: [intake, inline_gate, execution]
-      when: artifact management within workspace folders (analysis_move)
+      when: >
+        artifact management within workspace folders (analysis_move). Two modes: plain
+        move (no evaluation, no evidence) and closure move (explicit implementation/
+        validation claim + evidence summary, closing a pending/refined package into
+        done/). Does NOT fire automatically when a main_mission reaches
+        documentation_applied — that is documentation completion, not implementation
+        evidence. A completed main_mission normally ends with its package in refined/.
+        Never infers completion on its own.
     quick_draw:
       sequence: [intake, ranger_qd, archivist_qd, gate, sniper_qd]
       when: rapid note/idea capture
-  route_decision: internal (intake routing layer)
+  route_decision: internal (Scout / intake routing layer — see internal_skills/scout)
   delegating_agent_contract: invoke with request context — route is resolved internally
 
 orchestration:
   model: master_skill
+  # Scout is internal/built-in Strategist behavior — NOT a slot. It has no
+  # active.yaml entry, no roles/scout.yaml, and is never configurable.
+  # See internal_skills/scout/, schemas/scout-route-decision.schema.yaml, and
+  # contracts/machine/scout-routing.yaml.
+  scout:
+    internal_role: scout
+    owner: internal (orchestrator)
+    pre_pipeline: true
+    never_a_slot: true
   slot_hierarchy:
     discovery:
       skill: ranger
+      # Ranger is the internal discovery persona. It owns discovery_subtype behavior
+      # (creative, evaluation, diagnostic, closure_evidence) and wields the configured
+      # discovery weapon for exploration. The weapon is not the persona and does not
+      # need to declare subtype-specific behavior.
       may_delegate_to: [brainstorming, writing-plans]
+      # Default weapon: brainstorming. Preflight validates that the configured weapon
+      # exists, is invocable, and matches the write_analysis risk contract. It must not
+      # block evaluation missions merely because the weapon's standalone instructions
+      # are creative-first; Ranger's role directives control subtype behavior.
     refinement:
       skill: archivist
+      # Archivist is the internal refinement persona. openspec-explore is its default
+      # weapon, not a replacement for the persona.
       may_delegate_to: [openspec-explore, dossier-builder, context-enrichment]
     execution:
       skill: sniper
+      # Sniper is internal and controlled. It has no subtype customization.
       may_delegate_to: [sdd-ask]
 
 parameters:
@@ -196,16 +223,25 @@ pipeline:
     input: quick_draw_refinement
     artifact_path: "<base_path>/todo/<tema>.md"
     produces: quick_draw_result
+  - stage: scout_routing
+    skill: scout
+    condition: "!quick_draw_detection.matched"
+    input: mission_contract
+    produces: route_decision
+    description: >
+      Scout classifies the request and selects critical_hit, implementation_short_route,
+      or full_pipeline. See schemas/scout-route-decision.schema.yaml and
+      contracts/machine/scout-routing.yaml. Scout is internal — never a slot.
   - stage: context_enrichment
     skill: context-enrichment
-    condition: "!quick_draw_detection.matched"
+    condition: "!quick_draw_detection.matched && route_decision.selected_route == full_pipeline"
     input:
       task_type: mission_contract.task_type
       token_strategy: mission_contract.token_strategy    # drives budget limits by mode
     produces: dossier
   - stage: compression_metrics
     type: internal
-    condition: "!quick_draw_detection.matched"
+    condition: "!quick_draw_detection.matched && route_decision.selected_route == full_pipeline"
     description: >
       Log dossier compression_metrics to .strategist/memory/chest-usage.jsonl. Non-blocking.
       Format: JSON lines with mission_id, mode, sources_seen, sources_selected,
@@ -213,8 +249,10 @@ pipeline:
     blocking: false
   - stage: discovery
     slot: discovery
-    condition: "!quick_draw_detection.matched"
-    input: mission_contract
+    condition: "!quick_draw_detection.matched && route_decision.selected_route == full_pipeline"
+    input:
+      mission_contract: mission_contract
+      discovery_subtype: route_decision.discovery_subtype
     artifact_path: "<base_path>/pending/<mission_id>-analysis.md"
   - stage: refinement
     slot: refinement

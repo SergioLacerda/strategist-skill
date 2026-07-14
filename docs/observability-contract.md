@@ -57,6 +57,22 @@ All attributes are namespaced under `strategist.*`. Defined in `internal/telemet
 | `strategist.artifact` | string | Artifact type being produced |
 | `strategist.artifact.path` | string | Artifact path (sanitized) |
 
+### Scout route decision
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `strategist.role` | string | Role emitting the event, e.g. `Scout` |
+| `strategist.route` | string | Selected route: `critical_hit`, `implementation_short_route`, `full_pipeline` |
+| `strategist.route_reason` | string | Short machine-readable reason for the selected route |
+| `strategist.route_confidence` | float | Route classification confidence, 0.0–1.0 |
+| `strategist.evidence_state` | string | `explicit`, `insufficient`, or `requires_discovery` |
+| `strategist.discovery_subtype` | string | `creative`, `evaluation`, `diagnostic`, or `closure_evidence` (set when `route=full_pipeline`) |
+| `strategist.provider` | string | Resolved discovery provider id, when `evidence_state=requires_discovery` |
+
+Distinguished from Ranger discovery-result events by `strategist.component`:
+`component=scout` for the route decision, `component=ranger` for the discovery
+result. See `contracts/narrative/10-telemetry.md` § Scout Event.
+
 ### Gate
 
 | Key | Type | Description |
@@ -72,7 +88,9 @@ All attributes are namespaced under `strategist.*`. Defined in `internal/telemet
 | Key | Type | Unit | Description |
 |-----|------|------|-------------|
 | `strategist.metrics.t_start_to_intake_ms` | int | ms | Time from pipeline start to intake complete |
-| `strategist.metrics.t_intake_to_ranger_ms` | int | ms | Time from intake to Ranger start |
+| `strategist.metrics.t_intake_to_scout_ms` | int | ms | Time from intake to Scout's route decision |
+| `strategist.metrics.t_scout_to_ranger_ms` | int | ms | Time from Scout's route decision to Ranger start |
+| `strategist.metrics.t_intake_to_ranger_ms` | int | ms | Time from intake to Ranger start (spans Scout) |
 | `strategist.metrics.total_wall_time_ms` | int | ms | Total wall-clock time for the mission |
 | `strategist.metrics.tokens_in` | int | tokens | Input tokens consumed |
 | `strategist.metrics.tokens_out` | int | tokens | Output tokens produced |

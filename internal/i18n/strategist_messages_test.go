@@ -71,3 +71,15 @@ func TestENRuntimeHasDocumentationMaterializationSemantics(t *testing.T) {
 	assert.Contains(t, i18n.ENRuntime.SniperStart, "materialization")
 	assert.Contains(t, i18n.ENRuntime.AdrGate, "Archive ADR")
 }
+
+// TestRuntimeMessagesToMap verifies ToMap exposes every field under its snake_case key.
+func TestRuntimeMessagesToMap(t *testing.T) {
+	t.Parallel()
+
+	m := i18n.ENRuntime.ToMap()
+	assert.Equal(t, i18n.ENRuntime.IntakeSummary, m["intake_summary"])
+	assert.Equal(t, i18n.ENRuntime.RangerStart, m["ranger_start"])
+	assert.Equal(t, i18n.ENRuntime.SniperDone, m["sniper_done"])
+	assert.Equal(t, i18n.ENRuntime.ArtifactEntry, m["artifact_entry"])
+	assert.NotEmpty(t, m)
+}

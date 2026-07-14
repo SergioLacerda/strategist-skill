@@ -199,3 +199,48 @@ func TestFSMCriticalHitDeclinedGoesToDoneAnalysis(t *testing.T) {
 	s = domain.NextState(s, domain.EventDirectGateDeclined, policy)
 	assert.Equal(t, domain.StateDoneAnalysis, s)
 }
+
+func TestFSMStayBranches(t *testing.T) {
+	t.Parallel()
+	policy := domain.DefaultMissionPolicy()
+
+	cases := []struct {
+		name  string
+		start domain.MissionState
+		event domain.TransitionEvent
+	}{
+		{"init unrelated event", domain.StateInit, domain.EventGateApproved},
+		{"opportunity attack unrelated event", domain.StateOpportunityAttack, domain.EventGateApproved},
+		{"opportunity gate unrelated event", domain.StateOpportunityGate, domain.EventManifestEmpty},
+		{"opportunity exec unrelated event", domain.StateOpportunityExec, domain.EventGateApproved},
+		{"refinement unrelated event", domain.StateRefinement, domain.EventGateApproved},
+		{"approval gate unrelated event", domain.StateApprovalGate, domain.EventManifestEmpty},
+		{"execution unrelated event", domain.StateExecution, domain.EventGateApproved},
+		{"retrying unrelated event", domain.StateRetrying, domain.EventManifestEmpty},
+		{"quick draw unrelated event", domain.StateQuickDraw, domain.EventGateApproved},
+		{"quick draw gate unrelated event", domain.StateQuickDrawGate, domain.EventManifestEmpty},
+		{"adr gate1 unrelated event", domain.StateADRGate1, domain.EventGateApproved},
+		{"adr gate2 unrelated event", domain.StateADRGate2, domain.EventGateApproved},
+		{"direct gate unrelated event", domain.StateDirectGate, domain.EventGateApproved},
+		{"direct exec unrelated event", domain.StateDirectExec, domain.EventGateApproved},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got := domain.NextState(tc.start, tc.event, policy)
+			assert.Equal(t, tc.start, got, "state should not change for unrelated event")
+		})
+	}
+}
+
+func TestFSMAbsorbingStates(t *testing.T) {
+	t.Parallel()
+	policy := domain.DefaultMissionPolicy()
+	for _, s := range []domain.MissionState{
+		domain.StateQuickDrawDone, domain.StateADRDone, domain.StateBlocked, domain.StateDirectDone,
+	} {
+		got := domain.NextState(s, domain.EventGateApproved, policy)
+		assert.Equal(t, s, got)
+	}
+}

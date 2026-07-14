@@ -15,6 +15,7 @@ type MissionRun struct {
 	MissionID     string
 	startedAt     time.Time
 	intakeAt      time.Time
+	scoutAt       time.Time
 	rangerAt      time.Time
 	archivistAt   time.Time
 	gateAt        time.Time
@@ -57,6 +58,15 @@ func (m *MissionRun) MarkIntake() {
 	defer m.mu.Unlock()
 	if m.intakeAt.IsZero() {
 		m.intakeAt = time.Now()
+	}
+}
+
+// MarkScout records when Scout's route decision completes, once.
+func (m *MissionRun) MarkScout() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.scoutAt.IsZero() {
+		m.scoutAt = time.Now()
 	}
 }
 
@@ -134,9 +144,13 @@ func (m *MissionRun) Snapshot() MissionMetrics {
 	if intakeAt.IsZero() {
 		intakeAt = now
 	}
+	scoutAt := m.scoutAt
+	if scoutAt.IsZero() {
+		scoutAt = intakeAt
+	}
 	rangerAt := m.rangerAt
 	if rangerAt.IsZero() {
-		rangerAt = intakeAt
+		rangerAt = scoutAt
 	}
 	archivistAt := m.archivistAt
 	if archivistAt.IsZero() {
@@ -158,6 +172,8 @@ func (m *MissionRun) Snapshot() MissionMetrics {
 	return MissionMetrics{
 		MissionID:            m.MissionID,
 		TStartToIntakeMS:     intakeAt.Sub(m.startedAt).Milliseconds(),
+		TIntakeToScoutMS:     scoutAt.Sub(intakeAt).Milliseconds(),
+		TScoutToRangerMS:     rangerAt.Sub(scoutAt).Milliseconds(),
 		TIntakeToRangerMS:    rangerAt.Sub(intakeAt).Milliseconds(),
 		TRangerToArchivistMS: archivistAt.Sub(rangerAt).Milliseconds(),
 		TArchivistToGateMS:   gateAt.Sub(archivistAt).Milliseconds(),

@@ -45,6 +45,7 @@ event_examples:
   - "[Strategist] phase=approval_gate status=blocked reason=user_declined action=none"
   - "[Strategist] phase=execution status=done artifact=.analysis/archived/abc123-report.md"
   - "[Strategist] event=treasure_chest_found chest=my-chest phase=discovery"
+  - "[Strategist] event=evidence_pack_generated path=.analysis/refined/abc123/abc123-evidence-pack.md phase=refinement"
   - "[Strategist] event=side_quest_detected type=quick_draw phase=intake"
   - "[Strategist] event=scope_observation type=side_quest phase=refinement"
   - "[Strategist] phase=execution task=2 status=running"
@@ -93,3 +94,4 @@ output_paths:
   discovery_analysis: "<base_path>/refined/<mission_id>/analysis.md"
   refined_plan_dir: "<base_path>/refined/<mission_id>/"
   execution_report: "<base_path>/archived/<mission_id>-report.md"
+  evidence_pack: "<base_path>/<state>/<mission_id>-evidence-pack.md"  # optional; only when dossier.source_cards is non-empty

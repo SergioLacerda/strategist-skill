@@ -23,6 +23,7 @@ input:
 output:
   artifact_path: string          # <base_path>/pending/<mission_id>-analysis.md
   mission_status: string         # ranger_done on success
+  evidence_pack_path: string | null  # from dossier.evidence_pack_path; cited in analysis artifact when present
 
 completion_signal:
   format: |
@@ -41,6 +42,9 @@ required_artifact_sections:
 behavior:
   - Check mission_status in artifact frontmatter before writing. See pre-creation checklist in 03-discovery.md.
   - Consult treasure chests scoped to discovery before generating content.
+  - Cite dossier.evidence_pack_path in the analysis artifact when present. Do not load raw chest contents.
+  - May generate at most one jewel per consulted chest, trust-capped at the chest's own
+    trust.tier, per the jewel_generation contract in machine/context-enrichment.yaml.
   - Separate facts, hypotheses, and ambiguities explicitly.
   - Write artifact to <base_path>/pending/<mission_id>-analysis.md.
   - Update frontmatter mission_status from ranger_pending to ranger_done on completion.

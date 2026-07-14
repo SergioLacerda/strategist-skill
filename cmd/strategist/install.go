@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -19,17 +20,31 @@ import (
 )
 
 var (
-	installTarget string
-	installSilent bool
-	installWizard bool
-	installGlobal bool
-	installForce  bool
+	installTarget        string
+	installSilent        bool
+	installWizard        bool
+	installGlobal        bool
+	installForce         bool
+	installStrictCompile bool
+	installNoShim        bool
+	installShimPath      string
 )
 
 var installCmd = &cobra.Command{
 	Use:   "install",
 	Short: "Install the Strategist skill into a target repository",
-	RunE:  runInstall,
+	Long: `Install the Strategist skill into a target repository.
+
+Silent mode (default, no flags needed) writes epic-profile defaults and never
+prompts. A CompileAll failure after extraction is warning-only by default —
+install still completes with a partial/uncompiled runtime. Pass
+--strict-compile to make that failure fatal (the install rolls back instead).
+
+By default a Claude Code shim is written to
+~/.claude/skills/strategist/SKILL.md so the skill is invocable outside this
+repository. Use --no-shim to skip that write entirely (e.g. CI/containers
+without a writable home directory), or --shim-path to redirect it.`,
+	RunE: runInstall,
 }
 
 // resolveInstallTarget returns the effective install target path.
@@ -56,6 +71,10 @@ func resolveInstallTarget(explicit string, global bool) (string, error) {
 }
 
 func runInstall(cmd *cobra.Command, _ []string) (retErr error) {
+	if installNoShim && installShimPath != "" {
+		return fmt.Errorf("install: --no-shim and --shim-path are mutually exclusive")
+	}
+
 	target, err := resolveInstallTarget(installTarget, installGlobal)
 	if err != nil {
 		return err
@@ -105,11 +124,14 @@ func runInstall(cmd *cobra.Command, _ []string) (retErr error) {
 	}
 
 	cfg := domain.InstallConfig{
-		Target: installTarget,
-		Silent: installSilent,
-		Wizard: installWizard,
-		Global: installGlobal,
-		Force:  installForce,
+		Target:        installTarget,
+		Silent:        installSilent,
+		Wizard:        installWizard,
+		Global:        installGlobal,
+		Force:         installForce,
+		StrictCompile: installStrictCompile,
+		NoShim:        installNoShim,
+		ShimPath:      installShimPath,
 	}
 
 	svc := install.Service{
@@ -133,22 +155,52 @@ func runInstall(cmd *cobra.Command, _ []string) (retErr error) {
 	if run != nil {
 		run.AddLines(2)
 	}
+	// A successful Install with StrictCompile=false may still have hit a
+	// non-fatal CompileAll failure (warning-only). Detect that here by checking
+	// for the manifest CompileAll writes on success, so the terminal banner
+	// clearly reports partial status instead of a bare "install complete".
+	partial := installIsPartial(installTarget)
 	slog.InfoContext(ctx, "[Strategist] install complete",
 		telemetry.AttrComponent, "install",
 		telemetry.AttrRuntimeMode, "cli",
 		telemetry.AttrOutputProfile, "default",
 		telemetry.AttrTarget, installTarget,
+		"partial", partial,
 	)
-	printInstallCompleteBanner(installTarget, installWizard)
+	printInstallCompleteBanner(installTarget, installWizard, partial)
 	return nil
 }
 
-func printInstallCompleteBanner(target string, wizard bool) {
+// installIsPartial reports whether the just-completed install has an
+// uncompiled/partial runtime — i.e. CompileAll's warning-only failure path
+// was taken and no manifest was produced. Only meaningful immediately after a
+// successful Service.Install call.
+func installIsPartial(target string) bool {
+	manifestPath := filepath.Join(target, ".strategist", ".compiled", ".manifest.gz")
+	_, err := os.Stat(manifestPath)
+	return err != nil
+}
+
+func printInstallCompleteBanner(target string, wizard, partial bool) {
 	mode := "silent"
 	if wizard {
 		mode = "wizard"
 	}
 	fmt.Println()
+	if partial {
+		fmt.Println("  ┌─────────────────────────────────────────────────────────────────────┐")
+		fmt.Println("  │  STRATEGIST  ◆  install complete (partial — compile warning)        │")
+		fmt.Println("  └─────────────────────────────────────────────────────────────────────┘")
+		fmt.Println()
+		fmt.Printf("     target  %s\n", target)
+		fmt.Printf("     mode    %s\n", mode)
+		fmt.Println()
+		fmt.Println("     ⚠ compile failed during install — runtime is uncompiled/partial.")
+		fmt.Println("       Run: strategist compile   (or re-run install with --strict-compile")
+		fmt.Println("       to make this fatal instead of warning-only next time)")
+		fmt.Println()
+		return
+	}
 	fmt.Println("  ┌─────────────────────────────────────────────────────────────────────┐")
 	fmt.Println("  │  STRATEGIST  ◆  install complete                                    │")
 	fmt.Println("  └─────────────────────────────────────────────────────────────────────┘")
@@ -164,4 +216,7 @@ func init() {
 	installCmd.Flags().BoolVar(&installWizard, "wizard", false, "interactive wizard for configuration")
 	installCmd.Flags().BoolVar(&installGlobal, "global", false, "install into global root (default: local project)")
 	installCmd.Flags().BoolVar(&installForce, "force", false, "overwrite all files, including user-modified ones (default: preserve customizations)")
+	installCmd.Flags().BoolVar(&installStrictCompile, "strict-compile", false, "fail install (and roll back) on a CompileAll error, instead of warning-only (default: warning-only)")
+	installCmd.Flags().BoolVar(&installNoShim, "no-shim", false, "skip writing the SKILL.md shim under ~/.claude/skills (mutually exclusive with --shim-path)")
+	installCmd.Flags().StringVar(&installShimPath, "shim-path", "", "write the SKILL.md shim to this path instead of the default ~/.claude/skills/strategist/SKILL.md (mutually exclusive with --no-shim)")
 }

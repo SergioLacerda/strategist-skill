@@ -42,10 +42,12 @@ Opportunity Attack is an **Archivist routine** that evaluates ADR necessity afte
 
 ## Pipeline Overview
 
-The Strategist orchestrates work in three sequential phases, each delegated to a **slot**:
+Before the three-slot pipeline runs, **Scout** (the Intake Router) classifies the
+request and selects a route: `critical_hit`, `implementation_short_route`, or
+`full_pipeline`. Only `full_pipeline` reaches the slot pipeline below:
 
 ```
-Ranger (discovery) → Archivist (refinement) → [gate] → Sniper (execution)
+Scout (route decision) → Ranger (discovery) → Archivist (refinement) → [gate] → Sniper (execution)
 ```
 
 The Strategist never executes work directly — it delegates. Each slot receives a **provider** (weapon) configured in `active.yaml`. The combination of provider + slot + contract defines a **role**.
@@ -54,13 +56,36 @@ The Strategist never executes work directly — it delegates. Each slot receives
 
 ## Role
 
-A role is the combination of a slot with its behavior contract. There are three canonical roles:
+A role is the combination of a slot with its behavior contract. There are three canonical, pluggable roles:
 
 | Role | Slot | Contract | Authorized writes |
 |------|------|----------|------------------|
 | **Ranger** | `discovery` | `write_analysis` | `.md` in `<base_path>/pending/` |
 | **Archivist** | `refinement` | `write_analysis` | `.md` in `<base_path>/refined/` |
 | **Sniper** | `execution` | `controlled` | Approved documentation/handoff, only after approval gate |
+
+**Scout** is a fourth role, but it is internal and pre-pipeline, not a slot — it has
+no `active.yaml` entry and no configurable provider:
+
+| Role | Slot | Contract | Authorized writes |
+|------|------|----------|------------------|
+| **Scout** | pre-pipeline (internal, never a slot) | `read_only` | none — emits a `route_decision`, logged/telemetered only |
+
+## Scout — Intake Router
+
+Scout classifies each request and decides the route before any slot runs. It is
+internal Strategist behavior, analogous in scope-boundedness to Sniper but
+positioned before the pipeline instead of at the end of it — there is no
+`roles/scout.yaml` and no way to configure a different Scout provider. `Scout` is
+the internal persona name; `Intake Router` is the same entity's public/pragmatic
+contract label used in narrative-mode responses.
+
+Scout may NOT perform deep discovery, invoke Sniper directly, bypass the
+Strategist Approval Gate, or replace Ranger when evidence review is required. When
+a request needs evidence gathering, Scout routes to `full_pipeline` with a
+`discovery_subtype` (see `contracts/narrative/03-discovery.md`) and Ranger remains
+the discovery/evidence owner. See `contracts/narrative/00-routing.md` § Scout —
+Intake Router and `internal_skills/scout/SKILL.md` for the full contract.
 
 Each role has a contract declared in `.strategist/roles/<role>.yaml` with `must` and `must_not` clauses. Example (Ranger):
 
@@ -84,6 +109,31 @@ Canonical responsibilities by role:
 - **Sniper** materializes approved tasks and reports newly discovered side quests. Does not run analyses or ADR evaluations.
 
 Sniper requires explicit user approval before any execution — no exceptions. Under the current contract, execution means materializing documentation, diagrams, analyses, or approved handoffs; it does not mean changing source code.
+
+---
+
+## Parent Agent Role Lock
+
+When Strategist is invoked, the parent agent (Codex, Claude, or any host) becomes a
+constrained orchestrator shell — it must not solve the user's task directly. See the
+"Role Lock" section in `SKILL.md` and "Parent Agent Boundary" in `agent-protocol.md`
+for the normative rules. Examples of correct and incorrect behavior:
+
+- **Read-only analysis request** — user asks Strategist to evaluate a proposal. The
+  parent agent bootstraps, invokes the discovery/refinement providers, presents the
+  gate, and relays their output. It never inspects or judges the code itself.
+- **Code/test mutation request** — user asks Strategist to "clean up duplicated
+  tests." The parent agent produces analysis/handoff artifacts only; it does not edit
+  the test files, because the default Sniper contract forbids code/test mutation.
+  Implementation happens outside Strategist or through a separately configured
+  execution provider whose contract permits mutation.
+- **Unavailable provider** — the configured discovery provider cannot be invoked. The
+  parent agent stops and emits `error=role_invocation_failed slot=discovery
+  provider=<configured_provider>`. It does not perform discovery itself to "help."
+- **Anti-example (drift)** — the parent agent reads `SKILL.md` and `agent-protocol.md`,
+  then performs discovery, refinement, or execution itself instead of invoking the
+  configured provider. This is `direct_execution` drift even if the resulting answer
+  is correct — correctness does not repair the drift.
 
 ---
 

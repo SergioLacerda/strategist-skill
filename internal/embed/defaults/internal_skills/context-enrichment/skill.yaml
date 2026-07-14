@@ -80,3 +80,8 @@ failure_modes:
   - source_path_missing: a source path in the index does not exist. Skip and continue.
   - token_budget_exceeded: stop loading excerpts when budget is reached. Return what was loaded.
   - chest_manifest_missing: treasure-chests.yaml not found. Skip chest loading, continue.
+
+downstream_consumers:
+  - dossier-builder: consumes source_cards to assemble the dossier and, when non-empty,
+    to generate the mission Evidence Pack (see machine/context-enrichment.yaml#evidence_pack).
+    context-enrichment itself performs no pack generation and adds no new retrieval unit.

@@ -78,6 +78,56 @@ func (p PersonaConfig) ValidateForRuntime() error {
 	return fmt.Errorf("persona config invalid: %s", strings.Join(errs, "; "))
 }
 
+// validSlots are the three pipeline slots a role or role-slot-map entry may declare.
+var validSlots = map[string]bool{"discovery": true, "refinement": true, "execution": true}
+
+// RoleConfig is the structure of a native role definition file (roles/<name>.yaml),
+// e.g. roles/sniper.yaml — a role that declares its own slot and behavior contract
+// instead of being backed by a skills/<provider>/skill.yaml manifest.
+type RoleConfig struct {
+	Role        string   `yaml:"role"`
+	Slot        string   `yaml:"slot"`
+	Must        []string `yaml:"must"`
+	MustNot     []string `yaml:"must_not"`
+	CustomBrief string   `yaml:"custom_brief"`
+}
+
+// Validate returns an error if the role definition is missing required fields
+// or declares an unknown slot.
+func (r RoleConfig) Validate() error {
+	var errs []string
+	if r.Role == "" {
+		errs = append(errs, "role is required")
+	}
+	if r.Slot == "" {
+		errs = append(errs, "slot is required")
+	} else if !validSlots[r.Slot] {
+		errs = append(errs, fmt.Sprintf("slot %q is not one of discovery, refinement, execution", r.Slot))
+	}
+	if len(errs) == 0 {
+		return nil
+	}
+	return fmt.Errorf("role config invalid: %s", strings.Join(errs, "; "))
+}
+
+// RoleSlotMap is the structure of roles/default.yaml — a slot→provider mapping,
+// mirroring the shape of active.yaml's slots field.
+type RoleSlotMap map[string]string
+
+// Validate returns an error if any of the three required slots is missing or empty.
+func (m RoleSlotMap) Validate() error {
+	var errs []string
+	for _, slot := range []string{"discovery", "refinement", "execution"} {
+		if m[slot] == "" {
+			errs = append(errs, fmt.Sprintf("missing slot: %s", slot))
+		}
+	}
+	if len(errs) == 0 {
+		return nil
+	}
+	return fmt.Errorf("role slot map invalid: %s", strings.Join(errs, "; "))
+}
+
 // ApprovalGateContract is the structure of contracts/approval-gate.yaml.
 type ApprovalGateContract struct {
 	Module      string `yaml:"module"`
@@ -171,6 +221,15 @@ type InstallConfig struct {
 	// Force overwrites all files, including user-modified ones.
 	// When false (default), files that differ from the embedded default are preserved.
 	Force bool
+	// StrictCompile makes a CompileAll failure fatal (triggers rollback) instead of
+	// warning-only. Default false preserves the existing warning-only behavior.
+	StrictCompile bool
+	// NoShim skips writing the SKILL.md shim entirely (no ~/.claude/skills write).
+	NoShim bool
+	// ShimPath overrides the shim destination file path. Empty means use the
+	// default ~/.claude/skills/strategist/SKILL.md location. Mutually exclusive
+	// with NoShim.
+	ShimPath string
 }
 
 // TreasureChest is a scoped knowledge source passed to slot providers at invocation time.
