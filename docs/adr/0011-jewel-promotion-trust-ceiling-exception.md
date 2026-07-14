@@ -80,4 +80,4 @@ unresolved requirement.
 - Enforcement: `internal/domain/jewel_grade.go` (`ValidateJewelTrust`)
 - Runtime: `bau-tesouro-sq009-jewels-runtime`
 - Provenance divergence: `jewels-retrieval-precedence`
-- Docs: [cli-reference.md § Jewels](../cli-reference.md#jewels)
+- Docs: `cli-reference.md` § Jewels

@@ -94,7 +94,7 @@ func TestE2E_CLI_ValidateOnMinimalRoot(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Join(strategistDir, "roles"), 0o755))
 
 	require.NoError(t, os.WriteFile(filepath.Join(strategistDir, "active.yaml"), []byte("mode: epic\nroles_config: default\n"), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(strategistDir, "personas", "epic.yaml"), []byte("tone_directive: precise\nphase_labels:\n  discovery: analysis\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(strategistDir, "personas", "epic.yaml"), testutil.ValidMinimalPersonaYAML(), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(strategistDir, "roles", "default.yaml"), []byte("discovery: brainstorming\nrefinement: archivist\nexecution: caveman\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(strategistDir, "knowledge.index.yaml"), []byte("sources: []\n"), 0o644))
 
