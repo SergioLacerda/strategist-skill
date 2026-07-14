@@ -83,7 +83,7 @@ The invoking local context (any adapter, orchestrator, or harness) controls thre
 - which **provider, base path, and knowledge paths** are injected (via `governance_injection`)
 - which **context documents** are made available to slots (`governance_context`)
 
-Strategist controls everything else: pipeline sequence, artifact persistence, evidence requirements, and slot delegation. The local context cannot substitute the canonical mission sequence after invocation.
+Strategist controls everything else: pipeline sequence, artifact persistence, evidence requirements, and slot contracts. The local context cannot substitute the canonical mission sequence after invocation.
 
 No specific governance system is normatively coupled. `local_execution_context` is provider-agnostic.
 
@@ -119,7 +119,7 @@ When another local context invokes Strategist (delegated invocation), it passes 
 The local execution context constrains only provider resolution and policy context. It does not:
 - alter the pipeline sequence after Strategist is invoked
 - replace the Strategist Approval Gate
-- control artifact persistence, evidence requirements, or slot delegation
+- control artifact persistence, evidence requirements, or slot contracts
 
 If `invocation_mode=delegated` and `execution_provider` is missing, Strategist blocks with `local_execution_provider_missing` — it does not fall back to direct execution.
 If the resolved provider cannot be invoked, Strategist blocks with `execution_provider_unavailable` — it does not fall back to direct execution.

@@ -16,7 +16,8 @@ strategist <command> [flags]
 Installs the Strategist skill in a target repository.
 
 ```
-strategist install [--target=<dir>] [--wizard] [--silent]
+strategist install [--target=<dir>] [--wizard] [--silent] [--force]
+                    [--strict-compile] [--no-shim | --shim-path=<path>]
 ```
 
 **Flags:**
@@ -25,17 +26,23 @@ strategist install [--target=<dir>] [--wizard] [--silent]
 |------|---------|-------------|
 | `--target` | `.` (current directory) | Repository root where `.strategist/` will be created |
 | `--wizard` | `false` | Interactive mode: collects mode, base_path, and provider via prompts |
-| `--silent` | `false` | Installation without prompts using pragmatic defaults (default behavior when no flag is passed) |
+| `--silent` | `false` (default behavior when no flag is passed) | Installation without prompts, using **epic** profile defaults |
+| `--force` | `false` | Overwrite all files, including user-modified ones (default: preserve customizations that differ from the embedded default) |
+| `--strict-compile` | `false` | Make a `CompileAll` failure after extraction fatal — the install rolls back instead of completing with a partial/uncompiled runtime. Default is warning-only (install still completes) |
+| `--no-shim` | `false` | Skip writing the SKILL.md shim entirely — no write to `~/.claude/skills` at all. Useful for CI/containers without a writable home directory. Mutually exclusive with `--shim-path` |
+| `--shim-path` | `` (default: `~/.claude/skills/strategist/SKILL.md`) | Write the shim to this path instead of the default home-relative location. Mutually exclusive with `--no-shim` |
 
 **What it does:**
 
 1. Extracts embedded defaults to `<target>/.strategist/`
-2. Generates `active.yaml` (wizard or pragmatic template)
+2. Generates `active.yaml` (wizard or epic template)
 3. Adds `.strategist/.compiled/` to `.gitignore`
-4. Installs the shim at `~/.claude/skills/strategist/SKILL.md`
-5. Compiles all artifacts to `.strategist/.compiled/`
+4. Installs the shim at `~/.claude/skills/strategist/SKILL.md`, unless `--no-shim` or `--shim-path` is set
+5. Compiles all artifacts to `.strategist/.compiled/` — a failure here is warning-only by default, fatal with `--strict-compile`
 
-**Rollback:** if any step fails, created files are removed and the workspace is restored to its previous state.
+**Rollback:** if any step fails, the install is rolled back. On a **fresh** install (no pre-existing `.strategist/`), Strategist owns the entire tree and removes it wholesale (`rm -rf .strategist/`), plus any `.gitignore`/shim entries it added. On a **re-install over an existing tree** (`--force`), pre-existing content is never deleted — only the specific entries added during that run (e.g. a new `.gitignore` line or shim file) are rolled back.
+
+Only `env/profile`-based shim precedence is out of scope for now — CLI flags (`--no-shim`/`--shim-path`) are the only supported override today.
 
 **Examples:**
 
@@ -141,9 +148,11 @@ strategist validate [--root=<dir>]
 | File | What is checked |
 |------|----------------|
 | `active.yaml` | Exists, valid YAML, `mode` and `roles_config` fields present, `mode` is `pragmatic` or `epic` |
-| `personas/*.yaml` | Each file has `tone_directive` and `phase_labels` |
-| `roles/*.yaml` | Each file has the `discovery`, `refinement`, and `execution` slots |
+| `personas/*.yaml` | Each file satisfies the same runtime contract `check` enforces: `id`, `tone_directive`, `phase_labels.{discovery,refinement,execution}`, `diagnostics.pipeline_header`, `diagnostics.bootstrap_origin` |
+| `roles/*.yaml` | A native role definition (has a `role` key) must have `role` and a `slot` that is one of `discovery`/`refinement`/`execution`. A slot map (e.g. `roles/default.yaml`, shaped like `active.yaml`'s `slots:`) must have all three slots present and non-empty |
 | `knowledge.index.yaml` | If present, valid YAML |
+
+Go structs/validators (`domain.PersonaConfig`, `domain.RoleConfig`, `domain.RoleSlotMap`) are the authoritative source of truth for these rules — the `.schema.yaml` files under `schemas/` are descriptive documentation only and are not loaded or enforced by the CLI.
 
 **Success output:**
 ```
@@ -185,7 +194,7 @@ Validates operational readiness of the Strategist runtime — confirms the skill
 `check` does **not** test whether the environment can invoke external agents. It confirms the runtime is installed and configured. If a slot provider fails to be invoked during a mission, Strategist reports `role_invocation_failed` as an internal skill error — not a `check` failure.
 
 ```
-strategist check [--root=<dir>]
+strategist check [--root=<dir>] [--strict] [--simulate]
 ```
 
 **Flags:**
@@ -193,6 +202,8 @@ strategist check [--root=<dir>]
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--root` | `.strategist` | Path to the `.strategist/` root |
+| `--strict` | `false` | Additionally require `.compiled/{.index,.domain,.config,.manifest}.gz` to exist and match the recorded manifest SHA256 hashes. Composes on top of the base checks below — never weakens them |
+| `--simulate` | `false` | Print a `READINESS` report (per-slot/persona status, plus `pipeline_route`/`decision_reason`) instead of the terse pass/fail banner. Performs no provider invocation and no workspace mutation — same read-only guarantee as plain `check` |
 
 **Checks performed:**
 
@@ -200,9 +211,10 @@ strategist check [--root=<dir>]
 - For each slot (`discovery`, `refinement`, `execution`):
   - `skills/<provider>/skill.yaml` exists (provider skill), **or** `roles/<provider>.yaml` exists with the slot field (native role)
   - Provider skills must declare the correct `risk_score`: `discovery`/`refinement` → `write_analysis`; `execution` → `controlled`
-  - Native roles are accepted by field match; no `risk_score` verification
+  - Native roles are validated against `domain.RoleConfig` (required `role` + valid `slot`), then accepted by slot match; no `risk_score` verification
 - Active persona file exists and contains required fields
 - Normative runtime files match embedded defaults (detects stale installs)
+- With `--strict`: compiled artifacts exist and match the recorded manifest hashes (see `compile`)
 
 **Success output:**
 ```
@@ -217,6 +229,24 @@ SLOTS
 PERSONA   
   mode   epic
 ```
+
+**`--simulate` output:**
+```
+READINESS
+  root             .strategist
+  pipeline_route   main
+  decision_reason  all_slots_ready
+
+SLOTS
+  discovery    provider=brainstorming       status=ready
+  refinement   provider=openspec-explore    status=ready
+  execution    provider=sniper              status=ready
+
+PERSONA
+  mode   epic
+```
+
+Note: `--simulate` reports readiness for the CLI-known `main` pipeline route only. Quick-draw and critical-hit routing — and Scout's route classification generally — are prompt-time decisions made by the LLM runtime from `contracts/narrative/00-routing.md` and `contracts/machine/scout-routing.yaml`, and are not simulated here — `check` intentionally does not take over mission routing.
 
 **Failure output:**
 ```
@@ -348,6 +378,122 @@ artifact      .strategist/.compiled/.index.gz
 health        ok                                            
 compiled_at   2026-06-26 18:19:47 UTC                       
 ```
+
+### `treasure-chest add` / `treasure-chest remove`
+
+Registry mutation commands (Track T-I, implemented in `SQ-006`). Update `active.yaml`,
+`treasure-chests.yaml`, and `knowledge.index.yaml` together via `yaml.Node` round-tripping, so
+existing comments and formatting in those files are preserved rather than overwritten.
+
+```
+strategist treasure-chest add "path" [--id <id>] [--scope all|discovery|refinement|execution] [--trust-tier T0|T1|T2|T3] [--reviewed-by human|auto] [--tags <tag>,...] [--index]
+strategist treasure-chest remove ["path"] [--id <id>]
+```
+
+**`add`:**
+
+- `--id` defaults to the last non-empty path segment; explicit `--id` overrides it.
+- `--scope` defaults to `all`.
+- `--trust-tier` defaults to `T1`; `--reviewed-by` defaults to `human`.
+- `--tags` is optional, comma-separated; defaults to `[all]`.
+- Fails if `--id` (or the derived id) is already registered in `active.yaml` — use a different
+  `--id` or `remove` the existing entry first.
+- Updates `active.yaml` (`treasure_chests[]`), `treasure-chests.yaml` (`chests[]`), and
+  `knowledge.index.yaml` (`sources[]`) together — if a write fails partway through, the error
+  reports exactly which files were already written so state can be reconciled manually.
+- `.compiled/.index.gz` is left stale with an explicit warning unless `--index` is also passed.
+
+**`remove`:**
+
+- Resolves by positional `path` or `--id`. If both are given and disagree (same id different
+  path, or vice versa), or if a path matches multiple ids, the command rejects with an explicit
+  ambiguity error rather than guessing.
+- Tombstones rather than hard-deletes: removes the entry from `active.yaml`'s
+  `treasure_chests[]` (the "active" declaration), and sets `status: inactive` on the matching
+  entry in `treasure-chests.yaml` and `knowledge.index.yaml` — the entries stay for audit
+  history instead of being deleted.
+- Reports a stale-index warning identical in spirit to `add`'s.
+
+**Registry layers touched:** see [Registry Layers](configuration.md#registry-layers) in the
+configuration reference — `add`/`remove` keep configured, governed, and indexed layers
+consistent, and only ever touch the compiled layer through explicit `--index` or an explicit
+stale warning.
+
+### `scan` — implemented; `gaps` / `index` / `pack` — still planned
+
+The original critique proposed a `scan`/`gaps`/`index`/`pack` command family (Track T-K /
+SQ-008). Comparing each against current behavior:
+
+| Proposed command | Current equivalent | Status |
+|---|---|---|
+| `treasure-chest scan` | `cmd/strategist/treasure_chest_scan.go` | **implemented** (Track T-F / `SQ-003` contract defined in `bau-tesouro-sq003-004-007`, implemented in `bau-tesouro-sq010-scan-runtime`) — see contract below |
+| `treasure-chest gaps` | `open_gaps` field exists per-chest (Track T-G / `SQ-002`) but there is no aggregate report command | not implemented; a `gaps` command would just be a filtered view over existing `open_gaps` fields once enough chests have them populated |
+| `treasure-chest index` | `strategist treasure-chest --index` already rebuilds the compiled artifact | covered by the existing `--index` flag; a separate `index` subcommand would be redundant unless it needs distinct semantics |
+| `treasure-chest pack` | Evidence Packs (Track T-A) already exist as mission artifacts, generated automatically by `dossier-builder` | covered conceptually; a manual `pack` command to regenerate/inspect an Evidence Pack outside a mission run is not implemented |
+
+`scan` shipped in `SQ-010`. `gaps` and a standalone `pack` command remain future scope pending
+an explicit decision on whether to pick them up next; `index` is intentionally not duplicated
+since `--index` already covers it.
+
+**`treasure-chest scan` contract** (Track T-F / `SQ-003`, defined in mission
+`bau-tesouro-sq003-004-007`, implemented in `bau-tesouro-sq010-scan-runtime`):
+
+- **Input scope**: `.analysis/refined/**/tasks.md` and `.analysis/done/**` only —
+  Archivist-reviewed or closure-validated content. Excludes `.analysis/pending/scraps`
+  (unreviewed capture) and raw `.analysis/archived/*-report.md` files (Sniper completion
+  reports, not analysis content).
+- **Method**: lexical/tag matching only — no embeddings, no vector index (semantic/vector
+  retrieval remains explicitly forbidden per the parent mission's scope).
+- **Trust default**: `T2` (`examples` tier), matching `treasure-chests.yaml`'s existing
+  semantics for "previous missions."
+- **Output**: `.strategist/treasure/clusters/<cluster-id>.md` (recurring theme, cited missions)
+  and `.strategist/treasure/gaps/<gap-id>.md` (recurring unresolved item, cited missions) — see
+  [Storage Domain](configuration.md#storage-domain-track-t-h--sq-004--contract-only-not-implemented)
+  in the configuration reference.
+
+### Jewels
+
+Jewels (Track T-J / `SQ-007`, schema defined in mission `bau-tesouro-sq003-004-007`,
+implemented in `SQ-009`) are compact, source-linked knowledge units — children of the
+specific chest they were extracted from, not a flat cross-mission list.
+
+**Gate revision note:** the original design required human pre-approval before a jewel could
+become active (`candidate → reviewed → active`). At this mission's Approval Gate, that was
+revised: the agent analyzing a chest generates and activates a jewel immediately
+(`reviewed_by: agent`), with a **trust-tier ceiling** as the safeguard instead of a pre-approval
+step — a jewel's `trust` can never exceed its parent chest's `trust.tier`. This relaxes the
+`20260711-bau-tesouro-upgrade` mission's `forbidden` clause "Any generated jewel promotion
+without explicit review/approval," scoped narrowly to this mechanism only — see
+[ADR-0011](adr/0011-jewel-promotion-trust-ceiling-exception.md) for the full scope
+statement. Enforced at runtime by `ValidateJewelTrust` (`internal/domain/jewel_grade.go`).
+
+```yaml
+# .strategist/jewels.yaml — created and populated at runtime
+schema_version: "1"
+jewels:
+  - id: <identifier>
+    chest_id: <parent chest id>          # mandatory — jewel is a child of exactly one chest
+    statement: <compact fact/pattern/decision, source-linked>
+    source_refs:                         # mandatory — at least one
+      - <chest-id>#<section-slug>
+    trust: T0 | T1 | T2 | T3             # mandatory; MUST be <= parent chest's trust.tier
+    status: active | deprecated
+    reviewed_by: agent | human
+    last_reviewed: YYYY-MM-DD | null
+```
+
+**Lifecycle:** generated directly in `active` status by the analyzing agent. `deprecated` is
+reached manually (a human marks it) or automatically when the parent chest is tombstoned via
+`treasure-chest remove` (the chest removal is already an explicit human action). No promotion
+command exists — activation is immediate, not staged.
+
+**Implemented** (`SQ-009`, mission `bau-tesouro-sq009-jewels-runtime`): `.strategist/jewels.yaml`
+exists and is loaded via `loadJewels` (`cmd/strategist/treasure_chest_jewels.go`); active jewel
+counts are shown in the `treasure-chest` list's `JEWELS` column and JSON output
+(`cmd/strategist/treasure_chest.go`); removing a chest cascades to mark its jewels `deprecated`
+(`markJewelsDeprecatedForChest` in `treasure_chest_yaml_node.go`); the `jewel_generation`
+contract block governs LLM-facing generation behavior
+(`internal/embed/defaults/contracts/machine/context-enrichment.yaml`).
 
 ---
 

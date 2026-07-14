@@ -37,6 +37,7 @@ Every Strategist response must close in this order:
 - Archivist package: `<base_path>/refined/<mission_id>/`
 - Sniper report: `<base_path>/archived/<mission_id>-report.md`
 - optional ADR: `<base_path>/archived/<mission_id>-adr.md`
+- Critical Hit closure completion report: `<base_path>/done/<id>/completion-report.md` (see `11-critical-hit.md`)
 
 ## Console Policy Enforcement
 

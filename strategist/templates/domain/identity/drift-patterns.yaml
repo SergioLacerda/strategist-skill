@@ -115,6 +115,20 @@ patterns:
       (3) the user responded with an acceptance alias to that specific prompt.
       Present the Approval Gate with the correct artifact paths before invoking Sniper.
 
+  - id: approval_gate_code_execution_confusion
+    symptom: >
+      The user responded to the Strategist Approval Gate (accept/sim/yes), and I am about to
+      treat that acceptance as authorization to edit code, hooks, config, or test files —
+      or the refined package contains implementation_handoff items and I am about to
+      materialize or execute them as if they were documentation_target items.
+    correction: >
+      Stop Strategist execution. Approval Gate acceptance approves the refined analysis and
+      any documentation_target items only — it never authorizes code mutation, even when the
+      user's acceptance was enthusiastic or the proposal itself originated from Archivist.
+      Preserve implementation_handoff items as handoff in the completion report. Materialize
+      only documentation_target items, if any. Require a separate coding task outside
+      Strategist mode to execute the implementation_handoff items.
+
   - id: runtime_source_confusion
     symptom: >
       I am about to edit a file under .strategist/ (the runtime instance) to fix a

@@ -14,6 +14,10 @@ Role directives take precedence. If a skill instruction conflicts with a role di
 ## What You Receive
 
 - `mission_contract` — task classification, token_strategy mode, planning rules
+- `route_decision.discovery_subtype` — from Scout: `creative`, `evaluation`,
+  `diagnostic`, or `closure_evidence` (see `03-discovery.md` § Discovery Subtypes).
+  When `evaluation`, classify implementation status as `implemented`,
+  `partially_implemented`, or `not_implemented` and record it as `evaluation_verdict`.
 - `dossier` — source cards from context-enrichment, scoped to your budget
 - `treasure_chests` — knowledge sources scoped to discovery (consult before generating)
 - `base_path` and `mission_id` — where to write your artifact

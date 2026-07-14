@@ -88,6 +88,32 @@ func TestAgentAwareness(t *testing.T) {
 		assert.NotNil(t, result["on_strategist_invoke"])
 	})
 
+	t.Run("codex seed carries the Strategist Active role-lock header and forbidden actions", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+
+		codexPath := filepath.Join(dir, ".sdd", "seedlings", "codex.seed.json")
+		require.NoError(t, os.MkdirAll(filepath.Dir(codexPath), 0o755))
+		initial := map[string]any{"required_context": []any{}}
+		data, _ := json.Marshal(initial)
+		require.NoError(t, os.WriteFile(codexPath, data, 0o644))
+
+		require.NoError(t, compile.AgentAwareness(dir))
+
+		var result map[string]any
+		raw, _ := os.ReadFile(codexPath)
+		require.NoError(t, json.Unmarshal(raw, &result))
+
+		invoke := result["on_strategist_invoke"].(map[string]any)
+		assert.Equal(t, "Strategist Active", invoke["header"])
+		assert.Contains(t, invoke["role_lock"], "do not solve the task directly")
+		assert.Contains(t, invoke["allowed_actions"], "invoke_providers")
+		assert.Contains(t, invoke["forbidden_actions"], "direct_execution")
+		assert.Contains(t, invoke["forbidden_actions"], "code_or_test_mutation")
+		assert.Contains(t, invoke["forbidden_actions"], "provider_fallback")
+		assert.Equal(t, "emit error=role_invocation_failed with slot and provider, then stop", invoke["on_role_invocation_failed"])
+	})
+
 	t.Run("does not duplicate agent-protocol.md in codex required_context", func(t *testing.T) {
 		t.Parallel()
 		dir := t.TempDir()

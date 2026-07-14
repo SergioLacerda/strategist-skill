@@ -38,6 +38,15 @@ required_fields:
       objective: string
       scope: list           # files or paths
       validation: list      # commands or checks
+      task_type: string
+    item_values:
+      task_type: [documentation_target, analysis_artifact, implementation_handoff, out_of_scope]
+    field_descriptions:
+      task_type: >
+        Archivist classification of this item. Only documentation_target items are
+        Sniper-executable. implementation_handoff items (code/hook/config/test mutation)
+        must never be presented as Sniper-executable work — see 04-refinement.md and
+        06-execution.md.
   side_quests_approved:
     type: list
     description: Side quest strategy decisions made by Archivist — surfaced at approval gate

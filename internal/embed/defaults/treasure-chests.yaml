@@ -72,6 +72,12 @@ stop_conditions:
 #   strategy: selective | full
 #   require_relevance_reason: true  # MANDATORY — always true
 #   allow_full_load: false          # default: false
+# grade:                            # optional; all fields human-reviewed only (no derived/learned values)
+#   source_grade: A | B | C           # overall reliability of this source
+#   reuse_value: high | medium | low  # how often this source proves reusable across missions
+#   implementation_status: not_started | in_progress | implemented | deprecated
+#   provenance: string                # free text — where this chest came from
+# open_gaps: []                     # optional; list of short strings, known gaps in this source
 
 chests: []
 

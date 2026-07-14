@@ -29,11 +29,16 @@ Documentation and analysis artifacts are the normal output.
 ## The pipeline
 
 ```
-You → [Ranger]    → discovers requirements, maps context
+You → [Scout]     → classifies the request, picks the route
+      [Ranger]    → discovers requirements, maps context
       [Archivist] → refines into an actionable specification
       [Gate]      → STOPS and waits for your explicit approval
       [Sniper]    → materializes exactly the approved documentation/handoff
 ```
+
+Scout may short-circuit straight to Critical Hit or Implementation Short Route
+when the request is narrow and evidence is already explicit — in that case Ranger
+and Archivist are skipped, but the approval gate is not.
 
 Each phase writes versioned artifacts to `.analysis/` so the process is auditable
 and resumable. If something goes wrong mid-execution, you can see exactly where it stopped.
@@ -43,6 +48,7 @@ and resumable. If something goes wrong mid-execution, you can see exactly where 
 | Role | Neutral name | Responsibility |
 |------|-------------|----------------|
 | Strategist | Orchestrator | Coordinates the mission; guards the gate |
+| Scout | Router | Classifies the request and picks the route before Ranger ever runs |
 | Ranger | Discoverer | Gathers requirements and maps the terrain |
 | Archivist | Spec Writer | Turns the discovery report into an actionable spec |
 | Sniper | Executor | Materializes the approved documentation/handoff — surgically, minimally |

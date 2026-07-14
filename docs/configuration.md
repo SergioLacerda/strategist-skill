@@ -20,6 +20,7 @@ All configuration files live in `.strategist/` inside the installed repository. 
     mission.yaml               Example mission configuration
     spec-driven.yaml           Configuration for spec-driven flow
   knowledge.index.yaml         Knowledge sources by task_type
+  treasure-chests.yaml         Governed trust/routing/retrieval metadata per chest
   memory/
     source-hints.yaml          Learned priority adjustments (learning loop)
   .compiled/                   Compiled artifacts (do not edit manually)
@@ -241,6 +242,123 @@ sources:
 ```
 
 An empty `knowledge.index.yaml` (no `sources`) is valid — the pipeline continues without context enrichment.
+
+---
+
+## treasure-chests.yaml
+
+Governed manifest of offline knowledge sources. Extends `knowledge.index.yaml` with trust tier,
+routing, and retrieval metadata per source. Sources declared here MUST also be registered in
+`knowledge.index.yaml`. Read by `strategist treasure-chest` (see [CLI Reference](cli-reference.md#treasure-chest)).
+
+**Schema:**
+
+```yaml
+schema_version: "1"
+trust_tiers: { T0, T1, T2, T3 }        # canonical / project_docs / examples / discovered
+budget_defaults_by_mode: { lean, balanced, deep }
+stop_conditions: [...]
+
+chests:
+  - id: <identifier>
+    title: <human-readable name>
+    path: <absolute or relative path>
+    trust:
+      tier: T0 | T1 | T2 | T3
+      reviewed_by: human | auto
+      last_reviewed: YYYY-MM-DD
+    routing:
+      task_types: [<task_type>, ...]
+      keywords: [<keyword>, ...]
+    retrieval:
+      strategy: selective | full
+      require_relevance_reason: true   # mandatory
+      allow_full_load: false           # default
+    grade:                             # optional; human-reviewed only, no derived/learned values
+      source_grade: A | B | C
+      reuse_value: high | medium | low
+      implementation_status: not_started | in_progress | implemented | deprecated
+      provenance: <free text>
+    open_gaps: [<short string>, ...]   # optional; known gaps in this source
+    status: active | inactive          # optional; set to inactive by `treasure-chest remove` (tombstone)
+```
+
+**Grading fields (Track T-G / SQ-002):** `grade` and `open_gaps` are optional and additive —
+existing chests without them remain valid. All grading fields are human-reviewed only; nothing
+in Strategist derives or learns these values automatically. `strategist treasure-chest`
+validates `source_grade`, `reuse_value`, and `implementation_status` against their enumerated
+values on load and fails with a descriptive error if an unrecognized value is present.
+
+### Registry Layers
+
+Chest configuration flows through four layers, each with a distinct source of truth:
+
+| Layer | File | Role |
+|-------|------|------|
+| Configured | `active.yaml` | `treasure_chests[]` — which chests are active per scope (`id`, `path`, `scope`) |
+| Governed | `treasure-chests.yaml` | Trust tier, routing, retrieval, and budget policy per chest |
+| Indexed | `knowledge.index.yaml` | Retrieval registration — tags, priority, path lookup |
+| Compiled | `.compiled/.index.gz` | Rebuilt artifact consumed at runtime; stale until `strategist treasure-chest --index` |
+
+`strategist treasure-chest` reads all four layers and reports drift between them (see
+[CLI Reference](cli-reference.md#treasure-chest)). Divergence between a runtime `.strategist/`
+instance and the shipped `strategist/`/embedded-default templates is expected when a chest has
+been added locally — only classify it as stale drift if the schema/structure itself (not the
+`chests:` entries) differs.
+
+**Registry mutation commands:** `strategist treasure-chest add`/`remove` (Track T-I, `SQ-006`)
+update all three layers together — see [treasure-chest add / treasure-chest remove](cli-reference.md#treasure-chest-add--treasure-chest-remove)
+in the CLI reference for the full command contract.
+
+### Storage Domain (Track T-H / SQ-004) — contract only, not implemented
+
+Two more artifact families are planned beyond the four registry layers above. Neither exists
+on disk yet — this section documents where they will live, split by authority rather than as a
+single undifferentiated `.strategist/treasure/` tree:
+
+| Artifact | Authoritative? | Planned location | Precedent |
+|---|---|---|---|
+| Jewels | yes — human/agent-attested, source-linked | `.strategist/jewels.yaml` (NEW, not created) | sibling to `treasure-chests.yaml` |
+| Clusters | no — generated, regenerable | `.strategist/treasure/clusters/` (NEW, not created) | sibling to `.compiled/` |
+| Gaps | no — generated, regenerable | `.strategist/treasure/gaps/` (NEW, not created) | sibling to `.compiled/` |
+
+**Explicitly not created, with reasons:**
+- `.strategist/treasure/indexes/` — redundant with the existing `.compiled/.index.gz`.
+- `.strategist/treasure/packs/` — forbidden; Evidence Packs are mission artifacts under
+  `base_path`, not runtime state (see Evidence Pack ownership decision referenced from the
+  `20260711-bau-tesouro-upgrade` mission).
+- `.strategist/treasure/summaries/` — see "Planned: Summaries" below; still deferred.
+
+See [Planned: jewels](cli-reference.md#planned-jewels) in the CLI reference for the full jewel
+schema and lifecycle, and [Planned: scan / gaps / index / pack command family](cli-reference.md#planned-scan--gaps--index--pack-command-family-contract-only-not-implemented)
+for the historical-mining scanner contract that populates `clusters/` and `gaps/`.
+
+### Specialized Chest Categories (Track T-K / SQ-008)
+
+The original critique named several specialized chest categories users can adopt today with
+the existing schema — no new fields or code required, just a chest whose `id`/`path` matches
+one of these conventions:
+
+- `refined-missions` — point a chest at `<base_path>/refined/` to make prior refined missions
+  themselves consultable evidence.
+- `implemented-lessons` — point at a curated directory of "what we learned after shipping X"
+  notes.
+- `rejected-patterns` — approaches considered and explicitly rejected, so future missions don't
+  re-propose them without reason.
+- `anti-patterns` — known-bad patterns to actively avoid.
+- `architecture-decisions` — an ADR directory, if not already covered by another T0/T1 chest.
+
+These are naming conventions, not enforced categories — Strategist does not validate that a
+chest's `id` matches one of these names. Formalizing them as a first-class `category` field
+(with routing/trust defaults per category) is a future refinement, not implemented here.
+
+### Planned: Summaries
+
+Summaries (compact, derived-from-source overviews) are a future derived artifact, not ready-now
+implementation. They overlap conceptually with jewels, clusters, source cards, and Evidence
+Packs — see `.analysis/pending/jewels-refinement.md` for the same kind of lifecycle question
+applied to jewels, which summaries will need to answer too (generated vs reviewed vs promoted,
+and how they avoid becoming an unreviewed cache). No summary generation exists in this pass.
 
 ---
 
