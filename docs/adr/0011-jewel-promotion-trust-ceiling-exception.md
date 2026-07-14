@@ -58,9 +58,26 @@ chest's own already-approved trust level."
   to prevent that misreading — the exception is narrow (jewels, via the trust
   ceiling) and does not extend to chest-level promotion.
 
+## Addendum — Provenance divergence from SQ-002 (`jewels-retrieval-precedence`, 2026-07-14)
+
+The original jewels scoping note assumed jewel provenance would reuse SQ-002's
+`ChestGrade` schema (`source_grade`/`reuse_value`/`implementation_status`,
+`internal/domain/chest_grade.go`). The shipped implementation instead gives jewels
+their own `source_refs: [<chest-id>#<section-slug>]` field
+(`cmd/strategist/treasure_chest_jewels.go`).
+
+This is an intentional divergence, not an oversight: `ChestGrade` grades a chest as a
+whole, curated by a human at a coarse grain. A jewel's provenance is a fact-level
+pointer to the specific source location it was extracted from — a finer, different
+grain of concern. Reusing `ChestGrade` for jewel provenance would have conflated
+chest-level curation with fact-level sourcing. `source_refs` is the correct-grained
+mechanism; this addendum makes that choice explicit so it is not mistaken for an
+unresolved requirement.
+
 ## Reference
 
 - Originating mission: `bau-tesouro-sq003-004-007` (Gate revision note)
 - Enforcement: `internal/domain/jewel_grade.go` (`ValidateJewelTrust`)
 - Runtime: `bau-tesouro-sq009-jewels-runtime`
+- Provenance divergence: `jewels-retrieval-precedence`
 - Docs: [cli-reference.md § Jewels](../cli-reference.md#jewels)

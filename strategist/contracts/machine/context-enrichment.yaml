@@ -65,6 +65,7 @@ contract:
     log_stale: "[Strategist] context_enrichment=standard_path"
 
   retrieval_fallback_order:
+    - jewel_consultation_as_ranking_hint   # see jewel_retrieval block below
     - trusted_chests_and_explicit_docs
     - tag_based_structured_outcomes
     - lexical_search_on_outcomes_jsonl
@@ -83,6 +84,7 @@ contract:
       - selected_source_count
       - compression_metrics  # when available, from dossier-builder output
       - per_card: [chest, trust, relevance, interpretation, impact, excerpt]  # bounded excerpt only
+      - jewels_consulted: [id, chest_id, trust, statement]  # distinct from per_card/source_cards
     empty_state:
       trigger: dossier.source_cards is empty
       behavior: Do not generate an Evidence Pack file. Non-blocking. evidence_pack_path is null.
@@ -103,6 +105,22 @@ contract:
     forbidden:
       - generating a jewel with trust exceeding the parent chest's trust.tier
       - generating a jewel without at least one source_ref
+
+  jewel_retrieval:
+    description: >
+      Before assembling source_cards for a chest, the analyzing agent may check
+      .strategist/jewels.yaml for active jewels belonging to that chest and use them as
+      a ranking/shortcut hint. This never replaces source_cards assembly — it only
+      influences which sources are prioritized. Staleness is qualitative and agent-judged,
+      consistent with jewel_generation: a jewel is stale when last_reviewed is null, or
+      older than the chest's own last update.
+    trigger: ranger_discovery_consultation | archivist_refinement_consultation
+    mandatory_fallback:
+      condition: jewel is stale | disputed | missing | insufficient
+      action: proceed with full source_cards assembly unchanged
+    forbidden:
+      - treating a jewel as a substitute for source_cards assembly
+      - consulting a deprecated jewel as if active
 
   planned_score_selection_transparency:
     status: not_implemented

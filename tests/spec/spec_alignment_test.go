@@ -2404,3 +2404,44 @@ func TestJewelGenerationContractDefinesTrustCeiling(t *testing.T) {
 		}
 	}
 }
+
+// TestJewelRetrievalContractDefinesMandatoryFallback verifies the jewel_retrieval contract
+// (Track T-J2, jewels-retrieval-precedence) wires jewel consultation into the retrieval
+// fallback order as a ranking hint and enforces the mandatory fallback to full source_cards
+// assembly when a jewel is stale, disputed, missing, or insufficient.
+func TestJewelRetrievalContractDefinesMandatoryFallback(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "context-enrichment.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "context-enrichment.yaml"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"jewel_consultation_as_ranking_hint",
+			"jewel_retrieval:",
+			"condition: jewel is stale | disputed | missing | insufficient",
+			"action: proceed with full source_cards assembly unchanged",
+			"jewels_consulted: [id, chest_id, trust, statement]",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing jewel_retrieval contract term %q", path, needle)
+			}
+		}
+	}
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "internal_skills", "dossier-builder", "skill.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "internal_skills", "dossier-builder", "skill.yaml"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"jewel_retrieval contract",
+			"jewels_consulted",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing reference to jewel_retrieval / jewels_consulted", path)
+			}
+		}
+	}
+}
