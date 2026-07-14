@@ -10,6 +10,8 @@ import (
 type MissionMetrics struct {
 	MissionID            string
 	TStartToIntakeMS     int64
+	TIntakeToScoutMS     int64 // decomposition of TIntakeToRangerMS: intake -> Scout route decision
+	TScoutToRangerMS     int64 // decomposition of TIntakeToRangerMS: Scout route decision -> Ranger start
 	TIntakeToRangerMS    int64
 	TRangerToArchivistMS int64
 	TArchivistToGateMS   int64
@@ -25,9 +27,11 @@ type MissionMetrics struct {
 // FormatMissionMetrics returns a canonical mission metrics line.
 func FormatMissionMetrics(m MissionMetrics) string {
 	return fmt.Sprintf(
-		"[Strategist] metrics mission=%s t_start_to_intake_ms=%d t_intake_to_ranger_ms=%d t_ranger_to_archivist_ms=%d t_archivist_to_gate_ms=%d t_gate_wait_ms=%d t_gate_to_sniper_ms=%d t_sniper_to_done_ms=%d total_wall_time_ms=%d tokens_in=%d tokens_out=%d lines_emitted=%d",
+		"[Strategist] metrics mission=%s t_start_to_intake_ms=%d t_intake_to_scout_ms=%d t_scout_to_ranger_ms=%d t_intake_to_ranger_ms=%d t_ranger_to_archivist_ms=%d t_archivist_to_gate_ms=%d t_gate_wait_ms=%d t_gate_to_sniper_ms=%d t_sniper_to_done_ms=%d total_wall_time_ms=%d tokens_in=%d tokens_out=%d lines_emitted=%d",
 		m.MissionID,
 		m.TStartToIntakeMS,
+		m.TIntakeToScoutMS,
+		m.TScoutToRangerMS,
 		m.TIntakeToRangerMS,
 		m.TRangerToArchivistMS,
 		m.TArchivistToGateMS,
@@ -47,6 +51,8 @@ func EmitMissionMetrics(m MissionMetrics) {
 		FormatMissionMetrics(m),
 		AttrMissionID, m.MissionID,
 		AttrStartToIntakeMS, m.TStartToIntakeMS,
+		AttrIntakeToScoutMS, m.TIntakeToScoutMS,
+		AttrScoutToRangerMS, m.TScoutToRangerMS,
 		AttrIntakeToRangerMS, m.TIntakeToRangerMS,
 		"strategist.metrics.t_ranger_to_archivist_ms", m.TRangerToArchivistMS,
 		"strategist.metrics.t_archivist_to_gate_ms", m.TArchivistToGateMS,

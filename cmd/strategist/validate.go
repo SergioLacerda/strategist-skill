@@ -160,11 +160,8 @@ func validatePersonasDir(dir string) (errs []string, checks int) {
 			errs = append(errs, fmt.Sprintf("personas/%s: invalid YAML: %v", e.Name(), err))
 			continue
 		}
-		if p.ToneDirective == "" {
-			errs = append(errs, fmt.Sprintf("personas/%s: missing required field: tone_directive", e.Name()))
-		}
-		if p.PhaseLabels.Discovery == "" && p.PhaseLabels.Refinement == "" && p.PhaseLabels.Execution == "" {
-			errs = append(errs, fmt.Sprintf("personas/%s: missing required field: phase_labels", e.Name()))
+		if rtErr := p.ValidateForRuntime(); rtErr != nil {
+			errs = append(errs, fmt.Sprintf("personas/%s: %v", e.Name(), rtErr))
 		}
 	}
 	return errs, checks
@@ -193,19 +190,28 @@ func validateRoleFile(dir, name string) (errs []string) {
 		return []string{fmt.Sprintf("roles/%s: read: %v", name, err)}
 	}
 
-	var role map[string]any
-	if err := yaml.Unmarshal(raw, &role); err != nil {
+	var shape map[string]any
+	if err := yaml.Unmarshal(raw, &shape); err != nil {
 		return []string{fmt.Sprintf("roles/%s: invalid YAML: %v", name, err)}
 	}
 
-	if _, isRoleDef := role["role"]; isRoleDef {
-		return nil
+	if _, isRoleDef := shape["role"]; isRoleDef {
+		var role domain.RoleConfig
+		if err := yaml.Unmarshal(raw, &role); err != nil {
+			return []string{fmt.Sprintf("roles/%s: invalid YAML: %v", name, err)}
+		}
+		if valErr := role.Validate(); valErr != nil {
+			errs = append(errs, fmt.Sprintf("roles/%s: %v", name, valErr))
+		}
+		return errs
 	}
 
-	for _, slot := range []string{"discovery", "refinement", "execution"} {
-		if _, ok := role[slot]; !ok {
-			errs = append(errs, fmt.Sprintf("roles/%s: missing slot: %s", name, slot))
-		}
+	var slotMap domain.RoleSlotMap
+	if err := yaml.Unmarshal(raw, &slotMap); err != nil {
+		return []string{fmt.Sprintf("roles/%s: invalid YAML: %v", name, err)}
+	}
+	if valErr := slotMap.Validate(); valErr != nil {
+		errs = append(errs, fmt.Sprintf("roles/%s: %v", name, valErr))
 	}
 	return errs
 }

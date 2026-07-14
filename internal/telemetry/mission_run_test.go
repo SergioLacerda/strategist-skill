@@ -19,6 +19,7 @@ func TestMissionRun_SnapshotAndContext(t *testing.T) {
 
 	run.MarkIntake()
 	time.Sleep(1 * time.Millisecond)
+	run.MarkScout()
 	run.MarkRanger()
 	run.MarkArchivist()
 	run.MarkGatePresented()
@@ -33,7 +34,8 @@ func TestMissionRun_SnapshotAndContext(t *testing.T) {
 		t.Fatalf("unexpected mission id: %s", snap.MissionID)
 	}
 	allTimings := []int64{
-		snap.TStartToIntakeMS, snap.TIntakeToRangerMS, snap.TRangerToArchivistMS,
+		snap.TStartToIntakeMS, snap.TIntakeToScoutMS, snap.TScoutToRangerMS,
+		snap.TIntakeToRangerMS, snap.TRangerToArchivistMS,
 		snap.TArchivistToGateMS, snap.TGateWaitMS, snap.TGateToSniperMS,
 		snap.TSniperToDoneMS, snap.TotalWallTimeMS,
 	}
@@ -56,6 +58,8 @@ func TestMissionRun_SnapshotAndContext(t *testing.T) {
 func TestMissionRun_PhaseMarks_Idempotent(t *testing.T) {
 	t.Parallel()
 	run := NewMissionRun("m-idem")
+	run.MarkScout()
+	run.MarkScout() // second call must be a no-op
 	run.MarkArchivist()
 	run.MarkArchivist() // second call must be a no-op
 	run.MarkGatePresented()
@@ -65,7 +69,7 @@ func TestMissionRun_PhaseMarks_Idempotent(t *testing.T) {
 	run.MarkSniper()
 	run.MarkSniper()
 	snap := run.Snapshot()
-	for _, v := range []int64{snap.TRangerToArchivistMS, snap.TArchivistToGateMS, snap.TGateWaitMS, snap.TGateToSniperMS} {
+	for _, v := range []int64{snap.TIntakeToScoutMS, snap.TScoutToRangerMS, snap.TRangerToArchivistMS, snap.TArchivistToGateMS, snap.TGateWaitMS, snap.TGateToSniperMS} {
 		if v < 0 {
 			t.Fatalf("expected non-negative phase timing: %#v", snap)
 		}

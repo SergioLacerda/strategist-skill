@@ -50,6 +50,9 @@ The parent agent MUST NOT:
 - perform discovery directly;
 - perform refinement directly;
 - perform execution/materialization directly;
+- perform Scout's route classification itself, or skip Scout to jump straight to
+  discovery/execution — route selection always goes through Scout (see
+  `contracts/narrative/00-routing.md` § Scout — Intake Router);
 - mutate source code, tests, generated artifacts, or documentation as a substitute
   for a provider;
 - treat `strategist check` as mission authorization;
@@ -64,6 +67,14 @@ slot=<discovery|refinement|execution>
 provider=<configured_provider>
 action=fix provider configuration or runtime installation, then rerun strategist check
 ```
+
+Discovery subtypes are owned by Ranger, the internal discovery persona. The configured
+discovery provider is Ranger's weapon, not a substitute for Ranger. The parent agent
+MUST NOT perform discovery directly, and MUST NOT require the weapon's standalone
+instructions to implement every `discovery_subtype`. If the configured discovery
+weapon is missing, invalid, risk-incompatible, or unavailable, stop with the relevant
+slot/provider error. Otherwise invoke Ranger with the configured weapon and let Ranger's
+role directives control subtype behavior.
 
 If the request requires source-code mutation, Strategist may analyze and refine the
 work, but must not perform the mutation. The response must clearly state that
@@ -90,6 +101,17 @@ This skill operates on a two-path model:
 
 All contract references, role files, schemas, and personas are read from `.strategist/`.
 If you see a path beginning with `strategist/` (without the leading dot), it is a documentation error — read from `.strategist/` instead.
+
+External discovery/refinement/execution provider capability descriptors
+(`.strategist/skills/<provider_id>/skill.yaml`) are the one exception to the
+"only `strategist/` authors, only `.strategist/` is read" rule: their
+generation source is `internal/embed/defaults/skills/` in this repository, not
+`strategist/` (which has no `skills/` subtree). Do not confuse a provider's own
+installed skill package (its own SKILL.md/skill.yaml, elsewhere on the
+filesystem) with Strategist's capability mirror at
+`.strategist/skills/<provider_id>/skill.yaml` — capability checks such as
+provider existence, `risk_score`, and role taxonomy are read from the latter.
+Discovery subtype behavior is owned by Ranger, not by provider subtype metadata.
 
 Workspace artifacts resolve through `base_path` from `.strategist/active.yaml`.
 `.analysis/` is only a repository-local example/default when configured as `base_path`; it is not a hardcoded `.analysis/` fixed runtime path.

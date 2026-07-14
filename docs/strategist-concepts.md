@@ -42,10 +42,12 @@ Opportunity Attack is an **Archivist routine** that evaluates ADR necessity afte
 
 ## Pipeline Overview
 
-The Strategist orchestrates work in three sequential phases, each delegated to a **slot**:
+Before the three-slot pipeline runs, **Scout** (the Intake Router) classifies the
+request and selects a route: `critical_hit`, `implementation_short_route`, or
+`full_pipeline`. Only `full_pipeline` reaches the slot pipeline below:
 
 ```
-Ranger (discovery) → Archivist (refinement) → [gate] → Sniper (execution)
+Scout (route decision) → Ranger (discovery) → Archivist (refinement) → [gate] → Sniper (execution)
 ```
 
 The Strategist never executes work directly — it delegates. Each slot receives a **provider** (weapon) configured in `active.yaml`. The combination of provider + slot + contract defines a **role**.
@@ -54,13 +56,36 @@ The Strategist never executes work directly — it delegates. Each slot receives
 
 ## Role
 
-A role is the combination of a slot with its behavior contract. There are three canonical roles:
+A role is the combination of a slot with its behavior contract. There are three canonical, pluggable roles:
 
 | Role | Slot | Contract | Authorized writes |
 |------|------|----------|------------------|
 | **Ranger** | `discovery` | `write_analysis` | `.md` in `<base_path>/pending/` |
 | **Archivist** | `refinement` | `write_analysis` | `.md` in `<base_path>/refined/` |
 | **Sniper** | `execution` | `controlled` | Approved documentation/handoff, only after approval gate |
+
+**Scout** is a fourth role, but it is internal and pre-pipeline, not a slot — it has
+no `active.yaml` entry and no configurable provider:
+
+| Role | Slot | Contract | Authorized writes |
+|------|------|----------|------------------|
+| **Scout** | pre-pipeline (internal, never a slot) | `read_only` | none — emits a `route_decision`, logged/telemetered only |
+
+## Scout — Intake Router
+
+Scout classifies each request and decides the route before any slot runs. It is
+internal Strategist behavior, analogous in scope-boundedness to Sniper but
+positioned before the pipeline instead of at the end of it — there is no
+`roles/scout.yaml` and no way to configure a different Scout provider. `Scout` is
+the internal persona name; `Intake Router` is the same entity's public/pragmatic
+contract label used in narrative-mode responses.
+
+Scout may NOT perform deep discovery, invoke Sniper directly, bypass the
+Strategist Approval Gate, or replace Ranger when evidence review is required. When
+a request needs evidence gathering, Scout routes to `full_pipeline` with a
+`discovery_subtype` (see `contracts/narrative/03-discovery.md`) and Ranger remains
+the discovery/evidence owner. See `contracts/narrative/00-routing.md` § Scout —
+Intake Router and `internal_skills/scout/SKILL.md` for the full contract.
 
 Each role has a contract declared in `.strategist/roles/<role>.yaml` with `must` and `must_not` clauses. Example (Ranger):
 

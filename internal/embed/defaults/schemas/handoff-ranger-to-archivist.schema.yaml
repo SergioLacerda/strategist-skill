@@ -68,6 +68,19 @@ required_fields:
       estimated_impact: "scope of effort if executed"
       dependencies: "list of other SQ ids or mission ids this depends on"
       status: "sq_pending when presented at gate; sq_backlog if not selected"
+  discovery_subtype:
+    type: string
+    required: false
+    allowed_values: [creative, evaluation, diagnostic, closure_evidence]
+    description: >
+      Carried forward from Scout's route_decision when full_pipeline was selected.
+      See contracts/narrative/03-discovery.md § Discovery Subtypes.
+  evaluation_verdict:
+    type: string
+    required: false
+    allowed_values: [implemented, partially_implemented, not_implemented]
+    description: >
+      Required when discovery_subtype=evaluation. Absent for other subtypes.
   recommended_refinement_focus:
     type: list
     required: false

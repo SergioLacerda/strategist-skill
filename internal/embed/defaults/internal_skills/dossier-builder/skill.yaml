@@ -33,6 +33,7 @@ output:
     sources_seen: integer          # from context-enrichment
     sources_selected: integer      # cards actually included
     tokens_estimated: integer      # sum of excerpt lengths
+  evidence_pack_path: string | null  # <base_path>/<state>/<mission_id>-evidence-pack.md, null when dossier.source_cards is empty
 
 behavior:
   - If enrichment_output is empty: produce minimal dossier with only task_type and output_template.
@@ -49,7 +50,12 @@ behavior:
     Each card must include all required fields — id, chest, trust, excerpt, relevance, interpretation, impact.
   - Emit compression_metrics with sources_seen (from enrichment_output), sources_selected (cards included),
     and tokens_estimated (sum of excerpt character counts divided by 4).
+  - If dossier.source_cards is non-empty, write a mission Evidence Pack artifact at
+    <base_path>/<state>/<mission_id>-evidence-pack.md serializing the selected source_cards
+    (per evidence_pack contract in machine/context-enrichment.yaml) and set evidence_pack_path
+    to that path. Never load raw chest contents into the pack. Never introduce a new retrieval unit.
 
 failure_modes:
   - empty_enrichment: return minimal dossier (task_type + template only). Not an error.
   - empty_source_cards: omit source_cards section from dossier. Not an error.
+    evidence_pack_path is null; no Evidence Pack file is written. Non-blocking.
