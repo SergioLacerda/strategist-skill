@@ -310,17 +310,23 @@ been added locally — only classify it as stale drift if the schema/structure i
 update all three layers together — see [treasure-chest add / treasure-chest remove](cli-reference.md#treasure-chest-add--treasure-chest-remove)
 in the CLI reference for the full command contract.
 
-### Storage Domain (Track T-H / SQ-004) — contract only, not implemented
+### Storage Domain (Track T-H / SQ-004)
 
-Two more artifact families are planned beyond the four registry layers above. Neither exists
-on disk yet — this section documents where they will live, split by authority rather than as a
-single undifferentiated `.strategist/treasure/` tree:
+Two more artifact families exist beyond the four registry layers above, split by authority
+rather than as a single undifferentiated `.strategist/treasure/` tree:
 
-| Artifact | Authoritative? | Planned location | Precedent |
+| Artifact | Authoritative? | Location | Precedent |
 |---|---|---|---|
-| Jewels | yes — human/agent-attested, source-linked | `.strategist/jewels.yaml` (NEW, not created) | sibling to `treasure-chests.yaml` |
-| Clusters | no — generated, regenerable | `.strategist/treasure/clusters/` (NEW, not created) | sibling to `.compiled/` |
-| Gaps | no — generated, regenerable | `.strategist/treasure/gaps/` (NEW, not created) | sibling to `.compiled/` |
+| Jewels | yes — human/agent-attested, source-linked | `.strategist/jewels.yaml` | sibling to `treasure-chests.yaml` |
+| Clusters | no — generated, regenerable | `.strategist/treasure/clusters/` | sibling to `.compiled/` |
+| Gaps | no — generated, regenerable | `.strategist/treasure/gaps/` | sibling to `.compiled/` |
+
+Clusters and gaps are (re)generated from scratch by `strategist treasure-chest index`'s
+internal scan phase on every run — safe to delete, never hand-edited. Jewels are
+authoritative and persist across `index` runs; `index` only ever appends new
+`status: proposed` candidates, deduplicated by id, and never overwrites an existing entry —
+see [treasure-chest index / treasure-chest mine](cli-reference.md#treasure-chest-index--treasure-chest-mine)
+for the full command contract.
 
 **Explicitly not created, with reasons:**
 - `.strategist/treasure/indexes/` — redundant with the existing `.compiled/.index.gz`.
@@ -329,9 +335,11 @@ single undifferentiated `.strategist/treasure/` tree:
   `20260711-bau-tesouro-upgrade` mission).
 - `.strategist/treasure/summaries/` — see "Planned: Summaries" below; still deferred.
 
-See [Planned: jewels](cli-reference.md#planned-jewels) in the CLI reference for the full jewel
-schema and lifecycle, and [Planned: scan / gaps / index / pack command family](cli-reference.md#planned-scan--gaps--index--pack-command-family-contract-only-not-implemented)
-for the historical-mining scanner contract that populates `clusters/` and `gaps/`.
+See [Jewels](cli-reference.md#jewels) in the CLI reference for the full jewel schema and
+lifecycle (`proposed | accepted | verified | deprecated`, see
+[ADR-0012](adr/0012-jewel-lifecycle-statuses.md)), and
+[treasure-chest index / treasure-chest mine](cli-reference.md#treasure-chest-index--treasure-chest-mine)
+for the scan-phase contract that populates `clusters/` and `gaps/`.
 
 ### Specialized Chest Categories (Track T-K / SQ-008)
 

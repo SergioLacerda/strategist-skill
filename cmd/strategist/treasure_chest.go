@@ -346,7 +346,7 @@ func mergeChestRows(
 			configured: true,
 			indexed:    indexed[ac.ID],
 			compiled:   compiledIDs[ac.ID],
-			jewelCount: activeJewelCount(jewels[ac.ID]),
+			jewelCount: nonDeprecatedJewelCount(jewels[ac.ID]),
 		}
 		if gc, ok := governed[ac.ID]; ok {
 			row.governed = true
@@ -380,7 +380,7 @@ func mergeChestRows(
 			openGaps:     gc.OpenGaps,
 			indexed:      indexed[id],
 			compiled:     compiledIDs[id],
-			jewelCount:   activeJewelCount(jewels[id]),
+			jewelCount:   nonDeprecatedJewelCount(jewels[id]),
 		}
 		row.freshness = deriveFreshness(row)
 		row.drift = deriveDrift(row)

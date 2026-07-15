@@ -1,20 +1,39 @@
 # Jewels — compact, source-linked knowledge units, children of a specific treasure chest.
-# Generated directly by the agent analyzing a chest (no pre-approval gate); trust is capped
-# at the parent chest's trust.tier. See docs/cli-reference.md § "Planned: jewels" and
-# .analysis/refined/bau-tesouro-sq003-004-007/design.md for the full schema and lifecycle.
+# Generated directly by the agent analyzing a chest, or during `strategist treasure-chest
+# index` (no pre-approval gate); trust is capped at the parent chest's trust.tier. See
+# docs/cli-reference.md § Jewels, ADR 0012, and
+# .analysis/refined/treasure-chest-index-mine-pipeline/design.md for the full schema and
+# lifecycle.
 # Format version: 1
 
 schema_version: "1"
 
 # jewel schema reference:
 #
-# id: string                # unique identifier
-# chest_id: string           # mandatory — parent chest id (jewel is a child of exactly one chest)
-# statement: string          # compact fact/pattern/decision, source-linked
-# source_refs: [string]      # mandatory — at least one, format <chest-id>#<section-slug>
-# trust: T0 | T1 | T2 | T3   # mandatory; MUST be <= parent chest's trust.tier
-# status: active | deprecated
+# id: string                  # unique identifier
+# chest_id: string             # mandatory — parent chest id (jewel is a child of exactly one chest)
+# kind: string                 # decision | pattern | anti_pattern | gap | risk | constraint |
+#                               #   example | heuristic | template | question
+# statement: string            # compact fact/pattern/decision, source-linked
+# source_refs: [string]        # mandatory — at least one, format <chest-id>#<section-slug>
+# trust: T0 | T1 | T2 | T3     # mandatory; MUST be <= parent chest's trust.tier
+# status: proposed | accepted | verified | deprecated
+#   proposed   — agent- or index-generated, not yet human-curated; usable only as a hint
+#   accepted   — promoted by `strategist treasure-chest mine --accept`
+#   verified   — promoted by `strategist treasure-chest mine --verify`, requires evidence
+#   deprecated — no longer usable at runtime
+#   "active" is a removed legacy status — migrate with
+#   `strategist treasure-chest mine --migrate-status` (active -> accepted).
 # reviewed_by: agent | human
-# last_reviewed: YYYY-MM-DD  # optional; set only if/when a human reviews it
+# last_reviewed: YYYY-MM-DD    # optional; set only if/when a human reviews it
+# score:                       # optional — LLM-governed candidate quality signal, set during index
+#   value: 0-100
+#   reasons: [string]
+# applicability:               # optional — set during polishing
+#   scope: [discovery | refinement | execution | all]
+#   applies_when: [string]
+#   avoid_when: [string]
+# verification:                # optional — populated only by `mine --verify`
+#   evidence_refs: [string]
 
 jewels: []

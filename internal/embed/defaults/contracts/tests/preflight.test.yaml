@@ -6,6 +6,10 @@ invariants:
     description: Provider resolved from strategist runtime skills directory — no fallback chain
     rule: resolve provider from skill_root/skills/<provider>/skill.yaml — single lookup, no fallback
 
+  - id: provider_manifest_is_slot_authority
+    description: Provider slot capability is determined only by the strategist provider manifest
+    rule: standalone SKILL.md style or creative-first instructions must not cause role_invocation_failed when skill_root/skills/<provider>/skill.yaml satisfies the slot contract
+
   - id: risk_mismatch_blocks
     description: Slot with wrong risk_score stops the mission
     rule: slot.risk_score != expected → emit blocked reason=slot_risk_mismatch
@@ -38,6 +42,17 @@ cases:
       ranger_risk_score: controlled
     expect:
       emit: "[Strategist] phase=preflight status=blocked reason=slot_risk_mismatch slot=discovery"
+
+  - name: brainstorming_diagnostic_not_blocked_by_standalone_creative_first
+    given:
+      discovery_provider: brainstorming
+      provider_manifest_path: skill_root/skills/brainstorming/skill.yaml
+      provider_manifest_risk_score: write_analysis
+      discovery_subtype: diagnostic
+      standalone_skill_md_style: creative-first
+    expect:
+      no_emit: "[Strategist] phase=preflight status=blocked reason=role_invocation_failed slot=discovery provider=brainstorming"
+      handoff: "[Strategist] phase=intake status=handoff component=scout target=ranger weapon=brainstorming subtype=diagnostic"
 
   - name: provider_not_found
     given:

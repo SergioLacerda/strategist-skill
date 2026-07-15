@@ -43,8 +43,10 @@ contract:
     - code: role_invocation_failed
       trigger: >
         Strategist attempts to invoke a configured role/provider and the invocation fails
-        because the provider is unavailable, invalid, or not callable from the installed
-        runtime.
+        because the provider manifest at skill_root/skills/<provider>/skill.yaml is
+        schema-invalid, the provider is unavailable, or the provider is not callable from
+        the installed runtime. Standalone SKILL.md style, subtype coverage, or
+        creative-first instructions are not provider-invalid conditions.
       behavior: >
         Emit:
           "[Strategist] phase=preflight status=blocked reason=role_invocation_failed

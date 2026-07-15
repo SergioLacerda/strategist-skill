@@ -25,9 +25,14 @@ import (
 var treasureChestScanDryRun bool
 
 var treasureChestScanCmd = &cobra.Command{
-	Use:   "scan",
-	Short: "Mine .analysis/refined and .analysis/done for recurring clusters and open gaps",
-	Long: `Scan mission history for recurring themes and unresolved side quests.
+	Use:    "scan",
+	Hidden: true, // internal phase, folded into `treasure-chest index` — not public steady-state UX
+	Short:  "[internal] Mine .analysis/refined and .analysis/done for recurring clusters and open gaps",
+	Long: `Internal phase folded into "strategist treasure-chest index" — not part of the
+public steady-state UX. Kept as a standalone command for debugging/dry-run inspection of
+the scan phase in isolation.
+
+Scan mission history for recurring themes and unresolved side quests.
 
 Input: <base_path>/refined/**/tasks.md and <base_path>/done/** only. Never reads
 <base_path>/pending/ or <base_path>/archived/ reports.

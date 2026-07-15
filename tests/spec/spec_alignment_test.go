@@ -892,6 +892,46 @@ func TestPreflightContractNoFallbackChain(t *testing.T) {
 	}
 }
 
+func TestPreflightProviderManifestIsSlotAuthority(t *testing.T) {
+	t.Parallel()
+
+	contractFiles := []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "preflight.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "preflight.yaml"),
+	}
+
+	for _, path := range contractFiles {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"skill_root/skills/<provider>/skill.yaml",
+			"Standalone SKILL.md style",
+			"creative-first instructions are not provider-invalid conditions",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing provider authority preflight term %q", path, needle)
+			}
+		}
+	}
+
+	testFiles := []string{
+		filepath.Join(repoRoot(t), ".strategist", "contracts", "tests", "preflight.test.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "tests", "preflight.test.yaml"),
+	}
+
+	for _, path := range testFiles {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"provider_manifest_is_slot_authority",
+			"brainstorming_diagnostic_not_blocked_by_standalone_creative_first",
+			"subtype=diagnostic",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing provider authority preflight test term %q", path, needle)
+			}
+		}
+	}
+}
+
 func TestSniperWriteScopeIsWorkspaceAndDocs(t *testing.T) {
 	t.Parallel()
 
