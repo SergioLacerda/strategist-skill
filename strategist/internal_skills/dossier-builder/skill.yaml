@@ -34,7 +34,7 @@ output:
     sources_selected: integer      # cards actually included
     tokens_estimated: integer      # sum of excerpt lengths
   evidence_pack_path: string | null  # <base_path>/<state>/<mission_id>-evidence-pack.md, null when dossier.source_cards is empty
-  jewels_consulted: array          # [{id, chest_id, trust, statement}], empty list if none consulted
+  jewels_consulted: array          # [{id, chest_id, trust, status, statement}], empty list if none consulted
 
 behavior:
   - If enrichment_output is empty: produce minimal dossier with only task_type and output_template.

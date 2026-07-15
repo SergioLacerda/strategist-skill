@@ -198,6 +198,12 @@ func gapCandidateScore(g gap) int {
 // preserving existing comments/structure via yaml.Node. It returns how many were written
 // vs. skipped as duplicates. A candidate with an id that already exists — proposed or
 // otherwise — is always skipped, never overwritten: index must not clobber human curation.
+//
+// Dedup is id-only by design, not content/statement-level: this repo's scan/index pipeline
+// is lexical/tag-based throughout (no embeddings, no semantic similarity), so detecting
+// "duplicate knowledge" across differently-worded candidates is intentionally out of scope
+// for v1. See .analysis/refined/treasure-chest-index-mine-pipeline-audit/ for the decision
+// record.
 func writeProposedJewels(root string, candidates []jewelEntry) (written, skipped int, err error) {
 	if len(candidates) == 0 {
 		return 0, 0, nil
