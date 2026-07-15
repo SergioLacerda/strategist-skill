@@ -2462,7 +2462,7 @@ func TestJewelRetrievalContractDefinesMandatoryFallback(t *testing.T) {
 			"jewel_retrieval:",
 			"condition: jewel is stale | disputed | missing | insufficient",
 			"action: proceed with full source_cards assembly unchanged",
-			"jewels_consulted: [id, chest_id, trust, statement]",
+			"jewels_consulted: [id, chest_id, trust, status, statement]",
 		} {
 			if !strings.Contains(content, needle) {
 				t.Fatalf("%s missing jewel_retrieval contract term %q", path, needle)

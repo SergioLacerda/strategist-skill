@@ -84,7 +84,7 @@ contract:
       - selected_source_count
       - compression_metrics  # when available, from dossier-builder output
       - per_card: [chest, trust, relevance, interpretation, impact, excerpt]  # bounded excerpt only
-      - jewels_consulted: [id, chest_id, trust, statement]  # distinct from per_card/source_cards
+      - jewels_consulted: [id, chest_id, trust, status, statement]  # distinct from per_card/source_cards
     empty_state:
       trigger: dossier.source_cards is empty
       behavior: Do not generate an Evidence Pack file. Non-blocking. evidence_pack_path is null.
