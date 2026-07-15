@@ -266,6 +266,37 @@ func markJewelsDeprecatedForChest(doc *yaml.Node, chestID string) error {
 	return nil
 }
 
+// findJewelEntry returns the jewels.yaml jewel entry mapping node for id, or an error if
+// no jewels are declared or id is not found.
+func findJewelEntry(doc *yaml.Node, id string) (*yaml.Node, error) {
+	root, err := rootMapping(doc)
+	if err != nil {
+		return nil, err
+	}
+	seq := mappingValue(root, "jewels")
+	if seq == nil {
+		return nil, fmt.Errorf("no jewels declared in jewels.yaml")
+	}
+	entry, idx := findEntryByID(seq, id)
+	if idx == -1 {
+		return nil, fmt.Errorf("jewel %q not found in jewels.yaml", id)
+	}
+	return entry, nil
+}
+
+// appendEvidenceRef appends ref to entry's verification.evidence_refs sequence, creating
+// the verification mapping if it does not already exist (e.g. on a jewel hand-authored
+// before the verification field was introduced).
+func appendEvidenceRef(entry *yaml.Node, ref string) {
+	verification := mappingValue(entry, "verification")
+	if verification == nil {
+		verification = mapNode()
+		entry.Content = append(entry.Content, strNode("verification"), verification)
+	}
+	seq := findOrCreateSequence(verification, "evidence_refs")
+	seq.Content = append(seq.Content, strNode(ref))
+}
+
 func boolNode(v bool) *yaml.Node {
 	val := "false"
 	if v {
