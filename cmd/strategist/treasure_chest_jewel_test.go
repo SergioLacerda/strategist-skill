@@ -69,3 +69,72 @@ func TestTreasureChestJewelList_DefaultExcludesDeprecated(t *testing.T) {
 	assert.Contains(t, out, "jewel-accepted-1")
 	assert.NotContains(t, out, "jewel-deprecated-1")
 }
+
+func TestTreasureChestJewelList_StatusAllIncludesDeprecated(t *testing.T) {
+	dir := mineTestRoot(t, threeStatusJewelsYAML)
+	resetTreasureChestFlags(t)
+	resetTreasureChestJewelFlags(t)
+	treasureChestRoot = dir
+	treasureChestJewelStatus = "all"
+
+	out := captureStdout(t, func() {
+		require.NoError(t, treasureChestJewelListCmd.RunE(treasureChestJewelListCmd, nil))
+	})
+	assert.Contains(t, out, "jewel-proposed-1")
+	assert.Contains(t, out, "jewel-accepted-1")
+	assert.Contains(t, out, "jewel-deprecated-1")
+}
+
+func TestTreasureChestJewelList_ExplicitStatusFilter(t *testing.T) {
+	dir := mineTestRoot(t, threeStatusJewelsYAML)
+	resetTreasureChestFlags(t)
+	resetTreasureChestJewelFlags(t)
+	treasureChestRoot = dir
+	treasureChestJewelStatus = "accepted"
+
+	out := captureStdout(t, func() {
+		require.NoError(t, treasureChestJewelListCmd.RunE(treasureChestJewelListCmd, nil))
+	})
+	assert.NotContains(t, out, "jewel-proposed-1")
+	assert.Contains(t, out, "jewel-accepted-1")
+	assert.NotContains(t, out, "jewel-deprecated-1")
+}
+
+func TestTreasureChestJewelList_ChestFilter(t *testing.T) {
+	dir := mineTestRoot(t, threeStatusJewelsYAML)
+	resetTreasureChestFlags(t)
+	resetTreasureChestJewelFlags(t)
+	treasureChestRoot = dir
+	treasureChestJewelStatus = "all"
+	treasureChestJewelChest = "nonexistent-chest"
+
+	out := captureStdout(t, func() {
+		require.NoError(t, treasureChestJewelListCmd.RunE(treasureChestJewelListCmd, nil))
+	})
+	assert.Contains(t, out, "no jewels match")
+}
+
+func TestTreasureChestJewelList_InvalidStatusRejected(t *testing.T) {
+	dir := mineTestRoot(t, threeStatusJewelsYAML)
+	resetTreasureChestFlags(t)
+	resetTreasureChestJewelFlags(t)
+	treasureChestRoot = dir
+	treasureChestJewelStatus = "bogus"
+
+	err := treasureChestJewelListCmd.RunE(treasureChestJewelListCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `unknown --status "bogus"`)
+}
+
+func TestTreasureChestJewelList_EmptyResultIsNotAnError(t *testing.T) {
+	dir := mineTestRoot(t, threeStatusJewelsYAML)
+	resetTreasureChestFlags(t)
+	resetTreasureChestJewelFlags(t)
+	treasureChestRoot = dir
+	treasureChestJewelChest = "no-such-chest"
+
+	out := captureStdout(t, func() {
+		require.NoError(t, treasureChestJewelListCmd.RunE(treasureChestJewelListCmd, nil))
+	})
+	assert.Contains(t, out, "no jewels match the given filters")
+}
