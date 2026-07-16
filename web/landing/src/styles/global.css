@@ -140,6 +140,14 @@ html, body {
 .wchip { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text); background: rgba(0,0,0,.25); border: 1px solid var(--line); border-radius: var(--radius-xs); padding: 5px 10px; }
 .wchip span { color: var(--amber); }
 
+/* ---- jewels disclosure (Treasure Chest) ---- */
+.jewel-disclosure { margin-top: 14px; }
+.jewel-disclosure summary { cursor: pointer; font-family: var(--font-mono); font-size: 12px; letter-spacing: .06em; color: var(--amber-dim); list-style: none; }
+.jewel-disclosure summary::-webkit-details-marker { display: none; }
+.jewel-disclosure summary::before { content: "▸ "; }
+.jewel-disclosure[open] summary::before { content: "▾ "; }
+.jewel-disclosure .wchips { margin-top: 10px; }
+
 /* ---- pipeline diagram ---- */
 .mapwrap { text-align: center; margin: 12px 0 34px; }
 .map { display: inline-block; text-align: left; font-family: var(--font-mono); font-size: 14px; line-height: 1.4; color: var(--amber-dim); white-space: pre; border: 1px solid var(--line-2); border-radius: 6px; background: linear-gradient(180deg, rgba(42,33,23,.45), rgba(12,8,5,.55)); box-shadow: inset 0 0 40px rgba(0,0,0,.5); padding: 24px 30px; overflow-x: auto; }

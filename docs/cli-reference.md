@@ -419,24 +419,59 @@ configuration reference — `add`/`remove` keep configured, governed, and indexe
 consistent, and only ever touch the compiled layer through explicit `--index` or an explicit
 stale warning.
 
-### `scan` — implemented; `gaps` / `index` / `pack` — still planned
+### `treasure-chest index` / `treasure-chest mine`
 
-The original critique proposed a `scan`/`gaps`/`index`/`pack` command family (Track T-K /
-SQ-008). Comparing each against current behavior:
+The offline organization plane exposes exactly two public, steady-state commands (Track:
+`treasure-chest-index-mine-pipeline`). `scan` is folded into `index` as an internal phase —
+it remains callable directly (`strategist treasure-chest scan`, hidden from `--help`) for
+debugging/dry-run inspection, but is no longer documented UX. There is no `gaps` or `pack`
+command; Evidence Packs already exist as mission artifacts (Track T-A), generated
+automatically by `dossier-builder`, and open gaps surface through `index`'s internal scan
+phase into `.strategist/treasure/gaps/` and `status:proposed` jewels.
 
-| Proposed command | Current equivalent | Status |
-|---|---|---|
-| `treasure-chest scan` | `cmd/strategist/treasure_chest_scan.go` | **implemented** (Track T-F / `SQ-003` contract defined in `bau-tesouro-sq003-004-007`, implemented in `bau-tesouro-sq010-scan-runtime`) — see contract below |
-| `treasure-chest gaps` | `open_gaps` field exists per-chest (Track T-G / `SQ-002`) but there is no aggregate report command | not implemented; a `gaps` command would just be a filtered view over existing `open_gaps` fields once enough chests have them populated |
-| `treasure-chest index` | `strategist treasure-chest --index` already rebuilds the compiled artifact | covered by the existing `--index` flag; a separate `index` subcommand would be redundant unless it needs distinct semantics |
-| `treasure-chest pack` | Evidence Packs (Track T-A) already exist as mission artifacts, generated automatically by `dossier-builder` | covered conceptually; a manual `pack` command to regenerate/inspect an Evidence Pack outside a mission run is not implemented |
+```
+strategist treasure-chest index [--include-historical]
+strategist treasure-chest mine --list [--format table|json]
+strategist treasure-chest mine --accept <jewel-id>
+strategist treasure-chest mine --verify <jewel-id> --evidence <ref>
+strategist treasure-chest mine --deprecate <jewel-id>
+strategist treasure-chest mine --migrate-status
+```
 
-`scan` shipped in `SQ-010`. `gaps` and a standalone `pack` command remain future scope pending
-an explicit decision on whether to pick them up next; `index` is intentionally not duplicated
-since `--index` already covers it.
+**`index`** rebuilds the offline knowledge substrate:
 
-**`treasure-chest scan` contract** (Track T-F / `SQ-003`, defined in mission
-`bau-tesouro-sq003-004-007`, implemented in `bau-tesouro-sq010-scan-runtime`):
+1. Runs the internal scan phase over `<base_path>/refined/**/tasks.md` and
+   `<base_path>/done/**` (lexical/tag matching only — no embeddings, no vector index),
+   writing `.strategist/treasure/clusters/` and `.strategist/treasure/gaps/` exactly as the
+   former standalone `scan` command did.
+2. Polishes each cluster/gap into a deduplicated `status: proposed` jewel candidate
+   (`kind: pattern` for clusters, `kind: gap` for gaps), scored 0-100 as a ranking/economy
+   hint only — never a promotion authority. Candidates use the virtual
+   `chest_id: mission-history` since they are derived from mission history, not a specific
+   treasure chest's own content.
+3. Deduplicates against existing `jewels.yaml` entries by `id` — a rerun never overwrites or
+   duplicates a jewel, curated or not.
+4. Rebuilds the compiled knowledge index (`.strategist/.compiled/.index.gz`), same as the
+   legacy `--index` flag on the base `treasure-chest` command.
+5. Reports: missions scanned, candidates found, proposed jewels written, duplicates
+   skipped, compiled artifact refreshed.
+
+**`mine`** is the human curation command over `status: proposed` jewels — exactly one action
+flag is required per invocation:
+
+- `--list [--format table|json]` — lists only `status: proposed` jewels (the curation
+  queue), grouped/sorted by chest then id, with kind/trust/score/statement.
+- `--accept <jewel-id>` — promotes to `status: accepted`; sets `reviewed_by: human` and
+  `last_reviewed` to today.
+- `--verify <jewel-id> --evidence <ref>` — promotes to `status: verified`; requires
+  `--evidence`, appended to `verification.evidence_refs`.
+- `--deprecate <jewel-id>` — marks `status: deprecated`. Deprecation is terminal: a
+  deprecated jewel can never be promoted back to `accepted`/`verified`.
+- `--migrate-status` — see Migration below.
+
+**`treasure-chest scan` contract** (internal phase, folded into `index`; originally Track
+T-F / `SQ-003`, defined in mission `bau-tesouro-sq003-004-007`, implemented in
+`bau-tesouro-sq010-scan-runtime`):
 
 - **Input scope**: `.analysis/refined/**/tasks.md` and `.analysis/done/**` only —
   Archivist-reviewed or closure-validated content. Excludes `.analysis/pending/scraps`
@@ -446,22 +481,24 @@ since `--index` already covers it.
   retrieval remains explicitly forbidden per the parent mission's scope).
 - **Trust default**: `T2` (`examples` tier), matching `treasure-chests.yaml`'s existing
   semantics for "previous missions."
-- **Output**: `.strategist/treasure/clusters/<cluster-id>.md` (recurring theme, cited missions)
-  and `.strategist/treasure/gaps/<gap-id>.md` (recurring unresolved item, cited missions) — see
+- **Output**: `.strategist/treasure/clusters/<cluster-id>.md` and
+  `.strategist/treasure/gaps/<gap-id>.md` — see
   [Storage Domain](configuration.md#storage-domain-track-t-h--sq-004--contract-only-not-implemented)
   in the configuration reference.
 
 ### Jewels
 
 Jewels (Track T-J / `SQ-007`, schema defined in mission `bau-tesouro-sq003-004-007`,
-implemented in `SQ-009`) are compact, source-linked knowledge units — children of the
-specific chest they were extracted from, not a flat cross-mission list.
+implemented in `SQ-009`; lifecycle statuses revised in the
+`treasure-chest-index-mine-pipeline` mission, see [ADR-0012](adr/0012-jewel-lifecycle-statuses.md))
+are compact, source-linked knowledge units — children of the specific chest they were
+extracted from (or, for `index`-generated candidates, the virtual `mission-history` chest).
 
 **Gate revision note:** the original design required human pre-approval before a jewel could
-become active (`candidate → reviewed → active`). At this mission's Approval Gate, that was
-revised: the agent analyzing a chest generates and activates a jewel immediately
-(`reviewed_by: agent`), with a **trust-tier ceiling** as the safeguard instead of a pre-approval
-step — a jewel's `trust` can never exceed its parent chest's `trust.tier`. This relaxes the
+be usable (`candidate → reviewed → active`). At the originating mission's Approval Gate, that
+was revised: the agent analyzing a chest generates a jewel immediately (`reviewed_by: agent`),
+with a **trust-tier ceiling** as the safeguard instead of a pre-approval step — a jewel's
+`trust` can never exceed its parent chest's `trust.tier`. This relaxes the
 `20260711-bau-tesouro-upgrade` mission's `forbidden` clause "Any generated jewel promotion
 without explicit review/approval," scoped narrowly to this mechanism only — see
 [ADR-0011](adr/0011-jewel-promotion-trust-ceiling-exception.md) for the full scope
@@ -473,27 +510,43 @@ schema_version: "1"
 jewels:
   - id: <identifier>
     chest_id: <parent chest id>          # mandatory — jewel is a child of exactly one chest
+    kind: decision | pattern | anti_pattern | gap | risk | constraint | example | heuristic | template | question
     statement: <compact fact/pattern/decision, source-linked>
     source_refs:                         # mandatory — at least one
       - <chest-id>#<section-slug>
     trust: T0 | T1 | T2 | T3             # mandatory; MUST be <= parent chest's trust.tier
-    status: active | deprecated
+    status: proposed | accepted | verified | deprecated
     reviewed_by: agent | human
     last_reviewed: YYYY-MM-DD | null
+    score: { value: 0-100, reasons: [<short reason>, ...] }
+    applicability: { scope: [...], applies_when: [...], avoid_when: [...] }
+    verification: { evidence_refs: [...] }
 ```
 
-**Lifecycle:** generated directly in `active` status by the analyzing agent. `deprecated` is
-reached manually (a human marks it) or automatically when the parent chest is tombstoned via
-`treasure-chest remove` (the chest removal is already an explicit human action). No promotion
-command exists — activation is immediate, not staged.
+**Lifecycle:** agent- or `index`-generated jewels always start at `status: proposed` — an
+agent must never write `accepted` or `verified` directly. Only `treasure-chest mine` (human
+curation) promotes a jewel to `accepted` or `verified` (the latter requires an evidence ref).
+`deprecated` is reached manually via `mine --deprecate`, or automatically when the parent
+chest is tombstoned via `treasure-chest remove` (the chest removal is already an explicit
+human action). Deprecation is terminal.
 
-**Implemented** (`SQ-009`, mission `bau-tesouro-sq009-jewels-runtime`): `.strategist/jewels.yaml`
-exists and is loaded via `loadJewels` (`cmd/strategist/treasure_chest_jewels.go`); active jewel
-counts are shown in the `treasure-chest` list's `JEWELS` column and JSON output
-(`cmd/strategist/treasure_chest.go`); removing a chest cascades to mark its jewels `deprecated`
-(`markJewelsDeprecatedForChest` in `treasure_chest_yaml_node.go`); the `jewel_generation`
-contract block governs LLM-facing generation behavior
-(`internal/embed/defaults/contracts/machine/context-enrichment.yaml`).
+**Migration (`active` → `accepted`):** the pre-`treasure-chest-index-mine-pipeline` schema
+used a two-state `active | deprecated` model. `active` is a **removed legacy status** —
+`loadJewels` fails loudly (not a silent fallback) on any remaining `active` entry, per
+`ValidateJewelStatus` (`internal/domain/jewel_grade.go`). Run
+`strategist treasure-chest mine --migrate-status` once to rewrite every `status: active`
+entry to `status: accepted` in place; the command is idempotent and reports how many
+entries it migrated (0 is a valid, non-error outcome).
+
+**Implemented**: `.strategist/jewels.yaml` exists and is loaded via `loadJewels`
+(`cmd/strategist/treasure_chest_jewels.go`); non-deprecated jewel counts are shown in the
+`treasure-chest` list's `JEWELS` column and JSON output (`cmd/strategist/treasure_chest.go`);
+removing a chest cascades to mark its jewels `deprecated` (`markJewelsDeprecatedForChest` in
+`treasure_chest_yaml_node.go`); the `jewel_generation` and `jewel_retrieval` contract blocks
+govern LLM-facing generation/retrieval behavior
+(`internal/embed/defaults/contracts/machine/context-enrichment.yaml`), including
+status-precedence retrieval (`verified` preferred, then `accepted`, `proposed` as hint only,
+`deprecated` excluded).
 
 ---
 

@@ -84,7 +84,13 @@ Scout may NOT perform deep discovery, invoke Sniper directly, bypass the
 Strategist Approval Gate, or replace Ranger when evidence review is required. When
 a request needs evidence gathering, Scout routes to `full_pipeline` with a
 `discovery_subtype` (see `contracts/narrative/03-discovery.md`) and Ranger remains
-the discovery/evidence owner. See `contracts/narrative/00-routing.md` § Scout —
+the discovery/evidence owner. In particular, when the request asks Strategist to
+evaluate whether something was implemented (evidence review, not new work), Scout
+routes to `full_pipeline` with `discovery_subtype: evaluation` — Ranger, not Scout,
+performs that evaluation. Critical Hit remains the separate short route for
+evidence-ready artifact closure (moving/archiving an already-evidenced `.md`
+artifact), distinct from `discovery_subtype: evaluation` (Ranger investigating
+whether evidence exists). See `contracts/narrative/00-routing.md` § Scout —
 Intake Router and `internal_skills/scout/SKILL.md` for the full contract.
 
 Each role has a contract declared in `.strategist/roles/<role>.yaml` with `must` and `must_not` clauses. Example (Ranger):

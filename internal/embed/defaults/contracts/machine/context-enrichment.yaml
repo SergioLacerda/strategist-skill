@@ -84,43 +84,92 @@ contract:
       - selected_source_count
       - compression_metrics  # when available, from dossier-builder output
       - per_card: [chest, trust, relevance, interpretation, impact, excerpt]  # bounded excerpt only
-      - jewels_consulted: [id, chest_id, trust, statement]  # distinct from per_card/source_cards
+      - jewels_consulted: [id, chest_id, trust, status, statement]  # distinct from per_card/source_cards
     empty_state:
       trigger: dossier.source_cards is empty
       behavior: Do not generate an Evidence Pack file. Non-blocking. evidence_pack_path is null.
     artifact_path: "<base_path>/<state>/<mission_id>-evidence-pack.md"
+
+  commands:
+    description: >
+      The Treasure Chest offline organization plane exposes exactly two public,
+      steady-state commands. `scan` is folded into `index` as an internal phase and must
+      not be documented or invoked as primary UX. There is no `polish` or `pack` command —
+      "polish" is an internal, partly-LLM-governed step inside `index`; there is no `pack`
+      step at all. See ADR 0012 (jewel lifecycle statuses) and
+      .analysis/refined/treasure-chest-index-mine-pipeline/design.md.
+    public:
+      - name: "strategist treasure-chest index"
+        description: >
+          Rebuilds the offline knowledge substrate: validates configured/governed/indexed/
+          compiled layers, runs the internal scan phase, detects and polishes reusable
+          knowledge units into deduplicated status:proposed jewels, and refreshes the
+          compiled index.
+      - name: "strategist treasure-chest mine"
+        description: >
+          Human curation over status:proposed jewels — accept, verify (with evidence),
+          adjust, or deprecate. Supports non-interactive automation via
+          --list/--accept/--verify/--deprecate flags.
+    internal:
+      - scan   # mission-history clustering/gap-mining phase, folded into `index`
 
   jewel_generation:
     description: >
       When consulting a chest, the analyzing agent (Ranger during discovery, Archivist during
       refinement) may generate at most one jewel per chest per consultation, judging relevance
       by its own analysis. No pre-approval gate — the trust-tier ceiling
-      (jewel.trust <= chest.trust.tier) is the safeguard, not human review. See
-      .analysis/refined/bau-tesouro-sq003-004-007/design.md for the full rationale and
-      .analysis/refined/bau-tesouro-sq009-jewels-runtime/design.md for this contract's origin.
-    trigger: ranger_discovery_consultation | archivist_refinement_consultation
+      (jewel.trust <= chest.trust.tier) is the safeguard, not human review. Agent-generated
+      jewels are always written with status: proposed — an agent must never write accepted or
+      verified directly; only `strategist treasure-chest mine` (human curation) can promote a
+      jewel past proposed. See .analysis/refined/bau-tesouro-sq003-004-007/design.md for the
+      original rationale, .analysis/refined/bau-tesouro-sq009-jewels-runtime/design.md for this
+      contract's origin, and .analysis/refined/treasure-chest-index-mine-pipeline/design.md for
+      the proposed/accepted/verified/deprecated lifecycle.
+    trigger: ranger_discovery_consultation | archivist_refinement_consultation | treasure_chest_index
     cap_per_consultation: 1
     write_target: .strategist/jewels.yaml
-    fields: [id, chest_id, statement, source_refs, trust, status, reviewed_by, last_reviewed]
+    fields:
+      - id
+      - chest_id
+      - kind            # decision | pattern | anti_pattern | gap | risk | constraint | example | heuristic | template | question
+      - statement
+      - source_refs
+      - trust
+      - status          # always "proposed" when agent- or index-generated
+      - reviewed_by
+      - last_reviewed
+      - score           # {value, reasons} — LLM-governed candidate quality signal, never a promotion authority
+      - applicability    # {scope, applies_when, avoid_when}
+      - verification     # {evidence_refs} — populated only by `treasure-chest mine --verify`
     forbidden:
       - generating a jewel with trust exceeding the parent chest's trust.tier
       - generating a jewel without at least one source_ref
+      - writing a status other than "proposed" from agent or index generation
+      - writing the legacy "active" status (removed; see migration in ADR 0012)
 
   jewel_retrieval:
     description: >
       Before assembling source_cards for a chest, the analyzing agent may check
-      .strategist/jewels.yaml for active jewels belonging to that chest and use them as
-      a ranking/shortcut hint. This never replaces source_cards assembly — it only
-      influences which sources are prioritized. Staleness is qualitative and agent-judged,
-      consistent with jewel_generation: a jewel is stale when last_reviewed is null, or
-      older than the chest's own last update.
+      .strategist/jewels.yaml for jewels belonging to that chest and use them as a
+      ranking/shortcut hint. This never replaces source_cards assembly — it only influences
+      which sources are prioritized. Staleness is qualitative and agent-judged, consistent
+      with jewel_generation: a jewel is stale when last_reviewed is null, or older than the
+      chest's own last update.
     trigger: ranger_discovery_consultation | archivist_refinement_consultation
+    status_precedence:
+      - verified   # preferred first
+      - accepted   # preferred next
+      - proposed   # hint only — never treated as verified evidence, never a substitute for source_cards
+    excluded_status:
+      - deprecated
     mandatory_fallback:
-      condition: jewel is stale | disputed | missing | insufficient
+      condition: jewel is stale | disputed | missing | insufficient | status:proposed and evidence is required
       action: proceed with full source_cards assembly unchanged
     forbidden:
       - treating a jewel as a substitute for source_cards assembly
-      - consulting a deprecated jewel as if active
+      - treating a status:proposed jewel as verified evidence
+      - consulting a deprecated jewel as if accepted or verified
+      - consulting a legacy "active" jewel (invalid after migration; loading must fail loudly)
 
   planned_score_selection_transparency:
     status: not_implemented

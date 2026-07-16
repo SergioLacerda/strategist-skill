@@ -120,7 +120,7 @@ Sniper write scope is limited to workspace documentation files and declared docu
 - documentation files (`.md` and diagram/documentation assets) declared in `documentation_targets`
 - files inside `<base_path>/` (workspace) declared by Archivist
 - files outside `<base_path>/` only when explicitly declared by Archivist and accepted at the approval gate
-- **code files are forbidden** — no code mutation: no `.go`, `.ts`, `.py`, `.js`, `.sh`, or other source code
+- **code files are forbidden** — no code mutation: no `.go`, `.ts`, `.py`, `.js`, `.sh`, or other source code, **except** `.astro`/`.css`/`.js`/`.ts`/`.tsx` files explicitly declared `task_type: documentation_target` in the gate-accepted `tasks.md` (same exception as the Pre-Materialization Scan above — this section previously omitted it, creating an inconsistency; see ADR-0013)
 - **Git mutating commands are forbidden** — no `git add`, `git commit`, `git push`, `git reset`, `git merge`, or any other state-modifying Git operation
 
 The default Sniper contract cannot mutate code or test files, and this restriction cannot
