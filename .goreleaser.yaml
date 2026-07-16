@@ -34,6 +34,7 @@ release:
     owner: SergioLacerda
     name: strategist-skill
   draft: false
+  replace_existing_artifacts: true
 
 changelog:
   sort: asc
