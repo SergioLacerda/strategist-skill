@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
@@ -73,6 +74,8 @@ func runTreasureChestJewelList(cmd *cobra.Command, _ []string) error {
 	switch treasureChestJewelFormat {
 	case "", "table":
 		return renderJewelListTable(filtered)
+	case "json":
+		return renderJewelListJSON(filtered)
 	default:
 		return fmt.Errorf("treasure-chest jewel list: unknown --format %q (want table or json)", treasureChestJewelFormat)
 	}
@@ -150,6 +153,41 @@ func renderJewelListTable(jewels []jewelEntry) error {
 	}
 	if err := w.Flush(); err != nil {
 		return fmt.Errorf("treasure-chest jewel list: flush: %w", err)
+	}
+	return nil
+}
+
+type jsonJewelListEntry struct {
+	ID           string   `json:"id"`
+	ChestID      string   `json:"chest_id"`
+	Status       string   `json:"status"`
+	Kind         string   `json:"kind"`
+	Statement    string   `json:"statement"`
+	SourceRefs   []string `json:"source_refs"`
+	Trust        string   `json:"trust"`
+	ScoreValue   int      `json:"score_value"`
+	ScoreReasons []string `json:"score_reasons,omitempty"`
+}
+
+func renderJewelListJSON(jewels []jewelEntry) error {
+	out := make([]jsonJewelListEntry, 0, len(jewels))
+	for _, j := range jewels {
+		out = append(out, jsonJewelListEntry{
+			ID:           j.ID,
+			ChestID:      j.ChestID,
+			Status:       j.Status,
+			Kind:         j.Kind,
+			Statement:    j.Statement,
+			SourceRefs:   j.SourceRefs,
+			Trust:        j.Trust,
+			ScoreValue:   j.Score.Value,
+			ScoreReasons: j.Score.Reasons,
+		})
+	}
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(out); err != nil {
+		return fmt.Errorf("treasure-chest jewel list: encode json: %w", err)
 	}
 	return nil
 }
