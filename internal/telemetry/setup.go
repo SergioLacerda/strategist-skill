@@ -3,6 +3,7 @@ package telemetry
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 
 	"go.opentelemetry.io/contrib/bridges/otelslog"
@@ -17,9 +18,17 @@ import (
 // Init initializes the global OTel providers from cfg.
 // Returns a shutdown function that must be deferred before process exit.
 // If cfg.Enabled() is false, installs noop providers — no network connections opened.
+//
+// The default slog handler is also swapped for a discard handler in this case:
+// without it, structured slog.Info/InfoContext calls elsewhere in the CLI fall
+// through to Go's builtin handler, which writes a second, differently-formatted
+// copy of every line to stderr — duplicating the friendly stdout messages the
+// CLI already prints. Telemetry attributes still reach the OTel pipeline when
+// cfg.Enabled() is true, via the otelslog handler below.
 func Init(cfg Config) (shutdown func(context.Context) error, err error) {
 	if !cfg.Enabled() {
 		otel.SetTracerProvider(noop.NewTracerProvider())
+		slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
 		return func(context.Context) error { return nil }, nil
 	}
 
