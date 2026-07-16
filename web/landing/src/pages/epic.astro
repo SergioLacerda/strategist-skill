@@ -133,6 +133,9 @@ const PIPELINE_PT = ` <span class="node">[ WIZARD ]</span> ───────
           <RoleCard glyph="🧠" role="Estrategista" klass="Mestre · Orquestrador" feature={true}>
             <span data-pt="Orquestra a missão de ponta a ponta. Delegando e monitorando os papéis, reunindo o time e documentação para aguardar usuário no gate de aprovação." data-en="Orchestrates the mission end to end. Delegating and monitoring the roles, assembling the team and documentation while waiting for the user at the approval gate.">Orquestra a missão de ponta a ponta. Delegando e monitorando os papéis, reunindo o time e documentação para aguardar usuário no gate de aprovação.</span>
           </RoleCard>
+          <RoleCard glyph="🧭" role="Scout" klass="Batedor de Rota · Intake Router" badgePt="interno" badgeEn="internal">
+            <span data-pt="Classifica o pedido e escolhe a rota antes de qualquer papel agir. Não investiga a fundo — quando precisa de evidência, aciona o Ranger." data-en="Classifies the request and picks the route before any role acts. Does not investigate deeply — when evidence is needed, it hands off to Ranger.">Classifica o pedido e escolhe a rota antes de qualquer papel agir. Não investiga a fundo — quando precisa de evidência, aciona o Ranger.</span>
+          </RoleCard>
           <RoleCard glyph="⌕" role="Ranger" klass="Batedor · Discovery">
             <span data-pt="Levanta requisitos, mapeia o contexto e devolve um relatório de discovery." data-en="Gathers requirements, maps context and returns a discovery report.">Levanta requisitos, mapeia o contexto e devolve um relatório de discovery.</span>
           </RoleCard>
@@ -227,6 +230,19 @@ const PIPELINE_PT = ` <span class="node">[ WIZARD ]</span> ───────
           </SkillPanel>
           <SkillPanel icon="❖" title="Baú do tesouro">
             <span data-pt="Fontes offline já indexáveis e listáveis por comando, usadas para enriquecer a missão com contexto local." data-en="Offline sources that can already be indexed and listed by command, used to enrich the mission with local context.">Fontes offline já indexáveis e listáveis por comando, usadas para enriquecer a missão com contexto local.</span>
+            <details class="jewel-disclosure">
+              <summary data-pt="Joias/Jewels" data-en="Jewels">Joias/Jewels</summary>
+              <p style="margin:8px 0 0; font-size:12.5px; color:var(--muted);" data-pt="<code>index</code> descobre e propõe joias a partir dos documentos completos; <code>mine</code> é a curadoria humana que promove joias propostas." data-en="<code>index</code> discovers and proposes jewels from the full documents; <code>mine</code> is the human curation step that promotes proposed jewels.">index descobre e propõe joias a partir dos documentos completos; mine é a curadoria humana que promove joias propostas.</p>
+              <div class="wchips">
+                <span class="wchip"><span>▤</span><span data-pt="documentos" data-en="documents">documentos</span></span>
+                <span class="wchip"><span>▤</span><span data-pt="source cards" data-en="source cards">source cards</span></span>
+                <span class="wchip"><span>▤</span><span data-pt="evidence packs" data-en="evidence packs">evidence packs</span></span>
+                <span class="wchip"><span>◆</span><span data-pt="proposta" data-en="proposed">proposta</span></span>
+                <span class="wchip"><span>◆</span><span data-pt="aceita" data-en="accepted">aceita</span></span>
+                <span class="wchip"><span>◆</span><span data-pt="verificada" data-en="verified">verificada</span></span>
+                <span class="wchip"><span>✦</span><span data-pt="joias/jewels" data-en="jewels">joias/jewels</span></span>
+              </div>
+            </details>
           </SkillPanel>
           <SkillPanel icon="⚡" title="Saque rápido">
             <span data-pt="Anota ideias no todo do workspace. A pasta de ideias fica para consulta do usuário, não da skill." data-en="Captures ideas in the workspace todo. The idea folder is for the user to consult, not the skill.">Anota ideias no todo do workspace. A pasta de ideias fica para consulta do usuário, não da skill.</span>

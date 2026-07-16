@@ -88,6 +88,34 @@ token_count: integer
 
 ---
 
+### scout (pre-pipeline, internal — not a slot)
+
+**Category:** routing  
+**When:** immediately after intake, before any slot runs
+
+Scout is the Intake Router: it classifies the incoming request and selects a
+route (`critical_hit`, `implementation_short_route`, or `full_pipeline`) before
+the three-slot pipeline runs. Scout has no `active.yaml` entry, no configurable
+provider, and no `roles/scout.yaml` — unlike Ranger/Archivist/Sniper it is not a
+pluggable slot, it is fixed internal behavior.
+
+**Scout / Ranger boundary:** Scout classifies and routes; it never performs deep
+discovery itself. When a request needs evidence gathering — including requests
+that ask Strategist to *evaluate* whether something was already implemented —
+Scout routes to `full_pipeline` with a `discovery_subtype` (`creative`,
+`evaluation`, `diagnostic`, or `closure_evidence`) and hands the work to Ranger.
+Ranger, not Scout, is the discovery/evidence owner in every case; `discovery_subtype:
+evaluation` is Ranger's mode for implementation-evaluation requests, not a
+separate Scout capability.
+
+**Output:** a `route_decision` (role, selected_route, route_reason,
+route_confidence, evidence_state, discovery_subtype, fallback_route,
+gate_required) — logged/telemetered, never written as a `pending/` artifact. See
+`docs/strategist-concepts.md` § Scout — Intake Router and
+`internal_skills/scout/SKILL.md` for the full contract.
+
+---
+
 ### ranger (discovery slot)
 
 **Category:** discovery  
@@ -217,6 +245,25 @@ The Strategist passes to each slot only the chests with compatible scope:
 - `all` → all slots
 
 Absence of an applicable chest does not block the mission.
+
+**Jewels** are compact, source-linked knowledge points extracted from a chest's
+full documents (or, for `index`-generated candidates, the virtual
+`mission-history` chest). Each jewel carries a lifecycle `status`: `proposed`
+(agent- or `index`-generated, low-trust hint), `accepted` or `verified` (human-
+curated via `mine`, preferred reusable runtime knowledge), or `deprecated`
+(terminal — never promoted back). See [Jewels](cli-reference.md#jewels) for the
+full schema.
+
+**`index`** is the internalized offline mining pipeline: it scans full documents
+(the former standalone `scan` phase, now internal), detects candidate
+clusters/gaps, polishes them into deduplicated `status: proposed` jewels, and
+refreshes the compiled knowledge index — all in one command, with no separate
+public `scan`/`polish`/`pack` steps.
+
+**`mine`** is the separate human curation surface over `status: proposed`
+jewels: it lists the curation queue and promotes individual jewels to
+`accepted`, `verified` (with evidence), or `deprecated`. `index` only ever
+proposes; `mine` is the only path to `accepted`/`verified`.
 
 ### bootstrap
 

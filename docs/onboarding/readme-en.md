@@ -50,13 +50,14 @@ For full pipeline/contracts/schema details: [readme-detailed-en.md](readme-detai
 
 ## How it works
 
+- **Scout** (internal, pre-pipeline): classifies the request and picks the route before any slot runs. Does not perform discovery itself.
 - **Ranger**: explores context and produces discovery.
 - **Archivist**: turns discovery into proposal, design, and tasks.
 - **Sniper**: materializes approved documentation/handoff work only after gate + policy checks.
 - **Opportunity Attack**: Archivist-owned ADR evaluation after all four refined artifacts are written.
 - **Side Quests**: cross-phase scope observations; Archivist consolidates and presents at the approval gate; Sniper reports newly discovered ones.
 - **Critical Hit**: analysis `.md` movement route within `<base_path>` folders (`pending/`, `refined/`, `archived/`).
-- **Treasure Chests**: offline scoped context sources.
+- **Treasure Chests**: offline scoped context sources. `strategist treasure-chest index`/`mine` currently manage jewels (compact source-linked knowledge points, `proposed → accepted/verified/deprecated`); jewel runtime consultation and Scout telemetry are documented as target behavior — see `docs/observability-contract.md`.
 
 ## Generated files
 
