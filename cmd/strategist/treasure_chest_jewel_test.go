@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -137,4 +138,22 @@ func TestTreasureChestJewelList_EmptyResultIsNotAnError(t *testing.T) {
 		require.NoError(t, treasureChestJewelListCmd.RunE(treasureChestJewelListCmd, nil))
 	})
 	assert.Contains(t, out, "no jewels match the given filters")
+}
+
+func TestTreasureChestJewelList_JSONFormat(t *testing.T) {
+	dir := mineTestRoot(t, threeStatusJewelsYAML)
+	resetTreasureChestFlags(t)
+	resetTreasureChestJewelFlags(t)
+	treasureChestRoot = dir
+	treasureChestJewelStatus = "all"
+	treasureChestJewelFormat = "json"
+
+	out := captureStdout(t, func() {
+		require.NoError(t, treasureChestJewelListCmd.RunE(treasureChestJewelListCmd, nil))
+	})
+	var decoded []jsonJewelListEntry
+	require.NoError(t, json.Unmarshal([]byte(out), &decoded))
+	require.Len(t, decoded, 3)
+	assert.Equal(t, "jewel-accepted-1", decoded[0].ID)
+	assert.Equal(t, "accepted", decoded[0].Status)
 }
