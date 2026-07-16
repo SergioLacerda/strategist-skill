@@ -38,12 +38,22 @@ deprecated jewels are excluded unless --status=all or --status=deprecated is giv
 	RunE: runTreasureChestJewelList,
 }
 
+var treasureChestJewelShowCmd = &cobra.Command{
+	Use:   "show <jewel-id>",
+	Short: "Show a single jewel's full content",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runTreasureChestJewelShow,
+}
+
 func init() {
 	treasureChestJewelListCmd.Flags().StringVar(&treasureChestJewelStatus, "status", "", "filter by status: all, proposed, accepted, verified, or deprecated (default: all except deprecated)")
 	treasureChestJewelListCmd.Flags().StringVar(&treasureChestJewelChest, "chest", "", "filter by chest id")
 	treasureChestJewelListCmd.Flags().StringVar(&treasureChestJewelFormat, "format", "table", "output format: table or json")
 
+	treasureChestJewelShowCmd.Flags().StringVar(&treasureChestJewelFormat, "format", "table", "output format: table or json")
+
 	treasureChestJewelCmd.AddCommand(treasureChestJewelListCmd)
+	treasureChestJewelCmd.AddCommand(treasureChestJewelShowCmd)
 	treasureChestCmd.AddCommand(treasureChestJewelCmd)
 }
 
@@ -188,6 +198,108 @@ func renderJewelListJSON(jewels []jewelEntry) error {
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(out); err != nil {
 		return fmt.Errorf("treasure-chest jewel list: encode json: %w", err)
+	}
+	return nil
+}
+
+func runTreasureChestJewelShow(cmd *cobra.Command, args []string) error {
+	if run := telemetryRunFromCmd(cmd); run != nil {
+		run.SetSilent()
+	}
+
+	id := args[0]
+	jewelsByChest, err := loadJewelsForCmd("treasure-chest jewel show")
+	if err != nil {
+		return err
+	}
+
+	var found *jewelEntry
+	for _, list := range jewelsByChest {
+		for i := range list {
+			if list[i].ID == id {
+				found = &list[i]
+				break
+			}
+		}
+	}
+	if found == nil {
+		return fmt.Errorf("treasure-chest jewel show: jewel %q not found", id)
+	}
+
+	switch treasureChestJewelFormat {
+	case "", "table":
+		return renderJewelShowTable(*found)
+	case "json":
+		return renderJewelShowJSON(*found)
+	default:
+		return fmt.Errorf("treasure-chest jewel show: unknown --format %q (want table or json)", treasureChestJewelFormat)
+	}
+}
+
+func renderJewelShowTable(j jewelEntry) error {
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	rows := [][2]string{
+		{"id", j.ID},
+		{"chest_id", j.ChestID},
+		{"kind", j.Kind},
+		{"status", j.Status},
+		{"trust", j.Trust},
+		{"statement", j.Statement},
+		{"source_refs", fmt.Sprintf("%v", j.SourceRefs)},
+		{"reviewed_by", j.ReviewedBy},
+		{"last_reviewed", j.LastReviewed},
+		{"score.value", fmt.Sprintf("%d", j.Score.Value)},
+		{"score.reasons", fmt.Sprintf("%v", j.Score.Reasons)},
+		{"applicability.scope", fmt.Sprintf("%v", j.Applicability.Scope)},
+		{"applicability.applies_when", fmt.Sprintf("%v", j.Applicability.AppliesWhen)},
+		{"applicability.avoid_when", fmt.Sprintf("%v", j.Applicability.AvoidWhen)},
+		{"verification.evidence_refs", fmt.Sprintf("%v", j.Verification.EvidenceRefs)},
+	}
+	for _, r := range rows {
+		if _, err := fmt.Fprintf(w, "%s\t%s\n", r[0], r[1]); err != nil {
+			return fmt.Errorf("treasure-chest jewel show: write row: %w", err)
+		}
+	}
+	if err := w.Flush(); err != nil {
+		return fmt.Errorf("treasure-chest jewel show: flush: %w", err)
+	}
+	return nil
+}
+
+type jsonJewelShowEntry struct {
+	ID            string             `json:"id"`
+	ChestID       string             `json:"chest_id"`
+	Kind          string             `json:"kind"`
+	Status        string             `json:"status"`
+	Trust         string             `json:"trust"`
+	Statement     string             `json:"statement"`
+	SourceRefs    []string           `json:"source_refs"`
+	ReviewedBy    string             `json:"reviewed_by"`
+	LastReviewed  string             `json:"last_reviewed,omitempty"`
+	Score         jewelScore         `json:"score"`
+	Applicability jewelApplicability `json:"applicability"`
+	Verification  jewelVerification  `json:"verification"`
+}
+
+func renderJewelShowJSON(j jewelEntry) error {
+	out := jsonJewelShowEntry{
+		ID:            j.ID,
+		ChestID:       j.ChestID,
+		Kind:          j.Kind,
+		Status:        j.Status,
+		Trust:         j.Trust,
+		Statement:     j.Statement,
+		SourceRefs:    j.SourceRefs,
+		ReviewedBy:    j.ReviewedBy,
+		LastReviewed:  j.LastReviewed,
+		Score:         j.Score,
+		Applicability: j.Applicability,
+		Verification:  j.Verification,
+	}
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(out); err != nil {
+		return fmt.Errorf("treasure-chest jewel show: encode json: %w", err)
 	}
 	return nil
 }
