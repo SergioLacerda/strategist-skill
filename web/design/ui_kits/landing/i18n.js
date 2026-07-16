@@ -1,5 +1,9 @@
 /* Bilingual copy for the landing recreation (PT-BR / EN), lifted from the
-   canonical pages/index.html. Exposed as window.LANDING_I18N. */
+   canonical pages/index.html. Exposed as window.LANDING_I18N.
+   LEGACY / REFERENCE ONLY — not the live landing (see web/landing/src/pages/).
+   Sniper's "Executor · Implementação" wording below predates the current
+   documentation-only Sniper contract; left as-is deliberately (see
+   .analysis/refined/20260712-docs-landing-updates-treasure-scout/tasks.md T12). */
 window.LANDING_I18N = {
   pt: {
     authorsLbl: "Autores",

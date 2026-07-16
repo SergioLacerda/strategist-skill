@@ -72,10 +72,15 @@ behavior (`creative`, `evaluation`, `diagnostic`, `closure_evidence`); the confi
 discovery provider is Ranger's weapon, not a replacement for Ranger.
 
 The only blocking checks for the discovery weapon are the standard preflight checks:
-the weapon must exist, be invocable, and satisfy the discovery slot's `write_analysis`
-risk contract. If those checks pass, do not block an evaluation mission merely because
-the weapon's standalone instructions are creative-first or do not declare subtype
-metadata. Invoke Ranger with the route decision and the configured weapon.
+the weapon manifest at `skill_root/skills/<provider>/skill.yaml` must exist, be
+schema-valid, be invocable by the installed runtime, and satisfy the discovery slot's
+`write_analysis` risk contract. That manifest is the only Strategist authority for
+slot capability. A provider's standalone `SKILL.md` can guide how the provider runs
+once invoked, but it must not be used by Scout or preflight to reject
+`discovery_subtype`, category, or slot-contract compatibility. If the manifest checks
+pass, do not block an evaluation or diagnostic mission merely because the weapon's
+standalone instructions are creative-first or do not declare subtype metadata. Invoke
+Ranger with the route decision and the configured weapon.
 
 ## Main Mission Sequence
 

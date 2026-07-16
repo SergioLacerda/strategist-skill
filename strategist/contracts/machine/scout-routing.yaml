@@ -86,9 +86,12 @@ post_route_discovery_handoff:
   check: >
     Do not inspect discovery_subtype_support on the configured discovery weapon.
     discovery_subtype is Ranger behavior, not weapon behavior. The configured
-    discovery provider is Ranger's weapon and is validated only by the standard
-    preflight checks: provider manifest exists, provider is invocable, and risk_score
-    matches the discovery slot's write_analysis contract.
+    discovery provider is Ranger's weapon. Its slot capability authority is only
+    skill_root/skills/<provider>/skill.yaml, validated by the standard preflight
+    checks: provider manifest exists, provider manifest is schema-valid, provider is
+    invocable by the installed runtime, and risk_score matches the discovery slot's
+    write_analysis contract. Do not use the provider's standalone SKILL.md to reject
+    discovery_subtype, category, or slot-contract compatibility.
   emit:
     on_handoff:
       format: >

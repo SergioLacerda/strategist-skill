@@ -1,6 +1,9 @@
 package domain
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestValidateJewelTrust_EqualToChestTier(t *testing.T) {
 	t.Parallel()
@@ -37,5 +40,33 @@ func TestValidateJewelTrust_InvalidChestTier(t *testing.T) {
 	err := ValidateJewelTrust("jewel-1", "T2", "bogus")
 	if err == nil {
 		t.Fatal("expected error for invalid chest trust tier value")
+	}
+}
+
+func TestValidateJewelStatus_ValidStatuses(t *testing.T) {
+	t.Parallel()
+	for _, status := range []string{JewelStatusProposed, JewelStatusAccepted, JewelStatusVerified, JewelStatusDeprecated} {
+		if err := ValidateJewelStatus("jewel-1", status); err != nil {
+			t.Errorf("status %q: expected no error, got %v", status, err)
+		}
+	}
+}
+
+func TestValidateJewelStatus_LegacyActiveRejected(t *testing.T) {
+	t.Parallel()
+	err := ValidateJewelStatus("jewel-1", "active")
+	if err == nil {
+		t.Fatal("expected error for legacy active status")
+	}
+	if got := err.Error(); !strings.Contains(got, "migrate-status") {
+		t.Errorf("expected migration hint in error, got %q", got)
+	}
+}
+
+func TestValidateJewelStatus_UnknownStatus(t *testing.T) {
+	t.Parallel()
+	err := ValidateJewelStatus("jewel-1", "bogus")
+	if err == nil {
+		t.Fatal("expected error for unknown status")
 	}
 }

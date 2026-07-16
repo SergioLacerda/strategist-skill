@@ -26,7 +26,7 @@ jewels:
     statement: "Widgets require explicit teardown."
     source_refs: ["source#widgets"]
     trust: T1
-    status: active
+    status: accepted
     reviewed_by: agent
 `), 0o644))
 	governed := map[string]govChest{
@@ -50,7 +50,7 @@ jewels:
     statement: "Over-trusted jewel."
     source_refs: ["source#x"]
     trust: T0
-    status: active
+    status: accepted
     reviewed_by: agent
 `), 0o644))
 	governed := map[string]govChest{
@@ -94,14 +94,52 @@ jewels:
 	assert.Contains(t, err.Error(), "missing source_refs")
 }
 
-func TestActiveJewelCount_ExcludesDeprecated(t *testing.T) {
+func TestNonDeprecatedJewelCount_ExcludesDeprecated(t *testing.T) {
 	t.Parallel()
 	jewels := []jewelEntry{
-		{ID: "a", Status: "active"},
+		{ID: "a", Status: "proposed"},
 		{ID: "b", Status: "deprecated"},
-		{ID: "c", Status: "active"},
+		{ID: "c", Status: "accepted"},
 	}
-	assert.Equal(t, 2, activeJewelCount(jewels))
+	assert.Equal(t, 2, nonDeprecatedJewelCount(jewels))
+}
+
+func TestLoadJewels_LegacyActiveStatusErrors(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "jewels.yaml"), []byte(`
+jewels:
+  - id: jewel-1
+    chest_id: source
+    statement: "Pre-migration jewel."
+    source_refs: ["source#x"]
+    trust: T1
+    status: active
+    reviewed_by: agent
+`), 0o644))
+
+	_, err := loadJewels(dir, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "migrate-status")
+}
+
+func TestLoadJewels_UnknownStatusErrors(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "jewels.yaml"), []byte(`
+jewels:
+  - id: jewel-1
+    chest_id: source
+    statement: "Bad status."
+    source_refs: ["source#x"]
+    trust: T1
+    status: bogus
+    reviewed_by: agent
+`), 0o644))
+
+	_, err := loadJewels(dir, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "must be one of proposed, accepted, verified, deprecated")
 }
 
 func TestTreasureChestCmd_ShowsJewelsColumn(t *testing.T) {
@@ -113,7 +151,7 @@ jewels:
     statement: "A useful fact."
     source_refs: ["source#x"]
     trust: T1
-    status: active
+    status: accepted
     reviewed_by: agent
 `), 0o644))
 	resetTreasureChestFlags(t)
@@ -135,7 +173,7 @@ jewels:
     statement: "A useful fact."
     source_refs: ["source#x"]
     trust: T1
-    status: active
+    status: accepted
     reviewed_by: agent
 `), 0o644))
 	resetTreasureChestFlags(t)

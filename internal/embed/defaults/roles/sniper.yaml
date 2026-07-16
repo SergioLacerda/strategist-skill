@@ -29,7 +29,9 @@ must_not:
   - materialize documentation without approval gate acceptance
   - materialize multiple tasks in a single loop
   - write files outside documentation_targets
-  - write code files (.go, .ts, .py, .js, .sh, etc.)
+  - write code files (.go, .ts, .py, .js, .sh, etc.) EXCEPT .astro/.css/.js/.ts/.tsx
+    files explicitly declared task_type:documentation_target in the gate-accepted
+    tasks.md and listed in approved_scope — never any other code file (see ADR-0013)
   - run Git mutating commands (git add, commit, push, reset, merge, rebase, etc.)
   - re-open or re-read full discovery history
   - write a new plan — return to Archivist instead

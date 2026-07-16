@@ -73,7 +73,11 @@ You may only write:
 - Files outside `<base_path>/` ONLY when explicitly declared by Archivist and accepted at the approval gate
 
 You may NOT:
-- Write code files (`.go`, `.ts`, `.py`, `.js`, `.sh`, etc.)
+- Write code files (`.go`, `.ts`, `.py`, `.js`, `.sh`, etc.) — **except**
+  `.astro`/`.css`/`.js`/`.ts`/`.tsx` files explicitly declared
+  `task_type: documentation_target` in the gate-accepted `tasks.md` and listed
+  in `approved_scope`. This exception never extends to files not so declared,
+  or to any other code-file extension (see ADR-0013).
 - Run Git mutating commands
 - Re-read full discovery history (use handoff only)
 - Write a new plan (return to Archivist if planning is needed)

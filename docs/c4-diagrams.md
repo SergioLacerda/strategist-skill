@@ -121,6 +121,10 @@ flowchart TD
         I1 --> I2 --> I3
     end
 
+    subgraph scout["🧭 Scout — Intake Router (internal, pre-pipeline)"]
+        SC1["Classifies request\nEmits route_decision\n(route, reason, confidence,\nevidence_state, discovery_subtype)\nNever a slot — no active.yaml entry"]
+    end
+
     subgraph discovery["🔭 Discovery — Ranger"]
         D1["Slot: discovery\nConfigurable provider in active.yaml\nWrites pending/<id>-analysis.md\nMay detect side quests"]
     end
@@ -150,13 +154,15 @@ flowchart TD
     RESULT(["✅ Mission result\n<base_path>/archived/<id>-report.md"])
     NO_EXEC(["📄 Delivered analysis\n<base_path>/refined/<id>/"])
 
-    bootstrap --> preflight --> intake --> discovery --> refinement --> gate
+    bootstrap --> preflight --> intake --> scout
+    scout -- "route: full_pipeline" --> discovery --> refinement --> gate
     gate -- "yes" --> execution --> learning --> RESULT
     gate -- "no" --> NO_EXEC
 
     style bootstrap fill:#1e2a3a,color:#ccc
     style preflight fill:#1e2a3a,color:#ccc
     style intake fill:#1e3a2a,color:#ccc
+    style scout fill:#1e3a3a,color:#ccc
     style discovery fill:#2a1e3a,color:#ccc
     style refinement fill:#2a1e3a,color:#ccc
     style gate fill:#3a2a1e,color:#ccc
@@ -191,7 +197,8 @@ stateDiagram-v2
     [*] --> Bootstrap
     Bootstrap --> Preflight
     Preflight --> Intake
-    Intake --> Discovery
+    Intake --> Scout
+    Scout --> Discovery: route=full_pipeline
     Discovery --> Refinement
     Refinement --> ApprovalGate
     ApprovalGate --> DeliveredAnalysis: no / no materialization tasks

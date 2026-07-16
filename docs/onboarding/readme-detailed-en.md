@@ -272,6 +272,16 @@ Strategist filters by scope and passes them to each slot:
 
 If no scope match exists, the slot continues without blocking.
 
+**Index / Mine (current public commands):** `strategist treasure-chest index`
+internalizes offline scanning, candidate detection, and jewel polishing into
+deduplicated `status: proposed` jewels in one run. `strategist treasure-chest
+mine` is the separate human curation step that promotes `proposed` jewels to
+`accepted`/`verified`, or marks them `deprecated`. There is no public `scan`,
+`polish`, or `pack` command — those are internal phases folded into `index`. Jewel
+runtime consultation (preferring `accepted`/`verified` jewels over expanding full
+source documents) and Scout/Treasure telemetry are **planned**, not yet emitted —
+see `docs/observability-contract.md`.
+
 ---
 
 ### Internal Technical Flow

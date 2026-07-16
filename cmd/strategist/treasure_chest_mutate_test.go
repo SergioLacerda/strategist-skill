@@ -159,7 +159,7 @@ jewels:
     statement: "A useful fact."
     source_refs: ["source#x"]
     trust: T1
-    status: active
+    status: accepted
     reviewed_by: agent
 `), 0o644))
 	resetTreasureChestFlags(t)

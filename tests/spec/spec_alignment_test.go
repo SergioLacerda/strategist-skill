@@ -878,7 +878,7 @@ func TestPreflightContractNoFallbackChain(t *testing.T) {
 	t.Parallel()
 
 	files := []string{
-		filepath.Join(repoRoot(t), ".strategist", "contracts", "tests", "preflight.test.yaml"),
+		filepath.Join(isolatedStrategistDir(t), "contracts", "tests", "preflight.test.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "tests", "preflight.test.yaml"),
 	}
 
@@ -888,6 +888,46 @@ func TestPreflightContractNoFallbackChain(t *testing.T) {
 		content := readFile(t, path)
 		if strings.Contains(content, forbidden) {
 			t.Fatalf("%s still references stale fallback %q in slot_resolution_order invariant", path, forbidden)
+		}
+	}
+}
+
+func TestPreflightProviderManifestIsSlotAuthority(t *testing.T) {
+	t.Parallel()
+
+	contractFiles := []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "preflight.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "preflight.yaml"),
+	}
+
+	for _, path := range contractFiles {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"skill_root/skills/<provider>/skill.yaml",
+			"Standalone SKILL.md style",
+			"creative-first instructions are not provider-invalid conditions",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing provider authority preflight term %q", path, needle)
+			}
+		}
+	}
+
+	testFiles := []string{
+		filepath.Join(isolatedStrategistDir(t), "contracts", "tests", "preflight.test.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "tests", "preflight.test.yaml"),
+	}
+
+	for _, path := range testFiles {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"provider_manifest_is_slot_authority",
+			"brainstorming_diagnostic_not_blocked_by_standalone_creative_first",
+			"subtype=diagnostic",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing provider authority preflight test term %q", path, needle)
+			}
 		}
 	}
 }
@@ -2422,7 +2462,7 @@ func TestJewelRetrievalContractDefinesMandatoryFallback(t *testing.T) {
 			"jewel_retrieval:",
 			"condition: jewel is stale | disputed | missing | insufficient",
 			"action: proceed with full source_cards assembly unchanged",
-			"jewels_consulted: [id, chest_id, trust, statement]",
+			"jewels_consulted: [id, chest_id, trust, status, statement]",
 		} {
 			if !strings.Contains(content, needle) {
 				t.Fatalf("%s missing jewel_retrieval contract term %q", path, needle)
