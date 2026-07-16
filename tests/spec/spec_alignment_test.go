@@ -878,7 +878,7 @@ func TestPreflightContractNoFallbackChain(t *testing.T) {
 	t.Parallel()
 
 	files := []string{
-		filepath.Join(repoRoot(t), ".strategist", "contracts", "tests", "preflight.test.yaml"),
+		filepath.Join(isolatedStrategistDir(t), "contracts", "tests", "preflight.test.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "tests", "preflight.test.yaml"),
 	}
 
@@ -914,7 +914,7 @@ func TestPreflightProviderManifestIsSlotAuthority(t *testing.T) {
 	}
 
 	testFiles := []string{
-		filepath.Join(repoRoot(t), ".strategist", "contracts", "tests", "preflight.test.yaml"),
+		filepath.Join(isolatedStrategistDir(t), "contracts", "tests", "preflight.test.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "tests", "preflight.test.yaml"),
 	}
 

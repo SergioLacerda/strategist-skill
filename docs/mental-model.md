@@ -40,6 +40,9 @@ Scout may short-circuit straight to Critical Hit or Implementation Short Route
 when the request is narrow and evidence is already explicit — in that case Ranger
 and Archivist are skipped, but the approval gate is not.
 
+In one line: **Scout chooses; Ranger investigates; Archivist refines; Sniper
+materializes approved docs/handoff.**
+
 Each phase writes versioned artifacts to `.analysis/` so the process is auditable
 and resumable. If something goes wrong mid-execution, you can see exactly where it stopped.
 

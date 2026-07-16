@@ -73,6 +73,32 @@ Distinguished from Ranger discovery-result events by `strategist.component`:
 `component=scout` for the route decision, `component=ranger` for the discovery
 result. See `contracts/narrative/10-telemetry.md` § Scout Event.
 
+### Treasure Chest — Index / Mine / Jewels (target — not yet emitted)
+
+The fields below describe the **planned** telemetry/logs/metrics surface for the
+Treasure Chest `index`/`mine` pipeline and jewel runtime consultation (see
+[configuration.md](configuration.md#storage-domain-track-t-h--sq-004--contract-only-not-implemented)
+and [cli-reference.md](cli-reference.md#treasure-chest-index--treasure-chest-mine)
+for current command behavior). None of these keys are emitted by
+`internal/telemetry/schema.go` today; this section documents the target shape so
+instrumentation and dashboards can be planned ahead of implementation.
+
+| Key (target) | Type | Description |
+|-----|------|-------------|
+| `strategist.treasure.index_run_id` | string | Identifier for one `treasure-chest index` run |
+| `strategist.treasure.sources_scanned` | int | Count of `refined/**/tasks.md` + `done/**` sources scanned by the internal scan phase |
+| `strategist.treasure.candidates_detected` | int | Cluster/gap candidates detected before polishing into jewels |
+| `strategist.treasure.proposed_jewels_written` | int | New `status: proposed` jewels written this run |
+| `strategist.treasure.proposed_jewels_skipped` | int | Candidates skipped as duplicates of existing jewel ids |
+| `strategist.treasure.mine_decision` | string | `accept`, `verify`, `deprecate`, or `migrate_status` — the `treasure-chest mine` action taken |
+| `strategist.treasure.jewel_id` | string | Jewel affected by a `mine` decision or runtime consultation |
+| `strategist.treasure.jewel_consulted` | bool | Whether a role consulted an `accepted`/`verified` jewel before expanding a full source document |
+| `strategist.treasure.full_source_expanded` | bool | Whether the full source document was expanded via a source card after (or instead of) jewel consultation |
+| `strategist.treasure.evidence_pack_generated` | bool | Whether `dossier-builder` generated an Evidence Pack for the mission |
+
+These are documentation targets only — do not treat their presence here as
+confirmation that Strategist emits them today.
+
 ### Gate
 
 | Key | Type | Description |

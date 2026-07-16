@@ -1,5 +1,9 @@
 /* Strategist Console (v2) — bilingual copy (PT-BR primary / EN).
-   Exposed as window.CONSOLE_I18N. */
+   Exposed as window.CONSOLE_I18N.
+   LEGACY / REFERENCE ONLY — not the live landing (see web/landing/src/pages/).
+   Sniper's "Executor · Implementação" wording below predates the current
+   documentation-only Sniper contract; left as-is deliberately (see
+   .analysis/refined/20260712-docs-landing-updates-treasure-scout/tasks.md T12). */
 window.CONSOLE_I18N = {
   pt: {
     nav: { overview: "Visão Geral", roles: "Papéis", skills: "Habilidades", mission: "Fluxo da Missão", invoke: "Invocação" },

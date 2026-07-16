@@ -36,7 +36,7 @@ func TestAbilityContractNoStaleQuickDrawOutputs(t *testing.T) {
 	roots := []string{
 		filepath.Join(repoRoot(t), "strategist"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults"),
-		filepath.Join(repoRoot(t), ".strategist"),
+		isolatedStrategistDir(t),
 	}
 	forbidden := []string{"total_ideas", "similar_ideas"}
 
@@ -68,7 +68,7 @@ func TestAbilityContractNoStaleApprovalGateRouting(t *testing.T) {
 	paths := []string{
 		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "approval-gate.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "approval-gate.yaml"),
-		filepath.Join(repoRoot(t), ".strategist", "contracts", "machine", "approval-gate.yaml"),
+		filepath.Join(isolatedStrategistDir(t), "contracts", "machine", "approval-gate.yaml"),
 	}
 	forbidden := "next_phase: adr_opportunity"
 
@@ -90,9 +90,9 @@ func TestAbilityContractNoStaleImplementationIntentField(t *testing.T) {
 		filepath.Join(repoRoot(t), "strategist", "protocol.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "agent-protocol.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "protocol.md"),
-		filepath.Join(repoRoot(t), ".strategist", "agent-protocol.md"),
-		filepath.Join(repoRoot(t), ".strategist", "templates", "agent-protocol.md"),
-		filepath.Join(repoRoot(t), ".strategist", "protocol.md"),
+		filepath.Join(isolatedStrategistDir(t), "agent-protocol.md"),
+		filepath.Join(isolatedStrategistDir(t), "templates", "agent-protocol.md"),
+		filepath.Join(isolatedStrategistDir(t), "protocol.md"),
 	}
 	forbidden := "implementation_intent"
 
@@ -113,7 +113,7 @@ func TestAbilityContractRangerDoesNotProduceOpportunityManifest(t *testing.T) {
 	paths := []string{
 		filepath.Join(repoRoot(t), "strategist", "internal_skills", "ranger", "SKILL.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "internal_skills", "ranger", "SKILL.md"),
-		filepath.Join(repoRoot(t), ".strategist", "internal_skills", "ranger", "SKILL.md"),
+		filepath.Join(isolatedStrategistDir(t), "internal_skills", "ranger", "SKILL.md"),
 	}
 	forbidden := "opportunity_manifest"
 
@@ -138,10 +138,10 @@ func TestAbilityContractNoMandatoryOpportunityAttackForRangerOrSniper(t *testing
 	checks := []roleCheck{
 		{filepath.Join(repoRoot(t), "strategist", "internal_skills", "ranger", "SKILL.md"), "ranger"},
 		{filepath.Join(repoRoot(t), "internal", "embed", "defaults", "internal_skills", "ranger", "SKILL.md"), "ranger"},
-		{filepath.Join(repoRoot(t), ".strategist", "internal_skills", "ranger", "SKILL.md"), "ranger"},
+		{filepath.Join(isolatedStrategistDir(t), "internal_skills", "ranger", "SKILL.md"), "ranger"},
 		{filepath.Join(repoRoot(t), "strategist", "internal_skills", "sniper", "SKILL.md"), "sniper"},
 		{filepath.Join(repoRoot(t), "internal", "embed", "defaults", "internal_skills", "sniper", "SKILL.md"), "sniper"},
-		{filepath.Join(repoRoot(t), ".strategist", "internal_skills", "sniper", "SKILL.md"), "sniper"},
+		{filepath.Join(isolatedStrategistDir(t), "internal_skills", "sniper", "SKILL.md"), "sniper"},
 	}
 	forbidden := "Run opportunity_attack as a mandatory routine"
 
@@ -160,7 +160,7 @@ func TestAbilityContractNoStaleOpportunityAttackCrossRoleRule(t *testing.T) {
 
 	paths := []string{
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "tests", "opportunity-attack.test.yaml"),
-		filepath.Join(repoRoot(t), ".strategist", "contracts", "tests", "opportunity-attack.test.yaml"),
+		filepath.Join(isolatedStrategistDir(t), "contracts", "tests", "opportunity-attack.test.yaml"),
 	}
 	forbidden := "roles [ranger, archivist, sniper] must each invoke opportunity_attack"
 
