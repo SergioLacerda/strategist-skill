@@ -157,3 +157,45 @@ func TestTreasureChestJewelList_JSONFormat(t *testing.T) {
 	assert.Equal(t, "jewel-accepted-1", decoded[0].ID)
 	assert.Equal(t, "accepted", decoded[0].Status)
 }
+
+func TestTreasureChestJewelShow_Found(t *testing.T) {
+	dir := mineTestRoot(t, threeStatusJewelsYAML)
+	resetTreasureChestFlags(t)
+	resetTreasureChestJewelFlags(t)
+	treasureChestRoot = dir
+
+	out := captureStdout(t, func() {
+		require.NoError(t, treasureChestJewelShowCmd.RunE(treasureChestJewelShowCmd, []string{"jewel-accepted-1"}))
+	})
+	assert.Contains(t, out, "jewel-accepted-1")
+	assert.Contains(t, out, "Accepted jewel statement.")
+	assert.Contains(t, out, "source#b")
+	assert.Contains(t, out, "accepted")
+}
+
+func TestTreasureChestJewelShow_NotFound(t *testing.T) {
+	dir := mineTestRoot(t, threeStatusJewelsYAML)
+	resetTreasureChestFlags(t)
+	resetTreasureChestJewelFlags(t)
+	treasureChestRoot = dir
+
+	err := treasureChestJewelShowCmd.RunE(treasureChestJewelShowCmd, []string{"no-such-jewel"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `jewel "no-such-jewel" not found`)
+}
+
+func TestTreasureChestJewelShow_JSONFormat(t *testing.T) {
+	dir := mineTestRoot(t, threeStatusJewelsYAML)
+	resetTreasureChestFlags(t)
+	resetTreasureChestJewelFlags(t)
+	treasureChestRoot = dir
+	treasureChestJewelFormat = "json"
+
+	out := captureStdout(t, func() {
+		require.NoError(t, treasureChestJewelShowCmd.RunE(treasureChestJewelShowCmd, []string{"jewel-accepted-1"}))
+	})
+	var decoded jsonJewelShowEntry
+	require.NoError(t, json.Unmarshal([]byte(out), &decoded))
+	assert.Equal(t, "jewel-accepted-1", decoded.ID)
+	assert.Equal(t, []string{"source#b"}, decoded.SourceRefs)
+}
