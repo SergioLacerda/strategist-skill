@@ -76,7 +76,11 @@ func init() {
 		}
 		profile := resolveRuntimeProfile(strategistDir)
 		slogLine := run.StartLine(profile.ProfileMode, profile.ProfilePath, profile.ActiveYAMLPath, profile.PersonaResolved, profile.Reason, profile.OutputProfile)
-		fmt.Println(slogLine)
+		// A single slog.InfoContext call is enough: Go's default handler already
+		// prints this to stderr when telemetry is disabled, and the otelslog
+		// handler forwards it to the OTel pipeline when enabled. An additional
+		// fmt.Println here duplicated every line verbatim (see the "handshake"
+		// bug where `treasure-chest add` printed this banner twice).
 		slog.InfoContext(ctx, slogLine,
 			telemetry.AttrComponent, "root",
 			telemetry.AttrRuntimeMode, "cli",
