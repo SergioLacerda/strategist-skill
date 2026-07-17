@@ -29,6 +29,28 @@ var rootCmd = &cobra.Command{
 	Long:  "Strategist — install, compile, and manage the Strategist skill for Claude agents.",
 }
 
+// isHumanStatusCommand reports whether cmd or any of its ancestors is a
+// human-status command. Subcommands (e.g. "add" under "treasure-chest")
+// report their own Name(), not their parent's, so the check must walk up
+// the command tree — otherwise only the bare parent command is silenced
+// and every subcommand falls through to the verbose pipeline banner.
+func isHumanStatusCommand(cmd *cobra.Command) bool {
+	for c := cmd; c != nil; c = c.Parent() {
+		if humanStatusCommands[c.Name()] {
+			return true
+		}
+	}
+	return false
+}
+
+func warnIfConfigModified() {
+	if modified, err := integrity.IsModified(".strategist/active.yaml", ".strategist/.config.lock"); err == nil && modified {
+		fmt.Fprintf(os.Stderr,
+			"[Strategist] WARN: active.yaml was modified outside the CLI.\n"+
+				"             Config integrity unverified. Re-run `strategist install` to acknowledge.\n")
+	}
+}
+
 func init() {
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, _ []string) error {
 		ctx := context.Background()
@@ -37,14 +59,10 @@ func init() {
 		run.MarkIntake()
 		run.AddLines(1)
 
-		if humanStatusCommands[cmd.Name()] {
+		if isHumanStatusCommand(cmd) {
 			run.SetSilent()
 			cmd.SetContext(ctx)
-			if modified, err := integrity.IsModified(".strategist/active.yaml", ".strategist/.config.lock"); err == nil && modified {
-				fmt.Fprintf(os.Stderr,
-					"[Strategist] WARN: active.yaml was modified outside the CLI.\n"+
-						"             Config integrity unverified. Re-run `strategist install` to acknowledge.\n")
-			}
+			warnIfConfigModified()
 			return nil
 		}
 
@@ -58,7 +76,11 @@ func init() {
 		}
 		profile := resolveRuntimeProfile(strategistDir)
 		slogLine := run.StartLine(profile.ProfileMode, profile.ProfilePath, profile.ActiveYAMLPath, profile.PersonaResolved, profile.Reason, profile.OutputProfile)
-		fmt.Println(slogLine)
+		// A single slog.InfoContext call is enough: Go's default handler already
+		// prints this to stderr when telemetry is disabled, and the otelslog
+		// handler forwards it to the OTel pipeline when enabled. An additional
+		// fmt.Println here duplicated every line verbatim (see the "handshake"
+		// bug where `treasure-chest add` printed this banner twice).
 		slog.InfoContext(ctx, slogLine,
 			telemetry.AttrComponent, "root",
 			telemetry.AttrRuntimeMode, "cli",
@@ -66,11 +88,7 @@ func init() {
 			telemetry.AttrMissionID, run.MissionID,
 		)
 		cmd.SetContext(ctx)
-		if modified, err := integrity.IsModified(".strategist/active.yaml", ".strategist/.config.lock"); err == nil && modified {
-			fmt.Fprintf(os.Stderr,
-				"[Strategist] WARN: active.yaml was modified outside the CLI.\n"+
-					"             Config integrity unverified. Re-run `strategist install` to acknowledge.\n")
-		}
+		warnIfConfigModified()
 		return nil
 	}
 	rootCmd.PersistentPostRunE = func(cmd *cobra.Command, _ []string) error {

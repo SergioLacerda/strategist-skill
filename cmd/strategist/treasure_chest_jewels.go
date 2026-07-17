@@ -20,21 +20,21 @@ import (
 // jewelScore is the LLM-governed candidate quality signal recorded during `index`. It is
 // never a promotion authority — only `mine` (human curation) can change status.
 type jewelScore struct {
-	Value   int      `yaml:"value"`
-	Reasons []string `yaml:"reasons"`
+	Value   int      `yaml:"value" json:"value"`
+	Reasons []string `yaml:"reasons" json:"reasons"`
 }
 
 // jewelApplicability records when a jewel is and is not a good fit, set during polishing.
 type jewelApplicability struct {
-	Scope       []string `yaml:"scope"`
-	AppliesWhen []string `yaml:"applies_when"`
-	AvoidWhen   []string `yaml:"avoid_when"`
+	Scope       []string `yaml:"scope" json:"scope"`
+	AppliesWhen []string `yaml:"applies_when" json:"applies_when"`
+	AvoidWhen   []string `yaml:"avoid_when" json:"avoid_when"`
 }
 
 // jewelVerification holds evidence recorded by `mine --verify`. Empty until a human
 // promotes a jewel to status: verified.
 type jewelVerification struct {
-	EvidenceRefs []string `yaml:"evidence_refs"`
+	EvidenceRefs []string `yaml:"evidence_refs" json:"evidence_refs"`
 }
 
 type jewelEntry struct {

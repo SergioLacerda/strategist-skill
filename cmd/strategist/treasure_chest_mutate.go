@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/compile"
+	"github.com/SergioLacerda/strategist-skill/internal/integrity"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -116,8 +117,9 @@ func runTreasureChestAdd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("treasure-chest add: partial write after %v: %w", written, err)
 	}
+	refreshConfigLock(root, activePath)
 
-	fmt.Printf("[Strategist] treasure-chest add: registered %q (id=%s) in active.yaml, treasure-chests.yaml, knowledge.index.yaml\n", path, id)
+	fmt.Printf("[Strategist] add: OK (id=%s)\n", id)
 
 	return finishChestAdd(root, indexPath)
 }
@@ -158,15 +160,28 @@ func applyAddMutations(activeDoc, governedDoc, indexDoc *yaml.Node, id, path, sc
 // --index was passed.
 func finishChestAdd(root, indexPath string) error {
 	if !treasureChestAddIndexAfter {
-		fmt.Println("[Strategist] treasure-chest add: compiled index is now stale. Run: strategist treasure-chest --index")
+		fmt.Println("[Strategist] add: index is stale. Run: strategist treasure-chest index")
 		return nil
 	}
 	c := compile.Compiler{}
 	if err := c.CompileAll(root, indexPath); err != nil {
 		return fmt.Errorf("treasure-chest add: rebuild index: %w", err)
 	}
-	fmt.Printf("[Strategist] treasure-chest add: compiled index refreshed → %s/.compiled/\n", root)
+	fmt.Printf("[Strategist] add: index refreshed → %s/.compiled/\n", root)
 	return nil
+}
+
+// refreshConfigLock re-seals the config integrity lock after a CLI command
+// legitimately writes active.yaml. Without this, the next command's
+// integrity.IsModified check sees the mtime change and falsely warns that
+// active.yaml was "modified outside the CLI" — even though this command is
+// the CLI. Best-effort: a failure here only means the next run may show a
+// stale-lock warning, not a functional break.
+func refreshConfigLock(root, activePath string) {
+	lockPath := filepath.Join(root, ".config.lock")
+	if err := integrity.WriteLock(activePath, lockPath); err != nil {
+		fmt.Fprintf(os.Stderr, "[Strategist] WARN: could not refresh config lock: %v\n", err)
+	}
 }
 
 // --- remove ---
@@ -212,6 +227,7 @@ func runTreasureChestRemove(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("treasure-chest remove: partial write after %v: %w", written, err)
 	}
+	refreshConfigLock(root, paths.active)
 
 	reportRemoveResult(id, docs.hasJewels)
 	return nil
@@ -292,11 +308,11 @@ func writeRemoveDocs(p chestPaths, docs chestDocSet) ([]string, error) {
 }
 
 func reportRemoveResult(id string, hasJewels bool) {
-	fmt.Printf("[Strategist] treasure-chest remove: %q removed from active.yaml, marked inactive in treasure-chests.yaml and knowledge.index.yaml\n", id)
+	fmt.Printf("[Strategist] remove: OK (id=%s)\n", id)
 	if hasJewels {
-		fmt.Printf("[Strategist] treasure-chest remove: %q's jewels marked deprecated in jewels.yaml\n", id)
+		fmt.Printf("[Strategist] remove: %q's jewels marked deprecated in jewels.yaml\n", id)
 	}
-	fmt.Println("[Strategist] treasure-chest remove: compiled index is now stale. Run: strategist treasure-chest --index")
+	fmt.Println("[Strategist] remove: index is stale. Run: strategist treasure-chest index")
 }
 
 // resolveRemoveTarget resolves the chest id to remove from a positional path and/or

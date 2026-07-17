@@ -436,6 +436,8 @@ strategist treasure-chest mine --accept <jewel-id>
 strategist treasure-chest mine --verify <jewel-id> --evidence <ref>
 strategist treasure-chest mine --deprecate <jewel-id>
 strategist treasure-chest mine --migrate-status
+strategist treasure-chest jewel list [--status all|proposed|accepted|verified|deprecated] [--chest <chest-id>] [--format table|json]
+strategist treasure-chest jewel show <jewel-id> [--format table|json]
 ```
 
 **`index`** rebuilds the offline knowledge substrate:
@@ -468,6 +470,17 @@ flag is required per invocation:
 - `--deprecate <jewel-id>` — marks `status: deprecated`. Deprecation is terminal: a
   deprecated jewel can never be promoted back to `accepted`/`verified`.
 - `--migrate-status` — see Migration below.
+
+**`jewel`** is the read-only inspection surface over all jewels regardless of status —
+unlike `mine --list` (scoped to the `status: proposed` curation queue only):
+
+- `list [--status all|proposed|accepted|verified|deprecated] [--chest <chest-id>] [--format table|json]`
+  — without `--status`, shows `proposed` + `accepted` + `verified` (excludes
+  `deprecated`); `--status all` includes `deprecated`; `--chest` filters by chest id,
+  combinable with `--status`. Sorted by `(chest_id, id)`, same as `mine --list`.
+- `show <jewel-id> [--format table|json]` — prints every field of a single jewel
+  (`statement`, `source_refs`, `trust`, `score`, `applicability`, `verification`,
+  etc.). Unknown id: error, non-zero exit.
 
 **`treasure-chest scan` contract** (internal phase, folded into `index`; originally Track
 T-F / `SQ-003`, defined in mission `bau-tesouro-sq003-004-007`, implemented in
@@ -546,7 +559,9 @@ removing a chest cascades to mark its jewels `deprecated` (`markJewelsDeprecated
 govern LLM-facing generation/retrieval behavior
 (`internal/embed/defaults/contracts/machine/context-enrichment.yaml`), including
 status-precedence retrieval (`verified` preferred, then `accepted`, `proposed` as hint only,
-`deprecated` excluded).
+`deprecated` excluded); `treasure-chest jewel list`/`jewel show`
+(`cmd/strategist/treasure_chest_jewel.go`) expose all jewels regardless of status for
+inspection, independent of `mine`'s curation queue.
 
 ---
 

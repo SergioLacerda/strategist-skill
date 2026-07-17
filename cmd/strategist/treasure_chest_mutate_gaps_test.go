@@ -428,7 +428,7 @@ func TestFinishChestAdd_IndexAfterSuccess(t *testing.T) {
 	out := captureStdout(t, func() {
 		require.NoError(t, finishChestAdd(dir, indexPath))
 	})
-	assert.Contains(t, out, "compiled index refreshed")
+	assert.Contains(t, out, "index refreshed")
 
 	_, err := os.Stat(filepath.Join(dir, ".compiled"))
 	require.NoError(t, err)
