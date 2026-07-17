@@ -17,6 +17,10 @@ import (
 // Init initializes the global OTel providers from cfg.
 // Returns a shutdown function that must be deferred before process exit.
 // If cfg.Enabled() is false, installs noop providers — no network connections opened.
+// The default slog handler is left untouched in this case: several commands
+// (e.g. check-stale, install) emit their sole user-facing result line via
+// slog.InfoContext with no fmt.Println companion, so discarding the default
+// handler here would silently delete real output, not just duplicate noise.
 func Init(cfg Config) (shutdown func(context.Context) error, err error) {
 	if !cfg.Enabled() {
 		otel.SetTracerProvider(noop.NewTracerProvider())
