@@ -39,35 +39,20 @@ Discovery contract: ` + "`" + `.strategist/provider-discovery.md` + "`"
 // Does not create files that do not exist. Failures per file are logged and skipped —
 // this function always returns nil (non-blocking by contract).
 func AgentAwareness(projectRoot string) error {
-	agPath := filepath.Join(projectRoot, ".antigravity", "antigravity-instructions.md")
-	if _, err := os.Stat(agPath); err == nil {
-		if err := upsertSection(agPath); err != nil {
-			slog.Warn("[Strategist] agent awareness: antigravity update failed", "error", err)
-		}
-	}
-
-	codexPath := filepath.Join(projectRoot, ".sdd", "seedlings", "codex.seed.json")
-	if _, err := os.Stat(codexPath); err == nil {
-		if err := upsertCodexSeed(codexPath); err != nil {
-			slog.Warn("[Strategist] agent awareness: codex update failed", "error", err)
-		}
-	}
-
-	claudePath := filepath.Join(projectRoot, ".claude", "claude-instructions.md")
-	if _, err := os.Stat(claudePath); err == nil {
-		if err := upsertSection(claudePath); err != nil {
-			slog.Warn("[Strategist] agent awareness: claude-instructions update failed", "error", err)
-		}
-	}
-
-	codexCmdPath := filepath.Join(projectRoot, ".codex", "commands.md")
-	if _, err := os.Stat(codexCmdPath); err == nil {
-		if err := upsertSection(codexCmdPath); err != nil {
-			slog.Warn("[Strategist] agent awareness: codex commands update failed", "error", err)
-		}
-	}
-
+	upsertIfExists(filepath.Join(projectRoot, ".antigravity", "antigravity-instructions.md"), upsertSection, "antigravity")
+	upsertIfExists(filepath.Join(projectRoot, ".sdd", "seedlings", "codex.seed.json"), upsertCodexSeed, "codex")
+	upsertIfExists(filepath.Join(projectRoot, ".claude", "claude-instructions.md"), upsertSection, "claude-instructions")
+	upsertIfExists(filepath.Join(projectRoot, ".codex", "commands.md"), upsertSection, "codex commands")
 	return nil
+}
+
+func upsertIfExists(path string, update func(string) error, label string) {
+	if _, err := os.Stat(path); err != nil {
+		return
+	}
+	if err := update(path); err != nil {
+		slog.Warn("[Strategist] agent awareness: "+label+" update failed", "error", err)
+	}
 }
 
 // RefreshAgentAwareness is the single coordinating entry point for both the
@@ -105,26 +90,7 @@ func upsertSection(path string) error {
 
 	content := string(data)
 	const sectionHeader = "## Strategist Runtime Discovery"
-	newSection := strategistRuntimeDiscoverySection
-
-	idx := strings.Index(content, sectionHeader)
-	if idx == -1 {
-		// Section absent — append.
-		if !strings.HasSuffix(content, "\n") {
-			content += "\n"
-		}
-		content += "\n" + newSection + "\n"
-	} else {
-		// Section present — replace to next "## " header or EOF.
-		after := content[idx+len(sectionHeader):]
-		nextSection := strings.Index(after, "\n## ")
-		var tail string
-		if nextSection != -1 {
-			tail = after[nextSection:]
-		}
-		content = content[:idx] + newSection + tail
-	}
-
+	content = upsertMarkdownSection(content, sectionHeader, strategistRuntimeDiscoverySection)
 	if !strings.HasSuffix(content, "\n") {
 		content += "\n"
 	}
@@ -132,6 +98,30 @@ func upsertSection(path string) error {
 		return fmt.Errorf("upsert section: write %s: %w", path, err)
 	}
 	return nil
+}
+
+func upsertMarkdownSection(content, sectionHeader, newSection string) string {
+	idx := strings.Index(content, sectionHeader)
+	if idx == -1 {
+		return appendMarkdownSection(content, newSection)
+	}
+	after := content[idx+len(sectionHeader):]
+	return content[:idx] + newSection + markdownTail(after)
+}
+
+func appendMarkdownSection(content, newSection string) string {
+	if !strings.HasSuffix(content, "\n") {
+		content += "\n"
+	}
+	return content + "\n" + newSection + "\n"
+}
+
+func markdownTail(after string) string {
+	nextSection := strings.Index(after, "\n## ")
+	if nextSection == -1 {
+		return ""
+	}
+	return after[nextSection:]
 }
 
 // upsertCodexSeed updates required_context and on_strategist_invoke in a codex.seed.json.
@@ -149,21 +139,7 @@ func upsertCodexSeed(path string) error {
 	}
 
 	const protocolPath = ".strategist/agent-protocol.md"
-	var ctx []any
-	if existing, ok := seed["required_context"].([]any); ok {
-		ctx = existing
-	}
-	hasProt := false
-	for _, v := range ctx {
-		if v == protocolPath {
-			hasProt = true
-			break
-		}
-	}
-	if !hasProt {
-		ctx = append([]any{protocolPath}, ctx...)
-	}
-	seed["required_context"] = ctx
+	seed["required_context"] = requiredContextWithProtocol(seed["required_context"], protocolPath)
 
 	seed["on_strategist_invoke"] = map[string]any{
 		"header":                    "Strategist Active",
@@ -186,6 +162,31 @@ func upsertCodexSeed(path string) error {
 	return nil
 }
 
+func requiredContextWithProtocol(raw any, protocolPath string) []any {
+	ctx := requiredContext(raw)
+	if containsAnyString(ctx, protocolPath) {
+		return ctx
+	}
+	return append([]any{protocolPath}, ctx...)
+}
+
+func requiredContext(raw any) []any {
+	ctx, ok := raw.([]any)
+	if !ok {
+		return nil
+	}
+	return ctx
+}
+
+func containsAnyString(values []any, needle string) bool {
+	for _, v := range values {
+		if v == needle {
+			return true
+		}
+	}
+	return false
+}
+
 // marshalSortedJSON marshals a map[string]any to indented JSON with keys sorted
 // alphabetically, producing deterministic output across multiple runs.
 func marshalSortedJSON(m map[string]any) ([]byte, error) {
@@ -198,25 +199,32 @@ func marshalSortedJSON(m map[string]any) ([]byte, error) {
 	var buf bytes.Buffer
 	buf.WriteByte('{')
 	for i, k := range keys {
-		if i > 0 {
-			buf.WriteByte(',')
+		if err := writeSortedJSONEntry(&buf, m, k, i > 0); err != nil {
+			return nil, err
 		}
-		keyBytes, err := json.Marshal(k)
-		if err != nil {
-			return nil, fmt.Errorf("marshal key %q: %w", k, err)
-		}
-		valBytes, err := json.MarshalIndent(m[k], "  ", "  ")
-		if err != nil {
-			return nil, fmt.Errorf("marshal value for key %q: %w", k, err)
-		}
-		buf.WriteString("\n  ")
-		buf.Write(keyBytes)
-		buf.WriteString(": ")
-		buf.Write(valBytes)
 	}
 	if len(keys) > 0 {
 		buf.WriteByte('\n')
 	}
 	buf.WriteByte('}')
 	return buf.Bytes(), nil
+}
+
+func writeSortedJSONEntry(buf *bytes.Buffer, m map[string]any, key string, comma bool) error {
+	if comma {
+		buf.WriteByte(',')
+	}
+	keyBytes, err := json.Marshal(key)
+	if err != nil {
+		return fmt.Errorf("marshal key %q: %w", key, err)
+	}
+	valBytes, err := json.MarshalIndent(m[key], "  ", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal value for key %q: %w", key, err)
+	}
+	buf.WriteString("\n  ")
+	buf.Write(keyBytes)
+	buf.WriteString(": ")
+	buf.Write(valBytes)
+	return nil
 }

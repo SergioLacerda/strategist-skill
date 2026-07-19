@@ -39,12 +39,7 @@ Use --dry-run to preview changes without writing.`,
 }
 
 func runSyncGovernanceCmd(cmd *cobra.Command, _ []string) (retErr error) {
-	if syncGovernanceRoot == "" {
-		syncGovernanceRoot = ".strategist"
-	}
-	if syncGovernanceSddDir == "" {
-		syncGovernanceSddDir = ".sdd"
-	}
+	applySyncGovernanceDefaults()
 
 	ctx := cmd.Context()
 	if ctx == nil {
@@ -91,6 +86,15 @@ func runSyncGovernanceCmd(cmd *cobra.Command, _ []string) (retErr error) {
 
 	printSyncReport(report, run)
 	return nil
+}
+
+func applySyncGovernanceDefaults() {
+	if syncGovernanceRoot == "" {
+		syncGovernanceRoot = ".strategist"
+	}
+	if syncGovernanceSddDir == "" {
+		syncGovernanceSddDir = ".sdd"
+	}
 }
 
 type syncReport struct {
@@ -140,30 +144,30 @@ func runSyncGovernance(skillRoot, sddDir string, dryRun bool) (syncReport, error
 	changed := applyMissingFields(skill, &report)
 
 	if changed && !dryRun {
-		out, err := yaml.Marshal(skill)
-		if err != nil {
-			return report, fmt.Errorf("marshal skill.yaml: %w", err)
-		}
-		if err := os.WriteFile(skillPath, out, 0o644); err != nil {
-			return report, fmt.Errorf("write skill.yaml: %w", err)
+		if err := writeSyncedSkill(skillPath, skill); err != nil {
+			return report, err
 		}
 	}
 
 	return report, nil
 }
 
+func writeSyncedSkill(skillPath string, skill map[string]any) error {
+	out, err := yaml.Marshal(skill)
+	if err != nil {
+		return fmt.Errorf("marshal skill.yaml: %w", err)
+	}
+	if err := os.WriteFile(skillPath, out, 0o644); err != nil {
+		return fmt.Errorf("write skill.yaml: %w", err)
+	}
+	return nil
+}
+
 func readGovernance(sddDir string) (fingerprint string, activeMandates []string, err error) {
 	metaPath := filepath.Join(sddDir, "metadata.json")
-	metaRaw, err := os.ReadFile(metaPath)
+	meta, err := readSDDMetadata(metaPath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return "", nil, fmt.Errorf(".sdd/metadata.json not found — is SDD active in this workspace? (path: %s)", metaPath)
-		}
-		return "", nil, fmt.Errorf("read metadata: %w", err)
-	}
-	var meta sddMetadata
-	if err := json.Unmarshal(metaRaw, &meta); err != nil {
-		return "", nil, fmt.Errorf("parse metadata: %w", err)
+		return "", nil, err
 	}
 	fp := meta.Fingerprints.Combined
 	if fp == "" {
@@ -171,20 +175,48 @@ func readGovernance(sddDir string) (fingerprint string, activeMandates []string,
 	}
 
 	corePath := filepath.Join(sddDir, "source", "governance-core.json")
+	core, err := readGovernanceCore(corePath)
+	if err != nil {
+		return "", nil, err
+	}
+	return fp, activeMandateIDs(core), nil
+}
+
+func readSDDMetadata(metaPath string) (sddMetadata, error) {
+	metaRaw, err := os.ReadFile(metaPath)
+	if os.IsNotExist(err) {
+		return sddMetadata{}, fmt.Errorf(".sdd/metadata.json not found — is SDD active in this workspace? (path: %s)", metaPath)
+	}
+	if err != nil {
+		return sddMetadata{}, fmt.Errorf("read metadata: %w", err)
+	}
+	var meta sddMetadata
+	if err := json.Unmarshal(metaRaw, &meta); err != nil {
+		return sddMetadata{}, fmt.Errorf("parse metadata: %w", err)
+	}
+	return meta, nil
+}
+
+func readGovernanceCore(corePath string) (governanceCore, error) {
 	coreRaw, err := os.ReadFile(corePath)
 	if err != nil {
-		return "", nil, fmt.Errorf("read governance-core.json: %w", err)
+		return governanceCore{}, fmt.Errorf("read governance-core.json: %w", err)
 	}
 	var core governanceCore
 	if err := json.Unmarshal(coreRaw, &core); err != nil {
-		return "", nil, fmt.Errorf("parse governance-core.json: %w", err)
+		return governanceCore{}, fmt.Errorf("parse governance-core.json: %w", err)
 	}
+	return core, nil
+}
+
+func activeMandateIDs(core governanceCore) []string {
+	var activeMandates []string
 	for _, item := range core.Items {
 		if item.Type == "MANDATE" && item.Status == "required" {
 			activeMandates = append(activeMandates, item.ID)
 		}
 	}
-	return fp, activeMandates, nil
+	return activeMandates
 }
 
 func readSkill(skillPath string) (map[string]any, error) {

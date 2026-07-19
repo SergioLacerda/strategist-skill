@@ -55,23 +55,31 @@ func AppendOutcomeLine(path, line string) (err error) {
 	if err != nil {
 		return fmt.Errorf("open outcomes file: %w", err)
 	}
-	defer func() {
-		if cerr := f.Close(); cerr != nil && err == nil {
-			err = fmt.Errorf("close outcomes file: %w", cerr)
-		}
-	}()
+	defer closeOutcomeFile(f, &err)
+	return appendOutcomeLineLocked(f, line)
+}
+
+func appendOutcomeLineLocked(f *os.File, line string) (err error) {
 	if err = lockFile(f); err != nil {
 		return fmt.Errorf("lock outcomes file: %w", err)
 	}
-	defer func() {
-		if unlockErr := unlockFile(f); unlockErr != nil && err == nil {
-			err = fmt.Errorf("unlock outcomes file: %w", unlockErr)
-		}
-	}()
+	defer unlockOutcomeFile(f, &err)
 	if _, err = fmt.Fprintln(f, line); err != nil {
 		return fmt.Errorf("write outcome line: %w", err)
 	}
 	return nil
+}
+
+func closeOutcomeFile(f *os.File, err *error) {
+	if cerr := f.Close(); cerr != nil && *err == nil {
+		*err = fmt.Errorf("close outcomes file: %w", cerr)
+	}
+}
+
+func unlockOutcomeFile(f *os.File, err *error) {
+	if unlockErr := unlockFile(f); unlockErr != nil && *err == nil {
+		*err = fmt.Errorf("unlock outcomes file: %w", unlockErr)
+	}
 }
 
 // AppendOutcomeLineSafe calls AppendOutcomeLine and logs errors without propagating them.

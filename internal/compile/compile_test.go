@@ -347,30 +347,37 @@ func TestCompileIndex(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			dir := t.TempDir()
-			out := filepath.Join(dir, ".compiled", ".index.gz")
-
-			var kiPath string
-			if tt.wantErr {
-				kiPath = filepath.Join(dir, "nonexistent.yaml")
-			} else {
-				kiPath = filepath.Join(dir, "knowledge.index.yaml")
-				require.NoError(t, os.WriteFile(kiPath, []byte(tt.content), 0o644))
-			}
-
+			kiPath, out := prepareCompileIndexCase(t, tt.wantErr, tt.content)
 			err := compile.Index(kiPath, out)
-			if tt.wantErr {
-				require.Error(t, err)
-				return
-			}
-			require.NoError(t, err)
-			require.FileExists(t, out)
-			var artifact map[string]any
-			testutil.ReadGzJSON(t, out, &artifact)
-			if tt.check != nil {
-				tt.check(t, artifact)
-			}
+			assertCompileIndexResult(t, out, err, tt.wantErr, tt.check)
 		})
+	}
+}
+
+func prepareCompileIndexCase(t *testing.T, wantErr bool, content string) (string, string) {
+	t.Helper()
+	dir := t.TempDir()
+	out := filepath.Join(dir, ".compiled", ".index.gz")
+	if wantErr {
+		return filepath.Join(dir, "nonexistent.yaml"), out
+	}
+	kiPath := filepath.Join(dir, "knowledge.index.yaml")
+	require.NoError(t, os.WriteFile(kiPath, []byte(content), 0o644))
+	return kiPath, out
+}
+
+func assertCompileIndexResult(t *testing.T, out string, err error, wantErr bool, check func(*testing.T, map[string]any)) {
+	t.Helper()
+	if wantErr {
+		require.Error(t, err)
+		return
+	}
+	require.NoError(t, err)
+	require.FileExists(t, out)
+	var artifact map[string]any
+	testutil.ReadGzJSON(t, out, &artifact)
+	if check != nil {
+		check(t, artifact)
 	}
 }
 

@@ -151,16 +151,28 @@ func DeriveFreshness(r StatusRow) string {
 // DeriveDrift reports missing or unscoped truth-layer relationships for a row.
 func DeriveDrift(r StatusRow) []string {
 	var d []string
-	if r.Configured && !r.Governed {
+	if missingGovernance(r) {
 		d = append(d, "missing_governance")
 	}
-	if (r.Configured || r.Governed) && !r.Indexed {
+	if missingIndex(r) {
 		d = append(d, "missing_index")
 	}
-	if !r.Configured && (r.Governed || r.Indexed) {
+	if unscopedTruth(r) {
 		d = append(d, "unscoped")
 	}
 	return d
+}
+
+func missingGovernance(r StatusRow) bool {
+	return r.Configured && !r.Governed
+}
+
+func missingIndex(r StatusRow) bool {
+	return (r.Configured || r.Governed) && !r.Indexed
+}
+
+func unscopedTruth(r StatusRow) bool {
+	return !r.Configured && (r.Governed || r.Indexed)
 }
 
 // FilterRowsByScope filters rows to a Strategist slot scope, treating "all" as a match.
@@ -170,14 +182,20 @@ func FilterRowsByScope(rows []StatusRow, value string) []StatusRow {
 	}
 	out := make([]StatusRow, 0, len(rows))
 	for _, r := range rows {
-		for _, s := range r.Scope {
-			if s == value || s == "all" {
-				out = append(out, r)
-				break
-			}
+		if rowMatchesScope(r, value) {
+			out = append(out, r)
 		}
 	}
 	return out
+}
+
+func rowMatchesScope(r StatusRow, value string) bool {
+	for _, s := range r.Scope {
+		if s == value || s == "all" {
+			return true
+		}
+	}
+	return false
 }
 
 // HistoricalCount counts rows with historical/lower-trust tiers.

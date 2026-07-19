@@ -63,16 +63,29 @@ func (c *compiledCache) Set(path string, info os.FileInfo, data []byte) {
 	key := cacheKey{path: path, mtime: info.ModTime().Unix(), size: info.Size()}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if elem, ok := c.index[key]; ok {
-		entry, ok := elem.Value.(*cacheEntry)
-		if !ok {
-			return
-		}
-		entry.data = data
-		entry.accessedAt = time.Now()
-		c.lru.MoveToFront(elem)
+	if c.refreshExisting(key, data) {
 		return
 	}
+	c.evictOverflow()
+	c.addEntry(key, data)
+}
+
+func (c *compiledCache) refreshExisting(key cacheKey, data []byte) bool {
+	elem, ok := c.index[key]
+	if !ok {
+		return false
+	}
+	entry, ok := elem.Value.(*cacheEntry)
+	if !ok {
+		return true
+	}
+	entry.data = data
+	entry.accessedAt = time.Now()
+	c.lru.MoveToFront(elem)
+	return true
+}
+
+func (c *compiledCache) evictOverflow() {
 	for c.lru.Len() >= c.maxSize {
 		back := c.lru.Back()
 		if back == nil {
@@ -83,6 +96,9 @@ func (c *compiledCache) Set(path string, info os.FileInfo, data []byte) {
 			delete(c.index, entry.key)
 		}
 	}
+}
+
+func (c *compiledCache) addEntry(key cacheKey, data []byte) {
 	entry := &cacheEntry{key: key, data: data, accessedAt: time.Now()}
 	elem := c.lru.PushFront(entry)
 	c.index[key] = elem

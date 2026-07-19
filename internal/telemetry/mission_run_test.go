@@ -30,20 +30,15 @@ func TestMissionRun_SnapshotAndContext(t *testing.T) {
 	run.SetTokens(11, 22)
 
 	snap := run.Snapshot()
+	assertMissionSnapshot(t, snap)
+}
+
+func assertMissionSnapshot(t *testing.T, snap MissionMetrics) {
+	t.Helper()
 	if snap.MissionID != "m-1" {
 		t.Fatalf("unexpected mission id: %s", snap.MissionID)
 	}
-	allTimings := []int64{
-		snap.TStartToIntakeMS, snap.TIntakeToScoutMS, snap.TScoutToRangerMS,
-		snap.TIntakeToRangerMS, snap.TRangerToArchivistMS,
-		snap.TArchivistToGateMS, snap.TGateWaitMS, snap.TGateToSniperMS,
-		snap.TSniperToDoneMS, snap.TotalWallTimeMS,
-	}
-	for _, v := range allTimings {
-		if v < 0 {
-			t.Fatalf("expected non-negative timings: %#v", snap)
-		}
-	}
+	assertNonNegativeTimings(t, snap)
 	if snap.TGateWaitMS < 1 {
 		t.Fatalf("gate wait must reflect sleep: got %d ms", snap.TGateWaitMS)
 	}
@@ -52,6 +47,20 @@ func TestMissionRun_SnapshotAndContext(t *testing.T) {
 	}
 	if snap.TokensIn != 11 || snap.TokensOut != 22 {
 		t.Fatalf("unexpected tokens: %#v", snap)
+	}
+}
+
+func assertNonNegativeTimings(t *testing.T, snap MissionMetrics) {
+	t.Helper()
+	for _, v := range []int64{
+		snap.TStartToIntakeMS, snap.TIntakeToScoutMS, snap.TScoutToRangerMS,
+		snap.TIntakeToRangerMS, snap.TRangerToArchivistMS,
+		snap.TArchivistToGateMS, snap.TGateWaitMS, snap.TGateToSniperMS,
+		snap.TSniperToDoneMS, snap.TotalWallTimeMS,
+	} {
+		if v < 0 {
+			t.Fatalf("expected non-negative timings: %#v", snap)
+		}
 	}
 }
 

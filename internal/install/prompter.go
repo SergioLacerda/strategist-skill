@@ -39,31 +39,45 @@ func NewTextPrompter(r io.Reader) Prompter {
 func (p *TextPrompter) Select(title, defaultVal string, options []string) (string, error) {
 	for {
 		fmt.Print(title)
-		line, err := p.r.ReadString('\n')
+		line, err := p.readTrimmedLine()
 		if err != nil {
-			return "", fmt.Errorf("read: %w", err)
+			return "", err
 		}
 		line = strings.TrimSpace(line)
 		if line == "" {
 			return defaultVal, nil
 		}
-		for _, o := range options {
-			if strings.EqualFold(line, o) {
-				return o, nil
-			}
+		if value, ok := matchOption(line, options); ok {
+			return value, nil
 		}
 		fmt.Printf("  Invalid value %q. Accepted: %s\n", line, strings.Join(options, ", "))
 	}
 }
 
-// Input prints title and reads a line, returning defaultVal on empty input.
-func (p *TextPrompter) Input(title, defaultVal string) (string, error) {
-	fmt.Print(title)
+func (p *TextPrompter) readTrimmedLine() (string, error) {
 	line, err := p.r.ReadString('\n')
 	if err != nil {
 		return "", fmt.Errorf("read: %w", err)
 	}
-	line = strings.TrimSpace(line)
+	return strings.TrimSpace(line), nil
+}
+
+func matchOption(line string, options []string) (string, bool) {
+	for _, o := range options {
+		if strings.EqualFold(line, o) {
+			return o, true
+		}
+	}
+	return "", false
+}
+
+// Input prints title and reads a line, returning defaultVal on empty input.
+func (p *TextPrompter) Input(title, defaultVal string) (string, error) {
+	fmt.Print(title)
+	line, err := p.readTrimmedLine()
+	if err != nil {
+		return "", err
+	}
 	if line == "" {
 		return defaultVal, nil
 	}

@@ -179,17 +179,22 @@ func TestFSMSafetyPropertyLike(t *testing.T) {
 	}
 
 	for i := 0; i < 400; i++ {
-		state := domain.StateInit
-		seenGateApproved := false
-		for j := 0; j < 14; j++ {
-			ev := allEvents[rng.Intn(len(allEvents))]
-			if ev == domain.EventGateApproved {
-				seenGateApproved = true
-			}
-			state = domain.NextState(state, ev)
-			if state == domain.StateExecution {
-				assert.True(t, seenGateApproved)
-			}
+		assertRandomFSMSequence(t, rng, allEvents)
+	}
+}
+
+func assertRandomFSMSequence(t *testing.T, rng *rand.Rand, allEvents []domain.TransitionEvent) {
+	t.Helper()
+	state := domain.StateInit
+	seenGateApproved := false
+	for j := 0; j < 14; j++ {
+		ev := allEvents[rng.Intn(len(allEvents))]
+		if ev == domain.EventGateApproved {
+			seenGateApproved = true
+		}
+		state = domain.NextState(state, ev)
+		if state == domain.StateExecution {
+			assert.True(t, seenGateApproved)
 		}
 	}
 }

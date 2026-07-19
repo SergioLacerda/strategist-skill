@@ -261,15 +261,19 @@ func MarkJewelsDeprecatedForChest(doc *yaml.Node, chestID string) error {
 		return nil
 	}
 	for _, entry := range seq.Content {
-		if entry.Kind != yaml.MappingNode {
-			continue
-		}
-		if v := MappingValue(entry, "chest_id"); v != nil && v.Value == chestID {
-			SetMappingField(entry, "status", "deprecated")
-			AppendJewelHistory(entry, "deprecated", time.Now().UTC().Format("2006-01-02"), "human", "")
-		}
+		deprecateJewelForChest(entry, chestID)
 	}
 	return nil
+}
+
+func deprecateJewelForChest(entry *yaml.Node, chestID string) {
+	if entry.Kind != yaml.MappingNode {
+		return
+	}
+	if v := MappingValue(entry, "chest_id"); v != nil && v.Value == chestID {
+		SetMappingField(entry, "status", "deprecated")
+		AppendJewelHistory(entry, "deprecated", time.Now().UTC().Format("2006-01-02"), "human", "")
+	}
 }
 
 // FindJewelEntry returns the jewels.yaml jewel entry mapping node for id, or an error if

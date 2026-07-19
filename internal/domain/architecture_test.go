@@ -78,16 +78,21 @@ func TestLateralIsolation(t *testing.T) {
 		tc := tc
 		t.Run(tc.pkg, func(t *testing.T) {
 			t.Parallel()
-			out, err := exec.Command("go", "list", "-deps", tc.pkg).CombinedOutput()
-			if err != nil {
-				t.Fatalf("go list -deps failed: %v\n%s", err, out)
-			}
-			deps := string(out)
-			for _, forbidden := range tc.forbidden {
-				if strings.Contains(deps, forbidden) {
-					t.Errorf("%s must not import %s", tc.pkg, forbidden)
-				}
-			}
+			assertNoForbiddenDeps(t, tc.pkg, tc.forbidden)
 		})
+	}
+}
+
+func assertNoForbiddenDeps(t *testing.T, pkg string, forbidden []string) {
+	t.Helper()
+	out, err := exec.Command("go", "list", "-deps", pkg).CombinedOutput()
+	if err != nil {
+		t.Fatalf("go list -deps failed: %v\n%s", err, out)
+	}
+	deps := string(out)
+	for _, forbiddenPkg := range forbidden {
+		if strings.Contains(deps, forbiddenPkg) {
+			t.Errorf("%s must not import %s", pkg, forbiddenPkg)
+		}
 	}
 }

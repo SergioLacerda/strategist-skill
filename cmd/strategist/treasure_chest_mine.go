@@ -62,6 +62,19 @@ func runTreasureChestMine(cmd *cobra.Command, _ []string, opts treasureChestMine
 	if run := telemetryRunFromCmd(cmd); run != nil {
 		run.SetSilent()
 	}
+	opts = treasureChestMineOptionsFromFlags(cmd, opts)
+	if err := validateTreasureChestMineOptions(opts); err != nil {
+		return err
+	}
+
+	root, err := resolveTreasureChestCommandRoot(cmd, "mine")
+	if err != nil {
+		return err
+	}
+	return runTreasureChestMineAction(root, opts)
+}
+
+func treasureChestMineOptionsFromFlags(cmd *cobra.Command, opts treasureChestMineOptions) treasureChestMineOptions {
 	opts.List = boolFlag(cmd, "list", opts.List)
 	opts.Format = stringFlag(cmd, "format", opts.Format)
 	opts.Accept = stringFlag(cmd, "accept", opts.Accept)
@@ -69,35 +82,30 @@ func runTreasureChestMine(cmd *cobra.Command, _ []string, opts treasureChestMine
 	opts.Evidence = stringFlag(cmd, "evidence", opts.Evidence)
 	opts.Deprecate = stringFlag(cmd, "deprecate", opts.Deprecate)
 	opts.MigrateStatus = boolFlag(cmd, "migrate-status", opts.MigrateStatus)
+	return opts
+}
 
-	actions := 0
-	for _, set := range []bool{
-		opts.List,
-		opts.Accept != "",
-		opts.Verify != "",
-		opts.Deprecate != "",
-		opts.MigrateStatus,
-	} {
-		if set {
-			actions++
-		}
-	}
-	if actions != 1 {
+func validateTreasureChestMineOptions(opts treasureChestMineOptions) error {
+	if mineActionCount(opts) != 1 {
 		return fmt.Errorf("treasure-chest mine: specify exactly one of --list, --accept, --verify, --deprecate, --migrate-status")
 	}
 	if opts.Verify != "" && opts.Evidence == "" {
 		return fmt.Errorf("treasure-chest mine: --verify requires --evidence")
 	}
+	return nil
+}
 
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("treasure-chest mine: get cwd: %w", err)
+func mineActionCount(opts treasureChestMineOptions) int {
+	actions := 0
+	for _, set := range []bool{opts.List, opts.Accept != "", opts.Verify != "", opts.Deprecate != "", opts.MigrateStatus} {
+		if set {
+			actions++
+		}
 	}
-	root, _, err := resolveStrategistRoot(treasureChestRootFromCmd(cmd), cwd)
-	if err != nil {
-		return fmt.Errorf("treasure-chest mine: %w", err)
-	}
+	return actions
+}
 
+func runTreasureChestMineAction(root string, opts treasureChestMineOptions) error {
 	switch {
 	case opts.List:
 		return runTreasureChestMineList(root, opts.Format)
