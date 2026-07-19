@@ -1,5 +1,4 @@
 mode: full
 base_path: .analysis
-roles_config: roles/default.yaml
 slots:
   discovery: brainstorming

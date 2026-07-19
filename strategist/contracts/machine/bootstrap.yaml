@@ -17,12 +17,12 @@ contract:
     - name: roles_override
       type: string
       required: false
-      description: --roles flag value; overrides active.yaml.roles_config for this mission only
+      description: --roles flag value; selects a role map for this mission only
 
   output:
     - name: active
       type: object
-      description: Parsed active.yaml content (mode, base_path, roles_config, knowledge_index_path)
+      description: Parsed active.yaml content (mode, base_path, slots, knowledge_index_path)
     - name: persona
       type: object
       description: Resolved persona content (tone_directive, phase_labels, prompt_templates)
@@ -44,7 +44,7 @@ contract:
     - code: invalid_local_profile
       trigger: >
         active.yaml present but fails schema validation: field `mode` absent or empty,
-        `base_path` absent, or `roles_config` absent.
+        `base_path` absent, or `slots` absent.
       behavior: >
         Emit: "[Strategist] phase=bootstrap status=blocked reason=invalid_local_profile file=<path> field=<field>"
         Stop mission. No fallback to global profile.

@@ -26,7 +26,7 @@ var validateCmd = &cobra.Command{
 	Long: `Validate all configuration files inside a .strategist/ directory.
 
 Checks performed:
-  - active.yaml: exists, valid YAML, required fields (mode, roles_config)
+  - active.yaml: exists, valid YAML, required fields (mode, base_path, slots)
   - personas/*.yaml: each has tone_directive and phase_labels
   - roles/*.yaml: each has discovery, refinement, execution slots
   - knowledge.index.yaml: if present, valid YAML`,
@@ -129,8 +129,11 @@ func validateActiveYAML(path string) error {
 	if cfg.Mode == "" {
 		return fmt.Errorf("missing required field: mode")
 	}
-	if cfg.RolesConfig == "" {
-		return fmt.Errorf("missing required field: roles_config")
+	if cfg.BasePath == "" {
+		return fmt.Errorf("missing required field: base_path")
+	}
+	if len(cfg.Slots) == 0 {
+		return fmt.Errorf("missing required field: slots")
 	}
 	if cfg.Mode != "pragmatic" && cfg.Mode != "epic" {
 		return fmt.Errorf("invalid mode %q (must be pragmatic or epic)", cfg.Mode)

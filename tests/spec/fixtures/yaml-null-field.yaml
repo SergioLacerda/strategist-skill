@@ -7,7 +7,6 @@ input:
   active_yaml:
     mode: pragmatic
     base_path: null
-    roles_config: default
   roles_default_yaml:
     discovery: brainstorming
     refinement: openspec-explore

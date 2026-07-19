@@ -22,7 +22,6 @@ func scanTestRoot(t *testing.T) (strategistDir, basePath string) {
 	require.NoError(t, os.WriteFile(filepath.Join(strategistDir, "active.yaml"), []byte(`
 mode: epic
 base_path: .analysis
-roles_config: roles/default.yaml
 slots:
   discovery: brainstorming
   refinement: openspec-explore
