@@ -69,13 +69,15 @@ provider=<configured_provider>
 action=fix provider configuration or runtime installation, then rerun strategist check
 ```
 
-Discovery subtypes are owned by Ranger, the internal discovery persona. The configured
-discovery provider is Ranger's weapon, not a substitute for Ranger. The parent agent
-MUST NOT perform discovery directly, and MUST NOT require the weapon's standalone
-instructions to implement every `discovery_subtype`. If the configured discovery
-weapon is missing, invalid, risk-incompatible, or unavailable, stop with the relevant
-slot/provider error. Otherwise invoke Ranger with the configured weapon and let Ranger's
-role directives control subtype behavior.
+Discovery subtypes are selected by Scout and executed through Ranger, the internal
+discovery persona. The configured discovery provider is Ranger's weapon, not a
+substitute for Ranger. The parent agent MUST NOT perform discovery directly. After
+Scout emits `route_decision.discovery_subtype` with `evidence_state: requires_discovery`,
+Strategist MUST check the configured weapon manifest's `discovery_subtype_support`
+before invoking the weapon. If the manifest does not declare native or adapter support
+for the required subtype, stop with `provider_capability_mismatch`. If the configured
+discovery weapon is missing, invalid, risk-incompatible, or unavailable, stop with the
+relevant slot/provider error.
 
 If the request requires source-code mutation, Strategist may analyze and refine the
 work, but must not perform the mutation. The response must clearly state that
@@ -176,7 +178,8 @@ action=fix provider configuration or runtime installation, then rerun strategist
 ```
 
 Equivalent errors may be reported as `slot_provider_not_found`,
-`slot_risk_mismatch`, or `role_provider_invalid`, depending on the cause.
+`slot_risk_mismatch`, `provider_capability_mismatch`, or `role_provider_invalid`,
+depending on the cause.
 
 Strategist must not turn an internal failure into silent ad-hoc work. If the
 skill fails, return the error and wait for correction or new explicit user
