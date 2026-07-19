@@ -1,63 +1,65 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/treasure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func resetTreasureChestMutateFlags(t *testing.T) {
 	t.Helper()
-	origID := treasureChestAddID
-	origScope := treasureChestAddScope
-	origTrustTier := treasureChestAddTrustTier
-	origReviewedBy := treasureChestAddReviewedBy
-	origTags := treasureChestAddTags
-	origIndexAfter := treasureChestAddIndexAfter
-	origRemoveID := treasureChestRemoveID
+	origID := cmdFlagString(t, treasureChestAddCmd, "id")
+	origScope := cmdFlagString(t, treasureChestAddCmd, "scope")
+	origTrustTier := cmdFlagString(t, treasureChestAddCmd, "trust-tier")
+	origReviewedBy := cmdFlagString(t, treasureChestAddCmd, "reviewed-by")
+	origTags := cmdFlagString(t, treasureChestAddCmd, "tags")
+	origIndexAfter := cmdFlagBool(t, treasureChestAddCmd, "index")
+	origRemoveID := cmdFlagString(t, treasureChestRemoveCmd, "id")
 	t.Cleanup(func() {
-		treasureChestAddID = origID
-		treasureChestAddScope = origScope
-		treasureChestAddTrustTier = origTrustTier
-		treasureChestAddReviewedBy = origReviewedBy
-		treasureChestAddTags = origTags
-		treasureChestAddIndexAfter = origIndexAfter
-		treasureChestRemoveID = origRemoveID
+		setCmdFlag(t, treasureChestAddCmd, "id", origID)
+		setCmdFlag(t, treasureChestAddCmd, "scope", origScope)
+		setCmdFlag(t, treasureChestAddCmd, "trust-tier", origTrustTier)
+		setCmdFlag(t, treasureChestAddCmd, "reviewed-by", origReviewedBy)
+		setCmdFlag(t, treasureChestAddCmd, "tags", origTags)
+		setCmdFlag(t, treasureChestAddCmd, "index", fmt.Sprint(origIndexAfter))
+		setCmdFlag(t, treasureChestRemoveCmd, "id", origRemoveID)
 	})
-	treasureChestAddID = ""
-	treasureChestAddScope = "all"
-	treasureChestAddTrustTier = "T1"
-	treasureChestAddReviewedBy = "human"
-	treasureChestAddTags = ""
-	treasureChestAddIndexAfter = false
-	treasureChestRemoveID = ""
+	setCmdFlag(t, treasureChestAddCmd, "id", "")
+	setCmdFlag(t, treasureChestAddCmd, "scope", "all")
+	setCmdFlag(t, treasureChestAddCmd, "trust-tier", "T1")
+	setCmdFlag(t, treasureChestAddCmd, "reviewed-by", "human")
+	setCmdFlag(t, treasureChestAddCmd, "tags", "")
+	setCmdFlag(t, treasureChestAddCmd, "index", "false")
+	setCmdFlag(t, treasureChestRemoveCmd, "id", "")
 }
 
 func TestTreasureChestAdd_DefaultsAllThreeFiles(t *testing.T) {
 	dir := minimalTreasureChestRoot(t)
 	resetTreasureChestFlags(t)
 	resetTreasureChestMutateFlags(t)
-	treasureChestRoot = dir
+	setTreasureChestRoot(t, dir)
 
 	require.NoError(t, treasureChestAddCmd.RunE(treasureChestAddCmd, []string{"/tmp/new-chest"}))
 
-	active, err := loadActiveChests(dir)
+	active, err := treasure.LoadActiveChests(dir)
 	require.NoError(t, err)
 	require.Len(t, active, 2)
 	assert.Equal(t, "new-chest", active[1].ID)
 	assert.Equal(t, "/tmp/new-chest", active[1].Path)
 	assert.Equal(t, []string{"all"}, []string(active[1].Scope))
 
-	governed, err := loadGoverned(dir)
+	governed, err := treasure.LoadGoverned(dir)
 	require.NoError(t, err)
 	require.Contains(t, governed, "new-chest")
 	assert.Equal(t, "T1", governed["new-chest"].Trust.Tier)
 	assert.Equal(t, "human", governed["new-chest"].Trust.ReviewedBy)
 
-	indexed, err := loadIndexed(dir)
+	indexed, err := treasure.LoadIndexed(dir)
 	require.NoError(t, err)
 	assert.True(t, indexed["new-chest"])
 }
@@ -66,22 +68,22 @@ func TestTreasureChestAdd_ExplicitFlagsOverrideDefaults(t *testing.T) {
 	dir := minimalTreasureChestRoot(t)
 	resetTreasureChestFlags(t)
 	resetTreasureChestMutateFlags(t)
-	treasureChestRoot = dir
-	treasureChestAddID = "custom-id"
-	treasureChestAddScope = "discovery"
-	treasureChestAddTrustTier = "T0"
-	treasureChestAddReviewedBy = "auto"
-	treasureChestAddTags = "foo, bar"
+	setTreasureChestRoot(t, dir)
+	setCmdFlag(t, treasureChestAddCmd, "id", "custom-id")
+	setCmdFlag(t, treasureChestAddCmd, "scope", "discovery")
+	setCmdFlag(t, treasureChestAddCmd, "trust-tier", "T0")
+	setCmdFlag(t, treasureChestAddCmd, "reviewed-by", "auto")
+	setCmdFlag(t, treasureChestAddCmd, "tags", "foo, bar")
 
 	require.NoError(t, treasureChestAddCmd.RunE(treasureChestAddCmd, []string{"/tmp/new-chest"}))
 
-	active, err := loadActiveChests(dir)
+	active, err := treasure.LoadActiveChests(dir)
 	require.NoError(t, err)
 	require.Len(t, active, 2)
 	assert.Equal(t, "custom-id", active[1].ID)
 	assert.Equal(t, []string{"discovery"}, []string(active[1].Scope))
 
-	governed, err := loadGoverned(dir)
+	governed, err := treasure.LoadGoverned(dir)
 	require.NoError(t, err)
 	require.Contains(t, governed, "custom-id")
 	assert.Equal(t, "T0", governed["custom-id"].Trust.Tier)
@@ -92,7 +94,7 @@ func TestTreasureChestAdd_PreservesExistingComments(t *testing.T) {
 	dir := minimalTreasureChestRoot(t)
 	resetTreasureChestFlags(t)
 	resetTreasureChestMutateFlags(t)
-	treasureChestRoot = dir
+	setTreasureChestRoot(t, dir)
 
 	tcPath := filepath.Join(dir, "treasure-chests.yaml")
 	orig, err := os.ReadFile(tcPath)
@@ -111,8 +113,8 @@ func TestTreasureChestAdd_DuplicateIDErrors(t *testing.T) {
 	dir := minimalTreasureChestRoot(t)
 	resetTreasureChestFlags(t)
 	resetTreasureChestMutateFlags(t)
-	treasureChestRoot = dir
-	treasureChestAddID = "source" // already registered by minimalTreasureChestRoot
+	setTreasureChestRoot(t, dir)
+	setCmdFlag(t, treasureChestAddCmd, "id", "source") // already registered by minimalTreasureChestRoot
 
 	err := treasureChestAddCmd.RunE(treasureChestAddCmd, []string{"/tmp/new-chest"})
 	require.Error(t, err)
@@ -123,16 +125,16 @@ func TestTreasureChestRemove_ByID(t *testing.T) {
 	dir := minimalTreasureChestRoot(t)
 	resetTreasureChestFlags(t)
 	resetTreasureChestMutateFlags(t)
-	treasureChestRoot = dir
-	treasureChestRemoveID = "source"
+	setTreasureChestRoot(t, dir)
+	setCmdFlag(t, treasureChestRemoveCmd, "id", "source")
 
 	require.NoError(t, treasureChestRemoveCmd.RunE(treasureChestRemoveCmd, nil))
 
-	active, err := loadActiveChests(dir)
+	active, err := treasure.LoadActiveChests(dir)
 	require.NoError(t, err)
 	assert.Empty(t, active)
 
-	governed, err := loadGoverned(dir)
+	governed, err := treasure.LoadGoverned(dir)
 	require.NoError(t, err)
 	require.Contains(t, governed, "source")
 }
@@ -141,11 +143,11 @@ func TestTreasureChestRemove_ByPath(t *testing.T) {
 	dir := minimalTreasureChestRoot(t)
 	resetTreasureChestFlags(t)
 	resetTreasureChestMutateFlags(t)
-	treasureChestRoot = dir
+	setTreasureChestRoot(t, dir)
 
 	require.NoError(t, treasureChestRemoveCmd.RunE(treasureChestRemoveCmd, []string{".sdd/source"}))
 
-	active, err := loadActiveChests(dir)
+	active, err := treasure.LoadActiveChests(dir)
 	require.NoError(t, err)
 	assert.Empty(t, active)
 }
@@ -164,14 +166,15 @@ jewels:
 `), 0o644))
 	resetTreasureChestFlags(t)
 	resetTreasureChestMutateFlags(t)
-	treasureChestRoot = dir
-	treasureChestRemoveID = "source"
+	setTreasureChestRoot(t, dir)
+	setCmdFlag(t, treasureChestRemoveCmd, "id", "source")
 
 	require.NoError(t, treasureChestRemoveCmd.RunE(treasureChestRemoveCmd, nil))
 
 	raw, err := os.ReadFile(filepath.Join(dir, "jewels.yaml"))
 	require.NoError(t, err)
 	assert.Contains(t, string(raw), "status: deprecated")
+	assert.Contains(t, string(raw), "history:")
 	assert.Contains(t, string(raw), "id: jewel-1") // entry still present, not deleted
 }
 
@@ -179,8 +182,8 @@ func TestTreasureChestRemove_NoJewelsFileIsNoop(t *testing.T) {
 	dir := minimalTreasureChestRoot(t)
 	resetTreasureChestFlags(t)
 	resetTreasureChestMutateFlags(t)
-	treasureChestRoot = dir
-	treasureChestRemoveID = "source"
+	setTreasureChestRoot(t, dir)
+	setCmdFlag(t, treasureChestRemoveCmd, "id", "source")
 
 	// No jewels.yaml present in minimalTreasureChestRoot — must not error.
 	require.NoError(t, treasureChestRemoveCmd.RunE(treasureChestRemoveCmd, nil))
@@ -190,8 +193,8 @@ func TestTreasureChestRemove_TombstonesInsteadOfDeleting(t *testing.T) {
 	dir := minimalTreasureChestRoot(t)
 	resetTreasureChestFlags(t)
 	resetTreasureChestMutateFlags(t)
-	treasureChestRoot = dir
-	treasureChestRemoveID = "source"
+	setTreasureChestRoot(t, dir)
+	setCmdFlag(t, treasureChestRemoveCmd, "id", "source")
 
 	require.NoError(t, treasureChestRemoveCmd.RunE(treasureChestRemoveCmd, nil))
 
@@ -209,7 +212,7 @@ func TestTreasureChestRemove_NoPathOrIDErrors(t *testing.T) {
 	dir := minimalTreasureChestRoot(t)
 	resetTreasureChestFlags(t)
 	resetTreasureChestMutateFlags(t)
-	treasureChestRoot = dir
+	setTreasureChestRoot(t, dir)
 
 	err := treasureChestRemoveCmd.RunE(treasureChestRemoveCmd, nil)
 	require.Error(t, err)
@@ -220,8 +223,8 @@ func TestTreasureChestRemove_PathIDMismatchIsAmbiguous(t *testing.T) {
 	dir := minimalTreasureChestRoot(t)
 	resetTreasureChestFlags(t)
 	resetTreasureChestMutateFlags(t)
-	treasureChestRoot = dir
-	treasureChestRemoveID = "does-not-match"
+	setTreasureChestRoot(t, dir)
+	setCmdFlag(t, treasureChestRemoveCmd, "id", "does-not-match")
 
 	err := treasureChestRemoveCmd.RunE(treasureChestRemoveCmd, []string{".sdd/source"})
 	require.Error(t, err)
@@ -230,13 +233,13 @@ func TestTreasureChestRemove_PathIDMismatchIsAmbiguous(t *testing.T) {
 
 func TestDeriveChestIDFromPath(t *testing.T) {
 	t.Parallel()
-	assert.Equal(t, "docs", deriveChestIDFromPath("/abs/path/to/docs"))
-	assert.Equal(t, "docs", deriveChestIDFromPath("/abs/path/to/docs/"))
-	assert.Equal(t, "relative", deriveChestIDFromPath("relative"))
+	assert.Equal(t, "docs", treasure.DeriveChestIDFromPath("/abs/path/to/docs"))
+	assert.Equal(t, "docs", treasure.DeriveChestIDFromPath("/abs/path/to/docs/"))
+	assert.Equal(t, "relative", treasure.DeriveChestIDFromPath("relative"))
 }
 
 func TestParseTagsFlag(t *testing.T) {
 	t.Parallel()
-	assert.Equal(t, []string{"all"}, parseTagsFlag(""))
-	assert.Equal(t, []string{"foo", "bar"}, parseTagsFlag("foo, bar"))
+	assert.Equal(t, []string{"all"}, treasure.ParseTagsFlag(""))
+	assert.Equal(t, []string{"foo", "bar"}, treasure.ParseTagsFlag("foo, bar"))
 }

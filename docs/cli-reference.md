@@ -432,12 +432,15 @@ phase into `.strategist/treasure/gaps/` and `status:proposed` jewels.
 ```
 strategist treasure-chest index [--include-historical]
 strategist treasure-chest mine --list [--format table|json]
-strategist treasure-chest mine --accept <jewel-id>
-strategist treasure-chest mine --verify <jewel-id> --evidence <ref>
-strategist treasure-chest mine --deprecate <jewel-id>
+strategist treasure-chest mine --accept <jewel-id>[,<jewel-id>...]
+strategist treasure-chest mine --verify <jewel-id>[,<jewel-id>...] --evidence <ref>
+strategist treasure-chest mine --deprecate <jewel-id>[,<jewel-id>...]
 strategist treasure-chest mine --migrate-status
 strategist treasure-chest jewel list [--status all|proposed|accepted|verified|deprecated] [--chest <chest-id>] [--format table|json]
 strategist treasure-chest jewel show <jewel-id> [--format table|json]
+strategist treasure-chest jewel accept <jewel-id>...
+strategist treasure-chest jewel verify <jewel-id>... --evidence <ref>
+strategist treasure-chest jewel deprecate <jewel-id>...
 ```
 
 **`index`** rebuilds the offline knowledge substrate:
@@ -451,23 +454,32 @@ strategist treasure-chest jewel show <jewel-id> [--format table|json]
    hint only — never a promotion authority. Candidates use the virtual
    `chest_id: mission-history` since they are derived from mission history, not a specific
    treasure chest's own content.
-3. Deduplicates against existing `jewels.yaml` entries by `id` — a rerun never overwrites or
-   duplicates a jewel, curated or not.
+3. Deduplicates against existing monolithic `jewels.yaml` and partitioned
+   `jewels/<chest-id>.yaml` entries by `id` — a rerun never overwrites or duplicates a
+   jewel, curated or not.
 4. Rebuilds the compiled knowledge index (`.strategist/.compiled/.index.gz`), same as the
    legacy `--index` flag on the base `treasure-chest` command.
 5. Reports: missions scanned, candidates found, proposed jewels written, duplicates
    skipped, compiled artifact refreshed.
+
+Score generation is configurable via optional `scoring_policy` in `treasure-chests.yaml`.
+Defaults preserve the original formula:
+
+- cluster score = `40 + missions * 10 + tags * 5`
+- gap score = `30 + missions * 15`
+- both are capped at `100`
 
 **`mine`** is the human curation command over `status: proposed` jewels — exactly one action
 flag is required per invocation:
 
 - `--list [--format table|json]` — lists only `status: proposed` jewels (the curation
   queue), grouped/sorted by chest then id, with kind/trust/score/statement.
-- `--accept <jewel-id>` — promotes to `status: accepted`; sets `reviewed_by: human` and
-  `last_reviewed` to today.
-- `--verify <jewel-id> --evidence <ref>` — promotes to `status: verified`; requires
-  `--evidence`, appended to `verification.evidence_refs`.
-- `--deprecate <jewel-id>` — marks `status: deprecated`. Deprecation is terminal: a
+- `--accept <jewel-id>[,<jewel-id>...]` — promotes one or more jewels to `status: accepted`;
+  sets `reviewed_by: human` and `last_reviewed` to today.
+- `--verify <jewel-id>[,<jewel-id>...] --evidence <ref>` — promotes one or more jewels to
+  `status: verified`; requires `--evidence`, appended to `verification.evidence_refs`.
+- `--deprecate <jewel-id>[,<jewel-id>...]` — marks one or more jewels as `status: deprecated`.
+  Deprecation is terminal: a
   deprecated jewel can never be promoted back to `accepted`/`verified`.
 - `--migrate-status` — see Migration below.
 
@@ -481,6 +493,9 @@ unlike `mine --list` (scoped to the `status: proposed` curation queue only):
 - `show <jewel-id> [--format table|json]` — prints every field of a single jewel
   (`statement`, `source_refs`, `trust`, `score`, `applicability`, `verification`,
   etc.). Unknown id: error, non-zero exit.
+- `accept <jewel-id>...`, `verify <jewel-id>... --evidence <ref>`, and
+  `deprecate <jewel-id>...` — curation commands equivalent to the legacy `mine` flags,
+  accepting either repeated positional ids or comma-separated ids.
 
 **`treasure-chest scan` contract** (internal phase, folded into `index`; originally Track
 T-F / `SQ-003`, defined in mission `bau-tesouro-sq003-004-007`, implemented in
@@ -518,7 +533,7 @@ without explicit review/approval," scoped narrowly to this mechanism only — se
 statement. Enforced at runtime by `ValidateJewelTrust` (`internal/domain/jewel_grade.go`).
 
 ```yaml
-# .strategist/jewels.yaml — created and populated at runtime
+# .strategist/jewels/<chest-id>.yaml — created and populated at runtime
 schema_version: "1"
 jewels:
   - id: <identifier>
@@ -534,6 +549,11 @@ jewels:
     score: { value: 0-100, reasons: [<short reason>, ...] }
     applicability: { scope: [...], applies_when: [...], avoid_when: [...] }
     verification: { evidence_refs: [...] }
+    history:
+      - status: proposed | accepted | verified | deprecated
+        at: YYYY-MM-DD
+        by: agent | human
+        evidence_ref: <ref>              # present when status: verified was evidence-backed
 ```
 
 **Lifecycle:** agent- or `index`-generated jewels always start at `status: proposed` — an
@@ -543,19 +563,25 @@ curation) promotes a jewel to `accepted` or `verified` (the latter requires an e
 chest is tombstoned via `treasure-chest remove` (the chest removal is already an explicit
 human action). Deprecation is terminal.
 
+**Lifecycle history:** newly proposed jewels and every later status mutation append a
+`history` entry. Older jewels without `history` remain valid and gain history on their next
+curation or deprecation event.
+
 **Migration (`active` → `accepted`):** the pre-`treasure-chest-index-mine-pipeline` schema
 used a two-state `active | deprecated` model. `active` is a **removed legacy status** —
 `loadJewels` fails loudly (not a silent fallback) on any remaining `active` entry, per
 `ValidateJewelStatus` (`internal/domain/jewel_grade.go`). Run
 `strategist treasure-chest mine --migrate-status` once to rewrite every `status: active`
-entry to `status: accepted` in place; the command is idempotent and reports how many
-entries it migrated (0 is a valid, non-error outcome).
+entry to `status: accepted` in place across monolithic and partitioned manifests; the
+command is idempotent and reports how many entries it migrated (0 is a valid, non-error
+outcome).
 
-**Implemented**: `.strategist/jewels.yaml` exists and is loaded via `loadJewels`
-(`cmd/strategist/treasure_chest_jewels.go`); non-deprecated jewel counts are shown in the
-`treasure-chest` list's `JEWELS` column and JSON output (`cmd/strategist/treasure_chest.go`);
-removing a chest cascades to mark its jewels `deprecated` (`markJewelsDeprecatedForChest` in
-`treasure_chest_yaml_node.go`); the `jewel_generation` and `jewel_retrieval` contract blocks
+**Implemented**: `loadJewels` accepts legacy `.strategist/jewels.yaml` and partitioned
+`.strategist/jewels/<chest-id>.yaml`; new `index` candidates are written to partitioned
+manifests. Non-deprecated jewel counts are shown in the `treasure-chest` list's `JEWELS`
+column and JSON output (`cmd/strategist/treasure_chest.go`); removing a chest cascades to
+mark its jewels `deprecated` across both layouts (`markJewelsDeprecatedForChest` in
+`internal/treasure/yaml_node.go`); the `jewel_generation` and `jewel_retrieval` contract blocks
 govern LLM-facing generation/retrieval behavior
 (`internal/embed/defaults/contracts/machine/context-enrichment.yaml`), including
 status-precedence retrieval (`verified` preferred, then `accepted`, `proposed` as hint only,

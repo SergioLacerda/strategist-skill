@@ -117,7 +117,7 @@ compile.Compiler.CompileAll(.strategist/, knowledge.index.yaml)
   remains `Ranger -> Archivist -> Approval Gate -> Sniper`. Scout never replaces a
   slot and is not itself a slot — see `docs/strategist-concepts.md` § Scout —
   Intake Router.
-- **Scout route decision**: Scout (Intake Router) classifies the request immediately after intake and emits a compact `route_decision` (role, selected_route, route_reason, route_confidence, evidence_state, discovery_subtype, fallback_route, gate_required) — logged and telemetered, never written as a `pending/` artifact. See `schemas/scout-route-decision.schema.yaml` and `contracts/machine/scout-routing.yaml`.
+- **Scout route decision**: Scout (Intake Router) classifies the request immediately after intake and emits a compact `route_decision` (role, selected_route, route_reason, route_confidence, evidence_state, discovery_subtype, fallback_route, gate_required) — logged and telemetered, never written as a `pending/` artifact. See `schemas/scout-route-decision.schema.yaml` and `contracts/machine/scout-routing.yaml`. Runtime callers can validate the selected route against request facts with `domain.ValidateRouteDecision`.
 - **Canonical discovery handoff**: Ranger produces `<base_path>/pending/<mission_id>-analysis.md`; Archivist consumes that artifact and promotes the refined package to `<base_path>/refined/<mission_id>/`.
 - **Documentation-only execution**: Sniper maintains the executor narrative, but its current execution is materialization of documentation, diagrams, analyses, and approved handoffs. Source code changes are outside the contract.
 - **Quick Draw (`saque rápido`)**: quick idea/task capture; writes only after gate; `todo/` is write-only from the skill perspective.

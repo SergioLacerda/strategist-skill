@@ -258,6 +258,13 @@ schema_version: "1"
 trust_tiers: { T0, T1, T2, T3 }        # canonical / project_docs / examples / discovered
 budget_defaults_by_mode: { lean, balanced, deep }
 stop_conditions: [...]
+scoring_policy:                         # optional; used by treasure-chest index
+  cluster_base: 40
+  cluster_mission_weight: 10
+  cluster_tag_weight: 5
+  gap_base: 30
+  gap_mission_weight: 15
+  max_score: 100
 
 chests:
   - id: <identifier>
@@ -289,6 +296,15 @@ in Strategist derives or learns these values automatically. `strategist treasure
 validates `source_grade`, `reuse_value`, and `implementation_status` against their enumerated
 values on load and fails with a descriptive error if an unrecognized value is present.
 
+**Scoring policy (GAP-TC-04):** `scoring_policy` is optional. Missing fields use the defaults
+shown above. `treasure-chest index` computes proposed jewel scores as:
+
+- cluster score = `cluster_base + missions * cluster_mission_weight + tags * cluster_tag_weight`
+- gap score = `gap_base + missions * gap_mission_weight`
+- both values are capped by `max_score`
+
+Weights must be non-negative and `max_score` must be between 1 and 100.
+
 ### Registry Layers
 
 Chest configuration flows through four layers, each with a distinct source of truth:
@@ -317,13 +333,14 @@ rather than as a single undifferentiated `.strategist/treasure/` tree:
 
 | Artifact | Authoritative? | Location | Precedent |
 |---|---|---|---|
-| Jewels | yes — human/agent-attested, source-linked | `.strategist/jewels.yaml` | sibling to `treasure-chests.yaml` |
+| Jewels | yes — human/agent-attested, source-linked | `.strategist/jewels/<chest-id>.yaml` (legacy `.strategist/jewels.yaml` still read) | sibling domain to `treasure-chests.yaml` |
 | Clusters | no — generated, regenerable | `.strategist/treasure/clusters/` | sibling to `.compiled/` |
 | Gaps | no — generated, regenerable | `.strategist/treasure/gaps/` | sibling to `.compiled/` |
 
 Clusters and gaps are (re)generated from scratch by `strategist treasure-chest index`'s
 internal scan phase on every run — safe to delete, never hand-edited. Jewels are
-authoritative and persist across `index` runs; `index` only ever appends new
+authoritative and persist across `index` runs; `index` writes new candidates to
+per-chest partition manifests and only ever appends new
 `status: proposed` candidates, deduplicated by id, and never overwrites an existing entry —
 see [treasure-chest index / treasure-chest mine](cli-reference.md#treasure-chest-index--treasure-chest-mine)
 for the full command contract.

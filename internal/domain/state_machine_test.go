@@ -11,7 +11,6 @@ import (
 func TestFSMNominalRoute(t *testing.T) {
 	t.Parallel()
 	// Init → OpportunityAttack (non-empty) → OpportunityAttack (no opp, empty) → Refinement → ApprovalGate → Execution → DoneDelivery
-	policy := domain.DefaultMissionPolicy()
 	events := []domain.TransitionEvent{
 		domain.EventManifestNonEmpty, // Init → OpportunityAttack
 		domain.EventManifestEmpty,    // OpportunityAttack → Refinement (no opportunities)
@@ -21,17 +20,23 @@ func TestFSMNominalRoute(t *testing.T) {
 	}
 	state := domain.StateInit
 	for _, ev := range events {
-		state = domain.NextState(state, ev, policy)
+		state = domain.NextState(state, ev)
 	}
 	assert.Equal(t, domain.StateDoneDelivery, state)
 }
 
 func TestFSMGateDeniedTerminatesAnalysis(t *testing.T) {
 	t.Parallel()
-	policy := domain.DefaultMissionPolicy()
 	state := domain.RunStateMachine(domain.StateApprovalGate,
 		[]domain.TransitionEvent{domain.EventGateDenied},
-		policy,
+	)
+	assert.Equal(t, domain.StateDoneAnalysis, state)
+}
+
+func TestFSMGateTimeoutTerminatesAnalysis(t *testing.T) {
+	t.Parallel()
+	state := domain.RunStateMachine(domain.StateApprovalGate,
+		[]domain.TransitionEvent{domain.EventGateTimeout},
 	)
 	assert.Equal(t, domain.StateDoneAnalysis, state)
 }
@@ -40,7 +45,6 @@ func TestOpportunityGateApproved_GoesToExec(t *testing.T) {
 	t.Parallel()
 	state := domain.RunStateMachine(domain.StateOpportunityAttack,
 		[]domain.TransitionEvent{domain.EventManifestNonEmpty, domain.EventGateApproved},
-		domain.DefaultMissionPolicy(),
 	)
 	assert.Equal(t, domain.StateOpportunityExec, state)
 }
@@ -49,29 +53,27 @@ func TestOpportunityGateDenied_GoesToRefinement(t *testing.T) {
 	t.Parallel()
 	state := domain.RunStateMachine(domain.StateOpportunityGate,
 		[]domain.TransitionEvent{domain.EventGateDenied},
-		domain.DefaultMissionPolicy(),
 	)
 	assert.Equal(t, domain.StateRefinement, state)
 }
 
 func TestFSMQuickDrawRoute(t *testing.T) {
 	t.Parallel()
-	policy := domain.DefaultMissionPolicy()
 
 	// Intent detected → QuickDraw state
-	s := domain.NextState(domain.StateInit, domain.EventQuickDrawIntent, policy)
+	s := domain.NextState(domain.StateInit, domain.EventQuickDrawIntent)
 	assert.Equal(t, domain.StateQuickDraw, s)
 
 	// Normalize note → gate
-	s = domain.NextState(s, domain.EventManifestNonEmpty, policy)
+	s = domain.NextState(s, domain.EventManifestNonEmpty)
 	assert.Equal(t, domain.StateQuickDrawGate, s)
 
 	// User approves → done
-	s = domain.NextState(s, domain.EventQuickDrawApprove, policy)
+	s = domain.NextState(s, domain.EventQuickDrawApprove)
 	assert.Equal(t, domain.StateQuickDrawDone, s)
 
 	// Done is absorbing
-	s = domain.NextState(s, domain.EventManifestNonEmpty, policy)
+	s = domain.NextState(s, domain.EventManifestNonEmpty)
 	assert.Equal(t, domain.StateQuickDrawDone, s)
 }
 
@@ -79,23 +81,21 @@ func TestFSMQuickDrawDecline(t *testing.T) {
 	t.Parallel()
 	s := domain.RunStateMachine(domain.StateQuickDrawGate,
 		[]domain.TransitionEvent{domain.EventQuickDrawDecline},
-		domain.DefaultMissionPolicy(),
 	)
 	assert.Equal(t, domain.StateQuickDrawDone, s)
 }
 
 func TestFSMADRRoute(t *testing.T) {
 	t.Parallel()
-	policy := domain.DefaultMissionPolicy()
 
 	for _, start := range []domain.MissionState{domain.StateDoneAnalysis, domain.StateDoneDelivery} {
-		s := domain.NextState(start, domain.EventADRCriterionMet, policy)
+		s := domain.NextState(start, domain.EventADRCriterionMet)
 		assert.Equal(t, domain.StateADRGate1, s, "from %s", start)
 
-		s = domain.NextState(s, domain.EventADRApproved, policy)
+		s = domain.NextState(s, domain.EventADRApproved)
 		assert.Equal(t, domain.StateADRGate2, s)
 
-		s = domain.NextState(s, domain.EventADRApproved, policy)
+		s = domain.NextState(s, domain.EventADRApproved)
 		assert.Equal(t, domain.StateADRDone, s)
 	}
 }
@@ -104,41 +104,64 @@ func TestFSMADRDeclineAtGate1(t *testing.T) {
 	t.Parallel()
 	s := domain.RunStateMachine(domain.StateADRGate1,
 		[]domain.TransitionEvent{domain.EventADRDeclined},
-		domain.DefaultMissionPolicy(),
 	)
 	assert.Equal(t, domain.StateADRDone, s)
 }
 
 func TestFSMRetryTransient(t *testing.T) {
 	t.Parallel()
-	policy := domain.DefaultMissionPolicy()
 
-	// Transient failure in refinement → retrying
-	s := domain.NextState(domain.StateRefinement, domain.EventSlotTransient, policy)
-	assert.Equal(t, domain.StateRetrying, s)
+	// Transient failure in refinement preserves refinement retry origin.
+	s := domain.NextState(domain.StateRefinement, domain.EventSlotTransient)
+	assert.Equal(t, domain.StateRetryingRefinement, s)
 
 	// Retry succeeds (manifest non-empty = slot returned artifact)
-	s = domain.NextState(s, domain.EventManifestNonEmpty, policy)
+	s = domain.NextState(s, domain.EventManifestNonEmpty)
 	assert.Equal(t, domain.StateRefinement, s)
+}
+
+func TestFSMRetryTransientExecutionPreservesOrigin(t *testing.T) {
+	t.Parallel()
+
+	s := domain.NextState(domain.StateExecution, domain.EventSlotTransient)
+	assert.Equal(t, domain.StateRetryingExecution, s)
+
+	s = domain.NextState(s, domain.EventManifestNonEmpty)
+	assert.Equal(t, domain.StateExecution, s)
+}
+
+func TestFSMRetryTransientDirectExecPreservesOrigin(t *testing.T) {
+	t.Parallel()
+
+	s := domain.NextState(domain.StateDirectExec, domain.EventSlotTransient)
+	assert.Equal(t, domain.StateRetryingDirectExec, s)
+
+	s = domain.NextState(s, domain.EventManifestNonEmpty)
+	assert.Equal(t, domain.StateDirectExec, s)
 }
 
 func TestFSMRetryExhausted(t *testing.T) {
 	t.Parallel()
-	policy := domain.DefaultMissionPolicy()
 
-	s := domain.NextState(domain.StateRetrying, domain.EventSlotTransient, policy)
-	assert.Equal(t, domain.StateBlocked, s)
+	for _, state := range []domain.MissionState{
+		domain.StateRetrying,
+		domain.StateRetryingRefinement,
+		domain.StateRetryingExecution,
+		domain.StateRetryingDirectExec,
+	} {
+		s := domain.NextState(state, domain.EventSlotTransient)
+		assert.Equal(t, domain.StateBlocked, s, "transient exhaustion from %s", state)
 
-	s = domain.NextState(domain.StateRetrying, domain.EventSlotPermanent, policy)
-	assert.Equal(t, domain.StateBlocked, s)
+		s = domain.NextState(state, domain.EventSlotPermanent)
+		assert.Equal(t, domain.StateBlocked, s, "permanent failure from %s", state)
+	}
 }
 
 func TestFSMSniperOARoute(t *testing.T) {
 	t.Parallel()
-	policy := domain.DefaultMissionPolicy()
 
 	// Mid-execution OA surfaces → pause at opportunity gate
-	s := domain.NextState(domain.StateExecution, domain.EventSniperOA, policy)
+	s := domain.NextState(domain.StateExecution, domain.EventSniperOA)
 	assert.Equal(t, domain.StateOpportunityGate, s)
 }
 
@@ -156,7 +179,6 @@ func TestFSMSafetyPropertyLike(t *testing.T) {
 	}
 
 	for i := 0; i < 400; i++ {
-		policy := domain.DefaultMissionPolicy()
 		state := domain.StateInit
 		seenGateApproved := false
 		for j := 0; j < 14; j++ {
@@ -164,7 +186,7 @@ func TestFSMSafetyPropertyLike(t *testing.T) {
 			if ev == domain.EventGateApproved {
 				seenGateApproved = true
 			}
-			state = domain.NextState(state, ev, policy)
+			state = domain.NextState(state, ev)
 			if state == domain.StateExecution {
 				assert.True(t, seenGateApproved)
 			}
@@ -174,35 +196,32 @@ func TestFSMSafetyPropertyLike(t *testing.T) {
 
 func TestFSMCriticalHitRoute(t *testing.T) {
 	t.Parallel()
-	policy := domain.DefaultMissionPolicy()
 
-	s := domain.NextState(domain.StateInit, domain.EventDirectHitIntent, policy)
+	s := domain.NextState(domain.StateInit, domain.EventDirectHitIntent)
 	assert.Equal(t, domain.StateDirectGate, s)
 
-	s = domain.NextState(s, domain.EventDirectGateApproved, policy)
+	s = domain.NextState(s, domain.EventDirectGateApproved)
 	assert.Equal(t, domain.StateDirectExec, s)
 
-	s = domain.NextState(s, domain.EventSniperDone, policy)
+	s = domain.NextState(s, domain.EventSniperDone)
 	assert.Equal(t, domain.StateDirectDone, s)
 
-	s = domain.NextState(s, domain.EventManifestNonEmpty, policy)
+	s = domain.NextState(s, domain.EventManifestNonEmpty)
 	assert.Equal(t, domain.StateDirectDone, s)
 }
 
 func TestFSMCriticalHitDeclinedGoesToDoneAnalysis(t *testing.T) {
 	t.Parallel()
-	policy := domain.DefaultMissionPolicy()
 
-	s := domain.NextState(domain.StateInit, domain.EventDirectHitIntent, policy)
+	s := domain.NextState(domain.StateInit, domain.EventDirectHitIntent)
 	assert.Equal(t, domain.StateDirectGate, s)
 
-	s = domain.NextState(s, domain.EventDirectGateDeclined, policy)
+	s = domain.NextState(s, domain.EventDirectGateDeclined)
 	assert.Equal(t, domain.StateDoneAnalysis, s)
 }
 
 func TestFSMStayBranches(t *testing.T) {
 	t.Parallel()
-	policy := domain.DefaultMissionPolicy()
 
 	cases := []struct {
 		name  string
@@ -217,6 +236,9 @@ func TestFSMStayBranches(t *testing.T) {
 		{"approval gate unrelated event", domain.StateApprovalGate, domain.EventManifestEmpty},
 		{"execution unrelated event", domain.StateExecution, domain.EventGateApproved},
 		{"retrying unrelated event", domain.StateRetrying, domain.EventManifestEmpty},
+		{"retrying refinement unrelated event", domain.StateRetryingRefinement, domain.EventManifestEmpty},
+		{"retrying execution unrelated event", domain.StateRetryingExecution, domain.EventManifestEmpty},
+		{"retrying direct exec unrelated event", domain.StateRetryingDirectExec, domain.EventManifestEmpty},
 		{"quick draw unrelated event", domain.StateQuickDraw, domain.EventGateApproved},
 		{"quick draw gate unrelated event", domain.StateQuickDrawGate, domain.EventManifestEmpty},
 		{"adr gate1 unrelated event", domain.StateADRGate1, domain.EventGateApproved},
@@ -228,7 +250,7 @@ func TestFSMStayBranches(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			got := domain.NextState(tc.start, tc.event, policy)
+			got := domain.NextState(tc.start, tc.event)
 			assert.Equal(t, tc.start, got, "state should not change for unrelated event")
 		})
 	}
@@ -236,11 +258,10 @@ func TestFSMStayBranches(t *testing.T) {
 
 func TestFSMAbsorbingStates(t *testing.T) {
 	t.Parallel()
-	policy := domain.DefaultMissionPolicy()
 	for _, s := range []domain.MissionState{
 		domain.StateQuickDrawDone, domain.StateADRDone, domain.StateBlocked, domain.StateDirectDone,
 	} {
-		got := domain.NextState(s, domain.EventGateApproved, policy)
+		got := domain.NextState(s, domain.EventGateApproved)
 		assert.Equal(t, s, got)
 	}
 }
