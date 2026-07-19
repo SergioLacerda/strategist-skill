@@ -2,11 +2,14 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/testutil"
+	"github.com/SergioLacerda/strategist-skill/internal/treasure"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -57,18 +60,73 @@ sources:
 // resetTreasureChestFlags saves and restores all treasure-chest command flags.
 func resetTreasureChestFlags(t *testing.T) {
 	t.Helper()
-	origRoot := treasureChestRoot
-	origIndex := treasureChestDoIndex
-	origHist := treasureChestIncludeHistorical
-	origFmt := treasureChestFormat
-	origScope := treasureChestScope
+	origRoot, err := treasureChestCmd.PersistentFlags().GetString("root")
+	require.NoError(t, err)
+	origIndex, err := treasureChestCmd.Flags().GetBool("index")
+	require.NoError(t, err)
+	origHist, err := treasureChestCmd.Flags().GetBool("include-historical")
+	require.NoError(t, err)
+	origFmt, err := treasureChestCmd.Flags().GetString("format")
+	require.NoError(t, err)
+	origScope, err := treasureChestCmd.Flags().GetString("scope")
+	require.NoError(t, err)
 	t.Cleanup(func() {
-		treasureChestRoot = origRoot
-		treasureChestDoIndex = origIndex
-		treasureChestIncludeHistorical = origHist
-		treasureChestFormat = origFmt
-		treasureChestScope = origScope
+		setTreasureChestRoot(t, origRoot)
+		setTreasureChestDoIndex(t, origIndex)
+		setTreasureChestIncludeHistorical(t, origHist)
+		setTreasureChestFormat(t, origFmt)
+		setTreasureChestScope(t, origScope)
 	})
+	setTreasureChestRoot(t, "")
+	setTreasureChestDoIndex(t, false)
+	setTreasureChestIncludeHistorical(t, false)
+	setTreasureChestFormat(t, "table")
+	setTreasureChestScope(t, "")
+	setCmdFlag(t, treasureChestScanCmd, "dry-run", "false")
+}
+
+func setTreasureChestRoot(t *testing.T, value string) {
+	t.Helper()
+	require.NoError(t, treasureChestCmd.PersistentFlags().Set("root", value))
+}
+
+func setTreasureChestDoIndex(t *testing.T, value bool) {
+	t.Helper()
+	require.NoError(t, treasureChestCmd.Flags().Set("index", fmt.Sprint(value)))
+}
+
+func setTreasureChestIncludeHistorical(t *testing.T, value bool) {
+	t.Helper()
+	require.NoError(t, treasureChestCmd.Flags().Set("include-historical", fmt.Sprint(value)))
+}
+
+func setTreasureChestFormat(t *testing.T, value string) {
+	t.Helper()
+	require.NoError(t, treasureChestCmd.Flags().Set("format", value))
+}
+
+func setTreasureChestScope(t *testing.T, value string) {
+	t.Helper()
+	require.NoError(t, treasureChestCmd.Flags().Set("scope", value))
+}
+
+func setCmdFlag(t *testing.T, cmd *cobra.Command, name, value string) {
+	t.Helper()
+	require.NoError(t, cmd.Flags().Set(name, value))
+}
+
+func cmdFlagString(t *testing.T, cmd *cobra.Command, name string) string {
+	t.Helper()
+	value, err := cmd.Flags().GetString(name)
+	require.NoError(t, err)
+	return value
+}
+
+func cmdFlagBool(t *testing.T, cmd *cobra.Command, name string) bool {
+	t.Helper()
+	value, err := cmd.Flags().GetBool(name)
+	require.NoError(t, err)
+	return value
 }
 
 // --- status (read-only) tests ---
@@ -76,8 +134,8 @@ func resetTreasureChestFlags(t *testing.T) {
 func TestTreasureChestCmd_ShowsChestsSection(t *testing.T) {
 	dir := minimalTreasureChestRoot(t)
 	resetTreasureChestFlags(t)
-	treasureChestRoot = dir
-	treasureChestDoIndex = false
+	setTreasureChestRoot(t, dir)
+	setTreasureChestDoIndex(t, false)
 
 	out := captureStdout(t, func() {
 		require.NoError(t, treasureChestCmd.RunE(treasureChestCmd, nil))
@@ -90,8 +148,8 @@ func TestTreasureChestCmd_ShowsChestsSection(t *testing.T) {
 func TestTreasureChestCmd_ShowsTrustTierFromGoverned(t *testing.T) {
 	dir := minimalTreasureChestRoot(t)
 	resetTreasureChestFlags(t)
-	treasureChestRoot = dir
-	treasureChestDoIndex = false
+	setTreasureChestRoot(t, dir)
+	setTreasureChestDoIndex(t, false)
 
 	out := captureStdout(t, func() {
 		require.NoError(t, treasureChestCmd.RunE(treasureChestCmd, nil))
@@ -103,8 +161,8 @@ func TestTreasureChestCmd_ShowsTrustTierFromGoverned(t *testing.T) {
 func TestTreasureChestCmd_DefaultIsReadOnly(t *testing.T) {
 	dir := minimalTreasureChestRoot(t)
 	resetTreasureChestFlags(t)
-	treasureChestRoot = dir
-	treasureChestDoIndex = false
+	setTreasureChestRoot(t, dir)
+	setTreasureChestDoIndex(t, false)
 
 	require.NoError(t, treasureChestCmd.RunE(treasureChestCmd, nil))
 
@@ -115,8 +173,8 @@ func TestTreasureChestCmd_DefaultIsReadOnly(t *testing.T) {
 func TestTreasureChestCmd_SuggestsIndexWhenCompiledAbsent(t *testing.T) {
 	dir := minimalTreasureChestRoot(t)
 	resetTreasureChestFlags(t)
-	treasureChestRoot = dir
-	treasureChestDoIndex = false
+	setTreasureChestRoot(t, dir)
+	setTreasureChestDoIndex(t, false)
 
 	out := captureStdout(t, func() {
 		require.NoError(t, treasureChestCmd.RunE(treasureChestCmd, nil))
@@ -144,8 +202,8 @@ treasure_chests:
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "knowledge.index.yaml"), []byte("sources: []\n"), 0o644))
 
 	resetTreasureChestFlags(t)
-	treasureChestRoot = dir
-	treasureChestDoIndex = false
+	setTreasureChestRoot(t, dir)
+	setTreasureChestDoIndex(t, false)
 
 	out := captureStdout(t, func() {
 		require.NoError(t, treasureChestCmd.RunE(treasureChestCmd, nil))
@@ -180,8 +238,8 @@ chests:
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "knowledge.index.yaml"), []byte("sources: []\n"), 0o644))
 
 	resetTreasureChestFlags(t)
-	treasureChestRoot = dir
-	treasureChestDoIndex = false
+	setTreasureChestRoot(t, dir)
+	setTreasureChestDoIndex(t, false)
 
 	out := captureStdout(t, func() {
 		require.NoError(t, treasureChestCmd.RunE(treasureChestCmd, nil))
@@ -221,8 +279,8 @@ sources:
 `), 0o644))
 
 	resetTreasureChestFlags(t)
-	treasureChestRoot = dir
-	treasureChestDoIndex = false
+	setTreasureChestRoot(t, dir)
+	setTreasureChestDoIndex(t, false)
 
 	out := captureStdout(t, func() {
 		require.NoError(t, treasureChestCmd.RunE(treasureChestCmd, nil))
@@ -233,7 +291,7 @@ sources:
 
 func TestTreasureChestCmd_MissingActiveYAML(t *testing.T) {
 	resetTreasureChestFlags(t)
-	treasureChestRoot = filepath.Join(t.TempDir(), "nonexistent")
+	setTreasureChestRoot(t, filepath.Join(t.TempDir(), "nonexistent"))
 
 	err := treasureChestCmd.RunE(treasureChestCmd, nil)
 	require.Error(t, err)
@@ -257,8 +315,8 @@ treasure_chests:
 	// No treasure-chests.yaml — must be non-fatal.
 
 	resetTreasureChestFlags(t)
-	treasureChestRoot = dir
-	treasureChestDoIndex = false
+	setTreasureChestRoot(t, dir)
+	setTreasureChestDoIndex(t, false)
 
 	out := captureStdout(t, func() {
 		require.NoError(t, treasureChestCmd.RunE(treasureChestCmd, nil))
@@ -293,8 +351,8 @@ chests:
 	// No knowledge.index.yaml — must be non-fatal.
 
 	resetTreasureChestFlags(t)
-	treasureChestRoot = dir
-	treasureChestDoIndex = false
+	setTreasureChestRoot(t, dir)
+	setTreasureChestDoIndex(t, false)
 
 	out := captureStdout(t, func() {
 		require.NoError(t, treasureChestCmd.RunE(treasureChestCmd, nil))
@@ -307,9 +365,9 @@ chests:
 func TestTreasureChestCmd_IndexBuildsCompiledArtifact(t *testing.T) {
 	dir := minimalTreasureChestRoot(t)
 	resetTreasureChestFlags(t)
-	treasureChestRoot = dir
-	treasureChestDoIndex = true
-	treasureChestIncludeHistorical = false
+	setTreasureChestRoot(t, dir)
+	setTreasureChestDoIndex(t, true)
+	setTreasureChestIncludeHistorical(t, false)
 
 	out := captureStdout(t, func() {
 		require.NoError(t, treasureChestCmd.RunE(treasureChestCmd, nil))
@@ -321,8 +379,8 @@ func TestTreasureChestCmd_IndexBuildsCompiledArtifact(t *testing.T) {
 func TestTreasureChestCmd_IndexIsIsolatedToExplicitFlag(t *testing.T) {
 	dir := minimalTreasureChestRoot(t)
 	resetTreasureChestFlags(t)
-	treasureChestRoot = dir
-	treasureChestDoIndex = false
+	setTreasureChestRoot(t, dir)
+	setTreasureChestDoIndex(t, false)
 
 	require.NoError(t, treasureChestCmd.RunE(treasureChestCmd, nil))
 	assert.NoFileExists(t, filepath.Join(dir, ".compiled", ".index.gz"))
@@ -358,9 +416,9 @@ sources:
 `), 0o644))
 
 	resetTreasureChestFlags(t)
-	treasureChestRoot = dir
-	treasureChestDoIndex = true
-	treasureChestIncludeHistorical = false
+	setTreasureChestRoot(t, dir)
+	setTreasureChestDoIndex(t, true)
+	setTreasureChestIncludeHistorical(t, false)
 
 	out := captureStdout(t, func() {
 		require.NoError(t, treasureChestCmd.RunE(treasureChestCmd, nil))
@@ -371,7 +429,7 @@ sources:
 
 func TestTreasureChestCmd_DefaultRootFallback(t *testing.T) {
 	resetTreasureChestFlags(t)
-	treasureChestRoot = ""
+	setTreasureChestRoot(t, "")
 
 	tmp := t.TempDir()
 	origWd, _ := os.Getwd()
@@ -388,8 +446,8 @@ func TestTreasureChestCmd_DefaultRootFallback(t *testing.T) {
 func TestTreasureChestCmd_FormatJSON_EmitsStructuredOutput(t *testing.T) {
 	dir := minimalTreasureChestRoot(t)
 	resetTreasureChestFlags(t)
-	treasureChestRoot = dir
-	treasureChestFormat = "json"
+	setTreasureChestRoot(t, dir)
+	setTreasureChestFormat(t, "json")
 
 	out := captureStdout(t, func() {
 		require.NoError(t, treasureChestCmd.RunE(treasureChestCmd, nil))
@@ -421,7 +479,7 @@ chests:
     open_gaps: ["missing tests", "no changelog"]
 `), 0o644))
 	resetTreasureChestFlags(t)
-	treasureChestRoot = dir
+	setTreasureChestRoot(t, dir)
 
 	out := captureStdout(t, func() {
 		require.NoError(t, treasureChestCmd.RunE(treasureChestCmd, nil))
@@ -451,8 +509,8 @@ chests:
     open_gaps: ["needs review"]
 `), 0o644))
 	resetTreasureChestFlags(t)
-	treasureChestRoot = dir
-	treasureChestFormat = "json"
+	setTreasureChestRoot(t, dir)
+	setTreasureChestFormat(t, "json")
 
 	out := captureStdout(t, func() {
 		require.NoError(t, treasureChestCmd.RunE(treasureChestCmd, nil))
@@ -469,8 +527,8 @@ chests:
 func TestTreasureChestCmd_FormatUnknown_ReturnsError(t *testing.T) {
 	dir := minimalTreasureChestRoot(t)
 	resetTreasureChestFlags(t)
-	treasureChestRoot = dir
-	treasureChestFormat = "xml"
+	setTreasureChestRoot(t, dir)
+	setTreasureChestFormat(t, "xml")
 
 	err := treasureChestCmd.RunE(treasureChestCmd, nil)
 	require.Error(t, err)
@@ -480,8 +538,8 @@ func TestTreasureChestCmd_FormatUnknown_ReturnsError(t *testing.T) {
 func TestTreasureChestCmd_ScopeFiltersMatchingChests(t *testing.T) {
 	dir := minimalTreasureChestRoot(t)
 	resetTreasureChestFlags(t)
-	treasureChestRoot = dir
-	treasureChestScope = "discovery" // chest declares scope: all, which matches any scope
+	setTreasureChestRoot(t, dir)
+	setTreasureChestScope(t, "discovery") // chest declares Scope: all, which matches any scope
 
 	out := captureStdout(t, func() {
 		require.NoError(t, treasureChestCmd.RunE(treasureChestCmd, nil))
@@ -505,8 +563,8 @@ treasure_chests:
     scope: refinement
 `), 0o644))
 	resetTreasureChestFlags(t)
-	treasureChestRoot = dir
-	treasureChestScope = "discovery"
+	setTreasureChestRoot(t, dir)
+	setTreasureChestScope(t, "discovery")
 
 	out := captureStdout(t, func() {
 		require.NoError(t, treasureChestCmd.RunE(treasureChestCmd, nil))
@@ -516,61 +574,61 @@ treasure_chests:
 
 func TestFilterRowsByScope_EmptyValueIsNoop(t *testing.T) {
 	t.Parallel()
-	rows := []chestRow{{id: "a", scope: []string{"discovery"}}}
-	assert.Equal(t, rows, filterRowsByScope(rows, ""))
+	rows := []treasure.StatusRow{{ID: "a", Scope: []string{"discovery"}}}
+	assert.Equal(t, rows, treasure.FilterRowsByScope(rows, ""))
 }
 
 func TestFilterRowsByScope_MatchesAllScope(t *testing.T) {
 	t.Parallel()
-	rows := []chestRow{{id: "a", scope: []string{"all"}}}
-	assert.Len(t, filterRowsByScope(rows, "execution"), 1)
+	rows := []treasure.StatusRow{{ID: "a", Scope: []string{"all"}}}
+	assert.Len(t, treasure.FilterRowsByScope(rows, "execution"), 1)
 }
 
 func TestFilterRowsByScope_ExcludesUnscopedRows(t *testing.T) {
 	t.Parallel()
-	rows := []chestRow{{id: "a", scope: nil}}
-	assert.Empty(t, filterRowsByScope(rows, "discovery"))
+	rows := []treasure.StatusRow{{ID: "a", Scope: nil}}
+	assert.Empty(t, treasure.FilterRowsByScope(rows, "discovery"))
 }
 
 // --- unit-level helpers ---
 
 func TestDeriveFreshness_WithLastReviewed(t *testing.T) {
 	t.Parallel()
-	r := chestRow{lastReviewed: "2026-06-24"}
-	assert.Equal(t, "fresh", deriveFreshness(r))
+	r := treasure.StatusRow{LastReviewed: "2026-06-24"}
+	assert.Equal(t, "fresh", treasure.DeriveFreshness(r))
 }
 
 func TestDeriveFreshness_WithoutLastReviewed(t *testing.T) {
 	t.Parallel()
-	r := chestRow{}
-	assert.Equal(t, "unknown", deriveFreshness(r))
+	r := treasure.StatusRow{}
+	assert.Equal(t, "unknown", treasure.DeriveFreshness(r))
 }
 
 func TestDeriveDrift_MissingGovernance(t *testing.T) {
 	t.Parallel()
-	r := chestRow{configured: true, governed: false, indexed: true}
-	drift := deriveDrift(r)
+	r := treasure.StatusRow{Configured: true, Governed: false, Indexed: true}
+	drift := treasure.DeriveDrift(r)
 	assert.Contains(t, drift, "missing_governance")
 }
 
 func TestDeriveDrift_MissingIndex(t *testing.T) {
 	t.Parallel()
-	r := chestRow{configured: true, governed: true, indexed: false}
-	drift := deriveDrift(r)
+	r := treasure.StatusRow{Configured: true, Governed: true, Indexed: false}
+	drift := treasure.DeriveDrift(r)
 	assert.Contains(t, drift, "missing_index")
 }
 
 func TestDeriveDrift_Unscoped(t *testing.T) {
 	t.Parallel()
-	r := chestRow{configured: false, governed: true, indexed: true}
-	drift := deriveDrift(r)
+	r := treasure.StatusRow{Configured: false, Governed: true, Indexed: true}
+	drift := treasure.DeriveDrift(r)
 	assert.Contains(t, drift, "unscoped")
 }
 
 func TestDeriveDrift_None(t *testing.T) {
 	t.Parallel()
-	r := chestRow{configured: true, governed: true, indexed: true}
-	drift := deriveDrift(r)
+	r := treasure.StatusRow{Configured: true, Governed: true, Indexed: true}
+	drift := treasure.DeriveDrift(r)
 	assert.Empty(t, drift)
 }
 
@@ -578,7 +636,7 @@ func TestScopeVal_UnmarshalScalar(t *testing.T) {
 	t.Parallel()
 	input := []byte("scope: all\n")
 	var out struct {
-		Scope scopeVal `yaml:"scope"`
+		Scope treasure.Scope `yaml:"scope"`
 	}
 	require.NoError(t, yaml.Unmarshal(input, &out))
 	assert.Equal(t, []string{"all"}, []string(out.Scope))
@@ -588,7 +646,7 @@ func TestScopeVal_UnmarshalList(t *testing.T) {
 	t.Parallel()
 	input := []byte("scope:\n  - discovery\n  - refinement\n")
 	var out struct {
-		Scope scopeVal `yaml:"scope"`
+		Scope treasure.Scope `yaml:"scope"`
 	}
 	require.NoError(t, yaml.Unmarshal(input, &out))
 	assert.Equal(t, []string{"discovery", "refinement"}, []string(out.Scope))

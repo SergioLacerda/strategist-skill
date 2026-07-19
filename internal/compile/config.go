@@ -15,20 +15,9 @@ import (
 // It mirrors the logic of compile-config.sh exactly.
 func Config(root, outputPath string) error {
 	activePath := filepath.Join(root, "active.yaml")
-
-	// Validate active.yaml using a typed struct (catches required-field drift early).
-	var activeCfg ActiveConfig
-	if err := loadYAMLInto(activePath, &activeCfg); err != nil {
-		return fmt.Errorf("compile config: %w", err)
-	}
-	if err := activeCfg.Validate(); err != nil {
-		return fmt.Errorf("compile config: active.yaml: %w", err)
-	}
-
-	// Load as raw map so all fields (including extended ones like treasure_chests) are preserved.
-	activeRaw, err := loadYAMLFile(activePath)
+	activeRaw, err := loadValidatedActiveRaw(activePath)
 	if err != nil {
-		return fmt.Errorf("compile config: active.yaml raw: %w", err)
+		return fmt.Errorf("compile config: %w", err)
 	}
 
 	sources := map[string]int64{activePath: mtime(activePath)}
@@ -83,6 +72,29 @@ func Config(root, outputPath string) error {
 		return fmt.Errorf("compile config: write %s: %w", outputPath, err)
 	}
 	return nil
+}
+
+func loadValidatedActiveRaw(activePath string) (map[string]any, error) {
+	activeData, err := os.ReadFile(activePath) //nolint:gosec // G304: path derived from strategistDir
+	if err != nil {
+		return nil, fmt.Errorf("read active.yaml: %w", err)
+	}
+
+	// Validate active.yaml using a typed struct (catches required-field drift early).
+	var activeCfg ActiveConfig
+	if err := parseYAMLBytes(activePath, activeData, &activeCfg); err != nil {
+		return nil, err
+	}
+	if err := activeCfg.Validate(); err != nil {
+		return nil, fmt.Errorf("active.yaml: %w", err)
+	}
+
+	// Load as raw map so all fields (including extended ones like treasure_chests) are preserved.
+	activeRaw, err := parseYAMLMapBytes(activePath, activeData)
+	if err != nil {
+		return nil, fmt.Errorf("active.yaml raw: %w", err)
+	}
+	return activeRaw, nil
 }
 
 // compileYAMLDir reads all *.yaml files from dir, adding each to sources,

@@ -1,4 +1,4 @@
-package main
+package treasure
 
 import (
 	"os"
@@ -22,11 +22,11 @@ func mustParseDoc(t *testing.T, content string) *yaml.Node {
 	return &doc
 }
 
-// --- readYAMLNode ---
+// --- ReadYAMLNode ---
 
 func TestReadYAMLNode_MissingFile(t *testing.T) {
 	t.Parallel()
-	_, err := readYAMLNode(filepath.Join(t.TempDir(), "nope.yaml"))
+	_, err := ReadYAMLNode(filepath.Join(t.TempDir(), "nope.yaml"))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "read")
 }
@@ -35,19 +35,19 @@ func TestReadYAMLNode_InvalidYAML(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "bad.yaml")
 	require.NoError(t, os.WriteFile(path, []byte(": not: valid: yaml:\n"), 0o644))
-	_, err := readYAMLNode(path)
+	_, err := ReadYAMLNode(path)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "parse")
 }
 
-// --- writeYAMLNodes ---
+// --- WriteYAMLNodes ---
 
 func TestWriteYAMLNodes_WriteFailure(t *testing.T) {
 	t.Parallel()
 	doc := mustParseDoc(t, "a: 1\n")
 	// Directory instead of file path — os.WriteFile will fail.
 	dir := t.TempDir()
-	written, err := writeYAMLNodes(yamlWrite{dir, doc})
+	written, err := WriteYAMLNodes(YAMLWrite{Path: dir, Doc: doc})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "write")
 	assert.Empty(t, written)
@@ -59,9 +59,9 @@ func TestWriteYAMLNodes_PartialWriteReturnsWrittenPaths(t *testing.T) {
 	goodPath := filepath.Join(dir, "good.yaml")
 	doc := mustParseDoc(t, "a: 1\n")
 
-	written, err := writeYAMLNodes(
-		yamlWrite{goodPath, doc},
-		yamlWrite{dir, doc}, // second write fails: dir is not a regular file
+	written, err := WriteYAMLNodes(
+		YAMLWrite{Path: goodPath, Doc: doc},
+		YAMLWrite{Path: dir, Doc: doc}, // second write fails: dir is not a regular file
 	)
 	require.Error(t, err)
 	assert.Equal(t, []string{goodPath}, written)
@@ -73,7 +73,7 @@ func TestWriteYAMLNodes_Success(t *testing.T) {
 	path := filepath.Join(dir, "out.yaml")
 	doc := mustParseDoc(t, "a: 1\n")
 
-	written, err := writeYAMLNodes(yamlWrite{path, doc})
+	written, err := WriteYAMLNodes(YAMLWrite{Path: path, Doc: doc})
 	require.NoError(t, err)
 	assert.Equal(t, []string{path}, written)
 	raw, err := os.ReadFile(path)
@@ -81,12 +81,12 @@ func TestWriteYAMLNodes_Success(t *testing.T) {
 	assert.Contains(t, string(raw), "a: 1")
 }
 
-// --- rootMapping ---
+// --- RootMapping ---
 
 func TestRootMapping_EmptyDocument(t *testing.T) {
 	t.Parallel()
 	doc := &yaml.Node{Kind: yaml.DocumentNode}
-	_, err := rootMapping(doc)
+	_, err := RootMapping(doc)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no content")
 }
@@ -94,7 +94,7 @@ func TestRootMapping_EmptyDocument(t *testing.T) {
 func TestRootMapping_NotDocumentNode(t *testing.T) {
 	t.Parallel()
 	doc := &yaml.Node{Kind: yaml.ScalarNode, Value: "x"}
-	_, err := rootMapping(doc)
+	_, err := RootMapping(doc)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no content")
 }
@@ -102,7 +102,7 @@ func TestRootMapping_NotDocumentNode(t *testing.T) {
 func TestRootMapping_RootNotMapping(t *testing.T) {
 	t.Parallel()
 	doc := mustParseDoc(t, "- a\n- b\n")
-	_, err := rootMapping(doc)
+	_, err := RootMapping(doc)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not a mapping")
 }
@@ -110,69 +110,69 @@ func TestRootMapping_RootNotMapping(t *testing.T) {
 func TestRootMapping_Success(t *testing.T) {
 	t.Parallel()
 	doc := mustParseDoc(t, "a: 1\n")
-	root, err := rootMapping(doc)
+	root, err := RootMapping(doc)
 	require.NoError(t, err)
 	assert.Equal(t, yaml.MappingNode, root.Kind)
 }
 
-// --- mappingValue ---
+// --- MappingValue ---
 
 func TestMappingValue_KeyNotFound(t *testing.T) {
 	t.Parallel()
 	doc := mustParseDoc(t, "a: 1\n")
-	root, err := rootMapping(doc)
+	root, err := RootMapping(doc)
 	require.NoError(t, err)
-	assert.Nil(t, mappingValue(root, "missing"))
+	assert.Nil(t, MappingValue(root, "missing"))
 }
 
 func TestMappingValue_KeyFound(t *testing.T) {
 	t.Parallel()
 	doc := mustParseDoc(t, "a: 1\nb: 2\n")
-	root, err := rootMapping(doc)
+	root, err := RootMapping(doc)
 	require.NoError(t, err)
-	v := mappingValue(root, "b")
+	v := MappingValue(root, "b")
 	require.NotNil(t, v)
 	assert.Equal(t, "2", v.Value)
 }
 
-// --- findOrCreateSequence ---
+// --- FindOrCreateSequence ---
 
 func TestFindOrCreateSequence_CreatesWhenMissing(t *testing.T) {
 	t.Parallel()
 	doc := mustParseDoc(t, "a: 1\n")
-	root, err := rootMapping(doc)
+	root, err := RootMapping(doc)
 	require.NoError(t, err)
 
-	seq := findOrCreateSequence(root, "items")
+	seq := FindOrCreateSequence(root, "items")
 	require.NotNil(t, seq)
 	assert.Equal(t, yaml.SequenceNode, seq.Kind)
 	assert.Empty(t, seq.Content)
 
 	// key was appended to the mapping
-	assert.NotNil(t, mappingValue(root, "items"))
+	assert.NotNil(t, MappingValue(root, "items"))
 }
 
 func TestFindOrCreateSequence_ReturnsExisting(t *testing.T) {
 	t.Parallel()
 	doc := mustParseDoc(t, "items:\n  - x\n  - y\n")
-	root, err := rootMapping(doc)
+	root, err := RootMapping(doc)
 	require.NoError(t, err)
 
-	seq := findOrCreateSequence(root, "items")
+	seq := FindOrCreateSequence(root, "items")
 	require.NotNil(t, seq)
 	assert.Len(t, seq.Content, 2)
 }
 
-// --- findEntryByID ---
+// --- FindEntryByID ---
 
 func TestFindEntryByID_Found(t *testing.T) {
 	t.Parallel()
 	doc := mustParseDoc(t, "items:\n  - id: a\n  - id: b\n")
-	root, err := rootMapping(doc)
+	root, err := RootMapping(doc)
 	require.NoError(t, err)
-	seq := mappingValue(root, "items")
+	seq := MappingValue(root, "items")
 
-	entry, idx := findEntryByID(seq, "b")
+	entry, idx := FindEntryByID(seq, "b")
 	require.NotNil(t, entry)
 	assert.Equal(t, 1, idx)
 }
@@ -180,11 +180,11 @@ func TestFindEntryByID_Found(t *testing.T) {
 func TestFindEntryByID_NotFound(t *testing.T) {
 	t.Parallel()
 	doc := mustParseDoc(t, "items:\n  - id: a\n")
-	root, err := rootMapping(doc)
+	root, err := RootMapping(doc)
 	require.NoError(t, err)
-	seq := mappingValue(root, "items")
+	seq := MappingValue(root, "items")
 
-	entry, idx := findEntryByID(seq, "missing")
+	entry, idx := FindEntryByID(seq, "missing")
 	assert.Nil(t, entry)
 	assert.Equal(t, -1, idx)
 }
@@ -192,21 +192,21 @@ func TestFindEntryByID_NotFound(t *testing.T) {
 func TestFindEntryByID_SkipsNonMappingItems(t *testing.T) {
 	t.Parallel()
 	doc := mustParseDoc(t, "items:\n  - plain-scalar\n  - id: b\n")
-	root, err := rootMapping(doc)
+	root, err := RootMapping(doc)
 	require.NoError(t, err)
-	seq := mappingValue(root, "items")
+	seq := MappingValue(root, "items")
 
-	entry, idx := findEntryByID(seq, "b")
+	entry, idx := FindEntryByID(seq, "b")
 	require.NotNil(t, entry)
 	assert.Equal(t, 1, idx)
 }
 
-// --- appendActiveChestEntry / removeActiveChestEntry error branches ---
+// --- AppendActiveChestEntry / RemoveActiveChestEntry error branches ---
 
 func TestAppendActiveChestEntry_RootMappingError(t *testing.T) {
 	t.Parallel()
 	doc := mustParseDoc(t, "- a\n- b\n")
-	err := appendActiveChestEntry(doc, "id", "path", "all")
+	err := AppendActiveChestEntry(doc, "id", "path", "all")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not a mapping")
 }
@@ -214,7 +214,7 @@ func TestAppendActiveChestEntry_RootMappingError(t *testing.T) {
 func TestRemoveActiveChestEntry_RootMappingError(t *testing.T) {
 	t.Parallel()
 	doc := mustParseDoc(t, "- a\n- b\n")
-	err := removeActiveChestEntry(doc, "id")
+	err := RemoveActiveChestEntry(doc, "id")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not a mapping")
 }
@@ -222,7 +222,7 @@ func TestRemoveActiveChestEntry_RootMappingError(t *testing.T) {
 func TestRemoveActiveChestEntry_NoSequenceDeclared(t *testing.T) {
 	t.Parallel()
 	doc := mustParseDoc(t, "mode: epic\n")
-	err := removeActiveChestEntry(doc, "id")
+	err := RemoveActiveChestEntry(doc, "id")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no treasure_chests declared")
 }
@@ -230,7 +230,7 @@ func TestRemoveActiveChestEntry_NoSequenceDeclared(t *testing.T) {
 func TestRemoveActiveChestEntry_IDNotFound(t *testing.T) {
 	t.Parallel()
 	doc := mustParseDoc(t, "treasure_chests:\n  - id: a\n    path: p\n    scope: all\n")
-	err := removeActiveChestEntry(doc, "missing")
+	err := RemoveActiveChestEntry(doc, "missing")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not found in active.yaml")
 }
@@ -238,37 +238,37 @@ func TestRemoveActiveChestEntry_IDNotFound(t *testing.T) {
 func TestRemoveActiveChestEntry_Success(t *testing.T) {
 	t.Parallel()
 	doc := mustParseDoc(t, "treasure_chests:\n  - id: a\n    path: p\n    scope: all\n  - id: b\n    path: q\n    scope: all\n")
-	require.NoError(t, removeActiveChestEntry(doc, "a"))
+	require.NoError(t, RemoveActiveChestEntry(doc, "a"))
 
-	root, err := rootMapping(doc)
+	root, err := RootMapping(doc)
 	require.NoError(t, err)
-	seq := mappingValue(root, "treasure_chests")
+	seq := MappingValue(root, "treasure_chests")
 	require.Len(t, seq.Content, 1)
-	entry, idx := findEntryByID(seq, "b")
+	entry, idx := FindEntryByID(seq, "b")
 	require.NotNil(t, entry)
 	assert.Equal(t, 0, idx)
 }
 
-// --- appendGovernedChestEntry / markGovernedChestInactive error branches ---
+// --- AppendGovernedChestEntry / MarkGovernedChestInactive error branches ---
 
 func TestAppendGovernedChestEntry_RootMappingError(t *testing.T) {
 	t.Parallel()
 	doc := mustParseDoc(t, "- a\n")
-	err := appendGovernedChestEntry(doc, "id", "path", "T1", "human", []string{"all"})
+	err := AppendGovernedChestEntry(doc, "id", "path", "T1", "human", []string{"all"})
 	require.Error(t, err)
 }
 
 func TestMarkGovernedChestInactive_RootMappingError(t *testing.T) {
 	t.Parallel()
 	doc := mustParseDoc(t, "- a\n")
-	err := markGovernedChestInactive(doc, "id")
+	err := MarkGovernedChestInactive(doc, "id")
 	require.Error(t, err)
 }
 
 func TestMarkGovernedChestInactive_NoChestsDeclared(t *testing.T) {
 	t.Parallel()
 	doc := mustParseDoc(t, "schema_version: \"1\"\n")
-	err := markGovernedChestInactive(doc, "id")
+	err := MarkGovernedChestInactive(doc, "id")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no chests declared")
 }
@@ -276,31 +276,31 @@ func TestMarkGovernedChestInactive_NoChestsDeclared(t *testing.T) {
 func TestMarkGovernedChestInactive_IDNotFound(t *testing.T) {
 	t.Parallel()
 	doc := mustParseDoc(t, "chests:\n  - id: a\n")
-	err := markGovernedChestInactive(doc, "missing")
+	err := MarkGovernedChestInactive(doc, "missing")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not found in treasure-chests.yaml")
 }
 
-// --- appendIndexedSourceEntry / markIndexedSourceInactive error branches ---
+// --- AppendIndexedSourceEntry / MarkIndexedSourceInactive error branches ---
 
 func TestAppendIndexedSourceEntry_RootMappingError(t *testing.T) {
 	t.Parallel()
 	doc := mustParseDoc(t, "- a\n")
-	err := appendIndexedSourceEntry(doc, "id", "path", []string{"all"})
+	err := AppendIndexedSourceEntry(doc, "id", "path", []string{"all"})
 	require.Error(t, err)
 }
 
 func TestMarkIndexedSourceInactive_RootMappingError(t *testing.T) {
 	t.Parallel()
 	doc := mustParseDoc(t, "- a\n")
-	err := markIndexedSourceInactive(doc, "id")
+	err := MarkIndexedSourceInactive(doc, "id")
 	require.Error(t, err)
 }
 
 func TestMarkIndexedSourceInactive_NoSourcesDeclared(t *testing.T) {
 	t.Parallel()
 	doc := mustParseDoc(t, "schema_version: \"1\"\n")
-	err := markIndexedSourceInactive(doc, "id")
+	err := MarkIndexedSourceInactive(doc, "id")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no sources declared")
 }
@@ -308,41 +308,46 @@ func TestMarkIndexedSourceInactive_NoSourcesDeclared(t *testing.T) {
 func TestMarkIndexedSourceInactive_IDNotFound(t *testing.T) {
 	t.Parallel()
 	doc := mustParseDoc(t, "sources:\n  - id: a\n")
-	err := markIndexedSourceInactive(doc, "missing")
+	err := MarkIndexedSourceInactive(doc, "missing")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not found in knowledge.index.yaml")
 }
 
-// --- markJewelsDeprecatedForChest ---
+// --- MarkJewelsDeprecatedForChest ---
 
 func TestMarkJewelsDeprecatedForChest_RootMappingError(t *testing.T) {
 	t.Parallel()
 	doc := mustParseDoc(t, "- a\n")
-	err := markJewelsDeprecatedForChest(doc, "chest-id")
+	err := MarkJewelsDeprecatedForChest(doc, "chest-id")
 	require.Error(t, err)
 }
 
 func TestMarkJewelsDeprecatedForChest_NoJewelsKeyIsNoop(t *testing.T) {
 	t.Parallel()
 	doc := mustParseDoc(t, "schema_version: \"1\"\n")
-	require.NoError(t, markJewelsDeprecatedForChest(doc, "chest-id"))
+	require.NoError(t, MarkJewelsDeprecatedForChest(doc, "chest-id"))
 }
 
 func TestMarkJewelsDeprecatedForChest_SkipsNonMatchingAndNonMappingEntries(t *testing.T) {
 	t.Parallel()
 	doc := mustParseDoc(t, "jewels:\n  - plain-scalar\n  - id: j1\n    chest_id: other\n  - id: j2\n    chest_id: target\n")
-	require.NoError(t, markJewelsDeprecatedForChest(doc, "target"))
+	require.NoError(t, MarkJewelsDeprecatedForChest(doc, "target"))
 
-	root, err := rootMapping(doc)
+	root, err := RootMapping(doc)
 	require.NoError(t, err)
-	seq := mappingValue(root, "jewels")
-	other, _ := findEntryByID(seq, "j1")
+	seq := MappingValue(root, "jewels")
+	other, _ := FindEntryByID(seq, "j1")
 	require.NotNil(t, other)
-	assert.Nil(t, mappingValue(other, "status"))
+	assert.Nil(t, MappingValue(other, "status"))
 
-	target, _ := findEntryByID(seq, "j2")
+	target, _ := FindEntryByID(seq, "j2")
 	require.NotNil(t, target)
-	status := mappingValue(target, "status")
+	status := MappingValue(target, "status")
 	require.NotNil(t, status)
 	assert.Equal(t, "deprecated", status.Value)
+	history := MappingValue(target, "history")
+	require.NotNil(t, history)
+	assert.Equal(t, yaml.SequenceNode, history.Kind)
+	require.Len(t, history.Content, 1)
+	assert.Equal(t, "deprecated", MappingValue(history.Content[0], "status").Value)
 }
