@@ -14,6 +14,7 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/testutil"
+	"github.com/SergioLacerda/strategist-skill/internal/treasure"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -71,7 +72,7 @@ func TestReadLastMissionID_EmptyMissionID(t *testing.T) {
 	assert.Equal(t, "—", readLastMissionID(path))
 }
 
-// --- loadCompiledIndex ---
+// --- treasure.LoadCompiledIndex ---
 
 func writeIndexGz(t *testing.T, path string, compiledAt int64, sourceIDs ...string) {
 	t.Helper()
@@ -93,7 +94,7 @@ func writeIndexGz(t *testing.T, path string, compiledAt int64, sourceIDs ...stri
 
 func TestLoadCompiledIndex_NotExist(t *testing.T) {
 	t.Parallel()
-	ids, ts, err := loadCompiledIndex(t.TempDir())
+	ids, ts, err := treasure.LoadCompiledIndex(t.TempDir())
 	require.NoError(t, err)
 	assert.Nil(t, ids)
 	assert.Zero(t, ts)
@@ -106,7 +107,7 @@ func TestLoadCompiledIndex_CorruptGzip(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
 	require.NoError(t, os.WriteFile(path, []byte("not gzip"), 0o644))
 
-	_, _, err := loadCompiledIndex(dir)
+	_, _, err := treasure.LoadCompiledIndex(dir)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "decompress")
 }
@@ -117,7 +118,7 @@ func TestLoadCompiledIndex_Success(t *testing.T) {
 	path := filepath.Join(dir, ".compiled", ".index.gz")
 	writeIndexGz(t, path, 1700000000, "chest-a", "chest-b")
 
-	ids, ts, err := loadCompiledIndex(dir)
+	ids, ts, err := treasure.LoadCompiledIndex(dir)
 	require.NoError(t, err)
 	assert.EqualValues(t, 1700000000, ts)
 	assert.True(t, ids["chest-a"])
@@ -125,11 +126,11 @@ func TestLoadCompiledIndex_Success(t *testing.T) {
 	assert.False(t, ids["chest-c"])
 }
 
-// --- loadIndexed ---
+// --- treasure.LoadIndexed ---
 
 func TestLoadIndexed_NotExist(t *testing.T) {
 	t.Parallel()
-	result, err := loadIndexed(t.TempDir())
+	result, err := treasure.LoadIndexed(t.TempDir())
 	require.NoError(t, err)
 	assert.Nil(t, result)
 }
@@ -138,9 +139,9 @@ func TestLoadIndexed_CorruptYAML(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "knowledge.index.yaml"),
-		[]byte(": not: valid:\n"), 0o644))
+		[]byte(": not: valID:\n"), 0o644))
 
-	_, err := loadIndexed(dir)
+	_, err := treasure.LoadIndexed(dir)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "knowledge.index.yaml")
 }
@@ -151,7 +152,7 @@ func TestLoadIndexed_Success(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "knowledge.index.yaml"),
 		[]byte("sources:\n  - id: chest-x\n  - id: chest-y\n"), 0o644))
 
-	result, err := loadIndexed(dir)
+	result, err := treasure.LoadIndexed(dir)
 	require.NoError(t, err)
 	assert.True(t, result["chest-x"])
 	assert.True(t, result["chest-y"])
@@ -161,68 +162,68 @@ func TestLoadIndexed_Success(t *testing.T) {
 
 func TestMergeChestRows_GovernedNotInActive(t *testing.T) {
 	t.Parallel()
-	governed := map[string]govChest{
-		"gov-only": {ID: "gov-only", Path: "/some/path", Trust: govTrust{Tier: "T1"}},
+	governed := map[string]treasure.GovernedChest{
+		"gov-only": {ID: "gov-only", Path: "/some/path", Trust: treasure.GovernedTrust{Tier: "T1"}},
 	}
-	rows := mergeChestRows(nil, governed, nil, nil, nil)
+	rows := treasure.MergeChestRows(nil, governed, nil, nil, nil)
 	require.Len(t, rows, 1)
 	r := rows[0]
-	assert.Equal(t, "gov-only", r.id)
-	assert.True(t, r.governed)
-	assert.False(t, r.configured)
-	assert.Contains(t, r.drift, "unscoped")
+	assert.Equal(t, "gov-only", r.ID)
+	assert.True(t, r.Governed)
+	assert.False(t, r.Configured)
+	assert.Contains(t, r.Drift, "unscoped")
 }
 
 func TestMergeChestRows_IndexedNotDeclared(t *testing.T) {
 	t.Parallel()
 	indexed := map[string]bool{"idx-only": true}
-	rows := mergeChestRows(nil, nil, indexed, nil, nil)
+	rows := treasure.MergeChestRows(nil, nil, indexed, nil, nil)
 	require.Len(t, rows, 1)
 	r := rows[0]
-	assert.Equal(t, "idx-only", r.id)
-	assert.True(t, r.indexed)
-	assert.False(t, r.governed)
-	assert.False(t, r.configured)
-	assert.Equal(t, "unknown", r.freshness)
-	assert.Contains(t, r.drift, "unscoped")
+	assert.Equal(t, "idx-only", r.ID)
+	assert.True(t, r.Indexed)
+	assert.False(t, r.Governed)
+	assert.False(t, r.Configured)
+	assert.Equal(t, "unknown", r.Freshness)
+	assert.Contains(t, r.Drift, "unscoped")
 }
 
 func TestMergeChestRows_FullMerge(t *testing.T) {
 	t.Parallel()
-	active := []activeChestEntry{
+	active := []treasure.ActiveChest{
 		{ID: "chest-a", Path: "/a", Scope: []string{"discovery"}},
 	}
-	governed := map[string]govChest{
-		"chest-a":  {ID: "chest-a", Trust: govTrust{Tier: "T1", LastReviewed: "2026-01-01"}},
-		"gov-only": {ID: "gov-only", Path: "/b", Trust: govTrust{Tier: "T2"}},
+	governed := map[string]treasure.GovernedChest{
+		"chest-a":  {ID: "chest-a", Trust: treasure.GovernedTrust{Tier: "T1", LastReviewed: "2026-01-01"}},
+		"gov-only": {ID: "gov-only", Path: "/b", Trust: treasure.GovernedTrust{Tier: "T2"}},
 	}
 	indexed := map[string]bool{"chest-a": true, "idx-only": true}
 	compiled := map[string]bool{"chest-a": true}
 
-	rows := mergeChestRows(active, governed, indexed, compiled, nil)
+	rows := treasure.MergeChestRows(active, governed, indexed, compiled, nil)
 	assert.Len(t, rows, 3)
 
-	byID := make(map[string]chestRow)
+	byID := make(map[string]treasure.StatusRow)
 	for _, r := range rows {
-		byID[r.id] = r
+		byID[r.ID] = r
 	}
 
 	a := byID["chest-a"]
-	assert.True(t, a.configured)
-	assert.True(t, a.governed)
-	assert.True(t, a.indexed)
-	assert.True(t, a.compiled)
-	assert.Equal(t, "fresh", a.freshness)
-	assert.Empty(t, a.drift)
+	assert.True(t, a.Configured)
+	assert.True(t, a.Governed)
+	assert.True(t, a.Indexed)
+	assert.True(t, a.Compiled)
+	assert.Equal(t, "fresh", a.Freshness)
+	assert.Empty(t, a.Drift)
 
 	govOnly := byID["gov-only"]
-	assert.False(t, govOnly.configured)
-	assert.True(t, govOnly.governed)
-	assert.Contains(t, govOnly.drift, "unscoped")
+	assert.False(t, govOnly.Configured)
+	assert.True(t, govOnly.Governed)
+	assert.Contains(t, govOnly.Drift, "unscoped")
 
 	idxOnly := byID["idx-only"]
-	assert.False(t, idxOnly.configured)
-	assert.True(t, idxOnly.indexed)
+	assert.False(t, idxOnly.Configured)
+	assert.True(t, idxOnly.Indexed)
 }
 
 // --- renderIndexSection ---
@@ -277,11 +278,11 @@ func TestTelemetryRunFromCmd_NilContext(t *testing.T) {
 	assert.Nil(t, telemetryRunFromCmd(treasureChestCmd))
 }
 
-// --- treasure-chest integration: loadGoverned ---
+// --- treasure-chest integration: treasure.LoadGoverned ---
 
 func TestLoadGoverned_NotExist(t *testing.T) {
 	t.Parallel()
-	result, err := loadGoverned(t.TempDir())
+	result, err := treasure.LoadGoverned(t.TempDir())
 	require.NoError(t, err)
 	assert.Nil(t, result)
 }
@@ -292,7 +293,7 @@ func TestLoadGoverned_Success(t *testing.T) {
 	content := "chests:\n  - id: chest-one\n    title: Chest One\n    path: /some/path\n    trust:\n      tier: T1\n      reviewed_by: user@example.com\n      last_reviewed: '2026-01-01'\n"
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "treasure-chests.yaml"), []byte(content), 0o644))
 
-	result, err := loadGoverned(dir)
+	result, err := treasure.LoadGoverned(dir)
 	require.NoError(t, err)
 	require.Contains(t, result, "chest-one")
 	assert.Equal(t, "T1", result["chest-one"].Trust.Tier)
@@ -304,7 +305,7 @@ func TestLoadGoverned_WithValidGrade(t *testing.T) {
 	content := "chests:\n  - id: chest-one\n    path: /some/path\n    trust:\n      tier: T1\n    grade:\n      source_grade: A\n      reuse_value: high\n      implementation_status: implemented\n    open_gaps: [\"missing tests\"]\n"
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "treasure-chests.yaml"), []byte(content), 0o644))
 
-	result, err := loadGoverned(dir)
+	result, err := treasure.LoadGoverned(dir)
 	require.NoError(t, err)
 	require.Contains(t, result, "chest-one")
 	assert.Equal(t, "A", result["chest-one"].Grade.SourceGrade)
@@ -318,7 +319,7 @@ func TestLoadGoverned_WithInvalidGrade(t *testing.T) {
 	content := "chests:\n  - id: chest-one\n    path: /some/path\n    trust:\n      tier: T1\n    grade:\n      source_grade: Z\n"
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "treasure-chests.yaml"), []byte(content), 0o644))
 
-	_, err := loadGoverned(dir)
+	_, err := treasure.LoadGoverned(dir)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "source_grade")
 }
@@ -345,15 +346,15 @@ func TestInitiativeCmd_WithOutcomesFile(t *testing.T) {
 	assert.Contains(t, out, "m-test-123")
 }
 
-// --- loadGoverned ---
+// --- treasure.LoadGoverned ---
 
 func TestLoadGoverned_CorruptYAML(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "treasure-chests.yaml"),
-		[]byte(": not: valid: yaml:\n"), 0o644))
+		[]byte(": not: valID: yaml:\n"), 0o644))
 
-	_, err := loadGoverned(dir)
+	_, err := treasure.LoadGoverned(dir)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "treasure-chests.yaml")
 }
@@ -362,10 +363,10 @@ func TestLoadGoverned_CorruptYAML(t *testing.T) {
 
 func TestCollectWarnings_AllWarnings(t *testing.T) {
 	t.Parallel()
-	rows := []chestRow{
-		{id: "drift-chest", configured: true, governed: false, indexed: false,
-			drift: []string{"missing_governance", "missing_index"}},
-		{id: "historical-chest", trustTier: "T2", lastReviewed: ""},
+	rows := []treasure.StatusRow{
+		{ID: "drift-chest", Configured: true, Governed: false, Indexed: false,
+			Drift: []string{"missing_governance", "missing_index"}},
+		{ID: "historical-chest", TrustTier: "T2", LastReviewed: ""},
 	}
 	warnings := collectWarnings(rows,
 		errors.New("gov load error"),
@@ -389,9 +390,9 @@ func TestCollectWarnings_AbsentIndex(t *testing.T) {
 
 func TestCollectWarnings_DriftWithCompiledAt(t *testing.T) {
 	t.Parallel()
-	rows := []chestRow{
-		{id: "chest-a", configured: true, governed: false,
-			drift: []string{"missing_governance"}},
+	rows := []treasure.StatusRow{
+		{ID: "chest-a", Configured: true, Governed: false,
+			Drift: []string{"missing_governance"}},
 	}
 	warnings := collectWarnings(rows, nil, nil, nil, 1700000000)
 	combined := strings.Join(warnings, "\n")
@@ -421,11 +422,11 @@ func TestRenderWarningsSection_WithWarnings(t *testing.T) {
 
 func TestRenderChestsSection_WithRows(t *testing.T) {
 	t.Parallel()
-	rows := []chestRow{
-		{id: "chest-a", path: "/path/a", scope: []string{"discovery"}, trustTier: "T1",
-			freshness: "fresh", drift: nil},
-		{id: "chest-b", scope: nil, trustTier: "", freshness: "unknown",
-			drift: []string{"missing_governance"}},
+	rows := []treasure.StatusRow{
+		{ID: "chest-a", Path: "/path/a", Scope: []string{"discovery"}, TrustTier: "T1",
+			Freshness: "fresh", Drift: nil},
+		{ID: "chest-b", Scope: nil, TrustTier: "", Freshness: "unknown",
+			Drift: []string{"missing_governance"}},
 	}
 	var buf strings.Builder
 	w := tabwriter.NewWriter(&buf, 0, 0, 3, ' ', 0)
@@ -473,15 +474,15 @@ func TestTelemetryRunFromCmd_WithNonNilContext(t *testing.T) {
 	assert.Nil(t, result)
 }
 
-// --- loadActiveChests with corrupt YAML ---
+// --- treasure.LoadActiveChests with corrupt YAML ---
 
 func TestLoadActiveChests_CorruptYAML(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"),
-		[]byte(": not: valid: yaml:\n"), 0o644))
+		[]byte(": not: valID: yaml:\n"), 0o644))
 
-	_, err := loadActiveChests(dir)
+	_, err := treasure.LoadActiveChests(dir)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "active.yaml")
 }

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/treasure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -42,7 +43,7 @@ func TestTreasureChestScan_ClustersMissionsWithSharedTags(t *testing.T) {
 	writeMissionTasks(t, basePath, "refined", "mission-a", "side_quests_approved:\n\n- id: `SQ-101`\n  description: Improve widget caching layer for faster loads.\n  status: `sq_pending`\n\n## Suggested Validation\n")
 	writeMissionTasks(t, basePath, "refined", "mission-b", "## Task 1 — Improve widget rendering\n\nside_quests_approved:\n\n- id: `SQ-102`\n  description: Improve widget caching consistency.\n  status: `sq_closed_moot`\n\n## Suggested Validation\n")
 	resetTreasureChestFlags(t)
-	treasureChestRoot = dir
+	setTreasureChestRoot(t, dir)
 
 	require.NoError(t, treasureChestScanCmd.RunE(treasureChestScanCmd, nil))
 
@@ -60,7 +61,7 @@ func TestTreasureChestScan_NoClusterBelowTwoSharedTags(t *testing.T) {
 	writeMissionTasks(t, basePath, "refined", "mission-a", "side_quests_approved:\n\n- id: `SQ-101`\n  description: Widget caching improvements.\n  status: `sq_pending`\n")
 	writeMissionTasks(t, basePath, "done", "mission-c", "side_quests_approved:\n\n- id: `SQ-103`\n  description: Totally unrelated documentation formatting topic.\n  status: `sq_pending`\n")
 	resetTreasureChestFlags(t)
-	treasureChestRoot = dir
+	setTreasureChestRoot(t, dir)
 
 	require.NoError(t, treasureChestScanCmd.RunE(treasureChestScanCmd, nil))
 
@@ -73,7 +74,7 @@ func TestTreasureChestScan_GapsOnlyPendingStatus(t *testing.T) {
 	dir, basePath := scanTestRoot(t)
 	writeMissionTasks(t, basePath, "refined", "mission-a", "side_quests_approved:\n\n- id: `SQ-101`\n  description: Pending item.\n  status: `sq_pending`\n\n- id: `SQ-102`\n  description: Closed item.\n  status: `sq_closed_moot`\n")
 	resetTreasureChestFlags(t)
-	treasureChestRoot = dir
+	setTreasureChestRoot(t, dir)
 
 	require.NoError(t, treasureChestScanCmd.RunE(treasureChestScanCmd, nil))
 
@@ -89,7 +90,7 @@ func TestTreasureChestScan_ExcludesPendingScrapsAndArchivedReports(t *testing.T)
 	require.NoError(t, os.MkdirAll(filepath.Join(basePath, "pending", "scraps"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(basePath, "pending", "scraps", "idea.md"), []byte("side_quests_approved:\n\n- id: `SQ-999`\n  status: `sq_pending`\n"), 0o644))
 	resetTreasureChestFlags(t)
-	treasureChestRoot = dir
+	setTreasureChestRoot(t, dir)
 
 	require.NoError(t, treasureChestScanCmd.RunE(treasureChestScanCmd, nil))
 
@@ -102,9 +103,8 @@ func TestTreasureChestScan_DryRunWritesNothing(t *testing.T) {
 	dir, basePath := scanTestRoot(t)
 	writeMissionTasks(t, basePath, "refined", "mission-a", "side_quests_approved:\n\n- id: `SQ-101`\n  description: Pending item.\n  status: `sq_pending`\n")
 	resetTreasureChestFlags(t)
-	treasureChestRoot = dir
-	treasureChestScanDryRun = true
-	t.Cleanup(func() { treasureChestScanDryRun = false })
+	setTreasureChestRoot(t, dir)
+	setCmdFlag(t, treasureChestScanCmd, "dry-run", "true")
 
 	out := captureStdout(t, func() {
 		require.NoError(t, treasureChestScanCmd.RunE(treasureChestScanCmd, nil))
@@ -120,7 +120,7 @@ func TestTreasureChestScan_RegeneratesFromScratch(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "treasure", "gaps"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "treasure", "gaps", "stale-gap.md"), []byte("stale"), 0o644))
 	resetTreasureChestFlags(t)
-	treasureChestRoot = dir
+	setTreasureChestRoot(t, dir)
 
 	require.NoError(t, treasureChestScanCmd.RunE(treasureChestScanCmd, nil))
 
@@ -132,8 +132,8 @@ func TestTreasureChestScan_RegeneratesFromScratch(t *testing.T) {
 
 func TestExtractTags_FiltersShortWordsAndStopwords(t *testing.T) {
 	t.Parallel()
-	m := scannedMission{TaskTitles: []string{"Improve the widget caching with this"}}
-	tags := extractTags(m)
+	m := treasure.ScannedMission{TaskTitles: []string{"Improve the widget caching with this"}}
+	tags := treasure.ExtractTags(m)
 	assert.Contains(t, tags, "widget")
 	assert.Contains(t, tags, "caching")
 	assert.Contains(t, tags, "improve")
@@ -144,5 +144,5 @@ func TestExtractTags_FiltersShortWordsAndStopwords(t *testing.T) {
 
 func TestGapID_Lowercases(t *testing.T) {
 	t.Parallel()
-	assert.Equal(t, "sq-005", gapID("SQ-005"))
+	assert.Equal(t, "sq-005", treasure.GapID("SQ-005"))
 }

@@ -63,24 +63,20 @@ was not explicitly supplied. If Scout would need to read broad implementation
 surfaces to answer a classification question, it has crossed into Ranger territory
 and must select `full_pipeline` instead.
 
-### Post-Route Discovery Handoff
+### Post-Route Capability Check
 
-Immediately after Scout emits `route_decision` with `evidence_state: requires_discovery`,
-Strategist hands the route to Ranger. Scout does not validate `discovery_subtype` against
-the configured discovery weapon. Ranger is the internal discovery persona and owns subtype
-behavior (`creative`, `evaluation`, `diagnostic`, `closure_evidence`); the configured
-discovery provider is Ranger's weapon, not a replacement for Ranger.
+Immediately after Scout emits `route_decision` with `evidence_state: requires_discovery`
+(before the discovery weapon is invoked), check the resolved weapon's `skill.yaml`
+`discovery_subtype_support` field against the required `discovery_subtype`. This runs
+as part of Scout's routing responsibility (see `contracts/machine/scout-routing.yaml`
+§ `post_route_capability_check`) — not at classic preflight time, since preflight
+runs before intake/routing and before `discovery_subtype` exists.
 
-The only blocking checks for the discovery weapon are the standard preflight checks:
-the weapon manifest at `skill_root/skills/<provider>/skill.yaml` must exist, be
-schema-valid, be invocable by the installed runtime, and satisfy the discovery slot's
-`write_analysis` risk contract. That manifest is the only Strategist authority for
-slot capability. A provider's standalone `SKILL.md` can guide how the provider runs
-once invoked, but it must not be used by Scout or preflight to reject
-`discovery_subtype`, category, or slot-contract compatibility. If the manifest checks
-pass, do not block an evaluation or diagnostic mission merely because the weapon's
-standalone instructions are creative-first or do not declare subtype metadata. Invoke
-Ranger with the route decision and the configured weapon.
+If the resolved weapon does not declare support for the required `discovery_subtype`,
+emit `provider_capability_mismatch` and stop **before** invoking the weapon. Do not
+invoke the weapon to discover the mismatch empirically — that wastes an invocation and
+risks the weapon partially acting before the mismatch is caught. See `preflight.yaml`
+for the full error condition and remediation hint.
 
 ## Main Mission Sequence
 

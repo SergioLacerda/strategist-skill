@@ -33,8 +33,12 @@ const (
 	StateADRGate2 MissionState = "ADR_GATE_2"
 	StateADRDone  MissionState = "ADR_DONE"
 
-	// Retry state for transient slot failures (protocol §Slot Failure Classification).
-	StateRetrying MissionState = "RETRYING"
+	// Retry states for transient slot failures (protocol §Slot Failure Classification).
+	// StateRetrying is kept as a legacy refinement retry state for compatibility.
+	StateRetrying           MissionState = "RETRYING"
+	StateRetryingRefinement MissionState = "RETRYING_REFINEMENT"
+	StateRetryingExecution  MissionState = "RETRYING_EXECUTION"
+	StateRetryingDirectExec MissionState = "RETRYING_DIRECT_EXEC"
 
 	// Critical Hit route states — fast path for low-risk doc/content tasks.
 	StateDirectGate MissionState = "DIRECT_GATE"
@@ -51,6 +55,7 @@ const (
 	EventManifestNonEmpty TransitionEvent = "manifest_non_empty"
 	EventGateApproved     TransitionEvent = "gate_approved"
 	EventGateDenied       TransitionEvent = "gate_denied"
+	EventGateTimeout      TransitionEvent = "gate_timeout"
 	EventSniperDone       TransitionEvent = "sniper_done"
 	EventArchivistNoTasks TransitionEvent = "archivist_done_no_tasks"
 	EventArchivistTasks   TransitionEvent = "archivist_done_has_tasks"
@@ -78,25 +83,9 @@ const (
 	EventDirectGateDeclined TransitionEvent = "direct_gate_declined"
 )
 
-// MissionPolicy controls whether guarded transitions are allowed.
-// Sniper write scope is fixed by contract: documentation files only.
-// Documentation materialization is always permitted after review gate acceptance.
-type MissionPolicy struct{}
-
 // TransitionDecision is the deterministic result of policy evaluation.
 type TransitionDecision struct {
 	Allowed bool
 	Reason  string
 	Status  string // allowed | policy_blocked | approval_required
-	Policy  MissionPolicy
-}
-
-// DefaultMissionPolicy returns the fixed documentation policy for this skill.
-func DefaultMissionPolicy() MissionPolicy {
-	return MissionPolicy{}
-}
-
-// NormalizePolicy is a no-op kept for call-site compatibility.
-func NormalizePolicy(p MissionPolicy) MissionPolicy {
-	return p
 }

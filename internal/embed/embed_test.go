@@ -196,10 +196,16 @@ func TestExtractor_Extract(t *testing.T) {
 		assert.Contains(t, skill, "expected_phase={expected_phase}")
 		assert.Contains(t, skill, "missing_evidence={missing_evidence}")
 
-		protocol, err := os.ReadFile(filepath.Join(dir, "protocol.md"))
+		// GAP-ST-06: protocol.md was merged into templates/agent-protocol.md; the
+		// hardening rules must survive in the unified document.
+		protocol, err := os.ReadFile(filepath.Join(dir, "templates", "agent-protocol.md"))
 		require.NoError(t, err)
 		assert.Contains(t, string(protocol), "pipeline_bypass_detected")
-		assert.Contains(t, string(protocol), "Mutate the repo without canonical pipeline evidence")
+		assert.Contains(t, string(protocol), "Never mutate the repo without canonical pipeline evidence")
+
+		stub, err := os.ReadFile(filepath.Join(dir, "protocol.md"))
+		require.NoError(t, err)
+		assert.Contains(t, string(stub), "templates/agent-protocol.md")
 
 		approvalGate, err := os.ReadFile(filepath.Join(dir, "contracts", "machine", "approval-gate.yaml"))
 		require.NoError(t, err)
@@ -220,7 +226,9 @@ func TestExtractor_Extract(t *testing.T) {
 		assert.Contains(t, doc, "base_path")
 		assert.Contains(t, doc, "not a hardcoded `.analysis/`")
 
-		protocol, err := os.ReadFile(filepath.Join(dir, "protocol.md"))
+		// GAP-ST-06: the runtime-only path contract now lives in the unified
+		// templates/agent-protocol.md document.
+		protocol, err := os.ReadFile(filepath.Join(dir, "templates", "agent-protocol.md"))
 		require.NoError(t, err)
 		assert.Contains(t, string(protocol), ".strategist/")
 		assert.Contains(t, string(protocol), "base_path")
