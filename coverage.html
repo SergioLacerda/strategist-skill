@@ -63,11 +63,11 @@
 				
 				<option value="file3">github.com/SergioLacerda/strategist-skill/internal/compile/cache.go (91.9%)</option>
 				
-				<option value="file4">github.com/SergioLacerda/strategist-skill/internal/compile/config.go (88.6%)</option>
+				<option value="file4">github.com/SergioLacerda/strategist-skill/internal/compile/config.go (89.6%)</option>
 				
 				<option value="file5">github.com/SergioLacerda/strategist-skill/internal/compile/domain.go (91.2%)</option>
 				
-				<option value="file6">github.com/SergioLacerda/strategist-skill/internal/compile/helpers.go (87.2%)</option>
+				<option value="file6">github.com/SergioLacerda/strategist-skill/internal/compile/helpers.go (89.4%)</option>
 				
 				<option value="file7">github.com/SergioLacerda/strategist-skill/internal/compile/index.go (89.5%)</option>
 				
@@ -81,15 +81,15 @@
 				
 				<option value="file12">github.com/SergioLacerda/strategist-skill/internal/domain/contract_validator.go (100.0%)</option>
 				
-				<option value="file13">github.com/SergioLacerda/strategist-skill/internal/domain/jewel_grade.go (100.0%)</option>
+				<option value="file13">github.com/SergioLacerda/strategist-skill/internal/domain/jewel_grade.go (70.0%)</option>
 				
 				<option value="file14">github.com/SergioLacerda/strategist-skill/internal/domain/pipeline_bypass.go (100.0%)</option>
 				
-				<option value="file15">github.com/SergioLacerda/strategist-skill/internal/domain/policy.go (100.0%)</option>
+				<option value="file15">github.com/SergioLacerda/strategist-skill/internal/domain/policy_evaluator.go (100.0%)</option>
 				
-				<option value="file16">github.com/SergioLacerda/strategist-skill/internal/domain/policy_evaluator.go (100.0%)</option>
+				<option value="file16">github.com/SergioLacerda/strategist-skill/internal/domain/route_decision.go (84.0%)</option>
 				
-				<option value="file17">github.com/SergioLacerda/strategist-skill/internal/domain/state_machine.go (79.8%)</option>
+				<option value="file17">github.com/SergioLacerda/strategist-skill/internal/domain/state_machine.go (100.0%)</option>
 				
 				<option value="file18">github.com/SergioLacerda/strategist-skill/internal/domain/types.go (100.0%)</option>
 				
@@ -140,6 +140,20 @@
 				<option value="file41">github.com/SergioLacerda/strategist-skill/internal/telemetry/tracer.go (100.0%)</option>
 				
 				<option value="file42">github.com/SergioLacerda/strategist-skill/internal/testutil/testutil.go (100.0%)</option>
+				
+				<option value="file43">github.com/SergioLacerda/strategist-skill/internal/treasure/index.go (9.3%)</option>
+				
+				<option value="file44">github.com/SergioLacerda/strategist-skill/internal/treasure/jewel_query.go (93.9%)</option>
+				
+				<option value="file45">github.com/SergioLacerda/strategist-skill/internal/treasure/loaders.go (14.8%)</option>
+				
+				<option value="file46">github.com/SergioLacerda/strategist-skill/internal/treasure/mutations.go (0.0%)</option>
+				
+				<option value="file47">github.com/SergioLacerda/strategist-skill/internal/treasure/scan.go (0.0%)</option>
+				
+				<option value="file48">github.com/SergioLacerda/strategist-skill/internal/treasure/status.go (0.0%)</option>
+				
+				<option value="file49">github.com/SergioLacerda/strategist-skill/internal/treasure/yaml_node.go (68.3%)</option>
 				
 				</select>
 			</div>
@@ -720,20 +734,9 @@ import (
 // It mirrors the logic of compile-config.sh exactly.
 func Config(root, outputPath string) error <span class="cov10" title="24">{
         activePath := filepath.Join(root, "active.yaml")
-
-        // Validate active.yaml using a typed struct (catches required-field drift early).
-        var activeCfg ActiveConfig
-        if err := loadYAMLInto(activePath, &amp;activeCfg); err != nil </span><span class="cov7" title="9">{
+        activeRaw, err := loadValidatedActiveRaw(activePath)
+        if err != nil </span><span class="cov8" title="12">{
                 return fmt.Errorf("compile config: %w", err)
-        }</span>
-        <span class="cov8" title="15">if err := activeCfg.Validate(); err != nil </span><span class="cov4" title="3">{
-                return fmt.Errorf("compile config: active.yaml: %w", err)
-        }</span>
-
-        // Load as raw map so all fields (including extended ones like treasure_chests) are preserved.
-        <span class="cov8" title="12">activeRaw, err := loadYAMLFile(activePath)
-        if err != nil </span><span class="cov0" title="0">{
-                return fmt.Errorf("compile config: active.yaml raw: %w", err)
         }</span>
 
         <span class="cov8" title="12">sources := map[string]int64{activePath: mtime(activePath)}
@@ -788,6 +791,29 @@ func Config(root, outputPath string) error <span class="cov10" title="24">{
                 return fmt.Errorf("compile config: write %s: %w", outputPath, err)
         }</span>
         <span class="cov7" title="9">return nil</span>
+}
+
+func loadValidatedActiveRaw(activePath string) (map[string]any, error) <span class="cov10" title="24">{
+        activeData, err := os.ReadFile(activePath) //nolint:gosec // G304: path derived from strategistDir
+        if err != nil </span><span class="cov5" title="5">{
+                return nil, fmt.Errorf("read active.yaml: %w", err)
+        }</span>
+
+        // Validate active.yaml using a typed struct (catches required-field drift early).
+        <span class="cov9" title="19">var activeCfg ActiveConfig
+        if err := parseYAMLBytes(activePath, activeData, &amp;activeCfg); err != nil </span><span class="cov4" title="4">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="15">if err := activeCfg.Validate(); err != nil </span><span class="cov4" title="3">{
+                return nil, fmt.Errorf("active.yaml: %w", err)
+        }</span>
+
+        // Load as raw map so all fields (including extended ones like treasure_chests) are preserved.
+        <span class="cov8" title="12">activeRaw, err := parseYAMLMapBytes(activePath, activeData)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("active.yaml raw: %w", err)
+        }</span>
+        <span class="cov8" title="12">return activeRaw, nil</span>
 }
 
 // compileYAMLDir reads all *.yaml files from dir, adding each to sources,
@@ -998,21 +1024,37 @@ func sha256Artifact(path string) string <span class="cov7" title="24">{
 
 // loadYAMLFile reads a YAML file and returns its content as a generic map.
 // Uses the yaml.v3 package.
-func loadYAMLFile(path string) (map[string]any, error) <span class="cov8" title="35">{
+func loadYAMLFile(path string) (map[string]any, error) <span class="cov7" title="23">{
+        data, err := os.ReadFile(path) //nolint:gosec // G304: path derived from strategistDir
+        if err != nil </span><span class="cov2" title="2">{
+                return nil, fmt.Errorf("read %s: %w", path, err)
+        }</span>
+        <span class="cov7" title="21">out, err := parseYAMLMapBytes(path, data)
+        if err != nil </span><span class="cov2" title="2">{
+                return nil, err
+        }</span>
+        <span class="cov7" title="19">return out, nil</span>
+}
+
+// loadYAMLInto reads a YAML file into v.
+func loadYAMLInto(path string, v any) error <span class="cov7" title="17">{
+        data, err := os.ReadFile(path) //nolint:gosec // G304: path derived from strategistDir
+        if err != nil </span><span class="cov1" title="1">{
+                return fmt.Errorf("read %s: %w", path, err)
+        }</span>
+        <span class="cov6" title="16">return parseYAMLBytes(path, data, v)</span>
+}
+
+func parseYAMLMapBytes(path string, data []byte) (map[string]any, error) <span class="cov8" title="33">{
         var out map[string]any
-        if err := loadYAMLInto(path, &amp;out); err != nil </span><span class="cov3" title="4">{
+        if err := parseYAMLBytes(path, data, &amp;out); err != nil </span><span class="cov2" title="2">{
                 return nil, err
         }</span>
         <span class="cov8" title="31">return out, nil</span>
 }
 
-// loadYAMLInto reads a YAML file into v.
-func loadYAMLInto(path string, v any) error <span class="cov10" title="76">{
-        data, err := os.ReadFile(path) //nolint:gosec // G304: path derived from strategistDir
-        if err != nil </span><span class="cov5" title="8">{
-                return fmt.Errorf("read %s: %w", path, err)
-        }</span>
-        <span class="cov9" title="68">if err := unmarshalYAML(data, v); err != nil </span><span class="cov4" title="6">{
+func parseYAMLBytes(path string, data []byte, v any) error <span class="cov10" title="68">{
+        if err := unmarshalYAML(data, v); err != nil </span><span class="cov4" title="6">{
                 return fmt.Errorf("parse yaml %s: %w", path, err)
         }</span>
         <span class="cov9" title="62">return nil</span>
@@ -1541,6 +1583,29 @@ var validJewelStatuses = map[string]bool{
         JewelStatusDeprecated: true,
 }
 
+var validJewelKinds = map[string]bool{
+        "decision": true, "pattern": true, "anti_pattern": true,
+        "gap": true, "risk": true, "constraint": true,
+        "example": true, "heuristic": true, "template": true,
+        "question": true,
+}
+
+// ValidateJewelKind returns an error if the kind is not one of the allowed types.
+func ValidateJewelKind(jewelID, kind string) error <span class="cov0" title="0">{
+        if validJewelKinds[kind] </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+        <span class="cov0" title="0">return fmt.Errorf("jewel %q has invalid kind %q", jewelID, kind)</span>
+}
+
+// ValidateJewelScore returns an error if the score is outside the 0-100 range.
+func ValidateJewelScore(jewelID string, score int) error <span class="cov0" title="0">{
+        if score &lt; 0 || score &gt; 100 </span><span class="cov0" title="0">{
+                return fmt.Errorf("jewel %q has invalid score %d (must be 0-100)", jewelID, score)
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+
 // ValidateJewelStatus returns an error if status is not one of the four lifecycle states
 // (proposed, accepted, verified, deprecated). The legacy "active" status is called out by
 // name since it was the pre-migration default and existing jewels.yaml files may still
@@ -1716,427 +1781,232 @@ func normalizePipelineEvidence(e PipelineEvidence) PipelineEvidence <span class=
 		
 		<pre class="file" id="file15" style="display: none">package domain
 
-// Transition groups classify sensitive mission-state changes.
-const (
-        TransitionGroupFinalizeAnalysis = "finalize_analysis"             // pending/refined -&gt; done
-        TransitionGroupReviewGate       = "review_gate"                   // analysis review before documentation
-        TransitionGroupDocumentation    = "documentation_materialization" // sniper documentation writes
-)
-
-// MissionState represents the orchestrator FSM state.
-type MissionState string
-
-// Orchestrator finite-state machine states.
-const (
-        StateInit              MissionState = "INIT"
-        StateOpportunityAttack MissionState = "OPPORTUNITY_ATTACK"
-        StateOpportunityGate   MissionState = "OPPORTUNITY_GATE"
-        StateOpportunityExec   MissionState = "OPPORTUNITY_EXEC"
-        StateRefinement        MissionState = "REFINEMENT"
-        StateApprovalGate      MissionState = "APPROVAL_GATE"
-        StateExecution         MissionState = "EXECUTION"
-        StateDoneAnalysis      MissionState = "DONE_ANALYSIS"
-        StateDoneDelivery      MissionState = "DONE_DELIVERY"
-        StateBlocked           MissionState = "BLOCKED"
-
-        // Quick Draw route states (§5.0 pipeline).
-        StateQuickDraw     MissionState = "QUICK_DRAW"
-        StateQuickDrawGate MissionState = "QUICK_DRAW_GATE"
-        StateQuickDrawDone MissionState = "QUICK_DRAW_DONE"
-
-        // ADR stage states (§8 pipeline).
-        StateADRGate1 MissionState = "ADR_GATE_1"
-        StateADRGate2 MissionState = "ADR_GATE_2"
-        StateADRDone  MissionState = "ADR_DONE"
-
-        // Retry state for transient slot failures (protocol §Slot Failure Classification).
-        StateRetrying MissionState = "RETRYING"
-
-        // Critical Hit route states — fast path for low-risk doc/content tasks.
-        StateDirectGate MissionState = "DIRECT_GATE"
-        StateDirectExec MissionState = "DIRECT_EXEC"
-        StateDirectDone MissionState = "DIRECT_DONE"
-)
-
-// TransitionEvent represents FSM/evaluator inputs.
-type TransitionEvent string
-
-// Transition events accepted by the orchestrator state machine.
-const (
-        EventManifestEmpty    TransitionEvent = "manifest_empty"
-        EventManifestNonEmpty TransitionEvent = "manifest_non_empty"
-        EventGateApproved     TransitionEvent = "gate_approved"
-        EventGateDenied       TransitionEvent = "gate_denied"
-        EventSniperDone       TransitionEvent = "sniper_done"
-        EventArchivistNoTasks TransitionEvent = "archivist_done_no_tasks"
-        EventArchivistTasks   TransitionEvent = "archivist_done_has_tasks"
-
-        // Quick Draw route events (§3.1 detection → §5.0 execution).
-        EventQuickDrawIntent  TransitionEvent = "quick_draw_intent"
-        EventQuickDrawApprove TransitionEvent = "quick_draw_approved"
-        EventQuickDrawDecline TransitionEvent = "quick_draw_declined"
-
-        // ADR stage events (§8 pipeline).
-        EventADRCriterionMet TransitionEvent = "adr_criterion_met"
-        EventADRApproved     TransitionEvent = "adr_approved"
-        EventADRDeclined     TransitionEvent = "adr_declined"
-
-        // Slot failure classification events (protocol §Slot Failure Classification).
-        EventSlotTransient TransitionEvent = "slot_transient_failure"
-        EventSlotPermanent TransitionEvent = "slot_permanent_failure"
-
-        // Sniper opportunity attack surfaced mid-documentation (§7 Opportunity Attack).
-        EventSniperOA TransitionEvent = "sniper_opportunity_attack"
-
-        // Critical Hit route events — fast path gate for direct_execute route.
-        EventDirectHitIntent    TransitionEvent = "direct_hit_intent"
-        EventDirectGateApproved TransitionEvent = "direct_gate_approved"
-        EventDirectGateDeclined TransitionEvent = "direct_gate_declined"
-)
-
-// MissionPolicy controls whether guarded transitions are allowed.
-// Sniper write scope is fixed by contract: documentation files only.
-// Documentation materialization is always permitted after review gate acceptance.
-type MissionPolicy struct{}
-
-// TransitionDecision is the deterministic result of policy evaluation.
-type TransitionDecision struct {
-        Allowed bool
-        Reason  string
-        Status  string // allowed | policy_blocked | approval_required
-        Policy  MissionPolicy
-}
-
-// DefaultMissionPolicy returns the fixed documentation policy for this skill.
-func DefaultMissionPolicy() MissionPolicy <span class="cov7" title="423">{
-        return MissionPolicy{}
-}</span>
-
-// NormalizePolicy is a no-op kept for call-site compatibility.
-func NormalizePolicy(p MissionPolicy) MissionPolicy <span class="cov10" title="5658">{
-        return p
-}</span>
-</pre>
-		
-		<pre class="file" id="file16" style="display: none">package domain
-
 // EvaluateGuardedTransition applies review gate status to guarded transitions.
 // Invariants:
 // - Any guarded transition requires explicit review gate acceptance.
 // - Documentation materialization is always permitted after review gate acceptance.
-func EvaluateGuardedTransition(policy MissionPolicy, transitionGroup string, gateApproved bool) TransitionDecision <span class="cov10" title="7">{
-        p := NormalizePolicy(policy)
-
+func EvaluateGuardedTransition(transitionGroup string, gateApproved bool) TransitionDecision <span class="cov10" title="7">{
         if !gateApproved </span><span class="cov6" title="3">{
-                return TransitionDecision{Allowed: false, Reason: "approval_required", Status: "approval_required", Policy: p}
+                return TransitionDecision{Allowed: false, Reason: "approval_required", Status: "approval_required"}
         }</span>
 
         <span class="cov7" title="4">switch transitionGroup </span>{
         case TransitionGroupDocumentation, TransitionGroupReviewGate, TransitionGroupFinalizeAnalysis:<span class="cov6" title="3">
-                return TransitionDecision{Allowed: true, Reason: "allowed", Status: "allowed", Policy: p}</span>
+                return TransitionDecision{Allowed: true, Reason: "allowed", Status: "allowed"}</span>
         default:<span class="cov1" title="1">
-                return TransitionDecision{Allowed: false, Reason: "unknown_transition_group", Status: "policy_blocked", Policy: p}</span>
+                return TransitionDecision{Allowed: false, Reason: "unknown_transition_group", Status: "policy_blocked"}</span>
         }
 }
 </pre>
 		
+		<pre class="file" id="file16" style="display: none">package domain
+
+import "fmt"
+
+// RouteValidationStatus reports the outcome of route decision validation.
+type RouteValidationStatus string
+
+// Route decision validation statuses.
+const (
+        RouteValidationAllowed RouteValidationStatus = "allowed"
+        RouteValidationBlocked RouteValidationStatus = "blocked"
+)
+
+// RouteRequestMetadata captures optional request facts used to validate a route decision.
+type RouteRequestMetadata struct {
+        // HasContext means the caller supplied request facts. Without context, validation is
+        // intentionally limited to checking that the route name is known.
+        HasContext bool
+        // TouchesSourceCode indicates the request mutates source files or tests.
+        TouchesSourceCode bool
+        // AnalysisArtifactOnly indicates the request only moves/archives/reopens analysis files.
+        AnalysisArtifactOnly bool
+        // RequiresDiscovery indicates the request needs Ranger/Archivist analysis before execution.
+        RequiresDiscovery bool
+}
+
+// RouteValidationDecision is the deterministic result of validating a route decision.
+type RouteValidationDecision struct {
+        Allowed bool
+        Status  RouteValidationStatus
+        Route   string
+        Reason  string
+}
+
+// ValidateRouteDecision checks whether Scout's selected route is compatible with known
+// request metadata. It is conservative when metadata is absent so existing callers can adopt
+// the hook before they have full request classification signals.
+func ValidateRouteDecision(route string, metadata RouteRequestMetadata) RouteValidationDecision <span class="cov10" title="8">{
+        if route == "" </span><span class="cov1" title="1">{
+                route = MissionRouteMain
+        }</span>
+        <span class="cov10" title="8">switch route </span>{
+        case MissionRouteMain:<span class="cov4" title="2">
+                return allowedRoute(route)</span>
+        case MissionRouteQuickDraw:<span class="cov4" title="2">
+                return validateQuickDrawRoute(route, metadata)</span>
+        case MissionRouteDirectExecute:<span class="cov5" title="3">
+                return validateDirectExecuteRoute(route, metadata)</span>
+        default:<span class="cov1" title="1">
+                return blockedRoute(route, fmt.Sprintf("unknown route %q", route))</span>
+        }
+}
+
+func validateQuickDrawRoute(route string, metadata RouteRequestMetadata) RouteValidationDecision <span class="cov4" title="2">{
+        if !metadata.HasContext </span><span class="cov1" title="1">{
+                return allowedRoute(route)
+        }</span>
+        <span class="cov1" title="1">if metadata.TouchesSourceCode </span><span class="cov0" title="0">{
+                return blockedRoute(route, "quick_draw cannot mutate source files or tests")
+        }</span>
+        <span class="cov1" title="1">if metadata.RequiresDiscovery </span><span class="cov1" title="1">{
+                return blockedRoute(route, "quick_draw cannot bypass required discovery/refinement")
+        }</span>
+        <span class="cov0" title="0">return allowedRoute(route)</span>
+}
+
+func validateDirectExecuteRoute(route string, metadata RouteRequestMetadata) RouteValidationDecision <span class="cov5" title="3">{
+        if !metadata.HasContext </span><span class="cov1" title="1">{
+                return allowedRoute(route)
+        }</span>
+        <span class="cov4" title="2">if metadata.TouchesSourceCode </span><span class="cov1" title="1">{
+                return blockedRoute(route, "direct_execute cannot mutate source files or tests")
+        }</span>
+        <span class="cov1" title="1">if metadata.RequiresDiscovery </span><span class="cov0" title="0">{
+                return blockedRoute(route, "direct_execute cannot bypass required discovery/refinement")
+        }</span>
+        <span class="cov1" title="1">if !metadata.AnalysisArtifactOnly </span><span class="cov0" title="0">{
+                return blockedRoute(route, "direct_execute is limited to analysis artifact maintenance")
+        }</span>
+        <span class="cov1" title="1">return allowedRoute(route)</span>
+}
+
+func allowedRoute(route string) RouteValidationDecision <span class="cov7" title="5">{
+        return RouteValidationDecision{
+                Allowed: true,
+                Status:  RouteValidationAllowed,
+                Route:   route,
+        }
+}</span>
+
+func blockedRoute(route, reason string) RouteValidationDecision <span class="cov5" title="3">{
+        return RouteValidationDecision{
+                Allowed: false,
+                Status:  RouteValidationBlocked,
+                Route:   route,
+                Reason:  reason,
+        }
+}</span>
+</pre>
+		
 		<pre class="file" id="file17" style="display: none">package domain
 
-// NextState applies a single transition event to the current state using policy guards.
-func NextState(current MissionState, event TransitionEvent, policy MissionPolicy) MissionState <span class="cov10" title="5650">{
-        p := NormalizePolicy(policy)
+var stateTransitions = map[MissionState]map[TransitionEvent]MissionState{
+        StateInit: {
+                EventQuickDrawIntent:  StateQuickDraw,
+                EventDirectHitIntent:  StateDirectGate,
+                EventManifestEmpty:    StateOpportunityAttack,
+                EventManifestNonEmpty: StateOpportunityAttack,
+        },
+        StateOpportunityAttack: {
+                EventManifestEmpty:    StateRefinement,
+                EventManifestNonEmpty: StateOpportunityGate,
+        },
+        StateOpportunityGate: {
+                EventGateDenied:   StateRefinement,
+                EventGateApproved: StateOpportunityExec,
+        },
+        StateOpportunityExec: {
+                EventSniperDone: StateRefinement,
+        },
+        StateRefinement: {
+                EventArchivistNoTasks: StateDoneAnalysis,
+                EventArchivistTasks:   StateApprovalGate,
+                EventSlotTransient:    StateRetryingRefinement,
+                EventSlotPermanent:    StateBlocked,
+        },
+        StateApprovalGate: {
+                EventGateDenied:   StateDoneAnalysis,
+                EventGateApproved: StateExecution,
+                EventGateTimeout:  StateDoneAnalysis,
+        },
+        StateExecution: {
+                EventSniperDone:    StateDoneDelivery,
+                EventSniperOA:      StateOpportunityGate,
+                EventSlotTransient: StateRetryingExecution,
+                EventSlotPermanent: StateBlocked,
+        },
+        StateDoneAnalysis: {
+                EventADRCriterionMet: StateADRGate1,
+        },
+        StateDoneDelivery: {
+                EventADRCriterionMet: StateADRGate1,
+        },
+        StateRetrying: {
+                EventManifestNonEmpty: StateRefinement,
+                EventSlotPermanent:    StateBlocked,
+                EventSlotTransient:    StateBlocked,
+        },
+        StateRetryingRefinement: {
+                EventManifestNonEmpty: StateRefinement,
+                EventSlotPermanent:    StateBlocked,
+                EventSlotTransient:    StateBlocked,
+        },
+        StateRetryingExecution: {
+                EventManifestNonEmpty: StateExecution,
+                EventSlotPermanent:    StateBlocked,
+                EventSlotTransient:    StateBlocked,
+        },
+        StateQuickDraw: {
+                EventManifestNonEmpty: StateQuickDrawGate,
+                EventManifestEmpty:    StateQuickDrawDone,
+        },
+        StateQuickDrawGate: {
+                EventQuickDrawApprove: StateQuickDrawDone,
+                EventQuickDrawDecline: StateQuickDrawDone,
+        },
+        StateADRGate1: {
+                EventADRApproved: StateADRGate2,
+                EventADRDeclined: StateADRDone,
+        },
+        StateADRGate2: {
+                EventADRApproved: StateADRDone,
+                EventADRDeclined: StateADRDone,
+        },
+        StateDirectGate: {
+                EventDirectGateApproved: StateDirectExec,
+                EventDirectGateDeclined: StateDoneAnalysis,
+        },
+        StateDirectExec: {
+                EventSniperDone:    StateDirectDone,
+                EventSlotTransient: StateRetryingDirectExec,
+                EventSlotPermanent: StateBlocked,
+        },
+        StateRetryingDirectExec: {
+                EventManifestNonEmpty: StateDirectExec,
+                EventSlotPermanent:    StateBlocked,
+                EventSlotTransient:    StateBlocked,
+        },
+}
 
-        switch current </span>{
-        case StateInit:<span class="cov8" title="1357">
-                return nextFromInit(event)</span>
-        case StateOpportunityAttack:<span class="cov8" title="1253">
-                return nextFromOpportunityAttack(event)</span>
-        case StateOpportunityGate:<span class="cov7" title="546">
-                return nextFromOpportunityGate(event, p)</span>
-        case StateOpportunityExec:<span class="cov7" title="329">
-                return nextFromOpportunityExec(event)</span>
-        case StateRefinement:<span class="cov8" title="864">
-                return nextFromRefinement(event, p)</span>
-        case StateApprovalGate:<span class="cov6" title="298">
-                return nextFromApprovalGate(event, p)</span>
-        case StateExecution:<span class="cov6" title="133">
-                return nextFromExecution(event)</span>
-        case StateRetrying:<span class="cov2" title="4">
-                return nextFromRetrying(event, p)</span>
-        case StateQuickDraw:<span class="cov1" title="2">
-                return nextFromQuickDraw(event)</span>
-        case StateQuickDrawGate:<span class="cov2" title="3">
-                return nextFromQuickDrawGate(event)</span>
-        case StateADRGate1:<span class="cov2" title="4">
-                return nextFromADRGate1(event)</span>
-        case StateADRGate2:<span class="cov2" title="3">
-                return nextFromADRGate2(event)</span>
-        case StateDoneAnalysis:<span class="cov7" title="803">
-                return nextFromDoneAnalysis(event)</span>
-        case StateDoneDelivery:<span class="cov4" title="40">
-                return nextFromDoneDelivery(event)</span>
-        case StateQuickDrawDone, StateADRDone, StateBlocked:<span class="cov2" title="4">
-                return current</span>
-        case StateDirectGate:<span class="cov2" title="3">
-                return nextFromDirectGate(event, p)</span>
-        case StateDirectExec:<span class="cov1" title="2">
-                return nextFromDirectExec(event)</span>
-        case StateDirectDone:<span class="cov1" title="2">
-                return current</span>
+// NextState applies a single transition event to the current state using a predefined transition table.
+// Unhandled events for a given state return the current state (a self-loop).
+func NextState(current MissionState, event TransitionEvent) MissionState <span class="cov10" title="5664">{
+        if transitions, ok := stateTransitions[current]; ok </span><span class="cov9" title="5658">{
+                if next, ok := transitions[event]; ok </span><span class="cov8" title="1408">{
+                        return next
+                }</span>
         }
-
-        <span class="cov0" title="0">return current</span>
-}
-
-func nextFromInit(event TransitionEvent) MissionState <span class="cov8" title="1357">{
-        switch event </span>{
-        case EventQuickDrawIntent:<span class="cov1" title="1">
-                return StateQuickDraw</span>
-        case EventDirectHitIntent:<span class="cov1" title="2">
-                return StateDirectGate</span>
-        case EventManifestEmpty, EventManifestNonEmpty:<span class="cov7" title="398">
-                return StateOpportunityAttack</span>
-        case EventGateApproved, EventGateDenied, EventSniperDone, EventArchivistNoTasks, EventArchivistTasks,
-                EventQuickDrawApprove, EventQuickDrawDecline,
-                EventADRCriterionMet, EventADRApproved, EventADRDeclined,
-                EventSlotTransient, EventSlotPermanent, EventSniperOA,
-                EventDirectGateApproved, EventDirectGateDeclined:<span class="cov8" title="956">
-                return StateInit</span>
-        }
-        <span class="cov0" title="0">return StateInit</span>
-}
-
-func nextFromOpportunityAttack(event TransitionEvent) MissionState <span class="cov8" title="1253">{
-        switch event </span>{
-        case EventManifestEmpty:<span class="cov6" title="191">
-                return StateRefinement</span>
-        case EventManifestNonEmpty:<span class="cov6" title="193">
-                return StateOpportunityGate</span>
-        case EventGateApproved, EventGateDenied, EventSniperDone, EventArchivistNoTasks, EventArchivistTasks,
-                EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
-                EventADRCriterionMet, EventADRApproved, EventADRDeclined,
-                EventSlotTransient, EventSlotPermanent, EventSniperOA,
-                EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:<span class="cov8" title="869">
-                return StateOpportunityAttack</span>
-        }
-        <span class="cov0" title="0">return StateOpportunityAttack</span>
-}
-
-func nextFromOpportunityGate(event TransitionEvent, _ MissionPolicy) MissionState <span class="cov7" title="546">{
-        switch event </span>{
-        case EventGateDenied:<span class="cov5" title="88">
-                return StateRefinement</span>
-        case EventGateApproved:<span class="cov5" title="82">
-                return StateOpportunityExec</span>
-        case EventManifestEmpty, EventManifestNonEmpty, EventSniperDone, EventArchivistNoTasks, EventArchivistTasks,
-                EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
-                EventADRCriterionMet, EventADRApproved, EventADRDeclined,
-                EventSlotTransient, EventSlotPermanent, EventSniperOA,
-                EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:<span class="cov7" title="376">
-                return StateOpportunityGate</span>
-        }
-        <span class="cov0" title="0">return StateOpportunityGate</span>
-}
-
-func nextFromOpportunityExec(event TransitionEvent) MissionState <span class="cov7" title="329">{
-        switch event </span>{
-        case EventSniperDone:<span class="cov4" title="37">
-                return StateRefinement</span>
-        case EventManifestEmpty, EventManifestNonEmpty, EventGateApproved, EventGateDenied, EventArchivistNoTasks, EventArchivistTasks,
-                EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
-                EventADRCriterionMet, EventADRApproved, EventADRDeclined,
-                EventSlotTransient, EventSlotPermanent, EventSniperOA,
-                EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:<span class="cov6" title="292">
-                return StateOpportunityExec</span>
-        }
-        <span class="cov0" title="0">return StateOpportunityExec</span>
-}
-
-func nextFromRefinement(event TransitionEvent, _ MissionPolicy) MissionState <span class="cov8" title="864">{
-        switch event </span>{
-        case EventArchivistNoTasks:<span class="cov6" title="122">
-                return StateDoneAnalysis</span>
-        case EventArchivistTasks:<span class="cov6" title="141">
-                return StateApprovalGate</span>
-        case EventSlotTransient:<span class="cov1" title="1">
-                return StateRetrying</span>
-        case EventSlotPermanent:<span class="cov0" title="0">
-                return StateBlocked</span>
-        case EventManifestEmpty, EventManifestNonEmpty, EventGateApproved, EventGateDenied, EventSniperDone,
-                EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
-                EventADRCriterionMet, EventADRApproved, EventADRDeclined, EventSniperOA,
-                EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:<span class="cov7" title="600">
-                return StateRefinement</span>
-        }
-        <span class="cov0" title="0">return StateRefinement</span>
-}
-
-func nextFromApprovalGate(event TransitionEvent, _ MissionPolicy) MissionState <span class="cov6" title="298">{
-        switch event </span>{
-        case EventGateDenied:<span class="cov5" title="52">
-                return StateDoneAnalysis</span>
-        case EventGateApproved:<span class="cov5" title="53">
-                return StateExecution</span>
-        case EventManifestEmpty, EventManifestNonEmpty, EventSniperDone, EventArchivistNoTasks, EventArchivistTasks,
-                EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
-                EventADRCriterionMet, EventADRApproved, EventADRDeclined,
-                EventSlotTransient, EventSlotPermanent, EventSniperOA,
-                EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:<span class="cov6" title="193">
-                return StateApprovalGate</span>
-        }
-        <span class="cov0" title="0">return StateApprovalGate</span>
-}
-
-func nextFromExecution(event TransitionEvent) MissionState <span class="cov6" title="133">{
-        switch event </span>{
-        case EventSniperDone:<span class="cov4" title="19">
-                return StateDoneDelivery</span>
-        case EventSniperOA:<span class="cov1" title="1">
-                // Mid-execution opportunity attack surfaced — pause for user review.
-                return StateOpportunityGate</span>
-        case EventSlotTransient:<span class="cov0" title="0">
-                return StateRetrying</span>
-        case EventSlotPermanent:<span class="cov0" title="0">
-                return StateBlocked</span>
-        case EventManifestEmpty, EventManifestNonEmpty, EventGateApproved, EventGateDenied, EventArchivistNoTasks, EventArchivistTasks,
-                EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
-                EventADRCriterionMet, EventADRApproved, EventADRDeclined,
-                EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:<span class="cov5" title="113">
-                return StateExecution</span>
-        }
-        <span class="cov0" title="0">return StateExecution</span>
-}
-
-func nextFromDoneAnalysis(event TransitionEvent) MissionState <span class="cov7" title="803">{
-        if event == EventADRCriterionMet </span><span class="cov1" title="1">{
-                return StateADRGate1
-        }</span>
-        <span class="cov7" title="802">return StateDoneAnalysis</span>
-}
-
-func nextFromDoneDelivery(event TransitionEvent) MissionState <span class="cov4" title="40">{
-        if event == EventADRCriterionMet </span><span class="cov1" title="1">{
-                return StateADRGate1
-        }</span>
-        <span class="cov4" title="39">return StateDoneDelivery</span>
-}
-
-// nextFromRetrying handles a single transient retry attempt.
-// A second transient or any permanent failure always goes to BLOCKED.
-func nextFromRetrying(event TransitionEvent, _ MissionPolicy) MissionState <span class="cov2" title="4">{
-        switch event </span>{
-        case EventManifestNonEmpty:<span class="cov1" title="1">
-                return StateRefinement</span>
-        case EventSlotPermanent, EventSlotTransient:<span class="cov1" title="2">
-                return StateBlocked</span>
-        case EventManifestEmpty, EventGateApproved, EventGateDenied, EventSniperDone, EventArchivistNoTasks, EventArchivistTasks,
-                EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
-                EventADRCriterionMet, EventADRApproved, EventADRDeclined, EventSniperOA,
-                EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:<span class="cov1" title="1">
-                return StateRetrying</span>
-        }
-        <span class="cov0" title="0">return StateRetrying</span>
-}
-
-func nextFromQuickDraw(event TransitionEvent) MissionState <span class="cov1" title="2">{
-        switch event </span>{
-        case EventManifestNonEmpty:<span class="cov1" title="1">
-                return StateQuickDrawGate</span>
-        case EventManifestEmpty:<span class="cov0" title="0">
-                return StateQuickDrawDone</span>
-        case EventGateApproved, EventGateDenied, EventSniperDone, EventArchivistNoTasks, EventArchivistTasks,
-                EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
-                EventADRCriterionMet, EventADRApproved, EventADRDeclined,
-                EventSlotTransient, EventSlotPermanent, EventSniperOA,
-                EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:<span class="cov1" title="1">
-                return StateQuickDraw</span>
-        }
-        <span class="cov0" title="0">return StateQuickDraw</span>
-}
-
-func nextFromQuickDrawGate(event TransitionEvent) MissionState <span class="cov2" title="3">{
-        switch event </span>{
-        case EventQuickDrawApprove, EventQuickDrawDecline:<span class="cov1" title="2">
-                return StateQuickDrawDone</span>
-        case EventManifestEmpty, EventManifestNonEmpty, EventGateApproved, EventGateDenied, EventSniperDone,
-                EventArchivistNoTasks, EventArchivistTasks, EventQuickDrawIntent,
-                EventADRCriterionMet, EventADRApproved, EventADRDeclined,
-                EventSlotTransient, EventSlotPermanent, EventSniperOA,
-                EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:<span class="cov1" title="1">
-                return StateQuickDrawGate</span>
-        }
-        <span class="cov0" title="0">return StateQuickDrawGate</span>
-}
-
-func nextFromADRGate1(event TransitionEvent) MissionState <span class="cov2" title="4">{
-        switch event </span>{
-        case EventADRApproved:<span class="cov1" title="2">
-                return StateADRGate2</span>
-        case EventADRDeclined:<span class="cov1" title="1">
-                return StateADRDone</span>
-        case EventManifestEmpty, EventManifestNonEmpty, EventGateApproved, EventGateDenied, EventSniperDone,
-                EventArchivistNoTasks, EventArchivistTasks, EventADRCriterionMet,
-                EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
-                EventSlotTransient, EventSlotPermanent, EventSniperOA,
-                EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:<span class="cov1" title="1">
-                return StateADRGate1</span>
-        }
-        <span class="cov0" title="0">return StateADRGate1</span>
-}
-
-func nextFromADRGate2(event TransitionEvent) MissionState <span class="cov2" title="3">{
-        switch event </span>{
-        case EventADRApproved, EventADRDeclined:<span class="cov1" title="2">
-                return StateADRDone</span>
-        case EventManifestEmpty, EventManifestNonEmpty, EventGateApproved, EventGateDenied, EventSniperDone,
-                EventArchivistNoTasks, EventArchivistTasks, EventADRCriterionMet,
-                EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
-                EventSlotTransient, EventSlotPermanent, EventSniperOA,
-                EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:<span class="cov1" title="1">
-                return StateADRGate2</span>
-        }
-        <span class="cov0" title="0">return StateADRGate2</span>
-}
-
-func nextFromDirectGate(event TransitionEvent, _ MissionPolicy) MissionState <span class="cov2" title="3">{
-        switch event </span>{
-        case EventDirectGateApproved:<span class="cov1" title="1">
-                return StateDirectExec</span>
-        case EventDirectGateDeclined:<span class="cov1" title="1">
-                return StateDoneAnalysis</span>
-        case EventManifestEmpty, EventManifestNonEmpty, EventGateApproved, EventGateDenied, EventSniperDone,
-                EventArchivistNoTasks, EventArchivistTasks, EventADRCriterionMet, EventADRApproved, EventADRDeclined,
-                EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
-                EventSlotTransient, EventSlotPermanent, EventSniperOA, EventDirectHitIntent:<span class="cov1" title="1">
-                return StateDirectGate</span>
-        }
-        <span class="cov0" title="0">return StateDirectGate</span>
-}
-
-func nextFromDirectExec(event TransitionEvent) MissionState <span class="cov1" title="2">{
-        switch event </span>{
-        case EventSniperDone:<span class="cov1" title="1">
-                return StateDirectDone</span>
-        case EventSlotTransient:<span class="cov0" title="0">
-                return StateRetrying</span>
-        case EventSlotPermanent:<span class="cov0" title="0">
-                return StateBlocked</span>
-        case EventManifestEmpty, EventManifestNonEmpty, EventGateApproved, EventGateDenied,
-                EventArchivistNoTasks, EventArchivistTasks, EventADRCriterionMet, EventADRApproved, EventADRDeclined,
-                EventQuickDrawIntent, EventQuickDrawApprove, EventQuickDrawDecline,
-                EventSniperOA, EventDirectHitIntent, EventDirectGateApproved, EventDirectGateDeclined:<span class="cov1" title="1">
-                return StateDirectExec</span>
-        }
-        <span class="cov0" title="0">return StateDirectExec</span>
+        <span class="cov9" title="4256">return current</span>
 }
 
 // RunStateMachine folds a sequence of events from a starting state.
-func RunStateMachine(start MissionState, events []TransitionEvent, policy MissionPolicy) MissionState <span class="cov2" title="5">{
+func RunStateMachine(start MissionState, events []TransitionEvent) MissionState <span class="cov2" title="6">{
         state := start
-        for _, ev := range events </span><span class="cov2" title="6">{
-                state = NextState(state, ev, policy)
+        for _, ev := range events </span><span class="cov3" title="7">{
+                state = NextState(state, ev)
         }</span>
-        <span class="cov2" title="5">return state</span>
+        <span class="cov2" title="6">return state</span>
 }
 </pre>
 		
@@ -4999,6 +4869,2168 @@ func MinimalRoot(t testing.TB, dir string) <span class="cov10" title="13">{
         require.NoError(t, os.WriteFile(filepath.Join(dir, "index.yaml"), []byte("load_always: []\nload_by_task_type: {}\n"), 0o644))
         require.NoError(t, os.WriteFile(filepath.Join(dir, "knowledge.index.yaml"), []byte("sources: []\n"), 0o644))
 }</span>
+</pre>
+		
+		<pre class="file" id="file43" style="display: none">package treasure
+
+import (
+        "fmt"
+        "os"
+        "path/filepath"
+        "sort"
+        "strings"
+        "time"
+
+        "github.com/SergioLacerda/strategist-skill/internal/domain"
+        "gopkg.in/yaml.v3"
+)
+
+// MissionHistoryChestID is the synthetic chest used for mined mission history.
+const MissionHistoryChestID = "mission-history"
+
+// BuildJewelCandidates converts mined clusters and gaps into proposed jewels.
+func BuildJewelCandidates(clusters []Cluster, gaps []Gap) []Jewel <span class="cov0" title="0">{
+        return BuildJewelCandidatesWithPolicy(clusters, gaps, DefaultScoringPolicy())
+}</span>
+
+// BuildJewelCandidatesWithPolicy converts mined clusters and gaps into proposed jewels.
+func BuildJewelCandidatesWithPolicy(clusters []Cluster, gaps []Gap, policy ScoringPolicy) []Jewel <span class="cov0" title="0">{
+        candidates := make([]Jewel, 0, len(clusters)+len(gaps))
+        for _, c := range clusters </span><span class="cov0" title="0">{
+                candidates = append(candidates, Jewel{
+                        ID:         "jewel-" + c.ID,
+                        ChestID:    MissionHistoryChestID,
+                        Kind:       "pattern",
+                        Statement:  fmt.Sprintf("Recurring theme across missions: %s", strings.Join(c.Tags, ", ")),
+                        SourceRefs: missionSourceRefs(c.CitedMissions),
+                        Trust:      "T2",
+                        Status:     domain.JewelStatusProposed,
+                        ReviewedBy: "agent",
+                        Score: JewelScore{
+                                Value: ClusterCandidateScoreWithPolicy(c, policy),
+                                Reasons: []string{
+                                        fmt.Sprintf("recurring across %d missions", len(c.CitedMissions)),
+                                        "shared tags: " + strings.Join(c.Tags, ", "),
+                                },
+                        },
+                        Applicability: JewelApplicability{Scope: []string{"all"}},
+                })
+        }</span>
+        <span class="cov0" title="0">for _, g := range gaps </span><span class="cov0" title="0">{
+                candidates = append(candidates, Jewel{
+                        ID:         "jewel-gap-" + g.ID,
+                        ChestID:    MissionHistoryChestID,
+                        Kind:       "gap",
+                        Statement:  fmt.Sprintf("Open side quest %s still pending", g.ID),
+                        SourceRefs: missionSourceRefs(g.CitedMissions),
+                        Trust:      "T2",
+                        Status:     domain.JewelStatusProposed,
+                        ReviewedBy: "agent",
+                        Score: JewelScore{
+                                Value:   GapCandidateScoreWithPolicy(g, policy),
+                                Reasons: []string{fmt.Sprintf("still pending in %d mission(s)", len(g.CitedMissions))},
+                        },
+                        Applicability: JewelApplicability{Scope: []string{"all"}},
+                })
+        }</span>
+        <span class="cov0" title="0">return candidates</span>
+}
+
+func missionSourceRefs(missionIDs []string) []string <span class="cov0" title="0">{
+        refs := make([]string, 0, len(missionIDs))
+        for _, id := range missionIDs </span><span class="cov0" title="0">{
+                refs = append(refs, MissionHistoryChestID+"#"+id)
+        }</span>
+        <span class="cov0" title="0">return refs</span>
+}
+
+// ClusterCandidateScore scores a recurring-mission cluster candidate.
+func ClusterCandidateScore(c Cluster) int <span class="cov1" title="1">{
+        return ClusterCandidateScoreWithPolicy(c, DefaultScoringPolicy())
+}</span>
+
+// ClusterCandidateScoreWithPolicy scores a recurring-mission cluster candidate.
+func ClusterCandidateScoreWithPolicy(c Cluster, policy ScoringPolicy) int <span class="cov5" title="2">{
+        v := policy.ClusterBase + len(c.CitedMissions)*policy.ClusterMissionWeight + len(c.Tags)*policy.ClusterTagWeight
+        return clampScore(v, policy.MaxScore)
+}</span>
+
+// GapCandidateScore scores an open side-quest gap candidate.
+func GapCandidateScore(g Gap) int <span class="cov1" title="1">{
+        return GapCandidateScoreWithPolicy(g, DefaultScoringPolicy())
+}</span>
+
+// GapCandidateScoreWithPolicy scores an open side-quest gap candidate.
+func GapCandidateScoreWithPolicy(g Gap, policy ScoringPolicy) int <span class="cov5" title="2">{
+        v := policy.GapBase + len(g.CitedMissions)*policy.GapMissionWeight
+        return clampScore(v, policy.MaxScore)
+}</span>
+
+func clampScore(value, maxScore int) int <span class="cov10" title="4">{
+        if value &gt; maxScore </span><span class="cov5" title="2">{
+                return maxScore
+        }</span>
+        <span class="cov5" title="2">return value</span>
+}
+
+// WriteProposedJewels appends new proposed jewels while skipping existing ids.
+func WriteProposedJewels(root string, candidates []Jewel) (written, skipped int, err error) <span class="cov0" title="0">{
+        if len(candidates) == 0 </span><span class="cov0" title="0">{
+                return 0, 0, nil
+        }</span>
+
+        <span class="cov0" title="0">docs, written, skipped, err := buildProposedJewelDocs(root, candidates)
+        if err != nil </span><span class="cov0" title="0">{
+                return written, skipped, err
+        }</span>
+
+        <span class="cov0" title="0">if written == 0 </span><span class="cov0" title="0">{
+                return written, skipped, nil
+        }</span>
+        <span class="cov0" title="0">if err := writeProposedJewelDocs(root, docs); err != nil </span><span class="cov0" title="0">{
+                return written, skipped, err
+        }</span>
+        <span class="cov0" title="0">return written, skipped, nil</span>
+}
+
+func buildProposedJewelDocs(root string, candidates []Jewel) (map[string]*yaml.Node, int, int, error) <span class="cov0" title="0">{
+        existing, err := ExistingJewelIDs(root)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, 0, 0, fmt.Errorf("index proposed jewels: %w", err)
+        }</span>
+        <span class="cov0" title="0">proposedAt := time.Now().UTC().Format("2006-01-02")
+        docs := make(map[string]*yaml.Node)
+        written, skipped := 0, 0
+        for _, cand := range candidates </span><span class="cov0" title="0">{
+                if existing[cand.ID] </span><span class="cov0" title="0">{
+                        skipped++
+                        continue</span>
+                }
+                <span class="cov0" title="0">if err := appendCandidateToPartition(root, docs, cand, proposedAt); err != nil </span><span class="cov0" title="0">{
+                        return docs, written, skipped, err
+                }</span>
+                <span class="cov0" title="0">existing[cand.ID] = true
+                written++</span>
+        }
+        <span class="cov0" title="0">return docs, written, skipped, nil</span>
+}
+
+func writeProposedJewelDocs(root string, docs map[string]*yaml.Node) error <span class="cov0" title="0">{
+        if err := os.MkdirAll(filepath.Join(root, "jewels"), 0o755); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("index proposed jewels: create jewels/: %w", err)
+        }</span>
+        <span class="cov0" title="0">var writes []YAMLWrite
+        for path, doc := range docs </span><span class="cov0" title="0">{
+                writes = append(writes, YAMLWrite{Path: path, Doc: doc})
+        }</span>
+        <span class="cov0" title="0">sort.Slice(writes, func(i, j int) bool </span><span class="cov0" title="0">{ return writes[i].Path &lt; writes[j].Path }</span>)
+        <span class="cov0" title="0">if _, err := WriteYAMLNodes(writes...); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("index proposed jewels: %w", err)
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+
+func appendCandidateToPartition(root string, docs map[string]*yaml.Node, cand Jewel, proposedAt string) error <span class="cov0" title="0">{
+        path := JewelPartitionPath(root, cand.ChestID)
+        doc, ok := docs[path]
+        if !ok </span><span class="cov0" title="0">{
+                var err error
+                doc, err = ReadOrCreateJewelsDocument(path)
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("index proposed jewels: %w", err)
+                }</span>
+                <span class="cov0" title="0">docs[path] = doc</span>
+        }
+        <span class="cov0" title="0">mapping, err := RootMapping(doc)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("index proposed jewels: %w", err)
+        }</span>
+        <span class="cov0" title="0">seq := FindOrCreateSequence(mapping, "jewels")
+        seq.Style = 0
+        var entry yaml.Node
+        if err := entry.Encode(cand); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("index proposed jewels: encode %s: %w", cand.ID, err)
+        }</span>
+        <span class="cov0" title="0">AppendJewelHistory(&amp;entry, domain.JewelStatusProposed, proposedAt, "agent", "")
+        seq.Content = append(seq.Content, &amp;entry)
+        return nil</span>
+}
+
+// ExistingJewelIDs returns all ids present across monolithic and partitioned jewel manifests.
+func ExistingJewelIDs(root string) (map[string]bool, error) <span class="cov0" title="0">{
+        paths, err := JewelManifestPaths(root)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">ids := make(map[string]bool)
+        for _, path := range paths </span><span class="cov0" title="0">{
+                doc, err := ReadYAMLNode(path)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+                <span class="cov0" title="0">if err := collectJewelIDs(doc, ids); err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+        }
+        <span class="cov0" title="0">return ids, nil</span>
+}
+
+func collectJewelIDs(doc *yaml.Node, ids map[string]bool) error <span class="cov0" title="0">{
+        mapping, err := RootMapping(doc)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">seq := MappingValue(mapping, "jewels")
+        if seq == nil </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+        <span class="cov0" title="0">for _, entry := range seq.Content </span><span class="cov0" title="0">{
+                if entry.Kind != yaml.MappingNode </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+                <span class="cov0" title="0">if id := MappingValue(entry, "id"); id != nil </span><span class="cov0" title="0">{
+                        ids[id.Value] = true
+                }</span>
+        }
+        <span class="cov0" title="0">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file44" style="display: none">package treasure
+
+import (
+        "sort"
+        "strings"
+
+        "github.com/SergioLacerda/strategist-skill/internal/domain"
+)
+
+// JewelFilter selects jewels for read-only listing.
+type JewelFilter struct {
+        ChestID string
+        Status  string
+}
+
+// FilterJewels flattens grouped jewels, applies the requested filter, and returns
+// a deterministic chest/id ordering for CLI and JSON output.
+func FilterJewels(jewelsByChest map[string][]Jewel, filter JewelFilter) []Jewel <span class="cov6" title="3">{
+        filtered := make([]Jewel, 0)
+        for _, list := range jewelsByChest </span><span class="cov9" title="5">{
+                for _, j := range list </span><span class="cov10" title="6">{
+                        if jewelMatchesFilter(j, filter) </span><span class="cov7" title="4">{
+                                filtered = append(filtered, j)
+                        }</span>
+                }
+        }
+        <span class="cov6" title="3">SortJewels(filtered)
+        return filtered</span>
+}
+
+// ProposedJewels returns the deterministic status:proposed curation queue.
+func ProposedJewels(jewelsByChest map[string][]Jewel) []Jewel <span class="cov0" title="0">{
+        return FilterJewels(jewelsByChest, JewelFilter{Status: domain.JewelStatusProposed})
+}</span>
+
+// FindJewel returns the first jewel with the given id from grouped jewels.
+func FindJewel(jewelsByChest map[string][]Jewel, id string) (Jewel, bool) <span class="cov4" title="2">{
+        for _, list := range jewelsByChest </span><span class="cov4" title="2">{
+                for _, j := range list </span><span class="cov4" title="2">{
+                        if j.ID == id </span><span class="cov1" title="1">{
+                                return j, true
+                        }</span>
+                }
+        }
+        <span class="cov1" title="1">return Jewel{}, false</span>
+}
+
+// SortJewels orders jewels by chest id, then jewel id.
+func SortJewels(jewels []Jewel) <span class="cov6" title="3">{
+        sort.Slice(jewels, func(i, k int) bool </span><span class="cov1" title="1">{
+                if jewels[i].ChestID != jewels[k].ChestID </span><span class="cov1" title="1">{
+                        return jewels[i].ChestID &lt; jewels[k].ChestID
+                }</span>
+                <span class="cov0" title="0">return jewels[i].ID &lt; jewels[k].ID</span>
+        })
+}
+
+// ParseJewelIDs expands comma-separated CLI values into a de-duplicated id list.
+func ParseJewelIDs(values ...string) []string <span class="cov1" title="1">{
+        ids := make([]string, 0, len(values))
+        seen := make(map[string]bool)
+        for _, value := range values </span><span class="cov7" title="4">{
+                for _, part := range strings.Split(value, ",") </span><span class="cov10" title="6">{
+                        id := strings.TrimSpace(part)
+                        if id == "" || seen[id] </span><span class="cov6" title="3">{
+                                continue</span>
+                        }
+                        <span class="cov6" title="3">ids = append(ids, id)
+                        seen[id] = true</span>
+                }
+        }
+        <span class="cov1" title="1">return ids</span>
+}
+
+func jewelMatchesFilter(j Jewel, filter JewelFilter) bool <span class="cov10" title="6">{
+        if filter.ChestID != "" &amp;&amp; j.ChestID != filter.ChestID </span><span class="cov1" title="1">{
+                return false
+        }</span>
+        <span class="cov9" title="5">switch filter.Status </span>{
+        case "":<span class="cov6" title="3">
+                return j.Status != domain.JewelStatusDeprecated</span>
+        case "all":<span class="cov1" title="1">
+                return true</span>
+        default:<span class="cov1" title="1">
+                return j.Status == filter.Status</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file45" style="display: none">package treasure
+
+import (
+        "compress/gzip"
+        "encoding/json"
+        "fmt"
+        "os"
+        "path/filepath"
+        "sort"
+        "strings"
+
+        "github.com/SergioLacerda/strategist-skill/internal/domain"
+        "gopkg.in/yaml.v3"
+)
+
+// Scope accepts both scalar ("all") and sequence (["discovery", "refinement"]) in YAML.
+type Scope []string
+
+// UnmarshalYAML decodes a scalar or sequence scope into a normalized string list.
+func (s *Scope) UnmarshalYAML(value *yaml.Node) error <span class="cov0" title="0">{
+        if value.Kind == yaml.ScalarNode </span><span class="cov0" title="0">{
+                *s = []string{value.Value}
+                return nil
+        }</span>
+        <span class="cov0" title="0">var vs []string
+        if err := value.Decode(&amp;vs); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("decode scope: %w", err)
+        }</span>
+        <span class="cov0" title="0">*s = vs
+        return nil</span>
+}
+
+// ActiveChest is a chest declaration from active.yaml.
+type ActiveChest struct {
+        ID    string `yaml:"id"`
+        Path  string `yaml:"path"`
+        Scope Scope  `yaml:"scope"`
+}
+
+type activeYAMLWithChests struct {
+        TreasureChests []ActiveChest `yaml:"treasure_chests"`
+}
+
+// GovernedTrust is the trust metadata attached to a governed treasure chest.
+type GovernedTrust struct {
+        Tier         string `yaml:"tier"`
+        ReviewedBy   string `yaml:"reviewed_by"`
+        LastReviewed string `yaml:"last_reviewed"`
+}
+
+// GovernedGrade captures source quality and reuse metadata for a governed chest.
+type GovernedGrade struct {
+        SourceGrade          string `yaml:"source_grade"`
+        ReuseValue           string `yaml:"reuse_value"`
+        ImplementationStatus string `yaml:"implementation_status"`
+        Provenance           string `yaml:"provenance"`
+}
+
+// GovernedChest is a chest entry from treasure-chests.yaml.
+type GovernedChest struct {
+        ID       string        `yaml:"id"`
+        Title    string        `yaml:"title"`
+        Path     string        `yaml:"path"`
+        Trust    GovernedTrust `yaml:"trust"`
+        Grade    GovernedGrade `yaml:"grade"`
+        OpenGaps []string      `yaml:"open_gaps"`
+        // Status is the tombstone marker: "" or "active" means active, "inactive" means removed.
+        Status string `yaml:"status"`
+}
+
+type governedManifest struct {
+        ScoringPolicy rawScoringPolicy `yaml:"scoring_policy"`
+        Chests        []GovernedChest  `yaml:"chests"`
+}
+
+type rawScoringPolicy struct {
+        ClusterBase          *int `yaml:"cluster_base"`
+        ClusterMissionWeight *int `yaml:"cluster_mission_weight"`
+        ClusterTagWeight     *int `yaml:"cluster_tag_weight"`
+        GapBase              *int `yaml:"gap_base"`
+        GapMissionWeight     *int `yaml:"gap_mission_weight"`
+        MaxScore             *int `yaml:"max_score"`
+}
+
+// ScoringPolicy controls proposed-jewel score generation during treasure-chest index.
+type ScoringPolicy struct {
+        ClusterBase          int `yaml:"cluster_base" json:"cluster_base"`
+        ClusterMissionWeight int `yaml:"cluster_mission_weight" json:"cluster_mission_weight"`
+        ClusterTagWeight     int `yaml:"cluster_tag_weight" json:"cluster_tag_weight"`
+        GapBase              int `yaml:"gap_base" json:"gap_base"`
+        GapMissionWeight     int `yaml:"gap_mission_weight" json:"gap_mission_weight"`
+        MaxScore             int `yaml:"max_score" json:"max_score"`
+}
+
+type indexedEntry struct {
+        ID string `yaml:"id"`
+}
+
+type knowledgeIndexYAML struct {
+        Sources []indexedEntry `yaml:"sources"`
+}
+
+// JewelScore stores a jewel's ranking value and supporting reasons.
+type JewelScore struct {
+        Value   int      `yaml:"value" json:"value"`
+        Reasons []string `yaml:"reasons" json:"reasons"`
+}
+
+// JewelApplicability describes where and when a jewel should be applied.
+type JewelApplicability struct {
+        Scope       []string `yaml:"scope" json:"scope"`
+        AppliesWhen []string `yaml:"applies_when" json:"applies_when"`
+        AvoidWhen   []string `yaml:"avoid_when" json:"avoid_when"`
+}
+
+// JewelVerification stores evidence references for verified jewels.
+type JewelVerification struct {
+        EvidenceRefs []string `yaml:"evidence_refs" json:"evidence_refs"`
+}
+
+// JewelHistoryEntry records a lifecycle transition for a jewel.
+type JewelHistoryEntry struct {
+        Status      string `yaml:"status" json:"status"`
+        At          string `yaml:"at" json:"at"`
+        By          string `yaml:"by" json:"by"`
+        EvidenceRef string `yaml:"evidence_ref,omitempty" json:"evidence_ref,omitempty"`
+}
+
+// Jewel is a compact knowledge unit anchored to a treasure chest.
+type Jewel struct {
+        ID            string              `yaml:"id"`
+        ChestID       string              `yaml:"chest_id"`
+        Kind          string              `yaml:"kind"`
+        Statement     string              `yaml:"statement"`
+        SourceRefs    []string            `yaml:"source_refs"`
+        Trust         string              `yaml:"trust"`
+        Status        string              `yaml:"status"`
+        ReviewedBy    string              `yaml:"reviewed_by"`
+        LastReviewed  string              `yaml:"last_reviewed"`
+        Score         JewelScore          `yaml:"score"`
+        Applicability JewelApplicability  `yaml:"applicability"`
+        Verification  JewelVerification   `yaml:"verification"`
+        History       []JewelHistoryEntry `yaml:"history,omitempty" json:"history,omitempty"`
+}
+
+// Manifest is the top-level jewels.yaml document.
+type Manifest struct {
+        SchemaVersion string  `yaml:"schema_version"`
+        Jewels        []Jewel `yaml:"jewels"`
+}
+
+// LoadActiveChests reads active.yaml treasure_chests entries.
+func LoadActiveChests(root string) ([]ActiveChest, error) <span class="cov0" title="0">{
+        raw, err := os.ReadFile(filepath.Join(root, "active.yaml")) //nolint:gosec // G304
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("read active.yaml: %w", err)
+        }</span>
+        <span class="cov0" title="0">var cfg activeYAMLWithChests
+        if err := yaml.Unmarshal(raw, &amp;cfg); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("parse active.yaml: %w", err)
+        }</span>
+        <span class="cov0" title="0">return cfg.TreasureChests, nil</span>
+}
+
+// LoadGoverned reads treasure-chests.yaml and returns governed chests by id.
+func LoadGoverned(root string) (map[string]GovernedChest, error) <span class="cov0" title="0">{
+        raw, err := os.ReadFile(filepath.Join(root, "treasure-chests.yaml")) //nolint:gosec // G304
+        if err != nil </span><span class="cov0" title="0">{
+                if os.IsNotExist(err) </span><span class="cov0" title="0">{
+                        return nil, nil
+                }</span>
+                <span class="cov0" title="0">return nil, fmt.Errorf("read treasure-chests.yaml: %w", err)</span>
+        }
+        <span class="cov0" title="0">var m governedManifest
+        if err := yaml.Unmarshal(raw, &amp;m); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("parse treasure-chests.yaml: %w", err)
+        }</span>
+        <span class="cov0" title="0">out := make(map[string]GovernedChest, len(m.Chests))
+        for _, c := range m.Chests </span><span class="cov0" title="0">{
+                if err := domain.ValidateChestGrade(c.ID, domain.ChestGrade{
+                        SourceGrade:          c.Grade.SourceGrade,
+                        ReuseValue:           c.Grade.ReuseValue,
+                        ImplementationStatus: c.Grade.ImplementationStatus,
+                }); err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("treasure-chests.yaml: %w", err)
+                }</span>
+                <span class="cov0" title="0">out[c.ID] = c</span>
+        }
+        <span class="cov0" title="0">return out, nil</span>
+}
+
+// DefaultScoringPolicy returns the legacy hardcoded score formula as configuration.
+func DefaultScoringPolicy() ScoringPolicy <span class="cov8" title="7">{
+        return ScoringPolicy{
+                ClusterBase:          40,
+                ClusterMissionWeight: 10,
+                ClusterTagWeight:     5,
+                GapBase:              30,
+                GapMissionWeight:     15,
+                MaxScore:             100,
+        }
+}</span>
+
+// LoadScoringPolicy reads optional scoring_policy from treasure-chests.yaml.
+func LoadScoringPolicy(root string) (ScoringPolicy, error) <span class="cov5" title="3">{
+        raw, err := os.ReadFile(filepath.Join(root, "treasure-chests.yaml")) //nolint:gosec // G304
+        if err != nil </span><span class="cov1" title="1">{
+                if os.IsNotExist(err) </span><span class="cov1" title="1">{
+                        return DefaultScoringPolicy(), nil
+                }</span>
+                <span class="cov0" title="0">return ScoringPolicy{}, fmt.Errorf("read treasure-chests.yaml: %w", err)</span>
+        }
+        <span class="cov3" title="2">var m governedManifest
+        if err := yaml.Unmarshal(raw, &amp;m); err != nil </span><span class="cov0" title="0">{
+                return ScoringPolicy{}, fmt.Errorf("parse treasure-chests.yaml: %w", err)
+        }</span>
+        <span class="cov3" title="2">policy := DefaultScoringPolicy()
+        applyScoringPolicyOverrides(&amp;policy, m.ScoringPolicy)
+        if err := ValidateScoringPolicy(policy); err != nil </span><span class="cov1" title="1">{
+                return ScoringPolicy{}, fmt.Errorf("treasure-chests.yaml: scoring_policy: %w", err)
+        }</span>
+        <span class="cov1" title="1">return policy, nil</span>
+}
+
+func applyScoringPolicyOverrides(policy *ScoringPolicy, raw rawScoringPolicy) <span class="cov3" title="2">{
+        if raw.ClusterBase != nil </span><span class="cov1" title="1">{
+                policy.ClusterBase = *raw.ClusterBase
+        }</span>
+        <span class="cov3" title="2">if raw.ClusterMissionWeight != nil </span><span class="cov0" title="0">{
+                policy.ClusterMissionWeight = *raw.ClusterMissionWeight
+        }</span>
+        <span class="cov3" title="2">if raw.ClusterTagWeight != nil </span><span class="cov1" title="1">{
+                policy.ClusterTagWeight = *raw.ClusterTagWeight
+        }</span>
+        <span class="cov3" title="2">if raw.GapBase != nil </span><span class="cov0" title="0">{
+                policy.GapBase = *raw.GapBase
+        }</span>
+        <span class="cov3" title="2">if raw.GapMissionWeight != nil </span><span class="cov1" title="1">{
+                policy.GapMissionWeight = *raw.GapMissionWeight
+        }</span>
+        <span class="cov3" title="2">if raw.MaxScore != nil </span><span class="cov0" title="0">{
+                policy.MaxScore = *raw.MaxScore
+        }</span>
+}
+
+// ValidateScoringPolicy rejects negative weights and invalid score caps.
+func ValidateScoringPolicy(policy ScoringPolicy) error <span class="cov3" title="2">{
+        if policy.MaxScore &lt; 1 || policy.MaxScore &gt; 100 </span><span class="cov0" title="0">{
+                return fmt.Errorf("max_score must be between 1 and 100")
+        }</span>
+        <span class="cov3" title="2">for name, value := range map[string]int{
+                "cluster_base":           policy.ClusterBase,
+                "cluster_mission_weight": policy.ClusterMissionWeight,
+                "cluster_tag_weight":     policy.ClusterTagWeight,
+                "gap_base":               policy.GapBase,
+                "gap_mission_weight":     policy.GapMissionWeight,
+        } </span><span class="cov10" title="10">{
+                if value &lt; 0 </span><span class="cov1" title="1">{
+                        return fmt.Errorf("%s must be &gt;= 0", name)
+                }</span>
+        }
+        <span class="cov1" title="1">return nil</span>
+}
+
+// LoadIndexed reads knowledge.index.yaml and returns indexed source ids.
+func LoadIndexed(root string) (map[string]bool, error) <span class="cov0" title="0">{
+        raw, err := os.ReadFile(filepath.Join(root, "knowledge.index.yaml")) //nolint:gosec // G304
+        if err != nil </span><span class="cov0" title="0">{
+                if os.IsNotExist(err) </span><span class="cov0" title="0">{
+                        return nil, nil
+                }</span>
+                <span class="cov0" title="0">return nil, fmt.Errorf("read knowledge.index.yaml: %w", err)</span>
+        }
+        <span class="cov0" title="0">var ki knowledgeIndexYAML
+        if err := yaml.Unmarshal(raw, &amp;ki); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("parse knowledge.index.yaml: %w", err)
+        }</span>
+        <span class="cov0" title="0">out := make(map[string]bool, len(ki.Sources))
+        for _, s := range ki.Sources </span><span class="cov0" title="0">{
+                out[s.ID] = true
+        }</span>
+        <span class="cov0" title="0">return out, nil</span>
+}
+
+// LoadCompiledIndex reads the compiled fast-path index and returns source ids and timestamp.
+func LoadCompiledIndex(root string) (present map[string]bool, compiledAt int64, err error) <span class="cov0" title="0">{
+        path := filepath.Join(root, ".compiled", ".index.gz")
+        idx, ok, err := readCompiledIndex(path)
+        if err != nil || !ok </span><span class="cov0" title="0">{
+                return nil, 0, err
+        }</span>
+        <span class="cov0" title="0">return compiledSourcePresence(idx.SourceMeta), idx.CompiledAt, nil</span>
+}
+
+type compiledIndexYAML struct {
+        CompiledAt int64          `json:"compiled_at"`
+        SourceMeta map[string]any `json:"source_meta"`
+}
+
+func readCompiledIndex(path string) (compiledIndexYAML, bool, error) <span class="cov0" title="0">{
+        f, err := os.Open(path) //nolint:gosec // G304
+        if err != nil </span><span class="cov0" title="0">{
+                if os.IsNotExist(err) </span><span class="cov0" title="0">{
+                        return compiledIndexYAML{}, false, nil
+                }</span>
+                <span class="cov0" title="0">return compiledIndexYAML{}, false, fmt.Errorf("open .compiled/.index.gz: %w", err)</span>
+        }
+        <span class="cov0" title="0">defer func() </span><span class="cov0" title="0">{
+                if closeErr := f.Close(); closeErr != nil &amp;&amp; err == nil </span><span class="cov0" title="0">{
+                        err = fmt.Errorf("close .compiled/.index.gz: %w", closeErr)
+                }</span>
+        }()
+
+        <span class="cov0" title="0">gz, err := gzip.NewReader(f)
+        if err != nil </span><span class="cov0" title="0">{
+                return compiledIndexYAML{}, false, fmt.Errorf("decompress .compiled/.index.gz: %w", err)
+        }</span>
+        <span class="cov0" title="0">defer func() </span><span class="cov0" title="0">{
+                if closeErr := gz.Close(); closeErr != nil &amp;&amp; err == nil </span><span class="cov0" title="0">{
+                        err = fmt.Errorf("close decompressed .compiled/.index.gz: %w", closeErr)
+                }</span>
+        }()
+
+        <span class="cov0" title="0">var idx compiledIndexYAML
+        if err := json.NewDecoder(gz).Decode(&amp;idx); err != nil </span><span class="cov0" title="0">{
+                return compiledIndexYAML{}, false, fmt.Errorf("decode .compiled/.index.gz: %w", err)
+        }</span>
+        <span class="cov0" title="0">return idx, true, nil</span>
+}
+
+func compiledSourcePresence(sourceMeta map[string]any) map[string]bool <span class="cov0" title="0">{
+        present := make(map[string]bool, len(sourceMeta))
+        for id := range sourceMeta </span><span class="cov0" title="0">{
+                present[id] = true
+        }</span>
+        <span class="cov0" title="0">return present</span>
+}
+
+// LoadJewels reads monolithic jewels.yaml plus optional jewels/*.yaml partitions,
+// validates each jewel, and groups entries by chest id. Duplicate jewel ids are loaded
+// from the first file encountered so mixed-layout workspaces do not double-count jewels.
+func LoadJewels(root string, governed map[string]GovernedChest) (map[string][]Jewel, error) <span class="cov0" title="0">{
+        paths, err := JewelManifestPaths(root)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">if len(paths) == 0 </span><span class="cov0" title="0">{
+                return nil, nil
+        }</span>
+        <span class="cov0" title="0">out := make(map[string][]Jewel)
+        seen := make(map[string]bool)
+        for _, path := range paths </span><span class="cov0" title="0">{
+                if err := loadJewelsFromManifest(path, root, governed, out, seen); err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+        }
+        <span class="cov0" title="0">return out, nil</span>
+}
+
+func loadJewelsFromManifest(path, root string, governed map[string]GovernedChest, out map[string][]Jewel, seen map[string]bool) error <span class="cov0" title="0">{
+        raw, err := os.ReadFile(path) //nolint:gosec // G304
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("read %s: %w", jewelManifestLabel(root, path), err)
+        }</span>
+        <span class="cov0" title="0">var m Manifest
+        if err := yaml.Unmarshal(raw, &amp;m); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("parse %s: %w", jewelManifestLabel(root, path), err)
+        }</span>
+
+        <span class="cov0" title="0">if m.SchemaVersion != "1" </span><span class="cov0" title="0">{
+                return fmt.Errorf("%s: unsupported schema_version %q (expected \"1\")", jewelManifestLabel(root, path), m.SchemaVersion)
+        }</span>
+
+        <span class="cov0" title="0">for _, j := range m.Jewels </span><span class="cov0" title="0">{
+                if seen[j.ID] </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+                <span class="cov0" title="0">if err := ValidateJewelEntry(j, governed); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("%s: %w", jewelManifestLabel(root, path), err)
+                }</span>
+                <span class="cov0" title="0">out[j.ChestID] = append(out[j.ChestID], j)
+                seen[j.ID] = true</span>
+        }
+        <span class="cov0" title="0">return nil</span>
+}
+
+// JewelManifestPaths returns monolithic and partitioned jewel manifests in stable read order.
+func JewelManifestPaths(root string) ([]string, error) <span class="cov0" title="0">{
+        paths, err := monolithicJewelManifestPaths(root)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">partitionPaths, err := partitionedJewelManifestPaths(root)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">return append(paths, partitionPaths...), nil</span>
+}
+
+func monolithicJewelManifestPaths(root string) ([]string, error) <span class="cov0" title="0">{
+        path := filepath.Join(root, "jewels.yaml")
+        if _, err := os.Stat(path); err == nil </span><span class="cov0" title="0">{
+                return []string{path}, nil
+        }</span> else<span class="cov0" title="0"> if !os.IsNotExist(err) </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("stat jewels.yaml: %w", err)
+        }</span>
+        <span class="cov0" title="0">return nil, nil</span>
+}
+
+func partitionedJewelManifestPaths(root string) ([]string, error) <span class="cov0" title="0">{
+        entries, err := os.ReadDir(filepath.Join(root, "jewels"))
+        if err != nil </span><span class="cov0" title="0">{
+                if os.IsNotExist(err) </span><span class="cov0" title="0">{
+                        return nil, nil
+                }</span>
+                <span class="cov0" title="0">return nil, fmt.Errorf("read jewels/: %w", err)</span>
+        }
+        <span class="cov0" title="0">var partitionPaths []string
+        for _, entry := range entries </span><span class="cov0" title="0">{
+                if isJewelPartitionFile(entry) </span><span class="cov0" title="0">{
+                        partitionPaths = append(partitionPaths, filepath.Join(root, "jewels", entry.Name()))
+                }</span>
+        }
+        <span class="cov0" title="0">sort.Strings(partitionPaths)
+        return partitionPaths, nil</span>
+}
+
+func isJewelPartitionFile(entry os.DirEntry) bool <span class="cov0" title="0">{
+        name := entry.Name()
+        return !entry.IsDir() &amp;&amp; (strings.HasSuffix(name, ".yaml") || strings.HasSuffix(name, ".yml"))
+}</span>
+
+func jewelManifestLabel(root, path string) string <span class="cov0" title="0">{
+        rel, err := filepath.Rel(root, path)
+        if err != nil </span><span class="cov0" title="0">{
+                return path
+        }</span>
+        <span class="cov0" title="0">return rel</span>
+}
+
+// ValidateJewelEntry validates a single jewel against schema and parent trust rules.
+func ValidateJewelEntry(j Jewel, governed map[string]GovernedChest) error <span class="cov0" title="0">{
+        if j.ChestID == "" </span><span class="cov0" title="0">{
+                return fmt.Errorf("jewel %q missing chest_id", j.ID)
+        }</span>
+        <span class="cov0" title="0">if len(j.SourceRefs) == 0 </span><span class="cov0" title="0">{
+                return fmt.Errorf("jewel %q missing source_refs", j.ID)
+        }</span>
+        <span class="cov0" title="0">if err := domain.ValidateJewelStatus(j.ID, j.Status); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("status: %w", err)
+        }</span>
+        <span class="cov0" title="0">if err := domain.ValidateJewelKind(j.ID, j.Kind); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("kind: %w", err)
+        }</span>
+        <span class="cov0" title="0">if err := domain.ValidateJewelScore(j.ID, j.Score.Value); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("score: %w", err)
+        }</span>
+        <span class="cov0" title="0">if gc, ok := governed[j.ChestID]; ok </span><span class="cov0" title="0">{
+                if err := domain.ValidateJewelTrust(j.ID, j.Trust, gc.Trust.Tier); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("trust: %w", err)
+                }</span>
+        }
+        <span class="cov0" title="0">return nil</span>
+}
+
+// NonDeprecatedJewelCount counts jewels that are still active in the curation lifecycle.
+func NonDeprecatedJewelCount(jewels []Jewel) int <span class="cov0" title="0">{
+        n := 0
+        for _, j := range jewels </span><span class="cov0" title="0">{
+                if j.Status != domain.JewelStatusDeprecated </span><span class="cov0" title="0">{
+                        n++
+                }</span>
+        }
+        <span class="cov0" title="0">return n</span>
+}
+</pre>
+		
+		<pre class="file" id="file46" style="display: none">package treasure
+
+import (
+        "errors"
+        "fmt"
+        "os"
+        "path/filepath"
+        "strings"
+        "time"
+
+        "github.com/SergioLacerda/strategist-skill/internal/domain"
+        "gopkg.in/yaml.v3"
+)
+
+// ChestPaths holds the files mutated by treasure-chest add/remove operations.
+type ChestPaths struct {
+        Active   string
+        Governed string
+        Index    string
+        Jewels   string
+}
+
+// NewChestPaths returns the standard treasure-chest file paths under a strategist root.
+func NewChestPaths(root string) ChestPaths <span class="cov0" title="0">{
+        return ChestPaths{
+                Active:   filepath.Join(root, "active.yaml"),
+                Governed: filepath.Join(root, "treasure-chests.yaml"),
+                Index:    filepath.Join(root, "knowledge.index.yaml"),
+                Jewels:   filepath.Join(root, "jewels.yaml"),
+        }
+}</span>
+
+// ChestDocSet holds loaded YAML documents for a chest mutation.
+type ChestDocSet struct {
+        Active   *yaml.Node
+        Governed *yaml.Node
+        Index    *yaml.Node
+        Jewels   []YAMLWrite
+}
+
+// LoadChestYAMLDocs loads the three required YAML documents for adding a chest.
+func LoadChestYAMLDocs(activePath, governedPath, indexPath string) (activeDoc, governedDoc, indexDoc *yaml.Node, err error) <span class="cov0" title="0">{
+        activeDoc, err = ReadYAMLNode(activePath)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, nil, nil, err
+        }</span>
+        <span class="cov0" title="0">governedDoc, err = ReadYAMLNode(governedPath)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, nil, nil, err
+        }</span>
+        <span class="cov0" title="0">indexDoc, err = ReadYAMLNode(indexPath)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, nil, nil, err
+        }</span>
+        <span class="cov0" title="0">return activeDoc, governedDoc, indexDoc, nil</span>
+}
+
+// ApplyAddMutations appends a new chest to active, governed, and indexed layers.
+func ApplyAddMutations(activeDoc, governedDoc, indexDoc *yaml.Node, id, path, scope, trustTier, reviewedBy string, tags []string) error <span class="cov0" title="0">{
+        if err := AppendActiveChestEntry(activeDoc, id, path, scope); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">if err := AppendGovernedChestEntry(governedDoc, id, path, trustTier, reviewedBy, tags); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">if err := AppendIndexedSourceEntry(indexDoc, id, path, tags); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+
+// CheckChestIDAvailable errors if id is already registered and active.
+func CheckChestIDAvailable(root, id string) error <span class="cov0" title="0">{
+        activeChests, err := LoadActiveChests(root)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">for _, ac := range activeChests </span><span class="cov0" title="0">{
+                if ac.ID == id </span><span class="cov0" title="0">{
+                        return fmt.Errorf("id %q is already registered in active.yaml; use a different --id or remove it first", id)
+                }</span>
+        }
+        <span class="cov0" title="0">return nil</span>
+}
+
+// DeriveChestIDFromPath derives the default chest id from the last path segment.
+func DeriveChestIDFromPath(path string) string <span class="cov0" title="0">{
+        path = strings.TrimRight(path, "/")
+        for i := len(path) - 1; i &gt;= 0; i-- </span><span class="cov0" title="0">{
+                if path[i] == '/' </span><span class="cov0" title="0">{
+                        return path[i+1:]
+                }</span>
+        }
+        <span class="cov0" title="0">return path</span>
+}
+
+// ParseTagsFlag parses a comma-separated task_type list. Blank input means all.
+func ParseTagsFlag(tags string) []string <span class="cov0" title="0">{
+        if strings.TrimSpace(tags) == "" </span><span class="cov0" title="0">{
+                return []string{"all"}
+        }</span>
+        <span class="cov0" title="0">parts := strings.Split(tags, ",")
+        out := make([]string, 0, len(parts))
+        for _, p := range parts </span><span class="cov0" title="0">{
+                p = strings.TrimSpace(p)
+                if p != "" </span><span class="cov0" title="0">{
+                        out = append(out, p)
+                }</span>
+        }
+        <span class="cov0" title="0">if len(out) == 0 </span><span class="cov0" title="0">{
+                return []string{"all"}
+        }</span>
+        <span class="cov0" title="0">return out</span>
+}
+
+// ResolveRemoveTarget resolves the chest id to remove from a positional path and/or
+// --id flag, rejecting ambiguous input (both given but disagreeing).
+func ResolveRemoveTarget(root, pathArg, idFlag string) (string, error) <span class="cov0" title="0">{
+        if pathArg == "" </span><span class="cov0" title="0">{
+                return idFlag, nil
+        }</span>
+
+        <span class="cov0" title="0">matches, err := chestIDsForPath(root, pathArg)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+        <span class="cov0" title="0">return resolveRemoveMatches(pathArg, idFlag, matches)</span>
+}
+
+func chestIDsForPath(root, pathArg string) ([]string, error) <span class="cov0" title="0">{
+        activeChests, err := LoadActiveChests(root)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">var matches []string
+        for _, ac := range activeChests </span><span class="cov0" title="0">{
+                if ac.Path == pathArg </span><span class="cov0" title="0">{
+                        matches = append(matches, ac.ID)
+                }</span>
+        }
+        <span class="cov0" title="0">return matches, nil</span>
+}
+
+func resolveRemoveMatches(pathArg, idFlag string, matches []string) (string, error) <span class="cov0" title="0">{
+        switch len(matches) </span>{
+        case 0:<span class="cov0" title="0">
+                if idFlag != "" </span><span class="cov0" title="0">{
+                        return idFlag, nil
+                }</span>
+                <span class="cov0" title="0">return "", fmt.Errorf("no chest registered with path %q", pathArg)</span>
+        case 1:<span class="cov0" title="0">
+                if idFlag != "" &amp;&amp; idFlag != matches[0] </span><span class="cov0" title="0">{
+                        return "", fmt.Errorf("ambiguous — path %q resolves to id %q but --id=%q was given", pathArg, matches[0], idFlag)
+                }</span>
+                <span class="cov0" title="0">return matches[0], nil</span>
+        default:<span class="cov0" title="0">
+                return "", fmt.Errorf("ambiguous — multiple chests share path %q (%s); use --id", pathArg, strings.Join(matches, ", "))</span>
+        }
+}
+
+// LoadRemoveDocs loads the YAML documents required for removing a chest.
+func LoadRemoveDocs(p ChestPaths) (ChestDocSet, error) <span class="cov0" title="0">{
+        var docs ChestDocSet
+        var err error
+        docs.Active, err = ReadYAMLNode(p.Active)
+        if err != nil </span><span class="cov0" title="0">{
+                return docs, err
+        }</span>
+        <span class="cov0" title="0">docs.Governed, err = ReadYAMLNode(p.Governed)
+        if err != nil </span><span class="cov0" title="0">{
+                return docs, err
+        }</span>
+        <span class="cov0" title="0">docs.Index, err = ReadYAMLNode(p.Index)
+        if err != nil </span><span class="cov0" title="0">{
+                return docs, err
+        }</span>
+        <span class="cov0" title="0">jewelPaths, err := JewelManifestPaths(filepath.Dir(p.Active))
+        if err != nil </span><span class="cov0" title="0">{
+                return docs, err
+        }</span>
+        <span class="cov0" title="0">for _, path := range jewelPaths </span><span class="cov0" title="0">{
+                jewelsDoc, jewelsErr := ReadYAMLNode(path)
+                if jewelsErr != nil </span><span class="cov0" title="0">{
+                        return docs, jewelsErr
+                }</span>
+                <span class="cov0" title="0">docs.Jewels = append(docs.Jewels, YAMLWrite{Path: path, Doc: jewelsDoc})</span>
+        }
+        <span class="cov0" title="0">return docs, nil</span>
+}
+
+// ApplyRemoveMutations removes/tombstones a chest across all loaded documents.
+func ApplyRemoveMutations(docs ChestDocSet, id string) error <span class="cov0" title="0">{
+        if err := RemoveActiveChestEntry(docs.Active, id); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">if err := MarkGovernedChestInactive(docs.Governed, id); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">if err := MarkIndexedSourceInactive(docs.Index, id); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">for _, jewels := range docs.Jewels </span><span class="cov0" title="0">{
+                if err := MarkJewelsDeprecatedForChest(jewels.Doc, id); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+        }
+        <span class="cov0" title="0">return nil</span>
+}
+
+// WriteRemoveDocs writes the documents changed by a remove operation.
+func WriteRemoveDocs(p ChestPaths, docs ChestDocSet) ([]string, error) <span class="cov0" title="0">{
+        writes := []YAMLWrite{
+                {Path: p.Active, Doc: docs.Active},
+                {Path: p.Governed, Doc: docs.Governed},
+                {Path: p.Index, Doc: docs.Index},
+        }
+        writes = append(writes, docs.Jewels...)
+        return WriteYAMLNodes(writes...)
+}</span>
+
+// PromoteJewel updates a jewel lifecycle status while preserving YAML structure.
+func PromoteJewel(root, id, newStatus, evidenceRef string, reviewedAt time.Time) error <span class="cov0" title="0">{
+        path, doc, entry, err := FindJewelDocument(root, id)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">current := ""
+        if v := MappingValue(entry, "status"); v != nil </span><span class="cov0" title="0">{
+                current = v.Value
+        }</span>
+        <span class="cov0" title="0">if current == domain.JewelStatusDeprecated &amp;&amp; newStatus != domain.JewelStatusDeprecated </span><span class="cov0" title="0">{
+                return fmt.Errorf("jewel %q is deprecated, cannot promote to %s", id, newStatus)
+        }</span>
+
+        <span class="cov0" title="0">SetMappingField(entry, "status", newStatus)
+        SetMappingField(entry, "reviewed_by", "human")
+        reviewedDate := reviewedAt.UTC().Format("2006-01-02")
+        SetMappingField(entry, "last_reviewed", reviewedDate)
+        if newStatus == domain.JewelStatusVerified </span><span class="cov0" title="0">{
+                AppendEvidenceRef(entry, evidenceRef)
+        }</span>
+        <span class="cov0" title="0">AppendJewelHistory(entry, newStatus, reviewedDate, "human", evidenceRef)
+
+        if _, err := WriteYAMLNodes(YAMLWrite{Path: path, Doc: doc}); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+
+// MigrateLegacyJewelStatus rewrites legacy status: active jewels to status: accepted.
+func MigrateLegacyJewelStatus(root string) (int, error) <span class="cov0" title="0">{
+        writes, migrated, err := legacyJewelStatusWrites(root)
+        if err != nil || migrated == 0 </span><span class="cov0" title="0">{
+                return migrated, err
+        }</span>
+        <span class="cov0" title="0">if _, err := WriteYAMLNodes(writes...); err != nil </span><span class="cov0" title="0">{
+                return migrated, err
+        }</span>
+        <span class="cov0" title="0">return migrated, nil</span>
+}
+
+func legacyJewelStatusWrites(root string) ([]YAMLWrite, int, error) <span class="cov0" title="0">{
+        paths, err := JewelManifestPaths(root)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, 0, err
+        }</span>
+        <span class="cov0" title="0">migrated := 0
+        var writes []YAMLWrite
+        for _, path := range paths </span><span class="cov0" title="0">{
+                write, count, err := legacyJewelStatusWrite(path)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, migrated, err
+                }</span>
+                <span class="cov0" title="0">migrated += count
+                if count &gt; 0 </span><span class="cov0" title="0">{
+                        writes = append(writes, write)
+                }</span>
+        }
+        <span class="cov0" title="0">return writes, migrated, nil</span>
+}
+
+func legacyJewelStatusWrite(path string) (YAMLWrite, int, error) <span class="cov0" title="0">{
+        doc, err := ReadYAMLNode(path)
+        if err != nil </span><span class="cov0" title="0">{
+                return YAMLWrite{}, 0, err
+        }</span>
+        <span class="cov0" title="0">count, err := MigrateLegacyJewelStatusInDocument(doc)
+        if err != nil </span><span class="cov0" title="0">{
+                return YAMLWrite{}, 0, err
+        }</span>
+        <span class="cov0" title="0">return YAMLWrite{Path: path, Doc: doc}, count, nil</span>
+}
+
+// MigrateLegacyJewelStatusInDocument rewrites legacy status: active entries in one manifest.
+func MigrateLegacyJewelStatusInDocument(doc *yaml.Node) (int, error) <span class="cov0" title="0">{
+        mapping, err := RootMapping(doc)
+        if err != nil </span><span class="cov0" title="0">{
+                return 0, err
+        }</span>
+        <span class="cov0" title="0">seq := MappingValue(mapping, "jewels")
+        if seq == nil </span><span class="cov0" title="0">{
+                return 0, nil
+        }</span>
+        <span class="cov0" title="0">migrated := 0
+        for _, entry := range seq.Content </span><span class="cov0" title="0">{
+                if entry.Kind != yaml.MappingNode </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+                <span class="cov0" title="0">v := MappingValue(entry, "status")
+                if v != nil &amp;&amp; v.Value == "active" </span><span class="cov0" title="0">{
+                        SetMappingField(entry, "status", domain.JewelStatusAccepted)
+                        migrated++
+                }</span>
+        }
+        <span class="cov0" title="0">return migrated, nil</span>
+}
+
+// FindJewelDocument returns the manifest document and jewel mapping for id across
+// monolithic and partitioned jewel manifests.
+func FindJewelDocument(root, id string) (string, *yaml.Node, *yaml.Node, error) <span class="cov0" title="0">{
+        paths, err := JewelManifestPaths(root)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", nil, nil, err
+        }</span>
+        <span class="cov0" title="0">for _, path := range paths </span><span class="cov0" title="0">{
+                doc, err := ReadYAMLNode(path)
+                if err != nil </span><span class="cov0" title="0">{
+                        return "", nil, nil, err
+                }</span>
+                <span class="cov0" title="0">entry, err := FindJewelEntry(doc, id)
+                if err == nil </span><span class="cov0" title="0">{
+                        return path, doc, entry, nil
+                }</span>
+        }
+        <span class="cov0" title="0">return "", nil, nil, fmt.Errorf("jewel %q not found in jewels.yaml or jewels/", id)</span>
+}
+
+// NewJewelsDocument creates an empty schema-versioned jewels manifest.
+func NewJewelsDocument() *yaml.Node <span class="cov0" title="0">{
+        root := mapNode(
+                strNode("schema_version"), strNode("1"),
+                strNode("jewels"), &amp;yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"},
+        )
+        return &amp;yaml.Node{Kind: yaml.DocumentNode, Content: []*yaml.Node{root}}
+}</span>
+
+// ReadOrCreateJewelsDocument loads a jewels manifest or creates an empty one.
+func ReadOrCreateJewelsDocument(path string) (*yaml.Node, error) <span class="cov0" title="0">{
+        doc, err := ReadYAMLNode(path)
+        if err == nil </span><span class="cov0" title="0">{
+                return doc, nil
+        }</span>
+        <span class="cov0" title="0">if errors.Is(err, os.ErrNotExist) </span><span class="cov0" title="0">{
+                return NewJewelsDocument(), nil
+        }</span>
+        <span class="cov0" title="0">return nil, err</span>
+}
+
+// JewelPartitionPath returns the partition manifest path for a chest id.
+func JewelPartitionPath(root, chestID string) string <span class="cov0" title="0">{
+        name := strings.NewReplacer("/", "_", "\\", "_").Replace(chestID)
+        return filepath.Join(root, "jewels", name+".yaml")
+}</span>
+</pre>
+		
+		<pre class="file" id="file47" style="display: none">package treasure
+
+import (
+        "errors"
+        "fmt"
+        "gopkg.in/yaml.v3"
+        "os"
+        "path/filepath"
+        "regexp"
+        "sort"
+        "strings"
+        "time"
+)
+
+// --- SQ-010 (Track T-F): treasure-chest scan ---
+//
+// Mines .analysis/refined/**/tasks.md and .analysis/done/** (never pending/ or archived/
+// reports) for recurring clusters (2+ missions sharing 2+ tags) and open gaps (side quests
+// still status: sq_pending), per .analysis/refined/bau-tesouro-sq003-004-007/design.md and
+// .analysis/refined/bau-tesouro-sq010-scan-runtime/design.md. Lexical/tag matching only — no
+// embeddings, no semantic retrieval.
+
+// SQEntry is a side_quests_approved entry parsed from a mission tasks.md file.
+type SQEntry struct {
+        ID              string   `yaml:"id"`
+        Description     string   `yaml:"description"`
+        Strategy        string   `yaml:"strategy"`
+        EstimatedImpact string   `yaml:"estimated_impact"`
+        Dependencies    []string `yaml:"dependencies"`
+        Status          string   `yaml:"status"`
+}
+
+// ScannedMission is the mined task and side-quest data for one mission.
+type ScannedMission struct {
+        MissionID  string
+        SQs        []SQEntry
+        TaskTitles []string
+}
+
+// Cluster is a recurring theme shared across mined missions.
+type Cluster struct {
+        ID            string
+        CitedMissions []string
+        Tags          []string
+        GeneratedAt   string
+}
+
+// Gap is an open side quest still pending in mined mission history.
+type Gap struct {
+        ID            string
+        CitedMissions []string
+        Status        string
+        Dependencies  []string
+        GeneratedAt   string
+}
+
+// WriteScanOutputs regenerates cluster and gap output directories from scan results.
+func WriteScanOutputs(clustersDir string, clusters []Cluster, gapsDir string, gaps []Gap) error <span class="cov0" title="0">{
+        if err := RegenerateDir(clustersDir); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">for _, c := range clusters </span><span class="cov0" title="0">{
+                if err := WriteClusterFile(clustersDir, c); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+        }
+
+        <span class="cov0" title="0">if err := RegenerateDir(gapsDir); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">for _, g := range gaps </span><span class="cov0" title="0">{
+                if err := WriteGapFile(gapsDir, g); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+        }
+        <span class="cov0" title="0">return nil</span>
+}
+
+// --- mission scanning ---
+
+var taskTitleRe = regexp.MustCompile(`^##\s+Task\s+\d+\s*[—-]\s*(.+)$`)
+
+// ScanMissions scans refined and done mission directories under basePath.
+func ScanMissions(basePath string) ([]ScannedMission, error) <span class="cov0" title="0">{
+        var missions []ScannedMission
+
+        for _, sub := range []string{"refined", "done"} </span><span class="cov0" title="0">{
+                found, err := ScanMissionsInDir(filepath.Join(basePath, sub))
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+                <span class="cov0" title="0">missions = append(missions, found...)</span>
+        }
+
+        <span class="cov0" title="0">sort.Slice(missions, func(i, j int) bool </span><span class="cov0" title="0">{ return missions[i].MissionID &lt; missions[j].MissionID }</span>)
+        <span class="cov0" title="0">return missions, nil</span>
+}
+
+// ScanMissionsInDir parses tasks.md for every mission directory under dir. A missing
+// dir (base_path not yet populated) is not an error — it just yields no missions.
+func ScanMissionsInDir(dir string) ([]ScannedMission, error) <span class="cov0" title="0">{
+        entries, err := readMissionDir(dir)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">var missions []ScannedMission
+        for _, e := range entries </span><span class="cov0" title="0">{
+                m, ok, err := scanMissionDirEntry(dir, e)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+                <span class="cov0" title="0">if ok </span><span class="cov0" title="0">{
+                        missions = append(missions, m)
+                }</span>
+        }
+        <span class="cov0" title="0">return missions, nil</span>
+}
+
+func readMissionDir(dir string) ([]os.DirEntry, error) <span class="cov0" title="0">{
+        entries, err := os.ReadDir(dir)
+        if err == nil </span><span class="cov0" title="0">{
+                return entries, nil
+        }</span>
+        <span class="cov0" title="0">if os.IsNotExist(err) </span><span class="cov0" title="0">{
+                return nil, nil
+        }</span>
+        <span class="cov0" title="0">return nil, fmt.Errorf("read %s: %w", dir, err)</span>
+}
+
+func scanMissionDirEntry(dir string, entry os.DirEntry) (ScannedMission, bool, error) <span class="cov0" title="0">{
+        if !entry.IsDir() </span><span class="cov0" title="0">{
+                return ScannedMission{}, false, nil
+        }</span>
+        <span class="cov0" title="0">tasksPath := filepath.Join(dir, entry.Name(), "tasks.md")
+        m, err := ParseMissionTasks(entry.Name(), tasksPath)
+        if err == nil </span><span class="cov0" title="0">{
+                return m, true, nil
+        }</span>
+        <span class="cov0" title="0">if errors.Is(err, os.ErrNotExist) </span><span class="cov0" title="0">{
+                return ScannedMission{}, false, nil
+        }</span>
+        <span class="cov0" title="0">return ScannedMission{}, false, err</span>
+}
+
+// ParseMissionTasks extracts task titles and the side_quests_approved: block from a
+// tasks.md file. The block is YAML embedded in markdown with backtick-wrapped scalars
+// (e.g. “ `SQ-001` “) — backticks are stripped before unmarshaling.
+func ParseMissionTasks(missionID, path string) (ScannedMission, error) <span class="cov0" title="0">{
+        raw, err := os.ReadFile(path) //nolint:gosec // G304
+        if err != nil </span><span class="cov0" title="0">{
+                return ScannedMission{}, fmt.Errorf("read %s: %w", path, err)
+        }</span>
+        <span class="cov0" title="0">lines := strings.Split(string(raw), "\n")
+
+        sqs, err := parseMissionSideQuests(lines, path)
+        if err != nil </span><span class="cov0" title="0">{
+                return ScannedMission{}, err
+        }</span>
+        <span class="cov0" title="0">return ScannedMission{MissionID: missionID, SQs: sqs, TaskTitles: parseMissionTaskTitles(lines)}, nil</span>
+}
+
+func parseMissionTaskTitles(lines []string) []string <span class="cov0" title="0">{
+        var taskTitles []string
+        for _, line := range lines </span><span class="cov0" title="0">{
+                if m := taskTitleRe.FindStringSubmatch(line); m != nil </span><span class="cov0" title="0">{
+                        taskTitles = append(taskTitles, strings.TrimSpace(m[1]))
+                }</span>
+        }
+        <span class="cov0" title="0">return taskTitles</span>
+}
+
+func parseMissionSideQuests(lines []string, path string) ([]SQEntry, error) <span class="cov0" title="0">{
+        startIdx := -1
+        for i, line := range lines </span><span class="cov0" title="0">{
+                if strings.HasPrefix(strings.TrimSpace(line), "side_quests_approved:") </span><span class="cov0" title="0">{
+                        startIdx = i
+                        break</span>
+                }
+        }
+
+        <span class="cov0" title="0">if startIdx == -1 </span><span class="cov0" title="0">{
+                return nil, nil
+        }</span>
+        <span class="cov0" title="0">return parseSideQuestBlock(lines[startIdx:sideQuestBlockEnd(lines, startIdx)], path)</span>
+}
+
+func sideQuestBlockEnd(lines []string, startIdx int) int <span class="cov0" title="0">{
+        for i := startIdx + 1; i &lt; len(lines); i++ </span><span class="cov0" title="0">{
+                if strings.HasPrefix(lines[i], "## ") </span><span class="cov0" title="0">{
+                        return i
+                }</span>
+        }
+        <span class="cov0" title="0">return len(lines)</span>
+}
+
+func parseSideQuestBlock(lines []string, path string) ([]SQEntry, error) <span class="cov0" title="0">{
+        block := strings.ReplaceAll(strings.Join(lines, "\n"), "`", "")
+        var parsed struct {
+                SideQuestsApproved []SQEntry `yaml:"side_quests_approved"`
+        }
+        if err := yaml.Unmarshal([]byte(block), &amp;parsed); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("parse side_quests_approved in %s: %w", path, err)
+        }</span>
+        <span class="cov0" title="0">return parsed.SideQuestsApproved, nil</span>
+}
+
+// --- Cluster pass ---
+
+var (
+        tagWordRe    = regexp.MustCompile(`[a-z0-9]+`)
+        tagStopwords = map[string]bool{
+                "this": true, "that": true, "with": true, "from": true, "have": true,
+                "will": true, "into": true, "than": true, "then": true, "when": true,
+                "which": true, "their": true, "there": true, "these": true, "those": true,
+                "about": true, "after": true, "before": true, "under": true, "over": true,
+        }
+)
+
+// ExtractTags derives normalized lexical tags from mission task titles and side quests.
+func ExtractTags(m ScannedMission) []string <span class="cov0" title="0">{
+        text := strings.ToLower(strings.Join(m.TaskTitles, " "))
+        for _, sq := range m.SQs </span><span class="cov0" title="0">{
+                text += " " + strings.ToLower(sq.Description)
+        }</span>
+        <span class="cov0" title="0">words := tagWordRe.FindAllString(text, -1)
+        seen := make(map[string]bool)
+        var tags []string
+        for _, w := range words </span><span class="cov0" title="0">{
+                if len(w) &lt; 4 || tagStopwords[w] || seen[w] </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+                <span class="cov0" title="0">seen[w] = true
+                tags = append(tags, w)</span>
+        }
+        <span class="cov0" title="0">sort.Strings(tags)
+        return tags</span>
+}
+
+func sharedTagCount(a, b []string) int <span class="cov0" title="0">{
+        set := make(map[string]bool, len(a))
+        for _, t := range a </span><span class="cov0" title="0">{
+                set[t] = true
+        }</span>
+        <span class="cov0" title="0">n := 0
+        for _, t := range b </span><span class="cov0" title="0">{
+                if set[t] </span><span class="cov0" title="0">{
+                        n++
+                }</span>
+        }
+        <span class="cov0" title="0">return n</span>
+}
+
+// BuildClusters groups missions that share enough lexical tags into recurring clusters.
+func BuildClusters(missions []ScannedMission) []Cluster <span class="cov0" title="0">{
+        tagsByMission, ids := tagsForMissions(missions)
+        uf := unionFindFromSharedTags(ids, tagsByMission)
+
+        var clusters []Cluster
+        for _, members := range uf.groups() </span><span class="cov0" title="0">{
+                if c, ok := clusterFromGroup(members, tagsByMission); ok </span><span class="cov0" title="0">{
+                        clusters = append(clusters, c)
+                }</span>
+        }
+        <span class="cov0" title="0">sort.Slice(clusters, func(i, j int) bool </span><span class="cov0" title="0">{ return clusters[i].ID &lt; clusters[j].ID }</span>)
+        <span class="cov0" title="0">return clusters</span>
+}
+
+func tagsForMissions(missions []ScannedMission) (map[string][]string, []string) <span class="cov0" title="0">{
+        tagsByMission := make(map[string][]string, len(missions))
+        ids := make([]string, 0, len(missions))
+        for _, m := range missions </span><span class="cov0" title="0">{
+                tagsByMission[m.MissionID] = ExtractTags(m)
+                ids = append(ids, m.MissionID)
+        }</span>
+        <span class="cov0" title="0">sort.Strings(ids)
+        return tagsByMission, ids</span>
+}
+
+// unionFindFromSharedTags unions any two missions that share 2+ tags.
+func unionFindFromSharedTags(ids []string, tagsByMission map[string][]string) *unionFind <span class="cov0" title="0">{
+        uf := newUnionFind(ids)
+        for i := 0; i &lt; len(ids); i++ </span><span class="cov0" title="0">{
+                for j := i + 1; j &lt; len(ids); j++ </span><span class="cov0" title="0">{
+                        if sharedTagCount(tagsByMission[ids[i]], tagsByMission[ids[j]]) &gt;= 2 </span><span class="cov0" title="0">{
+                                uf.union(ids[i], ids[j])
+                        }</span>
+                }
+        }
+        <span class="cov0" title="0">return uf</span>
+}
+
+// clusterFromGroup builds a Cluster from a union-find group, keeping only groups of
+// 2+ missions that share 2+ tags across all members. ok is false when the group does
+// not qualify as a Cluster.
+func clusterFromGroup(members []string, tagsByMission map[string][]string) (c Cluster, ok bool) <span class="cov0" title="0">{
+        if len(members) &lt; 2 </span><span class="cov0" title="0">{
+                return Cluster{}, false
+        }</span>
+        <span class="cov0" title="0">sort.Strings(members)
+        freq := make(map[string]int)
+        for _, id := range members </span><span class="cov0" title="0">{
+                for _, tag := range tagsByMission[id] </span><span class="cov0" title="0">{
+                        freq[tag]++
+                }</span>
+        }
+        <span class="cov0" title="0">var sharedTags []string
+        for tag, count := range freq </span><span class="cov0" title="0">{
+                if count &gt;= 2 </span><span class="cov0" title="0">{
+                        sharedTags = append(sharedTags, tag)
+                }</span>
+        }
+        <span class="cov0" title="0">if len(sharedTags) == 0 </span><span class="cov0" title="0">{
+                return Cluster{}, false
+        }</span>
+        <span class="cov0" title="0">sort.Strings(sharedTags)
+        return Cluster{
+                ID:            ClusterID(sharedTags),
+                CitedMissions: members,
+                Tags:          sharedTags,
+                GeneratedAt:   nowISO(),
+        }, true</span>
+}
+
+// ClusterID builds the stable id for a cluster from its tags.
+func ClusterID(tags []string) string <span class="cov0" title="0">{
+        n := tags
+        if len(n) &gt; 2 </span><span class="cov0" title="0">{
+                n = n[:2]
+        }</span>
+        <span class="cov0" title="0">return "cluster-" + strings.Join(n, "-")</span>
+}
+
+// --- Gap pass ---
+
+// BuildGaps returns still-pending side quests across scanned missions.
+func BuildGaps(missions []ScannedMission) []Gap <span class="cov0" title="0">{
+        byID := make(map[string]*Gap)
+        var order []string
+        for _, m := range missions </span><span class="cov0" title="0">{
+                for _, sq := range m.SQs </span><span class="cov0" title="0">{
+                        order = appendPendingGap(byID, order, m.MissionID, sq)
+                }</span>
+        }
+        <span class="cov0" title="0">return sortedGaps(byID, order)</span>
+}
+
+func appendPendingGap(byID map[string]*Gap, order []string, missionID string, sq SQEntry) []string <span class="cov0" title="0">{
+        if sq.Status != "sq_pending" </span><span class="cov0" title="0">{
+                return order
+        }</span>
+        <span class="cov0" title="0">id := GapID(sq.ID)
+        if g, ok := byID[id]; ok </span><span class="cov0" title="0">{
+                g.CitedMissions = append(g.CitedMissions, missionID)
+                return order
+        }</span>
+        <span class="cov0" title="0">byID[id] = &amp;Gap{
+                ID:            id,
+                CitedMissions: []string{missionID},
+                Status:        sq.Status,
+                Dependencies:  sq.Dependencies,
+                GeneratedAt:   nowISO(),
+        }
+        return append(order, id)</span>
+}
+
+func sortedGaps(byID map[string]*Gap, order []string) []Gap <span class="cov0" title="0">{
+        sort.Strings(order)
+        gaps := make([]Gap, 0, len(order))
+        for _, id := range order </span><span class="cov0" title="0">{
+                gaps = append(gaps, *byID[id])
+        }</span>
+        <span class="cov0" title="0">return gaps</span>
+}
+
+// GapID normalizes a side-quest id for gap artifact filenames and ids.
+func GapID(sqID string) string <span class="cov0" title="0">{
+        return strings.ToLower(sqID)
+}</span>
+
+// --- writers ---
+
+// RegenerateDir recreates a generated output directory from scratch.
+func RegenerateDir(dir string) error <span class="cov0" title="0">{
+        if err := os.RemoveAll(dir); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("remove %s: %w", dir, err)
+        }</span>
+        <span class="cov0" title="0">if err := os.MkdirAll(dir, 0o755); err != nil </span><span class="cov0" title="0">{ //nolint:gosec // G301
+                return fmt.Errorf("create %s: %w", dir, err)
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+
+// WriteClusterFile writes one cluster artifact.
+func WriteClusterFile(dir string, c Cluster) error <span class="cov0" title="0">{
+        content := fmt.Sprintf(`---
+id: %s
+cited_missions: [%s]
+tags: [%s]
+trust: T2
+generated_at: %s
+---
+
+# Cluster: %s
+
+Recurring theme across: %s
+`, c.ID, strings.Join(c.CitedMissions, ", "), strings.Join(c.Tags, ", "), c.GeneratedAt, c.ID, strings.Join(c.CitedMissions, ", "))
+        path := filepath.Join(dir, c.ID+".md")
+        if err := os.WriteFile(path, []byte(content), 0o644); err != nil </span><span class="cov0" title="0">{ //nolint:gosec // G306
+                return fmt.Errorf("write %s: %w", path, err)
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+
+// WriteGapFile writes one gap artifact.
+func WriteGapFile(dir string, g Gap) error <span class="cov0" title="0">{
+        deps := "[]"
+        if len(g.Dependencies) &gt; 0 </span><span class="cov0" title="0">{
+                deps = "[" + strings.Join(g.Dependencies, ", ") + "]"
+        }</span>
+        <span class="cov0" title="0">content := fmt.Sprintf(`---
+id: %s
+cited_missions: [%s]
+status: %s
+dependencies: %s
+trust: T2
+generated_at: %s
+---
+
+# Gap: %s
+
+Still pending in: %s
+`, g.ID, strings.Join(g.CitedMissions, ", "), g.Status, deps, g.GeneratedAt, g.ID, strings.Join(g.CitedMissions, ", "))
+        path := filepath.Join(dir, g.ID+".md")
+        if err := os.WriteFile(path, []byte(content), 0o644); err != nil </span><span class="cov0" title="0">{ //nolint:gosec // G306
+                return fmt.Errorf("write %s: %w", path, err)
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+
+func nowISO() string <span class="cov0" title="0">{
+        return time.Now().UTC().Format(time.RFC3339)
+}</span>
+
+// --- union-find ---
+
+type unionFind struct {
+        parent map[string]string
+}
+
+func newUnionFind(ids []string) *unionFind <span class="cov0" title="0">{
+        p := make(map[string]string, len(ids))
+        for _, id := range ids </span><span class="cov0" title="0">{
+                p[id] = id
+        }</span>
+        <span class="cov0" title="0">return &amp;unionFind{parent: p}</span>
+}
+
+func (u *unionFind) find(x string) string <span class="cov0" title="0">{
+        for u.parent[x] != x </span><span class="cov0" title="0">{
+                u.parent[x] = u.parent[u.parent[x]]
+                x = u.parent[x]
+        }</span>
+        <span class="cov0" title="0">return x</span>
+}
+
+func (u *unionFind) union(a, b string) <span class="cov0" title="0">{
+        ra, rb := u.find(a), u.find(b)
+        if ra != rb </span><span class="cov0" title="0">{
+                u.parent[ra] = rb
+        }</span>
+}
+
+func (u *unionFind) groups() map[string][]string <span class="cov0" title="0">{
+        out := make(map[string][]string)
+        for id := range u.parent </span><span class="cov0" title="0">{
+                root := u.find(id)
+                out[root] = append(out[root], id)
+        }</span>
+        <span class="cov0" title="0">return out</span>
+}
+</pre>
+		
+		<pre class="file" id="file48" style="display: none">package treasure
+
+// StatusRow is the merged runtime status for one treasure chest across all truth layers.
+type StatusRow struct {
+        ID           string
+        Path         string
+        Scope        []string
+        TrustTier    string
+        ReviewedBy   string
+        LastReviewed string
+        Configured   bool
+        Governed     bool
+        Indexed      bool
+        Compiled     bool
+        Freshness    string
+        Drift        []string
+        SourceGrade  string
+        ReuseValue   string
+        OpenGaps     []string
+        JewelCount   int
+}
+
+// MergeChestRows merges active, governed, indexed, compiled, and jewel data into status rows.
+func MergeChestRows(
+        active []ActiveChest,
+        governed map[string]GovernedChest,
+        indexed map[string]bool,
+        compiledIDs map[string]bool,
+        jewels map[string][]Jewel,
+) []StatusRow <span class="cov0" title="0">{
+        seen := make(map[string]bool)
+        rows := activeStatusRows(active, governed, indexed, compiledIDs, jewels, seen)
+        rows = append(rows, governedOnlyStatusRows(governed, indexed, compiledIDs, jewels, seen)...)
+        rows = append(rows, indexedOnlyStatusRows(indexed, compiledIDs, seen)...)
+        return rows
+}</span>
+
+func activeStatusRows(
+        active []ActiveChest,
+        governed map[string]GovernedChest,
+        indexed map[string]bool,
+        compiledIDs map[string]bool,
+        jewels map[string][]Jewel,
+        seen map[string]bool,
+) []StatusRow <span class="cov0" title="0">{
+        rows := make([]StatusRow, 0, len(active))
+        for _, ac := range active </span><span class="cov0" title="0">{
+                row := activeStatusRow(ac, indexed, compiledIDs, jewels)
+                if gc, ok := governed[ac.ID]; ok </span><span class="cov0" title="0">{
+                        applyGovernedStatus(&amp;row, gc)
+                }</span>
+                <span class="cov0" title="0">rows = append(rows, finalizeStatusRow(row))
+                seen[ac.ID] = true</span>
+        }
+        <span class="cov0" title="0">return rows</span>
+}
+
+func activeStatusRow(ac ActiveChest, indexed, compiledIDs map[string]bool, jewels map[string][]Jewel) StatusRow <span class="cov0" title="0">{
+        return StatusRow{
+                ID:         ac.ID,
+                Path:       ac.Path,
+                Scope:      ac.Scope,
+                Configured: true,
+                Indexed:    indexed[ac.ID],
+                Compiled:   compiledIDs[ac.ID],
+                JewelCount: NonDeprecatedJewelCount(jewels[ac.ID]),
+        }
+}</span>
+
+func governedOnlyStatusRows(
+        governed map[string]GovernedChest,
+        indexed map[string]bool,
+        compiledIDs map[string]bool,
+        jewels map[string][]Jewel,
+        seen map[string]bool,
+) []StatusRow <span class="cov0" title="0">{
+        var rows []StatusRow
+        for id, gc := range governed </span><span class="cov0" title="0">{
+                if seen[id] </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+                <span class="cov0" title="0">row := governedOnlyStatusRow(id, gc, indexed, compiledIDs, jewels)
+                rows = append(rows, finalizeStatusRow(row))
+                seen[id] = true</span>
+        }
+        <span class="cov0" title="0">return rows</span>
+}
+
+func governedOnlyStatusRow(
+        id string,
+        gc GovernedChest,
+        indexed map[string]bool,
+        compiledIDs map[string]bool,
+        jewels map[string][]Jewel,
+) StatusRow <span class="cov0" title="0">{
+        row := StatusRow{
+                ID:         id,
+                Path:       gc.Path,
+                Indexed:    indexed[id],
+                Compiled:   compiledIDs[id],
+                JewelCount: NonDeprecatedJewelCount(jewels[id]),
+        }
+        applyGovernedStatus(&amp;row, gc)
+        return row
+}</span>
+
+func indexedOnlyStatusRows(indexed, compiledIDs map[string]bool, seen map[string]bool) []StatusRow <span class="cov0" title="0">{
+        var rows []StatusRow
+        for id := range indexed </span><span class="cov0" title="0">{
+                if seen[id] </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+                <span class="cov0" title="0">row := StatusRow{
+                        ID:        id,
+                        Indexed:   true,
+                        Compiled:  compiledIDs[id],
+                        Freshness: "unknown",
+                }
+                rows = append(rows, finalizeStatusRow(row))
+                seen[id] = true</span>
+        }
+        <span class="cov0" title="0">return rows</span>
+}
+
+func applyGovernedStatus(row *StatusRow, gc GovernedChest) <span class="cov0" title="0">{
+        row.Governed = true
+        row.TrustTier = gc.Trust.Tier
+        row.ReviewedBy = gc.Trust.ReviewedBy
+        row.LastReviewed = gc.Trust.LastReviewed
+        row.SourceGrade = gc.Grade.SourceGrade
+        row.ReuseValue = gc.Grade.ReuseValue
+        row.OpenGaps = gc.OpenGaps
+}</span>
+
+func finalizeStatusRow(row StatusRow) StatusRow <span class="cov0" title="0">{
+        if row.Freshness == "" </span><span class="cov0" title="0">{
+                row.Freshness = DeriveFreshness(row)
+        }</span>
+        <span class="cov0" title="0">row.Drift = DeriveDrift(row)
+        return row</span>
+}
+
+// DeriveFreshness computes the freshness label for a merged chest row.
+func DeriveFreshness(r StatusRow) string <span class="cov0" title="0">{
+        if r.LastReviewed != "" </span><span class="cov0" title="0">{
+                return "fresh"
+        }</span>
+        <span class="cov0" title="0">return "unknown"</span>
+}
+
+// DeriveDrift reports missing or unscoped truth-layer relationships for a row.
+func DeriveDrift(r StatusRow) []string <span class="cov0" title="0">{
+        var d []string
+        if r.Configured &amp;&amp; !r.Governed </span><span class="cov0" title="0">{
+                d = append(d, "missing_governance")
+        }</span>
+        <span class="cov0" title="0">if (r.Configured || r.Governed) &amp;&amp; !r.Indexed </span><span class="cov0" title="0">{
+                d = append(d, "missing_index")
+        }</span>
+        <span class="cov0" title="0">if !r.Configured &amp;&amp; (r.Governed || r.Indexed) </span><span class="cov0" title="0">{
+                d = append(d, "unscoped")
+        }</span>
+        <span class="cov0" title="0">return d</span>
+}
+
+// FilterRowsByScope filters rows to a Strategist slot scope, treating "all" as a match.
+func FilterRowsByScope(rows []StatusRow, value string) []StatusRow <span class="cov0" title="0">{
+        if value == "" </span><span class="cov0" title="0">{
+                return rows
+        }</span>
+        <span class="cov0" title="0">out := make([]StatusRow, 0, len(rows))
+        for _, r := range rows </span><span class="cov0" title="0">{
+                for _, s := range r.Scope </span><span class="cov0" title="0">{
+                        if s == value || s == "all" </span><span class="cov0" title="0">{
+                                out = append(out, r)
+                                break</span>
+                        }
+                }
+        }
+        <span class="cov0" title="0">return out</span>
+}
+
+// HistoricalCount counts rows with historical/lower-trust tiers.
+func HistoricalCount(rows []StatusRow) int <span class="cov0" title="0">{
+        n := 0
+        for _, r := range rows </span><span class="cov0" title="0">{
+                if r.TrustTier == "T2" || r.TrustTier == "T3" </span><span class="cov0" title="0">{
+                        n++
+                }</span>
+        }
+        <span class="cov0" title="0">return n</span>
+}
+</pre>
+		
+		<pre class="file" id="file49" style="display: none">package treasure
+
+import (
+        "bytes"
+        "fmt"
+        "os"
+        "time"
+
+        "gopkg.in/yaml.v3"
+)
+
+// yaml.Node-based read-modify-write helpers for treasure-chest add/remove (SQ-006 / T-I).
+// Every other YAML writer in this codebase either struct-marshals (losing comments) or
+// does an install-time-only placeholder replace; these helpers preserve existing comments
+// and formatting when mutating an already-populated file.
+
+// YAMLWrite pairs a destination path with the YAML document to write there.
+type YAMLWrite struct {
+        Path string
+        Doc  *yaml.Node
+}
+
+// ReadYAMLNode reads a YAML file into a document node.
+func ReadYAMLNode(path string) (*yaml.Node, error) <span class="cov2" title="2">{
+        raw, err := os.ReadFile(path) //nolint:gosec // G304
+        if err != nil </span><span class="cov1" title="1">{
+                return nil, fmt.Errorf("read %s: %w", path, err)
+        }</span>
+        <span class="cov1" title="1">var doc yaml.Node
+        if err := yaml.Unmarshal(raw, &amp;doc); err != nil </span><span class="cov1" title="1">{
+                return nil, fmt.Errorf("parse %s: %w", path, err)
+        }</span>
+        <span class="cov0" title="0">return &amp;doc, nil</span>
+}
+
+// WriteYAMLNodes writes each document to its file, in order, stopping at the first
+// failure. It returns the list of paths successfully written so callers can report
+// exactly how much state was mutated if a later write fails.
+func WriteYAMLNodes(writes ...YAMLWrite) ([]string, error) <span class="cov3" title="3">{
+        var written []string
+        for _, w := range writes </span><span class="cov4" title="4">{
+                var buf bytes.Buffer
+                enc := yaml.NewEncoder(&amp;buf)
+                enc.SetIndent(2) // matches this repo's existing YAML style
+                if err := enc.Encode(w.Doc); err != nil </span><span class="cov0" title="0">{
+                        return written, fmt.Errorf("encode %s: %w", w.Path, err)
+                }</span>
+                <span class="cov4" title="4">if err := enc.Close(); err != nil </span><span class="cov0" title="0">{
+                        return written, fmt.Errorf("encode %s: %w", w.Path, err)
+                }</span>
+                <span class="cov4" title="4">if err := os.WriteFile(w.Path, buf.Bytes(), 0o644); err != nil </span><span class="cov2" title="2">{ //nolint:gosec // G306
+                        return written, fmt.Errorf("write %s: %w", w.Path, err)
+                }</span>
+                <span class="cov2" title="2">written = append(written, w.Path)</span>
+        }
+        <span class="cov1" title="1">return written, nil</span>
+}
+
+// RootMapping returns the top-level mapping node from a YAML document.
+func RootMapping(doc *yaml.Node) (*yaml.Node, error) <span class="cov8" title="29">{
+        if doc.Kind != yaml.DocumentNode || len(doc.Content) == 0 </span><span class="cov2" title="2">{
+                return nil, fmt.Errorf("yaml document has no content")
+        }</span>
+        <span class="cov8" title="27">root := doc.Content[0]
+        if root.Kind != yaml.MappingNode </span><span class="cov5" title="8">{
+                return nil, fmt.Errorf("yaml root is not a mapping")
+        }</span>
+        <span class="cov7" title="19">return root, nil</span>
+}
+
+// MappingValue returns the value node for a mapping key, or nil when absent.
+func MappingValue(mapping *yaml.Node, key string) *yaml.Node <span class="cov9" title="38">{
+        for i := 0; i+1 &lt; len(mapping.Content); i += 2 </span><span class="cov10" title="50">{
+                if mapping.Content[i].Value == key </span><span class="cov8" title="30">{
+                        return mapping.Content[i+1]
+                }</span>
+        }
+        <span class="cov5" title="8">return nil</span>
+}
+
+// FindOrCreateSequence returns the sequence node for key under mapping, creating an
+// empty one (and appending the key) if it does not exist yet.
+func FindOrCreateSequence(mapping *yaml.Node, key string) *yaml.Node <span class="cov3" title="3">{
+        if v := MappingValue(mapping, key); v != nil </span><span class="cov1" title="1">{
+                return v
+        }</span>
+        <span class="cov2" title="2">keyNode := strNode(key)
+        seq := &amp;yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+        mapping.Content = append(mapping.Content, keyNode, seq)
+        return seq</span>
+}
+
+func strNode(v string) *yaml.Node <span class="cov6" title="10">{
+        return &amp;yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: v}
+}</span>
+
+func flowSeqNode(values []string) *yaml.Node <span class="cov0" title="0">{
+        items := make([]*yaml.Node, 0, len(values))
+        for _, v := range values </span><span class="cov0" title="0">{
+                items = append(items, strNode(v))
+        }</span>
+        <span class="cov0" title="0">return &amp;yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq", Style: yaml.FlowStyle, Content: items}</span>
+}
+
+func mapNode(pairs ...*yaml.Node) *yaml.Node <span class="cov1" title="1">{
+        return &amp;yaml.Node{Kind: yaml.MappingNode, Tag: "!!map", Content: pairs}
+}</span>
+
+// FindEntryByID returns the mapping node and index within seq.Content whose "id"
+// field equals id, or nil/-1 if not found.
+func FindEntryByID(seq *yaml.Node, id string) (*yaml.Node, int) <span class="cov6" title="10">{
+        for i, item := range seq.Content </span><span class="cov7" title="15">{
+                if item.Kind != yaml.MappingNode </span><span class="cov3" title="3">{
+                        continue</span>
+                }
+                <span class="cov6" title="12">if v := MappingValue(item, "id"); v != nil &amp;&amp; v.Value == id </span><span class="cov5" title="6">{
+                        return item, i
+                }</span>
+        }
+        <span class="cov4" title="4">return nil, -1</span>
+}
+
+// SetMappingField sets key's value to a string scalar on mapping, adding the pair if
+// key does not already exist.
+func SetMappingField(mapping *yaml.Node, key, value string) <span class="cov1" title="1">{
+        for i := 0; i+1 &lt; len(mapping.Content); i += 2 </span><span class="cov2" title="2">{
+                if mapping.Content[i].Value == key </span><span class="cov0" title="0">{
+                        mapping.Content[i+1] = strNode(value)
+                        return
+                }</span>
+        }
+        <span class="cov1" title="1">mapping.Content = append(mapping.Content, strNode(key), strNode(value))</span>
+}
+
+// AppendActiveChestEntry appends an active.yaml treasure_chests entry.
+func AppendActiveChestEntry(doc *yaml.Node, id, path, scope string) error <span class="cov1" title="1">{
+        root, err := RootMapping(doc)
+        if err != nil </span><span class="cov1" title="1">{
+                return err
+        }</span>
+        <span class="cov0" title="0">seq := FindOrCreateSequence(root, "treasure_chests")
+        entry := mapNode(
+                strNode("id"), strNode(id),
+                strNode("path"), strNode(path),
+                strNode("scope"), strNode(scope),
+        )
+        seq.Content = append(seq.Content, entry)
+        return nil</span>
+}
+
+// RemoveActiveChestEntry removes an active.yaml treasure_chests entry by id.
+func RemoveActiveChestEntry(doc *yaml.Node, id string) error <span class="cov4" title="4">{
+        root, err := RootMapping(doc)
+        if err != nil </span><span class="cov1" title="1">{
+                return err
+        }</span>
+        <span class="cov3" title="3">seq := MappingValue(root, "treasure_chests")
+        if seq == nil </span><span class="cov1" title="1">{
+                return fmt.Errorf("no treasure_chests declared in active.yaml")
+        }</span>
+        <span class="cov2" title="2">_, idx := FindEntryByID(seq, id)
+        if idx == -1 </span><span class="cov1" title="1">{
+                return fmt.Errorf("id %q not found in active.yaml treasure_chests", id)
+        }</span>
+        <span class="cov1" title="1">seq.Content = append(seq.Content[:idx], seq.Content[idx+1:]...)
+        return nil</span>
+}
+
+// AppendGovernedChestEntry appends a treasure-chests.yaml governed chest entry.
+func AppendGovernedChestEntry(doc *yaml.Node, id, path, trustTier, reviewedBy string, tags []string) error <span class="cov1" title="1">{
+        root, err := RootMapping(doc)
+        if err != nil </span><span class="cov1" title="1">{
+                return err
+        }</span>
+        <span class="cov0" title="0">seq := FindOrCreateSequence(root, "chests")
+        entry := mapNode(
+                strNode("id"), strNode(id),
+                strNode("title"), strNode(id),
+                strNode("path"), strNode(path),
+                strNode("trust"), mapNode(
+                        strNode("tier"), strNode(trustTier),
+                        strNode("reviewed_by"), strNode(reviewedBy),
+                ),
+                strNode("routing"), mapNode(
+                        strNode("task_types"), flowSeqNode(tags),
+                ),
+                strNode("retrieval"), mapNode(
+                        strNode("strategy"), strNode("selective"),
+                        strNode("require_relevance_reason"), boolNode(true),
+                        strNode("allow_full_load"), boolNode(false),
+                ),
+        )
+        seq.Content = append(seq.Content, entry)
+        return nil</span>
+}
+
+// MarkGovernedChestInactive sets status: inactive for a governed chest entry.
+func MarkGovernedChestInactive(doc *yaml.Node, id string) error <span class="cov3" title="3">{
+        root, err := RootMapping(doc)
+        if err != nil </span><span class="cov1" title="1">{
+                return err
+        }</span>
+        <span class="cov2" title="2">seq := MappingValue(root, "chests")
+        if seq == nil </span><span class="cov1" title="1">{
+                return fmt.Errorf("no chests declared in treasure-chests.yaml")
+        }</span>
+        <span class="cov1" title="1">entry, idx := FindEntryByID(seq, id)
+        if idx == -1 </span><span class="cov1" title="1">{
+                return fmt.Errorf("id %q not found in treasure-chests.yaml chests", id)
+        }</span>
+        <span class="cov0" title="0">SetMappingField(entry, "status", "inactive")
+        return nil</span>
+}
+
+// AppendIndexedSourceEntry appends a knowledge.index.yaml source entry.
+func AppendIndexedSourceEntry(doc *yaml.Node, id, path string, tags []string) error <span class="cov1" title="1">{
+        root, err := RootMapping(doc)
+        if err != nil </span><span class="cov1" title="1">{
+                return err
+        }</span>
+        <span class="cov0" title="0">seq := FindOrCreateSequence(root, "sources")
+        entry := mapNode(
+                strNode("id"), strNode(id),
+                strNode("path"), strNode(path),
+                strNode("tags"), flowSeqNode(tags),
+        )
+        seq.Content = append(seq.Content, entry)
+        return nil</span>
+}
+
+// MarkIndexedSourceInactive sets status: inactive for an indexed source entry.
+func MarkIndexedSourceInactive(doc *yaml.Node, id string) error <span class="cov3" title="3">{
+        root, err := RootMapping(doc)
+        if err != nil </span><span class="cov1" title="1">{
+                return err
+        }</span>
+        <span class="cov2" title="2">seq := MappingValue(root, "sources")
+        if seq == nil </span><span class="cov1" title="1">{
+                return fmt.Errorf("no sources declared in knowledge.index.yaml")
+        }</span>
+        <span class="cov1" title="1">entry, idx := FindEntryByID(seq, id)
+        if idx == -1 </span><span class="cov1" title="1">{
+                return fmt.Errorf("id %q not found in knowledge.index.yaml sources", id)
+        }</span>
+        <span class="cov0" title="0">SetMappingField(entry, "status", "inactive")
+        return nil</span>
+}
+
+// --- jewels.yaml: jewels[] ---
+
+// MarkJewelsDeprecatedForChest sets status: deprecated on every jewels.yaml entry whose
+// chest_id matches chestID — the chest-removal cascade (SQ-009). A missing jewels: sequence
+// or zero matches is not an error: a chest may have no jewels yet.
+func MarkJewelsDeprecatedForChest(doc *yaml.Node, chestID string) error <span class="cov3" title="3">{
+        root, err := RootMapping(doc)
+        if err != nil </span><span class="cov1" title="1">{
+                return err
+        }</span>
+        <span class="cov2" title="2">seq := MappingValue(root, "jewels")
+        if seq == nil </span><span class="cov1" title="1">{
+                return nil
+        }</span>
+        <span class="cov1" title="1">for _, entry := range seq.Content </span><span class="cov3" title="3">{
+                if entry.Kind != yaml.MappingNode </span><span class="cov1" title="1">{
+                        continue</span>
+                }
+                <span class="cov2" title="2">if v := MappingValue(entry, "chest_id"); v != nil &amp;&amp; v.Value == chestID </span><span class="cov1" title="1">{
+                        SetMappingField(entry, "status", "deprecated")
+                        AppendJewelHistory(entry, "deprecated", time.Now().UTC().Format("2006-01-02"), "human", "")
+                }</span>
+        }
+        <span class="cov1" title="1">return nil</span>
+}
+
+// FindJewelEntry returns the jewels.yaml jewel entry mapping node for id, or an error if
+// no jewels are declared or id is not found.
+func FindJewelEntry(doc *yaml.Node, id string) (*yaml.Node, error) <span class="cov0" title="0">{
+        root, err := RootMapping(doc)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">seq := MappingValue(root, "jewels")
+        if seq == nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("no jewels declared in jewels.yaml")
+        }</span>
+        <span class="cov0" title="0">entry, idx := FindEntryByID(seq, id)
+        if idx == -1 </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("jewel %q not found in jewels.yaml", id)
+        }</span>
+        <span class="cov0" title="0">return entry, nil</span>
+}
+
+// AppendEvidenceRef appends ref to entry's verification.evidence_refs sequence, creating
+// the verification mapping if it does not already exist (e.g. on a jewel hand-authored
+// before the verification field was introduced).
+func AppendEvidenceRef(entry *yaml.Node, ref string) <span class="cov0" title="0">{
+        verification := MappingValue(entry, "verification")
+        if verification == nil </span><span class="cov0" title="0">{
+                verification = mapNode()
+                entry.Content = append(entry.Content, strNode("verification"), verification)
+        }</span>
+        <span class="cov0" title="0">seq := FindOrCreateSequence(verification, "evidence_refs")
+        seq.Content = append(seq.Content, strNode(ref))</span>
+}
+
+// AppendJewelHistory appends a lifecycle history entry to a jewel mapping.
+func AppendJewelHistory(entry *yaml.Node, status, at, by, evidenceRef string) <span class="cov1" title="1">{
+        seq := FindOrCreateSequence(entry, "history")
+        historyEntry := mapNode(
+                strNode("status"), strNode(status),
+                strNode("at"), strNode(at),
+                strNode("by"), strNode(by),
+        )
+        if evidenceRef != "" </span><span class="cov0" title="0">{
+                historyEntry.Content = append(historyEntry.Content, strNode("evidence_ref"), strNode(evidenceRef))
+        }</span>
+        <span class="cov1" title="1">seq.Content = append(seq.Content, historyEntry)</span>
+}
+
+func boolNode(v bool) *yaml.Node <span class="cov0" title="0">{
+        val := "false"
+        if v </span><span class="cov0" title="0">{
+                val = "true"
+        }</span>
+        <span class="cov0" title="0">return &amp;yaml.Node{Kind: yaml.ScalarNode, Tag: "!!bool", Value: val}</span>
+}
 </pre>
 		
 		</div>
