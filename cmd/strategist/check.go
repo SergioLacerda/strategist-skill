@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -30,17 +32,6 @@ var slotContract = map[string]string{
 	"discovery":  "write_analysis",
 	"refinement": "write_analysis",
 	"execution":  "controlled",
-}
-
-var normativeRuntimeDefaultFiles = []string{
-	"SKILL.md",
-	"skill.yaml",
-	"protocol.md",
-	"templates/agent-protocol.md",
-	"contracts/machine/preflight.yaml",
-	"contracts/narrative/05-approval-gate.md",
-	"contracts/narrative/06-execution.md",
-	"templates/domain/identity/drift-patterns.yaml",
 }
 
 var checkCmd = &cobra.Command{
@@ -350,30 +341,84 @@ func writeSimulateBlockers(sw *simReportWriter, errs []string) {
 func validateRuntimeDefaultParity(root string) []string {
 	extractor := embedpkg.Extractor{}
 	var errs []string
+	manifest, manifestLoaded, manifestErr := readInstallManifest(root)
+	if manifestErr != nil {
+		errs = append(errs, fmt.Sprintf("runtime_stale: install manifest unreadable: %v", manifestErr))
+	}
 
-	for _, rel := range normativeRuntimeDefaultFiles {
-		runtimePath := filepath.Join(root, filepath.FromSlash(rel))
-		runtimeRaw, readErr := os.ReadFile(runtimePath)
-		if readErr != nil {
-			if os.IsNotExist(readErr) {
-				continue
-			}
-			errs = append(errs, fmt.Sprintf("runtime_stale: read %s: %v", runtimePath, readErr))
-			continue
-		}
-
-		embeddedRaw, embedErr := extractor.ReadFile(rel)
-		if embedErr != nil {
-			errs = append(errs, fmt.Sprintf("runtime_stale: embedded default %q unreadable: %v", rel, embedErr))
-			continue
-		}
-
-		if string(runtimeRaw) != string(embeddedRaw) {
-			errs = append(errs, fmt.Sprintf("runtime_stale: normative file %q differs from embedded default — run strategist install --force", rel))
+	for _, rel := range domain.NormativeRuntimeDefaultPaths() {
+		err, ok := validateRuntimeDefaultFile(root, rel, extractor, manifest, manifestLoaded, manifestErr)
+		if ok {
+			errs = append(errs, err)
 		}
 	}
 
 	return errs
+}
+
+func validateRuntimeDefaultFile(
+	root, rel string,
+	extractor embedpkg.Extractor,
+	manifest domain.InstallManifest,
+	manifestLoaded bool,
+	manifestErr error,
+) (string, bool) {
+	runtimePath := filepath.Join(root, filepath.FromSlash(rel))
+	runtimeRaw, readErr := os.ReadFile(runtimePath)
+	if readErr != nil {
+		if os.IsNotExist(readErr) {
+			return "", false
+		}
+		return fmt.Sprintf("runtime_stale: read %s: %v", runtimePath, readErr), true
+	}
+
+	embeddedRaw, embedErr := extractor.ReadFile(rel)
+	if embedErr != nil {
+		return fmt.Sprintf("runtime_stale: embedded default %q unreadable: %v", rel, embedErr), true
+	}
+	if string(runtimeRaw) == string(embeddedRaw) {
+		return "", false
+	}
+	return domain.FormatRuntimeStaleDiagnostic(
+		rel,
+		classifyRuntimeStale(runtimeRaw, rel, manifest, manifestLoaded, manifestErr),
+	), true
+}
+
+func classifyRuntimeStale(
+	runtimeRaw []byte,
+	rel string,
+	manifest domain.InstallManifest,
+	manifestLoaded bool,
+	manifestErr error,
+) domain.RuntimeDefaultDecision {
+	if manifestErr != nil || !manifestLoaded {
+		return domain.RuntimeDecisionUnknownManifest
+	}
+	manifestFile, ok := manifest.FileByPath(rel)
+	if !ok {
+		return domain.RuntimeDecisionUnknownManifest
+	}
+	if domain.SHA256Hex(runtimeRaw) == manifestFile.SHA256 {
+		return domain.RuntimeDecisionAutoUpgrade
+	}
+	return domain.RuntimeDecisionConflict
+}
+
+func readInstallManifest(root string) (domain.InstallManifest, bool, error) {
+	path := filepath.Join(root, domain.InstallManifestRelPath)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return domain.InstallManifest{}, false, nil
+		}
+		return domain.InstallManifest{}, false, fmt.Errorf("read install manifest: %w", err)
+	}
+	var manifest domain.InstallManifest
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		return domain.InstallManifest{}, false, fmt.Errorf("parse install manifest: %w", err)
+	}
+	return manifest, true, nil
 }
 
 func init() {

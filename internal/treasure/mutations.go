@@ -304,16 +304,20 @@ func MigrateLegacyJewelStatusInDocument(doc *yaml.Node) (int, error) {
 	}
 	migrated := 0
 	for _, entry := range seq.Content {
-		if entry.Kind != yaml.MappingNode {
-			continue
-		}
-		v := MappingValue(entry, "status")
-		if v != nil && v.Value == "active" {
+		if migrateLegacyJewelStatus(entry) {
 			SetMappingField(entry, "status", domain.JewelStatusAccepted)
 			migrated++
 		}
 	}
 	return migrated, nil
+}
+
+func migrateLegacyJewelStatus(entry *yaml.Node) bool {
+	if entry.Kind != yaml.MappingNode {
+		return false
+	}
+	v := MappingValue(entry, "status")
+	return v != nil && v.Value == "active"
 }
 
 // FindJewelDocument returns the manifest document and jewel mapping for id across

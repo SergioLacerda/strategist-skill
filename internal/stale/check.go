@@ -22,37 +22,54 @@ type Checker struct{}
 //  3. Every source file listed in artifact.sources must exist and have an mtime
 //     no newer than the recorded value.
 func (c Checker) IsStale(artifactPath string) (bool, error) {
-	if _, err := os.Stat(artifactPath); os.IsNotExist(err) {
-		return true, nil
-	} else if err != nil {
-		return false, fmt.Errorf("stale: stat artifact: %w", err)
+	missing, err := pathMissing(artifactPath, "artifact")
+	if missing || err != nil {
+		return missing, err
 	}
 
 	manifestPath := filepath.Join(filepath.Dir(artifactPath), ".manifest.gz")
-	if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
-		return true, nil
-	} else if err != nil {
-		return false, fmt.Errorf("stale: stat manifest: %w", err)
+	missing, err = pathMissing(manifestPath, "manifest")
+	if missing || err != nil {
+		return missing, err
 	}
 
 	sources, err := readSources(artifactPath)
 	if err != nil {
 		return false, fmt.Errorf("stale: read sources: %w", err)
 	}
+	return sourcesAreStale(sources)
+}
 
+func pathMissing(path, label string) (bool, error) {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return true, nil
+	} else if err != nil {
+		return false, fmt.Errorf("stale: stat %s: %w", label, err)
+	}
+	return false, nil
+}
+
+func sourcesAreStale(sources map[string]int64) (bool, error) {
 	for path, recorded := range sources {
-		info, statErr := os.Stat(path)
-		if os.IsNotExist(statErr) {
-			return true, nil
-		}
-		if statErr != nil {
-			return false, fmt.Errorf("stale: stat source %s: %w", path, statErr)
-		}
-		if info.ModTime().Unix() > recorded {
-			return true, nil
+		stale, err := sourceIsStale(path, recorded)
+		if stale || err != nil {
+			return stale, err
 		}
 	}
+	return false, nil
+}
 
+func sourceIsStale(path string, recorded int64) (bool, error) {
+	info, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return true, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("stale: stat source %s: %w", path, err)
+	}
+	if info.ModTime().Unix() > recorded {
+		return true, nil
+	}
 	return false, nil
 }
 

@@ -44,20 +44,10 @@ func runTreasureChest(cmd *cobra.Command, _ []string, opts treasureChestOptions)
 	if run := telemetryRunFromCmd(cmd); run != nil {
 		run.SetSilent()
 	}
-	opts.Root = stringFlag(cmd, "root", opts.Root)
-	opts.DoIndex = boolFlag(cmd, "index", opts.DoIndex)
-	opts.IncludeHistorical = boolFlag(cmd, "include-historical", opts.IncludeHistorical)
-	opts.Format = stringFlag(cmd, "format", opts.Format)
-	opts.Scope = stringFlag(cmd, "scope", opts.Scope)
-
-	cwd, err := os.Getwd()
+	opts = treasureChestOptionsFromFlags(cmd, opts)
+	root, err := resolveTreasureChestRoot(opts.Root)
 	if err != nil {
-		return fmt.Errorf("treasure-chest: get cwd: %w", err)
-	}
-
-	root, _, err := resolveStrategistRoot(opts.Root, cwd)
-	if err != nil {
-		return fmt.Errorf("treasure-chest: %w", err)
+		return err
 	}
 
 	// Load the four truth layers (each is best-effort; only active.yaml is mandatory).
@@ -91,29 +81,55 @@ func runTreasureChest(cmd *cobra.Command, _ []string, opts treasureChestOptions)
 		return fmt.Errorf("treasure-chest: unknown --format %q (want table or json)", opts.Format)
 	}
 
+	return renderTreasureChestTable(root, rows, govErr, idxErr, compErr, compiledAt)
+}
+
+func treasureChestOptionsFromFlags(cmd *cobra.Command, opts treasureChestOptions) treasureChestOptions {
+	opts.Root = stringFlag(cmd, "root", opts.Root)
+	opts.DoIndex = boolFlag(cmd, "index", opts.DoIndex)
+	opts.IncludeHistorical = boolFlag(cmd, "include-historical", opts.IncludeHistorical)
+	opts.Format = stringFlag(cmd, "format", opts.Format)
+	opts.Scope = stringFlag(cmd, "scope", opts.Scope)
+	return opts
+}
+
+func resolveTreasureChestRoot(rootFlag string) (string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("treasure-chest: get cwd: %w", err)
+	}
+	root, _, err := resolveStrategistRoot(rootFlag, cwd)
+	if err != nil {
+		return "", fmt.Errorf("treasure-chest: %w", err)
+	}
+	return root, nil
+}
+
+func renderTreasureChestTable(root string, rows []treasure.StatusRow, govErr, idxErr, compErr error, compiledAt int64) error {
 	printTreasureChestBanner()
-
-	// Chests and Index sections each get their own tabwriter so column widths
-	// are scoped per section (warnings would inflate column 0 if shared).
-	wc := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	if err := renderChestsSection(wc, rows); err != nil {
+	if err := renderTableSection("chests", func(w *tabwriter.Writer) error {
+		return renderChestsSection(w, rows)
+	}); err != nil {
 		return err
 	}
-	if err := wc.Flush(); err != nil {
-		return fmt.Errorf("flush chests: %w", err)
+	if err := renderTableSection("index", func(w *tabwriter.Writer) error {
+		return renderIndexSection(w, root, compiledAt, compErr)
+	}); err != nil {
+		return err
 	}
+	renderWarningsSection(collectWarnings(rows, govErr, idxErr, compErr, compiledAt))
 	fmt.Println()
+	return nil
+}
 
-	wi := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	if err := renderIndexSection(wi, root, compiledAt, compErr); err != nil {
+func renderTableSection(label string, render func(*tabwriter.Writer) error) error {
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
+	if err := render(w); err != nil {
 		return err
 	}
-	if err := wi.Flush(); err != nil {
-		return fmt.Errorf("flush index: %w", err)
+	if err := w.Flush(); err != nil {
+		return fmt.Errorf("flush %s: %w", label, err)
 	}
-
-	warnings := collectWarnings(rows, govErr, idxErr, compErr, compiledAt)
-	renderWarningsSection(warnings)
 	fmt.Println()
 	return nil
 }
@@ -218,34 +234,43 @@ func renderChestsSection(w *tabwriter.Writer, rows []treasure.StatusRow) error {
 		return fmt.Errorf("treasure-chest: write column header: %w", err)
 	}
 	for _, r := range rows {
-		scope := strings.Join(r.Scope, ",")
-		if scope == "" {
-			scope = "—"
-		}
-		trust := r.TrustTier
-		if trust == "" {
-			trust = "—"
-		}
-		drift := "none"
-		if len(r.Drift) > 0 {
-			drift = strings.Join(r.Drift, " ")
-		}
-		grade := dashIfEmpty(r.SourceGrade)
-		reuse := dashIfEmpty(r.ReuseValue)
-		gaps := "—"
-		if len(r.OpenGaps) > 0 {
-			gaps = fmt.Sprintf("%d", len(r.OpenGaps))
-		}
-		jewels := "—"
-		if r.JewelCount > 0 {
-			jewels = fmt.Sprintf("%d", r.JewelCount)
-		}
-		if _, err := fmt.Fprintf(w, "  %s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
-			r.ID, r.Path, scope, trust, r.Freshness, drift, grade, reuse, gaps, jewels); err != nil {
+		if err := renderChestRow(w, r); err != nil {
 			return fmt.Errorf("treasure-chest: write row: %w", err)
 		}
 	}
 	return nil
+}
+
+func renderChestRow(w *tabwriter.Writer, r treasure.StatusRow) error {
+	if _, err := fmt.Fprintf(w, "  %s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+		r.ID,
+		r.Path,
+		dashIfEmpty(strings.Join(r.Scope, ",")),
+		dashIfEmpty(r.TrustTier),
+		r.Freshness,
+		driftText(r.Drift),
+		dashIfEmpty(r.SourceGrade),
+		dashIfEmpty(r.ReuseValue),
+		countOrDash(len(r.OpenGaps)),
+		countOrDash(r.JewelCount),
+	); err != nil {
+		return fmt.Errorf("treasure-chest status: write chest row: %w", err)
+	}
+	return nil
+}
+
+func driftText(drift []string) string {
+	if len(drift) == 0 {
+		return "none"
+	}
+	return strings.Join(drift, " ")
+}
+
+func countOrDash(count int) string {
+	if count == 0 {
+		return "—"
+	}
+	return fmt.Sprintf("%d", count)
 }
 
 func dashIfEmpty(v string) string {
@@ -302,38 +327,64 @@ func renderWarningsSection(warnings []string) {
 func collectWarnings(rows []treasure.StatusRow, govErr, idxErr, compErr error, compiledAt int64) []string {
 	var w []string
 
-	if govErr != nil {
-		w = append(w, "⚠ treasure-chests.yaml unavailable: "+govErr.Error())
-	}
-	if idxErr != nil {
-		w = append(w, "⚠ knowledge.index.yaml unavailable: "+idxErr.Error())
-	}
-	if compErr != nil {
-		w = append(w, "⚠ .compiled/.index.gz corrupt — run: strategist treasure-chest --index")
-	} else if compiledAt == 0 {
-		w = append(w, "⚠ compiled index absent — run: strategist treasure-chest --index")
-	}
+	w = append(w, loadWarnings(govErr, idxErr)...)
+	w = append(w, compiledIndexWarnings(compErr, compiledAt)...)
 
 	var driftIDs []string
 	var historicalMissing []string
 	for _, r := range rows {
-		if len(r.Drift) > 0 {
-			driftIDs = append(driftIDs, r.ID+"("+strings.Join(r.Drift, ",")+")")
-		}
-		if (r.TrustTier == "T2" || r.TrustTier == "T3") && r.LastReviewed == "" {
-			historicalMissing = append(historicalMissing, r.ID)
-		}
+		driftIDs = appendDriftID(driftIDs, r)
+		historicalMissing = appendHistoricalMissing(historicalMissing, r)
 	}
+	return appendTreasureWarnings(w, driftIDs, historicalMissing, compiledAt)
+}
+
+func loadWarnings(govErr, idxErr error) []string {
+	var warnings []string
+	if govErr != nil {
+		warnings = append(warnings, "⚠ treasure-chests.yaml unavailable: "+govErr.Error())
+	}
+	if idxErr != nil {
+		warnings = append(warnings, "⚠ knowledge.index.yaml unavailable: "+idxErr.Error())
+	}
+	return warnings
+}
+
+func compiledIndexWarnings(compErr error, compiledAt int64) []string {
+	if compErr != nil {
+		return []string{"⚠ .compiled/.index.gz corrupt — run: strategist treasure-chest --index"}
+	}
+	if compiledAt == 0 {
+		return []string{"⚠ compiled index absent — run: strategist treasure-chest --index"}
+	}
+	return nil
+}
+
+func appendDriftID(ids []string, r treasure.StatusRow) []string {
+	if len(r.Drift) == 0 {
+		return ids
+	}
+	return append(ids, r.ID+"("+strings.Join(r.Drift, ",")+")")
+}
+
+func appendHistoricalMissing(ids []string, r treasure.StatusRow) []string {
+	if (r.TrustTier == "T2" || r.TrustTier == "T3") && r.LastReviewed == "" {
+		return append(ids, r.ID)
+	}
+	return ids
+}
+
+func appendTreasureWarnings(warnings, driftIDs, historicalMissing []string, compiledAt int64) []string {
 	if len(driftIDs) > 0 {
-		w = append(w, "⚠ drift detected: "+strings.Join(driftIDs, " "))
+		warnings = append(warnings, "⚠ drift detected: "+strings.Join(driftIDs, " "))
 		if compiledAt != 0 {
-			w = append(w, "  → run: strategist treasure-chest --index to refresh")
+			warnings = append(warnings, "  → run: strategist treasure-chest --index to refresh")
 		}
 	}
 	if len(historicalMissing) > 0 {
-		w = append(w, "⚠ historical sources missing last_reviewed (freshness=unknown): "+strings.Join(historicalMissing, ", "))
+		warnings = append(warnings, "⚠ historical sources missing last_reviewed (freshness=unknown): "+strings.Join(historicalMissing, ", "))
 	}
-	return w
+	return warnings
 }
 
 // telemetryRunFromCmd extracts the MissionRun from the command context, if any.

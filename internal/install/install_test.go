@@ -63,6 +63,11 @@ func (m *mockExtractor) ReadFile(relPath string) ([]byte, error) {
 	case "SKILL.md":
 		return []byte("# SKILL\n"), nil
 	default:
+		for _, file := range domain.NormativeRuntimeDefaultFiles() {
+			if relPath == file.Path {
+				return []byte(relPath + "\n"), nil
+			}
+		}
 		return nil, fmt.Errorf("mockExtractor: file not found: %s", relPath)
 	}
 }

@@ -31,53 +31,38 @@ func CheckFiles(criteria domain.DojoCriteria, basePath string) []domain.DojoChec
 	runDir := filepath.Join(basePath, criteria.RunDir)
 
 	for _, fc := range criteria.FilesCreated {
-		full := filepath.Join(runDir, fc.Path)
-		exists := fileExists(full)
-		items = append(items, domain.DojoCheckItem{
-			Label:  fmt.Sprintf("files_created %s", fc.Path),
-			Passed: exists,
-			Detail: ifFail(exists, "file not found: "+full),
-		})
-		if !exists {
-			continue
-		}
-
-		content, err := os.ReadFile(full)
-		if err != nil {
-			items = append(items, domain.DojoCheckItem{
-				Label:  fmt.Sprintf("files_created %s (read)", fc.Path),
-				Passed: false,
-				Detail: err.Error(),
-			})
-			continue
-		}
-		text := string(content)
-
-		for _, section := range fc.RequiredSections {
-			found := strings.Contains(text, section)
-			items = append(items, domain.DojoCheckItem{
-				Label:  fmt.Sprintf("section %q in %s", section, fc.Path),
-				Passed: found,
-				Detail: ifFail(found, fmt.Sprintf("section %q not found", section)),
-			})
-		}
-		for _, needle := range fc.MustContain {
-			found := strings.Contains(text, needle)
-			items = append(items, domain.DojoCheckItem{
-				Label:  fmt.Sprintf("must_contain %q in %s", needle, fc.Path),
-				Passed: found,
-				Detail: ifFail(found, fmt.Sprintf("%q not found in file", needle)),
-			})
-		}
-		for _, needle := range fc.MustNotContain {
-			found := strings.Contains(text, needle)
-			items = append(items, domain.DojoCheckItem{
-				Label:  fmt.Sprintf("must_not_contain %q in %s", needle, fc.Path),
-				Passed: !found,
-				Detail: ifFail(!found, fmt.Sprintf("%q must not appear in file", needle)),
-			})
-		}
+		items = append(items, checkCreatedFile(runDir, fc)...)
 	}
+	return items
+}
+
+func checkCreatedFile(runDir string, fc domain.DojoFileCheck) []domain.DojoCheckItem {
+	full := filepath.Join(runDir, fc.Path)
+	exists := fileExists(full)
+	items := []domain.DojoCheckItem{{
+		Label:  fmt.Sprintf("files_created %s", fc.Path),
+		Passed: exists,
+		Detail: ifFail(exists, "file not found: "+full),
+	}}
+	if !exists {
+		return items
+	}
+	content, err := os.ReadFile(full)
+	if err != nil {
+		return append(items, domain.DojoCheckItem{
+			Label:  fmt.Sprintf("files_created %s (read)", fc.Path),
+			Passed: false,
+			Detail: err.Error(),
+		})
+	}
+	return append(items, checkFileContent(fc, string(content))...)
+}
+
+func checkFileContent(fc domain.DojoFileCheck, text string) []domain.DojoCheckItem {
+	var items []domain.DojoCheckItem
+	items = append(items, checkRequiredSections(fc, text)...)
+	items = append(items, checkMustContain(fc, text)...)
+	items = append(items, checkMustNotContain(fc, text)...)
 	return items
 }
 
@@ -91,17 +76,7 @@ func CheckEmitLog(criteria domain.DojoCriteria, logPath string, filesOnly bool) 
 	}
 
 	if !fileExists(logPath) {
-		if filesOnly {
-			return items
-		}
-		for _, key := range criteria.EmitLog.MustContain {
-			items = append(items, domain.DojoCheckItem{
-				Label:  fmt.Sprintf("emit %s", key),
-				Passed: false,
-				Detail: "emit.log not found — run the LLM scenario first",
-			})
-		}
-		return items
+		return missingEmitLogItems(criteria, filesOnly)
 	}
 
 	raw, err := os.ReadFile(logPath)
@@ -113,7 +88,26 @@ func CheckEmitLog(criteria domain.DojoCriteria, logPath string, filesOnly bool) 
 		}}
 	}
 	log := string(raw)
+	return checkEmitLogText(criteria, log)
+}
 
+func missingEmitLogItems(criteria domain.DojoCriteria, filesOnly bool) []domain.DojoCheckItem {
+	if filesOnly {
+		return nil
+	}
+	var items []domain.DojoCheckItem
+	for _, key := range criteria.EmitLog.MustContain {
+		items = append(items, domain.DojoCheckItem{
+			Label:  fmt.Sprintf("emit %s", key),
+			Passed: false,
+			Detail: "emit.log not found — run the LLM scenario first",
+		})
+	}
+	return items
+}
+
+func checkEmitLogText(criteria domain.DojoCriteria, log string) []domain.DojoCheckItem {
+	var items []domain.DojoCheckItem
 	for _, key := range criteria.EmitLog.MustContain {
 		found := strings.Contains(log, key)
 		items = append(items, domain.DojoCheckItem{
@@ -128,6 +122,45 @@ func CheckEmitLog(criteria domain.DojoCriteria, logPath string, filesOnly bool) 
 			Label:  fmt.Sprintf("emit %s must NOT appear", key),
 			Passed: !found,
 			Detail: ifFail(!found, fmt.Sprintf("emit key %q must not appear in log", key)),
+		})
+	}
+	return items
+}
+
+func checkRequiredSections(fc domain.DojoFileCheck, text string) []domain.DojoCheckItem {
+	var items []domain.DojoCheckItem
+	for _, section := range fc.RequiredSections {
+		found := strings.Contains(text, section)
+		items = append(items, domain.DojoCheckItem{
+			Label:  fmt.Sprintf("section %q in %s", section, fc.Path),
+			Passed: found,
+			Detail: ifFail(found, fmt.Sprintf("section %q not found", section)),
+		})
+	}
+	return items
+}
+
+func checkMustContain(fc domain.DojoFileCheck, text string) []domain.DojoCheckItem {
+	var items []domain.DojoCheckItem
+	for _, needle := range fc.MustContain {
+		found := strings.Contains(text, needle)
+		items = append(items, domain.DojoCheckItem{
+			Label:  fmt.Sprintf("must_contain %q in %s", needle, fc.Path),
+			Passed: found,
+			Detail: ifFail(found, fmt.Sprintf("%q not found in file", needle)),
+		})
+	}
+	return items
+}
+
+func checkMustNotContain(fc domain.DojoFileCheck, text string) []domain.DojoCheckItem {
+	var items []domain.DojoCheckItem
+	for _, needle := range fc.MustNotContain {
+		found := strings.Contains(text, needle)
+		items = append(items, domain.DojoCheckItem{
+			Label:  fmt.Sprintf("must_not_contain %q in %s", needle, fc.Path),
+			Passed: !found,
+			Detail: ifFail(!found, fmt.Sprintf("%q must not appear in file", needle)),
 		})
 	}
 	return items

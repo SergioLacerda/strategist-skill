@@ -67,43 +67,106 @@ func (s Service) Install(ctx context.Context, cfg domain.InstallConfig) error {
 		}
 	}()
 
+	runtimePlan, err := s.planRuntimeDefaultUpgrade(strategistDir, cfg.Force)
+	if err != nil {
+		return err
+	}
+
+	if err := s.runInstallSteps(ctx, strategistDir, cfg, runtimePlan, &manifest); err != nil {
+		return err
+	}
+
+	succeeded = true
+	slog.InfoContext(ctx, "[Strategist] install complete",
+		telemetry.AttrComponent, "install",
+		telemetry.AttrTarget, telemetry.SanitizePath(cfg.Target),
+	)
+	return nil
+}
+
+func (s Service) runInstallSteps(ctx context.Context, strategistDir string, cfg domain.InstallConfig, runtimePlan runtimeDefaultPlan, manifest *[]string) error {
+	created, err := s.prepareRuntime(ctx, strategistDir, cfg, runtimePlan)
+	if err != nil {
+		return err
+	}
+	*manifest = append(*manifest, created...)
+	created, err = s.applyWorkspaceConfig(ctx, strategistDir, cfg)
+	if err != nil {
+		return err
+	}
+	*manifest = append(*manifest, created...)
+	gitignoreManifest, err := ensureProjectGitignore(cfg)
+	if err != nil {
+		return err
+	}
+	*manifest = append(*manifest, gitignoreManifest...)
+	shimManifest, err := s.runShimStep(ctx, cfg)
+	if err != nil {
+		return err
+	}
+	*manifest = append(*manifest, shimManifest...)
+	if err := s.finalizeInstall(ctx, cfg, strategistDir, runtimePlan); err != nil {
+		return err
+	}
+	*manifest = append(*manifest, filepath.Join(strategistDir, domain.InstallManifestRelPath))
+	return nil
+}
+
+func (s Service) prepareRuntime(ctx context.Context, strategistDir string, cfg domain.InstallConfig, plan runtimeDefaultPlan) ([]string, error) {
 	slog.InfoContext(ctx, "[Strategist] install extracting-defaults",
 		telemetry.AttrComponent, "install",
 		telemetry.AttrTarget, telemetry.SanitizePath(strategistDir),
 	)
 	if err := s.Extractor.Extract(strategistDir, cfg.Force); err != nil {
-		return fmt.Errorf("install: extract defaults: %w", err)
+		return nil, fmt.Errorf("install: extract defaults: %w", err)
 	}
-	manifest = append(manifest, strategistDir)
+	if err := s.applyRuntimeDefaultPlan(strategistDir, plan); err != nil {
+		return nil, err
+	}
+	return []string{strategistDir}, nil
+}
 
+func (s Service) applyWorkspaceConfig(ctx context.Context, strategistDir string, cfg domain.InstallConfig) ([]string, error) {
 	slog.InfoContext(ctx, "[Strategist] install applying-config",
 		telemetry.AttrComponent, "install",
 		"wizard", cfg.Wizard,
 	)
 	if err := s.applyConfig(strategistDir, cfg); err != nil {
+		return nil, err
+	}
+	return []string{filepath.Join(strategistDir, "active.yaml")}, nil
+}
+
+func ensureProjectGitignore(cfg domain.InstallConfig) ([]string, error) {
+	if cfg.Global {
+		return nil, nil
+	}
+	gitignorePath := filepath.Join(cfg.Target, ".gitignore")
+	gitignoreExisted := fileExists(gitignorePath)
+	if err := ensureGitignore(cfg.Target); err != nil {
+		return nil, fmt.Errorf("install: gitignore: %w", err)
+	}
+	if gitignoreExisted {
+		return nil, nil
+	}
+	return []string{gitignorePath}, nil
+}
+
+func (s Service) finalizeInstall(ctx context.Context, cfg domain.InstallConfig, strategistDir string, plan runtimeDefaultPlan) error {
+	if err := s.compileAfterInstall(ctx, cfg, strategistDir); err != nil {
 		return err
 	}
-	manifest = append(manifest, filepath.Join(strategistDir, "active.yaml"))
-
-	if !cfg.Global {
-		gitignorePath := filepath.Join(cfg.Target, ".gitignore")
-		gitignoreExisted := fileExists(gitignorePath)
-		if err := ensureGitignore(cfg.Target); err != nil {
-			return fmt.Errorf("install: gitignore: %w", err)
-		}
-		if !gitignoreExisted {
-			manifest = append(manifest, gitignorePath)
-		}
+	if s.AwarenessRefresher != nil {
+		s.AwarenessRefresher(strategistDir, cfg.Target, s.Version)
 	}
-
-	shimManifest, err := s.runShimStep(ctx, cfg)
-	if err != nil {
+	installManifest := domain.NewInstallManifest(packageID(s.Version), plan.embeddedHashes)
+	if err := saveInstallManifest(strategistDir, installManifest); err != nil {
 		return err
 	}
-	manifest = append(manifest, shimManifest...)
+	return nil
+}
 
-	// Compile after install. Non-fatal (warn-only) by default; fatal (triggers
-	// rollback) when cfg.StrictCompile is set.
+func (s Service) compileAfterInstall(ctx context.Context, cfg domain.InstallConfig, strategistDir string) error {
 	kiPath := filepath.Join(strategistDir, "knowledge.index.yaml")
 	if compileErr := s.Compiler.CompileAll(strategistDir, kiPath); compileErr != nil {
 		if cfg.StrictCompile {
@@ -117,18 +180,6 @@ func (s Service) Install(ctx context.Context, cfg domain.InstallConfig) error {
 			telemetry.AttrTarget, strategistDir,
 		)
 	}
-
-	// Agent awareness refresh: generate agent-protocol.md and update per-agent entrypoints.
-	// Non-fatal — failures are logged internally by the refresher.
-	if s.AwarenessRefresher != nil {
-		s.AwarenessRefresher(strategistDir, cfg.Target, s.Version)
-	}
-
-	succeeded = true
-	slog.InfoContext(ctx, "[Strategist] install complete",
-		telemetry.AttrComponent, "install",
-		telemetry.AttrTarget, telemetry.SanitizePath(cfg.Target),
-	)
 	return nil
 }
 
@@ -186,20 +237,33 @@ func (s Service) runShimStep(ctx context.Context, cfg domain.InstallConfig) ([]s
 // the user has made after the initial install.
 func (s Service) applyConfig(strategistDir string, cfg domain.InstallConfig) error {
 	if !cfg.Wizard {
-		activeYAMLPath := filepath.Join(strategistDir, "active.yaml")
-		if !cfg.Force && fileExists(activeYAMLPath) {
-			return nil // preserve user customizations
-		}
-		data, err := s.Extractor.ReadFile("templates/epic-standalone.yaml")
-		if err != nil {
-			return fmt.Errorf("install: read template: %w", err)
-		}
-		if err := os.WriteFile(activeYAMLPath, data, 0o644); err != nil {
-			return fmt.Errorf("install: write active.yaml: %w", err)
-		}
-		return nil
+		return s.applySilentConfig(strategistDir, cfg)
 	}
+	return s.applyWizardConfig(strategistDir)
+}
 
+func (s Service) applySilentConfig(strategistDir string, cfg domain.InstallConfig) error {
+	activeYAMLPath := filepath.Join(strategistDir, "active.yaml")
+	if !cfg.Force && fileExists(activeYAMLPath) {
+		return nil // preserve user customizations
+	}
+	if cfg.Force && fileExists(activeYAMLPath) {
+		slog.Info("[Strategist] install force-overwriting user-owned config",
+			telemetry.AttrComponent, "install",
+			"path", activeYAMLPath,
+		)
+	}
+	data, err := s.Extractor.ReadFile("templates/epic-standalone.yaml")
+	if err != nil {
+		return fmt.Errorf("install: read template: %w", err)
+	}
+	if err := os.WriteFile(activeYAMLPath, data, 0o644); err != nil {
+		return fmt.Errorf("install: write active.yaml: %w", err)
+	}
+	return nil
+}
+
+func (s Service) applyWizardConfig(strategistDir string) error {
 	p := s.resolvePrompter()
 	wc, err := runWizard(p, s.Extractor)
 	if err != nil {
@@ -229,27 +293,31 @@ func (s Service) writeSelectedProviderManifests(strategistDir string, wc domain.
 	selectedProviders := []string{wc.DiscoveryProvider, wc.RefinementProvider}
 
 	for _, provider := range selectedProviders {
-		manifestPath, ok := installableDefaultProviders[provider]
-		if !ok {
-			continue
-		}
-
-		data, err := s.Extractor.ReadFile(manifestPath)
-		if err != nil {
-			return fmt.Errorf("read %s: %w", manifestPath, err)
-		}
-
-		providerDir := filepath.Join(strategistDir, "skills", provider)
-		if err := os.MkdirAll(providerDir, 0o755); err != nil {
-			return fmt.Errorf("mkdir %s: %w", providerDir, err)
-		}
-
-		targetPath := filepath.Join(providerDir, "skill.yaml")
-		if err := os.WriteFile(targetPath, data, 0o644); err != nil {
-			return fmt.Errorf("write %s: %w", targetPath, err)
+		if err := s.writeSelectedProviderManifest(strategistDir, provider); err != nil {
+			return err
 		}
 	}
 
+	return nil
+}
+
+func (s Service) writeSelectedProviderManifest(strategistDir, provider string) error {
+	manifestPath, ok := installableDefaultProviders[provider]
+	if !ok {
+		return nil
+	}
+	data, err := s.Extractor.ReadFile(manifestPath)
+	if err != nil {
+		return fmt.Errorf("read %s: %w", manifestPath, err)
+	}
+	providerDir := filepath.Join(strategistDir, "skills", provider)
+	if err := os.MkdirAll(providerDir, 0o755); err != nil {
+		return fmt.Errorf("mkdir %s: %w", providerDir, err)
+	}
+	targetPath := filepath.Join(providerDir, "skill.yaml")
+	if err := os.WriteFile(targetPath, data, 0o644); err != nil {
+		return fmt.Errorf("write %s: %w", targetPath, err)
+	}
 	return nil
 }
 

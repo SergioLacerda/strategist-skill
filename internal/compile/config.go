@@ -22,36 +22,9 @@ func Config(root, outputPath string) error {
 
 	sources := map[string]int64{activePath: mtime(activePath)}
 
-	// Personas: load as raw maps to preserve all YAML fields (content_by_lang, diagnostics, etc.).
-	// Validate each persona using a typed struct before including it in the artifact.
-	personasRaw, err := compileYAMLDir(filepath.Join(root, "personas"), sources)
+	personasRaw, err := compilePersonas(root, sources)
 	if err != nil {
-		return fmt.Errorf("compile config: personas: %w", err)
-	}
-	personasTyped, err := compileYAMLDirTyped[PersonaConfig](filepath.Join(root, "personas"), nil)
-	if err != nil {
-		return fmt.Errorf("compile config: personas validate: %w", err)
-	}
-	for name, persona := range personasTyped {
-		if err := persona.Validate(); err != nil {
-			return fmt.Errorf("compile config: personas/%s: %w", name, err)
-		}
-	}
-
-	// Inject pt-BR locale into each persona that has a content_by_lang map.
-	// The canonical English wording lives in the persona YAML; pt-BR is provided
-	// by the i18n package so it doesn't bloat every persona file.
-	ptBR := i18n.PTBRRuntime.ToMap()
-	for _, raw := range personasRaw {
-		personaMap, ok := raw.(map[string]any)
-		if !ok {
-			continue
-		}
-		cbl, ok := personaMap["content_by_lang"].(map[string]any)
-		if !ok {
-			continue
-		}
-		cbl["pt-BR"] = ptBR
+		return err
 	}
 
 	roles, err := compileYAMLDir(filepath.Join(root, "roles"), sources)
@@ -72,6 +45,51 @@ func Config(root, outputPath string) error {
 		return fmt.Errorf("compile config: write %s: %w", outputPath, err)
 	}
 	return nil
+}
+
+func compilePersonas(root string, sources map[string]int64) (map[string]any, error) {
+	personasDir := filepath.Join(root, "personas")
+	personasRaw, err := compileYAMLDir(personasDir, sources)
+	if err != nil {
+		return nil, fmt.Errorf("compile config: personas: %w", err)
+	}
+	if err := validateTypedPersonas(personasDir); err != nil {
+		return nil, err
+	}
+	injectPTBRRuntime(personasRaw)
+	return personasRaw, nil
+}
+
+func validateTypedPersonas(personasDir string) error {
+	personasTyped, err := compileYAMLDirTyped[PersonaConfig](personasDir, nil)
+	if err != nil {
+		return fmt.Errorf("compile config: personas validate: %w", err)
+	}
+	for name, persona := range personasTyped {
+		if err := persona.Validate(); err != nil {
+			return fmt.Errorf("compile config: personas/%s: %w", name, err)
+		}
+	}
+	return nil
+}
+
+func injectPTBRRuntime(personasRaw map[string]any) {
+	ptBR := i18n.PTBRRuntime.ToMap()
+	for _, raw := range personasRaw {
+		cbl, ok := contentByLang(raw)
+		if ok {
+			cbl["pt-BR"] = ptBR
+		}
+	}
+}
+
+func contentByLang(raw any) (map[string]any, bool) {
+	personaMap, ok := raw.(map[string]any)
+	if !ok {
+		return nil, false
+	}
+	cbl, ok := personaMap["content_by_lang"].(map[string]any)
+	return cbl, ok
 }
 
 func loadValidatedActiveRaw(activePath string) (map[string]any, error) {
@@ -104,27 +122,22 @@ func loadValidatedActiveRaw(activePath string) (map[string]any, error) {
 // compileYAMLDir reads all *.yaml files from dir, adding each to sources,
 // and returns a map of basename-without-ext → parsed content.
 func compileYAMLDir(dir string, sources map[string]int64) (map[string]any, error) {
-	entries, err := os.ReadDir(dir)
-	if os.IsNotExist(err) {
+	entries, missing, err := readYAMLDirEntries(dir)
+	if missing {
 		return map[string]any{}, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("read dir %s: %w", dir, err)
+		return nil, err
 	}
 
 	result := make(map[string]any, len(entries))
 	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".yaml") {
+		if !isYAMLFile(e) {
 			continue
 		}
-		path := filepath.Join(dir, e.Name())
-		content, loadErr := loadYAMLFile(path)
-		if loadErr != nil {
-			return nil, loadErr
+		if err := addRawYAMLFile(result, sources, dir, e.Name()); err != nil {
+			return nil, err
 		}
-		sources[path] = mtime(path)
-		name := strings.TrimSuffix(e.Name(), ".yaml")
-		result[name] = content
 	}
 	return result, nil
 }
@@ -132,29 +145,69 @@ func compileYAMLDir(dir string, sources map[string]int64) (map[string]any, error
 // compileYAMLDirTyped reads all *.yaml files from dir and returns a typed map
 // keyed by basename-without-ext.
 func compileYAMLDirTyped[T any](dir string, sources map[string]int64) (map[string]T, error) {
-	entries, err := os.ReadDir(dir)
-	if os.IsNotExist(err) {
+	entries, missing, err := readYAMLDirEntries(dir)
+	if missing {
 		return map[string]T{}, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("read dir %s: %w", dir, err)
+		return nil, err
 	}
 
 	result := make(map[string]T, len(entries))
 	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".yaml") {
+		if !isYAMLFile(e) {
 			continue
 		}
-		path := filepath.Join(dir, e.Name())
-		var content T
-		if err := loadYAMLInto(path, &content); err != nil {
+		if err := addTypedYAMLFile(result, sources, dir, e.Name()); err != nil {
 			return nil, err
 		}
-		if sources != nil {
-			sources[path] = mtime(path)
-		}
-		name := strings.TrimSuffix(e.Name(), ".yaml")
-		result[name] = content
 	}
 	return result, nil
+}
+
+func readYAMLDirEntries(dir string) ([]os.DirEntry, bool, error) {
+	entries, err := os.ReadDir(dir)
+	if os.IsNotExist(err) {
+		return nil, true, nil
+	}
+	if err != nil {
+		return nil, false, fmt.Errorf("read dir %s: %w", dir, err)
+	}
+	return entries, false, nil
+}
+
+func addRawYAMLFile(result map[string]any, sources map[string]int64, dir, name string) error {
+	path := filepath.Join(dir, name)
+	content, err := loadYAMLFile(path)
+	if err != nil {
+		return err
+	}
+	sources[path] = mtime(path)
+	result[strings.TrimSuffix(name, ".yaml")] = content
+	return nil
+}
+
+func addTypedYAMLFile[T any](result map[string]T, sources map[string]int64, dir, name string) error {
+	path := filepath.Join(dir, name)
+	content, err := loadTypedYAMLFile[T](path)
+	if err != nil {
+		return err
+	}
+	if sources != nil {
+		sources[path] = mtime(path)
+	}
+	result[strings.TrimSuffix(name, ".yaml")] = content
+	return nil
+}
+
+func isYAMLFile(e os.DirEntry) bool {
+	return !e.IsDir() && strings.HasSuffix(e.Name(), ".yaml")
+}
+
+func loadTypedYAMLFile[T any](path string) (T, error) {
+	var content T
+	if err := loadYAMLInto(path, &content); err != nil {
+		return content, err
+	}
+	return content, nil
 }

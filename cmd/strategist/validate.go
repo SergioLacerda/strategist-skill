@@ -114,18 +114,29 @@ Checks performed:
 }
 
 func validateActiveYAML(path string) error {
-	raw, err := os.ReadFile(path)
+	cfg, err := readActiveConfigForValidation(path)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return fmt.Errorf("file not found")
-		}
-		return fmt.Errorf("read: %w", err)
+		return err
 	}
+	return validateActiveFields(cfg)
+}
 
+func readActiveConfigForValidation(path string) (domain.ActiveConfig, error) {
+	raw, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return domain.ActiveConfig{}, fmt.Errorf("file not found")
+	}
+	if err != nil {
+		return domain.ActiveConfig{}, fmt.Errorf("read: %w", err)
+	}
 	var cfg domain.ActiveConfig
 	if err := yaml.Unmarshal(raw, &cfg); err != nil {
-		return fmt.Errorf("invalid YAML: %w", err)
+		return domain.ActiveConfig{}, fmt.Errorf("invalid YAML: %w", err)
 	}
+	return cfg, nil
+}
+
+func validateActiveFields(cfg domain.ActiveConfig) error {
 	if cfg.Mode == "" {
 		return fmt.Errorf("missing required field: mode")
 	}
@@ -152,22 +163,25 @@ func validatePersonasDir(dir string) (errs []string, checks int) {
 			continue
 		}
 		checks++
-		path := filepath.Join(dir, e.Name())
-		raw, err := os.ReadFile(path)
-		if err != nil {
-			errs = append(errs, fmt.Sprintf("personas/%s: read: %v", e.Name(), err))
-			continue
-		}
-		var p domain.PersonaConfig
-		if err := yaml.Unmarshal(raw, &p); err != nil {
-			errs = append(errs, fmt.Sprintf("personas/%s: invalid YAML: %v", e.Name(), err))
-			continue
-		}
-		if rtErr := p.ValidateForRuntime(); rtErr != nil {
-			errs = append(errs, fmt.Sprintf("personas/%s: %v", e.Name(), rtErr))
-		}
+		errs = append(errs, validatePersonaFile(dir, e.Name())...)
 	}
 	return errs, checks
+}
+
+func validatePersonaFile(dir, name string) []string {
+	path := filepath.Join(dir, name)
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return []string{fmt.Sprintf("personas/%s: read: %v", name, err)}
+	}
+	var p domain.PersonaConfig
+	if err := yaml.Unmarshal(raw, &p); err != nil {
+		return []string{fmt.Sprintf("personas/%s: invalid YAML: %v", name, err)}
+	}
+	if err := p.ValidateForRuntime(); err != nil {
+		return []string{fmt.Sprintf("personas/%s: %v", name, err)}
+	}
+	return nil
 }
 
 func validateRolesDir(dir string) (errs []string, checks int) {
@@ -188,35 +202,50 @@ func validateRolesDir(dir string) (errs []string, checks int) {
 
 func validateRoleFile(dir, name string) (errs []string) {
 	path := filepath.Join(dir, name)
-	raw, err := os.ReadFile(path)
+	raw, shape, err := readRoleShape(path)
 	if err != nil {
-		return []string{fmt.Sprintf("roles/%s: read: %v", name, err)}
-	}
-
-	var shape map[string]any
-	if err := yaml.Unmarshal(raw, &shape); err != nil {
-		return []string{fmt.Sprintf("roles/%s: invalid YAML: %v", name, err)}
+		return []string{fmt.Sprintf("roles/%s: %v", name, err)}
 	}
 
 	if _, isRoleDef := shape["role"]; isRoleDef {
-		var role domain.RoleConfig
-		if err := yaml.Unmarshal(raw, &role); err != nil {
-			return []string{fmt.Sprintf("roles/%s: invalid YAML: %v", name, err)}
-		}
-		if valErr := role.Validate(); valErr != nil {
-			errs = append(errs, fmt.Sprintf("roles/%s: %v", name, valErr))
-		}
-		return errs
+		return validateRoleDefinition(name, raw)
 	}
 
+	return validateRoleSlotMap(name, raw)
+}
+
+func readRoleShape(path string) ([]byte, map[string]any, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read: %w", err)
+	}
+	var shape map[string]any
+	if err := yaml.Unmarshal(raw, &shape); err != nil {
+		return nil, nil, fmt.Errorf("invalid YAML: %w", err)
+	}
+	return raw, shape, nil
+}
+
+func validateRoleDefinition(name string, raw []byte) []string {
+	var role domain.RoleConfig
+	if err := yaml.Unmarshal(raw, &role); err != nil {
+		return []string{fmt.Sprintf("roles/%s: invalid YAML: %v", name, err)}
+	}
+	if err := role.Validate(); err != nil {
+		return []string{fmt.Sprintf("roles/%s: %v", name, err)}
+	}
+	return nil
+}
+
+func validateRoleSlotMap(name string, raw []byte) []string {
 	var slotMap domain.RoleSlotMap
 	if err := yaml.Unmarshal(raw, &slotMap); err != nil {
 		return []string{fmt.Sprintf("roles/%s: invalid YAML: %v", name, err)}
 	}
-	if valErr := slotMap.Validate(); valErr != nil {
-		errs = append(errs, fmt.Sprintf("roles/%s: %v", name, valErr))
+	if err := slotMap.Validate(); err != nil {
+		return []string{fmt.Sprintf("roles/%s: %v", name, err)}
 	}
-	return errs
+	return nil
 }
 
 func validateYAMLFile(path string) error {

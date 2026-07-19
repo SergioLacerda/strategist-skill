@@ -34,47 +34,74 @@ WORKSPACE section reports:
 }
 
 func runInitiative(_ *cobra.Command, _ []string) error {
-	cwd, err := os.Getwd()
+	root, projectRoot, err := resolveInitiativeRoot()
 	if err != nil {
-		return fmt.Errorf("initiative: get cwd: %w", err)
+		return err
 	}
 
-	root, projectRoot, err := resolveStrategistRoot(initiativeRoot, cwd)
+	cfg, err := readInitiativeConfig(root)
 	if err != nil {
-		return fmt.Errorf("initiative: %w", err)
-	}
-
-	raw, err := os.ReadFile(filepath.Join(root, "active.yaml"))
-	if err != nil {
-		return fmt.Errorf("initiative: read active.yaml: %w", err)
-	}
-
-	var cfg domain.ActiveConfig
-	if err := yaml.Unmarshal(raw, &cfg); err != nil {
-		return fmt.Errorf("initiative: parse active.yaml: %w", err)
+		return err
 	}
 
 	printStatusBanner("initiative")
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
 
-	if _, err := fmt.Fprintln(w, "SLOTS\t\t\t"); err != nil {
-		return fmt.Errorf("initiative: write header: %w", err)
+	if err := writeSlotsSection(w, cfg, root); err != nil {
+		return err
 	}
-	for _, slot := range []string{"discovery", "refinement", "execution"} {
-		providerID := cfg.Slots[slot]
-		role, class, status := providerRow(root, slot, providerID)
-		if _, err := fmt.Fprintf(w, "%s\t%s\t%s %s\t%s\n", slot, providerID, role, class, status); err != nil {
-			return fmt.Errorf("initiative: write row: %w", err)
-		}
-	}
-
 	if err := writeWorkspaceSection(w, cfg, root, projectRoot); err != nil {
 		return err
 	}
 
 	if err := w.Flush(); err != nil {
 		return fmt.Errorf("initiative: flush output: %w", err)
+	}
+	return nil
+}
+
+func resolveInitiativeRoot() (string, string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", "", fmt.Errorf("initiative: get cwd: %w", err)
+	}
+	root, projectRoot, err := resolveStrategistRoot(initiativeRoot, cwd)
+	if err != nil {
+		return "", "", fmt.Errorf("initiative: %w", err)
+	}
+	return root, projectRoot, nil
+}
+
+func readInitiativeConfig(root string) (domain.ActiveConfig, error) {
+	raw, err := os.ReadFile(filepath.Join(root, "active.yaml"))
+	if err != nil {
+		return domain.ActiveConfig{}, fmt.Errorf("initiative: read active.yaml: %w", err)
+	}
+	var cfg domain.ActiveConfig
+	if err := yaml.Unmarshal(raw, &cfg); err != nil {
+		return domain.ActiveConfig{}, fmt.Errorf("initiative: parse active.yaml: %w", err)
+	}
+	return cfg, nil
+}
+
+func writeSlotsSection(w *tabwriter.Writer, cfg domain.ActiveConfig, root string) error {
+	if _, err := fmt.Fprintln(w, "SLOTS\t\t\t"); err != nil {
+		return fmt.Errorf("initiative: write header: %w", err)
+	}
+	for _, slot := range []string{"discovery", "refinement", "execution"} {
+		if err := writeSlotRow(w, cfg, root, slot); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func writeSlotRow(w *tabwriter.Writer, cfg domain.ActiveConfig, root, slot string) error {
+	providerID := cfg.Slots[slot]
+	role, class, status := providerRow(root, slot, providerID)
+	if _, err := fmt.Fprintf(w, "%s\t%s\t%s %s\t%s\n", slot, providerID, role, class, status); err != nil {
+		return fmt.Errorf("initiative: write row: %w", err)
 	}
 	return nil
 }
@@ -147,6 +174,14 @@ func readLastMissionID(path string) string {
 	}
 	defer func() { _ = f.Close() }() //nolint:errcheck // read-only file; close error is not actionable
 
+	lastLine := lastNonEmptyLine(f)
+	if lastLine == "" {
+		return "—"
+	}
+	return missionIDFromJSONLine(lastLine)
+}
+
+func lastNonEmptyLine(f *os.File) string {
 	var lastLine string
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
@@ -154,12 +189,12 @@ func readLastMissionID(path string) string {
 			lastLine = line
 		}
 	}
-	if lastLine == "" {
-		return "—"
-	}
+	return lastLine
+}
 
+func missionIDFromJSONLine(line string) string {
 	var obj map[string]any
-	if err := json.Unmarshal([]byte(lastLine), &obj); err != nil {
+	if err := json.Unmarshal([]byte(line), &obj); err != nil {
 		return "—"
 	}
 	if id, ok := obj["mission_id"].(string); ok && id != "" {

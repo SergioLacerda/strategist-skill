@@ -9,6 +9,7 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/integrity"
 	"github.com/SergioLacerda/strategist-skill/internal/treasure"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 // --- SQ-006 (Track T-I): treasure-chest add / remove ---
@@ -82,21 +83,12 @@ func runTreasureChestAdd(cmd *cobra.Command, args []string, opts treasureChestAd
 	if run := telemetryRunFromCmd(cmd); run != nil {
 		run.SetSilent()
 	}
-	opts.ID = stringFlag(cmd, "id", opts.ID)
-	opts.Scope = stringFlag(cmd, "scope", opts.Scope)
-	opts.TrustTier = stringFlag(cmd, "trust-tier", opts.TrustTier)
-	opts.ReviewedBy = stringFlag(cmd, "reviewed-by", opts.ReviewedBy)
-	opts.Tags = stringFlag(cmd, "tags", opts.Tags)
-	opts.IndexAfter = boolFlag(cmd, "index", opts.IndexAfter)
+	opts = treasureChestAddOptionsFromFlags(cmd, opts)
 
 	path := args[0]
-	cwd, err := os.Getwd()
+	root, err := resolveTreasureChestCommandRoot(cmd, "add")
 	if err != nil {
-		return fmt.Errorf("treasure-chest add: get cwd: %w", err)
-	}
-	root, _, err := resolveStrategistRoot(treasureChestRootFromCmd(cmd), cwd)
-	if err != nil {
-		return fmt.Errorf("treasure-chest add: %w", err)
+		return err
 	}
 
 	id := opts.ID
@@ -110,32 +102,54 @@ func runTreasureChestAdd(cmd *cobra.Command, args []string, opts treasureChestAd
 
 	tags := treasure.ParseTagsFlag(opts.Tags)
 
-	activePath := filepath.Join(root, "active.yaml")
-	governedPath := filepath.Join(root, "treasure-chests.yaml")
-	indexPath := filepath.Join(root, "knowledge.index.yaml")
-
-	activeDoc, governedDoc, indexDoc, err := treasure.LoadChestYAMLDocs(activePath, governedPath, indexPath)
+	indexPath, err := applyTreasureChestAdd(root, id, path, opts, tags)
 	if err != nil {
 		return fmt.Errorf("treasure-chest add: %w", err)
 	}
 
-	if err := treasure.ApplyAddMutations(activeDoc, governedDoc, indexDoc, id, path, opts.Scope, opts.TrustTier, opts.ReviewedBy, tags); err != nil {
-		return fmt.Errorf("treasure-chest add: %w", err)
-	}
+	fmt.Printf("[Strategist] add: OK (id=%s)\n", id)
 
+	return finishChestAdd(root, indexPath, opts.IndexAfter)
+}
+
+func treasureChestAddOptionsFromFlags(cmd *cobra.Command, opts treasureChestAddOptions) treasureChestAddOptions {
+	opts.ID = stringFlag(cmd, "id", opts.ID)
+	opts.Scope = stringFlag(cmd, "scope", opts.Scope)
+	opts.TrustTier = stringFlag(cmd, "trust-tier", opts.TrustTier)
+	opts.ReviewedBy = stringFlag(cmd, "reviewed-by", opts.ReviewedBy)
+	opts.Tags = stringFlag(cmd, "tags", opts.Tags)
+	opts.IndexAfter = boolFlag(cmd, "index", opts.IndexAfter)
+	return opts
+}
+
+func applyTreasureChestAdd(root, id, path string, opts treasureChestAddOptions, tags []string) (string, error) {
+	activePath := filepath.Join(root, "active.yaml")
+	governedPath := filepath.Join(root, "treasure-chests.yaml")
+	indexPath := filepath.Join(root, "knowledge.index.yaml")
+	activeDoc, governedDoc, indexDoc, err := treasure.LoadChestYAMLDocs(activePath, governedPath, indexPath)
+	if err != nil {
+		return "", fmt.Errorf("load chest YAML docs: %w", err)
+	}
+	if err := treasure.ApplyAddMutations(activeDoc, governedDoc, indexDoc, id, path, opts.Scope, opts.TrustTier, opts.ReviewedBy, tags); err != nil {
+		return "", fmt.Errorf("apply add mutations: %w", err)
+	}
+	if err := writeTreasureChestAddDocs(activePath, governedPath, indexPath, activeDoc, governedDoc, indexDoc); err != nil {
+		return "", err
+	}
+	refreshConfigLock(root, activePath)
+	return indexPath, nil
+}
+
+func writeTreasureChestAddDocs(activePath, governedPath, indexPath string, activeDoc, governedDoc, indexDoc *yaml.Node) error {
 	written, err := treasure.WriteYAMLNodes(
 		treasure.YAMLWrite{Path: activePath, Doc: activeDoc},
 		treasure.YAMLWrite{Path: governedPath, Doc: governedDoc},
 		treasure.YAMLWrite{Path: indexPath, Doc: indexDoc},
 	)
 	if err != nil {
-		return fmt.Errorf("treasure-chest add: partial write after %v: %w", written, err)
+		return fmt.Errorf("partial write after %v: %w", written, err)
 	}
-	refreshConfigLock(root, activePath)
-
-	fmt.Printf("[Strategist] add: OK (id=%s)\n", id)
-
-	return finishChestAdd(root, indexPath, opts.IndexAfter)
+	return nil
 }
 
 // finishChestAdd reports the stale-index hint, or rebuilds the compiled index when
@@ -174,46 +188,62 @@ func runTreasureChestRemove(cmd *cobra.Command, args []string, opts treasureChes
 	}
 	opts.ID = stringFlag(cmd, "id", opts.ID)
 
-	var pathArg string
-	if len(args) == 1 {
-		pathArg = args[0]
-	}
+	pathArg := optionalPathArg(args)
 	if pathArg == "" && opts.ID == "" {
 		return fmt.Errorf("treasure-chest remove: provide a path or --id")
 	}
 
-	cwd, err := os.Getwd()
+	root, err := resolveTreasureChestCommandRoot(cmd, "remove")
 	if err != nil {
-		return fmt.Errorf("treasure-chest remove: get cwd: %w", err)
+		return err
 	}
-	root, _, err := resolveStrategistRoot(treasureChestRootFromCmd(cmd), cwd)
+
+	id, hasJewels, err := applyTreasureChestRemove(root, pathArg, opts.ID)
 	if err != nil {
 		return fmt.Errorf("treasure-chest remove: %w", err)
 	}
+	reportRemoveResult(id, hasJewels)
+	return nil
+}
 
-	id, err := treasure.ResolveRemoveTarget(root, pathArg, opts.ID)
+func applyTreasureChestRemove(root, pathArg, idOpt string) (string, bool, error) {
+	id, err := treasure.ResolveRemoveTarget(root, pathArg, idOpt)
 	if err != nil {
-		return fmt.Errorf("treasure-chest remove: %w", err)
+		return "", false, fmt.Errorf("resolve remove target: %w", err)
 	}
-
 	paths := treasure.NewChestPaths(root)
 	docs, err := treasure.LoadRemoveDocs(paths)
 	if err != nil {
-		return fmt.Errorf("treasure-chest remove: %w", err)
+		return "", false, fmt.Errorf("load remove docs: %w", err)
 	}
-
 	if err := treasure.ApplyRemoveMutations(docs, id); err != nil {
-		return fmt.Errorf("treasure-chest remove: %w", err)
+		return "", false, fmt.Errorf("apply remove mutations: %w", err)
 	}
-
 	written, err := treasure.WriteRemoveDocs(paths, docs)
 	if err != nil {
-		return fmt.Errorf("treasure-chest remove: partial write after %v: %w", written, err)
+		return "", false, fmt.Errorf("partial write after %v: %w", written, err)
 	}
 	refreshConfigLock(root, paths.Active)
+	return id, len(docs.Jewels) > 0, nil
+}
 
-	reportRemoveResult(id, len(docs.Jewels) > 0)
-	return nil
+func optionalPathArg(args []string) string {
+	if len(args) == 1 {
+		return args[0]
+	}
+	return ""
+}
+
+func resolveTreasureChestCommandRoot(cmd *cobra.Command, action string) (string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("treasure-chest %s: get cwd: %w", action, err)
+	}
+	root, _, err := resolveStrategistRoot(treasureChestRootFromCmd(cmd), cwd)
+	if err != nil {
+		return "", fmt.Errorf("treasure-chest %s: %w", action, err)
+	}
+	return root, nil
 }
 
 func reportRemoveResult(id string, hasJewels bool) {

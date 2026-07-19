@@ -109,48 +109,21 @@ func validateProvider(registry map[string]string, provider, expectedRisk string)
 func runWizard(p Prompter, extractor domain.FileExtractor) (domain.WizardConfig, error) {
 	providerRisk := loadKnownProviders(extractor)
 	skillCfg := loadSkillConfig(extractor)
-	// Prompt 1 — bilingual, bundle not yet chosen
-	uiLang, err := p.Select("Preferred language / Idioma preferido", "en", skillCfg.LangOptions)
+	uiLang, docLang, chatLang, codeLang, b, err := promptLanguages(p, skillCfg)
 	if err != nil {
-		return domain.WizardConfig{}, fmt.Errorf("wizard: ui_language: %w", err)
+		return domain.WizardConfig{}, err
 	}
-	uiLang = normLang(uiLang)
-
-	b := i18n.BundleFor(uiLang)
-
-	docLang, err := p.Select(b.PromptDocLang, "en", skillCfg.LangOptions)
+	mode, basePath, err := promptWorkspace(p, b, skillCfg)
 	if err != nil {
-		return domain.WizardConfig{}, fmt.Errorf("wizard: doc_language: %w", err)
-	}
-	chatLang, err := p.Select(b.PromptChatLang, "en", skillCfg.LangOptions)
-	if err != nil {
-		return domain.WizardConfig{}, fmt.Errorf("wizard: chat_language: %w", err)
-	}
-	codeLang, err := p.Select(b.PromptCodeLang, "en", skillCfg.LangOptions)
-	if err != nil {
-		return domain.WizardConfig{}, fmt.Errorf("wizard: code_language: %w", err)
-	}
-
-	mode, err := p.Select(b.PromptMode, "epic", skillCfg.ModeOptions)
-	if err != nil {
-		return domain.WizardConfig{}, fmt.Errorf("wizard: mode: %w", err)
-	}
-	basePath, err := p.Input(b.PromptBasePath, ".analysis")
-	if err != nil {
-		return domain.WizardConfig{}, fmt.Errorf("wizard: base_path: %w", err)
+		return domain.WizardConfig{}, err
 	}
 	discovery, refinement, execution, err := promptSlots(p, b, providerRisk)
 	if err != nil {
 		return domain.WizardConfig{}, err
 	}
-
-	fmt.Println(b.HeaderChest)
-	chestPath, err := p.Input(b.PromptChestPath, "")
+	chestPath, err := promptTreasureChest(p, b)
 	if err != nil {
-		return domain.WizardConfig{}, fmt.Errorf("wizard: treasure_chest: %w", err)
-	}
-	if chestPath == "" {
-		fmt.Println(b.SkipChestHint)
+		return domain.WizardConfig{}, err
 	}
 
 	return domain.WizardConfig{
@@ -167,31 +140,85 @@ func runWizard(p Prompter, extractor domain.FileExtractor) (domain.WizardConfig,
 	}, nil
 }
 
+func promptLanguages(p Prompter, skillCfg skillConfig) (uiLang, docLang, chatLang, codeLang string, b i18n.WizardStrings, err error) {
+	uiLang, err = p.Select("Preferred language / Idioma preferido", "en", skillCfg.LangOptions)
+	if err != nil {
+		err = fmt.Errorf("wizard: ui_language: %w", err)
+		return
+	}
+	uiLang = normLang(uiLang)
+	b = i18n.BundleFor(uiLang)
+	docLang, err = selectLang(p, b.PromptDocLang, skillCfg.LangOptions, "doc_language")
+	if err != nil {
+		return
+	}
+	chatLang, err = selectLang(p, b.PromptChatLang, skillCfg.LangOptions, "chat_language")
+	if err != nil {
+		return
+	}
+	codeLang, err = selectLang(p, b.PromptCodeLang, skillCfg.LangOptions, "code_language")
+	return
+}
+
+func selectLang(p Prompter, prompt string, options []string, field string) (string, error) {
+	value, err := p.Select(prompt, "en", options)
+	if err != nil {
+		return "", fmt.Errorf("wizard: %s: %w", field, err)
+	}
+	return value, nil
+}
+
+func promptWorkspace(p Prompter, b i18n.WizardStrings, skillCfg skillConfig) (string, string, error) {
+	mode, err := p.Select(b.PromptMode, "epic", skillCfg.ModeOptions)
+	if err != nil {
+		return "", "", fmt.Errorf("wizard: mode: %w", err)
+	}
+	basePath, err := p.Input(b.PromptBasePath, ".analysis")
+	if err != nil {
+		return "", "", fmt.Errorf("wizard: base_path: %w", err)
+	}
+	return mode, basePath, nil
+}
+
+func promptTreasureChest(p Prompter, b i18n.WizardStrings) (string, error) {
+	fmt.Println(b.HeaderChest)
+	chestPath, err := p.Input(b.PromptChestPath, "")
+	if err != nil {
+		return "", fmt.Errorf("wizard: treasure_chest: %w", err)
+	}
+	if chestPath == "" {
+		fmt.Println(b.SkipChestHint)
+	}
+	return chestPath, nil
+}
+
 // promptSlots collects discovery, refinement and execution slot providers.
 func promptSlots(p Prompter, b i18n.WizardStrings, providerRisk map[string]string) (discovery, refinement, execution string, err error) {
 	fmt.Println(b.HeaderSlots)
-	discovery, err = p.SelectOrInput(b.PromptDiscovery, "brainstorming", []string{"brainstorming"}, b.LabelCustomInput)
+	discovery, err = promptProvider(p, b.PromptDiscovery, "brainstorming", []string{"brainstorming"}, b.LabelCustomInput, providerRisk, "write_analysis", "discovery")
 	if err != nil {
-		return "", "", "", fmt.Errorf("wizard: discovery: %w", err)
+		return "", "", "", err
 	}
-	if w := validateProvider(providerRisk, discovery, "write_analysis"); w != "" {
-		fmt.Println(w)
-	}
-	refinement, err = p.SelectOrInput(b.PromptRefinement, "openspec-explore", []string{"openspec-explore"}, b.LabelCustomInput)
+	refinement, err = promptProvider(p, b.PromptRefinement, "openspec-explore", []string{"openspec-explore"}, b.LabelCustomInput, providerRisk, "write_analysis", "refinement")
 	if err != nil {
-		return "", "", "", fmt.Errorf("wizard: refinement: %w", err)
+		return "", "", "", err
 	}
-	if w := validateProvider(providerRisk, refinement, "write_analysis"); w != "" {
-		fmt.Println(w)
-	}
-	execution, err = p.SelectOrInput(b.PromptExecution, "sniper", []string{"sniper", "openspec-apply-change"}, b.LabelCustomInput)
+	execution, err = promptProvider(p, b.PromptExecution, "sniper", []string{"sniper", "openspec-apply-change"}, b.LabelCustomInput, providerRisk, "controlled", "execution")
 	if err != nil {
-		return "", "", "", fmt.Errorf("wizard: execution: %w", err)
-	}
-	if w := validateProvider(providerRisk, execution, "controlled"); w != "" {
-		fmt.Println(w)
+		return "", "", "", err
 	}
 	return discovery, refinement, execution, nil
+}
+
+func promptProvider(p Prompter, prompt, defaultVal string, options []string, customLabel string, providerRisk map[string]string, expectedRisk, field string) (string, error) {
+	provider, err := p.SelectOrInput(prompt, defaultVal, options, customLabel)
+	if err != nil {
+		return "", fmt.Errorf("wizard: %s: %w", field, err)
+	}
+	if w := validateProvider(providerRisk, provider, expectedRisk); w != "" {
+		fmt.Println(w)
+	}
+	return provider, nil
 }
 
 // normLang normalises language input to canonical form: "en" or "pt-BR".

@@ -54,35 +54,51 @@ func EvaluatePipelineBypass(e PipelineEvidence) PipelineBypassDecision {
 	if e.Route == MissionRouteDirectExecute {
 		return evaluateDirectExecuteBypass(e)
 	}
+	return evaluateMainRouteBypass(e)
+}
+
+func evaluateMainRouteBypass(e PipelineEvidence) PipelineBypassDecision {
 	if !e.DiscoveryPresent {
-		return blockedBypassDecision(
-			e,
-			"ranger",
-			fmt.Sprintf("%s/refined/%s/analysis.md", e.BasePath, e.MissionID),
-			fmt.Sprintf("re-invoke the mission through the full pipeline so Ranger and Archivist can produce %s/refined/%s/analysis.md", e.BasePath, e.MissionID),
-		)
+		return discoveryBypassDecision(e)
 	}
 	if !e.RefinementPresent || !e.TasksPresent {
-		missing := fmt.Sprintf("%s/refined/%s/tasks.md", e.BasePath, e.MissionID)
-		if !e.RefinementPresent {
-			missing = fmt.Sprintf("%s/refined/%s/", e.BasePath, e.MissionID)
-		}
-		return blockedBypassDecision(
-			e,
-			"archivist",
-			missing,
-			fmt.Sprintf("resume at Archivist by generating the refined plan under %s/refined/%s/", e.BasePath, e.MissionID),
-		)
+		return refinementBypassDecision(e)
 	}
 	if !e.GatePresented || !e.GateApproved {
-		return blockedBypassDecision(
-			e,
-			"approval_gate",
-			"approval_gate:approved",
-			fmt.Sprintf("present the approval gate for mission %s and wait for explicit user approval before execution", e.MissionID),
-		)
+		return approvalGateBypassDecision(e)
 	}
 	return PipelineBypassDecision{Allowed: true}
+}
+
+func discoveryBypassDecision(e PipelineEvidence) PipelineBypassDecision {
+	return blockedBypassDecision(
+		e,
+		"ranger",
+		fmt.Sprintf("%s/refined/%s/analysis.md", e.BasePath, e.MissionID),
+		fmt.Sprintf("re-invoke the mission through the full pipeline so Ranger and Archivist can produce %s/refined/%s/analysis.md", e.BasePath, e.MissionID),
+	)
+}
+
+func refinementBypassDecision(e PipelineEvidence) PipelineBypassDecision {
+	missing := fmt.Sprintf("%s/refined/%s/tasks.md", e.BasePath, e.MissionID)
+	if !e.RefinementPresent {
+		missing = fmt.Sprintf("%s/refined/%s/", e.BasePath, e.MissionID)
+	}
+	return blockedBypassDecision(
+		e,
+		"archivist",
+		missing,
+		fmt.Sprintf("resume at Archivist by generating the refined plan under %s/refined/%s/", e.BasePath, e.MissionID),
+	)
+}
+
+func approvalGateBypassDecision(e PipelineEvidence) PipelineBypassDecision {
+	return blockedBypassDecision(
+		e,
+		"approval_gate",
+		"approval_gate:approved",
+		fmt.Sprintf("present the approval gate for mission %s and wait for explicit user approval before execution", e.MissionID),
+	)
 }
 
 func evaluateDirectExecuteBypass(e PipelineEvidence) PipelineBypassDecision {

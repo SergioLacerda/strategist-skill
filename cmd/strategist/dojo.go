@@ -81,26 +81,42 @@ func runDojoList(_ *cobra.Command, _ []string) error {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	for _, e := range entries {
-		if !e.IsDir() || e.Name() == ".last-run" {
-			continue
-		}
-		criteriaPath := filepath.Join(dojoDir, e.Name(), "criteria.yaml")
-		description := ""
-		if raw, err := os.ReadFile(criteriaPath); err == nil {
-			var c domain.DojoCriteria
-			if yaml.Unmarshal(raw, &c) == nil {
-				description = c.Description
-			}
-		}
-		if _, err := fmt.Fprintf(w, "%s\t%s\n", e.Name(), description); err != nil {
-			return fmt.Errorf("dojo list: write: %w", err)
-		}
+	if err := writeDojoListRows(w, dojoDir, entries); err != nil {
+		return err
 	}
 	if err := w.Flush(); err != nil {
 		return fmt.Errorf("dojo list: flush: %w", err)
 	}
 	return nil
+}
+
+func writeDojoListRows(w *tabwriter.Writer, dojoDir string, entries []os.DirEntry) error {
+	for _, e := range entries {
+		if !isDojoScenarioEntry(e) {
+			continue
+		}
+		if _, err := fmt.Fprintf(w, "%s\t%s\n", e.Name(), dojoDescription(dojoDir, e.Name())); err != nil {
+			return fmt.Errorf("dojo list: write: %w", err)
+		}
+	}
+	return nil
+}
+
+func isDojoScenarioEntry(e os.DirEntry) bool {
+	return e.IsDir() && e.Name() != ".last-run"
+}
+
+func dojoDescription(dojoDir, scenario string) string {
+	criteriaPath := filepath.Join(dojoDir, scenario, "criteria.yaml")
+	raw, err := os.ReadFile(criteriaPath)
+	if err != nil {
+		return ""
+	}
+	var c domain.DojoCriteria
+	if yaml.Unmarshal(raw, &c) != nil {
+		return ""
+	}
+	return c.Description
 }
 
 func resolveDojoRoots(root string) (strategistRoot, basePath string, err error) {

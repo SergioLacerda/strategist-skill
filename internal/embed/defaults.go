@@ -49,22 +49,34 @@ func extractFS(src fs.FS, root, targetDir string, force bool) error {
 
 func makeWalkFn(src fs.FS, root, targetDir string, force bool) fs.WalkDirFunc {
 	return func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return fmt.Errorf("embed: walk %s: %w", path, err)
-		}
-		rel := strings.TrimPrefix(path, root+"/")
-		if rel == root || rel == "" {
-			return nil
+		rel, ok, err := embeddedRelPath(path, root, err)
+		if err != nil || !ok {
+			return err
 		}
 		dst := filepath.Join(targetDir, rel)
 		if d.IsDir() {
-			if mkErr := os.MkdirAll(dst, 0o755); mkErr != nil {
-				return fmt.Errorf("embed: mkdir %s: %w", dst, mkErr)
-			}
-			return nil
+			return ensureEmbedDir(dst)
 		}
 		return writeEmbedFile(src, path, dst, force)
 	}
+}
+
+func embeddedRelPath(path, root string, walkErr error) (string, bool, error) {
+	if walkErr != nil {
+		return "", false, fmt.Errorf("embed: walk %s: %w", path, walkErr)
+	}
+	rel := strings.TrimPrefix(path, root+"/")
+	if rel == root || rel == "" {
+		return "", false, nil
+	}
+	return rel, true, nil
+}
+
+func ensureEmbedDir(dst string) error {
+	if mkErr := os.MkdirAll(dst, 0o755); mkErr != nil {
+		return fmt.Errorf("embed: mkdir %s: %w", dst, mkErr)
+	}
+	return nil
 }
 
 // writeEmbedFile writes embedded file src/path to dst.

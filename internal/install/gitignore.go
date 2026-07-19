@@ -28,13 +28,20 @@ func ensureGitignore(target string) error {
 	if err != nil {
 		return fmt.Errorf("open .gitignore: %w", err)
 	}
-	line := gitignoreEntry
-	if len(existing) > 0 && !strings.HasSuffix(string(existing), "\n") {
-		line = "\n" + line
-	}
-	if _, err := fmt.Fprintln(f, line); err != nil {
+	if _, err := fmt.Fprintln(f, gitignoreLine(existing)); err != nil {
 		return fmt.Errorf("write .gitignore: %w", errors.Join(err, f.Close()))
 	}
+	return closeGitignore(f)
+}
+
+func gitignoreLine(existing []byte) string {
+	if len(existing) > 0 && !strings.HasSuffix(string(existing), "\n") {
+		return "\n" + gitignoreEntry
+	}
+	return gitignoreEntry
+}
+
+func closeGitignore(f *os.File) error {
 	if err := f.Close(); err != nil {
 		return fmt.Errorf("close .gitignore: %w", err)
 	}
