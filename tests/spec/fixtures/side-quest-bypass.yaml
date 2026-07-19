@@ -8,7 +8,6 @@ input:
   active_yaml:
     mode: pragmatic
     base_path: .analysis
-    roles_config: default
   archivist_response:
     has_opportunity_attack_evaluation: false
     has_refined_artifacts: true

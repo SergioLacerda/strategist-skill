@@ -144,8 +144,9 @@ func scanMissionDirEntry(dir string, entry os.DirEntry) (ScannedMission, bool, e
 }
 
 // ParseMissionTasks extracts task titles and the side_quests_approved: block from a
-// tasks.md file. The block is YAML embedded in markdown with backtick-wrapped scalars
-// (e.g. “ `SQ-001` “) — backticks are stripped before unmarshaling.
+// tasks.md file. The block is YAML embedded in markdown with optional fenced YAML
+// and backtick-wrapped scalars (e.g. “ `SQ-001` “) — backticks are stripped before
+// unmarshaling.
 func ParseMissionTasks(missionID, path string) (ScannedMission, error) {
 	raw, err := os.ReadFile(path) //nolint:gosec // G304
 	if err != nil {
@@ -195,7 +196,9 @@ func sideQuestBlockEnd(lines []string, startIdx int) int {
 }
 
 func parseSideQuestBlock(lines []string, path string) ([]SQEntry, error) {
-	block := strings.ReplaceAll(strings.Join(lines, "\n"), "`", "")
+	block := normalizeSideQuestYAML(lines)
+	block = normalizeLegacySideQuestFields(block)
+	block = strings.ReplaceAll(block, "`", "")
 	var parsed struct {
 		SideQuestsApproved []SQEntry `yaml:"side_quests_approved"`
 	}
@@ -203,6 +206,77 @@ func parseSideQuestBlock(lines []string, path string) ([]SQEntry, error) {
 		return nil, fmt.Errorf("parse side_quests_approved in %s: %w", path, err)
 	}
 	return parsed.SideQuestsApproved, nil
+}
+
+func normalizeSideQuestYAML(lines []string) string {
+	if len(lines) == 0 {
+		return ""
+	}
+
+	contentStart := 1
+	for contentStart < len(lines) && strings.TrimSpace(lines[contentStart]) == "" {
+		contentStart++
+	}
+	if contentStart >= len(lines) || !isFenceLine(lines[contentStart]) {
+		return strings.Join(lines, "\n")
+	}
+
+	var body []string
+	for i := contentStart + 1; i < len(lines); i++ {
+		if isFenceLine(lines[i]) {
+			break
+		}
+		body = append(body, lines[i])
+	}
+
+	return lines[0] + "\n" + strings.Join(body, "\n")
+}
+
+func isFenceLine(line string) bool {
+	trimmed := strings.TrimSpace(line)
+	if !strings.HasPrefix(trimmed, "```") {
+		return false
+	}
+	lang := strings.TrimSpace(strings.TrimPrefix(trimmed, "```"))
+	return lang == "" || lang == "yaml" || lang == "yml"
+}
+
+func normalizeLegacySideQuestFields(block string) string {
+	lines := strings.Split(block, "\n")
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		indent := len(line) - len(strings.TrimLeft(line, " \t"))
+		if indent > 0 && strings.HasPrefix(trimmed, "- ") && looksLikeMappingField(strings.TrimPrefix(trimmed, "- ")) {
+			trimmed = strings.TrimPrefix(trimmed, "- ")
+			lines[i] = line[:indent] + trimmed
+		}
+		if isNoneDependencyField(trimmed) {
+			lines[i] = line[:indent] + "dependencies: []"
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+func looksLikeMappingField(value string) bool {
+	key, _, ok := strings.Cut(value, ":")
+	if !ok || key == "" {
+		return false
+	}
+	for _, r := range key {
+		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') && (r < '0' || r > '9') && r != '_' && r != '-' {
+			return false
+		}
+	}
+	return true
+}
+
+func isNoneDependencyField(trimmed string) bool {
+	key, value, ok := strings.Cut(trimmed, ":")
+	if !ok || strings.TrimSpace(key) != "dependencies" {
+		return false
+	}
+	value = strings.ToLower(strings.Trim(strings.TrimSpace(value), "`\"'"))
+	return value == "none" || value == "null" || value == "n/a"
 }
 
 // --- Cluster pass ---

@@ -269,7 +269,6 @@ func TestResolveRemoveTarget_MultipleMatchesIsAmbiguous(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte(`
 mode: epic
 base_path: .analysis
-roles_config: roles/default.yaml
 slots:
   discovery: brainstorming
   refinement: openspec-explore
@@ -377,7 +376,6 @@ func TestTreasureChestRemove_ApplyMutationsErrorAtCommandLevel(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte(`
 mode: epic
 base_path: .analysis
-roles_config: roles/default.yaml
 slots:
   discovery: brainstorming
   refinement: openspec-explore

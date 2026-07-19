@@ -17,15 +17,13 @@ field_rules:
     type: string
     non_empty: true
 
-optional_fields:
-  - name: roles_config
-    type: string
-    deprecated: true
-    note: "Replaced by active.slots. Present for backward compat; not validated."
+optional_fields: []
 
 unknown_fields_policy: warn
 # Fields not declared in required_fields or optional_fields are ignored by the agent.
 # Add them here or remove from active.yaml to keep the schema clean.
+# roles_config is intentionally not declared: it was replaced by active.slots and
+# should be reported as an unknown legacy field if it remains in older installs.
 
 on_validation_error:
   emit_format: "[Strategist] phase=preflight status=blocked reason=yaml_validation_failed file=<path> field=<field>"

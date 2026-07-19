@@ -94,6 +94,10 @@ func loadValidatedActiveRaw(activePath string) (map[string]any, error) {
 	if err != nil {
 		return nil, fmt.Errorf("active.yaml raw: %w", err)
 	}
+	// roles_config was a transitional slot-map pointer. Runtime resolution now
+	// reads active.slots directly, so do not carry the stale field into compiled
+	// artifacts even when old installs still have it in active.yaml.
+	delete(activeRaw, "roles_config")
 	return activeRaw, nil
 }
 

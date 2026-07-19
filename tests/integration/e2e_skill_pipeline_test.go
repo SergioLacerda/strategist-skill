@@ -24,7 +24,6 @@ func prepareE2ERoot(t *testing.T) string {
 
 	activeData := []byte(`mode: epic
 base_path: .analysis
-roles_config: roles/default.yaml
 knowledge_index_path: knowledge.index.yaml
 language:
   ui: pt-BR

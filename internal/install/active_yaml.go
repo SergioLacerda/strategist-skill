@@ -17,7 +17,6 @@ import (
 func writeActiveYAML(strategistDir string, wc domain.WizardConfig) error {
 	content := fmt.Sprintf(`mode: %s
 base_path: %s
-roles_config: roles/default.yaml
 knowledge_index_path: knowledge.index.yaml
 language:
   ui: %s

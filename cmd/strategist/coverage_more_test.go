@@ -147,7 +147,9 @@ func TestValidateHelpers_DirectErrorBranches(t *testing.T) {
 
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte(`
 mode: experimental
-roles_config: roles/default.yaml
+base_path: .analysis
+slots:
+  discovery: brainstorming
 `), 0o644))
 	err := validateActiveYAML(filepath.Join(dir, "active.yaml"))
 	require.Error(t, err)
@@ -456,7 +458,6 @@ func testutilMinimalRootWithoutGovernance(t *testing.T, root string) {
 	require.NoError(t, os.WriteFile(filepath.Join(root, "active.yaml"), []byte(`
 mode: epic
 base_path: .analysis
-roles_config: roles/default.yaml
 slots:
   discovery: brainstorming
   refinement: openspec-explore
