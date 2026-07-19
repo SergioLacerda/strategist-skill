@@ -7,7 +7,6 @@ input:
   active_yaml:
     mode: pragmatic
     base_path: .analysis
-    roles_config: default
   roles_default_yaml:
     discovery: bad-provider
     refinement: openspec-explore

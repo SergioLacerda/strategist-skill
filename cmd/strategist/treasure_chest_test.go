@@ -24,7 +24,6 @@ func minimalTreasureChestRoot(t *testing.T) string {
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte(`
 mode: epic
 base_path: .analysis
-roles_config: roles/default.yaml
 slots:
   discovery: brainstorming
   refinement: openspec-explore
@@ -190,7 +189,6 @@ func TestTreasureChestCmd_ShowsDriftMissingGovernance(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte(`
 mode: epic
 base_path: .analysis
-roles_config: roles/default.yaml
 slots:
   discovery: brainstorming
 treasure_chests:
@@ -219,7 +217,6 @@ func TestTreasureChestCmd_ShowsDriftMissingIndex(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte(`
 mode: epic
 base_path: .analysis
-roles_config: roles/default.yaml
 slots:
   discovery: brainstorming
 treasure_chests:
@@ -254,7 +251,6 @@ func TestTreasureChestCmd_ShowsHistoricalFreshnessWarning(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte(`
 mode: epic
 base_path: .analysis
-roles_config: roles/default.yaml
 slots:
   discovery: brainstorming
 treasure_chests:
@@ -304,7 +300,6 @@ func TestTreasureChestCmd_MissingTreasureChestsYAML_ContinuesWithWarning(t *test
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte(`
 mode: epic
 base_path: .analysis
-roles_config: roles/default.yaml
 slots:
   discovery: brainstorming
 treasure_chests:
@@ -332,7 +327,6 @@ func TestTreasureChestCmd_MissingKnowledgeIndexYAML_ContinuesWithWarning(t *test
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte(`
 mode: epic
 base_path: .analysis
-roles_config: roles/default.yaml
 slots:
   discovery: brainstorming
 treasure_chests:
@@ -393,7 +387,6 @@ func TestTreasureChestCmd_IndexReportsHistoricalExclusionByDefault(t *testing.T)
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte(`
 mode: epic
 base_path: .analysis
-roles_config: roles/default.yaml
 slots:
   discovery: brainstorming
 treasure_chests:
@@ -552,7 +545,6 @@ func TestTreasureChestCmd_ScopeExcludesNonMatchingChests(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte(`
 mode: epic
 base_path: .analysis
-roles_config: roles/default.yaml
 slots:
   discovery: brainstorming
   refinement: openspec-explore

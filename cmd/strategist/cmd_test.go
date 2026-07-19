@@ -290,7 +290,7 @@ func minimalValidateRoot(t *testing.T) string {
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"),
-		[]byte("mode: pragmatic\nbase_path: .analysis\nroles_config: default\nslots:\n  discovery: brainstorming\n"), 0o644))
+		[]byte("mode: pragmatic\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "personas", "pragmatic.yaml"),
 		[]byte("id: pragmatic\ntone_directive: precise\nphase_labels:\n  discovery: analysis\n  refinement: refinement\n  execution: execution\ndiagnostics:\n  pipeline_header: \"[Strategist] pipeline=starting\"\n  bootstrap_origin: \"[Strategist] profile_path={path}\"\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "roles", "default.yaml"),
@@ -379,7 +379,7 @@ func TestValidateCmd_MissingActiveYAML(t *testing.T) {
 func TestValidateCmd_InvalidMode(t *testing.T) {
 	dir := minimalValidateRoot(t)
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"),
-		[]byte("mode: invalid_mode\nbase_path: .analysis\nroles_config: default\nslots:\n  discovery: brainstorming\n"), 0o644))
+		[]byte("mode: invalid_mode\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n"), 0o644))
 
 	orig := validateRoot
 	t.Cleanup(func() { validateRoot = orig })
@@ -420,9 +420,9 @@ func TestValidateCmd_InvalidActiveYAML(t *testing.T) {
 
 func TestValidateCmd_MissingRequiredField(t *testing.T) {
 	dir := minimalValidateRoot(t)
-	// active.yaml missing roles_config
+	// active.yaml missing slots
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"),
-		[]byte("mode: pragmatic\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n"), 0o644))
+		[]byte("mode: pragmatic\nbase_path: .analysis\n"), 0o644))
 
 	orig := validateRoot
 	t.Cleanup(func() { validateRoot = orig })
@@ -729,7 +729,7 @@ func setupDojoScenario(t *testing.T, scenario, criteria, runContent string) stri
 	strategistRoot := filepath.Join(dir, ".strategist")
 	require.NoError(t, os.MkdirAll(strategistRoot, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(strategistRoot, "active.yaml"),
-		[]byte("mode: epic\nbase_path: .analysis\nroles_config: roles/default.yaml\nslots:\n  discovery: brainstorming\n"), 0o644))
+		[]byte("mode: epic\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n"), 0o644))
 
 	scenarioDir := filepath.Join(dir, ".analysis", "dojo", scenario)
 	require.NoError(t, os.MkdirAll(scenarioDir, 0o755))
@@ -824,7 +824,7 @@ func TestDojoCheckCmd_EmptyBasePath(t *testing.T) {
 	strategistRoot := filepath.Join(dir, ".strategist")
 	require.NoError(t, os.MkdirAll(strategistRoot, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(strategistRoot, "active.yaml"),
-		[]byte("mode: epic\nroles_config: x\nslots:\n  discovery: brainstorming\n"), 0o644))
+		[]byte("mode: epic\nslots:\n  discovery: brainstorming\n"), 0o644))
 
 	orig := dojoRoot
 	t.Cleanup(func() { dojoRoot = orig })
@@ -862,7 +862,7 @@ func TestDojoListCmd_EmptyDojo(t *testing.T) {
 	strategistRoot := filepath.Join(dir, ".strategist")
 	require.NoError(t, os.MkdirAll(strategistRoot, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(strategistRoot, "active.yaml"),
-		[]byte("mode: epic\nbase_path: .analysis\nroles_config: roles/default.yaml\nslots:\n  discovery: brainstorming\n"), 0o644))
+		[]byte("mode: epic\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n"), 0o644))
 	// base_path resolves to <dir>/.analysis (parent of strategistRoot is dir)
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, ".analysis", "dojo"), 0o755))
 
@@ -882,7 +882,7 @@ func TestDojoListCmd_MissingDojoDir(t *testing.T) {
 	strategistRoot := filepath.Join(dir, ".strategist")
 	require.NoError(t, os.MkdirAll(strategistRoot, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(strategistRoot, "active.yaml"),
-		[]byte("mode: epic\nbase_path: .analysis\nroles_config: roles/default.yaml\nslots:\n  discovery: brainstorming\n"), 0o644))
+		[]byte("mode: epic\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n"), 0o644))
 
 	orig := dojoRoot
 	t.Cleanup(func() { dojoRoot = orig })
@@ -944,7 +944,7 @@ func minimalCheckRoot(t *testing.T) string {
 	))
 	require.NoError(t, os.WriteFile(
 		filepath.Join(dir, "active.yaml"),
-		[]byte("mode: epic\nbase_path: .analysis\nroles_config: roles/default.yaml\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: sdd-ask\n"),
+		[]byte("mode: epic\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: sdd-ask\n"),
 		0o644,
 	))
 	return dir
@@ -1051,7 +1051,7 @@ func TestCheckCmd_ProviderNotInstalled(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.WriteFile(
 		filepath.Join(dir, "active.yaml"),
-		[]byte("mode: epic\nbase_path: .analysis\nroles_config: roles/default.yaml\nslots:\n  discovery: missing-provider\n  refinement: openspec-explore\n  execution: sdd-ask\n"),
+		[]byte("mode: epic\nbase_path: .analysis\nslots:\n  discovery: missing-provider\n  refinement: openspec-explore\n  execution: sdd-ask\n"),
 		0o644,
 	))
 
@@ -1115,7 +1115,7 @@ func TestCheckCmd_NativeRole_Sniper(t *testing.T) {
 	))
 	require.NoError(t, os.WriteFile(
 		filepath.Join(dir, "active.yaml"),
-		[]byte("mode: epic\nbase_path: .analysis\nroles_config: roles/default.yaml\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: sniper\n"),
+		[]byte("mode: epic\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: sniper\n"),
 		0o644,
 	))
 
@@ -1163,7 +1163,7 @@ func TestCheckCmd_NativeRole_InvalidRoleDefinition(t *testing.T) {
 	))
 	require.NoError(t, os.WriteFile(
 		filepath.Join(dir, "active.yaml"),
-		[]byte("mode: epic\nbase_path: .analysis\nroles_config: roles/default.yaml\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: sniper\n"),
+		[]byte("mode: epic\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: sniper\n"),
 		0o644,
 	))
 
@@ -1202,7 +1202,7 @@ func TestCheckCmd_NativeRole_SlotMismatch(t *testing.T) {
 	))
 	require.NoError(t, os.WriteFile(
 		filepath.Join(dir, "active.yaml"),
-		[]byte("mode: epic\nbase_path: .analysis\nroles_config: roles/default.yaml\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: wrong-role\n"),
+		[]byte("mode: epic\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: wrong-role\n"),
 		0o644,
 	))
 

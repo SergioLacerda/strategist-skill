@@ -70,17 +70,15 @@ func TestRoleSlotMap_Validate(t *testing.T) {
 func TestActiveConfig_Validate(t *testing.T) {
 	t.Parallel()
 	valid := domain.ActiveConfig{
-		Mode:        "epic",
-		BasePath:    ".analysis",
-		RolesConfig: "roles/default.yaml",
-		Slots:       map[string]string{"discovery": "ranger"},
+		Mode:     "epic",
+		BasePath: ".analysis",
+		Slots:    map[string]string{"discovery": "ranger"},
 	}
 	require.NoError(t, valid.Validate())
 
 	err := domain.ActiveConfig{}.Validate()
 	require.ErrorContains(t, err, "mode is required")
 	require.ErrorContains(t, err, "base_path is required")
-	require.ErrorContains(t, err, "roles_config is required")
 	require.ErrorContains(t, err, "slots must have at least one entry")
 }
 

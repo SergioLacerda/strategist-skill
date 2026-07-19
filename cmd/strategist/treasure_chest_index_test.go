@@ -69,6 +69,38 @@ func TestTreasureChestIndex_GeneratesProposedJewelFromGap(t *testing.T) {
 	assert.Contains(t, string(raw), "kind: gap")
 }
 
+func TestTreasureChestIndex_AcceptsFencedSideQuestsYAML(t *testing.T) {
+	dir, basePath := indexTestRoot(t)
+	writeMissionTasks(t, basePath, "done", "mission-a", `
+## Archivist-To-Sniper Handoff Fields
+
+side_quests_approved:
+
+`+"```yaml"+`
+- id: SQ-101
+  description: Pending fenced side quest.
+  strategy: execute_later
+  estimated_impact: low
+  dependencies: []
+  status: sq_pending
+`+"```"+`
+
+acceptance_checks:
+
+`+"```yaml"+`
+- "fenced acceptance checks must not be parsed as side quests"
+`+"```"+`
+`)
+	resetTreasureChestFlags(t)
+	setTreasureChestRoot(t, dir)
+
+	require.NoError(t, treasureChestIndexCmd.RunE(treasureChestIndexCmd, nil))
+
+	raw, err := os.ReadFile(filepath.Join(dir, "jewels", "mission-history.yaml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(raw), "id: jewel-gap-sq-101")
+}
+
 func TestTreasureChestIndex_UsesConfiguredScoringPolicy(t *testing.T) {
 	dir, basePath := indexTestRoot(t)
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "treasure-chests.yaml"), []byte(`

@@ -57,7 +57,7 @@ func MinimalRoot(t testing.TB, dir string) {
 	t.Helper()
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte("mode: full\nbase_path: .analysis\nroles_config: roles/default.yaml\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: sdd-ask\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte("mode: full\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: sdd-ask\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "personas", "epic.yaml"), ValidMinimalPersonaYAML(), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "roles", "default.yaml"), []byte("name: Default\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "index.yaml"), []byte("load_always: []\nload_by_task_type: {}\n"), 0o644))
