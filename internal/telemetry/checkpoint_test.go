@@ -174,22 +174,32 @@ func TestCheckpoint_SkipCompletedTasks(t *testing.T) {
 		t.Fatalf("save: %v", err)
 	}
 
-	// Re-invoke: load checkpoint, verify tasks 1-3 are skipped.
 	loaded, err := LoadCheckpoint(path)
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
+	assertSkippedTasks(t, loaded, 3, 5)
+	assertTasksNotDone(t, loaded, 4, 5)
+}
+
+func assertSkippedTasks(t *testing.T, cp *MissionCheckpoint, want, total int) {
+	t.Helper()
 	skipped := 0
-	for task := 1; task <= 5; task++ {
-		if loaded.TaskDone(task) {
+	for task := 1; task <= total; task++ {
+		if cp.TaskDone(task) {
 			skipped++
 		}
 	}
-	if skipped != 3 {
-		t.Fatalf("expected 3 tasks skipped, got %d", skipped)
+	if skipped != want {
+		t.Fatalf("expected %d tasks skipped, got %d", want, skipped)
 	}
-	// Tasks 4 and 5 are not done.
-	if loaded.TaskDone(4) || loaded.TaskDone(5) {
-		t.Fatal("tasks 4 and 5 should not be done")
+}
+
+func assertTasksNotDone(t *testing.T, cp *MissionCheckpoint, tasks ...int) {
+	t.Helper()
+	for _, task := range tasks {
+		if cp.TaskDone(task) {
+			t.Fatalf("task %d should not be done", task)
+		}
 	}
 }

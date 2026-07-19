@@ -26,28 +26,14 @@ var compileCmd = &cobra.Command{
 
 func runCompile(cmd *cobra.Command, _ []string) (retErr error) {
 	if compileRoot == "" {
-		compileRoot = ".strategist"
-		if err := requireStrategistDir(); err != nil {
+		if err := defaultCompileRoot(); err != nil {
 			return err
 		}
 	}
 
-	ctx := cmd.Context()
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	run := telemetry.MissionRunFromContext(ctx)
-	if run != nil {
-		run.MarkRanger()
-	}
-	ctx, span := telemetry.Tracer().Start(ctx, "strategist.compile",
-		trace.WithAttributes(
-			attribute.String(telemetry.AttrComponent, "compile"),
-			attribute.String(telemetry.AttrRuntimeMode, "cli"),
-			attribute.String(telemetry.AttrOutputProfile, "default"),
-			attribute.String(telemetry.AttrTarget, compileRoot),
-		),
-	)
+	ctx := commandContext(cmd)
+	markCompileRun(ctx)
+	ctx, span := startCompileSpan(ctx)
 	defer func() {
 		if retErr != nil {
 			span.RecordError(retErr)
@@ -56,9 +42,7 @@ func runCompile(cmd *cobra.Command, _ []string) (retErr error) {
 		span.End()
 	}()
 
-	if run != nil {
-		run.AddLines(1)
-	}
+	addMissionLines(ctx, 1)
 	slog.InfoContext(ctx, "[Strategist] compile running",
 		telemetry.AttrComponent, "compile",
 		telemetry.AttrRuntimeMode, "cli",
@@ -72,9 +56,7 @@ func runCompile(cmd *cobra.Command, _ []string) (retErr error) {
 		return fmt.Errorf("compile: compile all: %w", err)
 	}
 
-	if run != nil {
-		run.AddLines(2)
-	}
+	addMissionLines(ctx, 2)
 	slog.InfoContext(ctx, "[Strategist] compile complete",
 		telemetry.AttrComponent, "compile",
 		telemetry.AttrRuntimeMode, "cli",
@@ -83,6 +65,34 @@ func runCompile(cmd *cobra.Command, _ []string) (retErr error) {
 	)
 	fmt.Printf("[Strategist] compile complete → %s/.compiled/\n", compileRoot)
 
+	refreshCompileAwareness(ctx)
+
+	return nil
+}
+
+func defaultCompileRoot() error {
+	compileRoot = ".strategist"
+	return requireStrategistDir()
+}
+
+func markCompileRun(ctx context.Context) {
+	if run := telemetry.MissionRunFromContext(ctx); run != nil {
+		run.MarkRanger()
+	}
+}
+
+func startCompileSpan(ctx context.Context) (context.Context, trace.Span) {
+	return telemetry.Tracer().Start(ctx, "strategist.compile",
+		trace.WithAttributes(
+			attribute.String(telemetry.AttrComponent, "compile"),
+			attribute.String(telemetry.AttrRuntimeMode, "cli"),
+			attribute.String(telemetry.AttrOutputProfile, "default"),
+			attribute.String(telemetry.AttrTarget, compileRoot),
+		),
+	)
+}
+
+func refreshCompileAwareness(ctx context.Context) {
 	projectRoot := filepath.Dir(compileRoot)
 	tplBytes, err := embedpkg.Extractor{}.ReadFile("templates/agent-protocol.md")
 	if err != nil {
@@ -93,8 +103,6 @@ func runCompile(cmd *cobra.Command, _ []string) (retErr error) {
 		fmt.Printf("[Strategist] agent-protocol → %s/agent-protocol.md\n", compileRoot)
 	}
 	fmt.Printf("[Strategist] agent-awareness pass complete → %s\n", projectRoot)
-
-	return nil
 }
 
 func init() {

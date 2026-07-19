@@ -29,30 +29,57 @@ func sanitizeSlug(slug string) string {
 	slug = strings.ToLower(slug)
 	var b strings.Builder
 	for _, r := range slug {
-		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' {
+		switch {
+		case isSlugRune(r):
 			b.WriteRune(r)
-		} else if r == ' ' || r == '_' {
+		case isSlugSeparator(r):
 			b.WriteRune('-')
 		}
 	}
 	return strings.Trim(b.String(), "-")
 }
 
+func isSlugRune(r rune) bool {
+	return (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-'
+}
+
+func isSlugSeparator(r rune) bool {
+	return r == ' ' || r == '_'
+}
+
 // missionIDCollides checks whether any artifact named after id already exists
 // in the three canonical analysis directories.
 func missionIDCollides(basePath, id string) bool {
-	dirs := []string{"pending", "refined", "archived"}
-	for _, dir := range dirs {
-		pattern := filepath.Join(basePath, dir, id+"*")
-		matches, err := filepath.Glob(pattern)
-		if err != nil {
-			continue
-		}
-		for _, m := range matches {
-			if info, err := os.Stat(m); err == nil && info != nil {
-				return true
-			}
+	for _, pattern := range missionIDPatterns(basePath, id) {
+		if patternCollides(pattern) {
+			return true
 		}
 	}
 	return false
+}
+
+func missionIDPatterns(basePath, id string) []string {
+	return []string{
+		filepath.Join(basePath, "pending", id+"*"),
+		filepath.Join(basePath, "refined", id+"*"),
+		filepath.Join(basePath, "archived", id+"*"),
+	}
+}
+
+func patternCollides(pattern string) bool {
+	matches, err := filepath.Glob(pattern)
+	if err != nil {
+		return false
+	}
+	for _, match := range matches {
+		if pathExists(match) {
+			return true
+		}
+	}
+	return false
+}
+
+func pathExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info != nil
 }

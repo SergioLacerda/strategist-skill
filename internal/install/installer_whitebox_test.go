@@ -59,6 +59,11 @@ func (m minimalExtractor) ReadFile(relPath string) ([]byte, error) {
 	case "skills/openspec-explore/skill.yaml":
 		return []byte("id: openspec-explore\nstatus: active\nrisk_score: write_analysis\n"), nil
 	default:
+		for _, file := range domain.NormativeRuntimeDefaultFiles() {
+			if relPath == file.Path {
+				return []byte(relPath + "\n"), nil
+			}
+		}
 		return nil, fmt.Errorf("minimalExtractor: file not found: %s", relPath)
 	}
 }
@@ -232,13 +237,24 @@ func TestApplyConfig_ReadFileFails(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	svc := Service{
-		Extractor:   &errReadExtractor{},
+		Extractor:   templateReadErrorExtractor{},
 		Compiler:    nopCompiler{},
 		ShimHomeDir: t.TempDir(),
 	}
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Silent: true})
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "read template")
+}
+
+type templateReadErrorExtractor struct {
+	minimalExtractor
+}
+
+func (e templateReadErrorExtractor) ReadFile(relPath string) ([]byte, error) {
+	if relPath == "templates/epic-standalone.yaml" {
+		return nil, fmt.Errorf("templateReadErrorExtractor: read error for %s", relPath)
+	}
+	return e.minimalExtractor.ReadFile(relPath)
 }
 
 // errReadExtractor creates the .strategist/ dir but returns an error from ReadFile.

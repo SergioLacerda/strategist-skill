@@ -299,33 +299,37 @@ type compiledIndexYAML struct {
 
 func readCompiledIndex(path string) (compiledIndexYAML, bool, error) {
 	f, err := os.Open(path) //nolint:gosec // G304
+	if os.IsNotExist(err) {
+		return compiledIndexYAML{}, false, nil
+	}
 	if err != nil {
-		if os.IsNotExist(err) {
-			return compiledIndexYAML{}, false, nil
-		}
 		return compiledIndexYAML{}, false, fmt.Errorf("open .compiled/.index.gz: %w", err)
 	}
-	defer func() {
-		if closeErr := f.Close(); closeErr != nil && err == nil {
-			err = fmt.Errorf("close .compiled/.index.gz: %w", closeErr)
-		}
-	}()
+	defer closeCompiledFile(f, &err)
 
 	gz, err := gzip.NewReader(f)
 	if err != nil {
 		return compiledIndexYAML{}, false, fmt.Errorf("decompress .compiled/.index.gz: %w", err)
 	}
-	defer func() {
-		if closeErr := gz.Close(); closeErr != nil && err == nil {
-			err = fmt.Errorf("close decompressed .compiled/.index.gz: %w", closeErr)
-		}
-	}()
+	defer closeCompiledGzip(gz, &err)
 
 	var idx compiledIndexYAML
 	if err := json.NewDecoder(gz).Decode(&idx); err != nil {
 		return compiledIndexYAML{}, false, fmt.Errorf("decode .compiled/.index.gz: %w", err)
 	}
 	return idx, true, nil
+}
+
+func closeCompiledFile(f *os.File, err *error) {
+	if closeErr := f.Close(); closeErr != nil && *err == nil {
+		*err = fmt.Errorf("close .compiled/.index.gz: %w", closeErr)
+	}
+}
+
+func closeCompiledGzip(gz *gzip.Reader, err *error) {
+	if closeErr := gz.Close(); closeErr != nil && *err == nil {
+		*err = fmt.Errorf("close decompressed .compiled/.index.gz: %w", closeErr)
+	}
 }
 
 func compiledSourcePresence(sourceMeta map[string]any) map[string]bool {
@@ -358,29 +362,42 @@ func LoadJewels(root string, governed map[string]GovernedChest) (map[string][]Je
 }
 
 func loadJewelsFromManifest(path, root string, governed map[string]GovernedChest, out map[string][]Jewel, seen map[string]bool) error {
+	m, err := readJewelManifest(path, root)
+	if err != nil {
+		return err
+	}
+	for _, j := range m.Jewels {
+		if err := addJewelFromManifest(j, governed, out, seen); err != nil {
+			return fmt.Errorf("%s: %w", jewelManifestLabel(root, path), err)
+		}
+	}
+	return nil
+}
+
+func readJewelManifest(path, root string) (Manifest, error) {
 	raw, err := os.ReadFile(path) //nolint:gosec // G304
 	if err != nil {
-		return fmt.Errorf("read %s: %w", jewelManifestLabel(root, path), err)
+		return Manifest{}, fmt.Errorf("read %s: %w", jewelManifestLabel(root, path), err)
 	}
 	var m Manifest
 	if err := yaml.Unmarshal(raw, &m); err != nil {
-		return fmt.Errorf("parse %s: %w", jewelManifestLabel(root, path), err)
+		return Manifest{}, fmt.Errorf("parse %s: %w", jewelManifestLabel(root, path), err)
 	}
-
 	if m.SchemaVersion != "1" {
-		return fmt.Errorf("%s: unsupported schema_version %q (expected \"1\")", jewelManifestLabel(root, path), m.SchemaVersion)
+		return Manifest{}, fmt.Errorf("%s: unsupported schema_version %q (expected \"1\")", jewelManifestLabel(root, path), m.SchemaVersion)
 	}
+	return m, nil
+}
 
-	for _, j := range m.Jewels {
-		if seen[j.ID] {
-			continue
-		}
-		if err := ValidateJewelEntry(j, governed); err != nil {
-			return fmt.Errorf("%s: %w", jewelManifestLabel(root, path), err)
-		}
-		out[j.ChestID] = append(out[j.ChestID], j)
-		seen[j.ID] = true
+func addJewelFromManifest(j Jewel, governed map[string]GovernedChest, out map[string][]Jewel, seen map[string]bool) error {
+	if seen[j.ID] {
+		return nil
 	}
+	if err := ValidateJewelEntry(j, governed); err != nil {
+		return err
+	}
+	out[j.ChestID] = append(out[j.ChestID], j)
+	seen[j.ID] = true
 	return nil
 }
 
@@ -440,25 +457,50 @@ func jewelManifestLabel(root, path string) string {
 
 // ValidateJewelEntry validates a single jewel against schema and parent trust rules.
 func ValidateJewelEntry(j Jewel, governed map[string]GovernedChest) error {
+	for _, validate := range jewelValidators(j, governed) {
+		if err := validate(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func jewelValidators(j Jewel, governed map[string]GovernedChest) []func() error {
+	return []func() error{
+		func() error { return validateJewelChest(j) },
+		func() error { return validateJewelSourceRefs(j) },
+		func() error { return wrapJewelValidation("status", domain.ValidateJewelStatus(j.ID, j.Status)) },
+		func() error { return wrapJewelValidation("kind", domain.ValidateJewelKind(j.ID, j.Kind)) },
+		func() error { return wrapJewelValidation("score", domain.ValidateJewelScore(j.ID, j.Score.Value)) },
+		func() error { return validateJewelTrust(j, governed) },
+	}
+}
+
+func validateJewelChest(j Jewel) error {
 	if j.ChestID == "" {
 		return fmt.Errorf("jewel %q missing chest_id", j.ID)
 	}
+	return nil
+}
+
+func validateJewelSourceRefs(j Jewel) error {
 	if len(j.SourceRefs) == 0 {
 		return fmt.Errorf("jewel %q missing source_refs", j.ID)
 	}
-	if err := domain.ValidateJewelStatus(j.ID, j.Status); err != nil {
-		return fmt.Errorf("status: %w", err)
+	return nil
+}
+
+func validateJewelTrust(j Jewel, governed map[string]GovernedChest) error {
+	gc, ok := governed[j.ChestID]
+	if !ok {
+		return nil
 	}
-	if err := domain.ValidateJewelKind(j.ID, j.Kind); err != nil {
-		return fmt.Errorf("kind: %w", err)
-	}
-	if err := domain.ValidateJewelScore(j.ID, j.Score.Value); err != nil {
-		return fmt.Errorf("score: %w", err)
-	}
-	if gc, ok := governed[j.ChestID]; ok {
-		if err := domain.ValidateJewelTrust(j.ID, j.Trust, gc.Trust.Tier); err != nil {
-			return fmt.Errorf("trust: %w", err)
-		}
+	return wrapJewelValidation("trust", domain.ValidateJewelTrust(j.ID, j.Trust, gc.Trust.Tier))
+}
+
+func wrapJewelValidation(label string, err error) error {
+	if err != nil {
+		return fmt.Errorf("%s: %w", label, err)
 	}
 	return nil
 }

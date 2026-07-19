@@ -92,26 +92,38 @@ func writeShimFile(shimPath, skillContent, skillRoot string) error {
 // directories exist under homeDir. Errors are silently swallowed — optional
 // shims must never fail the main install flow.
 func installOptionalShims(homeDir, skillContent, skillRoot string) {
-	geminiRoot := filepath.Join(homeDir, ".gemini")
-	if info, err := os.Stat(geminiRoot); err == nil && info.IsDir() {
-		geminiPaths := []string{
-			filepath.Join(geminiRoot, "skills", "strategist", "SKILL.md"),
-			filepath.Join(geminiRoot, "antigravity", "skills", "strategist", "SKILL.md"),
-		}
-		for _, p := range geminiPaths {
-			if err := writeShimFile(p, skillContent, skillRoot); err != nil {
-				continue
-			}
+	installGeminiShims(filepath.Join(homeDir, ".gemini"), skillContent, skillRoot)
+	installCodexShim(filepath.Join(homeDir, ".codex"), skillContent, skillRoot)
+}
+
+func installGeminiShims(geminiRoot, skillContent, skillRoot string) {
+	if !dirExists(geminiRoot) {
+		return
+	}
+	for _, p := range geminiShimPaths(geminiRoot) {
+		if err := writeShimFile(p, skillContent, skillRoot); err != nil {
+			continue
 		}
 	}
+}
 
-	codexRoot := filepath.Join(homeDir, ".codex")
-	if info, err := os.Stat(codexRoot); err == nil && info.IsDir() {
-		if err := writeShimFile(
-			filepath.Join(codexRoot, "skills", "strategist", "SKILL.md"),
-			skillContent, skillRoot,
-		); err != nil {
-			return
-		}
+func installCodexShim(codexRoot, skillContent, skillRoot string) {
+	if !dirExists(codexRoot) {
+		return
+	}
+	if err := writeShimFile(filepath.Join(codexRoot, "skills", "strategist", "SKILL.md"), skillContent, skillRoot); err != nil {
+		return
+	}
+}
+
+func dirExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
+}
+
+func geminiShimPaths(geminiRoot string) []string {
+	return []string{
+		filepath.Join(geminiRoot, "skills", "strategist", "SKILL.md"),
+		filepath.Join(geminiRoot, "antigravity", "skills", "strategist", "SKILL.md"),
 	}
 }

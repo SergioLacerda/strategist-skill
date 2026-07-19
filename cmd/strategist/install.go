@@ -81,25 +81,9 @@ func runInstall(cmd *cobra.Command, _ []string) (retErr error) {
 	}
 	installTarget = target
 
-	ctx := cmd.Context()
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	run := telemetry.MissionRunFromContext(ctx)
-	if run != nil {
-		run.MarkRanger()
-		if installWizard {
-			run.SetSilent()
-		}
-	}
-	ctx, span := telemetry.Tracer().Start(ctx, "strategist.install",
-		trace.WithAttributes(
-			attribute.String(telemetry.AttrComponent, "install"),
-			attribute.String(telemetry.AttrRuntimeMode, "cli"),
-			attribute.String(telemetry.AttrOutputProfile, "default"),
-			attribute.String(telemetry.AttrTarget, installTarget),
-		),
-	)
+	ctx := commandContext(cmd)
+	markInstallRun(ctx, installWizard)
+	ctx, span := startInstallSpan(ctx)
 	defer func() {
 		if retErr != nil {
 			span.RecordError(retErr)
@@ -108,9 +92,7 @@ func runInstall(cmd *cobra.Command, _ []string) (retErr error) {
 		span.End()
 	}()
 
-	if run != nil {
-		run.AddLines(1)
-	}
+	addMissionLines(ctx, 1)
 	slog.InfoContext(ctx, "[Strategist] install running",
 		telemetry.AttrComponent, "install",
 		telemetry.AttrRuntimeMode, "cli",
@@ -123,38 +105,14 @@ func runInstall(cmd *cobra.Command, _ []string) (retErr error) {
 		return fmt.Errorf("install: resolve home dir: %w", err)
 	}
 
-	cfg := domain.InstallConfig{
-		Target:        installTarget,
-		Silent:        installSilent,
-		Wizard:        installWizard,
-		Global:        installGlobal,
-		Force:         installForce,
-		StrictCompile: installStrictCompile,
-		NoShim:        installNoShim,
-		ShimPath:      installShimPath,
-	}
-
-	svc := install.Service{
-		Extractor:   embedpkg.Extractor{},
-		Compiler:    compile.Compiler{},
-		ShimHomeDir: shimHome,
-		AwarenessRefresher: func(strategistRoot, projectRoot, version string) bool {
-			tplBytes, err := embedpkg.Extractor{}.ReadFile("templates/agent-protocol.md")
-			if err != nil {
-				tplBytes = nil
-			}
-			return compile.RefreshAgentAwareness(strategistRoot, projectRoot, version, tplBytes)
-		},
-		Version: Version,
-	}
+	cfg := installConfigFromFlags()
+	svc := installService(shimHome)
 
 	if err := svc.Install(ctx, cfg); err != nil {
 		return fmt.Errorf("install: %w", err)
 	}
 
-	if run != nil {
-		run.AddLines(2)
-	}
+	addMissionLines(ctx, 2)
 	// A successful Install with StrictCompile=false may still have hit a
 	// non-fatal CompileAll failure (warning-only). Detect that here by checking
 	// for the manifest CompileAll writes on success, so the terminal banner
@@ -169,6 +127,73 @@ func runInstall(cmd *cobra.Command, _ []string) (retErr error) {
 	)
 	printInstallCompleteBanner(installTarget, installWizard, partial)
 	return nil
+}
+
+func commandContext(cmd *cobra.Command) context.Context {
+	ctx := cmd.Context()
+	if ctx == nil {
+		return context.Background()
+	}
+	return ctx
+}
+
+func markInstallRun(ctx context.Context, wizard bool) {
+	run := telemetry.MissionRunFromContext(ctx)
+	if run == nil {
+		return
+	}
+	run.MarkRanger()
+	if wizard {
+		run.SetSilent()
+	}
+}
+
+func startInstallSpan(ctx context.Context) (context.Context, trace.Span) {
+	return telemetry.Tracer().Start(ctx, "strategist.install",
+		trace.WithAttributes(
+			attribute.String(telemetry.AttrComponent, "install"),
+			attribute.String(telemetry.AttrRuntimeMode, "cli"),
+			attribute.String(telemetry.AttrOutputProfile, "default"),
+			attribute.String(telemetry.AttrTarget, installTarget),
+		),
+	)
+}
+
+func addMissionLines(ctx context.Context, lines int64) {
+	if run := telemetry.MissionRunFromContext(ctx); run != nil {
+		run.AddLines(lines)
+	}
+}
+
+func installConfigFromFlags() domain.InstallConfig {
+	return domain.InstallConfig{
+		Target:        installTarget,
+		Silent:        installSilent,
+		Wizard:        installWizard,
+		Global:        installGlobal,
+		Force:         installForce,
+		StrictCompile: installStrictCompile,
+		NoShim:        installNoShim,
+		ShimPath:      installShimPath,
+	}
+}
+
+func installService(shimHome string) install.Service {
+	return install.Service{
+		Extractor:          embedpkg.Extractor{},
+		Compiler:           compile.Compiler{},
+		ShimHomeDir:        shimHome,
+		AwarenessRefresher: refreshAgentAwarenessFromEmbed,
+		Version:            Version,
+	}
+}
+
+func refreshAgentAwarenessFromEmbed(strategistRoot, projectRoot, version string) bool {
+	tplBytes, err := embedpkg.Extractor{}.ReadFile("templates/agent-protocol.md")
+	if err != nil {
+		tplBytes = nil
+	}
+	return compile.RefreshAgentAwareness(strategistRoot, projectRoot, version, tplBytes)
 }
 
 // installIsPartial reports whether the just-completed install has an
