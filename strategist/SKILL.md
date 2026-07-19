@@ -2,16 +2,17 @@
 
 ## What Strategist Does
 
-Strategist é uma skill de **análise e documentação**. Não muta código.
+Strategist is an **analysis and documentation** skill. It does not mutate code.
 
-Capacidades:
-- analisar problemas e demandas
-- avaliar se demandas foram implementadas
-- detectar lacunas entre o requisitado e o entregue
-- atualizar e refinar requisitos
+Capabilities:
+- analyze problems and requests
+- evaluate whether requested work was implemented
+- detect gaps between requested and delivered work
+- update and refine requirements
 
-A skill decide internamente qual rota usar (pipeline completo ou Critical Hit).
-O delegatário não precisa especificar — basta invocar com o contexto do pedido.
+The skill decides internally which route to use (full pipeline or Critical Hit).
+The delegating agent does not need to specify the route — invoke it with the
+request context.
 
 ---
 
@@ -68,13 +69,15 @@ provider=<configured_provider>
 action=fix provider configuration or runtime installation, then rerun strategist check
 ```
 
-Discovery subtypes are owned by Ranger, the internal discovery persona. The configured
-discovery provider is Ranger's weapon, not a substitute for Ranger. The parent agent
-MUST NOT perform discovery directly, and MUST NOT require the weapon's standalone
-instructions to implement every `discovery_subtype`. If the configured discovery
-weapon is missing, invalid, risk-incompatible, or unavailable, stop with the relevant
-slot/provider error. Otherwise invoke Ranger with the configured weapon and let Ranger's
-role directives control subtype behavior.
+Discovery subtypes are selected by Scout and executed through Ranger, the internal
+discovery persona. The configured discovery provider is Ranger's weapon, not a
+substitute for Ranger. The parent agent MUST NOT perform discovery directly. After
+Scout emits `route_decision.discovery_subtype` with `evidence_state: requires_discovery`,
+Strategist MUST check the configured weapon manifest's `discovery_subtype_support`
+before invoking the weapon. If the manifest does not declare native or adapter support
+for the required subtype, stop with `provider_capability_mismatch`. If the configured
+discovery weapon is missing, invalid, risk-incompatible, or unavailable, stop with the
+relevant slot/provider error.
 
 If the request requires source-code mutation, Strategist may analyze and refine the
 work, but must not perform the mutation. The response must clearly state that
@@ -162,10 +165,10 @@ For `/strategist-raid` (batch refinement of captured ideas), see `contracts/stra
 
 ## Role Invocation Failures
 
-`strategist check` confirma que o runtime esta instalado e operacional.
+`strategist check` confirms that the runtime is installed and operational.
 
-Se, durante uma missão, Strategist não conseguir acionar um papel/provider configurado,
-isso é erro interno da skill. Pare e reporte:
+If Strategist cannot invoke a configured role/provider during a mission, that is
+an internal skill error. Stop and report:
 
 ```
 error=role_invocation_failed
@@ -174,11 +177,13 @@ provider=<configured_provider>
 action=fix provider configuration or runtime installation, then rerun strategist check
 ```
 
-Erros equivalentes podem ser reportados como `slot_provider_not_found`,
-`slot_risk_mismatch` ou `role_provider_invalid`, conforme a causa.
+Equivalent errors may be reported as `slot_provider_not_found`,
+`slot_risk_mismatch`, `provider_capability_mismatch`, or `role_provider_invalid`,
+depending on the cause.
 
-Strategist nao deve transformar falha interna em trabalho ad-hoc silencioso. Se a
-skill falhar, retorne o erro e aguarde correcao ou nova autorizacao explicita do usuario.
+Strategist must not turn an internal failure into silent ad-hoc work. If the
+skill fails, return the error and wait for correction or new explicit user
+authorization.
 
 ## Response Contract
 

@@ -230,7 +230,7 @@ StateInit         → [EventCriticalHitIntent]                      → StateDir
 StateDirectGate   → [EventDirectGateApproved + execution_authorized] → StateDirectExec
 StateDirectGate   → [EventDirectGateDeclined]                     → StateDoneAnalysis
 StateDirectExec   → [EventSniperDone]                             → StateDirectDone
-StateDirectExec   → [EventSlotTransient]                          → StateRetrying
+StateDirectExec   → [EventSlotTransient]                          → StateRetryingDirectExec
 StateDirectExec   → [EventSlotPermanent]                          → StateBlocked
 ```
 

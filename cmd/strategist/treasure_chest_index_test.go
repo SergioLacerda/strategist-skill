@@ -37,7 +37,7 @@ func TestTreasureChestIndex_GeneratesProposedJewelsFromClusters(t *testing.T) {
 	writeMissionTasks(t, basePath, "refined", "mission-a", "side_quests_approved:\n\n- id: `SQ-101`\n  description: Improve widget caching layer for faster loads.\n  status: `sq_pending`\n\n## Suggested Validation\n")
 	writeMissionTasks(t, basePath, "refined", "mission-b", "## Task 1 — Improve widget rendering\n\nside_quests_approved:\n\n- id: `SQ-102`\n  description: Improve widget caching consistency.\n  status: `sq_closed_moot`\n\n## Suggested Validation\n")
 	resetTreasureChestFlags(t)
-	treasureChestRoot = dir
+	setTreasureChestRoot(t, dir)
 
 	out := captureStdout(t, func() {
 		require.NoError(t, treasureChestIndexCmd.RunE(treasureChestIndexCmd, nil))
@@ -45,37 +45,59 @@ func TestTreasureChestIndex_GeneratesProposedJewelsFromClusters(t *testing.T) {
 	assert.Contains(t, out, "proposed jewel(s) written")
 	assert.FileExists(t, filepath.Join(dir, ".compiled", ".index.gz"))
 
-	raw, err := os.ReadFile(filepath.Join(dir, "jewels.yaml"))
+	raw, err := os.ReadFile(filepath.Join(dir, "jewels", "mission-history.yaml"))
 	require.NoError(t, err)
 	content := string(raw)
 	assert.Contains(t, content, "chest_id: mission-history")
 	assert.Contains(t, content, "status: proposed")
 	assert.Contains(t, content, "kind: pattern")
+	assert.Contains(t, content, "history:")
+	assert.Contains(t, content, "by: agent")
 }
 
 func TestTreasureChestIndex_GeneratesProposedJewelFromGap(t *testing.T) {
 	dir, basePath := indexTestRoot(t)
 	writeMissionTasks(t, basePath, "refined", "mission-a", "side_quests_approved:\n\n- id: `SQ-101`\n  description: Pending item.\n  status: `sq_pending`\n")
 	resetTreasureChestFlags(t)
-	treasureChestRoot = dir
+	setTreasureChestRoot(t, dir)
 
 	require.NoError(t, treasureChestIndexCmd.RunE(treasureChestIndexCmd, nil))
 
-	raw, err := os.ReadFile(filepath.Join(dir, "jewels.yaml"))
+	raw, err := os.ReadFile(filepath.Join(dir, "jewels", "mission-history.yaml"))
 	require.NoError(t, err)
 	assert.Contains(t, string(raw), "id: jewel-gap-sq-101")
 	assert.Contains(t, string(raw), "kind: gap")
+}
+
+func TestTreasureChestIndex_UsesConfiguredScoringPolicy(t *testing.T) {
+	dir, basePath := indexTestRoot(t)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "treasure-chests.yaml"), []byte(`
+schema_version: "1"
+scoring_policy:
+  gap_base: 7
+  gap_mission_weight: 2
+chests: []
+`), 0o644))
+	writeMissionTasks(t, basePath, "refined", "mission-a", "side_quests_approved:\n\n- id: `SQ-101`\n  description: Pending item.\n  status: `sq_pending`\n")
+	resetTreasureChestFlags(t)
+	setTreasureChestRoot(t, dir)
+
+	require.NoError(t, treasureChestIndexCmd.RunE(treasureChestIndexCmd, nil))
+
+	raw, err := os.ReadFile(filepath.Join(dir, "jewels", "mission-history.yaml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(raw), "value: 9")
 }
 
 func TestTreasureChestIndex_DeduplicatesAgainstExistingJewels(t *testing.T) {
 	dir, basePath := indexTestRoot(t)
 	writeMissionTasks(t, basePath, "refined", "mission-a", "side_quests_approved:\n\n- id: `SQ-101`\n  description: Pending item.\n  status: `sq_pending`\n")
 	resetTreasureChestFlags(t)
-	treasureChestRoot = dir
+	setTreasureChestRoot(t, dir)
 
-	// First run creates the proposed gap jewel.
+	// First run creates the proposed treasure.Gap jewel.
 	require.NoError(t, treasureChestIndexCmd.RunE(treasureChestIndexCmd, nil))
-	raw, err := os.ReadFile(filepath.Join(dir, "jewels.yaml"))
+	raw, err := os.ReadFile(filepath.Join(dir, "jewels", "mission-history.yaml"))
 	require.NoError(t, err)
 	firstCount := countOccurrences(string(raw), "id: jewel-gap-sq-101")
 	require.Equal(t, 1, firstCount)
@@ -86,7 +108,7 @@ func TestTreasureChestIndex_DeduplicatesAgainstExistingJewels(t *testing.T) {
 	})
 	assert.Contains(t, out, "1 duplicate(s) skipped")
 
-	raw, err = os.ReadFile(filepath.Join(dir, "jewels.yaml"))
+	raw, err = os.ReadFile(filepath.Join(dir, "jewels", "mission-history.yaml"))
 	require.NoError(t, err)
 	assert.Equal(t, 1, countOccurrences(string(raw), "id: jewel-gap-sq-101"))
 }
@@ -94,7 +116,7 @@ func TestTreasureChestIndex_DeduplicatesAgainstExistingJewels(t *testing.T) {
 func TestTreasureChestIndex_NoCandidatesLeavesJewelsUntouched(t *testing.T) {
 	dir, _ := indexTestRoot(t)
 	resetTreasureChestFlags(t)
-	treasureChestRoot = dir
+	setTreasureChestRoot(t, dir)
 
 	before, err := os.ReadFile(filepath.Join(dir, "jewels.yaml"))
 	require.NoError(t, err)

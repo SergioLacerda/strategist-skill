@@ -38,10 +38,11 @@ Correctness of the parent agent's independent answer does not repair the drift.
 
 ---
 
-## 2. NEVER DO
+## 2. FORBIDDEN BEHAVIORS (NEVER DO)
 
 - Never perform discovery, refinement, or documentation materialization work directly — always invoke the designated slot provider
 - Never simulate role work by performing slot work in the Strategist shell — if the configured role/provider cannot be invoked, stop with `error=role_invocation_failed`
+- Never invoke a discovery weapon when its manifest lacks `discovery_subtype_support` for Scout's required subtype — stop with `error=provider_capability_mismatch`
 - Never read from `strategist/` (without dot) — path drift; only `.strategist/` is valid at runtime
 - Never skip phases — there is no "this task is too small to need discovery"
 - Never invoke Sniper without an explicit Strategist Approval Gate approval from the user in the conversation
@@ -51,6 +52,13 @@ Correctness of the parent agent's independent answer does not repair the drift.
 - Never fall back to direct execution when the resolved provider is missing or uncallable — emit the appropriate blocked state and stop
 - Never treat `execution_gate=allowed` as a substitute for the Strategist Approval Gate
 - Never treat Strategist Approval Gate acceptance (`sim`/`accept`/`yes`) as authorization for code, hook, config, or test mutation — it approves the refined analysis and `documentation_target` items only; `implementation_handoff` items stay outside Strategist (see `05-approval-gate.md`, `06-execution.md`)
+- Never write config files into the target repo
+- Never load unindexed internal-domain files
+- Never write learning memory without checkpoint approval
+- Never override execution provider from an undeclared source (must come from `local_execution_context.execution_provider` in delegated mode or `active.slots.execution` in direct mode)
+- Never skip preflight
+- Never mutate the repo without canonical pipeline evidence
+- Never emit raw `[Strategist] key=value` events in epic mode without the corresponding `phase_announcements` wrapper line.
 
 ---
 
@@ -83,29 +91,63 @@ Linear checklist. Do not advance without completing each item.
 [ ] 4. context enrichment (skill: context-enrichment)
 [ ] 5. discovery → invoke {{.Slots.Discovery}}
 [ ] 6. refinement → invoke {{.Slots.Refinement}}
-[ ] 7. approval gate  ← MANDATORY PAUSE — do not advance without explicit user response
+[ ] 7. approval gate  ← MANDATORY PAUSE — do not advance without explicit approval; timeout/decline ends as analysis-only
 [ ] 8. materialization → invoke {{.Slots.Execution}}  ← only after gate approved
 [ ] 9. learning (non-blocking)
 ```
 
+## Canonical Pipeline Evidence
+
+Main mission evidence:
+- Ranger analysis artifact exists at `<base_path>/refined/<mission_id>/analysis.md`
+- Archivist refined package exists at `<base_path>/refined/<mission_id>/`
+- `tasks.md` exists when execution depends on refinement
+- approval gate was presented and explicitly approved before execution
+- approval gate timeout/decline terminates as analysis-only (`EventGateTimeout`/`EventGateDenied` → `StateDoneAnalysis`)
+
+Quick Draw evidence:
+- prompt matched quick-draw route
+- quick-draw gate was presented and approved before append
+
 ---
 
-## 5. ERROR STATES
+## 5. ERROR STATES AND STOP CONDITIONS
 
-| State | Emit | Action |
+Strategist stops immediately on:
+
+| State / Condition | Emit | Action |
 |---|---|---|
 | `.strategist/` missing | `error=not_installed` | stop; instruct `strategist install` |
 | `strategist check` failed | CLI output | stop |
 | `active.yaml` missing | `error=config_missing` | stop |
 | slot provider not found | `error=slot_provider_not_found` | stop |
 | configured role/provider cannot be invoked | `error=role_invocation_failed` | stop; fix provider configuration or runtime installation |
+| discovery weapon lacks required subtype support | `error=provider_capability_mismatch` | stop; configure a compatible discovery weapon |
 | gate bypass attempt | `drift=approval_bypass` | block, notify user |
 | delegated invocation missing `execution_provider` | `error=local_execution_provider_missing` | stop; do not execute directly |
 | resolved provider cannot be invoked | `error=execution_provider_unavailable` | stop; do not execute directly |
 | Strategist attempted direct execution instead of provider invocation | `drift=local_execution_context_bypass` | stop; resolve and invoke provider |
 | `agent-protocol.md` missing | fall back to existing SKILL.md | graceful degradation |
+| `slot_risk_mismatch` | `error=slot_risk_mismatch` | stop |
+| `intake_conflict_unresolved` | `error=intake_conflict_unresolved` | stop |
+| `preflight_failed` | `error=preflight_failed` | stop |
+| `discovery_failed` | `error=discovery_failed` | stop |
+| `refinement_failed` | `error=refinement_failed` | stop |
+| `pipeline_bypass_detected` | `error=pipeline_bypass_detected` | stop |
 
-## 6. LOCAL EXECUTION CONTEXT
+`user_requests_revision` is a valid `revision_requested` outcome, not an error. `user_rejects_analysis` is a valid `rejected` outcome, not an error.
+
+## Slot Failure Handling
+
+- discovery failure stops before refinement
+- refinement failure stops before gate
+- execution failure returns partial result and blocked execution state
+
+Transient discovery/refinement failures may be retried once. Transient execution failures may be retried once. The FSM preserves retry origin with explicit retry states (`StateRetryingRefinement`, `StateRetryingExecution`, `StateRetryingDirectExec`) so a successful retry returns to the originating phase. Permanent failures are never retried.
+
+---
+
+## 6. LOCAL EXECUTION CONTEXT AND APPROVAL GATES
 
 When another context (governance system, orchestrator, harness) invokes Strategist, it may pass a local execution context via `governance_injection`:
 
@@ -126,3 +168,59 @@ Provider resolution order:
 If delegated and provider is missing → `error=local_execution_provider_missing` → stop.
 If resolved provider is uncallable → `error=execution_provider_unavailable` → stop.
 Never execute directly.
+
+The invoking local context controls three things only:
+- whether execution is **permitted, blocked, or conditioned** (`execution_gate`)
+- which **provider, base path, and knowledge paths** are injected (via `governance_injection`)
+- which **context documents** are made available to slots (`governance_context`)
+
+Strategist controls everything else: pipeline sequence, artifact persistence, evidence requirements, and slot contracts. The local context cannot substitute the canonical mission sequence after invocation.
+
+### Local Execution Context Gate vs. Strategist Approval Gate
+
+These are two independent checks, both required before execution:
+
+1. **Local execution context gate** (`execution_gate=allowed/blocked`) — reported by the invoking context. Determines whether the local policy *permits* execution. `allowed` means "not blocked by policy." It is NOT user approval. In direct invocation, absent this field defaults to allowed.
+2. **Strategist Approval Gate** (the 🚦 Gate prompt shown to the user) — the explicit confirmation the user types in the conversation. Required regardless of invocation mode, execution gate state, or any external approval granted upstream.
+
+`execution_gate=allowed` + no Strategist Approval Gate = `approval_bypass` drift.
+Both must be satisfied before Sniper starts. External approval cannot substitute the Strategist Approval Gate.
+
+## Slot Provider Governance Compliance
+
+If a slot provider ignores `governance_injection.execution_gate = blocked`:
+- The provider has no write authorization in the repository. Strategist's FSM prevents reaching documentation state (code-enforced via `nextFromApprovalGate` requiring approval gate acceptance).
+- Any direct mutation attempt by a non-compliant provider triggers `pipeline_bypass_detected`.
+- Strategist reports `slot_risk_mismatch` for a provider that violates its declared contract.
+- The provider is considered non-compliant; future missions will be blocked at preflight until the provider is replaced or corrected.
+
+---
+
+## 7. PROTOCOL INVARIANTS
+
+### Progress Event Invariants
+- phase start → `status=running`
+- phase success → `status=done`
+- phase failure → `status=blocked`
+Never advance phases silently.
+
+### Learning Rules
+- append outcome lines to `.strategist/memory/outcomes.tmp`
+- minimum required fields: `mission_id`, `status`, `timestamp`
+- preserve `outcomes.jsonl` as source of truth
+- learning failures never block the mission result
+
+### Approval Policy
+Supported modes: `any`, `explicit_confirm`, `human_only` (documented, not enforced by default)
+
+### Response Contract
+See `strategist/contracts/09-response.md`.
+
+### Compliance Summary
+Append a compliance summary block before the mission result. The summary should expose the final compliance state of the active mission route and any blocking governance reason when present.
+
+### Mission Result
+Append the final mission result after the compliance summary. The mission result should expose the final mission status, artifact set, and next action.
+
+### Telemetry Contract
+See `strategist/contracts/10-telemetry.md`.

@@ -11,7 +11,6 @@ func TestGuardedTransitionRequiresGate(t *testing.T) {
 	t.Parallel()
 
 	decision := domain.EvaluateGuardedTransition(
-		domain.DefaultMissionPolicy(),
 		domain.TransitionGroupDocumentation,
 		false, // gate not approved
 	)
@@ -24,7 +23,6 @@ func TestDocumentationAllowedAfterReviewAcceptance(t *testing.T) {
 	t.Parallel()
 
 	decision := domain.EvaluateGuardedTransition(
-		domain.DefaultMissionPolicy(),
 		domain.TransitionGroupDocumentation,
 		true,
 	)
@@ -37,7 +35,6 @@ func TestReviewGateAllowedAfterAcceptance(t *testing.T) {
 	t.Parallel()
 
 	decision := domain.EvaluateGuardedTransition(
-		domain.DefaultMissionPolicy(),
 		domain.TransitionGroupReviewGate,
 		true,
 	)
@@ -50,7 +47,6 @@ func TestFinalizeAnalysisAllowedWithGate(t *testing.T) {
 	t.Parallel()
 
 	decision := domain.EvaluateGuardedTransition(
-		domain.DefaultMissionPolicy(),
 		domain.TransitionGroupFinalizeAnalysis,
 		true,
 	)
@@ -63,7 +59,6 @@ func TestFinalizeAnalysisRequiresGate(t *testing.T) {
 	t.Parallel()
 
 	decision := domain.EvaluateGuardedTransition(
-		domain.DefaultMissionPolicy(),
 		domain.TransitionGroupFinalizeAnalysis,
 		false,
 	)
@@ -72,25 +67,10 @@ func TestFinalizeAnalysisRequiresGate(t *testing.T) {
 	assert.Equal(t, "approval_required", decision.Reason)
 }
 
-func TestNormalizePolicyIsNoOp(t *testing.T) {
-	t.Parallel()
-
-	p := domain.NormalizePolicy(domain.MissionPolicy{})
-	assert.Equal(t, domain.MissionPolicy{}, p)
-}
-
-func TestDefaultMissionPolicyIsEmpty(t *testing.T) {
-	t.Parallel()
-
-	p := domain.DefaultMissionPolicy()
-	assert.Equal(t, domain.MissionPolicy{}, p)
-}
-
 func TestUnknownTransitionGroupBlocked(t *testing.T) {
 	t.Parallel()
 
 	decision := domain.EvaluateGuardedTransition(
-		domain.DefaultMissionPolicy(),
 		"unknown_group",
 		true,
 	)
@@ -104,7 +84,6 @@ func TestDocumentationRequiresReviewGateAcceptance(t *testing.T) {
 
 	// Regression: no explicit review acceptance must never allow documentation materialization.
 	decision := domain.EvaluateGuardedTransition(
-		domain.DefaultMissionPolicy(),
 		domain.TransitionGroupDocumentation,
 		false,
 	)
