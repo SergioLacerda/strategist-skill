@@ -59,15 +59,25 @@ func WriteScanOutputs(clustersDir string, clusters []Cluster, gapsDir string, ga
 	if err := RegenerateDir(clustersDir); err != nil {
 		return err
 	}
+	if err := writeClusterFiles(clustersDir, clusters); err != nil {
+		return err
+	}
+	if err := RegenerateDir(gapsDir); err != nil {
+		return err
+	}
+	return writeGapFiles(gapsDir, gaps)
+}
+
+func writeClusterFiles(clustersDir string, clusters []Cluster) error {
 	for _, c := range clusters {
 		if err := WriteClusterFile(clustersDir, c); err != nil {
 			return err
 		}
 	}
+	return nil
+}
 
-	if err := RegenerateDir(gapsDir); err != nil {
-		return err
-	}
+func writeGapFiles(gapsDir string, gaps []Gap) error {
 	for _, g := range gaps {
 		if err := WriteGapFile(gapsDir, g); err != nil {
 			return err
@@ -213,14 +223,22 @@ func normalizeSideQuestYAML(lines []string) string {
 		return ""
 	}
 
+	contentStart := firstSideQuestContentLine(lines)
+	if contentStart >= len(lines) || !isFenceLine(lines[contentStart]) {
+		return strings.Join(lines, "\n")
+	}
+	return lines[0] + "\n" + strings.Join(fencedBody(lines, contentStart), "\n")
+}
+
+func firstSideQuestContentLine(lines []string) int {
 	contentStart := 1
 	for contentStart < len(lines) && strings.TrimSpace(lines[contentStart]) == "" {
 		contentStart++
 	}
-	if contentStart >= len(lines) || !isFenceLine(lines[contentStart]) {
-		return strings.Join(lines, "\n")
-	}
+	return contentStart
+}
 
+func fencedBody(lines []string, contentStart int) []string {
 	var body []string
 	for i := contentStart + 1; i < len(lines); i++ {
 		if isFenceLine(lines[i]) {
@@ -228,8 +246,7 @@ func normalizeSideQuestYAML(lines []string) string {
 		}
 		body = append(body, lines[i])
 	}
-
-	return lines[0] + "\n" + strings.Join(body, "\n")
+	return body
 }
 
 func isFenceLine(line string) bool {
@@ -263,11 +280,19 @@ func looksLikeMappingField(value string) bool {
 		return false
 	}
 	for _, r := range key {
-		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') && (r < '0' || r > '9') && r != '_' && r != '-' {
+		if !isMappingKeyRune(r) {
 			return false
 		}
 	}
 	return true
+}
+
+func isMappingKeyRune(r rune) bool {
+	return isASCIILetter(r) || (r >= '0' && r <= '9') || r == '_' || r == '-'
+}
+
+func isASCIILetter(r rune) bool {
+	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z')
 }
 
 func isNoneDependencyField(trimmed string) bool {
@@ -372,18 +397,7 @@ func clusterFromGroup(members []string, tagsByMission map[string][]string) (c Cl
 		return Cluster{}, false
 	}
 	sort.Strings(members)
-	freq := make(map[string]int)
-	for _, id := range members {
-		for _, tag := range tagsByMission[id] {
-			freq[tag]++
-		}
-	}
-	var sharedTags []string
-	for tag, count := range freq {
-		if count >= 2 {
-			sharedTags = append(sharedTags, tag)
-		}
-	}
+	sharedTags := sharedTagsForMembers(members, tagsByMission)
 	if len(sharedTags) == 0 {
 		return Cluster{}, false
 	}
@@ -394,6 +408,28 @@ func clusterFromGroup(members []string, tagsByMission map[string][]string) (c Cl
 		Tags:          sharedTags,
 		GeneratedAt:   nowISO(),
 	}, true
+}
+
+func sharedTagsForMembers(members []string, tagsByMission map[string][]string) []string {
+	freq := tagFrequency(members, tagsByMission)
+	var sharedTags []string
+	for tag, count := range freq {
+		if count >= 2 {
+			sharedTags = append(sharedTags, tag)
+		}
+	}
+	sort.Strings(sharedTags)
+	return sharedTags
+}
+
+func tagFrequency(members []string, tagsByMission map[string][]string) map[string]int {
+	freq := make(map[string]int)
+	for _, id := range members {
+		for _, tag := range tagsByMission[id] {
+			freq[tag]++
+		}
+	}
+	return freq
 }
 
 // ClusterID builds the stable id for a cluster from its tags.

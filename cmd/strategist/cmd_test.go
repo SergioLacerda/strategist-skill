@@ -6,6 +6,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -998,8 +999,63 @@ func TestCheckCmd_RuntimeNormativeFileStale(t *testing.T) {
 	})
 	require.Error(t, runErr)
 	assert.Contains(t, runErr.Error(), "check=failed")
-	assert.Contains(t, stderr, "runtime_stale")
+	assert.Contains(t, stderr, "runtime_stale_unknown_manifest")
 	assert.Contains(t, stderr, "SKILL.md")
+}
+
+func TestCheckCmd_RuntimeNormativeFileAutoRepairable(t *testing.T) {
+	dir := minimalCheckRoot(t)
+	stale := []byte("previous default\n")
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "SKILL.md"), stale, 0o644))
+	writeInstallManifestForTest(t, dir, "SKILL.md", domain.SHA256Hex(stale))
+
+	orig := checkRoot
+	t.Cleanup(func() { checkRoot = orig })
+	checkRoot = dir
+
+	var runErr error
+	stderr := captureStderr(t, func() {
+		runErr = checkCmd.RunE(checkCmd, nil)
+	})
+	require.Error(t, runErr)
+	assert.Contains(t, runErr.Error(), "check=failed")
+	assert.Contains(t, stderr, "runtime_stale_auto_repairable")
+	assert.Contains(t, stderr, "run strategist install")
+}
+
+func TestCheckCmd_RuntimeNormativeFileConflict(t *testing.T) {
+	dir := minimalCheckRoot(t)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte("local edit\n"), 0o644))
+	writeInstallManifestForTest(t, dir, "SKILL.md", domain.SHA256Hex([]byte("previous default\n")))
+
+	orig := checkRoot
+	t.Cleanup(func() { checkRoot = orig })
+	checkRoot = dir
+
+	var runErr error
+	stderr := captureStderr(t, func() {
+		runErr = checkCmd.RunE(checkCmd, nil)
+	})
+	require.Error(t, runErr)
+	assert.Contains(t, runErr.Error(), "check=failed")
+	assert.Contains(t, stderr, "runtime_stale_conflict")
+	assert.Contains(t, stderr, "strategist install --force")
+}
+
+func writeInstallManifestForTest(t *testing.T, root, relPath, hash string) {
+	t.Helper()
+	manifest := domain.InstallManifest{
+		Schema:    "strategist.install-manifest.v1",
+		PackageID: "test",
+		Files: []domain.InstallManifestFile{{
+			Path:   relPath,
+			Owner:  domain.RuntimeFileNormative,
+			SHA256: hash,
+		}},
+	}
+	data, err := json.Marshal(manifest)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(root, domain.InstallManifestRelPath), data, 0o644))
 }
 
 func TestCheckCmd_PersonaMissingDiagnosticsField(t *testing.T) {

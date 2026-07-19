@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"gopkg.in/yaml.v3"
 )
 
@@ -41,16 +42,7 @@ func readFile(t *testing.T, path string) string {
 }
 
 func normativeRuntimeFiles() []string {
-	return []string{
-		"SKILL.md",
-		"skill.yaml",
-		"protocol.md",
-		"templates/agent-protocol.md",
-		"contracts/machine/preflight.yaml",
-		"contracts/narrative/05-approval-gate.md",
-		"contracts/narrative/06-execution.md",
-		"templates/domain/identity/drift-patterns.yaml",
-	}
+	return domain.NormativeRuntimeDefaultPaths()
 }
 
 func readFixture(t *testing.T, path string) fixture {

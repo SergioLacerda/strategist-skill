@@ -51,13 +51,9 @@ func runTreasureChestIndexCmd(cmd *cobra.Command, _ []string, opts treasureChest
 	}
 	opts.IncludeHistorical = boolFlag(cmd, "include-historical", opts.IncludeHistorical)
 
-	cwd, err := os.Getwd()
+	root, err := resolveTreasureChestIndexRoot(cmd)
 	if err != nil {
-		return fmt.Errorf("treasure-chest index: get cwd: %w", err)
-	}
-	root, _, err := resolveStrategistRoot(treasureChestRootFromCmd(cmd), cwd)
-	if err != nil {
-		return fmt.Errorf("treasure-chest index: %w", err)
+		return err
 	}
 
 	governed, err := treasure.LoadGoverned(root)
@@ -69,22 +65,9 @@ func runTreasureChestIndexCmd(cmd *cobra.Command, _ []string, opts treasureChest
 		return fmt.Errorf("treasure-chest index: %w", err)
 	}
 
-	_, basePath, err := resolveDojoRoots(root)
+	missions, clusters, gaps, err := scanTreasureChestMissions(root)
 	if err != nil {
-		return fmt.Errorf("treasure-chest index: %w", err)
-	}
-
-	missions, err := treasure.ScanMissions(basePath)
-	if err != nil {
-		return fmt.Errorf("treasure-chest index: %w", err)
-	}
-	clusters := treasure.BuildClusters(missions)
-	gaps := treasure.BuildGaps(missions)
-
-	clustersDir := filepath.Join(root, "treasure", "clusters")
-	gapsDir := filepath.Join(root, "treasure", "gaps")
-	if err := treasure.WriteScanOutputs(clustersDir, clusters, gapsDir, gaps); err != nil {
-		return fmt.Errorf("treasure-chest index: %w", err)
+		return err
 	}
 
 	candidates := treasure.BuildJewelCandidatesWithPolicy(clusters, gaps, scoringPolicy)
@@ -93,12 +76,7 @@ func runTreasureChestIndexCmd(cmd *cobra.Command, _ []string, opts treasureChest
 		return fmt.Errorf("treasure-chest index: %w", err)
 	}
 
-	if !opts.IncludeHistorical {
-		if historical := treasure.HistoricalCount(governedRows(governed)); historical > 0 {
-			fmt.Printf("[Strategist] treasure-chest index: %d historical/lower-trust source(s) excluded from default indexing.\n", historical)
-			fmt.Println("             Use --include-historical to opt in.")
-		}
-	}
+	printHistoricalIndexWarning(governed, opts.IncludeHistorical)
 
 	indexPath := filepath.Join(root, "knowledge.index.yaml")
 	c := compile.Compiler{}
@@ -110,6 +88,45 @@ func runTreasureChestIndexCmd(cmd *cobra.Command, _ []string, opts treasureChest
 		"%d proposed jewel(s) written, %d duplicate(s) skipped, compiled artifact refreshed\n",
 		len(missions), len(candidates), written, skipped)
 	return nil
+}
+
+func resolveTreasureChestIndexRoot(cmd *cobra.Command) (string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("treasure-chest index: get cwd: %w", err)
+	}
+	root, _, err := resolveStrategistRoot(treasureChestRootFromCmd(cmd), cwd)
+	if err != nil {
+		return "", fmt.Errorf("treasure-chest index: %w", err)
+	}
+	return root, nil
+}
+
+func scanTreasureChestMissions(root string) ([]treasure.ScannedMission, []treasure.Cluster, []treasure.Gap, error) {
+	_, basePath, err := resolveDojoRoots(root)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("treasure-chest index: %w", err)
+	}
+	missions, err := treasure.ScanMissions(basePath)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("treasure-chest index: %w", err)
+	}
+	clusters := treasure.BuildClusters(missions)
+	gaps := treasure.BuildGaps(missions)
+	if err := treasure.WriteScanOutputs(filepath.Join(root, "treasure", "clusters"), clusters, filepath.Join(root, "treasure", "gaps"), gaps); err != nil {
+		return nil, nil, nil, fmt.Errorf("treasure-chest index: %w", err)
+	}
+	return missions, clusters, gaps, nil
+}
+
+func printHistoricalIndexWarning(governed map[string]treasure.GovernedChest, includeHistorical bool) {
+	if includeHistorical {
+		return
+	}
+	if historical := treasure.HistoricalCount(governedRows(governed)); historical > 0 {
+		fmt.Printf("[Strategist] treasure-chest index: %d historical/lower-trust source(s) excluded from default indexing.\n", historical)
+		fmt.Println("             Use --include-historical to opt in.")
+	}
 }
 
 // governedRows adapts the governed-chest map into the minimal []treasure.StatusRow shape
