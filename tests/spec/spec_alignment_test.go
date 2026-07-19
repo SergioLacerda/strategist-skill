@@ -2209,12 +2209,12 @@ func TestCriticalHitClosureCrossReferencesEvidenceState(t *testing.T) {
 	}
 }
 
-// TestBrainstormingProviderIsWeaponNotSubtypeOwner verifies the brainstorming
-// provider manifest remains a Ranger weapon manifest and does not claim ownership
-// of Ranger's discovery_subtype behavior. .strategist/ is a generated runtime
-// artifact, so this only asserts the embedded-defaults copy — the canonical source
-// for what strategist install stamps into a workspace.
-func TestBrainstormingProviderIsWeaponNotSubtypeOwner(t *testing.T) {
+// TestBrainstormingProviderDeclaresSubtypeSupport verifies the brainstorming
+// provider manifest declares the subtype support Scout checks after route_decision.
+// .strategist/ is a generated runtime artifact, so this only asserts the
+// embedded-defaults copy — the canonical source for what strategist install stamps
+// into a workspace.
+func TestBrainstormingProviderDeclaresSubtypeSupport(t *testing.T) {
 	t.Parallel()
 
 	path := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "skills", "brainstorming", "skill.yaml")
@@ -2228,13 +2228,15 @@ func TestBrainstormingProviderIsWeaponNotSubtypeOwner(t *testing.T) {
 			t.Fatalf("%s missing brainstorming weapon term %q", path, needle)
 		}
 	}
-	for _, forbidden := range []string{
+	for _, needle := range []string{
 		"discovery_subtype_support:",
-		"adapter_wording:",
+		"creative: native",
 		"evaluation: adapter",
+		"diagnostic: adapter",
+		"closure_evidence: adapter",
 	} {
-		if strings.Contains(content, forbidden) {
-			t.Fatalf("%s must not declare subtype adapter term %q", path, forbidden)
+		if !strings.Contains(content, needle) {
+			t.Fatalf("%s missing brainstorming subtype support term %q", path, needle)
 		}
 	}
 }
@@ -2263,10 +2265,9 @@ func TestEvaluationDiscoveryDoesNotRequireCreativeObligations(t *testing.T) {
 	}
 }
 
-// TestRoleLockKeepsSubtypeOwnershipWithRanger verifies the parent-agent Role Lock
-// treats the configured discovery provider as Ranger's weapon, not as the owner of
-// discovery_subtype behavior.
-func TestRoleLockKeepsSubtypeOwnershipWithRanger(t *testing.T) {
+// TestRoleLockRequiresSubtypeCapabilityCheck verifies the parent-agent Role Lock
+// blocks unsupported discovery subtype/weapon pairings before invoking the weapon.
+func TestRoleLockRequiresSubtypeCapabilityCheck(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
@@ -2275,20 +2276,20 @@ func TestRoleLockKeepsSubtypeOwnershipWithRanger(t *testing.T) {
 	} {
 		content := readFile(t, path)
 		for _, needle := range []string{
-			"Discovery subtypes are owned by Ranger",
-			"weapon is missing, invalid, risk-incompatible, or unavailable",
-			"role directives control subtype behavior",
+			"Discovery subtypes are selected by Scout and executed through Ranger",
+			"discovery_subtype_support",
+			"provider_capability_mismatch",
 		} {
 			if !strings.Contains(content, needle) {
-				t.Fatalf("%s missing Ranger subtype ownership term %q", path, needle)
+				t.Fatalf("%s missing subtype capability-check term %q", path, needle)
 			}
 		}
 	}
 }
 
-// TestPreflightContractDoesNotDefineProviderCapabilityMismatch verifies preflight.yaml
-// no longer blocks discovery based on weapon subtype metadata.
-func TestPreflightContractDoesNotDefineProviderCapabilityMismatch(t *testing.T) {
+// TestPreflightContractDefinesProviderCapabilityMismatch verifies preflight.yaml
+// documents the post-route provider/subtype mismatch block and honest remediation hint.
+func TestPreflightContractDefinesProviderCapabilityMismatch(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
@@ -2296,15 +2297,23 @@ func TestPreflightContractDoesNotDefineProviderCapabilityMismatch(t *testing.T) 
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "preflight.yaml"),
 	} {
 		content := readFile(t, path)
-		if strings.Contains(content, "provider_capability_mismatch") {
-			t.Fatalf("%s must not define provider_capability_mismatch", path)
+		for _, needle := range []string{
+			"code: provider_capability_mismatch",
+			"reason=provider_capability_mismatch",
+			"scout-routing.yaml",
+			"editing skill.yaml metadata alone does not change",
+			"Verify with a live invocation",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing preflight provider_capability_mismatch term %q", path, needle)
+			}
 		}
 	}
 }
 
-// TestDriftPatternsDoNotCoverProviderCapabilityMismatch verifies the normative
-// drift-patterns.yaml no longer teaches subtype-capability blocking on weapons.
-func TestDriftPatternsDoNotCoverProviderCapabilityMismatch(t *testing.T) {
+// TestDriftPatternsCoverProviderCapabilityMismatch verifies the normative
+// drift-patterns.yaml teaches subtype-capability blocking on weapons.
+func TestDriftPatternsCoverProviderCapabilityMismatch(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
@@ -2312,15 +2321,20 @@ func TestDriftPatternsDoNotCoverProviderCapabilityMismatch(t *testing.T) {
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "domain", "identity", "drift-patterns.yaml"),
 	} {
 		content := readFile(t, path)
-		if strings.Contains(content, "provider_capability_mismatch") {
-			t.Fatalf("%s must not define provider_capability_mismatch drift pattern", path)
+		for _, needle := range []string{
+			"id: provider_capability_mismatch",
+			"editing skill.yaml metadata alone does not change",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing provider_capability_mismatch drift pattern term %q", path, needle)
+			}
 		}
 	}
 }
 
-// TestSkillYamlStopConditionsExcludeProviderCapabilityMismatch verifies the
-// master pipeline no longer declares provider_capability_mismatch as a stop condition.
-func TestSkillYamlStopConditionsExcludeProviderCapabilityMismatch(t *testing.T) {
+// TestSkillYamlStopConditionsIncludeProviderCapabilityMismatch verifies the
+// master pipeline declares provider_capability_mismatch as a stop condition.
+func TestSkillYamlStopConditionsIncludeProviderCapabilityMismatch(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
@@ -2328,8 +2342,8 @@ func TestSkillYamlStopConditionsExcludeProviderCapabilityMismatch(t *testing.T) 
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "skill.yaml"),
 	} {
 		content := readFile(t, path)
-		if strings.Contains(content, "provider_capability_mismatch") {
-			t.Fatalf("%s stop_conditions must not include provider_capability_mismatch", path)
+		if !strings.Contains(content, "provider_capability_mismatch") {
+			t.Fatalf("%s stop_conditions must include provider_capability_mismatch", path)
 		}
 	}
 }
@@ -2363,10 +2377,10 @@ func TestTelemetryContractDefinesScoutFields(t *testing.T) {
 	}
 }
 
-// TestRoutingContractDefinesPostRouteDiscoveryHandoff verifies 00-routing.md
-// describes Scout handing requires_discovery routes to Ranger without checking
-// subtype metadata on the configured weapon.
-func TestRoutingContractDefinesPostRouteDiscoveryHandoff(t *testing.T) {
+// TestRoutingContractDefinesPostRouteCapabilityCheck verifies 00-routing.md
+// describes the weapon-capability check running immediately after Scout emits
+// route_decision, before the discovery weapon is invoked.
+func TestRoutingContractDefinesPostRouteCapabilityCheck(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
@@ -2375,21 +2389,22 @@ func TestRoutingContractDefinesPostRouteDiscoveryHandoff(t *testing.T) {
 	} {
 		content := readFile(t, path)
 		for _, needle := range []string{
-			"Post-Route Discovery Handoff",
-			"Ranger is the internal discovery persona",
-			"standard preflight checks",
+			"Post-Route Capability Check",
+			"post_route_capability_check",
+			"before the discovery weapon is invoked",
+			"discovery_subtype_support",
 		} {
 			if !strings.Contains(content, needle) {
-				t.Fatalf("%s missing post-route discovery handoff term %q", path, needle)
+				t.Fatalf("%s missing post-route capability check term %q", path, needle)
 			}
 		}
 	}
 }
 
-// TestScoutRoutingMachineContractDefinesPostRouteDiscoveryHandoff verifies
-// scout-routing.yaml defines the post_route_discovery_handoff block that hands
-// requires_discovery routes to Ranger without checking discovery_subtype_support.
-func TestScoutRoutingMachineContractDefinesPostRouteDiscoveryHandoff(t *testing.T) {
+// TestScoutRoutingMachineContractDefinesPostRouteCapabilityCheck verifies
+// scout-routing.yaml defines the post_route_capability_check block that runs
+// before weapon invocation, checking discovery_subtype_support.
+func TestScoutRoutingMachineContractDefinesPostRouteCapabilityCheck(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
@@ -2398,12 +2413,12 @@ func TestScoutRoutingMachineContractDefinesPostRouteDiscoveryHandoff(t *testing.
 	} {
 		content := readFile(t, path)
 		for _, needle := range []string{
-			"post_route_discovery_handoff:",
-			"before_ranger_invocation",
-			"discovery_subtype is Ranger behavior",
+			"post_route_capability_check:",
+			"discovery_subtype_support",
+			"before_weapon_invocation",
 		} {
 			if !strings.Contains(content, needle) {
-				t.Fatalf("%s missing post_route_discovery_handoff term %q", path, needle)
+				t.Fatalf("%s missing post_route_capability_check term %q", path, needle)
 			}
 		}
 	}
