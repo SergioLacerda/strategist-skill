@@ -9,10 +9,9 @@ import (
 func TestActiveConfig_Validate_Valid(t *testing.T) {
 	t.Parallel()
 	cfg := compile.ActiveConfig{
-		Mode:        "epic",
-		BasePath:    ".analysis",
-		RolesConfig: "roles/default.yaml",
-		Slots:       map[string]string{"discovery": "brainstorming"},
+		Mode:     "epic",
+		BasePath: ".analysis",
+		Slots:    map[string]string{"discovery": "brainstorming"},
 	}
 	if err := cfg.Validate(); err != nil {
 		t.Fatalf("unexpected error for valid config: %v", err)
@@ -28,17 +27,17 @@ func TestActiveConfig_Validate_MissingFields(t *testing.T) {
 	}{
 		{
 			name: "missing mode",
-			cfg:  compile.ActiveConfig{BasePath: ".analysis", RolesConfig: "roles/default.yaml", Slots: map[string]string{"x": "y"}},
+			cfg:  compile.ActiveConfig{BasePath: ".analysis", Slots: map[string]string{"x": "y"}},
 			want: "mode is required",
 		},
 		{
 			name: "missing base_path",
-			cfg:  compile.ActiveConfig{Mode: "epic", RolesConfig: "roles/default.yaml", Slots: map[string]string{"x": "y"}},
+			cfg:  compile.ActiveConfig{Mode: "epic", Slots: map[string]string{"x": "y"}},
 			want: "base_path is required",
 		},
 		{
 			name: "empty slots",
-			cfg:  compile.ActiveConfig{Mode: "epic", BasePath: ".analysis", RolesConfig: "roles/default.yaml"},
+			cfg:  compile.ActiveConfig{Mode: "epic", BasePath: ".analysis"},
 			want: "slots must have at least one entry",
 		},
 		{

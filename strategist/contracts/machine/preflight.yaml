@@ -9,7 +9,7 @@ contract:
     - name: active
       type: object
       required: true
-      description: Active config from Bootstrap (mode, base_path, roles_config)
+      description: Active config from Bootstrap (mode, base_path, slots)
     - name: persona
       type: object
       required: true

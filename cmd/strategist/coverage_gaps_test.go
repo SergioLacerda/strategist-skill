@@ -53,9 +53,9 @@ func TestValidateCmd_MissingMode(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
-	// active.yaml has roles_config but no mode field
+	// active.yaml has the current required fields except mode.
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"),
-		[]byte("base_path: .analysis\nroles_config: default\nslots:\n  discovery: brainstorming\n"), 0o644))
+		[]byte("base_path: .analysis\nslots:\n  discovery: brainstorming\n"), 0o644))
 
 	orig := validateRoot
 	t.Cleanup(func() { validateRoot = orig })

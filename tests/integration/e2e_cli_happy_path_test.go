@@ -19,7 +19,6 @@ func writeHappyPathActiveYAML(t *testing.T, strategistDir string) {
 
 	activeYAML := []byte(`mode: epic
 base_path: .analysis
-roles_config: roles/default.yaml
 knowledge_index_path: knowledge.index.yaml
 language:
   ui: pt-BR
@@ -72,7 +71,7 @@ func TestE2E_CLI_InstallCompileValidateCheckStale(t *testing.T) {
 	active, ok := compiledConfig["active"].(map[string]any)
 	require.True(t, ok, "compiled active must be an object")
 	assert.Equal(t, "epic", active["mode"])
-	assert.NotEmpty(t, active["roles_config"])
+	assert.NotContains(t, active, "roles_config")
 
 	var compiledDomain map[string]any
 	testutil.ReadGzJSON(t, filepath.Join(strategistDir, ".compiled", ".domain.gz"), &compiledDomain)
@@ -93,7 +92,7 @@ func TestE2E_CLI_ValidateOnMinimalRoot(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Join(strategistDir, "personas"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(strategistDir, "roles"), 0o755))
 
-	require.NoError(t, os.WriteFile(filepath.Join(strategistDir, "active.yaml"), []byte("mode: epic\nroles_config: default\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(strategistDir, "active.yaml"), []byte("mode: epic\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(strategistDir, "personas", "epic.yaml"), testutil.ValidMinimalPersonaYAML(), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(strategistDir, "roles", "default.yaml"), []byte("discovery: brainstorming\nrefinement: archivist\nexecution: caveman\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(strategistDir, "knowledge.index.yaml"), []byte("sources: []\n"), 0o644))

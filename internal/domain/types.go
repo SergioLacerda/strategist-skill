@@ -16,7 +16,6 @@ type PhaseLabels struct {
 type ActiveConfig struct {
 	Mode               string `yaml:"mode"`
 	BasePath           string `yaml:"base_path"`
-	RolesConfig        string `yaml:"roles_config"`
 	KnowledgeIndexPath string `yaml:"knowledge_index_path"`
 	Language           any    `yaml:"language,omitempty"`
 	// Legacy fields — parsed to detect stale active.yaml files. ValidateNoLegacyFields returns
@@ -180,9 +179,6 @@ func (c ActiveConfig) Validate() error {
 	}
 	if c.BasePath == "" {
 		errs = append(errs, "base_path is required")
-	}
-	if c.RolesConfig == "" {
-		errs = append(errs, "roles_config is required")
 	}
 	if len(c.Slots) == 0 {
 		errs = append(errs, "slots must have at least one entry")

@@ -133,7 +133,6 @@ func TestWriteActiveYAML(t *testing.T) {
 			wantContain: []string{
 				"mode: pragmatic",
 				"base_path: .analysis",
-				"roles_config: roles/default.yaml",
 				"language:",
 				"  ui: en",
 				"  docs: en",
@@ -143,7 +142,7 @@ func TestWriteActiveYAML(t *testing.T) {
 				"refinement: openspec-explore",
 				"execution: sdd-ask",
 			},
-			wantAbsent: []string{"execution_mode", "git_persistence_mode", "adr_enabled"},
+			wantAbsent: []string{"roles_config", "execution_mode", "git_persistence_mode", "adr_enabled"},
 		},
 		{
 			name: "with treasure chest path",

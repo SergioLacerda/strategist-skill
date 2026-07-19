@@ -50,10 +50,9 @@ func TestCompiledConfig_JSONTags(t *testing.T) {
 		CompiledAt: "123",
 		Sources:    map[string]int64{"/a": 100},
 		Active: domain.ActiveConfig{
-			Mode:        "full",
-			BasePath:    ".analysis",
-			RolesConfig: "roles/default.yaml",
-			Slots:       map[string]string{"discovery": "brainstorming"},
+			Mode:     "full",
+			BasePath: ".analysis",
+			Slots:    map[string]string{"discovery": "brainstorming"},
 		},
 		Personas: map[string]domain.PersonaConfig{
 			"epic": {

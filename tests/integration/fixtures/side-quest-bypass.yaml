@@ -8,7 +8,6 @@ input:
   active_yaml:
     mode: pragmatic
     base_path: .analysis
-    roles_config: default
   opportunity_attack_result:
     side_quests:
       - type: promote
