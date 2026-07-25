@@ -66,9 +66,9 @@ func runTreasureChest(cmd *cobra.Command, _ []string, opts treasureChestOptions)
 	rows = treasure.FilterRowsByScope(rows, opts.Scope)
 
 	switch opts.Format {
-	case "", "table":
+	case "", outputFormatTable:
 		// fall through to table rendering below
-	case "json":
+	case outputFormatJSON:
 		return renderTreasureChestJSON(os.Stdout, root, rows, compErr, govErr, idxErr, compiledAt)
 	default:
 		return fmt.Errorf("treasure-chest: unknown --format %q (want table or json)", opts.Format)
@@ -78,10 +78,10 @@ func runTreasureChest(cmd *cobra.Command, _ []string, opts treasureChestOptions)
 }
 
 func treasureChestOptionsFromFlags(cmd *cobra.Command, opts treasureChestOptions) treasureChestOptions {
-	opts.Root = stringFlag(cmd, "root", opts.Root)
-	opts.DoIndex = boolFlag(cmd, "index", opts.DoIndex)
-	opts.IncludeHistorical = boolFlag(cmd, "include-historical", opts.IncludeHistorical)
-	opts.Format = stringFlag(cmd, "format", opts.Format)
+	opts.Root = stringFlag(cmd, flagRoot, opts.Root)
+	opts.DoIndex = boolFlag(cmd, flagIndex, opts.DoIndex)
+	opts.IncludeHistorical = boolFlag(cmd, flagIncludeHistorical, opts.IncludeHistorical)
+	opts.Format = stringFlag(cmd, flagFormat, opts.Format)
 	opts.Scope = stringFlag(cmd, "scope", opts.Scope)
 	return opts
 }
@@ -99,11 +99,11 @@ func resolveTreasureChestRoot(rootFlag string) (string, error) {
 }
 
 func init() {
-	opts := treasureChestOptions{Format: "table"}
-	treasureChestCmd.PersistentFlags().StringVar(&opts.Root, "root", "", "path to .strategist/ root (default: auto-discovered from CWD)")
-	treasureChestCmd.Flags().BoolVar(&opts.DoIndex, "index", false, "rebuild compiled knowledge index from declared sources")
-	treasureChestCmd.Flags().BoolVar(&opts.IncludeHistorical, "include-historical", false, "include T2/T3 historical sources in index rebuild (requires --index)")
-	treasureChestCmd.Flags().StringVar(&opts.Format, "format", "table", "output format: table or json")
+	opts := treasureChestOptions{Format: outputFormatTable}
+	treasureChestCmd.PersistentFlags().StringVar(&opts.Root, flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
+	treasureChestCmd.Flags().BoolVar(&opts.DoIndex, flagIndex, false, "rebuild compiled knowledge index from declared sources")
+	treasureChestCmd.Flags().BoolVar(&opts.IncludeHistorical, flagIncludeHistorical, false, "include T2/T3 historical sources in index rebuild (requires --index)")
+	treasureChestCmd.Flags().StringVar(&opts.Format, flagFormat, outputFormatTable, "output format: table or json")
 	treasureChestCmd.Flags().StringVar(&opts.Scope, "scope", "", "filter output by slot scope (e.g. discovery, refinement, execution)")
 	treasureChestCmd.RunE = func(cmd *cobra.Command, args []string) error {
 		return runTreasureChest(cmd, args, opts)

@@ -2,11 +2,9 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/compile"
-	"github.com/SergioLacerda/strategist-skill/internal/integrity"
 	"github.com/SergioLacerda/strategist-skill/internal/treasure"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -167,89 +165,6 @@ func finishChestAdd(root, indexPath string, indexAfter bool) error {
 	return nil
 }
 
-// refreshConfigLock re-seals the config integrity lock after a CLI command
-// legitimately writes active.yaml. Without this, the next command's
-// integrity.IsModified check sees the mtime change and falsely warns that
-// active.yaml was "modified outside the CLI" — even though this command is
-// the CLI. Best-effort: a failure here only means the next run may show a
-// stale-lock warning, not a functional break.
-func refreshConfigLock(root, activePath string) {
-	lockPath := filepath.Join(root, ".config.lock")
-	if err := integrity.WriteLock(activePath, lockPath); err != nil {
-		fmt.Fprintf(os.Stderr, "[Strategist] WARN: could not refresh config lock: %v\n", err)
-	}
-}
-
-// --- remove ---
-
-func runTreasureChestRemove(cmd *cobra.Command, args []string, opts treasureChestRemoveOptions) error {
-	if run := telemetryRunFromCmd(cmd); run != nil {
-		run.SetSilent()
-	}
-	opts.ID = stringFlag(cmd, "id", opts.ID)
-
-	pathArg := optionalPathArg(args)
-	if pathArg == "" && opts.ID == "" {
-		return fmt.Errorf("treasure-chest remove: provide a path or --id")
-	}
-
-	root, err := resolveTreasureChestCommandRoot(cmd, "remove")
-	if err != nil {
-		return err
-	}
-
-	id, hasJewels, err := applyTreasureChestRemove(root, pathArg, opts.ID)
-	if err != nil {
-		return fmt.Errorf("treasure-chest remove: %w", err)
-	}
-	reportRemoveResult(id, hasJewels)
-	return nil
-}
-
-func applyTreasureChestRemove(root, pathArg, idOpt string) (string, bool, error) {
-	id, err := treasure.ResolveRemoveTarget(root, pathArg, idOpt)
-	if err != nil {
-		return "", false, fmt.Errorf("resolve remove target: %w", err)
-	}
-	paths := treasure.NewChestPaths(root)
-	docs, err := treasure.LoadRemoveDocs(paths)
-	if err != nil {
-		return "", false, fmt.Errorf("load remove docs: %w", err)
-	}
-	if err := treasure.ApplyRemoveMutations(docs, id); err != nil {
-		return "", false, fmt.Errorf("apply remove mutations: %w", err)
-	}
-	written, err := treasure.WriteRemoveDocs(paths, docs)
-	if err != nil {
-		return "", false, fmt.Errorf("partial write after %v: %w", written, err)
-	}
-	refreshConfigLock(root, paths.Active)
-	return id, len(docs.Jewels) > 0, nil
-}
-
-func optionalPathArg(args []string) string {
-	if len(args) == 1 {
-		return args[0]
-	}
-	return ""
-}
-
 func resolveTreasureChestCommandRoot(cmd *cobra.Command, action string) (string, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", fmt.Errorf("treasure-chest %s: get cwd: %w", action, err)
-	}
-	root, _, err := resolveStrategistRoot(treasureChestRootFromCmd(cmd), cwd)
-	if err != nil {
-		return "", fmt.Errorf("treasure-chest %s: %w", action, err)
-	}
-	return root, nil
-}
-
-func reportRemoveResult(id string, hasJewels bool) {
-	fmt.Printf("[Strategist] remove: OK (id=%s)\n", id)
-	if hasJewels {
-		fmt.Printf("[Strategist] remove: %q's jewels marked deprecated in jewels.yaml\n", id)
-	}
-	fmt.Println("[Strategist] remove: index is stale. Run: strategist treasure-chest index")
+	return resolveTreasureChestActionRoot(cmd, action)
 }
