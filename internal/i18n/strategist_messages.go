@@ -176,6 +176,49 @@ func (m RuntimeMessages) ToMap() map[string]any {
 	}
 }
 
+// PhaseAnnouncementsMessages holds localized per-phase mission narration lines
+// (Ranger/Archivist/Gate/Sniper progress events), compiled into each persona's
+// phase_announcements.<lang> field. This is a distinct compiled-artifact field
+// from content_by_lang (RuntimeMessages above) — different keys, different
+// wording, injected separately at compile time.
+type PhaseAnnouncementsMessages struct {
+	DiscoveryStarting       string
+	DiscoveryDone           string
+	RefinementStarting      string
+	RefinementDone          string
+	ApprovalGateShown       string
+	DocumentationStarting   string
+	DocumentationTargetDone string
+	DocumentationDone       string
+}
+
+// ToMap converts PhaseAnnouncementsMessages to a map[string]any with snake_case
+// keys matching the phase_announcements.en conventions used in persona YAML files.
+func (m PhaseAnnouncementsMessages) ToMap() map[string]any {
+	return map[string]any{
+		"discovery_starting":        m.DiscoveryStarting,
+		"discovery_done":            m.DiscoveryDone,
+		"refinement_starting":       m.RefinementStarting,
+		"refinement_done":           m.RefinementDone,
+		"approval_gate_shown":       m.ApprovalGateShown,
+		"documentation_starting":    m.DocumentationStarting,
+		"documentation_target_done": m.DocumentationTargetDone,
+		"documentation_done":        m.DocumentationDone,
+	}
+}
+
+// PTBRPhaseAnnouncements is the Portuguese (pt-BR) phase_announcements bundle.
+var PTBRPhaseAnnouncements = PhaseAnnouncementsMessages{
+	DiscoveryStarting:       "🎯 **Ranger:** Estou em campo. O reconhecimento começa agora.",
+	DiscoveryDone:           "🎯 **Ranger:** Missão de campo concluída. Passando o dossiê para o Archivist.",
+	RefinementStarting:      "📚 **Archivist:** Dossiê recebido. Iniciando análise sistemática.",
+	RefinementDone:          "📚 **Archivist:** Refinamento concluído. O plano está pronto para avaliação.",
+	ApprovalGateShown:       "🚦 **Gate:** O trabalho está feito. A decisão é sua — o que construímos merece materialização de documentação?",
+	DocumentationStarting:   "🗡️ **Sniper:** Alvo confirmado. Silêncio — materializando documentação.",
+	DocumentationTargetDone: "🗡️ **Sniper:** Alvo {done}/{total} concluído.",
+	DocumentationDone:       "🗡️ **Sniper:** Concluído. Relatório entregue.",
+}
+
 // PTBRRuntime is the Portuguese (pt-BR) runtime message bundle.
 var PTBRRuntime = RuntimeMessages{ //nolint:dupl
 	IntakeSummary: "Missão recebida: {task_type} | delivery={delivery_strategy} |" +

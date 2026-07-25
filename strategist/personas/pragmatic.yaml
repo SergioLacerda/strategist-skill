@@ -94,6 +94,9 @@ content_by_lang:
     quick_draw_success: >
       success: idea added at {destination_path}
       ideas added: {ideas_added}
+    runbook_opportunity: >
+      runbook candidate available: [{candidate_id}] {candidate_title} (confidence: {confidence}).
+      create candidate? (yes / no) — independent of the idea gate above.
 
     treasure_chest_found: >
       Chest: [{chest_id}] — {description}

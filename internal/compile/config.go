@@ -75,10 +75,13 @@ func validateTypedPersonas(personasDir string) error {
 
 func injectPTBRRuntime(personasRaw map[string]any) {
 	ptBR := i18n.PTBRRuntime.ToMap()
+	ptBRPhaseAnnouncements := i18n.PTBRPhaseAnnouncements.ToMap()
 	for _, raw := range personasRaw {
-		cbl, ok := contentByLang(raw)
-		if ok {
+		if cbl, ok := contentByLang(raw); ok {
 			cbl["pt-BR"] = ptBR
+		}
+		if pa, ok := phaseAnnouncements(raw); ok {
+			pa["pt-BR"] = ptBRPhaseAnnouncements
 		}
 	}
 }
@@ -90,6 +93,15 @@ func contentByLang(raw any) (map[string]any, bool) {
 	}
 	cbl, ok := personaMap["content_by_lang"].(map[string]any)
 	return cbl, ok
+}
+
+func phaseAnnouncements(raw any) (map[string]any, bool) {
+	personaMap, ok := raw.(map[string]any)
+	if !ok {
+		return nil, false
+	}
+	pa, ok := personaMap["phase_announcements"].(map[string]any)
+	return pa, ok
 }
 
 func loadValidatedActiveRaw(activePath string) (map[string]any, error) {

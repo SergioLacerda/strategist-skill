@@ -1,6 +1,0 @@
-{
-  "schema_version": "1",
-  "description": "Chunk-level index per chest — rebuilt on sync-embed when chests are present.",
-  "generated": "2026-06-02",
-  "chunks": []
-}

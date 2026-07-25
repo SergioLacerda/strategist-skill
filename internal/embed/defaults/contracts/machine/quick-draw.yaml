@@ -23,6 +23,7 @@ pipeline:
   - phase: pre_scan             # §5.0pre — scan pending missions before capture
   - phase: ranger_quick_draw    # §5.0a
   - phase: archivist_quick_draw # §5.0b
+  - phase: runbook_opportunity  # §5.0b2 — advisory only, no write
   - phase: gate                 # §5.0c — mandatory stop
   - phase: sniper_quick_draw    # §5.0d — conditional on gate approval
 
@@ -71,6 +72,57 @@ phases:
     compute:
       - ideas_added: 1   # count of entries written in this operation; no reads from todo/
 
+  runbook_opportunity:
+    description: >
+      Advisory-only routine, analogous in shape to Opportunity Attack but scoped to
+      Quick Draw captures instead of refined missions. Evaluates whether the
+      normalized idea (from ranger_quick_draw) describes a reusable agent-facing
+      operational procedure. Emits gate metadata only — it never writes a runbook
+      and never performs discovery beyond the already-captured idea.
+    owner: quick_draw
+    input:
+      - normalized_idea (from ranger_quick_draw)
+      - destination_bucket (from archivist_quick_draw)
+    activation_criteria:
+      repeated_failure_with_recovery: idea records a repeated operational failure and a known recovery sequence
+      runtime_governance_diagnostic: idea explains how an agent should diagnose or unblock a known runtime/provider/governance state
+      executable_decision_procedure: idea captures a decision procedure a future agent can execute without broad discovery
+      source_runtime_lookup_rule: idea identifies a source/runtime lookup pattern that prevents stale or non-canonical behavior
+      verified_procedure_worth_preserving: idea preserves verified commands, symptoms, expected outputs, and stop conditions
+    non_signals:
+      - generic idea with no procedure
+      - one-off implementation task
+      - broad feature request needing normal discovery/refinement
+      - a note whose correctness has not been validated
+      - architecture trade-off note — belongs to Opportunity Attack / ADR, not here
+    output:
+      warranted: boolean
+      reason: short operational reason
+      candidate_id: "RB-{mission_id}"   # null when warranted=false
+      candidate_title: short runbook candidate title   # null when warranted=false
+      confidence: low|medium|high
+    on_warranted:
+      action: add_runbook_side_quest_to_gate
+      gate_extra_option:
+        runbook: create_runbook_candidate   # only offered when warranted=true
+      gate_display: >
+        📖 Runbook Opportunity
+        [RB-{mission_id}] Draft agent runbook candidate — impact: {confidence}
+    on_not_warranted:
+      action: emit_done_no_runbook
+      emit: "[Strategist] phase=quick_draw runbook_opportunity=done runbook_warranted=false"
+    emit:
+      format: "[Strategist] phase=quick_draw runbook_opportunity=done runbook_warranted={bool}"
+      emit_level: DEBUG
+    invariants:
+      - this routine MUST NOT write a runbook file directly — it only proposes a candidate at the gate
+      - selecting the runbook gate option creates a reviewable candidate, never a trusted canonical docs/runbooks/ entry, without further human review
+      - this routine MUST NOT perform discovery beyond the already-normalized Quick Draw idea
+      - this routine MUST NOT evaluate ADR-worthiness — that remains Opportunity Attack's responsibility
+      - this routine MUST NOT evaluate card closure or movement — that remains Critical Hit's responsibility
+      - emit always produced after evaluation (runbook_warranted=false is valid; silence is not)
+    write_scope: read-only (evaluates the already-captured idea; any write happens only via sniper_quick_draw after explicit gate approval)
+
   gate:
     template_key: quick_draw_gate          # persona.content_by_lang[lang].quick_draw_gate
     success_template_key: quick_draw_success
@@ -78,6 +130,12 @@ phases:
       sim: proceed_to_sniper
       nao: return_without_writing
       escalar: escalate_to_full_mission    # only shown when scope_expansion=true
+      runbook: create_runbook_candidate    # only shown when runbook_opportunity.warranted=true
+    runbook_response_policy: >
+      The runbook option is independent of sim/nao: selecting it creates a runbook
+      candidate but does not by itself append the Quick Draw idea, and confirming
+      sim does not by itself create a runbook candidate. Each action requires its
+      own explicit confirmation — a user may select one, both, or neither.
     policy_eval:
       transition_group: finalize_analysis
       emit: "[Strategist] phase=policy_eval status={status} mission={id} mode={mode} can_execute={bool} transition_group=finalize_analysis"
@@ -89,6 +147,19 @@ phases:
     return_keys:
       - destination_path
       - ideas_added
+    runbook_candidate_action:
+      trigger: gate response includes "runbook" (see runbook_response_policy)
+      action: create_reviewable_runbook_candidate
+      allowed_forms:
+        - a pending mission stub under "<base_path>/pending/" that asks for a runbook, routed through the normal discovery/refinement pipeline
+        - a draft appended to the destination bucket clearly tagged as a runbook candidate, not a canonical runbook
+      forbidden:
+        - writing directly to docs/runbooks/<slug>.md from this phase
+        - promoting the candidate to canonical without human acceptance
+      note: >
+        The candidate is a request for a runbook, not the runbook itself. Accepted
+        runbooks live under docs/runbooks/ (see docs/runbooks/README.md) only after
+        explicit human review.
 
 # --- Escalation: full mission pipeline ---
 
@@ -106,3 +177,4 @@ persona_keys:
   - quick_draw_gate       # gate prompt shown to user
   - quick_draw_success    # confirmation after successful append
   - pending_missions_found  # emitted by pre_scan when gate_approval/gate_pending missions exist
+  - runbook_opportunity   # gate side-quest text shown when runbook_opportunity.warranted=true

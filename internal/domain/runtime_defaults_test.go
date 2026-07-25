@@ -95,3 +95,45 @@ func TestNewInstallManifestRecordsNormativeDefaults(t *testing.T) {
 		assert.Equal(t, hashes[file.Path], got.SHA256)
 	}
 }
+
+func TestFileByPath_NotFound(t *testing.T) {
+	t.Parallel()
+	manifest := domain.NewInstallManifest("test", nil)
+	_, ok := manifest.FileByPath("does/not/exist.yaml")
+	assert.False(t, ok)
+}
+
+func TestNormativeRuntimeDefaultPaths_MatchesFiles(t *testing.T) {
+	t.Parallel()
+	files := domain.NormativeRuntimeDefaultFiles()
+	paths := domain.NormativeRuntimeDefaultPaths()
+	assert.Len(t, paths, len(files))
+	for i, file := range files {
+		assert.Equal(t, file.Path, paths[i])
+	}
+}
+
+func TestFormatRuntimeStaleDiagnostic(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		decision domain.RuntimeDefaultDecision
+		want     string
+	}{
+		{"auto upgrade", domain.RuntimeDecisionAutoUpgrade, "runtime_stale_auto_repairable"},
+		{"conflict", domain.RuntimeDecisionConflict, "runtime_stale_conflict"},
+		{"unknown manifest", domain.RuntimeDecisionUnknownManifest, "runtime_stale_unknown_manifest"},
+		{"write missing", domain.RuntimeDecisionWriteMissing, "runtime_stale:"},
+		{"keep current", domain.RuntimeDecisionKeepCurrent, "runtime_stale:"},
+		{"force overwrite", domain.RuntimeDecisionForceOverwrite, "runtime_stale:"},
+		{"unrecognized decision", domain.RuntimeDefaultDecision("bogus"), "runtime_stale:"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := domain.FormatRuntimeStaleDiagnostic("SKILL.md", tt.decision)
+			assert.Contains(t, got, tt.want)
+			assert.Contains(t, got, "SKILL.md")
+		})
+	}
+}

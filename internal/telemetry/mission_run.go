@@ -140,34 +140,13 @@ func (m *MissionRun) Snapshot() MissionMetrics {
 	defer m.mu.Unlock()
 
 	now := time.Now()
-	intakeAt := m.intakeAt
-	if intakeAt.IsZero() {
-		intakeAt = now
-	}
-	scoutAt := m.scoutAt
-	if scoutAt.IsZero() {
-		scoutAt = intakeAt
-	}
-	rangerAt := m.rangerAt
-	if rangerAt.IsZero() {
-		rangerAt = scoutAt
-	}
-	archivistAt := m.archivistAt
-	if archivistAt.IsZero() {
-		archivistAt = rangerAt
-	}
-	gateAt := m.gateAt
-	if gateAt.IsZero() {
-		gateAt = archivistAt
-	}
-	gateRespondAt := m.gateRespondAt
-	if gateRespondAt.IsZero() {
-		gateRespondAt = gateAt
-	}
-	sniperAt := m.sniperAt
-	if sniperAt.IsZero() {
-		sniperAt = gateRespondAt
-	}
+	intakeAt := firstNonZeroTime(m.intakeAt, now)
+	scoutAt := firstNonZeroTime(m.scoutAt, intakeAt)
+	rangerAt := firstNonZeroTime(m.rangerAt, scoutAt)
+	archivistAt := firstNonZeroTime(m.archivistAt, rangerAt)
+	gateAt := firstNonZeroTime(m.gateAt, archivistAt)
+	gateRespondAt := firstNonZeroTime(m.gateRespondAt, gateAt)
+	sniperAt := firstNonZeroTime(m.sniperAt, gateRespondAt)
 
 	return MissionMetrics{
 		MissionID:            m.MissionID,
@@ -185,6 +164,13 @@ func (m *MissionRun) Snapshot() MissionMetrics {
 		TokensOut:            m.tokensOut,
 		LinesEmitted:         m.linesOut,
 	}
+}
+
+func firstNonZeroTime(value, fallback time.Time) time.Time {
+	if value.IsZero() {
+		return fallback
+	}
+	return value
 }
 
 // SetSilent suppresses the metrics emission in Finish. Call this for

@@ -83,3 +83,34 @@ func TestRuntimeMessagesToMap(t *testing.T) {
 	assert.Equal(t, i18n.ENRuntime.ArtifactEntry, m["artifact_entry"])
 	assert.NotEmpty(t, m)
 }
+
+// TestPTBRPhaseAnnouncementsFieldsNonEmpty verifies every phase_announcements field
+// has a translated value — this is a distinct compiled-artifact field from
+// content_by_lang (RuntimeMessages above), injected separately at compile time.
+func TestPTBRPhaseAnnouncementsFieldsNonEmpty(t *testing.T) {
+	t.Parallel()
+
+	v := reflect.ValueOf(i18n.PTBRPhaseAnnouncements)
+	typ := v.Type()
+	for i := range typ.NumField() {
+		field := typ.Field(i)
+		assert.NotEmpty(t, v.Field(i).String(), "PTBRPhaseAnnouncements.%s must not be empty", field.Name)
+	}
+}
+
+// TestPhaseAnnouncementsMessagesToMap verifies ToMap exposes every field under its
+// snake_case key, matching the phase_announcements.en conventions used in persona YAML.
+func TestPhaseAnnouncementsMessagesToMap(t *testing.T) {
+	t.Parallel()
+
+	m := i18n.PTBRPhaseAnnouncements.ToMap()
+	assert.Equal(t, i18n.PTBRPhaseAnnouncements.DiscoveryStarting, m["discovery_starting"])
+	assert.Equal(t, i18n.PTBRPhaseAnnouncements.DiscoveryDone, m["discovery_done"])
+	assert.Equal(t, i18n.PTBRPhaseAnnouncements.RefinementStarting, m["refinement_starting"])
+	assert.Equal(t, i18n.PTBRPhaseAnnouncements.RefinementDone, m["refinement_done"])
+	assert.Equal(t, i18n.PTBRPhaseAnnouncements.ApprovalGateShown, m["approval_gate_shown"])
+	assert.Equal(t, i18n.PTBRPhaseAnnouncements.DocumentationStarting, m["documentation_starting"])
+	assert.Equal(t, i18n.PTBRPhaseAnnouncements.DocumentationTargetDone, m["documentation_target_done"])
+	assert.Equal(t, i18n.PTBRPhaseAnnouncements.DocumentationDone, m["documentation_done"])
+	assert.Len(t, m, reflect.TypeOf(i18n.PTBRPhaseAnnouncements).NumField())
+}

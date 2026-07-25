@@ -84,8 +84,20 @@ field_rules:
         response:
           type: string
 
+idempotency:
+  key: mission_id
+  description: >
+    mission_id is required for presence (see required_fields above), but
+    presence alone does not guarantee uniqueness. mission_id is additionally
+    the idempotency key for outcomes.jsonl: at most one entry per mission_id
+    may exist. This is enforced at write/flush time (skip-before-append), not
+    by post-hoc cleanup — see learning-buffer.yaml#idempotency_key and
+    internal/telemetry.AppendOutcomeLine.
+
 invariants:
   - id: outcomes_jsonl_is_source_of_truth
     rule: structured outcome entries are persisted in outcomes.jsonl; derived indexes never replace it
   - id: semantic_retrieval_is_optional
     rule: any future semantic index is optional, local, rebuildable, and must degrade to tag or lexical retrieval
+  - id: mission_id_is_unique
+    rule: outcomes.jsonl contains at most one entry per mission_id; duplicate writes are skipped before append

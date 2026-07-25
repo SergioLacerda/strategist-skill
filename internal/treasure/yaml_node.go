@@ -22,6 +22,11 @@ type YAMLWrite struct {
 	Doc  *yaml.Node
 }
 
+type stagedYAMLWrite struct {
+	path    string
+	tmpPath string
+}
+
 // ReadYAMLNode reads a YAML file into a document node.
 func ReadYAMLNode(path string) (*yaml.Node, error) {
 	raw, err := os.ReadFile(path) //nolint:gosec // G304
@@ -35,38 +40,83 @@ func ReadYAMLNode(path string) (*yaml.Node, error) {
 	return &doc, nil
 }
 
-// WriteYAMLNodes writes each document to its file, in order, stopping at the first
-// failure. It returns the list of paths successfully written so callers can report
-// exactly how much state was mutated if a later write fails.
+// WriteYAMLNodes commits every document as a single all-or-nothing batch: a prepare phase
+// serializes and writes each document to a temporary sibling file, and only if every write in
+// the batch prepares successfully does a commit phase rename each temporary into place. A
+// prepare-phase failure leaves every destination untouched — no partial mutation reaches disk.
+// A commit-phase failure (renames happen in path order) can still leave a small residual
+// window where earlier files in the batch were already replaced; the returned slice and
+// wrapped error report exactly which paths were committed before the failure.
 func WriteYAMLNodes(writes ...YAMLWrite) ([]string, error) {
-	var written []string
+	stagedWrites, err := stageYAMLWrites(writes)
+	if err != nil {
+		return nil, err
+	}
+	return commitStagedYAMLWrites(stagedWrites)
+}
+
+func stageYAMLWrites(writes []YAMLWrite) ([]stagedYAMLWrite, error) {
+	stagedWrites := make([]stagedYAMLWrite, 0, len(writes))
 	for _, w := range writes {
-		var buf bytes.Buffer
-		enc := yaml.NewEncoder(&buf)
-		enc.SetIndent(2) // matches this repo's existing YAML style
-		if err := enc.Encode(w.Doc); err != nil {
-			return written, fmt.Errorf("encode %s: %w", w.Path, err)
+		tmpPath, err := stageYAMLWrite(w)
+		if err != nil {
+			cleanupStagedYAMLWrites(stagedWrites)
+			return nil, err
 		}
-		if err := enc.Close(); err != nil {
-			return written, fmt.Errorf("encode %s: %w", w.Path, err)
+		stagedWrites = append(stagedWrites, stagedYAMLWrite{path: w.Path, tmpPath: tmpPath})
+	}
+	return stagedWrites, nil
+}
+
+func stageYAMLWrite(w YAMLWrite) (string, error) {
+	data, err := encodeYAMLNode(w.Doc)
+	if err != nil {
+		return "", fmt.Errorf("write %s: %w", w.Path, err)
+	}
+	tmpPath, err := writeTempSibling(w.Path, data, 0o644)
+	if err != nil {
+		return "", fmt.Errorf("write %s: %w", w.Path, err)
+	}
+	return tmpPath, nil
+}
+
+func encodeYAMLNode(doc *yaml.Node) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(2) // matches this repo's existing YAML style
+	if err := enc.Encode(doc); err != nil {
+		return nil, fmt.Errorf("encode: %w", err)
+	}
+	if err := enc.Close(); err != nil {
+		return nil, fmt.Errorf("encode: %w", err)
+	}
+	return buf.Bytes(), nil
+}
+
+func cleanupStagedYAMLWrites(stagedWrites []stagedYAMLWrite) {
+	for _, s := range stagedWrites {
+		os.Remove(s.tmpPath) //nolint:errcheck,gosec // best-effort cleanup of temp file
+	}
+}
+
+func commitStagedYAMLWrites(stagedWrites []stagedYAMLWrite) ([]string, error) {
+	var written []string
+	for _, s := range stagedWrites {
+		if err := os.Rename(s.tmpPath, s.path); err != nil {
+			return written, fmt.Errorf("write %s (already committed: %v): %w", s.path, written, err)
 		}
-		if err := writeFileAtomic(w.Path, buf.Bytes(), 0o644); err != nil {
-			return written, fmt.Errorf("write %s: %w", w.Path, err)
-		}
-		written = append(written, w.Path)
+		written = append(written, s.path)
 	}
 	return written, nil
 }
 
-func writeFileAtomic(path string, data []byte, perm fs.FileMode) error {
-	return writeFileAtomicWithRename(path, data, perm, os.Rename)
-}
-
-func writeFileAtomicWithRename(path string, data []byte, perm fs.FileMode, rename func(string, string) error) error {
+// writeTempSibling serializes data into a temporary file in path's directory (so the later
+// rename is atomic on the same filesystem) without touching path itself.
+func writeTempSibling(path string, data []byte, perm fs.FileMode) (string, error) {
 	dir := filepath.Dir(path)
 	tmp, err := os.CreateTemp(dir, "."+filepath.Base(path)+"-*.tmp")
 	if err != nil {
-		return fmt.Errorf("create temp: %w", err)
+		return "", fmt.Errorf("create temp: %w", err)
 	}
 	tmpName := tmp.Name()
 	cleanup := true
@@ -78,19 +128,32 @@ func writeFileAtomicWithRename(path string, data []byte, perm fs.FileMode, renam
 
 	if _, err := tmp.Write(data); err != nil {
 		tmp.Close() //nolint:errcheck,gosec // best-effort close after write failure; write error is what's reported
-		return fmt.Errorf("write temp: %w", err)
+		return "", fmt.Errorf("write temp: %w", err)
 	}
 	if err := tmp.Chmod(perm); err != nil {
 		tmp.Close() //nolint:errcheck,gosec // best-effort close after chmod failure; chmod error is what's reported
-		return fmt.Errorf("chmod temp: %w", err)
+		return "", fmt.Errorf("chmod temp: %w", err)
 	}
 	if err := tmp.Close(); err != nil {
-		return fmt.Errorf("close temp: %w", err)
-	}
-	if err := rename(tmpName, path); err != nil {
-		return fmt.Errorf("rename temp: %w", err)
+		return "", fmt.Errorf("close temp: %w", err)
 	}
 	cleanup = false
+	return tmpName, nil
+}
+
+func writeFileAtomic(path string, data []byte, perm fs.FileMode) error {
+	return writeFileAtomicWithRename(path, data, perm, os.Rename)
+}
+
+func writeFileAtomicWithRename(path string, data []byte, perm fs.FileMode, rename func(string, string) error) error {
+	tmpName, err := writeTempSibling(path, data, perm)
+	if err != nil {
+		return err
+	}
+	if err := rename(tmpName, path); err != nil {
+		os.Remove(tmpName) //nolint:errcheck,gosec // best-effort cleanup of temp file after failed rename
+		return fmt.Errorf("rename temp: %w", err)
+	}
 	return nil
 }
 

@@ -70,3 +70,49 @@ func TestValidateJewelStatus_UnknownStatus(t *testing.T) {
 		t.Fatal("expected error for unknown status")
 	}
 }
+
+func TestValidateJewelKind_ValidKinds(t *testing.T) {
+	t.Parallel()
+	for _, kind := range []string{
+		"decision", "pattern", "anti_pattern", "gap", "risk",
+		"constraint", "example", "heuristic", "template", "question",
+	} {
+		if err := ValidateJewelKind("jewel-1", kind); err != nil {
+			t.Errorf("kind %q: expected no error, got %v", kind, err)
+		}
+	}
+}
+
+func TestValidateJewelKind_InvalidKind(t *testing.T) {
+	t.Parallel()
+	err := ValidateJewelKind("jewel-1", "bogus")
+	if err == nil {
+		t.Fatal("expected error for unknown kind")
+	}
+	if got := err.Error(); !strings.Contains(got, "jewel-1") || !strings.Contains(got, "bogus") {
+		t.Errorf("expected error to mention jewel id and kind, got %q", got)
+	}
+}
+
+func TestValidateJewelScore_ValidRange(t *testing.T) {
+	t.Parallel()
+	for _, score := range []int{0, 50, 100} {
+		if err := ValidateJewelScore("jewel-1", score); err != nil {
+			t.Errorf("score %d: expected no error, got %v", score, err)
+		}
+	}
+}
+
+func TestValidateJewelScore_BelowRange(t *testing.T) {
+	t.Parallel()
+	if err := ValidateJewelScore("jewel-1", -1); err == nil {
+		t.Fatal("expected error for negative score")
+	}
+}
+
+func TestValidateJewelScore_AboveRange(t *testing.T) {
+	t.Parallel()
+	if err := ValidateJewelScore("jewel-1", 101); err == nil {
+		t.Fatal("expected error for score above 100")
+	}
+}

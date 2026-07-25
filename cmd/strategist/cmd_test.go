@@ -1169,6 +1169,113 @@ func TestCheckCmd_PrintContentByLang_MissingPersona(t *testing.T) {
 	assert.Contains(t, err.Error(), "available=epic")
 }
 
+func TestCheckCmd_PrintContentByLang_IncludesPhaseAnnouncementsWhenPresent(t *testing.T) {
+	dir := minimalCheckRoot(t)
+	testutil.WriteGzJSON(t, filepath.Join(dir, ".compiled", ".config.gz"), map[string]any{
+		"personas": map[string]any{
+			"epic": map[string]any{
+				"content_by_lang": map[string]any{
+					"en":    map[string]any{"ranger_start": "starting"},
+					"pt-BR": map[string]any{"ranger_start": "iniciando"},
+				},
+				"phase_announcements": map[string]any{
+					"en":    map[string]any{"discovery_starting": "Ranger starts."},
+					"pt-BR": map[string]any{"discovery_starting": "Ranger começa."},
+				},
+			},
+		},
+	})
+
+	orig := checkRoot
+	t.Cleanup(func() {
+		checkRoot = orig
+		checkPrintContentByLang = ""
+	})
+	checkRoot = dir
+	checkPrintContentByLang = "pt-BR"
+
+	var runErr error
+	stdout := captureStdout(t, func() {
+		runErr = checkCmd.RunE(checkCmd, nil)
+	})
+	require.NoError(t, runErr)
+	assert.Contains(t, stdout, "Ranger começa.")
+	assert.NotContains(t, stdout, "Ranger starts.")
+}
+
+func TestCheckCmd_PrintContentByLang_OmitsPhaseAnnouncementsWhenAbsent(t *testing.T) {
+	dir := minimalCheckRoot(t)
+	testutil.WriteGzJSON(t, filepath.Join(dir, ".compiled", ".config.gz"), map[string]any{
+		"personas": map[string]any{
+			"epic": map[string]any{
+				"content_by_lang": map[string]any{
+					"en": map[string]any{"ranger_start": "starting"},
+				},
+			},
+		},
+	})
+
+	orig := checkRoot
+	t.Cleanup(func() {
+		checkRoot = orig
+		checkPrintContentByLang = ""
+	})
+	checkRoot = dir
+	checkPrintContentByLang = "en"
+
+	var runErr error
+	stdout := captureStdout(t, func() {
+		runErr = checkCmd.RunE(checkCmd, nil)
+	})
+	require.NoError(t, runErr)
+	assert.Contains(t, stdout, "content_by_lang")
+	assert.NotContains(t, stdout, "phase_announcements")
+}
+
+func TestPrintContentByLang_ErrorBranches(t *testing.T) {
+	t.Run("persona malformed", func(t *testing.T) {
+		dir := minimalCheckRoot(t)
+		testutil.WriteGzJSON(t, filepath.Join(dir, ".compiled", ".config.gz"), map[string]any{
+			"personas": map[string]any{"epic": "not-a-map"},
+		})
+
+		err := printContentByLang(dir, "epic", "en")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "persona_malformed")
+	})
+
+	t.Run("content by lang missing", func(t *testing.T) {
+		dir := minimalCheckRoot(t)
+		testutil.WriteGzJSON(t, filepath.Join(dir, ".compiled", ".config.gz"), map[string]any{
+			"personas": map[string]any{"epic": map[string]any{}},
+		})
+
+		err := printContentByLang(dir, "epic", "en")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "content_by_lang_missing")
+	})
+
+	t.Run("corrupt gzip", func(t *testing.T) {
+		dir := minimalCheckRoot(t)
+		require.NoError(t, os.MkdirAll(filepath.Join(dir, ".compiled"), 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, ".compiled", ".config.gz"), []byte("not gzip"), 0o644))
+
+		err := printContentByLang(dir, "epic", "en")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "compiled_artifact_corrupt")
+	})
+
+	t.Run("directory artifact is corrupt", func(t *testing.T) {
+		dir := minimalCheckRoot(t)
+		require.NoError(t, os.MkdirAll(filepath.Join(dir, ".compiled"), 0o755))
+		require.NoError(t, os.Mkdir(filepath.Join(dir, ".compiled", ".config.gz"), 0o755))
+
+		err := printContentByLang(dir, "epic", "en")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "compiled_artifact_corrupt")
+	})
+}
+
 func writeInstallManifestForTest(t *testing.T, root, relPath, hash string) {
 	t.Helper()
 	manifest := domain.InstallManifest{

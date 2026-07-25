@@ -149,6 +149,11 @@ content_by_lang:
     quick_draw_success: >
       ⚔️ Quick Draw complete.
       success: {ideas_added} idea(s) added at {destination_path}
+    runbook_opportunity: >
+      📖 **Runbook Opportunity**
+
+      [{candidate_id}] {candidate_title} — confidence: {confidence}
+      Create runbook candidate? (yes / no) — independent of the idea gate above.
 
     treasure_chest_found: >
       🎁 **Treasure chest found!** [{chest_id}] — {description}

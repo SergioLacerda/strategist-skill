@@ -68,6 +68,37 @@ func TestWriteYAMLNodes_PartialWriteReturnsWrittenPaths(t *testing.T) {
 	assert.Equal(t, []string{goodPath}, written)
 }
 
+func TestWriteYAMLNodes_PrepareFailureLeavesNoDestinationMutated(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	goodPath := filepath.Join(dir, "good.yaml")
+	require.NoError(t, os.WriteFile(goodPath, []byte("existing: true\n"), 0o644))
+	doc := mustParseDoc(t, "a: 1\n")
+
+	// Second write's directory does not exist, so its prepare phase (temp file creation)
+	// fails before any rename is attempted for the whole batch.
+	badPath := filepath.Join(dir, "missing-subdir", "bad.yaml")
+
+	written, err := WriteYAMLNodes(
+		YAMLWrite{Path: goodPath, Doc: doc},
+		YAMLWrite{Path: badPath, Doc: doc},
+	)
+	require.Error(t, err)
+	assert.Empty(t, written)
+
+	// goodPath must be untouched: its prepare phase succeeded, but the batch never reached
+	// the commit phase because a later write's prepare phase failed.
+	raw, readErr := os.ReadFile(goodPath)
+	require.NoError(t, readErr)
+	assert.Equal(t, "existing: true\n", string(raw))
+
+	// No leftover temp file for goodPath either — prepare-phase cleanup ran for all staged
+	// writes, not just the one that failed.
+	matches, globErr := filepath.Glob(filepath.Join(dir, ".good.yaml-*.tmp"))
+	require.NoError(t, globErr)
+	assert.Empty(t, matches)
+}
+
 func TestWriteYAMLNodes_Success(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
