@@ -53,7 +53,7 @@ stale_card_detection:
     - sniper_report_exists
     - approval_gate_accepted
     - tasks_md_fully_checked
-    - implementation_handoff_ready
+    - implementation_handoff_items_present
   behavior: >
     Detection only surfaces a candidate and proposes the closure inline gate. It never
     auto-closes and never substitutes for explicit user confirmation and evidence_summary.

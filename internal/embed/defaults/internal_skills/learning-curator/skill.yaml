@@ -28,6 +28,12 @@ output:
 behavior:
   - Derive an outcomes entry from the mission_result and critic_evaluation.
     Include: mission_id, task_type, status, rubric score, timestamp.
+  - If mission_result.jewels_consulted is present and non-empty, copy those IDs
+    verbatim into the outcome entry's jewel_ids field. If jewels_consulted is
+    absent or empty, write the outcome without jewel_ids; this is non-blocking
+    and must not delay the checkpoint or write.
+  - Use mission_id as the only duplicate/idempotency key for outcome writes;
+    jewel_ids never participate in duplicate detection.
   - Derive source hints from critic_evaluation gaps — if a source was queried but its content
     did not contribute to must_have items, propose a negative priority_adjustment.
   - Present BOTH proposals in a learning checkpoint to the user. Format:

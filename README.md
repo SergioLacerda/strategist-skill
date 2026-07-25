@@ -63,7 +63,7 @@ See [`docs/`](docs/) for full documentation including [CLI reference](docs/cli-r
 
 Every release binary is protected by two independent supply chain controls. See [SECURITY.md](SECURITY.md#verifying-release-integrity) for full verification instructions.
 
-**SLSA provenance** (via GitHub Attestation):
+**GitHub build provenance** (via GitHub Attestation — not a formal SLSA level claim):
 
 ```bash
 gh attestation verify strategist-linux-amd64 --owner SergioLacerda

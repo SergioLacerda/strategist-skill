@@ -1039,6 +1039,7 @@ func TestSchemaFilesDoNotContainLegacyPlanOnly(t *testing.T) {
 	assertNoToken(t, filepath.Join(root, "strategist", "schemas", "mission-result.schema.yaml"), "plan_only")
 	assertNoToken(t, filepath.Join(root, "strategist", "schemas", "outcome-entry.schema.yaml"), "plan_only")
 	assertNoToken(t, filepath.Join(root, "strategist", "schemas", "progress-contract.yaml"), "plan_only")
+	assertNoToken(t, filepath.Join(root, "internal", "embed", "defaults", "schemas", "mission-result.schema.yaml"), "plan_only")
 	assertNoToken(t, filepath.Join(root, "internal", "embed", "defaults", "schemas", "outcome-entry.schema.yaml"), "plan_only")
 	assertNoToken(t, filepath.Join(root, "internal", "embed", "defaults", "schemas", "progress-contract.yaml"), "plan_only")
 }
@@ -1678,12 +1679,14 @@ func TestApprovalGateAcceptanceDoesNotAuthorizeCodeMutation(t *testing.T) {
 		for _, needle := range []string{
 			"Gate Acceptance Is Not Code Mutation Approval",
 			"implementation_handoff",
-			"requires a separate coding task outside Strategist mode",
+			"not as a separate mission status",
+			"requires a separate coding task outside",
 		} {
 			if !strings.Contains(content, needle) {
 				t.Fatalf("%s missing gate/code-mutation term %q", path, needle)
 			}
 		}
+		assertNoToken(t, path, "implementation_handoff_ready")
 	}
 
 	for _, path := range []string{
@@ -1694,6 +1697,20 @@ func TestApprovalGateAcceptanceDoesNotAuthorizeCodeMutation(t *testing.T) {
 		if !strings.Contains(content, "Never treat Strategist Approval Gate acceptance") {
 			t.Fatalf("%s missing NEVER DO bullet for gate-acceptance/code-mutation confusion", path)
 		}
+	}
+}
+
+func TestNoLegacyImplementationHandoffReadyStatus(t *testing.T) {
+	t.Parallel()
+	root := repoRoot(t)
+
+	for _, path := range []string{
+		filepath.Join(root, "strategist", "contracts", "narrative", "05-approval-gate.md"),
+		filepath.Join(root, "strategist", "contracts", "machine", "critical-hit.yaml"),
+		filepath.Join(root, "internal", "embed", "defaults", "contracts", "narrative", "05-approval-gate.md"),
+		filepath.Join(root, "internal", "embed", "defaults", "contracts", "machine", "critical-hit.yaml"),
+	} {
+		assertNoToken(t, path, "implementation_handoff_ready")
 	}
 }
 
@@ -2490,6 +2507,104 @@ func TestJewelRetrievalContractDefinesMandatoryFallback(t *testing.T) {
 			if !strings.Contains(content, needle) {
 				t.Fatalf("%s missing reference to jewel_retrieval / jewels_consulted", path)
 			}
+		}
+	}
+}
+
+// TestOutcomeEntryCoordinatedShapeMirrorsRuntime locks the coordinated outcome-entry
+// shape from 2026-07-25-outcome-entry-schema-coordination across source, embedded
+// defaults, and the installed .strategist runtime mirror.
+func TestOutcomeEntryCoordinatedShapeMirrorsRuntime(t *testing.T) {
+	t.Parallel()
+
+	root := repoRoot(t)
+	coordinatedFiles := map[string][]string{
+		filepath.Join("schemas", "outcome-entry.schema.yaml"): {
+			"mission_id",
+			"jewel_ids",
+			"idempotency:",
+			"key: mission_id",
+			"mission_id_is_unique",
+		},
+		filepath.Join("schemas", "mission-result.schema.yaml"): {
+			"mission_id",
+			"jewels_consulted",
+			"jewel_ids",
+			"no jewels were consulted",
+			"not an error",
+		},
+		filepath.Join("contracts", "machine", "context-enrichment.yaml"): {
+			"jewel_retrieval:",
+			"jewels_consulted",
+			"outcome_forwarding:",
+			"mission_result.jewels_consulted",
+			"outcome-entry.schema.yaml's jewel_ids",
+		},
+		filepath.Join("contracts", "machine", "learning-curator.yaml"): {
+			"idempotency:",
+			"mission_id is the idempotency key",
+			"jewel_outcome_mapping:",
+			"mission_result.jewels_consulted",
+			"jewel_ids",
+		},
+		filepath.Join("contracts", "machine", "learning-buffer.yaml"): {
+			"idempotency_key: mission_id",
+			"Reference implementation: internal/telemetry.FlushOutcomeBuffer",
+			"dedup-on-mission_id",
+			"idempotency_invariant:",
+		},
+	}
+
+	for rel, needles := range coordinatedFiles {
+		sourcePath := filepath.Join(root, "strategist", rel)
+		embedPath := filepath.Join(root, "internal", "embed", "defaults", rel)
+		runtimePath := filepath.Join(root, ".strategist", rel)
+
+		source := readFile(t, sourcePath)
+		if embed := readFile(t, embedPath); source != embed {
+			t.Fatalf("%s drifted from embedded default %s; run make sync-embed", sourcePath, embedPath)
+		}
+		if runtime := readFile(t, runtimePath); source != runtime {
+			t.Fatalf("%s drifted from runtime mirror %s; refresh .strategist from the canonical source", sourcePath, runtimePath)
+		}
+
+		for _, needle := range needles {
+			if !strings.Contains(source, needle) {
+				t.Fatalf("%s missing coordinated outcome-entry term %q", sourcePath, needle)
+			}
+		}
+	}
+}
+
+// TestLearningCuratorInternalSkillDefinesJewelOutcomeProduction locks the
+// provider-owned production boundary for mission_result.jewels_consulted ->
+// outcome_entry.jewel_ids across source, embedded defaults, and runtime mirror.
+func TestLearningCuratorInternalSkillDefinesJewelOutcomeProduction(t *testing.T) {
+	t.Parallel()
+
+	root := repoRoot(t)
+	sourcePath := filepath.Join(root, "strategist", "internal_skills", "learning-curator", "skill.yaml")
+	embedPath := filepath.Join(root, "internal", "embed", "defaults", "internal_skills", "learning-curator", "skill.yaml")
+	runtimePath := filepath.Join(root, ".strategist", "internal_skills", "learning-curator", "skill.yaml")
+
+	source := readFile(t, sourcePath)
+	if embed := readFile(t, embedPath); source != embed {
+		t.Fatalf("%s drifted from embedded default %s; run make sync-embed", sourcePath, embedPath)
+	}
+	if runtime := readFile(t, runtimePath); source != runtime {
+		t.Fatalf("%s drifted from runtime mirror %s; refresh .strategist from the canonical source", sourcePath, runtimePath)
+	}
+
+	for _, needle := range []string{
+		"mission_result.jewels_consulted",
+		"verbatim into the outcome entry's jewel_ids field",
+		"absent or empty, write the outcome without jewel_ids",
+		"non-blocking",
+		"mission_id as the only duplicate/idempotency key",
+		"jewel_ids never participate in duplicate detection",
+	} {
+		if !strings.Contains(source, needle) {
+			t.Fatalf("%s missing provider-owned jewel outcome instruction %q", sourcePath, needle)
 		}
 	}
 }

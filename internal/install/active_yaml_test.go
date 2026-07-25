@@ -128,7 +128,7 @@ func TestWriteActiveYAML(t *testing.T) {
 				CodeLanguage:       "en",
 				DiscoveryProvider:  "brainstorming",
 				RefinementProvider: "openspec-explore",
-				ExecutionProvider:  "sdd-ask",
+				ExecutionProvider:  "sniper",
 			},
 			wantContain: []string{
 				"mode: pragmatic",
@@ -140,7 +140,7 @@ func TestWriteActiveYAML(t *testing.T) {
 				"  code: en",
 				"discovery: brainstorming",
 				"refinement: openspec-explore",
-				"execution: sdd-ask",
+				"execution: sniper",
 			},
 			wantAbsent: []string{"roles_config", "execution_mode", "git_persistence_mode", "adr_enabled"},
 		},
@@ -155,7 +155,7 @@ func TestWriteActiveYAML(t *testing.T) {
 				CodeLanguage:       "en",
 				DiscoveryProvider:  "brainstorming",
 				RefinementProvider: "openspec-explore",
-				ExecutionProvider:  "sdd-ask",
+				ExecutionProvider:  "sniper",
 				TreasureChestPath:  ".sdd/source",
 			},
 			wantContain: []string{

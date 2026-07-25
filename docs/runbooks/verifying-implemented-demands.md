@@ -6,6 +6,23 @@ A request to implement a demand from `<base_path>/refined/<mission_id>/`, especi
 phrased as "if it's already finished, move it to done" — or any time you're about to start
 implementation work and a refined package already exists for it.
 
+## Pre-Refinement Duplicate Check
+
+Before generating a new refined package, inventory the configured analysis lifecycle
+directories when they exist: `pending/`, `refined/`, `done/`, and `archived/`.
+Search for related artifacts by exact `mission_id`, slug variants, demand title, and
+scope keywords.
+
+If a matching refined package exists, inspect its four canonical files:
+`analysis.md`, `proposal.md`, `design.md`, and `tasks.md`. Treat
+`mission_status: archivist_done` or equivalent complete package evidence as
+already refined unless the package documents a material gap.
+
+Report and reuse the existing package instead of overwriting it. Create a residual
+pending demand only when the existing package is materially incomplete or stale.
+This check only decides whether refinement already exists before generation; the
+steps below verify whether a refined demand has already been implemented.
+
 ## Steps
 
 1. Read the package's `tasks.md` front-matter: `approved_scope` and `acceptance_checks`. These

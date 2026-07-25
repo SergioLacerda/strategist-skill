@@ -126,40 +126,54 @@ func TestSniperMaterializationHistory_ReadRecentSkipsMalformedAndOld(t *testing.
 	t.Parallel()
 	now := time.Date(2026, 7, 25, 12, 0, 0, 0, time.UTC)
 	path := filepath.Join(t.TempDir(), "sniper-materializations.jsonl")
-	err := AppendSniperMaterialization(path, SniperMaterializationRecord{
+
+	mustAppendSniperMaterialization(t, path, SniperMaterializationRecord{
 		MissionID:      "recent",
 		BasePath:       ".analysis",
 		TargetPath:     "docs/recent.md",
 		MaterializedAt: now.Add(-time.Hour),
 	})
-	if err != nil {
-		t.Fatalf("append recent: %v", err)
-	}
-	err = AppendSniperMaterialization(path, SniperMaterializationRecord{
+	mustAppendSniperMaterialization(t, path, SniperMaterializationRecord{
 		MissionID:      "old",
 		BasePath:       ".analysis",
 		TargetPath:     "docs/old.md",
 		MaterializedAt: now.Add(-31 * 24 * time.Hour),
 	})
-	if err != nil {
-		t.Fatalf("append old: %v", err)
-	}
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0)
-	if err != nil {
-		t.Fatalf("open history: %v", err)
-	}
-	if _, err := f.WriteString("not json\n"); err != nil {
-		t.Fatalf("write malformed: %v", err)
-	}
-	if err := f.Close(); err != nil {
-		t.Fatalf("close history: %v", err)
-	}
+	appendRawHistoryLine(t, path, "not json\n")
 
 	records, err := ReadRecentSniperMaterializations(path, now, SniperMaterializationWindow)
 	if err != nil {
 		t.Fatalf("read recent: %v", err)
 	}
-	if len(records) != 1 || records[0].TargetPath != "docs/recent.md" {
+	assertSingleSniperMaterializationRecord(t, records, "docs/recent.md")
+}
+
+func mustAppendSniperMaterialization(t *testing.T, path string, rec SniperMaterializationRecord) {
+	t.Helper()
+	if err := AppendSniperMaterialization(path, rec); err != nil {
+		t.Fatalf("append %s: %v", rec.MissionID, err)
+	}
+}
+
+// appendRawHistoryLine writes line directly to path, bypassing AppendSniperMaterialization's
+// JSON marshaling — used to inject a malformed historical record for skip-on-parse-failure tests.
+func appendRawHistoryLine(t *testing.T, path, line string) {
+	t.Helper()
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatalf("open history: %v", err)
+	}
+	if _, err := f.WriteString(line); err != nil {
+		t.Fatalf("write malformed: %v", err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatalf("close history: %v", err)
+	}
+}
+
+func assertSingleSniperMaterializationRecord(t *testing.T, records []SniperMaterializationRecord, wantTargetPath string) {
+	t.Helper()
+	if len(records) != 1 || records[0].TargetPath != wantTargetPath {
 		t.Fatalf("unexpected records: %#v", records)
 	}
 }

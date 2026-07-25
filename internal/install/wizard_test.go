@@ -122,8 +122,10 @@ func TestRunWizard(t *testing.T) {
 			wantBase:       "/workspace",
 			wantDiscovery:  "brainstorming",
 			wantRefinement: "archivist",
-			wantExecution:  "batata",
-			wantChestPath:  ".sdd/source",
+			// Legacy execution input ("batata") is consumed but discarded — execution
+			// always resolves to the native sniper role, never a scripted/custom value.
+			wantExecution: "sniper",
+			wantChestPath: ".sdd/source",
 		},
 		{
 			name:           "pt-BR ui language",

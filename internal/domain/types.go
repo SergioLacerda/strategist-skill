@@ -345,6 +345,6 @@ type WizardConfig struct {
 	CodeLanguage       string // en | pt-BR — internal code (default: en)
 	DiscoveryProvider  string // skill id for the Ranger (discovery) slot
 	RefinementProvider string // skill id for the Arquivista (refinement) slot
-	ExecutionProvider  string // skill id for the Sniper (execution) slot
+	ExecutionProvider  string // always "sniper" — the native execution role, not a wizard-selectable governance/provider skill id
 	TreasureChestPath  string // optional: path to a knowledge source (e.g. .sdd/source)
 }

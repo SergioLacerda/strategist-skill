@@ -192,7 +192,13 @@ func promptTreasureChest(p Prompter, b i18n.WizardStrings) (string, error) {
 	return chestPath, nil
 }
 
-// promptSlots collects discovery, refinement and execution slot providers.
+// promptSlots collects discovery and refinement slot providers. The execution slot is
+// always the native `sniper` role — Strategist's built-in execution persona, not a
+// governance/provider skill selectable from `.sdd/skills` (see mission
+// 2026-07-25-wizard-execution-slot-native-sniper). The legacy execution prompt is still
+// shown and consumed here so prompt count and scripted-input ordering stay stable, but
+// its returned value is discarded: no typed input (e.g. `sdd-ask`) can ever leak into
+// slots.execution.
 func promptSlots(p Prompter, b i18n.WizardStrings, providerRisk map[string]string) (discovery, refinement, execution string, err error) {
 	fmt.Println(b.HeaderSlots)
 	discovery, err = promptProvider(p, b.PromptDiscovery, "brainstorming", []string{"brainstorming"}, b.LabelCustomInput, providerRisk, "write_analysis", "discovery")
@@ -203,11 +209,10 @@ func promptSlots(p Prompter, b i18n.WizardStrings, providerRisk map[string]strin
 	if err != nil {
 		return "", "", "", err
 	}
-	execution, err = promptProvider(p, b.PromptExecution, "sniper", []string{"sniper", "openspec-apply-change"}, b.LabelCustomInput, providerRisk, "controlled", "execution")
-	if err != nil {
+	if _, err = promptProvider(p, b.PromptExecution, "sniper", []string{"sniper"}, b.LabelCustomInput, providerRisk, "controlled", "execution"); err != nil {
 		return "", "", "", err
 	}
-	return discovery, refinement, execution, nil
+	return discovery, refinement, "sniper", nil
 }
 
 func promptProvider(p Prompter, prompt, defaultVal string, options []string, customLabel string, providerRisk map[string]string, expectedRisk, field string) (string, error) {
