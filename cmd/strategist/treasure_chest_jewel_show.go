@@ -14,7 +14,7 @@ func runTreasureChestJewelShow(cmd *cobra.Command, args []string, opts treasureC
 	if run := telemetryRunFromCmd(cmd); run != nil {
 		run.SetSilent()
 	}
-	opts.Format = stringFlag(cmd, "format", opts.Format)
+	opts.Format = stringFlag(cmd, flagFormat, opts.Format)
 
 	id := args[0]
 	jewelsByChest, err := loadJewelsForCmd(cmd, "treasure-chest jewel show")
@@ -28,9 +28,9 @@ func runTreasureChestJewelShow(cmd *cobra.Command, args []string, opts treasureC
 	}
 
 	switch opts.Format {
-	case "", "table":
+	case "", outputFormatTable:
 		return renderJewelShowTable(found)
-	case "json":
+	case outputFormatJSON:
 		return renderJewelShowJSON(found)
 	default:
 		return fmt.Errorf("treasure-chest jewel show: unknown --format %q (want table or json)", opts.Format)

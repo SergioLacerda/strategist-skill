@@ -1,10 +1,7 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
-	"text/tabwriter"
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -44,9 +41,9 @@ Non-interactive flags (exactly one required):
 }
 
 func init() {
-	opts := treasureChestMineOptions{Format: "table"}
+	opts := treasureChestMineOptions{Format: outputFormatTable}
 	treasureChestMineCmd.Flags().BoolVar(&opts.List, "list", false, "list status:proposed jewels awaiting curation")
-	treasureChestMineCmd.Flags().StringVar(&opts.Format, "format", "table", "output format for --list: table or json")
+	treasureChestMineCmd.Flags().StringVar(&opts.Format, flagFormat, outputFormatTable, "output format for --list: table or json")
 	treasureChestMineCmd.Flags().StringVar(&opts.Accept, "accept", "", "promote a jewel id to status: accepted")
 	treasureChestMineCmd.Flags().StringVar(&opts.Verify, "verify", "", "promote a jewel id to status: verified (requires --evidence)")
 	treasureChestMineCmd.Flags().StringVar(&opts.Evidence, "evidence", "", "evidence reference recorded with --verify")
@@ -76,7 +73,7 @@ func runTreasureChestMine(cmd *cobra.Command, _ []string, opts treasureChestMine
 
 func treasureChestMineOptionsFromFlags(cmd *cobra.Command, opts treasureChestMineOptions) treasureChestMineOptions {
 	opts.List = boolFlag(cmd, "list", opts.List)
-	opts.Format = stringFlag(cmd, "format", opts.Format)
+	opts.Format = stringFlag(cmd, flagFormat, opts.Format)
 	opts.Accept = stringFlag(cmd, "accept", opts.Accept)
 	opts.Verify = stringFlag(cmd, "verify", opts.Verify)
 	opts.Evidence = stringFlag(cmd, "evidence", opts.Evidence)
@@ -118,89 +115,6 @@ func runTreasureChestMineAction(root string, opts treasureChestMineOptions) erro
 	default:
 		return runTreasureChestMineMigrateStatus(root)
 	}
-}
-
-// --- list ---
-
-func runTreasureChestMineList(root, format string) error {
-	// Best-effort: governed is trust-ceiling context only, not required for listing. A
-	// corrupt/missing treasure-chests.yaml just means trust ceilings go unchecked here.
-	governed, govErr := treasure.LoadGoverned(root)
-	if govErr != nil {
-		governed = nil
-	}
-	jewelsByChest, err := treasure.LoadJewels(root, governed)
-	if err != nil {
-		return fmt.Errorf("treasure-chest mine: %w", err)
-	}
-
-	proposed := treasure.ProposedJewels(jewelsByChest)
-
-	switch format {
-	case "", "table":
-		return renderMineTable(proposed)
-	case "json":
-		return renderMineJSON(proposed)
-	default:
-		return fmt.Errorf("treasure-chest mine: unknown --format %q (want table or json)", format)
-	}
-}
-
-func renderMineTable(jewels []treasure.Jewel) error {
-	if len(jewels) == 0 {
-		fmt.Println("[Strategist] treasure-chest mine: no proposed jewels awaiting curation")
-		return nil
-	}
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", "ID", "CHEST", "KIND", "TRUST", "SCORE", "STATEMENT"); err != nil {
-		return fmt.Errorf("treasure-chest mine: write header: %w", err)
-	}
-	for _, j := range jewels {
-		if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%d\t%s\n", j.ID, j.ChestID, j.Kind, j.Trust, j.Score.Value, j.Statement); err != nil {
-			return fmt.Errorf("treasure-chest mine: write row: %w", err)
-		}
-	}
-	if err := w.Flush(); err != nil {
-		return fmt.Errorf("treasure-chest mine: flush: %w", err)
-	}
-	return nil
-}
-
-type jsonMineJewel struct {
-	ID           string   `json:"id"`
-	ChestID      string   `json:"chest_id"`
-	Kind         string   `json:"kind"`
-	Statement    string   `json:"statement"`
-	SourceRefs   []string `json:"source_refs"`
-	Trust        string   `json:"trust"`
-	Status       string   `json:"status"`
-	ScoreValue   int      `json:"score_value"`
-	ScoreReasons []string `json:"score_reasons,omitempty"`
-	Scope        []string `json:"scope,omitempty"`
-}
-
-func renderMineJSON(jewels []treasure.Jewel) error {
-	out := make([]jsonMineJewel, 0, len(jewels))
-	for _, j := range jewels {
-		out = append(out, jsonMineJewel{
-			ID:           j.ID,
-			ChestID:      j.ChestID,
-			Kind:         j.Kind,
-			Statement:    j.Statement,
-			SourceRefs:   j.SourceRefs,
-			Trust:        j.Trust,
-			Status:       j.Status,
-			ScoreValue:   j.Score.Value,
-			ScoreReasons: j.Score.Reasons,
-			Scope:        j.Applicability.Scope,
-		})
-	}
-	enc := json.NewEncoder(os.Stdout)
-	enc.SetIndent("", "  ")
-	if err := enc.Encode(out); err != nil {
-		return fmt.Errorf("treasure-chest mine: encode json: %w", err)
-	}
-	return nil
 }
 
 // --- accept / verify / deprecate ---

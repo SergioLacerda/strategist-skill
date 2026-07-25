@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/compile"
@@ -34,7 +33,7 @@ Use --include-historical to opt in to indexing T2/T3 sources into the compiled a
 
 func init() {
 	var opts treasureChestIndexOptions
-	treasureChestIndexCmd.Flags().BoolVar(&opts.IncludeHistorical, "include-historical", false, "include T2/T3 historical sources in the compiled index rebuild")
+	treasureChestIndexCmd.Flags().BoolVar(&opts.IncludeHistorical, flagIncludeHistorical, false, "include T2/T3 historical sources in the compiled index rebuild")
 	treasureChestIndexCmd.RunE = func(cmd *cobra.Command, args []string) error {
 		return runTreasureChestIndexCmd(cmd, args, opts)
 	}
@@ -49,7 +48,7 @@ func runTreasureChestIndexCmd(cmd *cobra.Command, _ []string, opts treasureChest
 	if run := telemetryRunFromCmd(cmd); run != nil {
 		run.SetSilent()
 	}
-	opts.IncludeHistorical = boolFlag(cmd, "include-historical", opts.IncludeHistorical)
+	opts.IncludeHistorical = boolFlag(cmd, flagIncludeHistorical, opts.IncludeHistorical)
 
 	root, err := resolveTreasureChestIndexRoot(cmd)
 	if err != nil {
@@ -92,15 +91,7 @@ func runTreasureChestIndexCmd(cmd *cobra.Command, _ []string, opts treasureChest
 }
 
 func resolveTreasureChestIndexRoot(cmd *cobra.Command) (string, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", fmt.Errorf("treasure-chest index: get cwd: %w", err)
-	}
-	root, _, err := resolveStrategistRoot(treasureChestRootFromCmd(cmd), cwd)
-	if err != nil {
-		return "", fmt.Errorf("treasure-chest index: %w", err)
-	}
-	return root, nil
+	return resolveTreasureChestActionRoot(cmd, "index")
 }
 
 func scanTreasureChestMissions(root string) ([]treasure.ScannedMission, []treasure.Cluster, []treasure.Gap, []treasure.ScanWarning, error) {

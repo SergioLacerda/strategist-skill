@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/treasure"
@@ -49,13 +48,9 @@ func runTreasureChestScan(cmd *cobra.Command, _ []string, opts treasureChestScan
 	}
 	opts.DryRun = boolFlag(cmd, "dry-run", opts.DryRun)
 
-	cwd, err := os.Getwd()
+	root, err := resolveTreasureChestActionRoot(cmd, "scan")
 	if err != nil {
-		return fmt.Errorf("treasure-chest scan: get cwd: %w", err)
-	}
-	root, _, err := resolveStrategistRoot(treasureChestRootFromCmd(cmd), cwd)
-	if err != nil {
-		return fmt.Errorf("treasure-chest scan: %w", err)
+		return err
 	}
 	_, basePath, err := resolveDojoRoots(root)
 	if err != nil {

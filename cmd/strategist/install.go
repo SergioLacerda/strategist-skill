@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -45,29 +44,6 @@ By default a Claude Code shim is written to
 repository. Use --no-shim to skip that write entirely (e.g. CI/containers
 without a writable home directory), or --shim-path to redirect it.`,
 	RunE: runInstall,
-}
-
-// resolveInstallTarget returns the effective install target path.
-// For global installs, returns the user home dir.
-// For local installs with no explicit target, walks up from CWD to find an
-// existing .strategist/ and updates in-place; falls back to "." otherwise.
-func resolveInstallTarget(explicit string, global bool) (string, error) {
-	if explicit != "" {
-		return explicit, nil
-	}
-	if global {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return "", fmt.Errorf("install: resolve home dir: %w", err)
-		}
-		return home, nil
-	}
-	if cwd, err := os.Getwd(); err == nil {
-		if _, projRoot, discErr := findStrategistRoot(cwd); discErr == nil {
-			return projRoot, nil
-		}
-	}
-	return ".", nil
 }
 
 func runInstall(cmd *cobra.Command, _ []string) (retErr error) {
@@ -194,45 +170,6 @@ func refreshAgentAwarenessFromEmbed(strategistRoot, projectRoot, version string)
 		tplBytes = nil
 	}
 	return compile.RefreshAgentAwareness(strategistRoot, projectRoot, version, tplBytes)
-}
-
-// installIsPartial reports whether the just-completed install has an
-// uncompiled/partial runtime — i.e. CompileAll's warning-only failure path
-// was taken and no manifest was produced. Only meaningful immediately after a
-// successful Service.Install call.
-func installIsPartial(target string) bool {
-	manifestPath := filepath.Join(target, ".strategist", ".compiled", ".manifest.gz")
-	_, err := os.Stat(manifestPath)
-	return err != nil
-}
-
-func printInstallCompleteBanner(target string, wizard, partial bool) {
-	mode := "silent"
-	if wizard {
-		mode = "wizard"
-	}
-	fmt.Println()
-	if partial {
-		fmt.Println("  ┌─────────────────────────────────────────────────────────────────────┐")
-		fmt.Println("  │  STRATEGIST  ◆  install complete (partial — compile warning)        │")
-		fmt.Println("  └─────────────────────────────────────────────────────────────────────┘")
-		fmt.Println()
-		fmt.Printf("     target  %s\n", target)
-		fmt.Printf("     mode    %s\n", mode)
-		fmt.Println()
-		fmt.Println("     ⚠ compile failed during install — runtime is uncompiled/partial.")
-		fmt.Println("       Run: strategist compile   (or re-run install with --strict-compile")
-		fmt.Println("       to make this fatal instead of warning-only next time)")
-		fmt.Println()
-		return
-	}
-	fmt.Println("  ┌─────────────────────────────────────────────────────────────────────┐")
-	fmt.Println("  │  STRATEGIST  ◆  install complete                                    │")
-	fmt.Println("  └─────────────────────────────────────────────────────────────────────┘")
-	fmt.Println()
-	fmt.Printf("     target  %s\n", target)
-	fmt.Printf("     mode    %s\n", mode)
-	fmt.Println()
 }
 
 func init() {

@@ -25,7 +25,7 @@ func runTreasureChestJewelList(cmd *cobra.Command, _ []string, opts treasureChes
 	}
 	opts.Status = stringFlag(cmd, "status", opts.Status)
 	opts.Chest = stringFlag(cmd, "chest", opts.Chest)
-	opts.Format = stringFlag(cmd, "format", opts.Format)
+	opts.Format = stringFlag(cmd, flagFormat, opts.Format)
 
 	if opts.Status != "" && !validJewelListStatuses[opts.Status] {
 		return fmt.Errorf("treasure-chest jewel list: unknown --status %q (want all, proposed, accepted, verified, or deprecated)", opts.Status)
@@ -42,9 +42,9 @@ func runTreasureChestJewelList(cmd *cobra.Command, _ []string, opts treasureChes
 	})
 
 	switch opts.Format {
-	case "", "table":
+	case "", outputFormatTable:
 		return renderJewelListTable(filtered)
-	case "json":
+	case outputFormatJSON:
 		return renderJewelListJSON(filtered)
 	default:
 		return fmt.Errorf("treasure-chest jewel list: unknown --format %q (want table or json)", opts.Format)

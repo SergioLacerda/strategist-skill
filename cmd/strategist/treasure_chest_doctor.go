@@ -51,15 +51,7 @@ func runTreasureChestDoctor(cmd *cobra.Command, _ []string) error {
 }
 
 func resolveTreasureChestDoctorRoot(cmd *cobra.Command) (string, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", fmt.Errorf("treasure-chest doctor: get cwd: %w", err)
-	}
-	root, _, err := resolveStrategistRoot(treasureChestRootFromCmd(cmd), cwd)
-	if err != nil {
-		return "", fmt.Errorf("treasure-chest doctor: %w", err)
-	}
-	return root, nil
+	return resolveTreasureChestActionRoot(cmd, "doctor")
 }
 
 func loadTreasureChestDoctorRows(root string) ([]treasure.StatusRow, error) {

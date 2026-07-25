@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/treasure"
@@ -56,13 +55,9 @@ func jewelCurationRunE(errPrefix string, action func(cmd *cobra.Command, root st
 		if run := telemetryRunFromCmd(cmd); run != nil {
 			run.SetSilent()
 		}
-		cwd, err := os.Getwd()
+		root, err := resolveTreasureChestActionRoot(cmd, errPrefix)
 		if err != nil {
-			return fmt.Errorf("%s: get cwd: %w", errPrefix, err)
-		}
-		root, _, err := resolveStrategistRoot(treasureChestRootFromCmd(cmd), cwd)
-		if err != nil {
-			return fmt.Errorf("%s: %w", errPrefix, err)
+			return err
 		}
 		return action(cmd, root, args)
 	}
@@ -102,17 +97,17 @@ var treasureChestJewelMigrateStatusCmd = &cobra.Command{
 }
 
 func init() {
-	listOpts := treasureChestJewelListOptions{Format: "table"}
-	showOpts := treasureChestJewelShowOptions{Format: "table"}
+	listOpts := treasureChestJewelListOptions{Format: outputFormatTable}
+	showOpts := treasureChestJewelShowOptions{Format: outputFormatTable}
 	verifyOpts := treasureChestJewelVerifyOptions{}
 	treasureChestJewelListCmd.Flags().StringVar(&listOpts.Status, "status", "", "filter by status: all, proposed, accepted, verified, or deprecated (default: all except deprecated)")
 	treasureChestJewelListCmd.Flags().StringVar(&listOpts.Chest, "chest", "", "filter by chest id")
-	treasureChestJewelListCmd.Flags().StringVar(&listOpts.Format, "format", "table", "output format: table or json")
+	treasureChestJewelListCmd.Flags().StringVar(&listOpts.Format, flagFormat, outputFormatTable, "output format: table or json")
 	treasureChestJewelListCmd.RunE = func(cmd *cobra.Command, args []string) error {
 		return runTreasureChestJewelList(cmd, args, listOpts)
 	}
 
-	treasureChestJewelShowCmd.Flags().StringVar(&showOpts.Format, "format", "table", "output format: table or json")
+	treasureChestJewelShowCmd.Flags().StringVar(&showOpts.Format, flagFormat, outputFormatTable, "output format: table or json")
 	treasureChestJewelShowCmd.RunE = func(cmd *cobra.Command, args []string) error {
 		return runTreasureChestJewelShow(cmd, args, showOpts)
 	}
@@ -140,13 +135,9 @@ func init() {
 // treating a missing/invalid governed-chests file as best-effort (not fatal) —
 // governed data is only trust-ceiling context, not required for read-only inspection.
 func loadJewelsForCmd(cmd *cobra.Command, errPrefix string) (map[string][]treasure.Jewel, error) {
-	cwd, err := os.Getwd()
+	root, err := resolveTreasureChestActionRoot(cmd, errPrefix)
 	if err != nil {
-		return nil, fmt.Errorf("%s: get cwd: %w", errPrefix, err)
-	}
-	root, _, err := resolveStrategistRoot(treasureChestRootFromCmd(cmd), cwd)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", errPrefix, err)
+		return nil, err
 	}
 
 	governed, govErr := treasure.LoadGoverned(root)
