@@ -84,7 +84,7 @@ func runTreasureChestAdd(cmd *cobra.Command, args []string, opts treasureChestAd
 	opts = treasureChestAddOptionsFromFlags(cmd, opts)
 
 	path := args[0]
-	root, err := resolveTreasureChestCommandRoot(cmd, "add")
+	root, err := resolveTreasureChestActionRoot(cmd, "add")
 	if err != nil {
 		return err
 	}
@@ -163,8 +163,4 @@ func finishChestAdd(root, indexPath string, indexAfter bool) error {
 	}
 	fmt.Printf("[Strategist] add: index refreshed → %s/.compiled/\n", root)
 	return nil
-}
-
-func resolveTreasureChestCommandRoot(cmd *cobra.Command, action string) (string, error) {
-	return resolveTreasureChestActionRoot(cmd, action)
 }

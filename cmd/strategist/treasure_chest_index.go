@@ -50,7 +50,7 @@ func runTreasureChestIndexCmd(cmd *cobra.Command, _ []string, opts treasureChest
 	}
 	opts.IncludeHistorical = boolFlag(cmd, flagIncludeHistorical, opts.IncludeHistorical)
 
-	root, err := resolveTreasureChestIndexRoot(cmd)
+	root, err := resolveTreasureChestActionRoot(cmd, "index")
 	if err != nil {
 		return err
 	}
@@ -88,10 +88,6 @@ func runTreasureChestIndexCmd(cmd *cobra.Command, _ []string, opts treasureChest
 		"%d proposed jewel(s) written, %d duplicate(s) skipped, compiled artifact refreshed\n",
 		len(missions), len(candidates), written, skipped)
 	return nil
-}
-
-func resolveTreasureChestIndexRoot(cmd *cobra.Command) (string, error) {
-	return resolveTreasureChestActionRoot(cmd, "index")
 }
 
 func scanTreasureChestMissions(root string) ([]treasure.ScannedMission, []treasure.Cluster, []treasure.Gap, []treasure.ScanWarning, error) {

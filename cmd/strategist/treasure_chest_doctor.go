@@ -32,7 +32,7 @@ func runTreasureChestDoctor(cmd *cobra.Command, _ []string) error {
 		run.SetSilent()
 	}
 
-	root, err := resolveTreasureChestDoctorRoot(cmd)
+	root, err := resolveTreasureChestActionRoot(cmd, "doctor")
 	if err != nil {
 		return err
 	}
@@ -48,10 +48,6 @@ func runTreasureChestDoctor(cmd *cobra.Command, _ []string) error {
 	}
 	printTreasureChestDoctorFindings(findings)
 	return fmt.Errorf("[Strategist] treasure-chest doctor: consistency drift in %d chest(s)", len(findings))
-}
-
-func resolveTreasureChestDoctorRoot(cmd *cobra.Command) (string, error) {
-	return resolveTreasureChestActionRoot(cmd, "doctor")
 }
 
 func loadTreasureChestDoctorRows(root string) ([]treasure.StatusRow, error) {

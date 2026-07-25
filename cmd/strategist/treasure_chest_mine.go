@@ -64,7 +64,7 @@ func runTreasureChestMine(cmd *cobra.Command, _ []string, opts treasureChestMine
 		return err
 	}
 
-	root, err := resolveTreasureChestCommandRoot(cmd, "mine")
+	root, err := resolveTreasureChestActionRoot(cmd, "mine")
 	if err != nil {
 		return err
 	}

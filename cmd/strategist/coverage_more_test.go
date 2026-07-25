@@ -363,12 +363,12 @@ func TestTreasureChestRenderers_ClosedStdoutErrors(t *testing.T) {
 	}
 
 	withClosedStdout(t, func() {
-		require.Error(t, renderJewelListTable([]treasure.Jewel{j}))
-		require.Error(t, renderJewelListJSON([]treasure.Jewel{j}))
+		require.Error(t, renderJewelTable([]treasure.Jewel{j}, true, "empty", "treasure-chest jewel list"))
+		require.Error(t, renderJewelJSON([]treasure.Jewel{j}, true, false, "treasure-chest jewel list"))
 		require.Error(t, renderJewelShowTable(j))
 		require.Error(t, renderJewelShowJSON(j))
-		require.Error(t, renderMineTable([]treasure.Jewel{j}))
-		require.Error(t, renderMineJSON([]treasure.Jewel{j}))
+		require.Error(t, renderJewelTable([]treasure.Jewel{j}, false, "empty", "treasure-chest mine"))
+		require.Error(t, renderJewelJSON([]treasure.Jewel{j}, true, true, "treasure-chest mine"))
 	})
 }
 

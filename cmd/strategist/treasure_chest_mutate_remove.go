@@ -18,7 +18,7 @@ func runTreasureChestRemove(cmd *cobra.Command, args []string, opts treasureChes
 		return fmt.Errorf("treasure-chest remove: provide a path or --id")
 	}
 
-	root, err := resolveTreasureChestCommandRoot(cmd, "remove")
+	root, err := resolveTreasureChestActionRoot(cmd, "remove")
 	if err != nil {
 		return err
 	}

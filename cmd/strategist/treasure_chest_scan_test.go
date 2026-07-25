@@ -145,3 +145,84 @@ func TestGapID_Lowercases(t *testing.T) {
 	t.Parallel()
 	assert.Equal(t, "sq-005", treasure.GapID("SQ-005"))
 }
+
+// --- runTreasureChestScan: resolveStrategistRoot / resolveDojoRoots errors ---
+
+func TestTreasureChestScan_ResolveRootError(t *testing.T) {
+	resetTreasureChestFlags(t)
+	setTreasureChestRoot(t, "")
+
+	oldWd, err := os.Getwd()
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.Chdir(oldWd) })
+	require.NoError(t, os.Chdir(t.TempDir()))
+
+	err = treasureChestScanCmd.RunE(treasureChestScanCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "treasure-chest scan")
+}
+
+func TestTreasureChestScan_ResolveDojoRootsError(t *testing.T) {
+	dir, _ := scanTestRoot(t)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte(": not: valID: yaml:\n"), 0o644))
+	resetTreasureChestFlags(t)
+	setTreasureChestRoot(t, dir)
+
+	err := treasureChestScanCmd.RunE(treasureChestScanCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "treasure-chest scan")
+}
+
+// --- runTreasureChestScan: treasure.ScanMissions error (unreadable refined/ dir) ---
+
+func TestTreasureChestScan_ScanMissionsError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("permission tests do not apply when running as root")
+	}
+	dir, basePath := scanTestRoot(t)
+	refinedDir := filepath.Join(basePath, "refined")
+	require.NoError(t, os.MkdirAll(refinedDir, 0o755))
+	require.NoError(t, os.Chmod(refinedDir, 0o000))
+	t.Cleanup(func() { _ = os.Chmod(refinedDir, 0o755) })
+	resetTreasureChestFlags(t)
+	setTreasureChestRoot(t, dir)
+
+	err := treasureChestScanCmd.RunE(treasureChestScanCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "treasure-chest scan")
+}
+
+// --- runTreasureChestScan: treasure.WriteScanOutputs error (clustersDir parent unwritable) ---
+
+func TestTreasureChestScan_WriteScanOutputsError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("permission tests do not apply when running as root")
+	}
+	dir, basePath := scanTestRoot(t)
+	writeMissionTasks(t, basePath, "refined", "mission-a", "side_quests_approved:\n\n- id: `SQ-101`\n  description: Pending item.\n  status: `sq_pending`\n")
+	require.NoError(t, os.Chmod(dir, 0o555))
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+	resetTreasureChestFlags(t)
+	setTreasureChestRoot(t, dir)
+
+	err := treasureChestScanCmd.RunE(treasureChestScanCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "treasure-chest scan")
+}
+
+// --- printScanDryRun: loop bodies with actual clusters and gaps ---
+
+func TestTreasureChestScan_DryRunListsClustersAndGaps(t *testing.T) {
+	dir, basePath := scanTestRoot(t)
+	writeMissionTasks(t, basePath, "refined", "mission-a", "side_quests_approved:\n\n- id: `SQ-101`\n  description: Improve widget caching layer for faster loads.\n  status: `sq_pending`\n\n## Suggested Validation\n")
+	writeMissionTasks(t, basePath, "refined", "mission-b", "## Task 1 — Improve widget rendering\n\nside_quests_approved:\n\n- id: `SQ-102`\n  description: Improve widget caching consistency.\n  status: `sq_pending`\n\n## Suggested Validation\n")
+	resetTreasureChestFlags(t)
+	setTreasureChestRoot(t, dir)
+	setCmdFlag(t, treasureChestScanCmd, "dry-run", "true")
+
+	out := captureStdout(t, func() {
+		require.NoError(t, treasureChestScanCmd.RunE(treasureChestScanCmd, nil))
+	})
+	assert.Contains(t, out, "cluster: ")
+	assert.Contains(t, out, "gap: ")
+}
