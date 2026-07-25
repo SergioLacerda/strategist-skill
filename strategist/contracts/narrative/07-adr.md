@@ -8,7 +8,7 @@ contract: execution_task
 
 ## Purpose
 
-Create an ADR (Architectural Decision Record) when the refined work contains decisions worth documenting. Evaluated by Archivist during refinement; approved and executed at the main gate.
+Create an ADR (Architectural Decision Record) when the refined work contains decisions worth documenting. Evaluated by Archivist during refinement; approved and executed at the main gate. Opportunity Attack is the ADR evaluation routine only; it does not evaluate implementation completion and does not move analysis cards.
 
 ## Inputs
 
@@ -25,6 +25,7 @@ Create an ADR (Architectural Decision Record) when the refined work contains dec
 - If criteria met → Archivist surfaces `[OA-ADR-{mission_id}]` at the approval gate as a side quest
 - If user approves at gate → **Sniper** creates the ADR as an execution task
 - If user declines at gate → ADR is not created; outcome logged
+- Pending/refined card closure remains a **Critical Hit** responsibility and requires the closure evidence defined in `11-critical-hit.md`
 
 ## ADR Activation Criteria (evaluated by Archivist)
 

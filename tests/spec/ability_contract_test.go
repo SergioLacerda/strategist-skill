@@ -19,8 +19,12 @@ func abilityContractFiles() []string {
 		"personas/pragmatic.yaml",
 		"internal_skills/ranger/SKILL.md",
 		"internal_skills/sniper/SKILL.md",
+		"contracts/machine/critical-hit.yaml",
+		"contracts/machine/opportunity-attack.yaml",
 		"contracts/machine/approval-gate.yaml",
 		"contracts/machine/compliance-summary.yaml",
+		"contracts/narrative/07-adr.md",
+		"contracts/narrative/11-critical-hit.md",
 		"schemas/progress-contract.yaml",
 	}
 }
@@ -174,6 +178,88 @@ func TestAbilityContractNoStaleOpportunityAttackCrossRoleRule(t *testing.T) {
 		}
 		if strings.Contains(string(data), forbidden) {
 			t.Fatalf("%s still requires all roles to invoke opportunity_attack; update to Archivist-only ownership model", path)
+		}
+	}
+}
+
+// TestAbilityContractOpportunityAttackIsADROnly ensures Opportunity Attack does
+// not become a second card-closure or implementation-audit mechanism.
+func TestAbilityContractOpportunityAttackIsADROnly(t *testing.T) {
+	t.Parallel()
+
+	paths := []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "opportunity-attack.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "opportunity-attack.yaml"),
+		filepath.Join(isolatedStrategistDir(t), "contracts", "machine", "opportunity-attack.yaml"),
+	}
+	required := []string{
+		"Opportunity Attack is ADR-only",
+		"Opportunity Attack MUST NOT evaluate implementation completion or move cards to done/",
+		"Critical Hit is the only route that may close pending/refined cards into done/",
+	}
+
+	for _, path := range paths {
+		content := readFile(t, path)
+		for _, needle := range required {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing Opportunity Attack role boundary %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestAbilityContractCriticalHitOwnsCardClosure keeps finalized-card movement
+// assigned to Critical Hit rather than ADR Opportunity Attack.
+func TestAbilityContractCriticalHitOwnsCardClosure(t *testing.T) {
+	t.Parallel()
+
+	paths := []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "critical-hit.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "critical-hit.yaml"),
+		filepath.Join(isolatedStrategistDir(t), "contracts", "machine", "critical-hit.yaml"),
+	}
+	required := []string{
+		"Critical Hit owns pending/refined card closure into done/",
+		"Opportunity Attack does not move analysis cards",
+	}
+
+	for _, path := range paths {
+		content := readFile(t, path)
+		for _, needle := range required {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing Critical Hit closure boundary %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestAbilityContractNoLegacyOpportunityFSMNaming ensures the generic side-quest
+// gate does not reuse Opportunity Attack naming.
+func TestAbilityContractNoLegacyOpportunityFSMNaming(t *testing.T) {
+	t.Parallel()
+
+	paths := []string{
+		filepath.Join(repoRoot(t), "internal", "domain", "policy.go"),
+		filepath.Join(repoRoot(t), "internal", "domain", "state_machine.go"),
+		filepath.Join(repoRoot(t), "internal", "domain", "state_machine_test.go"),
+	}
+	forbidden := []string{
+		"StateOpportunityAttack",
+		"StateOpportunityGate",
+		"StateOpportunityExec",
+		"EventSniperOA",
+		"sniper_opportunity_attack",
+		"OPPORTUNITY_ATTACK",
+		"OPPORTUNITY_GATE",
+		"OPPORTUNITY_EXEC",
+	}
+
+	for _, path := range paths {
+		content := readFile(t, path)
+		for _, bad := range forbidden {
+			if strings.Contains(content, bad) {
+				t.Fatalf("%s still contains legacy Opportunity FSM name %q; use SideQuest naming for the generic gate", path, bad)
+			}
 		}
 	}
 }

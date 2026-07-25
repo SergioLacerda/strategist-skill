@@ -12,16 +12,16 @@ type MissionState string
 
 // Orchestrator finite-state machine states.
 const (
-	StateInit              MissionState = "INIT"
-	StateOpportunityAttack MissionState = "OPPORTUNITY_ATTACK"
-	StateOpportunityGate   MissionState = "OPPORTUNITY_GATE"
-	StateOpportunityExec   MissionState = "OPPORTUNITY_EXEC"
-	StateRefinement        MissionState = "REFINEMENT"
-	StateApprovalGate      MissionState = "APPROVAL_GATE"
-	StateExecution         MissionState = "EXECUTION"
-	StateDoneAnalysis      MissionState = "DONE_ANALYSIS"
-	StateDoneDelivery      MissionState = "DONE_DELIVERY"
-	StateBlocked           MissionState = "BLOCKED"
+	StateInit          MissionState = "INIT"
+	StateSideQuestScan MissionState = "SIDE_QUEST_SCAN"
+	StateSideQuestGate MissionState = "SIDE_QUEST_GATE"
+	StateSideQuestExec MissionState = "SIDE_QUEST_EXEC"
+	StateRefinement    MissionState = "REFINEMENT"
+	StateApprovalGate  MissionState = "APPROVAL_GATE"
+	StateExecution     MissionState = "EXECUTION"
+	StateDoneAnalysis  MissionState = "DONE_ANALYSIS"
+	StateDoneDelivery  MissionState = "DONE_DELIVERY"
+	StateBlocked       MissionState = "BLOCKED"
 
 	// Quick Draw route states (§5.0 pipeline).
 	StateQuickDraw     MissionState = "QUICK_DRAW"
@@ -74,8 +74,9 @@ const (
 	EventSlotTransient TransitionEvent = "slot_transient_failure"
 	EventSlotPermanent TransitionEvent = "slot_permanent_failure"
 
-	// Sniper opportunity attack surfaced mid-documentation (§7 Opportunity Attack).
-	EventSniperOA TransitionEvent = "sniper_opportunity_attack"
+	// Side quest surfaced during documentation materialization. This is the
+	// generic side-quest gate, not Archivist's ADR-only Opportunity Attack routine.
+	EventSniperSideQuest TransitionEvent = "sniper_side_quest_detected"
 
 	// Critical Hit route events — fast path gate for direct_execute route.
 	EventDirectHitIntent    TransitionEvent = "direct_hit_intent"

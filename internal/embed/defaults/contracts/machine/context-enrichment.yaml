@@ -169,6 +169,16 @@ contract:
       - treating a jewel as a substitute for source_cards assembly
       - treating a status:proposed jewel as verified evidence
       - consulting a deprecated jewel as if accepted or verified
+    outcome_forwarding:
+      description: >
+        The deduplicated set of jewel IDs consulted under this block (Ranger during
+        discovery, Archivist during refinement — union, deduplicated by id) must be
+        forwarded into mission_result.jewels_consulted (see mission-result.schema.yaml)
+        rather than discarded after use as a ranking hint. This is separate from, and
+        does not change, jewel_retrieval's own ranking/fallback behavior above — it only
+        adds a downstream reporting obligation so learning-curator can populate
+        outcome-entry.schema.yaml's jewel_ids field. See
+        .analysis/refined/2026-07-22-jewel-outcome-feedback-loop/design.md.
       - consulting a legacy "active" jewel (invalid after migration; loading must fail loudly)
 
   planned_score_selection_transparency:

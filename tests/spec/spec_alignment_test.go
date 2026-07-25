@@ -781,7 +781,7 @@ func TestE2EFeatureFilesCoverHappyPathContracts(t *testing.T) {
 	files := map[string][]string{
 		filepath.Join(testDir(t), "specs", "e2e-happy-path.feature"): []string{
 			"Ranger consults treasure chests",
-			"Ranger runs opportunity attack",
+			"Ranger records scope observations",
 			"Archivist runs opportunity attack",
 			"approval gate",
 		},
@@ -795,7 +795,8 @@ func TestE2EFeatureFilesCoverHappyPathContracts(t *testing.T) {
 			"treasure_chests=none",
 		},
 		filepath.Join(testDir(t), "specs", "e2e-opportunity-attack.feature"): []string{
-			"opportunity attack",
+			"only Archivist performs Opportunity Attack",
+			"Critical Hit remains responsible",
 			"approval gate",
 		},
 		filepath.Join(testDir(t), "specs", "e2e-install-compile.feature"): []string{
@@ -2491,4 +2492,128 @@ func TestJewelRetrievalContractDefinesMandatoryFallback(t *testing.T) {
 			}
 		}
 	}
+}
+
+// TestOutputProfilesSourceMirrorsEmbeddedDefaults verifies strategist/output-profiles/ (the
+// authoring source restored by mission 2026-07-22-output-profiles-undocumented-embed-exception)
+// stays byte-identical to its internal/embed/defaults/output-profiles/ mirror. Mirrors the
+// TestNormativeRuntimeFilesMirrorEmbeddedDefaults pattern for this content class, which has no
+// fixed file list (domain.NormativeRuntimeDefaultPaths() does not cover it) so both trees are
+// walked and their relative file sets compared before comparing content.
+func TestOutputProfilesSourceMirrorsEmbeddedDefaults(t *testing.T) {
+	t.Parallel()
+
+	root := repoRoot(t)
+	sourceDir := filepath.Join(root, "strategist", "output-profiles")
+	embedDir := filepath.Join(root, "internal", "embed", "defaults", "output-profiles")
+
+	sourceFiles := relativeFileSet(t, sourceDir)
+	embedFiles := relativeFileSet(t, embedDir)
+
+	for rel := range sourceFiles {
+		if !embedFiles[rel] {
+			t.Fatalf("strategist/output-profiles/%s has no embedded counterpart at internal/embed/defaults/output-profiles/%s; run make sync-embed", rel, rel)
+		}
+	}
+	for rel := range embedFiles {
+		if !sourceFiles[rel] {
+			t.Fatalf("internal/embed/defaults/output-profiles/%s has no source counterpart at strategist/output-profiles/%s; content must be authored under strategist/ and synced, not hand-written directly into the embed mirror", rel, rel)
+		}
+	}
+
+	for rel := range sourceFiles {
+		sourcePath := filepath.Join(sourceDir, filepath.FromSlash(rel))
+		embedPath := filepath.Join(embedDir, filepath.FromSlash(rel))
+		source := readFile(t, sourcePath)
+		embedded := readFile(t, embedPath)
+		if source != embedded {
+			t.Fatalf("%s drifted from embedded default %s; run make sync-embed after changing strategist/output-profiles/", sourcePath, embedPath)
+		}
+	}
+}
+
+// TestSyncEmbedSchemaExclusionsStayIntentional guards duplicate schema files that used
+// to be excluded from sync-embed. Duplicate source/embed schemas must mirror exactly;
+// embed-only schemas must remain explicitly absent from the strategist/ authoring tree.
+func TestSyncEmbedSchemaExclusionsStayIntentional(t *testing.T) {
+	t.Parallel()
+
+	root := repoRoot(t)
+	for _, rel := range []string{
+		"mission-result.schema.yaml",
+		"slot-output.schema.yaml",
+	} {
+		sourcePath := filepath.Join(root, "strategist", "schemas", rel)
+		embedPath := filepath.Join(root, "internal", "embed", "defaults", "schemas", rel)
+		if source := readFile(t, sourcePath); source != readFile(t, embedPath) {
+			t.Fatalf("%s drifted from embedded default %s; run make sync-embed after changing strategist/schemas/", sourcePath, embedPath)
+		}
+	}
+
+	for _, rel := range []string{
+		"active.schema.yaml",
+		"roles.schema.yaml",
+	} {
+		sourcePath := filepath.Join(root, "strategist", "schemas", rel)
+		embedPath := filepath.Join(root, "internal", "embed", "defaults", "schemas", rel)
+		if _, err := os.Stat(embedPath); err != nil {
+			t.Fatalf("expected embed-only schema %s: %v", embedPath, err)
+		}
+		if _, err := os.Stat(sourcePath); !os.IsNotExist(err) {
+			t.Fatalf("%s must remain embed-only; do not create a strategist/schemas counterpart without updating sync-embed policy", rel)
+		}
+	}
+
+	sourceRole := filepath.Join(root, "strategist", "roles", "default.yaml")
+	embedRole := filepath.Join(root, "internal", "embed", "defaults", "roles", "default.yaml")
+	if _, err := os.Stat(embedRole); err != nil {
+		t.Fatalf("expected embed-only role default %s: %v", embedRole, err)
+	}
+	if _, err := os.Stat(sourceRole); !os.IsNotExist(err) {
+		t.Fatalf("roles/default.yaml must remain embed-only; do not create a strategist/roles counterpart without updating sync-embed policy")
+	}
+}
+
+// TestDiscoveryAndRefinementContractsRequireDocsLanguage guards mission
+// 2026-07-24-language-config-not-reflected's root cause 1 fix: Ranger and Archivist must author
+// documentation artifacts in active.language.docs, independent of the conversation's language.
+// Without this instruction, refined packages drift to whatever language the surrounding chat
+// happens to use (observed directly: two missions refined mid-session in Portuguese despite
+// docs: en).
+func TestDiscoveryAndRefinementContractsRequireDocsLanguage(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "03-discovery.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "03-discovery.md"),
+		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "04-refinement.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "04-refinement.md"),
+	} {
+		content := readFile(t, path)
+		if !strings.Contains(content, "active.language.docs") {
+			t.Fatalf("%s missing instruction to write documentation artifacts in active.language.docs", path)
+		}
+	}
+}
+
+// relativeFileSet walks dir and returns the set of file paths relative to dir, using forward
+// slashes regardless of OS.
+func relativeFileSet(t *testing.T, dir string) map[string]bool {
+	t.Helper()
+	files := map[string]bool{}
+	err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		rel, relErr := filepath.Rel(dir, path)
+		if relErr != nil {
+			return relErr
+		}
+		files[filepath.ToSlash(rel)] = true
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk %s: %v", dir, err)
+	}
+	return files
 }

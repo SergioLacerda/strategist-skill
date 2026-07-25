@@ -43,7 +43,7 @@ All attributes are namespaced under `strategist.*`. Defined in `internal/telemet
 | Key | Type | Description |
 |-----|------|-------------|
 | `strategist.runtime_mode` | string | Always `cli` for CLI invocations |
-| `strategist.output_profile` | string | Active output profile (e.g. `default`, `epic`, `pragmatic`) |
+| `strategist.output_profile` | string | Active output profile (e.g. `default`, `full`, `verbose`) |
 | `strategist.target` | string | Target directory (sanitized — absolute paths are redacted) |
 
 ### Pipeline phase

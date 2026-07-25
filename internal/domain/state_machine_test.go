@@ -10,13 +10,13 @@ import (
 
 func TestFSMNominalRoute(t *testing.T) {
 	t.Parallel()
-	// Init → OpportunityAttack (non-empty) → OpportunityAttack (no opp, empty) → Refinement → ApprovalGate → Execution → DoneDelivery
+	// Init -> SideQuestScan (non-empty) -> SideQuestScan (no side quests) -> Refinement -> ApprovalGate -> Execution -> DoneDelivery
 	events := []domain.TransitionEvent{
-		domain.EventManifestNonEmpty, // Init → OpportunityAttack
-		domain.EventManifestEmpty,    // OpportunityAttack → Refinement (no opportunities)
-		domain.EventArchivistTasks,   // Refinement → ApprovalGate
-		domain.EventGateApproved,     // ApprovalGate → Execution
-		domain.EventSniperDone,       // Execution → DoneDelivery
+		domain.EventManifestNonEmpty, // Init -> SideQuestScan
+		domain.EventManifestEmpty,    // SideQuestScan -> Refinement (no side quests)
+		domain.EventArchivistTasks,   // Refinement -> ApprovalGate
+		domain.EventGateApproved,     // ApprovalGate -> Execution
+		domain.EventSniperDone,       // Execution -> DoneDelivery
 	}
 	state := domain.StateInit
 	for _, ev := range events {
@@ -41,17 +41,17 @@ func TestFSMGateTimeoutTerminatesAnalysis(t *testing.T) {
 	assert.Equal(t, domain.StateDoneAnalysis, state)
 }
 
-func TestOpportunityGateApproved_GoesToExec(t *testing.T) {
+func TestSideQuestGateApproved_GoesToExec(t *testing.T) {
 	t.Parallel()
-	state := domain.RunStateMachine(domain.StateOpportunityAttack,
+	state := domain.RunStateMachine(domain.StateSideQuestScan,
 		[]domain.TransitionEvent{domain.EventManifestNonEmpty, domain.EventGateApproved},
 	)
-	assert.Equal(t, domain.StateOpportunityExec, state)
+	assert.Equal(t, domain.StateSideQuestExec, state)
 }
 
-func TestOpportunityGateDenied_GoesToRefinement(t *testing.T) {
+func TestSideQuestGateDenied_GoesToRefinement(t *testing.T) {
 	t.Parallel()
-	state := domain.RunStateMachine(domain.StateOpportunityGate,
+	state := domain.RunStateMachine(domain.StateSideQuestGate,
 		[]domain.TransitionEvent{domain.EventGateDenied},
 	)
 	assert.Equal(t, domain.StateRefinement, state)
@@ -157,12 +157,12 @@ func TestFSMRetryExhausted(t *testing.T) {
 	}
 }
 
-func TestFSMSniperOARoute(t *testing.T) {
+func TestFSMExecutionSideQuestRoute(t *testing.T) {
 	t.Parallel()
 
-	// Mid-execution OA surfaces → pause at opportunity gate
-	s := domain.NextState(domain.StateExecution, domain.EventSniperOA)
-	assert.Equal(t, domain.StateOpportunityGate, s)
+	// Mid-execution side quest surfaces -> pause at the side quest gate.
+	s := domain.NextState(domain.StateExecution, domain.EventSniperSideQuest)
+	assert.Equal(t, domain.StateSideQuestGate, s)
 }
 
 func TestFSMSafetyPropertyLike(t *testing.T) {
@@ -234,9 +234,9 @@ func TestFSMStayBranches(t *testing.T) {
 		event domain.TransitionEvent
 	}{
 		{"init unrelated event", domain.StateInit, domain.EventGateApproved},
-		{"opportunity attack unrelated event", domain.StateOpportunityAttack, domain.EventGateApproved},
-		{"opportunity gate unrelated event", domain.StateOpportunityGate, domain.EventManifestEmpty},
-		{"opportunity exec unrelated event", domain.StateOpportunityExec, domain.EventGateApproved},
+		{"side quest scan unrelated event", domain.StateSideQuestScan, domain.EventGateApproved},
+		{"side quest gate unrelated event", domain.StateSideQuestGate, domain.EventManifestEmpty},
+		{"side quest exec unrelated event", domain.StateSideQuestExec, domain.EventGateApproved},
 		{"refinement unrelated event", domain.StateRefinement, domain.EventGateApproved},
 		{"approval gate unrelated event", domain.StateApprovalGate, domain.EventManifestEmpty},
 		{"execution unrelated event", domain.StateExecution, domain.EventGateApproved},

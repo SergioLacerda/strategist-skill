@@ -1,12 +1,15 @@
 package main
 
 import (
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"text/tabwriter"
 
 	"go.opentelemetry.io/otel/attribute"
@@ -22,9 +25,11 @@ import (
 )
 
 var (
-	checkRoot     string
-	checkStrict   bool
-	checkSimulate bool
+	checkRoot                      string
+	checkStrict                    bool
+	checkSimulate                  bool
+	checkPrintContentByLang        string
+	checkPrintContentByLangPersona string
 )
 
 // slotContract maps slot names to their required risk_score contract.
@@ -92,6 +97,14 @@ Checks performed:
 		var cfg domain.ActiveConfig
 		if err := yaml.Unmarshal(raw, &cfg); err != nil {
 			return fmt.Errorf("[Strategist] check=blocked reason=active_yaml_invalid_yaml: %w", err)
+		}
+
+		if checkPrintContentByLang != "" {
+			persona := checkPrintContentByLangPersona
+			if persona == "" {
+				persona = cfg.Mode
+			}
+			return printContentByLang(root, persona, checkPrintContentByLang)
 		}
 
 		providers := map[string]string{
@@ -421,9 +434,81 @@ func readInstallManifest(root string) (domain.InstallManifest, bool, error) {
 	return manifest, true, nil
 }
 
+// printContentByLang extracts personas.<persona>.content_by_lang.<lang> from the compiled
+// config artifact and prints it as indented JSON to stdout. This is the supported way for an
+// agent to read localized runtime message templates — persona YAML source under
+// personas/<mode>.yaml only ever contains the canonical English content; non-English variants
+// (e.g. pt-BR) are injected only at `strategist compile` time (see
+// internal/compile/config.go's injectPTBRRuntime) and exist solely in the compiled artifact.
+func printContentByLang(root, persona, lang string) error {
+	if persona == "" {
+		return fmt.Errorf("[Strategist] check=blocked reason=persona_not_resolved\n→ pass --persona or ensure active.yaml has a non-empty mode")
+	}
+
+	artifactPath := filepath.Join(root, ".compiled", ".config.gz")
+	f, err := os.Open(artifactPath) //nolint:gosec // G304: path derived from strategistDir
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("[Strategist] check=blocked reason=compiled_artifact_missing artifact=%s\n→ Run: strategist compile", artifactPath)
+		}
+		return fmt.Errorf("[Strategist] check=blocked reason=compiled_artifact_read_error: %w", err)
+	}
+	defer func() { _ = f.Close() }() //nolint:errcheck // read-only file; close error is not actionable
+
+	gz, err := gzip.NewReader(f)
+	if err != nil {
+		return fmt.Errorf("[Strategist] check=blocked reason=compiled_artifact_corrupt: %w", err)
+	}
+	defer func() { _ = gz.Close() }() //nolint:errcheck // read-only reader; close error is not actionable
+
+	var artifact struct {
+		Personas map[string]any `json:"personas"`
+	}
+	if err := json.NewDecoder(gz).Decode(&artifact); err != nil {
+		return fmt.Errorf("[Strategist] check=blocked reason=compiled_artifact_corrupt: %w", err)
+	}
+
+	personaRaw, ok := artifact.Personas[persona]
+	if !ok {
+		return fmt.Errorf("[Strategist] check=blocked reason=persona_not_found persona=%s available=%s",
+			persona, strings.Join(sortedKeys(artifact.Personas), ","))
+	}
+	personaMap, ok := personaRaw.(map[string]any)
+	if !ok {
+		return fmt.Errorf("[Strategist] check=blocked reason=persona_malformed persona=%s", persona)
+	}
+	cbl, ok := personaMap["content_by_lang"].(map[string]any)
+	if !ok {
+		return fmt.Errorf("[Strategist] check=blocked reason=content_by_lang_missing persona=%s", persona)
+	}
+	langContent, ok := cbl[lang]
+	if !ok {
+		return fmt.Errorf("[Strategist] check=blocked reason=lang_not_found lang=%s persona=%s available=%s",
+			lang, persona, strings.Join(sortedKeys(cbl), ","))
+	}
+
+	out, err := json.MarshalIndent(langContent, "", "  ")
+	if err != nil {
+		return fmt.Errorf("[Strategist] check=blocked reason=marshal_error: %w", err)
+	}
+	fmt.Println(string(out))
+	return nil
+}
+
+func sortedKeys(m map[string]any) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
 func init() {
 	checkCmd.Flags().StringVar(&checkRoot, "root", "", "path to .strategist/ root (default: .strategist)")
 	checkCmd.Flags().BoolVar(&checkStrict, "strict", false, "additionally require compiled artifacts to exist and match the recorded manifest hashes")
 	checkCmd.Flags().BoolVar(&checkSimulate, "simulate", false, "print a readiness report (per-slot/persona status) instead of the pass/fail banner; never invokes providers or mutates state")
+	checkCmd.Flags().StringVar(&checkPrintContentByLang, "print-content-by-lang", "", "print personas.<persona>.content_by_lang.<lang> from the compiled artifact as JSON and exit; use this instead of reading persona YAML directly to resolve non-English chat templates")
+	checkCmd.Flags().StringVar(&checkPrintContentByLangPersona, "persona", "", "persona/mode to read with --print-content-by-lang (default: active.yaml's mode)")
 	rootCmd.AddCommand(checkCmd)
 }

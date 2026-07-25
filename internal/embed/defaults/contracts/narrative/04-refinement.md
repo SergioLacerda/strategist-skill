@@ -58,6 +58,11 @@ Archivist (`refinement`)
 
 - if `tasks.md` is empty or absent, mission resolves as `analysis_delivered`
 
+## Language
+
+Write the four-file refined package in `active.language.docs`, independent of the language used
+in the surrounding conversation.
+
 ## Status Transitions (Archivist)
 
 - On start → update transient analysis frontmatter `mission_status: archivist_pending`

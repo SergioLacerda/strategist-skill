@@ -4,6 +4,8 @@ description: >
   ADR evaluation routine that runs INSIDE the Archivist, after all four refined
   artifacts are written. Evaluates whether the refined work warrants an ADR.
   Not a standalone phase — it is a post-refinement subsection before the completion signal.
+  Opportunity Attack is ADR-only: it never closes, archives, or moves pending/refined
+  analysis cards. Card closure is owned by Critical Hit.
 
 routing_note: >
   Opportunity Attack does not choose between short and full route.
@@ -52,6 +54,8 @@ contract:
     - criteria evaluation is based solely on the written refined artifacts, not on speculation
     - Archivist does NOT write the ADR draft — only evaluates and surfaces at gate
     - ADR creation is Sniper's responsibility when approved at gate
+    - Opportunity Attack MUST NOT evaluate implementation completion or move cards to done/
+    - Critical Hit is the only route that may close pending/refined cards into done/
 
   write_scope: read-only (archivist reads its own artifacts to evaluate)
   owner: archivist

@@ -1,6 +1,7 @@
 package treasure
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -45,7 +46,7 @@ func TestReadYAMLNode_InvalidYAML(t *testing.T) {
 func TestWriteYAMLNodes_WriteFailure(t *testing.T) {
 	t.Parallel()
 	doc := mustParseDoc(t, "a: 1\n")
-	// Directory instead of file path — os.WriteFile will fail.
+	// Directory instead of file path — atomic rename will fail.
 	dir := t.TempDir()
 	written, err := WriteYAMLNodes(YAMLWrite{Path: dir, Doc: doc})
 	require.Error(t, err)
@@ -79,6 +80,41 @@ func TestWriteYAMLNodes_Success(t *testing.T) {
 	raw, err := os.ReadFile(path)
 	require.NoError(t, err)
 	assert.Contains(t, string(raw), "a: 1")
+}
+
+func TestWriteFileAtomicWithRenameFailurePreservesDestination(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "out.yaml")
+	require.NoError(t, os.WriteFile(path, []byte("existing: true\n"), 0o644))
+
+	renameErr := errors.New("rename failed")
+	err := writeFileAtomicWithRename(path, []byte("replacement: true\n"), 0o644, func(tmp, dst string) error {
+		assert.Equal(t, path, dst)
+		_, statErr := os.Stat(tmp)
+		require.NoError(t, statErr)
+		return renameErr
+	})
+
+	require.ErrorIs(t, err, renameErr)
+	raw, readErr := os.ReadFile(path)
+	require.NoError(t, readErr)
+	assert.Equal(t, "existing: true\n", string(raw))
+
+	matches, globErr := filepath.Glob(filepath.Join(dir, ".out.yaml-*.tmp"))
+	require.NoError(t, globErr)
+	assert.Empty(t, matches)
+}
+
+func TestWriteFileAtomicUsesRequestedMode(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "out.yaml")
+
+	require.NoError(t, writeFileAtomic(path, []byte("a: 1\n"), 0o600))
+	info, err := os.Stat(path)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
 }
 
 // --- RootMapping ---

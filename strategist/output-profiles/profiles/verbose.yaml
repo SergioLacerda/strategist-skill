@@ -1,0 +1,3 @@
+profile: verbose
+level_threshold: DEBUG
+description: Includes opportunity attack narrative and internal events.

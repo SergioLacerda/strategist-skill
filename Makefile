@@ -153,18 +153,18 @@ install: build
 # After sync-embed, run: make build && ./bin/strategist install --target <project>
 sync-embed:
 	@echo "[Strategist] syncing strategist/ → internal/embed/defaults/"
+	@# active.schema.yaml and roles.schema.yaml are intentionally embed-only runtime validation schemas.
 	rsync -a --delete \
 		--exclude 'active.schema.yaml' \
-		--exclude 'mission-result.schema.yaml' \
 		--exclude 'roles.schema.yaml' \
-		--exclude 'slot-output.schema.yaml' \
 		strategist/schemas/ internal/embed/defaults/schemas/
+	@# default.yaml is intentionally embed-only: installed workspaces customize role bindings locally.
 	rsync -a --delete \
 		--exclude 'default.yaml' \
 		strategist/roles/ internal/embed/defaults/roles/
 	rsync -a --delete strategist/templates/ internal/embed/defaults/templates/
 	rsync -a --delete strategist/personas/ internal/embed/defaults/personas/
-	@if [ -d strategist/output-profiles ]; then rsync -a --delete strategist/output-profiles/ internal/embed/defaults/output-profiles/; fi
+	rsync -a --delete strategist/output-profiles/ internal/embed/defaults/output-profiles/
 	rsync -a --delete strategist/internal_skills/ internal/embed/defaults/internal_skills/
 	rsync -a --delete strategist/contracts/narrative/ internal/embed/defaults/contracts/narrative/
 	rsync -a --delete strategist/contracts/machine/   internal/embed/defaults/contracts/machine/

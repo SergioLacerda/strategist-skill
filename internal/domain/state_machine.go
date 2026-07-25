@@ -4,18 +4,18 @@ var stateTransitions = map[MissionState]map[TransitionEvent]MissionState{
 	StateInit: {
 		EventQuickDrawIntent:  StateQuickDraw,
 		EventDirectHitIntent:  StateDirectGate,
-		EventManifestEmpty:    StateOpportunityAttack,
-		EventManifestNonEmpty: StateOpportunityAttack,
+		EventManifestEmpty:    StateSideQuestScan,
+		EventManifestNonEmpty: StateSideQuestScan,
 	},
-	StateOpportunityAttack: {
+	StateSideQuestScan: {
 		EventManifestEmpty:    StateRefinement,
-		EventManifestNonEmpty: StateOpportunityGate,
+		EventManifestNonEmpty: StateSideQuestGate,
 	},
-	StateOpportunityGate: {
+	StateSideQuestGate: {
 		EventGateDenied:   StateRefinement,
-		EventGateApproved: StateOpportunityExec,
+		EventGateApproved: StateSideQuestExec,
 	},
-	StateOpportunityExec: {
+	StateSideQuestExec: {
 		EventSniperDone: StateRefinement,
 	},
 	StateRefinement: {
@@ -30,10 +30,10 @@ var stateTransitions = map[MissionState]map[TransitionEvent]MissionState{
 		EventGateTimeout:  StateDoneAnalysis,
 	},
 	StateExecution: {
-		EventSniperDone:    StateDoneDelivery,
-		EventSniperOA:      StateOpportunityGate,
-		EventSlotTransient: StateRetryingExecution,
-		EventSlotPermanent: StateBlocked,
+		EventSniperDone:      StateDoneDelivery,
+		EventSniperSideQuest: StateSideQuestGate,
+		EventSlotTransient:   StateRetryingExecution,
+		EventSlotPermanent:   StateBlocked,
 	},
 	StateDoneAnalysis: {
 		EventADRCriterionMet: StateADRGate1,
