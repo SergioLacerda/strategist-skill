@@ -53,3 +53,44 @@ chests: []
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "cluster_tag_weight")
 }
+
+func TestLoadIndexed_NotExist(t *testing.T) {
+	t.Parallel()
+	result, err := LoadIndexed(t.TempDir())
+	require.NoError(t, err)
+	assert.Nil(t, result)
+}
+
+func TestLoadIndexed_CorruptYAML(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "knowledge.index.yaml"),
+		[]byte(": not: valID:\n"), 0o644))
+
+	_, err := LoadIndexed(dir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "knowledge.index.yaml")
+}
+
+func TestLoadIndexed_Success(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "knowledge.index.yaml"),
+		[]byte("sources:\n  - id: chest-x\n  - id: chest-y\n"), 0o644))
+
+	result, err := LoadIndexed(dir)
+	require.NoError(t, err)
+	assert.True(t, result["chest-x"])
+	assert.True(t, result["chest-y"])
+}
+
+func TestLoadActiveChests_CorruptYAML(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"),
+		[]byte(": not: valID: yaml:\n"), 0o644))
+
+	_, err := LoadActiveChests(dir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "active.yaml")
+}

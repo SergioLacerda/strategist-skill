@@ -8,7 +8,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// DefaultScoringPolicy returns the legacy hardcoded score formula as configuration.
+// DefaultScoringPolicy returns the built-in score formula applied whenever
+// treasure-chests.yaml has no scoring_policy override.
 func DefaultScoringPolicy() ScoringPolicy {
 	return ScoringPolicy{
 		ClusterBase:          40,

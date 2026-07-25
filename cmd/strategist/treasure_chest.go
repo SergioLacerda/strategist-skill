@@ -38,7 +38,7 @@ func runTreasureChest(cmd *cobra.Command, _ []string, opts treasureChestOptions)
 		run.SetSilent()
 	}
 	opts = treasureChestOptionsFromFlags(cmd, opts)
-	root, err := resolveTreasureChestRoot(opts.Root)
+	root, err := resolveTreasureChestActionRoot(cmd, "treasure-chest")
 	if err != nil {
 		return err
 	}
@@ -84,18 +84,6 @@ func treasureChestOptionsFromFlags(cmd *cobra.Command, opts treasureChestOptions
 	opts.Format = stringFlag(cmd, flagFormat, opts.Format)
 	opts.Scope = stringFlag(cmd, "scope", opts.Scope)
 	return opts
-}
-
-func resolveTreasureChestRoot(rootFlag string) (string, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", fmt.Errorf("treasure-chest: get cwd: %w", err)
-	}
-	root, _, err := resolveStrategistRoot(rootFlag, cwd)
-	if err != nil {
-		return "", fmt.Errorf("treasure-chest: %w", err)
-	}
-	return root, nil
 }
 
 func init() {
