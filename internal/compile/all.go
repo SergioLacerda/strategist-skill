@@ -4,6 +4,7 @@ package compile
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -23,6 +24,7 @@ func (c Compiler) CompileAll(root, indexPath string) error {
 	indexOut := filepath.Join(compiledDir, ".index.gz")
 	domainOut := filepath.Join(compiledDir, ".domain.gz")
 	configOut := filepath.Join(compiledDir, ".config.gz")
+	manifestOut := filepath.Join(compiledDir, ".manifest.gz")
 
 	steps := []struct {
 		name string
@@ -53,6 +55,7 @@ func (c Compiler) CompileAll(root, indexPath string) error {
 	wg.Wait()
 
 	if len(errs) > 0 {
+		_ = os.Remove(manifestOut) //nolint:errcheck // best-effort: absence is the "partial compile" signal
 		return errors.Join(errs...)
 	}
 
@@ -66,7 +69,6 @@ func (c Compiler) CompileAll(root, indexPath string) error {
 		},
 	}
 
-	manifestOut := filepath.Join(compiledDir, ".manifest.gz")
 	if err := writeGzJSON(manifestOut, manifest); err != nil {
 		return fmt.Errorf("compile all: manifest: %w", err)
 	}
