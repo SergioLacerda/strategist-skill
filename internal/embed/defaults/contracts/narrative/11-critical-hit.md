@@ -14,6 +14,10 @@ reopening, or closing `.md` analysis/documentation artifacts between the workspa
 folders (`pending/`, `refined/`, `archived/`, `done/`) without running the full
 Ranger/Archivist pipeline.
 
+Critical Hit is the only Strategist capability that closes finalized analysis cards
+from `pending/` or `refined/` into `done/`. Opportunity Attack is unrelated to this
+movement; it only evaluates whether refined work should produce an ADR side quest.
+
 Critical Hit is not a route mutually exclusive with the pipeline — it is an internal
 capability that may fire at intake, or mid-mission at any phase boundary, whenever the
 current request reduces to a pure artifact move/closure. Firing Critical Hit mid-mission

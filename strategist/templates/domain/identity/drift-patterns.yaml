@@ -102,7 +102,7 @@ patterns:
       Stop. Emit reason=pipeline_bypass_detected with the name of the missing phase and a
       resume hint. Do not proceed with the mutation until the missing phase has completed.
 
-  - id: opportunity_gate_bypass
+  - id: side_quest_gate_bypass
     symptom: >
       I am about to execute a side quest or ADR listed in the opportunity_manifest
       without the user having selected it at the approval gate.

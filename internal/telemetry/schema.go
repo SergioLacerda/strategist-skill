@@ -58,6 +58,11 @@ const (
 
 	AttrIntakeToScoutMS = "strategist.metrics.t_intake_to_scout_ms"
 	AttrScoutToRangerMS = "strategist.metrics.t_scout_to_ranger_ms"
+
+	// AttrBasePath, AttrConflictCount are the F3 revisit tripwire signal attrs
+	// (ADR-0008 § F3 revisit tripwire, docs/adr/0008-single-session-assumption.md).
+	AttrBasePath      = "strategist.base_path"
+	AttrConflictCount = "strategist.sniper.conflict_count"
 )
 
 const redactedPath = "<redacted-path>"

@@ -397,11 +397,17 @@ func TestTreasureChestRemove_WriteErrorAtCommandLevel(t *testing.T) {
 		t.Skip("permission tests do not apply when running as root")
 	}
 	dir := minimalTreasureChestRoot(t)
-	// Make treasure-chests.yaml unwritable so writeRemoveDocs fails after the
-	// active.yaml write already succeeded (partial-write path).
-	govPath := filepath.Join(dir, "treasure-chests.yaml")
-	require.NoError(t, os.Chmod(govPath, 0o444))
-	t.Cleanup(func() { _ = os.Chmod(govPath, 0o644) })
+	// WriteYAMLNodes writes each governance file through writeFileAtomic
+	// (temp file + os.Rename, see internal/treasure/yaml_node.go, mission
+	// 2026-07-22-yaml-write-atomicity). os.Rename does not check the
+	// destination file's own permission bits, only that its parent
+	// directory is writable — so chmod'ing treasure-chests.yaml itself no
+	// longer forces a write failure. Chmod the directory read-only instead:
+	// reads (LoadRemoveDocs) only need r-x and still succeed, but
+	// os.CreateTemp for the first write in the batch fails, and the command
+	// must still surface that as an error.
+	require.NoError(t, os.Chmod(dir, 0o555))
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
 
 	resetTreasureChestFlags(t)
 	resetTreasureChestMutateFlags(t)

@@ -30,6 +30,12 @@ contract: null
 - fall back to YAML sources when compiled artifacts are stale or absent
 - resolve chat language from `active.language.chat`
 - resolve docs language from `active.language.docs`
+- to read localized chat-language templates, run `strategist check --print-content-by-lang
+  <active.language.chat> --persona <mode>` — persona YAML source under `personas/<mode>.yaml`
+  only ever contains the canonical English `content_by_lang`; non-English variants (e.g.
+  `pt-BR`) are injected only at `strategist compile` time and exist solely in the compiled
+  artifact (`.strategist/.compiled/.config.gz`). Reading persona YAML source directly will
+  never show non-English content_by_lang — that is expected, not a bug in the source file.
 - when `governance_injection` is present: resolve and expose `governance_source` and `governance_adapter` in bootstrap diagnostics
 - when no `governance_injection`: set `governance_mode=standalone`, `governance_source=none`
 

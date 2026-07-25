@@ -291,7 +291,7 @@ Quick reference — IDs only. Authoritative source is the yaml; do not add descr
 - `silent_phase_advance` — starting next phase without emitting done event
 - `approval_bypass` — invoking Sniper without user approval
 - `pipeline_bypass_detected` — mutating repo without phase evidence
-- `opportunity_gate_bypass` — executing manifest items without presenting gate
+- `side_quest_gate_bypass` — executing manifest items without presenting gate
 - `scope_expansion` — addressing work outside declared mission scope
 - `execution_provider_override` — resolving execution slot from undeclared source
 - `route_plan_creation_to_sniper` — asking Sniper to author documents

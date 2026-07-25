@@ -80,6 +80,11 @@ completion condition. Those are `creative`-subtype obligations only (see
 - authorized path: `<base_path>/pending/<mission_id>-analysis.md`
 - type: `.md`
 
+## Language
+
+Write the analysis artifact in `active.language.docs`, independent of the language used in the
+surrounding conversation.
+
 ## Mission Status Protocol
 
 Every analysis artifact MUST begin with YAML frontmatter:

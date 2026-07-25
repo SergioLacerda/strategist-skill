@@ -18,6 +18,17 @@ field_rules:
       revision_requested: user identified a missing item or correction; Archivist must revisit
       rejected: user rejected analysis as not matching the original request
       blocked: pipeline stopped due to contract, governance, or safety blocker
+  jewels_consulted:
+    type: array
+    required: false
+    description: >
+      Deduplicated IDs of jewels consulted across this mission's discovery and
+      refinement phases (see context-enrichment.yaml jewel_retrieval). Forwarded by
+      learning-curator into outcome-entry.schema.yaml's jewel_ids field. Absence means
+      no jewels were consulted, or the mission predates this field — not an error.
+    items:
+      type: string
+      non_empty: true
 
 invariants:
   - id: only_documentation_pipeline_statuses

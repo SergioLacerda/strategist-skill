@@ -55,6 +55,20 @@ field_rules:
     items:
       type: string
       non_empty: true
+  jewel_ids:
+    type: array
+    required: false
+    description: >
+      Deduplicated IDs of jewels consulted (discovery and/or refinement) during the
+      mission that produced this outcome entry. IDs only — chest_id, trust, status,
+      and statement are joined from .strategist/jewels.yaml / jewels/<chest-id>.yaml
+      at read time, never duplicated here. Populated from mission_result.jewels_consulted
+      when present (see mission-result.schema.yaml). Enables correlating jewel
+      consultations with mission outcomes for `treasure-chest mine` curation without
+      introducing automatic scoring or status promotion.
+    items:
+      type: string
+      non_empty: true
   gates:
     type: array
     required: false

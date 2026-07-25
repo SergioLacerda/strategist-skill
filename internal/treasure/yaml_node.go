@@ -3,7 +3,9 @@ package treasure
 import (
 	"bytes"
 	"fmt"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -48,12 +50,48 @@ func WriteYAMLNodes(writes ...YAMLWrite) ([]string, error) {
 		if err := enc.Close(); err != nil {
 			return written, fmt.Errorf("encode %s: %w", w.Path, err)
 		}
-		if err := os.WriteFile(w.Path, buf.Bytes(), 0o644); err != nil { //nolint:gosec // G306
+		if err := writeFileAtomic(w.Path, buf.Bytes(), 0o644); err != nil {
 			return written, fmt.Errorf("write %s: %w", w.Path, err)
 		}
 		written = append(written, w.Path)
 	}
 	return written, nil
+}
+
+func writeFileAtomic(path string, data []byte, perm fs.FileMode) error {
+	return writeFileAtomicWithRename(path, data, perm, os.Rename)
+}
+
+func writeFileAtomicWithRename(path string, data []byte, perm fs.FileMode, rename func(string, string) error) error {
+	dir := filepath.Dir(path)
+	tmp, err := os.CreateTemp(dir, "."+filepath.Base(path)+"-*.tmp")
+	if err != nil {
+		return fmt.Errorf("create temp: %w", err)
+	}
+	tmpName := tmp.Name()
+	cleanup := true
+	defer func() {
+		if cleanup {
+			os.Remove(tmpName) //nolint:errcheck,gosec // best-effort cleanup of temp file on failure path
+		}
+	}()
+
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close() //nolint:errcheck,gosec // best-effort close after write failure; write error is what's reported
+		return fmt.Errorf("write temp: %w", err)
+	}
+	if err := tmp.Chmod(perm); err != nil {
+		tmp.Close() //nolint:errcheck,gosec // best-effort close after chmod failure; chmod error is what's reported
+		return fmt.Errorf("chmod temp: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("close temp: %w", err)
+	}
+	if err := rename(tmpName, path); err != nil {
+		return fmt.Errorf("rename temp: %w", err)
+	}
+	cleanup = false
+	return nil
 }
 
 // RootMapping returns the top-level mapping node from a YAML document.

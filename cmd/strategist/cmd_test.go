@@ -1042,6 +1042,133 @@ func TestCheckCmd_RuntimeNormativeFileConflict(t *testing.T) {
 	assert.Contains(t, stderr, "strategist install --force")
 }
 
+func TestCheckCmd_PrintContentByLang_Success(t *testing.T) {
+	dir := minimalCheckRoot(t)
+	testutil.WriteGzJSON(t, filepath.Join(dir, ".compiled", ".config.gz"), map[string]any{
+		"personas": map[string]any{
+			"epic": map[string]any{
+				"content_by_lang": map[string]any{
+					"en":    map[string]any{"ranger_start": "starting"},
+					"pt-BR": map[string]any{"ranger_start": "iniciando"},
+				},
+			},
+		},
+	})
+
+	orig, origPersona := checkRoot, checkPrintContentByLangPersona
+	t.Cleanup(func() {
+		checkRoot, checkPrintContentByLangPersona = orig, origPersona
+		checkPrintContentByLang = ""
+	})
+	checkRoot = dir
+	checkPrintContentByLang = "pt-BR"
+
+	var runErr error
+	stdout := captureStdout(t, func() {
+		runErr = checkCmd.RunE(checkCmd, nil)
+	})
+	require.NoError(t, runErr)
+	assert.Contains(t, stdout, "iniciando")
+	assert.NotContains(t, stdout, "starting")
+}
+
+func TestCheckCmd_PrintContentByLang_DefaultsPersonaFromActiveYAML(t *testing.T) {
+	dir := minimalCheckRoot(t)
+	testutil.WriteGzJSON(t, filepath.Join(dir, ".compiled", ".config.gz"), map[string]any{
+		"personas": map[string]any{
+			"epic": map[string]any{
+				"content_by_lang": map[string]any{
+					"en": map[string]any{"ranger_start": "starting"},
+				},
+			},
+		},
+	})
+
+	orig := checkRoot
+	t.Cleanup(func() {
+		checkRoot = orig
+		checkPrintContentByLang = ""
+	})
+	checkRoot = dir
+	checkPrintContentByLang = "en"
+	// checkPrintContentByLangPersona left empty — must default to active.yaml's mode (epic).
+
+	var runErr error
+	stdout := captureStdout(t, func() {
+		runErr = checkCmd.RunE(checkCmd, nil)
+	})
+	require.NoError(t, runErr)
+	assert.Contains(t, stdout, "starting")
+}
+
+func TestCheckCmd_PrintContentByLang_MissingCompiledArtifact(t *testing.T) {
+	dir := minimalCheckRoot(t)
+
+	orig := checkRoot
+	t.Cleanup(func() {
+		checkRoot = orig
+		checkPrintContentByLang = ""
+	})
+	checkRoot = dir
+	checkPrintContentByLang = "pt-BR"
+
+	err := checkCmd.RunE(checkCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "compiled_artifact_missing")
+	assert.Contains(t, err.Error(), "strategist compile")
+}
+
+func TestCheckCmd_PrintContentByLang_MissingLangKey(t *testing.T) {
+	dir := minimalCheckRoot(t)
+	testutil.WriteGzJSON(t, filepath.Join(dir, ".compiled", ".config.gz"), map[string]any{
+		"personas": map[string]any{
+			"epic": map[string]any{
+				"content_by_lang": map[string]any{
+					"en": map[string]any{"ranger_start": "starting"},
+				},
+			},
+		},
+	})
+
+	orig := checkRoot
+	t.Cleanup(func() {
+		checkRoot = orig
+		checkPrintContentByLang = ""
+	})
+	checkRoot = dir
+	checkPrintContentByLang = "xx-XX"
+
+	err := checkCmd.RunE(checkCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "lang_not_found")
+	assert.Contains(t, err.Error(), "available=en")
+}
+
+func TestCheckCmd_PrintContentByLang_MissingPersona(t *testing.T) {
+	dir := minimalCheckRoot(t)
+	testutil.WriteGzJSON(t, filepath.Join(dir, ".compiled", ".config.gz"), map[string]any{
+		"personas": map[string]any{
+			"epic": map[string]any{
+				"content_by_lang": map[string]any{"en": map[string]any{}},
+			},
+		},
+	})
+
+	orig, origPersona := checkRoot, checkPrintContentByLangPersona
+	t.Cleanup(func() {
+		checkRoot, checkPrintContentByLangPersona = orig, origPersona
+		checkPrintContentByLang = ""
+	})
+	checkRoot = dir
+	checkPrintContentByLang = "en"
+	checkPrintContentByLangPersona = "pragmatic"
+
+	err := checkCmd.RunE(checkCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "persona_not_found")
+	assert.Contains(t, err.Error(), "available=epic")
+}
+
 func writeInstallManifestForTest(t *testing.T, root, relPath, hash string) {
 	t.Helper()
 	manifest := domain.InstallManifest{
