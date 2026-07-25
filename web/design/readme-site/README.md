@@ -32,7 +32,7 @@ Use these facts when writing copy or building screens so the brand stays accurat
 
 - **One orchestrator + three slots.** Strategist orchestrates; it validates contracts, emits progress, and enforces the gate — it **never executes**. The pluggable slots are **Ranger** (`discovery`, contract `write_pending`), **Archivist** (`refinement`, contract `write_analysis`), **Sniper** (`execution`, contract `controlled`).
 - **Canonical pipeline:** `Bootstrap → Preflight → Intake → Context Enrichment → Ranger → Opportunist Attack (internal) → Archivist → Approval Gate → Sniper → Learning Loop`. The console's *Mission Flow* shows the four human-facing phases (Discovery · Refinement · Approval Gate · Execution).
-- **Approval Gate is mandatory** whenever `tasks.md` is non-empty; an empty `tasks.md` returns `plan_only` with no gate. Invoking Sniper without explicit approval is a *forbidden behavior*.
+- **Approval Gate is mandatory** whenever `tasks.md` is non-empty; an empty or absent `tasks.md` resolves as `analysis_delivered` with no gate. Invoking Sniper without explicit approval is a *forbidden behavior*.
 - **Two personas, one pipeline:** `epic` (ranger / archivist / sniper labels, strategic tone) and `pragmatic` (analysis / refinement / execution labels, analytical tone). The `mode: pragmatic · epic` badge reflects this.
 - **Artifacts:** `pending/<id>-discovery.md` → `refined/<id>/{proposal,design,tasks}.md` → `done/<id>-report.md`. Config lives in the skill root (`active.yaml`, `roles/`, `personas/`, `knowledge.index.yaml`) — never written into the target repo.
 - **Install:** bootstrap the binary (`curl … | bash`), then `strategist install --wizard` (interactive TUI to pick template, base_path, slot providers, knowledge source).

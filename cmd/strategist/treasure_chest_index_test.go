@@ -101,6 +101,25 @@ acceptance_checks:
 	assert.Contains(t, string(raw), "id: jewel-gap-sq-101")
 }
 
+func TestTreasureChestIndex_WarnsAndContinuesOnInvalidMissionTasks(t *testing.T) {
+	dir, basePath := indexTestRoot(t)
+	writeMissionTasks(t, basePath, "refined", "invalid-mission", "side_quests_approved:\n  : not: valID:\n")
+	writeMissionTasks(t, basePath, "refined", "valid-mission", "side_quests_approved:\n\n- id: SQ-201\n  description: Pending valid item.\n  status: sq_pending\n")
+	resetTreasureChestFlags(t)
+	setTreasureChestRoot(t, dir)
+
+	errOut := captureStderr(t, func() {
+		require.NoError(t, treasureChestIndexCmd.RunE(treasureChestIndexCmd, nil))
+	})
+	assert.Contains(t, errOut, "Warning: treasure-chest index: skipped inconsistent mission file")
+	assert.Contains(t, errOut, filepath.Join("invalid-mission", "tasks.md"))
+	assert.Contains(t, errOut, "parse side_quests_approved")
+
+	raw, err := os.ReadFile(filepath.Join(dir, "jewels", "mission-history.yaml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(raw), "id: jewel-gap-sq-201")
+}
+
 func TestTreasureChestIndex_UsesConfiguredScoringPolicy(t *testing.T) {
 	dir, basePath := indexTestRoot(t)
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "treasure-chests.yaml"), []byte(`

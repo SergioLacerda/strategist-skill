@@ -65,10 +65,11 @@ func runTreasureChestIndexCmd(cmd *cobra.Command, _ []string, opts treasureChest
 		return fmt.Errorf("treasure-chest index: %w", err)
 	}
 
-	missions, clusters, gaps, err := scanTreasureChestMissions(root)
+	missions, clusters, gaps, warnings, err := scanTreasureChestMissions(root)
 	if err != nil {
 		return err
 	}
+	printTreasureChestIndexWarnings(cmd, warnings)
 
 	candidates := treasure.BuildJewelCandidatesWithPolicy(clusters, gaps, scoringPolicy)
 	written, skipped, err := treasure.WriteProposedJewels(root, candidates)
@@ -102,21 +103,27 @@ func resolveTreasureChestIndexRoot(cmd *cobra.Command) (string, error) {
 	return root, nil
 }
 
-func scanTreasureChestMissions(root string) ([]treasure.ScannedMission, []treasure.Cluster, []treasure.Gap, error) {
+func scanTreasureChestMissions(root string) ([]treasure.ScannedMission, []treasure.Cluster, []treasure.Gap, []treasure.ScanWarning, error) {
 	_, basePath, err := resolveDojoRoots(root)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("treasure-chest index: %w", err)
+		return nil, nil, nil, nil, fmt.Errorf("treasure-chest index: %w", err)
 	}
-	missions, err := treasure.ScanMissions(basePath)
+	missions, warnings, err := treasure.ScanMissionsTolerant(basePath)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("treasure-chest index: %w", err)
+		return nil, nil, nil, nil, fmt.Errorf("treasure-chest index: %w", err)
 	}
 	clusters := treasure.BuildClusters(missions)
 	gaps := treasure.BuildGaps(missions)
 	if err := treasure.WriteScanOutputs(filepath.Join(root, "treasure", "clusters"), clusters, filepath.Join(root, "treasure", "gaps"), gaps); err != nil {
-		return nil, nil, nil, fmt.Errorf("treasure-chest index: %w", err)
+		return nil, nil, nil, nil, fmt.Errorf("treasure-chest index: %w", err)
 	}
-	return missions, clusters, gaps, nil
+	return missions, clusters, gaps, warnings, nil
+}
+
+func printTreasureChestIndexWarnings(cmd *cobra.Command, warnings []treasure.ScanWarning) {
+	for _, warning := range warnings {
+		cmd.PrintErrf("Warning: treasure-chest index: skipped inconsistent mission file: %v\n", warning)
+	}
 }
 
 func printHistoricalIndexWarning(governed map[string]treasure.GovernedChest, includeHistorical bool) {
