@@ -537,6 +537,30 @@ func TestCompileAll(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "domain")
 	})
+
+	t.Run("partial failure after prior success removes stale manifest", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		testutil.MinimalRoot(t, dir)
+		kiPath := filepath.Join(dir, "knowledge.index.yaml")
+
+		c := compile.Compiler{}
+		require.NoError(t, c.CompileAll(dir, kiPath))
+		manifestPath := filepath.Join(dir, ".compiled", ".manifest.gz")
+		require.FileExists(t, manifestPath)
+
+		// Break only the domain step (invalid YAML) while index/config stay valid,
+		// so index/config succeed and overwrite their artifacts, but domain fails.
+		require.NoError(t, os.WriteFile(
+			filepath.Join(dir, "index.yaml"),
+			[]byte("load_always: [unterminated\n"),
+			0o644,
+		))
+
+		err := c.CompileAll(dir, kiPath)
+		require.Error(t, err)
+		assert.NoFileExists(t, manifestPath, "manifest must be removed after a partial failure so absence is the sole staleness signal")
+	})
 }
 
 // --- writeGzJSON error paths ---

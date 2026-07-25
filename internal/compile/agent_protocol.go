@@ -24,14 +24,14 @@ type agentProtocolSlots struct {
 	Execution  string
 }
 
-// AgentProtocol generates or upserts <root>/agent-protocol.md from templateBytes,
+// agentProtocol generates or upserts <root>/agent-protocol.md from templateBytes,
 // stamping runtime values from <root>/active.yaml.
 //
 // If the file exists and has valid frontmatter: replaces the body section, updates
 // version and generated_at in the existing frontmatter, and preserves any extra
 // frontmatter fields the user may have added.
 // If the file is absent or frontmatter is malformed: writes the rendered output entirely.
-func AgentProtocol(root string, templateBytes []byte, version string) error {
+func agentProtocol(root string, templateBytes []byte, version string) error {
 	var active domain.ActiveConfig
 	if err := loadYAMLInto(filepath.Join(root, "active.yaml"), &active); err != nil {
 		return fmt.Errorf("agent protocol: %w", err)

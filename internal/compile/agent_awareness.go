@@ -37,10 +37,10 @@ When ` + "`" + `.strategist/` + "`" + ` is absent:
 ` + "`" + `.strategist/agent-protocol.md` + "`" + ` is the runtime authority for agent behavior.
 Discovery contract: ` + "`" + `.strategist/provider-discovery.md` + "`"
 
-// AgentAwareness upserts per-agent entrypoint files at projectRoot if they already exist.
+// agentAwareness upserts per-agent entrypoint files at projectRoot if they already exist.
 // Does not create files that do not exist. Failures per file are logged and skipped —
 // this function always returns nil (non-blocking by contract).
-func AgentAwareness(projectRoot string) error {
+func agentAwareness(projectRoot string) error {
 	upsertIfExists(filepath.Join(projectRoot, ".antigravity", "antigravity-instructions.md"), upsertSection, "antigravity")
 	upsertIfExists(filepath.Join(projectRoot, ".sdd", "seedlings", "codex.seed.json"), upsertCodexSeed, "codex")
 	upsertIfExists(filepath.Join(projectRoot, ".claude", "claude-instructions.md"), upsertSection, "claude-instructions")
@@ -68,13 +68,13 @@ func upsertIfExists(path string, update func(string) error, label string) {
 func RefreshAgentAwareness(strategistRoot, projectRoot, version string, tplBytes []byte) (protocolOK bool) {
 	if len(tplBytes) == 0 {
 		slog.Warn("[Strategist] agent-protocol template not found or empty")
-	} else if err := AgentProtocol(strategistRoot, tplBytes, version); err != nil {
+	} else if err := agentProtocol(strategistRoot, tplBytes, version); err != nil {
 		slog.Warn("[Strategist] agent-protocol generation failed", "error", err)
 	} else {
 		protocolOK = true
 	}
 
-	if err := AgentAwareness(projectRoot); err != nil {
+	if err := agentAwareness(projectRoot); err != nil {
 		slog.Warn("[Strategist] agent awareness update skipped", "error", err)
 	}
 
@@ -119,11 +119,27 @@ func appendMarkdownSection(content, newSection string) string {
 }
 
 func markdownTail(after string) string {
-	nextSection := strings.Index(after, "\n## ")
-	if nextSection == -1 {
+	idx := indexNextHeading(after)
+	if idx == -1 {
 		return ""
 	}
-	return after[nextSection:]
+	return after[idx:]
+}
+
+// indexNextHeading finds the index of the "\n" immediately preceding the next
+// Markdown heading line (any level, "#" through "######") in s, or -1 if none
+// exists. Only lines after the first are considered, since s is the content
+// immediately following a section header, not itself a heading line.
+func indexNextHeading(s string) int {
+	lines := strings.Split(s, "\n")
+	offset := 0
+	for i, line := range lines {
+		if i > 0 && strings.HasPrefix(line, "#") {
+			return offset - 1
+		}
+		offset += len(line) + 1
+	}
+	return -1
 }
 
 // upsertCodexSeed updates required_context and on_strategist_invoke in a codex.seed.json.

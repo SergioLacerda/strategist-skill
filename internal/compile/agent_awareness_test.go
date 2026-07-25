@@ -1,13 +1,16 @@
-package compile_test
+package compile
+
+// Markdown-section upsert subtests (antigravity / claude-instructions / codex
+// commands), split from the JSON codex-seed subtests in
+// agent_awareness_codexseed_test.go. Moved to package compile alongside the
+// AgentAwareness -> agentAwareness unexport.
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/SergioLacerda/strategist-skill/internal/compile"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -18,7 +21,7 @@ func TestAgentAwareness(t *testing.T) {
 	t.Run("no-op when no agent files present", func(t *testing.T) {
 		t.Parallel()
 		dir := t.TempDir()
-		err := compile.AgentAwareness(dir)
+		err := agentAwareness(dir)
 		require.NoError(t, err)
 	})
 
@@ -31,7 +34,7 @@ func TestAgentAwareness(t *testing.T) {
 		initial := "# Antigravity Instructions\n\n## Strategist Runtime Discovery\n\nOld content here.\n\n## Other Section\n\nKeep this.\n"
 		require.NoError(t, os.WriteFile(agPath, []byte(initial), 0o644))
 
-		require.NoError(t, compile.AgentAwareness(dir))
+		require.NoError(t, agentAwareness(dir))
 
 		content, _ := os.ReadFile(agPath)
 		s := string(content)
@@ -54,153 +57,13 @@ func TestAgentAwareness(t *testing.T) {
 		initial := "# Antigravity Instructions\n\n## Other Section\n\nContent.\n"
 		require.NoError(t, os.WriteFile(agPath, []byte(initial), 0o644))
 
-		require.NoError(t, compile.AgentAwareness(dir))
+		require.NoError(t, agentAwareness(dir))
 
 		content, _ := os.ReadFile(agPath)
 		s := string(content)
 		assert.Contains(t, s, "## Strategist Runtime Discovery")
 		assert.Contains(t, s, "agent-protocol.md")
 		assert.Contains(t, s, "## Other Section")
-	})
-
-	t.Run("upserts codex required_context when file exists", func(t *testing.T) {
-		t.Parallel()
-		dir := t.TempDir()
-
-		codexPath := filepath.Join(dir, ".sdd", "seedlings", "codex.seed.json")
-		require.NoError(t, os.MkdirAll(filepath.Dir(codexPath), 0o755))
-		initial := map[string]any{
-			"auto_activate":    true,
-			"required_context": []any{".sdd/metadata.json", ".strategist/SKILL.md"},
-		}
-		data, _ := json.Marshal(initial)
-		require.NoError(t, os.WriteFile(codexPath, data, 0o644))
-
-		require.NoError(t, compile.AgentAwareness(dir))
-
-		var result map[string]any
-		raw, _ := os.ReadFile(codexPath)
-		require.NoError(t, json.Unmarshal(raw, &result))
-
-		ctx := result["required_context"].([]any)
-		assert.Equal(t, ".strategist/agent-protocol.md", ctx[0], "agent-protocol.md must be first")
-		assert.Contains(t, ctx, ".sdd/metadata.json")
-		assert.Contains(t, ctx, ".strategist/SKILL.md")
-		assert.NotNil(t, result["on_strategist_invoke"])
-	})
-
-	t.Run("codex seed carries the Strategist Active role-lock header and forbidden actions", func(t *testing.T) {
-		t.Parallel()
-		dir := t.TempDir()
-
-		codexPath := filepath.Join(dir, ".sdd", "seedlings", "codex.seed.json")
-		require.NoError(t, os.MkdirAll(filepath.Dir(codexPath), 0o755))
-		initial := map[string]any{"required_context": []any{}}
-		data, _ := json.Marshal(initial)
-		require.NoError(t, os.WriteFile(codexPath, data, 0o644))
-
-		require.NoError(t, compile.AgentAwareness(dir))
-
-		var result map[string]any
-		raw, _ := os.ReadFile(codexPath)
-		require.NoError(t, json.Unmarshal(raw, &result))
-
-		invoke := result["on_strategist_invoke"].(map[string]any)
-		assert.Equal(t, "Strategist Active", invoke["header"])
-		assert.Contains(t, invoke["role_lock"], "do not solve the task directly")
-		assert.Contains(t, invoke["allowed_actions"], "invoke_providers")
-		assert.Contains(t, invoke["forbidden_actions"], "direct_execution")
-		assert.Contains(t, invoke["forbidden_actions"], "code_or_test_mutation")
-		assert.Contains(t, invoke["forbidden_actions"], "provider_fallback")
-		assert.Equal(t, "emit error=role_invocation_failed with slot and provider, then stop", invoke["on_role_invocation_failed"])
-	})
-
-	t.Run("does not duplicate agent-protocol.md in codex required_context", func(t *testing.T) {
-		t.Parallel()
-		dir := t.TempDir()
-
-		codexPath := filepath.Join(dir, ".sdd", "seedlings", "codex.seed.json")
-		require.NoError(t, os.MkdirAll(filepath.Dir(codexPath), 0o755))
-		initial := map[string]any{
-			"required_context": []any{".strategist/agent-protocol.md", ".sdd/metadata.json"},
-		}
-		data, _ := json.Marshal(initial)
-		require.NoError(t, os.WriteFile(codexPath, data, 0o644))
-
-		require.NoError(t, compile.AgentAwareness(dir))
-
-		var result map[string]any
-		raw, _ := os.ReadFile(codexPath)
-		require.NoError(t, json.Unmarshal(raw, &result))
-
-		ctx := result["required_context"].([]any)
-		count := 0
-		for _, v := range ctx {
-			if v == ".strategist/agent-protocol.md" {
-				count++
-			}
-		}
-		assert.Equal(t, 1, count, "agent-protocol.md should appear exactly once")
-	})
-
-	t.Run("skips codex when file is not valid JSON", func(t *testing.T) {
-		t.Parallel()
-		dir := t.TempDir()
-
-		codexPath := filepath.Join(dir, ".sdd", "seedlings", "codex.seed.json")
-		require.NoError(t, os.MkdirAll(filepath.Dir(codexPath), 0o755))
-		require.NoError(t, os.WriteFile(codexPath, []byte("not json"), 0o644))
-
-		err := compile.AgentAwareness(dir)
-		require.NoError(t, err)
-	})
-
-	t.Run("idempotent on second run", func(t *testing.T) {
-		t.Parallel()
-		dir := t.TempDir()
-
-		codexPath := filepath.Join(dir, ".sdd", "seedlings", "codex.seed.json")
-		require.NoError(t, os.MkdirAll(filepath.Dir(codexPath), 0o755))
-		initial := map[string]any{
-			"auto_activate":    true,
-			"required_context": []any{".sdd/metadata.json"},
-		}
-		data, _ := json.Marshal(initial)
-		require.NoError(t, os.WriteFile(codexPath, data, 0o644))
-
-		require.NoError(t, compile.AgentAwareness(dir))
-		first, _ := os.ReadFile(codexPath)
-
-		require.NoError(t, compile.AgentAwareness(dir))
-		second, _ := os.ReadFile(codexPath)
-
-		assert.Equal(t, string(first), string(second), "second run must produce identical output")
-	})
-
-	t.Run("stable serialization between runs", func(t *testing.T) {
-		t.Parallel()
-		dir := t.TempDir()
-
-		codexPath := filepath.Join(dir, ".sdd", "seedlings", "codex.seed.json")
-		require.NoError(t, os.MkdirAll(filepath.Dir(codexPath), 0o755))
-		initial := map[string]any{
-			"z_last_key":       "z",
-			"a_first_key":      "a",
-			"required_context": []any{".sdd/metadata.json"},
-			"middle_key":       true,
-		}
-		data, _ := json.Marshal(initial)
-		require.NoError(t, os.WriteFile(codexPath, data, 0o644))
-
-		require.NoError(t, compile.AgentAwareness(dir))
-		run1, _ := os.ReadFile(codexPath)
-
-		// Reset and run again — output must be byte-identical.
-		require.NoError(t, os.WriteFile(codexPath, data, 0o644))
-		require.NoError(t, compile.AgentAwareness(dir))
-		run2, _ := os.ReadFile(codexPath)
-
-		assert.Equal(t, string(run1), string(run2), "serialization must be stable across independent runs")
 	})
 
 	t.Run("upserts claude-instructions section when file exists", func(t *testing.T) {
@@ -212,7 +75,7 @@ func TestAgentAwareness(t *testing.T) {
 		initial := "# Claude Instructions\n\n## My Section\n\nKeep this.\n"
 		require.NoError(t, os.WriteFile(claudePath, []byte(initial), 0o644))
 
-		require.NoError(t, compile.AgentAwareness(dir))
+		require.NoError(t, agentAwareness(dir))
 
 		content, _ := os.ReadFile(claudePath)
 		s := string(content)
@@ -232,7 +95,7 @@ func TestAgentAwareness(t *testing.T) {
 		initial := "# Claude Instructions\n\n## Strategist Runtime Discovery\n\nOld awareness.\n\n## Other\n\nKeep.\n"
 		require.NoError(t, os.WriteFile(claudePath, []byte(initial), 0o644))
 
-		require.NoError(t, compile.AgentAwareness(dir))
+		require.NoError(t, agentAwareness(dir))
 
 		content, _ := os.ReadFile(claudePath)
 		s := string(content)
@@ -251,7 +114,7 @@ func TestAgentAwareness(t *testing.T) {
 		initial := "# Codex Commands\n\n## Run Tests\n\ngo test ./...\n"
 		require.NoError(t, os.WriteFile(codexCmdPath, []byte(initial), 0o644))
 
-		require.NoError(t, compile.AgentAwareness(dir))
+		require.NoError(t, agentAwareness(dir))
 
 		content, _ := os.ReadFile(codexCmdPath)
 		s := string(content)
@@ -272,14 +135,14 @@ func TestAgentAwareness(t *testing.T) {
 
 		const marker = "<!-- generated by: strategist compile — do not edit manually -->"
 
-		require.NoError(t, compile.AgentAwareness(dir))
+		require.NoError(t, agentAwareness(dir))
 		first, _ := os.ReadFile(agPath)
 		assert.Contains(t, string(first), marker)
 		assert.Equal(t, 1, strings.Count(string(first), marker), "marker must appear exactly once")
 
 		// Re-run against a file that already carries the marker (upsert path, not append)
 		// to prove the marker is not duplicated on repeated compiles.
-		require.NoError(t, compile.AgentAwareness(dir))
+		require.NoError(t, agentAwareness(dir))
 		second, _ := os.ReadFile(agPath)
 		assert.Equal(t, 1, strings.Count(string(second), marker), "marker must not duplicate across upserts")
 		assert.Equal(t, string(first), string(second), "second run must produce identical output")
@@ -293,10 +156,10 @@ func TestAgentAwareness(t *testing.T) {
 		require.NoError(t, os.MkdirAll(filepath.Dir(codexCmdPath), 0o755))
 		require.NoError(t, os.WriteFile(codexCmdPath, []byte("# Commands\n"), 0o644))
 
-		require.NoError(t, compile.AgentAwareness(dir))
+		require.NoError(t, agentAwareness(dir))
 		first, _ := os.ReadFile(codexCmdPath)
 
-		require.NoError(t, compile.AgentAwareness(dir))
+		require.NoError(t, agentAwareness(dir))
 		second, _ := os.ReadFile(codexCmdPath)
 
 		assert.Equal(t, string(first), string(second), "second run must produce identical output")
@@ -316,39 +179,11 @@ func TestAgentAwareness(t *testing.T) {
 		require.NoError(t, os.MkdirAll(filepath.Dir(claudePath), 0o755))
 		require.NoError(t, os.WriteFile(claudePath, []byte("# Claude\n"), 0o644))
 
-		// AgentAwareness must not error even though codex failed.
-		require.NoError(t, compile.AgentAwareness(dir))
+		// agentAwareness must not error even though codex failed.
+		require.NoError(t, agentAwareness(dir))
 
 		// Claude file must still have been updated.
 		content, _ := os.ReadFile(claudePath)
-		assert.Contains(t, string(content), "## Strategist Runtime Discovery")
-	})
-}
-
-func TestRefreshAgentAwareness(t *testing.T) {
-	t.Parallel()
-
-	t.Run("returns false when agent-protocol generation fails (non-blocking)", func(t *testing.T) {
-		t.Parallel()
-		dir := t.TempDir()
-		// Non-existent strategistRoot — AgentProtocol will warn but not error.
-		ok := compile.RefreshAgentAwareness(filepath.Join(dir, "no-such"), dir, "1.0.0", nil)
-		assert.False(t, ok, "should return false when agent-protocol cannot be written")
-	})
-
-	t.Run("updates per-agent files when present regardless of protocol result", func(t *testing.T) {
-		t.Parallel()
-		dir := t.TempDir()
-
-		agPath := filepath.Join(dir, ".antigravity", "antigravity-instructions.md")
-		require.NoError(t, os.MkdirAll(filepath.Dir(agPath), 0o755))
-		require.NoError(t, os.WriteFile(agPath, []byte("# AG\n"), 0o644))
-
-		// strategistRoot missing → protocol fails (returns false), but AgentAwareness still runs.
-		ok := compile.RefreshAgentAwareness(filepath.Join(dir, "no-root"), dir, "2.0.0", nil)
-		assert.False(t, ok, "protocol generation should have failed")
-
-		content, _ := os.ReadFile(agPath)
 		assert.Contains(t, string(content), "## Strategist Runtime Discovery")
 	})
 }
