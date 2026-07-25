@@ -399,8 +399,13 @@ strategist treasure-chest remove ["path"] [--id <id>]
 - Fails if `--id` (or the derived id) is already registered in `active.yaml` — use a different
   `--id` or `remove` the existing entry first.
 - Updates `active.yaml` (`treasure_chests[]`), `treasure-chests.yaml` (`chests[]`), and
-  `knowledge.index.yaml` (`sources[]`) together — if a write fails partway through, the error
-  reports exactly which files were already written so state can be reconciled manually.
+  `knowledge.index.yaml` (`sources[]`) as a single all-or-nothing batch: every file is first
+  serialized to a temporary sibling, and only if every one of those temp writes succeeds are
+  any of the three destinations replaced. A failure before that point leaves all three files
+  exactly as they were. Renames themselves happen in sequence, so a failure mid-rename can
+  still leave a small residual window where earlier files in the batch were already replaced —
+  the error reports exactly which ones. Run `strategist treasure-chest doctor` to check whether
+  the three files are still consistent.
 - `.compiled/.index.gz` is left stale with an explicit warning unless `--index` is also passed.
 
 **`remove`:**
@@ -418,6 +423,22 @@ strategist treasure-chest remove ["path"] [--id <id>]
 configuration reference — `add`/`remove` keep configured, governed, and indexed layers
 consistent, and only ever touch the compiled layer through explicit `--index` or an explicit
 stale warning.
+
+### `treasure-chest doctor`
+
+Read-only consistency check for the three registry truth layers `add`/`remove` mutate
+together.
+
+```
+strategist treasure-chest doctor
+```
+
+- Reports every chest present in one of `active.yaml`, `treasure-chests.yaml`, or
+  `knowledge.index.yaml` but missing from another — the divergence a commit-phase batch
+  failure (see `add`/`remove` above) can leave behind.
+- Detection only: it never repairs a divergence it finds, since which file is the source of
+  truth when they disagree is a product decision outside this command's scope.
+- Exits non-zero when any divergence is found, so it can be used as a CI/pre-flight check.
 
 ### `treasure-chest index` / `treasure-chest mine`
 

@@ -21,6 +21,7 @@ must:
   - declare the active documentation task at the start of each loop
   - materialize only the single declared active documentation target
   - run targeted validation after each materialization
+  - append one runtime memory record to .strategist/memory/sniper-materializations.jsonl after each successful materialization
   - update the task checklist before advancing to the next task
   - stop immediately and report if documentation_scope_violation, ambiguity, or validation failure is detected
   - surface scope violations immediately and pause materialization
@@ -29,6 +30,7 @@ must_not:
   - materialize documentation without approval gate acceptance
   - materialize multiple tasks in a single loop
   - write files outside documentation_targets
+  - write runtime memory outside .strategist/memory/sniper-materializations.jsonl for materialization history
   - write code files (.go, .ts, .py, .js, .sh, etc.) EXCEPT .astro/.css/.js/.ts/.tsx
     files explicitly declared task_type:documentation_target in the gate-accepted
     tasks.md and listed in approved_scope — never any other code file (see ADR-0013)

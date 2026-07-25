@@ -35,6 +35,8 @@ emits:
   profile_source:              DEBUG
   treasure_chest_found:        INFO
   adr_opportunity:             DEBUG
+  runbook_opportunity_done:    DEBUG
+  runbook_opportunity:         DEBUG
 
   # INFO — rendered through the active profile and visible in all output modes
   ranger_start:                INFO

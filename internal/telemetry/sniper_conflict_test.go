@@ -4,8 +4,12 @@ import (
 	"bytes"
 	"context"
 	"log/slog"
+	"os"
+	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestFormatSniperConflictSignal(t *testing.T) {
@@ -93,13 +97,8 @@ func TestClassifyConflictedTargets(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			got := ClassifyConflictedTargets(tt.conflicted, tt.recentlyMaterialized)
-			if len(got) != len(tt.want) {
+			if !slices.Equal(got, tt.want) {
 				t.Fatalf("unexpected result\nwant: %v\n got: %v", tt.want, got)
-			}
-			for i := range got {
-				if got[i] != tt.want[i] {
-					t.Fatalf("unexpected result\nwant: %v\n got: %v", tt.want, got)
-				}
 			}
 		})
 	}
@@ -119,6 +118,127 @@ func TestF3ConflictThresholdMet(t *testing.T) {
 	for _, tt := range tests {
 		if got := F3ConflictThresholdMet(tt.count); got != tt.want {
 			t.Errorf("F3ConflictThresholdMet(%d) = %v, want %v", tt.count, got, tt.want)
+		}
+	}
+}
+
+func TestSniperMaterializationHistory_ReadRecentSkipsMalformedAndOld(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 7, 25, 12, 0, 0, 0, time.UTC)
+	path := filepath.Join(t.TempDir(), "sniper-materializations.jsonl")
+	err := AppendSniperMaterialization(path, SniperMaterializationRecord{
+		MissionID:      "recent",
+		BasePath:       ".analysis",
+		TargetPath:     "docs/recent.md",
+		MaterializedAt: now.Add(-time.Hour),
+	})
+	if err != nil {
+		t.Fatalf("append recent: %v", err)
+	}
+	err = AppendSniperMaterialization(path, SniperMaterializationRecord{
+		MissionID:      "old",
+		BasePath:       ".analysis",
+		TargetPath:     "docs/old.md",
+		MaterializedAt: now.Add(-31 * 24 * time.Hour),
+	})
+	if err != nil {
+		t.Fatalf("append old: %v", err)
+	}
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatalf("open history: %v", err)
+	}
+	if _, err := f.WriteString("not json\n"); err != nil {
+		t.Fatalf("write malformed: %v", err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatalf("close history: %v", err)
+	}
+
+	records, err := ReadRecentSniperMaterializations(path, now, SniperMaterializationWindow)
+	if err != nil {
+		t.Fatalf("read recent: %v", err)
+	}
+	if len(records) != 1 || records[0].TargetPath != "docs/recent.md" {
+		t.Fatalf("unexpected records: %#v", records)
+	}
+}
+
+func TestAppendSniperMaterialization_MkdirAllFailsWhenParentIsFile(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	blocker := filepath.Join(dir, "blocker")
+	if err := os.WriteFile(blocker, []byte("x"), 0o644); err != nil {
+		t.Fatalf("write blocker: %v", err)
+	}
+	// blocker is a file, so MkdirAll(blocker/memory, ...) must fail.
+	path := filepath.Join(blocker, "memory", "sniper-materializations.jsonl")
+
+	err := AppendSniperMaterialization(path, SniperMaterializationRecord{MissionID: "m-1", TargetPath: "docs/a.md"})
+	if err == nil {
+		t.Fatal("expected error when parent dir cannot be created, got nil")
+	}
+}
+
+func TestAppendSniperMaterialization_OpenFailsWhenPathIsDirectory(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	// path itself is an existing directory — os.OpenFile must fail.
+	if err := os.Mkdir(filepath.Join(dir, "history-dir"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	path := filepath.Join(dir, "history-dir")
+
+	err := AppendSniperMaterialization(path, SniperMaterializationRecord{MissionID: "m-1", TargetPath: "docs/a.md"})
+	if err == nil {
+		t.Fatal("expected error when path is a directory, got nil")
+	}
+}
+
+func TestSniperConflictSignals_FallsBackToRecordBasePathWhenEmpty(t *testing.T) {
+	t.Parallel()
+	records := []SniperMaterializationRecord{
+		{MissionID: "m-1", BasePath: ".analysis-from-record", TargetPath: "docs/a.md"},
+		{MissionID: "m-2", BasePath: ".analysis-from-record", TargetPath: "docs/b.md"},
+		{MissionID: "m-3", BasePath: ".analysis-from-record", TargetPath: "docs/c.md"},
+	}
+	signals := SniperConflictSignals("", []string{"docs/a.md", "docs/b.md", "docs/c.md"}, records)
+	if len(signals) != 3 {
+		t.Fatalf("expected 3 signals, got %#v", signals)
+	}
+	for _, signal := range signals {
+		if signal.BasePath != ".analysis-from-record" {
+			t.Fatalf("expected fallback to record's BasePath, got %q", signal.BasePath)
+		}
+	}
+}
+
+func TestSniperConflictSignals_EmptyInputsReturnNil(t *testing.T) {
+	t.Parallel()
+	if got := SniperConflictSignals(".analysis", nil, nil); got != nil {
+		t.Fatalf("expected nil for empty inputs, got %#v", got)
+	}
+}
+
+func TestSniperConflictSignals_Threshold(t *testing.T) {
+	t.Parallel()
+	records := []SniperMaterializationRecord{
+		{MissionID: "m-1", BasePath: ".analysis", TargetPath: "docs/a.md"},
+		{MissionID: "m-2", BasePath: ".analysis", TargetPath: "docs/b.md"},
+		{MissionID: "m-3", BasePath: ".analysis", TargetPath: "docs/c.md"},
+	}
+	below := SniperConflictSignals(".analysis", []string{"docs/a.md", "docs/b.md"}, records)
+	if len(below) != 0 {
+		t.Fatalf("expected no signal below threshold, got %#v", below)
+	}
+
+	signals := SniperConflictSignals(".analysis", []string{"docs/a.md", "docs/b.md", "docs/c.md"}, records)
+	if len(signals) != 3 {
+		t.Fatalf("expected 3 signals at threshold, got %#v", signals)
+	}
+	for _, signal := range signals {
+		if signal.ConflictCount != 3 {
+			t.Fatalf("expected conflict count 3, got %#v", signal)
 		}
 	}
 }

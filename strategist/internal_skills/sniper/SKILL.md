@@ -51,7 +51,10 @@ For each documentation task in `tasks.md`:
 1. **Declare** the active task at the start of the loop
 2. **Materialize** exactly ONE documentation target — never batch
 3. **Validate** after materialization (confirm file written, format correct)
-4. **Update** the checklist before advancing to next task
+4. **Record** the successful materialization by appending one JSONL entry to
+   `.strategist/memory/sniper-materializations.jsonl`:
+   `{"mission_id":"<mission_id>","base_path":"<base_path>","target_path":"<target_path>","materialized_at":"<RFC3339 timestamp>"}`
+5. **Update** the checklist before advancing to next task
 
 ## Scope Observation
 
@@ -71,6 +74,7 @@ You may only write:
 - `.md` files and other documentation/diagram assets declared in `documentation_targets`
 - Files within `<base_path>/` declared by Archivist
 - Files outside `<base_path>/` ONLY when explicitly declared by Archivist and accepted at the approval gate
+- `.strategist/memory/sniper-materializations.jsonl` runtime memory entries for successful documentation materializations
 
 You may NOT:
 - Write code files (`.go`, `.ts`, `.py`, `.js`, `.sh`, etc.) — **except**

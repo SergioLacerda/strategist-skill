@@ -149,6 +149,78 @@ func TestCompileConfig(t *testing.T) {
 	}
 }
 
+func TestCompileConfig_InjectsPTBRPhaseAnnouncements(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"),
+		[]byte("mode: full\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "personas", "epic.yaml"), []byte(`id: epic
+tone_directive: be precise
+phase_labels:
+  discovery: analysis
+  refinement: refinement
+  execution: execution
+diagnostics:
+  pipeline_header: "[Strategist] pipeline=starting mission_id={id}"
+  bootstrap_origin: "[Strategist] profile_path={path} active_yaml={active} reason={reason}"
+phase_announcements:
+  en:
+    discovery_starting: "Ranger starts."
+    discovery_done: "Ranger done."
+    refinement_starting: "Archivist starts."
+    refinement_done: "Archivist done."
+    approval_gate_shown: "Gate shown."
+    documentation_starting: "Sniper starts."
+    documentation_target_done: "Sniper target done."
+    documentation_done: "Sniper done."
+`), 0o644))
+
+	out := filepath.Join(dir, ".compiled", ".config.gz")
+	require.NoError(t, compile.Config(dir, out))
+
+	var artifact map[string]any
+	testutil.ReadGzJSON(t, out, &artifact)
+	personas, ok := artifact["personas"].(map[string]any)
+	require.True(t, ok)
+	epic, ok := personas["epic"].(map[string]any)
+	require.True(t, ok)
+	pa, ok := epic["phase_announcements"].(map[string]any)
+	require.True(t, ok)
+	assert.Contains(t, pa, "en")
+	ptBR, ok := pa["pt-BR"].(map[string]any)
+	require.True(t, ok, "expected phase_announcements.pt-BR to be injected")
+
+	for _, key := range []string{
+		"discovery_starting", "discovery_done",
+		"refinement_starting", "refinement_done",
+		"approval_gate_shown",
+		"documentation_starting", "documentation_target_done", "documentation_done",
+	} {
+		value, ok := ptBR[key].(string)
+		require.True(t, ok, "missing pt-BR key %q", key)
+		assert.NotEmpty(t, value)
+	}
+}
+
+func TestCompileConfig_PhaseAnnouncementsAbsentWhenPersonaHasNone(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	testutil.MinimalRoot(t, dir) // ValidMinimalPersonaYAML has no phase_announcements block
+
+	out := filepath.Join(dir, ".compiled", ".config.gz")
+	require.NoError(t, compile.Config(dir, out))
+
+	var artifact map[string]any
+	testutil.ReadGzJSON(t, out, &artifact)
+	personas, ok := artifact["personas"].(map[string]any)
+	require.True(t, ok)
+	epic, ok := personas["epic"].(map[string]any)
+	require.True(t, ok)
+	assert.NotContains(t, epic, "phase_announcements")
+}
+
 // --- CompileDomain ---
 
 func TestCompileDomain(t *testing.T) {

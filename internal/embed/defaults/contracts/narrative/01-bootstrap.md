@@ -36,6 +36,12 @@ contract: null
   `pt-BR`) are injected only at `strategist compile` time and exist solely in the compiled
   artifact (`.strategist/.compiled/.config.gz`). Reading persona YAML source directly will
   never show non-English content_by_lang — that is expected, not a bug in the source file.
+- the same applies to `phase_announcements` (the per-phase Ranger/Archivist/Gate/Sniper
+  narration lines): persona YAML source only ever contains the canonical English
+  `phase_announcements.en`; non-English variants are injected only at `strategist compile`
+  time. Resolve them the same way — `strategist check --print-content-by-lang
+  <active.language.chat> --persona <mode>` returns both `content_by_lang` and
+  `phase_announcements` bundles for the requested language in one call.
 - when `governance_injection` is present: resolve and expose `governance_source` and `governance_adapter` in bootstrap diagnostics
 - when no `governance_injection`: set `governance_mode=standalone`, `governance_source=none`
 

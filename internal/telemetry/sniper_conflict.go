@@ -8,16 +8,13 @@ import (
 // f3ConflictThreshold is the Git-conflict side of the ADR-0008 F3 revisit
 // tripwire: three or more Git conflicts attributed to files Sniper recently
 // materialized, within a rolling 30-day window that the caller is
-// responsible for tracking (this package does not persist history).
+// responsible for tracking.
 //
 // This is the first of two signals named in ADR-0008 § F3 revisit tripwire
 // (docs/adr/0008-single-session-assumption.md). The other — two or more
 // distinct Sniper sessions claiming the same target — is not instrumented
 // here: it would require a cross-session claim registry, which ADR-0008
-// itself, and this signal's own approved scope, explicitly rule out. Git
-// conflict attribution needs no new persistent state: it classifies
-// caller-supplied paths (already-known Git conflicts, already-known recent
-// Sniper targets), so it was chosen as the cheaper first-pass signal.
+// itself, and this signal's own approved scope, explicitly rule out.
 const f3ConflictThreshold = 3
 
 // SniperConflictSignal reports a Git conflict attributed to a documentation
