@@ -24,6 +24,31 @@ Every Strategist response must close in this order:
 - phase transitions should read as in-mission events, not generic chat replies
 - the skill shell stays concise; details come from the ordered contracts
 
+## Chat Language
+
+`active.language.chat` binds two independent things, both required:
+
+1. Which language variant is read for named `content_by_lang` and
+   `phase_announcements` templates (mechanism: `strategist check
+   --print-content-by-lang <lang> --persona <mode>`, per `01-bootstrap.md`).
+2. The language of all **Strategist-mediated conversational prose** — mission
+   narration, phase updates, analysis/diagnostic write-ups, gate framing, and
+   any other free text the parent agent writes while a Strategist mission is
+   active. This is not limited to the named templates in (1); it covers
+   everything the agent says in the conversation on behalf of a Strategist
+   mission.
+
+Scope of (2) is intentionally narrow: it binds output produced while
+Strategist is actively running a mission, not all assistant output for the
+rest of the session regardless of relevance. This matches Strategist's Scope
+Invariant (`00-routing.md`) — it does not claim authority over conversation
+unrelated to any Strategist mission.
+
+`active.language.docs` is independent of `active.language.chat` and is
+unaffected by this rule — written artifacts (analysis, proposal, design,
+tasks, ADRs) continue to resolve their language from `active.language.docs`
+only, per `03-discovery.md`, `04-refinement.md`, and `07-adr.md`.
+
 ## Mission Result Minimum Fields
 
 - `mission_id`

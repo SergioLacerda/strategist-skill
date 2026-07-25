@@ -6,6 +6,10 @@ A request to implement a demand from `<base_path>/refined/<mission_id>/`, especi
 phrased as "if it's already finished, move it to done" — or any time you're about to start
 implementation work and a refined package already exists for it.
 
+This is also the procedure to follow whenever the mandatory bootstrap stale scan
+(`strategist/contracts/narrative/01-bootstrap.md`, `11-critical-hit.md` § Stale Card
+Detection Trigger 3) flags a candidate.
+
 ## Pre-Refinement Duplicate Check
 
 Before generating a new refined package, inventory the configured analysis lifecycle
