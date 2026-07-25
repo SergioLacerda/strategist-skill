@@ -1,6 +1,7 @@
 package telemetry
 
 import (
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -13,6 +14,7 @@ func TestValidateOutcomeLine_Valid(t *testing.T) {
 	cases := []string{
 		`{"mission_id":"m-1","status":"completed","timestamp":"2026-06-02T12:00:00Z"}`,
 		`{"mission_id":"m-2","status":"analysis_delivered","timestamp":"2026-06-02T13:00:00Z","gates":[{"type":"approval_gate","approved_at":"2026-06-02T13:01:00Z","response":"sim"}]}`,
+		`{"mission_id":"m-3","status":"completed","timestamp":"2026-06-02T14:00:00Z","jewel_ids":["jewel-a","jewel-b"]}`,
 	}
 	for _, line := range cases {
 		if err := ValidateOutcomeLine(line); err != nil {
@@ -50,6 +52,23 @@ func TestValidateOutcomeLine_InvalidJSON(t *testing.T) {
 	}
 }
 
+func TestOutcomeEntry_OmitsEmptyJewelIDs(t *testing.T) {
+	t.Parallel()
+	entry := OutcomeEntry{
+		MissionID: "m-no-jewels",
+		Status:    "completed",
+		Timestamp: "2026-07-25T00:00:00Z",
+	}
+
+	data, err := json.Marshal(entry)
+	if err != nil {
+		t.Fatalf("marshal outcome entry: %v", err)
+	}
+	if strings.Contains(string(data), "jewel_ids") {
+		t.Fatalf("expected empty jewel_ids to be omitted, got: %s", data)
+	}
+}
+
 func TestAppendOutcomeLine_WritesValidLine(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
@@ -70,6 +89,26 @@ func TestAppendOutcomeLine_WritesValidLine(t *testing.T) {
 	}
 	if !strings.Contains(string(data), line) {
 		t.Fatalf("line not found in file: %s", data)
+	}
+}
+
+func TestAppendOutcomeLine_PreservesJewelIDs(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "outcomes.tmp")
+	line := `{"mission_id":"m-jewels","status":"completed","timestamp":"2026-07-25T00:00:00Z","jewel_ids":["jewel-a","jewel-b"]}`
+
+	appended, err := AppendOutcomeLine(path, line)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !appended {
+		t.Fatal("expected line to be appended")
+	}
+
+	entries := readOutcomeTestEntries(t, path)
+	if got, want := strings.Join(entries[0].JewelIDs, ","), "jewel-a,jewel-b"; got != want {
+		t.Fatalf("unexpected jewel_ids: got %q, want %q", got, want)
 	}
 }
 
@@ -203,6 +242,34 @@ func TestFlushOutcomeBuffer_SkipsEntryAlreadyInOutcomes(t *testing.T) {
 	if lineCount != 1 {
 		t.Fatalf("expected outcomes.jsonl to still have 1 line, got %d: %s", lineCount, outData)
 	}
+}
+
+func TestFlushOutcomeBuffer_PreservesJewelIDsAndSkipsDuplicateMissionID(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	bufferPath := filepath.Join(dir, "outcomes.tmp")
+	outcomesPath := filepath.Join(dir, "outcomes.jsonl")
+
+	existing := `{"mission_id":"m-jewel-dup","status":"completed","timestamp":"2026-07-25T09:00:00Z","jewel_ids":["old-jewel"]}` + "\n"
+	buffered := `{"mission_id":"m-jewel-dup","status":"completed","timestamp":"2026-07-25T09:05:00Z","jewel_ids":["new-jewel"]}` + "\n" +
+		`{"mission_id":"m-jewel-new","status":"completed","timestamp":"2026-07-25T09:10:00Z","jewel_ids":["jewel-a","jewel-b"]}` + "\n"
+	writeOutcomeTestFile(t, outcomesPath, existing)
+	writeOutcomeTestFile(t, bufferPath, buffered)
+
+	flushed, err := FlushOutcomeBuffer(bufferPath, outcomesPath)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if flushed != 1 {
+		t.Fatalf("expected 1 flushed, got %d", flushed)
+	}
+
+	entries := readOutcomeTestEntries(t, outcomesPath)
+	if len(entries) != 2 {
+		t.Fatalf("expected 2 outcome entries, got %d", len(entries))
+	}
+	assertOutcomeTestEntryJewelIDs(t, entries, "m-jewel-dup", "old-jewel")
+	assertOutcomeTestEntryJewelIDs(t, entries, "m-jewel-new", "jewel-a", "jewel-b")
 }
 
 func TestAppendOutcomeLineSafe_DoesNotPanicOnBadPath(t *testing.T) {
@@ -449,4 +516,40 @@ func assertOutcomeTestFileContains(t *testing.T, path string, values ...string) 
 			t.Fatalf("expected %s in %s, got: %s", value, path, data)
 		}
 	}
+}
+
+func readOutcomeTestEntries(t *testing.T, path string) []OutcomeEntry {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read test file %s: %v", path, err)
+	}
+	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	entries := make([]OutcomeEntry, 0, len(lines))
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+		var entry OutcomeEntry
+		if err := json.Unmarshal([]byte(line), &entry); err != nil {
+			t.Fatalf("unmarshal outcome line %q: %v", line, err)
+		}
+		entries = append(entries, entry)
+	}
+	return entries
+}
+
+func assertOutcomeTestEntryJewelIDs(t *testing.T, entries []OutcomeEntry, missionID string, want ...string) {
+	t.Helper()
+	for _, entry := range entries {
+		if entry.MissionID != missionID {
+			continue
+		}
+		got := strings.Join(entry.JewelIDs, ",")
+		if got != strings.Join(want, ",") {
+			t.Fatalf("mission %s jewel_ids: got %q, want %q", missionID, got, strings.Join(want, ","))
+		}
+		return
+	}
+	t.Fatalf("mission %s not found in entries: %#v", missionID, entries)
 }

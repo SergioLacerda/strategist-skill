@@ -39,12 +39,13 @@ Approval Gate acceptance means the refined analysis is correct and, if the packa
   `sim`/`accept`/`yes` to the refined package as a whole.
 
 If the accepted package contains `implementation_handoff` items, those items remain
-outside Strategist after the gate. The mission may resolve as `analysis_delivered` or
-`implementation_handoff_ready` (if `documentation_target` items also exist and are
-accepted, Sniper still materializes only those). Executing the `implementation_handoff`
-items requires a separate coding task outside Strategist mode — the Approval Gate does
-not grant that authorization, regardless of `execution_gate=allowed` or how emphatically
-the user accepted the package.
+outside Strategist after the gate. The mission resolves as `analysis_delivered` when
+there are no accepted `documentation_target` items, or `documentation_applied` after
+Sniper materializes accepted documentation targets. In both cases, `implementation_handoff`
+items are reported as non-executable handoff work, not as a separate mission status.
+Executing the `implementation_handoff` items requires a separate coding task outside
+Strategist mode — the Approval Gate does not grant that authorization, regardless of
+`execution_gate=allowed` or how emphatically the user accepted the package.
 
 ## Gate Display With Implementation Handoff
 

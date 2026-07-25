@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
@@ -31,36 +32,33 @@ func SniperMaterializationHistoryPath(strategistRoot string) string {
 }
 
 // AppendSniperMaterialization appends rec as one JSONL record.
-func AppendSniperMaterialization(path string, rec SniperMaterializationRecord) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return fmt.Errorf("create sniper materialization history dir: %w", err)
+func AppendSniperMaterialization(path string, rec SniperMaterializationRecord) (err error) {
+	if mkdirErr := os.MkdirAll(filepath.Dir(path), 0o755); mkdirErr != nil {
+		return fmt.Errorf("create sniper materialization history dir: %w", mkdirErr)
 	}
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 	if err != nil {
 		return fmt.Errorf("open sniper materialization history: %w", err)
 	}
+	defer closeSniperMaterializationFile(f, &err)
+
+	return writeSniperMaterializationLine(f, rec)
+}
+
+func writeSniperMaterializationLine(f *os.File, rec SniperMaterializationRecord) error {
 	line, err := json.Marshal(rec)
 	if err != nil {
-		if closeErr := f.Close(); closeErr != nil {
-			return fmt.Errorf("close sniper materialization history after marshal failure: %w", closeErr)
-		}
 		return fmt.Errorf("marshal sniper materialization record: %w", err)
 	}
 	if _, err := f.Write(append(line, '\n')); err != nil {
-		if closeErr := f.Close(); closeErr != nil {
-			return fmt.Errorf("close sniper materialization history after append failure: %w", closeErr)
-		}
 		return fmt.Errorf("append sniper materialization record: %w", err)
-	}
-	if err := f.Close(); err != nil {
-		return fmt.Errorf("close sniper materialization history: %w", err)
 	}
 	return nil
 }
 
 // ReadRecentSniperMaterializations reads records inside the [now-window, now] range.
 // Malformed historical lines are skipped so one bad record does not disable the signal.
-func ReadRecentSniperMaterializations(path string, now time.Time, window time.Duration) ([]SniperMaterializationRecord, error) {
+func ReadRecentSniperMaterializations(path string, now time.Time, window time.Duration) (records []SniperMaterializationRecord, err error) {
 	f, err := os.Open(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, nil
@@ -68,31 +66,47 @@ func ReadRecentSniperMaterializations(path string, now time.Time, window time.Du
 	if err != nil {
 		return nil, fmt.Errorf("open sniper materialization history: %w", err)
 	}
+	defer closeSniperMaterializationFile(f, &err)
 
+	return scanSniperMaterializations(f, now, window)
+}
+
+// closeSniperMaterializationFile closes f, surfacing the close error via *err only
+// when the caller doesn't already have an error to report (a real read/write/parse
+// failure takes priority over a close failure).
+func closeSniperMaterializationFile(f *os.File, err *error) {
+	if closeErr := f.Close(); closeErr != nil && *err == nil {
+		*err = fmt.Errorf("close sniper materialization history: %w", closeErr)
+	}
+}
+
+func scanSniperMaterializations(r io.Reader, now time.Time, window time.Duration) ([]SniperMaterializationRecord, error) {
 	cutoff := now.Add(-window)
 	var records []SniperMaterializationRecord
-	scanner := bufio.NewScanner(f)
+	scanner := bufio.NewScanner(r)
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	for scanner.Scan() {
-		var rec SniperMaterializationRecord
-		if err := json.Unmarshal(scanner.Bytes(), &rec); err != nil {
-			continue
+		if rec, ok := parseSniperMaterializationLine(scanner.Bytes(), cutoff, now); ok {
+			records = append(records, rec)
 		}
-		if rec.TargetPath == "" || rec.MaterializedAt.Before(cutoff) || rec.MaterializedAt.After(now) {
-			continue
-		}
-		records = append(records, rec)
 	}
 	if err := scanner.Err(); err != nil {
-		if closeErr := f.Close(); closeErr != nil {
-			return nil, fmt.Errorf("close sniper materialization history after scan failure: %w", closeErr)
-		}
 		return nil, fmt.Errorf("scan sniper materialization history: %w", err)
 	}
-	if err := f.Close(); err != nil {
-		return nil, fmt.Errorf("close sniper materialization history: %w", err)
-	}
 	return records, nil
+}
+
+// parseSniperMaterializationLine parses one JSONL line and reports whether it falls
+// inside [cutoff, now) with a non-empty target path. Malformed lines report ok=false
+// rather than an error — one bad historical record must not disable the signal.
+func parseSniperMaterializationLine(line []byte, cutoff, now time.Time) (rec SniperMaterializationRecord, ok bool) {
+	if err := json.Unmarshal(line, &rec); err != nil {
+		return rec, false
+	}
+	if rec.TargetPath == "" || rec.MaterializedAt.Before(cutoff) || rec.MaterializedAt.After(now) {
+		return rec, false
+	}
+	return rec, true
 }
 
 // SniperConflictSignals builds threshold-qualified F3 conflict signals from current conflicts and recent records.

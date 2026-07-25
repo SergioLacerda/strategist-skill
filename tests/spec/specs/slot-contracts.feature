@@ -35,20 +35,32 @@ Feature: Slot Write Scope Contracts
     And all four files are present after completion
     And .analysis/pending/<mission_id>-analysis.md is removed after completion
 
-  Scenario: Sniper requires controlled risk_score at preflight
-    Given Sniper is declared in roles config
-    When preflight resolves Sniper's risk_score from known-providers.yaml
-    Then risk_score MUST equal "controlled"
+  Scenario: Sniper resolves as a native role, not a risk_score-scored skill provider
+    Given Sniper is declared as the execution provider in active.yaml
+    And roles/sniper.yaml exists with role=sniper and slot=execution
+    And skills/sniper/skill.yaml does not exist
+    When preflight resolves the execution slot
+    Then Sniper resolves through the native role branch (roles/<provider>.yaml + role
+      schema validation + slot match) — not through known-providers.yaml or any
+      risk_score lookup, since native roles never declare risk_score
+    And preflight succeeds without a slot_risk_mismatch check for this slot
+
+  Scenario: Skill provider requires matching risk_score at preflight
+    Given a skill provider (e.g. brainstorming) is declared for a slot
+    And the slot requires a specific risk_score (write_analysis for discovery/
+      refinement, controlled for execution)
+    When preflight resolves the skill provider's risk_score from its skill.yaml
+    Then risk_score MUST equal the slot's required value
     If risk_score is any other value:
-      Then Strategist emits blocked event reason=slot_risk_mismatch slot=execution
+      Then Strategist emits blocked event reason=slot_risk_mismatch slot=<slot>
       And mission does not proceed past preflight
 
   Scenario: Provider with unknown risk_score is rejected
     Given a roles config declares execution provider "unknown-provider"
-    And "unknown-provider" is not in known-providers.yaml
     And "unknown-provider" has no skill.yaml declaring risk_score
-    When preflight attempts to resolve the risk_score
-    Then Strategist emits blocked event reason=slot_risk_mismatch
+    And "unknown-provider" has no roles/unknown-provider.yaml native role definition
+    When preflight attempts to resolve the provider
+    Then Strategist emits blocked event reason=slot_provider_not_found
     And mission stops at preflight
 
   Scenario: Sniper materializes exactly one documentation target per loop iteration

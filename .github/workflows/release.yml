@@ -5,14 +5,13 @@ on:
     tags:
       - 'v*.*.*'
 
-permissions:
-  contents: write
-  id-token: write      # OIDC token para SLSA signing
-  attestations: write  # publicar atestado no GitHub
-
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write      # OIDC token for cosign keyless signing
+      attestations: write  # publish GitHub build provenance attestation
 
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -37,6 +36,10 @@ jobs:
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
 
       - name: Sign release binaries (keyless)
+        # Keyless signing (Fulcio/Rekor) has been GA since cosign v1.13 — the
+        # COSIGN_EXPERIMENTAL=1 flag this step previously set is a pre-GA relic
+        # from older cosign docs and is not required by the cosign version this
+        # pinned cosign-installer release installs.
         run: |
           shopt -s nullglob
           for f in dist/strategist-*; do
@@ -44,8 +47,6 @@ jobs:
             [[ "$f" == *.bundle ]] && continue
             cosign sign-blob --yes "$f" --bundle "${f}.bundle"
           done
-        env:
-          COSIGN_EXPERIMENTAL: "1"
 
       - name: Upload cosign bundles to release
         run: |
@@ -69,4 +70,7 @@ jobs:
       - name: Attest build provenance
         uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
         with:
-          subject-path: dist/strategist_*
+          # GoReleaser's name_template ("strategist-{{ .Os }}-{{ .Arch }}") hyphenates,
+          # so the subject glob must match dist/strategist-* — an underscore glob here
+          # would match zero files and silently attest nothing.
+          subject-path: dist/strategist-*

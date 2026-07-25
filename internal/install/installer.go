@@ -457,7 +457,10 @@ func (a *serviceAdapter) Install(cfg domain.InstallConfig) error {
 	return a.svc.Install(context.Background(), cfg)
 }
 
-// NewInstaller returns a domain.Installer backed by Service.
+// NewInstaller returns a minimal domain.Installer adapter. It intentionally leaves
+// AwarenessRefresher unwired — command-layer installs construct Service directly
+// (with AwarenessRefresher set) when agent-protocol.md/entrypoint awareness refresh
+// is required. Callers using this constructor get install without awareness refresh.
 func NewInstaller(extractor domain.FileExtractor, compiler domain.Compiler) domain.Installer {
 	return &serviceAdapter{svc: Service{Extractor: extractor, Compiler: compiler}}
 }

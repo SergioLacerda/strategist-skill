@@ -16,6 +16,7 @@ type OutcomeEntry struct {
 	MissionID string           `json:"mission_id"`
 	Status    string           `json:"status"`
 	Timestamp string           `json:"timestamp"`
+	JewelIDs  []string         `json:"jewel_ids,omitempty"`
 	Gates     []GateAuditEntry `json:"gates,omitempty"`
 }
 

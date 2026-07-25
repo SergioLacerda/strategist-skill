@@ -3,15 +3,36 @@ version: "1.0"
 
 invariants:
   - id: slot_resolution_order
-    description: Provider resolved from strategist runtime skills directory — no fallback chain
-    rule: resolve provider from skill_root/skills/<provider>/skill.yaml — single lookup, no fallback
+    description: >
+      Provider resolved through two independent branches, tried in order: an external
+      skill provider first, then a built-in Strategist native role. These are different
+      authorities with different validation rules — a native role match is not a
+      fallback within the skill-provider branch, and neither branch is ever skipped
+      based on the other's absence alone.
+    rule: >
+      resolve provider from skill_root/skills/<provider>/skill.yaml (validate
+      risk_score) — if absent, resolve from skill_root/roles/<provider>.yaml
+      (validate role schema + slot match) — if neither resolves, emit
+      slot_provider_not_found
 
   - id: provider_manifest_is_slot_authority
     description: Provider slot capability is determined only by the strategist provider manifest
     rule: standalone SKILL.md style or creative-first instructions must not cause role_invocation_failed when skill_root/skills/<provider>/skill.yaml satisfies the slot contract
 
+  - id: native_role_is_valid_slot_authority
+    description: >
+      A built-in Strategist native role (e.g. sniper) satisfies the execution slot
+      through skill_root/roles/<provider>.yaml without requiring a corresponding
+      skills/<provider>/skill.yaml manifest, and without declaring risk_score.
+    rule: >
+      skill_root/roles/<provider>.yaml with valid role schema and role.slot ==
+      configured slot → slot resolves, no risk_score required
+
   - id: risk_mismatch_blocks
-    description: Slot with wrong risk_score stops the mission
+    description: >
+      Slot with wrong risk_score stops the mission. Applies only to the
+      skill-provider branch — native roles are validated by role schema plus slot
+      match instead, never by risk_score.
     rule: slot.risk_score != expected → emit blocked reason=slot_risk_mismatch
 
   - id: governance_mode_declared
@@ -59,3 +80,24 @@ cases:
       execution_provider_resolvable: false
     expect:
       emit: "[Strategist] phase=preflight status=blocked reason=slot_provider_not_found"
+
+  - name: native_role_sniper_resolves_without_skill_manifest
+    given:
+      execution_provider: sniper
+      skill_manifest_path: skill_root/skills/sniper/skill.yaml
+      skill_manifest_exists: false
+      role_definition_path: skill_root/roles/sniper.yaml
+      role_definition: { role: sniper, slot: execution }
+    expect:
+      no_emit: "[Strategist] phase=preflight status=blocked reason=slot_provider_not_found"
+      slots_ok: true
+
+  - name: native_role_malformed_yaml_is_role_invocation_failed_not_provider_not_found
+    given:
+      execution_provider: sniper
+      skill_manifest_exists: false
+      role_definition_path: skill_root/roles/sniper.yaml
+      role_definition_malformed_yaml: true
+    expect:
+      emit: "[Strategist] phase=preflight status=blocked reason=role_invocation_failed slot=execution provider=sniper"
+      no_emit: "[Strategist] phase=preflight status=blocked reason=slot_provider_not_found"

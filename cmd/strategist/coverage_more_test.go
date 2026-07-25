@@ -114,14 +114,22 @@ func TestSimulateReport_ErrorAndWriterFailure(t *testing.T) {
 			"discovery":  "ranger",
 			"refinement": "archivist",
 			"execution":  "sniper",
+		}, map[string]slotResolution{
+			"discovery":  {kind: slotResolutionSkillProvider},
+			"refinement": {kind: slotResolutionSkillProvider},
+			"execution":  {kind: slotResolutionNativeRole},
 		}, "epic", "test", nil))
 	})
 	assert.Contains(t, okOut, "status=ready")
+	assert.Contains(t, okOut, "kind=native_role")
 
 	out := captureStdout(t, func() {
 		err := printSimulateReport("/tmp/root", map[string]string{
 			"discovery": "ranger",
 			"execution": "sniper",
+		}, map[string]slotResolution{
+			"discovery": {kind: slotResolutionSkillProvider},
+			"execution": {kind: slotResolutionNativeRole},
 		}, "epic", "test", []string{"missing refinement"})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "errors=1")

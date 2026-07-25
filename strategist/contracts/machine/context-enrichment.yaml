@@ -169,6 +169,7 @@ contract:
       - treating a jewel as a substitute for source_cards assembly
       - treating a status:proposed jewel as verified evidence
       - consulting a deprecated jewel as if accepted or verified
+      - consulting a legacy "active" jewel (invalid after migration; loading must fail loudly)
     outcome_forwarding:
       description: >
         The deduplicated set of jewel IDs consulted under this block (Ranger during
@@ -179,7 +180,6 @@ contract:
         adds a downstream reporting obligation so learning-curator can populate
         outcome-entry.schema.yaml's jewel_ids field. See
         .analysis/refined/2026-07-22-jewel-outcome-feedback-loop/design.md.
-      - consulting a legacy "active" jewel (invalid after migration; loading must fail loudly)
 
   planned_score_selection_transparency:
     status: not_implemented

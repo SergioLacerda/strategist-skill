@@ -107,7 +107,10 @@ func TestInstall_WizardPath(t *testing.T) {
 	assert.NotContains(t, s, "git_persistence_mode")
 	assert.Contains(t, s, "discovery: brainstorming")
 	assert.Contains(t, s, "refinement: archivist")
-	assert.Contains(t, s, "execution: sdd-ask")
+	// Legacy scripted execution input ("sdd-ask") is consumed but discarded — execution
+	// always resolves to the native sniper role.
+	assert.Contains(t, s, "execution: sniper")
+	assert.NotContains(t, s, "execution: sdd-ask")
 
 	brainstorming, err := os.ReadFile(filepath.Join(dir, ".strategist", "skills", "brainstorming", "skill.yaml"))
 	require.NoError(t, err)
@@ -333,7 +336,7 @@ func TestWriteActiveYAML_ReadOnlyDir(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
 	err := writeActiveYAML(dir, domain.WizardConfig{
 		Mode: "pragmatic", BasePath: ".", UILanguage: "pt", DocLanguage: "pt", ChatLanguage: "pt", CodeLanguage: "pt",
-		DiscoveryProvider: "brainstorming", RefinementProvider: "openspec-explore", ExecutionProvider: "sdd-ask",
+		DiscoveryProvider: "brainstorming", RefinementProvider: "openspec-explore", ExecutionProvider: "sniper",
 	})
 	require.Error(t, err)
 }
