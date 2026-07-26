@@ -27,7 +27,7 @@ func (s Service) applyConfig(strategistDir string, cfg domain.InstallConfig) err
 }
 
 func (s Service) applySilentConfig(strategistDir string, cfg domain.InstallConfig) error {
-	activeYAMLPath := filepath.Join(strategistDir, "active.yaml")
+	activeYAMLPath := filepath.Join(strategistDir, activeYAMLName)
 	if !cfg.Force && runtimefs.Exists(activeYAMLPath) {
 		return nil // preserve user customizations
 	}
@@ -37,12 +37,14 @@ func (s Service) applySilentConfig(strategistDir string, cfg domain.InstallConfi
 			"path", activeYAMLPath,
 		)
 	}
-	data, err := s.Extractor.ReadFile("templates/epic-standalone.yaml")
+	data, err := s.Extractor.ReadFile(epicStandaloneTemplatePath)
 	if err != nil {
 		return fmt.Errorf("install: read template: %w", err)
 	}
-	if err := os.WriteFile(activeYAMLPath, data, 0o644); err != nil {
-		return fmt.Errorf("install: write active.yaml: %w", err)
+	// Route through writeActiveYAMLBytes so silent installs seal .config.lock the
+	// same way wizard installs do — a silent install must never start unlocked.
+	if err := writeActiveYAMLBytes(strategistDir, data); err != nil {
+		return fmt.Errorf("install: %w", err)
 	}
 	return nil
 }
@@ -94,12 +96,9 @@ func (s Service) writeSelectedProviderManifest(strategistDir, provider string) e
 	if err != nil {
 		return fmt.Errorf("read %s: %w", manifestPath, err)
 	}
-	providerDir := filepath.Join(strategistDir, "skills", provider)
-	if err := os.MkdirAll(providerDir, 0o755); err != nil {
-		return fmt.Errorf("mkdir %s: %w", providerDir, err)
-	}
-	targetPath := filepath.Join(providerDir, "skill.yaml")
-	if err := os.WriteFile(targetPath, data, 0o644); err != nil {
+	providerDir := filepath.Join(strategistDir, installedProvidersDirName, provider)
+	targetPath := filepath.Join(providerDir, skillYAMLName)
+	if err := atomicWriteFile(targetPath, data, 0o644); err != nil {
 		return fmt.Errorf("write %s: %w", targetPath, err)
 	}
 	return nil

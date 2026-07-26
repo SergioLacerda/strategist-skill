@@ -114,7 +114,7 @@ func saveInstallManifest(strategistDir string, manifest domain.InstallManifest) 
 	}
 	data = append(data, '\n')
 	path := filepath.Join(strategistDir, domain.InstallManifestRelPath)
-	if err := runtimefs.WriteFile(path, data, 0o644); err != nil {
+	if err := atomicWriteFile(path, data, 0o644); err != nil {
 		return fmt.Errorf("install: write manifest: %w", err)
 	}
 	return nil

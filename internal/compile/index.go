@@ -41,11 +41,12 @@ func Index(knowledgeIndexPath, outputPath string) error {
 	}
 
 	artifact := compiledIndex{
-		Schema:     "strategist-compiled-index/1.0",
-		CompiledAt: time.Now().Unix(),
-		Sources:    map[string]int64{absSource: mtime(knowledgeIndexPath)},
-		Tags:       tagIndex,
-		SourceMeta: sourceMeta,
+		Schema:      "strategist-compiled-index/1.0",
+		CompiledAt:  time.Now().Unix(),
+		Sources:     map[string]int64{absSource: mtime(knowledgeIndexPath)},
+		SourceStats: sourceMetaForSources(map[string]int64{absSource: mtime(knowledgeIndexPath)}),
+		Tags:        tagIndex,
+		SourceMeta:  sourceMeta,
 	}
 
 	if err := writeGzJSON(outputPath, artifact); err != nil {

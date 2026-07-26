@@ -11,7 +11,11 @@ func TestActiveConfig_Validate_Valid(t *testing.T) {
 	cfg := compile.ActiveConfig{
 		Mode:     "epic",
 		BasePath: ".analysis",
-		Slots:    map[string]string{"discovery": "brainstorming"},
+		Slots: map[string]string{
+			"discovery":  "brainstorming",
+			"refinement": "openspec-explore",
+			"execution":  "sdd-ask",
+		},
 	}
 	if err := cfg.Validate(); err != nil {
 		t.Fatalf("unexpected error for valid config: %v", err)
@@ -27,12 +31,26 @@ func TestActiveConfig_Validate_MissingFields(t *testing.T) {
 	}{
 		{
 			name: "missing mode",
-			cfg:  compile.ActiveConfig{BasePath: ".analysis", Slots: map[string]string{"x": "y"}},
+			cfg: compile.ActiveConfig{
+				BasePath: ".analysis",
+				Slots: map[string]string{
+					"discovery":  "brainstorming",
+					"refinement": "openspec-explore",
+					"execution":  "sdd-ask",
+				},
+			},
 			want: "mode is required",
 		},
 		{
 			name: "missing base_path",
-			cfg:  compile.ActiveConfig{Mode: "epic", Slots: map[string]string{"x": "y"}},
+			cfg: compile.ActiveConfig{
+				Mode: "epic",
+				Slots: map[string]string{
+					"discovery":  "brainstorming",
+					"refinement": "openspec-explore",
+					"execution":  "sdd-ask",
+				},
+			},
 			want: "base_path is required",
 		},
 		{

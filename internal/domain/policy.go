@@ -7,6 +7,17 @@ const (
 	TransitionGroupDocumentation    = "documentation_materialization" // sniper documentation writes
 )
 
+// Policy decision reasons and statuses are serialized into CLI output and telemetry.
+const (
+	PolicyReasonAllowed                = "allowed"
+	PolicyReasonApprovalRequired       = "approval_required"
+	PolicyReasonUnknownTransitionGroup = "unknown_transition_group"
+
+	PolicyStatusAllowed          = "allowed"
+	PolicyStatusApprovalRequired = "approval_required"
+	PolicyStatusBlocked          = "policy_blocked"
+)
+
 // MissionState represents the orchestrator FSM state.
 type MissionState string
 
@@ -88,5 +99,5 @@ const (
 type TransitionDecision struct {
 	Allowed bool
 	Reason  string
-	Status  string // allowed | policy_blocked | approval_required
+	Status  string // PolicyStatusAllowed | PolicyStatusBlocked | PolicyStatusApprovalRequired
 }

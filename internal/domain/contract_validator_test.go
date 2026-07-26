@@ -35,6 +35,66 @@ func TestValidateSlotWrite_WrongPrefix(t *testing.T) {
 	}
 }
 
+func TestValidateSlotWrite_RejectsSiblingPrefix(t *testing.T) {
+	t.Parallel()
+	scope := SlotWriteScope{
+		SlotName:      "discovery",
+		AllowedPrefix: ".analysis/pending/",
+		AllowedExt:    ".md",
+	}
+	err := ValidateSlotWrite(scope, ".analysis/pending-other/mission.md")
+	if err == nil {
+		t.Fatal("expected error for sibling prefix outside allowed path")
+	}
+	if !strings.Contains(err.Error(), "slot_write_scope_violation") {
+		t.Errorf("error must contain 'slot_write_scope_violation', got: %v", err)
+	}
+}
+
+func TestValidateSlotWrite_RejectsTraversalOutsidePrefix(t *testing.T) {
+	t.Parallel()
+	scope := SlotWriteScope{
+		SlotName:      "discovery",
+		AllowedPrefix: ".analysis/pending/",
+		AllowedExt:    ".md",
+	}
+	err := ValidateSlotWrite(scope, ".analysis/pending/../../outside.md")
+	if err == nil {
+		t.Fatal("expected error for traversal outside allowed path")
+	}
+	if !strings.Contains(err.Error(), "slot_write_scope_violation") {
+		t.Errorf("error must contain 'slot_write_scope_violation', got: %v", err)
+	}
+}
+
+func TestValidateSlotWrite_NormalizesTraversalInsidePrefix(t *testing.T) {
+	t.Parallel()
+	scope := SlotWriteScope{
+		SlotName:      "discovery",
+		AllowedPrefix: ".analysis/pending/",
+		AllowedExt:    ".md",
+	}
+	if err := ValidateSlotWrite(scope, ".analysis/pending/subdir/../mission.md"); err != nil {
+		t.Errorf("expected normalized path inside prefix to pass, got %v", err)
+	}
+}
+
+func TestValidateSlotWrite_RejectsAbsolutePathForRelativeScope(t *testing.T) {
+	t.Parallel()
+	scope := SlotWriteScope{
+		SlotName:      "discovery",
+		AllowedPrefix: ".analysis/pending/",
+		AllowedExt:    ".md",
+	}
+	err := ValidateSlotWrite(scope, filepath.Join(t.TempDir(), ".analysis", "pending", "mission.md"))
+	if err == nil {
+		t.Fatal("expected error for absolute path against relative scope")
+	}
+	if !strings.Contains(err.Error(), "slot_write_scope_violation") {
+		t.Errorf("error must contain 'slot_write_scope_violation', got: %v", err)
+	}
+}
+
 func TestValidateSlotWrite_WrongExtension(t *testing.T) {
 	t.Parallel()
 	scope := SlotWriteScope{

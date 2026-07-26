@@ -31,6 +31,7 @@ func TestCompileDomain(t *testing.T) {
 			},
 			check: func(t *testing.T, a map[string]any) {
 				assert.Equal(t, "strategist-compiled-domain/1.0", a["schema"])
+				assertSourceStats(t, a)
 				assert.NotNil(t, a["load_always"])
 				assert.NotNil(t, a["load_by_task_type"])
 			},

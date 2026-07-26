@@ -97,7 +97,7 @@ func (s Service) installShimStep(ctx context.Context, target, shimPathOverride s
 // readLocalSKILLMD reads SKILL.md from the embedded FS.
 // .strategist/ is write-only — we never read back from it.
 func (s Service) readLocalSKILLMD(ctx context.Context, _ string) (string, error) {
-	data, err := s.Extractor.ReadFile("SKILL.md")
+	data, err := s.Extractor.ReadFile(skillMDName)
 	if err != nil {
 		return "", fmt.Errorf("read embedded SKILL.md: %w", err)
 	}
@@ -118,7 +118,7 @@ func (s Service) installShimFor(target, skillContent, shimPathOverride string) e
 		if err != nil {
 			return fmt.Errorf("resolve target: %w", err)
 		}
-		skillRoot = filepath.Join(absTarget, ".strategist")
+		skillRoot = filepath.Join(absTarget, strategistDirName)
 	}
 	if shimPathOverride != "" {
 		return installShimToPath(shimPathOverride, skillContent, skillRoot)
@@ -143,7 +143,7 @@ func (s Service) resolveShimPath(shimPathOverride string) (string, error) {
 			return "", fmt.Errorf("home dir: %w", err)
 		}
 	}
-	return filepath.Join(homeDir, ".claude", "skills", "strategist", "SKILL.md"), nil
+	return defaultShimPath(homeDir), nil
 }
 
 // rollbackManifest removes created paths in reverse order (best-effort).

@@ -19,7 +19,7 @@ func TestCompileConfig_InjectsPTBRRuntimeContentByLang(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"),
-		[]byte("mode: full\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n"), 0o644))
+		[]byte(fullActiveYAML), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "personas", "epic.yaml"), []byte(`id: epic
 tone_directive: be precise
 phase_labels:

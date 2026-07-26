@@ -46,6 +46,8 @@ mode: epic
 base_path: .analysis
 slots:
   discovery: brainstorming
+  refinement: openspec-explore
+  execution: sdd-ask
 treasure_chests:
   - id: analysis-done
     path: .analysis/done

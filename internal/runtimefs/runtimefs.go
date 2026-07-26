@@ -2,7 +2,9 @@
 package runtimefs
 
 import (
+	"compress/gzip"
 	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -35,6 +37,41 @@ func WriteFile(path string, data []byte, perm os.FileMode) error {
 	}
 	if err := os.WriteFile(path, data, perm); err != nil { //nolint:gosec // G306: caller controls desired file mode
 		return fmt.Errorf("write %s: %w", path, err)
+	}
+	return nil
+}
+
+// WriteGzJSON atomically writes v as gzip-compressed JSON.
+func WriteGzJSON(path string, v any) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return fmt.Errorf("mkdir parent %s: %w", filepath.Dir(path), err)
+	}
+
+	tmp := path + ".tmp"
+	f, err := os.Create(tmp) //nolint:gosec // G304: caller owns path trust boundary
+	if err != nil {
+		return fmt.Errorf("create tmp %s: %w", tmp, err)
+	}
+
+	cleanup := func() {
+		_ = os.Remove(tmp) //nolint:errcheck // best-effort cleanup after failed atomic write
+	}
+	gz := gzip.NewWriter(f)
+	if err := json.NewEncoder(gz).Encode(v); err != nil {
+		cleanup()
+		return fmt.Errorf("json encode: %w", err)
+	}
+	if err := gz.Close(); err != nil {
+		cleanup()
+		return fmt.Errorf("gzip close: %w", err)
+	}
+	if err := f.Close(); err != nil {
+		cleanup()
+		return fmt.Errorf("file close: %w", err)
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		cleanup()
+		return fmt.Errorf("rename %s: %w", path, err)
 	}
 	return nil
 }

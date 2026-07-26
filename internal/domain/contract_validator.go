@@ -38,7 +38,7 @@ func ValidateArchivistPackage(refinedDir string) error {
 // The error message always contains "slot_write_scope_violation" so callers and
 // BDD scenarios can match on that token.
 func ValidateSlotWrite(scope SlotWriteScope, attemptedPath string) error {
-	if !strings.HasPrefix(attemptedPath, scope.AllowedPrefix) {
+	if !slotWritePathAllowed(scope.AllowedPrefix, attemptedPath) {
 		return fmt.Errorf("slot_write_scope_violation: %s attempted write to %q (allowed prefix: %q)",
 			scope.SlotName, attemptedPath, scope.AllowedPrefix)
 	}
@@ -47,4 +47,22 @@ func ValidateSlotWrite(scope SlotWriteScope, attemptedPath string) error {
 			scope.SlotName, scope.AllowedExt, attemptedPath)
 	}
 	return nil
+}
+
+func slotWritePathAllowed(allowedPrefix, attemptedPath string) bool {
+	if attemptedPath == "" || allowedPrefix == "" {
+		return false
+	}
+
+	allowed := filepath.Clean(allowedPrefix)
+	attempted := filepath.Clean(attemptedPath)
+	if filepath.IsAbs(allowed) != filepath.IsAbs(attempted) {
+		return false
+	}
+
+	rel, err := filepath.Rel(allowed, attempted)
+	if err != nil {
+		return false
+	}
+	return rel == "." || (!filepath.IsAbs(rel) && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)))
 }

@@ -26,16 +26,16 @@ var validJewelStatuses = map[string]bool{
 	JewelStatusDeprecated: true,
 }
 
-var validJewelKinds = map[string]bool{
-	"decision": true, "pattern": true, "anti_pattern": true,
-	"gap": true, "risk": true, "constraint": true,
-	"example": true, "heuristic": true, "template": true,
-	"question": true,
-}
+var validJewelKinds = stringSet(
+	"decision", "pattern", "anti_pattern",
+	"gap", "risk", "constraint",
+	"example", "heuristic", "template",
+	"question",
+)
 
 // ValidateJewelKind returns an error if the kind is not one of the allowed types.
 func ValidateJewelKind(jewelID, kind string) error {
-	if validJewelKinds[kind] {
+	if hasString(validJewelKinds, kind) {
 		return nil
 	}
 	return fmt.Errorf("jewel %q has invalid kind %q", jewelID, kind)

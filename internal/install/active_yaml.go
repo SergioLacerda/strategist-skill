@@ -44,11 +44,18 @@ treasure_chests:
 `, id, wc.TreasureChestPath)
 	}
 
-	path := filepath.Join(strategistDir, "active.yaml")
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+	return writeActiveYAMLBytes(strategistDir, []byte(content))
+}
+
+// writeActiveYAMLBytes atomically writes active.yaml under strategistDir and
+// seals .config.lock over it. Both silent and wizard installs write active.yaml
+// through this path so neither can start without an integrity lock.
+func writeActiveYAMLBytes(strategistDir string, data []byte) error {
+	path := filepath.Join(strategistDir, activeYAMLName)
+	if err := atomicWriteFile(path, data, 0o644); err != nil {
 		return fmt.Errorf("write active.yaml: %w", err)
 	}
-	lockPath := filepath.Join(strategistDir, ".config.lock")
+	lockPath := filepath.Join(strategistDir, configLockName)
 	if err := integrity.WriteLock(path, lockPath); err != nil {
 		fmt.Fprintf(os.Stderr, "[Strategist] WARN: could not write config lock: %v\n", err)
 	}
@@ -63,15 +70,18 @@ func writeKnowledgeIndexSource(strategistDir string, wc domain.WizardConfig) err
 	if wc.TreasureChestPath == "" {
 		return nil
 	}
-	kiPath := filepath.Join(strategistDir, "knowledge.index.yaml")
+	kiPath := filepath.Join(strategistDir, knowledgeIndexName)
 	data, err := os.ReadFile(kiPath) //nolint:gosec // G304: path constructed from install config
 	if err != nil {
 		return fmt.Errorf("read knowledge.index.yaml: %w", err)
 	}
 	id := treasureChestID(wc.TreasureChestPath)
 	entry := fmt.Sprintf("sources:\n  - id: %s\n    path: %s\n    tags: [all]", id, wc.TreasureChestPath)
-	updated := strings.Replace(string(data), "sources: []", entry, 1)
-	if err := os.WriteFile(kiPath, []byte(updated), 0o644); err != nil { //nolint:gosec // G703: path from install config
+	updated, err := replacePlaceholder(string(data), "sources: []", entry)
+	if err != nil {
+		return fmt.Errorf("knowledge.index.yaml: %w", err)
+	}
+	if err := atomicWriteFile(kiPath, []byte(updated), 0o644); err != nil {
 		return fmt.Errorf("write knowledge.index.yaml: %w", err)
 	}
 	return nil
@@ -83,7 +93,7 @@ func writeTreasureChestManifest(strategistDir string, wc domain.WizardConfig) er
 	if wc.TreasureChestPath == "" {
 		return nil
 	}
-	tcPath := filepath.Join(strategistDir, "treasure-chests.yaml")
+	tcPath := filepath.Join(strategistDir, treasureChestsName)
 	data, err := os.ReadFile(tcPath) //nolint:gosec // G304: path constructed from install config
 	if err != nil {
 		return fmt.Errorf("read treasure-chests.yaml: %w", err)
@@ -102,11 +112,24 @@ func writeTreasureChestManifest(strategistDir string, wc domain.WizardConfig) er
       strategy: selective
       require_relevance_reason: true
       allow_full_load: false`, id, id, wc.TreasureChestPath)
-	updated := strings.Replace(string(data), "chests: []", entry, 1)
-	if err := os.WriteFile(tcPath, []byte(updated), 0o644); err != nil { //nolint:gosec // G703: path from install config
+	updated, err := replacePlaceholder(string(data), "chests: []", entry)
+	if err != nil {
+		return fmt.Errorf("treasure-chests.yaml: %w", err)
+	}
+	if err := atomicWriteFile(tcPath, []byte(updated), 0o644); err != nil {
 		return fmt.Errorf("write treasure-chests.yaml: %w", err)
 	}
 	return nil
+}
+
+// replacePlaceholder replaces the first occurrence of placeholder in content with
+// replacement, returning an explicit error if placeholder is absent. This guards
+// template mutation against silently no-op-ing when template formatting drifts.
+func replacePlaceholder(content, placeholder, replacement string) (string, error) {
+	if !strings.Contains(content, placeholder) {
+		return "", fmt.Errorf("placeholder %q not found", placeholder)
+	}
+	return strings.Replace(content, placeholder, replacement, 1), nil
 }
 
 // treasureChestID derives a stable id from a path by taking the last non-empty segment.

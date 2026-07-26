@@ -8,6 +8,7 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/install"
+	"github.com/SergioLacerda/strategist-skill/internal/integrity"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -42,6 +43,46 @@ func TestInstall_Silent(t *testing.T) {
 	assert.Contains(t, shimStr, "name: strategist", "shim must have frontmatter")
 	assert.Contains(t, shimStr, "skill_root: "+filepath.Join(dir, ".strategist"), "shim must pin project-local skill_root")
 	assert.Contains(t, shimStr, "# SKILL", "shim must contain SKILL.md content from extractor")
+}
+
+func TestInstall_Silent_SealsConfigLock(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	svc := newSvc(t, &mockExtractor{}, &mockCompiler{})
+	require.NoError(t, svc.Install(context.Background(), domain.InstallConfig{
+		Target: dir,
+		Silent: true,
+	}))
+
+	strategistDir := filepath.Join(dir, ".strategist")
+	assert.FileExists(t, filepath.Join(strategistDir, ".config.lock"),
+		"silent install must seal .config.lock, same as wizard install")
+}
+
+func TestInstall_Silent_Force_RefreshesConfigLock(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	svc := newSvc(t, &mockExtractor{}, &mockCompiler{})
+	cfg := domain.InstallConfig{Target: dir, Silent: true}
+	require.NoError(t, svc.Install(context.Background(), cfg))
+
+	strategistDir := filepath.Join(dir, ".strategist")
+	activeYAMLPath := filepath.Join(strategistDir, "active.yaml")
+	lockPath := filepath.Join(strategistDir, ".config.lock")
+
+	// Desync the lock from active.yaml, simulating a stale/tampered lock.
+	require.NoError(t, os.WriteFile(lockPath, []byte(`{"schema":"strategist-config-lock/1.0","sha256":"sha256:0000"}`), 0o644))
+	modified, err := integrity.IsModified(activeYAMLPath, lockPath)
+	require.NoError(t, err)
+	require.True(t, modified, "precondition: tampered lock must read as out of sync")
+
+	forceCfg := cfg
+	forceCfg.Force = true
+	require.NoError(t, svc.Install(context.Background(), forceCfg))
+
+	modified, err = integrity.IsModified(activeYAMLPath, lockPath)
+	require.NoError(t, err)
+	assert.False(t, modified, "force install must refresh .config.lock to match the rewritten active.yaml")
 }
 
 func TestInstall_EnsuresGitignore(t *testing.T) {

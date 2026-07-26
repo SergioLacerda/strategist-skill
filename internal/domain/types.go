@@ -77,9 +77,6 @@ func (p PersonaConfig) ValidateForRuntime() error {
 	return fmt.Errorf("persona config invalid: %s", strings.Join(errs, "; "))
 }
 
-// validSlots are the three pipeline slots a role or role-slot-map entry may declare.
-var validSlots = map[string]bool{"discovery": true, "refinement": true, "execution": true}
-
 // RoleConfig is the structure of a native role definition file (roles/<name>.yaml),
 // e.g. roles/sniper.yaml — a role that declares its own slot and behavior contract
 // instead of being backed by a skills/<provider>/skill.yaml manifest.
@@ -100,8 +97,8 @@ func (r RoleConfig) Validate() error {
 	}
 	if r.Slot == "" {
 		errs = append(errs, "slot is required")
-	} else if !validSlots[r.Slot] {
-		errs = append(errs, fmt.Sprintf("slot %q is not one of discovery, refinement, execution", r.Slot))
+	} else if !IsValidSlot(r.Slot) {
+		errs = append(errs, fmt.Sprintf("slot %q is not one of %s", r.Slot, requiredSlotList))
 	}
 	if len(errs) == 0 {
 		return nil
@@ -116,7 +113,8 @@ type RoleSlotMap map[string]string
 // Validate returns an error if any of the three required slots is missing or empty.
 func (m RoleSlotMap) Validate() error {
 	var errs []string
-	for _, slot := range []string{"discovery", "refinement", "execution"} {
+	for _, required := range RequiredSlots() {
+		slot := string(required)
 		if m[slot] == "" {
 			errs = append(errs, fmt.Sprintf("missing slot: %s", slot))
 		}
@@ -144,14 +142,26 @@ func (c ActiveConfig) Validate() error {
 	if c.BasePath == "" {
 		errs = append(errs, "base_path is required")
 	}
-	if len(c.Slots) == 0 {
-		errs = append(errs, "slots must have at least one entry")
-	}
+	errs = append(errs, validateActiveConfigSlots(c.Slots)...)
 	// Execution policy is fixed — no per-config validation needed.
 	if len(errs) == 0 {
 		return nil
 	}
 	return fmt.Errorf("active config invalid: %s", strings.Join(errs, "; "))
+}
+
+func validateActiveConfigSlots(slots RoleSlotMap) []string {
+	if len(slots) == 0 {
+		return []string{"slots must have at least one entry"}
+	}
+	var errs []string
+	for _, required := range RequiredSlots() {
+		slot := string(required)
+		if slots[slot] == "" {
+			errs = append(errs, fmt.Sprintf("missing slot: %s", slot))
+		}
+	}
+	return errs
 }
 
 // Validate returns an error if any required field is missing.

@@ -1,7 +1,6 @@
 package telemetry
 
 import (
-	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -40,7 +39,7 @@ func AppendSniperMaterialization(path string, rec SniperMaterializationRecord) (
 	if err != nil {
 		return fmt.Errorf("open sniper materialization history: %w", err)
 	}
-	defer closeSniperMaterializationFile(f, &err)
+	defer closeFileWithContext(f, &err, "close sniper materialization history")
 
 	return writeSniperMaterializationLine(f, rec)
 }
@@ -66,34 +65,21 @@ func ReadRecentSniperMaterializations(path string, now time.Time, window time.Du
 	if err != nil {
 		return nil, fmt.Errorf("open sniper materialization history: %w", err)
 	}
-	defer closeSniperMaterializationFile(f, &err)
+	defer closeFileWithContext(f, &err, "close sniper materialization history")
 
 	return scanSniperMaterializations(f, now, window)
-}
-
-// closeSniperMaterializationFile closes f, surfacing the close error via *err only
-// when the caller doesn't already have an error to report (a real read/write/parse
-// failure takes priority over a close failure).
-func closeSniperMaterializationFile(f *os.File, err *error) {
-	if closeErr := f.Close(); closeErr != nil && *err == nil {
-		*err = fmt.Errorf("close sniper materialization history: %w", closeErr)
-	}
 }
 
 func scanSniperMaterializations(r io.Reader, now time.Time, window time.Duration) ([]SniperMaterializationRecord, error) {
 	cutoff := now.Add(-window)
 	var records []SniperMaterializationRecord
-	scanner := bufio.NewScanner(r)
-	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	scanner := newJSONLScanner(r)
 	for scanner.Scan() {
 		if rec, ok := parseSniperMaterializationLine(scanner.Bytes(), cutoff, now); ok {
 			records = append(records, rec)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("scan sniper materialization history: %w", err)
-	}
-	return records, nil
+	return records, jsonlScannerErr(scanner, "scan sniper materialization history")
 }
 
 // parseSniperMaterializationLine parses one JSONL line and reports whether it falls

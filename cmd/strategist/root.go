@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -43,11 +44,53 @@ func isHumanStatusCommand(cmd *cobra.Command) bool {
 	return false
 }
 
+// warnIfConfigModified checks the sealed config lock against the actual
+// .strategist runtime root (resolved the same way every other root command
+// does, via findStrategistRoot), not a path hardcoded relative to cwd — so the
+// warning also fires correctly when a command runs from a subdirectory.
 func warnIfConfigModified() {
-	if modified, err := integrity.IsModified(".strategist/active.yaml", ".strategist/.config.lock"); err == nil && modified {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return
+	}
+	strategistDir, _, err := findStrategistRoot(cwd)
+	if err != nil {
+		// No runtime root yet (e.g. before install) — nothing to warn about.
+		return
+	}
+
+	activePath := filepath.Join(strategistDir, "active.yaml")
+	lockPath := filepath.Join(strategistDir, ".config.lock")
+
+	result, err := integrity.Check(activePath, lockPath)
+	if err != nil {
+		// Corrupt lock is surfaced but never blocks an ordinary command.
 		fmt.Fprintf(os.Stderr,
-			"[Strategist] WARN: active.yaml was modified outside the CLI.\n"+
-				"             Config integrity unverified. Re-run `strategist install` to acknowledge.\n")
+			"[Strategist] WARN: active.yaml lock is corrupt (%v).\n"+
+				"             Re-run `strategist install` to reseal it.\n", err)
+		return
+	}
+	if !result.Modified {
+		// Includes the "no lock yet" case (first install) — stay quiet.
+		return
+	}
+
+	switch result.Reason {
+	case integrity.ReasonUnmodified, integrity.ReasonLockMissing, integrity.ReasonLegacyLock:
+		return
+	case integrity.ReasonConfigMissing:
+		fmt.Fprintf(os.Stderr,
+			"[Strategist] WARN: active.yaml missing after lock.\n"+
+				"             Re-run `strategist install` to restore it.\n")
+	case integrity.ReasonPathMismatch:
+		fmt.Fprintf(os.Stderr,
+			"[Strategist] WARN: active.yaml lock path mismatch.\n"+
+				"             Re-run `strategist install` to reseal the lock.\n")
+	case integrity.ReasonMTimeMismatch, integrity.ReasonHashMismatch, integrity.ReasonSizeMismatch:
+		fmt.Fprintf(os.Stderr,
+			"[Strategist] WARN: active.yaml was modified outside the CLI (reason=%s).\n"+
+				"             Config integrity unverified. Re-run `strategist install` to acknowledge.\n",
+			result.Reason)
 	}
 }
 
