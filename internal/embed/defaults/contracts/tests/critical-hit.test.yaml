@@ -1,0 +1,82 @@
+subject: contracts/machine/critical-hit.yaml
+version: "1.0"
+
+invariants:
+  - id: only_analysis_move
+    description: Critical Hit only fires for the analysis_move task type
+    rule: task_type != analysis_move → Critical Hit does not trigger
+
+  - id: closure_owns_card_move
+    description: Critical Hit owns pending/refined card closure into done/ — Opportunity Attack never moves analysis cards
+    rule: closure_move.target == <base_path>/done/<id>; Opportunity Attack never writes this transition
+
+  - id: plain_move_within_base_path
+    description: Plain move source and target must both stay within base_path analysis folders
+    rule: source_path_within [pending/, refined/, archived/] and target_path_within [pending/, refined/, archived/]; else none_of violated
+
+  - id: closure_requires_evidence
+    description: Closure move requires an explicit, non-invented evidence_summary
+    rule: closure_move requires evidence_summary_present=true; evidence_summary is supplied by user/delegating agent, never invented by Strategist
+
+  - id: gate_cannot_be_bypassed
+    description: Approval gate cannot be bypassed even inside Critical Hit
+    rule: both plain_move and closure_move stop and wait for sim/nao confirmation before Sniper acts
+
+  - id: stale_detection_never_auto_closes
+    description: Stale-card detection only surfaces a candidate, never closes it automatically
+    rule: on candidate_detected → emit only; no move, no completion-report write, no gate skip
+
+cases:
+  - name: plain_move_approved
+    given:
+      task_type: analysis_move
+      source_path: "<base_path>/pending/idea-1-analysis.md"
+      target_path: "<base_path>/archived/"
+      file_count: 1
+      risk_level: low
+      explicit_completion_claim: false
+      gate_response: "sim"
+    expect:
+      emit: "[Strategist] phase=critical_hit status=triggered task_type=analysis_move mode=plain_move"
+      action: move_artifact
+      artifacts_written: none
+
+  - name: closure_move_approved_with_evidence
+    given:
+      task_type: analysis_move
+      source_path: "<base_path>/refined/idea-2/"
+      target_path: "<base_path>/done/idea-2"
+      explicit_completion_claim: true
+      evidence_summary_present: true
+      gate_response: "sim"
+    expect:
+      action: write completion-report.md, update only evidence-covered task statuses, move package to <base_path>/done/idea-2
+      artifacts_written: "<source_path>/completion-report.md"
+
+  - name: closure_move_missing_evidence
+    given:
+      task_type: analysis_move
+      explicit_completion_claim: true
+      evidence_summary_present: false
+    expect:
+      emit: "[Strategist] phase=critical_hit status=blocked reason=evidence_missing"
+      action: do not move, do not write completion-report.md
+
+  - name: gate_declined
+    given:
+      task_type: analysis_move
+      gate_response: "nao"
+    expect:
+      emit: "[Strategist] phase=critical_hit status=gate_declined mode={mode}"
+      action: resolve as analysis_delivered, no move performed
+
+  - name: stale_card_detected_during_discovery
+    given:
+      phase: discovery
+      other_mission_package_present: true
+      other_mission_has_recorded_completion_claim_and_evidence: true
+      other_mission_already_moved: false
+    expect:
+      emit: "[Strategist] phase=critical_hit status=stale_candidate_detected source={source}"
+      action: flag_closure_candidate_for_next_touch
+      no_auto_close: true

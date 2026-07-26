@@ -37,9 +37,10 @@ machine:
     - machine/preflight.yaml
   by_phase:
     bootstrap:   [machine/bootstrap.yaml]
-    intake:      [machine/intake.yaml]
+    intake:      [machine/intake.yaml, machine/scout-routing.yaml]
     discovery:   [machine/opportunity-attack.yaml]
     refinement:  [machine/opportunity-attack.yaml]
+    gate:        [machine/approval-gate.yaml]
     execution:   [machine/compliance-summary.yaml]
     adr:         [machine/adr.yaml]
     learning:    [machine/learning-curator.yaml, machine/learning-buffer.yaml]
@@ -52,6 +53,14 @@ machine:
       - machine/compile-knowledge-index.yaml
       - machine/context-enrichment.yaml
       - machine/check-stale.yaml
+    # Not an agent-loaded pipeline phase: this is a CI/lint-enforced rule about
+    # this repository's own internal/ Go package layout (depguard +
+    # internal/domain/architecture_test.go), never read by the agent during a
+    # user mission. Kept out of always_load to avoid spending mission tokens
+    # on a contributor-only concern; kept under by_phase (rather than a
+    # separate section) so it still counts as referenced by the manifest.
+    governance:
+      - machine/architecture-rules.yaml
 
 supplemental:
   - strategist-raid.yaml   # batch refinement route — loaded on /strategist-raid invocation

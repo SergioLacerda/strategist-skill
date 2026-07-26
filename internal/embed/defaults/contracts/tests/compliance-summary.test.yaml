@@ -1,4 +1,4 @@
-subject: contracts/compliance-summary.yaml
+subject: contracts/machine/compliance-summary.yaml
 version: "1.0"
 
 invariants:

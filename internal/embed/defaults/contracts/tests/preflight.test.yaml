@@ -1,4 +1,4 @@
-subject: contracts/preflight.yaml
+subject: contracts/machine/preflight.yaml
 version: "1.0"
 
 invariants:

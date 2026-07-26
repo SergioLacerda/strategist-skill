@@ -1,4 +1,4 @@
-subject: contracts/learning-curator.yaml
+subject: contracts/machine/learning-curator.yaml
 version: "1.0"
 
 invariants:
