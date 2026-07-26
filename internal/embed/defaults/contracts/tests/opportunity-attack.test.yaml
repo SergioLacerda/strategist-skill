@@ -1,4 +1,4 @@
-subject: contracts/opportunity-attack.yaml
+subject: contracts/machine/opportunity-attack.yaml
 version: "1.0"
 
 invariants:

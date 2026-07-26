@@ -1,4 +1,4 @@
-subject: contracts/quick-draw.yaml
+subject: contracts/machine/quick-draw.yaml
 version: "1.0"
 
 invariants:

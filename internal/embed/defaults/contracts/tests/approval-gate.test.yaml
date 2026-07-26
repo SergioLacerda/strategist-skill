@@ -1,4 +1,4 @@
-subject: contracts/approval-gate.yaml
+subject: contracts/machine/approval-gate.yaml
 version: "1.0"
 
 invariants:

@@ -1,4 +1,4 @@
-subject: contracts/intake.yaml
+subject: contracts/machine/intake.yaml
 version: "1.0"
 
 invariants:
