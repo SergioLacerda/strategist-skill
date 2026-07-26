@@ -11,9 +11,10 @@ import (
 
 // CheckTiming validates wall-time performance from a timing_criteria block.
 // It reads total_wall_time_ms=<value> from the emit log.
-// If timing_criteria is nil, returns empty (no check performed).
-func CheckTiming(criteria domain.DojoCriteria, logPath string) []domain.DojoCheckItem {
-	if criteria.TimingCriteria == nil {
+// If timing_criteria is nil, or filesOnly is true, returns empty (no check performed) —
+// timing depends on emit.log just like emit_log checks do.
+func CheckTiming(criteria domain.DojoCriteria, logPath string, filesOnly bool) []domain.DojoCheckItem {
+	if criteria.TimingCriteria == nil || filesOnly {
 		return nil
 	}
 	tc := criteria.TimingCriteria

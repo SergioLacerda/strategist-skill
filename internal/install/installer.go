@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
 
@@ -49,8 +50,7 @@ type Service struct {
 // The context is threaded through for future cancellation support.
 func (s Service) Install(ctx context.Context, cfg domain.InstallConfig) error {
 	strategistDir := filepath.Join(cfg.Target, ".strategist")
-	strategistDirExisted := fileExists(strategistDir)
-	var manifest []string // tracks created paths for rollback (existing-tree case only)
+	tx := newInstallTransaction(strategistDir)
 
 	slog.InfoContext(ctx, "[Strategist] install starting",
 		telemetry.AttrComponent, "install",
@@ -60,7 +60,7 @@ func (s Service) Install(ctx context.Context, cfg domain.InstallConfig) error {
 	succeeded := false
 	defer func() {
 		if !succeeded {
-			rollbackInstall(ctx, strategistDir, strategistDirExisted, manifest)
+			tx.rollback(ctx)
 		}
 	}()
 
@@ -69,7 +69,7 @@ func (s Service) Install(ctx context.Context, cfg domain.InstallConfig) error {
 		return err
 	}
 
-	if err := s.runInstallSteps(ctx, strategistDir, cfg, runtimePlan, &manifest); err != nil {
+	if err := s.runInstallSteps(ctx, strategistDir, cfg, runtimePlan, tx); err != nil {
 		return err
 	}
 
@@ -81,31 +81,31 @@ func (s Service) Install(ctx context.Context, cfg domain.InstallConfig) error {
 	return nil
 }
 
-func (s Service) runInstallSteps(ctx context.Context, strategistDir string, cfg domain.InstallConfig, runtimePlan runtimeDefaultPlan, manifest *[]string) error {
+func (s Service) runInstallSteps(ctx context.Context, strategistDir string, cfg domain.InstallConfig, runtimePlan runtimeDefaultPlan, tx *installTransaction) error {
 	created, err := s.prepareRuntime(ctx, strategistDir, cfg, runtimePlan)
 	if err != nil {
 		return err
 	}
-	*manifest = append(*manifest, created...)
+	tx.record(created...)
 	created, err = s.applyWorkspaceConfig(ctx, strategistDir, cfg)
 	if err != nil {
 		return err
 	}
-	*manifest = append(*manifest, created...)
+	tx.record(created...)
 	gitignoreManifest, err := ensureProjectGitignore(cfg)
 	if err != nil {
 		return err
 	}
-	*manifest = append(*manifest, gitignoreManifest...)
+	tx.record(gitignoreManifest...)
 	shimManifest, err := s.runShimStep(ctx, cfg)
 	if err != nil {
 		return err
 	}
-	*manifest = append(*manifest, shimManifest...)
+	tx.record(shimManifest...)
 	if err := s.finalizeInstall(ctx, cfg, strategistDir, runtimePlan); err != nil {
 		return err
 	}
-	*manifest = append(*manifest, filepath.Join(strategistDir, domain.InstallManifestRelPath))
+	tx.record(filepath.Join(strategistDir, domain.InstallManifestRelPath))
 	return nil
 }
 
@@ -139,7 +139,7 @@ func ensureProjectGitignore(cfg domain.InstallConfig) ([]string, error) {
 		return nil, nil
 	}
 	gitignorePath := filepath.Join(cfg.Target, ".gitignore")
-	gitignoreExisted := fileExists(gitignorePath)
+	gitignoreExisted := runtimefs.Exists(gitignorePath)
 	if err := ensureGitignore(cfg.Target); err != nil {
 		return nil, fmt.Errorf("install: gitignore: %w", err)
 	}

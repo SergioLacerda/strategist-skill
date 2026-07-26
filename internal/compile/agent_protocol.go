@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
 )
 
 type agentProtocolData struct {
@@ -70,7 +71,7 @@ func agentProtocol(root string, templateBytes []byte, version string) error {
 func upsertAgentProtocol(path, rendered, version, generatedAt string) error {
 	existing, err := os.ReadFile(path) //nolint:gosec // G304: path derived from root, not user input
 	if os.IsNotExist(err) {
-		return writeFile(path, rendered)
+		return writeFile(path, []byte(rendered), "agent protocol")
 	}
 	if err != nil {
 		return fmt.Errorf("agent protocol: read %s: %w", path, err)
@@ -81,11 +82,11 @@ func upsertAgentProtocol(path, rendered, version, generatedAt string) error {
 	const closeMarker = "\n---\n"
 	content := string(existing)
 	if !strings.HasPrefix(content, openMarker) {
-		return writeFile(path, rendered)
+		return writeFile(path, []byte(rendered), "agent protocol")
 	}
 	idx := strings.Index(content[len(openMarker):], closeMarker)
 	if idx == -1 {
-		return writeFile(path, rendered)
+		return writeFile(path, []byte(rendered), "agent protocol")
 	}
 	fmEnd := len(openMarker) + idx + len(closeMarker) // first char after closing "---\n"
 	existingFM := content[:fmEnd]
@@ -94,13 +95,15 @@ func upsertAgentProtocol(path, rendered, version, generatedAt string) error {
 	existingFM = replaceYAMLLine(existingFM, "version:", version)
 	existingFM = replaceYAMLLine(existingFM, "generated_at:", generatedAt)
 
-	return writeFile(path, existingFM+renderedBodyOnly(rendered))
+	return writeFile(path, []byte(existingFM+renderedBodyOnly(rendered)), "agent protocol")
 }
 
 // writeFile wraps os.WriteFile with a context-aware error for wrapcheck compliance.
-func writeFile(path, content string) error {
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil { //nolint:gosec // G306
-		return fmt.Errorf("agent protocol: write %s: %w", path, err)
+// errPrefix is prepended to the error message so each call site can keep its own
+// wrapped-error text (e.g. "agent protocol", "upsert section", "codex seed").
+func writeFile(path string, content []byte, errPrefix string) error {
+	if err := runtimefs.WriteFile(path, content, 0o644); err != nil {
+		return fmt.Errorf("%s: write %s: %w", errPrefix, path, err)
 	}
 	return nil
 }

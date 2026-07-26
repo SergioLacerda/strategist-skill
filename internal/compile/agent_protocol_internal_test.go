@@ -181,7 +181,7 @@ func TestWriteFile_Error(t *testing.T) {
 	require.NoError(t, os.Chmod(dir, 0o444))
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
 
-	err := writeFile(filepath.Join(dir, "out.md"), "content")
+	err := writeFile(filepath.Join(dir, "out.md"), []byte("content"), "agent protocol")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "agent protocol: write")
 }

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"text/tabwriter"
+	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/dojo"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -57,15 +58,32 @@ func runDojoCheck(_ *cobra.Command, args []string) error {
 	}
 
 	emitLogPath := filepath.Join(basePath, "dojo", ".last-run", scenario, "emit.log")
+	startedAt := time.Now()
 	result := dojo.Run(criteria, basePath, strategistRoot, emitLogPath, dojoFilesOnly)
+	finishedAt := time.Now()
 
 	if err := printDojoResult(result); err != nil {
 		return err
 	}
+	persistDojoResult(basePath, result, startedAt, finishedAt)
+
 	if !result.Passed() {
 		return fmt.Errorf("dojo check: scenario %q failed (%d checks failed)", scenario, result.FailCount())
 	}
 	return nil
+}
+
+// persistDojoResult writes learning artifacts (result.json, .history.jsonl, and — for
+// failed runs — lesson.md) under the dojo storage domain. Persistence failures are
+// reported to stderr but never change the check's pass/fail exit status: dojo is a
+// health check first, a learning tool second.
+func persistDojoResult(basePath string, result domain.DojoCheckResult, startedAt, finishedAt time.Time) {
+	if err := dojo.PersistResult(basePath, result, startedAt, finishedAt); err != nil {
+		fmt.Fprintf(os.Stderr, "dojo: warning: failed to persist result: %v\n", err)
+	}
+	if err := dojo.WriteLesson(basePath, result); err != nil {
+		fmt.Fprintf(os.Stderr, "dojo: warning: failed to write lesson: %v\n", err)
+	}
 }
 
 func runDojoList(_ *cobra.Command, _ []string) error {
@@ -92,7 +110,7 @@ func runDojoList(_ *cobra.Command, _ []string) error {
 
 func writeDojoListRows(w *tabwriter.Writer, dojoDir string, entries []os.DirEntry) error {
 	for _, e := range entries {
-		if !isDojoScenarioEntry(e) {
+		if !isDojoScenarioEntry(dojoDir, e) {
 			continue
 		}
 		if _, err := fmt.Fprintf(w, "%s\t%s\n", e.Name(), dojoDescription(dojoDir, e.Name())); err != nil {
@@ -102,8 +120,11 @@ func writeDojoListRows(w *tabwriter.Writer, dojoDir string, entries []os.DirEntr
 	return nil
 }
 
-func isDojoScenarioEntry(e os.DirEntry) bool {
-	return e.IsDir() && e.Name() != ".last-run"
+func isDojoScenarioEntry(dojoDir string, e os.DirEntry) bool {
+	if !e.IsDir() || e.Name() == ".last-run" {
+		return false
+	}
+	return dojo.ScenarioHasCriteria(dojoDir, e.Name())
 }
 
 func dojoDescription(dojoDir, scenario string) string {
@@ -184,7 +205,8 @@ func printDojoResult(result domain.DojoCheckResult) error {
 
 func init() {
 	dojoCheckCmd.Flags().StringVar(&dojoRoot, "root", "", "path to .strategist/ root (default: .strategist)")
-	dojoCheckCmd.Flags().BoolVar(&dojoFilesOnly, "files-only", false, "skip emit_log validation")
+	dojoCheckCmd.Flags().BoolVar(&dojoFilesOnly, "files-only", false,
+		"skip checks that require an emit.log run (emit_log, timing, pipeline)")
 	dojoListCmd.Flags().StringVar(&dojoRoot, "root", "", "path to .strategist/ root (default: .strategist)")
 	dojoCmd.AddCommand(dojoCheckCmd)
 	dojoCmd.AddCommand(dojoListCmd)

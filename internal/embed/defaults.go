@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
 )
 
 //go:embed all:defaults
@@ -79,23 +81,35 @@ func ensureEmbedDir(dst string) error {
 	return nil
 }
 
+type extractMode bool
+
+const (
+	extractMerge     extractMode = false
+	extractOverwrite extractMode = true
+)
+
+func extractModeFor(force bool) extractMode {
+	if force {
+		return extractOverwrite
+	}
+	return extractMerge
+}
+
 // writeEmbedFile writes embedded file src/path to dst.
-// In merge mode (!force), if dst already exists and its content differs from the
+// In merge mode, if dst already exists and its content differs from the
 // embedded version, the file is skipped to preserve user customizations.
 func writeEmbedFile(src fs.FS, path, dst string, force bool) error {
+	mode := extractModeFor(force)
 	data, readErr := fs.ReadFile(src, path)
 	if readErr != nil {
 		return fmt.Errorf("embed: read %s: %w", path, readErr)
 	}
-	if mkErr := os.MkdirAll(filepath.Dir(dst), 0o755); mkErr != nil {
-		return fmt.Errorf("embed: mkdir parent %s: %w", filepath.Dir(dst), mkErr)
-	}
-	if !force {
+	if mode == extractMerge {
 		if userModified(dst, data) {
 			return nil // preserve user's version
 		}
 	}
-	if writeErr := os.WriteFile(dst, data, 0o644); writeErr != nil {
+	if writeErr := runtimefs.WriteFile(dst, data, 0o644); writeErr != nil {
 		return fmt.Errorf("embed: write %s: %w", dst, writeErr)
 	}
 	return nil
@@ -104,9 +118,14 @@ func writeEmbedFile(src fs.FS, path, dst string, force bool) error {
 // userModified reports true when dst exists on disk AND its content differs
 // from the embedded bytes — meaning the user has customized the file.
 func userModified(dst string, embedded []byte) bool {
-	existing, err := os.ReadFile(dst)
-	if err != nil {
-		return false // file doesn't exist — not user-modified
+	embeddedHash := fmt.Sprintf("%x", sha256Bytes(embedded))
+	existingHash, exists, err := runtimefs.ReadSHA256(dst)
+	if err != nil || !exists {
+		return false // file doesn't exist or cannot be read — not user-modified
 	}
-	return sha256.Sum256(existing) != sha256.Sum256(embedded)
+	return existingHash != embeddedHash
+}
+
+func sha256Bytes(data []byte) [32]byte {
+	return sha256.Sum256(data)
 }

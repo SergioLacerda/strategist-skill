@@ -9,6 +9,8 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"golang.org/x/term"
+
+	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
 )
 
 // applyConfig writes active.yaml either from the epic template (silent) or
@@ -26,10 +28,10 @@ func (s Service) applyConfig(strategistDir string, cfg domain.InstallConfig) err
 
 func (s Service) applySilentConfig(strategistDir string, cfg domain.InstallConfig) error {
 	activeYAMLPath := filepath.Join(strategistDir, "active.yaml")
-	if !cfg.Force && fileExists(activeYAMLPath) {
+	if !cfg.Force && runtimefs.Exists(activeYAMLPath) {
 		return nil // preserve user customizations
 	}
-	if cfg.Force && fileExists(activeYAMLPath) {
+	if cfg.Force && runtimefs.Exists(activeYAMLPath) {
 		slog.Info("[Strategist] install force-overwriting user-owned config",
 			telemetry.AttrComponent, "install",
 			"path", activeYAMLPath,

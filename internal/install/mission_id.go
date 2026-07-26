@@ -3,10 +3,11 @@ package install
 import (
 	"fmt"
 	"math/rand"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
 )
 
 // GenerateMissionID returns a date-prefixed mission ID from slug.
@@ -72,14 +73,9 @@ func patternCollides(pattern string) bool {
 		return false
 	}
 	for _, match := range matches {
-		if pathExists(match) {
+		if runtimefs.Exists(match) {
 			return true
 		}
 	}
 	return false
-}
-
-func pathExists(path string) bool {
-	info, err := os.Stat(path)
-	return err == nil && info != nil
 }

@@ -1,7 +1,5 @@
 package i18n
 
-import "strings"
-
 // WizardStrings holds all user-visible strings for the install wizard.
 type WizardStrings struct {
 	PromptDocLang    string
@@ -56,8 +54,8 @@ var PT = WizardStrings{
 // BundleFor returns the WizardStrings for the given language code.
 // Defaults to EN for unrecognised codes.
 func BundleFor(lang string) WizardStrings {
-	if strings.EqualFold(lang, "pt-BR") {
-		return PT
+	if bundle, ok := wizardBundleFor(lang); ok {
+		return bundle
 	}
 	return EN
 }
