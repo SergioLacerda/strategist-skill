@@ -31,5 +31,5 @@ a different condition (`provider_capability_mismatch`), not this one.
 
 ## Reference
 
-- `strategist/SKILL.md` § Role Invocation Failures
+- `.strategist/SKILL.md` § Role Invocation Failures
 - `.strategist/contracts/machine/preflight.yaml` → `error_conditions.role_invocation_failed`

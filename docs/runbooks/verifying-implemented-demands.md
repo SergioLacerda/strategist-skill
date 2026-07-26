@@ -7,7 +7,7 @@ phrased as "if it's already finished, move it to done" — or any time you're ab
 implementation work and a refined package already exists for it.
 
 This is also the procedure to follow whenever the mandatory bootstrap stale scan
-(`strategist/contracts/narrative/01-bootstrap.md`, `11-critical-hit.md` § Stale Card
+(`.strategist/contracts/narrative/01-bootstrap.md`, `11-critical-hit.md` § Stale Card
 Detection Trigger 3) flags a candidate.
 
 ## Pre-Refinement Duplicate Check
@@ -35,8 +35,8 @@ steps below verify whether a refined demand has already been implemented.
    from file names or commit messages.
 3. Re-run verification: the mission's own "Suggested Verification Command" section if `tasks.md`
    has one; otherwise this repo's standard — `go build ./...`, `go test ./...`, `go vet ./...`,
-   `go test -tags spec ./tests/spec/...`. If `strategist/contracts`, `strategist/schemas`, or
-   `strategist/personas` are in `approved_scope`, also run `make sync-embed` and diff the source
+   `go test -tags spec ./tests/spec/...`. If `.strategist/contracts`, `.strategist/schemas`, or
+   `.strategist/personas` are in `approved_scope`, also run `make sync-embed` and diff the source
    against its `internal/embed/defaults/` mirror to confirm they match.
 
 ## Decision Point
@@ -49,7 +49,7 @@ assumption):
 2. Mark per-task `status: completed` in `tasks.md`, but only for tasks the supplied evidence
    actually covers.
 3. Present the Critical Hit closure gate exactly as defined in
-   `strategist/contracts/machine/critical-hit.yaml#inline_gate.closure_move` — evidence summary,
+   `.strategist/contracts/machine/critical-hit.yaml#inline_gate.closure_move` — evidence summary,
    then "Confirm? (sim / nao)". Stop and wait; this gate cannot be bypassed.
 4. On `sim`: move `<base_path>/refined/<mission_id>/` to `<base_path>/done/<mission_id>/` — `git
    mv` if the analysis workspace is git-tracked in this repo, a plain move otherwise (check with
@@ -69,6 +69,6 @@ and do not present the closure gate.
 
 ## Reference
 
-- `strategist/contracts/machine/critical-hit.yaml` — the authoritative closure_move contract
+- `.strategist/contracts/machine/critical-hit.yaml` — the authoritative closure_move contract
   (trigger conditions, gate display, evidence fields, invariants). This runbook shows how to
   arrive at a well-formed evidence summary; it does not redefine the contract.
