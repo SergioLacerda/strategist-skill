@@ -74,7 +74,8 @@ If Archivist identified side quests during refinement:
 2. Assign each a unique ID (SQ-NNN)
 3. Show estimated impact and dependencies
 4. User may select a subset for documentation
-5. Unselected side quests are recorded as `sq_backlog` — not discarded
+5. Unselected side quests are recorded as `sq_backlog` — not discarded; at mission
+   close they get a Riposte capture offer (see § Riposte below)
 6. Partial acceptance is valid — Sniper materializes only the accepted items
 
 Gate display format:
@@ -83,6 +84,10 @@ Gate display format:
 📋 MAIN ANALYSIS
    Proposal:    refined/<mission_id>/proposal.md
    Tasks:       refined/<mission_id>/tasks.md — N task(s)
+
+🎯 CRITIC (if a rubric evaluation ran)
+   score: <0.00–1.00> — <pass|fail>
+   gaps:  <must_have_missing / must_not_present items, if any>
 
 📄 DOCUMENTATION TARGETS (outside <base_path>, if any)
    <path> — <description>
@@ -93,6 +98,30 @@ Gate display format:
 
 Is the analysis correct?  (accept / review / reject)
 ```
+
+## Critic at the Gate (W8/P5)
+
+When the response-critic evaluated the refined package, its result is shown in the
+`🎯 CRITIC` line (see `machine/approval-gate.yaml#critic_display`). Rules:
+
+- `fail` → pre-suggest `review` as the default answer in the prompt sentence
+  (e.g. "Critic flagged gaps — review?  (accept / **review** / reject)")
+- `no_rubric`, or critic did not run → omit the line entirely; never block the gate
+- the critic result is advisory display only — it never auto-rejects, never blocks,
+  and never substitutes the user's decision
+
+## Riposte (W8/P2)
+
+A parried mission still scores a hit. On `reject` or `revision`, and at mission close
+when `sq_backlog` items exist, offer to capture the reason/items as structured backlog
+entries via the Quick Draw machinery (normative contract:
+`machine/riposte.yaml`). Doctrine:
+
+- one combined confirmation at the trigger point — the gate response itself is NOT
+  capture confirmation; declining the offer is always valid
+- captured entries carry `origin: riposte` and `mission_ref: <mission_id>`; they wait
+  in the backlog for a future intake — Riposte never spawns or restarts a mission
+- the gate outcome and its FSM transition are unchanged whatever the user answers
 
 ## Status Transitions
 
