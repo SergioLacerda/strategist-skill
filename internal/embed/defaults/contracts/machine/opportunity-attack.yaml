@@ -26,6 +26,15 @@ contract:
   on_criteria_met:
     action: add_adr_side_quest_to_opportunity_manifest
     side_quest_id_format: "OA-ADR-{mission_id}"
+    # W10/P6 (deep analysis 2026-07-26): the same criteria hits are decision-shaped
+    # knowledge — harvest them as jewel candidates for the mine queue.
+    secondary_action:
+      id: jewel_candidate
+      emit_jewel:
+        kind: decision | pattern       # decision for documented_tradeoff/breaking_change; pattern for new_pattern/new_external_dependency
+        status: proposed               # ALWAYS proposed — promotion only via mine curation gates (mine --accept / --verify)
+        source_refs: refined package paths that satisfied the criteria
+      non_blocking: true               # harvest failure never blocks the ADR side quest or the pipeline
     gate_display: >
       ⚔️ Opportunity Attack → ADR
       This mission contains architectural decisions worth recording.
@@ -50,6 +59,7 @@ contract:
 
   invariants:
     - emit always produced after evaluation (adr_warranted=false is valid; silence is not)
+    - jewel candidates are always status proposed and enter only through the mine curation gates — Opportunity Attack never promotes, accepts, or verifies a jewel
     - technical failure is non-blocking — log reason and continue pipeline
     - criteria evaluation is based solely on the written refined artifacts, not on speculation
     - Archivist does NOT write the ADR draft — only evaluates and surfaces at gate

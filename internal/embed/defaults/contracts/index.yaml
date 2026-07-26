@@ -37,11 +37,13 @@ machine:
     - machine/preflight.yaml
     - machine/mission-status.yaml
   by_phase:
-    bootstrap:   [machine/bootstrap.yaml]
+    bootstrap:   [machine/bootstrap.yaml, machine/keen-senses.yaml]
     intake:      [machine/intake.yaml, machine/scout-routing.yaml]
     discovery:   [machine/opportunity-attack.yaml]
     refinement:  [machine/opportunity-attack.yaml]
-    gate:        [machine/approval-gate.yaml]
+    gate:        [machine/approval-gate.yaml, machine/riposte.yaml]
+    # riposte.yaml also fires at mission close (sq_backlog drain) — response phase:
+    response:    [machine/riposte.yaml]
     execution:   [machine/compliance-summary.yaml]
     adr:         [machine/adr.yaml]
     learning:    [machine/learning-curator.yaml, machine/learning-buffer.yaml]

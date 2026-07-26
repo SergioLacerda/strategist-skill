@@ -28,6 +28,16 @@ contract:
     stop: true
     wait_for_response: true
 
+  # W8/P5 (deep analysis 2026-07-26): surface the response-critic result at the
+  # gate — the one human decision point. Advisory only.
+  critic_display:
+    source: internal_skills/response-critic (evaluation of the refined package)
+    show_score: true                  # "🎯 CRITIC" line in the gate display
+    show_gaps: true                   # must_have_missing / must_not_present items
+    on_fail_suggest: review           # pre-suggest `review` as the default answer
+    on_no_rubric: omit_line           # critic returned no_rubric → no critic line
+    on_missing: omit_line             # critic did not run → no critic line, never block
+
   responses:
     accept_aliases: [agree, accepted, approve_analysis, sim, concordo, yes, approve, authorize, autorizar]
     revision_aliases: [missing_item, forgot_item, esqueci, faltou, revision, revisao]
@@ -45,16 +55,20 @@ contract:
     emit_format: "[Strategist] phase=approval_gate status=revision_requested"
     emit_level: TRACE
     mission_result_status: revision_requested
+    riposte_offer: true               # W8/P2 — offer to capture the revision reason (riposte.yaml)
     next_phase: archivist
 
   on_reject:
     emit_format: "[Strategist] phase=approval_gate status=rejected"
     emit_level: TRACE
     mission_result_status: rejected
+    riposte_offer: true               # W8/P2 — offer to capture the rejection reason (riposte.yaml)
     next_phase: closed
 
   invariants:
     - gate must emit status=analysis_accepted, status=revision_requested, or status=rejected before sniper is invoked
+    - the critic result never auto-rejects and never blocks the gate — it is advisory display; the user decision stands alone
+    - the riposte offer never alters the gate outcome or its FSM transition; declining Riposte is always valid
     - analysis_delivered is a valid terminal state when no documentation_targets exist
     - checkpoint is re-emitted on accept (not on revision or reject)
     - direct repository mutation before acceptance emits reason=pipeline_bypass_detected
