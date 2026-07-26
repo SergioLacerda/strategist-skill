@@ -398,6 +398,34 @@ compression_policy:
     external_provider_may_not: [scope_decisions, execution, side_quest_approval, mission_contract_changes]
   metrics_log: ".strategist/memory/chest-usage.jsonl"
 
+role_budgets:
+  description: >
+    Per-role token ceilings by mode, independent of compression_policy.modes (which
+    budgets the context_enrichment/dossier phase, not the roles themselves). ranger
+    budgets what Discovery reads beyond the dossier; archivist budgets the bounded
+    reopen set allowed by contracts/machine/handoff-contract.yaml#refinement_context_policy.
+    Values are placeholders pending real data from handoff_metrics_log
+    (.strategist/memory/handoff-metrics.jsonl) — not yet tuned from telemetry.
+  ranger:
+    lean:     {max_sources: 2, max_context_tokens: 3000}
+    balanced: {max_sources: 4, max_context_tokens: 6000}
+    deep:     {max_sources: 8, max_context_tokens: 12000}
+  archivist:
+    lean:     {max_reopen_sources: 0, max_context_tokens: 2000}
+    balanced: {max_reopen_sources: 1, max_context_tokens: 4000}
+    deep:     {max_reopen_sources: 3, max_context_tokens: 8000}
+
+handoff_metrics_log:
+  path: ".strategist/memory/handoff-metrics.jsonl"
+  emitted_by: archivist
+  emitted_when: refinement_complete
+  fields: [mission_id, discovery_tokens, brief_tokens, brief_compression_ratio, refinement_reopens, evidence_coverage_ratio]
+  note: >
+    brief_compression_ratio and evidence_coverage_ratio require discovery_tokens and
+    evidence_cards[] (schemas/handoff-ranger-to-archivist.schema.yaml) to be populated
+    by the Ranger artifact; both are null until missions populate those fields —
+    expected during rollout, not a bug.
+
 token_economy_stop_conditions:
   - id: ambiguous_task_no_criteria
     trigger: task_is_ambiguous and acceptance_criteria_missing
@@ -462,6 +490,7 @@ forbidden_behaviors:
   - engineer_writes_outside_analysis
   - archivist_writes_non_md
   - delegate_analysis_creation_to_sniper
+  - archivist_reopens_discovery_sources_without_declared_reason  # see contracts/machine/handoff-contract.yaml#refinement_context_policy for the closed allowed_reasons list
   - id: non_documentation_write
     description: >
       Sniper attempted to write a non-documentation file. Sniper write scope is strictly

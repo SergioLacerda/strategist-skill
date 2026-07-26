@@ -66,9 +66,40 @@ a `writing-plans` handoff, and does not require a design-doc commit as a
 completion condition. Those are `creative`-subtype obligations only (see
 `04-refinement.md` and Ranger's creative-subtype role directives).
 
+## Retrieval Cascade
+
+Ranger's source retrieval follows this order, normative rather than heuristic. Each
+stage runs only if the previous stage did not reach `stop_when: sufficient_evidence`:
+
+1. explicit paths named in the prompt or mission contract
+2. registry / manifest lookups (`index.yaml`, `active.yaml`, treasure-chests manifest)
+3. keyword search over the workspace
+4. symbol search (definitions, references)
+5. architecture / structure index, when one exists for the workspace
+6. treasure chests (`consult_treasure_chests`)
+7. semantic search, when a semantic provider is configured — optional, last resort
+
+`stop_when: sufficient_evidence` is met when either condition holds:
+
+- every open Discovery Question has at least one Evidence Card with `confidence >= 0.6`, or
+- all seven cascade stages have been attempted (evidence gaps are then reported as
+  `uncertainties`, not left implicit)
+
+This cascade governs order only; per-role token ceilings remain governed by
+`skill.yaml#role_budgets`.
+
+## Intra-Phase Parallelism
+
+Independent Discovery sub-tasks (e.g. reading unrelated source files, running
+independent read-only checks) may run concurrently within this phase. This is
+distinct from cross-phase concurrency: Scout and Archivist must never run
+simultaneously (decision conflict) — see `00-routing.md`. `skill.yaml#budget_policy`'s
+`timeout_seconds` applies to the phase total, not to the sum of sequential sub-tasks.
+
 ## Required Behavior
 
 - consult treasure chests before analysis
+- follow the Retrieval Cascade above; do not skip stages out of order
 - cite `evidence_pack_path` in the analysis artifact when the dossier provides one
 - write exactly one canonical analysis artifact for the handoff
 - include explicit sections for:
