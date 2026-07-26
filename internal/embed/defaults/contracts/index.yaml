@@ -62,6 +62,11 @@ machine:
     # separate section) so it still counts as referenced by the manifest.
     governance:
       - machine/architecture-rules.yaml
+    # Cross-cutting reference catalog (W7b): the normative source for error/blocked
+    # token reason+action text. Loaded on demand when emitting or interpreting a
+    # blocked state — not tied to a single pipeline phase.
+    errors:
+      - machine/errors.yaml
 
 supplemental:
   - strategist-raid.yaml   # batch refinement route — loaded on /strategist-raid invocation

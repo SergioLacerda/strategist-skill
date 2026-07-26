@@ -36,8 +36,8 @@ steps below verify whether a refined demand has already been implemented.
 3. Re-run verification: the mission's own "Suggested Verification Command" section if `tasks.md`
    has one; otherwise this repo's standard — `go build ./...`, `go test ./...`, `go vet ./...`,
    `go test -tags spec ./tests/spec/...`. If `.strategist/contracts`, `.strategist/schemas`, or
-   `.strategist/personas` are in `approved_scope`, also run `make sync-embed` and diff the source
-   against its `internal/embed/defaults/` mirror to confirm they match.
+   `.strategist/personas` are in `approved_scope`, diff them against their
+   `internal/embed/defaults/` source (the single authoring tree) to confirm they match.
 
 ## Decision Point
 

@@ -14,9 +14,7 @@ func TestStrategistRaidSkillArtifactsPresent(t *testing.T) {
 
 	root := repoRoot(t)
 	paths := []string{
-		filepath.Join(root, "strategist", "contracts", "strategist-raid.yaml"),
-		filepath.Join(root, "strategist", "internal_skills", "strategist-raid", "skill.yaml"),
-		filepath.Join(root, "strategist", "internal_skills", "strategist-raid", "SKILL.md"),
+		filepath.Join(root, "internal", "embed", "defaults", "contracts", "strategist-raid.yaml"),
 		filepath.Join(root, "internal", "embed", "defaults", "internal_skills", "strategist-raid", "skill.yaml"),
 		filepath.Join(root, "internal", "embed", "defaults", "internal_skills", "strategist-raid", "SKILL.md"),
 	}
@@ -33,8 +31,8 @@ func TestStrategistSkillReferencesStrategistRaidContract(t *testing.T) {
 
 	// The exact sentence moved when W4 (token-economy) compacted the Contract Loading
 	// Order section, but the reference itself must survive in some form.
-	content := readFile(t, filepath.Join(repoRoot(t), "strategist", "SKILL.md"))
+	content := readFile(t, filepath.Join(repoRoot(t), "internal", "embed", "defaults", "SKILL.md"))
 	if !strings.Contains(content, "strategist-raid.yaml") || !strings.Contains(content, "/strategist-raid") {
-		t.Fatalf("strategist/SKILL.md missing /strategist-raid routing reference")
+		t.Fatalf("internal/embed/defaults/SKILL.md missing /strategist-raid routing reference")
 	}
 }

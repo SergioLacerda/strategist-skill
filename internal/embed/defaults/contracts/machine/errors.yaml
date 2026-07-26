@@ -1,0 +1,149 @@
+schema_version: "1"
+module: errors
+type: reference_catalog
+description: >
+  Canonical catalog of Strategist error and blocked-state tokens (W7b). This file is
+  the single normative source for each token's reason and remediation action. Other
+  contracts and entry docs reference tokens by name — they must not restate reason or
+  action text. Drift tokens are cataloged separately in identity/drift-patterns.yaml
+  (symptom/correction form); this file lists them only as an index.
+
+# Every entry: token, emitted-as prefix, reason (one line), action (remediation).
+# scope: startup | routing | slot | gate | execution | claim
+errors:
+  - token: not_installed
+    emit: "error=not_installed"
+    scope: startup
+    reason: ".strategist/ runtime is absent from the workspace"
+    action: "run strategist install, then retry"
+
+  - token: config_missing
+    emit: "error=config_missing"
+    scope: startup
+    reason: ".strategist/active.yaml is missing or unreadable"
+    action: "restore active.yaml (or reinstall), then rerun strategist check"
+
+  - token: preflight_failed
+    emit: "error=preflight_failed"
+    scope: startup
+    reason: "preflight validation failed (domain, slots, or integrity)"
+    action: "fix the reported preflight condition, then rerun strategist check"
+
+  - token: identity_files_missing
+    emit: "check=blocked reason=identity_files_missing"
+    scope: startup
+    reason: "internal domain identity files (drift patterns, what-i-am) are not deployed for the configured base_path"
+    action: "run strategist compile-domain to deploy identity files"
+
+  - token: intake_conflict_unresolved
+    emit: "error=intake_conflict_unresolved"
+    scope: routing
+    reason: "prompt contains mutually exclusive constraint aliases"
+    action: "ask the user to resolve the conflicting constraints, then re-run intake"
+
+  - token: slot_provider_not_found
+    emit: "error=slot_provider_not_found"
+    scope: slot
+    reason: "configured slot provider has no capability descriptor under .strategist/skills/"
+    action: "configure a valid provider in active.slots or install its capability mirror"
+
+  - token: role_invocation_failed
+    emit: "error=role_invocation_failed"
+    scope: slot
+    reason: "a configured role/provider cannot be invoked from the installed runtime"
+    action: "fix provider configuration or runtime installation, then rerun strategist check"
+
+  - token: role_provider_invalid
+    emit: "error=role_provider_invalid"
+    scope: slot
+    reason: "resolved role/provider descriptor is present but invalid for the slot"
+    action: "correct the provider descriptor or configure a different provider"
+
+  - token: provider_capability_mismatch
+    emit: "error=provider_capability_mismatch"
+    scope: slot
+    reason: "resolved discovery weapon does not declare support for the required discovery_subtype"
+    action: "configure active.slots.discovery to a weapon whose instructions implement the required subtype"
+
+  - token: slot_risk_mismatch
+    emit: "error=slot_risk_mismatch"
+    scope: slot
+    reason: "provider risk_score is incompatible with the slot's declared contract"
+    action: "replace or correct the provider; non-compliant providers block future missions at preflight"
+
+  - token: discovery_failed
+    emit: "error=discovery_failed"
+    scope: slot
+    reason: "discovery slot failed permanently (transient failures are retried once)"
+    action: "fix the discovery provider or inputs, then restart the mission"
+
+  - token: refinement_failed
+    emit: "error=refinement_failed"
+    scope: slot
+    reason: "refinement slot failed permanently (transient failures are retried once)"
+    action: "fix the refinement provider or the Ranger handoff artifact, then resume"
+
+  - token: local_execution_provider_missing
+    emit: "error=local_execution_provider_missing"
+    scope: execution
+    reason: "delegated invocation did not provide execution_provider"
+    action: "provide local execution context or use direct standalone invocation"
+
+  - token: execution_provider_unavailable
+    emit: "error=execution_provider_unavailable"
+    scope: execution
+    reason: "resolved execution_provider cannot be invoked in this environment"
+    action: "fix provider configuration or runtime installation"
+
+  - token: pipeline_bypass_detected
+    emit: "error=pipeline_bypass_detected"
+    scope: execution
+    reason: "repository mutation attempted without canonical pipeline evidence for the active route"
+    action: "stop; complete the missing phase and resume through the pipeline"
+
+  - token: already_claimed
+    emit: "blocked reason=already_claimed"
+    scope: claim
+    reason: "mission analysis is claimed by another Sniper (mission_status: sniper_running)"
+    action: "wait for the claiming agent or resolve the stale claim before retrying"
+
+  - token: gate_approval_missing
+    emit: "blocked reason=gate_approval_missing"
+    scope: claim
+    reason: "Sniper claim attempted without mission_status: gate_analysis_accepted"
+    action: "present the Strategist Approval Gate and obtain explicit acceptance first"
+
+  - token: mission_in_progress
+    emit: "blocked reason=mission_in_progress"
+    scope: claim
+    reason: "an analysis artifact for this mission is already mid-pipeline"
+    action: "resume the existing mission from its recorded mission_status instead of recreating it"
+
+  - token: documentation_scope_violation
+    emit: "blocked reason=documentation_scope_violation"
+    scope: execution
+    reason: "tasks.md contains implementation handoff items outside Sniper's documentation scope"
+    action: "materialize documentation_target items only; report implementation_handoff items as out of scope"
+
+# Drift tokens are cataloged in identity/drift-patterns.yaml (symptom/correction).
+# Index only — do not add reason/action text here.
+drift_index:
+  - direct_execution
+  - role_invocation_failed
+  - provider_capability_mismatch
+  - silent_phase_advance
+  - approval_bypass
+  - scope_expansion
+  - execution_provider_override
+  - local_execution_context_bypass
+  - pipeline_bypass_detected
+  - side_quest_gate_bypass
+  - route_plan_creation_to_sniper
+  - approval_design_confused_with_approval_gate
+  - approval_gate_code_execution_confusion
+  - runtime_source_confusion
+
+invariants:
+  - every errors[].token must exist in the Go implementation (internal/ or cmd/)
+  - every "error=<token>" emitted in contracts or entry docs must resolve to an errors[] entry
+  - drift_index must exactly match the pattern ids in identity/drift-patterns.yaml

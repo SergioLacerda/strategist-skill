@@ -318,7 +318,7 @@ Chest configuration flows through four layers, each with a distinct source of tr
 
 `strategist treasure-chest` reads all four layers and reports drift between them (see
 [CLI Reference](cli-reference.md#treasure-chest)). Divergence between a runtime `.strategist/`
-instance and the shipped `strategist/`/embedded-default templates is expected when a chest has
+instance and the shipped embedded-default templates (`internal/embed/defaults/`) is expected when a chest has
 been added locally — only classify it as stale drift if the schema/structure itself (not the
 `chests:` entries) differs.
 

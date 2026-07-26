@@ -23,7 +23,7 @@ output:
   errors: array
 
 entry_point:
-  contract: strategist/contracts/strategist-raid.yaml
+  contract: .strategist/contracts/strategist-raid.yaml
 
 behavior:
   - Load the source_file and collect entries whose status matches filter_status

@@ -38,7 +38,6 @@ func TestAbilityContractNoStaleQuickDrawOutputs(t *testing.T) {
 	t.Parallel()
 
 	roots := []string{
-		filepath.Join(repoRoot(t), "strategist"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults"),
 		isolatedStrategistDir(t),
 	}
@@ -70,7 +69,6 @@ func TestAbilityContractNoStaleApprovalGateRouting(t *testing.T) {
 	t.Parallel()
 
 	paths := []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "approval-gate.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "approval-gate.yaml"),
 		filepath.Join(isolatedStrategistDir(t), "contracts", "machine", "approval-gate.yaml"),
 	}
@@ -90,8 +88,8 @@ func TestAbilityContractNoStaleImplementationIntentField(t *testing.T) {
 	t.Parallel()
 
 	paths := []string{
-		filepath.Join(repoRoot(t), "strategist", "templates", "agent-protocol.md"),
-		filepath.Join(repoRoot(t), "strategist", "protocol.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "agent-protocol.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "protocol.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "agent-protocol.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "protocol.md"),
 		filepath.Join(isolatedStrategistDir(t), "agent-protocol.md"),
@@ -115,7 +113,6 @@ func TestAbilityContractRangerDoesNotProduceOpportunityManifest(t *testing.T) {
 	t.Parallel()
 
 	paths := []string{
-		filepath.Join(repoRoot(t), "strategist", "internal_skills", "ranger", "SKILL.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "internal_skills", "ranger", "SKILL.md"),
 		filepath.Join(isolatedStrategistDir(t), "internal_skills", "ranger", "SKILL.md"),
 	}
@@ -140,10 +137,8 @@ func TestAbilityContractNoMandatoryOpportunityAttackForRangerOrSniper(t *testing
 		role string
 	}
 	checks := []roleCheck{
-		{filepath.Join(repoRoot(t), "strategist", "internal_skills", "ranger", "SKILL.md"), "ranger"},
 		{filepath.Join(repoRoot(t), "internal", "embed", "defaults", "internal_skills", "ranger", "SKILL.md"), "ranger"},
 		{filepath.Join(isolatedStrategistDir(t), "internal_skills", "ranger", "SKILL.md"), "ranger"},
-		{filepath.Join(repoRoot(t), "strategist", "internal_skills", "sniper", "SKILL.md"), "sniper"},
 		{filepath.Join(repoRoot(t), "internal", "embed", "defaults", "internal_skills", "sniper", "SKILL.md"), "sniper"},
 		{filepath.Join(isolatedStrategistDir(t), "internal_skills", "sniper", "SKILL.md"), "sniper"},
 	}
@@ -188,7 +183,6 @@ func TestAbilityContractOpportunityAttackIsADROnly(t *testing.T) {
 	t.Parallel()
 
 	paths := []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "opportunity-attack.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "opportunity-attack.yaml"),
 		filepath.Join(isolatedStrategistDir(t), "contracts", "machine", "opportunity-attack.yaml"),
 	}
@@ -214,7 +208,6 @@ func TestAbilityContractCriticalHitOwnsCardClosure(t *testing.T) {
 	t.Parallel()
 
 	paths := []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "critical-hit.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "critical-hit.yaml"),
 		filepath.Join(isolatedStrategistDir(t), "contracts", "machine", "critical-hit.yaml"),
 	}
@@ -266,46 +259,7 @@ func TestAbilityContractNoLegacyOpportunityFSMNaming(t *testing.T) {
 
 // --- Part B: Parity check ---
 
-// TestAbilityContractParityCanonicalVsEmbedded ensures the ability contract files
-// are byte-for-byte identical between canonical (strategist/) and embedded defaults
-// (internal/embed/defaults/). Runtime (.strategist/) is generated/installed and
-// may differ at the leaf level — it is not included in this parity check.
-func TestAbilityContractParityCanonicalVsEmbedded(t *testing.T) {
-	t.Parallel()
-
-	canonical := filepath.Join(repoRoot(t), "strategist")
-	embedded := filepath.Join(repoRoot(t), "internal", "embed", "defaults")
-
-	for _, rel := range abilityContractFiles() {
-		rel := rel
-		t.Run(rel, func(t *testing.T) {
-			t.Parallel()
-
-			canonicalPath := filepath.Join(canonical, rel)
-			embeddedPath := filepath.Join(embedded, rel)
-
-			canonicalData, err := os.ReadFile(canonicalPath)
-			if err != nil {
-				if os.IsNotExist(err) {
-					t.Skipf("ability contract file %s absent in canonical — skipping parity", rel)
-				}
-				t.Fatalf("read canonical %s: %v", canonicalPath, err)
-			}
-
-			embeddedData, err := os.ReadFile(embeddedPath)
-			if err != nil {
-				if os.IsNotExist(err) {
-					t.Fatalf("ability contract file %s exists in canonical but is missing from embedded defaults (%s)", rel, embeddedPath)
-				}
-				t.Fatalf("read embedded %s: %v", embeddedPath, err)
-			}
-
-			if string(canonicalData) != string(embeddedData) {
-				t.Fatalf(
-					"ability contract parity failure for %s:\n  canonical: %s\n  embedded:  %s\nSync embedded defaults from canonical or run `strategist compile`.",
-					rel, canonicalPath, embeddedPath,
-				)
-			}
-		})
-	}
-}
+// TestAbilityContractParityCanonicalVsEmbedded was removed in W7a (Option B):
+// strategist/ was retired, so canonical and embedded defaults are the same tree
+// and byte parity is true by construction. Runtime parity is covered by
+// TestLocalRuntimeMirrorsCanonicalNormativeFilesWhenPresent in spec_alignment_test.go.
