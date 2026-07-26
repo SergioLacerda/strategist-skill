@@ -94,6 +94,10 @@ Checks performed:
 			return printContentByLang(root, persona, checkPrintContentByLang)
 		}
 
+		if identityErr := checkIdentityFilesBlockingError(root); identityErr != nil {
+			return identityErr
+		}
+
 		providers := map[string]string{
 			"discovery":  cfg.Slots["discovery"],
 			"refinement": cfg.Slots["refinement"],

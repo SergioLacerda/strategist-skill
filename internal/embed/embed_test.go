@@ -247,11 +247,18 @@ func TestExtractor_Extract(t *testing.T) {
 		assert.Contains(t, adr, "en")
 		assert.Contains(t, adr, "active.language.docs")
 
-		// SKILL.md retains the ADR routing reference (now with narrative/ subdir)
+		// SKILL.md itself no longer enumerates contract paths (W4 token-economy fix:
+		// contracts/index.yaml is the sole authoritative loading manifest — SKILL.md
+		// defers to it instead of restating the narrative load order). The ADR routing
+		// reference now lives there.
 		skillMD, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
 		require.NoError(t, err)
 		doc := string(skillMD)
 		assert.Contains(t, doc, "Archivist")
-		assert.Contains(t, doc, "contracts/narrative/07-adr.md")
+		assert.Contains(t, doc, "index.yaml")
+
+		indexYAML, err := os.ReadFile(filepath.Join(dir, "contracts", "index.yaml"))
+		require.NoError(t, err)
+		assert.Contains(t, string(indexYAML), "narrative/07-adr.md")
 	})
 }

@@ -123,37 +123,21 @@ Workspace artifacts resolve through `base_path` from `.strategist/active.yaml`.
 
 ## Contract Loading Order
 
-Read `.strategist/contracts/index.yaml` for the authoritative phase manifest and load contracts
-from the paths listed under `narrative.load_order`. Machine contracts are in `machine/`.
+`.strategist/contracts/index.yaml` is the authoritative loading manifest for both
+narrative and machine contracts — the single source of truth for which contracts load
+at which phase. Do not restate its contents here, and never bulk-load ahead of the
+phase that needs them (token economy — every mission, including trivial routes,
+otherwise pays the full read cost).
 
-Narrative contracts (in load order):
+Procedure:
 
-1. `.strategist/contracts/narrative/00-routing.md`
-2. `.strategist/contracts/narrative/01-bootstrap.md`
-3. `.strategist/contracts/narrative/02-intake.md`
-4. `.strategist/contracts/narrative/03-discovery.md`
-5. `.strategist/contracts/narrative/04-refinement.md`
-6. `.strategist/contracts/narrative/05-approval-gate.md`
-7. `.strategist/contracts/narrative/06-execution.md`
-8. `.strategist/contracts/narrative/07-adr.md`
-9. `.strategist/contracts/narrative/08-learning.md`
-10. `.strategist/contracts/narrative/09-response.md`
-11. `.strategist/contracts/narrative/10-telemetry.md`
-12. `.strategist/contracts/narrative/11-critical-hit.md`
+1. Read `index.yaml` first, before any phase work.
+2. Load `machine.always_load` (currently `preflight.yaml`).
+3. As each phase begins, load only that phase's `narrative.by_phase` and
+   `machine.by_phase` entries from `index.yaml` — nothing more.
 
-Machine contracts (loaded per-phase, see index.yaml):
-
-- `.strategist/contracts/machine/preflight.yaml` — always loaded
-- `.strategist/contracts/machine/quick-draw.yaml` — quick draw route
-- `.strategist/contracts/machine/critical-hit.yaml` — critical hit route
-
-Supplemental references:
-
-- `.strategist/contracts/strategist-raid.yaml`
-- `.strategist/protocol.md`
-- `.strategist/schemas/*.yaml`
-
-For `/strategist-raid` (batch refinement of captured ideas), see `contracts/strategist-raid.yaml`.
+Supplemental, loaded on demand (not phase-gated): `strategist-raid.yaml`
+(`/strategist-raid` only), `protocol.md`, `schemas/*.yaml`.
 
 ## Operating Rules
 
@@ -284,15 +268,8 @@ action=stop and invoke the resolved execution provider
 
 ## Drift Self-Correction
 
-Patterns loaded from `identity/drift-patterns.yaml` at preflight (§2b).
-Quick reference — IDs only. Authoritative source is the yaml; do not add descriptions here.
-
-- `direct_execution` — performing slot work directly instead of invoking the configured provider
-- `silent_phase_advance` — starting next phase without emitting done event
-- `approval_bypass` — invoking Sniper without user approval
-- `pipeline_bypass_detected` — mutating repo without phase evidence
-- `side_quest_gate_bypass` — executing manifest items without presenting gate
-- `scope_expansion` — addressing work outside declared mission scope
-- `execution_provider_override` — resolving execution slot from undeclared source
-- `route_plan_creation_to_sniper` — asking Sniper to author documents
-- `local_execution_context_bypass` — executing directly instead of delegating to resolved provider
+Patterns are defined in `identity/drift-patterns.yaml`, loaded at preflight (§2b) when the
+internal domain identity files are present. Authoritative source is the yaml — do not
+restate IDs or descriptions here. If identity files are absent, preflight emits
+`identity=degraded` (see `contracts/machine/preflight.yaml#identity_files_missing`) and
+falls back to this document's own instructions; loading is not unconditional.

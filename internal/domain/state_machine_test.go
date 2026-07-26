@@ -270,3 +270,83 @@ func TestFSMAbsorbingStates(t *testing.T) {
 		assert.Equal(t, s, got)
 	}
 }
+
+// allMissionStates and allTransitionEvents enumerate every FSM state/event so
+// invariant tests below can brute-force the whole transition table instead of
+// hand-picking cases that might miss a future addition.
+var allMissionStates = []domain.MissionState{
+	domain.StateInit, domain.StateSideQuestScan, domain.StateSideQuestGate, domain.StateSideQuestExec,
+	domain.StateRefinement, domain.StateApprovalGate, domain.StateExecution,
+	domain.StateDoneAnalysis, domain.StateDoneDelivery, domain.StateBlocked,
+	domain.StateQuickDraw, domain.StateQuickDrawGate, domain.StateQuickDrawDone,
+	domain.StateADRGate1, domain.StateADRGate2, domain.StateADRDone,
+	domain.StateRetrying, domain.StateRetryingRefinement, domain.StateRetryingExecution, domain.StateRetryingDirectExec,
+	domain.StateDirectGate, domain.StateDirectExec, domain.StateDirectDone,
+}
+
+var allTransitionEvents = []domain.TransitionEvent{
+	domain.EventManifestEmpty, domain.EventManifestNonEmpty,
+	domain.EventGateApproved, domain.EventGateDenied, domain.EventGateTimeout,
+	domain.EventSniperDone, domain.EventArchivistNoTasks, domain.EventArchivistTasks,
+	domain.EventQuickDrawIntent, domain.EventQuickDrawApprove, domain.EventQuickDrawDecline,
+	domain.EventADRCriterionMet, domain.EventADRApproved, domain.EventADRDeclined,
+	domain.EventSlotTransient, domain.EventSlotPermanent,
+	domain.EventSniperSideQuest,
+	domain.EventDirectHitIntent, domain.EventDirectGateApproved, domain.EventDirectGateDeclined,
+}
+
+// TestSideQuestGateCannotBeBypassed is the D12/side_quest_gate_bypass regression
+// guard: it brute-forces every (state, event) pair in the transition table and
+// asserts StateSideQuestExec is reachable from exactly one edge —
+// (StateSideQuestGate, EventGateApproved). A manifest item must never reach
+// execution without first passing through the side-quest gate.
+func TestSideQuestGateCannotBeBypassed(t *testing.T) {
+	t.Parallel()
+	for _, s := range allMissionStates {
+		if s == domain.StateSideQuestExec {
+			continue // self-loops (unhandled events) are not a new arrival, not a bypass
+		}
+		for _, ev := range allTransitionEvents {
+			got := domain.NextState(s, ev)
+			if got != domain.StateSideQuestExec {
+				continue
+			}
+			isTheOneAllowedEdge := s == domain.StateSideQuestGate && ev == domain.EventGateApproved
+			assert.True(t, isTheOneAllowedEdge,
+				"unexpected edge into StateSideQuestExec: (%s, %s) — only (SIDE_QUEST_GATE, gate_approved) may reach it", s, ev)
+		}
+	}
+}
+
+// TestSideQuestGateBypassFuzz is the random-walk counterpart to
+// TestFSMSafetyPropertyLike, scoped to the side-quest gate rather than the main
+// Approval Gate: across many random event sequences, StateSideQuestExec is never
+// reached unless EventGateApproved was seen after the most recent side-quest
+// manifest scan.
+func TestSideQuestGateBypassFuzz(t *testing.T) {
+	t.Parallel()
+	rng := rand.New(rand.NewSource(97))
+	for i := 0; i < 400; i++ {
+		assertRandomSideQuestGateNotBypassed(t, rng)
+	}
+}
+
+func assertRandomSideQuestGateNotBypassed(t *testing.T, rng *rand.Rand) {
+	t.Helper()
+	state := domain.StateInit
+	seenGateApproved := false
+	for j := 0; j < 14; j++ {
+		ev := allTransitionEvents[rng.Intn(len(allTransitionEvents))]
+		if state == domain.StateSideQuestGate && ev == domain.EventGateApproved {
+			seenGateApproved = true
+		}
+		if state == domain.StateSideQuestScan {
+			// Entering the scan again resets whether the *upcoming* gate was cleared.
+			seenGateApproved = false
+		}
+		state = domain.NextState(state, ev)
+		if state == domain.StateSideQuestExec {
+			assert.True(t, seenGateApproved, "reached StateSideQuestExec without EventGateApproved at StateSideQuestGate")
+		}
+	}
+}
