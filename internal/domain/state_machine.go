@@ -1,4 +1,6 @@
-// Package domain's FSM models gate/execution mechanics: side-quest handling, the
+package domain
+
+// stateTransitions models gate/execution mechanics only: side-quest handling, the
 // main Approval Gate, execution, retry-on-transient-failure, Quick Draw, ADR, and
 // Critical Hit. It intentionally does NOT model bootstrap, intake, discovery, or
 // learning as states (S7) — those phases are enforced by contract + progress
@@ -6,8 +8,6 @@
 // a separate design decision (interacts with W7's single-source compilation) and
 // is out of scope here; see the "full-pipeline FSM" follow-up in
 // .analysis/todo/analise-tecnica.md.
-package domain
-
 var stateTransitions = map[MissionState]map[TransitionEvent]MissionState{
 	StateInit: {
 		EventQuickDrawIntent:  StateQuickDraw,
