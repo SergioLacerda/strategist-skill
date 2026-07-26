@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	embedpkg "github.com/SergioLacerda/strategist-skill/internal/embed"
 	"github.com/SergioLacerda/strategist-skill/internal/stale"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/SergioLacerda/strategist-skill/internal/testutil"
@@ -1010,6 +1011,26 @@ diagnostics:
   bootstrap_origin: "[Strategist] profile_path={path} active_yaml={active} reason={reason}\n"
 `
 
+// writeMinimalIdentityFiles creates the internal-domain identity files
+// (templates/domain/identity/{drift-patterns,what-i-am}.yaml) that checkCmd now
+// requires (D6 — see check_identity.go). Any hand-built check root fixture that
+// doesn't go through minimalCheckRoot must call this too.
+//
+// drift-patterns.yaml is also one of domain.NormativeRuntimeDefaultFiles() (checked
+// for embedded-default parity by validateRuntimeDefaultParity), so it must be
+// byte-identical to the real embedded default — an arbitrary placeholder would
+// trip a *different* check (runtime_stale_unknown_manifest) as an unrelated
+// side effect. what-i-am.yaml is not normative-tracked, so any content is fine.
+func writeMinimalIdentityFiles(t *testing.T, dir string) {
+	t.Helper()
+	identityDir := filepath.Join(dir, "templates", "domain", "identity")
+	require.NoError(t, os.MkdirAll(identityDir, 0o755))
+	driftPatterns, err := embedpkg.Extractor{}.ReadFile("templates/domain/identity/drift-patterns.yaml")
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(identityDir, "drift-patterns.yaml"), driftPatterns, 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(identityDir, "what-i-am.yaml"), []byte("identity: strategist\n"), 0o644))
+}
+
 // minimalCheckRoot creates a .strategist/ tree suitable for checkCmd with all
 // three slot providers installed plus a valid epic persona.
 func minimalCheckRoot(t *testing.T) string {
@@ -1042,6 +1063,7 @@ func minimalCheckRoot(t *testing.T) string {
 		[]byte("mode: epic\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: sdd-ask\n"),
 		0o644,
 	))
+	writeMinimalIdentityFiles(t, dir)
 	return dir
 }
 
@@ -1438,6 +1460,7 @@ func TestCheckCmd_ProviderNotInstalled(t *testing.T) {
 		[]byte("mode: epic\nbase_path: .analysis\nslots:\n  discovery: missing-provider\n  refinement: openspec-explore\n  execution: sdd-ask\n"),
 		0o644,
 	))
+	writeMinimalIdentityFiles(t, dir)
 
 	orig := checkRoot
 	t.Cleanup(func() { checkRoot = orig })
@@ -1502,6 +1525,7 @@ func TestCheckCmd_NativeRole_Sniper(t *testing.T) {
 		[]byte("mode: epic\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: sniper\n"),
 		0o644,
 	))
+	writeMinimalIdentityFiles(t, dir)
 
 	orig := checkRoot
 	t.Cleanup(func() { checkRoot = orig })
@@ -1550,6 +1574,7 @@ func TestCheckCmd_NativeRole_InvalidRoleDefinition(t *testing.T) {
 		[]byte("mode: epic\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: sniper\n"),
 		0o644,
 	))
+	writeMinimalIdentityFiles(t, dir)
 
 	orig := checkRoot
 	t.Cleanup(func() { checkRoot = orig })
@@ -1589,6 +1614,7 @@ func TestCheckCmd_NativeRole_SlotMismatch(t *testing.T) {
 		[]byte("mode: epic\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: wrong-role\n"),
 		0o644,
 	))
+	writeMinimalIdentityFiles(t, dir)
 
 	orig := checkRoot
 	t.Cleanup(func() { checkRoot = orig })

@@ -31,8 +31,10 @@ func TestStrategistRaidSkillArtifactsPresent(t *testing.T) {
 func TestStrategistSkillReferencesStrategistRaidContract(t *testing.T) {
 	t.Parallel()
 
+	// The exact sentence moved when W4 (token-economy) compacted the Contract Loading
+	// Order section, but the reference itself must survive in some form.
 	content := readFile(t, filepath.Join(repoRoot(t), "strategist", "SKILL.md"))
-	if !strings.Contains(content, "For `/strategist-raid` (batch refinement of captured ideas), see `contracts/strategist-raid.yaml`.") {
+	if !strings.Contains(content, "strategist-raid.yaml") || !strings.Contains(content, "/strategist-raid") {
 		t.Fatalf("strategist/SKILL.md missing /strategist-raid routing reference")
 	}
 }
