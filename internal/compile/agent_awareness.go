@@ -96,10 +96,7 @@ func upsertSection(path string) error {
 	if !strings.HasSuffix(content, "\n") {
 		content += "\n"
 	}
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil { //nolint:gosec // G306
-		return fmt.Errorf("upsert section: write %s: %w", path, err)
-	}
-	return nil
+	return writeFile(path, []byte(content), "upsert section")
 }
 
 func upsertMarkdownSection(content, sectionHeader, newSection string) string {
@@ -174,10 +171,7 @@ func upsertCodexSeed(path string) error {
 	if err != nil {
 		return fmt.Errorf("codex seed: marshal %s: %w", path, err)
 	}
-	if err := os.WriteFile(path, append(out, '\n'), 0o644); err != nil { //nolint:gosec // G306
-		return fmt.Errorf("codex seed: write %s: %w", path, err)
-	}
-	return nil
+	return writeFile(path, append(out, '\n'), "codex seed")
 }
 
 func requiredContextWithProtocol(raw any, protocolPath string) []any {

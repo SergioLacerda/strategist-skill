@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
 )
 
 type runtimeDefaultPlan struct {
@@ -51,7 +52,7 @@ func planRuntimeDefaultFile(
 	force bool,
 ) (domain.RuntimeDefaultDecision, error) {
 	runtimePath := filepath.Join(strategistDir, filepath.FromSlash(relPath))
-	currentHash, exists, readErr := fileHash(runtimePath)
+	currentHash, exists, readErr := runtimefs.ReadSHA256(runtimePath)
 	if readErr != nil {
 		return "", fmt.Errorf("install: read normative runtime file %s: %w", relPath, readErr)
 	}
@@ -100,10 +101,7 @@ func (s Service) applyRuntimeDefaultFile(strategistDir, relPath string, decision
 		return fmt.Errorf("install: read embedded normative default %s: %w", relPath, err)
 	}
 	targetPath := filepath.Join(strategistDir, filepath.FromSlash(relPath))
-	if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
-		return fmt.Errorf("install: mkdir normative parent %s: %w", filepath.Dir(targetPath), err)
-	}
-	if err := os.WriteFile(targetPath, data, 0o644); err != nil {
+	if err := runtimefs.WriteFile(targetPath, data, 0o644); err != nil {
 		return fmt.Errorf("install: write normative default %s: %w", relPath, err)
 	}
 	return nil
@@ -116,7 +114,7 @@ func saveInstallManifest(strategistDir string, manifest domain.InstallManifest) 
 	}
 	data = append(data, '\n')
 	path := filepath.Join(strategistDir, domain.InstallManifestRelPath)
-	if err := os.WriteFile(path, data, 0o644); err != nil {
+	if err := runtimefs.WriteFile(path, data, 0o644); err != nil {
 		return fmt.Errorf("install: write manifest: %w", err)
 	}
 	return nil
@@ -136,17 +134,6 @@ func loadInstallManifest(strategistDir string) (domain.InstallManifest, bool, er
 		return domain.InstallManifest{}, false, fmt.Errorf("install: parse manifest: %w", err)
 	}
 	return manifest, true, nil
-}
-
-func fileHash(path string) (string, bool, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return "", false, nil
-		}
-		return "", false, fmt.Errorf("read file hash: %w", err)
-	}
-	return domain.SHA256Hex(data), true, nil
 }
 
 func packageID(version string) string {

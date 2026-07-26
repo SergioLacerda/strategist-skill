@@ -3,7 +3,6 @@ package dojo
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
@@ -39,11 +38,8 @@ func missingEmitLogItems(criteria domain.DojoCriteria, filesOnly bool) []domain.
 	}
 	var items []domain.DojoCheckItem
 	for _, key := range criteria.EmitLog.MustContain {
-		items = append(items, domain.DojoCheckItem{
-			Label:  fmt.Sprintf("emit %s", key),
-			Passed: false,
-			Detail: "emit.log not found — run the LLM scenario first",
-		})
+		items = append(items, newItem(fmt.Sprintf("emit %s", key), false,
+			"emit.log not found — run the LLM scenario first"))
 	}
 	return items
 }
@@ -51,20 +47,12 @@ func missingEmitLogItems(criteria domain.DojoCriteria, filesOnly bool) []domain.
 func checkEmitLogText(criteria domain.DojoCriteria, log string) []domain.DojoCheckItem {
 	var items []domain.DojoCheckItem
 	for _, key := range criteria.EmitLog.MustContain {
-		found := strings.Contains(log, key)
-		items = append(items, domain.DojoCheckItem{
-			Label:  fmt.Sprintf("emit %s", key),
-			Passed: found,
-			Detail: ifFail(found, fmt.Sprintf("emit key %q not found in log", key)),
-		})
+		items = append(items, checkTextAssertion(fmt.Sprintf("emit %s", key), log, key, true,
+			fmt.Sprintf("emit key %q not found in log", key)))
 	}
 	for _, key := range criteria.EmitLog.MustNotContain {
-		found := strings.Contains(log, key)
-		items = append(items, domain.DojoCheckItem{
-			Label:  fmt.Sprintf("emit %s must NOT appear", key),
-			Passed: !found,
-			Detail: ifFail(!found, fmt.Sprintf("emit key %q must not appear in log", key)),
-		})
+		items = append(items, checkTextAssertion(fmt.Sprintf("emit %s must NOT appear", key), log, key, false,
+			fmt.Sprintf("emit key %q must not appear in log", key)))
 	}
 	return items
 }

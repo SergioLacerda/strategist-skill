@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -820,6 +821,30 @@ func TestDojoCheckCmd_FilesOnlySkipsEmitLog(t *testing.T) {
 	assert.NotContains(t, out, "emit.log not found")
 }
 
+func TestDojoCheckCmd_PersistsResultAndLesson(t *testing.T) {
+	root := setupDojoScenario(t, "quick-draw",
+		"scenario: quick-draw\nrun_dir: dojo/run\nfiles_created:\n  - path: todo/geral.md\n",
+		"",
+	)
+
+	orig := dojoRoot
+	t.Cleanup(func() { dojoRoot = orig })
+	dojoRoot = root
+
+	_ = captureStdout(t, func() {
+		err := dojoCheckCmd.RunE(dojoCheckCmd, []string{"quick-draw"})
+		require.Error(t, err)
+	})
+
+	basePath := filepath.Join(filepath.Dir(root), ".analysis")
+	_, err := os.Stat(filepath.Join(basePath, "dojo", ".last-run", "quick-draw", "result.json"))
+	require.NoError(t, err, "expected result.json to be persisted")
+	_, err = os.Stat(filepath.Join(basePath, "dojo", ".history.jsonl"))
+	require.NoError(t, err, "expected .history.jsonl to be appended")
+	_, err = os.Stat(filepath.Join(basePath, "dojo", ".last-run", "quick-draw", "lesson.md"))
+	assert.NoError(t, err, "expected lesson.md to be written for a failing run")
+}
+
 func TestDojoCheckCmd_EmptyBasePath(t *testing.T) {
 	dir := t.TempDir()
 	strategistRoot := filepath.Join(dir, ".strategist")
@@ -856,6 +881,25 @@ func TestDojoListCmd_ListsScenarios(t *testing.T) {
 		require.NoError(t, err)
 	})
 	assert.Contains(t, out, "quick-draw")
+}
+
+func TestDojoListCmd_ExcludesRunDirectory(t *testing.T) {
+	root := setupDojoScenario(t, "quick-draw",
+		"scenario: quick-draw\ndescription: \"Quick Draw test\"\n", "ideia: content\n")
+
+	orig := dojoRoot
+	t.Cleanup(func() { dojoRoot = orig })
+	dojoRoot = root
+
+	out := captureStdout(t, func() {
+		err := dojoListCmd.RunE(dojoListCmd, nil)
+		require.NoError(t, err)
+	})
+	assert.Contains(t, out, "quick-draw")
+	for _, line := range strings.Split(out, "\n") {
+		assert.False(t, strings.HasPrefix(line, "run\t") || line == "run",
+			"dojo list must not list the run output directory: %q", line)
+	}
 }
 
 func TestDojoListCmd_EmptyDojo(t *testing.T) {
@@ -1653,7 +1697,7 @@ func writeLines(t *testing.T, path string, count int) {
 	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
 	f, err := os.Create(path)
 	require.NoError(t, err)
-	defer f.Close()
+	defer func() { require.NoError(t, f.Close()) }()
 	for i := 0; i < count; i++ {
 		_, err = fmt.Fprintf(f, "// line %d\n", i+1)
 		require.NoError(t, err)

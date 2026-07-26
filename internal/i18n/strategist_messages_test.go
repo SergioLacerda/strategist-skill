@@ -3,7 +3,9 @@ package i18n_test
 import (
 	"reflect"
 	"regexp"
+	"strings"
 	"testing"
+	"unicode"
 
 	"github.com/SergioLacerda/strategist-skill/internal/i18n"
 	"github.com/stretchr/testify/assert"
@@ -34,7 +36,8 @@ func TestReservedTokensAreNotInENRuntime(t *testing.T) {
 	t.Parallel()
 
 	// These are matched as whole words to avoid false positives (e.g. "similar" contains "sim").
-	forbidden := []string{"sim", "nao", "concordo", "faltou", "saque rapido"}
+	forbidden := append([]string{}, i18n.ReservedGateTokensPTBR()...)
+	forbidden = append(forbidden, i18n.ReservedQuickDrawPT)
 	en := reflect.ValueOf(i18n.ENRuntime)
 	typ := en.Type()
 
@@ -76,12 +79,7 @@ func TestENRuntimeHasDocumentationMaterializationSemantics(t *testing.T) {
 func TestRuntimeMessagesToMap(t *testing.T) {
 	t.Parallel()
 
-	m := i18n.ENRuntime.ToMap()
-	assert.Equal(t, i18n.ENRuntime.IntakeSummary, m["intake_summary"])
-	assert.Equal(t, i18n.ENRuntime.RangerStart, m["ranger_start"])
-	assert.Equal(t, i18n.ENRuntime.SniperDone, m["sniper_done"])
-	assert.Equal(t, i18n.ENRuntime.ArtifactEntry, m["artifact_entry"])
-	assert.NotEmpty(t, m)
+	assertMessageMapCoversStruct(t, i18n.ENRuntime, i18n.ENRuntime.ToMap())
 }
 
 // TestPTBRPhaseAnnouncementsFieldsNonEmpty verifies every phase_announcements field
@@ -103,14 +101,39 @@ func TestPTBRPhaseAnnouncementsFieldsNonEmpty(t *testing.T) {
 func TestPhaseAnnouncementsMessagesToMap(t *testing.T) {
 	t.Parallel()
 
-	m := i18n.PTBRPhaseAnnouncements.ToMap()
-	assert.Equal(t, i18n.PTBRPhaseAnnouncements.DiscoveryStarting, m["discovery_starting"])
-	assert.Equal(t, i18n.PTBRPhaseAnnouncements.DiscoveryDone, m["discovery_done"])
-	assert.Equal(t, i18n.PTBRPhaseAnnouncements.RefinementStarting, m["refinement_starting"])
-	assert.Equal(t, i18n.PTBRPhaseAnnouncements.RefinementDone, m["refinement_done"])
-	assert.Equal(t, i18n.PTBRPhaseAnnouncements.ApprovalGateShown, m["approval_gate_shown"])
-	assert.Equal(t, i18n.PTBRPhaseAnnouncements.DocumentationStarting, m["documentation_starting"])
-	assert.Equal(t, i18n.PTBRPhaseAnnouncements.DocumentationTargetDone, m["documentation_target_done"])
-	assert.Equal(t, i18n.PTBRPhaseAnnouncements.DocumentationDone, m["documentation_done"])
-	assert.Len(t, m, reflect.TypeOf(i18n.PTBRPhaseAnnouncements).NumField())
+	assertMessageMapCoversStruct(t, i18n.PTBRPhaseAnnouncements, i18n.PTBRPhaseAnnouncements.ToMap())
+}
+
+func assertMessageMapCoversStruct(t *testing.T, bundle any, got map[string]any) {
+	t.Helper()
+	v := reflect.ValueOf(bundle)
+	typ := v.Type()
+	assert.Len(t, got, typ.NumField())
+	for i := range typ.NumField() {
+		field := typ.Field(i)
+		key := snakeCase(field.Name)
+		assert.Contains(t, got, key)
+		assert.Equal(t, v.Field(i).String(), got[key], "field %s should map to %q", field.Name, key)
+	}
+}
+
+func snakeCase(name string) string {
+	var out strings.Builder
+	runes := []rune(name)
+	for i, r := range runes {
+		if shouldInsertSnakeUnderscore(runes, i) {
+			out.WriteByte('_')
+		}
+		out.WriteRune(unicode.ToLower(r))
+	}
+	return out.String()
+}
+
+func shouldInsertSnakeUnderscore(runes []rune, index int) bool {
+	if index == 0 || !unicode.IsUpper(runes[index]) {
+		return false
+	}
+	prev := runes[index-1]
+	nextLower := index+1 < len(runes) && unicode.IsLower(runes[index+1])
+	return unicode.IsLower(prev) || unicode.IsDigit(prev) || nextLower
 }

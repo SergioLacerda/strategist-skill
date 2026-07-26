@@ -9,32 +9,49 @@ import (
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
 
-// rollbackInstall restores the workspace to its pre-install state on failure.
-// On a fresh install (strategistDir did not exist before this run), Strategist
-// owns the entire tree and removes it wholesale. On a re-install over an
-// existing tree, pre-existing content is never deleted — only the entries
-// tracked in manifest (added during this run) are rolled back.
-func rollbackInstall(ctx context.Context, strategistDir string, strategistDirExisted bool, manifest []string) {
-	if !strategistDirExisted {
-		if err := os.RemoveAll(strategistDir); err != nil {
+type installTransaction struct {
+	strategistDir string
+	existedBefore bool
+	createdPaths  []string
+}
+
+func newInstallTransaction(strategistDir string) *installTransaction {
+	return &installTransaction{
+		strategistDir: strategistDir,
+		existedBefore: runtimefs.Exists(strategistDir),
+	}
+}
+
+func (tx *installTransaction) record(paths ...string) {
+	tx.createdPaths = append(tx.createdPaths, paths...)
+}
+
+// rollback restores the workspace to its pre-install state on failure.
+// On a fresh install, Strategist owns the entire tree and removes it wholesale.
+// On a re-install over an existing tree, pre-existing content is never deleted:
+// only entries tracked during this transaction are rolled back.
+func (tx *installTransaction) rollback(ctx context.Context) {
+	if !tx.existedBefore {
+		if err := os.RemoveAll(tx.strategistDir); err != nil {
 			slog.ErrorContext(ctx, "[Strategist] rollback failed — manual cleanup required",
-				"path", strategistDir,
+				"path", tx.strategistDir,
 				"error", err,
-				"hint", fmt.Sprintf("rm -rf %s", strategistDir),
+				"hint", fmt.Sprintf("rm -rf %s", tx.strategistDir),
 				telemetry.AttrComponent, "install",
 				telemetry.AttrRuntimeMode, "cli",
 				telemetry.AttrOutputProfile, "default",
-				telemetry.AttrTarget, strategistDir,
+				telemetry.AttrTarget, tx.strategistDir,
 			)
 		}
 	}
 	// strategistDir (when freshly removed above) already covers everything under
 	// it; the remaining manifest entries are outside it (e.g. target/.gitignore)
 	// or, on the existing-tree path, the specific entries added this run.
-	rollbackManifest(ctx, manifest)
+	rollbackManifest(ctx, tx.createdPaths)
 }
 
 // runShimStep writes the SKILL.md shim per cfg (default path, --shim-path, or
@@ -150,10 +167,4 @@ func rollbackManifest(ctx context.Context, manifest []string) {
 		telemetry.AttrRuntimeMode, "cli",
 		telemetry.AttrOutputProfile, "default",
 	)
-}
-
-// fileExists reports whether path exists (any type).
-func fileExists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
 }

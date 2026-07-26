@@ -2,11 +2,12 @@ package compile
 
 import (
 	"compress/gzip"
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
 )
 
 // mtime returns the Unix mtime of path in seconds, or 0 on error.
@@ -55,12 +56,11 @@ func writeGzJSON(outputPath string, v any) error {
 
 // sha256Artifact returns "sha256:<hex>" for the file at path, or "unavailable" on error.
 func sha256Artifact(path string) string {
-	data, err := os.ReadFile(path) //nolint:gosec // G304: path is a compiled artifact path
-	if err != nil {
+	hash, exists, err := runtimefs.ReadSHA256(path)
+	if err != nil || !exists {
 		return "unavailable"
 	}
-	sum := sha256.Sum256(data)
-	return fmt.Sprintf("sha256:%x", sum)
+	return "sha256:" + hash
 }
 
 // loadYAMLFile reads a YAML file and returns its content as a generic map.
