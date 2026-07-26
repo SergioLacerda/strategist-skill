@@ -41,6 +41,26 @@ func TestFSMGateTimeoutTerminatesAnalysis(t *testing.T) {
 	assert.Equal(t, domain.StateDoneAnalysis, state)
 }
 
+// TestFSMGateRevisionLoop is the D2 regression guard: the documented
+// gate -> archivist revision loop (05-approval-gate.md: "Archivist revisits") must
+// be representable end to end — gate, revision, back to refinement, re-presented at
+// the gate, approved, and on into execution.
+func TestFSMGateRevisionLoop(t *testing.T) {
+	t.Parallel()
+	state := domain.RunStateMachine(domain.StateApprovalGate, []domain.TransitionEvent{
+		domain.EventGateRevision,   // ApprovalGate -> Refinement
+		domain.EventArchivistTasks, // Refinement -> ApprovalGate (re-presented)
+		domain.EventGateApproved,   // ApprovalGate -> Execution
+	})
+	assert.Equal(t, domain.StateExecution, state)
+}
+
+func TestFSMGateRevisionGoesToRefinement(t *testing.T) {
+	t.Parallel()
+	state := domain.NextState(domain.StateApprovalGate, domain.EventGateRevision)
+	assert.Equal(t, domain.StateRefinement, state)
+}
+
 func TestSideQuestGateApproved_GoesToExec(t *testing.T) {
 	t.Parallel()
 	state := domain.RunStateMachine(domain.StateSideQuestScan,
@@ -115,8 +135,8 @@ func TestFSMRetryTransient(t *testing.T) {
 	s := domain.NextState(domain.StateRefinement, domain.EventSlotTransient)
 	assert.Equal(t, domain.StateRetryingRefinement, s)
 
-	// Retry succeeds (manifest non-empty = slot returned artifact)
-	s = domain.NextState(s, domain.EventManifestNonEmpty)
+	// Retry succeeds (S9: EventRetryOK, not the overloaded EventManifestNonEmpty)
+	s = domain.NextState(s, domain.EventRetryOK)
 	assert.Equal(t, domain.StateRefinement, s)
 }
 
@@ -126,7 +146,7 @@ func TestFSMRetryTransientExecutionPreservesOrigin(t *testing.T) {
 	s := domain.NextState(domain.StateExecution, domain.EventSlotTransient)
 	assert.Equal(t, domain.StateRetryingExecution, s)
 
-	s = domain.NextState(s, domain.EventManifestNonEmpty)
+	s = domain.NextState(s, domain.EventRetryOK)
 	assert.Equal(t, domain.StateExecution, s)
 }
 
@@ -136,15 +156,30 @@ func TestFSMRetryTransientDirectExecPreservesOrigin(t *testing.T) {
 	s := domain.NextState(domain.StateDirectExec, domain.EventSlotTransient)
 	assert.Equal(t, domain.StateRetryingDirectExec, s)
 
-	s = domain.NextState(s, domain.EventManifestNonEmpty)
+	s = domain.NextState(s, domain.EventRetryOK)
 	assert.Equal(t, domain.StateDirectExec, s)
+}
+
+// TestFSMRetryEventsDoNotOverlapWithManifestEvents is the S9 regression guard:
+// EventManifestEmpty/EventManifestNonEmpty must mean "manifest scan result" only
+// (Init, SideQuestScan, QuickDraw) — retry success is EventRetryOK exclusively, so
+// the three retry states must not react to manifest events at all.
+func TestFSMRetryEventsDoNotOverlapWithManifestEvents(t *testing.T) {
+	t.Parallel()
+	for _, state := range []domain.MissionState{
+		domain.StateRetryingRefinement, domain.StateRetryingExecution, domain.StateRetryingDirectExec,
+	} {
+		for _, ev := range []domain.TransitionEvent{domain.EventManifestEmpty, domain.EventManifestNonEmpty} {
+			got := domain.NextState(state, ev)
+			assert.Equal(t, state, got, "manifest event %s must not resolve retry state %s", ev, state)
+		}
+	}
 }
 
 func TestFSMRetryExhausted(t *testing.T) {
 	t.Parallel()
 
 	for _, state := range []domain.MissionState{
-		domain.StateRetrying,
 		domain.StateRetryingRefinement,
 		domain.StateRetryingExecution,
 		domain.StateRetryingDirectExec,
@@ -240,7 +275,6 @@ func TestFSMStayBranches(t *testing.T) {
 		{"refinement unrelated event", domain.StateRefinement, domain.EventGateApproved},
 		{"approval gate unrelated event", domain.StateApprovalGate, domain.EventManifestEmpty},
 		{"execution unrelated event", domain.StateExecution, domain.EventGateApproved},
-		{"retrying unrelated event", domain.StateRetrying, domain.EventManifestEmpty},
 		{"retrying refinement unrelated event", domain.StateRetryingRefinement, domain.EventManifestEmpty},
 		{"retrying execution unrelated event", domain.StateRetryingExecution, domain.EventManifestEmpty},
 		{"retrying direct exec unrelated event", domain.StateRetryingDirectExec, domain.EventManifestEmpty},
@@ -280,17 +314,17 @@ var allMissionStates = []domain.MissionState{
 	domain.StateDoneAnalysis, domain.StateDoneDelivery, domain.StateBlocked,
 	domain.StateQuickDraw, domain.StateQuickDrawGate, domain.StateQuickDrawDone,
 	domain.StateADRGate1, domain.StateADRGate2, domain.StateADRDone,
-	domain.StateRetrying, domain.StateRetryingRefinement, domain.StateRetryingExecution, domain.StateRetryingDirectExec,
+	domain.StateRetryingRefinement, domain.StateRetryingExecution, domain.StateRetryingDirectExec,
 	domain.StateDirectGate, domain.StateDirectExec, domain.StateDirectDone,
 }
 
 var allTransitionEvents = []domain.TransitionEvent{
 	domain.EventManifestEmpty, domain.EventManifestNonEmpty,
-	domain.EventGateApproved, domain.EventGateDenied, domain.EventGateTimeout,
+	domain.EventGateApproved, domain.EventGateDenied, domain.EventGateTimeout, domain.EventGateRevision,
 	domain.EventSniperDone, domain.EventArchivistNoTasks, domain.EventArchivistTasks,
 	domain.EventQuickDrawIntent, domain.EventQuickDrawApprove, domain.EventQuickDrawDecline,
 	domain.EventADRCriterionMet, domain.EventADRApproved, domain.EventADRDeclined,
-	domain.EventSlotTransient, domain.EventSlotPermanent,
+	domain.EventSlotTransient, domain.EventSlotPermanent, domain.EventRetryOK,
 	domain.EventSniperSideQuest,
 	domain.EventDirectHitIntent, domain.EventDirectGateApproved, domain.EventDirectGateDeclined,
 }

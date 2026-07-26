@@ -1,3 +1,11 @@
+// Package domain's FSM models gate/execution mechanics: side-quest handling, the
+// main Approval Gate, execution, retry-on-transient-failure, Quick Draw, ADR, and
+// Critical Hit. It intentionally does NOT model bootstrap, intake, discovery, or
+// learning as states (S7) — those phases are enforced by contract + progress
+// events, not by this transition table. Extending the FSM to the full pipeline is
+// a separate design decision (interacts with W7's single-source compilation) and
+// is out of scope here; see the "full-pipeline FSM" follow-up in
+// .analysis/todo/analise-tecnica.md.
 package domain
 
 var stateTransitions = map[MissionState]map[TransitionEvent]MissionState{
@@ -28,6 +36,7 @@ var stateTransitions = map[MissionState]map[TransitionEvent]MissionState{
 		EventGateDenied:   StateDoneAnalysis,
 		EventGateApproved: StateExecution,
 		EventGateTimeout:  StateDoneAnalysis,
+		EventGateRevision: StateRefinement, // D2: documented revision loop, now representable
 	},
 	StateExecution: {
 		EventSniperDone:      StateDoneDelivery,
@@ -41,20 +50,15 @@ var stateTransitions = map[MissionState]map[TransitionEvent]MissionState{
 	StateDoneDelivery: {
 		EventADRCriterionMet: StateADRGate1,
 	},
-	StateRetrying: {
-		EventManifestNonEmpty: StateRefinement,
-		EventSlotPermanent:    StateBlocked,
-		EventSlotTransient:    StateBlocked,
-	},
 	StateRetryingRefinement: {
-		EventManifestNonEmpty: StateRefinement,
-		EventSlotPermanent:    StateBlocked,
-		EventSlotTransient:    StateBlocked,
+		EventRetryOK:       StateRefinement,
+		EventSlotPermanent: StateBlocked,
+		EventSlotTransient: StateBlocked,
 	},
 	StateRetryingExecution: {
-		EventManifestNonEmpty: StateExecution,
-		EventSlotPermanent:    StateBlocked,
-		EventSlotTransient:    StateBlocked,
+		EventRetryOK:       StateExecution,
+		EventSlotPermanent: StateBlocked,
+		EventSlotTransient: StateBlocked,
 	},
 	StateQuickDraw: {
 		EventManifestNonEmpty: StateQuickDrawGate,
@@ -82,9 +86,9 @@ var stateTransitions = map[MissionState]map[TransitionEvent]MissionState{
 		EventSlotPermanent: StateBlocked,
 	},
 	StateRetryingDirectExec: {
-		EventManifestNonEmpty: StateDirectExec,
-		EventSlotPermanent:    StateBlocked,
-		EventSlotTransient:    StateBlocked,
+		EventRetryOK:       StateDirectExec,
+		EventSlotPermanent: StateBlocked,
+		EventSlotTransient: StateBlocked,
 	},
 }
 
