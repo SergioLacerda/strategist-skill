@@ -1,7 +1,6 @@
 package telemetry
 
 import (
-	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -68,7 +67,7 @@ func AppendOutcomeLine(path, line string) (appended bool, err error) {
 	if err != nil {
 		return false, fmt.Errorf("open outcomes file: %w", err)
 	}
-	defer closeOutcomeFile(f, &err)
+	defer closeFileWithContext(f, &err, "close outcomes file")
 	return appendOutcomeLineLocked(f, entry.MissionID, line)
 }
 
@@ -102,13 +101,13 @@ func missionIDExists(f *os.File, missionID string) (bool, error) {
 	if _, err := f.Seek(0, io.SeekStart); err != nil {
 		return false, fmt.Errorf("seek outcomes file start: %w", err)
 	}
-	scanner := newOutcomeScanner(f)
+	scanner := newJSONLScanner(f)
 	for scanner.Scan() {
 		if outcomeLineHasMissionID(scanner.Bytes(), missionID) {
 			return true, nil
 		}
 	}
-	return false, outcomeScannerErr(scanner, "scan outcomes file")
+	return false, jsonlScannerErr(scanner, "scan outcomes file")
 }
 
 func outcomeLineHasMissionID(line []byte, missionID string) bool {
@@ -120,25 +119,6 @@ func outcomeLineHasMissionID(line []byte, missionID string) bool {
 		return false
 	}
 	return entry.MissionID == missionID
-}
-
-func newOutcomeScanner(r io.Reader) *bufio.Scanner {
-	scanner := bufio.NewScanner(r)
-	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
-	return scanner
-}
-
-func outcomeScannerErr(scanner *bufio.Scanner, context string) error {
-	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("%s: %w", context, err)
-	}
-	return nil
-}
-
-func closeOutcomeFile(f *os.File, err *error) {
-	if cerr := f.Close(); cerr != nil && *err == nil {
-		*err = fmt.Errorf("close outcomes file: %w", cerr)
-	}
 }
 
 func unlockOutcomeFile(f *os.File, err *error) {
@@ -188,13 +168,13 @@ func readOutcomeBuffer(bufferPath string) ([]byte, error) {
 
 func flushOutcomeBufferData(data []byte, outcomesPath string) (int, error) {
 	flushed := 0
-	scanner := newOutcomeScanner(strings.NewReader(string(data)))
+	scanner := newJSONLScanner(strings.NewReader(string(data)))
 	for scanner.Scan() {
 		if appendBufferedOutcomeLine(outcomesPath, scanner.Text()) {
 			flushed++
 		}
 	}
-	return flushed, outcomeScannerErr(scanner, "scan outcomes buffer")
+	return flushed, jsonlScannerErr(scanner, "scan outcomes buffer")
 }
 
 func appendBufferedOutcomeLine(outcomesPath, line string) bool {

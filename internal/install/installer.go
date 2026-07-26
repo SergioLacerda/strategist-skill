@@ -49,7 +49,7 @@ type Service struct {
 //
 // The context is threaded through for future cancellation support.
 func (s Service) Install(ctx context.Context, cfg domain.InstallConfig) error {
-	strategistDir := filepath.Join(cfg.Target, ".strategist")
+	strategistDir := filepath.Join(cfg.Target, strategistDirName)
 	tx := newInstallTransaction(strategistDir)
 
 	slog.InfoContext(ctx, "[Strategist] install starting",
@@ -131,7 +131,7 @@ func (s Service) applyWorkspaceConfig(ctx context.Context, strategistDir string,
 	if err := s.applyConfig(strategistDir, cfg); err != nil {
 		return nil, err
 	}
-	return []string{filepath.Join(strategistDir, "active.yaml")}, nil
+	return []string{filepath.Join(strategistDir, activeYAMLName)}, nil
 }
 
 func ensureProjectGitignore(cfg domain.InstallConfig) ([]string, error) {

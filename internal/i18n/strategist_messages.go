@@ -2,7 +2,9 @@ package i18n
 
 // RuntimeMessages holds localized runtime strings emitted by Strategist agents during mission execution.
 // These bundles are the canonical localization source for compiled content_by_lang
-// runtime messages; protocol tokens remain centralized in reserved.go.
+// runtime messages; protocol tokens remain centralized in reserved.go. Canonical
+// persona YAML source remains English — pt-BR values live only here and are
+// injected into content_by_lang.pt-BR at compile time (see internal/compile).
 type RuntimeMessages struct {
 	// Intake phase
 	IntakeSummary       string

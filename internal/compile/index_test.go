@@ -24,6 +24,7 @@ func TestCompileIndex(t *testing.T) {
 			content: "sources: []\n",
 			check: func(t *testing.T, a map[string]any) {
 				assert.Equal(t, "strategist-compiled-index/1.0", a["schema"])
+				assertSourceStats(t, a)
 				tags := a["tags"].(map[string]any)
 				assert.Empty(t, tags)
 			},
@@ -36,6 +37,8 @@ func TestCompileIndex(t *testing.T) {
 `,
 			check: func(t *testing.T, a map[string]any) {
 				tags := a["tags"].(map[string]any)
+				sourceMeta := a["source_meta"].(map[string]any)
+				assert.Contains(t, sourceMeta, "arch-doc")
 				assert.Contains(t, tags, "architecture")
 				assert.Contains(t, tags, "system-design")
 				archIDs := tags["architecture"].([]any)

@@ -46,6 +46,7 @@ func Domain(root, outputPath string) error {
 		Schema:         "strategist-compiled-domain/1.0",
 		CompiledAt:     time.Now().Unix(),
 		Sources:        sources,
+		SourceStats:    sourceMetaForSources(sources),
 		LoadAlways:     loadAlways,
 		LoadByTaskType: loadByTaskType,
 	}

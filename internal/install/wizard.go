@@ -13,19 +13,19 @@ var defaultLangOptions = []string{"en", "pt-BR"}
 var defaultModeOptions = []string{"pragmatic", "epic"}
 
 var installableDefaultProviders = map[string]string{
-	"brainstorming":    "skills/brainstorming/skill.yaml",
-	"openspec-explore": "skills/openspec-explore/skill.yaml",
+	defaultDiscoveryProvider:  "skills/brainstorming/skill.yaml",
+	defaultRefinementProvider: "skills/openspec-explore/skill.yaml",
 }
 
 // knownProviderRisk is populated at wizard start from the embedded known-providers.yaml.
 // The static map below is the fallback used only when the embed read fails.
 var knownProviderRisk = map[string]string{
-	"brainstorming":           "write_analysis",
-	"openspec-explore":        "write_analysis",
+	defaultDiscoveryProvider:  "write_analysis",
+	defaultRefinementProvider: "write_analysis",
 	"openspec-propose":        "write_analysis",
 	"openspec-apply-change":   "controlled",
 	"openspec-archive-change": "write_analysis",
-	"sniper":                  "controlled",
+	nativeExecutionProvider:   "controlled",
 	"sdd-ask":                 "controlled",
 	"batata":                  "controlled",
 	"sdd-diagnose":            "write_analysis",
@@ -41,7 +41,7 @@ var knownProviderRisk = map[string]string{
 // loadKnownProviders reads templates/known-providers.yaml from the extractor and
 // returns a provider→risk_score map. Falls back to the static map on any error.
 func loadKnownProviders(extractor domain.FileExtractor) map[string]string {
-	data, err := extractor.ReadFile("templates/known-providers.yaml")
+	data, err := extractor.ReadFile(knownProvidersTemplatePath)
 	if err != nil {
 		return knownProviderRisk
 	}
@@ -63,7 +63,7 @@ type skillConfig struct {
 // loadSkillConfig reads skill.yaml from the extractor and extracts the language and mode
 // option lists declared in active_config. Falls back to hardcoded defaults on any error.
 func loadSkillConfig(extractor domain.FileExtractor) skillConfig {
-	data, err := extractor.ReadFile("skill.yaml")
+	data, err := extractor.ReadFile(skillYAMLName)
 	if err != nil {
 		return skillConfig{LangOptions: defaultLangOptions, ModeOptions: defaultModeOptions}
 	}
@@ -201,18 +201,18 @@ func promptTreasureChest(p Prompter, b i18n.WizardStrings) (string, error) {
 // slots.execution.
 func promptSlots(p Prompter, b i18n.WizardStrings, providerRisk map[string]string) (discovery, refinement, execution string, err error) {
 	fmt.Println(b.HeaderSlots)
-	discovery, err = promptProvider(p, b.PromptDiscovery, "brainstorming", []string{"brainstorming"}, b.LabelCustomInput, providerRisk, "write_analysis", "discovery")
+	discovery, err = promptProvider(p, b.PromptDiscovery, defaultDiscoveryProvider, []string{defaultDiscoveryProvider}, b.LabelCustomInput, providerRisk, "write_analysis", "discovery")
 	if err != nil {
 		return "", "", "", err
 	}
-	refinement, err = promptProvider(p, b.PromptRefinement, "openspec-explore", []string{"openspec-explore"}, b.LabelCustomInput, providerRisk, "write_analysis", "refinement")
+	refinement, err = promptProvider(p, b.PromptRefinement, defaultRefinementProvider, []string{defaultRefinementProvider}, b.LabelCustomInput, providerRisk, "write_analysis", "refinement")
 	if err != nil {
 		return "", "", "", err
 	}
-	if _, err = promptProvider(p, b.PromptExecution, "sniper", []string{"sniper"}, b.LabelCustomInput, providerRisk, "controlled", "execution"); err != nil {
+	if _, err = promptProvider(p, b.PromptExecution, nativeExecutionProvider, []string{nativeExecutionProvider}, b.LabelCustomInput, providerRisk, "controlled", "execution"); err != nil {
 		return "", "", "", err
 	}
-	return discovery, refinement, "sniper", nil
+	return discovery, refinement, nativeExecutionProvider, nil
 }
 
 func promptProvider(p Prompter, prompt, defaultVal string, options []string, customLabel string, providerRisk map[string]string, expectedRisk, field string) (string, error) {

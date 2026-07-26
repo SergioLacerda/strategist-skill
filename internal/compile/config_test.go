@@ -12,6 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const fullActiveYAML = "mode: full\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: sdd-ask\n"
+
 // copyTestdata copies the tree rooted at testdata/<fixture> into dst.
 func copyTestdata(t testing.TB, fixture, dst string) {
 	t.Helper()
@@ -49,6 +51,7 @@ func TestCompileConfig(t *testing.T) {
 				assert.Equal(t, "strategist-compiled-config/1.0", a["schema"])
 				assert.NotNil(t, a["compiled_at"])
 				assert.NotNil(t, a["sources"])
+				assertSourceStats(t, a)
 				assert.NotNil(t, a["active"])
 				personas, ok := a["personas"].(map[string]any)
 				require.True(t, ok)
@@ -71,7 +74,7 @@ func TestCompileConfig(t *testing.T) {
 				t.Helper()
 				require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
 				require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
-				require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte("mode: lite\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n"), 0o644))
+				require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte(fullActiveYAML), 0o644))
 			},
 			check: func(t *testing.T, a map[string]any) {
 				assert.Equal(t, "strategist-compiled-config/1.0", a["schema"])
@@ -96,7 +99,7 @@ func TestCompileConfig(t *testing.T) {
 				t.Helper()
 				require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
 				require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
-				require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte("mode: full\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n"), 0o644))
+				require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte(fullActiveYAML), 0o644))
 				require.NoError(t, os.WriteFile(filepath.Join(dir, "personas", "README.md"), []byte("# readme"), 0o644))
 			},
 			check: func(t *testing.T, a map[string]any) {
@@ -112,7 +115,7 @@ func TestCompileConfig(t *testing.T) {
 				testutil.MinimalRoot(t, dir)
 				require.NoError(t, os.WriteFile(
 					filepath.Join(dir, "active.yaml"),
-					[]byte("mode: full\nbase_path: .analysis\nroles_config: roles/default.yaml\nslots:\n  discovery: brainstorming\n"),
+					[]byte("mode: full\nbase_path: .analysis\nroles_config: roles/default.yaml\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: sdd-ask\n"),
 					0o644,
 				))
 			},
@@ -152,7 +155,7 @@ func TestCompileConfig_InjectsPTBRPhaseAnnouncements(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"),
-		[]byte("mode: full\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n"), 0o644))
+		[]byte(fullActiveYAML), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "personas", "epic.yaml"), []byte(`id: epic
 tone_directive: be precise
 phase_labels:
@@ -234,7 +237,7 @@ func TestCompileConfig_InvalidPersonaYAML(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte("mode: full\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte(fullActiveYAML), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "personas", "bad.yaml"), []byte(": invalid\n  yaml: here"), 0o644))
 	err := compile.Config(dir, filepath.Join(dir, ".compiled", ".config.gz"))
 	require.Error(t, err)
@@ -247,7 +250,7 @@ func TestCompileConfig_PersonaFailsValidation(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
 	require.NoError(t, os.WriteFile(
 		filepath.Join(dir, "active.yaml"),
-		[]byte("mode: full\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n"),
+		[]byte(fullActiveYAML),
 		0o644,
 	))
 	require.NoError(t, os.WriteFile(

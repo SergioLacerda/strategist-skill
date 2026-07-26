@@ -73,6 +73,8 @@ mode: epic
 base_path: .analysis
 slots:
   discovery: brainstorming
+  refinement: openspec-explore
+  execution: sdd-ask
 treasure_chests:
   - id: undeclared-chest
     path: .some/path
@@ -101,6 +103,8 @@ mode: epic
 base_path: .analysis
 slots:
   discovery: brainstorming
+  refinement: openspec-explore
+  execution: sdd-ask
 treasure_chests:
   - id: source
     path: .sdd/source
@@ -135,6 +139,8 @@ mode: epic
 base_path: .analysis
 slots:
   discovery: brainstorming
+  refinement: openspec-explore
+  execution: sdd-ask
 treasure_chests:
   - id: analysis-done
     path: .analysis/done
@@ -184,6 +190,8 @@ mode: epic
 base_path: .analysis
 slots:
   discovery: brainstorming
+  refinement: openspec-explore
+  execution: sdd-ask
 treasure_chests:
   - id: source
     path: .sdd/source
@@ -211,6 +219,8 @@ mode: epic
 base_path: .analysis
 slots:
   discovery: brainstorming
+  refinement: openspec-explore
+  execution: sdd-ask
 treasure_chests:
   - id: source
     path: .sdd/source

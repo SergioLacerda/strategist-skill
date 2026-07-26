@@ -1,5 +1,8 @@
 package domain
 
+// Dojo scenario DTOs stay in domain because internal/dojo and CLI surfaces both consume
+// them; keeping the dependency root here avoids cycles while preserving shared contracts.
+
 // DojoFileCheck specifies one file that must exist and match structural requirements.
 type DojoFileCheck struct {
 	Path             string   `yaml:"path"`

@@ -33,12 +33,13 @@ func Config(root, outputPath string) error {
 	}
 
 	artifact := compiledConfig{
-		Schema:     "strategist-compiled-config/1.0",
-		CompiledAt: time.Now().Unix(),
-		Sources:    sources,
-		Active:     activeRaw,
-		Personas:   mapValuesToAny(personasRaw),
-		Roles:      mapValuesToAny(roles),
+		Schema:      "strategist-compiled-config/1.0",
+		CompiledAt:  time.Now().Unix(),
+		Sources:     sources,
+		SourceStats: sourceMetaForSources(sources),
+		Active:      activeRaw,
+		Personas:    mapValuesToAny(personasRaw),
+		Roles:       mapValuesToAny(roles),
 	}
 
 	if err := writeGzJSON(outputPath, artifact); err != nil {

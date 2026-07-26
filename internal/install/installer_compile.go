@@ -11,7 +11,7 @@ import (
 )
 
 func (s Service) compileAfterInstall(ctx context.Context, cfg domain.InstallConfig, strategistDir string) error {
-	kiPath := filepath.Join(strategistDir, "knowledge.index.yaml")
+	kiPath := filepath.Join(strategistDir, knowledgeIndexName)
 	if compileErr := s.Compiler.CompileAll(strategistDir, kiPath); compileErr != nil {
 		if cfg.StrictCompile {
 			return fmt.Errorf("install: strict compile: %w", compileErr)
