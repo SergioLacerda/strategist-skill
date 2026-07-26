@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -402,3 +403,22 @@ func TestSyncGovernanceCmd_DefaultFlags(t *testing.T) {
 	assert.Equal(t, ".strategist", syncGovernanceRoot)
 	assert.Equal(t, ".sdd", syncGovernanceSddDir)
 }
+
+// --- addLine ---
+
+func TestAddLine_NilRun(t *testing.T) {
+	t.Parallel()
+	// addLine must not panic when run is nil.
+	assert.NotPanics(t, func() { addLine(nil) })
+}
+
+func TestAddLine_NonNilRun(t *testing.T) {
+	t.Parallel()
+	run := telemetry.NewMissionRun("test-add-line")
+	// addLine must not panic and must update snapshot metrics.
+	assert.NotPanics(t, func() { addLine(run) })
+	snap := run.Snapshot()
+	assert.Equal(t, int64(1), snap.LinesEmitted)
+}
+
+// --- go-file-size-report (Makefile contract) ---

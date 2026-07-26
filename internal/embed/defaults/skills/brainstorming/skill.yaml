@@ -17,9 +17,6 @@ specialization_taxonomy:
 
 discovery_subtype_support:
   creative: native
-  evaluation: adapter
-  diagnostic: adapter
-  closure_evidence: adapter
 
 auxiliary_tools_allowed:
   - writing-plans

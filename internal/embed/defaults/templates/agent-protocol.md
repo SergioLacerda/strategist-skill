@@ -42,7 +42,7 @@ Correctness of the parent agent's independent answer does not repair the drift.
 
 - Never perform discovery, refinement, or documentation materialization work directly — always invoke the designated slot provider
 - Never simulate role work by performing slot work in the Strategist shell — if the configured role/provider cannot be invoked, stop with `error=role_invocation_failed`
-- Never invoke a discovery weapon when its manifest lacks `discovery_subtype_support` for Scout's required subtype — stop with `error=provider_capability_mismatch`
+- Never invoke a discovery weapon when its manifest lacks `discovery_subtype_support` for the required subtype — stop with `error=provider_capability_mismatch`. This check only ever applies to `creative`: `evaluation`/`diagnostic`/`closure_evidence` resolve directly to `internal_skills/ranger` and never consult the weapon's manifest (see §3 Discovery Routing).
 - Never read from `strategist/` (without dot) — path drift; only `.strategist/` is valid at runtime
 - Never skip phases — there is no "this task is too small to need discovery"
 - Never invoke Sniper without an explicit Strategist Approval Gate approval from the user in the conversation
@@ -67,12 +67,27 @@ Correctness of the parent agent's independent answer does not repair the drift.
 The providers below are read from `.strategist/active.yaml` at compile time. If `active.yaml` changes, run `strategist compile` to update this file.
 
 ```
-PHASE         INVOKE SKILL               WHAT NOT TO DO
-────────────────────────────────────────────────────────────────────
-discovery  →  {{.Slots.Discovery}}       explore or analyze the code directly
-refinement →  {{.Slots.Refinement}}      write proposals or designs directly
-execution  →  {{.Slots.Execution}}       run git/edits/commits directly
+PHASE         INVOKE SKILL                              WHAT NOT TO DO
+─────────────────────────────────────────────────────────────────────────────
+discovery  →  see Discovery Routing below                explore or analyze the code directly
+refinement →  {{.Slots.Refinement}}                       write proposals or designs directly
+execution  →  {{.Slots.Execution}}                        run git/edits/commits directly
 ```
+
+### Discovery Routing
+
+Discovery invocation target depends on `route_decision.discovery_subtype`
+(set by Scout — see `00-routing.md` § Scout — Intake Router and
+§ Discovery Weapon Resolution by Subtype):
+
+| `discovery_subtype` | Invoke | Kind |
+|---|---|---|
+| `creative` | `{{.Slots.Discovery}}` | `skill_provider` — external weapon, invoked via the `Skill` tool |
+| `evaluation` \| `diagnostic` \| `closure_evidence` | `internal_skills/ranger` | `native_role` — parent agent embodies Ranger directly (same mechanism already used for execution/`sniper`), reading `roles/ranger.yaml` + `internal_skills/ranger/SKILL.md` |
+
+For `evaluation`/`diagnostic`/`closure_evidence` this holds regardless of what `active.slots.discovery` is configured to — the external weapon is never
+consulted for these subtypes. See `03-discovery.md` § Discovery Subtypes and
+`contracts/machine/scout-routing.yaml` § `post_route_capability_check`.
 
 Handoff contracts:
 - Ranger → Archivist: `.strategist/schemas/handoff-ranger-to-archivist.schema.yaml`
@@ -89,7 +104,7 @@ Linear checklist. Do not advance without completing each item.
 [ ] 2. intake (skill: prompt-intake)
 [ ] 3. routing (skill: scout — Intake Router): quick draw? critical hit? main mission?
 [ ] 4. context enrichment (skill: context-enrichment)
-[ ] 5. discovery → invoke {{.Slots.Discovery}}
+[ ] 5. discovery → invoke per Discovery Routing (§3): {{.Slots.Discovery}} for creative, internal_skills/ranger otherwise
 [ ] 6. refinement → invoke {{.Slots.Refinement}}
 [ ] 7. approval gate  ← MANDATORY PAUSE — do not advance without explicit approval; timeout/decline ends as analysis-only
 [ ] 8. materialization → invoke {{.Slots.Execution}}  ← only after gate approved

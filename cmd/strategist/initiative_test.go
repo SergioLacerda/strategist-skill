@@ -123,3 +123,112 @@ func TestInitiativeCmd_WithOutcomesFile(t *testing.T) {
 	})
 	assert.Contains(t, out, "m-test-123")
 }
+
+// --- providers ---
+
+func TestInitiativeCmd_ShowsAllSlots(t *testing.T) {
+	dir := t.TempDir()
+	testutil.MinimalRoot(t, dir)
+
+	orig := initiativeRoot
+	t.Cleanup(func() { initiativeRoot = orig })
+	initiativeRoot = dir
+
+	out := captureStdout(t, func() {
+		require.NoError(t, initiativeCmd.RunE(initiativeCmd, nil))
+	})
+	assert.Contains(t, out, "discovery")
+	assert.Contains(t, out, "brainstorming")
+	assert.Contains(t, out, "refinement")
+	assert.Contains(t, out, "openspec-explore")
+	assert.Contains(t, out, "execution")
+	assert.Contains(t, out, "sdd-ask")
+	// no manifests in minimal root → all show absent
+	assert.Contains(t, out, "⚠ manifest ausente")
+}
+
+func TestInitiativeCmd_ShowsManifestOK(t *testing.T) {
+	dir := t.TempDir()
+	testutil.MinimalRoot(t, dir)
+
+	// write a minimal provider manifest for brainstorming
+	provDir := filepath.Join(dir, "skills", "brainstorming")
+	require.NoError(t, os.MkdirAll(provDir, 0o755))
+	manifest := []byte("id: brainstorming\nstatus: active\nrisk_score: write_analysis\nprovider_class: rankeado\nspecialization_taxonomy:\n  canonical_role: ranger\n  provider_class: rankeado\n")
+	require.NoError(t, os.WriteFile(filepath.Join(provDir, "skill.yaml"), manifest, 0o644))
+
+	orig := initiativeRoot
+	t.Cleanup(func() { initiativeRoot = orig })
+	initiativeRoot = dir
+
+	out := captureStdout(t, func() {
+		require.NoError(t, initiativeCmd.RunE(initiativeCmd, nil))
+	})
+	assert.Contains(t, out, "Ranger rankeado")
+	assert.Contains(t, out, "✓ manifest OK")
+}
+
+func TestInitiativeCmd_MissingActiveYAML(t *testing.T) {
+	dir := t.TempDir() // empty — no active.yaml
+
+	orig := initiativeRoot
+	t.Cleanup(func() { initiativeRoot = orig })
+	initiativeRoot = dir
+
+	err := initiativeCmd.RunE(initiativeCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "active.yaml")
+}
+
+func TestInitiativeCmd_DefaultRootFallback(t *testing.T) {
+	// When --root is empty, RunE auto-discovers via findStrategistRoot.
+	// In a tmpdir with no .strategist/, it should return an error containing "not found".
+	orig := initiativeRoot
+	t.Cleanup(func() { initiativeRoot = orig })
+	initiativeRoot = ""
+
+	// Change CWD to an isolated temp dir so we don't accidentally pick up the real runtime.
+	tmp := t.TempDir()
+	origWd, _ := os.Getwd()
+	require.NoError(t, os.Chdir(tmp))
+	t.Cleanup(func() { _ = os.Chdir(origWd) })
+
+	err := initiativeCmd.RunE(initiativeCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not found")
+}
+
+func TestProviderRow_FallbackRoles(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir() // no manifests
+
+	role, class, status := providerRow(dir, "discovery", "custom-ranger")
+	assert.Equal(t, "Ranger", role)
+	assert.Equal(t, "(base)", class)
+	assert.Equal(t, "⚠ manifest ausente", status)
+
+	role, _, _ = providerRow(dir, "refinement", "custom-arch")
+	assert.Equal(t, "Archivist", role)
+
+	role, _, _ = providerRow(dir, "execution", "custom-sniper")
+	assert.Equal(t, "Sniper", role)
+
+	role, _, _ = providerRow(dir, "custom-slot", "some-provider")
+	assert.Equal(t, "Custom-slot", role) // unknown slot → title-case of slot name
+}
+
+func TestCanonicalRoleLabel(t *testing.T) {
+	t.Parallel()
+	cases := []struct{ input, want string }{
+		{"ranger", "Ranger"},
+		{"RANGER", "Ranger"},
+		{"archivist", "Archivist"},
+		{"Archivist", "Archivist"},
+		{"sniper", "Sniper"},
+		{"custom", "Custom"},
+		{"", ""},
+	}
+	for _, tc := range cases {
+		assert.Equal(t, tc.want, canonicalRoleLabel(tc.input), "input=%q", tc.input)
+	}
+}
