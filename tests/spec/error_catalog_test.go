@@ -18,8 +18,9 @@ import (
 
 type errorCatalogFixture struct {
 	Errors []struct {
-		Token string `yaml:"token"`
-		Emit  string `yaml:"emit"`
+		Token      string `yaml:"token"`
+		Emit       string `yaml:"emit"`
+		EnforcedBy string `yaml:"enforced_by"`
 	} `yaml:"errors"`
 	DriftIndex []string `yaml:"drift_index"`
 }
@@ -166,6 +167,61 @@ func TestErrorCatalogHasNoOrphanTokens(t *testing.T) {
 	for _, e := range cat.Errors {
 		if !strings.Contains(all, e.Token) {
 			t.Errorf("catalog token %q is not referenced anywhere outside errors.yaml — orphan entry", e.Token)
+		}
+	}
+}
+
+// T3 (deep-analysis implementation review, 2026-07-26): every token classifies as
+// enforced_by binary or agent, and binary tokens must be literally, reachably
+// emitted by non-test Go code — a symbol name or doctrine-text mention referencing
+// the token is not sufficient (that was GAP-2's misclassification in the original
+// Pass 0 inventory: extension-unfiltered grep counted embed/defaults docs as Go).
+func TestErrorCatalogEnforcedByIsAccurate(t *testing.T) {
+	t.Parallel()
+
+	root := repoRoot(t)
+	cat := loadErrorCatalog(t, filepath.Join(root, "internal", "embed", "defaults"))
+
+	var goCorpus strings.Builder
+	for _, dir := range []string{filepath.Join(root, "internal"), filepath.Join(root, "cmd")} {
+		err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+			if err != nil || d.IsDir() {
+				return err
+			}
+			if strings.HasSuffix(path, "_test.go") || filepath.Ext(path) != ".go" {
+				return nil
+			}
+			if strings.Contains(filepath.ToSlash(path), "internal/embed/defaults/") {
+				return nil
+			}
+			data, readErr := os.ReadFile(path)
+			if readErr != nil {
+				return readErr
+			}
+			goCorpus.Write(data)
+			goCorpus.WriteByte('\n')
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("walk %s: %v", dir, err)
+		}
+	}
+	code := goCorpus.String()
+
+	for _, e := range cat.Errors {
+		switch e.EnforcedBy {
+		case "binary":
+			literal := "error=" + e.Token
+			reasonLiteral := "reason=" + e.Token
+			if !strings.Contains(code, literal) && !strings.Contains(code, reasonLiteral) {
+				t.Errorf("catalog token %q is enforced_by: binary but no non-test .go file "+
+					"under internal/ or cmd/ (excluding embed defaults) literally emits %q or %q",
+					e.Token, literal, reasonLiteral)
+			}
+		case "agent":
+			// no reachability requirement — doctrine-only tokens
+		default:
+			t.Errorf("catalog token %q has invalid or missing enforced_by (got %q, want binary|agent)", e.Token, e.EnforcedBy)
 		}
 	}
 }

@@ -36,7 +36,7 @@ func checkIdentityFilesBlockingError(root string) error {
 		return nil
 	}
 	return fmt.Errorf(
-		"[Strategist] check=blocked reason=identity_files_missing files_missing=%s\n→ Run: strategist compile-domain",
+		"[Strategist] check=blocked reason=identity_files_missing files_missing=%s\n→ Run: strategist compile",
 		strings.Join(missing, ","),
 	)
 }

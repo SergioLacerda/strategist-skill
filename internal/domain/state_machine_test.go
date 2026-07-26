@@ -341,15 +341,19 @@ func TestSideQuestGateCannotBeBypassed(t *testing.T) {
 			continue // self-loops (unhandled events) are not a new arrival, not a bypass
 		}
 		for _, ev := range allTransitionEvents {
-			got := domain.NextState(s, ev)
-			if got != domain.StateSideQuestExec {
-				continue
-			}
-			isTheOneAllowedEdge := s == domain.StateSideQuestGate && ev == domain.EventGateApproved
-			assert.True(t, isTheOneAllowedEdge,
-				"unexpected edge into StateSideQuestExec: (%s, %s) — only (SIDE_QUEST_GATE, gate_approved) may reach it", s, ev)
+			assertNoUnexpectedEdgeIntoSideQuestExec(t, s, ev)
 		}
 	}
+}
+
+func assertNoUnexpectedEdgeIntoSideQuestExec(t *testing.T, s domain.MissionState, ev domain.TransitionEvent) {
+	t.Helper()
+	if domain.NextState(s, ev) != domain.StateSideQuestExec {
+		return
+	}
+	isTheOneAllowedEdge := s == domain.StateSideQuestGate && ev == domain.EventGateApproved
+	assert.True(t, isTheOneAllowedEdge,
+		"unexpected edge into StateSideQuestExec: (%s, %s) — only (SIDE_QUEST_GATE, gate_approved) may reach it", s, ev)
 }
 
 // TestSideQuestGateBypassFuzz is the random-walk counterpart to
@@ -371,16 +375,23 @@ func assertRandomSideQuestGateNotBypassed(t *testing.T, rng *rand.Rand) {
 	seenGateApproved := false
 	for j := 0; j < 14; j++ {
 		ev := allTransitionEvents[rng.Intn(len(allTransitionEvents))]
-		if state == domain.StateSideQuestGate && ev == domain.EventGateApproved {
-			seenGateApproved = true
-		}
-		if state == domain.StateSideQuestScan {
-			// Entering the scan again resets whether the *upcoming* gate was cleared.
-			seenGateApproved = false
-		}
+		seenGateApproved = nextSeenGateApproved(state, ev, seenGateApproved)
 		state = domain.NextState(state, ev)
 		if state == domain.StateSideQuestExec {
 			assert.True(t, seenGateApproved, "reached StateSideQuestExec without EventGateApproved at StateSideQuestGate")
 		}
 	}
+}
+
+// nextSeenGateApproved tracks whether EventGateApproved was seen at the side-quest
+// gate since the most recent side-quest manifest scan; a new scan resets it because
+// entering the scan again means the *upcoming* gate has not yet been cleared.
+func nextSeenGateApproved(state domain.MissionState, ev domain.TransitionEvent, seenGateApproved bool) bool {
+	if state == domain.StateSideQuestGate && ev == domain.EventGateApproved {
+		return true
+	}
+	if state == domain.StateSideQuestScan {
+		return false
+	}
+	return seenGateApproved
 }

@@ -62,6 +62,9 @@ contract: null
   a flagged candidate). This step never infers completion and never closes a
   package — it only produces `stale_scan_candidates` for the current invocation to
   surface
+- after the stale scan, run the Keen Senses radar (`machine/keen-senses.yaml`) —
+  informational staleness surfacing only (captured entries, jewels, treasure chests);
+  its findings never block bootstrap
 
 ## Evidence
 
