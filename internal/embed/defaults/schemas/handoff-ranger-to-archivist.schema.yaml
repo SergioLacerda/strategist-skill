@@ -96,3 +96,48 @@ required_fields:
     fields:
       mission_open: boolean
       active_phase: string
+  sources_consulted:
+    type: list
+    required: false
+    item_fields: [source_path, content_fingerprint, coverage_status]
+    item_values:
+      coverage_status: [full, partial, skimmed]
+    description: >
+      Sources Ranger opened during discovery, with a fingerprint and how thoroughly
+      each was read. Consumed by contracts/machine/handoff-contract.yaml to decide
+      whether Archivist may reopen a source or must treat it as already covered.
+  evidence_cards:
+    type: list
+    required: false
+    item_fields: [id, question, evidence, interpretation, impact, confidence]
+    description: >
+      Structured question -> evidence -> interpretation -> impact -> confidence
+      records, one per Discovery Question answered.
+  constraints:
+    type: list
+    required: false
+    item_fields: [id, text]
+    description: Hard constraints Archivist must respect while refining.
+  risks:
+    type: list
+    required: false
+    item_fields: [id, text, severity]
+    item_values:
+      severity: [low, medium, high]
+    description: Risks identified during discovery that refinement must account for.
+  knowledge:
+    type: object
+    required: false
+    description: >
+      Epistemic stratification for the discovery output. facts[] remains the home for
+      established facts (see known_facts above) — this field only adds inferences[],
+      which are distinct from facts and must not be treated as decisions until
+      promoted.
+    fields:
+      inferences:
+        type: list
+        item_fields: [id, text, confidence, promoted_to_decision]
+        description: >
+          confidence is a float in [0.0, 1.0]. promoted_to_decision is a bool set
+          only by Archivist during refinement, never by Ranger — an inference
+          becomes a decision during refinement, never during discovery.
