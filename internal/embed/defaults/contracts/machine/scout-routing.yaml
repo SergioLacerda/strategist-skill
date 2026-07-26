@@ -80,13 +80,20 @@ invariants:
 post_route_capability_check:
   description: >
     Runs immediately after route_decision is emitted with
-    evidence_state: requires_discovery, and before the resolved discovery weapon is
-    invoked. This is Scout's routing responsibility, not classic preflight — preflight
-    runs before intake/routing, before discovery_subtype exists.
+    evidence_state: requires_discovery and discovery_subtype: creative, before
+    the resolved discovery weapon is invoked. This is Scout's routing
+    responsibility, not classic preflight — preflight runs before
+    intake/routing, before discovery_subtype exists. For discovery_subtype
+    values other than creative (evaluation, diagnostic, closure_evidence),
+    this check does not run: resolution goes directly to
+    internal_skills/ranger (native_role) and the external weapon's manifest
+    is never consulted — see
+    contracts/narrative/00-routing.md § Discovery Weapon Resolution by Subtype.
   timing: before_weapon_invocation
+  applies_to_subtypes: [creative]
   check: >
     Read the resolved discovery weapon's skill.yaml discovery_subtype_support field.
-    If it does not declare support (native or adapter) for route_decision.discovery_subtype,
+    If it does not declare support (native or adapter) for creative,
     do not invoke the weapon. Emit provider_capability_mismatch instead (see
     contracts/machine/preflight.yaml for the full error condition and remediation hint).
   emit:

@@ -64,16 +64,24 @@ cases:
     expect:
       emit: "[Strategist] phase=preflight status=blocked reason=slot_risk_mismatch slot=discovery"
 
-  - name: brainstorming_diagnostic_not_blocked_by_standalone_creative_first
+  - name: brainstorming_creative_not_blocked_by_standalone_creative_first
     given:
       discovery_provider: brainstorming
       provider_manifest_path: skill_root/skills/brainstorming/skill.yaml
       provider_manifest_risk_score: write_analysis
-      discovery_subtype: diagnostic
+      discovery_subtype: creative
       standalone_skill_md_style: creative-first
     expect:
       no_emit: "[Strategist] phase=preflight status=blocked reason=role_invocation_failed slot=discovery provider=brainstorming"
-      handoff: "[Strategist] phase=intake status=handoff component=scout target=ranger weapon=brainstorming subtype=diagnostic"
+      handoff: "[Strategist] phase=intake status=handoff component=scout target=ranger weapon=brainstorming subtype=creative"
+
+  - name: diagnostic_subtype_bypasses_external_weapon_for_native_ranger
+    given:
+      discovery_provider: brainstorming
+      discovery_subtype: diagnostic
+    expect:
+      note: "external weapon manifest is never consulted for this subtype — see 00-routing.md § Discovery Weapon Resolution by Subtype"
+      handoff: "[Strategist] phase=intake status=handoff component=scout target=ranger weapon=internal_skills/ranger subtype=diagnostic"
 
   - name: provider_not_found
     given:

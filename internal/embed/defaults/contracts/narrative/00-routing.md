@@ -78,6 +78,29 @@ invoke the weapon to discover the mismatch empirically — that wastes an invoca
 risks the weapon partially acting before the mismatch is caught. See `preflight.yaml`
 for the full error condition and remediation hint.
 
+### Discovery Weapon Resolution by Subtype
+
+Discovery invocation target depends on `discovery_subtype`, not solely on
+`active.slots.discovery`:
+
+- `creative` → the external weapon configured at `active.slots.discovery`
+  (`kind=skill_provider`), subject to the Post-Route Capability Check above.
+- `evaluation` | `diagnostic` | `closure_evidence` → always
+  `internal_skills/ranger` (`kind=native_role`), regardless of `active.slots.discovery`. The parent agent embodies Ranger directly — the
+  same native-role mechanism already used for execution/`sniper` — reading
+  `roles/ranger.yaml` + `internal_skills/ranger/SKILL.md` and performing
+  discovery under that contract. The Post-Route Capability Check above does
+  not run for these three subtypes: the external weapon's manifest is never
+  consulted, because the weapon is never a candidate for these subtypes.
+
+This exists because an external weapon's own `SKILL.md` is authored
+independently of Strategist and cannot be relied on to honor
+`roles/ranger.yaml` or subtype-specific obligations, even when its manifest
+declares `adapter` support — declared support in a manifest is a capability
+claim by whoever wrote it, never a live behavior guarantee. Only
+`internal_skills/ranger`, authored by Strategist itself, can be trusted to
+compose with `roles/ranger.yaml` per its own documented "Invocation Contract".
+
 ## Main Mission Sequence
 
 `bootstrap → preflight → intake → discovery → refinement → approval_gate → execution? → adr? → learning`
