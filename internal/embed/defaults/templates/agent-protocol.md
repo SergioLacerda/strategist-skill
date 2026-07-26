@@ -223,7 +223,7 @@ Never advance phases silently.
 Supported modes: `any`, `explicit_confirm`, `human_only` (documented, not enforced by default)
 
 ### Response Contract
-See `strategist/contracts/09-response.md`.
+See `.strategist/contracts/narrative/09-response.md`.
 
 ### Compliance Summary
 Append a compliance summary block before the mission result. The summary should expose the final compliance state of the active mission route and any blocking governance reason when present.
@@ -232,4 +232,4 @@ Append a compliance summary block before the mission result. The summary should 
 Append the final mission result after the compliance summary. The mission result should expose the final mission status, artifact set, and next action.
 
 ### Telemetry Contract
-See `strategist/contracts/10-telemetry.md`.
+See `.strategist/contracts/narrative/10-telemetry.md`.

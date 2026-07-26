@@ -168,7 +168,7 @@ slots:
 # scope values: all | discovery | refinement | execution (list or single string)
 treasure_chest_schema:
   manifest: "strategist/treasure-chests.yaml"    # full governance manifest (trust, routing, budget)
-  source_card_schema: "strategist/schemas/source-card.schema.yaml"
+  source_card_schema: ".strategist/schemas/source-card.schema.yaml"
   legacy_fields: [id, path, scope, description]  # supported in active.yaml declarations
   scope_values: [all, discovery, refinement, execution]
   note: >

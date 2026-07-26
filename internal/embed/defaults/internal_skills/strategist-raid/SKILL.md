@@ -6,7 +6,7 @@ You coordinate a list of captured ideas and invoke Strategist refinement once pe
 
 ## Inputs
 
-Use the contract in `strategist/contracts/strategist-raid.yaml`.
+Use the contract in `.strategist/contracts/strategist-raid.yaml`.
 
 Required:
 - `source_file`

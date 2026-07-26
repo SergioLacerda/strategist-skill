@@ -1,4 +1,4 @@
-.PHONY: build test test-all integration spec validate-expanded validate-all test-lite test-telemetry-lite test-compile-cache test-domain-architecture lint complexity-report go-file-size-report vuln bench cover cover-gate cover-html analysis-structure-gate docs-governance-gate governance-check convergence-check install sync-embed release snapshot clean compile-skill build-site build-all install-web lint-web test-web cover-web
+.PHONY: build test test-all integration spec validate-expanded validate-all test-lite test-telemetry-lite test-compile-cache test-domain-architecture lint complexity-report go-file-size-report vuln bench cover cover-gate cover-html analysis-structure-gate docs-governance-gate governance-check convergence-check install release snapshot clean compile-skill build-site build-all install-web lint-web test-web cover-web
 
 GOCACHE ?= /tmp/go-build-cache
 
@@ -128,10 +128,10 @@ convergence-check:
 		|| (echo "DRIFT: dojo/checker_test.go uses old provider path"; exit 1)
 	@grep -q '"skills".*providerID\|skills.*providerID' cmd/strategist/initiative.go \
 		|| (echo "DRIFT: initiative.go uses old provider path (not skills/<provider>/skill.yaml)"; exit 1)
-	@test -d strategist/internal_skills \
-		|| (echo "DRIFT: strategist/internal_skills/ missing — source-authoring boundary broken"; exit 1)
+	@test ! -d strategist \
+		|| (echo "DRIFT: strategist/ exists — the authoring mirror was retired (W7a); author in internal/embed/defaults/"; exit 1)
 	@test -d internal/embed/defaults/internal_skills \
-		|| (echo "DRIFT: internal/embed/defaults/internal_skills/ missing — embed sync broken"; exit 1)
+		|| (echo "DRIFT: internal/embed/defaults/internal_skills/ missing — authoring tree broken"; exit 1)
 	@echo "Convergence check: OK"
 
 governance-check:
@@ -147,33 +147,8 @@ install: build
 	install -m 755 bin/strategist ~/.local/bin/strategist
 	@echo "[Strategist] binary installed. Run: strategist install --wizard"
 
-# sync-embed copies updated YAML artifacts from strategist/ to internal/embed/defaults/
-# so the next `make build` embeds the latest versions.
-# Run this whenever you edit files under strategist/ that should ship in the binary.
-# After sync-embed, run: make build && ./bin/strategist install --target <project>
-sync-embed:
-	@echo "[Strategist] syncing strategist/ → internal/embed/defaults/"
-	@# active.schema.yaml and roles.schema.yaml are intentionally embed-only runtime validation schemas.
-	rsync -a --delete \
-		--exclude 'active.schema.yaml' \
-		--exclude 'roles.schema.yaml' \
-		strategist/schemas/ internal/embed/defaults/schemas/
-	@# default.yaml is intentionally embed-only: installed workspaces customize role bindings locally.
-	rsync -a --delete \
-		--exclude 'default.yaml' \
-		strategist/roles/ internal/embed/defaults/roles/
-	rsync -a --delete strategist/templates/ internal/embed/defaults/templates/
-	rsync -a --delete strategist/personas/ internal/embed/defaults/personas/
-	rsync -a --delete strategist/output-profiles/ internal/embed/defaults/output-profiles/
-	rsync -a --delete strategist/internal_skills/ internal/embed/defaults/internal_skills/
-	rsync -a --delete strategist/contracts/narrative/ internal/embed/defaults/contracts/narrative/
-	rsync -a --delete strategist/contracts/machine/   internal/embed/defaults/contracts/machine/
-	rsync -a          strategist/contracts/index.yaml  internal/embed/defaults/contracts/index.yaml
-	rsync -a --delete strategist/SKILL.md internal/embed/defaults/SKILL.md
-	rsync -a --delete strategist/protocol.md internal/embed/defaults/protocol.md
-	rsync -a --delete strategist/skill.yaml internal/embed/defaults/skill.yaml
-	rsync -a --delete strategist/treasure-chests.yaml internal/embed/defaults/treasure-chests.yaml
-	@echo "[Strategist] sync done. Next: make build && ./bin/strategist install --target <project>"
+# The sync-embed target was removed in W7a (Option B): internal/embed/defaults/ is now
+# the single authoring source embedded directly via go:embed — there is nothing to sync.
 
 # release publishes to GitHub — requires GITHUB_TOKEN.
 release:

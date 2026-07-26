@@ -34,7 +34,6 @@ func TestNoLegacyMissionStatusTokensInShippedTrees(t *testing.T) {
 	t.Parallel()
 
 	roots := []string{
-		filepath.Join(repoRoot(t), "strategist"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults"),
 	}
 

@@ -99,21 +99,21 @@ Do not re-derive a table here — read the YAML.
 
 This skill operates on a two-path model:
 
-- `strategist/` — source-only authoring tree in this repository. It exists to generate the runtime package and is never a runtime read target.
-- `.strategist/` — runtime instance in the user's workspace. This is the only operational read target during mission execution.
+- `internal/embed/defaults/` — the single authoring and generation source in the
+  Strategist repository, embedded into the binary via `go:embed`. It is never a runtime
+  read target. (The former `strategist/` authoring mirror was retired — if you see a
+  path beginning with `strategist/` without the leading dot, it is a documentation
+  error; read from `.strategist/` instead.)
+- `.strategist/` — runtime instance in the user's workspace, materialized by
+  `strategist install`/`compile`. This is the only operational read target during
+  mission execution.
 
 All contract references, role files, schemas, and personas are read from `.strategist/`.
-If you see a path beginning with `strategist/` (without the leading dot), it is a documentation error — read from `.strategist/` instead.
 
-External discovery/refinement/execution provider capability descriptors
-(`.strategist/skills/<provider_id>/skill.yaml`) are the one exception to the
-"only `strategist/` authors, only `.strategist/` is read" rule: their
-generation source is `internal/embed/defaults/skills/` in this repository, not
-`strategist/` (which has no `skills/` subtree). Do not confuse a provider's own
-installed skill package (its own SKILL.md/skill.yaml, elsewhere on the
-filesystem) with Strategist's capability mirror at
-`.strategist/skills/<provider_id>/skill.yaml` — capability checks such as
-provider existence, `risk_score`, and role taxonomy are read from the latter.
+Do not confuse a provider's own installed skill package (its own SKILL.md/skill.yaml,
+elsewhere on the filesystem) with Strategist's capability mirror at
+`.strategist/skills/<provider_id>/skill.yaml` — capability checks such as provider
+existence, `risk_score`, and role taxonomy are read from the latter.
 Discovery subtype behavior is owned by Ranger, not by provider subtype metadata.
 
 Workspace artifacts resolve through `base_path` from `.strategist/active.yaml`.
@@ -152,18 +152,11 @@ Supplemental, loaded on demand (not phase-gated): `strategist-raid.yaml`
 `strategist check` confirms that the runtime is installed and operational.
 
 If Strategist cannot invoke a configured role/provider during a mission, that is
-an internal skill error. Stop and report:
-
-```
-error=role_invocation_failed
-slot=<discovery|refinement|execution>
-provider=<configured_provider>
-action=fix provider configuration or runtime installation, then rerun strategist check
-```
-
-Equivalent errors may be reported as `slot_provider_not_found`,
-`slot_risk_mismatch`, `provider_capability_mismatch`, or `role_provider_invalid`,
-depending on the cause.
+an internal skill error. Stop and emit the `role_invocation_failed` block shown in
+§ Role Lock above. Reason and action text for this and the related tokens
+(`slot_provider_not_found`, `slot_risk_mismatch`, `provider_capability_mismatch`,
+`role_provider_invalid`) is normative in `.strategist/contracts/machine/errors.yaml`
+— do not restate it.
 
 Strategist must not turn an internal failure into silent ad-hoc work. If the
 skill fails, return the error and wait for correction or new explicit user
@@ -200,15 +193,13 @@ The mode is declared via `local_execution_context.invocation_mode` (`direct` | `
 
 ## Dual Gate Requirement
 
-Execution requires two independent approvals — both must be satisfied before Sniper starts:
-
-1. **Local execution context gate** (`execution_gate=allowed/blocked`) — reported by the invoking context via `governance_injection`. Confirms the local policy permits execution. `allowed` means "not blocked by policy." It is NOT user approval. Absent in direct invocation; defaults to allowed.
-
-2. **Strategist Approval Gate** — the explicit 🚦 Gate prompt presented to the user in the conversation. Required regardless of invocation mode, execution gate state, or any external approval granted upstream.
-
-`execution_gate=allowed` without the Strategist Approval Gate triggers `approval_bypass` drift.
-A user approving at the Approval Gate does NOT override a blocked execution gate.
-See `.strategist/protocol.md#local-execution-context-gate-vs-strategist-approval-gate`.
+Execution requires two independent approvals — both must be satisfied before Sniper
+starts: the **local execution context gate** (`execution_gate=allowed/blocked`, local
+policy only — NOT user approval) and the **Strategist Approval Gate** (the explicit 🚦
+prompt the user answers in the conversation, required on every route and invocation
+mode). `execution_gate=allowed` without the Approval Gate is `approval_bypass` drift;
+user approval never overrides a blocked execution gate. Normative detail:
+`.strategist/agent-protocol.md#local-execution-context-gate-vs-strategist-approval-gate`.
 
 ## Local Execution Context Flow
 
@@ -224,18 +215,14 @@ The field `governance_injection` is the backward-compatible wire name. The prefe
 
 ## Execution Provider Resolution
 
-```
-if local_execution_context.execution_provider is present:
-  execution_provider = local_execution_context.execution_provider
-  resolution_reason = local_context
-else:
-  execution_provider = active.slots.execution
-  resolution_reason = standalone_config
-```
-
-The local execution context wins only for execution provider resolution and related policy context. It does not replace Strategist's pipeline ownership, artifact contract, or Approval Gate.
-
-If the resolved provider is missing or cannot be invoked, Strategist blocks — it does not fall back to direct execution.
+Resolution order is normative in
+`.strategist/contracts/narrative/06-execution.md` § Execution Provider Resolution:
+delegated invocation resolves from `local_execution_context.execution_provider`;
+direct invocation resolves from `active.slots.execution`. The local execution context
+wins only for provider resolution and related policy context — never for pipeline
+ownership, artifact contract, or the Approval Gate. If the resolved provider is
+missing or cannot be invoked, Strategist blocks — it does not fall back to direct
+execution.
 
 ## Local Context Precedence
 
@@ -248,23 +235,11 @@ No specific governance system is the normative model — `local_execution_contex
 
 ## Blocked States
 
-```
-error=local_execution_provider_missing
-reason=delegated invocation did not provide execution_provider
-action=provide local execution context or use direct standalone invocation
-```
-
-```
-error=execution_provider_unavailable
-reason=resolved execution_provider cannot be invoked in this environment
-action=fix provider configuration or runtime installation
-```
-
-```
-drift=local_execution_context_bypass
-reason=Strategist attempted direct execution instead of invoking the resolved provider
-action=stop and invoke the resolved execution provider
-```
+Delegated-execution blocked states — `error=local_execution_provider_missing`,
+`error=execution_provider_unavailable`, `drift=local_execution_context_bypass` — are
+cataloged with normative reason and action text in
+`.strategist/contracts/machine/errors.yaml`. Emit the token line with the catalog's
+reason/action; do not improvise or restate the text here.
 
 ## Drift Self-Correction
 

@@ -28,7 +28,7 @@ Conclusion: the corpus is not mature enough to justify a semantic index yet.
 
 The preferred historical record shape is defined in:
 
-- `strategist/schemas/outcome-entry.schema.yaml`
+- `internal/embed/defaults/schemas/outcome-entry.schema.yaml`
 
 This schema is additive. Current producers may still emit the minimum fields
 required by the protocol while evolving toward richer structured outcomes.

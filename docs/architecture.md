@@ -10,7 +10,7 @@ The project is composed of two independent layers:
 | Layer | Location | Responsibility |
 |-------|----------|----------------|
 | **Go Binary** | `cmd/` + `internal/` | Install, compile, and validate skill artifacts |
-| **Runtime source** | `strategist/` | Source-only authoring tree used to generate the runtime package |
+| **Runtime source** | `internal/embed/defaults/` | Single authoring tree embedded into the binary (`go:embed`); generates the runtime package |
 | **Runtime instance** | `.strategist/` | Operational instructions read by the agent: pipeline, slots, personas, contracts |
 
 The binary **does not execute missions**. It prepares the environment so the agent can run the skill correctly. During a mission, the agent reads `.strategist/`; `strategist/` is a build/documentation source, not a runtime target.
@@ -46,7 +46,7 @@ internal/
 
   embed/                 Defaults embedded in the binary
     defaults.go          embed.FS with all defaults/ files
-    defaults/            Full copy of strategist/ (SKILL.md, roles,
+    defaults/            The authoring source itself (SKILL.md, roles,
                          personas, schemas, contracts, templates)
 
   install/               Installation logic
@@ -183,7 +183,7 @@ The `check-stale` CLI exits with code `0` if fresh and `1` if stale — designed
 
 ## Embedded Defaults
 
-`internal/embed/defaults/` is an exact copy of `strategist/` included in the binary via `//go:embed all:defaults`. This means `strategist install` works **without a network connection** and **without the repository cloned** — the binary carries all defaults in memory.
+`internal/embed/defaults/` is the authoring source itself, included in the binary via `//go:embed all:defaults` (the former `strategist/` authoring mirror was retired in W7a — there is no sync step). This means `strategist install` works **without a network connection** and **without the repository cloned** — the binary carries all defaults in memory.
 
 Extraction preserves the directory structure but does not overwrite pre-existing files (files are written via `os.WriteFile` directly — projects with a custom `.strategist/` should back up before re-installing).
 

@@ -6,7 +6,7 @@
 This document describes the internal components of the Strategist skill runtime: the sub-skills automatically invoked by the orchestrator, the phase contracts, and the input/output schemas.
 
 For the general pipeline and slot behavior, see `docs/architecture.md`.
-For the canonical reading order of contracts, see `strategist/SKILL.md` and `docs/adr/0010-ordered-contracts-and-mission-observability.md`.
+For the canonical reading order of contracts, see `internal/embed/defaults/SKILL.md` and `docs/adr/0010-ordered-contracts-and-mission-observability.md`.
 For configuration, see [configuration.md](configuration.md).
 
 ---
@@ -404,7 +404,7 @@ The rich telemetry contract now covers:
 - `transition_group`
 - `reason`
 
-The canonical namespace is in `internal/telemetry/schema.go` and the target shape is in `strategist/schemas/telemetry-event.schema.yaml`.
+The canonical namespace is in `internal/telemetry/schema.go` and the target shape is in `internal/embed/defaults/schemas/telemetry-event.schema.yaml`.
 
 The `phase_labels` (Ranger/Archivist/Sniper vs analysis/refinement/execution) are resolved from the active persona at runtime — the schema defines only the required fields, not the label values.
 
@@ -424,7 +424,7 @@ Each slot has a write scope declared in `skill.yaml`. Writing outside scope fail
 
 ## Security Test Fixtures
 
-The fixtures in `strategist/tests/fixtures/` represent violation scenarios for security invariants. They are used by the format tests (`tests/fixtures_test.go`) and serve as executable documentation of forbidden behaviors.
+The fixtures in `tests/integration/fixtures/` represent violation scenarios for security invariants. They are used by the format tests (`tests/fixtures_test.go`) and serve as executable documentation of forbidden behaviors.
 
 | Fixture | Invariant tested |
 |---------|-----------------|

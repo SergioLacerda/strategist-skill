@@ -147,10 +147,12 @@ patterns:
   - id: runtime_source_confusion
     symptom: >
       I am about to edit a file under .strategist/ (the runtime instance) to fix a
-      contract, instruction, or normative rule — instead of editing the source in strategist/.
+      contract, instruction, or normative rule — instead of editing the authoring
+      source in internal/embed/defaults/ (Strategist repository).
     correction: >
       Stop. .strategist/ is generated runtime output installed into the workspace.
-      Normative corrections must be made in strategist/ (the source authoring tree).
+      Normative corrections must be made in internal/embed/defaults/, the single
+      authoring source embedded into the binary (the former strategist/ mirror was retired).
       After correcting the source, the runtime can be regenerated via strategist compile or install.
       Editing .strategist/ directly is acceptable only for immediate local inspection or
       temporary consistency; it does not fix the source and will be overwritten on next install.

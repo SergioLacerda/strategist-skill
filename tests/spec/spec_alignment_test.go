@@ -69,7 +69,7 @@ func TestPrimaryContractsDoNotHardcodeAnalysisAsArtifactRoot(t *testing.T) {
 	}
 	checks := []fileCheck{
 		{
-			path:      filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "09-response.md"),
+			path:      filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "09-response.md"),
 			forbidden: []string{"📁 discovery:  .analysis/", "📁 refined:    .analysis/", "📁 report:     .analysis/"},
 		},
 		{
@@ -77,7 +77,7 @@ func TestPrimaryContractsDoNotHardcodeAnalysisAsArtifactRoot(t *testing.T) {
 			forbidden: []string{"📁 discovery:  .analysis/", "📁 refined:    .analysis/", "📁 report:     .analysis/"},
 		},
 		{
-			path:      filepath.Join(repoRoot(t), "strategist", "personas", "epic.yaml"),
+			path:      filepath.Join(repoRoot(t), "internal", "embed", "defaults", "personas", "epic.yaml"),
 			forbidden: []string{"📁 discovery:  .analysis/", "📁 refined:    .analysis/", "📁 report:     .analysis/"},
 		},
 		{
@@ -99,31 +99,17 @@ func TestRuntimeContractsDoNotReferenceSourceTreeSchemas(t *testing.T) {
 	t.Parallel()
 
 	// Runtime-facing contracts must reference .strategist/schemas/ (runtime tree),
-	// not strategist/schemas/ (source tree).
-	pairs := [][2]string{
-		{
-			filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "02-intake.md"),
-			filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "02-intake.md"),
-		},
-		{
-			filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "03-discovery.md"),
-			filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "03-discovery.md"),
-		},
-		{
-			filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "04-refinement.md"),
-			filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "04-refinement.md"),
-		},
-		{
-			filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "learning-buffer.yaml"),
-			filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "learning-buffer.yaml"),
-		},
+	// never a dot-less strategist/schemas/ path.
+	paths := []string{
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "02-intake.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "03-discovery.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "04-refinement.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "learning-buffer.yaml"),
 	}
-	for _, pair := range pairs {
-		for _, path := range pair {
-			content := readFile(t, path)
-			if strings.Contains(content, "`strategist/schemas/") || strings.Contains(content, " strategist/schemas/") {
-				t.Fatalf("%s references source-tree schema path strategist/schemas/; use .strategist/schemas/ instead", path)
-			}
+	for _, path := range paths {
+		content := readFile(t, path)
+		if strings.Contains(content, "`strategist/schemas/") || strings.Contains(content, " strategist/schemas/") {
+			t.Fatalf("%s references dot-less schema path strategist/schemas/; use .strategist/schemas/ instead", path)
 		}
 	}
 }
@@ -162,22 +148,25 @@ func TestCanonicalProviderPathIsSkillsSubdirectory(t *testing.T) {
 func TestSourceInternalSkillsDirMirrorsRuntimeLayout(t *testing.T) {
 	t.Parallel()
 
-	// Source authoring dir must be internal_skills/, not skills/, so it maps directly to runtime.
-	sourceDir := filepath.Join(repoRoot(t), "strategist", "internal_skills")
+	// Two-tree world (W7a, Option B): internal/embed/defaults/ is the single
+	// authoring+generation source; internal skills are authored under internal_skills/
+	// (skills/ holds external provider capability mirrors, a different namespace).
+	sourceDir := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "internal_skills")
 	if _, err := os.Stat(sourceDir); os.IsNotExist(err) {
-		t.Fatalf("strategist/internal_skills/ must exist as the source-authoring directory for internal skills")
+		t.Fatalf("internal/embed/defaults/internal_skills/ must exist as the authoring directory for internal skills")
 	}
 
-	// Legacy source directory must not exist.
-	legacyDir := filepath.Join(repoRoot(t), "strategist", "skills")
-	if _, err := os.Stat(legacyDir); !os.IsNotExist(err) {
-		t.Fatalf("strategist/skills/ still exists — internal skills must be authored under strategist/internal_skills/")
+	// The retired authoring mirror must stay deleted.
+	retiredTree := filepath.Join(repoRoot(t), "strategist")
+	if _, err := os.Stat(retiredTree); !os.IsNotExist(err) {
+		t.Fatalf("strategist/ still exists — the authoring mirror was retired (W7a); author in internal/embed/defaults/")
 	}
 
-	// Makefile sync must target the renamed source directory.
+	// The manual sync step must stay deleted with it (a prose mention in comments is
+	// fine; a target definition is not).
 	makefile := readFile(t, filepath.Join(repoRoot(t), "Makefile"))
-	if !strings.Contains(makefile, "strategist/internal_skills/") {
-		t.Fatalf("Makefile does not sync strategist/internal_skills/ — embed sync is broken")
+	if strings.Contains(makefile, "\nsync-embed:") {
+		t.Fatalf("Makefile still defines the sync-embed target — the two-tree world has no manual sync step")
 	}
 }
 
@@ -185,7 +174,6 @@ func TestRemedationLabelPointsToCanonicalSkillsDir(t *testing.T) {
 	t.Parallel()
 
 	files := []string{
-		filepath.Join(repoRoot(t), "strategist", "schemas", "progress-contract.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "schemas", "progress-contract.yaml"),
 	}
 	for _, path := range files {
@@ -200,9 +188,9 @@ func TestPrimaryRuntimeContractsDoNotHardcodeAnalysisAsInvariant(t *testing.T) {
 	t.Parallel()
 
 	files := []string{
-		filepath.Join(repoRoot(t), "strategist", "SKILL.md"),
-		filepath.Join(repoRoot(t), "strategist", "skill.yaml"),
-		filepath.Join(repoRoot(t), "strategist", "protocol.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "SKILL.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "skill.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "protocol.md"),
 	}
 
 	for _, path := range files {
@@ -216,7 +204,7 @@ func TestPrimaryRuntimeContractsDoNotHardcodeAnalysisAsInvariant(t *testing.T) {
 func TestProtocolReferencesUseRuntimeTreeNotSourceTree(t *testing.T) {
 	t.Parallel()
 
-	path := filepath.Join(repoRoot(t), "strategist", "protocol.md")
+	path := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "protocol.md")
 	content := readFile(t, path)
 
 	for _, needle := range []string{
@@ -232,11 +220,11 @@ func TestProtocolReferencesUseRuntimeTreeNotSourceTree(t *testing.T) {
 func TestStrategistSkillDeclaresRuntimeAndWorkspacePathContracts(t *testing.T) {
 	t.Parallel()
 
-	path := filepath.Join(repoRoot(t), "strategist", "SKILL.md")
+	path := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "SKILL.md")
 	content := readFile(t, path)
 
 	for _, needle := range []string{
-		"`strategist/` — source-only",
+		"`internal/embed/defaults/` — the single authoring and generation source",
 		"`.strategist/` — runtime instance",
 		"only operational read target",
 		"`base_path`",
@@ -248,25 +236,9 @@ func TestStrategistSkillDeclaresRuntimeAndWorkspacePathContracts(t *testing.T) {
 	}
 }
 
-func TestNormativeRuntimeFilesMirrorEmbeddedDefaults(t *testing.T) {
-	t.Parallel()
-
-	root := repoRoot(t)
-	for _, rel := range normativeRuntimeFiles() {
-		rel := rel
-		t.Run(rel, func(t *testing.T) {
-			t.Parallel()
-			sourcePath := filepath.Join(root, "strategist", filepath.FromSlash(rel))
-			embedPath := filepath.Join(root, "internal", "embed", "defaults", filepath.FromSlash(rel))
-
-			source := readFile(t, sourcePath)
-			embedded := readFile(t, embedPath)
-			if source != embedded {
-				t.Fatalf("%s drifted from embedded default %s; run make sync-embed after changing normative Strategist runtime files", sourcePath, embedPath)
-			}
-		})
-	}
-}
+// TestNormativeRuntimeFilesMirrorEmbeddedDefaults was removed in W7a (Option B):
+// with strategist/ retired, internal/embed/defaults/ IS the canonical source, so
+// source↔embed parity is true by construction. Runtime parity is covered below.
 
 func TestLocalRuntimeMirrorsCanonicalNormativeFilesWhenPresent(t *testing.T) {
 	t.Parallel()
@@ -281,13 +253,13 @@ func TestLocalRuntimeMirrorsCanonicalNormativeFilesWhenPresent(t *testing.T) {
 		rel := rel
 		t.Run(rel, func(t *testing.T) {
 			t.Parallel()
-			sourcePath := filepath.Join(root, "strategist", filepath.FromSlash(rel))
+			sourcePath := filepath.Join(root, "internal", "embed", "defaults", filepath.FromSlash(rel))
 			runtimePath := filepath.Join(runtimeRoot, filepath.FromSlash(rel))
 
 			source := readFile(t, sourcePath)
 			runtime := readFile(t, runtimePath)
 			if source != runtime {
-				t.Fatalf("%s drifted from canonical source %s; regenerate runtime from strategist/ defaults", runtimePath, sourcePath)
+				t.Fatalf("%s drifted from canonical source %s; reinstall/recompile runtime from internal/embed/defaults", runtimePath, sourcePath)
 			}
 		})
 	}
@@ -297,7 +269,6 @@ func TestStrategistPipelineHasNoImplementationShortRoute(t *testing.T) {
 	t.Parallel()
 
 	for _, rel := range []string{
-		filepath.Join("strategist", "skill.yaml"),
 		filepath.Join("internal", "embed", "defaults", "skill.yaml"),
 	} {
 		path := filepath.Join(repoRoot(t), rel)
@@ -548,8 +519,8 @@ func TestBootstrapContractDefinesInvalidLocalProfileErrorCode(t *testing.T) {
 
 func TestStrategistResponseContractIsExternalized(t *testing.T) {
 	t.Parallel()
-	protocolPath := filepath.Join(repoRoot(t), "strategist", "protocol.md")
-	skillPath := filepath.Join(repoRoot(t), "strategist", "SKILL.md")
+	protocolPath := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "protocol.md")
+	skillPath := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "SKILL.md")
 
 	protocol := readFile(t, protocolPath)
 	skill := readFile(t, skillPath)
@@ -718,7 +689,6 @@ func TestCommonDiscoveryContractExists(t *testing.T) {
 	// The common discovery contract must exist in both the source tree and the
 	// embedded defaults so it is available after install.
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "provider-discovery.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "provider-discovery.md"),
 	} {
 		if _, err := os.Stat(path); err != nil {
@@ -731,7 +701,6 @@ func TestCommonDiscoveryContractDefinesMandatoryFields(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "provider-discovery.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "provider-discovery.md"),
 	} {
 		content := readFile(t, path)
@@ -752,7 +721,6 @@ func TestMissionMetricsSignalPresent(t *testing.T) {
 	t.Parallel()
 
 	files := []string{
-		filepath.Join(repoRoot(t), "strategist", "schemas", "progress-contract.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "schemas", "progress-contract.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "intake.yaml"),
 	}
@@ -854,7 +822,6 @@ func TestInternalSkillsSourceBoundarySymmetric(t *testing.T) {
 	t.Parallel()
 
 	dirs := []string{
-		filepath.Join(repoRoot(t), "strategist", "internal_skills"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "internal_skills"),
 	}
 
@@ -889,7 +856,6 @@ func TestPreflightProviderManifestIsSlotAuthority(t *testing.T) {
 	t.Parallel()
 
 	contractFiles := []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "preflight.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "preflight.yaml"),
 	}
 
@@ -931,7 +897,6 @@ func TestSniperWriteScopeIsWorkspaceAndDocs(t *testing.T) {
 	// The execution contract must declare that Sniper write scope is workspace files
 	// and documentation files only — code mutation is always forbidden.
 	files := []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "06-execution.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "06-execution.md"),
 	}
 
@@ -968,7 +933,6 @@ func TestActiveYAMLTemplatesDoNotContainLegacyPolicyFields(t *testing.T) {
 	// All active.yaml templates in the embed tree must not contain legacy execution_mode
 	// or git_persistence_mode fields — they were removed in the scope simplification.
 	templateDirs := []string{
-		filepath.Join(repoRoot(t), "strategist", "templates"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates"),
 	}
 
@@ -1003,8 +967,8 @@ func TestStandaloneTemplatesDefaultExecutionToSniper(t *testing.T) {
 	// Standalone active.yaml templates must ship with sniper as the default execution
 	// provider. This ensures both silent install and wizard defaults align.
 	standaloneTemplates := []string{
-		filepath.Join(repoRoot(t), "strategist", "templates", "epic-standalone.yaml"),
-		filepath.Join(repoRoot(t), "strategist", "templates", "pragmatic-standalone.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "epic-standalone.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "pragmatic-standalone.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "epic-standalone.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "pragmatic-standalone.yaml"),
 	}
@@ -1036,9 +1000,9 @@ func TestSchemaFilesDoNotContainLegacyPlanOnly(t *testing.T) {
 	t.Parallel()
 	root := repoRoot(t)
 
-	assertNoToken(t, filepath.Join(root, "strategist", "schemas", "mission-result.schema.yaml"), "plan_only")
-	assertNoToken(t, filepath.Join(root, "strategist", "schemas", "outcome-entry.schema.yaml"), "plan_only")
-	assertNoToken(t, filepath.Join(root, "strategist", "schemas", "progress-contract.yaml"), "plan_only")
+	assertNoToken(t, filepath.Join(root, "internal", "embed", "defaults", "schemas", "mission-result.schema.yaml"), "plan_only")
+	assertNoToken(t, filepath.Join(root, "internal", "embed", "defaults", "schemas", "outcome-entry.schema.yaml"), "plan_only")
+	assertNoToken(t, filepath.Join(root, "internal", "embed", "defaults", "schemas", "progress-contract.yaml"), "plan_only")
 	assertNoToken(t, filepath.Join(root, "internal", "embed", "defaults", "schemas", "mission-result.schema.yaml"), "plan_only")
 	assertNoToken(t, filepath.Join(root, "internal", "embed", "defaults", "schemas", "outcome-entry.schema.yaml"), "plan_only")
 	assertNoToken(t, filepath.Join(root, "internal", "embed", "defaults", "schemas", "progress-contract.yaml"), "plan_only")
@@ -1049,7 +1013,6 @@ func TestApprovalGateContractUsesReviewGateSemantics(t *testing.T) {
 	root := repoRoot(t)
 
 	paths := []string{
-		filepath.Join(root, "strategist", "contracts", "machine", "approval-gate.yaml"),
 		filepath.Join(root, "internal", "embed", "defaults", "contracts", "machine", "approval-gate.yaml"),
 	}
 
@@ -1069,7 +1032,6 @@ func TestSniperIsDocumentationMaterializerNotExecutionSkill(t *testing.T) {
 	root := repoRoot(t)
 
 	paths := []string{
-		filepath.Join(root, "strategist", "internal_skills", "sniper", "SKILL.md"),
 		filepath.Join(root, "internal", "embed", "defaults", "internal_skills", "sniper", "SKILL.md"),
 	}
 	forbidden := []string{
@@ -1105,9 +1067,9 @@ func TestDocumentationPipelineDoesNotContainLegacyExecutionTerms(t *testing.T) {
 
 	forbidden := []string{"apply_workspace", "execution_mode", "git_persistence_mode", "CanExecute"}
 	paths := []string{
-		filepath.Join(root, "strategist", "SKILL.md"),
-		filepath.Join(root, "strategist", "skill.yaml"),
-		filepath.Join(root, "strategist", "protocol.md"),
+		filepath.Join(root, "internal", "embed", "defaults", "SKILL.md"),
+		filepath.Join(root, "internal", "embed", "defaults", "skill.yaml"),
+		filepath.Join(root, "internal", "embed", "defaults", "protocol.md"),
 		filepath.Join(root, "internal", "embed", "defaults", "SKILL.md"),
 		filepath.Join(root, "internal", "embed", "defaults", "protocol.md"),
 	}
@@ -1133,7 +1095,7 @@ func TestDocumentationPipelineDoesNotContainLegacyExecutionTerms(t *testing.T) {
 func TestStrategistSourceTreeEnglishOnly(t *testing.T) {
 	t.Parallel()
 	root := repoRoot(t)
-	strategistDir := filepath.Join(root, "strategist")
+	strategistDir := filepath.Join(root, "internal", "embed", "defaults")
 
 	// Portuguese prose markers that must NOT appear in canonical strategist/ files.
 	// These are not language-code data — they are prose fragments in Portuguese.
@@ -1196,7 +1158,6 @@ func TestRoleInvocationFailureContractPresent(t *testing.T) {
 	// agent-protocol.md templates must declare role_invocation_failed as a named internal
 	// error state and forbid direct simulation of role work.
 	templatePaths := []string{
-		filepath.Join(repoRoot(t), "strategist", "templates", "agent-protocol.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "agent-protocol.md"),
 	}
 	for _, path := range templatePaths {
@@ -1211,7 +1172,6 @@ func TestRoleInvocationFailureContractPresent(t *testing.T) {
 
 	// drift-patterns.yaml files must include a role_invocation_failed pattern.
 	driftPaths := []string{
-		filepath.Join(repoRoot(t), "strategist", "templates", "domain", "identity", "drift-patterns.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "domain", "identity", "drift-patterns.yaml"),
 	}
 	for _, path := range driftPaths {
@@ -1230,7 +1190,7 @@ func TestRoleInvocationFailureContractPresent(t *testing.T) {
 func TestStrategistNoLegacyExecutionTerminology(t *testing.T) {
 	t.Parallel()
 	root := repoRoot(t)
-	strategistDir := filepath.Join(root, "strategist")
+	strategistDir := filepath.Join(root, "internal", "embed", "defaults")
 
 	// Forbidden legacy terms. See design doc: 2026-06-25-strategist-english-canonical-i18n-design.md.
 	forbidden := []string{
@@ -1277,8 +1237,8 @@ func TestPersonaFilesHaveNoPtBRContentBlocks(t *testing.T) {
 	root := repoRoot(t)
 
 	personaPaths := []string{
-		filepath.Join(root, "strategist", "personas", "epic.yaml"),
-		filepath.Join(root, "strategist", "personas", "pragmatic.yaml"),
+		filepath.Join(root, "internal", "embed", "defaults", "personas", "epic.yaml"),
+		filepath.Join(root, "internal", "embed", "defaults", "personas", "pragmatic.yaml"),
 		filepath.Join(root, "internal", "embed", "defaults", "personas", "epic.yaml"),
 		filepath.Join(root, "internal", "embed", "defaults", "personas", "pragmatic.yaml"),
 	}
@@ -1311,8 +1271,8 @@ func TestPersonasUseApprovalGateSemantics(t *testing.T) {
 	root := repoRoot(t)
 
 	paths := []string{
-		filepath.Join(root, "strategist", "personas", "epic.yaml"),
-		filepath.Join(root, "strategist", "personas", "pragmatic.yaml"),
+		filepath.Join(root, "internal", "embed", "defaults", "personas", "epic.yaml"),
+		filepath.Join(root, "internal", "embed", "defaults", "personas", "pragmatic.yaml"),
 		filepath.Join(root, "internal", "embed", "defaults", "personas", "epic.yaml"),
 		filepath.Join(root, "internal", "embed", "defaults", "personas", "pragmatic.yaml"),
 	}
@@ -1332,7 +1292,7 @@ func TestPersonasUseApprovalGateSemantics(t *testing.T) {
 // invocation failures as internal skill errors, not caller delegation gates.
 func TestRoleInvocationFailuresInSKILLMD(t *testing.T) {
 	t.Parallel()
-	path := filepath.Join(repoRoot(t), "strategist", "SKILL.md")
+	path := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "SKILL.md")
 	content := readFile(t, path)
 
 	required := []string{
@@ -1354,7 +1314,7 @@ func TestRoleInvocationFailuresInSKILLMD(t *testing.T) {
 // forbids simulating role work (performing slot work in the Strategist shell).
 func TestProtocolDeclaresRoleSimulationForbidden(t *testing.T) {
 	t.Parallel()
-	path := filepath.Join(repoRoot(t), "strategist", "protocol.md")
+	path := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "protocol.md")
 	content := readFile(t, path)
 
 	for _, needle := range []string{
@@ -1374,7 +1334,6 @@ func TestDriftPatternsIncludeApprovalAndRuntimePatterns(t *testing.T) {
 	t.Parallel()
 
 	paths := []string{
-		filepath.Join(repoRoot(t), "strategist", "templates", "domain", "identity", "drift-patterns.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "domain", "identity", "drift-patterns.yaml"),
 	}
 	required := []string{
@@ -1395,7 +1354,7 @@ func TestDriftPatternsIncludeApprovalAndRuntimePatterns(t *testing.T) {
 // machine contract declares role_invocation_failed as a named error condition.
 func TestPreflightContractDeclaresRoleInvocationFailure(t *testing.T) {
 	t.Parallel()
-	path := filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "preflight.yaml")
+	path := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "preflight.yaml")
 	content := readFile(t, path)
 
 	for _, needle := range []string{
@@ -1417,7 +1376,6 @@ func TestSkillDeclaresRoleLockForParentAgent(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "SKILL.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "SKILL.md"),
 	} {
 		content := readFile(t, path)
@@ -1440,7 +1398,6 @@ func TestAgentProtocolDeclaresParentAgentBoundary(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "templates", "agent-protocol.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "agent-protocol.md"),
 	} {
 		content := readFile(t, path)
@@ -1463,7 +1420,6 @@ func TestRoutingContractExcludesCodeMutationFromCriticalHit(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "00-routing.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "00-routing.md"),
 	} {
 		content := readFile(t, path)
@@ -1485,7 +1441,6 @@ func TestExecutionContractForbidsParentAgentMutationBypass(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "06-execution.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "06-execution.md"),
 	} {
 		content := readFile(t, path)
@@ -1509,7 +1464,6 @@ func TestCriticalHitSupportsEvidenceGatedClosureIntoDone(t *testing.T) {
 	t.Parallel()
 
 	narrativePaths := []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "11-critical-hit.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "11-critical-hit.md"),
 	}
 	for _, path := range narrativePaths {
@@ -1532,7 +1486,6 @@ func TestCriticalHitSupportsEvidenceGatedClosureIntoDone(t *testing.T) {
 	}
 
 	machinePaths := []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "critical-hit.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "critical-hit.yaml"),
 	}
 	for _, path := range machinePaths {
@@ -1561,8 +1514,8 @@ func TestCloseCardIsNotASeparateRoute(t *testing.T) {
 
 	root := repoRoot(t)
 	for _, rel := range []string{
-		filepath.Join("strategist", "contracts", "narrative", "12-close-card.md"),
-		filepath.Join("strategist", "contracts", "machine", "close-card.yaml"),
+		filepath.Join("internal", "embed", "defaults", "contracts", "narrative", "12-close-card.md"),
+		filepath.Join("internal", "embed", "defaults", "contracts", "machine", "close-card.yaml"),
 		filepath.Join("internal", "embed", "defaults", "contracts", "narrative", "12-close-card.md"),
 		filepath.Join("internal", "embed", "defaults", "contracts", "machine", "close-card.yaml"),
 	} {
@@ -1572,7 +1525,6 @@ func TestCloseCardIsNotASeparateRoute(t *testing.T) {
 	}
 
 	for _, path := range []string{
-		filepath.Join(root, "strategist", "skill.yaml"),
 		filepath.Join(root, "internal", "embed", "defaults", "skill.yaml"),
 	} {
 		content := readFile(t, path)
@@ -1593,7 +1545,6 @@ func TestDocumentationAppliedDoesNotTriggerClosure(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "06-execution.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "06-execution.md"),
 	} {
 		content := readFile(t, path)
@@ -1611,7 +1562,6 @@ func TestDocumentationAppliedDoesNotTriggerClosure(t *testing.T) {
 	}
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "00-routing.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "00-routing.md"),
 	} {
 		content := readFile(t, path)
@@ -1624,7 +1574,6 @@ func TestDocumentationAppliedDoesNotTriggerClosure(t *testing.T) {
 	}
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "critical-hit.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "critical-hit.yaml"),
 	} {
 		content := readFile(t, path)
@@ -1637,7 +1586,6 @@ func TestDocumentationAppliedDoesNotTriggerClosure(t *testing.T) {
 	}
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "11-critical-hit.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "11-critical-hit.md"),
 	} {
 		content := readFile(t, path)
@@ -1652,7 +1600,6 @@ func TestDocumentationAppliedDoesNotTriggerClosure(t *testing.T) {
 	}
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "skill.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "skill.yaml"),
 	} {
 		content := readFile(t, path)
@@ -1672,7 +1619,6 @@ func TestApprovalGateAcceptanceDoesNotAuthorizeCodeMutation(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "05-approval-gate.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "05-approval-gate.md"),
 	} {
 		content := readFile(t, path)
@@ -1690,7 +1636,6 @@ func TestApprovalGateAcceptanceDoesNotAuthorizeCodeMutation(t *testing.T) {
 	}
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "templates", "agent-protocol.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "agent-protocol.md"),
 	} {
 		content := readFile(t, path)
@@ -1705,8 +1650,8 @@ func TestNoLegacyImplementationHandoffReadyStatus(t *testing.T) {
 	root := repoRoot(t)
 
 	for _, path := range []string{
-		filepath.Join(root, "strategist", "contracts", "narrative", "05-approval-gate.md"),
-		filepath.Join(root, "strategist", "contracts", "machine", "critical-hit.yaml"),
+		filepath.Join(root, "internal", "embed", "defaults", "contracts", "narrative", "05-approval-gate.md"),
+		filepath.Join(root, "internal", "embed", "defaults", "contracts", "machine", "critical-hit.yaml"),
 		filepath.Join(root, "internal", "embed", "defaults", "contracts", "narrative", "05-approval-gate.md"),
 		filepath.Join(root, "internal", "embed", "defaults", "contracts", "machine", "critical-hit.yaml"),
 	} {
@@ -1722,7 +1667,6 @@ func TestSniperBlocksImplementationHandoffInTasks(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "06-execution.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "06-execution.md"),
 	} {
 		content := readFile(t, path)
@@ -1738,7 +1682,6 @@ func TestSniperBlocksImplementationHandoffInTasks(t *testing.T) {
 	}
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "internal_skills", "sniper", "SKILL.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "internal_skills", "sniper", "SKILL.md"),
 	} {
 		content := readFile(t, path)
@@ -1762,7 +1705,6 @@ func TestArchivistClassifiesTaskTypeForSniperScope(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "04-refinement.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "04-refinement.md"),
 	} {
 		content := readFile(t, path)
@@ -1778,7 +1720,6 @@ func TestArchivistClassifiesTaskTypeForSniperScope(t *testing.T) {
 	}
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "schemas", "handoff-archivist-to-sniper.schema.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "schemas", "handoff-archivist-to-sniper.schema.yaml"),
 	} {
 		content := readFile(t, path)
@@ -1800,7 +1741,6 @@ func TestDriftPatternsIncludeApprovalGateCodeExecutionConfusion(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "templates", "domain", "identity", "drift-patterns.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "domain", "identity", "drift-patterns.yaml"),
 	} {
 		content := readFile(t, path)
@@ -1822,7 +1762,6 @@ func TestEvidencePackContractDefinesNonBlockingEmptyState(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "context-enrichment.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "context-enrichment.yaml"),
 	} {
 		content := readFile(t, path)
@@ -1846,7 +1785,6 @@ func TestDossierBuilderGeneratesEvidencePackFromSourceCards(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "internal_skills", "dossier-builder", "skill.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "internal_skills", "dossier-builder", "skill.yaml"),
 	} {
 		content := readFile(t, path)
@@ -1869,7 +1807,6 @@ func TestRangerAndArchivistThreadEvidencePackPath(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "internal_skills", "ranger", "skill.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "internal_skills", "ranger", "skill.yaml"),
 	} {
 		content := readFile(t, path)
@@ -1879,7 +1816,6 @@ func TestRangerAndArchivistThreadEvidencePackPath(t *testing.T) {
 	}
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "internal_skills", "archivist", "skill.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "internal_skills", "archivist", "skill.yaml"),
 	} {
 		content := readFile(t, path)
@@ -1901,7 +1837,6 @@ func TestTelemetryContractDocumentsChestEventDistinction(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "10-telemetry.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "10-telemetry.md"),
 	} {
 		content := readFile(t, path)
@@ -1923,7 +1858,6 @@ func TestScoutRouteDecisionSchemaExists(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "schemas", "scout-route-decision.schema.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "schemas", "scout-route-decision.schema.yaml"),
 	} {
 		if _, err := os.Stat(path); err != nil {
@@ -1938,7 +1872,6 @@ func TestScoutRouteDecisionSchemaDefinesRequiredFields(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "schemas", "scout-route-decision.schema.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "schemas", "scout-route-decision.schema.yaml"),
 	} {
 		content := readFile(t, path)
@@ -1970,7 +1903,6 @@ func TestRoutingContractNamesScoutAsRouteOwner(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "00-routing.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "00-routing.md"),
 	} {
 		content := readFile(t, path)
@@ -1994,7 +1926,6 @@ func TestScoutRoutingMachineContractFallsBackToFullPipeline(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "scout-routing.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "scout-routing.yaml"),
 	} {
 		content := readFile(t, path)
@@ -2021,7 +1952,6 @@ func TestScoutSkillFilesExist(t *testing.T) {
 		filepath.Join("internal_skills", "scout", "skill.yaml"),
 	} {
 		for _, root := range []string{
-			filepath.Join(repoRoot(t), "strategist"),
 			filepath.Join(repoRoot(t), "internal", "embed", "defaults"),
 		} {
 			path := filepath.Join(root, rel)
@@ -2038,7 +1968,6 @@ func TestScoutSkillDeclaresForbiddenBehaviors(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "internal_skills", "scout", "skill.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "internal_skills", "scout", "skill.yaml"),
 	} {
 		content := readFile(t, path)
@@ -2063,7 +1992,6 @@ func TestSkillYamlPipelineIncludesScoutRoutingStage(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "skill.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "skill.yaml"),
 	} {
 		content := readFile(t, path)
@@ -2086,7 +2014,6 @@ func TestRoleLockForbidsSkippingScout(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "SKILL.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "SKILL.md"),
 	} {
 		content := readFile(t, path)
@@ -2107,7 +2034,6 @@ func TestDiscoveryContractDefinesSubtypeVocabulary(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "03-discovery.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "03-discovery.md"),
 	} {
 		content := readFile(t, path)
@@ -2134,7 +2060,6 @@ func TestRangerHandoffSchemaSupportsEvaluationVerdict(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "schemas", "handoff-ranger-to-archivist.schema.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "schemas", "handoff-ranger-to-archivist.schema.yaml"),
 	} {
 		content := readFile(t, path)
@@ -2156,7 +2081,6 @@ func TestRangerRoleFileReferencesEvaluationVerdict(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "roles", "ranger.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "roles", "ranger.yaml"),
 	} {
 		content := readFile(t, path)
@@ -2173,7 +2097,6 @@ func TestShortRouteAnnotationRequiresExplicitEvidence(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "00-routing.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "00-routing.md"),
 	} {
 		content := readFile(t, path)
@@ -2197,7 +2120,6 @@ func TestCriticalHitClosureCrossReferencesEvidenceState(t *testing.T) {
 	t.Parallel()
 
 	narrativePaths := []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "11-critical-hit.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "11-critical-hit.md"),
 	}
 	for _, path := range narrativePaths {
@@ -2208,7 +2130,6 @@ func TestCriticalHitClosureCrossReferencesEvidenceState(t *testing.T) {
 	}
 
 	machinePaths := []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "critical-hit.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "critical-hit.yaml"),
 	}
 	for _, path := range machinePaths {
@@ -2258,7 +2179,6 @@ func TestEvaluationDiscoveryDoesNotRequireCreativeObligations(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "03-discovery.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "03-discovery.md"),
 	} {
 		content := readFile(t, path)
@@ -2281,7 +2201,6 @@ func TestRoleLockRequiresSubtypeCapabilityCheck(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "SKILL.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "SKILL.md"),
 	} {
 		content := readFile(t, path)
@@ -2303,7 +2222,6 @@ func TestPreflightContractDefinesProviderCapabilityMismatch(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "preflight.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "preflight.yaml"),
 	} {
 		content := readFile(t, path)
@@ -2327,7 +2245,6 @@ func TestDriftPatternsCoverProviderCapabilityMismatch(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "templates", "domain", "identity", "drift-patterns.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "domain", "identity", "drift-patterns.yaml"),
 	} {
 		content := readFile(t, path)
@@ -2348,7 +2265,6 @@ func TestSkillYamlStopConditionsIncludeProviderCapabilityMismatch(t *testing.T) 
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "skill.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "skill.yaml"),
 	} {
 		content := readFile(t, path)
@@ -2365,7 +2281,6 @@ func TestTelemetryContractDefinesScoutFields(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "10-telemetry.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "10-telemetry.md"),
 	} {
 		content := readFile(t, path)
@@ -2394,7 +2309,6 @@ func TestRoutingContractDefinesPostRouteCapabilityCheck(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "00-routing.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "00-routing.md"),
 	} {
 		content := readFile(t, path)
@@ -2418,7 +2332,6 @@ func TestScoutRoutingMachineContractDefinesPostRouteCapabilityCheck(t *testing.T
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "scout-routing.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "scout-routing.yaml"),
 	} {
 		content := readFile(t, path)
@@ -2441,7 +2354,6 @@ func TestJewelGenerationContractDefinesTrustCeiling(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "context-enrichment.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "context-enrichment.yaml"),
 	} {
 		content := readFile(t, path)
@@ -2458,9 +2370,7 @@ func TestJewelGenerationContractDefinesTrustCeiling(t *testing.T) {
 	}
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "internal_skills", "ranger", "skill.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "internal_skills", "ranger", "skill.yaml"),
-		filepath.Join(repoRoot(t), "strategist", "internal_skills", "archivist", "skill.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "internal_skills", "archivist", "skill.yaml"),
 	} {
 		content := readFile(t, path)
@@ -2478,7 +2388,6 @@ func TestJewelRetrievalContractDefinesMandatoryFallback(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "context-enrichment.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "context-enrichment.yaml"),
 	} {
 		content := readFile(t, path)
@@ -2496,7 +2405,6 @@ func TestJewelRetrievalContractDefinesMandatoryFallback(t *testing.T) {
 	}
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "internal_skills", "dossier-builder", "skill.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "internal_skills", "dossier-builder", "skill.yaml"),
 	} {
 		content := readFile(t, path)
@@ -2556,7 +2464,7 @@ func TestOutcomeEntryCoordinatedShapeMirrorsRuntime(t *testing.T) {
 	}
 
 	for rel, needles := range coordinatedFiles {
-		sourcePath := filepath.Join(root, "strategist", rel)
+		sourcePath := filepath.Join(root, "internal", "embed", "defaults", rel)
 		embedPath := filepath.Join(root, "internal", "embed", "defaults", rel)
 		runtimePath := filepath.Join(root, ".strategist", rel)
 
@@ -2583,7 +2491,7 @@ func TestLearningCuratorInternalSkillDefinesJewelOutcomeProduction(t *testing.T)
 	t.Parallel()
 
 	root := repoRoot(t)
-	sourcePath := filepath.Join(root, "strategist", "internal_skills", "learning-curator", "skill.yaml")
+	sourcePath := filepath.Join(root, "internal", "embed", "defaults", "internal_skills", "learning-curator", "skill.yaml")
 	embedPath := filepath.Join(root, "internal", "embed", "defaults", "internal_skills", "learning-curator", "skill.yaml")
 	runtimePath := filepath.Join(root, ".strategist", "internal_skills", "learning-curator", "skill.yaml")
 
@@ -2619,7 +2527,7 @@ func TestOutputProfilesSourceMirrorsEmbeddedDefaults(t *testing.T) {
 	t.Parallel()
 
 	root := repoRoot(t)
-	sourceDir := filepath.Join(root, "strategist", "output-profiles")
+	sourceDir := filepath.Join(root, "internal", "embed", "defaults", "output-profiles")
 	embedDir := filepath.Join(root, "internal", "embed", "defaults", "output-profiles")
 
 	sourceFiles := relativeFileSet(t, sourceDir)
@@ -2650,44 +2558,9 @@ func TestOutputProfilesSourceMirrorsEmbeddedDefaults(t *testing.T) {
 // TestSyncEmbedSchemaExclusionsStayIntentional guards duplicate schema files that used
 // to be excluded from sync-embed. Duplicate source/embed schemas must mirror exactly;
 // embed-only schemas must remain explicitly absent from the strategist/ authoring tree.
-func TestSyncEmbedSchemaExclusionsStayIntentional(t *testing.T) {
-	t.Parallel()
-
-	root := repoRoot(t)
-	for _, rel := range []string{
-		"mission-result.schema.yaml",
-		"slot-output.schema.yaml",
-	} {
-		sourcePath := filepath.Join(root, "strategist", "schemas", rel)
-		embedPath := filepath.Join(root, "internal", "embed", "defaults", "schemas", rel)
-		if source := readFile(t, sourcePath); source != readFile(t, embedPath) {
-			t.Fatalf("%s drifted from embedded default %s; run make sync-embed after changing strategist/schemas/", sourcePath, embedPath)
-		}
-	}
-
-	for _, rel := range []string{
-		"active.schema.yaml",
-		"roles.schema.yaml",
-	} {
-		sourcePath := filepath.Join(root, "strategist", "schemas", rel)
-		embedPath := filepath.Join(root, "internal", "embed", "defaults", "schemas", rel)
-		if _, err := os.Stat(embedPath); err != nil {
-			t.Fatalf("expected embed-only schema %s: %v", embedPath, err)
-		}
-		if _, err := os.Stat(sourcePath); !os.IsNotExist(err) {
-			t.Fatalf("%s must remain embed-only; do not create a strategist/schemas counterpart without updating sync-embed policy", rel)
-		}
-	}
-
-	sourceRole := filepath.Join(root, "strategist", "roles", "default.yaml")
-	embedRole := filepath.Join(root, "internal", "embed", "defaults", "roles", "default.yaml")
-	if _, err := os.Stat(embedRole); err != nil {
-		t.Fatalf("expected embed-only role default %s: %v", embedRole, err)
-	}
-	if _, err := os.Stat(sourceRole); !os.IsNotExist(err) {
-		t.Fatalf("roles/default.yaml must remain embed-only; do not create a strategist/roles counterpart without updating sync-embed policy")
-	}
-}
+// TestSyncEmbedSchemaExclusionsStayIntentional was removed in W7a (Option B):
+// sync-embed no longer exists, so its schema/role exclusion policy is moot —
+// embed-only artifacts live directly in internal/embed/defaults/ like everything else.
 
 // TestDiscoveryAndRefinementContractsRequireDocsLanguage guards mission
 // 2026-07-24-language-config-not-reflected's root cause 1 fix: Ranger and Archivist must author
@@ -2699,9 +2572,7 @@ func TestDiscoveryAndRefinementContractsRequireDocsLanguage(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "03-discovery.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "03-discovery.md"),
-		filepath.Join(repoRoot(t), "strategist", "contracts", "narrative", "04-refinement.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "04-refinement.md"),
 	} {
 		content := readFile(t, path)
@@ -2720,7 +2591,6 @@ func TestQuickDrawRunbookOpportunityIsExplicitGateOnly(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "quick-draw.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "quick-draw.yaml"),
 	} {
 		content := readFile(t, path)
@@ -2745,7 +2615,6 @@ func TestQuickDrawRunbookOpportunityDoesNotClaimADROrClosureRole(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "quick-draw.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "quick-draw.yaml"),
 	} {
 		content := readFile(t, path)
@@ -2768,7 +2637,6 @@ func TestRunbookCandidateNeverWritesCanonicalDirectly(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "quick-draw.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "quick-draw.yaml"),
 	} {
 		content := readFile(t, path)
@@ -2790,7 +2658,6 @@ func TestOpportunityAttackRemainsADROnlyAfterQuickDrawRunbookAddition(t *testing
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "opportunity-attack.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "opportunity-attack.yaml"),
 	} {
 		content := readFile(t, path)
@@ -2810,7 +2677,6 @@ func TestCriticalHitRemainsClosureOnlyAfterQuickDrawRunbookAddition(t *testing.T
 	t.Parallel()
 
 	for _, path := range []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "critical-hit.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "critical-hit.yaml"),
 	} {
 		content := readFile(t, path)

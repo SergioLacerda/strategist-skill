@@ -39,10 +39,10 @@ the user or delegating agent — never invented). If a request is ambiguous betw
 move and a closure, or between Critical Hit and full analysis, it falls back to
 `main_mission`.
 
-A rota é selecionada internamente pela camada de routing após o intake, ou
-re-avaliada a qualquer transição de fase durante uma missão em andamento. O delegatário
-não precisa solicitar Critical Hit explicitamente, mas deve fornecer confirmação e
-evidência quando o gate de fechamento (closure) exigir.
+The route is selected internally by the routing layer after intake, or re-evaluated
+at any phase transition during an in-flight mission. The delegating agent does not
+need to request Critical Hit explicitly, but must supply confirmation and evidence
+whenever the closure gate requires them.
 
 ## When to Apply
 

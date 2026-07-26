@@ -15,7 +15,6 @@ import (
 func contextEnrichmentMirrors(t *testing.T) []string {
 	t.Helper()
 	return []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "context-enrichment.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "context-enrichment.yaml"),
 		filepath.Join(isolatedStrategistDir(t), "contracts", "machine", "context-enrichment.yaml"),
 	}

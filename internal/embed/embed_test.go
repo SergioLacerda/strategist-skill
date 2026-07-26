@@ -221,7 +221,7 @@ func TestExtractor_Extract(t *testing.T) {
 		skillMD, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
 		require.NoError(t, err)
 		doc := string(skillMD)
-		assert.Contains(t, doc, "source-only")
+		assert.Contains(t, doc, "single authoring and generation source")
 		assert.Contains(t, doc, "only operational read target")
 		assert.Contains(t, doc, "base_path")
 		assert.Contains(t, doc, "not a hardcoded `.analysis/`")
