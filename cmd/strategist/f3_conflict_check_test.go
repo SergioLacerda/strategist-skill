@@ -36,6 +36,18 @@ func TestReadGitConflictedPathsFromWorktree_CommandErrorWrapped(t *testing.T) {
 	}
 }
 
+func TestReadGitConflictedPathsFromWorktree_NonGitDirSkipsGracefully(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir() // no .git — real non-git worktree, not the invalid-path case above
+	paths, err := readGitConflictedPathsFromWorktree(dir)
+	if err != nil {
+		t.Fatalf("expected graceful skip for non-git worktree, got error: %v", err)
+	}
+	if len(paths) != 0 {
+		t.Fatalf("expected no conflicted paths for non-git worktree, got: %v", paths)
+	}
+}
+
 func TestEmitF3ConflictAttributionSignals_EmitsAtThreshold(t *testing.T) {
 	// no t.Parallel() — mutates package global and slog default
 	root := filepath.Join(t.TempDir(), ".strategist")

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os/exec"
 	"path/filepath"
@@ -32,12 +33,22 @@ func emitF3ConflictAttributionSignals(strategistRoot, basePath string, now time.
 
 func readGitConflictedPathsFromWorktree(worktreeRoot string) ([]string, error) {
 	//nolint:gosec // G204: read-only fixed git subcommand; worktreeRoot is the discovered workspace root.
+	probe := exec.Command("git", "-C", worktreeRoot, "rev-parse", "--is-inside-work-tree")
+	if err := probe.Run(); err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			// git ran and deterministically said "not inside a work tree" —
+			// nothing to check, and no locale/version-dependent text to match.
+			return nil, nil
+		}
+		// probe could not even run (invalid path, git not found, etc.) — a real
+		// operational error, not a "no git repo here" signal. Propagate it.
+		return nil, fmt.Errorf("read git conflicted paths: probe worktree: %w", err)
+	}
+	//nolint:gosec // G204: read-only fixed git subcommand; worktreeRoot is the discovered workspace root.
 	cmd := exec.Command("git", "-C", worktreeRoot, "diff", "--name-only", "--diff-filter=U")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		if strings.Contains(string(out), "not a git repository") {
-			return nil, nil
-		}
 		return nil, fmt.Errorf("read git conflicted paths: %w: %s", err, strings.TrimSpace(string(out)))
 	}
 	return parseGitPathLines(string(out)), nil
