@@ -136,8 +136,7 @@ Procedure:
 3. As each phase begins, load only that phase's `narrative.by_phase` and
    `machine.by_phase` entries from `index.yaml` — nothing more.
 
-Supplemental, loaded on demand (not phase-gated): `strategist-raid.yaml`
-(`/strategist-raid` only), `protocol.md`, `schemas/*.yaml`.
+Supplemental, loaded on demand (not phase-gated): `protocol.md`, `schemas/*.yaml`.
 
 ## Operating Rules
 
