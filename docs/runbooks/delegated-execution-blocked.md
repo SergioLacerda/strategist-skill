@@ -73,5 +73,5 @@ delegating to the resolved execution provider.
 
 ## Reference
 
-- `strategist/SKILL.md` § Blocked States
+- `.strategist/SKILL.md` § Blocked States
 - `.strategist/agent-protocol.md` § 6 Local Execution Context and Approval Gates
