@@ -132,7 +132,7 @@ otherwise pays the full read cost).
 Procedure:
 
 1. Read `index.yaml` first, before any phase work.
-2. Load `machine.always_load` (currently `preflight.yaml`).
+2. Load `machine.always_load`.
 3. As each phase begins, load only that phase's `narrative.by_phase` and
    `machine.by_phase` entries from `index.yaml` — nothing more.
 

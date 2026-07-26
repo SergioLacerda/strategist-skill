@@ -22,7 +22,7 @@ func TestCheckCmd_MissingIdentityFiles(t *testing.T) {
 	require.Error(t, err, "check must fail when identity files are missing")
 	assert.Contains(t, err.Error(), "check=blocked")
 	assert.Contains(t, err.Error(), "reason=identity_files_missing")
-	assert.Contains(t, err.Error(), "strategist compile-domain")
+	assert.Contains(t, err.Error(), "strategist compile")
 }
 
 // TestCheckCmd_MissingOneIdentityFile covers the partial case: only one of the

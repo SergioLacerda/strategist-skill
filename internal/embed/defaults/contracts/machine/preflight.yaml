@@ -98,7 +98,7 @@ contract:
         Non-blocking. Emit:
           "[Strategist] phase=preflight status=warn reason=identity_files_missing"
           "[Strategist] phase=preflight identity=degraded files_missing=[<list>]"
-        Remediation hint: "Run `strategist compile-domain` to deploy identity files."
+        Remediation hint: "Run `strategist compile` to deploy identity files."
         Continue. Agent operates in degraded mode; SKILL.md patterns serve as fallback.
     - code: directives_missing
       trigger: directives/core.yaml absent after index.yaml load attempt

@@ -101,6 +101,9 @@ by re-emitting with the announcement prefix.
 
 Emit in this order:
 
+0. If `sq_backlog` is non-empty, present the Riposte capture offer
+   (`machine/riposte.yaml`, trigger `mission_close_sq_backlog`) — declining never
+   blocks the close
 1. `content_by_lang.*.response_complete` — 1-line compliance summary
 2. `content_by_lang.*.mission_complete` — renders `mission_envelope.close`
 
