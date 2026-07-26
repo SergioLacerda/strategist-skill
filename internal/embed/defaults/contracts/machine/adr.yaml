@@ -6,7 +6,7 @@ description: >
   ADR approval happens at the main gate as a side quest — no separate post-execution phase.
 
 contract:
-  trigger: gate_approval of OA-ADR side quest
+  trigger: gate_analysis_accepted (gate acceptance) of OA-ADR side quest
   executor: sniper
 
   template:

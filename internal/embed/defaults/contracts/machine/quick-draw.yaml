@@ -34,7 +34,7 @@ phases:
       Informational only — does not block Quick Draw.
     action:
       - scan: "<base_path>/refined/*/analysis.md"
-      - filter_by_status: [gate_approval, gate_pending]
+      - filter_by_status: [gate_analysis_accepted, gate_pending]
       - if_found:
           emit: pending_missions_found count=N ids=[list]
           include_in_gate: "⚠️ {N} pending mission(s): {ids}"
@@ -176,5 +176,5 @@ persona_keys:
   - quick_draw_detected   # emitted when detection matches
   - quick_draw_gate       # gate prompt shown to user
   - quick_draw_success    # confirmation after successful append
-  - pending_missions_found  # emitted by pre_scan when gate_approval/gate_pending missions exist
+  - pending_missions_found  # emitted by pre_scan when gate_analysis_accepted/gate_pending missions exist
   - runbook_opportunity   # gate side-quest text shown when runbook_opportunity.warranted=true

@@ -35,6 +35,7 @@ narrative:
 machine:
   always_load:
     - machine/preflight.yaml
+    - machine/mission-status.yaml
   by_phase:
     bootstrap:   [machine/bootstrap.yaml]
     intake:      [machine/intake.yaml, machine/scout-routing.yaml]

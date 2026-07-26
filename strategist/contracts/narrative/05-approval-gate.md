@@ -106,8 +106,13 @@ Is the analysis correct?  (accept / review / reject)
 - `analysis_delivered`
 - `revision_requested`
 - `rejected`
-- `awaiting_review`
 - `analysis_accepted`
+
+`awaiting_review` retired (D10 orphan — no writer, no reader): the "gate is pending a
+response" signal is `status=shown` (see `emit_on_show` in
+`contracts/machine/approval-gate.yaml`), not a Gate State value. The mission_status
+frontmatter equivalent for "pending a response" is `gate_pending` (a different
+vocabulary — see `contracts/machine/mission-status.yaml`), not this list.
 
 ## Invariant: Gate Is Always Required
 

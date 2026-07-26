@@ -1,0 +1,87 @@
+module: mission-status
+type: canonical_vocabulary
+version: "1.0"
+
+description: >
+  Single normative list of every value the `mission_status` frontmatter field (set on
+  the mission analysis artifact — see schemas/handoff-ranger-to-archivist.schema.yaml)
+  may carry. Other contracts, schemas, and docs MUST reference this file rather than
+  restate the set. Resolves D1 (two competing vocabularies) — the 05/06 set below is
+  the accepted canonical decision; the legacy tokens `gate_approval` and
+  `execution_done` are retired (see legacy_compatibility).
+
+  fsm_state is the internal/domain/state_machine.go MissionState this status
+  corresponds to once written, or null where no FSM state models that point yet
+  (see contracts/narrative/README or state_machine.go's own doc comment for what the
+  FSM does and does not model — bootstrap/intake/discovery/learning are contract-only,
+  not FSM-modeled).
+
+values:
+  - status: ranger_pending
+    written_by: Ranger (on artifact create)
+    allowed_successors: [ranger_done]
+    fsm_state: null   # discovery is not FSM-modeled (S7)
+
+  - status: ranger_done
+    written_by: Ranger (on analysis complete)
+    allowed_successors: [archivist_pending]
+    fsm_state: null   # discovery is not FSM-modeled (S7)
+
+  - status: archivist_pending
+    written_by: Archivist (on refinement start)
+    allowed_successors: [archivist_done]
+    fsm_state: StateRefinement
+
+  - status: archivist_done
+    written_by: Archivist (on refinement complete)
+    allowed_successors: [gate_pending]
+    fsm_state: StateRefinement
+    note: >
+      If Archivist produced no documentation_targets, the mission ends here as
+      analysis_delivered (see contracts/machine/approval-gate.yaml case
+      empty_tasks_analysis_delivered) — no gate is shown and mission_status is not
+      advanced further. gate_pending is the successor only when tasks/documentation_targets
+      exist.
+
+  - status: gate_pending
+    written_by: Archivist (when presenting the gate) / re-presented on resume
+    allowed_successors: [gate_analysis_accepted, gate_revision_requested, gate_rejected]
+    fsm_state: StateApprovalGate
+
+  - status: gate_analysis_accepted
+    written_by: Approval Gate (on accept)
+    allowed_successors: [sniper_running]
+    fsm_state: StateExecution   # post EventGateApproved
+    note: The only "unclaimed" state — any Sniper may claim it (see handoff schema).
+
+  - status: gate_revision_requested
+    written_by: Approval Gate (on revision request)
+    allowed_successors: [archivist_pending]
+    fsm_state: StateRefinement   # via EventGateRevision (D2 — landed in W5,
+                                  # internal/domain/state_machine.go StateApprovalGate)
+
+  - status: gate_rejected
+    written_by: Approval Gate (on reject)
+    allowed_successors: []   # terminal
+    fsm_state: StateDoneAnalysis   # post EventGateDenied
+
+  - status: sniper_running
+    written_by: Sniper (on materialization start)
+    allowed_successors: [documentation_applied]
+    fsm_state: StateExecution
+
+  - status: documentation_applied
+    written_by: Sniper (on materialization complete)
+    allowed_successors: []   # terminal (a separate ADR flow may follow; it does not
+                              # advance mission_status further)
+    fsm_state: StateDoneDelivery
+
+legacy_compatibility:
+  description: >
+    Retired tokens. Some workspace artifacts written before this vocabulary was
+    finalized still carry them (verified in this repo's own .analysis/done/ and
+    .analysis/archived/ — both terminal/closed missions). No runtime migration
+    helper exists yet; if one is built, it should apply this mapping.
+  mapping:
+    gate_approval: gate_analysis_accepted
+    execution_done: documentation_applied

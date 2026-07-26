@@ -45,8 +45,9 @@ const (
 	StateADRDone  MissionState = "ADR_DONE"
 
 	// Retry states for transient slot failures (protocol §Slot Failure Classification).
-	// StateRetrying is kept as a legacy refinement retry state for compatibility.
-	StateRetrying           MissionState = "RETRYING"
+	// StateRetrying ("RETRYING", generic/unreachable legacy retry state — S8) was
+	// removed: M016 check confirmed no code persists or parses the "RETRYING" string
+	// (grep -rn '"RETRYING"' internal/ cmd/ matched only its own former declaration).
 	StateRetryingRefinement MissionState = "RETRYING_REFINEMENT"
 	StateRetryingExecution  MissionState = "RETRYING_EXECUTION"
 	StateRetryingDirectExec MissionState = "RETRYING_DIRECT_EXEC"
@@ -67,6 +68,11 @@ const (
 	EventGateApproved     TransitionEvent = "gate_approved"
 	EventGateDenied       TransitionEvent = "gate_denied"
 	EventGateTimeout      TransitionEvent = "gate_timeout"
+	// EventGateRevision is the Approval Gate's revision_requested outcome (D2):
+	// contracts/narrative/05-approval-gate.md documents "Archivist revisits" as a
+	// valid, non-error resolution, distinct from EventGateDenied (rejected/timeout,
+	// terminal). See contracts/machine/mission-status.yaml's gate_revision_requested entry.
+	EventGateRevision     TransitionEvent = "gate_revision_requested"
 	EventSniperDone       TransitionEvent = "sniper_done"
 	EventArchivistNoTasks TransitionEvent = "archivist_done_no_tasks"
 	EventArchivistTasks   TransitionEvent = "archivist_done_has_tasks"
@@ -84,6 +90,11 @@ const (
 	// Slot failure classification events (protocol §Slot Failure Classification).
 	EventSlotTransient TransitionEvent = "slot_transient_failure"
 	EventSlotPermanent TransitionEvent = "slot_permanent_failure"
+	// EventRetryOK is the retry-success signal for the StateRetrying* states (S9):
+	// previously EventManifestNonEmpty did double duty here and at the side-quest
+	// manifest scan / Quick Draw content check, three unrelated meanings on one
+	// token. Manifest events now mean manifests only (Init, SideQuestScan, QuickDraw).
+	EventRetryOK TransitionEvent = "retry_ok"
 
 	// Side quest surfaced during documentation materialization. This is the
 	// generic side-quest gate, not Archivist's ADR-only Opportunity Attack routine.
