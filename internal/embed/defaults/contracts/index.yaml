@@ -70,5 +70,3 @@ machine:
     errors:
       - machine/errors.yaml
 
-supplemental:
-  - strategist-raid.yaml   # batch refinement route — loaded on /strategist-raid invocation

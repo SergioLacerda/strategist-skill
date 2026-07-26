@@ -13,7 +13,7 @@ This is not an inconsistency to fix — it reflects two different invocation sha
 - **`SKILL.md` is additionally required when invoking the skill means the orchestrating
   agent adopts a distinct persona/identity for that turn** — a pipeline slot role
   (Archivist, Ranger, Sniper) or a standalone addressable capability with its own
-  entry point (Scout, `/strategist-raid`). The tell is textual: these `SKILL.md` files
+  entry point (Scout). The tell is textual: these `SKILL.md` files
   address the invoked agent in second person ("You are Scout...", "you never perform
   discovery") and carry what `skill.yaml`'s structured fields cannot express — scope
   contracts, ordered checklists spanning a whole phase, and completion/handoff protocol.
@@ -44,7 +44,6 @@ This is not an inconsistency to fix — it reflects two different invocation sha
 | `ranger` | `skill.yaml` + `SKILL.md` | Pipeline slot role (`skill_type: role_filler`) |
 | `sniper` | `skill.yaml` + `SKILL.md` | Pipeline slot role (`skill_type: role_filler`) |
 | `scout` | `skill.yaml` + `SKILL.md` | Standalone addressable capability — internal Intake Router, no `active.yaml` slot, but its own persona ("You are Scout") |
-| `strategist-raid` | `skill.yaml` + `SKILL.md` | Standalone addressable capability — own entry point (`/strategist-raid`), own persona |
 | `prompt-intake` | `skill.yaml` only | Inline classification sub-routine run by whichever agent is current; full algorithm (incl. `triage_questions`, `failure_modes`) already self-contained in `skill.yaml` |
 | `context-enrichment` | `skill.yaml` only | Inline retrieval sub-routine; `behavior` fully specifies the algorithm |
 | `dossier-builder` | `skill.yaml` only | Inline assembly sub-routine consuming `context-enrichment` output |

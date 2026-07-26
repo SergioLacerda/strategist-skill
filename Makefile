@@ -122,12 +122,12 @@ docs-governance-gate:
 
 convergence-check:
 	@echo "Checking runtime/package-boundary convergence..."
-	@grep -q 'skills.*ExpectedProvider\|"skills".*ExpectedProvider' internal/dojo/checker.go \
-		|| (echo "DRIFT: dojo/checker.go uses old provider path (not skills/<provider>/skill.yaml)"; exit 1)
-	@grep -q '"skills".*"brainstorming"\|skills.*brainstorming' internal/dojo/checker_test.go \
-		|| (echo "DRIFT: dojo/checker_test.go uses old provider path"; exit 1)
-	@grep -q '"skills".*providerID\|skills.*providerID' cmd/strategist/initiative.go \
-		|| (echo "DRIFT: initiative.go uses old provider path (not skills/<provider>/skill.yaml)"; exit 1)
+	@grep -q '"skills", mc.ExpectedProvider' internal/dojo/checker_manifest.go \
+		|| (echo "DRIFT: dojo/checker_manifest.go uses old provider path (not skills/<provider>/skill.yaml)"; exit 1)
+	@grep -q '"skills", "brainstorming"' internal/dojo/checker_manifest_test.go \
+		|| (echo "DRIFT: dojo/checker_manifest_test.go uses old provider path"; exit 1)
+	@grep -q 'skills/<provider>/skill.yaml' cmd/strategist/initiative.go \
+		|| (echo "DRIFT: initiative.go lost the canonical provider path skills/<provider>/skill.yaml"; exit 1)
 	@test ! -d strategist \
 		|| (echo "DRIFT: strategist/ exists — the authoring mirror was retired (W7a); author in internal/embed/defaults/"; exit 1)
 	@test -d internal/embed/defaults/internal_skills \
