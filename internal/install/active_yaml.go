@@ -77,9 +77,12 @@ func writeKnowledgeIndexSource(strategistDir string, wc domain.WizardConfig) err
 	}
 	id := treasureChestID(wc.TreasureChestPath)
 	entry := fmt.Sprintf("sources:\n  - id: %s\n    path: %s\n    tags: [all]", id, wc.TreasureChestPath)
-	updated, err := replacePlaceholder(string(data), "sources: []", entry)
+	updated, changed, err := substituteOrSkip(string(data), "sources: []", "sources:", entry)
 	if err != nil {
 		return fmt.Errorf("knowledge.index.yaml: %w", err)
+	}
+	if !changed {
+		return nil // already configured by a prior wizard run — not an error
 	}
 	if err := atomicWriteFile(kiPath, []byte(updated), 0o644); err != nil {
 		return fmt.Errorf("write knowledge.index.yaml: %w", err)
@@ -112,9 +115,12 @@ func writeTreasureChestManifest(strategistDir string, wc domain.WizardConfig) er
       strategy: selective
       require_relevance_reason: true
       allow_full_load: false`, id, id, wc.TreasureChestPath)
-	updated, err := replacePlaceholder(string(data), "chests: []", entry)
+	updated, changed, err := substituteOrSkip(string(data), "chests: []", "chests:", entry)
 	if err != nil {
 		return fmt.Errorf("treasure-chests.yaml: %w", err)
+	}
+	if !changed {
+		return nil // already configured by a prior wizard run — not an error
 	}
 	if err := atomicWriteFile(tcPath, []byte(updated), 0o644); err != nil {
 		return fmt.Errorf("write treasure-chests.yaml: %w", err)
@@ -122,14 +128,22 @@ func writeTreasureChestManifest(strategistDir string, wc domain.WizardConfig) er
 	return nil
 }
 
-// replacePlaceholder replaces the first occurrence of placeholder in content with
-// replacement, returning an explicit error if placeholder is absent. This guards
-// template mutation against silently no-op-ing when template formatting drifts.
-func replacePlaceholder(content, placeholder, replacement string) (string, error) {
-	if !strings.Contains(content, placeholder) {
-		return "", fmt.Errorf("placeholder %q not found", placeholder)
+// substituteOrSkip replaces the first occurrence of the one-liner placeholder
+// (e.g. "sources: []") with replacement. If the placeholder is absent but key
+// (e.g. "sources:") is present, the target was already substituted by a prior
+// install run — that is a legitimate re-run, not template drift, so it returns
+// the content unchanged with changed=false and no error. Only when neither the
+// placeholder nor the key is found does it report an error: that combination
+// means the template is missing the section entirely, which is genuine
+// corruption/drift this guard exists to catch.
+func substituteOrSkip(content, placeholder, key, replacement string) (updated string, changed bool, err error) {
+	if strings.Contains(content, placeholder) {
+		return strings.Replace(content, placeholder, replacement, 1), true, nil
 	}
-	return strings.Replace(content, placeholder, replacement, 1), nil
+	if strings.Contains(content, key) {
+		return content, false, nil
+	}
+	return "", false, fmt.Errorf("placeholder %q not found and %q key absent — template may be corrupted", placeholder, key)
 }
 
 // treasureChestID derives a stable id from a path by taking the last non-empty segment.
