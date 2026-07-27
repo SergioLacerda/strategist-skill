@@ -46,6 +46,8 @@ own behavior below is identical regardless of which mechanism invoked it.
   required when `discovery_subtype: evaluation`
 - opportunity manifest summary when present
 - `evidence_pack_path` when the context-enrichment dossier's `source_cards` are non-empty (see `machine/context-enrichment.yaml#evidence_pack`); null otherwise, non-blocking
+- `relevant_sources_hint` produced by the Search ability during the Retrieval Cascade's
+  treasure-chest stage; reused by Archivist by default (see `04-refinement.md`)
 
 ## Evaluation Discovery Procedure
 
@@ -76,7 +78,11 @@ stage runs only if the previous stage did not reach `stop_when: sufficient_evide
 3. keyword search over the workspace
 4. symbol search (definitions, references)
 5. architecture / structure index, when one exists for the workspace
-6. treasure chests (`consult_treasure_chests`)
+6. treasure chests (`consult_treasure_chests`) — the **Search** ability runs as a
+   sub-routine of this stage, before `consult_treasure_chests` opens any chest: it
+   filters candidate jewels/potions and produces `relevant_sources_hint`, so a whole
+   chest is not paid for when a jewel/potion already summarizes what would be found
+   there (see `roles/ranger.yaml#canonical.search`)
 7. semantic search, when a semantic provider is configured — optional, last resort
 
 `stop_when: sufficient_evidence` is met when either condition holds:

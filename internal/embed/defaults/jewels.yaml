@@ -19,11 +19,11 @@ schema_version: "1"
 # trust: T0 | T1 | T2 | T3     # mandatory; MUST be <= parent chest's trust.tier
 # status: proposed | accepted | verified | deprecated
 #   proposed   — agent- or index-generated, not yet human-curated; usable only as a hint
-#   accepted   — promoted by `strategist treasure-chest mine --accept`
-#   verified   — promoted by `strategist treasure-chest mine --verify`, requires evidence
+#   accepted   — promoted by `strategist treasure-chest items accept`
+#   verified   — promoted by `strategist treasure-chest items verify`, requires evidence
 #   deprecated — no longer usable at runtime
 #   "active" is a removed legacy status — migrate with
-#   `strategist treasure-chest mine --migrate-status` (active -> accepted).
+#   `strategist treasure-chest items migrate-status` (active -> accepted).
 # reviewed_by: agent | human
 # last_reviewed: YYYY-MM-DD    # optional; set only if/when a human reviews it
 # score:                       # optional — LLM-governed candidate quality signal, set during index

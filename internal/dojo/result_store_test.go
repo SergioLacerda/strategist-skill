@@ -16,7 +16,7 @@ import (
 func TestPersistResult_WritesResultJSON(t *testing.T) {
 	base := t.TempDir()
 	result := domain.DojoCheckResult{
-		Scenario: "quick-draw",
+		Scenario: "sample-scenario",
 		Items: []domain.DojoCheckItem{
 			{Label: "files_created todo/geral.md", Passed: true},
 		},
@@ -26,11 +26,11 @@ func TestPersistResult_WritesResultJSON(t *testing.T) {
 
 	require.NoError(t, dojo.PersistResult(base, result, started, finished))
 
-	raw, err := os.ReadFile(filepath.Join(base, "dojo", ".last-run", "quick-draw", "result.json"))
+	raw, err := os.ReadFile(filepath.Join(base, "dojo", ".last-run", "sample-scenario", "result.json"))
 	require.NoError(t, err)
 	var record dojo.ResultRecord
 	require.NoError(t, json.Unmarshal(raw, &record))
-	assert.Equal(t, "quick-draw", record.Scenario)
+	assert.Equal(t, "sample-scenario", record.Scenario)
 	assert.True(t, record.Passed)
 	assert.Equal(t, 0, record.FailCount)
 	assert.Equal(t, "2026-07-25T10:00:00Z", record.StartedAt)
@@ -88,7 +88,7 @@ func splitLines(s string) []string {
 
 func TestPersistResult_ScenarioIsolation(t *testing.T) {
 	base := t.TempDir()
-	result := domain.DojoCheckResult{Scenario: "quick-draw"}
+	result := domain.DojoCheckResult{Scenario: "sample-scenario"}
 	require.NoError(t, dojo.PersistResult(base, result, time.Now(), time.Now()))
 
 	// Persistence must never touch anything outside <base>/dojo/.

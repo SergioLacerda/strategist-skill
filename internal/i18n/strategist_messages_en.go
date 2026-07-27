@@ -33,13 +33,6 @@ var ENRuntime = RuntimeMessages{ //nolint:dupl
 	OpportunityGate:     "⚔️ **Available Side Quests:**\n{manifest}\n\nApprove? (yes / no / select)",
 	OpportunitySignal:   "⚔️ **Opportunity Attack!** {count} item(s) detected — details at gate.",
 
-	QuickDrawDetected: "⚔️ **Quick Draw** detected. Short side quest started (Ranger -> Archivist -> Gate).",
-	QuickDrawGate:     "🚦 **Quick Draw Gate**\n\nidea: {idea}\n\nadd idea? (yes / no)",
-	QuickDrawSuccess: "⚔️ Quick Draw complete.\n" +
-		"success: idea added at {destination_path}\n" +
-		"total ideas: {total_ideas}\n" +
-		"similar ideas (same theme): {similar_ideas}",
-
 	TreasureChestFound: "🎁 **Treasure chest found!** [{chest_id}] — {description}",
 	SideQuestDetected:  "🗺️ **Side quest detected!** {description}",
 

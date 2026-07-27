@@ -86,6 +86,24 @@ func TestCompileDomain(t *testing.T) {
 			},
 		},
 		{
+			name: "blank path entries in load_always are skipped",
+			setup: func(t testing.TB, dir string) {
+				t.Helper()
+				require.NoError(t, os.WriteFile(filepath.Join(dir, "roles.yaml"), []byte("roles: true\n"), 0o644))
+				require.NoError(t, os.WriteFile(
+					filepath.Join(dir, "index.yaml"),
+					[]byte("load_always:\n  - \"\"\n  - \"   \"\n  - roles.yaml\nload_by_task_type: {}\n"),
+					0o644,
+				))
+			},
+			check: func(t *testing.T, a map[string]any) {
+				la, ok := a["load_always"].(map[string]any)
+				require.True(t, ok)
+				assert.Len(t, la, 1)
+				assert.Contains(t, la, "roles.yaml")
+			},
+		},
+		{
 			name: "missing index.yaml returns error",
 			setup: func(t testing.TB, _ string) {
 				t.Helper()
@@ -155,4 +173,34 @@ func TestCompileDomain_InvalidYAMLInLoadAlways(t *testing.T) {
 	))
 	err := compile.Domain(dir, filepath.Join(dir, ".compiled", ".domain.gz"))
 	require.Error(t, err)
+}
+
+func TestCompileDomain_InvalidYAMLInLoadByTaskType(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "bad.yaml"), []byte(": invalid\n  yaml:"), 0o644))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "index.yaml"),
+		[]byte("load_always: []\nload_by_task_type:\n  analysis:\n    - bad.yaml\n"),
+		0o644,
+	))
+	err := compile.Domain(dir, filepath.Join(dir, ".compiled", ".domain.gz"))
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "load_by_task_type[analysis]")
+}
+
+func TestCompileDomain_WriteError(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "index.yaml"),
+		[]byte("load_always: []\nload_by_task_type: {}\n"),
+		0o644,
+	))
+	// Output path is a directory, so the final gzip write must fail.
+	outPath := filepath.Join(dir, ".domain.gz")
+	require.NoError(t, os.MkdirAll(outPath, 0o755))
+	err := compile.Domain(dir, outPath)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "compile domain: write")
 }

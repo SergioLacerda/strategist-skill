@@ -6,7 +6,6 @@ import "fmt"
 const (
 	PipelineBypassDetectedReason = "pipeline_bypass_detected"
 	MissionRouteMain             = "main"
-	MissionRouteQuickDraw        = "quick_draw"
 	MissionRouteDirectExecute    = "direct_execute"
 )
 
@@ -21,8 +20,6 @@ type PipelineEvidence struct {
 	TasksPresent       bool
 	GatePresented      bool
 	GateApproved       bool
-	QuickDrawPresented bool
-	QuickDrawApproved  bool
 	DirectGateApproved bool
 }
 
@@ -48,9 +45,6 @@ func (d PipelineBypassDecision) Error() string {
 // a pipeline bypass and, if so, returns the expected phase and resume hint.
 func EvaluatePipelineBypass(e PipelineEvidence) PipelineBypassDecision {
 	e = normalizePipelineEvidence(e)
-	if e.Route == MissionRouteQuickDraw {
-		return evaluateQuickDrawBypass(e)
-	}
 	if e.Route == MissionRouteDirectExecute {
 		return evaluateDirectExecuteBypass(e)
 	}
@@ -108,18 +102,6 @@ func evaluateDirectExecuteBypass(e PipelineEvidence) PipelineBypassDecision {
 			"direct_gate",
 			fmt.Sprintf("direct_gate:approved (mission %s)", e.MissionID),
 			fmt.Sprintf("present the Critical Hit gate for mission %s and wait for user confirmation before writing", e.MissionID),
-		)
-	}
-	return PipelineBypassDecision{Allowed: true}
-}
-
-func evaluateQuickDrawBypass(e PipelineEvidence) PipelineBypassDecision {
-	if !e.QuickDrawPresented || !e.QuickDrawApproved {
-		return blockedBypassDecision(
-			e,
-			"quick_draw_gate",
-			fmt.Sprintf("%s/pending/%s-quick-draw.md + quick_draw_gate:approved", e.BasePath, e.MissionID),
-			fmt.Sprintf("route this prompt through quick draw and wait for gate approval before writing %s/todo/", e.BasePath),
 		)
 	}
 	return PipelineBypassDecision{Allowed: true}

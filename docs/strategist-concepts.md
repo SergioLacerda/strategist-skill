@@ -3,7 +3,7 @@
 **Status:** Accepted
 **Last Updated:** 2026-06-30
 
-Reference for the core concepts of the Strategist skill: what it is, how it routes work internally, and the roles, weapons, initiative, and dojo that make up its architecture.
+Reference for the core concepts of the Strategist skill: what it is, how it routes work internally, and the roles, weapons, abilities, and dojo that make up its architecture.
 
 ---
 
@@ -19,11 +19,10 @@ Callers delegate a request to Strategist as a single skill. Strategist decides t
 
 ## Routing
 
-When a request arrives, the intake/routing layer classifies it and selects one of four routes:
+When a request arrives, the intake/routing layer classifies it and selects one of three routes:
 
 | Route | When | Sequence |
 |-------|------|----------|
-| **Quick Draw** | Explicit quick-capture / note-append | `intake → ranger_qd → archivist_qd → gate → sniper_qd` |
 | **Critical Hit** | Move/archive `.md` artifacts inside `<base_path>` | `intake → inline_gate → sniper` |
 | **Implementation Short Route** | Already-refined materialization with sufficient context | `intake → validation → approval_gate → execution` |
 | **Main Mission** | Everything else (default) | `intake → discovery → refinement → approval_gate → execution` |
@@ -34,9 +33,11 @@ The caller does not specify a route. When in doubt, Strategist defaults to **Mai
 
 Critical Hit is a narrow short route for **artifact maintenance** only — moving, archiving, or reopening `.md` files within the workspace folders (`pending/`, `refined/`, `archived/`). It does **not** perform analysis, evaluate implementation, detect gaps, or redesign requirements. Those tasks always go through Main Mission.
 
+Critical Hit is also a labeled **Ability** (see § Abilities below) — the unified vocabulary treats it as one of the four routines a user perceives running "inside" a mission. That label is purely a naming convenience: mechanically, Critical Hit remains a Route resolved by Scout before Ranger/Archivist ever run, not an internal Role routine. This distinction is stated explicitly here so it does not need to be re-litigated in a future mission.
+
 ### Opportunity Attack
 
-Opportunity Attack is an **Archivist routine** that evaluates ADR necessity after all four refined artifacts are written. It is not a route selector — it does not decide between short and full route. Routing is owned by the intake/routing layer.
+Opportunity Attack is an **Archivist routine** that evaluates ADR, Runbook, and Treasure Chest necessity after all four refined artifacts are written (see `contracts/machine/opportunity-attack.yaml`). Each of the three outputs is offered independently as its own side quest at the approval gate. Opportunity Attack is not a route selector — it does not decide between short and full route. Routing is owned by the intake/routing layer.
 
 ---
 
@@ -160,10 +161,9 @@ The difference from a `(base)` provider:
 |---|------|--------|
 | `provider_class` | absent or `base` | `rankeado` |
 | `specialization_taxonomy` | not declared | `canonical_role` + `provider_class` filled in |
-| Display in `initiative` | `(base)` | `rankeado` |
 | Meaning | Generic implementation | Specialized provider, aligned with the canonical role |
 
-A ranked provider gains no extra permissions — the distinction is semantic and visible in the `initiative` command. It communicates that the provider was designed specifically for that role, not just plugged into it.
+A ranked provider gains no extra permissions — the distinction is purely semantic. It communicates that the provider was designed specifically for that role, not just plugged into it.
 
 Ranked providers installed in this workspace:
 
@@ -197,44 +197,20 @@ Each weapon is a skill with its own `skill.yaml` resolved in preflight by the St
 
 To swap a weapon, change the slot value in `active.yaml` and ensure the new provider's `skill.yaml` exists at `.strategist/skills/<provider>/skill.yaml`.
 
-## Initiative
+---
 
-`strategist initiative` is the CLI command that answers: *"who is armed in each slot right now?"*
+## Abilities
 
-```bash
-$ strategist initiative
+Abilities are internal routines that run inside a Role/phase. Unlike Weapons, they are not configurable, not swappable, and have no `active.yaml` entry — they are built into Strategist itself (see `skill.yaml#taxonomy`). There are four:
 
-SLOTS                                                  
-discovery      brainstorming      Ranger rankeado      ✓ manifest OK
-refinement     openspec-explore   Archivist rankeado   ✓ manifest OK
-execution      sniper             Sniper (base)        ✓ manifest OK
-                                                       
-WORKSPACE                                              
-mode           epic                                    
-base_path      .analysis                               
-pending        0 cards                                 
-done           49 missions                              
-last mission   20260620-feature-xyz                    
-```
+| Ability | Runs in | What it does |
+|---------|---------|--------------|
+| **Opportunist Attack** | Refinement (Archivist), post-refinement | Evaluates whether the refined work warrants an ADR, a Runbook, and/or a Treasure Chest registration — each surfaced as its own side quest at the gate. |
+| **Search** | Discovery (Ranger); cache reused by Refinement (Archivist) | Filters candidate Jewels/Potions from Treasure Chests before a chest is opened in full — part of the Retrieval Cascade's treasure-chest stage. |
+| **Critical Hit** | Scout (pre-pipeline route) | A labeled Ability, but mechanically a Route resolved by Scout, not a Role-internal routine — see § Critical Hit above. |
+| **Side Quest** | Discovery or Refinement, any phase | Adjacent work detected during exploration or refinement, classified and surfaced at the gate rather than silently expanded into the current mission. |
 
-The **SLOTS** section displays, for each slot:
-
-| Column | Meaning |
-|--------|---------|
-| slot | `discovery`, `refinement`, `execution` |
-| provider | ID of the skill configured in `active.yaml` |
-| canonical_role | Canonical role declared in the manifest (`ranger`, `archivist`, `sniper`) |
-| class | `rankeado` if `provider_class: rankeado`, otherwise `(base)` |
-| manifest status | `✓ manifest OK` if `.strategist/skills/<provider>/skill.yaml` exists and is valid; `⚠ manifest missing` otherwise |
-
-The **WORKSPACE** section displays: `mode` and `base_path` from `active.yaml`, counts of pending cards and completed missions, and the ID of the last mission from `memory/outcomes.jsonl`.
-
-The command makes no LLM calls — it only reads `active.yaml` and local `skill.yaml` files. Useful for quickly verifying the workspace is healthy before starting a mission.
-
-```bash
-# With custom root
-strategist initiative --root /path/to/.strategist
-```
+**Treasure Chest is a resource, not an Ability.** It is the offline knowledge source that Search consults — it never runs, decides, or executes anything on its own. A Treasure Chest holds two kinds of entries: **Jewel** (a fact extracted from a past mission) and **Potion** (an index entry for a runbook under `docs/runbooks/`).
 
 ---
 
@@ -267,7 +243,6 @@ Runs the full pipeline with input from `<base_path>/dojo/<scenario>/input.yaml`,
 
 | Scenario | What it validates |
 |----------|------------------|
-| `quick-draw` | Raw idea converted to a todo item with canary `KATA_RAPIDO`; pipeline stops at gate |
 | `treasure-chest` | Planted chest found and canary `TORNEIO_DO_DOJO` incorporated in the analysis |
 | `ranger-weapons` | Discovery provider manifest exists with `canonical_role` and `provider_class` fields |
 

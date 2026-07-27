@@ -1,6 +1,7 @@
 package stale_test
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -91,4 +92,24 @@ func TestCheckReasons(t *testing.T) {
 			assert.Equal(t, tt.wantReason, got.Reason)
 		})
 	}
+}
+
+func TestCheckManifestArtifactHashUnavailable(t *testing.T) {
+	t.Parallel()
+	if os.Getuid() == 0 {
+		t.Skip("permission tests do not apply when running as root")
+	}
+	checker := stale.Checker{}
+	dir := t.TempDir()
+	art := filepath.Join(dir, ".config.gz")
+	testutil.WriteGzJSON(t, art, map[string]any{"sources": map[string]int64{}})
+	writeManifestForArtifact(t, art)
+	require.NoError(t, os.Chmod(art, 0o000))
+	t.Cleanup(func() { _ = os.Chmod(art, 0o644) })
+
+	got, err := checker.Check(art)
+	require.NoError(t, err)
+	assert.True(t, got.Stale)
+	assert.Equal(t, stale.ReasonArtifactHashMismatch, got.Reason)
+	assert.Contains(t, got.Detail, "unavailable")
 }

@@ -123,6 +123,82 @@ func TestInstall_GitignoreError(t *testing.T) {
 	assert.ErrorContains(t, err, "gitignore")
 }
 
+func TestInstallGeminiShims_WriteFailureIsLoggedNotFatal(t *testing.T) {
+	t.Parallel()
+	home := t.TempDir()
+	// A directory where a file is expected makes this specific shim write fail.
+	blocked := filepath.Join(home, ".gemini", "skills", "strategist", "SKILL.md")
+	require.NoError(t, os.MkdirAll(blocked, 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(home, ".gemini", "antigravity"), 0o755))
+
+	installGeminiShims(filepath.Join(home, ".gemini"), "# SKILL", "")
+
+	// The antigravity shim must still be written despite the other failure.
+	data, err := os.ReadFile(filepath.Join(home, ".gemini", "antigravity", "skills", "strategist", "SKILL.md"))
+	require.NoError(t, err)
+	assert.Contains(t, string(data), "# SKILL")
+}
+
+func TestInstallCodexShim_WriteFailureIsLoggedNotFatal(t *testing.T) {
+	t.Parallel()
+	home := t.TempDir()
+	blocked := filepath.Join(home, ".codex", "skills", "strategist", "SKILL.md")
+	require.NoError(t, os.MkdirAll(blocked, 0o755))
+
+	// Must not panic — the failure is best-effort and only logged.
+	installCodexShim(filepath.Join(home, ".codex"), "# SKILL", "")
+}
+
+func TestInstallShim_HomeDirError(t *testing.T) {
+	t.Setenv("HOME", "")
+	err := installShim(t.TempDir())
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "home dir")
+}
+
+func TestResolveShimPath_HomeDirError(t *testing.T) {
+	t.Setenv("HOME", "")
+	s := Service{}
+	_, err := s.resolveShimPath("")
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "home dir")
+}
+
+func TestInstallShimStep_ReadSKILLMDFails(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	s := Service{Extractor: &errReadExtractor{}}
+	_, err := s.installShimStep(context.Background(), dir, "")
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "install: read SKILL.md")
+}
+
+func TestInstallShimStep_ResolveShimPathFails(t *testing.T) {
+	t.Setenv("HOME", "")
+	dir := t.TempDir()
+	s := Service{Extractor: minimalExtractor{}}
+	_, err := s.installShimStep(context.Background(), dir, "")
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "resolve shim path")
+}
+
+func TestInstallShimStep_InstallShimForFails(t *testing.T) {
+	t.Parallel()
+	if os.Getuid() == 0 {
+		t.Skip("permission tests do not apply when running as root")
+	}
+	dir := t.TempDir()
+	shimHome := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(shimHome, ".claude"), 0o755))
+	require.NoError(t, os.Chmod(filepath.Join(shimHome, ".claude"), 0o444))
+	t.Cleanup(func() { _ = os.Chmod(filepath.Join(shimHome, ".claude"), 0o755) })
+
+	s := Service{Extractor: minimalExtractor{}, ShimHomeDir: shimHome}
+	_, err := s.installShimStep(context.Background(), dir, "")
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "install: shim")
+}
+
 func TestStripFrontmatter(t *testing.T) {
 	t.Parallel()
 

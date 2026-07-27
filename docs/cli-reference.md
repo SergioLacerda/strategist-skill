@@ -246,49 +246,13 @@ PERSONA
   mode   epic
 ```
 
-Note: `--simulate` reports readiness for the CLI-known `main` pipeline route only. Quick-draw and critical-hit routing — and Scout's route classification generally — are prompt-time decisions made by the LLM runtime from `contracts/narrative/00-routing.md` and `contracts/machine/scout-routing.yaml`, and are not simulated here — `check` intentionally does not take over mission routing.
+Note: `--simulate` reports readiness for the CLI-known `main` pipeline route only. Critical-hit routing — and Scout's route classification generally — are prompt-time decisions made by the LLM runtime from `contracts/narrative/00-routing.md` and `contracts/machine/scout-routing.yaml`, and are not simulated here — `check` intentionally does not take over mission routing.
 
 **Failure output:**
 ```
   ✗ slot execution: provider "sniper" not installed (missing .strategist/skills/sniper/skill.yaml)
 [Strategist] check=failed errors=1 root=.strategist
 ```
-
----
-
-## initiative
-
-Displays the configured slot providers and the current workspace state. Immediate read with no LLM call.
-
-```
-strategist initiative [--root=<dir>]
-```
-
-**Flags:**
-
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--root` | `.strategist` (auto-discovered) | Path to the `.strategist/` root |
-
-**Output:**
-
-```
-SLOTS                                                  
-discovery      brainstorming      Ranger rankeado      ✓ manifest OK
-refinement     openspec-explore   Archivist rankeado   ✓ manifest OK
-execution      sniper             Sniper (base)        ✓ manifest OK
-                                                       
-WORKSPACE                                              
-mode           epic                                    
-base_path      .analysis                               
-pending        0 cards                                 
-done           49 missions                             
-last mission   —                                       
-```
-
-The **SLOTS** section displays, for each slot: configured provider, canonical role, class (`rankeado` or `base`), and status of the local manifest at `.strategist/skills/<provider>/skill.yaml`.
-
-The **WORKSPACE** section displays: `mode` and `base_path` from `active.yaml`, counts of pending cards and completed missions, and the ID of the last mission recorded in `memory/outcomes.jsonl` (if present).
 
 ---
 
@@ -320,7 +284,6 @@ strategist dojo list
 | Scenario | What it validates |
 |----------|------------------|
 | `critical-hit` | Doc edit via fast path — Ranger and Archivist not invoked, inline gate presented, Sniper writes only the target file |
-| `quick-draw` | Raw idea converted to a pending todo item, gate presented, execution not invoked |
 | `ranger-weapons` | Lists available providers for the discovery slot and validates manifests |
 | `treasure-chest` | Treasure chest found and content incorporated in the analysis |
 
@@ -328,10 +291,10 @@ strategist dojo list
 
 ```bash
 # Validate a scenario offline
-strategist dojo check quick-draw
+strategist dojo check critical-hit
 
 # Check files only (no emit log)
-strategist dojo check quick-draw --files-only
+strategist dojo check critical-hit --files-only
 
 # List available scenarios
 strategist dojo list
@@ -377,6 +340,17 @@ INDEX
 artifact      .strategist/.compiled/.index.gz               
 health        ok                                            
 compiled_at   2026-06-26 18:19:47 UTC                       
+```
+
+### `treasure-chest list`
+
+Explicit name for the default status view above (Decision D4,
+`treasure-chest-cli-unification`) — completes the chest CRUD group
+`list|add|remove|index`. The bare `treasure-chest` command (no subcommand) remains a
+back-compat alias calling the exact same code.
+
+```
+strategist treasure-chest list [--format table|json] [--scope <slot-scope>]
 ```
 
 ### `treasure-chest add` / `treasure-chest remove`
@@ -440,28 +414,26 @@ strategist treasure-chest doctor
   truth when they disagree is a product decision outside this command's scope.
 - Exits non-zero when any divergence is found, so it can be used as a CI/pre-flight check.
 
-### `treasure-chest index` / `treasure-chest mine`
+### `treasure-chest index` / `treasure-chest items`
 
 The offline organization plane exposes exactly two public, steady-state commands (Track:
-`treasure-chest-index-mine-pipeline`). `scan` is folded into `index` as an internal phase —
-it remains callable directly (`strategist treasure-chest scan`, hidden from `--help`) for
-debugging/dry-run inspection, but is no longer documented UX. There is no `gaps` or `pack`
-command; Evidence Packs already exist as mission artifacts (Track T-A), generated
-automatically by `dossier-builder`, and open gaps surface through `index`'s internal scan
-phase into `.strategist/treasure/gaps/` and `status:proposed` jewels.
+`treasure-chest-index-mine-pipeline`, unified with Potion support and renamed
+`jewel`/`mine` → `items` by `treasure-chest-cli-unification`). `scan` is folded into
+`index` as an internal phase — it remains callable directly (`strategist treasure-chest
+scan`, hidden from `--help`) for debugging/dry-run inspection, but is no longer documented
+UX. There is no `gaps` or `pack` command; Evidence Packs already exist as mission artifacts
+(Track T-A), generated automatically by `dossier-builder`, and open gaps surface through
+`index`'s internal scan phase into `.strategist/treasure/gaps/` and `status:proposed`
+jewels.
 
 ```
 strategist treasure-chest index [--include-historical]
-strategist treasure-chest mine --list [--format table|json]
-strategist treasure-chest mine --accept <jewel-id>[,<jewel-id>...]
-strategist treasure-chest mine --verify <jewel-id>[,<jewel-id>...] --evidence <ref>
-strategist treasure-chest mine --deprecate <jewel-id>[,<jewel-id>...]
-strategist treasure-chest mine --migrate-status
-strategist treasure-chest jewel list [--status all|proposed|accepted|verified|deprecated] [--chest <chest-id>] [--format table|json]
-strategist treasure-chest jewel show <jewel-id> [--format table|json]
-strategist treasure-chest jewel accept <jewel-id>...
-strategist treasure-chest jewel verify <jewel-id>... --evidence <ref>
-strategist treasure-chest jewel deprecate <jewel-id>...
+strategist treasure-chest items list [--kind jewel|potion] [--status all|proposed|accepted|verified|deprecated] [--chest <chest-id>] [--format table|json]
+strategist treasure-chest items show <item-id> [--format table|json]
+strategist treasure-chest items accept <item-id>...
+strategist treasure-chest items verify <item-id>... --evidence <ref>
+strategist treasure-chest items deprecate <item-id>...
+strategist treasure-chest items migrate-status
 ```
 
 **`index`** rebuilds the offline knowledge substrate:
@@ -478,10 +450,18 @@ strategist treasure-chest jewel deprecate <jewel-id>...
 3. Deduplicates against existing monolithic `jewels.yaml` and partitioned
    `jewels/<chest-id>.yaml` entries by `id` — a rerun never overwrites or duplicates a
    jewel, curated or not.
-4. Rebuilds the compiled knowledge index (`.strategist/.compiled/.index.gz`), same as the
+4. Scans registered chests' own content (not just mission history) for candidates — today
+   this covers the `runbooks` chest (`docs/runbooks/*.md`) specifically: one `status:
+   proposed` Potion candidate per runbook file, with `when_to_use` extracted from the
+   file's first `## ` section (e.g. `Symptom`/`Trigger`), never LLM-generated. Deduplicated
+   against `potions.yaml`/`potions/<chest-id>.yaml` the same way jewel candidates are.
+   Other governed chest kinds ("raw source" → Jewel candidates) have no designed
+   extraction routine yet and are skipped — see
+   `.analysis/refined/treasure-chest-cli-unification/design.md`.
+5. Rebuilds the compiled knowledge index (`.strategist/.compiled/.index.gz`), same as the
    legacy `--index` flag on the base `treasure-chest` command.
-5. Reports: missions scanned, candidates found, proposed jewels written, duplicates
-   skipped, compiled artifact refreshed.
+6. Reports: missions scanned, candidates found, proposed jewels written, duplicates
+   skipped, proposed potions written, duplicates skipped, compiled artifact refreshed.
 
 Score generation is configurable via optional `scoring_policy` in `treasure-chests.yaml`.
 Defaults preserve the original formula:
@@ -490,33 +470,34 @@ Defaults preserve the original formula:
 - gap score = `30 + missions * 15`
 - both are capped at `100`
 
-**`mine`** is the human curation command over `status: proposed` jewels — exactly one action
-flag is required per invocation:
+**`items`** is the unified CRUD surface over both Jewel and Potion rows — the two
+candidate types a treasure chest can hold. Jewels and Potions are never hand-created via
+an `add` verb: they are proposed by `index` (`status: proposed`) and then curated by a
+human via `accept`/`verify`/`deprecate` — the same tombstone doctrine `treasure-chest
+remove` already uses for chests. There is no `items add`/`items remove`; a `remove`
+request maps to `deprecate` (tombstone, not hard-delete).
 
-- `--list [--format table|json]` — lists only `status: proposed` jewels (the curation
-  queue), grouped/sorted by chest then id, with kind/trust/score/statement.
-- `--accept <jewel-id>[,<jewel-id>...]` — promotes one or more jewels to `status: accepted`;
-  sets `reviewed_by: human` and `last_reviewed` to today.
-- `--verify <jewel-id>[,<jewel-id>...] --evidence <ref>` — promotes one or more jewels to
-  `status: verified`; requires `--evidence`, appended to `verification.evidence_refs`.
-- `--deprecate <jewel-id>[,<jewel-id>...]` — marks one or more jewels as `status: deprecated`.
-  Deprecation is terminal: a
-  deprecated jewel can never be promoted back to `accepted`/`verified`.
-- `--migrate-status` — see Migration below.
-
-**`jewel`** is the read-only inspection surface over all jewels regardless of status —
-unlike `mine --list` (scoped to the `status: proposed` curation queue only):
-
-- `list [--status all|proposed|accepted|verified|deprecated] [--chest <chest-id>] [--format table|json]`
-  — without `--status`, shows `proposed` + `accepted` + `verified` (excludes
-  `deprecated`); `--status all` includes `deprecated`; `--chest` filters by chest id,
-  combinable with `--status`. Sorted by `(chest_id, id)`, same as `mine --list`.
-- `show <jewel-id> [--format table|json]` — prints every field of a single jewel
-  (`statement`, `source_refs`, `trust`, `score`, `applicability`, `verification`,
-  etc.). Unknown id: error, non-zero exit.
-- `accept <jewel-id>...`, `verify <jewel-id>... --evidence <ref>`, and
-  `deprecate <jewel-id>...` — curation commands equivalent to the legacy `mine` flags,
-  accepting either repeated positional ids or comma-separated ids.
+- `list [--kind jewel|potion] [--status ...] [--chest <chest-id>] [--format table|json]`
+  — without `--kind`, shows both jewels and potions; without `--status`, shows `proposed`
+  + `accepted` + `verified` (excludes `deprecated`); `--status all` includes
+  `deprecated`; `--chest` filters by chest id. Sorted by `(chest_id, kind, id)`.
+- `show <item-id> [--format table|json]` — looks up the id as a jewel first, then as a
+  potion, and prints every field of whichever is found (jewel: `statement`,
+  `source_refs`, `trust`, `score`, `applicability`, `verification`, etc.; potion:
+  `runbook_ref`, `when_to_use`, `when_to_avoid`, `trust`, `source_refs`, etc.). Unknown
+  id in both manifests: error, non-zero exit.
+- `accept <item-id>...` — promotes one or more items to `status: accepted`; sets
+  `reviewed_by: human` and `last_reviewed` to today. Each id is tried as a jewel, then a
+  potion.
+- `verify <item-id>... --evidence <ref>` — promotes one or more items to `status:
+  verified`; requires `--evidence`. For jewels, the evidence ref is appended to
+  `verification.evidence_refs`; the Potion schema has no verification block, so a
+  potion's evidence is accepted on the CLI surface but not persisted.
+- `deprecate <item-id>...` — marks one or more items as `status: deprecated`.
+  Deprecation is terminal: a deprecated item can never be promoted back to
+  `accepted`/`verified`.
+- `migrate-status` — see Migration below. Jewel-only: potions never had the legacy
+  `active` status.
 
 **`treasure-chest scan` contract** (internal phase, folded into `index`; originally Track
 T-F / `SQ-003`, defined in mission `bau-tesouro-sq003-004-007`, implemented in
@@ -578,11 +559,11 @@ jewels:
 ```
 
 **Lifecycle:** agent- or `index`-generated jewels always start at `status: proposed` — an
-agent must never write `accepted` or `verified` directly. Only `treasure-chest mine` (human
-curation) promotes a jewel to `accepted` or `verified` (the latter requires an evidence ref).
-`deprecated` is reached manually via `mine --deprecate`, or automatically when the parent
-chest is tombstoned via `treasure-chest remove` (the chest removal is already an explicit
-human action). Deprecation is terminal.
+agent must never write `accepted` or `verified` directly. Only `treasure-chest items`
+(human curation) promotes a jewel to `accepted` or `verified` (the latter requires an
+evidence ref). `deprecated` is reached manually via `items deprecate`, or automatically
+when the parent chest is tombstoned via `treasure-chest remove` (the chest removal is
+already an explicit human action). Deprecation is terminal.
 
 **Lifecycle history:** newly proposed jewels and every later status mutation append a
 `history` entry. Older jewels without `history` remain valid and gain history on their next
@@ -592,7 +573,7 @@ curation or deprecation event.
 used a two-state `active | deprecated` model. `active` is a **removed legacy status** —
 `loadJewels` fails loudly (not a silent fallback) on any remaining `active` entry, per
 `ValidateJewelStatus` (`internal/domain/jewel_grade.go`). Run
-`strategist treasure-chest mine --migrate-status` once to rewrite every `status: active`
+`strategist treasure-chest items migrate-status` once to rewrite every `status: active`
 entry to `status: accepted` in place across monolithic and partitioned manifests; the
 command is idempotent and reports how many entries it migrated (0 is a valid, non-error
 outcome).
@@ -606,9 +587,48 @@ mark its jewels `deprecated` across both layouts (`markJewelsDeprecatedForChest`
 govern LLM-facing generation/retrieval behavior
 (`internal/embed/defaults/contracts/machine/context-enrichment.yaml`), including
 status-precedence retrieval (`verified` preferred, then `accepted`, `proposed` as hint only,
-`deprecated` excluded); `treasure-chest jewel list`/`jewel show`
-(`cmd/strategist/treasure_chest_jewel.go`) expose all jewels regardless of status for
-inspection, independent of `mine`'s curation queue.
+`deprecated` excluded); `treasure-chest items list`/`items show`
+(`cmd/strategist/treasure_chest_items.go`) expose all jewels and potions regardless of
+status for inspection, independent of the curation-only `--status proposed` filter.
+
+### Potions
+
+Potions (Track: `runbook-jewel-relevance-mechanism`, schema in
+`internal/embed/defaults/potions.yaml`; CRUD and `index` auto-generation implemented by
+`treasure-chest-cli-unification`) are compact index entries for one whole runbook file
+under `docs/runbooks/` — sibling of Jewel: a jewel is a fact extracted from a mission, a
+potion is an index entry for a runbook. Always children of the `runbooks` chest in this
+v1.
+
+```yaml
+# .strategist/potions/runbooks.yaml — created and populated at runtime by `index`
+schema_version: "1"
+potions:
+  - id: <identifier>                       # e.g. potion-<runbook-slug>
+    chest_id: runbooks                     # mandatory — always "runbooks" in this v1
+    runbook_ref: docs/runbooks/<slug>.md    # mandatory
+    when_to_use: <short summary>            # mandatory — header-extracted, never LLM-generated
+    when_to_avoid: <short summary>           # optional
+    trust: T0 | T1 | T2 | T3                # mandatory; MUST be <= parent chest's trust.tier
+    status: proposed | accepted | verified | deprecated
+    source_refs:                             # mandatory — at least one
+      - docs/runbooks/<slug>.md
+    reviewed_by: agent | human
+    last_reviewed: YYYY-MM-DD | null
+```
+
+**Lifecycle:** same four-state model as Jewel (`proposed → accepted/verified →
+deprecated`), curated via the same `treasure-chest items accept|verify|deprecate`
+commands (`--kind potion` on `items list` to see only potions). Potion has no
+`verification`/`history`/`score` fields — `items verify --evidence` accepts an evidence
+ref for CLI-surface parity with jewels but does not persist it for potions. Potion never
+had the legacy `active` status, so `items migrate-status` only ever touches jewels.
+
+**Generation:** `strategist treasure-chest index` scans the `runbooks` chest's directory
+(`docs/runbooks/*.md`) and proposes one Potion candidate per runbook file, deduplicated by
+id against existing `potions.yaml`/`potions/<chest-id>.yaml` entries — same doctrine as
+jewel candidate generation (always `status: proposed`, trust capped at the parent chest's
+tier, no pre-approval gate).
 
 ---
 
@@ -683,7 +703,6 @@ strategist install --target .
 | `strategist.check_stale` | `strategist.artifact`, `strategist.cache.hit` |
 | `strategist.sync_governance` | `strategist.mandates.count`, `strategist.mandates.missing` |
 | `strategist.check` | `strategist.target` |
-| `strategist.initiative` | `strategist.target` |
 
 ---
 

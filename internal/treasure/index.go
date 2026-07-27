@@ -2,9 +2,6 @@ package treasure
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
@@ -143,18 +140,7 @@ func buildProposedJewelDocs(root string, candidates []Jewel) (map[string]*yaml.N
 }
 
 func writeProposedJewelDocs(root string, docs map[string]*yaml.Node) error {
-	if err := os.MkdirAll(filepath.Join(root, "jewels"), 0o755); err != nil {
-		return fmt.Errorf("index proposed jewels: create jewels/: %w", err)
-	}
-	var writes []YAMLWrite
-	for path, doc := range docs {
-		writes = append(writes, YAMLWrite{Path: path, Doc: doc})
-	}
-	sort.Slice(writes, func(i, j int) bool { return writes[i].Path < writes[j].Path })
-	if _, err := WriteYAMLNodes(writes...); err != nil {
-		return fmt.Errorf("index proposed jewels: %w", err)
-	}
-	return nil
+	return writeProposedItemDocs(root, "jewels", docs, "index proposed jewels")
 }
 
 func appendCandidateToPartition(root string, docs map[string]*yaml.Node, cand Jewel, proposedAt string) error {

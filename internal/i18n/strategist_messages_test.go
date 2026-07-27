@@ -37,7 +37,6 @@ func TestReservedTokensAreNotInENRuntime(t *testing.T) {
 
 	// These are matched as whole words to avoid false positives (e.g. "similar" contains "sim").
 	forbidden := append([]string{}, i18n.ReservedGateTokensPTBR()...)
-	forbidden = append(forbidden, i18n.ReservedQuickDrawPT)
 	en := reflect.ValueOf(i18n.ENRuntime)
 	typ := en.Type()
 

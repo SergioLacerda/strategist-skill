@@ -141,9 +141,9 @@ Supplemental, loaded on demand (not phase-gated): `protocol.md`, `schemas/*.yaml
 ## Operating Rules
 
 - The main pipeline still runs in the same order.
-- No request category may bypass the pipeline unless it matches Quick Draw or Critical Hit.
+- No request category may bypass the pipeline unless it matches Critical Hit.
 - Route selection (Critical Hit vs main mission) is handled internally by the intake routing layer — the delegating agent does not need to specify a route.
-- Documentation-only and "small" changes still require discovery, refinement, and gate evidence unless the internal routing contract selects Quick Draw or Critical Hit.
+- Documentation-only and "small" changes still require discovery, refinement, and gate evidence unless the internal routing contract selects Critical Hit.
 - When in doubt, consult the numbered contracts above instead of improvising.
 
 ## Role Invocation Failures

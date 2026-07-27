@@ -12,8 +12,8 @@ import (
 )
 
 func TestDojoCheckCmd_AllPass(t *testing.T) {
-	root := setupDojoScenario(t, "quick-draw",
-		"scenario: quick-draw\nrun_dir: dojo/run\nfiles_created:\n  - path: todo/geral.md\n    must_contain: [KATA_RAPIDO]\n",
+	root := setupDojoScenario(t, "sample-scenario",
+		"scenario: sample-scenario\nrun_dir: dojo/run\nfiles_created:\n  - path: todo/geral.md\n    must_contain: [KATA_RAPIDO]\n",
 		"ideia: KATA_RAPIDO test\n",
 	)
 
@@ -22,7 +22,7 @@ func TestDojoCheckCmd_AllPass(t *testing.T) {
 	dojoRoot = root
 
 	out := captureStdout(t, func() {
-		err := dojoCheckCmd.RunE(dojoCheckCmd, []string{"quick-draw"})
+		err := dojoCheckCmd.RunE(dojoCheckCmd, []string{"sample-scenario"})
 		require.NoError(t, err)
 	})
 	assert.Contains(t, out, "PASS")
@@ -30,8 +30,8 @@ func TestDojoCheckCmd_AllPass(t *testing.T) {
 }
 
 func TestDojoCheckCmd_FileMissing(t *testing.T) {
-	root := setupDojoScenario(t, "quick-draw",
-		"scenario: quick-draw\nrun_dir: dojo/run\nfiles_created:\n  - path: todo/geral.md\n",
+	root := setupDojoScenario(t, "sample-scenario",
+		"scenario: sample-scenario\nrun_dir: dojo/run\nfiles_created:\n  - path: todo/geral.md\n",
 		"",
 	)
 
@@ -40,7 +40,7 @@ func TestDojoCheckCmd_FileMissing(t *testing.T) {
 	dojoRoot = root
 
 	out := captureStdout(t, func() {
-		err := dojoCheckCmd.RunE(dojoCheckCmd, []string{"quick-draw"})
+		err := dojoCheckCmd.RunE(dojoCheckCmd, []string{"sample-scenario"})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed")
 	})
@@ -52,13 +52,13 @@ func TestDojoCheckCmd_MissingActiveYAML(t *testing.T) {
 	t.Cleanup(func() { dojoRoot = orig })
 	dojoRoot = filepath.Join(t.TempDir(), "nonexistent")
 
-	err := dojoCheckCmd.RunE(dojoCheckCmd, []string{"quick-draw"})
+	err := dojoCheckCmd.RunE(dojoCheckCmd, []string{"sample-scenario"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "active.yaml")
 }
 
 func TestDojoCheckCmd_MissingCriteria(t *testing.T) {
-	root := setupDojoScenario(t, "quick-draw", "scenario: quick-draw\n", "")
+	root := setupDojoScenario(t, "sample-scenario", "scenario: sample-scenario\n", "")
 	orig := dojoRoot
 	t.Cleanup(func() { dojoRoot = orig })
 	dojoRoot = root
@@ -68,8 +68,8 @@ func TestDojoCheckCmd_MissingCriteria(t *testing.T) {
 }
 
 func TestDojoCheckCmd_FilesOnlySkipsEmitLog(t *testing.T) {
-	root := setupDojoScenario(t, "quick-draw",
-		"scenario: quick-draw\nrun_dir: dojo/run\nfiles_created:\n  - path: todo/geral.md\nemit_log:\n  must_contain: [ranger_start]\n",
+	root := setupDojoScenario(t, "sample-scenario",
+		"scenario: sample-scenario\nrun_dir: dojo/run\nfiles_created:\n  - path: todo/geral.md\nemit_log:\n  must_contain: [ranger_start]\n",
 		"ideia: content\n",
 	)
 
@@ -80,7 +80,7 @@ func TestDojoCheckCmd_FilesOnlySkipsEmitLog(t *testing.T) {
 	dojoFilesOnly = true
 
 	out := captureStdout(t, func() {
-		err := dojoCheckCmd.RunE(dojoCheckCmd, []string{"quick-draw"})
+		err := dojoCheckCmd.RunE(dojoCheckCmd, []string{"sample-scenario"})
 		require.NoError(t, err)
 	})
 	assert.Contains(t, out, "PASS")
@@ -88,8 +88,8 @@ func TestDojoCheckCmd_FilesOnlySkipsEmitLog(t *testing.T) {
 }
 
 func TestDojoCheckCmd_PersistsResultAndLesson(t *testing.T) {
-	root := setupDojoScenario(t, "quick-draw",
-		"scenario: quick-draw\nrun_dir: dojo/run\nfiles_created:\n  - path: todo/geral.md\n",
+	root := setupDojoScenario(t, "sample-scenario",
+		"scenario: sample-scenario\nrun_dir: dojo/run\nfiles_created:\n  - path: todo/geral.md\n",
 		"",
 	)
 
@@ -98,16 +98,16 @@ func TestDojoCheckCmd_PersistsResultAndLesson(t *testing.T) {
 	dojoRoot = root
 
 	_ = captureStdout(t, func() {
-		err := dojoCheckCmd.RunE(dojoCheckCmd, []string{"quick-draw"})
+		err := dojoCheckCmd.RunE(dojoCheckCmd, []string{"sample-scenario"})
 		require.Error(t, err)
 	})
 
 	basePath := filepath.Join(filepath.Dir(root), ".analysis")
-	_, err := os.Stat(filepath.Join(basePath, "dojo", ".last-run", "quick-draw", "result.json"))
+	_, err := os.Stat(filepath.Join(basePath, "dojo", ".last-run", "sample-scenario", "result.json"))
 	require.NoError(t, err, "expected result.json to be persisted")
 	_, err = os.Stat(filepath.Join(basePath, "dojo", ".history.jsonl"))
 	require.NoError(t, err, "expected .history.jsonl to be appended")
-	_, err = os.Stat(filepath.Join(basePath, "dojo", ".last-run", "quick-draw", "lesson.md"))
+	_, err = os.Stat(filepath.Join(basePath, "dojo", ".last-run", "sample-scenario", "lesson.md"))
 	assert.NoError(t, err, "expected lesson.md to be written for a failing run")
 }
 
@@ -122,14 +122,14 @@ func TestDojoCheckCmd_EmptyBasePath(t *testing.T) {
 	t.Cleanup(func() { dojoRoot = orig })
 	dojoRoot = strategistRoot
 
-	err := dojoCheckCmd.RunE(dojoCheckCmd, []string{"quick-draw"})
+	err := dojoCheckCmd.RunE(dojoCheckCmd, []string{"sample-scenario"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "base_path")
 }
 
 func TestDojoListCmd_ListsScenarios(t *testing.T) {
-	root := setupDojoScenario(t, "quick-draw",
-		"scenario: quick-draw\ndescription: \"Quick Draw test\"\n", "")
+	root := setupDojoScenario(t, "sample-scenario",
+		"scenario: sample-scenario\ndescription: \"sample scenario test\"\n", "")
 
 	// root is .strategist; project root is its parent; dojo dir is <project>/.analysis/dojo
 	projectRoot := filepath.Dir(root)
@@ -146,12 +146,12 @@ func TestDojoListCmd_ListsScenarios(t *testing.T) {
 		err := dojoListCmd.RunE(dojoListCmd, nil)
 		require.NoError(t, err)
 	})
-	assert.Contains(t, out, "quick-draw")
+	assert.Contains(t, out, "sample-scenario")
 }
 
 func TestDojoListCmd_ExcludesRunDirectory(t *testing.T) {
-	root := setupDojoScenario(t, "quick-draw",
-		"scenario: quick-draw\ndescription: \"Quick Draw test\"\n", "ideia: content\n")
+	root := setupDojoScenario(t, "sample-scenario",
+		"scenario: sample-scenario\ndescription: \"sample scenario test\"\n", "ideia: content\n")
 
 	orig := dojoRoot
 	t.Cleanup(func() { dojoRoot = orig })
@@ -161,7 +161,7 @@ func TestDojoListCmd_ExcludesRunDirectory(t *testing.T) {
 		err := dojoListCmd.RunE(dojoListCmd, nil)
 		require.NoError(t, err)
 	})
-	assert.Contains(t, out, "quick-draw")
+	assert.Contains(t, out, "sample-scenario")
 	for _, line := range strings.Split(out, "\n") {
 		assert.False(t, strings.HasPrefix(line, "run\t") || line == "run",
 			"dojo list must not list the run output directory: %q", line)

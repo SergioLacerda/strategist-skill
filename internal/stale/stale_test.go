@@ -13,16 +13,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestIsStale(t *testing.T) {
-	t.Parallel()
-	checker := stale.Checker{}
+type isStaleTestCase struct {
+	name      string
+	setup     func(t *testing.T, dir string) string
+	wantStale bool
+	wantErr   bool
+}
 
-	tests := []struct {
-		name      string
-		setup     func(t *testing.T, dir string) string
-		wantStale bool
-		wantErr   bool
-	}{
+func skipIfRoot(t *testing.T) {
+	t.Helper()
+	if os.Getuid() == 0 {
+		t.Skip("permission tests do not apply when running as root")
+	}
+}
+
+func isStaleTestCases() []isStaleTestCase {
+	return []isStaleTestCase{
 		{
 			name: "absent artifact is stale",
 			setup: func(t *testing.T, dir string) string {
@@ -132,9 +138,7 @@ func TestIsStale(t *testing.T) {
 			name: "artifact in unreadable directory returns error",
 			setup: func(t *testing.T, dir string) string {
 				t.Helper()
-				if os.Getuid() == 0 {
-					t.Skip("permission tests do not apply when running as root")
-				}
+				skipIfRoot(t)
 				subdir := filepath.Join(dir, "locked")
 				require.NoError(t, os.Mkdir(subdir, 0o755))
 				art := filepath.Join(subdir, ".config.gz")
@@ -148,9 +152,49 @@ func TestIsStale(t *testing.T) {
 			wantStale: false,
 			wantErr:   true,
 		},
+		{
+			name: "legacy source in unreadable directory returns error",
+			setup: func(t *testing.T, dir string) string {
+				t.Helper()
+				skipIfRoot(t)
+				subdir := filepath.Join(dir, "locked")
+				require.NoError(t, os.Mkdir(subdir, 0o755))
+				src := filepath.Join(subdir, "old.yaml")
+				require.NoError(t, os.WriteFile(src, []byte("x"), 0o644))
+				art := filepath.Join(dir, ".config.gz")
+				testutil.WriteGzJSON(t, art, map[string]any{"sources": map[string]int64{src: time.Now().Unix()}})
+				testutil.WriteGzJSON(t, filepath.Join(dir, ".manifest.gz"), map[string]any{})
+				require.NoError(t, os.Chmod(subdir, 0o000))
+				t.Cleanup(func() { _ = os.Chmod(subdir, 0o755) })
+				return art
+			},
+			wantStale: false,
+			wantErr:   true,
+		},
+		{
+			name: "manifest file unreadable returns error",
+			setup: func(t *testing.T, dir string) string {
+				t.Helper()
+				skipIfRoot(t)
+				art := filepath.Join(dir, ".config.gz")
+				testutil.WriteGzJSON(t, art, map[string]any{"sources": map[string]int64{}})
+				manifestPath := filepath.Join(dir, ".manifest.gz")
+				testutil.WriteGzJSON(t, manifestPath, map[string]any{"artifacts": map[string]string{}})
+				require.NoError(t, os.Chmod(manifestPath, 0o000))
+				t.Cleanup(func() { _ = os.Chmod(manifestPath, 0o644) })
+				return art
+			},
+			wantStale: false,
+			wantErr:   true,
+		},
 	}
+}
 
-	for _, tt := range tests {
+func TestIsStale(t *testing.T) {
+	t.Parallel()
+	checker := stale.Checker{}
+
+	for _, tt := range isStaleTestCases() {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			dir := t.TempDir()

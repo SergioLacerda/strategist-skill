@@ -77,34 +77,6 @@ func TestSideQuestGateDenied_GoesToRefinement(t *testing.T) {
 	assert.Equal(t, domain.StateRefinement, state)
 }
 
-func TestFSMQuickDrawRoute(t *testing.T) {
-	t.Parallel()
-
-	// Intent detected → QuickDraw state
-	s := domain.NextState(domain.StateInit, domain.EventQuickDrawIntent)
-	assert.Equal(t, domain.StateQuickDraw, s)
-
-	// Normalize note → gate
-	s = domain.NextState(s, domain.EventManifestNonEmpty)
-	assert.Equal(t, domain.StateQuickDrawGate, s)
-
-	// User approves → done
-	s = domain.NextState(s, domain.EventQuickDrawApprove)
-	assert.Equal(t, domain.StateQuickDrawDone, s)
-
-	// Done is absorbing
-	s = domain.NextState(s, domain.EventManifestNonEmpty)
-	assert.Equal(t, domain.StateQuickDrawDone, s)
-}
-
-func TestFSMQuickDrawDecline(t *testing.T) {
-	t.Parallel()
-	s := domain.RunStateMachine(domain.StateQuickDrawGate,
-		[]domain.TransitionEvent{domain.EventQuickDrawDecline},
-	)
-	assert.Equal(t, domain.StateQuickDrawDone, s)
-}
-
 func TestFSMADRRoute(t *testing.T) {
 	t.Parallel()
 
@@ -162,7 +134,7 @@ func TestFSMRetryTransientDirectExecPreservesOrigin(t *testing.T) {
 
 // TestFSMRetryEventsDoNotOverlapWithManifestEvents is the S9 regression guard:
 // EventManifestEmpty/EventManifestNonEmpty must mean "manifest scan result" only
-// (Init, SideQuestScan, QuickDraw) — retry success is EventRetryOK exclusively, so
+// (Init, SideQuestScan) — retry success is EventRetryOK exclusively, so
 // the three retry states must not react to manifest events at all.
 func TestFSMRetryEventsDoNotOverlapWithManifestEvents(t *testing.T) {
 	t.Parallel()
@@ -278,8 +250,6 @@ func TestFSMStayBranches(t *testing.T) {
 		{"retrying refinement unrelated event", domain.StateRetryingRefinement, domain.EventManifestEmpty},
 		{"retrying execution unrelated event", domain.StateRetryingExecution, domain.EventManifestEmpty},
 		{"retrying direct exec unrelated event", domain.StateRetryingDirectExec, domain.EventManifestEmpty},
-		{"quick draw unrelated event", domain.StateQuickDraw, domain.EventGateApproved},
-		{"quick draw gate unrelated event", domain.StateQuickDrawGate, domain.EventManifestEmpty},
 		{"adr gate1 unrelated event", domain.StateADRGate1, domain.EventGateApproved},
 		{"adr gate2 unrelated event", domain.StateADRGate2, domain.EventGateApproved},
 		{"direct gate unrelated event", domain.StateDirectGate, domain.EventGateApproved},
@@ -298,7 +268,7 @@ func TestFSMStayBranches(t *testing.T) {
 func TestFSMAbsorbingStates(t *testing.T) {
 	t.Parallel()
 	for _, s := range []domain.MissionState{
-		domain.StateQuickDrawDone, domain.StateADRDone, domain.StateBlocked, domain.StateDirectDone,
+		domain.StateADRDone, domain.StateBlocked, domain.StateDirectDone,
 	} {
 		got := domain.NextState(s, domain.EventGateApproved)
 		assert.Equal(t, s, got)
@@ -312,7 +282,6 @@ var allMissionStates = []domain.MissionState{
 	domain.StateInit, domain.StateSideQuestScan, domain.StateSideQuestGate, domain.StateSideQuestExec,
 	domain.StateRefinement, domain.StateApprovalGate, domain.StateExecution,
 	domain.StateDoneAnalysis, domain.StateDoneDelivery, domain.StateBlocked,
-	domain.StateQuickDraw, domain.StateQuickDrawGate, domain.StateQuickDrawDone,
 	domain.StateADRGate1, domain.StateADRGate2, domain.StateADRDone,
 	domain.StateRetryingRefinement, domain.StateRetryingExecution, domain.StateRetryingDirectExec,
 	domain.StateDirectGate, domain.StateDirectExec, domain.StateDirectDone,
@@ -322,7 +291,6 @@ var allTransitionEvents = []domain.TransitionEvent{
 	domain.EventManifestEmpty, domain.EventManifestNonEmpty,
 	domain.EventGateApproved, domain.EventGateDenied, domain.EventGateTimeout, domain.EventGateRevision,
 	domain.EventSniperDone, domain.EventArchivistNoTasks, domain.EventArchivistTasks,
-	domain.EventQuickDrawIntent, domain.EventQuickDrawApprove, domain.EventQuickDrawDecline,
 	domain.EventADRCriterionMet, domain.EventADRApproved, domain.EventADRDeclined,
 	domain.EventSlotTransient, domain.EventSlotPermanent, domain.EventRetryOK,
 	domain.EventSniperSideQuest,

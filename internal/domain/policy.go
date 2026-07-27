@@ -34,11 +34,6 @@ const (
 	StateDoneDelivery  MissionState = "DONE_DELIVERY"
 	StateBlocked       MissionState = "BLOCKED"
 
-	// Quick Draw route states (§5.0 pipeline).
-	StateQuickDraw     MissionState = "QUICK_DRAW"
-	StateQuickDrawGate MissionState = "QUICK_DRAW_GATE"
-	StateQuickDrawDone MissionState = "QUICK_DRAW_DONE"
-
 	// ADR stage states (§8 pipeline).
 	StateADRGate1 MissionState = "ADR_GATE_1"
 	StateADRGate2 MissionState = "ADR_GATE_2"
@@ -77,11 +72,6 @@ const (
 	EventArchivistNoTasks TransitionEvent = "archivist_done_no_tasks"
 	EventArchivistTasks   TransitionEvent = "archivist_done_has_tasks"
 
-	// Quick Draw route events (§3.1 detection → §5.0 execution).
-	EventQuickDrawIntent  TransitionEvent = "quick_draw_intent"
-	EventQuickDrawApprove TransitionEvent = "quick_draw_approved"
-	EventQuickDrawDecline TransitionEvent = "quick_draw_declined"
-
 	// ADR stage events (§8 pipeline).
 	EventADRCriterionMet TransitionEvent = "adr_criterion_met"
 	EventADRApproved     TransitionEvent = "adr_approved"
@@ -92,8 +82,8 @@ const (
 	EventSlotPermanent TransitionEvent = "slot_permanent_failure"
 	// EventRetryOK is the retry-success signal for the StateRetrying* states (S9):
 	// previously EventManifestNonEmpty did double duty here and at the side-quest
-	// manifest scan / Quick Draw content check, three unrelated meanings on one
-	// token. Manifest events now mean manifests only (Init, SideQuestScan, QuickDraw).
+	// manifest scan, two unrelated meanings on one token. Manifest events now
+	// mean manifests only (Init, SideQuestScan).
 	EventRetryOK TransitionEvent = "retry_ok"
 
 	// Side quest surfaced during documentation materialization. This is the

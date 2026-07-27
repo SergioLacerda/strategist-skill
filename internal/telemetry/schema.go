@@ -37,7 +37,7 @@ const (
 	// route-decision telemetry (mission route, e.g. "main", and a short
 	// machine-readable reason for that route/readiness verdict). Emitted today only
 	// from `strategist check --simulate`, the sole Go-side call site that produces a
-	// route-shaped verdict; full mission routing (quick-draw/critical-hit) is a
+	// route-shaped verdict; full mission routing (critical-hit) is a
 	// prompt-time decision made by the LLM runtime from the narrative/machine
 	// contracts, not the compiled CLI, and is not instrumented here.
 	AttrPipelineRoute  = "strategist.pipeline_route"

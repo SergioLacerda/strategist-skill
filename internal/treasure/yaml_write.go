@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"gopkg.in/yaml.v3"
 )
@@ -14,6 +15,24 @@ import (
 type YAMLWrite struct {
 	Path string
 	Doc  *yaml.Node
+}
+
+// writeProposedItemDocs stages one or more newly-built manifest documents into
+// <root>/<subdir>/ as a single all-or-nothing batch — shared by
+// writeProposedJewelDocs and writeProposedPotionDocs.
+func writeProposedItemDocs(root, subdir string, docs map[string]*yaml.Node, errPrefix string) error {
+	if err := os.MkdirAll(filepath.Join(root, subdir), 0o755); err != nil {
+		return fmt.Errorf("%s: create %s/: %w", errPrefix, subdir, err)
+	}
+	writes := make([]YAMLWrite, 0, len(docs))
+	for path, doc := range docs {
+		writes = append(writes, YAMLWrite{Path: path, Doc: doc})
+	}
+	sort.Slice(writes, func(i, j int) bool { return writes[i].Path < writes[j].Path })
+	if _, err := WriteYAMLNodes(writes...); err != nil {
+		return fmt.Errorf("%s: %w", errPrefix, err)
+	}
+	return nil
 }
 
 type stagedYAMLWrite struct {

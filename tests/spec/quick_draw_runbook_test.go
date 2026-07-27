@@ -86,25 +86,28 @@ func TestRunbookCandidateNeverWritesCanonicalDirectly(t *testing.T) {
 	}
 }
 
-// TestOpportunityAttackRemainsADROnlyAfterQuickDrawRunbookAddition is a regression
-// guard: adding a Quick Draw-scoped runbook routine must not expand Opportunity
-// Attack's ADR-only remit or make it aware of runbooks at all.
-
-// TestOpportunityAttackRemainsADROnlyAfterQuickDrawRunbookAddition is a regression
-// guard: adding a Quick Draw-scoped runbook routine must not expand Opportunity
-// Attack's ADR-only remit or make it aware of runbooks at all.
-func TestOpportunityAttackRemainsADROnlyAfterQuickDrawRunbookAddition(t *testing.T) {
+// TestOpportunityAttackInheritsRunbookSignalsFromQuickDraw verifies the planned
+// migration (strategist-ability-taxonomy-reorg T5, Decision D3): once Quick Draw's
+// runbook_opportunity routine is retired, Opportunity Attack must carry an
+// equivalent runbook_worthy activation criterion and its own OA-RUNBOOK side quest,
+// while still keeping ADR, runbook, and chest evaluation as independent outputs
+// that never claim card-closure (Critical Hit's exclusive remit).
+func TestOpportunityAttackInheritsRunbookSignalsFromQuickDraw(t *testing.T) {
 	t.Parallel()
 
 	for _, path := range []string{
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "opportunity-attack.yaml"),
 	} {
 		content := readFile(t, path)
-		if !strings.Contains(content, "Opportunity Attack is ADR-only") {
-			t.Fatalf("%s lost its ADR-only declaration", path)
-		}
-		if strings.Contains(strings.ToLower(content), "runbook") {
-			t.Fatalf("%s should not reference runbooks — that is Quick Draw's runbook_opportunity routine", path)
+		for _, needle := range []string{
+			"runbook_worthy",
+			"OA-RUNBOOK-{mission_id}",
+			"Opportunity Attack MUST NOT evaluate implementation completion or move cards to done/",
+			"Critical Hit is the only route that may close pending/refined cards into done/",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing post-migration runbook declaration %q", path, needle)
+			}
 		}
 	}
 }

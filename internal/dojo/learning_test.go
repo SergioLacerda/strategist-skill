@@ -67,11 +67,11 @@ func TestGenerateLesson_IncludesFailuresAndNextAction(t *testing.T) {
 func TestWriteLesson_SkipsPassingRun(t *testing.T) {
 	base := t.TempDir()
 	result := domain.DojoCheckResult{
-		Scenario: "quick-draw",
+		Scenario: "sample-scenario",
 		Items:    []domain.DojoCheckItem{{Label: "files_created x", Passed: true}},
 	}
 	require.NoError(t, dojo.WriteLesson(base, result))
-	_, err := os.Stat(filepath.Join(base, "dojo", ".last-run", "quick-draw", "lesson.md"))
+	_, err := os.Stat(filepath.Join(base, "dojo", ".last-run", "sample-scenario", "lesson.md"))
 	assert.True(t, os.IsNotExist(err))
 }
 

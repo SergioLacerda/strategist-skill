@@ -12,7 +12,6 @@ Resolve the route before any mission work starts.
 
 ## Routes
 
-- **Quick Draw** — only for explicit quick capture / note append requests
 - **Critical Hit** — internal capability for workspace artifact management
   (`pending/`, `refined/`, `archived/`, `done/`). Not a route mutually exclusive with the
   pipeline — may fire at intake or mid-mission. Two modes: plain move (no evaluation, no
@@ -27,11 +26,10 @@ Resolve the route before any mission work starts.
 
 ## Route Selection Order
 
-1. Quick Draw keywords detected → Quick Draw
-2. Critical Hit conditions satisfied (see `critical-hit.yaml`) → Critical Hit
+1. Critical Hit conditions satisfied (see `critical-hit.yaml`) → Critical Hit
    (plain move, or closure move when an explicit completion claim + evidence are present)
-3. Implementation Short Route conditions satisfied → Implementation Short Route
-4. Default → Main Mission
+2. Implementation Short Route conditions satisfied → Implementation Short Route
+3. Default → Main Mission
 
 **When in doubt → Main Mission. Conservatism is the safe default.**
 
@@ -41,7 +39,7 @@ Steps 2–4 above are decided by **Scout**, an internal pre-pipeline role (the "
 Router"). Scout is not a slot and not a configurable provider — it is built-in
 Strategist behavior, analogous in scope-boundedness to Sniper but positioned before
 the pipeline instead of at the end of it. Scout runs immediately after intake
-(`prompt-intake`) and after `quick_draw_detection` finds no match.
+(`prompt-intake`).
 
 Scout classifies the request and emits one compact, auditable `route_decision`
 (never a discovery report — see `schemas/scout-route-decision.schema.yaml` and
@@ -175,7 +173,7 @@ When operating inside the main mission, consult contracts in this order:
 - No slot work performed by Strategist itself
 - The invoking local context (any adapter, orchestrator, or harness) may block or permit execution — it does NOT replace the canonical pipeline sequence once Strategist is invoked
 - `execution_gate=allowed` from local context never substitutes the Strategist Approval Gate (explicit user approval)
-- The Strategist Approval Gate is required on all routes: Quick Draw, Critical Hit, Implementation Short Route, and Main Mission
+- The Strategist Approval Gate is required on all routes: Critical Hit, Implementation Short Route, and Main Mission
 - A missing or uncallable resolved execution provider is a blocked state — never a reason for direct execution
 
 ## Scope Invariant

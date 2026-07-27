@@ -71,6 +71,20 @@ func TestWriteGzJSON_OutputIsDirectory(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestSourceMetaForSources_MissingSourceKeepsRecordedMTimeOnly(t *testing.T) {
+	t.Parallel()
+	missing := filepath.Join(t.TempDir(), "nonexistent.yaml")
+	meta := sourceMetaForSources(map[string]int64{missing: 12345})
+	assert.Equal(t, sourceMetadata{MTime: 12345}, meta[missing])
+}
+
+func TestSourceFileSHA256_ReadError(t *testing.T) {
+	t.Parallel()
+	// A directory cannot be read as a file — triggers the os.ReadFile error path.
+	result := sourceFileSHA256(t.TempDir())
+	assert.Empty(t, result)
+}
+
 func TestCompileYAMLDirTyped_UnreadableDir(t *testing.T) {
 	t.Parallel()
 	if os.Getuid() == 0 {

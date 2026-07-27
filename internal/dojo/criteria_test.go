@@ -13,7 +13,7 @@ import (
 
 func TestValidateCriteria_OK(t *testing.T) {
 	c := domain.DojoCriteria{
-		Scenario: "quick-draw",
+		Scenario: "sample-scenario",
 		RunDir:   "dojo/run",
 		FilesCreated: []domain.DojoFileCheck{
 			{Path: "todo/geral.md"},
@@ -30,7 +30,7 @@ func TestValidateCriteria_MissingScenario(t *testing.T) {
 }
 
 func TestValidateCriteria_MissingRunDir(t *testing.T) {
-	c := domain.DojoCriteria{Scenario: "quick-draw"}
+	c := domain.DojoCriteria{Scenario: "sample-scenario"}
 	err := dojo.ValidateCriteria(c)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "run_dir is required")
@@ -38,7 +38,7 @@ func TestValidateCriteria_MissingRunDir(t *testing.T) {
 
 func TestValidateCriteria_PathTraversal(t *testing.T) {
 	c := domain.DojoCriteria{
-		Scenario: "quick-draw",
+		Scenario: "sample-scenario",
 		RunDir:   "dojo/run",
 		FilesCreated: []domain.DojoFileCheck{
 			{Path: "../../outside.md"},
@@ -51,7 +51,7 @@ func TestValidateCriteria_PathTraversal(t *testing.T) {
 
 func TestValidateCriteria_AbsolutePathRejected(t *testing.T) {
 	c := domain.DojoCriteria{
-		Scenario: "quick-draw",
+		Scenario: "sample-scenario",
 		RunDir:   "dojo/run",
 		FilesCreated: []domain.DojoFileCheck{
 			{Path: "/etc/passwd"},
@@ -64,7 +64,7 @@ func TestValidateCriteria_AbsolutePathRejected(t *testing.T) {
 
 func TestValidateCriteria_EmptyFilePath(t *testing.T) {
 	c := domain.DojoCriteria{
-		Scenario:     "quick-draw",
+		Scenario:     "sample-scenario",
 		RunDir:       "dojo/run",
 		FilesCreated: []domain.DojoFileCheck{{Path: ""}},
 	}
@@ -75,7 +75,7 @@ func TestValidateCriteria_EmptyFilePath(t *testing.T) {
 
 func TestValidateCriteria_ManifestMissingProvider(t *testing.T) {
 	c := domain.DojoCriteria{
-		Scenario: "quick-draw",
+		Scenario: "sample-scenario",
 		RunDir:   "dojo/run",
 		ManifestChecks: []domain.DojoManifestCheck{
 			{Slot: "discovery"},
@@ -88,7 +88,7 @@ func TestValidateCriteria_ManifestMissingProvider(t *testing.T) {
 
 func TestValidateCriteria_ManifestEmptyField(t *testing.T) {
 	c := domain.DojoCriteria{
-		Scenario: "quick-draw",
+		Scenario: "sample-scenario",
 		RunDir:   "dojo/run",
 		ManifestChecks: []domain.DojoManifestCheck{
 			{ExpectedProvider: "brainstorming", FieldsPresent: []string{""}},
@@ -101,7 +101,7 @@ func TestValidateCriteria_ManifestEmptyField(t *testing.T) {
 
 func TestValidateCriteria_TimingNonPositive(t *testing.T) {
 	c := domain.DojoCriteria{
-		Scenario:       "quick-draw",
+		Scenario:       "sample-scenario",
 		RunDir:         "dojo/run",
 		TimingCriteria: &domain.DojoTimingCriteria{MaxWallTimeMs: 0},
 	}
@@ -121,7 +121,7 @@ func TestLoadCriteria_InvalidIsRejected(t *testing.T) {
 func TestLoadCriteria_OK(t *testing.T) {
 	dir := t.TempDir()
 	writeCriteria(t, dir, `
-scenario: quick-draw
+scenario: sample-scenario
 description: "test"
 run_dir: dojo/run
 auto_stop_at_gate: true
@@ -135,7 +135,7 @@ emit_log:
 `)
 	c, err := dojo.LoadCriteria(dir)
 	require.NoError(t, err)
-	assert.Equal(t, "quick-draw", c.Scenario)
+	assert.Equal(t, "sample-scenario", c.Scenario)
 	assert.Equal(t, "dojo/run", c.RunDir)
 	assert.True(t, c.AutoStopAtGate)
 	assert.Len(t, c.FilesCreated, 1)

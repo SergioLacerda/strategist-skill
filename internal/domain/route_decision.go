@@ -42,26 +42,11 @@ func ValidateRouteDecision(route string, metadata RouteRequestMetadata) RouteVal
 	switch route {
 	case MissionRouteMain:
 		return allowedRoute(route)
-	case MissionRouteQuickDraw:
-		return validateQuickDrawRoute(route, metadata)
 	case MissionRouteDirectExecute:
 		return validateDirectExecuteRoute(route, metadata)
 	default:
 		return blockedRoute(route, fmt.Sprintf("unknown route %q", route))
 	}
-}
-
-func validateQuickDrawRoute(route string, metadata RouteRequestMetadata) RouteValidationDecision {
-	if !metadata.HasContext {
-		return allowedRoute(route)
-	}
-	if metadata.TouchesSourceCode {
-		return blockedRoute(route, "quick_draw cannot mutate source files or tests")
-	}
-	if metadata.RequiresDiscovery {
-		return blockedRoute(route, "quick_draw cannot bypass required discovery/refinement")
-	}
-	return allowedRoute(route)
 }
 
 func validateDirectExecuteRoute(route string, metadata RouteRequestMetadata) RouteValidationDecision {

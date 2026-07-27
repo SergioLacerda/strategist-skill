@@ -46,7 +46,7 @@ For full pipeline/contracts/schema details: [readme-detailed-en.md](readme-detai
 - Mandatory approval gate before Sniper materializes approved documentation or handoff work.
 - Pluggable slots (`discovery`, `refinement`, `execution`).
 - Mission policy through `mission_mode` (analysis vs delivery).
-- Quick Draw, Opportunity Attack, Side Quests, Critical Hit, and Treasure Chests in the same flow.
+- Opportunity Attack, Side Quests, Critical Hit, and Treasure Chests in the same flow.
 
 ## How it works
 

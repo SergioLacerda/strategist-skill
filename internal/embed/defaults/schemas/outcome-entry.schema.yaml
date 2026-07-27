@@ -64,7 +64,7 @@ field_rules:
       and statement are joined from .strategist/jewels.yaml / jewels/<chest-id>.yaml
       at read time, never duplicated here. Populated from mission_result.jewels_consulted
       when present (see mission-result.schema.yaml). Enables correlating jewel
-      consultations with mission outcomes for `treasure-chest mine` curation without
+      consultations with mission outcomes for `treasure-chest items` curation without
       introducing automatic scoring or status promotion.
     items:
       type: string

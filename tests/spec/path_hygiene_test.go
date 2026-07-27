@@ -70,7 +70,6 @@ func TestCanonicalProviderPathIsSkillsSubdirectory(t *testing.T) {
 
 	// Guard canonical runtime path in normative surfaces — no root-level .strategist/<provider>/ lookup.
 	mustContainCanonical := []string{
-		filepath.Join(repoRoot(t), "cmd", "strategist", "initiative.go"),
 		filepath.Join(repoRoot(t), "docs", "strategist-concepts.md"),
 		filepath.Join(repoRoot(t), "internal", "domain", "types.go"),
 	}
@@ -231,7 +230,6 @@ func TestNoRootLevelProviderLookupInCode(t *testing.T) {
 	files := []string{
 		filepath.Join(repoRoot(t), "cmd", "strategist", "check.go"),
 		filepath.Join(repoRoot(t), "internal", "dojo", "checker.go"),
-		filepath.Join(repoRoot(t), "cmd", "strategist", "initiative.go"),
 	}
 
 	// Forbidden: join(root, provider, "skill.yaml") without the "skills" segment.

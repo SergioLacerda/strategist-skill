@@ -29,9 +29,8 @@ contract: null
 - generate unique `mission_id`
 - emit mission checkpoint immediately after intake
 - emit mission metrics with the checkpoint
-- invoke Scout immediately after `prompt-intake`, and before `context_enrichment`/discovery,
-  whenever `quick_draw_detection` did not match — Scout resolves `route_decision` before any
-  further pipeline stage runs
+- invoke Scout immediately after `prompt-intake`, and before `context_enrichment`/discovery —
+  Scout resolves `route_decision` before any further pipeline stage runs
 
 ## Narrative Rule
 

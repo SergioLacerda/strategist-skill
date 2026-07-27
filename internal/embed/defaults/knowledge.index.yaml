@@ -4,7 +4,12 @@ description: >
   each mission. context-enrichment loads excerpts within the configured token budget.
   source-hints.yaml overlays learned priority adjustments from past missions.
 
-sources: []
+sources:
+  - id: runbooks
+    type: docs
+    path: docs/runbooks
+    tags: [runbooks, troubleshooting, all]
+    priority: medium
 
 # Example entries (uncomment and customize):
 #

@@ -21,6 +21,6 @@ If the user invokes this skill without any other guidance, ask them what they wa
 - Amber phosphor on deep resin-brown; **everything amber glows**. CRT scanline + vignette overlay on full pages (`.crt`).
 - Three type voices: Cinzel Decorative (titles), Cinzel (headings), IBM Plex Mono (everything else). Wide tracking on labels.
 - Iconography is **Unicode glyphs in circular medallions** — never SVG icons or emoji (flags excepted).
-- The **Approval Gate** is the only dashed-orange element. RPG "party" vocabulary (Wizard/Strategist/Ranger/Archivist/Sniper, treasure chests, quick draw) is the brand's voice — use it.
+- The **Approval Gate** is the only dashed-orange element. RPG "party" vocabulary (Wizard/Strategist/Ranger/Archivist/Sniper, treasure chests) is the brand's voice — use it.
 - Small sharp radii (3–6px), inset shadows (recessed wells), restrained ~.15s motion.
 - Bilingual PT-BR / EN; PT-BR is primary.

@@ -97,6 +97,37 @@ func TestAgentAwareness_CodexSeed(t *testing.T) {
 		assert.Equal(t, 1, count, "agent-protocol.md should appear exactly once")
 	})
 
+	t.Run("required_context key absent starts fresh with only agent-protocol.md", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+
+		codexPath := filepath.Join(dir, ".sdd", "seedlings", "codex.seed.json")
+		require.NoError(t, os.MkdirAll(filepath.Dir(codexPath), 0o755))
+		initial := map[string]any{"auto_activate": true}
+		data, _ := json.Marshal(initial)
+		require.NoError(t, os.WriteFile(codexPath, data, 0o644))
+
+		require.NoError(t, agentAwareness(dir))
+
+		var result map[string]any
+		raw, _ := os.ReadFile(codexPath)
+		require.NoError(t, json.Unmarshal(raw, &result))
+
+		ctx := result["required_context"].([]any)
+		assert.Equal(t, []any{".strategist/agent-protocol.md"}, ctx)
+	})
+
+	t.Run("read error is non-blocking when codex seed path is a directory", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+
+		codexPath := filepath.Join(dir, ".sdd", "seedlings", "codex.seed.json")
+		require.NoError(t, os.MkdirAll(codexPath, 0o755))
+
+		err := agentAwareness(dir)
+		require.NoError(t, err, "agentAwareness must not error even when codex seed read fails")
+	})
+
 	t.Run("skips codex when file is not valid JSON", func(t *testing.T) {
 		t.Parallel()
 		dir := t.TempDir()

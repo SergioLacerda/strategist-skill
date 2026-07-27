@@ -102,7 +102,7 @@ Linear checklist. Do not advance without completing each item.
 ```
 [ ] 1. startup (this document — section 1)
 [ ] 2. intake (skill: prompt-intake)
-[ ] 3. routing (skill: scout — Intake Router): quick draw? critical hit? main mission?
+[ ] 3. routing (skill: scout — Intake Router): critical hit? main mission?
 [ ] 4. context enrichment (skill: context-enrichment)
 [ ] 5. discovery → invoke per Discovery Routing (§3): {{.Slots.Discovery}} for creative, internal_skills/ranger otherwise
 [ ] 6. refinement → invoke {{.Slots.Refinement}}
@@ -121,13 +121,9 @@ Main mission evidence:
 - approval gate timeout/decline terminates as analysis-only (`EventGateTimeout`/`EventGateDenied` → `StateDoneAnalysis`)
 - approval gate revision request loops back to refinement, not a new mission (`EventGateRevision` → `StateRefinement`)
 
-Quick Draw evidence:
-- prompt matched quick-draw route
-- quick-draw gate was presented and approved before append
-
 **FSM scope (S7):** the internal state machine (`internal/domain/state_machine.go`)
 models gate/execution mechanics only — side-quest handling, the Approval Gate,
-execution, retry-on-transient-failure, Quick Draw, ADR, and Critical Hit. It does
+execution, retry-on-transient-failure, ADR, and Critical Hit. It does
 NOT model bootstrap, intake, discovery, or learning as states. Sequencing for those
 phases is enforced by contract + progress events (this document, the numbered
 narrative contracts), not by the FSM. Do not infer that an unmodeled phase is

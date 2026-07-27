@@ -117,7 +117,7 @@ func TestExtractor_Extract(t *testing.T) {
 		assert.NotEmpty(t, data)
 	})
 
-	t.Run("extracted defaults include quick_draw pipeline and prompts", func(t *testing.T) {
+	t.Run("extracted defaults have no live quick_draw pipeline entry", func(t *testing.T) {
 		t.Parallel()
 		dir := t.TempDir()
 		require.NoError(t, embedpkg.Extractor{}.Extract(dir, false))
@@ -125,33 +125,34 @@ func TestExtractor_Extract(t *testing.T) {
 		skillYAML, err := os.ReadFile(filepath.Join(dir, "skill.yaml"))
 		require.NoError(t, err)
 		skill := string(skillYAML)
-		assert.Contains(t, skill, "stage: quick_draw_detection")
-		assert.Contains(t, skill, "stage: quick_draw_gate")
-		assert.Contains(t, skill, "write_quick_draw_without_gate")
-		assert.Contains(t, skill, "<base_path>/todo/<tema>.md")
+		assert.NotContains(t, skill, "stage: quick_draw_detection")
+		assert.NotContains(t, skill, "stage: quick_draw_gate")
+		assert.NotContains(t, skill, "write_quick_draw_without_gate")
 
-		// Quick Draw procedure detail lives in contracts/machine/quick-draw.yaml
+		// contracts/machine/quick-draw.yaml is preserved but dormant — see
+		// remove-quick-draw-cli-skill T9 (deferred pending
+		// strategist-ability-taxonomy-reorg T5).
 		quickDraw, err := os.ReadFile(filepath.Join(dir, "contracts", "machine", "quick-draw.yaml"))
 		require.NoError(t, err)
 		qd := string(quickDraw)
 		assert.Contains(t, qd, "quick-draw")
 		assert.Contains(t, qd, "sim: proceed_to_sniper")
 
-		// SKILL.md retains the Quick Draw routing reference
+		// SKILL.md no longer references Quick Draw routing
 		skillMD, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
 		require.NoError(t, err)
 		doc := string(skillMD)
-		assert.Contains(t, doc, "Quick Draw")
+		assert.NotContains(t, doc, "Quick Draw")
 
 		pragmatic, err := os.ReadFile(filepath.Join(dir, "personas", "pragmatic.yaml"))
 		require.NoError(t, err)
-		assert.Contains(t, string(pragmatic), "quick_draw_gate")
-		assert.Contains(t, string(pragmatic), "quick_draw_success")
+		assert.NotContains(t, string(pragmatic), "quick_draw_gate")
+		assert.NotContains(t, string(pragmatic), "quick_draw_success")
 
 		epic, err := os.ReadFile(filepath.Join(dir, "personas", "epic.yaml"))
 		require.NoError(t, err)
-		assert.Contains(t, string(epic), "quick_draw_gate")
-		assert.Contains(t, string(epic), "quick_draw_success")
+		assert.NotContains(t, string(epic), "quick_draw_gate")
+		assert.NotContains(t, string(epic), "quick_draw_success")
 	})
 
 	t.Run("extracted defaults include opportunist attack and chest scope contracts", func(t *testing.T) {
