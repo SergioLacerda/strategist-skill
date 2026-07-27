@@ -4,9 +4,9 @@ version: "0.1"
 
 description: >
   Machine contract for Scout, the internal pre-pipeline Intake Router. Scout
-  classifies each request immediately after intake (and after quick_draw_detection
-  finds no match) and selects one of critical_hit, implementation_short_route, or
-  full_pipeline. Scout emits a compact route_decision (see
+  classifies each request immediately after intake and selects one of
+  critical_hit, implementation_short_route, or full_pipeline. Scout emits a
+  compact route_decision (see
   schemas/scout-route-decision.schema.yaml) — it never performs discovery itself,
   never invokes Sniper directly, never bypasses the Strategist Approval Gate, and
   never replaces Ranger when evidence review is required.

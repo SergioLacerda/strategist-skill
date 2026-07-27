@@ -118,3 +118,16 @@ func TestCompileIndex_InvalidYAML(t *testing.T) {
 	err := compile.Index(kiPath, filepath.Join(dir, ".compiled", ".index.gz"))
 	require.Error(t, err)
 }
+
+func TestCompileIndex_WriteError(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	kiPath := filepath.Join(dir, "knowledge.index.yaml")
+	require.NoError(t, os.WriteFile(kiPath, []byte("sources: []\n"), 0o644))
+	// Output path is a directory, so the final gzip write must fail.
+	outPath := filepath.Join(dir, ".index.gz")
+	require.NoError(t, os.MkdirAll(outPath, 0o755))
+	err := compile.Index(kiPath, outPath)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "compile index: write")
+}

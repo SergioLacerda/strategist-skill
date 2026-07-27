@@ -9,9 +9,19 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/compile"
+	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+const refreshAwarenessTemplate = `---
+generated_by: strategist compile
+version: {{.Version}}
+generated_at: {{.GeneratedAt}}
+---
+
+Discovery slot: {{.Slots.Discovery}}
+`
 
 func TestRefreshAgentAwareness(t *testing.T) {
 	t.Parallel()
@@ -38,5 +48,23 @@ func TestRefreshAgentAwareness(t *testing.T) {
 
 		content, _ := os.ReadFile(agPath)
 		assert.Contains(t, string(content), "## Strategist Runtime Discovery")
+	})
+
+	t.Run("returns true when agent-protocol generation succeeds", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		testutil.MinimalRoot(t, dir)
+
+		ok := compile.RefreshAgentAwareness(dir, dir, "1.0.0", []byte(refreshAwarenessTemplate))
+		assert.True(t, ok, "should return true when agent-protocol.md was written")
+		assert.FileExists(t, filepath.Join(dir, "agent-protocol.md"))
+	})
+
+	t.Run("returns false when agent-protocol generation errors with non-empty template", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		// strategistRoot has no active.yaml, so agentProtocol fails despite a non-empty template.
+		ok := compile.RefreshAgentAwareness(dir, dir, "1.0.0", []byte(refreshAwarenessTemplate))
+		assert.False(t, ok, "should return false when agent-protocol.md write fails")
 	})
 }

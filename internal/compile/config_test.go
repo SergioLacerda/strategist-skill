@@ -109,6 +109,30 @@ func TestCompileConfig(t *testing.T) {
 			},
 		},
 		{
+			name: "missing roles directory entirely is valid",
+			setup: func(t testing.TB, dir string) {
+				t.Helper()
+				require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
+				require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte(fullActiveYAML), 0o644))
+			},
+			check: func(t *testing.T, a map[string]any) {
+				roles, ok := a["roles"].(map[string]any)
+				require.True(t, ok)
+				assert.Empty(t, roles)
+			},
+		},
+		{
+			name: "invalid roles yaml returns wrapped error",
+			setup: func(t testing.TB, dir string) {
+				t.Helper()
+				require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
+				require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
+				require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte(fullActiveYAML), 0o644))
+				require.NoError(t, os.WriteFile(filepath.Join(dir, "roles", "bad.yaml"), []byte(": invalid\n  yaml: here"), 0o644))
+			},
+			wantErr: true,
+		},
+		{
 			name: "legacy roles_config is not preserved in compiled active",
 			setup: func(t testing.TB, dir string) {
 				t.Helper()
@@ -241,6 +265,25 @@ func TestCompileConfig_InvalidPersonaYAML(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "personas", "bad.yaml"), []byte(": invalid\n  yaml: here"), 0o644))
 	err := compile.Config(dir, filepath.Join(dir, ".compiled", ".config.gz"))
 	require.Error(t, err)
+}
+
+func TestCompileConfig_PersonaTypedDecodeFails(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte(fullActiveYAML), 0o644))
+	// Valid as a generic map (id decodes to a sequence) but invalid against the
+	// typed PersonaConfig struct, whose ID field is a string — triggers the
+	// typed re-validation decode error path distinct from persona.Validate() failures.
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "personas", "badtype.yaml"),
+		[]byte("id:\n  - a\n  - b\ntone_directive: valid\n"),
+		0o644,
+	))
+	err := compile.Config(dir, filepath.Join(dir, ".compiled", ".config.gz"))
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "personas validate")
 }
 
 func TestCompileConfig_PersonaFailsValidation(t *testing.T) {

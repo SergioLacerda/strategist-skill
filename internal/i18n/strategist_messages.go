@@ -31,11 +31,6 @@ type RuntimeMessages struct {
 	OpportunityGate     string
 	OpportunitySignal   string
 
-	// Quick draw route
-	QuickDrawDetected string
-	QuickDrawGate     string
-	QuickDrawSuccess  string
-
 	// Knowledge / chests
 	TreasureChestFound string
 	SideQuestDetected  string
@@ -82,9 +77,6 @@ func (m RuntimeMessages) ToMap() map[string]any {
 		"opportunity_detected":      m.OpportunityDetected,
 		"opportunity_gate":          m.OpportunityGate,
 		"opportunity_signal":        m.OpportunitySignal,
-		"quick_draw_detected":       m.QuickDrawDetected,
-		"quick_draw_gate":           m.QuickDrawGate,
-		"quick_draw_success":        m.QuickDrawSuccess,
 		"treasure_chest_found":      m.TreasureChestFound,
 		"side_quest_detected":       m.SideQuestDetected,
 		"mission_checkpoint":        m.MissionCheckpoint,

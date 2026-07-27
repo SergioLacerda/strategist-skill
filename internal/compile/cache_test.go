@@ -99,6 +99,21 @@ func TestCompiledCache_Eviction_LRU(t *testing.T) {
 	}
 }
 
+func TestCompiledCache_ZeroMaxSize_EvictOverflowStopsOnEmptyList(t *testing.T) {
+	t.Parallel()
+	c := newCompiledCache(0)
+	info := newFakeInfo(1000, 512)
+	// With maxSize 0, evictOverflow tries to evict down to capacity but the list
+	// starts empty, so it must break instead of looping or panicking on a nil back element.
+	c.Set("a.gz", info, []byte("data"))
+	if c.Len() != 1 {
+		t.Fatalf("expected Len=1 after Set on empty zero-capacity cache, got %d", c.Len())
+	}
+	if got := c.Get("a.gz", info); string(got) != "data" {
+		t.Fatalf("expected 'data', got %q", got)
+	}
+}
+
 func TestCompiledCache_Eviction_LRU_AccessRenewsOrder(t *testing.T) {
 	t.Parallel()
 	c := newCompiledCache(3)

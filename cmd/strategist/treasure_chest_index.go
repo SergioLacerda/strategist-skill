@@ -55,38 +55,102 @@ func runTreasureChestIndexCmd(cmd *cobra.Command, _ []string, opts treasureChest
 		return err
 	}
 
+	jewelPhase, err := runTreasureChestIndexJewelPhase(cmd, root)
+	if err != nil {
+		return err
+	}
+
+	potionPhase, err := runTreasureChestIndexPotionPhase(root, jewelPhase.governed)
+	if err != nil {
+		return err
+	}
+
+	if err := finalizeTreasureChestIndex(root, jewelPhase.governed, opts.IncludeHistorical); err != nil {
+		return err
+	}
+
+	fmt.Printf("[Strategist] treasure-chest index: %d mission(s) scanned, %d candidate(s) found, "+
+		"%d proposed jewel(s) written, %d duplicate(s) skipped, "+
+		"%d proposed potion(s) written, %d duplicate(s) skipped, compiled artifact refreshed\n",
+		len(jewelPhase.missions), len(jewelPhase.candidates), jewelPhase.written, jewelPhase.skipped,
+		potionPhase.written, potionPhase.skipped)
+	return nil
+}
+
+// indexJewelPhaseResult carries the jewel-mining phase's outputs forward — governed is
+// reused by the potion phase and the historical-source warning; the rest feeds the
+// final summary line.
+type indexJewelPhaseResult struct {
+	governed   map[string]treasure.GovernedChest
+	missions   []treasure.ScannedMission
+	candidates []treasure.Jewel
+	written    int
+	skipped    int
+}
+
+// runTreasureChestIndexJewelPhase runs the mission-history scan and proposes jewel
+// candidates from it — the original `index` behavior, unchanged by the Potion/chest-
+// content scan extension in runTreasureChestIndexPotionPhase.
+func runTreasureChestIndexJewelPhase(cmd *cobra.Command, root string) (indexJewelPhaseResult, error) {
 	governed, err := treasure.LoadGoverned(root)
 	if err != nil {
-		return fmt.Errorf("treasure-chest index: %w", err)
+		return indexJewelPhaseResult{}, fmt.Errorf("treasure-chest index: %w", err)
 	}
 	scoringPolicy, err := treasure.LoadScoringPolicy(root)
 	if err != nil {
-		return fmt.Errorf("treasure-chest index: %w", err)
+		return indexJewelPhaseResult{}, fmt.Errorf("treasure-chest index: %w", err)
 	}
 
 	missions, clusters, gaps, warnings, err := scanTreasureChestMissions(root)
 	if err != nil {
-		return err
+		return indexJewelPhaseResult{}, err
 	}
 	printTreasureChestIndexWarnings(cmd, warnings)
 
 	candidates := treasure.BuildJewelCandidatesWithPolicy(clusters, gaps, scoringPolicy)
 	written, skipped, err := treasure.WriteProposedJewels(root, candidates)
 	if err != nil {
-		return fmt.Errorf("treasure-chest index: %w", err)
+		return indexJewelPhaseResult{}, fmt.Errorf("treasure-chest index: %w", err)
 	}
 
-	printHistoricalIndexWarning(governed, opts.IncludeHistorical)
+	return indexJewelPhaseResult{
+		governed:   governed,
+		missions:   missions,
+		candidates: candidates,
+		written:    written,
+		skipped:    skipped,
+	}, nil
+}
+
+type indexPotionPhaseResult struct {
+	written int
+	skipped int
+}
+
+// runTreasureChestIndexPotionPhase scans registered chests' own content (ask #1 /
+// SQ-001) and proposes Potion candidates from it.
+func runTreasureChestIndexPotionPhase(root string, governed map[string]treasure.GovernedChest) (indexPotionPhaseResult, error) {
+	candidates, err := scanRegisteredChestsForPotions(root, governed)
+	if err != nil {
+		return indexPotionPhaseResult{}, err
+	}
+	written, skipped, err := treasure.WriteProposedPotions(root, candidates)
+	if err != nil {
+		return indexPotionPhaseResult{}, fmt.Errorf("treasure-chest index: %w", err)
+	}
+	return indexPotionPhaseResult{written: written, skipped: skipped}, nil
+}
+
+// finalizeTreasureChestIndex prints the historical-source warning (if applicable) and
+// rebuilds the compiled knowledge index.
+func finalizeTreasureChestIndex(root string, governed map[string]treasure.GovernedChest, includeHistorical bool) error {
+	printHistoricalIndexWarning(governed, includeHistorical)
 
 	indexPath := filepath.Join(root, "knowledge.index.yaml")
 	c := compile.Compiler{}
 	if err := c.CompileAll(root, indexPath); err != nil {
 		return fmt.Errorf("treasure-chest index: %w", err)
 	}
-
-	fmt.Printf("[Strategist] treasure-chest index: %d mission(s) scanned, %d candidate(s) found, "+
-		"%d proposed jewel(s) written, %d duplicate(s) skipped, compiled artifact refreshed\n",
-		len(missions), len(candidates), written, skipped)
 	return nil
 }
 

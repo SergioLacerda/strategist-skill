@@ -79,6 +79,4 @@ invariants:
   - gate_required is always true — Scout never sets it false, on any route
   - discovery_subtype MUST be present whenever evidence_state=requires_discovery and
     selected_route=full_pipeline
-  - selected_route is never quick_draw — quick_draw is resolved by keyword match before
-    Scout runs and is out of Scout's scope
   - fallback_route is always full_pipeline — conservatism is the safe default

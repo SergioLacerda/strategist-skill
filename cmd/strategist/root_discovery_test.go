@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -38,56 +37,6 @@ func TestFindStrategistRoot_NotFound(t *testing.T) {
 	_, _, err := findStrategistRoot(dir)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not found")
-}
-
-func TestInitiativeCmd_AutoDiscoversRoot(t *testing.T) {
-	// Layout: projectRoot/.strategist/ + projectRoot/src/  (run from src/).
-	projectRoot := t.TempDir()
-	strategistDir := filepath.Join(projectRoot, ".strategist")
-	testutil.MinimalRoot(t, strategistDir)
-
-	subdir := filepath.Join(projectRoot, "src")
-	require.NoError(t, os.MkdirAll(subdir, 0o755))
-
-	origWd, _ := os.Getwd()
-	require.NoError(t, os.Chdir(subdir))
-	t.Cleanup(func() { _ = os.Chdir(origWd) })
-
-	orig := initiativeRoot
-	t.Cleanup(func() { initiativeRoot = orig })
-	initiativeRoot = "" // force auto-discovery
-
-	out := captureStdout(t, func() {
-		require.NoError(t, initiativeCmd.RunE(initiativeCmd, nil))
-	})
-	assert.Contains(t, out, "SLOTS")
-	assert.Contains(t, out, "discovery")
-	assert.Contains(t, out, "WORKSPACE")
-}
-
-func TestInitiativeCmd_WorkspaceSection(t *testing.T) {
-	// Layout: projectRoot/.strategist/ with .analysis/ at projectRoot/.analysis/
-	projectRoot := t.TempDir()
-	strategistDir := filepath.Join(projectRoot, ".strategist")
-	testutil.MinimalRoot(t, strategistDir)
-
-	// Create pending/ and done/ relative to projectRoot (workspace base).
-	require.NoError(t, os.MkdirAll(filepath.Join(projectRoot, ".analysis", "pending"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(projectRoot, ".analysis", "pending", "card1.md"), []byte("x"), 0o644))
-	require.NoError(t, os.MkdirAll(filepath.Join(projectRoot, ".analysis", "done"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(projectRoot, ".analysis", "done", "m1.md"), []byte("x"), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(projectRoot, ".analysis", "done", "m2.md"), []byte("x"), 0o644))
-
-	orig := initiativeRoot
-	t.Cleanup(func() { initiativeRoot = orig })
-	initiativeRoot = strategistDir // points to .strategist/ itself
-
-	out := captureStdout(t, func() {
-		require.NoError(t, initiativeCmd.RunE(initiativeCmd, nil))
-	})
-	assert.Contains(t, out, "WORKSPACE")
-	assert.Contains(t, out, "1 card")
-	assert.Contains(t, out, "2 missões")
 }
 
 func TestInstallCmd_IdempotentUpdatesExisting(t *testing.T) {

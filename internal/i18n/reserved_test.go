@@ -22,12 +22,3 @@ func TestReservedGateTokensPTBR(t *testing.T) {
 	tokens[0] = "mutated"
 	assert.Equal(t, i18n.ReservedGateYes, i18n.ReservedGateTokensPTBR()[0])
 }
-
-func TestReservedQuickDrawTokens(t *testing.T) {
-	t.Parallel()
-
-	assert.ElementsMatch(t, []string{
-		i18n.ReservedQuickDrawPT,
-		i18n.ReservedQuickDrawEN,
-	}, i18n.ReservedQuickDrawTokens())
-}

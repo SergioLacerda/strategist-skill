@@ -25,7 +25,7 @@ implementer:
 4. Read ` + "`" + `.strategist/skill.yaml` + "`" + ` — slot mapping
 
 Mandatory restrictions after bootstrap:
-- Do not skip phases unless the internal routing contract selected Quick Draw or Critical Hit
+- Do not skip phases unless the internal routing contract selected Critical Hit
 - Do not perform source-code mutation; Strategist produces analysis, documentation, and handoff artifacts
 - Route selection is internal to Strategist; invoke the skill with the request context
 - If a configured slot/provider cannot be invoked, emit ` + "`" + `error=role_invocation_failed` + "`" + ` with slot and provider — do not fall back to solving the phase directly

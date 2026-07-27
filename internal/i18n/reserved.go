@@ -16,10 +16,6 @@ const (
 	ReservedGateAccept            = "concordo"
 	ReservedGateRevisionRequested = "faltou"
 	ReservedGateReject            = "pedi_outra_coisa"
-
-	// Quick draw triggers — typed by the user, matched by the agent.
-	ReservedQuickDrawPT = "saque rapido"
-	ReservedQuickDrawEN = "quick draw"
 )
 
 // ReservedGateTokensPTBR returns Portuguese gate tokens accepted by the runtime protocol.
@@ -30,13 +26,5 @@ func ReservedGateTokensPTBR() []string {
 		ReservedGateAccept,
 		ReservedGateRevisionRequested,
 		ReservedGateReject,
-	}
-}
-
-// ReservedQuickDrawTokens returns Quick Draw trigger tokens accepted by the runtime protocol.
-func ReservedQuickDrawTokens() []string {
-	return []string{
-		ReservedQuickDrawPT,
-		ReservedQuickDrawEN,
 	}
 }

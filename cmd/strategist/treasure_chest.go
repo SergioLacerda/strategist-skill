@@ -86,6 +86,14 @@ func treasureChestOptionsFromFlags(cmd *cobra.Command, opts treasureChestOptions
 	return opts
 }
 
+// treasureChestListCmd is the explicit name for the bare command's default status
+// view (Decision D4, treasure-chest-cli-unification): `treasure-chest` with no
+// subcommand remains a back-compat alias calling the same runTreasureChest function.
+var treasureChestListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "Show treasure chest runtime status (explicit name for the default view)",
+}
+
 func init() {
 	opts := treasureChestOptions{Format: outputFormatTable}
 	treasureChestCmd.PersistentFlags().StringVar(&opts.Root, flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
@@ -97,4 +105,12 @@ func init() {
 		return runTreasureChest(cmd, args, opts)
 	}
 	rootCmd.AddCommand(treasureChestCmd)
+
+	listOpts := treasureChestOptions{Format: outputFormatTable}
+	treasureChestListCmd.Flags().StringVar(&listOpts.Format, flagFormat, outputFormatTable, "output format: table or json")
+	treasureChestListCmd.Flags().StringVar(&listOpts.Scope, "scope", "", "filter output by slot scope (e.g. discovery, refinement, execution)")
+	treasureChestListCmd.RunE = func(cmd *cobra.Command, args []string) error {
+		return runTreasureChest(cmd, args, listOpts)
+	}
+	treasureChestCmd.AddCommand(treasureChestListCmd)
 }

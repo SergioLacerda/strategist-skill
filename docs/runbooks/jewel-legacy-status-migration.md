@@ -16,7 +16,7 @@ pipeline need an explicit one-time migration.
 
 ## Resolution Steps
 
-1. Run `strategist treasure-chest mine --migrate-status` once.
+1. Run `strategist treasure-chest items migrate-status` once.
 2. The command rewrites every `status: active` entry to `status: accepted`, in
    place, across both monolithic (`jewels.yaml`) and partitioned
    (`jewels/<chest-id>.yaml`) manifests.

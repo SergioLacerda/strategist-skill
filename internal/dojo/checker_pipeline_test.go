@@ -11,11 +11,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const quickDrawEmitLog = `2026-06-19T08:55:00Z INFO [Strategist] key=ranger_start scenario=quick-draw strategist.phase=ranger strategist.status=start
-2026-06-19T08:55:01Z INFO [Strategist] key=ranger_done scenario=quick-draw strategist.phase=ranger strategist.status=done
-2026-06-19T08:55:02Z INFO [Strategist] key=archivist_done scenario=quick-draw strategist.phase=archivist strategist.status=done
-2026-06-19T08:55:03Z INFO [Strategist] key=approval_prompt scenario=quick-draw strategist.phase=approval_gate strategist.status=prompt
-2026-06-19T08:55:03Z INFO [Strategist] phase=approval_gate status=auto_stopped scenario=quick-draw strategist.phase=approval_gate strategist.status=auto_stopped
+const sampleEmitLog = `2026-06-19T08:55:00Z INFO [Strategist] key=ranger_start scenario=sample-scenario strategist.phase=ranger strategist.status=start
+2026-06-19T08:55:01Z INFO [Strategist] key=ranger_done scenario=sample-scenario strategist.phase=ranger strategist.status=done
+2026-06-19T08:55:02Z INFO [Strategist] key=archivist_done scenario=sample-scenario strategist.phase=archivist strategist.status=done
+2026-06-19T08:55:03Z INFO [Strategist] key=approval_prompt scenario=sample-scenario strategist.phase=approval_gate strategist.status=prompt
+2026-06-19T08:55:03Z INFO [Strategist] phase=approval_gate status=auto_stopped scenario=sample-scenario strategist.phase=approval_gate strategist.status=auto_stopped
 `
 
 func writeEmitLog(t *testing.T, content string) string {
@@ -26,8 +26,8 @@ func writeEmitLog(t *testing.T, content string) string {
 	return path
 }
 
-func TestCheckPipeline_QuickDraw_AllPass(t *testing.T) {
-	logPath := writeEmitLog(t, quickDrawEmitLog)
+func TestCheckPipeline_SampleScenario_AllPass(t *testing.T) {
+	logPath := writeEmitLog(t, sampleEmitLog)
 	criteria := domain.DojoCriteria{
 		AutoStopAtGate: true,
 		Pipeline: domain.DojoPipeline{
@@ -44,7 +44,7 @@ func TestCheckPipeline_QuickDraw_AllPass(t *testing.T) {
 }
 
 func TestCheckPipeline_SlotInvokedMissing(t *testing.T) {
-	logPath := writeEmitLog(t, quickDrawEmitLog)
+	logPath := writeEmitLog(t, sampleEmitLog)
 	criteria := domain.DojoCriteria{
 		Pipeline: domain.DojoPipeline{SlotsInvoked: []string{"execution"}},
 	}
@@ -55,7 +55,7 @@ func TestCheckPipeline_SlotInvokedMissing(t *testing.T) {
 }
 
 func TestCheckPipeline_SlotNotInvokedViolated(t *testing.T) {
-	logPath := writeEmitLog(t, quickDrawEmitLog)
+	logPath := writeEmitLog(t, sampleEmitLog)
 	criteria := domain.DojoCriteria{
 		Pipeline: domain.DojoPipeline{SlotsNotInvoked: []string{"discovery"}},
 	}
@@ -65,7 +65,7 @@ func TestCheckPipeline_SlotNotInvokedViolated(t *testing.T) {
 }
 
 func TestCheckPipeline_MustStopAtMismatch(t *testing.T) {
-	logPath := writeEmitLog(t, quickDrawEmitLog)
+	logPath := writeEmitLog(t, sampleEmitLog)
 	criteria := domain.DojoCriteria{
 		Pipeline: domain.DojoPipeline{MustStopAt: "execution"},
 	}
@@ -115,7 +115,7 @@ func TestCheckPipeline_LogMissing(t *testing.T) {
 }
 
 func TestCheckPipeline_MustStopAtEmpty_NoAssertion(t *testing.T) {
-	logPath := writeEmitLog(t, quickDrawEmitLog)
+	logPath := writeEmitLog(t, sampleEmitLog)
 	criteria := domain.DojoCriteria{
 		Pipeline: domain.DojoPipeline{MustStopAt: "", SlotsInvoked: []string{"discovery"}},
 	}

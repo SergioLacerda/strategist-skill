@@ -26,6 +26,15 @@ func (s skillYAMLExtractor) ReadFile(relPath string) ([]byte, error) {
 	return []byte(yaml), nil
 }
 
+// alwaysErrExtractor fails every ReadFile call, used to exercise loadSkillConfig's
+// extractor-error fallback distinct from its YAML-parse-error fallback.
+type alwaysErrExtractor struct{}
+
+func (alwaysErrExtractor) Extract(_ string, _ bool) error { return nil }
+func (alwaysErrExtractor) ReadFile(relPath string) ([]byte, error) {
+	return nil, fmt.Errorf("alwaysErrExtractor: read error for %s", relPath)
+}
+
 func TestLoadSkillConfig(t *testing.T) {
 	t.Parallel()
 
@@ -39,9 +48,18 @@ func TestLoadSkillConfig(t *testing.T) {
 		assert.Equal(t, []string{"pragmatic", "epic"}, cfg.ModeOptions)
 	})
 
-	t.Run("falls back to defaults when extractor fails", func(t *testing.T) {
+	t.Run("falls back to defaults when yaml is a valid but non-mapping scalar", func(t *testing.T) {
 		t.Parallel()
+		// minimalExtractor's default case echoes "skill.yaml\n" for this path — a
+		// bare scalar that unmarshals successfully but can't populate the struct.
 		cfg := loadSkillConfig(minimalExtractor{})
+		assert.Equal(t, defaultLangOptions, cfg.LangOptions)
+		assert.Equal(t, defaultModeOptions, cfg.ModeOptions)
+	})
+
+	t.Run("falls back to defaults when extractor.ReadFile errors", func(t *testing.T) {
+		t.Parallel()
+		cfg := loadSkillConfig(alwaysErrExtractor{})
 		assert.Equal(t, defaultLangOptions, cfg.LangOptions)
 		assert.Equal(t, defaultModeOptions, cfg.ModeOptions)
 	})

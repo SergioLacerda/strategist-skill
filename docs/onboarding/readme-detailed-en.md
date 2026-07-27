@@ -248,18 +248,6 @@ Examples of side quest patterns:
                                        propose → promote → archived
 ```
 
-#### Quick Draw — Detail
-
-`quick_draw` is a rapid-note intent signal within the same mission:
-
-- **Input:** explicit quick draw / rapid TODO capture prompt.
-- **Ranger:** only normalizes the sentence into `idea: ...` without expanding scope.
-- **Archivist:** assigns theme (`architecture`, `security`, `analysis`, `general`) and destination `.analysis/todo/<theme>.md`; computes `ideas_added`.
-- **Gate:** approval at the main mission gate.
-- **Sniper:** appends to the themed file; `todo/` is write-only from the skill perspective; returns `ideas_added`.
-
-Without main-gate approval, nothing is written.
-
 #### Treasure Chests — Scope
 
 `active.yaml` can declare `treasure_chests` as optional offline knowledge sources.

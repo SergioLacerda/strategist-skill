@@ -96,6 +96,19 @@ required_fields:
     fields:
       mission_open: boolean
       active_phase: string
+  relevant_sources_hint:
+    type: list
+    required: false
+    item_fields: [id, kind, chest_id, ref, reason]
+    item_values:
+      kind: [jewel, potion]
+    description: >
+      Output of the Search ability (contracts/narrative/03-discovery.md § Retrieval
+      Cascade, stage 6): candidate jewels/potions filtered from treasure chests before
+      consult_treasure_chests decides which chests to open in full. Reused by Archivist
+      by default (roles/archivist.yaml#canonical.reuse_search_cache) — re-running
+      Search during refinement requires a declared reason (see
+      contracts/machine/handoff-contract.yaml#refinement_context_policy).
   sources_consulted:
     type: list
     required: false

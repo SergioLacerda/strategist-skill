@@ -7,6 +7,13 @@ description: >
   Skips the full Ranger discovery and Archivist refinement phases.
 
 # --- Detection (§3.1 of intake contract) ---
+# DORMANT (remove-quick-draw-cli-skill, T9 deferred): intake.yaml no longer
+# defines quick_draw_triggers/quick_draw_behavior and skill.yaml's pipeline no
+# longer has a quick_draw_detection stage, so this detection block has no
+# caller. Kept only because runbook_opportunity below still awaits migration
+# to Opportunist Attack (strategist-ability-taxonomy-reorg T5); do not treat
+# this file as a live route until that migration lands and the rest of this
+# file is removed per tasks.md T9.
 
 detection:
   triggers:
@@ -124,6 +131,13 @@ phases:
     write_scope: read-only (evaluates the already-captured idea; any write happens only via sniper_quick_draw after explicit gate approval)
 
   gate:
+    # DORMANT (added during remove-quick-draw-cli-skill, T9 deferred pending
+    # strategist-ability-taxonomy-reorg T5): the quick_draw_detection entry route
+    # was removed from skill.yaml's pipeline, so this phase is unreachable from
+    # intake. Riposte (riposte.yaml) reuses only ranger_quick_draw/sniper_quick_draw
+    # below, never this gate phase, so it does not depend on the keys referenced
+    # here. template_key/success_template_key no longer resolve to any persona
+    # entry — do not re-wire this gate without also restoring a live entry point.
     template_key: quick_draw_gate          # persona.content_by_lang[lang].quick_draw_gate
     success_template_key: quick_draw_success
     responses:

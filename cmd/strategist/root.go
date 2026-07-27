@@ -19,7 +19,6 @@ import (
 // humanStatusCommands are commands whose default output is a human-readable
 // status display. They suppress the pipeline startup line and metrics.
 var humanStatusCommands = map[string]bool{
-	"initiative":     true,
 	"check":          true,
 	"treasure-chest": true,
 }

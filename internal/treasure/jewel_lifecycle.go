@@ -12,6 +12,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// ErrJewelNotFound is returned by FindJewelDocument (and callers like PromoteJewel) when
+// no jewel with the given id exists — lets callers that also check Potion (e.g. the
+// `items` CLI dispatch) distinguish "not a jewel" from a genuine I/O or validation error.
+var ErrJewelNotFound = errors.New("jewel not found")
+
 // PromoteJewel updates a jewel lifecycle status while preserving YAML structure.
 func PromoteJewel(root, id, newStatus, evidenceRef string, reviewedAt time.Time) error {
 	path, doc, entry, err := FindJewelDocument(root, id)
@@ -131,7 +136,7 @@ func FindJewelDocument(root, id string) (string, *yaml.Node, *yaml.Node, error) 
 			return path, doc, entry, nil
 		}
 	}
-	return "", nil, nil, fmt.Errorf("jewel %q not found in jewels.yaml or jewels/", id)
+	return "", nil, nil, fmt.Errorf("jewel %q: %w (checked jewels.yaml and jewels/)", id, ErrJewelNotFound)
 }
 
 // NewJewelsDocument creates an empty schema-versioned jewels manifest.

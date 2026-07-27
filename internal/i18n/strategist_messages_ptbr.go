@@ -44,13 +44,6 @@ var PTBRRuntime = RuntimeMessages{ //nolint:dupl
 	OpportunityGate:     "⚔️ **Side Quests disponíveis:**\n{manifest}\n\nAprovar? (sim / nao / selecionar)",
 	OpportunitySignal:   "⚔️ **Ataque de oportunidade!** {count} item(s) detectado(s) — detalhes no gate.",
 
-	QuickDrawDetected: "⚔️ **Quick Draw** detectado. Side quest curta iniciada (Ranger -> Archivist -> Gate).",
-	QuickDrawGate:     "🚦 **Gate Quick Draw**\n\nideia: {idea}\n\nadicionar ideia? (sim / nao)",
-	QuickDrawSuccess: "⚔️ Quick Draw concluído.\n" +
-		"sucesso: ideia adicionada em {destination_path}\n" +
-		"total de ideias: {total_ideas}\n" +
-		"ideias similares (mesmo tema): {similar_ideas}",
-
 	TreasureChestFound: "🎁 **Baú do tesouro encontrado!** [{chest_id}] — {description}",
 	SideQuestDetected:  "🗺️ **Side quest encontrada!** {description}",
 

@@ -179,6 +179,51 @@ func TestTreasureChestIndex_NoCandidatesLeavesJewelsUntouched(t *testing.T) {
 	assert.Equal(t, string(before), string(after))
 }
 
+func TestTreasureChestIndex_GeneratesProposedPotionsFromRunbooksChest(t *testing.T) {
+	dir, _ := indexTestRoot(t)
+	runbooksDir := filepath.Join(filepath.Dir(dir), "docs", "runbooks")
+	require.NoError(t, os.MkdirAll(runbooksDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(runbooksDir, "sample-issue.md"), []byte(
+		"# Runbook: Sample Issue\n\n## Symptom\n\nSomething breaks when X happens.\n\n## Resolution Steps\n\n1. Do Y.\n"),
+		0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "treasure-chests.yaml"), []byte(`
+schema_version: "1"
+chests:
+  - id: runbooks
+    title: Agent Runbooks
+    path: docs/runbooks
+    trust:
+      tier: T2
+    routing:
+      task_types: [all]
+`), 0o644))
+	resetTreasureChestFlags(t)
+	setTreasureChestRoot(t, dir)
+
+	out := captureStdout(t, func() {
+		require.NoError(t, treasureChestIndexCmd.RunE(treasureChestIndexCmd, nil))
+	})
+	assert.Contains(t, out, "1 proposed potion(s) written")
+
+	raw, err := os.ReadFile(filepath.Join(dir, "potions", "runbooks.yaml"))
+	require.NoError(t, err)
+	content := string(raw)
+	assert.Contains(t, content, "id: potion-sample-issue")
+	assert.Contains(t, content, "status: proposed")
+	assert.Contains(t, content, "Something breaks when X happens.")
+}
+
+func TestTreasureChestIndex_NoRunbooksChestWritesNoPotions(t *testing.T) {
+	dir, _ := indexTestRoot(t)
+	resetTreasureChestFlags(t)
+	setTreasureChestRoot(t, dir)
+
+	require.NoError(t, treasureChestIndexCmd.RunE(treasureChestIndexCmd, nil))
+
+	_, err := os.Stat(filepath.Join(dir, "potions", "runbooks.yaml"))
+	assert.True(t, os.IsNotExist(err))
+}
+
 func countOccurrences(s, substr string) int {
 	n := 0
 	for i := 0; i+len(substr) <= len(s); i++ {

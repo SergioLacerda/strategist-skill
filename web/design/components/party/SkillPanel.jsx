@@ -2,7 +2,7 @@ import React from "react";
 
 /**
  * SkillPanel — a dashed mini panel for a special ability / skill
- * (Opportunist Attack, Side Quest, Treasure Chest, Quick Draw).
+ * (Opportunist Attack, Side Quest, Treasure Chest).
  * Circular icon medallion above an eyebrow, title, and description.
  */
 export function SkillPanel({ icon, eyebrow, title, children, style, ...rest }) {

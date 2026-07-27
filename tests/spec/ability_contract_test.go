@@ -178,7 +178,11 @@ func TestAbilityContractNoStaleOpportunityAttackCrossRoleRule(t *testing.T) {
 }
 
 // TestAbilityContractOpportunityAttackIsADROnly ensures Opportunity Attack does
-// not become a second card-closure or implementation-audit mechanism.
+// not become a second card-closure or implementation-audit mechanism. Since
+// strategist-ability-taxonomy-reorg (Decisions D3/D4), Opportunity Attack also
+// evaluates runbook- and chest-worthiness alongside ADR-worthiness — three
+// independent side quests — but none of the three may evaluate implementation
+// completion or move cards to done/; that remains Critical Hit's exclusive remit.
 func TestAbilityContractOpportunityAttackIsADROnly(t *testing.T) {
 	t.Parallel()
 
@@ -187,7 +191,6 @@ func TestAbilityContractOpportunityAttackIsADROnly(t *testing.T) {
 		filepath.Join(isolatedStrategistDir(t), "contracts", "machine", "opportunity-attack.yaml"),
 	}
 	required := []string{
-		"Opportunity Attack is ADR-only",
 		"Opportunity Attack MUST NOT evaluate implementation completion or move cards to done/",
 		"Critical Hit is the only route that may close pending/refined cards into done/",
 	}

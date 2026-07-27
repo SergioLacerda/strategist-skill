@@ -119,6 +119,43 @@ func TestAgentProtocol(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "agent protocol")
 	})
+
+	t.Run("error when template references a field that does not exist", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		testutil.MinimalRoot(t, dir)
+
+		// Parses fine (valid syntax), but Slots has no "Bogus" field — fails at Execute time.
+		err := agentProtocol(dir, []byte("{{.Slots.Bogus}}"), "1.0.0")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "render template")
+	})
+
+	t.Run("error when existing agent-protocol.md path is a directory", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		testutil.MinimalRoot(t, dir)
+		require.NoError(t, os.MkdirAll(filepath.Join(dir, "agent-protocol.md"), 0o755))
+
+		err := agentProtocol(dir, []byte(minimalAgentProtocolTemplate), "1.0.0")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "agent protocol: read")
+	})
+
+	t.Run("overwrites entirely when closing frontmatter marker is missing", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		testutil.MinimalRoot(t, dir)
+
+		out := filepath.Join(dir, "agent-protocol.md")
+		require.NoError(t, os.WriteFile(out, []byte("---\nversion: 0.9.0\nno closing marker here"), 0o644))
+
+		require.NoError(t, agentProtocol(dir, []byte(minimalAgentProtocolTemplate), "1.0.0"))
+
+		content, _ := os.ReadFile(out)
+		assert.Contains(t, string(content), "version: 1.0.0")
+		assert.NotContains(t, string(content), "no closing marker here")
+	})
 }
 
 func TestAgentProtocol_GeneratedAtIsSet(t *testing.T) {
@@ -236,6 +273,25 @@ func TestUpsertCodexSeed_WriteError(t *testing.T) {
 	err := upsertCodexSeed(path)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "codex seed: write")
+}
+
+func TestUpsertSection_ReadError(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	// A directory at the target path makes os.ReadFile fail with a non-permission error.
+	path := filepath.Join(dir, "instructions.md")
+	require.NoError(t, os.MkdirAll(path, 0o755))
+
+	err := upsertSection(path)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "upsert section: read")
+}
+
+func TestAppendMarkdownSection_AddsMissingTrailingNewline(t *testing.T) {
+	t.Parallel()
+	// Content without a trailing newline must gain one before the section is appended.
+	got := appendMarkdownSection("# Header\n\nNo trailing newline", "## New Section\n\nBody.")
+	assert.Equal(t, "# Header\n\nNo trailing newline\n\n## New Section\n\nBody.\n", got)
 }
 
 func TestUpsertSection_AppendWhenAbsent(t *testing.T) {

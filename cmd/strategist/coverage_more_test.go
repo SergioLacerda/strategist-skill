@@ -10,7 +10,6 @@ import (
 	"testing"
 	"text/tabwriter"
 
-	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/treasure"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
@@ -198,26 +197,6 @@ discovery: scout
 	assert.Contains(t, errs[0], "roles/slots.yaml")
 }
 
-func TestInitiativeWorkspaceSection_DefaultBaseAndWriteError(t *testing.T) {
-	root := t.TempDir()
-	project := t.TempDir()
-	require.NoError(t, os.MkdirAll(filepath.Join(project, ".analysis", "pending"), 0o755))
-	require.NoError(t, os.MkdirAll(filepath.Join(root, "memory"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(root, "memory", "ignored"), nil, 0o644))
-
-	var buf bytes.Buffer
-	w := tabwriter.NewWriter(&buf, 0, 0, 3, ' ', 0)
-	err := writeWorkspaceSection(w, domain.ActiveConfig{Mode: "epic"}, root, project)
-	require.NoError(t, err)
-	require.NoError(t, w.Flush())
-	assert.Contains(t, buf.String(), "base_path")
-	assert.Contains(t, buf.String(), ".analysis")
-
-	bad := tabwriter.NewWriter(errorWriter{}, 0, 0, 3, ' ', 0)
-	require.NoError(t, writeWorkspaceSection(bad, domain.ActiveConfig{Mode: "epic"}, root, project))
-	assert.Error(t, bad.Flush())
-}
-
 func TestRootHelpers_HumanStatusAndPreRun(t *testing.T) {
 	assert.False(t, isHumanStatusCommand(nil))
 	parent := &cobra.Command{Use: "treasure-chest"}
@@ -263,19 +242,6 @@ func TestRunInstall_RejectsConflictingShimFlags(t *testing.T) {
 	err := runInstall(&cobra.Command{Use: "install"}, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "mutually exclusive")
-}
-
-func TestRunInitiative_InvalidActiveYAML(t *testing.T) {
-	root := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(root, "active.yaml"), []byte("mode: ["), 0o644))
-
-	orig := initiativeRoot
-	t.Cleanup(func() { initiativeRoot = orig })
-	initiativeRoot = root
-
-	err := runInitiative(&cobra.Command{Use: "initiative"}, nil)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "parse active.yaml")
 }
 
 func TestTreasureChestIndexCmd_MissingGovernance(t *testing.T) {
@@ -333,19 +299,19 @@ func TestLoadJewelsForCmd_MissingGovernedIsBestEffort(t *testing.T) {
 	require.Len(t, jewelsByChest["source"], 1)
 }
 
-func TestTreasureChestJewelCommands_UnknownFormat(t *testing.T) {
-	root := mineTestRoot(t, oneProposedJewelYAML)
+func TestTreasureChestItemsCommands_UnknownFormat(t *testing.T) {
+	root := itemsTestRoot(t, oneProposedJewelYAML)
 	resetTreasureChestFlags(t)
-	resetTreasureChestJewelFlags(t)
+	resetTreasureChestItemsFlags(t)
 	setTreasureChestRoot(t, root)
-	setCmdFlag(t, treasureChestJewelListCmd, "format", "xml")
+	setCmdFlag(t, treasureChestItemsListCmd, "format", "xml")
 
-	err := runTreasureChestJewelList(treasureChestJewelListCmd, nil, treasureChestJewelListOptions{})
+	err := runTreasureChestItemsList(treasureChestItemsListCmd, nil, treasureChestItemsListOptions{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown --format")
 
-	setCmdFlag(t, treasureChestJewelShowCmd, "format", "xml")
-	err = runTreasureChestJewelShow(treasureChestJewelShowCmd, []string{"jewel-1"}, treasureChestJewelShowOptions{})
+	setCmdFlag(t, treasureChestItemsShowCmd, "format", "xml")
+	err = runTreasureChestItemsShow(treasureChestItemsShowCmd, []string{"jewel-1"}, treasureChestItemsShowOptions{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown --format")
 }
@@ -363,12 +329,10 @@ func TestTreasureChestRenderers_ClosedStdoutErrors(t *testing.T) {
 	}
 
 	withClosedStdout(t, func() {
-		require.Error(t, renderJewelTable([]treasure.Jewel{j}, true, "empty", "treasure-chest jewel list"))
-		require.Error(t, renderJewelJSON([]treasure.Jewel{j}, true, false, "treasure-chest jewel list"))
+		require.Error(t, renderItemTable([]itemRow{jewelToItemRow(j)}, "empty", "treasure-chest items list"))
+		require.Error(t, renderItemJSON([]itemRow{jewelToItemRow(j)}, "treasure-chest items list"))
 		require.Error(t, renderJewelShowTable(j))
 		require.Error(t, renderJewelShowJSON(j))
-		require.Error(t, renderJewelTable([]treasure.Jewel{j}, false, "empty", "treasure-chest mine"))
-		require.Error(t, renderJewelJSON([]treasure.Jewel{j}, true, true, "treasure-chest mine"))
 	})
 }
 
@@ -383,26 +347,22 @@ func withClosedStdout(t *testing.T, fn func()) {
 	fn()
 }
 
-func TestTreasureChestMineHelpers_ErrorAndNoopBranches(t *testing.T) {
-	root := mineTestRoot(t, oneProposedJewelYAML)
+func TestTreasureChestItemsHelpers_ErrorAndNoopBranches(t *testing.T) {
+	root := itemsTestRoot(t, oneProposedJewelYAML)
 
-	err := runTreasureChestMineList(root, "xml")
+	err := runTreasureChestItemsPromote(root, nil, "accepted", "")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unknown --format")
+	assert.Contains(t, err.Error(), "provide at least one item id")
 
-	err = runTreasureChestMinePromote(root, nil, "accepted", "")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "provide at least one jewel id")
-
-	emptyRoot := mineTestRoot(t, "schema_version: \"1\"\njewels: []\n")
+	emptyRoot := itemsTestRoot(t, "schema_version: \"1\"\njewels: []\n")
 	out := captureStdout(t, func() {
-		require.NoError(t, runTreasureChestMineMigrateStatus(emptyRoot))
+		require.NoError(t, runTreasureChestItemsMigrateStatus(emptyRoot))
 	})
 	assert.Contains(t, out, "nothing to migrate")
 }
 
-func TestTreasureChestMineList_InvalidJewelsErrors(t *testing.T) {
-	root := mineTestRoot(t, `
+func TestLoadJewelsForCmd_InvalidJewelsErrors(t *testing.T) {
+	root := itemsTestRoot(t, `
 schema_version: "1"
 jewels:
   - id: bad
@@ -413,14 +373,16 @@ jewels:
     status: proposed
     score: { value: 1 }
 `)
+	cmd := &cobra.Command{Use: "items-list"}
+	cmd.Flags().String("root", root, "")
 
-	err := runTreasureChestMineList(root, "table")
+	_, err := loadJewelsForCmd(cmd, "treasure-chest items list")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "treasure-chest mine")
+	assert.Contains(t, err.Error(), "treasure-chest items list")
 }
 
 func TestRunTreasureChest_LoadJewelsError(t *testing.T) {
-	root := mineTestRoot(t, `
+	root := itemsTestRoot(t, `
 schema_version: "1"
 jewels:
   - id: bad

@@ -1,7 +1,7 @@
 package domain
 
 // stateTransitions models gate/execution mechanics only: side-quest handling, the
-// main Approval Gate, execution, retry-on-transient-failure, Quick Draw, ADR, and
+// main Approval Gate, execution, retry-on-transient-failure, ADR, and
 // Critical Hit. It intentionally does NOT model bootstrap, intake, discovery, or
 // learning as states (S7) — those phases are enforced by contract + progress
 // events, not by this transition table. Extending the FSM to the full pipeline is
@@ -10,7 +10,6 @@ package domain
 // .analysis/todo/analise-tecnica.md.
 var stateTransitions = map[MissionState]map[TransitionEvent]MissionState{
 	StateInit: {
-		EventQuickDrawIntent:  StateQuickDraw,
 		EventDirectHitIntent:  StateDirectGate,
 		EventManifestEmpty:    StateSideQuestScan,
 		EventManifestNonEmpty: StateSideQuestScan,
@@ -59,14 +58,6 @@ var stateTransitions = map[MissionState]map[TransitionEvent]MissionState{
 		EventRetryOK:       StateExecution,
 		EventSlotPermanent: StateBlocked,
 		EventSlotTransient: StateBlocked,
-	},
-	StateQuickDraw: {
-		EventManifestNonEmpty: StateQuickDrawGate,
-		EventManifestEmpty:    StateQuickDrawDone,
-	},
-	StateQuickDrawGate: {
-		EventQuickDrawApprove: StateQuickDrawDone,
-		EventQuickDrawDecline: StateQuickDrawDone,
 	},
 	StateADRGate1: {
 		EventADRApproved: StateADRGate2,

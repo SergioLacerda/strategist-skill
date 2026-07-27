@@ -93,6 +93,28 @@ func TestCompileAll(t *testing.T) {
 		assert.ErrorContains(t, err, "domain")
 	})
 
+	t.Run("manifest write error is reported after all three steps succeed", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		testutil.MinimalRoot(t, dir)
+		require.NoError(t, os.WriteFile(
+			filepath.Join(dir, "index.yaml"),
+			[]byte("load_always: []\nload_by_task_type: {}\n"),
+			0o644,
+		))
+		kiPath := filepath.Join(dir, "knowledge.index.yaml")
+		require.NoError(t, os.WriteFile(kiPath, []byte("sources: []\n"), 0o644))
+
+		// A directory at the manifest path makes the final write fail even
+		// though index/domain/config all succeed.
+		manifestPath := filepath.Join(dir, ".compiled", ".manifest.gz")
+		require.NoError(t, os.MkdirAll(manifestPath, 0o755))
+
+		err := compile.Compiler{}.CompileAll(dir, kiPath)
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "compile all: manifest")
+	})
+
 	t.Run("partial failure after prior success removes stale manifest", func(t *testing.T) {
 		t.Parallel()
 		dir := t.TempDir()

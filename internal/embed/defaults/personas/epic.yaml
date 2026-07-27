@@ -138,17 +138,6 @@ content_by_lang:
 
       Approve? (yes / no / select)
 
-    quick_draw_detected: >
-      ⚔️ **Quick Draw** detected. Short side quest started (Ranger -> Archivist -> Gate).
-    quick_draw_gate: >
-      🚦 **Quick Draw Gate**
-
-      idea: {idea}
-
-      add idea? (yes / no)
-    quick_draw_success: >
-      ⚔️ Quick Draw complete.
-      success: {ideas_added} idea(s) added at {destination_path}
     runbook_opportunity: >
       📖 **Runbook Opportunity**
 

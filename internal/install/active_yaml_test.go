@@ -228,6 +228,36 @@ func TestWriteTreasureChestManifest_CorruptedTemplate(t *testing.T) {
 	assert.ErrorContains(t, err, `"chests:" key absent`)
 }
 
+func TestWriteTreasureChestManifest_WriteError(t *testing.T) {
+	t.Parallel()
+	if os.Getuid() == 0 {
+		t.Skip("permission tests do not apply when running as root")
+	}
+	dir := t.TempDir()
+	tcPath := filepath.Join(dir, "treasure-chests.yaml")
+	require.NoError(t, os.WriteFile(tcPath, []byte("chests: []\n"), 0o644))
+	require.NoError(t, os.Chmod(dir, 0o555))
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+	err := writeTreasureChestManifest(dir, domain.WizardConfig{TreasureChestPath: ".sdd/source"})
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "write treasure-chests.yaml")
+}
+
+func TestWriteActiveYAMLBytes_LockWriteFailureIsNonBlocking(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	// A directory at the lock path makes integrity.WriteLock fail while
+	// active.yaml itself still gets written — the failure is only warned about.
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, configLockName), 0o755))
+
+	err := writeActiveYAMLBytes(dir, []byte("mode: full\n"))
+	require.NoError(t, err, "lock failure must not block active.yaml write")
+
+	content, readErr := os.ReadFile(filepath.Join(dir, activeYAMLName))
+	require.NoError(t, readErr)
+	assert.Equal(t, "mode: full\n", string(content))
+}
+
 // TestWriteTreasureChestManifest_SecondRunIsIdempotent mirrors
 // TestWriteKnowledgeIndexSource_SecondRunIsIdempotent for treasure-chests.yaml.
 func TestWriteTreasureChestManifest_SecondRunIsIdempotent(t *testing.T) {

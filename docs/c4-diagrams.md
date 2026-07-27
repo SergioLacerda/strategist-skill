@@ -44,7 +44,7 @@ C4Container
     Person(dev, "Developer", "")
 
     System_Boundary(sys, "Strategist Skill") {
-        Container(binary, "strategist", "Go binary", "CLI: install, compile, check-stale, validate, check, initiative, dojo, treasure-chest, sync-governance, version")
+        Container(binary, "strategist", "Go binary", "CLI: install, compile, check-stale, validate, check, dojo, treasure-chest, sync-governance, version")
         Container(skill_root, ".strategist/", "YAML + gzip/JSON", "Configs (active.yaml, personas/, roles/), compiled artifacts (.compiled/), memory (memory/)")
         Container(shim, "~/.claude/skills/strategist/SKILL.md", "Markdown", "Skill registration in Claude Agent — points to the skill root")
         Container(analysis, "<base_path>/", "Markdown", "Mission artifacts: pending/<id>-analysis.md, refined/<id>/, archived/")

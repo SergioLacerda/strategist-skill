@@ -21,13 +21,13 @@ func TestRun_AllPass(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(runDir, "geral.md"),
 		[]byte("ideia: KATA_RAPIDO\n"), 0o644))
 
-	logDir := filepath.Join(base, "dojo", ".last-run", "quick-draw")
+	logDir := filepath.Join(base, "dojo", ".last-run", "sample-scenario")
 	require.NoError(t, os.MkdirAll(logDir, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(logDir, "emit.log"),
 		[]byte("ranger_start\nranger_done\n"), 0o644))
 
 	criteria := domain.DojoCriteria{
-		Scenario: "quick-draw",
+		Scenario: "sample-scenario",
 		RunDir:   "dojo/run",
 		FilesCreated: []domain.DojoFileCheck{
 			{Path: "todo/geral.md", MustContain: []string{"KATA_RAPIDO"}},
