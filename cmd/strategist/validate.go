@@ -12,6 +12,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
+	"github.com/SergioLacerda/strategist-skill/internal/validate"
 	"github.com/spf13/cobra"
 )
 
@@ -61,19 +62,19 @@ Checks performed:
 		checks := 0
 
 		// 1. active.yaml
-		activeErr := validateActiveYAML(filepath.Join(validateRoot, "active.yaml"))
+		activeErr := validate.ActiveYAML(filepath.Join(validateRoot, "active.yaml"))
 		checks++
 		if activeErr != nil {
 			errs = append(errs, fmt.Sprintf("active.yaml: %v", activeErr))
 		}
 
 		// 2. personas/*.yaml
-		personaErrs, personaChecks := validatePersonasDir(filepath.Join(validateRoot, "personas"))
+		personaErrs, personaChecks := validate.PersonasDir(filepath.Join(validateRoot, "personas"))
 		checks += personaChecks
 		errs = append(errs, personaErrs...)
 
 		// 3. roles/*.yaml
-		roleErrs, roleChecks := validateRolesDir(filepath.Join(validateRoot, "roles"))
+		roleErrs, roleChecks := validate.RolesDir(filepath.Join(validateRoot, "roles"))
 		checks += roleChecks
 		errs = append(errs, roleErrs...)
 
@@ -81,7 +82,7 @@ Checks performed:
 		kiPath := filepath.Join(validateRoot, "knowledge.index.yaml")
 		if _, err := os.Stat(kiPath); err == nil {
 			checks++
-			if kiErr := validateYAMLFile(kiPath); kiErr != nil {
+			if kiErr := validate.YAMLFile(kiPath); kiErr != nil {
 				errs = append(errs, fmt.Sprintf("knowledge.index.yaml: %v", kiErr))
 			}
 		}

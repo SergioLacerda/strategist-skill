@@ -63,6 +63,33 @@ type Gap struct {
 	GeneratedAt   string
 }
 
+// ScanResult is the mined-and-persisted output of RunScanPipeline.
+type ScanResult struct {
+	Missions []ScannedMission
+	Clusters []Cluster
+	Gaps     []Gap
+	Warnings []ScanWarning
+}
+
+// RunScanPipeline mines missions under basePath, builds clusters/gaps from
+// them, and persists the results under root/treasure/{clusters,gaps}. It is
+// the use case behind `treasure-chest index`'s scan phase.
+func RunScanPipeline(root, basePath string) (ScanResult, error) {
+	missions, warnings, err := ScanMissionsTolerant(basePath)
+	if err != nil {
+		return ScanResult{}, err
+	}
+	clusters := BuildClusters(missions)
+	gaps := BuildGaps(missions)
+	if err := WriteScanOutputs(
+		filepath.Join(root, "treasure", "clusters"), clusters,
+		filepath.Join(root, "treasure", "gaps"), gaps,
+	); err != nil {
+		return ScanResult{}, err
+	}
+	return ScanResult{Missions: missions, Clusters: clusters, Gaps: gaps, Warnings: warnings}, nil
+}
+
 // --- mission scanning ---
 
 // ScanMissions scans refined and done mission directories under basePath.
