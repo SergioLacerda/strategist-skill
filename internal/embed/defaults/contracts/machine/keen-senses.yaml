@@ -11,7 +11,7 @@ routing_note: >
   Not a route and not a phase. Runs inside bootstrap, after the mandatory git-scope
   stale scan, reusing the same machinery (internal/stale for freshness comparisons).
   Output rides the existing bootstrap diagnostics and, when relevant, one gate
-  footnote line — mirroring quick-draw.yaml#pre_scan.
+  footnote line.
 
 contract:
   owner: internal (orchestrator)

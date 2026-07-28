@@ -394,9 +394,3 @@ func TestDiscoveryAndRefinementContractsRequireDocsLanguage(t *testing.T) {
 		}
 	}
 }
-
-// TestQuickDrawRunbookOpportunityIsExplicitGateOnly verifies the runbook_opportunity
-// routine added to Quick Draw (source and embedded mirror) is advisory-only: it must
-// declare that it never writes a runbook file directly, that the runbook gate option
-// is only offered when warranted, and that candidate creation requires its own
-// explicit confirmation independent of the ordinary idea-append gate response.
