@@ -7,7 +7,6 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/compile"
 	"github.com/SergioLacerda/strategist-skill/internal/treasure"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 )
 
 // --- SQ-006 (Track T-I): treasure-chest add / remove ---
@@ -100,10 +99,18 @@ func runTreasureChestAdd(cmd *cobra.Command, args []string, opts treasureChestAd
 
 	tags := treasure.ParseTagsFlag(opts.Tags)
 
-	indexPath, err := applyTreasureChestAdd(root, id, path, opts, tags)
+	indexPath, err := treasure.ExecuteAdd(root, treasure.AddOptions{
+		ID:         id,
+		Path:       path,
+		Scope:      opts.Scope,
+		TrustTier:  opts.TrustTier,
+		ReviewedBy: opts.ReviewedBy,
+		Tags:       tags,
+	})
 	if err != nil {
 		return fmt.Errorf("treasure-chest add: %w", err)
 	}
+	refreshConfigLock(root, filepath.Join(root, "active.yaml"))
 
 	fmt.Printf("[Strategist] add: OK (id=%s)\n", id)
 
@@ -118,36 +125,6 @@ func treasureChestAddOptionsFromFlags(cmd *cobra.Command, opts treasureChestAddO
 	opts.Tags = stringFlag(cmd, "tags", opts.Tags)
 	opts.IndexAfter = boolFlag(cmd, "index", opts.IndexAfter)
 	return opts
-}
-
-func applyTreasureChestAdd(root, id, path string, opts treasureChestAddOptions, tags []string) (string, error) {
-	activePath := filepath.Join(root, "active.yaml")
-	governedPath := filepath.Join(root, "treasure-chests.yaml")
-	indexPath := filepath.Join(root, "knowledge.index.yaml")
-	activeDoc, governedDoc, indexDoc, err := treasure.LoadChestYAMLDocs(activePath, governedPath, indexPath)
-	if err != nil {
-		return "", fmt.Errorf("load chest YAML docs: %w", err)
-	}
-	if err := treasure.ApplyAddMutations(activeDoc, governedDoc, indexDoc, id, path, opts.Scope, opts.TrustTier, opts.ReviewedBy, tags); err != nil {
-		return "", fmt.Errorf("apply add mutations: %w", err)
-	}
-	if err := writeTreasureChestAddDocs(activePath, governedPath, indexPath, activeDoc, governedDoc, indexDoc); err != nil {
-		return "", err
-	}
-	refreshConfigLock(root, activePath)
-	return indexPath, nil
-}
-
-func writeTreasureChestAddDocs(activePath, governedPath, indexPath string, activeDoc, governedDoc, indexDoc *yaml.Node) error {
-	written, err := treasure.WriteYAMLNodes(
-		treasure.YAMLWrite{Path: activePath, Doc: activeDoc},
-		treasure.YAMLWrite{Path: governedPath, Doc: governedDoc},
-		treasure.YAMLWrite{Path: indexPath, Doc: indexDoc},
-	)
-	if err != nil {
-		return fmt.Errorf("partial write after %v: %w", written, err)
-	}
-	return nil
 }
 
 // finishChestAdd reports the stale-index hint, or rebuilds the compiled index when

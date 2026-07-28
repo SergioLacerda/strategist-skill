@@ -83,40 +83,6 @@ func TestValidateCmd_PersonaMissingToneDirective(t *testing.T) {
 	assert.Contains(t, err.Error(), "validate")
 }
 
-// --- providerRow: empty providerID returns defaults ---
-
-func TestProviderRow_EmptyProviderID(t *testing.T) {
-	t.Parallel()
-	dir := t.TempDir()
-
-	role, class, status := providerRow(dir, "discovery", "")
-	assert.Equal(t, "Ranger", role)
-	assert.Equal(t, "(base)", class)
-	assert.Equal(t, "⚠ manifest ausente", status)
-
-	role, _, _ = providerRow(dir, "refinement", "")
-	assert.Equal(t, "Archivist", role)
-
-	role, _, _ = providerRow(dir, "execution", "")
-	assert.Equal(t, "Sniper", role)
-}
-
-// --- providerRow: invalid YAML in skill.yaml ---
-
-func TestProviderRow_InvalidManifestYAML(t *testing.T) {
-	t.Parallel()
-	dir := t.TempDir()
-	provDir := filepath.Join(dir, "skills", "bad-provider")
-	require.NoError(t, os.MkdirAll(provDir, 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(provDir, "skill.yaml"),
-		[]byte(": not: valid: yaml:\n"), 0o644))
-
-	role, class, status := providerRow(dir, "discovery", "bad-provider")
-	assert.Equal(t, "Ranger", role)               // default role
-	assert.Equal(t, "(base)", class)              // default class
-	assert.Equal(t, "⚠ manifest ausente", status) // manifest read but unmarshal failed
-}
-
 // --- resolveDojoRoots: empty root defaults to ".strategist" ---
 
 func TestResolveDojoRoots_EmptyRootDefaultsToStrategist(t *testing.T) {

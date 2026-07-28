@@ -101,13 +101,17 @@ func runTreasureChestIndexJewelPhase(cmd *cobra.Command, root string) (indexJewe
 		return indexJewelPhaseResult{}, fmt.Errorf("treasure-chest index: %w", err)
 	}
 
-	missions, clusters, gaps, warnings, err := scanTreasureChestMissions(root)
+	_, basePath, err := resolveDojoRoots(root)
 	if err != nil {
-		return indexJewelPhaseResult{}, err
+		return indexJewelPhaseResult{}, fmt.Errorf("treasure-chest index: %w", err)
 	}
-	printTreasureChestIndexWarnings(cmd, warnings)
+	scanResult, err := treasure.RunScanPipeline(root, basePath)
+	if err != nil {
+		return indexJewelPhaseResult{}, fmt.Errorf("treasure-chest index: %w", err)
+	}
+	printTreasureChestIndexWarnings(cmd, scanResult.Warnings)
 
-	candidates := treasure.BuildJewelCandidatesWithPolicy(clusters, gaps, scoringPolicy)
+	candidates := treasure.BuildJewelCandidatesWithPolicy(scanResult.Clusters, scanResult.Gaps, scoringPolicy)
 	written, skipped, err := treasure.WriteProposedJewels(root, candidates)
 	if err != nil {
 		return indexJewelPhaseResult{}, fmt.Errorf("treasure-chest index: %w", err)
@@ -115,7 +119,7 @@ func runTreasureChestIndexJewelPhase(cmd *cobra.Command, root string) (indexJewe
 
 	return indexJewelPhaseResult{
 		governed:   governed,
-		missions:   missions,
+		missions:   scanResult.Missions,
 		candidates: candidates,
 		written:    written,
 		skipped:    skipped,
@@ -152,23 +156,6 @@ func finalizeTreasureChestIndex(root string, governed map[string]treasure.Govern
 		return fmt.Errorf("treasure-chest index: %w", err)
 	}
 	return nil
-}
-
-func scanTreasureChestMissions(root string) ([]treasure.ScannedMission, []treasure.Cluster, []treasure.Gap, []treasure.ScanWarning, error) {
-	_, basePath, err := resolveDojoRoots(root)
-	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("treasure-chest index: %w", err)
-	}
-	missions, warnings, err := treasure.ScanMissionsTolerant(basePath)
-	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("treasure-chest index: %w", err)
-	}
-	clusters := treasure.BuildClusters(missions)
-	gaps := treasure.BuildGaps(missions)
-	if err := treasure.WriteScanOutputs(filepath.Join(root, "treasure", "clusters"), clusters, filepath.Join(root, "treasure", "gaps"), gaps); err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("treasure-chest index: %w", err)
-	}
-	return missions, clusters, gaps, warnings, nil
 }
 
 func printTreasureChestIndexWarnings(cmd *cobra.Command, warnings []treasure.ScanWarning) {

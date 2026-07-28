@@ -8,6 +8,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 
+	"github.com/SergioLacerda/strategist-skill/internal/governance"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
 )
@@ -54,7 +55,7 @@ func runSyncGovernanceCmd(cmd *cobra.Command, _ []string) (retErr error) {
 		span.End()
 	}()
 
-	report, err := runSyncGovernance(syncGovernanceRoot, syncGovernanceSddDir, syncGovernanceDryRun)
+	report, err := governance.RunSync(syncGovernanceRoot, syncGovernanceSddDir, syncGovernanceDryRun)
 	if err != nil {
 		return fmt.Errorf("sync-governance: %w", err)
 	}

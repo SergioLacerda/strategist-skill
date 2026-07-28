@@ -144,6 +144,30 @@ type Manifest struct {
 	Jewels        []Jewel `yaml:"jewels"`
 }
 
+// Potion is a compact runbook-index entry, a child of the "runbooks" treasure chest.
+// Sibling of Jewel: a jewel is a fact extracted from a mission, a potion is an index
+// entry for one whole runbook file under docs/runbooks/. Schema owned by
+// internal/embed/defaults/potions.yaml (see the header comment there) — this type
+// consumes that schema, it does not redecide it.
+type Potion struct {
+	ID           string   `yaml:"id"`
+	ChestID      string   `yaml:"chest_id"`
+	RunbookRef   string   `yaml:"runbook_ref"`
+	WhenToUse    string   `yaml:"when_to_use"`
+	WhenToAvoid  string   `yaml:"when_to_avoid,omitempty"`
+	Trust        string   `yaml:"trust"`
+	Status       string   `yaml:"status"`
+	SourceRefs   []string `yaml:"source_refs"`
+	ReviewedBy   string   `yaml:"reviewed_by"`
+	LastReviewed string   `yaml:"last_reviewed,omitempty"`
+}
+
+// PotionManifest is the top-level potions.yaml document.
+type PotionManifest struct {
+	SchemaVersion string   `yaml:"schema_version"`
+	Potions       []Potion `yaml:"potions"`
+}
+
 // LoadActiveChests reads active.yaml treasure_chests entries.
 func LoadActiveChests(root string) ([]ActiveChest, error) {
 	raw, err := os.ReadFile(filepath.Join(root, "active.yaml")) //nolint:gosec // G304

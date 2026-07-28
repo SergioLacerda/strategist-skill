@@ -1,4 +1,7 @@
-package main
+// Package validate implements the configuration checks behind the
+// `strategist validate` command: active.yaml, personas/*.yaml, roles/*.yaml,
+// and arbitrary YAML files.
+package validate
 
 import (
 	"fmt"
@@ -10,7 +13,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func validateActiveYAML(path string) error {
+// ActiveYAML validates a .strategist/active.yaml file.
+func ActiveYAML(path string) error {
 	cfg, err := readActiveConfigForValidation(path)
 	if err != nil {
 		return err
@@ -49,7 +53,8 @@ func validateActiveFields(cfg domain.ActiveConfig) error {
 	return nil
 }
 
-func validatePersonasDir(dir string) (errs []string, checks int) {
+// PersonasDir validates every *.yaml file under dir as a persona config.
+func PersonasDir(dir string) (errs []string, checks int) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return []string{fmt.Sprintf("personas/: %v", err)}, 0
@@ -81,7 +86,8 @@ func validatePersonaFile(dir, name string) []string {
 	return nil
 }
 
-func validateRolesDir(dir string) (errs []string, checks int) {
+// RolesDir validates every *.yaml file under dir as a role config.
+func RolesDir(dir string) (errs []string, checks int) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return []string{fmt.Sprintf("roles/: %v", err)}, 0
@@ -145,7 +151,8 @@ func validateRoleSlotMap(name string, raw []byte) []string {
 	return nil
 }
 
-func validateYAMLFile(path string) error {
+// YAMLFile checks that path parses as well-formed YAML.
+func YAMLFile(path string) error {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("read: %w", err)
