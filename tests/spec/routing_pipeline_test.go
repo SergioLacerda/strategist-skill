@@ -125,9 +125,6 @@ func TestPolicyGuardrailsSpecAlignedWithFixture(t *testing.T) {
 	feature := readFile(t, featurePath)
 	fixture := readFixture(t, fixturePath)
 
-	if !strings.Contains(feature, "quick_draw append is blocked") {
-		t.Fatalf("%s missing quick_draw guardrail scenario", featurePath)
-	}
 	if !strings.Contains(feature, "opportunity execution is skipped") {
 		t.Fatalf("%s missing opportunity execution policy scenario", featurePath)
 	}

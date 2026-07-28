@@ -117,7 +117,7 @@ func TestExtractor_Extract(t *testing.T) {
 		assert.NotEmpty(t, data)
 	})
 
-	t.Run("extracted defaults have no live quick_draw pipeline entry", func(t *testing.T) {
+	t.Run("extracted defaults have no legacy idea-capture pipeline entry", func(t *testing.T) {
 		t.Parallel()
 		dir := t.TempDir()
 		require.NoError(t, embedpkg.Extractor{}.Extract(dir, false))
@@ -129,16 +129,30 @@ func TestExtractor_Extract(t *testing.T) {
 		assert.NotContains(t, skill, "stage: quick_draw_gate")
 		assert.NotContains(t, skill, "write_quick_draw_without_gate")
 
-		// contracts/machine/quick-draw.yaml is preserved but dormant — see
-		// remove-quick-draw-cli-skill T9 (deferred pending
-		// strategist-ability-taxonomy-reorg T5).
-		quickDraw, err := os.ReadFile(filepath.Join(dir, "contracts", "machine", "quick-draw.yaml"))
-		require.NoError(t, err)
-		qd := string(quickDraw)
-		assert.Contains(t, qd, "quick-draw")
-		assert.Contains(t, qd, "sim: proceed_to_sniper")
+		// contracts/machine/quick-draw.yaml was renamed to runbook-opportunity.yaml
+		// and trimmed to the runbook_opportunity routine only — the idea-capture
+		// gate/pipeline is gone; the normalize+append machinery Riposte used to
+		// reuse from the old file now lives in riposte.yaml under Riposte's own
+		// names.
+		_, err = os.Stat(filepath.Join(dir, "contracts", "machine", "quick-draw.yaml"))
+		assert.True(t, os.IsNotExist(err), "contracts/machine/quick-draw.yaml should no longer exist")
 
-		// SKILL.md no longer references Quick Draw routing
+		runbookOpportunity, err := os.ReadFile(filepath.Join(dir, "contracts", "machine", "runbook-opportunity.yaml"))
+		require.NoError(t, err)
+		ro := string(runbookOpportunity)
+		assert.Contains(t, ro, "runbook_opportunity")
+		assert.NotContains(t, ro, "sim: proceed_to_sniper")
+		assert.NotContains(t, ro, "ranger_quick_draw:")
+		assert.NotContains(t, ro, "archivist_quick_draw:")
+
+		riposte, err := os.ReadFile(filepath.Join(dir, "contracts", "machine", "riposte.yaml"))
+		require.NoError(t, err)
+		rp := string(riposte)
+		assert.Contains(t, rp, "riposte_normalize")
+		assert.Contains(t, rp, "riposte_capture")
+		assert.NotContains(t, rp, "quick-draw")
+
+		// SKILL.md no longer references the retired idea-capture routing
 		skillMD, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
 		require.NoError(t, err)
 		doc := string(skillMD)

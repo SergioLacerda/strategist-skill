@@ -28,9 +28,9 @@ contract:
     # --- Runbook criterion (on_runbook_criteria_met below) ---
     runbook_worthy:
       # D3 (strategist-ability-taxonomy-reorg): inherits the signal semantics of
-      # contracts/machine/quick-draw.yaml#runbook_opportunity, evaluated here instead
-      # (post-refinement, inside Archivist) now that Quick Draw is being removed
-      # (see remove-quick-draw-cli-skill). Same signal quality, new timing.
+      # contracts/machine/runbook-opportunity.yaml#runbook_opportunity, evaluated
+      # here instead (post-refinement, inside Archivist). Same signal quality,
+      # new timing.
       repeated_failure_with_recovery: refined work records a repeated operational failure and a known recovery sequence
       runtime_governance_diagnostic: refined work explains how an agent should diagnose or unblock a known runtime/provider/governance state
       executable_decision_procedure: refined work captures a decision procedure a future agent can execute without broad discovery

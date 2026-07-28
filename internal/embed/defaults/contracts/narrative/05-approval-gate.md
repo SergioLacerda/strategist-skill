@@ -114,7 +114,7 @@ When the response-critic evaluated the refined package, its result is shown in t
 
 A parried mission still scores a hit. On `reject` or `revision`, and at mission close
 when `sq_backlog` items exist, offer to capture the reason/items as structured backlog
-entries via the Quick Draw machinery (normative contract:
+entries via Riposte's own normalize+capture machinery (normative contract:
 `machine/riposte.yaml`). Doctrine:
 
 - one combined confirmation at the trigger point — the gate response itself is NOT

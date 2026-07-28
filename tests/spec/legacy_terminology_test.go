@@ -105,7 +105,6 @@ func TestDocumentationPipelineDoesNotContainLegacyExecutionTerms(t *testing.T) {
 // Allowlisted paths and fields that legitimately contain non-English data:
 //   - strategist/schemas/intake.schema.yaml — user input aliases (não pode quebrar, etc.)
 //     are intent-matching tokens, not prose (design non-goal: preserve Portuguese input tokens).
-//   - strategist/contracts/machine/quick-draw.yaml — pt-BR bucket name list (data).
 //   - strategist/contracts/machine/adr.yaml — pt-BR section name list (data).
 //   - strategist/contracts/narrative/07-adr.md — pt-BR language mapping (data).
 //   - strategist/contracts/adr.md — docs: pt-BR language mapping (data).

@@ -14,8 +14,9 @@ import (
 // W8 (deep analysis 2026-07-26, proposals P5 + P2): Critic-at-Gate and Riposte
 // wiring. P5 surfaces the response-critic result at the Approval Gate — the one
 // human decision point (fixes Y3). P2 turns gate declines/revisions and
-// unselected side quests (sq_backlog, Y2) into offered backlog captures via the
-// Quick Draw machinery.
+// unselected side quests (sq_backlog, Y2) into offered backlog captures via
+// Riposte's own normalize+capture machinery (migrated off quick-draw.yaml by
+// remove-quick-draw-cli-skill-residual T1, 2026-07-28).
 
 func gateContractPath(t *testing.T) string {
 	t.Helper()
@@ -58,8 +59,8 @@ func TestApprovalGateOutcomesOfferRiposte(t *testing.T) {
 	}
 }
 
-// P2: the riposte machine contract exists, reuses Quick Draw machinery, covers
-// the three triggers, and carries the doctrine invariants.
+// P2: the riposte machine contract exists, owns its own normalize+capture
+// machinery, covers the three triggers, and carries the doctrine invariants.
 func TestRiposteContractShape(t *testing.T) {
 	t.Parallel()
 
@@ -82,7 +83,8 @@ func TestRiposteContractShape(t *testing.T) {
 		"gate_revision_requested",
 		"gate_rejected",
 		"mission_close_sq_backlog",
-		"quick-draw.yaml",
+		"riposte_normalize",
+		"riposte_capture",
 		"origin: riposte",
 		"never write without an explicit user confirmation",
 		"never converts a decline into a new mission automatically",
@@ -90,6 +92,9 @@ func TestRiposteContractShape(t *testing.T) {
 		if !strings.Contains(content, needle) {
 			t.Errorf("riposte.yaml missing %q", needle)
 		}
+	}
+	if strings.Contains(content, "quick-draw.yaml#phases") {
+		t.Errorf("riposte.yaml should no longer depend on quick-draw.yaml's phases — it owns its own normalize+capture machinery")
 	}
 }
 

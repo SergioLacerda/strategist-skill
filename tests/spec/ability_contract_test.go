@@ -11,8 +11,7 @@ import (
 
 // abilityContractFiles lists paths relative to a layer root that belong to the
 // ability contract set — the files most likely to accumulate drift when the
-// ability model changes (Quick Draw semantics, Opportunity Attack ownership,
-// Side Quest routing).
+// ability model changes (Opportunity Attack ownership, Side Quest routing).
 func abilityContractFiles() []string {
 	return []string{
 		"skill.yaml",
@@ -31,10 +30,10 @@ func abilityContractFiles() []string {
 
 // --- Part A: Stale-string guards ---
 
-// TestAbilityContractNoStaleQuickDrawOutputs ensures the old read/count Quick Draw
+// TestAbilityContractNoStaleReadCountOutputs ensures the old read/count idea-capture
 // model (total_ideas, similar_ideas) has been fully replaced by the write-only model
 // (ideas_added, destination_path) across canonical, embedded defaults, and runtime.
-func TestAbilityContractNoStaleQuickDrawOutputs(t *testing.T) {
+func TestAbilityContractNoStaleReadCountOutputs(t *testing.T) {
 	t.Parallel()
 
 	roots := []string{
@@ -56,7 +55,7 @@ func TestAbilityContractNoStaleQuickDrawOutputs(t *testing.T) {
 			content := string(data)
 			for _, bad := range forbidden {
 				if strings.Contains(content, bad) {
-					t.Fatalf("%s contains stale Quick Draw output %q; replace with ideas_added/destination_path", path, bad)
+					t.Fatalf("%s contains stale read/count output %q; replace with ideas_added/destination_path", path, bad)
 				}
 			}
 		}
