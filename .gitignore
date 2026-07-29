@@ -17,6 +17,8 @@ generated/
 # Stray local build of the CLI binary at repo root (bin/strategist is the
 # documented, intentional build output location per CONTRIBUTING.md)
 /strategist
+# GoReleaser output (local `goreleaser build/release --clean` runs)
+/dist/
 # Analysis folder is local files only!
 .analysis/
 
