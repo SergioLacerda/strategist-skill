@@ -224,6 +224,76 @@ func TestTreasureChestIndex_NoRunbooksChestWritesNoPotions(t *testing.T) {
 	assert.True(t, os.IsNotExist(err))
 }
 
+func TestTreasureChestIndex_WithMissionRunDoesNotError(t *testing.T) {
+	dir, _ := indexTestRoot(t)
+	resetTreasureChestFlags(t)
+	setTreasureChestRoot(t, dir)
+	attachMissionRun(t, treasureChestIndexCmd)
+
+	require.NoError(t, treasureChestIndexCmd.RunE(treasureChestIndexCmd, nil))
+}
+
+func TestTreasureChestIndex_LoadGovernedInvalidYAML(t *testing.T) {
+	dir, _ := indexTestRoot(t)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "treasure-chests.yaml"), []byte("chests: [unterminated\n"), 0o644))
+	resetTreasureChestFlags(t)
+	setTreasureChestRoot(t, dir)
+
+	err := treasureChestIndexCmd.RunE(treasureChestIndexCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "treasure-chest index")
+}
+
+func TestTreasureChestIndex_LoadScoringPolicyInvalid(t *testing.T) {
+	dir, _ := indexTestRoot(t)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "treasure-chests.yaml"), []byte(`
+schema_version: "1"
+scoring_policy:
+  gap_base: -5
+chests: []
+`), 0o644))
+	resetTreasureChestFlags(t)
+	setTreasureChestRoot(t, dir)
+
+	err := treasureChestIndexCmd.RunE(treasureChestIndexCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "treasure-chest index")
+}
+
+func TestTreasureChestIndex_ResolveDojoRootsEmptyBasePath(t *testing.T) {
+	dir, _ := indexTestRoot(t)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte("mode: epic\nslots:\n  discovery: brainstorming\n"), 0o644))
+	resetTreasureChestFlags(t)
+	setTreasureChestRoot(t, dir)
+
+	err := treasureChestIndexCmd.RunE(treasureChestIndexCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "treasure-chest index")
+	assert.Contains(t, err.Error(), "base_path is empty")
+}
+
+func TestTreasureChestIndex_IncludeHistoricalSkipsWarning(t *testing.T) {
+	dir, _ := indexTestRoot(t)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "treasure-chests.yaml"), []byte(`
+schema_version: "1"
+chests:
+  - id: legacy
+    title: Legacy
+    path: docs/legacy
+    trust:
+      tier: T3
+`), 0o644))
+	resetTreasureChestFlags(t)
+	setTreasureChestRoot(t, dir)
+	require.NoError(t, treasureChestIndexCmd.Flags().Set(flagIncludeHistorical, "true"))
+	t.Cleanup(func() { _ = treasureChestIndexCmd.Flags().Set(flagIncludeHistorical, "false") })
+
+	out := captureStdout(t, func() {
+		require.NoError(t, treasureChestIndexCmd.RunE(treasureChestIndexCmd, nil))
+	})
+	assert.NotContains(t, out, "historical/lower-trust source(s) excluded")
+}
+
 func countOccurrences(s, substr string) int {
 	n := 0
 	for i := 0; i+len(substr) <= len(s); i++ {

@@ -11,6 +11,41 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestIsDojoScenarioEntry(t *testing.T) {
+	dojoDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dojoDir, "not-a-dir.txt"), []byte("x"), 0o644))
+	require.NoError(t, os.MkdirAll(filepath.Join(dojoDir, ".last-run"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(dojoDir, "valid-scenario"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dojoDir, "valid-scenario", "criteria.yaml"), []byte("scenario: valid-scenario\n"), 0o644))
+
+	entries, err := os.ReadDir(dojoDir)
+	require.NoError(t, err)
+
+	got := map[string]bool{}
+	for _, e := range entries {
+		got[e.Name()] = isDojoScenarioEntry(dojoDir, e)
+	}
+	assert.False(t, got["not-a-dir.txt"], "a regular file must never be a scenario entry")
+	assert.False(t, got[".last-run"], "the run output directory must never be a scenario entry")
+	assert.True(t, got["valid-scenario"], "a directory with criteria.yaml must be a scenario entry")
+}
+
+func TestDojoDescription_MissingCriteriaFile(t *testing.T) {
+	dojoDir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dojoDir, "empty-scenario"), 0o755))
+
+	assert.Empty(t, dojoDescription(dojoDir, "empty-scenario"))
+}
+
+func TestDojoDescription_InvalidYAML(t *testing.T) {
+	dojoDir := t.TempDir()
+	scenarioDir := filepath.Join(dojoDir, "broken-scenario")
+	require.NoError(t, os.MkdirAll(scenarioDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(scenarioDir, "criteria.yaml"), []byte("scenario: [unterminated\n"), 0o644))
+
+	assert.Empty(t, dojoDescription(dojoDir, "broken-scenario"))
+}
+
 func TestDojoCheckCmd_AllPass(t *testing.T) {
 	root := setupDojoScenario(t, "sample-scenario",
 		"scenario: sample-scenario\nrun_dir: dojo/run\nfiles_created:\n  - path: todo/geral.md\n    must_contain: [KATA_RAPIDO]\n",

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/testutil"
+	"github.com/SergioLacerda/strategist-skill/internal/treasure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,6 +22,63 @@ schema_version: "1"
 chests: []
 `), 0o644))
 	return dir
+}
+
+func TestTreasureChestDoctor_WithMissionRunDoesNotError(t *testing.T) {
+	dir := doctorTestRoot(t)
+	resetTreasureChestFlags(t)
+	setTreasureChestRoot(t, dir)
+	attachMissionRun(t, treasureChestDoctorCmd)
+
+	require.NoError(t, treasureChestDoctorCmd.RunE(treasureChestDoctorCmd, nil))
+}
+
+func TestTreasureChestDoctor_ResolveRootError(t *testing.T) {
+	resetTreasureChestFlags(t)
+	setTreasureChestRoot(t, "")
+	chdirForTest(t, t.TempDir())
+
+	err := treasureChestDoctorCmd.RunE(treasureChestDoctorCmd, nil)
+	require.Error(t, err)
+}
+
+func TestLoadTreasureChestDoctorRows_ActiveYAMLInvalid(t *testing.T) {
+	dir := doctorTestRoot(t)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte("mode: [unterminated\n"), 0o644))
+
+	_, err := loadTreasureChestDoctorRows(dir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "treasure-chest doctor")
+}
+
+func TestLoadTreasureChestDoctorRows_GovernedYAMLInvalid(t *testing.T) {
+	dir := doctorTestRoot(t)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte("mode: epic\nbase_path: .analysis\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "treasure-chests.yaml"), []byte("chests: [unterminated\n"), 0o644))
+
+	_, err := loadTreasureChestDoctorRows(dir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "treasure-chest doctor")
+}
+
+func TestLoadTreasureChestDoctorRows_IndexedYAMLInvalid(t *testing.T) {
+	dir := doctorTestRoot(t)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte("mode: epic\nbase_path: .analysis\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "knowledge.index.yaml"), []byte("sources: [unterminated\n"), 0o644))
+
+	_, err := loadTreasureChestDoctorRows(dir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "treasure-chest doctor")
+}
+
+func TestPresentLayers_AllPresent(t *testing.T) {
+	row := treasure.StatusRow{Configured: true, Governed: true, Indexed: true}
+	assert.Equal(t, []string{"active.yaml", "treasure-chests.yaml", "knowledge.index.yaml"}, presentLayers(row))
+}
+
+func TestAbsentLayers_AllAbsent(t *testing.T) {
+	row := treasure.StatusRow{}
+	assert.Equal(t, []string{"active.yaml", "treasure-chests.yaml", "knowledge.index.yaml"}, absentLayers(row))
 }
 
 func TestTreasureChestDoctor_NoDriftReportsClean(t *testing.T) {

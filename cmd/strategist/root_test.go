@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -86,6 +87,37 @@ func TestExecute_ErrorPath(t *testing.T) {
 		t.Fatalf("expected exit error, got: %v", err)
 	}
 	assert.Equal(t, 1, exitErr.ExitCode())
+}
+
+func TestPersistentPreRunE_HumanStatusCommandSuppressesBanner(t *testing.T) {
+	dir := minimalCheckRoot(t)
+	chdirForTest(t, dir)
+
+	err := rootCmd.PersistentPreRunE(checkCmd, nil)
+	require.NoError(t, err)
+}
+
+func TestPersistentPreRunE_NonHumanStatusCommandDefaultsStrategistDir(t *testing.T) {
+	chdirForTest(t, t.TempDir())
+
+	err := rootCmd.PersistentPreRunE(versionCmd, nil)
+	require.NoError(t, err)
+}
+
+func TestPersistentPreRunE_GetwdErrorFallsBackToDot(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chdir-then-remove not reliable on windows")
+	}
+	oldWd, err := os.Getwd()
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.Chdir(oldWd) })
+
+	removed := t.TempDir()
+	require.NoError(t, os.Chdir(removed))
+	require.NoError(t, os.RemoveAll(removed))
+
+	runErr := rootCmd.PersistentPreRunE(versionCmd, nil)
+	require.NoError(t, runErr)
 }
 
 // --- validate ---

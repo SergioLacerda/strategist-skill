@@ -70,6 +70,34 @@ func TestPrintCheckStaleResult_DefaultAndQuiet(t *testing.T) {
 	assert.Empty(t, out)
 }
 
+func TestPrintCheckStaleResult_NoSourcePathUsesArtifactFallback(t *testing.T) {
+	result := stale.Result{
+		Stale:        true,
+		Reason:       stale.ReasonMissingSource,
+		ArtifactPath: "artifact.gz",
+	}
+	origJSON, origQuiet := checkStaleJSON, checkStaleQuiet
+	t.Cleanup(func() {
+		checkStaleJSON = origJSON
+		checkStaleQuiet = origQuiet
+	})
+	checkStaleJSON = false
+	checkStaleQuiet = false
+
+	out := captureStdout(t, func() {
+		require.NoError(t, printCheckStaleResult(result))
+	})
+	assert.Contains(t, out, "stale: missing_source artifact=artifact.gz")
+}
+
+func TestCheckStaleCmd_WithMissionRunDoesNotError(t *testing.T) {
+	_, artifactPath := freshArtifactDir(t)
+	attachMissionRun(t, checkStaleCmd)
+
+	err := checkStaleCmd.RunE(checkStaleCmd, []string{artifactPath})
+	require.NoError(t, err)
+}
+
 func TestCheckStaleCmd_CorruptArtifact(t *testing.T) {
 	dir := t.TempDir()
 	art := filepath.Join(dir, "artifact.gz")

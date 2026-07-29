@@ -2,11 +2,49 @@ package main
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestTreasureChestItemsList_WithMissionRunDoesNotError(t *testing.T) {
+	dir := itemsTestRoot(t, threeStatusJewelsYAML)
+	resetTreasureChestFlags(t)
+	resetTreasureChestItemsFlags(t)
+	setTreasureChestRoot(t, dir)
+	attachMissionRun(t, treasureChestItemsListCmd)
+
+	require.NoError(t, treasureChestItemsListCmd.RunE(treasureChestItemsListCmd, nil))
+}
+
+func TestTreasureChestItemsList_JewelLoadErrorPropagates(t *testing.T) {
+	dir := itemsTestRoot(t, threeStatusJewelsYAML)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "jewels.yaml"), []byte("jewels: [unterminated\n"), 0o644))
+	resetTreasureChestFlags(t)
+	resetTreasureChestItemsFlags(t)
+	setTreasureChestRoot(t, dir)
+	setCmdFlag(t, treasureChestItemsListCmd, "kind", "jewel")
+
+	err := treasureChestItemsListCmd.RunE(treasureChestItemsListCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "treasure-chest items list")
+}
+
+func TestTreasureChestItemsList_PotionLoadErrorPropagates(t *testing.T) {
+	dir := itemsTestRoot(t, threeStatusJewelsYAML)
+	writePotionsFile(t, dir, "potions: [unterminated\n")
+	resetTreasureChestFlags(t)
+	resetTreasureChestItemsFlags(t)
+	setTreasureChestRoot(t, dir)
+	setCmdFlag(t, treasureChestItemsListCmd, "kind", "potion")
+
+	err := treasureChestItemsListCmd.RunE(treasureChestItemsListCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "treasure-chest items list")
+}
 
 func TestTreasureChestItemsList_DefaultExcludesDeprecated(t *testing.T) {
 	dir := itemsTestRoot(t, threeStatusJewelsYAML)

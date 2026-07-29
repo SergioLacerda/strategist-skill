@@ -23,6 +23,12 @@ canonical:
 # Contract
 must:
   - load only the Ranger analysis artifact (do NOT re-read full history)
+  - write all conversational/user-facing prose (questions, framing, confirmations —
+    anything other than the four written artifact files) in the `chat_language`
+    value received at invocation. The four written artifact files
+    (analysis.md/proposal.md/design.md/tasks.md) remain in `docs_language`,
+    unaffected by this rule (see contracts/narrative/04-refinement.md § Language
+    and 09-response.md § Chat Language)
   - decide side_quest_strategy for every side quest received in the handoff
   - convert ambiguities into decisions or explicit blockers
   - produce numbered tasks with scope and validation steps

@@ -159,3 +159,29 @@ func TestOutcomeLineHasMissionID_MalformedJSONTolerated(t *testing.T) {
 		t.Fatal("expected false for malformed JSON, not an error")
 	}
 }
+
+// TestAppendOutcomeLineLocked_SeekFailurePropagatesFromMissionIDExists uses the
+// read end of an os.Pipe() as a file: Flock succeeds on a pipe fd (unlike a
+// closed file, which fails locking before ever reaching missionIDExists), but
+// Seek does not — pipes are not seekable. This isolates and covers both
+// missionIDExists's own Seek-error branch and its propagation into
+// appendOutcomeLineLocked, neither of which the closed-file lock-failure test
+// above can reach (that one returns earlier, at lockFile).
+func TestAppendOutcomeLineLocked_SeekFailurePropagatesFromMissionIDExists(t *testing.T) {
+	t.Parallel()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	defer w.Close()
+	defer r.Close()
+
+	line := `{"mission_id":"m-seek","status":"completed","timestamp":"2026-07-25T00:00:00Z"}`
+	_, err = appendOutcomeLineLocked(r, "m-seek", line)
+	if err == nil {
+		t.Fatal("expected error from non-seekable file, got nil")
+	}
+	if !strings.Contains(err.Error(), "scan outcomes file") {
+		t.Fatalf("expected error to be wrapped by missionIDExists's scan-outcomes-file context, got: %v", err)
+	}
+}

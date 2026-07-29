@@ -1,14 +1,26 @@
 package main
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestMarkCompileRun_WithMissionRun(t *testing.T) {
+	run := telemetry.NewMissionRun("test-compile")
+	ctx := telemetry.WithMissionRun(context.Background(), run)
+	assert.NotPanics(t, func() { markCompileRun(ctx) })
+}
+
+func TestMarkCompileRun_NilRunNoPanic(t *testing.T) {
+	assert.NotPanics(t, func() { markCompileRun(context.Background()) })
+}
 
 // --- compile ---
 

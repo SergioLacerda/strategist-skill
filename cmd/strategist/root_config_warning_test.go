@@ -6,6 +6,7 @@ package main
 // project root and from a subdirectory.
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -86,6 +87,32 @@ func TestWarnIfConfigModified_ConfigMissingWarns(t *testing.T) {
 
 	out := captureStderr(t, warnIfConfigModified)
 	assert.Contains(t, out, "active.yaml missing after lock")
+}
+
+func TestWarnIfConfigModified_PathMismatchWarns(t *testing.T) {
+	root := t.TempDir()
+	strategistDir := filepath.Join(root, ".strategist")
+	require.NoError(t, os.MkdirAll(strategistDir, 0o755))
+	activePath := filepath.Join(strategistDir, "active.yaml")
+	require.NoError(t, os.WriteFile(activePath, []byte("mode: epic\n"), 0o644))
+	lockPath := filepath.Join(strategistDir, ".config.lock")
+	require.NoError(t, integrity.WriteLock(activePath, lockPath))
+
+	// Hand-craft the lock to record a different sealed path than the one
+	// that will actually be checked, without moving any real directories.
+	raw, err := os.ReadFile(lockPath)
+	require.NoError(t, err)
+	var lock map[string]any
+	require.NoError(t, json.Unmarshal(raw, &lock))
+	lock["path"] = filepath.Join(root, "elsewhere", "active.yaml")
+	rewritten, err := json.Marshal(lock)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(lockPath, rewritten, 0o644))
+
+	chdirForTest(t, root)
+
+	out := captureStderr(t, warnIfConfigModified)
+	assert.Contains(t, out, "lock path mismatch")
 }
 
 func TestWarnIfConfigModified_CorruptLockWarnsWithoutBlocking(t *testing.T) {

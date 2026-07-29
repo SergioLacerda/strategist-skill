@@ -26,6 +26,26 @@ func TestTreasureChestCmd_ShowsChestsSection(t *testing.T) {
 	assert.Contains(t, out, "INDEX")
 }
 
+func TestTreasureChestListCmd_ShowsStatus(t *testing.T) {
+	dir := minimalTreasureChestRoot(t)
+	resetTreasureChestFlags(t)
+	setTreasureChestRoot(t, dir)
+
+	out := captureStdout(t, func() {
+		require.NoError(t, treasureChestListCmd.RunE(treasureChestListCmd, nil))
+	})
+	assert.Contains(t, out, "CHESTS")
+}
+
+func TestTreasureChestCmd_WithMissionRunDoesNotError(t *testing.T) {
+	dir := minimalTreasureChestRoot(t)
+	resetTreasureChestFlags(t)
+	setTreasureChestRoot(t, dir)
+	attachMissionRun(t, treasureChestCmd)
+
+	require.NoError(t, treasureChestCmd.RunE(treasureChestCmd, nil))
+}
+
 func TestTreasureChestCmd_ShowsTrustTierFromGoverned(t *testing.T) {
 	dir := minimalTreasureChestRoot(t)
 	resetTreasureChestFlags(t)

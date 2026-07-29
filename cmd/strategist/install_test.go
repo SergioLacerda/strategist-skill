@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"os"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,6 +28,67 @@ func TestInstallCmd_ErrorPath(t *testing.T) {
 	err := installCmd.RunE(installCmd, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "install")
+}
+
+func TestResolveInstallTarget_GlobalHomeDirError(t *testing.T) {
+	origHome, hadHome := os.LookupEnv("HOME")
+	t.Cleanup(func() {
+		if hadHome {
+			_ = os.Setenv("HOME", origHome)
+		} else {
+			_ = os.Unsetenv("HOME")
+		}
+	})
+	require.NoError(t, os.Unsetenv("HOME"))
+
+	_, err := resolveInstallTarget("", true)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "resolve home dir")
+}
+
+func TestRunInstall_UserHomeDirError(t *testing.T) {
+	origHome, hadHome := os.LookupEnv("HOME")
+	t.Cleanup(func() {
+		if hadHome {
+			_ = os.Setenv("HOME", origHome)
+		} else {
+			_ = os.Unsetenv("HOME")
+		}
+	})
+	require.NoError(t, os.Unsetenv("HOME"))
+
+	orig := installTarget
+	t.Cleanup(func() { installTarget = orig })
+	installTarget = t.TempDir()
+
+	err := installCmd.RunE(installCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "resolve home dir")
+}
+
+func TestMarkInstallRun_WithMissionRunAndWizard(t *testing.T) {
+	run := attachMissionRun(t, installCmd)
+	ctx := installCmd.Context()
+
+	assert.NotPanics(t, func() { markInstallRun(ctx, true) })
+	_ = run
+}
+
+func TestMarkInstallRun_NilRunNoPanic(t *testing.T) {
+	assert.NotPanics(t, func() { markInstallRun(context.Background(), false) })
+}
+
+func TestAddMissionLines_WithRun(t *testing.T) {
+	run := telemetry.NewMissionRun("test-install-lines")
+	ctx := telemetry.WithMissionRun(context.Background(), run)
+	assert.NotPanics(t, func() { addMissionLines(ctx, 3) })
+	assert.Equal(t, int64(3), run.Snapshot().LinesEmitted)
+}
+
+func TestCommandContext_NilContextReturnsBackground(t *testing.T) {
+	cmd := &cobra.Command{Use: "no-context-cmd"}
+	ctx := commandContext(cmd)
+	assert.NotNil(t, ctx)
 }
 
 func TestInstallCmd_DefaultTarget(t *testing.T) {
