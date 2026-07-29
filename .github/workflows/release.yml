@@ -23,6 +23,21 @@ jobs:
           go-version-file: "go.mod"
           cache: true
 
+      - name: Verify no pre-existing release for this tag
+        # A GitHub Release created by hand (e.g. via the web UI) before this
+        # workflow runs can interfere with goreleaser's own release-creation
+        # and asset-upload logic in ways that are hard to diagnose after the
+        # fact — fail loudly here instead of letting goreleaser silently
+        # behave differently against a release it didn't create.
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "::error::A GitHub Release already exists for tag $TAG. Delete it (or the tag) before re-running, so goreleaser creates it from scratch." >&2
+            exit 1
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Run goreleaser
         uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0
         with:
@@ -31,6 +46,21 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify goreleaser produced binaries
+        # goreleaser-action reports success even if the underlying `goreleaser`
+        # run built zero archives (e.g. it published but archiving no-op'd) —
+        # the steps below use nullglob loops that silently no-op on zero
+        # matches too, so without this check a total build failure surfaces
+        # only much later, confusingly, at the attest step.
+        run: |
+          shopt -s nullglob
+          files=(dist/strategist-*)
+          if [[ ${#files[@]} -eq 0 ]]; then
+            echo "::error::No dist/strategist-* artifacts found after goreleaser run" >&2
+            exit 1
+          fi
+          printf '%s\n' "${files[@]}"
 
       - name: Install cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
@@ -52,7 +82,12 @@ jobs:
         run: |
           shopt -s nullglob
           TAG="${GITHUB_REF_NAME}"
-          for bundle in dist/strategist-*.bundle; do
+          bundles=(dist/strategist-*.bundle)
+          if [[ ${#bundles[@]} -eq 0 ]]; then
+            echo "::error::No cosign bundles found to upload" >&2
+            exit 1
+          fi
+          for bundle in "${bundles[@]}"; do
             gh release upload "$TAG" "$bundle" --clobber
           done
         env:
