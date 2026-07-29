@@ -5,9 +5,45 @@ on:
     tags:
       - 'v*.*.*'
 
+# Deny by default; each job opts into exactly what it needs.
+permissions: {}
+
+# Two tags pushed close together must not publish concurrently — they share the
+# same dist/ semantics and the same GitHub Release API surface. Never cancel a
+# release in flight: a half-published release is worse than a slow one.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  release:
+  # A tag push does not trigger the Health Orchestrator workflow (it only runs
+  # on branch pushes and PRs), so without this gate it is possible to tag any
+  # commit — including one that never passed CI — and ship binaries from it.
+  verify:
+    name: Verify tagged commit
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v5
+        with:
+          go-version-file: "go.mod"
+          cache: true
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Tests
+        run: make test-lite
+
+  release:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: write
       id-token: write      # OIDC token for cosign keyless signing
@@ -30,6 +66,7 @@ jobs:
         # fact — fail loudly here instead of letting goreleaser silently
         # behave differently against a release it didn't create.
         run: |
+          set -euo pipefail
           TAG="${GITHUB_REF_NAME}"
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "::error::A GitHub Release already exists for tag $TAG. Delete it (or the tag) before re-running, so goreleaser creates it from scratch." >&2
@@ -47,64 +84,85 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: TEMP debug dist state
-        # Temporary diagnostic: goreleaser's own log shows it building,
-        # archiving, and successfully uploading dist/strategist-* files to
-        # the GitHub release in this same job — yet the very next step's
-        # glob finds nothing. Dump the actual filesystem state here so we
-        # stop guessing. Remove this step once the mismatch is understood.
+      - name: Collect published artifacts
+        id: artifacts
+        # Do NOT glob dist/ to find the release binaries. GoReleaser's on-disk
+        # layout is an implementation detail (it has historically nested build
+        # output under dist/<id>_<goos>_<goarch>/ regardless of the archive
+        # name_template), so a glob that assumes a layout fails silently or,
+        # worse, matches the wrong set. dist/artifacts.json is GoReleaser's
+        # documented machine-readable manifest of exactly what it published —
+        # read the paths from there and cross-check them against the filesystem.
         run: |
-          echo "pwd: $(pwd)"
-          echo "--- ls -la . ---"
-          ls -la .
-          echo "--- ls -la dist (if it exists) ---"
-          ls -la dist 2>&1 || echo "dist/ does not exist"
-          echo "--- find . -iname 'strategist-*' ---"
-          find . -maxdepth 3 -iname 'strategist-*' 2>&1 || true
-
-      - name: Verify goreleaser produced binaries
-        # goreleaser-action reports success even if the underlying `goreleaser`
-        # run built zero archives (e.g. it published but archiving no-op'd) —
-        # the steps below use nullglob loops that silently no-op on zero
-        # matches too, so without this check a total build failure surfaces
-        # only much later, confusingly, at the attest step.
-        run: |
-          shopt -s nullglob
-          files=(dist/strategist-*)
-          if [[ ${#files[@]} -eq 0 ]]; then
-            echo "::error::No dist/strategist-* artifacts found after goreleaser run" >&2
+          set -euo pipefail
+          if [[ ! -f dist/artifacts.json ]]; then
+            echo "::error::dist/artifacts.json not found — goreleaser did not complete a release run" >&2
             exit 1
           fi
-          printf '%s\n' "${files[@]}"
+
+          jq -r '
+            .[]
+            | select(.type == "UploadableBinary" or .type == "UploadableArchive")
+            | [.path, .name] | @tsv
+          ' dist/artifacts.json > dist/published.tsv
+
+          if [[ ! -s dist/published.tsv ]]; then
+            echo "::error::goreleaser published no binaries or archives (dist/artifacts.json had no uploadable entries)" >&2
+            jq -r '.[] | "\(.type)\t\(.name)"' dist/artifacts.json >&2 || true
+            exit 1
+          fi
+
+          # Every manifest entry must actually exist, and be non-empty: the
+          # signing, upload and attestation steps below all address these files
+          # by path, and a missing one there would surface far less clearly.
+          while IFS=$'\t' read -r path name; do
+            if [[ ! -s "$path" ]]; then
+              echo "::error::published artifact '$name' is missing or empty at '$path'" >&2
+              exit 1
+            fi
+            echo "  $name -> $path"
+          done < dist/published.tsv
+
+          echo "Published $(wc -l < dist/published.tsv) artifact(s)."
+
+          # Newline-separated subject list for the attestation step.
+          {
+            echo 'paths<<PATHS_EOF'
+            cut -f1 dist/published.tsv
+            echo 'PATHS_EOF'
+          } >> "$GITHUB_OUTPUT"
 
       - name: Install cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
 
-      - name: Sign release binaries (keyless)
+      - name: Sign published artifacts (keyless)
         # Keyless signing (Fulcio/Rekor) has been GA since cosign v1.13 — the
         # COSIGN_EXPERIMENTAL=1 flag this step previously set is a pre-GA relic
         # from older cosign docs and is not required by the cosign version this
         # pinned cosign-installer release installs.
+        #
+        # Bundles land in a dedicated directory, named after the *published*
+        # asset name rather than the on-disk basename, so that the published
+        # pair is always `<asset>` + `<asset>.bundle` (as documented in
+        # README.md and SECURITY.md) and so they can never be picked up as
+        # attestation subjects by a later step.
         run: |
-          shopt -s nullglob
-          for f in dist/strategist-*; do
-            [[ -f "$f" ]] || continue
-            [[ "$f" == *.bundle ]] && continue
-            cosign sign-blob --yes "$f" --bundle "${f}.bundle"
-          done
+          set -euo pipefail
+          mkdir -p dist/bundles
+          while IFS=$'\t' read -r path name; do
+            cosign sign-blob --yes "$path" --bundle "dist/bundles/${name}.bundle"
+          done < dist/published.tsv
 
       - name: Upload cosign bundles to release
         run: |
+          set -euo pipefail
           shopt -s nullglob
-          TAG="${GITHUB_REF_NAME}"
-          bundles=(dist/strategist-*.bundle)
+          bundles=(dist/bundles/*.bundle)
           if [[ ${#bundles[@]} -eq 0 ]]; then
             echo "::error::No cosign bundles found to upload" >&2
             exit 1
           fi
-          for bundle in "${bundles[@]}"; do
-            gh release upload "$TAG" "$bundle" --clobber
-          done
+          gh release upload "${GITHUB_REF_NAME}" "${bundles[@]}" --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -120,7 +178,32 @@ jobs:
       - name: Attest build provenance
         uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
         with:
-          # GoReleaser's name_template ("strategist-{{ .Os }}-{{ .Arch }}") hyphenates,
-          # so the subject glob must match dist/strategist-* — an underscore glob here
-          # would match zero files and silently attest nothing.
-          subject-path: dist/strategist-*
+          # Explicit paths from dist/artifacts.json rather than a glob: a glob
+          # would either miss the binaries or sweep in the cosign bundles, and
+          # attesting zero subjects is not an error the action reports.
+          subject-path: ${{ steps.artifacts.outputs.paths }}
+
+      - name: Verify published release is complete
+        # Final gate: the release is only "done" if every artifact goreleaser
+        # said it published, plus its signature bundle and the checksum file,
+        # is actually retrievable from the GitHub Release.
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          assets=$(gh release view "$TAG" --json assets --jq '.assets[].name')
+          missing=0
+          while IFS=$'\t' read -r _ name; do
+            for want in "$name" "${name}.bundle"; do
+              if ! grep -qxF "$want" <<<"$assets"; then
+                echo "::error::release $TAG is missing asset '$want'" >&2
+                missing=1
+              fi
+            done
+          done < dist/published.tsv
+          if ! grep -qxF "SHA256SUMS" <<<"$assets"; then
+            echo "::error::release $TAG is missing SHA256SUMS (bootstrap.sh requires it)" >&2
+            missing=1
+          fi
+          exit "$missing"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
