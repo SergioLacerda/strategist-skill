@@ -1,0 +1,41 @@
+subject: contracts/machine/runbook-opportunity.yaml
+version: "1.0"
+
+invariants:
+  - id: runbook_opportunity_advisory_only
+    description: runbook_opportunity never writes a runbook file directly — it only proposes a candidate at the gate
+    rule: write_scope is read-only; any write happens only via sniper_runbook_opportunity after explicit gate approval
+
+  - id: runbook_option_independent_confirmation
+    description: The runbook gate option requires its own explicit confirmation, independent of any other response
+    rule: selecting "runbook" creates a candidate; it is offered only when runbook_opportunity.warranted=true
+
+  - id: no_adr_or_closure_role
+    description: runbook_opportunity defers ADR-worthiness to Opportunity Attack and card closure/movement to Critical Hit
+    rule: runbook_opportunity MUST NOT evaluate ADR-worthiness or card closure/movement
+
+  - id: candidate_never_canonical_directly
+    description: The runbook candidate action never writes directly to docs/runbooks/<slug>.md
+    rule: candidate creation produces a reviewable form only (pending mission stub or tagged draft); promotion to canonical requires human acceptance
+
+cases:
+  - name: runbook_warranted
+    given:
+      normalized_idea: "idea describing a verified recovery procedure with stop conditions"
+    expect:
+      output: { warranted: true, candidate_id: "RB-{mission_id}" }
+      gate_extra_option: { runbook: create_runbook_candidate }
+
+  - name: runbook_not_warranted
+    given:
+      normalized_idea: "generic idea with no procedure"
+    expect:
+      output: { warranted: false }
+      emit: "[Strategist] phase=runbook_opportunity runbook_opportunity=done runbook_warranted=false"
+
+  - name: runbook_candidate_creation_is_independent_confirmation
+    given:
+      gate_response: "runbook"
+    expect:
+      action: create_reviewable_runbook_candidate
+      forbidden: writing directly to docs/runbooks/<slug>.md

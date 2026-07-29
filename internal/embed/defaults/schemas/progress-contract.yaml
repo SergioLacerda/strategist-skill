@@ -46,7 +46,6 @@ event_examples:
   - "[Strategist] phase=execution status=done artifact=.analysis/archived/abc123-report.md"
   - "[Strategist] event=treasure_chest_found chest=my-chest phase=discovery"
   - "[Strategist] event=evidence_pack_generated path=.analysis/refined/abc123/abc123-evidence-pack.md phase=refinement"
-  - "[Strategist] event=side_quest_detected type=quick_draw phase=intake"
   - "[Strategist] event=scope_observation type=side_quest phase=refinement"
   - "[Strategist] phase=execution task=2 status=running"
   - "[Strategist] phase=execution task=2 status=done"
@@ -62,7 +61,7 @@ user_facing_signals:
       fields: [chest_id, description]
     side_quest_detected:
       template: side_quest_detected
-      trigger: Quick draw route matched, or ADR criteria met
+      trigger: ADR criteria met
       fields: [description]
     opportunity_signal:
       template: opportunity_signal

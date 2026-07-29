@@ -56,3 +56,11 @@ func TestGenerateMissionID_CollisionAddsuffix(t *testing.T) {
 		t.Fatalf("expected prefix 20260602-my-feature-, got %s", id)
 	}
 }
+
+func TestPatternCollides_MalformedPatternReturnsFalse(t *testing.T) {
+	t.Parallel()
+	// An unterminated "[" makes filepath.Glob return ErrBadPattern.
+	if patternCollides("[") {
+		t.Fatal("expected malformed pattern to be treated as no collision")
+	}
+}

@@ -105,11 +105,13 @@ contract:
           compiled layers, runs the internal scan phase, detects and polishes reusable
           knowledge units into deduplicated status:proposed jewels, and refreshes the
           compiled index.
-      - name: "strategist treasure-chest mine"
+      - name: "strategist treasure-chest items"
         description: >
-          Human curation over status:proposed jewels — accept, verify (with evidence),
-          adjust, or deprecate. Supports non-interactive automation via
-          --list/--accept/--verify/--deprecate flags.
+          Human curation over status:proposed jewels and potions — list, show, accept,
+          verify (with evidence), deprecate, or migrate-status, via subcommands
+          (`items list|show|accept|verify|deprecate|migrate-status`). Replaces the
+          removed `mine` and `jewel` commands (see
+          .analysis/refined/treasure-chest-cli-unification/design.md).
     internal:
       - scan   # mission-history clustering/gap-mining phase, folded into `index`
 
@@ -120,7 +122,7 @@ contract:
       by its own analysis. No pre-approval gate — the trust-tier ceiling
       (jewel.trust <= chest.trust.tier) is the safeguard, not human review. Agent-generated
       jewels are always written with status: proposed — an agent must never write accepted or
-      verified directly; only `strategist treasure-chest mine` (human curation) can promote a
+      verified directly; only `strategist treasure-chest items` (human curation) can promote a
       jewel past proposed. See .analysis/refined/bau-tesouro-sq003-004-007/design.md for the
       original rationale, .analysis/refined/bau-tesouro-sq009-jewels-runtime/design.md for this
       contract's origin, and .analysis/refined/treasure-chest-index-mine-pipeline/design.md for
@@ -140,7 +142,7 @@ contract:
       - last_reviewed
       - score           # {value, reasons} — LLM-governed candidate quality signal, never a promotion authority
       - applicability    # {scope, applies_when, avoid_when}
-      - verification     # {evidence_refs} — populated only by `treasure-chest mine --verify`
+      - verification     # {evidence_refs} — populated only by `treasure-chest items verify --evidence`
     forbidden:
       - generating a jewel with trust exceeding the parent chest's trust.tier
       - generating a jewel without at least one source_ref
@@ -170,6 +172,16 @@ contract:
       - treating a status:proposed jewel as verified evidence
       - consulting a deprecated jewel as if accepted or verified
       - consulting a legacy "active" jewel (invalid after migration; loading must fail loudly)
+    outcome_forwarding:
+      description: >
+        The deduplicated set of jewel IDs consulted under this block (Ranger during
+        discovery, Archivist during refinement — union, deduplicated by id) must be
+        forwarded into mission_result.jewels_consulted (see mission-result.schema.yaml)
+        rather than discarded after use as a ranking hint. This is separate from, and
+        does not change, jewel_retrieval's own ranking/fallback behavior above — it only
+        adds a downstream reporting obligation so learning-curator can populate
+        outcome-entry.schema.yaml's jewel_ids field. See
+        .analysis/refined/2026-07-22-jewel-outcome-feedback-loop/design.md.
 
   planned_score_selection_transparency:
     status: not_implemented

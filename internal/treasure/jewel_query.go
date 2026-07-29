@@ -55,8 +55,9 @@ func SortJewels(jewels []Jewel) {
 	})
 }
 
-// ParseJewelIDs expands comma-separated CLI values into a de-duplicated id list.
-func ParseJewelIDs(values ...string) []string {
+// ParseItemIDs expands comma-separated CLI values into a de-duplicated id list.
+// Shared by jewel and potion id parsing — the format has no per-type meaning.
+func ParseItemIDs(values ...string) []string {
 	ids := make([]string, 0, len(values))
 	seen := make(map[string]bool)
 	for _, value := range values {

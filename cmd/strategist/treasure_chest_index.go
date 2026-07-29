@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/compile"
@@ -34,7 +33,7 @@ Use --include-historical to opt in to indexing T2/T3 sources into the compiled a
 
 func init() {
 	var opts treasureChestIndexOptions
-	treasureChestIndexCmd.Flags().BoolVar(&opts.IncludeHistorical, "include-historical", false, "include T2/T3 historical sources in the compiled index rebuild")
+	treasureChestIndexCmd.Flags().BoolVar(&opts.IncludeHistorical, flagIncludeHistorical, false, "include T2/T3 historical sources in the compiled index rebuild")
 	treasureChestIndexCmd.RunE = func(cmd *cobra.Command, args []string) error {
 		return runTreasureChestIndexCmd(cmd, args, opts)
 	}
@@ -49,74 +48,120 @@ func runTreasureChestIndexCmd(cmd *cobra.Command, _ []string, opts treasureChest
 	if run := telemetryRunFromCmd(cmd); run != nil {
 		run.SetSilent()
 	}
-	opts.IncludeHistorical = boolFlag(cmd, "include-historical", opts.IncludeHistorical)
+	opts.IncludeHistorical = boolFlag(cmd, flagIncludeHistorical, opts.IncludeHistorical)
 
-	root, err := resolveTreasureChestIndexRoot(cmd)
+	root, err := resolveTreasureChestActionRoot(cmd, "index")
 	if err != nil {
 		return err
 	}
 
+	jewelPhase, err := runTreasureChestIndexJewelPhase(cmd, root)
+	if err != nil {
+		return err
+	}
+
+	potionPhase, err := runTreasureChestIndexPotionPhase(root, jewelPhase.governed)
+	if err != nil {
+		return err
+	}
+
+	if err := finalizeTreasureChestIndex(root, jewelPhase.governed, opts.IncludeHistorical); err != nil {
+		return err
+	}
+
+	fmt.Printf("[Strategist] treasure-chest index: %d mission(s) scanned, %d candidate(s) found, "+
+		"%d proposed jewel(s) written, %d duplicate(s) skipped, "+
+		"%d proposed potion(s) written, %d duplicate(s) skipped, compiled artifact refreshed\n",
+		len(jewelPhase.missions), len(jewelPhase.candidates), jewelPhase.written, jewelPhase.skipped,
+		potionPhase.written, potionPhase.skipped)
+	return nil
+}
+
+// indexJewelPhaseResult carries the jewel-mining phase's outputs forward — governed is
+// reused by the potion phase and the historical-source warning; the rest feeds the
+// final summary line.
+type indexJewelPhaseResult struct {
+	governed   map[string]treasure.GovernedChest
+	missions   []treasure.ScannedMission
+	candidates []treasure.Jewel
+	written    int
+	skipped    int
+}
+
+// runTreasureChestIndexJewelPhase runs the mission-history scan and proposes jewel
+// candidates from it — the original `index` behavior, unchanged by the Potion/chest-
+// content scan extension in runTreasureChestIndexPotionPhase.
+func runTreasureChestIndexJewelPhase(cmd *cobra.Command, root string) (indexJewelPhaseResult, error) {
 	governed, err := treasure.LoadGoverned(root)
 	if err != nil {
-		return fmt.Errorf("treasure-chest index: %w", err)
+		return indexJewelPhaseResult{}, fmt.Errorf("treasure-chest index: %w", err)
 	}
 	scoringPolicy, err := treasure.LoadScoringPolicy(root)
 	if err != nil {
-		return fmt.Errorf("treasure-chest index: %w", err)
+		return indexJewelPhaseResult{}, fmt.Errorf("treasure-chest index: %w", err)
 	}
 
-	missions, clusters, gaps, err := scanTreasureChestMissions(root)
+	_, basePath, err := resolveDojoRoots(root)
 	if err != nil {
-		return err
+		return indexJewelPhaseResult{}, fmt.Errorf("treasure-chest index: %w", err)
 	}
+	scanResult, err := treasure.RunScanPipeline(root, basePath)
+	if err != nil {
+		return indexJewelPhaseResult{}, fmt.Errorf("treasure-chest index: %w", err)
+	}
+	printTreasureChestIndexWarnings(cmd, scanResult.Warnings)
 
-	candidates := treasure.BuildJewelCandidatesWithPolicy(clusters, gaps, scoringPolicy)
+	candidates := treasure.BuildJewelCandidatesWithPolicy(scanResult.Clusters, scanResult.Gaps, scoringPolicy)
 	written, skipped, err := treasure.WriteProposedJewels(root, candidates)
 	if err != nil {
-		return fmt.Errorf("treasure-chest index: %w", err)
+		return indexJewelPhaseResult{}, fmt.Errorf("treasure-chest index: %w", err)
 	}
 
-	printHistoricalIndexWarning(governed, opts.IncludeHistorical)
+	return indexJewelPhaseResult{
+		governed:   governed,
+		missions:   scanResult.Missions,
+		candidates: candidates,
+		written:    written,
+		skipped:    skipped,
+	}, nil
+}
+
+type indexPotionPhaseResult struct {
+	written int
+	skipped int
+}
+
+// runTreasureChestIndexPotionPhase scans registered chests' own content (ask #1 /
+// SQ-001) and proposes Potion candidates from it.
+func runTreasureChestIndexPotionPhase(root string, governed map[string]treasure.GovernedChest) (indexPotionPhaseResult, error) {
+	candidates, err := scanRegisteredChestsForPotions(root, governed)
+	if err != nil {
+		return indexPotionPhaseResult{}, err
+	}
+	written, skipped, err := treasure.WriteProposedPotions(root, candidates)
+	if err != nil {
+		return indexPotionPhaseResult{}, fmt.Errorf("treasure-chest index: %w", err)
+	}
+	return indexPotionPhaseResult{written: written, skipped: skipped}, nil
+}
+
+// finalizeTreasureChestIndex prints the historical-source warning (if applicable) and
+// rebuilds the compiled knowledge index.
+func finalizeTreasureChestIndex(root string, governed map[string]treasure.GovernedChest, includeHistorical bool) error {
+	printHistoricalIndexWarning(governed, includeHistorical)
 
 	indexPath := filepath.Join(root, "knowledge.index.yaml")
 	c := compile.Compiler{}
 	if err := c.CompileAll(root, indexPath); err != nil {
 		return fmt.Errorf("treasure-chest index: %w", err)
 	}
-
-	fmt.Printf("[Strategist] treasure-chest index: %d mission(s) scanned, %d candidate(s) found, "+
-		"%d proposed jewel(s) written, %d duplicate(s) skipped, compiled artifact refreshed\n",
-		len(missions), len(candidates), written, skipped)
 	return nil
 }
 
-func resolveTreasureChestIndexRoot(cmd *cobra.Command) (string, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", fmt.Errorf("treasure-chest index: get cwd: %w", err)
+func printTreasureChestIndexWarnings(cmd *cobra.Command, warnings []treasure.ScanWarning) {
+	for _, warning := range warnings {
+		cmd.PrintErrf("Warning: treasure-chest index: skipped inconsistent mission file: %v\n", warning)
 	}
-	root, _, err := resolveStrategistRoot(treasureChestRootFromCmd(cmd), cwd)
-	if err != nil {
-		return "", fmt.Errorf("treasure-chest index: %w", err)
-	}
-	return root, nil
-}
-
-func scanTreasureChestMissions(root string) ([]treasure.ScannedMission, []treasure.Cluster, []treasure.Gap, error) {
-	_, basePath, err := resolveDojoRoots(root)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("treasure-chest index: %w", err)
-	}
-	missions, err := treasure.ScanMissions(basePath)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("treasure-chest index: %w", err)
-	}
-	clusters := treasure.BuildClusters(missions)
-	gaps := treasure.BuildGaps(missions)
-	if err := treasure.WriteScanOutputs(filepath.Join(root, "treasure", "clusters"), clusters, filepath.Join(root, "treasure", "gaps"), gaps); err != nil {
-		return nil, nil, nil, fmt.Errorf("treasure-chest index: %w", err)
-	}
-	return missions, clusters, gaps, nil
 }
 
 func printHistoricalIndexWarning(governed map[string]treasure.GovernedChest, includeHistorical bool) {

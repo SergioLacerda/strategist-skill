@@ -1,0 +1,79 @@
+subject: contracts/machine/scout-routing.yaml
+version: "1.0"
+
+invariants:
+  - id: never_bypass_approval_gate
+    description: Scout never bypasses the Strategist Approval Gate on any route
+    rule: gate_required == true regardless of selected_route
+
+  - id: never_invoke_sniper_directly
+    description: Scout classifies only — it never invokes Sniper directly
+    rule: Scout's only output is route_decision; no direct Sniper invocation on any route
+
+  - id: never_replace_ranger_when_discovery_required
+    description: Scout defers to Ranger whenever evidence_state=requires_discovery
+    rule: evidence_state == requires_discovery → selected_route=full_pipeline and discovery_subtype is set; Scout does not perform discovery itself
+
+  - id: conservative_fallback_on_low_confidence
+    description: Below-threshold route confidence always falls back to full_pipeline
+    rule: route_confidence < route_confidence_threshold (0.6) → selected_route=full_pipeline
+
+  - id: ambiguous_conditions_route_to_full_pipeline
+    description: Any ambiguous trigger condition routes conservatively to full_pipeline
+    rule: condition_ambiguous == true → selected_route=full_pipeline
+
+  - id: discovery_always_resolves_to_native_ranger
+    description: >
+      Discovery invocation never depends on discovery_subtype or
+      active.slots.discovery — every subtype resolves to internal_skills/ranger.
+      No external weapon's manifest is ever consulted for discovery.
+    rule: for any discovery_subtype → discovery target == internal_skills/ranger (native_role)
+
+cases:
+  - name: critical_hit_route_selected
+    given:
+      critical_hit_candidate: true
+      route_confidence: 0.9
+    expect:
+      selected_route: critical_hit
+      emit: "[Strategist] phase=intake status=route_selected component=scout route=critical_hit route_reason={reason} route_confidence=0.9 evidence_state={evidence_state}"
+
+  - name: implementation_short_route_selected
+    given:
+      request_explicitly_asks_for_implementation_or_materialization: true
+      local_context_or_prompt_scope_sufficient: true
+      documentation_or_materialization_targets_clear: true
+      unresolved_ambiguity: false
+      code_mutation_required: false
+      git_mutation_required: false
+      status_annotation_requires_broad_investigation: false
+      route_confidence: 0.8
+    expect:
+      selected_route: implementation_short_route
+
+  - name: full_pipeline_default_low_confidence
+    given:
+      route_confidence: 0.4
+    expect:
+      selected_route: full_pipeline
+      emit: "[Strategist] phase=intake status=fallback component=scout reason={reason} route_confidence=0.4"
+
+  - name: full_pipeline_requires_discovery
+    given:
+      evidence_state: requires_discovery
+    expect:
+      selected_route: full_pipeline
+      discovery_subtype: set
+      action: Ranger performs discovery — Scout does not
+
+  - name: all_discovery_subtypes_resolve_to_native_ranger
+    given:
+      evidence_state: requires_discovery
+      discovery_subtype: "creative"
+      configured_discovery_weapon: brainstorming
+    expect:
+      handoff: "[Strategist] phase=intake status=handoff component=scout target=ranger weapon=internal_skills/ranger subtype=creative"
+      action: >
+        discovery resolves to internal_skills/ranger regardless of
+        active.slots.discovery or discovery_subtype — no external weapon's
+        manifest is ever consulted for discovery invocation

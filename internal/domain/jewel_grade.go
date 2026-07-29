@@ -26,16 +26,16 @@ var validJewelStatuses = map[string]bool{
 	JewelStatusDeprecated: true,
 }
 
-var validJewelKinds = map[string]bool{
-	"decision": true, "pattern": true, "anti_pattern": true,
-	"gap": true, "risk": true, "constraint": true,
-	"example": true, "heuristic": true, "template": true,
-	"question": true,
-}
+var validJewelKinds = stringSet(
+	"decision", "pattern", "anti_pattern",
+	"gap", "risk", "constraint",
+	"example", "heuristic", "template",
+	"question",
+)
 
 // ValidateJewelKind returns an error if the kind is not one of the allowed types.
 func ValidateJewelKind(jewelID, kind string) error {
-	if validJewelKinds[kind] {
+	if hasString(validJewelKinds, kind) {
 		return nil
 	}
 	return fmt.Errorf("jewel %q has invalid kind %q", jewelID, kind)
@@ -52,14 +52,14 @@ func ValidateJewelScore(jewelID string, score int) error {
 // ValidateJewelStatus returns an error if status is not one of the four lifecycle states
 // (proposed, accepted, verified, deprecated). The legacy "active" status is called out by
 // name since it was the pre-migration default and existing jewels.yaml files may still
-// carry it — see ADR 0012 and `strategist treasure-chest mine --migrate-status`.
+// carry it — see ADR 0012 and `strategist treasure-chest items migrate-status`.
 func ValidateJewelStatus(jewelID, status string) error {
 	if validJewelStatuses[status] {
 		return nil
 	}
 	if status == jewelStatusLegacyActive {
 		return fmt.Errorf(
-			"jewel %q has legacy status %q, no longer valid; run `strategist treasure-chest mine --migrate-status` to migrate active -> accepted",
+			"jewel %q has legacy status %q, no longer valid; run `strategist treasure-chest items migrate-status` to migrate active -> accepted",
 			jewelID, status,
 		)
 	}

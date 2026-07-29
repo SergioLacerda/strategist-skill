@@ -136,6 +136,31 @@ func TestSaveCheckpoint_UnwritableDir(t *testing.T) {
 	}
 }
 
+func TestSaveCheckpoint_RenameFailsWhenPathIsDirectory(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	// path itself is an existing directory — os.Rename(tmp, path) fails.
+	target := filepath.Join(dir, "cp-dir")
+	if err := os.Mkdir(target, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	cp := &MissionCheckpoint{MissionID: "m-rename-fail", TasksTotal: 1}
+	err := SaveCheckpoint(target, cp)
+	if err == nil {
+		t.Fatal("expected error when destination path is a directory, got nil")
+	}
+
+	// The temp file must be cleaned up, not left behind in the parent dir.
+	matches, globErr := filepath.Glob(filepath.Join(dir, ".cp-dir-*.tmp"))
+	if globErr != nil {
+		t.Fatalf("glob: %v", globErr)
+	}
+	if len(matches) != 0 {
+		t.Fatalf("expected temp file cleanup, found: %v", matches)
+	}
+}
+
 func TestRemoveCheckpoint_UnremovableFile(t *testing.T) {
 	t.Parallel()
 	if runtime.GOOS == "windows" {

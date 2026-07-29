@@ -8,8 +8,8 @@ skill_type: utility
 
 description: >
   Internal pre-pipeline route classifier ("Intake Router"). Runs immediately after
-  prompt-intake and after quick_draw_detection finds no match. Reads mission_contract
-  and the user prompt, then selects critical_hit, implementation_short_route, or
+  prompt-intake. Reads mission_contract and the user prompt, then selects
+  critical_hit, implementation_short_route, or
   full_pipeline. Emits a compact route_decision — never a discovery report. Never
   performs deep discovery, never invokes Sniper directly, never bypasses the
   Strategist Approval Gate, never replaces Ranger. Scout is internal/built-in

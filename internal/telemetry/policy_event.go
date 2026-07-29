@@ -36,7 +36,7 @@ func EmitPolicyEvent(ev PolicyEvent) {
 		AttrPhase, ev.Phase,
 		AttrStatus, ev.Status,
 		AttrMissionID, ev.Mission,
-		"strategist.documentation_scope", "approved_targets",
+		AttrDocumentationScope, documentationScopeApprovedTargets,
 	}
 	if ev.TransitionGroup != "" {
 		attrs = append(attrs, AttrTransitionGroup, ev.TransitionGroup)

@@ -52,7 +52,7 @@ execution_slot:
         fields:
           type:
             type: enum
-            values: [approval_gate, adr_gate, quick_draw_gate]
+            values: [approval_gate, adr_gate]
           approved_at:
             type: string
             format: iso8601

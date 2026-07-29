@@ -5,6 +5,10 @@ slot: discovery
 # Listed here for reference when writing custom_brief below.
 canonical:
   - find_unexpected_items       # surface items outside declared mission scope
+  - search:                     # ability: filters jewel/potion candidates from treasure chests
+      when: before consult_treasure_chests decides which chests to open (Retrieval Cascade stage 6)
+      filters: [jewel, potion]
+      output: relevant_sources_hint     # carried in the handoff artifact, reused by Archivist by default
   - consult_treasure_chests     # consult T0/T1 chests scoped to discovery before generating artifact
   - scope_observation:          # surface side quests and unexpected items during exploration
       detect: [treasure_chests, side_quests]

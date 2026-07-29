@@ -3,6 +3,7 @@
 package spec_test
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -15,12 +16,16 @@ import (
 func contextEnrichmentMirrors(t *testing.T) []string {
 	t.Helper()
 	return []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "context-enrichment.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "context-enrichment.yaml"),
 		filepath.Join(isolatedStrategistDir(t), "contracts", "machine", "context-enrichment.yaml"),
 	}
 }
 
+// TestJewelSpec_NoPublicMultiCommandMiningWorkflow guards the offline organization
+// plane's public command surface. Updated by treasure-chest-cli-unification
+// (Decisions D2/D5): `mine` was removed and its curation responsibilities absorbed
+// into `items` (list/show/accept/verify/deprecate/migrate-status subcommands) —
+// see .analysis/refined/treasure-chest-cli-unification/design.md.
 func TestJewelSpec_NoPublicMultiCommandMiningWorkflow(t *testing.T) {
 	t.Parallel()
 
@@ -30,8 +35,8 @@ func TestJewelSpec_NoPublicMultiCommandMiningWorkflow(t *testing.T) {
 		if !strings.Contains(content, `"strategist treasure-chest index"`) {
 			t.Errorf("%s: missing public command \"strategist treasure-chest index\"", path)
 		}
-		if !strings.Contains(content, `"strategist treasure-chest mine"`) {
-			t.Errorf("%s: missing public command \"strategist treasure-chest mine\"", path)
+		if !strings.Contains(content, `"strategist treasure-chest items"`) {
+			t.Errorf("%s: missing public command \"strategist treasure-chest items\"", path)
 		}
 		if !strings.Contains(content, "internal:") || !strings.Contains(content, "- scan") {
 			t.Errorf("%s: scan must be listed as an internal phase, not public UX", path)
@@ -43,11 +48,17 @@ func TestJewelSpec_NoPublicMultiCommandMiningWorkflow(t *testing.T) {
 		}
 	}
 
-	// The Go CLI itself must expose exactly index and mine as the non-hidden subcommands
-	// under `treasure-chest scan/add/remove/index/mine`; scan is folded in as Hidden.
+	// The Go CLI itself must expose exactly index and items as the non-hidden subcommands
+	// under `treasure-chest list/add/remove/index/items/doctor`; scan is folded in as Hidden,
+	// and mine/jewel no longer exist as separate commands (renamed/removed, see above).
 	scanSource := readFile(t, filepath.Join(repoRoot(t), "cmd", "strategist", "treasure_chest_scan.go"))
 	if !strings.Contains(scanSource, "Hidden: true") {
 		t.Error("cmd/strategist/treasure_chest_scan.go: scan command must be Hidden (internal phase, not public UX)")
+	}
+	for _, stale := range []string{"treasure_chest_mine.go", "treasure_chest_jewel.go"} {
+		if _, err := os.Stat(filepath.Join(repoRoot(t), "cmd", "strategist", stale)); err == nil {
+			t.Errorf("cmd/strategist/%s must not exist — removed/renamed into treasure_chest_items.go", stale)
+		}
 	}
 }
 
@@ -113,9 +124,9 @@ func TestJewelSpec_LegacyActiveRejectedAfterMigration(t *testing.T) {
 		t.Error("internal/domain/jewel_grade.go: legacy active rejection must point at the migrate-status command")
 	}
 
-	mineSource := readFile(t, filepath.Join(repoRoot(t), "cmd", "strategist", "treasure_chest_mine.go"))
-	if !strings.Contains(mineSource, "migrate-status") {
-		t.Error("cmd/strategist/treasure_chest_mine.go: must expose a --migrate-status flag for the one-time active -> accepted migration")
+	itemsSource := readFile(t, filepath.Join(repoRoot(t), "cmd", "strategist", "treasure_chest_items.go"))
+	if !strings.Contains(itemsSource, "migrate-status") {
+		t.Error("cmd/strategist/treasure_chest_items.go: must expose a migrate-status subcommand for the one-time active -> accepted migration")
 	}
 
 	for _, path := range contextEnrichmentMirrors(t) {

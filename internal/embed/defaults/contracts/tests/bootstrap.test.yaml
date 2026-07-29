@@ -1,4 +1,4 @@
-subject: contracts/bootstrap.yaml
+subject: contracts/machine/bootstrap.yaml
 version: "1.0"
 
 invariants:

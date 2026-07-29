@@ -56,45 +56,35 @@ func MissionRunFromContext(ctx context.Context) *MissionRun {
 func (m *MissionRun) MarkIntake() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if m.intakeAt.IsZero() {
-		m.intakeAt = time.Now()
-	}
+	m.markTimeOnce(&m.intakeAt)
 }
 
 // MarkScout records when Scout's route decision completes, once.
 func (m *MissionRun) MarkScout() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if m.scoutAt.IsZero() {
-		m.scoutAt = time.Now()
-	}
+	m.markTimeOnce(&m.scoutAt)
 }
 
 // MarkRanger records the first substantive work timestamp once.
 func (m *MissionRun) MarkRanger() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if m.rangerAt.IsZero() {
-		m.rangerAt = time.Now()
-	}
+	m.markTimeOnce(&m.rangerAt)
 }
 
 // MarkArchivist records when the refinement slot starts.
 func (m *MissionRun) MarkArchivist() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if m.archivistAt.IsZero() {
-		m.archivistAt = time.Now()
-	}
+	m.markTimeOnce(&m.archivistAt)
 }
 
 // MarkGatePresented records when the approval gate is shown to the user.
 func (m *MissionRun) MarkGatePresented() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if m.gateAt.IsZero() {
-		m.gateAt = time.Now()
-	}
+	m.markTimeOnce(&m.gateAt)
 }
 
 // MarkGateResponse records when the user responds to the approval gate.
@@ -102,17 +92,19 @@ func (m *MissionRun) MarkGatePresented() {
 func (m *MissionRun) MarkGateResponse() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if m.gateRespondAt.IsZero() {
-		m.gateRespondAt = time.Now()
-	}
+	m.markTimeOnce(&m.gateRespondAt)
 }
 
 // MarkSniper records when the execution slot starts.
 func (m *MissionRun) MarkSniper() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if m.sniperAt.IsZero() {
-		m.sniperAt = time.Now()
+	m.markTimeOnce(&m.sniperAt)
+}
+
+func (m *MissionRun) markTimeOnce(dst *time.Time) {
+	if dst.IsZero() {
+		*dst = time.Now()
 	}
 }
 
@@ -140,34 +132,13 @@ func (m *MissionRun) Snapshot() MissionMetrics {
 	defer m.mu.Unlock()
 
 	now := time.Now()
-	intakeAt := m.intakeAt
-	if intakeAt.IsZero() {
-		intakeAt = now
-	}
-	scoutAt := m.scoutAt
-	if scoutAt.IsZero() {
-		scoutAt = intakeAt
-	}
-	rangerAt := m.rangerAt
-	if rangerAt.IsZero() {
-		rangerAt = scoutAt
-	}
-	archivistAt := m.archivistAt
-	if archivistAt.IsZero() {
-		archivistAt = rangerAt
-	}
-	gateAt := m.gateAt
-	if gateAt.IsZero() {
-		gateAt = archivistAt
-	}
-	gateRespondAt := m.gateRespondAt
-	if gateRespondAt.IsZero() {
-		gateRespondAt = gateAt
-	}
-	sniperAt := m.sniperAt
-	if sniperAt.IsZero() {
-		sniperAt = gateRespondAt
-	}
+	intakeAt := firstNonZeroTime(m.intakeAt, now)
+	scoutAt := firstNonZeroTime(m.scoutAt, intakeAt)
+	rangerAt := firstNonZeroTime(m.rangerAt, scoutAt)
+	archivistAt := firstNonZeroTime(m.archivistAt, rangerAt)
+	gateAt := firstNonZeroTime(m.gateAt, archivistAt)
+	gateRespondAt := firstNonZeroTime(m.gateRespondAt, gateAt)
+	sniperAt := firstNonZeroTime(m.sniperAt, gateRespondAt)
 
 	return MissionMetrics{
 		MissionID:            m.MissionID,
@@ -185,6 +156,13 @@ func (m *MissionRun) Snapshot() MissionMetrics {
 		TokensOut:            m.tokensOut,
 		LinesEmitted:         m.linesOut,
 	}
+}
+
+func firstNonZeroTime(value, fallback time.Time) time.Time {
+	if value.IsZero() {
+		return fallback
+	}
+	return value
 }
 
 // SetSilent suppresses the metrics emission in Finish. Call this for

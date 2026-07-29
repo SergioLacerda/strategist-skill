@@ -35,16 +35,27 @@ narrative:
 machine:
   always_load:
     - machine/preflight.yaml
+    - machine/mission-status.yaml
   by_phase:
-    bootstrap:   [machine/bootstrap.yaml]
-    intake:      [machine/intake.yaml]
+    bootstrap:   [machine/bootstrap.yaml, machine/keen-senses.yaml]
+    intake:      [machine/intake.yaml, machine/scout-routing.yaml]
     discovery:   [machine/opportunity-attack.yaml]
-    refinement:  [machine/opportunity-attack.yaml]
+    refinement:  [machine/opportunity-attack.yaml, machine/handoff-contract.yaml]
+    gate:        [machine/approval-gate.yaml, machine/riposte.yaml]
+    # riposte.yaml also fires at mission close (sq_backlog drain) — response phase:
+    response:    [machine/riposte.yaml]
     execution:   [machine/compliance-summary.yaml]
     adr:         [machine/adr.yaml]
     learning:    [machine/learning-curator.yaml, machine/learning-buffer.yaml]
-    quick_draw:  [machine/quick-draw.yaml]
     critical_hit: [machine/critical-hit.yaml]
+    # Deliberately dormant: runbook-opportunity.yaml has no live phase caller
+    # yet — it awaits migration to Opportunity Attack
+    # (activation_criteria.runbook_worthy, already landed; the cutover itself
+    # is a separate decision). "dormant" is not a real mission phase and is
+    # never loaded by the phase-loading procedure in agent-protocol.md — this
+    # key exists only so TestContractIndexReferencesAllMachineContracts does
+    # not flag the file as orphaned.
+    dormant:     [machine/runbook-opportunity.yaml]
     compile:
       - machine/compile-all.yaml
       - machine/compile-config.yaml
@@ -52,6 +63,17 @@ machine:
       - machine/compile-knowledge-index.yaml
       - machine/context-enrichment.yaml
       - machine/check-stale.yaml
+    # Not an agent-loaded pipeline phase: this is a CI/lint-enforced rule about
+    # this repository's own internal/ Go package layout (depguard +
+    # internal/domain/architecture_test.go), never read by the agent during a
+    # user mission. Kept out of always_load to avoid spending mission tokens
+    # on a contributor-only concern; kept under by_phase (rather than a
+    # separate section) so it still counts as referenced by the manifest.
+    governance:
+      - machine/architecture-rules.yaml
+    # Cross-cutting reference catalog (W7b): the normative source for error/blocked
+    # token reason+action text. Loaded on demand when emitting or interpreting a
+    # blocked state — not tied to a single pipeline phase.
+    errors:
+      - machine/errors.yaml
 
-supplemental:
-  - strategist-raid.yaml   # batch refinement route — loaded on /strategist-raid invocation

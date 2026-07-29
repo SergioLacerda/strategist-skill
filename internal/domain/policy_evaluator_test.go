@@ -16,7 +16,8 @@ func TestGuardedTransitionRequiresGate(t *testing.T) {
 	)
 
 	assert.False(t, decision.Allowed)
-	assert.Equal(t, "approval_required", decision.Reason)
+	assert.Equal(t, domain.PolicyReasonApprovalRequired, decision.Reason)
+	assert.Equal(t, domain.PolicyStatusApprovalRequired, decision.Status)
 }
 
 func TestDocumentationAllowedAfterReviewAcceptance(t *testing.T) {
@@ -28,7 +29,8 @@ func TestDocumentationAllowedAfterReviewAcceptance(t *testing.T) {
 	)
 
 	assert.True(t, decision.Allowed)
-	assert.Equal(t, "allowed", decision.Reason)
+	assert.Equal(t, domain.PolicyReasonAllowed, decision.Reason)
+	assert.Equal(t, domain.PolicyStatusAllowed, decision.Status)
 }
 
 func TestReviewGateAllowedAfterAcceptance(t *testing.T) {
@@ -40,7 +42,8 @@ func TestReviewGateAllowedAfterAcceptance(t *testing.T) {
 	)
 
 	assert.True(t, decision.Allowed)
-	assert.Equal(t, "allowed", decision.Reason)
+	assert.Equal(t, domain.PolicyReasonAllowed, decision.Reason)
+	assert.Equal(t, domain.PolicyStatusAllowed, decision.Status)
 }
 
 func TestFinalizeAnalysisAllowedWithGate(t *testing.T) {
@@ -52,7 +55,8 @@ func TestFinalizeAnalysisAllowedWithGate(t *testing.T) {
 	)
 
 	assert.True(t, decision.Allowed)
-	assert.Equal(t, "allowed", decision.Reason)
+	assert.Equal(t, domain.PolicyReasonAllowed, decision.Reason)
+	assert.Equal(t, domain.PolicyStatusAllowed, decision.Status)
 }
 
 func TestFinalizeAnalysisRequiresGate(t *testing.T) {
@@ -64,7 +68,8 @@ func TestFinalizeAnalysisRequiresGate(t *testing.T) {
 	)
 
 	assert.False(t, decision.Allowed)
-	assert.Equal(t, "approval_required", decision.Reason)
+	assert.Equal(t, domain.PolicyReasonApprovalRequired, decision.Reason)
+	assert.Equal(t, domain.PolicyStatusApprovalRequired, decision.Status)
 }
 
 func TestUnknownTransitionGroupBlocked(t *testing.T) {
@@ -76,7 +81,8 @@ func TestUnknownTransitionGroupBlocked(t *testing.T) {
 	)
 
 	assert.False(t, decision.Allowed)
-	assert.Equal(t, "unknown_transition_group", decision.Reason)
+	assert.Equal(t, domain.PolicyReasonUnknownTransitionGroup, decision.Reason)
+	assert.Equal(t, domain.PolicyStatusBlocked, decision.Status)
 }
 
 func TestDocumentationRequiresReviewGateAcceptance(t *testing.T) {
@@ -89,5 +95,6 @@ func TestDocumentationRequiresReviewGateAcceptance(t *testing.T) {
 	)
 
 	assert.False(t, decision.Allowed)
-	assert.Equal(t, "approval_required", decision.Reason)
+	assert.Equal(t, domain.PolicyReasonApprovalRequired, decision.Reason)
+	assert.Equal(t, domain.PolicyStatusApprovalRequired, decision.Status)
 }

@@ -1,0 +1,83 @@
+schema_version: "1"
+module: riposte
+type: capture_routine
+description: >
+  Riposte (W8/P2, deep analysis 2026-07-26) — turns a parried mission into a
+  counter-capture. When the user declines or requests revision at the Approval Gate,
+  or when a mission closes with unselected side quests (sq_backlog), Riposte offers
+  to capture the reason/items as structured backlog entries. It uses its own
+  normalize+capture machinery (`phases.riposte_normalize`/`riposte_capture`
+  below) — it is an offer, never a silent write, and never restarts or spawns
+  a mission.
+
+routing_note: >
+  Riposte is not a route. It fires inside existing flows: the Approval Gate outcome
+  handlers (05-approval-gate.md, approval-gate.yaml) and the mission-close sequence
+  (09-response.md). Scout is not involved.
+
+contract:
+  owner: internal (orchestrator)
+  write_scope: >
+    Append-only to the capture destination resolved by Riposte's own
+    `riposte_capture` phase (<base_path> todo files), and only after explicit
+    confirmation.
+
+  triggers:
+    - id: gate_revision_requested
+      source: approval-gate.yaml#on_revision_requested
+      payload: revision reason as stated by the user, linked to mission_id
+    - id: gate_rejected
+      source: approval-gate.yaml#on_reject
+      payload: rejection reason as stated by the user, linked to mission_id
+    - id: mission_close_sq_backlog
+      source: mission close sequence (09-response.md)
+      payload: each side quest left with status sq_backlog, linked to mission_id
+
+  behavior:
+    - >
+      present ONE combined confirmation at the trigger point, listing exactly what
+      would be captured (reason text or sq_backlog items) and the destination file
+    - >
+      on confirmation — invoke Riposte's own capture phases
+      (phases.riposte_normalize then riposte_capture, below) for each approved
+      item, stamping entry metadata "origin: riposte",
+      "mission_ref: <mission_id>", and the trigger id
+      (gate_revision_requested | gate_rejected | mission_close_sq_backlog)
+    - >
+      on decline or timeout — emit the declined event and continue the enclosing
+      flow unchanged; declining Riposte never blocks the gate outcome or the
+      mission close
+
+  phases:
+    riposte_normalize:
+      input: reason text (gate_revision_requested/gate_rejected) or sq_backlog item (mission_close_sq_backlog)
+      output: one normalized line
+      format: "idea: <formalization without expanding scope>"
+      constraints:
+        - must_not: add requirements, milestones, or implementation details
+        - must_not: expand scope beyond the captured reason/item
+
+    riposte_capture:
+      action: append entry to destination file
+      entry_format: "timestamp + normalized text + origin: riposte + mission_ref: <mission_id> + trigger id"
+      return_keys:
+        - destination_path
+        - items_captured
+
+  emit:
+    on_offer: "[Strategist] phase=riposte status=offered trigger={trigger} items={n}"
+    on_captured: "[Strategist] phase=riposte status=captured trigger={trigger} items={n}"
+    on_declined: "[Strategist] phase=riposte status=declined trigger={trigger}"
+    emit_level: TRACE
+
+  invariants:
+    - never write without an explicit user confirmation at the Riposte offer — the
+      gate response itself (reject/revision) is NOT capture confirmation
+    - never converts a decline into a new mission automatically — captured entries
+      wait in the backlog for a future intake
+    - the enclosing gate outcome (revision_requested / rejected) and its FSM
+      transition are unchanged by Riposte, whatever the user answers
+    - sq_backlog entries remain recorded in the refined package even when the
+      Riposte offer is declined — Riposte drains by copy, it never deletes
+    - capture uses Riposte's own normalize+append machinery (phases above) —
+      no external contract dependency

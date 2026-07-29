@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -33,23 +34,6 @@ func TestWriteGzJSON_NonSerializable(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestCompileYAMLDir_UnreadableDir(t *testing.T) {
-	t.Parallel()
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
-	dir := t.TempDir()
-	subdir := filepath.Join(dir, "locked")
-	require.NoError(t, os.Mkdir(subdir, 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(subdir, "file.yaml"), []byte("x: 1\n"), 0o644))
-	require.NoError(t, os.Chmod(subdir, 0o000))
-	t.Cleanup(func() { _ = os.Chmod(subdir, 0o755) })
-
-	sources := map[string]int64{}
-	_, err := compileYAMLDir(subdir, sources)
-	require.Error(t, err)
-}
-
 func TestWriteGzJSON_MkdirFails(t *testing.T) {
 	t.Parallel()
 	if os.Getuid() == 0 {
@@ -62,6 +46,43 @@ func TestWriteGzJSON_MkdirFails(t *testing.T) {
 	err := writeGzJSON(filepath.Join(dir, "subdir", "out.gz"), map[string]string{"x": "y"})
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "mkdir")
+}
+
+func TestWriteGzJSON_ReadOnlyDir(t *testing.T) {
+	t.Parallel()
+	if os.Getuid() == 0 {
+		t.Skip("permission tests do not apply when running as root")
+	}
+	dir := t.TempDir()
+	require.NoError(t, os.Chmod(dir, 0o444))
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+
+	err := Config(dir, filepath.Join(dir, "output.gz"))
+	require.Error(t, err)
+}
+
+func TestWriteGzJSON_OutputIsDirectory(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	testutil.MinimalRoot(t, dir)
+	outPath := filepath.Join(dir, ".compiled")
+	require.NoError(t, os.MkdirAll(outPath, 0o755))
+	err := Config(dir, outPath)
+	require.Error(t, err)
+}
+
+func TestSourceMetaForSources_MissingSourceKeepsRecordedMTimeOnly(t *testing.T) {
+	t.Parallel()
+	missing := filepath.Join(t.TempDir(), "nonexistent.yaml")
+	meta := sourceMetaForSources(map[string]int64{missing: 12345})
+	assert.Equal(t, sourceMetadata{MTime: 12345}, meta[missing])
+}
+
+func TestSourceFileSHA256_ReadError(t *testing.T) {
+	t.Parallel()
+	// A directory cannot be read as a file — triggers the os.ReadFile error path.
+	result := sourceFileSHA256(t.TempDir())
+	assert.Empty(t, result)
 }
 
 func TestCompileYAMLDirTyped_UnreadableDir(t *testing.T) {

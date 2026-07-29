@@ -39,12 +39,13 @@ Approval Gate acceptance means the refined analysis is correct and, if the packa
   `sim`/`accept`/`yes` to the refined package as a whole.
 
 If the accepted package contains `implementation_handoff` items, those items remain
-outside Strategist after the gate. The mission may resolve as `analysis_delivered` or
-`implementation_handoff_ready` (if `documentation_target` items also exist and are
-accepted, Sniper still materializes only those). Executing the `implementation_handoff`
-items requires a separate coding task outside Strategist mode — the Approval Gate does
-not grant that authorization, regardless of `execution_gate=allowed` or how emphatically
-the user accepted the package.
+outside Strategist after the gate. The mission resolves as `analysis_delivered` when
+there are no accepted `documentation_target` items, or `documentation_applied` after
+Sniper materializes accepted documentation targets. In both cases, `implementation_handoff`
+items are reported as non-executable handoff work, not as a separate mission status.
+Executing the `implementation_handoff` items requires a separate coding task outside
+Strategist mode — the Approval Gate does not grant that authorization, regardless of
+`execution_gate=allowed` or how emphatically the user accepted the package.
 
 ## Gate Display With Implementation Handoff
 
@@ -73,7 +74,8 @@ If Archivist identified side quests during refinement:
 2. Assign each a unique ID (SQ-NNN)
 3. Show estimated impact and dependencies
 4. User may select a subset for documentation
-5. Unselected side quests are recorded as `sq_backlog` — not discarded
+5. Unselected side quests are recorded as `sq_backlog` — not discarded; at mission
+   close they get a Riposte capture offer (see § Riposte below)
 6. Partial acceptance is valid — Sniper materializes only the accepted items
 
 Gate display format:
@@ -82,6 +84,10 @@ Gate display format:
 📋 MAIN ANALYSIS
    Proposal:    refined/<mission_id>/proposal.md
    Tasks:       refined/<mission_id>/tasks.md — N task(s)
+
+🎯 CRITIC (if a rubric evaluation ran)
+   score: <0.00–1.00> — <pass|fail>
+   gaps:  <must_have_missing / must_not_present items, if any>
 
 📄 DOCUMENTATION TARGETS (outside <base_path>, if any)
    <path> — <description>
@@ -92,6 +98,30 @@ Gate display format:
 
 Is the analysis correct?  (accept / review / reject)
 ```
+
+## Critic at the Gate (W8/P5)
+
+When the response-critic evaluated the refined package, its result is shown in the
+`🎯 CRITIC` line (see `machine/approval-gate.yaml#critic_display`). Rules:
+
+- `fail` → pre-suggest `review` as the default answer in the prompt sentence
+  (e.g. "Critic flagged gaps — review?  (accept / **review** / reject)")
+- `no_rubric`, or critic did not run → omit the line entirely; never block the gate
+- the critic result is advisory display only — it never auto-rejects, never blocks,
+  and never substitutes the user's decision
+
+## Riposte (W8/P2)
+
+A parried mission still scores a hit. On `reject` or `revision`, and at mission close
+when `sq_backlog` items exist, offer to capture the reason/items as structured backlog
+entries via Riposte's own normalize+capture machinery (normative contract:
+`machine/riposte.yaml`). Doctrine:
+
+- one combined confirmation at the trigger point — the gate response itself is NOT
+  capture confirmation; declining the offer is always valid
+- captured entries carry `origin: riposte` and `mission_ref: <mission_id>`; they wait
+  in the backlog for a future intake — Riposte never spawns or restarts a mission
+- the gate outcome and its FSM transition are unchanged whatever the user answers
 
 ## Status Transitions
 
@@ -105,14 +135,19 @@ Is the analysis correct?  (accept / review / reject)
 - `analysis_delivered`
 - `revision_requested`
 - `rejected`
-- `awaiting_review`
 - `analysis_accepted`
+
+`awaiting_review` retired (D10 orphan — no writer, no reader): the "gate is pending a
+response" signal is `status=shown` (see `emit_on_show` in
+`contracts/machine/approval-gate.yaml`), not a Gate State value. The mission_status
+frontmatter equivalent for "pending a response" is `gate_pending` (a different
+vocabulary — see `contracts/machine/mission-status.yaml`), not this list.
 
 ## Invariant: Gate Is Always Required
 
 The Strategist Approval Gate is mandatory whenever Strategist participates in a request — regardless of:
 - invocation mode (direct or delegated)
-- route (Main Mission, Critical Hit, Quick Draw, Implementation Short Route)
+- route (Main Mission, Critical Hit, Implementation Short Route)
 - external approvals granted by the invoking context, parent orchestrator, or governance system
 - `execution_gate=allowed` from the local execution context
 

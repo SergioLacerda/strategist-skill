@@ -16,6 +16,9 @@ Archivist (`refinement`)
 - `mission_contract.planning_rules`
 - context dossier
 - applicable treasure chests
+- `contracts/machine/handoff-contract.yaml#refinement_context_policy` — the source
+  deduplication policy; consult before reopening any source listed in the Ranger
+  artifact's `sources_consulted[]`
 
 ## Outputs
 
@@ -25,11 +28,24 @@ Archivist (`refinement`)
 - `<base_path>/refined/<mission_id>/tasks.md`
 - execution handoff fields validated by `.strategist/schemas/handoff-archivist-to-sniper.schema.yaml`
 - `evidence_pack_path` when present in the Ranger analysis artifact; passed through, never regenerated
+- one appended line to `.strategist/memory/handoff-metrics.jsonl` (skill.yaml#handoff_metrics_log)
 
 ## Required Behavior
 
 - treat the Ranger transient analysis artifact as the canonical refinement input
+- reuse the Ranger artifact's `relevant_sources_hint` (Search ability output) by
+  default instead of re-running Search; only re-run Search with a declared reason
+  from `contracts/machine/handoff-contract.yaml#refinement_context_policy.allowed_reasons`
+  (see `roles/archivist.yaml#canonical.reuse_search_cache`)
 - consult treasure chests before refinement
+- before reopening any source listed in the Ranger artifact's `sources_consulted[]`,
+  check `contracts/machine/handoff-contract.yaml#refinement_context_policy` — reopen
+  only for one of its `allowed_reasons`, and state the matching reason explicitly in
+  the refined artifact that needed it (see skill.yaml's
+  `archivist_reopens_discovery_sources_without_declared_reason` forbidden_behaviors entry)
+- on completion, append one line to `.strategist/memory/handoff-metrics.jsonl`
+  (skill.yaml#handoff_metrics_log) — nulls are expected for `brief_compression_ratio`/
+  `evidence_coverage_ratio` when the Ranger artifact did not populate `evidence_cards[]`
 - produce the four-file refined package
 - preserve `evidence_pack_path` from the Ranger analysis artifact when present; the four-file package shape does not change
 - promote the Ranger analysis artifact from `pending/` into `<base_path>/refined/<mission_id>/analysis.md`
@@ -57,6 +73,11 @@ Archivist (`refinement`)
 ## Gate Condition
 
 - if `tasks.md` is empty or absent, mission resolves as `analysis_delivered`
+
+## Language
+
+Write the four-file refined package in `active.language.docs`, independent of the language used
+in the surrounding conversation.
 
 ## Status Transitions (Archivist)
 

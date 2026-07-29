@@ -2,14 +2,11 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/compile"
-	"github.com/SergioLacerda/strategist-skill/internal/integrity"
 	"github.com/SergioLacerda/strategist-skill/internal/treasure"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 )
 
 // --- SQ-006 (Track T-I): treasure-chest add / remove ---
@@ -86,7 +83,7 @@ func runTreasureChestAdd(cmd *cobra.Command, args []string, opts treasureChestAd
 	opts = treasureChestAddOptionsFromFlags(cmd, opts)
 
 	path := args[0]
-	root, err := resolveTreasureChestCommandRoot(cmd, "add")
+	root, err := resolveTreasureChestActionRoot(cmd, "add")
 	if err != nil {
 		return err
 	}
@@ -102,10 +99,18 @@ func runTreasureChestAdd(cmd *cobra.Command, args []string, opts treasureChestAd
 
 	tags := treasure.ParseTagsFlag(opts.Tags)
 
-	indexPath, err := applyTreasureChestAdd(root, id, path, opts, tags)
+	indexPath, err := treasure.ExecuteAdd(root, treasure.AddOptions{
+		ID:         id,
+		Path:       path,
+		Scope:      opts.Scope,
+		TrustTier:  opts.TrustTier,
+		ReviewedBy: opts.ReviewedBy,
+		Tags:       tags,
+	})
 	if err != nil {
 		return fmt.Errorf("treasure-chest add: %w", err)
 	}
+	refreshConfigLock(root, filepath.Join(root, "active.yaml"))
 
 	fmt.Printf("[Strategist] add: OK (id=%s)\n", id)
 
@@ -122,36 +127,6 @@ func treasureChestAddOptionsFromFlags(cmd *cobra.Command, opts treasureChestAddO
 	return opts
 }
 
-func applyTreasureChestAdd(root, id, path string, opts treasureChestAddOptions, tags []string) (string, error) {
-	activePath := filepath.Join(root, "active.yaml")
-	governedPath := filepath.Join(root, "treasure-chests.yaml")
-	indexPath := filepath.Join(root, "knowledge.index.yaml")
-	activeDoc, governedDoc, indexDoc, err := treasure.LoadChestYAMLDocs(activePath, governedPath, indexPath)
-	if err != nil {
-		return "", fmt.Errorf("load chest YAML docs: %w", err)
-	}
-	if err := treasure.ApplyAddMutations(activeDoc, governedDoc, indexDoc, id, path, opts.Scope, opts.TrustTier, opts.ReviewedBy, tags); err != nil {
-		return "", fmt.Errorf("apply add mutations: %w", err)
-	}
-	if err := writeTreasureChestAddDocs(activePath, governedPath, indexPath, activeDoc, governedDoc, indexDoc); err != nil {
-		return "", err
-	}
-	refreshConfigLock(root, activePath)
-	return indexPath, nil
-}
-
-func writeTreasureChestAddDocs(activePath, governedPath, indexPath string, activeDoc, governedDoc, indexDoc *yaml.Node) error {
-	written, err := treasure.WriteYAMLNodes(
-		treasure.YAMLWrite{Path: activePath, Doc: activeDoc},
-		treasure.YAMLWrite{Path: governedPath, Doc: governedDoc},
-		treasure.YAMLWrite{Path: indexPath, Doc: indexDoc},
-	)
-	if err != nil {
-		return fmt.Errorf("partial write after %v: %w", written, err)
-	}
-	return nil
-}
-
 // finishChestAdd reports the stale-index hint, or rebuilds the compiled index when
 // --index was passed.
 func finishChestAdd(root, indexPath string, indexAfter bool) error {
@@ -165,91 +140,4 @@ func finishChestAdd(root, indexPath string, indexAfter bool) error {
 	}
 	fmt.Printf("[Strategist] add: index refreshed → %s/.compiled/\n", root)
 	return nil
-}
-
-// refreshConfigLock re-seals the config integrity lock after a CLI command
-// legitimately writes active.yaml. Without this, the next command's
-// integrity.IsModified check sees the mtime change and falsely warns that
-// active.yaml was "modified outside the CLI" — even though this command is
-// the CLI. Best-effort: a failure here only means the next run may show a
-// stale-lock warning, not a functional break.
-func refreshConfigLock(root, activePath string) {
-	lockPath := filepath.Join(root, ".config.lock")
-	if err := integrity.WriteLock(activePath, lockPath); err != nil {
-		fmt.Fprintf(os.Stderr, "[Strategist] WARN: could not refresh config lock: %v\n", err)
-	}
-}
-
-// --- remove ---
-
-func runTreasureChestRemove(cmd *cobra.Command, args []string, opts treasureChestRemoveOptions) error {
-	if run := telemetryRunFromCmd(cmd); run != nil {
-		run.SetSilent()
-	}
-	opts.ID = stringFlag(cmd, "id", opts.ID)
-
-	pathArg := optionalPathArg(args)
-	if pathArg == "" && opts.ID == "" {
-		return fmt.Errorf("treasure-chest remove: provide a path or --id")
-	}
-
-	root, err := resolveTreasureChestCommandRoot(cmd, "remove")
-	if err != nil {
-		return err
-	}
-
-	id, hasJewels, err := applyTreasureChestRemove(root, pathArg, opts.ID)
-	if err != nil {
-		return fmt.Errorf("treasure-chest remove: %w", err)
-	}
-	reportRemoveResult(id, hasJewels)
-	return nil
-}
-
-func applyTreasureChestRemove(root, pathArg, idOpt string) (string, bool, error) {
-	id, err := treasure.ResolveRemoveTarget(root, pathArg, idOpt)
-	if err != nil {
-		return "", false, fmt.Errorf("resolve remove target: %w", err)
-	}
-	paths := treasure.NewChestPaths(root)
-	docs, err := treasure.LoadRemoveDocs(paths)
-	if err != nil {
-		return "", false, fmt.Errorf("load remove docs: %w", err)
-	}
-	if err := treasure.ApplyRemoveMutations(docs, id); err != nil {
-		return "", false, fmt.Errorf("apply remove mutations: %w", err)
-	}
-	written, err := treasure.WriteRemoveDocs(paths, docs)
-	if err != nil {
-		return "", false, fmt.Errorf("partial write after %v: %w", written, err)
-	}
-	refreshConfigLock(root, paths.Active)
-	return id, len(docs.Jewels) > 0, nil
-}
-
-func optionalPathArg(args []string) string {
-	if len(args) == 1 {
-		return args[0]
-	}
-	return ""
-}
-
-func resolveTreasureChestCommandRoot(cmd *cobra.Command, action string) (string, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", fmt.Errorf("treasure-chest %s: get cwd: %w", action, err)
-	}
-	root, _, err := resolveStrategistRoot(treasureChestRootFromCmd(cmd), cwd)
-	if err != nil {
-		return "", fmt.Errorf("treasure-chest %s: %w", action, err)
-	}
-	return root, nil
-}
-
-func reportRemoveResult(id string, hasJewels bool) {
-	fmt.Printf("[Strategist] remove: OK (id=%s)\n", id)
-	if hasJewels {
-		fmt.Printf("[Strategist] remove: %q's jewels marked deprecated in jewels.yaml\n", id)
-	}
-	fmt.Println("[Strategist] remove: index is stale. Run: strategist treasure-chest index")
 }

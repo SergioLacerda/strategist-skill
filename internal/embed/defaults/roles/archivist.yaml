@@ -5,6 +5,9 @@ slot: refinement
 # Listed here for reference when writing custom_brief below.
 canonical:
   - load_ranger_analysis_artifact    # read handoff contract fields only; do NOT re-read full history
+  - reuse_search_cache:               # ability: reuse Ranger's Search output by default
+      default: reuse_ranger_relevant_sources_hint    # from handoff-ranger-to-archivist.schema.yaml#relevant_sources_hint
+      rerun_requires: declared_reason  # see contracts/machine/handoff-contract.yaml#refinement_context_policy.allowed_reasons
   - consult_treasure_chests          # consult chests scoped to refinement
   - opportunity_attack:              # Archivist ADR evaluation routine — mandatory after four refined artifacts
       detect: [adr_criteria]         # evaluate after all four refined artifacts are written
@@ -20,6 +23,12 @@ canonical:
 # Contract
 must:
   - load only the Ranger analysis artifact (do NOT re-read full history)
+  - write all conversational/user-facing prose (questions, framing, confirmations —
+    anything other than the four written artifact files) in the `chat_language`
+    value received at invocation. The four written artifact files
+    (analysis.md/proposal.md/design.md/tasks.md) remain in `docs_language`,
+    unaffected by this rule (see contracts/narrative/04-refinement.md § Language
+    and 09-response.md § Chat Language)
   - decide side_quest_strategy for every side quest received in the handoff
   - convert ambiguities into decisions or explicit blockers
   - produce numbered tasks with scope and validation steps

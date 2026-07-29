@@ -3,12 +3,46 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
-	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestResolveStrategistRoot_ExplicitPathResolvesAbs(t *testing.T) {
+	strategistDir, projectRoot, err := resolveStrategistRoot("some/relative/path", "/unused/cwd")
+	require.NoError(t, err)
+	assert.True(t, filepath.IsAbs(strategistDir))
+	assert.Equal(t, filepath.Dir(strategistDir), projectRoot)
+}
+
+func TestResolveStrategistRoot_EmptyExplicitFallsBackToFind(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, ".strategist"), 0o755))
+
+	strategistDir, projectRoot, err := resolveStrategistRoot("", dir)
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(dir, ".strategist"), strategistDir)
+	assert.Equal(t, dir, projectRoot)
+}
+
+func TestResolveStrategistRoot_AbsError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chdir-then-remove not reliable on windows")
+	}
+	oldWd, err := os.Getwd()
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.Chdir(oldWd) })
+
+	removed := t.TempDir()
+	require.NoError(t, os.Chdir(removed))
+	require.NoError(t, os.RemoveAll(removed))
+
+	_, _, resolveErr := resolveStrategistRoot("relative/explicit/path", "irrelevant")
+	require.Error(t, resolveErr)
+	assert.Contains(t, resolveErr.Error(), "resolve root")
+}
 
 func TestFindStrategistRoot_FoundInCWD(t *testing.T) {
 	dir := t.TempDir()
@@ -38,56 +72,6 @@ func TestFindStrategistRoot_NotFound(t *testing.T) {
 	_, _, err := findStrategistRoot(dir)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not found")
-}
-
-func TestInitiativeCmd_AutoDiscoversRoot(t *testing.T) {
-	// Layout: projectRoot/.strategist/ + projectRoot/src/  (run from src/).
-	projectRoot := t.TempDir()
-	strategistDir := filepath.Join(projectRoot, ".strategist")
-	testutil.MinimalRoot(t, strategistDir)
-
-	subdir := filepath.Join(projectRoot, "src")
-	require.NoError(t, os.MkdirAll(subdir, 0o755))
-
-	origWd, _ := os.Getwd()
-	require.NoError(t, os.Chdir(subdir))
-	t.Cleanup(func() { _ = os.Chdir(origWd) })
-
-	orig := initiativeRoot
-	t.Cleanup(func() { initiativeRoot = orig })
-	initiativeRoot = "" // force auto-discovery
-
-	out := captureStdout(t, func() {
-		require.NoError(t, initiativeCmd.RunE(initiativeCmd, nil))
-	})
-	assert.Contains(t, out, "SLOTS")
-	assert.Contains(t, out, "discovery")
-	assert.Contains(t, out, "WORKSPACE")
-}
-
-func TestInitiativeCmd_WorkspaceSection(t *testing.T) {
-	// Layout: projectRoot/.strategist/ with .analysis/ at projectRoot/.analysis/
-	projectRoot := t.TempDir()
-	strategistDir := filepath.Join(projectRoot, ".strategist")
-	testutil.MinimalRoot(t, strategistDir)
-
-	// Create pending/ and done/ relative to projectRoot (workspace base).
-	require.NoError(t, os.MkdirAll(filepath.Join(projectRoot, ".analysis", "pending"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(projectRoot, ".analysis", "pending", "card1.md"), []byte("x"), 0o644))
-	require.NoError(t, os.MkdirAll(filepath.Join(projectRoot, ".analysis", "done"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(projectRoot, ".analysis", "done", "m1.md"), []byte("x"), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(projectRoot, ".analysis", "done", "m2.md"), []byte("x"), 0o644))
-
-	orig := initiativeRoot
-	t.Cleanup(func() { initiativeRoot = orig })
-	initiativeRoot = strategistDir // points to .strategist/ itself
-
-	out := captureStdout(t, func() {
-		require.NoError(t, initiativeCmd.RunE(initiativeCmd, nil))
-	})
-	assert.Contains(t, out, "WORKSPACE")
-	assert.Contains(t, out, "1 card")
-	assert.Contains(t, out, "2 missões")
 }
 
 func TestInstallCmd_IdempotentUpdatesExisting(t *testing.T) {

@@ -22,7 +22,6 @@ func TestValidateRouteDecision_AllowsKnownRoutesWithoutContext(t *testing.T) {
 
 	for _, route := range []string{
 		domain.MissionRouteMain,
-		domain.MissionRouteQuickDraw,
 		domain.MissionRouteDirectExecute,
 	} {
 		decision := domain.ValidateRouteDecision(route, domain.RouteRequestMetadata{})
@@ -64,10 +63,10 @@ func TestValidateRouteDecision_AllowsDirectExecuteForAnalysisArtifactOnly(t *tes
 	assert.True(t, decision.Allowed)
 }
 
-func TestValidateRouteDecision_BlocksQuickDrawWhenDiscoveryRequired(t *testing.T) {
+func TestValidateRouteDecision_BlocksDirectExecuteWhenDiscoveryRequired(t *testing.T) {
 	t.Parallel()
 
-	decision := domain.ValidateRouteDecision(domain.MissionRouteQuickDraw, domain.RouteRequestMetadata{
+	decision := domain.ValidateRouteDecision(domain.MissionRouteDirectExecute, domain.RouteRequestMetadata{
 		HasContext:        true,
 		RequiresDiscovery: true,
 	})

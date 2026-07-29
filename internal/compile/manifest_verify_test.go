@@ -1,6 +1,7 @@
 package compile_test
 
 import (
+	"compress/gzip"
 	"os"
 	"path/filepath"
 	"testing"
@@ -57,4 +58,44 @@ func TestVerifyManifest_NoManifest(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, drift, 1)
 	assert.Contains(t, drift[0], "not found")
+}
+
+func TestVerifyManifest_CorruptGzipManifest(t *testing.T) {
+	compiledDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(compiledDir, ".manifest.gz"), []byte("not gzip data"), 0o644))
+
+	_, err := compile.VerifyManifest(compiledDir)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "gzip reader")
+}
+
+func TestVerifyManifest_InvalidJSONInManifest(t *testing.T) {
+	compiledDir := t.TempDir()
+	manifestPath := filepath.Join(compiledDir, ".manifest.gz")
+	f, err := os.Create(manifestPath)
+	require.NoError(t, err)
+	gz := gzip.NewWriter(f)
+	_, err = gz.Write([]byte("{not valid json"))
+	require.NoError(t, err)
+	require.NoError(t, gz.Close())
+	require.NoError(t, f.Close())
+
+	_, err = compile.VerifyManifest(compiledDir)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "json decode")
+}
+
+func TestVerifyManifest_UnreadableManifest(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("permission tests do not apply when running as root")
+	}
+	compiledDir := t.TempDir()
+	manifestPath := filepath.Join(compiledDir, ".manifest.gz")
+	require.NoError(t, os.WriteFile(manifestPath, []byte("irrelevant"), 0o644))
+	require.NoError(t, os.Chmod(manifestPath, 0o000))
+	t.Cleanup(func() { _ = os.Chmod(manifestPath, 0o644) })
+
+	_, err := compile.VerifyManifest(compiledDir)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "verify manifest: read")
 }

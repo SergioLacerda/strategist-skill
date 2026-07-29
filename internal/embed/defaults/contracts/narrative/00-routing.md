@@ -12,7 +12,6 @@ Resolve the route before any mission work starts.
 
 ## Routes
 
-- **Quick Draw** — only for explicit quick capture / note append requests
 - **Critical Hit** — internal capability for workspace artifact management
   (`pending/`, `refined/`, `archived/`, `done/`). Not a route mutually exclusive with the
   pipeline — may fire at intake or mid-mission. Two modes: plain move (no evaluation, no
@@ -27,11 +26,10 @@ Resolve the route before any mission work starts.
 
 ## Route Selection Order
 
-1. Quick Draw keywords detected → Quick Draw
-2. Critical Hit conditions satisfied (see `critical-hit.yaml`) → Critical Hit
+1. Critical Hit conditions satisfied (see `critical-hit.yaml`) → Critical Hit
    (plain move, or closure move when an explicit completion claim + evidence are present)
-3. Implementation Short Route conditions satisfied → Implementation Short Route
-4. Default → Main Mission
+2. Implementation Short Route conditions satisfied → Implementation Short Route
+3. Default → Main Mission
 
 **When in doubt → Main Mission. Conservatism is the safe default.**
 
@@ -41,7 +39,7 @@ Steps 2–4 above are decided by **Scout**, an internal pre-pipeline role (the "
 Router"). Scout is not a slot and not a configurable provider — it is built-in
 Strategist behavior, analogous in scope-boundedness to Sniper but positioned before
 the pipeline instead of at the end of it. Scout runs immediately after intake
-(`prompt-intake`) and after `quick_draw_detection` finds no match.
+(`prompt-intake`).
 
 Scout classifies the request and emits one compact, auditable `route_decision`
 (never a discovery report — see `schemas/scout-route-decision.schema.yaml` and
@@ -63,20 +61,33 @@ was not explicitly supplied. If Scout would need to read broad implementation
 surfaces to answer a classification question, it has crossed into Ranger territory
 and must select `full_pipeline` instead.
 
-### Post-Route Capability Check
+### Discovery Weapon Resolution by Subtype
 
-Immediately after Scout emits `route_decision` with `evidence_state: requires_discovery`
-(before the discovery weapon is invoked), check the resolved weapon's `skill.yaml`
-`discovery_subtype_support` field against the required `discovery_subtype`. This runs
-as part of Scout's routing responsibility (see `contracts/machine/scout-routing.yaml`
-§ `post_route_capability_check`) — not at classic preflight time, since preflight
-runs before intake/routing and before `discovery_subtype` exists.
+Discovery invocation target does not depend on `discovery_subtype` or on
+`active.slots.discovery` — all discovery subtypes (`creative`, `evaluation`,
+`diagnostic`, `closure_evidence`) always resolve to `internal_skills/ranger`
+(`kind=native_role`). The parent agent embodies Ranger directly — the same
+native-role mechanism already used for execution/`sniper` — reading
+`roles/ranger.yaml` + `internal_skills/ranger/SKILL.md` and performing
+discovery under that contract. An external weapon configured at
+`active.slots.discovery` is never consulted for discovery invocation; the
+field remains present for provider-metadata/future use but does not gate any
+current subtype.
 
-If the resolved weapon does not declare support for the required `discovery_subtype`,
-emit `provider_capability_mismatch` and stop **before** invoking the weapon. Do not
-invoke the weapon to discover the mismatch empirically — that wastes an invocation and
-risks the weapon partially acting before the mismatch is caught. See `preflight.yaml`
-for the full error condition and remediation hint.
+This exists because an external weapon's own `SKILL.md` is authored
+independently of Strategist and cannot be relied on to honor
+`roles/ranger.yaml` or subtype-specific obligations, even when its manifest
+declares `native` or `adapter` support — declared support in a manifest is a
+capability claim by whoever wrote it, never a live behavior guarantee. This
+was previously handled by a Post-Route Capability Check applied only to the
+`creative` subtype (the other three subtypes were already native-only); that
+check was removed once a live invocation of a manifest-compliant `creative`
+weapon (`brainstorming`, declaring `discovery_subtype_support: creative:
+native`) surfaced structural incompatibilities with Ranger's autonomous
+single-shot contract that the manifest check could not have caught (see
+`.analysis/refined/20260728-ranger-drift-eval/`). Only
+`internal_skills/ranger`, authored by Strategist itself, can be trusted to
+compose with `roles/ranger.yaml` per its own documented "Invocation Contract".
 
 ## Main Mission Sequence
 
@@ -152,7 +163,7 @@ When operating inside the main mission, consult contracts in this order:
 - No slot work performed by Strategist itself
 - The invoking local context (any adapter, orchestrator, or harness) may block or permit execution — it does NOT replace the canonical pipeline sequence once Strategist is invoked
 - `execution_gate=allowed` from local context never substitutes the Strategist Approval Gate (explicit user approval)
-- The Strategist Approval Gate is required on all routes: Quick Draw, Critical Hit, Implementation Short Route, and Main Mission
+- The Strategist Approval Gate is required on all routes: Critical Hit, Implementation Short Route, and Main Mission
 - A missing or uncallable resolved execution provider is a blocked state — never a reason for direct execution
 
 ## Scope Invariant

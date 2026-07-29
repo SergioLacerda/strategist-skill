@@ -42,7 +42,7 @@ Correctness of the parent agent's independent answer does not repair the drift.
 
 - Never perform discovery, refinement, or documentation materialization work directly — always invoke the designated slot provider
 - Never simulate role work by performing slot work in the Strategist shell — if the configured role/provider cannot be invoked, stop with `error=role_invocation_failed`
-- Never invoke a discovery weapon when its manifest lacks `discovery_subtype_support` for Scout's required subtype — stop with `error=provider_capability_mismatch`
+- Never invoke an external discovery weapon as a substitute for Ranger — all discovery subtypes (`creative`, `evaluation`, `diagnostic`, `closure_evidence`) always resolve to `internal_skills/ranger` (native role); no weapon manifest is ever consulted for discovery invocation (see §3 Discovery Routing).
 - Never read from `strategist/` (without dot) — path drift; only `.strategist/` is valid at runtime
 - Never skip phases — there is no "this task is too small to need discovery"
 - Never invoke Sniper without an explicit Strategist Approval Gate approval from the user in the conversation
@@ -67,12 +67,26 @@ Correctness of the parent agent's independent answer does not repair the drift.
 The providers below are read from `.strategist/active.yaml` at compile time. If `active.yaml` changes, run `strategist compile` to update this file.
 
 ```
-PHASE         INVOKE SKILL               WHAT NOT TO DO
-────────────────────────────────────────────────────────────────────
-discovery  →  {{.Slots.Discovery}}       explore or analyze the code directly
-refinement →  {{.Slots.Refinement}}      write proposals or designs directly
-execution  →  {{.Slots.Execution}}       run git/edits/commits directly
+PHASE         INVOKE SKILL                              WHAT NOT TO DO
+─────────────────────────────────────────────────────────────────────────────
+discovery  →  see Discovery Routing below                explore or analyze the code directly
+refinement →  {{.Slots.Refinement}}                       write proposals or designs directly
+execution  →  {{.Slots.Execution}}                        run git/edits/commits directly
 ```
+
+### Discovery Routing
+
+Discovery invocation target does not depend on `route_decision.discovery_subtype`
+or on `active.slots.discovery` (see `00-routing.md` § Scout — Intake Router and
+§ Discovery Weapon Resolution by Subtype):
+
+| `discovery_subtype` | Invoke | Kind |
+|---|---|---|
+| `creative` \| `evaluation` \| `diagnostic` \| `closure_evidence` | `internal_skills/ranger` | `native_role` — parent agent embodies Ranger directly (same mechanism already used for execution/`sniper`), reading `roles/ranger.yaml` + `internal_skills/ranger/SKILL.md` |
+
+This holds regardless of what `active.slots.discovery` is configured to (default:
+`{{.Slots.Discovery}}`) — the external weapon is never consulted for discovery
+invocation, for any subtype. See `03-discovery.md` § Discovery Subtypes.
 
 Handoff contracts:
 - Ranger → Archivist: `.strategist/schemas/handoff-ranger-to-archivist.schema.yaml`
@@ -87,9 +101,9 @@ Linear checklist. Do not advance without completing each item.
 ```
 [ ] 1. startup (this document — section 1)
 [ ] 2. intake (skill: prompt-intake)
-[ ] 3. routing (skill: scout — Intake Router): quick draw? critical hit? main mission?
+[ ] 3. routing (skill: scout — Intake Router): critical hit? main mission?
 [ ] 4. context enrichment (skill: context-enrichment)
-[ ] 5. discovery → invoke {{.Slots.Discovery}}
+[ ] 5. discovery → invoke internal_skills/ranger (native role, all discovery subtypes)
 [ ] 6. refinement → invoke {{.Slots.Refinement}}
 [ ] 7. approval gate  ← MANDATORY PAUSE — do not advance without explicit approval; timeout/decline ends as analysis-only
 [ ] 8. materialization → invoke {{.Slots.Execution}}  ← only after gate approved
@@ -104,10 +118,15 @@ Main mission evidence:
 - `tasks.md` exists when execution depends on refinement
 - approval gate was presented and explicitly approved before execution
 - approval gate timeout/decline terminates as analysis-only (`EventGateTimeout`/`EventGateDenied` → `StateDoneAnalysis`)
+- approval gate revision request loops back to refinement, not a new mission (`EventGateRevision` → `StateRefinement`)
 
-Quick Draw evidence:
-- prompt matched quick-draw route
-- quick-draw gate was presented and approved before append
+**FSM scope (S7):** the internal state machine (`internal/domain/state_machine.go`)
+models gate/execution mechanics only — side-quest handling, the Approval Gate,
+execution, retry-on-transient-failure, ADR, and Critical Hit. It does
+NOT model bootstrap, intake, discovery, or learning as states. Sequencing for those
+phases is enforced by contract + progress events (this document, the numbered
+narrative contracts), not by the FSM. Do not infer that an unmodeled phase is
+unenforced — absence from the FSM is a scope decision, not a gap.
 
 ---
 
@@ -122,7 +141,6 @@ Strategist stops immediately on:
 | `active.yaml` missing | `error=config_missing` | stop |
 | slot provider not found | `error=slot_provider_not_found` | stop |
 | configured role/provider cannot be invoked | `error=role_invocation_failed` | stop; fix provider configuration or runtime installation |
-| discovery weapon lacks required subtype support | `error=provider_capability_mismatch` | stop; configure a compatible discovery weapon |
 | gate bypass attempt | `drift=approval_bypass` | block, notify user |
 | delegated invocation missing `execution_provider` | `error=local_execution_provider_missing` | stop; do not execute directly |
 | resolved provider cannot be invoked | `error=execution_provider_unavailable` | stop; do not execute directly |
@@ -214,7 +232,7 @@ Never advance phases silently.
 Supported modes: `any`, `explicit_confirm`, `human_only` (documented, not enforced by default)
 
 ### Response Contract
-See `strategist/contracts/09-response.md`.
+See `.strategist/contracts/narrative/09-response.md`.
 
 ### Compliance Summary
 Append a compliance summary block before the mission result. The summary should expose the final compliance state of the active mission route and any blocking governance reason when present.
@@ -223,4 +241,4 @@ Append a compliance summary block before the mission result. The summary should 
 Append the final mission result after the compliance summary. The mission result should expose the final mission status, artifact set, and next action.
 
 ### Telemetry Contract
-See `strategist/contracts/10-telemetry.md`.
+See `.strategist/contracts/narrative/10-telemetry.md`.

@@ -101,6 +101,25 @@ acceptance_checks:
 	assert.Contains(t, string(raw), "id: jewel-gap-sq-101")
 }
 
+func TestTreasureChestIndex_WarnsAndContinuesOnInvalidMissionTasks(t *testing.T) {
+	dir, basePath := indexTestRoot(t)
+	writeMissionTasks(t, basePath, "refined", "invalid-mission", "side_quests_approved:\n  : not: valID:\n")
+	writeMissionTasks(t, basePath, "refined", "valid-mission", "side_quests_approved:\n\n- id: SQ-201\n  description: Pending valid item.\n  status: sq_pending\n")
+	resetTreasureChestFlags(t)
+	setTreasureChestRoot(t, dir)
+
+	errOut := captureStderr(t, func() {
+		require.NoError(t, treasureChestIndexCmd.RunE(treasureChestIndexCmd, nil))
+	})
+	assert.Contains(t, errOut, "Warning: treasure-chest index: skipped inconsistent mission file")
+	assert.Contains(t, errOut, filepath.Join("invalid-mission", "tasks.md"))
+	assert.Contains(t, errOut, "parse side_quests_approved")
+
+	raw, err := os.ReadFile(filepath.Join(dir, "jewels", "mission-history.yaml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(raw), "id: jewel-gap-sq-201")
+}
+
 func TestTreasureChestIndex_UsesConfiguredScoringPolicy(t *testing.T) {
 	dir, basePath := indexTestRoot(t)
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "treasure-chests.yaml"), []byte(`
@@ -158,6 +177,121 @@ func TestTreasureChestIndex_NoCandidatesLeavesJewelsUntouched(t *testing.T) {
 	after, err := os.ReadFile(filepath.Join(dir, "jewels.yaml"))
 	require.NoError(t, err)
 	assert.Equal(t, string(before), string(after))
+}
+
+func TestTreasureChestIndex_GeneratesProposedPotionsFromRunbooksChest(t *testing.T) {
+	dir, _ := indexTestRoot(t)
+	runbooksDir := filepath.Join(filepath.Dir(dir), "docs", "runbooks")
+	require.NoError(t, os.MkdirAll(runbooksDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(runbooksDir, "sample-issue.md"), []byte(
+		"# Runbook: Sample Issue\n\n## Symptom\n\nSomething breaks when X happens.\n\n## Resolution Steps\n\n1. Do Y.\n"),
+		0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "treasure-chests.yaml"), []byte(`
+schema_version: "1"
+chests:
+  - id: runbooks
+    title: Agent Runbooks
+    path: docs/runbooks
+    trust:
+      tier: T2
+    routing:
+      task_types: [all]
+`), 0o644))
+	resetTreasureChestFlags(t)
+	setTreasureChestRoot(t, dir)
+
+	out := captureStdout(t, func() {
+		require.NoError(t, treasureChestIndexCmd.RunE(treasureChestIndexCmd, nil))
+	})
+	assert.Contains(t, out, "1 proposed potion(s) written")
+
+	raw, err := os.ReadFile(filepath.Join(dir, "potions", "runbooks.yaml"))
+	require.NoError(t, err)
+	content := string(raw)
+	assert.Contains(t, content, "id: potion-sample-issue")
+	assert.Contains(t, content, "status: proposed")
+	assert.Contains(t, content, "Something breaks when X happens.")
+}
+
+func TestTreasureChestIndex_NoRunbooksChestWritesNoPotions(t *testing.T) {
+	dir, _ := indexTestRoot(t)
+	resetTreasureChestFlags(t)
+	setTreasureChestRoot(t, dir)
+
+	require.NoError(t, treasureChestIndexCmd.RunE(treasureChestIndexCmd, nil))
+
+	_, err := os.Stat(filepath.Join(dir, "potions", "runbooks.yaml"))
+	assert.True(t, os.IsNotExist(err))
+}
+
+func TestTreasureChestIndex_WithMissionRunDoesNotError(t *testing.T) {
+	dir, _ := indexTestRoot(t)
+	resetTreasureChestFlags(t)
+	setTreasureChestRoot(t, dir)
+	attachMissionRun(t, treasureChestIndexCmd)
+
+	require.NoError(t, treasureChestIndexCmd.RunE(treasureChestIndexCmd, nil))
+}
+
+func TestTreasureChestIndex_LoadGovernedInvalidYAML(t *testing.T) {
+	dir, _ := indexTestRoot(t)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "treasure-chests.yaml"), []byte("chests: [unterminated\n"), 0o644))
+	resetTreasureChestFlags(t)
+	setTreasureChestRoot(t, dir)
+
+	err := treasureChestIndexCmd.RunE(treasureChestIndexCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "treasure-chest index")
+}
+
+func TestTreasureChestIndex_LoadScoringPolicyInvalid(t *testing.T) {
+	dir, _ := indexTestRoot(t)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "treasure-chests.yaml"), []byte(`
+schema_version: "1"
+scoring_policy:
+  gap_base: -5
+chests: []
+`), 0o644))
+	resetTreasureChestFlags(t)
+	setTreasureChestRoot(t, dir)
+
+	err := treasureChestIndexCmd.RunE(treasureChestIndexCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "treasure-chest index")
+}
+
+func TestTreasureChestIndex_ResolveDojoRootsEmptyBasePath(t *testing.T) {
+	dir, _ := indexTestRoot(t)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte("mode: epic\nslots:\n  discovery: brainstorming\n"), 0o644))
+	resetTreasureChestFlags(t)
+	setTreasureChestRoot(t, dir)
+
+	err := treasureChestIndexCmd.RunE(treasureChestIndexCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "treasure-chest index")
+	assert.Contains(t, err.Error(), "base_path is empty")
+}
+
+func TestTreasureChestIndex_IncludeHistoricalSkipsWarning(t *testing.T) {
+	dir, _ := indexTestRoot(t)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "treasure-chests.yaml"), []byte(`
+schema_version: "1"
+chests:
+  - id: legacy
+    title: Legacy
+    path: docs/legacy
+    trust:
+      tier: T3
+`), 0o644))
+	resetTreasureChestFlags(t)
+	setTreasureChestRoot(t, dir)
+	require.NoError(t, treasureChestIndexCmd.Flags().Set(flagIncludeHistorical, "true"))
+	t.Cleanup(func() { _ = treasureChestIndexCmd.Flags().Set(flagIncludeHistorical, "false") })
+
+	out := captureStdout(t, func() {
+		require.NoError(t, treasureChestIndexCmd.RunE(treasureChestIndexCmd, nil))
+	})
+	assert.NotContains(t, out, "historical/lower-trust source(s) excluded")
 }
 
 func countOccurrences(s, substr string) int {

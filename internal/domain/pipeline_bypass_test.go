@@ -80,29 +80,6 @@ func TestEvaluatePipelineBypass_AllowsMainPipelineAfterGate(t *testing.T) {
 	assert.Empty(t, decision.Reason)
 }
 
-func TestEvaluatePipelineBypass_QuickDrawCompatibility(t *testing.T) {
-	t.Parallel()
-	blocked := domain.EvaluatePipelineBypass(domain.PipelineEvidence{
-		Route:           domain.MissionRouteQuickDraw,
-		BasePath:        ".analysis",
-		MissionID:       "m-note",
-		AttemptedAction: "append quick draw note",
-	})
-	assert.False(t, blocked.Allowed)
-	assert.Equal(t, "quick_draw_gate", blocked.ExpectedPhase)
-	assert.Contains(t, blocked.MissingEvidence, "quick_draw_gate:approved")
-
-	allowed := domain.EvaluatePipelineBypass(domain.PipelineEvidence{
-		Route:              domain.MissionRouteQuickDraw,
-		BasePath:           ".analysis",
-		MissionID:          "m-note",
-		AttemptedAction:    "append quick draw note",
-		QuickDrawPresented: true,
-		QuickDrawApproved:  true,
-	})
-	assert.True(t, allowed.Allowed)
-}
-
 func TestEvaluatePipelineBypass_DirectExecuteBlockedWithoutGate(t *testing.T) {
 	t.Parallel()
 	decision := domain.EvaluatePipelineBypass(domain.PipelineEvidence{

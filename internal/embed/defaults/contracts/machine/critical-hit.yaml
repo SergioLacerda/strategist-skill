@@ -11,7 +11,8 @@ description: >
   exclusive with the pipeline — may fire at intake or mid-mission. Does NOT fire
   automatically when a main_mission reaches documentation_applied — that is
   documentation completion, not implementation/validation evidence (see
-  insufficient_evidence and stale_card_detection below).
+  insufficient_evidence and stale_card_detection below). Opportunity Attack never
+  performs card closure; it only evaluates ADR need during Archivist refinement.
 
 trigger_conditions:
   plain_move:
@@ -52,7 +53,7 @@ stale_card_detection:
     - sniper_report_exists
     - approval_gate_accepted
     - tasks_md_fully_checked
-    - implementation_handoff_ready
+    - implementation_handoff_items_present
   behavior: >
     Detection only surfaces a candidate and proposes the closure inline gate. It never
     auto-closes and never substitutes for explicit user confirmation and evidence_summary.
@@ -139,6 +140,7 @@ owner: internal (orchestrator)
 
 invariants:
   - Critical Hit ONLY fires for task_type: analysis_move
+  - Critical Hit owns pending/refined card closure into done/; Opportunity Attack does not move analysis cards
   - Plain move: source and target MUST both be within <base_path> analysis folders (pending/, refined/, archived/)
   - Closure move: source MUST be within <base_path>/pending/ or <base_path>/refined/, target MUST be <base_path>/done/<id>, and evidence_summary MUST be present and MUST NOT be invented by Strategist
   - Task statuses are updated only for tasks explicitly covered by supplied evidence

@@ -572,7 +572,7 @@ try { (() => {
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 /**
  * SkillPanel — a dashed mini panel for a special ability / skill
- * (Opportunist Attack, Side Quest, Treasure Chest, Quick Draw).
+ * (Opportunist Attack, Side Quest, Treasure Chest).
  * Circular icon medallion above an eyebrow, title, and description.
  */
 function SkillPanel({
@@ -754,10 +754,6 @@ window.CONSOLE_I18N = {
       title: "Baú de tesouro",
       desc: "Em cada estágio podemos encontrar fontes de documentação para enriquecer a análise."
     }, {
-      icon: "⚡",
-      title: "Saque rápido",
-      desc: "Ideias aparecem rápidas como um raio, estamos prontos para anotar."
-    }, {
       icon: "⧗",
       title: "Iniciativa",
       desc: "Avalie seu time antes de começar suas missões."
@@ -920,10 +916,6 @@ window.CONSOLE_I18N = {
       icon: "❖",
       title: "Treasure Chest",
       desc: "At each stage we may find documentation sources to enrich the analysis."
-    }, {
-      icon: "⚡",
-      title: "Quick Draw",
-      desc: "Ideas appear fast as lightning, we are ready to write them down."
     }, {
       icon: "⧗",
       title: "Initiative",
@@ -1129,10 +1121,6 @@ window.LANDING_I18N = {
       icon: "❖",
       title: "Baú de tesouro",
       desc: "Em cada estágio podemos encontrar fontes de documentação para enriquecer a análise."
-    }, {
-      icon: "⚡",
-      title: "Saque rápido",
-      desc: "Ideias aparecem rápidas como um raio, estamos prontos para anotar."
     }],
     gateHead: "<b>REQUER ::</b> confirmação humana · sem exceções",
     gateP: "Discovery e refinamento ocorrem autonomamente. Com aprovação humana, a execução só avança quando o mission_mode permitir implementação."
@@ -1189,10 +1177,6 @@ window.LANDING_I18N = {
       icon: "❖",
       title: "Treasure Chest",
       desc: "At each stage we may find documentation sources to enrich the analysis."
-    }, {
-      icon: "⚡",
-      title: "Quick Draw",
-      desc: "Ideas appear fast as lightning, we are ready to write them down."
     }],
     gateHead: "<b>REQUIRES ::</b> human confirmation · no exceptions",
     gateP: "Discovery and refinement run autonomously. After human approval, execution proceeds only when mission_mode allows implementation."

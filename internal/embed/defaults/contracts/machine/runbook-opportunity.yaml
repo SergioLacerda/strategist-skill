@@ -1,0 +1,92 @@
+module: runbook-opportunity
+type: routing_contract
+description: >
+  Runbook Opportunity — an advisory-only routine, analogous in shape to
+  Opportunity Attack, that evaluates whether a normalized idea describes a
+  reusable agent-facing operational procedure. Emits gate metadata only — it
+  never writes a runbook and never performs discovery beyond the
+  already-captured idea. DORMANT: it has no live invocation path today; it
+  awaits migration to Opportunity Attack's `activation_criteria.runbook_worthy`
+  (strategist-ability-taxonomy-reorg T5, already landed — the cutover itself
+  is a separate decision, not yet made).
+
+pipeline:
+  - phase: runbook_opportunity  # advisory only, no write; no live caller yet
+
+phases:
+  runbook_opportunity:
+    description: >
+      Evaluates whether a normalized idea describes a reusable agent-facing
+      operational procedure. Emits gate metadata only — it never writes a
+      runbook and never performs discovery beyond the already-captured idea.
+    owner: runbook_opportunity
+    input:
+      - normalized_idea (source retired; dormant until Opportunity Attack migration)
+      - destination_bucket (source retired; dormant until Opportunity Attack migration)
+    activation_criteria:
+      repeated_failure_with_recovery: idea records a repeated operational failure and a known recovery sequence
+      runtime_governance_diagnostic: idea explains how an agent should diagnose or unblock a known runtime/provider/governance state
+      executable_decision_procedure: idea captures a decision procedure a future agent can execute without broad discovery
+      source_runtime_lookup_rule: idea identifies a source/runtime lookup pattern that prevents stale or non-canonical behavior
+      verified_procedure_worth_preserving: idea preserves verified commands, symptoms, expected outputs, and stop conditions
+    non_signals:
+      - generic idea with no procedure
+      - one-off implementation task
+      - broad feature request needing normal discovery/refinement
+      - a note whose correctness has not been validated
+      - architecture trade-off note — belongs to Opportunity Attack / ADR, not here
+    output:
+      warranted: boolean
+      reason: short operational reason
+      candidate_id: "RB-{mission_id}"   # null when warranted=false
+      candidate_title: short runbook candidate title   # null when warranted=false
+      confidence: low|medium|high
+    on_warranted:
+      action: add_runbook_side_quest_to_gate
+      gate_extra_option:
+        runbook: create_runbook_candidate   # only offered when warranted=true
+      gate_display: >
+        📖 Runbook Opportunity
+        [RB-{mission_id}] Draft agent runbook candidate — impact: {confidence}
+    on_not_warranted:
+      action: emit_done_no_runbook
+      emit: "[Strategist] phase=runbook_opportunity runbook_opportunity=done runbook_warranted=false"
+    emit:
+      format: "[Strategist] phase=runbook_opportunity runbook_opportunity=done runbook_warranted={bool}"
+      emit_level: DEBUG
+    invariants:
+      - this routine MUST NOT write a runbook file directly — it only proposes a candidate at the gate
+      - selecting the runbook gate option creates a reviewable candidate, never a trusted canonical docs/runbooks/ entry, without further human review
+      - this routine MUST NOT perform discovery beyond the already-normalized idea
+      - this routine MUST NOT evaluate ADR-worthiness — that remains Opportunity Attack's responsibility
+      - this routine MUST NOT evaluate card closure or movement — that remains Critical Hit's responsibility
+      - emit always produced after evaluation (runbook_warranted=false is valid; silence is not)
+    write_scope: read-only (evaluates the already-captured idea; any write happens only via sniper_runbook_opportunity after explicit gate approval)
+
+  gate:
+    responses:
+      runbook: create_runbook_candidate    # only shown when runbook_opportunity.warranted=true
+    runbook_response_policy: >
+      The runbook option requires its own explicit confirmation, independent
+      of any other gate response. Selecting it creates a runbook candidate;
+      declining it does not.
+
+  sniper_runbook_opportunity:
+    runbook_candidate_action:
+      trigger: gate response includes "runbook" (see runbook_response_policy)
+      action: create_reviewable_runbook_candidate
+      allowed_forms:
+        - a pending mission stub under "<base_path>/pending/" that asks for a runbook, routed through the normal discovery/refinement pipeline
+        - a draft appended to the destination bucket clearly tagged as a runbook candidate, not a canonical runbook
+      forbidden:
+        - writing directly to docs/runbooks/<slug>.md from this phase
+        - promoting the candidate to canonical without human acceptance
+      note: >
+        The candidate is a request for a runbook, not the runbook itself. Accepted
+        runbooks live under docs/runbooks/ (see docs/runbooks/README.md) only after
+        explicit human review.
+
+# --- Persona keys used ---
+
+persona_keys:
+  - runbook_opportunity   # gate side-quest text shown when runbook_opportunity.warranted=true

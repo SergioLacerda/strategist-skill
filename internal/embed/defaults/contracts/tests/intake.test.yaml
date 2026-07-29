@@ -1,14 +1,10 @@
-subject: contracts/intake.yaml
+subject: contracts/machine/intake.yaml
 version: "1.0"
 
 invariants:
   - id: mission_id_required
     description: Intake must produce a mission_id
     rule: output.mission_id is present and non-empty
-
-  - id: quick_draw_route_explicit
-    description: Quick Draw route only triggers on explicit keyword match
-    rule: quick_draw_triggered only when prompt matches quick_draw_triggers pattern
 
   - id: conflict_stops_pipeline
     description: Constraint conflict must stop intake and ask user to resolve
@@ -27,19 +23,6 @@ cases:
       output.mission_id: present
       route: standard
       emit: mission_checkpoint
-
-  - name: quick_draw_triggered
-    given:
-      prompt: "quick draw: ideia sobre cache layer"
-    expect:
-      route: quick_draw
-      emit: side_quest_detected description="Quick Draw — rapid idea capture."
-
-  - name: quick_draw_todo_prefix
-    given:
-      prompt: "TODO: adicionar rate limiting"
-    expect:
-      route: quick_draw
 
   - name: constraint_conflict
     given:
