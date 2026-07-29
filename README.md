@@ -116,7 +116,9 @@ See [SECURITY.md](SECURITY.md) for the vulnerability disclosure policy.
 
 ## License
 
-CC BY-NC 4.0. Commercial use requires prior authorization.
+MIT. Open source — free to use, modify, and redistribute, with attribution
+per the LICENSE terms. See [LICENSE](LICENSE) for the full text, attribution
+guidance, and professional services terms.
 
 - Repository: <https://github.com/SergioLacerda/strategist-skill>
 - Documentation: <https://sergiolacerda.github.io/strategist-skill/index.html?lang=en>
