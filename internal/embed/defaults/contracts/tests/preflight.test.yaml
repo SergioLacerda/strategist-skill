@@ -73,14 +73,19 @@ cases:
       standalone_skill_md_style: creative-first
     expect:
       no_emit: "[Strategist] phase=preflight status=blocked reason=role_invocation_failed slot=discovery provider=brainstorming"
-      handoff: "[Strategist] phase=intake status=handoff component=scout target=ranger weapon=brainstorming subtype=creative"
+      note: >
+        active.slots.discovery (brainstorming) is still preflight-validated
+        (manifest exists, risk_score matches) even though it is never invoked
+        for discovery — see contracts/narrative/00-routing.md § Discovery
+        Weapon Resolution by Subtype and .analysis/refined/20260728-ranger-drift-eval/.
+      handoff: "[Strategist] phase=intake status=handoff component=scout target=ranger weapon=internal_skills/ranger subtype=creative"
 
   - name: diagnostic_subtype_bypasses_external_weapon_for_native_ranger
     given:
       discovery_provider: brainstorming
       discovery_subtype: diagnostic
     expect:
-      note: "external weapon manifest is never consulted for this subtype — see 00-routing.md § Discovery Weapon Resolution by Subtype"
+      note: "external weapon manifest is never consulted for any discovery subtype — see 00-routing.md § Discovery Weapon Resolution by Subtype"
       handoff: "[Strategist] phase=intake status=handoff component=scout target=ranger weapon=internal_skills/ranger subtype=diagnostic"
 
   - name: provider_not_found

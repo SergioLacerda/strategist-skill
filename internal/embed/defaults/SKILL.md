@@ -70,14 +70,13 @@ action=fix provider configuration or runtime installation, then rerun strategist
 ```
 
 Discovery subtypes are selected by Scout and executed through Ranger, the internal
-discovery persona. The configured discovery provider is Ranger's weapon, not a
-substitute for Ranger. The parent agent MUST NOT perform discovery directly. After
-Scout emits `route_decision.discovery_subtype` with `evidence_state: requires_discovery`,
-Strategist MUST check the configured weapon manifest's `discovery_subtype_support`
-before invoking the weapon. If the manifest does not declare native or adapter support
-for the required subtype, stop with `provider_capability_mismatch`. If the configured
-discovery weapon is missing, invalid, risk-incompatible, or unavailable, stop with the
-relevant slot/provider error.
+discovery persona. Ranger always performs discovery itself (native role) — no
+external weapon is ever consulted as a substitute for Ranger, for any subtype (see
+`contracts/narrative/00-routing.md` § Discovery Weapon Resolution by Subtype). The
+parent agent MUST NOT perform discovery directly; it embodies Ranger under
+`roles/ranger.yaml` + `internal_skills/ranger/SKILL.md`. `active.slots.discovery`
+remains configured and preflight-validated (exists, invocable, risk-compatible) but
+is not invoked for discovery.
 
 If the request requires source-code mutation, Strategist may analyze and refine the
 work, but must not perform the mutation. The response must clearly state that
@@ -153,9 +152,8 @@ Supplemental, loaded on demand (not phase-gated): `protocol.md`, `schemas/*.yaml
 If Strategist cannot invoke a configured role/provider during a mission, that is
 an internal skill error. Stop and emit the `role_invocation_failed` block shown in
 § Role Lock above. Reason and action text for this and the related tokens
-(`slot_provider_not_found`, `slot_risk_mismatch`, `provider_capability_mismatch`,
-`role_provider_invalid`) is normative in `.strategist/contracts/machine/errors.yaml`
-— do not restate it.
+(`slot_provider_not_found`, `slot_risk_mismatch`, `role_provider_invalid`) is
+normative in `.strategist/contracts/machine/errors.yaml` — do not restate it.
 
 Strategist must not turn an internal failure into silent ad-hoc work. If the
 skill fails, return the error and wait for correction or new explicit user

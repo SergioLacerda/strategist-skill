@@ -90,16 +90,16 @@ orchestration:
     discovery:
       skill: ranger
       # Ranger is the internal discovery persona. It owns discovery_subtype behavior
-      # (creative, evaluation, diagnostic, closure_evidence) and wields the configured
-      # discovery weapon for exploration. Scout verifies the weapon's
-      # discovery_subtype_support immediately after route_decision and before
-      # invocation; unsupported subtype/weapon pairings stop with
-      # provider_capability_mismatch.
-      may_delegate_to: [brainstorming, writing-plans]
-      # Default weapon: brainstorming. Preflight validates that the configured weapon
-      # exists, is invocable, and matches the write_analysis risk contract. Scout's
-      # post-route capability check validates subtype support after discovery_subtype
-      # exists.
+      # (creative, evaluation, diagnostic, closure_evidence) and always performs
+      # discovery itself (native role) — no external weapon is ever consulted for
+      # discovery invocation, for any subtype (see contracts/narrative/00-routing.md
+      # § Discovery Weapon Resolution by Subtype; a live invocation of a
+      # manifest-compliant creative weapon surfaced contract-incompatible behavior,
+      # see .analysis/refined/20260728-ranger-drift-eval/).
+      may_delegate_to: []
+      # active.slots.discovery (default: brainstorming) is still validated at preflight
+      # (exists, invocable, matches the write_analysis risk contract) but is not
+      # invoked for discovery — the field is retained for provider-metadata/future use.
     refinement:
       skill: archivist
       # Archivist is the internal refinement persona. openspec-explore is its default
@@ -292,7 +292,6 @@ stop_conditions:
   - slots_not_configured              # active.slots absent or empty
   - slot_provider_not_found
   - slot_risk_mismatch
-  - provider_capability_mismatch      # discovery weapon lacks required discovery_subtype_support
   - intake_conflict_unresolved
   - user_requests_revision
   - user_rejects_analysis

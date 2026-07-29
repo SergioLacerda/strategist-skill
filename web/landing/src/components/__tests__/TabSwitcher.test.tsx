@@ -15,8 +15,8 @@ beforeEach(() => {
 });
 
 describe('TabSwitcher', () => {
-  it('renders all 5 tabs in PT', () => {
-    render(<TabSwitcher lang="pt" />);
+  it('renders all 5 tabs in Portuguese by default', () => {
+    render(<TabSwitcher />);
     expect(screen.getByText('Visão Geral')).toBeTruthy();
     expect(screen.getByText('Papéis')).toBeTruthy();
     expect(screen.getByText('Habilidades')).toBeTruthy();
@@ -24,23 +24,24 @@ describe('TabSwitcher', () => {
     expect(screen.getByText('Invocação')).toBeTruthy();
   });
 
-  it('renders all 5 tabs in EN', () => {
-    render(<TabSwitcher lang="en" />);
-    expect(screen.getByText('Overview')).toBeTruthy();
-    expect(screen.getByText('Roles')).toBeTruthy();
-    expect(screen.getByText('Skills')).toBeTruthy();
-    expect(screen.getByText('Mission Flow')).toBeTruthy();
-    expect(screen.getByText('Invoke')).toBeTruthy();
+  it('carries data-pt/data-en attributes so LangToggle can translate the nav', () => {
+    render(<TabSwitcher />);
+    const roles = screen.getByText('Papéis');
+    expect(roles.dataset.pt).toBe('Papéis');
+    expect(roles.dataset.en).toBe('Roles');
+    const mission = screen.getByText('Fluxo da Missão');
+    expect(mission.dataset.pt).toBe('Fluxo da Missão');
+    expect(mission.dataset.en).toBe('Mission Flow');
   });
 
   it('defaults to overview tab', () => {
-    render(<TabSwitcher lang="pt" />);
+    render(<TabSwitcher />);
     const btn = screen.getByText('Visão Geral');
     expect(btn.className).toContain('active');
   });
 
   it('switches active tab on click', () => {
-    render(<TabSwitcher lang="pt" />);
+    render(<TabSwitcher />);
     const rolesBtn = screen.getByText('Papéis');
     fireEvent.click(rolesBtn);
     expect(rolesBtn.className).toContain('active');
@@ -48,14 +49,14 @@ describe('TabSwitcher', () => {
   });
 
   it('marks matching panel as active on tab switch', () => {
-    render(<TabSwitcher lang="pt" />);
+    render(<TabSwitcher />);
     fireEvent.click(screen.getByText('Papéis'));
     const rolesPanel = document.querySelector('[data-panel="roles"]') as HTMLElement;
     expect(rolesPanel.classList.contains('active')).toBe(true);
   });
 
   it('responds to strategist:tab custom event', async () => {
-    render(<TabSwitcher lang="pt" />);
+    render(<TabSwitcher />);
     await act(async () => {
       window.dispatchEvent(new CustomEvent('strategist:tab', { detail: 'skills' }));
     });
@@ -64,7 +65,7 @@ describe('TabSwitcher', () => {
   });
 
   it('ignores unknown tab values from external events', () => {
-    render(<TabSwitcher lang="pt" />);
+    render(<TabSwitcher />);
     window.dispatchEvent(new CustomEvent('strategist:tab', { detail: 'unknown' }));
     // overview stays active (default)
     expect(screen.getByText('Visão Geral').className).toContain('active');
@@ -72,7 +73,7 @@ describe('TabSwitcher', () => {
 
   it('restores tab from localStorage', () => {
     localStorage.setItem('strategist_console_tab', 'invoke');
-    render(<TabSwitcher lang="pt" />);
+    render(<TabSwitcher />);
     expect(screen.getByText('Invocação').className).toContain('active');
   });
 });

@@ -61,41 +61,31 @@ was not explicitly supplied. If Scout would need to read broad implementation
 surfaces to answer a classification question, it has crossed into Ranger territory
 and must select `full_pipeline` instead.
 
-### Post-Route Capability Check
-
-Immediately after Scout emits `route_decision` with `evidence_state: requires_discovery`
-(before the discovery weapon is invoked), check the resolved weapon's `skill.yaml`
-`discovery_subtype_support` field against the required `discovery_subtype`. This runs
-as part of Scout's routing responsibility (see `contracts/machine/scout-routing.yaml`
-§ `post_route_capability_check`) — not at classic preflight time, since preflight
-runs before intake/routing and before `discovery_subtype` exists.
-
-If the resolved weapon does not declare support for the required `discovery_subtype`,
-emit `provider_capability_mismatch` and stop **before** invoking the weapon. Do not
-invoke the weapon to discover the mismatch empirically — that wastes an invocation and
-risks the weapon partially acting before the mismatch is caught. See `preflight.yaml`
-for the full error condition and remediation hint.
-
 ### Discovery Weapon Resolution by Subtype
 
-Discovery invocation target depends on `discovery_subtype`, not solely on
-`active.slots.discovery`:
-
-- `creative` → the external weapon configured at `active.slots.discovery`
-  (`kind=skill_provider`), subject to the Post-Route Capability Check above.
-- `evaluation` | `diagnostic` | `closure_evidence` → always
-  `internal_skills/ranger` (`kind=native_role`), regardless of `active.slots.discovery`. The parent agent embodies Ranger directly — the
-  same native-role mechanism already used for execution/`sniper` — reading
-  `roles/ranger.yaml` + `internal_skills/ranger/SKILL.md` and performing
-  discovery under that contract. The Post-Route Capability Check above does
-  not run for these three subtypes: the external weapon's manifest is never
-  consulted, because the weapon is never a candidate for these subtypes.
+Discovery invocation target does not depend on `discovery_subtype` or on
+`active.slots.discovery` — all discovery subtypes (`creative`, `evaluation`,
+`diagnostic`, `closure_evidence`) always resolve to `internal_skills/ranger`
+(`kind=native_role`). The parent agent embodies Ranger directly — the same
+native-role mechanism already used for execution/`sniper` — reading
+`roles/ranger.yaml` + `internal_skills/ranger/SKILL.md` and performing
+discovery under that contract. An external weapon configured at
+`active.slots.discovery` is never consulted for discovery invocation; the
+field remains present for provider-metadata/future use but does not gate any
+current subtype.
 
 This exists because an external weapon's own `SKILL.md` is authored
 independently of Strategist and cannot be relied on to honor
 `roles/ranger.yaml` or subtype-specific obligations, even when its manifest
-declares `adapter` support — declared support in a manifest is a capability
-claim by whoever wrote it, never a live behavior guarantee. Only
+declares `native` or `adapter` support — declared support in a manifest is a
+capability claim by whoever wrote it, never a live behavior guarantee. This
+was previously handled by a Post-Route Capability Check applied only to the
+`creative` subtype (the other three subtypes were already native-only); that
+check was removed once a live invocation of a manifest-compliant `creative`
+weapon (`brainstorming`, declaring `discovery_subtype_support: creative:
+native`) surfaced structural incompatibilities with Ranger's autonomous
+single-shot contract that the manifest check could not have caught (see
+`.analysis/refined/20260728-ranger-drift-eval/`). Only
 `internal_skills/ranger`, authored by Strategist itself, can be trusted to
 compose with `roles/ranger.yaml` per its own documented "Invocation Contract".
 

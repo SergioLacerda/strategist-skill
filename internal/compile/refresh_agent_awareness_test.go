@@ -38,15 +38,15 @@ func TestRefreshAgentAwareness(t *testing.T) {
 		t.Parallel()
 		dir := t.TempDir()
 
-		agPath := filepath.Join(dir, ".antigravity", "antigravity-instructions.md")
-		require.NoError(t, os.MkdirAll(filepath.Dir(agPath), 0o755))
-		require.NoError(t, os.WriteFile(agPath, []byte("# AG\n"), 0o644))
+		claudePath := filepath.Join(dir, ".claude", "claude-instructions.md")
+		require.NoError(t, os.MkdirAll(filepath.Dir(claudePath), 0o755))
+		require.NoError(t, os.WriteFile(claudePath, []byte("# Claude\n"), 0o644))
 
 		// strategistRoot missing → protocol fails (returns false), but AgentAwareness still runs.
 		ok := compile.RefreshAgentAwareness(filepath.Join(dir, "no-root"), dir, "2.0.0", nil)
 		assert.False(t, ok, "protocol generation should have failed")
 
-		content, _ := os.ReadFile(agPath)
+		content, _ := os.ReadFile(claudePath)
 		assert.Contains(t, string(content), "## Strategist Runtime Discovery")
 	})
 

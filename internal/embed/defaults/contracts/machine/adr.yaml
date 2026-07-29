@@ -17,6 +17,14 @@ contract:
     required_fields: [title, date, status, mission_id]
     status_value: accepted
 
-  write_scope: "<base_path>/archived/<mission_id>-adr.md"
+  write_scope:
+    description: >
+      Resolved from active.yaml#adr.canonical_path (optional, project-relative,
+      no default). Configured -> write only to <canonical_path>/<adr_filename>,
+      never also to <base_path>/archived/. Absent -> unchanged fallback below.
+      See contracts/narrative/07-adr.md § Canonical Destination Resolution for
+      the filename-numbering scan run when canonical_path is configured.
+    when_canonical_path_configured: "<adr.canonical_path>/<adr_filename>"
+    when_absent: "<base_path>/archived/<mission_id>-adr.md"
   owner: sniper (on gate approval)
   canonical_human_contract: contracts/narrative/07-adr.md
