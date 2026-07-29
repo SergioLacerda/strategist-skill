@@ -33,16 +33,31 @@ Every Strategist response must close in this order:
    --print-content-by-lang <lang> --persona <mode>`, per `01-bootstrap.md`).
 2. The language of all **Strategist-mediated conversational prose** — mission
    narration, phase updates, analysis/diagnostic write-ups, gate framing, and
-   any other free text the parent agent writes while a Strategist mission is
+   any other free text written on behalf of a Strategist mission while it is
    active. This is not limited to the named templates in (1); it covers
-   everything the agent says in the conversation on behalf of a Strategist
-   mission.
+   everything said in the conversation on behalf of a Strategist mission —
+   regardless of which layer produced it (see below).
 
 Scope of (2) is intentionally narrow: it binds output produced while
 Strategist is actively running a mission, not all assistant output for the
 rest of the session regardless of relevance. This matches Strategist's Scope
 Invariant (`00-routing.md`) — it does not claim authority over conversation
 unrelated to any Strategist mission.
+
+**Which layer this binds, by phase:** discovery and execution are native
+roles the parent agent embodies directly (`00-routing.md § Discovery Weapon
+Resolution by Subtype`; the analogous mechanism for Sniper) — the binding
+above applies to the parent agent's own prose directly, with no forwarding
+step needed. Refinement is different by default: `active.slots.refinement`
+typically names a genuinely external, independently-authored provider (e.g.
+`openspec-explore`) that does not automatically inherit contracts it was not
+told about. For refinement, this binding is satisfied via the explicit
+`chat_language` value forwarded at invocation (`skill.yaml`'s refinement
+pipeline stage `input`) plus the corresponding `must` directive in
+`roles/archivist.yaml` — not by assumption. An external refinement provider
+that ignores its forwarded `chat_language` is a provider compliance gap (see
+`agent-protocol.md § Slot Provider Governance Compliance`), not evidence that
+this binding does not apply to it.
 
 `active.language.docs` is independent of `active.language.chat` and is
 unaffected by this rule — written artifacts (analysis, proposal, design,
@@ -89,13 +104,32 @@ by re-emitting with the announcement prefix.
 | `status_label` | string | e.g., `"MISSION COMPLETE"` (localized via i18n bundle) |
 | `phase_timeline` | string | Lines built from `phase_timeline_entry` template, one per executed phase |
 | `artifact_block` | string | Lines built from `artifact_entry` template, one per produced artifact |
-| `conclusion_text` | string | Final sentence with `{mission_id}` and `{next_action}` |
+| `conclusion_text` | string | Final sentence with `{mission_id}` and `{next_action}`, followed by the fixed Mission Boundary clause (see below) |
 
 **`phase_timeline_entry`:** `"  {icon} {phase_label} → {result_label}"`
 
 **`artifact_entry`:** `"  📁 {key}: {path}"`
 
 **Output:** the box rendered with all sections filled — no raw fields outside the box.
+
+## Mission Boundary Clause
+
+Every terminal `conclusion_text` — for both `analysis_delivered` and
+`documentation_applied` outcomes, on every route — MUST end with a fixed clause stating
+that this mission's approval state does not carry over: no other skill, command, or CLI
+invocation inherits it, and any follow-up implementation request is a new,
+separately-authorized action regardless of which channel receives it. This exists because
+a Strategist mission's own closing text is routinely copied verbatim into unrelated
+follow-up prompts and other skills/CLIs; without a fixed, unmissable boundary sentence,
+the boundary depends on the agent choosing to restate it, which is not reliable (see
+`.analysis/refined/20260729-strategist-sddask-handoff-drift/` for the incident this
+codifies). Wording is not prescribed beyond the required content above — it must be
+written in `active.language.chat` like the rest of the conversational envelope, and it is
+additive: it does not replace `{mission_id}`/`{next_action}`, it follows them.
+
+This clause does not extend Strategist's authority into `.sdd/` or any other concrete
+governance system — it states only that *this* mission's own approval state is not
+transferable; it says nothing about what another system's own gates require.
 
 ## Mission Close Sequence (profile=epic)
 
@@ -125,7 +159,9 @@ Emit in this order:
   📁 refined:    <base_path>/refined/ID/
   📁 report:     <base_path>/archived/ID-report.md
 ╚══════════════════════════════════════════════════════════╝
-🎯 Mission ID complete. Next action: push to main.
+🎯 Mission ID complete. Next action: push to main. This mission is now closed — no other
+skill or command inherits its approval state; any further implementation request, through
+any channel, requires separate authorization.
 ```
 
 **❌ VIOLATION (forbidden_behavior #9):**
@@ -137,7 +173,7 @@ Emit in this order:
   phases_run: preflight, intake, ...
 
 mission_id: ID                                 ← loose YAML fields outside the envelope
-status: completed
+status: completed                              ← and no Mission Boundary Clause at all
 ```
 
 **✅ COMPLIANT (epic raw event with wrapper):**

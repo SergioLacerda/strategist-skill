@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -9,9 +10,25 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	embedpkg "github.com/SergioLacerda/strategist-skill/internal/embed"
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/SergioLacerda/strategist-skill/internal/testutil"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
+
+// attachMissionRun wires a non-nil telemetry.MissionRun into cmd's context, so
+// that RunE bodies gated on `telemetryRunFromCmd(cmd) != nil` (the SetSilent()
+// branch present in most treasure-chest subcommands) get exercised. Returns
+// the run so callers can inspect it (e.g. Snapshot()) if needed, and restores
+// the command's original context on test cleanup.
+func attachMissionRun(t *testing.T, cmd *cobra.Command) *telemetry.MissionRun {
+	t.Helper()
+	run := telemetry.NewMissionRun("test-mission")
+	origCtx := cmd.Context()
+	t.Cleanup(func() { cmd.SetContext(origCtx) })
+	cmd.SetContext(telemetry.WithMissionRun(context.Background(), run))
+	return run
+}
 
 // --- helpers ---
 

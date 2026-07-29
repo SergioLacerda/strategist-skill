@@ -1,8 +1,10 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -316,6 +318,146 @@ func TestCheckCmd_NativeRole_SlotMismatch(t *testing.T) {
 	err := checkCmd.RunE(checkCmd, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "check=failed")
+}
+
+func TestCheckCmd_CwdError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chdir-then-remove not reliable on windows")
+	}
+	orig := checkRoot
+	t.Cleanup(func() { checkRoot = orig })
+	checkRoot = ""
+
+	oldWd, err := os.Getwd()
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.Chdir(oldWd) })
+
+	removed := t.TempDir()
+	require.NoError(t, os.Chdir(removed))
+	require.NoError(t, os.RemoveAll(removed))
+
+	runErr := checkCmd.RunE(checkCmd, nil)
+	require.Error(t, runErr)
+	assert.Contains(t, runErr.Error(), "cwd_error")
+}
+
+func TestCheckCmd_DefaultRootResolvesRealStrategistRoot(t *testing.T) {
+	dir := minimalCheckRoot(t)
+	projectRoot := filepath.Dir(dir)
+	strategistDir := filepath.Join(projectRoot, ".strategist")
+	require.NoError(t, os.Rename(dir, strategistDir))
+
+	orig := checkRoot
+	t.Cleanup(func() { checkRoot = orig })
+	checkRoot = ""
+
+	oldWd, err := os.Getwd()
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.Chdir(oldWd) })
+	require.NoError(t, os.Chdir(projectRoot))
+
+	out := captureStdout(t, func() {
+		runErr := checkCmd.RunE(checkCmd, nil)
+		require.NoError(t, runErr)
+	})
+	assert.Contains(t, out, "STRATEGIST :: check")
+}
+
+func TestCheckCmd_ActiveYAMLUnreadable(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod not reliable on windows")
+	}
+	dir := minimalCheckRoot(t)
+	require.NoError(t, os.Chmod(filepath.Join(dir, "active.yaml"), 0o000))
+	t.Cleanup(func() { _ = os.Chmod(filepath.Join(dir, "active.yaml"), 0o644) })
+	if os.Getuid() == 0 {
+		t.Skip("running as root — file permission checks do not apply")
+	}
+
+	orig := checkRoot
+	t.Cleanup(func() { checkRoot = orig })
+	checkRoot = dir
+
+	err := checkCmd.RunE(checkCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "active_yaml_read_error")
+}
+
+func TestCheckCmd_ActiveYAMLInvalidYAML(t *testing.T) {
+	dir := minimalCheckRoot(t)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte("mode: [unterminated\n"), 0o644))
+
+	orig := checkRoot
+	t.Cleanup(func() { checkRoot = orig })
+	checkRoot = dir
+
+	err := checkCmd.RunE(checkCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "active_yaml_invalid_yaml")
+}
+
+func TestCheckCmd_EmptyProviderConfig(t *testing.T) {
+	dir := minimalCheckRoot(t)
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "active.yaml"),
+		[]byte("mode: epic\nbase_path: .analysis\nslots:\n  discovery: \"\"\n  refinement: openspec-explore\n  execution: sdd-ask\n"),
+		0o644,
+	))
+
+	orig := checkRoot
+	t.Cleanup(func() { checkRoot = orig })
+	checkRoot = dir
+
+	var stderr string
+	var runErr error
+	stderr = captureStderr(t, func() { runErr = checkCmd.RunE(checkCmd, nil) })
+	require.Error(t, runErr)
+	assert.Contains(t, runErr.Error(), "check=failed")
+	assert.Contains(t, stderr, "no provider configured")
+}
+
+func TestCheckCmd_PersonaInvalidYAML(t *testing.T) {
+	dir := minimalCheckRoot(t)
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "personas", "epic.yaml"),
+		[]byte("id: [unterminated\n"),
+		0o644,
+	))
+
+	orig := checkRoot
+	t.Cleanup(func() { checkRoot = orig })
+	checkRoot = dir
+
+	var stderr string
+	var runErr error
+	stderr = captureStderr(t, func() { runErr = checkCmd.RunE(checkCmd, nil) })
+	require.Error(t, runErr)
+	assert.Contains(t, runErr.Error(), "check=failed")
+	assert.Contains(t, stderr, "invalid yaml")
+}
+
+func TestCheckCmd_F3ConflictSignalWarning(t *testing.T) {
+	// no t.Parallel() — mutates package global readGitConflictedPaths
+	dir := minimalCheckRoot(t)
+	origReader := readGitConflictedPaths
+	readGitConflictedPaths = func(string) ([]string, error) {
+		return nil, errors.New("f3 boom")
+	}
+	t.Cleanup(func() { readGitConflictedPaths = origReader })
+
+	orig := checkRoot
+	t.Cleanup(func() { checkRoot = orig })
+	checkRoot = dir
+
+	stderr := captureStderr(t, func() {
+		out := captureStdout(t, func() {
+			runErr := checkCmd.RunE(checkCmd, nil)
+			require.NoError(t, runErr)
+		})
+		assert.Contains(t, out, "STRATEGIST :: check")
+	})
+	assert.Contains(t, stderr, "f3_conflict_signal")
+	assert.Contains(t, stderr, "f3 boom")
 }
 
 func TestCheckCmd_DefaultRoot(t *testing.T) {

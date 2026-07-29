@@ -101,6 +101,26 @@ func TestSyncGovernanceCmd_Success(t *testing.T) {
 	})
 }
 
+func TestSyncGovernanceCmd_WithMissionRunDoesNotError(t *testing.T) {
+	dir := t.TempDir()
+	writeSddFixtures(t, dir, []string{"M001"})
+	writeSkillYAML(t, dir, ".strategist/skill.yaml", map[string]any{
+		"compliance":        map[string]any{"mandates": []any{"M001"}},
+		"validation_policy": map[string]any{},
+		"budget_policy":     map[string]any{},
+		"telemetry_policy":  map[string]any{},
+	})
+	origRoot, origSdd := syncGovernanceRoot, syncGovernanceSddDir
+	t.Cleanup(func() { syncGovernanceRoot = origRoot; syncGovernanceSddDir = origSdd })
+	syncGovernanceRoot = filepath.Join(dir, ".strategist")
+	syncGovernanceSddDir = filepath.Join(dir, ".sdd")
+	attachMissionRun(t, syncGovernanceCmd)
+
+	_ = captureStdout(t, func() {
+		require.NoError(t, syncGovernanceCmd.RunE(syncGovernanceCmd, nil))
+	})
+}
+
 func TestSyncGovernanceCmd_ErrorPath(t *testing.T) {
 	origRoot, origSdd := syncGovernanceRoot, syncGovernanceSddDir
 	t.Cleanup(func() { syncGovernanceRoot = origRoot; syncGovernanceSddDir = origSdd })

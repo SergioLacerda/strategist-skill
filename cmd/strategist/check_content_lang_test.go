@@ -1,8 +1,10 @@
 package main
 
 import (
+	"compress/gzip"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/testutil"
@@ -241,5 +243,47 @@ func TestPrintContentByLang_ErrorBranches(t *testing.T) {
 		err := printContentByLang(dir, "epic", "en")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "compiled_artifact_corrupt")
+	})
+
+	t.Run("empty persona", func(t *testing.T) {
+		dir := minimalCheckRoot(t)
+		err := printContentByLang(dir, "", "en")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "persona_not_resolved")
+	})
+
+	t.Run("valid gzip with invalid JSON payload", func(t *testing.T) {
+		dir := minimalCheckRoot(t)
+		artifactPath := filepath.Join(dir, ".compiled", ".config.gz")
+		require.NoError(t, os.MkdirAll(filepath.Dir(artifactPath), 0o755))
+		f, err := os.Create(artifactPath)
+		require.NoError(t, err)
+		gz := gzip.NewWriter(f)
+		_, err = gz.Write([]byte("not json"))
+		require.NoError(t, err)
+		require.NoError(t, gz.Close())
+		require.NoError(t, f.Close())
+
+		err = printContentByLang(dir, "epic", "en")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "compiled_artifact_corrupt")
+	})
+
+	t.Run("artifact unreadable due to permissions", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("chmod not reliable on windows")
+		}
+		dir := minimalCheckRoot(t)
+		artifactPath := filepath.Join(dir, ".compiled", ".config.gz")
+		testutil.WriteGzJSON(t, artifactPath, map[string]any{"personas": map[string]any{}})
+		require.NoError(t, os.Chmod(artifactPath, 0o000))
+		t.Cleanup(func() { _ = os.Chmod(artifactPath, 0o644) })
+		if os.Getuid() == 0 {
+			t.Skip("running as root — file permission checks do not apply")
+		}
+
+		err := printContentByLang(dir, "epic", "en")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "compiled_artifact_read_error")
 	})
 }

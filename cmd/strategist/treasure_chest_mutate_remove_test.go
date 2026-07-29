@@ -28,6 +28,17 @@ func TestTreasureChestRemove_ByID(t *testing.T) {
 	require.Contains(t, governed, "source")
 }
 
+func TestTreasureChestRemove_WithMissionRunDoesNotError(t *testing.T) {
+	dir := minimalTreasureChestRoot(t)
+	resetTreasureChestFlags(t)
+	resetTreasureChestMutateFlags(t)
+	setTreasureChestRoot(t, dir)
+	setCmdFlag(t, treasureChestRemoveCmd, "id", "source")
+	attachMissionRun(t, treasureChestRemoveCmd)
+
+	require.NoError(t, treasureChestRemoveCmd.RunE(treasureChestRemoveCmd, nil))
+}
+
 func TestTreasureChestRemove_ByPath(t *testing.T) {
 	dir := minimalTreasureChestRoot(t)
 	resetTreasureChestFlags(t)

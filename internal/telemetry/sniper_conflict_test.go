@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -254,5 +255,75 @@ func TestSniperConflictSignals_Threshold(t *testing.T) {
 		if signal.ConflictCount != 3 {
 			t.Fatalf("expected conflict count 3, got %#v", signal)
 		}
+	}
+}
+
+func TestSniperMaterializationHistoryPath(t *testing.T) {
+	t.Parallel()
+	got := SniperMaterializationHistoryPath("/tmp/strategist-root")
+	want := filepath.Join("/tmp/strategist-root", "memory", "sniper-materializations.jsonl")
+	if got != want {
+		t.Fatalf("unexpected path: got %q, want %q", got, want)
+	}
+}
+
+func TestReadRecentSniperMaterializations_MissingFileReturnsNilNil(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "never-created.jsonl")
+
+	records, err := ReadRecentSniperMaterializations(path, time.Now(), SniperMaterializationWindow)
+	if err != nil {
+		t.Fatalf("expected nil error for missing file, got %v", err)
+	}
+	if records != nil {
+		t.Fatalf("expected nil records for missing file, got %#v", records)
+	}
+}
+
+func TestReadRecentSniperMaterializations_OpenError(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod not reliable on windows")
+	}
+	dir := t.TempDir()
+	path := filepath.Join(dir, "locked.jsonl")
+	if err := os.WriteFile(path, []byte(`{"mission_id":"m"}`), 0o000); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	if os.Getuid() == 0 {
+		t.Skip("running as root — file permission checks do not apply")
+	}
+
+	_, err := ReadRecentSniperMaterializations(path, time.Now(), SniperMaterializationWindow)
+	if err == nil {
+		t.Fatal("expected error for unreadable file, got nil")
+	}
+}
+
+func TestSniperConflictSignals_DeduplicatesSameTargetPath(t *testing.T) {
+	t.Parallel()
+	records := []SniperMaterializationRecord{
+		{MissionID: "m-1-first", BasePath: ".analysis", TargetPath: "docs/a.md"},
+		{MissionID: "m-1-second-should-be-ignored", BasePath: ".analysis", TargetPath: "docs/a.md"},
+		{MissionID: "m-2", BasePath: ".analysis", TargetPath: "docs/b.md"},
+		{MissionID: "m-3", BasePath: ".analysis", TargetPath: "docs/c.md"},
+	}
+
+	signals := SniperConflictSignals(".analysis", []string{"docs/a.md", "docs/b.md", "docs/c.md"}, records)
+	if len(signals) != 3 {
+		t.Fatalf("expected 3 signals (one per distinct target), got %#v", signals)
+	}
+
+	var aSignal *SniperConflictSignal
+	for i := range signals {
+		if signals[i].TargetPath == "docs/a.md" {
+			aSignal = &signals[i]
+		}
+	}
+	if aSignal == nil {
+		t.Fatal("expected a signal for docs/a.md")
+	}
+	if aSignal.MissionID != "m-1-first" {
+		t.Fatalf("expected first-seen record to win dedup, got mission_id %q", aSignal.MissionID)
 	}
 }

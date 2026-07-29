@@ -132,6 +132,97 @@ func readJewelsFile(t *testing.T, dir string) string {
 	return string(raw)
 }
 
+func TestTreasureChestItemsAccept_WithMissionRunDoesNotError(t *testing.T) {
+	dir := itemsTestRoot(t, oneProposedJewelYAML)
+	resetTreasureChestFlags(t)
+	resetTreasureChestItemsFlags(t)
+	setTreasureChestRoot(t, dir)
+	attachMissionRun(t, treasureChestItemsAcceptCmd)
+
+	require.NoError(t, treasureChestItemsAcceptCmd.RunE(treasureChestItemsAcceptCmd, []string{"jewel-1"}))
+}
+
+func TestTreasureChestItemsAccept_ResolveRootError(t *testing.T) {
+	resetTreasureChestFlags(t)
+	resetTreasureChestItemsFlags(t)
+	setTreasureChestRoot(t, "")
+	chdirForTest(t, t.TempDir())
+
+	err := treasureChestItemsAcceptCmd.RunE(treasureChestItemsAcceptCmd, []string{"jewel-1"})
+	require.Error(t, err)
+}
+
+func TestLoadJewelsForCmd_ResolveRootError(t *testing.T) {
+	resetTreasureChestFlags(t)
+	setTreasureChestRoot(t, "") // force cwd-based discovery
+	chdirForTest(t, t.TempDir())
+
+	_, err := loadJewelsForCmd(treasureChestItemsListCmd, "treasure-chest items list")
+	require.Error(t, err)
+}
+
+func TestLoadPotionsForCmd_ResolveRootError(t *testing.T) {
+	resetTreasureChestFlags(t)
+	setTreasureChestRoot(t, "") // force cwd-based discovery
+	chdirForTest(t, t.TempDir())
+
+	_, err := loadPotionsForCmd(treasureChestItemsListCmd, "treasure-chest items list")
+	require.Error(t, err)
+}
+
+func TestLoadPotionsForCmd_InvalidPotionsYAML(t *testing.T) {
+	dir := itemsTestRoot(t, oneProposedJewelYAML)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "potions.yaml"), []byte("potions: [unterminated\n"), 0o644))
+	resetTreasureChestFlags(t)
+	setTreasureChestRoot(t, dir)
+
+	_, err := loadPotionsForCmd(treasureChestItemsListCmd, "treasure-chest items list")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "treasure-chest items list")
+}
+
+func TestBestEffortGoverned_InvalidYAMLReturnsNil(t *testing.T) {
+	dir := itemsTestRoot(t, oneProposedJewelYAML)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "treasure-chests.yaml"), []byte("chests: [unterminated\n"), 0o644))
+
+	assert.Nil(t, bestEffortGoverned(dir))
+}
+
+func TestPromoteItem_PotionDeprecatedCannotPromote(t *testing.T) {
+	dir := itemsTestRoot(t, oneProposedJewelYAML)
+	writePotionsFile(t, dir, `
+schema_version: "1"
+potions:
+  - id: potion-deprecated-1
+    chest_id: runbooks
+    runbook_ref: docs/runbooks/sample.md
+    when_to_use: "When sample breaks."
+    trust: T2
+    status: deprecated
+    source_refs: ["docs/runbooks/sample.md"]
+    reviewed_by: human
+`)
+	resetTreasureChestFlags(t)
+	resetTreasureChestItemsFlags(t)
+	setTreasureChestRoot(t, dir)
+
+	err := treasureChestItemsAcceptCmd.RunE(treasureChestItemsAcceptCmd, []string{"potion-deprecated-1"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "promote potion")
+	assert.Contains(t, err.Error(), "deprecated")
+}
+
+func TestTreasureChestItemsMigrateStatus_Error(t *testing.T) {
+	dir := itemsTestRoot(t, oneProposedJewelYAML)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "jewels.yaml"), []byte("jewels: [unterminated\n"), 0o644))
+	resetTreasureChestFlags(t)
+	setTreasureChestRoot(t, dir)
+
+	err := runTreasureChestItemsMigrateStatus(dir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "treasure-chest items")
+}
+
 func TestTreasureChestItemsAccept_PromotesProposedJewel(t *testing.T) {
 	dir := itemsTestRoot(t, oneProposedJewelYAML)
 	resetTreasureChestFlags(t)

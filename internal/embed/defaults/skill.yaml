@@ -143,12 +143,26 @@ active_config:
       discovery → Ranger (write_analysis), refinement → Archivist (write_analysis),
       execution → Sniper (controlled).
   language:
-    type: string
-    default: pt
-    values: [pt, en]
+    type: object
+    required: true
+    fields: [ui, docs, chat, code]
     description: >
-      Language for all generated artifacts: discovery docs, ADRs, analysis files.
-      Passed to all slot providers. Does not affect prompt_templates (controlled by persona).
+      Four independent language axes, set by the install wizard
+      (internal/install/wizard.go#promptLanguages) and written as a nested
+      block in active.yaml (internal/install/active_yaml.go#writeActiveYAML):
+        ui   — wizard/CLI-facing strings (content_by_lang, phase_announcements)
+        docs — written artifact files: discovery/refinement analysis, proposal,
+               design, tasks, ADRs (see contracts/narrative/03-discovery.md and
+               04-refinement.md § Language)
+        chat — Strategist-mediated conversational prose, including the refinement
+               slot provider's own user-facing output (forwarded via the
+               refinement pipeline stage's chat_language input — see
+               contracts/narrative/09-response.md § Chat Language and
+               roles/archivist.yaml#must)
+        code — reserved words, identifiers, and code embedded inside artifacts;
+               never translated regardless of the other three axes
+      `docs` and `chat` are independent — a written artifact's language is never
+      inferred from the surrounding chat language, and vice versa.
   mode:
     type: string
     default: epic
@@ -262,7 +276,10 @@ pipeline:
     artifact_path: "<base_path>/pending/<mission_id>-analysis.md"
   - stage: refinement
     slot: refinement
-    input: analysis_artifact
+    input:
+      analysis_artifact: analysis_artifact
+      chat_language: active.language.chat    # required directive for the provider's own conversational output — see roles/archivist.yaml#must
+      docs_language: active.language.docs    # unchanged: governs the four written artifact files only
     note: >
       Opportunity Attack runs as a routine inside Archivist (refinement) only.
       Evaluates ADR necessity after all four refined artifacts are written.

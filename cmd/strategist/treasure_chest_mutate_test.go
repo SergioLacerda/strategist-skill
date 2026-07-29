@@ -64,6 +64,16 @@ func TestTreasureChestAdd_DefaultsAllThreeFiles(t *testing.T) {
 	assert.True(t, indexed["new-chest"])
 }
 
+func TestTreasureChestAdd_WithMissionRunDoesNotError(t *testing.T) {
+	dir := minimalTreasureChestRoot(t)
+	resetTreasureChestFlags(t)
+	resetTreasureChestMutateFlags(t)
+	setTreasureChestRoot(t, dir)
+	attachMissionRun(t, treasureChestAddCmd)
+
+	require.NoError(t, treasureChestAddCmd.RunE(treasureChestAddCmd, []string{"/tmp/new-chest-run"}))
+}
+
 func TestTreasureChestAdd_ExplicitFlagsOverrideDefaults(t *testing.T) {
 	dir := minimalTreasureChestRoot(t)
 	resetTreasureChestFlags(t)
