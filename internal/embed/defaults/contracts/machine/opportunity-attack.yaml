@@ -117,12 +117,31 @@ contract:
       artifact_path: "<base_path>/archived/<mission_id>-adr.md"
     OA-RUNBOOK:
       action: sniper_creates_runbook_candidate_as_execution_task
-      allowed_forms:
-        - a pending mission stub under "<base_path>/pending/" that asks for a runbook, routed through the normal discovery/refinement pipeline
-        - a draft clearly tagged as a runbook candidate, not a canonical runbook
+      preferred_form: >
+        a pending mission stub under "<base_path>/pending/" that asks for a
+        runbook, routed through the normal discovery/refinement pipeline —
+        this is the default, because it leads to a canonical
+        docs/runbooks/ artifact through the normal gated pipeline (Sniper
+        may write directly to docs/runbooks/<slug>.md as a
+        documentation_target once that mission's own gate is approved, same
+        as any other documentation_target write)
+      fallback_form: >
+        a draft clearly tagged as a runbook candidate, not a canonical
+        runbook — use only when the content is already fully
+        known/verified from the source mission (avoids wasteful
+        rediscovery). MUST NOT be written to <base_path>/archived/ — that
+        folder's meaning elsewhere in this repo's contracts is
+        "closed/decided" (see 11-critical-hit.md Valid Moves), the opposite
+        of an unreviewed candidate's state. Use <base_path>/pending/
+        instead, in the same transient-stub shape as the preferred form,
+        even though its content may already be substantially complete.
       forbidden:
-        - writing directly to docs/runbooks/<slug>.md from this action
-        - promoting the candidate to canonical without human acceptance
+        - writing directly to docs/runbooks/<slug>.md from *this* action
+          (the Opportunity Attack side quest itself never writes canonical
+          docs) — still allowed as normal Sniper documentation_target
+          output from a *separate*, subsequently gated mission that
+          materializes the pending stub above
+        - promoting the candidate to canonical without a gate approval
     OA-CHEST:
       action: sniper_registers_chest_candidate_as_execution_task
       target: "internal/embed/defaults/treasure-chests.yaml (source layer — see skill.yaml#runtime_model)"

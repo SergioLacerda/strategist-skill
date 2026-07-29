@@ -46,11 +46,6 @@ func TestComplianceSummaryDefinesPhaseCounters(t *testing.T) {
 	}
 }
 
-// --- Provider discovery conformance tests ---
-
-// providerBootstrapFiles lists all provider bootstrap surfaces that must declare
-// Strategist runtime discovery semantics.
-
 func TestApprovalGateContractUsesReviewGateSemantics(t *testing.T) {
 	t.Parallel()
 	root := repoRoot(t)

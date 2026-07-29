@@ -1,0 +1,79 @@
+# Strategist — License and Professional Services
+
+Copyright (c) 2026 Sérgio Lacerda Vieira
+
+## MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+## Attribution
+
+Strategist may be freely used, modified, incorporated into other
+solutions, and redistributed under the terms of the MIT License.
+
+When the Software, or a substantial portion of it, is incorporated into
+another project or product, the copyright notice and the MIT License text above
+must be preserved.
+
+Suggested attribution:
+
+> This product includes or is based on Strategist, created by Sérgio
+> Lacerda Vieira.
+
+Project attribution may also include a link to the official Strategist
+repository.
+
+The suggested public attribution is appreciated. The legally required
+attribution is the preservation of the copyright and permission notice as
+defined by the MIT License.
+
+---
+
+## Professional Services
+
+The open-source license does not include guaranteed support, maintenance,
+consulting, implementation, or customization services.
+
+Professional services may be provided according to each project's needs,
+including:
+
+- installation and onboarding;
+- project-specific governance;
+- custom mandates, policies, guardrails, and templates;
+- integrations with AI agents, IDEs, CI/CD pipelines, and internal tools;
+- private plugins and adapters;
+- architecture and governance reviews;
+- training and technical guidance;
+- maintenance and support arrangements.
+
+For customization, integration, consulting, or support, please contact the
+author. Scope, delivery format, availability, and commercial terms will be
+defined according to the specific need.
+
+---
+
+## No Official Endorsement
+
+Use of the Strategist source code does not imply endorsement, certification,
+partnership, or official support by the author.
+
+Modified versions and third-party distributions should not be presented as
+official releases of Strategist unless explicitly authorized.

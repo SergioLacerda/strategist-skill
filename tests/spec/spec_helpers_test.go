@@ -91,19 +91,3 @@ func relativeFileSet(t *testing.T, dir string) map[string]bool {
 	}
 	return files
 }
-
-// --- Provider discovery conformance tests ---
-
-// providerBootstrapFiles lists all provider bootstrap surfaces that must declare
-// Strategist runtime discovery semantics.
-func providerBootstrapFiles(t *testing.T) []string {
-	t.Helper()
-	root := repoRoot(t)
-	return []string{
-		filepath.Join(root, ".codex", "commands.md"),
-		filepath.Join(root, ".claude", "claude-instructions.md"),
-		filepath.Join(root, ".antigravity", "antigravity-instructions.md"),
-		filepath.Join(root, "AGENTS.md"),
-		filepath.Join(root, "GEMINI.md"),
-	}
-}
