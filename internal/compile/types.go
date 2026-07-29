@@ -8,12 +8,13 @@ import (
 // Active and Personas are raw maps so all YAML fields (including unknown/extended ones
 // like content_by_lang or treasure_chests) are preserved verbatim in the artifact.
 type compiledConfig struct {
-	Schema     string           `json:"schema"`
-	CompiledAt int64            `json:"compiled_at"`
-	Sources    map[string]int64 `json:"sources"`
-	Active     map[string]any   `json:"active"`
-	Personas   map[string]any   `json:"personas"`
-	Roles      map[string]any   `json:"roles"`
+	Schema      string                    `json:"schema"`
+	CompiledAt  int64                     `json:"compiled_at"`
+	Sources     map[string]int64          `json:"sources"`
+	SourceStats map[string]sourceMetadata `json:"source_stats"`
+	Active      map[string]any            `json:"active"`
+	Personas    map[string]any            `json:"personas"`
+	Roles       map[string]any            `json:"roles"`
 }
 
 // compiledDomain is the in-memory representation of a compiled domain artifact.
@@ -21,17 +22,26 @@ type compiledDomain struct {
 	Schema         string                    `json:"schema"`
 	CompiledAt     int64                     `json:"compiled_at"`
 	Sources        map[string]int64          `json:"sources"`
+	SourceStats    map[string]sourceMetadata `json:"source_stats"`
 	LoadAlways     map[string]any            `json:"load_always"`
 	LoadByTaskType map[string]map[string]any `json:"load_by_task_type"`
 }
 
 // compiledIndex is the in-memory representation of a compiled knowledge index artifact.
 type compiledIndex struct {
-	Schema     string              `json:"schema"`
-	CompiledAt int64               `json:"compiled_at"`
-	Sources    map[string]int64    `json:"sources"`
-	Tags       map[string][]string `json:"tags"`
-	SourceMeta map[string]any      `json:"source_meta"`
+	Schema      string                    `json:"schema"`
+	CompiledAt  int64                     `json:"compiled_at"`
+	Sources     map[string]int64          `json:"sources"`
+	SourceStats map[string]sourceMetadata `json:"source_stats"`
+	Tags        map[string][]string       `json:"tags"`
+	SourceMeta  map[string]any            `json:"source_meta"`
+}
+
+type sourceMetadata struct {
+	MTime   int64  `json:"mtime"`
+	MTimeNS int64  `json:"mtime_ns"`
+	Size    int64  `json:"size"`
+	SHA256  string `json:"sha256,omitempty"`
 }
 
 // compiledManifest records artifact paths and their SHA256 checksums.

@@ -1,4 +1,4 @@
-subject: contracts/learning-buffer.yaml
+subject: contracts/machine/learning-buffer.yaml
 version: "1.0"
 
 invariants:

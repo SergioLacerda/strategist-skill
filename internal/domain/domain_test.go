@@ -119,12 +119,12 @@ func TestWizardConfig_Fields(t *testing.T) {
 		CodeLanguage:       "pt",
 		DiscoveryProvider:  "brainstorming",
 		RefinementProvider: "openspec-explore",
-		ExecutionProvider:  "sdd-ask",
+		ExecutionProvider:  "sniper",
 	}
 	assert.Equal(t, "pragmatic", wc.Mode)
 	assert.Equal(t, ".", wc.BasePath)
 	assert.Equal(t, "pt", wc.UILanguage)
 	assert.Equal(t, "brainstorming", wc.DiscoveryProvider)
 	assert.Equal(t, "openspec-explore", wc.RefinementProvider)
-	assert.Equal(t, "sdd-ask", wc.ExecutionProvider)
+	assert.Equal(t, "sniper", wc.ExecutionProvider)
 }

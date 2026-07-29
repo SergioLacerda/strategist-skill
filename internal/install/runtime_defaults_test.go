@@ -156,6 +156,133 @@ func TestInstall_PreservesUserOwnedActiveYAML(t *testing.T) {
 	assert.Equal(t, "mode: custom\nbase_path: .custom\n", string(got))
 }
 
+func TestPlanRuntimeDefaultUpgrade_EmbeddedHashError(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	// No normative files registered — every ReadFile call errors.
+	ext := runtimeDefaultsExtractor{files: map[string][]byte{}}
+	s := runtimeDefaultService(ext)
+	_, err := s.planRuntimeDefaultUpgrade(dir, false)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "read embedded normative default")
+}
+
+func TestPlanRuntimeDefaultUpgrade_CorruptManifest(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(dir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, domain.InstallManifestRelPath), []byte("not json"), 0o644))
+	s := runtimeDefaultService(newRuntimeDefaultsExtractor(nil))
+	_, err := s.planRuntimeDefaultUpgrade(dir, false)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "install: parse manifest")
+}
+
+func TestLoadInstallManifest_UnreadableFile(t *testing.T) {
+	t.Parallel()
+	if os.Getuid() == 0 {
+		t.Skip("permission tests do not apply when running as root")
+	}
+	dir := t.TempDir()
+	path := filepath.Join(dir, domain.InstallManifestRelPath)
+	require.NoError(t, os.WriteFile(path, []byte("{}"), 0o644))
+	require.NoError(t, os.Chmod(path, 0o000))
+	t.Cleanup(func() { _ = os.Chmod(path, 0o644) })
+
+	_, _, err := loadInstallManifest(dir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "install: read manifest")
+}
+
+func TestPlanRuntimeDefaultUpgrade_FileStatError(t *testing.T) {
+	t.Parallel()
+	if os.Getuid() == 0 {
+		t.Skip("permission tests do not apply when running as root")
+	}
+	dir := t.TempDir()
+	contractsDir := filepath.Join(dir, "contracts")
+	require.NoError(t, os.MkdirAll(filepath.Join(contractsDir, "machine"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(contractsDir, "machine", "preflight.yaml"), []byte("x"), 0o644))
+	require.NoError(t, os.Chmod(contractsDir, 0o000))
+	t.Cleanup(func() { _ = os.Chmod(contractsDir, 0o755) })
+
+	s := runtimeDefaultService(newRuntimeDefaultsExtractor(nil))
+	_, err := s.planRuntimeDefaultUpgrade(dir, false)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "read normative runtime file")
+}
+
+func TestApplyRuntimeDefaultPlan_PropagatesFileError(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	ext := runtimeDefaultsExtractor{files: map[string][]byte{}}
+	s := runtimeDefaultService(ext)
+	plan := runtimeDefaultPlan{decisions: map[string]domain.RuntimeDefaultDecision{}}
+	for _, f := range domain.NormativeRuntimeDefaultFiles() {
+		plan.decisions[f.Path] = domain.RuntimeDecisionWriteMissing
+	}
+	err := s.applyRuntimeDefaultPlan(dir, plan)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "read embedded normative default")
+}
+
+func TestApplyRuntimeDefaultFile_WriteError(t *testing.T) {
+	t.Parallel()
+	if os.Getuid() == 0 {
+		t.Skip("permission tests do not apply when running as root")
+	}
+	dir := t.TempDir()
+	require.NoError(t, os.Chmod(dir, 0o555))
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+	s := runtimeDefaultService(newRuntimeDefaultsExtractor(nil))
+	err := s.applyRuntimeDefaultFile(dir, "SKILL.md", domain.RuntimeDecisionWriteMissing)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "write normative default")
+}
+
+func TestSaveInstallManifest_WriteError(t *testing.T) {
+	t.Parallel()
+	if os.Getuid() == 0 {
+		t.Skip("permission tests do not apply when running as root")
+	}
+	dir := t.TempDir()
+	require.NoError(t, os.Chmod(dir, 0o555))
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+	err := saveInstallManifest(dir, domain.NewInstallManifest("test", nil))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "install: write manifest")
+}
+
+func TestFinalizeInstall_SaveManifestErrorPropagates(t *testing.T) {
+	t.Parallel()
+	if os.Getuid() == 0 {
+		t.Skip("permission tests do not apply when running as root")
+	}
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(dir, 0o755))
+	s := runtimeDefaultService(newRuntimeDefaultsExtractor(nil))
+	require.NoError(t, os.Chmod(dir, 0o555))
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+
+	err := s.finalizeInstall(context.Background(), domain.InstallConfig{Target: dir}, dir, runtimeDefaultPlan{
+		decisions: map[string]domain.RuntimeDefaultDecision{},
+	})
+	require.Error(t, err)
+}
+
+func TestPrepareRuntime_ApplyPlanErrorPropagates(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	ext := runtimeDefaultsExtractor{files: map[string][]byte{}}
+	s := runtimeDefaultService(ext)
+	plan := runtimeDefaultPlan{decisions: map[string]domain.RuntimeDefaultDecision{}}
+	for _, f := range domain.NormativeRuntimeDefaultFiles() {
+		plan.decisions[f.Path] = domain.RuntimeDecisionWriteMissing
+	}
+	_, err := s.prepareRuntime(context.Background(), dir, domain.InstallConfig{}, plan)
+	require.Error(t, err)
+}
+
 func TestInstall_BlocksUnknownManifestForStaleNormativeFile(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()

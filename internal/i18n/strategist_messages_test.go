@@ -3,7 +3,9 @@ package i18n_test
 import (
 	"reflect"
 	"regexp"
+	"strings"
 	"testing"
+	"unicode"
 
 	"github.com/SergioLacerda/strategist-skill/internal/i18n"
 	"github.com/stretchr/testify/assert"
@@ -34,7 +36,7 @@ func TestReservedTokensAreNotInENRuntime(t *testing.T) {
 	t.Parallel()
 
 	// These are matched as whole words to avoid false positives (e.g. "similar" contains "sim").
-	forbidden := []string{"sim", "nao", "concordo", "faltou", "saque rapido"}
+	forbidden := append([]string{}, i18n.ReservedGateTokensPTBR()...)
 	en := reflect.ValueOf(i18n.ENRuntime)
 	typ := en.Type()
 
@@ -76,10 +78,61 @@ func TestENRuntimeHasDocumentationMaterializationSemantics(t *testing.T) {
 func TestRuntimeMessagesToMap(t *testing.T) {
 	t.Parallel()
 
-	m := i18n.ENRuntime.ToMap()
-	assert.Equal(t, i18n.ENRuntime.IntakeSummary, m["intake_summary"])
-	assert.Equal(t, i18n.ENRuntime.RangerStart, m["ranger_start"])
-	assert.Equal(t, i18n.ENRuntime.SniperDone, m["sniper_done"])
-	assert.Equal(t, i18n.ENRuntime.ArtifactEntry, m["artifact_entry"])
-	assert.NotEmpty(t, m)
+	assertMessageMapCoversStruct(t, i18n.ENRuntime, i18n.ENRuntime.ToMap())
+}
+
+// TestPTBRPhaseAnnouncementsFieldsNonEmpty verifies every phase_announcements field
+// has a translated value — this is a distinct compiled-artifact field from
+// content_by_lang (RuntimeMessages above), injected separately at compile time.
+func TestPTBRPhaseAnnouncementsFieldsNonEmpty(t *testing.T) {
+	t.Parallel()
+
+	v := reflect.ValueOf(i18n.PTBRPhaseAnnouncements)
+	typ := v.Type()
+	for i := range typ.NumField() {
+		field := typ.Field(i)
+		assert.NotEmpty(t, v.Field(i).String(), "PTBRPhaseAnnouncements.%s must not be empty", field.Name)
+	}
+}
+
+// TestPhaseAnnouncementsMessagesToMap verifies ToMap exposes every field under its
+// snake_case key, matching the phase_announcements.en conventions used in persona YAML.
+func TestPhaseAnnouncementsMessagesToMap(t *testing.T) {
+	t.Parallel()
+
+	assertMessageMapCoversStruct(t, i18n.PTBRPhaseAnnouncements, i18n.PTBRPhaseAnnouncements.ToMap())
+}
+
+func assertMessageMapCoversStruct(t *testing.T, bundle any, got map[string]any) {
+	t.Helper()
+	v := reflect.ValueOf(bundle)
+	typ := v.Type()
+	assert.Len(t, got, typ.NumField())
+	for i := range typ.NumField() {
+		field := typ.Field(i)
+		key := snakeCase(field.Name)
+		assert.Contains(t, got, key)
+		assert.Equal(t, v.Field(i).String(), got[key], "field %s should map to %q", field.Name, key)
+	}
+}
+
+func snakeCase(name string) string {
+	var out strings.Builder
+	runes := []rune(name)
+	for i, r := range runes {
+		if shouldInsertSnakeUnderscore(runes, i) {
+			out.WriteByte('_')
+		}
+		out.WriteRune(unicode.ToLower(r))
+	}
+	return out.String()
+}
+
+func shouldInsertSnakeUnderscore(runes []rune, index int) bool {
+	if index == 0 || !unicode.IsUpper(runes[index]) {
+		return false
+	}
+	prev := runes[index-1]
+	nextLower := index+1 < len(runes) && unicode.IsLower(runes[index+1])
+	return unicode.IsLower(prev) || unicode.IsDigit(prev) || nextLower
 }

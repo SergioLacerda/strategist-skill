@@ -11,30 +11,32 @@ import (
 
 // abilityContractFiles lists paths relative to a layer root that belong to the
 // ability contract set — the files most likely to accumulate drift when the
-// ability model changes (Quick Draw semantics, Opportunity Attack ownership,
-// Side Quest routing).
+// ability model changes (Opportunity Attack ownership, Side Quest routing).
 func abilityContractFiles() []string {
 	return []string{
 		"skill.yaml",
 		"personas/pragmatic.yaml",
 		"internal_skills/ranger/SKILL.md",
 		"internal_skills/sniper/SKILL.md",
+		"contracts/machine/critical-hit.yaml",
+		"contracts/machine/opportunity-attack.yaml",
 		"contracts/machine/approval-gate.yaml",
 		"contracts/machine/compliance-summary.yaml",
+		"contracts/narrative/07-adr.md",
+		"contracts/narrative/11-critical-hit.md",
 		"schemas/progress-contract.yaml",
 	}
 }
 
 // --- Part A: Stale-string guards ---
 
-// TestAbilityContractNoStaleQuickDrawOutputs ensures the old read/count Quick Draw
+// TestAbilityContractNoStaleReadCountOutputs ensures the old read/count idea-capture
 // model (total_ideas, similar_ideas) has been fully replaced by the write-only model
 // (ideas_added, destination_path) across canonical, embedded defaults, and runtime.
-func TestAbilityContractNoStaleQuickDrawOutputs(t *testing.T) {
+func TestAbilityContractNoStaleReadCountOutputs(t *testing.T) {
 	t.Parallel()
 
 	roots := []string{
-		filepath.Join(repoRoot(t), "strategist"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults"),
 		isolatedStrategistDir(t),
 	}
@@ -53,7 +55,7 @@ func TestAbilityContractNoStaleQuickDrawOutputs(t *testing.T) {
 			content := string(data)
 			for _, bad := range forbidden {
 				if strings.Contains(content, bad) {
-					t.Fatalf("%s contains stale Quick Draw output %q; replace with ideas_added/destination_path", path, bad)
+					t.Fatalf("%s contains stale read/count output %q; replace with ideas_added/destination_path", path, bad)
 				}
 			}
 		}
@@ -66,7 +68,6 @@ func TestAbilityContractNoStaleApprovalGateRouting(t *testing.T) {
 	t.Parallel()
 
 	paths := []string{
-		filepath.Join(repoRoot(t), "strategist", "contracts", "machine", "approval-gate.yaml"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "approval-gate.yaml"),
 		filepath.Join(isolatedStrategistDir(t), "contracts", "machine", "approval-gate.yaml"),
 	}
@@ -86,8 +87,8 @@ func TestAbilityContractNoStaleImplementationIntentField(t *testing.T) {
 	t.Parallel()
 
 	paths := []string{
-		filepath.Join(repoRoot(t), "strategist", "templates", "agent-protocol.md"),
-		filepath.Join(repoRoot(t), "strategist", "protocol.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "agent-protocol.md"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "protocol.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "templates", "agent-protocol.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "protocol.md"),
 		filepath.Join(isolatedStrategistDir(t), "agent-protocol.md"),
@@ -111,7 +112,6 @@ func TestAbilityContractRangerDoesNotProduceOpportunityManifest(t *testing.T) {
 	t.Parallel()
 
 	paths := []string{
-		filepath.Join(repoRoot(t), "strategist", "internal_skills", "ranger", "SKILL.md"),
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "internal_skills", "ranger", "SKILL.md"),
 		filepath.Join(isolatedStrategistDir(t), "internal_skills", "ranger", "SKILL.md"),
 	}
@@ -136,10 +136,8 @@ func TestAbilityContractNoMandatoryOpportunityAttackForRangerOrSniper(t *testing
 		role string
 	}
 	checks := []roleCheck{
-		{filepath.Join(repoRoot(t), "strategist", "internal_skills", "ranger", "SKILL.md"), "ranger"},
 		{filepath.Join(repoRoot(t), "internal", "embed", "defaults", "internal_skills", "ranger", "SKILL.md"), "ranger"},
 		{filepath.Join(isolatedStrategistDir(t), "internal_skills", "ranger", "SKILL.md"), "ranger"},
-		{filepath.Join(repoRoot(t), "strategist", "internal_skills", "sniper", "SKILL.md"), "sniper"},
 		{filepath.Join(repoRoot(t), "internal", "embed", "defaults", "internal_skills", "sniper", "SKILL.md"), "sniper"},
 		{filepath.Join(isolatedStrategistDir(t), "internal_skills", "sniper", "SKILL.md"), "sniper"},
 	}
@@ -178,48 +176,92 @@ func TestAbilityContractNoStaleOpportunityAttackCrossRoleRule(t *testing.T) {
 	}
 }
 
-// --- Part B: Parity check ---
-
-// TestAbilityContractParityCanonicalVsEmbedded ensures the ability contract files
-// are byte-for-byte identical between canonical (strategist/) and embedded defaults
-// (internal/embed/defaults/). Runtime (.strategist/) is generated/installed and
-// may differ at the leaf level — it is not included in this parity check.
-func TestAbilityContractParityCanonicalVsEmbedded(t *testing.T) {
+// TestAbilityContractOpportunityAttackIsADROnly ensures Opportunity Attack does
+// not become a second card-closure or implementation-audit mechanism. Since
+// strategist-ability-taxonomy-reorg (Decisions D3/D4), Opportunity Attack also
+// evaluates runbook- and chest-worthiness alongside ADR-worthiness — three
+// independent side quests — but none of the three may evaluate implementation
+// completion or move cards to done/; that remains Critical Hit's exclusive remit.
+func TestAbilityContractOpportunityAttackIsADROnly(t *testing.T) {
 	t.Parallel()
 
-	canonical := filepath.Join(repoRoot(t), "strategist")
-	embedded := filepath.Join(repoRoot(t), "internal", "embed", "defaults")
+	paths := []string{
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "opportunity-attack.yaml"),
+		filepath.Join(isolatedStrategistDir(t), "contracts", "machine", "opportunity-attack.yaml"),
+	}
+	required := []string{
+		"Opportunity Attack MUST NOT evaluate implementation completion or move cards to done/",
+		"Critical Hit is the only route that may close pending/refined cards into done/",
+	}
 
-	for _, rel := range abilityContractFiles() {
-		rel := rel
-		t.Run(rel, func(t *testing.T) {
-			t.Parallel()
-
-			canonicalPath := filepath.Join(canonical, rel)
-			embeddedPath := filepath.Join(embedded, rel)
-
-			canonicalData, err := os.ReadFile(canonicalPath)
-			if err != nil {
-				if os.IsNotExist(err) {
-					t.Skipf("ability contract file %s absent in canonical — skipping parity", rel)
-				}
-				t.Fatalf("read canonical %s: %v", canonicalPath, err)
+	for _, path := range paths {
+		content := readFile(t, path)
+		for _, needle := range required {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing Opportunity Attack role boundary %q", path, needle)
 			}
-
-			embeddedData, err := os.ReadFile(embeddedPath)
-			if err != nil {
-				if os.IsNotExist(err) {
-					t.Fatalf("ability contract file %s exists in canonical but is missing from embedded defaults (%s)", rel, embeddedPath)
-				}
-				t.Fatalf("read embedded %s: %v", embeddedPath, err)
-			}
-
-			if string(canonicalData) != string(embeddedData) {
-				t.Fatalf(
-					"ability contract parity failure for %s:\n  canonical: %s\n  embedded:  %s\nSync embedded defaults from canonical or run `strategist compile`.",
-					rel, canonicalPath, embeddedPath,
-				)
-			}
-		})
+		}
 	}
 }
+
+// TestAbilityContractCriticalHitOwnsCardClosure keeps finalized-card movement
+// assigned to Critical Hit rather than ADR Opportunity Attack.
+func TestAbilityContractCriticalHitOwnsCardClosure(t *testing.T) {
+	t.Parallel()
+
+	paths := []string{
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "critical-hit.yaml"),
+		filepath.Join(isolatedStrategistDir(t), "contracts", "machine", "critical-hit.yaml"),
+	}
+	required := []string{
+		"Critical Hit owns pending/refined card closure into done/",
+		"Opportunity Attack does not move analysis cards",
+	}
+
+	for _, path := range paths {
+		content := readFile(t, path)
+		for _, needle := range required {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing Critical Hit closure boundary %q", path, needle)
+			}
+		}
+	}
+}
+
+// TestAbilityContractNoLegacyOpportunityFSMNaming ensures the generic side-quest
+// gate does not reuse Opportunity Attack naming.
+func TestAbilityContractNoLegacyOpportunityFSMNaming(t *testing.T) {
+	t.Parallel()
+
+	paths := []string{
+		filepath.Join(repoRoot(t), "internal", "domain", "policy.go"),
+		filepath.Join(repoRoot(t), "internal", "domain", "state_machine.go"),
+		filepath.Join(repoRoot(t), "internal", "domain", "state_machine_test.go"),
+	}
+	forbidden := []string{
+		"StateOpportunityAttack",
+		"StateOpportunityGate",
+		"StateOpportunityExec",
+		"EventSniperOA",
+		"sniper_opportunity_attack",
+		"OPPORTUNITY_ATTACK",
+		"OPPORTUNITY_GATE",
+		"OPPORTUNITY_EXEC",
+	}
+
+	for _, path := range paths {
+		content := readFile(t, path)
+		for _, bad := range forbidden {
+			if strings.Contains(content, bad) {
+				t.Fatalf("%s still contains legacy Opportunity FSM name %q; use SideQuest naming for the generic gate", path, bad)
+			}
+		}
+	}
+}
+
+// --- Part B: Parity check ---
+
+// TestAbilityContractParityCanonicalVsEmbedded was removed in W7a (Option B):
+// strategist/ was retired, so canonical and embedded defaults are the same tree
+// and byte parity is true by construction. Runtime parity is covered by
+// TestLocalRuntimeMirrorsCanonicalNormativeFilesWhenPresent in spec_alignment_test.go.

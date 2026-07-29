@@ -7,9 +7,168 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// --- agentProtocol ---
+// Relocated from agent_protocol_test.go (formerly package compile_test) when
+// AgentProtocol was unexported to agentProtocol.
+
+const minimalAgentProtocolTemplate = `---
+generated_by: strategist compile
+version: {{.Version}}
+generated_at: {{.GeneratedAt}}
+path_model: runtime-only
+---
+
+# Strategist Agent Protocol
+
+Discovery slot: {{.Slots.Discovery}}
+Refinement slot: {{.Slots.Refinement}}
+Execution slot: {{.Slots.Execution}}
+`
+
+func TestAgentProtocol(t *testing.T) {
+	t.Parallel()
+
+	t.Run("creates file when absent", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		testutil.MinimalRoot(t, dir)
+
+		err := agentProtocol(dir, []byte(minimalAgentProtocolTemplate), "1.0.0")
+		require.NoError(t, err)
+
+		out := filepath.Join(dir, "agent-protocol.md")
+		require.FileExists(t, out)
+		content, _ := os.ReadFile(out)
+		s := string(content)
+		assert.Contains(t, s, "version: 1.0.0")
+		assert.Contains(t, s, "Discovery slot: brainstorming")
+		assert.Contains(t, s, "Refinement slot: openspec-explore")
+		assert.Contains(t, s, "Execution slot: sdd-ask")
+	})
+
+	t.Run("upserts body when file exists", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		testutil.MinimalRoot(t, dir)
+
+		out := filepath.Join(dir, "agent-protocol.md")
+		initial := "---\ngenerated_by: strategist compile\nversion: 0.9.0\ngenerated_at: 2026-01-01T00:00:00Z\npath_model: runtime-only\n---\n\nOld body content.\n"
+		require.NoError(t, os.WriteFile(out, []byte(initial), 0o644))
+
+		require.NoError(t, agentProtocol(dir, []byte(minimalAgentProtocolTemplate), "1.1.0"))
+
+		content, _ := os.ReadFile(out)
+		s := string(content)
+		assert.Contains(t, s, "version: 1.1.0")
+		assert.NotContains(t, s, "Old body content.")
+		assert.Contains(t, s, "Discovery slot: brainstorming")
+	})
+
+	t.Run("preserves extra frontmatter fields on upsert", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		testutil.MinimalRoot(t, dir)
+
+		out := filepath.Join(dir, "agent-protocol.md")
+		initial := "---\ngenerated_by: strategist compile\nversion: 0.9.0\ngenerated_at: 2026-01-01T00:00:00Z\npath_model: runtime-only\ncustom_note: keep-me\n---\n\nOld body.\n"
+		require.NoError(t, os.WriteFile(out, []byte(initial), 0o644))
+
+		require.NoError(t, agentProtocol(dir, []byte(minimalAgentProtocolTemplate), "1.2.0"))
+
+		content, _ := os.ReadFile(out)
+		s := string(content)
+		assert.Contains(t, s, "custom_note: keep-me")
+		assert.Contains(t, s, "version: 1.2.0")
+		assert.NotContains(t, s, "Old body.")
+	})
+
+	t.Run("overwrites malformed frontmatter entirely", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		testutil.MinimalRoot(t, dir)
+
+		out := filepath.Join(dir, "agent-protocol.md")
+		require.NoError(t, os.WriteFile(out, []byte("no frontmatter here\njust body"), 0o644))
+
+		require.NoError(t, agentProtocol(dir, []byte(minimalAgentProtocolTemplate), "1.0.0"))
+
+		content, _ := os.ReadFile(out)
+		assert.Contains(t, string(content), "generated_by: strategist compile")
+	})
+
+	t.Run("error when active.yaml missing", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+
+		err := agentProtocol(dir, []byte(minimalAgentProtocolTemplate), "1.0.0")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "agent protocol")
+	})
+
+	t.Run("error on invalid template syntax", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		testutil.MinimalRoot(t, dir)
+
+		err := agentProtocol(dir, []byte("{{.Invalid syntax"), "1.0.0")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "agent protocol")
+	})
+
+	t.Run("error when template references a field that does not exist", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		testutil.MinimalRoot(t, dir)
+
+		// Parses fine (valid syntax), but Slots has no "Bogus" field — fails at Execute time.
+		err := agentProtocol(dir, []byte("{{.Slots.Bogus}}"), "1.0.0")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "render template")
+	})
+
+	t.Run("error when existing agent-protocol.md path is a directory", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		testutil.MinimalRoot(t, dir)
+		require.NoError(t, os.MkdirAll(filepath.Join(dir, "agent-protocol.md"), 0o755))
+
+		err := agentProtocol(dir, []byte(minimalAgentProtocolTemplate), "1.0.0")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "agent protocol: read")
+	})
+
+	t.Run("overwrites entirely when closing frontmatter marker is missing", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		testutil.MinimalRoot(t, dir)
+
+		out := filepath.Join(dir, "agent-protocol.md")
+		require.NoError(t, os.WriteFile(out, []byte("---\nversion: 0.9.0\nno closing marker here"), 0o644))
+
+		require.NoError(t, agentProtocol(dir, []byte(minimalAgentProtocolTemplate), "1.0.0"))
+
+		content, _ := os.ReadFile(out)
+		assert.Contains(t, string(content), "version: 1.0.0")
+		assert.NotContains(t, string(content), "no closing marker here")
+	})
+}
+
+func TestAgentProtocol_GeneratedAtIsSet(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	testutil.MinimalRoot(t, dir)
+
+	require.NoError(t, agentProtocol(dir, []byte(minimalAgentProtocolTemplate), "1.0.0"))
+
+	out := filepath.Join(dir, "agent-protocol.md")
+	content, _ := os.ReadFile(out)
+	assert.Contains(t, string(content), "generated_at: 20", "generated_at should be set to a current timestamp")
+}
 
 // --- renderedBodyOnly ---
 
@@ -59,25 +218,9 @@ func TestWriteFile_Error(t *testing.T) {
 	require.NoError(t, os.Chmod(dir, 0o444))
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
 
-	err := writeFile(filepath.Join(dir, "out.md"), "content")
+	err := writeFile(filepath.Join(dir, "out.md"), []byte("content"), "agent protocol")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "agent protocol: write")
-}
-
-// --- marshalSortedJSON ---
-
-func TestMarshalSortedJSON_NonSerializableValue(t *testing.T) {
-	t.Parallel()
-	_, err := marshalSortedJSON(map[string]any{"key": make(chan int)})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "marshal value for key")
-}
-
-func TestMarshalSortedJSON_EmptyMap(t *testing.T) {
-	t.Parallel()
-	out, err := marshalSortedJSON(map[string]any{})
-	require.NoError(t, err)
-	assert.Equal(t, "{}", string(out))
 }
 
 // --- upsertSection write error ---
@@ -98,22 +241,23 @@ func TestUpsertSection_WriteError(t *testing.T) {
 	assert.Contains(t, err.Error(), "upsert section: write")
 }
 
-// --- upsertCodexSeed write error ---
-
-func TestUpsertCodexSeed_WriteError(t *testing.T) {
+func TestUpsertSection_ReadError(t *testing.T) {
 	t.Parallel()
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
 	dir := t.TempDir()
-	path := filepath.Join(dir, "codex.seed.json")
-	require.NoError(t, os.WriteFile(path, []byte(`{"required_context":[]}`), 0o644))
-	require.NoError(t, os.Chmod(path, 0o444))
-	t.Cleanup(func() { _ = os.Chmod(path, 0o644) })
+	// A directory at the target path makes os.ReadFile fail with a non-permission error.
+	path := filepath.Join(dir, "instructions.md")
+	require.NoError(t, os.MkdirAll(path, 0o755))
 
-	err := upsertCodexSeed(path)
+	err := upsertSection(path)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "codex seed: write")
+	assert.Contains(t, err.Error(), "upsert section: read")
+}
+
+func TestAppendMarkdownSection_AddsMissingTrailingNewline(t *testing.T) {
+	t.Parallel()
+	// Content without a trailing newline must gain one before the section is appended.
+	got := appendMarkdownSection("# Header\n\nNo trailing newline", "## New Section\n\nBody.")
+	assert.Equal(t, "# Header\n\nNo trailing newline\n\n## New Section\n\nBody.\n", got)
 }
 
 func TestUpsertSection_AppendWhenAbsent(t *testing.T) {
@@ -146,21 +290,37 @@ func TestUpsertSection_ReplaceExisting(t *testing.T) {
 	assert.Contains(t, s, "## Other Section")
 }
 
-// --- AgentAwareness slog.Warn path (write error on antigravity) ---
+// --- markdownTail ---
 
-func TestAgentAwareness_AntigravityWriteErrorIsNonBlocking(t *testing.T) {
+func TestMarkdownTail_PreservesContentAfterDeeperHeading(t *testing.T) {
+	t.Parallel()
+	after := "\n\nSome section body.\n\n### Deeper Heading\n\nMore content.\n"
+	tail := markdownTail(after)
+	assert.Contains(t, tail, "### Deeper Heading")
+	assert.Contains(t, tail, "More content.")
+}
+
+func TestMarkdownTail_LastSectionInFileReturnsEmpty(t *testing.T) {
+	t.Parallel()
+	after := "\n\nSome trailing content with no further heading.\n"
+	assert.Empty(t, markdownTail(after))
+}
+
+// --- AgentAwareness slog.Warn path (write error on a seed target) ---
+
+func TestAgentAwareness_SeedWriteErrorIsNonBlocking(t *testing.T) {
 	t.Parallel()
 	if os.Getuid() == 0 {
 		t.Skip("permission tests do not apply when running as root")
 	}
 	dir := t.TempDir()
-	agDir := filepath.Join(dir, ".antigravity")
-	require.NoError(t, os.MkdirAll(agDir, 0o755))
-	agPath := filepath.Join(agDir, "antigravity-instructions.md")
-	require.NoError(t, os.WriteFile(agPath, []byte("# Antigravity\n"), 0o644))
-	require.NoError(t, os.Chmod(agPath, 0o444))
-	t.Cleanup(func() { _ = os.Chmod(agPath, 0o644) })
+	claudeDir := filepath.Join(dir, ".claude")
+	require.NoError(t, os.MkdirAll(claudeDir, 0o755))
+	claudePath := filepath.Join(claudeDir, "claude-instructions.md")
+	require.NoError(t, os.WriteFile(claudePath, []byte("# Claude\n"), 0o644))
+	require.NoError(t, os.Chmod(claudePath, 0o444))
+	t.Cleanup(func() { _ = os.Chmod(claudePath, 0o644) })
 
-	err := AgentAwareness(dir)
-	require.NoError(t, err, "AgentAwareness must always return nil even when per-file update fails")
+	err := agentAwareness(dir)
+	require.NoError(t, err, "agentAwareness must always return nil even when per-file update fails")
 }

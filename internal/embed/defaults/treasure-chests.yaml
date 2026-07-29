@@ -79,7 +79,21 @@ stop_conditions:
 #   provenance: string                # free text — where this chest came from
 # open_gaps: []                     # optional; list of short strings, known gaps in this source
 
-chests: []
+chests:
+  - id: runbooks
+    title: Agent Runbooks
+    path: docs/runbooks
+    trust:
+      tier: T2        # discovered/project docs — already reviewed by a human before
+                       # becoming canonical, but not T1 (mandates/config) nor T0.
+                       # Assumed by Archivist recommendation; user may correct to T1
+                       # in a future review (see .analysis/refined/runbook-jewel-relevance-mechanism/tasks.md).
+      reviewed_by: human
+    routing:
+      task_types: [all]
+    retrieval:
+      strategy: selective
+      require_relevance_reason: true
 
 # Example entry (uncomment and customize):
 #

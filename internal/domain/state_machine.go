@@ -1,21 +1,28 @@
 package domain
 
+// stateTransitions models gate/execution mechanics only: side-quest handling, the
+// main Approval Gate, execution, retry-on-transient-failure, ADR, and
+// Critical Hit. It intentionally does NOT model bootstrap, intake, discovery, or
+// learning as states (S7) — those phases are enforced by contract + progress
+// events, not by this transition table. Extending the FSM to the full pipeline is
+// a separate design decision (interacts with W7's single-source compilation) and
+// is out of scope here; see the "full-pipeline FSM" follow-up in
+// .analysis/todo/analise-tecnica.md.
 var stateTransitions = map[MissionState]map[TransitionEvent]MissionState{
 	StateInit: {
-		EventQuickDrawIntent:  StateQuickDraw,
 		EventDirectHitIntent:  StateDirectGate,
-		EventManifestEmpty:    StateOpportunityAttack,
-		EventManifestNonEmpty: StateOpportunityAttack,
+		EventManifestEmpty:    StateSideQuestScan,
+		EventManifestNonEmpty: StateSideQuestScan,
 	},
-	StateOpportunityAttack: {
+	StateSideQuestScan: {
 		EventManifestEmpty:    StateRefinement,
-		EventManifestNonEmpty: StateOpportunityGate,
+		EventManifestNonEmpty: StateSideQuestGate,
 	},
-	StateOpportunityGate: {
+	StateSideQuestGate: {
 		EventGateDenied:   StateRefinement,
-		EventGateApproved: StateOpportunityExec,
+		EventGateApproved: StateSideQuestExec,
 	},
-	StateOpportunityExec: {
+	StateSideQuestExec: {
 		EventSniperDone: StateRefinement,
 	},
 	StateRefinement: {
@@ -28,12 +35,13 @@ var stateTransitions = map[MissionState]map[TransitionEvent]MissionState{
 		EventGateDenied:   StateDoneAnalysis,
 		EventGateApproved: StateExecution,
 		EventGateTimeout:  StateDoneAnalysis,
+		EventGateRevision: StateRefinement, // D2: documented revision loop, now representable
 	},
 	StateExecution: {
-		EventSniperDone:    StateDoneDelivery,
-		EventSniperOA:      StateOpportunityGate,
-		EventSlotTransient: StateRetryingExecution,
-		EventSlotPermanent: StateBlocked,
+		EventSniperDone:      StateDoneDelivery,
+		EventSniperSideQuest: StateSideQuestGate,
+		EventSlotTransient:   StateRetryingExecution,
+		EventSlotPermanent:   StateBlocked,
 	},
 	StateDoneAnalysis: {
 		EventADRCriterionMet: StateADRGate1,
@@ -41,28 +49,15 @@ var stateTransitions = map[MissionState]map[TransitionEvent]MissionState{
 	StateDoneDelivery: {
 		EventADRCriterionMet: StateADRGate1,
 	},
-	StateRetrying: {
-		EventManifestNonEmpty: StateRefinement,
-		EventSlotPermanent:    StateBlocked,
-		EventSlotTransient:    StateBlocked,
-	},
 	StateRetryingRefinement: {
-		EventManifestNonEmpty: StateRefinement,
-		EventSlotPermanent:    StateBlocked,
-		EventSlotTransient:    StateBlocked,
+		EventRetryOK:       StateRefinement,
+		EventSlotPermanent: StateBlocked,
+		EventSlotTransient: StateBlocked,
 	},
 	StateRetryingExecution: {
-		EventManifestNonEmpty: StateExecution,
-		EventSlotPermanent:    StateBlocked,
-		EventSlotTransient:    StateBlocked,
-	},
-	StateQuickDraw: {
-		EventManifestNonEmpty: StateQuickDrawGate,
-		EventManifestEmpty:    StateQuickDrawDone,
-	},
-	StateQuickDrawGate: {
-		EventQuickDrawApprove: StateQuickDrawDone,
-		EventQuickDrawDecline: StateQuickDrawDone,
+		EventRetryOK:       StateExecution,
+		EventSlotPermanent: StateBlocked,
+		EventSlotTransient: StateBlocked,
 	},
 	StateADRGate1: {
 		EventADRApproved: StateADRGate2,
@@ -82,9 +77,9 @@ var stateTransitions = map[MissionState]map[TransitionEvent]MissionState{
 		EventSlotPermanent: StateBlocked,
 	},
 	StateRetryingDirectExec: {
-		EventManifestNonEmpty: StateDirectExec,
-		EventSlotPermanent:    StateBlocked,
-		EventSlotTransient:    StateBlocked,
+		EventRetryOK:       StateDirectExec,
+		EventSlotPermanent: StateBlocked,
+		EventSlotTransient: StateBlocked,
 	},
 }
 

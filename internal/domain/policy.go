@@ -7,26 +7,32 @@ const (
 	TransitionGroupDocumentation    = "documentation_materialization" // sniper documentation writes
 )
 
+// Policy decision reasons and statuses are serialized into CLI output and telemetry.
+const (
+	PolicyReasonAllowed                = "allowed"
+	PolicyReasonApprovalRequired       = "approval_required"
+	PolicyReasonUnknownTransitionGroup = "unknown_transition_group"
+
+	PolicyStatusAllowed          = "allowed"
+	PolicyStatusApprovalRequired = "approval_required"
+	PolicyStatusBlocked          = "policy_blocked"
+)
+
 // MissionState represents the orchestrator FSM state.
 type MissionState string
 
 // Orchestrator finite-state machine states.
 const (
-	StateInit              MissionState = "INIT"
-	StateOpportunityAttack MissionState = "OPPORTUNITY_ATTACK"
-	StateOpportunityGate   MissionState = "OPPORTUNITY_GATE"
-	StateOpportunityExec   MissionState = "OPPORTUNITY_EXEC"
-	StateRefinement        MissionState = "REFINEMENT"
-	StateApprovalGate      MissionState = "APPROVAL_GATE"
-	StateExecution         MissionState = "EXECUTION"
-	StateDoneAnalysis      MissionState = "DONE_ANALYSIS"
-	StateDoneDelivery      MissionState = "DONE_DELIVERY"
-	StateBlocked           MissionState = "BLOCKED"
-
-	// Quick Draw route states (§5.0 pipeline).
-	StateQuickDraw     MissionState = "QUICK_DRAW"
-	StateQuickDrawGate MissionState = "QUICK_DRAW_GATE"
-	StateQuickDrawDone MissionState = "QUICK_DRAW_DONE"
+	StateInit          MissionState = "INIT"
+	StateSideQuestScan MissionState = "SIDE_QUEST_SCAN"
+	StateSideQuestGate MissionState = "SIDE_QUEST_GATE"
+	StateSideQuestExec MissionState = "SIDE_QUEST_EXEC"
+	StateRefinement    MissionState = "REFINEMENT"
+	StateApprovalGate  MissionState = "APPROVAL_GATE"
+	StateExecution     MissionState = "EXECUTION"
+	StateDoneAnalysis  MissionState = "DONE_ANALYSIS"
+	StateDoneDelivery  MissionState = "DONE_DELIVERY"
+	StateBlocked       MissionState = "BLOCKED"
 
 	// ADR stage states (§8 pipeline).
 	StateADRGate1 MissionState = "ADR_GATE_1"
@@ -34,8 +40,9 @@ const (
 	StateADRDone  MissionState = "ADR_DONE"
 
 	// Retry states for transient slot failures (protocol §Slot Failure Classification).
-	// StateRetrying is kept as a legacy refinement retry state for compatibility.
-	StateRetrying           MissionState = "RETRYING"
+	// StateRetrying ("RETRYING", generic/unreachable legacy retry state — S8) was
+	// removed: M016 check confirmed no code persists or parses the "RETRYING" string
+	// (grep -rn '"RETRYING"' internal/ cmd/ matched only its own former declaration).
 	StateRetryingRefinement MissionState = "RETRYING_REFINEMENT"
 	StateRetryingExecution  MissionState = "RETRYING_EXECUTION"
 	StateRetryingDirectExec MissionState = "RETRYING_DIRECT_EXEC"
@@ -56,14 +63,14 @@ const (
 	EventGateApproved     TransitionEvent = "gate_approved"
 	EventGateDenied       TransitionEvent = "gate_denied"
 	EventGateTimeout      TransitionEvent = "gate_timeout"
+	// EventGateRevision is the Approval Gate's revision_requested outcome (D2):
+	// contracts/narrative/05-approval-gate.md documents "Archivist revisits" as a
+	// valid, non-error resolution, distinct from EventGateDenied (rejected/timeout,
+	// terminal). See contracts/machine/mission-status.yaml's gate_revision_requested entry.
+	EventGateRevision     TransitionEvent = "gate_revision_requested"
 	EventSniperDone       TransitionEvent = "sniper_done"
 	EventArchivistNoTasks TransitionEvent = "archivist_done_no_tasks"
 	EventArchivistTasks   TransitionEvent = "archivist_done_has_tasks"
-
-	// Quick Draw route events (§3.1 detection → §5.0 execution).
-	EventQuickDrawIntent  TransitionEvent = "quick_draw_intent"
-	EventQuickDrawApprove TransitionEvent = "quick_draw_approved"
-	EventQuickDrawDecline TransitionEvent = "quick_draw_declined"
 
 	// ADR stage events (§8 pipeline).
 	EventADRCriterionMet TransitionEvent = "adr_criterion_met"
@@ -73,9 +80,15 @@ const (
 	// Slot failure classification events (protocol §Slot Failure Classification).
 	EventSlotTransient TransitionEvent = "slot_transient_failure"
 	EventSlotPermanent TransitionEvent = "slot_permanent_failure"
+	// EventRetryOK is the retry-success signal for the StateRetrying* states (S9):
+	// previously EventManifestNonEmpty did double duty here and at the side-quest
+	// manifest scan, two unrelated meanings on one token. Manifest events now
+	// mean manifests only (Init, SideQuestScan).
+	EventRetryOK TransitionEvent = "retry_ok"
 
-	// Sniper opportunity attack surfaced mid-documentation (§7 Opportunity Attack).
-	EventSniperOA TransitionEvent = "sniper_opportunity_attack"
+	// Side quest surfaced during documentation materialization. This is the
+	// generic side-quest gate, not Archivist's ADR-only Opportunity Attack routine.
+	EventSniperSideQuest TransitionEvent = "sniper_side_quest_detected"
 
 	// Critical Hit route events — fast path gate for direct_execute route.
 	EventDirectHitIntent    TransitionEvent = "direct_hit_intent"
@@ -87,5 +100,5 @@ const (
 type TransitionDecision struct {
 	Allowed bool
 	Reason  string
-	Status  string // allowed | policy_blocked | approval_required
+	Status  string // PolicyStatusAllowed | PolicyStatusBlocked | PolicyStatusApprovalRequired
 }

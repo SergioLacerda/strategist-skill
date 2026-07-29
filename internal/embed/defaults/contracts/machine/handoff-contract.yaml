@@ -1,0 +1,49 @@
+module: handoff-contract
+type: refinement_policy
+description: >
+  Deduplication policy for the Discovery -> Refinement handoff. Governs whether
+  Archivist may reopen a source Ranger already consulted, or must treat the
+  Discovery Brief (the Ranger analysis artifact) as sufficient. Exists to give
+  contracts/narrative/04-refinement.md and skill.yaml's
+  archivist_reopens_discovery_sources_without_declared_reason forbidden_behaviors
+  entry a single normative definition of "declared reason" rather than leaving it
+  to per-mission judgment.
+
+routing_note: >
+  This is a policy reference, not a phase and not an archivist_routine like
+  opportunity-attack.yaml — it does not run or emit on its own. It is read by
+  Archivist during refinement (04-refinement.md#Inputs) and enforced via the
+  forbidden_behaviors entry in skill.yaml.
+
+contract:
+  owner: archivist
+  consumes: sources_consulted[] (schemas/handoff-ranger-to-archivist.schema.yaml)
+
+  refinement_context_policy:
+    default_source: discovery_brief
+    reopen_original_sources: on_demand
+    allowed_reasons:
+      - source_marked_partial_or_skimmed_in_sources_consulted
+      - brief_reference_is_ambiguous_or_contradictory
+      - archivist_needs_a_field_ranger_did_not_capture
+
+  on_reopen:
+    action: state the matching allowed_reason explicitly in the refined artifact that needed the reopen
+    emit: "[Strategist] phase=archivist status=source_reopened mission_id={mission_id} source_path={source_path} reason={reason}"
+    emit_level: TRACE
+
+  on_reopen_without_declared_reason:
+    action: block
+    reason: archivist_reopens_discovery_sources_without_declared_reason
+    emit: "[Strategist] phase=compliance status=blocked reason=archivist_reopens_discovery_sources_without_declared_reason source_path={source_path}"
+
+  invariants:
+    - allowed_reasons is a closed list — a real mission needing a reason outside it is
+      signal for a follow-up mission to extend this contract, not silent expansion by
+      whichever Archivist run hits the gap first
+    - a source listed in sources_consulted[] with coverage_status:full is never a valid
+      reopen target under any allowed_reason
+    - this policy does not apply to Sniper — see token_economy_stop_conditions#sniper_context_gap
+      in skill.yaml for the equivalent Sniper-side control
+
+  write_scope: read-only (Archivist reads this contract; it does not write to it)

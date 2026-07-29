@@ -16,8 +16,17 @@ field_rules:
   base_path:
     type: string
     non_empty: true
+  adr.canonical_path:
+    type: string
+    non_empty: true
+    description: >
+      Optional. Project-relative path Sniper writes approved ADRs to instead
+      of <base_path>/archived/. No default — absence preserves the unchanged
+      fallback. See contracts/narrative/07-adr.md § Canonical Destination
+      Resolution.
 
-optional_fields: []
+optional_fields:
+  - adr.canonical_path
 
 unknown_fields_policy: warn
 # Fields not declared in required_fields or optional_fields are ignored by the agent.

@@ -55,6 +55,20 @@ field_rules:
     items:
       type: string
       non_empty: true
+  jewel_ids:
+    type: array
+    required: false
+    description: >
+      Deduplicated IDs of jewels consulted (discovery and/or refinement) during the
+      mission that produced this outcome entry. IDs only — chest_id, trust, status,
+      and statement are joined from .strategist/jewels.yaml / jewels/<chest-id>.yaml
+      at read time, never duplicated here. Populated from mission_result.jewels_consulted
+      when present (see mission-result.schema.yaml). Enables correlating jewel
+      consultations with mission outcomes for `treasure-chest items` curation without
+      introducing automatic scoring or status promotion.
+    items:
+      type: string
+      non_empty: true
   gates:
     type: array
     required: false
@@ -63,15 +77,27 @@ field_rules:
       fields:
         type:
           type: enum
-          values: [approval_gate, adr_gate, quick_draw_gate]
+          values: [approval_gate, adr_gate]
         approved_at:
           type: string
           format: iso8601
         response:
           type: string
 
+idempotency:
+  key: mission_id
+  description: >
+    mission_id is required for presence (see required_fields above), but
+    presence alone does not guarantee uniqueness. mission_id is additionally
+    the idempotency key for outcomes.jsonl: at most one entry per mission_id
+    may exist. This is enforced at write/flush time (skip-before-append), not
+    by post-hoc cleanup — see learning-buffer.yaml#idempotency_key and
+    internal/telemetry.AppendOutcomeLine.
+
 invariants:
   - id: outcomes_jsonl_is_source_of_truth
     rule: structured outcome entries are persisted in outcomes.jsonl; derived indexes never replace it
   - id: semantic_retrieval_is_optional
     rule: any future semantic index is optional, local, rebuildable, and must degrade to tag or lexical retrieval
+  - id: mission_id_is_unique
+    rule: outcomes.jsonl contains at most one entry per mission_id; duplicate writes are skipped before append

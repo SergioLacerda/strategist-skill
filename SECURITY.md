@@ -26,15 +26,18 @@ Expected response time: **5 business days**.
 
 Every release binary is protected by two independent supply chain controls.
 
-### 1. SLSA Provenance (via GitHub Attestation)
+### 1. GitHub Build Provenance (Attestation)
 
 ```bash
 gh attestation verify strategist-linux-amd64 \
   --owner SergioLacerda
 ```
 
-This verifies the binary was built by the official GitHub Actions workflow.
-Requires the [GitHub CLI](https://cli.github.com/).
+This verifies the binary was built by the official GitHub Actions workflow, using
+GitHub's native build provenance attestation (`actions/attest-build-provenance`).
+This is not a formal SLSA level claim — it confirms provenance (which workflow,
+repo, and commit produced the binary), not conformance to a specific SLSA build
+track. Requires the [GitHub CLI](https://cli.github.com/).
 
 ### 2. Cosign Keyless Signature
 
@@ -56,6 +59,16 @@ A `SHA256SUMS` file is included with every release for quick integrity checks:
 ```bash
 sha256sum --check SHA256SUMS
 ```
+
+### Why `bootstrap.sh` only checks SHA256
+
+The `curl | bash` installer (`bootstrap.sh`) deliberately verifies only the
+`SHA256SUMS` checksum, not the cosign signature or GitHub attestation above.
+Requiring `cosign` as a dependency for the common one-line install path would
+add a failure mode most users don't need (checksum verification already
+detects a corrupted or tampered download). Users who want the stronger
+cosign/attestation guarantees should download the release asset manually and
+run the verification commands in this document.
 
 ## Branch Protection (Recommended for forks)
 

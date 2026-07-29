@@ -46,3 +46,15 @@ The learning buffer (`memory/outcomes.tmp`) has a limit of 20 entries before bei
 - If learning fails systematically (e.g. corrupted memory file), the problem may go unnoticed across many missions without the user realizing
 - The learning buffer is a second write path for outcomes — two paths to the same data can cause duplicates if the main flush and buffer flush coincide
 - A user who repeatedly ignores the checkpoint loses the accumulated benefit of the knowledge system without explicit feedback
+
+## Update — 2026-07-25: write-time idempotency mitigation
+
+The duplicate-write risk named above now has a mitigation. `outcomes.jsonl` remains
+append-only (never truncated or overwritten), but writes are deduplicated at write time
+using `mission_id` as the idempotency key: `internal/telemetry.AppendOutcomeLine` skips
+appending a line whose `mission_id` already exists in the target file, and
+`internal/telemetry.FlushOutcomeBuffer` applies the same check per buffered line before
+clearing `outcomes.tmp`. This means a flush retried after being interrupted between the
+append and the buffer clear no longer re-appends already-flushed entries. See
+`strategist/contracts/machine/learning-buffer.yaml#idempotency_key` and
+`strategist/schemas/outcome-entry.schema.yaml#idempotency`.

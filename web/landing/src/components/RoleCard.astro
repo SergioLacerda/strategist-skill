@@ -2,13 +2,14 @@
 export interface Props {
   glyph?: string;
   role: string;
-  klass?: string;
+  klassPt?: string;
+  klassEn?: string;
   gate?: boolean;
   feature?: boolean;
   badgePt?: string;
   badgeEn?: string;
 }
-const { glyph, role, klass, gate = false, feature = false, badgePt, badgeEn } = Astro.props;
+const { glyph, role, klassPt, klassEn, gate = false, feature = false, badgePt, badgeEn } = Astro.props;
 const borderStyle = gate ? 'dashed' : 'solid';
 const borderColor = gate ? 'var(--border-gate)' : 'var(--border-strong)';
 const bg = gate
@@ -33,6 +34,6 @@ const iconGlow = gate ? '0 0 14px rgba(207,122,44,.55)' : '0 0 12px rgba(232,194
       <span data-pt={badgePt} data-en={badgeEn ?? badgePt} style="font-family:var(--font-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-label); border:1px solid var(--border-strong); border-radius:999px; padding:2px 8px; font-weight:500;">{badgePt}</span>
     )}
   </div>
-  {klass && <div style="font-size:var(--fs-caption); letter-spacing:var(--ls-label); text-transform:uppercase; color:var(--text-label); margin:6px 0 10px;">{klass}</div>}
+  {klassPt && <div data-pt={klassPt} data-en={klassEn ?? klassPt} style="font-size:var(--fs-caption); letter-spacing:var(--ls-label); text-transform:uppercase; color:var(--text-label); margin:6px 0 10px;">{klassPt}</div>}
   <p style="margin:0; font-size:13.5px; color:var(--muted); line-height:var(--lh-body);"><slot /></p>
 </div>

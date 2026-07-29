@@ -43,3 +43,19 @@ contract:
   invariant: >
     The mission result is NEVER blocked or modified by learning-curator failure.
     Checkpoint MUST be presented to user before any write occurs.
+
+  idempotency: >
+    The outcome entry's mission_id is the idempotency key shared with
+    learning-buffer (see learning-buffer.yaml#idempotency_key). If a curator
+    retry appends a second outcome for a mission_id already present in
+    outcomes.tmp or outcomes.jsonl, it is skipped rather than duplicated —
+    enforced by the same write path (internal/telemetry.AppendOutcomeLine)
+    used for the buffer flush.
+
+  jewel_outcome_mapping: >
+    When mission_result.jewels_consulted is present (see mission-result.schema.yaml),
+    copy it verbatim into the jewel_ids field of the outcome entry written to
+    outcomes.tmp (see outcome-entry.schema.yaml). Absence of jewels_consulted on
+    mission_result is not an error and must not delay or block the checkpoint/write —
+    the outcome entry is simply written without jewel_ids, consistent with this
+    schema's additive/converging nature.

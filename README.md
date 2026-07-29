@@ -63,7 +63,7 @@ See [`docs/`](docs/) for full documentation including [CLI reference](docs/cli-r
 
 Every release binary is protected by two independent supply chain controls. See [SECURITY.md](SECURITY.md#verifying-release-integrity) for full verification instructions.
 
-**SLSA provenance** (via GitHub Attestation):
+**GitHub build provenance** (via GitHub Attestation — not a formal SLSA level claim):
 
 ```bash
 gh attestation verify strategist-linux-amd64 --owner SergioLacerda
@@ -116,7 +116,9 @@ See [SECURITY.md](SECURITY.md) for the vulnerability disclosure policy.
 
 ## License
 
-CC BY-NC 4.0. Commercial use requires prior authorization.
+MIT. Open source — free to use, modify, and redistribute, with attribution
+per the LICENSE terms. See [LICENSE](LICENSE) for the full text, attribution
+guidance, and professional services terms.
 
 - Repository: <https://github.com/SergioLacerda/strategist-skill>
 - Documentation: <https://sergiolacerda.github.io/strategist-skill/index.html?lang=en>

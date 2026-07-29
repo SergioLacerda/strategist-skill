@@ -31,4 +31,8 @@ F3 is accepted as a known limitation of the single-session architecture. The ski
 
 - The skill explicitly documents that session parallelism is not guaranteed safe for concurrent writes to the same file.
 - Users who need full parallelism should use separate git worktrees.
-- F3 may be revisited if parallel-session use cases become more frequent and the cost of git conflicts becomes unacceptable.
+- **F3 revisit tripwire:** F3 remains accepted while concurrent Sniper collisions are rare. Revisit this decision if telemetry shows either of these conditions over a rolling 30-day window:
+  - two or more distinct Sniper sessions claim or attempt to materialize the same documentation target under the same `base_path`; or
+  - three or more Git conflicts are attributed to files recently materialized by Sniper.
+
+  Until one of these thresholds is observed, the project keeps relying on mission IDs, approval prompts, and Git conflict detection instead of a cross-session lock registry. No telemetry for this signal exists today — instrumenting it is tracked as separate implementation work, not part of this decision record.

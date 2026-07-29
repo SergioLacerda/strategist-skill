@@ -117,7 +117,7 @@ func TestExtractor_Extract(t *testing.T) {
 		assert.NotEmpty(t, data)
 	})
 
-	t.Run("extracted defaults include quick_draw pipeline and prompts", func(t *testing.T) {
+	t.Run("extracted defaults have no legacy idea-capture pipeline entry", func(t *testing.T) {
 		t.Parallel()
 		dir := t.TempDir()
 		require.NoError(t, embedpkg.Extractor{}.Extract(dir, false))
@@ -125,33 +125,48 @@ func TestExtractor_Extract(t *testing.T) {
 		skillYAML, err := os.ReadFile(filepath.Join(dir, "skill.yaml"))
 		require.NoError(t, err)
 		skill := string(skillYAML)
-		assert.Contains(t, skill, "stage: quick_draw_detection")
-		assert.Contains(t, skill, "stage: quick_draw_gate")
-		assert.Contains(t, skill, "write_quick_draw_without_gate")
-		assert.Contains(t, skill, "<base_path>/todo/<tema>.md")
+		assert.NotContains(t, skill, "stage: quick_draw_detection")
+		assert.NotContains(t, skill, "stage: quick_draw_gate")
+		assert.NotContains(t, skill, "write_quick_draw_without_gate")
 
-		// Quick Draw procedure detail lives in contracts/machine/quick-draw.yaml
-		quickDraw, err := os.ReadFile(filepath.Join(dir, "contracts", "machine", "quick-draw.yaml"))
+		// contracts/machine/quick-draw.yaml was renamed to runbook-opportunity.yaml
+		// and trimmed to the runbook_opportunity routine only — the idea-capture
+		// gate/pipeline is gone; the normalize+append machinery Riposte used to
+		// reuse from the old file now lives in riposte.yaml under Riposte's own
+		// names.
+		_, err = os.Stat(filepath.Join(dir, "contracts", "machine", "quick-draw.yaml"))
+		assert.True(t, os.IsNotExist(err), "contracts/machine/quick-draw.yaml should no longer exist")
+
+		runbookOpportunity, err := os.ReadFile(filepath.Join(dir, "contracts", "machine", "runbook-opportunity.yaml"))
 		require.NoError(t, err)
-		qd := string(quickDraw)
-		assert.Contains(t, qd, "quick-draw")
-		assert.Contains(t, qd, "sim: proceed_to_sniper")
+		ro := string(runbookOpportunity)
+		assert.Contains(t, ro, "runbook_opportunity")
+		assert.NotContains(t, ro, "sim: proceed_to_sniper")
+		assert.NotContains(t, ro, "ranger_quick_draw:")
+		assert.NotContains(t, ro, "archivist_quick_draw:")
 
-		// SKILL.md retains the Quick Draw routing reference
+		riposte, err := os.ReadFile(filepath.Join(dir, "contracts", "machine", "riposte.yaml"))
+		require.NoError(t, err)
+		rp := string(riposte)
+		assert.Contains(t, rp, "riposte_normalize")
+		assert.Contains(t, rp, "riposte_capture")
+		assert.NotContains(t, rp, "quick-draw")
+
+		// SKILL.md no longer references the retired idea-capture routing
 		skillMD, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
 		require.NoError(t, err)
 		doc := string(skillMD)
-		assert.Contains(t, doc, "Quick Draw")
+		assert.NotContains(t, doc, "Quick Draw")
 
 		pragmatic, err := os.ReadFile(filepath.Join(dir, "personas", "pragmatic.yaml"))
 		require.NoError(t, err)
-		assert.Contains(t, string(pragmatic), "quick_draw_gate")
-		assert.Contains(t, string(pragmatic), "quick_draw_success")
+		assert.NotContains(t, string(pragmatic), "quick_draw_gate")
+		assert.NotContains(t, string(pragmatic), "quick_draw_success")
 
 		epic, err := os.ReadFile(filepath.Join(dir, "personas", "epic.yaml"))
 		require.NoError(t, err)
-		assert.Contains(t, string(epic), "quick_draw_gate")
-		assert.Contains(t, string(epic), "quick_draw_success")
+		assert.NotContains(t, string(epic), "quick_draw_gate")
+		assert.NotContains(t, string(epic), "quick_draw_success")
 	})
 
 	t.Run("extracted defaults include opportunist attack and chest scope contracts", func(t *testing.T) {
@@ -221,7 +236,7 @@ func TestExtractor_Extract(t *testing.T) {
 		skillMD, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
 		require.NoError(t, err)
 		doc := string(skillMD)
-		assert.Contains(t, doc, "source-only")
+		assert.Contains(t, doc, "single authoring and generation source")
 		assert.Contains(t, doc, "only operational read target")
 		assert.Contains(t, doc, "base_path")
 		assert.Contains(t, doc, "not a hardcoded `.analysis/`")
@@ -247,11 +262,18 @@ func TestExtractor_Extract(t *testing.T) {
 		assert.Contains(t, adr, "en")
 		assert.Contains(t, adr, "active.language.docs")
 
-		// SKILL.md retains the ADR routing reference (now with narrative/ subdir)
+		// SKILL.md itself no longer enumerates contract paths (W4 token-economy fix:
+		// contracts/index.yaml is the sole authoritative loading manifest — SKILL.md
+		// defers to it instead of restating the narrative load order). The ADR routing
+		// reference now lives there.
 		skillMD, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
 		require.NoError(t, err)
 		doc := string(skillMD)
 		assert.Contains(t, doc, "Archivist")
-		assert.Contains(t, doc, "contracts/narrative/07-adr.md")
+		assert.Contains(t, doc, "index.yaml")
+
+		indexYAML, err := os.ReadFile(filepath.Join(dir, "contracts", "index.yaml"))
+		require.NoError(t, err)
+		assert.Contains(t, string(indexYAML), "narrative/07-adr.md")
 	})
 }

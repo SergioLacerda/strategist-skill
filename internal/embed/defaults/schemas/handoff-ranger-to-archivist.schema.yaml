@@ -19,13 +19,17 @@ required_fields:
       - archivist_pending
       - archivist_done
       - gate_pending
-      - gate_approval
+      - gate_analysis_accepted
+      - gate_revision_requested
+      - gate_rejected
       - sniper_running
-      - execution_done
+      - documentation_applied
     description: >
-      Runtime isolation marker set in the analysis file frontmatter.
+      Runtime isolation marker set in the analysis file frontmatter. Canonical vocabulary
+      and phase/successor mapping: contracts/machine/mission-status.yaml (single source
+      of truth — do not restate the set elsewhere).
       Each phase writes its own status on start and completion.
-      gate_approval is the only "unclaimed" state — any Sniper may claim it.
+      gate_analysis_accepted is the only "unclaimed" state — any Sniper may claim it.
       Sniper MUST verify mission_id and mission_status before executing.
   analysis_artifact_path:
     type: string
@@ -92,3 +96,61 @@ required_fields:
     fields:
       mission_open: boolean
       active_phase: string
+  relevant_sources_hint:
+    type: list
+    required: false
+    item_fields: [id, kind, chest_id, ref, reason]
+    item_values:
+      kind: [jewel, potion]
+    description: >
+      Output of the Search ability (contracts/narrative/03-discovery.md § Retrieval
+      Cascade, stage 6): candidate jewels/potions filtered from treasure chests before
+      consult_treasure_chests decides which chests to open in full. Reused by Archivist
+      by default (roles/archivist.yaml#canonical.reuse_search_cache) — re-running
+      Search during refinement requires a declared reason (see
+      contracts/machine/handoff-contract.yaml#refinement_context_policy).
+  sources_consulted:
+    type: list
+    required: false
+    item_fields: [source_path, content_fingerprint, coverage_status]
+    item_values:
+      coverage_status: [full, partial, skimmed]
+    description: >
+      Sources Ranger opened during discovery, with a fingerprint and how thoroughly
+      each was read. Consumed by contracts/machine/handoff-contract.yaml to decide
+      whether Archivist may reopen a source or must treat it as already covered.
+  evidence_cards:
+    type: list
+    required: false
+    item_fields: [id, question, evidence, interpretation, impact, confidence]
+    description: >
+      Structured question -> evidence -> interpretation -> impact -> confidence
+      records, one per Discovery Question answered.
+  constraints:
+    type: list
+    required: false
+    item_fields: [id, text]
+    description: Hard constraints Archivist must respect while refining.
+  risks:
+    type: list
+    required: false
+    item_fields: [id, text, severity]
+    item_values:
+      severity: [low, medium, high]
+    description: Risks identified during discovery that refinement must account for.
+  knowledge:
+    type: object
+    required: false
+    description: >
+      Epistemic stratification for the discovery output. facts[] remains the home for
+      established facts (see known_facts above) — this field only adds inferences[],
+      which are distinct from facts and must not be treated as decisions until
+      promoted.
+    fields:
+      inferences:
+        type: list
+        item_fields: [id, text, confidence, promoted_to_decision]
+        description: >
+          confidence is a float in [0.0, 1.0]. promoted_to_decision is a bool set
+          only by Archivist during refinement, never by Ranger — an inference
+          becomes a decision during refinement, never during discovery.

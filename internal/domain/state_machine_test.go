@@ -10,13 +10,13 @@ import (
 
 func TestFSMNominalRoute(t *testing.T) {
 	t.Parallel()
-	// Init → OpportunityAttack (non-empty) → OpportunityAttack (no opp, empty) → Refinement → ApprovalGate → Execution → DoneDelivery
+	// Init -> SideQuestScan (non-empty) -> SideQuestScan (no side quests) -> Refinement -> ApprovalGate -> Execution -> DoneDelivery
 	events := []domain.TransitionEvent{
-		domain.EventManifestNonEmpty, // Init → OpportunityAttack
-		domain.EventManifestEmpty,    // OpportunityAttack → Refinement (no opportunities)
-		domain.EventArchivistTasks,   // Refinement → ApprovalGate
-		domain.EventGateApproved,     // ApprovalGate → Execution
-		domain.EventSniperDone,       // Execution → DoneDelivery
+		domain.EventManifestNonEmpty, // Init -> SideQuestScan
+		domain.EventManifestEmpty,    // SideQuestScan -> Refinement (no side quests)
+		domain.EventArchivistTasks,   // Refinement -> ApprovalGate
+		domain.EventGateApproved,     // ApprovalGate -> Execution
+		domain.EventSniperDone,       // Execution -> DoneDelivery
 	}
 	state := domain.StateInit
 	for _, ev := range events {
@@ -41,48 +41,40 @@ func TestFSMGateTimeoutTerminatesAnalysis(t *testing.T) {
 	assert.Equal(t, domain.StateDoneAnalysis, state)
 }
 
-func TestOpportunityGateApproved_GoesToExec(t *testing.T) {
+// TestFSMGateRevisionLoop is the D2 regression guard: the documented
+// gate -> archivist revision loop (05-approval-gate.md: "Archivist revisits") must
+// be representable end to end — gate, revision, back to refinement, re-presented at
+// the gate, approved, and on into execution.
+func TestFSMGateRevisionLoop(t *testing.T) {
 	t.Parallel()
-	state := domain.RunStateMachine(domain.StateOpportunityAttack,
-		[]domain.TransitionEvent{domain.EventManifestNonEmpty, domain.EventGateApproved},
-	)
-	assert.Equal(t, domain.StateOpportunityExec, state)
+	state := domain.RunStateMachine(domain.StateApprovalGate, []domain.TransitionEvent{
+		domain.EventGateRevision,   // ApprovalGate -> Refinement
+		domain.EventArchivistTasks, // Refinement -> ApprovalGate (re-presented)
+		domain.EventGateApproved,   // ApprovalGate -> Execution
+	})
+	assert.Equal(t, domain.StateExecution, state)
 }
 
-func TestOpportunityGateDenied_GoesToRefinement(t *testing.T) {
+func TestFSMGateRevisionGoesToRefinement(t *testing.T) {
 	t.Parallel()
-	state := domain.RunStateMachine(domain.StateOpportunityGate,
-		[]domain.TransitionEvent{domain.EventGateDenied},
-	)
+	state := domain.NextState(domain.StateApprovalGate, domain.EventGateRevision)
 	assert.Equal(t, domain.StateRefinement, state)
 }
 
-func TestFSMQuickDrawRoute(t *testing.T) {
+func TestSideQuestGateApproved_GoesToExec(t *testing.T) {
 	t.Parallel()
-
-	// Intent detected → QuickDraw state
-	s := domain.NextState(domain.StateInit, domain.EventQuickDrawIntent)
-	assert.Equal(t, domain.StateQuickDraw, s)
-
-	// Normalize note → gate
-	s = domain.NextState(s, domain.EventManifestNonEmpty)
-	assert.Equal(t, domain.StateQuickDrawGate, s)
-
-	// User approves → done
-	s = domain.NextState(s, domain.EventQuickDrawApprove)
-	assert.Equal(t, domain.StateQuickDrawDone, s)
-
-	// Done is absorbing
-	s = domain.NextState(s, domain.EventManifestNonEmpty)
-	assert.Equal(t, domain.StateQuickDrawDone, s)
+	state := domain.RunStateMachine(domain.StateSideQuestScan,
+		[]domain.TransitionEvent{domain.EventManifestNonEmpty, domain.EventGateApproved},
+	)
+	assert.Equal(t, domain.StateSideQuestExec, state)
 }
 
-func TestFSMQuickDrawDecline(t *testing.T) {
+func TestSideQuestGateDenied_GoesToRefinement(t *testing.T) {
 	t.Parallel()
-	s := domain.RunStateMachine(domain.StateQuickDrawGate,
-		[]domain.TransitionEvent{domain.EventQuickDrawDecline},
+	state := domain.RunStateMachine(domain.StateSideQuestGate,
+		[]domain.TransitionEvent{domain.EventGateDenied},
 	)
-	assert.Equal(t, domain.StateQuickDrawDone, s)
+	assert.Equal(t, domain.StateRefinement, state)
 }
 
 func TestFSMADRRoute(t *testing.T) {
@@ -115,8 +107,8 @@ func TestFSMRetryTransient(t *testing.T) {
 	s := domain.NextState(domain.StateRefinement, domain.EventSlotTransient)
 	assert.Equal(t, domain.StateRetryingRefinement, s)
 
-	// Retry succeeds (manifest non-empty = slot returned artifact)
-	s = domain.NextState(s, domain.EventManifestNonEmpty)
+	// Retry succeeds (S9: EventRetryOK, not the overloaded EventManifestNonEmpty)
+	s = domain.NextState(s, domain.EventRetryOK)
 	assert.Equal(t, domain.StateRefinement, s)
 }
 
@@ -126,7 +118,7 @@ func TestFSMRetryTransientExecutionPreservesOrigin(t *testing.T) {
 	s := domain.NextState(domain.StateExecution, domain.EventSlotTransient)
 	assert.Equal(t, domain.StateRetryingExecution, s)
 
-	s = domain.NextState(s, domain.EventManifestNonEmpty)
+	s = domain.NextState(s, domain.EventRetryOK)
 	assert.Equal(t, domain.StateExecution, s)
 }
 
@@ -136,15 +128,30 @@ func TestFSMRetryTransientDirectExecPreservesOrigin(t *testing.T) {
 	s := domain.NextState(domain.StateDirectExec, domain.EventSlotTransient)
 	assert.Equal(t, domain.StateRetryingDirectExec, s)
 
-	s = domain.NextState(s, domain.EventManifestNonEmpty)
+	s = domain.NextState(s, domain.EventRetryOK)
 	assert.Equal(t, domain.StateDirectExec, s)
+}
+
+// TestFSMRetryEventsDoNotOverlapWithManifestEvents is the S9 regression guard:
+// EventManifestEmpty/EventManifestNonEmpty must mean "manifest scan result" only
+// (Init, SideQuestScan) — retry success is EventRetryOK exclusively, so
+// the three retry states must not react to manifest events at all.
+func TestFSMRetryEventsDoNotOverlapWithManifestEvents(t *testing.T) {
+	t.Parallel()
+	for _, state := range []domain.MissionState{
+		domain.StateRetryingRefinement, domain.StateRetryingExecution, domain.StateRetryingDirectExec,
+	} {
+		for _, ev := range []domain.TransitionEvent{domain.EventManifestEmpty, domain.EventManifestNonEmpty} {
+			got := domain.NextState(state, ev)
+			assert.Equal(t, state, got, "manifest event %s must not resolve retry state %s", ev, state)
+		}
+	}
 }
 
 func TestFSMRetryExhausted(t *testing.T) {
 	t.Parallel()
 
 	for _, state := range []domain.MissionState{
-		domain.StateRetrying,
 		domain.StateRetryingRefinement,
 		domain.StateRetryingExecution,
 		domain.StateRetryingDirectExec,
@@ -157,12 +164,12 @@ func TestFSMRetryExhausted(t *testing.T) {
 	}
 }
 
-func TestFSMSniperOARoute(t *testing.T) {
+func TestFSMExecutionSideQuestRoute(t *testing.T) {
 	t.Parallel()
 
-	// Mid-execution OA surfaces → pause at opportunity gate
-	s := domain.NextState(domain.StateExecution, domain.EventSniperOA)
-	assert.Equal(t, domain.StateOpportunityGate, s)
+	// Mid-execution side quest surfaces -> pause at the side quest gate.
+	s := domain.NextState(domain.StateExecution, domain.EventSniperSideQuest)
+	assert.Equal(t, domain.StateSideQuestGate, s)
 }
 
 func TestFSMSafetyPropertyLike(t *testing.T) {
@@ -234,18 +241,15 @@ func TestFSMStayBranches(t *testing.T) {
 		event domain.TransitionEvent
 	}{
 		{"init unrelated event", domain.StateInit, domain.EventGateApproved},
-		{"opportunity attack unrelated event", domain.StateOpportunityAttack, domain.EventGateApproved},
-		{"opportunity gate unrelated event", domain.StateOpportunityGate, domain.EventManifestEmpty},
-		{"opportunity exec unrelated event", domain.StateOpportunityExec, domain.EventGateApproved},
+		{"side quest scan unrelated event", domain.StateSideQuestScan, domain.EventGateApproved},
+		{"side quest gate unrelated event", domain.StateSideQuestGate, domain.EventManifestEmpty},
+		{"side quest exec unrelated event", domain.StateSideQuestExec, domain.EventGateApproved},
 		{"refinement unrelated event", domain.StateRefinement, domain.EventGateApproved},
 		{"approval gate unrelated event", domain.StateApprovalGate, domain.EventManifestEmpty},
 		{"execution unrelated event", domain.StateExecution, domain.EventGateApproved},
-		{"retrying unrelated event", domain.StateRetrying, domain.EventManifestEmpty},
 		{"retrying refinement unrelated event", domain.StateRetryingRefinement, domain.EventManifestEmpty},
 		{"retrying execution unrelated event", domain.StateRetryingExecution, domain.EventManifestEmpty},
 		{"retrying direct exec unrelated event", domain.StateRetryingDirectExec, domain.EventManifestEmpty},
-		{"quick draw unrelated event", domain.StateQuickDraw, domain.EventGateApproved},
-		{"quick draw gate unrelated event", domain.StateQuickDrawGate, domain.EventManifestEmpty},
 		{"adr gate1 unrelated event", domain.StateADRGate1, domain.EventGateApproved},
 		{"adr gate2 unrelated event", domain.StateADRGate2, domain.EventGateApproved},
 		{"direct gate unrelated event", domain.StateDirectGate, domain.EventGateApproved},
@@ -264,9 +268,98 @@ func TestFSMStayBranches(t *testing.T) {
 func TestFSMAbsorbingStates(t *testing.T) {
 	t.Parallel()
 	for _, s := range []domain.MissionState{
-		domain.StateQuickDrawDone, domain.StateADRDone, domain.StateBlocked, domain.StateDirectDone,
+		domain.StateADRDone, domain.StateBlocked, domain.StateDirectDone,
 	} {
 		got := domain.NextState(s, domain.EventGateApproved)
 		assert.Equal(t, s, got)
 	}
+}
+
+// allMissionStates and allTransitionEvents enumerate every FSM state/event so
+// invariant tests below can brute-force the whole transition table instead of
+// hand-picking cases that might miss a future addition.
+var allMissionStates = []domain.MissionState{
+	domain.StateInit, domain.StateSideQuestScan, domain.StateSideQuestGate, domain.StateSideQuestExec,
+	domain.StateRefinement, domain.StateApprovalGate, domain.StateExecution,
+	domain.StateDoneAnalysis, domain.StateDoneDelivery, domain.StateBlocked,
+	domain.StateADRGate1, domain.StateADRGate2, domain.StateADRDone,
+	domain.StateRetryingRefinement, domain.StateRetryingExecution, domain.StateRetryingDirectExec,
+	domain.StateDirectGate, domain.StateDirectExec, domain.StateDirectDone,
+}
+
+var allTransitionEvents = []domain.TransitionEvent{
+	domain.EventManifestEmpty, domain.EventManifestNonEmpty,
+	domain.EventGateApproved, domain.EventGateDenied, domain.EventGateTimeout, domain.EventGateRevision,
+	domain.EventSniperDone, domain.EventArchivistNoTasks, domain.EventArchivistTasks,
+	domain.EventADRCriterionMet, domain.EventADRApproved, domain.EventADRDeclined,
+	domain.EventSlotTransient, domain.EventSlotPermanent, domain.EventRetryOK,
+	domain.EventSniperSideQuest,
+	domain.EventDirectHitIntent, domain.EventDirectGateApproved, domain.EventDirectGateDeclined,
+}
+
+// TestSideQuestGateCannotBeBypassed is the D12/side_quest_gate_bypass regression
+// guard: it brute-forces every (state, event) pair in the transition table and
+// asserts StateSideQuestExec is reachable from exactly one edge —
+// (StateSideQuestGate, EventGateApproved). A manifest item must never reach
+// execution without first passing through the side-quest gate.
+func TestSideQuestGateCannotBeBypassed(t *testing.T) {
+	t.Parallel()
+	for _, s := range allMissionStates {
+		if s == domain.StateSideQuestExec {
+			continue // self-loops (unhandled events) are not a new arrival, not a bypass
+		}
+		for _, ev := range allTransitionEvents {
+			assertNoUnexpectedEdgeIntoSideQuestExec(t, s, ev)
+		}
+	}
+}
+
+func assertNoUnexpectedEdgeIntoSideQuestExec(t *testing.T, s domain.MissionState, ev domain.TransitionEvent) {
+	t.Helper()
+	if domain.NextState(s, ev) != domain.StateSideQuestExec {
+		return
+	}
+	isTheOneAllowedEdge := s == domain.StateSideQuestGate && ev == domain.EventGateApproved
+	assert.True(t, isTheOneAllowedEdge,
+		"unexpected edge into StateSideQuestExec: (%s, %s) — only (SIDE_QUEST_GATE, gate_approved) may reach it", s, ev)
+}
+
+// TestSideQuestGateBypassFuzz is the random-walk counterpart to
+// TestFSMSafetyPropertyLike, scoped to the side-quest gate rather than the main
+// Approval Gate: across many random event sequences, StateSideQuestExec is never
+// reached unless EventGateApproved was seen after the most recent side-quest
+// manifest scan.
+func TestSideQuestGateBypassFuzz(t *testing.T) {
+	t.Parallel()
+	rng := rand.New(rand.NewSource(97))
+	for i := 0; i < 400; i++ {
+		assertRandomSideQuestGateNotBypassed(t, rng)
+	}
+}
+
+func assertRandomSideQuestGateNotBypassed(t *testing.T, rng *rand.Rand) {
+	t.Helper()
+	state := domain.StateInit
+	seenGateApproved := false
+	for j := 0; j < 14; j++ {
+		ev := allTransitionEvents[rng.Intn(len(allTransitionEvents))]
+		seenGateApproved = nextSeenGateApproved(state, ev, seenGateApproved)
+		state = domain.NextState(state, ev)
+		if state == domain.StateSideQuestExec {
+			assert.True(t, seenGateApproved, "reached StateSideQuestExec without EventGateApproved at StateSideQuestGate")
+		}
+	}
+}
+
+// nextSeenGateApproved tracks whether EventGateApproved was seen at the side-quest
+// gate since the most recent side-quest manifest scan; a new scan resets it because
+// entering the scan again means the *upcoming* gate has not yet been cleared.
+func nextSeenGateApproved(state domain.MissionState, ev domain.TransitionEvent, seenGateApproved bool) bool {
+	if state == domain.StateSideQuestGate && ev == domain.EventGateApproved {
+		return true
+	}
+	if state == domain.StateSideQuestScan {
+		return false
+	}
+	return seenGateApproved
 }

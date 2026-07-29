@@ -5,13 +5,11 @@ import (
 	"strings"
 )
 
-var validSourceGrades = map[string]bool{"A": true, "B": true, "C": true}
+var validSourceGrades = stringSet("A", "B", "C")
 
-var validReuseValues = map[string]bool{"high": true, "medium": true, "low": true}
+var validReuseValues = stringSet("high", "medium", "low")
 
-var validImplementationStatuses = map[string]bool{
-	"not_started": true, "in_progress": true, "implemented": true, "deprecated": true,
-}
+var validImplementationStatuses = stringSet("not_started", "in_progress", "implemented", "deprecated")
 
 // ChestGrade holds SQ-002 (Track T-G) source grading fields for a treasure chest.
 // All fields are optional and human-reviewed only — no derived or learned values.
@@ -25,13 +23,13 @@ type ChestGrade struct {
 // values. Empty fields are valid — grading is optional.
 func ValidateChestGrade(chestID string, g ChestGrade) error {
 	var errs []string
-	if g.SourceGrade != "" && !validSourceGrades[g.SourceGrade] {
+	if g.SourceGrade != "" && !hasString(validSourceGrades, g.SourceGrade) {
 		errs = append(errs, fmt.Sprintf("source_grade %q must be one of A, B, C", g.SourceGrade))
 	}
-	if g.ReuseValue != "" && !validReuseValues[g.ReuseValue] {
+	if g.ReuseValue != "" && !hasString(validReuseValues, g.ReuseValue) {
 		errs = append(errs, fmt.Sprintf("reuse_value %q must be one of high, medium, low", g.ReuseValue))
 	}
-	if g.ImplementationStatus != "" && !validImplementationStatuses[g.ImplementationStatus] {
+	if g.ImplementationStatus != "" && !hasString(validImplementationStatuses, g.ImplementationStatus) {
 		errs = append(errs, fmt.Sprintf(
 			"implementation_status %q must be one of not_started, in_progress, implemented, deprecated",
 			g.ImplementationStatus))

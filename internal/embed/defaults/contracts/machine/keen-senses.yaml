@@ -1,0 +1,49 @@
+schema_version: "1"
+module: keen-senses
+type: radar_routine
+description: >
+  Keen Senses (W10/P3, deep analysis 2026-07-26) — extends the bootstrap staleness
+  radar beyond the git-scope stale scan (01-bootstrap.md). Surfaces three additional
+  staleness classes as compact informational output. Same doctrine as Stale Card
+  Detection: a radar only surfaces candidates — it never acts on them.
+
+routing_note: >
+  Not a route and not a phase. Runs inside bootstrap, after the mandatory git-scope
+  stale scan, reusing the same machinery (internal/stale for freshness comparisons).
+  Output rides the existing bootstrap diagnostics and, when relevant, one gate
+  footnote line.
+
+contract:
+  owner: internal (orchestrator)
+  runs_at: bootstrap, after the git-scope stale scan
+  write_scope: read-only
+
+  radar_classes:
+    - id: stale_captured_entries
+      source: "<base_path> todo files"
+      condition: entries with status capturada older than thresholds.captured_days
+      surface: count + oldest entry id
+    - id: stale_jewels
+      source: ".strategist/jewels/ (accepted/verified jewels)"
+      condition: last_reviewed older than thresholds.jewel_review_days (unset last_reviewed is never flagged)
+      surface: count + jewel ids
+    - id: stale_chests
+      source: ".strategist/treasure-chests.yaml + chest index metadata"
+      condition: chest source path changed since last treasure-chest index run
+      surface: chest ids
+
+  thresholds:
+    captured_days: 30          # advisory defaults; overridable in active.yaml when supported
+    jewel_review_days: 90
+
+  emit:
+    on_findings: "[Strategist] phase=bootstrap keen_senses=surfaced captured={n} jewels={n} chests={n}"
+    on_clear: "[Strategist] phase=bootstrap keen_senses=clear"
+    emit_level: TRACE
+    gate_footnote: "👂 Keen Senses: {summary}"   # appended to the next gate display when findings exist
+
+  invariants:
+    - surfaces candidates only — never archives entries, never deprecates jewels, never re-indexes chests on its own
+    - staleness raises visibility, not action; any follow-up (Riposte capture, Critical Hit move, mine re-run) still passes its own gate
+    - a radar failure is non-blocking — log reason and continue bootstrap
+    - freshness comparisons reuse internal/stale; no parallel staleness implementation

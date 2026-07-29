@@ -73,10 +73,10 @@ func TestFindJewel(t *testing.T) {
 	assert.False(t, ok)
 }
 
-func TestParseJewelIDs(t *testing.T) {
+func TestParseItemIDs(t *testing.T) {
 	t.Parallel()
 
-	got := ParseJewelIDs(" jewel-1, jewel-2 ", "jewel-2", ",", "jewel-3")
+	got := ParseItemIDs(" jewel-1, jewel-2 ", "jewel-2", ",", "jewel-3")
 
 	assert.Equal(t, []string{"jewel-1", "jewel-2", "jewel-3"}, got)
 }

@@ -1,15 +1,10 @@
 package treasure
 
 import (
-	"compress/gzip"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
-	"strings"
 
-	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"gopkg.in/yaml.v3"
 )
 
@@ -149,6 +144,30 @@ type Manifest struct {
 	Jewels        []Jewel `yaml:"jewels"`
 }
 
+// Potion is a compact runbook-index entry, a child of the "runbooks" treasure chest.
+// Sibling of Jewel: a jewel is a fact extracted from a mission, a potion is an index
+// entry for one whole runbook file under docs/runbooks/. Schema owned by
+// internal/embed/defaults/potions.yaml (see the header comment there) — this type
+// consumes that schema, it does not redecide it.
+type Potion struct {
+	ID           string   `yaml:"id"`
+	ChestID      string   `yaml:"chest_id"`
+	RunbookRef   string   `yaml:"runbook_ref"`
+	WhenToUse    string   `yaml:"when_to_use"`
+	WhenToAvoid  string   `yaml:"when_to_avoid,omitempty"`
+	Trust        string   `yaml:"trust"`
+	Status       string   `yaml:"status"`
+	SourceRefs   []string `yaml:"source_refs"`
+	ReviewedBy   string   `yaml:"reviewed_by"`
+	LastReviewed string   `yaml:"last_reviewed,omitempty"`
+}
+
+// PotionManifest is the top-level potions.yaml document.
+type PotionManifest struct {
+	SchemaVersion string   `yaml:"schema_version"`
+	Potions       []Potion `yaml:"potions"`
+}
+
 // LoadActiveChests reads active.yaml treasure_chests entries.
 func LoadActiveChests(root string) ([]ActiveChest, error) {
 	raw, err := os.ReadFile(filepath.Join(root, "active.yaml")) //nolint:gosec // G304
@@ -160,106 +179,6 @@ func LoadActiveChests(root string) ([]ActiveChest, error) {
 		return nil, fmt.Errorf("parse active.yaml: %w", err)
 	}
 	return cfg.TreasureChests, nil
-}
-
-// LoadGoverned reads treasure-chests.yaml and returns governed chests by id.
-func LoadGoverned(root string) (map[string]GovernedChest, error) {
-	raw, err := os.ReadFile(filepath.Join(root, "treasure-chests.yaml")) //nolint:gosec // G304
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("read treasure-chests.yaml: %w", err)
-	}
-	var m governedManifest
-	if err := yaml.Unmarshal(raw, &m); err != nil {
-		return nil, fmt.Errorf("parse treasure-chests.yaml: %w", err)
-	}
-	out := make(map[string]GovernedChest, len(m.Chests))
-	for _, c := range m.Chests {
-		if err := domain.ValidateChestGrade(c.ID, domain.ChestGrade{
-			SourceGrade:          c.Grade.SourceGrade,
-			ReuseValue:           c.Grade.ReuseValue,
-			ImplementationStatus: c.Grade.ImplementationStatus,
-		}); err != nil {
-			return nil, fmt.Errorf("treasure-chests.yaml: %w", err)
-		}
-		out[c.ID] = c
-	}
-	return out, nil
-}
-
-// DefaultScoringPolicy returns the legacy hardcoded score formula as configuration.
-func DefaultScoringPolicy() ScoringPolicy {
-	return ScoringPolicy{
-		ClusterBase:          40,
-		ClusterMissionWeight: 10,
-		ClusterTagWeight:     5,
-		GapBase:              30,
-		GapMissionWeight:     15,
-		MaxScore:             100,
-	}
-}
-
-// LoadScoringPolicy reads optional scoring_policy from treasure-chests.yaml.
-func LoadScoringPolicy(root string) (ScoringPolicy, error) {
-	raw, err := os.ReadFile(filepath.Join(root, "treasure-chests.yaml")) //nolint:gosec // G304
-	if err != nil {
-		if os.IsNotExist(err) {
-			return DefaultScoringPolicy(), nil
-		}
-		return ScoringPolicy{}, fmt.Errorf("read treasure-chests.yaml: %w", err)
-	}
-	var m governedManifest
-	if err := yaml.Unmarshal(raw, &m); err != nil {
-		return ScoringPolicy{}, fmt.Errorf("parse treasure-chests.yaml: %w", err)
-	}
-	policy := DefaultScoringPolicy()
-	applyScoringPolicyOverrides(&policy, m.ScoringPolicy)
-	if err := ValidateScoringPolicy(policy); err != nil {
-		return ScoringPolicy{}, fmt.Errorf("treasure-chests.yaml: scoring_policy: %w", err)
-	}
-	return policy, nil
-}
-
-func applyScoringPolicyOverrides(policy *ScoringPolicy, raw rawScoringPolicy) {
-	if raw.ClusterBase != nil {
-		policy.ClusterBase = *raw.ClusterBase
-	}
-	if raw.ClusterMissionWeight != nil {
-		policy.ClusterMissionWeight = *raw.ClusterMissionWeight
-	}
-	if raw.ClusterTagWeight != nil {
-		policy.ClusterTagWeight = *raw.ClusterTagWeight
-	}
-	if raw.GapBase != nil {
-		policy.GapBase = *raw.GapBase
-	}
-	if raw.GapMissionWeight != nil {
-		policy.GapMissionWeight = *raw.GapMissionWeight
-	}
-	if raw.MaxScore != nil {
-		policy.MaxScore = *raw.MaxScore
-	}
-}
-
-// ValidateScoringPolicy rejects negative weights and invalid score caps.
-func ValidateScoringPolicy(policy ScoringPolicy) error {
-	if policy.MaxScore < 1 || policy.MaxScore > 100 {
-		return fmt.Errorf("max_score must be between 1 and 100")
-	}
-	for name, value := range map[string]int{
-		"cluster_base":           policy.ClusterBase,
-		"cluster_mission_weight": policy.ClusterMissionWeight,
-		"cluster_tag_weight":     policy.ClusterTagWeight,
-		"gap_base":               policy.GapBase,
-		"gap_mission_weight":     policy.GapMissionWeight,
-	} {
-		if value < 0 {
-			return fmt.Errorf("%s must be >= 0", name)
-		}
-	}
-	return nil
 }
 
 // LoadIndexed reads knowledge.index.yaml and returns indexed source ids.
@@ -280,238 +199,4 @@ func LoadIndexed(root string) (map[string]bool, error) {
 		out[s.ID] = true
 	}
 	return out, nil
-}
-
-// LoadCompiledIndex reads the compiled fast-path index and returns source ids and timestamp.
-func LoadCompiledIndex(root string) (present map[string]bool, compiledAt int64, err error) {
-	path := filepath.Join(root, ".compiled", ".index.gz")
-	idx, ok, err := readCompiledIndex(path)
-	if err != nil || !ok {
-		return nil, 0, err
-	}
-	return compiledSourcePresence(idx.SourceMeta), idx.CompiledAt, nil
-}
-
-type compiledIndexYAML struct {
-	CompiledAt int64          `json:"compiled_at"`
-	SourceMeta map[string]any `json:"source_meta"`
-}
-
-func readCompiledIndex(path string) (compiledIndexYAML, bool, error) {
-	f, err := os.Open(path) //nolint:gosec // G304
-	if os.IsNotExist(err) {
-		return compiledIndexYAML{}, false, nil
-	}
-	if err != nil {
-		return compiledIndexYAML{}, false, fmt.Errorf("open .compiled/.index.gz: %w", err)
-	}
-	defer closeCompiledFile(f, &err)
-
-	gz, err := gzip.NewReader(f)
-	if err != nil {
-		return compiledIndexYAML{}, false, fmt.Errorf("decompress .compiled/.index.gz: %w", err)
-	}
-	defer closeCompiledGzip(gz, &err)
-
-	var idx compiledIndexYAML
-	if err := json.NewDecoder(gz).Decode(&idx); err != nil {
-		return compiledIndexYAML{}, false, fmt.Errorf("decode .compiled/.index.gz: %w", err)
-	}
-	return idx, true, nil
-}
-
-func closeCompiledFile(f *os.File, err *error) {
-	if closeErr := f.Close(); closeErr != nil && *err == nil {
-		*err = fmt.Errorf("close .compiled/.index.gz: %w", closeErr)
-	}
-}
-
-func closeCompiledGzip(gz *gzip.Reader, err *error) {
-	if closeErr := gz.Close(); closeErr != nil && *err == nil {
-		*err = fmt.Errorf("close decompressed .compiled/.index.gz: %w", closeErr)
-	}
-}
-
-func compiledSourcePresence(sourceMeta map[string]any) map[string]bool {
-	present := make(map[string]bool, len(sourceMeta))
-	for id := range sourceMeta {
-		present[id] = true
-	}
-	return present
-}
-
-// LoadJewels reads monolithic jewels.yaml plus optional jewels/*.yaml partitions,
-// validates each jewel, and groups entries by chest id. Duplicate jewel ids are loaded
-// from the first file encountered so mixed-layout workspaces do not double-count jewels.
-func LoadJewels(root string, governed map[string]GovernedChest) (map[string][]Jewel, error) {
-	paths, err := JewelManifestPaths(root)
-	if err != nil {
-		return nil, err
-	}
-	if len(paths) == 0 {
-		return nil, nil
-	}
-	out := make(map[string][]Jewel)
-	seen := make(map[string]bool)
-	for _, path := range paths {
-		if err := loadJewelsFromManifest(path, root, governed, out, seen); err != nil {
-			return nil, err
-		}
-	}
-	return out, nil
-}
-
-func loadJewelsFromManifest(path, root string, governed map[string]GovernedChest, out map[string][]Jewel, seen map[string]bool) error {
-	m, err := readJewelManifest(path, root)
-	if err != nil {
-		return err
-	}
-	for _, j := range m.Jewels {
-		if err := addJewelFromManifest(j, governed, out, seen); err != nil {
-			return fmt.Errorf("%s: %w", jewelManifestLabel(root, path), err)
-		}
-	}
-	return nil
-}
-
-func readJewelManifest(path, root string) (Manifest, error) {
-	raw, err := os.ReadFile(path) //nolint:gosec // G304
-	if err != nil {
-		return Manifest{}, fmt.Errorf("read %s: %w", jewelManifestLabel(root, path), err)
-	}
-	var m Manifest
-	if err := yaml.Unmarshal(raw, &m); err != nil {
-		return Manifest{}, fmt.Errorf("parse %s: %w", jewelManifestLabel(root, path), err)
-	}
-	if m.SchemaVersion != "1" {
-		return Manifest{}, fmt.Errorf("%s: unsupported schema_version %q (expected \"1\")", jewelManifestLabel(root, path), m.SchemaVersion)
-	}
-	return m, nil
-}
-
-func addJewelFromManifest(j Jewel, governed map[string]GovernedChest, out map[string][]Jewel, seen map[string]bool) error {
-	if seen[j.ID] {
-		return nil
-	}
-	if err := ValidateJewelEntry(j, governed); err != nil {
-		return err
-	}
-	out[j.ChestID] = append(out[j.ChestID], j)
-	seen[j.ID] = true
-	return nil
-}
-
-// JewelManifestPaths returns monolithic and partitioned jewel manifests in stable read order.
-func JewelManifestPaths(root string) ([]string, error) {
-	paths, err := monolithicJewelManifestPaths(root)
-	if err != nil {
-		return nil, err
-	}
-	partitionPaths, err := partitionedJewelManifestPaths(root)
-	if err != nil {
-		return nil, err
-	}
-	return append(paths, partitionPaths...), nil
-}
-
-func monolithicJewelManifestPaths(root string) ([]string, error) {
-	path := filepath.Join(root, "jewels.yaml")
-	if _, err := os.Stat(path); err == nil {
-		return []string{path}, nil
-	} else if !os.IsNotExist(err) {
-		return nil, fmt.Errorf("stat jewels.yaml: %w", err)
-	}
-	return nil, nil
-}
-
-func partitionedJewelManifestPaths(root string) ([]string, error) {
-	entries, err := os.ReadDir(filepath.Join(root, "jewels"))
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("read jewels/: %w", err)
-	}
-	var partitionPaths []string
-	for _, entry := range entries {
-		if isJewelPartitionFile(entry) {
-			partitionPaths = append(partitionPaths, filepath.Join(root, "jewels", entry.Name()))
-		}
-	}
-	sort.Strings(partitionPaths)
-	return partitionPaths, nil
-}
-
-func isJewelPartitionFile(entry os.DirEntry) bool {
-	name := entry.Name()
-	return !entry.IsDir() && (strings.HasSuffix(name, ".yaml") || strings.HasSuffix(name, ".yml"))
-}
-
-func jewelManifestLabel(root, path string) string {
-	rel, err := filepath.Rel(root, path)
-	if err != nil {
-		return path
-	}
-	return rel
-}
-
-// ValidateJewelEntry validates a single jewel against schema and parent trust rules.
-func ValidateJewelEntry(j Jewel, governed map[string]GovernedChest) error {
-	for _, validate := range jewelValidators(j, governed) {
-		if err := validate(); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func jewelValidators(j Jewel, governed map[string]GovernedChest) []func() error {
-	return []func() error{
-		func() error { return validateJewelChest(j) },
-		func() error { return validateJewelSourceRefs(j) },
-		func() error { return wrapJewelValidation("status", domain.ValidateJewelStatus(j.ID, j.Status)) },
-		func() error { return wrapJewelValidation("kind", domain.ValidateJewelKind(j.ID, j.Kind)) },
-		func() error { return wrapJewelValidation("score", domain.ValidateJewelScore(j.ID, j.Score.Value)) },
-		func() error { return validateJewelTrust(j, governed) },
-	}
-}
-
-func validateJewelChest(j Jewel) error {
-	if j.ChestID == "" {
-		return fmt.Errorf("jewel %q missing chest_id", j.ID)
-	}
-	return nil
-}
-
-func validateJewelSourceRefs(j Jewel) error {
-	if len(j.SourceRefs) == 0 {
-		return fmt.Errorf("jewel %q missing source_refs", j.ID)
-	}
-	return nil
-}
-
-func validateJewelTrust(j Jewel, governed map[string]GovernedChest) error {
-	gc, ok := governed[j.ChestID]
-	if !ok {
-		return nil
-	}
-	return wrapJewelValidation("trust", domain.ValidateJewelTrust(j.ID, j.Trust, gc.Trust.Tier))
-}
-
-func wrapJewelValidation(label string, err error) error {
-	if err != nil {
-		return fmt.Errorf("%s: %w", label, err)
-	}
-	return nil
-}
-
-// NonDeprecatedJewelCount counts jewels that are still active in the curation lifecycle.
-func NonDeprecatedJewelCount(jewels []Jewel) int {
-	n := 0
-	for _, j := range jewels {
-		if j.Status != domain.JewelStatusDeprecated {
-			n++
-		}
-	}
-	return n
 }

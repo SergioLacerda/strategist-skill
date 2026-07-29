@@ -2,3 +2,5 @@ mode: full
 base_path: .analysis
 slots:
   discovery: brainstorming
+  refinement: openspec-explore
+  execution: sdd-ask

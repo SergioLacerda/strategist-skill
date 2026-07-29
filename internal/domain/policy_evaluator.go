@@ -6,13 +6,13 @@ package domain
 // - Documentation materialization is always permitted after review gate acceptance.
 func EvaluateGuardedTransition(transitionGroup string, gateApproved bool) TransitionDecision {
 	if !gateApproved {
-		return TransitionDecision{Allowed: false, Reason: "approval_required", Status: "approval_required"}
+		return TransitionDecision{Allowed: false, Reason: PolicyReasonApprovalRequired, Status: PolicyStatusApprovalRequired}
 	}
 
 	switch transitionGroup {
 	case TransitionGroupDocumentation, TransitionGroupReviewGate, TransitionGroupFinalizeAnalysis:
-		return TransitionDecision{Allowed: true, Reason: "allowed", Status: "allowed"}
+		return TransitionDecision{Allowed: true, Reason: PolicyReasonAllowed, Status: PolicyStatusAllowed}
 	default:
-		return TransitionDecision{Allowed: false, Reason: "unknown_transition_group", Status: "policy_blocked"}
+		return TransitionDecision{Allowed: false, Reason: PolicyReasonUnknownTransitionGroup, Status: PolicyStatusBlocked}
 	}
 }

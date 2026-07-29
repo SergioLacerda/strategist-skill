@@ -1,9 +1,13 @@
 module: opportunity-attack
 type: archivist_routine
 description: >
-  ADR evaluation routine that runs INSIDE the Archivist, after all four refined
-  artifacts are written. Evaluates whether the refined work warrants an ADR.
+  Opportunity-scan routine that runs INSIDE the Archivist, after all four refined
+  artifacts are written. Evaluates whether the refined work warrants an ADR, a
+  Runbook, and/or a Treasure Chest registration — three independent outputs, each
+  offered as its own side quest at the approval gate.
   Not a standalone phase — it is a post-refinement subsection before the completion signal.
+  Opportunity Attack never closes, archives, or moves pending/refined analysis cards.
+  Card closure is owned by Critical Hit.
 
 routing_note: >
   Opportunity Attack does not choose between short and full route.
@@ -16,42 +20,154 @@ contract:
   runs_before: completion_signal
 
   activation_criteria:
+    # --- ADR criteria (on_criteria_met below) ---
     new_pattern: new interface, contract, schema, or abstraction introduced
     breaking_change: field removed, signature changed, behavior changed
     documented_tradeoff: tasks.md/design.md describe a choice with discarded alternatives
     new_external_dependency: library, service, or protocol added
+    # --- Runbook criterion (on_runbook_criteria_met below) ---
+    runbook_worthy:
+      # D3 (strategist-ability-taxonomy-reorg): inherits the signal semantics of
+      # contracts/machine/runbook-opportunity.yaml#runbook_opportunity, evaluated
+      # here instead (post-refinement, inside Archivist). Same signal quality,
+      # new timing.
+      repeated_failure_with_recovery: refined work records a repeated operational failure and a known recovery sequence
+      runtime_governance_diagnostic: refined work explains how an agent should diagnose or unblock a known runtime/provider/governance state
+      executable_decision_procedure: refined work captures a decision procedure a future agent can execute without broad discovery
+      source_runtime_lookup_rule: refined work identifies a source/runtime lookup pattern that prevents stale or non-canonical behavior
+      verified_procedure_worth_preserving: refined work preserves verified commands, symptoms, expected outputs, and stop conditions
+      non_signals:
+        - generic idea with no procedure
+        - one-off implementation task
+        - broad feature request needing normal discovery/refinement
+        - a claim whose correctness has not been validated
+        - architecture trade-off note — belongs to the ADR criteria above, not here
+    # --- Treasure Chest criterion (on_chest_criteria_met below) ---
+    chest_worthy:
+      # D4 (strategist-ability-taxonomy-reorg): conservative, no direct precedent —
+      # only suggests, never auto-promotes (status: proposed candidate, same doctrine
+      # as "no pre-approval gate" but always human-reviewable).
+      full_coverage_source_not_in_chest: >
+        a source in the Ranger artifact's sources_consulted[] has coverage_status: full,
+        is not yet registered in treasure-chests.yaml/knowledge.index.yaml, and has
+        sufficient evidence of future reuse (same spirit as
+        treasure-chests.yaml#stop_conditions.discovered_conflicts_trusted, but as a
+        suggestion, not a block)
 
   on_criteria_met:
     action: add_adr_side_quest_to_opportunity_manifest
     side_quest_id_format: "OA-ADR-{mission_id}"
+    # W10/P6 (deep analysis 2026-07-26): the same criteria hits are decision-shaped
+    # knowledge — harvest them as jewel candidates for the mine queue.
+    secondary_action:
+      id: jewel_candidate
+      emit_jewel:
+        kind: decision | pattern       # decision for documented_tradeoff/breaking_change; pattern for new_pattern/new_external_dependency
+        status: proposed               # ALWAYS proposed — promotion only via mine curation gates (mine --accept / --verify)
+        source_refs: refined package paths that satisfied the criteria
+      non_blocking: true               # harvest failure never blocks the ADR side quest or the pipeline
     gate_display: >
       ⚔️ Opportunity Attack → ADR
       This mission contains architectural decisions worth recording.
       [OA-ADR-{mission_id}] Create ADR — impact: medium
     archivist_writes_draft: false   # draft is written by Sniper if approved at gate
 
+  on_runbook_criteria_met:
+    action: add_runbook_side_quest_to_opportunity_manifest
+    side_quest_id_format: "OA-RUNBOOK-{mission_id}"
+    secondary_action:
+      id: runbook_candidate
+      emit_candidate:
+        candidate_id_format: "RB-{mission_id}"
+        status: proposed              # ALWAYS proposed — never a trusted docs/runbooks/ entry without human review
+        confidence: low | medium | high
+      non_blocking: true               # candidate emission never blocks the pipeline
+    gate_display: >
+      ⚔️ Opportunity Attack → Runbook
+      This mission's refined work reads like a reusable agent runbook.
+      [OA-RUNBOOK-{mission_id}] Draft runbook candidate — impact: {confidence}
+    archivist_writes_draft: false   # draft is written by Sniper if approved at gate
+
+  on_chest_criteria_met:
+    action: add_chest_side_quest_to_opportunity_manifest
+    side_quest_id_format: "OA-CHEST-{mission_id}"
+    secondary_action:
+      id: chest_candidate
+      emit_candidate:
+        status: proposed              # ALWAYS proposed — never auto-registered in treasure-chests.yaml
+        source_ref: the sources_consulted[] entry that satisfied full_coverage_source_not_in_chest
+      non_blocking: true
+    gate_display: >
+      ⚔️ Opportunity Attack → Treasure Chest
+      This mission fully covered a source not yet registered as a treasure chest.
+      [OA-CHEST-{mission_id}] Register treasure chest — impact: low
+    archivist_writes_draft: false   # registration is written by Sniper if approved at gate
+
   on_criteria_not_met:
-    action: emit_done_no_adr
-    emit: "[Strategist] phase=archivist opportunity_attack=done adr_warranted=false"
+    action: emit_done_no_opportunity
+    emit: >
+      "[Strategist] phase=archivist opportunity_attack=done adr_warranted=false
+       runbook_warranted=false chest_warranted=false"
 
   on_approved_at_gate:
-    action: sniper_creates_adr_as_execution_task
-    artifact_path: "<base_path>/archived/<mission_id>-adr.md"
+    # Dispatches by side_quest_id prefix — the three outputs are independent;
+    # a mission may have zero, one, or more approved at the same gate.
+    OA-ADR:
+      action: sniper_creates_adr_as_execution_task
+      artifact_path: "<base_path>/archived/<mission_id>-adr.md"
+    OA-RUNBOOK:
+      action: sniper_creates_runbook_candidate_as_execution_task
+      preferred_form: >
+        a pending mission stub under "<base_path>/pending/" that asks for a
+        runbook, routed through the normal discovery/refinement pipeline —
+        this is the default, because it leads to a canonical
+        docs/runbooks/ artifact through the normal gated pipeline (Sniper
+        may write directly to docs/runbooks/<slug>.md as a
+        documentation_target once that mission's own gate is approved, same
+        as any other documentation_target write)
+      fallback_form: >
+        a draft clearly tagged as a runbook candidate, not a canonical
+        runbook — use only when the content is already fully
+        known/verified from the source mission (avoids wasteful
+        rediscovery). MUST NOT be written to <base_path>/archived/ — that
+        folder's meaning elsewhere in this repo's contracts is
+        "closed/decided" (see 11-critical-hit.md Valid Moves), the opposite
+        of an unreviewed candidate's state. Use <base_path>/pending/
+        instead, in the same transient-stub shape as the preferred form,
+        even though its content may already be substantially complete.
+      forbidden:
+        - writing directly to docs/runbooks/<slug>.md from *this* action
+          (the Opportunity Attack side quest itself never writes canonical
+          docs) — still allowed as normal Sniper documentation_target
+          output from a *separate*, subsequently gated mission that
+          materializes the pending stub above
+        - promoting the candidate to canonical without a gate approval
+    OA-CHEST:
+      action: sniper_registers_chest_candidate_as_execution_task
+      target: "internal/embed/defaults/treasure-chests.yaml (source layer — see skill.yaml#runtime_model)"
+      forbidden:
+        - auto-populating chest content beyond the registration entry itself
 
   on_declined_at_gate:
     action: log_declined
-    emit: "[Strategist] phase=gate opportunity_attack=adr_declined"
+    emit: "[Strategist] phase=gate opportunity_attack={side_quest_id}_declined"
 
   emit:
-    format: "[Strategist] phase=archivist opportunity_attack=done adr_warranted={bool}"
+    format: >
+      "[Strategist] phase=archivist opportunity_attack=done adr_warranted={bool}
+       runbook_warranted={bool} chest_warranted={bool}"
     emit_level: TRACE
 
   invariants:
-    - emit always produced after evaluation (adr_warranted=false is valid; silence is not)
+    - emit always produced after evaluation (all three *_warranted=false is valid; silence is not)
+    - jewel candidates are always status proposed and enter only through the mine curation gates — Opportunity Attack never promotes, accepts, or verifies a jewel
+    - runbook and chest candidates are always status proposed — Opportunity Attack never writes docs/runbooks/ or treasure-chests.yaml directly, only surfaces the side quest
     - technical failure is non-blocking — log reason and continue pipeline
     - criteria evaluation is based solely on the written refined artifacts, not on speculation
-    - Archivist does NOT write the ADR draft — only evaluates and surfaces at gate
-    - ADR creation is Sniper's responsibility when approved at gate
+    - Archivist does NOT write the ADR/runbook/chest artifact itself — only evaluates and surfaces at gate
+    - ADR/runbook/chest materialization is Sniper's responsibility when approved at gate
+    - Opportunity Attack MUST NOT evaluate implementation completion or move cards to done/
+    - Critical Hit is the only route that may close pending/refined cards into done/
 
   write_scope: read-only (archivist reads its own artifacts to evaluate)
   owner: archivist

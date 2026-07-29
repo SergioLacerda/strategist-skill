@@ -72,7 +72,11 @@ func TestActiveConfig_Validate(t *testing.T) {
 	valid := domain.ActiveConfig{
 		Mode:     "epic",
 		BasePath: ".analysis",
-		Slots:    map[string]string{"discovery": "ranger"},
+		Slots: map[string]string{
+			"discovery":  "ranger",
+			"refinement": "archivist",
+			"execution":  "sniper",
+		},
 	}
 	require.NoError(t, valid.Validate())
 
@@ -80,6 +84,14 @@ func TestActiveConfig_Validate(t *testing.T) {
 	require.ErrorContains(t, err, "mode is required")
 	require.ErrorContains(t, err, "base_path is required")
 	require.ErrorContains(t, err, "slots must have at least one entry")
+
+	err = domain.ActiveConfig{
+		Mode:     "epic",
+		BasePath: ".analysis",
+		Slots:    map[string]string{"discovery": "ranger"},
+	}.Validate()
+	require.ErrorContains(t, err, "missing slot: refinement")
+	require.ErrorContains(t, err, "missing slot: execution")
 }
 
 func TestPersonaConfig_Validate(t *testing.T) {

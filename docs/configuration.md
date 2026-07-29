@@ -318,7 +318,7 @@ Chest configuration flows through four layers, each with a distinct source of tr
 
 `strategist treasure-chest` reads all four layers and reports drift between them (see
 [CLI Reference](cli-reference.md#treasure-chest)). Divergence between a runtime `.strategist/`
-instance and the shipped `strategist/`/embedded-default templates is expected when a chest has
+instance and the shipped embedded-default templates (`internal/embed/defaults/`) is expected when a chest has
 been added locally — only classify it as stale drift if the schema/structure itself (not the
 `chests:` entries) differs.
 
@@ -342,7 +342,7 @@ internal scan phase on every run — safe to delete, never hand-edited. Jewels a
 authoritative and persist across `index` runs; `index` writes new candidates to
 per-chest partition manifests and only ever appends new
 `status: proposed` candidates, deduplicated by id, and never overwrites an existing entry —
-see [treasure-chest index / treasure-chest mine](cli-reference.md#treasure-chest-index--treasure-chest-mine)
+see [treasure-chest index / treasure-chest items](cli-reference.md#treasure-chest-index--treasure-chest-items)
 for the full command contract.
 
 **Explicitly not created, with reasons:**
@@ -355,7 +355,7 @@ for the full command contract.
 See [Jewels](cli-reference.md#jewels) in the CLI reference for the full jewel schema and
 lifecycle (`proposed | accepted | verified | deprecated`, see
 [ADR-0012](adr/0012-jewel-lifecycle-statuses.md)), and
-[treasure-chest index / treasure-chest mine](cli-reference.md#treasure-chest-index--treasure-chest-mine)
+[treasure-chest index / treasure-chest items](cli-reference.md#treasure-chest-index--treasure-chest-items)
 for the scan-phase contract that populates `clusters/` and `gaps/`.
 
 ### Specialized Chest Categories (Track T-K / SQ-008)

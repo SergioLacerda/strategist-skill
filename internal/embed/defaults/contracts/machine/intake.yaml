@@ -2,8 +2,7 @@ module: intake
 type: agent_phase
 description: >
   Classifies the user prompt via prompt-intake skill, generates mission_id,
-  emits mission checkpoint, and routes quick-draw captures to the side-quest pipeline.
-  Runs after bootstrap and preflight complete.
+  and emits mission checkpoint. Runs after bootstrap and preflight complete.
 
 contract:
   input:
@@ -32,7 +31,7 @@ contract:
       description: Generated unique mission identifier
     - name: route
       type: enum
-      values: [standard, quick_draw, direct_execute]
+      values: [standard, direct_execute]
       description: Determines which pipeline to run
 
   error_conditions:
@@ -40,21 +39,10 @@ contract:
       trigger: prompt-intake returns conflicting constraints
       behavior: Stop. Ask user to resolve conflict. Do not proceed to phases.
 
-  quick_draw_triggers:
-    - "quick draw"
-    - "saque rapido"
-    - "saque rápido"
-    - prompt starts with "TODO"
-  quick_draw_behavior: >
-    If any trigger matches: emit side_quest_detected with description="Quick Draw — rapid idea
-    capture." before routing. Do NOT run regular intake classification. Skip §4–§7.
-    Execute only quick_draw pipeline (§5.0).
-
   routing_matrix:
     evaluation_order:
-      1: quick_draw      # keyword-based, explicit user signal — checked first
-      2: direct_execute  # automatic classifier (Critical Hit) — checked second
-      3: main_mission    # default, always safe
+      1: direct_execute  # automatic classifier (Critical Hit) — checked first
+      2: main_mission    # default, always safe
     critical_hit_conditions:
       task_type_allow: [analysis_move]
       risk_level_require: low

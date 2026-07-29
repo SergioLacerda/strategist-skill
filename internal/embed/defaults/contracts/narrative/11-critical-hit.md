@@ -14,6 +14,10 @@ reopening, or closing `.md` analysis/documentation artifacts between the workspa
 folders (`pending/`, `refined/`, `archived/`, `done/`) without running the full
 Ranger/Archivist pipeline.
 
+Critical Hit is the only Strategist capability that closes finalized analysis cards
+from `pending/` or `refined/` into `done/`. Opportunity Attack is unrelated to this
+movement; it only evaluates whether refined work should produce an ADR side quest.
+
 Critical Hit is not a route mutually exclusive with the pipeline — it is an internal
 capability that may fire at intake, or mid-mission at any phase boundary, whenever the
 current request reduces to a pure artifact move/closure. Firing Critical Hit mid-mission
@@ -35,10 +39,10 @@ the user or delegating agent — never invented). If a request is ambiguous betw
 move and a closure, or between Critical Hit and full analysis, it falls back to
 `main_mission`.
 
-A rota é selecionada internamente pela camada de routing após o intake, ou
-re-avaliada a qualquer transição de fase durante uma missão em andamento. O delegatário
-não precisa solicitar Critical Hit explicitamente, mas deve fornecer confirmação e
-evidência quando o gate de fechamento (closure) exigir.
+The route is selected internally by the routing layer after intake, or re-evaluated
+at any phase transition during an in-flight mission. The delegating agent does not
+need to request Critical Hit explicitly, but must supply confirmation and evidence
+whenever the closure gate requires them.
 
 ## When to Apply
 
@@ -87,7 +91,7 @@ Card Detection exists only to surface packages that already carry implementation
 validation evidence but have not yet been moved, not to nudge every completed mission
 toward `done/`.
 
-Critical Hit self-checks at two points:
+Critical Hit self-checks at three points:
 
 1. **Discovery (Ranger).** While Ranger surveys the workspace for the current mission, any
    other `pending/` or `refined/` package it encounters that already carries an explicit
@@ -102,6 +106,24 @@ Critical Hit self-checks at two points:
    recorded implementation/validation claim and evidence, not merely a complete-looking
    status field. This is a flag, not a background job — Strategist does not go hunting
    through `pending/`/`refined/` unprompted outside of discovery and intake/bootstrap.
+3. **Bootstrap git-scope scan.** At every mission's bootstrap phase (`01-bootstrap.md`),
+   for each `refined/` package, compare its `approved_scope` files' last-commit dates
+   against its `date:` frontmatter field. Any file committed after `date:` flags the
+   package as a stale-scan candidate — this is independent of whether the package carries
+   any self-declared evidence, unlike Triggers 1 and 2. As with the other two triggers,
+   this only surfaces a candidate; it never substitutes for the evidence requirement or
+   the approval gate.
+
+   Once a candidate is surfaced (by any of the three triggers), verify it using the
+   bounded procedure in `docs/runbooks/verifying-implemented-demands.md`: re-run the
+   package's own stated validation commands, check the result against its own
+   `acceptance_checks`, write a completion report only for what the evidence actually
+   covers, then present the Critical Hit closure inline gate. If verification is
+   genuinely ambiguous — the package's acceptance checks can't be confidently confirmed
+   against real command output or current file content — stop. Do not force a verdict.
+   Note that a discovery-weapon fix for genuine `evaluation`/`diagnostic` full-pipeline
+   missions is a separate, not-yet-scoped demand; this escalation path does not attempt
+   that fix.
 
 Reaching `documentation_applied` at the end of main_mission execution does **not** trigger
 a closure check. It is documentation completion only (see `06-execution.md`). A completed
@@ -109,7 +131,7 @@ main_mission ends with its package in `refined/`, and that is correct — it doe
 Critical Hit to fire, and Critical Hit does not run an automatic candidacy check at that
 point.
 
-In both remaining trigger cases, detection only surfaces a candidate — it never
+In all three trigger cases, detection only surfaces a candidate — it never
 substitutes for the evidence requirement or the approval gate: the closure move still
 requires explicit user confirmation and an evidence summary before Sniper writes the
 completion report or moves the package.
@@ -257,5 +279,8 @@ proactively at discovery or intake, never automatically from a main_mission reac
   fully-checked `tasks.md` alone constitutes closure evidence (see Insufficient Evidence)
 - Ranger MUST NOT detour into evaluating or closing a stale candidate encountered during
   discovery — it only flags the candidate for a later mission-close/intake moment
+- The bootstrap git-scope scan (Trigger 3) surfaces candidates only — like the other two
+  triggers, it never closes a package and never substitutes for an explicit evidence
+  summary at the closure gate
 - If any condition is ambiguous, fall back to `main_mission`
 - `StateDirectDone` is absorbing — no further transitions

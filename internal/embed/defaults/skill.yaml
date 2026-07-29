@@ -17,6 +17,10 @@ capability:
   produces: [analysis, documentation, implementation_handoff]
   never_produces: [code_mutation, git_mutation, direct_execution]
   resolution_paths:
+    # NOTE: resolution_paths above are pipeline routes, distinct from the
+    # Weapon/Ability taxonomy below. A route selects which pipeline shape runs;
+    # Weapons and Abilities describe what runs inside a slot/role once a route
+    # is selected.
     full_pipeline:
       sequence: [intake, discovery, refinement, approval_gate, execution]
       when: complex analysis, ambiguous demands, new requirements
@@ -30,11 +34,46 @@ capability:
         documentation_applied — that is documentation completion, not implementation
         evidence. A completed main_mission normally ends with its package in refined/.
         Never infers completion on its own.
-    quick_draw:
-      sequence: [intake, ranger_qd, archivist_qd, gate, sniper_qd]
-      when: rapid note/idea capture
   route_decision: internal (Scout / intake routing layer — see internal_skills/scout)
   delegating_agent_contract: invoke with request context — route is resolved internally
+
+# Vocabulary layer distinguishing Weapons from Abilities. Documentation/naming only —
+# it does not change pipeline mechanism, routing, or the FSM. See
+# docs/strategist-concepts.md § Abilities for the human-facing explanation.
+taxonomy:
+  description: >
+    Weapons are external skill_provider skills invoked via the Skill tool and bound to
+    a slot in active.yaml (orchestration.slot_hierarchy.*.may_delegate_to). Abilities
+    are internal routines that run inside a Role/phase — they are not configurable,
+    not swappable, and have no active.yaml entry.
+  weapons:
+    - id: brainstorming
+      bound_to_slot: discovery
+    - id: openspec-explore
+      bound_to_slot: refinement
+  abilities:
+    - id: opportunist_attack
+      runs_in: refinement (Archivist, post-refinement, before completion_signal)
+      outputs: [adr, runbook, treasure_chest]
+      source: contracts/machine/opportunity-attack.yaml
+    - id: search
+      runs_in: discovery (Ranger, consult_treasure_chests); cache reused by refinement (Archivist)
+      consults: treasure_chest
+      source: roles/ranger.yaml#canonical, roles/archivist.yaml#canonical
+    - id: critical_hit
+      runs_in: scout (route resolved before Ranger/Archivist)
+      note: >
+        Label only — Critical Hit is mechanically a Route resolved by Scout
+        (see resolution_paths.critical_hit above), not a Role-internal routine.
+        Unified here purely to reduce user-facing vocabulary.
+    - id: side_quest
+      runs_in: discovery or refinement (any phase)
+  resources:
+    # Consulted by the Search ability. Not an Ability itself — never executable,
+    # never a route, never a slot.
+    treasure_chest:
+      consulted_by: search
+      contains: [jewel, potion]
 
 orchestration:
   model: master_skill
@@ -51,16 +90,16 @@ orchestration:
     discovery:
       skill: ranger
       # Ranger is the internal discovery persona. It owns discovery_subtype behavior
-      # (creative, evaluation, diagnostic, closure_evidence) and wields the configured
-      # discovery weapon for exploration. Scout verifies the weapon's
-      # discovery_subtype_support immediately after route_decision and before
-      # invocation; unsupported subtype/weapon pairings stop with
-      # provider_capability_mismatch.
-      may_delegate_to: [brainstorming, writing-plans]
-      # Default weapon: brainstorming. Preflight validates that the configured weapon
-      # exists, is invocable, and matches the write_analysis risk contract. Scout's
-      # post-route capability check validates subtype support after discovery_subtype
-      # exists.
+      # (creative, evaluation, diagnostic, closure_evidence) and always performs
+      # discovery itself (native role) — no external weapon is ever consulted for
+      # discovery invocation, for any subtype (see contracts/narrative/00-routing.md
+      # § Discovery Weapon Resolution by Subtype; a live invocation of a
+      # manifest-compliant creative weapon surfaced contract-incompatible behavior,
+      # see .analysis/refined/20260728-ranger-drift-eval/).
+      may_delegate_to: []
+      # active.slots.discovery (default: brainstorming) is still validated at preflight
+      # (exists, invocable, matches the write_analysis risk contract) but is not
+      # invoked for discovery — the field is retained for provider-metadata/future use.
     refinement:
       skill: archivist
       # Archivist is the internal refinement persona. openspec-explore is its default
@@ -104,12 +143,26 @@ active_config:
       discovery → Ranger (write_analysis), refinement → Archivist (write_analysis),
       execution → Sniper (controlled).
   language:
-    type: string
-    default: pt
-    values: [pt, en]
+    type: object
+    required: true
+    fields: [ui, docs, chat, code]
     description: >
-      Language for all generated artifacts: discovery docs, ADRs, analysis files.
-      Passed to all slot providers. Does not affect prompt_templates (controlled by persona).
+      Four independent language axes, set by the install wizard
+      (internal/install/wizard.go#promptLanguages) and written as a nested
+      block in active.yaml (internal/install/active_yaml.go#writeActiveYAML):
+        ui   — wizard/CLI-facing strings (content_by_lang, phase_announcements)
+        docs — written artifact files: discovery/refinement analysis, proposal,
+               design, tasks, ADRs (see contracts/narrative/03-discovery.md and
+               04-refinement.md § Language)
+        chat — Strategist-mediated conversational prose, including the refinement
+               slot provider's own user-facing output (forwarded via the
+               refinement pipeline stage's chat_language input — see
+               contracts/narrative/09-response.md § Chat Language and
+               roles/archivist.yaml#must)
+        code — reserved words, identifiers, and code embedded inside artifacts;
+               never translated regardless of the other three axes
+      `docs` and `chat` are independent — a written artifact's language is never
+      inferred from the surrounding chat language, and vice versa.
   mode:
     type: string
     default: epic
@@ -126,7 +179,7 @@ slots:
     write_types: [".md"]
     output_format_note: >
       Default output for normal missions is <base_path>/pending/<mission_id>-analysis.md.
-      Pipeline stages may declare artifact_path to override for specialized routes (e.g. quick-draw).
+      Pipeline stages may declare artifact_path to override for specialized routes.
       The pipeline stage artifact_path always takes precedence over slot output_format.
     canonical:
       - find_unexpected_items       # surface items outside declared mission scope
@@ -168,7 +221,7 @@ slots:
 # scope values: all | discovery | refinement | execution (list or single string)
 treasure_chest_schema:
   manifest: "strategist/treasure-chests.yaml"    # full governance manifest (trust, routing, budget)
-  source_card_schema: "strategist/schemas/source-card.schema.yaml"
+  source_card_schema: ".strategist/schemas/source-card.schema.yaml"
   legacy_fields: [id, path, scope, description]  # supported in active.yaml declarations
   scope_values: [all, discovery, refinement, execution]
   note: >
@@ -191,43 +244,8 @@ pipeline:
     description: >
       Present the single unblocking question from token_strategy.triage_gate.blocking_question.
       Do not advance to context_enrichment until user answers. Re-run intake after answer.
-  - stage: quick_draw_detection
-    type: conditional_route
-    condition: explicit_quick_draw_request
-    description: >
-      If the user explicitly asks for "quick draw" / "saque rapido" / quick TODO capture,
-      route to the quick_draw side-quest pipeline and skip the main mission pipeline.
-    produces: quick_draw_contract
-  - stage: quick_draw_discovery
-    slot: discovery
-    condition: quick_draw_detection.matched
-    input: quick_draw_contract
-    artifact_path: "<base_path>/pending/<mission_id>-quick-draw.md"
-  - stage: quick_draw_refinement
-    slot: refinement
-    condition: quick_draw_detection.matched
-    input: quick_draw_discovery
-    artifact_path: "<base_path>/pending/<mission_id>-quick-draw.md"
-    produces:
-      - idea
-      - theme
-      - destination_path
-      - ideas_added
-  - stage: quick_draw_gate
-    type: mandatory_pause
-    condition: quick_draw_detection.matched
-    description: >
-      Present the normalized idea and ask for confirmation before any write.
-      Use reserved input tokens: yes/no (en) or sim/nao (pt-BR, see internal/i18n/reserved.go).
-  - stage: quick_draw_execution
-    slot: execution
-    condition: quick_draw_gate_granted
-    input: quick_draw_refinement
-    artifact_path: "<base_path>/todo/<tema>.md"
-    produces: quick_draw_result
   - stage: scout_routing
     skill: scout
-    condition: "!quick_draw_detection.matched"
     input: mission_contract
     produces: route_decision
     description: >
@@ -236,14 +254,14 @@ pipeline:
       contracts/machine/scout-routing.yaml. Scout is internal — never a slot.
   - stage: context_enrichment
     skill: context-enrichment
-    condition: "!quick_draw_detection.matched && route_decision.selected_route == full_pipeline"
+    condition: "route_decision.selected_route == full_pipeline"
     input:
       task_type: mission_contract.task_type
       token_strategy: mission_contract.token_strategy    # drives budget limits by mode
     produces: dossier
   - stage: compression_metrics
     type: internal
-    condition: "!quick_draw_detection.matched && route_decision.selected_route == full_pipeline"
+    condition: "route_decision.selected_route == full_pipeline"
     description: >
       Log dossier compression_metrics to .strategist/memory/chest-usage.jsonl. Non-blocking.
       Format: JSON lines with mission_id, mode, sources_seen, sources_selected,
@@ -251,14 +269,17 @@ pipeline:
     blocking: false
   - stage: discovery
     slot: discovery
-    condition: "!quick_draw_detection.matched && route_decision.selected_route == full_pipeline"
+    condition: "route_decision.selected_route == full_pipeline"
     input:
       mission_contract: mission_contract
       discovery_subtype: route_decision.discovery_subtype
     artifact_path: "<base_path>/pending/<mission_id>-analysis.md"
   - stage: refinement
     slot: refinement
-    input: analysis_artifact
+    input:
+      analysis_artifact: analysis_artifact
+      chat_language: active.language.chat    # required directive for the provider's own conversational output — see roles/archivist.yaml#must
+      docs_language: active.language.docs    # unchanged: governs the four written artifact files only
     note: >
       Opportunity Attack runs as a routine inside Archivist (refinement) only.
       Evaluates ADR necessity after all four refined artifacts are written.
@@ -288,7 +309,6 @@ stop_conditions:
   - slots_not_configured              # active.slots absent or empty
   - slot_provider_not_found
   - slot_risk_mismatch
-  - provider_capability_mismatch      # discovery weapon lacks required discovery_subtype_support
   - intake_conflict_unresolved
   - user_requests_revision
   - user_rejects_analysis
@@ -398,6 +418,34 @@ compression_policy:
     external_provider_may_not: [scope_decisions, execution, side_quest_approval, mission_contract_changes]
   metrics_log: ".strategist/memory/chest-usage.jsonl"
 
+role_budgets:
+  description: >
+    Per-role token ceilings by mode, independent of compression_policy.modes (which
+    budgets the context_enrichment/dossier phase, not the roles themselves). ranger
+    budgets what Discovery reads beyond the dossier; archivist budgets the bounded
+    reopen set allowed by contracts/machine/handoff-contract.yaml#refinement_context_policy.
+    Values are placeholders pending real data from handoff_metrics_log
+    (.strategist/memory/handoff-metrics.jsonl) — not yet tuned from telemetry.
+  ranger:
+    lean:     {max_sources: 2, max_context_tokens: 3000}
+    balanced: {max_sources: 4, max_context_tokens: 6000}
+    deep:     {max_sources: 8, max_context_tokens: 12000}
+  archivist:
+    lean:     {max_reopen_sources: 0, max_context_tokens: 2000}
+    balanced: {max_reopen_sources: 1, max_context_tokens: 4000}
+    deep:     {max_reopen_sources: 3, max_context_tokens: 8000}
+
+handoff_metrics_log:
+  path: ".strategist/memory/handoff-metrics.jsonl"
+  emitted_by: archivist
+  emitted_when: refinement_complete
+  fields: [mission_id, discovery_tokens, brief_tokens, brief_compression_ratio, refinement_reopens, evidence_coverage_ratio]
+  note: >
+    brief_compression_ratio and evidence_coverage_ratio require discovery_tokens and
+    evidence_cards[] (schemas/handoff-ranger-to-archivist.schema.yaml) to be populated
+    by the Ranger artifact; both are null until missions populate those fields —
+    expected during rollout, not a bug.
+
 token_economy_stop_conditions:
   - id: ambiguous_task_no_criteria
     trigger: task_is_ambiguous and acceptance_criteria_missing
@@ -446,7 +494,6 @@ provider_compliance:
   external_trust: risk_score_only      # non-SDD providers: validate risk_score only (current behavior)
 
 forbidden_behaviors:
-  - write_quick_draw_without_gate
   - materialize_documentation_without_review_acceptance
   - direct_repository_mutation_without_pipeline_evidence
   - write_config_to_target_repo
@@ -462,6 +509,7 @@ forbidden_behaviors:
   - engineer_writes_outside_analysis
   - archivist_writes_non_md
   - delegate_analysis_creation_to_sniper
+  - archivist_reopens_discovery_sources_without_declared_reason  # see contracts/machine/handoff-contract.yaml#refinement_context_policy for the closed allowed_reasons list
   - id: non_documentation_write
     description: >
       Sniper attempted to write a non-documentation file. Sniper write scope is strictly
@@ -473,8 +521,7 @@ forbidden_behaviors:
     description: >
       A direct repository mutation was attempted without the canonical evidence
       required by the active route. Main pipeline requires Ranger analysis artifact,
-      refined artifacts, and approval gate evidence. Quick Draw requires quick
-      draw gate approval before append.
+      refined artifacts, and approval gate evidence.
     emit: >
       "[Strategist] phase=compliance status=blocked reason=pipeline_bypass_detected
        attempted_action={attempted_action} expected_phase={expected_phase}

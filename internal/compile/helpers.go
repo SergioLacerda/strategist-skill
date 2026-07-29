@@ -1,12 +1,11 @@
 package compile
 
 import (
-	"compress/gzip"
 	"crypto/sha256"
-	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
+
+	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
 )
 
 // mtime returns the Unix mtime of path in seconds, or 0 on error.
@@ -18,49 +17,50 @@ func mtime(path string) int64 {
 	return info.ModTime().Unix()
 }
 
+func sourceMetaForSources(sources map[string]int64) map[string]sourceMetadata {
+	meta := make(map[string]sourceMetadata, len(sources))
+	for path, recorded := range sources {
+		info, err := os.Stat(path)
+		if err != nil {
+			meta[path] = sourceMetadata{MTime: recorded}
+			continue
+		}
+		meta[path] = sourceMetadata{
+			MTime:   info.ModTime().Unix(),
+			MTimeNS: info.ModTime().UnixNano(),
+			Size:    info.Size(),
+			SHA256:  sourceFileSHA256(path),
+		}
+	}
+	return meta
+}
+
+func sourceFileSHA256(path string) string {
+	data, err := os.ReadFile(path) //nolint:gosec // G304: path comes from compile source inventory
+	if err != nil {
+		return ""
+	}
+	return fmt.Sprintf("%x", sha256.Sum256(data))
+}
+
 // writeGzJSON encodes v as JSON and writes the gzip-compressed result to outputPath.
 // The parent directory is created if it does not exist.
 // The write is atomic: data is written to a temp file and renamed into place so
 // concurrent readers never observe a partially-written archive.
 func writeGzJSON(outputPath string, v any) error {
-	if err := os.MkdirAll(filepath.Dir(outputPath), 0o755); err != nil {
-		return fmt.Errorf("mkdir: %w", err)
-	}
-
-	tmp := outputPath + ".tmp"
-	f, err := os.Create(tmp) //nolint:gosec // G304: path derived from strategistDir, not user input
-	if err != nil {
-		return fmt.Errorf("create tmp: %w", err)
-	}
-
-	gz := gzip.NewWriter(f)
-	if err := json.NewEncoder(gz).Encode(v); err != nil {
-		_ = os.Remove(tmp) //nolint:errcheck // best-effort cleanup on encode failure
-		return fmt.Errorf("json encode: %w", err)
-	}
-	if err := gz.Close(); err != nil {
-		_ = os.Remove(tmp) //nolint:errcheck // best-effort cleanup on gzip failure
-		return fmt.Errorf("gzip close: %w", err)
-	}
-	if err := f.Close(); err != nil {
-		_ = os.Remove(tmp) //nolint:errcheck
-		return fmt.Errorf("file close: %w", err)
-	}
-	if err := os.Rename(tmp, outputPath); err != nil {
-		_ = os.Remove(tmp) //nolint:errcheck
-		return fmt.Errorf("rename: %w", err)
+	if err := runtimefs.WriteGzJSON(outputPath, v); err != nil {
+		return fmt.Errorf("write gz json: %w", err)
 	}
 	return nil
 }
 
 // sha256Artifact returns "sha256:<hex>" for the file at path, or "unavailable" on error.
 func sha256Artifact(path string) string {
-	data, err := os.ReadFile(path) //nolint:gosec // G304: path is a compiled artifact path
-	if err != nil {
+	hash, exists, err := runtimefs.ReadSHA256(path)
+	if err != nil || !exists {
 		return "unavailable"
 	}
-	sum := sha256.Sum256(data)
-	return fmt.Sprintf("sha256:%x", sum)
+	return "sha256:" + hash
 }
 
 // loadYAMLFile reads a YAML file and returns its content as a generic map.

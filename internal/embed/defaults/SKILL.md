@@ -70,14 +70,13 @@ action=fix provider configuration or runtime installation, then rerun strategist
 ```
 
 Discovery subtypes are selected by Scout and executed through Ranger, the internal
-discovery persona. The configured discovery provider is Ranger's weapon, not a
-substitute for Ranger. The parent agent MUST NOT perform discovery directly. After
-Scout emits `route_decision.discovery_subtype` with `evidence_state: requires_discovery`,
-Strategist MUST check the configured weapon manifest's `discovery_subtype_support`
-before invoking the weapon. If the manifest does not declare native or adapter support
-for the required subtype, stop with `provider_capability_mismatch`. If the configured
-discovery weapon is missing, invalid, risk-incompatible, or unavailable, stop with the
-relevant slot/provider error.
+discovery persona. Ranger always performs discovery itself (native role) — no
+external weapon is ever consulted as a substitute for Ranger, for any subtype (see
+`contracts/narrative/00-routing.md` § Discovery Weapon Resolution by Subtype). The
+parent agent MUST NOT perform discovery directly; it embodies Ranger under
+`roles/ranger.yaml` + `internal_skills/ranger/SKILL.md`. `active.slots.discovery`
+remains configured and preflight-validated (exists, invocable, risk-compatible) but
+is not invoked for discovery.
 
 If the request requires source-code mutation, Strategist may analyze and refine the
 work, but must not perform the mutation. The response must clearly state that
@@ -99,21 +98,21 @@ Do not re-derive a table here — read the YAML.
 
 This skill operates on a two-path model:
 
-- `strategist/` — source-only authoring tree in this repository. It exists to generate the runtime package and is never a runtime read target.
-- `.strategist/` — runtime instance in the user's workspace. This is the only operational read target during mission execution.
+- `internal/embed/defaults/` — the single authoring and generation source in the
+  Strategist repository, embedded into the binary via `go:embed`. It is never a runtime
+  read target. (The former `strategist/` authoring mirror was retired — if you see a
+  path beginning with `strategist/` without the leading dot, it is a documentation
+  error; read from `.strategist/` instead.)
+- `.strategist/` — runtime instance in the user's workspace, materialized by
+  `strategist install`/`compile`. This is the only operational read target during
+  mission execution.
 
 All contract references, role files, schemas, and personas are read from `.strategist/`.
-If you see a path beginning with `strategist/` (without the leading dot), it is a documentation error — read from `.strategist/` instead.
 
-External discovery/refinement/execution provider capability descriptors
-(`.strategist/skills/<provider_id>/skill.yaml`) are the one exception to the
-"only `strategist/` authors, only `.strategist/` is read" rule: their
-generation source is `internal/embed/defaults/skills/` in this repository, not
-`strategist/` (which has no `skills/` subtree). Do not confuse a provider's own
-installed skill package (its own SKILL.md/skill.yaml, elsewhere on the
-filesystem) with Strategist's capability mirror at
-`.strategist/skills/<provider_id>/skill.yaml` — capability checks such as
-provider existence, `risk_score`, and role taxonomy are read from the latter.
+Do not confuse a provider's own installed skill package (its own SKILL.md/skill.yaml,
+elsewhere on the filesystem) with Strategist's capability mirror at
+`.strategist/skills/<provider_id>/skill.yaml` — capability checks such as provider
+existence, `risk_score`, and role taxonomy are read from the latter.
 Discovery subtype behavior is owned by Ranger, not by provider subtype metadata.
 
 Workspace artifacts resolve through `base_path` from `.strategist/active.yaml`.
@@ -123,44 +122,27 @@ Workspace artifacts resolve through `base_path` from `.strategist/active.yaml`.
 
 ## Contract Loading Order
 
-Read `.strategist/contracts/index.yaml` for the authoritative phase manifest and load contracts
-from the paths listed under `narrative.load_order`. Machine contracts are in `machine/`.
+`.strategist/contracts/index.yaml` is the authoritative loading manifest for both
+narrative and machine contracts — the single source of truth for which contracts load
+at which phase. Do not restate its contents here, and never bulk-load ahead of the
+phase that needs them (token economy — every mission, including trivial routes,
+otherwise pays the full read cost).
 
-Narrative contracts (in load order):
+Procedure:
 
-1. `.strategist/contracts/narrative/00-routing.md`
-2. `.strategist/contracts/narrative/01-bootstrap.md`
-3. `.strategist/contracts/narrative/02-intake.md`
-4. `.strategist/contracts/narrative/03-discovery.md`
-5. `.strategist/contracts/narrative/04-refinement.md`
-6. `.strategist/contracts/narrative/05-approval-gate.md`
-7. `.strategist/contracts/narrative/06-execution.md`
-8. `.strategist/contracts/narrative/07-adr.md`
-9. `.strategist/contracts/narrative/08-learning.md`
-10. `.strategist/contracts/narrative/09-response.md`
-11. `.strategist/contracts/narrative/10-telemetry.md`
-12. `.strategist/contracts/narrative/11-critical-hit.md`
+1. Read `index.yaml` first, before any phase work.
+2. Load `machine.always_load`.
+3. As each phase begins, load only that phase's `narrative.by_phase` and
+   `machine.by_phase` entries from `index.yaml` — nothing more.
 
-Machine contracts (loaded per-phase, see index.yaml):
-
-- `.strategist/contracts/machine/preflight.yaml` — always loaded
-- `.strategist/contracts/machine/quick-draw.yaml` — quick draw route
-- `.strategist/contracts/machine/critical-hit.yaml` — critical hit route
-
-Supplemental references:
-
-- `.strategist/contracts/strategist-raid.yaml`
-- `.strategist/protocol.md`
-- `.strategist/schemas/*.yaml`
-
-For `/strategist-raid` (batch refinement of captured ideas), see `contracts/strategist-raid.yaml`.
+Supplemental, loaded on demand (not phase-gated): `protocol.md`, `schemas/*.yaml`.
 
 ## Operating Rules
 
 - The main pipeline still runs in the same order.
-- No request category may bypass the pipeline unless it matches Quick Draw or Critical Hit.
+- No request category may bypass the pipeline unless it matches Critical Hit.
 - Route selection (Critical Hit vs main mission) is handled internally by the intake routing layer — the delegating agent does not need to specify a route.
-- Documentation-only and "small" changes still require discovery, refinement, and gate evidence unless the internal routing contract selects Quick Draw or Critical Hit.
+- Documentation-only and "small" changes still require discovery, refinement, and gate evidence unless the internal routing contract selects Critical Hit.
 - When in doubt, consult the numbered contracts above instead of improvising.
 
 ## Role Invocation Failures
@@ -168,18 +150,10 @@ For `/strategist-raid` (batch refinement of captured ideas), see `contracts/stra
 `strategist check` confirms that the runtime is installed and operational.
 
 If Strategist cannot invoke a configured role/provider during a mission, that is
-an internal skill error. Stop and report:
-
-```
-error=role_invocation_failed
-slot=<discovery|refinement|execution>
-provider=<configured_provider>
-action=fix provider configuration or runtime installation, then rerun strategist check
-```
-
-Equivalent errors may be reported as `slot_provider_not_found`,
-`slot_risk_mismatch`, `provider_capability_mismatch`, or `role_provider_invalid`,
-depending on the cause.
+an internal skill error. Stop and emit the `role_invocation_failed` block shown in
+§ Role Lock above. Reason and action text for this and the related tokens
+(`slot_provider_not_found`, `slot_risk_mismatch`, `role_provider_invalid`) is
+normative in `.strategist/contracts/machine/errors.yaml` — do not restate it.
 
 Strategist must not turn an internal failure into silent ad-hoc work. If the
 skill fails, return the error and wait for correction or new explicit user
@@ -216,15 +190,13 @@ The mode is declared via `local_execution_context.invocation_mode` (`direct` | `
 
 ## Dual Gate Requirement
 
-Execution requires two independent approvals — both must be satisfied before Sniper starts:
-
-1. **Local execution context gate** (`execution_gate=allowed/blocked`) — reported by the invoking context via `governance_injection`. Confirms the local policy permits execution. `allowed` means "not blocked by policy." It is NOT user approval. Absent in direct invocation; defaults to allowed.
-
-2. **Strategist Approval Gate** — the explicit 🚦 Gate prompt presented to the user in the conversation. Required regardless of invocation mode, execution gate state, or any external approval granted upstream.
-
-`execution_gate=allowed` without the Strategist Approval Gate triggers `approval_bypass` drift.
-A user approving at the Approval Gate does NOT override a blocked execution gate.
-See `.strategist/protocol.md#local-execution-context-gate-vs-strategist-approval-gate`.
+Execution requires two independent approvals — both must be satisfied before Sniper
+starts: the **local execution context gate** (`execution_gate=allowed/blocked`, local
+policy only — NOT user approval) and the **Strategist Approval Gate** (the explicit 🚦
+prompt the user answers in the conversation, required on every route and invocation
+mode). `execution_gate=allowed` without the Approval Gate is `approval_bypass` drift;
+user approval never overrides a blocked execution gate. Normative detail:
+`.strategist/agent-protocol.md#local-execution-context-gate-vs-strategist-approval-gate`.
 
 ## Local Execution Context Flow
 
@@ -240,18 +212,14 @@ The field `governance_injection` is the backward-compatible wire name. The prefe
 
 ## Execution Provider Resolution
 
-```
-if local_execution_context.execution_provider is present:
-  execution_provider = local_execution_context.execution_provider
-  resolution_reason = local_context
-else:
-  execution_provider = active.slots.execution
-  resolution_reason = standalone_config
-```
-
-The local execution context wins only for execution provider resolution and related policy context. It does not replace Strategist's pipeline ownership, artifact contract, or Approval Gate.
-
-If the resolved provider is missing or cannot be invoked, Strategist blocks — it does not fall back to direct execution.
+Resolution order is normative in
+`.strategist/contracts/narrative/06-execution.md` § Execution Provider Resolution:
+delegated invocation resolves from `local_execution_context.execution_provider`;
+direct invocation resolves from `active.slots.execution`. The local execution context
+wins only for provider resolution and related policy context — never for pipeline
+ownership, artifact contract, or the Approval Gate. If the resolved provider is
+missing or cannot be invoked, Strategist blocks — it does not fall back to direct
+execution.
 
 ## Local Context Precedence
 
@@ -264,35 +232,16 @@ No specific governance system is the normative model — `local_execution_contex
 
 ## Blocked States
 
-```
-error=local_execution_provider_missing
-reason=delegated invocation did not provide execution_provider
-action=provide local execution context or use direct standalone invocation
-```
-
-```
-error=execution_provider_unavailable
-reason=resolved execution_provider cannot be invoked in this environment
-action=fix provider configuration or runtime installation
-```
-
-```
-drift=local_execution_context_bypass
-reason=Strategist attempted direct execution instead of invoking the resolved provider
-action=stop and invoke the resolved execution provider
-```
+Delegated-execution blocked states — `error=local_execution_provider_missing`,
+`error=execution_provider_unavailable`, `drift=local_execution_context_bypass` — are
+cataloged with normative reason and action text in
+`.strategist/contracts/machine/errors.yaml`. Emit the token line with the catalog's
+reason/action; do not improvise or restate the text here.
 
 ## Drift Self-Correction
 
-Patterns loaded from `identity/drift-patterns.yaml` at preflight (§2b).
-Quick reference — IDs only. Authoritative source is the yaml; do not add descriptions here.
-
-- `direct_execution` — performing slot work directly instead of invoking the configured provider
-- `silent_phase_advance` — starting next phase without emitting done event
-- `approval_bypass` — invoking Sniper without user approval
-- `pipeline_bypass_detected` — mutating repo without phase evidence
-- `opportunity_gate_bypass` — executing manifest items without presenting gate
-- `scope_expansion` — addressing work outside declared mission scope
-- `execution_provider_override` — resolving execution slot from undeclared source
-- `route_plan_creation_to_sniper` — asking Sniper to author documents
-- `local_execution_context_bypass` — executing directly instead of delegating to resolved provider
+Patterns are defined in `identity/drift-patterns.yaml`, loaded at preflight (§2b) when the
+internal domain identity files are present. Authoritative source is the yaml — do not
+restate IDs or descriptions here. If identity files are absent, preflight emits
+`identity=degraded` (see `contracts/machine/preflight.yaml#identity_files_missing`) and
+falls back to this document's own instructions; loading is not unconditional.

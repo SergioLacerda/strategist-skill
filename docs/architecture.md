@@ -10,7 +10,7 @@ The project is composed of two independent layers:
 | Layer | Location | Responsibility |
 |-------|----------|----------------|
 | **Go Binary** | `cmd/` + `internal/` | Install, compile, and validate skill artifacts |
-| **Runtime source** | `strategist/` | Source-only authoring tree used to generate the runtime package |
+| **Runtime source** | `internal/embed/defaults/` | Single authoring tree embedded into the binary (`go:embed`); generates the runtime package |
 | **Runtime instance** | `.strategist/` | Operational instructions read by the agent: pipeline, slots, personas, contracts |
 
 The binary **does not execute missions**. It prepares the environment so the agent can run the skill correctly. During a mission, the agent reads `.strategist/`; `strategist/` is a build/documentation source, not a runtime target.
@@ -30,7 +30,6 @@ cmd/strategist/          CLI commands (cobra)
   sync_governance.go     strategist sync-governance
   version.go             strategist version
   check.go               strategist check
-  initiative.go          strategist initiative
   dojo.go                strategist dojo
   treasure_chest.go      strategist treasure-chest
   root_discovery.go      root-level .strategist/ discovery (CWD walk)
@@ -46,7 +45,7 @@ internal/
 
   embed/                 Defaults embedded in the binary
     defaults.go          embed.FS with all defaults/ files
-    defaults/            Full copy of strategist/ (SKILL.md, roles,
+    defaults/            The authoring source itself (SKILL.md, roles,
                          personas, schemas, contracts, templates)
 
   install/               Installation logic
@@ -120,16 +119,15 @@ compile.Compiler.CompileAll(.strategist/, knowledge.index.yaml)
 - **Scout route decision**: Scout (Intake Router) classifies the request immediately after intake and emits a compact `route_decision` (role, selected_route, route_reason, route_confidence, evidence_state, discovery_subtype, fallback_route, gate_required) — logged and telemetered, never written as a `pending/` artifact. See `schemas/scout-route-decision.schema.yaml` and `contracts/machine/scout-routing.yaml`. Runtime callers can validate the selected route against request facts with `domain.ValidateRouteDecision`.
 - **Canonical discovery handoff**: Ranger produces `<base_path>/pending/<mission_id>-analysis.md`; Archivist consumes that artifact and promotes the refined package to `<base_path>/refined/<mission_id>/`.
 - **Documentation-only execution**: Sniper maintains the executor narrative, but its current execution is materialization of documentation, diagrams, analyses, and approved handoffs. Source code changes are outside the contract.
-- **Quick Draw (`saque rápido`)**: quick idea/task capture; writes only after gate; `todo/` is write-only from the skill perspective.
 - **Opportunity Attack (`opportunity_attack`)**: Archivist-owned ADR evaluation after all four refined artifacts (`analysis.md`, `proposal.md`, `design.md`, `tasks.md`) are written.
 - **Critical Hit**: analysis file management route for moving `.md` artifacts within `pending/`, `refined/`, and `archived/` inside `<base_path>`.
 - **Side Quests**: cross-phase scope observations; Ranger, Archivist, and Sniper may detect them; Archivist consolidates pre-execution findings at the gate; Sniper reports newly discovered side quests.
 - **Treasure Chest knowledge flow (`treasure_chests`)**: full documents in a configured
   chest are the source of truth. `strategist treasure-chest index` scans them offline
-  and writes deduplicated `status: proposed` jewels (compact, source-linked knowledge
-  points) without altering the canonical pipeline. `strategist treasure-chest mine`
-  is the separate human curation step that promotes `proposed` jewels to `accepted`
-  or `verified` (or marks them `deprecated`) — see
+  and writes deduplicated `status: proposed` jewels and potions (compact, source-linked
+  knowledge points) without altering the canonical pipeline.
+  `strategist treasure-chest items` is the separate human curation step that promotes
+  `proposed` items to `accepted` or `verified` (or marks them `deprecated`) — see
   [Jewels](cli-reference.md#jewels). At runtime, any role may consult `accepted`/
   `verified` jewels first as a token-economical hint, then fall back to expanding the
   full source document through a source card when the jewel alone is insufficient
@@ -183,7 +181,7 @@ The `check-stale` CLI exits with code `0` if fresh and `1` if stale — designed
 
 ## Embedded Defaults
 
-`internal/embed/defaults/` is an exact copy of `strategist/` included in the binary via `//go:embed all:defaults`. This means `strategist install` works **without a network connection** and **without the repository cloned** — the binary carries all defaults in memory.
+`internal/embed/defaults/` is the authoring source itself, included in the binary via `//go:embed all:defaults` (the former `strategist/` authoring mirror was retired in W7a — there is no sync step). This means `strategist install` works **without a network connection** and **without the repository cloned** — the binary carries all defaults in memory.
 
 Extraction preserves the directory structure but does not overwrite pre-existing files (files are written via `os.WriteFile` directly — projects with a custom `.strategist/` should back up before re-installing).
 

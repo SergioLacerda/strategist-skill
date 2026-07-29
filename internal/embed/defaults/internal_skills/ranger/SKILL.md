@@ -46,8 +46,10 @@ Before writing the artifact:
 | Exists + status `ranger_pending` or `archivist_pending` or `sniper_running` | `blocked reason=mission_in_progress` → STOP |
 | Exists + status `ranger_done` | Skip Ranger, resume from Archivist |
 | Exists + status `archivist_done` or `gate_pending` | Skip to gate re-presentation |
-| Exists + status `gate_approval` | Skip to Sniper claim |
-| Exists + status `execution_done` | Emit warning, do not reprocess |
+| Exists + status `gate_analysis_accepted` | Skip to Sniper claim |
+| Exists + status `gate_revision_requested` | Resume from Archivist revision |
+| Exists + status `gate_rejected` | Do not reprocess; report status |
+| Exists + status `documentation_applied` | Emit warning, do not reprocess |
 
 ## Scope Observations
 

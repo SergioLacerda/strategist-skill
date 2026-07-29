@@ -1,0 +1,43 @@
+subject: contracts/machine/riposte.yaml
+version: "1.0"
+
+invariants:
+  - id: capture_requires_explicit_confirmation
+    description: The gate response (reject/revision) is never treated as capture confirmation
+    rule: riposte offer must be answered affirmatively before any append; decline/timeout → status=declined, no write
+
+  - id: gate_outcome_unchanged
+    description: Riposte never alters the enclosing gate outcome or FSM transition
+    rule: on_reject → status=rejected and on_revision_requested → status=revision_requested regardless of the riposte answer
+
+  - id: no_automatic_mission
+    description: Captured entries wait in the backlog; Riposte never spawns or restarts a mission
+    rule: riposte capture → backlog append only; no intake, no route selection, no mission_id generation
+
+cases:
+  - name: reject_with_capture
+    given:
+      gate_response: "reject"
+      riposte_response: "sim"
+    expect:
+      emit: "[Strategist] phase=riposte status=captured trigger=gate_rejected items=1"
+      entry_metadata: { origin: riposte, trigger: gate_rejected }
+      gate_status: rejected
+
+  - name: revision_decline_capture
+    given:
+      gate_response: "revision"
+      riposte_response: "nao"
+    expect:
+      emit: "[Strategist] phase=riposte status=declined trigger=gate_revision_requested"
+      gate_status: revision_requested
+      writes: none
+
+  - name: mission_close_drains_sq_backlog
+    given:
+      sq_backlog: ["SQ-002", "SQ-003"]
+      riposte_response: "select SQ-003"
+    expect:
+      emit: "[Strategist] phase=riposte status=captured trigger=mission_close_sq_backlog items=1"
+      entry_metadata: { origin: riposte, trigger: mission_close_sq_backlog }
+      sq_backlog_preserved_in_package: true
