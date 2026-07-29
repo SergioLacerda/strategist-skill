@@ -1,13 +1,11 @@
 package compile
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 )
 
@@ -37,15 +35,27 @@ When ` + "`" + `.strategist/` + "`" + ` is absent:
 ` + "`" + `.strategist/agent-protocol.md` + "`" + ` is the runtime authority for agent behavior.
 Discovery contract: ` + "`" + `.strategist/provider-discovery.md` + "`"
 
-// agentAwareness upserts per-agent entrypoint files at projectRoot if they already exist.
-// Does not create files that do not exist. Failures per file are logged and skipped —
-// this function always returns nil (non-blocking by contract).
+// seedTargets lists the per-agent seed files agentAwareness upserts, uniformly,
+// via the markdown section mechanism. One entry per supported coding-agent seed:
+// CODEX, Claude, Copilot.
+var seedTargets = []struct {
+	relPath string
+	label   string
+}{
+	{filepath.Join(".claude", "claude-instructions.md"), "claude-instructions"},
+	{filepath.Join(".codex", "commands.md"), "codex commands"},
+	{filepath.Join(".github", "copilot-instructions.md"), "copilot"},
+}
+
+// agentAwareness upserts per-agent seed files at projectRoot if they already exist,
+// then runs ideAwareness for IDE-level workspace registration. Does not create seed
+// files that do not exist. Failures per file are logged and skipped — this function
+// always returns nil (non-blocking by contract).
 func agentAwareness(projectRoot string) error {
-	upsertIfExists(filepath.Join(projectRoot, ".antigravity", "antigravity-instructions.md"), upsertSection, "antigravity")
-	upsertIfExists(filepath.Join(projectRoot, ".sdd", "seedlings", "codex.seed.json"), upsertCodexSeed, "codex")
-	upsertIfExists(filepath.Join(projectRoot, ".claude", "claude-instructions.md"), upsertSection, "claude-instructions")
-	upsertIfExists(filepath.Join(projectRoot, ".codex", "commands.md"), upsertSection, "codex commands")
-	return nil
+	for _, t := range seedTargets {
+		upsertIfExists(filepath.Join(projectRoot, t.relPath), upsertSection, t.label)
+	}
+	return ideAwareness(projectRoot)
 }
 
 func upsertIfExists(path string, update func(string) error, label string) {
@@ -83,7 +93,7 @@ func RefreshAgentAwareness(strategistRoot, projectRoot, version string, tplBytes
 
 // upsertSection replaces the "## Strategist Runtime Discovery" section in path.
 // If the section is absent, appends it. Other content is preserved.
-// Used for all markdown-based agent entrypoint files (antigravity, claude, codex commands).
+// Used for all markdown-based agent seed files (claude, codex commands, copilot).
 func upsertSection(path string) error {
 	data, err := os.ReadFile(path) //nolint:gosec // G304: path derived from projectRoot
 	if err != nil {
@@ -139,104 +149,111 @@ func indexNextHeading(s string) int {
 	return -1
 }
 
-// upsertCodexSeed updates required_context and on_strategist_invoke in a codex.seed.json.
-// Prepends ".strategist/agent-protocol.md" to required_context exactly once (idempotent).
-// Adds/updates the on_strategist_invoke field.
-func upsertCodexSeed(path string) error {
-	data, err := os.ReadFile(path) //nolint:gosec // G304
-	if err != nil {
-		return fmt.Errorf("codex seed: read %s: %w", path, err)
-	}
+const (
+	agentsRuntimeStartMarker = "<!-- strategist-runtime-start -->"
+	agentsRuntimeEndMarker   = "<!-- strategist-runtime-end -->"
+	strategistEntryPath      = ".strategist"
+)
 
-	var seed map[string]any
-	if err := json.Unmarshal(data, &seed); err != nil {
-		return fmt.Errorf("codex seed: parse %s: %w", path, err)
-	}
-
-	const protocolPath = ".strategist/agent-protocol.md"
-	seed["required_context"] = requiredContextWithProtocol(seed["required_context"], protocolPath)
-
-	seed["on_strategist_invoke"] = map[string]any{
-		"header":                    "Strategist Active",
-		"preflight":                 "strategist check",
-		"protocol":                  ".strategist/agent-protocol.md",
-		"on_not_installed":          "emit error=not_installed and stop",
-		"role_lock":                 "you are the Strategist orchestrator, not a general coding agent for this turn — do not solve the task directly",
-		"allowed_actions":           []any{"bootstrap", "route", "invoke_providers", "present_gates", "relay_outputs", "report_blocked_states"},
-		"forbidden_actions":         []any{"direct_discovery", "direct_refinement", "direct_execution", "code_or_test_mutation", "git_mutation", "provider_fallback"},
-		"on_role_invocation_failed": "emit error=role_invocation_failed with slot and provider, then stop",
-	}
-
-	out, err := marshalSortedJSON(seed)
-	if err != nil {
-		return fmt.Errorf("codex seed: marshal %s: %w", path, err)
-	}
-	return writeFile(path, append(out, '\n'), "codex seed")
-}
-
-func requiredContextWithProtocol(raw any, protocolPath string) []any {
-	ctx := requiredContext(raw)
-	if containsAnyString(ctx, protocolPath) {
-		return ctx
-	}
-	return append([]any{protocolPath}, ctx...)
-}
-
-func requiredContext(raw any) []any {
-	ctx, ok := raw.([]any)
-	if !ok {
+// ideAwareness registers the .strategist runtime with IDEs that discover skills
+// via a workspace customizations root, when .strategist/ exists at projectRoot.
+// Currently only Antigravity needs this — VSCode already discovers the Claude
+// seed natively via its extension, so it needs no additional registration.
+// Non-blocking: all failures are logged and skipped.
+func ideAwareness(projectRoot string) error {
+	if _, err := os.Stat(filepath.Join(projectRoot, ".strategist")); err != nil {
 		return nil
 	}
-	return ctx
-}
 
-func containsAnyString(values []any, needle string) bool {
-	for _, v := range values {
-		if v == needle {
-			return true
-		}
+	agentsDir := filepath.Join(projectRoot, ".agents")
+	if err := os.MkdirAll(agentsDir, 0o755); err != nil {
+		return fmt.Errorf("ide awareness: mkdir %s: %w", agentsDir, err)
 	}
-	return false
-}
 
-// marshalSortedJSON marshals a map[string]any to indented JSON with keys sorted
-// alphabetically, producing deterministic output across multiple runs.
-func marshalSortedJSON(m map[string]any) ([]byte, error) {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
+	if err := upsertAgentsSkillsJSON(filepath.Join(agentsDir, "skills.json")); err != nil {
+		slog.Warn("[Strategist] ide awareness: skills.json update failed", "error", err)
 	}
-	sort.Strings(keys)
-
-	var buf bytes.Buffer
-	buf.WriteByte('{')
-	for i, k := range keys {
-		if err := writeSortedJSONEntry(&buf, m, k, i > 0); err != nil {
-			return nil, err
-		}
+	if err := upsertAgentsMarkdown(filepath.Join(agentsDir, "AGENTS.md")); err != nil {
+		slog.Warn("[Strategist] ide awareness: AGENTS.md update failed", "error", err)
 	}
-	if len(keys) > 0 {
-		buf.WriteByte('\n')
-	}
-	buf.WriteByte('}')
-	return buf.Bytes(), nil
-}
-
-func writeSortedJSONEntry(buf *bytes.Buffer, m map[string]any, key string, comma bool) error {
-	if comma {
-		buf.WriteByte(',')
-	}
-	keyBytes, err := json.Marshal(key)
-	if err != nil {
-		return fmt.Errorf("marshal key %q: %w", key, err)
-	}
-	valBytes, err := json.MarshalIndent(m[key], "  ", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal value for key %q: %w", key, err)
-	}
-	buf.WriteString("\n  ")
-	buf.Write(keyBytes)
-	buf.WriteString(": ")
-	buf.Write(valBytes)
 	return nil
+}
+
+// upsertAgentsSkillsJSON ensures {"path": ".strategist"} is present in the
+// entries array of the .agents/skills.json registry, creating the file if
+// absent and preserving any other entries and top-level keys already present.
+func upsertAgentsSkillsJSON(path string) error {
+	doc, err := readAgentsSkillsDoc(path)
+	if err != nil {
+		return err
+	}
+
+	entries, ok := doc["entries"].([]any)
+	if !ok {
+		entries = nil
+	}
+	for _, e := range entries {
+		if m, ok := e.(map[string]any); ok && m["path"] == strategistEntryPath {
+			return nil // already registered, nothing to write
+		}
+	}
+	doc["entries"] = append(entries, map[string]any{"path": strategistEntryPath})
+
+	out, err := json.MarshalIndent(doc, "", "  ")
+	if err != nil {
+		return fmt.Errorf("agents skills.json: marshal %s: %w", path, err)
+	}
+	return writeFile(path, append(out, '\n'), "agents skills.json")
+}
+
+func readAgentsSkillsDoc(path string) (map[string]any, error) {
+	data, err := os.ReadFile(path) //nolint:gosec // G304: path derived from projectRoot
+	if err != nil {
+		if os.IsNotExist(err) {
+			return map[string]any{}, nil
+		}
+		return nil, fmt.Errorf("agents skills.json: read %s: %w", path, err)
+	}
+
+	doc := map[string]any{}
+	if err := json.Unmarshal(data, &doc); err != nil {
+		return nil, fmt.Errorf("agents skills.json: parse %s: %w", path, err)
+	}
+	return doc, nil
+}
+
+// upsertAgentsMarkdown upserts the delimited Strategist Runtime Discovery block
+// into .agents/AGENTS.md. Creates the file with a minimal header if absent.
+// If the delimiters are absent from existing content, appends the block.
+func upsertAgentsMarkdown(path string) error {
+	data, err := os.ReadFile(path) //nolint:gosec // G304: path derived from projectRoot
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("agents markdown: read %s: %w", path, err)
+		}
+		data = []byte("# Agent Rules\n")
+	}
+
+	content := upsertDelimitedSection(string(data), agentsRuntimeStartMarker, agentsRuntimeEndMarker, strategistRuntimeDiscoverySection)
+	if !strings.HasSuffix(content, "\n") {
+		content += "\n"
+	}
+	return writeFile(path, []byte(content), "agents markdown")
+}
+
+// upsertDelimitedSection replaces the content between startMarker and endMarker
+// with newBlock, wrapped in the markers. If the markers are absent (or malformed —
+// end before start), a new delimited block is appended to the end of content.
+func upsertDelimitedSection(content, startMarker, endMarker, newBlock string) string {
+	startIdx := strings.Index(content, startMarker)
+	endIdx := strings.Index(content, endMarker)
+	block := startMarker + "\n" + newBlock + "\n" + endMarker
+
+	if startIdx == -1 || endIdx == -1 || endIdx < startIdx {
+		if !strings.HasSuffix(content, "\n") {
+			content += "\n"
+		}
+		return content + "\n" + block + "\n"
+	}
+	return content[:startIdx] + block + content[endIdx+len(endMarker):]
 }

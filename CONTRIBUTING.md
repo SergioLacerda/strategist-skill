@@ -32,6 +32,18 @@ make build          # builds the CLI binary to bin/strategist
 > **Important:** After editing any file under `internal/embed/defaults/` or
 > `strategist/`, run `make sync-embed && make build` to apply changes to the binary.
 
+### Landing page: build before preview
+
+`npm run preview` (Astro's own command) serves the contents of `dist/`,
+which only exists after a build — running `preview` without building first
+fails with "output directory ... does not exist". `make install-web` only
+runs `npm ci`; it does not build.
+
+```bash
+make build-site          # installs + builds web/landing/dist/
+cd web/landing && npm run preview
+```
+
 ## Running tests
 
 ```bash

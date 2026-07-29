@@ -53,7 +53,7 @@ const PIPELINE_PT = ` <span class="node">[ WIZARD ]</span> ───────
       </a>
 
       <!-- Tab switcher island -->
-      <TabSwitcher client:load lang="pt" />
+      <TabSwitcher client:load />
 
       <div class="rightcluster">
         <a href={base} style="font-family:var(--font-mono); font-size:var(--fs-xs); letter-spacing:var(--ls-wide); color:var(--amber-dim); text-decoration:none; opacity:.75;" title="Escolher modo">‹ modos</a>
@@ -130,22 +130,22 @@ const PIPELINE_PT = ` <span class="node">[ WIZARD ]</span> ───────
           <p class="pdesc" data-pt="Cada Skill(IA agent) atua em um papel(persona), sob orientação do estrategista, que define responsabilidade e limites de atuação." data-en="Each Skill(AI agent) acts in a role(persona), under the Strategist's guidance, which defines responsibility and operating boundaries.">Cada Skill(IA agent) atua em um papel(persona), sob orientação do estrategista, que define responsabilidade e limites de atuação.</p>
         </div>
         <div class="cards">
-          <RoleCard glyph="🧠" role="Estrategista" klass="Mestre · Orquestrador" feature={true}>
+          <RoleCard glyph="🧠" role="Estrategista" klassPt="Mestre · Orquestrador" klassEn="Master · Orchestrator" feature={true}>
             <span data-pt="Orquestra a missão de ponta a ponta. Delegando e monitorando os papéis, reunindo o time e documentação para aguardar usuário no gate de aprovação." data-en="Orchestrates the mission end to end. Delegating and monitoring the roles, assembling the team and documentation while waiting for the user at the approval gate.">Orquestra a missão de ponta a ponta. Delegando e monitorando os papéis, reunindo o time e documentação para aguardar usuário no gate de aprovação.</span>
           </RoleCard>
-          <RoleCard glyph="🧭" role="Scout" klass="Batedor de Rota · Intake Router" badgePt="interno" badgeEn="internal">
+          <RoleCard glyph="🧭" role="Scout" klassPt="Batedor de Rota · Intake Router" klassEn="Route Scout · Intake Router" badgePt="interno" badgeEn="internal">
             <span data-pt="Classifica o pedido e escolhe a rota antes de qualquer papel agir. Não investiga a fundo — quando precisa de evidência, aciona o Ranger." data-en="Classifies the request and picks the route before any role acts. Does not investigate deeply — when evidence is needed, it hands off to Ranger.">Classifica o pedido e escolhe a rota antes de qualquer papel agir. Não investiga a fundo — quando precisa de evidência, aciona o Ranger.</span>
           </RoleCard>
-          <RoleCard glyph="⌕" role="Ranger" klass="Batedor · Discovery">
+          <RoleCard glyph="⌕" role="Ranger" klassPt="Batedor · Discovery" klassEn="Scout · Discovery">
             <span data-pt="Levanta requisitos, mapeia o contexto e devolve um relatório de discovery." data-en="Gathers requirements, maps context and returns a discovery report.">Levanta requisitos, mapeia o contexto e devolve um relatório de discovery.</span>
           </RoleCard>
-          <RoleCard glyph="✎" role="Archivist" klass="Arquivista · Refinamento">
+          <RoleCard glyph="✎" role="Archivist" klassPt="Arquivista · Refinamento" klassEn="Archivist · Refinement">
             <span data-pt="Refina o relatório do Ranger em pacote documental e requisitos prontos para executor." data-en="Refines Ranger's report into a documentation package and executor-ready requirements.">Refina o relatório do Ranger em pacote documental e requisitos prontos para executor.</span>
           </RoleCard>
-          <RoleCard glyph="⌖" role="Sniper" klass="Executor Documental · Materialização">
+          <RoleCard glyph="⌖" role="Sniper" klassPt="Executor Documental · Materialização" klassEn="Documentation Executor · Materialization">
             <span data-pt="Executa a missão documental aprovada: materializa artefatos, arquiva a análise e prepara o executor handoff. Não implementa código-fonte." data-en="Executes the approved documentation mission: materializes artifacts, archives analysis, and prepares the executor handoff. It does not implement source code.">Executa a missão documental aprovada: materializa artefatos, arquiva a análise e prepara o executor handoff. Não implementa código-fonte.</span>
           </RoleCard>
-          <RoleCard glyph="✶" role="Wizard" klass="Invocador · Instalador">
+          <RoleCard glyph="✶" role="Wizard" klassPt="Invocador · Instalador" klassEn="Summoner · Installer">
             <span data-pt="Conjura o grupo no repositório-alvo. Obtém o binário via go install ou GitHub Releases, depois configura com --wizard." data-en="Conjures the party into the target repository. Gets the binary via go install or GitHub Releases, then configures with --wizard.">Conjura o grupo no repositório-alvo. Obtém o binário via <i>go install</i> ou GitHub Releases, depois configura com <i>--wizard</i>.</span>
           </RoleCard>
         </div>
@@ -326,7 +326,10 @@ const PIPELINE_PT = ` <span class="node">[ WIZARD ]</span> ───────
           <span class="h" data-pt="portão de aprovação" data-en="approval gate">portão de aprovação</span>
           <span class="rule"></span>
         </div>
-        <GatePanel heading="<b>REQUIRES ::</b> human acceptance · no source-code mutation">
+        <GatePanel
+          headingPt="<b>REQUER ::</b> aceitação humana · nenhuma mutação de código-fonte"
+          headingEn="<b>REQUIRES ::</b> human acceptance · no source-code mutation"
+        >
           <span data-pt="Discovery e refinamento rodam autonomamente. No Approval Gate, o usuário aceita a análise, adiciona itens faltantes ou rejeita o escopo. Só então Sniper pode materializar documentação ou preparar o executor handoff." data-en="Discovery and refinement run autonomously. At the Approval Gate, the user accepts the analysis, adds missing items, or rejects the scope. Only then can Sniper materialize documentation or prepare the executor handoff.">Discovery e refinamento rodam autonomamente. No Approval Gate, o usuário aceita a análise, adiciona itens faltantes ou rejeita o escopo. Só então Sniper pode materializar documentação ou preparar o executor handoff.</span>
         </GatePanel>
 
@@ -355,11 +358,12 @@ const PIPELINE_PT = ` <span class="node">[ WIZARD ]</span> ───────
           </div>
           <InstallBlock
             commands={[
-              { label: 'go install (recomendado)', command: 'go install github.com/SergioLacerda/strategist-skill/cmd/strategist@latest' },
-              { label: 'curl · Linux / macOS / WSL', command: 'curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.sh | bash' },
-              { label: 'Windows · GitHub Releases', command: 'https://github.com/SergioLacerda/strategist-skill/releases' },
+              { labelPt: 'go install (recomendado)', labelEn: 'go install (recommended)', command: 'go install github.com/SergioLacerda/strategist-skill/cmd/strategist@latest' },
+              { labelPt: 'curl · Linux / macOS / WSL', labelEn: 'curl · Linux / macOS / WSL', command: 'curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.sh | bash' },
+              { labelPt: 'Windows · GitHub Releases', labelEn: 'Windows · GitHub Releases', command: 'https://github.com/SergioLacerda/strategist-skill/releases' },
             ]}
-            source="Windows: baixe strategist-windows-amd64.zip nos Releases, extraia e adicione ao PATH."
+            sourcePt="Windows: baixe strategist-windows-amd64.zip nos Releases, extraia e adicione ao PATH."
+            sourceEn="Windows: download strategist-windows-amd64.zip from Releases, extract it, and add it to PATH."
           />
           <div class="subhead" style="margin-top:34px;">
             <span class="h" data-pt="configurar o skill" data-en="configure the skill">configurar o skill</span>
@@ -367,7 +371,7 @@ const PIPELINE_PT = ` <span class="node">[ WIZARD ]</span> ───────
             <span class="meta" data-pt="passo 2" data-en="step 2">passo 2</span>
           </div>
           <p class="pdesc" style="margin-top:-8px; margin-bottom:18px;" data-pt="No repositório-alvo, invoque o wizard:" data-en="In the target repository, invoke the wizard:">No repositório-alvo, invoque o wizard:</p>
-          <InstallBlock label="Strategist CLI" command="strategist install --wizard" />
+          <InstallBlock labelPt="Strategist CLI" labelEn="Strategist CLI" command="strategist install --wizard" />
         </div>
       </section>
 

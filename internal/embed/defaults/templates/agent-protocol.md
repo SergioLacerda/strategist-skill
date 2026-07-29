@@ -42,7 +42,7 @@ Correctness of the parent agent's independent answer does not repair the drift.
 
 - Never perform discovery, refinement, or documentation materialization work directly — always invoke the designated slot provider
 - Never simulate role work by performing slot work in the Strategist shell — if the configured role/provider cannot be invoked, stop with `error=role_invocation_failed`
-- Never invoke a discovery weapon when its manifest lacks `discovery_subtype_support` for the required subtype — stop with `error=provider_capability_mismatch`. This check only ever applies to `creative`: `evaluation`/`diagnostic`/`closure_evidence` resolve directly to `internal_skills/ranger` and never consult the weapon's manifest (see §3 Discovery Routing).
+- Never invoke an external discovery weapon as a substitute for Ranger — all discovery subtypes (`creative`, `evaluation`, `diagnostic`, `closure_evidence`) always resolve to `internal_skills/ranger` (native role); no weapon manifest is ever consulted for discovery invocation (see §3 Discovery Routing).
 - Never read from `strategist/` (without dot) — path drift; only `.strategist/` is valid at runtime
 - Never skip phases — there is no "this task is too small to need discovery"
 - Never invoke Sniper without an explicit Strategist Approval Gate approval from the user in the conversation
@@ -76,18 +76,17 @@ execution  →  {{.Slots.Execution}}                        run git/edits/commit
 
 ### Discovery Routing
 
-Discovery invocation target depends on `route_decision.discovery_subtype`
-(set by Scout — see `00-routing.md` § Scout — Intake Router and
+Discovery invocation target does not depend on `route_decision.discovery_subtype`
+or on `active.slots.discovery` (see `00-routing.md` § Scout — Intake Router and
 § Discovery Weapon Resolution by Subtype):
 
 | `discovery_subtype` | Invoke | Kind |
 |---|---|---|
-| `creative` | `{{.Slots.Discovery}}` | `skill_provider` — external weapon, invoked via the `Skill` tool |
-| `evaluation` \| `diagnostic` \| `closure_evidence` | `internal_skills/ranger` | `native_role` — parent agent embodies Ranger directly (same mechanism already used for execution/`sniper`), reading `roles/ranger.yaml` + `internal_skills/ranger/SKILL.md` |
+| `creative` \| `evaluation` \| `diagnostic` \| `closure_evidence` | `internal_skills/ranger` | `native_role` — parent agent embodies Ranger directly (same mechanism already used for execution/`sniper`), reading `roles/ranger.yaml` + `internal_skills/ranger/SKILL.md` |
 
-For `evaluation`/`diagnostic`/`closure_evidence` this holds regardless of what `active.slots.discovery` is configured to — the external weapon is never
-consulted for these subtypes. See `03-discovery.md` § Discovery Subtypes and
-`contracts/machine/scout-routing.yaml` § `post_route_capability_check`.
+This holds regardless of what `active.slots.discovery` is configured to (default:
+`{{.Slots.Discovery}}`) — the external weapon is never consulted for discovery
+invocation, for any subtype. See `03-discovery.md` § Discovery Subtypes.
 
 Handoff contracts:
 - Ranger → Archivist: `.strategist/schemas/handoff-ranger-to-archivist.schema.yaml`
@@ -104,7 +103,7 @@ Linear checklist. Do not advance without completing each item.
 [ ] 2. intake (skill: prompt-intake)
 [ ] 3. routing (skill: scout — Intake Router): critical hit? main mission?
 [ ] 4. context enrichment (skill: context-enrichment)
-[ ] 5. discovery → invoke per Discovery Routing (§3): {{.Slots.Discovery}} for creative, internal_skills/ranger otherwise
+[ ] 5. discovery → invoke internal_skills/ranger (native role, all discovery subtypes)
 [ ] 6. refinement → invoke {{.Slots.Refinement}}
 [ ] 7. approval gate  ← MANDATORY PAUSE — do not advance without explicit approval; timeout/decline ends as analysis-only
 [ ] 8. materialization → invoke {{.Slots.Execution}}  ← only after gate approved
@@ -142,7 +141,6 @@ Strategist stops immediately on:
 | `active.yaml` missing | `error=config_missing` | stop |
 | slot provider not found | `error=slot_provider_not_found` | stop |
 | configured role/provider cannot be invoked | `error=role_invocation_failed` | stop; fix provider configuration or runtime installation |
-| discovery weapon lacks required subtype support | `error=provider_capability_mismatch` | stop; configure a compatible discovery weapon |
 | gate bypass attempt | `drift=approval_bypass` | block, notify user |
 | delegated invocation missing `execution_provider` | `error=local_execution_provider_missing` | stop; do not execute directly |
 | resolved provider cannot be invoked | `error=execution_provider_unavailable` | stop; do not execute directly |

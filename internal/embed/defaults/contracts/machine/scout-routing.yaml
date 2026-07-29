@@ -76,29 +76,17 @@ invariants:
   - If route_confidence < route_confidence_threshold, selected_route=full_pipeline
   - If any condition is ambiguous, route to full_pipeline — conservatism is the safe default
   - gate_required is always true, regardless of selected_route
+  - discovery_always_resolves_to_native_ranger — discovery invocation never depends on
+    discovery_subtype or active.slots.discovery; all subtypes resolve to
+    internal_skills/ranger (native_role); no external weapon's manifest is ever
+    consulted for discovery, so no post-route capability check applies
 
-post_route_capability_check:
-  description: >
-    Runs immediately after route_decision is emitted with
-    evidence_state: requires_discovery and discovery_subtype: creative, before
-    the resolved discovery weapon is invoked. This is Scout's routing
-    responsibility, not classic preflight — preflight runs before
-    intake/routing, before discovery_subtype exists. For discovery_subtype
-    values other than creative (evaluation, diagnostic, closure_evidence),
-    this check does not run: resolution goes directly to
-    internal_skills/ranger (native_role) and the external weapon's manifest
-    is never consulted — see
-    contracts/narrative/00-routing.md § Discovery Weapon Resolution by Subtype.
-  timing: before_weapon_invocation
-  applies_to_subtypes: [creative]
-  check: >
-    Read the resolved discovery weapon's skill.yaml discovery_subtype_support field.
-    If it does not declare support (native or adapter) for creative,
-    do not invoke the weapon. Emit provider_capability_mismatch instead (see
-    contracts/machine/preflight.yaml for the full error condition and remediation hint).
-  emit:
-    on_mismatch:
-      format: >
-        "[Strategist] phase=intake status=blocked reason=provider_capability_mismatch
-         slot=discovery weapon={weapon_id} subtype={discovery_subtype}"
-      level: INFO
+# post_route_capability_check was removed (see
+# .analysis/refined/20260728-ranger-drift-eval/): it only ever applied to
+# discovery_subtype=creative, and a live invocation of a manifest-compliant
+# creative weapon surfaced structural incompatibilities with Ranger's contract
+# that the manifest-only check could not catch. Discovery now resolves to
+# internal_skills/ranger for every subtype (see
+# contracts/narrative/00-routing.md § Discovery Weapon Resolution by Subtype),
+# so there is no remaining case where an external weapon is a discovery
+# candidate and this check would run.

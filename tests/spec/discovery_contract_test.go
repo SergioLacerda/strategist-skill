@@ -169,7 +169,7 @@ func TestRoutingContractDefinesDiscoveryWeaponResolutionBySubtype(t *testing.T) 
 		"Discovery Weapon Resolution by Subtype",
 		"internal_skills/ranger",
 		"kind=native_role",
-		"regardless of `active.slots.discovery`",
+		"does not depend on",
 		"never a live behavior guarantee",
 	} {
 		if !strings.Contains(content, needle) {
@@ -300,18 +300,20 @@ func TestRangerRoleFileReferencesEvaluationVerdict(t *testing.T) {
 // narrows Implementation Short Route's ability to annotate implementation status
 // to cases with explicit, narrow evidence, falling back to full_pipeline otherwise.
 
-// TestBrainstormingProviderDeclaresOnlyCreativeSubtypeSupport verifies the
-// brainstorming provider manifest declares creative-subtype support only.
-// It must NOT claim evaluation/diagnostic/closure_evidence adapter support:
-// those subtypes bypass this weapon entirely and resolve to
-// internal_skills/ranger (see 00-routing.md § Discovery Weapon Resolution by
-// Subtype). A prior version of this test required the adapter claims —
-// that assumption was falsified by a live invocation showing brainstorming's
-// own SKILL.md has no adaptive behavior for those subtypes at all.
+// TestBrainstormingProviderDoesNotDeclareDiscoverySubtypeSupport verifies the
+// brainstorming provider manifest no longer declares discovery_subtype_support
+// at all. Discovery never resolves to this weapon for any subtype anymore —
+// see 00-routing.md § Discovery Weapon Resolution by Subtype. Two prior
+// versions of this test required, in turn, adapter claims for
+// evaluation/diagnostic/closure_evidence, then a native claim for creative
+// only — both were falsified by live invocation (see
+// .analysis/refined/20260728-ranger-drift-eval/): a manifest capability claim
+// is not a live behavior guarantee, so the field was removed rather than
+// re-tuned a third time.
 // .strategist/ is a generated runtime artifact, so this only asserts the
 // embedded-defaults copy — the canonical source for what strategist install stamps
 // into a workspace.
-func TestBrainstormingProviderDeclaresOnlyCreativeSubtypeSupport(t *testing.T) {
+func TestBrainstormingProviderDoesNotDeclareDiscoverySubtypeSupport(t *testing.T) {
 	t.Parallel()
 
 	path := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "skills", "brainstorming", "skill.yaml")
@@ -320,20 +322,20 @@ func TestBrainstormingProviderDeclaresOnlyCreativeSubtypeSupport(t *testing.T) {
 		"canonical_role: ranger",
 		"provider_class: rankeado",
 		"risk_score: write_analysis",
-		"discovery_subtype_support:",
-		"creative: native",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("%s missing brainstorming weapon term %q", path, needle)
 		}
 	}
 	for _, forbidden := range []string{
+		"discovery_subtype_support",
+		"creative: native",
 		"evaluation: adapter",
 		"diagnostic: adapter",
 		"closure_evidence: adapter",
 	} {
 		if strings.Contains(content, forbidden) {
-			t.Fatalf("%s still declares false subtype support %q — these subtypes now bypass this weapon entirely", path, forbidden)
+			t.Fatalf("%s still declares a discovery-subtype capability claim %q — no subtype resolves to this weapon anymore", path, forbidden)
 		}
 	}
 }

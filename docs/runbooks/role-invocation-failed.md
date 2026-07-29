@@ -14,8 +14,12 @@ The configured slot provider's `skill.yaml` is missing, schema-invalid, or not
 callable in the current runtime — the provider is not installed, is installed at
 the wrong path, or the installed runtime doesn't expose it as a skill. This is
 specifically about the provider being uninvokable, not about what it does once
-invoked: standalone `SKILL.md` style quirks or discovery-subtype coverage gaps are
-a different condition (`provider_capability_mismatch`), not this one.
+invoked: standalone `SKILL.md` style quirks are not this condition either —
+preflight validates only that the manifest exists and matches the slot's risk
+contract. (Discovery no longer invokes an external weapon at all — all
+discovery subtypes resolve to `internal_skills/ranger` natively — so
+discovery-subtype coverage is not a runtime condition of any kind anymore;
+see `.analysis/refined/20260728-ranger-drift-eval/`.)
 
 ## Resolution Steps
 

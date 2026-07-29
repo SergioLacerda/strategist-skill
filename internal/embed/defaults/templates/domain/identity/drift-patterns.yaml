@@ -25,20 +25,22 @@ patterns:
       output directly. Instruct the user to fix provider configuration or runtime installation,
       then rerun strategist check.
 
-  - id: provider_capability_mismatch
+  - id: external_discovery_weapon_regression
     symptom: >
-      Scout selected discovery_subtype=evaluation (or another non-creative subtype),
-      and I am about to invoke the configured discovery weapon to find out whether it
-      supports this subtype — instead of checking discovery_subtype_support first.
+      I am about to invoke an external skill/weapon (e.g. the skill configured at
+      active.slots.discovery) for discovery, for any discovery_subtype — reverting to
+      a mechanism that was removed after a live invocation of a manifest-compliant
+      weapon (declared discovery_subtype_support: creative: native) surfaced
+      structural incompatibilities with Ranger's autonomous single-shot contract that
+      the manifest declaration could not have caught (see
+      .analysis/refined/20260728-ranger-drift-eval/).
     correction: >
-      Stop before invoking the weapon. Check the resolved weapon's skill.yaml
-      discovery_subtype_support field against route_decision.discovery_subtype (see
-      contracts/machine/scout-routing.yaml § post_route_capability_check). If
-      unsupported, emit blocked reason=provider_capability_mismatch with slot=discovery,
-      the configured weapon, and the required discovery_subtype. Never fall back to
-      parent-agent discovery. Instruct the user: configure active.slots.discovery to a
-      weapon whose own instructions actually implement this discovery_subtype — editing skill.yaml metadata alone does not change
-      an external weapon's real behavior.
+      Stop. Discovery always resolves to internal_skills/ranger (native role), for
+      every discovery_subtype — never to an external weapon (see
+      contracts/narrative/00-routing.md § Discovery Weapon Resolution by Subtype).
+      Embody Ranger directly: read roles/ranger.yaml + internal_skills/ranger/SKILL.md
+      and perform discovery under that contract. active.slots.discovery remains
+      configured/preflight-validated but is never invoked for discovery.
 
   - id: silent_phase_advance
     symptom: >

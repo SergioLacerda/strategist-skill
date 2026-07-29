@@ -223,22 +223,6 @@ func TestWriteFile_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "agent protocol: write")
 }
 
-// --- marshalSortedJSON ---
-
-func TestMarshalSortedJSON_NonSerializableValue(t *testing.T) {
-	t.Parallel()
-	_, err := marshalSortedJSON(map[string]any{"key": make(chan int)})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "marshal value for key")
-}
-
-func TestMarshalSortedJSON_EmptyMap(t *testing.T) {
-	t.Parallel()
-	out, err := marshalSortedJSON(map[string]any{})
-	require.NoError(t, err)
-	assert.Equal(t, "{}", string(out))
-}
-
 // --- upsertSection write error ---
 
 func TestUpsertSection_WriteError(t *testing.T) {
@@ -255,24 +239,6 @@ func TestUpsertSection_WriteError(t *testing.T) {
 	err := upsertSection(path)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "upsert section: write")
-}
-
-// --- upsertCodexSeed write error ---
-
-func TestUpsertCodexSeed_WriteError(t *testing.T) {
-	t.Parallel()
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
-	dir := t.TempDir()
-	path := filepath.Join(dir, "codex.seed.json")
-	require.NoError(t, os.WriteFile(path, []byte(`{"required_context":[]}`), 0o644))
-	require.NoError(t, os.Chmod(path, 0o444))
-	t.Cleanup(func() { _ = os.Chmod(path, 0o644) })
-
-	err := upsertCodexSeed(path)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "codex seed: write")
 }
 
 func TestUpsertSection_ReadError(t *testing.T) {
@@ -340,20 +306,20 @@ func TestMarkdownTail_LastSectionInFileReturnsEmpty(t *testing.T) {
 	assert.Empty(t, markdownTail(after))
 }
 
-// --- AgentAwareness slog.Warn path (write error on antigravity) ---
+// --- AgentAwareness slog.Warn path (write error on a seed target) ---
 
-func TestAgentAwareness_AntigravityWriteErrorIsNonBlocking(t *testing.T) {
+func TestAgentAwareness_SeedWriteErrorIsNonBlocking(t *testing.T) {
 	t.Parallel()
 	if os.Getuid() == 0 {
 		t.Skip("permission tests do not apply when running as root")
 	}
 	dir := t.TempDir()
-	agDir := filepath.Join(dir, ".antigravity")
-	require.NoError(t, os.MkdirAll(agDir, 0o755))
-	agPath := filepath.Join(agDir, "antigravity-instructions.md")
-	require.NoError(t, os.WriteFile(agPath, []byte("# Antigravity\n"), 0o644))
-	require.NoError(t, os.Chmod(agPath, 0o444))
-	t.Cleanup(func() { _ = os.Chmod(agPath, 0o644) })
+	claudeDir := filepath.Join(dir, ".claude")
+	require.NoError(t, os.MkdirAll(claudeDir, 0o755))
+	claudePath := filepath.Join(claudeDir, "claude-instructions.md")
+	require.NoError(t, os.WriteFile(claudePath, []byte("# Claude\n"), 0o644))
+	require.NoError(t, os.Chmod(claudePath, 0o444))
+	t.Cleanup(func() { _ = os.Chmod(claudePath, 0o644) })
 
 	err := agentAwareness(dir)
 	require.NoError(t, err, "agentAwareness must always return nil even when per-file update fails")

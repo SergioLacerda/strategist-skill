@@ -22,6 +22,13 @@ invariants:
     description: Any ambiguous trigger condition routes conservatively to full_pipeline
     rule: condition_ambiguous == true → selected_route=full_pipeline
 
+  - id: discovery_always_resolves_to_native_ranger
+    description: >
+      Discovery invocation never depends on discovery_subtype or
+      active.slots.discovery — every subtype resolves to internal_skills/ranger.
+      No external weapon's manifest is ever consulted for discovery.
+    rule: for any discovery_subtype → discovery target == internal_skills/ranger (native_role)
+
 cases:
   - name: critical_hit_route_selected
     given:
@@ -59,11 +66,14 @@ cases:
       discovery_subtype: set
       action: Ranger performs discovery — Scout does not
 
-  - name: provider_capability_mismatch_blocks_weapon_invocation
+  - name: all_discovery_subtypes_resolve_to_native_ranger
     given:
       evidence_state: requires_discovery
-      discovery_subtype: "some_subtype"
-      resolved_weapon_declares_subtype_support: false
+      discovery_subtype: "creative"
+      configured_discovery_weapon: brainstorming
     expect:
-      emit: "[Strategist] phase=intake status=blocked reason=provider_capability_mismatch slot=discovery weapon={weapon_id} subtype=some_subtype"
-      action: do not invoke the discovery weapon
+      handoff: "[Strategist] phase=intake status=handoff component=scout target=ranger weapon=internal_skills/ranger subtype=creative"
+      action: >
+        discovery resolves to internal_skills/ranger regardless of
+        active.slots.discovery or discovery_subtype — no external weapon's
+        manifest is ever consulted for discovery invocation

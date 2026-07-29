@@ -1,9 +1,10 @@
 ---
 export interface Props {
   lock?: string;
-  heading?: string;
+  headingPt?: string;
+  headingEn?: string;
 }
-const { lock = '⛨', heading } = Astro.props;
+const { lock = '⛨', headingPt, headingEn } = Astro.props;
 ---
 <div style="position:relative; border:1px dashed var(--border-gate); border-radius:var(--radius-md); background:linear-gradient(180deg,rgba(207,122,44,.10),rgba(20,15,9,.55)); box-shadow:var(--shadow-gate); padding:34px 76px 30px; text-align:center; overflow:hidden;">
   <!-- stone jambs -->
@@ -21,6 +22,6 @@ const { lock = '⛨', heading } = Astro.props;
     <div style="position:absolute; left:50%; top:46%; transform:translate(-50%,-50%); width:74px; height:74px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:1px solid var(--border-gate); background:radial-gradient(circle,rgba(207,122,44,.22),rgba(12,8,5,.85) 72%); color:var(--orange); font-size:36px; text-shadow:0 0 20px rgba(207,122,44,.7); box-shadow:0 0 26px rgba(207,122,44,.25);">{lock}</div>
   </div>
 
-  {heading && <div style="font-family:var(--font-mono); font-size:16px; font-weight:600; color:var(--amber-hi); letter-spacing:.04em; text-shadow:0 0 12px rgba(232,194,90,.4); margin:22px 0 10px;" set:html={heading}></div>}
+  {headingPt && <div data-pt={headingPt} data-en={headingEn ?? headingPt} style="font-family:var(--font-mono); font-size:16px; font-weight:600; color:var(--amber-hi); letter-spacing:.04em; text-shadow:0 0 12px rgba(232,194,90,.4); margin:22px 0 10px;" set:html={headingPt}></div>}
   <p style="margin:0 auto; max-width:560px; font-size:var(--fs-body); color:var(--muted); line-height:var(--lh-loose);"><slot /></p>
 </div>

@@ -67,13 +67,6 @@ errors:
     action: "correct the provider descriptor or configure a different provider"
     enforced_by: agent
 
-  - token: provider_capability_mismatch
-    emit: "error=provider_capability_mismatch"
-    scope: slot
-    reason: "resolved discovery weapon does not declare support for the required discovery_subtype"
-    action: "configure active.slots.discovery to a weapon whose instructions implement the required subtype"
-    enforced_by: agent
-
   - token: slot_risk_mismatch
     emit: "error=slot_risk_mismatch"
     scope: slot
@@ -149,7 +142,7 @@ errors:
 drift_index:
   - direct_execution
   - role_invocation_failed
-  - provider_capability_mismatch
+  - external_discovery_weapon_regression
   - silent_phase_advance
   - approval_bypass
   - scope_expansion

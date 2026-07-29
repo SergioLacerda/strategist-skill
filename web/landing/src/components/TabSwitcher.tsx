@@ -19,9 +19,7 @@ function save(k: string, v: string) {
   try { localStorage.setItem(k, v); } catch {}
 }
 
-interface Props { lang: string; }
-
-export default function TabSwitcher({ lang }: Props) {
+export default function TabSwitcher() {
   const [tab, setTab] = useState<Tab>(() => (read('strategist_console_tab', 'overview') as Tab));
 
   useEffect(() => {
@@ -49,8 +47,6 @@ export default function TabSwitcher({ lang }: Props) {
     });
   }, []);
 
-  const nav = lang === 'en' ? NAV_EN : NAV_PT;
-
   return (
     <nav className="nav" aria-label="Console tabs">
       {TABS.map(t => (
@@ -59,9 +55,9 @@ export default function TabSwitcher({ lang }: Props) {
           className={t === tab ? 'active' : ''}
           onClick={() => setTab(t)}
           aria-current={t === tab ? 'page' : undefined}
-        >
-          {nav[t]}
-        </button>
+          data-pt={NAV_PT[t]}
+          data-en={NAV_EN[t]}
+        >{NAV_PT[t]}</button>
       ))}
     </nav>
   );

@@ -69,24 +69,6 @@ contract:
            slot=<slot_name> provider=<provider_id>"
         Stop mission. Do not begin any phase work.
         Hint: fix provider configuration or runtime installation, then run strategist check again.
-    - code: provider_capability_mismatch
-      trigger: >
-        The resolved discovery weapon is invocable but does not declare support
-        (native or adapter) for the required discovery_subtype. Checked by Scout's
-        post_route_capability_check (see contracts/narrative/00-routing.md § Post-Route
-        Capability Check and contracts/machine/scout-routing.yaml
-        § post_route_capability_check) immediately after route_decision is emitted,
-        before the weapon is invoked — not at this preflight phase, which runs before
-        discovery_subtype exists.
-      behavior: >
-        Emit:
-          "[Strategist] phase=preflight status=blocked reason=provider_capability_mismatch
-           slot=discovery provider=<provider_id> subtype=<discovery_subtype>"
-        Stop mission. Do not fall back to parent-agent discovery.
-        Hint: configure active.slots.discovery to a weapon whose own instructions
-        actually implement this discovery_subtype — editing skill.yaml metadata alone does not change an
-        external weapon's real behavior. Verify with a live invocation before declaring
-        discovery_subtype_support: adapter for any subtype.
     - code: compiled_artifact_corrupt
       trigger: .compiled/.domain.gz fails jq parse
       behavior: Fall back to standard path (load YAML directly), emit preflight=standard_path
