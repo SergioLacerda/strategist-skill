@@ -47,6 +47,21 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: TEMP debug dist state
+        # Temporary diagnostic: goreleaser's own log shows it building,
+        # archiving, and successfully uploading dist/strategist-* files to
+        # the GitHub release in this same job — yet the very next step's
+        # glob finds nothing. Dump the actual filesystem state here so we
+        # stop guessing. Remove this step once the mismatch is understood.
+        run: |
+          echo "pwd: $(pwd)"
+          echo "--- ls -la . ---"
+          ls -la .
+          echo "--- ls -la dist (if it exists) ---"
+          ls -la dist 2>&1 || echo "dist/ does not exist"
+          echo "--- find . -iname 'strategist-*' ---"
+          find . -maxdepth 3 -iname 'strategist-*' 2>&1 || true
+
       - name: Verify goreleaser produced binaries
         # goreleaser-action reports success even if the underlying `goreleaser`
         # run built zero archives (e.g. it published but archiving no-op'd) —
