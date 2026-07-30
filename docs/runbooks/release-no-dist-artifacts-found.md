@@ -40,23 +40,20 @@ confusing "nothing was built" error rather than a layout mismatch.
 
 ## Fix Applied
 
-Two independent changes, so neither one alone can reintroduce the failure:
+The durable fix is manifest-driven artifact selection.
 
-1. `.goreleaser.yaml` — the build now writes target-named binaries directly into
-   `dist/`, making the on-disk filename identical to the published asset name:
+`.goreleaser.yaml` intentionally keeps the plain build binary name
+(`binary: strategist`) and GoReleaser's default per-target `dist/` layout. A
+previous attempt to make on-disk filenames match published asset names by using a
+target-templated binary name plus `no_unique_dist_dir: true` caused duplicate
+artifact-name collisions when `formats: [binary]` re-registered the same file at
+the archive stage.
 
-   ```yaml
-   builds:
-     - id: strategist
-       binary: strategist-{{ .Os }}-{{ .Arch }}
-       no_unique_dist_dir: true
-   ```
-
-2. `.github/workflows/release.yml` — the workflow no longer globs `dist/` at all.
-   The `Collect published artifacts` step reads `dist/artifacts.json` (GoReleaser's
-   documented machine-readable manifest), selects `UploadableBinary` /
-   `UploadableArchive` entries, verifies each listed path exists and is non-empty,
-   and feeds those exact paths to the signing and attestation steps.
+The release workflow no longer depends on either layout. Its `Collect published
+artifacts` step reads `dist/artifacts.json` (GoReleaser's machine-readable
+manifest), selects published `Binary` / `Archive` entries, verifies each listed
+path exists and is non-empty, and feeds those exact paths to the signing and
+attestation steps.
 
 Signature bundles are now written to `dist/bundles/<asset-name>.bundle`, keeping
 the published pair `<asset>` + `<asset>.bundle` documented in `README.md` and
@@ -66,8 +63,8 @@ the published pair `<asset>` + `<asset>.bundle` documented in `README.md` and
 
 1. Read the step output of `Collect published artifacts` — on failure it dumps
    every `type`/`name` pair found in `dist/artifacts.json`. If there are no
-   `Uploadable*` entries, the problem is in `.goreleaser.yaml` (build or archive
-   config), not in the workflow.
+   `Binary` or `Archive` entries, the problem is in `.goreleaser.yaml` (build or
+   archive config), not in the workflow.
 2. Never "fix" this by widening a glob. If a path assumption is needed, derive it
    from `dist/artifacts.json`; GoReleaser's on-disk layout is an implementation
    detail that changes with build options and with GoReleaser versions.
@@ -75,6 +72,10 @@ the published pair `<asset>` + `<asset>.bundle` documented in `README.md` and
    `goreleaser release --snapshot --clean && jq -r '.[] | [.type,.name,.path] | @tsv' dist/artifacts.json`
 4. If the release was already created before the failure, follow
    `release-asset-already-exists.md` before rerunning against the same tag.
+5. Before cutting another tag, run the local release test:
+   `make release-test`
+6. In CI, the branch/PR dry-run gate is `make release-dry-run`; it installs the
+   pinned GoReleaser version and then runs the same manifest-driven release test.
 
 ## Reference
 

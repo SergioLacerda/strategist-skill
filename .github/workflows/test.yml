@@ -25,25 +25,13 @@ jobs:
           go-version-file: "go.mod"
           cache: true
 
-      - name: Format check
-        run: test -z "$(gofmt -l .)"
-
-      - name: Module hygiene
-        run: |
-          go mod tidy
-          git diff --exit-code go.mod go.sum
-          go mod verify
-
-      - name: Vet
-        run: go vet ./...
+      - name: Local CI lint gates
+        run: make ci-lint
 
       - name: Lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
           version: v2.12.2
-
-      - name: Build
-        run: go build ./...
 
   test:
     runs-on: ubuntu-latest
@@ -57,36 +45,8 @@ jobs:
           go-version-file: "go.mod"
           cache: true
 
-      - name: Lightweight tests
-        run: make test-lite
-
-      - name: Test (with race detector)
-        run: go test -race $(go list ./... | grep -v '/testutil')
-
-      - name: Integration tests
-        run: go test -tags=integration -race ./tests/integration/...
-
-      - name: Spec suite (corpus lint + contract parity)
-        run: make spec
-
-      - name: Convergence check
-        run: make convergence-check
-
-      - name: Coverage gate (>90% per package)
-        run: |
-          fail=0
-          # internal/domain excluded: pure type declarations, no executable statements.
-          for pkg in internal/stale internal/compile internal/install internal/embed cmd/strategist; do
-            pct=$(go test -coverprofile=/tmp/cov.out -coverpkg=./$pkg/... ./$pkg/... 2>/dev/null \
-                  | grep -o '[0-9.]*%' | tail -1 | tr -d '%')
-            echo "$pkg: ${pct}%"
-            ok=$(awk -v p="$pct" 'BEGIN{print (p+0 >= 90)}')
-            if [ "$ok" != "1" ]; then
-              echo "  FAIL: ${pct}% < 90%"
-              fail=1
-            fi
-          done
-          exit $fail
+      - name: Local CI test gates
+        run: make ci-test
 
   security:
     runs-on: ubuntu-latest
@@ -101,9 +61,7 @@ jobs:
           cache: true
 
       - name: Vulnerability check
-        run: |
-          go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
-          govulncheck ./...
+        run: make vuln-ci
 
   validate:
     runs-on: ubuntu-latest
@@ -113,9 +71,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Fixture and schema validation
-        run: |
-          pip install pyyaml --quiet
-          bash tests/spec/run-tests.sh
+        run: make validate-fixtures
 
   site-build:
     runs-on: ubuntu-latest
@@ -130,14 +86,20 @@ jobs:
           cache: 'npm'
           cache-dependency-path: web/landing/package-lock.json
 
-      - name: Install dependencies
-        run: cd web/landing && npm ci
+      - name: Local web gates
+        run: make ci-web
 
-      - name: Lint (astro check)
-        run: cd web/landing && npm run lint
+  release-dry-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
 
-      - name: Test
-        run: cd web/landing && npm run test
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Build
-        run: cd web/landing && npm run build
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v5
+        with:
+          go-version-file: "go.mod"
+          cache: true
+
+      - name: Local release dry run
+        run: make release-dry-run

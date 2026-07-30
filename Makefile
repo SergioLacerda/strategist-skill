@@ -1,18 +1,50 @@
-.PHONY: build test test-all integration spec validate-expanded validate-all test-lite test-telemetry-lite test-compile-cache test-domain-architecture lint complexity-report go-file-size-report vuln bench cover cover-gate cover-html analysis-structure-gate docs-governance-gate governance-check convergence-check install release snapshot clean compile-skill build-site build-all install-web lint-web test-web cover-web
+.PHONY: \
+	fmt fmt-check mod-tidy mod-check vet build \
+	test test-all integration spec validate-expanded validate-all \
+	test-lite test-telemetry-lite test-compile-cache test-domain-architecture \
+	ci-lint ci-test ci lint complexity-report go-file-size-report \
+	install-govulncheck vuln vuln-ci bench \
+	cover cover-gate cover-html \
+	analysis-structure-gate docs-governance-gate governance-check convergence-check \
+	validate-fixtures install release-verify release-check install-goreleaser \
+	check-release-artifacts check-release-assets release-test release-dry-run \
+	release snapshot clean compile-skill build-site build-all \
+	install-web lint-web test-web cover-web ci-web
 
 GOCACHE ?= /tmp/go-build-cache
 
-GOLANGCI_LINT := $(shell which golangci-lint 2>/dev/null || echo $(shell go env GOPATH)/bin/golangci-lint)
-GOVULNCHECK   := $(shell which govulncheck 2>/dev/null || echo $(shell go env GOPATH)/bin/govulncheck)
-GOCOGNIT      := $(shell which gocognit 2>/dev/null || echo $(shell go env GOPATH)/bin/gocognit)
-GORELEASER    := $(shell which goreleaser 2>/dev/null || echo $(shell go env GOPATH)/bin/goreleaser)
-COVERAGE_PKGS := internal/stale internal/compile internal/install internal/embed internal/telemetry cmd/strategist
+GOLANGCI_LINT       := $(shell which golangci-lint 2>/dev/null || echo $(shell go env GOPATH)/bin/golangci-lint)
+GOVULNCHECK         := $(shell which govulncheck 2>/dev/null || echo $(shell go env GOPATH)/bin/govulncheck)
+GOCOGNIT            := $(shell which gocognit 2>/dev/null || echo $(shell go env GOPATH)/bin/gocognit)
+GORELEASER          := $(shell which goreleaser 2>/dev/null || echo $(shell go env GOPATH)/bin/goreleaser)
+GOVULNCHECK_VERSION ?= v1.1.4
+GORELEASER_VERSION  ?= v2.12.2
+COVERAGE_PKGS       := internal/stale internal/compile internal/install internal/embed internal/telemetry cmd/strategist
+COVERAGE_DIR        ?= coverage
+COVERAGE_PROFILE    := $(COVERAGE_DIR)/coverage.out
+COVERAGE_HTML       := $(COVERAGE_DIR)/coverage.html
+
+fmt:
+	gofmt -w .
+
+fmt-check:
+	test -z "$$(gofmt -l .)"
+
+mod-tidy:
+	GOCACHE=$(GOCACHE) go mod tidy
+
+mod-check:
+	GOCACHE=$(GOCACHE) go mod tidy -diff
+	GOCACHE=$(GOCACHE) go mod verify
+
+vet:
+	GOCACHE=$(GOCACHE) go vet ./...
 
 build:
-	go build -ldflags="-s -w" -o bin/strategist ./cmd/strategist
+	GOCACHE=$(GOCACHE) go build -ldflags="-s -w" -o bin/strategist ./cmd/strategist
 
 test:
-	GOCACHE=$(GOCACHE) go test -race $$(go list ./... | grep -v '/testutil')
+	GOCACHE=$(GOCACHE) go test -race $$(GOCACHE=$(GOCACHE) go list ./... | grep -v '/testutil')
 
 test-all: test spec integration
 
@@ -46,8 +78,13 @@ test-compile-cache:
 test-domain-architecture:
 	GOCACHE=$(GOCACHE) go test -race internal/domain/architecture_test.go
 
-lint:
-	gofmt -w .
+ci-lint: fmt-check mod-check vet build
+
+ci-test: test-all convergence-check cover-gate
+
+ci: ci-lint ci-test
+
+lint: fmt-check
 	$(GOLANGCI_LINT) run ./...
 	@$(MAKE) complexity-report
 	@$(MAKE) go-file-size-report
@@ -81,26 +118,33 @@ go-file-size-report:
 	done | sort -k2,2nr -k1,1); \
 	if [ -n "$$results" ]; then printf "%s\n" "$$results"; else echo "none"; fi
 
+install-govulncheck:
+	GOCACHE=$(GOCACHE) go install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION)
+
 vuln:
 	$(GOVULNCHECK) ./...
 
+vuln-ci: install-govulncheck vuln
+
 bench:
-	go test -bench=. -benchmem ./...
+	GOCACHE=$(GOCACHE) go test -bench=. -benchmem ./...
 
 # cover shows per-package coverage (each package measured against itself).
 cover:
+	@mkdir -p $(COVERAGE_DIR)
 	@for pkg in $(COVERAGE_PKGS); do \
 		echo "=== $$pkg ==="; \
-		go test -race -coverprofile=coverage.out -coverpkg=./$$pkg/... ./$$pkg/... 2>/dev/null; \
-		go tool cover -func=coverage.out | tail -1; \
+		GOCACHE=$(GOCACHE) go test -race -coverprofile=$(COVERAGE_PROFILE) -coverpkg=./$$pkg/... ./$$pkg/... 2>/dev/null; \
+		go tool cover -func=$(COVERAGE_PROFILE) | tail -1; \
 	done
 
 # cover-gate fails the build if any internal package is below 90%.
 # Note: internal/domain is excluded (pure type declarations — no executable statements).
 cover-gate:
+	@mkdir -p $(COVERAGE_DIR)
 	@fail=0; \
 	for pkg in $(COVERAGE_PKGS); do \
-		pct=$$(go test -coverprofile=coverage.out -coverpkg=./$$pkg/... ./$$pkg/... 2>/dev/null \
+		pct=$$(GOCACHE=$(GOCACHE) go test -coverprofile=$(COVERAGE_PROFILE) -coverpkg=./$$pkg/... ./$$pkg/... 2>/dev/null \
 			| grep -o '[0-9.]*%' | tail -1 | tr -d '%'); \
 		printf "%-30s %s%%\n" "$$pkg" "$$pct"; \
 		ok=$$(awk -v p="$$pct" 'BEGIN{print (p+0 >= 90)}'); \
@@ -108,11 +152,12 @@ cover-gate:
 	done; \
 	exit $$fail
 
-# cover-html writes coverage.html without opening a browser.
+# cover-html writes an HTML coverage report without opening a browser.
 cover-html:
-	go test -race -coverprofile=coverage.out -coverpkg=./internal/... ./internal/... ./tests/integration/...
-	go tool cover -html=coverage.out -o coverage.html
-	@echo "report written to coverage.html"
+	@mkdir -p $(COVERAGE_DIR)
+	GOCACHE=$(GOCACHE) go test -race -coverprofile=$(COVERAGE_PROFILE) -coverpkg=./internal/... ./internal/... ./tests/integration/...
+	go tool cover -html=$(COVERAGE_PROFILE) -o $(COVERAGE_HTML)
+	@echo "report written to $(COVERAGE_HTML)"
 
 analysis-structure-gate:
 	bash scripts/check-refined-structure.sh
@@ -142,6 +187,10 @@ governance-check:
 	done
 	@echo "Governance redirectors: OK"
 
+validate-fixtures:
+	python3 -c "import yaml" || python3 -m pip install --user pyyaml
+	bash tests/spec/run-tests.sh
+
 install: build
 	mkdir -p ~/.local/bin
 	install -m 755 bin/strategist ~/.local/bin/strategist
@@ -149,6 +198,26 @@ install: build
 
 # The sync-embed target was removed in W7a (Option B): internal/embed/defaults/ is now
 # the single authoring source embedded directly via go:embed — there is nothing to sync.
+
+release-verify: vet test-lite
+
+# release-check validates the GoReleaser config before a tag-triggered release.
+release-check:
+	$(GORELEASER) check
+
+install-goreleaser:
+	GOCACHE=$(GOCACHE) go install github.com/goreleaser/goreleaser/v2@$(GORELEASER_VERSION)
+
+check-release-artifacts:
+	bash scripts/check-release-artifacts.sh
+
+check-release-assets:
+	bash scripts/check-release-assets.sh "$(TAG)" dist/published.tsv
+
+# release-test validates release config and local snapshot artifacts without publishing.
+release-test: release-check snapshot check-release-artifacts
+
+release-dry-run: install-goreleaser release-test
 
 # release publishes to GitHub — requires GITHUB_TOKEN.
 release:
@@ -159,7 +228,7 @@ snapshot:
 	$(GORELEASER) release --snapshot --clean --skip=publish
 
 clean:
-	rm -rf bin/ dist/ coverage.out coverage.html
+	rm -rf bin/ dist/ coverage/ coverage.out coverage.html
 
 # compile-skill regenerates the compiled bootstrap artifacts in .strategist/.compiled/.
 # Run after editing any file under .strategist/ to keep the fast-path active.
@@ -182,3 +251,5 @@ test-web:
 
 cover-web:
 	cd web/landing && npm run cover
+
+ci-web: install-web lint-web test-web build-site
