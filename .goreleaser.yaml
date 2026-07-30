@@ -14,14 +14,21 @@ before:
 builds:
   - id: strategist
     main: ./cmd/strategist
-    # The binary is named for its target and written straight into dist/ (see
-    # no_unique_dist_dir below) so that the on-disk filename is identical to
-    # the published release asset name. The release workflow signs and attests
-    # these files by path, and `gh attestation verify strategist-linux-amd64`
-    # (README/SECURITY) reads more clearly when the attested subject name is
-    # the same string users downloaded.
-    binary: strategist-{{ .Os }}-{{ .Arch }}
-    no_unique_dist_dir: true
+    # Keep the plain binary name and GoReleaser's default per-target dist/
+    # layout. Naming the binary after its target (plus no_unique_dist_dir) was
+    # tried so the on-disk filename would equal the published asset name, but
+    # with `formats: [binary]` the archive stage re-registers the same file
+    # under the name_template below — making the build-stage and archive-stage
+    # artifact names identical and producing six "artifact already present in
+    # the list / this might cause errors when publishing" warnings. Verified
+    # locally with `goreleaser release --snapshot`: 6 collisions with the
+    # templated name, 0 with this one.
+    #
+    # Nothing downstream needs the on-disk name anymore: the release workflow
+    # resolves paths from dist/artifacts.json and names published assets from
+    # that manifest's `name` field, and the attestation subjects come from
+    # dist/SHA256SUMS.
+    binary: strategist
     goos:
       - linux
       - darwin

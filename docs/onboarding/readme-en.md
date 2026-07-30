@@ -107,11 +107,18 @@ Expected contracts:
 - `make test-lite` — runs the isolated test slices that do not download new dependencies
 - `make test` — runs unit and package tests
 - `make integration` — runs E2E/integration tests with `-tags=integration`
-- `make test-all` — runs `test` + `integration`
+- `make test-all` — runs `test` + `spec` + `integration`
+- `make ci-lint` — runs local lint gates used by CI
+- `make ci-test` — runs the local test gates used by CI
+- `make validate-fixtures` — runs fixture/schema validation used by CI
+- `make vuln-ci` — installs the pinned vulnerability checker and runs it
+- `make ci-web` — runs landing page install, lint, test, and build gates
+- `make release-test` — validates GoReleaser config and local snapshot artifacts without publishing
+- `make release-dry-run` — installs the pinned GoReleaser version and runs `release-test`
 - `make bench` — runs benchmarks
 - `make cover` — generates per-package coverage
 - `make cover-gate` — fails if any internal package is below 90% coverage
-- `make cover-html` — generates a consolidated `coverage.html` report
+- `make cover-html` — generates a consolidated `coverage/coverage.html` report
 - When contributing external skills used as wizard default providers, preserve attribution to the upstream project and include an installable canonical manifest at `.strategist/skills/<provider>/skill.yaml`.
 
 ```bash
@@ -120,6 +127,13 @@ make test-lite
 make test
 make integration
 make test-all
+make ci-lint
+make ci-test
+make validate-fixtures
+make vuln-ci
+make ci-web
+make release-test
+make release-dry-run
 make bench
 make cover
 make cover-gate

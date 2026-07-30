@@ -34,11 +34,8 @@ jobs:
           go-version-file: "go.mod"
           cache: true
 
-      - name: Vet
-        run: go vet ./...
-
-      - name: Tests
-        run: make test-lite
+      - name: Local release verify
+        run: make release-verify
 
   release:
     needs: verify
@@ -93,44 +90,7 @@ jobs:
         # worse, matches the wrong set. dist/artifacts.json is GoReleaser's
         # documented machine-readable manifest of exactly what it published —
         # read the paths from there and cross-check them against the filesystem.
-        run: |
-          set -euo pipefail
-          if [[ ! -f dist/artifacts.json ]]; then
-            echo "::error::dist/artifacts.json not found — goreleaser did not complete a release run" >&2
-            exit 1
-          fi
-
-          jq -r '
-            .[]
-            | select(.type == "UploadableBinary" or .type == "UploadableArchive")
-            | [.path, .name] | @tsv
-          ' dist/artifacts.json > dist/published.tsv
-
-          if [[ ! -s dist/published.tsv ]]; then
-            echo "::error::goreleaser published no binaries or archives (dist/artifacts.json had no uploadable entries)" >&2
-            jq -r '.[] | "\(.type)\t\(.name)"' dist/artifacts.json >&2 || true
-            exit 1
-          fi
-
-          # Every manifest entry must actually exist, and be non-empty: the
-          # signing, upload and attestation steps below all address these files
-          # by path, and a missing one there would surface far less clearly.
-          while IFS=$'\t' read -r path name; do
-            if [[ ! -s "$path" ]]; then
-              echo "::error::published artifact '$name' is missing or empty at '$path'" >&2
-              exit 1
-            fi
-            echo "  $name -> $path"
-          done < dist/published.tsv
-
-          echo "Published $(wc -l < dist/published.tsv) artifact(s)."
-
-          # Newline-separated subject list for the attestation step.
-          {
-            echo 'paths<<PATHS_EOF'
-            cut -f1 dist/published.tsv
-            echo 'PATHS_EOF'
-          } >> "$GITHUB_OUTPUT"
+        run: bash scripts/check-release-artifacts.sh
 
       - name: Install cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
@@ -178,32 +138,19 @@ jobs:
       - name: Attest build provenance
         uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
         with:
-          # Explicit paths from dist/artifacts.json rather than a glob: a glob
-          # would either miss the binaries or sweep in the cosign bundles, and
-          # attesting zero subjects is not an error the action reports.
-          subject-path: ${{ steps.artifacts.outputs.paths }}
+          # Subjects come from the checksum file, not from a path list. It pairs
+          # each digest with the name the asset is PUBLISHED under, so the attested
+          # subject matches what users actually download and verify
+          # (`gh attestation verify strategist-linux-amd64`, per README/SECURITY) —
+          # regardless of what GoReleaser named the file on disk. A subject-path
+          # list would instead attest six subjects all basenamed "strategist".
+          # The previous step has already verified this file is present.
+          subject-checksums: dist/SHA256SUMS
 
       - name: Verify published release is complete
         # Final gate: the release is only "done" if every artifact goreleaser
         # said it published, plus its signature bundle and the checksum file,
         # is actually retrievable from the GitHub Release.
-        run: |
-          set -euo pipefail
-          TAG="${GITHUB_REF_NAME}"
-          assets=$(gh release view "$TAG" --json assets --jq '.assets[].name')
-          missing=0
-          while IFS=$'\t' read -r _ name; do
-            for want in "$name" "${name}.bundle"; do
-              if ! grep -qxF "$want" <<<"$assets"; then
-                echo "::error::release $TAG is missing asset '$want'" >&2
-                missing=1
-              fi
-            done
-          done < dist/published.tsv
-          if ! grep -qxF "SHA256SUMS" <<<"$assets"; then
-            echo "::error::release $TAG is missing SHA256SUMS (bootstrap.sh requires it)" >&2
-            missing=1
-          fi
-          exit "$missing"
+        run: make check-release-assets TAG="${GITHUB_REF_NAME}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -752,7 +752,7 @@ cd strategist-skill
 make build          # → bin/strategist
 
 # Install to PATH (~/.local/bin/)
-make install-local  # equivalent to: install -m 755 bin/strategist ~/.local/bin/strategist
+make install        # builds and installs bin/strategist into ~/.local/bin
 
 # Ensure ~/.local/bin is in PATH
 export PATH="$HOME/.local/bin:$PATH"
