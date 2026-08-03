@@ -1,0 +1,49 @@
+schema_version: "1"
+runbook_id: verifying-implemented-demands
+runbook_type: analytical
+source_doc: docs/runbooks/verifying-implemented-demands.md
+
+applies_when:
+  - "A request to implement a demand from `<base_path>/refined/<mission_id>/`, especially when phrased as \"if it's already finished, move it to done\" — or any time implementation work is about to start and a refined package already exists for it"
+  - "The mandatory bootstrap stale scan (`.strategist/contracts/narrative/01-bootstrap.md`, `11-critical-hit.md` § Stale Card Detection Trigger 3) flags a candidate"
+
+objective: Determine whether a refined demand has already been implemented and, if so, close it through the Critical Hit gate without inventing evidence.
+
+preconditions:
+  - "A matching refined package for the demand already exists at `<base_path>/refined/<mission_id>/` (the separate Pre-Refinement Duplicate Check decides whether a package exists at all; these steps assume one does and verify whether it's already implemented)"
+
+analysis:
+  - "Read the package's `tasks.md` front-matter: `approved_scope` and `acceptance_checks` — these define what \"done\" means for this mission, not general impressions of the work"
+  - "Inspect the current state of every file listed in `approved_scope` by reading them directly; don't infer from file names or commit messages"
+  - "Re-run verification: the mission's own \"Suggested Verification Command\" section if `tasks.md` has one, otherwise this repo's standard — `go build ./...`, `go test ./...`, `go vet ./...`, `go test -tags spec ./tests/spec/...`. If `.strategist/contracts`, `.strategist/schemas`, or `.strategist/personas` are in `approved_scope`, diff them against their `internal/embed/defaults/` source to confirm they match"
+
+decision_gates:
+  - id: acceptance-checks-verifiably-met
+    statement: "All acceptance_checks are verifiably met against real command output and file content, not assumption — if any can't be verified this way, this is not a closure candidate and normal implementation work (finishing the missing work) proceeds instead, with no completion report and no closure gate"
+  - id: critical-hit-closure-confirmed
+    statement: "The Critical Hit closure gate, presented exactly as defined in `.strategist/contracts/machine/critical-hit.yaml#inline_gate.closure_move` (evidence summary, then \"Confirm? (sim / nao)\"), receives an explicit `sim` before the package moves from `refined/` to `done/`"
+
+checks:
+  - id: acceptance-checks-verified-against-real-output
+    level: mandatory
+  - id: evidence-never-invented
+    level: mandatory
+  - id: completion-report-written-with-required-fields
+    level: mandatory
+  - id: task-status-marked-completed-only-for-covered-tasks
+    level: mandatory
+  - id: closure-gate-presented-and-not-bypassed
+    level: mandatory
+  - id: move-package-to-done-on-sim-confirmation
+    level: conditional
+    when: "the closure gate was confirmed with sim"
+  - id: leave-package-in-refined-on-nao-or-no-response
+    level: conditional
+    when: "the closure gate was declined with nao, or no response was received"
+  - id: git-mv-used-when-analysis-workspace-is-git-tracked
+    level: conditional
+    when: "`git ls-files <base_path>/` shows the analysis workspace is git-tracked in this repo"
+
+metadata:
+  version: 1
+  reviewed_at: "2026-08-03"

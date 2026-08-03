@@ -1,0 +1,37 @@
+schema_version: "1"
+runbook_id: concurrent-session-sniper-collision
+runbook_type: operational
+source_doc: docs/runbooks/concurrent-session-sniper-collision.md
+
+applies_when:
+  - "Two Claude sessions running against the same .strategist/ / base_path workspace each have a Sniper materializing to the same file in the same time window, and the collision surfaces as a git conflict at commit time (no Strategist-level warning appears beforehand)"
+
+objective: Resolve (and reduce recurrence of) a cross-session Sniper write collision that ADR-0008 intentionally leaves to git's conflict mechanism rather than a Strategist-level lock registry.
+
+preconditions:
+  - "ADR-0008 (Single-Session Workspace Assumption) intentionally does not implement a cross-session lock registry (lock file, timeout, dead-session detection, rollback) — its complexity was judged to exceed the benefit given git already provides a visible, recoverable mitigation before any push"
+
+verification:
+  - "Confirm two sessions are not running Snipers targeting the same file in the same time window — this is workflow discipline, not something Strategist enforces"
+  - "Confirm commits are happening frequently between sessions, to shrink the window in which a collision can occur"
+  - "If a collision occurred, confirm it was resolved as a normal git merge conflict — there is no special Strategist-level recovery procedure; git's conflict markers are the full extent of the safety net"
+
+decision_gates:
+  - id: adopt-worktrees-for-routine-parallel-use
+    statement: "If parallel-session use becomes routine (not a one-off), the operator should switch to separate git worktrees per session instead of relying on the commit-frequently mitigation"
+
+checks:
+  - id: avoid-same-file-sniper-targets-across-sessions
+    level: recommended
+  - id: commit-frequently-between-sessions
+    level: recommended
+  - id: resolve-collision-as-git-merge-conflict
+    level: conditional
+    when: "a collision has occurred (surfaced as a git conflict at commit time)"
+  - id: use-separate-worktrees-per-session
+    level: conditional
+    when: "parallel-session use becomes routine"
+
+metadata:
+  version: 1
+  reviewed_at: "2026-08-03"

@@ -1,0 +1,35 @@
+schema_version: "1"
+runbook_id: deep-analysis-pass-4-engineering
+runbook_type: analytical
+source_doc: docs/runbooks/deep-analysis-pass-4-engineering.md
+
+applies_when:
+  - Pass 0 inventory is complete
+  - Runnable standalone; richer when Passes 1-3 exist since their findings become scored evidence
+
+objective: Score the project 1-5 per world-class-engineering dimension, evidence first — every score cites files/commands, every gap cites the pass that found it or a fresh probe.
+
+preconditions:
+  - "Scoring discipline is understood before scoring: 5 = exemplary and consistent, 4 = strong with targeted gaps, 3 = real machinery with a systemic gap, 2 = partial, 1 = absent; overall score is a judgment call naming the bottleneck dimension explicitly, not an average of the six."
+
+analysis:
+  - "Contract-code parity: check whether documented rules are enforced or tested (contract-test YAMLs + their runner, FSM in code, error tokens present in code per Pass 0 section 3); measure contract files vs contract-test file coverage and whether alignment tests validate their own subject: paths; the Pass 2 S1 count caps this score."
+  - "Testability: measure layer count (unit / integration / spec / scenario), _test.go count, and race-detector presence in CI; identify blind spots — zero-test error families (Pass 0), mechanics without scenarios (Pass 3), divergences tests cannot catch because no machine representation exists (Pass 1)."
+  - "Observability: inventory the telemetry surface (tracer/metrics/events), event invariants per phase, and envelope contracts; for every degraded mode (identity missing, registry incomplete) check whether it reaches the operator or is a one-shot warn — silent degradation caps this score."
+  - "Versioning & migration: inventory schema_version fields, generated headers, install manifest/lock, upgrade e2e tests, staleness tooling, migration commands, and ADR count; list unfinished migrations — legacy tokens still normative anywhere, 'future rename' declarations with no tracked plan, compiled artifacts that regenerate known defects (no template lint)."
+  - "Security / supply chain: check for code scanning, release pipeline, integrity checks, and a knowledge trust model (tiers, promotion gates); determine whether integrity is blocking or warn-only, and whether an artifact signing/SBOM story or an open backlog item exists (link it, don't duplicate)."
+  - "Developer experience: assess docs estate breadth, CLI remediation hints in error messages, and onboarding path; walk the agent's entry path (the primary user mid-mission) for startup token cost, broken pointers, and undocumented internal components — broken pointers on the entry path cap this score."
+
+decision_gates:
+  - id: engineering-scorecard-complete
+    statement: "<base_path>/pending/<slug>/04-engineering.md exists with the scorecard table, per-dimension evidence/gaps, and a 3-5 item cross-dimension top-gaps list."
+
+checks:
+  - id: score-requires-cited-evidence
+    level: mandatory
+  - id: errata-routed-to-earlier-passes-not-silently-rewritten
+    level: mandatory
+
+metadata:
+  version: 1
+  reviewed_at: "2026-08-03"

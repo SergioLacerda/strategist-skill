@@ -1,0 +1,34 @@
+schema_version: "1"
+runbook_id: jewel-legacy-status-migration
+runbook_type: operational
+source_doc: docs/runbooks/jewel-legacy-status-migration.md
+
+applies_when:
+  - "`loadJewels` fails loudly (not a silent fallback) on a jewel entry with `status: active`"
+
+objective: "Migrate legacy `status: active` jewel entries to the current lifecycle so `loadJewels` stops rejecting them."
+
+preconditions:
+  - Workspace jewel manifests (monolithic `jewels.yaml` or partitioned `jewels/<chest-id>.yaml`) were created before the `treasure-chest-index-mine-pipeline` schema and may still contain the removed legacy `active` status.
+
+verification:
+  - The command output reports how many entries were migrated (`0` is a valid, non-error outcome if there was nothing to migrate).
+  - "No `status: active` entries remain in `jewels.yaml` or any `jewels/<chest-id>.yaml` manifest."
+  - Re-running `strategist treasure-chest items migrate-status` is safe and reports no further migrations, confirming idempotency.
+
+checks:
+  - id: run-migrate-status-command
+    level: mandatory
+  - id: confirm-no-active-status-remaining
+    level: mandatory
+  - id: rerun-confirms-idempotent
+    level: recommended
+  - id: partitioned-manifest-format
+    level: conditional
+    when: the workspace uses partitioned `jewels/<chest-id>.yaml` manifests rather than a monolithic `jewels.yaml`
+  - id: review-adr-0012-lifecycle-statuses
+    level: informational
+
+metadata:
+  version: 1
+  reviewed_at: "2026-08-03"

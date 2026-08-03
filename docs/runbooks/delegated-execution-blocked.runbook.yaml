@@ -1,0 +1,37 @@
+schema_version: "1"
+runbook_id: delegated-execution-blocked
+runbook_type: operational
+source_doc: docs/runbooks/delegated-execution-blocked.md
+
+applies_when:
+  - "error=local_execution_provider_missing — delegated invocation did not provide execution_provider"
+  - "error=execution_provider_unavailable — resolved execution_provider cannot be invoked in this environment"
+  - "drift=local_execution_context_bypass — Strategist attempted direct execution instead of invoking the resolved provider"
+
+objective: Resolve one of three related blocked states from local execution context / delegated invocation resolution (.strategist/agent-protocol.md § 6), by fixing how the adapter supplies or the workspace declares execution provider information.
+
+preconditions:
+  - Identify which of the three symptoms is present — the three states share one audience (an operator integrating or debugging a governance adapter) and one resolution context, but have distinct root causes and remedies
+
+verification:
+  - "For local_execution_provider_missing: confirm the invoking adapter/orchestrator actually sets governance_injection.execution_provider before calling Strategist, or — if direct invocation was intended — remove/omit invocation_mode: delegated so Strategist falls back to active.slots.execution"
+  - "For execution_provider_unavailable: verify the resolved provider is installed and its skill manifest is valid (same diagnostic path as role-invocation-failed.md), and confirm the execution environment has access to that provider"
+  - "For local_execution_context_bypass: no user action is needed to fix the root cause — the mission should stop automatically; if seen repeatedly, report it as a Strategist orchestration bug rather than a workspace configuration issue"
+
+decision_gates:
+  - id: is-bypass-drift-recurring
+    statement: "For local_execution_context_bypass specifically, the gate is whether the drift is a one-off (self-corrects, no action) or recurring (indicates an orchestration bug that must be reported) — this determines whether the runbook is done or needs escalation"
+
+checks:
+  - id: governance-injection-execution-provider-set
+    level: conditional
+    when: "symptom is error=local_execution_provider_missing"
+  - id: execution-provider-installed-and-reachable
+    level: conditional
+    when: "symptom is error=execution_provider_unavailable"
+  - id: bypass-drift-reported-if-recurring
+    level: informational
+
+metadata:
+  version: 1
+  reviewed_at: "2026-08-03"

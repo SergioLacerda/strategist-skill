@@ -1,0 +1,37 @@
+schema_version: "1"
+runbook_id: deep-analysis-pass-0-inventory
+runbook_type: analytical
+source_doc: docs/runbooks/deep-analysis-pass-0-inventory.md
+
+applies_when:
+  - Start of a deep-analysis workflow (deep-analysis-workflow.md)
+  - Any time a fresh mechanical baseline of the corpus is needed
+
+objective: Mechanical evidence-gathering — tables and facts only, no judgments — feeding a routed-flags checklist to every other deep-analysis pass.
+
+preconditions:
+  - A frozen baseline (branch + commit) is recorded before starting.
+  - "The corpus trees to inventory are identified: strategist/ (authoring), internal/embed/defaults/ (embedded generation source), .strategist/ (runtime instance)."
+
+analysis:
+  - "Tree parity metrics: diff authoring-tree vs runtime-tree and embed-tree vs runtime-tree (only-in-A / only-in-B / differ counts), plus per-tree file counts; record the divergent file list without labeling runtime-only divergences as drift until their nature is checked."
+  - "Compile coverage: grep for 'generated_by' across the runtime tree to table which artifacts are compiler-generated vs hand-maintained per tree."
+  - "Error/drift token taxonomy: grep every documented error=/drift= token corpus-wide, cross-check presence in code and tests, and output a token x kind x doc-occurrences x code-files x test-files table; zero-test rows and doc-occurrence counts >= ~10 are routed flags; also diff drift-pattern IDs from the identity file against any quick-reference list."
+  - "Restated-rule map: pick signature phrases for load-bearing rules (gate names, wire-field names, Never/MUST NOT blocks) and count occurrences x files across entry docs + contracts; any rule restated in >=2 files is a dedup candidate (route to Pass 1) and a drift risk (route to Pass 2)."
+  - "Manifest / registry coverage: for each index or registry file (e.g. contracts/index.yaml), verify every artifact it should govern is referenced and every reference resolves; list unreferenced artifacts and dangling references, including secondary registries such as internal skill dirs."
+
+decision_gates:
+  - id: inventory-artifact-complete
+    statement: "<base_path>/pending/<slug>/00-inventory.md exists containing all five tables (tree parity, compile coverage, token taxonomy, restated-rule map, manifest/registry coverage) plus a routed-flags table (F<n> | observation | evidence | route to Pass N); Passes 1-4 may then start in any order."
+
+checks:
+  - id: no-fixes-record-and-route-only
+    level: mandatory
+  - id: read-only-inspection-no-state-changing-commands
+    level: mandatory
+  - id: facts-only-no-judgments-or-opinions
+    level: mandatory
+
+metadata:
+  version: 1
+  reviewed_at: "2026-08-03"

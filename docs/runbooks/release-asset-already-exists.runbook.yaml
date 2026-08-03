@@ -1,0 +1,58 @@
+schema_version: "1"
+runbook_id: release-asset-already-exists
+runbook_type: operational
+source_doc: docs/runbooks/release-asset-already-exists.md
+
+applies_when:
+  - >-
+    The `Release` GitHub Actions workflow (`.github/workflows/release.yml`) fails
+    during the `goreleaser release --clean` step, after build and archiving
+    succeed, with `422 Validation Failed
+    [{Resource:ReleaseAsset Field:name Code:already_exists}]`.
+
+objective: >-
+  Resolve release upload failures caused by a GitHub release that already has
+  one or more assets with the same name (422 already_exists).
+
+preconditions:
+  - >-
+    `.goreleaser.yaml` already sets `release.replace_existing_artifacts: true`
+    (the standing fix) — this runbook covers cases where the failure still
+    occurs, not the original unpatched bug.
+
+verification:
+  - >-
+    Check whether the release for the tag already exists and inspect its
+    assets: `GET https://api.github.com/repos/<owner>/<repo>/releases/tags/<tag>`.
+  - >-
+    If assets are missing or corrupted and the standing fix isn't sufficient,
+    delete the conflicting release/assets on GitHub before rerunning the
+    workflow, or cut a new patch tag instead of rerunning against the same
+    tag.
+  - >-
+    Confirm the `Release` workflow was not rerun repeatedly against the same
+    tag as a first response — a new patch tag is preferred if the fix doesn't
+    resolve it immediately.
+
+decision_gates:
+  - id: rerun-vs-new-tag
+    statement: >-
+      If assets are missing or corrupted and the standing
+      `replace_existing_artifacts` fix does not resolve it immediately, do
+      not repeatedly rerun the workflow against the same tag — cut a new
+      patch tag instead.
+
+checks:
+  - id: replace-existing-artifacts-set
+    level: mandatory
+  - id: release-assets-inspected
+    level: mandatory
+  - id: conflicting-release-cleared
+    level: conditional
+    when: "assets are missing or corrupted and the standing fix isn't sufficient"
+  - id: no-repeated-reruns-same-tag
+    level: recommended
+
+metadata:
+  version: 1
+  reviewed_at: "2026-08-03"

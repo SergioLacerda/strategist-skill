@@ -1,0 +1,42 @@
+schema_version: "1"
+runbook_id: treasure-chest-partial-write
+runbook_type: operational
+source_doc: docs/runbooks/treasure-chest-partial-write.md
+
+applies_when:
+  - "strategist treasure-chest add or strategist treasure-chest remove exits non-zero partway through, and it's unclear whether active.yaml, treasure-chests.yaml, knowledge.index.yaml, or a cascaded jewel file (on remove) were left in an inconsistent state"
+  - "Variant A (prepare-phase failure): error text matches `write <path>: create temp: ...` or `write <path>: encode: ...`, with no `(already committed: ...)` substring"
+  - "Variant B (commit-phase failure): error text matches `write <path> (already committed: [<path1> <path2> ...]): rename temp: ...`"
+
+objective: Determine whether a failed treasure-chest add/remove left the workspace's tracked files (active.yaml, treasure-chests.yaml, knowledge.index.yaml, cascaded jewel files) untouched (Variant A) or partially committed (Variant B), and bring them back into agreement.
+
+preconditions:
+  - "treasure-chest add/remove writes active.yaml, treasure-chests.yaml, knowledge.index.yaml, and (on remove) cascaded jewel files as a single all-or-nothing batch via internal/treasure/yaml_node.go's WriteYAMLNodes"
+  - "Prepare phase: every document is serialized to a temporary sibling file first; if any prepare write fails, all staged temp files are cleaned up and no destination file is touched (Variant A) — the workspace is exactly as it was before the command ran"
+  - "Commit phase: only entered once every prepare step succeeds; each temp file is renamed into place in order — if a rename fails partway, files renamed before the failure hold new content and the rest (including the failed one) still hold old content (Variant B), and the error names exactly which paths are on which side"
+
+decision_gates:
+  - id: variant-a-or-b
+    statement: "The error text determines the path forward: absence of `(already committed: ...)` means Variant A (nothing mutated, safe to just retry after fixing the cause); presence of it means Variant B (some files already hold new content, others old — requires the doctor/repair path)"
+
+verification:
+  - "Re-run `strategist treasure-chest doctor` and confirm it reports no consistency drift before continuing"
+
+checks:
+  - id: read-error-text-for-already-committed-marker
+    level: mandatory
+  - id: variant-a-fix-cause-and-retry
+    level: conditional
+    when: "error text does not contain `(already committed: ...)` (Variant A)"
+  - id: variant-b-run-doctor-report
+    level: conditional
+    when: "error text contains `(already committed: ...)` (Variant B)"
+  - id: variant-b-reconcile-affected-chest
+    level: conditional
+    when: "Variant B and doctor reports drift for a chest id — re-run add/remove for that chest id (safe to retry, deterministic by id) or hand-edit the lagging file to match the others"
+  - id: doctor-confirms-no-drift-before-continuing
+    level: mandatory
+
+metadata:
+  version: 1
+  reviewed_at: "2026-08-03"

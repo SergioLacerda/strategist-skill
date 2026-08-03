@@ -1,0 +1,112 @@
+schema_version: "1"
+runbook_id: release-tool-version-drift
+runbook_type: operational
+source_doc: docs/runbooks/release-tool-version-drift.md
+
+applies_when:
+  - >-
+    A tag-triggered release fails on configuration that worked for the
+    previous tag, and `git log` shows no change to the failing config or
+    workflow.
+  - >-
+    You are about to bump, pin, or unpin a tool version anywhere under
+    `.github/workflows/`.
+  - A deprecation warning appears in a CI log for a config file nobody edited.
+  - >-
+    You are adding a new tool to the pipeline and choosing how to express its
+    version.
+
+objective: >-
+  Diagnose and address a release or CI failure caused by a tool version that
+  can change without a commit (tool-version drift), by classifying how the
+  tool's version is expressed before treating the incident as this class of
+  failure.
+
+preconditions:
+  - >-
+    This is not the `v1.0.8`/`v1.0.9` incident post-mortem — for that
+    incident the tool-version hypothesis (`goreleaser-action v6.4.0 →
+    v7.2.3`) was explicitly tested and ruled out; its proximate cause was an
+    artifact path/layout mismatch, covered by
+    `release-no-dist-artifacts-found.md`.
+
+verification:
+  - >-
+    Classify the tool before touching anything, using the repo's four
+    classes: A (SHA-pinned `uses:` + version comment, Dependabot-visible), B
+    (literal version in a `with:` input or `go install @vX`,
+    Dependabot-blind), C (floating range like `~> v2`, Dependabot-blind,
+    changes with no commit), D (derived from a repo file such as
+    `go-version-file`).
+  - >-
+    If the tool is Class C — currently only `goreleaser/goreleaser-action`
+    `with.version: "~> v2"` in `release.yml` — treat it as priority, since
+    nothing validates `.goreleaser.yaml` on a branch or PR before a tag runs
+    it.
+  - >-
+    Validate the config against the version that will actually run:
+    `goreleaser check` (validates `.goreleaser.yaml`, reports deprecations)
+    and `goreleaser release --snapshot --clean` (full local build, publishes
+    nothing) — do not reason from memory about which version introduced or
+    removed a field.
+  - >-
+    Audit the Dependabot blind spot for Class B versions:
+    `grep -rn "version:" .github/workflows/ | grep -v "go-version-file"`,
+    `grep -rn "go install .*@v" .github/workflows/`,
+    `grep -rn "node-version:" .github/workflows/`.
+  - >-
+    Prefer Class D (a version derived from a repo file the build already
+    depends on, e.g. `go-version-file: "go.mod"`) wherever the tool supports
+    it, when adding or changing a version reference.
+  - >-
+    Confirm release-time hooks only verify dependency versions (`go mod
+    download` + `go mod verify`) and never mutate them (no `go mod tidy` at
+    release time) — module tidiness is already enforced on every push by
+    `test.yml`'s Module hygiene step.
+
+decision_gates:
+  - id: class-c-mitigation-policy
+    statement: >-
+      Choose and record (as an ADR) whether to pin Class C tool versions to
+      an exact release, add a PR-time `goreleaser check`, or both — this
+      repository has not decided, and the choice is a durable supply-chain
+      policy rather than a default.
+  - id: tag-already-exists
+    statement: >-
+      If a tag already exists for the failing run, do not simply re-run the
+      workflow — resolve via `release-asset-already-exists.md` first, since a
+      partially-created release changes what a re-run does.
+  - id: dist-artifact-mismatch
+    statement: >-
+      If the symptom is missing or mismatched `dist/` artifacts, that is a
+      different class — follow `release-no-dist-artifacts-found.md` instead
+      of treating it as version drift.
+  - id: goreleaser-check-inconclusive
+    statement: >-
+      If `goreleaser check` cannot confirm the version relationship, stop and
+      report — do not guess a version number into the config or widen a
+      floating range to make the error disappear.
+  - id: documentation-only-scope
+    statement: >-
+      If the fix requires editing a workflow but you are operating under a
+      documentation-only scope, stop and hand off — every remedy in the
+      Decision Point mutates `.github/workflows/`.
+
+checks:
+  - id: tool-classified
+    level: mandatory
+  - id: class-c-validated-with-goreleaser-check
+    level: mandatory
+  - id: dependabot-blind-spot-audited
+    level: recommended
+  - id: class-d-preferred-for-new-tool
+    level: conditional
+    when: "adding a new tool or version reference to a workflow"
+  - id: release-hooks-verify-not-mutate
+    level: mandatory
+  - id: adr-recorded-for-class-c-policy
+    level: recommended
+
+metadata:
+  version: 1
+  reviewed_at: "2026-08-03"

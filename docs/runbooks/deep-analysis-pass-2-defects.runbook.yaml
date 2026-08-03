@@ -1,0 +1,43 @@
+schema_version: "1"
+runbook_id: deep-analysis-pass-2-defects
+runbook_type: analytical
+source_doc: docs/runbooks/deep-analysis-pass-2-defects.md
+
+applies_when:
+  - Pass 0 inventory is complete; its routed flags are this pass's starting checklist
+  - Pass 1 findings are available (optional — not required, but feed this pass when present)
+
+objective: Adversarial cross-check of every normative surface against every other — the question is never "is this doc good?" but "do these two sources agree, and what breaks when they don't?"
+
+preconditions:
+  - Severity scale is applied consistently — S1 contradiction (two normative sources disagree, following either violates the other), S2 ambiguity/broken reference (unresolvable or two readings exist), S3 gap/orphan (defined but never consumed, or consumed but never defined).
+  - Every finding requires a concrete failure scenario (inputs/state -> wrong outcome); no scenario, no finding.
+
+analysis:
+  - "Status/state vocabulary: grep every status token corpus-wide, build a writer/reader table per token; any token with writers in one contract set and readers expecting a different set is S1."
+  - "Narrative <-> FSM: for each documented outcome (approve/decline/revision/timeout/retry), find the FSM transition; documented loops with no transition are S1."
+  - "Narrative <-> machine contracts: check whether every narrative MUST has an enforcing machine/code counterpart; aspirational rules with no enforcement are S3."
+  - "Docs <-> deployed runtime: verify files the docs claim are 'loaded at X' actually exist in the running workspace, and check that degraded modes fire loudly — silent degradation is S1-operational."
+  - "Reference resolution: every path/anchor mentioned in entry docs must resolve in the runtime tree; check dotless-path violations of the skill's own path model and check generated files too, since a template may regenerate the defect."
+  - "Quick-reference <-> authoritative list: diff every 'quick ref' against its declared source of truth (e.g. drift-pattern IDs)."
+  - "Registry completeness: from Pass 0 section 5, list unreferenced artifacts, dangling refs, and test files whose subject: field doesn't resolve."
+  - "Language policy: grep mandatory-English surfaces for disallowed non-English tokens."
+  - "Orphan vocabulary: for every enum value / documented field, find at least one writer and one reader; else S3."
+  - "Test coverage of error paths: from Pass 0 section 3, zero-test error families guarding critical boundaries are S3 with S1 consequences."
+  - "Gate-semantics edge cases, walked explicitly: revision vs decline vs timeout as distinct, representable outcomes; dual-gate ordering (policy gate vs user gate) — can one be mistaken for the other?; delegated invocation with a missing provider but implementation intent present; resume/re-entry — does the pre-creation checklist cover every status a prior session could have left behind?"
+
+decision_gates:
+  - id: defects-artifact-complete
+    statement: "<base_path>/pending/<slug>/02-defects.md exists with findings D<n> grouped by severity (each with evidence table + failure scenario), a severity roll-up, a fix-order recommendation, and errata recorded for any earlier-pass claim that was invalidated."
+
+checks:
+  - id: finding-requires-concrete-failure-scenario
+    level: mandatory
+  - id: verify-before-asserting-broken-reference-severity
+    level: mandatory
+  - id: no-fixes-in-this-pass-defer-to-pass-5
+    level: mandatory
+
+metadata:
+  version: 1
+  reviewed_at: "2026-08-03"

@@ -1,0 +1,45 @@
+schema_version: "1"
+runbook_id: deep-analysis-workflow
+runbook_type: analytical
+source_doc: docs/runbooks/deep-analysis-workflow.md
+
+applies_when:
+  - "Periodic health review of the skill corpus (suggested: after every N missions or before a structural refactor)"
+  - After a cluster of drift/consistency incidents
+  - Onboarding review of an unfamiliar skill with the same shape (docs corpus + machine contracts + runtime implementation)
+
+objective: Systematic analysis of a governed skill corpus (contracts + schemas + runtime code), across 6 passes / 4 axes, producing a ranked, deduplicated improvement backlog.
+
+analysis:
+  - "Pass 0 — Inventory & metrics: mechanical evidence baseline (tables and facts only), produces 00-inventory.md."
+  - "Pass 1 — Simplification & reuse: hunt duplication, dead weight, and consolidation opportunities along the main flow, produces 01-simplification.md."
+  - "Pass 2 — Defects (adversarial): cross-check every normative surface against every other, produces 02-defects.md."
+  - "Pass 3 — Mechanism synergy: map sub-ability interactions, find dead links, propose new mechanics, produces 03-synergy.md."
+  - "Pass 4 — Engineering rubric: score the project 1-5 per world-class-engineering dimension with evidence, produces 04-engineering.md."
+  - "Pass 5 — Consolidation & plan: merge all findings into one ranked, deduplicated plan and present it at an approval gate, produces refined/<slug>/analysis.md + tasks.md."
+
+decision_gates:
+  - id: pass-5-approval-gate
+    statement: All five findings artifacts (00-04) plus the consolidated refined package (analysis.md + tasks.md) exist, zero findings are unlinked duplicates against the pre-existing backlog, and the gate decision is recorded in the package frontmatter; acceptance never authorizes executing implementation_handoff items.
+
+checks:
+  - id: analysis-only-no-source-mutation
+    level: mandatory
+  - id: freeze-baseline-branch-and-commit
+    level: mandatory
+  - id: finding-has-id-location-evidence-scenario-effort
+    level: mandatory
+  - id: errata-appended-not-silently-rewritten
+    level: mandatory
+  - id: dedupe-against-existing-backlog-before-proposing
+    level: mandatory
+  - id: resolve-base-path-from-active-yaml-not-hardcoded
+    level: mandatory
+  - id: findings-language-follows-active-language-docs
+    level: recommended
+  - id: pass-sequencing-0-first-then-1-4-then-5
+    level: informational
+
+metadata:
+  version: 1
+  reviewed_at: "2026-08-03"

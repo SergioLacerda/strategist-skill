@@ -1,0 +1,50 @@
+schema_version: "1"
+runbook_id: verifying-dependency-upgrades
+runbook_type: operational
+source_doc: docs/runbooks/verifying-dependency-upgrades.md
+
+applies_when:
+  - "`npm audit fix --force` (or any dependency bump) reports a \"breaking change\" / major-version jump for a direct dependency, and it needs to be confirmed safe to land before committing"
+
+objective: Confirm a breaking/major-version dependency bump is safe to land before committing it.
+
+preconditions:
+  - "The bump has not yet been committed — this procedure runs before landing it"
+  - "A target version has been identified for the direct dependency (the version being jumped to)"
+
+verification:
+  - "Identify the target version's official migration/upgrade guide and fetch it"
+  - "Cross-check the guide's breaking-change list against what this codebase actually uses (features, config options, file conventions named in the guide) — rule out inapplicable items explicitly, don't skip this silently"
+  - "Build the CURRENT (pre-upgrade) version and copy the build output aside as a baseline"
+  - "Apply the dependency bump (`npm install <pkg>@<version> ...`)"
+  - "Build again with the bump applied"
+  - "Diff the two build outputs — decode HTML entities (or otherwise normalize) before diffing, and diff per meaningful unit (per-attribute, per visible text node) rather than raw bytes, so serialization-style changes don't show up as false-positive regressions"
+  - "Re-run the project's full verification set: build, full test suite, lint, and a from-scratch clean install (`npm ci`) to confirm the lockfile is self-consistent, not just that `npm install` happened to work locally"
+  - "Re-run the vulnerability scan to confirm the target advisory is actually resolved, not just that a version changed"
+
+decision_gates:
+  - id: safe-to-land
+    statement: "Safe to land only when build succeeds both before and after, the decoded diff shows no real content change, the full test/lint suite passes, a clean `npm ci` succeeds, and the target advisory is gone from the audit — if any check fails or the decoded diff shows a real content difference, stop, investigate the specific failing check, and do not land until it's resolved or explicitly accepted as a known, scoped behavior change"
+
+checks:
+  - id: migration-guide-breaking-changes-cross-checked
+    level: mandatory
+  - id: baseline-build-captured-before-bump
+    level: mandatory
+  - id: diff-normalized-not-raw-byte-diff
+    level: mandatory
+  - id: full-verification-set-passes-post-bump
+    level: mandatory
+  - id: clean-npm-ci-succeeds
+    level: mandatory
+  - id: vulnerability-scan-confirms-advisory-resolved
+    level: mandatory
+  - id: verification-evidence-recorded-in-commit-or-report
+    level: mandatory
+  - id: package-json-version-range-updated
+    level: conditional
+    when: "the package manager did not already update the declared version range in package.json"
+
+metadata:
+  version: 1
+  reviewed_at: "2026-08-03"

@@ -1,0 +1,49 @@
+schema_version: "1"
+runbook_id: verifying-test-failures
+runbook_type: analytical
+source_doc: docs/runbooks/verifying-test-failures.md
+
+applies_when:
+  - "`go test -tags spec ./tests/spec/...` fails, and it's unclear whether it's a genuine regression from the current change, a pre-existing unrelated issue, or a flaw in the test itself"
+
+objective: Triage a failing tests/spec/ test into a genuine regression, a pre-existing unrelated issue, or a flawed test, and resolve it accordingly.
+
+preconditions:
+  - "The specific failing test and its output are available from a `go test -tags spec ./tests/spec/...` run"
+
+analysis:
+  - "Reproduce the failure directly by re-running the specific failing test with `-run <TestName> -v` — don't rely on a pasted log alone"
+  - "Check provenance before assuming it's your fault: `git status --porcelain -- <affected path>` and `git log --oneline -3 -- <affected path>`. If the affected file/state is unchanged by your session and was already committed before you started, it's pre-existing — say so explicitly, don't silently \"fix\" something unrelated to your task without flagging it"
+  - "Read the failing test's own source, including inline comments — the comment often states the test's intended narrow purpose, which may be broader or narrower than what the code literally checks; a mismatch between stated intent and literal implementation is itself a common bug class"
+  - "Classify the failure into one of three categories: (A) genuine regression — your change broke something the test correctly guards, fix your change not the test; (B) pre-existing, unrelated to your task, confirmed via the provenance check — don't silently fix it as a side effect, surface it and let the user decide; (C) the test itself is flawed — e.g. checks a broader condition than its stated intent, or depends on non-hermetic environment state"
+  - "For category (C), apply this repo's hermeticity principle: tests should validate strategist-skill's own structure and authored content, not couple to external tools' generated output or incidental filesystem noise. When narrowing a check's precision (e.g. adding an `IsDir()` guard) is enough to fix it without losing its actual intent, prefer that over removal; when the check is fundamentally about validating a different project's output, remove it from this repo's suite"
+  - "Before removing any test or helper, grep for other call sites first — shared helpers may have multiple callers, so removing one caller's test doesn't mean the helper is dead"
+
+verification:
+  - "Run `go build ./...`, `go vet ./...`, the specific test with `-run`, the full `go test -tags spec ./tests/spec/...`, and `go test ./...` for the non-spec packages — a fix isn't done until all four are clean"
+
+decision_gates:
+  - id: fix-complete
+    statement: "All four verification commands pass, and the fix matches one of the three categories (A/B/C) with an explicit rationale recorded — if any verification command still fails, or the failure can't be confidently placed in a category, stop, don't guess"
+
+checks:
+  - id: failure-reproduced-with-run-flag
+    level: mandatory
+  - id: provenance-checked-via-git-status-and-log
+    level: mandatory
+  - id: failure-classified-into-category-with-rationale
+    level: mandatory
+  - id: category-b-surfaced-not-silently-fixed
+    level: conditional
+    when: "the failure was classified as category (B) — pre-existing, unrelated to the current task"
+  - id: category-c-narrowed-before-removed
+    level: conditional
+    when: "the failure was classified as category (C) — the test itself is flawed, and narrowing preserves its intent"
+  - id: call-sites-grepped-before-removing-shared-helper-or-test
+    level: mandatory
+  - id: all-four-verification-commands-clean
+    level: mandatory
+
+metadata:
+  version: 1
+  reviewed_at: "2026-08-03"

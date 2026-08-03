@@ -5,10 +5,16 @@ description: >
   Opportunity Attack, that evaluates whether a normalized idea describes a
   reusable agent-facing operational procedure. Emits gate metadata only — it
   never writes a runbook and never performs discovery beyond the
-  already-captured idea. DORMANT: it has no live invocation path today; it
-  awaits migration to Opportunity Attack's `activation_criteria.runbook_worthy`
-  (strategist-ability-taxonomy-reorg T5, already landed — the cutover itself
-  is a separate decision, not yet made).
+  already-captured idea. SUPERSEDED: this file's own signal semantics
+  (activation criteria, non-signals, gate integration, Sniper materialization
+  forms) were migrated into `opportunity-attack.yaml#activation_criteria.runbook_worthy`
+  and `#on_runbook_criteria_met`/`#OA-RUNBOOK`, which is loaded live at the
+  `refinement`/`gate` phases (see `contracts/index.yaml`). This file has no
+  live invocation path and is kept only as a historical reference and so
+  `TestContractIndexReferencesAllMachineContracts` does not flag it as
+  orphaned — see `.analysis/refined/20260803-runbook-domain-and-cutover/analysis.md`
+  for the side-by-side comparison confirming no gap exists between this file
+  and its live successor.
 
 pipeline:
   - phase: runbook_opportunity  # advisory only, no write; no live caller yet

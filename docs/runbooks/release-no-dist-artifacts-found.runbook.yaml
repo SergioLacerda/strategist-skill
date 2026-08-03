@@ -1,0 +1,75 @@
+schema_version: "1"
+runbook_id: release-no-dist-artifacts-found
+runbook_type: operational
+source_doc: docs/runbooks/release-no-dist-artifacts-found.md
+
+applies_when:
+  - >-
+    The `Release` GitHub Actions workflow fails *after* `goreleaser release
+    --clean` reports success and the GitHub release/assets are created, with
+    post-processing steps (cosign signing, bundle upload, provenance
+    attestation) erroring
+    `No dist/strategist-* artifacts found after goreleaser run`.
+
+objective: >-
+  Resolve release post-processing failures caused by artifact-path
+  assumptions that no longer match GoReleaser's on-disk `dist/` layout, using
+  manifest-driven artifact selection instead of a glob.
+
+preconditions:
+  - >-
+    The release workflow's `Collect published artifacts` step already reads
+    `dist/artifacts.json` (the manifest-driven fix) instead of globbing
+    `dist/strategist-*` — confirm this is still the case before assuming the
+    original layout-mismatch bug has recurred.
+
+verification:
+  - >-
+    Read the step output of `Collect published artifacts` — on failure it
+    dumps every `type`/`name` pair found in `dist/artifacts.json`; if there
+    are no `Binary` or `Archive` entries, the problem is in
+    `.goreleaser.yaml` (build or archive config), not the workflow.
+  - >-
+    Never "fix" this by widening a glob; if a path assumption is needed,
+    derive it from `dist/artifacts.json`, since GoReleaser's on-disk layout
+    is an implementation detail that changes with build options and
+    GoReleaser versions.
+  - >-
+    Reproduce locally without publishing anything:
+    `goreleaser release --snapshot --clean && jq -r '.[] | [.type,.name,.path] | @tsv' dist/artifacts.json`.
+  - >-
+    If the release was already created before this failure, follow
+    `release-asset-already-exists.md` before rerunning against the same tag.
+  - >-
+    Before cutting another tag, run the local release test:
+    `make release-test`.
+  - >-
+    In CI, the branch/PR dry-run gate is `make release-dry-run`; it installs
+    the pinned GoReleaser version and then runs the same manifest-driven
+    release test.
+
+decision_gates:
+  - id: release-already-created
+    statement: >-
+      If the release was already created before this failure surfaced,
+      resolve via `release-asset-already-exists.md` before rerunning the
+      workflow against the same tag.
+
+checks:
+  - id: artifacts-json-output-read
+    level: mandatory
+  - id: no-glob-widening
+    level: mandatory
+  - id: local-snapshot-reproduced
+    level: recommended
+  - id: prior-release-exists
+    level: conditional
+    when: "the release was already created before this failure"
+  - id: release-test-run-before-new-tag
+    level: mandatory
+  - id: ci-dry-run-gate-noted
+    level: informational
+
+metadata:
+  version: 1
+  reviewed_at: "2026-08-03"

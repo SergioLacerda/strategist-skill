@@ -1,0 +1,36 @@
+schema_version: "1"
+runbook_id: deep-analysis-pass-3-synergy
+runbook_type: analytical
+source_doc: docs/runbooks/deep-analysis-pass-3-synergy.md
+
+applies_when:
+  - Pass 0 inventory is complete
+  - Runs independently of Passes 1-2; their cross-references are welcome when available
+
+objective: Map how the skill's mechanics (sub-abilities) interact, find dead links, and propose new mechanics in the same design language as the existing ones.
+
+preconditions:
+  - Access to machine contracts, internal skill manifests, narrative contracts, and offline tooling (e.g. dojo scenarios) as mechanic-inventory sources.
+
+analysis:
+  - "Mechanic inventory: one row per mechanic (name | kind: route/radar/routine/knowledge/safety | fires at | gated by | output), sourced from machine contracts, internal skill manifests, narrative contracts, and offline tooling."
+  - "Interaction matrix: mechanic x mechanic grid marking reinforces / independent / broken-dead; for every broken cell, record evidence via a write-without-reader probe (grep the recorded token for writers vs readers — zero readers is a dead link) and a signal-not-at-decision-point probe (does a quality/priority signal reach the human gate where the decision is made); also verify which mechanics have dojo/test scenarios and which don't."
+  - "Identify keep-patterns: name the best-designed mechanic pairs (clear ownership split, evidence-gated, bounded triggers) — new proposals must copy their doctrine and refactors must not touch them casually."
+  - "New sub-ability proposals: for each proposal, fill the required template (Trigger, Behavior, Touchpoints, Composes with, Must NOT bypass) and perform the dedupe duty — check the backlog and CLI namespace (grep 'Use: \"[a-z-]+' under cmd/) before proposing, linking or renaming on collision."
+
+decision_gates:
+  - id: synergy-artifact-complete
+    statement: "<base_path>/pending/<slug>/03-synergy.md exists with the mechanic inventory, interaction matrix, dead links (Y<n>), proposals (P<n>), and a priority view separating defect-fixes (routed to Pass 2/5) from genuinely new mechanics."
+
+checks:
+  - id: proposal-must-not-create-ungated-write-path
+    level: mandatory
+  - id: proposal-dedupe-check-against-backlog-and-cli
+    level: mandatory
+  - id: proposal-feeding-pending-architectural-decision-labeled-as-input
+    level: conditional
+    when: the proposal feeds a pending architectural decision rather than standing as an independent design
+
+metadata:
+  version: 1
+  reviewed_at: "2026-08-03"

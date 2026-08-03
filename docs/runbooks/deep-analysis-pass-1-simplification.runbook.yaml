@@ -1,0 +1,36 @@
+schema_version: "1"
+runbook_id: deep-analysis-pass-1-simplification
+runbook_type: analytical
+source_doc: docs/runbooks/deep-analysis-pass-1-simplification.md
+
+applies_when:
+  - Pass 0 inventory is complete and its outputs (duplication metrics, restated-rule map, orphan lists) are available as input
+
+objective: Walk the canonical pipeline end to end hunting for duplication, dead weight, and consolidation opportunities — a constructive "what could be simpler or shared" lens; defects found en route are flagged and routed to Pass 2, not analyzed here.
+
+preconditions:
+  - Pass 0 inventory outputs are available (duplication metrics, restated-rule map, orphan lists).
+  - Access to the pipeline's narrative contracts, machine contracts, schemas, and the runtime state machine implementation.
+
+analysis:
+  - "Build the pipeline map: one table row per pipeline step (step | owner | contract(s) | schema(s) | artifact | FSM state); read the narrative contracts in load order and extract inputs/outputs/behavior per phase — gaps in the FSM column are findings."
+  - "Hunt duplication from Pass 0 evidence: for each restated rule / copy-pasted block, identify the natural normative home (one contract owns the rule), classify the fix as pointer-ization (cheap) vs compile-time projection (structural), and check whether a machine-readable form could replace prose."
+  - "Hunt structural simplifications: dead states/events with no inbound transition or events overloaded for multiple unrelated meanings, legacy items kept 'for compatibility', parallel vocabularies for the same concept with implicit mapping, pointer chains to collapse, and changelog prose embedded in normative text."
+  - "Hunt cost-vs-value on short routes: estimate the startup read cost (lines/tokens) for the cheapest route (e.g. quick capture), and if a lazy per-phase loading mechanism exists (contract index by_phase) verify entry docs actually use it."
+  - "Rank findings by impact x effort, noting which findings a structural (single-sourcing) fix would make obsolete by construction so they are not double-counted."
+
+decision_gates:
+  - id: simplification-artifact-complete
+    statement: "<base_path>/pending/<slug>/01-simplification.md exists with the pipeline map, findings table (S<n> | location | pattern | proposal | effort), impact x effort ranking, and flags routed to Pass 2/4."
+
+checks:
+  - id: finding-requires-proposal-and-effort-estimate
+    level: mandatory
+  - id: no-guardrail-removal-proposals
+    level: mandatory
+  - id: defects-routed-to-pass-2-not-fixed-here
+    level: mandatory
+
+metadata:
+  version: 1
+  reviewed_at: "2026-08-03"

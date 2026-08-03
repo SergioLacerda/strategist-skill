@@ -1,0 +1,57 @@
+schema_version: "1"
+runbook_id: refactoring-for-agent-operations
+runbook_type: operational
+source_doc: docs/runbooks/refactoring-for-agent-operations.md
+
+applies_when:
+  - "`golangci-lint` reports a narrow rule violation such as `gocritic` `unlambda` or `wrapcheck`"
+  - complexity tooling reports a function or test above a stated threshold
+  - the user asks to reduce complexity below a numeric limit
+  - the intended validation is local to touched packages
+
+objective: Perform a focused, behavior-preserving refactor driven by a concrete lint or complexity signal.
+
+preconditions:
+  - The requested change is behavior-preserving cleanup, not a license for broad architecture work.
+  - The exact triggering signal (tool, rule, file, function, line, target threshold) is captured before starting.
+
+verification:
+  - Re-run the same detector/signal that triggered the work and confirm it no longer fires.
+  - Run focused tests for the touched package(s).
+  - Report files changed, detector output after cleanup, tests run, and any sandbox cache workaround used.
+
+decision_gates:
+  - id: scope-stays-local
+    statement: The cleanup does not need to touch unrelated modules to clear the signal.
+  - id: behavior-preserved
+    statement: Reducing complexity does not require changing behavior.
+  - id: threshold-not-contested
+    statement: The requested threshold does not conflict with readability.
+  - id: not-a-design-problem
+    statement: The lint finding does not point to a broader design problem that needs a separate demand.
+  - id: validation-feasible
+    statement: Validation can be run, or the risk of skipping it is low.
+
+checks:
+  - id: no-threshold-changes-unless-requested
+    level: mandatory
+  - id: no-broadening-to-unrelated-files
+    level: mandatory
+  - id: no-converting-to-feature-work
+    level: mandatory
+  - id: no-semantics-change-unless-required
+    level: mandatory
+  - id: validate-with-triggering-signal
+    level: mandatory
+  - id: use-standard-comparison-helpers
+    level: conditional
+    when: a standard comparison helper such as `slices.Equal` is available for the Go version in use and order matters
+  - id: sandbox-cache-workaround
+    level: conditional
+    when: running in a sandboxed session where home cache directories are read-only
+  - id: report-result-summary
+    level: recommended
+
+metadata:
+  version: 1
+  reviewed_at: "2026-08-03"

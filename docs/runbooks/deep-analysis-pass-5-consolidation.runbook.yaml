@@ -1,0 +1,35 @@
+schema_version: "1"
+runbook_id: deep-analysis-pass-5-consolidation
+runbook_type: analytical
+source_doc: docs/runbooks/deep-analysis-pass-5-consolidation.md
+
+applies_when:
+  - Passes 0-4 are complete and all five findings artifacts exist
+
+objective: Merge all findings from Passes 0-4 into one ranked, deduplicated plan and present it at an approval gate.
+
+preconditions:
+  - "Access to the existing backlog (<base_path>/todo/), including dated files and long-lived analysis files, for the dedupe pass."
+
+analysis:
+  - "Merge & cluster: group findings into workstreams (W<n>) sharing a root cause rather than one task per finding (e.g. a 'canonical status vocabulary' workstream absorbing the schema, checklist, filter, and orphan-token findings); each workstream lists exactly which finding IDs it resolves."
+  - "Dedupe against the backlog: read every entry in <base_path>/todo/ (including dated files and long-lived analysis files); for each overlap, link rather than restate and record the link in the consolidated analysis; a proposal feeding a pending architectural decision becomes a documentation_target design-input note, not an implementation workstream."
+  - "Classify every workstream per the handoff taxonomy: documentation_target (workspace-doc updates only), implementation_handoff (anything touching source trees — contracts, schemas, code, tests; analysis mode never executes these), analysis_artifact (the findings files themselves); flag operational state-changing CLI commands (e.g. compile-domain) as ready-to-run suggestions for the human, never executed from the analysis flow."
+  - "Rank & sequence: impact x effort, then a sequencing block — cheap-and-safe first ('now'), root-cause fixes next, structural work after (noting which earlier fixes it folds in), new capabilities last; mark dependencies between workstreams explicitly."
+  - "Package & gate: write <base_path>/refined/<date>-<slug>/analysis.md (thesis, findings index, critical findings, dedupe links) and tasks.md (workstreams, classification, sequence) with frontmatter honest about origin (never stamp pipeline mission_status values the pipeline did not produce); present the approval gate with artifact paths, workstream count, and an explicit warning that acceptance does not execute implementation_handoff items; record the gate decision back into the package frontmatter (accepted / revision / rejected + date)."
+
+decision_gates:
+  - id: pass-5-approval-gate
+    statement: "Every finding ID from Passes 0-4 appears in exactly one workstream or an explicit won't-fix/superseded list, zero unlinked overlaps remain against the pre-existing backlog, and the gate is presented with the decision recorded in the package frontmatter."
+
+checks:
+  - id: gate-acceptance-does-not-authorize-implementation-handoff
+    level: mandatory
+  - id: no-false-pipeline-mission-status-stamp
+    level: mandatory
+  - id: operational-cli-commands-suggested-not-executed
+    level: mandatory
+
+metadata:
+  version: 1
+  reviewed_at: "2026-08-03"

@@ -48,13 +48,16 @@ machine:
     adr:         [machine/adr.yaml]
     learning:    [machine/learning-curator.yaml, machine/learning-buffer.yaml]
     critical_hit: [machine/critical-hit.yaml]
-    # Deliberately dormant: runbook-opportunity.yaml has no live phase caller
-    # yet — it awaits migration to Opportunity Attack
-    # (activation_criteria.runbook_worthy, already landed; the cutover itself
-    # is a separate decision). "dormant" is not a real mission phase and is
-    # never loaded by the phase-loading procedure in agent-protocol.md — this
-    # key exists only so TestContractIndexReferencesAllMachineContracts does
-    # not flag the file as orphaned.
+    # Superseded, not merely dormant: runbook-opportunity.yaml's signal
+    # semantics already migrated into opportunity-attack.yaml's
+    # activation_criteria.runbook_worthy / on_runbook_criteria_met (loaded
+    # live at refinement/gate) — see
+    # .analysis/refined/20260803-runbook-domain-and-cutover/analysis.md for
+    # the side-by-side comparison. "dormant" is not a real mission phase and
+    # this key is never loaded by the phase-loading procedure in
+    # agent-protocol.md — it exists only so
+    # TestContractIndexReferencesAllMachineContracts does not flag the file
+    # as orphaned.
     dormant:     [machine/runbook-opportunity.yaml]
     compile:
       - machine/compile-all.yaml

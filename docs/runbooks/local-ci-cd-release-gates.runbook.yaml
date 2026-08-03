@@ -1,0 +1,51 @@
+schema_version: "1"
+runbook_id: local-ci-cd-release-gates
+runbook_type: analytical
+source_doc: docs/runbooks/local-ci-cd-release-gates.md
+
+applies_when:
+  - "Local CI/CD or release validation prints `Published 6 artifact(s).` followed by `TAG is required ...` and `make: *** [Makefile:215: check-release-assets] Error 2`"
+  - "Local validation instead prints the notice `skipping published-release asset gate because TAG is not set; local snapshot artifacts were already validated`"
+
+objective: Determine which local release validation gate applies to the current situation and confirm it is being interpreted and invoked correctly.
+
+preconditions:
+  - Local release validation (e.g. `make release-test` or the full CI sequence) has already run and produced the symptom output above.
+
+analysis:
+  - Identify which situation applies using the gate-selection table — validating GoReleaser config and local snapshot artifacts (`make release-test`), installing pinned GoReleaser then running the local snapshot gate (`make release-dry-run`), or verifying an already-published GitHub Release (`make check-release-assets TAG=vX.Y.Z`).
+  - Confirm that `Published 6 artifact(s).` is success output from `scripts/check-release-artifacts.sh` — it means the local manifest-driven artifact check completed, not that GoReleaser failed to build artifacts.
+  - Determine whether the goal is local validation (stop at `make release-test` / `make release-dry-run`) or verifying a real release (pass `TAG=vX.Y.Z` explicitly to `check-release-assets`).
+
+decision_gates:
+  - id: correct-gate-selected
+    statement: The situation (local snapshot validation vs. verifying a published GitHub Release) determines which command runs; `check-release-assets` is never used as the local snapshot gate.
+  - id: tag-supplied-for-real-release
+    statement: When verifying a published release, `TAG=vX.Y.Z` is passed explicitly to `check-release-assets`.
+  - id: dist-artifacts-missing
+    statement: If `dist/artifacts.json` is missing before local artifact validation, this runbook does not apply — follow `release-no-dist-artifacts-found.md` instead.
+  - id: duplicate-remote-assets
+    statement: If the tag-triggered release fails with duplicate remote assets, follow `release-asset-already-exists.md` instead.
+  - id: tool-version-drift
+    statement: If a release breaks on a run where no repository configuration changed, or a tool deprecation warning appears in CI, follow `release-tool-version-drift.md` instead.
+
+checks:
+  - id: no-check-release-assets-as-local-gate
+    level: mandatory
+  - id: dont-treat-remote-failure-as-local
+    level: mandatory
+  - id: use-release-test-for-config-validation
+    level: conditional
+    when: validating GoReleaser config and local snapshot artifacts
+  - id: use-release-dry-run-for-pinned-goreleaser
+    level: conditional
+    when: installing pinned GoReleaser then running the local snapshot gate
+  - id: use-check-release-assets-with-tag
+    level: conditional
+    when: verifying an already-published GitHub Release
+  - id: changelog-vs-github-releases-authority
+    level: informational
+
+metadata:
+  version: 1
+  reviewed_at: "2026-08-03"
