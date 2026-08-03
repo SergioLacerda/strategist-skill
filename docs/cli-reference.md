@@ -434,6 +434,7 @@ strategist treasure-chest items accept <item-id>...
 strategist treasure-chest items verify <item-id>... --evidence <ref>
 strategist treasure-chest items deprecate <item-id>...
 strategist treasure-chest items migrate-status
+strategist treasure-chest items check-evidence <chest-id>
 ```
 
 **`index`** rebuilds the offline knowledge substrate:
@@ -498,6 +499,13 @@ request maps to `deprecate` (tombstone, not hard-delete).
   `accepted`/`verified`.
 - `migrate-status` — see Migration below. Jewel-only: potions never had the legacy
   `active` status.
+- `check-evidence <chest-id>` — advisory, non-blocking scan over a chest's
+  non-deprecated jewels for `expired` (`valid_until` has passed), `duplicate`
+  (same normalized statement within the chest), and `conflict` (overlapping
+  `source_refs` with a differing statement or status — always a human-review
+  flag, never auto-resolved) findings. Jewel-only. Exit code is always `0`
+  regardless of findings — same advisory posture as `mission_quality`, not a
+  CI gate. See Evidence Quality Fields below.
 
 **`treasure-chest scan` contract** (internal phase, folded into `index`; originally Track
 T-F / `SQ-003`, defined in mission `bau-tesouro-sq003-004-007`, implemented in
@@ -556,6 +564,9 @@ jewels:
         at: YYYY-MM-DD
         by: agent | human
         evidence_ref: <ref>              # present when status: verified was evidence-backed
+    evidence_class: explicit | corroborated_inference | weak_inference | unknown  # optional
+    evidence_confidence: low | medium | high                                     # optional
+    valid_until: <RFC3339 timestamp>                                            # optional
 ```
 
 **Lifecycle:** agent- or `index`-generated jewels always start at `status: proposed` — an
@@ -577,6 +588,20 @@ used a two-state `active | deprecated` model. `active` is a **removed legacy sta
 entry to `status: accepted` in place across monolithic and partitioned manifests; the
 command is idempotent and reports how many entries it migrated (0 is a valid, non-error
 outcome).
+
+**Evidence Quality Fields** (Track: `20260803-jewel-evidence-wiring`): `evidence_class`,
+`evidence_confidence`, and `valid_until` are additive, optional fields on any jewel
+(no `kind` restriction) — an existing manifest with none of them set parses unchanged.
+`evidence_class`/`evidence_confidence` reuse `internal/domain.Evidence`'s own
+Class/Confidence vocabulary rather than embedding the `Evidence` struct itself, so a
+jewel's evidence signal stays vocabulary-compatible with `Decision`/`Evidence` records
+elsewhere. `strategist treasure-chest items check-evidence <chest-id>` runs three
+advisory checks over these fields (`internal/treasure/jewel_evidence_quality.go`):
+expiration (`valid_until` vs. now), dedup (same chest, near-identical `statement`,
+trimmed/case-folded — no semantic matching), and conflict (same chest, overlapping
+`source_refs`, differing `statement` or `status` — a human-review trigger, never
+auto-resolved). All three are advisory only: the command never modifies a jewel and
+always exits `0`.
 
 **Implemented**: `loadJewels` accepts legacy `.strategist/jewels.yaml` and partitioned
 `.strategist/jewels/<chest-id>.yaml`; new `index` candidates are written to partitioned

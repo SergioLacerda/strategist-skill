@@ -47,5 +47,19 @@ schema_version: "1"
 #   internal/treasure.ValidateJewelEntry — parsing/writing a jewel with none of them
 #   set is unchanged. See
 #   .analysis/refined/20260803-handoff-challenge-extensions/design.md § Item 2.
+# evidence_class: explicit | corroborated_inference | weak_inference | unknown  # optional
+# evidence_confidence: low | medium | high  # optional
+# valid_until: RFC3339 timestamp  # optional — no expiry when unset
+#   evidence_class/evidence_confidence/valid_until are additive fields on any jewel
+#   (no kind restriction), reusing internal/domain.Evidence's own Class/Confidence
+#   vocabulary rather than embedding the Evidence struct. Power three advisory,
+#   non-blocking checks — never auto-modify a jewel — run via
+#   `strategist treasure-chest items check-evidence <chest-id>`:
+#     expired    — valid_until has passed
+#     duplicate  — same normalized (trimmed, case-folded) statement within a chest
+#     conflict   — overlapping source_refs with a differing statement or status
+#       within a chest (heuristic only, always a human-review flag, never
+#       auto-resolved)
+#   See .analysis/refined/20260803-jewel-evidence-wiring/design.md.
 
 jewels: []

@@ -146,6 +146,17 @@ type Jewel struct {
 	Pattern           string             `yaml:"pattern,omitempty" json:"pattern,omitempty"`
 	ChallengeTemplate *ChallengeTemplate `yaml:"challenge_template,omitempty" json:"challenge_template,omitempty"`
 	Severity          string             `yaml:"severity,omitempty" json:"severity,omitempty"`
+
+	// EvidenceClass, EvidenceConfidence, and ValidUntil are additive fields
+	// on any jewel, reusing domain.Evidence's Class/Confidence vocabulary
+	// rather than embedding the Evidence struct itself. See
+	// .analysis/refined/20260803-jewel-evidence-wiring/design.md § Target
+	// State. All three are optional; an existing manifest with none of them
+	// set parses unchanged.
+	EvidenceClass      string `yaml:"evidence_class,omitempty" json:"evidence_class,omitempty"`
+	EvidenceConfidence string `yaml:"evidence_confidence,omitempty" json:"evidence_confidence,omitempty"`
+	// ValidUntil is an RFC3339 timestamp string, or empty for no expiry.
+	ValidUntil string `yaml:"valid_until,omitempty" json:"valid_until,omitempty"`
 }
 
 // ChallengeTemplate seeds a future Handoff Challenge from a recurring

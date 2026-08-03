@@ -10,8 +10,8 @@ import (
 )
 
 // metricsCmd is the parent for Strategist's own runtime-memory reporting
-// subcommands (one per metrics domain, e.g. "handoff" here; a sibling
-// mission's own "scout" subcommand attaches the same way once it lands).
+// subcommands, one per metrics domain: "handoff" (this file) and "scout"
+// (metrics_scout.go).
 var metricsCmd = &cobra.Command{
 	Use:   "metrics",
 	Short: "Report metrics computed from Strategist's own runtime memory",
