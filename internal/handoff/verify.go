@@ -55,20 +55,33 @@ func missingRequiredTypes(required []string, challenges []Challenge) []string {
 }
 
 func missingSourceRefs(challenges []Challenge, understood []string) []string {
-	seen := map[string]bool{}
-	for _, ref := range understood {
-		seen[ref] = true
-	}
+	seen := toRefSet(understood)
 	missingSet := map[string]bool{}
 	var missing []string
 	for _, ch := range challenges {
-		for _, ref := range ch.SourceRefs {
-			if seen[ref] || missingSet[ref] {
-				continue
-			}
-			missing = append(missing, ref)
-			missingSet[ref] = true
+		missing = appendUnseenRefs(missing, ch.SourceRefs, seen, missingSet)
+	}
+	return missing
+}
+
+func toRefSet(refs []string) map[string]bool {
+	set := make(map[string]bool, len(refs))
+	for _, ref := range refs {
+		set[ref] = true
+	}
+	return set
+}
+
+// appendUnseenRefs appends each ref not already in seen or missingSet,
+// recording it in missingSet so a ref repeated across challenges is only
+// added to missing once.
+func appendUnseenRefs(missing, refs []string, seen, missingSet map[string]bool) []string {
+	for _, ref := range refs {
+		if seen[ref] || missingSet[ref] {
+			continue
 		}
+		missing = append(missing, ref)
+		missingSet[ref] = true
 	}
 	return missing
 }

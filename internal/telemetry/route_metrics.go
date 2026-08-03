@@ -30,34 +30,58 @@ const analysisDeliveredStatus = "analysis_delivered"
 // rather than NaN, so callers can render "0.00" instead of special-casing an
 // empty history.
 func ComputeRouteMetrics(decisions []RouteDecision, outcomes []OutcomeEntry) RouteMetrics {
-	outcomeByMissionID := make(map[string]OutcomeEntry, len(outcomes))
-	for _, o := range outcomes {
-		outcomeByMissionID[o.MissionID] = o
-	}
+	outcomeByMissionID := indexOutcomesByMissionID(outcomes)
+	fallbackCount, fullPipelineCount, unnecessaryCount := countRouteOutcomes(decisions, outcomeByMissionID)
 
-	var fallbackCount, fullPipelineCount, unnecessaryCount int
+	return RouteMetrics{
+		FallbackRate:            safeRate(fallbackCount, len(decisions)),
+		UnnecessaryPipelineRate: safeRate(unnecessaryCount, fullPipelineCount),
+		SampleSize:              len(decisions),
+		FullPipelineSampleSize:  fullPipelineCount,
+	}
+}
+
+func indexOutcomesByMissionID(outcomes []OutcomeEntry) map[string]OutcomeEntry {
+	byID := make(map[string]OutcomeEntry, len(outcomes))
+	for _, o := range outcomes {
+		byID[o.MissionID] = o
+	}
+	return byID
+}
+
+// countRouteOutcomes walks decisions once, counting how many fell back to
+// full_pipeline, how many selected full_pipeline at all, and — among those —
+// how many turned out unnecessary (see analysisDeliveredStatus above).
+func countRouteOutcomes(decisions []RouteDecision, outcomeByMissionID map[string]OutcomeEntry) (fallbackCount, fullPipelineCount, unnecessaryCount int) {
 	for _, d := range decisions {
-		if d.SelectedRoute == d.FallbackRoute && d.FallbackRoute != "" {
+		if isFallbackRoute(d) {
 			fallbackCount++
 		}
 		if d.SelectedRoute != "full_pipeline" {
 			continue
 		}
 		fullPipelineCount++
-		if o, ok := outcomeByMissionID[d.MissionID]; ok && o.Status == analysisDeliveredStatus {
+		if wasUnnecessaryPipeline(d, outcomeByMissionID) {
 			unnecessaryCount++
 		}
 	}
+	return fallbackCount, fullPipelineCount, unnecessaryCount
+}
 
-	m := RouteMetrics{
-		SampleSize:             len(decisions),
-		FullPipelineSampleSize: fullPipelineCount,
+func isFallbackRoute(d RouteDecision) bool {
+	return d.FallbackRoute != "" && d.SelectedRoute == d.FallbackRoute
+}
+
+func wasUnnecessaryPipeline(d RouteDecision, outcomeByMissionID map[string]OutcomeEntry) bool {
+	o, ok := outcomeByMissionID[d.MissionID]
+	return ok && o.Status == analysisDeliveredStatus
+}
+
+// safeRate returns 0 (not NaN) when total is 0, so callers can render "0.00"
+// instead of special-casing an empty history.
+func safeRate(count, total int) float64 {
+	if total == 0 {
+		return 0
 	}
-	if len(decisions) > 0 {
-		m.FallbackRate = float64(fallbackCount) / float64(len(decisions))
-	}
-	if fullPipelineCount > 0 {
-		m.UnnecessaryPipelineRate = float64(unnecessaryCount) / float64(fullPipelineCount)
-	}
-	return m
+	return float64(count) / float64(total)
 }

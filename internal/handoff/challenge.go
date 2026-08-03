@@ -113,27 +113,53 @@ func DefaultPolicy() Policy {
 // ValidatePolicy verifies that a policy is usable by the MVP verifier.
 func ValidatePolicy(p Policy) error {
 	var errs []error
-	if p.Transition == "" {
-		errs = append(errs, errors.New("handoff_policy_invalid: transition is required"))
+	errs = append(errs, validateTransition(p.Transition)...)
+	errs = append(errs, validateRequiredTypesPresence(p)...)
+	errs = append(errs, validateChallengeTypes(p.RequiredTypes)...)
+	errs = append(errs, validateMaxAttempts(p.MaxAttempts)...)
+	errs = append(errs, validateOnFailure(p.OnFailure)...)
+	return errors.Join(errs...)
+}
+
+func validateTransition(transition string) []error {
+	if transition == "" {
+		return []error{errors.New("handoff_policy_invalid: transition is required")}
 	}
-	if p.Transition != "" && p.Transition != TransitionArchivistToSniper {
-		errs = append(errs, fmt.Errorf("handoff_policy_invalid: transition %q is not supported by the MVP", p.Transition))
+	if transition != TransitionArchivistToSniper {
+		return []error{fmt.Errorf("handoff_policy_invalid: transition %q is not supported by the MVP", transition)}
 	}
+	return nil
+}
+
+func validateRequiredTypesPresence(p Policy) []error {
 	if p.Enabled && len(p.RequiredTypes) == 0 {
-		errs = append(errs, errors.New("handoff_policy_invalid: required_types is required when enabled"))
+		return []error{errors.New("handoff_policy_invalid: required_types is required when enabled")}
 	}
-	for _, typ := range p.RequiredTypes {
+	return nil
+}
+
+func validateChallengeTypes(types []string) []error {
+	var errs []error
+	for _, typ := range types {
 		if !allowedChallengeTypes[typ] {
 			errs = append(errs, fmt.Errorf("handoff_policy_invalid: challenge type %q is not allowed", typ))
 		}
 	}
-	if p.MaxAttempts < 0 {
-		errs = append(errs, errors.New("handoff_policy_invalid: max_attempts must be >= 0"))
+	return errs
+}
+
+func validateMaxAttempts(maxAttempts int) []error {
+	if maxAttempts < 0 {
+		return []error{errors.New("handoff_policy_invalid: max_attempts must be >= 0")}
 	}
-	if p.OnFailure != "" && p.OnFailure != FailureActionReturnToArchivist {
-		errs = append(errs, fmt.Errorf("handoff_policy_invalid: on_failure %q is not supported by the MVP", p.OnFailure))
+	return nil
+}
+
+func validateOnFailure(onFailure string) []error {
+	if onFailure != "" && onFailure != FailureActionReturnToArchivist {
+		return []error{fmt.Errorf("handoff_policy_invalid: on_failure %q is not supported by the MVP", onFailure)}
 	}
-	return errors.Join(errs...)
+	return nil
 }
 
 // RequiredByRisk reports whether risk signals require a challenge.

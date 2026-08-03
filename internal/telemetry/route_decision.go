@@ -49,35 +49,46 @@ func ValidateRouteDecisionLine(line string) error {
 		return fmt.Errorf("route decision line is not valid JSON: %w", err)
 	}
 	var errs []error
-	if d.MissionID == "" {
-		errs = append(errs, errors.New("mission_id is required"))
-	}
-	if d.RequestCategory == "" {
-		errs = append(errs, errors.New("request_category is required"))
-	}
-	if d.SelectedRoute == "" {
-		errs = append(errs, errors.New("selected_route is required"))
-	} else if !allowedSelectedRoutes[d.SelectedRoute] {
-		errs = append(errs, fmt.Errorf("selected_route %q is not an allowed value", d.SelectedRoute))
-	}
-	if d.RouteReason == "" {
-		errs = append(errs, errors.New("route_reason is required"))
-	}
-	if d.RouteConfidence < 0.0 || d.RouteConfidence > 1.0 {
-		errs = append(errs, fmt.Errorf("route_confidence %v is out of range [0.0, 1.0]", d.RouteConfidence))
-	}
-	if d.EvidenceState == "" {
-		errs = append(errs, errors.New("evidence_state is required"))
-	} else if !allowedEvidenceStates[d.EvidenceState] {
-		errs = append(errs, fmt.Errorf("evidence_state %q is not an allowed value", d.EvidenceState))
-	}
-	if d.FallbackRoute != "" && d.FallbackRoute != "full_pipeline" {
-		errs = append(errs, fmt.Errorf("fallback_route %q must be full_pipeline", d.FallbackRoute))
-	}
-	if d.Timestamp == "" {
-		errs = append(errs, errors.New("timestamp is required"))
-	}
+	errs = append(errs, requiredRouteField("mission_id", d.MissionID)...)
+	errs = append(errs, requiredRouteField("request_category", d.RequestCategory)...)
+	errs = append(errs, allowedRouteValue("selected_route", d.SelectedRoute, allowedSelectedRoutes)...)
+	errs = append(errs, requiredRouteField("route_reason", d.RouteReason)...)
+	errs = append(errs, routeConfidenceRange(d.RouteConfidence)...)
+	errs = append(errs, allowedRouteValue("evidence_state", d.EvidenceState, allowedEvidenceStates)...)
+	errs = append(errs, fallbackRouteValue(d.FallbackRoute)...)
+	errs = append(errs, requiredRouteField("timestamp", d.Timestamp)...)
 	return errors.Join(errs...)
+}
+
+func requiredRouteField(name, value string) []error {
+	if value == "" {
+		return []error{fmt.Errorf("%s is required", name)}
+	}
+	return nil
+}
+
+func allowedRouteValue(name, value string, allowed map[string]bool) []error {
+	if value == "" {
+		return []error{fmt.Errorf("%s is required", name)}
+	}
+	if !allowed[value] {
+		return []error{fmt.Errorf("%s %q is not an allowed value", name, value)}
+	}
+	return nil
+}
+
+func routeConfidenceRange(confidence float64) []error {
+	if confidence < 0.0 || confidence > 1.0 {
+		return []error{fmt.Errorf("route_confidence %v is out of range [0.0, 1.0]", confidence)}
+	}
+	return nil
+}
+
+func fallbackRouteValue(fallbackRoute string) []error {
+	if fallbackRoute != "" && fallbackRoute != "full_pipeline" {
+		return []error{fmt.Errorf("fallback_route %q must be full_pipeline", fallbackRoute)}
+	}
+	return nil
 }
 
 // AppendRouteDecisionLine validates line and appends it with a newline to
