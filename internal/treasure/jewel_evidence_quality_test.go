@@ -87,7 +87,7 @@ func TestScanExpiredJewels_FlagsPastValidUntil(t *testing.T) {
 	jewels := []Jewel{
 		{ID: "jewel-1", ValidUntil: "2026-01-01T00:00:00Z"}, // expired
 		{ID: "jewel-2", ValidUntil: "2027-01-01T00:00:00Z"}, // not expired
-		{ID: "jewel-3"},                                     // no valid_until
+		{ID: "jewel-3"}, // no valid_until
 	}
 	found := ScanExpiredJewels("chest-a", jewels, now)
 	require.Len(t, found, 1)
