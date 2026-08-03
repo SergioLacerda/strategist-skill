@@ -144,6 +144,7 @@ func jewelValidators(j Jewel, governed map[string]GovernedChest) []func() error 
 		func() error { return wrapJewelValidation("kind", domain.ValidateJewelKind(j.ID, j.Kind)) },
 		func() error { return wrapJewelValidation("score", domain.ValidateJewelScore(j.ID, j.Score.Value)) },
 		func() error { return validateJewelTrust(j, governed) },
+		func() error { return wrapJewelValidation("challenge_template", validateJewelChallengeTemplate(j)) },
 	}
 }
 

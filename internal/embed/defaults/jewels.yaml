@@ -35,5 +35,17 @@ schema_version: "1"
 #   avoid_when: [string]
 # verification:                # optional — populated only by `mine --verify`
 #   evidence_refs: [string]
+# pattern: string              # optional, kind: template only — short label for a recurring
+#                               #   handoff-failure pattern (e.g. "recommendation_promoted_to_requirement")
+# challenge_template:          # optional, kind: template only — seeds a future Handoff Challenge
+#   applies_to: [string]         #   transition ids this pattern applies to (e.g. archivist_to_sniper,
+#                                 #   ranger_to_archivist) — a list, since one pattern can recur across transitions
+#   type: string                 #   objective | boundary | classification | gate | recall | verdict
+#   prompt: string                #   the challenge question itself
+# severity: low | medium | high  # optional, kind: template only
+#   pattern/challenge_template/severity are additive fields validated by
+#   internal/treasure.ValidateJewelEntry — parsing/writing a jewel with none of them
+#   set is unchanged. See
+#   .analysis/refined/20260803-handoff-challenge-extensions/design.md § Item 2.
 
 jewels: []

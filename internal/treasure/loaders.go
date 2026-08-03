@@ -136,6 +136,36 @@ type Jewel struct {
 	Applicability JewelApplicability  `yaml:"applicability"`
 	Verification  JewelVerification   `yaml:"verification"`
 	History       []JewelHistoryEntry `yaml:"history,omitempty" json:"history,omitempty"`
+
+	// Pattern, ChallengeTemplate, and Severity are additive fields scoped to
+	// kind: template jewels only — a recurring handoff-failure pattern that
+	// can seed a future Handoff Challenge. See
+	// .analysis/refined/20260803-handoff-challenge-extensions/design.md §
+	// Item 2. All three are optional; an existing manifest with none of
+	// them set parses unchanged.
+	Pattern           string             `yaml:"pattern,omitempty" json:"pattern,omitempty"`
+	ChallengeTemplate *ChallengeTemplate `yaml:"challenge_template,omitempty" json:"challenge_template,omitempty"`
+	Severity          string             `yaml:"severity,omitempty" json:"severity,omitempty"`
+}
+
+// ChallengeTemplate seeds a future Handoff Challenge from a recurring
+// failure pattern noticed in a kind: template jewel — the field shape
+// quiz.txt's own worked example (jewel-handoff-007) uses. This mission
+// fixes the shape only; whether templates are authored manually or
+// generated automatically when a Handoff Challenge fails is left open, per
+// design.md § Item 2 "Generation: Open Question, Not Resolved Here".
+type ChallengeTemplate struct {
+	// AppliesTo lists transition ids (e.g. "archivist_to_sniper",
+	// "ranger_to_archivist") this pattern is relevant to. A list, not a
+	// single value, since one failure pattern can recur across transitions.
+	AppliesTo []string `yaml:"applies_to" json:"applies_to"`
+	// Type is a challenge type string. Deliberately not validated against
+	// internal/handoff's type constants here — internal packages depend
+	// only on internal/domain, never on a peer (see
+	// internal/domain/architecture_test.go's TestLateralIsolation) — so
+	// this package owns its own copy of the allowed value set.
+	Type   string `yaml:"type" json:"type"`
+	Prompt string `yaml:"prompt" json:"prompt"`
 }
 
 // Manifest is the top-level jewels.yaml document.

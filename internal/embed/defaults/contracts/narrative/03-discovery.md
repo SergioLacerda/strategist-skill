@@ -49,6 +49,29 @@ own behavior below is identical regardless of which mechanism invoked it.
 - `relevant_sources_hint` produced by the Search ability during the Retrieval Cascade's
   treasure-chest stage; reused by Archivist by default (see `04-refinement.md`)
 
+## Optional Handoff Challenge (Ranger → Archivist)
+
+Archivist MAY apply a `ranger_to_archivist` Handoff Challenge
+(`internal/handoff`, `TransitionRangerToArchivist`) against this handoff to
+verify it correctly restated the artifact's content before refinement
+proceeds. Its challenge-type vocabulary is fitted to this handoff's actual
+content, not a reuse of the Archivist → Sniper MVP's `objective`/`gate`
+types:
+
+| Type | Validates |
+| --- | --- |
+| `recall` | Archivist can restate the critical `known_facts` entries by id |
+| `boundary` | Archivist distinguishes `affected_scope` from `side_quests` — side quests are never treated as in-scope |
+| `classification` | Archivist distinguishes a `known_facts` entry from an `uncertainties` entry |
+| `verdict` | *(only when `discovery_subtype: evaluation`)* Archivist correctly restates `evaluation_verdict` |
+
+This is advisory-first: no policy in this workspace currently sets
+`RequiredTypes` for `ranger_to_archivist`, mirroring the MVP's own
+"don't block low-risk or documentation-only transitions by default"
+posture. Wiring a required-by-default risk policy for this transition is a
+future decision, not made here — see
+`.analysis/refined/20260803-handoff-challenge-extensions/design.md` § Item 1.
+
 ## Evaluation Discovery Procedure
 
 When `discovery_subtype: evaluation`, Ranger must:

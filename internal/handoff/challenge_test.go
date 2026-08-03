@@ -39,6 +39,55 @@ func TestValidatePolicy(t *testing.T) {
 
 	require.NoError(t, ValidatePolicy(DefaultPolicy()))
 	require.ErrorContains(t, ValidatePolicy(Policy{Enabled: true, Transition: TransitionArchivistToSniper}), "required_types")
-	require.ErrorContains(t, ValidatePolicy(Policy{Enabled: true, Transition: "ranger_to_archivist", RequiredTypes: []string{ChallengeObjective}}), "not supported")
-	assert.ErrorContains(t, ValidatePolicy(Policy{Enabled: true, Transition: TransitionArchivistToSniper, RequiredTypes: []string{"essay"}}), "not allowed")
+	require.ErrorContains(t, ValidatePolicy(Policy{Enabled: true, Transition: "some_other_transition", RequiredTypes: []string{ChallengeObjective}}), "not supported")
+	require.ErrorContains(t, ValidatePolicy(Policy{Enabled: true, Transition: TransitionArchivistToSniper, RequiredTypes: []string{"essay"}}), "not allowed")
+}
+
+func TestValidatePolicy_RangerToArchivistTransition(t *testing.T) {
+	t.Parallel()
+
+	require.NoError(t, ValidatePolicy(Policy{
+		Enabled:       true,
+		Transition:    TransitionRangerToArchivist,
+		RequiredTypes: []string{ChallengeRecall, ChallengeBoundary, ChallengeClassification, ChallengeVerdict},
+		MaxAttempts:   2,
+	}))
+}
+
+func TestValidatePolicy_ChallengeTypesAreTransitionScoped(t *testing.T) {
+	t.Parallel()
+
+	// MVP-only types are rejected on the Ranger->Archivist transition.
+	require.ErrorContains(t, ValidatePolicy(Policy{
+		Enabled: true, Transition: TransitionRangerToArchivist, RequiredTypes: []string{ChallengeGate},
+	}), "not allowed for transition")
+	require.ErrorContains(t, ValidatePolicy(Policy{
+		Enabled: true, Transition: TransitionRangerToArchivist, RequiredTypes: []string{ChallengeObjective},
+	}), "not allowed for transition")
+
+	// Ranger->Archivist-only types are rejected on the MVP transition.
+	require.ErrorContains(t, ValidatePolicy(Policy{
+		Enabled: true, Transition: TransitionArchivistToSniper, RequiredTypes: []string{ChallengeRecall},
+	}), "not allowed for transition")
+	require.ErrorContains(t, ValidatePolicy(Policy{
+		Enabled: true, Transition: TransitionArchivistToSniper, RequiredTypes: []string{ChallengeVerdict},
+	}), "not allowed for transition")
+
+	// boundary/classification are shared vocabulary, valid on both.
+	assert.NoError(t, ValidatePolicy(Policy{
+		Enabled: true, Transition: TransitionArchivistToSniper, RequiredTypes: []string{ChallengeBoundary, ChallengeClassification},
+	}))
+	assert.NoError(t, ValidatePolicy(Policy{
+		Enabled: true, Transition: TransitionRangerToArchivist, RequiredTypes: []string{ChallengeBoundary, ChallengeClassification},
+	}))
+}
+
+func TestDefaultPolicy_UnchangedByRangerToArchivistAddition(t *testing.T) {
+	t.Parallel()
+
+	// Acceptance check: the MVP's archivist_to_sniper behavior is additive-only.
+	p := DefaultPolicy()
+	assert.Equal(t, TransitionArchivistToSniper, p.Transition)
+	assert.Equal(t, []string{ChallengeObjective, ChallengeBoundary, ChallengeClassification, ChallengeGate}, p.RequiredTypes)
+	require.NoError(t, ValidatePolicy(p))
 }

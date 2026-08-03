@@ -61,6 +61,13 @@ Archivist (`refinement`)
   `handoff_verification` metadata in the handoff with `objective`, `boundary`,
   `classification`, and `gate` challenge types. This semantic acknowledgment
   complements the YAML structure contract; it never replaces Approval Gate review.
+- a second Handoff Challenge transition, `ranger_to_archivist`, is available in
+  `internal/handoff` (`TransitionRangerToArchivist`, challenge types `recall`,
+  `boundary`, `classification`, `verdict` — see `03-discovery.md` § Optional
+  Handoff Challenge). It is advisory-first: no policy in this workspace
+  currently sets `RequiredTypes` for it. Wiring a required-by-default risk
+  policy for this transition is a future decision, not made here — see
+  `.analysis/refined/20260803-handoff-challenge-extensions/design.md` § Item 1.
 - when the mission type is evaluation or audit and the Ranger discovers completed work
   requiring cleanup (archiving finished missions, removing obsolete files): treat that
   cleanup as an opportunity attack, not a main task. The main mission resolves as

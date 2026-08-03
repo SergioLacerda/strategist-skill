@@ -9,15 +9,40 @@ import (
 const (
 	// TransitionArchivistToSniper identifies the MVP handoff transition.
 	TransitionArchivistToSniper = "archivist_to_sniper"
+	// TransitionRangerToArchivist identifies the Ranger->Archivist handoff
+	// transition — a structurally different handoff (known_facts/
+	// uncertainties/evaluation_verdict, no execution.approval_required
+	// concept), so it gets its own challenge-type vocabulary below rather
+	// than reusing the MVP's objective/gate types. See
+	// .analysis/refined/20260803-handoff-challenge-extensions/design.md §
+	// Item 1.
+	TransitionRangerToArchivist = "ranger_to_archivist"
 
 	// ChallengeObjective checks whether Sniper preserved the handoff objective.
+	// Valid only for TransitionArchivistToSniper.
 	ChallengeObjective = "objective"
-	// ChallengeBoundary checks whether Sniper preserved scope boundaries.
+	// ChallengeBoundary checks scope-boundary preservation. Valid for both
+	// transitions, with a different referent each time: for
+	// TransitionArchivistToSniper it checks exclusions; for
+	// TransitionRangerToArchivist it checks affected_scope vs. side_quests.
 	ChallengeBoundary = "boundary"
-	// ChallengeClassification checks whether Sniper preserved evidence classes.
+	// ChallengeClassification checks classification preservation. Valid for
+	// both transitions, with a different referent each time: for
+	// TransitionArchivistToSniper it checks Evidence.Class; for
+	// TransitionRangerToArchivist it checks known_facts vs. uncertainties.
 	ChallengeClassification = "classification"
 	// ChallengeGate checks whether Sniper preserved Approval Gate state.
+	// Valid only for TransitionArchivistToSniper.
 	ChallengeGate = "gate"
+	// ChallengeRecall checks whether Archivist can restate the critical
+	// known_facts entries of a Ranger handoff, by id. Valid only for
+	// TransitionRangerToArchivist.
+	ChallengeRecall = "recall"
+	// ChallengeVerdict checks whether Archivist correctly restates a Ranger
+	// handoff's evaluation_verdict — only applicable when
+	// discovery_subtype: evaluation. Valid only for
+	// TransitionRangerToArchivist.
+	ChallengeVerdict = "verdict"
 
 	// DecisionApproved is the expected classification for approved decisions.
 	DecisionApproved = "approved_decision"
@@ -37,11 +62,25 @@ const (
 	StatusFailed = "failed"
 )
 
-var allowedChallengeTypes = map[string]bool{
-	ChallengeObjective:      true,
-	ChallengeBoundary:       true,
-	ChallengeClassification: true,
-	ChallengeGate:           true,
+// allowedChallengeTypesByTransition scopes valid challenge types per
+// transition — the MVP's four types stay valid only for
+// TransitionArchivistToSniper, and TransitionRangerToArchivist has its own
+// four, so a challenge type with no referent on a given transition (e.g.
+// "gate" on a Ranger handoff, which never has an approval gate) is rejected
+// by ValidatePolicy instead of silently accepted.
+var allowedChallengeTypesByTransition = map[string]map[string]bool{
+	TransitionArchivistToSniper: {
+		ChallengeObjective:      true,
+		ChallengeBoundary:       true,
+		ChallengeClassification: true,
+		ChallengeGate:           true,
+	},
+	TransitionRangerToArchivist: {
+		ChallengeRecall:         true,
+		ChallengeBoundary:       true,
+		ChallengeClassification: true,
+		ChallengeVerdict:        true,
+	},
 }
 
 // Policy decides whether a semantic handoff challenge is required for a transition.
@@ -115,7 +154,7 @@ func ValidatePolicy(p Policy) error {
 	var errs []error
 	errs = append(errs, validateTransition(p.Transition)...)
 	errs = append(errs, validateRequiredTypesPresence(p)...)
-	errs = append(errs, validateChallengeTypes(p.RequiredTypes)...)
+	errs = append(errs, validateChallengeTypes(p.Transition, p.RequiredTypes)...)
 	errs = append(errs, validateMaxAttempts(p.MaxAttempts)...)
 	errs = append(errs, validateOnFailure(p.OnFailure)...)
 	return errors.Join(errs...)
@@ -125,8 +164,8 @@ func validateTransition(transition string) []error {
 	if transition == "" {
 		return []error{errors.New("handoff_policy_invalid: transition is required")}
 	}
-	if transition != TransitionArchivistToSniper {
-		return []error{fmt.Errorf("handoff_policy_invalid: transition %q is not supported by the MVP", transition)}
+	if _, ok := allowedChallengeTypesByTransition[transition]; !ok {
+		return []error{fmt.Errorf("handoff_policy_invalid: transition %q is not supported", transition)}
 	}
 	return nil
 }
@@ -138,11 +177,12 @@ func validateRequiredTypesPresence(p Policy) []error {
 	return nil
 }
 
-func validateChallengeTypes(types []string) []error {
+func validateChallengeTypes(transition string, types []string) []error {
+	allowed := allowedChallengeTypesByTransition[transition]
 	var errs []error
 	for _, typ := range types {
-		if !allowedChallengeTypes[typ] {
-			errs = append(errs, fmt.Errorf("handoff_policy_invalid: challenge type %q is not allowed", typ))
+		if !allowed[typ] {
+			errs = append(errs, fmt.Errorf("handoff_policy_invalid: challenge type %q is not allowed for transition %q", typ, transition))
 		}
 	}
 	return errs
