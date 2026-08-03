@@ -11,7 +11,7 @@ import (
 
 // LoadGoverned reads treasure-chests.yaml and returns governed chests by id.
 func LoadGoverned(root string) (map[string]GovernedChest, error) {
-	raw, err := os.ReadFile(filepath.Join(root, "treasure-chests.yaml")) //nolint:gosec // G304
+	raw, err := os.ReadFile(filepath.Join(root, "treasure-chests.yaml")) //nolint:gosec // G304: governed chest config path is derived from the selected runtime root
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil

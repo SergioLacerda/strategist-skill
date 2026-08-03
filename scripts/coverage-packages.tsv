@@ -1,0 +1,7 @@
+# package	minimum	reason
+internal/stale	90	staleness contract gate
+internal/compile	90	compiled artifact contract gate
+internal/install	90	installer and runtime materialization gate
+internal/embed	90	embedded defaults availability gate
+internal/telemetry	90	governance telemetry gate
+cmd/strategist	90	CLI contract surface gate

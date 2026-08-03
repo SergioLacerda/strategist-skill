@@ -55,6 +55,32 @@ The Strategist never executes work directly — it delegates. Each slot receives
 
 ---
 
+## Handoff Challenge
+
+A Handoff Challenge is a risk-based semantic acknowledgment for the Archivist -> Sniper
+handoff. It complements the YAML handoff contract: schemas prove that required fields
+were transmitted, while the challenge checks that Sniper preserved critical meaning
+before materialization.
+
+The MVP supports four deterministic challenge types:
+
+- `objective`: Sniper identifies the approved mission objective.
+- `boundary`: Sniper identifies excluded or forbidden scope.
+- `classification`: Sniper distinguishes approved decisions from unresolved questions.
+- `gate`: Sniper identifies whether execution is authorized.
+
+The challenge is not a generic quiz and not an LLM judge. The first validator checks
+required refs, classifications, boundaries, and gate state. It is optional for low-risk
+handoffs and required when risk signals are present, such as mandatory constraints,
+unresolved questions, forbidden scope, implementation handoff items, destructive
+operation risk, or security-sensitive work.
+
+Passing a Handoff Challenge never replaces the Strategist Approval Gate and never expands
+Sniper's write scope. Failing a required challenge blocks execution with a named handoff
+challenge reason and returns the handoff to Archivist repair.
+
+---
+
 ## Role
 
 A role is the combination of a slot with its behavior contract. There are three canonical, pluggable roles:

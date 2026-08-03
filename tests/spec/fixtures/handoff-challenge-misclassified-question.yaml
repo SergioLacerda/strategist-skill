@@ -1,0 +1,10 @@
+scenario: handoff_challenge_misclassified_question
+description: >
+  Sniper treats an unresolved question as an approved decision.
+input:
+  acknowledgment:
+    classifications:
+      Q-001: approved_decision
+trigger: verify_handoff_acknowledgment
+expected_event: "phase=execution status=blocked reason=handoff_challenge_failed"
+

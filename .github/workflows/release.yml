@@ -12,7 +12,7 @@ permissions: {}
 # same dist/ semantics and the same GitHub Release API surface. Never cancel a
 # release in flight: a half-published release is worse than a slow one.
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ github.repository }}
   cancel-in-progress: false
 
 jobs:

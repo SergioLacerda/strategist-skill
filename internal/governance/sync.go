@@ -101,7 +101,7 @@ func readGovernance(sddDir string) (fingerprint string, activeMandates []string,
 }
 
 func readSDDMetadata(metaPath string) (SDDMetadata, error) {
-	metaRaw, err := os.ReadFile(metaPath)
+	metaRaw, err := os.ReadFile(metaPath) //nolint:gosec // G304: metadata path is derived from the configured .sdd directory
 	if os.IsNotExist(err) {
 		return SDDMetadata{}, fmt.Errorf(".sdd/metadata.json not found — is SDD active in this workspace? (path: %s)", metaPath)
 	}
@@ -116,7 +116,7 @@ func readSDDMetadata(metaPath string) (SDDMetadata, error) {
 }
 
 func readGovernanceCore(corePath string) (governanceCore, error) {
-	coreRaw, err := os.ReadFile(corePath)
+	coreRaw, err := os.ReadFile(corePath) //nolint:gosec // G304: governance core path is derived from the configured .sdd directory
 	if err != nil {
 		return governanceCore{}, fmt.Errorf("read governance-core.json: %w", err)
 	}
@@ -138,7 +138,7 @@ func activeMandateIDs(core governanceCore) []string {
 }
 
 func readSkill(skillPath string) (map[string]any, error) {
-	skillRaw, err := os.ReadFile(skillPath)
+	skillRaw, err := os.ReadFile(skillPath) //nolint:gosec // G304: skill manifest path is derived from the configured skill root
 	if err != nil {
 		return nil, fmt.Errorf("read skill.yaml: %w", err)
 	}

@@ -60,7 +60,7 @@ func readFileUnderRoot(root, rel string) ([]byte, string, error) {
 	if err != nil || relCheck == ".." || strings.HasPrefix(relCheck, ".."+string(filepath.Separator)) {
 		return nil, full, fmt.Errorf("%w: %q escapes root %q", errPathEscape, rel, root)
 	}
-	data, err := os.ReadFile(full)
+	data, err := os.ReadFile(full) //nolint:gosec // G304: dojo file checks read paths validated against the scenario root
 	if err != nil {
 		return nil, full, fmt.Errorf("dojo: read %s: %w", full, err)
 	}

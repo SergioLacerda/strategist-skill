@@ -20,7 +20,7 @@ func CheckEmitLog(criteria domain.DojoCriteria, logPath string, filesOnly bool) 
 		return missingEmitLogItems(criteria, filesOnly)
 	}
 
-	raw, err := os.ReadFile(logPath)
+	raw, err := os.ReadFile(logPath) //nolint:gosec // G304: dojo reads the selected scenario emit log
 	if err != nil {
 		return []domain.DojoCheckItem{{
 			Label:  "emit_log read",

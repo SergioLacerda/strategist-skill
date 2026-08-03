@@ -55,7 +55,7 @@ func ValidateOutcomeLine(line string) error {
 // held during the read-then-write so concurrent appenders remain compatible
 // while a flush's exclusive lock blocks new appends until the cat+truncate
 // sequence completes.
-func AppendOutcomeLine(path, line string) (appended bool, err error) {
+func AppendOutcomeLine(path, line string) (appended bool, err error) { //nolint:dupl // mirrors route-decision append semantics for a separate schema
 	if err = ValidateOutcomeLine(line); err != nil {
 		return false, fmt.Errorf("outcome validation failed: %w", err)
 	}
@@ -63,7 +63,7 @@ func AppendOutcomeLine(path, line string) (appended bool, err error) {
 	if err = json.Unmarshal([]byte(line), &entry); err != nil {
 		return false, fmt.Errorf("outcome line is not valid JSON: %w", err)
 	}
-	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o644)
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o644) //nolint:gosec // G304: outcomes path is owned by the Strategist runtime memory domain
 	if err != nil {
 		return false, fmt.Errorf("open outcomes file: %w", err)
 	}
@@ -156,7 +156,7 @@ func FlushOutcomeBuffer(bufferPath, outcomesPath string) (flushed int, err error
 }
 
 func readOutcomeBuffer(bufferPath string) ([]byte, error) {
-	data, err := os.ReadFile(bufferPath)
+	data, err := os.ReadFile(bufferPath) //nolint:gosec // G304: buffer path is owned by the Strategist runtime memory domain
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, nil
 	}

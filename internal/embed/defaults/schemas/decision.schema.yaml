@@ -1,0 +1,58 @@
+schema_version: "1"
+description: >
+  Decision ledger entry — critique_skill.txt item 2 and critique_skill_3.txt
+  § Skill/agent gaps item 1. A mission-scoped choice with stable identity,
+  status, and evidence backing. Optional in any given mission's refined
+  package; when present, decisions[] entries are validated against this
+  shape and evaluated by internal/domain's EvaluateMissionQuality
+  (mission_quality.go). See
+  .analysis/done/20260803-critique-skill-affinity-review/design.md §
+  "Consolidated Decision/Evidence Model".
+
+fields:
+  id:
+    type: string
+    format: "DEC-NNN"
+    example: "DEC-001"
+    required: true
+  statement:
+    type: string
+    description: The decision, stated as a single sentence.
+    required: true
+  status:
+    type: string
+    values: [open, approved, rejected, superseded]
+    required: true
+    description: >
+      "open" is the only non-terminal status. A decision that was "open" in
+      a prior mission snapshot and is absent from a later one is a dropped
+      open question (see unresolved_questions_preserved in
+      mission_quality.go) — status changes to approved/rejected/superseded
+      are progress, not drops.
+  evidence:
+    type: list
+    item_type: string
+    description: >
+      Evidence.id references (see evidence.schema.yaml). A decision with an
+      empty evidence list is an unsupported claim
+      (mission_quality.go#checkUnsupportedClaims). An evidence id that does
+      not resolve to a real Evidence record fails
+      mission_quality.go#checkTraceableFindings.
+    required: true
+  alternatives_rejected:
+    type: list
+    item_type: string
+    required: false
+  supersedes:
+    type: list
+    item_type: string
+    description: IDs of earlier decisions this one replaces.
+    required: false
+  confidence:
+    type: string
+    values: [low, medium, high]
+    required: true
+  approved_at:
+    type: string
+    format: RFC3339 timestamp
+    required: false

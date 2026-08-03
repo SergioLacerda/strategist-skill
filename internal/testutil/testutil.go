@@ -30,7 +30,7 @@ diagnostics:
 func WriteGzJSON(t testing.TB, path string, v any) {
 	t.Helper()
 	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
-	f, err := os.Create(path)
+	f, err := os.Create(path) //nolint:gosec // G304: test helper writes explicit temporary fixture paths
 	require.NoError(t, err)
 	gz := gzip.NewWriter(f)
 	require.NoError(t, json.NewEncoder(gz).Encode(v))
@@ -41,7 +41,7 @@ func WriteGzJSON(t testing.TB, path string, v any) {
 // ReadGzJSON decompresses a gzipped JSON artifact at path into v.
 func ReadGzJSON(t testing.TB, path string, v any) {
 	t.Helper()
-	f, err := os.Open(path)
+	f, err := os.Open(path) //nolint:gosec // G304: test helper reads explicit temporary fixture paths
 	require.NoError(t, err, "open artifact %s", path)
 	defer f.Close() //nolint:errcheck
 	gz, err := gzip.NewReader(f)

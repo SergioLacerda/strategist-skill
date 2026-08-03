@@ -39,7 +39,7 @@ func (c *MissionCheckpoint) MarkTaskDone(n int) {
 // LoadCheckpoint reads a checkpoint file. Returns an empty checkpoint (not an error)
 // if the file does not exist — a missing file means no tasks have been completed yet.
 func LoadCheckpoint(path string) (*MissionCheckpoint, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: checkpoint path is owned by the Strategist runtime memory domain
 	if errors.Is(err, os.ErrNotExist) {
 		return &MissionCheckpoint{}, nil
 	}

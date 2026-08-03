@@ -84,6 +84,19 @@ func TestLoadIndexed_Success(t *testing.T) {
 	assert.True(t, result["chest-y"])
 }
 
+func TestLoadIndexed_TreatsSourceIDsAsDataNotPaths(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "knowledge.index.yaml"),
+		[]byte("sources:\n  - id: ../outside\n  - id: /tmp/absolute\n"), 0o644))
+
+	result, err := LoadIndexed(dir)
+
+	require.NoError(t, err)
+	assert.True(t, result["../outside"])
+	assert.True(t, result["/tmp/absolute"])
+}
+
 func TestLoadActiveChests_CorruptYAML(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
@@ -93,4 +106,22 @@ func TestLoadActiveChests_CorruptYAML(t *testing.T) {
 	_, err := LoadActiveChests(dir)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "active.yaml")
+}
+
+func TestLoadActiveChests_TreatsChestPathAsDataNotReadTarget(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte(`
+treasure_chests:
+  - id: suspicious
+    path: ../outside.md
+    scope: discovery
+`), 0o644))
+
+	got, err := LoadActiveChests(dir)
+
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	assert.Equal(t, "../outside.md", got[0].Path)
+	assert.Equal(t, Scope{"discovery"}, got[0].Scope)
 }

@@ -59,6 +59,23 @@ Before any action, Sniper MUST:
 
 If `mission_status` is not `gate_analysis_accepted` → emit `reason=gate_approval_missing` → STOP.
 
+## Handoff Challenge Check
+
+After the claim protocol and before the Pre-Materialization Scan, Sniper MUST inspect
+the accepted handoff for optional `handoff_verification` metadata.
+
+- If `handoff_verification.required: false` or absent, continue to the
+  Pre-Materialization Scan.
+- If `handoff_verification.required: true` and no acknowledgment is present, emit
+  `blocked reason=handoff_challenge_missing` and STOP.
+- If acknowledgment is present, validate it deterministically against required refs,
+  forbidden claims, classifications, and gate state. If any critical challenge fails,
+  emit `blocked reason=handoff_challenge_failed` and STOP.
+- If repair is required, emit `blocked reason=handoff_challenge_repair_required` and
+  return to Archivist refinement; do not decide the repair inside Sniper.
+
+Passing handoff verification never authorizes materialization by itself and never replaces Approval Gate acceptance. Sniper still requires `mission_status: gate_analysis_accepted`, an allowed write scope, and a clean Pre-Materialization Scan.
+
 ## Pre-Materialization Scan
 
 After the claim protocol and before starting the materialization loop, Sniper MUST scan

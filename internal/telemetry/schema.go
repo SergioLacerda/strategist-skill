@@ -56,14 +56,17 @@ const (
 	AttrDiscoverySubtype = "strategist.discovery_subtype"
 	AttrProvider         = "strategist.provider"
 
-	AttrIntakeToScoutMS     = "strategist.metrics.t_intake_to_scout_ms"
-	AttrScoutToRangerMS     = "strategist.metrics.t_scout_to_ranger_ms"
-	AttrRangerToArchivistMS = "strategist.metrics.t_ranger_to_archivist_ms"
-	AttrArchivistToGateMS   = "strategist.metrics.t_archivist_to_gate_ms"
-	AttrGateWaitMS          = "strategist.metrics.t_gate_wait_ms"
-	AttrGateToSniperMS      = "strategist.metrics.t_gate_to_sniper_ms"
-	AttrSniperToDoneMS      = "strategist.metrics.t_sniper_to_done_ms"
-	AttrDocumentationScope  = "strategist.documentation_scope"
+	AttrIntakeToScoutMS                  = "strategist.metrics.t_intake_to_scout_ms"
+	AttrScoutToRangerMS                  = "strategist.metrics.t_scout_to_ranger_ms"
+	AttrRangerToArchivistMS              = "strategist.metrics.t_ranger_to_archivist_ms"
+	AttrArchivistToGateMS                = "strategist.metrics.t_archivist_to_gate_ms"
+	AttrGateWaitMS                       = "strategist.metrics.t_gate_wait_ms"
+	AttrGateToSniperMS                   = "strategist.metrics.t_gate_to_sniper_ms"
+	AttrSniperToDoneMS                   = "strategist.metrics.t_sniper_to_done_ms"
+	AttrDocumentationScope               = "strategist.documentation_scope"
+	AttrHandoffChallengeStatus           = "strategist.handoff_challenge.status"
+	AttrHandoffChallengeCriticalFailures = "strategist.handoff_challenge.critical_failures"
+	AttrHandoffChallengeTypes            = "strategist.handoff_challenge.types"
 
 	// AttrBasePath, AttrConflictCount are the F3 revisit tripwire signal attrs
 	// (ADR-0008 § F3 revisit tripwire, docs/adr/0008-single-session-assumption.md).

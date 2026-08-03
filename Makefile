@@ -3,11 +3,13 @@
 	test test-all integration spec validate-expanded validate-all \
 	test-lite test-telemetry-lite test-compile-cache test-domain-architecture \
 	ci-lint ci-test ci lint complexity-report go-file-size-report \
+	quality-budget-gate install-gocognit \
 	install-govulncheck vuln vuln-ci bench \
 	cover cover-gate cover-html \
 	analysis-structure-gate docs-governance-gate governance-check convergence-check \
+	contract-consistency-gate \
 	validate-fixtures install release-verify release-check install-goreleaser \
-	check-release-artifacts check-release-assets release-test release-dry-run \
+	check-release-artifacts check-release-assets release-reproducible-check release-test release-dry-run \
 	release snapshot clean compile-skill build-site build-all \
 	install-web lint-web test-web cover-web ci-web
 
@@ -18,11 +20,15 @@ GOVULNCHECK         := $(shell which govulncheck 2>/dev/null || echo $(shell go 
 GOCOGNIT            := $(shell which gocognit 2>/dev/null || echo $(shell go env GOPATH)/bin/gocognit)
 GORELEASER          := $(shell which goreleaser 2>/dev/null || echo $(shell go env GOPATH)/bin/goreleaser)
 GOVULNCHECK_VERSION ?= v1.1.4
+GOCOGNIT_VERSION    ?= v1.2.1
 GORELEASER_VERSION  ?= v2.12.2
-COVERAGE_PKGS       := internal/stale internal/compile internal/install internal/embed internal/telemetry cmd/strategist
+COVERAGE_MANIFEST   := scripts/coverage-packages.tsv
+COVERAGE_PKGS       := $(shell awk 'NF && $$1 !~ /^#/ {print $$1}' $(COVERAGE_MANIFEST))
 COVERAGE_DIR        ?= coverage
 COVERAGE_PROFILE    := $(COVERAGE_DIR)/coverage.out
 COVERAGE_HTML       := $(COVERAGE_DIR)/coverage.html
+QUALITY_BUDGETS     := scripts/quality-budgets.tsv
+COMPLEXITY_THRESHOLD ?= 15
 
 fmt:
 	gofmt -w .
@@ -78,9 +84,9 @@ test-compile-cache:
 test-domain-architecture:
 	GOCACHE=$(GOCACHE) go test -race internal/domain/architecture_test.go
 
-ci-lint: fmt-check mod-check vet build
+ci-lint: fmt-check mod-check vet build quality-budget-gate
 
-ci-test: test-all convergence-check cover-gate
+ci-test: test-all convergence-check contract-consistency-gate cover-gate
 
 ci: ci-lint ci-test
 
@@ -90,9 +96,8 @@ lint: fmt-check
 	@$(MAKE) go-file-size-report
 
 # complexity-report lists files that contain functions with cognitive complexity > 7.
-# Informational only — does not fail the build.
 complexity-report:
-	@command -v $(GOCOGNIT) >/dev/null 2>&1 || go install github.com/uudashr/gocognit/cmd/gocognit@latest
+	@$(MAKE) install-gocognit
 	@echo "=== Cognitive Complexity > 7 ==="
 	@$(GOCOGNIT) -over 7 ./cmd ./internal \
 		| awk '{split($$NF,a,":"); print a[1]}' \
@@ -106,7 +111,6 @@ complexity-report:
 		|| true
 
 # go-file-size-report lists primary Go source files over 200 lines.
-# Informational only — does not fail the build.
 go-file-size-report:
 	@echo "=== Go Files > 200 Lines ==="
 	@files=$$(find cmd internal -type f -name '*.go' \
@@ -117,6 +121,12 @@ go-file-size-report:
 		if [ "$$lines" -gt 200 ]; then printf "%s %s\n" "$$f" "$$lines"; fi; \
 	done | sort -k2,2nr -k1,1); \
 	if [ -n "$$results" ]; then printf "%s\n" "$$results"; else echo "none"; fi
+
+install-gocognit:
+	@command -v $(GOCOGNIT) >/dev/null 2>&1 || GOCACHE=$(GOCACHE) go install github.com/uudashr/gocognit/cmd/gocognit@$(GOCOGNIT_VERSION)
+
+quality-budget-gate: install-gocognit
+	bash scripts/check-quality-budgets.sh "$(QUALITY_BUDGETS)" "$(GOCOGNIT)" "$(COMPLEXITY_THRESHOLD)"
 
 install-govulncheck:
 	GOCACHE=$(GOCACHE) go install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION)
@@ -138,19 +148,9 @@ cover:
 		go tool cover -func=$(COVERAGE_PROFILE) | tail -1; \
 	done
 
-# cover-gate fails the build if any internal package is below 90%.
-# Note: internal/domain is excluded (pure type declarations — no executable statements).
+# cover-gate fails the build when a package falls below its manifest threshold.
 cover-gate:
-	@mkdir -p $(COVERAGE_DIR)
-	@fail=0; \
-	for pkg in $(COVERAGE_PKGS); do \
-		pct=$$(GOCACHE=$(GOCACHE) go test -coverprofile=$(COVERAGE_PROFILE) -coverpkg=./$$pkg/... ./$$pkg/... 2>/dev/null \
-			| grep -o '[0-9.]*%' | tail -1 | tr -d '%'); \
-		printf "%-30s %s%%\n" "$$pkg" "$$pct"; \
-		ok=$$(awk -v p="$$pct" 'BEGIN{print (p+0 >= 90)}'); \
-		if [ "$$ok" != "1" ]; then echo "  FAIL: $$pct% < 90%"; fail=1; fi; \
-	done; \
-	exit $$fail
+	bash scripts/check-coverage-gate.sh "$(COVERAGE_MANIFEST)" "$(COVERAGE_DIR)" "$(GOCACHE)"
 
 # cover-html writes an HTML coverage report without opening a browser.
 cover-html:
@@ -164,6 +164,9 @@ analysis-structure-gate:
 
 docs-governance-gate:
 	bash scripts/check-docs-governance.sh
+
+contract-consistency-gate:
+	bash scripts/check-contract-consistency.sh
 
 convergence-check:
 	@echo "Checking runtime/package-boundary convergence..."
@@ -199,7 +202,7 @@ install: build
 # The sync-embed target was removed in W7a (Option B): internal/embed/defaults/ is now
 # the single authoring source embedded directly via go:embed — there is nothing to sync.
 
-release-verify: vet test-lite
+release-verify: ci-lint ci-test docs-governance-gate validate-fixtures release-reproducible-check
 
 # release-check validates the GoReleaser config before a tag-triggered release.
 release-check:
@@ -213,6 +216,9 @@ check-release-artifacts:
 
 check-release-assets:
 	bash scripts/check-release-assets.sh "$(TAG)" dist/published.tsv
+
+release-reproducible-check:
+	bash scripts/check-reproducible-build.sh "$(GOCACHE)"
 
 # release-test validates release config and local snapshot artifacts without publishing.
 release-test: release-check snapshot check-release-artifacts
@@ -228,7 +234,7 @@ snapshot:
 	$(GORELEASER) release --snapshot --clean --skip=publish
 
 clean:
-	rm -rf bin/ dist/ coverage/ coverage.out coverage.html
+	rm -rf bin/ dist/ coverage/ coverage.out coverage.html cover.out coverage_cmd.out
 
 # compile-skill regenerates the compiled bootstrap artifacts in .strategist/.compiled/.
 # Run after editing any file under .strategist/ to keep the fast-path active.

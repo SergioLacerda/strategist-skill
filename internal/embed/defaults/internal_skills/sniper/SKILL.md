@@ -22,6 +22,23 @@ Before any action, you MUST execute the claim protocol:
 
 If `mission_status` is not `gate_analysis_accepted`, emit `reason=gate_approval_missing` and **STOP**.
 
+## Handoff Challenge Check
+
+After the claim protocol and before the Pre-Materialization Scan, inspect the accepted
+handoff for optional `handoff_verification` metadata.
+
+- If `handoff_verification.required: false` or absent, continue.
+- If `handoff_verification.required: true` and no acknowledgment is present, emit
+  `blocked reason=handoff_challenge_missing` and **STOP**.
+- Validate any acknowledgment deterministically against required refs, classifications,
+  boundaries, and gate state. If a critical check fails, emit
+  `blocked reason=handoff_challenge_failed` and **STOP**.
+- If the handoff itself needs repair, emit
+  `blocked reason=handoff_challenge_repair_required` and return to Archivist.
+
+Passing the Handoff Challenge never replaces Approval Gate acceptance and never expands
+your write scope.
+
 ## Pre-Materialization Scan
 
 Before starting the materialization loop, scan `tasks.md` / `implementation_plan` for

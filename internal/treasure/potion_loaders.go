@@ -46,7 +46,7 @@ func loadPotionsFromManifest(path, root string, governed map[string]GovernedChes
 }
 
 func readPotionManifest(path, root string) (PotionManifest, error) {
-	raw, err := os.ReadFile(path) //nolint:gosec // G304
+	raw, err := os.ReadFile(path) //nolint:gosec // G304: potion manifest path is derived from governed chest metadata
 	if err != nil {
 		return PotionManifest{}, fmt.Errorf("read %s: %w", potionManifestLabel(root, path), err)
 	}

@@ -71,3 +71,40 @@ required_fields:
     required: true
     known_values: [scope_drift, missing_file, validation_failure, ambiguity]
     description: Conditions under which Sniper must stop and report, not decide
+  handoff_verification:
+    type: object
+    required: false
+    description: >
+      Optional semantic handoff challenge metadata for the Archivist -> Sniper
+      transition. This complements YAML structure validation; it never replaces the
+      Strategist Approval Gate.
+    fields:
+      enabled:
+        type: boolean
+      transition:
+        type: string
+        allowed_values: [archivist_to_sniper]
+      required:
+        type: boolean
+      required_types:
+        type: list
+        allowed_values: [objective, boundary, classification, gate]
+      require_all_critical:
+        type: boolean
+      max_attempts:
+        type: integer
+      on_failure:
+        type: string
+        allowed_values: [return_to_archivist]
+      challenges:
+        type: list
+        item_fields: [id, type, source_refs, critical]
+        item_values:
+          type: [objective, boundary, classification, gate]
+      acknowledgment:
+        type: object
+        required: false
+        fields:
+          understood_refs: list
+          classifications: object
+          gate_allowed: boolean

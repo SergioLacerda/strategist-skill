@@ -122,7 +122,7 @@ func saveInstallManifest(strategistDir string, manifest domain.InstallManifest) 
 
 func loadInstallManifest(strategistDir string) (domain.InstallManifest, bool, error) {
 	path := filepath.Join(strategistDir, domain.InstallManifestRelPath)
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: install manifest path is derived from the selected .strategist root
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return domain.InstallManifest{}, false, nil

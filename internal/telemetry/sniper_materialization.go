@@ -35,7 +35,7 @@ func AppendSniperMaterialization(path string, rec SniperMaterializationRecord) (
 	if mkdirErr := os.MkdirAll(filepath.Dir(path), 0o755); mkdirErr != nil {
 		return fmt.Errorf("create sniper materialization history dir: %w", mkdirErr)
 	}
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644) //nolint:gosec // G304: materialization history path is owned by runtime memory
 	if err != nil {
 		return fmt.Errorf("open sniper materialization history: %w", err)
 	}
@@ -58,7 +58,7 @@ func writeSniperMaterializationLine(f *os.File, rec SniperMaterializationRecord)
 // ReadRecentSniperMaterializations reads records inside the [now-window, now] range.
 // Malformed historical lines are skipped so one bad record does not disable the signal.
 func ReadRecentSniperMaterializations(path string, now time.Time, window time.Duration) (records []SniperMaterializationRecord, err error) {
-	f, err := os.Open(path)
+	f, err := os.Open(path) //nolint:gosec // G304: materialization history path is owned by runtime memory
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, nil
 	}

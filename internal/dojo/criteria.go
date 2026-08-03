@@ -12,7 +12,7 @@ import (
 
 // LoadCriteria reads, parses, and validates a criteria.yaml for the given scenario directory.
 func LoadCriteria(scenarioDir string) (domain.DojoCriteria, error) {
-	raw, err := os.ReadFile(filepath.Join(scenarioDir, "criteria.yaml"))
+	raw, err := os.ReadFile(filepath.Join(scenarioDir, "criteria.yaml")) //nolint:gosec // G304: dojo reads criteria.yaml under the selected scenario directory
 	if err != nil {
 		return domain.DojoCriteria{}, fmt.Errorf("dojo: read criteria.yaml: %w", err)
 	}

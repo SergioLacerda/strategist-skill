@@ -1,0 +1,37 @@
+module: mission-quality
+type: quality_contract
+description: >
+  The mission_quality result contract (critique_skill.txt item 1): six
+  predicates that make "the pipeline was followed but the analysis is
+  mediocre" a detectable outcome, not just a felt one. Evaluated over the
+  optional Decision/Evidence model (schemas/decision.schema.yaml,
+  schemas/evidence.schema.yaml; internal/domain/decision.go, evidence.go,
+  mission_quality.go#EvaluateMissionQuality) when a refined package's
+  analysis.md declares decisions:/evidence: sections. Advisory only — see
+  invariants.
+
+predicates:
+  - unsupported_claims: forbidden       # every decision cites at least one evidence id
+  - fact_inference_separation: required  # every evidence entry has a valid class
+  - traceable_findings: required         # every cited evidence id resolves
+  - acceptance_criteria: required        # the mission declares acceptance criteria
+  - unresolved_questions_preserved: required # open decisions aren't silently dropped between revisions
+  - source_scope_respected: required     # evidence source_refs stay within approved scope, when declared
+
+owner: archivist
+consumes: >
+  Optional decisions:/evidence: sections in <base_path>/refined/<mission_id>/analysis.md,
+  validated against schemas/decision.schema.yaml and schemas/evidence.schema.yaml.
+
+write_scope: read-only — this contract does not write mission artifacts
+
+invariants:
+  - decisions:/evidence: sections are optional in every mission — never required
+  - when absent, mission_quality is simply not evaluated for that mission; this is not a failure
+  - mission_quality is advisory only — it never blocks a mission, never substitutes
+    the Approval Gate, and never overrides Sniper's write-scope contract
+  - a failed predicate is surfaced at the gate (see approval-gate.yaml#mission_quality_display)
+    for the user's own judgment, the same way the Critic's score is advisory-only
+  - this contract does not define a CLI command or a Go call site — internal/domain's
+    EvaluateMissionQuality is invoked conceptually by Archivist (agent-embodied),
+    the same pattern already used for internal/handoff's verification model

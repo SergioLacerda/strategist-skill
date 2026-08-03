@@ -16,7 +16,7 @@ var taskTitleRe = regexp.MustCompile(`^##\s+Task\s+\d+\s*[—-]\s*(.+)$`)
 // and backtick-wrapped scalars (e.g. “ `SQ-001` “) — backticks are stripped before
 // unmarshaling.
 func ParseMissionTasks(missionID, path string) (ScannedMission, error) {
-	raw, err := os.ReadFile(path) //nolint:gosec // G304
+	raw, err := os.ReadFile(path) //nolint:gosec // G304: mission scan reads task files selected from the analysis root
 	if err != nil {
 		return ScannedMission{}, fmt.Errorf("read %s: %w", path, err)
 	}

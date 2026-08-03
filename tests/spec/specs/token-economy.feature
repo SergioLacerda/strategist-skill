@@ -27,3 +27,11 @@ Feature: Token Economy — Mode Inference and Triage Gate
     Then Strategist detects drift pattern "skip_triage_gate"
     And stops the pipeline
     And presents the blocking_question to the user
+
+  Scenario: unresolved_question_not_promoted_to_decision
+    Given token_strategy.triage_gate.blocking_question is present
+    And the user has not answered it
+    When Strategist records the intake state
+    Then the question remains an open question
+    And Strategist does not record the missing answer as an accepted decision
+    And the pipeline remains blocked at the triage gate

@@ -4,8 +4,8 @@
 
 <div align="center">
 
-<img src="https://img.shields.io/badge/CI-passing-3fae6f?style=flat-square&labelColor=1b1610" />
-<img src="https://img.shields.io/badge/version-1.0-e8c25a?style=flat-square&labelColor=1b1610" />
+<img src="https://github.com/SergioLacerda/strategist-skill/actions/workflows/test.yml/badge.svg" alt="Health Orchestrator status" />
+<img src="https://img.shields.io/github/v/release/SergioLacerda/strategist-skill?label=release&style=flat-square&labelColor=1b1610" alt="Latest release" />
 <img src="https://img.shields.io/badge/license-CC_BY--NC_4.0-cf7a2c?style=flat-square&labelColor=1b1610" />
 <img src="https://img.shields.io/badge/mode-pragmatic_·_epic-9b865d?style=flat-square&labelColor=1b1610" />
 
@@ -98,8 +98,8 @@ Expected contracts:
 - [skill-internals.md](../skill-internals.md)
 - [c4-diagrams.md](../c4-diagrams.md)
 - [adr/](../adr/)
-- [strategist/SKILL.md](../../strategist/SKILL.md)
-- [strategist/protocol.md](../../strategist/protocol.md)
+- [embedded runtime defaults](../../internal/embed/defaults/SKILL.md)
+- [embedded protocol stub](../../internal/embed/defaults/protocol.md)
 
 ## Development and tests
 
@@ -116,8 +116,8 @@ Expected contracts:
 - `make release-test` — validates GoReleaser config and local snapshot artifacts without publishing
 - `make release-dry-run` — installs the pinned GoReleaser version and runs `release-test`
 - `make bench` — runs benchmarks
-- `make cover` — generates per-package coverage
-- `make cover-gate` — fails if any internal package is below 90% coverage
+- `make cover` — generates coverage for packages listed in `scripts/coverage-packages.tsv`
+- `make cover-gate` — fails if any manifest-listed package is below its threshold
 - `make cover-html` — generates a consolidated `coverage/coverage.html` report
 - When contributing external skills used as wizard default providers, preserve attribution to the upstream project and include an installable canonical manifest at `.strategist/skills/<provider>/skill.yaml`.
 

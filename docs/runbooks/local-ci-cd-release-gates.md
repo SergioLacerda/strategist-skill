@@ -104,6 +104,10 @@ make check-release-assets TAG="${GITHUB_REF_NAME}"
 
 ## Reference
 
+Release history source of truth: `CHANGELOG.md` is curated for unreleased changes
+and the `1.0.0` baseline. For patch releases after `1.0.0`, GitHub Releases are authoritative
+for notes and published assets.
+
 Diagnosed 2026-07-30 after a local validation sequence printed
 `Published 6 artifact(s).` and then failed because `check-release-assets` was run
 without `TAG`. The refined Strategist package is

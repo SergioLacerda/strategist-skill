@@ -1,0 +1,8 @@
+scenario: handoff_challenge_low_risk_skip
+description: >
+  Informational handoff has no critical constraints and skips semantic challenge.
+input:
+  risk_signals:
+    informational_only: true
+expected_event: "phase=execution status=handoff_challenge_skipped reason=handoff_challenge_skipped"
+

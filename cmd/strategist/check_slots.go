@@ -47,7 +47,7 @@ type slotResolution struct {
 // message that reads as "nothing here at all".
 func resolveSlotProvider(root, slot, provider string) (slotResolution, string) {
 	skillPath := filepath.Join(root, "skills", provider, "skill.yaml")
-	skillRaw, readErr := os.ReadFile(skillPath)
+	skillRaw, readErr := os.ReadFile(skillPath) //nolint:gosec // G304: provider manifest path is derived from the runtime skills directory
 	if readErr == nil {
 		return resolveSkillProviderSlot(slot, provider, skillPath, skillRaw)
 	}
@@ -73,7 +73,7 @@ func resolveSkillProviderSlot(slot, provider, skillPath string, skillRaw []byte)
 
 func resolveNativeRoleSlot(root, slot, provider, skillPath string) (slotResolution, string) {
 	rolePath := filepath.Join(root, "roles", provider+".yaml")
-	roleRaw, roleErr := os.ReadFile(rolePath)
+	roleRaw, roleErr := os.ReadFile(rolePath) //nolint:gosec // G304: native role path is derived from the runtime roles directory
 	if roleErr != nil {
 		if os.IsNotExist(roleErr) {
 			return slotResolution{}, fmt.Sprintf("slot %s: provider %q not installed (missing %s)", slot, provider, skillPath)

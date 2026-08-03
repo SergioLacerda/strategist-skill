@@ -129,7 +129,7 @@ func isDojoScenarioEntry(dojoDir string, e os.DirEntry) bool {
 
 func dojoDescription(dojoDir, scenario string) string {
 	criteriaPath := filepath.Join(dojoDir, scenario, "criteria.yaml")
-	raw, err := os.ReadFile(criteriaPath)
+	raw, err := os.ReadFile(criteriaPath) //nolint:gosec // G304: dojo list reads criteria.yaml under a discovered scenario directory
 	if err != nil {
 		return ""
 	}
@@ -146,7 +146,7 @@ func resolveDojoRoots(root string) (strategistRoot, basePath string, err error) 
 		strategistRoot = ".strategist"
 	}
 
-	raw, err := os.ReadFile(filepath.Join(strategistRoot, "active.yaml"))
+	raw, err := os.ReadFile(filepath.Join(strategistRoot, "active.yaml")) //nolint:gosec // G304: dojo reads active.yaml from the selected .strategist root
 	if err != nil {
 		return "", "", fmt.Errorf("dojo: read active.yaml: %w", err)
 	}

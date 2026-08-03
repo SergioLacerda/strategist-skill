@@ -2,9 +2,15 @@
 
 ## Prerequisites
 
-- Go 1.24+ (`go version`)
-- Node.js 20+ (for `web/landing/` only)
+- Go matching `go.mod` (`go 1.26.4`, toolchain `go1.26.5`)
+- Node.js 22 (for `web/landing/` only, matching CI)
 - `make` (GNU Make)
+
+Go versions are sourced from `go.mod`: `go 1.26.4` defines the language/module
+target and `toolchain go1.26.5` pins the patch toolchain used by CI-compatible
+local verification. Node is intentionally scoped to `web/landing/`; CI uses
+Node 22 and the landing package declares `engines.node >= 22.12.0`. Relax or bump
+these pins only through the toolchain policy in ADR-0014.
 
 ## Setup
 
@@ -22,15 +28,25 @@ make build          # builds the CLI binary to bin/strategist
 | `make build` | Build the CLI binary |
 | `make test` | Run unit tests |
 | `make test-all` | Unit + spec + integration tests |
-| `make lint` | Run formatting, golangci-lint, and informational source-size reports |
-| `make cover` | Run tests with coverage report |
-| `make cover-html` | Open coverage report in browser |
-| `make sync-embed` | Sync embedded YAML files into the binary |
+| `make ci-lint` | Run formatting, module, vet, build, and quality-budget gates |
+| `make ci-test` | Run unit, spec, integration, convergence, contract, and coverage gates |
+| `make cover` | Run coverage for packages listed in `scripts/coverage-packages.tsv` |
+| `make cover-html` | Generate `coverage/coverage.html` without opening a browser |
+| `make quality-budget-gate` | Enforce Go file-size and cognitive-complexity budgets |
 | `make compile-skill` | Compile the Strategist skill artifacts |
 | `make build-all` | Build CLI + landing site |
 
-> **Important:** After editing any file under `internal/embed/defaults/` or
-> `strategist/`, run `make sync-embed && make build` to apply changes to the binary.
+> **Important:** `internal/embed/defaults/` is the single authoring source for
+> packaged Strategist defaults. After editing embedded defaults, run
+> `make build` and the relevant tests; installed `.strategist/` directories are
+> runtime instances and should not be treated as source mirrors.
+
+## Release history
+
+`CHANGELOG.md` is the curated source for unreleased changes and the `1.0.0`
+baseline. For patch releases after `1.0.0`, GitHub Releases are authoritative
+for published notes and assets. Contributors should not invent or reconstruct
+patch notes in `CHANGELOG.md`; verify the tag and release page instead.
 
 ### Landing page: build before preview
 
@@ -61,8 +77,8 @@ internal/
   install/           Installation service
   compile/           Skill compilation
   telemetry/         OTel spans + structured log attributes
-  embed/defaults/    Embedded YAML/Markdown files (synced via make sync-embed)
-strategist/          Skill contract files (personas, contracts, schemas)
+  embed/defaults/    Embedded YAML/Markdown defaults packaged via go:embed
+.strategist/         Local runtime instance generated from embedded defaults
 docs/                Documentation
 web/landing/         Astro landing site
 ```
@@ -91,8 +107,8 @@ docs: add observability-contract.md
 
 1. Fork and create a branch: `git checkout -b feat/my-change`
 2. Make your changes + add tests
-3. Run `make test lint` — both must pass
-4. If you changed embedded files: `make sync-embed && make build && make integration`
+3. Run `make ci-lint ci-test` — both must pass
+4. If you changed embedded defaults: `make build && make integration`
 5. Open a PR against `main` with a clear description of what and why
 
 ## Governance files

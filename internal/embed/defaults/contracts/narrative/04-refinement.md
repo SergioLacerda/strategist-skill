@@ -56,11 +56,27 @@ Archivist (`refinement`)
   Sniper-executable. `implementation_handoff` items (code, hook, config, or test mutation)
   must never be phrased as executable Sniper tasks — they are handed off, not queued
   for materialization.
+- evaluate `contracts/machine/handoff-contract.yaml#handoff_verification_policy`
+  for Archivist -> Sniper handoffs. When the policy triggers, include optional
+  `handoff_verification` metadata in the handoff with `objective`, `boundary`,
+  `classification`, and `gate` challenge types. This semantic acknowledgment
+  complements the YAML structure contract; it never replaces Approval Gate review.
 - when the mission type is evaluation or audit and the Ranger discovers completed work
   requiring cleanup (archiving finished missions, removing obsolete files): treat that
   cleanup as an opportunity attack, not a main task. The main mission resolves as
   `analysis_delivered`. The cleanup is offered via `opportunity_gate` manifest.
 - never emit a single-file refined artifact as the canonical result
+
+### Optional Decision Ledger
+
+Archivist MAY consolidate mission-scoped choices as `decisions:` entries
+(`schemas/decision.schema.yaml`) — stable `DEC-NNN` ids, `status`, cited
+`evidence` ids, `alternatives_rejected`, `confidence`, `supersedes` — when a
+mission's own complexity warrants a durable ledger rather than prose alone.
+This is optional. When both `decisions:` and `evidence:` are present,
+`machine/mission-quality.yaml`'s predicates describe what a well-formed
+package looks like, and a failed predicate is surfaced at the gate
+(advisory only — see `05-approval-gate.md`).
 
 ## Write Scope
 

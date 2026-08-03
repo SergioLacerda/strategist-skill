@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Release History Authority
+
+`CHANGELOG.md` is the curated source for unreleased changes and the historical
+`1.0.0` baseline. For patch releases after `1.0.0`, GitHub Releases are authoritative
+for published release notes and downloadable assets. Do not
+backfill `v1.0.x` notes into this file unless they are verified against the
+corresponding tag and GitHub Release.
+
 ---
 
 ## [Unreleased]

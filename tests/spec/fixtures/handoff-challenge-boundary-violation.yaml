@@ -1,0 +1,12 @@
+scenario: handoff_challenge_boundary_violation
+description: >
+  Sniper does not acknowledge forbidden scope before materialization.
+input:
+  challenge:
+    type: boundary
+    source_refs: [X-001]
+  acknowledgment:
+    understood_refs: [G-001]
+trigger: verify_handoff_acknowledgment
+expected_event: "phase=execution status=blocked reason=handoff_challenge_failed"
+

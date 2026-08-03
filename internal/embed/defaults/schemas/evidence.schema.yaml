@@ -1,0 +1,52 @@
+schema_version: "1"
+description: >
+  Evidence record — critique_skill.txt item 3's "finding → source →
+  snippet/hash → classification → confidence" chain, refined by the
+  evidence_classes vocabulary proposed in .analysis/todo/v2/pathfinder.txt
+  ("never promote an inference to a fact; cite every historical claim").
+  Optional in any given mission's refined package; when present, evidence[]
+  entries are validated against this shape and evaluated by
+  internal/domain's EvaluateMissionQuality (mission_quality.go). See
+  .analysis/done/20260803-critique-skill-affinity-review/design.md §
+  "Consolidated Decision/Evidence Model".
+
+fields:
+  id:
+    type: string
+    format: "EVD-NNN or a stable slug"
+    example: "EVD-001"
+    required: true
+  source_ref:
+    type: string
+    description: >
+      Where this evidence came from — a file path, commit hash, ADR id,
+      test name, or Treasure Chest jewel id. Not required to be a
+      filesystem path; source_scope_respected
+      (mission_quality.go#checkSourceScopeRespected) checks it against
+      caller-supplied approved prefixes only when the caller opts in.
+    required: true
+  class:
+    type: string
+    values: [explicit, corroborated_inference, weak_inference, unknown]
+    required: true
+    description: >
+      explicit: directly stated in the source (e.g. an ADR's own words).
+      corroborated_inference: not stated outright, but supported by
+      multiple independent sources (e.g. tests + commit history agreeing).
+      weak_inference: a single, uncorroborated inference.
+      unknown: classification not yet done — distinct from omitting class
+      entirely, which fails validation
+      (mission_quality.go#checkFactInferenceSeparation) rather than passing
+      silently.
+  confidence:
+    type: string
+    values: [low, medium, high]
+    required: true
+  valid_until:
+    type: string
+    format: RFC3339 timestamp
+    description: >
+      Optional expiry. Absent means no expiry is declared. Interpreting
+      this against "now" is a caller concern — internal/domain stays free
+      of a time dependency.
+    required: false

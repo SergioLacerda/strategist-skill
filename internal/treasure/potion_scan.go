@@ -65,7 +65,7 @@ func isRunbookCandidateFile(entry os.DirEntry) bool {
 
 func runbookFileToPotion(chestID, trustTier, dirPath, fileName string) (Potion, error) {
 	path := filepath.Join(dirPath, fileName)
-	raw, err := os.ReadFile(path) //nolint:gosec // G304
+	raw, err := os.ReadFile(path) //nolint:gosec // G304: potion scan reads runbook files selected from governed chest metadata
 	if err != nil {
 		return Potion{}, fmt.Errorf("read %s: %w", path, err)
 	}

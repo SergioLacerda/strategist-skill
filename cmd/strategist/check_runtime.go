@@ -64,7 +64,7 @@ func validateRuntimeDefaultFile(
 	manifestErr error,
 ) (string, bool) {
 	runtimePath := filepath.Join(root, filepath.FromSlash(rel))
-	runtimeRaw, readErr := os.ReadFile(runtimePath)
+	runtimeRaw, readErr := os.ReadFile(runtimePath) //nolint:gosec // G304: runtime file path is derived from the discovered .strategist root
 	if readErr != nil {
 		if os.IsNotExist(readErr) {
 			return "", false
@@ -107,7 +107,7 @@ func classifyRuntimeStale(
 
 func readInstallManifest(root string) (domain.InstallManifest, bool, error) {
 	path := filepath.Join(root, domain.InstallManifestRelPath)
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: runtime file path is derived from the discovered .strategist root
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return domain.InstallManifest{}, false, nil

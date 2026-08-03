@@ -46,7 +46,7 @@ func loadJewelsFromManifest(path, root string, governed map[string]GovernedChest
 }
 
 func readJewelManifest(path, root string) (Manifest, error) {
-	raw, err := os.ReadFile(path) //nolint:gosec // G304
+	raw, err := os.ReadFile(path) //nolint:gosec // G304: jewel manifest path is derived from governed chest metadata
 	if err != nil {
 		return Manifest{}, fmt.Errorf("read %s: %w", jewelManifestLabel(root, path), err)
 	}

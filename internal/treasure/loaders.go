@@ -170,7 +170,7 @@ type PotionManifest struct {
 
 // LoadActiveChests reads active.yaml treasure_chests entries.
 func LoadActiveChests(root string) ([]ActiveChest, error) {
-	raw, err := os.ReadFile(filepath.Join(root, "active.yaml")) //nolint:gosec // G304
+	raw, err := os.ReadFile(filepath.Join(root, "active.yaml")) //nolint:gosec // G304: active.yaml path is derived from the selected runtime root
 	if err != nil {
 		return nil, fmt.Errorf("read active.yaml: %w", err)
 	}
@@ -183,7 +183,7 @@ func LoadActiveChests(root string) ([]ActiveChest, error) {
 
 // LoadIndexed reads knowledge.index.yaml and returns indexed source ids.
 func LoadIndexed(root string) (map[string]bool, error) {
-	raw, err := os.ReadFile(filepath.Join(root, "knowledge.index.yaml")) //nolint:gosec // G304
+	raw, err := os.ReadFile(filepath.Join(root, "knowledge.index.yaml")) //nolint:gosec // G304: knowledge index path is derived from the selected runtime root
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil

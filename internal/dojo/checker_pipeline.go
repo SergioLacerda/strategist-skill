@@ -37,7 +37,7 @@ func CheckPipeline(criteria domain.DojoCriteria, logPath string, filesOnly bool)
 	if !fileExists(logPath) {
 		return []domain.DojoCheckItem{newItem("pipeline", false, "emit.log not found — run the LLM scenario first")}
 	}
-	raw, err := os.ReadFile(logPath)
+	raw, err := os.ReadFile(logPath) //nolint:gosec // G304: dojo reads the selected scenario emit log
 	if err != nil {
 		return []domain.DojoCheckItem{newItem("pipeline", false, err.Error())}
 	}

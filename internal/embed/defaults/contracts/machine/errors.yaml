@@ -137,6 +137,27 @@ errors:
     action: "materialize documentation_target items only; report implementation_handoff items as out of scope"
     enforced_by: agent
 
+  - token: handoff_challenge_missing
+    emit: "blocked reason=handoff_challenge_missing"
+    scope: execution
+    reason: "required Archivist to Sniper semantic handoff acknowledgment is absent"
+    action: "return to Archivist to repair the handoff or collect the required acknowledgment"
+    enforced_by: agent
+
+  - token: handoff_challenge_failed
+    emit: "blocked reason=handoff_challenge_failed"
+    scope: execution
+    reason: "Sniper acknowledgment failed objective, boundary, classification, or gate challenge validation"
+    action: "return to Archivist to repair ambiguous handoff context before retrying Sniper"
+    enforced_by: agent
+
+  - token: handoff_challenge_repair_required
+    emit: "blocked reason=handoff_challenge_repair_required"
+    scope: execution
+    reason: "critical handoff challenge failures require handoff repair before materialization"
+    action: "revise the refined package or challenge metadata, then re-present the gate"
+    enforced_by: agent
+
 # Drift tokens are cataloged in identity/drift-patterns.yaml (symptom/correction).
 # Index only — do not add reason/action text here.
 drift_index:

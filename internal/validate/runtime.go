@@ -23,7 +23,7 @@ func ActiveYAML(path string) error {
 }
 
 func readActiveConfigForValidation(path string) (domain.ActiveConfig, error) {
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(path) //nolint:gosec // G304: validator reads the explicit runtime file path provided by caller
 	if os.IsNotExist(err) {
 		return domain.ActiveConfig{}, fmt.Errorf("file not found")
 	}
@@ -72,7 +72,7 @@ func PersonasDir(dir string) (errs []string, checks int) {
 
 func validatePersonaFile(dir, name string) []string {
 	path := filepath.Join(dir, name)
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(path) //nolint:gosec // G304: persona path is selected from the validated personas directory listing
 	if err != nil {
 		return []string{fmt.Sprintf("personas/%s: read: %v", name, err)}
 	}
@@ -118,7 +118,7 @@ func validateRoleFile(dir, name string) (errs []string) {
 }
 
 func readRoleShape(path string) ([]byte, map[string]any, error) {
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(path) //nolint:gosec // G304: role path is selected from the validated roles directory listing
 	if err != nil {
 		return nil, nil, fmt.Errorf("read: %w", err)
 	}
@@ -153,7 +153,7 @@ func validateRoleSlotMap(name string, raw []byte) []string {
 
 // YAMLFile checks that path parses as well-formed YAML.
 func YAMLFile(path string) error {
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(path) //nolint:gosec // G304: YAML validator intentionally reads the caller-selected file
 	if err != nil {
 		return fmt.Errorf("read: %w", err)
 	}

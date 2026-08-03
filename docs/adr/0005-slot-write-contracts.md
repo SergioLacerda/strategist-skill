@@ -43,6 +43,16 @@ Runtime violations:
 - Non-`.md` type write by `write_analysis` → `slot_write_type_violation`
 - Write outside the declared scope → `slot_write_scope_violation`
 
+### Enforcement levels
+
+The contract uses three enforcement levels:
+
+| Level | Role in this ADR | Current enforcement |
+|-------|------------------|---------------------|
+| Declarative | Slot contracts, allowed scopes, and allowed types are declared in skill/provider metadata. | `skill.yaml`, role manifests, and contract documentation define the expected write boundary. |
+| Detective | Preflight and runtime checks detect drift from declared contracts and report named violations. | Preflight rejects slot/provider mismatches; runtime violations are reported as `slot_write_type_violation` or `slot_write_scope_violation`. |
+| Preventive | A slot cannot continue materializing outside its approved boundary once a blocking violation is detected. | The approval gate remains mandatory for `controlled` writes, and scope/type violations stop the governed flow instead of being silently accepted. |
+
 ## Consequences
 
 **Positive:**

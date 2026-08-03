@@ -1,0 +1,17 @@
+scenario: handoff_challenge_pass
+description: >
+  Sniper acknowledges objective, boundary, classification, and gate refs before
+  materialization.
+input:
+  handoff_verification:
+    required: true
+    transition: archivist_to_sniper
+    required_types: [objective, boundary, classification, gate]
+  acknowledgment:
+    understood_refs: [G-001, X-001, D-001, Q-001, approval.required]
+    classifications:
+      D-001: approved_decision
+      Q-001: unresolved_question
+    gate_allowed: false
+expected_event: "phase=execution status=handoff_challenge_passed reason=handoff_challenge_passed"
+

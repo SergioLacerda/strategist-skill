@@ -13,7 +13,8 @@ func TestSchema_constants(t *testing.T) {
 		AttrIntakeToScoutMS, AttrScoutToRangerMS, AttrRangerToArchivistMS,
 		AttrArchivistToGateMS, AttrGateWaitMS, AttrGateToSniperMS,
 		AttrSniperToDoneMS, AttrDocumentationScope, AttrTotalWallTimeMS,
-		AttrTokensIn, AttrTokensOut, AttrLinesEmitted,
+		AttrHandoffChallengeStatus, AttrHandoffChallengeCriticalFailures,
+		AttrHandoffChallengeTypes, AttrTokensIn, AttrTokensOut, AttrLinesEmitted,
 	}
 	for _, c := range constants {
 		if c == "" {

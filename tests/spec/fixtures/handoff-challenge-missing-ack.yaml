@@ -1,0 +1,10 @@
+scenario: handoff_challenge_missing_ack
+description: >
+  A required Archivist to Sniper handoff challenge has no acknowledgment.
+input:
+  handoff_verification:
+    required: true
+    transition: archivist_to_sniper
+trigger: sniper_claim_before_acknowledgment
+expected_event: "phase=execution status=blocked reason=handoff_challenge_missing"
+

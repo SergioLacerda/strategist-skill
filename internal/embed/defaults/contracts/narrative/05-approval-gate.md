@@ -47,6 +47,17 @@ Executing the `implementation_handoff` items requires a separate coding task out
 Strategist mode — the Approval Gate does not grant that authorization, regardless of
 `execution_gate=allowed` or how emphatically the user accepted the package.
 
+## Handoff Challenge Independence
+
+If the refined package declares `handoff_verification.required: true`, the gate prompt
+may show that Sniper must pass a semantic handoff acknowledgment before materialization.
+That challenge is not an approval mechanism. Approval Gate acceptance remains the human
+decision that moves `mission_status` to `gate_analysis_accepted`; the handoff challenge
+only checks whether Sniper preserved objective, boundary, classification, and gate
+meaning from the accepted handoff. Passing the challenge never bypasses this gate, and
+failing it never counts as user rejection — it blocks execution with a handoff challenge
+reason and returns to Archivist repair.
+
 ## Gate Display With Implementation Handoff
 
 When the refined package contains `implementation_handoff` items, the gate prompt must

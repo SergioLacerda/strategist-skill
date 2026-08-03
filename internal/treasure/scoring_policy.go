@@ -23,7 +23,7 @@ func DefaultScoringPolicy() ScoringPolicy {
 
 // LoadScoringPolicy reads optional scoring_policy from treasure-chests.yaml.
 func LoadScoringPolicy(root string) (ScoringPolicy, error) {
-	raw, err := os.ReadFile(filepath.Join(root, "treasure-chests.yaml")) //nolint:gosec // G304
+	raw, err := os.ReadFile(filepath.Join(root, "treasure-chests.yaml")) //nolint:gosec // G304: governed chest config path is derived from the selected runtime root
 	if err != nil {
 		if os.IsNotExist(err) {
 			return DefaultScoringPolicy(), nil

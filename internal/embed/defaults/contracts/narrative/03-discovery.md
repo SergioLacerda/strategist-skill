@@ -117,6 +117,18 @@ simultaneously (decision conflict) — see `00-routing.md`. `skill.yaml#budget_p
   - recommended refinement focus
 - emit start, done, and opportunity events
 
+### Optional Evidence Recording
+
+Ranger MAY record individual findings as `evidence:` entries
+(`schemas/evidence.schema.yaml`) in addition to the required `known_facts`
+prose, when a finding's source, classification (`explicit` /
+`corroborated_inference` / `weak_inference` / `unknown`), and confidence are
+worth tracking individually — e.g., missions later evaluated for
+mission_quality (`machine/mission-quality.yaml`), or findings likely to be
+cited by name in a later mission. This is optional, not required: forcing it
+on every mission would add ceremony without proportional value, the same
+restraint already applied to Pathfinder/Anamnese/Quiz activation.
+
 ## Write Scope
 
 - authorized path: `<base_path>/pending/<mission_id>-analysis.md`

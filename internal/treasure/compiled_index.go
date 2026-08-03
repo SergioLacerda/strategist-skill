@@ -24,7 +24,7 @@ type compiledIndexYAML struct {
 }
 
 func readCompiledIndex(path string) (compiledIndexYAML, bool, error) {
-	f, err := os.Open(path) //nolint:gosec // G304
+	f, err := os.Open(path) //nolint:gosec // G304: compiled index path is derived from the selected runtime root
 	if os.IsNotExist(err) {
 		return compiledIndexYAML{}, false, nil
 	}

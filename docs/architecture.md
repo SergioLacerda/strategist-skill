@@ -1,7 +1,7 @@
 # Architecture — Strategist Skill
 
 **Status:** Accepted
-**Last Updated:** 2026-06-26
+**Last Updated:** 2026-08-03
 
 ## Overview
 
@@ -13,7 +13,7 @@ The project is composed of two independent layers:
 | **Runtime source** | `internal/embed/defaults/` | Single authoring tree embedded into the binary (`go:embed`); generates the runtime package |
 | **Runtime instance** | `.strategist/` | Operational instructions read by the agent: pipeline, slots, personas, contracts |
 
-The binary **does not execute missions**. It prepares the environment so the agent can run the skill correctly. During a mission, the agent reads `.strategist/`; `strategist/` is a build/documentation source, not a runtime target.
+The binary **does not execute missions**. It prepares the environment so the agent can run the skill correctly. During a mission, the agent reads `.strategist/`; the retired root `strategist/` authoring mirror is not a current build, documentation, or runtime source.
 
 ---
 
@@ -64,6 +64,12 @@ internal/
     helpers.go           writeGzJSON, loadYAMLFile, mtime, sha256Artifact
     yaml.go              Internal YAML helpers
 
+  dojo/                  Offline scenario/checker domain for contract and pipeline validation
+    checker.go           Evaluates criteria against a workspace root
+    checker_manifest.go  Validates provider/runtime manifest structure
+    checker_pipeline.go  Detects pipeline and gate violations
+    learning.go          Writes non-blocking scenario learning output
+
   stale/                 Stale artifact detection
     check.go             Checker.IsStale — compares source mtimes against values recorded in the artifact
 
@@ -73,6 +79,13 @@ internal/
     tracer.go            Tracer() trace.Tracer — accesses the package-level global tracer
     schema.go            Attribute constants: strategist.phase, strategist.cache.hit, etc.
                          No-op automatic when OTEL_EXPORTER_OTLP_ENDPOINT is not set.
+
+  governance/            Synchronizes Strategist manifests with SDD governance metadata
+  i18n/                  Language selection, reserved-term checks, and localized CLI strings
+  integrity/             Runtime config integrity lock and warning support
+  runtimefs/             Shared filesystem primitives for runtime artifact IO
+  treasure/              Treasure Chest, jewel, and potion indexing/loading/mutation logic
+  validate/              Runtime validation entry points
 
   testutil/              Shared test helpers
     testutil.go          MinimalRoot, temporary directory fixtures
@@ -139,7 +152,9 @@ compile.Compiler.CompileAll(.strategist/, knowledge.index.yaml)
 
 The human runtime of the skill should no longer depend on diffuse reading across loose files.
 The runtime entry point is `.strategist/SKILL.md`, which routes to the numbered sequence in
-`.strategist/contracts/`. The `strategist/` tree contains the source that generates this runtime. The architectural decision for this ordering is consolidated in
+`.strategist/contracts/`. Runtime defaults are authored in `internal/embed/defaults/` and
+installed into `.strategist/`; the retired root `strategist/` authoring mirror is not part of
+the current path model. The architectural decision for this ordering is consolidated in
 `docs/adr/0010-ordered-contracts-and-mission-observability.md`.
 
 ---
@@ -210,5 +225,10 @@ Interfaces are satisfied via compile-time verification (`var _ domain.X = Y{}`),
 | `installer_whitebox_test.go` | `internal/install` | `ensureGitignore`, error propagation |
 | `fixtures_test.go` | `tests/` | Format of 5 security invariant fixtures |
 | `cmd_test.go` | `cmd/strategist` | All CLI commands |
+| `checker_*_test.go` | `internal/dojo` | Offline scenario criteria, manifest, and pipeline validation |
+| `*_test.go` | `internal/treasure` | Treasure Chest, jewel, potion, and governed-loader behavior |
 
-Race detector enabled on all tests (`go test -race ./...`). Coverage gate: 90% per internal package (`make cover-gate`).
+Race detector enabled on core test targets (`make test`, `make spec`, `make integration`).
+Coverage gate thresholds are declared in `scripts/coverage-packages.tsv` and enforced
+by `make cover-gate`; the current gate covers the packages listed in that manifest
+rather than every `internal/` package.

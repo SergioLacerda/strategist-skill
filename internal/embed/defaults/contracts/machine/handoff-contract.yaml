@@ -47,3 +47,53 @@ contract:
       in skill.yaml for the equivalent Sniper-side control
 
   write_scope: read-only (Archivist reads this contract; it does not write to it)
+
+handoff_verification_policy:
+  owner: archivist
+  transition: archivist_to_sniper
+  description: >
+    Risk-based semantic handoff challenge for the Archivist -> Sniper transition.
+    It complements YAML handoff structure validation by requiring Sniper to
+    acknowledge critical refs and classifications before materialization can begin.
+    It never replaces the Strategist Approval Gate.
+
+  default_policy:
+    enabled: true
+    required_types: [objective, boundary, classification, gate]
+    require_all_critical: true
+    max_attempts: 2
+    on_failure: return_to_archivist
+
+  require_when:
+    - approval_gate_present
+    - mandatory_constraints_present
+    - unresolved_questions_present
+    - forbidden_scope_present
+    - implementation_handoff_present
+    - destructive_operation_possible
+    - security_sensitive_task
+
+  skip_when:
+    - informational_only
+    - no_critical_constraints
+    - no_unresolved_questions
+    - no_forbidden_scope_beyond_sniper_defaults
+
+  challenge_types:
+    objective: receiver identifies the approved mission objective
+    boundary: receiver identifies excluded or forbidden scope
+    classification: receiver distinguishes approved decisions from unresolved questions
+    gate: receiver identifies whether execution is authorized
+
+  failure_tokens:
+    missing: handoff_challenge_missing
+    failed: handoff_challenge_failed
+    repair_required: handoff_challenge_repair_required
+
+  invariants:
+    - handoff_verification is optional for backward compatibility, but when required it
+      must pass before Sniper materializes any documentation target
+    - passing handoff_verification never grants execution by itself and never bypasses
+      mission_status: gate_analysis_accepted
+    - validation is deterministic first: required refs, forbidden claims,
+      classifications, and gate state; LLM judging is not the MVP authority

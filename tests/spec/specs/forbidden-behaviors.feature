@@ -67,3 +67,17 @@ Feature: Forbidden Behavior Detection and Self-Correction
     Then Strategist detects drift pattern "route_plan_creation_to_sniper"
     And stops the Sniper invocation
     And routes the document authoring to the Archivist (refinement) slot
+
+  Scenario: provider_unavailable_no_direct_fallback — execution provider cannot be invoked
+    Given the execution provider resolves to the configured Sniper provider
+    When the current environment cannot invoke that provider
+    Then Strategist emits blocked event reason=execution_provider_unavailable
+    And must not perform the materialization itself
+    And must not replace the provider with parent-agent direct execution
+
+  Scenario: model_variance_preserves_blocking_question — ambiguous intake remains unresolved
+    Given model wording varies across equivalent ambiguous requests
+    When the required acceptance criterion is still absent
+    Then Strategist keeps the unresolved question remains open
+    And does not convert the question into an inferred decision
+    And does not advance to execution without the user's answer

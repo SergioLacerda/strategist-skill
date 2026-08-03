@@ -1,0 +1,13 @@
+# path	max_lines	reason
+cmd/strategist/dojo.go	230	dojo CLI command remains above the default 200-line threshold
+cmd/strategist/treasure_chest_items.go	250	treasure chest item command flow is pending a separate refactor
+internal/compile/agent_awareness.go	280	agent-awareness writer is intentionally centralized
+internal/governance/sync.go	230	governance sync has cohesive read/reconcile/write flow
+internal/install/wizard.go	260	interactive wizard flow is intentionally localized
+internal/integrity/warning.go	290	config integrity warning formatter is cohesive
+internal/telemetry/mission_run.go	220	mission run telemetry accumulator is cohesive
+internal/telemetry/outcome.go	230	outcome append and flush behavior is cohesive
+internal/treasure/index.go	230	treasure candidate indexing remains cohesive
+internal/treasure/loaders.go	220	treasure manifest loaders remain cohesive
+internal/treasure/scan.go	240	treasure scanner orchestration remains cohesive
+internal/treasure/status.go	230	treasure status transitions remain cohesive

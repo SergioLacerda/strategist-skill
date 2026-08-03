@@ -14,7 +14,7 @@ import (
 
 // ReadYAMLNode reads a YAML file into a document node.
 func ReadYAMLNode(path string) (*yaml.Node, error) {
-	raw, err := os.ReadFile(path) //nolint:gosec // G304
+	raw, err := os.ReadFile(path) //nolint:gosec // G304: YAML mutation reads files selected by governed treasure operations
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", path, err)
 	}

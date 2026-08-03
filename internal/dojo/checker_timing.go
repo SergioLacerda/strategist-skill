@@ -46,7 +46,7 @@ func readTimingLog(logPath string) ([]byte, bool, []domain.DojoCheckItem) {
 		}}
 	}
 
-	raw, err := os.ReadFile(logPath)
+	raw, err := os.ReadFile(logPath) //nolint:gosec // G304: dojo reads the selected scenario emit log
 	if err != nil {
 		return nil, false, []domain.DojoCheckItem{{
 			Label:  "timing total_wall_time_ms",

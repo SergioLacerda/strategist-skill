@@ -37,7 +37,7 @@ func CheckManifests(criteria domain.DojoCriteria, strategistDir string) []domain
 // fixtures; a dotted name (e.g. "specialization_taxonomy.canonical_role") is resolved
 // as an exact nested path for scenarios that want to assert structure, not just presence.
 func checkManifestFields(manifestPath string, mc domain.DojoManifestCheck) []domain.DojoCheckItem {
-	raw, err := os.ReadFile(manifestPath)
+	raw, err := os.ReadFile(manifestPath) //nolint:gosec // G304: dojo reads a manifest path derived from the scenario criteria
 	if err != nil {
 		return []domain.DojoCheckItem{newItem(fmt.Sprintf("manifest %s read", mc.ExpectedProvider), false, err.Error())}
 	}

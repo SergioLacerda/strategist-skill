@@ -57,6 +57,24 @@ emit:
        route={route} route_reason={reason} route_confidence={confidence}
        evidence_state={evidence_state}"
     level: INFO
+  route_decision_persistence:
+    description: >
+      The route_decision record (schemas/scout-route-decision.schema.yaml) is
+      "logged and telemetered" per that schema's own description, but the
+      on_route_selected log line above is narrative-only and not queryable
+      after the fact. In addition to that log line, append the same
+      route_decision as one JSON line to
+      <base_path>/.strategist/memory/route-decisions.jsonl (or
+      .strategist/memory/route-decisions.jsonl for direct invocation, mirroring
+      where outcomes.jsonl/handoff-metrics.jsonl already live), using
+      internal/telemetry's AppendRouteDecisionLine (idempotent by mission_id,
+      same shared-flock discipline as AppendOutcomeLine). This is the durable
+      record that Scout routing metrics (route_accuracy, fallback_rate,
+      unnecessary_pipeline_rate, etc.) aggregate over — see
+      .analysis/refined/20260803-scout-routing-metrics/ for the full design
+      and phased metric rollout.
+    write_scope: append-only, .strategist/memory/route-decisions.jsonl
+    non_blocking: true   # a persistence failure here must never block routing or the mission
   on_fallback_to_full_pipeline:
     format: >
       "[Strategist] phase=intake status=fallback component=scout

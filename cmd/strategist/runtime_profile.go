@@ -31,7 +31,7 @@ func resolveRuntimeProfile(strategistDir string) RuntimeProfile {
 		OutputProfile:   "default",
 	}
 
-	raw, err := os.ReadFile(base.ActiveYAMLPath)
+	raw, err := os.ReadFile(base.ActiveYAMLPath) //nolint:gosec // G304: active.yaml path is derived from the discovered .strategist root
 	if err != nil {
 		return base
 	}
@@ -47,7 +47,7 @@ func resolveRuntimeProfile(strategistDir string) RuntimeProfile {
 	}
 
 	personaPath := filepath.Join(strategistDir, "personas", cfg.Mode+".yaml")
-	personaRaw, err := os.ReadFile(personaPath)
+	personaRaw, err := os.ReadFile(personaPath) //nolint:gosec // G304: persona path is derived from the active runtime mode
 	if err != nil {
 		base.Reason = "persona_file_missing"
 		return base

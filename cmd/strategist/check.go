@@ -73,7 +73,7 @@ Checks performed:
 		}()
 
 		activeYAML := filepath.Join(root, "active.yaml")
-		raw, err := os.ReadFile(activeYAML)
+		raw, err := os.ReadFile(activeYAML) //nolint:gosec // G304: active.yaml path is derived from the selected .strategist root
 		if err != nil {
 			if os.IsNotExist(err) {
 				return fmt.Errorf("[Strategist] check=blocked reason=active_yaml_not_found\n→ Run: strategist install")
@@ -125,7 +125,7 @@ Checks performed:
 			errs = append(errs, "active.yaml: mode is empty — must be epic or pragmatic")
 		} else {
 			personaPath := filepath.Join(root, "personas", cfg.Mode+".yaml")
-			personaRaw, personaErr := os.ReadFile(personaPath)
+			personaRaw, personaErr := os.ReadFile(personaPath) //nolint:gosec // G304: persona path is derived from active runtime mode
 			if personaErr != nil {
 				errs = append(errs, fmt.Sprintf("persona: mode=%q file missing (%s)", cfg.Mode, personaPath))
 			} else {
