@@ -1,47 +1,8 @@
 package treasure
 
 import (
-	"fmt"
 	"strings"
 	"time"
-
-	"github.com/SergioLacerda/strategist-skill/internal/domain"
-)
-
-// validateJewelEvidenceFields checks the additive evidence_class/
-// evidence_confidence/valid_until fields: each is independently optional,
-// but when set must be a value domain.Evidence's own vocabulary (or, for
-// valid_until, RFC3339) already recognizes.
-func validateJewelEvidenceFields(j Jewel) error {
-	if j.EvidenceClass != "" {
-		if _, ok := allowedJewelEvidenceClasses[j.EvidenceClass]; !ok {
-			return fmt.Errorf("jewel %q has invalid evidence_class %q", j.ID, j.EvidenceClass)
-		}
-	}
-	if j.EvidenceConfidence != "" {
-		if _, ok := allowedJewelEvidenceConfidences[j.EvidenceConfidence]; !ok {
-			return fmt.Errorf("jewel %q has invalid evidence_confidence %q", j.ID, j.EvidenceConfidence)
-		}
-	}
-	if j.ValidUntil != "" {
-		if _, err := time.Parse(time.RFC3339, j.ValidUntil); err != nil {
-			return fmt.Errorf("jewel %q has invalid valid_until %q: not RFC3339", j.ID, j.ValidUntil)
-		}
-	}
-	return nil
-}
-
-var allowedJewelEvidenceClasses = stringSet(
-	domain.EvidenceClassExplicit,
-	domain.EvidenceClassCorroboratedInference,
-	domain.EvidenceClassWeakInference,
-	domain.EvidenceClassUnknown,
-)
-
-var allowedJewelEvidenceConfidences = stringSet(
-	domain.ConfidenceLow,
-	domain.ConfidenceMedium,
-	domain.ConfidenceHigh,
 )
 
 // EvidenceQualityReport aggregates the three advisory checks
@@ -113,14 +74,20 @@ type DedupCandidate struct {
 func ScanDuplicateJewels(chestID string, jewels []Jewel) []DedupCandidate {
 	var found []DedupCandidate
 	for i := 0; i < len(jewels); i++ {
-		a := normalizeJewelStatement(jewels[i].Statement)
-		if a == "" {
+		normalized := normalizeJewelStatement(jewels[i].Statement)
+		if normalized == "" {
 			continue
 		}
-		for k := i + 1; k < len(jewels); k++ {
-			if a == normalizeJewelStatement(jewels[k].Statement) {
-				found = append(found, DedupCandidate{ChestID: chestID, JewelIDA: jewels[i].ID, JewelIDB: jewels[k].ID})
-			}
+		found = append(found, duplicatesForIndex(chestID, jewels, i, normalized)...)
+	}
+	return found
+}
+
+func duplicatesForIndex(chestID string, jewels []Jewel, i int, normalized string) []DedupCandidate {
+	var found []DedupCandidate
+	for k := i + 1; k < len(jewels); k++ {
+		if normalized == normalizeJewelStatement(jewels[k].Statement) {
+			found = append(found, DedupCandidate{ChestID: chestID, JewelIDA: jewels[i].ID, JewelIDB: jewels[k].ID})
 		}
 	}
 	return found
@@ -148,18 +115,23 @@ func ScanConflictingJewels(chestID string, jewels []Jewel) []ConflictCandidate {
 	var found []ConflictCandidate
 	for i := 0; i < len(jewels); i++ {
 		for k := i + 1; k < len(jewels); k++ {
-			a, b := jewels[i], jewels[k]
-			if !jewelSourceRefsOverlap(a.SourceRefs, b.SourceRefs) {
-				continue
+			if c, ok := jewelConflictCandidate(chestID, jewels[i], jewels[k]); ok {
+				found = append(found, c)
 			}
-			reason := jewelConflictReason(a, b)
-			if reason == "" {
-				continue
-			}
-			found = append(found, ConflictCandidate{ChestID: chestID, JewelIDA: a.ID, JewelIDB: b.ID, Reason: reason})
 		}
 	}
 	return found
+}
+
+func jewelConflictCandidate(chestID string, a, b Jewel) (ConflictCandidate, bool) {
+	if !jewelSourceRefsOverlap(a.SourceRefs, b.SourceRefs) {
+		return ConflictCandidate{}, false
+	}
+	reason := jewelConflictReason(a, b)
+	if reason == "" {
+		return ConflictCandidate{}, false
+	}
+	return ConflictCandidate{ChestID: chestID, JewelIDA: a.ID, JewelIDB: b.ID, Reason: reason}, true
 }
 
 func jewelSourceRefsOverlap(a, b []string) bool {

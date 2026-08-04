@@ -14,7 +14,7 @@ func TestSlotContractVocabularyConsistentAcrossSurfaces(t *testing.T) {
 	root := repoRoot(t)
 	for _, path := range []string{
 		filepath.Join(root, "internal", "embed", "defaults", "skill.yaml"),
-		filepath.Join(root, ".strategist", "skill.yaml"),
+		filepath.Join(isolatedStrategistDir(t), "skill.yaml"),
 	} {
 		content := readFile(t, path)
 		for _, needle := range []string{

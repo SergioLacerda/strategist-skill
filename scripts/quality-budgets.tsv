@@ -8,6 +8,5 @@ internal/integrity/warning.go	290	config integrity warning formatter is cohesive
 internal/telemetry/mission_run.go	220	mission run telemetry accumulator is cohesive
 internal/telemetry/outcome.go	230	outcome append and flush behavior is cohesive
 internal/treasure/index.go	230	treasure candidate indexing remains cohesive
-internal/treasure/loaders.go	220	treasure manifest loaders remain cohesive
 internal/treasure/scan.go	240	treasure scanner orchestration remains cohesive
 internal/treasure/status.go	230	treasure status transitions remain cohesive

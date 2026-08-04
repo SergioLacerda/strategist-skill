@@ -42,7 +42,7 @@ contract:
   # at the gate, same advisory-only treatment as critic_display above.
   mission_quality_display:
     source: internal/domain/mission_quality.go#EvaluateMissionQuality
-    show_when: analysis.md declares decisions:/evidence: sections
+    show_when: "analysis.md declares decisions:/evidence: sections"
     show_line: "🧭 MISSION QUALITY"          # e.g. "🧭 MISSION QUALITY  5/6 passed — source_scope_respected: 1 violation"
     on_all_applicable_pass: show_summary_only
     on_any_applicable_fail: list_failed_predicates_and_violations

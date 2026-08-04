@@ -54,30 +54,40 @@ type Selection struct {
 // unconditionally by construction, since only matched candidates are ever
 // selected.
 func Select(candidates []Runbook, signals MissionSignals, policy SelectionPolicy) ([]Selection, error) {
-	if policy.MaxPrimary < 0 || policy.MaxSupporting < 0 {
-		return nil, errors.New("selection_policy_invalid: max_primary and max_supporting must be non-negative")
-	}
-	if err := validateNoDuplicateIDs(candidates); err != nil {
+	if err := validateSelectionInputs(candidates, policy); err != nil {
 		return nil, err
 	}
 
 	scored := scoreCandidates(candidates, signals)
 	sort.SliceStable(scored, func(i, j int) bool {
-		if scored[i].score != scored[j].score {
-			return scored[i].score > scored[j].score
-		}
-		return scored[i].runbook.RunbookID < scored[j].runbook.RunbookID
+		return lessScoredCandidate(scored[i], scored[j])
 	})
 
+	return buildSelections(scored, policy), nil
+}
+
+func validateSelectionInputs(candidates []Runbook, policy SelectionPolicy) error {
+	if policy.MaxPrimary < 0 || policy.MaxSupporting < 0 {
+		return errors.New("selection_policy_invalid: max_primary and max_supporting must be non-negative")
+	}
+	return validateNoDuplicateIDs(candidates)
+}
+
+func lessScoredCandidate(a, b scoredCandidate) bool {
+	if a.score != b.score {
+		return a.score > b.score
+	}
+	return a.runbook.RunbookID < b.runbook.RunbookID
+}
+
+func buildSelections(scored []scoredCandidate, policy SelectionPolicy) []Selection {
 	var selections []Selection
 	for _, s := range scored {
 		if s.score == 0 {
 			continue
 		}
-		role := RoleSupporting
-		if len(selections) < policy.MaxPrimary {
-			role = RolePrimary
-		} else if countByRole(selections, RoleSupporting) >= policy.MaxSupporting {
+		role, ok := nextRole(selections, policy)
+		if !ok {
 			continue
 		}
 		selections = append(selections, Selection{
@@ -86,7 +96,17 @@ func Select(candidates []Runbook, signals MissionSignals, policy SelectionPolicy
 			Reason:    "matches applies_when: " + strings.Join(s.matched, "; "),
 		})
 	}
-	return selections, nil
+	return selections
+}
+
+func nextRole(selections []Selection, policy SelectionPolicy) (SelectionRole, bool) {
+	if len(selections) < policy.MaxPrimary {
+		return RolePrimary, true
+	}
+	if countByRole(selections, RoleSupporting) >= policy.MaxSupporting {
+		return "", false
+	}
+	return RoleSupporting, true
 }
 
 type scoredCandidate struct {
@@ -107,17 +127,27 @@ func scoreCandidates(candidates []Runbook, signals MissionSignals) []scoredCandi
 func matchAppliesWhen(appliesWhen []string, signals MissionSignals) []string {
 	var matched []string
 	for _, trigger := range appliesWhen {
-		for _, signal := range signals {
-			if signal == "" || trigger == "" {
-				continue
-			}
-			if strings.Contains(strings.ToLower(trigger), strings.ToLower(signal)) {
-				matched = append(matched, trigger)
-				break
-			}
+		if trigger == "" {
+			continue
+		}
+		if triggerMatchesAnySignal(trigger, signals) {
+			matched = append(matched, trigger)
 		}
 	}
 	return matched
+}
+
+func triggerMatchesAnySignal(trigger string, signals MissionSignals) bool {
+	lowerTrigger := strings.ToLower(trigger)
+	for _, signal := range signals {
+		if signal == "" {
+			continue
+		}
+		if strings.Contains(lowerTrigger, strings.ToLower(signal)) {
+			return true
+		}
+	}
+	return false
 }
 
 func countByRole(selections []Selection, role SelectionRole) int {
