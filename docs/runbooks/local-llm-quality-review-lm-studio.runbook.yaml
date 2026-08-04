@@ -1,0 +1,36 @@
+schema_version: "1"
+runbook_id: local-llm-quality-review-lm-studio
+runbook_type: operational
+source_doc: docs/runbooks/local-llm-quality-review-lm-studio.md
+
+applies_when:
+  - "An operator wants a second, subjective opinion on a Strategist-produced artifact (e.g. a harvested analysis.md) using a locally-run model, without wiring it into CI"
+
+objective: Provide a manual, advisory-only procedure for reviewing a Strategist artifact via a local LM Studio-hosted model, without introducing non-deterministic signal into any automated gate.
+
+preconditions:
+  - "LM Studio is installed, a model is loaded, and its local server is enabled"
+  - "The operator has verified LM Studio's actual local endpoint (host/port/path) against their own installation — not assumed from this runbook"
+
+verification:
+  - "Confirm the reviewed artifact's path and content are the ones intended (e.g. from tests/evals/regression/<mission_id>/)"
+  - "Confirm the model's response was treated as advisory input, not recorded as project evidence without human review and explicit attribution"
+  - "Confirm no automated pipeline (make eval, CI) consumed this output as a pass/fail signal"
+
+decision_gates:
+  - id: promote-to-promptfoo-integration
+    statement: "If this manual procedure becomes frequent enough to be worth automating, scope SQ-004 (Promptfoo) and reconsider wiring LM Studio as one of its configured providers — a separate, future mission, not a trigger for editing this runbook piecemeal."
+
+checks:
+  - id: lm-studio-server-running
+    level: required
+  - id: endpoint-verified-against-own-installation
+    level: required
+  - id: output-treated-as-advisory-only
+    level: required
+  - id: not-wired-into-ci-or-make-eval
+    level: required
+
+metadata:
+  version: 1
+  reviewed_at: "2026-08-04"

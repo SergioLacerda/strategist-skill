@@ -1,0 +1,27 @@
+description: "Strategist artifact quality review — formalizes docs/runbooks/local-llm-quality-review-lm-studio.md's manual procedure. Advisory only; not a CI gate (see .analysis/archived/20260804-promptfoo-ci-adapter-adr.md DEC-2)."
+
+providers:
+  - id: "openai:chat:local-model"
+    config:
+      apiBaseUrl: "http://localhost:1234/v1" # operator-verify against own LM Studio install, per the runbook this formalizes
+      apiKey: "not-needed"
+
+prompts:
+  - |
+    You are reviewing a Strategist mission analysis artifact for clarity,
+    evidence grounding, and internal consistency. Point out anything that
+    reads as unsupported, vague, or contradictory.
+
+    Artifact:
+    {{artifact_content}}
+
+tests:
+  - vars:
+      artifact_content: "file://../tests/evals/regression/20260804-eval-fake-provider/analysis.md"
+    assert:
+      - type: is-json
+        value: false # placeholder: this is a prose-review prompt, not a
+        # structured-output check; real assertion shape is
+        # an implementation-time decision informed by
+        # actually running this against a real endpoint —
+        # not finalized by this design

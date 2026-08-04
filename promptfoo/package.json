@@ -1,0 +1,7 @@
+{
+  "name": "strategist-eval-promptfoo",
+  "private": true,
+  "devDependencies": {
+    "promptfoo": "^0.121.20"
+  }
+}

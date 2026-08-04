@@ -74,3 +74,27 @@ func TestScanMissionsInDir_PropagatesParseError(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "parse side_quests_approved")
 }
+
+// TestFilterRowsByScope_MixedRoster mirrors the roster shape a real Ranger/
+// Archivist scope filter operates on: some chests scoped to a single slot,
+// one scoped to "all", one scoped to an unrelated slot — and asserts the
+// filtered result is exactly the expected set, not merely non-empty
+// (status_test.go's existing FilterRowsByScope tests each cover one
+// single-row edge case in isolation; this one exercises them together).
+func TestFilterRowsByScope_MixedRoster(t *testing.T) {
+	t.Parallel()
+	rows := []StatusRow{
+		{ID: "runbooks", Scope: []string{"all"}},
+		{ID: "discovery-notes", Scope: []string{"discovery"}},
+		{ID: "execution-only", Scope: []string{"execution"}},
+		{ID: "unscoped", Scope: nil},
+	}
+
+	got := FilterRowsByScope(rows, "discovery")
+
+	gotIDs := make([]string, 0, len(got))
+	for _, r := range got {
+		gotIDs = append(gotIDs, r.ID)
+	}
+	assert.ElementsMatch(t, []string{"runbooks", "discovery-notes"}, gotIDs)
+}

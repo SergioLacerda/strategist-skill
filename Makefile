@@ -1,6 +1,6 @@
 .PHONY: \
 	fmt fmt-check mod-tidy mod-check vet build \
-	test test-all integration spec validate-expanded validate-all \
+	test test-all integration spec eval validate-expanded validate-all \
 	test-lite test-telemetry-lite test-compile-cache test-domain-architecture \
 	ci-lint ci-test ci lint complexity-report go-file-size-report \
 	quality-budget-gate install-gocognit \
@@ -11,7 +11,8 @@
 	validate-fixtures install release-verify release-check install-goreleaser \
 	check-release-artifacts check-release-assets release-reproducible-check release-test release-dry-run \
 	release snapshot clean compile-skill build-site build-all \
-	install-web lint-web test-web cover-web ci-web
+	install-web lint-web test-web cover-web ci-web \
+	eval-promptfoo
 
 GOCACHE ?= /tmp/go-build-cache
 
@@ -59,6 +60,16 @@ integration:
 
 spec:
 	GOCACHE=$(GOCACHE) go test -race -tags=spec ./tests/spec/...
+
+eval:
+	GOCACHE=$(GOCACHE) go test -race -tags=eval ./tests/evals/...
+
+# eval-promptfoo runs the Promptfoo-based artifact quality review config. Standalone and
+# manual — not wired into eval/test/test-all/ci-test/ci (see DEC-2 in
+# .analysis/archived/20260804-promptfoo-ci-adapter-adr.md). Requires a local LM Studio
+# endpoint; operator-verify apiBaseUrl in promptfoo/promptfooconfig.yaml first.
+eval-promptfoo:
+	cd promptfoo && npx promptfoo eval
 
 validate-expanded:
 	GOCACHE=$(GOCACHE) go test ./internal/telemetry ./internal/embed
