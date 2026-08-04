@@ -30,6 +30,11 @@ generated/
 # Analysis folder is local files only!
 .analysis/
 
+# `strategist eval harvest` bulk output — raw, uncurated mission snapshots.
+# Only fixtures actually referenced by a test/config get committed explicitly.
+/tests/evals/regression/*
+!/tests/evals/regression/20260804-eval-fake-provider/
+
 AGENTS.md
 CLAUDE.md
 GEMINI.md

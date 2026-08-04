@@ -41,8 +41,14 @@ eval:
 # eval-promptfoo runs the Promptfoo-based artifact quality review config. Standalone and
 # manual — not wired into eval/test/test-all/ci-test/ci (see DEC-2 in
 # .analysis/archived/20260804-promptfoo-ci-adapter-adr.md). Requires a local LM Studio
-# endpoint; operator-verify apiBaseUrl in promptfoo/promptfooconfig.yaml first.
+# endpoint; operator-verify apiBaseUrl in promptfoo/promptfooconfig.yaml first. Guarded by
+# a reachability preflight (see .analysis/refined/20260804-eval-promptfoo-guard/design.md)
+# so a missing local server fails fast with a clear message instead of a raw fetch error.
+PROMPTFOO_LM_STUDIO_URL ?= http://localhost:1234/v1
+
 eval-promptfoo:
+	@curl -sf -m 3 "$(PROMPTFOO_LM_STUDIO_URL)/models" >/dev/null || \
+	  (echo "eval-promptfoo: no LM Studio (or compatible) server detected at $(PROMPTFOO_LM_STUDIO_URL) - start it, or override PROMPTFOO_LM_STUDIO_URL, then rerun." >&2 && exit 1)
 	cd promptfoo && npx promptfoo eval
 
 validate-expanded:
