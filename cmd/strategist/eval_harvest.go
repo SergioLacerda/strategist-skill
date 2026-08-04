@@ -77,16 +77,26 @@ func runEvalHarvest(cmd *cobra.Command, args []string, opts evalHarvestOptions) 
 	}
 
 	destRoot := filepath.Join(projectRoot, "tests", "evals", "regression")
+	written, err := harvestMissions(basePath, destRoot, missionIDs, includeTypes)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("[Strategist] eval harvest: %d mission(s), %d fixture file(s) written\n", len(missionIDs), written)
+	return nil
+}
+
+// harvestMissions harvests every mission in missionIDs, returning the total
+// fixture file count written across all of them.
+func harvestMissions(basePath, destRoot string, missionIDs, includeTypes []string) (int, error) {
 	written := 0
 	for _, id := range missionIDs {
 		n, err := harvestMission(basePath, destRoot, id, includeTypes)
 		if err != nil {
-			return fmt.Errorf("eval harvest %s: %w", id, err)
+			return written, fmt.Errorf("eval harvest %s: %w", id, err)
 		}
 		written += n
 	}
-	fmt.Printf("[Strategist] eval harvest: %d mission(s), %d fixture file(s) written\n", len(missionIDs), written)
-	return nil
+	return written, nil
 }
 
 // selectHarvestMissionIDs resolves which missions to harvest: either the
@@ -100,20 +110,26 @@ func selectHarvestMissionIDs(args []string, opts evalHarvestOptions, basePath st
 		if len(args) > 0 {
 			return nil, nil, fmt.Errorf("eval harvest: mission_id and --all are mutually exclusive")
 		}
-		missions, warnings, err := treasure.ScanMissionsTolerant(basePath)
-		if err != nil {
-			return nil, nil, fmt.Errorf("eval harvest: %w", err)
-		}
-		ids := make([]string, 0, len(missions))
-		for _, m := range missions {
-			ids = append(ids, m.MissionID)
-		}
-		return ids, warnings, nil
+		return selectAllHarvestMissionIDs(basePath)
 	}
 	if len(args) != 1 || args[0] == "" {
 		return nil, nil, fmt.Errorf("eval harvest: exactly one mission_id is required (or use --all)")
 	}
 	return []string{args[0]}, nil, nil
+}
+
+// selectAllHarvestMissionIDs resolves every mission treasure.ScanMissionsTolerant
+// finds under basePath into its ID, passing through any skip warnings.
+func selectAllHarvestMissionIDs(basePath string) ([]string, []treasure.ScanWarning, error) {
+	missions, warnings, err := treasure.ScanMissionsTolerant(basePath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("eval harvest: %w", err)
+	}
+	ids := make([]string, 0, len(missions))
+	for _, m := range missions {
+		ids = append(ids, m.MissionID)
+	}
+	return ids, warnings, nil
 }
 
 // printEvalHarvestWarnings reports missions skipped by the tolerant scan,
@@ -135,14 +151,25 @@ func parseHarvestInclude(include string) ([]string, error) {
 		if v == "" {
 			continue
 		}
-		if v != "adr" && v != "report" {
-			if _, ok := evalHarvestArtifactFiles[v]; !ok {
-				return nil, fmt.Errorf("eval harvest: unknown --include value %q (want design, proposal, tasks, adr, report)", v)
-			}
+		if err := validateHarvestIncludeValue(v); err != nil {
+			return nil, err
 		}
 		out = append(out, v)
 	}
 	return out, nil
+}
+
+// validateHarvestIncludeValue rejects any --include token that isn't one of
+// the recognized artifact types ("adr"/"report", or a key of
+// evalHarvestArtifactFiles).
+func validateHarvestIncludeValue(v string) error {
+	if v == "adr" || v == "report" {
+		return nil
+	}
+	if _, ok := evalHarvestArtifactFiles[v]; ok {
+		return nil
+	}
+	return fmt.Errorf("eval harvest: unknown --include value %q (want design, proposal, tasks, adr, report)", v)
 }
 
 // harvestMission copies the default analysis.md plus every requested
