@@ -28,4 +28,11 @@ slots:
 #     scope: all
 #     description: Project knowledge base
 
+# ADR canonical destination — optional. Absent (default): Sniper writes ADRs to
+# <base_path>/archived/<mission_id>-adr.md. Uncomment to have Sniper write directly
+# to a project-relative canonical path instead (see contracts/narrative/07-adr.md
+# § Canonical Destination Resolution).
+# adr:
+#   canonical_path: docs/adr
+
 # Override per-mission with: --mode pragmatic

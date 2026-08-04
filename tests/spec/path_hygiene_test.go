@@ -116,7 +116,7 @@ func TestSourceInternalSkillsDirMirrorsRuntimeLayout(t *testing.T) {
 
 	// The manual sync step must stay deleted with it (a prose mention in comments is
 	// fine; a target definition is not).
-	makefile := readFile(t, filepath.Join(repoRoot(t), "Makefile"))
+	makefile := readMakefileSystem(t, repoRoot(t))
 	if strings.Contains(makefile, "\nsync-embed:") {
 		t.Fatalf("Makefile still defines the sync-embed target — the two-tree world has no manual sync step")
 	}

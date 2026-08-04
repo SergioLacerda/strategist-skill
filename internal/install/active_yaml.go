@@ -14,6 +14,13 @@ import (
 // writeActiveYAML writes active.yaml to strategistDir from wizard config values.
 // In silent mode (no wizard), the extract step already copied the selected template
 // active.yaml from defaults, so nothing extra is needed.
+//
+// Every field emitted here must come from wc — this function fully regenerates
+// active.yaml from scratch on each call (no read-merge of an existing file), matching
+// how the rest of the wizard flow already behaves for every other field.
+// wc.AdrCanonicalPath is not currently populated by the interactive wizard (see
+// TestWizardDoesNotAskPermissionLevel), so it is a no-op unless a caller constructs
+// WizardConfig programmatically.
 func writeActiveYAML(strategistDir string, wc domain.WizardConfig) error {
 	content := fmt.Sprintf(`mode: %s
 base_path: %s
@@ -42,6 +49,13 @@ treasure_chests:
     path: %s
     scope: all
 `, id, wc.TreasureChestPath)
+	}
+
+	if wc.AdrCanonicalPath != "" {
+		content += fmt.Sprintf(`
+adr:
+  canonical_path: %s
+`, wc.AdrCanonicalPath)
 	}
 
 	return writeActiveYAMLBytes(strategistDir, []byte(content))

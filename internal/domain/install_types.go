@@ -60,4 +60,11 @@ type WizardConfig struct {
 	RefinementProvider string // skill id for the Arquivista (refinement) slot
 	ExecutionProvider  string // always "sniper" — the native execution role, not a wizard-selectable governance/provider skill id
 	TreasureChestPath  string // optional: path to a knowledge source (e.g. .sdd/source)
+	// AdrCanonicalPath is the optional, project-relative destination Sniper writes ADRs
+	// to instead of the <base_path>/archived/<mission_id>-adr.md fallback (see
+	// contracts/narrative/07-adr.md § Canonical Destination Resolution). Empty means
+	// absent — no default is invented here. Not currently collected by the interactive
+	// wizard (see TestWizardDoesNotAskPermissionLevel): set this field when constructing
+	// WizardConfig programmatically, or edit active.yaml by hand after install.
+	AdrCanonicalPath string
 }

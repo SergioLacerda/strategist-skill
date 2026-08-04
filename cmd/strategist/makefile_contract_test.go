@@ -25,13 +25,33 @@ func writeLines(t *testing.T, path string, count int) {
 	}
 }
 
-func copyMakefile(t *testing.T, dstRoot string) {
+func copyFile(t *testing.T, srcRel, dstAbs string) {
 	t.Helper()
-	src, err := filepath.Abs("../../Makefile")
+	src, err := filepath.Abs(srcRel)
 	require.NoError(t, err)
 	data, err := os.ReadFile(src)
 	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(filepath.Join(dstRoot, "Makefile"), data, 0o644))
+	require.NoError(t, os.MkdirAll(filepath.Dir(dstAbs), 0o755))
+	require.NoError(t, os.WriteFile(dstAbs, data, 0o644))
+}
+
+// copyMakefile mirrors the real repo's Makefile layout into an isolated test
+// root: the root Makefile, every included make/*.mk domain file (go.mk
+// includes go-file-size-report's home, quality.mk), and the
+// go-file-size-report.sh script the quality.mk target now delegates to.
+func copyMakefile(t *testing.T, dstRoot string) {
+	t.Helper()
+	copyFile(t, "../../Makefile", filepath.Join(dstRoot, "Makefile"))
+
+	makeDir, err := filepath.Abs("../../make")
+	require.NoError(t, err)
+	entries, err := os.ReadDir(makeDir)
+	require.NoError(t, err)
+	for _, e := range entries {
+		copyFile(t, filepath.Join("../../make", e.Name()), filepath.Join(dstRoot, "make", e.Name()))
+	}
+
+	copyFile(t, "../../scripts/go-file-size-report.sh", filepath.Join(dstRoot, "scripts", "go-file-size-report.sh"))
 }
 
 func TestMakeGoFileSizeReport_PrimarySourcesOnly(t *testing.T) {

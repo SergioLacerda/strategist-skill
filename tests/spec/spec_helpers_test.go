@@ -41,6 +41,25 @@ func readFile(t *testing.T, path string) string {
 	return string(b)
 }
 
+// readMakefileSystem concatenates the root Makefile with every included
+// make/*.mk domain file (see 20260804-makefile-script-decomposition), so
+// content-contract assertions written against "the Makefile" keep matching
+// regardless of which file within the include chain actually defines a
+// given target or variable.
+func readMakefileSystem(t *testing.T, root string) string {
+	t.Helper()
+	var b strings.Builder
+	b.WriteString(readFile(t, filepath.Join(root, "Makefile")))
+	entries, err := os.ReadDir(filepath.Join(root, "make"))
+	if err != nil {
+		t.Fatalf("read make/ dir: %v", err)
+	}
+	for _, e := range entries {
+		b.WriteString(readFile(t, filepath.Join(root, "make", e.Name())))
+	}
+	return b.String()
+}
+
 func normativeRuntimeFiles() []string {
 	return domain.NormativeRuntimeDefaultPaths()
 }

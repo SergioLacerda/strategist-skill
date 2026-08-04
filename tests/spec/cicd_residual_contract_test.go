@@ -13,7 +13,7 @@ func TestReleaseVerificationAndConcurrencyContracts(t *testing.T) {
 	t.Parallel()
 
 	root := repoRoot(t)
-	makefile := readFile(t, filepath.Join(root, "Makefile"))
+	makefile := readMakefileSystem(t, root)
 	releaseWorkflow := readFile(t, filepath.Join(root, ".github", "workflows", "release.yml"))
 
 	for _, dep := range []string{
@@ -43,7 +43,7 @@ func TestQualityAndSecurityGateContracts(t *testing.T) {
 	t.Parallel()
 
 	root := repoRoot(t)
-	makefile := readFile(t, filepath.Join(root, "Makefile"))
+	makefile := readMakefileSystem(t, root)
 	qualityScript := readFile(t, filepath.Join(root, "scripts", "check-quality-budgets.sh"))
 	budgets := readFile(t, filepath.Join(root, "scripts", "quality-budgets.tsv"))
 	golangci := readFile(t, filepath.Join(root, ".golangci.yaml"))

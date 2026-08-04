@@ -14,27 +14,61 @@ permissions:
 
 jobs:
   analyze:
-    name: Analyze (go)
+    name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [go, javascript-typescript]
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v5
+      - if: matrix.language == 'go'
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v5
         with:
           go-version-file: go.mod
           cache: true
 
-      - name: Initialize CodeQL
+      - if: matrix.language == 'javascript-typescript'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: web/landing/package-lock.json
+
+      - if: matrix.language == 'javascript-typescript'
+        name: Install web/landing dependencies
+        run: npm ci
+        working-directory: web/landing
+
+      # Separate init/analyze pairs per leg (not one shared step with a
+      # conditional `paths` input) — the go leg has no paths restriction
+      # (whole-repo scan, unchanged), the javascript-typescript leg is
+      # scoped to web/landing/** (see .analysis/archived/20260804-codeql-js-astro-coverage-adr.md
+      # DEC-2). Keeps each leg's CodeQL input shape unambiguous rather
+      # than relying on an untested empty/conditional `paths` value.
+      - if: matrix.language == 'go'
+        name: Initialize CodeQL (go)
         uses: github/codeql-action/init@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v3
         with:
           languages: go
           queries: security-extended,security-and-quality
 
-      - name: Build
+      - if: matrix.language == 'javascript-typescript'
+        name: Initialize CodeQL (javascript-typescript)
+        uses: github/codeql-action/init@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v3
+        with:
+          languages: javascript-typescript
+          queries: security-extended,security-and-quality
+          paths: |
+            web/landing/**
+
+      - if: matrix.language == 'go'
+        name: Build
         run: make build
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v3
         with:
-          category: /language:go
+          category: /language:${{ matrix.language }}

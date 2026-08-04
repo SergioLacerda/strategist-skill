@@ -354,6 +354,40 @@ func TestWriteActiveYAML(t *testing.T) {
 				"scope: all",
 			},
 		},
+		{
+			name: "with adr canonical path",
+			cfg: domain.WizardConfig{
+				Mode:               "epic",
+				BasePath:           ".analysis",
+				UILanguage:         "en",
+				DocLanguage:        "en",
+				ChatLanguage:       "en",
+				CodeLanguage:       "en",
+				DiscoveryProvider:  "brainstorming",
+				RefinementProvider: "openspec-explore",
+				ExecutionProvider:  "sniper",
+				AdrCanonicalPath:   "docs/adr",
+			},
+			wantContain: []string{
+				"adr:",
+				"canonical_path: docs/adr",
+			},
+		},
+		{
+			name: "without adr canonical path — no adr block emitted",
+			cfg: domain.WizardConfig{
+				Mode:               "epic",
+				BasePath:           ".analysis",
+				UILanguage:         "en",
+				DocLanguage:        "en",
+				ChatLanguage:       "en",
+				CodeLanguage:       "en",
+				DiscoveryProvider:  "brainstorming",
+				RefinementProvider: "openspec-explore",
+				ExecutionProvider:  "sniper",
+			},
+			wantAbsent: []string{"adr:", "canonical_path"},
+		},
 	}
 
 	for _, tt := range tests {
