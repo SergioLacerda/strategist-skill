@@ -22,6 +22,8 @@ This is the entry point for all skill documentation. Use the table below to navi
 | Understand the skill mental model | [`docs/mental-model.md`](mental-model.md) |
 | Consume telemetry and observability | [`docs/observability-contract.md`](observability-contract.md) |
 | Reference fundamental concepts | [`docs/strategist-concepts.md`](strategist-concepts.md) |
+| Look up which script backs which `make` target | [`docs/makefile-scripts.md`](makefile-scripts.md) |
+| Understand the test style taxonomy and coverage gates | [`docs/test-styles.md`](test-styles.md) |
 
 ---
 

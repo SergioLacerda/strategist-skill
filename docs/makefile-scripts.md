@@ -1,5 +1,8 @@
 # Makefile Scripts Inventory
 
+**Status:** Accepted
+**Last Updated:** 2026-08-04
+
 The root `Makefile` sets shared variables and `include`s domain files under
 `make/*.mk`; non-trivial shell logic lives in standalone scripts under
 `scripts/`. This doc lists every script, its purpose, and which `make`

@@ -1,0 +1,76 @@
+Run make release-verify
+test -z "$(gofmt -l .)"
+GOCACHE=/tmp/go-build-cache go mod tidy -diff
+go: downloading gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
+go: downloading github.com/charmbracelet/x/xpty v0.1.2
+go: downloading go.opentelemetry.io/otel/sdk/metric v1.44.0
+go: downloading go.uber.org/goleak v1.3.0
+go: downloading github.com/google/go-cmp v0.7.0
+go: downloading github.com/inconshreveable/mousetrap v1.1.0
+go: downloading github.com/kr/pretty v0.3.1
+go: downloading github.com/MakeNowJust/heredoc v1.0.0
+go: downloading github.com/aymanbagabas/go-udiff v0.3.1
+go: downloading github.com/charmbracelet/x/exp/golden v0.0.0-20241011142426-46044092ad91
+go: downloading github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f
+go: downloading github.com/mattn/go-localereader v0.0.1
+go: downloading github.com/charmbracelet/x/conpty v0.1.0
+go: downloading github.com/charmbracelet/x/termios v0.1.1
+go: downloading github.com/creack/pty v1.1.24
+go: downloading github.com/kr/text v0.2.0
+go: downloading github.com/rogpeppe/go-internal v1.14.1
+go: downloading github.com/charmbracelet/x/errors v0.0.0-20240508181413-e8d8b6e2de86
+go: downloading github.com/golang/protobuf v1.5.4
+go: downloading golang.org/x/exp v0.0.0-20231006140011-7918f672742d
+go: downloading gonum.org/v1/gonum v0.17.0
+GOCACHE=/tmp/go-build-cache go mod verify
+all modules verified
+GOCACHE=/tmp/go-build-cache go vet ./...
+GOCACHE=/tmp/go-build-cache go build -ldflags="-s -w" -o bin/strategist ./cmd/strategist
+go: downloading github.com/uudashr/gocognit v1.2.1
+go: downloading golang.org/x/tools v0.42.0
+bash scripts/check-quality-budgets.sh "scripts/quality-budgets.tsv" "/home/runner/go/bin/gocognit" "15"
+OK: quality budgets valid
+GOCACHE=/tmp/go-build-cache go test -race $(GOCACHE=/tmp/go-build-cache go list ./... | grep -v '/testutil')
+ok  	github.com/SergioLacerda/strategist-skill/cmd/strategist	5.705s
+ok  	github.com/SergioLacerda/strategist-skill/internal/compile	1.358s
+ok  	github.com/SergioLacerda/strategist-skill/internal/dojo	1.054s
+ok  	github.com/SergioLacerda/strategist-skill/internal/domain	1.034s
+ok  	github.com/SergioLacerda/strategist-skill/internal/embed	1.244s
+ok  	github.com/SergioLacerda/strategist-skill/internal/eval	1.042s
+ok  	github.com/SergioLacerda/strategist-skill/internal/governance	1.040s
+ok  	github.com/SergioLacerda/strategist-skill/internal/handoff	1.043s
+ok  	github.com/SergioLacerda/strategist-skill/internal/i18n	1.045s
+ok  	github.com/SergioLacerda/strategist-skill/internal/install	1.233s
+ok  	github.com/SergioLacerda/strategist-skill/internal/integrity	1.034s
+ok  	github.com/SergioLacerda/strategist-skill/internal/runbook	1.023s
+ok  	github.com/SergioLacerda/strategist-skill/internal/runtimefs	1.016s
+ok  	github.com/SergioLacerda/strategist-skill/internal/stale	1.170s
+ok  	github.com/SergioLacerda/strategist-skill/internal/telemetry	1.058s
+ok  	github.com/SergioLacerda/strategist-skill/internal/treasure	1.047s
+ok  	github.com/SergioLacerda/strategist-skill/internal/validate	1.021s
+GOCACHE=/tmp/go-build-cache go test -race -tags=spec ./tests/spec/...
+ok  	github.com/SergioLacerda/strategist-skill/tests/spec	1.575s
+GOCACHE=/tmp/go-build-cache go test -race -tags=integration ./tests/integration/...
+ok  	github.com/SergioLacerda/strategist-skill/tests/integration	22.776s
+Checking runtime/package-boundary convergence...
+Convergence check: OK
+bash scripts/check-contract-consistency.sh
+OK: contract consistency valid
+bash scripts/check-coverage-gate.sh "scripts/coverage-packages.tsv" "coverage" "/tmp/go-build-cache"
+internal/stale                 100.0% >= 90%  staleness contract gate
+internal/compile               97.2% >= 90%  compiled artifact contract gate
+internal/install               98.6% >= 90%  installer and runtime materialization gate
+internal/embed                 100.0% >= 90%  embedded defaults availability gate
+internal/telemetry             94.8% >= 90%  governance telemetry gate
+cmd/strategist                 93.9% >= 90%  CLI contract surface gate
+bash scripts/check-docs-governance.sh
+FAIL: docs/adr/README.md missing **Status:** field
+FAIL: docs/adr/README.md missing **Date:** or **Data:** field
+FAIL: docs/makefile-scripts.md missing **Status:** field
+FAIL: docs/makefile-scripts.md missing **Date:** or **Last Updated:** field
+FAIL: docs/test-styles.md missing **Status:** field
+FAIL: docs/test-styles.md missing **Date:** or **Last Updated:** field
+FAIL: docs/makefile-scripts.md not referenced in docs/README.md
+FAIL: docs/test-styles.md not referenced in docs/README.md
+make: *** [make/governance.mk:9: docs-governance-gate] Error 1
+Error: Process completed with exit code 2.

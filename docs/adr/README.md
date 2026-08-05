@@ -1,5 +1,8 @@
 # ADR Index
 
+**Status:** Accepted
+**Date:** 2026-08-04
+
 Architecture Decision Records for this repository, listed in numeric order under
 `docs/adr/`. Files stay flat (`NNNN-slug.md`, no subfolders) — see
 [ADR-0015](0015-adr-index-by-theme-not-subfolders.md) for why. This table exists to make

@@ -16,19 +16,6 @@ corresponding tag and GitHub Release.
 
 ## [Unreleased]
 
-### Security
-
-- **BREAKING:** `OTEL_EXPORTER_OTLP_INSECURE` now defaults to `false` (TLS required).
-  If you send telemetry to a plaintext gRPC endpoint, add `OTEL_EXPORTER_OTLP_INSECURE=true`
-  to your environment. This change closes a security finding where telemetry data could be
-  intercepted on networks without TLS.
-- Release binaries are now signed with cosign keyless (Sigstore). `.bundle` files are uploaded
-  alongside each binary for offline verification via `cosign verify-blob`.
-- Config integrity check: CLI emits a warning to stderr when `active.yaml` is modified
-  outside the CLI. Lock file written at `install` time; checked on every CLI startup.
-- Added `SECURITY.md` with responsible disclosure policy, release verification instructions,
-  and recommended branch protection settings.
-
 ### Added
 - SHA256 checksum verification in `bootstrap.sh` for versioned releases
 - Security warning when installing from branch ref without integrity check
@@ -39,10 +26,39 @@ corresponding tag and GitHub Release.
 - Test harness with 5 golden-file fixtures for critical contract scenarios
 - CI workflow `test.yml` with shellcheck, fixture tests, and schema validation
 - `SHA256SUMS` asset generation in `release.yml`
+- Promptfoo-based external artifact quality review harness (`promptfoo/`),
+  with a Makefile target guarded by a reachability preflight so a missing
+  local LM Studio server fails fast with a clear message instead of a raw
+  fetch error
+- Automated Go-native evaluation harness (`tests/evals/`) with contract
+  testing and prompt-based artifact content validation
+- `strategist eval harvest`/`select`/`copy` CLI subcommands for building
+  eval fixtures from real mission artifacts, with accompanying ADR
+  documentation
+- Jewel evidence quality validation and advisory check CLI command
+- Handoff challenge metrics, persistence, and jewel challenge template
+  validation
+- Runbook execution engine and operational runbook documentation, including
+  a local CI/CD release gate validation runbook
+- Handoff verification and mission quality domain logic, with associated
+  CI/CD validation scripts and tests
 
 ### Changed
 - `protocol.md`: normalized `risk_score` vocabulary to `write_pending` / `write_analysis` / `controlled`
 - `readme.md`: added security callout for curl pipe installation
+- Modularized handoff validation and runbook selection logic; added
+  treasure chest type definitions
+- Modularized eval harvest logic (selection, copying, content-assertion
+  helpers) and mission harvesting/validation logic into separate helper
+  files
+- Modularized validation and calculation logic for readability and
+  maintainability
+- Test execution now uses an explicit project root path instead of
+  implicit auto-discovery, for hermetic test runs
+
+### Maintenance
+- Dependency bumps: GitHub Actions group, `jsdom` in `web/landing`
+- Whitespace formatting fix in jewel evidence quality test cases
 
 ---
 

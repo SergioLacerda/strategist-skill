@@ -1,5 +1,8 @@
 # Test Styles
 
+**Status:** Accepted
+**Last Updated:** 2026-08-04
+
 This repository runs six distinct test styles, each behind its own `make`
 target and (for the Go ones) its own build tag. Coverage — a *measured,
 gated* metric — currently exists for only two of them. This doc names the
