@@ -134,6 +134,167 @@ func TestVerify_VerdictChallengeFailsOnMisrestatedVerdict(t *testing.T) {
 	assert.Equal(t, FailureActionReturnToArchivist, result.NextAction)
 }
 
+func counterfactualChallenge(id string, expected bool) Challenge {
+	return Challenge{ID: id, Type: ChallengeCounterfactual, SourceRefs: []string{"C-01"}, Critical: true, ExpectedCounterfactual: &expected}
+}
+
+func policyWithCounterfactual() Policy {
+	return Policy{
+		Enabled:            true,
+		Transition:         TransitionArchivistToSniper,
+		RequiredTypes:      []string{ChallengeObjective, ChallengeBoundary, ChallengeClassification, ChallengeGate, ChallengeCounterfactual},
+		RequireAllCritical: true,
+		MaxAttempts:        2,
+		OnFailure:          FailureActionReturnToArchivist,
+	}
+}
+
+func TestVerify_CounterfactualPasses(t *testing.T) {
+	t.Parallel()
+
+	gateAllowed := false
+	challenges := append(sampleChallenges(gateAllowed), counterfactualChallenge("HC-005", false))
+	result := Verify(policyWithCounterfactual(), challenges, Acknowledgment{
+		UnderstoodRefs: []string{"G-001", "X-001", "D-001", "Q-001", "approval.required", "C-01"},
+		Classifications: map[string]string{
+			"D-001": DecisionApproved,
+			"Q-001": QuestionUnresolved,
+		},
+		GateAllowed:           &gateAllowed,
+		CounterfactualAnswers: map[string]bool{"HC-005": false},
+	})
+
+	require.True(t, result.Passed)
+	assert.Zero(t, result.CriticalFailures)
+}
+
+func TestVerify_CounterfactualFailsOnWrongAnswer(t *testing.T) {
+	t.Parallel()
+
+	gateAllowed := false
+	challenges := append(sampleChallenges(gateAllowed), counterfactualChallenge("HC-005", false))
+	result := Verify(policyWithCounterfactual(), challenges, Acknowledgment{
+		UnderstoodRefs: []string{"G-001", "X-001", "D-001", "Q-001", "approval.required"},
+		Classifications: map[string]string{
+			"D-001": DecisionApproved,
+			"Q-001": QuestionUnresolved,
+		},
+		GateAllowed:           &gateAllowed,
+		CounterfactualAnswers: map[string]bool{"HC-005": true}, // wrong — constraint forbids it
+	})
+
+	require.False(t, result.Passed)
+	assert.Contains(t, result.CounterfactualMismatches, "HC-005")
+	assert.Equal(t, FailureActionReturnToArchivist, result.NextAction)
+}
+
+func TestVerify_CounterfactualFailsOnMissingAnswer(t *testing.T) {
+	t.Parallel()
+
+	gateAllowed := false
+	challenges := append(sampleChallenges(gateAllowed), counterfactualChallenge("HC-005", false))
+	result := Verify(policyWithCounterfactual(), challenges, Acknowledgment{
+		UnderstoodRefs: []string{"G-001", "X-001", "D-001", "Q-001", "approval.required"},
+		Classifications: map[string]string{
+			"D-001": DecisionApproved,
+			"Q-001": QuestionUnresolved,
+		},
+		GateAllowed: &gateAllowed,
+		// no CounterfactualAnswers entry for HC-005
+	})
+
+	require.False(t, result.Passed)
+	assert.Contains(t, result.CounterfactualMismatches, "HC-005")
+}
+
+func TestVerify_ForbiddenClaimExecutionAuthorized(t *testing.T) {
+	t.Parallel()
+
+	policy := DefaultPolicy()
+	policy.ForbiddenClaims = []string{ForbiddenClaimExecutionAuthorized}
+
+	gateAllowedTrue := true
+	result := Verify(policy, sampleChallenges(true), Acknowledgment{
+		ChallengeRefs:  []string{"HC-001", "HC-002", "HC-003", "HC-004"},
+		UnderstoodRefs: []string{"G-001", "X-001", "D-001", "Q-001", "approval.required"},
+		Classifications: map[string]string{
+			"D-001": DecisionApproved,
+			"Q-001": QuestionUnresolved,
+		},
+		GateAllowed: &gateAllowedTrue,
+	})
+
+	require.False(t, result.Passed)
+	assert.Contains(t, result.ForbiddenClaimViolations, ForbiddenClaimExecutionAuthorized)
+}
+
+func TestVerify_ForbiddenClaimRefAsApproved(t *testing.T) {
+	t.Parallel()
+
+	policy := DefaultPolicy()
+	policy.ForbiddenClaims = []string{"Q-001_as_approved"}
+
+	gateAllowed := false
+	result := Verify(policy, sampleChallenges(gateAllowed), Acknowledgment{
+		ChallengeRefs:  []string{"HC-001", "HC-002", "HC-003", "HC-004"},
+		UnderstoodRefs: []string{"G-001", "X-001", "D-001", "Q-001", "approval.required"},
+		Classifications: map[string]string{
+			"D-001": DecisionApproved,
+			"Q-001": DecisionApproved, // also caught by MisclassifiedRefs, but forbidden_claims is a second, independent net
+		},
+		GateAllowed: &gateAllowed,
+	})
+
+	require.False(t, result.Passed)
+	assert.Contains(t, result.ForbiddenClaimViolations, "Q-001_as_approved")
+}
+
+func TestVerify_ForbiddenClaimsEmptyIsANoop(t *testing.T) {
+	t.Parallel()
+
+	gateAllowed := false
+	result := Verify(DefaultPolicy(), sampleChallenges(gateAllowed), Acknowledgment{
+		ChallengeRefs:  []string{"HC-001", "HC-002", "HC-003", "HC-004"},
+		UnderstoodRefs: []string{"G-001", "X-001", "D-001", "Q-001", "approval.required"},
+		Classifications: map[string]string{
+			"D-001": DecisionApproved,
+			"Q-001": QuestionUnresolved,
+		},
+		GateAllowed: &gateAllowed,
+	})
+
+	require.True(t, result.Passed)
+	assert.Empty(t, result.ForbiddenClaimViolations)
+}
+
+func sniperToValidationPolicy() Policy {
+	return Policy{
+		Enabled:            true,
+		Transition:         TransitionSniperToValidation,
+		RequiredTypes:      []string{ChallengeBoundary, ChallengeClassification},
+		RequireAllCritical: true,
+		MaxAttempts:        2,
+		OnFailure:          FailureActionReturnToArchivist,
+	}
+}
+
+func TestVerify_SniperToValidationTransitionPasses(t *testing.T) {
+	t.Parallel()
+
+	challenges := []Challenge{
+		{ID: "HC-201", Type: ChallengeBoundary, SourceRefs: []string{"FILE-001"}, Critical: true},
+		{ID: "HC-202", Type: ChallengeClassification, SourceRefs: []string{"DEV-001"}, Critical: true,
+			ExpectedClassification: map[string]string{"DEV-001": "authorized_deviation"}},
+	}
+	result := Verify(sniperToValidationPolicy(), challenges, Acknowledgment{
+		UnderstoodRefs:  []string{"FILE-001", "DEV-001"},
+		Classifications: map[string]string{"DEV-001": "authorized_deviation"},
+	})
+
+	require.True(t, result.Passed)
+	assert.Zero(t, result.CriticalFailures)
+}
+
 func sampleChallenges(gateAllowed bool) []Challenge {
 	return []Challenge{
 		{ID: "HC-001", Type: ChallengeObjective, SourceRefs: []string{"G-001"}, Critical: true},

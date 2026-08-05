@@ -28,19 +28,48 @@ type ChallengeRecord struct {
 	Attempt    int    `json:"attempt"`
 	Timestamp  string `json:"timestamp"`
 
-	Status            string   `json:"status"`
-	Passed            bool     `json:"passed"`
-	MissingRefs       []string `json:"missing_refs,omitempty"`
-	MissingChallenges []string `json:"missing_challenges,omitempty"`
-	MisclassifiedRefs []string `json:"misclassified_refs,omitempty"`
-	GateMismatch      bool     `json:"gate_mismatch"`
-	CriticalFailures  int      `json:"critical_failures"`
+	Status                   string   `json:"status"`
+	Passed                   bool     `json:"passed"`
+	MissingRefs              []string `json:"missing_refs,omitempty"`
+	MissingChallenges        []string `json:"missing_challenges,omitempty"`
+	MisclassifiedRefs        []string `json:"misclassified_refs,omitempty"`
+	GateMismatch             bool     `json:"gate_mismatch"`
+	CounterfactualMismatches []string `json:"counterfactual_mismatches,omitempty"`
+	ForbiddenClaimViolations []string `json:"forbidden_claim_violations,omitempty"`
+	CriticalFailures         int      `json:"critical_failures"`
 }
 
 // HandoffChallengeHistoryPath returns the default runtime memory path for
 // Handoff Challenge history.
 func HandoffChallengeHistoryPath(strategistRoot string) string {
 	return filepath.Join(strategistRoot, filepath.FromSlash(HandoffChallengeHistoryRelPath))
+}
+
+// AppendHandoffChallenge appends rec as one JSONL record, same append
+// pattern as AppendSniperMaterialization (create-dir-then-append, one
+// caller-owned record per call — no batching).
+func AppendHandoffChallenge(path string, rec ChallengeRecord) (err error) {
+	if mkdirErr := os.MkdirAll(filepath.Dir(path), 0o755); mkdirErr != nil {
+		return fmt.Errorf("create handoff challenge history dir: %w", mkdirErr)
+	}
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644) //nolint:gosec // G304: handoff challenge history path is owned by runtime memory
+	if err != nil {
+		return fmt.Errorf("open handoff challenge history: %w", err)
+	}
+	defer closeFileWithContext(f, &err, "close handoff challenge history")
+
+	return writeHandoffChallengeLine(f, rec)
+}
+
+func writeHandoffChallengeLine(f *os.File, rec ChallengeRecord) error {
+	line, err := json.Marshal(rec)
+	if err != nil {
+		return fmt.Errorf("marshal handoff challenge record: %w", err)
+	}
+	if _, err := f.Write(append(line, '\n')); err != nil {
+		return fmt.Errorf("append handoff challenge record: %w", err)
+	}
+	return nil
 }
 
 // ReadHandoffChallenges reads path's JSONL history. A missing file is not

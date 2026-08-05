@@ -1,0 +1,214 @@
+package main
+
+import (
+	"os"
+	"path/filepath"
+	"strconv"
+	"testing"
+
+	"github.com/SergioLacerda/strategist-skill/internal/testutil"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+const handoffVerifyChallengesYAML = `
+challenges:
+  - id: HC-001
+    type: objective
+    source_refs: [G-001]
+    critical: true
+  - id: HC-002
+    type: boundary
+    source_refs: [X-001]
+    critical: true
+  - id: HC-003
+    type: classification
+    source_refs: [D-001, Q-001]
+    critical: true
+    expected_classification:
+      D-001: approved_decision
+      Q-001: unresolved_question
+  - id: HC-004
+    type: gate
+    source_refs: [approval.required]
+    critical: true
+    expected_gate_allowed: false
+  - id: HC-005
+    type: counterfactual
+    source_refs: [C-01]
+    critical: true
+    expected_counterfactual: false
+`
+
+const handoffVerifyAckPassYAML = `
+challenge_refs: [HC-001, HC-002, HC-003, HC-004, HC-005]
+understood_refs: [G-001, X-001, D-001, Q-001, approval.required, C-01]
+classifications:
+  D-001: approved_decision
+  Q-001: unresolved_question
+gate_allowed: false
+counterfactual_answers:
+  HC-005: false
+`
+
+const handoffVerifyAckFailYAML = `
+challenge_refs: [HC-001, HC-002, HC-003, HC-004, HC-005]
+understood_refs: [G-001, X-001, D-001, Q-001, approval.required, C-01]
+classifications:
+  D-001: approved_decision
+  Q-001: approved_decision
+gate_allowed: true
+counterfactual_answers:
+  HC-005: true
+`
+
+func setHandoffVerifyFlags(t *testing.T, root, transition, policy, challenges, ack, missionID string, attempt int) {
+	t.Helper()
+	require.NoError(t, handoffVerifyCmd.Flags().Set(flagRoot, root))
+	require.NoError(t, handoffVerifyCmd.Flags().Set("transition", transition))
+	require.NoError(t, handoffVerifyCmd.Flags().Set("policy", policy))
+	require.NoError(t, handoffVerifyCmd.Flags().Set("challenges", challenges))
+	require.NoError(t, handoffVerifyCmd.Flags().Set("ack", ack))
+	require.NoError(t, handoffVerifyCmd.Flags().Set("mission-id", missionID))
+	require.NoError(t, handoffVerifyCmd.Flags().Set("attempt", strconv.Itoa(attempt)))
+}
+
+func resetHandoffVerifyFlags(t *testing.T) {
+	t.Helper()
+	setHandoffVerifyFlags(t, "", "", "", "", "", "", 1)
+}
+
+func writeHandoffVerifyFixture(t *testing.T, dir, name, content string) string {
+	t.Helper()
+	path := filepath.Join(dir, name)
+	require.NoError(t, os.WriteFile(path, []byte(content), 0o644))
+	return path
+}
+
+func TestHandoffVerifyCmd_PassesAndRecords(t *testing.T) {
+	dir := t.TempDir()
+	testutil.MinimalRoot(t, dir)
+	challenges := writeHandoffVerifyFixture(t, dir, "challenges.yaml", handoffVerifyChallengesYAML)
+	ack := writeHandoffVerifyFixture(t, dir, "ack.yaml", handoffVerifyAckPassYAML)
+	setHandoffVerifyFlags(t, dir, "archivist_to_sniper", "", challenges, ack, "m-pass", 1)
+	t.Cleanup(func() { resetHandoffVerifyFlags(t) })
+
+	out := captureStdout(t, func() {
+		require.NoError(t, handoffVerifyCmd.RunE(handoffVerifyCmd, nil))
+	})
+
+	assert.Contains(t, out, "status: passed")
+	assert.Contains(t, out, "passed: true")
+
+	data, err := os.ReadFile(filepath.Join(dir, "memory", "handoff-challenges.jsonl"))
+	require.NoError(t, err)
+	assert.Contains(t, string(data), `"mission_id":"m-pass"`)
+	assert.Contains(t, string(data), `"passed":true`)
+}
+
+func TestHandoffVerifyCmd_FailsAndStillRecords(t *testing.T) {
+	dir := t.TempDir()
+	testutil.MinimalRoot(t, dir)
+	challenges := writeHandoffVerifyFixture(t, dir, "challenges.yaml", handoffVerifyChallengesYAML)
+	ack := writeHandoffVerifyFixture(t, dir, "ack.yaml", handoffVerifyAckFailYAML)
+	setHandoffVerifyFlags(t, dir, "archivist_to_sniper", "", challenges, ack, "m-fail", 2)
+	t.Cleanup(func() { resetHandoffVerifyFlags(t) })
+
+	var runErr error
+	out := captureStdout(t, func() {
+		runErr = handoffVerifyCmd.RunE(handoffVerifyCmd, nil)
+	})
+
+	require.Error(t, runErr)
+	assert.Contains(t, out, "status: failed")
+	assert.Contains(t, out, "misclassified_refs")
+	assert.Contains(t, out, "counterfactual_mismatches")
+	assert.Contains(t, out, "gate_mismatch: true")
+
+	data, err := os.ReadFile(filepath.Join(dir, "memory", "handoff-challenges.jsonl"))
+	require.NoError(t, err)
+	assert.Contains(t, string(data), `"mission_id":"m-fail"`)
+	assert.Contains(t, string(data), `"passed":false`)
+}
+
+func TestHandoffVerifyCmd_UnknownTransitionErrorsWithoutPolicy(t *testing.T) {
+	dir := t.TempDir()
+	testutil.MinimalRoot(t, dir)
+	challenges := writeHandoffVerifyFixture(t, dir, "challenges.yaml", handoffVerifyChallengesYAML)
+	ack := writeHandoffVerifyFixture(t, dir, "ack.yaml", handoffVerifyAckPassYAML)
+	setHandoffVerifyFlags(t, dir, "not_a_real_transition", "", challenges, ack, "m-bad", 1)
+	t.Cleanup(func() { resetHandoffVerifyFlags(t) })
+
+	err := handoffVerifyCmd.RunE(handoffVerifyCmd, nil)
+	require.ErrorContains(t, err, "unknown --transition")
+}
+
+func TestHandoffVerifyCmd_SniperToValidationTransitionPasses(t *testing.T) {
+	dir := t.TempDir()
+	testutil.MinimalRoot(t, dir)
+	challenges := writeHandoffVerifyFixture(t, dir, "challenges.yaml", `
+challenges:
+  - id: HC-201
+    type: boundary
+    source_refs: [FILE-001]
+    critical: true
+  - id: HC-202
+    type: classification
+    source_refs: [DEV-001]
+    critical: true
+    expected_classification:
+      DEV-001: authorized_deviation
+`)
+	ack := writeHandoffVerifyFixture(t, dir, "ack.yaml", `
+understood_refs: [FILE-001, DEV-001]
+classifications:
+  DEV-001: authorized_deviation
+`)
+	setHandoffVerifyFlags(t, dir, "sniper_to_validation", "", challenges, ack, "m-validation", 1)
+	t.Cleanup(func() { resetHandoffVerifyFlags(t) })
+
+	out := captureStdout(t, func() {
+		require.NoError(t, handoffVerifyCmd.RunE(handoffVerifyCmd, nil))
+	})
+	assert.Contains(t, out, "status: passed")
+}
+
+func TestHandoffVerifyCmd_PolicyFileOverridesTransition(t *testing.T) {
+	dir := t.TempDir()
+	testutil.MinimalRoot(t, dir)
+	challenges := writeHandoffVerifyFixture(t, dir, "challenges.yaml", handoffVerifyChallengesYAML)
+	ack := writeHandoffVerifyFixture(t, dir, "ack.yaml", handoffVerifyAckPassYAML)
+	policy := writeHandoffVerifyFixture(t, dir, "policy.yaml", `
+enabled: true
+transition: archivist_to_sniper
+required_types: [objective, boundary, classification, gate, counterfactual]
+require_all_critical: true
+max_attempts: 2
+on_failure: return_to_archivist
+forbidden_claims:
+  - execution_authorized
+`)
+	setHandoffVerifyFlags(t, dir, "", policy, challenges, ack, "m-policy", 1)
+	t.Cleanup(func() { resetHandoffVerifyFlags(t) })
+
+	out := captureStdout(t, func() {
+		require.NoError(t, handoffVerifyCmd.RunE(handoffVerifyCmd, nil))
+	})
+	assert.Contains(t, out, "status: passed")
+}
+
+func TestHandoffVerifyCmd_MissingRequiredFlags(t *testing.T) {
+	dir := t.TempDir()
+	testutil.MinimalRoot(t, dir)
+	setHandoffVerifyFlags(t, dir, "archivist_to_sniper", "", "", "", "", 1)
+	t.Cleanup(func() { resetHandoffVerifyFlags(t) })
+
+	err := handoffVerifyCmd.RunE(handoffVerifyCmd, nil)
+	require.ErrorContains(t, err, "--challenges")
+	require.ErrorContains(t, err, "--ack")
+	require.ErrorContains(t, err, "--mission-id")
+}
+
+func TestHandoffCmd_IsHumanStatusCommand(t *testing.T) {
+	assert.True(t, isHumanStatusCommand(handoffVerifyCmd))
+}

@@ -1,7 +1,7 @@
 # Strategist — Core Concepts
 
 **Status:** Accepted
-**Last Updated:** 2026-06-30
+**Last Updated:** 2026-08-05 (Handoff Challenge: counterfactual type, forbidden_claims, and the Sniper→validation transition added)
 
 Reference for the core concepts of the Strategist skill: what it is, how it routes work internally, and the roles, weapons, abilities, and dojo that make up its architecture.
 
@@ -57,27 +57,86 @@ The Strategist never executes work directly — it delegates. Each slot receives
 
 ## Handoff Challenge
 
-A Handoff Challenge is a risk-based semantic acknowledgment for the Archivist -> Sniper
-handoff. It complements the YAML handoff contract: schemas prove that required fields
-were transmitted, while the challenge checks that Sniper preserved critical meaning
-before materialization.
+A Handoff Challenge is a risk-based semantic acknowledgment step between
+Strategist roles. It complements the YAML handoff contract: schemas prove
+that required fields were transmitted, while the challenge checks that the
+receiving role preserved critical meaning before proceeding.
 
-The MVP supports four deterministic challenge types:
+Three transitions are covered, each with its own challenge-type vocabulary
+(a type has no referent on a transition it isn't valid for — e.g. `gate`
+has no meaning for Ranger, which never gates):
 
+**Archivist → Sniper (MVP)** — five types:
 - `objective`: Sniper identifies the approved mission objective.
 - `boundary`: Sniper identifies excluded or forbidden scope.
 - `classification`: Sniper distinguishes approved decisions from unresolved questions.
 - `gate`: Sniper identifies whether execution is authorized.
+- `counterfactual`: Sniper applies a constraint to a short scenario (not
+  just recalls it) — e.g. "a test is hard to simulate against the
+  production API; does the constraint allow changing the API just to ease
+  testing?" This is the type most resistant to parroting, since restating a
+  constraint's text doesn't prove it can be applied.
 
-The challenge is not a generic quiz and not an LLM judge. The first validator checks
-required refs, classifications, boundaries, and gate state. It is optional for low-risk
-handoffs and required when risk signals are present, such as mandatory constraints,
-unresolved questions, forbidden scope, implementation handoff items, destructive
-operation risk, or security-sensitive work.
+**Ranger → Archivist** — four different types:
+- `recall`: Archivist can restate the critical `known_facts` entries by id.
+- `boundary`: Archivist distinguishes `affected_scope` from `side_quests`.
+- `classification`: Archivist distinguishes a `known_facts` entry from an `uncertainties` entry.
+- `verdict` *(evaluation missions only)*: Archivist correctly restates `evaluation_verdict`.
 
-Passing a Handoff Challenge never replaces the Strategist Approval Gate and never expands
-Sniper's write scope. Failing a required challenge blocks execution with a named handoff
-challenge reason and returns the handoff to Archivist repair.
+**Sniper → validation/reconciliation** — two types (advisory-first; no
+consuming role sets this required by default yet):
+- `boundary`: validator identifies which files were declared in scope vs. explicitly out of scope.
+- `classification`: validator distinguishes authorized deviations from unauthorized ones.
+
+The challenge is not a generic quiz and not an LLM judge. Verification is
+deterministic: it checks required refs, classifications, boundaries, gate
+state, counterfactual answers, and any policy-level `forbidden_claims` (a
+claim the acknowledgment must never assert — e.g. that execution is
+authorized, or that an open question was approved — checked independently
+of which challenges were actually generated). It is optional for low-risk
+handoffs and required when risk signals are present (mandatory constraints,
+unresolved questions, forbidden scope, implementation handoff items,
+destructive operation risk, or security-sensitive work).
+
+Passing a Handoff Challenge never replaces the Strategist Approval Gate and
+never expands a role's write scope. Failing a required challenge blocks the
+transition with a named handoff challenge reason and returns the handoff
+for repair.
+
+**CLI enforcement:** `strategist handoff verify --transition <t> --challenges
+<file> --ack <file> --mission-id <id>` runs verification deterministically
+against YAML challenge/acknowledgment files, prints the result, appends a
+`ChallengeRecord` to `.strategist/memory/handoff-challenges.jsonl`, and
+exits non-zero on failure — a scriptable tool the LLM agent embodying a
+role can invoke instead of reasoning through a challenge unaided. `--policy
+<file>` overrides the built-in default policy for a transition (e.g. to set
+`forbidden_claims` or enable a transition that's advisory-off by default).
+
+**Governance metrics:** `strategist metrics handoff` reads the same
+`.strategist/memory/handoff-challenges.jsonl` and reports
+`handoff_pass_rate`, `first_attempt_pass_rate`, `critical_constraint_recall`,
+`decision_classification_accuracy`, `scope_violation_rate`,
+`handoff_repair_rate`, and `semantic_handoff_loss`.
+
+**Treasure Chest integration:** `kind: template` jewels may carry an
+optional `pattern`/`challenge_template`/`severity` set, letting a recurring
+handoff-failure pattern (discovered via Opportunity Attack or manual
+curation) become a reusable challenge template for future missions.
+
+### Known Limitations
+
+- No `traceability` or `application` challenge type exists yet
+  (`counterfactual` closes the third of the three "apply, don't just
+  recall" types originally proposed).
+- The Sniper → validation transition has no dedicated consuming role in
+  Strategist's pipeline yet — its challenges are available for a human
+  reviewer, a follow-up mission, or a future role to use, but nothing
+  invokes them automatically today.
+- `strategist handoff verify` must still be invoked deliberately (by the
+  LLM agent, a script, or a human) — no part of the `strategist` binary
+  calls it automatically during `install`/`compile`/a live mission. It
+  replaces "reason through it unaided" with "run a deterministic command,"
+  not with automatic, unprompted enforcement.
 
 ---
 

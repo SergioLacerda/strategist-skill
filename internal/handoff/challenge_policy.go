@@ -3,6 +3,7 @@ package handoff
 import (
 	"errors"
 	"fmt"
+	"strings"
 )
 
 // allowedChallengeTypesByTransition scopes valid challenge types per
@@ -17,12 +18,18 @@ var allowedChallengeTypesByTransition = map[string]map[string]bool{
 		ChallengeBoundary:       true,
 		ChallengeClassification: true,
 		ChallengeGate:           true,
+		ChallengeCounterfactual: true,
 	},
 	TransitionRangerToArchivist: {
 		ChallengeRecall:         true,
 		ChallengeBoundary:       true,
 		ChallengeClassification: true,
 		ChallengeVerdict:        true,
+	},
+	TransitionSniperToValidation: {
+		ChallengeBoundary:       true,
+		ChallengeClassification: true,
+		ChallengeCounterfactual: true,
 	},
 }
 
@@ -34,7 +41,26 @@ func ValidatePolicy(p Policy) error {
 	errs = append(errs, validateChallengeTypes(p.Transition, p.RequiredTypes)...)
 	errs = append(errs, validateMaxAttempts(p.MaxAttempts)...)
 	errs = append(errs, validateOnFailure(p.OnFailure)...)
+	errs = append(errs, validateForbiddenClaims(p.ForbiddenClaims)...)
 	return errors.Join(errs...)
+}
+
+// validateForbiddenClaims rejects a ForbiddenClaims entry that matches
+// neither recognized form, so a typo (e.g. "Q-01_is_approved") fails fast
+// at policy-validation time instead of silently never matching in Verify.
+func validateForbiddenClaims(claims []string) []error {
+	var errs []error
+	for _, claim := range claims {
+		if claim == ForbiddenClaimExecutionAuthorized {
+			continue
+		}
+		if strings.HasSuffix(claim, forbiddenClaimAsApprovedSuffix) && len(claim) > len(forbiddenClaimAsApprovedSuffix) {
+			continue
+		}
+		errs = append(errs, fmt.Errorf("handoff_policy_invalid: forbidden_claims entry %q is not recognized (want %q or \"<ref>%s\")",
+			claim, ForbiddenClaimExecutionAuthorized, forbiddenClaimAsApprovedSuffix))
+	}
+	return errs
 }
 
 func validateTransition(transition string) []error {

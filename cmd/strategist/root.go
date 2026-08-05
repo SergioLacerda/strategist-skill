@@ -22,6 +22,7 @@ var humanStatusCommands = map[string]bool{
 	"check":          true,
 	"treasure-chest": true,
 	"metrics":        true,
+	"handoff":        true,
 }
 
 var rootCmd = &cobra.Command{

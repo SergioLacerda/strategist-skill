@@ -82,6 +82,56 @@ func TestValidatePolicy_ChallengeTypesAreTransitionScoped(t *testing.T) {
 	}))
 }
 
+func TestValidatePolicy_SniperToValidationTransition(t *testing.T) {
+	t.Parallel()
+
+	require.NoError(t, ValidatePolicy(Policy{
+		Enabled:       true,
+		Transition:    TransitionSniperToValidation,
+		RequiredTypes: []string{ChallengeBoundary, ChallengeClassification, ChallengeCounterfactual},
+		MaxAttempts:   1,
+	}))
+
+	// Ranger->Archivist-only types are rejected on the new transition.
+	require.ErrorContains(t, ValidatePolicy(Policy{
+		Enabled: true, Transition: TransitionSniperToValidation, RequiredTypes: []string{ChallengeRecall},
+	}), "not allowed for transition")
+	// MVP-only types (objective, gate) are rejected on the new transition too.
+	require.ErrorContains(t, ValidatePolicy(Policy{
+		Enabled: true, Transition: TransitionSniperToValidation, RequiredTypes: []string{ChallengeGate},
+	}), "not allowed for transition")
+}
+
+func TestValidatePolicy_CounterfactualAllowedOnMVPAndValidationOnly(t *testing.T) {
+	t.Parallel()
+
+	assert.NoError(t, ValidatePolicy(Policy{
+		Enabled: true, Transition: TransitionArchivistToSniper, RequiredTypes: []string{ChallengeCounterfactual},
+	}))
+	assert.NoError(t, ValidatePolicy(Policy{
+		Enabled: true, Transition: TransitionSniperToValidation, RequiredTypes: []string{ChallengeCounterfactual},
+	}))
+	require.ErrorContains(t, ValidatePolicy(Policy{
+		Enabled: true, Transition: TransitionRangerToArchivist, RequiredTypes: []string{ChallengeCounterfactual},
+	}), "not allowed for transition")
+}
+
+func TestValidatePolicy_ForbiddenClaims(t *testing.T) {
+	t.Parallel()
+
+	valid := DefaultPolicy()
+	valid.ForbiddenClaims = []string{ForbiddenClaimExecutionAuthorized, "Q-001_as_approved"}
+	require.NoError(t, ValidatePolicy(valid))
+
+	invalid := DefaultPolicy()
+	invalid.ForbiddenClaims = []string{"Q-001_is_approved"} // wrong suffix
+	require.ErrorContains(t, ValidatePolicy(invalid), "forbidden_claims entry")
+
+	emptyRef := DefaultPolicy()
+	emptyRef.ForbiddenClaims = []string{forbiddenClaimAsApprovedSuffix} // no ref before the suffix
+	require.ErrorContains(t, ValidatePolicy(emptyRef), "forbidden_claims entry")
+}
+
 func TestDefaultPolicy_UnchangedByRangerToArchivistAddition(t *testing.T) {
 	t.Parallel()
 
