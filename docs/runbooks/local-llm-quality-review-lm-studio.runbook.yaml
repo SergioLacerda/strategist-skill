@@ -23,13 +23,13 @@ decision_gates:
 
 checks:
   - id: lm-studio-server-running
-    level: required
+    level: mandatory
   - id: endpoint-verified-against-own-installation
-    level: required
+    level: mandatory
   - id: output-treated-as-advisory-only
-    level: required
+    level: mandatory
   - id: not-wired-into-ci-or-make-eval
-    level: required
+    level: mandatory
 
 metadata:
   version: 1

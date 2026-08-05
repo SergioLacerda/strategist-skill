@@ -109,6 +109,21 @@ required_fields:
       by default (roles/archivist.yaml#canonical.reuse_search_cache) — re-running
       Search during refinement requires a declared reason (see
       contracts/machine/handoff-contract.yaml#refinement_context_policy).
+  selected_runbooks_hint:
+    type: list
+    required: false
+    item_fields: [runbook_id, role, chest_id, ref, reason]
+    item_values:
+      role: [primary, supporting]
+    description: >
+      Output of the select_runbook ability (contracts/narrative/03-discovery.md § Retrieval
+      Cascade, stage 6): docs/runbooks/*.runbook.yaml sidecars scored against mission
+      signals via internal/runbook.Select(), bounded by
+      internal/runbook.DefaultSelectionPolicy() (max_primary=1, max_supporting=2,
+      require_reason=true — reason is always non-empty for a returned selection).
+      Reused by Archivist by default (roles/archivist.yaml#canonical.reuse_search_cache)
+      — re-running select_runbook during refinement requires a declared reason (see
+      contracts/machine/handoff-contract.yaml#refinement_context_policy).
   sources_consulted:
     type: list
     required: false

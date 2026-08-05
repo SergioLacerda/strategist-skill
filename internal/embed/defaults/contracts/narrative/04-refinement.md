@@ -33,8 +33,9 @@ Archivist (`refinement`)
 ## Required Behavior
 
 - treat the Ranger transient analysis artifact as the canonical refinement input
-- reuse the Ranger artifact's `relevant_sources_hint` (Search ability output) by
-  default instead of re-running Search; only re-run Search with a declared reason
+- reuse the Ranger artifact's `relevant_sources_hint` (Search ability output) and
+  `selected_runbooks_hint` (select_runbook ability output) by default instead of
+  re-running Search or select_runbook; only re-run either with a declared reason
   from `contracts/machine/handoff-contract.yaml#refinement_context_policy.allowed_reasons`
   (see `roles/archivist.yaml#canonical.reuse_search_cache`)
 - consult treasure chests before refinement

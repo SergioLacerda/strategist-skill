@@ -39,6 +39,12 @@ Critical Hit is also a labeled **Ability** (see § Abilities below) — the unif
 
 Opportunity Attack is an **Archivist routine** that evaluates ADR, Runbook, and Treasure Chest necessity after all four refined artifacts are written (see `contracts/machine/opportunity-attack.yaml`). Each of the three outputs is offered independently as its own side quest at the approval gate. Opportunity Attack is not a route selector — it does not decide between short and full route. Routing is owned by the intake/routing layer.
 
+### Runbook Domain Model (typed sidecars)
+
+Beyond the write-side candidate flow above, every accepted runbook under `docs/runbooks/*.md` also carries a co-located, typed `docs/runbooks/<slug>.runbook.yaml` sidecar (schema documented in `docs/runbooks/README.md`) — `applies_when`, `objective`, `preconditions`, `analysis`/`decision_gates` (analytical runbooks) or `verification` (operational runbooks), and leveled `checks` (`mandatory`/`recommended`/`conditional`/`informational`). The `internal/runbook` Go package (`Runbook`, `Select()`, `EvaluateStep()`, `ValidateCompletion()`) parses and operates on these sidecars, with `Select()` enforcing a reasoned, bounded choice (`max_primary`/`max_supporting`/`require_reason`) rather than silent auto-application.
+
+As of this writing, this layer is **data and library code only** — no live pipeline phase calls it. Runbook content still reaches Ranger exclusively through the generic `runbooks` Treasure Chest (unstructured Potion/jewel relevance matching, § Abilities table below), not through `Select()`'s structured `applies_when` scoring. Wiring `internal/runbook` into a live Ranger/Archivist/Sniper behavior is a tracked, undecided follow-up — see `.analysis/pending/20260805-wire-runbook-consumption.md`.
+
 ---
 
 ## Pipeline Overview

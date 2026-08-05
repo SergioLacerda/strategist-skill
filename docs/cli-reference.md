@@ -657,6 +657,65 @@ tier, no pre-approval gate).
 
 ---
 
+## runbook select
+
+Scores `docs/runbooks/*.runbook.yaml` sidecars against mission signals and prints a
+bounded, reasoned selection — the concrete implementation backing the `select_runbook`
+ability declared in `.strategist/roles/ranger.yaml#canonical.select_runbook` (see
+`contracts/narrative/03-discovery.md` § Retrieval Cascade, stage 6). This is the CLI
+surface an agent embodying Ranger invokes via Bash to actually run
+`internal/runbook.Select()`, rather than approximating the algorithm by reading sidecars
+manually.
+
+```
+strategist runbook select --signal <text> [--signal <text> ...] [--format table|json]
+```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--root` | `.strategist` (auto-discovered) | Path to the `.strategist/` root |
+| `--signal` | *(required, repeatable)* | Mission signal to match against runbook `applies_when` entries — one per keyword/phrase |
+| `--format` | `table` | Output format: `table` or `json` |
+
+Selection is always bounded by `internal/runbook.DefaultSelectionPolicy()` — at most one
+`primary` and two `supporting` runbooks, each carrying a non-empty match `reason`. These
+limits and the reason requirement are not configurable via flags: making them
+configurable would let a caller silently disable the exact safety property the mechanism
+exists to enforce (see `runbook_v2.txt`'s own stance against unreasoned automatic
+application).
+
+Prints an empty-result message (exit 0, not an error) both when no `.runbook.yaml`
+sidecar exists yet and when none match the given signals. A sidecar that fails to parse
+is a hard error naming the offending file — never silently skipped.
+
+**Example output (`--format json`):**
+
+```json
+[
+  {
+    "runbook_id": "verifying-implemented-demands",
+    "role": "primary",
+    "chest_id": "runbooks",
+    "ref": "docs/runbooks/verifying-implemented-demands.md",
+    "reason": "matches applies_when: implementation status unclear"
+  }
+]
+```
+
+The `--format json` shape (`runbook_id`, `role`, `chest_id`, `ref`, `reason`) matches
+`selected_runbooks_hint`'s field shape in
+`.strategist/schemas/handoff-ranger-to-archivist.schema.yaml` — Ranger's handoff artifact
+can carry this output directly, without reshaping.
+
+Not yet built: `runbook list`/`runbook show` subcommands, and CLI exposure for
+`internal/runbook.EvaluateStep()`/`ValidateCompletion()` (operational-runbook completion
+checks) — both deliberately deferred; see
+`.analysis/refined/20260805-runbook-mechanism-activation/design.md` for the reasoning.
+
+---
+
 ## sync-governance
 
 Synchronizes `.strategist/skill.yaml` with the active SDD governance mandates.

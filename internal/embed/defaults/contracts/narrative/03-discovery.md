@@ -48,6 +48,10 @@ own behavior below is identical regardless of which mechanism invoked it.
 - `evidence_pack_path` when the context-enrichment dossier's `source_cards` are non-empty (see `machine/context-enrichment.yaml#evidence_pack`); null otherwise, non-blocking
 - `relevant_sources_hint` produced by the Search ability during the Retrieval Cascade's
   treasure-chest stage; reused by Archivist by default (see `04-refinement.md`)
+- `selected_runbooks_hint` produced by the select_runbook ability during the same
+  Retrieval Cascade stage, when at least one runbook sidecar matched; null otherwise,
+  non-blocking. Reused by Archivist by default (see `04-refinement.md`), same reuse
+  policy as `relevant_sources_hint`.
 
 ## Optional Handoff Challenge (Ranger → Archivist)
 
@@ -105,7 +109,13 @@ stage runs only if the previous stage did not reach `stop_when: sufficient_evide
    sub-routine of this stage, before `consult_treasure_chests` opens any chest: it
    filters candidate jewels/potions and produces `relevant_sources_hint`, so a whole
    chest is not paid for when a jewel/potion already summarizes what would be found
-   there (see `roles/ranger.yaml#canonical.search`)
+   there (see `roles/ranger.yaml#canonical.search`). The **select_runbook** ability
+   runs alongside Search, at the same point: it scores `docs/runbooks/*.runbook.yaml`
+   sidecars against mission signals via `internal/runbook.Select()` and produces
+   `selected_runbooks_hint` — a bounded, reasoned selection (at most one primary, at
+   most two supporting runbooks, each with a non-empty match reason) distinct from
+   Search's own unstructured jewel/potion relevance matching (see
+   `roles/ranger.yaml#canonical.select_runbook`)
 7. semantic search, when a semantic provider is configured — optional, last resort
 
 `stop_when: sufficient_evidence` is met when either condition holds:
