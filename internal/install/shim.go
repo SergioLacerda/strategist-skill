@@ -1,6 +1,7 @@
 package install
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
+	"go.opentelemetry.io/otel/codes"
 )
 
 func generateShimContent(skillContent, skillRoot string) string {
@@ -44,7 +46,16 @@ func stripFrontmatter(s string) string {
 
 // installShim creates ~/.claude/skills/strategist/SKILL.md containing the full
 // pipeline instructions so Claude receives them inline at skill invocation time.
-func installShim(target string) error {
+func installShim(ctx context.Context, target string) (retErr error) {
+	_, span := telemetry.Tracer().Start(ctx, "install.shim")
+	defer func() {
+		if retErr != nil {
+			span.RecordError(retErr)
+			span.SetStatus(codes.Error, retErr.Error())
+		}
+		span.End()
+	}()
+
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return fmt.Errorf("home dir: %w", err)
@@ -57,25 +68,25 @@ func installShim(target string) error {
 		}
 		skillRoot = filepath.Join(absTarget, strategistDirName)
 	}
-	return installShimTo(home, "", skillRoot)
+	return installShimTo(ctx, home, "", skillRoot)
 }
 
 // installShimTo writes the Claude shim under homeDir and any optional
 // Gemini/Codex shims if their root directories exist.
 // skillContent is the raw content of SKILL.md. An empty string produces a
 // shim with frontmatter only (used in error-path tests).
-func installShimTo(homeDir, skillContent, skillRoot string) error {
+func installShimTo(ctx context.Context, homeDir, skillContent, skillRoot string) error {
 	shimPath := defaultShimPath(homeDir)
 	if err := writeShimFile(shimPath, skillContent, skillRoot); err != nil {
 		return err
 	}
-	installOptionalShims(homeDir, skillContent, skillRoot)
+	installOptionalShims(ctx, homeDir, skillContent, skillRoot)
 	return nil
 }
 
 // installShimToPath writes the Claude shim to an explicit path, bypassing the
 // default ~/.claude/skills/strategist/SKILL.md location. Used for --shim-path.
-func installShimToPath(shimPath, skillContent, skillRoot string) error {
+func installShimToPath(_ context.Context, shimPath, skillContent, skillRoot string) error {
 	return writeShimFile(shimPath, skillContent, skillRoot)
 }
 
@@ -96,7 +107,10 @@ func writeShimFile(shimPath, skillContent, skillRoot string) error {
 // installOptionalShims installs shims for Gemini and Codex if their root
 // directories exist under homeDir. Errors are silently swallowed — optional
 // shims must never fail the main install flow.
-func installOptionalShims(homeDir, skillContent, skillRoot string) {
+func installOptionalShims(ctx context.Context, homeDir, skillContent, skillRoot string) {
+	_, span := telemetry.Tracer().Start(ctx, "install.optional_shims")
+	defer span.End()
+
 	installGeminiShims(filepath.Join(homeDir, ".gemini"), skillContent, skillRoot)
 	installCodexShim(filepath.Join(homeDir, ".codex"), skillContent, skillRoot)
 }

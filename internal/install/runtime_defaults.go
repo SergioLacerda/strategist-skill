@@ -1,6 +1,7 @@
 package install
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +11,8 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
+	"go.opentelemetry.io/otel/codes"
 )
 
 type runtimeDefaultPlan struct {
@@ -17,7 +20,16 @@ type runtimeDefaultPlan struct {
 	decisions      map[string]domain.RuntimeDefaultDecision
 }
 
-func (s Service) planRuntimeDefaultUpgrade(strategistDir string, force bool) (runtimeDefaultPlan, error) {
+func (s Service) planRuntimeDefaultUpgrade(ctx context.Context, strategistDir string, force bool) (_ runtimeDefaultPlan, retErr error) {
+	_, span := telemetry.Tracer().Start(ctx, "install.plan_runtime_defaults")
+	defer func() {
+		if retErr != nil {
+			span.RecordError(retErr)
+			span.SetStatus(codes.Error, retErr.Error())
+		}
+		span.End()
+	}()
+
 	embeddedHashes, err := s.embeddedNormativeHashes()
 	if err != nil {
 		return runtimeDefaultPlan{}, err
@@ -83,7 +95,16 @@ func (s Service) embeddedNormativeHashes() (map[string]string, error) {
 	return hashes, nil
 }
 
-func (s Service) applyRuntimeDefaultPlan(strategistDir string, plan runtimeDefaultPlan) error {
+func (s Service) applyRuntimeDefaultPlan(ctx context.Context, strategistDir string, plan runtimeDefaultPlan) (retErr error) {
+	_, span := telemetry.Tracer().Start(ctx, "install.apply_runtime_defaults")
+	defer func() {
+		if retErr != nil {
+			span.RecordError(retErr)
+			span.SetStatus(codes.Error, retErr.Error())
+		}
+		span.End()
+	}()
+
 	for _, file := range domain.NormativeRuntimeDefaultFiles() {
 		if err := s.applyRuntimeDefaultFile(strategistDir, file.Path, plan.decisions[file.Path]); err != nil {
 			return err

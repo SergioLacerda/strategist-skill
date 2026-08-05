@@ -133,7 +133,7 @@ func TestRunWizard_EOFPrompts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := runWizard(p(tt.input), minimalExtractor{})
+			_, err := runWizard(context.Background(), p(tt.input), minimalExtractor{})
 			require.Error(t, err)
 			assert.ErrorContains(t, err, tt.wantError)
 		})
@@ -205,7 +205,7 @@ func TestInstall_WizardPath_AwarenessRefresherCalled(t *testing.T) {
 func TestPromptSlots_UnknownProviderPrintsWarning(t *testing.T) {
 	t.Parallel()
 	input := "en\nen\nen\nen\nepic\n.analysis\ncustom-ranger\nopenspec-explore\nsdd-ask\n\n"
-	wc, err := runWizard(NewTextPrompter(strings.NewReader(input)), minimalExtractor{})
+	wc, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(input)), minimalExtractor{})
 	require.NoError(t, err)
 	assert.Equal(t, "custom-ranger", wc.DiscoveryProvider)
 }

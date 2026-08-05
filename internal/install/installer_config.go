@@ -1,6 +1,7 @@
 package install
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
+	"go.opentelemetry.io/otel/codes"
 	"golang.org/x/term"
 
 	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
@@ -19,14 +21,23 @@ import (
 // In silent mode, active.yaml is only written when it does not already exist
 // (first install) or when cfg.Force is true. This preserves any customizations
 // the user has made after the initial install.
-func (s Service) applyConfig(strategistDir string, cfg domain.InstallConfig) error {
+func (s Service) applyConfig(ctx context.Context, strategistDir string, cfg domain.InstallConfig) (retErr error) {
+	ctx, span := telemetry.Tracer().Start(ctx, "install.apply_config")
+	defer func() {
+		if retErr != nil {
+			span.RecordError(retErr)
+			span.SetStatus(codes.Error, retErr.Error())
+		}
+		span.End()
+	}()
+
 	if !cfg.Wizard {
-		return s.applySilentConfig(strategistDir, cfg)
+		return s.applySilentConfig(ctx, strategistDir, cfg)
 	}
-	return s.applyWizardConfig(strategistDir)
+	return s.applyWizardConfig(ctx, strategistDir)
 }
 
-func (s Service) applySilentConfig(strategistDir string, cfg domain.InstallConfig) error {
+func (s Service) applySilentConfig(_ context.Context, strategistDir string, cfg domain.InstallConfig) error {
 	activeYAMLPath := filepath.Join(strategistDir, activeYAMLName)
 	if !cfg.Force && runtimefs.Exists(activeYAMLPath) {
 		return nil // preserve user customizations
@@ -49,9 +60,9 @@ func (s Service) applySilentConfig(strategistDir string, cfg domain.InstallConfi
 	return nil
 }
 
-func (s Service) applyWizardConfig(strategistDir string) error {
+func (s Service) applyWizardConfig(ctx context.Context, strategistDir string) error {
 	p := s.resolvePrompter()
-	wc, err := runWizard(p, s.Extractor)
+	wc, err := runWizard(ctx, p, s.Extractor)
 	if err != nil {
 		return fmt.Errorf("install: wizard: %w", err)
 	}

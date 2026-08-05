@@ -1,11 +1,14 @@
 package install
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/i18n"
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
+	"go.opentelemetry.io/otel/codes"
 	"gopkg.in/yaml.v3"
 )
 
@@ -106,7 +109,16 @@ func validateProvider(registry map[string]string, provider, expectedRisk string)
 }
 
 // runWizard collects install configuration through p.
-func runWizard(p Prompter, extractor domain.FileExtractor) (domain.WizardConfig, error) {
+func runWizard(ctx context.Context, p Prompter, extractor domain.FileExtractor) (_ domain.WizardConfig, retErr error) {
+	_, span := telemetry.Tracer().Start(ctx, "install.wizard")
+	defer func() {
+		if retErr != nil {
+			span.RecordError(retErr)
+			span.SetStatus(codes.Error, retErr.Error())
+		}
+		span.End()
+	}()
+
 	providerRisk := loadKnownProviders(extractor)
 	skillCfg := loadSkillConfig(extractor)
 	uiLang, docLang, chatLang, codeLang, b, err := promptLanguages(p, skillCfg)

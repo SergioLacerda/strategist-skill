@@ -1,6 +1,7 @@
 package install
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -164,7 +165,7 @@ func TestRunWizard(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			wc, err := runWizard(NewTextPrompter(strings.NewReader(tt.input)), minimalExtractor{})
+			wc, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(tt.input)), minimalExtractor{})
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantUILanguage, wc.UILanguage)
 			assert.Equal(t, tt.wantDocLang, wc.DocLanguage)
@@ -186,7 +187,7 @@ func TestWizardDoesNotAskPermissionLevel(t *testing.T) {
 	// 10 prompts: ui/doc/chat/code/mode/base/discovery/refinement/execution/chest
 	// If the wizard still prompts for execution mode or ADR, the input will be exhausted and the test errors.
 	input := "en\nen\npt-BR\nen\nepic\n.analysis\nbrainstorming\nopenspec-explore\nsdd-ask\n\n"
-	wc, err := runWizard(NewTextPrompter(strings.NewReader(input)), minimalExtractor{})
+	wc, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(input)), minimalExtractor{})
 	require.NoError(t, err)
 	assert.Equal(t, "epic", wc.Mode)
 	assert.Equal(t, "brainstorming", wc.DiscoveryProvider)

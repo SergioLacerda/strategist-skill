@@ -88,7 +88,7 @@ func (s Service) installShimStep(ctx context.Context, target, shimPathOverride s
 	if err != nil {
 		return "", fmt.Errorf("install: resolve shim path: %w", err)
 	}
-	if err := s.installShimFor(target, skillContent, shimPathOverride); err != nil {
+	if err := s.installShimFor(ctx, target, skillContent, shimPathOverride); err != nil {
 		return "", fmt.Errorf("install: shim: %w", err)
 	}
 	return shimPath, nil
@@ -111,7 +111,7 @@ func (s Service) readLocalSKILLMD(ctx context.Context, _ string) (string, error)
 
 // installShimFor installs the shim, using ShimHomeDir if set (for tests) or
 // shimPathOverride if set (--shim-path).
-func (s Service) installShimFor(target, skillContent, shimPathOverride string) error {
+func (s Service) installShimFor(ctx context.Context, target, skillContent, shimPathOverride string) error {
 	skillRoot := ""
 	if target != "" {
 		absTarget, err := filepath.Abs(target)
@@ -121,12 +121,12 @@ func (s Service) installShimFor(target, skillContent, shimPathOverride string) e
 		skillRoot = filepath.Join(absTarget, strategistDirName)
 	}
 	if shimPathOverride != "" {
-		return installShimToPath(shimPathOverride, skillContent, skillRoot)
+		return installShimToPath(ctx, shimPathOverride, skillContent, skillRoot)
 	}
 	if s.ShimHomeDir != "" {
-		return installShimTo(s.ShimHomeDir, skillContent, skillRoot)
+		return installShimTo(ctx, s.ShimHomeDir, skillContent, skillRoot)
 	}
-	return installShim(target)
+	return installShim(ctx, target)
 }
 
 // resolveShimPath returns the path of the SKILL.md shim that will be installed,

@@ -64,7 +64,7 @@ func (s Service) Install(ctx context.Context, cfg domain.InstallConfig) error {
 		}
 	}()
 
-	runtimePlan, err := s.planRuntimeDefaultUpgrade(strategistDir, cfg.Force)
+	runtimePlan, err := s.planRuntimeDefaultUpgrade(ctx, strategistDir, cfg.Force)
 	if err != nil {
 		return err
 	}
@@ -117,7 +117,7 @@ func (s Service) prepareRuntime(ctx context.Context, strategistDir string, cfg d
 	if err := s.Extractor.Extract(strategistDir, cfg.Force); err != nil {
 		return nil, fmt.Errorf("install: extract defaults: %w", err)
 	}
-	if err := s.applyRuntimeDefaultPlan(strategistDir, plan); err != nil {
+	if err := s.applyRuntimeDefaultPlan(ctx, strategistDir, plan); err != nil {
 		return nil, err
 	}
 	return []string{strategistDir}, nil
@@ -128,7 +128,7 @@ func (s Service) applyWorkspaceConfig(ctx context.Context, strategistDir string,
 		telemetry.AttrComponent, "install",
 		"wizard", cfg.Wizard,
 	)
-	if err := s.applyConfig(strategistDir, cfg); err != nil {
+	if err := s.applyConfig(ctx, strategistDir, cfg); err != nil {
 		return nil, err
 	}
 	return []string{filepath.Join(strategistDir, activeYAMLName)}, nil

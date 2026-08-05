@@ -20,7 +20,7 @@ func TestInstallShimTo_ReadOnlyParent(t *testing.T) {
 	home := t.TempDir()
 	require.NoError(t, os.Chmod(home, 0o444))
 	t.Cleanup(func() { _ = os.Chmod(home, 0o755) })
-	err := installShimTo(home, "", "")
+	err := installShimTo(context.Background(), home, "", "")
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "mkdir shim dir")
 }
@@ -34,7 +34,7 @@ func TestInstallShimTo_WriteError(t *testing.T) {
 	shimDir := filepath.Join(home, ".claude", "skills", "strategist")
 	require.NoError(t, os.MkdirAll(shimDir, 0o755))
 	require.NoError(t, os.Mkdir(filepath.Join(shimDir, "SKILL.md"), 0o755))
-	err := installShimTo(home, "", "")
+	err := installShimTo(context.Background(), home, "", "")
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "write shim")
 }
@@ -81,7 +81,7 @@ func TestInstallOptionalShims_GeminiAndCodex(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Join(home, ".gemini"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(home, ".codex"), 0o755))
 
-	installOptionalShims(home, "# SKILL", "")
+	installOptionalShims(context.Background(), home, "# SKILL", "")
 
 	expectedPaths := []string{
 		filepath.Join(home, ".gemini", "skills", "strategist", "SKILL.md"),
@@ -99,7 +99,7 @@ func TestInstallOptionalShims_SkipsWhenDirAbsent(t *testing.T) {
 	t.Parallel()
 	home := t.TempDir()
 
-	installOptionalShims(home, "# SKILL", "")
+	installOptionalShims(context.Background(), home, "# SKILL", "")
 
 	for _, dir := range []string{".gemini", ".codex"} {
 		_, err := os.Stat(filepath.Join(home, dir))
@@ -151,7 +151,7 @@ func TestInstallCodexShim_WriteFailureIsLoggedNotFatal(t *testing.T) {
 
 func TestInstallShim_HomeDirError(t *testing.T) {
 	t.Setenv("HOME", "")
-	err := installShim(t.TempDir())
+	err := installShim(context.Background(), t.TempDir())
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "home dir")
 }
