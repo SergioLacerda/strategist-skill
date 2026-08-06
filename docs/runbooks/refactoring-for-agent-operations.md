@@ -84,7 +84,7 @@ style guide or accumulates one-off preferences that future agents cannot reuse.
 
 ## Reference
 
-- `cmd/strategist/treasure_chest_doctor.go` — direct handler assignment for a
+- `internal/treasurecli/treasure_chest_doctor.go` — direct handler assignment for a
   pass-through `RunE` wrapper.
 - `internal/telemetry/outcome.go` — external error wrapping and helper
   extraction for scan/flush behavior.

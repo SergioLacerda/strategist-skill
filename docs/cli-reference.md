@@ -606,14 +606,14 @@ always exits `0`.
 **Implemented**: `loadJewels` accepts legacy `.strategist/jewels.yaml` and partitioned
 `.strategist/jewels/<chest-id>.yaml`; new `index` candidates are written to partitioned
 manifests. Non-deprecated jewel counts are shown in the `treasure-chest` list's `JEWELS`
-column and JSON output (`cmd/strategist/treasure_chest.go`); removing a chest cascades to
+column and JSON output (`internal/treasurecli/treasure_chest.go`); removing a chest cascades to
 mark its jewels `deprecated` across both layouts (`markJewelsDeprecatedForChest` in
 `internal/treasure/yaml_node.go`); the `jewel_generation` and `jewel_retrieval` contract blocks
 govern LLM-facing generation/retrieval behavior
 (`internal/embed/defaults/contracts/machine/context-enrichment.yaml`), including
 status-precedence retrieval (`verified` preferred, then `accepted`, `proposed` as hint only,
 `deprecated` excluded); `treasure-chest items list`/`items show`
-(`cmd/strategist/treasure_chest_items.go`) expose all jewels and potions regardless of
+(`internal/treasurecli/treasure_chest_items.go`) expose all jewels and potions regardless of
 status for inspection, independent of the curation-only `--status proposed` filter.
 
 ### Potions

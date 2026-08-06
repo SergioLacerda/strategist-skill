@@ -44,7 +44,7 @@ chosen fix treats any parse failure uniformly, regardless of cause.
 unparseable mission and report it as a `ScanWarning` instead of aborting
 the whole scan. `RunScanPipeline` (the engine behind
 `strategist treasure-chest index`) already uses it against this same
-real workspace data, and `cmd/strategist/treasure_chest_index.go`
+real workspace data, and `internal/treasurecli/treasure_chest_index.go`
 already has a working precedent (`printTreasureChestIndexWarnings`) for
 surfacing those warnings to the user.
 

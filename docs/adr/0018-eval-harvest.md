@@ -20,7 +20,7 @@ already implements exactly the mission-discovery half of "harvest":
 `<base_path>/refined/` and `<base_path>/done/`, locate mission directories
 containing a `tasks.md`, and return parsed `ScannedMission` records. This is
 live, tested infrastructure backing `strategist treasure-chest index`'s
-scan phase (`cmd/strategist/treasure_chest_scan.go`), not a design sketch.
+scan phase (`internal/treasurecli/treasure_chest_scan.go`), not a design sketch.
 
 Discovery also found that no `route_decision` record is ever persisted to
 disk anywhere in this codebase — Scout emits it as log/conversational text

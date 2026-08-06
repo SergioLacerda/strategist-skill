@@ -83,7 +83,7 @@ unaffected and continues to apply to every status.
 - Supersedes (status portion only): [ADR-0011](0011-jewel-promotion-trust-ceiling-exception.md)
   — the trust-tier ceiling itself is unaffected
 - Enforcement: `internal/domain/jewel_grade.go` (`ValidateJewelStatus`)
-- Runtime: `cmd/strategist/treasure_chest_index.go`, `cmd/strategist/treasure_chest_mine.go`
+- Runtime: `internal/treasurecli/treasure_chest_index.go`, `cmd/strategist/treasure_chest_mine.go`
 - Contract: `internal/embed/defaults/contracts/machine/context-enrichment.yaml`
   (`jewel_generation`, `jewel_retrieval`)
 - Docs: `cli-reference.md` § Jewels

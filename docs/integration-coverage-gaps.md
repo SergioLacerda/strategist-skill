@@ -136,7 +136,7 @@ dark for this metric, and a treasure-chest CLI flow also reaches a slice of
    than a synthetic always-green fixture.
 3. `treasure-chest items list` / `items show`, seeding `jewels.yaml`
    directly (same fixture shape as
-   `cmd/strategist/treasure_chest_items_test.go`'s `oneProposedJewelYAML`).
+   `internal/treasurecli/treasure_chest_items_test.go`'s `oneProposedJewelYAML`).
 
 **Result:** `internal/integrity` went from 14/14 functions at 0.0% to 2/14
 (`IsModified`, `pathMismatchResult` still unreached) — via `root.go`'s

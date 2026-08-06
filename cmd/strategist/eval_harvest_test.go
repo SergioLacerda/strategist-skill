@@ -33,13 +33,46 @@ func resetEvalHarvestFlags(t *testing.T) {
 }
 
 // writeMissionAnalysis writes a minimal analysis.md into a mission
-// directory, alongside whatever writeMissionTasks (treasure_chest_scan_test.go)
-// already wrote for tasks.md — harvest's default artifact is analysis.md.
+// directory, alongside whatever writeMissionTasks already wrote for
+// tasks.md — harvest's default artifact is analysis.md.
 func writeMissionAnalysis(t *testing.T, basePath, category, missionID, content string) {
 	t.Helper()
 	dir := filepath.Join(basePath, category, missionID)
 	require.NoError(t, os.MkdirAll(dir, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "analysis.md"), []byte(content), 0o644))
+}
+
+// scanTestRoot builds a project tree with a .strategist/ root and an .analysis/
+// base_path, matching resolveDojoRoots' expected layout (base_path resolved
+// relative to the .strategist root's parent directory). Duplicated from
+// internal/treasurecli's own treasure_chest_scan_test.go — Go test helpers
+// aren't shareable across package boundaries, and this fixture builder isn't
+// worth promoting to an exported package just for two callers.
+func scanTestRoot(t *testing.T) (strategistDir, basePath string) {
+	t.Helper()
+	root := t.TempDir()
+	strategistDir = filepath.Join(root, ".strategist")
+	basePath = filepath.Join(root, ".analysis")
+	require.NoError(t, os.MkdirAll(strategistDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(strategistDir, "active.yaml"), []byte(`
+mode: epic
+base_path: .analysis
+slots:
+  discovery: brainstorming
+  refinement: openspec-explore
+  execution: sniper
+`), 0o644))
+	return strategistDir, basePath
+}
+
+// writeMissionTasks writes a minimal tasks.md into a mission directory.
+// Duplicated from internal/treasurecli's own treasure_chest_scan_test.go —
+// see scanTestRoot's comment above.
+func writeMissionTasks(t *testing.T, basePath, category, missionID, content string) {
+	t.Helper()
+	dir := filepath.Join(basePath, category, missionID)
+	require.NoError(t, os.MkdirAll(dir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "tasks.md"), []byte(content), 0o644))
 }
 
 func TestMissionDir_PrefersRefinedOverDone(t *testing.T) {

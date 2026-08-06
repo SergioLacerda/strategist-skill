@@ -69,7 +69,7 @@ all-or-nothing batch (`internal/treasure/yaml_node.go` → `WriteYAMLNodes`):
 ## Reference
 
 - `internal/treasure/yaml_node.go` → `WriteYAMLNodes`, `writeTempSibling`
-- `cmd/strategist/treasure_chest_doctor.go`
+- `internal/treasurecli/treasure_chest_doctor.go`
 - `docs/cli-reference.md` § `treasure-chest add` / `treasure-chest remove`, §
   `treasure-chest doctor`
 - `.analysis/done/2026-07-22-treasure-mutation-transactionality/completion-report.md`

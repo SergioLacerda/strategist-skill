@@ -4,7 +4,9 @@ internal/compile	90	compiled artifact contract gate
 internal/install	90	installer and runtime materialization gate
 internal/embed	90	embedded defaults availability gate
 internal/telemetry	90	governance telemetry gate
-cmd/strategist	90	CLI contract surface gate
+cmd/strategist	90	CLI contract surface gate - remeasured 94.5% after treasure-chest cluster moved to internal/treasurecli (20260806-treasure-chest-cmd-consolidation)
+internal/treasurecli	90	treasure-chest/runbook CLI command cluster, extracted from cmd/strategist (20260806-treasure-chest-cmd-consolidation) - measured 95.5%
+internal/cliutil	90	shared CLI helpers extracted from cmd/strategist during the same move - measured 100%
 internal/dojo	90	widened cover-gate scope (T3) - measured 90.6%
 internal/domain	90	widened cover-gate scope (T3) - measured 95.1%
 internal/governance	90	widened cover-gate scope (T3) - measured 98.9%

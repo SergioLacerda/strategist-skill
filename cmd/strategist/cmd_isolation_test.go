@@ -7,11 +7,14 @@ import (
 )
 
 // TestCmdThinness verifies that the cmd/strategist files thinned out by the
-// architecture-refactoring extraction (governance sync, validate, and the
-// treasure-chest index/add pipelines) do not reintroduce direct YAML/JSON
-// parsing — that logic now lives in internal/governance, internal/validate,
-// and internal/treasure. A cmd file that starts importing these again is a
-// sign business logic is creeping back into the CLI adapter layer.
+// architecture-refactoring extraction (governance sync and validate) do not
+// reintroduce direct YAML/JSON parsing — that logic now lives in
+// internal/governance and internal/validate. A cmd file that starts importing
+// these again is a sign business logic is creeping back into the CLI adapter
+// layer. The treasure-chest index/add pipelines' equivalent of this check
+// moved with them to internal/treasurecli (see its own cmd_isolation_test.go)
+// when the treasure-chest/runbook command cluster was extracted into that
+// package (20260806-treasure-chest-cmd-consolidation).
 func TestCmdThinness(t *testing.T) {
 	t.Parallel()
 
@@ -19,8 +22,6 @@ func TestCmdThinness(t *testing.T) {
 		"sync_governance.go",
 		"sync_governance_report.go",
 		"validate.go",
-		"treasure_chest_index.go",
-		"treasure_chest_mutate.go",
 	}
 
 	fset := token.NewFileSet()

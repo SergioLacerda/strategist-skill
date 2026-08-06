@@ -3,48 +3,17 @@ package main
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestResolveStrategistRoot_ExplicitPathResolvesAbs(t *testing.T) {
-	strategistDir, projectRoot, err := resolveStrategistRoot("some/relative/path", "/unused/cwd")
-	require.NoError(t, err)
-	assert.True(t, filepath.IsAbs(strategistDir))
-	assert.Equal(t, filepath.Dir(strategistDir), projectRoot)
-}
+// findStrategistRoot/resolveStrategistRoot are thin wrappers around
+// internal/cliutil — see cliutil_test.go there for the full behavior matrix.
+// These smoke tests only confirm the delegation itself is wired correctly.
 
-func TestResolveStrategistRoot_EmptyExplicitFallsBackToFind(t *testing.T) {
-	dir := t.TempDir()
-	require.NoError(t, os.MkdirAll(filepath.Join(dir, ".strategist"), 0o755))
-
-	strategistDir, projectRoot, err := resolveStrategistRoot("", dir)
-	require.NoError(t, err)
-	assert.Equal(t, filepath.Join(dir, ".strategist"), strategistDir)
-	assert.Equal(t, dir, projectRoot)
-}
-
-func TestResolveStrategistRoot_AbsError(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("chdir-then-remove not reliable on windows")
-	}
-	oldWd, err := os.Getwd()
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = os.Chdir(oldWd) })
-
-	removed := t.TempDir()
-	require.NoError(t, os.Chdir(removed))
-	require.NoError(t, os.RemoveAll(removed))
-
-	_, _, resolveErr := resolveStrategistRoot("relative/explicit/path", "irrelevant")
-	require.Error(t, resolveErr)
-	assert.Contains(t, resolveErr.Error(), "resolve root")
-}
-
-func TestFindStrategistRoot_FoundInCWD(t *testing.T) {
+func TestFindStrategistRoot_DelegatesToCliutil(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, ".strategist"), 0o755))
 
@@ -54,62 +23,9 @@ func TestFindStrategistRoot_FoundInCWD(t *testing.T) {
 	assert.Equal(t, dir, projectRoot)
 }
 
-func TestFindStrategistRoot_FoundInParent(t *testing.T) {
-	root := t.TempDir()
-	require.NoError(t, os.MkdirAll(filepath.Join(root, ".strategist"), 0o755))
-	subdir := filepath.Join(root, "subproject", "src")
-	require.NoError(t, os.MkdirAll(subdir, 0o755))
-
-	strategistDir, projectRoot, err := findStrategistRoot(subdir)
+func TestResolveStrategistRoot_DelegatesToCliutil(t *testing.T) {
+	strategistDir, projectRoot, err := resolveStrategistRoot("some/relative/path", "/unused/cwd")
 	require.NoError(t, err)
-	assert.Equal(t, filepath.Join(root, ".strategist"), strategistDir)
-	assert.Equal(t, root, projectRoot)
-}
-
-func TestFindStrategistRoot_NotFound(t *testing.T) {
-	dir := t.TempDir() // no .strategist/
-
-	_, _, err := findStrategistRoot(dir)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "not found")
-}
-
-func TestInstallCmd_IdempotentUpdatesExisting(t *testing.T) {
-	// Layout: root/.strategist/ already exists; install runs from root/subdir.
-	root := t.TempDir()
-	require.NoError(t, os.MkdirAll(filepath.Join(root, ".strategist"), 0o755))
-
-	subdir := filepath.Join(root, "subdir")
-	require.NoError(t, os.MkdirAll(subdir, 0o755))
-
-	origWd, _ := os.Getwd()
-	require.NoError(t, os.Chdir(subdir))
-	t.Cleanup(func() { _ = os.Chdir(origWd) })
-
-	origTarget := installTarget
-	origSilent := installSilent
-	origWizard := installWizard
-	origGlobal := installGlobal
-	t.Cleanup(func() {
-		installTarget = origTarget
-		installSilent = origSilent
-		installWizard = origWizard
-		installGlobal = origGlobal
-	})
-
-	installTarget = ""
-	installSilent = true
-	installWizard = false
-	installGlobal = false
-
-	// install should resolve target to root (where .strategist/ exists), not subdir.
-	// We can't run the full install (shim step requires home), but we can verify
-	// the target resolution logic: after findStrategistRoot succeeds, installTarget = root.
-	if _, _, err := findStrategistRoot(subdir); err == nil {
-		// Confirms walk-up finds root/.strategist/ from subdir.
-		discovered, projRoot, discErr := findStrategistRoot(subdir)
-		require.NoError(t, discErr)
-		assert.Equal(t, filepath.Join(root, ".strategist"), discovered)
-		assert.Equal(t, root, projRoot)
-	}
+	assert.True(t, filepath.IsAbs(strategistDir))
+	assert.Equal(t, filepath.Dir(strategistDir), projectRoot)
 }

@@ -7,6 +7,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/dojo"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/spf13/cobra"
@@ -140,26 +141,13 @@ func dojoDescription(dojoDir, scenario string) string {
 	return c.Description
 }
 
+// resolveDojoRoots delegates to internal/cliutil (shared with internal/treasurecli
+// — see its own cli_bridge.go), re-adding the "dojo: " error prefix this
+// function's own callers have always returned unwrapped.
 func resolveDojoRoots(root string) (strategistRoot, basePath string, err error) {
-	strategistRoot = root
-	if strategistRoot == "" {
-		strategistRoot = ".strategist"
-	}
-
-	raw, err := os.ReadFile(filepath.Join(strategistRoot, "active.yaml")) //nolint:gosec // G304: dojo reads active.yaml from the selected .strategist root
+	strategistRoot, basePath, err = cliutil.ResolveActiveBasePath(root)
 	if err != nil {
-		return "", "", fmt.Errorf("dojo: read active.yaml: %w", err)
-	}
-	var cfg domain.ActiveConfig
-	if err := yaml.Unmarshal(raw, &cfg); err != nil {
-		return "", "", fmt.Errorf("dojo: parse active.yaml: %w", err)
-	}
-	if cfg.BasePath == "" {
-		return "", "", fmt.Errorf("dojo: active.yaml: base_path is empty")
-	}
-	basePath = cfg.BasePath
-	if !filepath.IsAbs(basePath) {
-		basePath = filepath.Join(filepath.Dir(strategistRoot), basePath)
+		return "", "", fmt.Errorf("dojo: %w", err)
 	}
 	return strategistRoot, basePath, nil
 }

@@ -75,7 +75,7 @@ func TestE2E_CLI_TreasureChestDoctor_DetectsDivergence(t *testing.T) {
 
 // TestE2E_CLI_TreasureChestItems_ListAndShow seeds a jewels.yaml directly
 // under .strategist/ (same fixture shape as
-// cmd/strategist/treasure_chest_items_test.go's oneProposedJewelYAML) and
+// internal/treasurecli/treasure_chest_items_test.go's oneProposedJewelYAML) and
 // runs `items list` then `items show` through the real CLI binary —
 // exercising internal/treasure's jewel loaders and
 // internal/domain.ValidateJewelKind/Score/Status/Trust's call path, plus

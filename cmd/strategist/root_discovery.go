@@ -1,45 +1,16 @@
 package main
 
-import (
-	"fmt"
-	"os"
-	"path/filepath"
-)
-
-const strategistDirName = ".strategist"
-const rootDiscoveryMaxLevels = 5
+import "github.com/SergioLacerda/strategist-skill/internal/cliutil"
 
 // findStrategistRoot walks up from startDir looking for a .strategist/ directory.
-// Returns (strategistDir, projectRoot, nil) on success.
-// strategistDir is the full path to .strategist/.
-// projectRoot is its parent (the project root).
-// Returns an error if no .strategist/ is found within rootDiscoveryMaxLevels levels.
+// Delegates to internal/cliutil so internal/treasurecli (and any other importable
+// command package) shares the exact same root-discovery behavior as cmd/strategist.
 func findStrategistRoot(startDir string) (strategistDir, projectRoot string, err error) {
-	dir := startDir
-	for i := 0; i < rootDiscoveryMaxLevels; i++ {
-		candidate := filepath.Join(dir, strategistDirName)
-		if stat, statErr := os.Stat(candidate); statErr == nil && stat.IsDir() {
-			return candidate, dir, nil
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			break // reached filesystem root
-		}
-		dir = parent
-	}
-	return "", "", fmt.Errorf("%s not found within %d levels of %s — run: strategist install", strategistDirName, rootDiscoveryMaxLevels, startDir)
+	return cliutil.FindStrategistRoot(startDir) //nolint:wrapcheck // pure delegation; cliutil's error text is this function's own contract, preserved verbatim on purpose
 }
 
 // resolveStrategistRoot returns the runtime root to use for a command.
-// If explicit is non-empty, it is used directly (projectRoot = its parent).
-// Otherwise, findStrategistRoot is called from cwd.
+// Delegates to internal/cliutil — see findStrategistRoot's comment.
 func resolveStrategistRoot(explicit, cwd string) (strategistDir, projectRoot string, err error) {
-	if explicit != "" {
-		abs, absErr := filepath.Abs(explicit)
-		if absErr != nil {
-			return "", "", fmt.Errorf("resolve root: %w", absErr)
-		}
-		return abs, filepath.Dir(abs), nil
-	}
-	return findStrategistRoot(cwd)
+	return cliutil.ResolveStrategistRoot(explicit, cwd) //nolint:wrapcheck // pure delegation, see findStrategistRoot above
 }

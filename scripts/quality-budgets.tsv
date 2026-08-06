@@ -1,6 +1,6 @@
 # path	max_lines	reason
 cmd/strategist/dojo.go	230	dojo CLI command remains above the default 200-line threshold
-cmd/strategist/treasure_chest_items.go	250	treasure chest item command flow is pending a separate refactor
+internal/treasurecli/treasure_chest_items.go	250	treasure chest item command flow is pending a separate refactor (moved to internal/treasurecli by 20260806-treasure-chest-cmd-consolidation)
 internal/compile/agent_awareness.go	280	agent-awareness writer is intentionally centralized
 internal/governance/sync.go	230	governance sync has cohesive read/reconcile/write flow
 internal/install/wizard.go	260	interactive wizard flow is intentionally localized
