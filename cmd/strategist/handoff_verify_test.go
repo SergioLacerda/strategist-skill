@@ -6,7 +6,9 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 	"github.com/SergioLacerda/strategist-skill/internal/testutil"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -211,4 +213,62 @@ func TestHandoffVerifyCmd_MissingRequiredFlags(t *testing.T) {
 
 func TestHandoffCmd_IsHumanStatusCommand(t *testing.T) {
 	assert.True(t, isHumanStatusCommand(handoffVerifyCmd))
+}
+
+func TestLoadHandoffPolicy_ReadError(t *testing.T) {
+	_, err := loadHandoffPolicy(filepath.Join(t.TempDir(), "does-not-exist.yaml"))
+	require.ErrorContains(t, err, "read policy file")
+}
+
+func TestLoadHandoffPolicy_ParseError(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "policy.yaml")
+	require.NoError(t, os.WriteFile(path, []byte("not: [valid\n"), 0o644))
+
+	_, err := loadHandoffPolicy(path)
+	require.ErrorContains(t, err, "parse policy file")
+}
+
+func TestLoadHandoffChallenges_ReadError(t *testing.T) {
+	_, err := loadHandoffChallenges(filepath.Join(t.TempDir(), "does-not-exist.yaml"))
+	require.ErrorContains(t, err, "read challenges file")
+}
+
+func TestLoadHandoffChallenges_ParseError(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "challenges.yaml")
+	require.NoError(t, os.WriteFile(path, []byte("not: [valid\n"), 0o644))
+
+	_, err := loadHandoffChallenges(path)
+	require.ErrorContains(t, err, "parse challenges file")
+}
+
+func TestLoadHandoffAck_ReadError(t *testing.T) {
+	_, err := loadHandoffAck(filepath.Join(t.TempDir(), "does-not-exist.yaml"))
+	require.ErrorContains(t, err, "read acknowledgment file")
+}
+
+func TestLoadHandoffAck_ParseError(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "ack.yaml")
+	require.NoError(t, os.WriteFile(path, []byte("not: [valid\n"), 0o644))
+
+	_, err := loadHandoffAck(path)
+	require.ErrorContains(t, err, "parse acknowledgment file")
+}
+
+func TestPrintHandoffVerifyResult_WriteError(t *testing.T) {
+	cmd := &cobra.Command{}
+	cmd.SetOut(errorWriter{})
+
+	err := printHandoffVerifyResult(cmd, handoff.Result{Status: "passed", Passed: true})
+	require.ErrorContains(t, err, "write output")
+}
+
+func TestRecordHandoffVerify_AppendErrorPropagates(t *testing.T) {
+	dir := t.TempDir()
+	blocker := filepath.Join(dir, "blocker")
+	require.NoError(t, os.WriteFile(blocker, []byte("x"), 0o644))
+	setHandoffVerifyFlags(t, blocker, "archivist_to_sniper", "", "", "", "m-1", 1)
+	t.Cleanup(func() { resetHandoffVerifyFlags(t) })
+
+	err := recordHandoffVerify(handoffVerifyCmd, handoffVerifyOptions{Root: blocker, MissionID: "m-1", Attempt: 1}, handoff.Result{Status: "passed", Passed: true})
+	require.ErrorContains(t, err, "record handoff challenge")
 }

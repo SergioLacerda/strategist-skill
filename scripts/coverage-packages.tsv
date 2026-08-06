@@ -5,3 +5,14 @@ internal/install	90	installer and runtime materialization gate
 internal/embed	90	embedded defaults availability gate
 internal/telemetry	90	governance telemetry gate
 cmd/strategist	90	CLI contract surface gate
+internal/dojo	90	widened cover-gate scope (T3) - measured 90.6%
+internal/domain	90	widened cover-gate scope (T3) - measured 95.1%
+internal/governance	90	widened cover-gate scope (T3) - measured 98.9%
+internal/handoff	90	widened cover-gate scope (T3) - measured 91.6%
+internal/i18n	90	widened cover-gate scope (T3) - measured 94.4%
+internal/runbook	90	widened cover-gate scope (T3) - measured 95.4%
+internal/validate	90	widened cover-gate scope (T3) - measured 90.4%
+internal/eval	50	below 90% baseline (measured 56.9%) - needs dedicated coverage follow-up, see riposte-backlog.md SQ-005
+internal/integrity	85	below 90% baseline (measured 88.2%) - needs small coverage follow-up, see riposte-backlog.md SQ-005
+internal/runtimefs	65	below 90% baseline (measured 69.4%) - needs dedicated coverage follow-up, see riposte-backlog.md SQ-005
+internal/treasure	70	below 90% baseline (measured 74.5%) - needs dedicated coverage follow-up, see riposte-backlog.md SQ-005

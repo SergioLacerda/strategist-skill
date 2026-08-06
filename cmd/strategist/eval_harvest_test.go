@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/treasure"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -192,6 +196,88 @@ func TestHarvestMission_ReharvestOverwrites(t *testing.T) {
 	got, err := os.ReadFile(filepath.Join(dest, "m-1", "analysis.md"))
 	require.NoError(t, err)
 	assert.Equal(t, "second version\n", string(got))
+}
+
+func TestHarvestIncludeSource_ReportCase(t *testing.T) {
+	src, dest := harvestIncludeSource("/base", "/src", "/dest", "m-1", "report")
+	assert.Equal(t, filepath.Join("/base", "archived", "m-1-report.md"), src)
+	assert.Equal(t, filepath.Join("/dest", "report.md"), dest)
+}
+
+func TestHarvestMission_DestMkdirAllFailsWhenParentIsFile(t *testing.T) {
+	_, base := scanTestRoot(t)
+	writeMissionTasks(t, base, "refined", "m-1", "## Task 1 — Example\n")
+	writeMissionAnalysis(t, base, "refined", "m-1", "# Analysis\n")
+
+	blocker := filepath.Join(t.TempDir(), "blocker")
+	require.NoError(t, os.WriteFile(blocker, []byte("x"), 0o644))
+	dest := filepath.Join(blocker, "dest")
+
+	_, err := harvestMission(base, dest, "m-1", nil)
+	require.Error(t, err)
+}
+
+func TestHarvestMission_MissingAnalysisFilePropagatesCopyError(t *testing.T) {
+	_, base := scanTestRoot(t)
+	writeMissionTasks(t, base, "refined", "m-1", "## Task 1 — Example\n")
+	// analysis.md deliberately not written — missionDir succeeds (the
+	// mission directory exists via writeMissionTasks) but copying the
+	// default analysis.md must fail.
+
+	dest := t.TempDir()
+	_, err := harvestMission(base, dest, "m-1", nil)
+	require.Error(t, err)
+}
+
+func TestHarvestMission_MissingIncludeFilePropagatesCopyError(t *testing.T) {
+	_, base := scanTestRoot(t)
+	writeMissionTasks(t, base, "refined", "m-1", "## Task 1 — Example\n")
+	writeMissionAnalysis(t, base, "refined", "m-1", "# Analysis\n")
+	// "design" is a valid include type but design.md is never written —
+	// the analysis.md copy succeeds first, then the include-loop copy
+	// fails.
+
+	dest := t.TempDir()
+	_, err := harvestMission(base, dest, "m-1", []string{"design"})
+	require.Error(t, err)
+}
+
+func TestCopyHarvestFile_OpenError(t *testing.T) {
+	dir := t.TempDir()
+	err := copyHarvestFile(filepath.Join(dir, "does-not-exist"), filepath.Join(dir, "out"))
+	require.ErrorContains(t, err, "read")
+}
+
+func TestCopyHarvestFile_CreateErrorWhenDestParentMissing(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "src")
+	require.NoError(t, os.WriteFile(src, []byte("content"), 0o644))
+
+	err := copyHarvestFile(src, filepath.Join(dir, "no-such-dir", "out"))
+	require.ErrorContains(t, err, "write")
+}
+
+func TestSelectAllHarvestMissionIDs_ScanErrorPropagates(t *testing.T) {
+	blocker := filepath.Join(t.TempDir(), "blocker")
+	require.NoError(t, os.WriteFile(blocker, []byte("x"), 0o644))
+
+	_, _, err := selectAllHarvestMissionIDs(blocker)
+	require.ErrorContains(t, err, "eval harvest")
+}
+
+func TestPrintEvalHarvestWarnings_PrintsEachWarning(t *testing.T) {
+	cmd := &cobra.Command{}
+	var buf bytes.Buffer
+	cmd.SetErr(&buf)
+
+	printEvalHarvestWarnings(cmd, []treasure.ScanWarning{{Path: "refined/bad-mission", Err: errors.New("unparseable")}})
+	assert.Contains(t, buf.String(), "skipped inconsistent mission file")
+}
+
+func TestParseHarvestInclude_SkipsBlankSegments(t *testing.T) {
+	out, err := parseHarvestInclude("design,,tasks")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"design", "tasks"}, out)
 }
 
 func TestEvalHarvestCmd_EndToEnd(t *testing.T) {

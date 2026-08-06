@@ -32,6 +32,12 @@ const (
 	TargetScopeFilter    Target = "scope_filter"
 	TargetSlotWriteScope Target = "slot_write_scope"
 	TargetArtifactCheck  Target = "artifact_check"
+	// TargetChestGrade dispatches to domain.ValidateChestGrade — treasure-chest
+	// grading field validation (source_grade/reuse_value/implementation_status).
+	TargetChestGrade Target = "chest_grade"
+	// TargetJewelTrust dispatches to domain.ValidateJewelTrust — the safeguard
+	// that a jewel's trust tier may never exceed its parent chest's trust tier.
+	TargetJewelTrust Target = "jewel_trust"
 )
 
 // Input carries whatever the target function needs. Shape depends on

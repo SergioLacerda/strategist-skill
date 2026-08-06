@@ -194,6 +194,25 @@ func TestRunbookSelect_TableFormatNoError(t *testing.T) {
 	assert.Contains(t, out, "fix-timeout")
 }
 
+func TestRunbookSelectionRenderers_ClosedStdoutErrors(t *testing.T) {
+	rows := []runbookSelectionRow{{RunbookID: "r-1", Role: "primary", ChestID: "runbooks", Ref: "docs/runbooks/r-1.md", Reason: "matched"}}
+
+	withClosedStdout(t, func() {
+		require.Error(t, renderRunbookSelectionTable(rows))
+		require.Error(t, renderRunbookSelectionJSON(rows))
+	})
+}
+
+func TestSortRunbookSelectionRows_TiesBrokenByRunbookID(t *testing.T) {
+	rows := []runbookSelectionRow{
+		{RunbookID: "z-supporting", Role: "supporting"},
+		{RunbookID: "a-supporting", Role: "supporting"},
+	}
+	sortRunbookSelectionRows(rows)
+	require.Equal(t, "a-supporting", rows[0].RunbookID)
+	require.Equal(t, "z-supporting", rows[1].RunbookID)
+}
+
 func TestRunbookSelect_UnknownFormatErrors(t *testing.T) {
 	root := runbookSelectTestRoot(t, map[string]string{"fix-timeout": fixtureRunbookA})
 	resetRunbookSelectFlags(t)

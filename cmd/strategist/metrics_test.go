@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -77,4 +78,53 @@ func TestMetricsHandoffCmd_NonexistentRootStillExitsCleanWithZeroRates(t *testin
 
 func TestMetricsCmd_IsHumanStatusCommand(t *testing.T) {
 	assert.True(t, isHumanStatusCommand(metricsHandoffCmd))
+}
+
+func TestPrintHandoffMetrics_WriteError(t *testing.T) {
+	err := printHandoffMetrics(errorWriter{}, telemetry.HandoffMetrics{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "write output")
+}
+
+func TestPrintRouteMetrics_WriteError(t *testing.T) {
+	err := printRouteMetrics(errorWriter{}, telemetry.RouteMetrics{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "write output")
+}
+
+func TestRunMetricsHandoff_WithMissionRunDoesNotError(t *testing.T) {
+	dir := t.TempDir()
+	testutil.MinimalRoot(t, dir)
+	setMetricsHandoffRoot(t, dir)
+	t.Cleanup(func() { setMetricsHandoffRoot(t, "") })
+	attachMissionRun(t, metricsHandoffCmd)
+
+	require.NoError(t, runMetricsHandoff(metricsHandoffCmd, metricsHandoffOptions{}))
+}
+
+func TestRunMetricsHandoff_ReadErrorPropagates(t *testing.T) {
+	dir := t.TempDir()
+	blocker := filepath.Join(dir, "blocker")
+	require.NoError(t, os.WriteFile(blocker, []byte("x"), 0o644))
+	// blocker is a file, so telemetry.ReadHandoffChallenges' os.Open on
+	// blocker/memory/handoff-challenges.jsonl fails with ENOTDIR — a real
+	// error distinct from os.ErrNotExist, which resolveMetricsActionRoot's
+	// explicit-root resolution never triggers on its own (filepath.Abs
+	// doesn't validate existence).
+	setMetricsHandoffRoot(t, blocker)
+	t.Cleanup(func() { setMetricsHandoffRoot(t, "") })
+
+	err := runMetricsHandoff(metricsHandoffCmd, metricsHandoffOptions{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "metrics handoff")
+}
+
+func TestRunMetricsScout_WithMissionRunDoesNotError(t *testing.T) {
+	dir := t.TempDir()
+	testutil.MinimalRoot(t, dir)
+	setMetricsScoutRoot(t, dir)
+	t.Cleanup(func() { setMetricsScoutRoot(t, "") })
+	attachMissionRun(t, metricsScoutCmd)
+
+	require.NoError(t, runMetricsScout(metricsScoutCmd, metricsScoutOptions{}))
 }

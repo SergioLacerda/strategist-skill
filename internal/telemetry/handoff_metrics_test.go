@@ -121,3 +121,21 @@ func TestComputeHandoffMetrics_HandoffRepairRateZeroWhenNoFailures(t *testing.T)
 		t.Fatalf("expected 0 HandoffRepairRate with no first-attempt failures, got %v", m.HandoffRepairRate)
 	}
 }
+
+func TestComputeHandoffMetrics_HandoffRepairRateIgnoresMissionWithNoFirstAttempt(t *testing.T) {
+	t.Parallel()
+	records := []ChallengeRecord{
+		// m-1: no attempt 1 on record at all (e.g. history started being
+		// captured mid-mission) — must be excluded from the repair-rate
+		// denominator entirely, not treated as a first-attempt failure.
+		{MissionID: "m-1", Attempt: 2, Passed: false},
+		{MissionID: "m-1", Attempt: 3, Passed: true},
+		// m-2: failed first attempt, no later attempt — counts as
+		// failedFirst but not repaired.
+		{MissionID: "m-2", Attempt: 1, Passed: false},
+	}
+	m := ComputeHandoffMetrics(records)
+	if got, want := m.HandoffRepairRate, 0.0; got != want {
+		t.Fatalf("HandoffRepairRate = %v, want %v (m-1 must not count toward the denominator)", got, want)
+	}
+}

@@ -18,4 +18,4 @@ test-web:
 cover-web:
 	cd web/landing && npm run cover
 
-ci-web: install-web lint-web test-web build-site
+ci-web: install-web lint-web test-web cover-web build-site

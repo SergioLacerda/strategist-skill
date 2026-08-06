@@ -267,6 +267,26 @@ func TestSniperMaterializationHistoryPath(t *testing.T) {
 	}
 }
 
+func TestWriteSniperMaterializationLine_WriteErrorOnClosedFile(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "closed.jsonl")
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+
+	// writeSniperMaterializationLine has no lockFile call to fail first —
+	// unlike appendRouteDecisionLineLocked/appendOutcomeLineLocked — so
+	// f.Write fails deterministically on the already-closed file.
+	err = writeSniperMaterializationLine(f, SniperMaterializationRecord{MissionID: "m-1", TargetPath: "docs/a.md"})
+	if err == nil {
+		t.Fatal("expected error writing to a closed file, got nil")
+	}
+}
+
 func TestReadRecentSniperMaterializations_MissingFileReturnsNilNil(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "never-created.jsonl")

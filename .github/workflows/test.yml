@@ -48,6 +48,17 @@ jobs:
       - name: Local CI test gates
         run: make ci-test
 
+      - name: Publish test-style report to job summary
+        if: always()
+        run: |
+          {
+            echo "### Test Style Report"
+            echo
+            echo '```'
+            make test-report
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
   security:
     runs-on: ubuntu-latest
     timeout-minutes: 10

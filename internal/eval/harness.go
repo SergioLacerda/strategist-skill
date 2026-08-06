@@ -29,6 +29,10 @@ func RunScenario(s Scenario) ScenarioResult {
 		runSlotWriteScopeScenario(s, &res)
 	case TargetArtifactCheck:
 		runArtifactCheckScenario(s, &res)
+	case TargetChestGrade:
+		runChestGradeScenario(s, &res)
+	case TargetJewelTrust:
+		runJewelTrustScenario(s, &res)
 	default:
 		res.Violations = append(res.Violations, Violation{Message: fmt.Sprintf("unknown target %q", s.Input.Target)})
 	}
@@ -114,6 +118,37 @@ func runSlotWriteScopeScenario(s Scenario, res *ScenarioResult) {
 	attemptedPath := paramString(p, "attempted_path")
 
 	err := domain.ValidateSlotWrite(scope, attemptedPath)
+	actualStatus, actualReason := "allowed", ""
+	if err != nil {
+		actualStatus, actualReason = "blocked", err.Error()
+	}
+	checkStatusAndReason(res, actualStatus, actualReason, s.Expected)
+}
+
+func runChestGradeScenario(s Scenario, res *ScenarioResult) {
+	p := s.Input.Params
+	chestID := paramString(p, "chest_id")
+	grade := domain.ChestGrade{
+		SourceGrade:          paramString(p, "source_grade"),
+		ReuseValue:           paramString(p, "reuse_value"),
+		ImplementationStatus: paramString(p, "implementation_status"),
+	}
+
+	err := domain.ValidateChestGrade(chestID, grade)
+	actualStatus, actualReason := "allowed", ""
+	if err != nil {
+		actualStatus, actualReason = "blocked", err.Error()
+	}
+	checkStatusAndReason(res, actualStatus, actualReason, s.Expected)
+}
+
+func runJewelTrustScenario(s Scenario, res *ScenarioResult) {
+	p := s.Input.Params
+	jewelID := paramString(p, "jewel_id")
+	jewelTrust := paramString(p, "jewel_trust")
+	chestTrustTier := paramString(p, "chest_trust_tier")
+
+	err := domain.ValidateJewelTrust(jewelID, jewelTrust, chestTrustTier)
 	actualStatus, actualReason := "allowed", ""
 	if err != nil {
 		actualStatus, actualReason = "blocked", err.Error()

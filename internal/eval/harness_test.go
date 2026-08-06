@@ -74,6 +74,78 @@ func TestRunScenario_SlotWriteScope(t *testing.T) {
 	}
 }
 
+func TestRunScenario_ChestGrade_Allowed(t *testing.T) {
+	res := RunScenario(Scenario{
+		ID: "chest-grade-allowed",
+		Input: Input{
+			Target: TargetChestGrade,
+			Params: map[string]any{
+				"chest_id":              "runbooks",
+				"source_grade":          "A",
+				"reuse_value":           "high",
+				"implementation_status": "implemented",
+			},
+		},
+		Expected: Expected{Status: "allowed"},
+	})
+	if !res.Passed {
+		t.Fatalf("expected pass, got violations: %+v", res.Violations)
+	}
+}
+
+func TestRunScenario_ChestGrade_Blocked(t *testing.T) {
+	res := RunScenario(Scenario{
+		ID: "chest-grade-blocked",
+		Input: Input{
+			Target: TargetChestGrade,
+			Params: map[string]any{
+				"chest_id":     "runbooks",
+				"source_grade": "Z",
+			},
+		},
+		Expected: Expected{Status: "blocked", Reason: "must be one of A, B, C"},
+	})
+	if !res.Passed {
+		t.Fatalf("expected pass, got violations: %+v", res.Violations)
+	}
+}
+
+func TestRunScenario_JewelTrust_Allowed(t *testing.T) {
+	res := RunScenario(Scenario{
+		ID: "jewel-trust-allowed",
+		Input: Input{
+			Target: TargetJewelTrust,
+			Params: map[string]any{
+				"jewel_id":         "jewel-001",
+				"jewel_trust":      "T2",
+				"chest_trust_tier": "T2",
+			},
+		},
+		Expected: Expected{Status: "allowed"},
+	})
+	if !res.Passed {
+		t.Fatalf("expected pass, got violations: %+v", res.Violations)
+	}
+}
+
+func TestRunScenario_JewelTrust_Blocked(t *testing.T) {
+	res := RunScenario(Scenario{
+		ID: "jewel-trust-blocked",
+		Input: Input{
+			Target: TargetJewelTrust,
+			Params: map[string]any{
+				"jewel_id":         "jewel-002",
+				"jewel_trust":      "T0",
+				"chest_trust_tier": "T2",
+			},
+		},
+		Expected: Expected{Status: "blocked", Reason: "exceeds parent chest's trust tier"},
+	})
+	if !res.Passed {
+		t.Fatalf("expected pass, got violations: %+v", res.Violations)
+	}
+}
+
 func TestRunScenario_ScopeFilter(t *testing.T) {
 	res := RunScenario(Scenario{
 		ID: "sf-pass",

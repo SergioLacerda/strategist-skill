@@ -280,11 +280,43 @@ func TestTreasureChestRenderers_ClosedStdoutErrors(t *testing.T) {
 		Score:      treasure.JewelScore{Value: 10, Reasons: []string{"reason"}},
 	}
 
+	p := treasure.Potion{
+		ID:         "potion-1",
+		ChestID:    "runbooks",
+		RunbookRef: "docs/runbooks/sample.md",
+		WhenToUse:  "when sample breaks",
+		Trust:      "T2",
+		Status:     "proposed",
+	}
+
 	withClosedStdout(t, func() {
 		require.Error(t, renderItemTable([]itemRow{jewelToItemRow(j)}, "empty", "treasure-chest items list"))
 		require.Error(t, renderItemJSON([]itemRow{jewelToItemRow(j)}, "treasure-chest items list"))
 		require.Error(t, renderJewelShowTable(j))
 		require.Error(t, renderJewelShowJSON(j))
+		require.Error(t, renderPotionShowTable(p))
+		require.Error(t, renderPotionShowJSON(p))
+	})
+}
+
+func TestTreasureChestTableRenderers_ClosedStdoutErrors(t *testing.T) {
+	rows := []treasure.StatusRow{{ID: "c1", Path: "docs", Freshness: "unknown"}}
+
+	withClosedStdout(t, func() {
+		require.Error(t, renderTreasureChestTable("/tmp/root", rows, nil, nil, nil, 0))
+	})
+}
+
+func TestPrintCheckSuccess_ClosedStdoutErrors(t *testing.T) {
+	providers := map[string]string{"discovery": "brainstorming", "refinement": "openspec-explore", "execution": "sniper"}
+	resolutions := map[string]slotResolution{
+		"discovery":  {kind: slotResolutionSkillProvider},
+		"refinement": {kind: slotResolutionSkillProvider},
+		"execution":  {kind: slotResolutionNativeRole},
+	}
+
+	withClosedStdout(t, func() {
+		require.Error(t, printCheckSuccess("/tmp/root", providers, resolutions, "epic"))
 	})
 }
 

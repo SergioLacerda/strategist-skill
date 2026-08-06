@@ -58,3 +58,15 @@ func TestMetricsScoutCmd_ReadsRecordedHistory(t *testing.T) {
 func TestMetricsScoutCmd_IsHumanStatusCommand(t *testing.T) {
 	assert.True(t, isHumanStatusCommand(metricsScoutCmd))
 }
+
+func TestRunMetricsScout_ReadRouteDecisionsErrorPropagates(t *testing.T) {
+	dir := t.TempDir()
+	blocker := filepath.Join(dir, "blocker")
+	require.NoError(t, os.WriteFile(blocker, []byte("x"), 0o644))
+	setMetricsScoutRoot(t, blocker)
+	t.Cleanup(func() { setMetricsScoutRoot(t, "") })
+
+	err := runMetricsScout(metricsScoutCmd, metricsScoutOptions{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "metrics scout")
+}

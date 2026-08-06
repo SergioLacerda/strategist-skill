@@ -138,3 +138,65 @@ func TestReadRouteDecisions_IntegratesWithComputeRouteMetrics(t *testing.T) {
 		t.Fatalf("FallbackRate = %v, want 1.0", m.FallbackRate)
 	}
 }
+
+func TestRouteDecisionHistoryPath(t *testing.T) {
+	t.Parallel()
+	got := RouteDecisionHistoryPath("/tmp/strategist-root")
+	want := filepath.Join("/tmp/strategist-root", "memory", "route-decisions.jsonl")
+	if got != want {
+		t.Fatalf("unexpected path: got %q, want %q", got, want)
+	}
+}
+
+func TestOutcomeHistoryPath(t *testing.T) {
+	t.Parallel()
+	got := OutcomeHistoryPath("/tmp/strategist-root")
+	want := filepath.Join("/tmp/strategist-root", "memory", "outcomes.jsonl")
+	if got != want {
+		t.Fatalf("unexpected path: got %q, want %q", got, want)
+	}
+}
+
+func TestReadRouteDecisions_OpenError(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	blocker := filepath.Join(dir, "blocker")
+	if err := os.WriteFile(blocker, []byte("x"), 0o644); err != nil {
+		t.Fatalf("write blocker: %v", err)
+	}
+	// blocker is a file, so opening blocker/route-decisions.jsonl fails with
+	// ENOTDIR — a real error distinct from os.ErrNotExist.
+	path := filepath.Join(blocker, "route-decisions.jsonl")
+
+	if _, err := ReadRouteDecisions(path); err == nil {
+		t.Fatal("expected error when parent path is not a directory, got nil")
+	}
+}
+
+func TestReadOutcomes_OpenError(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	blocker := filepath.Join(dir, "blocker")
+	if err := os.WriteFile(blocker, []byte("x"), 0o644); err != nil {
+		t.Fatalf("write blocker: %v", err)
+	}
+	path := filepath.Join(blocker, "outcomes.jsonl")
+
+	if _, err := ReadOutcomes(path); err == nil {
+		t.Fatal("expected error when parent path is not a directory, got nil")
+	}
+}
+
+func TestParseRouteDecisionLine_EmptyLine(t *testing.T) {
+	t.Parallel()
+	if _, ok := parseRouteDecisionLine(nil); ok {
+		t.Fatal("expected ok=false for an empty line")
+	}
+}
+
+func TestParseOutcomeLine_EmptyLine(t *testing.T) {
+	t.Parallel()
+	if _, ok := parseOutcomeLine(nil); ok {
+		t.Fatal("expected ok=false for an empty line")
+	}
+}
