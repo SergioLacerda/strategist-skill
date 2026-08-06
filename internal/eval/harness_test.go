@@ -188,6 +188,52 @@ func TestRunScenario_ArtifactCheck(t *testing.T) {
 	}
 }
 
+func TestRunScenario_CriticalHitTrigger_Allowed(t *testing.T) {
+	res := RunScenario(Scenario{
+		ID: "critical-hit-trigger-allowed",
+		Input: Input{
+			Target: TargetCriticalHitTrigger,
+			Params: map[string]any{
+				"mode":        "plain",
+				"task_type":   "analysis_move",
+				"source_path": ".analysis/pending/foo-analysis.md",
+				"target_path": ".analysis/archived/foo-analysis.md",
+				"base_path":   ".analysis",
+				"file_types":  []any{".md"},
+				"risk_level":  "low",
+				"file_count":  3,
+			},
+		},
+		Expected: Expected{Status: "allowed"},
+	})
+	if !res.Passed {
+		t.Fatalf("expected pass, got violations: %+v", res.Violations)
+	}
+}
+
+func TestRunScenario_CriticalHitTrigger_Blocked(t *testing.T) {
+	res := RunScenario(Scenario{
+		ID: "critical-hit-trigger-blocked",
+		Input: Input{
+			Target: TargetCriticalHitTrigger,
+			Params: map[string]any{
+				"mode":        "plain",
+				"task_type":   "analysis_move",
+				"source_path": ".analysis/pending/foo-analysis.md",
+				"target_path": ".analysis/archived/foo-analysis.md",
+				"base_path":   ".analysis",
+				"file_types":  []any{".md"},
+				"risk_level":  "low",
+				"file_count":  6,
+			},
+		},
+		Expected: Expected{Status: "blocked", Reason: "conditions_not_met"},
+	})
+	if !res.Passed {
+		t.Fatalf("expected pass, got violations: %+v", res.Violations)
+	}
+}
+
 func TestRunScenario_UnknownTarget(t *testing.T) {
 	res := RunScenario(Scenario{ID: "unknown", Input: Input{Target: "nonsense"}})
 	if res.Passed {

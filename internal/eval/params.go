@@ -16,6 +16,17 @@ func paramBool(params map[string]any, key string) bool {
 	return v
 }
 
+func paramInt(params map[string]any, key string) int {
+	switch v := params[key].(type) {
+	case int:
+		return v
+	case float64:
+		return int(v)
+	default:
+		return 0
+	}
+}
+
 func paramStringSlice(params map[string]any, key string) []string {
 	raw, ok := params[key].([]any)
 	if !ok {

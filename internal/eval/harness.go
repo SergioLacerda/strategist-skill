@@ -33,6 +33,8 @@ func RunScenario(s Scenario) ScenarioResult {
 		runChestGradeScenario(s, &res)
 	case TargetJewelTrust:
 		runJewelTrustScenario(s, &res)
+	case TargetCriticalHitTrigger:
+		runCriticalHitTriggerScenario(s, &res)
 	default:
 		res.Violations = append(res.Violations, Violation{Message: fmt.Sprintf("unknown target %q", s.Input.Target)})
 	}
@@ -154,6 +156,31 @@ func runJewelTrustScenario(s Scenario, res *ScenarioResult) {
 		actualStatus, actualReason = "blocked", err.Error()
 	}
 	checkStatusAndReason(res, actualStatus, actualReason, s.Expected)
+}
+
+func runCriticalHitTriggerScenario(s Scenario, res *ScenarioResult) {
+	p := s.Input.Params
+	evidence := domain.CriticalHitEvidence{
+		Mode:                           domain.CriticalHitMode(paramString(p, "mode")),
+		TaskType:                       paramString(p, "task_type"),
+		SourcePath:                     paramString(p, "source_path"),
+		TargetPath:                     paramString(p, "target_path"),
+		BasePath:                       paramString(p, "base_path"),
+		FileTypes:                      paramStringSlice(p, "file_types"),
+		RiskLevel:                      paramString(p, "risk_level"),
+		FileCount:                      paramInt(p, "file_count"),
+		ExplicitCompletionClaim:        paramBool(p, "explicit_completion_claim"),
+		EvidenceSummaryPresent:         paramBool(p, "evidence_summary_present"),
+		CompletionInferredFromCodeOnly: paramBool(p, "completion_inferred_from_code_only"),
+		PartialImplementationWithDeclaredResiduals: paramBool(p, "partial_implementation_with_declared_residuals"),
+	}
+
+	decision := domain.EvaluateCriticalHit(evidence)
+	actualStatus := "blocked"
+	if decision.Allowed {
+		actualStatus = "allowed"
+	}
+	checkStatusAndReason(res, actualStatus, decision.Reason, s.Expected)
 }
 
 func checkStatusAndReason(res *ScenarioResult, actualStatus, actualReason string, expected Expected) {
