@@ -54,6 +54,63 @@ chests: []
 	assert.Contains(t, err.Error(), "cluster_tag_weight")
 }
 
+func TestLoadScoringPolicy_ParseErrorPropagates(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "treasure-chests.yaml"), []byte(": not: valid: yaml:\n"), 0o644))
+
+	_, err := LoadScoringPolicy(dir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "parse treasure-chests.yaml")
+}
+
+func TestLoadScoringPolicy_ReadErrorPropagates(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("permission tests do not apply when running as root")
+	}
+	dir := t.TempDir()
+	require.NoError(t, os.Chmod(dir, 0o000))
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+
+	_, err := LoadScoringPolicy(dir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "read treasure-chests.yaml")
+}
+
+func TestValidateScoringPolicy_EachNegativeWeightErrors(t *testing.T) {
+	t.Parallel()
+	base := DefaultScoringPolicy()
+
+	cases := []struct {
+		name   string
+		mutate func(*ScoringPolicy)
+	}{
+		{"cluster_base", func(p *ScoringPolicy) { p.ClusterBase = -1 }},
+		{"cluster_mission_weight", func(p *ScoringPolicy) { p.ClusterMissionWeight = -1 }},
+		{"gap_base", func(p *ScoringPolicy) { p.GapBase = -1 }},
+		{"gap_mission_weight", func(p *ScoringPolicy) { p.GapMissionWeight = -1 }},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			p := base
+			tc.mutate(&p)
+			err := ValidateScoringPolicy(p)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tc.name)
+		})
+	}
+}
+
+func TestValidateScoringPolicy_MaxScoreOutOfRangeErrors(t *testing.T) {
+	t.Parallel()
+	p := DefaultScoringPolicy()
+	p.MaxScore = 0
+	require.Error(t, ValidateScoringPolicy(p))
+
+	p.MaxScore = 101
+	require.Error(t, ValidateScoringPolicy(p))
+}
+
 func TestLoadIndexed_NotExist(t *testing.T) {
 	t.Parallel()
 	result, err := LoadIndexed(t.TempDir())

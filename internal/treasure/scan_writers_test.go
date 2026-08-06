@@ -67,6 +67,41 @@ func TestWriteGapFile_WriteError(t *testing.T) {
 	assert.Contains(t, err.Error(), "write")
 }
 
+func TestWriteClusterFile_Success(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, WriteClusterFile(dir, Cluster{ID: "cluster-1", CitedMissions: []string{"m1"}, Tags: []string{"t1"}}))
+	raw, err := os.ReadFile(filepath.Join(dir, "cluster-1.md"))
+	require.NoError(t, err)
+	assert.Contains(t, string(raw), "id: cluster-1")
+}
+
+func TestWriteScanOutputs_ClusterFileWriteErrorAfterRegenerate(t *testing.T) {
+	t.Parallel()
+	parent := t.TempDir()
+	clustersDir := filepath.Join(parent, "clusters")
+	gapsDir := filepath.Join(parent, "gaps")
+	// A cluster ID containing a path separator makes the per-file WriteFile
+	// fail (intermediate dir doesn't exist) even though RegenerateDir itself
+	// succeeds — exercising WriteScanOutputs' propagation from
+	// writeClusterFiles, not RegenerateDir's own error branch.
+	badCluster := Cluster{ID: "sub/cluster-x"}
+
+	err := WriteScanOutputs(clustersDir, []Cluster{badCluster}, gapsDir, nil)
+	require.Error(t, err)
+}
+
+func TestWriteScanOutputs_GapFileWriteErrorAfterRegenerate(t *testing.T) {
+	t.Parallel()
+	parent := t.TempDir()
+	clustersDir := filepath.Join(parent, "clusters")
+	gapsDir := filepath.Join(parent, "gaps")
+	badGap := Gap{ID: "sub/gap-x", Status: "sq_pending"}
+
+	err := WriteScanOutputs(clustersDir, nil, gapsDir, []Gap{badGap})
+	require.Error(t, err)
+}
+
 func TestWriteGapFile_WithDependencies(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()

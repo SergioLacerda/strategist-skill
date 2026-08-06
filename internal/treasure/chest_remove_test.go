@@ -130,6 +130,55 @@ func TestLoadRemoveDocs_JewelsAbsentIsNotError(t *testing.T) {
 	assert.Empty(t, docs.Jewels)
 }
 
+func TestLoadRemoveDocs_JewelManifestReadErrorPropagates(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	p := NewChestPaths(dir)
+	require.NoError(t, os.WriteFile(p.Active, []byte("mode: epic\n"), 0o644))
+	require.NoError(t, os.WriteFile(p.Governed, []byte("chests: []\n"), 0o644))
+	require.NoError(t, os.WriteFile(p.Index, []byte("sources: []\n"), 0o644))
+	require.NoError(t, os.WriteFile(p.Jewels, []byte(": not: valid: yaml:\n"), 0o644))
+
+	_, err := LoadRemoveDocs(p)
+	require.Error(t, err)
+}
+
+// --- WriteRemoveDocs ---
+
+func TestWriteRemoveDocs_WritesAllDocs(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	p := NewChestPaths(dir)
+	docs := ChestDocSet{
+		Active:   mustParseDoc(t, "mode: epic\n"),
+		Governed: mustParseDoc(t, "chests: []\n"),
+		Index:    mustParseDoc(t, "sources: []\n"),
+		Jewels:   []YAMLWrite{{Path: p.Jewels, Doc: mustParseDoc(t, "jewels: []\n")}},
+	}
+
+	written, err := WriteRemoveDocs(p, docs)
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{p.Active, p.Governed, p.Index, p.Jewels}, written)
+	for _, path := range []string{p.Active, p.Governed, p.Index, p.Jewels} {
+		assert.FileExists(t, path)
+	}
+}
+
+func TestWriteRemoveDocs_ErrorPropagates(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	p := NewChestPaths(dir)
+	p.Active = dir // a directory instead of a file path — atomic rename fails
+	docs := ChestDocSet{
+		Active:   mustParseDoc(t, "mode: epic\n"),
+		Governed: mustParseDoc(t, "chests: []\n"),
+		Index:    mustParseDoc(t, "sources: []\n"),
+	}
+
+	_, err := WriteRemoveDocs(p, docs)
+	require.Error(t, err)
+}
+
 // --- ResolveRemoveTarget ---
 
 func TestResolveRemoveTarget_NoPathReturnsIDFlag(t *testing.T) {
@@ -176,6 +225,24 @@ treasure_chests:
 	_, err := ResolveRemoveTarget(dir, "/no/such/path", "")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no chest registered")
+}
+
+func TestResolveRemoveTarget_SingleMatchConflictingIDFlagIsAmbiguous(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte(`
+mode: epic
+treasure_chests:
+  - id: source
+    path: .sdd/source
+    scope: all
+`), 0o644))
+
+	_, err := ResolveRemoveTarget(dir, ".sdd/source", "other-id")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "ambiguous")
+	assert.Contains(t, err.Error(), "source")
+	assert.Contains(t, err.Error(), "other-id")
 }
 
 func TestResolveRemoveTarget_MultipleMatchesIsAmbiguous(t *testing.T) {

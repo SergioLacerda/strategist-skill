@@ -146,3 +146,85 @@ func TestMigrateLegacyJewelStatusInDocument_NoJewelsSequenceIsNoop(t *testing.T)
 	require.NoError(t, err)
 	assert.Equal(t, 0, migrated)
 }
+
+func TestMigrateLegacyJewelStatusInDocument_NonMappingRootErrors(t *testing.T) {
+	t.Parallel()
+	doc := mustParseDoc(t, "- a\n- b\n")
+	_, err := MigrateLegacyJewelStatusInDocument(doc)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not a mapping")
+}
+
+func TestMigrateLegacyJewelStatusInDocument_NonMappingEntrySkipped(t *testing.T) {
+	t.Parallel()
+	doc := mustParseDoc(t, "schema_version: \"1\"\njewels:\n  - plain-scalar\n")
+	migrated, err := MigrateLegacyJewelStatusInDocument(doc)
+	require.NoError(t, err)
+	assert.Equal(t, 0, migrated)
+}
+
+func TestReadOrCreateJewelsDocument_CreatesNewWhenMissing(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "jewels.yaml")
+
+	doc, err := ReadOrCreateJewelsDocument(path)
+	require.NoError(t, err)
+	mapping, err := RootMapping(doc)
+	require.NoError(t, err)
+	assert.NotNil(t, MappingValue(mapping, "jewels"))
+}
+
+func TestReadOrCreateJewelsDocument_ReturnsExisting(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	writeJewelsFileT(t, dir, oneJewelYAML)
+
+	doc, err := ReadOrCreateJewelsDocument(filepath.Join(dir, "jewels.yaml"))
+	require.NoError(t, err)
+	mapping, err := RootMapping(doc)
+	require.NoError(t, err)
+	seq := MappingValue(mapping, "jewels")
+	require.Len(t, seq.Content, 1)
+}
+
+func TestReadOrCreateJewelsDocument_OtherErrorPropagates(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	// A directory at the manifest path fails with something other than
+	// os.ErrNotExist (EISDIR), forcing the propagated-error branch.
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "jewels.yaml"), 0o755))
+
+	_, err := ReadOrCreateJewelsDocument(filepath.Join(dir, "jewels.yaml"))
+	require.Error(t, err)
+}
+
+func TestFindJewelDocument_ReadErrorPropagates(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	writeJewelsFileT(t, dir, ": not: valid: yaml:\n")
+
+	_, _, _, err := FindJewelDocument(dir, "jewel-1")
+	require.Error(t, err)
+	assert.NotErrorIs(t, err, ErrJewelNotFound)
+}
+
+func TestMigrateLegacyJewelStatus_ManifestPathsErrorPropagates(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("permission tests do not apply when running as root")
+	}
+	dir := t.TempDir()
+	require.NoError(t, os.Chmod(dir, 0o000))
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+
+	_, err := MigrateLegacyJewelStatus(dir)
+	require.Error(t, err)
+}
+
+func TestMigrateLegacyJewelStatus_ReadErrorPropagates(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	writeJewelsFileT(t, dir, ": not: valid: yaml:\n")
+
+	_, err := MigrateLegacyJewelStatus(dir)
+	require.Error(t, err)
+}

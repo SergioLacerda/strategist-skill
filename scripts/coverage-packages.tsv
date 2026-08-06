@@ -17,4 +17,4 @@ internal/validate	90	widened cover-gate scope (T3) - measured 90.4%
 internal/eval	50	below 90% baseline (measured 56.9%) - needs dedicated coverage follow-up, see riposte-backlog.md SQ-005
 internal/integrity	85	below 90% baseline (measured 88.2%) - needs small coverage follow-up, see riposte-backlog.md SQ-005
 internal/runtimefs	65	below 90% baseline (measured 69.4%) - needs dedicated coverage follow-up, see riposte-backlog.md SQ-005
-internal/treasure	70	below 90% baseline (measured 74.5%) - needs dedicated coverage follow-up, see riposte-backlog.md SQ-005
+internal/treasure	95	raised from 74.5% (SQ-005) to 88.2% (20260805-treasure-coverage-phase2) to 95.5% (20260806-treasure-coverage-95-plan) - measured 95.5%

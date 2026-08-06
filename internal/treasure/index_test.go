@@ -123,3 +123,48 @@ func TestExistingJewelIDs_CollectsAcrossManifest(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, got["jewel-1"])
 }
+
+func TestExistingJewelIDs_ReadErrorPropagates(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	writeJewelsFileT(t, dir, ": not: valid: yaml:\n")
+
+	_, err := ExistingJewelIDs(dir)
+	require.Error(t, err)
+}
+
+func TestExistingJewelIDs_NonMappingRootErrors(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	writeJewelsFileT(t, dir, "- a\n- b\n")
+
+	_, err := ExistingJewelIDs(dir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not a mapping")
+}
+
+func TestWriteProposedJewels_ExistingIDsErrorPropagates(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	writeJewelsFileT(t, dir, ": not: valid: yaml:\n")
+	candidates := []Jewel{{ID: "jewel-x", ChestID: "source"}}
+
+	_, _, err := WriteProposedJewels(dir, candidates)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "index proposed jewels")
+}
+
+func TestAppendCandidateToPartition_ReadOrCreateErrorPropagates(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	// JewelPartitionPath(dir, "source") -> dir/jewels/source.yaml; make "jewels" a
+	// file instead of a directory so ReadOrCreateJewelsDocument's ReadYAMLNode call
+	// fails with something other than os.ErrNotExist (EISDIR/ENOTDIR), forcing the
+	// propagated-error branch instead of the create-new-document branch.
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "jewels"), []byte("not a dir"), 0o644))
+	candidates := []Jewel{{ID: "jewel-x", ChestID: "source"}}
+
+	_, _, err := WriteProposedJewels(dir, candidates)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "index proposed jewels")
+}

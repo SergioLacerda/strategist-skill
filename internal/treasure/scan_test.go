@@ -132,6 +132,97 @@ func TestScanMissions_MissingBaseDirsIsEmpty(t *testing.T) {
 	assert.Empty(t, got)
 }
 
+func TestScanMissions_ErrorPropagates(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("permission tests do not apply when running as root")
+	}
+	basePath := t.TempDir()
+	refined := filepath.Join(basePath, "refined")
+	require.NoError(t, os.MkdirAll(refined, 0o755))
+	require.NoError(t, os.Chmod(refined, 0o000))
+	t.Cleanup(func() { _ = os.Chmod(refined, 0o755) })
+
+	_, err := ScanMissions(basePath)
+	require.Error(t, err)
+}
+
+func TestScanMissionsTolerant_SortsMultipleMissions(t *testing.T) {
+	t.Parallel()
+	basePath := t.TempDir()
+	for _, id := range []string{"mission-b", "mission-a"} {
+		missionDir := filepath.Join(basePath, "refined", id)
+		require.NoError(t, os.MkdirAll(missionDir, 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(missionDir, "tasks.md"), []byte("## Task 1\n"), 0o644))
+	}
+
+	got, warnings, err := ScanMissionsTolerant(basePath)
+	require.NoError(t, err)
+	assert.Empty(t, warnings)
+	require.Len(t, got, 2)
+	assert.Equal(t, "mission-a", got[0].MissionID)
+	assert.Equal(t, "mission-b", got[1].MissionID)
+}
+
+func TestScanMissionsInDirTolerant_SkipsMalformedMissionAsWarning(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	goodDir := filepath.Join(dir, "mission-good")
+	require.NoError(t, os.MkdirAll(goodDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(goodDir, "tasks.md"), []byte("## Task 1\n"), 0o644))
+
+	badDir := filepath.Join(dir, "mission-bad")
+	require.NoError(t, os.MkdirAll(badDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(badDir, "tasks.md"),
+		[]byte("side_quests_approved:\n  : not: valID:\n"), 0o644))
+
+	missions, warnings, err := ScanMissionsInDirTolerant(dir)
+	require.NoError(t, err)
+	require.Len(t, missions, 1)
+	assert.Equal(t, "mission-good", missions[0].MissionID)
+	require.Len(t, warnings, 1)
+	assert.Contains(t, warnings[0].Path, "mission-bad")
+}
+
+func TestScanMissionDirEntry_SkipsNonDirEntries(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "stray-file.md"), nil, 0o644))
+
+	got, err := ScanMissionsInDir(dir)
+	require.NoError(t, err)
+	assert.Empty(t, got)
+}
+
+func TestScanMissionDirEntry_NoTasksFileIsNotError(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "empty-mission"), 0o755))
+
+	got, err := ScanMissionsInDir(dir)
+	require.NoError(t, err)
+	assert.Empty(t, got)
+}
+
+func TestRunScanPipeline_WriteScanOutputsErrorPropagates(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("permission tests do not apply when running as root")
+	}
+	root := t.TempDir()
+	basePath := filepath.Join(root, ".analysis")
+	missionDir := filepath.Join(basePath, "refined", "mission-a")
+	require.NoError(t, os.MkdirAll(missionDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(missionDir, "tasks.md"), []byte("## Task 1\n"), 0o644))
+
+	// Make "treasure" (WriteScanOutputs' parent dir) unwritable so it can't
+	// create the clusters/gaps subdirectories.
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "treasure"), 0o755))
+	require.NoError(t, os.Chmod(filepath.Join(root, "treasure"), 0o000))
+	t.Cleanup(func() { _ = os.Chmod(filepath.Join(root, "treasure"), 0o755) })
+
+	_, err := RunScanPipeline(root, basePath)
+	require.Error(t, err)
+}
+
 func TestScanMissionWarning_BuildsTasksPath(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()

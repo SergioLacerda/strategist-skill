@@ -49,6 +49,40 @@ func TestLoadCompiledIndex_CorruptGzip(t *testing.T) {
 	assert.Contains(t, err.Error(), "decompress")
 }
 
+func TestLoadCompiledIndex_OpenErrorPropagates(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("permission tests do not apply when running as root")
+	}
+	dir := t.TempDir()
+	compiledDir := filepath.Join(dir, ".compiled")
+	require.NoError(t, os.MkdirAll(compiledDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(compiledDir, ".index.gz"), []byte("x"), 0o644))
+	require.NoError(t, os.Chmod(compiledDir, 0o000))
+	t.Cleanup(func() { _ = os.Chmod(compiledDir, 0o755) })
+
+	_, _, err := LoadCompiledIndex(dir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "open .compiled/.index.gz")
+}
+
+func TestLoadCompiledIndex_DecodeErrorPropagates(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	path := filepath.Join(dir, ".compiled", ".index.gz")
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+	f, err := os.Create(path)
+	require.NoError(t, err)
+	gz := gzip.NewWriter(f)
+	_, err = gz.Write([]byte("not json"))
+	require.NoError(t, err)
+	require.NoError(t, gz.Close())
+	require.NoError(t, f.Close())
+
+	_, _, err = LoadCompiledIndex(dir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "decode .compiled/.index.gz")
+}
+
 func TestLoadCompiledIndex_Success(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()

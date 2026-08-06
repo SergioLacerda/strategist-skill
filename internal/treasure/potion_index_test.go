@@ -51,3 +51,61 @@ func TestWriteProposedPotions_EmptyCandidatesNoop(t *testing.T) {
 	assert.Equal(t, 0, written)
 	assert.Equal(t, 0, skipped)
 }
+
+func TestExistingPotionIDs_NoManifestsIsEmpty(t *testing.T) {
+	t.Parallel()
+	got, err := ExistingPotionIDs(t.TempDir())
+	require.NoError(t, err)
+	assert.Empty(t, got)
+}
+
+func TestExistingPotionIDs_CollectsAcrossManifest(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	writePotionsFileT(t, dir, onePotionYAML)
+
+	got, err := ExistingPotionIDs(dir)
+	require.NoError(t, err)
+	assert.True(t, got["potion-1"])
+}
+
+func TestExistingPotionIDs_ReadErrorPropagates(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	writePotionsFileT(t, dir, ": not: valid: yaml:\n")
+
+	_, err := ExistingPotionIDs(dir)
+	require.Error(t, err)
+}
+
+func TestExistingPotionIDs_NonMappingRootErrors(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	writePotionsFileT(t, dir, "- a\n- b\n")
+
+	_, err := ExistingPotionIDs(dir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not a mapping")
+}
+
+func TestWriteProposedPotions_ExistingIDsErrorPropagates(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	writePotionsFileT(t, dir, ": not: valid: yaml:\n")
+	candidates := []Potion{{ID: "potion-x", ChestID: "runbooks"}}
+
+	_, _, err := WriteProposedPotions(dir, candidates)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "index proposed potions")
+}
+
+func TestAppendCandidateToPotionPartition_ReadOrCreateErrorPropagates(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "potions"), []byte("not a dir"), 0o644))
+	candidates := []Potion{{ID: "potion-x", ChestID: "runbooks"}}
+
+	_, _, err := WriteProposedPotions(dir, candidates)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "index proposed potions")
+}

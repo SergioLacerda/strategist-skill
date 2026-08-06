@@ -59,6 +59,20 @@ func TestFilterJewels_ChestAndStatus(t *testing.T) {
 	assert.Equal(t, "jewel-b", got[0].ID)
 }
 
+func TestProposedJewels(t *testing.T) {
+	t.Parallel()
+	jewels := map[string][]Jewel{
+		"source": {
+			{ID: "jewel-1", ChestID: "source", Status: domain.JewelStatusProposed},
+			{ID: "jewel-2", ChestID: "source", Status: domain.JewelStatusAccepted},
+		},
+	}
+
+	got := ProposedJewels(jewels)
+	require.Len(t, got, 1)
+	assert.Equal(t, "jewel-1", got[0].ID)
+}
+
 func TestFindJewel(t *testing.T) {
 	t.Parallel()
 	jewels := map[string][]Jewel{

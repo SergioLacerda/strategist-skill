@@ -151,3 +151,15 @@ func TestMergeChestRows_FullMerge(t *testing.T) {
 	assert.False(t, idxOnly.Configured)
 	assert.True(t, idxOnly.Indexed)
 }
+
+func TestHistoricalCount(t *testing.T) {
+	t.Parallel()
+	rows := []StatusRow{
+		{ID: "a", TrustTier: "T0"},
+		{ID: "b", TrustTier: "T1"},
+		{ID: "c", TrustTier: "T2"},
+		{ID: "d", TrustTier: "T3"},
+	}
+	assert.Equal(t, 2, HistoricalCount(rows))
+	assert.Equal(t, 0, HistoricalCount(nil))
+}

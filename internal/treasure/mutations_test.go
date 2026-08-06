@@ -114,6 +114,36 @@ func TestCheckChestIDAvailable_LoadActiveChestsError(t *testing.T) {
 	assert.NotEmpty(t, err.Error())
 }
 
+func TestCheckChestIDAvailable_AlreadyRegisteredErrors(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte(`
+mode: epic
+treasure_chests:
+  - id: source
+    path: .sdd/source
+    scope: all
+`), 0o644))
+
+	err := CheckChestIDAvailable(dir, "source")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "already registered")
+}
+
+func TestCheckChestIDAvailable_AvailableIsNoError(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte(`
+mode: epic
+treasure_chests:
+  - id: source
+    path: .sdd/source
+    scope: all
+`), 0o644))
+
+	require.NoError(t, CheckChestIDAvailable(dir, "new-id"))
+}
+
 // --- ParseTagsFlag ---
 
 func TestParseTagsFlag_AllPartsBlankAfterTrim(t *testing.T) {

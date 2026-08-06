@@ -56,3 +56,46 @@ func TestPromotePotion_NotFound(t *testing.T) {
 	require.Error(t, err)
 	assert.ErrorIs(t, err, ErrPotionNotFound)
 }
+
+func TestFindPotionDocument_ReadErrorPropagates(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	writePotionsFileT(t, dir, ": not: valid: yaml:\n")
+
+	_, _, _, err := FindPotionDocument(dir, "potion-1")
+	require.Error(t, err)
+	assert.NotErrorIs(t, err, ErrPotionNotFound)
+}
+
+func TestReadOrCreatePotionsDocument_CreatesNewWhenMissing(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "potions.yaml")
+
+	doc, err := ReadOrCreatePotionsDocument(path)
+	require.NoError(t, err)
+	mapping, err := RootMapping(doc)
+	require.NoError(t, err)
+	assert.NotNil(t, MappingValue(mapping, "potions"))
+}
+
+func TestReadOrCreatePotionsDocument_ReturnsExisting(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	writePotionsFileT(t, dir, onePotionYAML)
+
+	doc, err := ReadOrCreatePotionsDocument(filepath.Join(dir, "potions.yaml"))
+	require.NoError(t, err)
+	mapping, err := RootMapping(doc)
+	require.NoError(t, err)
+	seq := MappingValue(mapping, "potions")
+	require.Len(t, seq.Content, 1)
+}
+
+func TestReadOrCreatePotionsDocument_OtherErrorPropagates(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "potions.yaml"), 0o755))
+
+	_, err := ReadOrCreatePotionsDocument(filepath.Join(dir, "potions.yaml"))
+	require.Error(t, err)
+}

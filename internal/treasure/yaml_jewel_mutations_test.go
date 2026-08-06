@@ -8,6 +8,22 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+func TestFindJewelEntry_NoJewelsDeclaredErrors(t *testing.T) {
+	t.Parallel()
+	doc := mustParseDoc(t, "schema_version: \"1\"\n")
+	_, err := FindJewelEntry(doc, "jewel-1")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no jewels declared")
+}
+
+func TestFindJewelEntry_NotFoundErrors(t *testing.T) {
+	t.Parallel()
+	doc := mustParseDoc(t, "jewels:\n  - id: jewel-1\n")
+	_, err := FindJewelEntry(doc, "does-not-exist")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not found")
+}
+
 func TestMarkJewelsDeprecatedForChest_RootMappingError(t *testing.T) {
 	t.Parallel()
 	doc := mustParseDoc(t, "- a\n")

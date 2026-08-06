@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
 func TestWriteYAMLNodes_WriteFailure(t *testing.T) {
@@ -113,4 +114,86 @@ func TestWriteFileAtomicUsesRequestedMode(t *testing.T) {
 	info, err := os.Stat(path)
 	require.NoError(t, err)
 	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+}
+
+func TestWriteTempSibling_CreateTempErrorPropagates(t *testing.T) {
+	t.Parallel()
+	// Parent dir doesn't exist — os.CreateTemp fails immediately.
+	badPath := filepath.Join(t.TempDir(), "missing-subdir", "out.yaml")
+
+	_, err := writeTempSibling(badPath, []byte("a: 1\n"), 0o644)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "create temp")
+}
+
+func TestWriteFileAtomicWithRename_TempSiblingErrorPropagates(t *testing.T) {
+	t.Parallel()
+	badPath := filepath.Join(t.TempDir(), "missing-subdir", "out.yaml")
+
+	err := writeFileAtomicWithRename(badPath, []byte("a: 1\n"), 0o644, os.Rename)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "create temp")
+}
+
+func TestWriteProposedItemDocs_MkdirAllErrorPropagates(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	// A regular file at the target subdir path blocks os.MkdirAll.
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "jewels"), []byte("not a dir"), 0o644))
+
+	err := writeProposedItemDocs(dir, "jewels", map[string]*yaml.Node{}, "index proposed jewels")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "index proposed jewels")
+	assert.Contains(t, err.Error(), "create jewels/")
+}
+
+func TestWriteProposedItemDocs_SortsMultipleWritesByPath(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	docA := mustParseDoc(t, "a: 1\n")
+	docB := mustParseDoc(t, "b: 1\n")
+	docs := map[string]*yaml.Node{
+		filepath.Join(dir, "sub", "z.yaml"): docA,
+		filepath.Join(dir, "sub", "a.yaml"): docB,
+	}
+
+	err := writeProposedItemDocs(dir, "sub", docs, "index proposed")
+	require.NoError(t, err)
+	assert.FileExists(t, filepath.Join(dir, "sub", "a.yaml"))
+	assert.FileExists(t, filepath.Join(dir, "sub", "z.yaml"))
+}
+
+func TestWriteProposedItemDocs_WriteYAMLNodesErrorPropagates(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	// A directory at the target path makes WriteYAMLNodes' atomic rename fail.
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "sub", "bad.yaml"), 0o755))
+	docs := map[string]*yaml.Node{
+		filepath.Join(dir, "sub", "bad.yaml"): mustParseDoc(t, "a: 1\n"),
+	}
+
+	err := writeProposedItemDocs(dir, "sub", docs, "index proposed")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "index proposed")
+}
+
+func TestStageYAMLWrite_EncodeErrorPropagates(t *testing.T) {
+	t.Parallel()
+	bad := &yaml.Node{Kind: yaml.AliasNode, Alias: nil}
+	path := filepath.Join(t.TempDir(), "out.yaml")
+
+	_, err := stageYAMLWrite(YAMLWrite{Path: path, Doc: bad})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "write "+path)
+}
+
+func TestEncodeYAMLNode_EncodeErrorPropagates(t *testing.T) {
+	t.Parallel()
+	// An alias node with no target is rejected by yaml.v3's encoder
+	// ("alias value must not be empty"), forcing the Encode error branch.
+	bad := &yaml.Node{Kind: yaml.AliasNode, Alias: nil}
+
+	_, err := encodeYAMLNode(bad)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "encode")
 }
