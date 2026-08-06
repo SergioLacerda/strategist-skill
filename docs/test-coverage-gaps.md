@@ -1,6 +1,6 @@
 # Test Coverage Gaps — Implementation Handoff
 
-**Status:** Proposed (documentation only — no code/CI/test changes applied)
+**Status:** T2–T6 applied (verified 2026-08-06); T7 remains a future-mission candidate
 **Source mission:** `.analysis/refined/20260805-test-coverage-mapping-and-offline-eval/`
 **Related:** `docs/test-styles.md`, `docs/adr/0016-test-framework-v2.md`,
 `docs/adr/0017-eval-fake-provider.md`, `.analysis/todo/riposte-backlog.md`
@@ -8,11 +8,11 @@
 This doc is a single starting point for implementing the test-coverage/offline
 trait-verification gaps identified in the source mission above. It intentionally
 does not repeat `docs/test-styles.md`'s taxonomy or the two prior missions'
-own analysis — read those first for background. Every item below is
+own analysis — read those first for background. Every item below was
 `implementation_handoff`: source, CI-config, or test-file mutation that
-Strategist's default Sniper contract does not perform. Each item is written to
-be actionable by a separate coding task/session, without needing to re-read
-the full mission.
+Strategist's default Sniper contract does not perform. T2–T6 were applied
+manually outside Strategist; each item's "How" section below still documents
+the applied approach for reference.
 
 Do not introduce a `FakeProvider`/mock-LLM/`domain.SkillProvider`-shaped
 interface while implementing any item below — that path was evaluated and
@@ -21,11 +21,11 @@ below seems to need one, stop and re-read those ADRs before proceeding.
 
 | ID | Status | One-line objective |
 |---|---|---|
-| T2 | not_started | Publish `make test-report`'s table to `$GITHUB_STEP_SUMMARY` |
-| T3 | not_started | Widen `cover-gate`'s 90% scope from 6 packages to `./internal/...` |
-| T4 | not_started | Wire `cover-web` into `ci-web` |
-| T5 | not_started | New `internal/eval` Target for treasure-chest grading functions |
-| T6 | not_started | New Gherkin feature for Critical Hit plain-move vs closure-move |
+| T2 | done — `.github/workflows/test.yml` publishes `make test-report` to `$GITHUB_STEP_SUMMARY` (non-blocking, `if: always()`) | Publish `make test-report`'s table to `$GITHUB_STEP_SUMMARY` |
+| T3 | done — `scripts/coverage-packages.tsv` covers all of `./internal/...` (except `internal/testutil`, which has no test files); `make cover-gate` passes | Widen `cover-gate`'s 90% scope from 6 packages to `./internal/...` |
+| T4 | done — `make/web.mk`'s `ci-web` target depends on `cover-web` | Wire `cover-web` into `ci-web` |
+| T5 | done — `tests/evals/scenarios/treasure_chest_grading_test.go` + `internal/eval` dispatch Target; `go test -race -tags=eval ./tests/evals/...` passes (15/15 scenarios) | New `internal/eval` Target for treasure-chest grading functions |
+| T6 | done — `tests/spec/specs/e2e-critical-hit-closure.feature` + Go helper; `go test -race -tags=spec ./tests/spec/...` passes (159/159 scenarios) | New Gherkin feature for Critical Hit plain-move vs closure-move |
 | T7 | not_started (future mission) | Extract a pure Critical Hit trigger/closure function |
 
 ---

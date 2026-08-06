@@ -1,6 +1,7 @@
 package treasure
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -97,4 +98,50 @@ func TestFilterRowsByScope_MixedRoster(t *testing.T) {
 		gotIDs = append(gotIDs, r.ID)
 	}
 	assert.ElementsMatch(t, []string{"runbooks", "discovery-notes"}, gotIDs)
+}
+
+func TestScanWarning_Error(t *testing.T) {
+	t.Parallel()
+	w := ScanWarning{Path: "refined/m1", Err: errors.New("boom")}
+	assert.Equal(t, "refined/m1: boom", w.Error())
+
+	wNoPath := ScanWarning{Err: errors.New("boom")}
+	assert.Equal(t, "boom", wNoPath.Error())
+}
+
+func TestScanMissions_ScansRefinedAndDone(t *testing.T) {
+	t.Parallel()
+	basePath := t.TempDir()
+	for _, sub := range []string{"refined", "done"} {
+		missionDir := filepath.Join(basePath, sub, "mission-"+sub)
+		require.NoError(t, os.MkdirAll(missionDir, 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(missionDir, "tasks.md"), []byte("## Task 1\n"), 0o644))
+	}
+
+	got, err := ScanMissions(basePath)
+	require.NoError(t, err)
+	require.Len(t, got, 2)
+	assert.Equal(t, "mission-done", got[0].MissionID)
+	assert.Equal(t, "mission-refined", got[1].MissionID)
+}
+
+func TestScanMissions_MissingBaseDirsIsEmpty(t *testing.T) {
+	t.Parallel()
+	got, err := ScanMissions(t.TempDir())
+	require.NoError(t, err)
+	assert.Empty(t, got)
+}
+
+func TestScanMissionWarning_BuildsTasksPath(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	missionDir := filepath.Join(dir, "mission-a")
+	require.NoError(t, os.MkdirAll(missionDir, 0o755))
+	dirEntries, err := os.ReadDir(dir)
+	require.NoError(t, err)
+	require.Len(t, dirEntries, 1)
+
+	w := scanMissionWarning(dir, dirEntries[0], errors.New("boom"))
+	assert.Equal(t, filepath.Join(dir, "mission-a", "tasks.md"), w.Path)
+	assert.ErrorContains(t, w.Err, "boom")
 }

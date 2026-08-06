@@ -7,9 +7,23 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 )
+
+// gzTempFile is the subset of *os.File that WriteGzJSON needs. createGzTempFile
+// exists only so tests can substitute a fault-injecting fake for the file's
+// own Close call — a plain *os.File.Close() on a regular local file has no
+// realistic black-box trigger (see runtimefs_test.go).
+type gzTempFile interface {
+	io.Writer
+	Close() error
+}
+
+var createGzTempFile = func(path string) (gzTempFile, error) {
+	return os.Create(path) //nolint:gosec // G304: caller owns path trust boundary
+}
 
 // Exists reports whether path exists, regardless of file type.
 func Exists(path string) bool {
@@ -48,7 +62,7 @@ func WriteGzJSON(path string, v any) error {
 	}
 
 	tmp := path + ".tmp"
-	f, err := os.Create(tmp) //nolint:gosec // G304: caller owns path trust boundary
+	f, err := createGzTempFile(tmp)
 	if err != nil {
 		return fmt.Errorf("create tmp %s: %w", tmp, err)
 	}
