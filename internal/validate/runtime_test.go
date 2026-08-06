@@ -210,3 +210,94 @@ discovery: scout
 	require.NotEmpty(t, errs)
 	assert.Contains(t, errs[0], "roles/slots.yaml")
 }
+
+func TestValidateActiveYAML_RealReadErrorOnDirectory(t *testing.T) {
+	dir := t.TempDir()
+	// The path itself is a directory: os.ReadFile fails with a real error
+	// distinct from os.IsNotExist.
+	err := ActiveYAML(dir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "read:")
+}
+
+func TestValidateActiveYAML_InvalidYAML(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "active.yaml")
+	require.NoError(t, os.WriteFile(path, []byte("mode: [not, a, scalar"), 0o644))
+	err := ActiveYAML(path)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid YAML")
+}
+
+func TestValidatePersonasDir_SkipsNonYAMLEntries(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "subdir"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "notes.txt"), []byte("ignore me"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "epic.yaml"), []byte(`
+id: epic
+tone_directive: precise
+phase_labels:
+  discovery: analysis
+  refinement: refinement
+  execution: execution
+diagnostics:
+  pipeline_header: "x"
+  bootstrap_origin: "x"
+`), 0o644))
+
+	errs, checks := PersonasDir(dir)
+	assert.Equal(t, 1, checks, "subdir/ and notes.txt must be skipped, only epic.yaml counted")
+	assert.Empty(t, errs)
+}
+
+func TestValidatePersonaFile_ReadError(t *testing.T) {
+	errs := validatePersonaFile(t.TempDir(), "does-not-exist.yaml")
+	require.Len(t, errs, 1)
+	assert.Contains(t, errs[0], "read:")
+}
+
+func TestValidateRolesDir_SkipsNonYAMLEntries(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "subdir"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "notes.txt"), []byte("ignore me"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "default.yaml"), []byte(`
+discovery: brainstorming
+refinement: archivist
+execution: caveman
+`), 0o644))
+
+	errs, checks := RolesDir(dir)
+	assert.Equal(t, 1, checks, "subdir/ and notes.txt must be skipped, only default.yaml counted")
+	assert.Empty(t, errs)
+}
+
+func TestReadRoleShape_InvalidYAML(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "role.yaml")
+	require.NoError(t, os.WriteFile(path, []byte("role: [not\n"), 0o644))
+
+	_, _, err := readRoleShape(path)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid YAML")
+}
+
+func TestValidateRoleDefinition_UnmarshalError(t *testing.T) {
+	// shape["role"] is present (a list, not a scalar) so validateRoleFile
+	// routes to validateRoleDefinition — but domain.RoleConfig.Role is a
+	// string, so unmarshaling raw into RoleConfig fails, distinct from the
+	// generic map[string]any unmarshal readRoleShape already performed.
+	raw := []byte("role: [scout, ranger]\n")
+	errs := validateRoleDefinition("role.yaml", raw)
+	require.Len(t, errs, 1)
+	assert.Contains(t, errs[0], "invalid YAML")
+}
+
+func TestValidateRoleSlotMap_UnmarshalError(t *testing.T) {
+	// No "role" key, so validateRoleFile routes to validateRoleSlotMap —
+	// but domain.RoleSlotMap is map[string]string, and this value is a
+	// list, so the typed unmarshal fails.
+	raw := []byte("discovery: [scout, ranger]\n")
+	errs := validateRoleSlotMap("slots.yaml", raw)
+	require.Len(t, errs, 1)
+	assert.Contains(t, errs[0], "invalid YAML")
+}

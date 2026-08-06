@@ -377,3 +377,53 @@ func TestWriteLock_AtomicWriteFailureLeavesNoTempFileAndNoPartialLock(t *testing
 	_, statErr := os.Stat(lockPath)
 	assert.True(t, os.IsNotExist(statErr))
 }
+
+func TestWriteLock_HashFileErrorWhenConfigIsDirectory(t *testing.T) {
+	dir := t.TempDir()
+	// configPath is a directory, not a file: os.Stat succeeds (directories
+	// exist), but the internal hashFile/runtimefs.ReadSHA256 call's
+	// os.ReadFile fails with a real (EISDIR) error, distinct from
+	// os.ErrNotExist.
+	configPath := filepath.Join(dir, "active.yaml")
+	require.NoError(t, os.Mkdir(configPath, 0o755))
+	lockPath := filepath.Join(dir, ".config.lock")
+
+	err := integrity.WriteLock(configPath, lockPath)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "hash config")
+}
+
+func TestCheck_HashFileErrorWhenConfigBecomesDirectory(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "active.yaml")
+	lockPath := filepath.Join(dir, ".config.lock")
+	require.NoError(t, os.WriteFile(configPath, []byte("mode: epic\n"), 0o644))
+	require.NoError(t, integrity.WriteLock(configPath, lockPath))
+
+	// Replace the config file with a directory of the same name after the
+	// lock (with a sealed SHA256) was written — Check's hash-comparison
+	// path now hits a real read error instead of a hash mismatch.
+	require.NoError(t, os.Remove(configPath))
+	require.NoError(t, os.Mkdir(configPath, 0o755))
+
+	_, err := integrity.Check(configPath, lockPath)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "hash config")
+}
+
+func TestWriteLock_RenameFailsWhenLockPathIsDirectory(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "active.yaml")
+	require.NoError(t, os.WriteFile(configPath, []byte("mode: epic\n"), 0o644))
+
+	// lockPath is an existing directory: the temp file is created and
+	// written successfully, but the final os.Rename onto an existing
+	// directory fails — same technique already proven for
+	// internal/telemetry's SaveCheckpoint (TestSaveCheckpoint_RenameFailsWhenPathIsDirectory).
+	lockPath := filepath.Join(dir, "lock-dir")
+	require.NoError(t, os.Mkdir(lockPath, 0o755))
+
+	err := integrity.WriteLock(configPath, lockPath)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "write lock")
+}

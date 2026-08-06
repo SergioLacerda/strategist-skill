@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
@@ -76,4 +79,101 @@ func TestWriteGzJSONCleansTempFileOnEncodeError(t *testing.T) {
 	require.Error(t, err)
 	assert.NoFileExists(t, path)
 	assert.NoFileExists(t, path+".tmp")
+}
+
+func TestReadSHA256_RealErrorOnDirectory(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	_, exists, err := runtimefs.ReadSHA256(dir)
+	require.Error(t, err)
+	assert.False(t, exists)
+}
+
+func TestWriteFile_MkdirAllFailsWhenParentIsFile(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	blocker := filepath.Join(dir, "blocker")
+	require.NoError(t, os.WriteFile(blocker, []byte("x"), 0o644))
+
+	err := runtimefs.WriteFile(filepath.Join(blocker, "nested", "file.txt"), []byte("content"), 0o644)
+	require.Error(t, err)
+}
+
+func TestWriteFile_WriteFailsWhenPathIsDirectory(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	target := filepath.Join(dir, "is-a-dir")
+	require.NoError(t, os.Mkdir(target, 0o755))
+
+	err := runtimefs.WriteFile(target, []byte("content"), 0o644)
+	require.Error(t, err)
+}
+
+func TestWriteGzJSON_MkdirAllFailsWhenParentIsFile(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	blocker := filepath.Join(dir, "blocker")
+	require.NoError(t, os.WriteFile(blocker, []byte("x"), 0o644))
+
+	err := runtimefs.WriteGzJSON(filepath.Join(blocker, "nested", "artifact.gz"), map[string]string{"k": "v"})
+	require.Error(t, err)
+}
+
+func TestWriteGzJSON_CreateFailsWhenTempPathIsDirectory(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	target := filepath.Join(dir, "artifact.gz")
+	// The tmp path (target + ".tmp") is pre-occupied by a directory, so
+	// os.Create(tmp) fails — target itself stays a normal, nonexistent path.
+	require.NoError(t, os.Mkdir(target+".tmp", 0o755))
+
+	err := runtimefs.WriteGzJSON(target, map[string]string{"k": "v"})
+	require.Error(t, err)
+}
+
+// TestWriteGzJSON_GzipCloseWriteErrorPropagates triggers gz.Close's flush
+// write to fail deterministically via RLIMIT_FSIZE — the file grows past
+// the process file-size limit partway through the gzip footer flush.
+// Deliberately not t.Parallel(): it mutates a process-wide rlimit, restored
+// via t.Cleanup before returning; Go's testing framework runs all
+// non-parallel top-level tests to completion before any t.Parallel() test
+// in this file begins its body, so this cannot race with its siblings.
+func TestWriteGzJSON_GzipCloseWriteErrorPropagates(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("RLIMIT_FSIZE behavior is Linux-specific")
+	}
+	var original syscall.Rlimit
+	require.NoError(t, syscall.Getrlimit(syscall.RLIMIT_FSIZE, &original))
+	t.Cleanup(func() {
+		require.NoError(t, syscall.Setrlimit(syscall.RLIMIT_FSIZE, &original))
+	})
+	require.NoError(t, syscall.Setrlimit(syscall.RLIMIT_FSIZE, &syscall.Rlimit{Cur: 100, Max: original.Max}))
+
+	path := filepath.Join(t.TempDir(), "artifact.gz")
+	err := runtimefs.WriteGzJSON(path, map[string]string{"k": strings.Repeat("x", 100_000)})
+	require.Error(t, err)
+	assert.NoFileExists(t, path)
+	assert.NoFileExists(t, path+".tmp")
+}
+
+func TestWriteGzJSON_RenameFailsWhenPathIsDirectory(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	// path is an existing directory: the tmp file (path+".tmp") is created
+	// and encoded successfully, but the final os.Rename onto an existing
+	// directory fails — same technique already proven for
+	// internal/telemetry's SaveCheckpoint and internal/integrity's
+	// WriteLock in this same coverage-improvement pass.
+	target := filepath.Join(dir, "is-a-dir")
+	require.NoError(t, os.Mkdir(target, 0o755))
+
+	err := runtimefs.WriteGzJSON(target, map[string]string{"k": "v"})
+	require.Error(t, err)
+	assert.NoFileExists(t, target+".tmp")
 }
