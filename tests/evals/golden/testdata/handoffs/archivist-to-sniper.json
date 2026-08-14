@@ -1,0 +1,116 @@
+{
+  "description": "Handoff contract from Archivist (refinement) to Sniper (execution). These fields are REQUIRED in the refinement artifact, regardless of format. The implementing skill decides the file format.\n",
+  "required_fields": {
+    "acceptance_checks": {
+      "description": "Conditions that must be true for the mission to be considered complete",
+      "required": true,
+      "type": "list"
+    },
+    "analysis_artifact_path": {
+      "required": true,
+      "type": "string"
+    },
+    "approved_scope": {
+      "fields": {
+        "allowed": {
+          "description": "Glob patterns of paths Sniper may touch",
+          "type": "list"
+        },
+        "forbidden": {
+          "description": "Glob patterns Sniper must not touch",
+          "type": "list"
+        }
+      },
+      "required": true,
+      "type": "object"
+    },
+    "design_path": {
+      "required": true,
+      "type": "string"
+    },
+    "implementation_plan": {
+      "field_descriptions": {
+        "task_type": "Archivist classification of this item. Only documentation_target items are Sniper-executable. implementation_handoff items (code/hook/config/test mutation) must never be presented as Sniper-executable work — see 04-refinement.md and 06-execution.md.\n"
+      },
+      "item_fields": {
+        "id": "string",
+        "objective": "string",
+        "scope": "list",
+        "task_type": "string",
+        "validation": "list"
+      },
+      "item_values": {
+        "task_type": [
+          "documentation_target",
+          "analysis_artifact",
+          "implementation_handoff",
+          "out_of_scope"
+        ]
+      },
+      "required": true,
+      "type": "list"
+    },
+    "mission_id": {
+      "required": true,
+      "type": "string"
+    },
+    "proposal_path": {
+      "required": true,
+      "type": "string"
+    },
+    "side_quests_approved": {
+      "description": "Side quest strategy decisions made by Archivist — surfaced at approval gate",
+      "field_descriptions": {
+        "dependencies": "list of other SQ ids or task ids this depends on",
+        "description": "brief description of the side quest",
+        "estimated_impact": "scope of effort if executed",
+        "id": "SQ-NNN format — matches ranger handoff id",
+        "status": "sq_pending when gate opens; sq_backlog if user does not select it"
+      },
+      "item_fields": [
+        "id",
+        "description",
+        "strategy",
+        "estimated_impact",
+        "dependencies",
+        "status"
+      ],
+      "item_values": {
+        "estimated_impact": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "status": [
+          "sq_pending",
+          "sq_backlog",
+          "sq_done"
+        ],
+        "strategy": [
+          "execute_together",
+          "execute_later",
+          "separate_mission",
+          "discard"
+        ]
+      },
+      "required": false,
+      "type": "list"
+    },
+    "stop_conditions": {
+      "description": "Conditions under which Sniper must stop and report, not decide",
+      "known_values": [
+        "scope_drift",
+        "missing_file",
+        "validation_failure",
+        "ambiguity"
+      ],
+      "required": true,
+      "type": "list"
+    },
+    "tasks_path": {
+      "required": true,
+      "type": "string"
+    }
+  },
+  "schema_version": "1"
+}

@@ -1,0 +1,188 @@
+{
+  "confidence_threshold": 0.65,
+  "conflict_behavior": "When two aliases for mutually exclusive values of the same field are detected in the same prompt, stop and ask the user to resolve the conflict before proceeding. Do NOT apply defaults when a conflict is detected.\n",
+  "description": "Defines recognized constraint fields and their accepted values with aliases. Used by prompt-intake to extract mission_contract.planning_rules from the user prompt.\n",
+  "fields": {
+    "delivery_strategy": {
+      "default": "sprint",
+      "description": "How the mission should be delivered across time.",
+      "values": {
+        "sprint": {
+          "aliases": [
+            "por sprint",
+            "faseado",
+            "iterativo",
+            "incremental",
+            "fase a fase",
+            "entrega faseada"
+          ],
+          "description": "Deliver in phases; backward-compatible changes preferred."
+        },
+        "total": {
+          "aliases": [
+            "big bang",
+            "sem prazo",
+            "entrega total",
+            "tudo de uma vez",
+            "de uma vez",
+            "sem fases"
+          ],
+          "description": "Full delivery in one go; legacy compatibility not required."
+        }
+      }
+    },
+    "execution_intent": {
+      "default": "review_only",
+      "description": "Whether the user intends to execute the plan after review.",
+      "values": {
+        "execute": {
+          "aliases": [
+            "executar",
+            "implementar",
+            "aplicar",
+            "rodar",
+            "fazer"
+          ],
+          "description": "User intends to execute the plan after approval."
+        },
+        "review_only": {
+          "aliases": [
+            "só análise",
+            "sem execução",
+            "apenas revisar",
+            "só plano",
+            "não executar"
+          ],
+          "description": "User wants discovery and refinement only; will decide on execution later."
+        }
+      }
+    },
+    "legacy_compatibility": {
+      "default": "required",
+      "description": "Whether the output must maintain compatibility with existing interfaces.",
+      "values": {
+        "not_required": {
+          "aliases": [
+            "sem retrocompatibilidade",
+            "pode quebrar",
+            "breaking ok",
+            "clean break"
+          ],
+          "description": "Breaking changes are acceptable."
+        },
+        "required": {
+          "aliases": [
+            "retrocompatível",
+            "backwards compatible",
+            "sem breaking changes",
+            "não pode quebrar"
+          ],
+          "description": "Existing consumers must not break."
+        }
+      }
+    },
+    "token_strategy": {
+      "description": "Execution mode inferred by prompt-intake from task_type and uncertainty signals. Never set by the user. Determines context budget, chest limits, and triage gate.\n",
+      "fields": {
+        "context_policy": {
+          "fields": {
+            "max_excerpt_tokens": 450,
+            "max_sources": {
+              "balanced": 4,
+              "deep": 8,
+              "lean": 2
+            },
+            "require_source_justification": true
+          }
+        },
+        "mode": {
+          "default": "balanced",
+          "description": "lean = simple bug/task, balanced = common feature (default), deep = ambiguous/architecture\n",
+          "values": [
+            "lean",
+            "balanced",
+            "deep"
+          ]
+        },
+        "pressure_score": {
+          "description": "Sum of uncertainty signals triggered. Auditable.",
+          "type": "integer"
+        },
+        "signals_triggered": {
+          "description": "Which signal rules fired during inference.",
+          "type": "list"
+        },
+        "triage_gate": {
+          "fields": {
+            "blocked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "blocking_question": {
+              "description": "Present only when blocked=true. One question, highest-priority missing item.",
+              "type": "string"
+            }
+          }
+        },
+        "uncertainty_level": {
+          "default": "medium",
+          "values": [
+            "low",
+            "medium",
+            "high"
+          ]
+        }
+      },
+      "inferred": true
+    },
+    "urgency": {
+      "default": "normal",
+      "description": "Mission urgency — affects prioritization and quality trade-offs.",
+      "values": {
+        "deferred": {
+          "aliases": [
+            "pode esperar",
+            "baixa prioridade",
+            "deferred",
+            "depois",
+            "sem prioridade"
+          ],
+          "description": "Low priority. Can wait for other missions."
+        },
+        "normal": {
+          "aliases": [
+            "sem pressa",
+            "quando puder",
+            "normal",
+            "sem urgência"
+          ],
+          "description": "No specific deadline. Quality takes priority over speed."
+        },
+        "urgent": {
+          "aliases": [
+            "urgente",
+            "para ontem",
+            "precisa hoje",
+            "precisa essa semana",
+            "deadline curto",
+            "com prazo",
+            "tem prazo"
+          ],
+          "description": "Short deadline. Controlled quality trade-offs are acceptable."
+        }
+      }
+    }
+  },
+  "mission_id": {
+    "collision_policy": "If a mission artifact already exists for the generated id, append a numeric suffix: -2, -3, etc. (e.g., 20260602-refactor-2).\n",
+    "description": "Unique identifier for each mission instance. Generated by prompt-intake from the current date and a slug derived from the user prompt.\n",
+    "format": "YYYYMMDD-<slug>",
+    "known_limitation": "mission_id generation is serial — parallel missions running simultaneously in the same workspace are not addressed by this scheme.\n",
+    "slug_rules": {
+      "description": "Lowercase alphanumeric and hyphens only; truncated to 20 chars.",
+      "max_chars": 20,
+      "pattern": "[a-z0-9-]"
+    }
+  },
+  "schema_version": "1"
+}

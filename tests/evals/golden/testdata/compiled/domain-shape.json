@@ -1,0 +1,37 @@
+{
+  "contract": {
+    "error_conditions": [
+      {
+        "behavior": "string",
+        "code": "string",
+        "trigger": "string"
+      }
+    ],
+    "idempotent": "boolean",
+    "input": [
+      {
+        "description": "string",
+        "name": "string",
+        "required": "boolean",
+        "type": "string"
+      }
+    ],
+    "known_limitation": "string",
+    "output": [
+      {
+        "description": "string",
+        "name": "string",
+        "schema": "string",
+        "type": "string"
+      }
+    ],
+    "owner": "string",
+    "requires": [
+      "string"
+    ],
+    "write_scope": "string"
+  },
+  "description": "string",
+  "module": "string",
+  "type": "string"
+}

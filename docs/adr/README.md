@@ -17,6 +17,7 @@ lookup by topic fast without moving any file.
 | [0001](0001-compiled-artifacts-gzip-json.md) | Compiled artifacts in gzip+JSON with fast path |
 | [0002](0002-defaults-embutidos-embed-fs.md) | Defaults embedded in the binary via embed.FS |
 | [0007](0007-structural-compression-agent-contract.md) | Structural Compression Pipeline — Agent Contract vs Go Runtime |
+| [0025](0025-generated-documentation-anti-drift.md) | Generated Documentation and AI-First Anti-Drift |
 
 ### Pipeline & Governance Mechanics
 
@@ -29,6 +30,7 @@ lookup by topic fast without moving any file.
 | [0009](0009-learning-pipeline-semantic-retrieval-deferred.md) | Semantic Retrieval Deferred In Learning Pipeline |
 | [0010](0010-ordered-contracts-and-mission-observability.md) | Ordered contracts and mission observability |
 | [0015](0015-adr-index-by-theme-not-subfolders.md) | ADR index by theme instead of physical subfolders |
+| [0024](0024-pluggable-governance-and-telemetry.md) | Pluggable Governance and AI-First Telemetry |
 
 ### Knowledge & Jewels
 
@@ -55,6 +57,7 @@ lookup by topic fast without moving any file.
 | [0020](0020-promptfoo-ci-adapter.md) | Promptfoo Adapter: Formalized Content, No CI Wiring |
 | [0021](0021-eval-cli-subcommand.md) | `strategist eval run`: Wrap `go test`, One Flexible Subcommand |
 | [0022](0022-treasure-scan-sq-block-bug.md) | `eval harvest --all`: Tolerant Scan, No Parser Change |
+| [0026](0026-deterministic-golden-testing.md) | Deterministic Golden Testing for Generated Artifacts |
 
 ### Project & Tooling
 

@@ -1,0 +1,17 @@
+{
+  "auxiliary_tools_allowed": [
+    "writing-plans"
+  ],
+  "category": "discovery",
+  "description": "Configured discovery-slot metadata for Strategist (risk_score/provider-class only). Discovery invocation no longer resolves to this weapon for any subtype — all discovery always resolves to internal_skills/ranger (native role); see contracts/narrative/00-routing.md § Discovery Weapon Resolution by Subtype. A live invocation of this skill's own SKILL.md revealed structural incompatibilities with Ranger's autonomous single-shot contract (see .analysis/refined/20260728-ranger-drift-eval/), so this manifest no longer makes any discovery-subtype capability claim.\n",
+  "id": "brainstorming",
+  "provider_class": "rankeado",
+  "risk_score": "write_analysis",
+  "schema_version": "1",
+  "specialization_taxonomy": {
+    "canonical_role": "ranger",
+    "provider_class": "rankeado"
+  },
+  "status": "active",
+  "version": "1.0.0"
+}

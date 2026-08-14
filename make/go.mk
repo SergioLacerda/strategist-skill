@@ -1,6 +1,6 @@
 .PHONY: \
 	fmt fmt-check mod-tidy mod-check vet build \
-	test test-all integration spec eval eval-promptfoo \
+	test test-all integration spec eval eval-promptfoo golden \
 	validate-expanded validate-all \
 	test-lite test-telemetry-lite test-compile-cache test-domain-architecture \
 	bench validate-fixtures
@@ -37,6 +37,14 @@ spec:
 
 eval:
 	GOCACHE=$(GOCACHE) go test -race -tags=eval ./tests/evals/...
+
+# golden runs the deterministic artifact snapshot suite. Opt-in, not part of
+# test/test-all/ci-test/ci — the cli-help subtest alone costs ~90s (a cold
+# `go run ./cmd/strategist --help` per invocation). See
+# docs/adr/0026-deterministic-golden-testing.md. Use `-run <pattern>` or
+# `-update` (never in CI — see tests/evals/golden/golden.go) as needed.
+golden:
+	GOCACHE=$(GOCACHE) go test -race -tags=golden ./tests/evals/golden/...
 
 # eval-promptfoo runs the Promptfoo-based artifact quality review config. Standalone and
 # manual — not wired into eval/test/test-all/ci-test/ci (see DEC-2 in

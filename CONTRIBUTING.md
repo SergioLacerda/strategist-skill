@@ -5,12 +5,26 @@
 - Go matching `go.mod` (`go 1.26.4`, toolchain `go1.26.5`)
 - Node.js 22 (for `web/landing/` only, matching CI)
 - `make` (GNU Make)
+- A POSIX shell (Git Bash or WSL on Windows)
 
 Go versions are sourced from `go.mod`: `go 1.26.4` defines the language/module
 target and `toolchain go1.26.5` pins the patch toolchain used by CI-compatible
 local verification. Node is intentionally scoped to `web/landing/`; CI uses
 Node 22 and the landing package declares `engines.node >= 22.12.0`. Relax or bump
 these pins only through the toolchain policy in ADR-0014.
+
+**On Windows, run `make` from Git Bash or WSL — never directly from
+PowerShell or `cmd.exe`.** The Makefile and every `scripts/*.sh` gate it
+calls assume POSIX utilities (`which`, `awk`, `test`, pipes) that only exist
+inside a Git Bash/MSYS2/WSL shell, not in PowerShell/`cmd.exe` natively.
+
+**Troubleshooting:** if `make <target>` prints a wall of
+`CreateProcess(NULL, ...) failed` / "O sistema não pode encontrar o caminho
+especificado" (or the English equivalent, "The system cannot find the path
+specified") followed by `pipe: Bad file descriptor` and `Error 2`, you ran
+`make` from PowerShell or `cmd.exe` instead of Git Bash/WSL. Reopen your
+terminal as Git Bash (or `wsl`) and re-run the same command — no other
+change is needed.
 
 ## Setup
 

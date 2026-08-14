@@ -1,0 +1,26 @@
+Strategist — install, compile, and manage the Strategist skill for Claude agents.
+
+Usage:
+  strategist [command]
+
+Available Commands:
+  check           Pre-mission slot validation
+  check-stale     Check if a compiled artifact is stale (exit 0=fresh, exit 1=stale)
+  compile         Compile all skill artifacts from a .strategist/ root
+  completion      Generate the autocompletion script for the specified shell
+  dojo            Health-check scenarios for the Strategist skill
+  eval            Strategist eval harness utilities
+  handoff         Run and record Handoff Challenge verification
+  help            Help about any command
+  install         Install the Strategist skill into a target repository
+  metrics         Report metrics computed from Strategist's own runtime memory
+  runbook         Operate on the typed docs/runbooks/*.runbook.yaml corpus
+  sync-governance Sync .strategist/skill.yaml with active SDD governance mandates
+  treasure-chest  Show treasure chest runtime status and index health
+  validate        Validate the .strategist/ configuration tree
+  version         Print the strategist version
+
+Flags:
+  -h, --help   help for strategist
+
+Use "strategist [command] --help" for more information about a command.

@@ -1,0 +1,15 @@
+# Normalize line endings to LF in the repository and on checkout, regardless
+# of a contributor's local `core.autocrlf` setting. Without this file, Git
+# for Windows' common `core.autocrlf=true` default silently checks out every
+# text file (including .go, .sh, Makefile) as CRLF, which makes `gofmt -l .`
+# flag every single file and can break shell scripts under Git Bash.
+* text=auto eol=lf
+
+# Never normalize genuinely binary content.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary

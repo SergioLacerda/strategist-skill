@@ -11,7 +11,7 @@ install: build
 # The sync-embed target was removed in W7a (Option B): internal/embed/defaults/ is now
 # the single authoring source embedded directly via go:embed — there is nothing to sync.
 
-release-verify: ci-lint ci-test docs-governance-gate validate-fixtures release-reproducible-check
+release-verify: ci-lint ci-test docs-governance-gate validate-fixtures vuln-ci release-reproducible-check
 
 # release-check validates the GoReleaser config before a tag-triggered release.
 release-check:

@@ -1,0 +1,27 @@
+# `contracts:` below is a provenance hint, not a 1:1 index into
+# docs/generated/contract-index.md. Only `compile-domain` matches a real
+# `module:` from .strategist/contracts/machine/*.yaml verbatim. The rest
+# (handoff-archivist-to-sniper, discovery-provider, write-analysis,
+# telemetry-schema, cli-interface, intake-schema, runtime-defaults,
+# persona-rendering, adr-0016) are conceptual identifiers — the schema,
+# interface, or ADR a given golden's drift would actually affect — with no
+# corresponding machine-contract module. Keep both kinds here; do not assume
+# every entry resolves in contract-index.md. See
+# .analysis/refined/20260811-golden-suite-scope/design.md.
+golden:
+  - id: handoff-manifest
+    contracts: [handoff-archivist-to-sniper]
+  - id: provider-manifest
+    contracts: [discovery-provider, write-analysis]
+  - id: telemetry-attributes
+    contracts: [telemetry-schema]
+  - id: cli-help
+    contracts: [cli-interface]
+  - id: rendered-schema
+    contracts: [intake-schema]
+  - id: compiled-contract-shape
+    contracts: [compile-domain]
+  - id: default-config
+    contracts: [runtime-defaults]
+  - id: compiled-prompt
+    contracts: [persona-rendering, adr-0016]
