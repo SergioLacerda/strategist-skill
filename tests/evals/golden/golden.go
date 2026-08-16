@@ -30,6 +30,7 @@ var (
 // Mode selects how an artifact is canonicalized before comparison.
 type Mode string
 
+// Comparison modes for Canonicalize/Assert.
 const (
 	Exact      Mode = "exact"
 	Normalized Mode = "normalized"
@@ -49,19 +50,25 @@ func Assert(goldenPath string, actual []byte, mode Mode) error {
 		if err := os.MkdirAll(filepath.Dir(goldenPath), 0o755); err != nil {
 			return fmt.Errorf("golden: create directory: %w", err)
 		}
-		return os.WriteFile(goldenPath, canonical, 0o644)
+		if err := os.WriteFile(goldenPath, canonical, 0o644); err != nil {
+			return fmt.Errorf("golden: write %s: %w", goldenPath, err)
+		}
+		return nil
 	}
-	want, err := os.ReadFile(goldenPath)
+	want, err := os.ReadFile(goldenPath) //nolint:gosec // G304: goldenPath is a test-supplied fixture path, not user input
 	if err != nil {
 		return fmt.Errorf("golden: read %s: %w (run tests with -update to create it)", goldenPath, err)
 	}
 	if bytes.Equal(want, canonical) {
 		return nil
 	}
-	diff, _ := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
+	diff, err := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
 		A: difflib.SplitLines(string(want)), B: difflib.SplitLines(string(canonical)),
 		FromFile: goldenPath, ToFile: "actual", Context: 3,
 	})
+	if err != nil {
+		return fmt.Errorf("golden: compute diff for %s: %w", goldenPath, err)
+	}
 	return fmt.Errorf("golden: artifact drift detected\n%s", diff)
 }
 
@@ -142,7 +149,10 @@ func structuralShape(value any) any {
 		unique := map[string]any{}
 		for _, child := range current {
 			shape := structuralShape(child)
-			encoded, _ := json.Marshal(shape)
+			// shape is always a JSON-safe value built by this same function
+			// (string/bool/number/nil, or a map/slice of those) — Marshal
+			// cannot fail on it.
+			encoded, _ := json.Marshal(shape) //nolint:errcheck
 			key := string(encoded)
 			if _, exists := unique[key]; !exists {
 				unique[key] = shape

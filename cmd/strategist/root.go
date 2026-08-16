@@ -141,7 +141,6 @@ func init() {
 	}
 	rootCmd.AddCommand(installCmd)
 	rootCmd.AddCommand(compileCmd)
-	rootCmd.AddCommand(checkStaleCmd)
 	rootCmd.AddCommand(validateCmd)
 	rootCmd.AddCommand(syncGovernanceCmd)
 	rootCmd.AddCommand(versionCmd)

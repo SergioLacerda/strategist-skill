@@ -3,9 +3,7 @@ package main
 // Tests targeting specific uncovered branches to bring cmd/strategist above 90% coverage.
 
 import (
-	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -186,36 +184,4 @@ func TestCompileCmd_CompileAllError(t *testing.T) {
 	err := compileCmd.RunE(compileCmd, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "compile")
-}
-
-// --- check_stale: stale artifact subprocess test ---
-
-func TestCheckStaleCmd_StaleArtifactTriggersExit(t *testing.T) {
-	if os.Getenv("STRATEGIST_STALE_EXIT") == "1" {
-		// Subprocess branch: create a stale artifact and run check-stale against it.
-		dir := t.TempDir()
-		artifactPath := filepath.Join(dir, "artifact.gz")
-		// Write an artifact that references a source file with a future mtime.
-		// The source file doesn't exist → stale checker returns isStale=true.
-		// Actually: sources with non-zero timestamps where files don't exist → stale.
-		// Write the gz manually via testutil helpers is complex; instead use a
-		// source file with mtime newer than the artifact.
-		// Simplest: write artifact first, then create the source file (newer mtime).
-
-		// We'll import writeGzJSON logic inline.
-		// Alternatively: write the artifact as empty bytes to force a read error → not stale.
-		// Instead, we use the subprocess just to cover the assignment of strategistRoot.
-		_ = artifactPath
-		return
-	}
-	cmd := exec.Command(os.Args[0], "-test.run=TestCheckStaleCmd_StaleArtifactTriggersExit", "-test.v")
-	cmd.Env = append(os.Environ(), "STRATEGIST_STALE_EXIT=1")
-	err := cmd.Run()
-	var exitErr *exec.ExitError
-	if errors.As(err, &exitErr) {
-		// Any exit code is acceptable — what matters is the branch was reached.
-		t.Logf("subprocess exited with code %d (expected)", exitErr.ExitCode())
-		return
-	}
-	// Subprocess succeeded — that's also fine.
 }

@@ -2,6 +2,11 @@ module: critical-hit
 type: routing_decision
 version: "0.3"
 
+provenance:
+  adr_ref: null
+  lifecycle: active
+  owner: governance
+
 description: >
   Internal capability for workspace artifact management. When conditions are met,
   routes directly to Sniper for a file move without Ranger/Archivist phases.

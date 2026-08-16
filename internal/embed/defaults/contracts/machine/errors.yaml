@@ -186,7 +186,7 @@ invariants:
   - drift_index must exactly match the pattern ids in identity/drift-patterns.yaml
 
 # Known naming drift (2026-07-26, not fixed — renaming touches multiple call sites):
-# cmd/strategist/check.go emits reason=active_yaml_not_found / active_yaml_read_error /
+# internal/check/check.go emits reason=active_yaml_not_found / active_yaml_read_error /
 # active_yaml_invalid_yaml for what this catalog calls config_missing. cmd/strategist/root.go's
 # pre-command guard emits the literal error=not_installed for the same missing-file condition
 # instead. config_missing's enforced_by: agent reflects that no code path emits that exact token.

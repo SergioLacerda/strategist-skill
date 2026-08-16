@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -12,6 +13,16 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// errorWriter always fails writes, for exercising output-error branches.
+// internal/check carries its own duplicate (Go test helpers aren't
+// shareable across package boundaries) since the treasure-chest precedent
+// (20260806-treasure-chest-cmd-consolidation) established the pattern.
+type errorWriter struct{}
+
+func (errorWriter) Write([]byte) (int, error) {
+	return 0, errors.New("forced write failure")
+}
 
 const handoffVerifyChallengesYAML = `
 challenges:

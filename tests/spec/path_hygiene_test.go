@@ -230,7 +230,7 @@ func TestNoRootLevelProviderLookupInCode(t *testing.T) {
 
 	// These files contain the resolver logic; they must use the skills/ subdirectory.
 	files := []string{
-		filepath.Join(repoRoot(t), "cmd", "strategist", "check.go"),
+		filepath.Join(repoRoot(t), "internal", "check", "check.go"),
 		filepath.Join(repoRoot(t), "internal", "dojo", "checker.go"),
 	}
 

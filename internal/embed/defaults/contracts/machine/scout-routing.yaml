@@ -2,6 +2,11 @@ module: scout-routing
 type: routing_decision
 version: "0.1"
 
+provenance:
+  adr_ref: null
+  lifecycle: active
+  owner: governance
+
 description: >
   Machine contract for Scout, the internal pre-pipeline Intake Router. Scout
   classifies each request immediately after intake and selects one of

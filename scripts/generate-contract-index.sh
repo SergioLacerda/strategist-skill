@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 # Generates docs/generated/contract-index.md — a navigable table of every
-# Strategist machine contract (contrato | origem | tipo | testes | lifecycle),
-# per .analysis/strategist-ai-first-analysis/05-documentacao-gerada.md §8
-# ("contract provenance"). Complements, and does not replace,
+# Strategist machine contract (contract | type | origin | description | tests |
+# adr | lifecycle | owner), per
+# .analysis/strategist-ai-first-analysis/05-documentacao-gerada.md §8
+# ("contract provenance"). ADR/lifecycle/owner come from an optional
+# `provenance:` block per contract file — see
+# .analysis/refined/20260816-contract-provenance-catalog/design.md for the
+# incremental-adoption rationale. Complements, and does not replace,
 # scripts/check-contract-consistency.sh, which stays untouched and keeps
 # gating skill.yaml field presence — this script only renders an index.
 set -euo pipefail
@@ -26,8 +30,8 @@ python3 -c "import yaml" 2>/dev/null || python3 -m pip install --user pyyaml >/d
   echo "\`.strategist/contracts/narrative/\` for the human-readable narrative"
   echo "counterpart of each phase."
   echo
-  echo "| Contract | Type | Origin | Description | Tests (best-effort) |"
-  echo "|---|---|---|---|---|"
+  echo "| Contract | Type | Origin | Description | Tests (best-effort) | ADR | Lifecycle | Owner |"
+  echo "|---|---|---|---|---|---|---|---|"
   PYTHONIOENCODING=utf-8 python3 - "$CONTRACTS_DIR" <<'PY'
 import sys, os, glob, re, subprocess, yaml
 
@@ -64,7 +68,7 @@ for path in sorted(glob.glob(os.path.join(contracts_dir, "*.yaml").replace(os.se
         # signal (a real YAML syntax bug in the contract file), not something
         # to hide — but it must render as a valid table row.
         msg = " ".join(str(exc).split())
-        print(f"| `{name}` | — | `{path}` | **UNPARSEABLE**: {msg} | — |")
+        print(f"| `{name}` | — | `{path}` | **UNPARSEABLE**: {msg} | — | — | — | — |")
         continue
     module = str(doc.get("module", doc.get("id", name))).strip()
     ctype = str(doc.get("type", "—")).strip()
@@ -75,11 +79,21 @@ for path in sorted(glob.glob(os.path.join(contracts_dir, "*.yaml").replace(os.se
     desc = desc.replace("|", "\\|")
     tests = best_effort_tests(module)
     tests_cell = "; ".join(f"`{t}`" for t in tests[:3]) if tests else "—"
-    print(f"| `{module}` | {ctype} | `{path}` | {desc} | {tests_cell} |")
+    # provenance metadata is optional — added incrementally per contract
+    # (see .analysis/refined/20260816-contract-provenance-catalog/design.md);
+    # absence renders as "—", never as an error.
+    prov = doc.get("provenance") or {}
+    adr_ref = prov.get("adr_ref")
+    adr_cell = f"`{adr_ref}`" if adr_ref else "—"
+    lifecycle_cell = str(prov.get("lifecycle") or "—")
+    owner_cell = str(prov.get("owner") or "—")
+    print(f"| `{module}` | {ctype} | `{path}` | {desc} | {tests_cell} | {adr_cell} | {lifecycle_cell} | {owner_cell} |")
 PY
   echo
-  echo "Lifecycle: all contracts listed above are \`active\` unless superseded"
-  echo "by a newer ADR — see \`docs/adr/README.md\` for the ADR index."
+  echo "ADR / Lifecycle / Owner columns are populated only for contracts that"
+  echo "declare an optional \`provenance:\` block (\`adr_ref\`/\`lifecycle\`/\`owner\`)"
+  echo "— \`—\` means not yet declared, not \"none\". See"
+  echo "\`docs/adr/README.md\` for the ADR index."
 } >"$OUT"
 
 echo "generate-contract-index: wrote $OUT"

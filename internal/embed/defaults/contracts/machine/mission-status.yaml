@@ -2,6 +2,11 @@ module: mission-status
 type: canonical_vocabulary
 version: "1.0"
 
+provenance:
+  adr_ref: null
+  lifecycle: active
+  owner: governance
+
 description: >
   Single normative list of every value the `mission_status` frontmatter field (set on
   the mission analysis artifact — see schemas/handoff-ranger-to-archivist.schema.yaml)

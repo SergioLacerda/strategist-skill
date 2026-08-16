@@ -21,7 +21,7 @@ data, no scenario tests. It also found that scenario definitions live as Go
 struct literals inside `_test.go` files, not in a CLI-loadable data format
 — meaning `go test` is the only architecturally viable way to execute them
 without a much larger refactor. This codebase's only existing subprocess
-precedent is `git` (`cmd/strategist/check_f3_conflict.go`); nothing
+precedent is `git` (`internal/check/check_f3_conflict.go`); nothing
 previously shelled out to `go`.
 
 ## Decision

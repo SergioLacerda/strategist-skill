@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -90,10 +91,13 @@ func TestExecute_ErrorPath(t *testing.T) {
 }
 
 func TestPersistentPreRunE_HumanStatusCommandSuppressesBanner(t *testing.T) {
-	dir := minimalCheckRoot(t)
-	chdirForTest(t, dir)
+	// Any *cobra.Command named "check" exercises the human-status silent
+	// path via isHumanStatusCommand — the real internal/check.CheckCmd is
+	// not needed (this is root.go's own dispatch behavior under test, not
+	// check's).
+	chdirForTest(t, t.TempDir())
 
-	err := rootCmd.PersistentPreRunE(checkCmd, nil)
+	err := rootCmd.PersistentPreRunE(&cobra.Command{Use: "check"}, nil)
 	require.NoError(t, err)
 }
 

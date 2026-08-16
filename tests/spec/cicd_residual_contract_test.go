@@ -17,7 +17,7 @@ func TestReleaseVerificationAndConcurrencyContracts(t *testing.T) {
 	releaseWorkflow := readFile(t, filepath.Join(root, ".github", "workflows", "release.yml"))
 
 	for _, dep := range []string{
-		"release-verify: ci-lint ci-test docs-governance-gate validate-fixtures release-reproducible-check",
+		"release-verify: ci-lint ci-test docs-governance-gate validate-fixtures vuln-ci release-reproducible-check",
 		"quality-budget-gate: install-gocognit",
 		"release-reproducible-check:",
 	} {

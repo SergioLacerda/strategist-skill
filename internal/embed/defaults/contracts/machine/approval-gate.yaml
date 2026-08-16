@@ -8,6 +8,11 @@ description: >
   repository mutation attempted before acceptance must fail with
   `pipeline_bypass_detected`.
 
+provenance:
+  adr_ref: docs/adr/0003-approval-gate-obrigatorio.md
+  lifecycle: active
+  owner: governance
+
 contract:
   input:
     - name: artifact_path

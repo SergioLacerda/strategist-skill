@@ -2,14 +2,15 @@ package eval
 
 import (
 	"encoding/json"
-	"encoding/xml"
 	"fmt"
 	"io"
 	"time"
 )
 
+// ReportFormat selects the machine-readable encoding WriteReport produces.
 type ReportFormat string
 
+// Supported report formats.
 const (
 	ReportJSON  ReportFormat = "json"
 	ReportJUnit ReportFormat = "junit"
@@ -61,7 +62,10 @@ type jsonViolationReport struct {
 func writeJSONReport(w io.Writer, suite SuiteResult) error {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
-	return enc.Encode(toJSONSuiteReport(suite))
+	if err := enc.Encode(toJSONSuiteReport(suite)); err != nil {
+		return fmt.Errorf("eval report: encode json: %w", err)
+	}
+	return nil
 }
 
 func toJSONSuiteReport(suite SuiteResult) jsonSuiteReport {
@@ -100,98 +104,10 @@ func toJSONSuiteReport(suite SuiteResult) jsonSuiteReport {
 	return out
 }
 
-type junitTestSuites struct {
-	XMLName  xml.Name         `xml:"testsuites"`
-	Name     string           `xml:"name,attr"`
-	Tests    int              `xml:"tests,attr"`
-	Failures int              `xml:"failures,attr"`
-	Time     string           `xml:"time,attr"`
-	Suites   []junitTestSuite `xml:"testsuite"`
-}
-
-type junitTestSuite struct {
-	Name      string          `xml:"name,attr"`
-	Tests     int             `xml:"tests,attr"`
-	Failures  int             `xml:"failures,attr"`
-	Time      string          `xml:"time,attr"`
-	Timestamp string          `xml:"timestamp,attr,omitempty"`
-	Cases     []junitTestCase `xml:"testcase"`
-}
-
-type junitTestCase struct {
-	Classname string         `xml:"classname,attr"`
-	Name      string         `xml:"name,attr"`
-	Time      string         `xml:"time,attr"`
-	Failures  []junitFailure `xml:"failure,omitempty"`
-}
-
-type junitFailure struct {
-	Message string `xml:"message,attr"`
-	Type    string `xml:"type,attr,omitempty"`
-	Text    string `xml:",chardata"`
-}
-
-func writeJUnitReport(w io.Writer, suite SuiteResult) error {
-	report := toJUnitReport(suite)
-	if _, err := io.WriteString(w, xml.Header); err != nil {
-		return err
-	}
-	enc := xml.NewEncoder(w)
-	enc.Indent("", "  ")
-	if err := enc.Encode(report); err != nil {
-		return err
-	}
-	_, err := io.WriteString(w, "\n")
-	return err
-}
-
-func toJUnitReport(suite SuiteResult) junitTestSuites {
-	failures := 0
-	cases := make([]junitTestCase, 0, len(suite.Results))
-	for _, res := range suite.Results {
-		tc := junitTestCase{
-			Classname: suite.SuiteID,
-			Name:      res.ScenarioID,
-			Time:      secondsString(res.Duration),
-			Failures:  make([]junitFailure, 0, len(res.Violations)),
-		}
-		for _, v := range res.Violations {
-			failures++
-			tc.Failures = append(tc.Failures, junitFailure{
-				Message: v.Message,
-				Type:    string(v.AssertionType),
-				Text:    formatViolation(v),
-			})
-		}
-		cases = append(cases, tc)
-	}
-	return junitTestSuites{
-		Name:     suite.SuiteID,
-		Tests:    len(suite.Results),
-		Failures: failures,
-		Time:     secondsString(suite.Duration),
-		Suites: []junitTestSuite{{
-			Name:      suite.SuiteID,
-			Tests:     len(suite.Results),
-			Failures:  failures,
-			Time:      secondsString(suite.Duration),
-			Timestamp: formatReportTime(suite.StartedAt),
-			Cases:     cases,
-		}},
-	}
-}
-
-func formatViolation(v Violation) string {
-	return fmt.Sprintf("expected: %s\nactual: %s", v.Expected, v.Actual)
-}
-
+// formatReportTime is shared by both report formats — see reporter_junit.go.
 func formatReportTime(t time.Time) string {
 	if t.IsZero() {
 		return ""
 	}
 	return t.UTC().Format(time.RFC3339Nano)
-}
-
-func secondsString(d time.Duration) string {
-	return fmt.Sprintf("%.3f", d.Seconds())
 }

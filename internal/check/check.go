@@ -1,4 +1,4 @@
-package main
+package check
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
@@ -47,7 +48,7 @@ Checks performed:
 			if cwdErr != nil {
 				return fmt.Errorf("[Strategist] check=blocked reason=cwd_error: %w", cwdErr)
 			}
-			discovered, _, discErr := findStrategistRoot(cwd)
+			discovered, _, discErr := cliutil.FindStrategistRoot(cwd)
 			if discErr != nil {
 				return fmt.Errorf("[Strategist] check=blocked reason=runtime_not_found\n→ Run: strategist install")
 			}
@@ -184,5 +185,13 @@ func init() {
 	checkCmd.Flags().BoolVar(&checkSimulate, "simulate", false, "print a readiness report (per-slot/persona status) instead of the pass/fail banner; never invokes providers or mutates state")
 	checkCmd.Flags().StringVar(&checkPrintContentByLang, "print-content-by-lang", "", "print personas.<persona>.content_by_lang.<lang> and phase_announcements.<lang> from the compiled artifact as JSON and exit; use this instead of reading persona YAML directly to resolve non-English chat templates and mission narration lines")
 	checkCmd.Flags().StringVar(&checkPrintContentByLangPersona, "persona", "", "persona/mode to read with --print-content-by-lang (default: active.yaml's mode)")
-	rootCmd.AddCommand(checkCmd)
+}
+
+// Register attaches this package's top-level commands (check, check-stale)
+// onto root. Called once from cmd/strategist's own init(), mirroring how
+// every other feature area self-registers onto rootCmd — see
+// cmd/strategist/check_register.go and internal/treasurecli's own Register.
+func Register(root *cobra.Command) {
+	root.AddCommand(checkCmd)
+	root.AddCommand(checkStaleCmd)
 }
