@@ -33,9 +33,23 @@ const (
 // slotResolution records how a slot's provider resolved and where its
 // manifest/role definition lives, so callers (success table, --simulate
 // report) can surface the resolution kind instead of just the provider id.
+//
+// fallbackProvider/fallbackPath are populated only for kind=skill_provider
+// resolutions where a compatible native role also exists for the same slot
+// (see resolveNativeFallback and docs/adr/0028-native-role-resilient-baseline.md).
+// A native_role resolution never has a fallback — it already is the resilient
+// baseline ADR-0028 describes.
 type slotResolution struct {
-	kind slotResolutionKind
-	path string
+	kind             slotResolutionKind
+	path             string
+	fallbackProvider string
+	fallbackPath     string
+}
+
+// hasFallback reports whether a compatible native role was found for this
+// slot resolution (always false for kind=native_role).
+func (r slotResolution) hasFallback() bool {
+	return r.fallbackProvider != ""
 }
 
 // resolveSlotProvider resolves provider for slot through the two-branch model:
@@ -91,4 +105,35 @@ func resolveNativeRoleSlot(root, slot, provider, skillPath string) (slotResoluti
 		return slotResolution{}, fmt.Sprintf("slot %s: role %q declares slot=%q (mismatch)", slot, provider, roleDef.Slot)
 	}
 	return slotResolution{kind: slotResolutionNativeRole, path: rolePath}, ""
+}
+
+// resolveNativeFallback reports the compatible native role for slot, if one exists,
+// so a skill_provider resolution can surface it as a fallback candidate (ADR-0028).
+// The canonical slot→native-role mapping is roles/default.yaml (domain.RoleSlotMap);
+// the candidate is only reported when resolveNativeRoleSlot independently validates
+// it (existing role file, valid RoleConfig, matching slot) — the same validation
+// already applied to any explicitly configured native-role provider, so a fallback
+// is never offered for a role file that is missing, malformed, or slot-mismatched.
+// Absence of roles/default.yaml, or any resolution error, is non-fatal: it simply
+// means no fallback is reported, never a check failure — check's overall result for
+// the slot is still governed entirely by the caller's own resolveSlotProvider outcome.
+func resolveNativeFallback(root, slot string) (provider, path string) {
+	defaultMapPath := filepath.Join(root, "roles", "default.yaml")
+	raw, err := os.ReadFile(defaultMapPath) //nolint:gosec // G304: fixed path under the runtime roles directory
+	if err != nil {
+		return "", ""
+	}
+	var roleMap domain.RoleSlotMap
+	if err := yaml.Unmarshal(raw, &roleMap); err != nil {
+		return "", ""
+	}
+	candidate := roleMap[slot]
+	if candidate == "" {
+		return "", ""
+	}
+	res, errMsg := resolveNativeRoleSlot(root, slot, candidate, filepath.Join(root, "skills", candidate, "skill.yaml"))
+	if errMsg != "" {
+		return "", ""
+	}
+	return candidate, res.path
 }

@@ -35,6 +35,14 @@ slots:
   discovery: %s
   refinement: %s
   execution: %s
+
+# Governs what happens when a configured slot provider passes static
+# strategist check validation but turns out not to be invocable at mission
+# time, and a compatible native role exists for the same slot: block (strict,
+# no fallback) | ask (recommended default — request explicit confirmation) |
+# native (auto-use the compatible native role, emitting degradation evidence).
+# See docs/adr/0028-native-role-resilient-baseline.md.
+provider_resolution_policy: ask
 `,
 		wc.Mode, wc.BasePath,
 		wc.UILanguage, wc.DocLanguage, wc.ChatLanguage, wc.CodeLanguage,

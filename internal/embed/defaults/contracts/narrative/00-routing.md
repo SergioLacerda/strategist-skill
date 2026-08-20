@@ -89,6 +89,54 @@ single-shot contract that the manifest check could not have caught (see
 `internal_skills/ranger`, authored by Strategist itself, can be trusted to
 compose with `roles/ranger.yaml` per its own documented "Invocation Contract".
 
+### Provider Resolution Policy (ADR-0028)
+
+This section does not apply to discovery — discovery's resolution is settled by
+§ Discovery Weapon Resolution above (always native, no exception, for a stronger,
+independently-established reason: a live invocation of a manifest-compliant
+weapon surfaced structural incompatibilities that a per-request policy cannot
+detect in advance). It applies to **refinement**, and to any other slot where
+`strategist check` reports a `fallback=<role>(native_role)` annotation for the
+configured provider (see `roles/default.yaml` and
+`internal/check/check_slots.go#resolveNativeFallback`).
+
+`static strategist check` validation of a `skill_provider` slot (valid
+`skill.yaml`, matching `risk_score`) does not prove the provider is invocable by
+the current agent runtime — only a live mission invocation reveals that. When a
+configured `skill_provider` fails at invocation time, and `strategist check`'s
+own SLOTS output shows a compatible native-role fallback exists for that slot,
+the agent MUST resolve the block according to `active.yaml`'s
+`provider_resolution_policy` (absent or empty defaults to `ask`):
+
+- **`block`** — preserve the strict, pre-ADR-0028 behavior: emit
+  `role_invocation_failed`, stop, and wait for the user to fix the provider
+  configuration or reconfigure the slot. No fallback is offered automatically.
+- **`ask`** (default) — present the block to the user with the concrete choice:
+  (a) use the compatible native role for this mission, (b) reconfigure
+  `active.slots.<phase>` to a different, available provider, or (c) accept the
+  mission's current terminal state (e.g. analysis-only) without refinement. Do
+  not pick for the user. Record the choice made (e.g. as an ADR or mission
+  decision) rather than silently repeating the question on the very next
+  mission without referencing the prior one.
+- **`native`** — use the compatible native role automatically, without asking,
+  but the agent MUST emit degradation evidence identifying the configured
+  provider, the effective (fallback) provider, and the reason, e.g.:
+  `[Strategist] phase=<phase> status=degraded reason=native_fallback configured_provider=<x> effective_provider=<y>`.
+  Auto-substitution under this policy is still never a substitute for the
+  Strategist Approval Gate, still preserves the resolved role's own write scope
+  and role contract (`must`/`must_not`), and still never applies to discovery
+  or to a slot where no compatible native role exists.
+
+None of the three policies authorizes skipping the Approval Gate, changing
+write scope, or treating a `skill_provider` failure as license to invent a
+provider that isn't `roles/<id>.yaml`-backed. `block` and `ask` never mutate
+`active.yaml`; only `native` changes *behavior* for the current mission, never
+the stored configuration — an operator who wants the native role as the
+permanent, standing choice still edits `active.slots.<phase>` (via
+`strategist install`/`compile`, not a manual hand-edit, to avoid an
+unacknowledged `hash_mismatch` — see
+`docs/runbooks/role-invocation-failed.md` § Refinement-Specific Escalation).
+
 ## Main Mission Sequence
 
 `bootstrap → preflight → intake → discovery → refinement → approval_gate → execution? → adr? → learning`

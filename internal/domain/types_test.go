@@ -92,6 +92,35 @@ func TestActiveConfig_Validate(t *testing.T) {
 	}.Validate()
 	require.ErrorContains(t, err, "missing slot: refinement")
 	require.ErrorContains(t, err, "missing slot: execution")
+
+	err = domain.ActiveConfig{
+		Mode:     "epic",
+		BasePath: ".analysis",
+		Slots: map[string]string{
+			"discovery": "ranger", "refinement": "archivist", "execution": "sniper",
+		},
+		ProviderResolutionPolicy: "bogus",
+	}.Validate()
+	require.ErrorContains(t, err, `provider_resolution_policy "bogus" is not one of block, ask, native`)
+}
+
+func TestResolutionPolicy_Validate(t *testing.T) {
+	t.Parallel()
+	require.NoError(t, domain.ResolutionPolicy("").Validate())
+	require.NoError(t, domain.ResolutionPolicyBlock.Validate())
+	require.NoError(t, domain.ResolutionPolicyAsk.Validate())
+	require.NoError(t, domain.ResolutionPolicyNative.Validate())
+
+	err := domain.ResolutionPolicy("silent").Validate()
+	require.ErrorContains(t, err, `provider_resolution_policy "silent" is not one of block, ask, native`)
+}
+
+func TestResolutionPolicy_EffectivePolicy(t *testing.T) {
+	t.Parallel()
+	assert.Equal(t, domain.ResolutionPolicyAsk, domain.ResolutionPolicy("").EffectivePolicy())
+	assert.Equal(t, domain.DefaultResolutionPolicy, domain.ResolutionPolicy("").EffectivePolicy())
+	assert.Equal(t, domain.ResolutionPolicyBlock, domain.ResolutionPolicyBlock.EffectivePolicy())
+	assert.Equal(t, domain.ResolutionPolicyNative, domain.ResolutionPolicyNative.EffectivePolicy())
 }
 
 func TestPersonaConfig_Validate(t *testing.T) {

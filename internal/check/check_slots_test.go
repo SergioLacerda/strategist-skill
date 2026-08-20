@@ -61,3 +61,78 @@ func TestResolveNativeRoleSlot_MalformedYAML(t *testing.T) {
 	_, errMsg := resolveNativeRoleSlot(dir, "execution", "sniper", filepath.Join(dir, "skills", "sniper", "skill.yaml"))
 	assert.Contains(t, errMsg, "malformed YAML")
 }
+
+// --- resolveNativeFallback (ADR-0028) ---
+
+func TestResolveNativeFallback_CompatibleRoleFound(t *testing.T) {
+	dir := t.TempDir()
+	rolesDir := filepath.Join(dir, "roles")
+	require.NoError(t, os.MkdirAll(rolesDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "default.yaml"),
+		[]byte("discovery: ranger\nrefinement: archivist\nexecution: sniper\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "archivist.yaml"),
+		[]byte("role: archivist\nslot: refinement\n"), 0o644))
+
+	provider, path := resolveNativeFallback(dir, "refinement")
+	assert.Equal(t, "archivist", provider)
+	assert.Equal(t, filepath.Join(rolesDir, "archivist.yaml"), path)
+}
+
+func TestResolveNativeFallback_NoDefaultMap(t *testing.T) {
+	dir := t.TempDir()
+	provider, path := resolveNativeFallback(dir, "refinement")
+	assert.Empty(t, provider)
+	assert.Empty(t, path)
+}
+
+func TestResolveNativeFallback_DefaultMapMalformedYAML(t *testing.T) {
+	dir := t.TempDir()
+	rolesDir := filepath.Join(dir, "roles")
+	require.NoError(t, os.MkdirAll(rolesDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "default.yaml"), []byte("discovery: [unterminated\n"), 0o644))
+
+	provider, path := resolveNativeFallback(dir, "refinement")
+	assert.Empty(t, provider)
+	assert.Empty(t, path)
+}
+
+func TestResolveNativeFallback_SlotMissingFromDefaultMap(t *testing.T) {
+	dir := t.TempDir()
+	rolesDir := filepath.Join(dir, "roles")
+	require.NoError(t, os.MkdirAll(rolesDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "default.yaml"), []byte("discovery: ranger\n"), 0o644))
+
+	provider, path := resolveNativeFallback(dir, "refinement")
+	assert.Empty(t, provider)
+	assert.Empty(t, path)
+}
+
+func TestResolveNativeFallback_CandidateRoleFileMissing(t *testing.T) {
+	dir := t.TempDir()
+	rolesDir := filepath.Join(dir, "roles")
+	require.NoError(t, os.MkdirAll(rolesDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "default.yaml"),
+		[]byte("discovery: ranger\nrefinement: archivist\nexecution: sniper\n"), 0o644))
+	// archivist.yaml deliberately absent — no fallback should be reported.
+
+	provider, path := resolveNativeFallback(dir, "refinement")
+	assert.Empty(t, provider)
+	assert.Empty(t, path)
+}
+
+func TestResolveNativeFallback_CandidateRoleSlotMismatch(t *testing.T) {
+	dir := t.TempDir()
+	rolesDir := filepath.Join(dir, "roles")
+	require.NoError(t, os.MkdirAll(rolesDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "default.yaml"),
+		[]byte("discovery: ranger\nrefinement: archivist\nexecution: sniper\n"), 0o644))
+	// archivist.yaml declares the wrong slot — resolveNativeRoleSlot's own
+	// validation must reject it, so no fallback is reported (never a role file
+	// that is present but structurally incompatible).
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "archivist.yaml"),
+		[]byte("role: archivist\nslot: discovery\n"), 0o644))
+
+	provider, path := resolveNativeFallback(dir, "refinement")
+	assert.Empty(t, provider)
+	assert.Empty(t, path)
+}

@@ -107,6 +107,9 @@ Checks performed:
 
 		resolutions := map[string]slotResolution{}
 		var errs []string
+		if polErr := cfg.ProviderResolutionPolicy.Validate(); polErr != nil {
+			errs = append(errs, "active.yaml: "+polErr.Error())
+		}
 		for _, slot := range []string{"discovery", "refinement", "execution"} {
 			provider := providers[slot]
 			if provider == "" {
@@ -117,6 +120,9 @@ Checks performed:
 			if errMsg != "" {
 				errs = append(errs, errMsg)
 				continue
+			}
+			if res.kind == slotResolutionSkillProvider {
+				res.fallbackProvider, res.fallbackPath = resolveNativeFallback(root, slot)
 			}
 			resolutions[slot] = res
 		}
@@ -175,7 +181,7 @@ Checks performed:
 			return fmt.Errorf("[Strategist] check=failed errors=%d root=%s", len(errs), root)
 		}
 
-		return printCheckSuccess(root, providers, resolutions, cfg.Mode)
+		return printCheckSuccess(root, providers, resolutions, cfg.Mode, cfg.ProviderResolutionPolicy)
 	},
 }
 

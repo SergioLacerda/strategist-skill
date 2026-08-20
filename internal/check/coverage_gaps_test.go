@@ -11,9 +11,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"text/tabwriter"
 
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -106,6 +108,41 @@ func TestPrintCheckSuccess_ClosedStdoutErrors(t *testing.T) {
 	}
 
 	withClosedStdout(t, func() {
-		require.Error(t, printCheckSuccess("/tmp/root", providers, resolutions, "epic"))
+		require.Error(t, printCheckSuccess("/tmp/root", providers, resolutions, "epic", domain.ResolutionPolicyAsk))
 	})
+}
+
+// --- writeCheckSlotsSection / writeCheckPolicySection (ADR-0028) ---
+
+func TestPrintCheckSuccess_ReportsFallbackAndPolicy(t *testing.T) {
+	providers := map[string]string{"discovery": "brainstorming", "refinement": "openspec-explore", "execution": "sniper"}
+	resolutions := map[string]slotResolution{
+		"discovery":  {kind: slotResolutionSkillProvider},
+		"refinement": {kind: slotResolutionSkillProvider, fallbackProvider: "archivist", fallbackPath: "/root/roles/archivist.yaml"},
+		"execution":  {kind: slotResolutionNativeRole},
+	}
+
+	out := captureStdout(t, func() {
+		require.NoError(t, printCheckSuccess("/tmp/root", providers, resolutions, "epic", domain.ResolutionPolicyNative))
+	})
+	assert.Contains(t, out, "fallback=archivist(native_role)")
+	assert.Equal(t, 1, strings.Count(out, "fallback="), "only the refinement row should carry a fallback annotation")
+	assert.Contains(t, out, "provider_resolution")
+	assert.Contains(t, out, "native")
+	assert.NotContains(t, out, "(default)") // explicit policy set — no "(default)" suffix
+}
+
+func TestPrintCheckSuccess_DefaultPolicyAnnotated(t *testing.T) {
+	providers := map[string]string{"discovery": "ranger", "refinement": "archivist", "execution": "sniper"}
+	resolutions := map[string]slotResolution{
+		"discovery":  {kind: slotResolutionNativeRole},
+		"refinement": {kind: slotResolutionNativeRole},
+		"execution":  {kind: slotResolutionNativeRole},
+	}
+
+	out := captureStdout(t, func() {
+		require.NoError(t, printCheckSuccess("/tmp/root", providers, resolutions, "epic", ""))
+	})
+	assert.Contains(t, out, "ask (default)")
+	assert.NotContains(t, out, "fallback=") // native_role resolutions never carry a fallback
 }
