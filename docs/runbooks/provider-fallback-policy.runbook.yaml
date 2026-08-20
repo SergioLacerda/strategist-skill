@@ -1,0 +1,39 @@
+schema_version: "1"
+runbook_id: provider-fallback-policy
+runbook_type: operational
+source_doc: docs/runbooks/provider-fallback-policy.md
+
+applies_when:
+  - "error=slot_provider_not_found observed, with slot=<discovery|refinement|execution> in the error context"
+  - "error=role_provider_invalid observed, with slot=<discovery|refinement|execution> in the error context"
+  - "error=slot_risk_mismatch observed, with slot=<discovery|refinement|execution> in the error context"
+  - "error=role_invocation_failed observed, with slot=<discovery|refinement|execution> and provider=<configured_provider> in the error context"
+
+objective: Diagnose which of the four slot-provider failure tokens applies, then resolve through the configured block/ask/native fallback policy when a compatible native role exists for the affected slot.
+
+preconditions:
+  - A candidate native role may or may not exist for the affected slot — verification is step 3 of the resolution steps
+  - This runbook does not replace docs/runbooks/role-invocation-failed.md for role_invocation_failed specifically; it is the general entry point across all four tokens and defers to that file's refinement-slot escalation when relevant
+
+verification:
+  - "Classify the failure token against the Root Cause list in docs/runbooks/provider-fallback-policy.md"
+  - "Confirm a compatible native role exists for the affected slot (roles/<slot-role>.yaml + internal_skills/<slot-role>/SKILL.md)"
+  - "Read .strategist/active.yaml#provider_resolution_policy (absent/empty defaults to ask)"
+  - "Apply the block/ask/native procedure per ADR-0028 and 00-routing.md § Provider Resolution Policy — never skip the Strategist Approval Gate"
+  - "Rerun strategist check until STATUS reports ok before retrying the mission"
+
+checks:
+  - id: failure-token-classified
+    level: mandatory
+  - id: native-role-compatibility-verified
+    level: mandatory
+  - id: fallback-policy-applied-per-adr-0028
+    level: mandatory
+  - id: approval-gate-not-bypassed
+    level: mandatory
+  - id: refinement-slot-escalation-deferred-to-role-invocation-failed-runbook
+    level: conditional
+
+metadata:
+  version: 1
+  reviewed_at: "2026-08-20"

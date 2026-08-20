@@ -157,6 +157,11 @@ installed into `.strategist/`; the retired root `strategist/` authoring mirror i
 the current path model. The architectural decision for this ordering is consolidated in
 `docs/adr/0010-ordered-contracts-and-mission-observability.md`.
 
+A CLI-free, Markdown-centered *soft profile* of this same runtime was evaluated as feasible
+(additive, not a replacement) — see
+[`docs/design/soft-profile-orka-mapping.md`](design/soft-profile-orka-mapping.md) for the
+capability disposition matrix and target packaging structure.
+
 ---
 
 ## Compilation Pipeline

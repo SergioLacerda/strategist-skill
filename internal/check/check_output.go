@@ -14,7 +14,7 @@ func printCheckSuccess(root string, providers map[string]string, resolutions map
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
 	for _, section := range []func(*tabwriter.Writer) error{
 		func(w *tabwriter.Writer) error { return writeCheckStatusSection(w, root) },
-		func(w *tabwriter.Writer) error { return writeCheckSlotsSection(w, providers, resolutions) },
+		func(w *tabwriter.Writer) error { return writeCheckSlotsSection(w, providers, resolutions, policy) },
 		func(w *tabwriter.Writer) error { return writeCheckPersonaSection(w, mode) },
 		func(w *tabwriter.Writer) error { return writeCheckPolicySection(w, policy) },
 	} {
@@ -41,7 +41,7 @@ func writeCheckStatusSection(w *tabwriter.Writer, root string) error {
 	return nil
 }
 
-func writeCheckSlotsSection(w *tabwriter.Writer, providers map[string]string, resolutions map[string]slotResolution) error {
+func writeCheckSlotsSection(w *tabwriter.Writer, providers map[string]string, resolutions map[string]slotResolution, policy domain.ResolutionPolicy) error {
 	if _, err := fmt.Fprintln(w, "SLOTS\t"); err != nil {
 		return fmt.Errorf("check: write slots header: %w", err)
 	}
@@ -49,7 +49,8 @@ func writeCheckSlotsSection(w *tabwriter.Writer, providers map[string]string, re
 		res := resolutions[slot]
 		row := fmt.Sprintf("  %-12s\t%s\tkind=%s", slot, providers[slot], res.kind)
 		if res.hasFallback() {
-			row += fmt.Sprintf("\tfallback=%s(native_role)", res.fallbackProvider)
+			outcome := domain.DecideSlotFallbackOutcome(slot, policy, true)
+			row += fmt.Sprintf("\tfallback=%s(native_role)\toutcome=%s", res.fallbackProvider, outcome)
 		}
 		if _, err := fmt.Fprintln(w, row); err != nil {
 			return fmt.Errorf("check: write slot row: %w", err)

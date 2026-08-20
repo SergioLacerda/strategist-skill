@@ -64,3 +64,4 @@ When `slot=refinement` and steps 1–4 above don't resolve it:
 - `.strategist/SKILL.md` § Role Invocation Failures
 - `.strategist/contracts/machine/preflight.yaml` → `error_conditions.role_invocation_failed`
 - [ADR-0027](../adr/0027-refinement-native-role-for-light-client.md) — refinement-specific precedent and open follow-up work
+- [`docs/runbooks/provider-fallback-policy.md`](provider-fallback-policy.md) — general runbook for the other three slot-provider failure tokens (`slot_provider_not_found`, `role_provider_invalid`, `slot_risk_mismatch`) and the block/ask/native fallback policy

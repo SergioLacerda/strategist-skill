@@ -28,6 +28,72 @@
       "required": true,
       "type": "string"
     },
+    "handoff_verification": {
+      "description": "Optional semantic handoff challenge metadata for the Archivist -> Sniper transition. This complements YAML structure validation; it never replaces the Strategist Approval Gate.\n",
+      "fields": {
+        "acknowledgment": {
+          "fields": {
+            "classifications": "object",
+            "gate_allowed": "boolean",
+            "understood_refs": "list"
+          },
+          "required": false,
+          "type": "object"
+        },
+        "challenges": {
+          "item_fields": [
+            "id",
+            "type",
+            "source_refs",
+            "critical"
+          ],
+          "item_values": {
+            "type": [
+              "objective",
+              "boundary",
+              "classification",
+              "gate"
+            ]
+          },
+          "type": "list"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "max_attempts": {
+          "type": "integer"
+        },
+        "on_failure": {
+          "allowed_values": [
+            "return_to_archivist"
+          ],
+          "type": "string"
+        },
+        "require_all_critical": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "required_types": {
+          "allowed_values": [
+            "objective",
+            "boundary",
+            "classification",
+            "gate"
+          ],
+          "type": "list"
+        },
+        "transition": {
+          "allowed_values": [
+            "archivist_to_sniper"
+          ],
+          "type": "string"
+        }
+      },
+      "required": false,
+      "type": "object"
+    },
     "implementation_plan": {
       "field_descriptions": {
         "task_type": "Archivist classification of this item. Only documentation_target items are Sniper-executable. implementation_handoff items (code/hook/config/test mutation) must never be presented as Sniper-executable work — see 04-refinement.md and 06-execution.md.\n"

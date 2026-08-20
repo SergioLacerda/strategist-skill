@@ -146,3 +146,22 @@ func TestPrintCheckSuccess_DefaultPolicyAnnotated(t *testing.T) {
 	assert.Contains(t, out, "ask (default)")
 	assert.NotContains(t, out, "fallback=") // native_role resolutions never carry a fallback
 }
+
+func TestPrintCheckSuccess_ReportsPolicyOutcomePerSlot(t *testing.T) {
+	providers := map[string]string{"discovery": "brainstorming", "refinement": "openspec-explore", "execution": "sniper"}
+	resolutions := map[string]slotResolution{
+		// discovery: fallback available, but must always report outcome=always_native_no_policy
+		// regardless of the configured policy (00-routing.md § Discovery Weapon Resolution by Subtype).
+		"discovery":  {kind: slotResolutionSkillProvider, fallbackProvider: "ranger", fallbackPath: "/root/roles/ranger.yaml"},
+		"refinement": {kind: slotResolutionSkillProvider, fallbackProvider: "archivist", fallbackPath: "/root/roles/archivist.yaml"},
+		"execution":  {kind: slotResolutionNativeRole},
+	}
+
+	out := captureStdout(t, func() {
+		require.NoError(t, printCheckSuccess("/tmp/root", providers, resolutions, "epic", domain.ResolutionPolicyAsk))
+	})
+	assert.Contains(t, out, "fallback=ranger(native_role)")
+	assert.Contains(t, out, "outcome=always_native_no_policy")
+	assert.Contains(t, out, "fallback=archivist(native_role)")
+	assert.Contains(t, out, "outcome=ask_required")
+}

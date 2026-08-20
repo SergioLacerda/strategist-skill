@@ -9,6 +9,16 @@ type Config struct {
 	ServiceName string // OTEL_SERVICE_NAME
 	Insecure    bool   // OTEL_EXPORTER_OTLP_INSECURE — default false (TLS required).
 	// Set to "true" to allow plaintext gRPC (dev/self-hosted only).
+	// Strict controls EventSink failure handling (STRATEGIST_TELEMETRY_STRICT).
+	// Default false: a sink Emit error is logged and swallowed — telemetry
+	// failure never blocks a mission (fail-open), matching the OTel SDK's own
+	// error-handling spec ("MUST NOT cause the application to fail at runtime
+	// due to dynamic config settings"). Set true to make Emit errors
+	// propagate — useful in staging/CI to catch misconfiguration, the same
+	// posture the OTel spec recommends ("MUST allow end users to change the
+	// library's default error handling behavior... to run with strict error
+	// handling in a staging environment").
+	Strict bool
 }
 
 // FromEnv reads OTel configuration from environment variables.
@@ -21,10 +31,12 @@ func FromEnv() Config {
 		svcName = "strategist"
 	}
 	insecure := os.Getenv("OTEL_EXPORTER_OTLP_INSECURE") == "true"
+	strict := os.Getenv("STRATEGIST_TELEMETRY_STRICT") == "true"
 	return Config{
 		Endpoint:    os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
 		ServiceName: svcName,
 		Insecure:    insecure,
+		Strict:      strict,
 	}
 }
 
