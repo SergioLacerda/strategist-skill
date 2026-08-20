@@ -107,6 +107,7 @@ See [SECURITY.md](SECURITY.md) for the vulnerability disclosure policy.
 
 ## Documentation
 
+- **[Conceptual quickstart](docs/onboarding/quickstart-concepts.md)** — roles, guiding questions, lifecycle, artifacts, and boundaries on one page.
 - [Quickstart](QUICKSTART.md)
 - [Technical guide (English)](docs/onboarding/readme-en.md)
 - [Detailed documentation (English)](docs/onboarding/readme-detailed-en.md)

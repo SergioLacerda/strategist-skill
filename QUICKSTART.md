@@ -2,6 +2,8 @@
 
 Five steps from zero to first mission. No lore.
 
+Need the mental model first? Read the [Conceptual Quickstart](docs/onboarding/quickstart-concepts.md) for the role/question/artifact map, lifecycle diagram, and governance boundaries.
+
 ## Prerequisites
 
 - [Claude Code](https://claude.ai/code) installed
@@ -57,5 +59,6 @@ After approval, the Executor implements exactly the approved spec.
 ---
 
 → [Full technical guide](https://sergiolacerda.github.io/strategist-skill/pragmatic/)  
+→ [Conceptual quickstart](docs/onboarding/quickstart-concepts.md)  
 → [CLI reference](docs/cli-reference.md)  
 → [Configuration](docs/configuration.md)

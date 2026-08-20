@@ -10,9 +10,9 @@
 
 `20260804-eval-harvest`'s (ADR-0018) own acceptance checks state that
 `strategist eval harvest --all` must run without error against this
-workspace's real `.analysis/refined/` + `.analysis/done/` history.
+workspace's real refined and completed mission history.
 Verifying that check found it failing: one real mission file
-(`.analysis/done/2026-07-22-observability-doc-output-profile-error/tasks.md`,
+(the completed `2026-07-22-observability-doc-output-profile-error` mission's `tasks.md`,
 and 15+ others sharing the same shape) breaks `treasure.ScanMissions`.
 
 The root cause is `internal/treasure/scan_parse.go`'s
@@ -25,7 +25,7 @@ Stripping the opening dash turns `  - id: SQ-001\n    description: ...`
 into `  id: SQ-001\n    description: ...` — a deeper-indented line
 directly after a scalar `key: value`, which YAML rejects as "mapping
 values are not allowed in this context". Reproduced against 5 real
-mission files sharing this shape under `.analysis/done/`.
+completed mission files sharing this shape.
 
 **Correction (2026-08-04):** this root cause was originally misattributed
 during discovery to `sideQuestBlockEnd` not stopping at the frontmatter's
@@ -34,8 +34,9 @@ a sibling-frontmatter-key shape. That theory did not reproduce in
 isolation and the file count was wrong (most of the 16 use a 0-indent
 list style that parses fine). Corrected after building T4's test fixture
 during implementation, which required an isolated repro to get right.
-See `.analysis/refined/20260804-treasure-scan-sq-block-bug/analysis.md`'s
-own Correction Note for the full account. DEC-1/DEC-2 and their
+The isolated reproduction established that the affected form uses a scalar key followed
+by an illegally deeper-indented mapping line; the earlier file count conflated this with
+valid zero-indent list forms. DEC-1/DEC-2 and their
 rejected-alternatives reasoning are unaffected by this correction — the
 chosen fix treats any parse failure uniformly, regardless of cause.
 

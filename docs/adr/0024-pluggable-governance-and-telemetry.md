@@ -7,9 +7,9 @@
 
 ## Context
 
-Strategist must be governable without becoming a second organizational governance system. Its role is to declare contracts, emit evidence, expose state, record local violations, expose hooks, produce structured telemetry, and accept decisions from an external authority — leaving compliance, cross-project auditing, and policy enforcement to an external system (e.g. `sdd-harness`), per the base analysis document `.analysis/strategist-ai-first-analysis/01-governanca-plugavel-e-telemetria.md`.
+Strategist must be governable without becoming a second organizational governance system. Its role is to declare contracts, emit evidence, expose state, record local violations, expose hooks, produce structured telemetry, and accept decisions from an external authority — leaving compliance, cross-project auditing, and policy enforcement to an external system (e.g. `sdd-harness`).
 
-Discovery for this mission (`.analysis/refined/20260811-governanca-plugavel/analysis.md`) found that Strategist today already emits structured telemetry — OpenTelemetry tracing (`internal/telemetry/setup.go`), a `PolicyEvent` envelope with `correlation_id` (`internal/telemetry/policy_event.go`), and JSONL outcome persistence (`internal/telemetry/outcome*.go`) — but has no unifying `EventSink` interface, no `internal/telemetry/sink/{noop,slog,jsonl,otel,external}` layout, and no `contract_id`/`authority` fields in any emitted event. It also found `internal/governance/sync.go`, which solves a narrower, adjacent problem (reconciling `skill.yaml` against `.sdd/` mandates at install/compile time) and is itself named-coupled to `.sdd/` — the opposite of the "no mandatory dependency on a named governance system" principle already declared in Strategist's own routing contracts (`.strategist/contracts/narrative/00-routing.md`).
+Repository inspection found that Strategist already emits structured telemetry — OpenTelemetry tracing (`internal/telemetry/setup.go`), a `PolicyEvent` envelope with `correlation_id` (`internal/telemetry/policy_event.go`), and JSONL outcome persistence (`internal/telemetry/outcome*.go`) — but has no unifying `EventSink` interface, no `internal/telemetry/sink/{noop,slog,jsonl,otel,external}` layout, and no `contract_id`/`authority` fields in any emitted event. It also found `internal/governance/sync.go`, which solves a narrower, adjacent problem (reconciling `skill.yaml` against `.sdd/` mandates at install/compile time) and is itself named-coupled to `.sdd/` — the opposite of the "no mandatory dependency on a named governance system" principle already declared in Strategist's own routing contracts (`.strategist/contracts/narrative/00-routing.md`).
 
 Two alternatives were considered for closing this gap:
 
@@ -18,7 +18,7 @@ Two alternatives were considered for closing this gap:
 
 ## Decision
 
-Adopt the design proposed in `.analysis/refined/20260811-governanca-plugavel/design.md`:
+Adopt the following design:
 
 1. Introduce an `EventSink` interface and a standardized event envelope (`event`, `event_version`, `mission_id`, `correlation_id`, `contract_id`, `phase`, `expected`, `observed`, `severity`, `decision`, `authority`, `timestamp`).
 2. Introduce `internal/telemetry/sink/{noop,slog,jsonl,otel,external}` as the target layout, migrating existing OTel and JSONL logic into it without regressing current test coverage.

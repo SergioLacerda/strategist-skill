@@ -15,7 +15,7 @@ that: `SQ-003`'s real dependency, if any, is the external live-invocation
 tooling direction (`SQ-004`/Promptfoo), not a Go interface.
 
 This mission (`20260804-lm-studio-eval`) went further and re-examined the
-original source critique (`.analysis/todo/v2/tests/tests_v2.txt` and
+original source critique (the runtime workspace's `todo/v2/tests/tests_v2.txt` and
 `proposal.md`) that first proposed this work. Two things stood out:
 
 1. The critique frames LM Studio as "the model under test" with an optional

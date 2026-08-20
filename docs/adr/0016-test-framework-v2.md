@@ -8,7 +8,7 @@
 
 ## Context
 
-The pre-existing draft for a behavioral test harness (`.analysis/todo/v2/tests/`,
+The pre-existing draft for a behavioral test harness (the runtime workspace's `todo/v2/tests/` package,
 2026-07-28) specified `internal/eval`'s `FakeProvider` as implementing a
 `domain.SkillProvider` interface, scripting deterministic responses for a
 provider-invocation call boundary of the shape `Complete(ctx, req)

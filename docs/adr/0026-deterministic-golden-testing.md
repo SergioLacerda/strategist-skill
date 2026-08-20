@@ -8,16 +8,13 @@
 ## Context
 
 Strategist should detect unintentional drift in stable artifacts and textual/structured
-interfaces, per the base analysis document
-`.analysis/strategist-ai-first-analysis/04-golden-tests-e-antidrift.md`. The document
-proposes a golden-test system spanning 8 artifact categories (compiled prompts,
+interfaces. The proposed golden-test system spans 8 artifact categories (compiled prompts,
 manifests, compiled artifacts, handoffs, telemetry events, CLI help, generated docs,
 rendered schemas), three comparison strategies (exact text, normalized JSON/YAML,
 structural), volatile-field normalization, a human-reviewed update flow, and
 integration with "contract provenance."
 
-Discovery for this mission (`.analysis/refined/20260811-golden-antidrift/analysis.md`)
-found that, unlike two sibling items in the same document set — item 2 (test
+Repository inspection found that, unlike two sibling items in the same design set — item 2 (test
 architecture) and item 6 (evaluation providers), where the proposed architecture had
 already been examined and explicitly rejected in ADR-0016/0017 — **no ADR addresses a
 golden-diff-and-update system for deterministic artifacts**. `tests/golden/` does not
@@ -31,7 +28,7 @@ Go template* that produces a compiled prompt.
 
 ## Decision
 
-Adopt the design proposed in `.analysis/refined/20260811-golden-antidrift/design.md`:
+Adopt the following design:
 
 1. Build a deterministic golden-test system under `tests/evals/golden/` (a subdirectory
    of the already-existing `tests/evals/`, alongside `contracts/`, `fixtures/`,

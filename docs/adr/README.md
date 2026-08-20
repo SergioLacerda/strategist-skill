@@ -31,6 +31,8 @@ lookup by topic fast without moving any file.
 | [0010](0010-ordered-contracts-and-mission-observability.md) | Ordered contracts and mission observability |
 | [0015](0015-adr-index-by-theme-not-subfolders.md) | ADR index by theme instead of physical subfolders |
 | [0024](0024-pluggable-governance-and-telemetry.md) | Pluggable Governance and AI-First Telemetry |
+| [0027](0027-refinement-native-role-for-light-client.md) | Refinement (Archivist) as a native role — mission-scoped precedent |
+| [0028](0028-native-role-resilient-baseline.md) | Native roles as the resilient baseline |
 
 ### Knowledge & Jewels
 

@@ -12,9 +12,9 @@
 
 ## Context
 
-The discovery (Ranger) and refinement (Archivist) slots need to write artifacts to `.analysis/` as part of the normal mission flow. With the original model where all slots were `read_only` except Sniper (`controlled`), **any artifact write — even a local `.md` in `pending/` — required passing through the approval gate**.
+The discovery (Ranger) and refinement (Archivist) slots need to write artifacts under the configured runtime workspace as part of the normal mission flow. With the original model where all slots were `read_only` except Sniper (`controlled`), **any artifact write — even a local Markdown file in `<base_path>/pending/` — required passing through the approval gate**.
 
-This made the flow excessively interactive: creating `.analysis/pending/discovery.md` required an explicit "yes" from the user, even for a low-risk operation with no impact on code.
+This made the flow excessively interactive: creating a discovery artifact under `<base_path>/pending/` required an explicit "yes" from the user, even for a low-risk operation with no impact on code.
 
 The question: how to differentiate low-risk writes (local analysis artifacts) from high-risk writes (code, configs, system files)?
 

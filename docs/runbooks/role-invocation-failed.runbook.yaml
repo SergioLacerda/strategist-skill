@@ -18,6 +18,7 @@ verification:
   - "Confirm .strategist/active.yaml's slots.<phase> value matches an installed provider's id exactly — typos are the most common cause"
   - "If the provider's skill.yaml exists but fails schema validation, fix or reinstall it"
   - "Rerun `strategist check` until STATUS reports ok before retrying the mission"
+  - "If slot=refinement and no alternative provider is installed: confirm roles/archivist.yaml + internal_skills/archivist/SKILL.md exist, then escalate the native-role-vs-reconfigure-vs-analysis-only choice to the user instead of substituting Archivist silently — see docs/runbooks/role-invocation-failed.md § Refinement-Specific Escalation and ADR-0027"
 
 checks:
   - id: active-yaml-slot-matches-installed-provider
@@ -26,7 +27,9 @@ checks:
     level: mandatory
   - id: strategist-check-reports-ok
     level: mandatory
+  - id: refinement-native-role-escalation-if-no-alternative-provider
+    level: conditional
 
 metadata:
-  version: 1
-  reviewed_at: "2026-08-03"
+  version: 2
+  reviewed_at: "2026-08-19"

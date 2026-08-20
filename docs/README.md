@@ -11,6 +11,7 @@ This is the entry point for all skill documentation. Use the table below to navi
 
 | I want to... | Start with |
 |--------------|-----------|
+| Learn the roles, phase questions, artifacts, and first-mission flow | [`docs/onboarding/quickstart-concepts.md`](onboarding/quickstart-concepts.md) |
 | Understand the overall architecture | [`docs/architecture.md`](architecture.md) |
 | Review design decisions | [`docs/adr/`](adr/) |
 | Configure the skill | [`docs/configuration.md`](configuration.md) |

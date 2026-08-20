@@ -7,7 +7,7 @@
 
 ## Context
 
-The Strategist skill was designed to operate with a single active session per workspace. When two Claude sessions run simultaneously against the same `.strategist/` and `.analysis/` directories, five classes of failure emerge (see analysis in `.analysis/refined/conflito_multi_thread/design.md`).
+The Strategist skill was designed to operate with a single active session per workspace. When two agent sessions run simultaneously against the same configuration and runtime-workspace directories, five classes of failure emerge: competing mission claims, interleaved artifact writes, inconsistent status transitions, conflicting memory updates, and approval/execution state observed out of order.
 
 Three of these failures were mitigated:
 
