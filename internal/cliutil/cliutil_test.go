@@ -148,8 +148,9 @@ func TestResolveActiveBasePath_EmptyRootDefaultsToStrategist(t *testing.T) {
 	// (file not found), but the assignment branch is exercised.
 	oldWd, err := os.Getwd()
 	require.NoError(t, err)
+	dir := t.TempDir()
+	require.NoError(t, os.Chdir(dir))
 	t.Cleanup(func() { _ = os.Chdir(oldWd) })
-	require.NoError(t, os.Chdir(t.TempDir()))
 
 	_, _, err = ResolveActiveBasePath("")
 	require.Error(t, err)

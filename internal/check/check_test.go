@@ -461,6 +461,9 @@ func TestCheckCmd_F3ConflictSignalWarning(t *testing.T) {
 }
 
 func TestCheckCmd_DefaultRoot(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TempDir cleanup can race with process cwd handles on windows")
+	}
 	orig := checkRoot
 	t.Cleanup(func() { checkRoot = orig })
 	checkRoot = ""

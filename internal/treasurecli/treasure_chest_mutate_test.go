@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/treasure"
@@ -138,12 +139,9 @@ func TestTreasureChestAdd_ResolveRootError(t *testing.T) {
 	resetTreasureChestMutateFlags(t)
 	setTreasureChestRoot(t, "") // forces findStrategistRoot(cwd)
 
-	oldWd, err := os.Getwd()
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = os.Chdir(oldWd) })
-	require.NoError(t, os.Chdir(t.TempDir()))
+	chdirForTest(t, t.TempDir())
 
-	err = treasureChestAddCmd.RunE(treasureChestAddCmd, []string{"/tmp/new-chest"})
+	err := treasureChestAddCmd.RunE(treasureChestAddCmd, []string{"/tmp/new-chest"})
 	require.Error(t, err)
 	assert.NotEmpty(t, err.Error())
 }
@@ -179,6 +177,9 @@ func TestFinishChestAdd_IndexAfterSuccess(t *testing.T) {
 }
 
 func TestFinishChestAdd_IndexAfterCompileError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod not reliable on windows")
+	}
 	if os.Getuid() == 0 {
 		t.Skip("permission tests do not apply when running as root")
 	}

@@ -61,7 +61,7 @@ was not explicitly supplied. If Scout would need to read broad implementation
 surfaces to answer a classification question, it has crossed into Ranger territory
 and must select `full_pipeline` instead.
 
-### Discovery Weapon Resolution by Subtype
+### Discovery Plugin Resolution by Subtype
 
 Discovery invocation target does not depend on `discovery_subtype` or on
 `active.slots.discovery` — all discovery subtypes (`creative`, `evaluation`,
@@ -69,12 +69,12 @@ Discovery invocation target does not depend on `discovery_subtype` or on
 (`kind=native_role`). The parent agent embodies Ranger directly — the same
 native-role mechanism already used for execution/`sniper` — reading
 `roles/ranger.yaml` + `internal_skills/ranger/SKILL.md` and performing
-discovery under that contract. An external weapon configured at
+discovery under that contract. An external discovery plugin configured at
 `active.slots.discovery` is never consulted for discovery invocation; the
 field remains present for provider-metadata/future use but does not gate any
 current subtype.
 
-This exists because an external weapon's own `SKILL.md` is authored
+This exists because an external discovery plugin's own `SKILL.md` is authored
 independently of Strategist and cannot be relied on to honor
 `roles/ranger.yaml` or subtype-specific obligations, even when its manifest
 declares `native` or `adapter` support — declared support in a manifest is a
@@ -92,18 +92,18 @@ compose with `roles/ranger.yaml` per its own documented "Invocation Contract".
 ### Provider Resolution Policy (ADR-0028)
 
 This section does not apply to discovery — discovery's resolution is settled by
-§ Discovery Weapon Resolution above (always native, no exception, for a stronger,
+§ Discovery Plugin Resolution above (always native, no exception, for a stronger,
 independently-established reason: a live invocation of a manifest-compliant
-weapon surfaced structural incompatibilities that a per-request policy cannot
+discovery plugin surfaced structural incompatibilities that a per-request policy cannot
 detect in advance). It applies to **refinement**, and to any other slot where
 `strategist check` reports a `fallback=<role>(native_role)` annotation for the
 configured provider (see `roles/default.yaml` and
 `internal/check/check_slots.go#resolveNativeFallback`).
 
-`static strategist check` validation of a `skill_provider` slot (valid
-`skill.yaml`, matching `risk_score`) does not prove the provider is invocable by
+`static strategist check` validation of an external skill plugin slot (valid
+`skill.yaml`, matching `risk_score`) does not prove the slot plugin is invocable by
 the current agent runtime — only a live mission invocation reveals that. When a
-configured `skill_provider` fails at invocation time, and `strategist check`'s
+configured external skill plugin fails at invocation time, and `strategist check`'s
 own SLOTS output shows a compatible native-role fallback exists for that slot,
 the agent MUST resolve the block according to `active.yaml`'s
 `provider_resolution_policy` (absent or empty defaults to `ask`):
@@ -128,7 +128,7 @@ the agent MUST resolve the block according to `active.yaml`'s
   or to a slot where no compatible native role exists.
 
 None of the three policies authorizes skipping the Approval Gate, changing
-write scope, or treating a `skill_provider` failure as license to invent a
+write scope, or treating an external skill plugin failure as license to invent a
 provider that isn't `roles/<id>.yaml`-backed. `block` and `ask` never mutate
 `active.yaml`; only `native` changes *behavior* for the current mission, never
 the stored configuration — an operator who wants the native role as the

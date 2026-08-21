@@ -1,0 +1,112 @@
+schema_version: strategist-plugin-catalog/v1
+providers:
+  - id: brainstorming
+    version: "1.0.0"
+    provider_schema_version: "1"
+    status: active
+    risk_score: write_analysis
+    category: discovery
+    provider_class: rankeado
+    canonical_role: ranger
+    installable: true
+    legacy_manifest_path: skills/brainstorming/skill.yaml
+    known_provider_class: neutral
+    compatibility_source: embedded
+    description: >
+      Configured discovery-slot metadata for Strategist (risk_score/provider-class
+      only). Discovery invocation no longer resolves to this weapon for any
+      subtype — all discovery always resolves to internal_skills/ranger (native
+      role); see contracts/narrative/00-routing.md § Discovery Weapon Resolution
+      by Subtype. A live invocation of this skill's own SKILL.md revealed
+      structural incompatibilities with Ranger's autonomous single-shot contract
+      (see .analysis/refined/20260728-ranger-drift-eval/), so this manifest no
+      longer makes any discovery-subtype capability claim.
+    auxiliary_tools_allowed:
+      - writing-plans
+
+  - id: openspec-explore
+    version: "1.0.0"
+    provider_schema_version: "1"
+    status: active
+    risk_score: write_analysis
+    category: refinement
+    provider_class: rankeado
+    canonical_role: archivist
+    installable: true
+    legacy_manifest_path: skills/openspec-explore/skill.yaml
+    known_provider_class: neutral
+    compatibility_source: embedded
+    description: >
+      Refinement provider for Strategist. Consumes discovery output, structures the
+      implementation approach, and writes analysis artifacts within the Strategist
+      write_analysis boundary.
+
+  - id: openspec-propose
+    risk_score: write_analysis
+    known_provider_class: neutral
+    compatibility_source: legacy_registry
+
+  - id: openspec-apply-change
+    risk_score: controlled
+    known_provider_class: neutral
+    compatibility_source: legacy_registry
+
+  - id: openspec-archive-change
+    risk_score: write_analysis
+    known_provider_class: neutral
+    compatibility_source: legacy_registry
+
+  - id: archivist
+    risk_score: write_analysis
+    known_provider_class: neutral
+    compatibility_source: native_role
+
+  - id: sniper
+    risk_score: controlled
+    known_provider_class: native
+    compatibility_source: native_role
+
+  - id: sdd-ask
+    risk_score: controlled
+    known_provider_class: sdd
+    compatibility_source: sdd_skill
+
+  - id: batata
+    risk_score: controlled
+    known_provider_class: sdd
+    compatibility_source: sdd_skill
+
+  - id: sdd-diagnose
+    risk_score: write_analysis
+    known_provider_class: sdd
+    compatibility_source: sdd_skill
+
+  - id: sdd-converge
+    risk_score: controlled
+    known_provider_class: sdd
+    compatibility_source: sdd_skill
+
+  - id: sdd-correct
+    risk_score: controlled
+    known_provider_class: sdd
+    compatibility_source: sdd_skill
+
+  - id: sdd-stabilize
+    risk_score: controlled
+    known_provider_class: sdd
+    compatibility_source: sdd_skill
+
+  - id: sdd-validate-governance
+    risk_score: write_analysis
+    known_provider_class: sdd
+    compatibility_source: sdd_skill
+
+  - id: sdd-organize
+    risk_score: write_analysis
+    known_provider_class: sdd
+    compatibility_source: sdd_skill
+
+  - id: sdd-review-architecture
+    risk_score: write_analysis
+    known_provider_class: sdd
+    compatibility_source: sdd_skill

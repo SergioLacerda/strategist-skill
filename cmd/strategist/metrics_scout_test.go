@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/testutil"
@@ -60,6 +61,9 @@ func TestMetricsScoutCmd_IsHumanStatusCommand(t *testing.T) {
 }
 
 func TestRunMetricsScout_ReadRouteDecisionsErrorPropagates(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("ENOTDIR read-error semantics differ on Windows")
+	}
 	dir := t.TempDir()
 	blocker := filepath.Join(dir, "blocker")
 	require.NoError(t, os.WriteFile(blocker, []byte("x"), 0o644))

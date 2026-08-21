@@ -1,0 +1,29 @@
+schema: strategist-plugin-resource-schema/v1
+resource: binding
+authority: workspace
+additional_properties: false
+limits:
+  max_document_bytes: 262144
+  max_path_length: 240
+required:
+  - schema_version
+  - slot
+  - installed_instance_id
+  - generation
+  - status
+properties:
+  schema_version: {type: string}
+  slot:
+    type: enum
+    values: [discovery, refinement, execution]
+  installed_instance_id: {type: string}
+  grant_id: {type: string}
+  generation: {type: integer}
+  status:
+    type: enum
+    values: [enabled, disabled, quarantined]
+  native_fallback: {type: string}
+forbidden_authorities:
+  - artifact_source
+  - trusted_publishers
+  - requested_permissions

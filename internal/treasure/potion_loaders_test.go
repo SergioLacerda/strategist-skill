@@ -124,9 +124,7 @@ func TestLoadPotions_PartitionedManifestUsed(t *testing.T) {
 }
 
 func TestMonolithicPotionManifestPaths_StatError(t *testing.T) {
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	if runtime.GOOS == "windows" {
 		t.Skip("chmod-based permission denial is not reliable on windows")
 	}
@@ -140,9 +138,7 @@ func TestMonolithicPotionManifestPaths_StatError(t *testing.T) {
 }
 
 func TestPartitionedPotionManifestPaths_ReadDirError(t *testing.T) {
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	if runtime.GOOS == "windows" {
 		t.Skip("chmod-based permission denial is not reliable on windows")
 	}

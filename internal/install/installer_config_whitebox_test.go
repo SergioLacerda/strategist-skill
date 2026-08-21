@@ -88,9 +88,7 @@ func TestEnsureGitignore_AlreadyPresent(t *testing.T) {
 
 func TestEnsureGitignore_OpenError(t *testing.T) {
 	t.Parallel()
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	dir := t.TempDir()
 	require.NoError(t, os.Chmod(dir, 0o555))
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
@@ -101,9 +99,7 @@ func TestEnsureGitignore_OpenError(t *testing.T) {
 
 func TestEnsureGitignore_ReadError(t *testing.T) {
 	t.Parallel()
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	dir := t.TempDir()
 	gi := filepath.Join(dir, ".gitignore")
 	require.NoError(t, os.WriteFile(gi, []byte(""), 0o000))
@@ -114,9 +110,7 @@ func TestEnsureGitignore_ReadError(t *testing.T) {
 
 func TestApplySilentConfig_WriteActiveYAMLBytesFails(t *testing.T) {
 	t.Parallel()
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	dir := t.TempDir()
 	require.NoError(t, os.Chmod(dir, 0o555))
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
@@ -128,9 +122,7 @@ func TestApplySilentConfig_WriteActiveYAMLBytesFails(t *testing.T) {
 
 func TestApplyWizardConfig_WriteActiveYAMLFails(t *testing.T) {
 	t.Parallel()
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	dir := t.TempDir()
 	require.NoError(t, os.Chmod(dir, 0o555))
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
@@ -167,9 +159,7 @@ func TestApplyWizardConfig_WriteTreasureChestManifestFails(t *testing.T) {
 
 func TestWriteSelectedProviderManifest_WriteError(t *testing.T) {
 	t.Parallel()
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	dir := t.TempDir()
 	require.NoError(t, os.Chmod(dir, 0o555))
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
@@ -218,9 +208,7 @@ func TestCloseGitignore_AlreadyClosedFile(t *testing.T) {
 
 func TestWriteActiveYAML_ReadOnlyDir(t *testing.T) {
 	t.Parallel()
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	dir := t.TempDir()
 	require.NoError(t, os.Chmod(dir, 0o444))
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })

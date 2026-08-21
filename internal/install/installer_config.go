@@ -99,13 +99,13 @@ func (s Service) writeSelectedProviderManifests(strategistDir string, wc domain.
 }
 
 func (s Service) writeSelectedProviderManifest(strategistDir, provider string) error {
-	manifestPath, ok := installableDefaultProviders[provider]
+	manifestPath, ok := resolveInstallableDefaultProviders(s.Extractor)[provider]
 	if !ok {
 		return nil
 	}
-	data, err := s.Extractor.ReadFile(manifestPath)
+	data, err := legacyProviderManifestBytes(s.Extractor, provider, manifestPath)
 	if err != nil {
-		return fmt.Errorf("read %s: %w", manifestPath, err)
+		return err
 	}
 	providerDir := filepath.Join(strategistDir, installedProvidersDirName, provider)
 	targetPath := filepath.Join(providerDir, skillYAMLName)
@@ -113,6 +113,21 @@ func (s Service) writeSelectedProviderManifest(strategistDir, provider string) e
 		return fmt.Errorf("write %s: %w", targetPath, err)
 	}
 	return nil
+}
+
+func legacyProviderManifestBytes(extractor domain.FileExtractor, provider, fallbackPath string) ([]byte, error) {
+	if catalog, err := loadPluginCatalog(extractor); err == nil {
+		data, genErr := generateLegacyProviderManifest(catalog, provider)
+		if genErr != nil {
+			return nil, genErr
+		}
+		return data, nil
+	}
+	data, err := extractor.ReadFile(fallbackPath)
+	if err != nil {
+		return nil, fmt.Errorf("read %s: %w", fallbackPath, err)
+	}
+	return data, nil
 }
 
 // resolvePrompter returns the Prompter to use for wizard mode.

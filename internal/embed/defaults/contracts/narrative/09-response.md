@@ -45,18 +45,18 @@ Invariant (`00-routing.md`) — it does not claim authority over conversation
 unrelated to any Strategist mission.
 
 **Which layer this binds, by phase:** discovery and execution are native
-roles the parent agent embodies directly (`00-routing.md § Discovery Weapon
+roles the parent agent embodies directly (`00-routing.md § Discovery Plugin
 Resolution by Subtype`; the analogous mechanism for Sniper) — the binding
 above applies to the parent agent's own prose directly, with no forwarding
 step needed. Refinement is different by default: `active.slots.refinement`
-typically names a genuinely external, independently-authored provider (e.g.
+typically names a genuinely external, independently-authored slot plugin (e.g.
 `openspec-explore`) that does not automatically inherit contracts it was not
 told about. For refinement, this binding is satisfied via the explicit
 `chat_language` value forwarded at invocation (`skill.yaml`'s refinement
 pipeline stage `input`) plus the corresponding `must` directive in
-`roles/archivist.yaml` — not by assumption. An external refinement provider
-that ignores its forwarded `chat_language` is a provider compliance gap (see
-`agent-protocol.md § Slot Provider Governance Compliance`), not evidence that
+`roles/archivist.yaml` — not by assumption. An external refinement slot plugin
+that ignores its forwarded `chat_language` is a slot plugin compliance gap (see
+`agent-protocol.md § Slot Plugin Governance Compliance`), not evidence that
 this binding does not apply to it.
 
 `active.language.docs` is independent of `active.language.chat` and is

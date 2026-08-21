@@ -89,7 +89,8 @@ func TestValidateProvider(t *testing.T) {
 	assert.Empty(t, validateProvider(knownProviderRisk, "openspec-explore", "write_analysis"))
 	assert.Empty(t, validateProvider(knownProviderRisk, "sdd-ask", "controlled"))
 	assert.Contains(t, validateProvider(knownProviderRisk, "brainstorming", "controlled"), "preflight will block at runtime")
-	assert.Contains(t, validateProvider(knownProviderRisk, "unknown-provider", "write_analysis"), "is not in the known-providers registry")
+	assert.Contains(t, validateProvider(knownProviderRisk, "unknown-provider", "write_analysis"), "slot plugin")
+	assert.Contains(t, validateProvider(knownProviderRisk, "unknown-provider", "write_analysis"), "known plugin catalog")
 }
 
 func TestInstallableDefaultProviders(t *testing.T) {

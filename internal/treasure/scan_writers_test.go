@@ -12,9 +12,7 @@ import (
 // --- RegenerateDir ---
 
 func TestRegenerateDir_MkdirAllError(t *testing.T) {
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	parent := t.TempDir()
 	require.NoError(t, os.Chmod(parent, 0o555))
 	t.Cleanup(func() { _ = os.Chmod(parent, 0o755) })
@@ -25,9 +23,7 @@ func TestRegenerateDir_MkdirAllError(t *testing.T) {
 }
 
 func TestRegenerateDir_RemoveAllError(t *testing.T) {
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	parent := t.TempDir()
 	target := filepath.Join(parent, "child")
 	require.NoError(t, os.MkdirAll(target, 0o755))
@@ -114,9 +110,7 @@ func TestWriteGapFile_WithDependencies(t *testing.T) {
 // --- WriteScanOutputs: regeneration/write failures ---
 
 func TestWriteScanOutputs_GapsDirError(t *testing.T) {
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	parent := t.TempDir()
 	clustersDir := filepath.Join(parent, "clusters")
 	gapsDir := filepath.Join(parent, "locked", "gaps")
@@ -128,9 +122,7 @@ func TestWriteScanOutputs_GapsDirError(t *testing.T) {
 }
 
 func TestWriteScanOutputs_ClusterWriteError(t *testing.T) {
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	parent := t.TempDir()
 	clustersDir := filepath.Join(parent, "locked", "clusters")
 	require.NoError(t, os.MkdirAll(filepath.Join(parent, "locked"), 0o555))

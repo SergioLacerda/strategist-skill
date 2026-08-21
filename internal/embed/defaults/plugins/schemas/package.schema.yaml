@@ -1,0 +1,33 @@
+schema: strategist-plugin-resource-schema/v1
+resource: package
+authority: publisher
+additional_properties: false
+limits:
+  max_document_bytes: 262144
+  max_path_length: 240
+required:
+  - schema_version
+  - id
+  - version
+  - digest
+  - artifact_uri
+  - artifact_size
+  - license
+  - created_at
+  - manifest_schema
+  - upstream_version
+properties:
+  schema_version: {type: string}
+  id: {type: namespaced_id}
+  version: {type: semver_or_label}
+  digest: {type: digest, pattern: "sha256:<64 lowercase hex>"}
+  artifact_uri: {type: uri}
+  artifact_size: {type: integer, maximum: 262144}
+  license: {type: string}
+  created_at: {type: timestamp}
+  manifest_schema: {type: string}
+  upstream_version: {type: string}
+forbidden_authorities:
+  - binding_status
+  - granted_permissions
+  - verification_evidence

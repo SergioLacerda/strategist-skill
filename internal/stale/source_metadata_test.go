@@ -3,6 +3,7 @@ package stale_test
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -130,8 +131,8 @@ func TestCheckStrongSourceMetadata(t *testing.T) {
 
 	t.Run("strong source sha256 read error is treated as mismatch", func(t *testing.T) {
 		t.Parallel()
-		if os.Getuid() == 0 {
-			t.Skip("permission tests do not apply when running as root")
+		if runtime.GOOS == "windows" || os.Getuid() == 0 {
+			t.Skip("permission tests do not apply on Windows or when running as root")
 		}
 		dir := t.TempDir()
 		src := filepath.Join(dir, "active.yaml")
@@ -157,8 +158,8 @@ func TestCheckStrongSourceMetadata(t *testing.T) {
 
 	t.Run("strong source stat error surfaces", func(t *testing.T) {
 		t.Parallel()
-		if os.Getuid() == 0 {
-			t.Skip("permission tests do not apply when running as root")
+		if runtime.GOOS == "windows" || os.Getuid() == 0 {
+			t.Skip("permission tests do not apply on Windows or when running as root")
 		}
 		dir := t.TempDir()
 		subdir := filepath.Join(dir, "locked")

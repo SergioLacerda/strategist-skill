@@ -6,6 +6,7 @@ package jsonlsink
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
@@ -20,7 +21,10 @@ func New(path string) Sink { return Sink{Path: path} }
 
 // Emit appends event to s.Path.
 func (s Sink) Emit(_ context.Context, event telemetry.Event) error {
-	return telemetry.AppendEventLine(s.Path, event)
+	if err := telemetry.AppendEventLine(s.Path, event); err != nil {
+		return fmt.Errorf("jsonlsink: %w", err)
+	}
+	return nil
 }
 
 var _ telemetry.EventSink = Sink{}

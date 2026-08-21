@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -194,7 +195,7 @@ func TestReadGovernance_MetadataNotFound(t *testing.T) {
 }
 
 func TestReadGovernance_MetadataReadError(t *testing.T) {
-	if os.Getuid() == 0 {
+	if runtime.GOOS == "windows" || os.Getuid() == 0 {
 		t.Skip("permission tests do not apply when running as root")
 	}
 	dir := t.TempDir()
@@ -301,7 +302,7 @@ func TestRunSync_ReadSkillError(t *testing.T) {
 }
 
 func TestRunSync_WriteError(t *testing.T) {
-	if os.Getuid() == 0 {
+	if runtime.GOOS == "windows" || os.Getuid() == 0 {
 		t.Skip("permission tests do not apply when running as root")
 	}
 	dir := t.TempDir()

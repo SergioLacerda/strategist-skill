@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"testing/fstest"
 
@@ -28,6 +29,9 @@ func TestExtractFS_Basic(t *testing.T) {
 
 func TestExtractFS_MkdirError(t *testing.T) {
 	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("read-only chmod semantics are not reliable for this permission test on Windows")
+	}
 	if os.Getuid() == 0 {
 		t.Skip("permission tests do not apply when running as root")
 	}

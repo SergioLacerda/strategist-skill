@@ -15,6 +15,7 @@ func printCheckSuccess(root string, providers map[string]string, resolutions map
 	for _, section := range []func(*tabwriter.Writer) error{
 		func(w *tabwriter.Writer) error { return writeCheckStatusSection(w, root) },
 		func(w *tabwriter.Writer) error { return writeCheckSlotsSection(w, providers, resolutions, policy) },
+		func(w *tabwriter.Writer) error { return writeCheckReadinessSection(w, resolutions) },
 		func(w *tabwriter.Writer) error { return writeCheckPersonaSection(w, mode) },
 		func(w *tabwriter.Writer) error { return writeCheckPolicySection(w, policy) },
 	} {
@@ -24,6 +25,31 @@ func printCheckSuccess(root string, providers map[string]string, resolutions map
 	}
 	if err := w.Flush(); err != nil {
 		return fmt.Errorf("check: flush output: %w", err)
+	}
+	return nil
+}
+
+func writeCheckReadinessSection(w *tabwriter.Writer, resolutions map[string]slotResolution) error {
+	if _, err := fmt.Fprintln(w, "READINESS\t"); err != nil {
+		return fmt.Errorf("check: write readiness header: %w", err)
+	}
+	for _, slot := range []string{"discovery", "refinement", "execution"} {
+		vector := resolutions[slot].readiness
+		status := "not_ready"
+		if vector.Ready() {
+			status = "ready"
+		}
+		reasons := vector.ReasonCodes()
+		reasonText := "none"
+		if len(reasons) > 0 {
+			reasonText = fmt.Sprintf("%v", reasons)
+		}
+		if _, err := fmt.Fprintf(w, "  %-12s\t%s\treasons=%s\n", slot, status, reasonText); err != nil {
+			return fmt.Errorf("check: write readiness row: %w", err)
+		}
+	}
+	if _, err := fmt.Fprintln(w, "\t"); err != nil {
+		return fmt.Errorf("check: write separator: %w", err)
 	}
 	return nil
 }
@@ -47,7 +73,7 @@ func writeCheckSlotsSection(w *tabwriter.Writer, providers map[string]string, re
 	}
 	for _, slot := range []string{"discovery", "refinement", "execution"} {
 		res := resolutions[slot]
-		row := fmt.Sprintf("  %-12s\t%s\tkind=%s", slot, providers[slot], res.kind)
+		row := fmt.Sprintf("  %-12s\t%s\tkind=%s", slot, providers[slot], res.kind.label())
 		if res.hasFallback() {
 			outcome := domain.DecideSlotFallbackOutcome(slot, policy, true)
 			row += fmt.Sprintf("\tfallback=%s(native_role)\toutcome=%s", res.fallbackProvider, outcome)

@@ -11,9 +11,7 @@ import (
 )
 
 func TestScanMissionsInDir_ReadDirPermissionError(t *testing.T) {
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	dir := t.TempDir()
 	sub := filepath.Join(dir, "refined")
 	require.NoError(t, os.MkdirAll(sub, 0o755))
@@ -47,9 +45,7 @@ func TestRunScanPipeline_HappyPath(t *testing.T) {
 }
 
 func TestRunScanPipeline_ScanError(t *testing.T) {
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	root := t.TempDir()
 	basePath := filepath.Join(root, ".analysis")
 	refined := filepath.Join(basePath, "refined")
@@ -133,9 +129,7 @@ func TestScanMissions_MissingBaseDirsIsEmpty(t *testing.T) {
 }
 
 func TestScanMissions_ErrorPropagates(t *testing.T) {
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	basePath := t.TempDir()
 	refined := filepath.Join(basePath, "refined")
 	require.NoError(t, os.MkdirAll(refined, 0o755))
@@ -204,9 +198,7 @@ func TestScanMissionDirEntry_NoTasksFileIsNotError(t *testing.T) {
 }
 
 func TestRunScanPipeline_WriteScanOutputsErrorPropagates(t *testing.T) {
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	root := t.TempDir()
 	basePath := filepath.Join(root, ".analysis")
 	missionDir := filepath.Join(basePath, "refined", "mission-a")

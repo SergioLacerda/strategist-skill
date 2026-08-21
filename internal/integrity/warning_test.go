@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -171,6 +172,9 @@ func TestIsModified_ReadLockError(t *testing.T) {
 }
 
 func TestIsModified_StatConfigError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("ENOTDIR stat semantics differ on Windows")
+	}
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, "active.yaml")
 	lockPath := filepath.Join(dir, ".config.lock")
@@ -354,7 +358,9 @@ func TestWriteLock_SetsLockFilePermissionsAndLeavesNoTempFiles(t *testing.T) {
 
 	info, err := os.Stat(lockPath)
 	require.NoError(t, err)
-	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+	if runtime.GOOS != "windows" {
+		assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+	}
 
 	entries, err := os.ReadDir(dir)
 	require.NoError(t, err)

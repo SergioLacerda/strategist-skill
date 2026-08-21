@@ -244,12 +244,9 @@ func TestValidateCmd_DefaultRoot(t *testing.T) {
 	t.Cleanup(func() { validateRoot = orig })
 	validateRoot = ""
 
-	oldWd, err := os.Getwd()
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = os.Chdir(oldWd) })
-	require.NoError(t, os.Chdir(t.TempDir()))
+	chdirForTest(t, t.TempDir())
 
-	err = validateCmd.RunE(validateCmd, nil)
+	err := validateCmd.RunE(validateCmd, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "runtime not found")
 }

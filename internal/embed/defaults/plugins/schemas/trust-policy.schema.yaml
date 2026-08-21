@@ -1,0 +1,33 @@
+schema: strategist-plugin-resource-schema/v1
+resource: trust_policy
+authority: operator_policy
+additional_properties: false
+limits:
+  max_document_bytes: 262144
+  max_path_length: 240
+required:
+  - schema_version
+  - revision
+  - trusted_publishers
+  - trusted_sources
+  - minimum_conformance
+properties:
+  schema_version: {type: string}
+  revision: {type: string}
+  trusted_publishers: {type: array}
+  trusted_sources: {type: array}
+  allowed_licenses: {type: array}
+  minimum_conformance:
+    type: enum
+    values: [C0, C1, C2, C3]
+  required_signatures: {type: array}
+  required_attestations: {type: array}
+  freshness_days: {type: integer}
+  revocation_sources: {type: array}
+  revoked_digests: {type: array}
+  deprecations: {type: array}
+  development_exceptions: {type: array}
+forbidden_authorities:
+  - installed_instance
+  - slot_selection
+  - resolved_graph

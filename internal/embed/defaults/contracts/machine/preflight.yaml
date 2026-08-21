@@ -1,7 +1,7 @@
 module: preflight
 type: agent_phase
 description: >
-  Loads internal domain (identity, directives) and validates slot providers.
+  Loads internal domain (identity, directives) and validates slot plugins.
   Runs after Bootstrap. Must emit status=done before Intake begins.
 
 contract:
@@ -17,7 +17,7 @@ contract:
     - name: roles
       type: object
       required: true
-      description: Slot providers map from Bootstrap
+      description: Slot plugin/provider-id map from Bootstrap
 
   output:
     - name: domain
@@ -26,13 +26,13 @@ contract:
     - name: slot_providers
       type: object
       description: >
-        Resolved slot provider paths for discovery, refinement, execution. Each slot
-        resolves through one of two independent branches: an external skill provider
+        Resolved slot target paths for discovery, refinement, execution. Each slot
+        resolves through one of two independent branches: an external skill plugin
         (skills/<provider>/skill.yaml, validated against the slot's required
         risk_score) or a built-in Strategist native role (roles/<provider>.yaml,
         validated against role schema plus slot match). These are different
         authorities — a native role is never required to declare risk_score, and a
-        skill provider manifest is never validated against native role schema.
+        skill plugin manifest is never validated against native role schema.
     - name: preflight_status
       type: string
       description: "done" on success
@@ -44,20 +44,20 @@ contract:
     - code: slot_provider_not_found
       trigger: >
         Neither skills/<provider>/skill.yaml nor roles/<provider>.yaml can be resolved
-        for the configured slot provider — the two-branch resolver (skill provider,
+        for the configured slot plugin — the two-branch resolver (skill plugin,
         then native role) found no match in either search path.
       behavior: Emit blocked event with reason=slot_provider_not_found, stop mission
     - code: slot_risk_mismatch
       trigger: >
-        A skill provider's risk_score does not match the required contract for its
-        slot. This applies only to the skill-provider branch — native roles
+        A skill plugin's risk_score does not match the required contract for its
+        slot. This applies only to the skill-plugin branch — native roles
         (roles/<provider>.yaml) are validated against role schema plus slot match
         instead, and do not declare or require risk_score.
       behavior: Emit blocked event with reason=slot_risk_mismatch slot=<label>, stop mission
     - code: role_invocation_failed
       trigger: >
-        Strategist attempts to invoke a configured role/provider and the invocation fails
-        because either branch of the two-branch resolver is invalid: the skill provider
+        Strategist attempts to invoke a configured slot plugin or native role and the invocation fails
+        because either branch of the two-branch resolver is invalid: the skill plugin
         manifest at skill_root/skills/<provider>/skill.yaml is schema-invalid, or the
         native role definition at skill_root/roles/<provider>.yaml is malformed YAML,
         fails role schema validation, or declares a mismatched slot — or the provider is

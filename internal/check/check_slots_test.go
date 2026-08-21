@@ -62,6 +62,43 @@ func TestResolveNativeRoleSlot_MalformedYAML(t *testing.T) {
 	assert.Contains(t, errMsg, "malformed YAML")
 }
 
+func TestResolveSkillProviderSlot_AttachesUnsupportedReadiness(t *testing.T) {
+	t.Parallel()
+
+	res, errMsg := resolveSkillProviderSlot("discovery", "brainstorming", "skills/brainstorming/skill.yaml", []byte("risk_score: write_analysis\n"))
+	require.Empty(t, errMsg)
+
+	assert.Equal(t, slotResolutionSkillProvider, res.kind)
+	assert.False(t, res.readiness.Ready())
+	assert.Contains(t, res.readiness.ReasonCodes(), "connector_unsupported")
+	assert.Contains(t, res.readiness.ReasonCodes(), "entrypoint_probe_unsupported")
+}
+
+func TestResolveNativeRoleSlot_AttachesNativeReadiness(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	rolesDir := filepath.Join(dir, "roles")
+	require.NoError(t, os.MkdirAll(rolesDir, 0o755))
+	rolePath := filepath.Join(rolesDir, "sniper.yaml")
+	require.NoError(t, os.WriteFile(rolePath, []byte("role: sniper\nslot: execution\n"), 0o644))
+
+	res, errMsg := resolveNativeRoleSlot(dir, "execution", "sniper", filepath.Join(dir, "skills", "sniper", "skill.yaml"))
+	require.Empty(t, errMsg)
+
+	assert.Equal(t, slotResolutionNativeRole, res.kind)
+	assert.False(t, res.readiness.Ready(), "native readiness must still report unsupported enforcement explicitly")
+	assert.Contains(t, res.readiness.ReasonCodes(), "enforcement_unsupported")
+	assert.Equal(t, rolePath, res.readiness.Descriptor.Detail)
+}
+
+func TestSlotResolutionKindUsesPluginVocabulary(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "external skill plugin", slotResolutionSkillProvider.label())
+	assert.Equal(t, "native role", slotResolutionNativeRole.label())
+}
+
 // --- resolveNativeFallback (ADR-0028) ---
 
 func TestResolveNativeFallback_CompatibleRoleFound(t *testing.T) {

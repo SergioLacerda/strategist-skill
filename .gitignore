@@ -40,7 +40,7 @@ generated/
 /tests/evals/regression/*
 !/tests/evals/regression/20260804-eval-fake-provider/
 .tmp-gocache-cli/
-
+.tmp-go-cache
 AGENTS.md
 CLAUDE.md
 GEMINI.md

@@ -6,6 +6,7 @@ package compile
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/testutil"
@@ -36,7 +37,7 @@ func TestWriteGzJSON_NonSerializable(t *testing.T) {
 
 func TestWriteGzJSON_MkdirFails(t *testing.T) {
 	t.Parallel()
-	if os.Getuid() == 0 {
+	if runtime.GOOS == "windows" || os.Getuid() == 0 {
 		t.Skip("permission tests do not apply when running as root")
 	}
 	dir := t.TempDir()
@@ -50,7 +51,7 @@ func TestWriteGzJSON_MkdirFails(t *testing.T) {
 
 func TestWriteGzJSON_ReadOnlyDir(t *testing.T) {
 	t.Parallel()
-	if os.Getuid() == 0 {
+	if runtime.GOOS == "windows" || os.Getuid() == 0 {
 		t.Skip("permission tests do not apply when running as root")
 	}
 	dir := t.TempDir()
@@ -87,7 +88,7 @@ func TestSourceFileSHA256_ReadError(t *testing.T) {
 
 func TestCompileYAMLDirTyped_UnreadableDir(t *testing.T) {
 	t.Parallel()
-	if os.Getuid() == 0 {
+	if runtime.GOOS == "windows" || os.Getuid() == 0 {
 		t.Skip("permission tests do not apply when running as root")
 	}
 	dir := t.TempDir()

@@ -101,15 +101,15 @@ invariants:
   - gate_required is always true, regardless of selected_route
   - discovery_always_resolves_to_native_ranger — discovery invocation never depends on
     discovery_subtype or active.slots.discovery; all subtypes resolve to
-    internal_skills/ranger (native_role); no external weapon's manifest is ever
+    internal_skills/ranger (native_role); no external discovery plugin manifest is ever
     consulted for discovery, so no post-route capability check applies
 
 # post_route_capability_check was removed (see
 # .analysis/refined/20260728-ranger-drift-eval/): it only ever applied to
 # discovery_subtype=creative, and a live invocation of a manifest-compliant
-# creative weapon surfaced structural incompatibilities with Ranger's contract
+# creative discovery plugin surfaced structural incompatibilities with Ranger's contract
 # that the manifest-only check could not catch. Discovery now resolves to
 # internal_skills/ranger for every subtype (see
-# contracts/narrative/00-routing.md § Discovery Weapon Resolution by Subtype),
-# so there is no remaining case where an external weapon is a discovery
+# contracts/narrative/00-routing.md § Discovery Plugin Resolution by Subtype),
+# so there is no remaining case where an external discovery plugin is a discovery
 # candidate and this check would run.

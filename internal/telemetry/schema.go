@@ -1,6 +1,9 @@
 package telemetry
 
-import "path/filepath"
+import (
+	"path/filepath"
+	"strings"
+)
 
 // Attribute key constants for Strategist OTel spans and log records.
 const (
@@ -82,8 +85,18 @@ const documentationScopeApprovedTargets = "approved_targets"
 // Call this on any string that may originate from user filesystem input before
 // attaching it to a trace span.
 func SanitizePath(p string) string {
-	if filepath.IsAbs(p) {
+	if filepath.IsAbs(p) || strings.HasPrefix(p, "/") || looksLikeWindowsAbsPath(p) {
 		return redactedPath
 	}
 	return p
+}
+
+func looksLikeWindowsAbsPath(p string) bool {
+	if len(p) < 3 {
+		return false
+	}
+	drive := p[0]
+	return ((drive >= 'A' && drive <= 'Z') || (drive >= 'a' && drive <= 'z')) &&
+		p[1] == ':' &&
+		(p[2] == '\\' || p[2] == '/')
 }

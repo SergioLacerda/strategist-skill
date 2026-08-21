@@ -3,6 +3,7 @@ package embed_test
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	embedpkg "github.com/SergioLacerda/strategist-skill/internal/embed"
@@ -58,6 +59,9 @@ func TestExtractor_ReadFile(t *testing.T) {
 
 func TestExtractor_Extract_ReadOnlyTarget(t *testing.T) {
 	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("read-only chmod semantics are not reliable for this permission test on Windows")
+	}
 	if os.Getuid() == 0 {
 		t.Skip("permission tests do not apply when running as root")
 	}

@@ -1,0 +1,39 @@
+schema: strategist-plugin-resource-schema/v1
+resource: inventory
+authority: workspace
+additional_properties: false
+limits:
+  max_document_bytes: 262144
+  max_path_length: 240
+required:
+  - schema_version
+  - instances
+properties:
+  schema_version: {type: string}
+  instances:
+    type: array
+    item:
+      required:
+        - id
+        - package_digest
+        - adapter_digest
+        - connector_id
+        - lock_digest
+        - trust_policy_revision
+        - state
+      properties:
+        id: {type: string}
+        package_digest: {type: digest}
+        adapter_digest: {type: digest}
+        connector_id: {type: string}
+        lock_digest: {type: digest}
+        trust_policy_revision: {type: string}
+        verification_evidence: {type: string}
+        state:
+          type: enum
+          values: [discovered, resolved, verified, staged, probed, active, failed, quarantined]
+        last_known_good: {type: boolean}
+forbidden_authorities:
+  - trusted_publishers
+  - granted_permissions
+  - slot_selection

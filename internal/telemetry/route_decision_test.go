@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -178,6 +179,9 @@ func TestAppendRouteDecisionLine_SameRouteDifferentMissionIDBothAppend(t *testin
 
 func TestUnlockRouteDecisionFile_ReturnsErrorOnClosedFile(t *testing.T) {
 	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("unlocking a closed file can be a no-op on Windows")
+	}
 	dir := t.TempDir()
 	f, err := os.Create(filepath.Join(dir, "unlock-closed"))
 	if err != nil {

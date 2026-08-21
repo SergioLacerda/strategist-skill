@@ -3,6 +3,7 @@ package stale_test
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/stale"
@@ -96,8 +97,8 @@ func TestCheckReasons(t *testing.T) {
 
 func TestCheckManifestArtifactHashUnavailable(t *testing.T) {
 	t.Parallel()
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
+	if runtime.GOOS == "windows" || os.Getuid() == 0 {
+		t.Skip("permission tests do not apply on Windows or when running as root")
 	}
 	checker := stale.Checker{}
 	dir := t.TempDir()

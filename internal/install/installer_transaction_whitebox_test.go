@@ -11,9 +11,7 @@ import (
 
 func TestInstallTransaction_RollbackRemoveAllFailureIsLogged(t *testing.T) {
 	t.Parallel()
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	parent := t.TempDir()
 	strategistDir := filepath.Join(parent, "workspace", ".strategist")
 

@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -56,6 +57,9 @@ func copyMakefile(t *testing.T, dstRoot string) {
 
 func TestMakeGoFileSizeReport_PrimarySourcesOnly(t *testing.T) {
 	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("Makefile contract requires POSIX shell; use Git Bash or WSL on Windows")
+	}
 
 	root := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "cmd", "app"), 0o755))
@@ -86,6 +90,9 @@ func TestMakeGoFileSizeReport_PrimarySourcesOnly(t *testing.T) {
 
 func TestMakeGoFileSizeReport_PrintsNoneWhenNoLargeFilesExist(t *testing.T) {
 	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("Makefile contract requires POSIX shell; use Git Bash or WSL on Windows")
+	}
 
 	root := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "cmd", "app"), 0o755))

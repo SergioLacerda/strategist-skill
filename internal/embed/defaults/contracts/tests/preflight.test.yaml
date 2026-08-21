@@ -4,10 +4,10 @@ version: "1.0"
 invariants:
   - id: slot_resolution_order
     description: >
-      Provider resolved through two independent branches, tried in order: an external
-      skill provider first, then a built-in Strategist native role. These are different
+      Slot target resolved through two independent branches, tried in order: an external
+      skill plugin first, then a built-in Strategist native role. These are different
       authorities with different validation rules — a native role match is not a
-      fallback within the skill-provider branch, and neither branch is ever skipped
+      fallback within the skill-plugin branch, and neither branch is ever skipped
       based on the other's absence alone.
     rule: >
       resolve provider from skill_root/skills/<provider>/skill.yaml (validate
@@ -16,7 +16,7 @@ invariants:
       slot_provider_not_found
 
   - id: provider_manifest_is_slot_authority
-    description: Provider slot capability is determined only by the strategist provider manifest
+    description: Slot plugin capability is determined only by the strategist skill plugin manifest
     rule: standalone SKILL.md style or creative-first instructions must not cause role_invocation_failed when skill_root/skills/<provider>/skill.yaml satisfies the slot contract
 
   - id: native_role_is_valid_slot_authority
@@ -31,7 +31,7 @@ invariants:
   - id: risk_mismatch_blocks
     description: >
       Slot with wrong risk_score stops the mission. Applies only to the
-      skill-provider branch — native roles are validated by role schema plus slot
+      skill-plugin branch — native roles are validated by role schema plus slot
       match instead, never by risk_score.
     rule: slot.risk_score != expected → emit blocked reason=slot_risk_mismatch
 
@@ -85,7 +85,7 @@ cases:
       discovery_provider: brainstorming
       discovery_subtype: diagnostic
     expect:
-      note: "external weapon manifest is never consulted for any discovery subtype — see 00-routing.md § Discovery Weapon Resolution by Subtype"
+      note: "external discovery plugin manifest is never consulted for any discovery subtype — see 00-routing.md § Discovery Plugin Resolution by Subtype"
       handoff: "[Strategist] phase=intake status=handoff component=scout target=ranger weapon=internal_skills/ranger subtype=diagnostic"
 
   - name: provider_not_found

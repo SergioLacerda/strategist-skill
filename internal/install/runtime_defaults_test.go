@@ -180,9 +180,7 @@ func TestPlanRuntimeDefaultUpgrade_CorruptManifest(t *testing.T) {
 
 func TestLoadInstallManifest_UnreadableFile(t *testing.T) {
 	t.Parallel()
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	dir := t.TempDir()
 	path := filepath.Join(dir, domain.InstallManifestRelPath)
 	require.NoError(t, os.WriteFile(path, []byte("{}"), 0o644))
@@ -196,9 +194,7 @@ func TestLoadInstallManifest_UnreadableFile(t *testing.T) {
 
 func TestPlanRuntimeDefaultUpgrade_FileStatError(t *testing.T) {
 	t.Parallel()
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	dir := t.TempDir()
 	contractsDir := filepath.Join(dir, "contracts")
 	require.NoError(t, os.MkdirAll(filepath.Join(contractsDir, "machine"), 0o755))
@@ -228,9 +224,7 @@ func TestApplyRuntimeDefaultPlan_PropagatesFileError(t *testing.T) {
 
 func TestApplyRuntimeDefaultFile_WriteError(t *testing.T) {
 	t.Parallel()
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	dir := t.TempDir()
 	require.NoError(t, os.Chmod(dir, 0o555))
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
@@ -242,9 +236,7 @@ func TestApplyRuntimeDefaultFile_WriteError(t *testing.T) {
 
 func TestSaveInstallManifest_WriteError(t *testing.T) {
 	t.Parallel()
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	dir := t.TempDir()
 	require.NoError(t, os.Chmod(dir, 0o555))
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
@@ -255,9 +247,7 @@ func TestSaveInstallManifest_WriteError(t *testing.T) {
 
 func TestFinalizeInstall_SaveManifestErrorPropagates(t *testing.T) {
 	t.Parallel()
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	dir := t.TempDir()
 	require.NoError(t, os.MkdirAll(dir, 0o755))
 	s := runtimeDefaultService(newRuntimeDefaultsExtractor(nil))

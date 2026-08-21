@@ -9,6 +9,7 @@ package externalsink
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
@@ -28,7 +29,10 @@ func (s Sink) Emit(ctx context.Context, event telemetry.Event) error {
 	if s.Forward == nil {
 		return nil
 	}
-	return s.Forward.Emit(ctx, event)
+	if err := s.Forward.Emit(ctx, event); err != nil {
+		return fmt.Errorf("externalsink: forward emit: %w", err)
+	}
+	return nil
 }
 
 var _ telemetry.EventSink = Sink{}

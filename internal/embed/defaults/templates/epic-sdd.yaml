@@ -13,7 +13,7 @@ knowledge_index_path: knowledge.index.yaml
 # Values: pt | en
 language: pt
 
-# Slot providers — which skill fills each mission role.
+# Slot plugins — which skill fills each mission role.
 # The execution slot is overridden at runtime by governance_injection.execution_provider
 # when the SDD plugin is active. The value here is the fallback.
 slots:

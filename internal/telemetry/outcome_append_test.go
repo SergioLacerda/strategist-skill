@@ -3,6 +3,7 @@ package telemetry
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -112,6 +113,9 @@ func TestAppendOutcomeLine_SameStatusDifferentMissionIDBothAppend(t *testing.T) 
 
 func TestUnlockOutcomeFile_ReturnsErrorOnClosedFile(t *testing.T) {
 	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("unlocking a closed file can be a no-op on Windows")
+	}
 	dir := t.TempDir()
 	f, err := os.Create(filepath.Join(dir, "unlock-closed"))
 	if err != nil {

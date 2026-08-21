@@ -113,12 +113,8 @@ func TestExitCodeFor(t *testing.T) {
 // --- requireStrategistDir ---
 
 func TestRequireStrategistDir_FileExists(t *testing.T) {
-	oldWd, err := os.Getwd()
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = os.Chdir(oldWd) })
-
 	dir := t.TempDir()
-	require.NoError(t, os.Chdir(dir))
+	chdirForTest(t, dir)
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, ".strategist"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, ".strategist", "active.yaml"), []byte("mode: epic\n"), 0o644))
 

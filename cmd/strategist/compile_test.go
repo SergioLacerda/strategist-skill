@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -46,12 +45,9 @@ func TestCompileCmd_DefaultRoot(t *testing.T) {
 	compileRoot = ""
 
 	// Change to a temp dir so ".strategist" definitely doesn't exist.
-	oldWd, err := os.Getwd()
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = os.Chdir(oldWd) })
-	require.NoError(t, os.Chdir(t.TempDir()))
+	chdirForTest(t, t.TempDir())
 
-	err = compileCmd.RunE(compileCmd, nil)
+	err := compileCmd.RunE(compileCmd, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not_installed")
 	// After the run, compileRoot must be the default value.

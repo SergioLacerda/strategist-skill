@@ -5,6 +5,7 @@ package compile
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/testutil"
@@ -211,7 +212,7 @@ func TestReplaceYAMLLine_ReplacesFirst(t *testing.T) {
 
 func TestWriteFile_Error(t *testing.T) {
 	t.Parallel()
-	if os.Getuid() == 0 {
+	if runtime.GOOS == "windows" || os.Getuid() == 0 {
 		t.Skip("permission tests do not apply when running as root")
 	}
 	dir := t.TempDir()
@@ -227,7 +228,7 @@ func TestWriteFile_Error(t *testing.T) {
 
 func TestUpsertSection_WriteError(t *testing.T) {
 	t.Parallel()
-	if os.Getuid() == 0 {
+	if runtime.GOOS == "windows" || os.Getuid() == 0 {
 		t.Skip("permission tests do not apply when running as root")
 	}
 	dir := t.TempDir()
@@ -310,7 +311,7 @@ func TestMarkdownTail_LastSectionInFileReturnsEmpty(t *testing.T) {
 
 func TestAgentAwareness_SeedWriteErrorIsNonBlocking(t *testing.T) {
 	t.Parallel()
-	if os.Getuid() == 0 {
+	if runtime.GOOS == "windows" || os.Getuid() == 0 {
 		t.Skip("permission tests do not apply when running as root")
 	}
 	dir := t.TempDir()

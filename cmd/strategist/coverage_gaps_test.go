@@ -5,6 +5,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -87,12 +88,9 @@ func TestResolveDojoRoots_EmptyRootDefaultsToStrategist(t *testing.T) {
 	// When root is empty, resolveDojoRoots sets strategistRoot = ".strategist".
 	// Reading active.yaml from ".strategist/active.yaml" in a tmp CWD will fail
 	// (file not found), but the assignment branch is exercised.
-	oldWd, err := os.Getwd()
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = os.Chdir(oldWd) })
-	require.NoError(t, os.Chdir(t.TempDir()))
+	chdirForTest(t, t.TempDir())
 
-	_, _, err = resolveDojoRoots("")
+	_, _, err := resolveDojoRoots("")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "active.yaml")
 }
@@ -163,8 +161,8 @@ func TestResolveInstallTarget_ExistingStrategistDir(t *testing.T) {
 // --- compile: CompileAll failure path ---
 
 func TestCompileCmd_CompileAllError(t *testing.T) {
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
+	if runtime.GOOS == "windows" || os.Getuid() == 0 {
+		t.Skip("permission tests do not apply on Windows or when running as root")
 	}
 	dir := t.TempDir()
 

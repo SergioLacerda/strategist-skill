@@ -72,6 +72,8 @@ func WriteGzJSON(path string, v any) error {
 	}
 	gz := gzip.NewWriter(f)
 	if err := json.NewEncoder(gz).Encode(v); err != nil {
+		_ = gz.Close() //nolint:errcheck // close before cleanup so Windows can remove tmp
+		_ = f.Close()  //nolint:errcheck // best-effort after encode failure
 		cleanup()
 		return fmt.Errorf("json encode: %w", err)
 	}

@@ -3,6 +3,7 @@ package treasurecli
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/treasure"
@@ -152,12 +153,9 @@ func TestTreasureChestScan_ResolveRootError(t *testing.T) {
 	resetTreasureChestFlags(t)
 	setTreasureChestRoot(t, "")
 
-	oldWd, err := os.Getwd()
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = os.Chdir(oldWd) })
-	require.NoError(t, os.Chdir(t.TempDir()))
+	chdirForTest(t, t.TempDir())
 
-	err = treasureChestScanCmd.RunE(treasureChestScanCmd, nil)
+	err := treasureChestScanCmd.RunE(treasureChestScanCmd, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "treasure-chest scan")
 }
@@ -176,6 +174,9 @@ func TestTreasureChestScan_ResolveDojoRootsError(t *testing.T) {
 // --- runTreasureChestScan: treasure.ScanMissions error (unreadable refined/ dir) ---
 
 func TestTreasureChestScan_ScanMissionsError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod not reliable on windows")
+	}
 	if os.Getuid() == 0 {
 		t.Skip("permission tests do not apply when running as root")
 	}
@@ -195,6 +196,9 @@ func TestTreasureChestScan_ScanMissionsError(t *testing.T) {
 // --- runTreasureChestScan: treasure.WriteScanOutputs error (clustersDir parent unwritable) ---
 
 func TestTreasureChestScan_WriteScanOutputsError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod not reliable on windows")
+	}
 	if os.Getuid() == 0 {
 		t.Skip("permission tests do not apply when running as root")
 	}

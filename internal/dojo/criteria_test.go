@@ -50,14 +50,16 @@ func TestValidateCriteria_PathTraversal(t *testing.T) {
 }
 
 func TestValidateCriteria_AbsolutePathRejected(t *testing.T) {
+	absPath, err := filepath.Abs("outside.md")
+	require.NoError(t, err)
 	c := domain.DojoCriteria{
 		Scenario: "sample-scenario",
 		RunDir:   "dojo/run",
 		FilesCreated: []domain.DojoFileCheck{
-			{Path: "/etc/passwd"},
+			{Path: absPath},
 		},
 	}
-	err := dojo.ValidateCriteria(c)
+	err = dojo.ValidateCriteria(c)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "escapes its root")
 }

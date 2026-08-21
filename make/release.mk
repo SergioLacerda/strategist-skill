@@ -4,8 +4,7 @@
 	release-test release-dry-run release snapshot clean compile-skill
 
 install: build
-	mkdir -p ~/.local/bin
-	install -m 755 bin/strategist ~/.local/bin/strategist
+	mkdir -p "$$HOME/.local/bin" && install -m 755 bin/strategist "$$HOME/.local/bin/strategist"
 	@echo "[Strategist] binary installed. Run: strategist install --wizard"
 
 # The sync-embed target was removed in W7a (Option B): internal/embed/defaults/ is now

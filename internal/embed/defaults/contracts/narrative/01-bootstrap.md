@@ -18,7 +18,7 @@ contract: null
 
 - resolved `active`
 - resolved `persona`
-- resolved slot providers
+- resolved slot plugin/native-role provider ids
 - `governance_mode` — `standalone` or the adapter name (e.g. `sdd`, `custom`)
 - `governance_source` — origin of the active governance (path or adapter id; `none` in standalone mode)
 - `governance_adapter` — adapter responsible for governance injection, if any

@@ -1,0 +1,33 @@
+schema: strategist-plugin-resource-schema/v1
+resource: certification
+authority: conformance
+additional_properties: false
+limits:
+  max_document_bytes: 262144
+  max_path_length: 240
+required:
+  - schema_version
+  - level
+  - package_digest
+  - adapter_digest
+  - host_api_digest
+  - connector_digest
+  - test_suite_digest
+  - certified_at
+properties:
+  schema_version: {type: string}
+  level:
+    type: enum
+    values: [C0, C1, C2, C3]
+  package_digest: {type: digest}
+  adapter_digest: {type: digest}
+  host_api_digest: {type: digest}
+  connector_digest: {type: digest}
+  test_suite_digest: {type: digest}
+  certified_at: {type: timestamp}
+  expires_at: {type: timestamp}
+  evidence_refs: {type: array}
+forbidden_authorities:
+  - granted_permissions
+  - active_binding
+  - trusted_publishers

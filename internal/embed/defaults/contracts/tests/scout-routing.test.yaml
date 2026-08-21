@@ -26,7 +26,7 @@ invariants:
     description: >
       Discovery invocation never depends on discovery_subtype or
       active.slots.discovery — every subtype resolves to internal_skills/ranger.
-      No external weapon's manifest is ever consulted for discovery.
+      No external discovery plugin manifest is ever consulted for discovery.
     rule: for any discovery_subtype → discovery target == internal_skills/ranger (native_role)
 
 cases:
@@ -75,5 +75,5 @@ cases:
       handoff: "[Strategist] phase=intake status=handoff component=scout target=ranger weapon=internal_skills/ranger subtype=creative"
       action: >
         discovery resolves to internal_skills/ranger regardless of
-        active.slots.discovery or discovery_subtype — no external weapon's
+        active.slots.discovery or discovery_subtype — no external discovery plugin
         manifest is ever consulted for discovery invocation

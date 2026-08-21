@@ -50,9 +50,7 @@ func TestLoadCompiledIndex_CorruptGzip(t *testing.T) {
 }
 
 func TestLoadCompiledIndex_OpenErrorPropagates(t *testing.T) {
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	dir := t.TempDir()
 	compiledDir := filepath.Join(dir, ".compiled")
 	require.NoError(t, os.MkdirAll(compiledDir, 0o755))

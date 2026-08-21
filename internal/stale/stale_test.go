@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -22,8 +23,8 @@ type isStaleTestCase struct {
 
 func skipIfRoot(t *testing.T) {
 	t.Helper()
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
+	if runtime.GOOS == "windows" || os.Getuid() == 0 {
+		t.Skip("permission tests do not apply on Windows or when running as root")
 	}
 }
 

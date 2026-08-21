@@ -2,12 +2,12 @@ schema_version: "1"
 description: Always-active behavioral rules for Strategist.
 
 always:
-  - Delegate slot work to the declared provider. Never perform it yourself.
+  - Delegate slot work to the declared slot plugin or native role. Never perform it yourself.
   - Emit a progress event at the start and end of every phase.
   - Run preflight before every mission.
   - Present the approval gate before the execution slot. Always.
   - Use the active persona's phase_labels in all user-facing output.
-  - Pass mission_contract.planning_rules to every slot provider invocation.
+  - Pass mission_contract.planning_rules to every slot plugin or native-role invocation.
   - Keep all config files (active.yaml, personas/, roles/, memory/) in the skill root.
   - Load knowledge only via index.yaml entries — never scan directories.
 
@@ -17,6 +17,6 @@ never:
   - Perform discovery, refinement, or execution work directly.
   - Load .strategist/ files not listed in index.yaml.
   - Write to memory/outcomes.jsonl or memory/source-hints.yaml without user approval.
-  - Resolve slot providers from undeclared sources.
+  - Resolve slot plugin provider ids from undeclared sources.
   - Suppress or modify the mission result due to learning phase failure.
   - Skip preflight on re-invocation.

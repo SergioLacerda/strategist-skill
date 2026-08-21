@@ -20,8 +20,9 @@ Execute in exactly this order. Stop at the first failure.
 
 `strategist check` only confirms that the Strategist runtime is installed and operational.
 Route selection and role invocation are internal Strategist responsibilities.
-If a configured role/provider cannot be invoked, emit `error=role_invocation_failed`
-with the slot and provider.
+If a configured slot plugin or native role cannot be invoked, emit
+`error=role_invocation_failed` with the slot and provider id. The wire field name
+remains `provider` for backward compatibility.
 
 ---
 
@@ -40,9 +41,9 @@ Correctness of the parent agent's independent answer does not repair the drift.
 
 ## 2. FORBIDDEN BEHAVIORS (NEVER DO)
 
-- Never perform discovery, refinement, or documentation materialization work directly — always invoke the designated slot provider
-- Never simulate role work by performing slot work in the Strategist shell — if the configured role/provider cannot be invoked, stop with `error=role_invocation_failed`
-- Never invoke an external discovery weapon as a substitute for Ranger — all discovery subtypes (`creative`, `evaluation`, `diagnostic`, `closure_evidence`) always resolve to `internal_skills/ranger` (native role); no weapon manifest is ever consulted for discovery invocation (see §3 Discovery Routing).
+- Never perform discovery, refinement, or documentation materialization work directly — always invoke the designated slot plugin or native role
+- Never simulate role work by performing slot work in the Strategist shell — if the configured slot plugin or native role cannot be invoked, stop with `error=role_invocation_failed`
+- Never invoke an external discovery plugin as a substitute for Ranger — all discovery subtypes (`creative`, `evaluation`, `diagnostic`, `closure_evidence`) always resolve to `internal_skills/ranger` (native role); no external discovery plugin manifest is ever consulted for discovery invocation (see §3 Discovery Routing).
 - Never read from `strategist/` (without dot) — path drift; only `.strategist/` is valid at runtime
 - Never skip phases — there is no "this task is too small to need discovery"
 - Never invoke Sniper without an explicit Strategist Approval Gate approval from the user in the conversation
@@ -64,7 +65,10 @@ Correctness of the parent agent's independent answer does not repair the drift.
 
 ## 3. ROLE INVOCATION MODEL
 
-The providers below are read from `.strategist/active.yaml` at compile time. If `active.yaml` changes, run `strategist compile` to update this file.
+The slot targets below are read from `.strategist/active.yaml` at compile time.
+The legacy field name is `provider`, but product-facing language calls external
+targets slot plugins. If `active.yaml` changes, run `strategist compile` to
+update this file.
 
 ```
 PHASE         INVOKE SKILL                              WHAT NOT TO DO
@@ -78,15 +82,16 @@ execution  →  {{.Slots.Execution}}                        run git/edits/commit
 
 Discovery invocation target does not depend on `route_decision.discovery_subtype`
 or on `active.slots.discovery` (see `00-routing.md` § Scout — Intake Router and
-§ Discovery Weapon Resolution by Subtype):
+§ Discovery Plugin Resolution by Subtype):
 
 | `discovery_subtype` | Invoke | Kind |
 |---|---|---|
 | `creative` \| `evaluation` \| `diagnostic` \| `closure_evidence` | `internal_skills/ranger` | `native_role` — parent agent embodies Ranger directly (same mechanism already used for execution/`sniper`), reading `roles/ranger.yaml` + `internal_skills/ranger/SKILL.md` |
 
 This holds regardless of what `active.slots.discovery` is configured to (default:
-`{{.Slots.Discovery}}`) — the external weapon is never consulted for discovery
-invocation, for any subtype. See `03-discovery.md` § Discovery Subtypes.
+`{{.Slots.Discovery}}`) — the external discovery plugin is never consulted for
+discovery invocation, for any subtype. See `03-discovery.md` § Discovery
+Subtypes.
 
 Handoff contracts:
 - Ranger → Archivist: `.strategist/schemas/handoff-ranger-to-archivist.schema.yaml`
@@ -139,8 +144,8 @@ Strategist stops immediately on:
 | `.strategist/` missing | `error=not_installed` | stop; instruct `strategist install` |
 | `strategist check` failed | CLI output | stop |
 | `active.yaml` missing | `error=config_missing` | stop |
-| slot provider not found | `error=slot_provider_not_found` | stop |
-| configured role/provider cannot be invoked | `error=role_invocation_failed` | stop; fix provider configuration or runtime installation |
+| slot plugin descriptor not found | `error=slot_provider_not_found` | stop |
+| configured slot plugin or native role cannot be invoked | `error=role_invocation_failed` | stop; fix provider configuration or runtime installation |
 | gate bypass attempt | `drift=approval_bypass` | block, notify user |
 | delegated invocation missing `execution_provider` | `error=local_execution_provider_missing` | stop; do not execute directly |
 | resolved provider cannot be invoked | `error=execution_provider_unavailable` | stop; do not execute directly |
@@ -204,13 +209,13 @@ These are two independent checks, both required before execution:
 `execution_gate=allowed` + no Strategist Approval Gate = `approval_bypass` drift.
 Both must be satisfied before Sniper starts. External approval cannot substitute the Strategist Approval Gate.
 
-## Slot Provider Governance Compliance
+## Slot Plugin Governance Compliance
 
-If a slot provider ignores `governance_injection.execution_gate = blocked`:
-- The provider has no write authorization in the repository. Strategist's FSM prevents reaching documentation state (code-enforced via `nextFromApprovalGate` requiring approval gate acceptance).
-- Any direct mutation attempt by a non-compliant provider triggers `pipeline_bypass_detected`.
-- Strategist reports `slot_risk_mismatch` for a provider that violates its declared contract.
-- The provider is considered non-compliant; future missions will be blocked at preflight until the provider is replaced or corrected.
+If a slot plugin ignores `governance_injection.execution_gate = blocked`:
+- The slot plugin has no write authorization in the repository. Strategist's FSM prevents reaching documentation state (code-enforced via `nextFromApprovalGate` requiring approval gate acceptance).
+- Any direct mutation attempt by a non-compliant slot plugin triggers `pipeline_bypass_detected`.
+- Strategist reports `slot_risk_mismatch` for a slot plugin that violates its declared contract.
+- The slot plugin is considered non-compliant; future missions will be blocked at preflight until the provider id is replaced or corrected.
 
 ---
 

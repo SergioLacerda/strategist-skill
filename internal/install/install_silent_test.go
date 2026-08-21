@@ -148,7 +148,11 @@ func TestInstall_CompileFailureIsNonFatal(t *testing.T) {
 
 func TestInstall_NewInstaller(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	t.Setenv("HOMEDRIVE", "")
+	t.Setenv("HOMEPATH", "")
 	inst := install.NewInstaller(&mockExtractor{}, &mockCompiler{})
 	err := inst.Install(domain.InstallConfig{Target: dir, Silent: true})
 	require.NoError(t, err)

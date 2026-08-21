@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"os"
+	"runtime"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
@@ -14,8 +15,8 @@ import (
 // --- install ---
 
 func TestInstallCmd_ErrorPath(t *testing.T) {
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
+	if runtime.GOOS == "windows" || os.Getuid() == 0 {
+		t.Skip("permission tests do not apply on Windows or when running as root")
 	}
 	dir := t.TempDir()
 	require.NoError(t, os.Chmod(dir, 0o444))
@@ -31,15 +32,7 @@ func TestInstallCmd_ErrorPath(t *testing.T) {
 }
 
 func TestResolveInstallTarget_GlobalHomeDirError(t *testing.T) {
-	origHome, hadHome := os.LookupEnv("HOME")
-	t.Cleanup(func() {
-		if hadHome {
-			_ = os.Setenv("HOME", origHome)
-		} else {
-			_ = os.Unsetenv("HOME")
-		}
-	})
-	require.NoError(t, os.Unsetenv("HOME"))
+	clearHomeEnv(t)
 
 	_, err := resolveInstallTarget("", true)
 	require.Error(t, err)
@@ -47,15 +40,7 @@ func TestResolveInstallTarget_GlobalHomeDirError(t *testing.T) {
 }
 
 func TestRunInstall_UserHomeDirError(t *testing.T) {
-	origHome, hadHome := os.LookupEnv("HOME")
-	t.Cleanup(func() {
-		if hadHome {
-			_ = os.Setenv("HOME", origHome)
-		} else {
-			_ = os.Unsetenv("HOME")
-		}
-	})
-	require.NoError(t, os.Unsetenv("HOME"))
+	clearHomeEnv(t)
 
 	orig := installTarget
 	t.Cleanup(func() { installTarget = orig })
@@ -95,8 +80,8 @@ func TestInstallCmd_DefaultTarget(t *testing.T) {
 	// When installTarget is empty it defaults to "." — cover that branch.
 	// We expect an error (real install would touch ~/.claude/) so we
 	// use a read-only CWD to abort early inside the extractor.
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
+	if runtime.GOOS == "windows" || os.Getuid() == 0 {
+		t.Skip("permission tests do not apply on Windows or when running as root")
 	}
 	origTarget := installTarget
 	origSilent := installSilent
@@ -175,7 +160,7 @@ func TestInstallCmd_GlobalFlag_ResolvesHomeDefault(t *testing.T) {
 	})
 
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	setHomeEnv(t, home)
 	installTarget = ""
 	installSilent = true
 	installWizard = false
@@ -184,6 +169,29 @@ func TestInstallCmd_GlobalFlag_ResolvesHomeDefault(t *testing.T) {
 	err := installCmd.RunE(installCmd, nil)
 	require.NoError(t, err)
 	assert.Equal(t, home, installTarget)
+}
+
+func clearHomeEnv(t *testing.T) {
+	t.Helper()
+	for _, key := range []string{"HOME", "USERPROFILE", "HOMEDRIVE", "HOMEPATH"} {
+		orig, had := os.LookupEnv(key)
+		require.NoError(t, os.Unsetenv(key))
+		t.Cleanup(func() {
+			if had {
+				_ = os.Setenv(key, orig)
+			} else {
+				_ = os.Unsetenv(key)
+			}
+		})
+	}
+}
+
+func setHomeEnv(t *testing.T, home string) {
+	t.Helper()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	t.Setenv("HOMEDRIVE", "")
+	t.Setenv("HOMEPATH", "")
 }
 
 // --- dojo ---

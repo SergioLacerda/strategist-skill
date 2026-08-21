@@ -3,6 +3,7 @@ package telemetry
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -159,6 +160,9 @@ func TestOutcomeHistoryPath(t *testing.T) {
 
 func TestReadRouteDecisions_OpenError(t *testing.T) {
 	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("ENOTDIR open semantics differ on Windows")
+	}
 	dir := t.TempDir()
 	blocker := filepath.Join(dir, "blocker")
 	if err := os.WriteFile(blocker, []byte("x"), 0o644); err != nil {
@@ -175,6 +179,9 @@ func TestReadRouteDecisions_OpenError(t *testing.T) {
 
 func TestReadOutcomes_OpenError(t *testing.T) {
 	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("ENOTDIR open semantics differ on Windows")
+	}
 	dir := t.TempDir()
 	blocker := filepath.Join(dir, "blocker")
 	if err := os.WriteFile(blocker, []byte("x"), 0o644); err != nil {

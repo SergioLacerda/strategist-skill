@@ -1,0 +1,31 @@
+schema: strategist-plugin-resource-schema/v1
+resource: lock
+authority: resolver
+additional_properties: false
+limits:
+  max_document_bytes: 262144
+  max_path_length: 240
+required:
+  - schema_version
+  - resolution_id
+  - graph_digest
+  - nodes
+properties:
+  schema_version: {type: string}
+  resolution_id: {type: string}
+  graph_digest: {type: digest}
+  nodes:
+    type: array
+    item:
+      required: [id, kind, digest]
+      properties:
+        id: {type: string}
+        kind:
+          type: enum
+          values: [package, adapter_contract, dependency, connector, trust_policy]
+        digest: {type: digest}
+  conflict_explanation: {type: array}
+forbidden_authorities:
+  - trusted_publishers
+  - granted_permissions
+  - binding_status

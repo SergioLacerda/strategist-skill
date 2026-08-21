@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/treasure"
@@ -291,6 +292,9 @@ func TestCopyHarvestFile_CreateErrorWhenDestParentMissing(t *testing.T) {
 }
 
 func TestSelectAllHarvestMissionIDs_ScanErrorPropagates(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("ENOTDIR scan semantics differ on Windows")
+	}
 	blocker := filepath.Join(t.TempDir(), "blocker")
 	require.NoError(t, os.WriteFile(blocker, []byte("x"), 0o644))
 

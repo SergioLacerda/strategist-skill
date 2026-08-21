@@ -7,6 +7,7 @@ package sink
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/SergioLacerda/strategist-skill/internal/governancebridge"
@@ -58,7 +59,7 @@ func (r resilientSink) Emit(ctx context.Context, event telemetry.Event) error {
 		return nil
 	}
 	if r.strict {
-		return err
+		return fmt.Errorf("telemetry: strict emit: %w", err)
 	}
 	slog.WarnContext(ctx, "telemetry: event emit failed (non-blocking)", "error", err, "event.name", event.Name)
 	return nil

@@ -129,9 +129,7 @@ func TestWriteKnowledgeIndexSource_MissingFile(t *testing.T) {
 
 func TestWriteKnowledgeIndexSource_WriteError(t *testing.T) {
 	t.Parallel()
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	dir := t.TempDir()
 	kiPath := filepath.Join(dir, "knowledge.index.yaml")
 	require.NoError(t, os.WriteFile(kiPath, []byte("sources: []\n"), 0o644))
@@ -230,9 +228,7 @@ func TestWriteTreasureChestManifest_CorruptedTemplate(t *testing.T) {
 
 func TestWriteTreasureChestManifest_WriteError(t *testing.T) {
 	t.Parallel()
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	dir := t.TempDir()
 	tcPath := filepath.Join(dir, "treasure-chests.yaml")
 	require.NoError(t, os.WriteFile(tcPath, []byte("chests: []\n"), 0o644))

@@ -102,9 +102,7 @@ func TestLoadJewels_PartitionedManifestUsed(t *testing.T) {
 }
 
 func TestMonolithicJewelManifestPaths_StatError(t *testing.T) {
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	if runtime.GOOS == "windows" {
 		t.Skip("chmod-based permission denial is not reliable on windows")
 	}
@@ -118,9 +116,7 @@ func TestMonolithicJewelManifestPaths_StatError(t *testing.T) {
 }
 
 func TestPartitionedJewelManifestPaths_ReadDirError(t *testing.T) {
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	if runtime.GOOS == "windows" {
 		t.Skip("chmod-based permission denial is not reliable on windows")
 	}

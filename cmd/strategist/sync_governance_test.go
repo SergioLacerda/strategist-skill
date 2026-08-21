@@ -140,12 +140,9 @@ func TestSyncGovernanceCmd_DefaultFlags(t *testing.T) {
 	syncGovernanceRoot = ""
 	syncGovernanceSddDir = ""
 
-	oldWd, err := os.Getwd()
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = os.Chdir(oldWd) })
-	require.NoError(t, os.Chdir(t.TempDir()))
+	chdirForTest(t, t.TempDir())
 
-	err = syncGovernanceCmd.RunE(syncGovernanceCmd, nil)
+	err := syncGovernanceCmd.RunE(syncGovernanceCmd, nil)
 	require.Error(t, err)
 	assert.Equal(t, ".strategist", syncGovernanceRoot)
 	assert.Equal(t, ".sdd", syncGovernanceSddDir)

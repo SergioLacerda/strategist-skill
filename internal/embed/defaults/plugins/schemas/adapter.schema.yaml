@@ -1,0 +1,44 @@
+schema: strategist-plugin-resource-schema/v1
+resource: adapter_contract
+authority: adapter_maintainer
+additional_properties: false
+limits:
+  max_document_bytes: 262144
+  max_path_length: 240
+required:
+  - schema_version
+  - id
+  - adapter_revision
+  - plugin_api_range
+  - supported_slots
+  - entrypoints
+  - package_constraint
+properties:
+  schema_version: {type: string}
+  id: {type: namespaced_id}
+  adapter_revision: {type: string}
+  plugin_api_range: {type: range}
+  supported_slots:
+    type: array
+    values: [discovery, refinement, execution]
+  entrypoints:
+    type: array
+    values: [discover, refine, materialize_docs]
+  package_constraint: {type: string}
+  requested_permissions:
+    type: array
+    values:
+      - workspace.read
+      - analysis.write
+      - docs.write
+      - source.write
+      - network.access
+      - subprocess.exec
+      - external_app.access
+      - secret.access
+compatibility_dimensions:
+  - manifest_schema
+  - plugin_api
+  - adapter_revision
+  - upstream_version
+  - connector_api

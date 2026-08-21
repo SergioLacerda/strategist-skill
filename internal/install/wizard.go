@@ -44,6 +44,9 @@ var knownProviderRisk = map[string]string{
 // loadKnownProviders reads templates/known-providers.yaml from the extractor and
 // returns a provider→risk_score map. Falls back to the static map on any error.
 func loadKnownProviders(extractor domain.FileExtractor) map[string]string {
+	if catalog, err := loadPluginCatalog(extractor); err == nil {
+		return catalogKnownProviderRisk(catalog)
+	}
 	data, err := extractor.ReadFile(knownProvidersTemplatePath)
 	if err != nil {
 		return knownProviderRisk
@@ -93,16 +96,16 @@ func loadSkillConfig(extractor domain.FileExtractor) skillConfig {
 	return cfg
 }
 
-// validateProvider returns a non-empty warning if provider is unknown or its
+// validateProvider returns a non-empty warning if a slot plugin is unknown or its
 // declared risk_score does not match the expected risk for the slot.
 func validateProvider(registry map[string]string, provider, expectedRisk string) string {
 	risk, ok := registry[provider]
 	if !ok {
-		return fmt.Sprintf("⚠  provider %q is not in the known-providers registry — "+
+		return fmt.Sprintf("warning: slot plugin %q is not in the known plugin catalog; "+
 			"ensure its skill.yaml declares risk_score: %s", provider, expectedRisk)
 	}
 	if risk != expectedRisk {
-		return fmt.Sprintf("⚠  provider %q has risk_score %q but slot requires %q — "+
+		return fmt.Sprintf("warning: slot plugin %q has risk_score %q but slot requires %q; "+
 			"preflight will block at runtime", provider, risk, expectedRisk)
 	}
 	return ""
@@ -138,7 +141,7 @@ func runWizard(ctx context.Context, p Prompter, extractor domain.FileExtractor) 
 		return domain.WizardConfig{}, err
 	}
 
-	return domain.WizardConfig{
+	wc := domain.WizardConfig{
 		Mode:               mode,
 		BasePath:           basePath,
 		UILanguage:         uiLang,
@@ -149,7 +152,13 @@ func runWizard(ctx context.Context, p Prompter, extractor domain.FileExtractor) 
 		RefinementProvider: refinement,
 		ExecutionProvider:  execution,
 		TreasureChestPath:  chestPath,
-	}, nil
+	}
+	if catalog, catalogErr := loadPluginCatalog(extractor); catalogErr == nil {
+		if _, planErr := planPluginOnboarding(catalog, wizardSlots(wc)); planErr != nil {
+			return domain.WizardConfig{}, fmt.Errorf("wizard: plugin onboarding plan: %w", planErr)
+		}
+	}
+	return wc, nil
 }
 
 func promptLanguages(p Prompter, skillCfg skillConfig) (uiLang, docLang, chatLang, codeLang string, b i18n.WizardStrings, err error) {

@@ -3,6 +3,7 @@ package treasurecli
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/treasure"
@@ -139,12 +140,9 @@ func TestTreasureChestRemove_ResolveRootError(t *testing.T) {
 	setTreasureChestRoot(t, "")
 	setCmdFlag(t, treasureChestRemoveCmd, "id", "source")
 
-	oldWd, err := os.Getwd()
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = os.Chdir(oldWd) })
-	require.NoError(t, os.Chdir(t.TempDir()))
+	chdirForTest(t, t.TempDir())
 
-	err = treasureChestRemoveCmd.RunE(treasureChestRemoveCmd, nil)
+	err := treasureChestRemoveCmd.RunE(treasureChestRemoveCmd, nil)
 	require.Error(t, err)
 	assert.NotEmpty(t, err.Error())
 }
@@ -188,6 +186,9 @@ slots:
 }
 
 func TestTreasureChestRemove_WriteErrorAtCommandLevel(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod not reliable on windows")
+	}
 	if os.Getuid() == 0 {
 		t.Skip("permission tests do not apply when running as root")
 	}

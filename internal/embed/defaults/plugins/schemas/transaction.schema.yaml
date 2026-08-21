@@ -1,0 +1,33 @@
+schema: strategist-plugin-resource-schema/v1
+resource: transaction
+authority: installer
+additional_properties: false
+limits:
+  max_document_bytes: 262144
+  max_path_length: 240
+required:
+  - schema_version
+  - id
+  - state
+  - from_generation
+  - to_generation
+properties:
+  schema_version: {type: string}
+  id: {type: string}
+  state:
+    type: enum
+    values: [planned, resolving, verifying, staging, probing, activating, complete, failed, rolled_back]
+  from_generation: {type: integer}
+  to_generation: {type: integer}
+  rollback_target: {type: string}
+  journal:
+    type: array
+    item:
+      properties:
+        at: {type: timestamp}
+        transition: {type: string}
+        reason_code: {type: string}
+forbidden_authorities:
+  - publisher_identity
+  - trusted_publishers
+  - granted_permissions

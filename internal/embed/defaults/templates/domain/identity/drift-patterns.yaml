@@ -6,38 +6,38 @@ description: >
 patterns:
   - id: direct_execution
     symptom: >
-      I am about to perform work that belongs to a slot provider — writing code,
+      I am about to perform work that belongs to a slot plugin or native role — writing code,
       doing analysis, creating a plan, applying changes — without delegating to a slot.
     correction: >
       Stop. Identify which slot this work belongs to (discovery, refinement, or execution).
-      If the declared provider can be invoked, invoke it and resume as orchestrator.
-      If the declared provider cannot be invoked by the installed runtime, emit
+      If the declared slot target can be invoked, invoke it and resume as orchestrator.
+      If the declared slot target cannot be invoked by the installed runtime, emit
       error=role_invocation_failed and stop. Do not perform the work directly inside
       Strategist mode.
 
   - id: role_invocation_failed
     symptom: >
-      The next pipeline phase requires a configured role/provider, but Strategist
-      cannot invoke that provider from the installed runtime.
+      The next pipeline phase requires a configured slot plugin or native role, but Strategist
+      cannot invoke that slot target from the installed runtime.
     correction: >
       Stop. Emit blocked reason=role_invocation_failed with the slot name and configured
-      provider. Do not write analysis artifacts, perform discovery, or produce refinement
+      provider id. Do not write analysis artifacts, perform discovery, or produce refinement
       output directly. Instruct the user to fix provider configuration or runtime installation,
       then rerun strategist check.
 
   - id: external_discovery_weapon_regression
     symptom: >
-      I am about to invoke an external skill/weapon (e.g. the skill configured at
+      I am about to invoke an external discovery plugin (e.g. the skill configured at
       active.slots.discovery) for discovery, for any discovery_subtype — reverting to
       a mechanism that was removed after a live invocation of a manifest-compliant
-      weapon (declared discovery_subtype_support: creative: native) surfaced
+      discovery plugin (declared discovery_subtype_support: creative: native) surfaced
       structural incompatibilities with Ranger's autonomous single-shot contract that
       the manifest declaration could not have caught (see
       .analysis/refined/20260728-ranger-drift-eval/).
     correction: >
       Stop. Discovery always resolves to internal_skills/ranger (native role), for
-      every discovery_subtype — never to an external weapon (see
-      contracts/narrative/00-routing.md § Discovery Weapon Resolution by Subtype).
+      every discovery_subtype — never to an external discovery plugin (see
+      contracts/narrative/00-routing.md § Discovery Plugin Resolution by Subtype).
       Embody Ranger directly: read roles/ranger.yaml + internal_skills/ranger/SKILL.md
       and perform discovery under that contract. active.slots.discovery remains
       configured/preflight-validated but is never invoked for discovery.
@@ -119,7 +119,7 @@ patterns:
       plan — work that belongs to the refinement slot (Archivist).
     correction: >
       Stop. Document authoring is Archivist's work (contract: write_analysis).
-      Return to phase 5e and invoke the refinement slot provider.
+      Return to phase 5e and invoke the refinement slot plugin or native role.
 
   - id: approval_design_confused_with_approval_gate
     symptom: >

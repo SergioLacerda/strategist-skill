@@ -14,9 +14,7 @@ import (
 
 func TestInstallShimTo_ReadOnlyParent(t *testing.T) {
 	t.Parallel()
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	home := t.TempDir()
 	require.NoError(t, os.Chmod(home, 0o444))
 	t.Cleanup(func() { _ = os.Chmod(home, 0o755) })
@@ -27,9 +25,7 @@ func TestInstallShimTo_ReadOnlyParent(t *testing.T) {
 
 func TestInstallShimTo_WriteError(t *testing.T) {
 	t.Parallel()
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	home := t.TempDir()
 	shimDir := filepath.Join(home, ".claude", "skills", "strategist")
 	require.NoError(t, os.MkdirAll(shimDir, 0o755))
@@ -59,9 +55,7 @@ func (e *errReadExtractor) ReadFile(relPath string) ([]byte, error) {
 
 func TestInstall_ShimError(t *testing.T) {
 	t.Parallel()
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	dir := t.TempDir()
 	shimHome := t.TempDir()
 
@@ -109,9 +103,7 @@ func TestInstallOptionalShims_SkipsWhenDirAbsent(t *testing.T) {
 
 func TestInstall_GitignoreError(t *testing.T) {
 	t.Parallel()
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	dir := t.TempDir()
 	gi := filepath.Join(dir, ".gitignore")
 	require.NoError(t, os.WriteFile(gi, []byte(""), 0o000))
@@ -150,14 +142,14 @@ func TestInstallCodexShim_WriteFailureIsLoggedNotFatal(t *testing.T) {
 }
 
 func TestInstallShim_HomeDirError(t *testing.T) {
-	t.Setenv("HOME", "")
+	clearHomeEnv(t)
 	err := installShim(context.Background(), t.TempDir())
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "home dir")
 }
 
 func TestResolveShimPath_HomeDirError(t *testing.T) {
-	t.Setenv("HOME", "")
+	clearHomeEnv(t)
 	s := Service{}
 	_, err := s.resolveShimPath("")
 	require.Error(t, err)
@@ -174,7 +166,7 @@ func TestInstallShimStep_ReadSKILLMDFails(t *testing.T) {
 }
 
 func TestInstallShimStep_ResolveShimPathFails(t *testing.T) {
-	t.Setenv("HOME", "")
+	clearHomeEnv(t)
 	dir := t.TempDir()
 	s := Service{Extractor: minimalExtractor{}}
 	_, err := s.installShimStep(context.Background(), dir, "")
@@ -184,9 +176,7 @@ func TestInstallShimStep_ResolveShimPathFails(t *testing.T) {
 
 func TestInstallShimStep_InstallShimForFails(t *testing.T) {
 	t.Parallel()
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	dir := t.TempDir()
 	shimHome := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(shimHome, ".claude"), 0o755))

@@ -65,9 +65,7 @@ func TestLoadScoringPolicy_ParseErrorPropagates(t *testing.T) {
 }
 
 func TestLoadScoringPolicy_ReadErrorPropagates(t *testing.T) {
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
+	skipIfPermissionTestUnsupported(t)
 	dir := t.TempDir()
 	require.NoError(t, os.Chmod(dir, 0o000))
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
