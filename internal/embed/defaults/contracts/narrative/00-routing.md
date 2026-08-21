@@ -61,7 +61,7 @@ was not explicitly supplied. If Scout would need to read broad implementation
 surfaces to answer a classification question, it has crossed into Ranger territory
 and must select `full_pipeline` instead.
 
-### Discovery Plugin Resolution by Subtype
+### Discovery Weapon Resolution by Subtype
 
 Discovery invocation target does not depend on `discovery_subtype` or on
 `active.slots.discovery` — all discovery subtypes (`creative`, `evaluation`,
@@ -92,7 +92,7 @@ compose with `roles/ranger.yaml` per its own documented "Invocation Contract".
 ### Provider Resolution Policy (ADR-0028)
 
 This section does not apply to discovery — discovery's resolution is settled by
-§ Discovery Plugin Resolution above (always native, no exception, for a stronger,
+§ Discovery Weapon Resolution by Subtype above (always native, no exception, for a stronger,
 independently-established reason: a live invocation of a manifest-compliant
 discovery plugin surfaced structural incompatibilities that a per-request policy cannot
 detect in advance). It applies to **refinement**, and to any other slot where

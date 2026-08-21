@@ -31,6 +31,12 @@ var (
 	strategistCoverDirOnce sync.Once
 	strategistCoverDirPath string
 	strategistCoverDirErr  error
+
+	strategistGoCacheOnce sync.Once
+	strategistGoCachePath string
+	strategistGoCacheErr  error
+
+	strategistCLIRunMu sync.Mutex
 )
 
 // strategistGOCOVERDIR returns the directory every runStrategistCLI subprocess
@@ -85,23 +91,39 @@ func repoRoot(t *testing.T) string {
 	return filepath.Clean(filepath.Join(filepath.Dir(file), "../.."))
 }
 
+func strategistGoCache(t *testing.T) string {
+	t.Helper()
+
+	strategistGoCacheOnce.Do(func() {
+		dir := filepath.Join(os.TempDir(), "strategist-e2e-gocache")
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			strategistGoCacheErr = err
+			return
+		}
+		strategistGoCachePath = dir
+	})
+
+	require.NoError(t, strategistGoCacheErr)
+	return strategistGoCachePath
+}
+
 func buildStrategistBinary(t *testing.T) string {
 	t.Helper()
 
 	root := repoRoot(t)
+	goCache := strategistGoCache(t)
 	strategistBinaryOnce.Do(func() {
-		if err := os.MkdirAll("/tmp/gocache", 0o755); err != nil {
-			strategistBinaryErr = err
-			return
-		}
-
 		buildDir, err := os.MkdirTemp("", "strategist-e2e-bin-*")
 		if err != nil {
 			strategistBinaryErr = err
 			return
 		}
 
-		strategistBinaryPath = filepath.Join(buildDir, "strategist")
+		binaryName := "strategist"
+		if runtime.GOOS == "windows" {
+			binaryName += ".exe"
+		}
+		strategistBinaryPath = filepath.Join(buildDir, binaryName)
 		// -covermode=atomic must match what `go test -race` forces on the
 		// test binary's own instrumentation — go tool covdata refuses to
 		// merge "set"-mode and "atomic"-mode counter files from the same
@@ -118,7 +140,7 @@ func buildStrategistBinary(t *testing.T) string {
 		cmd := exec.Command("go", "build", "-cover", "-covermode=atomic", "-o", strategistBinaryPath, "./cmd/strategist")
 		cmd.Dir = root
 		cmd.Env = envWithOverrides(map[string]string{
-			"GOCACHE": "/tmp/gocache",
+			"GOCACHE": goCache,
 		})
 
 		output, err := cmd.CombinedOutput()
@@ -135,15 +157,18 @@ func runStrategistCLI(t *testing.T, workspace string, args ...string) cliResult 
 	t.Helper()
 
 	home := t.TempDir()
-	require.NoError(t, os.MkdirAll("/tmp/gocache", 0o755))
+	goCache := strategistGoCache(t)
 
 	binary := buildStrategistBinary(t)
 	cmd := exec.Command(binary, args...)
 	cmd.Dir = workspace
 	cmd.Env = envWithOverrides(map[string]string{
-		"HOME":       home,
-		"GOCACHE":    "/tmp/gocache",
-		"GOCOVERDIR": strategistGOCOVERDIR(t),
+		"HOME":        home,
+		"USERPROFILE": home,
+		"HOMEDRIVE":   "",
+		"HOMEPATH":    "",
+		"GOCACHE":     goCache,
+		"GOCOVERDIR":  strategistGOCOVERDIR(t),
 	})
 
 	var stdout bytes.Buffer
@@ -151,7 +176,9 @@ func runStrategistCLI(t *testing.T, workspace string, args ...string) cliResult 
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
+	strategistCLIRunMu.Lock()
 	err := cmd.Run()
+	strategistCLIRunMu.Unlock()
 	exitCode := 0
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
@@ -181,13 +208,21 @@ func envWithOverrides(overrides map[string]string) []string {
 		if !ok {
 			continue
 		}
-		if _, exists := overrides[key]; exists {
-			continue
+		if !envKeyOverridden(key, overrides) {
+			filtered = append(filtered, entry)
 		}
-		filtered = append(filtered, entry)
 	}
 	for key, value := range overrides {
 		filtered = append(filtered, key+"="+value)
 	}
 	return filtered
+}
+
+func envKeyOverridden(key string, overrides map[string]string) bool {
+	for overrideKey := range overrides {
+		if strings.EqualFold(key, overrideKey) {
+			return true
+		}
+	}
+	return false
 }
