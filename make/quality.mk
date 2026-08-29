@@ -32,10 +32,12 @@ vuln:
 
 vuln-ci: install-govulncheck vuln
 
-# cover shows per-package coverage (each package measured against itself).
+# cover shows per-package coverage (each package measured against itself),
+# annotated with the same gate threshold check-coverage-gate.sh/CI enforce —
+# report only, never fails the build (use cover-gate for that).
 cover:
 	@mkdir -p $(COVERAGE_DIR)
-	@bash scripts/coverage-per-package.sh "$(COVERAGE_PKGS)" "$(COVERAGE_PROFILE)" "$(GOCACHE)"
+	@bash scripts/coverage-per-package.sh "$(COVERAGE_PKGS)" "$(COVERAGE_PROFILE)" "$(GOCACHE)" "$(COVERAGE_MANIFEST)"
 
 # cover-gate fails the build when a package falls below its manifest threshold.
 cover-gate:

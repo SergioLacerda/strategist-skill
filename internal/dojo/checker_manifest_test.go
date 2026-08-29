@@ -106,6 +106,54 @@ func TestCheckManifests_NestedFieldPresent(t *testing.T) {
 	}
 }
 
+func TestCheckManifests_FieldInsideListIsFound(t *testing.T) {
+	// Exercises manifestSliceHasKeyAnywhere: a plain (non-dotted) field lookup
+	// must also search inside YAML sequences, not just nested maps.
+	strategistDir := t.TempDir()
+	providerDir := filepath.Join(strategistDir, "skills", "brainstorming")
+	require.NoError(t, os.MkdirAll(providerDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(providerDir, "skill.yaml"),
+		[]byte("items:\n  - name: unrelated\n  - canonical_role: ranger\n"), 0o644))
+
+	criteria := domain.DojoCriteria{
+		ManifestChecks: []domain.DojoManifestCheck{
+			{
+				Slot:             "discovery",
+				ExpectedProvider: "brainstorming",
+				ManifestExists:   true,
+				FieldsPresent:    []string{"canonical_role"},
+			},
+		},
+	}
+	items := dojo.CheckManifests(criteria, strategistDir)
+	require.NotEmpty(t, items)
+	assert.True(t, items[len(items)-1].Passed, "expected canonical_role nested inside a list to be found")
+}
+
+func TestCheckManifests_FieldAbsentFromList(t *testing.T) {
+	// Exercises manifestSliceHasKeyAnywhere's not-found path: a list whose
+	// entries never contain the requested field.
+	strategistDir := t.TempDir()
+	providerDir := filepath.Join(strategistDir, "skills", "brainstorming")
+	require.NoError(t, os.MkdirAll(providerDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(providerDir, "skill.yaml"),
+		[]byte("items:\n  - name: unrelated\n  - other: value\n"), 0o644))
+
+	criteria := domain.DojoCriteria{
+		ManifestChecks: []domain.DojoManifestCheck{
+			{
+				Slot:             "discovery",
+				ExpectedProvider: "brainstorming",
+				ManifestExists:   true,
+				FieldsPresent:    []string{"canonical_role"},
+			},
+		},
+	}
+	items := dojo.CheckManifests(criteria, strategistDir)
+	require.NotEmpty(t, items)
+	assert.False(t, items[len(items)-1].Passed, "expected canonical_role absent from every list entry to fail")
+}
+
 func TestCheckManifests_NestedFieldMissing(t *testing.T) {
 	strategistDir := t.TempDir()
 	providerDir := filepath.Join(strategistDir, "skills", "brainstorming")

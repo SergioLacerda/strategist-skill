@@ -52,6 +52,12 @@ func TestRuntimeBundleForUsesNormalizedLanguages(t *testing.T) {
 	assert.False(t, ok)
 }
 
+func TestSupportedRuntimeLanguagesReturnsStableOrder(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, []string{i18n.LangEN, i18n.LangPTBR}, i18n.SupportedRuntimeLanguages())
+}
+
 func TestPhaseAnnouncementsForUsesNormalizedLanguages(t *testing.T) {
 	t.Parallel()
 
