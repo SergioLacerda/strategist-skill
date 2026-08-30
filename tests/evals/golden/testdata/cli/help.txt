@@ -17,6 +17,7 @@ Available Commands:
   runbook         Operate on the typed docs/runbooks/*.runbook.yaml corpus
   sync-governance Sync .strategist/skill.yaml with active SDD governance mandates
   treasure-chest  Show treasure chest runtime status and index health
+  upgrade         Reconcile an installed .strategist/ runtime against the current embedded defaults
   validate        Validate the .strategist/ configuration tree
   version         Print the strategist version
 

@@ -25,12 +25,12 @@ func TestDeterministicArtifacts(t *testing.T) {
 		mode   Mode
 		load   func(*testing.T) []byte
 	}{
-		{"handoff-manifest", "handoffs/archivist-to-sniper.json", Normalized, read(root, ".strategist/schemas/handoff-archivist-to-sniper.schema.yaml")},
+		{"handoff-manifest", "handoffs/archivist-to-sniper.json", Normalized, read(root, "internal/embed/defaults/schemas/handoff-archivist-to-sniper.schema.yaml")},
 		{"provider-manifest", "manifests/brainstorming.json", Normalized, read(root, "internal/embed/defaults/skills/brainstorming/skill.yaml")},
 		{"telemetry-attributes", "telemetry/attribute-keys.txt", Exact, telemetryAttributes(root)},
 		{"cli-help", "cli/help.txt", Exact, cliHelp(root)},
-		{"rendered-schema", "schemas/intake.json", Normalized, read(root, ".strategist/schemas/intake.schema.yaml")},
-		{"compiled-contract-shape", "compiled/domain-shape.json", Structural, read(root, ".strategist/contracts/machine/compile-domain.yaml")},
+		{"rendered-schema", "schemas/intake.json", Normalized, read(root, "internal/embed/defaults/schemas/intake.schema.yaml")},
+		{"compiled-contract-shape", "compiled/domain-shape.json", Structural, read(root, "internal/embed/defaults/contracts/machine/compile-domain.yaml")},
 		{"default-config", "defaults/roles.json", Normalized, read(root, "internal/embed/defaults/roles/default.yaml")},
 		{"compiled-prompt", "prompts/epic-standalone.txt", Exact, read(root, "internal/embed/defaults/templates/epic-standalone.yaml")},
 	}
