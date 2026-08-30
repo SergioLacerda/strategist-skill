@@ -93,7 +93,5 @@ handoff_verification_policy:
   invariants:
     - handoff_verification is optional for backward compatibility, but when required it
       must pass before Sniper materializes any documentation target
-    - passing handoff_verification never grants execution by itself and never bypasses
-      mission_status: gate_analysis_accepted
-    - validation is deterministic first: required refs, forbidden claims,
-      classifications, and gate state; LLM judging is not the MVP authority
+    - "passing handoff_verification never grants execution by itself and never bypasses mission_status: gate_analysis_accepted"
+    - "validation is deterministic first: required refs, forbidden claims, classifications, and gate state; LLM judging is not the MVP authority"

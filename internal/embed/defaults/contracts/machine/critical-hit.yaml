@@ -140,7 +140,7 @@ emit:
     format: "[Strategist] phase=critical_hit status=blocked reason=evidence_missing"
     level: INFO
 
-write_scope: read-only (gate phase only; Sniper write scope applies after approval — plain move: file relocation only; closure move: completion report + tasks.md status + package move only)
+write_scope: "read-only (gate phase only; Sniper write scope applies after approval — plain move: file relocation only; closure move: completion report + tasks.md status + package move only)"
 owner: internal (orchestrator)
 
 invariants:

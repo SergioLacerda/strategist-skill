@@ -15,7 +15,13 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 source scripts/lib-provenance.sh
 
-CONTRACTS_DIR=".strategist/contracts/machine"
+# internal/embed/defaults/ is the canonical, git-tracked authoring source —
+# .strategist/ is a gitignored runtime instance materialized by `strategist
+# install`/`compile` (see docs/architecture.md). Scanning .strategist/ here
+# used to work only because a developer's local checkout happened to have it
+# installed already; a fresh CI checkout has no .strategist/ at all, so the
+# generator silently produced an empty table (20260830 CI failure).
+CONTRACTS_DIR="internal/embed/defaults/contracts/machine"
 OUT="docs/generated/contract-index.md"
 
 python3 -c "import yaml" 2>/dev/null || python3 -m pip install --user pyyaml >/dev/null

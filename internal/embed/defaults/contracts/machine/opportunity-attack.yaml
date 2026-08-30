@@ -15,7 +15,6 @@ routing_note: >
   Opportunity Attack only fires inside the Archivist phase of the full pipeline.
 
 contract:
-  owner: archivist
   runs_after: all_four_refined_artifacts_written
   runs_before: completion_signal
 

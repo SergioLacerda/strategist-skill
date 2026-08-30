@@ -1,15 +1,22 @@
 #!/usr/bin/env bash
-# Generates docs/generated/schema-index.md from .strategist/schemas/*.yaml
-# description fields. Uses python3+pyyaml (already a dependency of
-# `make validate-fixtures`) for robust YAML parsing — schema descriptions use
-# folded block scalars that plain grep/awk cannot parse reliably.
+# Generates docs/generated/schema-index.md from
+# internal/embed/defaults/schemas/*.yaml description fields. Uses
+# python3+pyyaml (already a dependency of `make validate-fixtures`) for
+# robust YAML parsing — schema descriptions use folded block scalars that
+# plain grep/awk cannot parse reliably.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 source scripts/lib-provenance.sh
 
-SCHEMAS_DIR=".strategist/schemas"
+# internal/embed/defaults/ is the canonical, git-tracked authoring source —
+# .strategist/ is a gitignored runtime instance materialized by `strategist
+# install`/`compile` (see docs/architecture.md). Scanning .strategist/ here
+# used to work only because a developer's local checkout happened to have it
+# installed already; a fresh CI checkout has no .strategist/ at all, so the
+# generator silently produced an empty table (20260830 CI failure).
+SCHEMAS_DIR="internal/embed/defaults/schemas"
 OUT="docs/generated/schema-index.md"
 
 python3 -c "import yaml" 2>/dev/null || python3 -m pip install --user pyyaml >/dev/null

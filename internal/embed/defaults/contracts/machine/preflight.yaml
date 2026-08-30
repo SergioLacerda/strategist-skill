@@ -35,7 +35,7 @@ contract:
         skill plugin manifest is never validated against native role schema.
     - name: preflight_status
       type: string
-      description: "done" on success
+      description: '"done" on success'
 
   error_conditions:
     - code: index_yaml_not_found
