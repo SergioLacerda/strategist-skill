@@ -22,7 +22,7 @@ jobs:
   verify:
     name: Verify tagged commit
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     permissions:
       contents: read
 
@@ -36,6 +36,24 @@ jobs:
 
       - name: Local release verify
         run: make release-verify
+
+      # The tagged commit must prove the same properties a PR proves. Health
+      # Orchestrator's `lint` job runs golangci-lint via this same action
+      # (test.yml) — release-verify's Make chain does not invoke it directly,
+      # so it is run here explicitly rather than silently skipped.
+      - name: Lint
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.12.2
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: web/landing/package-lock.json
+
+      - name: Local web gates
+        run: make ci-web
 
   release:
     needs: verify

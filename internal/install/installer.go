@@ -15,7 +15,11 @@ import (
 // Service implements domain.Installer.
 type Service struct {
 	Extractor domain.FileExtractor
-	Compiler  domain.Compiler
+	// Lister enumerates the full embedded default tree. Only required by
+	// Upgrade (Install never needs the full tree, only known normative
+	// paths) — nil is fine for every other Service method.
+	Lister   domain.FileLister
+	Compiler domain.Compiler
 	// AwarenessRefresher generates agent-protocol.md and updates per-agent entrypoint
 	// files. Called after CompileAll on every install (wizard and silent). Nil means skip.
 	// Returns true if agent-protocol.md was successfully written; false on partial failure.

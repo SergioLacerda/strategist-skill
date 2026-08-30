@@ -50,5 +50,6 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
     - `verify` — Promote item ids to status: verified (requires --evidence)
   - `list` — Show treasure chest runtime status (explicit name for the default view)
   - `remove` — Tombstone a treasure chest (mark inactive, do not hard-delete)
+- `upgrade` — Reconcile an installed .strategist/ runtime against the current embedded defaults
 - `validate` — Validate the .strategist/ configuration tree
 - `version` — Print the strategist version

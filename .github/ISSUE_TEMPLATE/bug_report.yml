@@ -1,0 +1,35 @@
+name: Bug report
+description: Something in the CLI, the compiled .strategist/ runtime, or the pipeline behaves incorrectly.
+labels: ["type/bug"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: strategist version
+      description: Output of `strategist version`
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Commands run, and relevant `.strategist/active.yaml` config if not default.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output / logs
+      render: shell

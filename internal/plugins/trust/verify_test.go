@@ -125,6 +125,164 @@ func TestVerifyTrustBlocksExpiredDevelopmentException(t *testing.T) {
 	assert.Contains(t, result.Reasons, trust.Reason{Code: "development_exception_expired", Detail: "dev-local"})
 }
 
+func TestVerifyTrustDerivesPublisherFromIDWhenUnset(t *testing.T) {
+	t.Parallel()
+
+	pkg := packageFixture()
+	pkg.Publisher = ""
+	pkg.ID = "openai/brainstorming"
+
+	result := trust.Verify(trust.Subject{Package: pkg, Evidence: evidenceFixture()}, policyFixture(), mustTime(t, "2026-08-21T00:00:00Z"))
+
+	assert.True(t, result.Trusted, "derived publisher %q matches TrustedPublishers", "openai")
+}
+
+func TestVerifyTrustBlocksUntrustedDerivedPublisher(t *testing.T) {
+	t.Parallel()
+
+	pkg := packageFixture()
+	pkg.Publisher = ""
+	pkg.ID = "someone-else/brainstorming"
+
+	result := trust.Verify(trust.Subject{Package: pkg}, policyFixture(), mustTime(t, "2026-08-21T00:00:00Z"))
+
+	assert.False(t, result.Trusted)
+	assert.Contains(t, result.Reasons, trust.Reason{Code: "publisher_not_trusted", Detail: "someone-else"})
+}
+
+func TestVerifyTrustSkipsPublisherCheckWhenPolicyHasNoTrustedPublishers(t *testing.T) {
+	t.Parallel()
+
+	policy := policyFixture()
+	policy.TrustedPublishers = nil
+	pkg := packageFixture()
+	pkg.Publisher = "anyone"
+
+	result := trust.Verify(trust.Subject{Package: pkg, Evidence: evidenceFixture()}, policy, mustTime(t, "2026-08-21T00:00:00Z"))
+
+	assert.True(t, result.Trusted)
+}
+
+func TestVerifyTrustSkipsSourceCheckWhenPolicyHasNoTrustedSources(t *testing.T) {
+	t.Parallel()
+
+	policy := policyFixture()
+	policy.TrustedSources = nil
+	evidence := evidenceFixture()
+	evidence.SourceURI = "file:///anything"
+	evidence.Provenance.SourceURI = "file:///anything"
+
+	result := trust.Verify(trust.Subject{
+		Package:  packageFixture(),
+		Evidence: evidence,
+	}, policy, mustTime(t, "2026-08-21T00:00:00Z"))
+
+	assert.True(t, result.Trusted)
+}
+
+func TestVerifyTrustSkipsProvenanceCheckWhenPolicyRequiresNoAttestations(t *testing.T) {
+	t.Parallel()
+
+	policy := policyFixture()
+	policy.RequiredAttestations = nil
+	evidence := evidenceFixture()
+	evidence.Provenance.BuilderID = "builder://anything-goes"
+
+	result := trust.Verify(trust.Subject{
+		Package:  packageFixture(),
+		Evidence: evidence,
+	}, policy, mustTime(t, "2026-08-21T00:00:00Z"))
+
+	assert.True(t, result.Trusted, "no RequiredAttestations means provenance is not checked at all")
+}
+
+func TestVerifyTrustBlocksProvenanceSourceMismatch(t *testing.T) {
+	t.Parallel()
+
+	result := trust.Verify(trust.Subject{
+		Package: packageFixture(),
+		Evidence: trust.Evidence{
+			SourceURI:    "embedded://skills/brainstorming",
+			Signatures:   []string{"sigstore/openai"},
+			Attestations: []string{"slsa-provenance/v1"},
+			Provenance: trust.Provenance{
+				BuilderID: "builder://strategist",
+				SourceURI: "embedded://skills/something-else",
+			},
+		},
+	}, policyFixture(), mustTime(t, "2026-08-21T00:00:00Z"))
+
+	assert.False(t, result.Trusted)
+	assert.Contains(t, result.Reasons, trust.Reason{Code: "provenance_source_mismatch", Detail: "embedded://skills/something-else"})
+}
+
+func TestVerifyTrustSkipsFreshnessCheckWhenPolicyOrPackageOptsOut(t *testing.T) {
+	t.Parallel()
+
+	noFreshnessPolicy := policyFixture()
+	noFreshnessPolicy.FreshnessDays = 0
+	result := trust.Verify(trust.Subject{Package: packageFixture(), Evidence: evidenceFixture()}, noFreshnessPolicy, mustTime(t, "2026-09-25T00:00:00Z"))
+	assert.True(t, result.Trusted, "FreshnessDays<=0 disables the freshness check")
+
+	pkg := packageFixture()
+	pkg.CreatedAt = ""
+	result = trust.Verify(trust.Subject{Package: pkg, Evidence: evidenceFixture()}, policyFixture(), mustTime(t, "2026-09-25T00:00:00Z"))
+	assert.True(t, result.Trusted, "empty CreatedAt disables the freshness check")
+}
+
+func TestVerifyTrustBlocksInvalidFreshnessTimestamp(t *testing.T) {
+	t.Parallel()
+
+	pkg := packageFixture()
+	pkg.CreatedAt = "not-a-timestamp"
+
+	result := trust.Verify(trust.Subject{Package: pkg}, policyFixture(), mustTime(t, "2026-08-21T00:00:00Z"))
+
+	assert.False(t, result.Trusted)
+	assert.Contains(t, result.Reasons, trust.Reason{Code: "freshness_timestamp_invalid", Detail: "not-a-timestamp"})
+}
+
+func TestVerifyTrustDeprecationFallsBackToDigestWhenReasonCodeEmpty(t *testing.T) {
+	t.Parallel()
+
+	policy := policyFixture()
+	policy.Deprecations = []domain.TrustDeprecation{{PackageDigest: trustDigest}}
+
+	result := trust.Verify(trust.Subject{Package: packageFixture()}, policy, mustTime(t, "2026-08-21T00:00:00Z"))
+
+	assert.False(t, result.Trusted)
+	assert.Contains(t, result.Reasons, trust.Reason{Code: "digest_deprecated", Detail: trustDigest})
+}
+
+func TestVerifyTrustBlocksMalformedDevelopmentExceptionExpiry(t *testing.T) {
+	t.Parallel()
+
+	policy := policyFixture()
+	policy.DevelopmentExceptions = []domain.TrustDevelopmentException{{
+		ID:            "dev-local",
+		PackageDigest: trustDigest,
+		ExpiresAt:     "not-a-timestamp",
+	}}
+
+	result := trust.Verify(trust.Subject{Package: packageFixture()}, policy, mustTime(t, "2026-08-21T00:00:00Z"))
+
+	assert.False(t, result.Trusted)
+	assert.Contains(t, result.Reasons, trust.Reason{Code: "development_exception_expired", Detail: "dev-local"})
+}
+
+func TestVerifyTrustSkipsUnrelatedDeprecationAndDevelopmentExceptionEntries(t *testing.T) {
+	t.Parallel()
+
+	policy := policyFixture()
+	otherDigest := "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+	policy.Deprecations = []domain.TrustDeprecation{{PackageDigest: otherDigest, ReasonCode: "unrelated"}}
+	policy.DevelopmentExceptions = []domain.TrustDevelopmentException{{ID: "unrelated-exception", PackageDigest: otherDigest}}
+
+	result := trust.Verify(trust.Subject{Package: packageFixture(), Evidence: evidenceFixture()}, policy, mustTime(t, "2026-08-21T00:00:00Z"))
+
+	assert.True(t, result.Trusted, "neither list contains an entry for this package's digest")
+}
+
 func packageFixture() domain.PluginPackage {
 	return domain.PluginPackage{
 		SchemaVersion:   "strategist-plugin-package/v1",
@@ -138,6 +296,20 @@ func packageFixture() domain.PluginPackage {
 		CreatedAt:       "2026-08-20T00:00:00Z",
 		ManifestSchema:  "strategist-plugin-package/v1",
 		UpstreamVersion: "1.0.0",
+	}
+}
+
+func evidenceFixture() trust.Evidence {
+	return trust.Evidence{
+		SourceURI:    "embedded://skills/brainstorming",
+		Signatures:   []string{"sigstore/openai"},
+		Attestations: []string{"slsa-provenance/v1"},
+		Provenance: trust.Provenance{
+			BuilderID:  "builder://strategist",
+			SourceURI:  "embedded://skills/brainstorming",
+			BuildType:  "local-embed",
+			VerifiedAt: "2026-08-20T00:00:00Z",
+		},
 	}
 }
 

@@ -19,3 +19,17 @@ internal/eval	90	raised from 56.9% via critical_hit_trigger Target + tests (2026
 internal/integrity	90	already above baseline via jewel loader/atomic lock test additions (569a1ae) - measured 98.2%
 internal/runtimefs	90	already above baseline via jewel loader/atomic lock test additions (569a1ae) - measured 100.0%
 internal/treasure	95	raised from 74.5% (SQ-005) to 88.2% (20260805-treasure-coverage-phase2) to 95.5% (20260806-treasure-coverage-95-plan) - measured 95.5%
+internal/governancebridge	0	pure interface/type declarations, no executable statements ("[no statements]") - see 20260830-pending-v3-disposition E4
+internal/plugins	95	raised from 85.8% to 98.6% (2026-08-30, resolver edge-case tests) - measured 98.6%
+internal/plugins/conformance	95	raised from 74.3% to 97.1% (2026-08-30, Validate/Stale/levelRank edge cases) - measured 97.1%
+internal/plugins/connectors	95	raised from 78.9% to 100.0% (2026-08-30, NativeRuntimeConnector branch coverage) - measured 100.0%
+internal/plugins/lifecycle	95	raised from 79.3% to 97.3% (2026-08-30, idempotency/error-path tests) - measured 97.3%
+internal/plugins/policy	95	raised from 94.1% to 100.0% (2026-08-30, adapter-digest branches) - measured 100.0%
+internal/plugins/trust	95	raised from 88.5% to 100.0% (2026-08-30, publisher/source/freshness/deprecation edge cases) - measured 100.0%
+internal/telemetry/sink	93	measured 93.3% (self-coverage, non-recursive) - see 20260830-pending-v3-disposition E4
+internal/telemetry/sink/external	100	measured 100.0% - see 20260830-pending-v3-disposition E4
+internal/telemetry/sink/jsonl	100	measured 100.0% - see 20260830-pending-v3-disposition E4
+internal/telemetry/sink/noop	100	measured 100.0% - see 20260830-pending-v3-disposition E4
+internal/telemetry/sink/otel	95	raised from 68.8% to 100.0% (2026-08-30, full severity-mapping table) - measured 100.0%
+internal/telemetry/sink/slog	95	raised from 68.8% to 100.0% (2026-08-30, full severity-mapping table) - measured 100.0%
+internal/testutil	95	raised from 0.0% to 100.0% (2026-08-30, direct helper tests added; no longer excluded from `make test`) - measured 100.0%

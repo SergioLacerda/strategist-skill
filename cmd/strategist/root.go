@@ -140,6 +140,7 @@ func init() {
 		return nil
 	}
 	rootCmd.AddCommand(installCmd)
+	rootCmd.AddCommand(upgradeCmd)
 	rootCmd.AddCommand(compileCmd)
 	rootCmd.AddCommand(validateCmd)
 	rootCmd.AddCommand(syncGovernanceCmd)

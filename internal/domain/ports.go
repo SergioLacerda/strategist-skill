@@ -25,3 +25,13 @@ type FileExtractor interface {
 	// Use this instead of reading from .strategist/ — that directory is write-only.
 	ReadFile(relPath string) ([]byte, error)
 }
+
+// FileLister enumerates every regular file's path in the embedded default
+// tree, relative to the defaults root. A separate, narrower interface from
+// FileExtractor (rather than a third method on it) so existing
+// FileExtractor test doubles that only ever needed Extract/ReadFile keep
+// compiling unchanged — only `strategist upgrade`, which needs the full
+// tree to detect orphaned files, requires a FileLister.
+type FileLister interface {
+	AllPaths() ([]string, error)
+}

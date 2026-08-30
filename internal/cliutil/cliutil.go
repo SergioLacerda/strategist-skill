@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -110,7 +111,11 @@ func ResolveActiveBasePath(root string) (strategistRoot, basePath string, err er
 		strategistRoot = ".strategist"
 	}
 
-	raw, err := os.ReadFile(filepath.Join(strategistRoot, "active.yaml")) //nolint:gosec // G304: root is the selected .strategist root
+	activeYamlPath, err := runtimefs.SafeJoin(strategistRoot, "active.yaml")
+	if err != nil {
+		return "", "", fmt.Errorf("resolve active.yaml path: %w", err)
+	}
+	raw, err := os.ReadFile(activeYamlPath) //nolint:gosec // G304: path validated by runtimefs.SafeJoin, confined to strategistRoot
 	if err != nil {
 		return "", "", fmt.Errorf("read active.yaml: %w", err)
 	}

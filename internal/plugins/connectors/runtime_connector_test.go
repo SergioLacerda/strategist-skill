@@ -64,6 +64,44 @@ func TestReadinessVectorDoesNotTreatUnsupportedAsReady(t *testing.T) {
 	assert.Contains(t, vector.ReasonCodes(), "enforcement_unsupported")
 }
 
+func TestNativeRuntimeConnectorRejectsIncompleteLocatorAndProbeInput(t *testing.T) {
+	t.Parallel()
+
+	connector := connectors.NativeRuntimeConnector{ConnectorID: "strategist-native"}
+
+	blockedResolve := connector.Resolve(context.Background(), connectors.RuntimeLocator{ID: "sniper"}) // no Path
+	assert.Equal(t, domain.ReadinessBlocked, blockedResolve.Status)
+	assert.Equal(t, "locator_incomplete", blockedResolve.ReasonCode)
+
+	blockedProbe := connector.Probe(context.Background(), domain.InstalledInstance{}, "materialize_docs") // no instance ID
+	assert.Equal(t, domain.ReadinessBlocked, blockedProbe.Status)
+	assert.Equal(t, "probe_input_incomplete", blockedProbe.ReasonCode)
+}
+
+func TestNativeRuntimeConnectorRemoveIsNotOwned(t *testing.T) {
+	t.Parallel()
+
+	connector := connectors.NativeRuntimeConnector{ConnectorID: "strategist-native"}
+	removed := connector.Remove(context.Background(), domain.InstalledInstance{ID: "sniper"})
+	assert.Equal(t, domain.ReadinessUnsupported, removed.Status)
+	assert.Equal(t, "remove_not_owned_by_static_connector", removed.ReasonCode)
+}
+
+func TestNativeRuntimeConnectorObservesEnforcementWhenConfigured(t *testing.T) {
+	t.Parallel()
+
+	connector := connectors.NativeRuntimeConnector{ConnectorID: "strategist-native", EnforcementObservable: true}
+	caps := connector.Capabilities(context.Background())
+	assert.True(t, caps.CanObserve)
+	assert.True(t, caps.CanEnforcePermissions)
+
+	observed := connector.Observe(context.Background(), domain.InstalledInstance{ID: "sniper"})
+	assert.Equal(t, domain.ReadinessReady, observed.Status)
+	assert.Equal(t, "enforcement_observed", observed.ReasonCode)
+	assert.Contains(t, observed.Enforcement.Enforceable, domain.PluginPermissionReadWorkspace)
+	assert.Empty(t, observed.Enforcement.Limitations)
+}
+
 func TestNativeRuntimeConnectorReportsVisibleLocalInstanceWithoutInvokeClaim(t *testing.T) {
 	t.Parallel()
 

@@ -24,8 +24,7 @@ row "STYLE" "COMMAND" "METRIC" "VALUE" "STATUS"
 
 # --- unit -------------------------------------------------------------
 profile="$coverage_dir/unit.out"
-GOCACHE="$go_cache" go test -race -coverprofile="$profile" -coverpkg=./... \
-  $(GOCACHE="$go_cache" go list ./... | grep -v '/testutil') >/dev/null 2>&1 || true
+GOCACHE="$go_cache" go test -race -coverprofile="$profile" -coverpkg=./... ./... >/dev/null 2>&1 || true
 pct="$(GOCACHE="$go_cache" go tool cover -func="$profile" 2>/dev/null | tail -1 | grep -o '[0-9.]*%' | tail -1)"
 if [[ -n "${pct:-}" ]]; then
   row "unit" "make test" "line coverage" "$pct" "ok"

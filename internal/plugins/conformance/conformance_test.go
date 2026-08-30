@@ -139,6 +139,141 @@ func TestPluginTelemetryEventSupportsDeprecationReason(t *testing.T) {
 	assert.Equal(t, "upstream_eol", event.Attributes["strategist.plugin.reason_code"])
 }
 
+func validCertificationRecord() conformance.CertificationRecord {
+	return conformance.CertificationRecord{
+		SchemaVersion:   "strategist-plugin-certification/v1",
+		Level:           conformance.LevelC2Runtime,
+		PackageDigest:   pkgDigest,
+		AdapterDigest:   adapterDigest,
+		HostAPIDigest:   hostDigest,
+		ConnectorDigest: connDigest,
+		TestSuiteDigest: suiteDigest,
+		CertifiedAt:     "2026-08-20T00:00:00Z",
+	}
+}
+
+func TestCertificationRecordValidate_RequiresSchemaVersion(t *testing.T) {
+	t.Parallel()
+
+	record := validCertificationRecord()
+	record.SchemaVersion = ""
+	err := record.Validate()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "schema_version is required")
+}
+
+func TestCertificationRecordValidate_RejectsUnknownLevel(t *testing.T) {
+	t.Parallel()
+
+	record := validCertificationRecord()
+	record.Level = "C99"
+	err := record.Validate()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `unknown level "C99"`)
+}
+
+func TestCertificationRecordValidate_RequiresEachDigestField(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		mutate func(*conformance.CertificationRecord)
+		field  string
+	}{
+		{"package_digest", func(r *conformance.CertificationRecord) { r.PackageDigest = "" }, "package_digest"},
+		{"adapter_digest", func(r *conformance.CertificationRecord) { r.AdapterDigest = "" }, "adapter_digest"},
+		{"host_api_digest", func(r *conformance.CertificationRecord) { r.HostAPIDigest = "" }, "host_api_digest"},
+		{"connector_digest", func(r *conformance.CertificationRecord) { r.ConnectorDigest = "" }, "connector_digest"},
+		{"test_suite_digest", func(r *conformance.CertificationRecord) { r.TestSuiteDigest = "" }, "test_suite_digest"},
+		{"certified_at", func(r *conformance.CertificationRecord) { r.CertifiedAt = "" }, "certified_at"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			record := validCertificationRecord()
+			tt.mutate(&record)
+			err := record.Validate()
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.field+" is required")
+		})
+	}
+}
+
+func TestCertificationRecordValidate_AcceptsCompleteRecord(t *testing.T) {
+	t.Parallel()
+
+	require.NoError(t, validCertificationRecord().Validate())
+}
+
+func TestCertificationRecordStale_NoExpiryNeverGoesStaleOnItsOwn(t *testing.T) {
+	t.Parallel()
+
+	record := validCertificationRecord()
+	// ExpiresAt left empty.
+	input := conformance.CertificationInputDigests{
+		PackageDigest: pkgDigest, AdapterDigest: adapterDigest, HostAPIDigest: hostDigest,
+		ConnectorDigest: connDigest, TestSuiteDigest: suiteDigest,
+	}
+	assert.False(t, record.Stale(input, mustTime(t, "2099-01-01T00:00:00Z")))
+}
+
+func TestCertificationRecordStale_InvalidExpiryTimestampIsTreatedAsStale(t *testing.T) {
+	t.Parallel()
+
+	record := validCertificationRecord()
+	record.ExpiresAt = "not-a-timestamp"
+	input := conformance.CertificationInputDigests{
+		PackageDigest: pkgDigest, AdapterDigest: adapterDigest, HostAPIDigest: hostDigest,
+		ConnectorDigest: connDigest, TestSuiteDigest: suiteDigest,
+	}
+	assert.True(t, record.Stale(input, mustTime(t, "2026-08-21T00:00:00Z")))
+}
+
+func TestEvaluateCertificationRejectsInvalidRecord(t *testing.T) {
+	t.Parallel()
+
+	record := validCertificationRecord()
+	record.SchemaVersion = ""
+	input := conformance.CertificationInputDigests{
+		PackageDigest: pkgDigest, AdapterDigest: adapterDigest, HostAPIDigest: hostDigest,
+		ConnectorDigest: connDigest, TestSuiteDigest: suiteDigest,
+	}
+	result := conformance.EvaluateCertification(record, conformance.LevelC1Contract, input, mustTime(t, "2026-08-21T00:00:00Z"))
+
+	assert.False(t, result.Accepted)
+	assert.Contains(t, result.ReasonCodes, "certification_record_invalid")
+}
+
+func TestEvaluateCertificationTreatsUnknownLevelAsBelowAnyMinimum(t *testing.T) {
+	t.Parallel()
+
+	record := validCertificationRecord()
+	record.Level = "C99"
+	input := conformance.CertificationInputDigests{
+		PackageDigest: pkgDigest, AdapterDigest: adapterDigest, HostAPIDigest: hostDigest,
+		ConnectorDigest: connDigest, TestSuiteDigest: suiteDigest,
+	}
+	result := conformance.EvaluateCertification(record, conformance.LevelC0Descriptor, input, mustTime(t, "2026-08-21T00:00:00Z"))
+
+	assert.False(t, result.Accepted)
+	assert.Contains(t, result.ReasonCodes, "certification_level_too_low")
+}
+
+func TestEvaluateCertificationAcceptsFreshRecordAtOrAboveMinimum(t *testing.T) {
+	t.Parallel()
+
+	record := validCertificationRecord()
+	record.Level = conformance.LevelC3Trusted
+	input := conformance.CertificationInputDigests{
+		PackageDigest: pkgDigest, AdapterDigest: adapterDigest, HostAPIDigest: hostDigest,
+		ConnectorDigest: connDigest, TestSuiteDigest: suiteDigest,
+	}
+	result := conformance.EvaluateCertification(record, conformance.LevelC0Descriptor, input, mustTime(t, "2026-08-21T00:00:00Z"))
+
+	assert.True(t, result.Accepted)
+	assert.Empty(t, result.ReasonCodes)
+}
+
 func mustTime(t *testing.T, raw string) time.Time {
 	t.Helper()
 	parsed, err := time.Parse(time.RFC3339, raw)

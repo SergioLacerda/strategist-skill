@@ -1,6 +1,6 @@
 <!--
 generated: true
-source: .strategist/schemas/*.yaml (description field)
+source: internal/embed/defaults/schemas/*.yaml (description field)
 generator: scripts/generate-schema-index.sh
 generator_version: 1
 do not edit manually — regenerate with: make docs-generate
