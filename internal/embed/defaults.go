@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
@@ -38,6 +39,31 @@ func (e Extractor) ReadFile(relPath string) ([]byte, error) {
 		return nil, fmt.Errorf("embed: read %s: %w", relPath, err)
 	}
 	return data, nil
+}
+
+// AllPaths returns every regular embedded default file's path relative to
+// the defaults root (e.g. "templates/epic-standalone.yaml"), sorted.
+// Implements domain.FileLister — used by `strategist upgrade` to enumerate
+// the full tree, since ReadFile alone only supports reading one
+// already-known path.
+func (e Extractor) AllPaths() ([]string, error) {
+	var paths []string
+	err := fs.WalkDir(defaultsFS, "defaults", func(path string, d fs.DirEntry, walkErr error) error {
+		rel, ok, relErr := embeddedRelPath(path, "defaults", walkErr)
+		if relErr != nil || !ok {
+			return relErr
+		}
+		if d.IsDir() {
+			return nil
+		}
+		paths = append(paths, rel)
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("embed: list defaults: %w", err)
+	}
+	sort.Strings(paths)
+	return paths, nil
 }
 
 // extractFS copies files from src under root into targetDir.

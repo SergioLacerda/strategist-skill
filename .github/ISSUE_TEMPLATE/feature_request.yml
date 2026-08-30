@@ -1,0 +1,19 @@
+name: Feature request
+description: Propose new behavior for the CLI, the compiled runtime, or the pipeline contracts.
+labels: ["type/feature"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed approach
+      description: If you have one in mind. Not required.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

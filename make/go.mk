@@ -25,7 +25,7 @@ build:
 	GOCACHE=$(GOCACHE) go build -ldflags="-s -w" -o bin/strategist ./cmd/strategist
 
 test:
-	GOCACHE=$(GOCACHE) go test -race $$(GOCACHE=$(GOCACHE) go list ./... | grep -v '/testutil')
+	GOCACHE=$(GOCACHE) go test -race ./...
 
 test-all: test spec integration
 

@@ -77,6 +77,33 @@ func TestEvaluateGrantRejectsInvalidDigestAndPermissionVocabulary(t *testing.T) 
 	assert.Contains(t, result.Reasons, policy.DecisionReason{Code: "unknown_requested_permission", Detail: "filesystem.superuser"})
 }
 
+func TestEvaluateGrantRejectsInvalidAndMismatchedAdapterDigest(t *testing.T) {
+	t.Parallel()
+
+	result := policy.EvaluateGrant(policy.GrantRequest{
+		PackageDigest: pkgDigestA,
+		AdapterDigest: "sha256:not-a-real-digest",
+	}, domain.PermissionGrant{
+		PackageDigest: pkgDigestA,
+		AdapterDigest: adapterDigestA,
+	})
+
+	assert.False(t, result.Allowed)
+	assert.Contains(t, result.Reasons, policy.DecisionReason{Code: "invalid_adapter_digest", Detail: "sha256:not-a-real-digest"})
+
+	otherAdapterDigest := "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+	mismatch := policy.EvaluateGrant(policy.GrantRequest{
+		PackageDigest: pkgDigestA,
+		AdapterDigest: otherAdapterDigest,
+	}, domain.PermissionGrant{
+		PackageDigest: pkgDigestA,
+		AdapterDigest: adapterDigestA,
+	})
+
+	assert.False(t, mismatch.Allowed)
+	assert.Contains(t, mismatch.Reasons, policy.DecisionReason{Code: "adapter_digest_mismatch", Detail: "grant is bound to a different adapter digest"})
+}
+
 func TestEvaluateEnforcementReportsUnenforceableGrantedPermissions(t *testing.T) {
 	t.Parallel()
 

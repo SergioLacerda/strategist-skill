@@ -198,6 +198,285 @@ func TestLifecycleQuarantineDisablesBoundInstance(t *testing.T) {
 	require.ErrorContains(t, err, "uninstall_blocked_bound_instance")
 }
 
+func TestLifecycleBeginResumesExistingTransaction(t *testing.T) {
+	t.Parallel()
+
+	store := lifecycle.NewStore()
+	store.Inventory.Instances = []domain.InstalledInstance{{ID: instanceCandidate, State: lifecycle.StateVerified}}
+	store.Bindings = []domain.SlotBinding{{Slot: "refinement", InstalledInstanceID: instanceActive, Generation: 1, Status: "enabled"}}
+
+	first, err := store.Begin("tx-1", "refinement", instanceCandidate)
+	require.NoError(t, err)
+	require.NoError(t, store.Stage(first.ID))
+
+	resumed, err := store.Begin("tx-1", "refinement", instanceCandidate)
+	require.NoError(t, err)
+	assert.Equal(t, lifecycle.StateStaged, resumed.State, "Begin on an existing id resumes it as-is, not a fresh Resolved transaction")
+}
+
+func TestLifecycleBeginRejectsMissingCandidateOrBinding(t *testing.T) {
+	t.Parallel()
+
+	store := lifecycle.NewStore()
+	_, err := store.Begin("tx-1", "refinement", instanceCandidate)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "candidate_instance_missing")
+
+	store.Inventory.Instances = []domain.InstalledInstance{{ID: instanceCandidate, State: lifecycle.StateVerified}}
+	_, err = store.Begin("tx-2", "refinement", instanceCandidate)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "binding_missing")
+}
+
+func TestLifecycleStageIsIdempotentWhenAlreadyPastResolved(t *testing.T) {
+	t.Parallel()
+
+	store := lifecycle.NewStore()
+	store.Inventory.Instances = []domain.InstalledInstance{{ID: instanceCandidate, State: lifecycle.StateVerified}}
+	store.Bindings = []domain.SlotBinding{{Slot: "refinement", InstalledInstanceID: instanceActive, Generation: 1, Status: "enabled"}}
+
+	tx, err := store.Begin("tx-1", "refinement", instanceCandidate)
+	require.NoError(t, err)
+	require.NoError(t, store.Stage(tx.ID))
+	require.NoError(t, store.Stage(tx.ID), "Stage is idempotent once already Staged")
+}
+
+func TestLifecycleStageRejectsInvalidState(t *testing.T) {
+	t.Parallel()
+
+	store := lifecycle.NewStore()
+	store.Inventory.Instances = []domain.InstalledInstance{{ID: instanceCandidate, State: lifecycle.StateVerified}}
+	store.Bindings = []domain.SlotBinding{{Slot: "refinement", InstalledInstanceID: instanceActive, Generation: 1, Status: "enabled"}}
+
+	tx, err := store.Begin("tx-1", "refinement", instanceCandidate)
+	require.NoError(t, err)
+	require.NoError(t, store.Stage(tx.ID))
+	require.NoError(t, store.Probe(tx.ID, false)) // drives the transaction to StateFailed
+
+	err = store.Stage(tx.ID)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "stage_invalid_state")
+}
+
+func TestLifecycleProbeIsIdempotentWithSameResult(t *testing.T) {
+	t.Parallel()
+
+	store := lifecycle.NewStore()
+	store.Inventory.Instances = []domain.InstalledInstance{{ID: instanceCandidate, State: lifecycle.StateVerified}}
+	store.Bindings = []domain.SlotBinding{{Slot: "refinement", InstalledInstanceID: instanceActive, Generation: 1, Status: "enabled"}}
+
+	tx, err := store.Begin("tx-1", "refinement", instanceCandidate)
+	require.NoError(t, err)
+	require.NoError(t, store.Stage(tx.ID))
+	require.NoError(t, store.Probe(tx.ID, true))
+	require.NoError(t, store.Probe(tx.ID, true), "Probe is idempotent when repeated with the same result")
+}
+
+func TestLifecycleProbeRejectsInvalidState(t *testing.T) {
+	t.Parallel()
+
+	store := lifecycle.NewStore()
+	store.Inventory.Instances = []domain.InstalledInstance{{ID: instanceCandidate, State: lifecycle.StateVerified}}
+	store.Bindings = []domain.SlotBinding{{Slot: "refinement", InstalledInstanceID: instanceActive, Generation: 1, Status: "enabled"}}
+
+	tx, err := store.Begin("tx-1", "refinement", instanceCandidate)
+	require.NoError(t, err)
+
+	err = store.Probe(tx.ID, true)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "probe_invalid_state")
+}
+
+func TestLifecycleActivateIsIdempotentOnceComplete(t *testing.T) {
+	t.Parallel()
+
+	store := lifecycle.NewStore()
+	store.Inventory.Instances = []domain.InstalledInstance{
+		{ID: instanceActive, State: lifecycle.StateActive, LastKnownGood: true},
+		{ID: instanceCandidate, State: lifecycle.StateVerified},
+	}
+	store.Bindings = []domain.SlotBinding{{Slot: "refinement", InstalledInstanceID: instanceActive, Generation: 1, Status: "enabled"}}
+
+	tx, err := store.Begin("tx-1", "refinement", instanceCandidate)
+	require.NoError(t, err)
+	require.NoError(t, store.Stage(tx.ID))
+	require.NoError(t, store.Probe(tx.ID, true))
+	require.NoError(t, store.Activate(tx.ID, 1))
+
+	require.NoError(t, store.Activate(tx.ID, 1), "Activate is idempotent once the transaction is Complete")
+}
+
+func TestLifecycleRollbackIsIdempotentOnceComplete(t *testing.T) {
+	t.Parallel()
+
+	store := lifecycle.NewStore()
+	store.Inventory.Instances = []domain.InstalledInstance{
+		{ID: instanceActive, State: lifecycle.StateActive, LastKnownGood: true},
+		{ID: instanceCandidate, State: lifecycle.StateVerified},
+	}
+	store.Bindings = []domain.SlotBinding{{Slot: "refinement", InstalledInstanceID: instanceActive, Generation: 1, Status: "enabled"}}
+
+	tx, err := store.Begin("tx-1", "refinement", instanceCandidate)
+	require.NoError(t, err)
+	require.NoError(t, store.Stage(tx.ID))
+	require.NoError(t, store.Probe(tx.ID, true))
+	require.NoError(t, store.Activate(tx.ID, 1))
+
+	require.NoError(t, store.Rollback(tx.ID), "Rollback on a Complete transaction is a no-op, not an error")
+	assert.Equal(t, lifecycle.StateComplete, store.Transaction(tx.ID).State, "an already-Complete transaction is left untouched by Rollback")
+}
+
+func TestLifecycleRecoverySkipsAlreadyCompleteTransaction(t *testing.T) {
+	t.Parallel()
+
+	store := lifecycle.NewStore()
+	store.Inventory.Instances = []domain.InstalledInstance{
+		{ID: instanceActive, State: lifecycle.StateActive, LastKnownGood: true},
+		{ID: "inst-complete", State: lifecycle.StateVerified},
+		{ID: instanceCandidate, State: lifecycle.StateStaged},
+	}
+	store.Bindings = []domain.SlotBinding{
+		{Slot: "refinement", InstalledInstanceID: instanceActive, Generation: 1, Status: "enabled"},
+		{Slot: "execution", InstalledInstanceID: instanceActive, Generation: 1, Status: "enabled"},
+	}
+
+	completed, err := store.Begin("tx-complete", "refinement", "inst-complete")
+	require.NoError(t, err)
+	require.NoError(t, store.Stage(completed.ID))
+	require.NoError(t, store.Probe(completed.ID, true))
+	require.NoError(t, store.Activate(completed.ID, 1))
+
+	incomplete, err := store.Begin("tx-incomplete", "execution", instanceCandidate)
+	require.NoError(t, err)
+	require.NoError(t, store.Stage(incomplete.ID))
+
+	require.NoError(t, store.Recover())
+
+	assert.Equal(t, lifecycle.StateComplete, store.Transaction(completed.ID).State, "Recover must not touch an already-Complete transaction")
+	assert.Equal(t, lifecycle.StateRolledBack, store.Transaction(incomplete.ID).State)
+}
+
+func TestLifecycleUninstallRemovesUnboundUnreferencedInstance(t *testing.T) {
+	t.Parallel()
+
+	store := lifecycle.NewStore()
+	store.Inventory.Instances = []domain.InstalledInstance{{ID: instanceCandidate, State: lifecycle.StateResolved}}
+
+	require.NoError(t, store.Uninstall(instanceCandidate))
+
+	_, ok := store.Instance(instanceCandidate)
+	assert.False(t, ok, "Uninstall removes the instance from inventory")
+}
+
+func TestLifecycleUninstallMissingInstance(t *testing.T) {
+	t.Parallel()
+
+	store := lifecycle.NewStore()
+	err := store.Uninstall("does-not-exist")
+	require.Error(t, err)
+	require.ErrorContains(t, err, "instance_missing")
+}
+
+func TestLifecycleQuarantineMissingInstance(t *testing.T) {
+	t.Parallel()
+
+	store := lifecycle.NewStore()
+	err := store.Quarantine("does-not-exist", "reason")
+	require.Error(t, err)
+	require.ErrorContains(t, err, "instance_missing")
+}
+
+func TestLifecycleTransactionReturnsZeroValueForUnknownID(t *testing.T) {
+	t.Parallel()
+
+	store := lifecycle.NewStore()
+	assert.Equal(t, lifecycle.Transaction{}, store.Transaction("does-not-exist"))
+}
+
+func TestLifecycleBindingReturnsFalseForUnknownSlot(t *testing.T) {
+	t.Parallel()
+
+	store := lifecycle.NewStore()
+	_, ok := store.Binding("does-not-exist")
+	assert.False(t, ok)
+}
+
+func TestLifecycleOperationsRejectUnknownTransactionID(t *testing.T) {
+	t.Parallel()
+
+	store := lifecycle.NewStore()
+
+	require.ErrorContains(t, store.Stage("does-not-exist"), "transaction_missing")
+	require.ErrorContains(t, store.Probe("does-not-exist", true), "transaction_missing")
+	require.ErrorContains(t, store.Activate("does-not-exist", 1), "transaction_missing")
+	require.ErrorContains(t, store.Rollback("does-not-exist"), "transaction_missing")
+}
+
+func TestLifecycleStageRejectsCandidateRemovedAfterBegin(t *testing.T) {
+	t.Parallel()
+
+	store := lifecycle.NewStore()
+	store.Inventory.Instances = []domain.InstalledInstance{{ID: instanceCandidate, State: lifecycle.StateVerified}}
+	store.Bindings = []domain.SlotBinding{{Slot: "refinement", InstalledInstanceID: instanceActive, Generation: 1, Status: "enabled"}}
+
+	tx, err := store.Begin("tx-1", "refinement", instanceCandidate)
+	require.NoError(t, err)
+
+	// The candidate instance disappears from inventory between Begin and
+	// Stage — exercises transitionCandidate's own candidate_instance_missing
+	// check, distinct from the one Begin already performs.
+	store.Inventory.Instances = nil
+
+	err = store.Stage(tx.ID)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "candidate_instance_missing")
+}
+
+func TestLifecycleRollbackWithNoLastKnownGoodLeavesBindingUnset(t *testing.T) {
+	t.Parallel()
+
+	store := lifecycle.NewStore()
+	store.Inventory.Instances = []domain.InstalledInstance{{ID: instanceCandidate, State: lifecycle.StateStaged}}
+	// InstalledInstanceID intentionally references an instance that does not
+	// exist, and no instance in inventory has LastKnownGood set — Rollback
+	// falls through lastKnownGoodInstanceID() to its empty-string "none
+	// found" branch, and rollbackTarget stays "".
+	store.Bindings = []domain.SlotBinding{{Slot: "refinement", InstalledInstanceID: "missing-old", Generation: 2, Status: "enabled"}}
+
+	tx, err := store.Begin("tx-1", "refinement", instanceCandidate)
+	require.NoError(t, err)
+	require.NoError(t, store.Stage(tx.ID))
+
+	require.NoError(t, store.Rollback(tx.ID))
+
+	binding, _ := store.Binding("refinement")
+	assert.Equal(t, "missing-old", binding.InstalledInstanceID, "no rollback target was applied, binding is left as-is")
+}
+
+func TestLifecycleActivateRejectsBindingRemovedAfterBegin(t *testing.T) {
+	t.Parallel()
+
+	store := lifecycle.NewStore()
+	store.Inventory.Instances = []domain.InstalledInstance{
+		{ID: instanceActive, State: lifecycle.StateActive, LastKnownGood: true},
+		{ID: instanceCandidate, State: lifecycle.StateVerified},
+	}
+	store.Bindings = []domain.SlotBinding{{Slot: "refinement", InstalledInstanceID: instanceActive, Generation: 1, Status: "enabled"}}
+
+	tx, err := store.Begin("tx-1", "refinement", instanceCandidate)
+	require.NoError(t, err)
+	require.NoError(t, store.Stage(tx.ID))
+	require.NoError(t, store.Probe(tx.ID, true))
+
+	// The binding disappears between Begin and Activate — exercises
+	// Activate's own binding_missing check, distinct from Begin's.
+	store.Bindings = nil
+
+	err = store.Activate(tx.ID, 1)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "binding_missing")
+}
+
 func TestLifecycleDeprecateMarksBoundInstanceWithoutDeletingIt(t *testing.T) {
 	t.Parallel()
 

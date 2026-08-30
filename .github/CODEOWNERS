@@ -1,0 +1,12 @@
+# Default owner for everything not matched below.
+*       @SergioLacerda
+
+# Governance-sensitive surfaces: contracts, schemas, and ADRs define the
+# runtime behavior the whole pipeline depends on — keep review concentrated.
+/internal/embed/defaults/contracts/   @SergioLacerda
+/internal/embed/defaults/schemas/     @SergioLacerda
+/docs/adr/                            @SergioLacerda
+
+# Supply chain / release surfaces.
+/.github/workflows/                   @SergioLacerda
+/.goreleaser.yaml                     @SergioLacerda
