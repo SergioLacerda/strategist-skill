@@ -60,7 +60,7 @@ def best_effort_tests(module):
             continue
         if out:
             hits.extend(out.splitlines())
-    return hits
+    return sorted(set(hits))
 
 for path in sorted(glob.glob(os.path.join(contracts_dir, "*.yaml").replace(os.sep, "/"))):
     path = path.replace(os.sep, "/")
