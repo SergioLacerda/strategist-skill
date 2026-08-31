@@ -25,6 +25,8 @@ This is the entry point for all skill documentation. Use the table below to navi
 | Reference fundamental concepts | [`docs/strategist-concepts.md`](strategist-concepts.md) |
 | Look up which script backs which `make` target | [`docs/makefile-scripts.md`](makefile-scripts.md) |
 | Understand the test style taxonomy and coverage gates | [`docs/test-styles.md`](test-styles.md) |
+| Check unit test coverage gaps and their implementation status | [`docs/test-coverage-gaps.md`](test-coverage-gaps.md) |
+| Check integration-style test coverage gaps and their implementation status | [`docs/integration-coverage-gaps.md`](integration-coverage-gaps.md) |
 | See which drift class each detector actually checks | [`docs/drift-detection-matrix.md`](drift-detection-matrix.md) |
 
 ---
