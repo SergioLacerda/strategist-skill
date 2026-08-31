@@ -328,6 +328,38 @@ func TestInstallMergeMode_ForceOverwritesCustomizedFile(t *testing.T) {
 		"the backup snapshot must contain the pre-overwrite (customized) content, not the new default")
 }
 
+// TestInstallMergeMode_ReportSurfacesBackupDir proves the CLI-visibility half
+// of the same fix (20260831-followup-implementation-eval K3): a --force
+// merge-mode overwrite must not just take a backup silently — Service.
+// InstallWithReport's Report.BackupDir must name the exact directory
+// TestInstallMergeMode_ForceOverwritesCustomizedFile already proved the
+// backup landed in, so callers (cmd/strategist/install.go) can tell the user
+// where it is, matching `strategist upgrade`'s existing "Backed up
+// overwritten files to %s" message.
+func TestInstallMergeMode_ReportSurfacesBackupDir(t *testing.T) {
+	t.Parallel()
+	const relPath = "docs/example.md"
+	dir := t.TempDir()
+	src := newInstallFakeSource(map[string][]byte{relPath: []byte("version: 1\n")})
+	svc := newInstallTestService(src)
+
+	report, err := svc.InstallWithReport(context.Background(), installTestConfig(dir, false))
+	require.NoError(t, err)
+	assert.Empty(t, report.BackupDir, "a fresh install has nothing to overwrite, so Report.BackupDir must be empty")
+
+	target := filepath.Join(dir, ".strategist", filepath.FromSlash(relPath))
+	require.NoError(t, os.WriteFile(target, []byte("user: customized\n"), 0o644))
+	src.files[relPath] = []byte("version: 2\n")
+
+	report, err = svc.InstallWithReport(context.Background(), installTestConfig(dir, true))
+	require.NoError(t, err)
+	require.NotEmpty(t, report.BackupDir, "a --force overwrite of a customized file must report a non-empty BackupDir")
+
+	backedUp, err := os.ReadFile(filepath.Join(report.BackupDir, filepath.FromSlash(relPath)))
+	require.NoError(t, err, "Report.BackupDir must point at the actual directory the pre-overwrite content was snapshotted into")
+	assert.Equal(t, "user: customized\n", string(backedUp))
+}
+
 // TestInstallMergeMode_AutoUpgradeDoesNotCreateSpuriousBackup proves the
 // backup-safety fix above doesn't over-trigger: a plain (non --force)
 // merge-mode install that only auto-upgrades an unmodified file (nothing the

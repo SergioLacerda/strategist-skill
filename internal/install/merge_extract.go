@@ -1,10 +1,43 @@
 package install
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
+
+// Report carries facts about an Install run that aren't errors but
+// are worth reporting to the user — currently just BackupDir, populated
+// when the three-way merge path (extractRuntimeTree) overwrote at least one
+// AutoUpgrade/Customized file and snapshotted it first. Empty when nothing
+// was overwritten, or on the s.Lister==nil legacy fallback path.
+type Report struct {
+	BackupDir string
+}
+
+// prepareRuntime extracts the embedded runtime tree into strategistDir and
+// applies the strictly-guarded normative-file plan on top. It returns the
+// paths it created (for rollback bookkeeping), the full embedded path->hash
+// map for the manifest finalizeInstall writes when the three-way merge path
+// ran (see extractRuntimeTree), and that path's backup dir (empty if no
+// file was overwritten, or on the legacy fallback path).
+func (s Service) prepareRuntime(ctx context.Context, strategistDir string, cfg domain.InstallConfig, plan runtimeDefaultPlan) ([]string, map[string]string, string, error) {
+	slog.InfoContext(ctx, "[Strategist] install extracting-defaults",
+		telemetry.AttrComponent, "install",
+		telemetry.AttrTarget, telemetry.SanitizePath(strategistDir),
+	)
+	fullHashes, backupDir, err := s.extractRuntimeTree(strategistDir, cfg.Force)
+	if err != nil {
+		return nil, nil, "", fmt.Errorf("install: extract defaults: %w", err)
+	}
+	if err := s.applyRuntimeDefaultPlan(ctx, strategistDir, plan); err != nil {
+		return nil, nil, "", err
+	}
+	return []string{strategistDir}, fullHashes, backupDir, nil
+}
 
 // extractRuntimeTree populates strategistDir from the embedded defaults and
 // returns the full embedded path->hash map for the current release (nil when
@@ -30,17 +63,23 @@ import (
 // doubles only implement domain.FileExtractor), this falls back to the
 // legacy s.Extractor.Extract raw-merge behavior unchanged, so every existing
 // caller that never wired a Lister keeps working exactly as before.
-func (s Service) extractRuntimeTree(strategistDir string, force bool) (map[string]string, error) {
+// extractRuntimeTree's third return value is the backup dir created by the
+// three-way path when it overwrote at least one AutoUpgrade/Customized file
+// (empty when nothing was overwritten, or when the s.Lister==nil legacy
+// fallback ran) — callers that want to report it to the user (see
+// Service.InstallWithReport) get it directly instead of needing to guess
+// whether a snapshot happened.
+func (s Service) extractRuntimeTree(strategistDir string, force bool) (fullHashes map[string]string, backupDir string, err error) {
 	if s.Lister == nil {
 		if err := s.Extractor.Extract(strategistDir, force); err != nil {
-			return nil, fmt.Errorf("extract runtime tree: %w", err)
+			return nil, "", fmt.Errorf("extract runtime tree: %w", err)
 		}
-		return nil, nil
+		return nil, "", nil
 	}
 
 	plan, err := s.PlanUpgrade(strategistDir)
 	if err != nil {
-		return nil, fmt.Errorf("extract runtime tree: %w", err)
+		return nil, "", fmt.Errorf("extract runtime tree: %w", err)
 	}
 
 	// Reuse ApplyUpgrade's own write set + backup-before-overwrite logic
@@ -56,17 +95,18 @@ func (s Service) extractRuntimeTree(strategistDir string, force bool) (map[strin
 	// manifest once, and calling ApplyUpgrade here would write it twice.
 	toWrite, toBackup := upgradeWriteSet(plan, force)
 	if len(toBackup) > 0 {
-		if _, err := s.snapshotBeforeUpgrade(strategistDir, toBackup); err != nil {
-			return nil, fmt.Errorf("extract runtime tree: %w", err)
+		backupDir, err = s.snapshotBeforeUpgrade(strategistDir, toBackup)
+		if err != nil {
+			return nil, "", fmt.Errorf("extract runtime tree: %w", err)
 		}
 	}
 	for _, p := range toWrite {
 		if err := s.writeUpgradeFile(strategistDir, p); err != nil {
-			return nil, fmt.Errorf("extract runtime tree: %w", err)
+			return nil, "", fmt.Errorf("extract runtime tree: %w", err)
 		}
 	}
 
-	return plan.embeddedHashes, nil
+	return plan.embeddedHashes, backupDir, nil
 }
 
 // buildInstallManifest chooses the install manifest shape to persist.

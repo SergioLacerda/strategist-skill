@@ -269,7 +269,7 @@ func TestPrepareRuntime_ApplyPlanErrorPropagates(t *testing.T) {
 	for _, f := range domain.NormativeRuntimeDefaultFiles() {
 		plan.decisions[f.Path] = domain.RuntimeDecisionWriteMissing
 	}
-	_, _, err := s.prepareRuntime(context.Background(), dir, domain.InstallConfig{}, plan)
+	_, _, _, err := s.prepareRuntime(context.Background(), dir, domain.InstallConfig{}, plan)
 	require.Error(t, err)
 }
 

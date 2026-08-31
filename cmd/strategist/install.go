@@ -84,8 +84,14 @@ func runInstall(cmd *cobra.Command, _ []string) (retErr error) {
 	cfg := installConfigFromFlags()
 	svc := installService(shimHome)
 
-	if err := svc.Install(ctx, cfg); err != nil {
+	report, err := svc.InstallWithReport(ctx, cfg)
+	if err != nil {
 		return fmt.Errorf("install: %w", err)
+	}
+	if report.BackupDir != "" {
+		if _, err := fmt.Fprintf(cmd.OutOrStdout(), "\nBacked up overwritten files to %s\n", report.BackupDir); err != nil {
+			return fmt.Errorf("install: write output: %w", err)
+		}
 	}
 
 	addMissionLines(ctx, 2)
