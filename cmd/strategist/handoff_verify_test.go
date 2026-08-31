@@ -89,6 +89,16 @@ func setHandoffVerifyFlags(t *testing.T, root, transition, policy, challenges, a
 func resetHandoffVerifyFlags(t *testing.T) {
 	t.Helper()
 	setHandoffVerifyFlags(t, "", "", "", "", "", "", 1)
+	require.NoError(t, handoffVerifyCmd.Flags().Set("risk-level", ""))
+}
+
+// setHandoffVerifyRiskLevel sets --risk-level in isolation, for tests
+// exercising handoff.ResolvePolicyForMission wiring. Kept separate from
+// setHandoffVerifyFlags so existing call sites don't all need a new
+// parameter for a flag most of them don't care about.
+func setHandoffVerifyRiskLevel(t *testing.T, level string) {
+	t.Helper()
+	require.NoError(t, handoffVerifyCmd.Flags().Set("risk-level", level))
 }
 
 func writeHandoffVerifyFixture(t *testing.T, dir, name, content string) string {
@@ -184,6 +194,90 @@ classifications:
 		require.NoError(t, handoffVerifyCmd.RunE(handoffVerifyCmd, nil))
 	})
 	assert.Contains(t, out, "status: passed")
+}
+
+func TestHandoffVerifyCmd_LowRiskLevelSkipsRangerToArchivist(t *testing.T) {
+	dir := t.TempDir()
+	testutil.MinimalRoot(t, dir)
+	// Deliberately empty/incomplete challenges and ack: if risk-based
+	// resolution failed to disable the policy, Verify would fail on these
+	// (missing required challenge types and refs) instead of skipping.
+	challenges := writeHandoffVerifyFixture(t, dir, "challenges.yaml", "challenges: []\n")
+	ack := writeHandoffVerifyFixture(t, dir, "ack.yaml", "understood_refs: []\n")
+	setHandoffVerifyFlags(t, dir, "ranger_to_archivist", "", challenges, ack, "m-low-risk", 1)
+	setHandoffVerifyRiskLevel(t, "low")
+	t.Cleanup(func() { resetHandoffVerifyFlags(t) })
+
+	out := captureStdout(t, func() {
+		require.NoError(t, handoffVerifyCmd.RunE(handoffVerifyCmd, nil))
+	})
+	assert.Contains(t, out, "status: skipped")
+	assert.Contains(t, out, "passed: true")
+}
+
+func TestHandoffVerifyCmd_HighRiskLevelRequiresRangerToArchivist(t *testing.T) {
+	dir := t.TempDir()
+	testutil.MinimalRoot(t, dir)
+	// Same deliberately incomplete fixtures as the low-risk case above:
+	// with the policy enabled by --risk-level=high, these same inputs must
+	// now fail verification instead of being skipped.
+	challenges := writeHandoffVerifyFixture(t, dir, "challenges.yaml", "challenges: []\n")
+	ack := writeHandoffVerifyFixture(t, dir, "ack.yaml", "understood_refs: []\n")
+	setHandoffVerifyFlags(t, dir, "ranger_to_archivist", "", challenges, ack, "m-high-risk", 1)
+	setHandoffVerifyRiskLevel(t, "high")
+	t.Cleanup(func() { resetHandoffVerifyFlags(t) })
+
+	var runErr error
+	out := captureStdout(t, func() {
+		runErr = handoffVerifyCmd.RunE(handoffVerifyCmd, nil)
+	})
+	require.Error(t, runErr)
+	assert.Contains(t, out, "status: failed")
+	assert.Contains(t, out, "missing_challenges")
+}
+
+func TestHandoffVerifyCmd_HighRiskLevelPassesSniperToValidationWithFullAck(t *testing.T) {
+	dir := t.TempDir()
+	testutil.MinimalRoot(t, dir)
+	challenges := writeHandoffVerifyFixture(t, dir, "challenges.yaml", `
+challenges:
+  - id: HC-301
+    type: boundary
+    source_refs: [FILE-001]
+    critical: true
+  - id: HC-302
+    type: classification
+    source_refs: [DEV-001]
+    critical: true
+    expected_classification:
+      DEV-001: authorized_deviation
+`)
+	ack := writeHandoffVerifyFixture(t, dir, "ack.yaml", `
+understood_refs: [FILE-001, DEV-001]
+classifications:
+  DEV-001: authorized_deviation
+`)
+	setHandoffVerifyFlags(t, dir, "sniper_to_validation", "", challenges, ack, "m-high-risk-validation", 1)
+	setHandoffVerifyRiskLevel(t, "high")
+	t.Cleanup(func() { resetHandoffVerifyFlags(t) })
+
+	out := captureStdout(t, func() {
+		require.NoError(t, handoffVerifyCmd.RunE(handoffVerifyCmd, nil))
+	})
+	assert.Contains(t, out, "status: passed")
+}
+
+func TestHandoffVerifyCmd_RiskLevelUnknownTransitionErrors(t *testing.T) {
+	dir := t.TempDir()
+	testutil.MinimalRoot(t, dir)
+	challenges := writeHandoffVerifyFixture(t, dir, "challenges.yaml", "challenges: []\n")
+	ack := writeHandoffVerifyFixture(t, dir, "ack.yaml", "understood_refs: []\n")
+	setHandoffVerifyFlags(t, dir, "not_a_real_transition", "", challenges, ack, "m-bad", 1)
+	setHandoffVerifyRiskLevel(t, "high")
+	t.Cleanup(func() { resetHandoffVerifyFlags(t) })
+
+	err := handoffVerifyCmd.RunE(handoffVerifyCmd, nil)
+	require.ErrorContains(t, err, "unknown transition")
 }
 
 func TestHandoffVerifyCmd_PolicyFileOverridesTransition(t *testing.T) {

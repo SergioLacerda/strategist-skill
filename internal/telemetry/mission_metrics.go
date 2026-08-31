@@ -65,3 +65,8 @@ func EmitMissionMetrics(m MissionMetrics) {
 		AttrLinesEmitted, m.LinesEmitted,
 	)
 }
+
+// Explicit, agent-reported mission token-usage records
+// (MissionTokenUsageRecord and its read/write/validate helpers) live in
+// mission_token_usage.go, split out to keep this file under the repo's
+// file-size budget.

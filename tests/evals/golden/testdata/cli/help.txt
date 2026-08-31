@@ -14,6 +14,7 @@ Available Commands:
   help            Help about any command
   install         Install the Strategist skill into a target repository
   metrics         Report metrics computed from Strategist's own runtime memory
+  mission         Report and inspect mission-level facts this binary cannot observe directly
   runbook         Operate on the typed docs/runbooks/*.runbook.yaml corpus
   sync-governance Sync .strategist/skill.yaml with active SDD governance mandates
   treasure-chest  Show treasure chest runtime status and index health

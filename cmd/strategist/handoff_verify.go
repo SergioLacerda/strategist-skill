@@ -18,6 +18,7 @@ type handoffVerifyOptions struct {
 	Root       string
 	Transition string
 	Policy     string
+	RiskLevel  string
 	Challenges string
 	Ack        string
 	MissionID  string
@@ -95,11 +96,25 @@ func validateHandoffVerifyOptions(opts handoffVerifyOptions) error {
 	return nil
 }
 
-// resolveHandoffPolicy loads --policy if given, otherwise the built-in
-// default for --transition.
+// resolveHandoffPolicy loads --policy if given; otherwise, if --risk-level
+// was given, resolves the policy from the mission's actual risk_level via
+// handoff.ResolvePolicyForMission (Cluster 11/K22: RequiredByRisk/
+// StatusForRisk existed but nothing invoked them against real mission
+// state — --risk-level is that missing input). With neither flag set, it
+// falls back to the pre-existing behavior: DefaultPolicy for
+// archivist_to_sniper, and Enabled forced true for the two advisory-first
+// transitions, since a bare CLI invocation with no risk information is
+// itself an explicit request to verify.
 func resolveHandoffPolicy(opts handoffVerifyOptions) (handoff.Policy, error) {
 	if opts.Policy != "" {
 		return loadHandoffPolicy(opts.Policy)
+	}
+	if opts.RiskLevel != "" {
+		p, err := handoff.ResolvePolicyForMission(opts.RiskLevel, opts.Transition)
+		if err != nil {
+			return handoff.Policy{}, fmt.Errorf("resolve handoff policy: %w", err)
+		}
+		return p, nil
 	}
 	switch opts.Transition {
 	case handoff.TransitionArchivistToSniper:
@@ -123,6 +138,7 @@ func init() {
 	handoffVerifyCmd.Flags().StringVar(&opts.Root, flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
 	handoffVerifyCmd.Flags().StringVar(&opts.Transition, "transition", "", "handoff transition (archivist_to_sniper, ranger_to_archivist, sniper_to_validation) — ignored if --policy is set")
 	handoffVerifyCmd.Flags().StringVar(&opts.Policy, "policy", "", "path to a policy YAML file, overriding the built-in default for --transition")
+	handoffVerifyCmd.Flags().StringVar(&opts.RiskLevel, "risk-level", "", "mission risk_level (low, medium, high) from intake — when set, resolves policy.Enabled/RequiredTypes from risk signals instead of the static per-transition default; ignored if --policy is set")
 	handoffVerifyCmd.Flags().StringVar(&opts.Challenges, "challenges", "", "path to a challenges YAML file (required)")
 	handoffVerifyCmd.Flags().StringVar(&opts.Ack, "ack", "", "path to an acknowledgment YAML file (required)")
 	handoffVerifyCmd.Flags().StringVar(&opts.MissionID, "mission-id", "", "mission_id to record against (required)")

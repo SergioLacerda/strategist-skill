@@ -61,5 +61,25 @@ schema_version: "1"
 #       within a chest (heuristic only, always a human-review flag, never
 #       auto-resolved)
 #   See .analysis/refined/20260803-jewel-evidence-wiring/design.md.
+#
+# internal/domain.Evidence itself (the full finding -> source -> snippet/hash ->
+# classification -> confidence record — see internal/domain/evidence.go and
+# internal/embed/defaults/schemas/evidence.schema.yaml) now additionally carries:
+#   hash: string             # optional — sha256 hex digest of the cited excerpt text,
+#                             #   or of the whole source file when excerpt-level
+#                             #   content wasn't available to the caller; see
+#                             #   domain.HashExcerpt / domain.NewEvidence
+#   excerpt_anchor: string   # optional — exactly which part of source_ref was cited
+#                             #   (e.g. a line range "L12-L34" or a heading anchor);
+#                             #   empty means the citation is to the whole source
+#   commit: string           # optional — git commit the citation was verified
+#                             #   against; empty for non-git sources or when not
+#                             #   resolved at construction time
+# These three are additive fields on the standalone Evidence record type, not on
+# Jewel — a jewel does not embed an Evidence value (it only mirrors the
+# class/confidence/valid_until vocabulary above), so no new jewel-level scalar
+# fields are introduced by this. Anything that constructs or parses an
+# internal/domain.Evidence value (e.g. a mission package's evidence[] block) picks
+# up hash/excerpt_anchor/commit automatically once populated.
 
 jewels: []

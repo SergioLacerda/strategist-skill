@@ -1,6 +1,10 @@
 package domain
 
-import "errors"
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
+)
 
 // Evidence is a graded, sourced claim backing one or more Decisions —
 // critique_skill.txt item 3's "finding → source → snippet/hash →
@@ -20,6 +24,57 @@ type Evidence struct {
 	// EvaluateMissionQuality only checks that the field is well-formed
 	// enough to be non-empty when the caller declares it.
 	ValidUntil string `yaml:"valid_until,omitempty"`
+	// Hash completes critique_skill.txt item 3's "snippet/hash" link: a
+	// sha256 hex digest (see HashExcerpt) of the cited excerpt text, or of
+	// the whole SourceRef file when only file-level (not excerpt-level)
+	// content was available to the caller at construction time. Empty when
+	// no hashable content was available — e.g. a hand-authored citation with
+	// no excerpt captured. Document at each call site which of the two
+	// (excerpt vs. whole file) was hashed.
+	Hash string `yaml:"hash,omitempty"`
+	// ExcerptAnchor identifies exactly which part of SourceRef was cited —
+	// e.g. a line range ("L12-L34"), a heading/section anchor
+	// ("#consolidated-decision-evidence-model"), or a YAML path. Empty means
+	// the citation is to the whole source rather than a specific excerpt.
+	ExcerptAnchor string `yaml:"excerpt_anchor,omitempty"`
+	// Commit is the git commit SHA the citation was verified against, when
+	// SourceRef lives in a git-tracked file. Empty for non-git sources (a
+	// URL, a human conversation, a generated artifact) or when the caller
+	// did not resolve a commit at construction time.
+	Commit string `yaml:"commit,omitempty"`
+}
+
+// NewEvidence builds an Evidence record and derives Hash from excerpt (a
+// sha256 hex digest via HashExcerpt) whenever excerpt is non-empty — the
+// "finding → source → snippet/hash" chain's snippet half. Pass an empty
+// excerpt when only file-level, not excerpt-level, content is practical to
+// hash at the call site (Hash then stays empty; hashing a whole source
+// file's bytes is the caller's job, since this package has no filesystem
+// dependency). excerptAnchor and commit are stored verbatim — see the
+// Evidence field docs for what each means and when it's expected to be
+// empty.
+func NewEvidence(id, sourceRef, class, confidence, excerpt, excerptAnchor, commit string) Evidence {
+	e := Evidence{
+		ID:            id,
+		SourceRef:     sourceRef,
+		Class:         class,
+		Confidence:    confidence,
+		ExcerptAnchor: excerptAnchor,
+		Commit:        commit,
+	}
+	if excerpt != "" {
+		e.Hash = HashExcerpt(excerpt)
+	}
+	return e
+}
+
+// HashExcerpt returns the sha256 hex digest of excerpt text — the reusable
+// primitive behind Evidence.Hash, exported so callers that build an Evidence
+// value field-by-field (e.g. via YAML unmarshal, then filling Hash in after
+// the fact) can compute the same digest NewEvidence would.
+func HashExcerpt(excerpt string) string {
+	sum := sha256.Sum256([]byte(excerpt))
+	return hex.EncodeToString(sum[:])
 }
 
 // Evidence classification, per .analysis/todo/v2/pathfinder.txt's

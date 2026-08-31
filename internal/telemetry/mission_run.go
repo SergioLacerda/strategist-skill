@@ -119,6 +119,21 @@ func (m *MissionRun) AddLines(n int64) {
 }
 
 // SetTokens records token counts when they are known.
+//
+// This Go binary never makes an LLM API call itself — it is a CLI invoked
+// by an LLM agent as subprocess commands — so it has no direct visibility
+// into provider-reported token usage. SetTokens exists for two callers:
+// (1) the ambient per-invocation MissionRun (see root.go's
+// PersistentPreRunE), which never has real numbers to give it, and (2)
+// `strategist mission report-usage` (cmd/strategist/mission_report_usage.go),
+// which is the only production call site: it takes token counts the
+// invoking agent explicitly reports from its own provider response (e.g.
+// Claude's usage.input_tokens/usage.output_tokens) after the fact, for a
+// named mission_id, and persists them via
+// telemetry.AppendMissionTokenUsage (mission_metrics.go) — see that
+// function's doc comment for the persisted record shape. Comparing the
+// reported total against skill.yaml's declarative token_budget is a
+// natural follow-up, not implemented here.
 func (m *MissionRun) SetTokens(in, out int64) {
 	m.mu.Lock()
 	m.tokensIn = in

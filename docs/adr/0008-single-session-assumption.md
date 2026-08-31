@@ -36,3 +36,20 @@ F3 is accepted as a known limitation of the single-session architecture. The ski
   - three or more Git conflicts are attributed to files recently materialized by Sniper.
 
   Until one of these thresholds is observed, the project keeps relying on mission IDs, approval prompts, and Git conflict detection instead of a cross-session lock registry. No telemetry for this signal exists today — instrumenting it is tracked as separate implementation work, not part of this decision record.
+
+---
+
+## Addendum (2026-08-30)
+
+The line above ("no telemetry for this signal exists today") is now only
+partially accurate and is left as originally written above — this addendum
+corrects the record without rewriting the original decision text.
+`internal/telemetry/sniper_conflict.go` has since implemented
+`F3ConflictThresholdMet` and `EmitSniperConflictSignal`, which measure the
+**second** revisit tripwire (three or more Git conflicts attributed to
+recently-materialized files). The **first** tripwire (two sessions claiming
+or attempting to materialize the same documentation target) remains
+uninstrumented, since it depends on the cross-session claim registry this
+ADR still declines to build. See
+`.analysis/refined/20260830-skill-gaps-triage/tasks.md` Task 2 for the
+tracked follow-up.

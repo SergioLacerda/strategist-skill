@@ -102,6 +102,85 @@ func TestNativeRuntimeConnectorObservesEnforcementWhenConfigured(t *testing.T) {
 	assert.Empty(t, observed.Enforcement.Limitations)
 }
 
+func TestNativeRoleConnectorClaimsInvokeForNativeRole(t *testing.T) {
+	t.Parallel()
+
+	connector := connectors.NativeRoleConnector{
+		NativeRuntimeConnector: connectors.NativeRuntimeConnector{ConnectorID: "strategist-native", ConnectorAPIVersion: "strategist-connector-api/1"},
+	}
+
+	caps := connector.Capabilities(context.Background())
+	assert.True(t, caps.CanInvoke, "NativeRoleConnector must claim CanInvoke for the native-role case")
+	assert.True(t, caps.CanResolve)
+	assert.True(t, caps.CanProbe)
+
+	invoked := connector.Invoke(context.Background(), connectors.InvocationEnvelope{
+		Instance:    domain.InstalledInstance{ID: "sniper"},
+		Entrypoint:  "materialize_docs",
+		GateAllowed: true,
+	})
+	assert.Equal(t, domain.ReadinessReady, invoked.Status)
+	assert.Equal(t, "invoke_native_role_direct_embodiment", invoked.ReasonCode)
+}
+
+func TestNativeRoleConnectorDeniesInvokeWithoutGateApproval(t *testing.T) {
+	t.Parallel()
+
+	connector := connectors.NativeRoleConnector{}
+	invoked := connector.Invoke(context.Background(), connectors.InvocationEnvelope{
+		Instance:    domain.InstalledInstance{ID: "sniper"},
+		Entrypoint:  "materialize_docs",
+		GateAllowed: false,
+	})
+	assert.Equal(t, domain.ReadinessBlocked, invoked.Status)
+	assert.Equal(t, "invoke_gate_not_allowed", invoked.ReasonCode)
+}
+
+func TestNativeRoleConnectorDeniesInvokeWithIncompleteEnvelope(t *testing.T) {
+	t.Parallel()
+
+	connector := connectors.NativeRoleConnector{}
+
+	missingInstance := connector.Invoke(context.Background(), connectors.InvocationEnvelope{Entrypoint: "materialize_docs", GateAllowed: true})
+	assert.Equal(t, domain.ReadinessBlocked, missingInstance.Status)
+	assert.Equal(t, "invoke_input_incomplete", missingInstance.ReasonCode)
+
+	missingEntrypoint := connector.Invoke(context.Background(), connectors.InvocationEnvelope{Instance: domain.InstalledInstance{ID: "sniper"}, GateAllowed: true})
+	assert.Equal(t, domain.ReadinessBlocked, missingEntrypoint.Status)
+	assert.Equal(t, "invoke_input_incomplete", missingEntrypoint.ReasonCode)
+}
+
+func TestNativeRoleConnectorInheritsResolveAndProbeFromNativeRuntimeConnector(t *testing.T) {
+	t.Parallel()
+
+	connector := connectors.NativeRoleConnector{
+		NativeRuntimeConnector: connectors.NativeRuntimeConnector{ConnectorID: "strategist-native"},
+	}
+
+	resolved := connector.Resolve(context.Background(), connectors.RuntimeLocator{ID: "sniper", Path: "roles/sniper.yaml"})
+	assert.Equal(t, domain.ReadinessReady, resolved.Status)
+
+	probe := connector.Probe(context.Background(), domain.InstalledInstance{ID: "sniper"}, "materialize_docs")
+	assert.Equal(t, domain.ReadinessReady, probe.Status)
+}
+
+// TestOnlyNativeRoleConnectorClaimsInvoke pins the K02 finding's fix in
+// place: NativeRuntimeConnector (used generically) and UnsupportedConnector
+// (used for external skill plugins) must both continue to NOT claim
+// CanInvoke — only the native-role-specific NativeRoleConnector variant may.
+func TestOnlyNativeRoleConnectorClaimsInvoke(t *testing.T) {
+	t.Parallel()
+
+	unsupported := connectors.UnsupportedConnector{IDValue: "x"}
+	assert.False(t, unsupported.Capabilities(context.Background()).CanInvoke)
+
+	native := connectors.NativeRuntimeConnector{ConnectorID: "strategist-native"}
+	assert.False(t, native.Capabilities(context.Background()).CanInvoke)
+
+	nativeRole := connectors.NativeRoleConnector{NativeRuntimeConnector: native}
+	assert.True(t, nativeRole.Capabilities(context.Background()).CanInvoke)
+}
+
 func TestNativeRuntimeConnectorReportsVisibleLocalInstanceWithoutInvokeClaim(t *testing.T) {
 	t.Parallel()
 

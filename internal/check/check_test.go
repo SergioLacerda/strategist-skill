@@ -184,6 +184,33 @@ func TestCheckCmd_WrongRiskScore(t *testing.T) {
 	assert.Contains(t, err.Error(), "check=failed")
 }
 
+func TestCheckCmd_BlockedReadinessEntrypointFailsExitCode(t *testing.T) {
+	dir := minimalCheckRoot(t)
+	// The manifest's declared id no longer matches the provider it resolves
+	// for — probeSkillEntrypoint must report this as Blocked, and check must
+	// gate its exit code on that (1a): a slot that resolves and passes
+	// static risk_score validation can still be genuinely not-ready.
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "skills", "brainstorming", "skill.yaml"),
+		[]byte("id: not-brainstorming\nrisk_score: write_analysis\n"),
+		0o644,
+	))
+
+	orig := checkRoot
+	t.Cleanup(func() { checkRoot = orig })
+	checkRoot = dir
+
+	var runErr error
+	stderr := captureStderr(t, func() {
+		runErr = checkCmd.RunE(checkCmd, nil)
+	})
+	require.Error(t, runErr, "check must fail exit code when a required slot's readiness is blocked")
+	assert.Contains(t, runErr.Error(), "check=failed")
+	assert.Contains(t, stderr, "slot discovery")
+	assert.Contains(t, stderr, "entrypoint")
+	assert.Contains(t, stderr, "entrypoint_id_mismatch")
+}
+
 func TestCheckCmd_NativeRole_Sniper(t *testing.T) {
 	dir := t.TempDir()
 	// Install skill providers for discovery and refinement.

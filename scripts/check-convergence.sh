@@ -18,4 +18,8 @@ test ! -d strategist \
 test -d internal/embed/defaults/internal_skills \
   || { echo "DRIFT: internal/embed/defaults/internal_skills/ missing — authoring tree broken"; exit 1; }
 
+# "OK" here means the contract/byte drift class checked above (a handful of
+# literal path/symbol strings staying in sync across code and docs) found
+# nothing — see docs/drift-detection-matrix.md for what this script does and
+# does not check.
 echo "Convergence check: OK"

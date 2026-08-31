@@ -206,13 +206,22 @@ When operating inside the main mission, consult contracts in this order:
 
 ## Invariants
 
-- No direct repository mutation without canonical pipeline evidence
-- No execution without explicit Strategist Approval Gate acceptance
-- No slot work performed by Strategist itself
-- The invoking local context (any adapter, orchestrator, or harness) may block or permit execution — it does NOT replace the canonical pipeline sequence once Strategist is invoked
-- `execution_gate=allowed` from local context never substitutes the Strategist Approval Gate (explicit user approval)
-- The Strategist Approval Gate is required on all routes: Critical Hit, Implementation Short Route, and Main Mission
-- A missing or uncallable resolved execution provider is a blocked state — never a reason for direct execution
+`enforced_by` tags use the unified 3-tier vocabulary defined in
+`machine/errors.yaml` (`machine_enforced` / `machine_observed` /
+`agent_only`). Reviewed against actual Go call sites (2026-08-30): every
+invariant below is `agent_only` — there is no live-mission FSM in Go that
+gates routing or execution; `internal/domain/pipeline_bypass.go`'s
+`EvaluatePipelineBypass` implements the matching decision logic for the first
+invariant but has zero non-test callers repo-wide, so it is not on a
+reachable path today.
+
+- No direct repository mutation without canonical pipeline evidence — `enforced_by: agent_only`
+- No execution without explicit Strategist Approval Gate acceptance — `enforced_by: agent_only`
+- No slot work performed by Strategist itself — `enforced_by: agent_only`
+- The invoking local context (any adapter, orchestrator, or harness) may block or permit execution — it does NOT replace the canonical pipeline sequence once Strategist is invoked — `enforced_by: agent_only`
+- `execution_gate=allowed` from local context never substitutes the Strategist Approval Gate (explicit user approval) — `enforced_by: agent_only`
+- The Strategist Approval Gate is required on all routes: Critical Hit, Implementation Short Route, and Main Mission — `enforced_by: agent_only`
+- A missing or uncallable resolved execution provider is a blocked state — never a reason for direct execution — `enforced_by: agent_only`
 
 ## Scope Invariant
 

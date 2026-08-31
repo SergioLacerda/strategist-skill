@@ -165,3 +165,6 @@ func (c NativeRuntimeConnector) Observe(context.Context, domain.InstalledInstanc
 func unsupported(reason string) ConnectorResult {
 	return ConnectorResult{Status: domain.ReadinessUnsupported, ReasonCode: reason}
 }
+
+// NativeRoleConnector lives in native_role_connector.go, split out to keep
+// this file under the repo's file-size budget.

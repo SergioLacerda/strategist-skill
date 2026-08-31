@@ -94,4 +94,7 @@ if [ "$violations" -ne 0 ]; then
   exit 1
 fi
 
+# "OK" here means the schema drift class checked above (required doc
+# metadata fields, cross-references, README navigation) found nothing — see
+# docs/drift-detection-matrix.md for what this script does and does not check.
 echo "OK: docs governance valid"

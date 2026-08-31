@@ -44,6 +44,10 @@ type Service struct {
 	tuiPrompterFn func() Prompter
 }
 
+// Report is defined in merge_extract.go, alongside prepareRuntime — the
+// function that populates its BackupDir field — split out to keep this file
+// under the repo's file-size budget.
+
 // Install installs the skill into cfg.Target. In silent mode it extracts defaults
 // and writes active.yaml from the epic template. In wizard mode it prompts
 // the user for configuration before writing active.yaml.
@@ -52,7 +56,21 @@ type Service struct {
 // workspace to its pre-install state (best-effort: non-empty directories are skipped).
 //
 // The context is threaded through for future cancellation support.
+//
+// This is a thin wrapper around InstallWithReport that discards the report,
+// kept so every existing caller (production and the many test call sites
+// across this module) keeps compiling against the original error-only
+// signature. Callers that want to know whether a backup was taken (e.g. to
+// print its path, matching `strategist upgrade`'s own UX) should call
+// InstallWithReport directly instead.
 func (s Service) Install(ctx context.Context, cfg domain.InstallConfig) error {
+	_, err := s.InstallWithReport(ctx, cfg)
+	return err
+}
+
+// InstallWithReport is Install, plus a Report describing
+// facts about the run — today, just whether a backup was taken and where.
+func (s Service) InstallWithReport(ctx context.Context, cfg domain.InstallConfig) (Report, error) {
 	strategistDir := filepath.Join(cfg.Target, strategistDirName)
 	tx := newInstallTransaction(strategistDir)
 
@@ -70,11 +88,12 @@ func (s Service) Install(ctx context.Context, cfg domain.InstallConfig) error {
 
 	runtimePlan, err := s.planRuntimeDefaultUpgrade(ctx, strategistDir, cfg.Force)
 	if err != nil {
-		return err
+		return Report{}, err
 	}
 
-	if err := s.runInstallSteps(ctx, strategistDir, cfg, runtimePlan, tx); err != nil {
-		return err
+	report, err := s.runInstallSteps(ctx, strategistDir, cfg, runtimePlan, tx)
+	if err != nil {
+		return Report{}, err
 	}
 
 	succeeded = true
@@ -82,50 +101,39 @@ func (s Service) Install(ctx context.Context, cfg domain.InstallConfig) error {
 		telemetry.AttrComponent, "install",
 		telemetry.AttrTarget, telemetry.SanitizePath(cfg.Target),
 	)
-	return nil
+	return report, nil
 }
 
-func (s Service) runInstallSteps(ctx context.Context, strategistDir string, cfg domain.InstallConfig, runtimePlan runtimeDefaultPlan, tx *installTransaction) error {
-	created, err := s.prepareRuntime(ctx, strategistDir, cfg, runtimePlan)
+func (s Service) runInstallSteps(ctx context.Context, strategistDir string, cfg domain.InstallConfig, runtimePlan runtimeDefaultPlan, tx *installTransaction) (Report, error) {
+	created, fullHashes, backupDir, err := s.prepareRuntime(ctx, strategistDir, cfg, runtimePlan)
 	if err != nil {
-		return err
+		return Report{}, err
 	}
 	tx.record(created...)
 	created, err = s.applyWorkspaceConfig(ctx, strategistDir, cfg)
 	if err != nil {
-		return err
+		return Report{}, err
 	}
 	tx.record(created...)
 	gitignoreManifest, err := ensureProjectGitignore(cfg)
 	if err != nil {
-		return err
+		return Report{}, err
 	}
 	tx.record(gitignoreManifest...)
 	shimManifest, err := s.runShimStep(ctx, cfg)
 	if err != nil {
-		return err
+		return Report{}, err
 	}
 	tx.record(shimManifest...)
-	if err := s.finalizeInstall(ctx, cfg, strategistDir, runtimePlan); err != nil {
-		return err
+	if err := s.finalizeInstall(ctx, cfg, strategistDir, runtimePlan, fullHashes); err != nil {
+		return Report{}, err
 	}
 	tx.record(filepath.Join(strategistDir, domain.InstallManifestRelPath))
-	return nil
+	return Report{BackupDir: backupDir}, nil
 }
 
-func (s Service) prepareRuntime(ctx context.Context, strategistDir string, cfg domain.InstallConfig, plan runtimeDefaultPlan) ([]string, error) {
-	slog.InfoContext(ctx, "[Strategist] install extracting-defaults",
-		telemetry.AttrComponent, "install",
-		telemetry.AttrTarget, telemetry.SanitizePath(strategistDir),
-	)
-	if err := s.Extractor.Extract(strategistDir, cfg.Force); err != nil {
-		return nil, fmt.Errorf("install: extract defaults: %w", err)
-	}
-	if err := s.applyRuntimeDefaultPlan(ctx, strategistDir, plan); err != nil {
-		return nil, err
-	}
-	return []string{strategistDir}, nil
-}
+// prepareRuntime is defined in merge_extract.go, split out to keep this
+// file under the repo's file-size budget.
 
 func (s Service) applyWorkspaceConfig(ctx context.Context, strategistDir string, cfg domain.InstallConfig) ([]string, error) {
 	slog.InfoContext(ctx, "[Strategist] install applying-config",
@@ -153,14 +161,14 @@ func ensureProjectGitignore(cfg domain.InstallConfig) ([]string, error) {
 	return []string{gitignorePath}, nil
 }
 
-func (s Service) finalizeInstall(ctx context.Context, cfg domain.InstallConfig, strategistDir string, plan runtimeDefaultPlan) error {
+func (s Service) finalizeInstall(ctx context.Context, cfg domain.InstallConfig, strategistDir string, plan runtimeDefaultPlan, fullHashes map[string]string) error {
 	if err := s.compileAfterInstall(ctx, cfg, strategistDir); err != nil {
 		return err
 	}
 	if s.AwarenessRefresher != nil {
 		s.AwarenessRefresher(strategistDir, cfg.Target, s.Version)
 	}
-	installManifest := domain.NewInstallManifest(packageID(s.Version), plan.embeddedHashes)
+	installManifest := buildInstallManifest(packageID(s.Version), plan, fullHashes)
 	if err := saveInstallManifest(strategistDir, installManifest); err != nil {
 		return err
 	}

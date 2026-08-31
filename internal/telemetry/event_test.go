@@ -101,6 +101,25 @@ func TestEvent_Validate_CriticalRequiresContractID(t *testing.T) {
 	require.NoError(t, warn.Validate())
 }
 
+// TestMarshalEventLine_IncludesRunEnvelopeFields covers Task 11 (telemetry
+// envelope completeness, G23): run_id, sequence, schema_version, and
+// complete must survive the jsonl round trip so a reader of the persisted
+// event log can run ValidateSequence against it.
+func TestMarshalEventLine_IncludesRunEnvelopeFields(t *testing.T) {
+	t.Parallel()
+	event := telemetry.NewEvent("strategist.discovery.done", telemetry.SeverityInfo, "run-123", true)
+
+	line, err := telemetry.MarshalEventLine(event)
+	require.NoError(t, err)
+
+	var decoded map[string]any
+	require.NoError(t, json.Unmarshal([]byte(line), &decoded))
+	assert.Equal(t, "run-123", decoded["run_id"])
+	assert.InDelta(t, float64(1), decoded["sequence"], 0)
+	assert.Equal(t, telemetry.CurrentEventSchemaVersion, decoded["schema_version"])
+	assert.Equal(t, true, decoded["complete"])
+}
+
 func TestMarshalEventLine_InvalidEvent(t *testing.T) {
 	t.Parallel()
 	_, err := telemetry.MarshalEventLine(telemetry.Event{})
