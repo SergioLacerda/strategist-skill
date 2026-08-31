@@ -17,48 +17,43 @@ corresponding tag and GitHub Release.
 ## [Unreleased]
 
 ### Added
-- SHA256 checksum verification in `bootstrap.sh` for versioned releases
-- Security warning when installing from branch ref without integrity check
-- Install rollback mechanism in `strategist/install.sh` (`INSTALL_MANIFEST` + `trap ERR`)
-- YAML config validation step in Strategist preflight (`2a.validate`)
-- New schemas: `active.schema.yaml`, `roles.schema.yaml`, `slot-output.schema.yaml`
-- Slot output contract validation after Ranger and Archivist phases
-- Test harness with 5 golden-file fixtures for critical contract scenarios
-- CI workflow `test.yml` with shellcheck, fixture tests, and schema validation
-- `SHA256SUMS` asset generation in `release.yml`
-- Promptfoo-based external artifact quality review harness (`promptfoo/`),
-  with a Makefile target guarded by a reachability preflight so a missing
-  local LM Studio server fails fast with a clear message instead of a raw
-  fetch error
-- Automated Go-native evaluation harness (`tests/evals/`) with contract
-  testing and prompt-based artifact content validation
-- `strategist eval harvest`/`select`/`copy` CLI subcommands for building
-  eval fixtures from real mission artifacts, with accompanying ADR
-  documentation
-- Jewel evidence quality validation and advisory check CLI command
-- Handoff challenge metrics, persistence, and jewel challenge template
-  validation
-- Runbook execution engine and operational runbook documentation, including
-  a local CI/CD release gate validation runbook
-- Handoff verification and mission quality domain logic, with associated
-  CI/CD validation scripts and tests
+- `strategist upgrade` command: backup-protected file application, expanded
+  policy validation, and updated runtime discovery protocols
+- `InstallWithReport`, exposing backup directory paths to CLI users
+- Native role invocation, automated runtime configuration merging, and
+  enhanced telemetry and enforcement policies
+- Plugin architecture, telemetry routing, and infrastructure for governance
+  system integration and strategist skill management
+- Telemetry event sinking system and expanded domain configuration
+  validation logic
+- `runbook select` CLI command, scoring local runbook sidecars against
+  mission signals
+- Counterfactual verification and forbidden-claim safety checks in handoff
+  logic and CLI
+- E2E integration test harness; routing and discovery workflow contracts
+- Deterministic golden testing suite with automated governance gates and
+  documentation drift prevention
+- `CriticalHitTrigger` evaluation logic and corresponding test scenarios
+- Integration-style coverage tracking; telemetry and treasure-chest E2E
+  scenarios
+- Auto-generated contract and schema documentation indices, generated from
+  source files
 
 ### Changed
-- `protocol.md`: normalized `risk_score` vocabulary to `write_pending` / `write_analysis` / `controlled`
-- `readme.md`: added security callout for curl pipe installation
-- Modularized handoff validation and runbook selection logic; added
-  treasure chest type definitions
-- Modularized eval harvest logic (selection, copying, content-assertion
-  helpers) and mission harvesting/validation logic into separate helper
-  files
-- Modularized validation and calculation logic for readability and
-  maintainability
-- Test execution now uses an explicit project root path instead of
-  implicit auto-discovery, for hermetic test runs
+- Documentation and generation scripts now point to source files instead
+  of gitignored build artifacts
+- Migrated treasure CLI logic into `internal/treasurecli`, decomposed into
+  smaller helpers
+- Introduced `internal/check` package; migrated test helpers for
+  modularity and coverage
+- Propagated context and added OpenTelemetry instrumentation to
+  installation and wizard workflows
+- Expanded gated CI metrics; added treasure chest grading evals and
+  Critical Hit closure specs
 
-### Maintenance
-- Dependency bumps: GitHub Actions group, `jsdom` in `web/landing`
-- Whitespace formatting fix in jewel evidence quality test cases
+### Fixed
+- Sorted and deduplicated test suite references in the contract index
+  generation script
 
 ---
 

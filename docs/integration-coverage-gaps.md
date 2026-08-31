@@ -1,6 +1,7 @@
 # Integration-Style Coverage Gaps — Implementation Handoff
 
 **Status:** Partially implemented outside Strategist (see Implementation Log)
+**Last Updated:** 2026-08-06
 **Source mission:** `.analysis/refined/20260805-integration-coverage-mapping/`
 **Related:** `docs/test-coverage-gaps.md` (sibling doc, different metric axis —
 see Metric Note below), `docs/test-styles.md`

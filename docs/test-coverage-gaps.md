@@ -1,6 +1,7 @@
 # Test Coverage Gaps — Implementation Handoff
 
 **Status:** T2–T6 applied (verified 2026-08-06); T7 remains a future-mission candidate
+**Last Updated:** 2026-08-06
 **Source mission:** `.analysis/refined/20260805-test-coverage-mapping-and-offline-eval/`
 **Related:** `docs/test-styles.md`, `docs/adr/0016-test-framework-v2.md`,
 `docs/adr/0017-eval-fake-provider.md`, `.analysis/todo/riposte-backlog.md`
