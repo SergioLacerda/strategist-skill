@@ -86,7 +86,7 @@ func (s Service) Install(ctx context.Context, cfg domain.InstallConfig) error {
 }
 
 func (s Service) runInstallSteps(ctx context.Context, strategistDir string, cfg domain.InstallConfig, runtimePlan runtimeDefaultPlan, tx *installTransaction) error {
-	created, err := s.prepareRuntime(ctx, strategistDir, cfg, runtimePlan)
+	created, fullHashes, err := s.prepareRuntime(ctx, strategistDir, cfg, runtimePlan)
 	if err != nil {
 		return err
 	}
@@ -106,25 +106,31 @@ func (s Service) runInstallSteps(ctx context.Context, strategistDir string, cfg 
 		return err
 	}
 	tx.record(shimManifest...)
-	if err := s.finalizeInstall(ctx, cfg, strategistDir, runtimePlan); err != nil {
+	if err := s.finalizeInstall(ctx, cfg, strategistDir, runtimePlan, fullHashes); err != nil {
 		return err
 	}
 	tx.record(filepath.Join(strategistDir, domain.InstallManifestRelPath))
 	return nil
 }
 
-func (s Service) prepareRuntime(ctx context.Context, strategistDir string, cfg domain.InstallConfig, plan runtimeDefaultPlan) ([]string, error) {
+// prepareRuntime extracts the embedded runtime tree into strategistDir and
+// applies the strictly-guarded normative-file plan on top. It returns the
+// paths it created (for rollback bookkeeping) and, when the three-way
+// merge path ran (see extractRuntimeTree), the full embedded path->hash map
+// for the manifest finalizeInstall writes.
+func (s Service) prepareRuntime(ctx context.Context, strategistDir string, cfg domain.InstallConfig, plan runtimeDefaultPlan) ([]string, map[string]string, error) {
 	slog.InfoContext(ctx, "[Strategist] install extracting-defaults",
 		telemetry.AttrComponent, "install",
 		telemetry.AttrTarget, telemetry.SanitizePath(strategistDir),
 	)
-	if err := s.Extractor.Extract(strategistDir, cfg.Force); err != nil {
-		return nil, fmt.Errorf("install: extract defaults: %w", err)
+	fullHashes, err := s.extractRuntimeTree(strategistDir, cfg.Force)
+	if err != nil {
+		return nil, nil, fmt.Errorf("install: extract defaults: %w", err)
 	}
 	if err := s.applyRuntimeDefaultPlan(ctx, strategistDir, plan); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return []string{strategistDir}, nil
+	return []string{strategistDir}, fullHashes, nil
 }
 
 func (s Service) applyWorkspaceConfig(ctx context.Context, strategistDir string, cfg domain.InstallConfig) ([]string, error) {
@@ -153,14 +159,14 @@ func ensureProjectGitignore(cfg domain.InstallConfig) ([]string, error) {
 	return []string{gitignorePath}, nil
 }
 
-func (s Service) finalizeInstall(ctx context.Context, cfg domain.InstallConfig, strategistDir string, plan runtimeDefaultPlan) error {
+func (s Service) finalizeInstall(ctx context.Context, cfg domain.InstallConfig, strategistDir string, plan runtimeDefaultPlan, fullHashes map[string]string) error {
 	if err := s.compileAfterInstall(ctx, cfg, strategistDir); err != nil {
 		return err
 	}
 	if s.AwarenessRefresher != nil {
 		s.AwarenessRefresher(strategistDir, cfg.Target, s.Version)
 	}
-	installManifest := domain.NewInstallManifest(packageID(s.Version), plan.embeddedHashes)
+	installManifest := buildInstallManifest(packageID(s.Version), plan, fullHashes)
 	if err := saveInstallManifest(strategistDir, installManifest); err != nil {
 		return err
 	}

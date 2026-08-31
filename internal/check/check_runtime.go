@@ -77,6 +77,10 @@ func validateRuntimeDefaultFile(
 		return fmt.Sprintf("runtime_stale: embedded default %q unreadable: %v", rel, embedErr), true
 	}
 	if string(runtimeRaw) == string(embeddedRaw) {
+		// No drift: exact byte identity with the embedded default. This check
+		// only ever covers the byte drift class (and, on mismatch, provenance
+		// via classifyRuntimeStale's manifest SHA256 lookup below) — see
+		// docs/drift-detection-matrix.md.
 		return "", false
 	}
 	return domain.FormatRuntimeStaleDiagnostic(

@@ -33,6 +33,8 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
 - `metrics` — Report metrics computed from Strategist's own runtime memory
   - `handoff` — Report Handoff Challenge governance metrics
   - `scout` — Report Scout routing metrics
+- `mission` — Report and inspect mission-level facts this binary cannot observe directly
+  - `report-usage` — Record real token usage for a mission, reported by the invoking agent
 - `runbook` — Operate on the typed docs/runbooks/*.runbook.yaml corpus
   - `select` — Select applicable runbooks for the given mission signals
 - `sync-governance` — Sync .strategist/skill.yaml with active SDD governance mandates

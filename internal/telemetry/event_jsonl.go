@@ -18,6 +18,10 @@ type eventJSON struct {
 	Attributes     map[string]any `json:"attributes,omitempty"`
 	TraceID        string         `json:"trace_id,omitempty"`
 	SpanID         string         `json:"span_id,omitempty"`
+	RunID          string         `json:"run_id,omitempty"`
+	Sequence       uint64         `json:"sequence,omitempty"`
+	SchemaVersion  string         `json:"schema_version,omitempty"`
+	Complete       bool           `json:"complete"`
 }
 
 // MarshalEventLine renders event as a single JSON line, suitable for
@@ -35,6 +39,10 @@ func MarshalEventLine(event Event) (string, error) {
 		Attributes:     event.Attributes,
 		TraceID:        event.TraceID,
 		SpanID:         event.SpanID,
+		RunID:          event.RunID,
+		Sequence:       event.Sequence,
+		SchemaVersion:  event.SchemaVersion,
+		Complete:       event.Complete,
 	})
 	if err != nil {
 		return "", fmt.Errorf("event: marshal: %w", err)

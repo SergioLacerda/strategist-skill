@@ -58,4 +58,8 @@ if [[ "$violations" -ne 0 ]]; then
   exit 1
 fi
 
+# "OK" here means the contract drift class checked below (declared values
+# staying consistent across skill.yaml/docs/tests) found nothing — it says
+# nothing about schema, provenance, behavior, or semantic drift. See
+# docs/drift-detection-matrix.md for what this script does and does not check.
 echo "OK: contract consistency valid"

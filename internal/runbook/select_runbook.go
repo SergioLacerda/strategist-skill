@@ -137,11 +137,24 @@ func matchAppliesWhen(appliesWhen []string, signals MissionSignals) []string {
 	return matched
 }
 
+// triggerMatchesAnySignal reports whether trigger (one applies_when entry)
+// matches any of signals. It first consults the controlled signal
+// vocabulary (signal_vocabulary.go): if trigger and a signal both resolve
+// to the same CanonicalSignal, they match even when neither string is a
+// substring of the other (e.g. trigger "CI test suite is red" and signal
+// "flaky test" both resolve to SignalCITestFailure). When the vocabulary
+// yields no shared canonical signal, it falls back to the original
+// case-insensitive raw substring match, so free-text triggers/signals with
+// no controlled-vocabulary coverage still behave exactly as before.
 func triggerMatchesAnySignal(trigger string, signals MissionSignals) bool {
 	lowerTrigger := strings.ToLower(trigger)
+	triggerCanonical := canonicalSignalsIn(trigger)
 	for _, signal := range signals {
 		if signal == "" {
 			continue
+		}
+		if len(triggerCanonical) > 0 && sharesCanonicalSignal(triggerCanonical, canonicalSignalsIn(signal)) {
+			return true
 		}
 		if strings.Contains(lowerTrigger, strings.ToLower(signal)) {
 			return true

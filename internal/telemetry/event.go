@@ -117,7 +117,44 @@ type Event struct {
 	// on it directly rather than on trace context.
 	TraceID string
 	SpanID  string
+
+	// RunID identifies one mission-runtime execution — one process
+	// invocation of the pipeline (see MissionRun in mission_run.go). It is
+	// deliberately reused from mission_id rather than freshly generated:
+	// today's FSM retries (StateRetryingRefinement, StateRetryingExecution,
+	// StateRetryingDirectExec in internal/domain/state_machine.go) are
+	// intra-run retries of a single slot within one process invocation, not
+	// a new run of the whole mission, so mission_id and run_id currently
+	// coincide 1:1. If Strategist later gains a genuine "resume this
+	// mission as a new process invocation" path, that is the point at which
+	// RunID should diverge from mission_id (e.g. by suffixing an attempt
+	// number) — see NewEvent and NextSequence.
+	RunID string
+	// Sequence is a monotonically increasing counter assigned per RunID at
+	// emission time (via NextSequence/NewEvent), starting at 1. Zero means
+	// "no sequence assigned" (e.g. an event built before this field existed
+	// via a bare Event{...} literal). ValidateSequence uses gaps in this
+	// numbering to detect an event that was emitted but never reached a
+	// given sink — distinct from a phase that simply never ran, which
+	// leaves no event and therefore no gap.
+	Sequence uint64
+	// SchemaVersion tags the shape of this envelope itself (currently
+	// CurrentEventSchemaVersion), not any domain/mission schema. Constant
+	// for now; exists so a future incompatible envelope change can be
+	// detected by readers of persisted event logs.
+	SchemaVersion string
+	// Complete marks a terminal event — e.g. a phase's done/blocked
+	// outcome — as opposed to an in-flight/running event for the same unit
+	// of work. Downstream consumers use it to tell "ran to completion"
+	// apart from "started but never finished," which a missing event alone
+	// cannot distinguish from "never started."
+	Complete bool
 }
+
+// CurrentEventSchemaVersion is the schema_version stamped onto every Event
+// built via NewEvent. Bump it if Event's envelope shape changes in a way
+// that matters to a persisted-log reader.
+const CurrentEventSchemaVersion = "1.0"
 
 // Validate returns an error if e is missing a required field. Critical
 // events (SeverityNumber >= SeverityError) MUST carry a contract_id

@@ -65,3 +65,58 @@ The contract uses three enforcement levels:
 - Two scope verification points: preflight (risk_score) and runtime (actual write) — these can diverge if the provider does not honor its declared contract
 - A malicious provider with `risk_score: write_analysis` could attempt to write outside scope; runtime validation is necessary but depends on the orchestrator detecting the violation
 - `known-providers.yaml` must be kept up to date for providers that do not declare `risk_score` in their `skill.yaml` — otherwise preflight cannot validate
+
+---
+
+## Addendum (2026-08-30) — mapping onto the unified enforcement-tier vocabulary
+
+The text above is left as originally written; this addendum does not change the
+Decision or Consequences, it cross-references a newer, more general vocabulary
+introduced elsewhere. `internal/embed/defaults/contracts/machine/errors.yaml`
+previously tagged only error tokens with a binary `enforced_by: binary|agent`
+field. `.analysis/refined/20260830-skill-gaps-triage/tasks.md` Task 4 (G03)
+generalized that into a 3-tier vocabulary — `machine_enforced` /
+`machine_observed` / `agent_only` — now defined canonically in `errors.yaml`
+and applied across other machine/narrative contract files, not just error
+tokens.
+
+This ADR's "Enforcement levels" table (§ above) predates that generalization
+and uses different names for a related but not identical distinction: it
+describes *stages in a contract's enforcement lifecycle* (declare it, detect
+drift from it, then prevent continuation past a detected violation), not a
+per-clause classification of *whether a specific obligation is machine-checked
+today*. The mapping is:
+
+| ADR-0005 level | What it describes | Maps to (per concrete clause) |
+|---|---|---|
+| Declarative | The contract is declared in metadata (`skill.yaml`, role manifests) with no detection or prevention wired yet. | `agent_only` — nothing machine-side observes or blocks a declarative-only clause; the orchestrating agent is trusted to honor the declaration. |
+| Detective (without a following Preventive step) | A Go-side check runs on a *live, reachable* path and reports a named violation, but nothing stops the flow because of it. | `machine_observed` — detected and reported, not blocking. |
+| Detective + Preventive together, on a live path | A Go-side check detects the violation on a live, reachable path *and* that detection actually stops the governed flow from continuing. | `machine_enforced` — checked and blocking. |
+| Detective + Preventive implemented, but only exercised by an eval/test harness | The decision logic exists as a real Go function with Detective+Preventive shape, but its only caller is a scenario/eval runner rather than a path a live mission write goes through. | `agent_only` — same "wired but not connected" pattern as `internal/domain/pipeline_bypass.go`'s `EvaluatePipelineBypass` (see `errors.yaml`'s vocabulary note); a function nothing on a live path calls does not make the obligation machine-checked, however correct the function is in isolation. |
+
+Applying this mapping to this ADR's own two runtime violations, verified
+against actual 2026-08-30 Go call sites:
+
+- **`slot_risk_mismatch`** (preflight risk_score match) — `machine_enforced`.
+  `internal/check/check_slots.go#resolveSkillProviderSlot` performs this
+  comparison and its error is appended to `strategist check`'s error list,
+  which fails the command (`check=failed`) with a non-zero exit — a live,
+  reachable, blocking path. (This is a different code path from
+  `errors.yaml`'s `slot_risk_mismatch` *error token*, which stays
+  `agent_only` there because no code path emits that literal
+  `error=slot_risk_mismatch` string — the two catalogs classify different
+  things: this ADR's check-time violation vs. errors.yaml's specific
+  emitted-token contract.)
+- **`slot_write_type_violation` / `slot_write_scope_violation`** (runtime
+  write-scope check) — `agent_only`, not `machine_enforced`, despite a
+  complete, unit-tested implementation:
+  `internal/domain/contract_validator.go#ValidateSlotWrite` correctly
+  implements the Detective+Preventive shape (returns a named violation error
+  that would block a caller), but its only non-test caller repo-wide is
+  `internal/eval/harness_policy_scenarios.go#runSlotWriteScopeScenario` — the
+  `strategist eval run` scenario harness, which checks the function's
+  correctness against fixtures. No live Ranger/Archivist/Sniper write path
+  calls it. This ADR's own "Negative" consequence above already flagged this
+  gap ("runtime validation is necessary but depends on the orchestrator
+  detecting the violation") — the vocabulary now makes that gap visible as a
+  tag instead of prose alone.

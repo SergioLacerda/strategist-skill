@@ -256,7 +256,7 @@ func TestFinalizeInstall_SaveManifestErrorPropagates(t *testing.T) {
 
 	err := s.finalizeInstall(context.Background(), domain.InstallConfig{Target: dir}, dir, runtimeDefaultPlan{
 		decisions: map[string]domain.RuntimeDefaultDecision{},
-	})
+	}, nil)
 	require.Error(t, err)
 }
 
@@ -269,7 +269,7 @@ func TestPrepareRuntime_ApplyPlanErrorPropagates(t *testing.T) {
 	for _, f := range domain.NormativeRuntimeDefaultFiles() {
 		plan.decisions[f.Path] = domain.RuntimeDecisionWriteMissing
 	}
-	_, err := s.prepareRuntime(context.Background(), dir, domain.InstallConfig{}, plan)
+	_, _, err := s.prepareRuntime(context.Background(), dir, domain.InstallConfig{}, plan)
 	require.Error(t, err)
 }
 

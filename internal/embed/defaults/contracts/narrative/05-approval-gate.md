@@ -21,12 +21,18 @@ contract: null
 
 ## Required Behavior
 
-- read `tasks.md` before deciding whether to present the gate
-- stop and wait for explicit user review response before Sniper
-- re-present analysis content on `review`
-- re-emit mission checkpoint when documentation targets are accepted
+`enforced_by` tags use the unified 3-tier vocabulary defined in
+`machine/errors.yaml` (`machine_enforced` / `machine_observed` /
+`agent_only`). All five items below are `agent_only` as of 2026-08-30: no Go
+code reads `tasks.md`, tracks whether the gate was presented, or validates
+gate-prompt content — this phase is entirely agent-narrative.
+
+- read `tasks.md` before deciding whether to present the gate — `enforced_by: agent_only`
+- stop and wait for explicit user review response before Sniper — `enforced_by: agent_only`
+- re-present analysis content on `review` — `enforced_by: agent_only`
+- re-emit mission checkpoint when documentation targets are accepted — `enforced_by: agent_only`
 - if `implementation_plan` contains any `task_type: implementation_handoff` item, state this
-  explicitly in the gate prompt (see Gate Display With Implementation Handoff below)
+  explicitly in the gate prompt (see Gate Display With Implementation Handoff below) — `enforced_by: agent_only`
 
 ## Gate Acceptance Is Not Code Mutation Approval
 
@@ -171,3 +177,8 @@ It does NOT mean:
 Both checks are required before execution/materialization:
 1. local execution context permits execution (`execution_gate=allowed`)
 2. Strategist Approval Gate explicitly accepted by the user in the conversation
+
+`enforced_by: agent_only` — same 2026-08-30 review as above: nothing in Go
+tracks whether the gate was ever shown or accepted for a given mission (no
+mission_status FSM exists outside Markdown frontmatter), so this invariant
+holds only because the orchestrating agent follows it.

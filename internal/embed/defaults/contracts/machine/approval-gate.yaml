@@ -80,14 +80,34 @@ contract:
     riposte_offer: true               # W8/P2 — offer to capture the rejection reason (riposte.yaml)
     next_phase: closed
 
+  # enforced_by uses the unified 3-tier vocabulary defined in
+  # contracts/machine/errors.yaml (machine_enforced / machine_observed /
+  # agent_only). Reviewed against actual Go call sites, 2026-08-30: every
+  # invariant below is agent_only today. There is no Go-side mission_status
+  # FSM (mission_status lives only as Markdown frontmatter the agent itself
+  # reads and writes), and internal/domain/pipeline_bypass.go's
+  # EvaluatePipelineBypass — the one Go function that would enforce the last
+  # two invariants — has zero non-test callers anywhere in the repo (verified
+  # by grep), so it does not sit on any live, reachable path. This gate's
+  # entire contract rests on the orchestrating agent following it; that is a
+  # real finding of this tagging pass, not an oversight in how the tags were
+  # applied — see .analysis/refined/20260830-skill-gaps-triage/tasks.md Task 1
+  # and its "cross-cutting pattern" note for the matching gap in related code.
   invariants:
-    - gate must emit status=analysis_accepted, status=revision_requested, or status=rejected before sniper is invoked
-    - the critic result never auto-rejects and never blocks the gate — it is advisory display; the user decision stands alone
-    - the riposte offer never alters the gate outcome or its FSM transition; declining Riposte is always valid
-    - analysis_delivered is a valid terminal state when no documentation_targets exist
-    - checkpoint is re-emitted on accept (not on revision or reject)
-    - direct repository mutation before acceptance emits reason=pipeline_bypass_detected
-    - pipeline_bypass_detected must include expected_phase=approval_gate and missing_evidence=approval_gate:analysis_accepted
+    - text: gate must emit status=analysis_accepted, status=revision_requested, or status=rejected before sniper is invoked
+      enforced_by: agent_only
+    - text: the critic result never auto-rejects and never blocks the gate — it is advisory display; the user decision stands alone
+      enforced_by: agent_only
+    - text: the riposte offer never alters the gate outcome or its FSM transition; declining Riposte is always valid
+      enforced_by: agent_only
+    - text: analysis_delivered is a valid terminal state when no documentation_targets exist
+      enforced_by: agent_only
+    - text: checkpoint is re-emitted on accept (not on revision or reject)
+      enforced_by: agent_only
+    - text: direct repository mutation before acceptance emits reason=pipeline_bypass_detected
+      enforced_by: agent_only
+    - text: pipeline_bypass_detected must include expected_phase=approval_gate and missing_evidence=approval_gate:analysis_accepted
+      enforced_by: agent_only
 
   write_scope: read-only
   owner: internal (orchestrator)

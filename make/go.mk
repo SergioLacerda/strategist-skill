@@ -38,11 +38,13 @@ spec:
 eval:
 	GOCACHE=$(GOCACHE) go test -race -tags=eval ./tests/evals/...
 
-# golden runs the deterministic artifact snapshot suite. Opt-in, not part of
-# test/test-all/ci-test/ci — the cli-help subtest alone costs ~90s (a cold
-# `go run ./cmd/strategist --help` per invocation). See
-# docs/adr/0026-deterministic-golden-testing.md. Use `-run <pattern>` or
-# `-update` (never in CI — see tests/evals/golden/golden.go) as needed.
+# golden runs the deterministic artifact snapshot suite. Wired into ci-test
+# (see the top-level Makefile) per docs/adr/0026-deterministic-golden-testing.md's
+# CI-wiring follow-up and .analysis/refined/20260830-skill-gaps-triage/tasks.md
+# Task 6 — the cli-help subtest alone costs ~90s (a cold
+# `go run ./cmd/strategist --help` per invocation), which fits comfortably inside
+# the `test` job's 15-minute timeout. Use `-run <pattern>` or `-update` (never in
+# CI — see tests/evals/golden/golden.go) for local iteration.
 golden:
 	GOCACHE=$(GOCACHE) go test -race -tags=golden ./tests/evals/golden/...
 

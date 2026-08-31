@@ -4,7 +4,11 @@ package stale
 type Reason string
 
 const (
-	// ReasonFresh means the artifact is usable.
+	// ReasonFresh means the artifact is usable. This is a "no drift detected"
+	// result covering only the byte (manifest SHA256) and provenance (source
+	// mtime/size lineage) drift classes — see docs/drift-detection-matrix.md
+	// for what strategist check-stale does and does not check (it says
+	// nothing about schema, contract, behavior, or semantic drift).
 	ReasonFresh Reason = "fresh"
 	// ReasonMissingArtifact means the target artifact does not exist.
 	ReasonMissingArtifact Reason = "missing_artifact"

@@ -172,10 +172,15 @@ func TestErrorCatalogHasNoOrphanTokens(t *testing.T) {
 }
 
 // T3 (deep-analysis implementation review, 2026-07-26): every token classifies as
-// enforced_by binary or agent, and binary tokens must be literally, reachably
+// enforced_by machine_enforced, machine_observed, or agent_only (2026-08-30:
+// migrated from the old binary|agent vocabulary — see
+// .analysis/refined/20260830-skill-gaps-triage/tasks.md Task 4, G03), and
+// machine_enforced/machine_observed tokens must be literally, reachably
 // emitted by non-test Go code — a symbol name or doctrine-text mention referencing
 // the token is not sufficient (that was GAP-2's misclassification in the original
 // Pass 0 inventory: extension-unfiltered grep counted embed/defaults docs as Go).
+// TestEnforcedByTagsUseUnifiedVocabulary (enforcement_vocabulary_test.go) checks
+// the same three-value vocabulary across other tagged contract files.
 func TestErrorCatalogEnforcedByIsAccurate(t *testing.T) {
 	t.Parallel()
 
@@ -210,18 +215,18 @@ func TestErrorCatalogEnforcedByIsAccurate(t *testing.T) {
 
 	for _, e := range cat.Errors {
 		switch e.EnforcedBy {
-		case "binary":
+		case "machine_enforced", "machine_observed":
 			literal := "error=" + e.Token
 			reasonLiteral := "reason=" + e.Token
 			if !strings.Contains(code, literal) && !strings.Contains(code, reasonLiteral) {
-				t.Errorf("catalog token %q is enforced_by: binary but no non-test .go file "+
+				t.Errorf("catalog token %q is enforced_by: %s but no non-test .go file "+
 					"under internal/ or cmd/ (excluding embed defaults) literally emits %q or %q",
-					e.Token, literal, reasonLiteral)
+					e.Token, e.EnforcedBy, literal, reasonLiteral)
 			}
-		case "agent":
+		case "agent_only":
 			// no reachability requirement — doctrine-only tokens
 		default:
-			t.Errorf("catalog token %q has invalid or missing enforced_by (got %q, want binary|agent)", e.Token, e.EnforcedBy)
+			t.Errorf("catalog token %q has invalid or missing enforced_by (got %q, want machine_enforced|machine_observed|agent_only)", e.Token, e.EnforcedBy)
 		}
 	}
 }

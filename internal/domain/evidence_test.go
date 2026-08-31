@@ -91,3 +91,56 @@ func TestValidateEvidence_ValidUntilIsOptional(t *testing.T) {
 		t.Fatalf("unexpected error with empty ValidUntil: %v", err)
 	}
 }
+
+func TestNewEvidence_PopulatesHashFromExcerpt(t *testing.T) {
+	t.Parallel()
+	excerpt := "writes MUST go through the slot contract, never direct file IO"
+	e := NewEvidence("EVD-002", "docs/adr/0005-slot-write-contracts.md",
+		EvidenceClassExplicit, ConfidenceHigh, excerpt, "L12-L34", "abc1234")
+
+	if e.Hash == "" {
+		t.Fatal("expected non-empty Hash when excerpt is provided")
+	}
+	if e.Hash != HashExcerpt(excerpt) {
+		t.Fatalf("Hash %q does not match HashExcerpt(excerpt) %q", e.Hash, HashExcerpt(excerpt))
+	}
+	if e.ExcerptAnchor != "L12-L34" {
+		t.Fatalf("expected ExcerptAnchor to be carried verbatim, got %q", e.ExcerptAnchor)
+	}
+	if e.Commit != "abc1234" {
+		t.Fatalf("expected Commit to be carried verbatim, got %q", e.Commit)
+	}
+	if err := ValidateEvidence(e); err != nil {
+		t.Fatalf("unexpected error validating evidence with new fields set: %v", err)
+	}
+}
+
+func TestNewEvidence_EmptyExcerptLeavesHashEmpty(t *testing.T) {
+	t.Parallel()
+	e := NewEvidence("EVD-003", "docs/adr/0005-slot-write-contracts.md",
+		EvidenceClassExplicit, ConfidenceHigh, "", "", "")
+
+	if e.Hash != "" {
+		t.Fatalf("expected empty Hash when no excerpt is provided, got %q", e.Hash)
+	}
+	if e.ExcerptAnchor != "" || e.Commit != "" {
+		t.Fatalf("expected empty ExcerptAnchor/Commit when not supplied, got %q / %q", e.ExcerptAnchor, e.Commit)
+	}
+}
+
+func TestHashExcerpt_IsDeterministicAndSensitiveToContent(t *testing.T) {
+	t.Parallel()
+	a := HashExcerpt("same text")
+	b := HashExcerpt("same text")
+	c := HashExcerpt("different text")
+
+	if a != b {
+		t.Fatalf("expected HashExcerpt to be deterministic, got %q vs %q", a, b)
+	}
+	if a == c {
+		t.Fatal("expected different excerpts to hash differently")
+	}
+	if a == "" {
+		t.Fatal("expected non-empty hash")
+	}
+}

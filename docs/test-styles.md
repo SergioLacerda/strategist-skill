@@ -1,7 +1,7 @@
 # Test Styles
 
 **Status:** Accepted
-**Last Updated:** 2026-08-04
+**Last Updated:** 2026-08-30
 
 This repository runs six distinct test styles, each behind its own `make`
 target and (for the Go ones) its own build tag. Coverage — a *measured,
@@ -11,7 +11,7 @@ taxonomy explicitly so the gap is visible instead of implicit.
 | Style | `make` target | Validates | Coverage today |
 |---|---|---|---|
 | unit | `test` | package-level Go logic (`go test -race ./...`, excludes `/testutil`) | none gated at this target; see `cover`/`cover-gate` below |
-| unit (gated subset) | `cover` / `cover-gate` | line coverage for the packages listed in `scripts/coverage-packages.tsv` (widened to the full `./internal/...` tree + `cmd/strategist`) | line coverage %, 90% minimum for packages already at/above baseline; 4 packages (`internal/eval`, `internal/integrity`, `internal/runtimefs`, `internal/treasure`) carry an explicit, lower interim minimum with a `riposte-backlog.md` follow-up reference (see `SQ-005`) instead of silently omitting them |
+| unit (gated subset) | `cover` / `cover-gate` | line coverage for the packages listed in `scripts/coverage-packages.tsv` (widened to the full `./internal/...` tree + `cmd/strategist`) | line coverage %, 90% minimum baseline; `internal/eval`, `internal/integrity`, `internal/runtimefs` are gated at the 90% baseline and currently measure 94.6%/98.2%/100.0%, and `internal/treasure` is gated at a stricter 95% threshold and measures 95.5% — see `scripts/coverage-packages.tsv` for per-package provenance |
 | spec (Gherkin) | `spec` | governance/contract behavior, driven by 16 `.feature` files under `tests/spec/specs/` (Given/When/Then scenarios consumed by Go test helpers in `tests/spec/*_test.go` — not a Cucumber/Godog runner) | none |
 | integration | `integration` | cross-component Go behavior (`go test -race -tags=integration ./tests/integration/...`) | none as its own view (it is folded in as a coverage *source* for `cover-html`, but not reported as its own number) |
 | eval | `eval` | prompt/artifact scenario correctness (`go test -race -tags=eval ./tests/evals/...`, 15 files across `contracts/` and `scenarios/`) | none |
@@ -31,7 +31,7 @@ suites rather than clarify them.
 ## Aggregators
 
 - `test-all: test spec integration` — omits `eval` and `web`
-- `ci-test: test-all convergence-check contract-consistency-gate cover-gate`
+- `ci-test: test-all golden convergence-check contract-consistency-gate cover-gate`
 - `ci-web: install-web lint-web test-web cover-web build-site`
 - `.github/workflows/test.yml`'s `test` job runs `make ci-test` and then
   publishes `make test-report`'s unified per-style table to
@@ -40,14 +40,21 @@ suites rather than clarify them.
 
 ## Known gaps (not covered by this document alone)
 
-- `internal/eval`, `internal/integrity`, `internal/runtimefs`, and
-  `internal/treasure` are gated below the 90% baseline (see the `cover`
-  row above) — raising them is tracked as `riposte-backlog.md` `SQ-005`,
-  not done here.
-- No internal/eval `Target` yet models Critical Hit's own trigger/closure
-  logic the way `chest_grade`/`jewel_trust` now model treasure-chest
-  grading — no pure Go function currently encapsulates that decision to
-  dispatch to. Tracked as `riposte-backlog.md` `SQ-004`.
+- The two gaps previously tracked here (`internal/eval`/`internal/integrity`/
+  `internal/runtimefs`/`internal/treasure` gated below the 90% baseline, and
+  no pure Go `Target` modeling Critical Hit's trigger/closure logic) are
+  closed: `scripts/coverage-packages.tsv` now gates all four packages at or
+  above baseline (see the `cover` row above), and
+  `internal/domain/critical_hit_trigger.go`'s `EvaluateCriticalHit` is that
+  pure decision function (`riposte-backlog.md`'s `SQ-004`/`SQ-005` entries
+  are gone — closed, not silently dropped).
+- The golden-test suite (`tests/evals/golden/`, `//go:build golden`) is now
+  wired into CI: `make golden` (`go test -race -tags=golden
+  ./tests/evals/golden/...`) is a prerequisite of `ci-test`, which
+  `.github/workflows/test.yml`'s `test` job already runs via `make ci-test` —
+  no separate workflow step was needed. Closes ADR-0026's CI-wiring
+  follow-up and `.analysis/refined/20260830-skill-gaps-triage/tasks.md`
+  Task 6.
 
 See `.analysis/refined/20260805-test-coverage-mapping-and-offline-eval/`
 and `docs/test-coverage-gaps.md` for the mission that closed the previous

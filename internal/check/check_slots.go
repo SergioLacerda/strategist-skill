@@ -1,13 +1,11 @@
 package check
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/plugins/connectors"
 	"gopkg.in/yaml.v3"
 )
 
@@ -145,48 +143,7 @@ func resolveNativeFallback(root, slot string) (provider, path string) {
 	return candidate, res.path
 }
 
-func skillProviderReadiness(provider, path string) domain.PluginReadinessVector {
-	connector := connectors.UnsupportedConnector{IDValue: "current-runtime", ConnectorAPIVersion: "strategist-connector-api/1"}
-	resolve := connector.Resolve(context.Background(), connectors.RuntimeLocator{ID: provider, Path: path})
-	observe := connector.Observe(context.Background(), domain.InstalledInstance{ID: provider})
-	return domain.PluginReadinessVector{
-		Descriptor:          domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "legacy_descriptor_valid", Detail: path},
-		Source:              domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "local_manifest_present", Detail: path},
-		Trust:               domain.ReadinessCheck{Status: domain.ReadinessUnknown, ReasonCode: "trust_policy_not_evaluated"},
-		Dependencies:        domain.ReadinessCheck{Status: domain.ReadinessUnknown, ReasonCode: "dependency_lock_not_evaluated"},
-		HostAPI:             domain.ReadinessCheck{Status: domain.ReadinessUnknown, ReasonCode: "host_api_not_declared"},
-		Connector:           connectorCheck(resolve),
-		Entrypoint:          domain.ReadinessCheck{Status: domain.ReadinessUnsupported, ReasonCode: "entrypoint_probe_unsupported"},
-		PermissionGrant:     domain.ReadinessCheck{Status: domain.ReadinessUnknown, ReasonCode: "permission_grant_not_evaluated"},
-		EnforcementCoverage: connectorObservationCheck(observe),
-		ActiveBinding:       domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "active_yaml_slot_binding"},
-	}
-}
-
-func nativeRoleReadiness(provider, path string) domain.PluginReadinessVector {
-	connector := connectors.NativeRuntimeConnector{ConnectorID: "strategist-native", ConnectorAPIVersion: "strategist-connector-api/1"}
-	instance := domain.InstalledInstance{ID: provider, State: "active"}
-	resolve := connector.Resolve(context.Background(), connectors.RuntimeLocator{ID: provider, Path: path})
-	probe := connector.Probe(context.Background(), instance, "native_role")
-	observe := connector.Observe(context.Background(), instance)
-	return domain.PluginReadinessVector{
-		Descriptor:          domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "native_role_valid", Detail: path},
-		Source:              domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "local_role_present", Detail: path},
-		Trust:               domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "native_baseline_trusted"},
-		Dependencies:        domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "native_role_no_plugin_dependencies"},
-		HostAPI:             domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "native_host_api"},
-		Connector:           connectorCheck(resolve),
-		Entrypoint:          connectorCheck(probe),
-		PermissionGrant:     domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "native_role_no_external_grant"},
-		EnforcementCoverage: connectorObservationCheck(observe),
-		ActiveBinding:       domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "active_yaml_slot_binding"},
-	}
-}
-
-func connectorCheck(result connectors.ConnectorResult) domain.ReadinessCheck {
-	return domain.ReadinessCheck{Status: result.Status, ReasonCode: result.ReasonCode, Detail: result.Detail}
-}
-
-func connectorObservationCheck(result connectors.ObservationResult) domain.ReadinessCheck {
-	return domain.ReadinessCheck{Status: result.Status, ReasonCode: result.ReasonCode, Detail: result.Detail}
-}
+// Plugin-readiness vector computation (skillProviderReadiness,
+// nativeRoleReadiness, probeSkillEntrypoint, blockedReadinessErrors, and
+// their helpers) lives in check_readiness.go, split out to keep this file
+// under the repo's file-size budget.

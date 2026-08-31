@@ -157,6 +157,7 @@ func installConfigFromFlags() domain.InstallConfig {
 func installService(shimHome string) install.Service {
 	return install.Service{
 		Extractor:          embedpkg.Extractor{},
+		Lister:             embedpkg.Extractor{},
 		Compiler:           compile.Compiler{},
 		ShimHomeDir:        shimHome,
 		AwarenessRefresher: refreshAgentAwarenessFromEmbed,

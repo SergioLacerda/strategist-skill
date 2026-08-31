@@ -127,6 +127,14 @@ Checks performed:
 			resolutions[slot] = res
 		}
 
+		// Gate the exit code on plugin-readiness diagnostics, not just static
+		// YAML validation (see blockedReadinessErrorsForSlots/
+		// blockedReadinessErrors in check_readiness.go for why Blocked
+		// specifically, not the full Ready() bar) — this is what makes
+		// `strategist check` actually enforce the readiness handshake it has
+		// always computed and printed but never gated on.
+		errs = append(errs, blockedReadinessErrorsForSlots(resolutions, []string{"discovery", "refinement", "execution"})...)
+
 		// Validate active persona.
 		if cfg.Mode == "" {
 			errs = append(errs, "active.yaml: mode is empty — must be epic or pragmatic")

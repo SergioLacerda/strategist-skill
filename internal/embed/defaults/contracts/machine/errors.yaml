@@ -8,6 +8,42 @@ description: >
   action text. Drift tokens are cataloged separately in identity/drift-patterns.yaml
   (symptom/correction form); this file lists them only as an index.
 
+# --- Unified enforcement-tier vocabulary (2026-08-30, replaces the old binary
+# enforced_by: binary|agent tag) ---
+#
+# Every `enforced_by` value below is one of exactly three tiers. This is the
+# canonical definition; other contract files that carry `enforced_by` reference
+# this block instead of restating it. See docs/adr/0005-slot-write-contracts.md
+# Addendum (2026-08-30) for how this vocabulary maps onto that ADR's older
+# Declarative/Detective/Preventive taxonomy, and
+# docs/drift-detection-matrix.md for how this relates to detector-level drift
+# classes (this vocabulary classifies *contract clauses*; that matrix classifies
+# *detectors*).
+#
+#   machine_enforced — a Go check, FSM transition, or schema validator actually
+#     blocks the action or fails the command (non-zero exit / returned error)
+#     on a reachable path exercised by real invocations, not just a unit test
+#     calling the function directly.
+#   machine_observed — a Go check runs on a reachable path and detects/reports
+#     the state (log line, telemetry event or attribute, check output) when the
+#     clause is violated, but does not block or fail anything — the caller may
+#     proceed regardless.
+#   agent_only — no Go-side code observes or enforces this clause on any
+#     reachable path today. Compliance rests entirely on the orchestrating
+#     agent following contract/prose doctrine. A Go type or pure function that
+#     implements the logic but has zero non-test callers is agent_only, not
+#     machine_observed, until something on a live path actually invokes it
+#     (e.g. internal/domain/pipeline_bypass.go's EvaluatePipelineBypass today).
+#
+# Every errors[] entry below was reviewed against its actual Go call sites
+# (2026-08-30): both former `enforced_by: binary` tokens (not_installed,
+# identity_files_missing) are emitted from a reachable, non-test path that
+# returns a real Go error and causes a non-zero exit — both map cleanly to
+# machine_enforced, no downgrade needed. All 20 former `enforced_by: agent`
+# tokens have no reachable non-test emission site (grep hits are either
+# unrelated same-named constants, code comments, or runbook signal-vocabulary
+# string lists) — all map to agent_only.
+
 # Every entry: token, emitted-as prefix, reason (one line), action (remediation).
 # scope: startup | routing | slot | gate | execution | claim
 errors:
@@ -16,147 +52,147 @@ errors:
     scope: startup
     reason: ".strategist/ runtime is absent from the workspace"
     action: "run strategist install, then retry"
-    enforced_by: binary
+    enforced_by: machine_enforced
 
   - token: config_missing
     emit: "error=config_missing"
     scope: startup
     reason: ".strategist/active.yaml is missing or unreadable"
     action: "restore active.yaml (or reinstall), then rerun strategist check"
-    enforced_by: agent
+    enforced_by: agent_only
 
   - token: preflight_failed
     emit: "error=preflight_failed"
     scope: startup
     reason: "preflight validation failed (domain, slots, or integrity)"
     action: "fix the reported preflight condition, then rerun strategist check"
-    enforced_by: agent
+    enforced_by: agent_only
 
   - token: identity_files_missing
     emit: "check=blocked reason=identity_files_missing"
     scope: startup
     reason: "internal domain identity files (drift patterns, what-i-am) are not deployed for the configured base_path"
     action: "run strategist compile to deploy identity files"
-    enforced_by: binary
+    enforced_by: machine_enforced
 
   - token: intake_conflict_unresolved
     emit: "error=intake_conflict_unresolved"
     scope: routing
     reason: "prompt contains mutually exclusive constraint aliases"
     action: "ask the user to resolve the conflicting constraints, then re-run intake"
-    enforced_by: agent
+    enforced_by: agent_only
 
   - token: slot_provider_not_found
     emit: "error=slot_provider_not_found"
     scope: slot
     reason: "configured slot provider has no capability descriptor under .strategist/skills/"
     action: "configure a valid provider in active.slots or install its capability mirror"
-    enforced_by: agent
+    enforced_by: agent_only
 
   - token: role_invocation_failed
     emit: "error=role_invocation_failed"
     scope: slot
     reason: "a configured role/provider cannot be invoked from the installed runtime"
     action: "fix provider configuration or runtime installation, then rerun strategist check"
-    enforced_by: agent
+    enforced_by: agent_only
 
   - token: role_provider_invalid
     emit: "error=role_provider_invalid"
     scope: slot
     reason: "resolved role/provider descriptor is present but invalid for the slot"
     action: "correct the provider descriptor or configure a different provider"
-    enforced_by: agent
+    enforced_by: agent_only
 
   - token: slot_risk_mismatch
     emit: "error=slot_risk_mismatch"
     scope: slot
     reason: "provider risk_score is incompatible with the slot's declared contract"
     action: "replace or correct the provider; non-compliant providers block future missions at preflight"
-    enforced_by: agent
+    enforced_by: agent_only
 
   - token: discovery_failed
     emit: "error=discovery_failed"
     scope: slot
     reason: "discovery slot failed permanently (transient failures are retried once)"
     action: "fix the discovery provider or inputs, then restart the mission"
-    enforced_by: agent
+    enforced_by: agent_only
 
   - token: refinement_failed
     emit: "error=refinement_failed"
     scope: slot
     reason: "refinement slot failed permanently (transient failures are retried once)"
     action: "fix the refinement provider or the Ranger handoff artifact, then resume"
-    enforced_by: agent
+    enforced_by: agent_only
 
   - token: local_execution_provider_missing
     emit: "error=local_execution_provider_missing"
     scope: execution
     reason: "delegated invocation did not provide execution_provider"
     action: "provide local execution context or use direct standalone invocation"
-    enforced_by: agent
+    enforced_by: agent_only
 
   - token: execution_provider_unavailable
     emit: "error=execution_provider_unavailable"
     scope: execution
     reason: "resolved execution_provider cannot be invoked in this environment"
     action: "fix provider configuration or runtime installation"
-    enforced_by: agent
+    enforced_by: agent_only
 
   - token: pipeline_bypass_detected
     emit: "error=pipeline_bypass_detected"
     scope: execution
     reason: "repository mutation attempted without canonical pipeline evidence for the active route"
     action: "stop; complete the missing phase and resume through the pipeline"
-    enforced_by: agent
+    enforced_by: agent_only
 
   - token: already_claimed
     emit: "blocked reason=already_claimed"
     scope: claim
     reason: "mission analysis is claimed by another Sniper (mission_status: sniper_running)"
     action: "wait for the claiming agent or resolve the stale claim before retrying"
-    enforced_by: agent
+    enforced_by: agent_only
 
   - token: gate_approval_missing
     emit: "blocked reason=gate_approval_missing"
     scope: claim
     reason: "Sniper claim attempted without mission_status: gate_analysis_accepted"
     action: "present the Strategist Approval Gate and obtain explicit acceptance first"
-    enforced_by: agent
+    enforced_by: agent_only
 
   - token: mission_in_progress
     emit: "blocked reason=mission_in_progress"
     scope: claim
     reason: "an analysis artifact for this mission is already mid-pipeline"
     action: "resume the existing mission from its recorded mission_status instead of recreating it"
-    enforced_by: agent
+    enforced_by: agent_only
 
   - token: documentation_scope_violation
     emit: "blocked reason=documentation_scope_violation"
     scope: execution
     reason: "tasks.md contains implementation handoff items outside Sniper's documentation scope"
     action: "materialize documentation_target items only; report implementation_handoff items as out of scope"
-    enforced_by: agent
+    enforced_by: agent_only
 
   - token: handoff_challenge_missing
     emit: "blocked reason=handoff_challenge_missing"
     scope: execution
     reason: "required Archivist to Sniper semantic handoff acknowledgment is absent"
     action: "return to Archivist to repair the handoff or collect the required acknowledgment"
-    enforced_by: agent
+    enforced_by: agent_only
 
   - token: handoff_challenge_failed
     emit: "blocked reason=handoff_challenge_failed"
     scope: execution
     reason: "Sniper acknowledgment failed objective, boundary, classification, or gate challenge validation"
     action: "return to Archivist to repair ambiguous handoff context before retrying Sniper"
-    enforced_by: agent
+    enforced_by: agent_only
 
   - token: handoff_challenge_repair_required
     emit: "blocked reason=handoff_challenge_repair_required"
     scope: execution
     reason: "critical handoff challenge failures require handoff repair before materialization"
     action: "revise the refined package or challenge metadata, then re-present the gate"
-    enforced_by: agent
+    enforced_by: agent_only
 
 # Drift tokens are cataloged in identity/drift-patterns.yaml (symptom/correction).
 # Index only — do not add reason/action text here.
@@ -177,16 +213,30 @@ drift_index:
   - runtime_source_confusion
 
 invariants:
-  - "every errors[].token with enforced_by=binary must be literally emitted (the exact
-    error=<token> or reason=<token> string) by a reachable, non-test path in cmd/
-    or internal/ — a Go symbol or comment referencing the token is not sufficient"
-  - "every errors[].token with enforced_by=agent has no such reachable binary path
-    today; it is enforced only by contract/prompt doctrine the orchestrating agent follows"
+  - "every errors[].token with enforced_by=machine_enforced must be literally emitted
+    (the exact error=<token> or reason=<token> string) by a reachable, non-test path
+    in cmd/ or internal/ that also blocks (returns a Go error / non-zero exit) — a Go
+    symbol or comment referencing the token, or a path that only logs/reports it, is
+    not sufficient"
+  - "every errors[].token with enforced_by=machine_observed is emitted or reported by
+    a reachable, non-test path, but that path does not block — no token in this
+    catalog is machine_observed today (see the 2026-08-30 review note above); this
+    invariant exists so the tier has a defined meaning if one is added later"
+  - "every errors[].token with enforced_by=agent_only has no reachable binary path
+    today that emits or reports it; it is enforced only by contract/prompt doctrine
+    the orchestrating agent follows"
   - every "error=<token>" emitted in contracts or entry docs must resolve to an errors[] entry
   - drift_index must exactly match the pattern ids in identity/drift-patterns.yaml
+  - every errors[].enforced_by value must be exactly one of machine_enforced, machine_observed, agent_only
 
 # Known naming drift (2026-07-26, not fixed — renaming touches multiple call sites):
 # internal/check/check.go emits reason=active_yaml_not_found / active_yaml_read_error /
 # active_yaml_invalid_yaml for what this catalog calls config_missing. cmd/strategist/root.go's
 # pre-command guard emits the literal error=not_installed for the same missing-file condition
-# instead. config_missing's enforced_by: agent reflects that no code path emits that exact token.
+# instead. config_missing's enforced_by: agent_only reflects that no code path emits that exact token.
+#
+# 2026-08-30: this file migrated from the old binary enforced_by: binary|agent tag to the
+# unified 3-tier machine_enforced/machine_observed/agent_only vocabulary defined at the top
+# of this file. No token changed its underlying enforcement reality in this migration —
+# binary -> machine_enforced and agent -> agent_only is a like-for-like rename, verified per
+# token against actual Go call sites (see the review note above the errors: list).
