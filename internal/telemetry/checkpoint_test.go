@@ -49,6 +49,7 @@ func TestLoadCheckpoint_MissingFile(t *testing.T) {
 	}
 	if cp == nil {
 		t.Fatal("expected non-nil checkpoint")
+		return
 	}
 	if len(cp.TasksCompleted) != 0 {
 		t.Fatalf("expected empty completed list, got %v", cp.TasksCompleted)

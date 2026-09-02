@@ -1,6 +1,6 @@
 # Soft-profile packaging map (ORKA-aligned)
 
-> Source mission: [`.analysis/refined/20260819-strategist-soft/`](../../.analysis/refined/20260819-strategist-soft/) (`analysis.md`, `proposal.md`, `design.md`, `tasks.md`).
+> Source mission: [`.analysis/refined/soft_strategist/20260819-strategist-soft/`](../../.analysis/refined/soft_strategist/20260819-strategist-soft/) (`analysis.md`, `proposal.md`, `design.md`, `tasks.md`).
 > This document materializes Task 1 (and the Task 2 verification note) of that mission's `tasks.md`. It is a design/reference document only — it does not itself authorize building the soft-profile package (Task 3, `implementation_handoff`, remains outside Strategist).
 
 ## Why this document exists

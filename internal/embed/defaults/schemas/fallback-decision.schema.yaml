@@ -1,0 +1,86 @@
+schema_version: "1"
+description: >
+  Provider-fallback degradation event (ADR-0028) emitted when a configured
+  slot provider is not invocable at mission time and Strategist proceeds
+  using a compatible native role instead. This is a compact, auditable
+  record — NOT a discovery report. It is logged and telemetered via
+  internal/telemetry's AppendFallbackDecisionLine; the implementing skill
+  decides the file/log format. A record is only ever written when a fallback
+  was actually applied — outcome=blocked or no compatible native role never
+  produce one, since nothing degraded.
+
+required_fields:
+  mission_id:
+    type: string
+    required: true
+  slot:
+    type: string
+    required: true
+    allowed_values: [discovery, refinement, execution]
+  phase:
+    type: string
+    required: true
+    description: The pipeline phase active when the configured provider failed.
+  policy:
+    type: string
+    required: true
+    allowed_values: [block, ask, native]
+    description: >
+      The effective provider_resolution_policy (active.yaml's value, or
+      "ask" when active.yaml omits it — never recorded as empty).
+  outcome:
+    type: string
+    required: true
+    allowed_values: [ask_required, auto_native]
+    description: >
+      domain.FallbackOutcome value. Only the two outcomes that represent an
+      applied fallback are valid here — blocked/unavailable/always_native
+      never produce a record.
+  configured_provider:
+    type: string
+    required: true
+    description: The originally configured provider id that failed invocation.
+  effective_provider:
+    type: string
+    required: true
+    description: >
+      The native role id actually used instead. MUST differ from
+      configured_provider — a record whose two provider fields match does
+      not describe a degradation.
+  reason:
+    type: string
+    required: true
+    description: >
+      The failure token that triggered the fallback (e.g.
+      role_invocation_failed) — see contracts/machine/errors.yaml.
+  user_confirmed:
+    type: boolean
+    required: true
+    description: >
+      MUST be true when outcome=ask_required — an ask_required outcome may
+      never be recorded as applied without explicit user confirmation. Not
+      meaningful (but still required as a field) when outcome=auto_native,
+      since the native policy does not require confirmation by design.
+  degraded:
+    type: boolean
+    required: true
+    description: MUST always be true — see this schema's own description.
+  timestamp:
+    type: string
+    required: true
+
+invariants:
+  - outcome MUST equal what
+    internal/domain.DecideSlotFallbackOutcome(slot, policy, fallback_available=true)
+    computes for the record's own slot and policy — a mismatch means the
+    record misrepresents ADR-0028's policy table
+  - outcome=ask_required MUST carry user_confirmed=true — this is the
+    structural guarantee that fallback never implies the Strategist Approval
+    Gate was skipped
+  - configured_provider MUST NOT equal effective_provider
+  - degraded is always true
+
+see_also:
+  - docs/adr/0028-native-role-resilient-baseline.md
+  - contracts/machine/provider-fallback.yaml
+  - contracts/narrative/00-routing.md § Provider Resolution Policy

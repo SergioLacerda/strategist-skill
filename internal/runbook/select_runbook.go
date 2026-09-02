@@ -22,21 +22,6 @@ const (
 	RoleSupporting SelectionRole = "supporting"
 )
 
-// SelectionPolicy bounds Select's output, per runbook_v2.txt's explicit
-// stance against silent, unreasoned runbook application ("eu não aplicaria
-// runbooks automaticamente sem explicar a seleção").
-type SelectionPolicy struct {
-	MaxPrimary    int
-	MaxSupporting int
-	RequireReason bool
-}
-
-// DefaultSelectionPolicy returns runbook_v2.txt's own defaults: at most one
-// primary runbook, at most two supporting, and a reason always required.
-func DefaultSelectionPolicy() SelectionPolicy {
-	return SelectionPolicy{MaxPrimary: 1, MaxSupporting: 2, RequireReason: true}
-}
-
 // Selection is one candidate Select chose, with the reason it matched.
 type Selection struct {
 	RunbookID string
@@ -53,17 +38,44 @@ type Selection struct {
 // carries a non-empty Reason naming the signals it matched; this holds
 // unconditionally by construction, since only matched candidates are ever
 // selected.
-func Select(candidates []Runbook, signals MissionSignals, policy SelectionPolicy) ([]Selection, error) {
+//
+// Before scoring, candidates that fail policy's staleness (MaxAge), trust
+// (MinTrust), or explicit-conflict (ConflictsWithHigherTrust) checks are
+// rejected outright — they never compete for a primary/supporting slot at
+// all, regardless of how well their applies_when text would have matched.
+// rejections carries one Rejection per candidate that did not end up in
+// selections, covering every rejection path (no match, stale, trust,
+// conflict, budget, or policy cap) — see design.md item 4's auditability
+// requirement. Policy fields (SelectionPolicy, Rejection, and the trust/
+// staleness helpers they use) live in select_runbook_policy.go.
+func Select(candidates []Runbook, signals MissionSignals, policy SelectionPolicy) (selections []Selection, rejections []Rejection, err error) {
 	if err := validateSelectionInputs(candidates, policy); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	scored := scoreCandidates(candidates, signals)
+	var eligible []Runbook
+	for _, rb := range candidates {
+		switch {
+		case rb.ConflictsWithHigherTrust:
+			rejections = append(rejections, Rejection{RunbookID: rb.RunbookID, Reason: RejectionConflictsHigherTrust})
+		case !meetsMinTrust(rb.Trust, policy.MinTrust):
+			rejections = append(rejections, Rejection{RunbookID: rb.RunbookID, Reason: RejectionBelowMinTrust})
+		case isStale(rb, policy):
+			rejections = append(rejections, Rejection{RunbookID: rb.RunbookID, Reason: RejectionStale})
+		default:
+			eligible = append(eligible, rb)
+		}
+	}
+
+	scored := scoreCandidates(eligible, signals)
 	sort.SliceStable(scored, func(i, j int) bool {
 		return lessScoredCandidate(scored[i], scored[j])
 	})
 
-	return buildSelections(scored, policy), nil
+	built, rejectedScored := buildSelections(scored, policy)
+	selections = built
+	rejections = append(rejections, rejectedScored...)
+	return selections, rejections, nil
 }
 
 func validateSelectionInputs(candidates []Runbook, policy SelectionPolicy) error {
@@ -80,23 +92,35 @@ func lessScoredCandidate(a, b scoredCandidate) bool {
 	return a.runbook.RunbookID < b.runbook.RunbookID
 }
 
-func buildSelections(scored []scoredCandidate, policy SelectionPolicy) []Selection {
-	var selections []Selection
+// buildSelections walks scored (already sorted highest-first) and assigns
+// each candidate a role, a budget outcome, or a rejection reason. spent
+// tracks the running EstimatedTokens total against policy.TokenBudget; an
+// over-budget candidate is rejected but does not stop the walk — a smaller,
+// lower-ranked candidate later in scored may still fit the remaining budget.
+func buildSelections(scored []scoredCandidate, policy SelectionPolicy) (selections []Selection, rejections []Rejection) {
+	spent := 0
 	for _, s := range scored {
 		if s.score == 0 {
+			rejections = append(rejections, Rejection{RunbookID: s.runbook.RunbookID, Reason: RejectionNoMatch})
 			continue
 		}
 		role, ok := nextRole(selections, policy)
 		if !ok {
+			rejections = append(rejections, Rejection{RunbookID: s.runbook.RunbookID, Reason: RejectionPolicyCapReached})
 			continue
 		}
+		if policy.TokenBudget > 0 && spent+s.runbook.EstimatedTokens > policy.TokenBudget {
+			rejections = append(rejections, Rejection{RunbookID: s.runbook.RunbookID, Reason: RejectionOverBudget})
+			continue
+		}
+		spent += s.runbook.EstimatedTokens
 		selections = append(selections, Selection{
 			RunbookID: s.runbook.RunbookID,
 			Role:      role,
 			Reason:    "matches applies_when: " + strings.Join(s.matched, "; "),
 		})
 	}
-	return selections
+	return selections, rejections
 }
 
 func nextRole(selections []Selection, policy SelectionPolicy) (SelectionRole, bool) {
@@ -107,60 +131,6 @@ func nextRole(selections []Selection, policy SelectionPolicy) (SelectionRole, bo
 		return "", false
 	}
 	return RoleSupporting, true
-}
-
-type scoredCandidate struct {
-	runbook Runbook
-	score   int
-	matched []string
-}
-
-func scoreCandidates(candidates []Runbook, signals MissionSignals) []scoredCandidate {
-	scored := make([]scoredCandidate, 0, len(candidates))
-	for _, rb := range candidates {
-		matched := matchAppliesWhen(rb.AppliesWhen, signals)
-		scored = append(scored, scoredCandidate{runbook: rb, score: len(matched), matched: matched})
-	}
-	return scored
-}
-
-func matchAppliesWhen(appliesWhen []string, signals MissionSignals) []string {
-	var matched []string
-	for _, trigger := range appliesWhen {
-		if trigger == "" {
-			continue
-		}
-		if triggerMatchesAnySignal(trigger, signals) {
-			matched = append(matched, trigger)
-		}
-	}
-	return matched
-}
-
-// triggerMatchesAnySignal reports whether trigger (one applies_when entry)
-// matches any of signals. It first consults the controlled signal
-// vocabulary (signal_vocabulary.go): if trigger and a signal both resolve
-// to the same CanonicalSignal, they match even when neither string is a
-// substring of the other (e.g. trigger "CI test suite is red" and signal
-// "flaky test" both resolve to SignalCITestFailure). When the vocabulary
-// yields no shared canonical signal, it falls back to the original
-// case-insensitive raw substring match, so free-text triggers/signals with
-// no controlled-vocabulary coverage still behave exactly as before.
-func triggerMatchesAnySignal(trigger string, signals MissionSignals) bool {
-	lowerTrigger := strings.ToLower(trigger)
-	triggerCanonical := canonicalSignalsIn(trigger)
-	for _, signal := range signals {
-		if signal == "" {
-			continue
-		}
-		if len(triggerCanonical) > 0 && sharesCanonicalSignal(triggerCanonical, canonicalSignalsIn(signal)) {
-			return true
-		}
-		if strings.Contains(lowerTrigger, strings.ToLower(signal)) {
-			return true
-		}
-	}
-	return false
 }
 
 func countByRole(selections []Selection, role SelectionRole) int {

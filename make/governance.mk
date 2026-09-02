@@ -1,5 +1,5 @@
 .PHONY: \
-	analysis-structure-gate docs-governance-gate docs-generated-gate governance-check \
+	analysis-structure-gate docs-governance-gate docs-generated-gate docs-links-gate governance-check \
 	convergence-check contract-consistency-gate
 
 analysis-structure-gate:
@@ -7,6 +7,11 @@ analysis-structure-gate:
 
 docs-governance-gate:
 	bash scripts/check-docs-governance.sh
+
+# docs-links-gate fails when a markdown internal link under docs/ points at a
+# file or directory that does not exist — see scripts/check-doc-links.sh.
+docs-links-gate:
+	bash scripts/check-doc-links.sh
 
 # docs-generated-gate fails when docs/generated/ is missing, or when
 # regenerating it produces a diff against the committed copy — i.e. someone

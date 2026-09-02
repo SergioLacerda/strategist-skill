@@ -83,3 +83,35 @@ func TestParseMissionTasks_MissingFile(t *testing.T) {
 	_, err := ParseMissionTasks("mission-x", filepath.Join(t.TempDir(), "nope.md"))
 	require.Error(t, err)
 }
+
+func TestSideQuestBlockEnd_StopsAtNextHeading(t *testing.T) {
+	t.Parallel()
+	lines := []string{
+		"side_quests_approved:",
+		"- id: SQ-001",
+		"## Next Section",
+		"unrelated content",
+	}
+	assert.Equal(t, 2, sideQuestBlockEnd(lines, 0))
+}
+
+func TestSideQuestBlockEnd_RunsToEndWithoutNextHeading(t *testing.T) {
+	t.Parallel()
+	lines := []string{"side_quests_approved:", "- id: SQ-001"}
+	assert.Equal(t, len(lines), sideQuestBlockEnd(lines, 0))
+}
+
+func TestNormalizeSideQuestYAML_EmptyLinesReturnsEmptyString(t *testing.T) {
+	t.Parallel()
+	assert.Empty(t, normalizeSideQuestYAML(nil))
+}
+
+func TestLooksLikeMappingField_RejectsValueWithoutColon(t *testing.T) {
+	t.Parallel()
+	assert.False(t, looksLikeMappingField("no colon here"))
+}
+
+func TestLooksLikeMappingField_RejectsEmptyKey(t *testing.T) {
+	t.Parallel()
+	assert.False(t, looksLikeMappingField(": value with empty key"))
+}

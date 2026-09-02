@@ -342,6 +342,7 @@ func TestSniperConflictSignals_DeduplicatesSameTargetPath(t *testing.T) {
 	}
 	if aSignal == nil {
 		t.Fatal("expected a signal for docs/a.md")
+		return
 	}
 	if aSignal.MissionID != "m-1-first" {
 		t.Fatalf("expected first-seen record to win dedup, got mission_id %q", aSignal.MissionID)

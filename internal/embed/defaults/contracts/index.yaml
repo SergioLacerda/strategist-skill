@@ -40,11 +40,11 @@ machine:
     bootstrap:   [machine/bootstrap.yaml, machine/keen-senses.yaml]
     intake:      [machine/intake.yaml, machine/scout-routing.yaml]
     discovery:   [machine/opportunity-attack.yaml]
-    refinement:  [machine/opportunity-attack.yaml, machine/handoff-contract.yaml, machine/mission-quality.yaml]
+    refinement:  [machine/opportunity-attack.yaml, machine/handoff-contract.yaml, machine/mission-quality.yaml, machine/provider-fallback.yaml]
     gate:        [machine/approval-gate.yaml, machine/riposte.yaml, machine/mission-quality.yaml]
     # riposte.yaml also fires at mission close (sq_backlog drain) — response phase:
     response:    [machine/riposte.yaml]
-    execution:   [machine/compliance-summary.yaml]
+    execution:   [machine/compliance-summary.yaml, machine/provider-fallback.yaml]
     adr:         [machine/adr.yaml]
     learning:    [machine/learning-curator.yaml, machine/learning-buffer.yaml]
     critical_hit: [machine/critical-hit.yaml]

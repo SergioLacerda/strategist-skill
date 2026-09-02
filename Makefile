@@ -48,6 +48,6 @@ include make/docs.mk
 
 ci-lint: fmt-check mod-check vet build quality-budget-gate
 
-ci-test: test-all golden convergence-check contract-consistency-gate cover-gate docs-generated-gate
+ci-test: test-all golden convergence-check contract-consistency-gate cover-gate docs-generated-gate docs-links-gate
 
 ci: ci-lint ci-test

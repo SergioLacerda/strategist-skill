@@ -142,7 +142,7 @@ func TestSelect_GoldenAgainstRealRunbookFixtures(t *testing.T) {
 			t.Parallel()
 			rb := loadSidecarFixture(t, tc.sidecarFile)
 
-			selections, err := Select([]Runbook{rb}, tc.signals, DefaultSelectionPolicy())
+			selections, _, err := Select([]Runbook{rb}, tc.signals, DefaultSelectionPolicy())
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}

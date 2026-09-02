@@ -58,6 +58,7 @@ Examples are available as completed mission packages under `.analysis/refined/`;
 - [Architecture](../architecture.md) — implementation structure and runtime model.
 - [Configuration](../configuration.md) — profiles, slots, paths, and languages.
 - [CLI reference](../cli-reference.md) — installation, compilation, checks, and maintenance.
+- [Generated reference index](../generated/) — always-current contracts, schemas, CLI commands, and telemetry events, regenerated deterministically from source (`make docs-generate`; see [ADR-0025](../adr/0025-generated-documentation-anti-drift.md)).
 - [Documentation index](../README.md) — navigate every maintained guide by intent.
 
 ## Non-negotiable boundaries

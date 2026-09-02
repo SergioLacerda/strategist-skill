@@ -9,6 +9,7 @@ func TestCheckContains(t *testing.T) {
 	v := checkContains("hello world", Assertion{Type: AssertContains, Value: "xyz"})
 	if v == nil {
 		t.Fatal("expected a violation, got nil")
+		return
 	}
 	if v.Expected != "xyz" {
 		t.Fatalf("unexpected Expected: %q", v.Expected)
@@ -38,6 +39,7 @@ func TestCheckRegex_InvalidPattern(t *testing.T) {
 	v := checkRegex("hello world", Assertion{Type: AssertRegex, Value: "["})
 	if v == nil {
 		t.Fatal("expected a violation for an invalid regex, got nil")
+		return
 	}
 	if v.Message != "invalid regex pattern" {
 		t.Fatalf("unexpected message: %q", v.Message)
@@ -57,6 +59,7 @@ func TestCheckMaxTokens_NotAnInteger(t *testing.T) {
 	v := checkMaxTokens("one two three", Assertion{Type: AssertMaxTokens, Value: "not-a-number"})
 	if v == nil {
 		t.Fatal("expected a violation for a non-integer budget, got nil")
+		return
 	}
 	if v.Message != "max-tokens value is not an integer" {
 		t.Fatalf("unexpected message: %q", v.Message)
@@ -100,6 +103,7 @@ func TestCheckSourceCitations_NotAnInteger(t *testing.T) {
 	v := checkSourceCitations("docs/a.md", Assertion{Type: AssertSourceCitations, Value: "not-a-number"})
 	if v == nil {
 		t.Fatal("expected a violation for a non-integer minimum, got nil")
+		return
 	}
 	if v.Message != "source-citations value is not an integer" {
 		t.Fatalf("unexpected message: %q", v.Message)
