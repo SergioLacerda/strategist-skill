@@ -28,6 +28,7 @@ This is the entry point for all skill documentation. Use the table below to navi
 | Check unit test coverage gaps and their implementation status | [`docs/test-coverage-gaps.md`](test-coverage-gaps.md) |
 | Check integration-style test coverage gaps and their implementation status | [`docs/integration-coverage-gaps.md`](integration-coverage-gaps.md) |
 | See which drift class each detector actually checks | [`docs/drift-detection-matrix.md`](drift-detection-matrix.md) |
+| Browse a generated, always-current inventory of contracts, schemas, CLI commands, telemetry events, and quality gates | [`docs/generated/`](generated/) |
 
 ---
 

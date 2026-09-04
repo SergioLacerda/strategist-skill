@@ -41,6 +41,7 @@ generated/
 !/tests/evals/regression/20260804-eval-fake-provider/
 .tmp-gocache-cli/
 .tmp-go-cache
+.cache
 AGENTS.md
 CLAUDE.md
 GEMINI.md
@@ -50,3 +51,4 @@ web/landing/node_modules
 web/landing/dist/
 web/landing/.astro/
 web/landing/coverage/
+.strategist/.upgrade-backups/

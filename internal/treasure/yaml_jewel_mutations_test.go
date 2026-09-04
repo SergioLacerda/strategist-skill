@@ -16,6 +16,14 @@ func TestFindJewelEntry_NoJewelsDeclaredErrors(t *testing.T) {
 	assert.Contains(t, err.Error(), "no jewels declared")
 }
 
+func TestFindJewelEntry_RootMappingError(t *testing.T) {
+	t.Parallel()
+	doc := mustParseDoc(t, "- a\n")
+	_, err := FindJewelEntry(doc, "jewel-1")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not a mapping")
+}
+
 func TestFindJewelEntry_NotFoundErrors(t *testing.T) {
 	t.Parallel()
 	doc := mustParseDoc(t, "jewels:\n  - id: jewel-1\n")

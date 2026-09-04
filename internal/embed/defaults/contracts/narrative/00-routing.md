@@ -127,6 +127,16 @@ the agent MUST resolve the block according to `active.yaml`'s
   and role contract (`must`/`must_not`), and still never applies to discovery
   or to a slot where no compatible native role exists.
 
+Whenever a fallback is actually applied — `native` automatically, or `ask`
+after the user confirms — append one JSON line shaped per
+`schemas/fallback-decision.schema.yaml` to
+`.strategist/memory/fallback-decisions.jsonl`, using `internal/telemetry`'s
+`AppendFallbackDecisionLine`, in addition to the narrative log line above.
+This is the durable, auditable record `strategist metrics fallback`
+aggregates over; see `contracts/machine/provider-fallback.yaml` for the full
+emission/persistence contract. `block`, and `ask` without confirmation, never
+produce a record — nothing degraded.
+
 None of the three policies authorizes skipping the Approval Gate, changing
 write scope, or treating an external skill plugin failure as license to invent a
 provider that isn't `roles/<id>.yaml`-backed. `block` and `ask` never mutate

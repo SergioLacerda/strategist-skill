@@ -34,6 +34,21 @@ type Runbook struct {
 	Checks        []Check        `yaml:"checks,omitempty"`
 
 	Metadata Metadata `yaml:"metadata"`
+
+	// Trust, EstimatedTokens, and ConflictsWithHigherTrust are not part of
+	// the *.runbook.yaml sidecar schema (no yaml tag — ParseSidecar never
+	// populates them) and are not part of docs/runbooks/README.md's
+	// documented shape. A candidate's trust tier lives at the chest level
+	// (treasure-chests.yaml#chests[].trust.tier — see
+	// internal/treasure.LoadGoverned), not per-runbook, so the caller
+	// assembling Select's candidate list is responsible for setting these
+	// three fields from that context before calling Select. Zero values
+	// (Trust="", EstimatedTokens=0, ConflictsWithHigherTrust=false) disable
+	// the corresponding policy check entirely, so existing callers that
+	// never set them keep selecting exactly as before these fields existed.
+	Trust                    string `yaml:"-"`
+	EstimatedTokens          int    `yaml:"-"`
+	ConflictsWithHigherTrust bool   `yaml:"-"`
 }
 
 // Runbook type values, per runbook_v2.txt's analytical/operational split.

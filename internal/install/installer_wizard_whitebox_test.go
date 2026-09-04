@@ -81,7 +81,7 @@ func TestInstall_WizardPath_Defaults(t *testing.T) {
 	assert.NotContains(t, s, "execution_mode")
 	assert.NotContains(t, s, "git_persistence_mode")
 	assert.Contains(t, s, "discovery: brainstorming")
-	assert.Contains(t, s, "refinement: openspec-explore")
+	assert.Contains(t, s, "refinement: archivist")
 	assert.Contains(t, s, "execution: sniper")
 
 	brainstorming, err := os.ReadFile(filepath.Join(dir, ".strategist", "skills", "brainstorming", "skill.yaml"))
@@ -89,10 +89,10 @@ func TestInstall_WizardPath_Defaults(t *testing.T) {
 	assert.Contains(t, string(brainstorming), "id: brainstorming")
 	assert.Contains(t, string(brainstorming), "risk_score: write_analysis")
 
-	openspecExplore, err := os.ReadFile(filepath.Join(dir, ".strategist", "skills", "openspec-explore", "skill.yaml"))
-	require.NoError(t, err)
-	assert.Contains(t, string(openspecExplore), "id: openspec-explore")
-	assert.Contains(t, string(openspecExplore), "risk_score: write_analysis")
+	// archivist is the native refinement role, not an installable skill package —
+	// accepting defaults must not require a separately installed openspec-explore.
+	_, err = os.Stat(filepath.Join(dir, ".strategist", "skills", "openspec-explore", "skill.yaml"))
+	require.ErrorIs(t, err, os.ErrNotExist)
 }
 
 func TestInstall_WizardPath_ExplicitDefaultProvidersMaterializeManifests(t *testing.T) {

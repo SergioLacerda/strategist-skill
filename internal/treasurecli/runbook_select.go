@@ -3,8 +3,6 @@ package treasurecli
 import (
 	"fmt"
 	"os"
-	"path/filepath"
-	"sort"
 
 	"github.com/SergioLacerda/strategist-skill/internal/runbook"
 	"github.com/spf13/cobra"
@@ -86,12 +84,12 @@ func runRunbookSelect(cmd *cobra.Command, _ []string, opts runbookSelectOptions)
 		return fmt.Errorf("runbook select: at least one --signal is required")
 	}
 
-	root, err := resolveRunbookActionRoot(cmd, opts.Root)
+	strategistDir, projectRoot, err := resolveRunbookActionRoot(cmd, opts.Root)
 	if err != nil {
 		return err
 	}
 
-	candidates, sourceDocByID, err := loadRunbookSidecars(root)
+	candidates, sourceDocByID, err := loadRunbookSidecars(strategistDir, projectRoot)
 	if err != nil {
 		return err
 	}
@@ -100,10 +98,11 @@ func runRunbookSelect(cmd *cobra.Command, _ []string, opts runbookSelectOptions)
 		return nil
 	}
 
-	selections, err := runbook.Select(candidates, runbook.MissionSignals(signals), runbook.DefaultSelectionPolicy())
+	selections, rejections, err := runbook.Select(candidates, runbook.MissionSignals(signals), runbook.DefaultSelectionPolicy())
 	if err != nil {
 		return fmt.Errorf("runbook select: %w", err)
 	}
+	printRunbookRejections(rejections)
 	if len(selections) == 0 {
 		fmt.Println("[Strategist] runbook select: no runbook matched the given signals")
 		return nil
@@ -131,48 +130,12 @@ func runRunbookSelect(cmd *cobra.Command, _ []string, opts runbookSelectOptions)
 	}
 }
 
-// resolveRunbookActionRoot resolves the workspace project root (the parent
-// of .strategist/) — docs/runbooks lives at the project root, not inside
-// .strategist/, so this mirrors scanRegisteredChestsForPotions' own
-// root/projectRoot split rather than resolveTreasureChestActionRoot's
-// .strategist-scoped helper (runbook is not a treasure-chest subcommand).
-func resolveRunbookActionRoot(cmd *cobra.Command, explicitRoot string) (string, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", fmt.Errorf("runbook select: get cwd: %w", err)
+// printRunbookRejections logs one line per rejected candidate to stderr —
+// auditability (design.md item 4) without disturbing --format json's stdout
+// contract, which callers parse as a bare selection array (see
+// runbook_select_test.go's TestRunbookSelect_MatchAssignsPrimaryAndSupportingWithReason).
+func printRunbookRejections(rejections []runbook.Rejection) {
+	for _, r := range rejections {
+		fmt.Fprintf(os.Stderr, "[Strategist] runbook select: rejected %s reason=%s\n", r.RunbookID, r.Reason)
 	}
-	_, projectRoot, err := resolveStrategistRoot(stringFlag(cmd, flagRoot, explicitRoot), cwd)
-	if err != nil {
-		return "", fmt.Errorf("runbook select: %w", err)
-	}
-	return projectRoot, nil
-}
-
-// loadRunbookSidecars parses every docs/runbooks/*.runbook.yaml sidecar
-// under projectRoot. A parse failure is a hard error naming the offending
-// file — no silent skip (see docs/runbooks/README.md's own authoring
-// guidance: an honestly under-specified sidecar is better than a silently
-// wrong one; a silently *ignored* one is worse than either).
-func loadRunbookSidecars(projectRoot string) ([]runbook.Runbook, map[string]string, error) {
-	matches, err := filepath.Glob(filepath.Join(projectRoot, runbookSidecarGlob))
-	if err != nil {
-		return nil, nil, fmt.Errorf("runbook select: glob %s: %w", runbookSidecarGlob, err)
-	}
-	sort.Strings(matches)
-
-	candidates := make([]runbook.Runbook, 0, len(matches))
-	sourceDocByID := make(map[string]string, len(matches))
-	for _, path := range matches {
-		data, readErr := os.ReadFile(path) //nolint:gosec // path comes from a controlled glob under the resolved project root
-		if readErr != nil {
-			return nil, nil, fmt.Errorf("runbook select: read %s: %w", path, readErr)
-		}
-		rb, parseErr := runbook.ParseSidecar(data)
-		if parseErr != nil {
-			return nil, nil, fmt.Errorf("runbook select: parse %s: %w", path, parseErr)
-		}
-		candidates = append(candidates, rb)
-		sourceDocByID[rb.RunbookID] = rb.SourceDoc
-	}
-	return candidates, sourceDocByID, nil
 }

@@ -31,6 +31,7 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
 - `help` — Help about any command
 - `install` — Install the Strategist skill into a target repository
 - `metrics` — Report metrics computed from Strategist's own runtime memory
+  - `fallback` — Report provider-fallback (ADR-0028) metrics
   - `handoff` — Report Handoff Challenge governance metrics
   - `scout` — Report Scout routing metrics
 - `mission` — Report and inspect mission-level facts this binary cannot observe directly

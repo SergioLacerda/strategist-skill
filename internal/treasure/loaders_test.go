@@ -75,6 +75,49 @@ func TestLoadScoringPolicy_ReadErrorPropagates(t *testing.T) {
 	assert.Contains(t, err.Error(), "read treasure-chests.yaml")
 }
 
+// TestLoadScoringPolicy_ReadErrorPropagates_NotIsNotExist covers the same
+// os.ReadFile error branch as TestLoadScoringPolicy_ReadErrorPropagates, but
+// portably (no chmod, so it isn't skipped on platforms where permission bits
+// don't produce a read error): treasure-chests.yaml is a directory, not a
+// file, so os.ReadFile fails with an error that is not os.IsNotExist.
+func TestLoadScoringPolicy_ReadErrorPropagates_NotIsNotExist(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "treasure-chests.yaml"), 0o755))
+
+	_, err := LoadScoringPolicy(dir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "read treasure-chests.yaml")
+}
+
+// TestLoadScoringPolicy_RemainingOverrideFields covers the three
+// scoring_policy override fields TestLoadScoringPolicy_PartialOverrides
+// doesn't exercise (cluster_mission_weight, gap_base, max_score) — the
+// other three (cluster_base, cluster_tag_weight, gap_mission_weight) are
+// already covered by TestLoadScoringPolicy_PartialOverrides and
+// TestLoadScoringPolicy_InvalidPolicyErrors.
+func TestLoadScoringPolicy_RemainingOverrideFields(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "treasure-chests.yaml"), []byte(`
+schema_version: "1"
+scoring_policy:
+  cluster_mission_weight: 7
+  gap_base: 20
+  max_score: 50
+chests: []
+`), 0o644))
+
+	got, err := LoadScoringPolicy(dir)
+
+	require.NoError(t, err)
+	expected := DefaultScoringPolicy()
+	expected.ClusterMissionWeight = 7
+	expected.GapBase = 20
+	expected.MaxScore = 50
+	assert.Equal(t, expected, got)
+}
+
 func TestValidateScoringPolicy_EachNegativeWeightErrors(t *testing.T) {
 	t.Parallel()
 	base := DefaultScoringPolicy()

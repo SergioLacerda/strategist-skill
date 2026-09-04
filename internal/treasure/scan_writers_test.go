@@ -121,6 +121,39 @@ func TestWriteScanOutputs_GapsDirError(t *testing.T) {
 	require.Error(t, err)
 }
 
+// TestWriteScanOutputs_ClustersDirRegenerateError_Portable covers the same
+// clustersDir RegenerateDir-failure branch as
+// TestWriteScanOutputs_ClusterWriteError, but portably (no chmod): a
+// regular file blocking a path component makes os.MkdirAll fail with a
+// "not a directory"-shaped error on every platform, not just ones where
+// chmod actually restricts access.
+func TestWriteScanOutputs_ClustersDirRegenerateError_Portable(t *testing.T) {
+	t.Parallel()
+	parent := t.TempDir()
+	blocker := filepath.Join(parent, "blocker")
+	require.NoError(t, os.WriteFile(blocker, []byte("x"), 0o644))
+	clustersDir := filepath.Join(blocker, "clusters")
+
+	err := WriteScanOutputs(clustersDir, []Cluster{{ID: "cluster-x"}}, filepath.Join(parent, "gaps"), nil)
+	require.Error(t, err)
+}
+
+// TestWriteScanOutputs_GapsDirRegenerateError_Portable covers the gapsDir
+// RegenerateDir-failure branch (distinct from the clustersDir one above —
+// WriteScanOutputs must reach past a successful clustersDir regeneration
+// before this branch runs), using the same portable file-blocks-directory
+// trick.
+func TestWriteScanOutputs_GapsDirRegenerateError_Portable(t *testing.T) {
+	t.Parallel()
+	parent := t.TempDir()
+	blocker := filepath.Join(parent, "blocker")
+	require.NoError(t, os.WriteFile(blocker, []byte("x"), 0o644))
+	gapsDir := filepath.Join(blocker, "gaps")
+
+	err := WriteScanOutputs(filepath.Join(parent, "clusters"), nil, gapsDir, []Gap{{ID: "sq-001", Status: "sq_pending"}})
+	require.Error(t, err)
+}
+
 func TestWriteScanOutputs_ClusterWriteError(t *testing.T) {
 	skipIfPermissionTestUnsupported(t)
 	parent := t.TempDir()

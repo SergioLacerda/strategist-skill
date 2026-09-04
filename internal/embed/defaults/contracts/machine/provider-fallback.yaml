@@ -1,0 +1,79 @@
+module: provider-fallback
+type: routing_decision
+version: "0.1"
+
+provenance:
+  adr_ref: docs/adr/0028-native-role-resilient-baseline.md
+  lifecycle: active
+  owner: governance
+
+description: >
+  Machine contract for provider-fallback resolution (ADR-0028): what an
+  agent does when a configured slot provider (discovery, refinement,
+  execution) passes static `strategist check` validation but is not
+  invocable at mission time, and a compatible native role exists for the
+  same slot. The full procedure — including the block/ask/native decision
+  text and the exact narrative log-line format — is authored in
+  contracts/narrative/00-routing.md § Provider Resolution Policy; this file
+  is the machine-contract counterpart, in the same relationship
+  scout-routing.yaml has to Scout's routing prose. This module never applies
+  to the discovery slot, which always resolves to the native Ranger role
+  regardless of provider_resolution_policy (see 00-routing.md § Discovery
+  Weapon Resolution by Subtype).
+
+trigger_conditions:
+  fallback_applicable:
+    all_of:
+      - configured_slot_provider_fails_at_invocation_time: true
+      - strategist_check_reports_compatible_native_role_fallback_for_slot: true
+      - slot_is_not_discovery: true
+
+policy_table:
+  description: >
+    Deterministic mapping from (slot, active.yaml#provider_resolution_policy,
+    fallback_available) to a domain.FallbackOutcome value — the canonical Go
+    implementation is internal/domain.DecideSlotFallbackOutcome
+    (internal/domain/fallback_outcome.go). This file does not restate that
+    table; it only binds it to the emission/persistence contract below.
+  defers_to: "internal/domain/fallback_outcome.go#DecideSlotFallbackOutcome"
+
+emit:
+  on_fallback_decision:
+    format: >
+      "[Strategist] phase={phase} status=degraded reason=native_fallback
+       configured_provider={configured_provider} effective_provider={effective_provider}"
+    level: INFO
+    applies_when: outcome is ask_required (after confirmation) or auto_native
+  fallback_decision_persistence:
+    description: >
+      The on_fallback_decision log line above is narrative-only and not
+      queryable after the fact. In addition to that log line, once a
+      fallback is actually applied (outcome=auto_native, or
+      outcome=ask_required with explicit user confirmation obtained),
+      append one JSON line shaped per
+      schemas/fallback-decision.schema.yaml to
+      .strategist/memory/fallback-decisions.jsonl, using internal/telemetry's
+      AppendFallbackDecisionLine (idempotent by mission_id+slot, same
+      shared-flock discipline as AppendRouteDecisionLine). This is the
+      durable record `strategist metrics fallback` aggregates over
+      (auto_native_rate, ask_confirmed_rate).
+    write_scope: append-only, .strategist/memory/fallback-decisions.jsonl
+    non_blocking: true # a persistence failure here must never block the mission
+
+owner: internal (orchestrator)
+write_scope: append-only, .strategist/memory/fallback-decisions.jsonl (no other write scope granted by this contract)
+
+invariants:
+  - a fallback decision is NEVER recorded for outcome=blocked or
+    outcome=no_fallback_available — nothing degraded in either case
+  - a fallback decision is NEVER recorded for the discovery slot
+    (FallbackOutcomeAlwaysNative — always native by unconditional design, not
+    a policy-governed degradation)
+  - outcome=ask_required is NEVER recorded without explicit user confirmation
+    already obtained — recording it is itself evidence the Approval Gate step
+    (asking) already happened, never a substitute for having asked
+  - configured_provider and effective_provider MUST differ in every recorded
+    decision
+  - none of block/ask/native ever authorizes skipping the Strategist Approval
+    Gate, changing write scope, or inventing a provider that isn't
+    roles/<id>.yaml-backed

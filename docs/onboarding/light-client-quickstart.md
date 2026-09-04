@@ -54,6 +54,6 @@ flowchart LR
 
 ## Related reading
 
-- [`.strategist/skill.yaml`](../../.strategist/skill.yaml) — full pipeline and slot definitions
-- [`.strategist/agent-protocol.md`](../../.strategist/agent-protocol.md) — the agent-facing bootstrap contract
+- [`internal/embed/defaults/skill.yaml`](../../internal/embed/defaults/skill.yaml) — source template compiled into `.strategist/skill.yaml`; full pipeline and slot definitions
+- [`internal/embed/defaults/templates/agent-protocol.md`](../../internal/embed/defaults/templates/agent-protocol.md) — source template compiled into `.strategist/agent-protocol.md`; the agent-facing bootstrap contract
 - Mission `20260819-portable-light-client-eval` (`.analysis/refined/20260819-portable-light-client-eval/`) — the design analysis this page summarizes

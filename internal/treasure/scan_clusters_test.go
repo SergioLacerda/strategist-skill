@@ -24,3 +24,13 @@ func TestClusterID_TruncatesToTwoTags(t *testing.T) {
 	t.Parallel()
 	assert.Equal(t, "cluster-alpha-beta", ClusterID([]string{"alpha", "beta", "gamma"}))
 }
+
+func TestClusterFromGroup_NoSharedTagsReturnsFalse(t *testing.T) {
+	t.Parallel()
+	tagsByMission := map[string][]string{
+		"m-1": {"alpha"},
+		"m-2": {"beta"},
+	}
+	_, ok := clusterFromGroup([]string{"m-1", "m-2"}, tagsByMission)
+	assert.False(t, ok, "members with no tag in common must never form a cluster")
+}

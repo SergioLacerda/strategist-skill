@@ -20,8 +20,13 @@ const (
 	strategistSkillName       = "strategist"
 	claudeDirName             = ".claude"
 
-	defaultDiscoveryProvider  = "brainstorming"
-	defaultRefinementProvider = "openspec-explore"
+	defaultDiscoveryProvider = "brainstorming"
+	// defaultRefinementProvider is the native archivist role, not the externally
+	// hosted openspec-explore skill: openspec-explore passes strategist check's
+	// static validation but isn't reliably installed in typical agent
+	// environments, which is what forced a manual active.yaml edit in mission
+	// 20260819-drift-native-refinement-diagnostic. archivist works out of the box.
+	defaultRefinementProvider = "archivist"
 	nativeExecutionProvider   = "sniper"
 )
 

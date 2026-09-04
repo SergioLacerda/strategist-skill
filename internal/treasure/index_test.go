@@ -133,6 +133,26 @@ func TestExistingJewelIDs_ReadErrorPropagates(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestExistingJewelIDs_NoJewelsKeyIsEmpty(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	writeJewelsFileT(t, dir, "schema_version: \"1\"\n")
+
+	got, err := ExistingJewelIDs(dir)
+	require.NoError(t, err)
+	assert.Empty(t, got)
+}
+
+func TestExistingJewelIDs_SkipsNonMappingSequenceEntries(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	writeJewelsFileT(t, dir, "jewels:\n  - not-a-mapping\n  - id: jewel-1\n")
+
+	got, err := ExistingJewelIDs(dir)
+	require.NoError(t, err)
+	assert.Equal(t, map[string]bool{"jewel-1": true}, got)
+}
+
 func TestExistingJewelIDs_NonMappingRootErrors(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
