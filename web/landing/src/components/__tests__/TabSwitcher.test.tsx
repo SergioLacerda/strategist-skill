@@ -20,8 +20,8 @@ describe('TabSwitcher', () => {
     expect(screen.getByText('Visão Geral')).toBeTruthy();
     expect(screen.getByText('Papéis')).toBeTruthy();
     expect(screen.getByText('Habilidades')).toBeTruthy();
-    expect(screen.getByText('Fluxo da Missão')).toBeTruthy();
-    expect(screen.getByText('Invocação')).toBeTruthy();
+    expect(screen.getByText('Arquitetura')).toBeTruthy();
+    expect(screen.getByText('Instalação')).toBeTruthy();
   });
 
   it('carries data-pt/data-en attributes so LangToggle can translate the nav', () => {
@@ -29,9 +29,9 @@ describe('TabSwitcher', () => {
     const roles = screen.getByText('Papéis');
     expect(roles.dataset.pt).toBe('Papéis');
     expect(roles.dataset.en).toBe('Roles');
-    const mission = screen.getByText('Fluxo da Missão');
-    expect(mission.dataset.pt).toBe('Fluxo da Missão');
-    expect(mission.dataset.en).toBe('Mission Flow');
+    const mission = screen.getByText('Arquitetura');
+    expect(mission.dataset.pt).toBe('Arquitetura');
+    expect(mission.dataset.en).toBe('Architecture');
   });
 
   it('defaults to overview tab', () => {
@@ -74,6 +74,6 @@ describe('TabSwitcher', () => {
   it('restores tab from localStorage', () => {
     localStorage.setItem('strategist_console_tab', 'invoke');
     render(<TabSwitcher />);
-    expect(screen.getByText('Invocação').className).toContain('active');
+    expect(screen.getByText('Instalação').className).toContain('active');
   });
 });

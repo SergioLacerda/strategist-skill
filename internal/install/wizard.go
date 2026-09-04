@@ -15,16 +15,20 @@ import (
 var defaultLangOptions = []string{"en", "pt-BR"}
 var defaultModeOptions = []string{"pragmatic", "epic"}
 
+// installableDefaultProviders lists providers that ship as an installable
+// skill.yaml template. archivist is deliberately absent here: it is the
+// native refinement role (roles/archivist.yaml), materialized like any other
+// native role, not a skill package requiring its own install manifest.
 var installableDefaultProviders = map[string]string{
-	defaultDiscoveryProvider:  "skills/brainstorming/skill.yaml",
-	defaultRefinementProvider: "skills/openspec-explore/skill.yaml",
+	defaultDiscoveryProvider: "skills/brainstorming/skill.yaml",
+	"openspec-explore":       "skills/openspec-explore/skill.yaml",
 }
 
 // knownProviderRisk is populated at wizard start from the embedded known-providers.yaml.
 // The static map below is the fallback used only when the embed read fails.
 var knownProviderRisk = map[string]string{
 	defaultDiscoveryProvider:  "write_analysis",
-	defaultRefinementProvider: "write_analysis",
+	"openspec-explore":        "write_analysis",
 	"openspec-propose":        "write_analysis",
 	"openspec-apply-change":   "controlled",
 	"openspec-archive-change": "write_analysis",
@@ -226,7 +230,10 @@ func promptSlots(p Prompter, b i18n.WizardStrings, providerRisk map[string]strin
 	if err != nil {
 		return "", "", "", err
 	}
-	refinement, err = promptProvider(p, b.PromptRefinement, defaultRefinementProvider, []string{defaultRefinementProvider}, b.LabelCustomInput, providerRisk, "write_analysis", "refinement")
+	// openspec-explore is listed as a secondary, opt-in option: it requires a
+	// separately installed skill and is no longer the recommended default (see
+	// defaultRefinementProvider).
+	refinement, err = promptProvider(p, b.PromptRefinement, defaultRefinementProvider, []string{defaultRefinementProvider, "openspec-explore"}, b.LabelCustomInput, providerRisk, "write_analysis", "refinement")
 	if err != nil {
 		return "", "", "", err
 	}

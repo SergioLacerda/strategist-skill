@@ -3,7 +3,7 @@ cmd/strategist/dojo.go	230	dojo CLI command remains above the default 200-line t
 internal/treasurecli/treasure_chest_items.go	250	treasure chest item command flow is pending a separate refactor (moved to internal/treasurecli by 20260806-treasure-chest-cmd-consolidation)
 internal/compile/agent_awareness.go	280	agent-awareness writer is intentionally centralized
 internal/governance/sync.go	230	governance sync has cohesive read/reconcile/write flow
-internal/install/wizard.go	260	interactive wizard flow is intentionally localized
+internal/install/wizard.go	270	interactive wizard flow is intentionally localized; grew past 260 with explanatory comments on the archivist default-provider switch
 internal/integrity/warning.go	290	config integrity warning formatter is cohesive
 internal/telemetry/mission_run.go	220	mission run telemetry accumulator is cohesive
 internal/telemetry/outcome.go	230	outcome append and flush behavior is cohesive

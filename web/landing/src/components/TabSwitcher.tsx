@@ -5,11 +5,11 @@ type Tab = typeof TABS[number];
 
 const NAV_PT: Record<Tab, string> = {
   overview: 'Visão Geral', roles: 'Papéis', skills: 'Habilidades',
-  mission: 'Fluxo da Missão', invoke: 'Invocação',
+  mission: 'Arquitetura', invoke: 'Instalação',
 };
 const NAV_EN: Record<Tab, string> = {
   overview: 'Overview', roles: 'Roles', skills: 'Skills',
-  mission: 'Mission Flow', invoke: 'Invoke',
+  mission: 'Architecture', invoke: 'Installation',
 };
 
 function read(k: string, d: string) {
