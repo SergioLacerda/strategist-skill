@@ -25,6 +25,17 @@ GOCACHE ?= /tmp/go-build-cache
 GOPATH_BIN          := $(shell go env GOPATH | tr '\134' '/')/bin
 
 GOLANGCI_LINT       := $(shell which golangci-lint 2>/dev/null || echo $(GOPATH_BIN)/golangci-lint)
+
+# Pinned to go.mod's own `toolchain` line so golangci-lint's bundled
+# go/types checker always type-checks against the exact Go stdlib version
+# it was built for. GOTOOLCHAIN=auto only upgrades when the system `go` is
+# OLDER than this pin -- a system `go` that races ahead of it (e.g. a distro
+# shipping a very recent point release) is used as-is otherwise, which can
+# make golangci-lint panic or fail to type-check stdlib packages it wasn't
+# built to understand. An explicit, non-"auto" GOTOOLCHAIN value always
+# switches to (downloading if needed) exactly that version, in either
+# direction, sidestepping the skew regardless of what the system `go` is.
+LINT_GOTOOLCHAIN    := $(shell awk '/^toolchain /{print $$2}' go.mod)
 GOVULNCHECK         := $(shell which govulncheck 2>/dev/null || echo $(GOPATH_BIN)/govulncheck)
 GOCOGNIT            := $(shell which gocognit 2>/dev/null || echo $(GOPATH_BIN)/gocognit)
 GORELEASER          := $(shell which goreleaser 2>/dev/null || echo $(GOPATH_BIN)/goreleaser)

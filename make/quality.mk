@@ -5,7 +5,7 @@
 	cover cover-gate cover-html test-report
 
 lint: fmt-check
-	$(GOLANGCI_LINT) run ./...
+	GOTOOLCHAIN=$(LINT_GOTOOLCHAIN) $(GOLANGCI_LINT) run ./...
 	@$(MAKE) complexity-report
 	@$(MAKE) go-file-size-report
 

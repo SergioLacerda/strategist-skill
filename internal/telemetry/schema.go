@@ -75,6 +75,12 @@ const (
 	// (ADR-0008 § F3 revisit tripwire, docs/adr/0008-single-session-assumption.md).
 	AttrBasePath      = "strategist.base_path"
 	AttrConflictCount = "strategist.sniper.conflict_count"
+
+	// AttrClaimMissionIDs is the F3 revisit tripwire's other signal attr — the
+	// claim-collision half (two or more distinct Sniper sessions claiming the
+	// same target before either commits), alongside AttrConflictCount's
+	// Git-conflict half. See internal/telemetry/sniper_claim.go.
+	AttrClaimMissionIDs = "strategist.sniper.claim_mission_ids"
 )
 
 const redactedPath = "<redacted-path>"
