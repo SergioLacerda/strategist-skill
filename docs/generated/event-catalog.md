@@ -66,3 +66,4 @@ feed once that lands.
 | `AttrHandoffChallengeTypes` | `strategist.handoff_challenge.types` |
 | `AttrBasePath` | `strategist.base_path` |
 | `AttrConflictCount` | `strategist.sniper.conflict_count` |
+| `AttrClaimMissionIDs` | `strategist.sniper.claim_mission_ids` |

@@ -44,6 +44,7 @@ strategist.route_reason
 strategist.runtime_mode
 strategist.selected_skill
 strategist.skill
+strategist.sniper.claim_mission_ids
 strategist.sniper.conflict_count
 strategist.status
 strategist.target

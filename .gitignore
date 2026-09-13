@@ -8,8 +8,11 @@
 .vscode
 .github/copilot-instructions.md
 
+# Governance
 .sdd
 generated/
+.providence
+
 # docs/generated/ is tracked on purpose — it is the committed baseline the
 # docs-generated-gate (make/governance.mk) diffs against. See
 # docs/adr/0025-generated-documentation-anti-drift.md.
