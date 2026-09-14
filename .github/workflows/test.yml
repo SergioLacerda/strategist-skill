@@ -33,6 +33,9 @@ jobs:
         with:
           version: v2.12.2
 
+      - name: Embedded skill catalog drift check
+        run: make embed-skills-check
+
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 15

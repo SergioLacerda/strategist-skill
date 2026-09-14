@@ -37,15 +37,11 @@ type TreasureChest struct {
 // .strategist/skills/<provider>/skill.yaml, materialized by the installer for
 // default providers or placed manually for custom ones.
 type ProviderManifest struct {
-	ID                     string `yaml:"id"`
-	Status                 string `yaml:"status"`
-	RiskScore              string `yaml:"risk_score"`
-	Category               string `yaml:"category"`
-	ProviderClass          string `yaml:"provider_class"`
-	SpecializationTaxonomy struct {
-		CanonicalRole string `yaml:"canonical_role"`
-		ProviderClass string `yaml:"provider_class"`
-	} `yaml:"specialization_taxonomy"`
+	ID            string `yaml:"id"`
+	Status        string `yaml:"status"`
+	RiskScore     string `yaml:"risk_score"`
+	Category      string `yaml:"category"`
+	CanonicalRole string `yaml:"canonical_role"`
 }
 
 // WizardConfig holds values collected from the interactive install wizard.

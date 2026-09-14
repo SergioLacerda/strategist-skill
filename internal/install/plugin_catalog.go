@@ -20,19 +20,21 @@ type pluginCatalog struct {
 }
 
 type pluginCatalogProvider struct {
-	ID                  string                    `yaml:"id"`
-	Version             string                    `yaml:"version"`
-	SchemaVersion       string                    `yaml:"provider_schema_version"`
-	Status              string                    `yaml:"status"`
-	RiskScore           string                    `yaml:"risk_score"`
-	Category            string                    `yaml:"category"`
-	ProviderClass       string                    `yaml:"provider_class"`
-	CanonicalRole       string                    `yaml:"canonical_role"`
-	Description         string                    `yaml:"description"`
+	ID            string `yaml:"id"`
+	Version       string `yaml:"version,omitempty"`
+	SchemaVersion string `yaml:"provider_schema_version,omitempty"`
+	Status        string `yaml:"status,omitempty"`
+	RiskScore     string `yaml:"risk_score"`
+	Category      string `yaml:"category,omitempty"`
+	CanonicalRole string `yaml:"canonical_role,omitempty"`
+	// Default marks this provider as the primary Arma for its CanonicalRole
+	// among candidates sharing it — a selection preference, not proof of
+	// provenance, installation, or readiness (see domain.ProviderContract.Default).
+	Default             bool                      `yaml:"default,omitempty"`
+	Description         string                    `yaml:"description,omitempty"`
 	AuxiliaryTools      []string                  `yaml:"auxiliary_tools_allowed,omitempty"`
 	Installable         bool                      `yaml:"installable,omitempty"`
 	LegacyManifestPath  string                    `yaml:"legacy_manifest_path,omitempty"`
-	KnownProviderClass  string                    `yaml:"known_provider_class,omitempty"`
 	CompatibilitySource string                    `yaml:"compatibility_source,omitempty"`
 	Dependencies        []pluginCatalogDependency `yaml:"dependencies,omitempty"`
 }
@@ -50,6 +52,15 @@ func loadPluginCatalog(extractor domain.FileExtractor) (pluginCatalog, error) {
 	if err != nil {
 		return pluginCatalog{}, fmt.Errorf("read plugin catalog: %w", err)
 	}
+	return parseCatalogBytes(data)
+}
+
+// parseCatalogBytes parses and validates raw catalog.yaml content, shared by
+// loadPluginCatalog (embed.FS-backed, runtime path) and PrepareEmbedded
+// (plain-filesystem-backed, maintainer/CI path — cmd/strategist's `strategist
+// plugin prepare-embedded` operates on real files, not the compiled-in
+// embed.FS, since it generates the very files that FS embeds).
+func parseCatalogBytes(data []byte) (pluginCatalog, error) {
 	var catalog pluginCatalog
 	if err := yaml.Unmarshal(data, &catalog); err != nil {
 		return pluginCatalog{}, fmt.Errorf("plugin catalog: %w", err)

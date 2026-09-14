@@ -18,7 +18,7 @@ func generateLegacyProviderManifest(catalog pluginCatalog, providerID string) ([
 	writeLegacyProviderField(&buf, "status", provider.Status)
 	writeLegacyProviderField(&buf, "risk_score", provider.RiskScore)
 	writeLegacyProviderField(&buf, "category", provider.Category)
-	writeLegacyProviderField(&buf, "provider_class", provider.ProviderClass)
+	writeLegacyProviderField(&buf, "canonical_role", provider.CanonicalRole)
 	buf.WriteString("\n")
 	buf.WriteString("description: >\n")
 	for _, line := range strings.Split(provider.Description, "\n") {
@@ -28,10 +28,6 @@ func generateLegacyProviderManifest(catalog pluginCatalog, providerID string) ([
 		}
 		buf.WriteString("  " + line + "\n")
 	}
-	buf.WriteString("\n")
-	buf.WriteString("specialization_taxonomy:\n")
-	writeLegacyProviderIndentedField(&buf, "canonical_role", provider.CanonicalRole)
-	writeLegacyProviderIndentedField(&buf, "provider_class", provider.ProviderClass)
 	if len(provider.AuxiliaryTools) > 0 {
 		buf.WriteString("\n")
 		buf.WriteString("auxiliary_tools_allowed:\n")
@@ -48,8 +44,4 @@ func writeLegacyProviderField(buf *bytes.Buffer, key, value string) {
 
 func writeLegacyProviderQuotedField(buf *bytes.Buffer, key, value string) {
 	fmt.Fprintf(buf, "%s: %q\n", key, value)
-}
-
-func writeLegacyProviderIndentedField(buf *bytes.Buffer, key, value string) {
-	fmt.Fprintf(buf, "  %s: %s\n", key, value)
 }

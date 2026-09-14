@@ -158,11 +158,46 @@ func runWizard(ctx context.Context, p Prompter, extractor domain.FileExtractor) 
 		TreasureChestPath:  chestPath,
 	}
 	if catalog, catalogErr := loadPluginCatalog(extractor); catalogErr == nil {
-		if _, planErr := planPluginOnboarding(catalog, wizardSlots(wc)); planErr != nil {
-			return domain.WizardConfig{}, fmt.Errorf("wizard: plugin onboarding plan: %w", planErr)
+		if err := validateAndActivatePluginPlan(extractor, catalog, providerRisk, wc); err != nil {
+			return domain.WizardConfig{}, err
 		}
 	}
 	return wc, nil
+}
+
+// validateAndActivatePluginPlan runs every catalog-dependent Wizard check and
+// activation step once a valid plugins/catalog.yaml has loaded: Task 6's
+// custom-skill availability pause, the legacy plugin onboarding plan, the
+// Role/Provider preview and evidence log, and Task 5's real staged-activation
+// wiring. Split out of runWizard to keep runWizard's own branching shallow.
+func validateAndActivatePluginPlan(extractor domain.FileExtractor, catalog pluginCatalog, providerRisk map[string]string, wc domain.WizardConfig) error {
+	// Task 6: pause on a custom skill the registry has no opinion on AND
+	// that cannot be resolved as an already-installed workspace skill —
+	// distinct from validateProvider's non-blocking risk-mismatch warning
+	// already applied per-field earlier in runWizard.
+	if err := checkCustomSkillAvailability(providerRisk, wizardSlots(wc)); err != nil {
+		return fmt.Errorf("wizard: %w", err)
+	}
+
+	plan, planErr := planPluginOnboarding(extractor, catalog, wizardSlots(wc))
+	if planErr != nil {
+		return fmt.Errorf("wizard: plugin onboarding plan: %w", planErr)
+	}
+	// Task 4.1: show Role separately from its resolved/candidate Providers
+	// instead of only validating the legacy slot/catalog shape above.
+	fmt.Println(plan.RoleMigration.Preview())
+	logRoleBindingEvidence(plan.RoleMigration.Evidence())
+
+	// .analysis/refined/20260913-embedded-skill-directory-catalog Task 5:
+	// actually drive the resolved bindings through the real staged/probed/
+	// active lifecycle instead of only previewing them —
+	// ApplyRoleProviderMigration previously had zero production callers.
+	if plan.RoleMigration.FullyResolved() {
+		if err := activateRoleProviderMigration(plan.RoleMigration); err != nil {
+			return fmt.Errorf("wizard: activate role/provider migration: %w", err)
+		}
+	}
+	return nil
 }
 
 func promptLanguages(p Prompter, skillCfg skillConfig) (uiLang, docLang, chatLang, codeLang string, b i18n.WizardStrings, err error) {

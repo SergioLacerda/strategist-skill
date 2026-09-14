@@ -1,7 +1,8 @@
 .PHONY: \
 	install release-verify release-check install-goreleaser \
 	check-release-artifacts check-release-assets release-reproducible-check \
-	release-test release-dry-run release snapshot clean compile-skill
+	release-test release-dry-run release snapshot clean compile-skill \
+	embed-skills embed-skills-check
 
 install: build
 	mkdir -p "$$HOME/.local/bin" && install -m 755 bin/strategist "$$HOME/.local/bin/strategist"
@@ -10,7 +11,21 @@ install: build
 # The sync-embed target was removed in W7a (Option B): internal/embed/defaults/ is now
 # the single authoring source embedded directly via go:embed — there is nothing to sync.
 
-release-verify: ci-lint ci-test docs-governance-gate validate-fixtures vuln-ci release-reproducible-check
+# embed-skills ingests external-skills-source/ into the embedded plugin
+# catalog (ADR-0032's pre-build ingestion pattern, generalized to role-slot
+# skills — see .analysis/done/20260913-embedded-skill-directory-catalog).
+# Run after adding/editing anything under external-skills-source/, then
+# commit the regenerated catalog.yaml, skill.yaml mirrors, and lock file.
+embed-skills: build
+	./bin/strategist plugins prepare-embedded
+
+# embed-skills-check fails non-zero on drift instead of writing — the CI gate
+# that catches an external-skills-source/ change that was never followed by
+# `make embed-skills`.
+embed-skills-check: build
+	./bin/strategist plugins prepare-embedded --check
+
+release-verify: ci-lint ci-test docs-governance-gate validate-fixtures vuln-ci release-reproducible-check embed-skills-check
 
 # release-check validates the GoReleaser config before a tag-triggered release.
 release-check:

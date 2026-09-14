@@ -1,0 +1,53 @@
+schema_version: "1"
+runbook_id: embedded-skill-ingestion-migration-rollback
+runbook_type: operational
+source_doc: docs/runbooks/embedded-skill-ingestion-migration-rollback.md
+
+applies_when:
+  - "a committed embedded-skill lock is being prepared for a build or release"
+  - "embedded skill artifact, adapter, catalog, command registration, or provenance verification fails"
+  - "legacy Treasure Chest data is being imported into the external skill"
+  - "embedded skill activation, invocation, migration, or rollback fails"
+
+objective: >
+  Verify and operate deterministic embedded-skill ingestion, preserve and migrate
+  legacy data explicitly, and restore the last-known-good build or binding after
+  verification, build, activation, or migration failure.
+
+preconditions:
+  - "The committed embedded-skill lock and adapter contract are available"
+  - "The external skill migration/import contract exists before legacy data is touched"
+  - "Legacy workspace data has a recoverable backup or preservation point"
+  - "Ordinary release builds do not refresh mutable tags implicitly"
+
+verification:
+  - "Verify package digest, license, provenance, schema, adapter API, dependencies, and permissions"
+  - "Confirm generated catalog and command registration inputs match committed state"
+  - "Confirm embedded presence is not reported as live invocation or health"
+  - "Inventory legacy Treasure Chest data before import and preserve its hashes"
+  - "Run an explicit, idempotent migration preview before import"
+  - "Confirm failed candidates leave the last-known-good state and release inventory intact"
+  - "Keep user/local plugins outside the embedded release catalog"
+
+checks:
+  - id: lock-and-digest-verified
+    level: mandatory
+  - id: provenance-license-api-passed
+    level: mandatory
+  - id: generated-embed-inputs-deterministic
+    level: mandatory
+  - id: command-collision-and-permission-policy-passed
+    level: mandatory
+  - id: legacy-data-preserved-before-migration
+    level: mandatory
+  - id: migration-idempotence-verified
+    level: conditional
+  - id: last-known-good-rollback-available
+    level: mandatory
+  - id: user-plugins-not-embedded-implicitly
+    level: mandatory
+
+metadata:
+  version: 1
+  reviewed_at: "2026-09-13"
+  related_adr: docs/adr/0032-external-skill-cli-embedding-and-treasure-chest-ownership.md

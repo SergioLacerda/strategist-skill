@@ -105,7 +105,6 @@ providers:
     status: active
     risk_score: write_analysis
     category: discovery
-    provider_class: rankeado
     canonical_role: ranger
     description: Generated from catalog.
     installable: true
@@ -117,7 +116,9 @@ providers:
 	require.NoError(t, yaml.Unmarshal(data, &manifest))
 	assert.Equal(t, "alpha", manifest["id"])
 	assert.Equal(t, "write_analysis", manifest["risk_score"])
-	assert.Equal(t, map[string]any{"canonical_role": "ranger", "provider_class": "rankeado"}, manifest["specialization_taxonomy"])
+	assert.Equal(t, "ranger", manifest["canonical_role"])
+	assert.NotContains(t, manifest, "provider_class")
+	assert.NotContains(t, manifest, "specialization_taxonomy")
 }
 
 func TestPluginCatalogFeedsDeterministicResolverLock(t *testing.T) {

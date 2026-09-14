@@ -42,18 +42,26 @@ func TestExtractor_ReadFile(t *testing.T) {
 		assert.Contains(t, string(brainstorming), "id: brainstorming")
 		assert.Contains(t, string(brainstorming), "status: active")
 		assert.Contains(t, string(brainstorming), "risk_score: write_analysis")
-		assert.Contains(t, string(brainstorming), "provider_class: rankeado")
 		assert.Contains(t, string(brainstorming), "canonical_role: ranger")
-		assert.Contains(t, string(brainstorming), "auxiliary_tools_allowed:")
-		assert.Contains(t, string(brainstorming), "- writing-plans")
+		assert.NotContains(t, string(brainstorming), "provider_class")
+		assert.NotContains(t, string(brainstorming), "specialization_taxonomy")
+		// auxiliary_tools_allowed: [writing-plans] was dropped when this
+		// manifest was migrated to external-skills-source/brainstorming/ —
+		// writing-plans was never itself a catalog entry (a genuine,
+		// documented gap; see external-skills-source/brainstorming/strategist.yaml)
+		// and brainstorming already makes no discovery-subtype capability
+		// claim, so fabricating a writing-plans package just to satisfy the
+		// declared dependency was not honest ingestion.
+		assert.NotContains(t, string(brainstorming), "auxiliary_tools_allowed")
 
 		openspecExplore, err := embedpkg.Extractor{}.ReadFile("skills/openspec-explore/skill.yaml")
 		require.NoError(t, err)
 		assert.Contains(t, string(openspecExplore), "id: openspec-explore")
 		assert.Contains(t, string(openspecExplore), "status: active")
 		assert.Contains(t, string(openspecExplore), "risk_score: write_analysis")
-		assert.Contains(t, string(openspecExplore), "provider_class: rankeado")
 		assert.Contains(t, string(openspecExplore), "canonical_role: archivist")
+		assert.NotContains(t, string(openspecExplore), "provider_class")
+		assert.NotContains(t, string(openspecExplore), "specialization_taxonomy")
 	})
 }
 

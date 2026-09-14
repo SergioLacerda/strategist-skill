@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/plugins"
 	"github.com/SergioLacerda/strategist-skill/internal/plugins/lifecycle"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,7 +19,7 @@ func TestPlanPluginOnboardingFromActiveSlotsProducesPreviewableBindings(t *testi
 	catalog, err := loadPluginCatalog(defaultsExtractor{})
 	require.NoError(t, err)
 
-	plan, err := planPluginOnboarding(catalog, map[string]string{
+	plan, err := planPluginOnboarding(defaultsExtractor{}, catalog, map[string]string{
 		"discovery":  "brainstorming",
 		"refinement": "openspec-explore",
 		"execution":  "sniper",
@@ -29,7 +30,11 @@ func TestPlanPluginOnboardingFromActiveSlotsProducesPreviewableBindings(t *testi
 	assert.Equal(t, "strategist-plugin-onboarding-plan/v1", plan.SchemaVersion)
 	assert.Len(t, plan.Inventory.Instances, 3)
 	assert.Len(t, plan.Bindings, 3)
-	assert.Len(t, plan.Lock.Nodes, 3)
+	// 3 legacy adapter_contract nodes + 3 role_provider_binding nodes — this
+	// slot combination (brainstorming/ranger, openspec-explore/archivist,
+	// sniper/sniper) resolves fully for every slot (see
+	// TestPlanRoleProviderMigrationValidatesOpenspecExploreAsArchivistMigrationCase).
+	assert.Len(t, plan.Lock.Nodes, 6)
 	assert.Contains(t, plan.Preview(), "slot discovery -> brainstorming@")
 	assert.Contains(t, plan.Preview(), "lock ")
 	for _, binding := range plan.Bindings {
@@ -38,13 +43,92 @@ func TestPlanPluginOnboardingFromActiveSlotsProducesPreviewableBindings(t *testi
 	}
 }
 
+// TestPlanPluginOnboardingIncludesRoleProviderBindingLockNodes proves
+// tasks.md Task 3.3 ("Record effective Role -> Provider bindings in the
+// existing lock") for real: the role/provider bindings resolved for these
+// slots participate in the same plan.Lock the legacy adapter_contract nodes
+// already do, and the lock's GraphDigest covers them (a tampered/missing
+// role_provider_binding node changes the digest).
+func TestPlanPluginOnboardingIncludesRoleProviderBindingLockNodes(t *testing.T) {
+	t.Parallel()
+
+	catalog, err := loadPluginCatalog(defaultsExtractor{})
+	require.NoError(t, err)
+	slots := map[string]string{
+		"discovery":  "brainstorming",
+		"refinement": "openspec-explore",
+		"execution":  "sniper",
+	}
+
+	plan, err := planPluginOnboarding(defaultsExtractor{}, catalog, slots)
+	require.NoError(t, err)
+
+	var roleNodes int
+	for _, node := range plan.Lock.Nodes {
+		if node.Kind != plugins.RoleBindingLockKind {
+			continue
+		}
+		roleNodes++
+		assert.NotEmpty(t, node.Digest)
+	}
+	assert.Equal(t, 3, roleNodes, "expected one role_provider_binding node per resolved slot")
+	assert.Equal(t, plugins.DigestLockNodes(plan.Lock.Nodes), plan.Lock.GraphDigest)
+}
+
+// TestPlanPluginOnboardingRoleBindingLockNodesReplayDeterministically proves
+// tasks.md Task 3.3's "offline replay" requirement: re-running the same plan
+// from local embedded defaults — no network, no reselection — reproduces the
+// identical lock graph digest byte-for-byte.
+func TestPlanPluginOnboardingRoleBindingLockNodesReplayDeterministically(t *testing.T) {
+	t.Parallel()
+
+	catalog, err := loadPluginCatalog(defaultsExtractor{})
+	require.NoError(t, err)
+	slots := map[string]string{
+		"discovery":  "brainstorming",
+		"refinement": "openspec-explore",
+		"execution":  "sniper",
+	}
+
+	first, err := planPluginOnboarding(defaultsExtractor{}, catalog, slots)
+	require.NoError(t, err)
+	second, err := planPluginOnboarding(defaultsExtractor{}, catalog, slots)
+	require.NoError(t, err)
+
+	assert.Equal(t, first.Lock.GraphDigest, second.Lock.GraphDigest)
+	assert.ElementsMatch(t, first.Lock.Nodes, second.Lock.Nodes)
+}
+
+// TestPlanPluginOnboardingRoleBindingEvidenceCoversEveryEntry proves the
+// evidence half of tasks.md Task 6.1: every slot's role/provider resolution
+// outcome (resolved or not) is available as evidence, not just the
+// successfully resolved ones folded into the lock.
+func TestPlanPluginOnboardingRoleBindingEvidenceCoversEveryEntry(t *testing.T) {
+	t.Parallel()
+
+	catalog, err := loadPluginCatalog(defaultsExtractor{})
+	require.NoError(t, err)
+	slots := map[string]string{
+		"discovery":  "brainstorming",
+		"refinement": "openspec-explore",
+		"execution":  "sniper",
+	}
+
+	plan, err := planPluginOnboarding(defaultsExtractor{}, catalog, slots)
+	require.NoError(t, err)
+
+	events := plan.RoleMigration.Evidence()
+	assert.Len(t, events, len(plan.RoleMigration.Entries))
+	assert.True(t, plan.RoleMigration.FullyResolved())
+}
+
 func TestPlanPluginOnboardingRejectsUnresolvedActiveSlot(t *testing.T) {
 	t.Parallel()
 
 	catalog, err := loadPluginCatalog(defaultsExtractor{})
 	require.NoError(t, err)
 
-	_, err = planPluginOnboarding(catalog, map[string]string{
+	_, err = planPluginOnboarding(defaultsExtractor{}, catalog, map[string]string{
 		"discovery":  "brainstorming",
 		"refinement": "missing-provider",
 		"execution":  "sniper",
@@ -60,7 +144,7 @@ func TestPlanPluginOnboardingApplyActivatesAfterProbe(t *testing.T) {
 
 	catalog, err := loadPluginCatalog(defaultsExtractor{})
 	require.NoError(t, err)
-	plan, err := planPluginOnboarding(catalog, map[string]string{
+	plan, err := planPluginOnboarding(defaultsExtractor{}, catalog, map[string]string{
 		"discovery": "brainstorming",
 	})
 	require.NoError(t, err)
@@ -84,7 +168,7 @@ func TestPlanPluginOnboardingApplyRollsBackOnProbeFailure(t *testing.T) {
 
 	catalog, err := loadPluginCatalog(defaultsExtractor{})
 	require.NoError(t, err)
-	plan, err := planPluginOnboarding(catalog, map[string]string{
+	plan, err := planPluginOnboarding(defaultsExtractor{}, catalog, map[string]string{
 		"refinement": "openspec-explore",
 	})
 	require.NoError(t, err)
@@ -133,8 +217,16 @@ providers:
 		"en\nen\nen\nen\nepic\n.analysis\nbrainstorming\nmissing-refinement\nsniper\n\n",
 	)), ext)
 
+	// checkCustomSkillAvailability (tasks.md Task 6,
+	// .analysis/refined/20260913-embedded-skill-directory-catalog) now runs
+	// before planPluginOnboarding and pauses on any registry-unknown value
+	// that also fails already-installed resolution — "missing-refinement" is
+	// exactly that case, so it is now caught here with a clearer
+	// "configured_unverified" message instead of surfacing as a raw
+	// "plugin onboarding plan"/"unresolved_active_slot" error. The wizard
+	// still blocks (require.Error) either way; only the message improved.
 	require.Error(t, err)
-	require.ErrorContains(t, err, "plugin onboarding plan")
+	require.ErrorContains(t, err, "configured_unverified")
 	require.ErrorContains(t, err, "missing-refinement")
 }
 

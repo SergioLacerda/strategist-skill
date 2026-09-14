@@ -1,0 +1,6 @@
+# Strategist project adapter (ADR-0033 two-layer contract) for the portable
+# openspec-explore/SKILL.md package in this same directory.
+canonical_role: archivist
+risk_score: write_analysis
+category: refinement
+default: true

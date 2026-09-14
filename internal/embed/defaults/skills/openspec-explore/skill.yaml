@@ -4,13 +4,7 @@ schema_version: "1"
 status: active
 risk_score: write_analysis
 category: refinement
-provider_class: rankeado
+canonical_role: archivist
 
 description: >
-  Refinement provider for Strategist. Consumes discovery output, structures the
-  implementation approach, and writes analysis artifacts within the Strategist
-  write_analysis boundary.
-
-specialization_taxonomy:
-  canonical_role: archivist
-  provider_class: rankeado
+  Refinement provider for Strategist. Consumes discovery output, structures the implementation approach, and writes analysis artifacts within the Strategist write_analysis boundary.

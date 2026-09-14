@@ -320,7 +320,6 @@ func TestBrainstormingProviderDoesNotDeclareDiscoverySubtypeSupport(t *testing.T
 	content := readFile(t, path)
 	for _, needle := range []string{
 		"canonical_role: ranger",
-		"provider_class: rankeado",
 		"risk_score: write_analysis",
 	} {
 		if !strings.Contains(content, needle) {
@@ -333,6 +332,8 @@ func TestBrainstormingProviderDoesNotDeclareDiscoverySubtypeSupport(t *testing.T
 		"evaluation: adapter",
 		"diagnostic: adapter",
 		"closure_evidence: adapter",
+		"provider_class",
+		"specialization_taxonomy",
 	} {
 		if strings.Contains(content, forbidden) {
 			t.Fatalf("%s still declares a discovery-subtype capability claim %q — no subtype resolves to this weapon anymore", path, forbidden)
