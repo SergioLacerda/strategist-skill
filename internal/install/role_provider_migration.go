@@ -97,38 +97,75 @@ func ApplyRoleProviderMigration(store *lifecycle.Store, preview RoleProviderMigr
 }
 
 // activateRoleProviderMigration drives preview's resolved bindings through a
-// real, ephemeral lifecycle.Store — Begin/Stage/Probe/Activate per slot, with
-// automatic rollback on probe failure — closing the "zero production
-// callers" gap ApplyRoleProviderMigration otherwise has (tasks.md Task 5,
+// real lifecycle.Store — Begin/Stage/Probe/Activate per slot, with automatic
+// rollback on probe failure — closing the "zero production callers" gap
+// ApplyRoleProviderMigration otherwise has (tasks.md Task 5,
 // .analysis/refined/20260913-embedded-skill-directory-catalog).
 //
-// The store is seeded fresh from preview's own current/resolved provider ids
-// for this single wizard run; it is not persisted across invocations
-// (persisting SlotBinding/PluginLock across runs is a separate, larger gap —
-// see .analysis/done/20260913-wizard-plugin-lifecycle-persistence-gap-analysis.md
-// — this task closes only the "nothing ever calls Apply*" half of it). The
-// probe here is intentionally a simple, always-successful check: a
-// connector-aware probe policy is a further enhancement this task does not
-// claim, matching the same level of rigor plugin_onboarding_test.go's own
-// probe closures already use for the legacy binding path.
-func activateRoleProviderMigration(preview RoleProviderMigrationPreview) error {
+// The store is seeded from plugins.lock under strategistDir when one exists
+// (docs/adr/0037-wizard-role-binding-persistence.md, DEC-001), so a resolved
+// binding survives across `strategist install` invocations instead of being
+// rebuilt from scratch and discarded every time
+// (.analysis/refined/20260913-wizard-plugin-lifecycle-persistence-gap/). It
+// only reads plugins.lock, never writes it — the caller (applyWizardConfig)
+// persists the returned state after active.yaml is written successfully, so
+// a wizard run that fails before reaching that point never leaves a stray
+// plugins.lock with no corresponding active.yaml. An empty strategistDir
+// (used by tests that exercise activation mechanics only, not a real
+// installation) skips the read — the store is seeded fresh exactly as it
+// was before persistence existed. The probe here is intentionally a simple,
+// always-successful check: a connector-aware probe policy is a further
+// enhancement this task does not claim, matching the same level of rigor
+// plugin_onboarding_test.go's own probe closures already use for the legacy
+// binding path.
+func activateRoleProviderMigration(strategistDir string, preview RoleProviderMigrationPreview) (domain.PluginLockFile, error) {
+	var persisted domain.PluginLockFile
+	if strategistDir != "" {
+		var err error
+		persisted, err = readPluginLockFile(strategistDir)
+		if err != nil {
+			return domain.PluginLockFile{}, fmt.Errorf("activate role/provider migration: %w", err)
+		}
+	}
+
 	store := lifecycle.NewStore()
+	store.Inventory = persisted.Inventory
+	store.Bindings = persisted.Bindings
+
 	for _, entry := range preview.Entries {
-		if entry.CurrentProviderID != "" {
+		seedRoleProviderMigrationEntry(store, entry)
+	}
+
+	probe := func(domain.SlotBinding, domain.InstalledInstance) bool { return true }
+	if err := ApplyRoleProviderMigration(store, preview, probe); err != nil {
+		return domain.PluginLockFile{}, err
+	}
+
+	return domain.PluginLockFile{Inventory: store.Inventory, Bindings: store.Bindings}, nil
+}
+
+// seedRoleProviderMigrationEntry ensures store has an instance/binding entry
+// for entry's current and resolved providers before ApplyRoleProviderMigration
+// runs, without duplicating an instance or binding a prior persisted run
+// already recorded (docs/adr/0037-wizard-role-binding-persistence.md).
+func seedRoleProviderMigrationEntry(store *lifecycle.Store, entry RoleProviderPreviewEntry) {
+	if entry.CurrentProviderID != "" {
+		if _, ok := store.Instance(entry.CurrentProviderID); !ok {
 			store.Inventory.Instances = append(store.Inventory.Instances, domain.InstalledInstance{
 				ID: entry.CurrentProviderID, State: lifecycle.StateActive, LastKnownGood: true,
 			})
+		}
+		if _, ok := store.Binding(entry.Slot); !ok {
 			store.Bindings = append(store.Bindings, domain.SlotBinding{
 				Slot: entry.Slot, InstalledInstanceID: entry.CurrentProviderID, Generation: 1, Status: "enabled",
 			})
 		}
+	}
+	if _, ok := store.Instance(entry.Resolved.Provider.ID); !ok {
 		store.Inventory.Instances = append(store.Inventory.Instances, domain.InstalledInstance{
 			ID: entry.Resolved.Provider.ID, State: lifecycle.StateActive,
 		})
 	}
-
-	probe := func(domain.SlotBinding, domain.InstalledInstance) bool { return true }
-	return ApplyRoleProviderMigration(store, preview, probe)
 }
 
 func loadRoleSlotMap(extractor domain.FileExtractor) (domain.RoleSlotMap, error) {

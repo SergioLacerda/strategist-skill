@@ -69,8 +69,13 @@ func validateProvider(registry map[string]string, provider, expectedRisk string)
 	return ""
 }
 
-// runWizard collects install configuration through p.
-func runWizard(ctx context.Context, p Prompter, extractor domain.FileExtractor) (_ domain.WizardConfig, retErr error) {
+// runWizard collects install configuration through p. strategistDir is the
+// target installation's .strategist directory — passed through to
+// validateAndActivatePluginPlan so a resolved Role/Provider binding can be
+// persisted to plugins.lock (docs/adr/0037-wizard-role-binding-persistence.md).
+// An empty strategistDir skips that persistence step (see
+// activateRoleProviderMigration).
+func runWizard(ctx context.Context, p Prompter, extractor domain.FileExtractor, strategistDir string) (_ domain.WizardConfig, retErr error) {
 	_, span := telemetry.Tracer().Start(ctx, "install.wizard")
 	defer func() {
 		if retErr != nil {
@@ -116,9 +121,11 @@ func runWizard(ctx context.Context, p Prompter, extractor domain.FileExtractor) 
 		ExecutionProvider:  execution,
 		TreasureChestPath:  chestPath,
 	}
-	if err := validateAndActivatePluginPlan(extractor, catalog, providerRisk, wc); err != nil {
+	lockFile, err := validateAndActivatePluginPlan(extractor, catalog, providerRisk, wc, strategistDir)
+	if err != nil {
 		return domain.WizardConfig{}, err
 	}
+	wc.ResolvedPluginLock = lockFile
 	return wc, nil
 }
 
@@ -127,18 +134,22 @@ func runWizard(ctx context.Context, p Prompter, extractor domain.FileExtractor) 
 // custom-skill availability pause, the legacy plugin onboarding plan, the
 // Role/Provider preview and evidence log, and Task 5's real staged-activation
 // wiring. Split out of runWizard to keep runWizard's own branching shallow.
-func validateAndActivatePluginPlan(extractor domain.FileExtractor, catalog pluginCatalog, providerRisk map[string]string, wc domain.WizardConfig) error {
+// The returned PluginLockFile is the resolved binding state to persist —
+// zero-value when the migration was not fully resolved this run — the caller
+// (applyWizardConfig) writes it to disk only after active.yaml lands
+// (docs/adr/0037-wizard-role-binding-persistence.md).
+func validateAndActivatePluginPlan(extractor domain.FileExtractor, catalog pluginCatalog, providerRisk map[string]string, wc domain.WizardConfig, strategistDir string) (domain.PluginLockFile, error) {
 	// Task 6: pause on a custom skill the registry has no opinion on AND
 	// that cannot be resolved as an already-installed workspace skill —
 	// distinct from validateProvider's non-blocking risk-mismatch warning
 	// already applied per-field earlier in runWizard.
 	if err := checkCustomSkillAvailability(providerRisk, wizardSlots(wc)); err != nil {
-		return fmt.Errorf("wizard: %w", err)
+		return domain.PluginLockFile{}, fmt.Errorf("wizard: %w", err)
 	}
 
 	plan, planErr := planPluginOnboarding(extractor, catalog, wizardSlots(wc))
 	if planErr != nil {
-		return fmt.Errorf("wizard: plugin onboarding plan: %w", planErr)
+		return domain.PluginLockFile{}, fmt.Errorf("wizard: plugin onboarding plan: %w", planErr)
 	}
 	// Task 4.1: show Role separately from its resolved/candidate Providers
 	// instead of only validating the legacy slot/catalog shape above.
@@ -149,12 +160,15 @@ func validateAndActivatePluginPlan(extractor domain.FileExtractor, catalog plugi
 	// actually drive the resolved bindings through the real staged/probed/
 	// active lifecycle instead of only previewing them —
 	// ApplyRoleProviderMigration previously had zero production callers.
+	var lockFile domain.PluginLockFile
 	if plan.RoleMigration.FullyResolved() {
-		if err := activateRoleProviderMigration(plan.RoleMigration); err != nil {
-			return fmt.Errorf("wizard: activate role/provider migration: %w", err)
+		var err error
+		lockFile, err = activateRoleProviderMigration(strategistDir, plan.RoleMigration)
+		if err != nil {
+			return domain.PluginLockFile{}, fmt.Errorf("wizard: activate role/provider migration: %w", err)
 		}
 	}
-	return nil
+	return lockFile, nil
 }
 
 // promptLanguages, selectLang, promptWorkspace, promptTreasureChest,

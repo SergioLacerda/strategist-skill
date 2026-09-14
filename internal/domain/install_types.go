@@ -63,4 +63,12 @@ type WizardConfig struct {
 	// wizard (see TestWizardDoesNotAskPermissionLevel): set this field when constructing
 	// WizardConfig programmatically, or edit active.yaml by hand after install.
 	AdrCanonicalPath string
+	// ResolvedPluginLock is the discovery/refinement role→weapon binding
+	// state resolved by the Role/Provider migration during this wizard run
+	// (docs/adr/0037-wizard-role-binding-persistence.md). Zero-value
+	// (empty Bindings) means the migration was not fully resolved this run
+	// and nothing should be persisted — applyWizardConfig checks
+	// len(Bindings) > 0 before writing plugins.lock, so a partial/failed
+	// resolution never overwrites a previously good persisted binding.
+	ResolvedPluginLock PluginLockFile
 }

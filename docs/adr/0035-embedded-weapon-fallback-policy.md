@@ -41,18 +41,26 @@ system.
    refinement option, unchanged. The execution slot's embedded weapon
    (paired with `sniper`) is explicitly deferred — not decided by this ADR.
 
-2. **Fallback substitution must always be visible, never silent.** This
-   extends ADR-0028's `ask`-first posture, previously scoped to mission-time
-   slot resolution, to the Wizard's install-time fallback path. When
-   `loadKnownProviders`/`resolveInstallableDefaultProviders` fall back to the
-   hardcoded maps, the Wizard must emit an explicit, visible notice naming
-   the load failure and which hardcoded values are now in effect, rather
-   than continuing silently as if the catalog had loaded normally.
-   `[NEEDS CLARIFICATION]`: whether this notice should be accompanied by a
-   hard stop (ADR-0028 `block`-style) or remain a continue-with-warning
-   (ADR-0028 `ask`/visible-degradation-style) — recommended: the latter, to
-   avoid breaking `minimalExtractor{}`-based tests and catalog-less
-   environments; not yet confirmed by the user.
+2. **Fallback substitution must always be visible, never silent — and, at
+   install time, is a hard block, not a warning.** This extends ADR-0028's
+   `ask`-first posture, previously scoped to mission-time slot resolution, to
+   the Wizard's install-time fallback path, but resolves the two paths to
+   different strengths, confirmed as an intentional dual hard-block:
+   - **`strategist install`** (Wizard, install-time): when
+     `plugins/catalog.yaml` fails to load, the Wizard refuses to prompt at
+     all — a hard stop, not a continue-with-warning. It no longer falls back
+     to the hardcoded `installableDefaultProviders`/`knownProviderRisk` maps
+     silently or otherwise; those maps are retained only for
+     `minimalExtractor{}`-based tests and as the post-catalog manifest-writing
+     fallback described in Decision 4.
+   - **`strategist check`** (runtime/validation-time): fails the command
+     (`check=failed`) when an embedded weapon binding — the `WEAPON LINKS`
+     section — is broken. This side was already correctly hard-blocking
+     before this revision; only this ADR's text was stale.
+
+   These are independent, complementary gates, not a contradiction: both
+   layers hard-block on their own respective failure, rather than one of them
+   degrading to a visible-but-permissive warning.
 
 3. **`strategist check` must positively verify embedded role↔weapon
    linkage.** `internal/check/check_slots.go#resolveNativeFallback` only

@@ -166,7 +166,7 @@ func TestRunWizard(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			wc, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(tt.input)), minimalExtractor{})
+			wc, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(tt.input)), minimalExtractor{}, t.TempDir())
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantUILanguage, wc.UILanguage)
 			assert.Equal(t, tt.wantDocLang, wc.DocLanguage)
@@ -192,7 +192,7 @@ func TestRunWizardBlocksOnUnreadableCatalog(t *testing.T) {
 	// Empty input: if the wizard prompted even once before blocking, the
 	// reader would be exhausted and TextPrompter would return an unrelated
 	// EOF-shaped error instead of the plugin-catalog error asserted below.
-	_, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader("")), ext)
+	_, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader("")), ext, "")
 	require.Error(t, err)
 	require.ErrorContains(t, err, "plugin catalog")
 	assert.ErrorContains(t, err, "no longer falls back to hardcoded defaults silently")
@@ -204,7 +204,7 @@ func TestWizardDoesNotAskPermissionLevel(t *testing.T) {
 	// 10 prompts: ui/doc/chat/code/mode/base/discovery/refinement/execution/chest
 	// If the wizard still prompts for execution mode or ADR, the input will be exhausted and the test errors.
 	input := "en\nen\npt-BR\nen\nepic\n.analysis\nbrainstorming\nopenspec-explore\nsdd-ask\n\n"
-	wc, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(input)), minimalExtractor{})
+	wc, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(input)), minimalExtractor{}, t.TempDir())
 	require.NoError(t, err)
 	assert.Equal(t, "epic", wc.Mode)
 	assert.Equal(t, "brainstorming", wc.DiscoveryProvider)

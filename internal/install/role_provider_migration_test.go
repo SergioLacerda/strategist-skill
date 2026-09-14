@@ -341,7 +341,73 @@ func TestActivateRoleProviderMigrationDrivesRealStagedActivation(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, preview.FullyResolved())
 
-	require.NoError(t, activateRoleProviderMigration(preview))
+	_, err = activateRoleProviderMigration("", preview)
+	require.NoError(t, err)
+}
+
+// TestActivateRoleProviderMigrationResolvesBindingsForPersistence proves
+// ADR-0037's DEC-001: activateRoleProviderMigration returns the resolved
+// discovery/refinement bindings so the caller (applyWizardConfig) can persist
+// them to plugins.lock, instead of the state being rebuilt from scratch and
+// discarded on every `strategist install` invocation. Persistence itself
+// (the actual disk write, gated on active.yaml landing first) is
+// applyWizardConfig's responsibility — see installer_config_whitebox_test.go.
+func TestActivateRoleProviderMigrationResolvesBindingsForPersistence(t *testing.T) {
+	t.Parallel()
+
+	preview, err := PlanRoleProviderMigration(defaultsExtractor{}, map[string]string{
+		"discovery":  "brainstorming",
+		"refinement": "archivist",
+		"execution":  "sniper",
+	})
+	require.NoError(t, err)
+	require.True(t, preview.FullyResolved())
+
+	lockFile, err := activateRoleProviderMigration("", preview)
+	require.NoError(t, err)
+
+	discoveryBinding, ok := findSlotBinding(lockFile.Bindings, "discovery")
+	require.True(t, ok)
+	assert.Equal(t, "brainstorming", discoveryBinding.InstalledInstanceID)
+	refinementBinding, ok := findSlotBinding(lockFile.Bindings, "refinement")
+	require.True(t, ok)
+	assert.Equal(t, "archivist", refinementBinding.InstalledInstanceID)
+}
+
+// TestActivateRoleProviderMigrationIsIdempotentAcrossPersistedRuns proves
+// ADR-0037's DEC-003: re-running activation against a strategistDir whose
+// plugins.lock already reflects the resolution must not re-resolve, switch,
+// or otherwise churn the persisted binding — a bound weapon is immutable
+// absent an actual change to the resolution inputs.
+func TestActivateRoleProviderMigrationIsIdempotentAcrossPersistedRuns(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+
+	preview, err := PlanRoleProviderMigration(defaultsExtractor{}, map[string]string{
+		"discovery":  "brainstorming",
+		"refinement": "archivist",
+		"execution":  "sniper",
+	})
+	require.NoError(t, err)
+	require.True(t, preview.FullyResolved())
+
+	first, err := activateRoleProviderMigration(dir, preview)
+	require.NoError(t, err)
+	require.NoError(t, writePluginLockFile(dir, first))
+
+	second, err := activateRoleProviderMigration(dir, preview)
+	require.NoError(t, err)
+
+	assert.Equal(t, first, second, "re-running activation against an already-persisted, unchanged resolution must be idempotent")
+}
+
+func findSlotBinding(bindings []domain.SlotBinding, slot string) (domain.SlotBinding, bool) {
+	for _, b := range bindings {
+		if b.Slot == slot {
+			return b, true
+		}
+	}
+	return domain.SlotBinding{}, false
 }
 
 // TestActivateRoleProviderMigrationHandlesNoCurrentProvider proves a slot
@@ -365,5 +431,6 @@ func TestActivateRoleProviderMigrationHandlesNoCurrentProvider(t *testing.T) {
 	require.Equal(t, "execution", execution.Slot)
 	require.Empty(t, execution.CurrentProviderID)
 
-	require.NoError(t, activateRoleProviderMigration(preview))
+	_, err = activateRoleProviderMigration("", preview)
+	require.NoError(t, err)
 }

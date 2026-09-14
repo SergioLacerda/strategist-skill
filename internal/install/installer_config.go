@@ -62,12 +62,21 @@ func (s Service) applySilentConfig(_ context.Context, strategistDir string, cfg 
 
 func (s Service) applyWizardConfig(ctx context.Context, strategistDir string) error {
 	p := s.resolvePrompter()
-	wc, err := runWizard(ctx, p, s.Extractor)
+	wc, err := runWizard(ctx, p, s.Extractor, strategistDir)
 	if err != nil {
 		return fmt.Errorf("install: wizard: %w", err)
 	}
 	if err := writeActiveYAML(strategistDir, wc); err != nil {
 		return fmt.Errorf("install: write active.yaml: %w", err)
+	}
+	// Persist the resolved discovery/refinement binding only when this run's
+	// Role/Provider migration was fully resolved (non-empty Bindings) — a
+	// partial/unresolved migration must never overwrite a previously good
+	// plugins.lock (docs/adr/0037-wizard-role-binding-persistence.md).
+	if len(wc.ResolvedPluginLock.Bindings) > 0 {
+		if err := writePluginLockFile(strategistDir, wc.ResolvedPluginLock); err != nil {
+			return fmt.Errorf("install: write plugins.lock: %w", err)
+		}
 	}
 	if err := s.writeSelectedProviderManifests(strategistDir, wc); err != nil {
 		return fmt.Errorf("install: write provider manifests: %w", err)

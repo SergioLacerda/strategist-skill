@@ -47,6 +47,26 @@ func TestInstall_WizardPath(t *testing.T) {
 	require.ErrorIs(t, err, os.ErrNotExist)
 }
 
+// TestInstall_WizardPath_PersistsPluginLock proves ADR-0037's DEC-001 end to
+// end: a real `strategist install` (wizard mode) run against a scratch
+// workspace produces plugins.lock with resolved bindings for both the
+// discovery and refinement slots, rather than the resolution being computed
+// and discarded on every invocation
+// (.analysis/refined/20260913-wizard-plugin-lifecycle-persistence-gap/).
+func TestInstall_WizardPath_PersistsPluginLock(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	svc := newSvcW(t, "en\nen\npt-BR\nen\nepic\n/workspace\nbrainstorming\narchivist\nsdd-ask\n\n")
+	require.NoError(t, svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true}))
+
+	data, err := os.ReadFile(filepath.Join(dir, ".strategist", "plugins.lock"))
+	require.NoError(t, err)
+	s := string(data)
+	assert.Contains(t, s, "schema_version: strategist-plugin-lock-file/v1")
+	assert.Contains(t, s, "slot: discovery")
+	assert.Contains(t, s, "slot: refinement")
+}
+
 func TestInstall_WizardPath_WithChest(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
@@ -141,7 +161,7 @@ func TestRunWizard_EOFPrompts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := runWizard(context.Background(), p(tt.input), minimalExtractor{})
+			_, err := runWizard(context.Background(), p(tt.input), minimalExtractor{}, "")
 			require.Error(t, err)
 			assert.ErrorContains(t, err, tt.wantError)
 		})
@@ -242,7 +262,7 @@ func TestRunWizardBlocksOnUnresolvedCustomSkill(t *testing.T) {
 	t.Setenv("HOME", homeDir) // no skill installed under homeDir — deliberately unresolvable
 
 	input := "en\nen\nen\nen\nepic\n.analysis\ndefinitely-not-a-real-installed-skill-id-xyz\nopenspec-explore\nsdd-ask\n\n"
-	_, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(input)), minimalExtractor{})
+	_, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(input)), minimalExtractor{}, "")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "configured_unverified")
 }

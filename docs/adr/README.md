@@ -35,6 +35,7 @@ lookup by topic fast without moving any file.
 | [0028](0028-native-role-resilient-baseline.md) | Native roles as the resilient baseline |
 | [0035](0035-embedded-weapon-fallback-policy.md) | Embedded weapon roster and fallback notification policy |
 | [0036](0036-openspec-explore-canonical-role-correction.md) | openspec-explore's canonical role: ranger, not archivist |
+| [0037](0037-wizard-role-binding-persistence.md) | Wizard role binding persistence (discovery + refinement) |
 
 ### Knowledge & Jewels
 

@@ -215,7 +215,7 @@ providers:
 
 	_, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(
 		"en\nen\nen\nen\nepic\n.analysis\nbrainstorming\nmissing-refinement\nsniper\n\n",
-	)), ext)
+	)), ext, "")
 
 	// checkCustomSkillAvailability (tasks.md Task 6,
 	// .analysis/refined/20260913-embedded-skill-directory-catalog) now runs
