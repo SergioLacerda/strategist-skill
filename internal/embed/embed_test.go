@@ -59,7 +59,7 @@ func TestExtractor_ReadFile(t *testing.T) {
 		assert.Contains(t, string(openspecExplore), "id: openspec-explore")
 		assert.Contains(t, string(openspecExplore), "status: active")
 		assert.Contains(t, string(openspecExplore), "risk_score: write_analysis")
-		assert.Contains(t, string(openspecExplore), "canonical_role: archivist")
+		assert.Contains(t, string(openspecExplore), "canonical_role: ranger")
 		assert.NotContains(t, string(openspecExplore), "provider_class")
 		assert.NotContains(t, string(openspecExplore), "specialization_taxonomy")
 	})

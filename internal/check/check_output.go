@@ -8,7 +8,7 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
 
-func printCheckSuccess(root string, providers map[string]string, resolutions map[string]slotResolution, mode string, policy domain.ResolutionPolicy) error {
+func printCheckSuccess(root string, providers map[string]string, resolutions map[string]slotResolution, mode string, policy domain.ResolutionPolicy, weaponBindings []weaponBinding) error {
 	printStatusBanner("check")
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
@@ -16,6 +16,7 @@ func printCheckSuccess(root string, providers map[string]string, resolutions map
 		func(w *tabwriter.Writer) error { return writeCheckStatusSection(w, root) },
 		func(w *tabwriter.Writer) error { return writeCheckSlotsSection(w, providers, resolutions, policy) },
 		func(w *tabwriter.Writer) error { return writeCheckReadinessSection(w, resolutions) },
+		func(w *tabwriter.Writer) error { return writeCheckWeaponLinksSection(w, weaponBindings) },
 		func(w *tabwriter.Writer) error { return writeCheckPersonaSection(w, mode) },
 		func(w *tabwriter.Writer) error { return writeCheckPolicySection(w, policy) },
 	} {
@@ -80,6 +81,34 @@ func writeCheckSlotsSection(w *tabwriter.Writer, providers map[string]string, re
 		}
 		if _, err := fmt.Fprintln(w, row); err != nil {
 			return fmt.Errorf("check: write slot row: %w", err)
+		}
+	}
+	if _, err := fmt.Fprintln(w, "\t"); err != nil {
+		return fmt.Errorf("check: write separator: %w", err)
+	}
+	return nil
+}
+
+// writeCheckWeaponLinksSection reports DEC-003's always-run embedded-weapon↔role
+// verification (docs/adr/0035-embedded-weapon-fallback-policy.md), independent
+// of what active.yaml currently configures for any slot — see
+// verifyEmbeddedWeaponBindings. The section is omitted entirely when no
+// installed skill declares a canonical_role (nothing to report), rather than
+// printing an empty header.
+func writeCheckWeaponLinksSection(w *tabwriter.Writer, bindings []weaponBinding) error {
+	if len(bindings) == 0 {
+		return nil
+	}
+	if _, err := fmt.Fprintln(w, "WEAPON LINKS\t"); err != nil {
+		return fmt.Errorf("check: write weapon links header: %w", err)
+	}
+	for _, b := range bindings {
+		status := "ok"
+		if !b.OK {
+			status = "FAIL: " + b.Reason
+		}
+		if _, err := fmt.Fprintf(w, "  %s→%s\t%s\n", b.SkillID, b.CanonicalRole, status); err != nil {
+			return fmt.Errorf("check: write weapon link row: %w", err)
 		}
 	}
 	if _, err := fmt.Fprintln(w, "\t"); err != nil {

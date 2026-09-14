@@ -261,7 +261,8 @@ Ranked providers installed in this workspace:
 | Provider | Slot | Canonical role |
 |----------|------|---------------|
 | `brainstorming` | discovery | Ranger |
-| `openspec-explore` | refinement | Archivist |
+| `openspec-propose` | refinement | Archivist |
+| `openspec-explore` | discovery | Ranger |
 
 ---
 
@@ -274,7 +275,7 @@ Configuration in `.strategist/active.yaml`:
 ```yaml
 slots:
   discovery: brainstorming       # Ranger's weapon
-  refinement: openspec-explore   # Archivist's weapon
+  refinement: openspec-propose   # Archivist's weapon
   execution: sniper              # Sniper's weapon
 ```
 

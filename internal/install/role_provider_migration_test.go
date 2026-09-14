@@ -128,17 +128,23 @@ func TestRoleProviderMigrationPreviewEvidenceRecordsBlockedOutcome(t *testing.T)
 	assert.Empty(t, events[0].Attributes["strategist.role_binding.provider_id"])
 }
 
-// TestPlanRoleProviderMigrationValidatesOpenspecExploreAsArchivistMigrationCase
+// TestPlanRoleProviderMigrationValidatesOpenspecProposeAsArchivistMigrationCase
 // backs tasks.md Task 5.2 ("Validate Brainstorm/Ranger and OpenSpec/
 // Archivist as migration cases without coupling Providers directly to
-// downstream roles"). openspec-explore is catalogued with
+// downstream roles"). openspec-propose is catalogued with
 // canonical_role: archivist alongside the native archivist role itself, so
-// switching active.slots.refinement from "archivist" to "openspec-explore"
+// switching active.slots.refinement from "archivist" to "openspec-propose"
 // must resolve as a legitimate, compatible binding for the same role — and
 // the execution slot's resolution must be byte-for-byte identical either
 // way, proving refinement's Provider choice has no path to influence what
 // Sniper (downstream) receives.
-func TestPlanRoleProviderMigrationValidatesOpenspecExploreAsArchivistMigrationCase(t *testing.T) {
+//
+// openspec-explore was originally used for this case, but its
+// canonical_role was corrected from archivist to ranger — see
+// docs/adr/0036-openspec-explore-canonical-role-correction.md and
+// TestPlanRoleProviderMigrationValidatesOpenspecExploreAsRangerMigrationCase
+// below for its own migration case.
+func TestPlanRoleProviderMigrationValidatesOpenspecProposeAsArchivistMigrationCase(t *testing.T) {
 	t.Parallel()
 
 	withNativeArchivist, err := PlanRoleProviderMigration(defaultsExtractor{}, map[string]string{
@@ -149,27 +155,63 @@ func TestPlanRoleProviderMigrationValidatesOpenspecExploreAsArchivistMigrationCa
 	require.NoError(t, err)
 	require.True(t, withNativeArchivist.FullyResolved())
 
-	withOpenspecExplore, err := PlanRoleProviderMigration(defaultsExtractor{}, map[string]string{
+	withOpenspecPropose, err := PlanRoleProviderMigration(defaultsExtractor{}, map[string]string{
 		"discovery":  "brainstorming",
-		"refinement": "openspec-explore",
+		"refinement": "openspec-propose",
 		"execution":  "sniper",
 	})
 	require.NoError(t, err)
-	require.True(t, withOpenspecExplore.FullyResolved())
+	require.True(t, withOpenspecPropose.FullyResolved())
 
 	refinementNative := withNativeArchivist.Entries[1]
-	refinementExternal := withOpenspecExplore.Entries[1]
+	refinementExternal := withOpenspecPropose.Entries[1]
 	assert.Equal(t, "archivist", refinementNative.Resolved.Provider.ID)
 	assert.Equal(t, "native_role", string(refinementNative.Resolved.Provider.Source))
-	assert.Equal(t, "openspec-explore", refinementExternal.Resolved.Provider.ID)
+	assert.Equal(t, "openspec-propose", refinementExternal.Resolved.Provider.ID)
 	assert.Equal(t, "embedded", string(refinementExternal.Resolved.Provider.Source))
 	assert.True(t, refinementExternal.Resolved.Compatibility.Compatible)
 	// Both bind to the same Role — the Role, not the Provider, owns the
 	// downstream handoff (proposal.md Decision 6).
 	assert.Equal(t, refinementNative.Resolved.Role, refinementExternal.Resolved.Role)
 
-	assert.Equal(t, withNativeArchivist.Entries[2].Resolved, withOpenspecExplore.Entries[2].Resolved,
+	assert.Equal(t, withNativeArchivist.Entries[2].Resolved, withOpenspecPropose.Entries[2].Resolved,
 		"execution slot resolution must be unaffected by the refinement slot's Provider choice")
+}
+
+// TestPlanRoleProviderMigrationValidatesOpenspecExploreAsRangerMigrationCase
+// covers the discovery side of the same proposal.md Decision 6 claim, for
+// openspec-explore specifically: its canonical_role was corrected from
+// archivist to ranger (docs/adr/0036-openspec-explore-canonical-role-correction.md),
+// so switching active.slots.discovery from "brainstorming" to
+// "openspec-explore" must resolve as a legitimate, compatible binding for
+// the same (ranger) role.
+func TestPlanRoleProviderMigrationValidatesOpenspecExploreAsRangerMigrationCase(t *testing.T) {
+	t.Parallel()
+
+	withBrainstorming, err := PlanRoleProviderMigration(defaultsExtractor{}, map[string]string{
+		"discovery":  "brainstorming",
+		"refinement": "archivist",
+		"execution":  "sniper",
+	})
+	require.NoError(t, err)
+	require.True(t, withBrainstorming.FullyResolved())
+
+	withOpenspecExplore, err := PlanRoleProviderMigration(defaultsExtractor{}, map[string]string{
+		"discovery":  "openspec-explore",
+		"refinement": "archivist",
+		"execution":  "sniper",
+	})
+	require.NoError(t, err)
+	require.True(t, withOpenspecExplore.FullyResolved())
+
+	discoveryDefault := withBrainstorming.Entries[0]
+	discoveryExternal := withOpenspecExplore.Entries[0]
+	assert.Equal(t, "brainstorming", discoveryDefault.Resolved.Provider.ID)
+	assert.Equal(t, "embedded", string(discoveryDefault.Resolved.Provider.Source))
+	assert.Equal(t, "openspec-explore", discoveryExternal.Resolved.Provider.ID)
+	assert.Equal(t, "embedded", string(discoveryExternal.Resolved.Provider.Source))
+	assert.True(t, discoveryExternal.Resolved.Compatibility.Compatible)
+	assert.Equal(t, discoveryDefault.Resolved.Role, discoveryExternal.Resolved.Role)
 }
 
 // TestApplyRoleProviderMigrationRefusesPartialMigration proves tasks.md Task

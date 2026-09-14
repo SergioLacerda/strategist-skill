@@ -223,7 +223,7 @@ STATUS
 
 SLOTS   
   discovery    brainstorming
-  refinement   openspec-explore
+  refinement   openspec-propose
   execution    sniper
 
 PERSONA   
@@ -239,7 +239,7 @@ READINESS
 
 SLOTS
   discovery    provider=brainstorming       status=ready
-  refinement   provider=openspec-explore    status=ready
+  refinement   provider=openspec-propose    status=ready
   execution    provider=sniper              status=ready
 
 PERSONA

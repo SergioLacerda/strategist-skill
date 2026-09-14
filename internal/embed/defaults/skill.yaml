@@ -50,6 +50,8 @@ taxonomy:
     - id: brainstorming
       bound_to_slot: discovery
     - id: openspec-explore
+      bound_to_slot: discovery
+    - id: openspec-propose
       bound_to_slot: refinement
   abilities:
     - id: opportunist_attack
@@ -100,11 +102,16 @@ orchestration:
       # active.slots.discovery (default: brainstorming) is still validated at preflight
       # (exists, invocable, matches the write_analysis risk contract) but is not
       # invoked for discovery — the field is retained for provider-metadata/future use.
+      # openspec-explore is also registered here (canonical_role: ranger,
+      # corrected in docs/adr/0036-openspec-explore-canonical-role-correction.md)
+      # as a secondary, opt-in discovery weapon — same non-invocation rule
+      # applies: metadata only, never live-invoked for discovery.
     refinement:
       skill: archivist
-      # Archivist is the internal refinement persona. openspec-explore is its default
-      # weapon, not a replacement for the persona.
-      may_delegate_to: [openspec-explore, dossier-builder, context-enrichment]
+      # Archivist is the internal refinement persona. openspec-propose is its default
+      # weapon (docs/adr/0035-embedded-weapon-fallback-policy.md DEC-004). Does not
+      # replace the persona.
+      may_delegate_to: [openspec-propose, dossier-builder, context-enrichment]
     execution:
       skill: sniper
       # Sniper is internal and controlled. It has no subtype customization.

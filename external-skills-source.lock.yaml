@@ -5,6 +5,10 @@ packages:
       digest: sha256:69a8c7928d375e65849dd06aa6035da2c12e7bbfcb0af6a74423f91a9699ea59
       source: external-skills-source/brainstorming
     - id: openspec-explore
-      version: 1.0.0
-      digest: sha256:180335cf0f7cf58654c00d0fa7adcb9b031f91d5a2710e89fda191b13488bb58
+      version: "1.0"
+      digest: sha256:68d9a8f07a0e939e5234489a1947edbd6278889035ab4157cb367b9e0a427967
       source: external-skills-source/openspec-explore
+    - id: openspec-propose
+      version: "1.0"
+      digest: sha256:cd075f9af79bcc2df5bf863f1874bc871e168445e2261388f7e4f4aa02ab1381
+      source: external-skills-source/openspec-propose

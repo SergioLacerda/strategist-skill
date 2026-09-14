@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -112,6 +113,48 @@ func TestResolveLocalPackageOversizedManifestIsRejected(t *testing.T) {
 	assert.Contains(t, err.Error(), "exceeds")
 }
 
+func TestResolveLocalPackageFrontmatterMissingClosingDelimiterIsMalformed(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	writeSkillMD(t, dir, "---\nname: sample\nno closing delimiter here\n")
+	_, err := connectors.ResolveLocalPackage(dir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "missing closing")
+}
+
+func TestResolveLocalPackageFrontmatterInvalidYAMLIsMalformed(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	// A leading blank line before the opening delimiter is still accepted as a
+	// valid frontmatter start, but the byte offset used to slice past the
+	// delimiter no longer lines up with it, so the sliced frontmatter fails to
+	// parse as YAML — exercising the "frontmatter: %w" wrapped-yaml-error path.
+	writeSkillMD(t, dir, "\n---\nname: sample\nmetadata:\n  version: \"1.0.0\"\n---\nbody\n")
+	_, err := connectors.ResolveLocalPackage(dir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "frontmatter")
+}
+
+func TestResolveLocalPackageUnreadableSubdirectoryIsRejected(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" || os.Getuid() == 0 {
+		t.Skip("permission tests do not apply when running as root")
+	}
+
+	dir := t.TempDir()
+	writeSkillMD(t, dir, validSkillMD)
+	sub := filepath.Join(dir, "scripts")
+	require.NoError(t, os.MkdirAll(sub, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(sub, "run.sh"), []byte("x"), 0o644))
+	require.NoError(t, os.Chmod(sub, 0o000))
+	t.Cleanup(func() { _ = os.Chmod(sub, 0o755) })
+
+	_, err := connectors.ResolveLocalPackage(dir)
+	require.Error(t, err)
+}
+
 func TestResolveLocalPackageOversizedPathIsRejected(t *testing.T) {
 	t.Parallel()
 
@@ -150,6 +193,36 @@ func TestLocalPathConnectorResolveReflectsPackageValidity(t *testing.T) {
 	blocked := connector.Resolve(context.Background(), connectors.RuntimeLocator{ID: "sample-skill", Path: t.TempDir()})
 	assert.Equal(t, domain.ReadinessBlocked, blocked.Status)
 	assert.Equal(t, "local_package_invalid", blocked.ReasonCode)
+}
+
+func TestLocalPathConnectorResolveBlocksIncompleteLocator(t *testing.T) {
+	t.Parallel()
+
+	connector := connectors.LocalPathConnector{ConnectorID: "local-path"}
+	missingID := connector.Resolve(context.Background(), connectors.RuntimeLocator{Path: t.TempDir()})
+	assert.Equal(t, domain.ReadinessBlocked, missingID.Status)
+	assert.Equal(t, "locator_incomplete", missingID.ReasonCode)
+
+	missingPath := connector.Resolve(context.Background(), connectors.RuntimeLocator{ID: "sample-skill"})
+	assert.Equal(t, domain.ReadinessBlocked, missingPath.Status)
+	assert.Equal(t, "locator_incomplete", missingPath.ReasonCode)
+}
+
+func TestLocalPathConnectorProbeValidatesStaticInputs(t *testing.T) {
+	t.Parallel()
+
+	connector := connectors.LocalPathConnector{ConnectorID: "local-path"}
+	ready := connector.Probe(context.Background(), domain.InstalledInstance{ID: "sample-skill"}, "invoke")
+	assert.Equal(t, domain.ReadinessReady, ready.Status)
+	assert.Equal(t, "static_probe_ready", ready.ReasonCode)
+
+	missingInstance := connector.Probe(context.Background(), domain.InstalledInstance{}, "invoke")
+	assert.Equal(t, domain.ReadinessBlocked, missingInstance.Status)
+	assert.Equal(t, "probe_input_incomplete", missingInstance.ReasonCode)
+
+	missingEntrypoint := connector.Probe(context.Background(), domain.InstalledInstance{ID: "sample-skill"}, "")
+	assert.Equal(t, domain.ReadinessBlocked, missingEntrypoint.Status)
+	assert.Equal(t, "probe_input_incomplete", missingEntrypoint.ReasonCode)
 }
 
 func TestLocalPathConnectorNeverClaimsInvokeOrRemove(t *testing.T) {

@@ -25,20 +25,28 @@ providers:
       risk_score: write_analysis
       compatibility_source: external
     - id: openspec-explore
-      version: 1.0.0
+      version: "1.0"
+      provider_schema_version: "1"
+      status: active
+      risk_score: write_analysis
+      category: discovery
+      canonical_role: ranger
+      description: Enter explore mode - a thinking partner for exploring ideas, investigating problems, and clarifying requirements. Use when the user wants to think through something before or during a change.
+      installable: true
+      legacy_manifest_path: skills/openspec-explore/skill.yaml
+      compatibility_source: embedded
+    - id: openspec-propose
+      version: "1.0"
       provider_schema_version: "1"
       status: active
       risk_score: write_analysis
       category: refinement
       canonical_role: archivist
       default: true
-      description: Refinement provider for Strategist. Consumes discovery output, structures the implementation approach, and writes analysis artifacts within the Strategist write_analysis boundary.
+      description: Propose a new change with all artifacts generated in one step. Use when the user wants to quickly describe what they want to build and get a complete proposal with design, specs, and tasks ready for implementation.
       installable: true
-      legacy_manifest_path: skills/openspec-explore/skill.yaml
+      legacy_manifest_path: skills/openspec-propose/skill.yaml
       compatibility_source: embedded
-    - id: openspec-propose
-      risk_score: write_analysis
-      compatibility_source: external
     - id: sdd-ask
       risk_score: controlled
       compatibility_source: external

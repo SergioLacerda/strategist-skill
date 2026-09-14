@@ -213,27 +213,52 @@ func TestCheckCmd_BlockedReadinessEntrypointFailsExitCode(t *testing.T) {
 
 func TestCheckCmd_NativeRole_Sniper(t *testing.T) {
 	dir := t.TempDir()
-	// Install skill providers for discovery and refinement.
+	// Install skill providers for discovery and refinement, declaring the
+	// ADR-0035 DEC-001 permanent embedded-weapon roster (brainstorming and
+	// openspec-propose) so the always-run weapon-binding check passes.
 	for _, p := range []struct {
-		name      string
-		riskScore string
+		name          string
+		riskScore     string
+		canonicalRole string
 	}{
-		{"brainstorming", "write_analysis"},
-		{"openspec-explore", "write_analysis"},
+		{"brainstorming", "write_analysis", "ranger"},
+		{"openspec-explore", "write_analysis", ""},
+		{"openspec-propose", "write_analysis", "archivist"},
 	} {
 		provDir := filepath.Join(dir, "skills", p.name)
 		require.NoError(t, os.MkdirAll(provDir, 0o755))
+		body := "id: " + p.name + "\nrisk_score: " + p.riskScore + "\n"
+		if p.canonicalRole != "" {
+			body += "canonical_role: " + p.canonicalRole + "\n"
+		}
 		require.NoError(t, os.WriteFile(
 			filepath.Join(provDir, "skill.yaml"),
-			[]byte("id: "+p.name+"\nrisk_score: "+p.riskScore+"\n"),
+			[]byte(body),
 			0o644,
 		))
 	}
-	// Install sniper as a native role (no skills/sniper/skill.yaml).
+	// Install sniper as a native role (no skills/sniper/skill.yaml), plus
+	// ranger/archivist role files and the slot->role map the weapon-binding
+	// check needs to validate the roster above.
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
 	require.NoError(t, os.WriteFile(
 		filepath.Join(dir, "roles", "sniper.yaml"),
 		[]byte("role: sniper\nslot: execution\n"),
+		0o644,
+	))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "roles", "ranger.yaml"),
+		[]byte("role: ranger\nslot: discovery\n"),
+		0o644,
+	))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "roles", "archivist.yaml"),
+		[]byte("role: archivist\nslot: refinement\n"),
+		0o644,
+	))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "roles", "default.yaml"),
+		[]byte("discovery: ranger\nrefinement: archivist\nexecution: sniper\n"),
 		0o644,
 	))
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))

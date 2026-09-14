@@ -108,7 +108,7 @@ func TestPrintCheckSuccess_ClosedStdoutErrors(t *testing.T) {
 	}
 
 	withClosedStdout(t, func() {
-		require.Error(t, printCheckSuccess("/tmp/root", providers, resolutions, "epic", domain.ResolutionPolicyAsk))
+		require.Error(t, printCheckSuccess("/tmp/root", providers, resolutions, "epic", domain.ResolutionPolicyAsk, nil))
 	})
 }
 
@@ -123,7 +123,7 @@ func TestPrintCheckSuccess_ReportsFallbackAndPolicy(t *testing.T) {
 	}
 
 	out := captureStdout(t, func() {
-		require.NoError(t, printCheckSuccess("/tmp/root", providers, resolutions, "epic", domain.ResolutionPolicyNative))
+		require.NoError(t, printCheckSuccess("/tmp/root", providers, resolutions, "epic", domain.ResolutionPolicyNative, nil))
 	})
 	assert.Contains(t, out, "fallback=archivist(native_role)")
 	assert.Equal(t, 1, strings.Count(out, "fallback="), "only the refinement row should carry a fallback annotation")
@@ -141,7 +141,7 @@ func TestPrintCheckSuccess_DefaultPolicyAnnotated(t *testing.T) {
 	}
 
 	out := captureStdout(t, func() {
-		require.NoError(t, printCheckSuccess("/tmp/root", providers, resolutions, "epic", ""))
+		require.NoError(t, printCheckSuccess("/tmp/root", providers, resolutions, "epic", "", nil))
 	})
 	assert.Contains(t, out, "ask (default)")
 	assert.NotContains(t, out, "fallback=") // native_role resolutions never carry a fallback
@@ -158,7 +158,7 @@ func TestPrintCheckSuccess_ReportsPolicyOutcomePerSlot(t *testing.T) {
 	}
 
 	out := captureStdout(t, func() {
-		require.NoError(t, printCheckSuccess("/tmp/root", providers, resolutions, "epic", domain.ResolutionPolicyAsk))
+		require.NoError(t, printCheckSuccess("/tmp/root", providers, resolutions, "epic", domain.ResolutionPolicyAsk, nil))
 	})
 	assert.Contains(t, out, "fallback=ranger(native_role)")
 	assert.Contains(t, out, "outcome=always_native_no_policy")

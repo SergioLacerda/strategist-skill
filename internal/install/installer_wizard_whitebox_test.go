@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/i18n"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/term"
@@ -81,7 +82,7 @@ func TestInstall_WizardPath_Defaults(t *testing.T) {
 	assert.NotContains(t, s, "execution_mode")
 	assert.NotContains(t, s, "git_persistence_mode")
 	assert.Contains(t, s, "discovery: brainstorming")
-	assert.Contains(t, s, "refinement: archivist")
+	assert.Contains(t, s, "refinement: openspec-propose")
 	assert.Contains(t, s, "execution: sniper")
 
 	brainstorming, err := os.ReadFile(filepath.Join(dir, ".strategist", "skills", "brainstorming", "skill.yaml"))
@@ -89,8 +90,15 @@ func TestInstall_WizardPath_Defaults(t *testing.T) {
 	assert.Contains(t, string(brainstorming), "id: brainstorming")
 	assert.Contains(t, string(brainstorming), "risk_score: write_analysis")
 
-	// archivist is the native refinement role, not an installable skill package —
-	// accepting defaults must not require a separately installed openspec-explore.
+	// openspec-propose (DEC-004, docs/adr/0035-embedded-weapon-fallback-policy.md)
+	// is the refinement default and, unlike archivist (native role), is an
+	// installable skill package — accepting defaults must materialize its manifest.
+	openspecPropose, err := os.ReadFile(filepath.Join(dir, ".strategist", "skills", "openspec-propose", "skill.yaml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(openspecPropose), "id: openspec-propose")
+	assert.Contains(t, string(openspecPropose), "risk_score: write_analysis")
+
+	// openspec-explore is not selected by defaults — it must not be materialized.
 	_, err = os.Stat(filepath.Join(dir, ".strategist", "skills", "openspec-explore", "skill.yaml"))
 	require.ErrorIs(t, err, os.ErrNotExist)
 }
@@ -191,7 +199,7 @@ func TestInstall_WizardPath_AwarenessRefresherCalled(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	called := false
-	svc := newSvcW(t, "en\nen\npt-BR\nen\nepic\n/workspace\nyes\nbrainstorming\narchivist\nsdd-ask\n\n")
+	svc := newSvcW(t, "en\nen\npt-BR\nen\nepic\n/workspace\nbrainstorming\nbrainstorming\narchivist\nsdd-ask\n\n")
 	svc.AwarenessRefresher = func(strategistRoot, projectRoot, _ string) bool {
 		called = true
 		assert.Equal(t, filepath.Join(dir, ".strategist"), strategistRoot)
@@ -202,10 +210,39 @@ func TestInstall_WizardPath_AwarenessRefresherCalled(t *testing.T) {
 	assert.True(t, called, "AwarenessRefresher must be called after wizard install")
 }
 
+// TestPromptSlots_UnknownProviderPrintsWarning exercises promptSlots directly
+// rather than the full runWizard: validateProvider's "not in the known
+// plugin catalog" warning is non-blocking at prompt time, but (correctly,
+// per docs/adr/0029-external-skill-provider-lifecycle.md §4) an
+// unresolved-to-the-catalog provider is unconditionally rejected later in
+// runWizard by planPluginOnboarding's own catalog-membership check — the two
+// are different, independent gates, and this test's scope is only the
+// prompt-time warning, not full wizard completion (see
+// TestRunWizardBlocksOnUnresolvedCustomSkill for the later, hard-blocking gate).
 func TestPromptSlots_UnknownProviderPrintsWarning(t *testing.T) {
 	t.Parallel()
-	input := "en\nen\nen\nen\nepic\n.analysis\ncustom-ranger\nopenspec-explore\nsdd-ask\n\n"
-	wc, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(input)), minimalExtractor{})
+	b := i18n.BundleFor("en")
+	input := "custom-ranger\nopenspec-explore\nsdd-ask\n\n"
+	discovery, refinement, execution, err := promptSlots(NewTextPrompter(strings.NewReader(input)), b, knownProviderRisk)
 	require.NoError(t, err)
-	assert.Equal(t, "custom-ranger", wc.DiscoveryProvider)
+	assert.Equal(t, "custom-ranger", discovery)
+	assert.Equal(t, "openspec-explore", refinement)
+	assert.Equal(t, nativeExecutionProvider, execution)
+}
+
+// TestRunWizardBlocksOnUnresolvedCustomSkill covers docs/adr/0029's converse
+// case from TestPromptSlots_UnknownProviderPrintsWarning above: a slot
+// provider that is neither a known registry/catalog entry nor resolvable as
+// an already-installed workspace skill must hard-block the full wizard run
+// (checkCustomSkillAvailability, the first of runWizard's two independent
+// catalog-membership/local-resolution gates — see planPluginOnboarding for
+// the second, stricter one), not just warn.
+func TestRunWizardBlocksOnUnresolvedCustomSkill(t *testing.T) {
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir) // no skill installed under homeDir — deliberately unresolvable
+
+	input := "en\nen\nen\nen\nepic\n.analysis\ndefinitely-not-a-real-installed-skill-id-xyz\nopenspec-explore\nsdd-ask\n\n"
+	_, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(input)), minimalExtractor{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "configured_unverified")
 }

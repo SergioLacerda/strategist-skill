@@ -33,6 +33,8 @@ lookup by topic fast without moving any file.
 | [0024](0024-pluggable-governance-and-telemetry.md) | Pluggable Governance and AI-First Telemetry |
 | [0027](0027-refinement-native-role-for-light-client.md) | Refinement (Archivist) as a native role — mission-scoped precedent |
 | [0028](0028-native-role-resilient-baseline.md) | Native roles as the resilient baseline |
+| [0035](0035-embedded-weapon-fallback-policy.md) | Embedded weapon roster and fallback notification policy |
+| [0036](0036-openspec-explore-canonical-role-correction.md) | openspec-explore's canonical role: ranger, not archivist |
 
 ### Knowledge & Jewels
 

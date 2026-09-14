@@ -722,7 +722,7 @@ Each `roles/<config>.yaml` file declares the providers for the three slots:
 
 ```yaml
 discovery: brainstorming
-refinement: openspec-explore
+refinement: openspec-propose
 execution: sniper
 ```
 

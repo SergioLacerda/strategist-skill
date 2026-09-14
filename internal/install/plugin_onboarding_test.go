@@ -21,7 +21,7 @@ func TestPlanPluginOnboardingFromActiveSlotsProducesPreviewableBindings(t *testi
 
 	plan, err := planPluginOnboarding(defaultsExtractor{}, catalog, map[string]string{
 		"discovery":  "brainstorming",
-		"refinement": "openspec-explore",
+		"refinement": "openspec-propose",
 		"execution":  "sniper",
 	})
 	require.NoError(t, err)
@@ -31,9 +31,9 @@ func TestPlanPluginOnboardingFromActiveSlotsProducesPreviewableBindings(t *testi
 	assert.Len(t, plan.Inventory.Instances, 3)
 	assert.Len(t, plan.Bindings, 3)
 	// 3 legacy adapter_contract nodes + 3 role_provider_binding nodes — this
-	// slot combination (brainstorming/ranger, openspec-explore/archivist,
+	// slot combination (brainstorming/ranger, openspec-propose/archivist,
 	// sniper/sniper) resolves fully for every slot (see
-	// TestPlanRoleProviderMigrationValidatesOpenspecExploreAsArchivistMigrationCase).
+	// TestPlanRoleProviderMigrationValidatesOpenspecProposeAsArchivistMigrationCase).
 	assert.Len(t, plan.Lock.Nodes, 6)
 	assert.Contains(t, plan.Preview(), "slot discovery -> brainstorming@")
 	assert.Contains(t, plan.Preview(), "lock ")
@@ -56,7 +56,7 @@ func TestPlanPluginOnboardingIncludesRoleProviderBindingLockNodes(t *testing.T) 
 	require.NoError(t, err)
 	slots := map[string]string{
 		"discovery":  "brainstorming",
-		"refinement": "openspec-explore",
+		"refinement": "openspec-propose",
 		"execution":  "sniper",
 	}
 
@@ -86,7 +86,7 @@ func TestPlanPluginOnboardingRoleBindingLockNodesReplayDeterministically(t *test
 	require.NoError(t, err)
 	slots := map[string]string{
 		"discovery":  "brainstorming",
-		"refinement": "openspec-explore",
+		"refinement": "openspec-propose",
 		"execution":  "sniper",
 	}
 
@@ -110,7 +110,7 @@ func TestPlanPluginOnboardingRoleBindingEvidenceCoversEveryEntry(t *testing.T) {
 	require.NoError(t, err)
 	slots := map[string]string{
 		"discovery":  "brainstorming",
-		"refinement": "openspec-explore",
+		"refinement": "openspec-propose",
 		"execution":  "sniper",
 	}
 

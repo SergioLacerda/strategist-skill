@@ -72,7 +72,7 @@ For full pipeline/contracts/schema details: [readme-detailed-en.md](readme-detai
 ```yaml
 slots:
   discovery: brainstorming
-  refinement: openspec-explore
+  refinement: openspec-propose
   execution: sniper
 ```
 

@@ -122,23 +122,34 @@ func writeMinimalIdentityFiles(t *testing.T, dir string) {
 }
 
 // minimalCheckRoot creates a .strategist/ tree suitable for checkCmd with all
-// three slot providers installed plus a valid epic persona.
+// three slot providers installed plus a valid epic persona. It also declares
+// the ADR-0035 DEC-001 permanent embedded-weapon roster
+// (brainstorming<->ranger, openspec-propose<->archivist) so the always-run
+// weapon-binding check (check_weapon_bindings.go) is satisfied by default —
+// tests that care about that check specifically live in
+// check_weapon_bindings_test.go and build their own narrower fixtures.
 func minimalCheckRoot(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
 	for _, provider := range []struct {
-		name      string
-		riskScore string
+		name          string
+		riskScore     string
+		canonicalRole string
 	}{
-		{"brainstorming", "write_analysis"},
-		{"openspec-explore", "write_analysis"},
-		{"sdd-ask", "controlled"},
+		{"brainstorming", "write_analysis", "ranger"},
+		{"openspec-explore", "write_analysis", ""},
+		{"openspec-propose", "write_analysis", "archivist"},
+		{"sdd-ask", "controlled", ""},
 	} {
 		provDir := filepath.Join(dir, "skills", provider.name)
 		require.NoError(t, os.MkdirAll(provDir, 0o755))
+		body := "id: " + provider.name + "\nrisk_score: " + provider.riskScore + "\n"
+		if provider.canonicalRole != "" {
+			body += "canonical_role: " + provider.canonicalRole + "\n"
+		}
 		require.NoError(t, os.WriteFile(
 			filepath.Join(provDir, "skill.yaml"),
-			[]byte("id: "+provider.name+"\nrisk_score: "+provider.riskScore+"\n"),
+			[]byte(body),
 			0o644,
 		))
 	}
@@ -153,6 +164,14 @@ func minimalCheckRoot(t *testing.T) string {
 		[]byte("mode: epic\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: sdd-ask\n"),
 		0o644,
 	))
+	rolesDir := filepath.Join(dir, "roles")
+	require.NoError(t, os.MkdirAll(rolesDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "default.yaml"),
+		[]byte("discovery: ranger\nrefinement: archivist\nexecution: sniper\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "ranger.yaml"),
+		[]byte("role: ranger\nslot: discovery\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "archivist.yaml"),
+		[]byte("role: archivist\nslot: refinement\n"), 0o644))
 	writeMinimalIdentityFiles(t, dir)
 	return dir
 }

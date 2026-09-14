@@ -153,6 +153,12 @@ Checks performed:
 			}
 		}
 
+		weaponBindings, weaponErr := verifyEmbeddedWeaponBindings(root)
+		if weaponErr != nil {
+			errs = append(errs, weaponErr.Error())
+		}
+		errs = append(errs, weaponBindingErrors(weaponBindings)...)
+
 		errs = append(errs, validateRuntimeDefaultParity(root)...)
 		emitErr := emitF3ConflictAttributionSignals(root, cfg.BasePath, time.Now())
 		if emitErr != nil {
@@ -189,6 +195,6 @@ Checks performed:
 			return fmt.Errorf("[Strategist] check=failed errors=%d root=%s", len(errs), root)
 		}
 
-		return printCheckSuccess(root, providers, resolutions, cfg.Mode, cfg.ProviderResolutionPolicy)
+		return printCheckSuccess(root, providers, resolutions, cfg.Mode, cfg.ProviderResolutionPolicy, weaponBindings)
 	},
 }

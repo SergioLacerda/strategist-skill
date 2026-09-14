@@ -127,7 +127,7 @@ func TestRunWizard(t *testing.T) {
 			wantMode:       "epic",
 			wantBase:       ".analysis",
 			wantDiscovery:  "brainstorming",
-			wantRefinement: "archivist",
+			wantRefinement: "openspec-propose",
 			wantExecution:  "sniper",
 			wantChestPath:  "",
 		},
@@ -157,7 +157,7 @@ func TestRunWizard(t *testing.T) {
 			wantMode:       "pragmatic",
 			wantBase:       ".",
 			wantDiscovery:  "brainstorming",
-			wantRefinement: "archivist",
+			wantRefinement: "openspec-propose",
 			wantExecution:  "sniper",
 			wantChestPath:  "",
 		},
@@ -180,6 +180,22 @@ func TestRunWizard(t *testing.T) {
 			assert.Equal(t, tt.wantChestPath, wc.TreasureChestPath)
 		})
 	}
+}
+
+// TestRunWizardBlocksOnUnreadableCatalog covers docs/adr/0035-embedded-weapon-fallback-policy.md's
+// decision: an unreadable plugins/catalog.yaml must hard-block the wizard
+// before any prompt is shown, never silently degrade to the hardcoded
+// installableDefaultProviders/knownProviderRisk maps.
+func TestRunWizardBlocksOnUnreadableCatalog(t *testing.T) {
+	t.Parallel()
+	ext := partialExtractor{failPath: pluginCatalogPath}
+	// Empty input: if the wizard prompted even once before blocking, the
+	// reader would be exhausted and TextPrompter would return an unrelated
+	// EOF-shaped error instead of the plugin-catalog error asserted below.
+	_, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader("")), ext)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "plugin catalog")
+	assert.ErrorContains(t, err, "no longer falls back to hardcoded defaults silently")
 }
 
 func TestWizardDoesNotAskPermissionLevel(t *testing.T) {

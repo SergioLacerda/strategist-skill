@@ -31,7 +31,7 @@ func TestResolveSlotProvider_SkillYAMLUnreadablePermission(t *testing.T) {
 }
 
 func TestResolveSkillProviderSlot_InvalidYAML(t *testing.T) {
-	_, errMsg := resolveSkillProviderSlot("discovery", "brainstorming", "/tmp/skill.yaml", []byte("id: [unterminated\n"))
+	_, errMsg := resolveSkillProviderSlot(t.TempDir(), "discovery", "brainstorming", "/tmp/skill.yaml", []byte("id: [unterminated\n"))
 	assert.Contains(t, errMsg, "skill.yaml invalid")
 }
 
@@ -70,7 +70,7 @@ func TestResolveSkillProviderSlot_AttachesUnsupportedReadiness(t *testing.T) {
 	// probe (probeSkillEntrypoint) correctly reports the file as missing
 	// rather than the old hardcoded "entrypoint_probe_unsupported" — the
 	// probe is now a real static check, not a no-op.
-	res, errMsg := resolveSkillProviderSlot("discovery", "brainstorming", "skills/brainstorming/skill.yaml", []byte("risk_score: write_analysis\n"))
+	res, errMsg := resolveSkillProviderSlot(t.TempDir(), "discovery", "brainstorming", "skills/brainstorming/skill.yaml", []byte("risk_score: write_analysis\n"))
 	require.Empty(t, errMsg)
 
 	assert.Equal(t, slotResolutionSkillProvider, res.kind)
@@ -88,7 +88,7 @@ func TestResolveSkillProviderSlot_EntrypointProbeVerifiesRealManifest(t *testing
 	skillPath := filepath.Join(skillDir, "skill.yaml")
 	require.NoError(t, os.WriteFile(skillPath, []byte("id: brainstorming\nrisk_score: write_analysis\n"), 0o644))
 
-	res, errMsg := resolveSkillProviderSlot("discovery", "brainstorming", skillPath, []byte("risk_score: write_analysis\n"))
+	res, errMsg := resolveSkillProviderSlot(dir, "discovery", "brainstorming", skillPath, []byte("risk_score: write_analysis\n"))
 	require.Empty(t, errMsg)
 
 	assert.Equal(t, domain.ReadinessReady, res.readiness.Entrypoint.Status)
@@ -104,7 +104,7 @@ func TestResolveSkillProviderSlot_EntrypointProbeBlocksIDMismatch(t *testing.T) 
 	skillPath := filepath.Join(skillDir, "skill.yaml")
 	require.NoError(t, os.WriteFile(skillPath, []byte("id: some-other-id\nrisk_score: write_analysis\n"), 0o644))
 
-	res, errMsg := resolveSkillProviderSlot("discovery", "brainstorming", skillPath, []byte("risk_score: write_analysis\n"))
+	res, errMsg := resolveSkillProviderSlot(dir, "discovery", "brainstorming", skillPath, []byte("risk_score: write_analysis\n"))
 	require.Empty(t, errMsg)
 
 	assert.Equal(t, domain.ReadinessBlocked, res.readiness.Entrypoint.Status)
@@ -283,4 +283,116 @@ func TestResolveNativeFallback_CandidateRoleSlotMismatch(t *testing.T) {
 	provider, path := resolveNativeFallback(dir, "refinement")
 	assert.Empty(t, provider)
 	assert.Empty(t, path)
+}
+
+func TestCheckRoleProviderCompatibility_NoRoleSlotMap(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir() // no roles/default.yaml at all
+	errMsg := checkRoleProviderCompatibility(dir, "refinement", "openspec-explore", "write_analysis",
+		[]byte("id: openspec-explore\ncanonical_role: archivist\n"))
+	assert.Empty(t, errMsg)
+}
+
+func TestCheckRoleProviderCompatibility_SlotNotMappedToARole(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	rolesDir := filepath.Join(dir, "roles")
+	require.NoError(t, os.MkdirAll(rolesDir, 0o755))
+	// default.yaml exists but has no entry for "execution".
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "default.yaml"),
+		[]byte("discovery: ranger\nrefinement: archivist\n"), 0o644))
+
+	errMsg := checkRoleProviderCompatibility(dir, "execution", "sdd-ask", "controlled",
+		[]byte("id: sdd-ask\n"))
+	assert.Empty(t, errMsg)
+}
+
+func TestCheckRoleProviderCompatibility_RoleFileMissing(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	rolesDir := filepath.Join(dir, "roles")
+	require.NoError(t, os.MkdirAll(rolesDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "default.yaml"),
+		[]byte("discovery: ranger\nrefinement: archivist\nexecution: sniper\n"), 0o644))
+	// roles/archivist.yaml deliberately absent.
+
+	errMsg := checkRoleProviderCompatibility(dir, "refinement", "openspec-explore", "write_analysis",
+		[]byte("id: openspec-explore\ncanonical_role: archivist\n"))
+	assert.Empty(t, errMsg)
+}
+
+func TestCheckRoleProviderCompatibility_SkillDeclaresNoCanonicalRole(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	rolesDir := filepath.Join(dir, "roles")
+	require.NoError(t, os.MkdirAll(rolesDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "default.yaml"),
+		[]byte("discovery: ranger\nrefinement: archivist\nexecution: sniper\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "archivist.yaml"),
+		[]byte("role: archivist\nslot: refinement\n"), 0o644))
+
+	// sdd-ask declares no canonical_role — not every provider is expected to.
+	errMsg := checkRoleProviderCompatibility(dir, "refinement", "sdd-ask", "controlled",
+		[]byte("id: sdd-ask\n"))
+	assert.Empty(t, errMsg)
+}
+
+func TestCheckRoleProviderCompatibility_MatchingCanonicalRole(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	rolesDir := filepath.Join(dir, "roles")
+	require.NoError(t, os.MkdirAll(rolesDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "default.yaml"),
+		[]byte("discovery: ranger\nrefinement: archivist\nexecution: sniper\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "archivist.yaml"),
+		[]byte("role: archivist\nslot: refinement\n"), 0o644))
+
+	errMsg := checkRoleProviderCompatibility(dir, "refinement", "openspec-propose", "write_analysis",
+		[]byte("id: openspec-propose\ncanonical_role: archivist\n"))
+	assert.Empty(t, errMsg)
+}
+
+func TestCheckRoleProviderCompatibility_MismatchedCanonicalRole(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	rolesDir := filepath.Join(dir, "roles")
+	require.NoError(t, os.MkdirAll(rolesDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "default.yaml"),
+		[]byte("discovery: ranger\nrefinement: archivist\nexecution: sniper\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "archivist.yaml"),
+		[]byte("role: archivist\nslot: refinement\n"), 0o644))
+
+	// A provider configured for the refinement slot but whose own
+	// canonical_role claims "ranger" (discovery's role) instead of
+	// "archivist" — this is the exact gap this check closes.
+	errMsg := checkRoleProviderCompatibility(dir, "refinement", "mis-wired-provider", "write_analysis",
+		[]byte("id: mis-wired-provider\ncanonical_role: ranger\n"))
+	require.NotEmpty(t, errMsg)
+	assert.Contains(t, errMsg, "role-incompatible")
+	assert.Contains(t, errMsg, "role_mismatch")
+	assert.Contains(t, errMsg, "mis-wired-provider")
+}
+
+// TestResolveSlotProvider_RoleIncompatibleProviderBlocksSlotResolution is the
+// end-to-end version of the mismatch case above, through the same
+// resolveSlotProvider entrypoint checkCmd itself calls, proving the
+// incompatibility actually blocks slot resolution rather than only being
+// detectable via the unexported helper directly.
+func TestResolveSlotProvider_RoleIncompatibleProviderBlocksSlotResolution(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	rolesDir := filepath.Join(dir, "roles")
+	require.NoError(t, os.MkdirAll(rolesDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "default.yaml"),
+		[]byte("discovery: ranger\nrefinement: archivist\nexecution: sniper\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "archivist.yaml"),
+		[]byte("role: archivist\nslot: refinement\n"), 0o644))
+	skillDir := filepath.Join(dir, "skills", "mis-wired-provider")
+	require.NoError(t, os.MkdirAll(skillDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(skillDir, "skill.yaml"),
+		[]byte("id: mis-wired-provider\nrisk_score: write_analysis\ncanonical_role: ranger\n"), 0o644))
+
+	_, errMsg := resolveSlotProvider(dir, "refinement", "mis-wired-provider")
+	require.NotEmpty(t, errMsg)
+	assert.Contains(t, errMsg, "role-incompatible")
 }
