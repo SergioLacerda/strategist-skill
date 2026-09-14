@@ -9,19 +9,20 @@ import (
 
 func catalogProviderFromIngestedSkill(skill IngestedSkill) pluginCatalogProvider {
 	return pluginCatalogProvider{
-		ID:                  skill.ID,
-		Version:             skill.Package.Version,
-		SchemaVersion:       "1",
-		Status:              "active",
-		RiskScore:           skill.Adapter.RiskScore,
-		Category:            skill.Adapter.Category,
-		CanonicalRole:       skill.Adapter.CanonicalRole,
-		Default:             skill.Adapter.Default,
-		Description:         skillDescription(skill.Dir),
-		AuxiliaryTools:      skill.Adapter.AuxiliaryTools,
-		Installable:         true,
-		LegacyManifestPath:  "skills/" + skill.ID + "/skill.yaml",
-		CompatibilitySource: "embedded",
+		ID:                      skill.ID,
+		Version:                 skill.Package.Version,
+		SchemaVersion:           "1",
+		Status:                  "active",
+		RiskScore:               skill.Adapter.RiskScore,
+		Category:                skill.Adapter.Category,
+		CanonicalRole:           skill.Adapter.CanonicalRole,
+		Default:                 skill.Adapter.Default,
+		Description:             skillDescription(skill.Dir),
+		AuxiliaryTools:          skill.Adapter.AuxiliaryTools,
+		Installable:             true,
+		LegacyManifestPath:      "skills/" + skill.ID + "/skill.yaml",
+		CompatibilitySource:     "embedded",
+		SupportedHandoffSchemas: skill.Adapter.SupportedHandoffSchemas,
 	}
 }
 

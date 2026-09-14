@@ -37,6 +37,12 @@ type pluginCatalogProvider struct {
 	LegacyManifestPath  string                    `yaml:"legacy_manifest_path,omitempty"`
 	CompatibilitySource string                    `yaml:"compatibility_source,omitempty"`
 	Dependencies        []pluginCatalogDependency `yaml:"dependencies,omitempty"`
+	// SupportedHandoffSchemas declares which RoleContract.HandoffSchema
+	// value(s) this weapon's real output conforms to (see
+	// domain.ProviderContract.SupportedHandoffSchemas). Omitted/empty means
+	// none — the weapon has no declared compatibility with any role's
+	// handoff contract on this dimension.
+	SupportedHandoffSchemas []string `yaml:"supported_handoff_schemas,omitempty"`
 }
 
 type pluginCatalogDependency struct {

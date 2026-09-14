@@ -14,6 +14,7 @@
 providers:
   # native roles — built-in execution roles resolved via roles/<name>.yaml
   sniper: controlled
+  ranger: write_analysis
 
   # neutral — governance-agnostic providers
   brainstorming: write_analysis

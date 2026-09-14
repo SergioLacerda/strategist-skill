@@ -2,13 +2,13 @@ schema_version: strategist-embedded-skill-lock/v1
 packages:
     - id: brainstorming
       version: 1.0.0
-      digest: sha256:69a8c7928d375e65849dd06aa6035da2c12e7bbfcb0af6a74423f91a9699ea59
+      digest: sha256:bfeb63a69d65e2f2970e0c09316bcdc40b744186aeb99d0f0c99c2fa2dcf3058
       source: external-skills-source/brainstorming
     - id: openspec-explore
       version: "1.0"
-      digest: sha256:68d9a8f07a0e939e5234489a1947edbd6278889035ab4157cb367b9e0a427967
+      digest: sha256:122e68223669aa9e231fce98736a6bba1646824e08f97819617e533ad0c37903
       source: external-skills-source/openspec-explore
     - id: openspec-propose
       version: "1.0"
-      digest: sha256:cd075f9af79bcc2df5bf863f1874bc871e168445e2261388f7e4f4aa02ab1381
+      digest: sha256:9bd2e02e0b6dbf4bd9024ebf24ffdd180daa6980bf3872ec88c339eadda53b6e
       source: external-skills-source/openspec-propose

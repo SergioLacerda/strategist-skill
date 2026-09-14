@@ -111,6 +111,58 @@ func TestCheckRoleCompatibilityRejectsUnsupportedRoleContractVersion(t *testing.
 	assert.Equal(t, "unsupported_role_contract_version", result.Reasons[0].Code)
 }
 
+func TestCheckRoleCompatibilityRejectsUnsupportedHandoffSchema(t *testing.T) {
+	t.Parallel()
+
+	role := validRoleContract()
+	role.HandoffSchema = "schemas/handoff-archivist-to-sniper.schema.yaml"
+	provider := validProviderContract()
+	provider.Source = domain.ProviderSourceEmbedded
+	provider.SupportedHandoffSchemas = []string{"some-other-schema.yaml"}
+
+	result := provider.CheckRoleCompatibility(role)
+	assert.False(t, result.Compatible)
+	require.Len(t, result.Reasons, 1)
+	assert.Equal(t, "handoff_schema", result.Reasons[0].Dimension)
+	assert.Equal(t, "unsupported_handoff_schema", result.Reasons[0].Code)
+}
+
+func TestCheckRoleCompatibilityAcceptsMatchingHandoffSchema(t *testing.T) {
+	t.Parallel()
+
+	role := validRoleContract()
+	role.HandoffSchema = "schemas/handoff-archivist-to-sniper.schema.yaml"
+	provider := validProviderContract()
+	provider.Source = domain.ProviderSourceEmbedded
+	provider.SupportedHandoffSchemas = []string{"schemas/handoff-archivist-to-sniper.schema.yaml"}
+
+	result := provider.CheckRoleCompatibility(role)
+	assert.True(t, result.Compatible)
+}
+
+func TestCheckRoleCompatibilitySkipsHandoffSchemaDimensionWhenRoleDeclaresNone(t *testing.T) {
+	t.Parallel()
+
+	role := validRoleContract() // HandoffSchema is "" (zero value) — e.g. Sniper, the terminal role
+	provider := validProviderContract()
+	provider.SupportedHandoffSchemas = nil
+
+	result := provider.CheckRoleCompatibility(role)
+	assert.True(t, result.Compatible, "a role with no declared handoff schema imposes no constraint on this dimension")
+}
+
+func TestCheckRoleCompatibilitySkipsHandoffSchemaDimensionForNativeRoleProviders(t *testing.T) {
+	t.Parallel()
+
+	role := validRoleContract()
+	role.HandoffSchema = "schemas/handoff-archivist-to-sniper.schema.yaml"
+	provider := validProviderContract() // Source: domain.ProviderSourceNativeRole (see validProviderContract())
+	provider.SupportedHandoffSchemas = nil
+
+	result := provider.CheckRoleCompatibility(role)
+	assert.True(t, result.Compatible, "a native role trivially satisfies its own handoff contract")
+}
+
 func TestCheckRoleCompatibilityAcceptsMatchingRoleAndVersion(t *testing.T) {
 	t.Parallel()
 

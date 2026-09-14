@@ -34,6 +34,7 @@ func providerContractFromCatalogEntry(provider pluginCatalogProvider) domain.Pro
 		Materialization:               materializationFromCatalogEntry(provider),
 		Default:                       provider.Default,
 		SupportedRoleContractVersions: []string{domain.RoleContractSchemaVersion},
+		SupportedHandoffSchemas:       provider.SupportedHandoffSchemas,
 	}
 }
 

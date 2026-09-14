@@ -30,6 +30,11 @@ type externalSkillAdapter struct {
 	Category       string   `yaml:"category"`
 	Default        bool     `yaml:"default,omitempty"`
 	AuxiliaryTools []string `yaml:"auxiliary_tools_allowed,omitempty"`
+	// SupportedHandoffSchemas — see domain.ProviderContract's field of the
+	// same name and internal/install/role_handoff_schemas.go. Omitted by
+	// every embedded weapon today — added here only so a future honest
+	// declaration isn't silently dropped by ingestion.
+	SupportedHandoffSchemas []string `yaml:"supported_handoff_schemas,omitempty"`
 }
 
 // IngestedSkill is one externally-sourced package that resolved, verified,

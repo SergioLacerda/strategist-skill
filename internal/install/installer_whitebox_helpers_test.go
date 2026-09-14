@@ -82,6 +82,9 @@ providers:
     installable: true
     legacy_manifest_path: skills/openspec-propose/skill.yaml
     compatibility_source: embedded
+  - id: ranger
+    risk_score: write_analysis
+    compatibility_source: native_role
   - id: sdd-ask
     risk_score: controlled
     compatibility_source: external

@@ -3,6 +3,7 @@ package install
 import (
 	"fmt"
 
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/i18n"
 )
 
@@ -65,20 +66,27 @@ func promptTreasureChest(p Prompter, b i18n.WizardStrings) (string, error) {
 // shown and consumed here so prompt count and scripted-input ordering stay stable, but
 // its returned value is discarded: no typed input (e.g. `sdd-ask`) can ever leak into
 // slots.execution.
-func promptSlots(p Prompter, b i18n.WizardStrings, providerRisk map[string]string) (discovery, refinement, execution string, err error) {
+//
+// The discovery/refinement option lists are compatibility-driven
+// (compatibleProviderOptions), not a hardcoded slice: a weapon whose
+// declared supported_handoff_schemas doesn't match its role's
+// HandoffSchema simply stops being offered, and the native role becomes
+// the shown default. This is what keeps discovery effectively locked to
+// Ranger without a special case — none of discovery's external weapons
+// declare a matching schema (see external-skills-source/brainstorming and
+// openspec-explore's strategist.yaml), so compatibleProviderOptions always
+// resolves to the single native ranger option there today.
+func promptSlots(p Prompter, b i18n.WizardStrings, catalog pluginCatalog, providerRisk map[string]string) (discovery, refinement, execution string, err error) {
 	fmt.Println(b.HeaderSlots)
-	discoveryDefault := defaultSkillBySlot["discovery"]
-	discovery, err = promptProvider(p, b.PromptDiscovery, discoveryDefault, []string{discoveryDefault}, b.LabelCustomInput, providerRisk, "write_analysis", "discovery")
+
+	discoveryIDs, discoveryDefault := compatibleProviderOptions(catalog, "ranger", roleHandoffSchema["ranger"], "ranger")
+	discovery, err = promptProvider(p, b.PromptDiscovery, discoveryDefault, discoveryIDs, b.LabelCustomInput, providerRisk, "write_analysis", "discovery")
 	if err != nil {
 		return "", "", "", err
 	}
-	// openspec-propose is the refinement default (DEC-004); openspec-explore
-	// remains listed as a secondary, opt-in option. archivist (the compatible
-	// native-role fallback, roles/default.yaml) is intentionally not a manual
-	// option here, matching discovery's own pattern where ranger is never a
-	// manual option either — see defaultSkillBySlot.
-	refinementDefault := defaultSkillBySlot["refinement"]
-	refinement, err = promptProvider(p, b.PromptRefinement, refinementDefault, []string{refinementDefault, "openspec-explore"}, b.LabelCustomInput, providerRisk, "write_analysis", "refinement")
+
+	refinementIDs, refinementDefault := compatibleProviderOptions(catalog, "archivist", roleHandoffSchema["archivist"], "archivist")
+	refinement, err = promptProvider(p, b.PromptRefinement, refinementDefault, refinementIDs, b.LabelCustomInput, providerRisk, "write_analysis", "refinement")
 	if err != nil {
 		return "", "", "", err
 	}
@@ -86,6 +94,47 @@ func promptSlots(p Prompter, b i18n.WizardStrings, providerRisk map[string]strin
 		return "", "", "", err
 	}
 	return discovery, refinement, nativeExecutionProvider, nil
+}
+
+// compatibleProviderOptions returns the catalog candidate IDs for roleName
+// that CheckRoleCompatibility reports compatible against handoffSchema, plus
+// which one should be pre-selected: whichever compatible candidate is
+// marked default in the catalog, or the first compatible one otherwise.
+// When nothing is compatible (e.g. every external weapon for this role is
+// honestly declared unable to produce the role's handoff shape), it falls
+// back to a single-item list naming the catalog's native_role candidate for
+// roleName, or fallbackID if the catalog has none — either way the wizard
+// stays usable and the operator is not offered a weapon known not to work.
+func compatibleProviderOptions(catalog pluginCatalog, roleName, handoffSchema, fallbackID string) (ids []string, defaultID string) {
+	role := domain.RoleContract{
+		SchemaVersion: domain.RoleContractSchemaVersion,
+		Role:          roleName,
+		HandoffSchema: handoffSchema,
+	}
+	var nativeID string
+	for _, candidate := range providerContractsForRole(catalog, roleName) {
+		if candidate.Source == domain.ProviderSourceNativeRole {
+			nativeID = candidate.ID
+		}
+		if !candidate.CheckRoleCompatibility(role).Compatible {
+			continue
+		}
+		ids = append(ids, candidate.ID)
+		if candidate.Default {
+			defaultID = candidate.ID
+		}
+	}
+	if defaultID == "" && len(ids) > 0 {
+		defaultID = ids[0]
+	}
+	if len(ids) == 0 {
+		if nativeID == "" {
+			nativeID = fallbackID
+		}
+		ids = []string{nativeID}
+		defaultID = nativeID
+	}
+	return ids, defaultID
 }
 
 func promptProvider(p Prompter, prompt, defaultVal string, options []string, customLabel string, providerRisk map[string]string, expectedRisk, field string) (string, error) {

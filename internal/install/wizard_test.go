@@ -126,8 +126,13 @@ func TestRunWizard(t *testing.T) {
 			wantCodeLang:   "en",
 			wantMode:       "epic",
 			wantBase:       ".analysis",
-			wantDiscovery:  "brainstorming",
-			wantRefinement: "openspec-propose",
+			// Neither brainstorming nor openspec-propose declares a
+			// supported_handoff_schemas value matching its role's
+			// HandoffSchema — accepting defaults now resolves both slots to
+			// their native role (see installer_wizard_whitebox_test.go's
+			// TestInstall_WizardPath_Defaults for the same change).
+			wantDiscovery:  "ranger",
+			wantRefinement: "archivist",
 			wantExecution:  "sniper",
 			wantChestPath:  "",
 		},
@@ -156,8 +161,8 @@ func TestRunWizard(t *testing.T) {
 			wantCodeLang:   "en",
 			wantMode:       "pragmatic",
 			wantBase:       ".",
-			wantDiscovery:  "brainstorming",
-			wantRefinement: "openspec-propose",
+			wantDiscovery:  "ranger",
+			wantRefinement: "archivist",
 			wantExecution:  "sniper",
 			wantChestPath:  "",
 		},

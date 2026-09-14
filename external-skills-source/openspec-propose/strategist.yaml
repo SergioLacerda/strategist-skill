@@ -12,3 +12,12 @@ canonical_role: archivist
 risk_score: write_analysis
 category: refinement
 default: true
+
+# supported_handoff_schemas intentionally omitted: this package's own
+# SKILL.md instructs writing OpenSpec's native artifact shape
+# (openspec/changes/<name>/{proposal,design,tasks}.md via the `openspec`
+# CLI), not Archivist's handoff-archivist-to-sniper.schema.yaml shape
+# (<base_path>/refined/<mission_id>/{analysis,proposal,design,tasks}.md).
+# Confirmed live in mission 20260914-role-weapon-structure-review — do not
+# add a value here without first changing what this package actually
+# writes.

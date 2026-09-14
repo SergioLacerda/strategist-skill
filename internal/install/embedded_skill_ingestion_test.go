@@ -45,6 +45,26 @@ func TestIngestExternalSkillsAcceptsValidPackage(t *testing.T) {
 	assert.Equal(t, "embedded", result.Catalog.Providers[0].CompatibilitySource)
 }
 
+func TestIngestExternalSkillsCarriesSupportedHandoffSchemas(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	dir := filepath.Join(root, "sample-skill")
+	require.NoError(t, os.MkdirAll(dir, 0o755))
+	skillMD := "---\nname: sample-skill\ndescription: Test skill.\nmetadata:\n  version: \"1.0.0\"\n  author: test\n---\nbody\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte(skillMD), 0o644))
+	adapter := "canonical_role: archivist\nrisk_score: write_analysis\ncategory: test\nsupported_handoff_schemas:\n  - example-schema.yaml\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "strategist.yaml"), []byte(adapter), 0o644))
+
+	result, err := IngestExternalSkills(root, pluginCatalog{SchemaVersion: "v1"}, domain.TrustPolicy{})
+	require.NoError(t, err)
+	require.Len(t, result.Ingested, 1)
+	assert.Equal(t, []string{"example-schema.yaml"}, result.Ingested[0].Adapter.SupportedHandoffSchemas)
+
+	require.Len(t, result.Catalog.Providers, 1)
+	assert.Equal(t, []string{"example-schema.yaml"}, result.Catalog.Providers[0].SupportedHandoffSchemas)
+}
+
 func TestIngestExternalSkillsRejectsIDShadowingAgainstNonEmbeddedEntry(t *testing.T) {
 	t.Parallel()
 

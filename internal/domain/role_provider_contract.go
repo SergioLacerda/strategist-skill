@@ -113,6 +113,19 @@ type ProviderContract struct {
 	Capabilities                  []string             `yaml:"capabilities,omitempty"`
 	Guarantees                    []string             `yaml:"guarantees,omitempty"`
 	SupportedRoleContractVersions []string             `yaml:"supported_role_contract_versions"`
+	// SupportedHandoffSchemas declares which handoff_schema value(s)
+	// (RoleContract.HandoffSchema) this Provider's real output actually
+	// conforms to. A Provider whose manifest omits this field supports none
+	// — CheckRoleCompatibility then correctly reports it incompatible with
+	// any role that declares a HandoffSchema, rather than defaulting to
+	// "compatible" the way SupportedRoleContractVersions' absence would not
+	// (that field is always synthesized as compatible today — see
+	// internal/install/role_provider_catalog_mapping.go). This is what
+	// closes the gap mission 20260914-role-weapon-structure-review hit
+	// live: openspec-propose passed canonical_role/role_contract_version
+	// compatibility while writing OpenSpec's own artifact shape instead of
+	// Archivist's.
+	SupportedHandoffSchemas []string `yaml:"supported_handoff_schemas,omitempty"`
 }
 
 // Validate returns an error if required ProviderContract fields are missing
@@ -157,6 +170,14 @@ func (p ProviderContract) CheckRoleCompatibility(role RoleContract) Compatibilit
 			Dimension: "role_contract_version",
 			Code:      "unsupported_role_contract_version",
 			Detail:    fmt.Sprintf("%s does not declare support for role contract %s", p.ID, role.SchemaVersion),
+		}}}
+	}
+	if p.Source != ProviderSourceNativeRole && role.HandoffSchema != "" &&
+		!hasString(stringSet(p.SupportedHandoffSchemas...), role.HandoffSchema) {
+		return CompatibilityResult{Compatible: false, Reasons: []CompatibilityReason{{
+			Dimension: "handoff_schema",
+			Code:      "unsupported_handoff_schema",
+			Detail:    fmt.Sprintf("%s does not declare support for handoff schema %s", p.ID, role.HandoffSchema),
 		}}}
 	}
 	return CompatibilityResult{Compatible: true}

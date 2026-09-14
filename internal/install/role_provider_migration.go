@@ -40,7 +40,7 @@ func PlanRoleProviderMigration(extractor domain.FileExtractor, activeSlots map[s
 		if err != nil {
 			return RoleProviderMigrationPreview{}, fmt.Errorf("role/provider migration: slot %s: %w", slotName, err)
 		}
-		role := domain.RoleContractFromConfig(roleCfg, "")
+		role := domain.RoleContractFromConfig(roleCfg, roleHandoffSchema[roleName])
 		candidates := providerContractsForRole(catalog, roleName)
 
 		entry := RoleProviderPreviewEntry{

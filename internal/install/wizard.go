@@ -100,7 +100,7 @@ func runWizard(ctx context.Context, p Prompter, extractor domain.FileExtractor, 
 	if err != nil {
 		return domain.WizardConfig{}, err
 	}
-	discovery, refinement, execution, err := promptSlots(p, b, providerRisk)
+	discovery, refinement, execution, err := promptSlots(p, b, catalog, providerRisk)
 	if err != nil {
 		return domain.WizardConfig{}, err
 	}
