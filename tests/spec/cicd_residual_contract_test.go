@@ -89,7 +89,7 @@ func TestDocumentationUsesCurrentRuntimePathModel(t *testing.T) {
 
 	root := repoRoot(t)
 	contributing := readFile(t, filepath.Join(root, "CONTRIBUTING.md"))
-	architecture := readFile(t, filepath.Join(root, "docs", "architecture.md"))
+	architecture := readFile(t, filepath.Join(root, "docs", "architecture", "overview.md"))
 	onboarding := readFile(t, filepath.Join(root, "docs", "onboarding", "readme-en.md"))
 	adr := readFile(t, filepath.Join(root, "docs", "adr", "0005-slot-write-contracts.md"))
 
@@ -98,7 +98,7 @@ func TestDocumentationUsesCurrentRuntimePathModel(t *testing.T) {
 		content string
 	}{
 		{"CONTRIBUTING.md", contributing},
-		{"docs/architecture.md", architecture},
+		{"docs/architecture/overview.md", architecture},
 		{"docs/onboarding/readme-en.md", onboarding},
 	} {
 		for _, forbidden := range []string{"make sync-embed", "../../strategist/SKILL.md", "../../strategist/protocol.md"} {

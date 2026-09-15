@@ -17,7 +17,7 @@ type pipelineEvent struct {
 }
 
 // slotRolePrefix maps a pipeline slot name to the emit-log role/phase prefix it drives.
-// See docs/strategist-concepts.md: discovery=Ranger, refinement=Archivist, execution=Sniper.
+// See docs/architecture/strategist-concepts.md: discovery=Ranger, refinement=Archivist, execution=Sniper.
 var slotRolePrefix = map[string]string{
 	"discovery":  "ranger",
 	"refinement": "archivist",

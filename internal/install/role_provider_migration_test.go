@@ -1,6 +1,9 @@
 package install
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -416,4 +419,111 @@ func TestActivateRoleProviderMigrationHandlesNoCurrentProvider(t *testing.T) {
 
 	_, err = activateRoleProviderMigration("", domain.PluginLock{}, preview)
 	require.NoError(t, err)
+}
+
+func TestPlanRoleProviderMigration_LoadRoleSlotMapErrorPropagates(t *testing.T) {
+	t.Parallel()
+
+	_, err := PlanRoleProviderMigration(brokenPathExtractor{missing: roleSlotMapPath}, map[string]string{"discovery": "brainstorming"})
+	require.Error(t, err)
+	require.ErrorContains(t, err, "role/provider migration")
+}
+
+func TestPlanRoleProviderMigration_LoadCatalogErrorPropagates(t *testing.T) {
+	t.Parallel()
+
+	_, err := PlanRoleProviderMigration(brokenPathExtractor{missing: pluginCatalogPath}, map[string]string{"discovery": "brainstorming"})
+	require.Error(t, err)
+	require.ErrorContains(t, err, "role/provider migration")
+}
+
+func TestPlanRoleProviderMigration_LoadRoleConfigErrorPropagates(t *testing.T) {
+	t.Parallel()
+
+	_, err := PlanRoleProviderMigration(brokenPathExtractor{missing: "roles/ranger.yaml"}, map[string]string{"discovery": "brainstorming"})
+	require.Error(t, err)
+	require.ErrorContains(t, err, "role/provider migration: slot discovery")
+}
+
+// brokenPathExtractor delegates to the real embedded defaults for every path
+// except missing, which it fails to read — for exercising one specific
+// downstream-read error branch at a time without a hand-authored fixture
+// tree.
+type brokenPathExtractor struct {
+	missing string
+}
+
+func (b brokenPathExtractor) Extract(_ string, _ bool) error { return nil }
+
+func (b brokenPathExtractor) ReadFile(relPath string) ([]byte, error) {
+	if relPath == b.missing {
+		return nil, fmt.Errorf("brokenPathExtractor: %s deliberately unreadable", relPath)
+	}
+	return defaultsExtractor{}.ReadFile(relPath)
+}
+
+func TestActivateRoleProviderMigration_ReadLockFileErrorPropagates(t *testing.T) {
+	t.Parallel()
+
+	preview, err := PlanRoleProviderMigration(defaultsExtractor{}, map[string]string{
+		"discovery": "brainstorming", "refinement": "archivist", "execution": "sniper",
+	})
+	require.NoError(t, err)
+	require.True(t, preview.FullyResolved())
+
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, pluginLockFileName), []byte("not: [valid"), 0o644))
+
+	_, err = activateRoleProviderMigration(dir, domain.PluginLock{}, preview)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "activate role/provider migration")
+}
+
+func TestActivateRoleProviderMigration_ApplyErrorPropagates(t *testing.T) {
+	t.Parallel()
+
+	preview, err := PlanRoleProviderMigration(defaultsExtractor{}, map[string]string{
+		"discovery":  "does-not-exist-in-catalog",
+		"refinement": "archivist",
+		"execution":  "sniper",
+	})
+	require.NoError(t, err)
+	require.False(t, preview.FullyResolved())
+
+	_, err = activateRoleProviderMigration("", domain.PluginLock{}, preview)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "role_provider_migration_not_fully_resolved")
+}
+
+// TestActivateRoleProviderMigration_SwitchesWhenCurrentDiffersFromResolved
+// exercises the one path no other test in this file reaches: a slot whose
+// seeded current binding (from CurrentProviderID) differs from the newly
+// resolved Provider, forcing applyPluginBinding through switchPluginBinding
+// (Begin/Stage/Probe/Activate) instead of either the no-op or
+// create-fresh-binding shortcuts. Built directly from a hand-authored
+// preview rather than PlanRoleProviderMigration's real catalog resolution
+// (which, for this repo's catalog, treats a preference that doesn't match
+// one of several role-compatible candidates as role_binding_ambiguous
+// rather than silently overriding it) — the resolution algorithm itself is
+// covered elsewhere; this test only needs activateRoleProviderMigration's
+// own seed/apply wiring.
+func TestActivateRoleProviderMigration_SwitchesWhenCurrentDiffersFromResolved(t *testing.T) {
+	t.Parallel()
+
+	preview := RoleProviderMigrationPreview{Entries: []RoleProviderPreviewEntry{
+		{
+			Slot: "discovery", RoleName: "ranger", CurrentProviderID: "openspec-explore",
+			Resolved: domain.ProviderBinding{
+				Provider:      domain.ProviderContract{ID: "brainstorming"},
+				Compatibility: domain.CompatibilityResult{Compatible: true},
+			},
+		},
+	}}
+	require.True(t, preview.FullyResolved())
+
+	lockFile, err := activateRoleProviderMigration("", domain.PluginLock{}, preview)
+	require.NoError(t, err)
+	binding, ok := findSlotBinding(lockFile.Bindings, "discovery")
+	require.True(t, ok)
+	assert.Equal(t, "brainstorming", binding.InstalledInstanceID)
 }

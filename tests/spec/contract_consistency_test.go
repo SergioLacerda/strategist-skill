@@ -33,7 +33,7 @@ func TestSlotContractVocabularyConsistentAcrossSurfaces(t *testing.T) {
 	assertFileContains(t, filepath.Join(root, "docs", "adr", "0005-slot-write-contracts.md"), "The `write_pending` contract was discontinued.")
 	assertFileContains(t, filepath.Join(root, "docs", "configuration.md"), "| `discovery` | `write_analysis` |")
 	assertFileContains(t, filepath.Join(root, "docs", "configuration.md"), "| `execution` | `controlled` |")
-	assertFileContains(t, filepath.Join(root, "docs", "c4-diagrams.md"), "| Slot `discovery` (Ranger) | pluggable | `write_analysis` |")
+	assertFileContains(t, filepath.Join(root, "docs", "architecture", "c4-diagrams.md"), "| Slot `discovery` (Ranger) | pluggable | `write_analysis` |")
 	assertFileContains(t, filepath.Join(root, "tests", "spec", "specs", "slot-contracts.feature"), "Roles: Ranger=write_analysis, Archivist=write_analysis, Sniper=controlled")
 }
 
@@ -60,7 +60,7 @@ func TestGeneratedStatusBadgesAreNotStaticClaims(t *testing.T) {
 func TestArchitectureDocumentsCurrentInternalPackages(t *testing.T) {
 	t.Parallel()
 
-	path := filepath.Join(repoRoot(t), "docs", "architecture.md")
+	path := filepath.Join(repoRoot(t), "docs", "architecture", "overview.md")
 	content := readFile(t, path)
 	for _, pkg := range []string{"dojo", "governance", "integrity", "i18n", "runtimefs", "treasure", "validate"} {
 		if !strings.Contains(content, "  "+pkg+"/") {

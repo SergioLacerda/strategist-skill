@@ -12,7 +12,7 @@ source scripts/lib-provenance.sh
 
 # internal/embed/defaults/ is the canonical, git-tracked authoring source —
 # .strategist/ is a gitignored runtime instance materialized by `strategist
-# install`/`compile` (see docs/architecture.md). Scanning .strategist/ here
+# install`/`compile` (see docs/architecture/overview.md). Scanning .strategist/ here
 # used to work only because a developer's local checkout happened to have it
 # installed already; a fresh CI checkout has no .strategist/ at all, so the
 # generator silently produced an empty table (20260830 CI failure).

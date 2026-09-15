@@ -4,7 +4,7 @@
 > documentation, diagram, and analysis orchestrator. Sniper remains the executor
 > in the lore, but execution means approved documentation/handoff materialization,
 > not source-code implementation. This detailed onboarding file is being
-> consolidated; when it conflicts with `docs/mental-model.md`,
+> consolidated; when it conflicts with `docs/architecture/mental-model.md`,
 > `docs/configuration.md`, or `.strategist/agent-protocol.md`, those sources win.
 
 ## Cognitive Runtime, Self-Learning and AI Agent Convergence

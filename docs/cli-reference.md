@@ -300,7 +300,7 @@ strategist dojo check critical-hit --files-only
 strategist dojo list
 ```
 
-For full pipeline execution with synthetic input, use the `/strategist dojo <scenario>` skill via Claude Agent. See `docs/strategist-concepts.md#dojo`.
+For full pipeline execution with synthetic input, use the `/strategist dojo <scenario>` skill via Claude Agent. See `docs/architecture/strategist-concepts.md#dojo`.
 
 ---
 

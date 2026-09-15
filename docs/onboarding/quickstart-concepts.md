@@ -53,9 +53,9 @@ Examples are available as completed mission packages under `.analysis/refined/`;
 
 ## Choose the next reference
 
-- [Mental model](../mental-model.md) — why the pipeline and Gate exist.
-- [Core concepts](../strategist-concepts.md) — routes, roles, providers, abilities, handoffs, and Dojo.
-- [Architecture](../architecture.md) — implementation structure and runtime model.
+- [Mental model](../architecture/mental-model.md) — why the pipeline and Gate exist.
+- [Core concepts](../architecture/strategist-concepts.md) — routes, roles, providers, abilities, handoffs, and Dojo.
+- [Architecture](../architecture/overview.md) — implementation structure and runtime model.
 - [Configuration](../configuration.md) — profiles, slots, paths, and languages.
 - [CLI reference](../cli-reference.md) — installation, compilation, checks, and maintenance.
 - [Generated reference index](../generated/) — always-current contracts, schemas, CLI commands, and telemetry events, regenerated deterministically from source (`make docs-generate`; see [ADR-0025](../adr/0025-generated-documentation-anti-drift.md)).

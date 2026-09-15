@@ -36,6 +36,7 @@ lookup by topic fast without moving any file.
 | [0035](0035-embedded-weapon-fallback-policy.md) | Embedded weapon roster and fallback notification policy |
 | [0036](0036-openspec-explore-canonical-role-correction.md) | openspec-explore's canonical role: ranger, not archivist |
 | [0037](0037-wizard-role-binding-persistence.md) | Wizard role binding persistence (discovery + refinement) |
+| [0038](0038-docs-information-architecture-and-mandate-layer.md) | Docs information architecture and mandate layer |
 
 ### Knowledge & Jewels
 

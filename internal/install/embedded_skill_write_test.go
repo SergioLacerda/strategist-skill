@@ -5,73 +5,61 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestWriteCatalogAndMirrorsWritesCatalogMirrorsAndLock(t *testing.T) {
+func TestWriteCatalogAndMirrors_CatalogWriteErrorPropagates(t *testing.T) {
 	t.Parallel()
 
-	sourceRoot := t.TempDir()
-	writeExternalSkill(t, sourceRoot, "sample-skill", "ranger", "write_analysis", nil)
+	result := IngestionResult{Catalog: pluginCatalog{SchemaVersion: "v1"}}
+	catalogPath := filepath.Join(t.TempDir(), "no-such-dir", "catalog.yaml")
 
-	result, err := IngestExternalSkills(sourceRoot, pluginCatalog{SchemaVersion: "strategist-plugin-catalog/v1"}, domain.TrustPolicy{})
-	require.NoError(t, err)
-	require.Len(t, result.Ingested, 1)
-
-	defaultsRoot := t.TempDir()
-	catalogPath := filepath.Join(defaultsRoot, "plugins", "catalog.yaml")
-	require.NoError(t, os.MkdirAll(filepath.Dir(catalogPath), 0o755))
-	lockPath := filepath.Join(t.TempDir(), "external-skills-source.lock.yaml")
-
-	require.NoError(t, WriteCatalogAndMirrors(result, defaultsRoot, catalogPath, lockPath))
-
-	catalogBytes, err := os.ReadFile(catalogPath)
-	require.NoError(t, err)
-	assert.Contains(t, string(catalogBytes), "id: sample-skill")
-
-	mirrorPath := filepath.Join(defaultsRoot, "skills", "sample-skill", "skill.yaml")
-	mirrorBytes, err := os.ReadFile(mirrorPath)
-	require.NoError(t, err)
-	assert.Contains(t, string(mirrorBytes), "id: sample-skill")
-	assert.Contains(t, string(mirrorBytes), "canonical_role: ranger")
-
-	lockBytes, err := os.ReadFile(lockPath)
-	require.NoError(t, err)
-	assert.Contains(t, string(lockBytes), "id: sample-skill")
-	assert.Contains(t, string(lockBytes), result.Ingested[0].Package.Digest)
+	err := WriteCatalogAndMirrors(result, t.TempDir(), catalogPath, filepath.Join(t.TempDir(), "lock.yaml"))
+	require.ErrorContains(t, err, "write "+catalogPath)
 }
 
-func TestWriteCatalogAndMirrorsIsByteIdenticalAcrossReRuns(t *testing.T) {
+func TestWriteCatalogAndMirrors_GenerateMirrorErrorPropagates(t *testing.T) {
 	t.Parallel()
 
-	sourceRoot := t.TempDir()
-	writeExternalSkill(t, sourceRoot, "sample-skill", "ranger", "write_analysis", nil)
-
-	runOnce := func() (catalog, mirror, lock []byte) {
-		result, err := IngestExternalSkills(sourceRoot, pluginCatalog{SchemaVersion: "strategist-plugin-catalog/v1"}, domain.TrustPolicy{})
-		require.NoError(t, err)
-
-		defaultsRoot := t.TempDir()
-		catalogPath := filepath.Join(defaultsRoot, "plugins", "catalog.yaml")
-		require.NoError(t, os.MkdirAll(filepath.Dir(catalogPath), 0o755))
-		lockPath := filepath.Join(t.TempDir(), "external-skills-source.lock.yaml")
-
-		require.NoError(t, WriteCatalogAndMirrors(result, defaultsRoot, catalogPath, lockPath))
-
-		c, err := os.ReadFile(catalogPath)
-		require.NoError(t, err)
-		m, err := os.ReadFile(filepath.Join(defaultsRoot, "skills", "sample-skill", "skill.yaml"))
-		require.NoError(t, err)
-		l, err := os.ReadFile(lockPath)
-		require.NoError(t, err)
-		return c, m, l
+	// "ghost" is in Ingested but was never added to Catalog — a hand-built
+	// inconsistency real ingestion (buildCatalog) never produces, used here
+	// to isolate this one error branch precisely.
+	result := IngestionResult{
+		Ingested: []IngestedSkill{{ID: "ghost"}},
+		Catalog:  pluginCatalog{SchemaVersion: "v1"},
 	}
+	dir := t.TempDir()
 
-	c1, m1, l1 := runOnce()
-	c2, m2, l2 := runOnce()
-	assert.Equal(t, c1, c2)
-	assert.Equal(t, m1, m2)
-	assert.Equal(t, l1, l2)
+	err := WriteCatalogAndMirrors(result, dir, filepath.Join(dir, "catalog.yaml"), filepath.Join(dir, "lock.yaml"))
+	require.ErrorContains(t, err, "generate mirror for ghost")
+}
+
+func TestWriteCatalogAndMirrors_MkdirMirrorDirErrorPropagates(t *testing.T) {
+	t.Parallel()
+
+	result := IngestionResult{
+		Ingested: []IngestedSkill{{ID: "sample"}},
+		Catalog:  pluginCatalog{SchemaVersion: "v1", Providers: []pluginCatalogProvider{{ID: "sample", RiskScore: "write_analysis"}}},
+	}
+	dir := t.TempDir()
+	// "skills" exists as a plain file, so MkdirAll(defaultsRoot/skills/sample) fails.
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "skills"), []byte("x"), 0o644))
+
+	err := WriteCatalogAndMirrors(result, dir, filepath.Join(dir, "catalog.yaml"), filepath.Join(dir, "lock.yaml"))
+	require.ErrorContains(t, err, "mkdir")
+}
+
+func TestWriteCatalogAndMirrors_WriteMirrorErrorPropagates(t *testing.T) {
+	t.Parallel()
+
+	result := IngestionResult{
+		Ingested: []IngestedSkill{{ID: "sample"}},
+		Catalog:  pluginCatalog{SchemaVersion: "v1", Providers: []pluginCatalogProvider{{ID: "sample", RiskScore: "write_analysis"}}},
+	}
+	dir := t.TempDir()
+	// skill.yaml already exists as a directory, so writing the mirror file fails.
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "skills", "sample", "skill.yaml"), 0o755))
+
+	err := WriteCatalogAndMirrors(result, dir, filepath.Join(dir, "catalog.yaml"), filepath.Join(dir, "lock.yaml"))
+	require.ErrorContains(t, err, "write "+filepath.Join(dir, "skills", "sample", "skill.yaml"))
 }

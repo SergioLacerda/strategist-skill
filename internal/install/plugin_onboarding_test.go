@@ -224,6 +224,34 @@ providers:
 	require.ErrorContains(t, err, "ranger")
 }
 
+func TestApplyPluginBinding_CreatesNewBindingWhenNoneExists(t *testing.T) {
+	t.Parallel()
+
+	store := lifecycle.NewStore()
+	desired := domain.SlotBinding{Slot: "discovery", InstalledInstanceID: "brainstorming", Status: "enabled"}
+
+	require.NoError(t, applyPluginBinding(store, desired, func(domain.SlotBinding, domain.InstalledInstance) bool { return true }))
+
+	binding, ok := store.Binding("discovery")
+	require.True(t, ok)
+	assert.Equal(t, "brainstorming", binding.InstalledInstanceID)
+	assert.Equal(t, int64(0), binding.Generation)
+}
+
+func TestApplyPluginBinding_PlannedInstanceMissing(t *testing.T) {
+	t.Parallel()
+
+	store := lifecycle.NewStore()
+	store.Bindings = []domain.SlotBinding{{Slot: "discovery", InstalledInstanceID: "old-instance", Generation: 1, Status: "enabled"}}
+	// No matching entry in store.Inventory.Instances for "new-instance".
+	desired := domain.SlotBinding{Slot: "discovery", InstalledInstanceID: "new-instance", Status: "enabled"}
+
+	err := applyPluginBinding(store, desired, func(domain.SlotBinding, domain.InstalledInstance) bool { return true })
+	require.Error(t, err)
+	require.ErrorContains(t, err, "planned_instance_missing")
+	require.ErrorContains(t, err, "new-instance")
+}
+
 type wizardCatalogExtractor struct {
 	catalog []byte
 }
