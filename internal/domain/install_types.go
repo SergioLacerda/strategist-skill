@@ -37,15 +37,11 @@ type TreasureChest struct {
 // .strategist/skills/<provider>/skill.yaml, materialized by the installer for
 // default providers or placed manually for custom ones.
 type ProviderManifest struct {
-	ID                     string `yaml:"id"`
-	Status                 string `yaml:"status"`
-	RiskScore              string `yaml:"risk_score"`
-	Category               string `yaml:"category"`
-	ProviderClass          string `yaml:"provider_class"`
-	SpecializationTaxonomy struct {
-		CanonicalRole string `yaml:"canonical_role"`
-		ProviderClass string `yaml:"provider_class"`
-	} `yaml:"specialization_taxonomy"`
+	ID            string `yaml:"id"`
+	Status        string `yaml:"status"`
+	RiskScore     string `yaml:"risk_score"`
+	Category      string `yaml:"category"`
+	CanonicalRole string `yaml:"canonical_role"`
 }
 
 // WizardConfig holds values collected from the interactive install wizard.
@@ -67,4 +63,12 @@ type WizardConfig struct {
 	// wizard (see TestWizardDoesNotAskPermissionLevel): set this field when constructing
 	// WizardConfig programmatically, or edit active.yaml by hand after install.
 	AdrCanonicalPath string
+	// ResolvedPluginLock is the discovery/refinement role→weapon binding
+	// state resolved by the Role/Provider migration during this wizard run
+	// (docs/adr/0037-wizard-role-binding-persistence.md). Zero-value
+	// (empty Bindings) means the migration was not fully resolved this run
+	// and nothing should be persisted — applyWizardConfig checks
+	// len(Bindings) > 0 before writing plugins.lock, so a partial/failed
+	// resolution never overwrites a previously good persisted binding.
+	ResolvedPluginLock PluginLockFile
 }

@@ -36,6 +36,9 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `scout` — Report Scout routing metrics
 - `mission` — Report and inspect mission-level facts this binary cannot observe directly
   - `report-usage` — Record real token usage for a mission, reported by the invoking agent
+- `plugins` — Inspect and evaluate Strategist plugin enforcement
+  - `evaluate-write` — Report whether a write to --target is enforceably allowed under the active connector
+  - `prepare-embedded` — Ingest external-skills-source/ into the embedded plugin catalog
 - `runbook` — Operate on the typed docs/runbooks/*.runbook.yaml corpus
   - `select` — Select applicable runbooks for the given mission signals
 - `sync-governance` — Sync .strategist/skill.yaml with active SDD governance mandates

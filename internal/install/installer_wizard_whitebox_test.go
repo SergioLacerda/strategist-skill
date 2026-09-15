@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/i18n"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/term"
@@ -46,6 +47,36 @@ func TestInstall_WizardPath(t *testing.T) {
 	require.ErrorIs(t, err, os.ErrNotExist)
 }
 
+// TestInstall_WizardPath_PersistsPluginLock proves ADR-0037's DEC-001 end to
+// end: a real `strategist install` (wizard mode) run against a scratch
+// workspace produces plugins.lock with resolved bindings for both the
+// discovery and refinement slots, rather than the resolution being computed
+// and discarded on every invocation
+// (.analysis/refined/20260913-wizard-plugin-lifecycle-persistence-gap/).
+func TestInstall_WizardPath_PersistsPluginLock(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	svc := newSvcW(t, "en\nen\npt-BR\nen\nepic\n/workspace\nbrainstorming\narchivist\nsdd-ask\n\n")
+	require.NoError(t, svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true}))
+
+	data, err := os.ReadFile(filepath.Join(dir, ".strategist", "plugins.lock"))
+	require.NoError(t, err)
+	s := string(data)
+	assert.Contains(t, s, "schema_version: strategist-plugin-lock-file/v1")
+	assert.Contains(t, s, "slot: discovery")
+	assert.Contains(t, s, "slot: refinement")
+	lockFile, err := readPluginLockFile(filepath.Join(dir, ".strategist"))
+	require.NoError(t, err)
+	assert.NotEmpty(t, lockFile.Lock.GraphDigest)
+	assert.Len(t, lockFile.Lock.Nodes, 6)
+	_, ok := findSlotBinding(lockFile.Bindings, "discovery")
+	assert.True(t, ok)
+	_, ok = findSlotBinding(lockFile.Bindings, "refinement")
+	assert.True(t, ok)
+	_, ok = findSlotBinding(lockFile.Bindings, "execution")
+	assert.False(t, ok)
+}
+
 func TestInstall_WizardPath_WithChest(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
@@ -80,17 +111,17 @@ func TestInstall_WizardPath_Defaults(t *testing.T) {
 	assert.NotContains(t, s, "adr_enabled")
 	assert.NotContains(t, s, "execution_mode")
 	assert.NotContains(t, s, "git_persistence_mode")
+	// The wizard defaults to the embedded weapons affiliated with each role;
+	// fixed role checkpoints still own handoff normalization.
 	assert.Contains(t, s, "discovery: brainstorming")
-	assert.Contains(t, s, "refinement: archivist")
+	assert.Contains(t, s, "refinement: openspec-propose")
 	assert.Contains(t, s, "execution: sniper")
 
-	brainstorming, err := os.ReadFile(filepath.Join(dir, ".strategist", "skills", "brainstorming", "skill.yaml"))
+	_, err = os.Stat(filepath.Join(dir, ".strategist", "skills", "brainstorming", "skill.yaml"))
 	require.NoError(t, err)
-	assert.Contains(t, string(brainstorming), "id: brainstorming")
-	assert.Contains(t, string(brainstorming), "risk_score: write_analysis")
-
-	// archivist is the native refinement role, not an installable skill package —
-	// accepting defaults must not require a separately installed openspec-explore.
+	_, err = os.Stat(filepath.Join(dir, ".strategist", "skills", "openspec-propose", "skill.yaml"))
+	require.NoError(t, err)
+	// openspec-explore is not selected by defaults — it must not be materialized.
 	_, err = os.Stat(filepath.Join(dir, ".strategist", "skills", "openspec-explore", "skill.yaml"))
 	require.ErrorIs(t, err, os.ErrNotExist)
 }
@@ -133,7 +164,7 @@ func TestRunWizard_EOFPrompts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := runWizard(context.Background(), p(tt.input), minimalExtractor{})
+			_, err := runWizard(context.Background(), p(tt.input), minimalExtractor{}, "")
 			require.Error(t, err)
 			assert.ErrorContains(t, err, tt.wantError)
 		})
@@ -191,7 +222,7 @@ func TestInstall_WizardPath_AwarenessRefresherCalled(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	called := false
-	svc := newSvcW(t, "en\nen\npt-BR\nen\nepic\n/workspace\nyes\nbrainstorming\narchivist\nsdd-ask\n\n")
+	svc := newSvcW(t, "en\nen\npt-BR\nen\nepic\n/workspace\nbrainstorming\nopenspec-propose\narchivist\nsdd-ask\n\n")
 	svc.AwarenessRefresher = func(strategistRoot, projectRoot, _ string) bool {
 		called = true
 		assert.Equal(t, filepath.Join(dir, ".strategist"), strategistRoot)
@@ -202,10 +233,41 @@ func TestInstall_WizardPath_AwarenessRefresherCalled(t *testing.T) {
 	assert.True(t, called, "AwarenessRefresher must be called after wizard install")
 }
 
+// TestPromptSlots_UnknownProviderPrintsWarning exercises promptSlots directly
+// rather than the full runWizard: validateProvider's "not in the known
+// plugin catalog" warning is non-blocking at prompt time, but (correctly,
+// per docs/adr/0029-external-skill-provider-lifecycle.md §4) an
+// unresolved-to-the-catalog provider is unconditionally rejected later in
+// runWizard by planPluginOnboarding's own catalog-membership check — the two
+// are different, independent gates, and this test's scope is only the
+// prompt-time warning, not full wizard completion (see
+// TestRunWizardBlocksOnUnresolvedCustomSkill for the later, hard-blocking gate).
 func TestPromptSlots_UnknownProviderPrintsWarning(t *testing.T) {
 	t.Parallel()
-	input := "en\nen\nen\nen\nepic\n.analysis\ncustom-ranger\nopenspec-explore\nsdd-ask\n\n"
-	wc, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(input)), minimalExtractor{})
+	b := i18n.BundleFor("en")
+	input := "custom-ranger\nopenspec-explore\nsdd-ask\n\n"
+	catalog, err := parseCatalogBytes([]byte(minimalCatalogYAML))
 	require.NoError(t, err)
-	assert.Equal(t, "custom-ranger", wc.DiscoveryProvider)
+	discovery, refinement, execution, err := promptSlots(NewTextPrompter(strings.NewReader(input)), b, catalog, knownProviderRisk)
+	require.NoError(t, err)
+	assert.Equal(t, "custom-ranger", discovery)
+	assert.Equal(t, "openspec-explore", refinement)
+	assert.Equal(t, nativeExecutionProvider, execution)
+}
+
+// TestRunWizardBlocksOnUnresolvedCustomSkill covers docs/adr/0029's converse
+// case from TestPromptSlots_UnknownProviderPrintsWarning above: a slot
+// provider that is neither a known registry/catalog entry nor resolvable as
+// an already-installed workspace skill must hard-block the full wizard run
+// (checkCustomSkillAvailability, the first of runWizard's two independent
+// catalog-membership/local-resolution gates — see planPluginOnboarding for
+// the second, stricter one), not just warn.
+func TestRunWizardBlocksOnUnresolvedCustomSkill(t *testing.T) {
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir) // no skill installed under homeDir — deliberately unresolvable
+
+	input := "en\nen\nen\nen\nepic\n.analysis\ndefinitely-not-a-real-installed-skill-id-xyz\nopenspec-explore\nsdd-ask\n\n"
+	_, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(input)), minimalExtractor{}, "")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "configured_unverified")
 }

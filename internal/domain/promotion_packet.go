@@ -43,44 +43,44 @@ const (
 type PromotionPacket struct {
 	// PacketID is a unique, stable identifier for this candidate (e.g. a
 	// slug derived from OriginMissionID plus a short description).
-	PacketID string
+	PacketID string `yaml:"packet_id"`
 
 	// OriginMissionID backlinks to the mission whose discovery/refinement
 	// pass first surfaced this candidate. This doubles as the "backlink to
 	// originating mission" the packet needs — the mission that raised the
 	// candidate is the backlink target, so there is no separate field for
 	// it.
-	OriginMissionID string
+	OriginMissionID string `yaml:"origin_mission_id"`
 
 	// TriggerReason is why this candidate was raised: the observed
 	// condition or pattern that suggests a runbook or ADR is missing.
-	TriggerReason string
+	TriggerReason string `yaml:"trigger_reason"`
 
 	// Procedure is the candidate's proposed steps, in the shape of a
 	// runbook's analysis/verification list — a first-draft procedure
 	// sketch, not yet a curated docs/runbooks/*.runbook.yaml sidecar.
-	Procedure []string
+	Procedure []string `yaml:"procedure,omitempty"`
 
 	// VerificationChecks are the checks a reviewer should confirm hold
 	// before promoting this packet, analogous to a runbook's Checks.
-	VerificationChecks []string
+	VerificationChecks []string `yaml:"verification_checks,omitempty"`
 
 	// SuggestedOwner is who the originating mission believes should review
 	// or own this candidate (a role name, a team, or "unassigned").
-	SuggestedOwner string
+	SuggestedOwner string `yaml:"suggested_owner"`
 
 	// CreatedAt is when this packet was raised — the aging clock's zero
 	// point; see EvaluatePromotionPacketAging.
-	CreatedAt time.Time
+	CreatedAt time.Time `yaml:"created_at"`
 
 	// ExpiresAt is an optional, packet-declared hard deadline after which
 	// the candidate should be discarded outright, distinct from the
 	// generic aging window: aging is a flag that applies to every pending
 	// packet regardless of whether it declares its own deadline.
-	ExpiresAt *time.Time
+	ExpiresAt *time.Time `yaml:"expires_at,omitempty"`
 
 	// Status is the packet's current lifecycle position.
-	Status PromotionPacketStatus
+	Status PromotionPacketStatus `yaml:"status"`
 }
 
 // PromotionPacketAgingDecision reports how long a packet has been open and

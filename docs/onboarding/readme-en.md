@@ -72,7 +72,7 @@ For full pipeline/contracts/schema details: [readme-detailed-en.md](readme-detai
 ```yaml
 slots:
   discovery: brainstorming
-  refinement: openspec-explore
+  refinement: openspec-propose
   execution: sniper
 ```
 
@@ -94,9 +94,9 @@ Expected contracts:
 - [readme-detailed-en.md](readme-detailed-en.md)
 - [configuration.md](../configuration.md)
 - [cli-reference.md](../cli-reference.md)
-- [architecture.md](../architecture.md)
-- [skill-internals.md](../skill-internals.md)
-- [c4-diagrams.md](../c4-diagrams.md)
+- [architecture.md](../architecture/overview.md)
+- [skill-internals.md](../architecture/skill-internals.md)
+- [c4-diagrams.md](../architecture/c4-diagrams.md)
 - [adr/](../adr/)
 - [embedded runtime defaults](../../internal/embed/defaults/SKILL.md)
 - [embedded protocol stub](../../internal/embed/defaults/protocol.md)

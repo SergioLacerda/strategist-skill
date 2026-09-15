@@ -22,9 +22,13 @@ func resetCheckFlags(t *testing.T) {
 
 func compileMinimalCheckRoot(t *testing.T, dir string) {
 	t.Helper()
-	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "roles", "default.yaml"),
-		[]byte("discovery: brainstorming\nrefinement: openspec-explore\nexecution: sdd-ask\n"), 0o644))
+	// roles/default.yaml is already written by minimalCheckRoot with the
+	// correct slot->native-role mapping (discovery: ranger, refinement:
+	// archivist, execution: sniper) — roles/default.yaml keys by role name,
+	// never by the configured skill provider id, so it must not be
+	// overwritten here with provider ids (that broke the always-run
+	// embedded-weapon binding check, which reads this same file — see
+	// check_weapon_bindings.go#verifyOneWeaponBinding).
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "knowledge.index.yaml"), []byte("sources: []\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "index.yaml"), []byte("load_always: []\nload_by_task_type: {}\n"), 0o644))
 

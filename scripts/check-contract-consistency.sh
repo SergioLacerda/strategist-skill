@@ -43,7 +43,7 @@ require_contains docs/adr/0005-slot-write-contracts.md 'The `write_pending` cont
 require_contains docs/configuration.md '| `discovery` | `write_analysis` |'
 require_contains docs/configuration.md '| `refinement` | `write_analysis` |'
 require_contains docs/configuration.md '| `execution` | `controlled` |'
-require_contains docs/c4-diagrams.md '| Slot `discovery` (Ranger) | pluggable | `write_analysis` |'
+require_contains docs/architecture/c4-diagrams.md '| Slot `discovery` (Ranger) | pluggable | `write_analysis` |'
 require_contains tests/spec/specs/slot-contracts.feature "Roles: Ranger=write_analysis, Archivist=write_analysis, Sniper=controlled"
 
 require_absent_regex docs/onboarding/readme-en.md 'CI-passing|version-1\.0'
@@ -51,7 +51,7 @@ require_contains docs/onboarding/readme-en.md 'actions/workflows/test.yml/badge.
 require_contains docs/onboarding/readme-en.md 'img.shields.io/github/v/release/SergioLacerda/strategist-skill'
 
 for pkg in dojo governance integrity i18n runtimefs treasure validate; do
-  require_contains docs/architecture.md "  ${pkg}/"
+  require_contains docs/architecture/overview.md "  ${pkg}/"
 done
 
 if [[ "$violations" -ne 0 ]]; then

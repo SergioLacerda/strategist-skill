@@ -22,7 +22,6 @@ properties:
   status:
     type: enum
     values: [enabled, disabled, quarantined]
-  native_fallback: {type: string}
 forbidden_authorities:
   - artifact_source
   - trusted_publishers

@@ -139,6 +139,45 @@ func TestPluginTelemetryEventSupportsDeprecationReason(t *testing.T) {
 	assert.Equal(t, "upstream_eol", event.Attributes["strategist.plugin.reason_code"])
 }
 
+func TestRoleBindingTelemetryEventCarriesResolvedOutcome(t *testing.T) {
+	t.Parallel()
+
+	event := conformance.RoleBindingTelemetryEvent(conformance.RoleBindingTelemetryInput{
+		EventName:  "resolved",
+		Role:       "ranger",
+		Slot:       "discovery",
+		ProviderID: "brainstorming",
+		Source:     "embedded",
+		Compatible: true,
+	})
+
+	require.NoError(t, event.Validate())
+	assert.Equal(t, "strategist.role_binding.resolved", event.Name)
+	assert.Equal(t, telemetry.SeverityInfo, event.SeverityNumber)
+	assert.Equal(t, "ranger", event.Attributes["strategist.role_binding.role"])
+	assert.Equal(t, "brainstorming", event.Attributes["strategist.role_binding.provider_id"])
+	assert.Equal(t, "embedded", event.Attributes["strategist.role_binding.source"])
+	assert.Equal(t, true, event.Attributes["strategist.role_binding.compatible"])
+}
+
+func TestRoleBindingTelemetryEventCarriesCollisionOutcomeWithoutAResolvedProvider(t *testing.T) {
+	t.Parallel()
+
+	event := conformance.RoleBindingTelemetryEvent(conformance.RoleBindingTelemetryInput{
+		EventName:  "id_shadowing",
+		Role:       "ranger",
+		Slot:       "discovery",
+		Compatible: false,
+		ReasonCode: "id_shadowing: id=brainstorming sources=embedded,external requires an explicit shadow override",
+	})
+
+	require.NoError(t, event.Validate())
+	assert.Equal(t, "strategist.role_binding.id_shadowing", event.Name)
+	assert.Empty(t, event.Attributes["strategist.role_binding.provider_id"])
+	assert.Equal(t, false, event.Attributes["strategist.role_binding.compatible"])
+	assert.Contains(t, event.Attributes["strategist.role_binding.reason_code"], "id_shadowing")
+}
+
 func validCertificationRecord() conformance.CertificationRecord {
 	return conformance.CertificationRecord{
 		SchemaVersion:   "strategist-plugin-certification/v1",

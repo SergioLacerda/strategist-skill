@@ -25,6 +25,19 @@ GOCACHE ?= /tmp/go-build-cache
 GOPATH_BIN          := $(shell go env GOPATH | tr '\134' '/')/bin
 
 GOLANGCI_LINT       := $(shell which golangci-lint 2>/dev/null || echo $(GOPATH_BIN)/golangci-lint)
+
+# Pinned to go.mod's own `toolchain` line so AST/SSA-based tools (golangci-lint's
+# bundled go/types checker, govulncheck's x/tools SSA builder) always analyze
+# against the exact Go version they were built for. GOTOOLCHAIN=auto only
+# upgrades when the system `go` is OLDER than this pin -- a system `go` that
+# races ahead of it (e.g. a distro shipping a very recent/prerelease point
+# release) is used as-is otherwise, which can make these tools panic on AST
+# shapes they weren't built to understand (observed: golangci-lint failing to
+# type-check stdlib packages; govulncheck's ssa builder panicking with
+# "unexpected expr: *ast.KeyValueExpr"). An explicit, non-"auto" GOTOOLCHAIN
+# value always switches to (downloading if needed) exactly that version, in
+# either direction, sidestepping the skew regardless of what the system `go` is.
+PINNED_GOTOOLCHAIN  := $(shell awk '/^toolchain /{print $$2}' go.mod)
 GOVULNCHECK         := $(shell which govulncheck 2>/dev/null || echo $(GOPATH_BIN)/govulncheck)
 GOCOGNIT            := $(shell which gocognit 2>/dev/null || echo $(GOPATH_BIN)/gocognit)
 GORELEASER          := $(shell which goreleaser 2>/dev/null || echo $(GOPATH_BIN)/goreleaser)

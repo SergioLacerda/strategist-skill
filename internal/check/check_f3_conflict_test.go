@@ -135,6 +135,71 @@ func TestEmitF3ConflictAttributionSignals_ReadRecentMaterializationsError(t *tes
 	}
 }
 
+func TestEmitF3ConflictAttributionSignals_EmitsClaimCollisionSignal(t *testing.T) {
+	// no t.Parallel() — mutates package global and slog default
+	root := filepath.Join(t.TempDir(), ".strategist")
+	now := time.Date(2026, 9, 5, 12, 0, 0, 0, time.UTC)
+	claimPath := telemetry.SniperClaimHistoryPath(root)
+	for _, rec := range []telemetry.SniperClaimRecord{
+		{MissionID: "m-1", BasePath: ".analysis", TargetPath: "docs/a.md", ClaimedAt: now.Add(-time.Hour)},
+		{MissionID: "m-2", BasePath: ".analysis", TargetPath: "docs/a.md", ClaimedAt: now.Add(-time.Minute)},
+	} {
+		if err := telemetry.AppendSniperClaim(claimPath, rec); err != nil {
+			t.Fatalf("append claim: %v", err)
+		}
+	}
+
+	origReader := readGitConflictedPaths
+	readGitConflictedPaths = func(string) ([]string, error) { return nil, nil }
+	t.Cleanup(func() { readGitConflictedPaths = origReader })
+
+	var buf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo})))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+
+	if err := emitF3ConflictAttributionSignals(root, ".analysis", now); err != nil {
+		t.Fatalf("emit f3 signals: %v", err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "signal=sniper_claim_collision") {
+		t.Fatalf("expected claim collision signal to be emitted, got: %s", out)
+	}
+	if !strings.Contains(out, "docs/a.md") {
+		t.Fatalf("expected target path in emitted signal, got: %s", out)
+	}
+}
+
+func TestEmitF3ConflictAttributionSignals_ReadRecentClaimsError(t *testing.T) {
+	// no t.Parallel() — mutates package global readGitConflictedPaths
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod not reliable on windows")
+	}
+	origReader := readGitConflictedPaths
+	readGitConflictedPaths = func(string) ([]string, error) { return nil, nil }
+	t.Cleanup(func() { readGitConflictedPaths = origReader })
+
+	root := filepath.Join(t.TempDir(), ".strategist")
+	claimPath := telemetry.SniperClaimHistoryPath(root)
+	if err := os.MkdirAll(filepath.Dir(claimPath), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(claimPath, []byte(`{"mission_id":"m"}`), 0o000); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	if os.Getuid() == 0 {
+		t.Skip("running as root — file permission checks do not apply")
+	}
+
+	err := emitF3ConflictAttributionSignals(root, ".analysis", time.Now())
+	if err == nil {
+		t.Fatal("expected error for unreadable claim history file")
+	}
+	if !strings.Contains(err.Error(), "read recent sniper claims") {
+		t.Fatalf("expected wrapped context, got: %v", err)
+	}
+}
+
 func TestReadGitConflictedPathsFromWorktree_CleanRepoSuccess(t *testing.T) {
 	t.Parallel()
 	if _, err := exec.LookPath("git"); err != nil {

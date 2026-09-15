@@ -16,7 +16,7 @@ language: pt
 # Edit provider ids here to change slot plugins. Preflight validates risk_score contracts.
 slots:
   discovery: brainstorming         # Ranger  — write_analysis contract
-  refinement: openspec-explore     # Archivist — write_analysis contract
+  refinement: openspec-propose     # Archivist — write_analysis contract (docs/adr/0035-embedded-weapon-fallback-policy.md)
   execution: sniper                # Sniper  — built-in native role (customize to swap slot plugin)
 
 # Treasure chests — scoped knowledge sources passed to each slot at invocation.

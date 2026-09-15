@@ -114,7 +114,7 @@ See [SECURITY.md](SECURITY.md) for the vulnerability disclosure policy.
 - [Detailed documentation (English)](docs/onboarding/readme-detailed-en.md)
 - [CLI reference](docs/cli-reference.md)
 - [Configuration](docs/configuration.md)
-- [Architecture](docs/architecture.md)
+- [Architecture](docs/architecture/overview.md)
 
 ## License
 

@@ -24,10 +24,13 @@ describes Ranger's behavior after that selection.
 | `diagnostic` | investigate a failure, mismatch, or blocked runtime | root-cause candidates, evidence, next check |
 | `closure_evidence` | gather evidence for possible close/move to `done` | closure verdict, residuals, move recommendation |
 
-Resolution of which concrete invocation target handles a given subtype (the
-configured external discovery plugin vs. the native `internal_skills/ranger`
-role) is defined in `00-routing.md` § Discovery Weapon Resolution by Subtype —
-Ranger's own behavior below is identical regardless of which mechanism invoked it.
+The configured discovery weapon is flexible input to the fixed Ranger role.
+Ranger's normalization, checkpoint, lock, state, and handoff behavior below is
+identical regardless of which weapon is selected.
+
+The weapon result is untrusted. Ranger must normalize it into the pending
+artifact, validate the required handoff schema and control metadata, and stop
+with an explicit error when any checkpoint, state, lock, or log condition fails.
 
 ## Inputs
 

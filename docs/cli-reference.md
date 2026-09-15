@@ -223,7 +223,7 @@ STATUS
 
 SLOTS   
   discovery    brainstorming
-  refinement   openspec-explore
+  refinement   openspec-propose
   execution    sniper
 
 PERSONA   
@@ -239,7 +239,7 @@ READINESS
 
 SLOTS
   discovery    provider=brainstorming       status=ready
-  refinement   provider=openspec-explore    status=ready
+  refinement   provider=openspec-propose    status=ready
   execution    provider=sniper              status=ready
 
 PERSONA
@@ -300,7 +300,7 @@ strategist dojo check critical-hit --files-only
 strategist dojo list
 ```
 
-For full pipeline execution with synthetic input, use the `/strategist dojo <scenario>` skill via Claude Agent. See `docs/strategist-concepts.md#dojo`.
+For full pipeline execution with synthetic input, use the `/strategist dojo <scenario>` skill via Claude Agent. See `docs/architecture/strategist-concepts.md#dojo`.
 
 ---
 

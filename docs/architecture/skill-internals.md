@@ -5,9 +5,9 @@
 
 This document describes the internal components of the Strategist skill runtime: the sub-skills automatically invoked by the orchestrator, the phase contracts, and the input/output schemas.
 
-For the general pipeline and slot behavior, see `docs/architecture.md`.
+For the general pipeline and slot behavior, see [`overview.md`](overview.md).
 For the canonical reading order of contracts, see `internal/embed/defaults/SKILL.md` and `docs/adr/0010-ordered-contracts-and-mission-observability.md`.
-For configuration, see [configuration.md](configuration.md).
+For configuration, see [configuration.md](../configuration.md).
 
 ---
 
@@ -111,7 +111,7 @@ separate Scout capability.
 **Output:** a `route_decision` (role, selected_route, route_reason,
 route_confidence, evidence_state, discovery_subtype, fallback_route,
 gate_required) — logged/telemetered, never written as a `pending/` artifact. See
-`docs/strategist-concepts.md` § Scout — Intake Router and
+[`strategist-concepts.md`](strategist-concepts.md) § Scout — Intake Router and
 `internal_skills/scout/SKILL.md` for the full contract.
 
 ---
@@ -250,7 +250,7 @@ full documents (or, for `index`-generated candidates, the virtual
 `mission-history` chest). Each jewel carries a lifecycle `status`: `proposed`
 (agent- or `index`-generated, low-trust hint), `accepted` or `verified` (human-
 curated via `mine`, preferred reusable runtime knowledge), or `deprecated`
-(terminal — never promoted back). See [Jewels](cli-reference.md#jewels) for the
+(terminal — never promoted back). See [Jewels](../cli-reference.md#jewels) for the
 full schema.
 
 **`index`** is the internalized offline mining pipeline: it scans full documents

@@ -12,9 +12,10 @@ import (
 //
 // This is the first of two signals named in ADR-0008 § F3 revisit tripwire
 // (docs/adr/0008-single-session-assumption.md). The other — two or more
-// distinct Sniper sessions claiming the same target — is not instrumented
-// here: it would require a cross-session claim registry, which ADR-0008
-// itself, and this signal's own approved scope, explicitly rule out.
+// distinct Sniper sessions claiming the same target — is implemented in
+// sniper_claim.go (SniperClaimRecord/DetectClaimCollisions), reading an
+// append-only claim history rather than requiring a live cross-session
+// claim registry.
 const f3ConflictThreshold = 3
 
 // SniperConflictSignal reports a Git conflict attributed to a documentation

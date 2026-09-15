@@ -56,6 +56,57 @@ func TestPlanUpgrade_FreshRoot_EverythingMissing(t *testing.T) {
 	}
 }
 
+func TestPlanUpgrade_HashEmbeddedPathsErrorPropagates(t *testing.T) {
+	t.Parallel()
+
+	svc := Service{Extractor: alwaysErrExtractor{}, Lister: alwaysAllPathsLister{[]string{"a.yaml"}}}
+
+	_, err := svc.PlanUpgrade(t.TempDir())
+	require.Error(t, err)
+	require.ErrorContains(t, err, "upgrade: read embedded")
+}
+
+func TestPlanUpgrade_LoadInstallManifestErrorPropagates(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, domain.InstallManifestRelPath), []byte("not json"), 0o644))
+	svc := upgradeTestService(map[string][]byte{"a.yaml": []byte("v1")})
+
+	_, err := svc.PlanUpgrade(dir)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "install: parse manifest")
+}
+
+func TestPlanUpgrade_ResolvePathErrorPropagates(t *testing.T) {
+	t.Parallel()
+
+	svc := upgradeTestService(map[string][]byte{"../escape.yaml": []byte("v1")})
+	_, err := svc.PlanUpgrade(t.TempDir())
+	require.Error(t, err)
+	require.ErrorContains(t, err, "upgrade: resolve")
+}
+
+func TestPlanUpgrade_ReadCurrentHashErrorPropagates(t *testing.T) {
+	skipIfPermissionTestUnsupported(t)
+	t.Parallel()
+
+	dir := t.TempDir()
+	locked := filepath.Join(dir, "a.yaml")
+	require.NoError(t, os.WriteFile(locked, []byte("x"), 0o000))
+	t.Cleanup(func() { _ = os.Chmod(locked, 0o644) })
+
+	svc := upgradeTestService(map[string][]byte{"a.yaml": []byte("v1")})
+	_, err := svc.PlanUpgrade(dir)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "upgrade: read a.yaml")
+}
+
+// alwaysAllPathsLister returns a fixed path list regardless of the backing extractor.
+type alwaysAllPathsLister struct{ paths []string }
+
+func (l alwaysAllPathsLister) AllPaths() ([]string, error) { return l.paths, nil }
+
 func TestPlanUpgrade_RequiresLister(t *testing.T) {
 	t.Parallel()
 
@@ -241,4 +292,191 @@ func TestListUpgradeBackups_EmptyWhenNoneTaken(t *testing.T) {
 	stamps, err := ListUpgradeBackups(t.TempDir())
 	require.NoError(t, err)
 	assert.Empty(t, stamps)
+}
+
+func TestListUpgradeBackups_ResolveErrorPropagates(t *testing.T) {
+	t.Parallel()
+
+	_, err := ListUpgradeBackups("")
+	require.Error(t, err)
+	require.ErrorContains(t, err, "resolve backup dir")
+}
+
+func TestListUpgradeBackups_ReadDirErrorPropagates(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	// upgradeBackupRelDir exists as a plain file, so os.ReadDir fails with
+	// something other than "not exist" (which is otherwise tolerated as
+	// "no backups yet").
+	require.NoError(t, os.WriteFile(filepath.Join(dir, upgradeBackupRelDir), []byte("x"), 0o644))
+
+	_, err := ListUpgradeBackups(dir)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "list backups")
+}
+
+func TestRollbackUpgrade_ResolveErrorPropagates(t *testing.T) {
+	t.Parallel()
+
+	_, err := RollbackUpgrade("", "some-stamp")
+	require.Error(t, err)
+	require.ErrorContains(t, err, "resolve backup")
+}
+
+func TestRollbackUpgrade_ReadFileErrorPropagates(t *testing.T) {
+	skipIfPermissionTestUnsupported(t)
+	t.Parallel()
+
+	dir := t.TempDir()
+	backupDir := filepath.Join(dir, upgradeBackupRelDir, "20260101T000000Z")
+	require.NoError(t, os.MkdirAll(backupDir, 0o755))
+	locked := filepath.Join(backupDir, "a.yaml")
+	require.NoError(t, os.WriteFile(locked, []byte("x"), 0o000))
+	t.Cleanup(func() { _ = os.Chmod(locked, 0o644) })
+
+	_, err := RollbackUpgrade(dir, "20260101T000000Z")
+	require.Error(t, err)
+	require.ErrorContains(t, err, "read backup")
+}
+
+func TestRollbackUpgrade_WriteErrorPropagates(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	backupDir := filepath.Join(dir, upgradeBackupRelDir, "20260101T000000Z")
+	require.NoError(t, os.MkdirAll(filepath.Join(backupDir, "blocked"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(backupDir, "blocked", "a.yaml"), []byte("x"), 0o644))
+	// "blocked" exists at the restore target as a plain file, so the restore
+	// target's parent directory cannot be created.
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "blocked"), []byte("x"), 0o644))
+
+	_, err := RollbackUpgrade(dir, "20260101T000000Z")
+	require.Error(t, err)
+	require.ErrorContains(t, err, "restore blocked")
+}
+
+func TestWriteUpgradeFile_ReadEmbeddedErrorPropagates(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	svc := upgradeTestService(map[string][]byte{}) // "missing.yaml" not in the embedded set
+	err := svc.writeUpgradeFile(dir, "missing.yaml")
+	require.Error(t, err)
+	require.ErrorContains(t, err, "read embedded")
+}
+
+func TestWriteUpgradeFile_ResolveErrorPropagates(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	svc := upgradeTestService(map[string][]byte{"../escape.yaml": []byte("x")})
+	err := svc.writeUpgradeFile(dir, "../escape.yaml")
+	require.Error(t, err)
+	require.ErrorContains(t, err, "resolve")
+}
+
+func TestWriteUpgradeFile_WriteErrorPropagates(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	// "blocked" exists as a plain file, so writeUpgradeFile's target
+	// (blocked/a.yaml) cannot have its parent directory created.
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "blocked"), []byte("x"), 0o644))
+
+	svc := upgradeTestService(map[string][]byte{"blocked/a.yaml": []byte("x")})
+	err := svc.writeUpgradeFile(dir, "blocked/a.yaml")
+	require.Error(t, err)
+	require.ErrorContains(t, err, "write blocked/a.yaml")
+}
+
+func TestApplyUpgrade_WriteFileErrorPropagates(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	svc := upgradeTestService(map[string][]byte{})
+	plan := UpgradePlan{Entries: []UpgradePlanEntry{{Path: "missing.yaml", State: domain.UpgradeMissing}}}
+
+	_, err := svc.ApplyUpgrade(dir, plan, false)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "read embedded")
+}
+
+func TestApplyUpgrade_SnapshotErrorPropagates(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	svc := upgradeTestService(map[string][]byte{"../escape.yaml": []byte("x")})
+	plan := UpgradePlan{Entries: []UpgradePlanEntry{{Path: "../escape.yaml", State: domain.UpgradeAutoUpgrade}}}
+
+	_, err := svc.ApplyUpgrade(dir, plan, false)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "snapshot before write")
+}
+
+func TestApplyUpgrade_SaveManifestErrorPropagates(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(dir, 0o755))
+	// The manifest target already exists as a directory, so the final
+	// atomicWriteFile rename in saveInstallManifest fails.
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, domain.InstallManifestRelPath), 0o755))
+
+	svc := upgradeTestService(map[string][]byte{})
+	_, err := svc.ApplyUpgrade(dir, UpgradePlan{}, false)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "save manifest")
+}
+
+func TestSnapshotBeforeUpgrade(t *testing.T) {
+	t.Parallel()
+	var svc Service
+
+	t.Run("resolve backup dir error", func(t *testing.T) {
+		t.Parallel()
+		_, err := svc.snapshotBeforeUpgrade("", []string{"a.yaml"})
+		require.Error(t, err)
+		require.ErrorContains(t, err, "resolve backup dir")
+	})
+
+	t.Run("resolve src path error", func(t *testing.T) {
+		t.Parallel()
+		_, err := svc.snapshotBeforeUpgrade(t.TempDir(), []string{"../escape.yaml"})
+		require.Error(t, err)
+		require.ErrorContains(t, err, "resolve ../escape.yaml")
+	})
+
+	t.Run("missing file is skipped, not an error", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		backupDir, err := svc.snapshotBeforeUpgrade(dir, []string{"never-existed.yaml"})
+		require.NoError(t, err)
+		assert.NoFileExists(t, filepath.Join(backupDir, "never-existed.yaml"))
+	})
+
+	t.Run("unreadable file propagates a read error", func(t *testing.T) {
+		skipIfPermissionTestUnsupported(t)
+		t.Parallel()
+		dir := t.TempDir()
+		target := filepath.Join(dir, "locked.yaml")
+		require.NoError(t, os.WriteFile(target, []byte("x"), 0o000))
+		t.Cleanup(func() { _ = os.Chmod(target, 0o644) })
+
+		_, err := svc.snapshotBeforeUpgrade(dir, []string{"locked.yaml"})
+		require.Error(t, err)
+		require.ErrorContains(t, err, "snapshot read locked.yaml")
+	})
+
+	t.Run("copies file content into a fresh timestamped backup dir", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "a.yaml"), []byte("content"), 0o644))
+
+		backupDir, err := svc.snapshotBeforeUpgrade(dir, []string{"a.yaml"})
+		require.NoError(t, err)
+		got, err := os.ReadFile(filepath.Join(backupDir, "a.yaml"))
+		require.NoError(t, err)
+		assert.Equal(t, "content", string(got))
+	})
 }

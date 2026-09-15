@@ -11,11 +11,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"testing"
 	"text/tabwriter"
 
-	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -108,28 +106,26 @@ func TestPrintCheckSuccess_ClosedStdoutErrors(t *testing.T) {
 	}
 
 	withClosedStdout(t, func() {
-		require.Error(t, printCheckSuccess("/tmp/root", providers, resolutions, "epic", domain.ResolutionPolicyAsk))
+		require.Error(t, printCheckSuccess("/tmp/root", providers, resolutions, "epic", nil))
 	})
 }
 
 // --- writeCheckSlotsSection / writeCheckPolicySection (ADR-0028) ---
 
-func TestPrintCheckSuccess_ReportsFallbackAndPolicy(t *testing.T) {
+func TestPrintCheckSuccess_ReportsBindingAndPolicy(t *testing.T) {
 	providers := map[string]string{"discovery": "brainstorming", "refinement": "openspec-explore", "execution": "sniper"}
 	resolutions := map[string]slotResolution{
 		"discovery":  {kind: slotResolutionSkillProvider},
-		"refinement": {kind: slotResolutionSkillProvider, fallbackProvider: "archivist", fallbackPath: "/root/roles/archivist.yaml"},
+		"refinement": {kind: slotResolutionSkillProvider},
 		"execution":  {kind: slotResolutionNativeRole},
 	}
 
 	out := captureStdout(t, func() {
-		require.NoError(t, printCheckSuccess("/tmp/root", providers, resolutions, "epic", domain.ResolutionPolicyNative))
+		require.NoError(t, printCheckSuccess("/tmp/root", providers, resolutions, "epic", nil))
 	})
-	assert.Contains(t, out, "fallback=archivist(native_role)")
-	assert.Equal(t, 1, strings.Count(out, "fallback="), "only the refinement row should carry a fallback annotation")
-	assert.Contains(t, out, "provider_resolution")
-	assert.Contains(t, out, "native")
-	assert.NotContains(t, out, "(default)") // explicit policy set — no "(default)" suffix
+	assert.Contains(t, out, "binding=valid")
+	assert.NotContains(t, out, "fallback=")
+	assert.NotContains(t, out, "provider_resolution")
 }
 
 func TestPrintCheckSuccess_DefaultPolicyAnnotated(t *testing.T) {
@@ -141,27 +137,23 @@ func TestPrintCheckSuccess_DefaultPolicyAnnotated(t *testing.T) {
 	}
 
 	out := captureStdout(t, func() {
-		require.NoError(t, printCheckSuccess("/tmp/root", providers, resolutions, "epic", ""))
+		require.NoError(t, printCheckSuccess("/tmp/root", providers, resolutions, "epic", nil))
 	})
-	assert.Contains(t, out, "ask (default)")
-	assert.NotContains(t, out, "fallback=") // native_role resolutions never carry a fallback
+	assert.NotContains(t, out, "provider_resolution")
+	assert.NotContains(t, out, "fallback=")
 }
 
-func TestPrintCheckSuccess_ReportsPolicyOutcomePerSlot(t *testing.T) {
+func TestPrintCheckSuccess_DoesNotReportFallbackPolicyOutcome(t *testing.T) {
 	providers := map[string]string{"discovery": "brainstorming", "refinement": "openspec-explore", "execution": "sniper"}
 	resolutions := map[string]slotResolution{
-		// discovery: fallback available, but must always report outcome=always_native_no_policy
-		// regardless of the configured policy (00-routing.md § Discovery Weapon Resolution by Subtype).
-		"discovery":  {kind: slotResolutionSkillProvider, fallbackProvider: "ranger", fallbackPath: "/root/roles/ranger.yaml"},
-		"refinement": {kind: slotResolutionSkillProvider, fallbackProvider: "archivist", fallbackPath: "/root/roles/archivist.yaml"},
+		"discovery":  {kind: slotResolutionSkillProvider},
+		"refinement": {kind: slotResolutionSkillProvider},
 		"execution":  {kind: slotResolutionNativeRole},
 	}
 
 	out := captureStdout(t, func() {
-		require.NoError(t, printCheckSuccess("/tmp/root", providers, resolutions, "epic", domain.ResolutionPolicyAsk))
+		require.NoError(t, printCheckSuccess("/tmp/root", providers, resolutions, "epic", nil))
 	})
-	assert.Contains(t, out, "fallback=ranger(native_role)")
-	assert.Contains(t, out, "outcome=always_native_no_policy")
-	assert.Contains(t, out, "fallback=archivist(native_role)")
-	assert.Contains(t, out, "outcome=ask_required")
+	assert.NotContains(t, out, "fallback=")
+	assert.NotContains(t, out, "outcome=")
 }

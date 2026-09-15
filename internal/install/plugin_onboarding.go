@@ -2,11 +2,13 @@ package install
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/plugins"
 	"github.com/SergioLacerda/strategist-skill/internal/plugins/lifecycle"
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
 
 type pluginOnboardingPlan struct {
@@ -16,11 +18,19 @@ type pluginOnboardingPlan struct {
 	Inventory            domain.PluginInventory
 	Bindings             []domain.SlotBinding
 	Changes              []string
+	// RoleMigration is the Role/Provider convergence preview for the same
+	// slots (tasks.md Task 4.1/4.2, strategist-papeis-personagens-skills-nativas).
+	// It is additive evidence over the legacy Lock/Bindings above, never a
+	// replacement for them (Decision 4: lifecycle reuse) — a role/provider
+	// resolution failure for one slot never fails plugin onboarding as a
+	// whole, since the legacy catalog/lock resolution above already is the
+	// authoritative gate for whether a slot's provider is usable.
+	RoleMigration RoleProviderMigrationPreview
 }
 
 type pluginProbeFunc func(domain.SlotBinding, domain.InstalledInstance) bool
 
-func planPluginOnboarding(catalog pluginCatalog, slots map[string]string) (pluginOnboardingPlan, error) {
+func planPluginOnboarding(extractor domain.FileExtractor, catalog pluginCatalog, slots map[string]string) (pluginOnboardingPlan, error) {
 	requirements := make([]plugins.Requirement, 0, len(slots))
 	for _, slot := range sortedSlotNames(slots) {
 		provider := slots[slot]
@@ -43,6 +53,20 @@ func planPluginOnboarding(catalog pluginCatalog, slots map[string]string) (plugi
 		return pluginOnboardingPlan{}, err
 	}
 	changes := changesFromBindings(bindings)
+
+	roleMigration, err := PlanRoleProviderMigration(extractor, slots)
+	if err != nil {
+		return pluginOnboardingPlan{}, fmt.Errorf("resolve role/provider bindings: %w", err)
+	}
+	for _, entry := range roleMigration.Entries {
+		if entry.ResolutionError != "" {
+			continue
+		}
+		lock.Nodes = append(lock.Nodes, plugins.RoleBindingLockNode(entry.Resolved))
+	}
+	lock.GraphDigest = plugins.DigestLockNodes(lock.Nodes)
+	lock.ResolutionID = lock.GraphDigest
+
 	return pluginOnboardingPlan{
 		SchemaVersion:        "strategist-plugin-onboarding-plan/v1",
 		RequiresConfirmation: true,
@@ -50,7 +74,25 @@ func planPluginOnboarding(catalog pluginCatalog, slots map[string]string) (plugi
 		Inventory:            domain.PluginInventory{SchemaVersion: "strategist-plugin-inventory/v1", Instances: instances},
 		Bindings:             bindings,
 		Changes:              changes,
+		RoleMigration:        roleMigration,
 	}, nil
+}
+
+// logRoleBindingEvidence logs one line per role/provider binding evidence
+// event (resolved, id_shadowing, role_binding_missing, role_binding_ambiguous)
+// through the same slog-based, standalone-safe boundary applyWizardConfig
+// already uses for its own install narration (tasks.md Task 6.1). This is a
+// real, non-test call site — RoleBindingTelemetryEvent/Evidence() previously
+// had none.
+func logRoleBindingEvidence(events []telemetry.Event) {
+	for _, ev := range events {
+		attrs := make([]any, 0, len(ev.Attributes)*2+2)
+		attrs = append(attrs, telemetry.AttrComponent, "install")
+		for k, v := range ev.Attributes {
+			attrs = append(attrs, k, v)
+		}
+		slog.Info(ev.Name, attrs...)
+	}
 }
 
 func (p pluginOnboardingPlan) Preview() string {

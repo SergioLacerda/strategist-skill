@@ -133,6 +133,6 @@ skill to propose changes through the pipeline.
 
 ## Getting help
 
-- Read `docs/mental-model.md` for how Strategist thinks about missions
-- Read `docs/architecture.md` for the component layout
+- Read `docs/architecture/mental-model.md` for how Strategist thinks about missions
+- Read `docs/architecture/overview.md` for the component layout
 - Open an issue on GitHub for bugs or questions

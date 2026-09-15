@@ -5,6 +5,13 @@
 
 ## Current Baseline
 
+This is **curated experience memory, not autonomous self-learning**:
+outcomes are recorded and jewels move through an explicit
+`proposed → accepted → verified → deprecated` lifecycle
+([ADR-0012](adr/0012-jewel-lifecycle-statuses.md)), but nothing here
+retrains a model or mutates behavior without a human curation step
+([ADR-0004](adr/0004-learning-loop-nao-bloqueante.md)).
+
 The current learning pipeline remains intentionally simple:
 
 - mission outcomes are appended to `.strategist/memory/outcomes.tmp`

@@ -1,0 +1,69 @@
+schema_version: "1"
+runbook_id: changelog-shipped-verification
+runbook_type: operational
+source_doc: docs/runbooks/changelog-shipped-verification.md
+
+applies_when:
+  - >-
+    You are preparing a CHANGELOG.md [Unreleased] section and need to
+    confirm whether a specific bullet describes work that has already
+    shipped in a prior tagged release.
+
+objective: >-
+  Confirm whether a CHANGELOG bullet describes work already released, using
+  a repeatable git/GitHub-API procedure instead of reading full project
+  history from scratch.
+
+preconditions:
+  - >-
+    GitHub Release bodies (goreleaser's raw commit-list format) do not map
+    1:1 to CHANGELOG.md's curated prose bullets — semantic matching (step 1)
+    is still required; this procedure narrows where to look, it does not
+    fully automate the match.
+
+verification:
+  - >-
+    Identify a candidate commit that introduced the feature/change described
+    by the bullet: `git log -S"<distinctive phrase or code token>" --oneline
+    -- <path>`, or `git log --diff-filter=A --oneline -- <path>` if the
+    bullet describes a whole new file/feature.
+  - >-
+    `git tag --contains <commit-sha>`, sorted by version — the first
+    (oldest) tag listed is the earliest release containing that commit.
+  - >-
+    Cross-check the release-boundary size: `git log <tag_n>..<tag_n+1>
+    --oneline | wc -l` — a tag range with very few, non-`feat:` commits
+    strongly implies nothing substantial shipped in that gap, corroborating
+    that a bullet must have shipped earlier.
+  - >-
+    Optional corroboration: fetch the published GitHub Release body via the
+    public API (`curl -s
+    https://api.github.com/repos/<owner>/<repo>/releases/tags/<tag>`, no
+    auth needed for a public repo) to confirm goreleaser's auto-generated
+    commit-list notes independently agree with the `git tag --contains`
+    result.
+
+decision_gates:
+  - id: single-use-procedure
+    statement: >-
+      This procedure has exactly one verified use (mission
+      20260831-release-v1014-docs-refresh, confirming several [Unreleased]
+      bullets had already shipped). Confidence would rise with a second
+      successful, independently-shaped application — treat this as a first
+      draft, not a fully validated procedure, until then.
+
+checks:
+  - id: candidate-commit-identified
+    level: mandatory
+  - id: tag-contains-checked
+    level: mandatory
+  - id: boundary-size-corroborated
+    level: recommended
+  - id: github-release-cross-checked
+    level: conditional
+    when: "a public GitHub Release exists for the candidate tag"
+
+metadata:
+  version: 1
+  reviewed_at: "2026-09-05"
+  status: first_draft

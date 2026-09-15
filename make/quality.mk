@@ -5,7 +5,7 @@
 	cover cover-gate cover-html test-report
 
 lint: fmt-check
-	$(GOLANGCI_LINT) run ./...
+	GOTOOLCHAIN=$(PINNED_GOTOOLCHAIN) $(GOLANGCI_LINT) run ./...
 	@$(MAKE) complexity-report
 	@$(MAKE) go-file-size-report
 
@@ -28,7 +28,7 @@ install-govulncheck:
 	GOCACHE=$(GOCACHE) go install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION)
 
 vuln:
-	$(GOVULNCHECK) ./...
+	GOTOOLCHAIN=$(PINNED_GOTOOLCHAIN) $(GOVULNCHECK) ./...
 
 vuln-ci: install-govulncheck vuln
 

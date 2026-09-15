@@ -27,7 +27,6 @@ type SlotBinding struct {
 	GrantID             string `yaml:"grant_id,omitempty"`
 	Generation          int64  `yaml:"generation"`
 	Status              string `yaml:"status"`
-	NativeFallback      string `yaml:"native_fallback,omitempty"`
 }
 
 // TrustPolicy is consumer-owned verification policy.
@@ -84,6 +83,23 @@ type PluginLockNode struct {
 	ID     string `yaml:"id"`
 	Kind   string `yaml:"kind"`
 	Digest string `yaml:"digest"`
+}
+
+// PluginLockFileSchemaVersion is the schema_version stamped on plugins.lock,
+// the on-disk envelope persisting a resolved role/provider binding across
+// `strategist install` invocations (docs/adr/0037-wizard-role-binding-persistence.md).
+const PluginLockFileSchemaVersion = "strategist-plugin-lock-file/v1"
+
+// PluginLockFile is the on-disk envelope for a lifecycle.Store's durable
+// state: which instances are installed and which slot currently binds to
+// which instance. It intentionally excludes a Store's Transactions/Dependents
+// maps — those are per-run activation journal state, not durable
+// configuration to persist across invocations.
+type PluginLockFile struct {
+	SchemaVersion string          `yaml:"schema_version"`
+	Lock          PluginLock      `yaml:"lock"`
+	Inventory     PluginInventory `yaml:"inventory"`
+	Bindings      []SlotBinding   `yaml:"bindings"`
 }
 
 // PluginTransaction journals lifecycle transitions.

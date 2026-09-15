@@ -28,6 +28,29 @@ func emitF3ConflictAttributionSignals(strategistRoot, basePath string, now time.
 	for _, signal := range telemetry.SniperConflictSignals(basePath, conflicted, records) {
 		telemetry.EmitSniperConflictSignal(signal)
 	}
+	return emitF3ClaimCollisionSignals(strategistRoot, now)
+}
+
+// emitF3ClaimCollisionSignals surfaces ADR-0008 F3's other tripwire signal —
+// two or more distinct missions claiming the same target — from recorded
+// claim history (memory/sniper-claims.jsonl). This is the Git-conflict
+// signal's sibling above, following the same "strategist check reads
+// recorded history and emits" pattern rather than live write-path
+// interception, since no live Go call site claims a target today (Sniper is
+// a parent-agent-embodied native role — see policy.EvaluateWrite's own doc
+// comment).
+func emitF3ClaimCollisionSignals(strategistRoot string, now time.Time) error {
+	claims, err := telemetry.ReadRecentSniperClaims(
+		telemetry.SniperClaimHistoryPath(strategistRoot),
+		now,
+		telemetry.SniperClaimWindow,
+	)
+	if err != nil {
+		return fmt.Errorf("read recent sniper claims: %w", err)
+	}
+	for _, signal := range telemetry.DetectClaimCollisions(claims) {
+		telemetry.EmitClaimCollisionSignal(signal)
+	}
 	return nil
 }
 

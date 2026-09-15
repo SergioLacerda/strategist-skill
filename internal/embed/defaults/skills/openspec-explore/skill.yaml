@@ -1,16 +1,12 @@
 id: openspec-explore
-version: "1.0.0"
+version: "1.0"
 schema_version: "1"
 status: active
 risk_score: write_analysis
-category: refinement
-provider_class: rankeado
+category: discovery
+canonical_role: ranger
+roles:
+  - ranger
 
 description: >
-  Refinement provider for Strategist. Consumes discovery output, structures the
-  implementation approach, and writes analysis artifacts within the Strategist
-  write_analysis boundary.
-
-specialization_taxonomy:
-  canonical_role: archivist
-  provider_class: rankeado
+  Enter explore mode - a thinking partner for exploring ideas, investigating problems, and clarifying requirements. Use when the user wants to think through something before or during a change.

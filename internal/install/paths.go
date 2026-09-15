@@ -20,15 +20,25 @@ const (
 	strategistSkillName       = "strategist"
 	claudeDirName             = ".claude"
 
-	defaultDiscoveryProvider = "brainstorming"
-	// defaultRefinementProvider is the native archivist role, not the externally
-	// hosted openspec-explore skill: openspec-explore passes strategist check's
-	// static validation but isn't reliably installed in typical agent
-	// environments, which is what forced a manual active.yaml edit in mission
-	// 20260819-drift-native-refinement-diagnostic. archivist works out of the box.
-	defaultRefinementProvider = "archivist"
-	nativeExecutionProvider   = "sniper"
+	// nativeExecutionProvider is always the native sniper role — execution
+	// has no configurable "default skill" the way discovery/refinement do
+	// (see promptSlots and defaultSkillBySlot below).
+	nativeExecutionProvider = "sniper"
 )
+
+// defaultSkillBySlot is the named default-skill variable per slot (DEC-004,
+// mission 20260913-wizard-hardcoded-fallback-maps-cleanup), superseding the prior
+// separate defaultDiscoveryProvider/defaultRefinementProvider constants.
+//
+// refinement's value is the embedded weapon openspec-propose, not the
+// archivist native role: openspec-propose already produces a
+// proposal/design/tasks package mirroring Archivist's own output contract
+// (DEC-001). If the selected weapon is unavailable or invalid, the Wizard and
+// strategist check fail closed; the native role is never substituted.
+var defaultSkillBySlot = map[string]string{
+	"discovery":  "brainstorming",
+	"refinement": "openspec-propose",
+}
 
 // shimRelPath is the shim location under an agent's home config root, e.g.
 // "skills/strategist/SKILL.md" under ~/.claude, ~/.gemini, or ~/.codex.

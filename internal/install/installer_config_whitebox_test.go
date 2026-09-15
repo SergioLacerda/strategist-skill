@@ -218,3 +218,36 @@ func TestWriteActiveYAML_ReadOnlyDir(t *testing.T) {
 	})
 	require.Error(t, err)
 }
+
+// slottedTemplateExtractor extends minimalExtractor with an epic-standalone
+// template that declares real default discovery/refinement/execution slots
+// (minimalExtractor's own template omits slots entirely), so a silent
+// install can exercise activateSilentRoleProviderBindings' full success path
+// instead of only its early "no slots configured" / "catalog unreadable"
+// failure branches, which every other silent-install test above already covers.
+type slottedTemplateExtractor struct {
+	minimalExtractor
+}
+
+func (e slottedTemplateExtractor) ReadFile(relPath string) ([]byte, error) {
+	if relPath == "templates/epic-standalone.yaml" {
+		return []byte("mode: epic\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n  refinement: openspec-propose\n  execution: sniper\n"), nil
+	}
+	return e.minimalExtractor.ReadFile(relPath)
+}
+
+func TestApplySilentConfig_ActivatesRoleProviderBindings(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	svc := Service{Extractor: slottedTemplateExtractor{}, Compiler: nopCompiler{}, ShimHomeDir: t.TempDir()}
+	require.NoError(t, svc.Install(context.Background(), domain.InstallConfig{Target: dir, Silent: true}))
+
+	lockPath := filepath.Join(dir, ".strategist", "plugins.lock")
+	lockData, err := os.ReadFile(lockPath)
+	require.NoError(t, err, "silent install must persist plugins.lock for its default discovery/refinement providers")
+	assert.Contains(t, string(lockData), "brainstorming")
+	assert.Contains(t, string(lockData), "openspec-propose")
+
+	assert.FileExists(t, filepath.Join(dir, ".strategist", "skills", "brainstorming", "skill.yaml"))
+	assert.FileExists(t, filepath.Join(dir, ".strategist", "skills", "openspec-propose", "skill.yaml"))
+}

@@ -1,12 +1,9 @@
 package install
 
 import (
-	"context"
 	"fmt"
-	"strings"
 	"testing"
 
-	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -50,33 +47,34 @@ func TestLoadKnownProviders(t *testing.T) {
 	})
 }
 
-// partialExtractor serves minimalExtractor files but fails for the given path.
+// partialExtractor serves minimalExtractor files but fails for the given
+// path(s). failPaths supersedes the legacy single failPath field when set.
 type partialExtractor struct {
-	failPath string
+	failPath  string
+	failPaths map[string]bool
 }
 
 func (p partialExtractor) Extract(targetDir string, overwrite bool) error {
 	return minimalExtractor{}.Extract(targetDir, overwrite)
 }
 func (p partialExtractor) ReadFile(relPath string) ([]byte, error) {
-	if relPath == p.failPath {
+	if relPath == p.failPath || p.failPaths[relPath] {
 		return nil, fmt.Errorf("partialExtractor: injected failure for %s", relPath)
 	}
 	return minimalExtractor{}.ReadFile(relPath)
 }
 
+// TestWriteSelectedProviderManifests_ReadFileFails proves manifest writing
+// fails closed when the catalog cannot be read; no legacy manifest fallback is
+// consulted.
 func TestWriteSelectedProviderManifests_ReadFileFails(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	svc := Service{
-		Extractor:   partialExtractor{failPath: "skills/brainstorming/skill.yaml"},
-		Compiler:    nopCompiler{},
-		ShimHomeDir: t.TempDir(),
-		WizardPrompter: NewTextPrompter(strings.NewReader(
-			"en\nen\nen\nen\nepic\n.analysis\nyes\nbrainstorming\nopenspec-explore\nsdd-ask\n\n",
-		)),
-	}
-	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
+	ext := partialExtractor{failPaths: map[string]bool{
+		pluginCatalogPath: true,
+	}}
+	svc := Service{Extractor: ext, Compiler: nopCompiler{}, ShimHomeDir: t.TempDir()}
+	err := svc.writeSelectedProviderManifest(dir, "brainstorming")
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "brainstorming")
 }

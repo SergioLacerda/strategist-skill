@@ -17,7 +17,7 @@ This system was reverse-engineered from the project's own canonical landing page
   - `readme.md` / `readme_en.md` — product overview, the canonical pipeline (`Ranger → Archivist → approval gate → Sniper`), install flow, slot config, credits (PT-BR is the primary language).
   - `readme_detailed.md` / `readme_detailed_en.md` — the deep technical spec: full mission pipeline, internal flow, personas, knowledge system, slot contracts, SDD integration, stop conditions, forbidden behaviors, drift self-correction. **The authority for every product fact in this guide.**
   - `strategist/SKILL.md`, `strategist/protocol.md`, `strategist/skill.yaml`, `strategist/personas/`, `strategist/roles/` — the slot definitions (Ranger, Archivist, Sniper), persona voices (`epic`, `pragmatic`), and the routing contract.
-  - `docs/architecture.md`, `docs/c4-diagrams.md`, `docs/fluxo-*.png` — flow diagrams.
+  - `docs/architecture/overview.md`, `docs/architecture/c4-diagrams.md`, `docs/fluxo-*.png` — flow diagrams.
 - **Hosted docs / landing:** <https://sergiolacerda.github.io/strategist-skill/>
 - **Governance integration (optional):** Strategist is **standalone by default** and can plug into a governance harness — the **SDD Harness** — documented in its own `readme_detailed*` *SDD Integration* section: SDD injects the execution (Sniper) slot, `base_path`, extra `knowledge_paths`, and a read-only `governance_context`. This is what the console's *Integration with governance models* promise refers to.
 - **Authors:** Sergio Lacerda & Raphael Vernil. **License:** CC BY-NC 4.0 (commercial use requires prior authorization).

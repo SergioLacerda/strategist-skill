@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -126,8 +127,9 @@ func TestRunWizard(t *testing.T) {
 			wantCodeLang:   "en",
 			wantMode:       "epic",
 			wantBase:       ".analysis",
+			// Defaults select the embedded weapon affiliated with each fixed role.
 			wantDiscovery:  "brainstorming",
-			wantRefinement: "archivist",
+			wantRefinement: "openspec-propose",
 			wantExecution:  "sniper",
 			wantChestPath:  "",
 		},
@@ -157,7 +159,7 @@ func TestRunWizard(t *testing.T) {
 			wantMode:       "pragmatic",
 			wantBase:       ".",
 			wantDiscovery:  "brainstorming",
-			wantRefinement: "archivist",
+			wantRefinement: "openspec-propose",
 			wantExecution:  "sniper",
 			wantChestPath:  "",
 		},
@@ -166,7 +168,7 @@ func TestRunWizard(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			wc, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(tt.input)), minimalExtractor{})
+			wc, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(tt.input)), minimalExtractor{}, t.TempDir())
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantUILanguage, wc.UILanguage)
 			assert.Equal(t, tt.wantDocLang, wc.DocLanguage)
@@ -182,14 +184,100 @@ func TestRunWizard(t *testing.T) {
 	}
 }
 
+// TestRunWizardBlocksOnUnreadableCatalog covers docs/adr/0035-embedded-weapon-fallback-policy.md's
+// decision: an unreadable plugins/catalog.yaml must hard-block the wizard
+// before any prompt is shown, never silently degrade to the hardcoded
+// installableDefaultProviders/knownProviderRisk maps.
+func TestRunWizardBlocksOnUnreadableCatalog(t *testing.T) {
+	t.Parallel()
+	ext := partialExtractor{failPath: pluginCatalogPath}
+	// Empty input: if the wizard prompted even once before blocking, the
+	// reader would be exhausted and TextPrompter would return an unrelated
+	// EOF-shaped error instead of the plugin-catalog error asserted below.
+	_, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader("")), ext, "")
+	require.Error(t, err)
+	require.ErrorContains(t, err, "plugin catalog")
+	assert.ErrorContains(t, err, "no longer falls back to hardcoded defaults silently")
+}
+
 func TestWizardDoesNotAskPermissionLevel(t *testing.T) {
 	t.Parallel()
 	// Input has no legacy execution_mode / apply_workspace / git_persistence_mode / adr tokens.
 	// 10 prompts: ui/doc/chat/code/mode/base/discovery/refinement/execution/chest
 	// If the wizard still prompts for execution mode or ADR, the input will be exhausted and the test errors.
 	input := "en\nen\npt-BR\nen\nepic\n.analysis\nbrainstorming\nopenspec-explore\nsdd-ask\n\n"
-	wc, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(input)), minimalExtractor{})
+	wc, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(input)), minimalExtractor{}, t.TempDir())
 	require.NoError(t, err)
 	assert.Equal(t, "epic", wc.Mode)
 	assert.Equal(t, "brainstorming", wc.DiscoveryProvider)
+}
+
+func TestValidateWizardRoleBindings_ReportsTheFailingEntrysResolutionError(t *testing.T) {
+	t.Parallel()
+	preview := RoleProviderMigrationPreview{Entries: []RoleProviderPreviewEntry{
+		{Slot: "discovery", RoleName: "ranger", Resolved: domain.ProviderBinding{Compatibility: domain.CompatibilityResult{Compatible: true}}},
+		{Slot: "refinement", RoleName: "archivist", ResolutionError: "no compatible provider in catalog"},
+	}}
+	err := validateWizardRoleBindings(preview)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "slot=refinement")
+	require.ErrorContains(t, err, "role=archivist")
+	require.ErrorContains(t, err, "no compatible provider in catalog")
+}
+
+func TestValidateWizardRoleBindings_EmptyPreviewIsUnresolved(t *testing.T) {
+	t.Parallel()
+	err := validateWizardRoleBindings(RoleProviderMigrationPreview{})
+	require.Error(t, err)
+	require.ErrorContains(t, err, "no complete role/provider binding")
+}
+
+func TestValidateWizardRoleBindings_ResolvedButIncompatibleWeaponFails(t *testing.T) {
+	t.Parallel()
+	preview := RoleProviderMigrationPreview{Entries: []RoleProviderPreviewEntry{
+		{
+			Slot:     string(domain.SlotDiscovery),
+			RoleName: "ranger",
+			Resolved: domain.ProviderBinding{
+				Provider:      domain.ProviderContract{ID: "brainstorming"},
+				Compatibility: domain.CompatibilityResult{Compatible: false},
+			},
+		},
+		{
+			Slot:     string(domain.SlotRefinement),
+			RoleName: "archivist",
+			Resolved: domain.ProviderBinding{
+				Provider:      domain.ProviderContract{ID: "openspec-propose"},
+				Compatibility: domain.CompatibilityResult{Compatible: true},
+			},
+		},
+	}}
+	err := validateWizardRoleBindings(preview)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "slot=discovery")
+	require.ErrorContains(t, err, "role=ranger")
+	require.ErrorContains(t, err, "has no compatible weapon")
+}
+
+func TestValidateWizardRoleBindings_FullyResolvedAndCompatiblePasses(t *testing.T) {
+	t.Parallel()
+	preview := RoleProviderMigrationPreview{Entries: []RoleProviderPreviewEntry{
+		{
+			Slot:     string(domain.SlotDiscovery),
+			RoleName: "ranger",
+			Resolved: domain.ProviderBinding{
+				Provider:      domain.ProviderContract{ID: "brainstorming"},
+				Compatibility: domain.CompatibilityResult{Compatible: true},
+			},
+		},
+		{
+			Slot:     string(domain.SlotExecution),
+			RoleName: "sniper",
+			Resolved: domain.ProviderBinding{
+				Provider:      domain.ProviderContract{ID: "sniper"},
+				Compatibility: domain.CompatibilityResult{Compatible: true},
+			},
+		},
+	}}
+	require.NoError(t, validateWizardRoleBindings(preview))
 }

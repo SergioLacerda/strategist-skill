@@ -1,112 +1,85 @@
 schema_version: strategist-plugin-catalog/v1
 providers:
-  - id: brainstorming
-    version: "1.0.0"
-    provider_schema_version: "1"
-    status: active
-    risk_score: write_analysis
-    category: discovery
-    provider_class: rankeado
-    canonical_role: ranger
-    installable: true
-    legacy_manifest_path: skills/brainstorming/skill.yaml
-    known_provider_class: neutral
-    compatibility_source: embedded
-    description: >
-      Configured discovery-slot metadata for Strategist (risk_score/provider-class
-      only). Discovery invocation no longer resolves to this weapon for any
-      subtype — all discovery always resolves to internal_skills/ranger (native
-      role); see contracts/narrative/00-routing.md § Discovery Weapon Resolution
-      by Subtype. A live invocation of this skill's own SKILL.md revealed
-      structural incompatibilities with Ranger's autonomous single-shot contract
-      (see .analysis/refined/20260728-ranger-drift-eval/), so this manifest no
-      longer makes any discovery-subtype capability claim.
-    auxiliary_tools_allowed:
-      - writing-plans
-
-  - id: openspec-explore
-    version: "1.0.0"
-    provider_schema_version: "1"
-    status: active
-    risk_score: write_analysis
-    category: refinement
-    provider_class: rankeado
-    canonical_role: archivist
-    installable: true
-    legacy_manifest_path: skills/openspec-explore/skill.yaml
-    known_provider_class: neutral
-    compatibility_source: embedded
-    description: >
-      Refinement provider for Strategist. Consumes discovery output, structures the
-      implementation approach, and writes analysis artifacts within the Strategist
-      write_analysis boundary.
-
-  - id: openspec-propose
-    risk_score: write_analysis
-    known_provider_class: neutral
-    compatibility_source: legacy_registry
-
-  - id: openspec-apply-change
-    risk_score: controlled
-    known_provider_class: neutral
-    compatibility_source: legacy_registry
-
-  - id: openspec-archive-change
-    risk_score: write_analysis
-    known_provider_class: neutral
-    compatibility_source: legacy_registry
-
-  - id: archivist
-    risk_score: write_analysis
-    known_provider_class: neutral
-    compatibility_source: native_role
-
-  - id: sniper
-    risk_score: controlled
-    known_provider_class: native
-    compatibility_source: native_role
-
-  - id: sdd-ask
-    risk_score: controlled
-    known_provider_class: sdd
-    compatibility_source: sdd_skill
-
-  - id: batata
-    risk_score: controlled
-    known_provider_class: sdd
-    compatibility_source: sdd_skill
-
-  - id: sdd-diagnose
-    risk_score: write_analysis
-    known_provider_class: sdd
-    compatibility_source: sdd_skill
-
-  - id: sdd-converge
-    risk_score: controlled
-    known_provider_class: sdd
-    compatibility_source: sdd_skill
-
-  - id: sdd-correct
-    risk_score: controlled
-    known_provider_class: sdd
-    compatibility_source: sdd_skill
-
-  - id: sdd-stabilize
-    risk_score: controlled
-    known_provider_class: sdd
-    compatibility_source: sdd_skill
-
-  - id: sdd-validate-governance
-    risk_score: write_analysis
-    known_provider_class: sdd
-    compatibility_source: sdd_skill
-
-  - id: sdd-organize
-    risk_score: write_analysis
-    known_provider_class: sdd
-    compatibility_source: sdd_skill
-
-  - id: sdd-review-architecture
-    risk_score: write_analysis
-    known_provider_class: sdd
-    compatibility_source: sdd_skill
+    - id: archivist
+      risk_score: write_analysis
+      compatibility_source: native_role
+    - id: batata
+      risk_score: controlled
+      compatibility_source: external
+    - id: brainstorming
+      version: 1.0.0
+      provider_schema_version: "1"
+      status: active
+      risk_score: write_analysis
+      category: discovery
+      canonical_role: ranger
+      roles:
+        - ranger
+      default: true
+      description: Flexible brainstorming weapon for Ranger discovery; Ranger owns normalization into the canonical pending artifact and handoff.
+      installable: true
+      legacy_manifest_path: skills/brainstorming/skill.yaml
+      compatibility_source: embedded
+    - id: openspec-apply-change
+      risk_score: controlled
+      compatibility_source: external
+    - id: openspec-archive-change
+      risk_score: write_analysis
+      compatibility_source: external
+    - id: openspec-explore
+      version: "1.0"
+      provider_schema_version: "1"
+      status: active
+      risk_score: write_analysis
+      category: discovery
+      canonical_role: ranger
+      roles:
+        - ranger
+      description: Enter explore mode - a thinking partner for exploring ideas, investigating problems, and clarifying requirements. Use when the user wants to think through something before or during a change.
+      installable: true
+      legacy_manifest_path: skills/openspec-explore/skill.yaml
+      compatibility_source: embedded
+    - id: openspec-propose
+      version: "1.0"
+      provider_schema_version: "1"
+      status: active
+      risk_score: write_analysis
+      category: refinement
+      canonical_role: archivist
+      roles:
+        - archivist
+      default: true
+      description: Propose a new change with all artifacts generated in one step. Use when the user wants to quickly describe what they want to build and get a complete proposal with design, specs, and tasks ready for implementation.
+      installable: true
+      legacy_manifest_path: skills/openspec-propose/skill.yaml
+      compatibility_source: embedded
+    - id: ranger
+      risk_score: write_analysis
+      compatibility_source: native_role
+    - id: sdd-ask
+      risk_score: controlled
+      compatibility_source: external
+    - id: sdd-converge
+      risk_score: controlled
+      compatibility_source: external
+    - id: sdd-correct
+      risk_score: controlled
+      compatibility_source: external
+    - id: sdd-diagnose
+      risk_score: write_analysis
+      compatibility_source: external
+    - id: sdd-organize
+      risk_score: write_analysis
+      compatibility_source: external
+    - id: sdd-review-architecture
+      risk_score: write_analysis
+      compatibility_source: external
+    - id: sdd-stabilize
+      risk_score: controlled
+      compatibility_source: external
+    - id: sdd-validate-governance
+      risk_score: write_analysis
+      compatibility_source: external
+    - id: sniper
+      risk_score: controlled
+      compatibility_source: native_role

@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/i18n"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"go.opentelemetry.io/otel/codes"
 	"gopkg.in/yaml.v3"
@@ -15,54 +14,9 @@ import (
 var defaultLangOptions = []string{"en", "pt-BR"}
 var defaultModeOptions = []string{"pragmatic", "epic"}
 
-// installableDefaultProviders lists providers that ship as an installable
-// skill.yaml template. archivist is deliberately absent here: it is the
-// native refinement role (roles/archivist.yaml), materialized like any other
-// native role, not a skill package requiring its own install manifest.
-var installableDefaultProviders = map[string]string{
-	defaultDiscoveryProvider: "skills/brainstorming/skill.yaml",
-	"openspec-explore":       "skills/openspec-explore/skill.yaml",
-}
-
-// knownProviderRisk is populated at wizard start from the embedded known-providers.yaml.
-// The static map below is the fallback used only when the embed read fails.
-var knownProviderRisk = map[string]string{
-	defaultDiscoveryProvider:  "write_analysis",
-	"openspec-explore":        "write_analysis",
-	"openspec-propose":        "write_analysis",
-	"openspec-apply-change":   "controlled",
-	"openspec-archive-change": "write_analysis",
-	nativeExecutionProvider:   "controlled",
-	"sdd-ask":                 "controlled",
-	"batata":                  "controlled",
-	"sdd-diagnose":            "write_analysis",
-	"sdd-converge":            "controlled",
-	"sdd-correct":             "controlled",
-	"sdd-stabilize":           "controlled",
-	"sdd-validate-governance": "write_analysis",
-	"sdd-organize":            "write_analysis",
-	"sdd-review-architecture": "write_analysis",
-	"archivist":               "write_analysis",
-}
-
-// loadKnownProviders reads templates/known-providers.yaml from the extractor and
-// returns a provider→risk_score map. Falls back to the static map on any error.
-func loadKnownProviders(extractor domain.FileExtractor) map[string]string {
-	if catalog, err := loadPluginCatalog(extractor); err == nil {
-		return catalogKnownProviderRisk(catalog)
-	}
-	data, err := extractor.ReadFile(knownProvidersTemplatePath)
-	if err != nil {
-		return knownProviderRisk
-	}
-	var doc struct {
-		Providers map[string]string `yaml:"providers"`
-	}
-	if err := yaml.Unmarshal(data, &doc); err != nil || len(doc.Providers) == 0 {
-		return knownProviderRisk
-	}
-	return doc.Providers
-}
+// installableDefaultProviders, knownProviderRisk, and loadKnownProviders live
+// in wizard_fallback_providers.go, split out to keep this file under the
+// repo's file-size budget.
 
 // skillConfig holds values read from the embedded skill.yaml active_config section.
 type skillConfig struct {
@@ -115,8 +69,13 @@ func validateProvider(registry map[string]string, provider, expectedRisk string)
 	return ""
 }
 
-// runWizard collects install configuration through p.
-func runWizard(ctx context.Context, p Prompter, extractor domain.FileExtractor) (_ domain.WizardConfig, retErr error) {
+// runWizard collects install configuration through p. strategistDir is the
+// target installation's .strategist directory — passed through to
+// validateAndActivatePluginPlan so a resolved Role/Provider binding can be
+// persisted to plugins.lock (docs/adr/0037-wizard-role-binding-persistence.md).
+// An empty strategistDir skips that persistence step (see
+// activateRoleProviderMigration).
+func runWizard(ctx context.Context, p Prompter, extractor domain.FileExtractor, strategistDir string) (_ domain.WizardConfig, retErr error) {
 	_, span := telemetry.Tracer().Start(ctx, "install.wizard")
 	defer func() {
 		if retErr != nil {
@@ -125,6 +84,11 @@ func runWizard(ctx context.Context, p Prompter, extractor domain.FileExtractor) 
 		}
 		span.End()
 	}()
+
+	catalog, catalogErr := loadPluginCatalog(extractor)
+	if catalogErr != nil {
+		return domain.WizardConfig{}, fmt.Errorf("wizard: %w — fix plugins/catalog.yaml (or the embedded default) before running the wizard; the wizard no longer falls back to hardcoded defaults silently (see docs/adr/0035-embedded-weapon-fallback-policy.md)", catalogErr)
+	}
 
 	providerRisk := loadKnownProviders(extractor)
 	skillCfg := loadSkillConfig(extractor)
@@ -136,7 +100,7 @@ func runWizard(ctx context.Context, p Prompter, extractor domain.FileExtractor) 
 	if err != nil {
 		return domain.WizardConfig{}, err
 	}
-	discovery, refinement, execution, err := promptSlots(p, b, providerRisk)
+	discovery, refinement, execution, err := promptSlots(p, b, catalog, providerRisk)
 	if err != nil {
 		return domain.WizardConfig{}, err
 	}
@@ -157,102 +121,65 @@ func runWizard(ctx context.Context, p Prompter, extractor domain.FileExtractor) 
 		ExecutionProvider:  execution,
 		TreasureChestPath:  chestPath,
 	}
-	if catalog, catalogErr := loadPluginCatalog(extractor); catalogErr == nil {
-		if _, planErr := planPluginOnboarding(catalog, wizardSlots(wc)); planErr != nil {
-			return domain.WizardConfig{}, fmt.Errorf("wizard: plugin onboarding plan: %w", planErr)
-		}
+	lockFile, err := validateAndActivatePluginPlan(extractor, catalog, providerRisk, wc, strategistDir)
+	if err != nil {
+		return domain.WizardConfig{}, err
 	}
+	wc.ResolvedPluginLock = lockFile
 	return wc, nil
 }
 
-func promptLanguages(p Prompter, skillCfg skillConfig) (uiLang, docLang, chatLang, codeLang string, b i18n.WizardStrings, err error) {
-	uiLang, err = p.Select("Preferred language / Idioma preferido", "en", skillCfg.LangOptions)
-	if err != nil {
-		err = fmt.Errorf("wizard: ui_language: %w", err)
-		return
+// validateAndActivatePluginPlan runs every catalog-dependent Wizard check and
+// activation step once a valid plugins/catalog.yaml has loaded: Task 6's
+// custom-skill availability pause, the legacy plugin onboarding plan, the
+// Role/Provider preview and evidence log, and Task 5's real staged-activation
+// wiring. Split out of runWizard to keep runWizard's own branching shallow.
+// The returned PluginLockFile is the resolved binding state to persist —
+// zero-value when the migration was not fully resolved this run — the caller
+// (applyWizardConfig) writes it to disk only after active.yaml lands
+// (docs/adr/0037-wizard-role-binding-persistence.md).
+func validateAndActivatePluginPlan(extractor domain.FileExtractor, catalog pluginCatalog, providerRisk map[string]string, wc domain.WizardConfig, strategistDir string) (domain.PluginLockFile, error) {
+	// Task 6: pause on a custom skill the registry has no opinion on AND
+	// that cannot be resolved as an already-installed workspace skill —
+	// distinct from validateProvider's non-blocking risk-mismatch warning
+	// already applied per-field earlier in runWizard.
+	if err := checkCustomSkillAvailability(providerRisk, wizardSlots(wc)); err != nil {
+		return domain.PluginLockFile{}, fmt.Errorf("wizard: %w", err)
 	}
-	uiLang = normLang(uiLang)
-	b = i18n.BundleFor(uiLang)
-	docLang, err = selectLang(p, b.PromptDocLang, skillCfg.LangOptions, "doc_language")
-	if err != nil {
-		return
+
+	plan, planErr := planPluginOnboarding(extractor, catalog, wizardSlots(wc))
+	if planErr != nil {
+		return domain.PluginLockFile{}, fmt.Errorf("wizard: plugin onboarding plan: %w", planErr)
 	}
-	chatLang, err = selectLang(p, b.PromptChatLang, skillCfg.LangOptions, "chat_language")
-	if err != nil {
-		return
+	// Task 4.1: show Role separately from its resolved/candidate Providers
+	// instead of only validating the legacy slot/catalog shape above.
+	fmt.Println(plan.RoleMigration.Preview())
+	logRoleBindingEvidence(plan.RoleMigration.Evidence())
+	if err := validateWizardRoleBindings(plan.RoleMigration); err != nil {
+		return domain.PluginLockFile{}, fmt.Errorf("wizard: %w", err)
 	}
-	codeLang, err = selectLang(p, b.PromptCodeLang, skillCfg.LangOptions, "code_language")
-	return
+
+	// .analysis/refined/20260913-embedded-skill-directory-catalog Task 5:
+	// actually drive the resolved bindings through the real staged/probed/
+	// active lifecycle instead of only previewing them —
+	// ApplyRoleProviderMigration previously had zero production callers.
+	lockFile, err := activateRoleProviderMigration(strategistDir, plan.Lock, plan.RoleMigration)
+	if err != nil {
+		return domain.PluginLockFile{}, fmt.Errorf("wizard: activate role/provider migration: %w", err)
+	}
+	if err := validatePersistedRoleBindings(lockFile, plan.RoleMigration); err != nil {
+		return domain.PluginLockFile{}, fmt.Errorf("wizard: %w", err)
+	}
+	return lockFile, nil
 }
 
-func selectLang(p Prompter, prompt string, options []string, field string) (string, error) {
-	value, err := p.Select(prompt, "en", options)
-	if err != nil {
-		return "", fmt.Errorf("wizard: %s: %w", field, err)
-	}
-	return value, nil
-}
+// validateWizardRoleBindings and validatePersistedRoleBindings live in
+// wizard_role_validation.go, split out to keep this file under the repo's
+// file-size budget.
 
-func promptWorkspace(p Prompter, b i18n.WizardStrings, skillCfg skillConfig) (string, string, error) {
-	mode, err := p.Select(b.PromptMode, "epic", skillCfg.ModeOptions)
-	if err != nil {
-		return "", "", fmt.Errorf("wizard: mode: %w", err)
-	}
-	basePath, err := p.Input(b.PromptBasePath, ".analysis")
-	if err != nil {
-		return "", "", fmt.Errorf("wizard: base_path: %w", err)
-	}
-	return mode, basePath, nil
-}
-
-func promptTreasureChest(p Prompter, b i18n.WizardStrings) (string, error) {
-	fmt.Println(b.HeaderChest)
-	chestPath, err := p.Input(b.PromptChestPath, "")
-	if err != nil {
-		return "", fmt.Errorf("wizard: treasure_chest: %w", err)
-	}
-	if chestPath == "" {
-		fmt.Println(b.SkipChestHint)
-	}
-	return chestPath, nil
-}
-
-// promptSlots collects discovery and refinement slot providers. The execution slot is
-// always the native `sniper` role — Strategist's built-in execution persona, not a
-// governance/provider skill selectable from `.sdd/skills` (see mission
-// 2026-07-25-wizard-execution-slot-native-sniper). The legacy execution prompt is still
-// shown and consumed here so prompt count and scripted-input ordering stay stable, but
-// its returned value is discarded: no typed input (e.g. `sdd-ask`) can ever leak into
-// slots.execution.
-func promptSlots(p Prompter, b i18n.WizardStrings, providerRisk map[string]string) (discovery, refinement, execution string, err error) {
-	fmt.Println(b.HeaderSlots)
-	discovery, err = promptProvider(p, b.PromptDiscovery, defaultDiscoveryProvider, []string{defaultDiscoveryProvider}, b.LabelCustomInput, providerRisk, "write_analysis", "discovery")
-	if err != nil {
-		return "", "", "", err
-	}
-	// openspec-explore is listed as a secondary, opt-in option: it requires a
-	// separately installed skill and is no longer the recommended default (see
-	// defaultRefinementProvider).
-	refinement, err = promptProvider(p, b.PromptRefinement, defaultRefinementProvider, []string{defaultRefinementProvider, "openspec-explore"}, b.LabelCustomInput, providerRisk, "write_analysis", "refinement")
-	if err != nil {
-		return "", "", "", err
-	}
-	if _, err = promptProvider(p, b.PromptExecution, nativeExecutionProvider, []string{nativeExecutionProvider}, b.LabelCustomInput, providerRisk, "controlled", "execution"); err != nil {
-		return "", "", "", err
-	}
-	return discovery, refinement, nativeExecutionProvider, nil
-}
-
-func promptProvider(p Prompter, prompt, defaultVal string, options []string, customLabel string, providerRisk map[string]string, expectedRisk, field string) (string, error) {
-	provider, err := p.SelectOrInput(prompt, defaultVal, options, customLabel)
-	if err != nil {
-		return "", fmt.Errorf("wizard: %s: %w", field, err)
-	}
-	if w := validateProvider(providerRisk, provider, expectedRisk); w != "" {
-		fmt.Println(w)
-	}
-	return provider, nil
-}
+// promptLanguages, selectLang, promptWorkspace, promptTreasureChest,
+// promptSlots, and promptProvider live in wizard_prompts.go, split out to
+// keep this file under the repo's file-size budget.
 
 // normLang normalises language input to canonical form: "en" or "pt-BR".
 // Accepts "pt" (skill.yaml canonical) and "pt-BR" (legacy/UI form).

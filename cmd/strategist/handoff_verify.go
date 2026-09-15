@@ -34,7 +34,7 @@ an acknowledgment file, prints the result, and appends a ChallengeRecord to
 
 This gives the LLM agent embodying a Strategist role (Ranger, Archivist,
 Sniper) a scriptable, deterministic tool to invoke instead of reasoning
-through a Handoff Challenge unaided — see docs/strategist-concepts.md §
+through a Handoff Challenge unaided — see docs/architecture/strategist-concepts.md §
 Handoff Challenge "Known Limitations" for why this command exists.
 
 Exits non-zero when verification fails, so callers can gate on it directly.`,

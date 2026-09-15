@@ -10,19 +10,21 @@ import (
 
 // TestRoleLockDoesNotReferenceRemovedCapabilityCheck verifies the parent-agent
 // Role Lock in SKILL.md no longer references the removed subtype/weapon
-// manifest capability check — discovery always resolves to
-// internal_skills/ranger now (see .analysis/refined/20260728-ranger-drift-eval/).
+// manifest capability check — the configured discovery weapon is flexible
+// input to the fixed Ranger role, with no per-subtype manifest gate and no
+// native fallback (see .analysis/refined/20260728-ranger-drift-eval/).
 func TestRoleLockDoesNotReferenceRemovedCapabilityCheck(t *testing.T) {
 	t.Parallel()
 
 	path := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "SKILL.md")
 	content := readFile(t, path)
 	for _, needle := range []string{
-		"Discovery subtypes are selected by Scout and executed through Ranger",
-		"external weapon is ever consulted as a substitute for Ranger",
+		"Discovery subtypes are selected by Scout and executed under the fixed Ranger role",
+		"flexible input to",
+		"There is no fallback",
 	} {
 		if !strings.Contains(content, needle) {
-			t.Fatalf("%s missing native-discovery term %q", path, needle)
+			t.Fatalf("%s missing weapon-resolution term %q", path, needle)
 		}
 	}
 	for _, forbidden := range []string{
@@ -88,9 +90,10 @@ func TestSkillYamlStopConditionsOmitProviderCapabilityMismatch(t *testing.T) {
 }
 
 // TestRoutingContractOmitsPostRouteCapabilityCheck verifies 00-routing.md no
-// longer describes a post-route weapon-capability check — discovery always
-// resolves to internal_skills/ranger, so there is no weapon invocation left to
-// gate.
+// longer describes a post-route weapon-capability check — an incompatible
+// discovery weapon is now a fatal error handled by Ranger's own normalization
+// boundary, so there is no separate manifest-capability gate left to run
+// after routing.
 func TestRoutingContractOmitsPostRouteCapabilityCheck(t *testing.T) {
 	t.Parallel()
 
@@ -98,8 +101,8 @@ func TestRoutingContractOmitsPostRouteCapabilityCheck(t *testing.T) {
 	content := readFile(t, path)
 	for _, needle := range []string{
 		"internal_skills/ranger",
-		"kind=native_role",
-		"never a live behavior guarantee",
+		"hard error",
+		"does not silently substitute another weapon",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("%s missing discovery weapon resolution term %q", path, needle)
