@@ -20,13 +20,14 @@ type pluginCatalog struct {
 }
 
 type pluginCatalogProvider struct {
-	ID            string `yaml:"id"`
-	Version       string `yaml:"version,omitempty"`
-	SchemaVersion string `yaml:"provider_schema_version,omitempty"`
-	Status        string `yaml:"status,omitempty"`
-	RiskScore     string `yaml:"risk_score"`
-	Category      string `yaml:"category,omitempty"`
-	CanonicalRole string `yaml:"canonical_role,omitempty"`
+	ID            string   `yaml:"id"`
+	Version       string   `yaml:"version,omitempty"`
+	SchemaVersion string   `yaml:"provider_schema_version,omitempty"`
+	Status        string   `yaml:"status,omitempty"`
+	RiskScore     string   `yaml:"risk_score"`
+	Category      string   `yaml:"category,omitempty"`
+	CanonicalRole string   `yaml:"canonical_role,omitempty"`
+	Roles         []string `yaml:"roles,omitempty"`
 	// Default marks this provider as the primary Arma for its CanonicalRole
 	// among candidates sharing it — a selection preference, not proof of
 	// provenance, installation, or readiness (see domain.ProviderContract.Default).

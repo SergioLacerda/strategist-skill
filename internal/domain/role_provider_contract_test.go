@@ -91,9 +91,9 @@ func TestCheckRoleCompatibilityRejectsRoleMismatch(t *testing.T) {
 	result := provider.CheckRoleCompatibility(role)
 	assert.False(t, result.Compatible)
 	assert.Contains(t, result.Reasons, domain.CompatibilityReason{
-		Dimension: "canonical_role",
+		Dimension: "role_affinity",
 		Code:      "role_mismatch",
-		Detail:    `provider declares canonical_role "archivist", role contract is "sniper"`,
+		Detail:    `provider declares roles [archivist], role contract is "sniper"`,
 	})
 }
 

@@ -126,6 +126,7 @@ Checks performed:
 			}
 			resolutions[slot] = res
 		}
+		errs = append(errs, checkPluginLockParity(root, providers)...)
 
 		// Gate the exit code on plugin-readiness diagnostics, not just static
 		// YAML validation (see blockedReadinessErrorsForSlots/
@@ -158,6 +159,8 @@ Checks performed:
 			errs = append(errs, weaponErr.Error())
 		}
 		errs = append(errs, weaponBindingErrors(weaponBindings)...)
+
+		errs = append(errs, checkPluginLockParity(root, providers)...)
 
 		errs = append(errs, validateRuntimeDefaultParity(root)...)
 		emitErr := emitF3ConflictAttributionSignals(root, cfg.BasePath, time.Now())

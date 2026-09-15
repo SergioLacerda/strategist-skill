@@ -9,6 +9,8 @@
 # available: the real package is an explore/investigate/think-before-changing
 # workflow, which is discovery-shaped, not refinement-shaped.
 canonical_role: ranger
+roles:
+  - ranger
 risk_score: write_analysis
 category: discovery
 # default: false — brainstorming remains the sole permanent discovery
@@ -16,11 +18,5 @@ category: discovery
 # openspec-explore is a secondary, opt-in discovery weapon.
 default: false
 
-# supported_handoff_schemas intentionally omitted: this package's own
-# SKILL.md is a multi-turn, approval-gated design flow, structurally
-# incompatible with Ranger's autonomous single-shot
-# handoff-ranger-to-archivist.schema.yaml output — see
-# .analysis/done/20260728-ranger-drift-eval/. Discovery never live-invokes
-# this weapon regardless (00-routing.md § Discovery Weapon Resolution by
-# Subtype); this omission keeps the Wizard's install-time compatibility
-# preview honest about the same fact.
+# supported_handoff_schemas is intentionally omitted: the fixed Ranger role
+# owns normalization into its handoff schema.

@@ -396,3 +396,30 @@ func TestResolveSlotProvider_RoleIncompatibleProviderBlocksSlotResolution(t *tes
 	require.NotEmpty(t, errMsg)
 	assert.Contains(t, errMsg, "role-incompatible")
 }
+
+func TestResolveSlotProvider_CatalogedProviderWithoutHandoffSchemaUsesRoleCheckpoint(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	rolesDir := filepath.Join(dir, "roles")
+	require.NoError(t, os.MkdirAll(rolesDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "default.yaml"),
+		[]byte("discovery: ranger\nrefinement: archivist\nexecution: sniper\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "archivist.yaml"),
+		[]byte("role: archivist\nslot: refinement\n"), 0o644))
+	skillDir := filepath.Join(dir, "skills", "openspec-propose")
+	require.NoError(t, os.MkdirAll(skillDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(skillDir, "skill.yaml"),
+		[]byte("id: openspec-propose\nrisk_score: write_analysis\ncanonical_role: archivist\n"), 0o644))
+	pluginsDir := filepath.Join(dir, "plugins")
+	require.NoError(t, os.MkdirAll(pluginsDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(pluginsDir, "catalog.yaml"), []byte(`schema_version: strategist-plugin-catalog/v1
+providers:
+  - id: openspec-propose
+    canonical_role: archivist
+    compatibility_source: embedded
+    risk_score: write_analysis
+`), 0o644))
+
+	_, errMsg := resolveSlotProvider(dir, "refinement", "openspec-propose")
+	assert.Empty(t, errMsg)
+}

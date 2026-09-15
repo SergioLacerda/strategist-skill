@@ -13,8 +13,10 @@ providers:
       risk_score: write_analysis
       category: discovery
       canonical_role: ranger
+      roles:
+        - ranger
       default: true
-      description: Configured discovery-slot metadata for Strategist (risk_score only). Discovery invocation no longer resolves to this weapon for any subtype — all discovery always resolves to internal_skills/ranger (native role); see contracts/narrative/00-routing.md § Discovery Weapon Resolution by Subtype.
+      description: Flexible brainstorming weapon for Ranger discovery; Ranger owns normalization into the canonical pending artifact and handoff.
       installable: true
       legacy_manifest_path: skills/brainstorming/skill.yaml
       compatibility_source: embedded
@@ -31,6 +33,8 @@ providers:
       risk_score: write_analysis
       category: discovery
       canonical_role: ranger
+      roles:
+        - ranger
       description: Enter explore mode - a thinking partner for exploring ideas, investigating problems, and clarifying requirements. Use when the user wants to think through something before or during a change.
       installable: true
       legacy_manifest_path: skills/openspec-explore/skill.yaml
@@ -42,6 +46,8 @@ providers:
       risk_score: write_analysis
       category: refinement
       canonical_role: archivist
+      roles:
+        - archivist
       default: true
       description: Propose a new change with all artifacts generated in one step. Use when the user wants to quickly describe what they want to build and get a complete proposal with design, specs, and tasks ready for implementation.
       installable: true

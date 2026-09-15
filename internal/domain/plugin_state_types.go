@@ -98,6 +98,7 @@ const PluginLockFileSchemaVersion = "strategist-plugin-lock-file/v1"
 // configuration to persist across invocations.
 type PluginLockFile struct {
 	SchemaVersion string          `yaml:"schema_version"`
+	Lock          PluginLock      `yaml:"lock"`
 	Inventory     PluginInventory `yaml:"inventory"`
 	Bindings      []SlotBinding   `yaml:"bindings"`
 }

@@ -163,7 +163,7 @@ func validateAndActivatePluginPlan(extractor domain.FileExtractor, catalog plugi
 	var lockFile domain.PluginLockFile
 	if plan.RoleMigration.FullyResolved() {
 		var err error
-		lockFile, err = activateRoleProviderMigration(strategistDir, plan.RoleMigration)
+		lockFile, err = activateRoleProviderMigration(strategistDir, plan.Lock, plan.RoleMigration)
 		if err != nil {
 			return domain.PluginLockFile{}, fmt.Errorf("wizard: activate role/provider migration: %w", err)
 		}

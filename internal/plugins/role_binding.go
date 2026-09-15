@@ -18,14 +18,14 @@ const RoleBindingLockKind = "role_provider_binding"
 // candidates, applying deterministic collision and compatibility rules
 // (proposal.md Decision 5; tasks.md Task 3):
 //
-//   - candidates are first filtered to those declaring role.Role as their
-//     CanonicalRole;
+//   - candidates are first filtered to those declaring role.Role in their
+//     explicit role affinity;
 //   - if two or more candidates share the same ID from different Source
 //     values (an external provider implicitly shadowing an embedded one, or
 //     vice versa), resolution fails with a stable id_shadowing error unless
 //     shadowOverride names the Source that must win every such collision;
-//   - among the surviving candidates, exactly one must be compatible with
-//     role (via ProviderContract.CheckRoleCompatibility) — zero compatible
+//   - among the surviving candidates, exactly one must declare affinity
+//     with role (via ProviderContract.CheckRoleAffinity) — zero compatible
 //     candidates is role_binding_missing. More than one is
 //     role_binding_ambiguous, unless preferredProviderID names one of the
 //     compatible candidates: a legitimately ambiguous role (e.g. more than
@@ -44,7 +44,7 @@ const RoleBindingLockKind = "role_provider_binding"
 func ResolveRoleBinding(role domain.RoleContract, candidates []domain.ProviderContract, shadowOverride domain.ProviderSource, preferredProviderID string) (domain.ProviderBinding, error) {
 	scoped := make([]domain.ProviderContract, 0, len(candidates))
 	for _, candidate := range candidates {
-		if candidate.CanonicalRole == role.Role {
+		if candidate.CheckRoleAffinity(role).Compatible {
 			scoped = append(scoped, candidate)
 		}
 	}
@@ -56,7 +56,7 @@ func ResolveRoleBinding(role domain.RoleContract, candidates []domain.ProviderCo
 
 	var compatible []domain.ProviderContract
 	for _, candidate := range deduped {
-		if candidate.CheckRoleCompatibility(role).Compatible {
+		if candidate.CheckRoleAffinity(role).Compatible {
 			compatible = append(compatible, candidate)
 		}
 	}
@@ -66,11 +66,11 @@ func ResolveRoleBinding(role domain.RoleContract, candidates []domain.ProviderCo
 	case 0:
 		return domain.ProviderBinding{}, fmt.Errorf("role_binding_missing: role=%s no compatible provider among %d candidate(s)", role.Role, len(scoped))
 	case 1:
-		return domain.ResolveProviderBinding(role, compatible[0]), nil
+		return domain.ProviderBinding{Role: role, Provider: compatible[0], Compatibility: compatible[0].CheckRoleAffinity(role)}, nil
 	default:
 		if preferredProviderID != "" {
 			if winner, ok := findByID(compatible, preferredProviderID); ok {
-				return domain.ResolveProviderBinding(role, winner), nil
+				return domain.ProviderBinding{Role: role, Provider: winner, Compatibility: winner.CheckRoleAffinity(role)}, nil
 			}
 		}
 		return domain.ProviderBinding{}, fmt.Errorf("role_binding_ambiguous: role=%s candidates=%s", role.Role, strings.Join(candidateIDs(compatible), ","))

@@ -2,6 +2,7 @@ package install
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/i18n"
@@ -67,25 +68,22 @@ func promptTreasureChest(p Prompter, b i18n.WizardStrings) (string, error) {
 // its returned value is discarded: no typed input (e.g. `sdd-ask`) can ever leak into
 // slots.execution.
 //
-// The discovery/refinement option lists are compatibility-driven
-// (compatibleProviderOptions), not a hardcoded slice: a weapon whose
-// declared supported_handoff_schemas doesn't match its role's
-// HandoffSchema simply stops being offered, and the native role becomes
-// the shown default. This is what keeps discovery effectively locked to
-// Ranger without a special case — none of discovery's external weapons
-// declare a matching schema (see external-skills-source/brainstorming and
-// openspec-explore's strategist.yaml), so compatibleProviderOptions always
-// resolves to the single native ranger option there today.
+// The discovery/refinement option lists are driven by explicit role affinity
+// (compatibleProviderOptions), not a hardcoded slice. Handoff production is a
+// fixed role checkpoint, so a weapon is not hidden merely because its adapter
+// does not declare the handoff schema.
 func promptSlots(p Prompter, b i18n.WizardStrings, catalog pluginCatalog, providerRisk map[string]string) (discovery, refinement, execution string, err error) {
 	fmt.Println(b.HeaderSlots)
 
-	discoveryIDs, discoveryDefault := compatibleProviderOptions(catalog, "ranger", roleHandoffSchema["ranger"], "ranger")
+	discoveryIDs, discoveryDefault, discoveryExcluded := compatibleProviderOptions(catalog, "ranger", domain.RoleHandoffSchema["ranger"], "ranger")
+	printExcludedCandidates(discoveryExcluded)
 	discovery, err = promptProvider(p, b.PromptDiscovery, discoveryDefault, discoveryIDs, b.LabelCustomInput, providerRisk, "write_analysis", "discovery")
 	if err != nil {
 		return "", "", "", err
 	}
 
-	refinementIDs, refinementDefault := compatibleProviderOptions(catalog, "archivist", roleHandoffSchema["archivist"], "archivist")
+	refinementIDs, refinementDefault, refinementExcluded := compatibleProviderOptions(catalog, "archivist", domain.RoleHandoffSchema["archivist"], "archivist")
+	printExcludedCandidates(refinementExcluded)
 	refinement, err = promptProvider(p, b.PromptRefinement, refinementDefault, refinementIDs, b.LabelCustomInput, providerRisk, "write_analysis", "refinement")
 	if err != nil {
 		return "", "", "", err
@@ -96,16 +94,28 @@ func promptSlots(p Prompter, b i18n.WizardStrings, catalog pluginCatalog, provid
 	return discovery, refinement, nativeExecutionProvider, nil
 }
 
+// excludedProviderOption records why compatibleProviderOptions did not offer
+// a given catalog candidate, so promptSlots can print it instead of letting
+// the operator wonder whether an empty-looking option list is a bug or an
+// intended exclusion (see .analysis/refined/
+// 20260914-wizard-weapon-options-not-listed/design.md Task 3).
+type excludedProviderOption struct {
+	id      string
+	reasons []domain.CompatibilityReason
+}
+
 // compatibleProviderOptions returns the catalog candidate IDs for roleName
-// that CheckRoleCompatibility reports compatible against handoffSchema, plus
+// that role-affinity validation reports compatible, plus
 // which one should be pre-selected: whichever compatible candidate is
-// marked default in the catalog, or the first compatible one otherwise.
+// marked default in the catalog, or the first compatible one otherwise, and
+// the candidates that were excluded along with their compatibility reasons.
 // When nothing is compatible (e.g. every external weapon for this role is
-// honestly declared unable to produce the role's handoff shape), it falls
-// back to a single-item list naming the catalog's native_role candidate for
-// roleName, or fallbackID if the catalog has none — either way the wizard
-// stays usable and the operator is not offered a weapon known not to work.
-func compatibleProviderOptions(catalog pluginCatalog, roleName, handoffSchema, fallbackID string) (ids []string, defaultID string) {
+// honestly declared unable to produce the role's handoff shape), the id list
+// falls back to a single-item list naming the catalog's native_role
+// candidate for roleName, or fallbackID if the catalog has none — either way
+// the wizard stays usable and the operator is not offered a weapon known not
+// to work; the native role itself is never reported as excluded.
+func compatibleProviderOptions(catalog pluginCatalog, roleName, handoffSchema, fallbackID string) (ids []string, defaultID string, excluded []excludedProviderOption) {
 	role := domain.RoleContract{
 		SchemaVersion: domain.RoleContractSchemaVersion,
 		Role:          roleName,
@@ -116,7 +126,11 @@ func compatibleProviderOptions(catalog pluginCatalog, roleName, handoffSchema, f
 		if candidate.Source == domain.ProviderSourceNativeRole {
 			nativeID = candidate.ID
 		}
-		if !candidate.CheckRoleCompatibility(role).Compatible {
+		result := candidate.CheckRoleAffinity(role)
+		if !result.Compatible {
+			if candidate.Source != domain.ProviderSourceNativeRole {
+				excluded = append(excluded, excludedProviderOption{id: candidate.ID, reasons: result.Reasons})
+			}
 			continue
 		}
 		ids = append(ids, candidate.ID)
@@ -134,7 +148,21 @@ func compatibleProviderOptions(catalog pluginCatalog, roleName, handoffSchema, f
 		ids = []string{nativeID}
 		defaultID = nativeID
 	}
-	return ids, defaultID
+	return ids, defaultID, excluded
+}
+
+// printExcludedCandidates prints one line per candidate compatibleProviderOptions
+// excluded, naming the candidate and its compatibility reasons, so an
+// operator seeing a single-option (native-only) prompt can tell an
+// intentional exclusion from a bug.
+func printExcludedCandidates(excluded []excludedProviderOption) {
+	for _, candidate := range excluded {
+		details := make([]string, 0, len(candidate.reasons))
+		for _, reason := range candidate.reasons {
+			details = append(details, fmt.Sprintf("%s: %s", reason.Code, reason.Detail))
+		}
+		fmt.Printf("  %s: excluded — %s\n", candidate.id, strings.Join(details, "; "))
+	}
 }
 
 func promptProvider(p Prompter, prompt, defaultVal string, options []string, customLabel string, providerRisk map[string]string, expectedRisk, field string) (string, error) {

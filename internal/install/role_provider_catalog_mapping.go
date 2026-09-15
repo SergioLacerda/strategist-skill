@@ -13,7 +13,7 @@ import (
 func providerContractsForRole(catalog pluginCatalog, roleName string) []domain.ProviderContract {
 	contracts := make([]domain.ProviderContract, 0)
 	for _, provider := range catalog.Providers {
-		if canonicalRoleOrDefault(provider) != roleName {
+		if !providerHasRole(provider, roleName) {
 			continue
 		}
 		contracts = append(contracts, providerContractFromCatalogEntry(provider))
@@ -29,6 +29,7 @@ func providerContractFromCatalogEntry(provider pluginCatalogProvider) domain.Pro
 		Version:                       providerVersionOrDefault(provider.Version),
 		ProviderSchemaVersion:         providerSchemaVersionOrDefault(provider.SchemaVersion),
 		CanonicalRole:                 canonicalRoleOrDefault(provider),
+		Roles:                         providerRoles(provider),
 		RiskScore:                     provider.RiskScore,
 		Source:                        providerSourceFromCompatibilitySource(provider.CompatibilitySource),
 		Materialization:               materializationFromCatalogEntry(provider),
@@ -36,6 +37,25 @@ func providerContractFromCatalogEntry(provider pluginCatalogProvider) domain.Pro
 		SupportedRoleContractVersions: []string{domain.RoleContractSchemaVersion},
 		SupportedHandoffSchemas:       provider.SupportedHandoffSchemas,
 	}
+}
+
+func providerRoles(provider pluginCatalogProvider) []string {
+	if len(provider.Roles) > 0 {
+		return normalizeRoles(provider.Roles)
+	}
+	if role := canonicalRoleOrDefault(provider); role != "" {
+		return []string{role}
+	}
+	return nil
+}
+
+func providerHasRole(provider pluginCatalogProvider, role string) bool {
+	for _, candidateRole := range providerRoles(provider) {
+		if candidateRole == role {
+			return true
+		}
+	}
+	return false
 }
 
 // canonicalRoleOrDefault returns the catalog entry's declared canonical_role,

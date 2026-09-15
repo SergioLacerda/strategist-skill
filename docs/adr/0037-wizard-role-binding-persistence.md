@@ -60,15 +60,10 @@ should cover (UNC-03). The user resolved both directly.
   not a defect to fix. Once persisted, no in-mission code path may
   re-resolve or substitute a different weapon for the same slot mid-mission.
 
-This decision does **not** change discovery's separate, stronger,
-already-correct rule that Ranger's live discovery execution is
-unconditionally native regardless of which weapon is bound
-(`contracts/narrative/00-routing.md` § Discovery Weapon Resolution by
-Subtype). Persistence makes the Wizard's choice real and observable; it does
-not make that choice live-invocable during discovery. It also does not
-change Archivist's existing, already-approved ability to delegate to its
-configured refinement weapon (`may_delegate_to`) — DEC-003 forbids
-*switching* the bound weapon mid-mission, not using it.
+Persistence makes the Wizard's role-to-weapon choice real and observable.
+The bound weapon may run within the role boundary, but it cannot replace the
+role's normalization, checkpoint, lock, state, or control-log responsibilities.
+DEC-003 forbids *switching* the bound weapon mid-mission.
 
 **Deferred (NC-01):** whether `strategist check`'s READINESS output should
 start reflecting real lifecycle state (`staged`/`probed`/`active`) once
@@ -76,11 +71,15 @@ persistence lands, versus keeping today's `not_ready` placeholders. This
 needs its own explicitly-decided follow-up mission, not a mechanical wiring
 fix bundled into this one.
 
-**Recommended (NC-02), not yet implemented:** the persisted binding should
-live in a dedicated lock file, distinct from the user-hand-edited
-`active.yaml` and from the unrelated `.config.lock` tamper-detection seal —
-final on-disk shape is an implementation decision for the mission that
-carries out DEC-001/002/003.
+**Resolved (NC-02).** The persisted state lives in the dedicated
+`.strategist/plugins.lock` YAML file, distinct from the user-hand-edited
+`active.yaml` and from the unrelated `.config.lock` tamper-detection seal.
+Its envelope contains the resolved `PluginLock` graph plus lifecycle
+inventory and discovery/refinement `SlotBinding` records. The writer stamps
+`strategist-plugin-lock-file/v1` and writes atomically; a missing file is a
+valid fresh-install state. The file is written only after `active.yaml` has
+been written successfully, so a failed configuration write cannot leave a
+binding artifact without its corresponding active configuration.
 
 ## Consequences
 
@@ -92,10 +91,8 @@ carries out DEC-001/002/003.
 - Reuses fully-implemented, already-tested infrastructure
   (`lifecycle.Store`, `ApplyRoleProviderMigration`) instead of introducing a
   new persistence mechanism.
-- Keeps discovery's native-only invocation guarantee (ADR-0028's
-  resilient-baseline model, `00-routing.md`) explicitly unchanged, avoiding
-  any ambiguity that persistence might imply live external delegation for
-  discovery.
+- Keeps the fixed Ranger normalization/checkpoint boundary explicit while
+  allowing the persisted weapon to provide flexible discovery input.
 
 ### Negative
 

@@ -19,6 +19,12 @@ func generateLegacyProviderManifest(catalog pluginCatalog, providerID string) ([
 	writeLegacyProviderField(&buf, "risk_score", provider.RiskScore)
 	writeLegacyProviderField(&buf, "category", provider.Category)
 	writeLegacyProviderField(&buf, "canonical_role", provider.CanonicalRole)
+	if len(provider.Roles) > 0 {
+		buf.WriteString("roles:\n")
+		for _, role := range provider.Roles {
+			buf.WriteString("  - " + role + "\n")
+		}
+	}
 	buf.WriteString("\n")
 	buf.WriteString("description: >\n")
 	for _, line := range strings.Split(provider.Description, "\n") {

@@ -3,18 +3,14 @@
 # fields (canonical_role, risk_score, category) live here, never in SKILL.md
 # itself.
 canonical_role: ranger
+roles:
+  - ranger
 risk_score: write_analysis
 category: discovery
 default: true
 
-# supported_handoff_schemas intentionally omitted: this package's own
-# SKILL.md is a multi-turn, approval-gated design flow, structurally
-# incompatible with Ranger's autonomous single-shot
-# handoff-ranger-to-archivist.schema.yaml output — see
-# .analysis/done/20260728-ranger-drift-eval/. Discovery never live-invokes
-# this weapon regardless (00-routing.md § Discovery Weapon Resolution by
-# Subtype); this omission keeps the Wizard's install-time compatibility
-# preview honest about the same fact.
+# supported_handoff_schemas is intentionally omitted: the fixed Ranger role
+# owns normalization into its handoff schema.
 
 # auxiliary_tools_allowed intentionally omitted on this migrated entry: the
 # hand-authored version declared "writing-plans" as a dependency, but

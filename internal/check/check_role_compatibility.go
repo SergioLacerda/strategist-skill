@@ -18,7 +18,11 @@ import (
 // tested, with zero production callers (see .analysis/pending/skills_plugaveis/
 // 20260913-role-provider-convergence-evaluation/analysis.md KF-05/KF-07).
 //
-// Scope is deliberately narrow: it only runs the canonical_role dimension.
+// It runs the same role-affinity and role-contract-version dimensions used by
+// the Wizard. Handoff production is owned by the fixed role checkpoint, so a
+// weapon is not filtered merely because its own manifest omits a handoff
+// schema declaration.
+//
 // It is a no-op (returns "") whenever:
 //   - roles/default.yaml has no entry for slot, is unreadable, or the mapped
 //     role's own role file is unreadable/invalid — those conditions are
@@ -34,6 +38,8 @@ import (
 // resolved RoleContract's own SchemaVersion, so an existing manifest that
 // predates this field is treated as compatible-by-default rather than
 // spuriously rejected; only an actual canonical_role mismatch fails.
+// The catalog handoff declaration remains available for full compatibility
+// checks, but it is intentionally not part of this role-selection gate.
 func checkRoleProviderCompatibility(root, slot, provider, riskScore string, skillRaw []byte) string {
 	roleSlotMap, err := loadRoleSlotMap(root)
 	if err != nil {
@@ -56,23 +62,29 @@ func checkRoleProviderCompatibility(root, slot, provider, riskScore string, skil
 	if yaml.Unmarshal(skillRaw, &taxonomy) != nil {
 		return ""
 	}
-	canonicalRole := taxonomy.canonicalRole()
-	if canonicalRole == "" {
+	roles := taxonomy.roles()
+	if len(roles) == 0 {
 		return ""
 	}
 
+	handoffSchema, cataloged := loadSupportedHandoffSchemas(root, provider)
 	roleContract := domain.RoleContractFromConfig(roleCfg, "")
+	if cataloged {
+		roleContract = domain.RoleContractFromConfig(roleCfg, domain.RoleHandoffSchema[roleID])
+	}
 	providerContract := domain.ProviderContract{
 		SchemaVersion:                 roleContract.SchemaVersion,
 		ID:                            provider,
 		Version:                       "0.0.0",
 		ProviderSchemaVersion:         "1",
-		CanonicalRole:                 canonicalRole,
+		CanonicalRole:                 roles[0],
+		Roles:                         roles,
 		RiskScore:                     riskScore,
 		Source:                        domain.ProviderSourceExternal,
 		SupportedRoleContractVersions: []string{roleContract.SchemaVersion},
+		SupportedHandoffSchemas:       handoffSchema,
 	}
-	result := providerContract.CheckRoleCompatibility(roleContract)
+	result := providerContract.CheckRoleAffinity(roleContract)
 	if result.Compatible {
 		return ""
 	}
@@ -81,4 +93,35 @@ func checkRoleProviderCompatibility(root, slot, provider, riskScore string, skil
 		details = append(details, fmt.Sprintf("%s: %s", reason.Code, reason.Detail))
 	}
 	return fmt.Sprintf("slot %s: provider %q role-incompatible with %q: %s", slot, provider, roleID, strings.Join(details, "; "))
+}
+
+// loadSupportedHandoffSchemas reads root/plugins/catalog.yaml — the same
+// file internal/install's Wizard reads via loadPluginCatalog — and returns
+// the named provider's own declared supported_handoff_schemas, or nil when
+// the catalog is absent/unreadable, the provider has no entry, or the entry
+// declares none. A read/parse failure is treated the same as "declares
+// none" (fail-closed on this dimension only) rather than a check error,
+// consistent with this file's other lookups (loadRoleSlotMap, role file
+// reads) that degrade to "no opinion" on I/O failure.
+func loadSupportedHandoffSchemas(root, provider string) ([]string, bool) {
+	catalogPath := filepath.Join(root, "plugins", "catalog.yaml")
+	raw, err := os.ReadFile(catalogPath) //nolint:gosec // G304: fixed path under the runtime plugins directory
+	if err != nil {
+		return nil, false
+	}
+	var doc struct {
+		Providers []struct {
+			ID                      string   `yaml:"id"`
+			SupportedHandoffSchemas []string `yaml:"supported_handoff_schemas"`
+		} `yaml:"providers"`
+	}
+	if yaml.Unmarshal(raw, &doc) != nil {
+		return nil, false
+	}
+	for _, p := range doc.Providers {
+		if p.ID == provider {
+			return p.SupportedHandoffSchemas, true
+		}
+	}
+	return nil, false
 }

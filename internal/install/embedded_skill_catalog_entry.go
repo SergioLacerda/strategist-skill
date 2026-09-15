@@ -16,6 +16,7 @@ func catalogProviderFromIngestedSkill(skill IngestedSkill) pluginCatalogProvider
 		RiskScore:               skill.Adapter.RiskScore,
 		Category:                skill.Adapter.Category,
 		CanonicalRole:           skill.Adapter.CanonicalRole,
+		Roles:                   skill.Adapter.Roles,
 		Default:                 skill.Adapter.Default,
 		Description:             skillDescription(skill.Dir),
 		AuxiliaryTools:          skill.Adapter.AuxiliaryTools,

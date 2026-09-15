@@ -35,6 +35,12 @@ func TestWritePluginLockFile_RoundTrip(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	want := domain.PluginLockFile{
+		Lock: domain.PluginLock{
+			SchemaVersion: "strategist-plugin-lock/v1",
+			ResolutionID:  "resolution-1",
+			GraphDigest:   "sha256:graph",
+			Nodes:         []domain.PluginLockNode{{ID: "brainstorming", Kind: "adapter_contract", Digest: "digest-a"}},
+		},
 		Inventory: domain.PluginInventory{
 			Instances: []domain.InstalledInstance{{ID: "brainstorming", State: "active", LastKnownGood: true}},
 		},
@@ -48,6 +54,7 @@ func TestWritePluginLockFile_RoundTrip(t *testing.T) {
 	got, err := readPluginLockFile(dir)
 	require.NoError(t, err)
 	assert.Equal(t, domain.PluginLockFileSchemaVersion, got.SchemaVersion)
+	assert.Equal(t, want.Lock, got.Lock)
 	assert.Equal(t, want.Inventory, got.Inventory)
 	assert.Equal(t, want.Bindings, got.Bindings)
 }

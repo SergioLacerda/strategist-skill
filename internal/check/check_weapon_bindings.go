@@ -34,7 +34,8 @@ type weaponBinding struct {
 // currently guaranteed identical by any generator this check depends on, so
 // it reads whichever is present rather than assuming one).
 type skillTaxonomy struct {
-	CanonicalRole          string `yaml:"canonical_role"`
+	CanonicalRole          string   `yaml:"canonical_role"`
+	Roles                  []string `yaml:"roles"`
 	SpecializationTaxonomy struct {
 		CanonicalRole string `yaml:"canonical_role"`
 	} `yaml:"specialization_taxonomy"`
@@ -45,6 +46,16 @@ func (t skillTaxonomy) canonicalRole() string {
 		return t.CanonicalRole
 	}
 	return t.SpecializationTaxonomy.CanonicalRole
+}
+
+func (t skillTaxonomy) roles() []string {
+	if len(t.Roles) > 0 {
+		return t.Roles
+	}
+	if role := t.canonicalRole(); role != "" {
+		return []string{role}
+	}
+	return nil
 }
 
 // verifyEmbeddedWeaponBindings scans every skill manifest under

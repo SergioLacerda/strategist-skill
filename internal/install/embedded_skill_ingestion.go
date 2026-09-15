@@ -15,7 +15,7 @@ import (
 // sidecar living alongside each external-skills-source/<id>/SKILL.md — the
 // two-layer contract ADR-0033 defines: SKILL.md stays a portable ORKA
 // package (name/description/metadata only); strategist.yaml carries the
-// project-specific fields (canonical_role, risk_score, category) SKILL.md
+// project-specific fields (roles/canonical_role, risk_score, category) SKILL.md
 // must never declare itself.
 const externalSkillAdapterFileName = "strategist.yaml"
 
@@ -26,6 +26,7 @@ const externalSkillAdapterFileName = "strategist.yaml"
 // pipeline exist today without inventing that schema prematurely.
 type externalSkillAdapter struct {
 	CanonicalRole  string   `yaml:"canonical_role"`
+	Roles          []string `yaml:"roles,omitempty"`
 	RiskScore      string   `yaml:"risk_score"`
 	Category       string   `yaml:"category"`
 	Default        bool     `yaml:"default,omitempty"`
@@ -102,9 +103,16 @@ func resolveExternalSkill(dir string) (IngestedSkill, error) {
 	if err := yaml.Unmarshal(adapterRaw, &adapter); err != nil {
 		return IngestedSkill{}, fmt.Errorf("external skill %s: parse %s: %w", pkg.ID, externalSkillAdapterFileName, err)
 	}
-	if adapter.CanonicalRole == "" || adapter.RiskScore == "" {
+	if (adapter.CanonicalRole == "" && len(adapter.Roles) == 0) || adapter.RiskScore == "" {
 		return IngestedSkill{}, fmt.Errorf("external skill %s: %s must declare canonical_role and risk_score", pkg.ID, externalSkillAdapterFileName)
 	}
+	if len(adapter.Roles) == 0 {
+		adapter.Roles = []string{adapter.CanonicalRole}
+	}
+	if adapter.CanonicalRole == "" && len(adapter.Roles) == 1 {
+		adapter.CanonicalRole = adapter.Roles[0]
+	}
+	adapter.Roles = normalizeRoles(adapter.Roles)
 	return IngestedSkill{ID: pkg.ID, Dir: dir, Package: pkg, Adapter: adapter}, nil
 }
 

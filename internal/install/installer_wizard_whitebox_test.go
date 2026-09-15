@@ -65,6 +65,16 @@ func TestInstall_WizardPath_PersistsPluginLock(t *testing.T) {
 	assert.Contains(t, s, "schema_version: strategist-plugin-lock-file/v1")
 	assert.Contains(t, s, "slot: discovery")
 	assert.Contains(t, s, "slot: refinement")
+	lockFile, err := readPluginLockFile(filepath.Join(dir, ".strategist"))
+	require.NoError(t, err)
+	assert.NotEmpty(t, lockFile.Lock.GraphDigest)
+	assert.Len(t, lockFile.Lock.Nodes, 6)
+	_, ok := findSlotBinding(lockFile.Bindings, "discovery")
+	assert.True(t, ok)
+	_, ok = findSlotBinding(lockFile.Bindings, "refinement")
+	assert.True(t, ok)
+	_, ok = findSlotBinding(lockFile.Bindings, "execution")
+	assert.False(t, ok)
 }
 
 func TestInstall_WizardPath_WithChest(t *testing.T) {
@@ -101,23 +111,16 @@ func TestInstall_WizardPath_Defaults(t *testing.T) {
 	assert.NotContains(t, s, "adr_enabled")
 	assert.NotContains(t, s, "execution_mode")
 	assert.NotContains(t, s, "git_persistence_mode")
-	// Neither brainstorming nor openspec-propose declares a
-	// supported_handoff_schemas value matching its role's HandoffSchema
-	// (honest — see their strategist.yaml sidecars and
-	// .analysis/done/20260728-ranger-drift-eval/ for why), so
-	// compatibleProviderOptions no longer offers them as the accept-defaults
-	// choice — the wizard now defaults both slots to their native role.
-	assert.Contains(t, s, "discovery: ranger")
-	assert.Contains(t, s, "refinement: archivist")
+	// The wizard defaults to the embedded weapons affiliated with each role;
+	// fixed role checkpoints still own handoff normalization.
+	assert.Contains(t, s, "discovery: brainstorming")
+	assert.Contains(t, s, "refinement: openspec-propose")
 	assert.Contains(t, s, "execution: sniper")
 
-	// Neither slot's default is an installable skill package anymore
-	// (both are native roles) — accepting defaults must not materialize any
-	// skill.yaml manifest for either.
 	_, err = os.Stat(filepath.Join(dir, ".strategist", "skills", "brainstorming", "skill.yaml"))
-	require.ErrorIs(t, err, os.ErrNotExist)
+	require.NoError(t, err)
 	_, err = os.Stat(filepath.Join(dir, ".strategist", "skills", "openspec-propose", "skill.yaml"))
-	require.ErrorIs(t, err, os.ErrNotExist)
+	require.NoError(t, err)
 	// openspec-explore is not selected by defaults — it must not be materialized.
 	_, err = os.Stat(filepath.Join(dir, ".strategist", "skills", "openspec-explore", "skill.yaml"))
 	require.ErrorIs(t, err, os.ErrNotExist)

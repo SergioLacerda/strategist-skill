@@ -63,39 +63,16 @@ and must select `full_pipeline` instead.
 
 ### Discovery Weapon Resolution by Subtype
 
-Discovery invocation target does not depend on `discovery_subtype` or on
-`active.slots.discovery` — all discovery subtypes (`creative`, `evaluation`,
-`diagnostic`, `closure_evidence`) always resolve to `internal_skills/ranger`
-(`kind=native_role`). The parent agent embodies Ranger directly — the same
-native-role mechanism already used for execution/`sniper` — reading
-`roles/ranger.yaml` + `internal_skills/ranger/SKILL.md` and performing
-discovery under that contract. An external discovery plugin configured at
-`active.slots.discovery` is never consulted for discovery invocation; the
-field remains present for provider-metadata/future use but does not gate any
-current subtype.
-
-This exists because an external discovery plugin's own `SKILL.md` is authored
-independently of Strategist and cannot be relied on to honor
-`roles/ranger.yaml` or subtype-specific obligations, even when its manifest
-declares `native` or `adapter` support — declared support in a manifest is a
-capability claim by whoever wrote it, never a live behavior guarantee. This
-was previously handled by a Post-Route Capability Check applied only to the
-`creative` subtype (the other three subtypes were already native-only); that
-check was removed once a live invocation of a manifest-compliant `creative`
-weapon (`brainstorming`, declaring `discovery_subtype_support: creative:
-native`) surfaced structural incompatibilities with Ranger's autonomous
-single-shot contract that the manifest check could not have caught (see
-`.analysis/refined/20260728-ranger-drift-eval/`). Only
-`internal_skills/ranger`, authored by Strategist itself, can be trusted to
-compose with `roles/ranger.yaml` per its own documented "Invocation Contract".
+The selected discovery weapon is flexible input to the fixed Ranger role. The
+role remains authoritative: it reads `roles/ranger.yaml` and
+`internal_skills/ranger/SKILL.md`, normalizes the weapon result into the
+canonical pending handoff, and owns the checkpoint, lock, state, and control
+log validation. A weapon that cannot satisfy that boundary is a hard error;
+the pipeline does not silently substitute another weapon.
 
 ### Provider Resolution Policy (ADR-0028)
 
-This section does not apply to discovery — discovery's resolution is settled by
-§ Discovery Weapon Resolution by Subtype above (always native, no exception, for a stronger,
-independently-established reason: a live invocation of a manifest-compliant
-discovery plugin surfaced structural incompatibilities that a per-request policy cannot
-detect in advance). It applies to **refinement**, and to any other slot where
+This section applies to **refinement**, and to any other slot where
 `strategist check` reports a `fallback=<role>(native_role)` annotation for the
 configured provider (see `roles/default.yaml` and
 `internal/check/check_slots.go#resolveNativeFallback`).

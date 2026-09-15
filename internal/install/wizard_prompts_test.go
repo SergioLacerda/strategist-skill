@@ -18,12 +18,13 @@ func TestCompatibleProviderOptionsPrefersDefaultCompatibleCandidate(t *testing.T
 		},
 	}}
 
-	ids, defaultID := compatibleProviderOptions(catalog, "archivist", "schemas/handoff-archivist-to-sniper.schema.yaml", "archivist")
+	ids, defaultID, excluded := compatibleProviderOptions(catalog, "archivist", "schemas/handoff-archivist-to-sniper.schema.yaml", "archivist")
 	assert.ElementsMatch(t, []string{"archivist", "openspec-propose"}, ids)
 	assert.Equal(t, "openspec-propose", defaultID)
+	assert.Empty(t, excluded)
 }
 
-func TestCompatibleProviderOptionsExcludesIncompatibleCandidate(t *testing.T) {
+func TestCompatibleProviderOptionsIncludesAffiliatedCandidateWithoutNativeHandoff(t *testing.T) {
 	t.Parallel()
 
 	catalog := pluginCatalog{Providers: []pluginCatalogProvider{
@@ -31,13 +32,14 @@ func TestCompatibleProviderOptionsExcludesIncompatibleCandidate(t *testing.T) {
 		{
 			ID: "openspec-propose", RiskScore: "write_analysis", CanonicalRole: "archivist",
 			CompatibilitySource: "embedded", Default: true,
-			// no SupportedHandoffSchemas declared — today's real state
+			// The fixed Archivist role owns normalization into its handoff.
 		},
 	}}
 
-	ids, defaultID := compatibleProviderOptions(catalog, "archivist", "schemas/handoff-archivist-to-sniper.schema.yaml", "archivist")
-	assert.Equal(t, []string{"archivist"}, ids)
-	assert.Equal(t, "archivist", defaultID)
+	ids, defaultID, excluded := compatibleProviderOptions(catalog, "archivist", "schemas/handoff-archivist-to-sniper.schema.yaml", "archivist")
+	assert.ElementsMatch(t, []string{"archivist", "openspec-propose"}, ids)
+	assert.Equal(t, "openspec-propose", defaultID)
+	assert.Empty(t, excluded)
 }
 
 func TestCompatibleProviderOptionsFallsBackWhenCatalogHasNoNativeEntry(t *testing.T) {
@@ -47,7 +49,8 @@ func TestCompatibleProviderOptionsFallsBackWhenCatalogHasNoNativeEntry(t *testin
 		{ID: "openspec-propose", RiskScore: "write_analysis", CanonicalRole: "archivist", CompatibilitySource: "embedded"},
 	}}
 
-	ids, defaultID := compatibleProviderOptions(catalog, "archivist", "schemas/handoff-archivist-to-sniper.schema.yaml", "archivist")
-	assert.Equal(t, []string{"archivist"}, ids, "falls back to the passed-in fallbackID even with no catalog entry for it, keeping the wizard usable")
-	assert.Equal(t, "archivist", defaultID)
+	ids, defaultID, excluded := compatibleProviderOptions(catalog, "archivist", "schemas/handoff-archivist-to-sniper.schema.yaml", "archivist")
+	assert.Equal(t, []string{"openspec-propose"}, ids)
+	assert.Equal(t, "openspec-propose", defaultID)
+	assert.Empty(t, excluded)
 }

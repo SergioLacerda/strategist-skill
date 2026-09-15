@@ -40,7 +40,7 @@ func PlanRoleProviderMigration(extractor domain.FileExtractor, activeSlots map[s
 		if err != nil {
 			return RoleProviderMigrationPreview{}, fmt.Errorf("role/provider migration: slot %s: %w", slotName, err)
 		}
-		role := domain.RoleContractFromConfig(roleCfg, roleHandoffSchema[roleName])
+		role := domain.RoleContractFromConfig(roleCfg, domain.RoleHandoffSchema[roleName])
 		candidates := providerContractsForRole(catalog, roleName)
 
 		entry := RoleProviderPreviewEntry{
@@ -67,9 +67,9 @@ func PlanRoleProviderMigration(extractor domain.FileExtractor, activeSlots map[s
 	return RoleProviderMigrationPreview{Entries: entries}, nil
 }
 
-// ApplyRoleProviderMigration activates every entry's resolved Provider as its
-// slot's live plugin binding, reusing the exact lifecycle.Store staged
-// activation (Begin/Stage/Probe/Activate) and last-known-good rollback
+// ApplyRoleProviderMigration activates the resolved Provider for the
+// discovery/refinement entries as each slot's live plugin binding, reusing the
+// exact lifecycle.Store staged activation (Begin/Stage/Probe/Activate) and last-known-good rollback
 // primitives applyPluginOnboardingPlan already uses for legacy slot bindings
 // — no second activation mechanism is introduced (Decision 4: lifecycle
 // reuse; tasks.md Task 3.3/4.2).
@@ -83,6 +83,9 @@ func ApplyRoleProviderMigration(store *lifecycle.Store, preview RoleProviderMigr
 		return fmt.Errorf("role_provider_migration_not_fully_resolved: refusing to apply a partial migration")
 	}
 	for _, entry := range preview.Entries {
+		if !isPersistedRoleProviderSlot(entry.Slot) {
+			continue
+		}
 		desired := domain.SlotBinding{
 			SchemaVersion:       "strategist-plugin-binding/v1",
 			Slot:                entry.Slot,
@@ -118,7 +121,7 @@ func ApplyRoleProviderMigration(store *lifecycle.Store, preview RoleProviderMigr
 // enhancement this task does not claim, matching the same level of rigor
 // plugin_onboarding_test.go's own probe closures already use for the legacy
 // binding path.
-func activateRoleProviderMigration(strategistDir string, preview RoleProviderMigrationPreview) (domain.PluginLockFile, error) {
+func activateRoleProviderMigration(strategistDir string, resolvedLock domain.PluginLock, preview RoleProviderMigrationPreview) (domain.PluginLockFile, error) {
 	var persisted domain.PluginLockFile
 	if strategistDir != "" {
 		var err error
@@ -133,6 +136,9 @@ func activateRoleProviderMigration(strategistDir string, preview RoleProviderMig
 	store.Bindings = persisted.Bindings
 
 	for _, entry := range preview.Entries {
+		if !isPersistedRoleProviderSlot(entry.Slot) {
+			continue
+		}
 		seedRoleProviderMigrationEntry(store, entry)
 	}
 
@@ -141,7 +147,11 @@ func activateRoleProviderMigration(strategistDir string, preview RoleProviderMig
 		return domain.PluginLockFile{}, err
 	}
 
-	return domain.PluginLockFile{Inventory: store.Inventory, Bindings: store.Bindings}, nil
+	return domain.PluginLockFile{Lock: resolvedLock, Inventory: store.Inventory, Bindings: store.Bindings}, nil
+}
+
+func isPersistedRoleProviderSlot(slot string) bool {
+	return slot == string(domain.SlotDiscovery) || slot == string(domain.SlotRefinement)
 }
 
 // seedRoleProviderMigrationEntry ensures store has an instance/binding entry

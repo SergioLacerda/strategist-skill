@@ -101,11 +101,14 @@ var validMaterializationStates = stringSet(
 // plugins/catalog.yaml fields instead of introducing a parallel provider
 // registry (Decision 4: lifecycle reuse).
 type ProviderContract struct {
-	SchemaVersion                 string               `yaml:"schema_version"`
-	ID                            string               `yaml:"id"`
-	Version                       string               `yaml:"version"`
-	ProviderSchemaVersion         string               `yaml:"provider_schema_version"`
-	CanonicalRole                 string               `yaml:"canonical_role"`
+	SchemaVersion         string `yaml:"schema_version"`
+	ID                    string `yaml:"id"`
+	Version               string `yaml:"version"`
+	ProviderSchemaVersion string `yaml:"provider_schema_version"`
+	CanonicalRole         string `yaml:"canonical_role"`
+	// Roles is the canonical multi-role affinity declaration. CanonicalRole is
+	// retained as a compatibility alias for older single-role catalog entries.
+	Roles                         []string             `yaml:"roles,omitempty"`
 	RiskScore                     string               `yaml:"risk_score"`
 	Source                        ProviderSource       `yaml:"source"`
 	Materialization               MaterializationState `yaml:"materialization"`
@@ -136,7 +139,9 @@ func (p ProviderContract) Validate() error {
 	requireNonEmpty(&errs, "id", p.ID)
 	requireNonEmpty(&errs, "version", p.Version)
 	requireNonEmpty(&errs, "provider_schema_version", p.ProviderSchemaVersion)
-	requireNonEmpty(&errs, "canonical_role", p.CanonicalRole)
+	if p.CanonicalRole == "" && len(p.Roles) == 0 {
+		errs = append(errs, "roles or canonical_role is required")
+	}
 	requireNonEmpty(&errs, "risk_score", p.RiskScore)
 	if p.Source == "" {
 		errs = append(errs, "source is required")
@@ -158,19 +163,9 @@ func (p ProviderContract) Validate() error {
 // AdapterContract.CheckCompatibility's existing host-API dimension — it does
 // not replace it.
 func (p ProviderContract) CheckRoleCompatibility(role RoleContract) CompatibilityResult {
-	if p.CanonicalRole != role.Role {
-		return CompatibilityResult{Compatible: false, Reasons: []CompatibilityReason{{
-			Dimension: "canonical_role",
-			Code:      "role_mismatch",
-			Detail:    fmt.Sprintf("provider declares canonical_role %q, role contract is %q", p.CanonicalRole, role.Role),
-		}}}
-	}
-	if !hasString(stringSet(p.SupportedRoleContractVersions...), role.SchemaVersion) {
-		return CompatibilityResult{Compatible: false, Reasons: []CompatibilityReason{{
-			Dimension: "role_contract_version",
-			Code:      "unsupported_role_contract_version",
-			Detail:    fmt.Sprintf("%s does not declare support for role contract %s", p.ID, role.SchemaVersion),
-		}}}
+	affinity := p.CheckRoleAffinity(role)
+	if !affinity.Compatible {
+		return affinity
 	}
 	if p.Source != ProviderSourceNativeRole && role.HandoffSchema != "" &&
 		!hasString(stringSet(p.SupportedHandoffSchemas...), role.HandoffSchema) {
@@ -178,6 +173,31 @@ func (p ProviderContract) CheckRoleCompatibility(role RoleContract) Compatibilit
 			Dimension: "handoff_schema",
 			Code:      "unsupported_handoff_schema",
 			Detail:    fmt.Sprintf("%s does not declare support for handoff schema %s", p.ID, role.HandoffSchema),
+		}}}
+	}
+	return CompatibilityResult{Compatible: true}
+}
+
+// CheckRoleAffinity verifies only the provider's explicit affinity and role
+// contract version. Handoff production is a fixed role checkpoint concern,
+// so this method is used by catalogs and wizard selection before execution.
+func (p ProviderContract) CheckRoleAffinity(role RoleContract) CompatibilityResult {
+	roles := p.Roles
+	if len(roles) == 0 && p.CanonicalRole != "" {
+		roles = []string{p.CanonicalRole}
+	}
+	if !hasString(stringSet(roles...), role.Role) {
+		return CompatibilityResult{Compatible: false, Reasons: []CompatibilityReason{{
+			Dimension: "role_affinity",
+			Code:      "role_mismatch",
+			Detail:    fmt.Sprintf("provider declares roles %v, role contract is %q", roles, role.Role),
+		}}}
+	}
+	if !hasString(stringSet(p.SupportedRoleContractVersions...), role.SchemaVersion) {
+		return CompatibilityResult{Compatible: false, Reasons: []CompatibilityReason{{
+			Dimension: "role_contract_version",
+			Code:      "unsupported_role_contract_version",
+			Detail:    fmt.Sprintf("%s does not declare support for role contract %s", p.ID, role.SchemaVersion),
 		}}}
 	}
 	return CompatibilityResult{Compatible: true}

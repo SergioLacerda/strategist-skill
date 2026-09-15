@@ -31,11 +31,9 @@ the distinction from first principles each time.
   entry. Pluggable by design; `strategist check`'s SLOTS/READINESS output validates
   invocability for exactly these before a mission starts. `ranger`, `archivist`,
   `sniper`.
-  - Documented exception: Ranger is structurally a Papel Externo but always resolves
-    natively today, regardless of `active.slots.discovery`'s configured value (see
-    `contracts/narrative/00-routing.md` § Discovery Weapon Resolution by Subtype —
-    a deliberate guardrail, not an oversight). "Papel Externo" names structural
-    pluggability, not a guarantee of current external invocation.
+  - Fixed-role guardrail: external providers may be selected for the role, but
+    Ranger remains authoritative for normalization and checkpoints. "Papel
+    Externo" names structural pluggability, not permission to bypass the role.
 
 ### 2. Skills ("Armas")
 
@@ -70,7 +68,8 @@ retroactively fabricate one; a future ingestion mission catalogues it for real.
 
 ### 4. Simplified Arma model — one primary weapon per Papel, plus its dependencies
 
-A Papel's candidate Armas are every catalog entry whose `canonical_role` matches it.
+A Papel's candidate Armas are every catalog entry whose explicit `roles` affinity
+contains it. `canonical_role` remains a backwards-compatible single-role alias.
 Exactly one is primary, via a `default: true` catalog field wired through to
 `domain.ProviderContract.Default` (the domain field already existed from the prior
 Role/Provider convergence mission but was never populated from the catalog).
@@ -106,8 +105,8 @@ not semantically meaningful checks. This is a backend/data-model simplification 
 
 - One vocabulary future contracts, ADRs, and code comments can cite by name instead
   of re-deriving the Papel/Skill distinction each time.
-- The Ranger native-invocation exception is now explicitly documented as
-  intentional, reducing the chance a future contributor "fixes" it as a bug.
+- The fixed-role normalization boundary is explicit, reducing the chance an
+  external weapon bypasses Ranger's checkpoints.
 - A single `compatibility_source: external` value removes a real source of naming
   ambiguity that no code ever actually distinguished between.
 - The Skill dependency rule has one enforcement point (`ValidateCatalogDependencies`)
