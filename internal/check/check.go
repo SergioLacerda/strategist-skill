@@ -13,6 +13,7 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/rolevalidation"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -40,7 +41,9 @@ Checks performed:
         roles/<provider>.yaml exists with matching slot field (native role)
       • skill providers must declare the correct risk_score for the slot contract:
         discovery/refinement → write_analysis, execution → controlled
-      • native roles are accepted by slot field match; no risk_score check`,
+      • native roles are accepted by slot field match; no risk_score check
+  - discovery and refinement must have one valid persisted weapon binding in plugins.lock
+  - role affinity and active.yaml/plugins.lock parity are validated fail-closed`,
 	RunE: func(cmd *cobra.Command, _ []string) (retErr error) {
 		root := checkRoot
 		if root == "" {
@@ -107,9 +110,6 @@ Checks performed:
 
 		resolutions := map[string]slotResolution{}
 		var errs []string
-		if polErr := cfg.ProviderResolutionPolicy.Validate(); polErr != nil {
-			errs = append(errs, "active.yaml: "+polErr.Error())
-		}
 		for _, slot := range []string{"discovery", "refinement", "execution"} {
 			provider := providers[slot]
 			if provider == "" {
@@ -121,12 +121,12 @@ Checks performed:
 				errs = append(errs, errMsg)
 				continue
 			}
-			if res.kind == slotResolutionSkillProvider {
-				res.fallbackProvider, res.fallbackPath = resolveNativeFallback(root, slot)
-			}
 			resolutions[slot] = res
 		}
 		errs = append(errs, checkPluginLockParity(root, providers)...)
+		for _, failure := range rolevalidation.ValidateRuntimeBindings(root, cfg) {
+			errs = append(errs, failure.Error())
+		}
 
 		// Gate the exit code on plugin-readiness diagnostics, not just static
 		// YAML validation (see blockedReadinessErrorsForSlots/
@@ -136,23 +136,7 @@ Checks performed:
 		// always computed and printed but never gated on.
 		errs = append(errs, blockedReadinessErrorsForSlots(resolutions, []string{"discovery", "refinement", "execution"})...)
 
-		// Validate active persona.
-		if cfg.Mode == "" {
-			errs = append(errs, "active.yaml: mode is empty — must be epic or pragmatic")
-		} else {
-			personaPath := filepath.Join(root, "personas", cfg.Mode+".yaml")
-			personaRaw, personaErr := os.ReadFile(personaPath) //nolint:gosec // G304: persona path is derived from active runtime mode
-			if personaErr != nil {
-				errs = append(errs, fmt.Sprintf("persona: mode=%q file missing (%s)", cfg.Mode, personaPath))
-			} else {
-				var persona domain.PersonaConfig
-				if yamlErr := yaml.Unmarshal(personaRaw, &persona); yamlErr != nil {
-					errs = append(errs, fmt.Sprintf("persona: mode=%q invalid yaml: %v", cfg.Mode, yamlErr))
-				} else if rtErr := persona.ValidateForRuntime(); rtErr != nil {
-					errs = append(errs, fmt.Sprintf("persona: mode=%q %v", cfg.Mode, rtErr))
-				}
-			}
-		}
+		errs = append(errs, validateActivePersona(root, cfg.Mode)...)
 
 		weaponBindings, weaponErr := verifyEmbeddedWeaponBindings(root)
 		if weaponErr != nil {
@@ -198,6 +182,6 @@ Checks performed:
 			return fmt.Errorf("[Strategist] check=failed errors=%d root=%s", len(errs), root)
 		}
 
-		return printCheckSuccess(root, providers, resolutions, cfg.Mode, cfg.ProviderResolutionPolicy, weaponBindings)
+		return printCheckSuccess(root, providers, resolutions, cfg.Mode, weaponBindings)
 	},
 }

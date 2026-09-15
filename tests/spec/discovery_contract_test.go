@@ -157,9 +157,10 @@ func TestRangerAndArchivistThreadEvidencePackPath(t *testing.T) {
 // distinct events rather than leaving them as unexplained naming drift.
 
 // TestRoutingContractDefinesDiscoveryWeaponResolutionBySubtype verifies
-// 00-routing.md normatively states that evaluation/diagnostic/closure_evidence
-// discovery subtypes always resolve to internal_skills/ranger, bypassing the
-// configured external weapon.
+// 00-routing.md normatively states that the configured discovery weapon is
+// flexible input to the fixed Ranger role, and that a weapon which cannot
+// satisfy Ranger's normalization/checkpoint boundary is a fatal error rather
+// than something the pipeline silently substitutes another provider for.
 func TestRoutingContractDefinesDiscoveryWeaponResolutionBySubtype(t *testing.T) {
 	t.Parallel()
 
@@ -168,9 +169,8 @@ func TestRoutingContractDefinesDiscoveryWeaponResolutionBySubtype(t *testing.T) 
 	for _, needle := range []string{
 		"Discovery Weapon Resolution by Subtype",
 		"internal_skills/ranger",
-		"kind=native_role",
-		"does not depend on",
-		"never a live behavior guarantee",
+		"hard error",
+		"does not silently substitute another weapon",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("%s missing discovery weapon resolution term %q", path, needle)
@@ -232,24 +232,22 @@ func TestAgentProtocolTemplateRoutesDiscoveryBySubtype(t *testing.T) {
 	}
 }
 
-// TestDiscoveryContractCrossReferencesSubtypeResolution verifies 03-discovery.md
-// points to 00-routing.md for which concrete invocation target (external weapon
-// vs. native Ranger) handles each subtype.
-
-// TestDiscoveryContractCrossReferencesSubtypeResolution verifies 03-discovery.md
-// points to 00-routing.md for which concrete invocation target (external weapon
-// vs. native Ranger) handles each subtype.
-func TestDiscoveryContractCrossReferencesSubtypeResolution(t *testing.T) {
+// TestDiscoveryContractDescribesUniformWeaponHandling verifies 03-discovery.md
+// states that Ranger's normalization/checkpoint/handoff behavior is identical
+// regardless of which weapon is configured for discovery — there is no
+// per-subtype invocation-target split left to cross-reference in
+// 00-routing.md, because resolution no longer depends on discovery_subtype.
+func TestDiscoveryContractDescribesUniformWeaponHandling(t *testing.T) {
 	t.Parallel()
 
 	path := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "03-discovery.md")
 	content := readFile(t, path)
 	for _, needle := range []string{
-		"Discovery Weapon Resolution by Subtype",
-		"internal_skills/ranger",
+		"flexible input to the fixed Ranger role",
+		"identical regardless of which weapon is selected",
 	} {
 		if !strings.Contains(content, needle) {
-			t.Fatalf("%s missing subtype resolution cross-reference term %q", path, needle)
+			t.Fatalf("%s missing uniform weapon handling term %q", path, needle)
 		}
 	}
 }
@@ -302,14 +300,17 @@ func TestRangerRoleFileReferencesEvaluationVerdict(t *testing.T) {
 
 // TestBrainstormingProviderDoesNotDeclareDiscoverySubtypeSupport verifies the
 // brainstorming provider manifest no longer declares discovery_subtype_support
-// at all. Discovery never resolves to this weapon for any subtype anymore —
-// see 00-routing.md § Discovery Weapon Resolution by Subtype. Two prior
-// versions of this test required, in turn, adapter claims for
-// evaluation/diagnostic/closure_evidence, then a native claim for creative
-// only — both were falsified by live invocation (see
-// .analysis/refined/20260728-ranger-drift-eval/): a manifest capability claim
-// is not a live behavior guarantee, so the field was removed rather than
-// re-tuned a third time.
+// at all. Discovery still resolves to whichever weapon is configured at
+// active.slots.discovery — see 00-routing.md § Discovery Weapon Resolution by
+// Subtype — but the weapon's own capability claims no longer gate anything: the
+// fixed Ranger role owns normalization/checkpoint/handoff for whatever the
+// weapon produces, and a weapon that cannot satisfy that boundary is a hard
+// error rather than a per-subtype manifest check. Two prior versions of this
+// test required, in turn, adapter claims for evaluation/diagnostic/
+// closure_evidence, then a native claim for creative only — both were
+// falsified by live invocation (see .analysis/refined/20260728-ranger-drift-eval/):
+// a manifest capability claim is not a live behavior guarantee, so the field
+// was removed rather than re-tuned a third time.
 // .strategist/ is a generated runtime artifact, so this only asserts the
 // embedded-defaults copy — the canonical source for what strategist install stamps
 // into a workspace.
@@ -336,7 +337,7 @@ func TestBrainstormingProviderDoesNotDeclareDiscoverySubtypeSupport(t *testing.T
 		"specialization_taxonomy",
 	} {
 		if strings.Contains(content, forbidden) {
-			t.Fatalf("%s still declares a discovery-subtype capability claim %q — no subtype resolves to this weapon anymore", path, forbidden)
+			t.Fatalf("%s still declares a discovery-subtype capability claim %q — manifest capability claims no longer gate weapon resolution", path, forbidden)
 		}
 	}
 }

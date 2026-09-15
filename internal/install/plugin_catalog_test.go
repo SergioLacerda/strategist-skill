@@ -93,10 +93,10 @@ providers:
 	assert.Equal(t, map[string]string{"alpha": "skills/alpha/skill.yaml"}, got)
 }
 
-func TestLegacyProviderManifestBytesPrefersPluginCatalog(t *testing.T) {
+func TestProviderManifestBytesUsesPluginCatalog(t *testing.T) {
 	t.Parallel()
 
-	data, err := legacyProviderManifestBytes(catalogOnlyExtractor{catalog: []byte(`
+	data, err := providerManifestBytes(catalogOnlyExtractor{catalog: []byte(`
 schema_version: strategist-plugin-catalog/v1
 providers:
   - id: alpha
@@ -109,7 +109,7 @@ providers:
     description: Generated from catalog.
     installable: true
     legacy_manifest_path: skills/alpha/skill.yaml
-`)}, "alpha", "skills/alpha/skill.yaml")
+`)}, "alpha")
 	require.NoError(t, err)
 
 	var manifest map[string]any

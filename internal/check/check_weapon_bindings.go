@@ -10,12 +10,8 @@ import (
 )
 
 // weaponBinding is the verification result for one embedded skill (weapon)
-// that declares a canonical_role — DEC-003 of mission
-// 20260913-wizard-hardcoded-fallback-maps-cleanup, recorded in
-// docs/adr/0035-embedded-weapon-fallback-policy.md. Unlike
-// resolveNativeFallback (which only discovers a compatible native-role
-// fallback lazily, for whichever slot happens to already be configured as a
-// skill_provider), this check runs unconditionally over every skill under
+// that declares a canonical_role. This check runs unconditionally over every
+// skill under
 // <root>/skills/ that declares specialization_taxonomy.canonical_role,
 // independent of what active.yaml currently configures for any slot.
 type weaponBinding struct {
@@ -77,8 +73,7 @@ func verifyEmbeddedWeaponBindings(root string) ([]weaponBinding, error) {
 
 	// A missing/invalid roles/default.yaml is surfaced per-binding below
 	// (each binding needing it fails with an explicit reason), not as a
-	// function-level error — mirrors resolveNativeFallback's own treatment
-	// of the same file.
+	// function-level error so each expected binding receives an explicit reason.
 	roleSlotMap, roleSlotMapErr := loadRoleSlotMap(root)
 
 	var bindings []weaponBinding

@@ -217,17 +217,11 @@ providers:
 		"en\nen\nen\nen\nepic\n.analysis\nbrainstorming\nmissing-refinement\nsniper\n\n",
 	)), ext, "")
 
-	// checkCustomSkillAvailability (tasks.md Task 6,
-	// .analysis/refined/20260913-embedded-skill-directory-catalog) now runs
-	// before planPluginOnboarding and pauses on any registry-unknown value
-	// that also fails already-installed resolution — "missing-refinement" is
-	// exactly that case, so it is now caught here with a clearer
-	// "configured_unverified" message instead of surfacing as a raw
-	// "plugin onboarding plan"/"unresolved_active_slot" error. The wizard
-	// still blocks (require.Error) either way; only the message improved.
+	// The wizard fails before activation because the catalog has no compatible
+	// refinement weapon for the fixed Archivist role.
 	require.Error(t, err)
-	require.ErrorContains(t, err, "configured_unverified")
-	require.ErrorContains(t, err, "missing-refinement")
+	require.ErrorContains(t, err, "no compatible weapon")
+	require.ErrorContains(t, err, "ranger")
 }
 
 type wizardCatalogExtractor struct {

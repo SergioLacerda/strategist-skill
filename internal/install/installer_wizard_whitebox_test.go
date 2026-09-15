@@ -222,7 +222,7 @@ func TestInstall_WizardPath_AwarenessRefresherCalled(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	called := false
-	svc := newSvcW(t, "en\nen\npt-BR\nen\nepic\n/workspace\nbrainstorming\nbrainstorming\narchivist\nsdd-ask\n\n")
+	svc := newSvcW(t, "en\nen\npt-BR\nen\nepic\n/workspace\nbrainstorming\nopenspec-propose\narchivist\nsdd-ask\n\n")
 	svc.AwarenessRefresher = func(strategistRoot, projectRoot, _ string) bool {
 		called = true
 		assert.Equal(t, filepath.Join(dir, ".strategist"), strategistRoot)

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -209,4 +210,74 @@ func TestWizardDoesNotAskPermissionLevel(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "epic", wc.Mode)
 	assert.Equal(t, "brainstorming", wc.DiscoveryProvider)
+}
+
+func TestValidateWizardRoleBindings_ReportsTheFailingEntrysResolutionError(t *testing.T) {
+	t.Parallel()
+	preview := RoleProviderMigrationPreview{Entries: []RoleProviderPreviewEntry{
+		{Slot: "discovery", RoleName: "ranger", Resolved: domain.ProviderBinding{Compatibility: domain.CompatibilityResult{Compatible: true}}},
+		{Slot: "refinement", RoleName: "archivist", ResolutionError: "no compatible provider in catalog"},
+	}}
+	err := validateWizardRoleBindings(preview)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "slot=refinement")
+	require.ErrorContains(t, err, "role=archivist")
+	require.ErrorContains(t, err, "no compatible provider in catalog")
+}
+
+func TestValidateWizardRoleBindings_EmptyPreviewIsUnresolved(t *testing.T) {
+	t.Parallel()
+	err := validateWizardRoleBindings(RoleProviderMigrationPreview{})
+	require.Error(t, err)
+	require.ErrorContains(t, err, "no complete role/provider binding")
+}
+
+func TestValidateWizardRoleBindings_ResolvedButIncompatibleWeaponFails(t *testing.T) {
+	t.Parallel()
+	preview := RoleProviderMigrationPreview{Entries: []RoleProviderPreviewEntry{
+		{
+			Slot:     string(domain.SlotDiscovery),
+			RoleName: "ranger",
+			Resolved: domain.ProviderBinding{
+				Provider:      domain.ProviderContract{ID: "brainstorming"},
+				Compatibility: domain.CompatibilityResult{Compatible: false},
+			},
+		},
+		{
+			Slot:     string(domain.SlotRefinement),
+			RoleName: "archivist",
+			Resolved: domain.ProviderBinding{
+				Provider:      domain.ProviderContract{ID: "openspec-propose"},
+				Compatibility: domain.CompatibilityResult{Compatible: true},
+			},
+		},
+	}}
+	err := validateWizardRoleBindings(preview)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "slot=discovery")
+	require.ErrorContains(t, err, "role=ranger")
+	require.ErrorContains(t, err, "has no compatible weapon")
+}
+
+func TestValidateWizardRoleBindings_FullyResolvedAndCompatiblePasses(t *testing.T) {
+	t.Parallel()
+	preview := RoleProviderMigrationPreview{Entries: []RoleProviderPreviewEntry{
+		{
+			Slot:     string(domain.SlotDiscovery),
+			RoleName: "ranger",
+			Resolved: domain.ProviderBinding{
+				Provider:      domain.ProviderContract{ID: "brainstorming"},
+				Compatibility: domain.CompatibilityResult{Compatible: true},
+			},
+		},
+		{
+			Slot:     string(domain.SlotExecution),
+			RoleName: "sniper",
+			Resolved: domain.ProviderBinding{
+				Provider:      domain.ProviderContract{ID: "sniper"},
+				Compatibility: domain.CompatibilityResult{Compatible: true},
+			},
+		},
+	}}
+	require.NoError(t, validateWizardRoleBindings(preview))
 }

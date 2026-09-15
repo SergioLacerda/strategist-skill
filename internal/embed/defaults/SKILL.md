@@ -69,14 +69,17 @@ provider=<configured_provider>
 action=fix provider configuration or runtime installation, then rerun strategist check
 ```
 
-Discovery subtypes are selected by Scout and executed through Ranger, the internal
-discovery persona. Ranger always performs discovery itself (native role) — no
-external weapon is ever consulted as a substitute for Ranger, for any subtype (see
+Discovery subtypes are selected by Scout and executed under the fixed Ranger role.
+The weapon configured at `active.slots.discovery` (set once during `strategist
+install`/onboarding, not chosen per subtype or per mission) is flexible input to
+that role — it may work however it needs to internally — but Ranger owns
+normalization, checkpoint, lock, state, and handoff validation regardless of which
+weapon produced the result. There is no fallback: a weapon that cannot satisfy that
+boundary is a hard error, never silently substituted with a native invocation (see
 `contracts/narrative/00-routing.md` § Discovery Weapon Resolution by Subtype). The
-parent agent MUST NOT perform discovery directly; it embodies Ranger under
-`roles/ranger.yaml` + `internal_skills/ranger/SKILL.md`. `active.slots.discovery`
-remains configured and preflight-validated (exists, invocable, risk-compatible) but
-is not invoked for discovery.
+parent agent MUST NOT perform discovery directly; it invokes the configured weapon
+and embodies Ranger under `roles/ranger.yaml` + `internal_skills/ranger/SKILL.md` to
+normalize the result.
 
 If the request requires source-code mutation, Strategist may analyze and refine the
 work, but must not perform the mutation. The response must clearly state that

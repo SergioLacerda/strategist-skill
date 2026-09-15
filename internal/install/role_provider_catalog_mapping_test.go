@@ -40,3 +40,24 @@ func TestProviderContractFromCatalogEntryNativeRoleNeedsNoDeclaredSchema(t *test
 	assert.Equal(t, domain.ProviderSourceNativeRole, contract.Source)
 	assert.Empty(t, contract.SupportedHandoffSchemas, "native role providers skip the handoff_schema dimension entirely; they need no declared value")
 }
+
+func TestProviderSourceFromCompatibilitySource(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		compatibilitySource string
+		want                domain.ProviderSource
+	}{
+		{"embedded", domain.ProviderSourceEmbedded},
+		{"native_role", domain.ProviderSourceNativeRole},
+		{"external", domain.ProviderSourceExternal},
+		{"", domain.ProviderSourceExternal},
+		{"unrecognized_value", domain.ProviderSourceExternal},
+	}
+	for _, tt := range tests {
+		t.Run(tt.compatibilitySource, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, providerSourceFromCompatibilitySource(tt.compatibilitySource))
+		})
+	}
+}

@@ -70,59 +70,13 @@ canonical pending handoff, and owns the checkpoint, lock, state, and control
 log validation. A weapon that cannot satisfy that boundary is a hard error;
 the pipeline does not silently substitute another weapon.
 
-### Provider Resolution Policy (ADR-0028)
+### Provider Resolution Policy
 
-This section applies to **refinement**, and to any other slot where
-`strategist check` reports a `fallback=<role>(native_role)` annotation for the
-configured provider (see `roles/default.yaml` and
-`internal/check/check_slots.go#resolveNativeFallback`).
-
-`static strategist check` validation of an external skill plugin slot (valid
-`skill.yaml`, matching `risk_score`) does not prove the slot plugin is invocable by
-the current agent runtime — only a live mission invocation reveals that. When a
-configured external skill plugin fails at invocation time, and `strategist check`'s
-own SLOTS output shows a compatible native-role fallback exists for that slot,
-the agent MUST resolve the block according to `active.yaml`'s
-`provider_resolution_policy` (absent or empty defaults to `ask`):
-
-- **`block`** — preserve the strict, pre-ADR-0028 behavior: emit
-  `role_invocation_failed`, stop, and wait for the user to fix the provider
-  configuration or reconfigure the slot. No fallback is offered automatically.
-- **`ask`** (default) — present the block to the user with the concrete choice:
-  (a) use the compatible native role for this mission, (b) reconfigure
-  `active.slots.<phase>` to a different, available provider, or (c) accept the
-  mission's current terminal state (e.g. analysis-only) without refinement. Do
-  not pick for the user. Record the choice made (e.g. as an ADR or mission
-  decision) rather than silently repeating the question on the very next
-  mission without referencing the prior one.
-- **`native`** — use the compatible native role automatically, without asking,
-  but the agent MUST emit degradation evidence identifying the configured
-  provider, the effective (fallback) provider, and the reason, e.g.:
-  `[Strategist] phase=<phase> status=degraded reason=native_fallback configured_provider=<x> effective_provider=<y>`.
-  Auto-substitution under this policy is still never a substitute for the
-  Strategist Approval Gate, still preserves the resolved role's own write scope
-  and role contract (`must`/`must_not`), and still never applies to discovery
-  or to a slot where no compatible native role exists.
-
-Whenever a fallback is actually applied — `native` automatically, or `ask`
-after the user confirms — append one JSON line shaped per
-`schemas/fallback-decision.schema.yaml` to
-`.strategist/memory/fallback-decisions.jsonl`, using `internal/telemetry`'s
-`AppendFallbackDecisionLine`, in addition to the narrative log line above.
-This is the durable, auditable record `strategist metrics fallback`
-aggregates over; see `contracts/machine/provider-fallback.yaml` for the full
-emission/persistence contract. `block`, and `ask` without confirmation, never
-produce a record — nothing degraded.
-
-None of the three policies authorizes skipping the Approval Gate, changing
-write scope, or treating an external skill plugin failure as license to invent a
-provider that isn't `roles/<id>.yaml`-backed. `block` and `ask` never mutate
-`active.yaml`; only `native` changes *behavior* for the current mission, never
-the stored configuration — an operator who wants the native role as the
-permanent, standing choice still edits `active.slots.<phase>` (via
-`strategist install`/`compile`, not a manual hand-edit, to avoid an
-unacknowledged `hash_mismatch` — see
-`docs/runbooks/role-invocation-failed.md` § Refinement-Specific Escalation).
+There is no provider fallback policy. The selected weapon is immutable for the
+mission and operates inside its fixed role. If it is absent, incompatible, or
+cannot satisfy the role checkpoint, the pipeline emits a fatal error and stops.
+The native role is not substituted for the weapon. The Wizard and
+`strategist check` must detect the invalid binding before mission execution.
 
 ## Main Mission Sequence
 

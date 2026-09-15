@@ -26,12 +26,12 @@ import (
 // It is a no-op (returns "") whenever:
 //   - roles/default.yaml has no entry for slot, is unreadable, or the mapped
 //     role's own role file is unreadable/invalid — those conditions are
-//     already surfaced elsewhere (resolveNativeFallback, check_weapon_bindings.go)
+//     already surfaced elsewhere (check_weapon_bindings.go)
 //     and are not duplicated here;
 //   - the skill.yaml declares no canonical_role at all — not every skill
 //     provider is expected to declare one (e.g. sdd-ask), and the execution
 //     slot's embedded weapon is explicitly deferred by
-//     docs/adr/0035-embedded-weapon-fallback-policy.md DEC-001.
+//     the fixed embedded-weapon roster.
 //
 // SupportedRoleContractVersions is not read from skill.yaml — no shipped
 // manifest declares it yet — and is instead defaulted to exactly the

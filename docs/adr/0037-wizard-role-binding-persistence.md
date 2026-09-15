@@ -42,10 +42,8 @@ should cover (UNC-03). The user resolved both directly.
 
 - **DEC-001.** The Wizard must persist a real, on-disk record of the
   resolved discovery (Ranger) and refinement (Archivist) weapon bindings —
-  not just a validated `active.yaml`. Describing today's behavior as "Ranger
-  never delegates to an external weapon" is correct for *mission-time
-  invocation* (unaffected by this decision — see Non-Goals below) but
-  incomplete as a description of the Wizard's job: the Wizard's binding step
+not just a validated `active.yaml`. The role remains authoritative during
+mission-time invocation, while the Wizard's binding step
   is real product intent, and its output must be written somewhere durable,
   using the already-implemented `lifecycle.Store`/`ApplyRoleProviderMigration`
   primitives instead of computing and discarding them.

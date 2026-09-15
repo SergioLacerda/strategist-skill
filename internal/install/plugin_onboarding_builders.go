@@ -44,7 +44,6 @@ func bindingsFromSlots(slots map[string]string, lock domain.PluginLock) ([]domai
 			InstalledInstanceID: installedInstanceID(node),
 			Generation:          0,
 			Status:              "enabled",
-			NativeFallback:      nativeFallbackForSlot(slot),
 		})
 	}
 	return bindings, nil
@@ -81,17 +80,4 @@ func sortedSlotNames(slots map[string]string) []string {
 	}
 	sort.Strings(names)
 	return names
-}
-
-func nativeFallbackForSlot(slot string) string {
-	switch slot {
-	case "discovery":
-		return "ranger"
-	case "refinement":
-		return "archivist"
-	case "execution":
-		return "sniper"
-	default:
-		return ""
-	}
 }

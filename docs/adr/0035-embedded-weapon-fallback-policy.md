@@ -1,4 +1,4 @@
-# ADR-0035 — Embedded Weapon Roster and Fallback Notification Policy
+# ADR-0035 — Embedded Weapon Roster and Fail-Closed Binding Policy
 
 **Status:** Accepted
 **Date:** 2026-09-14
@@ -38,56 +38,35 @@ system.
    already produces a proposal/design/tasks package mirroring Archivist's
    own output contract, and is the value the user confirmed at the Approval
    Gate. `openspec-explore` remains registered as a secondary, opt-in
-   refinement option, unchanged. The execution slot's embedded weapon
+   discovery option, unchanged. The execution slot's embedded weapon
    (paired with `sniper`) is explicitly deferred — not decided by this ADR.
 
-2. **Fallback substitution must always be visible, never silent — and, at
-   install time, is a hard block, not a warning.** This extends ADR-0028's
-   `ask`-first posture, previously scoped to mission-time slot resolution, to
-   the Wizard's install-time fallback path, but resolves the two paths to
-   different strengths, confirmed as an intentional dual hard-block:
-   - **`strategist install`** (Wizard, install-time): when
-     `plugins/catalog.yaml` fails to load, the Wizard refuses to prompt at
-     all — a hard stop, not a continue-with-warning. It no longer falls back
-     to the hardcoded `installableDefaultProviders`/`knownProviderRisk` maps
-     silently or otherwise; those maps are retained only for
-     `minimalExtractor{}`-based tests and as the post-catalog manifest-writing
-     fallback described in Decision 4.
-   - **`strategist check`** (runtime/validation-time): fails the command
-     (`check=failed`) when an embedded weapon binding — the `WEAPON LINKS`
-     section — is broken. This side was already correctly hard-blocking
-     before this revision; only this ADR's text was stale.
-
-   These are independent, complementary gates, not a contradiction: both
-   layers hard-block on their own respective failure, rather than one of them
-   degrading to a visible-but-permissive warning.
+2. **There is no fallback substitution.** This supersedes ADR-0028's
+   `ask`-first posture for the active role/weapon path. The Wizard refuses to
+   activate a configuration unless discovery and refinement each have one
+   compatible external weapon, and `strategist check` applies the same
+   invariant at runtime: missing, ambiguous, stale, or incompatible bindings
+   are fatal. Native roles are not substituted for weapons.
 
 3. **`strategist check` must positively verify embedded role↔weapon
-   linkage.** `internal/check/check_slots.go#resolveNativeFallback` only
-   discovers a compatible native-role fallback lazily, when a slot happens
-   to already be configured as an external skill provider. `strategist
-   check` must add an always-run verification, independent of the current
+   linkage.** `strategist check` must add an always-run verification,
+   independent of the current
    `active.yaml` configuration, that each permanent pairing from Decision 1
    is structurally intact (the embedded skill's `canonical_role` field
    matches `roles/default.yaml`'s slot map, and the target role file exists
    and validates), reporting pass/fail per pairing.
 
-4. The hardcoded default constants (`installableDefaultProviders`,
-   `knownProviderRisk`, `defaultDiscoveryProvider`, and the refinement
-   default) are retained, not deleted — this supersedes Task 7.2's literal
-   "delete" wording. The refinement default becomes a named default-skill
-   variable per slot (not an inline literal), whose refinement value is
-   `openspec-propose`.
+4. The named default-skill values remain catalog/build metadata, but they are
+   not runtime substitutes. The refinement default is
+   `openspec-propose`; its absence or incompatibility is a fatal Wizard/check
+   error, never a reason to select `archivist`.
 
 ## Consequences
 
 ### Positive
 
-- The Wizard keeps working in every environment `minimalExtractor{}`-based
-  tests and catalog-less installs rely on.
-- No fallback anywhere in the system — Wizard install-time or mission-time
-  slot resolution — can substitute a value without the operator/user seeing
-  it happen.
+- The Wizard and `strategist check` fail closed before mission execution when
+  a required role/weapon binding is invalid.
 - `strategist check` becomes a positive source of truth for whether the two
   permanent embedded pairings are intact, instead of only surfacing a
   fallback candidate reactively.
@@ -103,9 +82,8 @@ system.
   onboarding it is now a prerequisite before it can actually be wired as the
   configured default, adding implementation scope beyond a simple constant
   rename.
-- Two independent fallback-notification code paths (Wizard install-time,
-  ADR-0028 mission-time) now both need to satisfy "always visible," instead
-  of one.
+- Historical fallback-policy structures may remain for compatibility, but are
+  not consulted by Wizard activation or `strategist check`.
 
 ## Rejected Alternatives
 

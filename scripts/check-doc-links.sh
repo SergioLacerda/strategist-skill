@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # check-doc-links.sh — fails when a markdown internal link under docs/ points
 # at a file or directory that does not exist. External links (http/https/
-# mailto), bare in-page anchors (#foo), and generated files under
-# docs/generated/ (their own content is deterministic and already gated by
-# docs-generated-gate) are skipped. See tasks.md T3 acceptance check: "broken
-# links ... fail validation" and docs/adr/0025-generated-documentation-anti-drift.md
-# for the sibling docs/generated/ determinism gate this complements.
+# mailto), bare in-page anchors (#foo), generated files under docs/generated/
+# (their own content is deterministic and already gated by docs-generated-gate),
+# and links inside fenced code blocks (``` or ~~~ — runbooks/templates often
+# show illustrative example paths there, e.g. "./mission-name/proposal.md",
+# that were never meant to resolve on disk) are skipped. See tasks.md T3
+# acceptance check: "broken links ... fail validation" and
+# docs/adr/0025-generated-documentation-anti-drift.md for the sibling
+# docs/generated/ determinism gate this complements.
 set -euo pipefail
 
 DOCS="docs"
@@ -18,12 +21,21 @@ is_external_or_anchor() {
   esac
 }
 
+# strip_fenced_code_blocks removes lines inside ``` / ~~~ fenced code blocks,
+# so links shown as example/template markdown inside them are never scanned.
+strip_fenced_code_blocks() {
+  awk '
+    /^[[:space:]]*(```|~~~)/ { infence = !infence; next }
+    !infence { print }
+  '
+}
+
 while IFS= read -r f; do
   [ -n "$f" ] || continue
   dir=$(dirname "$f")
 
   # Extract every markdown link target: "](target)" -> "target"
-  targets=$(grep -oE '\]\([^)]+\)' "$f" 2>/dev/null | sed -E 's/^\]\((.*)\)$/\1/' || true)
+  targets=$(strip_fenced_code_blocks <"$f" | grep -oE '\]\([^)]+\)' 2>/dev/null | sed -E 's/^\]\((.*)\)$/\1/' || true)
   [ -n "$targets" ] || continue
 
   while IFS= read -r target; do

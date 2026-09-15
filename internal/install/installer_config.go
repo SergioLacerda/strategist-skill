@@ -57,6 +57,22 @@ func (s Service) applySilentConfig(_ context.Context, strategistDir string, cfg 
 	if err := writeActiveYAMLBytes(strategistDir, data); err != nil {
 		return fmt.Errorf("install: %w", err)
 	}
+	// A silent install's template slots (discovery/refinement) are external
+	// skill providers, not native roles — strategist check now fails closed
+	// when discovery/refinement lack a persisted plugins.lock binding
+	// (rolevalidation.ValidateRuntimeBindings), so a silent install activates
+	// the same Role/Provider binding the wizard path activates via
+	// activateRoleProviderMigration, or a fresh `strategist install --silent`
+	// would never pass `strategist check`. This is best-effort: a fixture or
+	// workspace extractor that doesn't model plugins/catalog.yaml (unlike the
+	// real embedded defaults, which always do) must not block install itself
+	// — strategist check remains the fail-closed gate for role readiness.
+	if err := s.activateSilentRoleProviderBindings(strategistDir, data); err != nil {
+		slog.Warn("[Strategist] install role/provider binding activation skipped",
+			telemetry.AttrComponent, "install",
+			"reason", err.Error(),
+		)
+	}
 	return nil
 }
 
@@ -108,11 +124,11 @@ func (s Service) writeSelectedProviderManifests(strategistDir string, wc domain.
 }
 
 func (s Service) writeSelectedProviderManifest(strategistDir, provider string) error {
-	manifestPath, ok := resolveInstallableDefaultProviders(s.Extractor)[provider]
+	_, ok := resolveInstallableDefaultProviders(s.Extractor)[provider]
 	if !ok {
 		return nil
 	}
-	data, err := legacyProviderManifestBytes(s.Extractor, provider, manifestPath)
+	data, err := providerManifestBytes(s.Extractor, provider)
 	if err != nil {
 		return err
 	}
@@ -124,17 +140,14 @@ func (s Service) writeSelectedProviderManifest(strategistDir, provider string) e
 	return nil
 }
 
-func legacyProviderManifestBytes(extractor domain.FileExtractor, provider, fallbackPath string) ([]byte, error) {
-	if catalog, err := loadPluginCatalog(extractor); err == nil {
-		data, genErr := generateLegacyProviderManifest(catalog, provider)
-		if genErr != nil {
-			return nil, genErr
-		}
-		return data, nil
-	}
-	data, err := extractor.ReadFile(fallbackPath)
+func providerManifestBytes(extractor domain.FileExtractor, provider string) ([]byte, error) {
+	catalog, err := loadPluginCatalog(extractor)
 	if err != nil {
-		return nil, fmt.Errorf("read %s: %w", fallbackPath, err)
+		return nil, fmt.Errorf("load plugin catalog for %s: %w", provider, err)
+	}
+	data, err := generateLegacyProviderManifest(catalog, provider)
+	if err != nil {
+		return nil, err
 	}
 	return data, nil
 }

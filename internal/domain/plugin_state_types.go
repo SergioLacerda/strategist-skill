@@ -27,7 +27,6 @@ type SlotBinding struct {
 	GrantID             string `yaml:"grant_id,omitempty"`
 	Generation          int64  `yaml:"generation"`
 	Status              string `yaml:"status"`
-	NativeFallback      string `yaml:"native_fallback,omitempty"`
 }
 
 // TrustPolicy is consumer-owned verification policy.

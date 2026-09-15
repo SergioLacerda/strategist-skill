@@ -155,20 +155,68 @@ func validateAndActivatePluginPlan(extractor domain.FileExtractor, catalog plugi
 	// instead of only validating the legacy slot/catalog shape above.
 	fmt.Println(plan.RoleMigration.Preview())
 	logRoleBindingEvidence(plan.RoleMigration.Evidence())
+	if err := validateWizardRoleBindings(plan.RoleMigration); err != nil {
+		return domain.PluginLockFile{}, fmt.Errorf("wizard: %w", err)
+	}
 
 	// .analysis/refined/20260913-embedded-skill-directory-catalog Task 5:
 	// actually drive the resolved bindings through the real staged/probed/
 	// active lifecycle instead of only previewing them —
 	// ApplyRoleProviderMigration previously had zero production callers.
-	var lockFile domain.PluginLockFile
-	if plan.RoleMigration.FullyResolved() {
-		var err error
-		lockFile, err = activateRoleProviderMigration(strategistDir, plan.Lock, plan.RoleMigration)
-		if err != nil {
-			return domain.PluginLockFile{}, fmt.Errorf("wizard: activate role/provider migration: %w", err)
-		}
+	lockFile, err := activateRoleProviderMigration(strategistDir, plan.Lock, plan.RoleMigration)
+	if err != nil {
+		return domain.PluginLockFile{}, fmt.Errorf("wizard: activate role/provider migration: %w", err)
+	}
+	if err := validatePersistedRoleBindings(lockFile, plan.RoleMigration); err != nil {
+		return domain.PluginLockFile{}, fmt.Errorf("wizard: %w", err)
 	}
 	return lockFile, nil
+}
+
+// validateWizardRoleBindings makes missing role/provider bindings a wizard
+// error instead of allowing a partial migration to look like a successful
+// installation. Runtime file validation is repeated by strategist check after
+// the generated files have been written.
+func validateWizardRoleBindings(preview RoleProviderMigrationPreview) error {
+	if !preview.FullyResolved() {
+		for _, entry := range preview.Entries {
+			if entry.ResolutionError != "" {
+				return fmt.Errorf("role readiness failed: slot=%s role=%s %s", entry.Slot, entry.RoleName, entry.ResolutionError)
+			}
+		}
+		return fmt.Errorf("role readiness failed: no complete role/provider binding")
+	}
+	for _, entry := range preview.Entries {
+		if entry.Slot != string(domain.SlotDiscovery) && entry.Slot != string(domain.SlotRefinement) {
+			continue
+		}
+		if entry.Resolved.Provider.ID == "" || !entry.Resolved.Compatibility.Compatible {
+			return fmt.Errorf("role readiness failed: slot=%s role=%s has no compatible weapon", entry.Slot, entry.RoleName)
+		}
+	}
+	return nil
+}
+
+func validatePersistedRoleBindings(lockFile domain.PluginLockFile, preview RoleProviderMigrationPreview) error {
+	for _, entry := range preview.Entries {
+		if entry.Slot != string(domain.SlotDiscovery) && entry.Slot != string(domain.SlotRefinement) {
+			continue
+		}
+		count := 0
+		for _, binding := range lockFile.Bindings {
+			if binding.Slot != entry.Slot {
+				continue
+			}
+			count++
+			if binding.InstalledInstanceID != entry.Resolved.Provider.ID {
+				return fmt.Errorf("role readiness failed: slot=%s role=%s persisted binding points to %q, expected %q", entry.Slot, entry.RoleName, binding.InstalledInstanceID, entry.Resolved.Provider.ID)
+			}
+		}
+		if count != 1 {
+			return fmt.Errorf("role readiness failed: slot=%s role=%s persisted binding count=%d, expected 1", entry.Slot, entry.RoleName, count)
+		}
+	}
+	return nil
 }
 
 // promptLanguages, selectLang, promptWorkspace, promptTreasureChest,

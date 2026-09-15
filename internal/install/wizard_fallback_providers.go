@@ -10,10 +10,8 @@ import (
 // native refinement role (roles/archivist.yaml), materialized like any other
 // native role, not a skill package requiring its own install manifest.
 //
-// This map is only reachable from resolveInstallableDefaultProviders' own
-// post-catalog manifest-writing fallback (writeSelectedProviderManifest,
-// called after the Wizard has already completed against a successfully
-// loaded plugins/catalog.yaml) — see mission
+// This map is retained as build/test metadata for embedded provider manifests;
+// it is not a runtime role/weapon fallback. See mission
 // 20260913-wizard-hardcoded-fallback-maps-cleanup and
 // docs/adr/0035-embedded-weapon-fallback-policy.md. It is a permanent,
 // intentional default roster (DEC-001), not scheduled for deletion.
@@ -27,14 +25,14 @@ var installableDefaultProviders = map[string]string{
 	defaultSkillBySlot["refinement"]: "skills/openspec-propose/skill.yaml",
 }
 
-// knownProviderRisk is the static fallback for loadKnownProviders' own
+// knownProviderRisk is historical static metadata for loadKnownProviders'
 // templates/known-providers.yaml tier (a secondary, smaller embedded file,
 // independent of plugins/catalog.yaml). It is unreachable from runWizard in
 // practice: runWizard hard-blocks before calling loadKnownProviders if
 // plugins/catalog.yaml itself fails to load, and loadKnownProviders always
 // prefers a successfully loaded catalog first. It remains directly exercised
-// by TestLoadKnownProviders and is kept as a defensive fallback for that
-// narrower, still-possible failure (see docs/adr/0035-embedded-weapon-fallback-policy.md).
+// by TestLoadKnownProviders; it is outside the active Wizard/check readiness
+// path.
 var knownProviderRisk = map[string]string{
 	defaultSkillBySlot["discovery"]:  "write_analysis",
 	"openspec-explore":               "write_analysis",

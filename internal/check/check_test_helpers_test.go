@@ -137,7 +137,7 @@ func minimalCheckRoot(t *testing.T) string {
 		canonicalRole string
 	}{
 		{"brainstorming", "write_analysis", "ranger"},
-		{"openspec-explore", "write_analysis", ""},
+		{"openspec-explore", "write_analysis", "archivist"},
 		{"openspec-propose", "write_analysis", "archivist"},
 		{"sdd-ask", "controlled", ""},
 	} {
@@ -146,6 +146,7 @@ func minimalCheckRoot(t *testing.T) string {
 		body := "id: " + provider.name + "\nrisk_score: " + provider.riskScore + "\n"
 		if provider.canonicalRole != "" {
 			body += "canonical_role: " + provider.canonicalRole + "\n"
+			body += "roles:\n  - " + provider.canonicalRole + "\n"
 		}
 		require.NoError(t, os.WriteFile(
 			filepath.Join(provDir, "skill.yaml"),
@@ -173,6 +174,15 @@ func minimalCheckRoot(t *testing.T) string {
 	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "archivist.yaml"),
 		[]byte("role: archivist\nslot: refinement\n"), 0o644))
 	writeMinimalIdentityFiles(t, dir)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "plugins.lock"), []byte(`schema_version: strategist-plugin-lock-file/v1
+bindings:
+  - slot: discovery
+    installed_instance_id: brainstorming
+    status: enabled
+  - slot: refinement
+    installed_instance_id: openspec-explore
+    status: enabled
+`), 0o644))
 	return dir
 }
 

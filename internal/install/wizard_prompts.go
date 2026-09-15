@@ -75,15 +75,21 @@ func promptTreasureChest(p Prompter, b i18n.WizardStrings) (string, error) {
 func promptSlots(p Prompter, b i18n.WizardStrings, catalog pluginCatalog, providerRisk map[string]string) (discovery, refinement, execution string, err error) {
 	fmt.Println(b.HeaderSlots)
 
-	discoveryIDs, discoveryDefault, discoveryExcluded := compatibleProviderOptions(catalog, "ranger", domain.RoleHandoffSchema["ranger"], "ranger")
+	discoveryIDs, discoveryDefault, discoveryExcluded := compatibleProviderOptions(catalog, "ranger", domain.RoleHandoffSchema["ranger"])
 	printExcludedCandidates(discoveryExcluded)
+	if len(discoveryIDs) == 0 {
+		return "", "", "", fmt.Errorf("wizard: discovery: no compatible weapon for role ranger")
+	}
 	discovery, err = promptProvider(p, b.PromptDiscovery, discoveryDefault, discoveryIDs, b.LabelCustomInput, providerRisk, "write_analysis", "discovery")
 	if err != nil {
 		return "", "", "", err
 	}
 
-	refinementIDs, refinementDefault, refinementExcluded := compatibleProviderOptions(catalog, "archivist", domain.RoleHandoffSchema["archivist"], "archivist")
+	refinementIDs, refinementDefault, refinementExcluded := compatibleProviderOptions(catalog, "archivist", domain.RoleHandoffSchema["archivist"])
 	printExcludedCandidates(refinementExcluded)
+	if len(refinementIDs) == 0 {
+		return "", "", "", fmt.Errorf("wizard: refinement: no compatible weapon for role archivist")
+	}
 	refinement, err = promptProvider(p, b.PromptRefinement, refinementDefault, refinementIDs, b.LabelCustomInput, providerRisk, "write_analysis", "refinement")
 	if err != nil {
 		return "", "", "", err
@@ -109,22 +115,18 @@ type excludedProviderOption struct {
 // which one should be pre-selected: whichever compatible candidate is
 // marked default in the catalog, or the first compatible one otherwise, and
 // the candidates that were excluded along with their compatibility reasons.
-// When nothing is compatible (e.g. every external weapon for this role is
-// honestly declared unable to produce the role's handoff shape), the id list
-// falls back to a single-item list naming the catalog's native_role
-// candidate for roleName, or fallbackID if the catalog has none — either way
-// the wizard stays usable and the operator is not offered a weapon known not
-// to work; the native role itself is never reported as excluded.
-func compatibleProviderOptions(catalog pluginCatalog, roleName, handoffSchema, fallbackID string) (ids []string, defaultID string, excluded []excludedProviderOption) {
+// When nothing is compatible, the id list is empty and the caller must fail
+// before activation. Native roles are not substitutes for the required
+// discovery/refinement weapons.
+func compatibleProviderOptions(catalog pluginCatalog, roleName, handoffSchema string) (ids []string, defaultID string, excluded []excludedProviderOption) {
 	role := domain.RoleContract{
 		SchemaVersion: domain.RoleContractSchemaVersion,
 		Role:          roleName,
 		HandoffSchema: handoffSchema,
 	}
-	var nativeID string
 	for _, candidate := range providerContractsForRole(catalog, roleName) {
 		if candidate.Source == domain.ProviderSourceNativeRole {
-			nativeID = candidate.ID
+			continue
 		}
 		result := candidate.CheckRoleAffinity(role)
 		if !result.Compatible {
@@ -140,13 +142,6 @@ func compatibleProviderOptions(catalog pluginCatalog, roleName, handoffSchema, f
 	}
 	if defaultID == "" && len(ids) > 0 {
 		defaultID = ids[0]
-	}
-	if len(ids) == 0 {
-		if nativeID == "" {
-			nativeID = fallbackID
-		}
-		ids = []string{nativeID}
-		defaultID = nativeID
 	}
 	return ids, defaultID, excluded
 }

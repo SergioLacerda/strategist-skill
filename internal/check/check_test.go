@@ -28,6 +28,9 @@ func TestCheckCmd_Success(t *testing.T) {
 	assert.Contains(t, out, "brainstorming")
 	assert.Contains(t, out, "openspec-explore")
 	assert.Contains(t, out, "sdd-ask")
+	assert.Contains(t, out, "binding=valid")
+	assert.NotContains(t, out, "fallback=ranger")
+	assert.NotContains(t, out, "always_native_no_policy")
 	assert.Contains(t, out, "epic")
 	assert.NotContains(t, out, "DELEGATION")
 	assert.NotContains(t, out, "delegation_capability")
@@ -222,7 +225,7 @@ func TestCheckCmd_NativeRole_Sniper(t *testing.T) {
 		canonicalRole string
 	}{
 		{"brainstorming", "write_analysis", "ranger"},
-		{"openspec-explore", "write_analysis", ""},
+		{"openspec-explore", "write_analysis", "archivist"},
 		{"openspec-propose", "write_analysis", "archivist"},
 	} {
 		provDir := filepath.Join(dir, "skills", p.name)
@@ -273,6 +276,15 @@ func TestCheckCmd_NativeRole_Sniper(t *testing.T) {
 		0o644,
 	))
 	writeMinimalIdentityFiles(t, dir)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "plugins.lock"), []byte(`schema_version: strategist-plugin-lock-file/v1
+bindings:
+  - slot: discovery
+    installed_instance_id: brainstorming
+    status: enabled
+  - slot: refinement
+    installed_instance_id: openspec-explore
+    status: enabled
+`), 0o644))
 
 	orig := checkRoot
 	t.Cleanup(func() { checkRoot = orig })

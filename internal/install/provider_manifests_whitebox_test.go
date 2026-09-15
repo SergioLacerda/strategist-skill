@@ -64,21 +64,14 @@ func (p partialExtractor) ReadFile(relPath string) ([]byte, error) {
 	return minimalExtractor{}.ReadFile(relPath)
 }
 
-// TestWriteSelectedProviderManifests_ReadFileFails exercises
-// writeSelectedProviderManifest's legacy fallback branch directly
-// (legacyProviderManifestBytes' extractor.ReadFile(fallbackPath) call),
-// bypassing runWizard: since docs/adr/0035-embedded-weapon-fallback-policy.md,
-// runWizard itself hard-blocks whenever plugins/catalog.yaml is unreadable,
-// so going through the full wizard can no longer reach this manifest-write
-// fallback with a failing catalog — the catalog load that gates runWizard
-// and the one legacyProviderManifestBytes performs share the same
-// extractor and would both fail together, never one after the other.
+// TestWriteSelectedProviderManifests_ReadFileFails proves manifest writing
+// fails closed when the catalog cannot be read; no legacy manifest fallback is
+// consulted.
 func TestWriteSelectedProviderManifests_ReadFileFails(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	ext := partialExtractor{failPaths: map[string]bool{
-		pluginCatalogPath:                 true, // forces the legacy-fallback branch
-		"skills/brainstorming/skill.yaml": true, // then fails the fallback read itself
+		pluginCatalogPath: true,
 	}}
 	svc := Service{Extractor: ext, Compiler: nopCompiler{}, ShimHomeDir: t.TempDir()}
 	err := svc.writeSelectedProviderManifest(dir, "brainstorming")
