@@ -15,6 +15,13 @@ risk_score: write_analysis
 category: refinement
 default: true
 
+# scratch_root: runtime — this weapon's own openspec CLI creates working
+# files (openspec/changes/<id>/) that must live in the runtime domain
+# (.strategist/weapon-runtime/openspec-propose/), never the repo root or the
+# workspace (.analysis/) — see
+# .analysis/refined/20260915-weapon-scratch-root-taxonomy/design.md D1.
+scratch_root: runtime
+
 # supported_handoff_schemas is intentionally omitted: the fixed Archivist
 # role owns normalization from this weapon's result into its canonical
 # refined artifacts and handoff.

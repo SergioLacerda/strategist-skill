@@ -25,6 +25,9 @@ func generateLegacyProviderManifest(catalog pluginCatalog, providerID string) ([
 			buf.WriteString("  - " + role + "\n")
 		}
 	}
+	if provider.ScratchRoot != "" {
+		writeLegacyProviderField(&buf, "scratch_root", provider.ScratchRoot)
+	}
 	buf.WriteString("\n")
 	buf.WriteString("description: >\n")
 	for _, line := range strings.Split(provider.Description, "\n") {

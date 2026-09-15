@@ -66,7 +66,10 @@ func (p partialExtractor) ReadFile(relPath string) ([]byte, error) {
 
 // TestWriteSelectedProviderManifests_ReadFileFails proves manifest writing
 // fails closed when the catalog cannot be read; no legacy manifest fallback is
-// consulted.
+// consulted. Since resolveInstallableDefaultProviders started propagating this
+// error (ADR-0035 Decision 2 / SQ-2 hardening), the failure now surfaces at
+// that earlier call rather than at the later providerManifestBytes call — the
+// caller-visible contract (error, no silent fallback) is unchanged.
 func TestWriteSelectedProviderManifests_ReadFileFails(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()

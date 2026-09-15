@@ -24,6 +24,7 @@ func catalogProviderFromIngestedSkill(skill IngestedSkill) pluginCatalogProvider
 		LegacyManifestPath:      "skills/" + skill.ID + "/skill.yaml",
 		CompatibilitySource:     "embedded",
 		SupportedHandoffSchemas: skill.Adapter.SupportedHandoffSchemas,
+		ScratchRoot:             skill.Adapter.ScratchRoot,
 	}
 }
 

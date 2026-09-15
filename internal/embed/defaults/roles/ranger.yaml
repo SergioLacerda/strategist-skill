@@ -5,6 +5,13 @@ slot: discovery
 # Listed here for reference when writing custom_brief below.
 canonical:
   - find_unexpected_items       # surface items outside declared mission scope
+  - resolve_weapon_scratch_root: # ability: cd into the resolved weapon's declared scratch root before invoking its own CLI/tooling
+      read: "skills/<resolved_provider>/skill.yaml#scratch_root"
+      when: scratch_root == "runtime"
+      action: >
+        Before invoking this weapon's own CLI/tooling, ensure
+        .strategist/weapon-runtime/<provider_id>/ exists (create if absent)
+        and run the weapon with that as the working directory.
   - search:                     # ability: filters jewel/potion candidates from treasure chests
       when: before consult_treasure_chests decides which chests to open (Retrieval Cascade stage 6)
       filters: [jewel, potion]

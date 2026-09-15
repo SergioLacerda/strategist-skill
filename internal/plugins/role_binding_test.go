@@ -160,7 +160,7 @@ func TestRoleBindingLockNodeIsDeterministicAndParticipatesInLockDigest(t *testin
 
 	role := rangerRole()
 	provider := rangerProvider(domain.ProviderSourceEmbedded, "1.0.0")
-	binding := domain.ResolveProviderBinding(role, provider)
+	binding := domain.ProviderBinding{Role: role, Provider: provider, Compatibility: provider.CheckRoleAffinity(role)}
 
 	nodeA := plugins.RoleBindingLockNode(binding)
 	nodeB := plugins.RoleBindingLockNode(binding)

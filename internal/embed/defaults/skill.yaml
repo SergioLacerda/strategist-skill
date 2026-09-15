@@ -39,7 +39,7 @@ capability:
 
 # Vocabulary layer distinguishing Weapons from Abilities. Documentation/naming only —
 # it does not change pipeline mechanism, routing, or the FSM. See
-# docs/strategist-concepts.md § Abilities for the human-facing explanation.
+# docs/architecture/strategist-concepts.md § Abilities for the human-facing explanation.
 taxonomy:
   description: >
     Weapons are external skill_provider skills invoked via the Skill tool and bound to
@@ -190,6 +190,8 @@ slots:
       The pipeline stage artifact_path always takes precedence over slot output_format.
     canonical:
       - find_unexpected_items       # surface items outside declared mission scope
+      - resolve_weapon_scratch_root: # cd into the resolved weapon's declared scratch root before invoking its own CLI/tooling — see roles/ranger.yaml for the full entry (this role's canonical: block is hand-authored, not generated from here; this line documents intent for consistency with the slot-level convention)
+          when: scratch_root == "runtime"
       - consult_treasure_chests     # if chests scoped to discovery present, consult before LLM
       - output_format: "<base_path>/pending/<mission_id>-analysis.md"
       - handoff_contract: "schemas/handoff-ranger-to-archivist.schema.yaml"
@@ -203,6 +205,8 @@ slots:
       - "<base_path>/refined/"
     write_types: [".md"]
     canonical:
+      - resolve_weapon_scratch_root: # cd into the resolved weapon's declared scratch root before invoking its own CLI/tooling — see roles/archivist.yaml for the full entry (this role's canonical: block is hand-authored, not generated from here; this line documents intent for consistency with the slot-level convention)
+          when: scratch_root == "runtime"
       - consult_treasure_chests     # if chests scoped to refinement present, consult before LLM
       - opportunity_attack          # routine: evaluate ADR necessity after writing refined artifacts; surface candidates at approval gate
       - emit_completion_signal      # must emit has_execution_tasks: true|false after writing artifacts

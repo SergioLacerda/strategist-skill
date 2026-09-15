@@ -31,6 +31,14 @@ type externalSkillAdapter struct {
 	Category       string   `yaml:"category"`
 	Default        bool     `yaml:"default,omitempty"`
 	AuxiliaryTools []string `yaml:"auxiliary_tools_allowed,omitempty"`
+	// ScratchRoot declares whether this weapon creates its own working/scratch
+	// files and, if so, that they belong in the runtime domain. Legal values:
+	// "runtime" or "none" (or absent, which behaves as "none" — every skill
+	// that doesn't need one, e.g. brainstorming). "workspace" is deliberately
+	// not a legal value: a weapon's own working format is implementation
+	// detail, never a curated mission artifact (see
+	// .analysis/refined/20260915-weapon-scratch-root-taxonomy/design.md D1).
+	ScratchRoot string `yaml:"scratch_root,omitempty"`
 	// SupportedHandoffSchemas — see domain.ProviderContract's field of the
 	// same name and internal/install/role_handoff_schemas.go. Omitted by
 	// every embedded weapon today — added here only so a future honest
@@ -105,6 +113,9 @@ func resolveExternalSkill(dir string) (IngestedSkill, error) {
 	}
 	if (adapter.CanonicalRole == "" && len(adapter.Roles) == 0) || adapter.RiskScore == "" {
 		return IngestedSkill{}, fmt.Errorf("external skill %s: %s must declare canonical_role and risk_score", pkg.ID, externalSkillAdapterFileName)
+	}
+	if adapter.ScratchRoot != "" && adapter.ScratchRoot != "runtime" && adapter.ScratchRoot != "none" {
+		return IngestedSkill{}, fmt.Errorf("external skill %s: %s scratch_root must be \"runtime\" or \"none\", got %q", pkg.ID, externalSkillAdapterFileName, adapter.ScratchRoot)
 	}
 	if len(adapter.Roles) == 0 {
 		adapter.Roles = []string{adapter.CanonicalRole}

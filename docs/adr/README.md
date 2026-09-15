@@ -37,6 +37,7 @@ lookup by topic fast without moving any file.
 | [0036](0036-openspec-explore-canonical-role-correction.md) | openspec-explore's canonical role: ranger, not archivist |
 | [0037](0037-wizard-role-binding-persistence.md) | Wizard role binding persistence (discovery + refinement) |
 | [0038](0038-docs-information-architecture-and-mandate-layer.md) | Docs information architecture and mandate layer |
+| [0039](0039-weapon-scratch-root-declaration.md) | Weapon scratch-root declaration |
 
 ### Knowledge & Jewels
 

@@ -10,5 +10,5 @@ packages:
       source: external-skills-source/openspec-explore
     - id: openspec-propose
       version: "1.0"
-      digest: sha256:1697759ceb6f864982d98e6ca5a8ca6f40b0296df5643f1fd84a085ff7d30e6c
+      digest: sha256:da682becaf644d944d571a89b9ca13f15a90d8765fe06777f3bd119b8423c0d5
       source: external-skills-source/openspec-propose

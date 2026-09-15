@@ -124,8 +124,11 @@ func (s Service) writeSelectedProviderManifests(strategistDir string, wc domain.
 }
 
 func (s Service) writeSelectedProviderManifest(strategistDir, provider string) error {
-	_, ok := resolveInstallableDefaultProviders(s.Extractor)[provider]
-	if !ok {
+	installable, err := resolveInstallableDefaultProviders(s.Extractor)
+	if err != nil {
+		return fmt.Errorf("resolve installable providers for %s: %w", provider, err)
+	}
+	if _, ok := installable[provider]; !ok {
 		return nil
 	}
 	data, err := providerManifestBytes(s.Extractor, provider)
