@@ -19,13 +19,13 @@ request context.
 ## ENTRYPOINT — execute before anything else
 
 1. Verify `.strategist/` exists in the workspace → if not: emit `error=not_installed` and stop
-2. Run `strategist check` → if it fails: stop with the CLI output
+2. Run `strategist check --json`, capture the PreflightResult → `status == "blocked"`: emit `warnings` and stop
 3. Read `.strategist/agent-protocol.md` → this file defines the complete role and pipeline protocol
 4. Only then process the request
 
 **Do not process any request before completing all 4 steps above.**
 
-> **`strategist check` passing is NOT authorization for source-code mutation.**
+> **A "ready" `PreflightResult` is NOT authorization for source-code mutation.**
 > It confirms the Strategist runtime is installed and operational. Mission work still
 > follows the internal routing contract, approval gates, and role/provider contracts.
 

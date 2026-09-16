@@ -30,8 +30,12 @@ contract: null
 ## Required Behavior
 
 - emit `[Strategist] pipeline=starting`
-- prefer compiled artifacts when fresh
-- fall back to YAML sources when compiled artifacts are stale or absent
+- rely on `strategist check --json`'s `PreflightResult` (docs/adr/0044) for
+  compiled-artifact freshness/corruption, internal-domain index presence,
+  and identity/directives presence — `contracts/machine/preflight.yaml`'s 7
+  conditions are all `machine_enforced` as of
+  `20260916-preflight-cli-enforcement-wave3`; do not re-derive compiled-vs-YAML
+  source preference narratively, branch on `Warnings`/`Status` instead
 - resolve chat language from `active.language.chat` — this governs two distinct
   things: (a) which language variant is read for `content_by_lang`/
   `phase_announcements` templates (see below), and (b) the language the parent

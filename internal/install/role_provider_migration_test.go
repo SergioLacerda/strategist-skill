@@ -353,9 +353,11 @@ func TestActivateRoleProviderMigrationResolvesBindingsForPersistence(t *testing.
 	discoveryBinding, ok := findSlotBinding(lockFile.Bindings, "discovery")
 	require.True(t, ok)
 	assert.Equal(t, "brainstorming", discoveryBinding.InstalledInstanceID)
+	assert.Equal(t, domain.SlotBindingModeCustom, discoveryBinding.Mode, "today's only implemented pipeline is Custom")
 	refinementBinding, ok := findSlotBinding(lockFile.Bindings, "refinement")
 	require.True(t, ok)
 	assert.Equal(t, "archivist", refinementBinding.InstalledInstanceID)
+	assert.Equal(t, domain.SlotBindingModeCustom, refinementBinding.Mode)
 	_, ok = findSlotBinding(lockFile.Bindings, "execution")
 	assert.False(t, ok, "role/provider persistence is scoped to discovery and refinement")
 }

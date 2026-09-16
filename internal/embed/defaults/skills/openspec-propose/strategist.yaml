@@ -15,6 +15,14 @@ risk_score: write_analysis
 category: refinement
 default: true
 
+# Upstream provenance (ADR-0029 DEC-002): not yet researched. ADR-0029
+# (2026-08-20) only recorded pins for brainstorming and openspec-explore —
+# this package (Archivist's real, actual tool; see
+# docs/adr/0036-openspec-explore-canonical-role-correction.md) has never
+# had its own upstream repo/commit/content-digest evidence gathered.
+# Left unpopulated rather than guessed or borrowed from openspec-explore's
+# own (different) upstream pin.
+
 # scratch_root: runtime — this weapon's own openspec CLI creates working
 # files (openspec/changes/<id>/) that must live in the runtime domain
 # (.strategist/weapon-runtime/openspec-propose/), never the repo root or the

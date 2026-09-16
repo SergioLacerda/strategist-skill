@@ -139,6 +139,7 @@ func applyPluginBinding(store *lifecycle.Store, desired domain.SlotBinding, prob
 			InstalledInstanceID: desired.InstalledInstanceID,
 			Generation:          0,
 			Status:              desired.Status,
+			Mode:                desired.Mode,
 		})
 		return nil
 	}

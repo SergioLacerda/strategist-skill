@@ -235,34 +235,58 @@ for the normative rules. Examples of correct and incorrect behavior:
 
 ---
 
-## Ranked Role
+## Ranked Class
 
-A ranked role is a provider that declares `provider_class: rankeado` in its `skill.yaml`.
+> Corrected 2026-09-15 (mission `20260915-ranked-binding-vs-provider-class-naming-residual`).
+> This section previously described a `provider_class: rankeado` field as
+> current/live. That field was removed by ADR-0034 — no code branches on it,
+> and its absence is enforced by `internal/install/plugin_catalog_test.go` and
+> `internal/embed/embed_test.go`. "Ranked" is redefined below; the name is kept
+> deliberately, not coincidentally reused.
 
-```yaml
-# .strategist/skills/brainstorming/skill.yaml
-specialization_taxonomy:
-  canonical_role: ranger
-  provider_class: rankeado     # ← ranked role
-```
+A **ranked class** is a Role that, at compile/build time, is already bound to a
+specific weapon (an embedded skill) — the binding is known before the mission
+runs, not resolved by the Wizard or discovered by the agent at runtime. This
+compile-time binding is built on the same certification pipeline the pending
+"Ranked Binding" draft describes (manifest/dependency/affinity/contract-test/
+handoff-schema validation, digest calculation): the pipeline is the core
+mechanism: a ranked class is one implementation built on that core, and other
+future functionality is expected to build on the same core too.
 
-The difference from a `(base)` provider:
+In the Wizard, this surfaces as two paths for a pluggable Role:
 
-| | Base | Ranked |
-|---|------|--------|
-| `provider_class` | absent or `base` | `rankeado` |
-| `specialization_taxonomy` | not declared | `canonical_role` + `provider_class` filled in |
-| Meaning | Generic implementation | Specialized provider, aligned with the canonical role |
+- **Ready Role** — pick a ranked class: the Role arrives with its embedded
+  weapon already bound.
+- **Custom** — bind the Role to an external weapon yourself (today's existing
+  flow, unchanged).
 
-A ranked provider gains no extra permissions — the distinction is purely semantic. It communicates that the provider was designed specifically for that role, not just plugged into it.
+> **Pipeline scope** (added 2026-09-16, mission
+> `20260916-ranked-vs-custom-binding-pipelines`): Ready Role/Ranked and Custom
+> are two separate pipelines, not two layers of the same mechanism. Custom's
+> runtime machinery — the readiness vector (`domain.PluginReadinessVector`),
+> trust-policy verification, permission-grant evaluation, and digest-pinned
+> `SlotBinding` in `plugins.lock` — exists because Custom accepts a
+> wizard-time-selected, potentially external weapon that needs runtime
+> verification. A ranked class's binding is already certified at build time,
+> so it does not go through any of that: no wizard-time validation, no
+> runtime trust check, no permission-grant negotiation. Ranked never calls
+> into Custom's checks. Per ADR-0042, a Ranked binding's own runtime record
+> in `plugins.lock` (`mode: ranked`) is optional, non-authoritative
+> redundancy if it exists at all — the build-time certification is the sole
+> authority — so `SlotBinding` does not need a separate on-disk file per
+> pipeline; only Custom's record is mandatory.
 
-Ranked providers installed in this workspace:
+A large part of the existing catalog/selection structure is expected to be
+reused rather than replaced: whatever is deterministic resolves at the CLI/build
+step, while formal contracts and definitions live in the runtime (`.strategist/`),
+keeping the agent-facing surface light.
 
-| Provider | Slot | Canonical role |
-|----------|------|---------------|
-| `brainstorming` | discovery | Ranger |
-| `openspec-propose` | refinement | Archivist |
-| `openspec-explore` | discovery | Ranger |
+This is a high-level definition only. The full mechanism — the certification
+pipeline's own steps, the `plugins.lock` shape, and exactly which existing
+fields (e.g. `default: true`) are reused vs. extended — is designed separately
+in `.analysis/pending/cli-enforcement-refactor/02-ranked-role-binding.md`,
+**not yet approved**. Do not treat this section as authorizing that design;
+it only fixes the term's meaning going forward.
 
 ---
 
@@ -336,7 +360,7 @@ Runs the full pipeline with input from `<base_path>/dojo/<scenario>/input.yaml`,
 | Scenario | What it validates |
 |----------|------------------|
 | `treasure-chest` | Planted chest found and canary `TORNEIO_DO_DOJO` incorporated in the analysis |
-| `ranger-weapons` | Discovery provider manifest exists with `canonical_role` and `provider_class` fields |
+| `ranger-weapons` | Discovery provider manifest exists with a `canonical_role` field |
 
 ### Scenario structure
 

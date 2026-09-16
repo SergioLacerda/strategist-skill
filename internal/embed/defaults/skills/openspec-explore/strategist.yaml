@@ -18,5 +18,19 @@ category: discovery
 # openspec-explore is a secondary, opt-in discovery weapon.
 default: false
 
+# Upstream provenance (ADR-0029 DEC-002), evidence recorded in
+# docs/adr/0029-external-skill-provider-lifecycle.md's own Context section
+# at the time this ADR was accepted (2026-08-20) — transcribed here, not
+# re-researched. This is this package's own provenance; it is not
+# Archivist's tool (see docs/adr/0036-openspec-explore-canonical-role-correction.md
+# — openspec-propose is, and this package's canonical_role above was
+# already corrected to ranger).
+upstream_repo: Fission-AI/OpenSpec
+upstream_skill_path: skills/openspec-explore/SKILL.md
+upstream_version: "1.10.0"
+upstream_commit: 1ebddd17f40dde15dfd28289e4493c3cf05ee9df
+upstream_content_digest: sha256:7e0281fc4f094dcced0c5469e7cbceba2dce9f113f22a4e34efcdce4315edf81
+# license: not recorded in ADR-0029 — left unpopulated rather than guessed.
+
 # supported_handoff_schemas is intentionally omitted: the fixed Ranger role
 # owns normalization into its handoff schema.

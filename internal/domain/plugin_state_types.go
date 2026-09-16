@@ -19,6 +19,15 @@ type PluginInventory struct {
 	Instances     []InstalledInstance `yaml:"instances"`
 }
 
+// Slot binding pipeline discriminator values (docs/architecture/strategist-concepts.md
+// §"Ranked Class" § Pipeline scope). Custom is a wizard-selected, runtime-verified
+// weapon (today's only implemented pipeline); Ranked is a build-time-certified
+// weapon that bypasses Custom's runtime trust/grant/readiness machinery entirely.
+const (
+	SlotBindingModeCustom = "custom"
+	SlotBindingModeRanked = "ranked"
+)
+
 // SlotBinding is the local operator's slot selection.
 type SlotBinding struct {
 	SchemaVersion       string `yaml:"schema_version"`
@@ -27,6 +36,35 @@ type SlotBinding struct {
 	GrantID             string `yaml:"grant_id,omitempty"`
 	Generation          int64  `yaml:"generation"`
 	Status              string `yaml:"status"`
+
+	// Mode discriminates the Custom vs. Ranked binding pipeline (see the
+	// constants above). Empty is legacy: every binding persisted before this
+	// field existed is a Custom binding — Ranked was never implemented, so
+	// no existing plugins.lock needs migration. Read Mode via EffectiveMode(),
+	// not directly, so this default is applied consistently.
+	Mode string `yaml:"mode,omitempty"`
+}
+
+// EffectiveMode returns b.Mode, defaulting to SlotBindingModeCustom when
+// empty (see the Mode field's own doc comment).
+func (b SlotBinding) EffectiveMode() string {
+	if b.Mode == "" {
+		return SlotBindingModeCustom
+	}
+	return b.Mode
+}
+
+// ValidMode reports whether b.Mode is empty (legacy Custom) or one of the
+// known discriminator values. A non-empty, unrecognized Mode is invalid —
+// fail closed rather than silently defaulting an operator's typo or a future
+// schema drift to Custom.
+func (b SlotBinding) ValidMode() bool {
+	switch b.Mode {
+	case "", SlotBindingModeCustom, SlotBindingModeRanked:
+		return true
+	default:
+		return false
+	}
 }
 
 // TrustPolicy is consumer-owned verification policy.
@@ -100,6 +138,19 @@ type PluginLockFile struct {
 	Lock          PluginLock      `yaml:"lock"`
 	Inventory     PluginInventory `yaml:"inventory"`
 	Bindings      []SlotBinding   `yaml:"bindings"`
+}
+
+// NodeDigest returns the digest of the single lock node matching id and kind
+// (e.g. id="brainstorming", kind="adapter_contract"), or "" if none matches.
+// Shared by every caller that needs one node's pinned digest, instead of each
+// re-implementing the same lookup over f.Lock.Nodes.
+func (f PluginLockFile) NodeDigest(id, kind string) string {
+	for _, n := range f.Lock.Nodes {
+		if n.ID == id && n.Kind == kind {
+			return n.Digest
+		}
+	}
+	return ""
 }
 
 // PluginTransaction journals lifecycle transitions.

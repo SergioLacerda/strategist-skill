@@ -36,7 +36,17 @@ type RuntimeLocator struct {
 	Path string
 }
 
-// InvocationEnvelope is the versioned runtime invocation input.
+// InvocationEnvelope is the versioned runtime invocation input for
+// RuntimeConnector.Invoke — a host/plugin-runtime dispatch payload, not to be
+// confused with domain.RoleInvocationPlan
+// (internal/domain/role_invocation_plan.go), the mission-scoped Role→Weapon
+// composition (pinned weapon binding + context/schema refs) a mission
+// resolves before invocation. The two names are similar on purpose only in
+// that both were candidates for the same English word ("envelope"/"plan") at
+// different points; they are deliberately distinct types with no shared
+// fields, kept separate per
+// docs/adr/0041-cli-enforcement-sequencing-and-role-invocation-plan-naming.md
+// D1.
 type InvocationEnvelope struct {
 	SchemaVersion string
 	Instance      domain.InstalledInstance

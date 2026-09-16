@@ -76,7 +76,7 @@ func resolveSkillProviderSlot(root, slot, provider, skillPath string, skillRaw [
 	if errMsg := checkRoleProviderCompatibility(root, slot, provider, skillDef.RiskScore, skillRaw); errMsg != "" {
 		return slotResolution{}, errMsg
 	}
-	return slotResolution{kind: slotResolutionSkillProvider, path: skillPath, readiness: skillProviderReadiness(provider, skillPath)}, ""
+	return slotResolution{kind: slotResolutionSkillProvider, path: skillPath, readiness: skillProviderReadiness(root, slot, provider, skillPath)}, ""
 }
 
 // checkRoleProviderCompatibility lives in check_role_compatibility.go, split

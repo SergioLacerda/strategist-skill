@@ -113,7 +113,7 @@ func collectWizardConfig(p Prompter, catalog pluginCatalog, providerRisk map[str
 	if err != nil {
 		return domain.WizardConfig{}, err
 	}
-	discovery, refinement, execution, err := promptSlots(p, b, catalog, providerRisk)
+	discovery, refinement, execution, discoveryMode, refinementMode, err := promptSlots(p, b, catalog, providerRisk)
 	if err != nil {
 		return domain.WizardConfig{}, err
 	}
@@ -121,7 +121,7 @@ func collectWizardConfig(p Prompter, catalog pluginCatalog, providerRisk map[str
 	if err != nil {
 		return domain.WizardConfig{}, err
 	}
-	return domain.WizardConfig{Mode: mode, BasePath: basePath, UILanguage: uiLang, DocLanguage: normLang(docLang), ChatLanguage: normLang(chatLang), CodeLanguage: normLang(codeLang), DiscoveryProvider: discovery, RefinementProvider: refinement, ExecutionProvider: execution, TreasureChestPath: chestPath}, nil
+	return domain.WizardConfig{Mode: mode, BasePath: basePath, UILanguage: uiLang, DocLanguage: normLang(docLang), ChatLanguage: normLang(chatLang), CodeLanguage: normLang(codeLang), DiscoveryProvider: discovery, RefinementProvider: refinement, ExecutionProvider: execution, DiscoveryMode: discoveryMode, RefinementMode: refinementMode, TreasureChestPath: chestPath}, nil
 }
 
 // validateAndActivatePluginPlan runs every catalog-dependent Wizard check and
@@ -163,6 +163,16 @@ func validateAndActivatePluginPlan(extractor domain.FileExtractor, catalog plugi
 		return domain.PluginLockFile{}, fmt.Errorf("wizard: activate role/provider migration: %w", err)
 	}
 	if err := validatePersistedRoleBindings(lockFile, plan.RoleMigration); err != nil {
+		return domain.PluginLockFile{}, fmt.Errorf("wizard: %w", err)
+	}
+
+	// docs/adr/0043-ranked-pipeline-pilot-implementation-decisions.md DEC-005:
+	// for every slot the Wizard resolved to Ranked, activate (copy) the
+	// pre-generated certification-time SlotBinding over the Custom-mode one
+	// activateRoleProviderMigration just wrote — every other slot (the
+	// overwhelming majority: every existing installation) is untouched.
+	lockFile, err = applyRankedBindingChoices(catalog, wc, lockFile)
+	if err != nil {
 		return domain.PluginLockFile{}, fmt.Errorf("wizard: %w", err)
 	}
 	return lockFile, nil

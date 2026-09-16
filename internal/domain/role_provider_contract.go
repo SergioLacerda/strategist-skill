@@ -108,14 +108,29 @@ type ProviderContract struct {
 	CanonicalRole         string `yaml:"canonical_role"`
 	// Roles is the canonical multi-role affinity declaration. CanonicalRole is
 	// retained as a compatibility alias for older single-role catalog entries.
-	Roles                         []string             `yaml:"roles,omitempty"`
-	RiskScore                     string               `yaml:"risk_score"`
-	Source                        ProviderSource       `yaml:"source"`
-	Materialization               MaterializationState `yaml:"materialization"`
-	Default                       bool                 `yaml:"default,omitempty"`
-	Capabilities                  []string             `yaml:"capabilities,omitempty"`
-	Guarantees                    []string             `yaml:"guarantees,omitempty"`
-	SupportedRoleContractVersions []string             `yaml:"supported_role_contract_versions"`
+	Roles           []string             `yaml:"roles,omitempty"`
+	RiskScore       string               `yaml:"risk_score"`
+	Source          ProviderSource       `yaml:"source"`
+	Materialization MaterializationState `yaml:"materialization"`
+	Default         bool                 `yaml:"default,omitempty"`
+	// Ranked and CertificationDigest mark a build-time-certified Ranked
+	// binding candidate (docs/adr/0041-...md §"Ranked Class Resolution";
+	// docs/adr/0043-ranked-pipeline-pilot-implementation-decisions.md
+	// DEC-001). Independent of Default: a candidate can be Default without
+	// being Ranked, or Ranked without being Default — "preferred?" and
+	// "certified?" are separate questions, never conflated.
+	Ranked              bool   `yaml:"ranked,omitempty"`
+	CertificationDigest string `yaml:"certification_digest,omitempty"`
+	// RankedBindingGeneration and RankedBindingStatus are the pre-generated
+	// runtime SlotBinding fragment's Generation/Status (ADR-0043 DEC-005),
+	// computed once at certification time (`strategist plugin
+	// prepare-embedded`) and copied — never recomputed — by the Wizard's
+	// Ranked activation path.
+	RankedBindingGeneration       int64    `yaml:"ranked_binding_generation,omitempty"`
+	RankedBindingStatus           string   `yaml:"ranked_binding_status,omitempty"`
+	Capabilities                  []string `yaml:"capabilities,omitempty"`
+	Guarantees                    []string `yaml:"guarantees,omitempty"`
+	SupportedRoleContractVersions []string `yaml:"supported_role_contract_versions"`
 	// SupportedHandoffSchemas declares which handoff_schema value(s)
 	// (RoleContract.HandoffSchema) this Provider's real output actually
 	// conforms to. Populated through the catalog/ingestion pipeline and

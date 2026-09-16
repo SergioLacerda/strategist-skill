@@ -248,7 +248,7 @@ func TestPromptSlots_UnknownProviderPrintsWarning(t *testing.T) {
 	input := "custom-ranger\nopenspec-explore\nsdd-ask\n\n"
 	catalog, err := parseCatalogBytes([]byte(minimalCatalogYAML))
 	require.NoError(t, err)
-	discovery, refinement, execution, err := promptSlots(NewTextPrompter(strings.NewReader(input)), b, catalog, knownProviderRisk)
+	discovery, refinement, execution, _, _, err := promptSlots(NewTextPrompter(strings.NewReader(input)), b, catalog, knownProviderRisk)
 	require.NoError(t, err)
 	assert.Equal(t, "custom-ranger", discovery)
 	assert.Equal(t, "openspec-explore", refinement)

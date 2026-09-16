@@ -1,0 +1,131 @@
+package install
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+// writeRoleContractFixture writes a minimal roles/<role>.yaml +
+// internal_skills/<role>/SKILL.md pair under defaultsRoot — the two files
+// hostAPIContractDigest (ADR-0043 DEC-006) reads.
+func writeRoleContractFixture(t *testing.T, defaultsRoot, role string) {
+	t.Helper()
+	rolesDir := filepath.Join(defaultsRoot, "roles")
+	skillDir := filepath.Join(defaultsRoot, "internal_skills", role)
+	require.NoError(t, os.MkdirAll(rolesDir, 0o755))
+	require.NoError(t, os.MkdirAll(skillDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, role+".yaml"), []byte("role: "+role+"\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("# "+role+"\n"), 0o644))
+}
+
+func TestCertifyRankedCandidates_StampsPinnedPairing(t *testing.T) {
+	defaultsRoot := t.TempDir()
+	writeRoleContractFixture(t, defaultsRoot, "ranger")
+	catalog := pluginCatalog{Providers: []pluginCatalogProvider{
+		{ID: "brainstorming", RiskScore: "write_analysis", CanonicalRole: "ranger", Roles: []string{"ranger"}, Default: true},
+		{ID: "openspec-explore", RiskScore: "write_analysis", CanonicalRole: "ranger"},
+	}}
+
+	require.NoError(t, certifyRankedCandidates(&catalog, defaultsRoot))
+
+	brainstorming, ok := findCatalogProvider(catalog, "brainstorming")
+	require.True(t, ok)
+	assert.True(t, brainstorming.Ranked)
+	assert.NotEmpty(t, brainstorming.CertificationDigest)
+	assert.Equal(t, int64(1), brainstorming.RankedBindingGeneration)
+	assert.Equal(t, "active", brainstorming.RankedBindingStatus)
+	assert.NotEmpty(t, brainstorming.HostAPIDigest)
+	assert.NotEmpty(t, brainstorming.ConnectorDigest)
+	assert.NotEmpty(t, brainstorming.TestSuiteDigest)
+	assert.Equal(t, "C1", brainstorming.ConformanceLevel)
+	// Default is untouched — Ranked and Default stay independent (DEC-001).
+	assert.True(t, brainstorming.Default)
+
+	// openspec-explore is not in rankedCertificationPairs (only
+	// openspec-propose is, as Archivist's pairing) — confirms only pinned
+	// pairings are certified, never every catalog entry.
+	openspecExplore, ok := findCatalogProvider(catalog, "openspec-explore")
+	require.True(t, ok)
+	assert.False(t, openspecExplore.Ranked, "only the pinned pairing is certified, never every catalog entry")
+}
+
+// TestCertifyRankedCandidates_StampsBothPinnedPairings is the
+// docs/adr/0045 regression test: two distinct Role→provider pairings
+// (Ranger↔brainstorming, Archivist↔openspec-propose) are certified
+// simultaneously, each with its own role-specific HostAPIDigest — proving
+// hostAPIContractDigest's role-parameterization is exercised end-to-end
+// with two roles, not just per-role in isolation.
+func TestCertifyRankedCandidates_StampsBothPinnedPairings(t *testing.T) {
+	defaultsRoot := t.TempDir()
+	writeRoleContractFixture(t, defaultsRoot, "ranger")
+	writeRoleContractFixture(t, defaultsRoot, "archivist")
+	catalog := pluginCatalog{Providers: []pluginCatalogProvider{
+		{ID: "brainstorming", RiskScore: "write_analysis", CanonicalRole: "ranger", Roles: []string{"ranger"}, Default: true},
+		{ID: "openspec-propose", RiskScore: "write_analysis", CanonicalRole: "archivist", Roles: []string{"archivist"}, Default: true},
+	}}
+
+	require.NoError(t, certifyRankedCandidates(&catalog, defaultsRoot))
+
+	brainstorming, ok := findCatalogProvider(catalog, "brainstorming")
+	require.True(t, ok)
+	assert.True(t, brainstorming.Ranked)
+	assert.NotEmpty(t, brainstorming.HostAPIDigest)
+	assert.NotEmpty(t, brainstorming.ConnectorDigest)
+	assert.NotEmpty(t, brainstorming.TestSuiteDigest)
+	assert.Equal(t, "C1", brainstorming.ConformanceLevel)
+
+	openspecPropose, ok := findCatalogProvider(catalog, "openspec-propose")
+	require.True(t, ok)
+	assert.True(t, openspecPropose.Ranked)
+	assert.NotEmpty(t, openspecPropose.HostAPIDigest)
+	assert.NotEmpty(t, openspecPropose.ConnectorDigest)
+	assert.NotEmpty(t, openspecPropose.TestSuiteDigest)
+	assert.Equal(t, "C1", openspecPropose.ConformanceLevel)
+
+	assert.NotEqual(t, brainstorming.HostAPIDigest, openspecPropose.HostAPIDigest,
+		"each role's HostAPIDigest must be computed from its own roles/<role>.yaml + internal_skills/<role>/SKILL.md, not shared")
+	// ConnectorDigest and TestSuiteDigest are role-agnostic pins by design
+	// (docs/adr/0045) — both pairings share the same value.
+	assert.Equal(t, brainstorming.ConnectorDigest, openspecPropose.ConnectorDigest)
+	assert.Equal(t, brainstorming.TestSuiteDigest, openspecPropose.TestSuiteDigest)
+}
+
+func TestCertifyRankedCandidates_SkipsAbsentPinnedPairing(t *testing.T) {
+	// openspec-explore is not in rankedCertificationPairs (neither
+	// brainstorming nor openspec-propose) — this fixture catalog contains
+	// no pinned pairing at all.
+	catalog := pluginCatalog{Providers: []pluginCatalogProvider{
+		{ID: "openspec-explore", RiskScore: "write_analysis", CanonicalRole: "ranger"},
+	}}
+
+	require.NoError(t, certifyRankedCandidates(&catalog, t.TempDir()), "a pinned pairing absent from an unrelated fixture catalog is not an error")
+}
+
+func TestCertifyRankedCandidates_RejectsMissingRoleAffinity(t *testing.T) {
+	catalog := pluginCatalog{Providers: []pluginCatalogProvider{
+		{ID: "brainstorming", RiskScore: "write_analysis", CanonicalRole: "archivist", Roles: []string{"archivist"}},
+	}}
+
+	err := certifyRankedCandidates(&catalog, t.TempDir())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "role affinity")
+}
+
+func TestCertifyRankedCandidates_IsDeterministic(t *testing.T) {
+	defaultsRoot := t.TempDir()
+	writeRoleContractFixture(t, defaultsRoot, "ranger")
+	build := func() pluginCatalog {
+		return pluginCatalog{Providers: []pluginCatalogProvider{
+			{ID: "brainstorming", Version: "1.0.0", RiskScore: "write_analysis", CanonicalRole: "ranger", Roles: []string{"ranger"}},
+		}}
+	}
+	a, b := build(), build()
+	require.NoError(t, certifyRankedCandidates(&a, defaultsRoot))
+	require.NoError(t, certifyRankedCandidates(&b, defaultsRoot))
+	assert.Equal(t, a.Providers[0].CertificationDigest, b.Providers[0].CertificationDigest)
+	assert.Equal(t, a.Providers[0].HostAPIDigest, b.Providers[0].HostAPIDigest)
+}

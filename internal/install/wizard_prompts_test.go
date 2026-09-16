@@ -39,7 +39,7 @@ func TestCompatibleProviderOptionsPrefersDefaultCompatibleCandidate(t *testing.T
 		},
 	}}
 
-	ids, defaultID, excluded := compatibleProviderOptions(catalog, "archivist", "schemas/handoff-archivist-to-sniper.schema.yaml")
+	ids, defaultID, _, excluded := compatibleProviderOptions(catalog, "archivist", "schemas/handoff-archivist-to-sniper.schema.yaml")
 	assert.Equal(t, []string{"openspec-propose"}, ids)
 	assert.Equal(t, "openspec-propose", defaultID)
 	assert.Empty(t, excluded)
@@ -57,7 +57,7 @@ func TestCompatibleProviderOptionsIncludesAffiliatedCandidateWithoutNativeHandof
 		},
 	}}
 
-	ids, defaultID, excluded := compatibleProviderOptions(catalog, "archivist", "schemas/handoff-archivist-to-sniper.schema.yaml")
+	ids, defaultID, _, excluded := compatibleProviderOptions(catalog, "archivist", "schemas/handoff-archivist-to-sniper.schema.yaml")
 	assert.Equal(t, []string{"openspec-propose"}, ids)
 	assert.Equal(t, "openspec-propose", defaultID)
 	assert.Empty(t, excluded)
@@ -68,10 +68,76 @@ func TestCompatibleProviderOptionsReturnsEmptyWhenNoWeaponIsCompatible(t *testin
 
 	catalog := pluginCatalog{Providers: []pluginCatalogProvider{}}
 
-	ids, defaultID, excluded := compatibleProviderOptions(catalog, "archivist", "schemas/handoff-archivist-to-sniper.schema.yaml")
+	ids, defaultID, _, excluded := compatibleProviderOptions(catalog, "archivist", "schemas/handoff-archivist-to-sniper.schema.yaml")
 	assert.Empty(t, ids)
 	assert.Empty(t, defaultID)
 	assert.Empty(t, excluded)
+}
+
+func TestCompatibleProviderOptionsReturnsRankedIDWhenCertified(t *testing.T) {
+	t.Parallel()
+
+	catalog := pluginCatalog{Providers: []pluginCatalogProvider{
+		{
+			ID: "brainstorming", RiskScore: "write_analysis", CanonicalRole: "ranger",
+			CompatibilitySource: "embedded", Default: true,
+			Ranked: true, CertificationDigest: "sha256:cert",
+		},
+		{ID: "openspec-explore", RiskScore: "write_analysis", CanonicalRole: "ranger", CompatibilitySource: "embedded"},
+	}}
+
+	ids, defaultID, rankedID, excluded := compatibleProviderOptions(catalog, "ranger", "")
+	assert.ElementsMatch(t, []string{"brainstorming", "openspec-explore"}, ids)
+	assert.Equal(t, "brainstorming", defaultID)
+	assert.Equal(t, "brainstorming", rankedID)
+	assert.Empty(t, excluded)
+}
+
+func TestCompatibleProviderOptionsRankedIDEmptyWhenNoCandidateCertified(t *testing.T) {
+	t.Parallel()
+
+	catalog := pluginCatalog{Providers: []pluginCatalogProvider{
+		{ID: "brainstorming", RiskScore: "write_analysis", CanonicalRole: "ranger", CompatibilitySource: "embedded", Default: true},
+	}}
+
+	_, _, rankedID, _ := compatibleProviderOptions(catalog, "ranger", "")
+	assert.Empty(t, rankedID)
+}
+
+func TestWithRankedOption_PrependsSynthenticEntryWhenRankedIDPresent(t *testing.T) {
+	t.Parallel()
+
+	options, uiDefault := withRankedOption([]string{"brainstorming", "openspec-explore"}, "brainstorming", "brainstorming")
+	assert.Equal(t, []string{"brainstorming::ranked", "brainstorming", "openspec-explore"}, options)
+	assert.Equal(t, "brainstorming::ranked", uiDefault)
+}
+
+func TestWithRankedOption_PassthroughWhenNoRankedID(t *testing.T) {
+	t.Parallel()
+
+	options, uiDefault := withRankedOption([]string{"brainstorming", "openspec-explore"}, "brainstorming", "")
+	assert.Equal(t, []string{"brainstorming", "openspec-explore"}, options)
+	assert.Equal(t, "brainstorming", uiDefault)
+}
+
+func TestSplitRankedChoice(t *testing.T) {
+	t.Parallel()
+
+	provider, mode := splitRankedChoice("brainstorming::ranked", "brainstorming")
+	assert.Equal(t, "brainstorming", provider)
+	assert.Equal(t, "ranked", mode)
+
+	provider, mode = splitRankedChoice("brainstorming", "brainstorming")
+	assert.Equal(t, "brainstorming", provider)
+	assert.Equal(t, "custom", mode)
+
+	provider, mode = splitRankedChoice("openspec-explore", "brainstorming")
+	assert.Equal(t, "openspec-explore", provider)
+	assert.Equal(t, "custom", mode)
+
+	provider, mode = splitRankedChoice("custom-skill", "")
+	assert.Equal(t, "custom-skill", provider)
+	assert.Equal(t, "custom", mode)
 }
 
 func TestPrintExcludedCandidatesPrintsEachIDWithItsReasons(t *testing.T) {

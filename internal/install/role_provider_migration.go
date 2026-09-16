@@ -91,6 +91,7 @@ func ApplyRoleProviderMigration(store *lifecycle.Store, preview RoleProviderMigr
 			Slot:                entry.Slot,
 			InstalledInstanceID: entry.Resolved.Provider.ID,
 			Status:              "enabled",
+			Mode:                domain.SlotBindingModeCustom,
 		}
 		if err := applyPluginBinding(store, desired, probe); err != nil {
 			return fmt.Errorf("apply role/provider migration: slot %s: %w", entry.Slot, err)
@@ -168,6 +169,7 @@ func seedRoleProviderMigrationEntry(store *lifecycle.Store, entry RoleProviderPr
 		if _, ok := store.Binding(entry.Slot); !ok {
 			store.Bindings = append(store.Bindings, domain.SlotBinding{
 				Slot: entry.Slot, InstalledInstanceID: entry.CurrentProviderID, Generation: 1, Status: "enabled",
+				Mode: domain.SlotBindingModeCustom,
 			})
 		}
 	}

@@ -16,6 +16,19 @@ providers:
       roles:
         - ranger
       default: true
+      ranked: true
+      certification_digest: sha256:e592541609229c2833aff30e14087d46555c8edff11e6a536045633d3f9d4dc6
+      ranked_binding_generation: 1
+      ranked_binding_status: active
+      host_api_digest: sha256:b3e37465b4951d23ee3f87269f927f6dfa443df852d49207f23cf635420efa46
+      connector_digest: sha256:71e52240f1c4b02247ddbd7456e42f3eb0b8c726a44731d77aee3a16a1e28d08
+      test_suite_digest: sha256:ae9ea8e91ef985e4018a5c584174d5f7bcc2347d10821a3302a4638c4d863a42
+      conformance_level: C1
+      upstream_repo: obra/superpowers
+      upstream_skill_path: skills/brainstorming/SKILL.md
+      upstream_version: 6.3.0
+      upstream_commit: b36e0829c6d0140e93cfef2ca599b1b07d4a7797
+      upstream_content_digest: sha256:74edf03ea6d24ef53db48677b93558d14a979bdf052ca3f57ecdca0c66791608
       description: Flexible brainstorming weapon for Ranger discovery; Ranger owns normalization into the canonical pending artifact and handoff.
       installable: true
       legacy_manifest_path: skills/brainstorming/skill.yaml
@@ -35,6 +48,11 @@ providers:
       canonical_role: ranger
       roles:
         - ranger
+      upstream_repo: Fission-AI/OpenSpec
+      upstream_skill_path: skills/openspec-explore/SKILL.md
+      upstream_version: 1.10.0
+      upstream_commit: 1ebddd17f40dde15dfd28289e4493c3cf05ee9df
+      upstream_content_digest: sha256:7e0281fc4f094dcced0c5469e7cbceba2dce9f113f22a4e34efcdce4315edf81
       description: Enter explore mode - a thinking partner for exploring ideas, investigating problems, and clarifying requirements. Use when the user wants to think through something before or during a change.
       installable: true
       legacy_manifest_path: skills/openspec-explore/skill.yaml
@@ -49,6 +67,14 @@ providers:
       roles:
         - archivist
       default: true
+      ranked: true
+      certification_digest: sha256:fcf9a3a83c00f803b51d048676c93b990361f42b13317bd0d16f3f01a7b382a9
+      ranked_binding_generation: 1
+      ranked_binding_status: active
+      host_api_digest: sha256:fff0c4febdedbead81855cc1e6ead4150b1e874a65d434bd71ae6134cf69c23d
+      connector_digest: sha256:71e52240f1c4b02247ddbd7456e42f3eb0b8c726a44731d77aee3a16a1e28d08
+      test_suite_digest: sha256:ae9ea8e91ef985e4018a5c584174d5f7bcc2347d10821a3302a4638c4d863a42
+      conformance_level: C1
       description: Propose a new change with all artifacts generated in one step. Use when the user wants to quickly describe what they want to build and get a complete proposal with design, specs, and tasks ready for implementation.
       installable: true
       legacy_manifest_path: skills/openspec-propose/skill.yaml

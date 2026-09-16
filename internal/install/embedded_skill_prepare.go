@@ -105,5 +105,8 @@ func ingestForOptions(opts PrepareEmbeddedOptions) (IngestionResult, error) {
 	if err != nil {
 		return IngestionResult{}, fmt.Errorf("ingest external skills: %w", err)
 	}
+	if err := certifyRankedCandidates(&result.Catalog, opts.DefaultsRoot); err != nil {
+		return IngestionResult{}, fmt.Errorf("certify ranked candidates: %w", err)
+	}
 	return result, nil
 }

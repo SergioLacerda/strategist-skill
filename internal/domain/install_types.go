@@ -55,7 +55,17 @@ type WizardConfig struct {
 	DiscoveryProvider  string // skill id for the Ranger (discovery) slot
 	RefinementProvider string // skill id for the Arquivista (refinement) slot
 	ExecutionProvider  string // always "sniper" — the native execution role, not a wizard-selectable governance/provider skill id
-	TreasureChestPath  string // optional: path to a knowledge source (e.g. .sdd/source)
+	// DiscoveryMode and RefinementMode record which pipeline the Wizard's
+	// prompt resolved for that slot — SlotBindingModeRanked when the operator
+	// picked the "Ranger rankeado"/certified-Ranked option, empty/Custom
+	// otherwise (docs/adr/0043-ranked-pipeline-pilot-implementation-decisions.md
+	// DEC-002). This is wizard-internal signaling only: it is never written to
+	// active.yaml (DiscoveryProvider/RefinementProvider stay a plain provider
+	// id either way) — only to plugins.lock's SlotBinding.Mode, the runtime
+	// reinforcement DEC-002 describes.
+	DiscoveryMode     string
+	RefinementMode    string
+	TreasureChestPath string // optional: path to a knowledge source (e.g. .sdd/source)
 	// AdrCanonicalPath is the optional, project-relative destination Sniper writes ADRs
 	// to instead of the <base_path>/archived/<mission_id>-adr.md fallback (see
 	// contracts/narrative/07-adr.md § Canonical Destination Resolution). Empty means

@@ -1,14 +1,9 @@
 package install
 
 import (
-	"bytes"
-	"crypto/sha256"
 	"fmt"
-	"sort"
-	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/plugins"
 	"gopkg.in/yaml.v3"
 )
 
@@ -31,13 +26,44 @@ type pluginCatalogProvider struct {
 	// Default marks this provider as the primary Arma for its CanonicalRole
 	// among candidates sharing it — a selection preference, not proof of
 	// provenance, installation, or readiness (see domain.ProviderContract.Default).
-	Default             bool                      `yaml:"default,omitempty"`
-	Description         string                    `yaml:"description,omitempty"`
-	AuxiliaryTools      []string                  `yaml:"auxiliary_tools_allowed,omitempty"`
-	Installable         bool                      `yaml:"installable,omitempty"`
-	LegacyManifestPath  string                    `yaml:"legacy_manifest_path,omitempty"`
-	CompatibilitySource string                    `yaml:"compatibility_source,omitempty"`
-	Dependencies        []pluginCatalogDependency `yaml:"dependencies,omitempty"`
+	Default bool `yaml:"default,omitempty"`
+	// Ranked and CertificationDigest mark a build-time-certified Ranked
+	// binding candidate — independent of Default (see
+	// domain.ProviderContract.Ranked;
+	// docs/adr/0043-ranked-pipeline-pilot-implementation-decisions.md DEC-001).
+	Ranked              bool   `yaml:"ranked,omitempty"`
+	CertificationDigest string `yaml:"certification_digest,omitempty"`
+	// RankedBindingGeneration and RankedBindingStatus are the pre-generated
+	// runtime SlotBinding fragment stamped by `strategist plugin
+	// prepare-embedded`'s certification pass (ADR-0043 DEC-005), copied — not
+	// recomputed — by the Wizard's Ranked activation path.
+	RankedBindingGeneration int64  `yaml:"ranked_binding_generation,omitempty"`
+	RankedBindingStatus     string `yaml:"ranked_binding_status,omitempty"`
+	// HostAPIDigest, ConnectorDigest, TestSuiteDigest, and ConformanceLevel
+	// are ADR-0043 DEC-006's generic Ranked-certification evidence,
+	// computed once per (role, provider) pairing by
+	// internal/install/embedded_skill_conformance.go — never hardcoded to
+	// one pairing. Empty for every non-Ranked entry.
+	HostAPIDigest    string `yaml:"host_api_digest,omitempty"`
+	ConnectorDigest  string `yaml:"connector_digest,omitempty"`
+	TestSuiteDigest  string `yaml:"test_suite_digest,omitempty"`
+	ConformanceLevel string `yaml:"conformance_level,omitempty"`
+	// UpstreamRepo through License are ADR-0029 DEC-002's per-provider
+	// upstream-identity fields — see externalSkillAdapter's own doc comment
+	// for the full rationale. Populated only for packages whose upstream
+	// provenance has actually been researched.
+	UpstreamRepo          string                    `yaml:"upstream_repo,omitempty"`
+	UpstreamSkillPath     string                    `yaml:"upstream_skill_path,omitempty"`
+	UpstreamVersion       string                    `yaml:"upstream_version,omitempty"`
+	UpstreamCommit        string                    `yaml:"upstream_commit,omitempty"`
+	UpstreamContentDigest string                    `yaml:"upstream_content_digest,omitempty"`
+	License               string                    `yaml:"license,omitempty"`
+	Description           string                    `yaml:"description,omitempty"`
+	AuxiliaryTools        []string                  `yaml:"auxiliary_tools_allowed,omitempty"`
+	Installable           bool                      `yaml:"installable,omitempty"`
+	LegacyManifestPath    string                    `yaml:"legacy_manifest_path,omitempty"`
+	CompatibilitySource   string                    `yaml:"compatibility_source,omitempty"`
+	Dependencies          []pluginCatalogDependency `yaml:"dependencies,omitempty"`
 	// SupportedHandoffSchemas declares which RoleContract.HandoffSchema
 	// value(s) this weapon's real output conforms to (see
 	// domain.ProviderContract.SupportedHandoffSchemas). Omitted/empty means
@@ -101,80 +127,9 @@ func catalogKnownProviderRisk(catalog pluginCatalog) map[string]string {
 
 // catalogInstallableDefaultProviders and resolveInstallableDefaultProviders
 // live in plugin_catalog_resolve.go, split out to keep this file under the
-// repo's file-size budget.
-
-func generateKnownProvidersYAML(catalog pluginCatalog) []byte {
-	var buf bytes.Buffer
-	buf.WriteString("# Generated from plugins/catalog.yaml. Do not edit by hand.\n")
-	buf.WriteString("providers:\n")
-	providers := append([]pluginCatalogProvider(nil), catalog.Providers...)
-	sort.Slice(providers, func(i, j int) bool {
-		return providers[i].ID < providers[j].ID
-	})
-	for _, provider := range providers {
-		fmt.Fprintf(&buf, "  %s: %s\n", provider.ID, provider.RiskScore)
-	}
-	return buf.Bytes()
-}
-
-func catalogResolverCandidates(catalog pluginCatalog) []plugins.Candidate {
-	providers := append([]pluginCatalogProvider(nil), catalog.Providers...)
-	sort.Slice(providers, func(i, j int) bool {
-		return providers[i].ID < providers[j].ID
-	})
-	candidates := make([]plugins.Candidate, 0, len(providers))
-	for _, provider := range providers {
-		candidates = append(candidates, plugins.Candidate{
-			ID:           provider.ID,
-			Kind:         "adapter_contract",
-			Version:      providerVersionOrDefault(provider.Version),
-			Digest:       catalogProviderDigest(provider),
-			Dependencies: catalogDependencies(provider.Dependencies),
-		})
-	}
-	return candidates
-}
-
-func catalogProviderDigest(provider pluginCatalogProvider) string {
-	if provider.Installable {
-		if data, err := generateLegacyProviderManifest(pluginCatalog{SchemaVersion: "digest", Providers: []pluginCatalogProvider{provider}}, provider.ID); err == nil {
-			sum := sha256.Sum256(data)
-			return fmt.Sprintf("sha256:%x", sum)
-		}
-	}
-	var b strings.Builder
-	b.WriteString(provider.ID)
-	b.WriteString("\t")
-	b.WriteString(providerVersionOrDefault(provider.Version))
-	b.WriteString("\t")
-	b.WriteString(provider.RiskScore)
-	b.WriteString("\t")
-	b.WriteString(provider.CompatibilitySource)
-	b.WriteString("\n")
-	sum := sha256.Sum256([]byte(b.String()))
-	return fmt.Sprintf("sha256:%x", sum)
-}
-
-func catalogDependencies(dependencies []pluginCatalogDependency) []plugins.Dependency {
-	out := make([]plugins.Dependency, 0, len(dependencies))
-	for _, dep := range dependencies {
-		out = append(out, plugins.Dependency{
-			ID:         dep.ID,
-			Kind:       dep.Kind,
-			Constraint: dep.Constraint,
-			Optional:   dep.Optional,
-			Reason:     dep.Reason,
-		})
-	}
-	return out
-}
-
-func providerVersionOrDefault(version string) string {
-	if version == "" {
-		return "0.0.0"
-	}
-	return version
-}
+// repo's file-size budget. generateKnownProvidersYAML, catalogResolverCandidates,
+// catalogProviderDigest, catalogDependencies, and providerVersionOrDefault
+// live in plugin_catalog_digest.go, for the same reason.
 
 func findCatalogProvider(catalog pluginCatalog, providerID string) (pluginCatalogProvider, bool) {
 	for _, provider := range catalog.Providers {
