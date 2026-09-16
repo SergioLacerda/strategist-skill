@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -56,6 +57,28 @@ func TestMetricsFallbackCmd_ReadsRecordedHistory(t *testing.T) {
 
 func TestMetricsFallbackCmd_IsHumanStatusCommand(t *testing.T) {
 	assert.True(t, isHumanStatusCommand(metricsFallbackCmd))
+}
+
+// TestRunMetricsFallback_WithMissionRunDoesNotError covers runMetricsFallback's
+// "if run := telemetryRunFromCmd(cmd); run != nil { run.SetSilent() }"
+// branch, matching the sibling runMetricsHandoff/runMetricsScout tests.
+func TestRunMetricsFallback_WithMissionRunDoesNotError(t *testing.T) {
+	dir := t.TempDir()
+	testutil.MinimalRoot(t, dir)
+	setMetricsFallbackRoot(t, dir)
+	t.Cleanup(func() { setMetricsFallbackRoot(t, "") })
+	attachMissionRun(t, metricsFallbackCmd)
+
+	require.NoError(t, runMetricsFallback(metricsFallbackCmd, metricsFallbackOptions{}))
+}
+
+// TestPrintFallbackMetrics_WriteError covers printFallbackMetrics' own
+// wrapped Fprint error, matching TestPrintHandoffMetrics_WriteError/
+// TestPrintRouteMetrics_WriteError in metrics_test.go.
+func TestPrintFallbackMetrics_WriteError(t *testing.T) {
+	err := printFallbackMetrics(errorWriter{}, telemetry.FallbackMetrics{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "write output")
 }
 
 func TestRunMetricsFallback_ReadFallbackDecisionsErrorPropagates(t *testing.T) {

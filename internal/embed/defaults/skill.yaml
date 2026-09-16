@@ -42,8 +42,9 @@ capability:
 # docs/architecture/strategist-concepts.md § Abilities for the human-facing explanation.
 taxonomy:
   description: >
-    Weapons are external skill_provider skills invoked via the Skill tool and bound to
-    a slot in active.yaml (orchestration.slot_hierarchy.*.may_delegate_to). Abilities
+    Weapons are embedded skill packages loaded from .strategist/skills/<id>/SKILL.md
+    and bound to a slot in active.yaml (orchestration.slot_hierarchy.*.may_delegate_to).
+    The external-skills-source tree is a build-time ingestion source only. Abilities
     are internal routines that run inside a Role/phase — they are not configurable,
     not swappable, and have no active.yaml entry.
   weapons:

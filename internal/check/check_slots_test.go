@@ -246,6 +246,63 @@ func TestCheckRoleProviderCompatibility_RoleFileMissing(t *testing.T) {
 	assert.Empty(t, errMsg)
 }
 
+func TestLoadRoleSlotMap_MalformedYAML(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	rolesDir := filepath.Join(dir, "roles")
+	require.NoError(t, os.MkdirAll(rolesDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "default.yaml"), []byte("discovery: [unterminated"), 0o644))
+
+	_, err := loadRoleSlotMap(dir)
+	require.ErrorContains(t, err, "parse role slot map")
+}
+
+func TestCheckRoleProviderCompatibility_RoleFileMalformedYAML(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	rolesDir := filepath.Join(dir, "roles")
+	require.NoError(t, os.MkdirAll(rolesDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "default.yaml"),
+		[]byte("discovery: ranger\nrefinement: archivist\nexecution: sniper\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "archivist.yaml"),
+		[]byte("role: [unterminated"), 0o644))
+
+	errMsg := checkRoleProviderCompatibility(dir, "refinement", "openspec-explore", "write_analysis",
+		[]byte("id: openspec-explore\ncanonical_role: archivist\n"))
+	assert.Empty(t, errMsg)
+}
+
+func TestCheckRoleProviderCompatibility_RoleFileFailsValidation(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	rolesDir := filepath.Join(dir, "roles")
+	require.NoError(t, os.MkdirAll(rolesDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "default.yaml"),
+		[]byte("discovery: ranger\nrefinement: archivist\nexecution: sniper\n"), 0o644))
+	// role field intentionally omitted -> RoleConfig.Validate() fails.
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "archivist.yaml"),
+		[]byte("slot: refinement\n"), 0o644))
+
+	errMsg := checkRoleProviderCompatibility(dir, "refinement", "openspec-explore", "write_analysis",
+		[]byte("id: openspec-explore\ncanonical_role: archivist\n"))
+	assert.Empty(t, errMsg)
+}
+
+func TestCheckRoleProviderCompatibility_ProviderTaxonomyMalformedYAML(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	rolesDir := filepath.Join(dir, "roles")
+	require.NoError(t, os.MkdirAll(rolesDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "default.yaml"),
+		[]byte("discovery: ranger\nrefinement: archivist\nexecution: sniper\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "archivist.yaml"),
+		[]byte("role: archivist\nslot: refinement\n"), 0o644))
+
+	errMsg := checkRoleProviderCompatibility(dir, "refinement", "openspec-explore", "write_analysis",
+		[]byte("canonical_role: [unterminated"))
+	assert.Empty(t, errMsg)
+}
+
 func TestCheckRoleProviderCompatibility_SkillDeclaresNoCanonicalRole(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()

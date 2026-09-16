@@ -19,32 +19,49 @@ func generateLegacyProviderManifest(catalog pluginCatalog, providerID string) ([
 	writeLegacyProviderField(&buf, "risk_score", provider.RiskScore)
 	writeLegacyProviderField(&buf, "category", provider.Category)
 	writeLegacyProviderField(&buf, "canonical_role", provider.CanonicalRole)
-	if len(provider.Roles) > 0 {
-		buf.WriteString("roles:\n")
-		for _, role := range provider.Roles {
-			buf.WriteString("  - " + role + "\n")
-		}
-	}
-	if provider.ScratchRoot != "" {
-		writeLegacyProviderField(&buf, "scratch_root", provider.ScratchRoot)
-	}
+	writeLegacyRoles(&buf, provider.Roles)
+	writeLegacyScratchRoot(&buf, provider.ScratchRoot)
 	buf.WriteString("\n")
+	writeLegacyDescription(&buf, provider.Description)
+	writeLegacyAuxiliaryTools(&buf, provider.AuxiliaryTools)
+	return buf.Bytes(), nil
+}
+
+func writeLegacyRoles(buf *bytes.Buffer, roles []string) {
+	if len(roles) == 0 {
+		return
+	}
+	buf.WriteString("roles:\n")
+	for _, role := range roles {
+		buf.WriteString("  - " + role + "\n")
+	}
+}
+
+func writeLegacyScratchRoot(buf *bytes.Buffer, scratchRoot string) {
+	if scratchRoot != "" {
+		writeLegacyProviderField(buf, "scratch_root", scratchRoot)
+	}
+}
+
+func writeLegacyDescription(buf *bytes.Buffer, description string) {
 	buf.WriteString("description: >\n")
-	for _, line := range strings.Split(provider.Description, "\n") {
+	for _, line := range strings.Split(description, "\n") {
 		if strings.TrimSpace(line) == "" {
 			buf.WriteString("\n")
 			continue
 		}
 		buf.WriteString("  " + line + "\n")
 	}
-	if len(provider.AuxiliaryTools) > 0 {
-		buf.WriteString("\n")
-		buf.WriteString("auxiliary_tools_allowed:\n")
-		for _, tool := range provider.AuxiliaryTools {
-			buf.WriteString("  - " + tool + "\n")
-		}
+}
+
+func writeLegacyAuxiliaryTools(buf *bytes.Buffer, tools []string) {
+	if len(tools) == 0 {
+		return
 	}
-	return buf.Bytes(), nil
+	buf.WriteString("\nauxiliary_tools_allowed:\n")
+	for _, tool := range tools {
+		buf.WriteString("  - " + tool + "\n")
+	}
 }
 
 func writeLegacyProviderField(buf *bytes.Buffer, key, value string) {

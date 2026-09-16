@@ -50,7 +50,7 @@ func TestQualityAndSecurityGateContracts(t *testing.T) {
 
 	for _, needle := range []string{
 		"ci-lint: fmt-check mod-check vet build quality-budget-gate",
-		"COMPLEXITY_THRESHOLD ?= 15",
+		"COMPLEXITY_THRESHOLD ?= 7",
 		"GOCOGNIT_VERSION    ?= v1.2.1",
 	} {
 		if !strings.Contains(makefile, needle) {

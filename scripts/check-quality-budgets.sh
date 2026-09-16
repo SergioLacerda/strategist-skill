@@ -32,7 +32,7 @@ while IFS= read -r file; do
     fail=1
   fi
   seen["$file"]=1
-done < <(find cmd internal -type f -name '*.go' \
+done < <(find cmd internal treasure-chest -type f -name '*.go' \
   ! -name '*_test.go' \
   ! -path 'internal/embed/defaults/*' | sort)
 
@@ -48,7 +48,7 @@ if [[ ! -x "$gocognit_bin" ]]; then
   exit 1
 fi
 
-complexity_output="$("$gocognit_bin" -over "$complexity_threshold" ./cmd ./internal || true)"
+complexity_output="$("$gocognit_bin" -over "$complexity_threshold" ./cmd ./internal ./treasure-chest || true)"
 if [[ -n "$complexity_output" ]]; then
   echo "::error::cognitive complexity exceeds threshold $complexity_threshold" >&2
   printf '%s\n' "$complexity_output" >&2

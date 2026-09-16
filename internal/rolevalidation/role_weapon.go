@@ -64,7 +64,14 @@ func validateSlot(root string, lock domain.PluginLockFile, slot, role, provider 
 	if provider == "" {
 		return []Failure{{Slot: slot, Role: role, Reason: "no weapon configured in active.yaml"}}
 	}
+	failure := persistedSlotBinding(lock, slot, role, provider)
+	if failure != nil {
+		return failure
+	}
+	return validateProviderManifest(root, slot, role, provider)
+}
 
+func persistedSlotBinding(lock domain.PluginLockFile, slot, role, provider string) []Failure {
 	matching := make([]domain.SlotBinding, 0, 1)
 	for _, binding := range lock.Bindings {
 		if binding.Slot == slot {
@@ -80,7 +87,10 @@ func validateSlot(root string, lock domain.PluginLockFile, slot, role, provider 
 	if matching[0].InstalledInstanceID != provider {
 		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("persisted binding points to %q, not active provider", matching[0].InstalledInstanceID)}}
 	}
+	return nil
+}
 
+func validateProviderManifest(root string, slot, role, provider string) []Failure {
 	// A native role binding is valid when its role contract is present and maps
 	// to the slot. External/embedded providers must additionally expose a valid
 	// manifest and explicit role affinity.
@@ -92,6 +102,10 @@ func validateSlot(root string, lock domain.PluginLockFile, slot, role, provider 
 	if err != nil {
 		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("skill manifest unreadable: %v", err)}}
 	}
+	return validateSkillManifest(slot, role, provider, raw)
+}
+
+func validateSkillManifest(slot, role, provider string, raw []byte) []Failure {
 	var manifest skillManifest
 	if err := yaml.Unmarshal(raw, &manifest); err != nil {
 		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("skill manifest invalid: %v", err)}}

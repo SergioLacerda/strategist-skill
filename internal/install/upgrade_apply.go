@@ -87,23 +87,8 @@ func (s Service) snapshotBeforeUpgrade(strategistDir string, paths []string) (st
 	}
 
 	for _, p := range paths {
-		src, err := runtimefs.SafeJoin(strategistDir, filepath.FromSlash(p))
-		if err != nil {
-			return "", fmt.Errorf("resolve %s: %w", p, err)
-		}
-		data, err := os.ReadFile(src) //nolint:gosec // G304: path validated by runtimefs.SafeJoin, confined to strategistDir
-		if err != nil {
-			if os.IsNotExist(err) {
-				continue
-			}
-			return "", fmt.Errorf("snapshot read %s: %w", p, err)
-		}
-		dst, err := runtimefs.SafeJoin(backupDir, filepath.FromSlash(p))
-		if err != nil {
-			return "", fmt.Errorf("resolve backup path %s: %w", p, err)
-		}
-		if err := runtimefs.WriteFile(dst, data, 0o644); err != nil {
-			return "", fmt.Errorf("snapshot write %s: %w", p, err)
+		if err := s.snapshotUpgradePath(strategistDir, backupDir, p); err != nil {
+			return "", err
 		}
 	}
 
@@ -111,4 +96,26 @@ func (s Service) snapshotBeforeUpgrade(strategistDir string, paths []string) (st
 		return "", fmt.Errorf("gitignore backup dir: %w", err)
 	}
 	return backupDir, nil
+}
+
+func (s Service) snapshotUpgradePath(strategistDir, backupDir, relPath string) error {
+	src, err := runtimefs.SafeJoin(strategistDir, filepath.FromSlash(relPath))
+	if err != nil {
+		return fmt.Errorf("resolve %s: %w", relPath, err)
+	}
+	data, err := os.ReadFile(src) //nolint:gosec // path validated by runtimefs.SafeJoin
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("snapshot read %s: %w", relPath, err)
+	}
+	dst, err := runtimefs.SafeJoin(backupDir, filepath.FromSlash(relPath))
+	if err != nil {
+		return fmt.Errorf("resolve backup path %s: %w", relPath, err)
+	}
+	if err := runtimefs.WriteFile(dst, data, 0o644); err != nil {
+		return fmt.Errorf("snapshot write %s: %w", relPath, err)
+	}
+	return nil
 }

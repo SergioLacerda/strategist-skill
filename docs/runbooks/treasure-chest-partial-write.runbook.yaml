@@ -11,7 +11,7 @@ applies_when:
 objective: Determine whether a failed treasure-chest add/remove left the workspace's tracked files (active.yaml, treasure-chests.yaml, knowledge.index.yaml, cascaded jewel files) untouched (Variant A) or partially committed (Variant B), and bring them back into agreement.
 
 preconditions:
-  - "treasure-chest add/remove writes active.yaml, treasure-chests.yaml, knowledge.index.yaml, and (on remove) cascaded jewel files as a single all-or-nothing batch via internal/treasure/yaml_node.go's WriteYAMLNodes"
+  - "treasure-chest add/remove writes active.yaml, treasure-chests.yaml, knowledge.index.yaml, and (on remove) cascaded jewel files as a single all-or-nothing batch via treasure-chest/yaml_node.go's WriteYAMLNodes"
   - "Prepare phase: every document is serialized to a temporary sibling file first; if any prepare write fails, all staged temp files are cleaned up and no destination file is touched (Variant A) — the workspace is exactly as it was before the command ran"
   - "Commit phase: only entered once every prepare step succeeds; each temp file is renamed into place in order — if a rename fails partway, files renamed before the failure hold new content and the rest (including the failed one) still hold old content (Variant B), and the error names exactly which paths are on which side"
 

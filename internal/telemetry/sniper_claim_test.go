@@ -10,6 +10,15 @@ import (
 	"time"
 )
 
+func TestSniperClaimHistoryPath(t *testing.T) {
+	t.Parallel()
+	got := SniperClaimHistoryPath("/root")
+	want := filepath.Join("/root", "memory", "sniper-claims.jsonl")
+	if got != want {
+		t.Fatalf("SniperClaimHistoryPath = %q, want %q", got, want)
+	}
+}
+
 func TestAppendSniperClaim_ThenReadRecentSniperClaims_RoundTrips(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()

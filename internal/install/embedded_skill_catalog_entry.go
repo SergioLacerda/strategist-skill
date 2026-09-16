@@ -3,6 +3,7 @@ package install
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -39,23 +40,19 @@ func skillDescription(dir string) string {
 	if err != nil {
 		return ""
 	}
+	return parseSkillDescription(string(raw))
+}
+
+func parseSkillDescription(content string) string {
 	var fm struct {
 		Description string `yaml:"description"`
 	}
-	content := string(raw)
 	const delim = "---"
-	if len(content) < len(delim) || content[:len(delim)] != delim {
+	if !strings.HasPrefix(content, delim) {
 		return ""
 	}
 	rest := content[len(delim):]
-	end := -1
-	needle := "\n" + delim
-	for i := 0; i+len(needle) <= len(rest); i++ {
-		if rest[i:i+len(needle)] == needle {
-			end = i
-			break
-		}
-	}
+	end := strings.Index(rest, "\n"+delim)
 	if end < 0 {
 		return ""
 	}

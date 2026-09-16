@@ -1,0 +1,23 @@
+# Strategist project adapter (ADR-0033 two-layer contract) for the portable
+# brainstorming/SKILL.md package in this same directory. Project-specific
+# fields (canonical_role, risk_score, category) live here, never in SKILL.md
+# itself.
+canonical_role: ranger
+roles:
+  - ranger
+risk_score: write_analysis
+category: discovery
+default: true
+
+# supported_handoff_schemas is intentionally omitted: the fixed Ranger role
+# owns normalization into its handoff schema.
+
+# auxiliary_tools_allowed intentionally omitted on this migrated entry: the
+# hand-authored version declared "writing-plans" as a dependency, but
+# writing-plans has never itself been a catalog entry (see
+# .analysis/done/20260913-role-skill-weapon-taxonomy/analysis.md KF-07) and
+# this package's own SKILL.md already states it makes no discovery-subtype
+# capability claim and is never actually invoked (discovery always resolves
+# to internal_skills/ranger). Fabricating a writing-plans package here just to
+# satisfy the declared dependency would not be honest ingestion — see
+# .analysis/refined/20260913-embedded-skill-directory-catalog/tasks.md Task 7.

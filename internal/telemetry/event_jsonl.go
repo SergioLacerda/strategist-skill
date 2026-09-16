@@ -66,8 +66,14 @@ func AppendEventLine(path string, event Event) (err error) {
 		return fmt.Errorf("open event log: %w", err)
 	}
 	defer closeFileWithContext(f, &err, "close event log")
+	if err := appendEventFile(f, line); err != nil {
+		return err
+	}
+	return nil
+}
 
-	if err = lockFile(f); err != nil {
+func appendEventFile(f *os.File, line string) (err error) {
+	if err := lockFile(f); err != nil {
 		return fmt.Errorf("lock event log: %w", err)
 	}
 	defer func() {
@@ -76,10 +82,10 @@ func AppendEventLine(path string, event Event) (err error) {
 		}
 	}()
 
-	if _, err = f.Seek(0, io.SeekEnd); err != nil {
+	if _, err := f.Seek(0, io.SeekEnd); err != nil {
 		return fmt.Errorf("seek event log: %w", err)
 	}
-	if _, err = fmt.Fprintln(f, line); err != nil {
+	if _, err := fmt.Fprintln(f, line); err != nil {
 		return fmt.Errorf("write event log line: %w", err)
 	}
 	return nil

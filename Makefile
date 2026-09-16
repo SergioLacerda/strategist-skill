@@ -50,7 +50,7 @@ COVERAGE_DIR        ?= coverage
 COVERAGE_PROFILE    := $(COVERAGE_DIR)/coverage.out
 COVERAGE_HTML       := $(COVERAGE_DIR)/coverage.html
 QUALITY_BUDGETS     := scripts/quality-budgets.tsv
-COMPLEXITY_THRESHOLD ?= 15
+COMPLEXITY_THRESHOLD ?= 7
 
 include make/go.mk
 include make/quality.mk

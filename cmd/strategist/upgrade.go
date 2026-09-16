@@ -54,6 +54,10 @@ func runUpgrade(cmd *cobra.Command, _ []string) error {
 		return runUpgradeRollback(cmd, strategistDir, upgradeRollback)
 	}
 
+	return executeUpgrade(cmd, svc, strategistDir)
+}
+
+func executeUpgrade(cmd *cobra.Command, svc install.Service, strategistDir string) error {
 	plan, err := svc.PlanUpgrade(strategistDir)
 	if err != nil {
 		return fmt.Errorf("upgrade: %w", err)
@@ -65,21 +69,37 @@ func runUpgrade(cmd *cobra.Command, _ []string) error {
 	}
 
 	if upgradeDryRun {
-		if _, err := fmt.Fprintln(out, "\n(dry run — nothing written)"); err != nil {
-			return fmt.Errorf("write output: %w", err)
-		}
-		return nil
+		return writeUpgradeDryRun(out)
 	}
 
 	backupDir, err := svc.ApplyUpgrade(strategistDir, plan, upgradeForce)
 	if err != nil {
 		return fmt.Errorf("upgrade: %w", err)
 	}
-	if backupDir != "" {
-		if _, err := fmt.Fprintf(out, "\nBacked up overwritten files to %s\n", backupDir); err != nil {
-			return fmt.Errorf("upgrade: %w", err)
-		}
+	if err := writeUpgradeBackupNotice(out, backupDir); err != nil {
+		return err
 	}
+	return writeUpgradeComplete(out)
+}
+
+func writeUpgradeDryRun(out io.Writer) error {
+	if _, err := fmt.Fprintln(out, "\n(dry run — nothing written)"); err != nil {
+		return fmt.Errorf("write output: %w", err)
+	}
+	return nil
+}
+
+func writeUpgradeBackupNotice(out io.Writer, backupDir string) error {
+	if backupDir == "" {
+		return nil
+	}
+	if _, err := fmt.Fprintf(out, "\nBacked up overwritten files to %s\n", backupDir); err != nil {
+		return fmt.Errorf("upgrade: %w", err)
+	}
+	return nil
+}
+
+func writeUpgradeComplete(out io.Writer) error {
 	if _, err := fmt.Fprintln(out, "Upgrade complete."); err != nil {
 		return fmt.Errorf("write output: %w", err)
 	}

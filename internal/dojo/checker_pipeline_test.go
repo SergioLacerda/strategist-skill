@@ -114,6 +114,38 @@ func TestCheckPipeline_LogMissing(t *testing.T) {
 	assert.Contains(t, items[0].Detail, "emit.log not found")
 }
 
+func TestCheckPipeline_UnrecognizedSlotUsesSlotNameAsPrefix(t *testing.T) {
+	logPath := writeEmitLog(t, sampleEmitLog)
+	criteria := domain.DojoCriteria{
+		Pipeline: domain.DojoPipeline{SlotsInvoked: []string{"unknown_slot"}},
+	}
+	items := dojo.CheckPipeline(criteria, logPath, false)
+	require.Len(t, items, 1)
+	assert.False(t, items[0].Passed)
+	assert.Contains(t, items[0].Detail, "unknown_slot")
+}
+
+func TestCheckPipeline_LogPathIsDirectory_ReadError(t *testing.T) {
+	dir := t.TempDir()
+	logPath := filepath.Join(dir, "emit.log")
+	require.NoError(t, os.MkdirAll(logPath, 0o755)) // exists per os.Stat, but unreadable as a file
+	criteria := domain.DojoCriteria{AutoStopAtGate: true}
+	items := dojo.CheckPipeline(criteria, logPath, false)
+	require.Len(t, items, 1)
+	assert.False(t, items[0].Passed)
+}
+
+func TestCheckPipeline_NoPhaseTaggedEvents_MustStopAtFailsWithEmptyGot(t *testing.T) {
+	logPath := writeEmitLog(t, "key=untagged_event scenario=sample-scenario\n")
+	criteria := domain.DojoCriteria{
+		Pipeline: domain.DojoPipeline{MustStopAt: "approval_gate"},
+	}
+	items := dojo.CheckPipeline(criteria, logPath, false)
+	require.Len(t, items, 1)
+	assert.False(t, items[0].Passed)
+	assert.Contains(t, items[0].Detail, `stopped at phase ""`)
+}
+
 func TestCheckPipeline_MustStopAtEmpty_NoAssertion(t *testing.T) {
 	logPath := writeEmitLog(t, sampleEmitLog)
 	criteria := domain.DojoCriteria{

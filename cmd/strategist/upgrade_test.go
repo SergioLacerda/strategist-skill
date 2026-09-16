@@ -28,9 +28,17 @@ func installedTempDir(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
 
-	origTarget := installTarget
-	t.Cleanup(func() { installTarget = origTarget })
+	origTarget, origNoShim, origShimPath := installTarget, installNoShim, installShimPath
+	t.Cleanup(func() {
+		installTarget = origTarget
+		installNoShim = origNoShim
+		installShimPath = origShimPath
+	})
 	installTarget = dir
+	// The helper only needs the runtime under dir; avoid writing the user-level
+	// Claude shim, which is unavailable in read-only CI/test environments.
+	installNoShim = true
+	installShimPath = ""
 
 	require.NoError(t, installCmd.RunE(installCmd, nil))
 	return dir

@@ -1,0 +1,27 @@
+# Strategist project adapter (ADR-0033 two-layer contract) for the portable
+# openspec-propose/SKILL.md package in this same directory. Project-specific
+# fields (canonical_role, risk_score, category) live here, never in SKILL.md
+# itself.
+#
+# default: true — openspec-propose is the refinement slot's embedded-weapon
+# default (DEC-004, docs/adr/0035-embedded-weapon-fallback-policy.md,
+# mission 20260913-wizard-hardcoded-fallback-maps-cleanup), superseding
+# openspec-explore, which remains a secondary, opt-in option (see its own
+# strategist.yaml in this directory).
+canonical_role: archivist
+roles:
+  - archivist
+risk_score: write_analysis
+category: refinement
+default: true
+
+# scratch_root: runtime — this weapon's own openspec CLI creates working
+# files (openspec/changes/<id>/) that must live in the runtime domain
+# (.strategist/weapon-runtime/openspec-propose/), never the repo root or the
+# workspace (.analysis/) — see
+# .analysis/refined/20260915-weapon-scratch-root-taxonomy/design.md D1.
+scratch_root: runtime
+
+# supported_handoff_schemas is intentionally omitted: the fixed Archivist
+# role owns normalization from this weapon's result into its canonical
+# refined artifacts and handoff.

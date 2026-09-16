@@ -71,12 +71,19 @@ func (s Service) prepareRuntime(ctx context.Context, strategistDir string, cfg d
 // whether a snapshot happened.
 func (s Service) extractRuntimeTree(strategistDir string, force bool) (fullHashes map[string]string, backupDir string, err error) {
 	if s.Lister == nil {
-		if err := s.Extractor.Extract(strategistDir, force); err != nil {
-			return nil, "", fmt.Errorf("extract runtime tree: %w", err)
-		}
-		return nil, "", nil
+		return s.extractLegacyRuntimeTree(strategistDir, force)
 	}
+	return s.extractUpgradeRuntimeTree(strategistDir, force)
+}
 
+func (s Service) extractLegacyRuntimeTree(strategistDir string, force bool) (map[string]string, string, error) {
+	if err := s.Extractor.Extract(strategistDir, force); err != nil {
+		return nil, "", fmt.Errorf("extract runtime tree: %w", err)
+	}
+	return nil, "", nil
+}
+
+func (s Service) extractUpgradeRuntimeTree(strategistDir string, force bool) (map[string]string, string, error) {
 	plan, err := s.PlanUpgrade(strategistDir)
 	if err != nil {
 		return nil, "", fmt.Errorf("extract runtime tree: %w", err)
@@ -94,19 +101,27 @@ func (s Service) extractRuntimeTree(strategistDir string, force bool) (fullHashe
 	// already returns plan.embeddedHashes for finalizeInstall to persist the
 	// manifest once, and calling ApplyUpgrade here would write it twice.
 	toWrite, toBackup := upgradeWriteSet(plan, force)
+	backupDir := ""
 	if len(toBackup) > 0 {
 		backupDir, err = s.snapshotBeforeUpgrade(strategistDir, toBackup)
 		if err != nil {
 			return nil, "", fmt.Errorf("extract runtime tree: %w", err)
 		}
 	}
-	for _, p := range toWrite {
-		if err := s.writeUpgradeFile(strategistDir, p); err != nil {
-			return nil, "", fmt.Errorf("extract runtime tree: %w", err)
-		}
+	if err := s.writeUpgradeFiles(strategistDir, toWrite); err != nil {
+		return nil, "", err
 	}
 
 	return plan.embeddedHashes, backupDir, nil
+}
+
+func (s Service) writeUpgradeFiles(strategistDir string, paths []string) error {
+	for _, path := range paths {
+		if err := s.writeUpgradeFile(strategistDir, path); err != nil {
+			return fmt.Errorf("extract runtime tree: %w", err)
+		}
+	}
+	return nil
 }
 
 // buildInstallManifest chooses the install manifest shape to persist.

@@ -111,35 +111,15 @@ func indexOf(s, substr string) int {
 // domain.MaxPluginPathLength and domain.MaxPluginManifestBytes per file, and
 // returns a stable sha256 over path+content pairs plus the total byte size.
 func digestPackageDirectory(dir string) (digest string, totalSize int64, err error) {
-	type fileEntry struct {
-		relPath string
-		content []byte
-	}
 	var entries []fileEntry
 
 	walkErr := filepath.WalkDir(dir, func(path string, d fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
+		entry, size, err := readPackageFile(dir, path, d, walkErr)
+		if err != nil || entry == nil {
+			return err
 		}
-		if d.IsDir() {
-			return nil
-		}
-		rel, relErr := filepath.Rel(dir, path)
-		if relErr != nil {
-			return fmt.Errorf("relative path for %q under %q: %w", path, dir, relErr)
-		}
-		if len(rel) > domain.MaxPluginPathLength {
-			return fmt.Errorf("path %q exceeds %d characters", rel, domain.MaxPluginPathLength)
-		}
-		data, readErr := os.ReadFile(path) //nolint:gosec // G304: dir is an operator-declared ingestion source, not untrusted request input
-		if readErr != nil {
-			return fmt.Errorf("read %q: %w", path, readErr)
-		}
-		if len(data) > domain.MaxPluginManifestBytes {
-			return fmt.Errorf("file %q exceeds %d bytes", rel, domain.MaxPluginManifestBytes)
-		}
-		entries = append(entries, fileEntry{relPath: filepath.ToSlash(rel), content: data})
-		totalSize += int64(len(data))
+		entries = append(entries, *entry)
+		totalSize += size
 		return nil
 	})
 	if walkErr != nil {
@@ -156,4 +136,33 @@ func digestPackageDirectory(dir string) (digest string, totalSize int64, err err
 		h.Write([]byte{0})
 	}
 	return fmt.Sprintf("sha256:%x", h.Sum(nil)), totalSize, nil
+}
+
+type fileEntry struct {
+	relPath string
+	content []byte
+}
+
+func readPackageFile(root, path string, entry fs.DirEntry, walkErr error) (*fileEntry, int64, error) {
+	if walkErr != nil {
+		return nil, 0, walkErr
+	}
+	if entry.IsDir() {
+		return nil, 0, nil
+	}
+	rel, err := filepath.Rel(root, path)
+	if err != nil {
+		return nil, 0, fmt.Errorf("relative path for %q under %q: %w", path, root, err)
+	}
+	if len(rel) > domain.MaxPluginPathLength {
+		return nil, 0, fmt.Errorf("path %q exceeds %d characters", rel, domain.MaxPluginPathLength)
+	}
+	data, err := os.ReadFile(path) //nolint:gosec // G304: root is an operator-declared ingestion source, not untrusted request input
+	if err != nil {
+		return nil, 0, fmt.Errorf("read %q: %w", path, err)
+	}
+	if len(data) > domain.MaxPluginManifestBytes {
+		return nil, 0, fmt.Errorf("file %q exceeds %d bytes", rel, domain.MaxPluginManifestBytes)
+	}
+	return &fileEntry{relPath: filepath.ToSlash(rel), content: data}, int64(len(data)), nil
 }

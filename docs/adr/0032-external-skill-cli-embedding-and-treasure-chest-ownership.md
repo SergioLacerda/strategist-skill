@@ -83,6 +83,13 @@ unavailable.
 
 ### Staged Treasure Chest removal
 
+> **Forward reference (2026-09-15):** [ADR-0040](0040-treasure-chest-in-repo-isolation-staging.md)
+> inserts a stage 0 in front of the numbered stages below — an in-repo
+> relocation to `treasure-chest/`, mediated by a new non-pipeline
+> "Jewelcrafter" role, as a staging step toward this ADR's external-repository
+> target. ADR-0040 supersedes only this section; this ADR's Decision,
+> Alternatives, and Consequences are otherwise unchanged.
+
 Core Treasure Chest code and defaults are removed only after:
 
 1. the external package, adapter, and CLI contract exist;

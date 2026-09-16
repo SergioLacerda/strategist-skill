@@ -44,6 +44,8 @@ func TestPrepareEmbedded_WritesCatalogMirrorsAndLock(t *testing.T) {
 	assert.Contains(t, string(catalogBytes), "sample-skill")
 
 	assert.FileExists(t, filepath.Join(defaultsRoot, "skills", "sample-skill", "skill.yaml"))
+	assert.FileExists(t, filepath.Join(defaultsRoot, "skills", "sample-skill", "SKILL.md"))
+	assert.FileExists(t, filepath.Join(defaultsRoot, "skills", "sample-skill", "strategist.yaml"))
 
 	lockBytes, err := os.ReadFile(opts.LockPath)
 	require.NoError(t, err)

@@ -49,21 +49,12 @@ func checkRoleProviderCompatibility(root, slot, provider, riskScore string, skil
 	if roleID == "" {
 		return ""
 	}
-	roleRaw, err := os.ReadFile(filepath.Join(root, "roles", roleID+".yaml")) //nolint:gosec // G304: path derived from the runtime roles directory
+	roleCfg, err := loadCompatibleRole(root, roleID)
 	if err != nil {
 		return ""
 	}
-	var roleCfg domain.RoleConfig
-	if yaml.Unmarshal(roleRaw, &roleCfg) != nil || roleCfg.Validate() != nil {
-		return ""
-	}
-
-	var taxonomy skillTaxonomy
-	if yaml.Unmarshal(skillRaw, &taxonomy) != nil {
-		return ""
-	}
-	roles := taxonomy.roles()
-	if len(roles) == 0 {
+	roles, err := loadProviderRoles(skillRaw)
+	if err != nil || len(roles) == 0 {
 		return ""
 	}
 
@@ -83,6 +74,33 @@ func checkRoleProviderCompatibility(root, slot, provider, riskScore string, skil
 	if result.Compatible {
 		return ""
 	}
+	return formatRoleCompatibilityFailure(slot, provider, roleID, result)
+}
+
+func loadCompatibleRole(root, roleID string) (domain.RoleConfig, error) {
+	roleRaw, err := os.ReadFile(filepath.Join(root, "roles", roleID+".yaml")) //nolint:gosec // G304: path derived from the runtime roles directory
+	if err != nil {
+		return domain.RoleConfig{}, fmt.Errorf("read role %s: %w", roleID, err)
+	}
+	var roleCfg domain.RoleConfig
+	if err := yaml.Unmarshal(roleRaw, &roleCfg); err != nil {
+		return domain.RoleConfig{}, fmt.Errorf("parse role %s: %w", roleID, err)
+	}
+	if err := roleCfg.Validate(); err != nil {
+		return domain.RoleConfig{}, fmt.Errorf("validate role %s: %w", roleID, err)
+	}
+	return roleCfg, nil
+}
+
+func loadProviderRoles(skillRaw []byte) ([]string, error) {
+	var taxonomy skillTaxonomy
+	if err := yaml.Unmarshal(skillRaw, &taxonomy); err != nil {
+		return nil, fmt.Errorf("parse provider taxonomy: %w", err)
+	}
+	return taxonomy.roles(), nil
+}
+
+func formatRoleCompatibilityFailure(slot, provider, roleID string, result domain.CompatibilityResult) string {
 	details := make([]string, 0, len(result.Reasons))
 	for _, reason := range result.Reasons {
 		details = append(details, fmt.Sprintf("%s: %s", reason.Code, reason.Detail))

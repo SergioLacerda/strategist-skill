@@ -102,21 +102,40 @@ func resolveExternalSkill(dir string) (IngestedSkill, error) {
 	if err != nil {
 		return IngestedSkill{}, fmt.Errorf("resolve external skill %s: %w", dir, err)
 	}
-	adapterPath := filepath.Join(dir, externalSkillAdapterFileName)
-	adapterRaw, err := os.ReadFile(adapterPath) //nolint:gosec // G304: dir is an operator-declared ingestion source, not untrusted request input
+	adapter, err := loadExternalSkillAdapter(dir, pkg.ID)
 	if err != nil {
-		return IngestedSkill{}, fmt.Errorf("external skill %s: read %s: %w", pkg.ID, externalSkillAdapterFileName, err)
+		return IngestedSkill{}, err
+	}
+	return IngestedSkill{ID: pkg.ID, Dir: dir, Package: pkg, Adapter: adapter}, nil
+}
+
+func loadExternalSkillAdapter(dir, packageID string) (externalSkillAdapter, error) {
+	adapterRaw, err := os.ReadFile(filepath.Join(dir, externalSkillAdapterFileName)) //nolint:gosec // G304: operator-declared ingestion source
+	if err != nil {
+		return externalSkillAdapter{}, fmt.Errorf("external skill %s: read %s: %w", packageID, externalSkillAdapterFileName, err)
 	}
 	var adapter externalSkillAdapter
 	if err := yaml.Unmarshal(adapterRaw, &adapter); err != nil {
-		return IngestedSkill{}, fmt.Errorf("external skill %s: parse %s: %w", pkg.ID, externalSkillAdapterFileName, err)
+		return externalSkillAdapter{}, fmt.Errorf("external skill %s: parse %s: %w", packageID, externalSkillAdapterFileName, err)
 	}
+	if err := validateExternalSkillAdapter(packageID, adapter); err != nil {
+		return externalSkillAdapter{}, err
+	}
+	adapter = normalizeExternalSkillAdapter(adapter)
+	return adapter, nil
+}
+
+func validateExternalSkillAdapter(packageID string, adapter externalSkillAdapter) error {
 	if (adapter.CanonicalRole == "" && len(adapter.Roles) == 0) || adapter.RiskScore == "" {
-		return IngestedSkill{}, fmt.Errorf("external skill %s: %s must declare canonical_role and risk_score", pkg.ID, externalSkillAdapterFileName)
+		return fmt.Errorf("external skill %s: %s must declare canonical_role and risk_score", packageID, externalSkillAdapterFileName)
 	}
 	if adapter.ScratchRoot != "" && adapter.ScratchRoot != "runtime" && adapter.ScratchRoot != "none" {
-		return IngestedSkill{}, fmt.Errorf("external skill %s: %s scratch_root must be \"runtime\" or \"none\", got %q", pkg.ID, externalSkillAdapterFileName, adapter.ScratchRoot)
+		return fmt.Errorf("external skill %s: %s scratch_root must be \"runtime\" or \"none\", got %q", packageID, externalSkillAdapterFileName, adapter.ScratchRoot)
 	}
+	return nil
+}
+
+func normalizeExternalSkillAdapter(adapter externalSkillAdapter) externalSkillAdapter {
 	if len(adapter.Roles) == 0 {
 		adapter.Roles = []string{adapter.CanonicalRole}
 	}
@@ -124,7 +143,7 @@ func resolveExternalSkill(dir string) (IngestedSkill, error) {
 		adapter.CanonicalRole = adapter.Roles[0]
 	}
 	adapter.Roles = normalizeRoles(adapter.Roles)
-	return IngestedSkill{ID: pkg.ID, Dir: dir, Package: pkg, Adapter: adapter}, nil
+	return adapter
 }
 
 // IngestExternalSkills scans sourceDir, resolves and verifies every

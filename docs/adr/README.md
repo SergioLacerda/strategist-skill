@@ -45,6 +45,7 @@ lookup by topic fast without moving any file.
 |---|---|
 | [0011](0011-jewel-promotion-trust-ceiling-exception.md) | Jewel promotion: trust-tier ceiling replaces human pre-approval |
 | [0012](0012-jewel-lifecycle-statuses.md) | Jewel lifecycle statuses supersede the active/deprecated model |
+| [0040](0040-treasure-chest-in-repo-isolation-staging.md) | Treasure Chest in-repo isolation staging (Jewelcrafter role) |
 
 ### Execution (Sniper)
 

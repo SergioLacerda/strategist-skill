@@ -96,19 +96,23 @@ func (p RoleProviderMigrationPreview) Preview() string {
 	var b strings.Builder
 	b.WriteString("role/provider migration preview\n")
 	for _, entry := range p.Entries {
-		fmt.Fprintf(&b, "slot=%s role=%s current_provider=%s\n", entry.Slot, entry.RoleName, entry.CurrentProviderID)
-		for _, candidate := range entry.Candidates {
-			marker := " "
-			if candidate.ID == entry.CurrentProviderID {
-				marker = "*"
-			}
-			fmt.Fprintf(&b, "  %s %s source=%s materialization=%s\n", marker, candidate.ID, candidate.Source, candidate.Materialization)
-		}
-		if entry.ResolutionError != "" {
-			fmt.Fprintf(&b, "  BLOCKED: %s\n", entry.ResolutionError)
-			continue
-		}
-		fmt.Fprintf(&b, "  resolved -> %s (compatible=%v)\n", entry.Resolved.Provider.ID, entry.Resolved.Compatibility.Compatible)
+		renderMigrationEntry(&b, entry)
 	}
 	return b.String()
+}
+
+func renderMigrationEntry(b *strings.Builder, entry RoleProviderPreviewEntry) {
+	fmt.Fprintf(b, "slot=%s role=%s current_provider=%s\n", entry.Slot, entry.RoleName, entry.CurrentProviderID)
+	for _, candidate := range entry.Candidates {
+		marker := " "
+		if candidate.ID == entry.CurrentProviderID {
+			marker = "*"
+		}
+		fmt.Fprintf(b, "  %s %s source=%s materialization=%s\n", marker, candidate.ID, candidate.Source, candidate.Materialization)
+	}
+	if entry.ResolutionError != "" {
+		fmt.Fprintf(b, "  BLOCKED: %s\n", entry.ResolutionError)
+		return
+	}
+	fmt.Fprintf(b, "  resolved -> %s (compatible=%v)\n", entry.Resolved.Provider.ID, entry.Resolved.Compatibility.Compatible)
 }

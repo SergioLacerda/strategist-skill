@@ -33,37 +33,38 @@ func PlanRoleProviderMigration(extractor domain.FileExtractor, activeSlots map[s
 
 	entries := make([]RoleProviderPreviewEntry, 0, len(domain.RequiredSlots()))
 	for _, slot := range domain.RequiredSlots() {
-		slotName := string(slot)
-		roleName := roleSlotMap[slotName]
-		roleCfg, err := loadRoleConfig(extractor, roleName)
+		entry, err := planRoleProviderEntry(extractor, catalog, roleSlotMap, activeSlots, slot)
 		if err != nil {
-			return RoleProviderMigrationPreview{}, fmt.Errorf("role/provider migration: slot %s: %w", slotName, err)
-		}
-		role := domain.RoleContractFromConfig(roleCfg, domain.RoleHandoffSchema[roleName])
-		candidates := providerContractsForRole(catalog, roleName)
-
-		entry := RoleProviderPreviewEntry{
-			Slot:              slotName,
-			RoleName:          roleName,
-			CurrentProviderID: activeSlots[slotName],
-			Candidates:        candidates,
-		}
-		if current := activeSlots[slotName]; current != "" {
-			if _, ok := findCatalogProvider(catalog, current); !ok {
-				entry.ResolutionError = fmt.Sprintf("unresolved_active_slot: %s provider %s not found in catalog", slotName, current)
-				entries = append(entries, entry)
-				continue
-			}
-		}
-		binding, resolveErr := plugins.ResolveRoleBinding(role, candidates, "", activeSlots[slotName])
-		if resolveErr != nil {
-			entry.ResolutionError = resolveErr.Error()
-		} else {
-			entry.Resolved = binding
+			return RoleProviderMigrationPreview{}, err
 		}
 		entries = append(entries, entry)
 	}
 	return RoleProviderMigrationPreview{Entries: entries}, nil
+}
+
+func planRoleProviderEntry(extractor domain.FileExtractor, catalog pluginCatalog, roleSlotMap map[string]string, activeSlots map[string]string, slot domain.SlotName) (RoleProviderPreviewEntry, error) {
+	slotName := string(slot)
+	roleName := roleSlotMap[slotName]
+	roleCfg, err := loadRoleConfig(extractor, roleName)
+	if err != nil {
+		return RoleProviderPreviewEntry{}, fmt.Errorf("role/provider migration: slot %s: %w", slotName, err)
+	}
+	role := domain.RoleContractFromConfig(roleCfg, domain.RoleHandoffSchema[roleName])
+	candidates := providerContractsForRole(catalog, roleName)
+	entry := RoleProviderPreviewEntry{Slot: slotName, RoleName: roleName, CurrentProviderID: activeSlots[slotName], Candidates: candidates}
+	if current := activeSlots[slotName]; current != "" {
+		if _, ok := findCatalogProvider(catalog, current); !ok {
+			entry.ResolutionError = fmt.Sprintf("unresolved_active_slot: %s provider %s not found in catalog", slotName, current)
+			return entry, nil
+		}
+	}
+	binding, resolveErr := plugins.ResolveRoleBinding(role, candidates, "", activeSlots[slotName])
+	if resolveErr != nil {
+		entry.ResolutionError = resolveErr.Error()
+	} else {
+		entry.Resolved = binding
+	}
+	return entry, nil
 }
 
 // ApplyRoleProviderMigration activates the resolved Provider for the

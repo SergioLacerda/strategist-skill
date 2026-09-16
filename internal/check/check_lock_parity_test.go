@@ -37,6 +37,33 @@ func TestCheckPluginLockParityReportsDivergence(t *testing.T) {
 	assert.Contains(t, errs[0], "archivist")
 }
 
+func TestCheckPluginLockParityNoLockFileReturnsNil(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir() // no plugins.lock written
+
+	errs := checkPluginLockParity(root, map[string]string{
+		"discovery":  "ranger",
+		"refinement": "archivist",
+		"execution":  "sniper",
+	})
+
+	assert.Nil(t, errs)
+}
+
+func TestCheckPluginLockParityMalformedLockFileReturnsNil(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins.lock"), []byte("bindings: [unterminated"), 0o644))
+
+	errs := checkPluginLockParity(root, map[string]string{
+		"discovery":  "ranger",
+		"refinement": "archivist",
+		"execution":  "sniper",
+	})
+
+	assert.Nil(t, errs)
+}
+
 func TestCheckPluginLockParityAcceptsMatchingBindings(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()

@@ -125,23 +125,25 @@ func compatibleProviderOptions(catalog pluginCatalog, roleName, handoffSchema st
 		HandoffSchema: handoffSchema,
 	}
 	for _, candidate := range providerContractsForRole(catalog, roleName) {
-		if candidate.Source == domain.ProviderSourceNativeRole {
-			continue
-		}
-		result := candidate.CheckRoleAffinity(role)
-		if !result.Compatible {
-			if candidate.Source != domain.ProviderSourceNativeRole {
-				excluded = append(excluded, excludedProviderOption{id: candidate.ID, reasons: result.Reasons})
-			}
-			continue
-		}
-		ids = append(ids, candidate.ID)
-		if candidate.Default {
-			defaultID = candidate.ID
-		}
+		ids, defaultID, excluded = appendProviderOption(ids, defaultID, excluded, candidate, role)
 	}
 	if defaultID == "" && len(ids) > 0 {
 		defaultID = ids[0]
+	}
+	return ids, defaultID, excluded
+}
+
+func appendProviderOption(ids []string, defaultID string, excluded []excludedProviderOption, candidate domain.ProviderContract, role domain.RoleContract) ([]string, string, []excludedProviderOption) {
+	if candidate.Source == domain.ProviderSourceNativeRole {
+		return ids, defaultID, excluded
+	}
+	result := candidate.CheckRoleAffinity(role)
+	if !result.Compatible {
+		return ids, defaultID, append(excluded, excludedProviderOption{id: candidate.ID, reasons: result.Reasons})
+	}
+	ids = append(ids, candidate.ID)
+	if candidate.Default {
+		defaultID = candidate.ID
 	}
 	return ids, defaultID, excluded
 }

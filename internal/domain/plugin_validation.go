@@ -63,21 +63,31 @@ func (a AdapterContract) Validate() error {
 	if len(a.SupportedSlots) == 0 {
 		errs = append(errs, "supported_slots must have at least one entry")
 	}
-	for _, slot := range a.SupportedSlots {
-		if !IsValidSlot(slot) {
-			errs = append(errs, fmt.Sprintf("supported_slots contains invalid slot %q", slot))
-		}
-	}
+	errs = appendInvalidSlots(errs, a.SupportedSlots)
 	if len(a.Entrypoints) == 0 {
 		errs = append(errs, "entrypoints must have at least one entry")
 	}
 	requireNonEmpty(&errs, "package_constraint", a.PackageConstraint)
-	for _, permission := range a.RequestedPermissions {
+	errs = appendInvalidPermissions(errs, a.RequestedPermissions)
+	return joinPluginValidation("adapter contract", errs)
+}
+
+func appendInvalidSlots(errs []string, slots []string) []string {
+	for _, slot := range slots {
+		if !IsValidSlot(slot) {
+			errs = append(errs, fmt.Sprintf("supported_slots contains invalid slot %q", slot))
+		}
+	}
+	return errs
+}
+
+func appendInvalidPermissions(errs []string, permissions []PluginPermission) []string {
+	for _, permission := range permissions {
 		if !hasString(validPluginPermissions, string(permission)) {
 			errs = append(errs, fmt.Sprintf("requested_permissions contains invalid permission %q", permission))
 		}
 	}
-	return joinPluginValidation("adapter contract", errs)
+	return errs
 }
 
 // CheckCompatibility evaluates the phase-1 host API dimension.

@@ -176,6 +176,53 @@ func TestCheckManifests_NestedFieldMissing(t *testing.T) {
 	assert.False(t, items[len(items)-1].Passed)
 }
 
+func TestCheckManifests_NestedPathThroughNonMapValue(t *testing.T) {
+	// specialization_taxonomy.canonical_role is a scalar string here, so
+	// asking for a deeper path through it must fail the type assertion in
+	// manifestHasPath rather than panic.
+	strategistDir := t.TempDir()
+	providerDir := filepath.Join(strategistDir, "skills", "brainstorming")
+	require.NoError(t, os.MkdirAll(providerDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(providerDir, "skill.yaml"),
+		[]byte("specialization_taxonomy:\n  canonical_role: ranger\n"), 0o644))
+
+	criteria := domain.DojoCriteria{
+		ManifestChecks: []domain.DojoManifestCheck{
+			{
+				Slot:             "discovery",
+				ExpectedProvider: "brainstorming",
+				ManifestExists:   true,
+				FieldsPresent:    []string{"specialization_taxonomy.canonical_role.nested"},
+			},
+		},
+	}
+	items := dojo.CheckManifests(criteria, strategistDir)
+	require.NotEmpty(t, items)
+	assert.False(t, items[len(items)-1].Passed)
+}
+
+func TestCheckManifests_ManifestMalformedYAML(t *testing.T) {
+	strategistDir := t.TempDir()
+	providerDir := filepath.Join(strategistDir, "skills", "brainstorming")
+	require.NoError(t, os.MkdirAll(providerDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(providerDir, "skill.yaml"),
+		[]byte("canonical_role: [unterminated"), 0o644))
+
+	criteria := domain.DojoCriteria{
+		ManifestChecks: []domain.DojoManifestCheck{
+			{
+				Slot:             "discovery",
+				ExpectedProvider: "brainstorming",
+				ManifestExists:   true,
+				FieldsPresent:    []string{"canonical_role"},
+			},
+		},
+	}
+	items := dojo.CheckManifests(criteria, strategistDir)
+	require.NotEmpty(t, items)
+	assert.False(t, items[len(items)-1].Passed)
+}
+
 func TestCheckManifests_FieldSubstringNoLongerFalsePositive(t *testing.T) {
 	// canonical_role_extended must not satisfy a field check for "canonical_role"
 	// now that manifest checks parse structured YAML instead of substring search.

@@ -41,7 +41,11 @@ The parent agent is only allowed to:
    `.strategist/active.yaml`; read `.strategist/agent-protocol.md`; load required
    contracts from `.strategist/contracts/`.
 2. Resolve the route using Strategist contracts.
-3. Invoke the configured slot/provider for the current phase.
+3. Load the configured embedded slot/provider from
+   `.strategist/skills/<provider>/SKILL.md` and execute that skill in the current
+   agent context. Built-in providers are self-contained; do not resolve them
+   through a client-global skill directory, network lookup, or another host
+   loader.
 4. Present and wait for the Strategist Approval Gate when required.
 5. Relay provider outputs to the user.
 6. Emit the required blocked state when a provider is missing, invalid, or unavailable.
@@ -60,6 +64,12 @@ The parent agent MUST NOT:
 - treat a user request as permission to bypass the Strategist Approval Gate;
 - replace a missing provider with its own built-in capabilities.
 
+For a provider selected from the embedded catalog, the local package under
+`.strategist/skills/<provider>/` is the provider. Its `SKILL.md` is the
+invocation payload and its `skill.yaml` is the Strategist compatibility
+descriptor. If either file is absent, the embedded package is incomplete and
+the mission must stop with `error=role_invocation_failed`.
+
 If the configured provider cannot be invoked, stop and emit:
 
 ```
@@ -77,9 +87,10 @@ normalization, checkpoint, lock, state, and handoff validation regardless of whi
 weapon produced the result. There is no fallback: a weapon that cannot satisfy that
 boundary is a hard error, never silently substituted with a native invocation (see
 `contracts/narrative/00-routing.md` § Discovery Weapon Resolution by Subtype). The
-parent agent MUST NOT perform discovery directly; it invokes the configured weapon
-and embodies Ranger under `roles/ranger.yaml` + `internal_skills/ranger/SKILL.md` to
-normalize the result.
+parent agent MUST NOT perform discovery directly; it loads the configured
+embedded weapon from `.strategist/skills/<provider>/SKILL.md` and embodies Ranger
+under `roles/ranger.yaml` + `internal_skills/ranger/SKILL.md` to normalize the
+result.
 
 If the request requires source-code mutation, Strategist may analyze and refine the
 work, but must not perform the mutation. The response must clearly state that
@@ -90,7 +101,9 @@ execution provider whose contract permits code mutation.
 
 You are Strategist, a mission orchestrator. You coordinate multi-phase work through
 three pluggable slots: Ranger (discovery) → Archivist (refinement) → Sniper (execution).
-You do not perform discovery, refinement, or execution yourself — invoke the configured provider.
+You do not perform discovery, refinement, or execution yourself — load the
+configured embedded provider package and relay its result through the fixed role
+checkpoint.
 
 ## Slots
 
@@ -112,10 +125,11 @@ This skill operates on a two-path model:
 
 All contract references, role files, schemas, and personas are read from `.strategist/`.
 
-Do not confuse a provider's own installed skill package (its own SKILL.md/skill.yaml,
-elsewhere on the filesystem) with Strategist's capability mirror at
-`.strategist/skills/<provider_id>/skill.yaml` — capability checks such as provider
-existence, `risk_score`, and role taxonomy are read from the latter.
+The provider package under `.strategist/skills/<provider_id>/` is self-contained:
+`SKILL.md` is the executable instruction payload and `skill.yaml` is the Strategist
+compatibility descriptor. Capability checks such as provider existence, `risk_score`,
+and role taxonomy are read from this local package. The source tree used to build it
+is not a runtime dependency.
 Discovery subtype behavior is owned by Ranger, not by provider subtype metadata.
 
 Workspace artifacts resolve through `base_path` from `.strategist/active.yaml`.

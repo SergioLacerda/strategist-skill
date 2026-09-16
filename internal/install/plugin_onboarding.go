@@ -31,16 +31,9 @@ type pluginOnboardingPlan struct {
 type pluginProbeFunc func(domain.SlotBinding, domain.InstalledInstance) bool
 
 func planPluginOnboarding(extractor domain.FileExtractor, catalog pluginCatalog, slots map[string]string) (pluginOnboardingPlan, error) {
-	requirements := make([]plugins.Requirement, 0, len(slots))
-	for _, slot := range sortedSlotNames(slots) {
-		provider := slots[slot]
-		if provider == "" {
-			return pluginOnboardingPlan{}, fmt.Errorf("unresolved_active_slot: %s has empty provider", slot)
-		}
-		if _, ok := findCatalogProvider(catalog, provider); !ok {
-			return pluginOnboardingPlan{}, fmt.Errorf("unresolved_active_slot: %s provider %s", slot, provider)
-		}
-		requirements = append(requirements, plugins.Requirement{ID: provider, Kind: "adapter_contract", Constraint: "*"})
+	requirements, err := onboardingRequirements(catalog, slots)
+	if err != nil {
+		return pluginOnboardingPlan{}, err
 	}
 
 	lock, err := plugins.Resolve(requirements, catalogResolverCandidates(catalog))
@@ -58,12 +51,7 @@ func planPluginOnboarding(extractor domain.FileExtractor, catalog pluginCatalog,
 	if err != nil {
 		return pluginOnboardingPlan{}, fmt.Errorf("resolve role/provider bindings: %w", err)
 	}
-	for _, entry := range roleMigration.Entries {
-		if entry.ResolutionError != "" {
-			continue
-		}
-		lock.Nodes = append(lock.Nodes, plugins.RoleBindingLockNode(entry.Resolved))
-	}
+	lock.Nodes = appendRoleMigrationNodes(lock.Nodes, roleMigration)
 	lock.GraphDigest = plugins.DigestLockNodes(lock.Nodes)
 	lock.ResolutionID = lock.GraphDigest
 
@@ -76,6 +64,30 @@ func planPluginOnboarding(extractor domain.FileExtractor, catalog pluginCatalog,
 		Changes:              changes,
 		RoleMigration:        roleMigration,
 	}, nil
+}
+
+func onboardingRequirements(catalog pluginCatalog, slots map[string]string) ([]plugins.Requirement, error) {
+	requirements := make([]plugins.Requirement, 0, len(slots))
+	for _, slot := range sortedSlotNames(slots) {
+		provider := slots[slot]
+		if provider == "" {
+			return nil, fmt.Errorf("unresolved_active_slot: %s has empty provider", slot)
+		}
+		if _, ok := findCatalogProvider(catalog, provider); !ok {
+			return nil, fmt.Errorf("unresolved_active_slot: %s provider %s", slot, provider)
+		}
+		requirements = append(requirements, plugins.Requirement{ID: provider, Kind: "adapter_contract", Constraint: "*"})
+	}
+	return requirements, nil
+}
+
+func appendRoleMigrationNodes(nodes []domain.PluginLockNode, migration RoleProviderMigrationPreview) []domain.PluginLockNode {
+	for _, entry := range migration.Entries {
+		if entry.ResolutionError == "" {
+			nodes = append(nodes, plugins.RoleBindingLockNode(entry.Resolved))
+		}
+	}
+	return nodes
 }
 
 // logRoleBindingEvidence logs one line per role/provider binding evidence

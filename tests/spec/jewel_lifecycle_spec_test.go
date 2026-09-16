@@ -51,13 +51,13 @@ func TestJewelSpec_NoPublicMultiCommandMiningWorkflow(t *testing.T) {
 	// The Go CLI itself must expose exactly index and items as the non-hidden subcommands
 	// under `treasure-chest list/add/remove/index/items/doctor`; scan is folded in as Hidden,
 	// and mine/jewel no longer exist as separate commands (renamed/removed, see above).
-	scanSource := readFile(t, filepath.Join(repoRoot(t), "internal", "treasurecli", "treasure_chest_scan.go"))
+	scanSource := readFile(t, filepath.Join(repoRoot(t), "treasure-chest", "cli", "treasure_chest_scan.go"))
 	if !strings.Contains(scanSource, "Hidden: true") {
-		t.Error("internal/treasurecli/treasure_chest_scan.go: scan command must be Hidden (internal phase, not public UX)")
+		t.Error("treasure-chest/cli/treasure_chest_scan.go: scan command must be Hidden (internal phase, not public UX)")
 	}
 	for _, stale := range []string{"treasure_chest_mine.go", "treasure_chest_jewel.go"} {
-		if _, err := os.Stat(filepath.Join(repoRoot(t), "internal", "treasurecli", stale)); err == nil {
-			t.Errorf("internal/treasurecli/%s must not exist — removed/renamed into treasure_chest_items.go", stale)
+		if _, err := os.Stat(filepath.Join(repoRoot(t), "treasure-chest", "cli", stale)); err == nil {
+			t.Errorf("treasure-chest/cli/%s must not exist — removed/renamed into treasure_chest_items.go", stale)
 		}
 	}
 }
@@ -74,10 +74,10 @@ func TestJewelSpec_NewJewelStatuses(t *testing.T) {
 		}
 	}
 
-	statusFn := readFile(t, filepath.Join(repoRoot(t), "internal", "domain", "jewel_grade.go"))
+	statusFn := readFile(t, filepath.Join(repoRoot(t), "treasure-chest", "domain", "jewel_grade.go"))
 	for _, status := range []string{`"proposed"`, `"accepted"`, `"verified"`, `"deprecated"`} {
 		if !strings.Contains(statusFn, status) {
-			t.Errorf("internal/domain/jewel_grade.go: missing jewel status constant %s", status)
+			t.Errorf("treasure-chest/domain/jewel_grade.go: missing jewel status constant %s", status)
 		}
 	}
 }
@@ -116,17 +116,17 @@ func TestJewelSpec_EvidencePackRemainsMissionScoped(t *testing.T) {
 func TestJewelSpec_LegacyActiveRejectedAfterMigration(t *testing.T) {
 	t.Parallel()
 
-	statusFn := readFile(t, filepath.Join(repoRoot(t), "internal", "domain", "jewel_grade.go"))
+	statusFn := readFile(t, filepath.Join(repoRoot(t), "treasure-chest", "domain", "jewel_grade.go"))
 	if !strings.Contains(statusFn, "jewelStatusLegacyActive") {
-		t.Error("internal/domain/jewel_grade.go: must explicitly recognize and reject the legacy \"active\" status")
+		t.Error("treasure-chest/domain/jewel_grade.go: must explicitly recognize and reject the legacy \"active\" status")
 	}
 	if !strings.Contains(statusFn, "migrate-status") {
-		t.Error("internal/domain/jewel_grade.go: legacy active rejection must point at the migrate-status command")
+		t.Error("treasure-chest/domain/jewel_grade.go: legacy active rejection must point at the migrate-status command")
 	}
 
-	itemsSource := readFile(t, filepath.Join(repoRoot(t), "internal", "treasurecli", "treasure_chest_items.go"))
+	itemsSource := readFile(t, filepath.Join(repoRoot(t), "treasure-chest", "cli", "treasure_chest_items.go"))
 	if !strings.Contains(itemsSource, "migrate-status") {
-		t.Error("internal/treasurecli/treasure_chest_items.go: must expose a migrate-status subcommand for the one-time active -> accepted migration")
+		t.Error("treasure-chest/cli/treasure_chest_items.go: must expose a migrate-status subcommand for the one-time active -> accepted migration")
 	}
 
 	for _, path := range contextEnrichmentMirrors(t) {

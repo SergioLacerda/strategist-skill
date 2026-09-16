@@ -49,6 +49,12 @@ type EnforcementDecision struct {
 
 // EvaluateGrant checks digest binding and blocks permission escalation.
 func EvaluateGrant(req GrantRequest, grant domain.PermissionGrant) GrantDecision {
+	reasons := grantDigestReasons(req, grant)
+	reasons = append(reasons, grantPermissionReasons(req.Requested, grant.GrantedPermissions)...)
+	return GrantDecision{Allowed: len(reasons) == 0, Reasons: reasons}
+}
+
+func grantDigestReasons(req GrantRequest, grant domain.PermissionGrant) []DecisionReason {
 	var reasons []DecisionReason
 	if !digestPattern.MatchString(req.PackageDigest) {
 		reasons = append(reasons, DecisionReason{Code: "invalid_package_digest", Detail: req.PackageDigest})
@@ -62,17 +68,22 @@ func EvaluateGrant(req GrantRequest, grant domain.PermissionGrant) GrantDecision
 	if req.AdapterDigest != "" && grant.AdapterDigest != "" && req.AdapterDigest != grant.AdapterDigest {
 		reasons = append(reasons, DecisionReason{Code: "adapter_digest_mismatch", Detail: "grant is bound to a different adapter digest"})
 	}
-	granted := permissionSet(grant.GrantedPermissions)
-	for _, permission := range sortedPermissions(req.Requested) {
+	return reasons
+}
+
+func grantPermissionReasons(requested, granted []domain.PluginPermission) []DecisionReason {
+	grantedSet := permissionSet(granted)
+	var reasons []DecisionReason
+	for _, permission := range sortedPermissions(requested) {
 		if !IsKnownPermission(permission) {
 			reasons = append(reasons, DecisionReason{Code: "unknown_requested_permission", Detail: string(permission)})
 			continue
 		}
-		if !granted[permission] {
+		if !grantedSet[permission] {
 			reasons = append(reasons, DecisionReason{Code: "permission_escalation_requires_reconsent", Detail: string(permission)})
 		}
 	}
-	return GrantDecision{Allowed: len(reasons) == 0, Reasons: reasons}
+	return reasons
 }
 
 // EvaluateEnforcement reports which granted permissions the connector can constrain.

@@ -60,6 +60,26 @@ func TestMetricsScoutCmd_IsHumanStatusCommand(t *testing.T) {
 	assert.True(t, isHumanStatusCommand(metricsScoutCmd))
 }
 
+// TestRunMetricsScout_ReadOutcomesErrorPropagates covers runMetricsScout's
+// second read-error branch specifically (ReadOutcomes, not ReadRouteDecisions):
+// route-decisions.jsonl is absent (tolerated), but outcomes.jsonl is a
+// directory rather than a file, so os.Open succeeds but scanning it fails.
+func TestRunMetricsScout_ReadOutcomesErrorPropagates(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("reading a directory as a file has different semantics on Windows")
+	}
+	dir := t.TempDir()
+	testutil.MinimalRoot(t, dir)
+	memDir := filepath.Join(dir, "memory")
+	require.NoError(t, os.MkdirAll(filepath.Join(memDir, "outcomes.jsonl"), 0o755))
+	setMetricsScoutRoot(t, dir)
+	t.Cleanup(func() { setMetricsScoutRoot(t, "") })
+
+	err := runMetricsScout(metricsScoutCmd, metricsScoutOptions{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "metrics scout")
+}
+
 func TestRunMetricsScout_ReadRouteDecisionsErrorPropagates(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("ENOTDIR read-error semantics differ on Windows")

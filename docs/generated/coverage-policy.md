@@ -20,7 +20,7 @@ Per-package minimum coverage thresholds enforced by `make cover-gate`
 | `internal/embed` | 95% | embedded defaults availability gate - raised to 95% (20260901-coverage-standard-95) - measured 96.5% |
 | `internal/telemetry` | 90% | governance telemetry gate |
 | `cmd/strategist` | 90% | CLI contract surface gate - remeasured 94.1% after check* cluster moved to internal/check (20260816-cmd-strategist-cli-reorg) |
-| `internal/treasurecli` | 90% | treasure-chest/runbook CLI command cluster, extracted from cmd/strategist (20260806-treasure-chest-cmd-consolidation) - measured 95.5% |
+| `treasure-chest/cli` | 90% | treasure-chest/runbook CLI command cluster, extracted from cmd/strategist (20260806-treasure-chest-cmd-consolidation) - measured 95.5%; path updated from internal/treasurecli after in-repo isolation move (ADR 0040) |
 | `internal/cliutil` | 90% | shared CLI helpers extracted from cmd/strategist during the same move - measured 100% |
 | `internal/check` | 90% | check/check-stale CLI command cluster, extracted from cmd/strategist (20260816-cmd-strategist-cli-reorg) - measured 95.6% |
 | `internal/dojo` | 90% | widened cover-gate scope (T3) - measured 90.6% |
@@ -33,7 +33,7 @@ Per-package minimum coverage thresholds enforced by `make cover-gate`
 | `internal/eval` | 90% | raised from 56.9% via critical_hit_trigger Target + tests (20260806-critical-hit-pure-function-extraction) - remeasured 94.6% after reporter.go/harness.go file-size split |
 | `internal/integrity` | 95% | already above baseline via jewel loader/atomic lock test additions (569a1ae) - raised to 95% (20260901-coverage-standard-95) - measured 96.4% |
 | `internal/runtimefs` | 90% | already above baseline via jewel loader/atomic lock test additions (569a1ae) - measured 100.0% |
-| `internal/treasure` | 95% | raised from 74.5% (SQ-005) to 88.2% (20260805-treasure-coverage-phase2) to 95.5% (20260806-treasure-coverage-95-plan), regressed to 94.1% by later feature work, closed again (20260901-coverage-standard-95) - measured 95.2% |
+| `treasure-chest` | 95% | raised from 74.5% (SQ-005) to 88.2% (20260805-treasure-coverage-phase2) to 95.5% (20260806-treasure-coverage-95-plan), regressed to 94.1% by later feature work, closed again (20260901-coverage-standard-95) - measured 95.2%; path updated from internal/treasure after in-repo isolation move (ADR 0040) |
 | `internal/governancebridge` | 0% | pure interface/type declarations, no executable statements ("[no statements]") - see 20260830-pending-v3-disposition E4 |
 | `internal/plugins` | 95% | raised from 85.8% to 98.6% (2026-08-30, resolver edge-case tests) - measured 98.6% |
 | `internal/plugins/conformance` | 95% | raised from 74.3% to 97.1% (2026-08-30, Validate/Stale/levelRank edge cases) - measured 97.1% |

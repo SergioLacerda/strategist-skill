@@ -35,7 +35,10 @@ func checkPluginLockParity(root string, activeSlots map[string]string) []string 
 	if yaml.Unmarshal(raw, &lock) != nil {
 		return nil
 	}
+	return lockParityErrors(lock, activeSlots)
+}
 
+func lockParityErrors(lock domain.PluginLockFile, activeSlots map[string]string) []string {
 	lockedBySlot := make(map[string]string, len(lock.Bindings))
 	for _, binding := range lock.Bindings {
 		if binding.Slot != "" && binding.InstalledInstanceID != "" {
@@ -43,6 +46,10 @@ func checkPluginLockParity(root string, activeSlots map[string]string) []string 
 		}
 	}
 
+	return mismatchedLockBindings(lockedBySlot, activeSlots)
+}
+
+func mismatchedLockBindings(lockedBySlot, activeSlots map[string]string) []string {
 	var errs []string
 	for _, slot := range []string{"discovery", "refinement", "execution"} {
 		lockedProvider, hasLockEntry := lockedBySlot[slot]

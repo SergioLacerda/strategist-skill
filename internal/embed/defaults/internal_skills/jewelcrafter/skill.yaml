@@ -1,0 +1,88 @@
+id: jewelcrafter
+version: "1.0.0"
+schema_version: "1"
+status: draft
+risk_score: write_analysis
+category: knowledge
+skill_type: support
+
+description: >
+  Non-pipeline internal skill that maps and organizes the offline document
+  structure (ADRs, runbooks, docs), pre-mines and organizes items for
+  discovery/refinement to consult, and manages the TTL/lifecycle of the
+  artifacts it creates. Owns .strategist/.data-offline/ as its runtime
+  domain, analogous to how .strategist/.compiled/ already tracks staleness
+  for other runtime artifacts. Not bound to any of Strategist's three
+  pipeline slots — like Scout, it has no roles/jewelcrafter.yaml
+  counterpart; this file plus SKILL.md is the complete contract. Runs
+  automatically as part of Strategist's bootstrap/preflight flow (not a
+  manual-only or explicit-CLI-only skill) from day one, regardless of
+  whether the treasure-chest domain it eventually mediates is today's
+  in-repo treasure-chest/ or a future externalized skill (ADR-0032).
+  Treasure-chest-specific mining (jewels/potions) is never reimplemented
+  here — Jewelcrafter calls into the isolated treasure-chest implementation
+  for that slice, and only owns independent mining logic for non-chest
+  document kinds (ADRs, runbooks, generic docs).
+
+input:
+  trigger: string             # "bootstrap_hook" — the only supported value; no CLI or manual trigger in v1
+  document_sources:
+    adr: docs/adr/**
+    runbooks: docs/runbooks/**
+    generic_docs: docs/**.md    # excluding adr/ and runbooks/, already covered above
+    treasure_chest: delegate    # not scanned directly — see treasure_chest_delegate below
+  # treasure_chest_delegate: package/skill path Jewelcrafter calls into for
+  # the chest slice. Wired 2026-09-15 (mission
+  # 20260915-treasure-chest-relocation-verification):
+  # "github.com/SergioLacerda/strategist-skill/treasure-chest" — the isolated
+  # treasure-chest package now exists (relocated from internal/treasure,
+  # internal/treasurecli, and the treasure-chest-specific internal/domain
+  # files). This field now names a real, buildable package path; it is still
+  # unused at runtime until Jewelcrafter's own Go implementation (task
+  # group 2, not yet built) actually imports and calls it — see
+  # failure_modes.treasure_chest_delegate_unwired below, which remains
+  # accurate until that implementation lands.
+  treasure_chest_delegate: string | null
+  previous_index: object | null            # prior .strategist/.data-offline/index.yaml, for staleness/TTL comparison
+
+output:
+  data_offline_index: object   # written to .strategist/.data-offline/index.yaml
+  items_created: integer
+  items_expired: integer       # TTL-driven removals
+  summary: string
+
+behavior:
+  - Read document_sources (ADRs, runbooks, generic docs) directly; for the
+    treasure_chest slice, call treasure_chest_delegate instead of scanning
+    jewels/potions directly — if treasure_chest_delegate is null (not yet
+    wired), skip that slice entirely and note it in summary as
+    "treasure_chest_delegate_unwired", never fail the run for it.
+  - For each source document, compute a content digest and compare against
+    previous_index (if present) — unchanged-digest items are not re-mined,
+    matching .strategist/.compiled/'s own fast-path/staleness pattern
+    (a `strategist check-stale`-shaped freshness check).
+  - Mine/organize changed or new items into .strategist/.data-offline/,
+    writing one curated entry per item plus the updated index.yaml manifest.
+  - Apply TTL — expire items whose lifecycle window has passed, remove their
+    curated entry, and report items_expired.
+  - Never mutate the original source documents (ADRs, runbooks, or
+    treasure-chest's own files) — Jewelcrafter only reads them (directly,
+    or via treasure_chest_delegate) and writes to its own .data-offline/
+    domain.
+  - Report a summary suitable for a bootstrap-phase log line.
+
+forbidden_behaviors:
+  - mutate_source_documents
+  - write_outside_data_offline_domain
+  - scan_treasure_chest_directly_once_delegate_is_wired
+  - invoke_sniper_directly
+  - bypass_approval_gate
+
+failure_modes:
+  - source_unreadable: a document_sources entry cannot be read. Skip it,
+      note in summary, do not fail the whole run.
+  - data_offline_corrupt: previous_index fails to parse. Rebuild from
+      scratch rather than erroring; note in summary.
+  - treasure_chest_delegate_unwired: treasure_chest_delegate is null. Skip
+      the chest slice, note in summary. Not an error — this is the expected
+      v1 state before the relocation mission wires the delegate.

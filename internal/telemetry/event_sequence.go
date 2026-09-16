@@ -87,6 +87,11 @@ func (g Gap) Missing() uint64 {
 // Duplicate sequence numbers within a run are tolerated and do not count as
 // gaps. Returned gaps are ordered by RunID, then by position in the run.
 func ValidateSequence(events []Event) []Gap {
+	byRun := groupSequencedEvents(events)
+	return findSequenceGaps(byRun)
+}
+
+func groupSequencedEvents(events []Event) map[string][]Event {
 	byRun := make(map[string][]Event)
 	for _, e := range events {
 		if e.Sequence == 0 {
@@ -94,7 +99,10 @@ func ValidateSequence(events []Event) []Gap {
 		}
 		byRun[e.RunID] = append(byRun[e.RunID], e)
 	}
+	return byRun
+}
 
+func findSequenceGaps(byRun map[string][]Event) []Gap {
 	runIDs := make([]string, 0, len(byRun))
 	for id := range byRun {
 		runIDs = append(runIDs, id)

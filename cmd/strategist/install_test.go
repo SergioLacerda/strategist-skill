@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
 
@@ -169,6 +170,52 @@ func TestInstallCmd_GlobalFlag_ResolvesHomeDefault(t *testing.T) {
 	err := installCmd.RunE(installCmd, nil)
 	require.NoError(t, err)
 	assert.Equal(t, home, installTarget)
+}
+
+// TestInstallCmd_GlobalHomeDirErrorPropagatesFromRunInstall covers runInstall's
+// own "if err := resolveInstallTarget(...); err != nil { return err }" branch,
+// through the real command — TestResolveInstallTarget_GlobalHomeDirError
+// already covers resolveInstallTarget's own error return, but calls it
+// directly rather than through runInstall.
+func TestInstallCmd_GlobalHomeDirErrorPropagatesFromRunInstall(t *testing.T) {
+	origTarget, origGlobal := installTarget, installGlobal
+	t.Cleanup(func() { installTarget = origTarget; installGlobal = origGlobal })
+	clearHomeEnv(t)
+	installTarget = ""
+	installGlobal = true
+
+	err := installCmd.RunE(installCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "resolve home dir")
+}
+
+// TestInstallCmd_BackupMessageWriteErrorOnClosedStdout covers runInstall's
+// "if report.BackupDir != \"\" { if _, err := fmt.Fprintf(...); err != nil {
+// return fmt.Errorf(...) } }" branch: a second, forced install over
+// customized files produces a non-empty BackupDir, and a closed stdout makes
+// the backup-message write itself fail.
+func TestInstallCmd_BackupMessageWriteErrorOnClosedStdout(t *testing.T) {
+	if runtime.GOOS == "windows" || os.Getuid() == 0 {
+		t.Skip("permission tests do not apply on Windows or when running as root")
+	}
+	dir := t.TempDir()
+	origTarget, origForce := installTarget, installForce
+	t.Cleanup(func() { installTarget = origTarget; installForce = origForce })
+	installTarget = dir
+	installForce = false
+	require.NoError(t, installCmd.RunE(installCmd, nil))
+
+	target := filepath.Join(dir, ".strategist", "SKILL.md")
+	original, err := os.ReadFile(target)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(target, append(original, []byte("\n# local edit\n")...), 0o644))
+
+	installForce = true
+	withClosedStdout(t, func() {
+		runErr := installCmd.RunE(installCmd, nil)
+		require.Error(t, runErr)
+		assert.Contains(t, runErr.Error(), "write output")
+	})
 }
 
 func clearHomeEnv(t *testing.T) {

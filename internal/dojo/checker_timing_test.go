@@ -70,6 +70,46 @@ func TestCheckTiming_FieldMissing(t *testing.T) {
 	assert.Contains(t, items[0].Detail, "total_wall_time_ms not found")
 }
 
+func TestCheckTiming_LogPathIsDirectory_ReadError(t *testing.T) {
+	logDir := t.TempDir()
+	logPath := filepath.Join(logDir, "emit.log")
+	require.NoError(t, os.MkdirAll(logPath, 0o755))
+
+	criteria := domain.DojoCriteria{
+		TimingCriteria: &domain.DojoTimingCriteria{MaxWallTimeMs: 30000},
+	}
+	items := dojo.CheckTiming(criteria, logPath, false)
+	require.Len(t, items, 1)
+	assert.False(t, items[0].Passed)
+}
+
+func TestCheckTiming_UnparseableValue(t *testing.T) {
+	logDir := t.TempDir()
+	logPath := filepath.Join(logDir, "emit.log")
+	require.NoError(t, os.WriteFile(logPath, []byte("total_wall_time_ms=notanumber\n"), 0o644))
+
+	criteria := domain.DojoCriteria{
+		TimingCriteria: &domain.DojoTimingCriteria{MaxWallTimeMs: 30000},
+	}
+	items := dojo.CheckTiming(criteria, logPath, false)
+	require.Len(t, items, 1)
+	assert.False(t, items[0].Passed)
+	assert.Contains(t, items[0].Detail, "cannot parse")
+}
+
+func TestCheckTiming_ValueAtEndOfFileWithNoTrailingWhitespace(t *testing.T) {
+	logDir := t.TempDir()
+	logPath := filepath.Join(logDir, "emit.log")
+	require.NoError(t, os.WriteFile(logPath, []byte("total_wall_time_ms=1200"), 0o644))
+
+	criteria := domain.DojoCriteria{
+		TimingCriteria: &domain.DojoTimingCriteria{MaxWallTimeMs: 30000},
+	}
+	items := dojo.CheckTiming(criteria, logPath, false)
+	require.Len(t, items, 1)
+	assert.True(t, items[0].Passed, "expected pass: %s", items[0].Detail)
+}
+
 func TestCheckTiming_FilesOnly_Skip(t *testing.T) {
 	criteria := domain.DojoCriteria{
 		TimingCriteria: &domain.DojoTimingCriteria{MaxWallTimeMs: 30000},

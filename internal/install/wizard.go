@@ -91,6 +91,19 @@ func runWizard(ctx context.Context, p Prompter, extractor domain.FileExtractor, 
 	}
 
 	providerRisk := loadKnownProviders(extractor)
+	wc, err := collectWizardConfig(p, catalog, providerRisk, extractor)
+	if err != nil {
+		return domain.WizardConfig{}, err
+	}
+	lockFile, err := validateAndActivatePluginPlan(extractor, catalog, providerRisk, wc, strategistDir)
+	if err != nil {
+		return domain.WizardConfig{}, err
+	}
+	wc.ResolvedPluginLock = lockFile
+	return wc, nil
+}
+
+func collectWizardConfig(p Prompter, catalog pluginCatalog, providerRisk map[string]string, extractor domain.FileExtractor) (domain.WizardConfig, error) {
 	skillCfg := loadSkillConfig(extractor)
 	uiLang, docLang, chatLang, codeLang, b, err := promptLanguages(p, skillCfg)
 	if err != nil {
@@ -108,25 +121,7 @@ func runWizard(ctx context.Context, p Prompter, extractor domain.FileExtractor, 
 	if err != nil {
 		return domain.WizardConfig{}, err
 	}
-
-	wc := domain.WizardConfig{
-		Mode:               mode,
-		BasePath:           basePath,
-		UILanguage:         uiLang,
-		DocLanguage:        normLang(docLang),
-		ChatLanguage:       normLang(chatLang),
-		CodeLanguage:       normLang(codeLang),
-		DiscoveryProvider:  discovery,
-		RefinementProvider: refinement,
-		ExecutionProvider:  execution,
-		TreasureChestPath:  chestPath,
-	}
-	lockFile, err := validateAndActivatePluginPlan(extractor, catalog, providerRisk, wc, strategistDir)
-	if err != nil {
-		return domain.WizardConfig{}, err
-	}
-	wc.ResolvedPluginLock = lockFile
-	return wc, nil
+	return domain.WizardConfig{Mode: mode, BasePath: basePath, UILanguage: uiLang, DocLanguage: normLang(docLang), ChatLanguage: normLang(chatLang), CodeLanguage: normLang(codeLang), DiscoveryProvider: discovery, RefinementProvider: refinement, ExecutionProvider: execution, TreasureChestPath: chestPath}, nil
 }
 
 // validateAndActivatePluginPlan runs every catalog-dependent Wizard check and
