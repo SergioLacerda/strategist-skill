@@ -54,7 +54,11 @@ func resolveMetricsActionRoot(cmd *cobra.Command, action, explicitRoot string) (
 	if err != nil {
 		return "", fmt.Errorf("metrics %s: get cwd: %w", action, err)
 	}
-	root, _, err := resolveStrategistRoot(stringFlag(cmd, flagRoot, explicitRoot), cwd)
+	rootInput := explicitRoot
+	if rootInput == "" {
+		rootInput = stringFlag(cmd, flagRoot, "")
+	}
+	root, _, err := resolveStrategistRoot(rootInput, cwd)
 	if err != nil {
 		return "", fmt.Errorf("metrics %s: %w", action, err)
 	}
