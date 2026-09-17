@@ -134,12 +134,14 @@ func (c NativeRuntimeConnector) Resolve(_ context.Context, locator RuntimeLocato
 	return ConnectorResult{Status: domain.ReadinessReady, ReasonCode: "resolved_local_locator", Detail: locator.Path}
 }
 
-// Probe validates static probe inputs without invoking external code.
+// Probe validates static probe inputs without claiming live readiness. Input
+// validation is useful, but it is not evidence that an external runtime was
+// reached or that its entrypoint can execute.
 func (c NativeRuntimeConnector) Probe(_ context.Context, instance domain.InstalledInstance, entrypoint string) ConnectorResult {
 	if instance.ID == "" || entrypoint == "" {
 		return ConnectorResult{Status: domain.ReadinessBlocked, ReasonCode: "probe_input_incomplete"}
 	}
-	return ConnectorResult{Status: domain.ReadinessReady, ReasonCode: "static_probe_ready"}
+	return ConnectorResult{Status: domain.ReadinessUnknown, ReasonCode: "probe_not_verified", Detail: "static connector performed no runtime invocation"}
 }
 
 // Invoke reports that static connectors do not claim invocation authority.

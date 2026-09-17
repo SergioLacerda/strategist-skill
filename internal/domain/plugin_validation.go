@@ -90,6 +90,12 @@ func appendInvalidPermissions(errs []string, permissions []PluginPermission) []s
 	return errs
 }
 
+// IsKnownPluginPermission exposes the canonical permission vocabulary to
+// persistence and connector-boundary packages without duplicating it.
+func IsKnownPluginPermission(permission PluginPermission) bool {
+	return hasString(validPluginPermissions, string(permission))
+}
+
 // CheckCompatibility evaluates the phase-1 host API dimension.
 func (a AdapterContract) CheckCompatibility(v PluginVersionVector) CompatibilityResult {
 	if err := v.Validate(); err != nil {

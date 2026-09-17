@@ -25,23 +25,29 @@ const (
 // CertificationRecord binds conformance to exact input digests.
 type CertificationRecord struct {
 	SchemaVersion   string
+	Role            string
+	Provider        string
 	Level           Level
 	PackageDigest   string
 	AdapterDigest   string
 	HostAPIDigest   string
 	ConnectorDigest string
 	TestSuiteDigest string
+	PolicyDigest    string
 	CertifiedAt     string
 	ExpiresAt       string
 }
 
 // CertificationInputDigests is the current material being evaluated.
 type CertificationInputDigests struct {
+	Role            string
+	Provider        string
 	PackageDigest   string
 	AdapterDigest   string
 	HostAPIDigest   string
 	ConnectorDigest string
 	TestSuiteDigest string
+	PolicyDigest    string
 }
 
 // CertificationResult reports whether a record satisfies current policy.
@@ -75,11 +81,14 @@ func (r CertificationRecord) Validate() error {
 
 // Stale reports whether any bound digest changed or the record expired.
 func (r CertificationRecord) Stale(input CertificationInputDigests, now time.Time) bool {
-	if r.PackageDigest != input.PackageDigest ||
+	if (r.Role != "" && r.Role != input.Role) ||
+		(r.Provider != "" && r.Provider != input.Provider) ||
+		r.PackageDigest != input.PackageDigest ||
 		r.AdapterDigest != input.AdapterDigest ||
 		r.HostAPIDigest != input.HostAPIDigest ||
 		r.ConnectorDigest != input.ConnectorDigest ||
-		r.TestSuiteDigest != input.TestSuiteDigest {
+		r.TestSuiteDigest != input.TestSuiteDigest ||
+		r.PolicyDigest != input.PolicyDigest {
 		return true
 	}
 	if r.ExpiresAt == "" {

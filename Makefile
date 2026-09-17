@@ -13,6 +13,10 @@ $(error make requires a POSIX shell. On Windows, run make from Git Bash or WSL -
 endif
 
 GOCACHE ?= /tmp/go-build-cache
+# Keep golangci-lint's analysis cache alongside the isolated Go build cache.
+# This avoids reusing entries written by a different system/toolchain version
+# (and keeps local CI-like runs writable in restricted environments).
+GOLANGCI_LINT_CACHE ?= /tmp/golangci-lint-cache
 
 # `go env GOPATH` prints a backslash-separated path on Windows (e.g.
 # C:\Users\User\go). Make substitutes that text literally into the recipe

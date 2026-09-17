@@ -199,6 +199,7 @@ func TestInstallCmd_BackupMessageWriteErrorOnClosedStdout(t *testing.T) {
 		t.Skip("permission tests do not apply on Windows or when running as root")
 	}
 	dir := t.TempDir()
+	setHomeEnv(t, t.TempDir())
 	origTarget, origForce := installTarget, installForce
 	t.Cleanup(func() { installTarget = origTarget; installForce = origForce })
 	installTarget = dir

@@ -9,6 +9,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func verifiedBrainstormingProvider(provider pluginCatalogProvider) pluginCatalogProvider {
+	provider.UpstreamRepo = "obra/superpowers"
+	provider.UpstreamSkillPath = "skills/brainstorming/SKILL.md"
+	provider.UpstreamVersion = "6.3.0"
+	provider.UpstreamCommit = "b36e0829c6d0140e93cfef2ca599b1b07d4a7797"
+	provider.UpstreamContentDigest = "sha256:74edf03ea6d24ef53db48677b93558d14a979bdf052ca3f57ecdca0c66791608"
+	provider.License = "MIT"
+	return provider
+}
+
 // writeRoleContractFixture writes a minimal roles/<role>.yaml +
 // internal_skills/<role>/SKILL.md pair under defaultsRoot — the two files
 // hostAPIContractDigest (ADR-0043 DEC-006) reads.
@@ -26,7 +36,7 @@ func TestCertifyRankedCandidates_StampsPinnedPairing(t *testing.T) {
 	defaultsRoot := t.TempDir()
 	writeRoleContractFixture(t, defaultsRoot, "ranger")
 	catalog := pluginCatalog{Providers: []pluginCatalogProvider{
-		{ID: "brainstorming", RiskScore: "write_analysis", CanonicalRole: "ranger", Roles: []string{"ranger"}, Default: true},
+		verifiedBrainstormingProvider(pluginCatalogProvider{ID: "brainstorming", RiskScore: "write_analysis", CanonicalRole: "ranger", Roles: []string{"ranger"}, Default: true}),
 		{ID: "openspec-explore", RiskScore: "write_analysis", CanonicalRole: "ranger"},
 	}}
 
@@ -64,8 +74,10 @@ func TestCertifyRankedCandidates_StampsBothPinnedPairings(t *testing.T) {
 	writeRoleContractFixture(t, defaultsRoot, "ranger")
 	writeRoleContractFixture(t, defaultsRoot, "archivist")
 	catalog := pluginCatalog{Providers: []pluginCatalogProvider{
-		{ID: "brainstorming", RiskScore: "write_analysis", CanonicalRole: "ranger", Roles: []string{"ranger"}, Default: true},
-		{ID: "openspec-propose", RiskScore: "write_analysis", CanonicalRole: "archivist", Roles: []string{"archivist"}, Default: true},
+		verifiedBrainstormingProvider(pluginCatalogProvider{ID: "brainstorming", RiskScore: "write_analysis", CanonicalRole: "ranger", Roles: []string{"ranger"}, Default: true}),
+		{ID: "openspec-propose", RiskScore: "write_analysis", CanonicalRole: "archivist", Roles: []string{"archivist"}, Default: true,
+			UpstreamRepo: "Fission-AI/OpenSpec", UpstreamSkillPath: "skills/openspec-propose/SKILL.md", UpstreamVersion: "1.10.0",
+			UpstreamCommit: "1ebddd17f40dde15dfd28289e4493c3cf05ee9df", UpstreamContentDigest: "sha256:c0537ce311115878e7e0a04e6ff4fc6456056f21024079c228b6b24325e38613", License: "MIT"},
 	}}
 
 	require.NoError(t, certifyRankedCandidates(&catalog, defaultsRoot))
@@ -88,8 +100,8 @@ func TestCertifyRankedCandidates_StampsBothPinnedPairings(t *testing.T) {
 
 	assert.NotEqual(t, brainstorming.HostAPIDigest, openspecPropose.HostAPIDigest,
 		"each role's HostAPIDigest must be computed from its own roles/<role>.yaml + internal_skills/<role>/SKILL.md, not shared")
-	// ConnectorDigest remains role-agnostic, while TestSuiteDigest is now
-	// seeded by the selected role/provider binding.
+	// ConnectorDigest remains role-agnostic, while each role now has its own
+	// conformance test file and therefore a distinct TestSuiteDigest.
 	assert.Equal(t, brainstorming.ConnectorDigest, openspecPropose.ConnectorDigest)
 	assert.NotEqual(t, brainstorming.TestSuiteDigest, openspecPropose.TestSuiteDigest)
 }
@@ -115,12 +127,37 @@ func TestCertifyRankedCandidates_RejectsMissingRoleAffinity(t *testing.T) {
 	assert.Contains(t, err.Error(), "role affinity")
 }
 
+func TestCertifyRankedCandidates_RejectsIncompleteProvenance(t *testing.T) {
+	defaultsRoot := t.TempDir()
+	writeRoleContractFixture(t, defaultsRoot, "ranger")
+	catalog := pluginCatalog{Providers: []pluginCatalogProvider{{
+		ID: "brainstorming", RiskScore: "write_analysis", CanonicalRole: "ranger", Roles: []string{"ranger"},
+	}}}
+
+	err := certifyRankedCandidates(&catalog, defaultsRoot)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "verified upstream provenance incomplete")
+}
+
+func TestCertifyRankedCandidatesLeavesIncompleteNonRankedProviderUncertified(t *testing.T) {
+	catalog := pluginCatalog{Providers: []pluginCatalogProvider{{
+		ID: "openspec-explore", RiskScore: "write_analysis", CanonicalRole: "ranger", Roles: []string{"ranger"},
+	}}}
+
+	require.NoError(t, certifyRankedCandidates(&catalog, t.TempDir()))
+	provider, ok := findCatalogProvider(catalog, "openspec-explore")
+	require.True(t, ok)
+	assert.False(t, provider.Ranked)
+	assert.Empty(t, provider.CertificationDigest)
+	assert.Empty(t, provider.License)
+}
+
 func TestCertifyRankedCandidates_IsDeterministic(t *testing.T) {
 	defaultsRoot := t.TempDir()
 	writeRoleContractFixture(t, defaultsRoot, "ranger")
 	build := func() pluginCatalog {
 		return pluginCatalog{Providers: []pluginCatalogProvider{
-			{ID: "brainstorming", Version: "1.0.0", RiskScore: "write_analysis", CanonicalRole: "ranger", Roles: []string{"ranger"}},
+			verifiedBrainstormingProvider(pluginCatalogProvider{ID: "brainstorming", Version: "1.0.0", RiskScore: "write_analysis", CanonicalRole: "ranger", Roles: []string{"ranger"}}),
 		}}
 	}
 	a, b := build(), build()

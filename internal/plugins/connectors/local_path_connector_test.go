@@ -212,9 +212,10 @@ func TestLocalPathConnectorProbeValidatesStaticInputs(t *testing.T) {
 	t.Parallel()
 
 	connector := connectors.LocalPathConnector{ConnectorID: "local-path"}
-	ready := connector.Probe(context.Background(), domain.InstalledInstance{ID: "sample-skill"}, "invoke")
-	assert.Equal(t, domain.ReadinessReady, ready.Status)
-	assert.Equal(t, "static_probe_ready", ready.ReasonCode)
+	probe := connector.Probe(context.Background(), domain.InstalledInstance{ID: "sample-skill"}, "invoke")
+	assert.Equal(t, domain.ReadinessUnknown, probe.Status)
+	assert.Equal(t, "probe_not_verified", probe.ReasonCode)
+	assert.Contains(t, probe.Detail, "no runtime invocation")
 
 	missingInstance := connector.Probe(context.Background(), domain.InstalledInstance{}, "invoke")
 	assert.Equal(t, domain.ReadinessBlocked, missingInstance.Status)

@@ -14,21 +14,30 @@ func skillProviderReadiness(root, slot, provider, path string) domain.PluginRead
 	connector := connectors.UnsupportedConnector{IDValue: "current-runtime", ConnectorAPIVersion: "strategist-connector-api/1"}
 	resolve := connector.Resolve(context.Background(), connectors.RuntimeLocator{ID: provider, Path: path})
 	observe := connector.Observe(context.Background(), domain.InstalledInstance{ID: provider})
+	entrypoint := "refine"
+	if slot == string(domain.SlotDiscovery) {
+		entrypoint = "discover"
+	}
+	probe := connector.Probe(context.Background(), domain.InstalledInstance{ID: provider, ConnectorID: connector.Capabilities(context.Background()).ConnectorID}, entrypoint)
 	lock := readPluginsLockFile(root)
 	digest := lock.NodeDigest(provider, "adapter_contract")
 	trustCheck := skillProviderTrustReadiness(root, provider, digest)
-	grantCheck := skillProviderPermissionGrantReadiness(digest)
-	if bindingIsRanked(lock, slot, provider) {
+	grantCheck := skillProviderPermissionGrantReadinessFor(root, digest, requestedPermissions(path))
+	ranked := bindingIsRanked(lock, slot, provider)
+	conformance := customConformanceReadiness(root, slot, provider, path, probe)
+	if ranked {
 		// A Ranked binding is already validated and certified at build time
 		// (docs/adr/0043-ranked-pipeline-pilot-implementation-decisions.md
 		// DEC-003) — it never calls into Custom's trust.Verify/
 		// policy.EvaluateGrant runtime checks; readiness is reported from the
 		// catalog's certification stamp instead.
 		trustCheck, grantCheck = rankedCertificationReadiness(root, slot, provider)
+		conformance = domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "ranked_certification_verified"}
 	}
 	return domain.PluginReadinessVector{
 		Descriptor:          domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "legacy_descriptor_valid", Detail: path},
 		Source:              domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "local_manifest_present", Detail: path},
+		Conformance:         conformance,
 		Trust:               trustCheck,
 		Dependencies:        domain.ReadinessCheck{Status: domain.ReadinessUnknown, ReasonCode: "dependency_lock_not_evaluated"},
 		HostAPI:             domain.ReadinessCheck{Status: domain.ReadinessUnknown, ReasonCode: "host_api_not_declared"},
@@ -38,6 +47,20 @@ func skillProviderReadiness(root, slot, provider, path string) domain.PluginRead
 		EnforcementCoverage: connectorObservationCheck(observe),
 		ActiveBinding:       domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "active_yaml_slot_binding"},
 	}
+}
+
+func requestedPermissions(path string) []domain.PluginPermission {
+	raw, err := os.ReadFile(path) //nolint:gosec // path is the resolved runtime skill manifest
+	if err != nil {
+		return nil
+	}
+	var manifest struct {
+		Requested []domain.PluginPermission `yaml:"requested_permissions"`
+	}
+	if yaml.Unmarshal(raw, &manifest) != nil {
+		return nil
+	}
+	return manifest.Requested
 }
 
 // bindingIsRanked reports whether slot's persisted plugins.lock binding for

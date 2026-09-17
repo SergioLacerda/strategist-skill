@@ -103,6 +103,9 @@ func (s Service) persistWizardConfig(strategistDir string, wc domain.WizardConfi
 	if err := writeTreasureChestManifest(strategistDir, wc); err != nil {
 		return fmt.Errorf("install: write treasure-chests.yaml: %w", err)
 	}
+	if err := persistGovernanceState(strategistDir, wc.GovernancePolicy, wc.PermissionGrants); err != nil {
+		return fmt.Errorf("install: write governance state: %w", err)
+	}
 	return nil
 }
 

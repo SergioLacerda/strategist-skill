@@ -20,6 +20,13 @@ from the workspace root, initialize the runtime lazily, or offer initialization
 as a remedy for a missing prepared runtime; Strategist must report
 `error=role_invocation_failed` instead.
 
+The provider's OpenSpec files are private scratch output. They must never be
+materialized as Strategist refinement artifacts in `docs/plans/` or any other
+repository planning directory. Archivist normalizes the result into
+`<base_path>/refined/<mission_id>/` using the invocation's
+`.strategist/active.yaml.base_path`; when this workspace is configured with
+`base_path: .analysis`, the canonical destination is `.analysis/refined/`.
+
 I'll create a change with the artifacts your schema defines. With the default spec-driven schema that is:
 - proposal.md (what & why)
 - `specs/<capability-path>/spec.md` (what the system must do - a delta, not the main spec)

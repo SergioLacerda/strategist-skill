@@ -21,13 +21,17 @@ runtime:
   bootstrap: openspec init --profile core --tools codex
   healthcheck: openspec context --json
 
-# Upstream provenance (ADR-0029 DEC-002): not yet researched. ADR-0029
-# (2026-08-20) only recorded pins for brainstorming and openspec-explore —
-# this package (Archivist's real, actual tool; see
-# docs/adr/0036-openspec-explore-canonical-role-correction.md) has never
-# had its own upstream repo/commit/content-digest evidence gathered.
-# Left unpopulated rather than guessed or borrowed from openspec-explore's
-# own (different) upstream pin.
+# Upstream provenance verified against the Fission-AI/OpenSpec v1.10.0 tag:
+# repository/revision from the signed GitHub release, license from the
+# upstream file header/LICENSE, and content digest computed from the pinned
+# raw file. The local SKILL.md is an adapted copy and therefore has a
+# different digest.
+upstream_repo: Fission-AI/OpenSpec
+upstream_skill_path: skills/openspec-propose/SKILL.md
+upstream_version: "1.10.0"
+upstream_commit: 1ebddd17f40dde15dfd28289e4493c3cf05ee9df
+upstream_content_digest: sha256:c0537ce311115878e7e0a04e6ff4fc6456056f21024079c228b6b24325e38613
+license: MIT
 
 # scratch_root: runtime — this weapon's own openspec CLI creates working
 # files (openspec/changes/<id>/) that must live in the runtime domain

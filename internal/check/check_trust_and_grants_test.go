@@ -51,6 +51,29 @@ func TestSkillProviderPermissionGrantReadiness_NoPermissionsRequestedIsReady(t *
 	assert.Equal(t, "no_permissions_requested", got.ReasonCode)
 }
 
+func TestSkillProviderPermissionGrantReadiness_UsesPersistedGrant(t *testing.T) {
+	root := t.TempDir()
+	digest := "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+	require.NoError(t, os.WriteFile(filepath.Join(root, "permission-grants.yaml"), []byte(`schema_version: strategist-permission-grants/v1
+grants:
+  - id: grant-1
+    package_digest: `+digest+`
+    adapter_digest: `+digest+`
+    granted_permissions: [workspace.read]
+`), 0o644))
+
+	got := skillProviderPermissionGrantReadinessFor(root, digest, []domain.PluginPermission{domain.PluginPermissionReadWorkspace})
+	assert.Equal(t, domain.ReadinessReady, got.Status)
+}
+
+func TestSkillProviderPermissionGrantReadiness_MissingPersistedGrantBlocksRequestedPermission(t *testing.T) {
+	root := t.TempDir()
+	digest := "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+	got := skillProviderPermissionGrantReadinessFor(root, digest, []domain.PluginPermission{domain.PluginPermissionReadWorkspace})
+	assert.Equal(t, domain.ReadinessBlocked, got.Status)
+	assert.Equal(t, "permission_grant_missing", got.ReasonCode)
+}
+
 // TestCheckCmd_JSON_TrustAndGrantWiredFromRealLockDigest is the P4/P5/P6
 // integration regression test: with a real adapter_contract digest present
 // in plugins.lock, both Trust and PermissionGrant must move from the old

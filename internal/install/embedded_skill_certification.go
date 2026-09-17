@@ -54,6 +54,9 @@ func certifyRankedCandidate(catalog *pluginCatalog, defaultsRoot, id, wantRole s
 	if err := validateRankedCandidate(provider, wantRole); err != nil {
 		return fmt.Errorf("certify ranked candidate %q: %w", id, err)
 	}
+	if err := validateVerifiedUpstreamProvenance(provider); err != nil {
+		return fmt.Errorf("certify ranked candidate %q: %w", id, err)
+	}
 	evidence, err := rankedConformanceEvidence(defaultsRoot, wantRole, id)
 	if err != nil {
 		return fmt.Errorf("certify ranked candidate %q: %w", id, err)
@@ -65,8 +68,26 @@ func certifyRankedCandidate(catalog *pluginCatalog, defaultsRoot, id, wantRole s
 	provider.HostAPIDigest = evidence.hostAPI
 	provider.ConnectorDigest = evidence.connector
 	provider.TestSuiteDigest = evidence.testSuite
+	provider.PolicyDigest = evidence.policy
 	provider.ConformanceLevel = string(conformance.LevelC1Contract)
 	catalog.Providers[idx] = provider
+	return nil
+}
+
+func validateVerifiedUpstreamProvenance(provider pluginCatalogProvider) error {
+	fields := map[string]string{
+		"upstream_repo":           provider.UpstreamRepo,
+		"upstream_skill_path":     provider.UpstreamSkillPath,
+		"upstream_version":        provider.UpstreamVersion,
+		"upstream_commit":         provider.UpstreamCommit,
+		"upstream_content_digest": provider.UpstreamContentDigest,
+		"license":                 provider.License,
+	}
+	for field, value := range fields {
+		if value == "" {
+			return fmt.Errorf("verified upstream provenance incomplete: %s is required", field)
+		}
+	}
 	return nil
 }
 
@@ -75,10 +96,10 @@ func certifyRankedCandidate(catalog *pluginCatalog, defaultsRoot, id, wantRole s
 // than as three separate, individually-erroring call sites in
 // certifyRankedCandidate.
 type rankedConformanceEvidenceSet struct {
-	hostAPI, connector, testSuite string
+	hostAPI, connector, testSuite, policy string
 }
 
-func rankedConformanceEvidence(defaultsRoot, role, provider string) (rankedConformanceEvidenceSet, error) {
+func rankedConformanceEvidence(defaultsRoot, role, _ string) (rankedConformanceEvidenceSet, error) {
 	hostAPI, err := hostAPIContractDigest(defaultsRoot, role)
 	if err != nil {
 		return rankedConformanceEvidenceSet{}, err
@@ -87,11 +108,15 @@ func rankedConformanceEvidence(defaultsRoot, role, provider string) (rankedConfo
 	if err != nil {
 		return rankedConformanceEvidenceSet{}, err
 	}
-	testSuite, err := testSuiteDigest(role, provider)
+	testSuite, err := testSuiteDigest(role)
 	if err != nil {
 		return rankedConformanceEvidenceSet{}, err
 	}
-	return rankedConformanceEvidenceSet{hostAPI: hostAPI, connector: connector, testSuite: testSuite}, nil
+	policy, err := policyDigest()
+	if err != nil {
+		return rankedConformanceEvidenceSet{}, err
+	}
+	return rankedConformanceEvidenceSet{hostAPI: hostAPI, connector: connector, testSuite: testSuite, policy: policy}, nil
 }
 
 func indexOfCatalogProvider(providers []pluginCatalogProvider, id string) int {

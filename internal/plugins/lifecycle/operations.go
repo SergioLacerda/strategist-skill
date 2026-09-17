@@ -6,6 +6,64 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
 
+// Validate checks the durable inventory/binding boundary before a lifecycle
+// store is used. Persistence belongs to the installer, while this package
+// owns the invariants every restored store must satisfy.
+func (s *Store) Validate() error {
+	if s == nil {
+		return fmt.Errorf("lifecycle_store_nil")
+	}
+	seenInstances, err := validateInstances(s.Inventory.Instances)
+	if err != nil {
+		return err
+	}
+	return validateBindings(s.Bindings, seenInstances)
+}
+
+func validateInstances(instances []domain.InstalledInstance) (map[string]struct{}, error) {
+	seenInstances := make(map[string]struct{}, len(instances))
+	for _, instance := range instances {
+		if instance.ID == "" {
+			return nil, fmt.Errorf("instance_id_missing")
+		}
+		if _, exists := seenInstances[instance.ID]; exists {
+			return nil, fmt.Errorf("duplicate_instance: %s", instance.ID)
+		}
+		seenInstances[instance.ID] = struct{}{}
+	}
+	return seenInstances, nil
+}
+
+func validateBindings(bindings []domain.SlotBinding, instances map[string]struct{}) error {
+	seenSlots := make(map[string]struct{}, len(bindings))
+	for _, binding := range bindings {
+		if _, exists := seenSlots[binding.Slot]; exists {
+			return fmt.Errorf("duplicate_binding_slot: %s", binding.Slot)
+		}
+		seenSlots[binding.Slot] = struct{}{}
+		if err := validateBinding(binding, instances); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateBinding(binding domain.SlotBinding, instances map[string]struct{}) error {
+	if binding.Slot == "" || binding.InstalledInstanceID == "" {
+		return fmt.Errorf("binding_incomplete: %s", binding.Slot)
+	}
+	if !binding.ValidMode() {
+		return fmt.Errorf("binding_invalid_mode: slot=%s mode=%s", binding.Slot, binding.Mode)
+	}
+	if binding.Generation < 0 {
+		return fmt.Errorf("binding_negative_generation: %s", binding.Slot)
+	}
+	if _, exists := instances[binding.InstalledInstanceID]; !exists {
+		return fmt.Errorf("binding_instance_missing: slot=%s instance=%s", binding.Slot, binding.InstalledInstanceID)
+	}
+	return nil
+}
+
 // Recover rolls back every incomplete transaction.
 func (s *Store) Recover() error {
 	for id, tx := range s.Transactions {

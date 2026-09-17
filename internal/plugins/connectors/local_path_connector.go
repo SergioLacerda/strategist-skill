@@ -48,12 +48,17 @@ func (c LocalPathConnector) Resolve(_ context.Context, locator RuntimeLocator) C
 	return ConnectorResult{Status: domain.ReadinessReady, ReasonCode: "resolved_local_package", Detail: locator.Path}
 }
 
-// Probe validates static probe inputs without invoking external code.
+// Probe validates static probe inputs without invoking external code. Static
+// validation is not runtime evidence, so a valid input remains unverified.
 func (c LocalPathConnector) Probe(_ context.Context, instance domain.InstalledInstance, entrypoint string) ConnectorResult {
 	if instance.ID == "" || entrypoint == "" {
 		return ConnectorResult{Status: domain.ReadinessBlocked, ReasonCode: "probe_input_incomplete"}
 	}
-	return ConnectorResult{Status: domain.ReadinessReady, ReasonCode: "static_probe_ready"}
+	return ConnectorResult{
+		Status:     domain.ReadinessUnknown,
+		ReasonCode: "probe_not_verified",
+		Detail:     "local-path connector performed no runtime invocation",
+	}
 }
 
 // Invoke never claims invocation authority — the resolved package's prompt

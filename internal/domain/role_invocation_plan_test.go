@@ -165,3 +165,24 @@ func TestNewRoleInvocationPlanFromLock_MissingDigestsAreEmptyNotFabricated(t *te
 		t.Fatalf("expected empty digests when lock has no matching nodes, got weapon=%q binding=%q", plan.WeaponDigest, plan.BindingDigest)
 	}
 }
+
+func TestAttachInvocationContextCompletesPlanWithoutChangingBinding(t *testing.T) {
+	plan, err := NewRoleInvocationPlanFromLock("ranger", "discovery", fixtureLockForRoleInvocationPlan())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	envelope := InvocationEnvelope{
+		Role: "ranger", Slot: "discovery", Provider: plan.WeaponID,
+		RequiredContextRefs: []string{"persona:ranger"}, OutputSchemaRef: "schema:proposal/v1",
+	}
+	got, err := AttachInvocationContext(plan, envelope)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.WeaponDigest != plan.WeaponDigest || got.BindingGeneration != plan.BindingGeneration {
+		t.Fatalf("context attachment changed binding fields: got=%+v want=%+v", got, plan)
+	}
+	if len(got.RequiredContextRefs) != 1 || got.OutputSchemaRef != "schema:proposal/v1" {
+		t.Fatalf("context refs not attached: %+v", got)
+	}
+}

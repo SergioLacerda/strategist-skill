@@ -27,10 +27,14 @@ type PipelinePhase string
 
 // Early-pipeline phases, in required order.
 const (
-	PhaseBootstrap  PipelinePhase = "BOOTSTRAP"
-	PhaseIntake     PipelinePhase = "INTAKE"
-	PhaseDiscovery  PipelinePhase = "DISCOVERY"
-	PhaseRefinement PipelinePhase = "REFINEMENT"
+	PhaseBootstrap    PipelinePhase = "BOOTSTRAP"
+	PhaseIntake       PipelinePhase = "INTAKE"
+	PhaseDiscovery    PipelinePhase = "DISCOVERY"
+	PhaseRefinement   PipelinePhase = "REFINEMENT"
+	PhaseApprovalGate PipelinePhase = "APPROVAL_GATE"
+	PhaseExecution    PipelinePhase = "EXECUTION"
+	PhaseDone         PipelinePhase = "DONE"
+	PhaseBlocked      PipelinePhase = "BLOCKED"
 )
 
 // PhaseEvent is a phase-completion signal submitted to a

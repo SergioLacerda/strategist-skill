@@ -20,7 +20,7 @@ upstream_skill_path: skills/brainstorming/SKILL.md
 upstream_version: "6.3.0"
 upstream_commit: b36e0829c6d0140e93cfef2ca599b1b07d4a7797
 upstream_content_digest: sha256:74edf03ea6d24ef53db48677b93558d14a979bdf052ca3f57ecdca0c66791608
-# license: not recorded in ADR-0029 — left unpopulated rather than guessed.
+license: MIT
 
 # supported_handoff_schemas is intentionally omitted: the fixed Ranger role
 # owns normalization into its handoff schema.

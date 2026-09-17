@@ -118,6 +118,22 @@ func NewRankedRoleInvocationPlanFromCatalog(role, slot string, binding SlotBindi
 	}, nil
 }
 
+// AttachInvocationContext copies the composer-owned context and output schema
+// references into a resolved plan after checking that the envelope addresses
+// the same role, slot, and weapon. It keeps binding resolution and context
+// selection as separate authorities while making the resulting plan complete.
+func AttachInvocationContext(plan RoleInvocationPlan, envelope InvocationEnvelope) (RoleInvocationPlan, error) {
+	if envelope.Role != plan.Role || envelope.Slot != plan.Slot || envelope.Provider != plan.WeaponID {
+		return RoleInvocationPlan{}, fmt.Errorf("role invocation plan: envelope binding does not match role/slot/provider")
+	}
+	if envelope.OutputSchemaRef == "" {
+		return RoleInvocationPlan{}, fmt.Errorf("role invocation plan: output schema reference is required")
+	}
+	plan.RequiredContextRefs = append([]string(nil), envelope.RequiredContextRefs...)
+	plan.OutputSchemaRef = envelope.OutputSchemaRef
+	return plan, nil
+}
+
 // SingleLockBindingForSlot returns the single SlotBinding persisted for slot
 // in lock.Bindings, erroring on zero or more than one match. Exported so
 // rolevalidation.BuildRoleInvocationPlan can inspect a binding's mode before

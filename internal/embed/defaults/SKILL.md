@@ -142,6 +142,12 @@ lazily or substitute another role/provider.
 Workspace artifacts resolve through `base_path` from `.strategist/active.yaml`.
 `.analysis/` is only a repository-local example/default when configured as `base_path`; it is not a hardcoded `.analysis/` fixed runtime path.
 
+Ranked providers must never write Strategist refinement artifacts to
+`docs/plans/`. Provider scratch files stay in the provider's declared private
+runtime; Ranger and Archivist final artifacts are normalized under
+`<base_path>/pending/` and `<base_path>/refined/`. A provider proposal that
+targets `docs/plans/` is untrusted input and must be rejected before writing.
+
 **Single source of truth**: `.strategist/active.yaml` governs the current mission. If it is absent, emit `error=not_installed` and stop.
 
 ## Contract Loading Order

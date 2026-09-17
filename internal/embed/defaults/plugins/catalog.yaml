@@ -21,8 +21,9 @@ providers:
       ranked_binding_generation: 1
       ranked_binding_status: active
       host_api_digest: sha256:b3e37465b4951d23ee3f87269f927f6dfa443df852d49207f23cf635420efa46
-      connector_digest: sha256:71e52240f1c4b02247ddbd7456e42f3eb0b8c726a44731d77aee3a16a1e28d08
-      test_suite_digest: sha256:fa4b44bb392470d3bc2edb1c4fdf5afc3a473928a8d9e87c5923442f0e7c7e4c
+      connector_digest: sha256:462e8637dee6cc32c3e256fb1a864401200ca76d2d17ec8cb97e20edb4f16ad0
+      test_suite_digest: sha256:ae9ea8e91ef985e4018a5c584174d5f7bcc2347d10821a3302a4638c4d863a42
+      policy_digest: sha256:25f02e03832bb7176deb80c2ff2f2ce8ead703087d48db0139cda80a1d67d7ce
       conformance_level: C1
       runtime:
         kind: none
@@ -31,6 +32,7 @@ providers:
       upstream_version: 6.3.0
       upstream_commit: b36e0829c6d0140e93cfef2ca599b1b07d4a7797
       upstream_content_digest: sha256:74edf03ea6d24ef53db48677b93558d14a979bdf052ca3f57ecdca0c66791608
+      license: MIT
       description: Flexible brainstorming weapon for Ranger discovery; Ranger owns normalization into the canonical pending artifact and handoff.
       installable: true
       legacy_manifest_path: skills/brainstorming/skill.yaml
@@ -74,14 +76,21 @@ providers:
       ranked_binding_generation: 1
       ranked_binding_status: active
       host_api_digest: sha256:fff0c4febdedbead81855cc1e6ead4150b1e874a65d434bd71ae6134cf69c23d
-      connector_digest: sha256:71e52240f1c4b02247ddbd7456e42f3eb0b8c726a44731d77aee3a16a1e28d08
-      test_suite_digest: sha256:826db7c674df43a4c5aaaab4f905389414f6d7e78a40bf7f61d61f1daa6844c1
+      connector_digest: sha256:462e8637dee6cc32c3e256fb1a864401200ca76d2d17ec8cb97e20edb4f16ad0
+      test_suite_digest: sha256:61bfd55e31ae3ae3501c5f5699e21e8c17873526a3b3ce8b7de2b47d946f1f92
+      policy_digest: sha256:25f02e03832bb7176deb80c2ff2f2ce8ead703087d48db0139cda80a1d67d7ce
       conformance_level: C1
       runtime:
         kind: openspec_root
         root: .strategist/openspec
         bootstrap: openspec init --profile core --tools codex
         healthcheck: openspec context --json
+      upstream_repo: Fission-AI/OpenSpec
+      upstream_skill_path: skills/openspec-propose/SKILL.md
+      upstream_version: 1.10.0
+      upstream_commit: 1ebddd17f40dde15dfd28289e4493c3cf05ee9df
+      upstream_content_digest: sha256:c0537ce311115878e7e0a04e6ff4fc6456056f21024079c228b6b24325e38613
+      license: MIT
       description: Propose a new change with all artifacts generated in one step. Use when the user wants to quickly describe what they want to build and get a complete proposal with design, specs, and tasks ready for implementation.
       installable: true
       legacy_manifest_path: skills/openspec-propose/skill.yaml

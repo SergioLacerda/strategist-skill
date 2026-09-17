@@ -1,6 +1,7 @@
 package policy_test
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -145,5 +146,42 @@ func TestEvaluateWrite_AllowsWhenConnectorEnforcesEverything(t *testing.T) {
 	} {
 		decision := policy.EvaluateWrite(".analysis", target, report)
 		assert.True(t, decision.Allowed, "expected %q to be allowed", target)
+	}
+}
+
+func TestEvaluateWrite_DeniesStrategistPlanningPathEvenWhenDocsAreEnforceable(t *testing.T) {
+	t.Parallel()
+
+	report := policy.EnforcementReport{
+		ConnectorID: "fully-enforced-runtime",
+		Enforceable: []domain.PluginPermission{
+			domain.PluginPermissionWriteDocs,
+		},
+	}
+
+	decision := policy.EvaluateWrite(".analysis", "docs/plans/next-wave.md", report)
+	require.False(t, decision.Allowed)
+	assert.Contains(t, decision.Reason, "forbidden")
+}
+
+func TestIsForbiddenStrategistRefinementPath_NormalizesHermeticPaths(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	tests := []struct {
+		name string
+		path string
+		want bool
+	}{
+		{name: "relative", path: "docs/plans/plan.md", want: true},
+		{name: "relative dot", path: "./docs/plans/plan.md", want: true},
+		{name: "absolute", path: filepath.Join(root, "docs", "plans", "plan.md"), want: true},
+		{name: "other docs", path: "docs/runbooks/plan.md", want: false},
+		{name: "analysis", path: filepath.Join(root, ".analysis", "refined", "mission", "tasks.md"), want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, policy.IsForbiddenStrategistRefinementPath(tt.path))
+		})
 	}
 }

@@ -8,11 +8,11 @@ import (
 	"runtime"
 )
 
-// nativeConnectorSourcePath and roleConformanceTestPath are repo-root-
+// nativeConnectorSourcePath and roleConformanceTestPaths are repo-root-
 // relative paths to the Strategist tool's own implementation evidence for
 // ADR-0043 DEC-006's generic Ranked certification: the native-role
-// dispatch mechanism, and the shared role/provider handoff-conformance
-// test suite. Both are Strategist-internal source files compiled into the
+// dispatch mechanism, and the per-role handoff-conformance test suites. Both
+// are Strategist-internal source files compiled into the
 // strategist binary — they never materialize into a target workspace's
 // .strategist/ tree, unlike a role's own contract files
 // (roles/<role>.yaml, internal_skills/<role>/SKILL.md — see
@@ -20,8 +20,17 @@ import (
 // working directory — see repoRoot's own doc comment for why.
 const (
 	nativeConnectorSourcePath = "internal/plugins/connectors/runtime_connector.go"
-	roleConformanceTestPath   = "internal/handoff/role_provider_conformance_test.go"
+	policySourcePath          = "internal/plugins/policy/grants.go"
+	policyEnforcementPath     = "internal/plugins/policy/write_enforcement.go"
 )
+
+// roleConformanceTestPaths maps each Ranked-certifiable role to its own
+// conformance test file. A separate file per role keeps the certification
+// digest role-specific rather than pinning duplicated evidence.
+var roleConformanceTestPaths = map[string]string{
+	"ranger":    "internal/handoff/role_provider_conformance_test.go",
+	"archivist": "internal/handoff/role_provider_conformance_archivist_test.go",
+}
 
 // repoRoot resolves this Strategist repository's own root directory via
 // runtime.Caller, independent of the caller's working directory. Unlike
@@ -60,27 +69,28 @@ func connectorDigest() (string, error) {
 	return digestFiles(filepath.Join(repoRoot(), nativeConnectorSourcePath))
 }
 
-// testSuiteDigest computes the ADR-0043 DEC-006 "test suite" evidence: a
-// digest over the shared role/provider handoff-conformance test file. It
-// pins WHICH suite backs the certification claim, for staleness detection
+// policyDigest binds Ranked certification to the permission and write-policy
+// implementation that governs plugin activation and enforcement.
+func policyDigest() (string, error) {
+	return digestFiles(filepath.Join(repoRoot(), policySourcePath), filepath.Join(repoRoot(), policyEnforcementPath))
+}
+
+// testSuiteDigest computes the ADR-0043 DEC-006 "test suite" evidence for
+// role: a digest over that role's own handoff-conformance test file. It pins
+// WHICH suite backs the certification claim, for staleness detection
 // via conformance.CertificationRecord.Stale — it does not itself execute
 // the suite. Running `go test` from inside a maintainer CLI step was
 // judged out of proportion to what this pilot needs; see
 // .analysis/pending/cli_refactor/20260916-conformance-wiring-and-adr0029-t2-decisions/design.md.
-//
-// Unlike connectorDigest (KF-006/docs/adr/0045: genuinely role-agnostic
-// content, since every native role shares the same dispatch connector),
-// The role/provider seed makes the certification evidence specific to the
-// selected Ranked binding even while the shared Go conformance harness is
-// being migrated to per-role fixtures. This prevents Archivist from inheriting
-// an indistinguishable Ranger certification pin.
-func testSuiteDigest(role, provider string) (string, error) {
-	base, err := digestFiles(filepath.Join(repoRoot(), roleConformanceTestPath))
-	if err != nil {
-		return "", err
+// Generic over role: adding a Ranked pairing for a new role means adding
+// its own entry to roleConformanceTestPaths, not sharing another role's
+// evidence file.
+func testSuiteDigest(role string) (string, error) {
+	path, ok := roleConformanceTestPaths[role]
+	if !ok {
+		return "", fmt.Errorf("test suite digest: no conformance test file pinned for role %q", role)
 	}
-	sum := sha256.Sum256([]byte(base + "\t" + role + "\t" + provider))
-	return fmt.Sprintf("sha256:%x", sum), nil
+	return digestFiles(filepath.Join(repoRoot(), path))
 }
 
 func digestFiles(paths ...string) (string, error) {

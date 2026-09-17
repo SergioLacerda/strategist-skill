@@ -78,6 +78,13 @@ func ClassifyWriteTarget(basePath, targetPath string) domain.PluginPermission {
 // targeting docs/ or a bare source file today is NOT enforceably allowed
 // under the native connector, even though it may be nominally granted.
 func EvaluateWrite(basePath, targetPath string, report EnforcementReport) WriteDecision {
+	if IsForbiddenStrategistRefinementPath(targetPath) {
+		return WriteDecision{
+			Allowed:    false,
+			Permission: domain.PluginPermissionWriteDocs,
+			Reason:     fmt.Sprintf("write to %q is forbidden for Strategist refinement artifacts; use <base_path>/refined/", targetPath),
+		}
+	}
 	permission := ClassifyWriteTarget(basePath, targetPath)
 	enforceable := permissionSet(report.Enforceable)
 	if !enforceable[permission] {
@@ -98,4 +105,15 @@ func EvaluateWrite(basePath, targetPath string, report EnforcementReport) WriteD
 			targetPath, permission, report.ConnectorID,
 		),
 	}
+}
+
+// IsForbiddenStrategistRefinementPath identifies repository planning paths that
+// must never receive a Strategist Ranger or Archivist artifact. The check is
+// intentionally independent of the configured base path: docs/plans is a
+// forbidden target even when a connector advertises docs.write.
+func IsForbiddenStrategistRefinementPath(targetPath string) bool {
+	clean := filepath.ToSlash(filepath.Clean(targetPath))
+	clean = strings.TrimPrefix(clean, "./")
+	return clean == "docs/plans" || strings.HasPrefix(clean, "docs/plans/") ||
+		strings.HasSuffix(clean, "/docs/plans") || strings.Contains(clean, "/docs/plans/")
 }

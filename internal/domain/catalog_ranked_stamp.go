@@ -21,13 +21,14 @@ type CatalogRankedStamp struct {
 	CertificationDigest     string   `yaml:"certification_digest"`
 	RankedBindingGeneration int64    `yaml:"ranked_binding_generation"`
 	RankedBindingStatus     string   `yaml:"ranked_binding_status"`
-	// HostAPIDigest, ConnectorDigest, TestSuiteDigest, and ConformanceLevel
+	// HostAPIDigest, ConnectorDigest, TestSuiteDigest, PolicyDigest, and ConformanceLevel
 	// are ADR-0043 DEC-006's generic conformance evidence — see
 	// internal/check/check_readiness.go's evaluateRankedConformance, the
 	// only reader of these four fields.
 	HostAPIDigest    string                `yaml:"host_api_digest"`
 	ConnectorDigest  string                `yaml:"connector_digest"`
 	TestSuiteDigest  string                `yaml:"test_suite_digest"`
+	PolicyDigest     string                `yaml:"policy_digest"`
 	ConformanceLevel string                `yaml:"conformance_level"`
 	Runtime          RankedRuntimeContract `yaml:"runtime"`
 }

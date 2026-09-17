@@ -81,4 +81,8 @@ type WizardConfig struct {
 	// len(Bindings) > 0 before writing plugins.lock, so a partial/failed
 	// resolution never overwrites a previously good persisted binding.
 	ResolvedPluginLock PluginLockFile
+	// GovernancePolicy and PermissionGrants are optional operator-owned state.
+	// Nil values preserve existing workspace files for legacy installs.
+	GovernancePolicy *TrustPolicy
+	PermissionGrants *PermissionGrantFile
 }

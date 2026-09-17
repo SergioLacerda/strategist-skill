@@ -30,6 +30,8 @@ type pluginOnboardingPlan struct {
 
 type pluginProbeFunc func(domain.SlotBinding, domain.InstalledInstance) bool
 
+type pluginProbeResultFunc func(domain.SlotBinding, domain.InstalledInstance) lifecycle.ProbeOutcome
+
 func planPluginOnboarding(extractor domain.FileExtractor, catalog pluginCatalog, slots map[string]string) (pluginOnboardingPlan, error) {
 	requirements, err := onboardingRequirements(catalog, slots)
 	if err != nil {
@@ -126,50 +128,6 @@ func applyPluginOnboardingPlan(store *lifecycle.Store, plan pluginOnboardingPlan
 		if err := applyPluginBinding(store, desired, probe); err != nil {
 			return err
 		}
-	}
-	return nil
-}
-
-func applyPluginBinding(store *lifecycle.Store, desired domain.SlotBinding, probe pluginProbeFunc) error {
-	current, ok := store.Binding(desired.Slot)
-	if !ok {
-		store.Bindings = append(store.Bindings, domain.SlotBinding{
-			SchemaVersion:       "strategist-plugin-binding/v1",
-			Slot:                desired.Slot,
-			InstalledInstanceID: desired.InstalledInstanceID,
-			Generation:          0,
-			Status:              desired.Status,
-			Mode:                desired.Mode,
-		})
-		return nil
-	}
-	if current.InstalledInstanceID == desired.InstalledInstanceID {
-		return nil
-	}
-	instance, ok := store.Instance(desired.InstalledInstanceID)
-	if !ok {
-		return fmt.Errorf("planned_instance_missing: %s", desired.InstalledInstanceID)
-	}
-	return switchPluginBinding(store, current, desired, instance, probe)
-}
-
-func switchPluginBinding(store *lifecycle.Store, current, desired domain.SlotBinding, instance domain.InstalledInstance, probe pluginProbeFunc) error {
-	txID := "plugin-onboarding-" + desired.Slot + "-" + desired.InstalledInstanceID
-	tx, err := store.Begin(txID, desired.Slot, desired.InstalledInstanceID)
-	if err != nil {
-		return fmt.Errorf("begin plugin lifecycle transaction: %w", err)
-	}
-	if err := store.Stage(tx.ID); err != nil {
-		return fmt.Errorf("stage plugin lifecycle transaction: %w", err)
-	}
-	if err := store.Probe(tx.ID, probe(desired, instance)); err != nil {
-		return fmt.Errorf("probe plugin lifecycle transaction: %w", err)
-	}
-	if err := store.Activate(tx.ID, current.Generation); err != nil {
-		if rollbackErr := store.Rollback(tx.ID); rollbackErr != nil {
-			return fmt.Errorf("activate plugin lifecycle transaction: %w; rollback: %v", err, rollbackErr)
-		}
-		return fmt.Errorf("activate plugin lifecycle transaction: %w", err)
 	}
 	return nil
 }

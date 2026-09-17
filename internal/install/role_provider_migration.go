@@ -79,6 +79,15 @@ func planRoleProviderEntry(extractor domain.FileExtractor, catalog pluginCatalog
 // story where some slots move to their new Provider while others silently
 // keep failing to resolve.
 func ApplyRoleProviderMigration(store *lifecycle.Store, preview RoleProviderMigrationPreview, probe pluginProbeFunc) error {
+	return applyRoleProviderMigration(store, preview, func(binding domain.SlotBinding, instance domain.InstalledInstance) lifecycle.ProbeOutcome {
+		if probe(binding, instance) {
+			return lifecycle.ProbeOutcome{Status: domain.ReadinessReady, ReasonCode: "probe_passed"}
+		}
+		return lifecycle.ProbeOutcome{Status: domain.ReadinessBlocked, ReasonCode: "probe_failed"}
+	})
+}
+
+func applyRoleProviderMigration(store *lifecycle.Store, preview RoleProviderMigrationPreview, probe pluginProbeResultFunc) error {
 	if !preview.FullyResolved() {
 		return fmt.Errorf("role_provider_migration_not_fully_resolved: refusing to apply a partial migration")
 	}
@@ -93,7 +102,7 @@ func ApplyRoleProviderMigration(store *lifecycle.Store, preview RoleProviderMigr
 			Status:              "enabled",
 			Mode:                domain.SlotBindingModeCustom,
 		}
-		if err := applyPluginBinding(store, desired, probe); err != nil {
+		if err := applyPluginBindingWithResult(store, desired, probe); err != nil {
 			return fmt.Errorf("apply role/provider migration: slot %s: %w", entry.Slot, err)
 		}
 	}
@@ -117,11 +126,9 @@ func ApplyRoleProviderMigration(store *lifecycle.Store, preview RoleProviderMigr
 // plugins.lock with no corresponding active.yaml. An empty strategistDir
 // (used by tests that exercise activation mechanics only, not a real
 // installation) skips the read — the store is seeded fresh exactly as it
-// was before persistence existed. The probe here is intentionally a simple,
-// always-successful check: a connector-aware probe policy is a further
-// enhancement this task does not claim, matching the same level of rigor
-// plugin_onboarding_test.go's own probe closures already use for the legacy
-// binding path.
+// was before persistence existed. The activation probe is connector-backed;
+// LocalPathConnector reports only structural/static readiness and never claims
+// external live invocation.
 func activateRoleProviderMigration(strategistDir string, resolvedLock domain.PluginLock, preview RoleProviderMigrationPreview) (domain.PluginLockFile, error) {
 	var persisted domain.PluginLockFile
 	if strategistDir != "" {
@@ -143,8 +150,7 @@ func activateRoleProviderMigration(strategistDir string, resolvedLock domain.Plu
 		seedRoleProviderMigrationEntry(store, entry)
 	}
 
-	probe := func(domain.SlotBinding, domain.InstalledInstance) bool { return true }
-	if err := ApplyRoleProviderMigration(store, preview, probe); err != nil {
+	if err := applyRoleProviderMigration(store, preview, connectorProbe); err != nil {
 		return domain.PluginLockFile{}, err
 	}
 

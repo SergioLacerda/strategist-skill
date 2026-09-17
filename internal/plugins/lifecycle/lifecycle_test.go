@@ -494,3 +494,163 @@ func TestLifecycleDeprecateMarksBoundInstanceWithoutDeletingIt(t *testing.T) {
 	assert.Equal(t, int64(10), binding.Generation)
 	assert.Equal(t, "upstream_eol", instance.VerificationEvidence)
 }
+
+func TestLifecycleValidateRejectsInconsistentPersistedBinding(t *testing.T) {
+	t.Parallel()
+
+	store := lifecycle.NewStore()
+	store.Inventory.Instances = []domain.InstalledInstance{{ID: instanceActive}}
+	store.Bindings = []domain.SlotBinding{{
+		Slot: "refinement", InstalledInstanceID: "missing", Generation: 1,
+	}}
+
+	err := store.Validate()
+	require.Error(t, err)
+	require.ErrorContains(t, err, "binding_instance_missing")
+}
+
+func TestLifecycleValidateAcceptsLegacyCustomBinding(t *testing.T) {
+	t.Parallel()
+
+	store := lifecycle.NewStore()
+	store.Inventory.Instances = []domain.InstalledInstance{{ID: instanceActive}}
+	store.Bindings = []domain.SlotBinding{{
+		Slot: "refinement", InstalledInstanceID: instanceActive, Generation: 0,
+	}}
+
+	require.NoError(t, store.Validate())
+}
+
+func TestLifecycleValidateRejectsMalformedInventoryAndBindings(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		prepare func(*lifecycle.Store)
+		want    string
+	}{
+		{name: "nil store", prepare: nil, want: "lifecycle_store_nil"},
+		{name: "missing instance id", prepare: func(s *lifecycle.Store) {
+			s.Inventory.Instances = []domain.InstalledInstance{{}}
+		}, want: "instance_id_missing"},
+		{name: "duplicate instance", prepare: func(s *lifecycle.Store) {
+			s.Inventory.Instances = []domain.InstalledInstance{{ID: "same"}, {ID: "same"}}
+		}, want: "duplicate_instance"},
+		{name: "incomplete binding", prepare: func(s *lifecycle.Store) {
+			s.Inventory.Instances = []domain.InstalledInstance{{ID: instanceActive}}
+			s.Bindings = []domain.SlotBinding{{InstalledInstanceID: instanceActive}}
+		}, want: "binding_incomplete"},
+		{name: "invalid mode", prepare: func(s *lifecycle.Store) {
+			s.Inventory.Instances = []domain.InstalledInstance{{ID: instanceActive}}
+			s.Bindings = []domain.SlotBinding{{Slot: "refinement", InstalledInstanceID: instanceActive, Mode: "invalid"}}
+		}, want: "binding_invalid_mode"},
+		{name: "negative generation", prepare: func(s *lifecycle.Store) {
+			s.Inventory.Instances = []domain.InstalledInstance{{ID: instanceActive}}
+			s.Bindings = []domain.SlotBinding{{Slot: "refinement", InstalledInstanceID: instanceActive, Generation: -1}}
+		}, want: "binding_negative_generation"},
+		{name: "duplicate binding slot", prepare: func(s *lifecycle.Store) {
+			s.Inventory.Instances = []domain.InstalledInstance{{ID: instanceActive}}
+			s.Bindings = []domain.SlotBinding{
+				{Slot: "refinement", InstalledInstanceID: instanceActive},
+				{Slot: "refinement", InstalledInstanceID: instanceActive},
+			}
+		}, want: "duplicate_binding_slot"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.prepare == nil {
+				var store *lifecycle.Store
+				err := store.Validate()
+				require.ErrorContains(t, err, tt.want)
+				return
+			}
+			store := lifecycle.NewStore()
+			tt.prepare(store)
+			require.ErrorContains(t, store.Validate(), tt.want)
+		})
+	}
+}
+
+func TestLifecycleProbeFailedWithoutReasonUsesDefault(t *testing.T) {
+	t.Parallel()
+
+	store := lifecycle.NewStore()
+	store.Inventory.Instances = []domain.InstalledInstance{{ID: instanceCandidate, State: lifecycle.StateVerified}}
+	store.Bindings = []domain.SlotBinding{{Slot: "refinement", InstalledInstanceID: instanceActive, Generation: 1}}
+	tx, err := store.Begin("tx-1", "refinement", instanceCandidate)
+	require.NoError(t, err)
+	require.NoError(t, store.Stage(tx.ID))
+	require.NoError(t, store.ProbeResult(tx.ID, lifecycle.ProbeOutcome{Status: domain.ReadinessBlocked}))
+	assert.Equal(t, lifecycle.StateFailed, store.Transaction(tx.ID).State)
+	assert.Equal(t, "probe_failed", store.Transaction(tx.ID).Journal[len(store.Transaction(tx.ID).Journal)-1].Code)
+}
+
+func TestLifecycleActivateFailsIfCandidateDisappearsAfterProbe(t *testing.T) {
+	t.Parallel()
+
+	store := lifecycle.NewStore()
+	store.Inventory.Instances = []domain.InstalledInstance{
+		{ID: instanceActive, State: lifecycle.StateActive, LastKnownGood: true},
+		{ID: instanceCandidate, State: lifecycle.StateVerified},
+	}
+	store.Bindings = []domain.SlotBinding{{Slot: "refinement", InstalledInstanceID: instanceActive, Generation: 1}}
+	tx, err := store.Begin("tx-1", "refinement", instanceCandidate)
+	require.NoError(t, err)
+	require.NoError(t, store.Stage(tx.ID))
+	require.NoError(t, store.Probe(tx.ID, true))
+	store.Inventory.Instances = store.Inventory.Instances[:1]
+
+	err = store.Activate(tx.ID, 1)
+	require.ErrorContains(t, err, "candidate_instance_missing")
+}
+
+func TestLifecycleProbeResultUnknownFailsClosed(t *testing.T) {
+	store := lifecycle.NewStore()
+	store.Inventory.Instances = []domain.InstalledInstance{
+		{ID: instanceActive, State: lifecycle.StateActive, LastKnownGood: true},
+		{ID: instanceCandidate, State: lifecycle.StateResolved},
+	}
+	store.Bindings = []domain.SlotBinding{{Slot: "refinement", InstalledInstanceID: instanceActive, Generation: 1}}
+	tx, err := store.Begin("probe-unknown", "refinement", instanceCandidate)
+	require.NoError(t, err)
+	require.NoError(t, store.Stage(tx.ID))
+	require.NoError(t, store.ProbeResult(tx.ID, lifecycle.ProbeOutcome{Status: domain.ReadinessUnknown, ReasonCode: "probe_not_verified"}))
+	err = store.Activate(tx.ID, 1)
+	require.ErrorContains(t, err, "activation_requires_successful_probe")
+	binding, ok := store.Binding("refinement")
+	require.True(t, ok)
+	assert.Equal(t, instanceActive, binding.InstalledInstanceID)
+}
+
+func TestLifecycleProbeResultPreservesNonCertifiedEvidenceReasons(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name   string
+		status domain.ReadinessStatus
+		reason string
+	}{
+		{name: "unsupported", status: domain.ReadinessUnsupported, reason: "probe_unsupported"},
+		{name: "failed", status: domain.ReadinessBlocked, reason: "probe_failed"},
+		{name: "stale", status: domain.ReadinessBlocked, reason: "certification_stale"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			store := lifecycle.NewStore()
+			store.Inventory.Instances = []domain.InstalledInstance{
+				{ID: instanceActive, State: lifecycle.StateActive, LastKnownGood: true},
+				{ID: instanceCandidate, State: lifecycle.StateResolved},
+			}
+			store.Bindings = []domain.SlotBinding{{Slot: "refinement", InstalledInstanceID: instanceActive, Generation: 1}}
+			tx, err := store.Begin("probe-"+tc.name, "refinement", instanceCandidate)
+			require.NoError(t, err)
+			require.NoError(t, store.Stage(tx.ID))
+			err = store.ProbeResult(tx.ID, lifecycle.ProbeOutcome{Status: tc.status, ReasonCode: tc.reason})
+			require.NoError(t, err)
+			err = store.Activate(tx.ID, 1)
+			require.ErrorContains(t, err, "activation_requires_successful_probe")
+			binding, ok := store.Binding("refinement")
+			require.True(t, ok)
+			assert.Equal(t, instanceActive, binding.InstalledInstanceID)
+		})
+	}
+}

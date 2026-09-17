@@ -108,6 +108,20 @@ type PermissionGrant struct {
 	ExpiresAt          string             `yaml:"expires_at,omitempty"`
 }
 
+// PermissionGrantFile is the workspace-owned envelope for operator grants.
+// The envelope allows future schema evolution without changing the individual
+// grant resource contract.
+type PermissionGrantFile struct {
+	SchemaVersion string            `yaml:"schema_version"`
+	Grants        []PermissionGrant `yaml:"grants"`
+}
+
+// Plugin governance persistence schema versions.
+const (
+	TrustPolicySchemaVersion         = "strategist-trust-policy/v1"
+	PermissionGrantFileSchemaVersion = "strategist-permission-grants/v1"
+)
+
 // PluginLock pins the exact resolved graph for offline replay.
 type PluginLock struct {
 	SchemaVersion string           `yaml:"schema_version"`
