@@ -20,6 +20,7 @@ import (
 var rankedCertificationPairs = map[string]string{
 	"brainstorming":    "ranger",
 	"openspec-propose": "archivist",
+	"sniper":           "sniper",
 }
 
 // certifyRankedCandidates stamps ranked/certification_digest (plus the
@@ -75,6 +76,11 @@ func certifyRankedCandidate(catalog *pluginCatalog, defaultsRoot, id, wantRole s
 }
 
 func validateVerifiedUpstreamProvenance(provider pluginCatalogProvider) error {
+	// Native role fillers are shipped by Strategist itself. Their provenance is
+	// the embedded role/skill contract, not an external upstream repository.
+	if provider.CompatibilitySource == "native_role" {
+		return nil
+	}
 	fields := map[string]string{
 		"upstream_repo":           provider.UpstreamRepo,
 		"upstream_skill_path":     provider.UpstreamSkillPath,
@@ -139,7 +145,7 @@ func validateRankedCandidate(provider pluginCatalogProvider, wantRole string) er
 	if !providerHasRole(provider, wantRole) {
 		return fmt.Errorf("role affinity missing %q (has %v)", wantRole, providerRoles(provider))
 	}
-	if _, ok := domain.RoleHandoffSchema[wantRole]; !ok {
+	if _, ok := domain.RoleHandoffSchema[wantRole]; !ok && wantRole != "sniper" {
 		return fmt.Errorf("role %q declares no handoff schema", wantRole)
 	}
 	if err := provider.Runtime.Validate(); err != nil {

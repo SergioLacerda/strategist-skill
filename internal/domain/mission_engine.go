@@ -10,9 +10,23 @@ type MissionStartRequest struct {
 // MissionEngineStatus is the durable, implementation-neutral state needed to
 // replay or restore a mission transition sequence.
 type MissionEngineStatus struct {
-	MissionID string
-	Phase     PipelinePhase
-	State     MissionState
+	MissionID         string
+	Phase             PipelinePhase
+	State             MissionState
+	HandoffAttempt    int
+	HandoffStatus     string
+	HandoffNextAction string
+}
+
+// HandoffOutcome is the already-verified and persisted result of the live
+// Archivist-to-Sniper boundary. The domain consumes this neutral contract and
+// does not depend on the handoff or telemetry packages.
+type HandoffOutcome struct {
+	Attempt     int
+	MaxAttempts int
+	Passed      bool
+	NextAction  string
+	Status      string
 }
 
 // MissionEngine is the mission-level facade over the two existing transition
@@ -82,7 +96,8 @@ func (e *MissionEngine) submitEarly(event MissionEngineEvent) error {
 		phaseEvent = EventDiscoveryDone
 	case MissionEventRefinementDone, MissionEventNoTasks,
 		MissionEventGateApproved, MissionEventGateDenied, MissionEventGateTimeout,
-		MissionEventGateRevision, MissionEventSniperDone, MissionEventRetryOK,
+		MissionEventGateRevision, MissionEventHandoffPassed, MissionEventHandoffFailed,
+		MissionEventHandoffExhausted, MissionEventSniperDone, MissionEventRetryOK,
 		MissionEventSlotTransient, MissionEventSlotPermanent, MissionEventADRCriterion,
 		MissionEventADRApproved, MissionEventADRDeclined:
 		return fmt.Errorf("mission engine: event %q is not an early-pipeline event", event)
@@ -96,6 +111,54 @@ func (e *MissionEngine) submitEarly(event MissionEngineEvent) error {
 		e.status.State = StateRefinement
 	}
 	return nil
+}
+
+// SubmitHandoff consumes one persisted live challenge result. It is the only
+// route from the independent Approval Gate into Sniper execution. Failed
+// attempts return to Archivist until the policy limit is reached, then remain
+// blocked. Replaying an attempt is rejected because the state is no longer at
+// the handoff boundary or the attempt number is not the next one.
+func (e *MissionEngine) SubmitHandoff(outcome HandoffOutcome) (MissionEngineStatus, error) {
+	if err := e.validateHandoffSubmission(outcome); err != nil {
+		if e == nil {
+			return MissionEngineStatus{}, err
+		}
+		return e.status, err
+	}
+	e.applyHandoffOutcome(outcome)
+	return e.submitFSM(handoffOutcomeEvent(outcome))
+}
+
+func (e *MissionEngine) validateHandoffSubmission(outcome HandoffOutcome) error {
+	if e == nil || e.early == nil {
+		return fmt.Errorf("mission engine: engine is nil")
+	}
+	if e.status.State != StateHandoffChallenge {
+		return fmt.Errorf("mission engine: handoff challenge is not pending from state %q", e.status.State)
+	}
+	if outcome.Attempt <= 0 || outcome.MaxAttempts <= 0 {
+		return fmt.Errorf("mission engine: handoff attempt and max attempts must be positive")
+	}
+	if outcome.Attempt != e.status.HandoffAttempt+1 {
+		return fmt.Errorf("mission engine: handoff attempt %d is not next attempt %d", outcome.Attempt, e.status.HandoffAttempt+1)
+	}
+	return nil
+}
+
+func (e *MissionEngine) applyHandoffOutcome(outcome HandoffOutcome) {
+	e.status.HandoffAttempt = outcome.Attempt
+	e.status.HandoffStatus = outcome.Status
+	e.status.HandoffNextAction = outcome.NextAction
+}
+
+func handoffOutcomeEvent(outcome HandoffOutcome) MissionEngineEvent {
+	if outcome.Passed {
+		return MissionEventHandoffPassed
+	}
+	if outcome.Attempt >= outcome.MaxAttempts {
+		return MissionEventHandoffExhausted
+	}
+	return MissionEventHandoffFailed
 }
 
 func (e *MissionEngine) submitFSM(event MissionEngineEvent) (MissionEngineStatus, error) {

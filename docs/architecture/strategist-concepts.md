@@ -138,11 +138,10 @@ curation) become a reusable challenge template for future missions.
   Strategist's pipeline yet — its challenges are available for a human
   reviewer, a follow-up mission, or a future role to use, but nothing
   invokes them automatically today.
-- `strategist handoff verify` must still be invoked deliberately (by the
-  LLM agent, a script, or a human) — no part of the `strategist` binary
-  calls it automatically during `install`/`compile`/a live mission. It
-  replaces "reason through it unaided" with "run a deterministic command,"
-  not with automatic, unprompted enforcement.
+- The standalone `strategist handoff verify` command remains deliberately
+  invocable by an LLM agent, script, or human. Live mission orchestration now
+  invokes the same deterministic verifier at the Archivist-to-Sniper boundary;
+  install and compile remain configuration-only operations.
 
 ---
 

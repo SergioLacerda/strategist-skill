@@ -57,6 +57,7 @@ func catalogProviderDigest(provider pluginCatalogProvider) string {
 	b.WriteString(provider.RiskScore)
 	b.WriteString("\t")
 	b.WriteString(provider.CompatibilitySource)
+	fmt.Fprintf(&b, "\tlifecycle=%t", provider.Lifecycle)
 	b.WriteString("\n")
 	sum := sha256.Sum256([]byte(b.String()))
 	return fmt.Sprintf("sha256:%x", sum)

@@ -25,6 +25,7 @@ const externalSkillAdapterFileName = "strategist.yaml"
 type externalSkillAdapter struct {
 	CanonicalRole  string                       `yaml:"canonical_role"`
 	Roles          []string                     `yaml:"roles,omitempty"`
+	Lifecycle      bool                         `yaml:"lifecycle,omitempty"`
 	RiskScore      string                       `yaml:"risk_score"`
 	Category       string                       `yaml:"category"`
 	Default        bool                         `yaml:"default,omitempty"`
@@ -76,8 +77,8 @@ func loadExternalSkillAdapter(dir, packageID string) (externalSkillAdapter, erro
 }
 
 func validateExternalSkillAdapter(packageID string, adapter externalSkillAdapter) error {
-	if (adapter.CanonicalRole == "" && len(adapter.Roles) == 0) || adapter.RiskScore == "" {
-		return fmt.Errorf("external skill %s: %s must declare canonical_role and risk_score", packageID, externalSkillAdapterFileName)
+	if (adapter.CanonicalRole == "" && len(adapter.Roles) == 0 && !adapter.Lifecycle) || adapter.RiskScore == "" {
+		return fmt.Errorf("external skill %s: %s must declare canonical_role/roles or lifecycle and risk_score", packageID, externalSkillAdapterFileName)
 	}
 	if adapter.ScratchRoot != "" && adapter.ScratchRoot != "runtime" && adapter.ScratchRoot != "none" {
 		return fmt.Errorf("external skill %s: %s scratch_root must be \"runtime\" or \"none\", got %q", packageID, externalSkillAdapterFileName, adapter.ScratchRoot)

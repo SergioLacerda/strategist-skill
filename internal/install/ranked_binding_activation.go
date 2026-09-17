@@ -6,13 +6,12 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
 
-// rankedModeSlots maps each Wizard-collected mode field to its slot name, so
-// applyRankedBindingChoices can iterate without duplicating "discovery"/
-// "refinement" across both fields.
+// rankedModeSlots maps each Wizard-collected mode field to its slot name.
 func rankedModeSlots(wc domain.WizardConfig) map[string]string {
 	return map[string]string{
 		"discovery":  wc.DiscoveryMode,
 		"refinement": wc.RefinementMode,
+		"execution":  wc.ExecutionMode,
 	}
 }
 

@@ -33,9 +33,14 @@ var stateTransitions = map[MissionState]map[TransitionEvent]MissionState{
 	},
 	StateApprovalGate: {
 		EventGateDenied:   StateDoneAnalysis,
-		EventGateApproved: StateExecution,
+		EventGateApproved: StateHandoffChallenge,
 		EventGateTimeout:  StateDoneAnalysis,
 		EventGateRevision: StateRefinement, // D2: documented revision loop, now representable
+	},
+	StateHandoffChallenge: {
+		EventHandoffPassed:    StateExecution,
+		EventHandoffFailed:    StateRefinement,
+		EventHandoffExhausted: StateBlocked,
 	},
 	StateExecution: {
 		EventSniperDone:      StateDoneDelivery,

@@ -23,6 +23,13 @@ const (
 	MissionEventGateTimeout MissionEngineEvent = "gate_timeout"
 	// MissionEventGateRevision requests refinement again.
 	MissionEventGateRevision MissionEngineEvent = "gate_revision_requested"
+	// MissionEventHandoffPassed is emitted only after the challenge result has
+	// been persisted successfully at the live Archivist->Sniper boundary.
+	MissionEventHandoffPassed MissionEngineEvent = "handoff_challenge_passed"
+	// MissionEventHandoffFailed returns a repairable handoff to Archivist.
+	MissionEventHandoffFailed MissionEngineEvent = "handoff_challenge_failed"
+	// MissionEventHandoffExhausted is the fail-closed terminal outcome.
+	MissionEventHandoffExhausted MissionEngineEvent = "handoff_challenge_exhausted"
 	// MissionEventSniperDone signals execution completion.
 	MissionEventSniperDone MissionEngineEvent = "sniper_done"
 	// MissionEventRetryOK resumes after a transient failure.
@@ -44,7 +51,9 @@ func missionTransitionEvent(event MissionEngineEvent) (TransitionEvent, bool) {
 		MissionEventRefinementDone: EventArchivistTasks, MissionEventNoTasks: EventArchivistNoTasks,
 		MissionEventGateApproved: EventGateApproved, MissionEventGateDenied: EventGateDenied,
 		MissionEventGateTimeout: EventGateTimeout, MissionEventGateRevision: EventGateRevision,
-		MissionEventSniperDone: EventSniperDone, MissionEventRetryOK: EventRetryOK,
+		MissionEventHandoffPassed: EventHandoffPassed, MissionEventHandoffFailed: EventHandoffFailed,
+		MissionEventHandoffExhausted: EventHandoffExhausted,
+		MissionEventSniperDone:       EventSniperDone, MissionEventRetryOK: EventRetryOK,
 		MissionEventSlotTransient: EventSlotTransient, MissionEventSlotPermanent: EventSlotPermanent,
 		MissionEventADRCriterion: EventADRCriterionMet, MissionEventADRApproved: EventADRApproved,
 		MissionEventADRDeclined: EventADRDeclined,
@@ -55,7 +64,7 @@ func missionTransitionEvent(event MissionEngineEvent) (TransitionEvent, bool) {
 
 func phaseForState(state MissionState) PipelinePhase {
 	switch state {
-	case StateApprovalGate, StateSideQuestGate, StateADRGate1, StateADRGate2, StateDirectGate:
+	case StateApprovalGate, StateHandoffChallenge, StateSideQuestGate, StateADRGate1, StateADRGate2, StateDirectGate:
 		return PhaseApprovalGate
 	case StateExecution, StateSideQuestExec, StateDirectExec, StateRetryingExecution, StateRetryingDirectExec:
 		return PhaseExecution

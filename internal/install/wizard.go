@@ -113,7 +113,7 @@ func collectWizardConfig(p Prompter, catalog pluginCatalog, providerRisk map[str
 	if err != nil {
 		return domain.WizardConfig{}, err
 	}
-	discovery, refinement, execution, discoveryMode, refinementMode, err := promptSlots(p, b, catalog, providerRisk)
+	discovery, refinement, execution, discoveryMode, refinementMode, executionMode, err := promptSlots(p, b, catalog, providerRisk)
 	if err != nil {
 		return domain.WizardConfig{}, err
 	}
@@ -121,7 +121,7 @@ func collectWizardConfig(p Prompter, catalog pluginCatalog, providerRisk map[str
 	if err != nil {
 		return domain.WizardConfig{}, err
 	}
-	return domain.WizardConfig{Mode: mode, BasePath: basePath, UILanguage: uiLang, DocLanguage: normLang(docLang), ChatLanguage: normLang(chatLang), CodeLanguage: normLang(codeLang), DiscoveryProvider: discovery, RefinementProvider: refinement, ExecutionProvider: execution, DiscoveryMode: discoveryMode, RefinementMode: refinementMode, TreasureChestPath: chestPath}, nil
+	return domain.WizardConfig{Mode: mode, BasePath: basePath, UILanguage: uiLang, DocLanguage: normLang(docLang), ChatLanguage: normLang(chatLang), CodeLanguage: normLang(codeLang), DiscoveryProvider: discovery, RefinementProvider: refinement, ExecutionProvider: execution, DiscoveryMode: discoveryMode, RefinementMode: refinementMode, ExecutionMode: executionMode, TreasureChestPath: chestPath}, nil
 }
 
 // validateAndActivatePluginPlan runs every catalog-dependent Wizard check and

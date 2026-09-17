@@ -36,7 +36,7 @@ func validMissionState(phase PipelinePhase, state MissionState) bool {
 	valid := map[PipelinePhase]map[MissionState]bool{
 		PhaseBootstrap: {StateInit: true}, PhaseIntake: {StateInit: true}, PhaseDiscovery: {StateInit: true},
 		PhaseRefinement:   {StateRefinement: true, StateRetryingRefinement: true},
-		PhaseApprovalGate: {StateApprovalGate: true, StateSideQuestGate: true, StateADRGate1: true, StateADRGate2: true, StateDirectGate: true},
+		PhaseApprovalGate: {StateApprovalGate: true, StateHandoffChallenge: true, StateSideQuestGate: true, StateADRGate1: true, StateADRGate2: true, StateDirectGate: true},
 		PhaseExecution:    {StateExecution: true, StateSideQuestExec: true, StateRetryingExecution: true, StateDirectExec: true, StateRetryingDirectExec: true},
 		PhaseDone:         {StateDoneAnalysis: true, StateDoneDelivery: true, StateADRDone: true, StateDirectDone: true},
 		PhaseBlocked:      {StateBlocked: true},

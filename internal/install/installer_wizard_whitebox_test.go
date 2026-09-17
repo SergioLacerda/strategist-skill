@@ -36,8 +36,8 @@ func TestInstall_WizardPath(t *testing.T) {
 	assert.NotContains(t, s, "git_persistence_mode")
 	assert.Contains(t, s, "discovery: brainstorming")
 	assert.Contains(t, s, "refinement: archivist")
-	assert.Contains(t, s, "execution: sniper")
-	assert.NotContains(t, s, "execution: sdd-ask")
+	assert.Contains(t, s, "execution: sdd-ask")
+	assert.NotContains(t, s, "execution: sniper")
 
 	brainstorming, err := os.ReadFile(filepath.Join(dir, ".strategist", "skills", "brainstorming", "skill.yaml"))
 	require.NoError(t, err)
@@ -248,11 +248,11 @@ func TestPromptSlots_UnknownProviderPrintsWarning(t *testing.T) {
 	input := "custom-ranger\nopenspec-explore\nsdd-ask\n\n"
 	catalog, err := parseCatalogBytes([]byte(minimalCatalogYAML))
 	require.NoError(t, err)
-	discovery, refinement, execution, _, _, err := promptSlots(NewTextPrompter(strings.NewReader(input)), b, catalog, knownProviderRisk)
+	discovery, refinement, execution, _, _, _, err := promptSlots(NewTextPrompter(strings.NewReader(input)), b, catalog, knownProviderRisk)
 	require.NoError(t, err)
 	assert.Equal(t, "custom-ranger", discovery)
 	assert.Equal(t, "openspec-explore", refinement)
-	assert.Equal(t, nativeExecutionProvider, execution)
+	assert.Equal(t, "sdd-ask", execution)
 }
 
 // TestRunWizardBlocksOnUnresolvedCustomSkill covers docs/adr/0029's converse
@@ -267,6 +267,16 @@ func TestRunWizardBlocksOnUnresolvedCustomSkill(t *testing.T) {
 	t.Setenv("HOME", homeDir) // no skill installed under homeDir — deliberately unresolvable
 
 	input := "en\nen\nen\nen\nepic\n.analysis\ndefinitely-not-a-real-installed-skill-id-xyz\nopenspec-explore\nsdd-ask\n\n"
+	_, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(input)), minimalExtractor{}, "")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "configured_unverified")
+}
+
+func TestRunWizardBlocksOnUnresolvedCustomExecutionProvider(t *testing.T) {
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+
+	input := "en\nen\nen\nen\nepic\n.analysis\nbrainstorming\nopenspec-propose\ncustom-execution\n\n"
 	_, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(input)), minimalExtractor{}, "")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "configured_unverified")

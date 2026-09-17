@@ -23,7 +23,7 @@ providers:
       host_api_digest: sha256:b3e37465b4951d23ee3f87269f927f6dfa443df852d49207f23cf635420efa46
       connector_digest: sha256:462e8637dee6cc32c3e256fb1a864401200ca76d2d17ec8cb97e20edb4f16ad0
       test_suite_digest: sha256:ae9ea8e91ef985e4018a5c584174d5f7bcc2347d10821a3302a4638c4d863a42
-      policy_digest: sha256:25f02e03832bb7176deb80c2ff2f2ce8ead703087d48db0139cda80a1d67d7ce
+      policy_digest: sha256:a2e38159e7b9c71f90db430c9b122a278fd0c3de83333b52241acd869fadf629
       conformance_level: C1
       runtime:
         kind: none
@@ -41,8 +41,22 @@ providers:
       risk_score: controlled
       compatibility_source: external
     - id: openspec-archive-change
+      version: "1.0"
+      provider_schema_version: "1"
+      status: active
       risk_score: write_analysis
-      compatibility_source: external
+      category: lifecycle
+      lifecycle: true
+      upstream_repo: Fission-AI/OpenSpec
+      upstream_skill_path: skills/openspec-archive-change/SKILL.md
+      upstream_version: 1.10.0
+      upstream_commit: 1ebddd17f40dde15dfd28289e4493c3cf05ee9df
+      upstream_content_digest: sha256:e111d71216167eea10cec26abe8f6e15d925efeef2fd9925ffa219f55145acce
+      license: MIT
+      description: Archive a completed change in the experimental workflow. Use when the user wants to finalize and archive a change after implementation is complete.
+      installable: true
+      legacy_manifest_path: skills/openspec-archive-change/skill.yaml
+      compatibility_source: embedded
     - id: openspec-explore
       version: "1.0"
       provider_schema_version: "1"
@@ -78,7 +92,7 @@ providers:
       host_api_digest: sha256:fff0c4febdedbead81855cc1e6ead4150b1e874a65d434bd71ae6134cf69c23d
       connector_digest: sha256:462e8637dee6cc32c3e256fb1a864401200ca76d2d17ec8cb97e20edb4f16ad0
       test_suite_digest: sha256:61bfd55e31ae3ae3501c5f5699e21e8c17873526a3b3ce8b7de2b47d946f1f92
-      policy_digest: sha256:25f02e03832bb7176deb80c2ff2f2ce8ead703087d48db0139cda80a1d67d7ce
+      policy_digest: sha256:a2e38159e7b9c71f90db430c9b122a278fd0c3de83333b52241acd869fadf629
       conformance_level: C1
       runtime:
         kind: openspec_root
@@ -125,4 +139,36 @@ providers:
       compatibility_source: external
     - id: sniper
       risk_score: controlled
+      category: documentation
+      canonical_role: sniper
+      roles:
+        - sniper
+      default: true
+      ranked: true
+      certification_digest: sha256:9cc5a46c11978922b2ea916f9da438b580c81cfbba3ea863b24576808e4955b6
+      ranked_binding_generation: 1
+      ranked_binding_status: active
+      host_api_digest: sha256:61da13f66d44ea8092079ddb78d39f8490868ebe82add2c1d474a56f7ad20f91
+      connector_digest: sha256:462e8637dee6cc32c3e256fb1a864401200ca76d2d17ec8cb97e20edb4f16ad0
+      test_suite_digest: sha256:ab8013534d9373fcc289d338814f1fe1c860f57db9ad02d61f177de621c77557
+      policy_digest: sha256:a2e38159e7b9c71f90db430c9b122a278fd0c3de83333b52241acd869fadf629
+      conformance_level: C1
       compatibility_source: native_role
+    - id: writing-plans
+      provider_schema_version: "1"
+      status: active
+      risk_score: write_analysis
+      category: refinement
+      canonical_role: archivist
+      roles:
+        - archivist
+      upstream_repo: obra/superpowers
+      upstream_skill_path: skills/writing-plans/SKILL.md
+      upstream_version: 6.3.0
+      upstream_commit: b36e0829c6d0140e93cfef2ca599b1b07d4a7797
+      upstream_content_digest: sha256:2f24891aab2623894a34e3322fbd1b4fcb2254d089293ef78ab1740a79f79c49
+      license: MIT
+      description: Use when you have a spec or requirements for a multi-step task, before touching code
+      installable: true
+      legacy_manifest_path: skills/writing-plans/skill.yaml
+      compatibility_source: embedded

@@ -22,6 +22,14 @@ type WriteDecision struct {
 	Reason string
 }
 
+// WriteScope contains onboarding-resolved roots. Roles remain portable and
+// never encode repository directory names.
+type WriteScope struct {
+	AnalysisRoot       string
+	DocumentationRoots []string
+	RuntimeRoot        string
+}
+
 // ClassifyWriteTarget maps a candidate write path to the PluginPermission
 // that governs it, given the mission's configured analysis base_path (read
 // from active.yaml — see domain.ActiveConfig.BasePath; this deliberately
@@ -38,18 +46,18 @@ type WriteDecision struct {
 // evaluate a concrete path against it instead of relying on agent-contract
 // text alone.
 func ClassifyWriteTarget(basePath, targetPath string) domain.PluginPermission {
-	clean := filepath.ToSlash(filepath.Clean(targetPath))
-	clean = strings.TrimPrefix(clean, "./")
+	return ClassifyWriteTargetInScope(WriteScope{AnalysisRoot: basePath, DocumentationRoots: []string{"docs"}}, targetPath)
+}
 
-	if basePath != "" {
-		base := filepath.ToSlash(filepath.Clean(basePath))
-		base = strings.TrimPrefix(base, "./")
-		if base != "." && (clean == base || strings.HasPrefix(clean, base+"/")) {
-			return domain.PluginPermissionWriteAnalysis
-		}
+// ClassifyWriteTargetInScope classifies a target against onboarding-resolved roots.
+func ClassifyWriteTargetInScope(scope WriteScope, targetPath string) domain.PluginPermission {
+	if underRoot(scope.AnalysisRoot, targetPath) {
+		return domain.PluginPermissionWriteAnalysis
 	}
-	if clean == "docs" || strings.HasPrefix(clean, "docs/") {
-		return domain.PluginPermissionWriteDocs
+	for _, root := range scope.DocumentationRoots {
+		if underRoot(root, targetPath) {
+			return domain.PluginPermissionWriteDocs
+		}
 	}
 	return domain.PluginPermissionWriteSource
 }
@@ -78,14 +86,23 @@ func ClassifyWriteTarget(basePath, targetPath string) domain.PluginPermission {
 // targeting docs/ or a bare source file today is NOT enforceably allowed
 // under the native connector, even though it may be nominally granted.
 func EvaluateWrite(basePath, targetPath string, report EnforcementReport) WriteDecision {
-	if IsForbiddenStrategistRefinementPath(targetPath) {
+	return EvaluateWriteInScope(WriteScope{AnalysisRoot: basePath, DocumentationRoots: []string{"docs"}}, targetPath, report)
+}
+
+// EvaluateWriteInScope applies connector enforcement to a target in a resolved scope.
+func EvaluateWriteInScope(scope WriteScope, targetPath string, report EnforcementReport) WriteDecision {
+	if underRoot(scope.RuntimeRoot, targetPath) {
+		return WriteDecision{Allowed: false, Permission: domain.PluginPermissionWriteSource,
+			Reason: fmt.Sprintf("write to %q is forbidden inside runtime root %q", targetPath, scope.RuntimeRoot)}
+	}
+	if isForbiddenRefinementPath(scope.DocumentationRoots, targetPath) {
 		return WriteDecision{
 			Allowed:    false,
 			Permission: domain.PluginPermissionWriteDocs,
 			Reason:     fmt.Sprintf("write to %q is forbidden for Strategist refinement artifacts; use <base_path>/refined/", targetPath),
 		}
 	}
-	permission := ClassifyWriteTarget(basePath, targetPath)
+	permission := ClassifyWriteTargetInScope(scope, targetPath)
 	enforceable := permissionSet(report.Enforceable)
 	if !enforceable[permission] {
 		return WriteDecision{
@@ -107,13 +124,32 @@ func EvaluateWrite(basePath, targetPath string, report EnforcementReport) WriteD
 	}
 }
 
+func underRoot(root, target string) bool {
+	if strings.TrimSpace(root) == "" || strings.TrimSpace(target) == "" {
+		return false
+	}
+	rel, err := filepath.Rel(filepath.Clean(root), filepath.Clean(target))
+	if err != nil {
+		return false
+	}
+	return rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel))
+}
+
+func isForbiddenRefinementPath(roots []string, target string) bool {
+	for _, root := range roots {
+		if underRoot(filepath.Join(root, "plans"), target) {
+			return true
+		}
+	}
+	return false
+}
+
 // IsForbiddenStrategistRefinementPath identifies repository planning paths that
 // must never receive a Strategist Ranger or Archivist artifact. The check is
 // intentionally independent of the configured base path: docs/plans is a
 // forbidden target even when a connector advertises docs.write.
 func IsForbiddenStrategistRefinementPath(targetPath string) bool {
 	clean := filepath.ToSlash(filepath.Clean(targetPath))
-	clean = strings.TrimPrefix(clean, "./")
 	return clean == "docs/plans" || strings.HasPrefix(clean, "docs/plans/") ||
 		strings.HasSuffix(clean, "/docs/plans") || strings.Contains(clean, "/docs/plans/")
 }

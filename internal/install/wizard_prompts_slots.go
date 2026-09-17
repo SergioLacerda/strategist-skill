@@ -8,44 +8,52 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/i18n"
 )
 
-// promptSlots collects discovery and refinement slot providers. The execution slot is
-// always the native `sniper` role — Strategist's built-in execution persona, not a
-// governance/provider skill selectable from `.sdd/skills` (see mission
-// 2026-07-25-wizard-execution-slot-native-sniper). The legacy execution prompt is still
-// shown and consumed here so prompt count and scripted-input ordering stay stable, but
-// its returned value is discarded: no typed input (e.g. `sdd-ask`) can ever leak into
-// slots.execution.
+// promptSlots collects all slot providers. Execution defaults to the certified
+// internal Sniper binding, while still exposing the same explicit Ranked versus
+// Custom choice used by the other roles.
 //
 // The discovery/refinement option lists are driven by explicit role affinity
 // (compatibleProviderOptions), not a hardcoded slice. Handoff production is a
 // fixed role checkpoint, so a weapon is not hidden merely because its adapter
 // does not declare the handoff schema.
-func promptSlots(p Prompter, b i18n.WizardStrings, catalog pluginCatalog, providerRisk map[string]string) (discovery, refinement, execution, discoveryMode, refinementMode string, err error) {
+func promptSlots(p Prompter, b i18n.WizardStrings, catalog pluginCatalog, providerRisk map[string]string) (discovery, refinement, execution, discoveryMode, refinementMode, executionMode string, err error) {
 	fmt.Println(b.HeaderSlots)
 
 	discoveryIDs, discoveryDefault, discoveryRankedID, discoveryExcluded := compatibleProviderOptions(catalog, "ranger", domain.RoleHandoffSchema["ranger"])
 	printExcludedCandidates(discoveryExcluded)
 	if len(discoveryIDs) == 0 {
-		return "", "", "", "", "", fmt.Errorf("wizard: discovery: no compatible weapon for role ranger")
+		return "", "", "", "", "", "", fmt.Errorf("wizard: discovery: no compatible weapon for role ranger")
 	}
 	discovery, discoveryMode, err = promptSlotProvider(p, b.PromptDiscovery, discoveryIDs, discoveryDefault, discoveryRankedID, b.LabelCustomInput, providerRisk, "write_analysis", "discovery")
 	if err != nil {
-		return "", "", "", "", "", err
+		return "", "", "", "", "", "", err
 	}
 
 	refinementIDs, refinementDefault, refinementRankedID, refinementExcluded := compatibleProviderOptions(catalog, "archivist", domain.RoleHandoffSchema["archivist"])
 	printExcludedCandidates(refinementExcluded)
 	if len(refinementIDs) == 0 {
-		return "", "", "", "", "", fmt.Errorf("wizard: refinement: no compatible weapon for role archivist")
+		return "", "", "", "", "", "", fmt.Errorf("wizard: refinement: no compatible weapon for role archivist")
 	}
 	refinement, refinementMode, err = promptSlotProvider(p, b.PromptRefinement, refinementIDs, refinementDefault, refinementRankedID, b.LabelCustomInput, providerRisk, "write_analysis", "refinement")
 	if err != nil {
-		return "", "", "", "", "", err
+		return "", "", "", "", "", "", err
 	}
-	if _, err = promptProvider(p, b.PromptExecution, nativeExecutionProvider, []string{nativeExecutionProvider}, b.LabelCustomInput, providerRisk, "controlled", "execution"); err != nil {
-		return "", "", "", "", "", err
+	execution, executionMode, err = promptExecutionSlot(p, b, catalog, providerRisk)
+	if err != nil {
+		return "", "", "", "", "", "", err
 	}
-	return discovery, refinement, nativeExecutionProvider, discoveryMode, refinementMode, nil
+	return discovery, refinement, execution, discoveryMode, refinementMode, executionMode, nil
+}
+
+func promptExecutionSlot(p Prompter, b i18n.WizardStrings, catalog pluginCatalog, providerRisk map[string]string) (string, string, error) {
+	ids, defaultID, rankedID, excluded := compatibleProviderOptions(catalog, "sniper", "")
+	printExcludedCandidates(excluded)
+	if len(ids) == 0 {
+		// Older synthetic extractors predate the catalogued internal skill.
+		provider, err := promptProvider(p, b.PromptExecution, nativeExecutionProvider, []string{nativeExecutionProvider}, b.LabelCustomInput, providerRisk, "controlled", "execution")
+		return provider, domain.SlotBindingModeCustom, err
+	}
+	return promptSlotProvider(p, b.PromptExecution, ids, defaultID, rankedID, b.LabelCustomInput, providerRisk, "controlled", "execution")
 }
 
 // excludedProviderOption records why compatibleProviderOptions did not offer
@@ -87,7 +95,7 @@ func compatibleProviderOptions(catalog pluginCatalog, roleName, handoffSchema st
 }
 
 func appendProviderOption(ids []string, defaultID string, excluded []excludedProviderOption, candidate domain.ProviderContract, role domain.RoleContract) ([]string, string, []excludedProviderOption) {
-	if candidate.Source == domain.ProviderSourceNativeRole {
+	if candidate.Source == domain.ProviderSourceNativeRole && (!candidate.Ranked || candidate.CertificationDigest == "") {
 		return ids, defaultID, excluded
 	}
 	result := candidate.CheckRoleAffinity(role)

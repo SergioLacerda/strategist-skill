@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/SergioLacerda/strategist-skill/internal/authorization"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/integrity"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
@@ -171,6 +172,10 @@ func execute() {
 //	3 — stale artifact or config integrity error
 func exitCodeFor(err error) int {
 	switch {
+	case errors.Is(err, authorization.ErrDenied), errors.Is(err, authorization.ErrBlocked):
+		return 2
+	case errors.Is(err, authorization.ErrStale):
+		return 3
 	case errors.Is(err, domain.ErrPipelineBypassDetected):
 		return 2
 	case errors.Is(err, domain.ErrSourceStale), errors.Is(err, domain.ErrArtifactAbsent), errors.Is(err, domain.ErrManifestMissing):

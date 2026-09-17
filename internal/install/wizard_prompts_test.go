@@ -3,9 +3,11 @@ package install
 import (
 	"bytes"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/i18n"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -138,6 +140,25 @@ func TestSplitRankedChoice(t *testing.T) {
 	provider, mode = splitRankedChoice("custom-skill", "")
 	assert.Equal(t, "custom-skill", provider)
 	assert.Equal(t, "custom", mode)
+}
+
+func TestPromptExecutionSlot_ResolvesRankedAndCustomModes(t *testing.T) {
+	t.Parallel()
+
+	catalog := pluginCatalog{Providers: []pluginCatalogProvider{
+		{ID: "sniper", RiskScore: "controlled", CompatibilitySource: "native_role", Ranked: true, CertificationDigest: "sha256:cert"},
+	}}
+	b := i18n.BundleFor("en")
+
+	provider, mode, err := promptExecutionSlot(NewTextPrompter(strings.NewReader("sniper::ranked\n")), b, catalog, knownProviderRisk)
+	require.NoError(t, err)
+	assert.Equal(t, "sniper", provider)
+	assert.Equal(t, domain.SlotBindingModeRanked, mode)
+
+	provider, mode, err = promptExecutionSlot(NewTextPrompter(strings.NewReader("custom-execution\n")), b, catalog, knownProviderRisk)
+	require.NoError(t, err)
+	assert.Equal(t, "custom-execution", provider)
+	assert.Equal(t, domain.SlotBindingModeCustom, mode)
 }
 
 func TestPrintExcludedCandidatesPrintsEachIDWithItsReasons(t *testing.T) {

@@ -9,7 +9,7 @@ func TestRunScenario_StateMachine_Pass(t *testing.T) {
 			Target: TargetStateMachine,
 			Params: map[string]any{
 				"start":  "APPROVAL_GATE",
-				"events": []any{"gate_approved"},
+				"events": []any{"gate_approved", "handoff_challenge_passed"},
 			},
 		},
 		Expected:   Expected{State: "EXECUTION"},

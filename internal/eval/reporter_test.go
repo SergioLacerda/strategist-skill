@@ -10,7 +10,7 @@ import (
 
 func TestRunScenariosAggregatesResults(t *testing.T) {
 	suite := RunScenarios("sample", []Scenario{
-		{ID: "pass", Input: Input{Target: TargetStateMachine, Params: map[string]any{"start": "APPROVAL_GATE", "events": []any{"gate_approved"}}}, Expected: Expected{State: "EXECUTION"}},
+		{ID: "pass", Input: Input{Target: TargetStateMachine, Params: map[string]any{"start": "APPROVAL_GATE", "events": []any{"gate_approved", "handoff_challenge_passed"}}}, Expected: Expected{State: "EXECUTION"}},
 		{ID: "fail", Input: Input{Target: TargetStateMachine, Params: map[string]any{"start": "APPROVAL_GATE", "events": []any{"gate_denied"}}}, Expected: Expected{State: "EXECUTION"}},
 	})
 

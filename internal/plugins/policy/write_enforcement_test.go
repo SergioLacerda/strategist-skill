@@ -56,6 +56,20 @@ func TestClassifyWriteTarget_DoesNotFalsePositiveOnPrefixCollision(t *testing.T)
 	assert.NotEqual(t, domain.PluginPermissionWriteAnalysis, policy.ClassifyWriteTarget(".analysis", ".analysis-archive/notes.md"))
 }
 
+func TestClassifyWriteTargetInScope_UsesResolvedRoots(t *testing.T) {
+	scope := policy.WriteScope{AnalysisRoot: "workspace/notes", DocumentationRoots: []string{"project-docs"}, RuntimeRoot: ".strategist"}
+	assert.Equal(t, domain.PluginPermissionWriteAnalysis, policy.ClassifyWriteTargetInScope(scope, "workspace/notes/mission.md"))
+	assert.Equal(t, domain.PluginPermissionWriteDocs, policy.ClassifyWriteTargetInScope(scope, "project-docs/adr/001.md"))
+	assert.Equal(t, domain.PluginPermissionWriteSource, policy.ClassifyWriteTargetInScope(scope, "docs/adr/001.md"))
+}
+
+func TestEvaluateWriteInScope_DeniesRuntimeAndResolvedPlans(t *testing.T) {
+	scope := policy.WriteScope{AnalysisRoot: "workspace/notes", DocumentationRoots: []string{"project-docs"}, RuntimeRoot: ".strategist"}
+	report := policy.EnforcementReport{ConnectorID: "test", Enforceable: []domain.PluginPermission{domain.PluginPermissionWriteDocs}}
+	assert.False(t, policy.EvaluateWriteInScope(scope, ".strategist/active.yaml", report).Allowed)
+	assert.False(t, policy.EvaluateWriteInScope(scope, "project-docs/plans/change.md", report).Allowed)
+}
+
 // --- EvaluateWrite ---
 
 func TestEvaluateWrite_AllowsEnforceableAnalysisWrite(t *testing.T) {

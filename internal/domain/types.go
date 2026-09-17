@@ -14,10 +14,11 @@ type PhaseLabels struct {
 
 // ActiveConfig is the structure of a standalone active.yaml template.
 type ActiveConfig struct {
-	Mode               string `yaml:"mode"`
-	BasePath           string `yaml:"base_path"`
-	KnowledgeIndexPath string `yaml:"knowledge_index_path"`
-	Language           any    `yaml:"language,omitempty"`
+	Mode               string   `yaml:"mode"`
+	BasePath           string   `yaml:"base_path"`
+	DocumentationRoots []string `yaml:"documentation_roots,omitempty"`
+	KnowledgeIndexPath string   `yaml:"knowledge_index_path"`
+	Language           any      `yaml:"language,omitempty"`
 	// Legacy fields — parsed to detect stale active.yaml files. ValidateNoLegacyFields returns
 	// an error if either is set, directing users to remove them.
 	ExecutionMode      string            `yaml:"execution_mode,omitempty"`

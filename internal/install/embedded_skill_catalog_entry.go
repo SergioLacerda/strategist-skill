@@ -18,6 +18,7 @@ func catalogProviderFromIngestedSkill(skill IngestedSkill) pluginCatalogProvider
 		Category:                skill.Adapter.Category,
 		CanonicalRole:           skill.Adapter.CanonicalRole,
 		Roles:                   skill.Adapter.Roles,
+		Lifecycle:               skill.Adapter.Lifecycle,
 		Default:                 skill.Adapter.Default,
 		Description:             skillDescription(skill.Dir),
 		AuxiliaryTools:          skill.Adapter.AuxiliaryTools,

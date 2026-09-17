@@ -23,6 +23,7 @@ type pluginCatalogProvider struct {
 	Category      string   `yaml:"category,omitempty"`
 	CanonicalRole string   `yaml:"canonical_role,omitempty"`
 	Roles         []string `yaml:"roles,omitempty"`
+	Lifecycle     bool     `yaml:"lifecycle,omitempty"`
 	// Default marks this provider as the primary Arma for its CanonicalRole
 	// among candidates sharing it — a selection preference, not proof of
 	// provenance, installation, or readiness (see domain.ProviderContract.Default).

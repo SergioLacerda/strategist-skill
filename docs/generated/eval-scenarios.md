@@ -15,7 +15,7 @@ files rather than a CLI-loadable format.
 
 | Group | File | Scenario ID | Description |
 |---|---|---|---|
-| `contracts` | `tests/evals/contracts/accept_execution_after_approval_test.go` | `accept-execution-after-approval` | gate_approved transitions APPROVAL_GATE to EXECUTION |
+| `contracts` | `tests/evals/contracts/accept_execution_after_approval_test.go` | `accept-execution-after-approval` | gate_approved opens the handoff challenge and a passed challenge enters EXECUTION |
 | `contracts` | `tests/evals/contracts/archivist_handoff_schema_valid_test.go` | `archivist-handoff-schema-valid` | handoff-archivist-to-sniper.schema.yaml exists, parses as YAML, and declares required_fields |
 | `contracts` | `tests/evals/contracts/archivist_produces_no_tasks_resolves_as_analysis_test.go` | `archivist-produces-no-tasks-resolves-as-analysis` | archivist_done_no_tasks transitions REFINEMENT to DONE_ANALYSIS, bypassing the approval gate entirely |
 | `contracts` | `tests/evals/contracts/critical_hit_closure_report_shape_valid_test.go` | `critical-hit-closure-report-shape-valid` | a Critical Hit closure completion report fixture has all four required fields |

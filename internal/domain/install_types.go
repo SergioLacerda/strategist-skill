@@ -46,15 +46,18 @@ type ProviderManifest struct {
 
 // WizardConfig holds values collected from the interactive install wizard.
 type WizardConfig struct {
-	Mode               string
-	BasePath           string
+	Mode     string
+	BasePath string
+	// DocumentationRoots are resolved during onboarding and constrain
+	// documentation writes for the execution binding.
+	DocumentationRoots []string
 	UILanguage         string // en | pt-BR — wizard interface + ongoing interactions
 	DocLanguage        string // en | pt-BR — generated documentation
 	ChatLanguage       string // en | pt-BR — AI chat responses
 	CodeLanguage       string // en | pt-BR — internal code (default: en)
 	DiscoveryProvider  string // skill id for the Ranger (discovery) slot
 	RefinementProvider string // skill id for the Arquivista (refinement) slot
-	ExecutionProvider  string // always "sniper" — the native execution role, not a wizard-selectable governance/provider skill id
+	ExecutionProvider  string // execution provider resolved by onboarding
 	// DiscoveryMode and RefinementMode record which pipeline the Wizard's
 	// prompt resolved for that slot — SlotBindingModeRanked when the operator
 	// picked the "Ranger rankeado"/certified-Ranked option, empty/Custom
@@ -65,6 +68,7 @@ type WizardConfig struct {
 	// reinforcement DEC-002 describes.
 	DiscoveryMode     string
 	RefinementMode    string
+	ExecutionMode     string // Ranked/Custom mode resolved for the execution binding
 	TreasureChestPath string // optional: path to a knowledge source (e.g. .sdd/source)
 	// AdrCanonicalPath is the optional, project-relative destination Sniper writes ADRs
 	// to instead of the <base_path>/archived/<mission_id>-adr.md fallback (see

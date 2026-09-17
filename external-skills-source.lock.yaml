@@ -4,6 +4,10 @@ packages:
       version: 1.0.0
       digest: sha256:8ba7cdc0c82a4733ccc3fd41949384b47900a8941156f8a4dcc2a382abd07b02
       source: external-skills-source/brainstorming
+    - id: openspec-archive-change
+      version: "1.0"
+      digest: sha256:4b643d2f34c4916563fbf83c3d9f871558590813dc79ff05483a64e98d6b3225
+      source: external-skills-source/openspec-archive-change
     - id: openspec-explore
       version: "1.0"
       digest: sha256:9a976e674f2bbcc0c6131d7cacff1bcc5090b3b6dfc5b791d36abceadeb1e07e
@@ -12,3 +16,7 @@ packages:
       version: "1.0"
       digest: sha256:dc003f3cdd4832ad75e696f5fa62932110b62c3a35871547b9602b143e606805
       source: external-skills-source/openspec-propose
+    - id: writing-plans
+      version: ""
+      digest: sha256:c2d9c8ff4029ea751113aa9c8df89276fc8852391a8af7378ec8d280cac82572
+      source: external-skills-source/writing-plans

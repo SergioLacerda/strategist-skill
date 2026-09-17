@@ -23,16 +23,17 @@ type MissionState string
 
 // Orchestrator finite-state machine states.
 const (
-	StateInit          MissionState = "INIT"
-	StateSideQuestScan MissionState = "SIDE_QUEST_SCAN"
-	StateSideQuestGate MissionState = "SIDE_QUEST_GATE"
-	StateSideQuestExec MissionState = "SIDE_QUEST_EXEC"
-	StateRefinement    MissionState = "REFINEMENT"
-	StateApprovalGate  MissionState = "APPROVAL_GATE"
-	StateExecution     MissionState = "EXECUTION"
-	StateDoneAnalysis  MissionState = "DONE_ANALYSIS"
-	StateDoneDelivery  MissionState = "DONE_DELIVERY"
-	StateBlocked       MissionState = "BLOCKED"
+	StateInit             MissionState = "INIT"
+	StateSideQuestScan    MissionState = "SIDE_QUEST_SCAN"
+	StateSideQuestGate    MissionState = "SIDE_QUEST_GATE"
+	StateSideQuestExec    MissionState = "SIDE_QUEST_EXEC"
+	StateRefinement       MissionState = "REFINEMENT"
+	StateApprovalGate     MissionState = "APPROVAL_GATE"
+	StateHandoffChallenge MissionState = "HANDOFF_CHALLENGE"
+	StateExecution        MissionState = "EXECUTION"
+	StateDoneAnalysis     MissionState = "DONE_ANALYSIS"
+	StateDoneDelivery     MissionState = "DONE_DELIVERY"
+	StateBlocked          MissionState = "BLOCKED"
 
 	// ADR stage states (§8 pipeline).
 	StateADRGate1 MissionState = "ADR_GATE_1"
@@ -68,6 +69,9 @@ const (
 	// valid, non-error resolution, distinct from EventGateDenied (rejected/timeout,
 	// terminal). See contracts/machine/mission-status.yaml's gate_revision_requested entry.
 	EventGateRevision     TransitionEvent = "gate_revision_requested"
+	EventHandoffPassed    TransitionEvent = "handoff_challenge_passed"
+	EventHandoffFailed    TransitionEvent = "handoff_challenge_failed"
+	EventHandoffExhausted TransitionEvent = "handoff_challenge_exhausted"
 	EventSniperDone       TransitionEvent = "sniper_done"
 	EventArchivistNoTasks TransitionEvent = "archivist_done_no_tasks"
 	EventArchivistTasks   TransitionEvent = "archivist_done_has_tasks"
