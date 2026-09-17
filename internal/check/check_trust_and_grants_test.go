@@ -39,6 +39,20 @@ func TestSkillProviderTrustReadiness_MissingFileFallsBackToEmptyPolicy(t *testin
 	assert.Equal(t, domain.TrustPolicy{}, policy)
 }
 
+func TestReadTrustPolicy_InvalidFileFallsBackToEmptyPolicy(t *testing.T) {
+	root := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(root, "trust-policy.yaml"), []byte(": invalid: yaml\n"), 0o644))
+
+	assert.Equal(t, domain.TrustPolicy{}, readTrustPolicy(root))
+}
+
+func TestReadPluginsLockFile_InvalidFileFallsBackToEmptyLock(t *testing.T) {
+	root := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins.lock"), []byte(": invalid: yaml\n"), 0o644))
+
+	assert.Empty(t, readPluginsLockFile(root).Bindings)
+}
+
 func TestSkillProviderPermissionGrantReadiness_NoDigestIsUnknown(t *testing.T) {
 	got := skillProviderPermissionGrantReadiness("")
 	assert.Equal(t, domain.ReadinessUnknown, got.Status)

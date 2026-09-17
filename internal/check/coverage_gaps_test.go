@@ -14,6 +14,7 @@ import (
 	"testing"
 	"text/tabwriter"
 
+	"github.com/SergioLacerda/strategist-skill/internal/plugins/trust"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -156,4 +157,28 @@ func TestPrintCheckSuccess_DoesNotReportFallbackPolicyOutcome(t *testing.T) {
 	})
 	assert.NotContains(t, out, "fallback=")
 	assert.NotContains(t, out, "outcome=")
+}
+
+func TestPrintCheckSuccess_RendersMissingReadinessAndWeaponFailures(t *testing.T) {
+	providers := map[string]string{"discovery": "brainstorming", "refinement": "openspec-explore"}
+	resolutions := map[string]slotResolution{
+		"discovery":  {kind: slotResolutionSkillProvider},
+		"refinement": {kind: slotResolutionSkillProvider},
+	}
+	bindings := []weaponBinding{
+		{SkillID: "brainstorming", CanonicalRole: "ranger", OK: true},
+		{SkillID: "openspec-propose", CanonicalRole: "archivist", Reason: "role mismatch"},
+	}
+
+	out := captureStdout(t, func() {
+		require.NoError(t, printCheckSuccess("/tmp/root", providers, resolutions, "epic", bindings))
+	})
+	assert.Contains(t, out, "execution")
+	assert.Contains(t, out, "fatal")
+	assert.Contains(t, out, "openspec-propose→archivist")
+	assert.Contains(t, out, "FAIL: role mismatch")
+}
+
+func TestTrustBlockReasonCodeFallsBackWhenNoReasonsExist(t *testing.T) {
+	assert.Equal(t, "trust_verification_failed", trustBlockReasonCode(trust.Result{}))
 }
