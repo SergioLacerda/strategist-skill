@@ -51,32 +51,40 @@ func RollbackUpgrade(strategistDir, stamp string) (restoredCount int, retErr err
 
 	count := 0
 	walkErr := filepath.WalkDir(backupDir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
+		if restored, err := restoreBackupFile(backupDir, strategistDir, path, d, err); err != nil {
 			return err
+		} else if restored {
+			count++
 		}
-		if d.IsDir() {
-			return nil
-		}
-		rel, err := filepath.Rel(backupDir, path)
-		if err != nil {
-			return fmt.Errorf("relativize %s: %w", path, err)
-		}
-		data, err := os.ReadFile(path) //nolint:gosec // G304: path enumerated by WalkDir under runtimefs.SafeJoin-validated backupDir, not external input
-		if err != nil {
-			return fmt.Errorf("read backup %s: %w", rel, err)
-		}
-		dst, err := runtimefs.SafeJoin(strategistDir, rel)
-		if err != nil {
-			return fmt.Errorf("resolve restore target %s: %w", rel, err)
-		}
-		if err := runtimefs.WriteFile(dst, data, 0o644); err != nil {
-			return fmt.Errorf("restore %s: %w", rel, err)
-		}
-		count++
 		return nil
 	})
 	if walkErr != nil {
 		return count, fmt.Errorf("upgrade: rollback %s: %w", stamp, walkErr)
 	}
 	return count, nil
+}
+
+func restoreBackupFile(backupDir, strategistDir, path string, entry fs.DirEntry, walkErr error) (bool, error) {
+	if walkErr != nil {
+		return false, walkErr
+	}
+	if entry.IsDir() {
+		return false, nil
+	}
+	rel, err := filepath.Rel(backupDir, path)
+	if err != nil {
+		return false, fmt.Errorf("relativize %s: %w", path, err)
+	}
+	data, err := os.ReadFile(path) //nolint:gosec // path is below a validated backup directory
+	if err != nil {
+		return false, fmt.Errorf("read backup %s: %w", rel, err)
+	}
+	dst, err := runtimefs.SafeJoin(strategistDir, rel)
+	if err != nil {
+		return false, fmt.Errorf("resolve restore target %s: %w", rel, err)
+	}
+	if err := runtimefs.WriteFile(dst, data, 0o644); err != nil {
+		return false, fmt.Errorf("restore %s: %w", rel, err)
+	}
+	return true, nil
 }

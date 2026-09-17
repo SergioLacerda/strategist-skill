@@ -39,33 +39,40 @@ contract:
 
   # enforced_by tags below use the unified 3-tier vocabulary defined in
   # contracts/machine/errors.yaml (machine_enforced / machine_observed /
-  # agent_only). Reviewed against actual Go call sites, 2026-08-30:
-  # slot_provider_not_found, slot_risk_mismatch, and role_invocation_failed
-  # are all detected AND blocked by internal/check/check_slots.go on a live,
-  # reachable path (feeds strategist check's errs list, which fails the
-  # command) — tagged machine_enforced. The other five conditions, including
-  # identity_files_missing, describe the agent's own live-mission preflight
-  # fallback behavior (reading index.yaml/.domain.gz/identity/directives
-  # itself and degrading gracefully) — no Go code observes or enforces *this
-  # non-blocking degraded-continue behavior* today, so they are agent_only.
-  # Two of these have a deliberately different, separately machine_enforced
-  # sibling elsewhere for the same named condition — not a drift, an
+  # agent_only). Reviewed against actual Go call sites, 2026-09-16
+  # (20260916-preflight-cli-enforcement-wave3, Task Group A): all 7
+  # conditions are now machine_enforced. slot_provider_not_found,
+  # slot_risk_mismatch, and role_invocation_failed are detected AND blocked
+  # by internal/check/check_slots.go on a live, reachable path (feeds
+  # `strategist check`'s errs list, which fails the command).
+  # index_yaml_not_found, compiled_artifact_corrupt, and directives_missing
+  # are detected by internal/check/check_preflight_advisories.go
+  # (preflightAdvisories) and surfaced in `strategist check --json`'s
+  # PreflightResult.Warnings — deliberately without flipping
+  # PreflightResult.Status or `strategist check`'s exit code, since their own
+  # `behavior` field below is explicitly non-blocking ("Continue...", "Fall
+  # back..."). "machine_enforced" here means "a live Go check observes and
+  # reports this," not "this now blocks" — the two are independent axes.
+  # identity_files_missing has a deliberately different, separately
+  # machine_enforced sibling for the same named condition — not a drift, an
   # intentional split (see internal/check/check_identity.go's own comment,
   # "D6"): internal/check/check_identity.go blocks `strategist check` itself
-  # (CLI-level, loud, non-zero exit) on identity_files_missing without
-  # changing preflight's own soft degraded emission described here; likewise
+  # (CLI-level, loud, non-zero exit) on identity_files_missing, stricter than
+  # this file's own softer degraded-continue framing below. Once
+  # check_identity.go's blocking error fires, `strategist check --json`
+  # still emits a structured PreflightResult (status="blocked", the error in
+  # Warnings) via printPreflightJSONBlocked, rather than a bare error
+  # string — so a --json caller always gets one envelope shape regardless of
+  # which check failed first. Likewise
   # internal/check/check_content_lang.go emits reason=compiled_artifact_corrupt
   # for a different artifact (.compiled/.config.gz, a content-by-lang
   # diagnostic) — not the same clause as this file's compiled_artifact_corrupt
-  # (.compiled/.domain.gz). errors.yaml's own identity_files_missing token
-  # (emit: "check=blocked reason=identity_files_missing") is what's tagged
-  # machine_enforced there — this file's identity_files_missing describes a
-  # different, non-blocking behavior and is tagged agent_only here on purpose.
+  # (.compiled/.domain.gz).
   error_conditions:
     - code: index_yaml_not_found
       trigger: <base_path>/.strategist/index.yaml absent
       behavior: Continue without internal domain (non-blocking)
-      enforced_by: agent_only
+      enforced_by: machine_enforced
     - code: slot_provider_not_found
       trigger: >
         Neither skills/<provider>/skill.yaml nor roles/<provider>.yaml can be resolved
@@ -100,7 +107,7 @@ contract:
     - code: compiled_artifact_corrupt
       trigger: .compiled/.domain.gz fails jq parse
       behavior: Fall back to standard path (load YAML directly), emit preflight=standard_path
-      enforced_by: agent_only
+      enforced_by: machine_enforced
     - code: identity_files_missing
       trigger: >
         identity/drift-patterns.yaml or identity/what-i-am.yaml absent
@@ -111,14 +118,14 @@ contract:
           "[Strategist] phase=preflight identity=degraded files_missing=[<list>]"
         Remediation hint: "Run `strategist compile` to deploy identity files."
         Continue. Agent operates in degraded mode; SKILL.md patterns serve as fallback.
-      enforced_by: agent_only
+      enforced_by: machine_enforced
     - code: directives_missing
       trigger: directives/core.yaml absent after index.yaml load attempt
       behavior: >
         Non-blocking. Emit:
           "[Strategist] phase=preflight status=warn reason=directives_missing"
         Continue without behavioral directives.
-      enforced_by: agent_only
+      enforced_by: machine_enforced
 
   write_scope: read-only
 

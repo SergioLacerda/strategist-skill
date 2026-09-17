@@ -34,14 +34,22 @@ func (s Service) activateSilentRoleProviderBindings(strategistDir string, active
 	if err != nil {
 		return fmt.Errorf("activate role/provider migration: %w", err)
 	}
-	if len(lockFile.Bindings) > 0 {
-		if err := writePluginLockFile(strategistDir, lockFile); err != nil {
-			return fmt.Errorf("write plugins.lock: %w", err)
-		}
+	if err := persistSilentBindings(strategistDir, lockFile); err != nil {
+		return err
 	}
 	wc := domain.WizardConfig{DiscoveryProvider: slots["discovery"], RefinementProvider: slots["refinement"]}
 	if err := s.writeSelectedProviderManifests(strategistDir, wc); err != nil {
 		return fmt.Errorf("write provider manifests: %w", err)
+	}
+	return nil
+}
+
+func persistSilentBindings(strategistDir string, lockFile domain.PluginLockFile) error {
+	if len(lockFile.Bindings) == 0 {
+		return nil
+	}
+	if err := writePluginLockFile(strategistDir, lockFile); err != nil {
+		return fmt.Errorf("write plugins.lock: %w", err)
 	}
 	return nil
 }

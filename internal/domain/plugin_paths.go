@@ -39,13 +39,24 @@ func ValidatePluginRelativePath(path string) error {
 	if filepath.IsAbs(path) || strings.HasPrefix(normalized, "/") {
 		return fmt.Errorf("plugin path must be relative")
 	}
-	for _, segment := range strings.Split(normalized, "/") {
+	if err := validatePluginPathSegments(normalized); err != nil {
+		return err
+	}
+	clean := pathpkg.Clean(normalized)
+	return validateCleanPluginPath(clean)
+}
+
+func validatePluginPathSegments(path string) error {
+	for _, segment := range strings.Split(path, "/") {
 		if segment == ".." {
 			return fmt.Errorf("plugin path must not escape the plugin root")
 		}
 	}
-	clean := pathpkg.Clean(normalized)
-	if clean == "." || clean == ".." || strings.HasPrefix(clean, "../") || strings.Contains(clean, "/../") {
+	return nil
+}
+
+func validateCleanPluginPath(path string) error {
+	if path == "." || path == ".." || strings.HasPrefix(path, "../") || strings.Contains(path, "/../") {
 		return fmt.Errorf("plugin path must not escape the plugin root")
 	}
 	return nil

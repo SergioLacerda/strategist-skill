@@ -44,6 +44,7 @@ func bindingsFromSlots(slots map[string]string, lock domain.PluginLock) ([]domai
 			InstalledInstanceID: installedInstanceID(node),
 			Generation:          0,
 			Status:              "enabled",
+			Mode:                domain.SlotBindingModeCustom,
 		})
 	}
 	return bindings, nil

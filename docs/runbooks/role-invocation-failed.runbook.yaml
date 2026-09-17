@@ -19,6 +19,8 @@ verification:
   - "If the provider's skill.yaml exists but fails schema validation, fix or reinstall it"
   - "Rerun `strategist check` until STATUS reports ok before retrying the mission"
   - "If slot=refinement and no alternative provider is installed: confirm roles/archivist.yaml + internal_skills/archivist/SKILL.md exist, then escalate the native-role-vs-reconfigure-vs-analysis-only choice to the user instead of substituting Archivist silently — see docs/runbooks/role-invocation-failed.md § Refinement-Specific Escalation and ADR-0027"
+  - "For a Ranked archivist -> openspec-propose binding, confirm .strategist/openspec/config.yaml is direct, ranked-runtimes.yaml contains the matching slot/provider/digest, and openspec context --json succeeds with cwd=.strategist/openspec"
+  - "If Ranked runtime state, digest, root, or healthcheck fails, block the binding and repair through governed installation; never fall back silently to native Archivist, another provider, the repository root, or .analysis"
 
 checks:
   - id: active-yaml-slot-matches-installed-provider
@@ -29,7 +31,13 @@ checks:
     level: mandatory
   - id: refinement-native-role-escalation-if-no-alternative-provider
     level: conditional
+  - id: ranked-runtime-prepared-and-healthy
+    level: conditional
+    when: "the selected provider is a certified Ranked binding"
+  - id: ranked-runtime-cwd-delivery
+    level: conditional
+    when: "the selected provider declares a private runtime root"
 
 metadata:
-  version: 2
-  reviewed_at: "2026-08-19"
+  version: 3
+  reviewed_at: "2026-09-16"

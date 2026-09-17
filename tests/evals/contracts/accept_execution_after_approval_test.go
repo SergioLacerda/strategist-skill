@@ -13,12 +13,12 @@ import (
 func TestA3_AcceptExecutionAfterApproval(t *testing.T) {
 	res := eval.RunScenario(eval.Scenario{
 		ID:          "accept-execution-after-approval",
-		Description: "gate_approved transitions APPROVAL_GATE to EXECUTION",
+		Description: "gate_approved opens the handoff challenge and a passed challenge enters EXECUTION",
 		Input: eval.Input{
 			Target: eval.TargetStateMachine,
 			Params: map[string]any{
 				"start":  "APPROVAL_GATE",
-				"events": []any{"gate_approved"},
+				"events": []any{"gate_approved", "handoff_challenge_passed"},
 			},
 		},
 		Expected: eval.Expected{State: "EXECUTION"},

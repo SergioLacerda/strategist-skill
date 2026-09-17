@@ -1,0 +1,9 @@
+lifecycle: true
+risk_score: write_analysis
+category: lifecycle
+upstream_repo: Fission-AI/OpenSpec
+upstream_skill_path: skills/openspec-archive-change/SKILL.md
+upstream_version: 1.10.0
+upstream_commit: 1ebddd17f40dde15dfd28289e4493c3cf05ee9df
+upstream_content_digest: sha256:e111d71216167eea10cec26abe8f6e15d925efeef2fd9925ffa219f55145acce
+license: MIT

@@ -174,6 +174,35 @@ func TestVerifyEmbeddedWeaponBindings_MalformedSkillYAML(t *testing.T) {
 	assert.Contains(t, b.Reason, "skill.yaml invalid")
 }
 
+func TestVerifyEmbeddedWeaponBindings_SkipsNonDirectoryEntry(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	skillsDir := filepath.Join(root, "skills")
+	require.NoError(t, os.MkdirAll(skillsDir, 0o755))
+	// A stray file directly under skills/ (not a skill directory) must be
+	// skipped rather than treated as a skill ID.
+	require.NoError(t, os.WriteFile(filepath.Join(skillsDir, "README.md"), []byte("not a skill"), 0o644))
+
+	bindings, err := verifyEmbeddedWeaponBindings(root)
+	require.NoError(t, err)
+	_, found := findBinding(bindings, "README.md")
+	assert.False(t, found)
+}
+
+func TestVerifyEmbeddedWeaponBindings_RoleFileMalformedYAML(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	writeDefaultRoleSlotMap(t, root)
+	writeWeaponFixture(t, root, "broken-role-yaml", "archivist", "role: [unterminated")
+
+	bindings, err := verifyEmbeddedWeaponBindings(root)
+	require.NoError(t, err)
+	b, found := findBinding(bindings, "broken-role-yaml")
+	require.True(t, found)
+	assert.False(t, b.OK)
+	assert.Contains(t, b.Reason, "role file malformed YAML")
+}
+
 func TestVerifyEmbeddedWeaponBindings_MissingRoleSlotMap(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()

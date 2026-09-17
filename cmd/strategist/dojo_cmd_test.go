@@ -274,3 +274,45 @@ func TestDojoItemLine_FailedWithoutDetail(t *testing.T) {
 	line := dojoItemLine(item)
 	assert.Contains(t, line, "FAIL")
 }
+
+// TestDojoCheckCmd_PrintResultErrorOnClosedStdout covers runDojoCheck's own
+// "if err := printDojoResult(result); err != nil { return err }" branch —
+// printDojoResult writes straight to os.Stdout, so a closed stdout makes its
+// first Fprint fail, which runDojoCheck must propagate unwrapped.
+func TestDojoCheckCmd_PrintResultErrorOnClosedStdout(t *testing.T) {
+	root := setupDojoScenario(t, "sample-scenario",
+		"scenario: sample-scenario\nrun_dir: dojo/run\nfiles_created:\n  - path: todo/geral.md\n    must_contain: [KATA_RAPIDO]\n",
+		"ideia: KATA_RAPIDO test\n",
+	)
+
+	orig := dojoRoot
+	t.Cleanup(func() { dojoRoot = orig })
+	dojoRoot = root
+
+	withClosedStdout(t, func() {
+		err := dojoCheckCmd.RunE(dojoCheckCmd, []string{"sample-scenario"})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "dojo: write result")
+	})
+}
+
+// TestDojoListCmd_FlushErrorOnClosedStdout covers runDojoList's own
+// "if err := w.Flush(); err != nil { return fmt.Errorf(...) }" branch.
+// tabwriter buffers writeDojoListRows' single-line Fprintf calls in memory
+// rather than writing through immediately, so — unlike printDojoResult's
+// multi-fragment loop (TestPrintDojoResult_ClosedStdoutErrors), which fails
+// mid-loop — the closed-stdout failure here only surfaces at Flush().
+func TestDojoListCmd_FlushErrorOnClosedStdout(t *testing.T) {
+	root := setupDojoScenario(t, "sample-scenario",
+		"scenario: sample-scenario\ndescription: \"sample scenario test\"\n", "")
+
+	orig := dojoRoot
+	t.Cleanup(func() { dojoRoot = orig })
+	dojoRoot = root
+
+	withClosedStdout(t, func() {
+		err := dojoListCmd.RunE(dojoListCmd, nil)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "dojo list: flush")
+	})
+}

@@ -22,6 +22,7 @@ providers:
   openspec-propose: write_analysis
   openspec-apply-change: controlled
   openspec-archive-change: write_analysis
+  writing-plans: write_analysis
   archivist: write_analysis
 
   # sdd — concrete SDD adapter providers

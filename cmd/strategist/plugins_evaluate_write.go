@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -58,7 +59,7 @@ func runPluginsEvaluateWrite(opts pluginsEvaluateWriteOptions) error {
 	if err != nil {
 		return fmt.Errorf("plugins evaluate-write: %w", err)
 	}
-	basePath, err := readActiveBasePath(strategistRoot)
+	scope, err := readActiveWriteScope(strategistRoot)
 	if err != nil {
 		return fmt.Errorf("plugins evaluate-write: %w", err)
 	}
@@ -75,7 +76,7 @@ func runPluginsEvaluateWrite(opts pluginsEvaluateWriteOptions) error {
 	// — the same frame active.yaml's own base_path is written in
 	// (policy.ClassifyWriteTarget's "docs/" prefix check is a literal,
 	// project-root-relative comparison, not basePath-relative).
-	decision := policy.EvaluateWrite(basePath, opts.Target, observation.Enforcement)
+	decision := policy.EvaluateWriteInScope(scope, filepath.Join(filepath.Dir(strategistRoot), opts.Target), observation.Enforcement)
 	printPluginsEvaluateWriteResult(decision)
 	if !decision.Allowed {
 		return fmt.Errorf("plugins evaluate-write: denied (permission=%s)", decision.Permission)
@@ -104,6 +105,34 @@ func readActiveBasePath(strategistRoot string) (string, error) {
 		return "", fmt.Errorf("active.yaml: base_path is empty")
 	}
 	return cfg.BasePath, nil
+}
+
+func readActiveWriteScope(strategistRoot string) (policy.WriteScope, error) {
+	activeYAMLPath, err := runtimefs.SafeJoin(strategistRoot, "active.yaml")
+	if err != nil {
+		return policy.WriteScope{}, fmt.Errorf("resolve active.yaml path: %w", err)
+	}
+	raw, err := os.ReadFile(activeYAMLPath) //nolint:gosec // validated by SafeJoin
+	if err != nil {
+		return policy.WriteScope{}, fmt.Errorf("read active.yaml: %w", err)
+	}
+	var cfg domain.ActiveConfig
+	if err := yaml.Unmarshal(raw, &cfg); err != nil {
+		return policy.WriteScope{}, fmt.Errorf("parse active.yaml: %w", err)
+	}
+	if cfg.BasePath == "" {
+		return policy.WriteScope{}, fmt.Errorf("active.yaml: base_path is empty")
+	}
+	roots := cfg.DocumentationRoots
+	if len(roots) == 0 {
+		roots = []string{"docs"}
+	}
+	projectRoot := filepath.Dir(strategistRoot)
+	scope := policy.WriteScope{AnalysisRoot: filepath.Join(projectRoot, cfg.BasePath), RuntimeRoot: strategistRoot}
+	for _, root := range roots {
+		scope.DocumentationRoots = append(scope.DocumentationRoots, filepath.Join(projectRoot, root))
+	}
+	return scope, nil
 }
 
 func printPluginsEvaluateWriteResult(decision policy.WriteDecision) {

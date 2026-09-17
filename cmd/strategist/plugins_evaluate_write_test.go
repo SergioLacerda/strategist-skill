@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -72,6 +74,57 @@ func TestRunPluginsEvaluateWrite_RootResolutionErrorPropagates(t *testing.T) {
 	})
 	require.Error(t, err)
 	assert.True(t, strings.Contains(err.Error(), "active.yaml") || strings.Contains(err.Error(), "plugins evaluate-write"))
+}
+
+// TestReadActiveBasePath_EmptyRootErrors covers readActiveBasePath's
+// runtimefs.SafeJoin error branch (SafeJoin rejects an empty root outright).
+func TestReadActiveBasePath_EmptyRootErrors(t *testing.T) {
+	t.Parallel()
+	_, err := readActiveBasePath("")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "resolve active.yaml path")
+}
+
+// TestReadActiveBasePath_InvalidYAMLErrors covers readActiveBasePath's
+// yaml.Unmarshal error branch.
+func TestReadActiveBasePath_InvalidYAMLErrors(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte(": not: valid: yaml:\n"), 0o644))
+
+	_, err := readActiveBasePath(dir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "parse active.yaml")
+}
+
+// TestReadActiveBasePath_EmptyBasePathErrors covers readActiveBasePath's
+// "if cfg.BasePath == \"\"" branch.
+func TestReadActiveBasePath_EmptyBasePathErrors(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte("mode: epic\n"), 0o644))
+
+	_, err := readActiveBasePath(dir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "base_path is empty")
+}
+
+// TestPluginsEvaluateWriteCmd_RunEInvokesRunPluginsEvaluateWrite exercises
+// the init()-wired RunE closure directly (every other test in this file
+// calls runPluginsEvaluateWrite directly, never through cobra dispatch).
+func TestPluginsEvaluateWriteCmd_RunEInvokesRunPluginsEvaluateWrite(t *testing.T) {
+	dir := minimalValidateRoot(t)
+	require.NoError(t, pluginsEvaluateWriteCmd.Flags().Set(flagRoot, dir))
+	require.NoError(t, pluginsEvaluateWriteCmd.Flags().Set("target", ".analysis/refined/example/tasks.md"))
+	t.Cleanup(func() {
+		_ = pluginsEvaluateWriteCmd.Flags().Set(flagRoot, "")
+		_ = pluginsEvaluateWriteCmd.Flags().Set("target", "")
+	})
+
+	out := captureStdout(t, func() {
+		require.NoError(t, pluginsEvaluateWriteCmd.RunE(pluginsEvaluateWriteCmd, nil))
+	})
+	assert.Contains(t, out, "write=allowed")
 }
 
 func TestPluginsEvaluateWriteCmd_IsRegistered(t *testing.T) {

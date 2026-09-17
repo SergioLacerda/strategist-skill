@@ -67,5 +67,9 @@ func TestEmbeddedDefaults_BaselineWeaponRosterIsAlwaysEmbedded(t *testing.T) {
 		// .strategist/skills/<id>/skill.yaml.
 		_, err := embedpkg.Extractor{}.ReadFile("skills/" + want.id + "/skill.yaml")
 		require.NoErrorf(t, err, "skills/%s/skill.yaml must be embedded alongside its catalog entry", want.id)
+		_, err = embedpkg.Extractor{}.ReadFile("skills/" + want.id + "/SKILL.md")
+		require.NoErrorf(t, err, "skills/%s/SKILL.md must be embedded alongside its catalog entry", want.id)
+		_, err = embedpkg.Extractor{}.ReadFile("skills/" + want.id + "/strategist.yaml")
+		require.NoErrorf(t, err, "skills/%s/strategist.yaml must be embedded alongside its catalog entry", want.id)
 	}
 }

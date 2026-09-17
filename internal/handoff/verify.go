@@ -140,17 +140,17 @@ func counterfactualMismatches(challenges []Challenge, got map[string]bool) []str
 func forbiddenClaimViolations(claims []string, ack Acknowledgment) []string {
 	var violations []string
 	for _, claim := range claims {
-		if claim == ForbiddenClaimExecutionAuthorized {
-			if ack.GateAllowed != nil && *ack.GateAllowed {
-				violations = append(violations, claim)
-			}
-			continue
-		}
-		if ref, ok := strings.CutSuffix(claim, forbiddenClaimAsApprovedSuffix); ok {
-			if ack.Classifications[ref] == DecisionApproved {
-				violations = append(violations, claim)
-			}
+		if violation := forbiddenClaimViolation(claim, ack); violation {
+			violations = append(violations, claim)
 		}
 	}
 	return violations
+}
+
+func forbiddenClaimViolation(claim string, ack Acknowledgment) bool {
+	if claim == ForbiddenClaimExecutionAuthorized {
+		return ack.GateAllowed != nil && *ack.GateAllowed
+	}
+	ref, ok := strings.CutSuffix(claim, forbiddenClaimAsApprovedSuffix)
+	return ok && ack.Classifications[ref] == DecisionApproved
 }

@@ -353,9 +353,11 @@ func TestActivateRoleProviderMigrationResolvesBindingsForPersistence(t *testing.
 	discoveryBinding, ok := findSlotBinding(lockFile.Bindings, "discovery")
 	require.True(t, ok)
 	assert.Equal(t, "brainstorming", discoveryBinding.InstalledInstanceID)
+	assert.Equal(t, domain.SlotBindingModeCustom, discoveryBinding.Mode, "today's only implemented pipeline is Custom")
 	refinementBinding, ok := findSlotBinding(lockFile.Bindings, "refinement")
 	require.True(t, ok)
 	assert.Equal(t, "archivist", refinementBinding.InstalledInstanceID)
+	assert.Equal(t, domain.SlotBindingModeCustom, refinementBinding.Mode)
 	_, ok = findSlotBinding(lockFile.Bindings, "execution")
 	assert.False(t, ok, "role/provider persistence is scoped to discovery and refinement")
 }
@@ -495,19 +497,11 @@ func TestActivateRoleProviderMigration_ApplyErrorPropagates(t *testing.T) {
 	require.ErrorContains(t, err, "role_provider_migration_not_fully_resolved")
 }
 
-// TestActivateRoleProviderMigration_SwitchesWhenCurrentDiffersFromResolved
-// exercises the one path no other test in this file reaches: a slot whose
-// seeded current binding (from CurrentProviderID) differs from the newly
-// resolved Provider, forcing applyPluginBinding through switchPluginBinding
-// (Begin/Stage/Probe/Activate) instead of either the no-op or
-// create-fresh-binding shortcuts. Built directly from a hand-authored
-// preview rather than PlanRoleProviderMigration's real catalog resolution
-// (which, for this repo's catalog, treats a preference that doesn't match
-// one of several role-compatible candidates as role_binding_ambiguous
-// rather than silently overriding it) — the resolution algorithm itself is
-// covered elsewhere; this test only needs activateRoleProviderMigration's
-// own seed/apply wiring.
-func TestActivateRoleProviderMigration_SwitchesWhenCurrentDiffersFromResolved(t *testing.T) {
+// TestActivateRoleProviderMigrationRejectsStaticOnlyProbeWhenCurrentDiffers
+// exercises the migration path where a candidate would replace an existing
+// binding. LocalPathConnector can validate package inputs, but cannot observe
+// host invocation, so its non-ready result must preserve last-known-good state.
+func TestActivateRoleProviderMigrationRejectsStaticOnlyProbeWhenCurrentDiffers(t *testing.T) {
 	t.Parallel()
 
 	preview := RoleProviderMigrationPreview{Entries: []RoleProviderPreviewEntry{
@@ -521,9 +515,20 @@ func TestActivateRoleProviderMigration_SwitchesWhenCurrentDiffersFromResolved(t 
 	}}
 	require.True(t, preview.FullyResolved())
 
-	lockFile, err := activateRoleProviderMigration("", domain.PluginLock{}, preview)
-	require.NoError(t, err)
-	binding, ok := findSlotBinding(lockFile.Bindings, "discovery")
+	store := lifecycle.NewStore()
+	seedRoleProviderMigrationEntry(store, preview.Entries[0])
+	err := applyRoleProviderMigration(store, preview, connectorProbe)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "activation_requires_successful_probe")
+	binding, ok := store.Binding("discovery")
 	require.True(t, ok)
-	assert.Equal(t, "brainstorming", binding.InstalledInstanceID)
+	assert.Equal(t, "openspec-explore", binding.InstalledInstanceID)
+	tx := store.Transaction("plugin-onboarding-discovery-brainstorming")
+	assert.Equal(t, lifecycle.StateRolledBack, tx.State)
+	assert.Contains(t, tx.JournalStates(), lifecycle.StateFailed)
+	var codes []string
+	for _, entry := range tx.Journal {
+		codes = append(codes, entry.Code)
+	}
+	assert.Contains(t, codes, "probe_not_verified")
 }

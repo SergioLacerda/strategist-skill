@@ -99,12 +99,11 @@ introduced, and no content is duplicated out of the contracts or out of existing
   grep and may break. Internal references were audited and updated as part of this
   mission's execution.
 - Three non-documentation files (`cmd/strategist/handoff_verify.go`,
-  `internal/dojo/checker_pipeline.go`, `tests/spec/cicd_residual_contract_test.go`) still
-  reference the old `docs/architecture.md` / `docs/strategist-concepts.md` paths and were
-  not updated by this mission — Sniper's documentation-only write scope forbids editing
-  `.go` files. `tests/spec/cicd_residual_contract_test.go` has a functional (not just
-  comment) dependency on `docs/architecture.md`'s old path and will fail until corrected
-  in a separate, code-authorized change.
+  `internal/dojo/checker_pipeline.go`, `tests/spec/cicd_residual_contract_test.go`)
+  already reference the current `docs/architecture/strategist-concepts.md` /
+  `docs/architecture/overview.md` paths — this paragraph originally flagged them as
+  a residual, code-authorized follow-up, but that follow-up was already completed
+  (corrected 2026-09-15 during `.analysis/refined/20260915-legacy-behavior-audit/`).
 - Philosophy/Principles remain unformalized; closing that gap is left as an explicit
   future decision, not assumed here.
 

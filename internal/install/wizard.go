@@ -91,6 +91,19 @@ func runWizard(ctx context.Context, p Prompter, extractor domain.FileExtractor, 
 	}
 
 	providerRisk := loadKnownProviders(extractor)
+	wc, err := collectWizardConfig(p, catalog, providerRisk, extractor)
+	if err != nil {
+		return domain.WizardConfig{}, err
+	}
+	lockFile, err := validateAndActivatePluginPlan(extractor, catalog, providerRisk, wc, strategistDir)
+	if err != nil {
+		return domain.WizardConfig{}, err
+	}
+	wc.ResolvedPluginLock = lockFile
+	return wc, nil
+}
+
+func collectWizardConfig(p Prompter, catalog pluginCatalog, providerRisk map[string]string, extractor domain.FileExtractor) (domain.WizardConfig, error) {
 	skillCfg := loadSkillConfig(extractor)
 	uiLang, docLang, chatLang, codeLang, b, err := promptLanguages(p, skillCfg)
 	if err != nil {
@@ -100,7 +113,7 @@ func runWizard(ctx context.Context, p Prompter, extractor domain.FileExtractor, 
 	if err != nil {
 		return domain.WizardConfig{}, err
 	}
-	discovery, refinement, execution, err := promptSlots(p, b, catalog, providerRisk)
+	discovery, refinement, execution, discoveryMode, refinementMode, executionMode, err := promptSlots(p, b, catalog, providerRisk)
 	if err != nil {
 		return domain.WizardConfig{}, err
 	}
@@ -108,25 +121,7 @@ func runWizard(ctx context.Context, p Prompter, extractor domain.FileExtractor, 
 	if err != nil {
 		return domain.WizardConfig{}, err
 	}
-
-	wc := domain.WizardConfig{
-		Mode:               mode,
-		BasePath:           basePath,
-		UILanguage:         uiLang,
-		DocLanguage:        normLang(docLang),
-		ChatLanguage:       normLang(chatLang),
-		CodeLanguage:       normLang(codeLang),
-		DiscoveryProvider:  discovery,
-		RefinementProvider: refinement,
-		ExecutionProvider:  execution,
-		TreasureChestPath:  chestPath,
-	}
-	lockFile, err := validateAndActivatePluginPlan(extractor, catalog, providerRisk, wc, strategistDir)
-	if err != nil {
-		return domain.WizardConfig{}, err
-	}
-	wc.ResolvedPluginLock = lockFile
-	return wc, nil
+	return domain.WizardConfig{Mode: mode, BasePath: basePath, UILanguage: uiLang, DocLanguage: normLang(docLang), ChatLanguage: normLang(chatLang), CodeLanguage: normLang(codeLang), DiscoveryProvider: discovery, RefinementProvider: refinement, ExecutionProvider: execution, DiscoveryMode: discoveryMode, RefinementMode: refinementMode, ExecutionMode: executionMode, TreasureChestPath: chestPath}, nil
 }
 
 // validateAndActivatePluginPlan runs every catalog-dependent Wizard check and
@@ -168,6 +163,16 @@ func validateAndActivatePluginPlan(extractor domain.FileExtractor, catalog plugi
 		return domain.PluginLockFile{}, fmt.Errorf("wizard: activate role/provider migration: %w", err)
 	}
 	if err := validatePersistedRoleBindings(lockFile, plan.RoleMigration); err != nil {
+		return domain.PluginLockFile{}, fmt.Errorf("wizard: %w", err)
+	}
+
+	// docs/adr/0043-ranked-pipeline-pilot-implementation-decisions.md DEC-005:
+	// for every slot the Wizard resolved to Ranked, activate (copy) the
+	// pre-generated certification-time SlotBinding over the Custom-mode one
+	// activateRoleProviderMigration just wrote — every other slot (the
+	// overwhelming majority: every existing installation) is untouched.
+	lockFile, err = applyRankedBindingChoices(catalog, wc, lockFile)
+	if err != nil {
 		return domain.PluginLockFile{}, fmt.Errorf("wizard: %w", err)
 	}
 	return lockFile, nil

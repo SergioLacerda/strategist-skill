@@ -155,18 +155,23 @@ func canonicalSignalsIn(text string) map[CanonicalSignal]bool {
 	lower := strings.ToLower(text)
 	found := make(map[CanonicalSignal]bool)
 	for canonical, aliases := range signalAliases {
-		if strings.Contains(lower, string(canonical)) {
+		if canonicalSignalMatches(lower, canonical, aliases) {
 			found[canonical] = true
-			continue
-		}
-		for _, alias := range aliases {
-			if strings.Contains(lower, strings.ToLower(alias)) {
-				found[canonical] = true
-				break
-			}
 		}
 	}
 	return found
+}
+
+func canonicalSignalMatches(text string, canonical CanonicalSignal, aliases []string) bool {
+	if strings.Contains(text, string(canonical)) {
+		return true
+	}
+	for _, alias := range aliases {
+		if strings.Contains(text, strings.ToLower(alias)) {
+			return true
+		}
+	}
+	return false
 }
 
 // sharesCanonicalSignal reports whether a and b have at least one

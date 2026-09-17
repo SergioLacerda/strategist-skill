@@ -46,6 +46,15 @@ func TestSelect_NilBridgeNeverBreaksFlow(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// TestSelect_EnabledConfigUsesOtelSink covers the otel branch of Select:
+// a configured OTel endpoint routes through otelsink instead of slogsink.
+func TestSelect_EnabledConfigUsesOtelSink(t *testing.T) {
+	t.Parallel()
+	s := sink.Select(telemetry.Config{Endpoint: "localhost:4317"}, nil)
+	require.NotNil(t, s)
+	require.NoError(t, s.Emit(context.Background(), telemetry.Event{Name: "x", Timestamp: time.Now()}))
+}
+
 func TestSelect_BridgePresentWrapsInExternal(t *testing.T) {
 	t.Parallel()
 	// Selection must not panic or error just because a bridge is configured —

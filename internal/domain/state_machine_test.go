@@ -10,12 +10,13 @@ import (
 
 func TestFSMNominalRoute(t *testing.T) {
 	t.Parallel()
-	// Init -> SideQuestScan (non-empty) -> SideQuestScan (no side quests) -> Refinement -> ApprovalGate -> Execution -> DoneDelivery
+	// Init -> SideQuestScan (non-empty) -> SideQuestScan (no side quests) -> Refinement -> ApprovalGate -> HandoffChallenge -> Execution -> DoneDelivery
 	events := []domain.TransitionEvent{
 		domain.EventManifestNonEmpty, // Init -> SideQuestScan
 		domain.EventManifestEmpty,    // SideQuestScan -> Refinement (no side quests)
 		domain.EventArchivistTasks,   // Refinement -> ApprovalGate
-		domain.EventGateApproved,     // ApprovalGate -> Execution
+		domain.EventGateApproved,     // ApprovalGate -> HandoffChallenge
+		domain.EventHandoffPassed,    // HandoffChallenge -> Execution
 		domain.EventSniperDone,       // Execution -> DoneDelivery
 	}
 	state := domain.StateInit
@@ -50,7 +51,8 @@ func TestFSMGateRevisionLoop(t *testing.T) {
 	state := domain.RunStateMachine(domain.StateApprovalGate, []domain.TransitionEvent{
 		domain.EventGateRevision,   // ApprovalGate -> Refinement
 		domain.EventArchivistTasks, // Refinement -> ApprovalGate (re-presented)
-		domain.EventGateApproved,   // ApprovalGate -> Execution
+		domain.EventGateApproved,   // ApprovalGate -> HandoffChallenge
+		domain.EventHandoffPassed,  // HandoffChallenge -> Execution
 	})
 	assert.Equal(t, domain.StateExecution, state)
 }
@@ -281,6 +283,7 @@ func TestFSMAbsorbingStates(t *testing.T) {
 var allMissionStates = []domain.MissionState{
 	domain.StateInit, domain.StateSideQuestScan, domain.StateSideQuestGate, domain.StateSideQuestExec,
 	domain.StateRefinement, domain.StateApprovalGate, domain.StateExecution,
+	domain.StateHandoffChallenge,
 	domain.StateDoneAnalysis, domain.StateDoneDelivery, domain.StateBlocked,
 	domain.StateADRGate1, domain.StateADRGate2, domain.StateADRDone,
 	domain.StateRetryingRefinement, domain.StateRetryingExecution, domain.StateRetryingDirectExec,
@@ -290,6 +293,7 @@ var allMissionStates = []domain.MissionState{
 var allTransitionEvents = []domain.TransitionEvent{
 	domain.EventManifestEmpty, domain.EventManifestNonEmpty,
 	domain.EventGateApproved, domain.EventGateDenied, domain.EventGateTimeout, domain.EventGateRevision,
+	domain.EventHandoffPassed, domain.EventHandoffFailed, domain.EventHandoffExhausted,
 	domain.EventSniperDone, domain.EventArchivistNoTasks, domain.EventArchivistTasks,
 	domain.EventADRCriterionMet, domain.EventADRApproved, domain.EventADRDeclined,
 	domain.EventSlotTransient, domain.EventSlotPermanent, domain.EventRetryOK,

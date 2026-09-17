@@ -40,18 +40,25 @@ func matchAppliesWhen(appliesWhen []string, signals MissionSignals) []string {
 // case-insensitive raw substring match, so free-text triggers/signals with
 // no controlled-vocabulary coverage still behave exactly as before.
 func triggerMatchesAnySignal(trigger string, signals MissionSignals) bool {
-	lowerTrigger := strings.ToLower(trigger)
 	triggerCanonical := canonicalSignalsIn(trigger)
 	for _, signal := range signals {
 		if signal == "" {
 			continue
 		}
-		if len(triggerCanonical) > 0 && sharesCanonicalSignal(triggerCanonical, canonicalSignalsIn(signal)) {
+		if canonicalTriggerMatches(triggerCanonical, signal) {
 			return true
 		}
-		if strings.Contains(lowerTrigger, strings.ToLower(signal)) {
+		if rawTriggerMatches(trigger, signal) {
 			return true
 		}
 	}
 	return false
+}
+
+func canonicalTriggerMatches(triggerCanonical map[CanonicalSignal]bool, signal string) bool {
+	return len(triggerCanonical) > 0 && sharesCanonicalSignal(triggerCanonical, canonicalSignalsIn(signal))
+}
+
+func rawTriggerMatches(trigger, signal string) bool {
+	return strings.Contains(strings.ToLower(trigger), strings.ToLower(signal))
 }

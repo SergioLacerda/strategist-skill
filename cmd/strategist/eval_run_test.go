@@ -88,6 +88,19 @@ func TestEvalRunCmd_EndToEnd(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// TestRunEvalRun_WithMissionRunSetsSilent covers runEvalRun's
+// "if run := telemetryRunFromCmd(cmd); run != nil { run.SetSilent() }"
+// branch, matching the attachMissionRun pattern used for the sibling
+// runMetricsHandoff/runMetricsScout tests.
+func TestRunEvalRun_WithMissionRunSetsSilent(t *testing.T) {
+	attachMissionRun(t, evalRunCmd)
+	setEvalRunFlags(t, realProjectRootStrategistPath(t), false)
+	t.Cleanup(func() { resetEvalRunFlags(t) })
+
+	err := runEvalRun(evalRunCmd, []string{"./tests/evals/contracts/..."}, evalRunOptions{})
+	require.NoError(t, err)
+}
+
 func TestEvalRunCmd_PropagatesTestFailureExitError(t *testing.T) {
 	setEvalRunFlags(t, realProjectRootStrategistPath(t), false)
 	t.Cleanup(func() { resetEvalRunFlags(t) })

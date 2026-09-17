@@ -33,17 +33,14 @@ func writeCheckReadinessSection(w *tabwriter.Writer, resolutions map[string]slot
 	}
 	roles := map[string]string{"discovery": "ranger", "refinement": "archivist", "execution": "sniper"}
 	for _, slot := range []string{"discovery", "refinement", "execution"} {
-		_, ok := resolutions[slot]
-		status := "ready"
-		reason := "minimum_contract_valid"
-		if !ok {
-			status = "fatal"
-			reason = "provider_not_resolved"
-		}
-		if _, err := fmt.Fprintf(w, "  %-12s\t%s\trole=%s\treason=%s\n", slot, status, roles[slot], reason); err != nil {
-			return fmt.Errorf("check: write readiness row: %w", err)
+		if err := writeReadinessRow(w, slot, roles[slot], resolutions); err != nil {
+			return err
 		}
 	}
+	return writeReadinessAdvisory(w)
+}
+
+func writeReadinessAdvisory(w *tabwriter.Writer) error {
 	if _, err := fmt.Fprintln(w, "\t"); err != nil {
 		return fmt.Errorf("check: write separator: %w", err)
 	}
@@ -55,6 +52,17 @@ func writeCheckReadinessSection(w *tabwriter.Writer, resolutions map[string]slot
 	}
 	if _, err := fmt.Fprintln(w, "\t"); err != nil {
 		return fmt.Errorf("check: write advisory separator: %w", err)
+	}
+	return nil
+}
+
+func writeReadinessRow(w *tabwriter.Writer, slot, role string, resolutions map[string]slotResolution) error {
+	status, reason := "ready", "minimum_contract_valid"
+	if _, ok := resolutions[slot]; !ok {
+		status, reason = "fatal", "provider_not_resolved"
+	}
+	if _, err := fmt.Fprintf(w, "  %-12s\t%s\trole=%s\treason=%s\n", slot, status, role, reason); err != nil {
+		return fmt.Errorf("check: write readiness row: %w", err)
 	}
 	return nil
 }
@@ -77,17 +85,23 @@ func writeCheckSlotsSection(w *tabwriter.Writer, providers map[string]string, re
 		return fmt.Errorf("check: write slots header: %w", err)
 	}
 	for _, slot := range []string{"discovery", "refinement", "execution"} {
-		res := resolutions[slot]
-		row := fmt.Sprintf("  %-12s\t%s\tkind=%s", slot, providers[slot], res.kind.label())
-		if slot == "discovery" || slot == "refinement" {
-			row += "\tbinding=valid"
-		}
-		if _, err := fmt.Fprintln(w, row); err != nil {
-			return fmt.Errorf("check: write slot row: %w", err)
+		if err := writeSlotRow(w, slot, providers[slot], resolutions[slot]); err != nil {
+			return err
 		}
 	}
 	if _, err := fmt.Fprintln(w, "\t"); err != nil {
 		return fmt.Errorf("check: write separator: %w", err)
+	}
+	return nil
+}
+
+func writeSlotRow(w *tabwriter.Writer, slot, provider string, res slotResolution) error {
+	row := fmt.Sprintf("  %-12s\t%s\tkind=%s", slot, provider, res.kind.label())
+	if slot == "discovery" || slot == "refinement" {
+		row += "\tbinding=valid"
+	}
+	if _, err := fmt.Fprintln(w, row); err != nil {
+		return fmt.Errorf("check: write slot row: %w", err)
 	}
 	return nil
 }
@@ -106,16 +120,23 @@ func writeCheckWeaponLinksSection(w *tabwriter.Writer, bindings []weaponBinding)
 		return fmt.Errorf("check: write weapon links header: %w", err)
 	}
 	for _, b := range bindings {
-		status := "ok"
-		if !b.OK {
-			status = "FAIL: " + b.Reason
-		}
-		if _, err := fmt.Fprintf(w, "  %s→%s\t%s\n", b.SkillID, b.CanonicalRole, status); err != nil {
-			return fmt.Errorf("check: write weapon link row: %w", err)
+		if err := writeWeaponLinkRow(w, b); err != nil {
+			return err
 		}
 	}
 	if _, err := fmt.Fprintln(w, "\t"); err != nil {
 		return fmt.Errorf("check: write separator: %w", err)
+	}
+	return nil
+}
+
+func writeWeaponLinkRow(w *tabwriter.Writer, b weaponBinding) error {
+	status := "ok"
+	if !b.OK {
+		status = "FAIL: " + b.Reason
+	}
+	if _, err := fmt.Fprintf(w, "  %s→%s\t%s\n", b.SkillID, b.CanonicalRole, status); err != nil {
+		return fmt.Errorf("check: write weapon link row: %w", err)
 	}
 	return nil
 }

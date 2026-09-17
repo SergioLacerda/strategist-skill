@@ -134,6 +134,11 @@ func DetectClaimCollisions(records []SniperClaimRecord) []ClaimCollisionSignal {
 	if len(records) == 0 {
 		return nil
 	}
+	missionsByTarget, basePathByTarget, targetOrder := groupClaimsByTarget(records)
+	return collisionSignals(missionsByTarget, basePathByTarget, targetOrder)
+}
+
+func groupClaimsByTarget(records []SniperClaimRecord) (map[string]map[string]bool, map[string]string, []string) {
 	missionsByTarget := make(map[string]map[string]bool)
 	basePathByTarget := make(map[string]string)
 	var targetOrder []string
@@ -145,7 +150,10 @@ func DetectClaimCollisions(records []SniperClaimRecord) []ClaimCollisionSignal {
 		}
 		missionsByTarget[rec.TargetPath][rec.MissionID] = true
 	}
+	return missionsByTarget, basePathByTarget, targetOrder
+}
 
+func collisionSignals(missionsByTarget map[string]map[string]bool, basePathByTarget map[string]string, targetOrder []string) []ClaimCollisionSignal {
 	var signals []ClaimCollisionSignal
 	for _, target := range targetOrder {
 		missions := missionsByTarget[target]

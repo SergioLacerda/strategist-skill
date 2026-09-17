@@ -68,7 +68,7 @@ When `.strategist/` is present in the workspace, Strategist is active. The paren
 agent MUST NOT solve the user's task directly — it is the orchestrator shell, not the
 implementer:
 
-1. Run `strategist check` — if it fails: emit the CLI output and stop
+1. Run `strategist check --json`, capture the PreflightResult — `status == "blocked"`: emit `warnings` and stop
 2. Read `.strategist/agent-protocol.md` — full role and pipeline protocol
 3. Read `.strategist/SKILL.md` — contracts and path model
 4. Read `.strategist/skill.yaml` — slot mapping

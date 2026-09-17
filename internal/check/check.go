@@ -23,6 +23,7 @@ var (
 	checkRoot                      string
 	checkStrict                    bool
 	checkSimulate                  bool
+	checkJSON                      bool
 	checkPrintContentByLang        string
 	checkPrintContentByLangPersona string
 	readGitConflictedPaths         = readGitConflictedPathsFromWorktree
@@ -99,6 +100,9 @@ Checks performed:
 		}
 
 		if identityErr := checkIdentityFilesBlockingError(root); identityErr != nil {
+			if checkJSON {
+				return printPreflightJSONBlocked(root, cfg.Mode, identityErr)
+			}
 			return identityErr
 		}
 
@@ -173,6 +177,10 @@ Checks performed:
 
 		if checkSimulate {
 			return printSimulateReport(root, providers, resolutions, cfg.Mode, decisionReason, errs)
+		}
+
+		if checkJSON {
+			return printPreflightJSON(root, cfg.Mode, providers, resolutions, errs)
 		}
 
 		if len(errs) > 0 {

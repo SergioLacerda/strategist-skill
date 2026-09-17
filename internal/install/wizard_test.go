@@ -115,6 +115,7 @@ func TestRunWizard(t *testing.T) {
 		wantDiscovery  string
 		wantRefinement string
 		wantExecution  string
+		wantExecMode   string
 		wantChestPath  string
 	}{
 		{
@@ -131,6 +132,7 @@ func TestRunWizard(t *testing.T) {
 			wantDiscovery:  "brainstorming",
 			wantRefinement: "openspec-propose",
 			wantExecution:  "sniper",
+			wantExecMode:   domain.SlotBindingModeCustom,
 			wantChestPath:  "",
 		},
 		{
@@ -144,9 +146,10 @@ func TestRunWizard(t *testing.T) {
 			wantBase:       "/workspace",
 			wantDiscovery:  "brainstorming",
 			wantRefinement: "archivist",
-			// Legacy execution input ("batata") is consumed but discarded — execution
-			// always resolves to the native sniper role, never a scripted/custom value.
-			wantExecution: "sniper",
+			// A non-ranked execution selection is retained as an explicit Custom
+			// binding; it is never silently replaced by the native Sniper role.
+			wantExecution: "batata",
+			wantExecMode:  domain.SlotBindingModeCustom,
 			wantChestPath: ".sdd/source",
 		},
 		{
@@ -161,6 +164,7 @@ func TestRunWizard(t *testing.T) {
 			wantDiscovery:  "brainstorming",
 			wantRefinement: "openspec-propose",
 			wantExecution:  "sniper",
+			wantExecMode:   domain.SlotBindingModeCustom,
 			wantChestPath:  "",
 		},
 	}
@@ -179,6 +183,7 @@ func TestRunWizard(t *testing.T) {
 			assert.Equal(t, tt.wantDiscovery, wc.DiscoveryProvider)
 			assert.Equal(t, tt.wantRefinement, wc.RefinementProvider)
 			assert.Equal(t, tt.wantExecution, wc.ExecutionProvider)
+			assert.Equal(t, tt.wantExecMode, wc.ExecutionMode)
 			assert.Equal(t, tt.wantChestPath, wc.TreasureChestPath)
 		})
 	}

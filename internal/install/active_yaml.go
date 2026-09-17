@@ -48,6 +48,12 @@ provider_resolution_policy: ask
 		wc.UILanguage, wc.DocLanguage, wc.ChatLanguage, wc.CodeLanguage,
 		wc.DiscoveryProvider, wc.RefinementProvider, wc.ExecutionProvider,
 	)
+	if len(wc.DocumentationRoots) > 0 {
+		content += "documentation_roots:\n"
+		for _, root := range wc.DocumentationRoots {
+			content += fmt.Sprintf("  - %s\n", root)
+		}
+	}
 
 	if wc.TreasureChestPath != "" {
 		id := treasureChestID(wc.TreasureChestPath)

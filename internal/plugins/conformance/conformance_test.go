@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/plugins/conformance"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/stretchr/testify/assert"
@@ -16,6 +17,7 @@ const (
 	hostDigest    = "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
 	connDigest    = "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
 	suiteDigest   = "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+	policyDigest  = "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 )
 
 func TestCertificationRecordBindsToExactDigestsAndBecomesStale(t *testing.T) {
@@ -54,6 +56,31 @@ func TestCertificationRecordBindsToExactDigestsAndBecomesStale(t *testing.T) {
 		ConnectorDigest: connDigest,
 		TestSuiteDigest: suiteDigest,
 	}, mustTime(t, "2026-10-01T00:00:00Z")))
+	policyRecord := record
+	policyRecord.PolicyDigest = policyDigest
+	assert.True(t, policyRecord.Stale(conformance.CertificationInputDigests{
+		PackageDigest: pkgDigest, AdapterDigest: adapterDigest, HostAPIDigest: hostDigest,
+		ConnectorDigest: connDigest, TestSuiteDigest: suiteDigest,
+		PolicyDigest: "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+	}, mustTime(t, "2026-08-21T00:00:00Z")))
+}
+
+func TestCertificationRecordIdentityChangeMakesEvidenceStale(t *testing.T) {
+	record := validCertificationRecord()
+	record.Role = "ranger"
+	record.Provider = "brainstorming"
+	input := conformance.CertificationInputDigests{
+		Role:            "ranger",
+		Provider:        "brainstorming",
+		PackageDigest:   pkgDigest,
+		AdapterDigest:   adapterDigest,
+		HostAPIDigest:   hostDigest,
+		ConnectorDigest: connDigest,
+		TestSuiteDigest: suiteDigest,
+	}
+	input.Role = "archivist"
+
+	assert.True(t, record.Stale(input, mustTime(t, "2026-08-21T00:00:00Z")))
 }
 
 func TestEvaluateCertificationRequiresMinimumLevel(t *testing.T) {
@@ -311,6 +338,48 @@ func TestEvaluateCertificationAcceptsFreshRecordAtOrAboveMinimum(t *testing.T) {
 
 	assert.True(t, result.Accepted)
 	assert.Empty(t, result.ReasonCodes)
+}
+
+func TestCertificationResultStateClassifiesEvidence(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		result conformance.CertificationResult
+		expect conformance.EvidenceState
+	}{
+		{name: "accepted", result: conformance.CertificationResult{Accepted: true}, expect: conformance.EvidenceCertified},
+		{name: "stale", result: conformance.CertificationResult{ReasonCodes: []string{"certification_stale"}}, expect: conformance.EvidenceStale},
+		{name: "rejected", result: conformance.CertificationResult{ReasonCodes: []string{"certification_level_too_low"}}, expect: conformance.EvidenceFailed},
+		{name: "empty rejection", result: conformance.CertificationResult{}, expect: conformance.EvidenceFailed},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.expect, tt.result.State())
+		})
+	}
+}
+
+func TestStateForReadinessPreservesFailClosedEvidence(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		status domain.ReadinessStatus
+		expect conformance.EvidenceState
+	}{
+		{status: domain.ReadinessReady, expect: conformance.EvidenceCertified},
+		{status: domain.ReadinessUnsupported, expect: conformance.EvidenceUnsupported},
+		{status: domain.ReadinessUnknown, expect: conformance.EvidenceUnknown},
+		{status: domain.ReadinessBlocked, expect: conformance.EvidenceFailed},
+		{status: domain.ReadinessStatus("future_status"), expect: conformance.EvidenceUnknown},
+	}
+	for _, tt := range tests {
+		t.Run(string(tt.status), func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.expect, conformance.StateForReadiness(tt.status))
+		})
+	}
 }
 
 func mustTime(t *testing.T, raw string) time.Time {

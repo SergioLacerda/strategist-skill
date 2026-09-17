@@ -36,25 +36,8 @@ func ValidateCatalogDependencies(catalog pluginCatalog) []DependencyViolation {
 
 	var violations []DependencyViolation
 	for _, provider := range catalog.Providers {
-		for _, toolID := range provider.AuxiliaryTools {
-			if !known[toolID] {
-				violations = append(violations, DependencyViolation{
-					ProviderID:   provider.ID,
-					DependencyID: toolID,
-					Source:       "auxiliary_tools_allowed",
-				})
-			}
-		}
-		for _, dep := range provider.Dependencies {
-			if dep.Optional || known[dep.ID] {
-				continue
-			}
-			violations = append(violations, DependencyViolation{
-				ProviderID:   provider.ID,
-				DependencyID: dep.ID,
-				Source:       "dependencies",
-			})
-		}
+		violations = append(violations, missingToolViolations(provider, known)...)
+		violations = append(violations, missingDependencyViolations(provider, known)...)
 	}
 	sort.Slice(violations, func(i, j int) bool {
 		if violations[i].ProviderID != violations[j].ProviderID {
@@ -62,5 +45,26 @@ func ValidateCatalogDependencies(catalog pluginCatalog) []DependencyViolation {
 		}
 		return violations[i].DependencyID < violations[j].DependencyID
 	})
+	return violations
+}
+
+func missingToolViolations(provider pluginCatalogProvider, known map[string]bool) []DependencyViolation {
+	var violations []DependencyViolation
+	for _, toolID := range provider.AuxiliaryTools {
+		if !known[toolID] {
+			violations = append(violations, DependencyViolation{ProviderID: provider.ID, DependencyID: toolID, Source: "auxiliary_tools_allowed"})
+		}
+	}
+	return violations
+}
+
+func missingDependencyViolations(provider pluginCatalogProvider, known map[string]bool) []DependencyViolation {
+	var violations []DependencyViolation
+	for _, dep := range provider.Dependencies {
+		if dep.Optional || known[dep.ID] {
+			continue
+		}
+		violations = append(violations, DependencyViolation{ProviderID: provider.ID, DependencyID: dep.ID, Source: "dependencies"})
+	}
 	return violations
 }

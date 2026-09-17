@@ -9,6 +9,53 @@ The `strategist` binary is built in Go with [cobra](https://github.com/spf13/cob
 strategist <command> [flags]
 ```
 
+## plugins authorize
+
+Composes the authorization evidence required before a governed target write.
+It checks runtime configuration, persisted discovery/refinement Role→Weapon
+bindings, the local execution gate, the Strategist Approval Gate, and the
+connector's enforceable permission for `--target`.
+
+```
+strategist plugins authorize --target=<path> [--approval-gate=<state>]
+                            [--execution-gate=<state>] [--mission=<id>]
+                            [--json] [--root=<dir>]
+```
+
+`--approval-gate` defaults to `pending`; use `accepted` only after the
+Strategist Approval Gate was explicitly accepted. `--execution-gate` defaults
+to `allowed` and represents local policy only — it never substitutes for user
+approval. The command does not invoke external providers or intercept writes
+performed outside the CLI.
+
+With `--json`, the command emits
+`strategist-authorization-report/v1`, including `decision`, `reason_code`,
+`exit_class`, target/permission, role/provider identity, and independent
+dimensions for `runtime`, `binding`, `gate`, `target`, and `live_provider`.
+External live invocation normally remains `unknown`/`unverified` rather than
+being reported as ready.
+
+Exit classes are stable for automation:
+
+| Exit | Class | Meaning |
+|------|-------|---------|
+| `0` | `success` | All required CLI-before-write dimensions allow the target |
+| `1` | generic | Invalid command input or unrelated CLI failure |
+| `2` | `denied` / `blocked` | Target, binding, local gate, or Approval Gate prevents authorization |
+| `3` | `stale` | Runtime/config/artifact evidence is stale |
+
+Examples:
+
+```bash
+strategist plugins authorize \
+  --target=.analysis/refined/mission/tasks.md \
+  --approval-gate=accepted --json
+
+strategist plugins authorize \
+  --target=internal/domain/policy.go \
+  --approval-gate=accepted --json  # denied: source.write is not enforceable
+```
+
 ---
 
 ## install

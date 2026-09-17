@@ -1,0 +1,12 @@
+canonical_role: archivist
+roles:
+  - archivist
+risk_score: write_analysis
+category: refinement
+default: false
+upstream_repo: obra/superpowers
+upstream_skill_path: skills/writing-plans/SKILL.md
+upstream_version: 6.3.0
+upstream_commit: b36e0829c6d0140e93cfef2ca599b1b07d4a7797
+upstream_content_digest: sha256:2f24891aab2623894a34e3322fbd1b4fcb2254d089293ef78ab1740a79f79c49
+license: MIT

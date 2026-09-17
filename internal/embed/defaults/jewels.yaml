@@ -44,7 +44,7 @@ schema_version: "1"
 #   prompt: string                #   the challenge question itself
 # severity: low | medium | high  # optional, kind: template only
 #   pattern/challenge_template/severity are additive fields validated by
-#   internal/treasure.ValidateJewelEntry — parsing/writing a jewel with none of them
+#   treasure-chest.ValidateJewelEntry — parsing/writing a jewel with none of them
 #   set is unchanged. See
 #   .analysis/refined/20260803-handoff-challenge-extensions/design.md § Item 2.
 # evidence_class: explicit | corroborated_inference | weak_inference | unknown  # optional

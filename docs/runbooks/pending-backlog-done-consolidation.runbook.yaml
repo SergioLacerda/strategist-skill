@@ -1,0 +1,52 @@
+schema_version: "1"
+runbook_id: pending-backlog-done-consolidation
+runbook_type: operational
+source_doc: docs/runbooks/pending-backlog-done-consolidation.md
+
+applies_when:
+  - "A backlog directory under `<base_path>/pending/` (or a subsystem folder within it) has accumulated multiple mission packages, some of which have already reached `mission_status: documentation_applied`, with no separation from still-open work"
+
+objective: Separate a flat pending backlog into a done/ subfolder, an open-work index, a promoted roadmap, and one consolidated remaining-work item, without rewriting any historical package's own content.
+
+preconditions:
+  - "The backlog root is a directory under the workspace's own `base_path` (from `.strategist/active.yaml`), containing one or more Strategist mission packages and/or flat pending demands"
+
+verification:
+  - "Every item now under `<backlog_root>/done/` still has its own original content unchanged, except a resolved flat demand's prepended resolution note"
+  - "`<backlog_root>/README.md` names every done item, every still-open item, and any seed/source material — nothing from the inventory is silently omitted"
+  - "If a roadmap was promoted, `<backlog_root>/ROADMAP.md` exists with a dated status block above the untouched original content, and the one seed-material index that linked the old path now points at the new one"
+  - "Exactly one new remaining-work file exists, and it is a flat file, not a mission package"
+  - "No historical (done/ADR/archived-report) package has its own internal cross-references rewritten"
+  - "The reorganization mission's own package remains in `pending/`, not moved into `done/`"
+
+decision_gates:
+  - id: mission-status-evidence-sufficient
+    statement: "A package's own frontmatter `mission_status` field — not a Sniper report's existence, not a fully-checked `tasks.md`, not Approval Gate acceptance — is what classifies it as done vs. open, matching `11-critical-hit.md`'s Insufficient Evidence list"
+  - id: seed-material-vs-mission-output
+    statement: "A document counts as seed/source material only if it predates and was never itself a Strategist-refined mission package (`analysis.md`/`proposal.md`/`design.md`/`tasks.md`) — an already-refined package that is still open is still-open, not seed material"
+
+checks:
+  - id: inventory-read-from-own-frontmatter
+    level: mandatory
+  - id: done-items-moved-unchanged
+    level: mandatory
+  - id: resolved-flat-demand-annotated-not-deleted
+    level: conditional
+    when: "a flat, never-refined pending demand is found to be resolved by a done package"
+  - id: root-index-names-all-three-groups
+    level: mandatory
+  - id: roadmap-promoted-with-dated-status-block
+    level: conditional
+    when: "a roadmap/plan document exists as seed material"
+  - id: single-consolidated-remaining-work-file
+    level: mandatory
+  - id: cross-references-fixed-only-in-live-packages
+    level: mandatory
+  - id: historical-packages-not-rewritten
+    level: mandatory
+  - id: reorganization-mission-left-in-pending
+    level: mandatory
+
+metadata:
+  version: 1
+  reviewed_at: "2026-09-16"

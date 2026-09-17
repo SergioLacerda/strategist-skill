@@ -33,6 +33,31 @@ see `.analysis/refined/20260728-ranger-drift-eval/`.)
    reinstall it.
 5. Rerun `strategist check` until STATUS reports `ok` before retrying the mission.
 
+## Ranked Runtime Escalation
+
+When the configured provider is a certified Ranked binding, `strategist check`
+being structurally ready is not sufficient to prove live invocability. Inspect
+the role/provider runtime contract and its prepared state before retrying:
+
+1. Confirm the selected role/provider pair in `.strategist/active.yaml`,
+   `.strategist/plugins.lock`, and `.strategist/plugins/catalog.yaml`.
+2. For `archivist -> openspec-propose`, confirm the runtime contract points to
+   `.strategist/openspec` and that `config.yaml` is directly under that root.
+   A repository-root or nested `openspec/config.yaml` is not a valid substitute.
+3. Confirm `.strategist/ranked-runtimes.yaml` contains the selected slot,
+   provider, and matching certification digest.
+4. Run `openspec context --json` with the working directory set to
+   `.strategist/openspec`; do not run it from the repository root and do not
+   initialize the runtime lazily.
+5. If runtime state, digest, root, or healthcheck fails, treat the binding as
+   unavailable and reinstall/repair through the governed installation path.
+   Do not fall back silently to native Archivist, another provider, the
+   repository root, or `.analysis`.
+
+For `ranger -> brainstorming` with `runtime.kind: none`, no OpenSpec runtime is
+required or created. Static certification, project-contract readiness, and live
+provider invocation must be reported as separate evidence dimensions.
+
 ## Refinement-Specific Escalation
 
 The general Resolution Steps above assume a fix exists: install the provider correctly,

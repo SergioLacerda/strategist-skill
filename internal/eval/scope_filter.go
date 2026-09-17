@@ -3,7 +3,7 @@ package eval
 import (
 	"fmt"
 
-	"github.com/SergioLacerda/strategist-skill/internal/treasure"
+	"github.com/SergioLacerda/strategist-skill/treasure-chest"
 )
 
 func runScopeFilterScenario(s Scenario, res *ScenarioResult) {

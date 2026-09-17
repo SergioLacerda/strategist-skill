@@ -30,6 +30,23 @@ func TestResolveCustomSkillAvailabilityAvailableWhenInstalledUnderHome(t *testin
 	assert.Empty(t, availability.Reason)
 }
 
+func TestResolveCustomSkillAvailabilityUnavailableWhenHomeDirUnresolvable(t *testing.T) {
+	t.Setenv("HOME", "")
+
+	availability := resolveCustomSkillAvailability("whatever")
+	assert.False(t, availability.Available)
+	assert.Contains(t, availability.Reason, "cannot resolve home directory")
+}
+
+func TestCheckCustomSkillAvailabilitySkipsEmptySlotValue(t *testing.T) {
+	t.Parallel()
+
+	err := checkCustomSkillAvailability(map[string]string{}, map[string]string{
+		"discovery": "",
+	})
+	require.NoError(t, err)
+}
+
 func TestCheckCustomSkillAvailabilitySkipsRegistryKnownEntries(t *testing.T) {
 	t.Parallel()
 

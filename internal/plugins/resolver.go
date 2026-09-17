@@ -142,7 +142,10 @@ func (r *resolver) resolveRequirement(req resolveRequest, path []string) error {
 	}
 	r.visiting[key] = true
 	defer delete(r.visiting, key)
+	return r.resolveSelectedRequirement(req, key, path)
+}
 
+func (r *resolver) resolveSelectedRequirement(req resolveRequest, key string, path []string) error {
 	selected, ok := r.selectCandidate(req.Requirement)
 	if !ok {
 		if req.Optional {

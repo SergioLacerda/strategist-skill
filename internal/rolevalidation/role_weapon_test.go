@@ -48,6 +48,124 @@ func TestValidateRuntimeBindingsRejectsRoleMismatch(t *testing.T) {
 	require.Contains(t, failures[0].Error(), "role affinity")
 }
 
+func TestValidateRuntimeBindingsRejectsUncertifiedRankedMode(t *testing.T) {
+	root := writeValidationRoot(t, `
+  - slot: discovery
+    installed_instance_id: brainstorming
+    mode: ranked
+  - slot: refinement
+    installed_instance_id: openspec-propose
+`)
+	writeRankedCatalogFile(t, root, `
+schema_version: strategist-plugin-catalog/v1
+providers:
+  - id: brainstorming
+    canonical_role: ranger
+    roles: [ranger]
+`)
+	active := domain.ActiveConfig{Slots: map[string]string{
+		"discovery": "brainstorming", "refinement": "openspec-propose",
+	}}
+	failures := ValidateRuntimeBindings(root, active)
+	require.NotEmpty(t, failures)
+	require.Contains(t, failures[0].Error(), "not a certified ranked candidate")
+}
+
+func TestValidateRuntimeBindingsAcceptsCertifiedRankedMode(t *testing.T) {
+	root := writeValidationRoot(t, `
+  - slot: discovery
+    installed_instance_id: brainstorming
+    mode: ranked
+  - slot: refinement
+    installed_instance_id: openspec-propose
+`)
+	writeRankedCatalogFile(t, root, `
+schema_version: strategist-plugin-catalog/v1
+providers:
+  - id: brainstorming
+    canonical_role: ranger
+    roles: [ranger]
+    ranked: true
+    certification_digest: sha256:1111111111111111111111111111111111111111111111111111111111111111
+`)
+	active := domain.ActiveConfig{Slots: map[string]string{
+		"discovery": "brainstorming", "refinement": "openspec-propose",
+	}}
+	require.Empty(t, ValidateRuntimeBindings(root, active))
+}
+
+// TestValidateRuntimeBindingsAcceptsCertifiedRankedModeOnRefinementSlot is
+// the 20260916-ranked-skills-end-to-end-evaluation Layer 3 coverage-gap
+// fix: the refinement-slot counterpart to
+// TestValidateRuntimeBindingsAcceptsCertifiedRankedMode, which only ever
+// exercised mode: ranked on the discovery binding.
+func TestValidateRuntimeBindingsAcceptsCertifiedRankedModeOnRefinementSlot(t *testing.T) {
+	root := writeValidationRoot(t, `
+  - slot: discovery
+    installed_instance_id: brainstorming
+  - slot: refinement
+    installed_instance_id: openspec-propose
+    mode: ranked
+`)
+	writeRankedCatalogFile(t, root, `
+schema_version: strategist-plugin-catalog/v1
+providers:
+  - id: openspec-propose
+    canonical_role: archivist
+    roles: [archivist]
+    ranked: true
+    certification_digest: sha256:1111111111111111111111111111111111111111111111111111111111111111
+`)
+	active := domain.ActiveConfig{Slots: map[string]string{
+		"discovery": "brainstorming", "refinement": "openspec-propose",
+	}}
+	require.Empty(t, ValidateRuntimeBindings(root, active))
+}
+
+func TestValidateRuntimeBindingsRejectsRankedModeMissingFromCatalog(t *testing.T) {
+	root := writeValidationRoot(t, `
+  - slot: discovery
+    installed_instance_id: brainstorming
+    mode: ranked
+  - slot: refinement
+    installed_instance_id: openspec-propose
+`)
+	writeRankedCatalogFile(t, root, `
+schema_version: strategist-plugin-catalog/v1
+providers:
+  - id: openspec-propose
+    canonical_role: archivist
+`)
+	active := domain.ActiveConfig{Slots: map[string]string{
+		"discovery": "brainstorming", "refinement": "openspec-propose",
+	}}
+	failures := ValidateRuntimeBindings(root, active)
+	require.NotEmpty(t, failures)
+	require.Contains(t, failures[0].Error(), "not found in catalog")
+}
+
+func writeRankedCatalogFile(t *testing.T, root, catalogYAML string) {
+	t.Helper()
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "plugins"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins", "catalog.yaml"), []byte(catalogYAML), 0o644))
+}
+
+func TestValidateRuntimeBindingsRejectsInvalidMode(t *testing.T) {
+	root := writeValidationRoot(t, `
+  - slot: discovery
+    installed_instance_id: brainstorming
+    mode: typo
+  - slot: refinement
+    installed_instance_id: openspec-propose
+`)
+	active := domain.ActiveConfig{Slots: map[string]string{
+		"discovery": "brainstorming", "refinement": "openspec-propose",
+	}}
+	failures := ValidateRuntimeBindings(root, active)
+	require.NotEmpty(t, failures)
+	require.Contains(t, failures[0].Error(), "invalid mode")
+}
+
 func writeValidationRoot(t *testing.T, bindings string) string {
 	t.Helper()
 	root := t.TempDir()

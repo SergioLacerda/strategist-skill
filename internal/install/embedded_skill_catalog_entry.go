@@ -3,6 +3,7 @@ package install
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -17,6 +18,7 @@ func catalogProviderFromIngestedSkill(skill IngestedSkill) pluginCatalogProvider
 		Category:                skill.Adapter.Category,
 		CanonicalRole:           skill.Adapter.CanonicalRole,
 		Roles:                   skill.Adapter.Roles,
+		Lifecycle:               skill.Adapter.Lifecycle,
 		Default:                 skill.Adapter.Default,
 		Description:             skillDescription(skill.Dir),
 		AuxiliaryTools:          skill.Adapter.AuxiliaryTools,
@@ -24,6 +26,14 @@ func catalogProviderFromIngestedSkill(skill IngestedSkill) pluginCatalogProvider
 		LegacyManifestPath:      "skills/" + skill.ID + "/skill.yaml",
 		CompatibilitySource:     "embedded",
 		SupportedHandoffSchemas: skill.Adapter.SupportedHandoffSchemas,
+		ScratchRoot:             skill.Adapter.ScratchRoot,
+		Runtime:                 skill.Adapter.Runtime,
+		UpstreamRepo:            skill.Adapter.UpstreamRepo,
+		UpstreamSkillPath:       skill.Adapter.UpstreamSkillPath,
+		UpstreamVersion:         skill.Adapter.UpstreamVersion,
+		UpstreamCommit:          skill.Adapter.UpstreamCommit,
+		UpstreamContentDigest:   skill.Adapter.UpstreamContentDigest,
+		License:                 skill.Adapter.License,
 	}
 }
 
@@ -38,23 +48,19 @@ func skillDescription(dir string) string {
 	if err != nil {
 		return ""
 	}
+	return parseSkillDescription(string(raw))
+}
+
+func parseSkillDescription(content string) string {
 	var fm struct {
 		Description string `yaml:"description"`
 	}
-	content := string(raw)
 	const delim = "---"
-	if len(content) < len(delim) || content[:len(delim)] != delim {
+	if !strings.HasPrefix(content, delim) {
 		return ""
 	}
 	rest := content[len(delim):]
-	end := -1
-	needle := "\n" + delim
-	for i := 0; i+len(needle) <= len(rest); i++ {
-		if rest[i:i+len(needle)] == needle {
-			end = i
-			break
-		}
-	}
+	end := strings.Index(rest, "\n"+delim)
 	if end < 0 {
 		return ""
 	}

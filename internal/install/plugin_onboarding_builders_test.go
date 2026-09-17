@@ -23,6 +23,20 @@ func TestInventoryFromLock_PackageKindCarriesPackageDigest(t *testing.T) {
 	assert.Empty(t, instances[0].AdapterDigest)
 }
 
+func TestBindingsFromSlots_SetsCustomMode(t *testing.T) {
+	t.Parallel()
+
+	lock := domain.PluginLock{
+		Nodes: []domain.PluginLockNode{
+			{ID: "brainstorming", Kind: "adapter_contract", Digest: "sha256:test"},
+		},
+	}
+	bindings, err := bindingsFromSlots(map[string]string{"discovery": "brainstorming"}, lock)
+	require.NoError(t, err)
+	require.Len(t, bindings, 1)
+	assert.Equal(t, domain.SlotBindingModeCustom, bindings[0].Mode)
+}
+
 func TestBindingsFromSlots_UnresolvedBindingErrorPropagates(t *testing.T) {
 	t.Parallel()
 

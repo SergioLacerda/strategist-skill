@@ -117,6 +117,26 @@ func TestCheckFiles_EmptyFilesCreated(t *testing.T) {
 	assert.Empty(t, items)
 }
 
+func TestCheckFiles_PathIsDirectory_ReadErrorReportedSeparately(t *testing.T) {
+	// Exercises checkCreatedFile's generic err != nil branch: the path
+	// exists (so it isn't os.ErrNotExist) but reading it as a file fails
+	// because it's actually a directory — existence and read are reported
+	// as two distinct check items.
+	base := t.TempDir()
+	runDir := filepath.Join(base, "dojo", "run")
+	require.NoError(t, os.MkdirAll(filepath.Join(runDir, "not-a-file.md"), 0o755))
+
+	criteria := domain.DojoCriteria{
+		RunDir:       "dojo/run",
+		FilesCreated: []domain.DojoFileCheck{{Path: "not-a-file.md"}},
+	}
+	items := dojo.CheckFiles(criteria, base)
+	require.Len(t, items, 2)
+	assert.True(t, items[0].Passed)
+	assert.False(t, items[1].Passed)
+	assert.Contains(t, items[1].Label, "(read)")
+}
+
 func TestCheckFiles_PathTraversalRejected(t *testing.T) {
 	base := t.TempDir()
 	criteria := domain.DojoCriteria{

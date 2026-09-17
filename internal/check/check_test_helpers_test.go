@@ -121,6 +121,24 @@ func writeMinimalIdentityFiles(t *testing.T, dir string) {
 	require.NoError(t, os.WriteFile(filepath.Join(identityDir, "what-i-am.yaml"), []byte("identity: strategist\n"), 0o644))
 }
 
+// writeMinimalDomainIndexFiles creates the domain index.yaml and
+// directives/core.yaml files preflightAdvisories (check_preflight_advisories.go)
+// checks for, so a "success" fixture built via minimalCheckRoot doesn't
+// spuriously report index_yaml_not_found/directives_missing advisories. Any
+// hand-built check root fixture that doesn't go through minimalCheckRoot and
+// wants an advisory-free PreflightResult must call this too.
+func writeMinimalDomainIndexFiles(t *testing.T, dir string) {
+	t.Helper()
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "index.yaml"),
+		[]byte("load_always: []\nload_by_task_type: {}\n"),
+		0o644,
+	))
+	directivesDir := filepath.Join(dir, "templates", "domain", "directives")
+	require.NoError(t, os.MkdirAll(directivesDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(directivesDir, "core.yaml"), []byte("directives: []\n"), 0o644))
+}
+
 // minimalCheckRoot creates a .strategist/ tree suitable for checkCmd with all
 // three slot providers installed plus a valid epic persona. It also declares
 // the ADR-0035 DEC-001 permanent embedded-weapon roster
@@ -174,6 +192,7 @@ func minimalCheckRoot(t *testing.T) string {
 	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "archivist.yaml"),
 		[]byte("role: archivist\nslot: refinement\n"), 0o644))
 	writeMinimalIdentityFiles(t, dir)
+	writeMinimalDomainIndexFiles(t, dir)
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "plugins.lock"), []byte(`schema_version: strategist-plugin-lock-file/v1
 bindings:
   - slot: discovery

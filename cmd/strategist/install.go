@@ -76,6 +76,13 @@ func runInstall(cmd *cobra.Command, _ []string) (retErr error) {
 		telemetry.AttrTarget, installTarget,
 	)
 
+	if err := executeInstall(ctx, cmd); err != nil {
+		return err
+	}
+	return nil
+}
+
+func executeInstall(ctx context.Context, cmd *cobra.Command) error {
 	shimHome, err := os.UserHomeDir()
 	if err != nil {
 		return fmt.Errorf("install: resolve home dir: %w", err)

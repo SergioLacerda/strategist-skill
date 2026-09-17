@@ -43,18 +43,25 @@ func (s Service) planRuntimeDefaultUpgrade(ctx context.Context, strategistDir st
 		return runtimeDefaultPlan{}, err
 	}
 
-	for _, file := range domain.NormativeRuntimeDefaultFiles() {
-		decision, err := planRuntimeDefaultFile(strategistDir, file.Path, embeddedHashes[file.Path], manifest, manifestLoaded, force)
-		if err != nil {
-			return runtimeDefaultPlan{}, err
-		}
-		if runtimeDefaultBlocksInstall(decision) {
-			return runtimeDefaultPlan{}, fmt.Errorf("install: %s", domain.FormatRuntimeStaleDiagnostic(file.Path, decision))
-		}
-		plan.decisions[file.Path] = decision
+	if err := populateRuntimeDefaultPlan(&plan, strategistDir, embeddedHashes, manifest, manifestLoaded, force); err != nil {
+		return runtimeDefaultPlan{}, err
 	}
 
 	return plan, nil
+}
+
+func populateRuntimeDefaultPlan(plan *runtimeDefaultPlan, strategistDir string, embeddedHashes map[string]string, manifest domain.InstallManifest, manifestLoaded, force bool) error {
+	for _, file := range domain.NormativeRuntimeDefaultFiles() {
+		decision, err := planRuntimeDefaultFile(strategistDir, file.Path, embeddedHashes[file.Path], manifest, manifestLoaded, force)
+		if err != nil {
+			return err
+		}
+		if runtimeDefaultBlocksInstall(decision) {
+			return fmt.Errorf("install: %s", domain.FormatRuntimeStaleDiagnostic(file.Path, decision))
+		}
+		plan.decisions[file.Path] = decision
+	}
+	return nil
 }
 
 func planRuntimeDefaultFile(

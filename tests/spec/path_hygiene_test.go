@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	embedpkg "github.com/SergioLacerda/strategist-skill/internal/embed"
 )
 
 func TestPrimaryContractsDoNotHardcodeAnalysisAsArtifactRoot(t *testing.T) {
@@ -216,6 +218,39 @@ func TestLocalRuntimeMirrorsCanonicalNormativeFilesWhenPresent(t *testing.T) {
 			runtime := readFile(t, runtimePath)
 			if source != runtime {
 				t.Fatalf("%s drifted from canonical source %s; reinstall/recompile runtime from internal/embed/defaults", runtimePath, sourcePath)
+			}
+		})
+	}
+}
+
+func TestRankedProviderAdaptersDeclareWorkspaceArtifactBoundary(t *testing.T) {
+	t.Parallel()
+
+	root := repoRoot(t)
+	runtimeRoot := filepath.Join(t.TempDir(), ".strategist")
+	if err := (embedpkg.Extractor{}).Extract(runtimeRoot, false); err != nil {
+		t.Fatalf("extract embedded runtime: %v", err)
+	}
+	providers := []string{
+		"skills/brainstorming/SKILL.md",
+		"skills/openspec-propose/SKILL.md",
+	}
+	for _, rel := range providers {
+		rel := rel
+		t.Run(rel, func(t *testing.T) {
+			t.Parallel()
+			source := readFile(t, filepath.Join(root, "internal", "embed", "defaults", rel))
+			runtime := readFile(t, filepath.Join(runtimeRoot, rel))
+			for name, content := range map[string]string{"source": source, "runtime": runtime} {
+				if !strings.Contains(content, "docs/plans/") {
+					t.Fatalf("%s adapter %s must declare docs/plans as a forbidden target", rel, name)
+				}
+				if !strings.Contains(content, "<base_path>") {
+					t.Fatalf("%s adapter %s must resolve final artifacts from <base_path>", rel, name)
+				}
+			}
+			if source != runtime {
+				t.Fatalf("%s runtime adapter drifted from internal/embed/defaults", rel)
 			}
 		})
 	}

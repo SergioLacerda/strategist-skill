@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/plugins/governance"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -80,4 +81,24 @@ func TestWritePluginLockFile_WriteErrorPropagates(t *testing.T) {
 	err := writePluginLockFile(dir, domain.PluginLockFile{})
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "write "+pluginLockFileName)
+}
+
+func TestPersistGovernanceStateRoundTripsOperatorResources(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	policy := &domain.TrustPolicy{SchemaVersion: domain.TrustPolicySchemaVersion, Revision: "r1", TrustedPublishers: []string{"acme"}, TrustedSources: []string{}}
+	grants := &domain.PermissionGrantFile{SchemaVersion: domain.PermissionGrantFileSchemaVersion, Grants: []domain.PermissionGrant{{
+		ID: "grant-1", PackageDigest: validDigest("1"), AdapterDigest: validDigest("2"),
+		GrantedPermissions: []domain.PluginPermission{domain.PluginPermissionReadWorkspace},
+	}}}
+	require.NoError(t, persistGovernanceState(dir, policy, grants))
+
+	loadedPolicy, loadedGrants, err := governance.Load(dir)
+	require.NoError(t, err)
+	assert.Equal(t, *policy, loadedPolicy)
+	assert.Equal(t, *grants, loadedGrants)
+}
+
+func validDigest(seed string) string {
+	return "sha256:" + seed + "000000000000000000000000000000000000000000000000000000000000000"
 }

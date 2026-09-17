@@ -42,29 +42,37 @@ const RoleBindingLockKind = "role_provider_binding"
 // last-known-good rollback through the existing lifecycle machinery instead
 // of a second binding store.
 func ResolveRoleBinding(role domain.RoleContract, candidates []domain.ProviderContract, shadowOverride domain.ProviderSource, preferredProviderID string) (domain.ProviderBinding, error) {
-	scoped := make([]domain.ProviderContract, 0, len(candidates))
-	for _, candidate := range candidates {
-		if candidate.CheckRoleAffinity(role).Compatible {
-			scoped = append(scoped, candidate)
-		}
-	}
+	scoped := compatibleProviders(role, candidates)
 
 	deduped, err := deduplicateShadowedIDs(scoped, shadowOverride)
 	if err != nil {
 		return domain.ProviderBinding{}, err
 	}
 
-	var compatible []domain.ProviderContract
-	for _, candidate := range deduped {
+	compatible := sortedCompatibleProviders(role, deduped)
+	return chooseRoleBinding(role, compatible, len(scoped), preferredProviderID)
+}
+
+func compatibleProviders(role domain.RoleContract, candidates []domain.ProviderContract) []domain.ProviderContract {
+	var scoped []domain.ProviderContract
+	for _, candidate := range candidates {
 		if candidate.CheckRoleAffinity(role).Compatible {
-			compatible = append(compatible, candidate)
+			scoped = append(scoped, candidate)
 		}
 	}
-	sort.Slice(compatible, func(i, j int) bool { return compatible[i].ID < compatible[j].ID })
+	return scoped
+}
 
+func sortedCompatibleProviders(role domain.RoleContract, candidates []domain.ProviderContract) []domain.ProviderContract {
+	compatible := compatibleProviders(role, candidates)
+	sort.Slice(compatible, func(i, j int) bool { return compatible[i].ID < compatible[j].ID })
+	return compatible
+}
+
+func chooseRoleBinding(role domain.RoleContract, compatible []domain.ProviderContract, scopedCount int, preferredProviderID string) (domain.ProviderBinding, error) {
 	switch len(compatible) {
 	case 0:
-		return domain.ProviderBinding{}, fmt.Errorf("role_binding_missing: role=%s no compatible provider among %d candidate(s)", role.Role, len(scoped))
+		return domain.ProviderBinding{}, fmt.Errorf("role_binding_missing: role=%s no compatible provider among %d candidate(s)", role.Role, scopedCount)
 	case 1:
 		return domain.ProviderBinding{Role: role, Provider: compatible[0], Compatibility: compatible[0].CheckRoleAffinity(role)}, nil
 	default:
@@ -95,21 +103,27 @@ func deduplicateShadowedIDs(candidates []domain.ProviderContract, shadowOverride
 
 	deduped := make([]domain.ProviderContract, 0, len(candidates))
 	for _, id := range ids {
-		group := byID[id]
-		if len(group) == 1 {
-			deduped = append(deduped, group[0])
-			continue
-		}
-		if shadowOverride == "" {
-			return nil, fmt.Errorf("id_shadowing: id=%s sources=%s requires an explicit shadow override", id, sourceList(group))
-		}
-		winner, ok := findBySource(group, shadowOverride)
-		if !ok {
-			return nil, fmt.Errorf("id_shadowing: id=%s sources=%s does not include override source %s", id, sourceList(group), shadowOverride)
+		winner, err := deduplicateShadowedGroup(id, byID[id], shadowOverride)
+		if err != nil {
+			return nil, err
 		}
 		deduped = append(deduped, winner)
 	}
 	return deduped, nil
+}
+
+func deduplicateShadowedGroup(id string, group []domain.ProviderContract, shadowOverride domain.ProviderSource) (domain.ProviderContract, error) {
+	if len(group) == 1 {
+		return group[0], nil
+	}
+	if shadowOverride == "" {
+		return domain.ProviderContract{}, fmt.Errorf("id_shadowing: id=%s sources=%s requires an explicit shadow override", id, sourceList(group))
+	}
+	winner, ok := findBySource(group, shadowOverride)
+	if !ok {
+		return domain.ProviderContract{}, fmt.Errorf("id_shadowing: id=%s sources=%s does not include override source %s", id, sourceList(group), shadowOverride)
+	}
+	return winner, nil
 }
 
 func findBySource(group []domain.ProviderContract, source domain.ProviderSource) (domain.ProviderContract, bool) {

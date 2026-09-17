@@ -367,6 +367,121 @@ func TestPrintHandoffVerifyResult_WriteError(t *testing.T) {
 	require.ErrorContains(t, err, "write output")
 }
 
+// TestRunHandoffVerify_WithMissionRunSetsSilent covers runHandoffVerify's own
+// "if run := telemetryRunFromCmd(cmd); run != nil { run.SetSilent() }" branch.
+func TestRunHandoffVerify_WithMissionRunSetsSilent(t *testing.T) {
+	dir := t.TempDir()
+	testutil.MinimalRoot(t, dir)
+	challenges := writeHandoffVerifyFixture(t, dir, "challenges.yaml", handoffVerifyChallengesYAML)
+	ack := writeHandoffVerifyFixture(t, dir, "ack.yaml", handoffVerifyAckPassYAML)
+
+	attachMissionRun(t, handoffVerifyCmd)
+	_ = captureStdout(t, func() {
+		err := runHandoffVerify(handoffVerifyCmd, handoffVerifyOptions{
+			Root: dir, Transition: "archivist_to_sniper",
+			Challenges: challenges, Ack: ack, MissionID: "m-silent", Attempt: 1,
+		})
+		require.NoError(t, err)
+	})
+}
+
+// TestHandoffVerifyCmd_ChallengesReadErrorPropagates covers runHandoffVerify's
+// "if err := loadHandoffChallenges(...); err != nil { return fmt.Errorf(...) }"
+// branch, driven through the real command rather than calling
+// loadHandoffChallenges directly.
+func TestHandoffVerifyCmd_ChallengesReadErrorPropagates(t *testing.T) {
+	dir := t.TempDir()
+	testutil.MinimalRoot(t, dir)
+	ack := writeHandoffVerifyFixture(t, dir, "ack.yaml", handoffVerifyAckPassYAML)
+	setHandoffVerifyFlags(t, dir, "archivist_to_sniper", "", filepath.Join(dir, "missing-challenges.yaml"), ack, "m-1", 1)
+	t.Cleanup(func() { resetHandoffVerifyFlags(t) })
+
+	err := handoffVerifyCmd.RunE(handoffVerifyCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "handoff verify")
+	assert.Contains(t, err.Error(), "read challenges file")
+}
+
+// TestHandoffVerifyCmd_AckReadErrorPropagates covers runHandoffVerify's
+// "if err := loadHandoffAck(...); err != nil { return fmt.Errorf(...) }" branch.
+func TestHandoffVerifyCmd_AckReadErrorPropagates(t *testing.T) {
+	dir := t.TempDir()
+	testutil.MinimalRoot(t, dir)
+	challenges := writeHandoffVerifyFixture(t, dir, "challenges.yaml", handoffVerifyChallengesYAML)
+	setHandoffVerifyFlags(t, dir, "archivist_to_sniper", "", challenges, filepath.Join(dir, "missing-ack.yaml"), "m-1", 1)
+	t.Cleanup(func() { resetHandoffVerifyFlags(t) })
+
+	err := handoffVerifyCmd.RunE(handoffVerifyCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "handoff verify")
+	assert.Contains(t, err.Error(), "read acknowledgment file")
+}
+
+// TestHandoffVerifyCmd_PrintResultWriteErrorPropagates covers runHandoffVerify's
+// "if err := printHandoffVerifyResult(...); err != nil { return fmt.Errorf(...) }"
+// branch.
+func TestHandoffVerifyCmd_PrintResultWriteErrorPropagates(t *testing.T) {
+	dir := t.TempDir()
+	testutil.MinimalRoot(t, dir)
+	challenges := writeHandoffVerifyFixture(t, dir, "challenges.yaml", handoffVerifyChallengesYAML)
+	ack := writeHandoffVerifyFixture(t, dir, "ack.yaml", handoffVerifyAckPassYAML)
+	setHandoffVerifyFlags(t, dir, "archivist_to_sniper", "", challenges, ack, "m-1", 1)
+	t.Cleanup(func() { resetHandoffVerifyFlags(t); handoffVerifyCmd.SetOut(nil) })
+	handoffVerifyCmd.SetOut(errorWriter{})
+
+	err := handoffVerifyCmd.RunE(handoffVerifyCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "handoff verify")
+	assert.Contains(t, err.Error(), "write output")
+}
+
+// TestHandoffVerifyCmd_RecordErrorPropagates covers runHandoffVerify's
+// "if err := recordHandoffVerify(...); err != nil { return fmt.Errorf(...) }"
+// branch, driven through the real command (unlike
+// TestRecordHandoffVerify_AppendErrorPropagates, which calls
+// recordHandoffVerify directly).
+func TestHandoffVerifyCmd_RecordErrorPropagates(t *testing.T) {
+	dir := t.TempDir()
+	blocker := filepath.Join(dir, "blocker")
+	require.NoError(t, os.WriteFile(blocker, []byte("x"), 0o644))
+	challenges := writeHandoffVerifyFixture(t, dir, "challenges.yaml", handoffVerifyChallengesYAML)
+	ack := writeHandoffVerifyFixture(t, dir, "ack.yaml", handoffVerifyAckPassYAML)
+	setHandoffVerifyFlags(t, blocker, "archivist_to_sniper", "", challenges, ack, "m-1", 1)
+	t.Cleanup(func() { resetHandoffVerifyFlags(t) })
+
+	var runErr error
+	_ = captureStdout(t, func() {
+		runErr = handoffVerifyCmd.RunE(handoffVerifyCmd, nil)
+	})
+	require.Error(t, runErr)
+	assert.Contains(t, runErr.Error(), "handoff verify")
+	assert.Contains(t, runErr.Error(), "record handoff challenge")
+}
+
+// TestHandoffVerifyCmd_RangerToArchivistWithoutRiskLevelForcesEnabled covers
+// resolveHandoffPolicy's TransitionRangerToArchivist switch case, which is
+// otherwise never reached: every other ranger_to_archivist test in this file
+// sets --risk-level, which returns earlier via
+// handoff.ResolvePolicyForMission before the switch is ever evaluated.
+func TestHandoffVerifyCmd_RangerToArchivistWithoutRiskLevelForcesEnabled(t *testing.T) {
+	dir := t.TempDir()
+	testutil.MinimalRoot(t, dir)
+	challenges := writeHandoffVerifyFixture(t, dir, "challenges.yaml", "challenges: []\n")
+	ack := writeHandoffVerifyFixture(t, dir, "ack.yaml", "understood_refs: []\n")
+	setHandoffVerifyFlags(t, dir, "ranger_to_archivist", "", challenges, ack, "m-ranger-default", 1)
+	t.Cleanup(func() { resetHandoffVerifyFlags(t) })
+
+	var runErr error
+	out := captureStdout(t, func() {
+		runErr = handoffVerifyCmd.RunE(handoffVerifyCmd, nil)
+	})
+	// RangerToArchivistPolicy() defaults Enabled=false, but runHandoffVerify
+	// forces it true for a bare CLI invocation — with empty challenges/ack,
+	// that must fail verification rather than skip it.
+	require.Error(t, runErr)
+	assert.Contains(t, out, "status: failed")
+}
+
 func TestRecordHandoffVerify_AppendErrorPropagates(t *testing.T) {
 	dir := t.TempDir()
 	blocker := filepath.Join(dir, "blocker")

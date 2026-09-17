@@ -108,26 +108,42 @@ type ProviderContract struct {
 	CanonicalRole         string `yaml:"canonical_role"`
 	// Roles is the canonical multi-role affinity declaration. CanonicalRole is
 	// retained as a compatibility alias for older single-role catalog entries.
-	Roles                         []string             `yaml:"roles,omitempty"`
-	RiskScore                     string               `yaml:"risk_score"`
-	Source                        ProviderSource       `yaml:"source"`
-	Materialization               MaterializationState `yaml:"materialization"`
-	Default                       bool                 `yaml:"default,omitempty"`
-	Capabilities                  []string             `yaml:"capabilities,omitempty"`
-	Guarantees                    []string             `yaml:"guarantees,omitempty"`
-	SupportedRoleContractVersions []string             `yaml:"supported_role_contract_versions"`
+	Roles           []string             `yaml:"roles,omitempty"`
+	RiskScore       string               `yaml:"risk_score"`
+	Source          ProviderSource       `yaml:"source"`
+	Materialization MaterializationState `yaml:"materialization"`
+	Default         bool                 `yaml:"default,omitempty"`
+	// Ranked and CertificationDigest mark a build-time-certified Ranked
+	// binding candidate (docs/adr/0041-...md §"Ranked Class Resolution";
+	// docs/adr/0043-ranked-pipeline-pilot-implementation-decisions.md
+	// DEC-001). Independent of Default: a candidate can be Default without
+	// being Ranked, or Ranked without being Default — "preferred?" and
+	// "certified?" are separate questions, never conflated.
+	Ranked              bool   `yaml:"ranked,omitempty"`
+	CertificationDigest string `yaml:"certification_digest,omitempty"`
+	// RankedBindingGeneration and RankedBindingStatus are the pre-generated
+	// runtime SlotBinding fragment's Generation/Status (ADR-0043 DEC-005),
+	// computed once at certification time (`strategist plugin
+	// prepare-embedded`) and copied — never recomputed — by the Wizard's
+	// Ranked activation path.
+	RankedBindingGeneration       int64    `yaml:"ranked_binding_generation,omitempty"`
+	RankedBindingStatus           string   `yaml:"ranked_binding_status,omitempty"`
+	Capabilities                  []string `yaml:"capabilities,omitempty"`
+	Guarantees                    []string `yaml:"guarantees,omitempty"`
+	SupportedRoleContractVersions []string `yaml:"supported_role_contract_versions"`
 	// SupportedHandoffSchemas declares which handoff_schema value(s)
 	// (RoleContract.HandoffSchema) this Provider's real output actually
-	// conforms to. A Provider whose manifest omits this field supports none
-	// — CheckRoleCompatibility then correctly reports it incompatible with
-	// any role that declares a HandoffSchema, rather than defaulting to
-	// "compatible" the way SupportedRoleContractVersions' absence would not
-	// (that field is always synthesized as compatible today — see
-	// internal/install/role_provider_catalog_mapping.go). This is what
-	// closes the gap mission 20260914-role-weapon-structure-review hit
-	// live: openspec-propose passed canonical_role/role_contract_version
-	// compatibility while writing OpenSpec's own artifact shape instead of
-	// Archivist's.
+	// conforms to. Populated through the catalog/ingestion pipeline and
+	// carried on this type, but not currently read by any compatibility
+	// check — CheckRoleAffinity (role_provider_compatibility.go), the
+	// method actually used by the Wizard and `strategist check`, only
+	// evaluates role affinity and role-contract-version, not this
+	// dimension. The stricter handoff_schema-aware check that used to read
+	// this field (CheckRoleCompatibility) was removed as dead code
+	// (2026-09-15, zero production callers) — see
+	// .analysis/pending/skills_plugaveis/04-wizard-cli-surface/20260914-wizard-weapon-options-not-listed/
+	// for why the Wizard was loosened to CheckRoleAffinity instead of
+	// `strategist check` being tightened to match the old stricter check.
 	SupportedHandoffSchemas []string `yaml:"supported_handoff_schemas,omitempty"`
 }
 
@@ -157,6 +173,6 @@ func (p ProviderContract) Validate() error {
 	return joinPluginValidation("provider contract", errs)
 }
 
-// CheckRoleCompatibility, CheckRoleAffinity, ProviderBinding, and
-// ResolveProviderBinding live in role_provider_compatibility.go, split out
-// to keep this file under the repo's file-size budget.
+// CheckRoleAffinity and ProviderBinding live in
+// role_provider_compatibility.go, split out to keep this file under the
+// repo's file-size budget.

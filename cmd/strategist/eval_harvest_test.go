@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/SergioLacerda/strategist-skill/internal/treasure"
+	"github.com/SergioLacerda/strategist-skill/treasure-chest"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -315,6 +315,105 @@ func TestParseHarvestInclude_SkipsBlankSegments(t *testing.T) {
 	out, err := parseHarvestInclude("design,,tasks")
 	require.NoError(t, err)
 	assert.Equal(t, []string{"design", "tasks"}, out)
+}
+
+// TestRunEvalHarvest_WithMissionRunSetsSilent covers runEvalHarvest's own
+// "if run := telemetryRunFromCmd(cmd); run != nil { run.SetSilent() }"
+// branch, matching the attachMissionRun pattern used elsewhere in this
+// package (e.g. runMetricsHandoff/runMetricsScout).
+func TestRunEvalHarvest_WithMissionRunSetsSilent(t *testing.T) {
+	dir, base := scanTestRoot(t)
+	writeMissionTasks(t, base, "refined", "m-silent", "## Task 1 — Example\n")
+	writeMissionAnalysis(t, base, "refined", "m-silent", "# Analysis\n")
+
+	attachMissionRun(t, evalHarvestCmd)
+	resetEvalHarvestFlags(t)
+	setEvalHarvestFlags(t, dir, false, "")
+	t.Cleanup(func() { resetEvalHarvestFlags(t) })
+
+	_ = captureStdout(t, func() {
+		require.NoError(t, runEvalHarvest(evalHarvestCmd, []string{"m-silent"}, evalHarvestOptions{}))
+	})
+}
+
+// TestEvalHarvestCmd_ResolveDojoRootsErrorPropagates covers runEvalHarvest's
+// "if err := resolveDojoRoots(...); err != nil { return fmt.Errorf(...) }"
+// branch: --root points at a real, non-empty directory (so resolveEvalActionRoot
+// succeeds) that has no active.yaml, so the subsequent resolveDojoRoots call fails.
+func TestEvalHarvestCmd_ResolveDojoRootsErrorPropagates(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "no-active-yaml")
+	require.NoError(t, os.MkdirAll(root, 0o755))
+
+	resetEvalHarvestFlags(t)
+	setEvalHarvestFlags(t, root, false, "")
+	t.Cleanup(func() { resetEvalHarvestFlags(t) })
+
+	err := evalHarvestCmd.RunE(evalHarvestCmd, []string{"m-1"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "eval harvest")
+}
+
+// TestEvalHarvestCmd_SelectMissionIDsErrorPropagates covers runEvalHarvest's
+// "if err := selectHarvestMissionIDs(...); err != nil { return err }" branch,
+// driven through the real command (unlike TestSelectHarvestMissionIDs_
+// RequiresExactlyOneWithoutAll, which calls the helper directly).
+func TestEvalHarvestCmd_SelectMissionIDsErrorPropagates(t *testing.T) {
+	dir, _ := scanTestRoot(t)
+
+	resetEvalHarvestFlags(t)
+	setEvalHarvestFlags(t, dir, false, "")
+	t.Cleanup(func() { resetEvalHarvestFlags(t) })
+
+	err := evalHarvestCmd.RunE(evalHarvestCmd, nil)
+	require.Error(t, err)
+}
+
+// TestEvalHarvestCmd_ParseIncludeErrorPropagates covers runEvalHarvest's
+// "if err := parseHarvestInclude(...); err != nil { return err }" branch.
+func TestEvalHarvestCmd_ParseIncludeErrorPropagates(t *testing.T) {
+	dir, base := scanTestRoot(t)
+	writeMissionTasks(t, base, "refined", "m-bogus", "## Task 1 — Example\n")
+	writeMissionAnalysis(t, base, "refined", "m-bogus", "# Analysis\n")
+
+	resetEvalHarvestFlags(t)
+	setEvalHarvestFlags(t, dir, false, "bogus")
+	t.Cleanup(func() { resetEvalHarvestFlags(t) })
+
+	err := evalHarvestCmd.RunE(evalHarvestCmd, []string{"m-bogus"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "bogus")
+}
+
+// TestEvalHarvestCmd_HarvestMissionsErrorPropagates covers both
+// runEvalHarvest's "if err := harvestMissions(...); err != nil { return err }"
+// branch and harvestMissions' own wrapped "eval harvest %s: %w" error, by
+// requesting a mission ID that doesn't exist under refined/ or done/.
+func TestEvalHarvestCmd_HarvestMissionsErrorPropagates(t *testing.T) {
+	dir, _ := scanTestRoot(t)
+
+	resetEvalHarvestFlags(t)
+	setEvalHarvestFlags(t, dir, false, "")
+	t.Cleanup(func() { resetEvalHarvestFlags(t) })
+
+	err := evalHarvestCmd.RunE(evalHarvestCmd, []string{"does-not-exist"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "eval harvest does-not-exist")
+}
+
+// TestCopyHarvestFile_CopyErrorWhenSrcIsDirectory covers copyHarvestFile's
+// io.Copy error branch: os.Open succeeds on a directory, but reading from it
+// fails, which io.Copy surfaces as an error distinct from the open/create
+// failures the existing tests in this file already cover.
+func TestCopyHarvestFile_CopyErrorWhenSrcIsDirectory(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("reading a directory as a file has different semantics on Windows")
+	}
+	dir := t.TempDir()
+	srcDir := filepath.Join(dir, "src-dir")
+	require.NoError(t, os.MkdirAll(srcDir, 0o755))
+
+	err := copyHarvestFile(srcDir, filepath.Join(dir, "out"))
+	require.ErrorContains(t, err, "copy")
 }
 
 func TestEvalHarvestCmd_EndToEnd(t *testing.T) {

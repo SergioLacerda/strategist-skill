@@ -1,0 +1,10 @@
+id: openspec-archive-change
+version: "1.0"
+schema_version: "1"
+status: active
+risk_score: write_analysis
+category: lifecycle
+canonical_role: 
+
+description: >
+  Archive a completed change in the experimental workflow. Use when the user wants to finalize and archive a change after implementation is complete.

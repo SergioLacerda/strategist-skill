@@ -11,7 +11,7 @@ import (
 )
 
 // checkRoleProviderCompatibility exercises the real
-// domain.ProviderContract.CheckRoleCompatibility algorithm for a configured
+// domain.ProviderContract.CheckRoleAffinity algorithm for a configured
 // skill_provider slot resolution — closing the gap where RoleContract/
 // ProviderContract (internal/domain/role_provider_contract.go) and
 // ResolveRoleBinding (internal/plugins/role_binding.go) existed, fully
@@ -49,29 +49,16 @@ func checkRoleProviderCompatibility(root, slot, provider, riskScore string, skil
 	if roleID == "" {
 		return ""
 	}
-	roleRaw, err := os.ReadFile(filepath.Join(root, "roles", roleID+".yaml")) //nolint:gosec // G304: path derived from the runtime roles directory
+	roleCfg, err := loadCompatibleRole(root, roleID)
 	if err != nil {
 		return ""
 	}
-	var roleCfg domain.RoleConfig
-	if yaml.Unmarshal(roleRaw, &roleCfg) != nil || roleCfg.Validate() != nil {
+	roles, err := loadProviderRoles(skillRaw)
+	if err != nil || len(roles) == 0 {
 		return ""
 	}
 
-	var taxonomy skillTaxonomy
-	if yaml.Unmarshal(skillRaw, &taxonomy) != nil {
-		return ""
-	}
-	roles := taxonomy.roles()
-	if len(roles) == 0 {
-		return ""
-	}
-
-	handoffSchema, cataloged := loadSupportedHandoffSchemas(root, provider)
 	roleContract := domain.RoleContractFromConfig(roleCfg, "")
-	if cataloged {
-		roleContract = domain.RoleContractFromConfig(roleCfg, domain.RoleHandoffSchema[roleID])
-	}
 	providerContract := domain.ProviderContract{
 		SchemaVersion:                 roleContract.SchemaVersion,
 		ID:                            provider,
@@ -82,46 +69,41 @@ func checkRoleProviderCompatibility(root, slot, provider, riskScore string, skil
 		RiskScore:                     riskScore,
 		Source:                        domain.ProviderSourceExternal,
 		SupportedRoleContractVersions: []string{roleContract.SchemaVersion},
-		SupportedHandoffSchemas:       handoffSchema,
 	}
 	result := providerContract.CheckRoleAffinity(roleContract)
 	if result.Compatible {
 		return ""
 	}
+	return formatRoleCompatibilityFailure(slot, provider, roleID, result)
+}
+
+func loadCompatibleRole(root, roleID string) (domain.RoleConfig, error) {
+	roleRaw, err := os.ReadFile(filepath.Join(root, "roles", roleID+".yaml")) //nolint:gosec // G304: path derived from the runtime roles directory
+	if err != nil {
+		return domain.RoleConfig{}, fmt.Errorf("read role %s: %w", roleID, err)
+	}
+	var roleCfg domain.RoleConfig
+	if err := yaml.Unmarshal(roleRaw, &roleCfg); err != nil {
+		return domain.RoleConfig{}, fmt.Errorf("parse role %s: %w", roleID, err)
+	}
+	if err := roleCfg.Validate(); err != nil {
+		return domain.RoleConfig{}, fmt.Errorf("validate role %s: %w", roleID, err)
+	}
+	return roleCfg, nil
+}
+
+func loadProviderRoles(skillRaw []byte) ([]string, error) {
+	var taxonomy skillTaxonomy
+	if err := yaml.Unmarshal(skillRaw, &taxonomy); err != nil {
+		return nil, fmt.Errorf("parse provider taxonomy: %w", err)
+	}
+	return taxonomy.roles(), nil
+}
+
+func formatRoleCompatibilityFailure(slot, provider, roleID string, result domain.CompatibilityResult) string {
 	details := make([]string, 0, len(result.Reasons))
 	for _, reason := range result.Reasons {
 		details = append(details, fmt.Sprintf("%s: %s", reason.Code, reason.Detail))
 	}
 	return fmt.Sprintf("slot %s: provider %q role-incompatible with %q: %s", slot, provider, roleID, strings.Join(details, "; "))
-}
-
-// loadSupportedHandoffSchemas reads root/plugins/catalog.yaml — the same
-// file internal/install's Wizard reads via loadPluginCatalog — and returns
-// the named provider's own declared supported_handoff_schemas, or nil when
-// the catalog is absent/unreadable, the provider has no entry, or the entry
-// declares none. A read/parse failure is treated the same as "declares
-// none" (fail-closed on this dimension only) rather than a check error,
-// consistent with this file's other lookups (loadRoleSlotMap, role file
-// reads) that degrade to "no opinion" on I/O failure.
-func loadSupportedHandoffSchemas(root, provider string) ([]string, bool) {
-	catalogPath := filepath.Join(root, "plugins", "catalog.yaml")
-	raw, err := os.ReadFile(catalogPath) //nolint:gosec // G304: fixed path under the runtime plugins directory
-	if err != nil {
-		return nil, false
-	}
-	var doc struct {
-		Providers []struct {
-			ID                      string   `yaml:"id"`
-			SupportedHandoffSchemas []string `yaml:"supported_handoff_schemas"`
-		} `yaml:"providers"`
-	}
-	if yaml.Unmarshal(raw, &doc) != nil {
-		return nil, false
-	}
-	for _, p := range doc.Providers {
-		if p.ID == provider {
-			return p.SupportedHandoffSchemas, true
-		}
-	}
-	return nil, false
 }

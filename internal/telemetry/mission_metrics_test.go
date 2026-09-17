@@ -90,7 +90,12 @@ func TestAppendAndReadMissionTokenUsage(t *testing.T) {
 
 	dir := t.TempDir()
 	path := filepath.Join(dir, "memory", "mission-token-usage.jsonl")
+	rec1, rec2 := missionTokenUsageFixtures()
+	appendMissionTokenUsageFixtures(t, path, rec1, rec2)
+	assertMissionTokenUsageRoundTrip(t, path, rec1, rec2)
+}
 
+func missionTokenUsageFixtures() (MissionTokenUsageRecord, MissionTokenUsageRecord) {
 	rec1 := MissionTokenUsageRecord{
 		MissionID: "m-alpha", TokensIn: 111, TokensOut: 222,
 		Source: MissionUsageSourceAgentReport, ReportedAt: "2026-08-30T10:00:00Z",
@@ -99,14 +104,20 @@ func TestAppendAndReadMissionTokenUsage(t *testing.T) {
 		MissionID: "m-beta", TokensIn: 333, TokensOut: 444,
 		Source: MissionUsageSourceAgentReport, ReportedAt: "2026-08-30T11:00:00Z",
 	}
+	return rec1, rec2
+}
 
-	if err := AppendMissionTokenUsage(path, rec1); err != nil {
-		t.Fatalf("append rec1: %v", err)
+func appendMissionTokenUsageFixtures(t *testing.T, path string, records ...MissionTokenUsageRecord) {
+	t.Helper()
+	for _, record := range records {
+		if err := AppendMissionTokenUsage(path, record); err != nil {
+			t.Fatalf("append record: %v", err)
+		}
 	}
-	if err := AppendMissionTokenUsage(path, rec2); err != nil {
-		t.Fatalf("append rec2: %v", err)
-	}
+}
 
+func assertMissionTokenUsageRoundTrip(t *testing.T, path string, rec1, rec2 MissionTokenUsageRecord) {
+	t.Helper()
 	records, err := ReadMissionTokenUsage(path)
 	if err != nil {
 		t.Fatalf("read: %v", err)
@@ -117,9 +128,6 @@ func TestAppendAndReadMissionTokenUsage(t *testing.T) {
 	if records[0] != rec1 || records[1] != rec2 {
 		t.Fatalf("records do not match what was appended: got %+v", records)
 	}
-
-	// The reported numbers must be exactly what was passed in — not zero,
-	// not a self-reported placeholder.
 	if records[0].TokensIn != 111 || records[0].TokensOut != 222 {
 		t.Fatalf("rec1 token counts corrupted on round-trip: %+v", records[0])
 	}

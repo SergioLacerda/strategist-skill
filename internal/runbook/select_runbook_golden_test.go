@@ -6,6 +6,13 @@ import (
 	"testing"
 )
 
+type goldenSelectionCase struct {
+	name        string
+	sidecarFile string
+	signals     MissionSignals
+	wantMatch   bool
+}
+
 // loadSidecarFixture parses a real docs/runbooks/<name>.runbook.yaml sidecar
 // from disk. Tests in this file run with the package directory as their
 // working directory (go test's default), so the fixture path climbs two
@@ -39,12 +46,7 @@ func loadSidecarFixture(t *testing.T, name string) Runbook {
 func TestSelect_GoldenAgainstRealRunbookFixtures(t *testing.T) {
 	t.Parallel()
 
-	cases := []struct {
-		name        string
-		sidecarFile string
-		signals     MissionSignals
-		wantMatch   bool
-	}{
+	cases := []goldenSelectionCase{
 		{
 			name:        "ci_test_failure: operator synonym matches via vocabulary, not substring",
 			sidecarFile: "verifying-test-failures.runbook.yaml",
@@ -138,23 +140,29 @@ func TestSelect_GoldenAgainstRealRunbookFixtures(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			rb := loadSidecarFixture(t, tc.sidecarFile)
+		t.Run(tc.name, func(t *testing.T) { runGoldenSelectionCase(t, tc) })
+	}
+}
 
-			selections, _, err := Select([]Runbook{rb}, tc.signals, DefaultSelectionPolicy())
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
+func runGoldenSelectionCase(t *testing.T, tc goldenSelectionCase) {
+	t.Helper()
+	t.Parallel()
+	rb := loadSidecarFixture(t, tc.sidecarFile)
+	selections, _, err := Select([]Runbook{rb}, tc.signals, DefaultSelectionPolicy())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	assertGoldenSelection(t, rb, tc, selections)
+}
 
-			gotMatch := len(selections) > 0
-			if gotMatch != tc.wantMatch {
-				t.Fatalf("runbook %q signals %v: got matched=%v, want matched=%v (selections=%v)",
-					rb.RunbookID, tc.signals, gotMatch, tc.wantMatch, selections)
-			}
-			if gotMatch && selections[0].Reason == "" {
-				t.Fatalf("runbook %q: matched selection has empty reason", rb.RunbookID)
-			}
-		})
+func assertGoldenSelection(t *testing.T, rb Runbook, tc goldenSelectionCase, selections []Selection) {
+	t.Helper()
+	gotMatch := len(selections) > 0
+	if gotMatch != tc.wantMatch {
+		t.Fatalf("runbook %q signals %v: got matched=%v, want matched=%v (selections=%v)",
+			rb.RunbookID, tc.signals, gotMatch, tc.wantMatch, selections)
+	}
+	if gotMatch && selections[0].Reason == "" {
+		t.Fatalf("runbook %q: matched selection has empty reason", rb.RunbookID)
 	}
 }

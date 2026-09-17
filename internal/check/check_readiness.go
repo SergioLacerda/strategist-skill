@@ -10,23 +10,76 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func skillProviderReadiness(provider, path string) domain.PluginReadinessVector {
+func skillProviderReadiness(root, slot, provider, path string) domain.PluginReadinessVector {
 	connector := connectors.UnsupportedConnector{IDValue: "current-runtime", ConnectorAPIVersion: "strategist-connector-api/1"}
 	resolve := connector.Resolve(context.Background(), connectors.RuntimeLocator{ID: provider, Path: path})
 	observe := connector.Observe(context.Background(), domain.InstalledInstance{ID: provider})
+	entrypoint := "refine"
+	if slot == string(domain.SlotDiscovery) {
+		entrypoint = "discover"
+	}
+	probe := connector.Probe(context.Background(), domain.InstalledInstance{ID: provider, ConnectorID: connector.Capabilities(context.Background()).ConnectorID}, entrypoint)
+	lock := readPluginsLockFile(root)
+	digest := lock.NodeDigest(provider, "adapter_contract")
+	trustCheck := skillProviderTrustReadiness(root, provider, digest)
+	grantCheck := skillProviderPermissionGrantReadinessFor(root, digest, requestedPermissions(path))
+	ranked := bindingIsRanked(lock, slot, provider)
+	conformance := customConformanceReadiness(root, slot, provider, path, probe)
+	if ranked {
+		// A Ranked binding is already validated and certified at build time
+		// (docs/adr/0043-ranked-pipeline-pilot-implementation-decisions.md
+		// DEC-003) — it never calls into Custom's trust.Verify/
+		// policy.EvaluateGrant runtime checks; readiness is reported from the
+		// catalog's certification stamp instead.
+		trustCheck, grantCheck = rankedCertificationReadiness(root, slot, provider)
+		conformance = domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "ranked_certification_verified"}
+	}
 	return domain.PluginReadinessVector{
 		Descriptor:          domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "legacy_descriptor_valid", Detail: path},
 		Source:              domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "local_manifest_present", Detail: path},
-		Trust:               domain.ReadinessCheck{Status: domain.ReadinessUnknown, ReasonCode: "trust_policy_not_evaluated"},
+		Conformance:         conformance,
+		Trust:               trustCheck,
 		Dependencies:        domain.ReadinessCheck{Status: domain.ReadinessUnknown, ReasonCode: "dependency_lock_not_evaluated"},
 		HostAPI:             domain.ReadinessCheck{Status: domain.ReadinessUnknown, ReasonCode: "host_api_not_declared"},
 		Connector:           connectorCheck(resolve),
 		Entrypoint:          probeSkillEntrypoint(provider, path),
-		PermissionGrant:     domain.ReadinessCheck{Status: domain.ReadinessUnknown, ReasonCode: "permission_grant_not_evaluated"},
+		PermissionGrant:     grantCheck,
 		EnforcementCoverage: connectorObservationCheck(observe),
 		ActiveBinding:       domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "active_yaml_slot_binding"},
 	}
 }
+
+func requestedPermissions(path string) []domain.PluginPermission {
+	raw, err := os.ReadFile(path) //nolint:gosec // path is the resolved runtime skill manifest
+	if err != nil {
+		return nil
+	}
+	var manifest struct {
+		Requested []domain.PluginPermission `yaml:"requested_permissions"`
+	}
+	if yaml.Unmarshal(raw, &manifest) != nil {
+		return nil
+	}
+	return manifest.Requested
+}
+
+// bindingIsRanked reports whether slot's persisted plugins.lock binding for
+// provider has EffectiveMode() == SlotBindingModeRanked. A missing or
+// mismatched binding is not Ranked — the same fail-closed default every
+// other readiness dimension already uses for absent state.
+func bindingIsRanked(lock domain.PluginLockFile, slot, provider string) bool {
+	for _, b := range lock.Bindings {
+		if b.Slot == slot && b.InstalledInstanceID == provider {
+			return b.EffectiveMode() == domain.SlotBindingModeRanked
+		}
+	}
+	return false
+}
+
+// Ranked-certification-specific readiness (rankedCertificationReadiness,
+// evaluateRankedConformance, liveHostAPIDigest) lives in
+// check_ranked_readiness.go, split out to keep this file under the repo's
+// file-size budget.
 
 // probeSkillEntrypoint is the strongest entrypoint probe feasible for an
 // external skill plugin from a static CLI check. A *true* live-invocation
@@ -71,72 +124,10 @@ func probeSkillEntrypoint(provider, path string) domain.ReadinessCheck {
 	return domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "entrypoint_manifest_verified", Detail: path}
 }
 
-// readinessDimension names one PluginReadinessVector field for diagnostic
-// messages, without requiring reflection or a change to the domain type.
-type readinessDimension struct {
-	name  string
-	check domain.ReadinessCheck
-}
-
-func readinessDimensions(v domain.PluginReadinessVector) []readinessDimension {
-	return []readinessDimension{
-		{"descriptor", v.Descriptor},
-		{"source", v.Source},
-		{"trust", v.Trust},
-		{"dependencies", v.Dependencies},
-		{"host_api", v.HostAPI},
-		{"connector", v.Connector},
-		{"entrypoint", v.Entrypoint},
-		{"permission_grant", v.PermissionGrant},
-		{"enforcement_coverage", v.EnforcementCoverage},
-		{"active_binding", v.ActiveBinding},
-	}
-}
-
-// blockedReadinessErrors reports one message per dimension of slot's
-// readiness vector that is explicitly domain.ReadinessBlocked — i.e. a
-// dimension where the vector positively identifies an active problem, not
-// merely one that is domain.ReadinessUnknown (not yet evaluated, by design —
-// e.g. Trust/Dependencies/HostAPI/PermissionGrant are intentionally out of
-// scope today) or domain.ReadinessUnsupported (the current runtime honestly
-// does not offer that capability at all, e.g. an external skill plugin's
-// Connector dimension). Gating strategist check's exit code on Blocked only
-// — rather than on PluginReadinessVector.Ready(), which no configuration can
-// satisfy today given those intentionally-unevaluated dimensions — means
-// every currently-passing provider configuration keeps passing, while a
-// configuration with a genuine, identifiable defect (e.g. an entrypoint
-// manifest that doesn't exist or doesn't match its provider) newly fails
-// with a precise slot+dimension+reason message instead of silently passing.
-func blockedReadinessErrors(slot string, v domain.PluginReadinessVector) []string {
-	var errs []string
-	for _, d := range readinessDimensions(v) {
-		if d.check.Status != domain.ReadinessBlocked {
-			continue
-		}
-		msg := fmt.Sprintf("slot %s: readiness blocked on %s dimension (reason=%s", slot, d.name, d.check.ReasonCode)
-		if d.check.Detail != "" {
-			msg += ": " + d.check.Detail
-		}
-		msg += ")"
-		errs = append(errs, msg)
-	}
-	return errs
-}
-
-// blockedReadinessErrorsForSlots applies blockedReadinessErrors across every
-// slot in slots that has a resolution, collecting one error set. Extracted
-// so check.go's RunE doesn't need to inline the per-slot loop itself.
-func blockedReadinessErrorsForSlots(resolutions map[string]slotResolution, slots []string) []string {
-	var errs []string
-	for _, slot := range slots {
-		res, ok := resolutions[slot]
-		if !ok {
-			continue
-		}
-		errs = append(errs, blockedReadinessErrors(slot, res.readiness)...)
-	}
-	return errs
-}
+// Blocked-readiness diagnostic aggregation (readinessDimension,
+// readinessDimensions, blockedReadinessErrors, blockedReadinessErrorsForSlots)
+// lives in check_readiness_errors.go, split out to keep this file under the
+// repo's file-size budget.
 
 func nativeRoleReadiness(provider, path string) domain.PluginReadinessVector {
 	connector := connectors.NativeRuntimeConnector{ConnectorID: "strategist-native", ConnectorAPIVersion: "strategist-connector-api/1"}

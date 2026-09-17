@@ -79,7 +79,7 @@ providers:
 func TestResolveInstallableDefaultProvidersPrefersPluginCatalog(t *testing.T) {
 	t.Parallel()
 
-	got := resolveInstallableDefaultProviders(catalogOnlyExtractor{catalog: []byte(`
+	got, err := resolveInstallableDefaultProviders(catalogOnlyExtractor{catalog: []byte(`
 schema_version: strategist-plugin-catalog/v1
 providers:
   - id: alpha
@@ -90,7 +90,22 @@ providers:
     risk_score: controlled
 `)})
 
+	require.NoError(t, err)
 	assert.Equal(t, map[string]string{"alpha": "skills/alpha/skill.yaml"}, got)
+}
+
+// TestResolveInstallableDefaultProvidersPropagatesCatalogError asserts SQ-2's
+// hardening (ADR-0035 Decision 2, no fallback substitution): a
+// loadPluginCatalog failure must return an error, not silently substitute
+// installableDefaultProviders.
+func TestResolveInstallableDefaultProvidersPropagatesCatalogError(t *testing.T) {
+	t.Parallel()
+
+	got, err := resolveInstallableDefaultProviders(partialExtractor{failPath: pluginCatalogPath})
+
+	require.Error(t, err)
+	require.ErrorContains(t, err, "resolve installable default providers")
+	assert.Nil(t, got)
 }
 
 func TestProviderManifestBytesUsesPluginCatalog(t *testing.T) {

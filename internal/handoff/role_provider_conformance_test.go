@@ -82,8 +82,7 @@ func TestHandoffForbidsExecutionClaimRegardlessOfProviderSource(t *testing.T) {
 	role := sniperRole()
 	require.Contains(t, role.MustNot, "materialize documentation without approval gate acceptance")
 
-	binding := domain.ResolveProviderBinding(role, embeddedSniperProvider())
-	require.True(t, binding.Compatibility.Compatible)
+	require.True(t, embeddedSniperProvider().CheckRoleAffinity(role).Compatible)
 
 	for _, source := range []domain.ProviderSource{domain.ProviderSourceNativeRole, domain.ProviderSourceEmbedded, domain.ProviderSourceExternal} {
 		provider := embeddedSniperProvider()

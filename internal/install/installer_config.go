@@ -85,10 +85,10 @@ func (s Service) applyWizardConfig(ctx context.Context, strategistDir string) er
 	if err := writeActiveYAML(strategistDir, wc); err != nil {
 		return fmt.Errorf("install: write active.yaml: %w", err)
 	}
-	// Persist the resolved discovery/refinement binding only when this run's
-	// Role/Provider migration was fully resolved (non-empty Bindings) — a
-	// partial/unresolved migration must never overwrite a previously good
-	// plugins.lock (docs/adr/0037-wizard-role-binding-persistence.md).
+	return s.persistWizardConfig(strategistDir, wc)
+}
+
+func (s Service) persistWizardConfig(strategistDir string, wc domain.WizardConfig) error {
 	if len(wc.ResolvedPluginLock.Bindings) > 0 {
 		if err := writePluginLockFile(strategistDir, wc.ResolvedPluginLock); err != nil {
 			return fmt.Errorf("install: write plugins.lock: %w", err)
@@ -102,6 +102,9 @@ func (s Service) applyWizardConfig(ctx context.Context, strategistDir string) er
 	}
 	if err := writeTreasureChestManifest(strategistDir, wc); err != nil {
 		return fmt.Errorf("install: write treasure-chests.yaml: %w", err)
+	}
+	if err := persistGovernanceState(strategistDir, wc.GovernancePolicy, wc.PermissionGrants); err != nil {
+		return fmt.Errorf("install: write governance state: %w", err)
 	}
 	return nil
 }
@@ -124,8 +127,11 @@ func (s Service) writeSelectedProviderManifests(strategistDir string, wc domain.
 }
 
 func (s Service) writeSelectedProviderManifest(strategistDir, provider string) error {
-	_, ok := resolveInstallableDefaultProviders(s.Extractor)[provider]
-	if !ok {
+	installable, err := resolveInstallableDefaultProviders(s.Extractor)
+	if err != nil {
+		return fmt.Errorf("resolve installable providers for %s: %w", provider, err)
+	}
+	if _, ok := installable[provider]; !ok {
 		return nil
 	}
 	data, err := providerManifestBytes(s.Extractor, provider)

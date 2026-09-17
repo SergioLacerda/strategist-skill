@@ -71,21 +71,28 @@ func compareVersions(left, right string) int {
 	leftParts := versionParts(left)
 	rightParts := versionParts(right)
 	for i := 0; i < len(leftParts) || i < len(rightParts); i++ {
-		var l, r int
-		if i < len(leftParts) {
-			l = leftParts[i]
-		}
-		if i < len(rightParts) {
-			r = rightParts[i]
-		}
-		if l < r {
-			return -1
-		}
-		if l > r {
-			return 1
+		if comparison := compareVersionPart(leftParts, rightParts, i); comparison != 0 {
+			return comparison
 		}
 	}
 	return strings.Compare(left, right)
+}
+
+func compareVersionPart(left, right []int, index int) int {
+	var l, r int
+	if index < len(left) {
+		l = left[index]
+	}
+	if index < len(right) {
+		r = right[index]
+	}
+	if l < r {
+		return -1
+	}
+	if l > r {
+		return 1
+	}
+	return 0
 }
 
 func versionParts(version string) []int {

@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"testing"
 
@@ -124,6 +125,68 @@ func TestMissionReportUsageCmd_RequiresTokensInFlag(t *testing.T) {
 	err := missionReportUsageCmd.RunE(missionReportUsageCmd, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "--tokens-in is required")
+}
+
+// TestRunMissionReportUsage_WithMissionRunSetsSilent covers runMissionReportUsage's
+// "if run := telemetryRunFromCmd(cmd); run != nil { run.SetSilent() }" branch.
+func TestRunMissionReportUsage_WithMissionRunSetsSilent(t *testing.T) {
+	root := setupMissionReportUsageRoot(t, "20260830-silent-mission")
+	attachMissionRun(t, missionReportUsageCmd)
+	setMissionReportUsageFlags(t, root, "20260830-silent-mission", 1, 1)
+	t.Cleanup(func() { resetMissionReportUsageFlags(t) })
+
+	out := captureStdout(t, func() {
+		require.NoError(t, runMissionReportUsage(missionReportUsageCmd, missionReportUsageOptions{
+			Root: root, MissionID: "20260830-silent-mission", TokensIn: 1, TokensOut: 1,
+		}))
+	})
+	assert.Contains(t, out, "recorded")
+}
+
+// TestMissionReportUsageCmd_RootResolutionErrorPropagates covers
+// runMissionReportUsage's "if err := cliutil.ResolveActiveBasePath(...); err
+// != nil { return fmt.Errorf(...) }" branch: --root points at a directory
+// with no active.yaml.
+func TestMissionReportUsageCmd_RootResolutionErrorPropagates(t *testing.T) {
+	setMissionReportUsageFlags(t, t.TempDir(), "20260830-no-active-yaml", 1, 1)
+	t.Cleanup(func() { resetMissionReportUsageFlags(t) })
+
+	err := missionReportUsageCmd.RunE(missionReportUsageCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "mission report-usage")
+}
+
+// TestMissionReportUsageCmd_AppendErrorPropagates covers runMissionReportUsage's
+// "if err := telemetry.AppendMissionTokenUsage(...); err != nil { return
+// fmt.Errorf(...) }" branch: root/memory exists as a regular file, so
+// AppendMissionTokenUsage's MkdirAll for the memory directory fails.
+func TestMissionReportUsageCmd_AppendErrorPropagates(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("ENOTDIR mkdir-error semantics differ on Windows")
+	}
+	root := setupMissionReportUsageRoot(t, "20260830-blocked-mission")
+	require.NoError(t, os.WriteFile(filepath.Join(root, "memory"), []byte("x"), 0o644))
+	setMissionReportUsageFlags(t, root, "20260830-blocked-mission", 1, 1)
+	t.Cleanup(func() { resetMissionReportUsageFlags(t) })
+
+	err := missionReportUsageCmd.RunE(missionReportUsageCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "mission report-usage")
+}
+
+// TestMissionReportUsageCmd_WriteOutputErrorPropagates covers
+// runMissionReportUsage's final "if _, err := fmt.Fprintf(cmd.OutOrStdout(),
+// ...); err != nil { return fmt.Errorf("mission report-usage: write output:
+// %w", err) }" branch.
+func TestMissionReportUsageCmd_WriteOutputErrorPropagates(t *testing.T) {
+	root := setupMissionReportUsageRoot(t, "20260830-write-err-mission")
+	setMissionReportUsageFlags(t, root, "20260830-write-err-mission", 5, 5)
+	t.Cleanup(func() { resetMissionReportUsageFlags(t); missionReportUsageCmd.SetOut(nil) })
+	missionReportUsageCmd.SetOut(errorWriter{})
+
+	err := missionReportUsageCmd.RunE(missionReportUsageCmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "write output")
 }
 
 func TestMissionIDKnown(t *testing.T) {

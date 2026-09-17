@@ -38,6 +38,14 @@ func TestPluginResourceVocabularySeparatesAuthorities(t *testing.T) {
 	assert.Equal(t, string(domain.PluginResourceTransaction), seen["journaled_transition"])
 }
 
+func TestSlotExtensionKindLabel(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "external skill plugin", domain.SlotExtensionKindLabel("skill_provider"))
+	assert.Equal(t, "native role", domain.SlotExtensionKindLabel("native_role"))
+	assert.Equal(t, "custom_kind", domain.SlotExtensionKindLabel("custom_kind"))
+}
+
 func TestPluginVersionVectorRequiresIndependentDimensions(t *testing.T) {
 	t.Parallel()
 

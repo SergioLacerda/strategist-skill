@@ -100,27 +100,33 @@ func lessScoredCandidate(a, b scoredCandidate) bool {
 func buildSelections(scored []scoredCandidate, policy SelectionPolicy) (selections []Selection, rejections []Rejection) {
 	spent := 0
 	for _, s := range scored {
-		if s.score == 0 {
-			rejections = append(rejections, Rejection{RunbookID: s.runbook.RunbookID, Reason: RejectionNoMatch})
-			continue
+		selection, rejection, selected, nextSpent := buildSelection(s, selections, policy, spent)
+		spent = nextSpent
+		if selected {
+			selections = append(selections, selection)
+		} else {
+			rejections = append(rejections, rejection)
 		}
-		role, ok := nextRole(selections, policy)
-		if !ok {
-			rejections = append(rejections, Rejection{RunbookID: s.runbook.RunbookID, Reason: RejectionPolicyCapReached})
-			continue
-		}
-		if policy.TokenBudget > 0 && spent+s.runbook.EstimatedTokens > policy.TokenBudget {
-			rejections = append(rejections, Rejection{RunbookID: s.runbook.RunbookID, Reason: RejectionOverBudget})
-			continue
-		}
-		spent += s.runbook.EstimatedTokens
-		selections = append(selections, Selection{
-			RunbookID: s.runbook.RunbookID,
-			Role:      role,
-			Reason:    "matches applies_when: " + strings.Join(s.matched, "; "),
-		})
 	}
 	return selections, rejections
+}
+
+func buildSelection(s scoredCandidate, selections []Selection, policy SelectionPolicy, spent int) (Selection, Rejection, bool, int) {
+	if s.score == 0 {
+		return Selection{}, Rejection{RunbookID: s.runbook.RunbookID, Reason: RejectionNoMatch}, false, spent
+	}
+	role, ok := nextRole(selections, policy)
+	if !ok {
+		return Selection{}, Rejection{RunbookID: s.runbook.RunbookID, Reason: RejectionPolicyCapReached}, false, spent
+	}
+	if policy.TokenBudget > 0 && spent+s.runbook.EstimatedTokens > policy.TokenBudget {
+		return Selection{}, Rejection{RunbookID: s.runbook.RunbookID, Reason: RejectionOverBudget}, false, spent
+	}
+	return Selection{
+		RunbookID: s.runbook.RunbookID,
+		Role:      role,
+		Reason:    "matches applies_when: " + strings.Join(s.matched, "; "),
+	}, Rejection{}, true, spent + s.runbook.EstimatedTokens
 }
 
 func nextRole(selections []Selection, policy SelectionPolicy) (SelectionRole, bool) {

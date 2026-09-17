@@ -34,6 +34,10 @@ func providerContractFromCatalogEntry(provider pluginCatalogProvider) domain.Pro
 		Source:                        providerSourceFromCompatibilitySource(provider.CompatibilitySource),
 		Materialization:               materializationFromCatalogEntry(provider),
 		Default:                       provider.Default,
+		Ranked:                        provider.Ranked,
+		CertificationDigest:           provider.CertificationDigest,
+		RankedBindingGeneration:       provider.RankedBindingGeneration,
+		RankedBindingStatus:           provider.RankedBindingStatus,
 		SupportedRoleContractVersions: []string{domain.RoleContractSchemaVersion},
 		SupportedHandoffSchemas:       provider.SupportedHandoffSchemas,
 	}

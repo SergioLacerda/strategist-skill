@@ -37,6 +37,15 @@ func captureStdout(t *testing.T, fn func()) string {
 	require.NoError(t, err)
 	old := os.Stdout
 	os.Stdout = w
+	// FailNow/require inside fn terminates the goroutine after running defers,
+	// so restore stdout there as well. Otherwise a failed assertion can leave
+	// later tests writing to this closed pipe and report misleading broken-pipe
+	// failures.
+	defer func() {
+		os.Stdout = old
+		_ = w.Close()
+		_ = r.Close()
+	}()
 	fn()
 	require.NoError(t, w.Close())
 	os.Stdout = old

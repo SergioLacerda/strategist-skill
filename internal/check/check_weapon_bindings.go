@@ -78,25 +78,10 @@ func verifyEmbeddedWeaponBindings(root string) ([]weaponBinding, error) {
 
 	var bindings []weaponBinding
 	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
+		binding, ok := scanWeaponEntry(root, skillsDir, entry, roleSlotMap, roleSlotMapErr)
+		if ok {
+			bindings = append(bindings, binding)
 		}
-		skillID := entry.Name()
-		manifestPath := filepath.Join(skillsDir, skillID, "skill.yaml")
-		raw, readErr := os.ReadFile(manifestPath) //nolint:gosec // G304: path derived from the runtime skills directory
-		if readErr != nil {
-			continue // not a skill.yaml-bearing entry; nothing to verify
-		}
-		var taxonomy skillTaxonomy
-		if yamlErr := yaml.Unmarshal(raw, &taxonomy); yamlErr != nil {
-			bindings = append(bindings, weaponBinding{SkillID: skillID, Reason: fmt.Sprintf("skill.yaml invalid: %v", yamlErr)})
-			continue
-		}
-		canonicalRole := taxonomy.canonicalRole()
-		if canonicalRole == "" {
-			continue // not claiming to be an embedded weapon for any role
-		}
-		bindings = append(bindings, verifyOneWeaponBinding(root, skillID, canonicalRole, roleSlotMap, roleSlotMapErr))
 	}
 	// The scan above is reactive (skill declares a role -> is the claim
 	// valid?). It never asks the converse question a role-focused reading of
@@ -108,46 +93,24 @@ func verifyEmbeddedWeaponBindings(root string) ([]weaponBinding, error) {
 	return bindings, nil
 }
 
-// embeddedWeaponRoster is the permanent embedded weapon<->role pairing
-// baseline fixed by docs/adr/0035-embedded-weapon-fallback-policy.md DEC-001:
-// brainstorming<->ranger (discovery) and openspec-propose<->archivist
-// (refinement). The execution slot's embedded weapon (paired with sniper) is
-// explicitly deferred by that ADR and is intentionally not listed here.
-var embeddedWeaponRoster = []struct {
-	SkillID       string
-	CanonicalRole string
-}{
-	{SkillID: "brainstorming", CanonicalRole: "ranger"},
-	{SkillID: "openspec-propose", CanonicalRole: "archivist"},
-}
-
-// verifyEmbeddedWeaponRoster reports one failing weaponBinding for every
-// embeddedWeaponRoster pairing whose SkillID does not appear at all among
-// bindings already computed by the skill->role scan — i.e. its skill
-// directory/manifest is missing from <root>/skills/ entirely. A pairing that
-// is present but itself failing some other check (bad YAML, missing role
-// file, slot mismatch) is already reported by that check and is not
-// duplicated here: presence, not validity, is this function's only concern.
-func verifyEmbeddedWeaponRoster(bindings []weaponBinding) []weaponBinding {
-	present := make(map[string]bool, len(bindings))
-	for _, b := range bindings {
-		present[b.SkillID] = true
+func scanWeaponEntry(root, skillsDir string, entry os.DirEntry, roleSlotMap domain.RoleSlotMap, roleSlotMapErr error) (weaponBinding, bool) {
+	if !entry.IsDir() {
+		return weaponBinding{}, false
 	}
-	var missing []weaponBinding
-	for _, expected := range embeddedWeaponRoster {
-		if present[expected.SkillID] {
-			continue
-		}
-		missing = append(missing, weaponBinding{
-			SkillID:       expected.SkillID,
-			CanonicalRole: expected.CanonicalRole,
-			OK:            false,
-			Reason: fmt.Sprintf(
-				"embedded weapon missing from <root>/skills/ (expected permanent pairing %s<->%s, docs/adr/0035-embedded-weapon-fallback-policy.md DEC-001)",
-				expected.SkillID, expected.CanonicalRole),
-		})
+	skillID := entry.Name()
+	raw, err := os.ReadFile(filepath.Join(skillsDir, skillID, "skill.yaml")) //nolint:gosec // G304: path derived from the runtime skills directory
+	if err != nil {
+		return weaponBinding{}, false
 	}
-	return missing
+	var taxonomy skillTaxonomy
+	if err := yaml.Unmarshal(raw, &taxonomy); err != nil {
+		return weaponBinding{SkillID: skillID, Reason: fmt.Sprintf("skill.yaml invalid: %v", err)}, true
+	}
+	canonicalRole := taxonomy.canonicalRole()
+	if canonicalRole == "" {
+		return weaponBinding{}, false
+	}
+	return verifyOneWeaponBinding(root, skillID, canonicalRole, roleSlotMap, roleSlotMapErr), true
 }
 
 func verifyOneWeaponBinding(root, skillID, canonicalRole string, roleSlotMap domain.RoleSlotMap, roleSlotMapErr error) weaponBinding {

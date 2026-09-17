@@ -10,7 +10,7 @@ import (
 
 func TestRunScenariosAggregatesResults(t *testing.T) {
 	suite := RunScenarios("sample", []Scenario{
-		{ID: "pass", Input: Input{Target: TargetStateMachine, Params: map[string]any{"start": "APPROVAL_GATE", "events": []any{"gate_approved"}}}, Expected: Expected{State: "EXECUTION"}},
+		{ID: "pass", Input: Input{Target: TargetStateMachine, Params: map[string]any{"start": "APPROVAL_GATE", "events": []any{"gate_approved", "handoff_challenge_passed"}}}, Expected: Expected{State: "EXECUTION"}},
 		{ID: "fail", Input: Input{Target: TargetStateMachine, Params: map[string]any{"start": "APPROVAL_GATE", "events": []any{"gate_denied"}}}, Expected: Expected{State: "EXECUTION"}},
 	})
 
@@ -34,7 +34,11 @@ func TestWriteReportJSON(t *testing.T) {
 	if err := WriteReport(&buf, suite, ReportJSON); err != nil {
 		t.Fatalf("WriteReport JSON: %v", err)
 	}
+	assertJSONReport(t, buf.Bytes())
+}
 
+func assertJSONReport(t *testing.T, data []byte) {
+	t.Helper()
 	var got struct {
 		SuiteID string `json:"suite_id"`
 		Passed  bool   `json:"passed"`
@@ -54,8 +58,8 @@ func TestWriteReportJSON(t *testing.T) {
 			} `json:"violations"`
 		} `json:"scenarios"`
 	}
-	if err := json.Unmarshal(buf.Bytes(), &got); err != nil {
-		t.Fatalf("report is not valid JSON: %v\n%s", err, buf.String())
+	if err := json.Unmarshal(data, &got); err != nil {
+		t.Fatalf("report is not valid JSON: %v\n%s", err, data)
 	}
 	if got.SuiteID != "eval/contracts" || got.Passed {
 		t.Fatalf("unexpected suite fields: %+v", got)

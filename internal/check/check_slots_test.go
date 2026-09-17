@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/plugins/connectors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -93,6 +94,74 @@ func TestResolveSkillProviderSlot_EntrypointProbeVerifiesRealManifest(t *testing
 
 	assert.Equal(t, domain.ReadinessReady, res.readiness.Entrypoint.Status)
 	assert.Equal(t, "entrypoint_manifest_verified", res.readiness.Entrypoint.ReasonCode)
+}
+
+func TestResolveSkillProviderSlot_ClassifiesCustomContractEvidence(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "roles", "default.yaml"), []byte("discovery: ranger\nrefinement: archivist\nexecution: sniper\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "roles", "ranger.yaml"), []byte("role: ranger\nslot: discovery\n"), 0o644))
+	skillPath := filepath.Join(dir, "skills", "brainstorming", "skill.yaml")
+	require.NoError(t, os.MkdirAll(filepath.Dir(skillPath), 0o755))
+	raw := []byte("id: brainstorming\nrisk_score: write_analysis\ncanonical_role: ranger\nroles:\n  - ranger\n")
+	require.NoError(t, os.WriteFile(skillPath, raw, 0o644))
+
+	res, errMsg := resolveSkillProviderSlot(dir, "discovery", "brainstorming", skillPath, raw)
+	require.Empty(t, errMsg)
+	assert.Equal(t, domain.ReadinessUnsupported, res.readiness.Conformance.Status)
+	assert.Equal(t, "probe_unsupported", res.readiness.Conformance.ReasonCode)
+	assert.Equal(t, "unsupported", res.readiness.Conformance.EvidenceState)
+	assert.Contains(t, res.readiness.Conformance.Detail, "state=unsupported")
+}
+
+func TestCustomConformanceReadinessMapsExplicitProbeEvidence(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "roles", "default.yaml"), []byte("discovery: ranger\nrefinement: archivist\nexecution: sniper\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "roles", "ranger.yaml"), []byte("role: ranger\nslot: discovery\n"), 0o644))
+	skillPath := filepath.Join(dir, "skills", "custom", "skill.yaml")
+	require.NoError(t, os.MkdirAll(filepath.Dir(skillPath), 0o755))
+	raw := []byte("id: custom\nrisk_score: write_analysis\ncanonical_role: ranger\nroles:\n  - ranger\n")
+	require.NoError(t, os.WriteFile(skillPath, raw, 0o644))
+
+	cases := []struct {
+		name   string
+		probe  connectors.ConnectorResult
+		status domain.ReadinessStatus
+		state  string
+	}{
+		{name: "certified", probe: connectors.ConnectorResult{Status: domain.ReadinessReady, ReasonCode: "probe_passed"}, status: domain.ReadinessReady, state: "certified"},
+		{name: "unknown", probe: connectors.ConnectorResult{Status: domain.ReadinessUnknown, ReasonCode: "probe_not_verified"}, status: domain.ReadinessUnknown, state: "unknown"},
+		{name: "unsupported", probe: connectors.ConnectorResult{Status: domain.ReadinessUnsupported, ReasonCode: "probe_unsupported"}, status: domain.ReadinessUnsupported, state: "unsupported"},
+		{name: "failed", probe: connectors.ConnectorResult{Status: domain.ReadinessBlocked, ReasonCode: "probe_failed"}, status: domain.ReadinessBlocked, state: "failed"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := customConformanceReadiness(dir, "discovery", "custom", skillPath, tc.probe)
+			assert.Equal(t, tc.status, got.Status)
+			assert.Equal(t, tc.state, got.EvidenceState)
+			assert.Equal(t, tc.probe.ReasonCode, got.ReasonCode)
+		})
+	}
+}
+
+func TestResolveSkillProviderSlot_MissingCustomAffinityIsUnknown(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	skillPath := filepath.Join(dir, "skills", "custom", "skill.yaml")
+	require.NoError(t, os.MkdirAll(filepath.Dir(skillPath), 0o755))
+	raw := []byte("id: custom\nrisk_score: write_analysis\n")
+	require.NoError(t, os.WriteFile(skillPath, raw, 0o644))
+
+	res, errMsg := resolveSkillProviderSlot(dir, "discovery", "custom", skillPath, raw)
+	require.Empty(t, errMsg)
+	assert.Equal(t, domain.ReadinessUnknown, res.readiness.Conformance.Status)
+	assert.Equal(t, "conformance_role_mapping_unknown", res.readiness.Conformance.ReasonCode)
 }
 
 func TestResolveSkillProviderSlot_EntrypointProbeBlocksIDMismatch(t *testing.T) {
@@ -243,6 +312,63 @@ func TestCheckRoleProviderCompatibility_RoleFileMissing(t *testing.T) {
 
 	errMsg := checkRoleProviderCompatibility(dir, "refinement", "openspec-explore", "write_analysis",
 		[]byte("id: openspec-explore\ncanonical_role: archivist\n"))
+	assert.Empty(t, errMsg)
+}
+
+func TestLoadRoleSlotMap_MalformedYAML(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	rolesDir := filepath.Join(dir, "roles")
+	require.NoError(t, os.MkdirAll(rolesDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "default.yaml"), []byte("discovery: [unterminated"), 0o644))
+
+	_, err := loadRoleSlotMap(dir)
+	require.ErrorContains(t, err, "parse role slot map")
+}
+
+func TestCheckRoleProviderCompatibility_RoleFileMalformedYAML(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	rolesDir := filepath.Join(dir, "roles")
+	require.NoError(t, os.MkdirAll(rolesDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "default.yaml"),
+		[]byte("discovery: ranger\nrefinement: archivist\nexecution: sniper\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "archivist.yaml"),
+		[]byte("role: [unterminated"), 0o644))
+
+	errMsg := checkRoleProviderCompatibility(dir, "refinement", "openspec-explore", "write_analysis",
+		[]byte("id: openspec-explore\ncanonical_role: archivist\n"))
+	assert.Empty(t, errMsg)
+}
+
+func TestCheckRoleProviderCompatibility_RoleFileFailsValidation(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	rolesDir := filepath.Join(dir, "roles")
+	require.NoError(t, os.MkdirAll(rolesDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "default.yaml"),
+		[]byte("discovery: ranger\nrefinement: archivist\nexecution: sniper\n"), 0o644))
+	// role field intentionally omitted -> RoleConfig.Validate() fails.
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "archivist.yaml"),
+		[]byte("slot: refinement\n"), 0o644))
+
+	errMsg := checkRoleProviderCompatibility(dir, "refinement", "openspec-explore", "write_analysis",
+		[]byte("id: openspec-explore\ncanonical_role: archivist\n"))
+	assert.Empty(t, errMsg)
+}
+
+func TestCheckRoleProviderCompatibility_ProviderTaxonomyMalformedYAML(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	rolesDir := filepath.Join(dir, "roles")
+	require.NoError(t, os.MkdirAll(rolesDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "default.yaml"),
+		[]byte("discovery: ranger\nrefinement: archivist\nexecution: sniper\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "archivist.yaml"),
+		[]byte("role: archivist\nslot: refinement\n"), 0o644))
+
+	errMsg := checkRoleProviderCompatibility(dir, "refinement", "openspec-explore", "write_analysis",
+		[]byte("canonical_role: [unterminated"))
 	assert.Empty(t, errMsg)
 }
 

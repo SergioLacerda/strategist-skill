@@ -116,25 +116,6 @@ func (s *Store) Stage(txID string) error {
 	return s.transitionCandidate(tx, StateStaged, "candidate_staged")
 }
 
-// Probe records a non-mutating probe result. Passing probes can activate.
-func (s *Store) Probe(txID string, passed bool) error {
-	tx, err := s.transaction(txID)
-	if err != nil {
-		return err
-	}
-	if tx.State == StateProbed && tx.ProbePassed == passed {
-		return nil
-	}
-	if tx.State != StateStaged {
-		return fmt.Errorf("probe_invalid_state: %s", tx.State)
-	}
-	tx.ProbePassed = passed
-	if !passed {
-		return s.transitionCandidate(tx, StateFailed, "probe_failed")
-	}
-	return s.transitionCandidate(tx, StateProbed, "probe_passed")
-}
-
 // Activate performs the compare-and-swap binding switch.
 func (s *Store) Activate(txID string, expectedGeneration int64) error {
 	tx, err := s.transaction(txID)

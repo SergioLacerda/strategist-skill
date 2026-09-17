@@ -30,17 +30,12 @@ type pluginOnboardingPlan struct {
 
 type pluginProbeFunc func(domain.SlotBinding, domain.InstalledInstance) bool
 
+type pluginProbeResultFunc func(domain.SlotBinding, domain.InstalledInstance) lifecycle.ProbeOutcome
+
 func planPluginOnboarding(extractor domain.FileExtractor, catalog pluginCatalog, slots map[string]string) (pluginOnboardingPlan, error) {
-	requirements := make([]plugins.Requirement, 0, len(slots))
-	for _, slot := range sortedSlotNames(slots) {
-		provider := slots[slot]
-		if provider == "" {
-			return pluginOnboardingPlan{}, fmt.Errorf("unresolved_active_slot: %s has empty provider", slot)
-		}
-		if _, ok := findCatalogProvider(catalog, provider); !ok {
-			return pluginOnboardingPlan{}, fmt.Errorf("unresolved_active_slot: %s provider %s", slot, provider)
-		}
-		requirements = append(requirements, plugins.Requirement{ID: provider, Kind: "adapter_contract", Constraint: "*"})
+	requirements, err := onboardingRequirements(catalog, slots)
+	if err != nil {
+		return pluginOnboardingPlan{}, err
 	}
 
 	lock, err := plugins.Resolve(requirements, catalogResolverCandidates(catalog))
@@ -58,12 +53,7 @@ func planPluginOnboarding(extractor domain.FileExtractor, catalog pluginCatalog,
 	if err != nil {
 		return pluginOnboardingPlan{}, fmt.Errorf("resolve role/provider bindings: %w", err)
 	}
-	for _, entry := range roleMigration.Entries {
-		if entry.ResolutionError != "" {
-			continue
-		}
-		lock.Nodes = append(lock.Nodes, plugins.RoleBindingLockNode(entry.Resolved))
-	}
+	lock.Nodes = appendRoleMigrationNodes(lock.Nodes, roleMigration)
 	lock.GraphDigest = plugins.DigestLockNodes(lock.Nodes)
 	lock.ResolutionID = lock.GraphDigest
 
@@ -76,6 +66,30 @@ func planPluginOnboarding(extractor domain.FileExtractor, catalog pluginCatalog,
 		Changes:              changes,
 		RoleMigration:        roleMigration,
 	}, nil
+}
+
+func onboardingRequirements(catalog pluginCatalog, slots map[string]string) ([]plugins.Requirement, error) {
+	requirements := make([]plugins.Requirement, 0, len(slots))
+	for _, slot := range sortedSlotNames(slots) {
+		provider := slots[slot]
+		if provider == "" {
+			return nil, fmt.Errorf("unresolved_active_slot: %s has empty provider", slot)
+		}
+		if _, ok := findCatalogProvider(catalog, provider); !ok {
+			return nil, fmt.Errorf("unresolved_active_slot: %s provider %s", slot, provider)
+		}
+		requirements = append(requirements, plugins.Requirement{ID: provider, Kind: "adapter_contract", Constraint: "*"})
+	}
+	return requirements, nil
+}
+
+func appendRoleMigrationNodes(nodes []domain.PluginLockNode, migration RoleProviderMigrationPreview) []domain.PluginLockNode {
+	for _, entry := range migration.Entries {
+		if entry.ResolutionError == "" {
+			nodes = append(nodes, plugins.RoleBindingLockNode(entry.Resolved))
+		}
+	}
+	return nodes
 }
 
 // logRoleBindingEvidence logs one line per role/provider binding evidence
@@ -114,49 +128,6 @@ func applyPluginOnboardingPlan(store *lifecycle.Store, plan pluginOnboardingPlan
 		if err := applyPluginBinding(store, desired, probe); err != nil {
 			return err
 		}
-	}
-	return nil
-}
-
-func applyPluginBinding(store *lifecycle.Store, desired domain.SlotBinding, probe pluginProbeFunc) error {
-	current, ok := store.Binding(desired.Slot)
-	if !ok {
-		store.Bindings = append(store.Bindings, domain.SlotBinding{
-			SchemaVersion:       "strategist-plugin-binding/v1",
-			Slot:                desired.Slot,
-			InstalledInstanceID: desired.InstalledInstanceID,
-			Generation:          0,
-			Status:              desired.Status,
-		})
-		return nil
-	}
-	if current.InstalledInstanceID == desired.InstalledInstanceID {
-		return nil
-	}
-	instance, ok := store.Instance(desired.InstalledInstanceID)
-	if !ok {
-		return fmt.Errorf("planned_instance_missing: %s", desired.InstalledInstanceID)
-	}
-	return switchPluginBinding(store, current, desired, instance, probe)
-}
-
-func switchPluginBinding(store *lifecycle.Store, current, desired domain.SlotBinding, instance domain.InstalledInstance, probe pluginProbeFunc) error {
-	txID := "plugin-onboarding-" + desired.Slot + "-" + desired.InstalledInstanceID
-	tx, err := store.Begin(txID, desired.Slot, desired.InstalledInstanceID)
-	if err != nil {
-		return fmt.Errorf("begin plugin lifecycle transaction: %w", err)
-	}
-	if err := store.Stage(tx.ID); err != nil {
-		return fmt.Errorf("stage plugin lifecycle transaction: %w", err)
-	}
-	if err := store.Probe(tx.ID, probe(desired, instance)); err != nil {
-		return fmt.Errorf("probe plugin lifecycle transaction: %w", err)
-	}
-	if err := store.Activate(tx.ID, current.Generation); err != nil {
-		if rollbackErr := store.Rollback(tx.ID); rollbackErr != nil {
-			return fmt.Errorf("activate plugin lifecycle transaction: %w; rollback: %v", err, rollbackErr)
-		}
-		return fmt.Errorf("activate plugin lifecycle transaction: %w", err)
 	}
 	return nil
 }

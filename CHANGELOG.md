@@ -54,6 +54,20 @@ corresponding tag and GitHub Release.
 ### Fixed
 - Sorted and deduplicated test suite references in the contract index
   generation script
+- `resolveInstallableDefaultProviders` now propagates a `loadPluginCatalog`
+  failure instead of silently substituting the hardcoded provider fallback
+  map, closing a residual ask-first gap flagged in ADR-0035's own context
+  (both current callers already guarded this earlier in the call stack, so
+  this is a defense-in-depth hardening, not a behavior change on any
+  currently reachable path)
+
+### Removed
+- Dead handoff-schema lookup plumbing in `check_role_compatibility.go`
+  (`loadSupportedHandoffSchemas` and its call sites): computed a value
+  `CheckRoleAffinity` never read
+- Unreferenced `SlotExtensionLabel` constant in `internal/domain/plugin_types.go`
+- `CheckRoleCompatibility` and `ResolveProviderBinding` from
+  `internal/domain/role_provider_compatibility.go`: zero production callers
 
 ---
 

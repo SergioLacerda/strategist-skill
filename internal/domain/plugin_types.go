@@ -37,10 +37,6 @@ type PluginResourceAuthority struct {
 	Owns      []string
 }
 
-// SlotExtensionLabel is the user-facing term for a configured slot extension.
-// Legacy files still use "provider" in field names; UI should prefer this label.
-const SlotExtensionLabel = "slot plugin"
-
 // SlotExtensionKindLabel returns the vocabulary label for a resolved slot target.
 func SlotExtensionKindLabel(kind string) string {
 	switch kind {

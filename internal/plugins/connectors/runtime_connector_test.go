@@ -78,6 +78,15 @@ func TestNativeRuntimeConnectorRejectsIncompleteLocatorAndProbeInput(t *testing.
 	assert.Equal(t, "probe_input_incomplete", blockedProbe.ReasonCode)
 }
 
+func TestNativeRuntimeConnectorDoesNotClaimLiveProbeReadiness(t *testing.T) {
+	t.Parallel()
+
+	connector := connectors.NativeRuntimeConnector{ConnectorID: "strategist-native"}
+	probe := connector.Probe(context.Background(), domain.InstalledInstance{ID: "sniper"}, "materialize_docs")
+	assert.Equal(t, domain.ReadinessUnknown, probe.Status)
+	assert.Equal(t, "probe_not_verified", probe.ReasonCode)
+}
+
 func TestNativeRuntimeConnectorRemoveIsNotOwned(t *testing.T) {
 	t.Parallel()
 
@@ -161,7 +170,8 @@ func TestNativeRoleConnectorInheritsResolveAndProbeFromNativeRuntimeConnector(t 
 	assert.Equal(t, domain.ReadinessReady, resolved.Status)
 
 	probe := connector.Probe(context.Background(), domain.InstalledInstance{ID: "sniper"}, "materialize_docs")
-	assert.Equal(t, domain.ReadinessReady, probe.Status)
+	assert.Equal(t, domain.ReadinessUnknown, probe.Status)
+	assert.Equal(t, "probe_not_verified", probe.ReasonCode)
 }
 
 // TestOnlyNativeRoleConnectorClaimsInvoke pins the K02 finding's fix in
@@ -196,8 +206,8 @@ func TestNativeRuntimeConnectorReportsVisibleLocalInstanceWithoutInvokeClaim(t *
 	assert.Equal(t, "resolved_local_locator", resolved.ReasonCode)
 
 	probe := connector.Probe(context.Background(), domain.InstalledInstance{ID: "sniper"}, "materialize_docs")
-	assert.Equal(t, domain.ReadinessReady, probe.Status)
-	assert.Equal(t, "static_probe_ready", probe.ReasonCode)
+	assert.Equal(t, domain.ReadinessUnknown, probe.Status)
+	assert.Equal(t, "probe_not_verified", probe.ReasonCode)
 
 	invoked := connector.Invoke(context.Background(), connectors.InvocationEnvelope{Instance: domain.InstalledInstance{ID: "sniper"}, Entrypoint: "materialize_docs"})
 	assert.Equal(t, domain.ReadinessUnsupported, invoked.Status)

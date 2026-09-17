@@ -6,10 +6,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"gopkg.in/yaml.v3"
 )
 
 // Failure is one actionable role/provider validation failure.
@@ -54,112 +52,96 @@ func ValidateRuntimeBindings(root string, active domain.ActiveConfig) []Failure 
 	return failures
 }
 
-type skillManifest struct {
-	RiskScore     string   `yaml:"risk_score"`
-	CanonicalRole string   `yaml:"canonical_role"`
-	Roles         []string `yaml:"roles"`
-}
+// Provider manifest validation (skillManifest, validateProviderManifest,
+// validateSkillManifest, validateNativeBinding) lives in
+// role_weapon_manifest.go, split out to keep this file under the repo's
+// file-size budget. readRoleMap/readLock live in role_weapon_io.go.
 
 func validateSlot(root string, lock domain.PluginLockFile, slot, role, provider string) []Failure {
 	if provider == "" {
 		return []Failure{{Slot: slot, Role: role, Reason: "no weapon configured in active.yaml"}}
 	}
+	failure := persistedSlotBinding(root, lock, slot, role, provider)
+	if failure != nil {
+		return failure
+	}
+	if bindingModeForSlot(lock, slot) == domain.SlotBindingModeRanked {
+		// Ranked was already validated against its certification stamp
+		// inside persistedSlotBinding — the manifest/risk_score/role-affinity
+		// checks validateProviderManifest runs below are Custom-specific
+		// (docs/adr/0041's pipeline-scope decision) and never apply to a
+		// Ranked binding's build-time-certified provider.
+		return nil
+	}
+	return validateProviderManifest(root, slot, role, provider)
+}
 
-	matching := make([]domain.SlotBinding, 0, 1)
+func bindingModeForSlot(lock domain.PluginLockFile, slot string) string {
 	for _, binding := range lock.Bindings {
 		if binding.Slot == slot {
-			matching = append(matching, binding)
+			return binding.EffectiveMode()
 		}
 	}
+	return domain.SlotBindingModeCustom
+}
+
+func persistedSlotBinding(root string, lock domain.PluginLockFile, slot, role, provider string) []Failure {
+	matching := bindingsForSlot(lock, slot)
 	if len(matching) == 0 {
 		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: "no persisted weapon binding in plugins.lock"}}
 	}
 	if len(matching) != 1 {
 		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("plugins.lock has %d bindings for the slot", len(matching))}}
 	}
-	if matching[0].InstalledInstanceID != provider {
-		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("persisted binding points to %q, not active provider", matching[0].InstalledInstanceID)}}
-	}
+	return validateSingleSlotBinding(root, slot, role, provider, matching[0])
+}
 
-	// A native role binding is valid when its role contract is present and maps
-	// to the slot. External/embedded providers must additionally expose a valid
-	// manifest and explicit role affinity.
-	skillPath := filepath.Join(root, "skills", provider, "skill.yaml")
-	raw, err := os.ReadFile(skillPath) //nolint:gosec // path is derived from the runtime root and active provider
-	if os.IsNotExist(err) {
-		return validateNativeBinding(root, slot, role, provider)
+func bindingsForSlot(lock domain.PluginLockFile, slot string) []domain.SlotBinding {
+	matching := make([]domain.SlotBinding, 0, 1)
+	for _, binding := range lock.Bindings {
+		if binding.Slot == slot {
+			matching = append(matching, binding)
+		}
 	}
-	if err != nil {
-		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("skill manifest unreadable: %v", err)}}
+	return matching
+}
+
+// validateSingleSlotBinding validates the slot's single persisted binding —
+// split out of persistedSlotBinding, which only handles the zero-or-many
+// cases, to keep each function's branching shallow.
+func validateSingleSlotBinding(root string, slot, role, provider string, binding domain.SlotBinding) []Failure {
+	if binding.InstalledInstanceID != provider {
+		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("persisted binding points to %q, not active provider", binding.InstalledInstanceID)}}
 	}
-	var manifest skillManifest
-	if err := yaml.Unmarshal(raw, &manifest); err != nil {
-		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("skill manifest invalid: %v", err)}}
+	if !binding.ValidMode() {
+		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("persisted binding has invalid mode %q", binding.Mode)}}
 	}
-	requiredRisk := map[string]string{"discovery": "write_analysis", "refinement": "write_analysis"}[slot]
-	if manifest.RiskScore != requiredRisk {
-		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("risk_score=%q, requires %q", manifest.RiskScore, requiredRisk)}}
-	}
-	roles := manifest.Roles
-	if len(roles) == 0 && manifest.CanonicalRole != "" {
-		roles = []string{manifest.CanonicalRole}
-	}
-	if !contains(roles, role) {
-		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("role affinity %v does not include %q", roles, role)}}
+	if mode := binding.EffectiveMode(); mode == domain.SlotBindingModeRanked {
+		return validateRankedSlotBinding(root, slot, role, provider)
 	}
 	return nil
 }
 
-func validateNativeBinding(root, slot, role, provider string) []Failure {
-	raw, err := os.ReadFile(filepath.Join(root, "roles", provider+".yaml")) //nolint:gosec // provider is read from active.yaml
+// validateRankedSlotBinding validates a Ranked binding against the catalog's
+// certification stamp instead of Custom's manifest/risk_score checks (see
+// docs/adr/0043-ranked-pipeline-pilot-implementation-decisions.md DEC-003).
+func validateRankedSlotBinding(root, slot, role, provider string) []Failure {
+	raw, err := os.ReadFile(filepath.Join(root, "plugins", "catalog.yaml")) //nolint:gosec // G304: fixed runtime path
 	if err != nil {
-		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: "provider manifest and native role are missing"}}
+		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("plugins/catalog.yaml unreadable: %v", err)}}
 	}
-	var cfg domain.RoleConfig
-	if err := yaml.Unmarshal(raw, &cfg); err != nil {
-		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("native role invalid: %v", err)}}
+	stamp, ok, err := domain.FindCatalogRankedStamp(raw, provider)
+	if err != nil {
+		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("plugins/catalog.yaml invalid: %v", err)}}
 	}
-	if err := cfg.Validate(); err != nil || cfg.Role != role || cfg.Slot != slot {
-		if err != nil {
-			return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: "native role invalid: " + err.Error()}}
-		}
-		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("native role declares role=%q slot=%q", cfg.Role, cfg.Slot)}}
+	if !ok {
+		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: "provider not found in catalog"}}
+	}
+	if !stamp.Certified() {
+		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: "provider is not a certified ranked candidate"}}
+	}
+	if !stamp.HasRole(role) {
+		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("certified provider role affinity does not include %q", role)}}
 	}
 	return nil
-}
-
-func readRoleMap(root string) (domain.RoleSlotMap, error) {
-	raw, err := os.ReadFile(filepath.Join(root, "roles", "default.yaml")) //nolint:gosec // fixed runtime path
-	if err != nil {
-		return nil, fmt.Errorf("read role slot map: %w", err)
-	}
-	var m domain.RoleSlotMap
-	if err := yaml.Unmarshal(raw, &m); err != nil {
-		return nil, fmt.Errorf("unmarshal role slot map: %w", err)
-	}
-	if err := m.Validate(); err != nil {
-		return nil, fmt.Errorf("validate role slot map: %w", err)
-	}
-	return m, nil
-}
-
-func readLock(root string) (domain.PluginLockFile, error) {
-	raw, err := os.ReadFile(filepath.Join(root, "plugins.lock")) //nolint:gosec // fixed runtime path
-	if err != nil {
-		return domain.PluginLockFile{}, fmt.Errorf("read plugins.lock: %w", err)
-	}
-	var lock domain.PluginLockFile
-	if err := yaml.Unmarshal(raw, &lock); err != nil {
-		return domain.PluginLockFile{}, fmt.Errorf("unmarshal plugins.lock: %w", err)
-	}
-	return lock, nil
-}
-
-func contains(values []string, wanted string) bool {
-	for _, value := range values {
-		if strings.TrimSpace(value) == wanted {
-			return true
-		}
-	}
-	return false
 }

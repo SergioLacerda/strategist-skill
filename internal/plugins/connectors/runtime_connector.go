@@ -36,7 +36,17 @@ type RuntimeLocator struct {
 	Path string
 }
 
-// InvocationEnvelope is the versioned runtime invocation input.
+// InvocationEnvelope is the versioned runtime invocation input for
+// RuntimeConnector.Invoke — a host/plugin-runtime dispatch payload, not to be
+// confused with domain.RoleInvocationPlan
+// (internal/domain/role_invocation_plan.go), the mission-scoped Role→Weapon
+// composition (pinned weapon binding + context/schema refs) a mission
+// resolves before invocation. The two names are similar on purpose only in
+// that both were candidates for the same English word ("envelope"/"plan") at
+// different points; they are deliberately distinct types with no shared
+// fields, kept separate per
+// docs/adr/0041-cli-enforcement-sequencing-and-role-invocation-plan-naming.md
+// D1.
 type InvocationEnvelope struct {
 	SchemaVersion string
 	Instance      domain.InstalledInstance
@@ -124,12 +134,14 @@ func (c NativeRuntimeConnector) Resolve(_ context.Context, locator RuntimeLocato
 	return ConnectorResult{Status: domain.ReadinessReady, ReasonCode: "resolved_local_locator", Detail: locator.Path}
 }
 
-// Probe validates static probe inputs without invoking external code.
+// Probe validates static probe inputs without claiming live readiness. Input
+// validation is useful, but it is not evidence that an external runtime was
+// reached or that its entrypoint can execute.
 func (c NativeRuntimeConnector) Probe(_ context.Context, instance domain.InstalledInstance, entrypoint string) ConnectorResult {
 	if instance.ID == "" || entrypoint == "" {
 		return ConnectorResult{Status: domain.ReadinessBlocked, ReasonCode: "probe_input_incomplete"}
 	}
-	return ConnectorResult{Status: domain.ReadinessReady, ReasonCode: "static_probe_ready"}
+	return ConnectorResult{Status: domain.ReadinessUnknown, ReasonCode: "probe_not_verified", Detail: "static connector performed no runtime invocation"}
 }
 
 // Invoke reports that static connectors do not claim invocation authority.

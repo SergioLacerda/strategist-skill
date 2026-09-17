@@ -36,3 +36,12 @@ The Papel (Role) / Skill / Arma (Weapon) vocabulary — a separate, already-acce
 taxonomy for *who executes* a mission phase and *what capability* they use — is defined
 in [ADR-0034](../adr/0034-role-and-skill-taxonomy.md) and is orthogonal to the governance
 ladder above: it describes execution structure, not normative-rule layering.
+
+**Papel/Arma is the canonical, doc-facing vocabulary.** A later, still-pending proposal
+(`strategist-papeis-personagens-skills-nativas`) independently introduced
+`Role`/`Provider`/`Binding`/`Source` for the same underlying concepts; those names now
+also exist as real Go types (`internal/domain/role_provider_contract.go`) and remain
+valid as internal implementation naming, but they do not supersede or compete with
+ADR-0034's Papel/Arma taxonomy for documentation and conceptual framing. Renaming the
+Go types to match is an explicit non-goal here — a separate, larger decision if ever
+pursued, not made by this note.

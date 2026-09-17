@@ -33,37 +33,38 @@ func PlanRoleProviderMigration(extractor domain.FileExtractor, activeSlots map[s
 
 	entries := make([]RoleProviderPreviewEntry, 0, len(domain.RequiredSlots()))
 	for _, slot := range domain.RequiredSlots() {
-		slotName := string(slot)
-		roleName := roleSlotMap[slotName]
-		roleCfg, err := loadRoleConfig(extractor, roleName)
+		entry, err := planRoleProviderEntry(extractor, catalog, roleSlotMap, activeSlots, slot)
 		if err != nil {
-			return RoleProviderMigrationPreview{}, fmt.Errorf("role/provider migration: slot %s: %w", slotName, err)
-		}
-		role := domain.RoleContractFromConfig(roleCfg, domain.RoleHandoffSchema[roleName])
-		candidates := providerContractsForRole(catalog, roleName)
-
-		entry := RoleProviderPreviewEntry{
-			Slot:              slotName,
-			RoleName:          roleName,
-			CurrentProviderID: activeSlots[slotName],
-			Candidates:        candidates,
-		}
-		if current := activeSlots[slotName]; current != "" {
-			if _, ok := findCatalogProvider(catalog, current); !ok {
-				entry.ResolutionError = fmt.Sprintf("unresolved_active_slot: %s provider %s not found in catalog", slotName, current)
-				entries = append(entries, entry)
-				continue
-			}
-		}
-		binding, resolveErr := plugins.ResolveRoleBinding(role, candidates, "", activeSlots[slotName])
-		if resolveErr != nil {
-			entry.ResolutionError = resolveErr.Error()
-		} else {
-			entry.Resolved = binding
+			return RoleProviderMigrationPreview{}, err
 		}
 		entries = append(entries, entry)
 	}
 	return RoleProviderMigrationPreview{Entries: entries}, nil
+}
+
+func planRoleProviderEntry(extractor domain.FileExtractor, catalog pluginCatalog, roleSlotMap map[string]string, activeSlots map[string]string, slot domain.SlotName) (RoleProviderPreviewEntry, error) {
+	slotName := string(slot)
+	roleName := roleSlotMap[slotName]
+	roleCfg, err := loadRoleConfig(extractor, roleName)
+	if err != nil {
+		return RoleProviderPreviewEntry{}, fmt.Errorf("role/provider migration: slot %s: %w", slotName, err)
+	}
+	role := domain.RoleContractFromConfig(roleCfg, domain.RoleHandoffSchema[roleName])
+	candidates := providerContractsForRole(catalog, roleName)
+	entry := RoleProviderPreviewEntry{Slot: slotName, RoleName: roleName, CurrentProviderID: activeSlots[slotName], Candidates: candidates}
+	if current := activeSlots[slotName]; current != "" {
+		if _, ok := findCatalogProvider(catalog, current); !ok {
+			entry.ResolutionError = fmt.Sprintf("unresolved_active_slot: %s provider %s not found in catalog", slotName, current)
+			return entry, nil
+		}
+	}
+	binding, resolveErr := plugins.ResolveRoleBinding(role, candidates, "", activeSlots[slotName])
+	if resolveErr != nil {
+		entry.ResolutionError = resolveErr.Error()
+	} else {
+		entry.Resolved = binding
+	}
+	return entry, nil
 }
 
 // ApplyRoleProviderMigration activates the resolved Provider for the
@@ -78,6 +79,15 @@ func PlanRoleProviderMigration(extractor domain.FileExtractor, activeSlots map[s
 // story where some slots move to their new Provider while others silently
 // keep failing to resolve.
 func ApplyRoleProviderMigration(store *lifecycle.Store, preview RoleProviderMigrationPreview, probe pluginProbeFunc) error {
+	return applyRoleProviderMigration(store, preview, func(binding domain.SlotBinding, instance domain.InstalledInstance) lifecycle.ProbeOutcome {
+		if probe(binding, instance) {
+			return lifecycle.ProbeOutcome{Status: domain.ReadinessReady, ReasonCode: "probe_passed"}
+		}
+		return lifecycle.ProbeOutcome{Status: domain.ReadinessBlocked, ReasonCode: "probe_failed"}
+	})
+}
+
+func applyRoleProviderMigration(store *lifecycle.Store, preview RoleProviderMigrationPreview, probe pluginProbeResultFunc) error {
 	if !preview.FullyResolved() {
 		return fmt.Errorf("role_provider_migration_not_fully_resolved: refusing to apply a partial migration")
 	}
@@ -90,8 +100,9 @@ func ApplyRoleProviderMigration(store *lifecycle.Store, preview RoleProviderMigr
 			Slot:                entry.Slot,
 			InstalledInstanceID: entry.Resolved.Provider.ID,
 			Status:              "enabled",
+			Mode:                domain.SlotBindingModeCustom,
 		}
-		if err := applyPluginBinding(store, desired, probe); err != nil {
+		if err := applyPluginBindingWithResult(store, desired, probe); err != nil {
 			return fmt.Errorf("apply role/provider migration: slot %s: %w", entry.Slot, err)
 		}
 	}
@@ -115,11 +126,9 @@ func ApplyRoleProviderMigration(store *lifecycle.Store, preview RoleProviderMigr
 // plugins.lock with no corresponding active.yaml. An empty strategistDir
 // (used by tests that exercise activation mechanics only, not a real
 // installation) skips the read — the store is seeded fresh exactly as it
-// was before persistence existed. The probe here is intentionally a simple,
-// always-successful check: a connector-aware probe policy is a further
-// enhancement this task does not claim, matching the same level of rigor
-// plugin_onboarding_test.go's own probe closures already use for the legacy
-// binding path.
+// was before persistence existed. The activation probe is connector-backed;
+// LocalPathConnector reports only structural/static readiness and never claims
+// external live invocation.
 func activateRoleProviderMigration(strategistDir string, resolvedLock domain.PluginLock, preview RoleProviderMigrationPreview) (domain.PluginLockFile, error) {
 	var persisted domain.PluginLockFile
 	if strategistDir != "" {
@@ -141,8 +150,7 @@ func activateRoleProviderMigration(strategistDir string, resolvedLock domain.Plu
 		seedRoleProviderMigrationEntry(store, entry)
 	}
 
-	probe := func(domain.SlotBinding, domain.InstalledInstance) bool { return true }
-	if err := ApplyRoleProviderMigration(store, preview, probe); err != nil {
+	if err := applyRoleProviderMigration(store, preview, connectorProbe); err != nil {
 		return domain.PluginLockFile{}, err
 	}
 
@@ -167,6 +175,7 @@ func seedRoleProviderMigrationEntry(store *lifecycle.Store, entry RoleProviderPr
 		if _, ok := store.Binding(entry.Slot); !ok {
 			store.Bindings = append(store.Bindings, domain.SlotBinding{
 				Slot: entry.Slot, InstalledInstanceID: entry.CurrentProviderID, Generation: 1, Status: "enabled",
+				Mode: domain.SlotBindingModeCustom,
 			})
 		}
 	}

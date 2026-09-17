@@ -15,7 +15,7 @@ package is invoked, authorized, or governed once it enters a specific host
 project — that is left to each consuming project.
 
 Strategist already runs a source-to-runtime pipeline, documented in
-`docs/architecture.md`: `internal/embed/defaults/` is the single authoring
+`docs/architecture/overview.md`: `internal/embed/defaults/` is the single authoring
 source, embedded into the binary via `go:embed`; `strategist install`
 extracts it into `.strategist/` as the installed runtime; `strategist
 compile` derives `.strategist/.compiled/*.gz` from that runtime. Source,
@@ -134,7 +134,7 @@ independently auditable.
 ### Authority and synchronization
 
 Four states are distinct and ordered, mirroring the source/embedded/
-runtime distinction `docs/architecture.md` already documents for
+runtime distinction `docs/architecture/overview.md` already documents for
 Strategist's own defaults:
 
 | State | Authority | Verification |

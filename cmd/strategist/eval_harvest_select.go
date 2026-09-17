@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/SergioLacerda/strategist-skill/internal/treasure"
+	"github.com/SergioLacerda/strategist-skill/treasure-chest"
 	"github.com/spf13/cobra"
 )
 

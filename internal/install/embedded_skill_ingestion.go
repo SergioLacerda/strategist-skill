@@ -8,35 +8,11 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/plugins/connectors"
-	"gopkg.in/yaml.v3"
 )
 
-// externalSkillAdapterFileName is the Strategist-owned project adapter
-// sidecar living alongside each external-skills-source/<id>/SKILL.md — the
-// two-layer contract ADR-0033 defines: SKILL.md stays a portable ORKA
-// package (name/description/metadata only); strategist.yaml carries the
-// project-specific fields (roles/canonical_role, risk_score, category) SKILL.md
-// must never declare itself.
-const externalSkillAdapterFileName = "strategist.yaml"
-
-// externalSkillAdapter is the minimal project adapter this mission needs —
-// exactly the fields internal/install/plugin_catalog.go#pluginCatalogProvider
-// already requires, not a speculative superset. ADR-0033 defers the full
-// adapter schema (T2); this is the smallest slice that lets a real ingestion
-// pipeline exist today without inventing that schema prematurely.
-type externalSkillAdapter struct {
-	CanonicalRole  string   `yaml:"canonical_role"`
-	Roles          []string `yaml:"roles,omitempty"`
-	RiskScore      string   `yaml:"risk_score"`
-	Category       string   `yaml:"category"`
-	Default        bool     `yaml:"default,omitempty"`
-	AuxiliaryTools []string `yaml:"auxiliary_tools_allowed,omitempty"`
-	// SupportedHandoffSchemas — see domain.ProviderContract's field of the
-	// same name and internal/install/role_handoff_schemas.go. Omitted by
-	// every embedded weapon today — added here only so a future honest
-	// declaration isn't silently dropped by ingestion.
-	SupportedHandoffSchemas []string `yaml:"supported_handoff_schemas,omitempty"`
-}
+// externalSkillAdapter (the strategist.yaml sidecar type) and its
+// load/validate/normalize helpers live in embedded_skill_adapter.go, split
+// out to keep this file under the repo's file-size budget.
 
 // IngestedSkill is one externally-sourced package that resolved, verified,
 // and validated successfully.
@@ -94,25 +70,10 @@ func resolveExternalSkill(dir string) (IngestedSkill, error) {
 	if err != nil {
 		return IngestedSkill{}, fmt.Errorf("resolve external skill %s: %w", dir, err)
 	}
-	adapterPath := filepath.Join(dir, externalSkillAdapterFileName)
-	adapterRaw, err := os.ReadFile(adapterPath) //nolint:gosec // G304: dir is an operator-declared ingestion source, not untrusted request input
+	adapter, err := loadExternalSkillAdapter(dir, pkg.ID)
 	if err != nil {
-		return IngestedSkill{}, fmt.Errorf("external skill %s: read %s: %w", pkg.ID, externalSkillAdapterFileName, err)
+		return IngestedSkill{}, err
 	}
-	var adapter externalSkillAdapter
-	if err := yaml.Unmarshal(adapterRaw, &adapter); err != nil {
-		return IngestedSkill{}, fmt.Errorf("external skill %s: parse %s: %w", pkg.ID, externalSkillAdapterFileName, err)
-	}
-	if (adapter.CanonicalRole == "" && len(adapter.Roles) == 0) || adapter.RiskScore == "" {
-		return IngestedSkill{}, fmt.Errorf("external skill %s: %s must declare canonical_role and risk_score", pkg.ID, externalSkillAdapterFileName)
-	}
-	if len(adapter.Roles) == 0 {
-		adapter.Roles = []string{adapter.CanonicalRole}
-	}
-	if adapter.CanonicalRole == "" && len(adapter.Roles) == 1 {
-		adapter.CanonicalRole = adapter.Roles[0]
-	}
-	adapter.Roles = normalizeRoles(adapter.Roles)
 	return IngestedSkill{ID: pkg.ID, Dir: dir, Package: pkg, Adapter: adapter}, nil
 }
 

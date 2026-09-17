@@ -48,15 +48,7 @@ func runHandoffVerify(cmd *cobra.Command, opts handoffVerifyOptions) error {
 	if err := validateHandoffVerifyOptions(opts); err != nil {
 		return fmt.Errorf("handoff verify: %w", err)
 	}
-	policy, err := resolveHandoffPolicy(opts)
-	if err != nil {
-		return fmt.Errorf("handoff verify: %w", err)
-	}
-	challenges, err := loadHandoffChallenges(opts.Challenges)
-	if err != nil {
-		return fmt.Errorf("handoff verify: %w", err)
-	}
-	ack, err := loadHandoffAck(opts.Ack)
+	policy, challenges, ack, err := loadHandoffVerificationInputs(opts)
 	if err != nil {
 		return fmt.Errorf("handoff verify: %w", err)
 	}
@@ -74,6 +66,22 @@ func runHandoffVerify(cmd *cobra.Command, opts handoffVerifyOptions) error {
 		return fmt.Errorf("handoff verify: failed (status=%s, critical_failures=%d)", result.Status, result.CriticalFailures)
 	}
 	return nil
+}
+
+func loadHandoffVerificationInputs(opts handoffVerifyOptions) (handoff.Policy, []handoff.Challenge, handoff.Acknowledgment, error) {
+	policy, err := resolveHandoffPolicy(opts)
+	if err != nil {
+		return handoff.Policy{}, nil, handoff.Acknowledgment{}, err
+	}
+	challenges, err := loadHandoffChallenges(opts.Challenges)
+	if err != nil {
+		return handoff.Policy{}, nil, handoff.Acknowledgment{}, err
+	}
+	ack, err := loadHandoffAck(opts.Ack)
+	if err != nil {
+		return handoff.Policy{}, nil, handoff.Acknowledgment{}, err
+	}
+	return policy, challenges, ack, nil
 }
 
 // validateHandoffVerifyOptions checks the flags this command treats as
