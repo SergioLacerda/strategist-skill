@@ -5,6 +5,8 @@
 canonical_role: ranger
 roles:
   - ranger
+runtime:
+  kind: none
 risk_score: write_analysis
 category: discovery
 default: true

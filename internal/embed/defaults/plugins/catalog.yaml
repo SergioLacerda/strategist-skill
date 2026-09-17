@@ -17,13 +17,15 @@ providers:
         - ranger
       default: true
       ranked: true
-      certification_digest: sha256:e592541609229c2833aff30e14087d46555c8edff11e6a536045633d3f9d4dc6
+      certification_digest: sha256:0e1a2549c47847e3ad779deab356603aa6cff8b1d10aa3cb52848a0633cdcc4f
       ranked_binding_generation: 1
       ranked_binding_status: active
       host_api_digest: sha256:b3e37465b4951d23ee3f87269f927f6dfa443df852d49207f23cf635420efa46
       connector_digest: sha256:71e52240f1c4b02247ddbd7456e42f3eb0b8c726a44731d77aee3a16a1e28d08
-      test_suite_digest: sha256:ae9ea8e91ef985e4018a5c584174d5f7bcc2347d10821a3302a4638c4d863a42
+      test_suite_digest: sha256:fa4b44bb392470d3bc2edb1c4fdf5afc3a473928a8d9e87c5923442f0e7c7e4c
       conformance_level: C1
+      runtime:
+        kind: none
       upstream_repo: obra/superpowers
       upstream_skill_path: skills/brainstorming/SKILL.md
       upstream_version: 6.3.0
@@ -68,13 +70,18 @@ providers:
         - archivist
       default: true
       ranked: true
-      certification_digest: sha256:fcf9a3a83c00f803b51d048676c93b990361f42b13317bd0d16f3f01a7b382a9
+      certification_digest: sha256:b8893c080fedd09fab62952b65ab074a66418d3837074f1bc09a1601eda59375
       ranked_binding_generation: 1
       ranked_binding_status: active
       host_api_digest: sha256:fff0c4febdedbead81855cc1e6ead4150b1e874a65d434bd71ae6134cf69c23d
       connector_digest: sha256:71e52240f1c4b02247ddbd7456e42f3eb0b8c726a44731d77aee3a16a1e28d08
-      test_suite_digest: sha256:ae9ea8e91ef985e4018a5c584174d5f7bcc2347d10821a3302a4638c4d863a42
+      test_suite_digest: sha256:826db7c674df43a4c5aaaab4f905389414f6d7e78a40bf7f61d61f1daa6844c1
       conformance_level: C1
+      runtime:
+        kind: openspec_root
+        root: .strategist/openspec
+        bootstrap: openspec init --profile core --tools codex
+        healthcheck: openspec context --json
       description: Propose a new change with all artifacts generated in one step. Use when the user wants to quickly describe what they want to build and get a complete proposal with design, specs, and tasks ready for implementation.
       installable: true
       legacy_manifest_path: skills/openspec-propose/skill.yaml

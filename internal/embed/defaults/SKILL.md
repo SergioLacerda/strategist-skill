@@ -132,6 +132,13 @@ and role taxonomy are read from this local package. The source tree used to buil
 is not a runtime dependency.
 Discovery subtype behavior is owned by Ranger, not by provider subtype metadata.
 
+For a Ranked provider that declares a runtime contract, Strategist must resolve
+the selected role/provider plan and execute the provider from the prepared
+runtime root under `.strategist/`. A successful static check does not authorize
+execution from the workspace root. If the runtime root is missing, invalid, or
+not invocable, emit `error=role_invocation_failed` and do not initialize it
+lazily or substitute another role/provider.
+
 Workspace artifacts resolve through `base_path` from `.strategist/active.yaml`.
 `.analysis/` is only a repository-local example/default when configured as `base_path`; it is not a hardcoded `.analysis/` fixed runtime path.
 

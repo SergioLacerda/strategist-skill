@@ -1,6 +1,12 @@
 package rolevalidation
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
 
 func TestBuildRoleInvocationPlan_ResolvesRoleFromSlotMapAndLock(t *testing.T) {
 	root := writeValidationRoot(t, `
@@ -77,4 +83,42 @@ func TestBuildRoleInvocationPlan_RankedBindingNotInCatalogErrors(t *testing.T) {
 	if _, err := BuildRoleInvocationPlan(root, "discovery"); err == nil {
 		t.Fatal("expected an error when plugins/catalog.yaml is missing for a ranked binding")
 	}
+}
+
+func TestBuildRoleInvocationPlan_ArchivistRequiresPreparedRuntime(t *testing.T) {
+	root := writeValidationRoot(t, `
+  - slot: refinement
+    installed_instance_id: openspec-propose
+    mode: ranked
+    generation: 1
+    status: active
+`)
+	writeRankedCatalogFile(t, root, `
+schema_version: strategist-plugin-catalog/v1
+providers:
+  - id: openspec-propose
+    canonical_role: archivist
+    roles: [archivist]
+    ranked: true
+    certification_digest: sha256:runtime
+    runtime:
+      kind: openspec_root
+      root: .strategist/openspec
+      bootstrap: openspec init --profile core --tools codex
+      healthcheck: openspec context --json
+`)
+
+	_, err := BuildRoleInvocationPlan(root, "refinement")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "runtime state is unavailable")
+
+	require.NoError(t, os.WriteFile(filepath.Join(root, "ranked-runtimes.yaml"), []byte(`{
+  "entries": [{"slot":"refinement","provider":"openspec-propose","contract_digest":"sha256:runtime"}]
+}`), 0o644))
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "openspec"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "openspec", "config.yaml"), []byte("schema: spec-driven\n"), 0o644))
+
+	plan, err := BuildRoleInvocationPlan(root, "refinement")
+	require.NoError(t, err)
+	require.Equal(t, ".strategist/openspec", plan.Runtime.Root)
 }

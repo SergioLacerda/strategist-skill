@@ -83,6 +83,7 @@ func TestNewRankedRoleInvocationPlanFromCatalog_Success(t *testing.T) {
 		Role: "ranger", Slot: "discovery", Mode: SlotBindingModeRanked,
 		WeaponID: "brainstorming", WeaponDigest: "sha256:cert", BindingDigest: "sha256:cert",
 		BindingGeneration: 1, BindingStatus: "active",
+		Runtime: RankedRuntimeContract{Kind: RankedRuntimeNone},
 	}
 	if !reflect.DeepEqual(plan, want) {
 		t.Fatalf("plan = %+v, want %+v", plan, want)

@@ -35,6 +35,7 @@ type RoleInvocationPlan struct {
 	BindingDigest     string
 	BindingGeneration int64
 	BindingStatus     string
+	Runtime           RankedRuntimeContract
 
 	// RequiredContextRefs and OutputSchemaRef are populated by whatever
 	// composes a mission invocation (ContextComposer, doc 05 — not
@@ -100,6 +101,10 @@ func NewRankedRoleInvocationPlanFromCatalog(role, slot string, binding SlotBindi
 	if !stamp.HasRole(role) {
 		return RoleInvocationPlan{}, fmt.Errorf("role invocation plan: certified provider %q does not declare role affinity for %q", stamp.ID, role)
 	}
+	runtime := NormalizeRankedRuntime(stamp.Runtime)
+	if err := runtime.Validate(); err != nil {
+		return RoleInvocationPlan{}, fmt.Errorf("role invocation plan: ranked provider %q runtime: %w", stamp.ID, err)
+	}
 	return RoleInvocationPlan{
 		Role:              role,
 		Slot:              slot,
@@ -109,6 +114,7 @@ func NewRankedRoleInvocationPlanFromCatalog(role, slot string, binding SlotBindi
 		BindingDigest:     stamp.CertificationDigest,
 		BindingGeneration: binding.Generation,
 		BindingStatus:     binding.Status,
+		Runtime:           runtime,
 	}, nil
 }
 

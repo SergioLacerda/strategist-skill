@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"gopkg.in/yaml.v3"
 )
 
@@ -22,12 +23,13 @@ const externalSkillAdapterFileName = "strategist.yaml"
 // adapter schema (T2); this is the smallest slice that lets a real ingestion
 // pipeline exist today without inventing that schema prematurely.
 type externalSkillAdapter struct {
-	CanonicalRole  string   `yaml:"canonical_role"`
-	Roles          []string `yaml:"roles,omitempty"`
-	RiskScore      string   `yaml:"risk_score"`
-	Category       string   `yaml:"category"`
-	Default        bool     `yaml:"default,omitempty"`
-	AuxiliaryTools []string `yaml:"auxiliary_tools_allowed,omitempty"`
+	CanonicalRole  string                       `yaml:"canonical_role"`
+	Roles          []string                     `yaml:"roles,omitempty"`
+	RiskScore      string                       `yaml:"risk_score"`
+	Category       string                       `yaml:"category"`
+	Default        bool                         `yaml:"default,omitempty"`
+	Runtime        domain.RankedRuntimeContract `yaml:"runtime,omitempty"`
+	AuxiliaryTools []string                     `yaml:"auxiliary_tools_allowed,omitempty"`
 	// ScratchRoot declares whether this weapon creates its own working/scratch
 	// files and, if so, that they belong in the runtime domain. Legal values:
 	// "runtime" or "none" (or absent, which behaves as "none" — every skill
@@ -79,6 +81,10 @@ func validateExternalSkillAdapter(packageID string, adapter externalSkillAdapter
 	}
 	if adapter.ScratchRoot != "" && adapter.ScratchRoot != "runtime" && adapter.ScratchRoot != "none" {
 		return fmt.Errorf("external skill %s: %s scratch_root must be \"runtime\" or \"none\", got %q", packageID, externalSkillAdapterFileName, adapter.ScratchRoot)
+	}
+	adapter.Runtime = domain.NormalizeRankedRuntime(adapter.Runtime)
+	if err := adapter.Runtime.Validate(); err != nil {
+		return fmt.Errorf("external skill %s: %s runtime: %w", packageID, externalSkillAdapterFileName, err)
 	}
 	return nil
 }

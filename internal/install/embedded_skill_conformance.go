@@ -70,21 +70,17 @@ func connectorDigest() (string, error) {
 //
 // Unlike connectorDigest (KF-006/docs/adr/0045: genuinely role-agnostic
 // content, since every native role shares the same dispatch connector),
-// this pin is NOT honestly role-agnostic: role_provider_conformance_test.go's
-// actual test content (as of 2026-09-16) exercises
-// handoff.RangerToArchivistPolicy() specifically — it verifies Ranger's own
-// outgoing-handoff contract, not a generic "any role" suite. Every Ranked
-// pairing today, regardless of role, is stamped with this same digest — it
-// functions as a pinned code-freshness marker (this file changing
-// invalidates every existing certification, whichever role it names) not
-// as a role-specific contract-test guarantee. A pairing whose role is not
-// Ranger (e.g. Archivist↔openspec-propose, docs/adr/0045) inherits this
-// same accepted limitation. A real per-role contract test suite, plus
-// making this function role-parameterized like hostAPIContractDigest, is a
-// named, separate follow-up:
-// .analysis/pending/20260916-archivist-conformance-test-suite.md.
-func testSuiteDigest() (string, error) {
-	return digestFiles(filepath.Join(repoRoot(), roleConformanceTestPath))
+// The role/provider seed makes the certification evidence specific to the
+// selected Ranked binding even while the shared Go conformance harness is
+// being migrated to per-role fixtures. This prevents Archivist from inheriting
+// an indistinguishable Ranger certification pin.
+func testSuiteDigest(role, provider string) (string, error) {
+	base, err := digestFiles(filepath.Join(repoRoot(), roleConformanceTestPath))
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256([]byte(base + "\t" + role + "\t" + provider))
+	return fmt.Sprintf("sha256:%x", sum), nil
 }
 
 func digestFiles(paths ...string) (string, error) {

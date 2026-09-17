@@ -54,7 +54,7 @@ func certifyRankedCandidate(catalog *pluginCatalog, defaultsRoot, id, wantRole s
 	if err := validateRankedCandidate(provider, wantRole); err != nil {
 		return fmt.Errorf("certify ranked candidate %q: %w", id, err)
 	}
-	evidence, err := rankedConformanceEvidence(defaultsRoot, wantRole)
+	evidence, err := rankedConformanceEvidence(defaultsRoot, wantRole, id)
 	if err != nil {
 		return fmt.Errorf("certify ranked candidate %q: %w", id, err)
 	}
@@ -78,7 +78,7 @@ type rankedConformanceEvidenceSet struct {
 	hostAPI, connector, testSuite string
 }
 
-func rankedConformanceEvidence(defaultsRoot, role string) (rankedConformanceEvidenceSet, error) {
+func rankedConformanceEvidence(defaultsRoot, role, provider string) (rankedConformanceEvidenceSet, error) {
 	hostAPI, err := hostAPIContractDigest(defaultsRoot, role)
 	if err != nil {
 		return rankedConformanceEvidenceSet{}, err
@@ -87,7 +87,7 @@ func rankedConformanceEvidence(defaultsRoot, role string) (rankedConformanceEvid
 	if err != nil {
 		return rankedConformanceEvidenceSet{}, err
 	}
-	testSuite, err := testSuiteDigest()
+	testSuite, err := testSuiteDigest(role, provider)
 	if err != nil {
 		return rankedConformanceEvidenceSet{}, err
 	}
@@ -117,6 +117,9 @@ func validateRankedCandidate(provider pluginCatalogProvider, wantRole string) er
 	if _, ok := domain.RoleHandoffSchema[wantRole]; !ok {
 		return fmt.Errorf("role %q declares no handoff schema", wantRole)
 	}
+	if err := provider.Runtime.Validate(); err != nil {
+		return fmt.Errorf("runtime contract invalid: %w", err)
+	}
 	return nil
 }
 
@@ -128,6 +131,7 @@ func validateRankedCandidate(provider pluginCatalogProvider, wantRole string) er
 // tuple always certifies to the same digest, and any change to one of them
 // changes it.
 func rankedCertificationDigest(provider pluginCatalogProvider, role string) string {
-	sum := sha256.Sum256([]byte(provider.ID + "\t" + providerVersionOrDefault(provider.Version) + "\t" + role + "\t" + domain.RoleHandoffSchema[role]))
+	runtime := domain.NormalizeRankedRuntime(provider.Runtime)
+	sum := sha256.Sum256([]byte(provider.ID + "\t" + providerVersionOrDefault(provider.Version) + "\t" + role + "\t" + domain.RoleHandoffSchema[role] + "\t" + runtime.Kind + "\t" + runtime.Root + "\t" + runtime.Bootstrap + "\t" + runtime.Healthcheck))
 	return fmt.Sprintf("sha256:%x", sum)
 }

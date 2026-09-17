@@ -88,10 +88,10 @@ func TestCertifyRankedCandidates_StampsBothPinnedPairings(t *testing.T) {
 
 	assert.NotEqual(t, brainstorming.HostAPIDigest, openspecPropose.HostAPIDigest,
 		"each role's HostAPIDigest must be computed from its own roles/<role>.yaml + internal_skills/<role>/SKILL.md, not shared")
-	// ConnectorDigest and TestSuiteDigest are role-agnostic pins by design
-	// (docs/adr/0045) — both pairings share the same value.
+	// ConnectorDigest remains role-agnostic, while TestSuiteDigest is now
+	// seeded by the selected role/provider binding.
 	assert.Equal(t, brainstorming.ConnectorDigest, openspecPropose.ConnectorDigest)
-	assert.Equal(t, brainstorming.TestSuiteDigest, openspecPropose.TestSuiteDigest)
+	assert.NotEqual(t, brainstorming.TestSuiteDigest, openspecPropose.TestSuiteDigest)
 }
 
 func TestCertifyRankedCandidates_SkipsAbsentPinnedPairing(t *testing.T) {

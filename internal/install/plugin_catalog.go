@@ -44,10 +44,11 @@ type pluginCatalogProvider struct {
 	// computed once per (role, provider) pairing by
 	// internal/install/embedded_skill_conformance.go — never hardcoded to
 	// one pairing. Empty for every non-Ranked entry.
-	HostAPIDigest    string `yaml:"host_api_digest,omitempty"`
-	ConnectorDigest  string `yaml:"connector_digest,omitempty"`
-	TestSuiteDigest  string `yaml:"test_suite_digest,omitempty"`
-	ConformanceLevel string `yaml:"conformance_level,omitempty"`
+	HostAPIDigest    string                       `yaml:"host_api_digest,omitempty"`
+	ConnectorDigest  string                       `yaml:"connector_digest,omitempty"`
+	TestSuiteDigest  string                       `yaml:"test_suite_digest,omitempty"`
+	ConformanceLevel string                       `yaml:"conformance_level,omitempty"`
+	Runtime          domain.RankedRuntimeContract `yaml:"runtime,omitempty"`
 	// UpstreamRepo through License are ADR-0029 DEC-002's per-provider
 	// upstream-identity fields — see externalSkillAdapter's own doc comment
 	// for the full rationale. Populated only for packages whose upstream

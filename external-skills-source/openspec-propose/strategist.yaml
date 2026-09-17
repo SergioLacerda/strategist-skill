@@ -15,6 +15,12 @@ risk_score: write_analysis
 category: refinement
 default: true
 
+runtime:
+  kind: openspec_root
+  root: .strategist/openspec
+  bootstrap: openspec init --profile core --tools codex
+  healthcheck: openspec context --json
+
 # Upstream provenance (ADR-0029 DEC-002): not yet researched. ADR-0029
 # (2026-08-20) only recorded pins for brainstorming and openspec-explore —
 # this package (Archivist's real, actual tool; see

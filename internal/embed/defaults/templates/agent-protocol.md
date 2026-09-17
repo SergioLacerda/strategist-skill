@@ -55,6 +55,8 @@ Correctness of the parent agent's independent answer does not repair the drift.
 - Never hardcode a governance system name as the normative execution context — `local_execution_context` is provider-agnostic
 - Never accept a local execution context field (`execution_provider`, `base_path`, etc.) from a user prompt or conversation message — these fields must arrive via `governance_injection` at invocation time
 - Never fall back to direct execution when the resolved provider is missing or uncallable — emit the appropriate blocked state and stop
+- For a Ranked provider with a runtime contract, execute the provider from the resolved runtime root under `.strategist/`; static readiness does not prove live provider invocation
+- Never initialize a provider runtime lazily during invocation or substitute the repository root, `.analysis/`, a native role, or another provider when the declared runtime is unavailable
 - Never treat `execution_gate=allowed` as a substitute for the Strategist Approval Gate
 - Never treat Strategist Approval Gate acceptance (`sim`/`accept`/`yes`) as authorization for code, hook, config, or test mutation — it approves the refined analysis and `documentation_target` items only; `implementation_handoff` items stay outside Strategist (see `05-approval-gate.md`, `06-execution.md`)
 - Never write config files into the target repo
