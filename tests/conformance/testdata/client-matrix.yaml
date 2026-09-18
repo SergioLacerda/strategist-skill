@@ -1,0 +1,82 @@
+schema_version: strategist-client-conformance/v1
+clients:
+  - id: codex
+    owner: codex-adapter
+    surface: .codex
+    roles: [ranger, archivist, sniper]
+    provider_modes: [custom, ranked]
+    unsupported_policy: report-unsupported-without-live-claim
+  - id: claude
+    owner: claude-adapter
+    surface: .claude
+    roles: [ranger, archivist, sniper]
+    provider_modes: [custom, ranked]
+    unsupported_policy: report-unsupported-without-live-claim
+  - id: gemini-antigravity
+    owner: gemini-adapter
+    surface: .gemini/antigravity
+    roles: [ranger, archivist, sniper]
+    provider_modes: [custom, ranked]
+    unsupported_policy: report-unsupported-without-live-claim
+  - id: governance-bridge
+    owner: governance-adapter
+    surface: internal/governance
+    roles: [ranger, archivist, sniper]
+    provider_modes: [custom, ranked]
+    unsupported_policy: report-unsupported-without-live-claim
+rows:
+  - id: codex-ranger-structural
+    client: codex
+    role: ranger
+    slot: discovery
+    provider_mode: custom
+    envelope_version: strategist-invocation-envelope/v1
+    evidence_tier: structural
+    expected_state: certified
+    reason_code: structural_evidence_verified
+    authority_owner: domain.ContextMaterializer
+    context_fixture: context-basic
+  - id: claude-archivist-structural
+    client: claude
+    role: archivist
+    slot: refinement
+    provider_mode: custom
+    envelope_version: strategist-invocation-envelope/v1
+    evidence_tier: structural
+    expected_state: certified
+    reason_code: structural_evidence_verified
+    authority_owner: plugins.lock
+    context_fixture: context-basic
+  - id: gemini-sniper-ranked
+    client: gemini-antigravity
+    role: sniper
+    slot: execution
+    provider_mode: ranked
+    envelope_version: strategist-invocation-envelope/v1
+    evidence_tier: structural
+    expected_state: certified
+    reason_code: ranked_certification_verified
+    authority_owner: build_catalog_certification
+    context_fixture: context-bounded
+  - id: governance-bridge-unsupported
+    client: governance-bridge
+    role: ranger
+    slot: discovery
+    provider_mode: custom
+    envelope_version: strategist-invocation-envelope/v1
+    evidence_tier: structural
+    expected_state: unsupported
+    reason_code: connector_unsupported
+    authority_owner: connector
+    context_fixture: context-unsupported
+  - id: codex-live-probe
+    client: codex
+    role: ranger
+    slot: discovery
+    provider_mode: custom
+    envelope_version: strategist-invocation-envelope/v1
+    evidence_tier: live
+    expected_state: certified
+    reason_code: probe_required
+    authority_owner: connector
+    context_fixture: context-basic

@@ -31,6 +31,21 @@ flowchart LR
 
 The Approval Gate is mandatory on every route. A policy gate may permit execution, but it never substitutes your explicit acceptance.
 
+### Two independent gates
+
+These checks answer different questions:
+
+| Check | Question | Effect |
+|---|---|---|
+| Local policy gate | Is this execution permitted by the invoking context? | A blocked policy stops the mission. An allowed policy is not user approval. |
+| Strategist Approval Gate | Is this refined package correct, and may approved documentation targets be materialized? | `accept` permits only declared documentation targets; implementation handoffs still require separate coding work. |
+
+If the selected provider is unavailable, Strategist reports the failure or asks
+according to its configured policy. It does not silently replace the provider.
+For the complete fallback, handoff, and stop-condition rules, use the linked
+[core concepts](../architecture/strategist-concepts.md) and [detailed
+documentation](readme-detailed-en.md).
+
 ## Start a mission
 
 1. [Install and configure Strategist](../../QUICKSTART.md).

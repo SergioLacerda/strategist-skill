@@ -25,6 +25,8 @@ files rather than a CLI-loadable format.
 | `contracts` | `tests/evals/contracts/reject_execution_without_approval_test.go` | `reject-execution-without-approval` | the skill must refuse execution when the approval gate denies the mission |
 | `contracts` | `tests/evals/contracts/reject_gate_acceptance_as_code_mutation_test.go` | `reject-gate-acceptance-as-code-mutation` | direct_execute is blocked whenever the request touches source code, regardless of gate acceptance |
 | `contracts` | `tests/evals/contracts/reject_implementation_handoff_as_sniper_task_test.go` | `reject-implementation-handoff-as-sniper-task` | Sniper's execution slot cannot write a .go file — only its declared documentation prefix/extension |
+| `contracts` | `tests/evals/contracts/sniper_terminal_boundary_test.go` | `sniper-accepted-gate-terminal-delivery` | an accepted gate and passed handoff reach Sniper and terminate at delivery |
+| `contracts` | `tests/evals/contracts/sniper_terminal_boundary_test.go` | `sniper-rejected-gate-no-execution` | a rejected gate terminates analysis before handoff or Sniper execution |
 | `scenarios` | `tests/evals/scenarios/critical_hit_trigger_test.go` | `critical-hit-valid-plain-move-allowed` | a low-risk, ≤5-file, .md-only move between analysis folders is allowed |
 | `scenarios` | `tests/evals/scenarios/critical_hit_trigger_test.go` | `critical-hit-valid-closure-move-allowed` | a closure move with an explicit completion claim and supplied evidence is allowed |
 | `scenarios` | `tests/evals/scenarios/critical_hit_trigger_test.go` | `critical-hit-conditions-not-met-blocked` | a request with no completion claim or evidence for a closure move is blocked, falling back to main_mission |

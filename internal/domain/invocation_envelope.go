@@ -15,27 +15,27 @@ const InvocationEnvelopeSchemaVersion = "strategist-invocation-envelope/v1"
 // Content is intentionally referenced by digest instead of copied into the
 // envelope; the agent/provider remains responsible for reading it.
 type InvocationComponent struct {
-	Ref      string
-	Kind     string
-	Phase    PipelinePhase
-	Digest   string
-	Selected bool
+	Ref      string        `json:"ref"`
+	Kind     string        `json:"kind"`
+	Phase    PipelinePhase `json:"phase,omitempty"`
+	Digest   string        `json:"digest"`
+	Selected bool          `json:"selected"`
 }
 
 // InvocationEnvelope is the deterministic structural context passed to a
 // phase invocation. Components from future phases are never included.
 type InvocationEnvelope struct {
-	SchemaVersion       string
-	MissionID           string
-	Phase               PipelinePhase
-	Role                string
-	Slot                string
-	Provider            string
-	RequiredContextRefs []string
-	OutputSchemaRef     string
-	Components          []InvocationComponent
-	Fingerprint         string
-	Plan                RoleInvocationPlan
+	SchemaVersion       string                `json:"schema_version"`
+	MissionID           string                `json:"mission_id"`
+	Phase               PipelinePhase         `json:"phase"`
+	Role                string                `json:"role"`
+	Slot                string                `json:"slot"`
+	Provider            string                `json:"provider"`
+	RequiredContextRefs []string              `json:"required_context_refs"`
+	OutputSchemaRef     string                `json:"output_schema_ref"`
+	Components          []InvocationComponent `json:"components"`
+	Fingerprint         string                `json:"fingerprint"`
+	Plan                RoleInvocationPlan    `json:"plan"`
 }
 
 // ComposeInvocationRequest supplies the structural inputs to the composer.

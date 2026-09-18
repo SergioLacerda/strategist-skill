@@ -155,3 +155,17 @@ func TestMissionEngine_HandoffCannotBypassApprovalGate(t *testing.T) {
 		t.Fatal("expected handoff to require the independent Approval Gate")
 	}
 }
+
+func TestReplayMissionRejectsGapsAndUsesMissionTransitions(t *testing.T) {
+	snapshot := MissionEngineStatus{MissionID: "replay", Phase: PhaseBootstrap, State: StateInit}
+	engine, err := ReplayMission(snapshot, []MissionReplayEvent{{Sequence: 1, Event: MissionEventBootstrapDone}})
+	require.NoError(t, err)
+	require.Equal(t, PhaseIntake, engine.Status().Phase)
+	_, err = ReplayMission(snapshot, []MissionReplayEvent{{Sequence: 2, Event: MissionEventBootstrapDone}})
+	require.ErrorContains(t, err, "sequence gap")
+}
+
+func TestRestoreMissionRejectsInvalidHandoffMetadata(t *testing.T) {
+	_, err := RestoreMission(MissionEngineStatus{MissionID: "bad", Phase: PhaseExecution, State: StateExecution, HandoffStatus: "failed"})
+	require.ErrorContains(t, err, "handoff metadata")
+}

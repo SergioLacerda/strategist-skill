@@ -1,0 +1,6 @@
+{
+  "authority": "standalone",
+  "governance_bridge": "absent",
+  "connector": "native",
+  "live_provider_invoked": false
+}

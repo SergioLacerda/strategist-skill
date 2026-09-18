@@ -99,3 +99,11 @@ func TestVerifyManifest_UnreadableManifest(t *testing.T) {
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "verify manifest: read")
 }
+
+func TestVerifyManifest_RejectsEscapingEntry(t *testing.T) {
+	compiledDir := t.TempDir()
+	testutil.WriteGzJSON(t, filepath.Join(compiledDir, ".manifest.gz"), map[string]any{"artifacts": map[string]string{"../outside.gz": "sha256:abc"}})
+	_, err := compile.VerifyManifest(compiledDir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "escapes compiled runtime")
+}

@@ -74,7 +74,36 @@ func resolveExternalSkill(dir string) (IngestedSkill, error) {
 	if err != nil {
 		return IngestedSkill{}, err
 	}
+	if err := validateIngestedSkillContract(pkg, adapter); err != nil {
+		return IngestedSkill{}, fmt.Errorf("external skill %s: %w", pkg.ID, err)
+	}
 	return IngestedSkill{ID: pkg.ID, Dir: dir, Package: pkg, Adapter: adapter}, nil
+}
+
+func validateIngestedSkillContract(pkg domain.PluginPackage, adapter externalSkillAdapter) error {
+	roles := append([]string(nil), adapter.Roles...)
+	slots := make([]string, 0, len(roles))
+	for _, role := range roles {
+		switch role {
+		case "ranger":
+			slots = append(slots, "discovery")
+		case "archivist":
+			slots = append(slots, "refinement")
+		case "sniper":
+			slots = append(slots, "execution")
+		}
+	}
+	if adapter.Lifecycle && len(slots) == 0 {
+		slots = []string{"discovery", "refinement", "execution"}
+	}
+	contract := domain.NewSkillPackageContract(pkg, domain.AdapterContract{
+		SupportedRoles: roles, SupportedSlots: slots, Capabilities: []string{"role." + adapter.CanonicalRole},
+		PluginAPIRange: "v1",
+	})
+	if err := contract.Validate(); err != nil {
+		return fmt.Errorf("validate skill package contract: %w", err)
+	}
+	return nil
 }
 
 // IngestExternalSkills scans sourceDir, resolves and verifies every

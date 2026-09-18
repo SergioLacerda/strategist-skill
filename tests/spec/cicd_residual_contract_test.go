@@ -3,6 +3,7 @@
 package spec_test
 
 import (
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -84,6 +85,67 @@ func TestQualityAndSecurityGateContracts(t *testing.T) {
 	}
 }
 
+func TestFmtCheckIsReadOnly(t *testing.T) {
+	t.Parallel()
+
+	makefile := readFile(t, filepath.Join(repoRoot(t), "make", "go.mk"))
+	start := strings.Index(makefile, "fmt-check:")
+	if start < 0 {
+		t.Fatal("make/go.mk is missing fmt-check")
+	}
+	end := strings.Index(makefile[start:], "\n\n")
+	if end < 0 {
+		t.Fatal("could not isolate fmt-check recipe")
+	}
+	recipe := makefile[start : start+end]
+	if strings.Contains(recipe, "gofmt -w") {
+		t.Fatal("fmt-check must not mutate the worktree")
+	}
+	if !strings.Contains(recipe, "run 'make fmt'") {
+		t.Fatal("fmt-check must direct operators to the explicit formatter target")
+	}
+}
+
+func TestPromptfooUnavailableEndpointIsActionable(t *testing.T) {
+	t.Parallel()
+
+	cmd := exec.Command("make", "-s", "eval-promptfoo", "PROMPTFOO_LM_STUDIO_URL=http://127.0.0.1:1")
+	cmd.Dir = repoRoot(t)
+	output, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Fatal("eval-promptfoo should fail when the configured endpoint is unavailable")
+	}
+	message := string(output)
+	for _, needle := range []string{
+		"no LM Studio (or compatible) server detected",
+		"start it, or override PROMPTFOO_LM_STUDIO_URL",
+	} {
+		if !strings.Contains(message, needle) {
+			t.Fatalf("unavailable Promptfoo endpoint output missing %q: %s", needle, message)
+		}
+	}
+	if strings.Contains(message, "fetch failed") || strings.Contains(message, "ECONNREFUSED") {
+		t.Fatalf("raw endpoint failure leaked as the primary diagnostic: %s", message)
+	}
+}
+
+func TestQuickstartExplainsMissionBoundaries(t *testing.T) {
+	t.Parallel()
+
+	quickstart := readFile(t, filepath.Join(repoRoot(t), "docs", "onboarding", "quickstart-concepts.md"))
+	for _, needle := range []string{
+		"Scout",
+		"Local policy gate",
+		"Strategist Approval Gate",
+		"implementation handoffs still require separate coding work",
+		"does not silently replace the provider",
+	} {
+		if !strings.Contains(quickstart, needle) {
+			t.Fatalf("quickstart missing operator boundary %q", needle)
+		}
+	}
+}
+
 func TestDocumentationUsesCurrentRuntimePathModel(t *testing.T) {
 	t.Parallel()
 
@@ -108,7 +170,7 @@ func TestDocumentationUsesCurrentRuntimePathModel(t *testing.T) {
 		}
 	}
 	for _, needle := range []string{
-		"Go matching `go.mod` (`go 1.26.4`, toolchain `go1.26.5`)",
+		"Go matching `go.mod` (`go 1.27.1`, toolchain `go1.27.1`)",
 		"Node.js 22",
 		"`internal/embed/defaults/` is the single authoring source",
 	} {
@@ -131,6 +193,27 @@ func TestDocumentationUsesCurrentRuntimePathModel(t *testing.T) {
 		if !strings.Contains(adr, needle) {
 			t.Fatalf("ADR-0005 missing enforcement level %q", needle)
 		}
+	}
+}
+
+func TestContributorToolchainMatchesGoMod(t *testing.T) {
+	t.Parallel()
+
+	root := repoRoot(t)
+	goMod := readFile(t, filepath.Join(root, "go.mod"))
+	contributing := readFile(t, filepath.Join(root, "CONTRIBUTING.md"))
+	goVersionPattern := regexp.MustCompile(`(?m)^go\s+(\S+)\s*$`)
+	goVersion := goVersionPattern.FindStringSubmatch(goMod)
+	if len(goVersion) != 2 {
+		t.Fatal("go.mod is missing a canonical go version declaration")
+	}
+	toolchainVersion := goVersion[1]
+	toolchainPattern := regexp.MustCompile(`(?m)^toolchain\s+(go\S+)\s*$`)
+	if match := toolchainPattern.FindStringSubmatch(goMod); len(match) == 2 {
+		toolchainVersion = strings.TrimPrefix(match[1], "go")
+	}
+	if !strings.Contains(contributing, "toolchain `go"+toolchainVersion+"`") {
+		t.Fatalf("CONTRIBUTING.md does not document the canonical go toolchain %q", toolchainVersion)
 	}
 }
 

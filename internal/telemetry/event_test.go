@@ -33,6 +33,13 @@ func TestEvent_Validate(t *testing.T) {
 	require.ErrorContains(t, (telemetry.Event{Name: "x"}).Validate(), "timestamp is required")
 }
 
+func TestNewHardeningEventSanitizesPathAndCarriesProvenance(t *testing.T) {
+	event := telemetry.NewHardeningEvent("strategist.hardening.blocked", "run-1", "blocked", "manifest", "tampered", "/secret/runtime")
+	require.Equal(t, "blocked", event.Attributes[telemetry.AttrStatus])
+	require.Equal(t, "<redacted-path>", event.Attributes[telemetry.AttrTarget])
+	require.Equal(t, "manifest", event.Attributes[telemetry.AttrEventContractID])
+}
+
 func TestSeverityNumber_String(t *testing.T) {
 	t.Parallel()
 	cases := []struct {

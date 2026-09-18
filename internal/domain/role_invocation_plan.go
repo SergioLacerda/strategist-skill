@@ -12,13 +12,13 @@ import "fmt"
 // docs/adr/0041-cli-enforcement-sequencing-and-role-invocation-plan-naming.md
 // D1 for the naming rationale that keeps them separate.
 type RoleInvocationPlan struct {
-	Role string
-	Slot string
+	Role string `json:"role"`
+	Slot string `json:"slot"`
 
 	// Mode is the source binding's EffectiveMode() (SlotBindingModeCustom or
 	// SlotBindingModeRanked). NewRoleInvocationPlanFromLock only resolves
 	// Custom bindings — see its own doc comment.
-	Mode string
+	Mode string `json:"binding_mode"`
 
 	// For a Custom binding, WeaponID, WeaponDigest, BindingDigest,
 	// BindingGeneration, and BindingStatus are sourced from today's flat
@@ -30,18 +30,18 @@ type RoleInvocationPlan struct {
 	// NewRankedRoleInvocationPlanFromCatalog — a deliberately separate
 	// resolution path (docs/adr/0043-ranked-pipeline-pilot-implementation-decisions.md),
 	// never a re-point of Custom's digest lookup.
-	WeaponID          string
-	WeaponDigest      string
-	BindingDigest     string
-	BindingGeneration int64
-	BindingStatus     string
-	Runtime           RankedRuntimeContract
+	WeaponID          string                `json:"weapon"`
+	WeaponDigest      string                `json:"weapon_digest,omitempty"`
+	BindingDigest     string                `json:"binding_digest,omitempty"`
+	BindingGeneration int64                 `json:"binding_generation,omitempty"`
+	BindingStatus     string                `json:"binding_status,omitempty"`
+	Runtime           RankedRuntimeContract `json:"runtime,omitempty"`
 
 	// RequiredContextRefs and OutputSchemaRef are populated by whatever
 	// composes a mission invocation (ContextComposer, doc 05 — not
 	// implemented here). This type only defines their shape.
-	RequiredContextRefs []string
-	OutputSchemaRef     string
+	RequiredContextRefs []string `json:"required_context_refs,omitempty"`
+	OutputSchemaRef     string   `json:"output_schema_ref"`
 }
 
 // NewRoleInvocationPlanFromLock builds a RoleInvocationPlan for role/slot by

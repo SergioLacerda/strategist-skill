@@ -25,6 +25,7 @@ const externalSkillAdapterFileName = "strategist.yaml"
 type externalSkillAdapter struct {
 	CanonicalRole  string                       `yaml:"canonical_role"`
 	Roles          []string                     `yaml:"roles,omitempty"`
+	Capabilities   []string                     `yaml:"capabilities,omitempty"`
 	Lifecycle      bool                         `yaml:"lifecycle,omitempty"`
 	RiskScore      string                       `yaml:"risk_score"`
 	Category       string                       `yaml:"category"`

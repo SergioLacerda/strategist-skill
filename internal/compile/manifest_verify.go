@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 )
 
 // VerifyManifest recomputes the SHA256 of each artifact recorded in
@@ -24,20 +25,53 @@ func VerifyManifest(compiledDir string) ([]string, error) {
 		return nil, fmt.Errorf("verify manifest: read %s: %w", manifestPath, err)
 	}
 
+	return manifestDrift(compiledDir, manifest)
+}
+
+func manifestDrift(compiledDir string, manifest compiledManifest) ([]string, error) {
+	names := sortedManifestNames(manifest)
 	var drift []string
-	for name, recorded := range manifest.Artifacts {
-		artifactPath := filepath.Join(compiledDir, name)
-		if _, statErr := os.Stat(artifactPath); os.IsNotExist(statErr) {
-			drift = append(drift, fmt.Sprintf("manifest_drift: artifact %s missing (recorded in manifest)", name))
-			continue
+	for _, name := range names {
+		if err := validateManifestName(compiledDir, name); err != nil {
+			return nil, fmt.Errorf("verify manifest: %w", err)
 		}
-		current := sha256Artifact(artifactPath)
-		if current != recorded {
-			drift = append(drift, fmt.Sprintf("manifest_drift: artifact %s hash mismatch — recorded=%s current=%s", name, recorded, current))
+		if message := artifactDrift(compiledDir, name, manifest.Artifacts[name]); message != "" {
+			drift = append(drift, message)
 		}
 	}
-
 	return drift, nil
+}
+
+func sortedManifestNames(manifest compiledManifest) []string {
+	names := make([]string, 0, len(manifest.Artifacts))
+	for name := range manifest.Artifacts {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+func artifactDrift(compiledDir, name, recorded string) string {
+	artifactPath := filepath.Join(compiledDir, name)
+	if _, err := os.Stat(artifactPath); os.IsNotExist(err) {
+		return fmt.Sprintf("manifest_drift: artifact %s missing (recorded in manifest)", name)
+	}
+	current := sha256Artifact(artifactPath)
+	if current != recorded {
+		return fmt.Sprintf("manifest_drift: artifact %s hash mismatch — recorded=%s current=%s", name, recorded, current)
+	}
+	return ""
+}
+
+func validateManifestName(compiledDir, name string) error {
+	if name == "" || filepath.IsAbs(name) || filepath.Clean(name) != name || name == "." || name == ".." {
+		return fmt.Errorf("manifest entry %q is not a clean relative path", name)
+	}
+	rel, err := filepath.Rel(compiledDir, filepath.Join(compiledDir, name))
+	if err != nil || rel == ".." || len(rel) >= 3 && rel[:3] == ".."+string(filepath.Separator) {
+		return fmt.Errorf("manifest entry %q escapes compiled runtime", name)
+	}
+	return nil
 }
 
 // readManifest decompresses and decodes a .manifest.gz file.

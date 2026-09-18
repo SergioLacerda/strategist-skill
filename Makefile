@@ -27,8 +27,13 @@ GOLANGCI_LINT_CACHE ?= /tmp/golangci-lint-cache
 # here, so nothing downstream ever sees a backslash to mis-parse. Octal \134
 # is the portable spelling of a literal backslash across tr implementations.
 GOPATH_BIN          := $(shell go env GOPATH | tr '\134' '/')/bin
+LOCAL_BIN           := $(CURDIR)/bin
 
+ifneq ($(wildcard $(LOCAL_BIN)/golangci-lint),)
+GOLANGCI_LINT       := $(LOCAL_BIN)/golangci-lint
+else
 GOLANGCI_LINT       := $(shell which golangci-lint 2>/dev/null || echo $(GOPATH_BIN)/golangci-lint)
+endif
 
 # Pinned to go.mod's own `toolchain` line so AST/SSA-based tools (golangci-lint's
 # bundled go/types checker, govulncheck's x/tools SSA builder) always analyze
@@ -45,7 +50,7 @@ PINNED_GOTOOLCHAIN  := $(shell awk '/^toolchain /{print $$2}' go.mod)
 GOVULNCHECK         := $(shell which govulncheck 2>/dev/null || echo $(GOPATH_BIN)/govulncheck)
 GOCOGNIT            := $(shell which gocognit 2>/dev/null || echo $(GOPATH_BIN)/gocognit)
 GORELEASER          := $(shell which goreleaser 2>/dev/null || echo $(GOPATH_BIN)/goreleaser)
-GOVULNCHECK_VERSION ?= v1.1.4
+GOVULNCHECK_VERSION ?= v1.8.0
 GOCOGNIT_VERSION    ?= v1.2.1
 GORELEASER_VERSION  ?= v2.12.2
 COVERAGE_MANIFEST   := scripts/coverage-packages.tsv
@@ -65,6 +70,6 @@ include make/docs.mk
 
 ci-lint: fmt-check mod-check vet build quality-budget-gate
 
-ci-test: test-all golden convergence-check contract-consistency-gate cover-gate docs-generated-gate docs-links-gate
+ci-test: test-all golden convergence-check contract-consistency-gate cover-gate docs-generated-gate docs-links-gate mutation-role-weapon
 
 ci: ci-lint ci-test

@@ -1,0 +1,72 @@
+schema_version: "1"
+runbook_id: embedded-defaults-drift-recovery
+runbook_type: operational
+source_doc: docs/runbooks/embedded-defaults-drift-recovery.md
+
+applies_when:
+  - >-
+    strategist check reports runtime_stale_conflict for a file listed by
+    NormativeRuntimeDefaultFiles()
+  - >-
+    strategist check reports runtime_stale_auto_repairable for a file listed by
+    NormativeRuntimeDefaultFiles()
+  - >-
+    strategist check reports runtime_stale_unknown_manifest for a file listed by
+    NormativeRuntimeDefaultFiles()
+
+objective: >-
+  Recover safely when the embedded defaults in the active strategist binary,
+  installed .strategist runtime, and authoring source no longer agree.
+
+preconditions:
+  - >-
+    The intended repository checkout and its .strategist runtime root have
+    been identified.
+  - >-
+    The affected path is listed by internal/domain/runtime_defaults.go in
+    NormativeRuntimeDefaultFiles().
+  - >-
+    The strategist binary selected through PATH has been resolved before any
+    replacement is considered.
+  - >-
+    The active binary is confirmed to be safely replaceable before installation.
+
+verification:
+  - >-
+    Record command -v strategist and stat the resolved binary, then compare its
+    timestamp and checkout with the edit that triggered the diagnostic.
+  - >-
+    Build a candidate binary to an explicit temporary path with the repository
+    build path, without replacing the active binary during validation.
+  - >-
+    Run the candidate from the intended .strategist runtime root and confirm
+    the expected stale diagnostic is resolved for the affected file.
+  - >-
+    Replace or install the active binary only when its path is owned and safely
+    writable by the operator, then rerun strategist check from the same root.
+  - >-
+    If stale status remains, compare every authoring and installed file named by
+    NormativeRuntimeDefaultFiles() and classify the mismatch before changing
+    either side.
+
+checks:
+  - id: active-binary-resolved
+    level: mandatory
+  - id: candidate-built-before-replacement
+    level: mandatory
+  - id: candidate-validated-from-runtime-root
+    level: mandatory
+  - id: binary-replacement-safety-confirmed
+    level: mandatory
+  - id: stale-status-cleared-after-install
+    level: conditional
+    when: "a safe binary replacement or installation was performed"
+  - id: residual-normative-files-compared
+    level: conditional
+    when: "a runtime_stale_* diagnostic remains after candidate validation"
+  - id: unexplained-drift-escalated
+    level: mandatory
+
+metadata:
+  version: 1
+  reviewed_at: "2026-09-17"

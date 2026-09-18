@@ -1,5 +1,6 @@
 .PHONY: \
 	lint complexity-report go-file-size-report \
+	mutation-role-weapon \
 	install-gocognit quality-budget-gate \
 	install-govulncheck vuln vuln-ci \
 	cover cover-gate cover-html test-report
@@ -23,6 +24,9 @@ install-gocognit:
 
 quality-budget-gate: install-gocognit
 	bash scripts/check-quality-budgets.sh "$(QUALITY_BUDGETS)" "$(GOCOGNIT)" "$(COMPLEXITY_THRESHOLD)"
+
+mutation-role-weapon:
+	bash scripts/mutation-role-weapon.sh
 
 install-govulncheck:
 	GOCACHE=$(GOCACHE) go install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION)

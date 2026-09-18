@@ -143,6 +143,99 @@ func TestInstall_WizardPath_ExplicitDefaultProvidersMaterializeManifests(t *test
 	assert.Contains(t, string(openspecExplore), "risk_score: write_analysis")
 }
 
+// TestInstall_WizardPath_PersistsRankedBindingModes protects the full wizard
+// decision boundary: a Ranked selection must reach both active.yaml and the
+// corresponding plugins.lock binding for each configurable role.
+func TestInstall_WizardPath_PersistsRankedBindingModes(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	input := "en\nen\nen\nen\nepic\n.analysis\nbrainstorming::ranked\nopenspec-propose::ranked\nsniper::ranked\n\n"
+	svc := Service{Extractor: rankedWizardExtractor{}, Compiler: nopCompiler{}, WizardPrompter: NewTextPrompter(strings.NewReader(input)), ShimHomeDir: t.TempDir()}
+	require.NoError(t, svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true}))
+
+	active, err := os.ReadFile(filepath.Join(dir, ".strategist", "active.yaml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(active), "discovery: brainstorming")
+	assert.Contains(t, string(active), "refinement: openspec-propose")
+	assert.Contains(t, string(active), "execution: sniper")
+
+	lock, err := readPluginLockFile(filepath.Join(dir, ".strategist"))
+	require.NoError(t, err)
+	for _, slot := range []string{"discovery", "refinement", "execution"} {
+		binding, ok := findSlotBinding(lock.Bindings, slot)
+		require.True(t, ok, "wizard must persist a binding for %s", slot)
+		assert.Equal(t, domain.SlotBindingModeRanked, binding.Mode, "wizard Ranked choice must survive persistence for %s", slot)
+	}
+}
+
+type rankedWizardExtractor struct{}
+
+func (rankedWizardExtractor) Extract(targetDir string, withShim bool) error {
+	if err := (minimalExtractor{}).Extract(targetDir, withShim); err != nil {
+		return err
+	}
+	roleFiles := map[string]string{
+		"roles/default.yaml":   "discovery: ranger\nrefinement: archivist\nexecution: sniper\n",
+		"roles/ranger.yaml":    "role: ranger\nslot: discovery\n",
+		"roles/archivist.yaml": "role: archivist\nslot: refinement\n",
+		"roles/sniper.yaml":    "role: sniper\nslot: execution\n",
+	}
+	for path, content := range roleFiles {
+		if err := os.WriteFile(filepath.Join(targetDir, path), []byte(content), 0o644); err != nil {
+			return err
+		}
+	}
+	if err := os.MkdirAll(filepath.Join(targetDir, "plugins"), 0o755); err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(targetDir, pluginCatalogPath), []byte(rankedWizardCatalogYAML), 0o644); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (rankedWizardExtractor) ReadFile(relPath string) ([]byte, error) {
+	if relPath == pluginCatalogPath {
+		return []byte(rankedWizardCatalogYAML), nil
+	}
+	return minimalExtractor{}.ReadFile(relPath)
+}
+
+const rankedWizardCatalogYAML = `schema_version: strategist-plugin-catalog/v1
+providers:
+  - id: archivist
+    risk_score: write_analysis
+    compatibility_source: native_role
+  - id: brainstorming
+    risk_score: write_analysis
+    canonical_role: ranger
+    default: true
+    ranked: true
+    certification_digest: sha256:brainstorming
+    ranked_binding_generation: 1
+    ranked_binding_status: active
+    installable: true
+    legacy_manifest_path: skills/brainstorming/skill.yaml
+    compatibility_source: embedded
+  - id: openspec-propose
+    risk_score: write_analysis
+    canonical_role: archivist
+    default: true
+    ranked: true
+    certification_digest: sha256:openspec-propose
+    ranked_binding_generation: 1
+    ranked_binding_status: active
+    installable: true
+    legacy_manifest_path: skills/openspec-propose/skill.yaml
+    compatibility_source: embedded
+  - id: sniper
+    risk_score: controlled
+    canonical_role: sniper
+    ranked: true
+    certification_digest: sha256:sniper
+    compatibility_source: native_role
+`
+
 func TestRunWizard_EOFPrompts(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

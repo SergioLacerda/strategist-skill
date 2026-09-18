@@ -13,15 +13,8 @@ fmt-check:
 	if [ -n "$$files" ]; then \
 		echo "fmt-check: unformatted Go files detected:" >&2; \
 		printf '%s\n' "$$files" | sed 's/^/  - /' >&2; \
-		echo "fmt-check: applying gofmt -w ." >&2; \
-		gofmt -w . || { echo "fmt-check: auto-fix failed" >&2; exit 1; }; \
-		remaining="$$(gofmt -l .)"; \
-		if [ -n "$$remaining" ]; then \
-			echo "fmt-check: files remain unformatted after auto-fix:" >&2; \
-			printf '%s\n' "$$remaining" | sed 's/^/  - /' >&2; \
-			exit 1; \
-		fi; \
-		echo "fmt-check: auto-fix completed"; \
+		echo "fmt-check: run 'make fmt' to apply formatting" >&2; \
+		exit 1; \
 	else \
 		echo "fmt-check: all Go files are formatted"; \
 	fi

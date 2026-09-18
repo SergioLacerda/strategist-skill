@@ -1,8 +1,6 @@
 module github.com/SergioLacerda/strategist-skill
 
-go 1.26.4
-
-toolchain go1.26.6
+go 1.27.1
 
 require (
 	github.com/charmbracelet/huh v1.0.0

@@ -26,7 +26,7 @@ tree and CI jobs:
   console work implement by hand.
 
 The same repository also carries strict toolchain declarations: `go.mod` sets
-`go 1.26.4` and `toolchain go1.26.5`, while the web surface uses Node 22 in CI
+`go 1.27.1` and `toolchain go1.27.1`, while the web surface uses Node 22 in CI
 and declares `engines.node >= 22.12.0`.
 
 ## Decision
@@ -62,8 +62,8 @@ Toolchain policy:
 
 - Go version authority is `go.mod`. Workflows should use `go-version-file:
   "go.mod"` instead of restating the Go version.
-- `go 1.26.4` is the module/language target.
-- `toolchain go1.26.5` is the exact patch toolchain for CI-compatible local
+- `go 1.27.1` is the module/language target.
+- `toolchain go1.27.1` is the exact patch toolchain for CI-compatible local
   verification.
 - Node 22 is the supported major version for `web/landing/`; the package-level
   floor is `>=22.12.0`.
