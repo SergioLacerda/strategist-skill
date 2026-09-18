@@ -43,6 +43,7 @@ generated/
 /tests/evals/regression/*
 !/tests/evals/regression/20260804-eval-fake-provider/
 .tmp-gocache-cli/
+.tmp-gomodcache-cli/
 .tmp-go-cache
 .cache
 AGENTS.md

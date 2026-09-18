@@ -73,3 +73,39 @@ func TestEmbeddedDefaults_BaselineWeaponRosterIsAlwaysEmbedded(t *testing.T) {
 		require.NoErrorf(t, err, "skills/%s/strategist.yaml must be embedded alongside its catalog entry", want.id)
 	}
 }
+
+// TestEmbeddedDefaults_RequestedAuxiliaryOptionsAreAlwaysEmbedded protects
+// the two additional built-in options requested for the standalone catalog.
+// They are catalog entries and complete payload mirrors, but only
+// writing-plans is a role-affine Archivist candidate; archive remains a
+// lifecycle utility and must not be promoted into a slot by inference.
+func TestEmbeddedDefaults_RequestedAuxiliaryOptionsAreAlwaysEmbedded(t *testing.T) {
+	t.Parallel()
+
+	raw, err := embedpkg.Extractor{}.ReadFile("plugins/catalog.yaml")
+	require.NoError(t, err)
+	var catalog embeddedWeaponRosterCatalog
+	require.NoError(t, yaml.Unmarshal(raw, &catalog))
+
+	byID := make(map[string]embeddedWeaponRosterCatalogEntry, len(catalog.Providers))
+	for _, provider := range catalog.Providers {
+		byID[provider.ID] = provider
+	}
+	for _, want := range []struct {
+		id            string
+		canonicalRole string
+	}{
+		{"writing-plans", "archivist"},
+		{"openspec-archive-change", ""},
+	} {
+		entry, found := byID[want.id]
+		require.Truef(t, found, "requested option %q must be present in embedded catalog", want.id)
+		assert.Equal(t, "embedded", entry.CompatibilitySource)
+		assert.Truef(t, entry.Installable, "%s must remain installable", want.id)
+		assert.Equal(t, want.canonicalRole, entry.CanonicalRole)
+		for _, payload := range []string{"skill.yaml", "SKILL.md", "strategist.yaml"} {
+			_, err := embedpkg.Extractor{}.ReadFile("skills/" + want.id + "/" + payload)
+			require.NoErrorf(t, err, "skills/%s/%s must be embedded", want.id, payload)
+		}
+	}
+}

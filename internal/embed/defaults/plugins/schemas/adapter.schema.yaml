@@ -21,6 +21,12 @@ properties:
   supported_slots:
     type: array
     values: [discovery, refinement, execution]
+  supported_roles:
+    type: array
+    values: [ranger, archivist, sniper]
+  capabilities:
+    type: array
+    values: [discover, refine, materialize_docs]
   entrypoints:
     type: array
     values: [discover, refine, materialize_docs]

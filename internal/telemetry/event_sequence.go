@@ -50,6 +50,20 @@ func NewEvent(name string, severity SeverityNumber, runID string, complete bool)
 	}
 }
 
+// NewHardeningEvent creates a sanitized, auditable event for a hardening
+// decision without introducing a second telemetry envelope.
+func NewHardeningEvent(name, runID, status, source, reason, path string) Event {
+	event := NewEvent(name, SeverityInfo, runID, true)
+	event.Attributes = map[string]any{
+		AttrStatus: status, AttrEventAuthority: AuthorityStrategistLocal,
+		AttrReason: reason, AttrEventContractID: source,
+	}
+	if path != "" {
+		event.Attributes[AttrTarget] = SanitizePath(path)
+	}
+	return event
+}
+
 // Gap describes a break in an event stream's Sequence numbering for one
 // RunID: evidence that at least one event was assigned a Sequence number
 // (via NextSequence/NewEvent) but is absent from the slice under

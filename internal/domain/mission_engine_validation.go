@@ -20,6 +20,9 @@ func validateMissionIdentity(status MissionEngineStatus) error {
 }
 
 func validateMissionPhaseState(status MissionEngineStatus) error {
+	if err := validateHandoffMetadata(status); err != nil {
+		return err
+	}
 	if status.Phase == PhaseBlocked && status.State != StateBlocked {
 		return fmt.Errorf("mission engine: blocked phase requires blocked state")
 	}
@@ -28,6 +31,16 @@ func validateMissionPhaseState(status MissionEngineStatus) error {
 	}
 	if !validMissionState(status.Phase, status.State) {
 		return fmt.Errorf("mission engine: state %q is invalid for phase %q", status.State, status.Phase)
+	}
+	return nil
+}
+
+func validateHandoffMetadata(status MissionEngineStatus) error {
+	if status.HandoffAttempt < 0 {
+		return fmt.Errorf("mission engine: handoff attempt cannot be negative")
+	}
+	if status.HandoffAttempt == 0 && (status.HandoffStatus != "" || status.HandoffNextAction != "") {
+		return fmt.Errorf("mission engine: handoff metadata requires a positive attempt")
 	}
 	return nil
 }

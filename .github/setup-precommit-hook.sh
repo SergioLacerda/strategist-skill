@@ -48,9 +48,14 @@ if ! go build ./... 2>&1; then
 fi
 
 # 4. Lint (optional — skipped if golangci-lint is not installed)
-GOLANGCI_LINT=$(command -v golangci-lint 2>/dev/null \
+GOLANGCI_LINT=""
+if [ -x "./bin/golangci-lint" ]; then
+    GOLANGCI_LINT="./bin/golangci-lint"
+else
+    GOLANGCI_LINT=$(command -v golangci-lint 2>/dev/null \
     || command -v "$(go env GOPATH)/bin/golangci-lint" 2>/dev/null \
     || true)
+fi
 
 if [ -n "$GOLANGCI_LINT" ]; then
     if ! "$GOLANGCI_LINT" run ./... 2>&1; then

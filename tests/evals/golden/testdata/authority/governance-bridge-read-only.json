@@ -1,0 +1,6 @@
+{
+  "authority": "governance_bridge_read_only",
+  "governance_bridge": "read_only",
+  "connector": "native",
+  "live_provider_invoked": false
+}

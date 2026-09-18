@@ -10,18 +10,42 @@
 # .analysis/refined/20260811-golden-suite-scope/design.md.
 golden:
   - id: handoff-manifest
+    source: internal/embed/defaults/schemas/handoff-archivist-to-sniper.schema.yaml
+    mode: normalized
     contracts: [handoff-archivist-to-sniper]
+    update_reason: "Pin the Archivist to Sniper handoff schema shape."
   - id: provider-manifest
+    source: internal/embed/defaults/skills/brainstorming/skill.yaml
+    mode: normalized
     contracts: [discovery-provider, write-analysis]
+    update_reason: "Pin the embedded provider compatibility descriptor."
   - id: telemetry-attributes
+    source: internal/telemetry/schema.go
+    mode: exact
     contracts: [telemetry-schema]
+    update_reason: "Pin the stable telemetry attribute vocabulary."
   - id: cli-help
+    source: cmd/strategist
+    mode: exact
     contracts: [cli-interface]
+    update_reason: "Pin the public CLI help surface."
   - id: rendered-schema
+    source: internal/embed/defaults/schemas/intake.schema.yaml
+    mode: normalized
     contracts: [intake-schema]
+    update_reason: "Pin the rendered intake schema structure."
   - id: compiled-contract-shape
+    source: internal/embed/defaults/contracts/machine/compile-domain.yaml
+    mode: structural
     contracts: [compile-domain]
+    update_reason: "Pin the compiled contract shape while ignoring values."
   - id: default-config
+    source: internal/embed/defaults/roles/default.yaml
+    mode: normalized
     contracts: [runtime-defaults]
+    update_reason: "Pin the default role configuration."
   - id: compiled-prompt
+    source: internal/embed/defaults/templates/epic-standalone.yaml
+    mode: exact
     contracts: [persona-rendering, adr-0016]
+    update_reason: "Pin deterministic prompt compilation output."

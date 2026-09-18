@@ -120,6 +120,8 @@ type AdapterContract struct {
 	AdapterRevision      string             `yaml:"adapter_revision"`
 	PluginAPIRange       string             `yaml:"plugin_api_range"`
 	SupportedSlots       []string           `yaml:"supported_slots"`
+	SupportedRoles       []string           `yaml:"supported_roles,omitempty"`
+	Capabilities         []string           `yaml:"capabilities,omitempty"`
 	Entrypoints          []string           `yaml:"entrypoints"`
 	PackageConstraint    string             `yaml:"package_constraint"`
 	RequestedPermissions []PluginPermission `yaml:"requested_permissions"`

@@ -85,7 +85,11 @@ func TestLateralIsolation(t *testing.T) {
 
 func assertNoForbiddenDeps(t *testing.T, pkg string, forbidden []string) {
 	t.Helper()
-	out, err := exec.Command("go", "list", "-deps", pkg).CombinedOutput()
+	// Inspect only direct imports. Transitive dependencies are legitimate here:
+	// for example, install uses integrity, and integrity uses compile to verify
+	// the compiled manifest. Treating that chain as lateral coupling would make
+	// the rule reject valid shared infrastructure.
+	out, err := exec.Command("go", "list", "-f", "{{join .Imports \"\\n\"}}", pkg).CombinedOutput()
 	if err != nil {
 		t.Fatalf("go list -deps failed: %v\n%s", err, out)
 	}

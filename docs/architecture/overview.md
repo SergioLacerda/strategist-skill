@@ -32,6 +32,8 @@ cmd/strategist/          CLI commands (cobra)
   check.go               strategist check
   dojo.go                strategist dojo
   treasure_chest.go      strategist treasure-chest
+  mission_lifecycle.go   mission start/report lifecycle commands
+  mission_normalize_openspec.go  normalize completed planning artifacts
   root_discovery.go      root-level .strategist/ discovery (CWD walk)
   runtime_profile.go     output profile resolution (default/epic/pragmatic)
 
@@ -83,6 +85,17 @@ internal/
   governance/            Synchronizes Strategist manifests with SDD governance metadata
   i18n/                  Language selection, reserved-term checks, and localized CLI strings
   integrity/             Runtime config integrity lock and warning support
+  authorization/          Authorization and permission-grant checks
+  conformance/            Provider readiness and conformance classification
+  eval/                   Evaluation and artifact-harvest support
+  governancebridge/       Local governance-context bridge and policy injection
+  handoff/                Role-to-role handoff and challenge validation
+  hardening/              Runtime hardening contracts and validation
+  mission/                Mission lifecycle and persisted mission state
+  plugins/                Provider catalog, binding, lock, and lifecycle logic
+  refinement/             OpenSpec refinement normalization and bridge logic
+  rolevalidation/         Role/provider mutation and compatibility validation
+  runbook/                Typed runbook parsing and bounded selection
   runtimefs/             Shared filesystem primitives for runtime artifact IO
   treasure/              Treasure Chest, jewel, and potion indexing/loading/mutation logic
   validate/              Runtime validation entry points

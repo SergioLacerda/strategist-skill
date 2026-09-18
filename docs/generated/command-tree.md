@@ -35,8 +35,12 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `handoff` — Report Handoff Challenge governance metrics
   - `scout` — Report Scout routing metrics
 - `mission` — Report and inspect mission-level facts this binary cannot observe directly
+  - `context` — Materialize declared mission context
   - `normalize-openspec` — Publish a completed OpenSpec change into the refined mission package
   - `report-usage` — Record real token usage for a mission, reported by the invoking agent
+  - `start` — Start a mission
+  - `status` — Inspect a mission status
+  - `submit` — Submit one authoritative mission event
 - `plugins` — Inspect and evaluate Strategist plugin enforcement
   - `authorize` — Compose authorization evidence for a governed target
   - `evaluate-write` — Report whether a write to --target is enforceably allowed under the active connector

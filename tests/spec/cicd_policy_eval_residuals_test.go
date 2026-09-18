@@ -48,8 +48,8 @@ func TestMonorepoAndToolchainPolicyADRExists(t *testing.T) {
 	for _, needle := range []string{
 		"Keep the Go CLI, embedded defaults, docs, and landing site in one repository",
 		"Go version authority is `go.mod`",
-		"`go 1.26.4` is the module/language target",
-		"`toolchain go1.26.5` is the exact patch toolchain",
+		"`go 1.27.1` is the module/language target",
+		"`toolchain go1.27.1` is the exact patch toolchain",
 		"Node 22 is the supported major version for `web/landing/`",
 		"`release-verify`",
 		"`ci-web`",

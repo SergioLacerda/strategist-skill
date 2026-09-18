@@ -4,18 +4,18 @@ import "fmt"
 
 // MissionStartRequest identifies a mission at the transition boundary.
 type MissionStartRequest struct {
-	MissionID string
+	MissionID string `json:"mission_id"`
 }
 
 // MissionEngineStatus is the durable, implementation-neutral state needed to
 // replay or restore a mission transition sequence.
 type MissionEngineStatus struct {
-	MissionID         string
-	Phase             PipelinePhase
-	State             MissionState
-	HandoffAttempt    int
-	HandoffStatus     string
-	HandoffNextAction string
+	MissionID         string        `json:"mission_id"`
+	Phase             PipelinePhase `json:"phase"`
+	State             MissionState  `json:"state"`
+	HandoffAttempt    int           `json:"handoff_attempt,omitempty"`
+	HandoffStatus     string        `json:"handoff_status,omitempty"`
+	HandoffNextAction string        `json:"handoff_next_action,omitempty"`
 }
 
 // HandoffOutcome is the already-verified and persisted result of the live

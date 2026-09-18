@@ -1,0 +1,6 @@
+{
+  "authority": "governance_bridge_nil",
+  "governance_bridge": "nil",
+  "connector": "native",
+  "live_provider_invoked": false
+}

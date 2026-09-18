@@ -9,6 +9,33 @@ The `strategist` binary is built in Go with [cobra](https://github.com/spf13/cob
 strategist <command> [flags]
 ```
 
+## mission lifecycle
+
+The mission commands are a machine-readable adapter over the domain
+`MissionEngine`. They persist only structural state under the configured
+`.strategist/missions/` runtime directory; transition validity remains owned by
+the engine.
+
+```
+strategist mission start --mission-id=<id> [--json]
+strategist mission status --mission-id=<id> [--json]
+strategist mission submit --mission-id=<id> --event=<event> [--json]
+strategist mission context --mission-id=<id> --ref=<path> [--ref=<path> ...] [--json]
+```
+
+References passed to `mission context` are workspace-relative, sorted
+deterministically, loaded without semantic synthesis, and checked against
+optional `--digest` values. Missing references, digest mismatches, duplicate
+references, and `--max-refs`/`--max-bytes` violations fail closed. Use
+`--json` for stable fields (`mission_id`, `phase`, `state`, `references`,
+`digest`) in automation.
+
+The lifecycle commands do not bypass Approval Gate or invoke a provider.
+`mission submit` delegates the event to `MissionEngine` and rejects invalid or
+out-of-order events without persisting a state change. The existing
+versioned `InvocationEnvelope` remains the standalone invocation contract and
+continues to derive its binding from `RoleInvocationPlan`.
+
 ## plugins authorize
 
 Composes the authorization evidence required before a governed target write.

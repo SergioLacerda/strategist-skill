@@ -2,13 +2,13 @@
 
 ## Prerequisites
 
-- Go matching `go.mod` (`go 1.26.4`, toolchain `go1.26.5`)
+- Go matching `go.mod` (`go 1.27.1`, toolchain `go1.27.1`)
 - Node.js 22 (for `web/landing/` only, matching CI)
 - `make` (GNU Make)
 - A POSIX shell (Git Bash or WSL on Windows)
 
-Go versions are sourced from `go.mod`: `go 1.26.4` defines the language/module
-target and `toolchain go1.26.5` pins the patch toolchain used by CI-compatible
+Go versions are sourced from `go.mod`: `go 1.27.1` defines the language/module
+target and `toolchain go1.27.1` pins the patch toolchain used by CI-compatible
 local verification. Node is intentionally scoped to `web/landing/`; CI uses
 Node 22 and the landing package declares `engines.node >= 22.12.0`. Relax or bump
 these pins only through the toolchain policy in ADR-0014.
