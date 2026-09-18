@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/runtimeenv"
 	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
 	"gopkg.in/yaml.v3"
 )
@@ -20,8 +20,10 @@ const rankedRuntimeStatePath = "ranked-runtimes.yaml"
 var runRankedRuntimeCommand = func(ctx context.Context, dir string, name string, args ...string) ([]byte, error) {
 	// The executable and arguments are supplied by the trusted runtime
 	// contract; provider roots are validated before reaching this adapter.
-	cmd := exec.CommandContext(ctx, name, args...) //nolint:gosec // G204: command is the validated provider runtime executable
-	cmd.Dir = dir
+	cmd, err := runtimeenv.Command(ctx, dir, name, args...)
+	if err != nil {
+		return nil, fmt.Errorf("prepare provider command: %w", err)
+	}
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return out, fmt.Errorf("%s %s: %w: %s", name, strings.Join(args, " "), err, strings.TrimSpace(string(out)))
@@ -136,7 +138,7 @@ func prepareRankedBinding(ctx context.Context, strategistDir string, roles domai
 	if runtime.Kind == domain.RankedRuntimeNone {
 		return rankedRuntimeStateEntry{}, false, nil
 	}
-	root, err := runtimefs.SafeJoin(strategistDir, filepath.ToSlash(runtime.Root)[len(".strategist/"):])
+	root, err := runtimefs.SafeJoinExisting(strategistDir, filepath.ToSlash(runtime.Root)[len(".strategist/"):])
 	if err != nil {
 		return rankedRuntimeStateEntry{}, false, fmt.Errorf("ranked runtime provider %q root: %w", provider.ID, err)
 	}
@@ -169,7 +171,11 @@ func bootstrapOpenSpecRuntime(ctx context.Context, root string, runtime domain.R
 }
 
 func validateExistingOpenSpecRuntime(ctx context.Context, root string, healthcheckArgs []string) error {
-	if _, err := runRankedRuntimeCommand(ctx, root, "openspec", healthcheckArgs...); err != nil {
+	output, err := runRankedRuntimeCommand(ctx, root, "openspec", healthcheckArgs...)
+	if err != nil {
+		return fmt.Errorf("healthcheck failed: %w", err)
+	}
+	if err := domain.ValidateOpenSpecHealthcheck(output, root); err != nil {
 		return fmt.Errorf("healthcheck failed: %w", err)
 	}
 	return removeLegacyNestedOpenSpecRoot(root)

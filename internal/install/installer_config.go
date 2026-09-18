@@ -48,15 +48,31 @@ func (s Service) applySilentConfig(_ context.Context, strategistDir string, cfg 
 			"path", activeYAMLPath,
 		)
 	}
-	data, err := s.Extractor.ReadFile(epicStandaloneTemplatePath)
+	data, err := s.readNormalizedSilentConfig()
 	if err != nil {
-		return fmt.Errorf("install: read template: %w", err)
+		return err
 	}
 	// Route through writeActiveYAMLBytes so silent installs seal .config.lock the
 	// same way wizard installs do — a silent install must never start unlocked.
 	if err := writeActiveYAMLBytes(strategistDir, data); err != nil {
 		return fmt.Errorf("install: %w", err)
 	}
+	return s.activateSilentBindings(strategistDir, data)
+}
+
+func (s Service) readNormalizedSilentConfig() ([]byte, error) {
+	data, err := s.Extractor.ReadFile(epicStandaloneTemplatePath)
+	if err != nil {
+		return nil, fmt.Errorf("install: read template: %w", err)
+	}
+	data, err = normalizeStandaloneLanguage(data)
+	if err != nil {
+		return nil, fmt.Errorf("install: normalize language: %w", err)
+	}
+	return data, nil
+}
+
+func (s Service) activateSilentBindings(strategistDir string, data []byte) error {
 	// A silent install's template slots (discovery/refinement) are external
 	// skill providers, not native roles — strategist check now fails closed
 	// when discovery/refinement lack a persisted plugins.lock binding

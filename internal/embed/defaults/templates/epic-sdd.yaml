@@ -10,8 +10,12 @@ base_path: .sdd/analysis
 knowledge_index_path: knowledge.index.yaml
 
 # Language for all generated artifacts (discovery docs, ADRs, analysis files).
-# Values: pt | en
-language: pt
+# Values: en | pt-BR
+language:
+  ui: pt-BR
+  docs: en
+  chat: pt-BR
+  code: en
 
 # Slot plugins — which skill fills each mission role.
 # The execution slot is overridden at runtime by governance_injection.execution_provider

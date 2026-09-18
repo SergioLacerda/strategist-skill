@@ -16,7 +16,11 @@ func WriteCatalogAndMirrors(result IngestionResult, defaultsRoot, catalogPath, l
 	if err := writeSkillMirrors(result.Catalog, result.Ingested, defaultsRoot); err != nil {
 		return err
 	}
-	return writeEmbeddedSkillLock(result.Ingested, lockPath)
+	skills, err := withNormalizedSkillDigests(result.Catalog, result.Ingested)
+	if err != nil {
+		return err
+	}
+	return writeEmbeddedSkillLock(skills, lockPath)
 }
 
 func validateEmbeddedSkillLockBytes(raw []byte) error {
@@ -49,8 +53,11 @@ func validateEmbeddedSkillLockPackage(pkg EmbeddedSkillLockNode) error {
 	if lockDigestsMismatch(pkg) {
 		return fmt.Errorf("validate embedded skill lock: digest mismatch for %q", pkg.ID)
 	}
-	if pkg.Transformation == "" || pkg.VerificationState == "" {
+	if pkg.Transformation == "" || pkg.VerificationState == "" || pkg.OriginalDigestEvidence == "" || pkg.NormalizedDigestEvidence == "" {
 		return fmt.Errorf("validate embedded skill lock: missing evidence state for %q", pkg.ID)
+	}
+	if !validLockEvidenceState(pkg.VerificationState) || !validLockEvidenceState(pkg.OriginalDigestEvidence) || !validLockEvidenceState(pkg.NormalizedDigestEvidence) {
+		return fmt.Errorf("validate embedded skill lock: invalid evidence state for %q", pkg.ID)
 	}
 	return nil
 }
@@ -60,7 +67,32 @@ func incompleteLockProvenance(pkg EmbeddedSkillLockNode) bool {
 }
 
 func lockDigestsMismatch(pkg EmbeddedSkillLockNode) bool {
-	return !strings.HasPrefix(pkg.Digest, "sha256:") || pkg.OriginalDigest != pkg.Digest || pkg.NormalizedDigest != pkg.Digest
+	return !validLockDigest(pkg.Digest) || !validLockDigest(pkg.OriginalDigest) || !validLockDigest(pkg.NormalizedDigest) || pkg.OriginalDigest != pkg.Digest
+}
+
+func validLockDigest(digest string) bool {
+	if !strings.HasPrefix(digest, "sha256:") || len(digest) != len("sha256:")+64 {
+		return false
+	}
+	for _, char := range digest[len("sha256:"):] {
+		if !isLowerHex(char) {
+			return false
+		}
+	}
+	return true
+}
+
+func isLowerHex(char rune) bool {
+	return (char >= '0' && char <= '9') || (char >= 'a' && char <= 'f')
+}
+
+func validLockEvidenceState(state string) bool {
+	switch state {
+	case "declared", "verified", "unknown", "unsupported", "failed", "blocked":
+		return true
+	default:
+		return false
+	}
 }
 
 func writeCatalog(catalog pluginCatalog, path string) error {

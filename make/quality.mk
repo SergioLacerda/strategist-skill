@@ -1,12 +1,23 @@
 .PHONY: \
-	lint complexity-report go-file-size-report \
+	lint lint-fix complexity-report go-file-size-report \
 	mutation-role-weapon \
 	install-gocognit quality-budget-gate \
 	install-govulncheck vuln vuln-ci \
 	cover cover-gate cover-html test-report
 
+# lint is diagnostic-only: it must never rewrite source files.
 lint: fmt-check
 	GOCACHE=$(GOCACHE) GOLANGCI_LINT_CACHE=$(GOLANGCI_LINT_CACHE) GOTOOLCHAIN=$(PINNED_GOTOOLCHAIN) $(GOLANGCI_LINT) run ./...
+	@$(MAKE) complexity-report
+	@$(MAKE) go-file-size-report
+
+# lint-fix applies only tool-supported repairs, then runs the same diagnostics
+# as lint. Complexity and file-size findings remain manual work and therefore
+# still fail here when they cannot be fixed automatically.
+lint-fix:
+	gofmt -w .
+	GOCACHE=$(GOCACHE) GOLANGCI_LINT_CACHE=$(GOLANGCI_LINT_CACHE) GOTOOLCHAIN=$(PINNED_GOTOOLCHAIN) $(GOLANGCI_LINT) run --fix ./...
+	@$(MAKE) fmt-check
 	@$(MAKE) complexity-report
 	@$(MAKE) go-file-size-report
 

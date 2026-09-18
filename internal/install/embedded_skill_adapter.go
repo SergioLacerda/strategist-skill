@@ -53,12 +53,24 @@ type externalSkillAdapter struct {
 	// provenance has not yet been researched simply omits them (see
 	// docs/adr/0029-external-skill-provider-lifecycle.md's own Context for
 	// which packages already have this evidence recorded).
-	UpstreamRepo          string `yaml:"upstream_repo,omitempty"`
-	UpstreamSkillPath     string `yaml:"upstream_skill_path,omitempty"`
-	UpstreamVersion       string `yaml:"upstream_version,omitempty"`
-	UpstreamCommit        string `yaml:"upstream_commit,omitempty"`
-	UpstreamContentDigest string `yaml:"upstream_content_digest,omitempty"`
-	License               string `yaml:"license,omitempty"`
+	UpstreamRepo          string         `yaml:"upstream_repo,omitempty"`
+	UpstreamSkillPath     string         `yaml:"upstream_skill_path,omitempty"`
+	UpstreamVersion       string         `yaml:"upstream_version,omitempty"`
+	UpstreamCommit        string         `yaml:"upstream_commit,omitempty"`
+	UpstreamContentDigest string         `yaml:"upstream_content_digest,omitempty"`
+	License               string         `yaml:"license,omitempty"`
+	WeaponContract        WeaponContract `yaml:"weapon_contract,omitempty"`
+}
+
+// WeaponContract makes the role/weapon participation boundary explicit in
+// generated catalog mirrors. It is descriptive metadata only; runtime
+// invocation still requires host evidence and never authorizes substitution.
+type WeaponContract struct {
+	RoleOwner           string `yaml:"role_owner,omitempty"`
+	Participation       string `yaml:"participation,omitempty"`
+	InvocationEvidence  string `yaml:"invocation_evidence,omitempty"`
+	UnavailableBehavior string `yaml:"unavailable_behavior,omitempty"`
+	NativeSubstitution  string `yaml:"native_substitution,omitempty"`
 }
 
 func loadExternalSkillAdapter(dir, packageID string) (externalSkillAdapter, error) {

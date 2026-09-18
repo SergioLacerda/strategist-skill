@@ -12,7 +12,7 @@ func reconciliationContract() SkillPackageContract {
 		ContractVersion: CurrentSkillPackageContractVersion, Capabilities: []string{"role.ranger"},
 		SupportedRoles: []string{"ranger"}, SupportedSlots: []string{"discovery"},
 		EvidenceState: PackageEvidenceDeclared,
-		Provenance:    PackageProvenance{NormalizedDigest: "sha256:package", VerificationState: PackageEvidenceDeclared},
+		Provenance:    PackageProvenance{OriginalDigest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", NormalizedDigest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", VerificationState: PackageEvidenceDeclared},
 	}
 }
 
@@ -20,7 +20,7 @@ func reconciliationLock(mode string) PluginLockFile {
 	return PluginLockFile{
 		Bindings: []SlotBinding{{Slot: "discovery", InstalledInstanceID: "brainstorming", Mode: mode}},
 		Lock: PluginLock{Nodes: []PluginLockNode{
-			{ID: "brainstorming", Kind: string(PluginResourceAdapter), Digest: "sha256:package"},
+			{ID: "brainstorming", Kind: string(PluginResourceAdapter), Digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
 			{ID: "ranger:brainstorming", Kind: string(PluginResourceBinding), Digest: "sha256:binding"},
 		}},
 	}
@@ -32,7 +32,7 @@ func TestReconcileCustomPackageBindingAcceptsMatchingLock(t *testing.T) {
 
 func TestReconcileCustomPackageBindingRejectsMismatchWithoutRepair(t *testing.T) {
 	contract := reconciliationContract()
-	contract.Provenance.NormalizedDigest = "sha256:other"
+	contract.Provenance.NormalizedDigest = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 	err := ReconcileCustomPackageBinding(reconciliationLock(SlotBindingModeCustom), "ranger", "discovery", contract)
 	require.ErrorContains(t, err, "adapter digest mismatch")
 }

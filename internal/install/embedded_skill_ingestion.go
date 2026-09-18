@@ -17,10 +17,11 @@ import (
 // IngestedSkill is one externally-sourced package that resolved, verified,
 // and validated successfully.
 type IngestedSkill struct {
-	ID      string
-	Dir     string
-	Package domain.PluginPackage
-	Adapter externalSkillAdapter
+	ID               string
+	Dir              string
+	Package          domain.PluginPackage
+	Adapter          externalSkillAdapter
+	NormalizedDigest string
 }
 
 // IngestionRejection names one candidate directory that did not make it into
@@ -91,14 +92,22 @@ func validateIngestedSkillContract(pkg domain.PluginPackage, adapter externalSki
 			slots = append(slots, "refinement")
 		case "sniper":
 			slots = append(slots, "execution")
+		case "auxiliary":
+			// Auxiliary tools are catalogued for explicit dependency
+			// resolution, but are never eligible for a mission slot binding.
+			slots = append(slots, "auxiliary")
 		}
 	}
 	if adapter.Lifecycle && len(slots) == 0 {
 		slots = []string{"discovery", "refinement", "execution"}
 	}
+	capabilities := append([]string(nil), adapter.Capabilities...)
+	if len(capabilities) == 0 {
+		capabilities = []string{"role." + adapter.CanonicalRole}
+	}
 	contract := domain.NewSkillPackageContract(pkg, domain.AdapterContract{
-		SupportedRoles: roles, SupportedSlots: slots, Capabilities: []string{"role." + adapter.CanonicalRole},
-		PluginAPIRange: "v1",
+		SupportedRoles: roles, SupportedSlots: slots, SupportedHandoffSchemas: adapter.SupportedHandoffSchemas,
+		Capabilities: capabilities, PluginAPIRange: "v1",
 	})
 	if err := contract.Validate(); err != nil {
 		return fmt.Errorf("validate skill package contract: %w", err)

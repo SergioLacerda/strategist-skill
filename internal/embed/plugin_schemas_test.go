@@ -14,6 +14,7 @@ func TestExtractor_ReadsPluginResourceSchemas(t *testing.T) {
 
 	schemas := []string{
 		"plugins/schemas/package.schema.yaml",
+		"plugins/schemas/skill-package.schema.yaml",
 		"plugins/schemas/adapter.schema.yaml",
 		"plugins/schemas/trust-policy.schema.yaml",
 		"plugins/schemas/inventory.schema.yaml",

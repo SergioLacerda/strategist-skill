@@ -11,6 +11,13 @@ risk_score: write_analysis
 category: discovery
 default: true
 
+weapon_contract:
+  role_owner: ranger
+  participation: advisory
+  invocation_evidence: required
+  unavailable_behavior: report_advisory
+  native_substitution: forbidden
+
 # Upstream provenance (ADR-0029 DEC-002), evidence recorded in
 # docs/adr/0029-external-skill-provider-lifecycle.md's own Context section
 # at the time this ADR was accepted (2026-08-20) — transcribed here, not

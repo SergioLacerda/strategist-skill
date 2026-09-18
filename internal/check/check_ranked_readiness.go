@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/runtimeenv"
 )
 
 // rankedCertificationReadiness reports Trust and PermissionGrant as Ready
@@ -121,10 +121,16 @@ func validateRankedRuntimeRoot(runtimeRoot, provider string) domain.ReadinessChe
 func runRankedRuntimeHealthcheck(runtimeRoot, provider string) domain.ReadinessCheck {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "openspec", "context", "--json")
-	cmd.Dir = runtimeRoot
-	if output, err := cmd.CombinedOutput(); err != nil {
+	cmd, err := runtimeenv.Command(ctx, runtimeRoot, "openspec", "context", "--json")
+	if err != nil {
+		return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: "ranked_runtime_healthcheck_failed", Detail: fmt.Sprintf("provider=%s root=%s error=%v", provider, runtimeRoot, err)}
+	}
+	output, err := cmd.CombinedOutput()
+	if err != nil {
 		return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: "ranked_runtime_healthcheck_failed", Detail: fmt.Sprintf("provider=%s root=%s error=%v output=%s", provider, runtimeRoot, err, strings.TrimSpace(string(output)))}
+	}
+	if err := domain.ValidateOpenSpecHealthcheck(output, runtimeRoot); err != nil {
+		return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: "ranked_runtime_root_mismatch", Detail: fmt.Sprintf("provider=%s root=%s error=%v", provider, runtimeRoot, err)}
 	}
 	return domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "ranked_runtime_healthy", Detail: runtimeRoot}
 }

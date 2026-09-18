@@ -168,6 +168,49 @@ func TestInstall_WizardPath_PersistsRankedBindingModes(t *testing.T) {
 	}
 }
 
+func TestInstall_WizardRankedPathBootstrapsContainedOpenSpecRuntime(t *testing.T) {
+	dir := t.TempDir()
+	binDir := t.TempDir()
+	openspec := filepath.Join(binDir, "openspec")
+	script := `#!/bin/sh
+set -eu
+test -z "${OPEN_SPEC_CONFIG:-}"
+printf '%s|%s\n' "$PWD" "$*" >> "$PWD/runtime-command.log"
+if [ "$1" = "init" ]; then
+  mkdir -p "$PWD/openspec"
+  printf 'schema: spec-driven\n' > "$PWD/openspec/config.yaml"
+  exit 0
+fi
+printf '{"root":{"path":"%s"},"members":[],"status":[]}\n' "$(dirname "$PWD")"
+`
+	require.NoError(t, os.WriteFile(openspec, []byte(script), 0o755))
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("OPEN_SPEC_CONFIG", filepath.Join(t.TempDir(), "foreign-config.yaml"))
+
+	input := "en\nen\nen\nen\nepic\n.analysis\nbrainstorming::ranked\nopenspec-propose::ranked\nsniper::ranked\n\n"
+	svc := Service{Extractor: rankedWizardExtractor{}, Compiler: nopCompiler{}, WizardPrompter: NewTextPrompter(strings.NewReader(input)), ShimHomeDir: t.TempDir()}
+	require.NoError(t, svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true}))
+
+	strategist := filepath.Join(dir, ".strategist")
+	config := filepath.Join(strategist, "openspec", "config.yaml")
+	require.FileExists(t, config)
+	assert.NoDirExists(t, filepath.Join(strategist, "openspec", "openspec"))
+	assert.NoDirExists(t, filepath.Join(dir, "openspec"))
+	assert.FileExists(t, filepath.Join(strategist, "ranked-runtimes.yaml"))
+
+	state, err := os.ReadFile(filepath.Join(strategist, "ranked-runtimes.yaml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(state), "openspec-propose")
+	assert.Contains(t, string(state), "sha256:openspec-propose")
+
+	initLog, err := os.ReadFile(filepath.Join(strategist, "runtime-command.log"))
+	require.NoError(t, err)
+	healthLog, err := os.ReadFile(filepath.Join(strategist, "openspec", "runtime-command.log"))
+	require.NoError(t, err)
+	assert.Contains(t, string(initLog), strategist+"|init --profile core --tools codex")
+	assert.Contains(t, string(healthLog), filepath.Join(strategist, "openspec")+"|context --json")
+}
+
 type rankedWizardExtractor struct{}
 
 func (rankedWizardExtractor) Extract(targetDir string, withShim bool) error {
@@ -225,6 +268,11 @@ providers:
     certification_digest: sha256:openspec-propose
     ranked_binding_generation: 1
     ranked_binding_status: active
+    runtime:
+      kind: openspec_root
+      root: .strategist/openspec
+      bootstrap: openspec init --profile core --tools codex
+      healthcheck: openspec context --json
     installable: true
     legacy_manifest_path: skills/openspec-propose/skill.yaml
     compatibility_source: embedded

@@ -29,11 +29,11 @@ type HandoffOutcome struct {
 	Status      string
 }
 
-// MissionEngine is the mission-level facade over the two existing transition
-// authorities. It deliberately does not expose a public CLI surface yet.
+// MissionEngine is the single mission-level transition facade. The phase and
+// state transition tables remain implementation details; callers cannot
+// advance either authority independently.
 type MissionEngine struct {
 	status MissionEngineStatus
-	early  *PhaseTransitionAuthority
 }
 
 // StartMission creates a mission at the bootstrap phase and INIT state.
@@ -47,7 +47,6 @@ func StartMission(request MissionStartRequest) (*MissionEngine, MissionEngineSta
 			Phase:     PhaseBootstrap,
 			State:     StateInit,
 		},
-		early: NewPhaseTransitionAuthority(),
 	}
 	return engine, engine.status, nil
 }
@@ -57,13 +56,7 @@ func RestoreMission(status MissionEngineStatus) (*MissionEngine, error) {
 	if err := validateMissionStatus(status); err != nil {
 		return nil, err
 	}
-	engine := &MissionEngine{status: status, early: NewPhaseTransitionAuthority()}
-	for _, event := range earlyEventsToPhase(status.Phase) {
-		if _, err := engine.early.Submit(event); err != nil {
-			return nil, fmt.Errorf("mission engine: restore phase %q: %w", status.Phase, err)
-		}
-	}
-	return engine, nil
+	return &MissionEngine{status: status}, nil
 }
 
 // Status returns the current durable status.
@@ -74,13 +67,11 @@ func (e *MissionEngine) Status() MissionEngineStatus {
 // Submit applies one event. Invalid or out-of-order events leave the engine
 // unchanged and return an error.
 func (e *MissionEngine) Submit(event MissionEngineEvent) (MissionEngineStatus, error) {
-	if e == nil || e.early == nil {
+	if e == nil {
 		return MissionEngineStatus{}, fmt.Errorf("mission engine: engine is nil")
 	}
-	if err := e.submitEarly(event); err == nil {
-		return e.status, nil
-	} else if e.status.Phase == PhaseBootstrap || e.status.Phase == PhaseIntake || e.status.Phase == PhaseDiscovery {
-		return e.status, err
+	if earlyMissionPhase(e.status.Phase) {
+		return e.status, e.submitEarly(event)
 	}
 	return e.submitFSM(event)
 }
@@ -102,9 +93,13 @@ func (e *MissionEngine) submitEarly(event MissionEngineEvent) error {
 		MissionEventADRApproved, MissionEventADRDeclined:
 		return fmt.Errorf("mission engine: event %q is not an early-pipeline event", event)
 	}
-	next, err := e.early.Submit(phaseEvent)
-	if err != nil {
-		return err
+	transitions, ok := phaseTransitions[e.status.Phase]
+	if !ok {
+		return ErrOutOfOrderPhaseSubmit{Current: e.status.Phase, Event: phaseEvent}
+	}
+	next, ok := transitions[phaseEvent]
+	if !ok {
+		return ErrOutOfOrderPhaseSubmit{Current: e.status.Phase, Event: phaseEvent}
 	}
 	e.status.Phase = next
 	if next == PhaseRefinement {
@@ -130,7 +125,7 @@ func (e *MissionEngine) SubmitHandoff(outcome HandoffOutcome) (MissionEngineStat
 }
 
 func (e *MissionEngine) validateHandoffSubmission(outcome HandoffOutcome) error {
-	if e == nil || e.early == nil {
+	if e == nil {
 		return fmt.Errorf("mission engine: engine is nil")
 	}
 	if e.status.State != StateHandoffChallenge {

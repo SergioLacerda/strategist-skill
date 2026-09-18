@@ -20,6 +20,17 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 **Save plans to:** `docs/plans/YYYY-MM-DD-<feature-name>.md`
 
+## Strategist containment
+
+When this skill is invoked from a Strategist mission, it is an auxiliary
+planning tool, not the Archivist provider. Do not write to `docs/plans/` or any
+other repository planning directory. Keep OpenSpec or other tool scratch data
+under `.strategist/weapon-runtime/writing-plans/`, using the runtime path
+provided by the caller. Return the plan to the caller for normalization into
+the mission's configured `<base_path>`; if no such caller or destination is
+provided, stop with `error=role_invocation_failed` instead of choosing a
+workspace path. The Strategist Archivist owns all canonical refinement writes.
+
 ## Bite-Sized Task Granularity
 
 **Each step is one action (2-5 minutes):**

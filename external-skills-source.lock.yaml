@@ -2,14 +2,16 @@ schema_version: strategist-embedded-skill-lock/v1
 packages:
     - id: brainstorming
       version: 1.0.0
-      digest: sha256:8ba7cdc0c82a4733ccc3fd41949384b47900a8941156f8a4dcc2a382abd07b02
+      digest: sha256:1d2705a39ba2ae7e35c9c1df894ddea26ca7779d5a94d70f141f0eb4671cb402
       source: external-skills-source/brainstorming
       contract_version: skill-package/v1
-      original_digest: sha256:8ba7cdc0c82a4733ccc3fd41949384b47900a8941156f8a4dcc2a382abd07b02
-      normalized_digest: sha256:8ba7cdc0c82a4733ccc3fd41949384b47900a8941156f8a4dcc2a382abd07b02
+      original_digest: sha256:1d2705a39ba2ae7e35c9c1df894ddea26ca7779d5a94d70f141f0eb4671cb402
+      normalized_digest: sha256:f627a3887209783c24b70cd4ceb9ed4bb31468d97df17118e46c2ae7ffb27ff4
       transformation: none
       local_modifications: unknown
       verification_state: declared
+      original_digest_evidence: verified
+      normalized_digest_evidence: verified
       canonical_source: obra/superpowers
       upstream_revision: b36e0829c6d0140e93cfef2ca599b1b07d4a7797
       license: MIT
@@ -19,10 +21,12 @@ packages:
       source: external-skills-source/openspec-archive-change
       contract_version: skill-package/v1
       original_digest: sha256:4b643d2f34c4916563fbf83c3d9f871558590813dc79ff05483a64e98d6b3225
-      normalized_digest: sha256:4b643d2f34c4916563fbf83c3d9f871558590813dc79ff05483a64e98d6b3225
+      normalized_digest: sha256:ed9a6188b50dab10ed99d32c9c03734845e2159be06730a0c7eeced79d89a4f5
       transformation: none
       local_modifications: unknown
       verification_state: declared
+      original_digest_evidence: verified
+      normalized_digest_evidence: verified
       canonical_source: Fission-AI/OpenSpec
       upstream_revision: 1ebddd17f40dde15dfd28289e4493c3cf05ee9df
       license: MIT
@@ -32,35 +36,41 @@ packages:
       source: external-skills-source/openspec-explore
       contract_version: skill-package/v1
       original_digest: sha256:9a976e674f2bbcc0c6131d7cacff1bcc5090b3b6dfc5b791d36abceadeb1e07e
-      normalized_digest: sha256:9a976e674f2bbcc0c6131d7cacff1bcc5090b3b6dfc5b791d36abceadeb1e07e
+      normalized_digest: sha256:e57ebede8797fb9c957da992a5471592f3e4a9291a61930d8261c5246d09e756
       transformation: none
       local_modifications: unknown
       verification_state: declared
+      original_digest_evidence: verified
+      normalized_digest_evidence: verified
       canonical_source: Fission-AI/OpenSpec
       upstream_revision: 1ebddd17f40dde15dfd28289e4493c3cf05ee9df
     - id: openspec-propose
       version: "1.0"
-      digest: sha256:dc003f3cdd4832ad75e696f5fa62932110b62c3a35871547b9602b143e606805
+      digest: sha256:e496761a6327c860f7129e2ab7b0a20ba2b6121562a5f89a1f9c042c993bd332
       source: external-skills-source/openspec-propose
       contract_version: skill-package/v1
-      original_digest: sha256:dc003f3cdd4832ad75e696f5fa62932110b62c3a35871547b9602b143e606805
-      normalized_digest: sha256:dc003f3cdd4832ad75e696f5fa62932110b62c3a35871547b9602b143e606805
+      original_digest: sha256:e496761a6327c860f7129e2ab7b0a20ba2b6121562a5f89a1f9c042c993bd332
+      normalized_digest: sha256:7c6140642a972645d3c50329b9eacdfe41a1842aadb59bbfd317f7e22f9ded28
       transformation: none
       local_modifications: unknown
       verification_state: declared
+      original_digest_evidence: verified
+      normalized_digest_evidence: verified
       canonical_source: Fission-AI/OpenSpec
       upstream_revision: 1ebddd17f40dde15dfd28289e4493c3cf05ee9df
       license: MIT
     - id: writing-plans
       version: ""
-      digest: sha256:c2d9c8ff4029ea751113aa9c8df89276fc8852391a8af7378ec8d280cac82572
+      digest: sha256:6d3a68e26e8792974721ed2325e7f5a78f6c4bc9dd44f2211e680426df0c93f5
       source: external-skills-source/writing-plans
       contract_version: skill-package/v1
-      original_digest: sha256:c2d9c8ff4029ea751113aa9c8df89276fc8852391a8af7378ec8d280cac82572
-      normalized_digest: sha256:c2d9c8ff4029ea751113aa9c8df89276fc8852391a8af7378ec8d280cac82572
+      original_digest: sha256:6d3a68e26e8792974721ed2325e7f5a78f6c4bc9dd44f2211e680426df0c93f5
+      normalized_digest: sha256:8f3baa399806a93309bb29b8f19db3e46c92533d7859e93cd3cf330644dbdcfa
       transformation: none
       local_modifications: unknown
       verification_state: declared
+      original_digest_evidence: verified
+      normalized_digest_evidence: verified
       canonical_source: obra/superpowers
       upstream_revision: b36e0829c6d0140e93cfef2ca599b1b07d4a7797
       license: MIT

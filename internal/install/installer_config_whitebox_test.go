@@ -41,7 +41,8 @@ func TestApplyConfig_ForceOverwritesActiveYAML(t *testing.T) {
 
 	got, err := os.ReadFile(activeYAMLPath)
 	require.NoError(t, err)
-	assert.Equal(t, "mode: epic\nbase_path: .analysis\n", string(got), "--force must overwrite active.yaml with embedded template")
+	assert.Contains(t, string(got), "language:\n  ui: pt-BR\n  docs: en\n  chat: pt-BR\n  code: en")
+	assert.Contains(t, string(got), "mode: epic\nbase_path: .analysis\n")
 }
 
 func TestApplyConfig_ReadFileFails(t *testing.T) {

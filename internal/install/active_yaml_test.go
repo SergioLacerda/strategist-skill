@@ -404,6 +404,33 @@ func TestWriteActiveYAML(t *testing.T) {
 	}
 }
 
+func TestNormalizeStandaloneLanguageValidation(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		input   string
+		wantErr string
+	}{
+		{name: "complete structured map", input: "language:\n  ui: pt-BR\n  docs: en\n  chat: pt-BR\n  code: en\n", wantErr: ""},
+		{name: "incomplete map", input: "language:\n  ui: pt-BR\n", wantErr: "non-empty docs fields"},
+		{name: "unsupported value", input: "language:\n  ui: fr\n  docs: en\n  chat: pt-BR\n  code: en\n", wantErr: "unsupported value"},
+		{name: "malformed sequence", input: "language: [en, pt-BR]\n", wantErr: "scalar legacy value"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := normalizeStandaloneLanguage([]byte(tt.input))
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantErr)
+				assert.Nil(t, got)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.input, string(got))
+		})
+	}
+}
+
 func TestWriteActiveYAML_DoesNotEmitExecutionMode(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()

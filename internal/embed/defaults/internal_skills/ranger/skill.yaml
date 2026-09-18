@@ -25,6 +25,16 @@ output:
   mission_status: string         # ranger_done on success
   evidence_pack_path: string | null  # from dossier.evidence_pack_path; cited in analysis artifact when present
 
+# The configured discovery weapon is bounded input to Ranger, not a second
+# discovery authority. Until the host supplies runtime invocation evidence,
+# Ranger must report the weapon as advisory/unavailable rather than claiming
+# that it was used or silently substituting the native role.
+weapon_contract:
+  participation: advisory
+  invocation_evidence: required
+  unavailable_behavior: report_advisory
+  native_substitution: forbidden
+
 completion_signal:
   format: |
     ranger: done

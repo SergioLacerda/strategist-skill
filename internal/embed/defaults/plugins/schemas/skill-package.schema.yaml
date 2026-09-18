@@ -1,0 +1,56 @@
+schema: strategist-plugin-resource-schema/v1
+resource: skill_package_contract
+authority: conformance
+additional_properties: false
+limits:
+  max_document_bytes: 262144
+  max_path_length: 240
+required:
+  - schema_version
+  - id
+  - version
+  - contract_version
+  - capabilities
+  - supported_slots
+  - provenance
+  - evidence_state
+properties:
+  schema_version: {type: string}
+  id: {type: namespaced_id}
+  version: {type: semver_or_label}
+  contract_version:
+    type: enum
+    values: [skill-package/v1, skill-package/v0]
+  capabilities: {type: array}
+  supported_roles: {type: array}
+  supported_slots:
+    type: array
+    values: [discovery, refinement, execution, auxiliary]
+  supported_handoff_schemas: {type: array}
+  compatibility_range: {type: range}
+  provenance:
+    type: object
+    required: [original_digest, normalized_digest, verification_state]
+    properties:
+      canonical_source: {type: uri_or_label}
+      upstream_revision: {type: string}
+      original_digest: {type: digest, pattern: "sha256:<64 lowercase hex>"}
+      normalized_digest: {type: digest, pattern: "sha256:<64 lowercase hex>"}
+      license: {type: string}
+      acquisition_method: {type: string}
+      acquired_at: {type: timestamp}
+      transformation: {type: string}
+      local_modifications: {type: string}
+      verification_state:
+        type: enum
+        values: [declared, verified, unknown, unsupported, failed, blocked]
+  evidence_state:
+    type: enum
+    values: [declared, verified, unknown, unsupported, failed, blocked]
+  trust_tier: {type: string}
+  freshness: {type: string}
+  limitations: {type: array}
+forbidden_authorities:
+  - active_binding
+  - slot_selection
+  - runtime_readiness

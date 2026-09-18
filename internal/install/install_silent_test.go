@@ -11,6 +11,7 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/integrity"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
 func TestInstall_Silent(t *testing.T) {
@@ -83,6 +84,21 @@ func TestInstall_Silent_Force_RefreshesConfigLock(t *testing.T) {
 	modified, err = integrity.IsModified(activeYAMLPath, lockPath)
 	require.NoError(t, err)
 	assert.False(t, modified, "force install must refresh .config.lock to match the rewritten active.yaml")
+}
+
+func TestInstall_Silent_Force_WritesStructuredLanguage(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	svc := newSvc(t, &mockExtractor{}, &mockCompiler{})
+	require.NoError(t, svc.Install(context.Background(), domain.InstallConfig{Target: dir, Silent: true, Force: true}))
+
+	data, err := os.ReadFile(filepath.Join(dir, ".strategist", "active.yaml"))
+	require.NoError(t, err)
+	var config struct {
+		Language map[string]string `yaml:"language"`
+	}
+	require.NoError(t, yaml.Unmarshal(data, &config))
+	assert.Equal(t, map[string]string{"ui": "pt-BR", "docs": "en", "chat": "pt-BR", "code": "en"}, config.Language)
 }
 
 func TestInstall_EnsuresGitignore(t *testing.T) {

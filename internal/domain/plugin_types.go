@@ -115,16 +115,17 @@ const (
 
 // AdapterContract is Strategist-owned compatibility metadata for one package family.
 type AdapterContract struct {
-	SchemaVersion        string             `yaml:"schema_version"`
-	ID                   string             `yaml:"id"`
-	AdapterRevision      string             `yaml:"adapter_revision"`
-	PluginAPIRange       string             `yaml:"plugin_api_range"`
-	SupportedSlots       []string           `yaml:"supported_slots"`
-	SupportedRoles       []string           `yaml:"supported_roles,omitempty"`
-	Capabilities         []string           `yaml:"capabilities,omitempty"`
-	Entrypoints          []string           `yaml:"entrypoints"`
-	PackageConstraint    string             `yaml:"package_constraint"`
-	RequestedPermissions []PluginPermission `yaml:"requested_permissions"`
+	SchemaVersion           string             `yaml:"schema_version"`
+	ID                      string             `yaml:"id"`
+	AdapterRevision         string             `yaml:"adapter_revision"`
+	PluginAPIRange          string             `yaml:"plugin_api_range"`
+	SupportedSlots          []string           `yaml:"supported_slots"`
+	SupportedRoles          []string           `yaml:"supported_roles,omitempty"`
+	SupportedHandoffSchemas []string           `yaml:"supported_handoff_schemas,omitempty"`
+	Capabilities            []string           `yaml:"capabilities,omitempty"`
+	Entrypoints             []string           `yaml:"entrypoints"`
+	PackageConstraint       string             `yaml:"package_constraint"`
+	RequestedPermissions    []PluginPermission `yaml:"requested_permissions"`
 }
 
 // CompatibilityReason identifies one structured compatibility failure.

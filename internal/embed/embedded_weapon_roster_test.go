@@ -76,9 +76,9 @@ func TestEmbeddedDefaults_BaselineWeaponRosterIsAlwaysEmbedded(t *testing.T) {
 
 // TestEmbeddedDefaults_RequestedAuxiliaryOptionsAreAlwaysEmbedded protects
 // the two additional built-in options requested for the standalone catalog.
-// They are catalog entries and complete payload mirrors, but only
-// writing-plans is a role-affine Archivist candidate; archive remains a
-// lifecycle utility and must not be promoted into a slot by inference.
+// They are catalog entries and complete payload mirrors, but writing-plans is
+// auxiliary-only and archive remains a lifecycle utility; neither may be
+// promoted into a mission slot by inference.
 func TestEmbeddedDefaults_RequestedAuxiliaryOptionsAreAlwaysEmbedded(t *testing.T) {
 	t.Parallel()
 
@@ -95,7 +95,7 @@ func TestEmbeddedDefaults_RequestedAuxiliaryOptionsAreAlwaysEmbedded(t *testing.
 		id            string
 		canonicalRole string
 	}{
-		{"writing-plans", "archivist"},
+		{"writing-plans", "auxiliary"},
 		{"openspec-archive-change", ""},
 	} {
 		entry, found := byID[want.id]

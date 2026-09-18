@@ -7,6 +7,12 @@ category: discovery
 canonical_role: ranger
 roles:
   - ranger
+weapon_contract:
+  role_owner: ranger
+  participation: advisory
+  invocation_evidence: required
+  unavailable_behavior: report_advisory
+  native_substitution: forbidden
 
 description: >
   Flexible brainstorming weapon for Ranger discovery; Ranger owns normalization into the canonical pending artifact and handoff.

@@ -178,6 +178,27 @@ func TestRoutingContractDefinesDiscoveryWeaponResolutionBySubtype(t *testing.T) 
 	}
 }
 
+func TestDiscoveryWeaponContractRequiresExplicitRuntimeEvidence(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "internal_skills", "ranger", "skill.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "skills", "brainstorming", "skill.yaml"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"participation: advisory",
+			"invocation_evidence: required",
+			"unavailable_behavior: report_advisory",
+			"native_substitution: forbidden",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing explicit discovery weapon boundary %q", path, needle)
+			}
+		}
+	}
+}
+
 // TestDiscoveryContractDefinesSubtypeVocabulary verifies 03-discovery.md defines
 // the four discovery_subtype values and the evaluation_verdict vocabulary.
 

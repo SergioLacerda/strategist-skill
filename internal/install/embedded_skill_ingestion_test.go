@@ -85,6 +85,25 @@ func TestIngestExternalSkillsCarriesScratchRoot(t *testing.T) {
 	assert.Equal(t, "runtime", result.Catalog.Providers[0].ScratchRoot)
 }
 
+func TestIngestExternalSkillsCataloguesAuxiliaryToolWithoutMissionSlot(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	dir := filepath.Join(root, "writing-plans")
+	require.NoError(t, os.MkdirAll(dir, 0o755))
+	skillMD := "---\nname: writing-plans\ndescription: Auxiliary planning tool.\nmetadata:\n  version: \"1.0.0\"\n  author: test\n---\nbody\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte(skillMD), 0o644))
+	adapter := "canonical_role: auxiliary\nroles:\n  - auxiliary\nrisk_score: write_analysis\ncategory: auxiliary\nscratch_root: runtime\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "strategist.yaml"), []byte(adapter), 0o644))
+
+	result, err := IngestExternalSkills(root, pluginCatalog{SchemaVersion: "v1"}, domain.TrustPolicy{})
+	require.NoError(t, err)
+	require.Len(t, result.Ingested, 1)
+	assert.Equal(t, "auxiliary", result.Catalog.Providers[0].CanonicalRole)
+	assert.Equal(t, []string{"auxiliary"}, result.Ingested[0].Adapter.Roles)
+	assert.Equal(t, "runtime", result.Catalog.Providers[0].ScratchRoot)
+}
+
 func TestIngestExternalSkillsWithoutScratchRootIsUnaffected(t *testing.T) {
 	t.Parallel()
 

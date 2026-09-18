@@ -87,6 +87,24 @@ func TestWriteCatalogAndMirrors_FullSuccessWithNestedPackage(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(lockBytes), "sample")
 	assert.Contains(t, string(lockBytes), "1.0.0")
+	assert.Contains(t, string(lockBytes), "original_digest_evidence: verified")
+	assert.Contains(t, string(lockBytes), "normalized_digest_evidence: verified")
+	assert.NotContains(t, string(lockBytes), "normalized_digest: "+result.Ingested[0].Package.Digest)
+}
+
+func TestNormalizedSkillDigestChangesWhenMaterializedOutputChanges(t *testing.T) {
+	t.Parallel()
+
+	manifestA := []byte("id: sample\nversion: '1.0.0'\n")
+	manifestB := []byte("id: sample\nversion: '2.0.0'\n")
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte("skill body"), 0o644))
+
+	digestA, err := normalizedSkillDigest(dir, manifestA)
+	require.NoError(t, err)
+	digestB, err := normalizedSkillDigest(dir, manifestB)
+	require.NoError(t, err)
+	assert.NotEqual(t, digestA, digestB)
 }
 
 func TestCopySkillPackage_RejectsSymlinks(t *testing.T) {
