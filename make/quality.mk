@@ -4,7 +4,7 @@
 	coverage-manifest-check \
 	install-gocognit quality-budget-gate \
 	install-govulncheck vuln vuln-ci \
-	cover cover-gate cover-html test-report
+	cover cover-gate cover-html coverage-badge sync-test-styles-docs test-report
 
 # lint is diagnostic-only: it must never rewrite source files.
 lint: fmt-check
@@ -73,3 +73,12 @@ cover-html:
 	GOCACHE=$(GOCACHE) go test -race -coverprofile=$(COVERAGE_PROFILE) -coverpkg=./internal/... ./internal/... ./tests/integration/...
 	go tool cover -html=$(COVERAGE_PROFILE) -o $(COVERAGE_HTML)
 	@echo "report written to $(COVERAGE_HTML)"
+
+# coverage-badge generates SVG and JSON Shields endpoint badges from coverage data.
+coverage-badge:
+	@bash scripts/generate-coverage-badge.sh "$(COVERAGE_DIR)" "$(GOCACHE)"
+
+# sync-test-styles-docs synchronizes measured package coverage numbers into docs/test-styles.md.
+sync-test-styles-docs:
+	@bash scripts/sync-test-styles-docs.sh "$(COVERAGE_DIR)" "$(GOCACHE)"
+

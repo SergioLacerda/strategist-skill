@@ -51,6 +51,18 @@ jobs:
       - name: Local CI test gates
         run: make ci-test
 
+      - name: Generate coverage badge
+        run: make coverage-badge
+
+      - name: Upload coverage badge artifact
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb99baed6f # v4.6.1
+        with:
+          name: coverage-badge
+          path: |
+            coverage/coverage-badge.json
+            coverage/badge.svg
+          retention-days: 14
+
       - name: Publish test-style report to job summary
         if: always()
         run: |
