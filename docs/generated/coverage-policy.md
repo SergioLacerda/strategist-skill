@@ -1,6 +1,6 @@
 <!--
 generated: true
-source: scripts/coverage-packages.tsv (source of truth — unchanged by this generator)
+source: scripts/coverage-packages.tsv and scripts/coverage-exemptions.tsv (policy sources — unchanged by this generator)
 generator: scripts/generate-coverage-policy.sh
 generator_version: 1
 do not edit manually — regenerate with: make docs-generate
@@ -9,8 +9,10 @@ do not edit manually — regenerate with: make docs-generate
 # Coverage Policy
 
 Per-package minimum coverage thresholds enforced by `make cover-gate`
-(`scripts/check-coverage-gate.sh`). This file is a generated view of
-`scripts/coverage-packages.tsv` — edit the TSV, not this file.
+(`scripts/check-coverage-gate.sh`). Production inventory is discovered
+from `cmd/...`, `internal/...`, and `treasure-chest/...`; test packages
+are outside this gate. Thresholds remain in `scripts/coverage-packages.tsv`; reviewed exceptions
+are recorded in `scripts/coverage-exemptions.tsv`. Edit those sources, not this file.
 
 | Package | Minimum Coverage | Reason |
 |---|---:|---|
@@ -48,3 +50,19 @@ Per-package minimum coverage thresholds enforced by `make cover-gate`
 | `internal/telemetry/sink/otel` | 95% | raised from 68.8% to 100.0% (2026-08-30, full severity-mapping table) - measured 100.0% |
 | `internal/telemetry/sink/slog` | 95% | raised from 68.8% to 100.0% (2026-08-30, full severity-mapping table) - measured 100.0% |
 | `internal/testutil` | 95% | raised from 0.0% to 100.0% (2026-08-30, direct helper tests added; no longer excluded from `make test`) - measured 100.0% |
+
+## Reviewed Exemptions
+
+These production packages are present in the inventory but intentionally have no threshold row.
+
+| Package | Owner | Reason |
+|---|---|---|
+| `internal/authorization` | quality-maintainers | baseline coverage policy is pending a dedicated authorization test budget |
+| `internal/conformance` | quality-maintainers | baseline coverage policy is pending a dedicated conformance test budget |
+| `internal/hardening` | quality-maintainers | baseline coverage policy is pending a dedicated hardening test budget |
+| `internal/mission` | quality-maintainers | baseline coverage policy is pending a dedicated mission test budget |
+| `internal/plugins/governance` | quality-maintainers | baseline coverage policy is pending a dedicated governance plugin test budget |
+| `internal/refinement` | quality-maintainers | baseline coverage policy is pending a dedicated refinement test budget |
+| `internal/rolevalidation` | quality-maintainers | baseline coverage policy is pending a dedicated role validation test budget |
+| `internal/runtimeenv` | quality-maintainers | baseline coverage policy is pending a dedicated runtime environment test budget |
+| `treasure-chest/domain` | quality-maintainers | baseline coverage policy is pending a dedicated Treasure Chest domain test budget |

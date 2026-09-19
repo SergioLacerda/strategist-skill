@@ -191,6 +191,7 @@ func TestExtractor_Extract(t *testing.T) {
 		skill := string(skillYAML)
 		// opportunity_attack is a canonical routine inside each slot (not a standalone pipeline stage)
 		assert.Contains(t, skill, "- opportunity_attack")
+		assert.NotContains(t, skill, "- opportunist_attack")
 		assert.Contains(t, skill, "skip_opportunity_attack_routine")
 		assert.Contains(t, skill, "suppress_opportunity_attack_feedback")
 		assert.Contains(t, skill, "scope_values: [all, discovery, refinement, execution]")

@@ -69,6 +69,44 @@ func TestArchitectureDocumentsCurrentInternalPackages(t *testing.T) {
 	}
 }
 
+func TestStrategistPhilosophyDocumentsCanonicalBoundaries(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(repoRoot(t), "docs", "architecture", "strategist-philosophy.md")
+	content := readFile(t, path)
+	for _, needle := range []string{
+		"Scout → Ranger → Archivist → Approval Gate → Sniper → Learning",
+		".strategist/plugins.lock",
+		"Certified embedded catalog data is the authority for Ranked bindings",
+		"`MissionEngine` is the mission-level transition facade",
+		"The Approval Gate is a",
+		"human decision point",
+		"does not edit source code, tests, hooks, locks",
+		"A successful runtime probe is required for live readiness",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("%s missing philosophy boundary %q", path, needle)
+		}
+	}
+}
+
+func TestCanonicalOpportunityAttackIdentifierHasNoLegacySpelling(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "skill.yaml"),
+		filepath.Join(repoRoot(t), ".strategist", "skill.yaml"),
+	} {
+		content := readFile(t, path)
+		if strings.Contains(content, "opportunist_attack") {
+			t.Fatalf("%s contains retired opportunity routine identifier", path)
+		}
+		if !strings.Contains(content, "opportunity_attack") {
+			t.Fatalf("%s does not contain canonical opportunity routine identifier", path)
+		}
+	}
+}
+
 func assertFileContains(t *testing.T, path, needle string) {
 	t.Helper()
 	if content := readFile(t, path); !strings.Contains(content, needle) {

@@ -95,7 +95,8 @@ func validateRowEvidence(row Row) error {
 
 func validState(state EvidenceState) bool {
 	switch state {
-	case StateCertified, StateStale, StateFailed, StateUnknown, StateUnsupported, StateBlocked:
+	case StateCertified, StateStale, StateFailed, StateUnknown, StateUnsupported, StateBlocked,
+		StateUnavailable, StateUnauthorized, StateTimeout, StateMalformed, StateTeardownFailed:
 		return true
 	default:
 		return false

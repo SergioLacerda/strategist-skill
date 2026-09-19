@@ -1,0 +1,48 @@
+schema_version: "1"
+runbook_id: restarting-orphaned-strategist-missions
+runbook_type: operational
+source_doc: docs/runbooks/restarting-orphaned-strategist-missions.md
+
+applies_when:
+  - "A Strategist mission artifact remains in .analysis/pending with mission_status: ranger_pending, no prior Ranger execution is active, and the operator wants to restart discovery using the existing material"
+
+objective: Restart an orphaned Ranger mission without losing material, bypassing the state machine, or treating incomplete analysis as completed evidence.
+
+preconditions:
+  - "The operator has confirmed that no other agent or session is currently writing the mission"
+  - "The configured Strategist runtime exists and strategist check --json is ready"
+  - "The original pending artifact can be copied to a recoverable snapshot before regeneration"
+
+decision_gates:
+  - id: active-owner-check
+    statement: "No live agent, lock, control record, or active session still owns the mission"
+  - id: snapshot-created
+    statement: "The original ranger_pending artifact is preserved before restart"
+  - id: ranger-handoff-complete
+    statement: "The restarted Ranger artifact has required sections, valid handoff fields, and mission_status: ranger_done"
+
+verification:
+  - "Confirm strategist check --json reports ready"
+  - "Confirm the original artifact snapshot is preserved and the canonical regenerated artifact is the only active pending handoff"
+  - "Confirm required Ranger sections and mission_status: ranger_done"
+  - "Confirm Archivist creates four refined artifacts before the approval gate"
+  - "Confirm implementation_handoff items are not executed by Sniper"
+
+checks:
+  - id: preflight-ready
+    level: mandatory
+  - id: no-concurrent-owner
+    level: mandatory
+  - id: preserve-original-material
+    level: mandatory
+  - id: refresh-source-evidence
+    level: mandatory
+  - id: resume-ranger-before-archivist
+    level: mandatory
+  - id: separate-code-implementation
+    level: mandatory
+
+metadata:
+  version: 1
+  owner: strategist-maintainers
+  reviewed_at: "2026-09-18"

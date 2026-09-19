@@ -1,0 +1,12 @@
+# package<TAB>owner<TAB>reason
+# Exemptions are inventory entries only; they do not receive a coverage
+# threshold. Each entry must still be a discovered production package.
+internal/authorization	quality-maintainers	baseline coverage policy is pending a dedicated authorization test budget
+internal/conformance	quality-maintainers	baseline coverage policy is pending a dedicated conformance test budget
+internal/hardening	quality-maintainers	baseline coverage policy is pending a dedicated hardening test budget
+internal/mission	quality-maintainers	baseline coverage policy is pending a dedicated mission test budget
+internal/plugins/governance	quality-maintainers	baseline coverage policy is pending a dedicated governance plugin test budget
+internal/refinement	quality-maintainers	baseline coverage policy is pending a dedicated refinement test budget
+internal/rolevalidation	quality-maintainers	baseline coverage policy is pending a dedicated role validation test budget
+internal/runtimeenv	quality-maintainers	baseline coverage policy is pending a dedicated runtime environment test budget
+treasure-chest/domain	quality-maintainers	baseline coverage policy is pending a dedicated Treasure Chest domain test budget

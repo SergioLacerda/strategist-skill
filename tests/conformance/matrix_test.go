@@ -154,6 +154,70 @@ func TestLiveProbeRequiresCertifiedEvidence(t *testing.T) {
 	assert.True(t, result.Passed)
 }
 
+func TestClientMatrixConsolidatesExplicitLiveProbeEvidenceFailClosed(t *testing.T) {
+	data, err := matrixFixture.ReadFile("testdata/client-matrix.yaml")
+	require.NoError(t, err)
+	matrix, err := conformance.DecodeMatrix(data)
+	require.NoError(t, err)
+	available := map[string]bool{
+		"codex": true, "claude": true, "gemini-antigravity": true, "governance-bridge": true,
+	}
+
+	tests := []struct {
+		name     string
+		observed map[string]conformance.EvidenceState
+		passed   bool
+		reason   string
+	}{
+		{name: "missing", observed: nil, passed: false, reason: "live_probe_required"},
+		{name: "certified", observed: map[string]conformance.EvidenceState{"codex-live-probe": conformance.StateCertified}, passed: true, reason: "live_probe_verified"},
+		{name: "unknown", observed: map[string]conformance.EvidenceState{"codex-live-probe": conformance.StateUnknown}, passed: false, reason: "live_probe_not_ready"},
+		{name: "unsupported", observed: map[string]conformance.EvidenceState{"codex-live-probe": conformance.StateUnsupported}, passed: false, reason: "live_probe_not_ready"},
+		{name: "failed", observed: map[string]conformance.EvidenceState{"codex-live-probe": conformance.StateFailed}, passed: false, reason: "live_probe_not_ready"},
+		{name: "blocked", observed: map[string]conformance.EvidenceState{"codex-live-probe": conformance.StateBlocked}, passed: false, reason: "live_probe_not_ready"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			report, err := matrix.EvaluateWithLiveProbes(available, test.observed)
+			require.NoError(t, err)
+			result := findResult(report.Results, "codex-live-probe")
+			assert.Equal(t, test.passed, result.Passed)
+			assert.Equal(t, test.reason, result.Reason)
+		})
+	}
+}
+
+func TestClientMatrixRejectsUnknownLiveProbeRow(t *testing.T) {
+	data, err := matrixFixture.ReadFile("testdata/client-matrix.yaml")
+	require.NoError(t, err)
+	matrix, err := conformance.DecodeMatrix(data)
+	require.NoError(t, err)
+
+	_, err = matrix.EvaluateWithLiveProbes(map[string]bool{
+		"codex": true, "claude": true, "gemini-antigravity": true, "governance-bridge": true,
+	}, map[string]conformance.EvidenceState{"missing-live-row": conformance.StateCertified})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `unknown row "missing-live-row"`)
+}
+
+func TestClientMatrixLiveProbeReportIsDeterministic(t *testing.T) {
+	data, err := matrixFixture.ReadFile("testdata/client-matrix.yaml")
+	require.NoError(t, err)
+	matrix, err := conformance.DecodeMatrix(data)
+	require.NoError(t, err)
+	available := map[string]bool{
+		"codex": true, "claude": true, "gemini-antigravity": true, "governance-bridge": true,
+	}
+	probes := map[string]conformance.EvidenceState{"codex-live-probe": conformance.StateCertified}
+
+	one, err := matrix.EvaluateWithLiveProbes(available, probes)
+	require.NoError(t, err)
+	two, err := matrix.EvaluateWithLiveProbes(available, probes)
+	require.NoError(t, err)
+	assert.Equal(t, one, two)
+}
+
 func TestInvocationEnvelopeSerializationPreservesIdentity(t *testing.T) {
 	envelope, err := domain.ComposeInvocationEnvelope(domain.ComposeInvocationRequest{
 		MissionID:       "matrix-mission",

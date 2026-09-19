@@ -28,6 +28,16 @@ const (
 	StateUnsupported EvidenceState = "unsupported"
 	// StateBlocked indicates that policy prevented evidence collection.
 	StateBlocked EvidenceState = "blocked"
+	// StateUnavailable indicates that the configured provider could not be reached.
+	StateUnavailable EvidenceState = "unavailable"
+	// StateUnauthorized indicates that the runner or credential boundary denied invocation.
+	StateUnauthorized EvidenceState = "unauthorized"
+	// StateTimeout indicates that the bounded probe exceeded its deadline.
+	StateTimeout EvidenceState = "timeout"
+	// StateMalformed indicates that a provider returned invalid evidence.
+	StateMalformed EvidenceState = "malformed"
+	// StateTeardownFailed indicates that probe cleanup did not complete successfully.
+	StateTeardownFailed EvidenceState = "teardown_failed"
 )
 
 // Client describes one release-supported client or adapter surface.

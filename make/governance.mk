@@ -1,6 +1,9 @@
 .PHONY: \
 	analysis-structure-gate docs-governance-gate docs-generated-gate docs-links-gate governance-check \
-	convergence-check contract-consistency-gate
+	convergence-check contract-consistency-gate hooks-install
+
+hooks-install:
+	bash .github/setup-precommit-hook.sh
 
 analysis-structure-gate:
 	bash scripts/check-refined-structure.sh

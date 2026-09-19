@@ -54,6 +54,7 @@ GOVULNCHECK_VERSION ?= v1.8.0
 GOCOGNIT_VERSION    ?= v1.2.1
 GORELEASER_VERSION  ?= v2.12.2
 COVERAGE_MANIFEST   := scripts/coverage-packages.tsv
+COVERAGE_EXEMPTIONS := scripts/coverage-exemptions.tsv
 COVERAGE_PKGS       := $(shell awk 'NF && $$1 !~ /^#/ {print $$1}' $(COVERAGE_MANIFEST))
 COVERAGE_DIR        ?= coverage
 COVERAGE_PROFILE    := $(COVERAGE_DIR)/coverage.out
@@ -70,6 +71,6 @@ include make/docs.mk
 
 ci-lint: fmt-check mod-check vet build quality-budget-gate
 
-ci-test: test-all golden convergence-check contract-consistency-gate cover-gate docs-generated-gate docs-links-gate mutation-role-weapon
+ci-test: test-all golden convergence-check contract-consistency-gate coverage-manifest-check cover-gate docs-generated-gate docs-links-gate mutation-role-weapon
 
 ci: ci-lint ci-test

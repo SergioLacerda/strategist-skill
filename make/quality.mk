@@ -1,6 +1,7 @@
 .PHONY: \
 	lint lint-fix complexity-report go-file-size-report \
 	mutation-role-weapon \
+	coverage-manifest-check \
 	install-gocognit quality-budget-gate \
 	install-govulncheck vuln vuln-ci \
 	cover cover-gate cover-html test-report
@@ -15,7 +16,7 @@ lint: fmt-check
 # as lint. Complexity and file-size findings remain manual work and therefore
 # still fail here when they cannot be fixed automatically.
 lint-fix:
-	gofmt -w .
+	git ls-files -co --exclude-standard -z '*.go' | xargs -0r gofmt -w
 	GOCACHE=$(GOCACHE) GOLANGCI_LINT_CACHE=$(GOLANGCI_LINT_CACHE) GOTOOLCHAIN=$(PINNED_GOTOOLCHAIN) $(GOLANGCI_LINT) run --fix ./...
 	@$(MAKE) fmt-check
 	@$(MAKE) complexity-report
@@ -55,8 +56,11 @@ cover:
 	@bash scripts/coverage-per-package.sh "$(COVERAGE_PKGS)" "$(COVERAGE_PROFILE)" "$(GOCACHE)" "$(COVERAGE_MANIFEST)"
 
 # cover-gate fails the build when a package falls below its manifest threshold.
+coverage-manifest-check:
+	bash scripts/check-coverage-manifest.sh "$(COVERAGE_MANIFEST)" "$(COVERAGE_EXEMPTIONS)" "$(GOCACHE)"
+
 cover-gate:
-	bash scripts/check-coverage-gate.sh "$(COVERAGE_MANIFEST)" "$(COVERAGE_DIR)" "$(GOCACHE)"
+	bash scripts/check-coverage-gate.sh "$(COVERAGE_MANIFEST)" "$(COVERAGE_DIR)" "$(GOCACHE)" "$(COVERAGE_EXEMPTIONS)"
 
 # test-report prints one status row per test style (unit, spec, integration,
 # eval, eval-promptfoo, web) using the metric that fits each style.

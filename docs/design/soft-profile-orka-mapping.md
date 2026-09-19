@@ -37,7 +37,11 @@ The four non-negotiable controls that must survive the conversion — role lock,
 
 ## Verification note — SQ-002 (refinement-provider consistency)
 
-**Finding as of 2026-08-20:** no contradiction found. The current `.strategist/active.yaml` resolves `slots.refinement: archivist` directly, with no reference to `openspec-explore`. `strategist check` confirms `refinement → archivist (kind=native_role)` with no external-provider fallback in play. The contradiction originally recorded in the analysis (`KF-05`, sourced from `.strategist/skill.yaml:105-107,192-193` at the time of that discovery) appears to have already been resolved by a prior change to `active.yaml`; this document does not re-verify `skill.yaml`'s own wording, only the resolved runtime configuration. No fix is proposed here — if a residual `skill.yaml` wording inconsistency is found later, it should be raised as its own follow-up rather than expanding this mission's scope.
+**Finding as of 2026-09-18:** the active runtime resolves `slots.refinement:
+openspec-propose` and `strategist check` reports that provider as ready. This
+document is a historical packaging map; it does not authorize changing the
+binding or implementing the soft profile. Any future refinement-provider
+change must update this note and the active runtime together.
 
 ## What this document does not do
 

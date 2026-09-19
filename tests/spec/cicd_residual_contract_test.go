@@ -40,6 +40,25 @@ func TestReleaseVerificationAndConcurrencyContracts(t *testing.T) {
 	}
 }
 
+func TestStrategistReleaseEvidenceBoundaryIsDocumented(t *testing.T) {
+	t.Parallel()
+
+	root := repoRoot(t)
+	runbook := readFile(t, filepath.Join(root, "docs", "runbooks", "strategist-philosophy-and-release-evidence.md"))
+	for _, needle := range []string{
+		"Source and generated parity",
+		"Snapshot release evidence",
+		"Published release evidence",
+		"must never be described as proof",
+		"The executable routine name is `opportunity_attack`",
+		"Product version (`v1.0.17`) is distinct from a skill/package contract version",
+	} {
+		if !strings.Contains(runbook, needle) {
+			t.Fatalf("release evidence runbook missing %q", needle)
+		}
+	}
+}
+
 func TestQualityAndSecurityGateContracts(t *testing.T) {
 	t.Parallel()
 
