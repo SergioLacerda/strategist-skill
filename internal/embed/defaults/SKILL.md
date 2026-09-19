@@ -5,7 +5,15 @@ fixed pipeline through the configured discovery, refinement, approval, and
 execution contracts. It does not mutate source code, tests, hooks, locks, or
 other repository implementation artifacts during analysis or refinement.
 
-## ENTRYPOINT — execute before anything else
+## Explicit Invocation Boundary
+
+Use this skill only after the user explicitly invokes Strategist through this
+dedicated skill, a registered host slash command, or a `strategist mission` CLI
+operation. The presence of `.strategist/` and a `strategist check --json` result
+make Strategist available for inspection, but do not invoke it, start a mission,
+or change how an ordinary direct request is handled.
+
+## ENTRYPOINT — after explicit invocation
 
 1. Verify `.strategist/` exists; otherwise emit `error=not_installed`.
 2. Run `strategist check --json`; if preflight is blocked, emit its warnings

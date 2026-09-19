@@ -204,7 +204,9 @@ content_by_lang:
         📁 refined:    {base_path}/refined/{mission_id}/
         📁 report:     {base_path}/archived/{mission_id}-report.md
       ╚══════════════════════════════════════════════════════════╝
-      🎯 Mission {mission_id} complete. Next action: {next_action}
+      🎯 Strategist has completed mission {mission_id}; this mission is closed. Next action: {next_action}
+      Later direct requests are handled independently and do not require leaving or disabling Strategist.
+      No other skill, command, or CLI inherits this mission's approval state.
 
       ENFORCEMENT: emit response_complete FIRST (1 line), then mission_complete box.
       NEVER emit raw [Strategist] key=value lines in user-facing output (forbidden_behavior #9).
