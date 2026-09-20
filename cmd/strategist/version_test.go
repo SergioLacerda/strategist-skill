@@ -3,9 +3,12 @@ package main
 import (
 	"bytes"
 	"log/slog"
+	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // --- version ---
@@ -67,3 +70,44 @@ func TestVersionIsHumanStatusCommand(t *testing.T) {
 }
 
 // --- compile ---
+
+// --- version --build ---
+
+func TestFormatBuildInfoShowsCommitPlatformAndPayload(t *testing.T) {
+	settings := map[string]string{"vcs.revision": "895d45b1c2e3f4a5b6c7d8e9f0a1b2c3d4e5f607", "vcs.modified": "false"}
+	payload := &buildPayload{OpenSpec: "1.13.0", Node: "22.23.2"}
+
+	got := formatBuildInfo(settings, "windows", "amd64", payload)
+
+	assert.Equal(t, []string{
+		"commit: 895d45b1c2e3",
+		"platform: windows/amd64",
+		"runtime payload: embedded (openspec 1.13.0, node 22.23.2)",
+	}, got)
+}
+
+func TestFormatBuildInfoFlagsDirtyTreesAndMissingInformation(t *testing.T) {
+	dirty := formatBuildInfo(map[string]string{"vcs.revision": "895d45b1c2e3f4a5", "vcs.modified": "true"}, "linux", "arm64", nil)
+	assert.Equal(t, "commit: 895d45b1c2e3 (modified)", dirty[0])
+	assert.Equal(t, "runtime payload: none (openspec resolved from PATH)", dirty[2])
+
+	unknown := formatBuildInfo(nil, "linux", "amd64", nil)
+	assert.Equal(t, "commit: unknown", unknown[0])
+}
+
+func TestVersionCmd_BuildFlagAddsLinesButDefaultStaysOneLine(t *testing.T) {
+	orig := Version
+	t.Cleanup(func() { Version = orig })
+	Version = "1.0.18"
+
+	t.Cleanup(func() { _ = versionCmd.Flags().Set("build", "false") })
+	require.NoError(t, versionCmd.Flags().Set("build", "true"))
+	out := captureStdout(t, func() { versionCmd.Run(versionCmd, nil) })
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	assert.Equal(t, "V1.0.18", lines[0])
+	assert.GreaterOrEqual(t, len(lines), 4)
+	assert.Contains(t, out, "platform: "+runtime.GOOS+"/"+runtime.GOARCH)
+
+	require.NoError(t, versionCmd.Flags().Set("build", "false"))
+	assert.Equal(t, "V1.0.18\n", captureStdout(t, func() { versionCmd.Run(versionCmd, nil) }))
+}

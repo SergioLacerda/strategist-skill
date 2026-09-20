@@ -103,6 +103,20 @@ errors:
     action: "install the CLI at the version pinned by the provider contract so it is on PATH, then rerun strategist install or strategist check; see docs/runbooks/standalone-runtime-hermeticity.md"
     enforced_by: machine_enforced
 
+  - token: ranked_runtime_pin_mismatch
+    emit: "error=ranked_runtime_pin_mismatch"
+    scope: slot
+    reason: "the materialized private runtime component versions differ from the versions pinned by the provider contract (a build defect)"
+    action: "rebuild the release so runtime/ and runtime.lock.yaml match runtime.version and runtime.node_version, then run make embed-skills"
+    enforced_by: machine_enforced
+
+  - token: ranked_runtime_version_skew
+    emit: "check=ready reason=ranked_runtime_version_skew"
+    scope: slot
+    reason: "a host executable resolved from PATH reports a version different from the provider contract pin (advisory, never blocks)"
+    action: "install the pinned version, or use a build that embeds the private runtime"
+    enforced_by: machine_observed
+
   - token: role_provider_invalid
     emit: "error=role_provider_invalid"
     scope: slot

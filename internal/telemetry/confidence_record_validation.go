@@ -3,6 +3,7 @@ package telemetry
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
@@ -27,11 +28,25 @@ func ValidateConfidenceRecord(record ConfidenceRecord) error {
 
 func validateMissingConfidenceRecord(record ConfidenceRecord) error {
 	var errs []error
+	if record.MissionID == "" {
+		errs = append(errs, errors.New("confidence record: missing coverage requires mission_id"))
+	}
 	if record.Agent == "" {
 		errs = append(errs, errors.New("confidence record: missing coverage requires agent"))
 	}
+	if record.CorrelationKey == "" {
+		errs = append(errs, errors.New("confidence record: missing coverage requires correlation_key"))
+	}
 	if record.MissingReason == "" {
 		errs = append(errs, errors.New("confidence record: missing coverage requires missing_reason"))
+	}
+	if record.EventID == "" {
+		errs = append(errs, errors.New("confidence record: missing coverage requires event_id"))
+	}
+	if record.Timestamp == "" {
+		errs = append(errs, errors.New("confidence record: missing coverage requires timestamp"))
+	} else if _, err := time.Parse(time.RFC3339, record.Timestamp); err != nil {
+		errs = append(errs, fmt.Errorf("confidence record: missing coverage timestamp %q is not RFC3339", record.Timestamp))
 	}
 	return errors.Join(errs...)
 }
@@ -137,15 +152,29 @@ func validateRecordCalibration(record ConfidenceRecord) []error {
 }
 
 func validateCalibrationClaim(record ConfidenceRecord) []error {
+	if record.CalibrationStatus != domain.CalibrationCalibrated {
+		return validateGroundTruthKind(record.GroundTruthKind)
+	}
+	return append(validateCalibratedRecord(record), validateGroundTruthKind(record.GroundTruthKind)...)
+}
+
+func validateCalibratedRecord(record ConfidenceRecord) []error {
 	var errs []error
-	if record.CalibrationStatus == domain.CalibrationCalibrated && (!record.Reviewed || record.SampleSize < domain.CalibrationMinimumSample) {
+	if !record.Reviewed || record.SampleSize < domain.CalibrationMinimumSample {
 		errs = append(errs, fmt.Errorf("confidence record: calibrated requires reviewed sample_size >= %d", domain.CalibrationMinimumSample))
 	}
-	if record.GroundTruthKind != "" && record.GroundTruthKind != domain.GroundTruthUserRevision && record.GroundTruthKind != domain.GroundTruthHandoff && record.GroundTruthKind != domain.GroundTruthDownstream {
-		errs = append(errs, fmt.Errorf("confidence record: ground_truth_kind %q is not allowed", record.GroundTruthKind))
-	}
-	if record.CalibrationStatus == domain.CalibrationCalibrated && record.GroundTruthRef == "" {
+	if record.GroundTruthRef == "" {
 		errs = append(errs, errors.New("confidence record: calibrated claim requires ground_truth_ref"))
 	}
+	if record.GroundTruthOutcome != domain.GroundTruthCorrect && record.GroundTruthOutcome != domain.GroundTruthIncorrect {
+		errs = append(errs, errors.New("confidence record: calibrated claim requires a resolved ground_truth_outcome"))
+	}
 	return errs
+}
+
+func validateGroundTruthKind(kind string) []error {
+	if kind != "" && kind != domain.GroundTruthUserRevision && kind != domain.GroundTruthHandoff && kind != domain.GroundTruthDownstream {
+		return []error{fmt.Errorf("confidence record: ground_truth_kind %q is not allowed", kind)}
+	}
+	return nil
 }

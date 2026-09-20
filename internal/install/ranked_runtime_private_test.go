@@ -114,3 +114,54 @@ func TestPrepareRankedProviderRuntimes_CorruptPayloadFailsClosedWithoutFallback(
 	require.False(t, called, "no provider command may run after a payload failure")
 	require.NoDirExists(t, filepath.Join(dir, ".strategist", "weapon-runtime", "openspec-propose"))
 }
+
+func openSpecContract(version, node string) domain.RankedRuntimeContract {
+	return domain.RankedRuntimeContract{
+		Kind: domain.RankedRuntimeOpenSpecRoot, Root: ".strategist/openspec", Bootstrap: "openspec init", Healthcheck: "openspec context --json",
+		Version: version, NodeVersion: node,
+	}
+}
+
+func TestHostVersionSkewMessageWarnsOnlyWhenPinnedAndDifferent(t *testing.T) {
+	original := runRankedRuntimeCommand
+	t.Cleanup(func() { runRankedRuntimeCommand = original })
+	reports := func(out string, err error) {
+		runRankedRuntimeCommand = func(_ context.Context, _ string, _ string, args ...string) ([]byte, error) {
+			require.Equal(t, []string{"--version"}, args)
+			return []byte(out), err
+		}
+	}
+
+	reports("1.10.0\n", nil)
+	msg := hostVersionSkewMessage(context.Background(), t.TempDir(), hostOpenSpec, openSpecContract("1.13.0", ""), "openspec-propose")
+	require.Contains(t, msg, domain.ReasonRankedRuntimeVersionSkew)
+	require.Contains(t, msg, "1.10.0")
+
+	reports("1.13.0\n", nil)
+	require.Empty(t, hostVersionSkewMessage(context.Background(), t.TempDir(), hostOpenSpec, openSpecContract("1.13.0", ""), "openspec-propose"))
+
+	reports("", os.ErrNotExist)
+	require.Contains(t, hostVersionSkewMessage(context.Background(), t.TempDir(), hostOpenSpec, openSpecContract("1.13.0", ""), "openspec-propose"), "unreadable")
+
+	runRankedRuntimeCommand = func(context.Context, string, string, ...string) ([]byte, error) {
+		t.Fatal("an unpinned contract must not probe the host version")
+		return nil, nil
+	}
+	require.Empty(t, hostVersionSkewMessage(context.Background(), t.TempDir(), hostOpenSpec, openSpecContract("", ""), "openspec-propose"))
+}
+
+func TestPrivateRuntimePinsMustMatchTheContract(t *testing.T) {
+	state := &rankedRuntimeStateRuntime{Components: []rankedRuntimeStateComponent{
+		{Name: "node", Version: "22.23.2"}, {Name: "openspec", Version: "1.13.0"},
+	}}
+
+	require.NoError(t, checkPrivateRuntimePins(openSpecContract("1.13.0", "22.23.2"), state))
+	require.NoError(t, checkPrivateRuntimePins(openSpecContract("", ""), state), "unpinned contract accepts any payload")
+
+	err := checkPrivateRuntimePins(openSpecContract("1.10.0", "22.23.2"), state)
+	require.ErrorContains(t, err, domain.ReasonRankedRuntimePinMismatch)
+	require.ErrorContains(t, err, "openspec")
+
+	err = checkPrivateRuntimePins(openSpecContract("1.13.0", "20.0.0"), state)
+	require.ErrorContains(t, err, "node")
+}

@@ -290,3 +290,22 @@ func TestPrivateRankedRuntimeHealthcheckReportsMissingRuntimeAndEscapes(t *testi
 		require.Equal(t, "ranked_runtime_state_invalid", escaped.ReasonCode, bad.Node)
 	}
 }
+
+func TestHostVersionSkewCheckStaysReadyButReportsSkew(t *testing.T) {
+	testutil.RequirePOSIXShell(t)
+	runtimeRoot := filepath.Join(t.TempDir(), "openspec")
+	require.NoError(t, os.MkdirAll(runtimeRoot, 0o755))
+	script := filepath.Join(t.TempDir(), "openspec")
+	t.Setenv("PATH", filepath.Dir(script)+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	require.NoError(t, os.WriteFile(script, []byte("#!/bin/sh\nprintf '1.10.0\\n'\n"), 0o755))
+	skewed := hostVersionSkewCheck(runtimeRoot, "openspec-propose", "1.13.0")
+	require.NotNil(t, skewed)
+	require.Equal(t, domain.ReadinessReady, skewed.Status, "skew is advisory, never a block")
+	require.Equal(t, domain.ReasonRankedRuntimeVersionSkew, skewed.ReasonCode)
+	require.Contains(t, skewed.Detail, "1.10.0")
+
+	require.NoError(t, os.WriteFile(script, []byte("#!/bin/sh\nprintf '1.13.0\\n'\n"), 0o755))
+	require.Nil(t, hostVersionSkewCheck(runtimeRoot, "openspec-propose", "1.13.0"))
+	require.Nil(t, hostVersionSkewCheck(runtimeRoot, "openspec-propose", ""), "no pin, no comparison")
+}

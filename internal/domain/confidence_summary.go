@@ -32,81 +32,8 @@ func ValidateConfidenceSummary(summary ConfidenceSummary) error {
 	}
 	errs = append(errs, validateSummaryEvidence(summary.Evidence)...)
 	errs = append(errs, validateSummaryClaims(summary)...)
+	errs = append(errs, validateSummaryCalibration(summary)...)
 	return errors.Join(errs...)
-}
-func validateConfidenceSummaryHeader(summary ConfidenceSummary) []error {
-	var errs []error
-	if summary.PolicyVersion != ConfidencePolicyVersion {
-		errs = append(errs, fmt.Errorf("confidence_summary_invalid: policy_version %q is not %q", summary.PolicyVersion, ConfidencePolicyVersion))
-	}
-	if summary.SampleSize < 0 {
-		errs = append(errs, errors.New("confidence_summary_invalid: sample_size cannot be negative"))
-	}
-	if err := ValidateCalibrationStatus(summary.CalibrationStatus, summary.SampleSize); err != nil {
-		errs = append(errs, err)
-	}
-	return errs
-}
-
-func validateMissingConfidenceSummary(summary ConfidenceSummary) []error {
-	var errs []error
-	if len(summary.Claims) != 0 || len(summary.OpenQuestions) != 0 || len(summary.Evidence) != 0 {
-		errs = append(errs, errors.New("confidence_summary_invalid: missing_record cannot carry claims or evidence"))
-	}
-	if summary.SampleSize != 0 || summary.CalibrationStatus != CalibrationNoSample {
-		errs = append(errs, errors.New("confidence_summary_invalid: missing_record requires sample_size 0 and no_sample"))
-	}
-	return errs
-}
-
-func validateSummaryEvidence(evidence []Evidence) []error {
-	var errs []error
-	seen := make(map[string]struct{}, len(evidence))
-	for _, item := range evidence {
-		if _, exists := seen[item.ID]; exists {
-			errs = append(errs, fmt.Errorf("confidence_summary_invalid: duplicate evidence id %q", item.ID))
-		}
-		seen[item.ID] = struct{}{}
-		if err := ValidateEvidence(item); err != nil {
-			errs = append(errs, err)
-		}
-	}
-	return errs
-}
-
-func validateSummaryClaims(summary ConfidenceSummary) []error {
-	claims := append(append([]ConfidenceClaim(nil), summary.Claims...), summary.OpenQuestions...)
-	openQuestions := make(map[string]struct{}, len(summary.OpenQuestions))
-	for _, claim := range summary.OpenQuestions {
-		openQuestions[claim.ID] = struct{}{}
-	}
-	seenClaims := make(map[string]struct{}, len(claims))
-	var errs []error
-	for _, claim := range claims {
-		if _, exists := seenClaims[claim.ID]; exists {
-			errs = append(errs, fmt.Errorf("confidence_summary_invalid: duplicate claim id %q", claim.ID))
-		}
-		seenClaims[claim.ID] = struct{}{}
-		errs = append(errs, validateSummaryClaim(claim, summary.Evidence, openQuestions)...)
-	}
-	return errs
-}
-
-func validateSummaryClaim(claim ConfidenceClaim, evidence []Evidence, openQuestions map[string]struct{}) []error {
-	var errs []error
-	if claim.Agent == "" {
-		errs = append(errs, fmt.Errorf("confidence_summary_invalid: claim %q requires agent", claim.ID))
-	}
-	if claim.CorrelationKey == "" {
-		errs = append(errs, fmt.Errorf("confidence_summary_invalid: claim %q requires correlation_key", claim.ID))
-	}
-	if _, isOpenQuestion := openQuestions[claim.ID]; isOpenQuestion && claim.ClaimKind != ClaimKindQuestion {
-		errs = append(errs, fmt.Errorf("confidence_summary_invalid: open question %q must have claim_kind question", claim.ID))
-	}
-	if err := ValidateConfidenceClaim(claim, evidence); err != nil {
-		errs = append(errs, err)
-	}
-	return errs
 }
 
 // CompareConfidenceSummaries proves that claims survive a handoff by stable
@@ -151,22 +78,50 @@ func compareConfidenceClaims(source ConfidenceSummary, destinationByCorrelation 
 
 func compareConfidenceClaim(source, destination ConfidenceClaim) []error {
 	var errs []error
+	errs = append(errs, compareClaimIdentity(source, destination)...)
+	errs = append(errs, compareClaimEvidence(source, destination)...)
+	errs = append(errs, compareClaimGroundTruth(source, destination)...)
+	errs = append(errs, compareClaimCalibration(source, destination)...)
+	return errs
+}
+
+func compareClaimIdentity(source, destination ConfidenceClaim) []error {
+	var errs []error
+	if source.Statement != destination.Statement {
+		errs = append(errs, fmt.Errorf("confidence_handoff_invalid: correlation %q changed statement", source.CorrelationKey))
+	}
 	if source.ClaimKind != destination.ClaimKind {
 		errs = append(errs, fmt.Errorf("confidence_handoff_invalid: correlation %q changed claim_kind from %q to %q", source.CorrelationKey, source.ClaimKind, destination.ClaimKind))
 	}
 	if source.ConfidencePercent != destination.ConfidencePercent || source.ConfidenceLevel != destination.ConfidenceLevel {
 		errs = append(errs, fmt.Errorf("confidence_handoff_invalid: correlation %q changed confidence", source.CorrelationKey))
 	}
+	return errs
+}
+
+func compareClaimEvidence(source, destination ConfidenceClaim) []error {
+	var errs []error
 	if !sameStrings(source.EvidenceIDs, destination.EvidenceIDs) {
 		errs = append(errs, fmt.Errorf("confidence_handoff_invalid: correlation %q changed evidence_ids", source.CorrelationKey))
 	}
 	if !sameStrings(source.EvidenceClasses, destination.EvidenceClasses) {
 		errs = append(errs, fmt.Errorf("confidence_handoff_invalid: correlation %q changed evidence_classes", source.CorrelationKey))
 	}
-	if changedGroundTruth(source, destination) {
-		errs = append(errs, fmt.Errorf("confidence_handoff_invalid: correlation %q changed ground truth", source.CorrelationKey))
-	}
 	return errs
+}
+
+func compareClaimGroundTruth(source, destination ConfidenceClaim) []error {
+	if changedGroundTruth(source, destination) {
+		return []error{fmt.Errorf("confidence_handoff_invalid: correlation %q changed ground truth", source.CorrelationKey)}
+	}
+	return nil
+}
+
+func compareClaimCalibration(source, destination ConfidenceClaim) []error {
+	if source.CalibrationStatus != destination.CalibrationStatus || source.SampleSize != destination.SampleSize {
+		return []error{fmt.Errorf("confidence_handoff_invalid: correlation %q changed calibration", source.CorrelationKey)}
+	}
+	return nil
 }
 
 func changedGroundTruth(source, destination ConfidenceClaim) bool {

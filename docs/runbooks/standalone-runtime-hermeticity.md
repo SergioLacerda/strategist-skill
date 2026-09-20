@@ -82,6 +82,12 @@ it without OpenSpec, Node, `npm`, or anything on `PATH`.
   `runtime.node_version` in the provider contract) are part of the certification
   digest. Workspaces installed before a runtime version change report
   `ranked_runtime_digest_mismatch` until `strategist install` is run again.
+- **Pins.** A private runtime whose component versions differ from the
+  contract's `runtime.version` / `runtime.node_version` is rejected at install
+  (`ranked_runtime_pin_mismatch`). A host `openspec` whose `--version` differs
+  from the pin only produces the advisory `ranked_runtime_version_skew` (log at
+  install, Ready-with-reason at check). `strategist version --build` shows a
+  binary's commit, platform and whether a payload is embedded.
 - **Ordinary builds** (`make build`, `go test`) do not embed a payload. Without
   one, install resolves `openspec` from `PATH` and reports the cataloged
   `ranked_runtime_executable_missing` diagnostic when it is absent (stage (a)).
@@ -93,7 +99,8 @@ it without OpenSpec, Node, `npm`, or anything on `PATH`.
   script are skipped on Windows (`testutil.RequirePOSIXShell`); the real exec
   path is proven there by `scripts/smoke-standalone-install.sh`, which the
   `test-windows` CI job runs against a payload build with an empty `PATH`.
-  That job is `continue-on-error` until a first green run on a real Windows
-  runner. The Windows binary was also exercised under Wine (install, `init`
-  through the embedded `node.exe`, and `check` all succeeded with no OpenSpec on
-  the system), which is supporting evidence, not a substitute for the CI run.
+  The job is blocking. On 2026-09-20 it passed on a GitHub `windows-latest`
+  runner, including the smoke: a payload build installed and passed
+  `strategist check` with an empty `PATH` and no OpenSpec on the machine. The
+  Windows binary was also exercised under Wine earlier as supporting evidence.
+  Not yet covered: macOS, and Windows on arm64 (both compile only).

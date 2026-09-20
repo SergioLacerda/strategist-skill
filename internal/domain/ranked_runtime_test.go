@@ -152,3 +152,27 @@ func TestRankedRuntimeContractValidatesPinnedIdentity(t *testing.T) {
 	none := RankedRuntimeContract{Kind: RankedRuntimeNone, Version: "1.0.0"}
 	require.Error(t, none.Validate(), "a provider without a runtime cannot declare a pinned version")
 }
+
+func TestParseReportedVersionAndSkew(t *testing.T) {
+	for output, want := range map[string]string{
+		"1.13.0\n":           "1.13.0",
+		"v1.13.0":            "1.13.0",
+		"  1.13.0  \r\n":     "1.13.0",
+		"openspec 1.13.0":    "1.13.0",
+		"":                   "",
+		"no version here\n":  "",
+		"1.13.0\nextra line": "1.13.0",
+	} {
+		require.Equal(t, want, ParseReportedVersion([]byte(output)), output)
+	}
+
+	require.False(t, VersionSkew("", "9.9.9"), "no pin, nothing to compare")
+	require.False(t, VersionSkew("1.13.0", "1.13.0"))
+	require.True(t, VersionSkew("1.13.0", "1.10.0"))
+	require.True(t, VersionSkew("1.13.0", ""), "an unreadable version cannot confirm the pin")
+
+	msg := RankedRuntimeVersionSkewMessage("openspec-propose", "1.13.0", "1.10.0")
+	require.Contains(t, msg, ReasonRankedRuntimeVersionSkew)
+	require.Contains(t, msg, "1.13.0")
+	require.Contains(t, msg, "1.10.0")
+}

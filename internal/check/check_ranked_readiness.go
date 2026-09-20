@@ -90,10 +90,14 @@ func rankedRuntimeReadiness(root, slot, provider string, stamp domain.CatalogRan
 	if result := validateRankedRuntimeRoot(runtimeRoot, provider); !result.Ready() {
 		return result
 	}
+	return rankedRuntimeExecutableReadiness(root, runtimeRoot, slot, provider, runtime.Version, state)
+}
+
+func rankedRuntimeExecutableReadiness(root, runtimeRoot, slot, provider, version string, state rankedRuntimeStateCheck) domain.ReadinessCheck {
 	if private := state.privateRuntimeFor(slot, provider); private != nil {
 		return runPrivateRankedRuntimeHealthcheck(root, runtimeRoot, provider, *private)
 	}
-	return runRankedRuntimeHealthcheck(runtimeRoot, provider)
+	return hostRankedRuntimeReadiness(runtimeRoot, provider, version)
 }
 
 func validateRankedRuntimeContract(runtime domain.RankedRuntimeContract, slot, provider string) domain.ReadinessCheck {

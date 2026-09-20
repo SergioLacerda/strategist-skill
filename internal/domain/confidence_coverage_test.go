@@ -90,6 +90,21 @@ func TestValidateConfidenceClaimFieldErrors(t *testing.T) {
 	}
 }
 
+func TestValidateConfidenceClaimRequiresGroundTruthForCalibrated(t *testing.T) {
+	t.Parallel()
+	claim := ConfidenceClaim{
+		ID: "calibrated", Statement: "reviewed claim", ClaimKind: ClaimKindQuestion,
+		ConfidencePercent: 90, CalibrationStatus: CalibrationCalibrated,
+		SampleSize: CalibrationMinimumSample,
+	}
+	mustFail(t, ValidateConfidenceClaim(claim, nil), "ground_truth_ref")
+
+	claim.GroundTruthRef = "approval_gate:1"
+	claim.GroundTruthKind = GroundTruthUserRevision
+	claim.GroundTruthOutcome = GroundTruthUnresolved
+	mustFail(t, ValidateConfidenceClaim(claim, nil), "resolved outcome")
+}
+
 func TestValidateAssertionClaimRules(t *testing.T) {
 	t.Parallel()
 	base := ConfidenceClaim{ID: "a", Statement: "s", ClaimKind: ClaimKindAssertion, ConfidencePercent: 90}
@@ -220,6 +235,17 @@ func TestCompareConfidenceSummaries(t *testing.T) {
 	err = CompareConfidenceSummaries(src2, dst2)
 	mustFail(t, err, "changed evidence_classes")
 	mustFail(t, err, "changed ground truth")
+
+	dst2 = validSummary()
+	dst2.Claims[0].Statement = "rewritten"
+	err = CompareConfidenceSummaries(src2, dst2)
+	mustFail(t, err, "changed statement")
+
+	dst2 = validSummary()
+	dst2.Claims[0].CalibrationStatus = CalibrationObserved
+	dst2.Claims[0].SampleSize = 1
+	err = CompareConfidenceSummaries(src2, dst2)
+	mustFail(t, err, "changed calibration")
 	if !sameStrings([]string{"a"}, []string{"a"}) || sameStrings([]string{"a"}, []string{"b"}) {
 		t.Fatal("sameStrings")
 	}

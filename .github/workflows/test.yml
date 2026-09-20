@@ -42,9 +42,6 @@ jobs:
     # there (Drift A/B evidence). Kept to the packages that own that behavior.
     runs-on: windows-latest
     timeout-minutes: 15
-    # Evidence-only until a first Windows run shows which tests assume a POSIX
-    # shell (fake `openspec` scripts); promote to blocking once green.
-    continue-on-error: true
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

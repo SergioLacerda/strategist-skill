@@ -23,6 +23,9 @@ if [[ -z "$bin" ]]; then
   CGO_ENABLED=0 go build -tags strategist_payload -trimpath -ldflags='-s -w' -o "$bin" ./cmd/strategist
 fi
 
+# The script changes directory below, so the binary must be an absolute path.
+bin="$(cd "$(dirname "$bin")" && pwd)/$(basename "$bin")"
+
 work="$(mktemp -d)"
 empty_path="$(mktemp -d)"
 trap 'rm -rf "$work" "$empty_path"' EXIT

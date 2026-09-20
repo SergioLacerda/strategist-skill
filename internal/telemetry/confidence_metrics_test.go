@@ -3,6 +3,7 @@ package telemetry
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 
@@ -217,5 +218,17 @@ func TestAppendConfidenceObservationKeepsRejectedAssertionVisible(t *testing.T) 
 	metrics := ComputeConfidenceMetrics(got)
 	if metrics.UnsupportedAssertionRate != 1 || metrics.RejectedRecords != 1 {
 		t.Fatalf("rejected assertion metrics = %+v", metrics)
+	}
+}
+
+func TestValidateMissingConfidenceRecordRequiresIdentityAndCorrelation(t *testing.T) {
+	t.Parallel()
+	record := ConfidenceRecord{
+		CoverageStatus: ConfidenceCoverageMissing,
+		Agent:          "ranger", MissingReason: "not supplied",
+	}
+	err := ValidateConfidenceRecord(record)
+	if err == nil || !strings.Contains(err.Error(), "mission_id") || !strings.Contains(err.Error(), "correlation_key") {
+		t.Fatalf("expected missing identity diagnostics, got %v", err)
 	}
 }

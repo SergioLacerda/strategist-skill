@@ -3,6 +3,7 @@ package install
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -33,12 +34,17 @@ func bootstrapRankedProvider(ctx context.Context, strategistDir string, provider
 	if err != nil {
 		return nil, fmt.Errorf("ranked runtime provider %q root: %w", provider.ID, err)
 	}
-	exe, private, err := resolveRankedExecutable(strategistDir, provider.ID)
+	exe, private, err := resolveRankedExecutable(strategistDir, provider.ID, runtime)
 	if err != nil {
 		return nil, fmt.Errorf("ranked runtime provider %q: %w", provider.ID, err)
 	}
 	if err := bootstrapOpenSpecRuntimeWith(ctx, root, runtime, exe); err != nil {
 		return nil, rankedRuntimeBootstrapError(provider.ID, err)
+	}
+	if private == nil {
+		if msg := hostVersionSkewMessage(ctx, root, exe, runtime, provider.ID); msg != "" {
+			slog.WarnContext(ctx, "[Strategist] ranked runtime version skew", "provider", provider.ID, "detail", msg)
+		}
 	}
 	return private, nil
 }

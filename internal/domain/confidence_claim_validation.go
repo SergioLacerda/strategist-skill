@@ -39,7 +39,25 @@ func validateConfidenceClaimFields(claim ConfidenceClaim) (string, []error) {
 		errs = append(errs, err)
 	}
 	errs = append(errs, validateGroundTruthFields(claim)...)
+	errs = append(errs, validateClaimCalibration(claim)...)
 	return level, errs
+}
+
+func validateClaimCalibration(claim ConfidenceClaim) []error {
+	if claim.CalibrationStatus != CalibrationCalibrated {
+		return nil
+	}
+	var errs []error
+	if claim.GroundTruthRef == "" {
+		errs = append(errs, errors.New("confidence_invalid: calibrated claim requires ground_truth_ref"))
+	}
+	if claim.GroundTruthKind == "" {
+		errs = append(errs, errors.New("confidence_invalid: calibrated claim requires ground_truth_kind"))
+	}
+	if claim.GroundTruthOutcome != GroundTruthCorrect && claim.GroundTruthOutcome != GroundTruthIncorrect {
+		errs = append(errs, errors.New("confidence_invalid: calibrated claim requires a resolved outcome"))
+	}
+	return errs
 }
 
 func validateGroundTruthFields(claim ConfidenceClaim) []error {

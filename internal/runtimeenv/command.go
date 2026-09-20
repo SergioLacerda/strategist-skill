@@ -30,6 +30,10 @@ func (e *ExecutableNotFoundError) Unwrap() error { return e.Err }
 // executable lookup still honors the operator's PATH without passing the rest
 // of the host environment into the provider.
 func Command(ctx context.Context, dir, name string, args ...string) (*exec.Cmd, error) {
+	dir, err := absoluteRoot(dir)
+	if err != nil {
+		return nil, err
+	}
 	executable, err := exec.LookPath(name)
 	if err != nil {
 		return nil, &ExecutableNotFoundError{Name: name, Err: err}
@@ -45,6 +49,10 @@ func Command(ctx context.Context, dir, name string, args ...string) (*exec.Cmd, 
 // subprocess PATH is only the executable's own directory, so a Ranked runtime
 // can never resolve a tool from the client's machine.
 func PrivateCommand(ctx context.Context, dir, executable string, args ...string) (*exec.Cmd, error) {
+	dir, err := absoluteRoot(dir)
+	if err != nil {
+		return nil, err
+	}
 	if !filepath.IsAbs(executable) {
 		return nil, fmt.Errorf("private runtime executable must be absolute, got %q", executable)
 	}
@@ -58,6 +66,18 @@ func PrivateCommand(ctx context.Context, dir, executable string, args ...string)
 	cmd.Dir = dir
 	cmd.Env = withPath(ForRoot(dir), filepath.Dir(executable))
 	return cmd, nil
+}
+
+// absoluteRoot resolves root once so cmd.Dir and the HOME/XDG variables share
+// one absolute spelling. A relative root would otherwise be resolved by the
+// provider against its own working directory, nesting state under
+// <root>/<root>/.provider-*.
+func absoluteRoot(root string) (string, error) {
+	absolute, err := filepath.Abs(root)
+	if err != nil {
+		return "", fmt.Errorf("resolve provider root %q: %w", root, err)
+	}
+	return absolute, nil
 }
 
 func withPath(env []string, path string) []string {
@@ -74,6 +94,9 @@ func withPath(env []string, path string) []string {
 // command. HOME/XDG directories are redirected below the runtime root so a
 // provider cannot silently consult or modify the operator's global state.
 func ForRoot(root string) []string {
+	if absolute, err := absoluteRoot(root); err == nil {
+		root = absolute
+	}
 	path := os.Getenv("PATH")
 	if path == "" {
 		path = "/usr/bin:/bin"

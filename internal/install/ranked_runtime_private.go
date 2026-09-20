@@ -1,10 +1,12 @@
 package install
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"runtime"
 
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/runtimepayload"
 )
 
@@ -30,7 +32,7 @@ func (e rankedExecutable) args(rest []string) []string {
 // runtime when this binary carries one, and never consults PATH in that case.
 // Without an embedded payload it returns the host executable (stage (a):
 // missing tools fail with an actionable diagnostic instead).
-func resolveRankedExecutable(strategistDir, providerID string) (rankedExecutable, *rankedRuntimeStateRuntime, error) {
+func resolveRankedExecutable(strategistDir, providerID string, contract domain.RankedRuntimeContract) (rankedExecutable, *rankedRuntimeStateRuntime, error) {
 	payload, ok := payloadSource()
 	if !ok {
 		return hostOpenSpec, nil, nil
@@ -49,7 +51,42 @@ func resolveRankedExecutable(strategistDir, providerID string) (rankedExecutable
 	for _, c := range evidence.Components {
 		state.Components = append(state.Components, rankedRuntimeStateComponent{Name: c.Name, Version: c.Version, SHA256: c.SHA256})
 	}
+	if err := checkPrivateRuntimePins(contract, state); err != nil {
+		return rankedExecutable{}, nil, err
+	}
 	return rankedExecutable{name: node, prefix: []string{script}}, state, nil
+}
+
+// checkPrivateRuntimePins fails closed when the materialized components are not
+// the versions the certified provider contract pins (openspec and node). An
+// unpinned contract accepts any payload.
+func checkPrivateRuntimePins(contract domain.RankedRuntimeContract, state *rankedRuntimeStateRuntime) error {
+	want := map[string]string{"openspec": contract.Version, "node": contract.NodeVersion}
+	for _, c := range state.Components {
+		if pin := want[c.Name]; pin != "" && pin != c.Version {
+			return fmt.Errorf("error=ranked_runtime_pin_mismatch: private runtime %s is %s but the provider contract pins %s", c.Name, c.Version, pin)
+		}
+	}
+	return nil
+}
+
+// hostVersionSkewMessage probes a host executable's --version and returns a
+// warning when it differs from the contract pin ("" when it matches or the
+// contract does not pin). It never fails the install: certification already
+// covers the pinned identity, and a host executable is the uncertified path.
+func hostVersionSkewMessage(ctx context.Context, root string, exe rankedExecutable, contract domain.RankedRuntimeContract, providerID string) string {
+	if contract.Version == "" {
+		return ""
+	}
+	out, err := runRankedRuntimeCommand(ctx, root, exe.name, exe.args([]string{"--version"})...)
+	observed := ""
+	if err == nil {
+		observed = domain.ParseReportedVersion(out)
+	}
+	if !domain.VersionSkew(contract.Version, observed) {
+		return ""
+	}
+	return domain.RankedRuntimeVersionSkewMessage(providerID, contract.Version, observed)
 }
 
 func relSlash(base, target string) string {

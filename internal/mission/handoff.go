@@ -106,10 +106,16 @@ func recordMissingHandoffConfidence(producer telemetry.ConfidenceProducerAdapter
 }
 
 func recordHandoffClaims(producer telemetry.ConfidenceProducerAdapter, summary domain.ConfidenceSummary) error {
-	for _, claim := range summary.Claims {
+	for _, claim := range confidenceSummaryClaims(summary) {
 		if _, err := producer.RecordClaim(claim, summary.Evidence); err != nil {
 			return fmt.Errorf("record confidence claim %q: %w", claim.ID, err)
 		}
 	}
 	return nil
+}
+
+func confidenceSummaryClaims(summary domain.ConfidenceSummary) []domain.ConfidenceClaim {
+	claims := make([]domain.ConfidenceClaim, 0, len(summary.Claims)+len(summary.OpenQuestions))
+	claims = append(claims, summary.Claims...)
+	return append(claims, summary.OpenQuestions...)
 }

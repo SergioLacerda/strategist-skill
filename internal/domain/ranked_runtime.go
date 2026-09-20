@@ -6,7 +6,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strings"
 )
 
@@ -88,8 +87,6 @@ func validateOpenSpecRuntime(runtime RankedRuntimeContract) error {
 	}
 	return nil
 }
-
-var pinnedVersion = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
 
 // isSafeRuntimeRoot accepts only a canonical slash-separated path under
 // .strategist. The separator is normalized before the cleanliness comparison:
