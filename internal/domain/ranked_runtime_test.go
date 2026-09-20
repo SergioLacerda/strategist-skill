@@ -130,6 +130,11 @@ func TestRankedRuntimeExecutableMissingMessageIsActionable(t *testing.T) {
 	require.Contains(t, msg, "PATH")
 	require.Contains(t, msg, "docs/runbooks/standalone-runtime-hermeticity.md")
 	require.NotContains(t, msg, "exec:")
+	// The binary is the usual culprit, so the message must say so and name the fix.
+	require.Contains(t, msg, "built without the embedded runtime")
+	require.Contains(t, msg, "make build-standalone")
+	require.Contains(t, msg, "strategist version --build")
+	require.NotContains(t, msg, "does not yet ship")
 }
 
 func TestRankedRuntimeContractValidatesPinnedIdentity(t *testing.T) {

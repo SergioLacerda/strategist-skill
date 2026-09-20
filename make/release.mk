@@ -2,11 +2,20 @@
 	install release-verify release-check install-goreleaser \
 	check-release-artifacts check-release-assets release-reproducible-check \
 	release-test release-dry-run release snapshot clean compile-skill \
-	embed-skills embed-skills-check build-standalone standalone-smoke
+	embed-skills embed-skills-check build-standalone standalone-smoke install-lite
 
-install: build
+# install puts a STANDALONE binary in ~/.local/bin: it embeds the private runtime
+# of the Ranked provider (openspec-propose), so `strategist install --wizard`
+# works on a machine with no OpenSpec or Node. It fetches the pinned Node by
+# digest on the first run (needs network and python; cached afterwards).
+# Use install-lite for a binary without the runtime (resolves openspec from PATH).
+install: build-standalone
 	mkdir -p "$$HOME/.local/bin" && install -m 755 bin/strategist "$$HOME/.local/bin/strategist"
-	@echo "[Strategist] binary installed. Run: strategist install --wizard"
+	@echo "[Strategist] standalone binary installed. Run: strategist install --wizard"
+
+install-lite: build
+	mkdir -p "$$HOME/.local/bin" && install -m 755 bin/strategist "$$HOME/.local/bin/strategist"
+	@echo "[Strategist] binary installed WITHOUT the embedded runtime (needs openspec on PATH for the Ranked provider)."
 
 # The sync-embed target was removed in W7a (Option B): internal/embed/defaults/ is now
 # the single authoring source embedded directly via go:embed — there is nothing to sync.
@@ -40,8 +49,10 @@ check-release-artifacts:
 check-release-assets:
 	bash scripts/check-release-assets.sh "$(TAG)" dist/published.tsv
 
+# Also covers the standalone build that embeds the runtime payload (fetches the
+# pinned Node for the host by digest, so it needs network).
 release-reproducible-check:
-	bash scripts/check-reproducible-build.sh "$(GOCACHE)"
+	REPRODUCIBLE_PAYLOAD=1 bash scripts/check-reproducible-build.sh "$(GOCACHE)"
 
 # release-test validates release config and local snapshot artifacts without publishing.
 release-test: release-check snapshot check-release-artifacts
@@ -67,9 +78,12 @@ compile-skill:
 # build-standalone builds bin/strategist with the private runtime payload for
 # the host target embedded (fetches the pinned Node first; needs network unless
 # .cache/node-runtime is pre-seeded). Ordinary `make build` never embeds it.
+PYTHON ?= $(shell command -v python3 2>/dev/null || command -v python 2>/dev/null)
+
 build-standalone:
-	python3 scripts/fetch-node-runtime.py --host
-	CGO_ENABLED=0 go build -tags strategist_payload -trimpath -ldflags='-s -w' -o bin/strategist ./cmd/strategist
+	@test -n "$(PYTHON)" || { echo "python3 (or python) is required to fetch the pinned Node; use 'make install-lite' to skip the embedded runtime" >&2; exit 1; }
+	$(PYTHON) scripts/fetch-node-runtime.py --host
+	GOCACHE=$(GOCACHE) CGO_ENABLED=0 go build -tags strategist_payload -trimpath -ldflags="-s -w -X main.Version=$$(git describe --tags --dirty --always 2>/dev/null || echo dev)" -o bin/strategist ./cmd/strategist
 
 # standalone-smoke proves a payload build installs and passes check with an
 # empty PATH (no host openspec or node).

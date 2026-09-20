@@ -88,11 +88,19 @@ it without OpenSpec, Node, `npm`, or anything on `PATH`.
   from the pin only produces the advisory `ranked_runtime_version_skew` (log at
   install, Ready-with-reason at check). `strategist version --build` shows a
   binary's commit, platform and whether a payload is embedded.
-- **Ordinary builds** (`make build`, `go test`) do not embed a payload. Without
-  one, install resolves `openspec` from `PATH` and reports the cataloged
-  `ranked_runtime_executable_missing` diagnostic when it is absent (stage (a)).
-  Use `make build-standalone` for a payload build and `make standalone-smoke`
-  to prove install and check succeed with an empty `PATH`.
+- **Ordinary builds** (`make build`, `make install-lite`, plain `go build`,
+  `go test`) do not embed a payload. Without one, install resolves `openspec`
+  from `PATH` and reports the cataloged `ranked_runtime_executable_missing`
+  diagnostic when it is absent. `make install` and `make build-standalone`
+  build with the payload (they fetch the pinned Node by digest on first use and
+  need network and python); `make standalone-smoke` proves install and check
+  succeed with an empty `PATH`.
+- **Troubleshooting `ranked_runtime_executable_missing`.** On a client this
+  almost always means the binary was built without the payload (typically
+  `make build` or a `go build`, or a binary installed before `make install`
+  started embedding it). Run `strategist version --build`: `runtime payload:
+  none` confirms it. Install a release binary, or rebuild with
+  `make install`.
 - **Windows.** The payload paths and the Windows environment allow-list
   (`SystemRoot`, `TEMP`, `TMP`, `ComSpec`, `PATHEXT`) are covered by
   platform-neutral tests. Tests that fake an executable with a POSIX shell
