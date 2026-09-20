@@ -26,7 +26,7 @@ check_variant() {
   sha1="$(sha256sum "$tmpdir/$label-1" | awk '{print $1}')"
   sha2="$(sha256sum "$tmpdir/$label-2" | awk '{print $1}')"
   if [[ "$sha1" != "$sha2" ]]; then
-    echo "::error::repeated deterministic $label builds produced different checksums" >&2
+    echo "::error::repeated deterministic builds produced different checksums ($label build)" >&2
     echo "first:  $sha1" >&2
     echo "second: $sha2" >&2
     exit 1
