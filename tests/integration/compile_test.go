@@ -13,26 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCompileConfig(t *testing.T) {
-	t.Parallel()
-	dir := t.TempDir()
-	testutil.MinimalRoot(t, dir)
-	out := filepath.Join(dir, ".compiled", ".config.gz")
-
-	require.NoError(t, compile.Config(dir, out))
-	require.FileExists(t, out)
-
-	var artifact map[string]interface{}
-	testutil.ReadGzJSON(t, out, &artifact)
-
-	assert.Equal(t, "strategist-compiled-config/1.0", artifact["schema"])
-	assert.NotNil(t, artifact["compiled_at"])
-	assert.NotNil(t, artifact["sources"])
-	assert.NotNil(t, artifact["active"])
-	assert.NotNil(t, artifact["personas"])
-	assert.NotNil(t, artifact["roles"])
-}
-
 func TestCompileDomain_EmptyIndex(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()

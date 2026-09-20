@@ -190,14 +190,6 @@ func TestStrategistSkillDeclaresRuntimeAndWorkspacePathContracts(t *testing.T) {
 	}
 }
 
-// TestNormativeRuntimeFilesMirrorEmbeddedDefaults was removed in W7a (Option B):
-// with strategist/ retired, internal/embed/defaults/ IS the canonical source, so
-// source↔embed parity is true by construction. Runtime parity is covered below.
-
-// TestNormativeRuntimeFilesMirrorEmbeddedDefaults was removed in W7a (Option B):
-// with strategist/ retired, internal/embed/defaults/ IS the canonical source, so
-// source↔embed parity is true by construction. Runtime parity is covered below.
-
 func TestLocalRuntimeMirrorsCanonicalNormativeFilesWhenPresent(t *testing.T) {
 	t.Parallel()
 
@@ -412,13 +404,6 @@ func TestOutputProfilesSourceMirrorsEmbeddedDefaults(t *testing.T) {
 		}
 	}
 }
-
-// TestSyncEmbedSchemaExclusionsStayIntentional guards duplicate schema files that used
-// to be excluded from sync-embed. Duplicate source/embed schemas must mirror exactly;
-// embed-only schemas must remain explicitly absent from the strategist/ authoring tree.
-// TestSyncEmbedSchemaExclusionsStayIntentional was removed in W7a (Option B):
-// sync-embed no longer exists, so its schema/role exclusion policy is moot —
-// embed-only artifacts live directly in internal/embed/defaults/ like everything else.
 
 // TestDiscoveryAndRefinementContractsRequireDocsLanguage guards mission
 // 2026-07-24-language-config-not-reflected's root cause 1 fix: Ranger and Archivist must author

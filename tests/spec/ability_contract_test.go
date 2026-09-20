@@ -258,10 +258,3 @@ func TestAbilityContractNoLegacyOpportunityFSMNaming(t *testing.T) {
 		}
 	}
 }
-
-// --- Part B: Parity check ---
-
-// TestAbilityContractParityCanonicalVsEmbedded was removed in W7a (Option B):
-// strategist/ was retired, so canonical and embedded defaults are the same tree
-// and byte parity is true by construction. Runtime parity is covered by
-// TestLocalRuntimeMirrorsCanonicalNormativeFilesWhenPresent in spec_alignment_test.go.

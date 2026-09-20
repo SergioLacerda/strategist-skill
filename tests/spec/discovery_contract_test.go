@@ -390,16 +390,6 @@ func TestEvaluationDiscoveryDoesNotRequireCreativeObligations(t *testing.T) {
 	}
 }
 
-// TestRoleLockRequiresSubtypeCapabilityCheck verifies the parent-agent Role Lock
-// blocks unsupported discovery subtype/weapon pairings before invoking the weapon.
-
-// TestSyncEmbedSchemaExclusionsStayIntentional guards duplicate schema files that used
-// to be excluded from sync-embed. Duplicate source/embed schemas must mirror exactly;
-// embed-only schemas must remain explicitly absent from the strategist/ authoring tree.
-// TestSyncEmbedSchemaExclusionsStayIntentional was removed in W7a (Option B):
-// sync-embed no longer exists, so its schema/role exclusion policy is moot —
-// embed-only artifacts live directly in internal/embed/defaults/ like everything else.
-
 // TestDiscoveryAndRefinementContractsRequireDocsLanguage guards mission
 // 2026-07-24-language-config-not-reflected's root cause 1 fix: Ranger and Archivist must author
 // documentation artifacts in active.language.docs, independent of the conversation's language.
