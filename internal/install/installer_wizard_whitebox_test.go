@@ -147,8 +147,24 @@ func TestInstall_WizardPath_ExplicitDefaultProvidersMaterializeManifests(t *test
 // decision boundary: a Ranked selection must reach both active.yaml and the
 // corresponding plugins.lock binding for each configurable role.
 func TestInstall_WizardPath_PersistsRankedBindingModes(t *testing.T) {
-	t.Parallel()
+	// No t.Parallel(): t.Setenv modifies the process-global PATH.
 	dir := t.TempDir()
+	// Inject a minimal fake openspec binary so prepareRankedProviderRuntimes
+	// can bootstrap the openspec-propose runtime without requiring the real
+	// openspec executable in $PATH (which is absent on CI runners).
+	binDir := t.TempDir()
+	openspecBin := filepath.Join(binDir, "openspec")
+	fakeScript := `#!/bin/sh
+set -eu
+if [ "$1" = "init" ]; then
+  mkdir -p "$PWD/openspec"
+  printf 'schema: spec-driven\n' > "$PWD/openspec/config.yaml"
+  exit 0
+fi
+printf '{"root":{"path":"%s"},"members":[],"status":[]}\n' "$(dirname "$PWD")"
+`
+	require.NoError(t, os.WriteFile(openspecBin, []byte(fakeScript), 0o755))
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	input := "en\nen\nen\nen\nepic\n.analysis\nbrainstorming::ranked\nopenspec-propose::ranked\nsniper::ranked\n\n"
 	svc := Service{Extractor: rankedWizardExtractor{}, Compiler: nopCompiler{}, WizardPrompter: NewTextPrompter(strings.NewReader(input)), ShimHomeDir: t.TempDir()}
 	require.NoError(t, svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true}))
