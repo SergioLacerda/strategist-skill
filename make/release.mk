@@ -87,7 +87,7 @@ PYTHON ?= $(shell command -v python3 2>/dev/null || command -v python 2>/dev/nul
 
 build-standalone:
 	@test -n "$(PYTHON)" || { echo "python3 (or python) is required to fetch the pinned Node; use 'make install-lite' to skip the embedded runtime" >&2; exit 1; }
-	$(PYTHON) scripts/fetch-node-runtime.py --host
+	"$(PYTHON)" scripts/fetch-node-runtime.py --host
 	GOCACHE=$(GOCACHE) CGO_ENABLED=0 go build -tags strategist_payload -trimpath -ldflags="-s -w -X main.Version=$$(git describe --tags --dirty --always 2>/dev/null || echo dev)" -o bin/strategist ./cmd/strategist
 
 # standalone-smoke proves a payload build installs and passes check with an
