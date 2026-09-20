@@ -95,7 +95,7 @@ func TestCanonicalOpportunityAttackIdentifierHasNoLegacySpelling(t *testing.T) {
 
 	for _, path := range []string{
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "skill.yaml"),
-		filepath.Join(repoRoot(t), ".strategist", "skill.yaml"),
+		filepath.Join(isolatedStrategistDir(t), "skill.yaml"),
 	} {
 		content := readFile(t, path)
 		if strings.Contains(content, "opportunist_attack") {
