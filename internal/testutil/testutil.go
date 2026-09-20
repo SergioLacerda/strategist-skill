@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -62,4 +63,35 @@ func MinimalRoot(t testing.TB, dir string) {
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "roles", "default.yaml"), []byte("name: Default\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "index.yaml"), []byte("load_always: []\nload_by_task_type: {}\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "knowledge.index.yaml"), []byte("sources: []\n"), 0o644))
+}
+
+// RequirePOSIXShell skips a test that fakes an executable with a #!/bin/sh
+// script. Windows cannot exec such a script (no PATHEXT match, no /bin/sh), so
+// the real exec path is covered there by the standalone payload smoke instead.
+func RequirePOSIXShell(t *testing.T) {
+	t.Helper()
+	skipOnWindows(t, runtime.GOOS, "fakes an executable with a POSIX shell script; covered on Windows by the standalone payload smoke")
+}
+
+// SkipOnWindowsReadDirOfFile skips a test that relies on os.ReadDir failing
+// for a regular file: on Windows that is reported as "path not found", which
+// the callers deliberately treat as an absent directory.
+func SkipOnWindowsReadDirOfFile(t *testing.T) {
+	t.Helper()
+	skipOnWindows(t, runtime.GOOS, "os.ReadDir on a regular file reports not-exist on Windows, which callers tolerate by design")
+}
+
+// SetHome points the home-directory lookup at dir on every OS (HOME on Unix,
+// USERPROFILE on Windows). An empty dir makes the lookup fail everywhere.
+func SetHome(t *testing.T, dir string) {
+	t.Helper()
+	t.Setenv("HOME", dir)
+	t.Setenv("USERPROFILE", dir)
+}
+
+func skipOnWindows(t *testing.T, goos, reason string) {
+	t.Helper()
+	if goos == "windows" {
+		t.Skip(reason)
+	}
 }

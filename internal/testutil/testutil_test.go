@@ -66,3 +66,19 @@ func TestMinimalRoot_WritesExpectedRuntimeFiles(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, testutil.ValidMinimalPersonaYAML(), personaData)
 }
+
+func TestRequirePOSIXShell_AllowsPOSIXHosts(t *testing.T) {
+	testutil.RequirePOSIXShell(t)
+}
+
+func TestSkipOnWindowsReadDirOfFile_AllowsUnixHosts(t *testing.T) {
+	testutil.SkipOnWindowsReadDirOfFile(t)
+}
+
+func TestSetHome_SetsPortableHomeVariables(t *testing.T) {
+	dir := t.TempDir()
+	testutil.SetHome(t, dir)
+
+	assert.Equal(t, dir, os.Getenv("HOME"))
+	assert.Equal(t, dir, os.Getenv("USERPROFILE"))
+}

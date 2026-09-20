@@ -1,6 +1,7 @@
 package install
 
 import (
+	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -19,7 +20,7 @@ func TestResolveCustomSkillAvailabilityUnavailableForUnknownID(t *testing.T) {
 
 func TestResolveCustomSkillAvailabilityAvailableWhenInstalledUnderHome(t *testing.T) {
 	homeDir := t.TempDir()
-	t.Setenv("HOME", homeDir)
+	testutil.SetHome(t, homeDir)
 	skillDir := filepath.Join(homeDir, claudeDirName, installedProvidersDirName, "my-team-skill")
 	require.NoError(t, os.MkdirAll(skillDir, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(skillDir, "SKILL.md"),
@@ -31,7 +32,7 @@ func TestResolveCustomSkillAvailabilityAvailableWhenInstalledUnderHome(t *testin
 }
 
 func TestResolveCustomSkillAvailabilityUnavailableWhenHomeDirUnresolvable(t *testing.T) {
-	t.Setenv("HOME", "")
+	testutil.SetHome(t, "")
 
 	availability := resolveCustomSkillAvailability("whatever")
 	assert.False(t, availability.Available)
@@ -71,7 +72,7 @@ func TestCheckCustomSkillAvailabilityPausesOnUnresolvableCustomID(t *testing.T) 
 
 func TestCheckCustomSkillAvailabilityAllowsResolvableWorkspaceSkill(t *testing.T) {
 	homeDir := t.TempDir()
-	t.Setenv("HOME", homeDir)
+	testutil.SetHome(t, homeDir)
 	skillDir := filepath.Join(homeDir, claudeDirName, installedProvidersDirName, "my-team-skill")
 	require.NoError(t, os.MkdirAll(skillDir, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(skillDir, "SKILL.md"),

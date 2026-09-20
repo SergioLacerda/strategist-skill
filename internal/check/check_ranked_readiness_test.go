@@ -1,6 +1,7 @@
 package check
 
 import (
+	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -147,6 +148,7 @@ providers:
 }
 
 func TestRunRankedRuntimeHealthcheckReportsFailureAndSuccess(t *testing.T) {
+	testutil.RequirePOSIXShell(t)
 	runtimeRoot := filepath.Join(t.TempDir(), "openspec")
 	require.NoError(t, os.MkdirAll(runtimeRoot, 0o755))
 	semanticRoot := filepath.Dir(runtimeRoot)
@@ -166,6 +168,7 @@ func TestRunRankedRuntimeHealthcheckReportsFailureAndSuccess(t *testing.T) {
 }
 
 func TestRunRankedRuntimeHealthcheckRejectsSemanticRootMismatch(t *testing.T) {
+	testutil.RequirePOSIXShell(t)
 	runtimeRoot := t.TempDir()
 	script := filepath.Join(t.TempDir(), "openspec")
 	require.NoError(t, os.WriteFile(script, []byte("#!/bin/sh\nprintf '{\"root\":{\"path\":\"/wrong/root\"}}'"), 0o755))
@@ -208,6 +211,7 @@ func TestRunRankedRuntimeHealthcheckRealOpenSpecPathForms(t *testing.T) {
 // declared runtime root is relative. A fake provider keeps this covered on
 // hosts without an openspec binary.
 func TestRunRankedRuntimeHealthcheckAcceptsRelativeRootWithAbsoluteReport(t *testing.T) {
+	testutil.RequirePOSIXShell(t)
 	base := t.TempDir()
 	semanticRoot := filepath.Join(base, ".strategist")
 	require.NoError(t, os.MkdirAll(filepath.Join(semanticRoot, "openspec"), 0o755))

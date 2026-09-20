@@ -3,6 +3,7 @@
 package spec_test
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -105,24 +106,42 @@ func TestConfidenceProducerRoleContractsDeclareCoverageBehavior(t *testing.T) {
 	}
 }
 
-func TestConfidenceProducerContractsPublishCLIAndRuntimeParity(t *testing.T) {
+// confidenceProducerContracts are the boundary contracts that must publish the
+// `strategist metrics record` producer command.
+var confidenceProducerContracts = []string{
+	"roles/ranger.yaml",
+	"roles/archivist.yaml",
+	"roles/sniper.yaml",
+	"internal_skills/response-critic/skill.yaml",
+	"contracts/machine/scout-routing.yaml",
+	"contracts/machine/mission-quality.yaml",
+}
+
+func TestConfidenceProducerContractsPublishCLI(t *testing.T) {
 	t.Parallel()
 	root := repoRoot(t)
-	for _, rel := range []string{
-		"roles/ranger.yaml",
-		"roles/archivist.yaml",
-		"roles/sniper.yaml",
-		"internal_skills/response-critic/skill.yaml",
-		"contracts/machine/scout-routing.yaml",
-		"contracts/machine/mission-quality.yaml",
-	} {
+	for _, rel := range confidenceProducerContracts {
+		defaults := readFile(t, filepath.Join(root, "internal", "embed", "defaults", rel))
+		if !strings.Contains(defaults, "strategist metrics record") {
+			t.Fatalf("%s does not publish the CLI producer", rel)
+		}
+	}
+}
+
+// TestConfidenceProducerContractsRuntimeParityWhenInstalled checks the local
+// .strategist mirror only when it exists: .strategist is git-ignored, so CI
+// runners do not have it (same rule as the other WhenPresent parity tests).
+func TestConfidenceProducerContractsRuntimeParityWhenInstalled(t *testing.T) {
+	t.Parallel()
+	root := repoRoot(t)
+	if _, err := os.Stat(filepath.Join(root, ".strategist")); os.IsNotExist(err) {
+		t.Skip(".strategist runtime not installed in this workspace")
+	}
+	for _, rel := range confidenceProducerContracts {
 		defaults := readFile(t, filepath.Join(root, "internal", "embed", "defaults", rel))
 		mirror := readFile(t, filepath.Join(root, ".strategist", rel))
 		if defaults != mirror {
 			t.Fatalf("confidence producer mirror drift for %s", rel)
-		}
-		if !strings.Contains(defaults, "strategist metrics record") {
-			t.Fatalf("%s does not publish the CLI producer", rel)
 		}
 	}
 }

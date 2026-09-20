@@ -1,6 +1,7 @@
 package install
 
 import (
+	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -57,6 +58,7 @@ func TestPrepareEmbedded_WritesCatalogMirrorsAndLock(t *testing.T) {
 }
 
 func TestPrepareEmbedded_IngestErrorPropagates(t *testing.T) {
+	testutil.SkipOnWindowsReadDirOfFile(t)
 	t.Parallel()
 
 	defaultsRoot := t.TempDir()

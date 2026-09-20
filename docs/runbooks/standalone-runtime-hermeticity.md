@@ -89,5 +89,11 @@ it without OpenSpec, Node, `npm`, or anything on `PATH`.
   to prove install and check succeed with an empty `PATH`.
 - **Windows.** The payload paths and the Windows environment allow-list
   (`SystemRoot`, `TEMP`, `TMP`, `ComSpec`, `PATHEXT`) are covered by
-  platform-neutral tests and by cross-compilation; a run on a Windows machine
-  is still required as acceptance evidence.
+  platform-neutral tests. Tests that fake an executable with a POSIX shell
+  script are skipped on Windows (`testutil.RequirePOSIXShell`); the real exec
+  path is proven there by `scripts/smoke-standalone-install.sh`, which the
+  `test-windows` CI job runs against a payload build with an empty `PATH`.
+  That job is `continue-on-error` until a first green run on a real Windows
+  runner. The Windows binary was also exercised under Wine (install, `init`
+  through the embedded `node.exe`, and `check` all succeeded with no OpenSpec on
+  the system), which is supporting evidence, not a substitute for the CI run.

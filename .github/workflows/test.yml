@@ -58,6 +58,13 @@ jobs:
         shell: bash
         run: go test ./internal/domain ./internal/runtimeenv ./internal/install ./internal/check ./cmd/strategist
 
+      # Real Windows exec path: build with the embedded payload (fetches the
+      # pinned Node for windows/amd64 by digest), then install and check with
+      # an empty PATH. This is the evidence the POSIX-shell test fakes cannot give.
+      - name: Standalone payload smoke (empty PATH)
+        shell: bash
+        run: ./scripts/smoke-standalone-install.sh
+
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 15
