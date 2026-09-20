@@ -14,10 +14,12 @@ import (
 // transition boundary. The challenge is evaluated and recorded before the
 // mission engine is allowed to enter execution.
 type LiveHandoffInput struct {
-	Policy     handoff.Policy
-	Challenges []handoff.Challenge
-	Ack        handoff.Acknowledgment
-	Attempt    int
+	Policy                    handoff.Policy
+	Challenges                []handoff.Challenge
+	Ack                       handoff.Acknowledgment
+	Attempt                   int
+	ConfidenceSummary         *domain.ConfidenceSummary
+	PreviousConfidenceSummary *domain.ConfidenceSummary
 }
 
 // ArchivistToSniper evaluates and persists one live handoff attempt, then
@@ -48,6 +50,9 @@ func ArchivistToSniper(engine *domain.MissionEngine, strategistRoot string, inpu
 	if err := telemetry.AppendHandoffChallenge(telemetry.HandoffChallengeHistoryPath(strategistRoot), record); err != nil {
 		return status, result, fmt.Errorf("live handoff: persist attempt: %w", err)
 	}
+	if err := persistHandoffConfidence(strategistRoot, status.MissionID, input); err != nil {
+		return status, result, fmt.Errorf("live handoff: persist confidence: %w", err)
+	}
 
 	next, err := engine.SubmitHandoff(domain.HandoffOutcome{
 		Attempt:     input.Attempt,
@@ -60,4 +65,51 @@ func ArchivistToSniper(engine *domain.MissionEngine, strategistRoot string, inpu
 		return status, result, fmt.Errorf("live handoff: apply outcome: %w", err)
 	}
 	return next, result, nil
+}
+
+func persistHandoffConfidence(strategistRoot, missionID string, input LiveHandoffInput) error {
+	path := telemetry.ConfidenceHistoryPath(strategistRoot)
+	producer, err := telemetry.NewConfidenceProducerAdapter(path, telemetry.ConfidenceAgentHandoffChallenge, missionID)
+	if err != nil {
+		return fmt.Errorf("create confidence producer: %w", err)
+	}
+	if input.ConfidenceSummary == nil {
+		return recordMissingHandoffConfidence(producer, "confidence_summary_not_supplied")
+	}
+	if err := validateHandoffConfidence(input); err != nil {
+		return err
+	}
+	if input.ConfidenceSummary.MissingRecord {
+		return recordMissingHandoffConfidence(producer, "confidence_summary_missing_record")
+	}
+	return recordHandoffClaims(producer, *input.ConfidenceSummary)
+}
+
+func validateHandoffConfidence(input LiveHandoffInput) error {
+	if err := domain.ValidateConfidenceSummary(*input.ConfidenceSummary); err != nil {
+		return fmt.Errorf("validate confidence summary: %w", err)
+	}
+	if input.PreviousConfidenceSummary == nil {
+		return nil
+	}
+	if err := domain.CompareConfidenceSummaries(*input.PreviousConfidenceSummary, *input.ConfidenceSummary); err != nil {
+		return fmt.Errorf("compare confidence summaries: %w", err)
+	}
+	return nil
+}
+
+func recordMissingHandoffConfidence(producer telemetry.ConfidenceProducerAdapter, reason string) error {
+	if err := producer.RecordMissing("archivist_to_sniper", reason); err != nil {
+		return fmt.Errorf("record missing confidence summary: %w", err)
+	}
+	return nil
+}
+
+func recordHandoffClaims(producer telemetry.ConfidenceProducerAdapter, summary domain.ConfidenceSummary) error {
+	for _, claim := range summary.Claims {
+		if _, err := producer.RecordClaim(claim, summary.Evidence); err != nil {
+			return fmt.Errorf("record confidence claim %q: %w", claim.ID, err)
+		}
+	}
+	return nil
 }

@@ -104,14 +104,16 @@ func TestInstallCmd_DefaultTarget(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chdir(oldWd) })
 	require.NoError(t, os.Chdir(readOnly))
 
-	installTarget = "" // triggers the default "." branch
+	installTarget = "" // triggers the default cwd branch
 	installSilent = true
 	installWizard = false
 	installGlobal = false
 
 	err = installCmd.RunE(installCmd, nil)
 	require.Error(t, err) // extraction into read-only "." fails
-	assert.Equal(t, ".", installTarget)
+	wd, wdErr := os.Getwd()
+	require.NoError(t, wdErr)
+	assert.Equal(t, wd, installTarget) // default "." is normalized to the absolute cwd
 }
 
 // --- root / execute ---

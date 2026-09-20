@@ -57,6 +57,28 @@ certification remains owned by catalog/build/probe evidence. Caches and
 indexes remain reconstructible projections; none may select a binding, repair
 a lock, or promote itself to authority.
 
+## Delegate lifecycle
+
+The Jewelcrafter delegate (`treasure_chest_delegate` in its skill contract) moves
+through the states below. The state is derived from the evidence vector; nothing
+stores it as an authority, and no state is reached by declaring metadata.
+
+| State | Evidence | Boundary result | Invocation |
+| --- | --- | --- | --- |
+| `unwired` | delegate evidence `unknown` (field null or package not imported by Jewelcrafter) | `degraded` / `delegate_unwired` | no |
+| `wired` | delegate `certified`, probe not yet `certified` | `unverified` / `probe_unverified` (or `degraded` / `probe_<state>`) | no |
+| `probed` | delegate and probe `certified`, health not yet `certified` | `unverified` / `health_unverified` (or `degraded` / `health_<state>`) | no |
+| `healthy` | package, identity, provenance, API, delegate, probe and health all `certified` | `ready` / `activation_evidence_verified` | yes |
+| `degraded` | any dimension `failed`, `stale`, `timeout`, `malformed`, `unavailable` or `teardown_failed` after having been better | `degraded` / `<dimension>_<state>` | no |
+| `blocked` | any dimension `blocked`, `unsupported` or `unauthorized` | `blocked` / `<dimension>_<state>` | no |
+
+Transitions are evidence-driven and reversible: losing certified evidence
+returns the boundary to `degraded`, `unverified` or `blocked` without touching
+legacy data (`LegacyDataPreserved` is always true). Today the in-repo stage is
+`unwired`: the delegate path names a real package but Jewelcrafter does not yet
+import and call it. The `treasure_chest_delegate_unwired` failure mode in the
+Jewelcrafter contract stays accurate until that changes.
+
 ## Consequences
 
 The import-boundary test queries direct Go imports (`.Imports`), not transitive

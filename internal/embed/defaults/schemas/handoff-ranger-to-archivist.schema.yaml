@@ -44,6 +44,42 @@ required_fields:
     type: float
     range: [0.0, 1.0]
     required: true
+  confidence_summary:
+    type: object
+    required: true
+    description: >
+      Versioned confidence envelope for claims surfaced by Ranger. This is
+      separate from confidence_score, which remains the route/discovery score.
+      Questions and assertions must remain distinguishable across the handoff;
+      assertion evidence references must resolve before the claim is gate-visible.
+    fields:
+      policy_version:
+        type: string
+        required: true
+      claims:
+        type: list
+        required: true
+        item_fields: [id, statement, agent, correlation_key, claim_kind, confidence_percent, confidence_level, evidence_ids, evidence_classes, risk_level, ground_truth_ref, ground_truth_kind, ground_truth_outcome]
+      open_questions:
+        type: list
+        required: false
+        item_fields: [id, statement, confidence_percent, suggested_resolution]
+      evidence:
+        type: list
+        required: false
+        item_fields: [id, source_ref, class]
+      sample_size:
+        type: integer
+        required: true
+      calibration_status:
+        type: string
+        required: true
+        allowed_values: [no_sample, uncalibrated, observed, calibrated]
+      missing_record:
+        type: boolean
+        required: true
+      violations:
+        type: list
   known_facts:
     type: list
     required: true

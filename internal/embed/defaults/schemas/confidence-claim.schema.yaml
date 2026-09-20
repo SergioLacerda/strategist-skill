@@ -1,0 +1,73 @@
+schema_version: "1"
+description: >
+  Shared confidence envelope for claims emitted by Strategist agents. The
+  percentage is an evidence-backed policy score; it is not an empirical
+  probability unless calibration_status and an explicit ground-truth sample
+  say so.
+
+required_fields:
+  id:
+    type: string
+    required: true
+  statement:
+    type: string
+    required: true
+  agent:
+    type: string
+    required: true
+  correlation_key:
+    type: string
+    required: true
+  claim_kind:
+    type: string
+    required: true
+    allowed_values: [question, assertion]
+  confidence_percent:
+    type: integer
+    required: true
+    range: [0, 100]
+  confidence_level:
+    type: string
+    required: false
+    allowed_values: [low, medium, high]
+    description: "Derived from confidence_percent: 0-59 low, 60-84 medium, 85-100 high."
+  evidence_ids:
+    type: list
+    required: false
+    description: "Assertions require resolvable evidence IDs; questions may omit evidence."
+  evidence_classes:
+    type: list
+    required: false
+    description: "Evidence classes aligned positionally with evidence_ids."
+  risk_level:
+    type: string
+    required: false
+    allowed_values: [low, medium, high]
+  destructive:
+    type: boolean
+    required: false
+  contradictions:
+    type: list
+    required: false
+  sample_size:
+    type: integer
+    required: true
+    range: [0, 2147483647]
+  calibration_status:
+    type: string
+    required: true
+    allowed_values: [no_sample, uncalibrated, observed, calibrated]
+  ground_truth_ref:
+    type: string
+    required: false
+    description: "Required before calibration accuracy or correction claims are emitted."
+  ground_truth_kind:
+    type: string
+    required: false
+    allowed_values: [user_revision, handoff_validation, downstream_verification]
+    description: "Declared source of the ground-truth label; required with ground_truth_ref."
+  ground_truth_outcome:
+    type: string
+    required: false
+    allowed_values: [correct, incorrect, unresolved]
+    description: "Reviewed outcome; required with ground_truth_ref and never inferred from confidence percentage."

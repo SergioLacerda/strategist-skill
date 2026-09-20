@@ -474,3 +474,25 @@ providers:
 	_, errMsg := resolveSlotProvider(dir, "refinement", "openspec-propose")
 	assert.Empty(t, errMsg)
 }
+
+func TestBlockedReadinessErrors_CollapsesIdenticalBlockedDimensions(t *testing.T) {
+	t.Parallel()
+
+	shared := domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: "ranked_runtime_root_mismatch", Detail: "provider=p root=/r"}
+	vector := domain.PluginReadinessVector{Trust: shared, PermissionGrant: shared}
+
+	errs := blockedReadinessErrors("refinement", vector)
+	require.Len(t, errs, 1)
+	assert.Contains(t, errs[0], "trust, permission_grant dimensions")
+	assert.Contains(t, errs[0], "ranked_runtime_root_mismatch")
+}
+
+func TestAbsoluteRootMakesRelativeRootAbsolute(t *testing.T) {
+	dir := t.TempDir()
+	t.Chdir(dir)
+
+	got, err := absoluteRoot(".strategist")
+	require.NoError(t, err)
+	assert.True(t, filepath.IsAbs(got))
+	assert.Equal(t, filepath.Join(dir, ".strategist"), got)
+}

@@ -23,6 +23,27 @@ contract:
       type: array
       required: false
       description: Documentation files Sniper will materialize if analysis is accepted
+    - name: confidence_summary
+      type: object
+      required: false
+      description: >
+        Shared confidence envelope from the handoff. It is advisory gate input;
+        it never substitutes for explicit human acceptance.
+
+  confidence_display:
+    source: machine/confidence-governance.yaml
+    materializer: internal/telemetry.BuildConfidenceGateReview
+    show_distribution: true
+    show_per_agent: true
+    show_claim_kinds: true
+    show_evidence_coverage: true
+    show_sample_and_calibration: true
+    show_violations: true
+    show_missing_and_rejected_records: true
+    low_or_unsupported_assertion: review
+    unavailable_confidence: review
+    empty_history: no_sample
+    policy_percentages_are_not_calibration: true
 
   gate:
     emit_prompt_key: review_prompt
@@ -107,6 +128,12 @@ contract:
     - text: direct repository mutation before acceptance emits reason=pipeline_bypass_detected
       enforced_by: agent_only
     - text: pipeline_bypass_detected must include expected_phase=approval_gate and missing_evidence=approval_gate:analysis_accepted
+      enforced_by: agent_only
+    - text: confidence summary is advisory input and cannot auto-accept, auto-reject, or invoke Sniper
+      enforced_by: agent_only
+    - text: low-confidence or unsupported assertions default to review and remain visible as violations
+      enforced_by: agent_only
+    - text: implementation_handoff items remain separate from documentation_target items at this gate
       enforced_by: agent_only
 
   write_scope: read-only

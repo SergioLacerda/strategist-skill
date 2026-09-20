@@ -21,6 +21,8 @@ type Decision struct {
 	AlternativesRejected []string `yaml:"alternatives_rejected,omitempty"`
 	Supersedes           []string `yaml:"supersedes,omitempty"`
 	Confidence           string   `yaml:"confidence"`
+	ConfidencePercent    *int     `yaml:"confidence_percent,omitempty"`
+	ClaimKind            string   `yaml:"claim_kind,omitempty"`
 	ApprovedAt           string   `yaml:"approved_at,omitempty"`
 }
 
@@ -63,7 +65,39 @@ func ValidateDecision(d Decision) error {
 	}
 	errs = append(errs, validateNamedValue("decision_invalid", "status", d.Status, allowedDecisionStatuses)...)
 	errs = append(errs, validateNamedValue("decision_invalid", "confidence", d.Confidence, allowedConfidenceLevels)...)
+	if err := validateConfidenceCompatibility(d.Confidence, d.ConfidencePercent); err != nil {
+		errs = append(errs, err)
+	}
+	if d.ClaimKind != "" {
+		if d.ConfidencePercent == nil {
+			errs = append(errs, errors.New("decision_invalid: claim_kind requires confidence_percent"))
+		}
+		if _, ok := allowedClaimKinds[d.ClaimKind]; !ok {
+			errs = append(errs, fmt.Errorf("decision_invalid: claim_kind %q is not allowed", d.ClaimKind))
+		}
+	}
 	return errors.Join(errs...)
+}
+
+// ValidateDecisionWithEvidence applies the claim-kind and evidence rules once
+// the caller has the mission's complete evidence set. ValidateDecision remains
+// the scalar/schema validator for backward-compatible callers.
+func ValidateDecisionWithEvidence(d Decision, evidence []Evidence) error {
+	if err := ValidateDecision(d); err != nil {
+		return err
+	}
+	if d.ClaimKind == "" && d.ConfidencePercent == nil {
+		return nil
+	}
+	if d.ConfidencePercent == nil {
+		return errors.New("decision_invalid: confidence_percent is required for claim validation")
+	}
+	claim := ConfidenceClaim{
+		ID: d.ID, Statement: d.Statement, ClaimKind: d.ClaimKind,
+		ConfidencePercent: *d.ConfidencePercent, EvidenceIDs: append([]string(nil), d.EvidenceIDs...),
+		CorrelationKey: d.ID,
+	}
+	return ValidateConfidenceClaim(claim, evidence)
 }
 
 func validateNamedValue(token, field, value string, allowed map[string]struct{}) []error {

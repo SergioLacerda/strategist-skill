@@ -106,6 +106,21 @@ Gate display format:
    score: <0.00–1.00> — <pass|fail>
    gaps:  <must_have_missing / must_not_present items, if any>
 
+🧠 CONFIDENCE (if claims were emitted)
+   policy:       v1 — low 0–59% | medium 60–84% | high 85–100%
+   distribution: low=<n> medium=<n> high=<n>
+   per-agent: <agent>=<sample>/<coverage>/<calibration>, ...
+   claims:       questions=<n> assertions=<n>
+   evidence:     assertion coverage=<0.00–1.00> unsupported=<0.00–1.00>
+   calibration:  status=<no_sample|uncalibrated|observed|calibrated> sample=<n>
+   missing/rejected: missing=<n> rejected=<n> duplicate=<n>
+   violations:   <low/unsupported/contradictory assertions, if any>
+
+Confidence is a review signal, not an approval. Low-confidence or unsupported
+assertions default to `review`, while questions remain visible as questions.
+Policy percentages must not be presented as empirical calibration when the
+sample is `no_sample` or has no declared ground-truth event.
+
 📄 DOCUMENTATION TARGETS (outside <base_path>, if any)
    <path> — <description>
 
@@ -115,6 +130,16 @@ Gate display format:
 
 Is the analysis correct?  (accept / review / reject)
 ```
+
+Confidence cannot invoke Sniper by itself. The existing human
+Approval Gate remains mandatory, and `implementation_handoff` items remain
+outside Sniper even when confidence checks pass; only accepted
+`documentation_target` items may proceed to materialization.
+
+The runtime advisory projection is materialized by
+`internal/telemetry.BuildConfidenceGateReview` from the validated confidence
+history. An empty, malformed, rejected, or incomplete history produces a
+review signal and is never interpreted as approval.
 
 ## Critic at the Gate (W8/P5)
 

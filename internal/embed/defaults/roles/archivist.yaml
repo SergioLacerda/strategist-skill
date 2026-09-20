@@ -41,6 +41,8 @@ must:
   - produce numbered tasks with scope and validation steps
   - declare allowed and forbidden file scope in handoff
   - include all handoff contract fields in the refinement output
+  - validate and preserve the Ranger confidence_summary by correlation_key; do not promote questions to assertions or drop evidence fields
+  - emit confidence_summary for Archivist claims, or an explicit missing_record outcome when no producer evidence exists
   - include opportunity_attack findings in the approval gate response
 
 must_not:

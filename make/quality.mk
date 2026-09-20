@@ -4,7 +4,8 @@
 	coverage-manifest-check \
 	install-gocognit quality-budget-gate \
 	install-govulncheck vuln vuln-ci \
-	cover cover-gate cover-html coverage-badge sync-test-styles-docs test-report
+	cover cover-gate cover-html coverage-badge sync-test-styles-docs \
+	sync-readme-badge coverage-docs-drift-check test-report
 
 # lint is diagnostic-only: it must never rewrite source files.
 lint: fmt-check
@@ -81,4 +82,13 @@ coverage-badge:
 # sync-test-styles-docs synchronizes measured package coverage numbers into docs/test-styles.md.
 sync-test-styles-docs:
 	@bash scripts/sync-test-styles-docs.sh "$(COVERAGE_DIR)" "$(GOCACHE)"
+
+# sync-readme-badge rewrites the static README coverage badge from the measured value.
+sync-readme-badge:
+	@bash scripts/sync-readme-coverage-badge.sh "$(COVERAGE_DIR)" "$(GOCACHE)"
+
+# coverage-docs-drift-check fails (never rewrites) when README.md's badge or
+# docs/test-styles.md differ from measured coverage by more than 1.0 point.
+coverage-docs-drift-check:
+	@bash scripts/check-coverage-docs-drift.sh "$(COVERAGE_DIR)" "$(GOCACHE)"
 

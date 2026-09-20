@@ -2,6 +2,7 @@ package check
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -177,4 +178,52 @@ func TestRunRankedRuntimeHealthcheckRejectsSemanticRootMismatch(t *testing.T) {
 	require.Equal(t, domain.ReadinessBlocked, result.Status)
 	require.Equal(t, "ranked_runtime_root_mismatch", result.ReasonCode)
 	require.Contains(t, result.Detail, "expected")
+}
+
+// Contract test against the real openspec binary so stubs cannot mask its
+// canonical (absolute, symlink-resolved) root.path output.
+func TestRunRankedRuntimeHealthcheckRealOpenSpecPathForms(t *testing.T) {
+	if _, err := exec.LookPath("openspec"); err != nil {
+		t.Skip("openspec binary not available")
+	}
+	base := t.TempDir()
+	realRoot := filepath.Join(base, "real")
+	runtimeRoot := filepath.Join(realRoot, ".strategist", "openspec")
+	require.NoError(t, os.MkdirAll(runtimeRoot, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(runtimeRoot, "config.yaml"), []byte("schema: spec-driven\n"), 0o644))
+	link := filepath.Join(base, "link")
+	require.NoError(t, os.Symlink(realRoot, link))
+	t.Chdir(realRoot)
+
+	for name, root := range map[string]string{
+		"absolute": runtimeRoot,
+		"relative": filepath.Join(".strategist", "openspec"),
+		"symlink":  filepath.Join(link, ".strategist", "openspec"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			result := runRankedRuntimeHealthcheck(root, "openspec-propose")
+			require.Equal(t, domain.ReadinessReady, result.Status, result.Detail)
+		})
+	}
+}
+
+// Drift regression: the provider reports an absolute root.path while the
+// declared runtime root is relative. A fake provider keeps this covered on
+// hosts without an openspec binary.
+func TestRunRankedRuntimeHealthcheckAcceptsRelativeRootWithAbsoluteReport(t *testing.T) {
+	base := t.TempDir()
+	semanticRoot := filepath.Join(base, ".strategist")
+	require.NoError(t, os.MkdirAll(filepath.Join(semanticRoot, "openspec"), 0o755))
+	script := filepath.Join(t.TempDir(), "openspec")
+	require.NoError(t, os.WriteFile(script, []byte("#!/bin/sh\nprintf '{\"root\":{\"path\":\""+semanticRoot+"\"}}'"), 0o755))
+	t.Setenv("PATH", filepath.Dir(script)+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Chdir(base)
+
+	relative := runRankedRuntimeHealthcheck(filepath.Join(".strategist", "openspec"), "openspec-propose")
+	require.Equal(t, domain.ReadinessReady, relative.Status, relative.Detail)
+
+	require.NoError(t, os.MkdirAll(filepath.Join(base, "other", "openspec"), 0o755))
+	wrong := runRankedRuntimeHealthcheck(filepath.Join("other", "openspec"), "openspec-propose")
+	require.Equal(t, domain.ReadinessBlocked, wrong.Status)
+	require.Equal(t, "ranked_runtime_root_mismatch", wrong.ReasonCode)
 }

@@ -28,6 +28,7 @@ docs-generated-gate: build
 	  echo "FAIL: docs/generated/ is out of date — run 'make docs-generate' and commit the diff"; \
 	  exit 1; \
 	}
+	@$(MAKE) coverage-docs-drift-check
 
 contract-consistency-gate:
 	bash scripts/check-contract-consistency.sh

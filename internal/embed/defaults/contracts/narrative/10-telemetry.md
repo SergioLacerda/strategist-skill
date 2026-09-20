@@ -37,6 +37,24 @@ Structured telemetry should preserve, when available:
 - `handoff_challenge.status`
 - `handoff_challenge.critical_failures`
 - `handoff_challenge.types`
+- `confidence.policy_version`
+- `confidence.event_id`
+- `confidence.agent`
+- `confidence.correlation_key`
+- `confidence.claim_kind`
+- `confidence.confidence_level`
+- `confidence.confidence_percent`
+- `confidence.evidence_class`
+- `confidence.evidence_ids`
+- `confidence.evidence_classes`
+- `confidence.sample_size`
+- `confidence.calibration_status`
+- `confidence.ground_truth_ref`
+- `confidence.ground_truth_kind`
+- `confidence.ground_truth_outcome`
+- `confidence.coverage_status`
+- `confidence.missing_reason`
+- `confidence.violation`
 
 ## Scout Event
 
@@ -76,6 +94,18 @@ When Archivist -> Sniper `handoff_verification` is evaluated, telemetry should p
 
 These attributes are diagnostic. They never imply Approval Gate acceptance and never
 authorize Sniper materialization.
+
+Confidence telemetry is comparable across agents only through the shared envelope
+above. Scout's `route_confidence`, critic scores, Mission Quality, timing, and
+handoff rates retain their own meanings and must not be converted into claim
+confidence. Calibration accuracy requires an explicit human revision, handoff
+validation, or downstream verification label; unlabeled records remain
+`uncalibrated`.
+
+Confidence history is owned by the Strategist runtime at
+`.strategist/memory/confidence-records.jsonl`. The v1 calibrated state requires
+at least three reviewed outcomes; observe-mode may report `no_sample`,
+`uncalibrated`, or `observed` without blocking the human gate.
 
 ## Coverage Policy
 

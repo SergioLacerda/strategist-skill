@@ -246,18 +246,24 @@ Useful in CI to ensure that manual configuration edits have not introduced schem
 
 ## version
 
-Displays the binary version.
+Displays the binary version as a single line, with no banner or metrics.
 
 ```
 strategist version
 ```
 
-The version is injected at build time via `-ldflags "-X main.Version=x.y.z"`. In local builds without ldflags, displays `strategist dev`.
+The version is injected at build time via `-ldflags "-X main.Version=x.y.z"` (release builds via goreleaser; `make build` injects `git describe --tags --dirty`).
 
 **Output:**
 ```
-strategist v1.0.0
+V1.0.18
 ```
+
+| Build | Output |
+|-------|--------|
+| Release tag `v1.0.18` | `V1.0.18` |
+| Local build ahead of `v1.0.18` (or dirty tree) | `V1.0.18+` |
+| No version injected (plain `go build`) | `Vdev` |
 
 ---
 

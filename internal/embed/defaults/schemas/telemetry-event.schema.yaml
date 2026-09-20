@@ -38,3 +38,25 @@ fields:
   reason:
     type: string
     required: false
+  confidence:
+    type: object
+    required: false
+    fields:
+      event_id: string
+      policy_version: string
+      agent: string
+      correlation_key: string
+      claim_kind: string
+      confidence_level: string
+      confidence_percent: integer
+      evidence_ids: list
+      evidence_classes: list
+      evidence_class: string
+      sample_size: integer
+      calibration_status: string
+      ground_truth_ref: string
+      ground_truth_kind: string
+      ground_truth_outcome: string
+      coverage_status: string
+      missing_reason: string
+      violation: string

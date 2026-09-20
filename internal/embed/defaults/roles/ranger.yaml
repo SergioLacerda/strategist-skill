@@ -36,6 +36,8 @@ must:
   - separate facts, hypotheses, and ambiguities clearly
   - surface scope_observations (side quests and unexpected items) in the response to the user before finishing
   - include all handoff contract fields in the analysis artifact
+  - emit confidence_summary for every question or assertion; use missing_record=true with reason when confidence evidence is unavailable
+  - preserve claim_kind question/assertion, agent, correlation_key, evidence_ids, evidence_classes, and calibration fields in the Ranger handoff
   - use discovery-artifact.md as format reference
   - when discovery_subtype is evaluation, classify implementation status as
     implemented/partially_implemented/not_implemented and record evaluation_verdict

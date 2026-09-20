@@ -9,11 +9,22 @@ be collapsed into a single green `strategist check` result.
    the selected slot/provider, certification digest and declared runtime.
 3. **Live healthcheck** — the provider command runs from the physical
    `.strategist/openspec` directory and reports the containing `.strategist`
-   directory as its semantic OpenSpec root.
+   directory as its semantic OpenSpec root. The comparison is independent of
+   path spelling: a relative, dotted, trailing-slash or symlinked runtime root
+   is resolved to its physical directory before it is compared with the
+   absolute `root.path` OpenSpec reports. A different directory is still
+   rejected (`ranked_runtime_root_mismatch`).
 4. **Containment** — configuration is directly at
    `.strategist/openspec/config.yaml`; repository-root or nested
    `openspec/config.yaml` is not an accepted substitute, and provider
    subprocesses receive a runtime-scoped environment.
+
+The declared runtime root (`runtime.root` in the provider contract) is a
+canonical slash-separated path under `.strategist/`. Validation normalizes the
+platform separator before checking cleanliness, so the same declaration is
+accepted on Windows and Linux; absolute paths, `..` segments, drive letters and
+non-canonical spellings (`./`, `//`, trailing slash) are rejected on every
+platform.
 
 The boundary is fail-closed: malformed healthcheck output, missing or
 mismatched roots, invalid runtime contracts, digest mismatches, and escaped

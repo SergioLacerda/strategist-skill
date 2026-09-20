@@ -176,3 +176,31 @@ func TestEvaluateMissionQuality_EmptyInput(t *testing.T) {
 		t.Fatal("expected CheckUnsupportedClaims to vacuously pass with no decisions")
 	}
 }
+
+func TestEvaluateMissionQualityValidatesConfidenceClaimAgainstEvidence(t *testing.T) {
+	t.Parallel()
+	in := wellFormedInput()
+	percent := 70
+	in.Decisions[0].ClaimKind = ClaimKindAssertion
+	in.Decisions[0].ConfidencePercent = &percent
+	in.Decisions[0].Confidence = ConfidenceMedium
+	in.Evidence[0].Class = EvidenceClassWeakInference
+	result := EvaluateMissionQuality(in)
+	c := findCheck(t, result, CheckUnsupportedClaims)
+	if c.Passed {
+		t.Fatal("weak evidence must fail the effective confidence validation path")
+	}
+}
+
+func TestEvaluateMissionQualityPreservesQuestionClaim(t *testing.T) {
+	t.Parallel()
+	in := wellFormedInput()
+	percent := 40
+	in.Decisions[0].ClaimKind = ClaimKindQuestion
+	in.Decisions[0].ConfidencePercent = &percent
+	in.Decisions[0].Confidence = ConfidenceLow
+	result := EvaluateMissionQuality(in)
+	if !result.Passed() {
+		t.Fatalf("question claim should remain valid as uncertainty: %+v", result)
+	}
+}

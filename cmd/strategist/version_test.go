@@ -10,19 +10,37 @@ import (
 
 // --- version ---
 
-func TestVersionCmd_PrintsVersion(t *testing.T) {
+func TestDisplayVersion(t *testing.T) {
+	cases := map[string]string{
+		"1.0.18":                   "V1.0.18",
+		"v1.0.18":                  "V1.0.18",
+		"V1.0.18":                  "V1.0.18",
+		"v1.0.18-3-gabc1234":       "V1.0.18+",
+		"v1.0.18-3-gabc1234-dirty": "V1.0.18+",
+		"v1.0.18-dirty":            "V1.0.18+",
+		"1.0.18-dirty":             "V1.0.18+",
+		"v1.0.18-rc1":              "Vdev",
+		"dev":                      "Vdev",
+		"":                         "Vdev",
+		"1.2.3-test":               "Vdev",
+	}
+	for raw, want := range cases {
+		assert.Equal(t, want, displayVersion(raw), "raw=%q", raw)
+	}
+}
+
+func TestVersionCmd_PrintsSingleCleanLine(t *testing.T) {
 	orig := Version
 	t.Cleanup(func() { Version = orig })
-	Version = "1.2.3-test"
+	Version = "1.0.18"
 
 	out := captureStdout(t, func() {
 		versionCmd.Run(versionCmd, nil)
 	})
-	assert.Contains(t, out, "1.2.3-test")
-	assert.Contains(t, out, "strategist")
+	assert.Equal(t, "V1.0.18\n", out)
 }
 
-func TestVersionCmd_EmitsStructuredTelemetry(t *testing.T) {
+func TestVersionCmd_TelemetryIsDebugLevel(t *testing.T) {
 	orig := Version
 	t.Cleanup(func() { Version = orig })
 	Version = "1.2.3-test"
@@ -33,13 +51,19 @@ func TestVersionCmd_EmitsStructuredTelemetry(t *testing.T) {
 	slog.SetDefault(slog.New(h))
 	t.Cleanup(func() { slog.SetDefault(prev) })
 
-	versionCmd.Run(versionCmd, nil)
+	_ = captureStdout(t, func() { versionCmd.Run(versionCmd, nil) })
+	assert.Empty(t, buf.String(), "version must not log at Info level")
 
+	buf.Reset()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	_ = captureStdout(t, func() { versionCmd.Run(versionCmd, nil) })
 	out := buf.String()
 	assert.Contains(t, out, "strategist.component=version")
-	assert.Contains(t, out, "strategist.runtime_mode=cli")
-	assert.Contains(t, out, "strategist.output_profile=default")
 	assert.Contains(t, out, "strategist.version=1.2.3-test")
+}
+
+func TestVersionIsHumanStatusCommand(t *testing.T) {
+	assert.True(t, isHumanStatusCommand(versionCmd))
 }
 
 // --- compile ---

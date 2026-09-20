@@ -42,6 +42,11 @@ fields:
     type: string
     values: [low, medium, high]
     required: true
+  confidence_percent:
+    type: integer
+    range: [0, 100]
+    required: false
+    description: Derived confidence percentage; must agree with confidence.
   valid_until:
     type: string
     format: RFC3339 timestamp

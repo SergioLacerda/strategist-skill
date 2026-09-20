@@ -13,7 +13,10 @@
 ## Confidence
 
 **Score:** {{confidence_score}} (0.0–1.0)
+**Claim confidence:** {{confidence_percent}}% (policy v1: low 0–59, medium 60–84, high 85–100)
+**Claim kind:** {{claim_kind}} (question or assertion)
 **Uncertainty level:** {{uncertainty_level}}
+**Calibration:** {{calibration_status}}; sample={{sample_size}}
 
 **Ambiguities:**
 - {{ambiguity_1}}

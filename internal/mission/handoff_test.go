@@ -29,6 +29,11 @@ func TestArchivistToSniper_PersistsBeforePermittingExecution(t *testing.T) {
 	require.Len(t, records, 1)
 	require.Equal(t, "live-pass", records[0].MissionID)
 	require.True(t, records[0].Passed)
+	confidenceRecords, err := telemetry.ReadConfidenceRecords(telemetry.ConfidenceHistoryPath(root))
+	require.NoError(t, err)
+	require.Len(t, confidenceRecords, 1)
+	require.Equal(t, telemetry.ConfidenceCoverageMissing, confidenceRecords[0].CoverageStatus)
+	require.Equal(t, telemetry.ConfidenceAgentHandoffChallenge, confidenceRecords[0].Agent)
 }
 
 func TestArchivistToSniper_FailureReturnsAndExhaustsWithoutExecution(t *testing.T) {
