@@ -1,0 +1,10 @@
+schema_version: "1"
+status: not_ready
+reviewed_by: ""
+reviewed_at: ""
+compatibility_evidence_ref: ""
+agent_denominators_reconciled: false
+samples_per_agent: {}
+
+# This checked-in baseline is intentionally inadmissible for blocking. Replace
+# it only with a human-reviewed observe-mode record after real samples exist.

@@ -20,8 +20,9 @@ var metricsScoutCmd = &cobra.Command{
 outcomes.jsonl: fallback_rate, unnecessary_pipeline_rate (Phase 1 —
 telemetry.ComputeRouteMetrics). The four reversal-dependent metrics
 (route_accuracy, direct_route_reversal_rate, risk_underclassification_rate,
-user_override_rate) need a reversal ground-truth source that does not exist
-in this workspace yet and are not printed until one does.
+user_override_rate) are computed from reviewed labels in
+.strategist/memory/ground-truth-labels.jsonl and are printed only once at
+least one decision has a label; otherwise calibration_status is no_sample.
 
 Runs cleanly against an empty .strategist/memory/ (no route-decisions.jsonl/
 outcomes.jsonl yet), printing sample_size: 0 rather than erroring.`,
@@ -43,7 +44,31 @@ func runMetricsScout(cmd *cobra.Command, opts metricsScoutOptions) error {
 	if err != nil {
 		return fmt.Errorf("metrics scout: %w", err)
 	}
-	return printRouteMetrics(os.Stdout, telemetry.ComputeRouteMetrics(decisions, outcomes))
+	labels, err := telemetry.ReadGroundTruthLabels(telemetry.GroundTruthLabelHistoryPath(root), telemetry.GroundTruthSubjectRoute)
+	if err != nil {
+		return fmt.Errorf("metrics scout: %w", err)
+	}
+	if err := printRouteMetrics(os.Stdout, telemetry.ComputeRouteMetrics(decisions, outcomes)); err != nil {
+		return err
+	}
+	return printRouteGroundTruthMetrics(os.Stdout, telemetry.ComputeRouteGroundTruthMetrics(decisions, labels))
+}
+
+func printRouteGroundTruthMetrics(w io.Writer, m telemetry.RouteGroundTruthMetrics) error {
+	out := fmt.Sprintf("ground_truth_sample_size: %d\ncalibration_status: %s\n", m.SampleSize, m.CalibrationStatus)
+	if m.SampleSize > 0 {
+		out += fmt.Sprintf(
+			"route_accuracy: %.2f\n"+
+				"direct_route_reversal_rate: %.2f\n"+
+				"risk_underclassification_rate: %.2f\n"+
+				"user_override_rate: %.2f\n",
+			m.RouteAccuracy, m.DirectRouteReversalRate, m.RiskUnderclassificationRate, m.UserOverrideRate,
+		)
+	}
+	if _, err := fmt.Fprint(w, out); err != nil {
+		return fmt.Errorf("metrics scout: write output: %w", err)
+	}
+	return nil
 }
 
 func printRouteMetrics(w io.Writer, m telemetry.RouteMetrics) error {

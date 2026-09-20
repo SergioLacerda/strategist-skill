@@ -47,6 +47,7 @@ lookup by topic fast without moving any file.
 | [0012](0012-jewel-lifecycle-statuses.md) | Jewel lifecycle statuses supersede the active/deprecated model |
 | [0040](0040-treasure-chest-in-repo-isolation-staging.md) | Treasure Chest in-repo isolation staging (Jewelcrafter role) |
 | [0049](0049-atlas-treasure-chest-boundary.md) | Atlas/Treasure Chest staged capability boundary |
+| [0050](0050-confidence-governance-contract.md) | Versioned confidence governance contract |
 
 ### Execution (Sniper)
 

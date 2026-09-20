@@ -1,5 +1,5 @@
 .PHONY: \
-	analysis-structure-gate docs-governance-gate docs-generated-gate docs-links-gate governance-check \
+	analysis-structure-gate docs-governance-gate docs-generated-gate docs-links-gate docs-index-ownership-gate governance-check \
 	convergence-check contract-consistency-gate hooks-install
 
 hooks-install:
@@ -15,6 +15,10 @@ docs-governance-gate:
 # file or directory that does not exist — see scripts/check-doc-links.sh.
 docs-links-gate:
 	bash scripts/check-doc-links.sh
+
+docs-index-ownership-gate:
+	bash scripts/check-doc-index-ownership.sh
+	bash scripts/test-doc-index-ownership.sh
 
 # docs-generated-gate fails when docs/generated/ is missing, or when
 # regenerating it produces a diff against the committed copy — i.e. someone
@@ -36,5 +40,5 @@ contract-consistency-gate:
 convergence-check:
 	@bash scripts/check-convergence.sh
 
-governance-check:
+governance-check: docs-index-ownership-gate
 	@bash scripts/check-governance-redirectors.sh

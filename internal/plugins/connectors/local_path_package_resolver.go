@@ -36,6 +36,28 @@ type skillFrontmatter struct {
 // only identity/digest metadata (ADR-0029 DEC-001: adapter-first, no blind
 // vendoring).
 func ResolveLocalPackage(dir string) (domain.PluginPackage, error) {
+	return resolvePackage(dir, false)
+}
+
+// MaxEmbeddedRuntimeFileBytes caps one file of a build-generated runtime/
+// subtree in an embedded skill package (a bundled CLI is far larger than the
+// prose limit).
+const MaxEmbeddedRuntimeFileBytes = 8 * 1024 * 1024
+
+// embeddedRuntimeDir is the only subtree of an embedded skill package that may
+// exceed domain.MaxPluginManifestBytes per file.
+const embeddedRuntimeDir = "runtime/"
+
+// ResolveEmbeddedPackage is ResolveLocalPackage for maintainer-controlled
+// embedded ingestion: identical rules, except files under runtime/ (the
+// prebuilt provider runtime produced by scripts/build-openspec-runtime.sh)
+// may reach MaxEmbeddedRuntimeFileBytes. Custom client packages never get this
+// allowance; they go through ResolveLocalPackage.
+func ResolveEmbeddedPackage(dir string) (domain.PluginPackage, error) {
+	return resolvePackage(dir, true)
+}
+
+func resolvePackage(dir string, allowRuntime bool) (domain.PluginPackage, error) {
 	skillMDPath := filepath.Join(dir, requiredSkillManifestFile)
 	skillMD, err := os.ReadFile(skillMDPath) //nolint:gosec // G304: dir is an operator-declared ingestion source, not untrusted request input
 	if err != nil {
@@ -53,7 +75,7 @@ func ResolveLocalPackage(dir string) (domain.PluginPackage, error) {
 		return domain.PluginPackage{}, fmt.Errorf("local package %s: %s frontmatter missing required field %q", dir, requiredSkillManifestFile, "name")
 	}
 
-	digest, size, err := digestPackageDirectory(dir)
+	digest, size, err := digestPackageDirectory(dir, allowRuntime)
 	if err != nil {
 		return domain.PluginPackage{}, err
 	}
@@ -110,11 +132,11 @@ func indexOf(s, substr string) int {
 // scripts/, templates/, assets/) in sorted relative-path order, enforcing
 // domain.MaxPluginPathLength and domain.MaxPluginManifestBytes per file, and
 // returns a stable sha256 over path+content pairs plus the total byte size.
-func digestPackageDirectory(dir string) (digest string, totalSize int64, err error) {
+func digestPackageDirectory(dir string, allowRuntime bool) (digest string, totalSize int64, err error) {
 	var entries []fileEntry
 
 	walkErr := filepath.WalkDir(dir, func(path string, d fs.DirEntry, walkErr error) error {
-		entry, size, err := readPackageFile(dir, path, d, walkErr)
+		entry, size, err := readPackageFile(dir, path, d, walkErr, allowRuntime)
 		if err != nil || entry == nil {
 			return err
 		}
@@ -136,33 +158,4 @@ func digestPackageDirectory(dir string) (digest string, totalSize int64, err err
 		h.Write([]byte{0})
 	}
 	return fmt.Sprintf("sha256:%x", h.Sum(nil)), totalSize, nil
-}
-
-type fileEntry struct {
-	relPath string
-	content []byte
-}
-
-func readPackageFile(root, path string, entry fs.DirEntry, walkErr error) (*fileEntry, int64, error) {
-	if walkErr != nil {
-		return nil, 0, walkErr
-	}
-	if entry.IsDir() {
-		return nil, 0, nil
-	}
-	rel, err := filepath.Rel(root, path)
-	if err != nil {
-		return nil, 0, fmt.Errorf("relative path for %q under %q: %w", path, root, err)
-	}
-	if len(rel) > domain.MaxPluginPathLength {
-		return nil, 0, fmt.Errorf("path %q exceeds %d characters", rel, domain.MaxPluginPathLength)
-	}
-	data, err := os.ReadFile(path) //nolint:gosec // G304: root is an operator-declared ingestion source, not untrusted request input
-	if err != nil {
-		return nil, 0, fmt.Errorf("read %q: %w", path, err)
-	}
-	if len(data) > domain.MaxPluginManifestBytes {
-		return nil, 0, fmt.Errorf("file %q exceeds %d bytes", rel, domain.MaxPluginManifestBytes)
-	}
-	return &fileEntry{relPath: filepath.ToSlash(rel), content: data}, int64(len(data)), nil
 }

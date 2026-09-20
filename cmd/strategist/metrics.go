@@ -46,7 +46,11 @@ func runMetricsHandoff(cmd *cobra.Command, opts metricsHandoffOptions) error {
 	if err != nil {
 		return fmt.Errorf("metrics handoff: %w", err)
 	}
-	return printHandoffMetrics(os.Stdout, telemetry.ComputeHandoffMetrics(records))
+	labels, err := telemetry.ReadGroundTruthLabels(telemetry.GroundTruthLabelHistoryPath(root), telemetry.GroundTruthSubjectHandoffApplication)
+	if err != nil {
+		return fmt.Errorf("metrics handoff: %w", err)
+	}
+	return printHandoffMetrics(os.Stdout, telemetry.ApplyHandoffApplicationGroundTruth(telemetry.ComputeHandoffMetrics(records), labels))
 }
 
 func resolveMetricsActionRoot(cmd *cobra.Command, action, explicitRoot string) (string, error) {
@@ -76,11 +80,12 @@ func printHandoffMetrics(w io.Writer, m telemetry.HandoffMetrics) error {
 			"semantic_handoff_loss.recall: %.2f\n"+
 			"semantic_handoff_loss.classification: %.2f\n"+
 			"semantic_handoff_loss.application: %.2f\n"+
-			"sample_size: %d\n",
+			"sample_size: %d\n"+
+			"application_sample_size: %d\n",
 		m.HandoffPassRate, m.FirstAttemptPassRate, m.CriticalConstraintRecall,
 		m.DecisionClassificationAccuracy, m.ScopeViolationRate, m.HandoffRepairRate,
 		m.SemanticLoss.Recall, m.SemanticLoss.Classification, m.SemanticLoss.Application,
-		m.SampleSize,
+		m.SampleSize, m.ApplicationSampleSize,
 	)
 	if _, err := fmt.Fprint(w, out); err != nil {
 		return fmt.Errorf("metrics handoff: write output: %w", err)

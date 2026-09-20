@@ -1,0 +1,90 @@
+{
+  "name": "@fission-ai/openspec",
+  "version": "1.13.0",
+  "description": "AI-native system for spec-driven development",
+  "keywords": [
+    "openspec",
+    "specs",
+    "cli",
+    "ai",
+    "development"
+  ],
+  "homepage": "https://github.com/Fission-AI/OpenSpec",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Fission-AI/OpenSpec"
+  },
+  "license": "MIT",
+  "author": "OpenSpec Contributors",
+  "type": "module",
+  "packageManager": "pnpm@10.34.5",
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "openspec": "./bin/openspec.js"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "schemas",
+    "!dist/**/*.test.js",
+    "!dist/**/__tests__",
+    "!dist/**/*.map"
+  ],
+  "scripts": {
+    "lint": "eslint src/",
+    "build": "node build.js",
+    "generate:skills": "node scripts/generate-skillssh.mjs",
+    "regen:parity-hashes": "node scripts/regen-parity-hashes.mjs",
+    "dev": "tsc --watch",
+    "dev:cli": "pnpm build && node bin/openspec.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
+    "prepare": "node build.js",
+    "prepublishOnly": "pnpm run build",
+    "check:pack-version": "node scripts/pack-version-check.mjs",
+    "release": "pnpm run release:ci",
+    "release:ci": "pnpm run check:pack-version && pnpm exec changeset publish",
+    "changeset": "changeset"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "devDependencies": {
+    "@changesets/changelog-github": "^1.0.0",
+    "@changesets/cli": "^3.0.1",
+    "@types/node": "^20.19.43",
+    "@vitest/ui": "^3.2.6",
+    "eslint": "^10.5.0",
+    "smol-toml": "^1.7.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.65.0",
+    "vitest": "^3.2.6"
+  },
+  "dependencies": {
+    "@inquirer/core": "^11.2.1",
+    "@inquirer/prompts": "^8.5.2",
+    "chalk": "^5.6.2",
+    "commander": "^14.0.0",
+    "diff": "^9.0.0",
+    "cross-spawn": "7.0.6",
+    "fast-glob": "^3.3.3",
+    "ora": "^9.4.1",
+    "yaml": "^2.8.3",
+    "zod": "^4.4.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

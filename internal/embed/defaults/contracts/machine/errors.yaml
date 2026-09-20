@@ -96,6 +96,13 @@ errors:
     action: "fix provider configuration or runtime installation, then rerun strategist check"
     enforced_by: agent_only
 
+  - token: ranked_runtime_executable_missing
+    emit: "check=blocked reason=ranked_runtime_executable_missing"
+    scope: slot
+    reason: "a Ranked provider's runtime executable (for openspec-propose: openspec) is not available to Strategist"
+    action: "install the CLI at the version pinned by the provider contract so it is on PATH, then rerun strategist install or strategist check; see docs/runbooks/standalone-runtime-hermeticity.md"
+    enforced_by: machine_enforced
+
   - token: role_provider_invalid
     emit: "error=role_provider_invalid"
     scope: slot

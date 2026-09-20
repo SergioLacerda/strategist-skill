@@ -33,7 +33,11 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
 - `metrics` — Report metrics computed from Strategist's own runtime memory
   - `confidence` — Report cross-agent confidence metrics
   - `fallback` — Report provider-fallback (ADR-0028) metrics
+  - `gate-outcome` — Record the human Approval Gate outcome as ground truth
   - `handoff` — Report Handoff Challenge governance metrics
+  - `label` — Record a reviewed ground-truth label for a mission
+  - `record` — Record a confidence claim or an explicit missing-record for a boundary
+  - `rollout-check` — Check whether a confidence enforcement mode is admissible
   - `scout` — Report Scout routing metrics
 - `mission` — Report and inspect mission-level facts this binary cannot observe directly
   - `context` — Materialize declared mission context

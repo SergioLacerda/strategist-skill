@@ -69,8 +69,8 @@ include make/release.mk
 include make/web.mk
 include make/docs.mk
 
-ci-lint: fmt-check mod-check vet build quality-budget-gate
+ci-lint: lint-status fmt-check mod-check vet build quality-budget-gate
 
-ci-test: test-all golden convergence-check contract-consistency-gate coverage-manifest-check cover-gate docs-generated-gate docs-links-gate mutation-role-weapon
+ci-test: test-all golden convergence-check contract-consistency-gate coverage-manifest-check cover-gate docs-generated-gate docs-links-gate docs-index-ownership-gate mutation-role-weapon
 
 ci: ci-lint ci-test

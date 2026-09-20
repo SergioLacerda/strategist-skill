@@ -56,6 +56,12 @@ evidence_state_classification:
     discovery_subtype MUST be set.
 
 emit:
+  confidence_record:
+    description: >
+      After route_decision, persist Scout's confidence for the routing boundary:
+      `strategist metrics record --mission <mission_id> --agent scout --claim-file <file>`
+      or `--missing --correlation-key scout-route --reason <why>`. Scout must never
+      finish silently (confidence-governance.yaml#producers). Advisory only.
   on_route_selected:
     format: >
       "[Strategist] phase=intake status=route_selected component=scout

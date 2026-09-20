@@ -29,6 +29,9 @@ canonical:
 
 # Contract
 must:
+  - persist confidence at this boundary before finishing with `strategist metrics record --mission <mission_id> --agent archivist --claim-file <file>`;
+    when no confidence summary exists, emit `--missing --correlation-key <key> --reason <why>` instead; record critic and mission_quality
+    boundaries with their respective agent values when those evaluations run
   - load only the Ranger analysis artifact (do NOT re-read full history)
   - write all conversational/user-facing prose (questions, framing, confirmations —
     anything other than the four written artifact files) in the `chat_language`

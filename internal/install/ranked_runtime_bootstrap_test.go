@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/runtimeenv"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
@@ -176,4 +177,21 @@ func setRankedRuntimeCommandForTest(t *testing.T, fn func(context.Context, strin
 	runRankedRuntimeCommand = func(ctx context.Context, commandDir, name string, args ...string) ([]byte, error) {
 		return fn(ctx, commandDir, name, args)
 	}
+}
+
+func TestPrepareRankedProviderRuntimes_MissingExecutableIsActionable(t *testing.T) {
+	dir := t.TempDir()
+	writeRankedRuntimeFixture(t, dir, "openspec-propose", "refinement", domain.RankedRuntimeContract{
+		Kind: domain.RankedRuntimeOpenSpecRoot, Root: ".strategist/openspec", Bootstrap: "openspec init --profile core --tools codex", Healthcheck: "openspec context --json",
+	})
+	t.Setenv("PATH", t.TempDir())
+
+	err := prepareRankedProviderRuntimes(context.Background(), filepath.Join(dir, ".strategist"))
+	require.Error(t, err)
+	require.ErrorContains(t, err, domain.ReasonRankedRuntimeExecutableMissing)
+	require.ErrorContains(t, err, `"openspec-propose"`)
+	require.ErrorContains(t, err, "standalone-runtime-hermeticity.md")
+
+	var missing *runtimeenv.ExecutableNotFoundError
+	require.ErrorAs(t, err, &missing)
 }

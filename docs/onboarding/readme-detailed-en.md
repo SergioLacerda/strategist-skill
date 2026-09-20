@@ -2,8 +2,8 @@
 
 > Current behavior note (2026-06-26): Strategist now operates as a
 > documentation, diagram, and analysis orchestrator. Sniper remains the executor
-> in the lore, but execution means approved documentation/handoff materialization,
-> not source-code implementation. This detailed onboarding file is being
+> in the lore, but its default execution scope is approved documentation targets;
+> implementation handoffs are reported and require a separate coding task. This detailed onboarding file is being
 > consolidated; when it conflicts with `docs/architecture/mental-model.md`,
 > `docs/configuration.md`, or `.strategist/agent-protocol.md`, those sources win.
 
@@ -556,8 +556,10 @@ After the Archivist completes, Strategist reads `tasks.md` before presenting the
 **If `tasks.md` contains tasks only within `<base_path>/`:**
   presents the gate once with the visible plan.
 
-**If `tasks.md` contains tasks that mutate source code, git state, system config, or non-documentation files:**
-  blocks the mission and returns to Archivist for a documentation-only refinement.
+**If `tasks.md` mixes documentation targets with implementation handoffs:**
+  Sniper materializes only the approved documentation targets and reports the
+  implementation handoffs as out of scope. Source-code, Git, system-config,
+  and other non-documentation mutations require a separate coding task.
 
 The gate also covers pending side quests consolidated by the Archivist — upon approval, the Sniper first executes side quests and then the main plan.
 

@@ -6,8 +6,8 @@ package telemetry
 // FallbackRate and UnnecessaryPipelineRate. The four reversal-dependent
 // metrics (route_accuracy, direct_route_reversal_rate,
 // risk_underclassification_rate, user_override_rate) are out of scope for
-// this type — they need a ground-truth labeling source that does not exist
-// yet.
+// this type — see RouteGroundTruthMetrics, fed by reviewed labels in
+// ground-truth-labels.jsonl.
 type RouteMetrics struct {
 	FallbackRate            float64
 	UnnecessaryPipelineRate float64

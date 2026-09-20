@@ -50,6 +50,7 @@ are recorded in `scripts/coverage-exemptions.tsv`. Edit those sources, not this 
 | `internal/telemetry/sink/otel` | 95% | raised from 68.8% to 100.0% (2026-08-30, full severity-mapping table) - measured 100.0% |
 | `internal/telemetry/sink/slog` | 95% | raised from 68.8% to 100.0% (2026-08-30, full severity-mapping table) - measured 100.0% |
 | `internal/testutil` | 95% | raised from 0.0% to 100.0% (2026-08-30, direct helper tests added; no longer excluded from `make test`) - measured 100.0% |
+| `internal/runtimepayload` | 75% | private runtime payload verification/extraction gate - measured 79.6% (20260920-drift-a-windows-standalone-install) |
 
 ## Reviewed Exemptions
 

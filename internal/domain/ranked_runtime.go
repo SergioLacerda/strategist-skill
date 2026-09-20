@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -16,6 +17,11 @@ type RankedRuntimeContract struct {
 	Root        string `yaml:"root,omitempty"`
 	Bootstrap   string `yaml:"bootstrap,omitempty"`
 	Healthcheck string `yaml:"healthcheck,omitempty"`
+	// Version and NodeVersion pin the runtime identity (the provider CLI and
+	// the Node it runs on). Optional, but when present they are part of the
+	// certification digest: changing either re-certifies the provider.
+	Version     string `yaml:"version,omitempty"`
+	NodeVersion string `yaml:"node_version,omitempty"`
 }
 
 const (
@@ -24,6 +30,21 @@ const (
 	// RankedRuntimeOpenSpecRoot marks a provider backed by an initialized OpenSpec root.
 	RankedRuntimeOpenSpecRoot = "openspec_root"
 )
+
+// ReasonRankedRuntimeExecutableMissing is the cataloged reason code emitted
+// when a Ranked provider's executable cannot be found (see
+// machine/errors.yaml).
+const ReasonRankedRuntimeExecutableMissing = "ranked_runtime_executable_missing"
+
+// RankedRuntimeExecutableMissingMessage explains a missing Ranked provider
+// executable in operator terms. Until a private pinned runtime ships, the
+// executable is resolved from PATH, so the remedy is to provide it there.
+func RankedRuntimeExecutableMissingMessage(provider, executable string) string {
+	return fmt.Sprintf("reason=ranked_runtime_executable_missing: Ranked provider %q needs the %q executable at the version pinned by its contract, but it was not found on PATH. "+
+		"Strategist does not yet ship a private runtime for it; install the pinned CLI so it is on PATH, then rerun. "+
+		"See docs/runbooks/standalone-runtime-hermeticity.md",
+		provider, executable)
+}
 
 // NormalizeRankedRuntime makes an omitted runtime declaration explicit.
 func NormalizeRankedRuntime(runtime RankedRuntimeContract) RankedRuntimeContract {
@@ -47,8 +68,8 @@ func (r RankedRuntimeContract) Validate() error {
 }
 
 func validateNoRuntime(runtime RankedRuntimeContract) error {
-	if runtime.Root != "" || runtime.Bootstrap != "" || runtime.Healthcheck != "" {
-		return fmt.Errorf("runtime kind %q cannot declare root, bootstrap, or healthcheck", runtime.Kind)
+	if runtime.Root != "" || runtime.Bootstrap != "" || runtime.Healthcheck != "" || runtime.Version != "" || runtime.NodeVersion != "" {
+		return fmt.Errorf("runtime kind %q cannot declare root, bootstrap, healthcheck, or pinned versions", runtime.Kind)
 	}
 	return nil
 }
@@ -60,8 +81,15 @@ func validateOpenSpecRuntime(runtime RankedRuntimeContract) error {
 	if runtime.Bootstrap == "" || runtime.Healthcheck == "" {
 		return fmt.Errorf("openspec runtime requires bootstrap and healthcheck")
 	}
+	for name, value := range map[string]string{"version": runtime.Version, "node_version": runtime.NodeVersion} {
+		if value != "" && !pinnedVersion.MatchString(value) {
+			return fmt.Errorf("openspec runtime %s must be an exact MAJOR.MINOR.PATCH version, got %q", name, value)
+		}
+	}
 	return nil
 }
+
+var pinnedVersion = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
 
 // isSafeRuntimeRoot accepts only a canonical slash-separated path under
 // .strategist. The separator is normalized before the cleanliness comparison:

@@ -3,6 +3,7 @@
 package spec_test
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -25,9 +26,27 @@ func TestCoverageManifestCompletenessAcceptsReviewedInventory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("coverage manifest check failed: %v\n%s", err, output)
 	}
-	if !strings.Contains(output, "coverage manifest complete: 43 packages (34 gated, 9 exempt)") {
-		t.Fatalf("missing deterministic completeness summary: %s", output)
+	// Counts come from the reviewed policy files themselves, so adding a
+	// package consistently to the manifest never breaks this contract.
+	root := repoRoot(t)
+	gated := countTSVRows(t, filepath.Join(root, "scripts", "coverage-packages.tsv"))
+	exempt := countTSVRows(t, filepath.Join(root, "scripts", "coverage-exemptions.tsv"))
+	want := fmt.Sprintf("coverage manifest complete: %d packages (%d gated, %d exempt)", gated+exempt, gated, exempt)
+	if !strings.Contains(output, want) {
+		t.Fatalf("missing deterministic completeness summary %q: %s", want, output)
 	}
+}
+
+// countTSVRows counts data rows, ignoring blank lines and # comments.
+func countTSVRows(t *testing.T, path string) int {
+	t.Helper()
+	rows := 0
+	for _, line := range strings.Split(readFile(t, path), "\n") {
+		if trimmed := strings.TrimSpace(line); trimmed != "" && !strings.HasPrefix(trimmed, "#") {
+			rows++
+		}
+	}
+	return rows
 }
 
 func TestCoverageManifestCompletenessReportsStableStaleDiagnostic(t *testing.T) {

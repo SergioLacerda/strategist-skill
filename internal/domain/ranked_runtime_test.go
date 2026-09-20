@@ -120,3 +120,35 @@ func TestOpenSpecRuntimeRootSeparatorForms(t *testing.T) {
 	}
 	require.Error(t, contract.Validate())
 }
+
+func TestRankedRuntimeExecutableMissingMessageIsActionable(t *testing.T) {
+	msg := RankedRuntimeExecutableMissingMessage("openspec-propose", "openspec")
+
+	require.Contains(t, msg, ReasonRankedRuntimeExecutableMissing)
+	require.Contains(t, msg, `"openspec-propose"`)
+	require.Contains(t, msg, `"openspec"`)
+	require.Contains(t, msg, "PATH")
+	require.Contains(t, msg, "docs/runbooks/standalone-runtime-hermeticity.md")
+	require.NotContains(t, msg, "exec:")
+}
+
+func TestRankedRuntimeContractValidatesPinnedIdentity(t *testing.T) {
+	base := RankedRuntimeContract{Kind: RankedRuntimeOpenSpecRoot, Root: ".strategist/openspec", Bootstrap: "openspec init", Healthcheck: "openspec context --json"}
+
+	pinned := base
+	pinned.Version, pinned.NodeVersion = "1.13.0", "22.23.2"
+	require.NoError(t, pinned.Validate())
+	require.NoError(t, base.Validate(), "identity stays optional so unpinned providers keep working")
+
+	for _, bad := range []string{"v1.13.0", "1.13", "latest", "1.13.0 "} {
+		c := base
+		c.Version = bad
+		require.Error(t, c.Validate(), bad)
+		c = base
+		c.NodeVersion = bad
+		require.Error(t, c.Validate(), bad)
+	}
+
+	none := RankedRuntimeContract{Kind: RankedRuntimeNone, Version: "1.0.0"}
+	require.Error(t, none.Validate(), "a provider without a runtime cannot declare a pinned version")
+}

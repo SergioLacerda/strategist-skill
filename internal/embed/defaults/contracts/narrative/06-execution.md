@@ -106,6 +106,9 @@ mention, and it does not execute them.
 
 ## Required Behavior
 
+- before finishing, persist this boundary's confidence: `strategist metrics record --mission <mission_id> --agent sniper --claim-file <file>`,
+  or, when no confidence summary was produced, `strategist metrics record --mission <mission_id> --agent sniper --missing --correlation-key <key> --reason <why>`;
+  never finish silently (see `machine/confidence-governance.yaml#producers`)
 - execute claim protocol before any action
 - never start without explicit approval gate acceptance evidence
 - execute the pre-materialization scan before the first task in the loop

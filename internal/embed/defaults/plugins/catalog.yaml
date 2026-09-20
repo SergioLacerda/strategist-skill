@@ -20,7 +20,7 @@ providers:
       certification_digest: sha256:0e1a2549c47847e3ad779deab356603aa6cff8b1d10aa3cb52848a0633cdcc4f
       ranked_binding_generation: 1
       ranked_binding_status: active
-      host_api_digest: sha256:219b6301194e342c8912d40d00e329da596e19c2af8566e4179fba08792f2de0
+      host_api_digest: sha256:babc725e86167a3a796b6c06514464a56215755506aeb9eb4a32127245fcb28f
       connector_digest: sha256:462e8637dee6cc32c3e256fb1a864401200ca76d2d17ec8cb97e20edb4f16ad0
       test_suite_digest: sha256:ae9ea8e91ef985e4018a5c584174d5f7bcc2347d10821a3302a4638c4d863a42
       policy_digest: sha256:a2e38159e7b9c71f90db430c9b122a278fd0c3de83333b52241acd869fadf629
@@ -92,10 +92,10 @@ providers:
         - archivist
       default: true
       ranked: true
-      certification_digest: sha256:b8893c080fedd09fab62952b65ab074a66418d3837074f1bc09a1601eda59375
+      certification_digest: sha256:3347d054cb8ca2ae7c311ee2dd872b5f1bbb958eb8c5c35b2e5bf8606caf2816
       ranked_binding_generation: 1
       ranked_binding_status: active
-      host_api_digest: sha256:a6887a6307e39e7c97a55b17bf69e65c8d5962cc9b73e9f99e08e0f46155cf5d
+      host_api_digest: sha256:e43c03478aa83a2587446524b81191751dca690071152d6b8598ebc3b91cf316
       connector_digest: sha256:462e8637dee6cc32c3e256fb1a864401200ca76d2d17ec8cb97e20edb4f16ad0
       test_suite_digest: sha256:61bfd55e31ae3ae3501c5f5699e21e8c17873526a3b3ce8b7de2b47d946f1f92
       policy_digest: sha256:a2e38159e7b9c71f90db430c9b122a278fd0c3de83333b52241acd869fadf629
@@ -105,11 +105,13 @@ providers:
         root: .strategist/openspec
         bootstrap: openspec init --profile core --tools codex
         healthcheck: openspec context --json
+        version: 1.13.0
+        node_version: 22.23.2
       upstream_repo: Fission-AI/OpenSpec
       upstream_skill_path: skills/openspec-propose/SKILL.md
-      upstream_version: 1.10.0
-      upstream_commit: 1ebddd17f40dde15dfd28289e4493c3cf05ee9df
-      upstream_content_digest: sha256:c0537ce311115878e7e0a04e6ff4fc6456056f21024079c228b6b24325e38613
+      upstream_version: 1.13.0
+      upstream_commit: 9d4e5974e5c0d9a09b9c6c1e1eb0975e80ec4461
+      upstream_content_digest: sha256:af5f5e5ebd0c8af4ee4498e1f7a3e196395030507e51adb52393e181f73a5c89
       license: MIT
       description: Propose a new change with all artifacts generated in one step. Use when the user wants to quickly describe what they want to build and get a complete proposal with design, specs, and tasks ready for implementation.
       installable: true
@@ -154,7 +156,7 @@ providers:
       certification_digest: sha256:9cc5a46c11978922b2ea916f9da438b580c81cfbba3ea863b24576808e4955b6
       ranked_binding_generation: 1
       ranked_binding_status: active
-      host_api_digest: sha256:03c1549a12ff612efda251c49882942c0ac5cdeaffff624f33dc4fa41cea7c71
+      host_api_digest: sha256:4853034a244d6a58183d211935c22e5a8ea94c8ccc48d71a538e490c5b8a3050
       connector_digest: sha256:462e8637dee6cc32c3e256fb1a864401200ca76d2d17ec8cb97e20edb4f16ad0
       test_suite_digest: sha256:ab8013534d9373fcc289d338814f1fe1c860f57db9ad02d61f177de621c77557
       policy_digest: sha256:a2e38159e7b9c71f90db430c9b122a278fd0c3de83333b52241acd869fadf629

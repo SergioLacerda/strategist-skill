@@ -32,6 +32,8 @@ canonical:
 
 # Contract
 must:
+  - persist confidence at this boundary before finishing with `strategist metrics record --mission <mission_id> --agent ranger --claim-file <file>`;
+    when no confidence summary exists, emit `--missing --correlation-key <key> --reason <why>` instead
   - load mission_contract and respect token_strategy.mode for context budget
   - separate facts, hypotheses, and ambiguities clearly
   - surface scope_observations (side quests and unexpected items) in the response to the user before finishing

@@ -56,3 +56,7 @@ web/landing/dist/
 web/landing/.astro/
 web/landing/coverage/
 .strategist/.upgrade-backups/
+
+# Build-time runtime payload (see scripts/fetch-node-runtime.py)
+.cache/
+internal/runtimepayload/nodepayload/

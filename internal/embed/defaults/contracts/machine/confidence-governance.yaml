@@ -41,6 +41,23 @@ rules:
   - id: execution_separation
     text: Confidence cannot invoke Sniper and implementation_handoff remains separate from documentation_target.
 
+producers:
+  command: "strategist metrics record --mission <id> --agent <agent> (--claim-file <file> | --missing --correlation-key <key> --reason <why>)"
+  boundaries:
+    - {agent: scout, owner: contracts/machine/scout-routing.yaml#emit.confidence_record}
+    - {agent: ranger, owner: narrative/03-discovery.md#required-behavior}
+    - {agent: archivist, owner: narrative/04-refinement.md#required-behavior}
+    - {agent: critic, owner: narrative/04-refinement.md#required-behavior}
+    - {agent: mission_quality, owner: narrative/04-refinement.md#required-behavior}
+    - {agent: handoff_challenge, owner: internal/mission/handoff.go}
+    - {agent: sniper, owner: narrative/06-execution.md#required-behavior}
+  silent_boundary: "A boundary that finishes without a record or an explicit missing-record is a coverage gap; the gate review reports missing records separately."
+  gate_review: "strategist metrics confidence --mission <id> is the gate-time materializer (telemetry.LoadConfidenceGateReview)."
+  ground_truth: >
+    The Approval Gate is the immutable point of human action and the only automatic ground-truth
+    source: `strategist metrics gate-outcome --mission <id> --outcome accepted|revision_requested|rejected --ref <gate event>`.
+    Confidence an agent fills between handoffs is a claim, never a label.
+
 metric_vocabulary:
   shared_fields: [event_id, agent, correlation_key, claim_kind, confidence_level, confidence_percent, evidence_ids, evidence_class, sample_size, calibration_status, ground_truth_outcome]
   comparable:
@@ -66,6 +83,9 @@ metric_vocabulary:
 rollout:
   enforcement: advisory
   blocking_requires: reviewed_compatibility_evidence
+  blocking_review_file: docs/evidence/confidence-observe-review.yaml
+  check_command: "strategist metrics rollout-check --enforcement blocking --review-file <file>"
+  runbook: docs/runbooks/confidence-observe-review.md
   rollback: >
     Set enforcement back to advisory while preserving confidence records and the
     human Approval Gate. Rollback must not auto-accept or bypass the gate.

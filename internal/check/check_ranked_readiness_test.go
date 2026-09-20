@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -60,11 +61,7 @@ func TestReadRankedRuntimeStateReportsMissingAndInvalidFiles(t *testing.T) {
 }
 
 func TestMatchRankedRuntimeStateReportsMismatchAndMissingBinding(t *testing.T) {
-	state := rankedRuntimeStateCheck{Entries: []struct {
-		Slot           string `json:"slot"`
-		Provider       string `json:"provider"`
-		ContractDigest string `json:"contract_digest"`
-	}{{Slot: "refinement", Provider: "provider", ContractDigest: "sha256:observed"}}}
+	state := rankedRuntimeStateCheck{Entries: []rankedRuntimeStateEntryCheck{{Slot: "refinement", Provider: "provider", ContractDigest: "sha256:observed"}}}
 
 	mismatch := matchRankedRuntimeState(state, "refinement", "provider", "sha256:expected", ".strategist/runtime")
 	require.Equal(t, "ranked_runtime_digest_mismatch", mismatch.ReasonCode)
@@ -226,4 +223,66 @@ func TestRunRankedRuntimeHealthcheckAcceptsRelativeRootWithAbsoluteReport(t *tes
 	wrong := runRankedRuntimeHealthcheck(filepath.Join("other", "openspec"), "openspec-propose")
 	require.Equal(t, domain.ReadinessBlocked, wrong.Status)
 	require.Equal(t, "ranked_runtime_root_mismatch", wrong.ReasonCode)
+}
+
+func TestRunRankedRuntimeHealthcheckReportsMissingExecutable(t *testing.T) {
+	runtimeRoot := filepath.Join(t.TempDir(), "openspec")
+	require.NoError(t, os.MkdirAll(runtimeRoot, 0o755))
+	t.Setenv("PATH", t.TempDir())
+
+	got := runRankedRuntimeHealthcheck(runtimeRoot, "openspec-propose")
+
+	require.Equal(t, domain.ReadinessBlocked, got.Status)
+	require.Equal(t, domain.ReasonRankedRuntimeExecutableMissing, got.ReasonCode)
+	require.Contains(t, got.Detail, `"openspec-propose"`)
+	require.Contains(t, got.Detail, "standalone-runtime-hermeticity.md")
+}
+
+func writePrivateNode(t *testing.T, strategist string) rankedRuntimeStatePrivate {
+	t.Helper()
+	dir := filepath.Join(strategist, "weapon-runtime", "openspec-propose", "node", "bin")
+	require.NoError(t, os.MkdirAll(dir, 0o755))
+	body := "#!/bin/sh\nprintf '{\"root\":{\"path\":\"%s\"}}' \"${PWD%/*}\"\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "node"), []byte(body), 0o755))
+	return rankedRuntimeStatePrivate{
+		Node:   "weapon-runtime/openspec-propose/node/bin/node",
+		Script: "weapon-runtime/openspec-propose/openspec/openspec.js",
+	}
+}
+
+func TestPrivateRankedRuntimeHealthcheckRunsWithoutHostOpenSpec(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake Node is a POSIX shell script")
+	}
+	strategist := t.TempDir()
+	runtimeRoot := filepath.Join(strategist, "openspec")
+	require.NoError(t, os.MkdirAll(runtimeRoot, 0o755))
+	private := writePrivateNode(t, strategist)
+	t.Setenv("PATH", t.TempDir())
+
+	got := runPrivateRankedRuntimeHealthcheck(strategist, runtimeRoot, "openspec-propose", private)
+
+	require.Equal(t, domain.ReadinessReady, got.Status, got.Detail)
+	require.Equal(t, "ranked_runtime_healthy", got.ReasonCode)
+}
+
+func TestPrivateRankedRuntimeHealthcheckReportsMissingRuntimeAndEscapes(t *testing.T) {
+	strategist := t.TempDir()
+	runtimeRoot := filepath.Join(strategist, "openspec")
+	require.NoError(t, os.MkdirAll(runtimeRoot, 0o755))
+
+	missing := runPrivateRankedRuntimeHealthcheck(strategist, runtimeRoot, "openspec-propose",
+		rankedRuntimeStatePrivate{Node: "weapon-runtime/openspec-propose/node/bin/node", Script: "weapon-runtime/openspec-propose/openspec/openspec.js"})
+	require.Equal(t, domain.ReadinessBlocked, missing.Status)
+	require.Equal(t, domain.ReasonRankedRuntimeExecutableMissing, missing.ReasonCode)
+
+	for _, bad := range []rankedRuntimeStatePrivate{
+		{Node: "../outside/node", Script: "weapon-runtime/x.js"},
+		{Node: "/abs/node", Script: "weapon-runtime/x.js"},
+		{Node: "openspec/node", Script: "weapon-runtime/x.js"},
+	} {
+		escaped := runPrivateRankedRuntimeHealthcheck(strategist, runtimeRoot, "openspec-propose", bad)
+		require.Equal(t, domain.ReadinessBlocked, escaped.Status, bad.Node)
+		require.Equal(t, "ranked_runtime_state_invalid", escaped.ReasonCode, bad.Node)
+	}
 }

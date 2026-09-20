@@ -11,7 +11,8 @@ import (
 )
 
 type metricsConfidenceOptions struct {
-	Root string
+	Root    string
+	Mission string
 }
 
 var metricsConfidenceCmd = &cobra.Command{
@@ -28,12 +29,33 @@ func runMetricsConfidence(cmd *cobra.Command, opts metricsConfidenceOptions) err
 	if err != nil {
 		return err
 	}
-	records, diagnostics, err := telemetry.ReadConfidenceRecordsWithDiagnostics(telemetry.ConfidenceHistoryPath(root))
+	review, err := telemetry.LoadConfidenceGateReview(root, opts.Mission)
 	if err != nil {
 		return fmt.Errorf("metrics confidence: %w", err)
 	}
-	review := telemetry.BuildConfidenceGateReview(records, diagnostics)
-	return printConfidenceMetrics(os.Stdout, review)
+	if err := printConfidenceMetrics(os.Stdout, review); err != nil {
+		return err
+	}
+	return printGateOutcome(os.Stdout, root, opts.Mission)
+}
+
+// printGateOutcome shows the human gate outcome beside the advisory review
+// when a mission is selected; it is context, never an approval.
+func printGateOutcome(w io.Writer, root, missionID string) error {
+	if missionID == "" {
+		return nil
+	}
+	outcome, err := telemetry.GateOutcomeFor(root, missionID)
+	if err != nil {
+		return fmt.Errorf("metrics confidence: %w", err)
+	}
+	if outcome == "" {
+		outcome = "none"
+	}
+	if _, err := fmt.Fprintf(w, "gate_outcome: %s\n", outcome); err != nil {
+		return fmt.Errorf("metrics confidence: write output: %w", err)
+	}
+	return nil
 }
 
 func printConfidenceMetrics(w io.Writer, review telemetry.ConfidenceGateReview) error {
@@ -99,6 +121,7 @@ func printConfidenceMetrics(w io.Writer, review telemetry.ConfidenceGateReview) 
 func init() {
 	opts := metricsConfidenceOptions{}
 	metricsConfidenceCmd.Flags().StringVar(&opts.Root, flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
+	metricsConfidenceCmd.Flags().StringVar(&opts.Mission, "mission", "", "scope the review to one mission (used at the Approval Gate)")
 	metricsConfidenceCmd.RunE = func(cmd *cobra.Command, _ []string) error {
 		return runMetricsConfidence(cmd, opts)
 	}

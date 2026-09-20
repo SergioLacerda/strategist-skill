@@ -1,11 +1,23 @@
 .PHONY: \
-	lint lint-fix complexity-report go-file-size-report \
+	lint lint-fix lint-status complexity-report go-file-size-report \
 	mutation-role-weapon \
 	coverage-manifest-check \
 	install-gocognit quality-budget-gate \
 	install-govulncheck vuln vuln-ci \
 	cover cover-gate cover-html coverage-badge sync-test-styles-docs \
 	sync-readme-badge coverage-docs-drift-check test-report
+
+# lint-status makes lint verifiability explicit: when golangci-lint is absent
+# the gate prints "lint: not verified" instead of passing silently. CI sets
+# LINT_REQUIRED=1 (or runs the golangci-lint action) so absence there fails.
+lint-status:
+	@if [ -x "$(GOLANGCI_LINT)" ] || command -v "$(GOLANGCI_LINT)" >/dev/null 2>&1; then \
+		echo "lint: golangci-lint available ($(GOLANGCI_LINT)); run 'make lint' to verify"; \
+	elif [ "$(LINT_REQUIRED)" = "1" ]; then \
+		echo "::error::lint: not verified - golangci-lint not found and LINT_REQUIRED=1" >&2; exit 1; \
+	else \
+		echo "lint: not verified (golangci-lint not installed; set LINT_REQUIRED=1 to make this fail)"; \
+	fi
 
 # lint is diagnostic-only: it must never rewrite source files.
 lint: fmt-check

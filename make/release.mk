@@ -2,7 +2,7 @@
 	install release-verify release-check install-goreleaser \
 	check-release-artifacts check-release-assets release-reproducible-check \
 	release-test release-dry-run release snapshot clean compile-skill \
-	embed-skills embed-skills-check
+	embed-skills embed-skills-check build-standalone standalone-smoke
 
 install: build
 	mkdir -p "$$HOME/.local/bin" && install -m 755 bin/strategist "$$HOME/.local/bin/strategist"
@@ -63,3 +63,15 @@ clean:
 # Run after editing any file under .strategist/ to keep the fast-path active.
 compile-skill:
 	strategist compile --root .strategist
+
+# build-standalone builds bin/strategist with the private runtime payload for
+# the host target embedded (fetches the pinned Node first; needs network unless
+# .cache/node-runtime is pre-seeded). Ordinary `make build` never embeds it.
+build-standalone:
+	python3 scripts/fetch-node-runtime.py --host
+	CGO_ENABLED=0 go build -tags strategist_payload -trimpath -ldflags='-s -w' -o bin/strategist ./cmd/strategist
+
+# standalone-smoke proves a payload build installs and passes check with an
+# empty PATH (no host openspec or node).
+standalone-smoke:
+	./scripts/smoke-standalone-install.sh

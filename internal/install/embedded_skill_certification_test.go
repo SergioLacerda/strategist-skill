@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -165,4 +166,23 @@ func TestCertifyRankedCandidates_IsDeterministic(t *testing.T) {
 	require.NoError(t, certifyRankedCandidates(&b, defaultsRoot))
 	assert.Equal(t, a.Providers[0].CertificationDigest, b.Providers[0].CertificationDigest)
 	assert.Equal(t, a.Providers[0].HostAPIDigest, b.Providers[0].HostAPIDigest)
+}
+
+func TestRankedCertificationDigestCoversRuntimeIdentityOnlyWhenPinned(t *testing.T) {
+	provider := pluginCatalogProvider{ID: "openspec-propose", Runtime: domain.RankedRuntimeContract{
+		Kind: domain.RankedRuntimeOpenSpecRoot, Root: ".strategist/openspec", Bootstrap: "openspec init", Healthcheck: "openspec context --json",
+	}}
+	unpinned := rankedCertificationDigest(provider, "archivist")
+
+	provider.Runtime.Version, provider.Runtime.NodeVersion = "1.13.0", "22.23.2"
+	pinned := rankedCertificationDigest(provider, "archivist")
+	require.NotEqual(t, unpinned, pinned, "runtime identity must change the certification digest")
+
+	provider.Runtime.Version = "1.13.1"
+	require.NotEqual(t, pinned, rankedCertificationDigest(provider, "archivist"))
+
+	other := pluginCatalogProvider{ID: "brainstorming"}
+	before := rankedCertificationDigest(other, "ranger")
+	other.Runtime = domain.RankedRuntimeContract{Kind: domain.RankedRuntimeNone}
+	require.Equal(t, before, rankedCertificationDigest(other, "ranger"), "providers without identity keep their digest")
 }

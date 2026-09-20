@@ -1,0 +1,3 @@
+# path	purpose	owner	policy
+docs/onboarding/quickstart-concepts.md	same-purpose	docs/README.md	required
+docs/onboarding/readme-en.md	same-purpose	docs/README.md	required

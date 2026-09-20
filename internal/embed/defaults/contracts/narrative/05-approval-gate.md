@@ -137,7 +137,7 @@ outside Sniper even when confidence checks pass; only accepted
 `documentation_target` items may proceed to materialization.
 
 The runtime advisory projection is materialized by
-`internal/telemetry.BuildConfidenceGateReview` from the validated confidence
+`internal/telemetry.LoadConfidenceGateReview` from the persisted, validated confidence
 history. An empty, malformed, rejected, or incomplete history produces a
 review signal and is never interpreted as approval.
 

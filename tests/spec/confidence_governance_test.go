@@ -104,3 +104,25 @@ func TestConfidenceProducerRoleContractsDeclareCoverageBehavior(t *testing.T) {
 		}
 	}
 }
+
+func TestConfidenceProducerContractsPublishCLIAndRuntimeParity(t *testing.T) {
+	t.Parallel()
+	root := repoRoot(t)
+	for _, rel := range []string{
+		"roles/ranger.yaml",
+		"roles/archivist.yaml",
+		"roles/sniper.yaml",
+		"internal_skills/response-critic/skill.yaml",
+		"contracts/machine/scout-routing.yaml",
+		"contracts/machine/mission-quality.yaml",
+	} {
+		defaults := readFile(t, filepath.Join(root, "internal", "embed", "defaults", rel))
+		mirror := readFile(t, filepath.Join(root, ".strategist", rel))
+		if defaults != mirror {
+			t.Fatalf("confidence producer mirror drift for %s", rel)
+		}
+		if !strings.Contains(defaults, "strategist metrics record") {
+			t.Fatalf("%s does not publish the CLI producer", rel)
+		}
+	}
+}

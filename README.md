@@ -9,58 +9,22 @@
 
 A governed AI mission orchestrator. Coordinates multi-phase work through three pluggable slots: Ranger (discovery) → Archivist (refinement) → Sniper (execution).
 
-## Choose your journey
+## Start here
 
-| | |
-|---|---|
-| **[Pragmatic Mode](https://sergiolacerda.github.io/strategist-skill/pragmatic/)** | Direct technical guide: pipeline, neutral role names, 5-minute quickstart, any-LLM support. Recommended for most. |
-| **[Epic Mode](https://sergiolacerda.github.io/strategist-skill/epic/)** | The full narrative experience with the system's lore. |
+In under two minutes, [Quickstart](QUICKSTART.md) takes you from installation
+to `/strategist <your mission prompt>`, the refined package, and the Approval
+Gate. You do not need to choose a mode before the first mission.
 
-> Prefer to read here? Continue below.
+Strategist coordinates discovery, refinement, and approved documentation
+materialization. Acceptance at the Approval Gate authorizes only declared
+documentation targets; source-code, test, script, CI, and configuration work
+remains a separate implementation handoff.
 
-## Installation
+## Documentation paths
 
-Installation is two stages: get the binary, then configure the skill.
-
-### Step 1 — Get the binary
-
-**Recommended (requires Go):**
-
-```bash
-go install github.com/SergioLacerda/strategist-skill/cmd/strategist@latest
-```
-
-**Universal — download a pre-built binary from [GitHub Releases](https://github.com/SergioLacerda/strategist-skill/releases)** (no Go required; works on Linux, macOS, Windows).
-
-<details>
-<summary>Convenience script — Linux / macOS / WSL (optional)</summary>
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.sh | bash
-```
-
-**Windows:** use the GitHub Releases link above to download `strategist-windows-amd64.zip`, extract, and add the binary to your PATH.
-</details>
-
-### Step 2 — Configure the skill
-
-Run once in your target repository:
-
-```bash
-strategist install --wizard
-```
-
-The wizard creates `.strategist/` with the agent config. Accept the defaults to get started.
-
-## Usage
-
-Invoke from any agent after installation:
-
-```
-/strategist <your mission prompt>
-```
-
-See [`docs/`](docs/) for full documentation including [CLI reference](docs/cli-reference.md) and [configuration](docs/configuration.md).
+- [Pragmatic Mode](https://sergiolacerda.github.io/strategist-skill/pragmatic/) — direct technical guide.
+- [Epic Mode](https://sergiolacerda.github.io/strategist-skill/epic/) — the narrative documentation experience.
+- [`docs/`](docs/) — the repository documentation index.
 
 ## Verifying releases
 

@@ -69,7 +69,7 @@ func TestQualityAndSecurityGateContracts(t *testing.T) {
 	golangci := readFile(t, filepath.Join(root, ".golangci.yaml"))
 
 	for _, needle := range []string{
-		"ci-lint: fmt-check mod-check vet build quality-budget-gate",
+		"ci-lint: lint-status fmt-check mod-check vet build quality-budget-gate",
 		"COMPLEXITY_THRESHOLD ?= 7",
 		"GOCOGNIT_VERSION    ?= v1.2.1",
 	} {

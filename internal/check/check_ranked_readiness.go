@@ -3,8 +3,10 @@ package check
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -44,12 +46,32 @@ func rankedCertificationReadiness(root, slot, provider string) (trustCheck, gran
 	return ready, ready
 }
 
+// rankedRuntimeStatePrivate is the private runtime recorded at install time:
+// slash paths relative to the Strategist root.
+type rankedRuntimeStatePrivate struct {
+	Node   string `json:"node"`
+	Script string `json:"script"`
+}
+
+type rankedRuntimeStateEntryCheck struct {
+	Slot           string                     `json:"slot"`
+	Provider       string                     `json:"provider"`
+	ContractDigest string                     `json:"contract_digest"`
+	Runtime        *rankedRuntimeStatePrivate `json:"runtime"`
+}
+
 type rankedRuntimeStateCheck struct {
-	Entries []struct {
-		Slot           string `json:"slot"`
-		Provider       string `json:"provider"`
-		ContractDigest string `json:"contract_digest"`
-	} `json:"entries"`
+	Entries []rankedRuntimeStateEntryCheck `json:"entries"`
+}
+
+// privateRuntimeFor returns the private runtime recorded for slot/provider, if any.
+func (s rankedRuntimeStateCheck) privateRuntimeFor(slot, provider string) *rankedRuntimeStatePrivate {
+	for _, entry := range s.Entries {
+		if entry.Slot == slot && entry.Provider == provider {
+			return entry.Runtime
+		}
+	}
+	return nil
 }
 
 func rankedRuntimeReadiness(root, slot, provider string, stamp domain.CatalogRankedStamp) domain.ReadinessCheck {
@@ -67,6 +89,9 @@ func rankedRuntimeReadiness(root, slot, provider string, stamp domain.CatalogRan
 	runtimeRoot := rankedRuntimeRoot(root, runtime.Root)
 	if result := validateRankedRuntimeRoot(runtimeRoot, provider); !result.Ready() {
 		return result
+	}
+	if private := state.privateRuntimeFor(slot, provider); private != nil {
+		return runPrivateRankedRuntimeHealthcheck(root, runtimeRoot, provider, *private)
 	}
 	return runRankedRuntimeHealthcheck(runtimeRoot, provider)
 }
@@ -123,8 +148,16 @@ func runRankedRuntimeHealthcheck(runtimeRoot, provider string) domain.ReadinessC
 	defer cancel()
 	cmd, err := runtimeenv.Command(ctx, runtimeRoot, "openspec", "context", "--json")
 	if err != nil {
+		var missing *runtimeenv.ExecutableNotFoundError
+		if errors.As(err, &missing) {
+			return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: domain.ReasonRankedRuntimeExecutableMissing, Detail: domain.RankedRuntimeExecutableMissingMessage(provider, missing.Name)}
+		}
 		return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: "ranked_runtime_healthcheck_failed", Detail: fmt.Sprintf("provider=%s root=%s error=%v", provider, runtimeRoot, err)}
 	}
+	return finishRankedRuntimeHealthcheck(cmd, runtimeRoot, provider)
+}
+
+func finishRankedRuntimeHealthcheck(cmd *exec.Cmd, runtimeRoot, provider string) domain.ReadinessCheck {
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: "ranked_runtime_healthcheck_failed", Detail: fmt.Sprintf("provider=%s root=%s error=%v output=%s", provider, runtimeRoot, err, strings.TrimSpace(string(output)))}
@@ -133,4 +166,25 @@ func runRankedRuntimeHealthcheck(runtimeRoot, provider string) domain.ReadinessC
 		return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: "ranked_runtime_root_mismatch", Detail: fmt.Sprintf("provider=%s root=%s error=%v", provider, runtimeRoot, err)}
 	}
 	return domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "ranked_runtime_healthy", Detail: runtimeRoot}
+}
+
+// runPrivateRankedRuntimeHealthcheck runs the healthcheck from the private
+// runtime recorded at install time. It never consults PATH; recorded paths must
+// stay under weapon-runtime/ so a tampered state file cannot point elsewhere.
+func runPrivateRankedRuntimeHealthcheck(root, runtimeRoot, provider string, private rankedRuntimeStatePrivate) domain.ReadinessCheck {
+	node, script, ok := privateRuntimePaths(root, private)
+	if !ok {
+		return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: "ranked_runtime_state_invalid", Detail: fmt.Sprintf("provider=%s private runtime paths must be relative and under weapon-runtime/", provider)}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	cmd, err := runtimeenv.PrivateCommand(ctx, runtimeRoot, node, script, "context", "--json")
+	if err != nil {
+		var missing *runtimeenv.ExecutableNotFoundError
+		if errors.As(err, &missing) {
+			return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: domain.ReasonRankedRuntimeExecutableMissing, Detail: fmt.Sprintf("provider=%s private runtime executable %s is missing; reinstall Strategist to materialize it", provider, private.Node)}
+		}
+		return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: "ranked_runtime_healthcheck_failed", Detail: fmt.Sprintf("provider=%s root=%s error=%v", provider, runtimeRoot, err)}
+	}
+	return finishRankedRuntimeHealthcheck(cmd, runtimeRoot, provider)
 }

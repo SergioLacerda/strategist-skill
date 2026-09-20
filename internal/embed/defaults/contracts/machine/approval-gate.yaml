@@ -32,7 +32,7 @@ contract:
 
   confidence_display:
     source: machine/confidence-governance.yaml
-    materializer: internal/telemetry.BuildConfidenceGateReview
+    materializer: internal/telemetry.LoadConfidenceGateReview   # CLI: strategist metrics confidence --mission <id>
     show_distribution: true
     show_per_agent: true
     show_claim_kinds: true

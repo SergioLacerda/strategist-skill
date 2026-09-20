@@ -36,6 +36,28 @@ jobs:
       - name: Embedded skill catalog drift check
         run: make embed-skills-check
 
+  test-windows:
+    # Standalone clients run on Windows; every other job is ubuntu-only, so the
+    # runtime-root, path-form and install-error paths are otherwise unproven
+    # there (Drift A/B evidence). Kept to the packages that own that behavior.
+    runs-on: windows-latest
+    timeout-minutes: 15
+    # Evidence-only until a first Windows run shows which tests assume a POSIX
+    # shell (fake `openspec` scripts); promote to blocking once green.
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v5
+        with:
+          go-version-file: "go.mod"
+          cache: true
+
+      - name: Windows runtime-path tests
+        shell: bash
+        run: go test ./internal/domain ./internal/runtimeenv ./internal/install ./internal/check ./cmd/strategist
+
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 15

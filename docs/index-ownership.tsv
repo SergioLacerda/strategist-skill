@@ -1,0 +1,8 @@
+# Deterministic docs index ownership contract.
+# path	purpose	owner	policy
+docs/onboarding/quickstart-concepts.md	first-mission-mental-model	docs/README.md	required
+docs/onboarding/readme-en.md	maintained-onboarding-overview	docs/README.md	required
+docs/onboarding/readme-detailed-en.md	detailed-technical-onboarding	docs/README.md	required
+docs/onboarding/light-client-quickstart.md	cli-free-mission-path	docs/README.md	required
+# Explicit exclusions: docs/generated/**, docs/adr/**, and docs/runbooks/**
+# keep their own indexes or provenance and are not entries in this allowlist.

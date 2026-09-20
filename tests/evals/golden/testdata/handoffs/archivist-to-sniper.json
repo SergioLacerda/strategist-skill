@@ -24,6 +24,76 @@
       "required": true,
       "type": "object"
     },
+    "confidence_summary": {
+      "description": "Versioned confidence envelope preserved from Ranger and refined by Archivist. Questions remain questions unless explicitly resolved; assertion evidence references must resolve before the package is presented at the Approval Gate.\n",
+      "fields": {
+        "calibration_status": {
+          "allowed_values": [
+            "no_sample",
+            "uncalibrated",
+            "observed",
+            "calibrated"
+          ],
+          "required": true,
+          "type": "string"
+        },
+        "claims": {
+          "item_fields": [
+            "id",
+            "statement",
+            "agent",
+            "correlation_key",
+            "claim_kind",
+            "confidence_percent",
+            "confidence_level",
+            "evidence_ids",
+            "evidence_classes",
+            "risk_level",
+            "ground_truth_ref",
+            "ground_truth_kind",
+            "ground_truth_outcome"
+          ],
+          "required": true,
+          "type": "list"
+        },
+        "evidence": {
+          "item_fields": [
+            "id",
+            "source_ref",
+            "class"
+          ],
+          "required": false,
+          "type": "list"
+        },
+        "missing_record": {
+          "required": true,
+          "type": "boolean"
+        },
+        "open_questions": {
+          "item_fields": [
+            "id",
+            "statement",
+            "confidence_percent",
+            "resolution_status"
+          ],
+          "required": false,
+          "type": "list"
+        },
+        "policy_version": {
+          "required": true,
+          "type": "string"
+        },
+        "sample_size": {
+          "required": true,
+          "type": "integer"
+        },
+        "violations": {
+          "type": "list"
+        }
+      },
+      "required": true,
+      "type": "object"
+    },
     "design_path": {
       "required": true,
       "type": "string"
