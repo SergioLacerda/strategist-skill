@@ -9,5 +9,12 @@
   ],
   "schema_version": "1",
   "status": "active",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "weapon_contract": {
+    "invocation_evidence": "required",
+    "native_substitution": "forbidden",
+    "participation": "advisory",
+    "role_owner": "ranger",
+    "unavailable_behavior": "report_advisory"
+  }
 }

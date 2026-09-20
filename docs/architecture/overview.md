@@ -1,5 +1,10 @@
 # Architecture — Strategist Skill
 
+The governing rationale for this architecture is documented in
+[`strategist-philosophy.md`](strategist-philosophy.md). This overview describes
+the implementation layout; the philosophy page describes the invariants that
+must survive implementation changes.
+
 **Status:** Accepted
 **Last Updated:** 2026-08-03
 
@@ -249,5 +254,8 @@ Interfaces are satisfied via compile-time verification (`var _ domain.X = Y{}`),
 
 Race detector enabled on core test targets (`make test`, `make spec`, `make integration`).
 Coverage gate thresholds are declared in `scripts/coverage-packages.tsv` and enforced
-by `make cover-gate`; the current gate covers the packages listed in that manifest
-rather than every `internal/` package.
+by `make cover-gate`. Before measuring thresholds, the gate discovers loadable
+production packages under `cmd/...`, `internal/...`, and `treasure-chest/...`, then
+requires each package to have either a threshold row or a reviewed entry in
+`scripts/coverage-exemptions.tsv`. Test packages are outside this inventory;
+omitted, stale, malformed, and exempt entries have distinct deterministic diagnostics.

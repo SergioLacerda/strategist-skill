@@ -27,6 +27,61 @@ func (m Matrix) Evaluate(availableClients map[string]bool) (Report, error) {
 	return Report{SchemaVersion: m.SchemaVersion, MatrixDigest: digest, ClientCount: len(m.Clients), RowCount: len(m.Rows), Results: results}, nil
 }
 
+// EvaluateWithLiveProbes overlays explicit probe observations on the
+// deterministic structural report. Missing observations leave live rows
+// pending; only certified evidence can make a live row pass.
+func (m Matrix) EvaluateWithLiveProbes(availableClients map[string]bool, probes map[string]EvidenceState) (Report, error) {
+	report, err := m.Evaluate(availableClients)
+	if err != nil {
+		return Report{}, err
+	}
+
+	rows := indexRows(m.Rows)
+	if err := validateLiveProbeRows(rows, probes); err != nil {
+		return Report{}, err
+	}
+	if err := applyLiveProbeResults(&report, rows, probes); err != nil {
+		return Report{}, err
+	}
+	return report, nil
+}
+
+func indexRows(rows []Row) map[string]Row {
+	indexed := make(map[string]Row, len(rows))
+	for _, row := range rows {
+		indexed[row.ID] = row
+	}
+	return indexed
+}
+
+func validateLiveProbeRows(rows map[string]Row, probes map[string]EvidenceState) error {
+	for rowID, observed := range probes {
+		row, ok := rows[rowID]
+		if !ok {
+			return fmt.Errorf("conformance live probe: unknown row %q", rowID)
+		}
+		if _, err := EvaluateLiveProbe(row, observed); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func applyLiveProbeResults(report *Report, rows map[string]Row, probes map[string]EvidenceState) error {
+	resultIndexes := make(map[string]int, len(report.Results))
+	for i, result := range report.Results {
+		resultIndexes[result.RowID] = i
+	}
+	for rowID, observed := range probes {
+		result, err := EvaluateLiveProbe(rows[rowID], observed)
+		if err != nil {
+			return err
+		}
+		report.Results[resultIndexes[rowID]] = result
+	}
+	return nil
+}
+
 func ensureClientsAvailable(clients []Client, available map[string]bool) error {
 	for _, client := range clients {
 		if !available[client.ID] {

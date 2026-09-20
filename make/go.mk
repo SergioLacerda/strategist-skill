@@ -6,10 +6,10 @@
 	bench validate-fixtures
 
 fmt:
-	gofmt -w .
+	git ls-files -co --exclude-standard -z '*.go' | xargs -0r gofmt -w
 
 fmt-check:
-	@files="$$(gofmt -l .)"; \
+	@files="$$(git ls-files -co --exclude-standard -z '*.go' | xargs -0r gofmt -l)"; \
 	if [ -n "$$files" ]; then \
 		echo "fmt-check: unformatted Go files detected:" >&2; \
 		printf '%s\n' "$$files" | sed 's/^/  - /' >&2; \

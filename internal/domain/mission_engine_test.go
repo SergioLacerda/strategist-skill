@@ -74,6 +74,24 @@ func TestMissionEngine_RestoresAndRejectsInvalidSnapshots(t *testing.T) {
 	}
 }
 
+func TestMissionEngine_RestoredEarlyPhaseAdvancesThroughFacade(t *testing.T) {
+	engine, err := RestoreMission(MissionEngineStatus{
+		MissionID: "m-restore-early",
+		Phase:     PhaseDiscovery,
+		State:     StateInit,
+	})
+	require.NoError(t, err)
+
+	status, err := engine.Submit(MissionEventDiscoveryDone)
+	require.NoError(t, err)
+	require.Equal(t, PhaseRefinement, status.Phase)
+	require.Equal(t, StateRefinement, status.State)
+
+	_, err = engine.Submit(MissionEventDiscoveryDone)
+	require.Error(t, err)
+	require.Equal(t, status, engine.Status())
+}
+
 func TestMissionEngine_HandlesRetryRevisionAndPermanentBlock(t *testing.T) {
 	engine := missionEngineAtGateAfterRevision(t)
 	failHandoff(t, engine, 1)

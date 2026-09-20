@@ -3,10 +3,11 @@ version: ""
 schema_version: "1"
 status: active
 risk_score: write_analysis
-category: refinement
-canonical_role: archivist
+category: auxiliary
+canonical_role: auxiliary
 roles:
-  - archivist
+  - auxiliary
+scratch_root: runtime
 
 description: >
   Use when you have a spec or requirements for a multi-step task, before touching code

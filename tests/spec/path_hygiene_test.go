@@ -234,6 +234,7 @@ func TestRankedProviderAdaptersDeclareWorkspaceArtifactBoundary(t *testing.T) {
 	providers := []string{
 		"skills/brainstorming/SKILL.md",
 		"skills/openspec-propose/SKILL.md",
+		"skills/writing-plans/SKILL.md",
 	}
 	for _, rel := range providers {
 		rel := rel
@@ -247,6 +248,9 @@ func TestRankedProviderAdaptersDeclareWorkspaceArtifactBoundary(t *testing.T) {
 				}
 				if !strings.Contains(content, "<base_path>") {
 					t.Fatalf("%s adapter %s must resolve final artifacts from <base_path>", rel, name)
+				}
+				if rel == "skills/writing-plans/SKILL.md" && !strings.Contains(content, ".strategist/weapon-runtime/writing-plans/") {
+					t.Fatalf("%s adapter %s must declare its Strategist-private runtime scratch path", rel, name)
 				}
 			}
 			if source != runtime {

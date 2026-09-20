@@ -48,6 +48,12 @@ func TestValidateRuntimeBindingsRejectsRoleMismatch(t *testing.T) {
 	require.Contains(t, failures[0].Error(), "role affinity")
 }
 
+func TestValidateSkillManifestRejectsAuxiliaryToolAsMissionProvider(t *testing.T) {
+	failures := validateSkillManifest("refinement", "archivist", "writing-plans", []byte("risk_score: write_analysis\ncanonical_role: auxiliary\nroles: [auxiliary]\n"))
+	require.Len(t, failures, 1)
+	require.Contains(t, failures[0].Error(), "role affinity")
+}
+
 func TestValidateRuntimeBindingsRejectsUncertifiedRankedMode(t *testing.T) {
 	root := writeValidationRoot(t, `
   - slot: discovery

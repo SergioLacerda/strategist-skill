@@ -55,7 +55,7 @@ taxonomy:
     - id: openspec-propose
       bound_to_slot: refinement
   abilities:
-    - id: opportunist_attack
+    - id: opportunity_attack
       runs_in: refinement (Archivist, post-refinement, before completion_signal)
       outputs: [adr, runbook, treasure_chest]
       source: contracts/machine/opportunity-attack.yaml

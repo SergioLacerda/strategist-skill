@@ -2,7 +2,6 @@ package install
 
 import (
 	"bytes"
-	"os"
 	"strings"
 	"testing"
 
@@ -11,23 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-// captureStdout replaces os.Stdout with a pipe for the duration of fn and
-// returns whatever was written to it.
-func captureStdout(t *testing.T, fn func()) string {
-	t.Helper()
-	r, w, err := os.Pipe()
-	require.NoError(t, err)
-	old := os.Stdout
-	os.Stdout = w
-	fn()
-	require.NoError(t, w.Close())
-	os.Stdout = old
-	var buf bytes.Buffer
-	_, err = buf.ReadFrom(r)
-	require.NoError(t, err)
-	return buf.String()
-}
 
 func TestCompatibleProviderOptionsPrefersDefaultCompatibleCandidate(t *testing.T) {
 	t.Parallel()
@@ -162,8 +144,7 @@ func TestPromptExecutionSlot_ResolvesRankedAndCustomModes(t *testing.T) {
 }
 
 func TestPrintExcludedCandidatesPrintsEachIDWithItsReasons(t *testing.T) {
-	// No t.Parallel(): captureStdout swaps the process-global os.Stdout, which
-	// is unsafe to do concurrently with other tests.
+	t.Parallel()
 	excluded := []excludedProviderOption{
 		{
 			id: "sdd-ask",
@@ -180,15 +161,17 @@ func TestPrintExcludedCandidatesPrintsEachIDWithItsReasons(t *testing.T) {
 		},
 	}
 
-	out := captureStdout(t, func() { printExcludedCandidates(excluded) })
+	var buf bytes.Buffer
+	require.NoError(t, printExcludedCandidatesTo(&buf, excluded))
+	out := buf.String()
 
 	assert.Contains(t, out, "sdd-ask: excluded — role_mismatch: provider declares roles [sniper], role contract is \"archivist\"")
 	assert.Contains(t, out, "batata: excluded — unsupported_handoff_schema: batata does not declare support for handoff schema x; unsupported_role_contract_version: batata does not declare support for role contract v1")
 }
 
 func TestPrintExcludedCandidatesNoopOnEmptyInput(t *testing.T) {
-	// No t.Parallel(): captureStdout swaps the process-global os.Stdout, which
-	// is unsafe to do concurrently with other tests.
-	out := captureStdout(t, func() { printExcludedCandidates(nil) })
-	assert.Empty(t, out)
+	t.Parallel()
+	var buf bytes.Buffer
+	require.NoError(t, printExcludedCandidatesTo(&buf, nil))
+	assert.Empty(t, buf.String())
 }

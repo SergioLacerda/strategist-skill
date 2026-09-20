@@ -123,6 +123,6 @@ content_by_lang:
     analysis_delivered_result: >
       [{mission_id}] Analysis delivered: {artifact_path}. Documentation pending review acceptance.
     mission_complete: >
-      [{mission_id}] Sprint done. status={status} artifacts={artifacts} next_action={next_action}
+      [{mission_id}] Strategist has completed this mission; it is closed. status={status} artifacts={artifacts} next_action={next_action}. Later direct requests are handled independently and do not require leaving or disabling Strategist. No other skill, command, or CLI inherits this mission's approval state.
     mission_metrics: >
       [Strategist] metrics mission={mission_id} t_start_to_intake_ms={t_start_to_intake_ms} t_intake_to_ranger_ms={t_intake_to_ranger_ms} total_wall_time_ms={total_wall_time_ms} tokens_in={tokens_in} tokens_out={tokens_out} lines_emitted={lines_emitted}

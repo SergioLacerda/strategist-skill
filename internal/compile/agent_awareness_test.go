@@ -159,6 +159,27 @@ func TestAgentAwareness(t *testing.T) {
 		assert.Equal(t, string(first), string(second), "second run must produce identical output")
 	})
 
+	t.Run("requires explicit Strategist invocation", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		for _, target := range seedTargets {
+			path := filepath.Join(dir, target.relPath)
+			require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+			require.NoError(t, os.WriteFile(path, []byte("# Commands\n"), 0o644))
+		}
+
+		require.NoError(t, agentAwareness(dir))
+		for _, target := range seedTargets {
+			content, err := os.ReadFile(filepath.Join(dir, target.relPath))
+			require.NoError(t, err)
+			s := string(content)
+			assert.Contains(t, s, "does not activate a\nStrategist mission", target.label)
+			assert.Contains(t, s, "explicitly invokes\nStrategist", target.label)
+			assert.Contains(t, s, "does not invoke a\nprovider, start a mission", target.label)
+			assert.NotContains(t, s, "Strategist is active", target.label)
+		}
+	})
+
 	t.Run("error in one agent does not block others", func(t *testing.T) {
 		t.Parallel()
 		dir := t.TempDir()

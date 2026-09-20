@@ -21,10 +21,33 @@ func generateLegacyProviderManifest(catalog pluginCatalog, providerID string) ([
 	writeLegacyProviderField(&buf, "canonical_role", provider.CanonicalRole)
 	writeLegacyRoles(&buf, provider.Roles)
 	writeLegacyScratchRoot(&buf, provider.ScratchRoot)
+	writeLegacyWeaponContract(&buf, provider.WeaponContract)
 	buf.WriteString("\n")
 	writeLegacyDescription(&buf, provider.Description)
 	writeLegacyAuxiliaryTools(&buf, provider.AuxiliaryTools)
 	return buf.Bytes(), nil
+}
+
+func writeLegacyWeaponContract(buf *bytes.Buffer, contract WeaponContract) {
+	if contract == (WeaponContract{}) {
+		return
+	}
+	buf.WriteString("weapon_contract:\n")
+	if contract.RoleOwner != "" {
+		writeLegacyProviderField(buf, "  role_owner", contract.RoleOwner)
+	}
+	if contract.Participation != "" {
+		writeLegacyProviderField(buf, "  participation", contract.Participation)
+	}
+	if contract.InvocationEvidence != "" {
+		writeLegacyProviderField(buf, "  invocation_evidence", contract.InvocationEvidence)
+	}
+	if contract.UnavailableBehavior != "" {
+		writeLegacyProviderField(buf, "  unavailable_behavior", contract.UnavailableBehavior)
+	}
+	if contract.NativeSubstitution != "" {
+		writeLegacyProviderField(buf, "  native_substitution", contract.NativeSubstitution)
+	}
 }
 
 func writeLegacyRoles(buf *bytes.Buffer, roles []string) {

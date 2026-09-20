@@ -1,7 +1,7 @@
 # Test Coverage Gaps — Implementation Handoff
 
 **Status:** T2–T6 applied (verified 2026-08-06); T7 remains a future-mission candidate
-**Last Updated:** 2026-08-06
+**Last Updated:** 2026-09-19
 **Source mission:** `.analysis/refined/20260805-test-coverage-mapping-and-offline-eval/`
 **Related:** `docs/test-styles.md`, `docs/adr/0016-test-framework-v2.md`,
 `docs/adr/0017-eval-fake-provider.md`, `.analysis/todo/riposte-backlog.md`
@@ -23,7 +23,7 @@ below seems to need one, stop and re-read those ADRs before proceeding.
 | ID | Status | One-line objective |
 |---|---|---|
 | T2 | done — `.github/workflows/test.yml` publishes `make test-report` to `$GITHUB_STEP_SUMMARY` (non-blocking, `if: always()`) | Publish `make test-report`'s table to `$GITHUB_STEP_SUMMARY` |
-| T3 | done — `scripts/coverage-packages.tsv` covers all of `./internal/...` (except `internal/testutil`, which has no test files); `make cover-gate` passes | Widen `cover-gate`'s 90% scope from 6 packages to `./internal/...` |
+| T3 | applied to the then-known `./internal/...` scope; current manifest completeness is a separate open refinement because newer production packages are not reconciled automatically | Widen `cover-gate`'s 90% scope from 6 packages to `./internal/...` |
 | T4 | done — `make/web.mk`'s `ci-web` target depends on `cover-web` | Wire `cover-web` into `ci-web` |
 | T5 | done — `tests/evals/scenarios/treasure_chest_grading_test.go` + `internal/eval` dispatch Target; `go test -race -tags=eval ./tests/evals/...` passes (15/15 scenarios) | New `internal/eval` Target for treasure-chest grading functions |
 | T6 | done — `tests/spec/specs/e2e-critical-hit-closure.feature` + Go helper; `go test -race -tags=spec ./tests/spec/...` passes (159/159 scenarios) | New Gherkin feature for Critical Hit plain-move vs closure-move |
@@ -62,12 +62,15 @@ creep beyond "publish what already runs."
 
 ## T3 — Widen `cover-gate`'s package scope
 
-**Why:** Only 6 packages (`scripts/coverage-packages.tsv`) are gated at 90%
-line coverage; the rest of `./internal/...` has coverage measured (via
-`make test`) but never enforced. `riposte-backlog.md` SQ-002.
+**Why:** The historical widening made the manifest cover the then-known
+`./internal/...` packages, but `scripts/coverage-packages.tsv` is still a
+curated row list. New production packages can be omitted without a completeness
+diagnostic. The separate coverage-manifest-completeness refinement defines the
+inventory boundary, exemptions, and stale-entry policy before changing this
+gate again. `riposte-backlog.md` SQ-002.
 
-**Where:** `scripts/coverage-packages.tsv`, `Makefile` (`cover`, `cover-gate`
-targets).
+**Where:** `scripts/coverage-packages.tsv`, `scripts/coverage-exemptions.tsv`,
+`scripts/check-coverage-manifest.sh`, and `Makefile` (`cover`, `cover-gate` targets).
 
 **How:**
 1. Run `go list ./internal/...` to get the full package list.
@@ -82,7 +85,9 @@ targets).
    with an explicitly lower, reasoned minimum and flag it for a follow-up —
    never omit it from the file to dodge the question.
 
-**Validation:** `make cover-gate` runs against every `./internal/...`
+**Validation:** `make cover-gate` now performs hermetic inventory reconciliation
+before the historical row-based measurements. Threshold ownership remains in the
+TSV; explicit exemptions require an owner and reason and do not receive coverage.
 package (not just the original 6) and still exits 0.
 
 **Stop condition (ambiguity):** if a package is meaningfully below 90% and

@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -38,6 +39,15 @@ var (
 
 	strategistCLIRunMu sync.Mutex
 )
+
+// integrationEnvAllowlist contains only host values needed to locate tools,
+// preserve platform behavior, and use pre-provisioned Go dependencies. Product
+// configuration and credentials must never leak into a CLI integration test.
+var integrationEnvAllowlist = []string{
+	"PATH", "TMPDIR", "TMP", "TEMP", "SystemRoot", "WINDIR", "PATHEXT",
+	"LANG", "LC_ALL", "TZ", "GOTOOLCHAIN", "GOPATH", "GOPROXY", "GOSUMDB", "GONOSUMDB",
+	"GONOPROXY", "GOPRIVATE", "GOMODCACHE", "GOFLAGS", "CGO_ENABLED", "CC", "CXX",
+}
 
 // strategistGOCOVERDIR returns the directory every runStrategistCLI subprocess
 // writes GOCOVERDIR binary coverage counters into, so that time spent inside
@@ -137,10 +147,16 @@ func buildStrategistBinary(t *testing.T) string {
 		// cmd/strategist) and scripts/test-style-report.sh's textfmt step
 		// filters the merged profile back down to internal/... lines only,
 		// to keep the metric's defined scope.
+		goPathOutput, err := exec.Command("go", "env", "GOPATH").Output()
+		if err != nil {
+			strategistBinaryErr = fmt.Errorf("resolve GOPATH: %w", err)
+			return
+		}
 		cmd := exec.Command("go", "build", "-cover", "-covermode=atomic", "-o", strategistBinaryPath, "./cmd/strategist")
 		cmd.Dir = root
-		cmd.Env = envWithOverrides(map[string]string{
+		cmd.Env = hermeticEnv(map[string]string{
 			"GOCACHE": goCache,
+			"GOPATH":  strings.TrimSpace(string(goPathOutput)),
 		})
 
 		output, err := cmd.CombinedOutput()
@@ -155,26 +171,47 @@ func buildStrategistBinary(t *testing.T) string {
 
 func runStrategistCLI(t *testing.T, workspace string, args ...string) cliResult {
 	t.Helper()
+	return runStrategistCLIWithEnv(t, workspace, nil, args...)
+}
+
+func runStrategistCLIWithEnv(t *testing.T, workspace string, extraEnv map[string]string, args ...string) cliResult {
+	return runStrategistCLIWithInput(t, workspace, extraEnv, "", args...)
+}
+
+func runStrategistCLIWithInput(t *testing.T, workspace string, extraEnv map[string]string, input string, args ...string) cliResult {
+	t.Helper()
 
 	home := t.TempDir()
+	xdgConfig := t.TempDir()
+	xdgCache := t.TempDir()
+	xdgData := t.TempDir()
 	goCache := strategistGoCache(t)
 
 	binary := buildStrategistBinary(t)
 	cmd := exec.Command(binary, args...)
 	cmd.Dir = workspace
-	cmd.Env = envWithOverrides(map[string]string{
-		"HOME":        home,
-		"USERPROFILE": home,
-		"HOMEDRIVE":   "",
-		"HOMEPATH":    "",
-		"GOCACHE":     goCache,
-		"GOCOVERDIR":  strategistGOCOVERDIR(t),
+	cmd.Env = hermeticEnv(map[string]string{
+		"HOME":            home,
+		"USERPROFILE":     home,
+		"HOMEDRIVE":       "",
+		"HOMEPATH":        "",
+		"XDG_CONFIG_HOME": xdgConfig,
+		"XDG_CACHE_HOME":  xdgCache,
+		"XDG_DATA_HOME":   xdgData,
+		"GOCACHE":         goCache,
+		"GOCOVERDIR":      strategistGOCOVERDIR(t),
 	})
+	if len(extraEnv) > 0 {
+		cmd.Env = hermeticEnvWithBase(cmd.Env, extraEnv)
+	}
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
+	if input != "" {
+		cmd.Stdin = strings.NewReader(input)
+	}
 
 	strategistCLIRunMu.Lock()
 	err := cmd.Run()
@@ -200,29 +237,44 @@ func (r cliResult) output() string {
 	return r.stdout + r.stderr
 }
 
-func envWithOverrides(overrides map[string]string) []string {
-	base := os.Environ()
-	filtered := make([]string, 0, len(base)+len(overrides))
-	for _, entry := range base {
-		key, _, ok := strings.Cut(entry, "=")
-		if !ok {
-			continue
-		}
-		if !envKeyOverridden(key, overrides) {
-			filtered = append(filtered, entry)
+func hermeticEnv(overrides map[string]string) []string {
+	base := make(map[string]string, len(integrationEnvAllowlist))
+	for _, key := range integrationEnvAllowlist {
+		if value, ok := os.LookupEnv(key); ok {
+			base[key] = value
 		}
 	}
-	for key, value := range overrides {
-		filtered = append(filtered, key+"="+value)
-	}
-	return filtered
+	return appendEnvOverrides(base, overrides)
 }
 
-func envKeyOverridden(key string, overrides map[string]string) bool {
-	for overrideKey := range overrides {
-		if strings.EqualFold(key, overrideKey) {
-			return true
+func hermeticEnvWithBase(baseEnv []string, overrides map[string]string) []string {
+	base := make(map[string]string, len(baseEnv)+len(overrides))
+	for _, entry := range baseEnv {
+		key, value, ok := strings.Cut(entry, "=")
+		if ok {
+			base[key] = value
 		}
 	}
-	return false
+	return appendEnvOverrides(base, overrides)
+}
+
+func appendEnvOverrides(base, overrides map[string]string) []string {
+	for key, value := range overrides {
+		for existing := range base {
+			if strings.EqualFold(existing, key) {
+				delete(base, existing)
+			}
+		}
+		base[key] = value
+	}
+	keys := make([]string, 0, len(base))
+	for key := range base {
+		keys = append(keys, key)
+	}
+	slices.Sort(keys)
+	env := make([]string, 0, len(keys))
+	for _, key := range keys {
+		env = append(env, key+"="+base[key])
+	}
+	return env
 }

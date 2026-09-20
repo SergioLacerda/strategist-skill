@@ -32,19 +32,20 @@ const (
 // metadata. Binding and readiness remain owned by PluginLock/SlotBinding and
 // the runtime probe respectively.
 type SkillPackageContract struct {
-	SchemaVersion      string               `yaml:"schema_version"`
-	ID                 string               `yaml:"id"`
-	Version            string               `yaml:"version"`
-	ContractVersion    string               `yaml:"contract_version"`
-	Capabilities       []string             `yaml:"capabilities,omitempty"`
-	SupportedRoles     []string             `yaml:"supported_roles,omitempty"`
-	SupportedSlots     []string             `yaml:"supported_slots,omitempty"`
-	CompatibilityRange string               `yaml:"compatibility_range,omitempty"`
-	Provenance         PackageProvenance    `yaml:"provenance"`
-	EvidenceState      PackageEvidenceState `yaml:"evidence_state"`
-	TrustTier          string               `yaml:"trust_tier,omitempty"`
-	Freshness          string               `yaml:"freshness,omitempty"`
-	Limitations        []string             `yaml:"limitations,omitempty"`
+	SchemaVersion           string               `yaml:"schema_version"`
+	ID                      string               `yaml:"id"`
+	Version                 string               `yaml:"version"`
+	ContractVersion         string               `yaml:"contract_version"`
+	Capabilities            []string             `yaml:"capabilities,omitempty"`
+	SupportedRoles          []string             `yaml:"supported_roles,omitempty"`
+	SupportedSlots          []string             `yaml:"supported_slots,omitempty"`
+	SupportedHandoffSchemas []string             `yaml:"supported_handoff_schemas,omitempty"`
+	CompatibilityRange      string               `yaml:"compatibility_range,omitempty"`
+	Provenance              PackageProvenance    `yaml:"provenance"`
+	EvidenceState           PackageEvidenceState `yaml:"evidence_state"`
+	TrustTier               string               `yaml:"trust_tier,omitempty"`
+	Freshness               string               `yaml:"freshness,omitempty"`
+	Limitations             []string             `yaml:"limitations,omitempty"`
 }
 
 // NewSkillPackageContract projects the existing publisher and adapter records
@@ -57,10 +58,11 @@ func NewSkillPackageContract(pkg PluginPackage, adapter AdapterContract) SkillPa
 	return SkillPackageContract{
 		SchemaVersion: pkg.SchemaVersion, ID: pkg.ID, Version: version,
 		ContractVersion: CurrentSkillPackageContractVersion, Capabilities: append([]string(nil), adapter.Capabilities...),
-		SupportedRoles:     append([]string(nil), adapter.SupportedRoles...),
-		SupportedSlots:     append([]string(nil), adapter.SupportedSlots...),
-		CompatibilityRange: adapter.PluginAPIRange,
-		EvidenceState:      PackageEvidenceDeclared,
+		SupportedRoles:          append([]string(nil), adapter.SupportedRoles...),
+		SupportedSlots:          append([]string(nil), adapter.SupportedSlots...),
+		SupportedHandoffSchemas: append([]string(nil), adapter.SupportedHandoffSchemas...),
+		CompatibilityRange:      adapter.PluginAPIRange,
+		EvidenceState:           PackageEvidenceDeclared,
 		Provenance: PackageProvenance{
 			OriginalDigest: pkg.Digest, NormalizedDigest: pkg.Digest,
 			License: pkg.License, VerificationState: PackageEvidenceDeclared,
@@ -97,47 +99,4 @@ func (c SkillPackageContract) Validate() error {
 		return fmt.Errorf("skill package contract: required/valid fields: %s", strings.Join(missing, ", "))
 	}
 	return nil
-}
-
-func (c SkillPackageContract) missingFields() []string {
-	missing := missingContractFields(map[string]string{
-		"schema_version": c.SchemaVersion, "id": c.ID, "version": c.Version,
-		"contract_version": c.ContractVersion,
-	})
-	if len(c.Capabilities) == 0 {
-		missing = append(missing, "capabilities")
-	}
-	if !SupportsSkillPackageContract(c.ContractVersion) {
-		missing = append(missing, "unsupported contract_version")
-	}
-	if len(c.SupportedSlots) == 0 {
-		missing = append(missing, "supported_slots")
-	}
-	if !validPackageEvidenceState(c.EvidenceState) {
-		missing = append(missing, "evidence_state")
-	}
-	if !validPackageEvidenceState(c.Provenance.VerificationState) {
-		missing = append(missing, "provenance.verification_state")
-	}
-	return missing
-}
-
-func missingContractFields(fields map[string]string) []string {
-	var missing []string
-	for name, value := range fields {
-		if strings.TrimSpace(value) == "" {
-			missing = append(missing, name)
-		}
-	}
-	return missing
-}
-
-func validPackageEvidenceState(state PackageEvidenceState) bool {
-	switch state {
-	case PackageEvidenceDeclared, PackageEvidenceVerified, PackageEvidenceUnknown,
-		PackageEvidenceUnsupported, PackageEvidenceFailed, PackageEvidenceBlocked:
-		return true
-	default:
-		return false
-	}
 }

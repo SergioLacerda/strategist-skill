@@ -1,12 +1,24 @@
 .PHONY: \
-	lint complexity-report go-file-size-report \
+	lint lint-fix complexity-report go-file-size-report \
 	mutation-role-weapon \
+	coverage-manifest-check \
 	install-gocognit quality-budget-gate \
 	install-govulncheck vuln vuln-ci \
-	cover cover-gate cover-html test-report
+	cover cover-gate cover-html coverage-badge sync-test-styles-docs test-report
 
+# lint is diagnostic-only: it must never rewrite source files.
 lint: fmt-check
 	GOCACHE=$(GOCACHE) GOLANGCI_LINT_CACHE=$(GOLANGCI_LINT_CACHE) GOTOOLCHAIN=$(PINNED_GOTOOLCHAIN) $(GOLANGCI_LINT) run ./...
+	@$(MAKE) complexity-report
+	@$(MAKE) go-file-size-report
+
+# lint-fix applies only tool-supported repairs, then runs the same diagnostics
+# as lint. Complexity and file-size findings remain manual work and therefore
+# still fail here when they cannot be fixed automatically.
+lint-fix:
+	git ls-files -co --exclude-standard -z '*.go' | xargs -0r gofmt -w
+	GOCACHE=$(GOCACHE) GOLANGCI_LINT_CACHE=$(GOLANGCI_LINT_CACHE) GOTOOLCHAIN=$(PINNED_GOTOOLCHAIN) $(GOLANGCI_LINT) run --fix ./...
+	@$(MAKE) fmt-check
 	@$(MAKE) complexity-report
 	@$(MAKE) go-file-size-report
 
@@ -44,8 +56,11 @@ cover:
 	@bash scripts/coverage-per-package.sh "$(COVERAGE_PKGS)" "$(COVERAGE_PROFILE)" "$(GOCACHE)" "$(COVERAGE_MANIFEST)"
 
 # cover-gate fails the build when a package falls below its manifest threshold.
+coverage-manifest-check:
+	bash scripts/check-coverage-manifest.sh "$(COVERAGE_MANIFEST)" "$(COVERAGE_EXEMPTIONS)" "$(GOCACHE)"
+
 cover-gate:
-	bash scripts/check-coverage-gate.sh "$(COVERAGE_MANIFEST)" "$(COVERAGE_DIR)" "$(GOCACHE)"
+	bash scripts/check-coverage-gate.sh "$(COVERAGE_MANIFEST)" "$(COVERAGE_DIR)" "$(GOCACHE)" "$(COVERAGE_EXEMPTIONS)"
 
 # test-report prints one status row per test style (unit, spec, integration,
 # eval, eval-promptfoo, web) using the metric that fits each style.
@@ -58,3 +73,12 @@ cover-html:
 	GOCACHE=$(GOCACHE) go test -race -coverprofile=$(COVERAGE_PROFILE) -coverpkg=./internal/... ./internal/... ./tests/integration/...
 	go tool cover -html=$(COVERAGE_PROFILE) -o $(COVERAGE_HTML)
 	@echo "report written to $(COVERAGE_HTML)"
+
+# coverage-badge generates SVG and JSON Shields endpoint badges from coverage data.
+coverage-badge:
+	@bash scripts/generate-coverage-badge.sh "$(COVERAGE_DIR)" "$(GOCACHE)"
+
+# sync-test-styles-docs synchronizes measured package coverage numbers into docs/test-styles.md.
+sync-test-styles-docs:
+	@bash scripts/sync-test-styles-docs.sh "$(COVERAGE_DIR)" "$(GOCACHE)"
+

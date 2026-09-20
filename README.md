@@ -2,6 +2,8 @@
 
 [![Release](https://img.shields.io/github/v/release/SergioLacerda/strategist-skill?label=release)](https://github.com/SergioLacerda/strategist-skill/releases)
 [![CI](https://github.com/SergioLacerda/strategist-skill/actions/workflows/test.yml/badge.svg)](https://github.com/SergioLacerda/strategist-skill/actions/workflows/test.yml)
+[![Coverage](https://img.shields.io/badge/coverage-94.6%25-brightgreen)](docs/test-styles.md)
+[![Mutation](https://img.shields.io/badge/mutation-passing-brightgreen)](scripts/mutation-role-weapon.sh)
 [![Go](https://img.shields.io/badge/Go-1.26-blue)](https://go.dev)
 [![License](https://img.shields.io/github/license/SergioLacerda/strategist-skill)](LICENSE)
 

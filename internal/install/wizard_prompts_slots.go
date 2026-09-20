@@ -2,6 +2,8 @@ package install
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -114,11 +116,20 @@ func appendProviderOption(ids []string, defaultID string, excluded []excludedPro
 // operator seeing a single-option (native-only) prompt can tell an
 // intentional exclusion from a bug.
 func printExcludedCandidates(excluded []excludedProviderOption) {
+	if err := printExcludedCandidatesTo(os.Stdout, excluded); err != nil {
+		return
+	}
+}
+
+func printExcludedCandidatesTo(w io.Writer, excluded []excludedProviderOption) error {
 	for _, candidate := range excluded {
 		details := make([]string, 0, len(candidate.reasons))
 		for _, reason := range candidate.reasons {
 			details = append(details, fmt.Sprintf("%s: %s", reason.Code, reason.Detail))
 		}
-		fmt.Printf("  %s: excluded — %s\n", candidate.id, strings.Join(details, "; "))
+		if _, err := fmt.Fprintf(w, "  %s: excluded — %s\n", candidate.id, strings.Join(details, "; ")); err != nil {
+			return fmt.Errorf("write excluded candidate: %w", err)
+		}
 	}
+	return nil
 }

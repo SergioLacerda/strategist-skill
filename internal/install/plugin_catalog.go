@@ -77,7 +77,8 @@ type pluginCatalogProvider struct {
 	// files and, if so, that they belong in the runtime domain — see
 	// externalSkillAdapter.ScratchRoot. Legal values: "runtime", "none", or
 	// omitted (behaves as "none").
-	ScratchRoot string `yaml:"scratch_root,omitempty"`
+	ScratchRoot    string         `yaml:"scratch_root,omitempty"`
+	WeaponContract WeaponContract `yaml:"weapon_contract,omitempty"`
 }
 
 type pluginCatalogDependency struct {

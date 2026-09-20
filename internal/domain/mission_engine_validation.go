@@ -61,18 +61,3 @@ func validMissionState(phase PipelinePhase, state MissionState) bool {
 func earlyMissionPhase(phase PipelinePhase) bool {
 	return phase == PhaseBootstrap || phase == PhaseIntake || phase == PhaseDiscovery
 }
-
-func earlyEventsToPhase(phase PipelinePhase) []PhaseEvent {
-	switch phase {
-	case PhaseBootstrap:
-		return nil
-	case PhaseIntake:
-		return []PhaseEvent{EventBootstrapDone}
-	case PhaseDiscovery:
-		return []PhaseEvent{EventBootstrapDone, EventIntakeDone}
-	case PhaseRefinement, PhaseApprovalGate, PhaseExecution, PhaseDone, PhaseBlocked:
-		return []PhaseEvent{EventBootstrapDone, EventIntakeDone, EventDiscoveryDone}
-	default:
-		return nil
-	}
-}

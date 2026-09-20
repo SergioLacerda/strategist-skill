@@ -60,7 +60,18 @@ When the user is ready to implement, they must start the apply workflow explicit
 
    Run `openspec context --json` with `.strategist/openspec` as the working directory (or `openspec context --json --store "<store-id>"` there when a registered store was explicitly selected). Use the returned `root.path` as the authoritative OpenSpec root. If context reports `no_openspec_root`, stop without creating or changing any files and emit `error=role_invocation_failed`. Do not initialize automatically or run later OpenSpec commands from the workspace root. For any other context failure, stop and report the error; do not fall back to the current directory or run later OpenSpec commands without the selected store.
 
-   Only when context returns a resolved `root.path`, read `<root.path>/config.yaml`. Use `config.yml` only when `config.yaml` does not exist. If neither file exists, continue without project context. Do not fall back to `config.yml` if `config.yaml` is unreadable or invalid.
+   The Strategist runtime deliberately separates the OpenSpec semantic
+   container from the provider working directory: for the prepared runtime,
+   `root.path` is expected to be the parent `.strategist` directory while the
+   provider config is physically at `.strategist/openspec/config.yaml`. Verify
+   that relationship before continuing. If the returned root is not the
+   prepared container, stop with `error=role_invocation_failed`; do not fall
+   back to either directory or initialize another root.
+
+   Read `.strategist/openspec/config.yaml` after that validation. Use
+   `config.yml` only when that provider-local file does not exist. If neither
+   file exists, continue without project context. Do not fall back to
+   `config.yml` if the provider-local `config.yaml` is unreadable or invalid.
 
    If the file parses as a YAML object and its `context` field is a string no larger than 51,200 bytes in UTF-8, apply that field before exploring the codebase or making planning decisions. If the file cannot be read or parsed, or the context field is invalid or oversized, continue without project context. Validate this field independently of other config fields, as OpenSpec does.
 

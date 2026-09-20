@@ -24,6 +24,43 @@ identity, authority, digest, ordering, bounds, provenance, and fail-closed
 reason semantics. Live rows remain pending until a successful ready probe is
 provided; static catalog or manifest metadata never substitutes for that probe.
 
+Evidence dimensions remain separate:
+
+- static evidence describes checked-in contracts and manifests;
+- persisted evidence describes pinned identity, digest, provenance, and release
+  records;
+- structural evidence is produced by the local matrix without provider
+  invocation;
+- live evidence is a redacted `strategist-live-evidence/v1` envelope tied to a
+  provider, authorized runner, matrix row, bounded timeout, teardown result,
+  report location, and retention policy;
+- manual Promptfoo evidence is optional operator-collected evidence and never
+  certifies an automated live row by itself;
+- remote governance and published-release evidence require their own
+  authorized remote source.
+
+The live executor requires an authorization reference, timeout, teardown, and
+report/retention metadata. It records `unavailable`, `unauthorized`,
+`timeout`, `malformed`, `failed`, or `teardown_failed` as non-certified states;
+it never serializes credentials or provider payloads. No provider or runner is
+selected by the local contract.
+
+The coverage inventory is checked independently by
+`make coverage-manifest-check`. It discovers `cmd/...`, `internal/...`, and
+`treasure-chest/...` with Go tooling and compares the result with
+`scripts/coverage-packages.tsv` plus the owner/reason records in
+`scripts/coverage-exemptions.tsv`.
+
+For optional Promptfoo evidence, first run the guarded endpoint preflight and
+then collect the report manually:
+
+```bash
+make eval-promptfoo PROMPTFOO_LM_STUDIO_URL=http://127.0.0.1:1234/v1
+```
+
+The command remains outside default CI. A failed preflight is non-evidence and
+must not be converted into a passing live or structural result.
+
 Run the focused suite with isolated caches:
 
 ```bash

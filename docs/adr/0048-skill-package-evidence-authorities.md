@@ -27,6 +27,15 @@ adapter, catalog, and provenance records. It is evidence, not authorization.
   live probe.
 - Provenance states are explicit. `declared` and `unknown` are not equivalent
   to `verified`; `unsupported`, `failed`, and `blocked` remain failure states.
+- The package contract accepts the current `skill-package/v1` and the
+  non-destructive N-1 `skill-package/v0` window. Role-to-slot affinity is
+  validated before preparation accepts a package; lifecycle-only adapters may
+  remain role-less and are not inferred as mission bindings.
+- The external-source lock keeps `digest`/`original_digest` as the source
+  digest and computes `normalized_digest` independently over the materialized
+  package and generated mirror manifest. The two digest evidence states are
+  recorded separately, so a declared upstream identity is not presented as a
+  verified upstream attestation.
 
 ## Consequences
 

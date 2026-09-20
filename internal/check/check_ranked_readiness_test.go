@@ -149,7 +149,9 @@ providers:
 }
 
 func TestRunRankedRuntimeHealthcheckReportsFailureAndSuccess(t *testing.T) {
-	runtimeRoot := t.TempDir()
+	runtimeRoot := filepath.Join(t.TempDir(), "openspec")
+	require.NoError(t, os.MkdirAll(runtimeRoot, 0o755))
+	semanticRoot := filepath.Dir(runtimeRoot)
 	script := filepath.Join(t.TempDir(), "openspec")
 	require.NoError(t, os.WriteFile(script, []byte("#!/bin/sh\nexit 1\n"), 0o755))
 	t.Setenv("PATH", filepath.Dir(script)+string(os.PathListSeparator)+os.Getenv("PATH"))
@@ -158,9 +160,21 @@ func TestRunRankedRuntimeHealthcheckReportsFailureAndSuccess(t *testing.T) {
 	require.Equal(t, domain.ReadinessBlocked, failed.Status)
 	require.Equal(t, "ranked_runtime_healthcheck_failed", failed.ReasonCode)
 
-	require.NoError(t, os.WriteFile(script, []byte("#!/bin/sh\nprintf '{}'"), 0o755))
+	require.NoError(t, os.WriteFile(script, []byte("#!/bin/sh\nprintf '{\"root\":{\"path\":\""+semanticRoot+"\"}}'"), 0o755))
 	passed := runRankedRuntimeHealthcheck(runtimeRoot, "openspec-propose")
 	require.Equal(t, domain.ReadinessReady, passed.Status)
 	require.Equal(t, "ranked_runtime_healthy", passed.ReasonCode)
 	require.Contains(t, passed.Detail, runtimeRoot)
+}
+
+func TestRunRankedRuntimeHealthcheckRejectsSemanticRootMismatch(t *testing.T) {
+	runtimeRoot := t.TempDir()
+	script := filepath.Join(t.TempDir(), "openspec")
+	require.NoError(t, os.WriteFile(script, []byte("#!/bin/sh\nprintf '{\"root\":{\"path\":\"/wrong/root\"}}'"), 0o755))
+	t.Setenv("PATH", filepath.Dir(script)+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	result := runRankedRuntimeHealthcheck(runtimeRoot, "openspec-propose")
+	require.Equal(t, domain.ReadinessBlocked, result.Status)
+	require.Equal(t, "ranked_runtime_root_mismatch", result.ReasonCode)
+	require.Contains(t, result.Detail, "expected")
 }

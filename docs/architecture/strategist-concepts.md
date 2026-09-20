@@ -1,7 +1,11 @@
 # Strategist — Core Concepts
 
 **Status:** Accepted
-**Last Updated:** 2026-08-05 (Handoff Challenge: counterfactual type, forbidden_claims, and the Sniper→validation transition added)
+**Last Updated:** 2026-09-18 (canonical philosophy and authority boundaries)
+
+See [`strategist-philosophy.md`](strategist-philosophy.md) for the rationale
+behind the fixed pipeline, replaceable weapons, evidence authorities, and
+approval-gated materialization described below.
 
 Reference for the core concepts of the Strategist skill: what it is, how it routes work internally, and the roles, weapons, abilities, and dojo that make up its architecture.
 

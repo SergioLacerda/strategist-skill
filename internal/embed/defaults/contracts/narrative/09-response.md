@@ -115,10 +115,13 @@ by re-emitting with the announcement prefix.
 ## Mission Boundary Clause
 
 Every terminal `conclusion_text` — for both `analysis_delivered` and
-`documentation_applied` outcomes, on every route — MUST end with a fixed clause stating
-that this mission's approval state does not carry over: no other skill, command, or CLI
-invocation inherits it, and any follow-up implementation request is a new,
-separately-authorized action regardless of which channel receives it. This exists because
+`documentation_applied` outcomes, on every route — MUST explicitly state that Strategist
+has completed the identified mission and that the mission is closed. It MUST also state
+that a later direct request is handled independently and does not require the user to
+leave or disable Strategist. The clause must state that this mission's approval state does
+not carry over: no other skill, command, or CLI invocation inherits it, and any follow-up
+implementation request is a new, separately-authorized action regardless of which channel
+receives it. This exists because
 a Strategist mission's own closing text is routinely copied verbatim into unrelated
 follow-up prompts and other skills/CLIs; without a fixed, unmissable boundary sentence,
 the boundary depends on the agent choosing to restate it, which is not reliable (see

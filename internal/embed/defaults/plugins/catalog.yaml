@@ -37,6 +37,12 @@ providers:
       installable: true
       legacy_manifest_path: skills/brainstorming/skill.yaml
       compatibility_source: embedded
+      weapon_contract:
+        role_owner: ranger
+        participation: advisory
+        invocation_evidence: required
+        unavailable_behavior: report_advisory
+        native_substitution: forbidden
     - id: openspec-apply-change
       risk_score: controlled
       compatibility_source: external
@@ -158,10 +164,10 @@ providers:
       provider_schema_version: "1"
       status: active
       risk_score: write_analysis
-      category: refinement
-      canonical_role: archivist
+      category: auxiliary
+      canonical_role: auxiliary
       roles:
-        - archivist
+        - auxiliary
       upstream_repo: obra/superpowers
       upstream_skill_path: skills/writing-plans/SKILL.md
       upstream_version: 6.3.0
@@ -172,3 +178,4 @@ providers:
       installable: true
       legacy_manifest_path: skills/writing-plans/skill.yaml
       compatibility_source: embedded
+      scratch_root: runtime

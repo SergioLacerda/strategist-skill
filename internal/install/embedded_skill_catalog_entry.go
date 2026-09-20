@@ -27,6 +27,7 @@ func catalogProviderFromIngestedSkill(skill IngestedSkill) pluginCatalogProvider
 		CompatibilitySource:     "embedded",
 		SupportedHandoffSchemas: skill.Adapter.SupportedHandoffSchemas,
 		ScratchRoot:             skill.Adapter.ScratchRoot,
+		WeaponContract:          skill.Adapter.WeaponContract,
 		Runtime:                 skill.Adapter.Runtime,
 		UpstreamRepo:            skill.Adapter.UpstreamRepo,
 		UpstreamSkillPath:       skill.Adapter.UpstreamSkillPath,

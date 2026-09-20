@@ -81,6 +81,39 @@ func TestPersonasExposeVisibleComplianceAndNextAction(t *testing.T) {
 	}
 }
 
+func TestTerminalResponsesCloseStrategistWithoutRequiringExit(t *testing.T) {
+
+	t.Parallel()
+	paths := []string{
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "personas", "pragmatic.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "personas", "epic.yaml"),
+	}
+	for _, path := range paths {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"Strategist has completed",
+			"do not require leaving or disabling Strategist",
+			"inherits this mission's approval state",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing terminal mission closure %q", path, needle)
+			}
+		}
+	}
+
+	contractPath := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "09-response.md")
+	contract := readFile(t, contractPath)
+	for _, needle := range []string{
+		"Strategist\nhas completed the identified mission",
+		"leave or disable Strategist",
+		"a later direct request is handled independently",
+	} {
+		if !strings.Contains(contract, needle) {
+			t.Fatalf("%s missing terminal-response requirement %q", contractPath, needle)
+		}
+	}
+}
+
 func TestPragmaticPersonaUsesDistinctPhaseLabels(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "personas", "pragmatic.yaml")

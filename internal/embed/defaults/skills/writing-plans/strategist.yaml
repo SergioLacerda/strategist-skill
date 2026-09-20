@@ -1,9 +1,10 @@
-canonical_role: archivist
+canonical_role: auxiliary
 roles:
-  - archivist
+  - auxiliary
 risk_score: write_analysis
-category: refinement
+category: auxiliary
 default: false
+scratch_root: runtime
 upstream_repo: obra/superpowers
 upstream_skill_path: skills/writing-plans/SKILL.md
 upstream_version: 6.3.0

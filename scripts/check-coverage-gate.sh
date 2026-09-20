@@ -4,11 +4,15 @@ set -euo pipefail
 manifest="${1:-scripts/coverage-packages.tsv}"
 coverage_dir="${2:-coverage}"
 go_cache="${3:-/tmp/go-build-cache}"
+exemptions="${4:-scripts/coverage-exemptions.tsv}"
 
 if [[ ! -f "$manifest" ]]; then
   echo "FAIL: coverage manifest not found: $manifest" >&2
   exit 1
 fi
+
+# Structural inventory drift is distinct from a package percentage failure.
+bash scripts/check-coverage-manifest.sh "$manifest" "$exemptions" "$go_cache"
 
 mkdir -p "$coverage_dir"
 fail=0

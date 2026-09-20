@@ -15,14 +15,10 @@ import "fmt"
 // the authoritative restatement of that scope, superseding the stale
 // pointer).
 //
-// PhaseTransitionAuthority is a separate, additive authority: it does not
-// read, write, or otherwise reference stateTransitions, NextState, or
-// RunStateMachine (state_machine.go), and it does not model
-// gate/execution/retry/ADR/Critical-Hit — those remain exclusively
-// state_machine.go's scope. The two authorities hand off at a single seam:
-// PhaseRefinement here precedes StateRefinement there (Archivist's own work),
-// which in turn transitions via EventArchivistTasks/EventArchivistNoTasks
-// exactly as it already does today.
+// phaseTransitions is the early-phase portion of the mission transition
+// model. MissionEngine is the only public facade allowed to apply it; the
+// table is kept separate from the gate/execution state table so each event
+// family remains easy to audit without creating a second mutable authority.
 type PipelinePhase string
 
 // Early-pipeline phases, in required order.
@@ -72,12 +68,11 @@ func (e ErrOutOfOrderPhaseSubmit) Error() string {
 	return fmt.Sprintf("phase transition authority: event %q is not valid from phase %q", e.Event, e.Current)
 }
 
-// PhaseTransitionAuthority enforces bootstrap→intake→discovery→refinement
-// ordering by rejecting out-of-order or unrecognized submits, rather than
-// self-looping on them. This is deliberately different from
-// state_machine.go's NextState, which self-loops on an unhandled event: gate/
-// execution mechanics tolerate a self-loop as a no-op, while an out-of-order
-// phase submit is exactly the drift this authority exists to catch.
+// PhaseTransitionAuthority is retained as a small table-backed validator for
+// callers that need to inspect early-phase rules. MissionEngine uses the same
+// table through its single transition facade. It rejects out-of-order or
+// unrecognized submits rather than self-looping on them, unlike
+// state_machine.go's gate/execution NextState behavior.
 type PhaseTransitionAuthority struct {
 	current PipelinePhase
 }
