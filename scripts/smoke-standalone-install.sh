@@ -33,7 +33,15 @@ work="$(mktemp -d)"
 empty_path="$(mktemp -d)"
 trap 'rm -rf "$work" "$empty_path" ${build_dir:+"$build_dir"}' EXIT
 nwork="$(native "$work")"
-npath="$(native "$(dirname "$node")")"
+# PATH gets the backslash spelling: a value like C:/dir looks like a POSIX path
+# list ("C" and "/dir") to Git Bash, which splits and rewrites it before the
+# native child sees it (C;C:\Program Files\Git\dir), so node is never found.
+# A drive-letter path with backslashes has no "/" and is passed through intact.
+if command -v cygpath >/dev/null 2>&1; then
+  npath="$(cygpath -w "$(dirname "$node")")"
+else
+  npath="$(dirname "$node")"
+fi
 
 # A clean environment: PATH contains only Node, proving OpenSpec is resolved
 # from the embedded bundle rather than from the host.
@@ -42,12 +50,11 @@ npath="$(native "$(dirname "$node")")"
 clean_env=(env -i HOME="$nwork" USERPROFILE="$nwork" PATH="$npath")
 sysroot="${SYSTEMROOT:-${SystemRoot:-}}"
 if [[ -n "$sysroot" ]]; then
-  # PATHEXT is what lets Windows resolve "node" to node.exe. The exclusion is
-  # read by the MSYS "env" process that spawns the binary (not by the binary),
-  # so it is exported; it stops Git Bash rewriting the already-native PATH into
-  # a POSIX/mixed list that the Go binary cannot search.
-  export MSYS2_ENV_CONV_EXCL=PATH
-  clean_env+=(SystemRoot="$sysroot" TEMP="$nwork" TMP="$nwork" PATHEXT=".COM;.EXE;.BAT;.CMD")
+  # PATHEXT is what lets Windows resolve "node" to node.exe. The exclusion tells
+  # the MSYS "env" process that spawns the binary not to rewrite PATH. It must
+  # be part of the env -i list: env -i clears the environment, so an exported
+  # copy would never reach the process doing the conversion.
+  clean_env+=(SystemRoot="$sysroot" TEMP="$nwork" TMP="$nwork" PATHEXT=".COM;.EXE;.BAT;.CMD" MSYS2_ENV_CONV_EXCL=PATH)
 fi
 
 echo "smoke: host Node $node_version at $npath"
