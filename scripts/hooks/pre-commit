@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# Pre-commit hook — strategist-skill
+# Gates: gofmt, go vet, go build, golangci-lint, embedded catalog drift
+# Tracked copy: scripts/hooks/pre-commit (install with `make install-hooks`).
+# Tests and govulncheck are intentionally left to CI (too slow for pre-commit).
+
+set -euo pipefail
+
+fail=0
+
+# 1. Format
+unformatted=$(git ls-files -co --exclude-standard -z '*.go' | xargs -0r gofmt -l)
+if [ -n "$unformatted" ]; then
+    echo "pre-commit: gofmt issues in:" >&2
+    echo "$unformatted" | sed 's/^/  /' >&2
+    echo "  run: git ls-files -co --exclude-standard -z '*.go' | xargs -0r gofmt -w" >&2
+    fail=1
+fi
+
+# 2. Vet
+if ! go vet ./... 2>&1; then
+    echo "pre-commit: go vet failed" >&2
+    fail=1
+fi
+
+# 3. Build
+if ! go build ./... 2>&1; then
+    echo "pre-commit: go build failed" >&2
+    fail=1
+fi
+
+# 4. Lint (optional — skipped if golangci-lint is not installed)
+GOLANGCI_LINT=""
+if [ -x "./bin/golangci-lint" ]; then
+    GOLANGCI_LINT="./bin/golangci-lint"
+else
+    GOLANGCI_LINT=$(command -v golangci-lint 2>/dev/null \
+    || command -v "$(go env GOPATH)/bin/golangci-lint" 2>/dev/null \
+    || true)
+fi
+
+if [ -n "$GOLANGCI_LINT" ]; then
+    if ! "$GOLANGCI_LINT" run ./... 2>&1; then
+        echo "pre-commit: golangci-lint failed" >&2
+        fail=1
+    fi
+else
+    echo "pre-commit: golangci-lint not found — skipping lint (install: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest)"
+fi
+
+# 5. Embedded catalog drift (only when Go or embedded files are staged)
+if ! bash scripts/hooks/check-embedded-drift.sh; then
+    fail=1
+fi
+
+if [ "$fail" -ne 0 ]; then
+    echo "pre-commit: commit blocked — fix the issues above" >&2
+    exit 1
+fi
+
+echo "pre-commit: all checks passed"

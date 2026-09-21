@@ -3,6 +3,8 @@ package domain
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"path"
 	"path/filepath"
 	"strings"
 )
@@ -14,6 +16,11 @@ type RankedRuntimeContract struct {
 	Root        string `yaml:"root,omitempty"`
 	Bootstrap   string `yaml:"bootstrap,omitempty"`
 	Healthcheck string `yaml:"healthcheck,omitempty"`
+	// Version and NodeVersion pin the runtime identity (the provider CLI and
+	// the Node it runs on). Optional, but when present they are part of the
+	// certification digest: changing either re-certifies the provider.
+	Version     string `yaml:"version,omitempty"`
+	NodeVersion string `yaml:"node_version,omitempty"`
 }
 
 const (
@@ -22,6 +29,24 @@ const (
 	// RankedRuntimeOpenSpecRoot marks a provider backed by an initialized OpenSpec root.
 	RankedRuntimeOpenSpecRoot = "openspec_root"
 )
+
+// ReasonRankedRuntimeExecutableMissing is the cataloged reason code emitted
+// when a Ranked provider's executable cannot be found (see
+// machine/errors.yaml).
+const ReasonRankedRuntimeExecutableMissing = "ranked_runtime_executable_missing"
+
+// RankedRuntimeExecutableMissingMessage explains a missing Ranked provider
+// executable in operator terms. A binary built without the embedded runtime
+// resolves the executable from PATH, so the remedies are a payload build or
+// providing it there.
+func RankedRuntimeExecutableMissingMessage(provider, executable string) string {
+	return fmt.Sprintf("Ranked provider %q needs the %q executable at the version pinned by its contract, but it was not found on PATH and no private runtime is installed. "+
+		"If `strategist version --build` shows an embedded runtime payload, run `strategist install --wizard` (keep the Ranked option) to materialize it. "+
+		"Otherwise this strategist binary was built without the embedded runtime (`runtime payload: none`): use a release binary, or build from source with `make build-standalone` (`make install` does this); "+
+		"alternatively install the pinned CLI so it is on PATH, then rerun. "+
+		"See docs/runbooks/standalone-runtime-hermeticity.md",
+		provider, executable)
+}
 
 // NormalizeRankedRuntime makes an omitted runtime declaration explicit.
 func NormalizeRankedRuntime(runtime RankedRuntimeContract) RankedRuntimeContract {
@@ -45,8 +70,8 @@ func (r RankedRuntimeContract) Validate() error {
 }
 
 func validateNoRuntime(runtime RankedRuntimeContract) error {
-	if runtime.Root != "" || runtime.Bootstrap != "" || runtime.Healthcheck != "" {
-		return fmt.Errorf("runtime kind %q cannot declare root, bootstrap, or healthcheck", runtime.Kind)
+	if runtime.Root != "" || runtime.Bootstrap != "" || runtime.Healthcheck != "" || runtime.Version != "" || runtime.NodeVersion != "" {
+		return fmt.Errorf("runtime kind %q cannot declare root, bootstrap, healthcheck, or pinned versions", runtime.Kind)
 	}
 	return nil
 }
@@ -58,18 +83,40 @@ func validateOpenSpecRuntime(runtime RankedRuntimeContract) error {
 	if runtime.Bootstrap == "" || runtime.Healthcheck == "" {
 		return fmt.Errorf("openspec runtime requires bootstrap and healthcheck")
 	}
+	for name, value := range map[string]string{"version": runtime.Version, "node_version": runtime.NodeVersion} {
+		if value != "" && !pinnedVersion.MatchString(value) {
+			return fmt.Errorf("openspec runtime %s must be an exact MAJOR.MINOR.PATCH version, got %q", name, value)
+		}
+	}
 	return nil
 }
 
+// isSafeRuntimeRoot accepts only a canonical slash-separated path under
+// .strategist. The separator is normalized before the cleanliness comparison:
+// on Windows filepath.Clean rewrites "/" to "\\", so comparing the raw string
+// against its cleaned form would reject the catalog's own declaration.
 func isSafeRuntimeRoot(root string) bool {
-	if root == "" || root == "." || root == ".." {
+	if root == "" || filepath.IsAbs(root) {
 		return false
 	}
-	if filepath.IsAbs(root) || filepath.Clean(root) != root {
+	slash := filepath.ToSlash(root)
+	if !hasSafeRuntimePrefix(slash) {
 		return false
 	}
-	root = filepath.ToSlash(root)
-	return !strings.HasPrefix(root, "../") && strings.HasPrefix(root, ".strategist/")
+	return safeRuntimeSegments(slash)
+}
+
+func hasSafeRuntimePrefix(slash string) bool {
+	return !path.IsAbs(slash) && path.Clean(slash) == slash && strings.HasPrefix(slash, ".strategist/")
+}
+
+func safeRuntimeSegments(slash string) bool {
+	for _, segment := range strings.Split(slash, "/") {
+		if segment == ".." || strings.Contains(segment, ":") {
+			return false
+		}
+	}
+	return true
 }
 
 // ValidateOpenSpecHealthcheck verifies the semantic root reported by OpenSpec
@@ -88,10 +135,36 @@ func ValidateOpenSpecHealthcheck(output []byte, runtimeRoot string) error {
 	if contextResult.Root.Path == "" {
 		return fmt.Errorf("OpenSpec context did not report root.path")
 	}
-	expected := filepath.Clean(filepath.Dir(runtimeRoot))
-	observed := filepath.Clean(contextResult.Root.Path)
-	if observed != expected {
-		return fmt.Errorf("OpenSpec semantic root mismatch: expected %s, got %s", expected, observed)
+	expected := canonicalRuntimePath(filepath.Dir(filepath.Clean(runtimeRoot)))
+	observed := canonicalRuntimePath(contextResult.Root.Path)
+	if observed != expected && !sameDirectory(expected, observed) {
+		return fmt.Errorf("OpenSpec semantic root mismatch: expected %s, got %s (resolved paths differ; verify --root points at the prepared .strategist directory)", expected, observed)
 	}
 	return nil
+}
+
+// canonicalRuntimePath makes a path comparable regardless of spelling:
+// relative, dotted, trailing-slash, or symlinked forms resolve to the same
+// absolute physical path. A path that cannot be resolved (for example one
+// that does not exist) falls back to its cleaned absolute form.
+func canonicalRuntimePath(path string) string {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return filepath.Clean(path)
+	}
+	if resolved, err := filepath.EvalSymlinks(abs); err == nil {
+		return resolved
+	}
+	return abs
+}
+
+// sameDirectory covers filesystems where two canonical spellings still name
+// one directory (case-insensitive volumes, bind mounts).
+func sameDirectory(a, b string) bool {
+	infoA, errA := os.Stat(a)
+	infoB, errB := os.Stat(b)
+	if errA != nil || errB != nil {
+		return false
+	}
+	return os.SameFile(infoA, infoB)
 }

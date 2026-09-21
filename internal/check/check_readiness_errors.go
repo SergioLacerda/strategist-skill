@@ -2,6 +2,7 @@ package check
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
@@ -43,19 +44,50 @@ func readinessDimensions(v domain.PluginReadinessVector) []readinessDimension {
 // manifest that doesn't exist or doesn't match its provider) newly fails
 // with a precise slot+dimension+reason message instead of silently passing.
 func blockedReadinessErrors(slot string, v domain.PluginReadinessVector) []string {
+	groups := groupBlockedReadiness(v)
 	var errs []string
-	for _, d := range readinessDimensions(v) {
-		if d.check.Status != domain.ReadinessBlocked {
-			continue
+	for _, g := range groups {
+		label := "dimension"
+		if len(g.names) > 1 {
+			label = "dimensions"
 		}
-		msg := fmt.Sprintf("slot %s: readiness blocked on %s dimension (reason=%s", slot, d.name, d.check.ReasonCode)
-		if d.check.Detail != "" {
-			msg += ": " + d.check.Detail
+		msg := fmt.Sprintf("slot %s: readiness blocked on %s %s (reason=%s", slot, strings.Join(g.names, ", "), label, g.check.ReasonCode)
+		if g.check.Detail != "" {
+			msg += ": " + g.check.Detail
 		}
 		msg += ")"
 		errs = append(errs, msg)
 	}
 	return errs
+}
+
+type blockedReadinessGroup struct {
+	names []string
+	check domain.ReadinessCheck
+}
+
+func groupBlockedReadiness(v domain.PluginReadinessVector) []*blockedReadinessGroup {
+	var groups []*blockedReadinessGroup
+	for _, d := range readinessDimensions(v) {
+		if d.check.Status != domain.ReadinessBlocked {
+			continue
+		}
+		// One underlying probe can block several dimensions (e.g. ranked
+		// runtime failures report the same check for trust and grant); report
+		// it once, naming every dimension it blocks.
+		groups = mergeBlockedReadinessDimension(groups, d)
+	}
+	return groups
+}
+
+func mergeBlockedReadinessDimension(groups []*blockedReadinessGroup, dimension readinessDimension) []*blockedReadinessGroup {
+	for _, group := range groups {
+		if group.check.ReasonCode == dimension.check.ReasonCode && group.check.Detail == dimension.check.Detail {
+			group.names = append(group.names, dimension.name)
+			return groups
+		}
+	}
+	return append(groups, &blockedReadinessGroup{names: []string{dimension.name}, check: dimension.check})
 }
 
 // blockedReadinessErrorsForSlots applies blockedReadinessErrors across every

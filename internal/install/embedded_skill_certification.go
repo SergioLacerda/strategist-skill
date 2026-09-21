@@ -163,6 +163,12 @@ func validateRankedCandidate(provider pluginCatalogProvider, wantRole string) er
 // changes it.
 func rankedCertificationDigest(provider pluginCatalogProvider, role string) string {
 	runtime := domain.NormalizeRankedRuntime(provider.Runtime)
-	sum := sha256.Sum256([]byte(provider.ID + "\t" + providerVersionOrDefault(provider.Version) + "\t" + role + "\t" + domain.RoleHandoffSchema[role] + "\t" + runtime.Kind + "\t" + runtime.Root + "\t" + runtime.Bootstrap + "\t" + runtime.Healthcheck))
+	input := provider.ID + "\t" + providerVersionOrDefault(provider.Version) + "\t" + role + "\t" + domain.RoleHandoffSchema[role] + "\t" + runtime.Kind + "\t" + runtime.Root + "\t" + runtime.Bootstrap + "\t" + runtime.Healthcheck
+	// Pinned runtime identity is appended only when declared, so providers
+	// without it keep their existing digests.
+	if runtime.Version != "" || runtime.NodeVersion != "" {
+		input += "\truntime_version=" + runtime.Version + "\tnode_version=" + runtime.NodeVersion
+	}
+	sum := sha256.Sum256([]byte(input))
 	return fmt.Sprintf("sha256:%x", sum)
 }

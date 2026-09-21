@@ -278,3 +278,23 @@ func appendEnvOverrides(base, overrides map[string]string) []string {
 	}
 	return env
 }
+
+// withHostOpenSpec returns extra environment whose PATH carries an executable
+// named openspec, standing in for a machine that has the OpenSpec CLI.
+//
+// The harness builds the strategist binary WITHOUT the embedded runtime, and a
+// provider that declares a runtime now (correctly) blocks readiness when there
+// is no executable for it anywhere. Tests that only need a ready workspace use
+// this instead of relying on the runner having OpenSpec installed; the missing
+// runtime itself is covered by its own tests and by the standalone smoke.
+func withHostOpenSpec(t *testing.T) map[string]string {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("stands in for openspec with a POSIX shell script")
+	}
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "openspec"), []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil { //nolint:gosec // test stub must be executable
+		t.Fatalf("write openspec stub: %v", err)
+	}
+	return map[string]string{"PATH": dir + string(os.PathListSeparator) + os.Getenv("PATH")}
+}

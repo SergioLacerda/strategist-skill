@@ -2,6 +2,7 @@ package install
 
 import (
 	"context"
+	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,6 +13,7 @@ import (
 )
 
 func TestBootstrapOpenSpecRuntime_UsesContainedCommandsAndDirectConfig(t *testing.T) {
+	testutil.RequirePOSIXShell(t)
 	root := filepath.Join(t.TempDir(), ".strategist", "openspec")
 	binDir := t.TempDir()
 	script := filepath.Join(binDir, "openspec")

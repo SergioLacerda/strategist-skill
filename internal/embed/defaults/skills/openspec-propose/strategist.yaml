@@ -20,17 +20,27 @@ runtime:
   root: .strategist/openspec
   bootstrap: openspec init --profile core --tools codex
   healthcheck: openspec context --json
+  # Pinned runtime identity (D3): the prebuilt bundle under runtime/ and the
+  # Node it runs on. Both are part of the certification digest, so changing
+  # either requires re-certification and a reinstall of existing workspaces.
+  version: 1.13.0
+  node_version: 22.23.2
 
-# Upstream provenance verified against the Fission-AI/OpenSpec v1.10.0 tag:
+# runtime/ is the prebuilt, self-contained OpenSpec bundle produced by
+# scripts/build-openspec-runtime.sh from the tag below (never edited by hand;
+# see runtime/runtime.build.yaml). Strategist embeds and materializes it, so
+# clients never install or invoke OpenSpec themselves.
+#
+# Upstream provenance verified against the Fission-AI/OpenSpec v1.13.0 tag:
 # repository/revision from the signed GitHub release, license from the
 # upstream file header/LICENSE, and content digest computed from the pinned
 # raw file. The local SKILL.md is an adapted copy and therefore has a
 # different digest.
 upstream_repo: Fission-AI/OpenSpec
 upstream_skill_path: skills/openspec-propose/SKILL.md
-upstream_version: "1.10.0"
-upstream_commit: 1ebddd17f40dde15dfd28289e4493c3cf05ee9df
-upstream_content_digest: sha256:c0537ce311115878e7e0a04e6ff4fc6456056f21024079c228b6b24325e38613
+upstream_version: "1.13.0"
+upstream_commit: 9d4e5974e5c0d9a09b9c6c1e1eb0975e80ec4461
+upstream_content_digest: sha256:af5f5e5ebd0c8af4ee4498e1f7a3e196395030507e51adb52393e181f73a5c89
 license: MIT
 
 # scratch_root: runtime — this weapon's own openspec CLI creates working

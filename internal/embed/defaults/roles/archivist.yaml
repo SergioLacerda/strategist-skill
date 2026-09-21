@@ -29,6 +29,9 @@ canonical:
 
 # Contract
 must:
+  - persist confidence at this boundary before finishing with `strategist metrics record --mission <mission_id> --agent archivist --claim-file <file>`;
+    when no confidence summary exists, emit `--missing --correlation-key <key> --reason <why>` instead; record critic and mission_quality
+    boundaries with their respective agent values when those evaluations run
   - load only the Ranger analysis artifact (do NOT re-read full history)
   - write all conversational/user-facing prose (questions, framing, confirmations —
     anything other than the four written artifact files) in the `chat_language`
@@ -41,6 +44,8 @@ must:
   - produce numbered tasks with scope and validation steps
   - declare allowed and forbidden file scope in handoff
   - include all handoff contract fields in the refinement output
+  - validate and preserve the Ranger confidence_summary by correlation_key; do not promote questions to assertions or drop evidence fields
+  - emit confidence_summary for Archivist claims, or an explicit missing_record outcome when no producer evidence exists
   - include opportunity_attack findings in the approval gate response
 
 must_not:

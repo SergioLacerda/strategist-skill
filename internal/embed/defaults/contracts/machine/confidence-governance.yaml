@@ -1,0 +1,100 @@
+module: confidence-governance
+type: cross_phase
+description: >
+  Shared confidence, claim-kind, evidence, and calibration policy. This contract
+  makes the existing low/medium/high vocabulary auditable without conflating
+  epistemic confidence with risk, routing, critic, mission-quality, or throughput
+  metrics.
+
+policy:
+  version: v1
+  history_path: .strategist/memory/confidence-records.jsonl
+  confidence_percent:
+    range: [0, 100]
+    bands:
+      low: [0, 59]
+      medium: [60, 84]
+      high: [85, 100]
+  claim_kind: [question, assertion]
+  calibration_status: [no_sample, uncalibrated, observed, calibrated]
+  ground_truth_kind: [user_revision, handoff_validation, downstream_verification]
+  ground_truth_outcome: [correct, incorrect, unresolved]
+  calibration_minimum_sample: 3
+
+rules:
+  - id: question_preservation
+    text: Questions remain questions through every handoff until explicitly resolved.
+  - id: assertion_evidence
+    text: Assertions require resolvable evidence and a supporting evidence class.
+  - id: low_assertion_review
+    text: Low-confidence assertions are invalid and default to human review.
+  - id: medium_assertion_limit
+    text: Medium-confidence assertions are provisional and cannot authorize high-risk or destructive work.
+  - id: high_assertion_corroboration
+    text: High-confidence assertions require explicit evidence or two independent corroborated sources with no unresolved contradiction.
+  - id: no_sample
+    text: Empty histories report no_sample; they never become calibrated 0%.
+  - id: ground_truth
+    text: Calibration accuracy and correction rates require an explicit ground-truth reference.
+  - id: approval_independence
+    text: Confidence evidence is advisory input; only explicit human Approval Gate acceptance authorizes the next phase.
+  - id: execution_separation
+    text: Confidence cannot invoke Sniper and implementation_handoff remains separate from documentation_target.
+
+producers:
+  command: "strategist metrics record --mission <id> --agent <agent> (--claim-file <file> | --missing --correlation-key <key> --reason <why>)"
+  boundaries:
+    - {agent: scout, owner: contracts/machine/scout-routing.yaml#emit.confidence_record}
+    - {agent: ranger, owner: narrative/03-discovery.md#required-behavior}
+    - {agent: archivist, owner: narrative/04-refinement.md#required-behavior}
+    - {agent: critic, owner: narrative/04-refinement.md#required-behavior}
+    - {agent: mission_quality, owner: narrative/04-refinement.md#required-behavior}
+    - {agent: handoff_challenge, owner: internal/mission/handoff.go}
+    - {agent: sniper, owner: narrative/06-execution.md#required-behavior}
+  silent_boundary: "A boundary that finishes without a record or an explicit missing-record is a coverage gap; the gate review reports missing records separately."
+  gate_review: "strategist metrics confidence --mission <id> is the gate-time materializer (telemetry.LoadConfidenceGateReview)."
+  ground_truth: >
+    The Approval Gate is the immutable point of human action and the only automatic ground-truth
+    source: `strategist metrics gate-outcome --mission <id> --outcome accepted|revision_requested|rejected --ref <gate event>`.
+    Confidence an agent fills between handoffs is a claim, never a label.
+
+metric_vocabulary:
+  shared_fields: [event_id, agent, correlation_key, claim_kind, confidence_level, confidence_percent, evidence_ids, evidence_class, sample_size, calibration_status, ground_truth_outcome]
+  comparable:
+    - assertion_evidence_coverage
+    - unsupported_assertion_rate
+    - question_preservation_rate
+    - corrected_high_confidence_claim_rate
+  denominator_policy:
+    assertion_evidence_coverage: "supported assertions / assertion records"
+    unsupported_assertion_rate: "unsupported assertion records / assertion records"
+    question_preservation_rate: "correlated question outputs preserved / correlated question inputs"
+    corrected_high_confidence_claim_rate: "corrected high-confidence claims / high-confidence claims with reviewed ground truth"
+    sample_unit: "one unique event_id; sample_size counts reviewed outcomes, not raw lines"
+    missing_records: "excluded from validity denominators and reported separately"
+  independent:
+    - route_confidence
+    - critic_score
+    - mission_quality
+    - throughput
+    - timing
+    - handoff_pass_rate
+
+rollout:
+  enforcement: advisory
+  blocking_requires: reviewed_compatibility_evidence
+  blocking_review_file: docs/evidence/confidence-observe-review.yaml
+  check_command: "strategist metrics rollout-check --enforcement blocking --review-file <file>"
+  runbook: docs/runbooks/confidence-observe-review.md
+  rollback: >
+    Set enforcement back to advisory while preserving confidence records and the
+    human Approval Gate. Rollback must not auto-accept or bypass the gate.
+
+legacy_compatibility:
+  evidence_alias: "Read evidence as a compatibility alias for evidence_ids only when values do not conflict; emit evidence_ids."
+  event_identity: "Derive event_id for legacy records from mission, agent, claim, correlation, confidence, evidence, and ground truth fields."
+  ground_truth: "Never infer ground truth, reviewed, or calibrated state from legacy records."
+  rejected_history: "Malformed and invalid lines remain excluded from valid metrics and are reported as diagnostics."
+
+enforced_by: agent_only
+owner: governance

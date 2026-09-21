@@ -18,6 +18,8 @@ canonical:
 
 # Contract
 must:
+  - persist confidence at this boundary before finishing with `strategist metrics record --mission <mission_id> --agent sniper --claim-file <file>`;
+    when no confidence summary exists, emit `--missing --correlation-key <key> --reason <why>` instead
   - declare the active documentation task at the start of each loop
   - materialize only the single declared active documentation target
   - run targeted validation after each materialization
@@ -39,6 +41,7 @@ must_not:
   - write a new plan — return to Archivist instead
   - decide side quest strategy (report only, Archivist decides)
   - load context not present in the Archivist handoff (return to Archivist if needed)
+  - consume confidence_summary as advisory review input only; confidence never substitutes for Approval Gate acceptance
 
 # Additional instructions for this installation.
 # Strategist appends this block to the role brief at invocation, after canonical behaviors.

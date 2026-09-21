@@ -3,26 +3,49 @@ package main
 import (
 	"bytes"
 	"log/slog"
+	"runtime"
+	"strings"
 	"testing"
+	"testing/fstest"
 
+	"github.com/SergioLacerda/strategist-skill/internal/runtimepayload"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // --- version ---
 
-func TestVersionCmd_PrintsVersion(t *testing.T) {
+func TestDisplayVersion(t *testing.T) {
+	cases := map[string]string{
+		"1.0.18":                   "V1.0.18",
+		"v1.0.18":                  "V1.0.18",
+		"V1.0.18":                  "V1.0.18",
+		"v1.0.18-3-gabc1234":       "V1.0.18+",
+		"v1.0.18-3-gabc1234-dirty": "V1.0.18+",
+		"v1.0.18-dirty":            "V1.0.18+",
+		"1.0.18-dirty":             "V1.0.18+",
+		"v1.0.18-rc1":              "Vdev",
+		"dev":                      "Vdev",
+		"":                         "Vdev",
+		"1.2.3-test":               "Vdev",
+	}
+	for raw, want := range cases {
+		assert.Equal(t, want, displayVersion(raw), "raw=%q", raw)
+	}
+}
+
+func TestVersionCmd_PrintsSingleCleanLine(t *testing.T) {
 	orig := Version
 	t.Cleanup(func() { Version = orig })
-	Version = "1.2.3-test"
+	Version = "1.0.18"
 
 	out := captureStdout(t, func() {
 		versionCmd.Run(versionCmd, nil)
 	})
-	assert.Contains(t, out, "1.2.3-test")
-	assert.Contains(t, out, "strategist")
+	assert.Equal(t, "V1.0.18\n", out)
 }
 
-func TestVersionCmd_EmitsStructuredTelemetry(t *testing.T) {
+func TestVersionCmd_TelemetryIsDebugLevel(t *testing.T) {
 	orig := Version
 	t.Cleanup(func() { Version = orig })
 	Version = "1.2.3-test"
@@ -33,13 +56,75 @@ func TestVersionCmd_EmitsStructuredTelemetry(t *testing.T) {
 	slog.SetDefault(slog.New(h))
 	t.Cleanup(func() { slog.SetDefault(prev) })
 
-	versionCmd.Run(versionCmd, nil)
+	_ = captureStdout(t, func() { versionCmd.Run(versionCmd, nil) })
+	assert.Empty(t, buf.String(), "version must not log at Info level")
 
+	buf.Reset()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	_ = captureStdout(t, func() { versionCmd.Run(versionCmd, nil) })
 	out := buf.String()
 	assert.Contains(t, out, "strategist.component=version")
-	assert.Contains(t, out, "strategist.runtime_mode=cli")
-	assert.Contains(t, out, "strategist.output_profile=default")
 	assert.Contains(t, out, "strategist.version=1.2.3-test")
 }
 
+func TestVersionIsHumanStatusCommand(t *testing.T) {
+	assert.True(t, isHumanStatusCommand(versionCmd))
+}
+
 // --- compile ---
+
+// --- version --build ---
+
+func TestFormatBuildInfoShowsCommitPlatformAndPayload(t *testing.T) {
+	settings := map[string]string{"vcs.revision": "895d45b1c2e3f4a5b6c7d8e9f0a1b2c3d4e5f607", "vcs.modified": "false"}
+	payload := &buildPayload{OpenSpec: "1.13.0", Node: "22.23.2"}
+
+	got := formatBuildInfo(settings, "windows", "amd64", payload)
+
+	assert.Equal(t, []string{
+		"commit: 895d45b1c2e3",
+		"platform: windows/amd64",
+		"runtime payload: embedded (openspec 1.13.0, node 22.23.2)",
+	}, got)
+}
+
+func TestFormatBuildInfoFlagsDirtyTreesAndMissingInformation(t *testing.T) {
+	dirty := formatBuildInfo(map[string]string{"vcs.revision": "895d45b1c2e3f4a5", "vcs.modified": "true"}, "linux", "arm64", nil)
+	assert.Equal(t, "commit: 895d45b1c2e3 (modified)", dirty[0])
+	assert.Equal(t, "runtime payload: none (openspec resolved from PATH)", dirty[2])
+
+	unknown := formatBuildInfo(nil, "linux", "amd64", nil)
+	assert.Equal(t, "commit: unknown", unknown[0])
+}
+
+func TestVersionCmd_BuildFlagAddsLinesButDefaultStaysOneLine(t *testing.T) {
+	orig := Version
+	t.Cleanup(func() { Version = orig })
+	Version = "1.0.18"
+
+	t.Cleanup(func() { _ = versionCmd.Flags().Set("build", "false") })
+	require.NoError(t, versionCmd.Flags().Set("build", "true"))
+	out := captureStdout(t, func() { versionCmd.Run(versionCmd, nil) })
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	assert.Equal(t, "V1.0.18", lines[0])
+	assert.GreaterOrEqual(t, len(lines), 4)
+	assert.Contains(t, out, "platform: "+runtime.GOOS+"/"+runtime.GOARCH)
+
+	require.NoError(t, versionCmd.Flags().Set("build", "false"))
+	assert.Equal(t, "V1.0.18\n", captureStdout(t, func() { versionCmd.Run(versionCmd, nil) }))
+}
+
+func TestEmbeddedPayloadSummarizesTheRegisteredComponentsOnly(t *testing.T) {
+	t.Cleanup(func() { runtimepayload.Register(runtimepayload.Manifest{}, nil) })
+
+	runtimepayload.Register(runtimepayload.Manifest{}, nil)
+	assert.Nil(t, embeddedPayload(), "no payload registered")
+
+	runtimepayload.Register(runtimepayload.Manifest{Components: []runtimepayload.Component{
+		{Name: "node", Version: "22.23.2"}, {Name: "openspec", Version: "1.13.0"}, {Name: "other", Version: "9.9.9"},
+	}}, fstest.MapFS{})
+	got := embeddedPayload()
+	require.NotNil(t, got)
+	assert.Equal(t, "1.13.0", got.OpenSpec)
+	assert.Equal(t, "22.23.2", got.Node)
+}

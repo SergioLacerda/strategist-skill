@@ -1,7 +1,7 @@
 # Test Styles
 
 **Status:** Accepted
-**Last Updated:** 2026-09-19
+**Last Updated:** 2026-09-20
 
 This repository runs six distinct test styles, each behind its own `make`
 target and (for the Go ones) its own build tag. Coverage — a *measured,
@@ -11,10 +11,10 @@ taxonomy explicitly so the gap is visible instead of implicit.
 | Style | `make` target | Validates | Coverage today |
 |---|---|---|---|
 | unit | `test` | package-level Go logic (`go test -race ./...`, excludes `/testutil`) | none gated at this target; see `cover`/`cover-gate` below |
-| unit (gated subset) | `cover` / `cover-gate` | line coverage for the packages listed in `scripts/coverage-packages.tsv` (widened to the full `./internal/...` tree + `cmd/strategist`) | line coverage %, 90% minimum baseline; `internal/eval`, `internal/integrity`, `internal/runtimefs` are gated at the 90% baseline and currently measure 95.5%/96.9%/98.3%%, and `internal/treasure` is gated at a stricter 95% threshold and measures 0.0% — see `scripts/coverage-packages.tsv` for per-package provenance |
-| spec (Gherkin) | `spec` | governance/contract behavior, driven by 16 `.feature` files under `tests/spec/specs/` (Given/When/Then scenarios consumed by Go test helpers in `tests/spec/*_test.go` — not a Cucumber/Godog runner) | none |
+| unit (gated subset) | `cover` / `cover-gate` | line coverage for the packages listed in `scripts/coverage-packages.tsv` (widened to the full `./internal/...` tree + `cmd/strategist`) | line coverage %, 90% minimum baseline; `internal/eval`, `internal/integrity`, `internal/runtimefs` are gated at the 90% baseline and currently measure 95.5%/96.9%/98.3%, and `treasure-chest` is gated at a stricter 95% threshold and measures 96.2% — see `scripts/coverage-packages.tsv` for per-package provenance |
+| spec (Gherkin) | `spec` | governance/contract behavior, driven by 16 `.feature` files under `tests/spec/specs/` (Given/When/Then scenarios; 15 are checked by Go test helpers in `tests/spec/*_test.go`, `e2e-critical-hit-closure.feature` is documentation-only — not a Cucumber/Godog runner) | none |
 | integration | `integration` | cross-component Go behavior (`go test -race -tags=integration ./tests/integration/...`) | none as its own view (it is folded in as a coverage *source* for `cover-html`, but not reported as its own number) |
-| eval | `eval` | prompt/artifact scenario correctness (`go test -race -tags=eval ./tests/evals/...`, 15 files across `contracts/` and `scenarios/`) | none |
+| eval | `eval` | prompt/artifact scenario correctness (`go test -race -tags=eval ./tests/evals/...`, 9 files across `contracts/` and `scenarios/`; not part of `test-all`/`ci-test`, run on demand with `make eval`) | none |
 | eval-promptfoo | `eval-promptfoo` | LLM-judged artifact quality (`npx promptfoo eval`) | none — deliberately standalone, not wired into `eval`/`test`/`test-all`/`ci-test`/`ci`; requires a local LM Studio endpoint. See `.analysis/archived/20260804-promptfoo-ci-adapter-adr.md`. |
 | web | `test-web` / `cover-web` | Vitest suite in `web/landing` | line coverage % via `cover-web` (`npm run cover`), not gated, and not wired into `ci-web` |
 

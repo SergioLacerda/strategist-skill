@@ -96,6 +96,118 @@ errors:
     action: "fix provider configuration or runtime installation, then rerun strategist check"
     enforced_by: agent_only
 
+  - token: ranked_runtime_executable_missing
+    emit: "check=blocked reason=ranked_runtime_executable_missing"
+    scope: slot
+    reason: "a Ranked provider's runtime executable (for openspec-propose: openspec) is not available to Strategist"
+    action: "install the CLI at the version pinned by the provider contract so it is on PATH, then rerun strategist install or strategist check; see docs/runbooks/standalone-runtime-hermeticity.md"
+    enforced_by: machine_enforced
+
+  - token: ranked_runtime_pin_mismatch
+    emit: "error=ranked_runtime_pin_mismatch"
+    scope: slot
+    reason: "the materialized private runtime component versions differ from the versions pinned by the provider contract (a build defect)"
+    action: "rebuild the release so runtime/ and runtime.lock.yaml match runtime.version and runtime.node_version, then run make embed-skills"
+    enforced_by: machine_enforced
+
+  - token: ranked_runtime_version_skew
+    emit: "check=ready reason=ranked_runtime_version_skew"
+    scope: slot
+    reason: "a host executable resolved from PATH reports a version different from the provider contract pin (advisory, never blocks)"
+    action: "install the pinned version, or use a build that embeds the private runtime"
+    enforced_by: machine_observed
+
+  - token: ranked_runtime_digest_mismatch
+    emit: "check=blocked reason=ranked_runtime_digest_mismatch"
+    scope: slot
+    reason: "the runtime recorded at install time was certified by a different binary than the one now running"
+    action: "run `strategist upgrade` in this workspace (or `strategist install --wizard`) so the runtime is re-materialized and re-recorded for this binary"
+    enforced_by: machine_enforced
+
+  - token: ranked_runtime_state_missing
+    emit: "check=blocked reason=ranked_runtime_state_missing"
+    scope: slot
+    reason: "ranked-runtimes.yaml is absent although a Ranked provider is bound"
+    action: "run `strategist install --wizard` (keep the Ranked option) to materialize and record the runtime"
+    enforced_by: machine_enforced
+
+  - token: ranked_runtime_state_invalid
+    emit: "check=blocked reason=ranked_runtime_state_invalid"
+    scope: slot
+    reason: "ranked-runtimes.yaml is unreadable, or records runtime paths outside weapon-runtime/"
+    action: "run `strategist upgrade`, or reinstall with `strategist install --wizard`; do not edit the state file by hand"
+    enforced_by: machine_enforced
+
+  - token: ranked_runtime_binding_missing
+    emit: "check=blocked reason=ranked_runtime_binding_missing"
+    scope: slot
+    reason: "the ranked runtime state has no entry for this slot and provider"
+    action: "run `strategist upgrade`, or reinstall with `strategist install --wizard`"
+    enforced_by: machine_enforced
+
+  - token: ranked_runtime_root_missing
+    emit: "check=blocked reason=ranked_runtime_root_missing"
+    scope: slot
+    reason: "the prepared runtime root has no config.yaml (.strategist/openspec/config.yaml)"
+    action: "run `strategist install --wizard` to prepare the runtime root again"
+    enforced_by: machine_enforced
+
+  - token: ranked_runtime_root_mismatch
+    emit: "check=blocked reason=ranked_runtime_root_mismatch"
+    scope: slot
+    reason: "the provider runtime reports a semantic root other than the prepared .strategist directory"
+    action: "run the command from the workspace that owns this .strategist, or reinstall; do not point --root at another directory"
+    enforced_by: machine_enforced
+
+  - token: ranked_runtime_healthcheck_failed
+    emit: "check=blocked reason=ranked_runtime_healthcheck_failed"
+    scope: slot
+    reason: "the provider runtime command failed or timed out"
+    action: "run `strategist version --build` to confirm the runtime payload is embedded, then reinstall with `strategist install --wizard`; the message carries the command output"
+    enforced_by: machine_enforced
+
+  - token: ranked_runtime_healthcheck_timeout
+    emit: "check=blocked reason=ranked_runtime_healthcheck_timeout"
+    scope: slot
+    reason: "the provider runtime did not answer its healthcheck within the configured time limit"
+    action: "retry; if the machine is slow on first launch (for example antivirus scanning a new node.exe) raise STRATEGIST_RANKED_HEALTHCHECK_TIMEOUT (for example 60s)"
+    enforced_by: machine_enforced
+
+  - token: ranked_runtime_contract_invalid
+    emit: "check=blocked reason=ranked_runtime_contract_invalid"
+    scope: slot
+    reason: "the provider's runtime contract in the installed catalog is invalid"
+    action: "use a binary whose catalog matches its source (`make embed-skills` for a source build), then run `strategist upgrade`"
+    enforced_by: machine_enforced
+
+  - token: ranked_catalog_unreadable
+    emit: "check=blocked reason=ranked_catalog_unreadable"
+    scope: slot
+    reason: "the installed plugins/catalog.yaml cannot be read"
+    action: "run `strategist upgrade --force`, or reinstall with `strategist install --wizard`"
+    enforced_by: machine_enforced
+
+  - token: ranked_catalog_invalid
+    emit: "check=blocked reason=ranked_catalog_invalid"
+    scope: slot
+    reason: "the installed plugins/catalog.yaml is not a valid catalog"
+    action: "run `strategist upgrade --force`, or reinstall with `strategist install --wizard`"
+    enforced_by: machine_enforced
+
+  - token: ranked_not_certified
+    emit: "check=blocked reason=ranked_not_certified"
+    scope: slot
+    reason: "the bound provider is not a certified Ranked candidate in the installed catalog"
+    action: "choose a certified provider in the wizard, or upgrade to a binary that certifies it"
+    enforced_by: machine_enforced
+
+  - token: ranked_conformance_rejected
+    emit: "check=blocked reason=ranked_conformance_rejected"
+    scope: slot
+    reason: "the provider's conformance evidence failed evaluation"
+    action: "upgrade to the matching binary with `strategist upgrade`, or reinstall; the message lists the rejected checks"
+    enforced_by: machine_enforced
+
   - token: role_provider_invalid
     emit: "error=role_provider_invalid"
     scope: slot

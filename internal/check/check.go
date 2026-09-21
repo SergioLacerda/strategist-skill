@@ -58,6 +58,10 @@ Checks performed:
 			}
 			root = discovered
 		}
+		root, absErr := absoluteRoot(root)
+		if absErr != nil {
+			return fmt.Errorf("[Strategist] check=blocked reason=root_unresolvable: %w", absErr)
+		}
 
 		ctx := cmd.Context()
 		if ctx == nil {

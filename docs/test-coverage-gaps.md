@@ -25,8 +25,8 @@ below seems to need one, stop and re-read those ADRs before proceeding.
 | T2 | done — `.github/workflows/test.yml` publishes `make test-report` to `$GITHUB_STEP_SUMMARY` (non-blocking, `if: always()`) | Publish `make test-report`'s table to `$GITHUB_STEP_SUMMARY` |
 | T3 | applied to the then-known `./internal/...` scope; current manifest completeness is a separate open refinement because newer production packages are not reconciled automatically | Widen `cover-gate`'s 90% scope from 6 packages to `./internal/...` |
 | T4 | done — `make/web.mk`'s `ci-web` target depends on `cover-web` | Wire `cover-web` into `ci-web` |
-| T5 | done — `tests/evals/scenarios/treasure_chest_grading_test.go` + `internal/eval` dispatch Target; `go test -race -tags=eval ./tests/evals/...` passes (15/15 scenarios) | New `internal/eval` Target for treasure-chest grading functions |
-| T6 | done — `tests/spec/specs/e2e-critical-hit-closure.feature` + Go helper; `go test -race -tags=spec ./tests/spec/...` passes (159/159 scenarios) | New Gherkin feature for Critical Hit plain-move vs closure-move |
+| T5 | done — `tests/evals/scenarios/treasure_chest_grading_test.go` + `internal/eval` dispatch Target; `go test -race -tags=eval ./tests/evals/...` passes (as of 2026-09-20, 9 test files remain in `tests/evals/`; the 9 duplicated FSM/critical-hit scenarios were removed, see `.analysis/refined/20260920-test-scenario-redundancy-review/`) | New `internal/eval` Target for treasure-chest grading functions |
+| T6 | done — `tests/spec/specs/e2e-critical-hit-closure.feature` kept as living documentation; its `strings.Contains` Go helper was removed on 2026-09-20 as tautological (it only checked the feature's own text) | New Gherkin feature for Critical Hit plain-move vs closure-move |
 | T7 | not_started (future mission) | Extract a pure Critical Hit trigger/closure function |
 
 ---

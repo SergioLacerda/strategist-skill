@@ -29,6 +29,9 @@ type HandoffMetrics struct {
 	HandoffRepairRate float64
 	SemanticLoss      SemanticHandoffLoss
 	SampleSize        int
+	// ApplicationSampleSize counts downstream application ground-truth labels
+	// (see ground_truth_labels.go). 0 means Application loss is unmeasured.
+	ApplicationSampleSize int
 }
 
 // SemanticHandoffLoss follows quiz.txt's own definition:
@@ -44,9 +47,9 @@ type HandoffMetrics struct {
 // than true item-level fractions. Application requires evidence of whether
 // Sniper's actual downstream work correctly incorporated an acknowledged
 // constraint, which is outside anything a Handoff Challenge record alone
-// can show; it is always 0 until such a signal exists, the same "no ground
-// truth yet" posture RouteMetrics takes for its four reversal-dependent
-// metrics.
+// can show; it stays 0 (ApplicationSampleSize 0, i.e. no_sample) until
+// downstream application labels exist in ground-truth-labels.jsonl, and is
+// then filled by ApplyHandoffApplicationGroundTruth.
 type SemanticHandoffLoss struct {
 	Recall         float64
 	Classification float64

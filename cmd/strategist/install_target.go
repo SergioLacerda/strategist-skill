@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 )
 
 // resolveInstallTarget returns the effective install target path.
@@ -11,7 +12,7 @@ import (
 // existing .strategist/ and updates in-place; falls back to "." otherwise.
 func resolveInstallTarget(explicit string, global bool) (string, error) {
 	if explicit != "" {
-		return explicit, nil
+		return absoluteInstallTarget(explicit)
 	}
 	if global {
 		home, err := os.UserHomeDir()
@@ -25,5 +26,13 @@ func resolveInstallTarget(explicit string, global bool) (string, error) {
 			return projRoot, nil
 		}
 	}
-	return ".", nil
+	return absoluteInstallTarget(".")
+}
+
+func absoluteInstallTarget(path string) (string, error) {
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		return "", fmt.Errorf("install: resolve absolute target %q: %w", path, err)
+	}
+	return absolute, nil
 }

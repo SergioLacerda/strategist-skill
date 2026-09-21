@@ -218,7 +218,11 @@ func TestErrorCatalogEnforcedByIsAccurate(t *testing.T) {
 		case "machine_enforced", "machine_observed":
 			literal := "error=" + e.Token
 			reasonLiteral := "reason=" + e.Token
-			if !strings.Contains(code, literal) && !strings.Contains(code, reasonLiteral) {
+			// Readiness blockers are emitted as a ReasonCode field or a Reason*
+			// constant rather than inside message text; both are literal,
+			// reachable emissions by non-test Go code.
+			fieldLiteral := regexp.MustCompile(`Reason[A-Za-z]*(:|\s*=)\s*"` + regexp.QuoteMeta(e.Token) + `"`)
+			if !strings.Contains(code, literal) && !strings.Contains(code, reasonLiteral) && !fieldLiteral.MatchString(code) {
 				t.Errorf("catalog token %q is enforced_by: %s but no non-test .go file "+
 					"under internal/ or cmd/ (excluding embed defaults) literally emits %q or %q",
 					e.Token, e.EnforcedBy, literal, reasonLiteral)
@@ -229,4 +233,79 @@ func TestErrorCatalogEnforcedByIsAccurate(t *testing.T) {
 			t.Errorf("catalog token %q has invalid or missing enforced_by (got %q, want machine_enforced|machine_observed|agent_only)", e.Token, e.EnforcedBy)
 		}
 	}
+}
+
+// Hardening F-03: every ranked_* reason code Go can emit that blocks readiness
+// must have a catalog entry with a remedy, so an operator is never left with a
+// bare token. Informational (non-blocking) codes are listed explicitly.
+func TestRankedBlockingReasonCodesAreCatalogedWithAnAction(t *testing.T) {
+	t.Parallel()
+
+	informational := map[string]string{
+		"ranked_certification_verified": "success detail, never blocks",
+		"ranked_runtime_healthy":        "success detail, never blocks",
+		"ranked_runtime_not_required":   "provider declares no runtime",
+	}
+	emitted := rankedReasonCodesInGo(t, repoRoot(t))
+	if len(emitted) < 10 {
+		t.Fatalf("scan found only %d ranked_* reason codes; the scanner is broken", len(emitted))
+	}
+
+	data := readFile(t, filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "errors.yaml"))
+	var cat struct {
+		Errors []struct {
+			Token  string `yaml:"token"`
+			Action string `yaml:"action"`
+		} `yaml:"errors"`
+	}
+	if err := yaml.Unmarshal([]byte(data), &cat); err != nil {
+		t.Fatalf("parse errors.yaml: %v", err)
+	}
+	actions := map[string]string{}
+	for _, e := range cat.Errors {
+		actions[e.Token] = strings.TrimSpace(e.Action)
+	}
+
+	for code := range emitted {
+		if _, ok := informational[code]; ok {
+			continue
+		}
+		action, cataloged := actions[code]
+		if !cataloged {
+			t.Errorf("reason code %q is emitted by Go but has no entry in errors.yaml", code)
+		} else if action == "" {
+			t.Errorf("reason code %q is cataloged without an action (remedy)", code)
+		}
+	}
+}
+
+var (
+	rankedReasonLiteral = regexp.MustCompile(`ReasonCode:\s*"(ranked_[a-z_]+)"`)
+	rankedReasonConst   = regexp.MustCompile(`Reason[A-Za-z]*\s*=\s*"(ranked_[a-z_]+)"`)
+)
+
+func rankedReasonCodesInGo(t *testing.T, root string) map[string]bool {
+	t.Helper()
+	found := map[string]bool{}
+	for _, dir := range []string{"internal", "cmd"} {
+		err := filepath.WalkDir(filepath.Join(root, dir), func(path string, d os.DirEntry, walkErr error) error {
+			if walkErr != nil || d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+				return walkErr
+			}
+			body, readErr := os.ReadFile(path)
+			if readErr != nil {
+				return readErr
+			}
+			for _, re := range []*regexp.Regexp{rankedReasonLiteral, rankedReasonConst} {
+				for _, m := range re.FindAllStringSubmatch(string(body), -1) {
+					found[m[1]] = true
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("scan %s: %v", dir, err)
+		}
+	}
+	return found
 }

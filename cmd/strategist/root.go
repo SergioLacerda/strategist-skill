@@ -18,12 +18,15 @@ import (
 )
 
 // humanStatusCommands are commands whose default output is a human-readable
-// status display. They suppress the pipeline startup line and metrics.
+// status display or a single machine-copyable value (e.g. `version`). They
+// suppress the pipeline startup line and metrics.
 var humanStatusCommands = map[string]bool{
 	"check":          true,
 	"treasure-chest": true,
 	"metrics":        true,
 	"handoff":        true,
+	"provider":       true,
+	"version":        true,
 }
 
 var rootCmd = &cobra.Command{

@@ -1,6 +1,7 @@
 package install
 
 import (
+	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -303,6 +304,7 @@ func TestListUpgradeBackups_ResolveErrorPropagates(t *testing.T) {
 }
 
 func TestListUpgradeBackups_ReadDirErrorPropagates(t *testing.T) {
+	testutil.SkipOnWindowsReadDirOfFile(t)
 	t.Parallel()
 
 	dir := t.TempDir()

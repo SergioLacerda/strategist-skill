@@ -34,12 +34,18 @@ func skillProviderReadiness(root, slot, provider, path string) domain.PluginRead
 		trustCheck, grantCheck = rankedCertificationReadiness(root, slot, provider)
 		conformance = domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "ranked_certification_verified"}
 	}
+	dependencies := domain.ReadinessCheck{Status: domain.ReadinessUnknown, ReasonCode: "dependency_lock_not_evaluated"}
+	if !ranked {
+		// A Ranked binding proves its runtime through its own readiness; every
+		// other binding must still not read ready without one.
+		dependencies = customRuntimeReadiness(root, slot, provider)
+	}
 	return domain.PluginReadinessVector{
 		Descriptor:          domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "legacy_descriptor_valid", Detail: path},
 		Source:              domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "local_manifest_present", Detail: path},
 		Conformance:         conformance,
 		Trust:               trustCheck,
-		Dependencies:        domain.ReadinessCheck{Status: domain.ReadinessUnknown, ReasonCode: "dependency_lock_not_evaluated"},
+		Dependencies:        dependencies,
 		HostAPI:             domain.ReadinessCheck{Status: domain.ReadinessUnknown, ReasonCode: "host_api_not_declared"},
 		Connector:           connectorCheck(resolve),
 		Entrypoint:          probeSkillEntrypoint(provider, path),

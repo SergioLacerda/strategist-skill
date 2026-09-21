@@ -38,12 +38,16 @@ discovery, refinement, and approved documentation/handoff materialization.
 Canonical pipeline:
 `Ranger → Archivist → approval gate → Sniper`
 
+For a first mission, start with the repository-level [QUICKSTART.md](../../QUICKSTART.md).
+This page is the maintained conceptual and technical overview of the onboarding
+material, not a second installation guide.
+
 For full pipeline/contracts/schema details: [readme-detailed-en.md](readme-detailed-en.md).
 
 ## Why use it
 
 - Discovery and refinement before execution.
-- Mandatory approval gate before Sniper materializes approved documentation or handoff work.
+- Mandatory approval gate before Sniper materializes approved documentation targets; implementation handoffs remain separate coding work.
 - Pluggable slots (`discovery`, `refinement`, `execution`).
 - Mission policy through `mission_mode` (analysis vs delivery).
 - Opportunity Attack, Side Quests, Critical Hit, and Treasure Chests in the same flow.
@@ -53,7 +57,7 @@ For full pipeline/contracts/schema details: [readme-detailed-en.md](readme-detai
 - **Scout** (internal, pre-pipeline): classifies the request and picks the route before any slot runs. Does not perform discovery itself.
 - **Ranger**: explores context and produces discovery.
 - **Archivist**: turns discovery into proposal, design, and tasks.
-- **Sniper**: materializes approved documentation/handoff work only after gate + policy checks.
+- **Sniper**: materializes approved documentation targets only after gate + policy checks; it reports implementation handoffs without executing them.
 - **Opportunity Attack**: Archivist-owned ADR evaluation after all four refined artifacts are written.
 - **Side Quests**: cross-phase scope observations; Archivist consolidates and presents at the approval gate; Sniper reports newly discovered ones.
 - **Critical Hit**: analysis `.md` movement route within `<base_path>` folders (`pending/`, `refined/`, `archived/`).

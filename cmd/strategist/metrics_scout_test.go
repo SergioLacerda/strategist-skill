@@ -4,8 +4,10 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -93,4 +95,26 @@ func TestRunMetricsScout_ReadRouteDecisionsErrorPropagates(t *testing.T) {
 	err := runMetricsScout(metricsScoutCmd, metricsScoutOptions{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "metrics scout")
+}
+
+func TestPrintRouteGroundTruthMetrics(t *testing.T) {
+	t.Parallel()
+	var empty strings.Builder
+	if err := printRouteGroundTruthMetrics(&empty, telemetry.RouteGroundTruthMetrics{CalibrationStatus: "no_sample"}); err != nil {
+		t.Fatal(err)
+	}
+	if got := empty.String(); !strings.Contains(got, "calibration_status: no_sample") || strings.Contains(got, "route_accuracy") {
+		t.Fatalf("empty output = %q", got)
+	}
+	var full strings.Builder
+	m := telemetry.RouteGroundTruthMetrics{RouteAccuracy: 0.5, SampleSize: 4, CalibrationStatus: "observed"}
+	if err := printRouteGroundTruthMetrics(&full, m); err != nil {
+		t.Fatal(err)
+	}
+	if got := full.String(); !strings.Contains(got, "route_accuracy: 0.50") || !strings.Contains(got, "user_override_rate") {
+		t.Fatalf("full output = %q", got)
+	}
+	if err := printRouteGroundTruthMetrics(errorWriter{}, m); err == nil {
+		t.Fatal("expected write error")
+	}
 }

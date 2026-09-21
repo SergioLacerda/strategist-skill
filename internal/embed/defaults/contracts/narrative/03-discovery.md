@@ -140,6 +140,9 @@ simultaneously (decision conflict) — see `00-routing.md`. `skill.yaml#budget_p
 
 ## Required Behavior
 
+- before finishing, persist this boundary's confidence: `strategist metrics record --mission <mission_id> --agent ranger --claim-file <file>`,
+  or, when no confidence summary was produced, `strategist metrics record --mission <mission_id> --agent ranger --missing --correlation-key <key> --reason <why>`;
+  never finish silently (see `machine/confidence-governance.yaml#producers`)
 - consult treasure chests before analysis
 - follow the Retrieval Cascade above; do not skip stages out of order
 - cite `evidence_pack_path` in the analysis artifact when the dossier provides one

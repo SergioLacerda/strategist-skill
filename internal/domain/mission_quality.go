@@ -2,7 +2,6 @@ package domain
 
 import (
 	"fmt"
-	"strings"
 )
 
 // MissionQualityCheck names one predicate in the mission_quality result
@@ -64,7 +63,7 @@ func EvaluateMissionQuality(in MissionQualityInput) MissionQualityResult {
 	evidenceByID := indexEvidenceByID(in.Evidence)
 	return MissionQualityResult{
 		Checks: []MissionQualityCheckResult{
-			checkUnsupportedClaims(in.Decisions),
+			checkUnsupportedClaims(in.Decisions, in.Evidence),
 			checkFactInferenceSeparation(in.Evidence),
 			checkTraceableFindings(in.Decisions, evidenceByID),
 			checkAcceptanceCriteria(in.AcceptanceCriteria),
@@ -83,12 +82,10 @@ func indexEvidenceByID(evidence []Evidence) map[string]Evidence {
 }
 
 // checkUnsupportedClaims fails for every Decision with no cited evidence.
-func checkUnsupportedClaims(decisions []Decision) MissionQualityCheckResult {
+func checkUnsupportedClaims(decisions []Decision, evidence []Evidence) MissionQualityCheckResult {
 	var violations []string
 	for _, d := range decisions {
-		if len(d.EvidenceIDs) == 0 {
-			violations = append(violations, fmt.Sprintf("decision %s cites no evidence", d.ID))
-		}
+		violations = append(violations, unsupportedClaimViolations(d, evidence)...)
 	}
 	return MissionQualityCheckResult{
 		Check:      CheckUnsupportedClaims,
@@ -98,12 +95,28 @@ func checkUnsupportedClaims(decisions []Decision) MissionQualityCheckResult {
 	}
 }
 
+func unsupportedClaimViolations(decision Decision, evidence []Evidence) []string {
+	var violations []string
+	if len(decision.EvidenceIDs) == 0 {
+		violations = append(violations, fmt.Sprintf("decision %s cites no evidence", decision.ID))
+	}
+	if decision.ClaimKind != "" || decision.ConfidencePercent != nil {
+		if err := ValidateDecisionWithEvidence(decision, evidence); err != nil {
+			violations = append(violations, fmt.Sprintf("decision %s confidence validation: %v", decision.ID, err))
+		}
+	}
+	return violations
+}
+
 // checkFactInferenceSeparation fails for invalid evidence classes.
 func checkFactInferenceSeparation(evidence []Evidence) MissionQualityCheckResult {
 	var violations []string
 	for _, e := range evidence {
 		if e.Class == "" || !hasString(allowedEvidenceClasses, e.Class) {
 			violations = append(violations, fmt.Sprintf("evidence %s has no valid class (got %q)", e.ID, e.Class))
+		}
+		if err := ValidateEvidence(e); err != nil {
+			violations = append(violations, fmt.Sprintf("evidence %s validation: %v", e.ID, err))
 		}
 	}
 	return MissionQualityCheckResult{
@@ -167,32 +180,4 @@ func checkUnresolvedQuestionsPreserved(decisions []Decision, previouslyOpenIDs [
 		Passed:     len(violations) == 0,
 		Violations: violations,
 	}
-}
-
-// checkSourceScopeRespected enforces approved source prefixes.
-func checkSourceScopeRespected(evidence []Evidence, approvedPrefixes []string) MissionQualityCheckResult {
-	if approvedPrefixes == nil {
-		return MissionQualityCheckResult{Check: CheckSourceScopeRespected, Applicable: false}
-	}
-	var violations []string
-	for _, e := range evidence {
-		if !sourceRefWithinScope(e.SourceRef, approvedPrefixes) {
-			violations = append(violations, fmt.Sprintf("evidence %s source_ref %q is outside the approved scope", e.ID, e.SourceRef))
-		}
-	}
-	return MissionQualityCheckResult{
-		Check:      CheckSourceScopeRespected,
-		Applicable: true,
-		Passed:     len(violations) == 0,
-		Violations: violations,
-	}
-}
-
-func sourceRefWithinScope(sourceRef string, approvedPrefixes []string) bool {
-	for _, prefix := range approvedPrefixes {
-		if strings.HasPrefix(sourceRef, prefix) {
-			return true
-		}
-	}
-	return false
 }

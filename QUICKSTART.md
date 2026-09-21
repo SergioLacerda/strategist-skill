@@ -1,12 +1,12 @@
 # Quickstart — Strategist
 
-Five steps from zero to first mission. No lore.
-
-Need the mental model first? Read the [Conceptual Quickstart](docs/onboarding/quickstart-concepts.md) for the role/question/artifact map, lifecycle diagram, and governance boundaries.
+Five steps from installation to a reviewed mission. No mode selection is
+needed before the first use.
 
 ## Prerequisites
 
-- [Claude Code](https://claude.ai/code) installed
+- The `strategist` binary on your `PATH`.
+- An agent host with the `/strategist` skill or slash command available.
 
 ## 5 Steps
 
@@ -18,7 +18,7 @@ _If you have Go:_
 go install github.com/SergioLacerda/strategist-skill/cmd/strategist@latest
 ```
 
-_No Go? Download a pre-built binary from [GitHub Releases](https://github.com/SergioLacerda/strategist-skill/releases) — covers Linux, macOS, and Windows._
+_No Go? Download a pre-built binary from [GitHub Releases](https://github.com/SergioLacerda/strategist-skill/releases)._
 
 _Linux / macOS / WSL convenience script:_
 
@@ -26,39 +26,45 @@ _Linux / macOS / WSL convenience script:_
 curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.sh | bash
 ```
 
-_Windows: download `strategist-windows-amd64.zip` from GitHub Releases, extract, add to PATH._
+_Windows: download the appropriate archive from GitHub Releases, extract it,
+and add the binary to `PATH`._
 
 **2. Configure the skill**
 
-Run once in your target repository:
+Run once in the target repository:
 
 ```bash
 strategist install --wizard
 ```
 
-The wizard creates `.strategist/` with the agent config. Accept the defaults to get started.
+Accept the defaults to create `.strategist/` and its mission configuration.
 
-**3. Start discovery**
+**3. Start a mission**
 
-Open Claude Code in your repository and invoke:
+Open your agent host in the repository and invoke:
 
 ```
 /strategist <describe your task>
 ```
 
-The Discoverer gathers requirements and writes a report to `.analysis/`.
+Strategist discovers the scope, records uncertainties, and refines the request
+into a reviewable package under `.analysis/refined/<mission_id>/`.
 
-**4. Review the spec**
+**4. Review the package**
 
-The Spec Writer refines the report into an actionable specification. **This is the approval gate** — review it and confirm before any code is written.
+Read `analysis.md`, `proposal.md`, `design.md`, and `tasks.md`. Confirm that
+the objective, boundaries, evidence, and validation criteria match your intent.
 
-**5. Execute**
+**5. Respond at the Approval Gate**
 
-After approval, the Executor implements exactly the approved spec.
+Choose `accept`, `review`, or `reject`. Acceptance permits only the declared
+documentation targets to be materialized. Any `implementation_handoff` for
+source code, tests, scripts, CI, or configuration remains a separate coding
+request; it is never authorized by this documentation gate.
 
 ---
 
-→ [Full technical guide](https://sergiolacerda.github.io/strategist-skill/pragmatic/)  
 → [Conceptual quickstart](docs/onboarding/quickstart-concepts.md)  
+→ [Full technical guide](docs/onboarding/readme-en.md)
 → [CLI reference](docs/cli-reference.md)  
 → [Configuration](docs/configuration.md)

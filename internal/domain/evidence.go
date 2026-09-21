@@ -14,10 +14,11 @@ import (
 // .analysis/done/20260803-critique-skill-affinity-review/design.md §
 // "Consolidated Decision/Evidence Model".
 type Evidence struct {
-	ID         string `yaml:"id"`
-	SourceRef  string `yaml:"source_ref"`
-	Class      string `yaml:"class"`
-	Confidence string `yaml:"confidence"`
+	ID                string `yaml:"id"`
+	SourceRef         string `yaml:"source_ref"`
+	Class             string `yaml:"class"`
+	Confidence        string `yaml:"confidence"`
+	ConfidencePercent *int   `yaml:"confidence_percent,omitempty"`
 	// ValidUntil is an optional RFC3339 timestamp string. Empty means no
 	// expiry is declared. Interpreting/comparing it against "now" is a
 	// caller concern (this package stays free of a time dependency);
@@ -105,5 +106,8 @@ func ValidateEvidence(e Evidence) error {
 	}
 	errs = append(errs, validateNamedValue("evidence_invalid", "class", e.Class, allowedEvidenceClasses)...)
 	errs = append(errs, validateNamedValue("evidence_invalid", "confidence", e.Confidence, allowedConfidenceLevels)...)
+	if err := validateConfidenceCompatibility(e.Confidence, e.ConfidencePercent); err != nil {
+		errs = append(errs, err)
+	}
 	return errors.Join(errs...)
 }

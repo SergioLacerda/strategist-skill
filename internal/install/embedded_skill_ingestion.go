@@ -67,7 +67,7 @@ func ScanExternalSkillsSourceDirs(sourceDir string) ([]string, error) {
 // — the ORKA package via connectors.ResolveLocalPackage, plus its required
 // strategist.yaml adapter sidecar.
 func resolveExternalSkill(dir string) (IngestedSkill, error) {
-	pkg, err := connectors.ResolveLocalPackage(dir)
+	pkg, err := connectors.ResolveEmbeddedPackage(dir)
 	if err != nil {
 		return IngestedSkill{}, fmt.Errorf("resolve external skill %s: %w", dir, err)
 	}

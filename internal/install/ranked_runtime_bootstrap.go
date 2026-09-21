@@ -5,35 +5,32 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/runtimeenv"
 	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
 	"gopkg.in/yaml.v3"
 )
 
 const rankedRuntimeStatePath = "ranked-runtimes.yaml"
 
-// runRankedRuntimeCommand is injectable so install tests can exercise the
-// bootstrap contract without depending on a host OpenSpec installation.
-var runRankedRuntimeCommand = func(ctx context.Context, dir string, name string, args ...string) ([]byte, error) {
-	// The executable and arguments are supplied by the trusted runtime
-	// contract; provider roots are validated before reaching this adapter.
-	cmd, err := runtimeenv.Command(ctx, dir, name, args...)
-	if err != nil {
-		return nil, fmt.Errorf("prepare provider command: %w", err)
-	}
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return out, fmt.Errorf("%s %s: %w: %s", name, strings.Join(args, " "), err, strings.TrimSpace(string(out)))
-	}
-	return out, nil
-}
-
 type rankedRuntimeState struct {
 	SchemaVersion string                    `yaml:"schema_version" json:"schema_version"`
 	Entries       []rankedRuntimeStateEntry `yaml:"entries" json:"entries"`
+}
+
+// rankedRuntimeStateRuntime records the verified private runtime a Ranked
+// provider executes from. Paths are slash-separated and relative to the
+// Strategist root; it is absent when the provider uses a host executable.
+type rankedRuntimeStateRuntime struct {
+	Node       string                        `yaml:"node" json:"node"`
+	Script     string                        `yaml:"script" json:"script"`
+	Components []rankedRuntimeStateComponent `yaml:"components" json:"components"`
+}
+
+type rankedRuntimeStateComponent struct {
+	Name    string `yaml:"name" json:"name"`
+	Version string `yaml:"version" json:"version"`
+	SHA256  string `yaml:"sha256" json:"sha256"`
 }
 
 type rankedRuntimeStateEntry struct {
@@ -43,6 +40,8 @@ type rankedRuntimeStateEntry struct {
 	ContractDigest string `yaml:"contract_digest" json:"contract_digest"`
 	Root           string `yaml:"root,omitempty" json:"root,omitempty"`
 	Kind           string `yaml:"kind" json:"kind"`
+
+	Runtime *rankedRuntimeStateRuntime `yaml:"runtime,omitempty" json:"runtime,omitempty"`
 }
 
 // prepareRankedProviderRuntimes materializes the runtime contract of each
@@ -124,28 +123,16 @@ func loadRankedRuntimeInputs(strategistDir string) (domain.RoleSlotMap, pluginCa
 }
 
 func prepareRankedBinding(ctx context.Context, strategistDir string, roles domain.RoleSlotMap, catalog pluginCatalog, binding domain.SlotBinding) (rankedRuntimeStateEntry, bool, error) {
-	provider, ok := findCatalogProvider(catalog, binding.InstalledInstanceID)
-	if !ok {
-		return rankedRuntimeStateEntry{}, false, fmt.Errorf("ranked runtime provider %q is missing from catalog", binding.InstalledInstanceID)
+	provider, runtime, err := resolveRankedProvider(catalog, binding)
+	if err != nil || runtime.Kind == domain.RankedRuntimeNone {
+		return rankedRuntimeStateEntry{}, false, err
 	}
-	if !provider.Ranked || provider.CertificationDigest == "" {
-		return rankedRuntimeStateEntry{}, false, fmt.Errorf("ranked runtime provider %q is not certified", provider.ID)
-	}
-	runtime := domain.NormalizeRankedRuntime(provider.Runtime)
-	if err := runtime.Validate(); err != nil {
-		return rankedRuntimeStateEntry{}, false, fmt.Errorf("ranked runtime provider %q: %w", provider.ID, err)
-	}
-	if runtime.Kind == domain.RankedRuntimeNone {
-		return rankedRuntimeStateEntry{}, false, nil
-	}
-	root, err := runtimefs.SafeJoinExisting(strategistDir, filepath.ToSlash(runtime.Root)[len(".strategist/"):])
+	private, err := bootstrapRankedProvider(ctx, strategistDir, provider, runtime)
 	if err != nil {
-		return rankedRuntimeStateEntry{}, false, fmt.Errorf("ranked runtime provider %q root: %w", provider.ID, err)
-	}
-	if err := bootstrapOpenSpecRuntime(ctx, root, runtime); err != nil {
-		return rankedRuntimeStateEntry{}, false, fmt.Errorf("ranked runtime provider %q: %w", provider.ID, err)
+		return rankedRuntimeStateEntry{}, false, err
 	}
 	return rankedRuntimeStateEntry{
+		Runtime:        private,
 		Role:           roles[binding.Slot],
 		Slot:           binding.Slot,
 		Provider:       provider.ID,
@@ -156,6 +143,10 @@ func prepareRankedBinding(ctx context.Context, strategistDir string, roles domai
 }
 
 func bootstrapOpenSpecRuntime(ctx context.Context, root string, runtime domain.RankedRuntimeContract) error {
+	return bootstrapOpenSpecRuntimeWith(ctx, root, runtime, hostOpenSpec)
+}
+
+func bootstrapOpenSpecRuntimeWith(ctx context.Context, root string, runtime domain.RankedRuntimeContract, exe rankedExecutable) error {
 	bootstrapArgs, err := openSpecCommandArgs(runtime.Bootstrap, "init")
 	if err != nil {
 		return fmt.Errorf("invalid bootstrap command: %w", err)
@@ -165,13 +156,13 @@ func bootstrapOpenSpecRuntime(ctx context.Context, root string, runtime domain.R
 		return fmt.Errorf("invalid healthcheck command: %w", err)
 	}
 	if runtimefs.Exists(filepath.Join(root, "config.yaml")) {
-		return validateExistingOpenSpecRuntime(ctx, root, healthcheckArgs)
+		return validateExistingOpenSpecRuntime(ctx, root, exe, healthcheckArgs)
 	}
-	return initializeOpenSpecRuntime(ctx, root, bootstrapArgs, healthcheckArgs)
+	return initializeOpenSpecRuntime(ctx, root, exe, bootstrapArgs, healthcheckArgs)
 }
 
-func validateExistingOpenSpecRuntime(ctx context.Context, root string, healthcheckArgs []string) error {
-	output, err := runRankedRuntimeCommand(ctx, root, "openspec", healthcheckArgs...)
+func validateExistingOpenSpecRuntime(ctx context.Context, root string, exe rankedExecutable, healthcheckArgs []string) error {
+	output, err := runRankedRuntimeCommand(ctx, root, exe.name, exe.args(healthcheckArgs)...)
 	if err != nil {
 		return fmt.Errorf("healthcheck failed: %w", err)
 	}
@@ -181,15 +172,15 @@ func validateExistingOpenSpecRuntime(ctx context.Context, root string, healthche
 	return removeLegacyNestedOpenSpecRoot(root)
 }
 
-func initializeOpenSpecRuntime(ctx context.Context, root string, bootstrapArgs, healthcheckArgs []string) error {
+func initializeOpenSpecRuntime(ctx context.Context, root string, exe rankedExecutable, bootstrapArgs, healthcheckArgs []string) error {
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		return fmt.Errorf("create root %s: %w", root, err)
 	}
-	if _, err := runRankedRuntimeCommand(ctx, filepath.Dir(root), "openspec", bootstrapArgs...); err != nil {
+	if _, err := runRankedRuntimeCommand(ctx, filepath.Dir(root), exe.name, exe.args(bootstrapArgs)...); err != nil {
 		return fmt.Errorf("bootstrap failed: %w", err)
 	}
 	if !runtimefs.Exists(filepath.Join(root, "config.yaml")) {
 		return fmt.Errorf("bootstrap completed without %s/config.yaml", root)
 	}
-	return validateExistingOpenSpecRuntime(ctx, root, healthcheckArgs)
+	return validateExistingOpenSpecRuntime(ctx, root, exe, healthcheckArgs)
 }

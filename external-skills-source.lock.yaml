@@ -46,18 +46,18 @@ packages:
       upstream_revision: 1ebddd17f40dde15dfd28289e4493c3cf05ee9df
     - id: openspec-propose
       version: "1.0"
-      digest: sha256:e496761a6327c860f7129e2ab7b0a20ba2b6121562a5f89a1f9c042c993bd332
+      digest: sha256:25c41e6e12f0d7c2255f9587b6493b6227d165df4b0f2ee8f8366e9735163075
       source: external-skills-source/openspec-propose
       contract_version: skill-package/v1
-      original_digest: sha256:e496761a6327c860f7129e2ab7b0a20ba2b6121562a5f89a1f9c042c993bd332
-      normalized_digest: sha256:7c6140642a972645d3c50329b9eacdfe41a1842aadb59bbfd317f7e22f9ded28
+      original_digest: sha256:25c41e6e12f0d7c2255f9587b6493b6227d165df4b0f2ee8f8366e9735163075
+      normalized_digest: sha256:95942f7d26c2e5ff9955e75cadf02a63ebd7cf19eda51a08f2f0ee54734ce787
       transformation: none
       local_modifications: unknown
       verification_state: declared
       original_digest_evidence: verified
       normalized_digest_evidence: verified
       canonical_source: Fission-AI/OpenSpec
-      upstream_revision: 1ebddd17f40dde15dfd28289e4493c3cf05ee9df
+      upstream_revision: 9d4e5974e5c0d9a09b9c6c1e1eb0975e80ec4461
       license: MIT
     - id: writing-plans
       version: ""

@@ -50,6 +50,14 @@ Static catalog, lock, manifest or cache evidence cannot substitute for probe or
 health evidence. Never repair `.strategist/plugins.lock`, choose a fallback,
 or promote generated/cache data while resolving a failure.
 
+## Read the delegate lifecycle
+
+The boundary result maps to a delegate state (`unwired` → `wired` → `probed` →
+`healthy`, with `degraded` and `blocked` reachable from any state); the full
+table is in [ADR-0049](../adr/0049-atlas-treasure-chest-boundary.md#delegate-lifecycle).
+Only `healthy` (`ready` / `activation_evidence_verified`) permits invocation.
+Losing certified evidence moves the state back without touching legacy data.
+
 ## Migration and rollback
 
 Before any transition, record source and target pinned identities, command

@@ -43,6 +43,19 @@ describe('landing documentation-only copy', () => {
     expect(source).not.toContain('Review Gate');
   });
 
+  it.each(pages)('%s points users to the repository canonical quickstart', (page) => {
+    const source = readPage(page);
+    expect(source).toContain('github.com/SergioLacerda/strategist-skill/blob/main/QUICKSTART.md');
+  });
+
+  it('pragmatic page uses the canonical repository role names in its public role table', () => {
+    const source = readPage('src/pages/pragmatic.astro');
+    for (const role of ['data-i18n="r1">Strategist', 'data-i18n="r2">Ranger', 'data-i18n="r3">Archivist', 'data-i18n="r4">Sniper']) {
+      expect(source).toContain(role);
+    }
+    expect(source).toContain('data-i18n="repoQuick"');
+  });
+
   it('epic page defines Sniper as documentation executor', () => {
     const source = readPage('src/pages/epic.astro').toLowerCase();
     expect(source).toContain('sniper');

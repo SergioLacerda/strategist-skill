@@ -142,6 +142,20 @@ func TestResolveActiveBasePath_Success(t *testing.T) {
 	assert.Equal(t, filepath.Join(filepath.Dir(dir), ".analysis"), basePath)
 }
 
+func TestResolveActiveBasePathFromOpenSpecRuntimeAnchorsStrategistRoot(t *testing.T) {
+	projectRoot := t.TempDir()
+	strategistRoot := filepath.Join(projectRoot, ".strategist")
+	openSpecRoot := filepath.Join(strategistRoot, "openspec")
+	require.NoError(t, os.MkdirAll(openSpecRoot, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(strategistRoot, "active.yaml"), []byte("mode: epic\nbase_path: .analysis\n"), 0o644))
+	t.Chdir(openSpecRoot)
+
+	gotRoot, gotBase, err := ResolveActiveBasePath(".strategist")
+	require.NoError(t, err)
+	require.Equal(t, strategistRoot, gotRoot)
+	require.Equal(t, filepath.Join(projectRoot, ".analysis"), gotBase)
+}
+
 func TestResolveActiveBasePath_EmptyRootDefaultsToStrategist(t *testing.T) {
 	// When root is empty, ResolveActiveBasePath sets strategistRoot = ".strategist".
 	// Reading active.yaml from ".strategist/active.yaml" in a tmp CWD will fail
@@ -198,4 +212,41 @@ func TestTelemetryRunFromCmd_WithNonNilContext(t *testing.T) {
 	result := TelemetryRunFromCmd(cmd)
 	// MissionRunFromContext returns nil when ctx has no embedded run.
 	assert.Nil(t, result)
+}
+
+func TestDiscoverRootOrDefault_FindsTheEnclosingStrategistDirectory(t *testing.T) {
+	project := t.TempDir()
+	strategist := filepath.Join(project, ".strategist")
+	nested := filepath.Join(strategist, "openspec")
+	require.NoError(t, os.MkdirAll(nested, 0o755))
+
+	assert.Equal(t, strategist, discoverRootOrDefault(nested))
+}
+
+func TestDiscoverRootOrDefault_FallsBackToTheConventionalName(t *testing.T) {
+	assert.Equal(t, ".strategist", discoverRootOrDefault(t.TempDir()))
+}
+
+func TestResolveRelativeRoot_StrategistNameAnchorsToTheDiscoveredWorkspace(t *testing.T) {
+	project := t.TempDir()
+	strategist := filepath.Join(project, ".strategist")
+	nested := filepath.Join(strategist, "openspec")
+	require.NoError(t, os.MkdirAll(nested, 0o755))
+
+	got, err := resolveRelativeRoot(nested, ".strategist")
+
+	require.NoError(t, err)
+	assert.Equal(t, strategist, got, "must not become .strategist/openspec/.strategist")
+}
+
+func TestResolveRelativeRoot_AnyOtherRelativePathIsMadeAbsoluteFromTheCurrentDirectory(t *testing.T) {
+	dir := t.TempDir()
+	t.Chdir(dir)
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+
+	got, err := resolveRelativeRoot(dir, "custom-root")
+
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(wd, "custom-root"), got)
 }

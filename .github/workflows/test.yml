@@ -28,13 +28,58 @@ jobs:
       - name: Local CI lint gates
         run: make ci-lint
 
+      # The per-target payload files exist only under -tags strategist_payload, so
+      # an ordinary lint never compiles them. Fetch the host Node (digest-checked)
+      # so the tagged build type-checks, then lint with the tag: it is a superset
+      # of the untagged build.
+      - name: Fetch host Node for the payload build
+        run: python3 scripts/fetch-node-runtime.py --host
+
+      - name: Vet the payload build
+        run: go vet -tags strategist_payload ./...
+
       - name: Lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
           version: v2.13.2
+          args: --build-tags=strategist_payload
 
       - name: Embedded skill catalog drift check
         run: make embed-skills-check
+
+  test-windows:
+    # Standalone clients run on Windows; every other job is ubuntu-only, so the
+    # runtime-root, path-form and install-error paths are otherwise unproven
+    # there (Drift A/B evidence). Kept to the packages that own that behavior.
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v5
+        with:
+          go-version-file: "go.mod"
+          cache: true
+
+      - name: Windows runtime-path tests
+        shell: bash
+        run: go test ./internal/domain ./internal/runtimeenv ./internal/install ./internal/check ./cmd/strategist
+
+      # Real Windows exec path: build with the embedded payload (fetches the
+      # pinned Node for windows/amd64 by digest), then install and check with
+      # an empty PATH. This is the evidence the POSIX-shell test fakes cannot give.
+      - name: Standalone payload smoke (empty PATH)
+        shell: bash
+        run: ./scripts/smoke-standalone-install.sh
+
+      # The blocking step above covers the packages that own the Windows runtime
+      # behavior. This runs the whole tree so failures elsewhere are visible; it
+      # does not block until it has been green once (then drop continue-on-error).
+      - name: Whole test tree (evidence, not yet blocking)
+        shell: bash
+        continue-on-error: true
+        run: go test ./...
 
   test:
     runs-on: ubuntu-latest
@@ -50,6 +95,11 @@ jobs:
 
       - name: Local CI test gates
         run: make ci-test
+
+      # Prove the shipped shape on Linux too: a payload build installs and passes
+      # check with an empty PATH (the Windows job proves the same on Windows).
+      - name: Standalone payload smoke (empty PATH)
+        run: ./scripts/smoke-standalone-install.sh
 
       - name: Generate coverage badge
         run: make coverage-badge

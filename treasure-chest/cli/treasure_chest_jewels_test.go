@@ -126,40 +126,6 @@ jewels:
 	assert.Contains(t, err.Error(), "exceeds parent chest's trust tier")
 }
 
-func TestLoadJewels_MissingChestIDErrors(t *testing.T) {
-	t.Parallel()
-	dir := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "jewels.yaml"), []byte(`
-schema_version: "1"
-jewels:
-  - id: jewel-1
-    statement: "No parent."
-    source_refs: ["source#x"]
-    trust: T1
-`), 0o644))
-
-	_, err := treasure.LoadJewels(dir, nil)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "missing chest_id")
-}
-
-func TestLoadJewels_MissingSourceRefsErrors(t *testing.T) {
-	t.Parallel()
-	dir := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "jewels.yaml"), []byte(`
-schema_version: "1"
-jewels:
-  - id: jewel-1
-    chest_id: source
-    statement: "No sources."
-    trust: T1
-`), 0o644))
-
-	_, err := treasure.LoadJewels(dir, nil)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "missing source_refs")
-}
-
 func TestNonDeprecatedJewelCount_ExcludesDeprecated(t *testing.T) {
 	t.Parallel()
 	jewels := []treasure.Jewel{

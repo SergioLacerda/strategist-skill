@@ -2,6 +2,7 @@ package install
 
 import (
 	"context"
+	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -147,6 +148,7 @@ func TestInstall_WizardPath_ExplicitDefaultProvidersMaterializeManifests(t *test
 // decision boundary: a Ranked selection must reach both active.yaml and the
 // corresponding plugins.lock binding for each configurable role.
 func TestInstall_WizardPath_PersistsRankedBindingModes(t *testing.T) {
+	testutil.RequirePOSIXShell(t)
 	// No t.Parallel(): t.Setenv modifies the process-global PATH.
 	dir := t.TempDir()
 	// Inject a minimal fake openspec binary so prepareRankedProviderRuntimes
@@ -185,6 +187,7 @@ printf '{"root":{"path":"%s"},"members":[],"status":[]}\n' "$(dirname "$PWD")"
 }
 
 func TestInstall_WizardRankedPathBootstrapsContainedOpenSpecRuntime(t *testing.T) {
+	testutil.RequirePOSIXShell(t)
 	dir := t.TempDir()
 	binDir := t.TempDir()
 	openspec := filepath.Join(binDir, "openspec")

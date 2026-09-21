@@ -1,0 +1,19 @@
+schema_version: strategist-plugin-adapter/v1
+id: fixture-provider
+adapter_revision: 1.0.0
+plugin_api_range: ">=1 <2"
+supported_slots:
+  - refinement
+supported_roles:
+  - archivist
+supported_handoff_schemas:
+  - schemas/handoff-archivist-to-sniper.schema.yaml
+capabilities:
+  - handoff.produce
+  - analysis.read
+entrypoints:
+  - host.prompt
+package_constraint: fixture-provider@1
+requested_permissions:
+  - workspace.read
+  - analysis.write

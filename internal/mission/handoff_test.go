@@ -29,6 +29,11 @@ func TestArchivistToSniper_PersistsBeforePermittingExecution(t *testing.T) {
 	require.Len(t, records, 1)
 	require.Equal(t, "live-pass", records[0].MissionID)
 	require.True(t, records[0].Passed)
+	confidenceRecords, err := telemetry.ReadConfidenceRecords(telemetry.ConfidenceHistoryPath(root))
+	require.NoError(t, err)
+	require.Len(t, confidenceRecords, 1)
+	require.Equal(t, telemetry.ConfidenceCoverageMissing, confidenceRecords[0].CoverageStatus)
+	require.Equal(t, telemetry.ConfidenceAgentHandoffChallenge, confidenceRecords[0].Agent)
 }
 
 func TestArchivistToSniper_FailureReturnsAndExhaustsWithoutExecution(t *testing.T) {
@@ -67,6 +72,33 @@ func TestArchivistToSniper_PersistenceFailureDoesNotAdvance(t *testing.T) {
 	})
 	require.Error(t, err)
 	require.Equal(t, domain.StateHandoffChallenge, status.State)
+}
+
+func TestArchivistToSniper_PersistsOpenQuestions(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	engine := readyForHandoff(t, "open-question")
+	status, result, err := ArchivistToSniper(engine, root, LiveHandoffInput{
+		Policy: handoff.DefaultPolicy(), Challenges: liveChallenges(false),
+		Ack: validAck(), Attempt: 1,
+		ConfidenceSummary: &domain.ConfidenceSummary{
+			PolicyVersion:     domain.ConfidencePolicyVersion,
+			CalibrationStatus: domain.CalibrationNoSample,
+			OpenQuestions: []domain.ConfidenceClaim{{
+				ID: "Q-001", Statement: "Is the handoff complete?", Agent: "archivist",
+				CorrelationKey: "question-1", ClaimKind: domain.ClaimKindQuestion,
+				ConfidencePercent: 40,
+			}},
+		},
+	})
+	require.NoError(t, err)
+	require.True(t, result.Passed)
+	require.Equal(t, domain.StateExecution, status.State)
+	records, err := telemetry.ReadConfidenceRecords(telemetry.ConfidenceHistoryPath(root))
+	require.NoError(t, err)
+	require.Len(t, records, 1)
+	require.Equal(t, "Q-001", records[0].ClaimID)
+	require.Equal(t, domain.ClaimKindQuestion, records[0].ClaimKind)
 }
 
 func readyForHandoff(t *testing.T, id string) *domain.MissionEngine {

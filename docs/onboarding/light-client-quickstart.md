@@ -1,5 +1,9 @@
 # Light Client Quickstart — Strategist Without the CLI
 
+For first-time installation and configuration, use the repository-level
+[QUICKSTART.md](../../QUICKSTART.md). This page is the complementary
+mission-time explanation for workspaces that already have `.strategist/`.
+
 Strategist's pipeline is already CLI-free once `.strategist/` exists in your workspace: the
 Go binary (`strategist install/compile/check/...`) is a setup and validation tool, not a
 mission-time dependency. This page explains who does what during a mission, with no CLI

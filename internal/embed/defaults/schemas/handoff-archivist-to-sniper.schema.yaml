@@ -47,6 +47,41 @@ required_fields:
         Sniper-executable. implementation_handoff items (code/hook/config/test mutation)
         must never be presented as Sniper-executable work — see 04-refinement.md and
         06-execution.md.
+  confidence_summary:
+    type: object
+    required: true
+    description: >
+      Versioned confidence envelope preserved from Ranger and refined by Archivist.
+      Questions remain questions unless explicitly resolved; assertion evidence
+      references must resolve before the package is presented at the Approval Gate.
+    fields:
+      policy_version:
+        type: string
+        required: true
+      claims:
+        type: list
+        required: true
+        item_fields: [id, statement, agent, correlation_key, claim_kind, confidence_percent, confidence_level, evidence_ids, evidence_classes, risk_level, ground_truth_ref, ground_truth_kind, ground_truth_outcome]
+      open_questions:
+        type: list
+        required: false
+        item_fields: [id, statement, confidence_percent, resolution_status]
+      evidence:
+        type: list
+        required: false
+        item_fields: [id, source_ref, class]
+      sample_size:
+        type: integer
+        required: true
+      calibration_status:
+        type: string
+        required: true
+        allowed_values: [no_sample, uncalibrated, observed, calibrated]
+      missing_record:
+        type: boolean
+        required: true
+      violations:
+        type: list
   side_quests_approved:
     type: list
     description: Side quest strategy decisions made by Archivist — surfaced at approval gate

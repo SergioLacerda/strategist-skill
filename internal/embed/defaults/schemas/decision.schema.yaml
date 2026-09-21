@@ -52,6 +52,16 @@ fields:
     type: string
     values: [low, medium, high]
     required: true
+  confidence_percent:
+    type: integer
+    range: [0, 100]
+    required: false
+    description: Derived confidence percentage; must agree with confidence.
+  claim_kind:
+    type: string
+    values: [question, assertion]
+    required: false
+    description: Questions preserve uncertainty; assertions require evidence.
   approved_at:
     type: string
     format: RFC3339 timestamp

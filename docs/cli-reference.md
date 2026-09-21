@@ -85,6 +85,32 @@ strategist plugins authorize \
 
 ---
 
+## provider
+
+Validates and onboards an already-materialized local provider package. The
+source contains the existing `package.yaml` and `adapter.yaml` contracts; an
+optional `skill.yaml` is checked only as a compatibility view.
+
+```bash
+strategist provider validate <source> [--format table|json|yaml]
+strategist provider add <source> --slot refinement|execution [--root <dir>] [--format table|json|yaml]
+```
+
+`validate` is read-only and reports static readiness separately from
+`live_invocation`; static success leaves live invocation `unknown` until an
+authorized runtime probe succeeds. Version 1 accepts local directories only
+and rejects URLs or git references. `add` stages the source, advances the
+existing lock/binding generation, compiles the workspace, and records a
+recoverable transaction. Failed onboarding restores the previous binding.
+
+External providers cannot be added to `discovery`: native Ranger owns that
+route and the command fails closed with `native_role_authority`.
+
+See [Provider extension guide](provider-extension.md) for the source contract,
+upgrade, rollback, and evidence boundaries.
+
+---
+
 ## install
 
 Installs the Strategist skill in a target repository.
@@ -246,18 +272,24 @@ Useful in CI to ensure that manual configuration edits have not introduced schem
 
 ## version
 
-Displays the binary version.
+Displays the binary version as a single line, with no banner or metrics.
 
 ```
 strategist version
 ```
 
-The version is injected at build time via `-ldflags "-X main.Version=x.y.z"`. In local builds without ldflags, displays `strategist dev`.
+The version is injected at build time via `-ldflags "-X main.Version=x.y.z"` (release builds via goreleaser; `make build` injects `git describe --tags --dirty`).
 
 **Output:**
 ```
-strategist v1.0.0
+V1.0.18
 ```
+
+| Build | Output |
+|-------|--------|
+| Release tag `v1.0.18` | `V1.0.18` |
+| Local build ahead of `v1.0.18` (or dirty tree) | `V1.0.18+` |
+| No version injected (plain `go build`) | `Vdev` |
 
 ---
 

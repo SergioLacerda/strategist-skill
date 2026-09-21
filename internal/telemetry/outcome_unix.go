@@ -15,6 +15,13 @@ func lockFile(f *os.File) error {
 	return nil
 }
 
+func lockFileExclusive(f *os.File) error {
+	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX); err != nil {
+		return fmt.Errorf("flock exclusive lock: %w", err)
+	}
+	return nil
+}
+
 func unlockFile(f *os.File) error {
 	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_UN); err != nil {
 		return fmt.Errorf("flock unlock: %w", err)

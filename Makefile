@@ -29,6 +29,12 @@ GOLANGCI_LINT_CACHE ?= /tmp/golangci-lint-cache
 GOPATH_BIN          := $(shell go env GOPATH | tr '\134' '/')/bin
 LOCAL_BIN           := $(CURDIR)/bin
 
+# Executable suffix of the build host (".exe" on Windows, empty elsewhere). Every
+# target that names the strategist binary uses it, so a Windows build produces
+# strategist.exe, which cmd and PowerShell can resolve. Override with EXE=.
+EXE                 ?= $(shell go env GOEXE)
+STRATEGIST_BIN      := bin/strategist$(EXE)
+
 ifneq ($(wildcard $(LOCAL_BIN)/golangci-lint),)
 GOLANGCI_LINT       := $(LOCAL_BIN)/golangci-lint
 else
@@ -69,8 +75,8 @@ include make/release.mk
 include make/web.mk
 include make/docs.mk
 
-ci-lint: fmt-check mod-check vet build quality-budget-gate
+ci-lint: lint-status fmt-check mod-check vet build quality-budget-gate
 
-ci-test: test-all golden convergence-check contract-consistency-gate coverage-manifest-check cover-gate docs-generated-gate docs-links-gate mutation-role-weapon
+ci-test: test-all golden convergence-check contract-consistency-gate coverage-manifest-check cover-gate docs-generated-gate docs-links-gate docs-index-ownership-gate mutation-role-weapon
 
 ci: ci-lint ci-test

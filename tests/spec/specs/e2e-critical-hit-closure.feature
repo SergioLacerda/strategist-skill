@@ -9,10 +9,11 @@ Feature: Strategist Critical Hit — Plain Move vs Closure Move
   duplicate `tests/spec/critical_hit_closure_test.go` (which asserts that
   specific narrative/machine contract files contain required phrases) or
   `tests/evals/contracts/critical_hit_closure_report_shape_valid_test.go`
-  (which validates completion-report.md's schema shape). Like the other
-  `e2e-*.feature` files, this is consumed by a Go test helper via
-  `strings.Contains` needle checks — not a Cucumber/Godog runner (see
-  `docs/test-styles.md`).
+  (which validates completion-report.md's schema shape). This file is
+  living documentation: it is not executed and no Go test asserts its text (the
+  former `strings.Contains` helper was removed as tautological). It is not a
+  Cucumber/Godog runner (see `docs/test-styles.md`). Executable checks for the same
+  behavior live in `internal/domain/critical_hit_trigger_test.go`.
 
   Scenario: plain move requires no evaluation and no evidence
     Given a workspace artifact under pending/ or refined/

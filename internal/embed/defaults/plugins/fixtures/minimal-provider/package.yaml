@@ -1,0 +1,11 @@
+schema_version: strategist-plugin-package/v1
+id: fixture-provider
+publisher: strategist-maintainers
+version: 1.0.0
+digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+artifact_uri: local://minimal-provider
+artifact_size: 512
+license: Apache-2.0
+created_at: 2026-09-20T00:00:00Z
+manifest_schema: strategist-provider/v1
+upstream_version: fixture/1

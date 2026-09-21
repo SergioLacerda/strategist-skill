@@ -155,3 +155,14 @@ func userModified(dst string, embedded []byte) bool {
 func sha256Bytes(data []byte) [32]byte {
 	return sha256.Sum256(data)
 }
+
+// DefaultsFS returns the embedded defaults tree rooted at defaults/, for
+// callers that read embedded files in place (for example the runtime payload).
+func DefaultsFS() fs.FS {
+	sub, err := fs.Sub(defaultsFS, "defaults")
+	if err != nil {
+		// defaults is a compile-time embed root; Sub only fails on an invalid path.
+		panic(fmt.Sprintf("embed: defaults root: %v", err))
+	}
+	return sub
+}

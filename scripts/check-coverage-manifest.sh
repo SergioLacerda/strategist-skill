@@ -66,14 +66,19 @@ done < "$exemptions"
 
 module_path="$(GOCACHE="$go_cache" go list -m -f '{{.Path}}')" || {
   fail_msg COVERAGE_INVENTORY_DISCOVERY_FAILED "unable to determine Go module path"
+  printf '%s\n' "${diagnostics[@]}" | LC_ALL=C sort -u >&2
   exit "$fail"
 }
 
-mapfile -t discovered < <(GOCACHE="$go_cache" go list ./cmd/... ./internal/... ./treasure-chest/... | sed "s#^${module_path}/##" | LC_ALL=C sort)
-if (( ${PIPESTATUS[0]} != 0 )); then
+# Capture go list separately: the exit status of a process-substitution pipeline
+# is not observable through PIPESTATUS, which used to make a go list failure
+# (e.g. unwritable build cache) look like every package was stale.
+if ! listed="$(GOCACHE="$go_cache" go list ./cmd/... ./internal/... ./treasure-chest/... 2>/dev/null)"; then
   fail_msg COVERAGE_INVENTORY_DISCOVERY_FAILED "unable to discover production Go packages"
+  printf '%s\n' "${diagnostics[@]}" | LC_ALL=C sort -u >&2
   exit "$fail"
 fi
+mapfile -t discovered < <(printf '%s\n' "$listed" | sed "s#^${module_path}/##" | LC_ALL=C sort)
 
 declare -A discovered_packages=()
 for pkg in "${discovered[@]}"; do

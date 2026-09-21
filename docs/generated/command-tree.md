@@ -31,8 +31,13 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
 - `help` — Help about any command
 - `install` — Install the Strategist skill into a target repository
 - `metrics` — Report metrics computed from Strategist's own runtime memory
+  - `confidence` — Report cross-agent confidence metrics
   - `fallback` — Report provider-fallback (ADR-0028) metrics
+  - `gate-outcome` — Record the human Approval Gate outcome as ground truth
   - `handoff` — Report Handoff Challenge governance metrics
+  - `label` — Record a reviewed ground-truth label for a mission
+  - `record` — Record a confidence claim or an explicit missing-record for a boundary
+  - `rollout-check` — Check whether a confidence enforcement mode is admissible
   - `scout` — Report Scout routing metrics
 - `mission` — Report and inspect mission-level facts this binary cannot observe directly
   - `context` — Materialize declared mission context
@@ -45,6 +50,9 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `authorize` — Compose authorization evidence for a governed target
   - `evaluate-write` — Report whether a write to --target is enforceably allowed under the active connector
   - `prepare-embedded` — Ingest external-skills-source/ into the embedded plugin catalog
+- `provider` — Validate and onboard local Strategist providers
+  - `add` — Stage and bind a validated local provider
+  - `validate` — Validate a local provider package without changing workspace state
 - `runbook` — Operate on the typed docs/runbooks/*.runbook.yaml corpus
   - `select` — Select applicable runbooks for the given mission signals
 - `sync-governance` — Sync .strategist/skill.yaml with active SDD governance mandates
