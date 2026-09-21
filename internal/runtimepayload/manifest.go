@@ -1,9 +1,10 @@
-// Package runtimepayload verifies and materializes the pinned, private
-// runtime (for example Node plus OpenSpec) a Ranked provider executes from.
-// It is source-agnostic: the payload is read from an fs.FS so production can
-// embed it per target while tests inject an in-memory one. Everything is
-// fail-closed: nothing is written unless every needed component matches its
-// pinned digest, and archive extraction rejects escapes and links.
+// Package runtimepayload verifies and materializes the pinned OpenSpec bundle
+// a Ranked provider executes with the host Node. It is source-agnostic: the
+// bundle is read from an fs.FS so production reads the embedded defaults while
+// tests inject an in-memory one. Everything is fail-closed: nothing is written
+// unless every needed directory tree matches its pinned digest, and copying
+// rejects escapes, links and names Windows cannot store. Archive formats are
+// deliberately unsupported: the only runtime that ships is a plain tree.
 package runtimepayload
 
 import (
@@ -12,7 +13,6 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
-	"path/filepath"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -24,10 +24,6 @@ const (
 	// AnyTarget marks a component that is independent of OS or architecture.
 	AnyTarget = "any"
 
-	// FormatTarGz is a gzip-compressed tar archive in the payload source.
-	FormatTarGz = "tar.gz"
-	// FormatZip is a zip archive in the payload source.
-	FormatZip = "zip"
 	// FormatDir is a directory tree in the payload source, verified by TreeDigest.
 	FormatDir = "dir"
 
@@ -43,7 +39,8 @@ var (
 	ErrPayloadMissing = errors.New("runtime payload component is missing")
 	// ErrDigestMismatch means a component differs from its pinned size or sha256.
 	ErrDigestMismatch = errors.New("runtime payload digest mismatch")
-	// ErrUnsafeArchive means an archive entry escapes the destination or is not a plain file.
+	// ErrUnsafeArchive means a runtime tree entry escapes the destination, is not
+	// a plain file, or exceeds the size/file-count budget.
 	ErrUnsafeArchive = errors.New("runtime payload archive entry is unsafe")
 )
 
@@ -63,18 +60,17 @@ type Launcher struct {
 	Script string            `yaml:"script"`
 }
 
-// Component is one pinned archive in the payload.
+// Component is one pinned directory tree in the payload.
 type Component struct {
-	Name            string `yaml:"name"`
-	Version         string `yaml:"version"`
-	OS              string `yaml:"os"`
-	Arch            string `yaml:"arch"`
-	File            string `yaml:"file"`
-	Format          string `yaml:"format"`
-	SHA256          string `yaml:"sha256"`
-	Size            int64  `yaml:"size"`
-	Dest            string `yaml:"dest"`
-	StripComponents int    `yaml:"strip_components,omitempty"`
+	Name    string `yaml:"name"`
+	Version string `yaml:"version"`
+	OS      string `yaml:"os"`
+	Arch    string `yaml:"arch"`
+	File    string `yaml:"file"`
+	Format  string `yaml:"format"`
+	SHA256  string `yaml:"sha256"`
+	Size    int64  `yaml:"size"`
+	Dest    string `yaml:"dest"`
 }
 
 // ParseManifest decodes and validates a manifest.
@@ -146,35 +142,16 @@ func (c Component) validate() error {
 		return errors.New("name, version, os and arch are required")
 	case !fs.ValidPath(c.File) || c.File == ".":
 		return fmt.Errorf("file %q must be a clean relative path", c.File)
-	case c.Format != FormatTarGz && c.Format != FormatZip && c.Format != FormatDir:
-		return fmt.Errorf("unsupported format %q", c.Format)
+	case c.Format != FormatDir:
+		return fmt.Errorf("unsupported format %q (only %q)", c.Format, FormatDir)
 	case !validSHA256(c.SHA256):
 		return errors.New("sha256 must be 64 hex characters")
 	case c.Size <= 0:
 		return errors.New("size must be positive")
 	case !safeRelative(c.Dest):
 		return fmt.Errorf("dest %q must be clean and relative", c.Dest)
-	case c.StripComponents < 0:
-		return errors.New("strip_components must not be negative")
 	}
 	return nil
-}
-
-// LauncherPaths returns the Node executable and script inside the runtime
-// materialized at dest, and fails if either is absent.
-func (m Manifest) LauncherPaths(dest, goos string) (node, script string, err error) {
-	rel := m.Launcher.Node[goos]
-	if rel == "" {
-		rel = m.Launcher.Node["default"]
-	}
-	node = filepath.Join(dest, filepath.FromSlash(rel))
-	script = filepath.Join(dest, filepath.FromSlash(m.Launcher.Script))
-	for _, p := range []string{node, script} {
-		if _, statErr := statFile(p); statErr != nil {
-			return "", "", fmt.Errorf("%w: %s", ErrPayloadMissing, p)
-		}
-	}
-	return node, script, nil
 }
 
 func safeRelative(p string) bool {

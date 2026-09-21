@@ -6,19 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"os"
 	"path"
 	"sort"
 	"strings"
 )
-
-func statFile(p string) (fs.FileInfo, error) {
-	info, err := os.Stat(p)
-	if err != nil {
-		return nil, fmt.Errorf("stat %s: %w", p, err)
-	}
-	return info, nil
-}
 
 // TreeDigest returns the sha256 of a directory tree in fsys (rooted at dir)
 // and its payload byte size. The digest covers every regular file except

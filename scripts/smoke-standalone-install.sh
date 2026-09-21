@@ -41,9 +41,19 @@ npath="$(native "$(dirname "$node")")"
 # always present on a real client, so it is passed through.
 clean_env=(env -i HOME="$nwork" USERPROFILE="$nwork" PATH="$npath")
 sysroot="${SYSTEMROOT:-${SystemRoot:-}}"
-[[ -z "$sysroot" ]] || clean_env+=(SystemRoot="$sysroot" TEMP="$nwork" TMP="$nwork")
+if [[ -n "$sysroot" ]]; then
+  # PATHEXT is what lets Windows resolve "node" to node.exe. The exclusion is
+  # read by the MSYS "env" process that spawns the binary (not by the binary),
+  # so it is exported; it stops Git Bash rewriting the already-native PATH into
+  # a POSIX/mixed list that the Go binary cannot search.
+  export MSYS2_ENV_CONV_EXCL=PATH
+  clean_env+=(SystemRoot="$sysroot" TEMP="$nwork" TMP="$nwork" PATHEXT=".COM;.EXE;.BAT;.CMD")
+fi
 
 echo "smoke: host Node $node_version at $npath"
+# Prove what a native child really receives, so a PATH mangled by the shell is
+# visible in the job log instead of surfacing as "node not found" later.
+echo "smoke: child PATH=$("${clean_env[@]}" "$node" -p 'process.env.PATH')"
 
 # fail_with_log reports the command's own error line first (cobra prints it
 # above the usage text, which a plain tail would show instead), then the whole

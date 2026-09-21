@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// entryPath validates an archive entry name, applies strip, and returns the
+// entryPath validates a runtime tree entry name, applies strip, and returns the
 // relative slash path to write; ok is false when the entry is fully stripped.
 func entryPath(name string, strip int) (rel string, ok bool, err error) {
 	parts, err := entryParts(name)
