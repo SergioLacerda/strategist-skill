@@ -43,8 +43,16 @@ release-verify: ci-lint ci-test docs-governance-gate validate-fixtures vuln-ci r
 release-check:
 	"$(GORELEASER)" check
 
+# The module proxy occasionally drops a large download mid-stream (for example
+# "stream error ... INTERNAL_ERROR"); the module cache keeps what already
+# arrived, so a retry of the same pinned version is cheap and changes nothing.
 install-goreleaser:
-	GOCACHE="$(GOCACHE)" go install github.com/goreleaser/goreleaser/v2@$(GORELEASER_VERSION)
+	@for attempt in 1 2 3; do \
+	  GOCACHE="$(GOCACHE)" go install github.com/goreleaser/goreleaser/v2@$(GORELEASER_VERSION) && exit 0; \
+	  echo "install-goreleaser: attempt $$attempt failed" >&2; \
+	  [ "$$attempt" -lt 3 ] && sleep $$((attempt * 10)); \
+	done; \
+	echo "install-goreleaser: failed after 3 attempts" >&2; exit 1
 
 check-release-artifacts:
 	bash scripts/check-release-artifacts.sh
