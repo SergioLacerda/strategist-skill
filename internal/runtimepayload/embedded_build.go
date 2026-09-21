@@ -4,7 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"path"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -13,16 +14,8 @@ import (
 const (
 	skillDir         = "skills/openspec-propose"
 	openSpecTreeDir  = skillDir + "/runtime"
-	runtimeLockFile  = skillDir + "/runtime.lock.yaml"
-	nodePayloadDir   = "nodepayload"
 	embeddedProvider = "openspec-propose"
 )
-
-type runtimeLock struct {
-	Node struct {
-		Version string `yaml:"version"`
-	} `yaml:"node"`
-}
 
 type openSpecBuildInfo struct {
 	Version    string `yaml:"version"`
@@ -31,74 +24,46 @@ type openSpecBuildInfo struct {
 	TreeBytes  int64  `yaml:"tree_bytes"`
 }
 
-type nodeInfo struct {
-	Version string `yaml:"version"`
-	Target  string `yaml:"target"`
-	File    string `yaml:"file"`
-	Format  string `yaml:"format"`
-	SHA256  string `yaml:"sha256"`
-	Size    int64  `yaml:"size"`
-}
+// openSpecDest is the materialized bundle directory under weapon-runtime/<provider>.
+const openSpecDest = "openspec"
 
-// BuildEmbedded composes the runtime payload of one build target: the prebuilt
-// OpenSpec tree that ships in the skill package (defaults) and the target's
-// Node archive (nodeFS, laid out as nodepayload/<target>/...). Every pin comes
-// from committed files or from files the build generated and digest-checked,
-// and any skew between them is an error: a broken payload must never register.
-func BuildEmbedded(defaults, nodeFS fs.FS, target string) (Manifest, fs.FS, error) {
-	goos, goarch, ok := strings.Cut(target, "-")
-	if !ok {
-		return Manifest{}, nil, fmt.Errorf("runtime payload target %q must be <os>-<arch>", target)
-	}
-	tree, node, err := readBuildInputs(defaults, nodeFS, target)
-	if err != nil {
-		return Manifest{}, nil, err
-	}
-	m := embeddedManifest(goos, goarch, target, tree, node)
-	if err := m.Validate(); err != nil {
-		return Manifest{}, nil, err
-	}
-	return m, layeredFS{defaults: defaults, node: nodeFS}, nil
-}
-
-// readBuildInputs loads the pinned inputs and rejects any skew between them.
-func readBuildInputs(defaults, nodeFS fs.FS, target string) (openSpecBuildInfo, nodeInfo, error) {
-	var lock runtimeLock
+// EmbeddedOpenSpecVersion reads the version certificate shipped with the
+// embedded OpenSpec tree. It is independent of the host Node executable.
+func EmbeddedOpenSpecVersion(defaults fs.FS) (string, error) {
 	var tree openSpecBuildInfo
-	var node nodeInfo
-	if err := errors.Join(
-		readYAML(defaults, runtimeLockFile, &lock),
-		readYAML(defaults, openSpecTreeDir+"/"+BuildInfoFile, &tree),
-		readYAML(nodeFS, path.Join(nodePayloadDir, target, "node.info.yaml"), &node),
-	); err != nil {
-		return tree, node, err
+	if err := readYAML(defaults, openSpecTreeDir+"/"+BuildInfoFile, &tree); err != nil {
+		return "", err
 	}
-	return tree, node, checkNodeSkew(lock, node, target)
+	if strings.TrimSpace(tree.Version) == "" {
+		return "", fmt.Errorf("embedded OpenSpec build info has no version")
+	}
+	return tree.Version, nil
 }
 
-func checkNodeSkew(lock runtimeLock, node nodeInfo, target string) error {
-	if node.Version != lock.Node.Version {
-		return fmt.Errorf("runtime payload node version %s does not match runtime.lock.yaml %s", node.Version, lock.Node.Version)
+// MaterializeOpenSpec installs the digest-verified OpenSpec bundle and
+// returns its private launcher path. Node is deliberately not part of this
+// materialization; callers validate and record the host Node separately.
+func MaterializeOpenSpec(defaults fs.FS, dest string) (string, Evidence, error) {
+	var tree openSpecBuildInfo
+	if err := readYAML(defaults, openSpecTreeDir+"/"+BuildInfoFile, &tree); err != nil {
+		return "", Evidence{}, err
 	}
-	if node.Target != target {
-		return fmt.Errorf("runtime payload was built for %s, not %s", node.Target, target)
-	}
-	return nil
-}
-
-func embeddedManifest(goos, goarch, target string, tree openSpecBuildInfo, node nodeInfo) Manifest {
-	return Manifest{
+	script := openSpecDest + "/" + tree.Bundle
+	manifest := Manifest{
 		SchemaVersion: SchemaVersion,
 		Provider:      embeddedProvider,
-		Launcher: Launcher{
-			Node:   map[string]string{"default": "node/bin/node", "windows": "node/node.exe"},
-			Script: "openspec/" + tree.Bundle,
-		},
-		Components: []Component{
-			{Name: "node", Version: node.Version, OS: goos, Arch: goarch, File: path.Join(nodePayloadDir, target, node.File), Format: node.Format, SHA256: node.SHA256, Size: node.Size, Dest: "node"},
-			{Name: "openspec", Version: tree.Version, OS: AnyTarget, Arch: AnyTarget, File: openSpecTreeDir, Format: FormatDir, SHA256: tree.TreeSHA256, Size: tree.TreeBytes, Dest: "openspec"},
-		},
+		Launcher:      Launcher{Node: map[string]string{"default": script}, Script: script},
+		Components: []Component{{
+			Name: "openspec", Version: tree.Version, OS: AnyTarget, Arch: AnyTarget,
+			File: openSpecTreeDir, Format: FormatDir, SHA256: tree.TreeSHA256,
+			Size: tree.TreeBytes, Dest: openSpecDest,
+		}},
 	}
+	evidence, err := Materialize(defaults, manifest, "any", "any", dest)
+	if err != nil {
+		return "", Evidence{}, err
+	}
+	return filepath.Join(dest, filepath.FromSlash(script)), evidence, nil
 }
 
 func readYAML(src fs.FS, name string, into any) error {
@@ -115,31 +80,18 @@ func readYAML(src fs.FS, name string, into any) error {
 	return nil
 }
 
-// layeredFS serves nodepayload/... from the per-target Node payload and every
-// other path from the embedded skill defaults.
-type layeredFS struct{ defaults, node fs.FS }
-
-func (l layeredFS) Open(name string) (fs.File, error) {
-	if name == nodePayloadDir || strings.HasPrefix(name, nodePayloadDir+"/") {
-		return l.node.Open(name) //nolint:wrapcheck // fs.FS contract: callers expect the underlying *fs.PathError
-	}
-	return l.defaults.Open(name) //nolint:wrapcheck // fs.FS contract: callers expect the underlying *fs.PathError
-}
-
-// RegisterEmbedded composes and registers the payload of one target. It
-// registers nothing when composition fails, so a defective build can never
-// half-register.
-func RegisterEmbedded(defaults, nodeFS fs.FS, target string) error {
-	m, src, err := BuildEmbedded(defaults, nodeFS, target)
+// VerifyMaterializedOpenSpec recomputes the tree digest of the OpenSpec bundle
+// materialized under runtimeDir (weapon-runtime/<provider>) and compares it
+// with the digest recorded at install. It returns ErrPayloadMissing when the
+// bundle directory is absent and ErrDigestMismatch when any file differs, was
+// added or was removed.
+func VerifyMaterializedOpenSpec(runtimeDir, wantSHA256 string) error {
+	sum, _, err := TreeDigest(os.DirFS(runtimeDir), openSpecDest)
 	if err != nil {
-		return fmt.Errorf("runtime payload for %s: %w", target, err)
+		return err
 	}
-	Register(m, src)
+	if wantSHA256 == "" || sum != wantSHA256 {
+		return fmt.Errorf("%w: %s", ErrDigestMismatch, filepath.Join(runtimeDir, openSpecDest))
+	}
 	return nil
-}
-
-// InitFailureMessage is the text of the start-up failure for a payload build
-// whose embedded runtime cannot be composed.
-func InitFailureMessage(target string, err error) string {
-	return fmt.Sprintf("strategist: embedded runtime payload for %s is invalid: %v (this binary is defective; rebuild it with `make build-standalone` or use a release binary)", target, err)
 }

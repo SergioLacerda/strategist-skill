@@ -122,18 +122,14 @@ func TestOpenSpecRuntimeRootSeparatorForms(t *testing.T) {
 }
 
 func TestRankedRuntimeExecutableMissingMessageIsActionable(t *testing.T) {
-	msg := RankedRuntimeExecutableMissingMessage("openspec-propose", "openspec")
+	msg := RankedRuntimeExecutableMissingMessage("openspec-propose", "node")
 
 	require.Contains(t, msg, `"openspec-propose"`)
-	require.Contains(t, msg, `"openspec"`)
-	require.Contains(t, msg, "PATH")
+	require.Contains(t, msg, `"node"`)
+	require.Contains(t, msg, "Node.js >=20.19.0")
 	require.Contains(t, msg, "docs/runbooks/standalone-runtime-hermeticity.md")
 	require.NotContains(t, msg, "exec:")
-	// The binary is the usual culprit, so the message must say so and name the fix.
-	require.Contains(t, msg, "built without the embedded runtime")
-	require.Contains(t, msg, "make build-standalone")
-	require.Contains(t, msg, "strategist version --build")
-	require.NotContains(t, msg, "does not yet ship")
+	require.Contains(t, msg, "OpenSpec and npm do not need to be installed separately")
 }
 
 func TestRankedRuntimeContractValidatesPinnedIdentity(t *testing.T) {
@@ -175,8 +171,17 @@ func TestParseReportedVersionAndSkew(t *testing.T) {
 	require.True(t, VersionSkew("1.13.0", "1.10.0"))
 	require.True(t, VersionSkew("1.13.0", ""), "an unreadable version cannot confirm the pin")
 
-	msg := RankedRuntimeVersionSkewMessage("openspec-propose", "1.13.0", "1.10.0")
+	msg := RankedRuntimeNodeVersionSkewMessage("openspec-propose", "22.23.2", "20.19.0")
 	require.Contains(t, msg, ReasonRankedRuntimeVersionSkew)
-	require.Contains(t, msg, "1.13.0")
-	require.Contains(t, msg, "1.10.0")
+	require.Contains(t, msg, "22.23.2")
+	require.Contains(t, msg, "20.19.0")
+	require.Contains(t, msg, "Node", "the message names the host Node runtime, not an OpenSpec executable")
+	require.Contains(t, RankedRuntimeNodeVersionSkewMessage("p", "22.23.2", ""), "unreadable")
+}
+
+func TestVersionAtLeast(t *testing.T) {
+	require.True(t, VersionAtLeast("20.19.0", "20.19.0"))
+	require.True(t, VersionAtLeast("22.0.0", "20.19.0"))
+	require.False(t, VersionAtLeast("20.18.9", "20.19.0"))
+	require.False(t, VersionAtLeast("invalid", "20.19.0"))
 }

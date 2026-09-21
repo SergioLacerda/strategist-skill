@@ -26,6 +26,7 @@ func promptSlots(p Prompter, b i18n.WizardStrings, catalog pluginCatalog, provid
 	if len(discoveryIDs) == 0 {
 		return "", "", "", "", "", "", fmt.Errorf("wizard: discovery: no compatible weapon for role ranger")
 	}
+	printRankedRuntimeNote(b, catalog, discoveryRankedID)
 	discovery, discoveryMode, err = promptSlotProvider(p, b.PromptDiscovery, discoveryIDs, discoveryDefault, discoveryRankedID, b.LabelCustomInput, providerRisk, "write_analysis", "discovery")
 	if err != nil {
 		return "", "", "", "", "", "", err
@@ -36,6 +37,7 @@ func promptSlots(p Prompter, b i18n.WizardStrings, catalog pluginCatalog, provid
 	if len(refinementIDs) == 0 {
 		return "", "", "", "", "", "", fmt.Errorf("wizard: refinement: no compatible weapon for role archivist")
 	}
+	printRankedRuntimeNote(b, catalog, refinementRankedID)
 	refinement, refinementMode, err = promptSlotProvider(p, b.PromptRefinement, refinementIDs, refinementDefault, refinementRankedID, b.LabelCustomInput, providerRisk, "write_analysis", "refinement")
 	if err != nil {
 		return "", "", "", "", "", "", err
@@ -45,6 +47,26 @@ func promptSlots(p Prompter, b i18n.WizardStrings, catalog pluginCatalog, provid
 		return "", "", "", "", "", "", err
 	}
 	return discovery, refinement, execution, discoveryMode, refinementMode, executionMode, nil
+}
+
+// rankedRuntimeNote explains the host Node prerequisite of a Ranked option
+// whose certified provider declares a runtime, or returns "" when choosing it
+// needs nothing from the host.
+func rankedRuntimeNote(b i18n.WizardStrings, catalog pluginCatalog, rankedID string) string {
+	if rankedID == "" {
+		return ""
+	}
+	provider, ok := findCatalogProvider(catalog, rankedID)
+	if !ok || domain.NormalizeRankedRuntime(provider.Runtime).Kind == domain.RankedRuntimeNone {
+		return ""
+	}
+	return fmt.Sprintf(b.NoteRankedHostNode, rankedID, domain.MinimumOpenSpecNodeVersion)
+}
+
+func printRankedRuntimeNote(b i18n.WizardStrings, catalog pluginCatalog, rankedID string) {
+	if note := rankedRuntimeNote(b, catalog, rankedID); note != "" {
+		fmt.Println(note)
+	}
 }
 
 func promptExecutionSlot(p Prompter, b i18n.WizardStrings, catalog pluginCatalog, providerRisk map[string]string) (string, string, error) {

@@ -17,8 +17,9 @@ import (
 var runRankedRuntimeCommand = func(ctx context.Context, dir string, name string, args ...string) ([]byte, error) {
 	// The executable and arguments are supplied by the trusted runtime
 	// contract; provider roots are validated before reaching this adapter.
-	// An absolute name is a Strategist-materialized private runtime and is
-	// never resolved through PATH; a bare name is the host/custom lookup.
+	// All Ranked launchers are absolute: either a Strategist-materialized Node
+	// or the host Node resolved during installation. Neither path resolves an
+	// OpenSpec executable through PATH.
 	cmd, err := rankedRuntimeCommand(ctx, dir, name, args...)
 	if err != nil {
 		return nil, fmt.Errorf("prepare provider command: %w", err)
@@ -40,12 +41,17 @@ func rankedRuntimeBootstrapError(providerID string, err error) error {
 	return fmt.Errorf("ranked runtime provider %q: %w", providerID, err)
 }
 
+// rankedRuntimeCommand fails closed on a non-absolute launcher. Every Ranked
+// launcher is absolute — a Strategist-materialized Node or the host Node
+// resolved at install time — so a bare name means the resolver is broken. It is
+// never degraded into a PATH lookup: that is the drift this runtime exists to
+// prevent, and it would surface as a silently working install on any machine
+// that happens to carry an `openspec` executable.
 func rankedRuntimeCommand(ctx context.Context, dir, name string, args ...string) (*exec.Cmd, error) {
-	build := runtimeenv.Command
-	if filepath.IsAbs(name) {
-		build = runtimeenv.PrivateCommand
+	if !filepath.IsAbs(name) {
+		return nil, fmt.Errorf("prepare ranked runtime command %q: launcher must be an absolute path resolved by the ranked runtime resolver, not a name resolved from PATH", name)
 	}
-	cmd, err := build(ctx, dir, name, args...)
+	cmd, err := runtimeenv.PrivateCommand(ctx, dir, name, args...)
 	if err != nil {
 		return nil, fmt.Errorf("prepare ranked runtime command %q: %w", name, err)
 	}

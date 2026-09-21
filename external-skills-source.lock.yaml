@@ -46,11 +46,11 @@ packages:
       upstream_revision: 1ebddd17f40dde15dfd28289e4493c3cf05ee9df
     - id: openspec-propose
       version: "1.0"
-      digest: sha256:25c41e6e12f0d7c2255f9587b6493b6227d165df4b0f2ee8f8366e9735163075
+      digest: sha256:496669ea08726c94ac03b3b2b90347ef215bd62a3b2f7337ba82b4b07d729752
       source: external-skills-source/openspec-propose
       contract_version: skill-package/v1
-      original_digest: sha256:25c41e6e12f0d7c2255f9587b6493b6227d165df4b0f2ee8f8366e9735163075
-      normalized_digest: sha256:95942f7d26c2e5ff9955e75cadf02a63ebd7cf19eda51a08f2f0ee54734ce787
+      original_digest: sha256:496669ea08726c94ac03b3b2b90347ef215bd62a3b2f7337ba82b4b07d729752
+      normalized_digest: sha256:1bab86f2792accab714995fcbee76d731c664b167635505f623c545ebffacf70
       transformation: none
       local_modifications: unknown
       verification_state: declared

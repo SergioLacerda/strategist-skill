@@ -14,32 +14,32 @@ func skillProviderReadiness(root, slot, provider, path string) domain.PluginRead
 	connector := connectors.UnsupportedConnector{IDValue: "current-runtime", ConnectorAPIVersion: "strategist-connector-api/1"}
 	resolve := connector.Resolve(context.Background(), connectors.RuntimeLocator{ID: provider, Path: path})
 	observe := connector.Observe(context.Background(), domain.InstalledInstance{ID: provider})
+	lock := readPluginsLockFile(root)
+	if bindingIsRanked(lock, slot, provider) {
+		// A Ranked binding is already validated and certified at build time
+		// (docs/adr/0043-ranked-pipeline-pilot-implementation-decisions.md
+		// DEC-003) — it never calls into Custom's trust.Verify/
+		// policy.EvaluateGrant runtime checks; readiness is reported from the
+		// catalog's certification stamp, and its installed runtime is the
+		// dependencies dimension.
+		trustCheck, grantCheck, runtimeCheck := rankedCertificationReadiness(root, slot, provider)
+		certified := domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "ranked_certification_verified"}
+		return skillProviderVector(path, provider, certified, trustCheck, grantCheck, runtimeCheck, resolve, observe)
+	}
 	entrypoint := "refine"
 	if slot == string(domain.SlotDiscovery) {
 		entrypoint = "discover"
 	}
 	probe := connector.Probe(context.Background(), domain.InstalledInstance{ID: provider, ConnectorID: connector.Capabilities(context.Background()).ConnectorID}, entrypoint)
-	lock := readPluginsLockFile(root)
 	digest := lock.NodeDigest(provider, "adapter_contract")
 	trustCheck := skillProviderTrustReadiness(root, provider, digest)
 	grantCheck := skillProviderPermissionGrantReadinessFor(root, digest, requestedPermissions(path))
-	ranked := bindingIsRanked(lock, slot, provider)
 	conformance := customConformanceReadiness(root, slot, provider, path, probe)
-	if ranked {
-		// A Ranked binding is already validated and certified at build time
-		// (docs/adr/0043-ranked-pipeline-pilot-implementation-decisions.md
-		// DEC-003) — it never calls into Custom's trust.Verify/
-		// policy.EvaluateGrant runtime checks; readiness is reported from the
-		// catalog's certification stamp instead.
-		trustCheck, grantCheck = rankedCertificationReadiness(root, slot, provider)
-		conformance = domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "ranked_certification_verified"}
-	}
-	dependencies := domain.ReadinessCheck{Status: domain.ReadinessUnknown, ReasonCode: "dependency_lock_not_evaluated"}
-	if !ranked {
-		// A Ranked binding proves its runtime through its own readiness; every
-		// other binding must still not read ready without one.
-		dependencies = customRuntimeReadiness(root, slot, provider)
-	}
+	// Every non-Ranked binding must still not read ready without a runtime.
+	return skillProviderVector(path, provider, conformance, trustCheck, grantCheck, customRuntimeReadiness(root, slot, provider), resolve, observe)
+}
+
+func skillProviderVector(path, provider string, conformance, trustCheck, grantCheck, dependencies domain.ReadinessCheck, resolve connectors.ConnectorResult, observe connectors.ObservationResult) domain.PluginReadinessVector {
 	return domain.PluginReadinessVector{
 		Descriptor:          domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "legacy_descriptor_valid", Detail: path},
 		Source:              domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "local_manifest_present", Detail: path},

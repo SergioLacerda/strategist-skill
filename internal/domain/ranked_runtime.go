@@ -28,6 +28,9 @@ const (
 	RankedRuntimeNone = "none"
 	// RankedRuntimeOpenSpecRoot marks a provider backed by an initialized OpenSpec root.
 	RankedRuntimeOpenSpecRoot = "openspec_root"
+	// MinimumOpenSpecNodeVersion is the upstream engine requirement for the
+	// OpenSpec bundle embedded in ordinary Strategist builds.
+	MinimumOpenSpecNodeVersion = "20.19.0"
 )
 
 // ReasonRankedRuntimeExecutableMissing is the cataloged reason code emitted
@@ -35,15 +38,12 @@ const (
 // machine/errors.yaml).
 const ReasonRankedRuntimeExecutableMissing = "ranked_runtime_executable_missing"
 
-// RankedRuntimeExecutableMissingMessage explains a missing Ranked provider
-// executable in operator terms. A binary built without the embedded runtime
-// resolves the executable from PATH, so the remedies are a payload build or
-// providing it there.
+// RankedRuntimeExecutableMissingMessage explains a missing Node executable in
+// operator terms. Every binary embeds OpenSpec; payload builds embed Node too,
+// while ordinary go-install builds use the supported host Node runtime.
 func RankedRuntimeExecutableMissingMessage(provider, executable string) string {
-	return fmt.Sprintf("Ranked provider %q needs the %q executable at the version pinned by its contract, but it was not found on PATH and no private runtime is installed. "+
-		"If `strategist version --build` shows an embedded runtime payload, run `strategist install --wizard` (keep the Ranked option) to materialize it. "+
-		"Otherwise this strategist binary was built without the embedded runtime (`runtime payload: none`): use a release binary, or build from source with `make build-standalone` (`make install` does this); "+
-		"alternatively install the pinned CLI so it is on PATH, then rerun. "+
+	return fmt.Sprintf("Ranked provider %q needs the %q executable to run its embedded OpenSpec bundle, but it was not found. "+
+		"Install Node.js >=20.19.0 and rerun `strategist install --wizard` (keep the Ranked option); OpenSpec and npm do not need to be installed separately. "+
 		"See docs/runbooks/standalone-runtime-hermeticity.md",
 		provider, executable)
 }

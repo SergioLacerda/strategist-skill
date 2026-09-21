@@ -51,12 +51,14 @@ func TestDoctorFailsWhenGolangciLintWasBuiltWithAnOlderGoThanGoMod(t *testing.T)
 	}
 }
 
-func TestDoctorFailsWhenPythonIsNotUsable(t *testing.T) {
+// Python was only needed to fetch a private Node archive; with the host-Node
+// runtime no build or install path requires it, so doctor must not gate on it.
+func TestDoctorDoesNotRequirePython(t *testing.T) {
 	t.Parallel()
 	// A Windows Store stub or a broken shim exists on PATH but cannot run.
-	out, code := runDoctor(t, map[string]string{"python3": `exit 9`})
-	if code == 0 || !strings.Contains(out, "python") || !strings.Contains(out, "FAIL") {
-		t.Fatalf("doctor must fail for an unusable python (exit=%d):\n%s", code, out)
+	out, _ := runDoctor(t, map[string]string{"python3": `exit 9`})
+	if strings.Contains(out, "python") {
+		t.Fatalf("doctor must not check python:\n%s", out)
 	}
 }
 
@@ -74,9 +76,9 @@ func TestDoctorWarnsButPassesOnLowTempSpace(t *testing.T) {
 func TestDoctorReportsAStaleStrategistOnPath(t *testing.T) {
 	t.Parallel()
 	out, _ := runDoctor(t, map[string]string{
-		"strategist": `if [ "$1" = "version" ]; then echo V1.0.0; echo "runtime payload: none (openspec resolved from PATH)"; fi`,
+		"strategist": `if [ "$1" = "version" ]; then echo V1.0.0; echo "runtime: legacy binary without embedded OpenSpec"; fi`,
 	})
-	if !strings.Contains(out, "runtime payload: none") && !strings.Contains(out, "no embedded runtime") {
+	if !strings.Contains(out, "no embedded OpenSpec runtime") {
 		t.Fatalf("doctor must flag a strategist without the embedded runtime:\n%s", out)
 	}
 }

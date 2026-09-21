@@ -21,14 +21,13 @@ func TestBootstrapOpenSpecRuntime_UsesContainedCommandsAndDirectConfig(t *testin
 set -eu
 printf '%s|%s|%s\n' "$PWD" "$*" "${OPEN_SPEC_CONFIG:-}" >> "$PWD/command.log"
 if [ "$1" = "init" ]; then
-  mkdir -p "$PWD/openspec"
+  command -p mkdir -p "$PWD/openspec"
   printf 'schema: spec-driven\n' > "$PWD/openspec/config.yaml"
   exit 0
 fi
-printf '{"root":{"path":"%s"},"members":[],"status":[]}\n' "$(dirname "$PWD")"
+printf '{"root":{"path":"%s"},"members":[],"status":[]}\n' "$(command -p dirname "$PWD")"
 `
 	require.NoError(t, os.WriteFile(script, []byte(scriptBody), 0o755))
-	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	t.Setenv("OPEN_SPEC_CONFIG", filepath.Join(t.TempDir(), "foreign-config.yaml"))
 
 	runtime := domain.RankedRuntimeContract{
@@ -37,7 +36,7 @@ printf '{"root":{"path":"%s"},"members":[],"status":[]}\n' "$(dirname "$PWD")"
 		Bootstrap:   "openspec init --profile core --tools codex",
 		Healthcheck: "openspec context --json",
 	}
-	require.NoError(t, bootstrapOpenSpecRuntime(context.Background(), root, runtime))
+	require.NoError(t, bootstrapOpenSpecRuntimeWith(context.Background(), root, runtime, rankedExecutable{name: script}))
 	require.FileExists(t, filepath.Join(root, "config.yaml"))
 	assertNoNestedOpenSpecRoot(t, root)
 

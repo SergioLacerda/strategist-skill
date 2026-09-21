@@ -113,7 +113,22 @@ providers:
 	require.Contains(t, err.Error(), "runtime state is unavailable")
 
 	require.NoError(t, os.WriteFile(filepath.Join(root, "ranked-runtimes.yaml"), []byte(`{
-  "entries": [{"slot":"refinement","provider":"openspec-propose","contract_digest":"sha256:runtime"}]
+  "schema_version": "strategist-ranked-runtime/v1",
+  "entries": [{"role":"archivist","slot":"refinement","provider":"openspec-propose","contract_digest":"sha256:runtime"}]
+}`), 0o644))
+	_, err = BuildRoleInvocationPlan(root, "refinement")
+	require.ErrorContains(t, err, "strategist upgrade", "a legacy runtime record is never used")
+
+	require.NoError(t, os.WriteFile(filepath.Join(root, "ranked-runtimes.yaml"), []byte(`{
+  "schema_version": "strategist-ranked-runtime/v2",
+  "entries": [{"role":"ranger","slot":"refinement","provider":"openspec-propose","contract_digest":"sha256:runtime"}]
+}`), 0o644))
+	_, err = BuildRoleInvocationPlan(root, "refinement")
+	require.ErrorContains(t, err, "recorded for role", "a runtime recorded for another role does not match this binding")
+
+	require.NoError(t, os.WriteFile(filepath.Join(root, "ranked-runtimes.yaml"), []byte(`{
+  "schema_version": "strategist-ranked-runtime/v2",
+  "entries": [{"role":"archivist","slot":"refinement","provider":"openspec-propose","contract_digest":"sha256:runtime"}]
 }`), 0o644))
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "openspec"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(root, "openspec", "config.yaml"), []byte("schema: spec-driven\n"), 0o644))

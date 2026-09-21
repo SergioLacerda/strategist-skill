@@ -46,8 +46,16 @@ func Command(ctx context.Context, dir, name string, args ...string) (*exec.Cmd, 
 
 // PrivateCommand runs an executable that Strategist itself materialized. The
 // path must be absolute and present: there is no PATH lookup, and the
-// subprocess PATH is only the executable's own directory, so a Ranked runtime
-// can never resolve a tool from the client's machine.
+// subprocess PATH is empty, so a Ranked runtime can never resolve a tool from
+// the client's machine.
+//
+// The PATH is empty rather than the launcher's own directory. In payload mode
+// that directory is Strategist-owned and harmless, but in host_node mode the
+// launcher is the host's Node, so its directory is a system binary directory
+// (commonly /usr/bin) — handing the provider subprocess the whole machine. The
+// OpenSpec bundle was measured against both commands it is ever given, the
+// bootstrap `init` and the healthcheck `context --json`, and both succeed with
+// no PATH at all, so the narrowest setting is the correct one for both modes.
 func PrivateCommand(ctx context.Context, dir, executable string, args ...string) (*exec.Cmd, error) {
 	dir, err := absoluteRoot(dir)
 	if err != nil {
@@ -64,7 +72,7 @@ func PrivateCommand(ctx context.Context, dir, executable string, args ...string)
 	}
 	cmd := exec.CommandContext(ctx, executable, args...) //nolint:gosec // executable is a Strategist-materialized private runtime path
 	cmd.Dir = dir
-	cmd.Env = withPath(ForRoot(dir), filepath.Dir(executable))
+	cmd.Env = withPath(ForRoot(dir), "")
 	return cmd, nil
 }
 
@@ -80,6 +88,9 @@ func absoluteRoot(root string) (string, error) {
 	return absolute, nil
 }
 
+// withPath replaces any inherited PATH with the given value; an empty value
+// yields an explicitly empty PATH rather than an absent one, so the subprocess
+// cannot fall back to a system default.
 func withPath(env []string, path string) []string {
 	out := make([]string, 0, len(env))
 	for _, kv := range env {

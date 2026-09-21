@@ -38,6 +38,7 @@ lookup by topic fast without moving any file.
 | [0037](0037-wizard-role-binding-persistence.md) | Wizard role binding persistence (discovery + refinement) |
 | [0038](0038-docs-information-architecture-and-mandate-layer.md) | Docs information architecture and mandate layer |
 | [0039](0039-weapon-scratch-root-declaration.md) | Weapon scratch-root declaration |
+| [0051](0051-remote-provider-acquisition-and-trust-policy.md) | Remote provider acquisition and trust policy (proposed) |
 
 ### Knowledge & Jewels
 

@@ -3,16 +3,10 @@ package install
 import "github.com/SergioLacerda/strategist-skill/internal/domain"
 
 // promoteRuntimeProvidersToRanked gives a silent install the same outcome the
-// wizard's pre-selected Ranked option gives: when this binary embeds a runtime
-// payload, every slot whose certified provider declares a runtime is bound in
-// Ranked mode, so the runtime is materialized instead of leaving the provider
-// bound in custom mode with no executable anywhere. Slots whose provider needs
-// no runtime keep their custom binding, and a binary without a payload changes
-// nothing (the readiness gate then reports the missing executable).
+// wizard's pre-selected Ranked option gives: every certified provider that
+// declares a runtime is bound in Ranked mode so the host-Node runtime is
+// materialized instead of leaving the provider bound in custom mode.
 func promoteRuntimeProvidersToRanked(catalog pluginCatalog, slots map[string]string, lockFile domain.PluginLockFile) (domain.PluginLockFile, error) {
-	if _, ok := payloadSource(); !ok {
-		return lockFile, nil
-	}
 	wc := domain.WizardConfig{
 		DiscoveryProvider:  slots["discovery"],
 		RefinementProvider: slots["refinement"],

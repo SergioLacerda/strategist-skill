@@ -4,6 +4,8 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/SergioLacerda/strategist-skill/internal/embed"
+	"github.com/SergioLacerda/strategist-skill/internal/runtimepayload"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
 
@@ -21,4 +23,8 @@ func main() {
 		defer shutdown(context.Background()) //nolint:errcheck // best-effort shutdown
 	}
 	execute()
+}
+
+func init() {
+	runtimepayload.RegisterOpenSpec(embed.DefaultsFS())
 }

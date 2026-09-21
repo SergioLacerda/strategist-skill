@@ -58,24 +58,14 @@ else
   fi
 fi
 
-# 3. python: build scripts need a working python (a Windows Store stub exists but cannot run)
-py="$(command -v python3 2>/dev/null || command -v python 2>/dev/null || true)"
-if [[ -z "${py}" ]]; then
-  bad "python: neither python3 nor python found; 'make install' needs it to fetch the pinned Node (use 'make install-lite' to skip)"
-elif ! "${py}" -c 'import sys; sys.exit(0 if sys.version_info[0] >= 3 else 1)' >/dev/null 2>&1; then
-  bad "python: '${py}' cannot run as Python 3 (a Windows Store stub or a broken shim?); install Python 3 or pass PYTHON=<path> to make"
-else
-  ok "python: ${py}"
-fi
-
-# 4. the strategist on PATH: shadowing and the embedded runtime
+# 3. the strategist on PATH: shadowing and the embedded runtime
 if command -v strategist >/dev/null 2>&1; then
   on_path="$(command -v strategist)"
   build_out="$(strategist version --build 2>&1 || true)"
-  if grep -q 'runtime payload: none' <<<"${build_out}"; then
-    warning "strategist: ${on_path} has no embedded runtime (runtime payload: none); the Ranked provider then needs openspec on PATH. Run 'make install' for a standalone binary"
-  elif grep -q 'runtime payload: embedded' <<<"${build_out}"; then
-    ok "strategist: ${on_path} (embedded runtime)"
+  if grep -q 'runtime: embedded OpenSpec' <<<"${build_out}"; then
+    ok "strategist: ${on_path} (embedded OpenSpec bundle; host Node prerequisite)"
+  elif grep -q '^runtime:' <<<"${build_out}"; then
+    warning "strategist: ${on_path} has no embedded OpenSpec runtime; run 'make install'"
   else
     warning "strategist: ${on_path} does not support 'version --build'; it predates the standalone runtime, run 'make install'"
   fi

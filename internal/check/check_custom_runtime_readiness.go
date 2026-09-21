@@ -1,10 +1,8 @@
 package check
 
 import (
-	"encoding/json"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"strings"
 
@@ -53,25 +51,27 @@ func runtimeExecutableName(runtime domain.RankedRuntimeContract) string {
 }
 
 // recordedPrivateRuntimeUsable reports whether ranked-runtimes.yaml records a
-// private runtime for slot/provider whose launcher still exists under
-// weapon-runtime/. Recorded paths outside that directory are never trusted.
+// current-schema runtime for slot/provider whose absolute host Node and
+// contained OpenSpec launcher both still exist. A launcher recorded outside
+// weapon-runtime/<provider>/openspec/ is never trusted.
 func recordedPrivateRuntimeUsable(root, slot, provider string) bool {
-	raw, err := os.ReadFile(filepath.Join(root, "ranked-runtimes.yaml")) //nolint:gosec // fixed path under the selected root
+	raw, err := os.ReadFile(filepath.Join(root, domain.RankedRuntimeStatePath)) //nolint:gosec // fixed path under the selected root
 	if err != nil {
 		return false
 	}
-	var state rankedRuntimeStateCheck
-	if json.Unmarshal(raw, &state) != nil {
+	state, err := domain.ParseRankedRuntimeState(raw)
+	if err != nil {
 		return false
 	}
-	private := state.privateRuntimeFor(slot, provider)
-	if private == nil {
+	entry, ok := state.Entry(slot, provider)
+	if !ok || entry.Runtime == nil || !filepath.IsAbs(entry.Runtime.Node) {
 		return false
 	}
-	node, _, ok := privateRuntimePaths(root, *private)
-	if !ok {
-		return false
-	}
-	info, statErr := os.Stat(node)
-	return statErr == nil && !info.IsDir() && path.Clean(private.Node) == private.Node
+	script, ok := recordedScriptPath(root, provider, entry.Runtime.Script)
+	return ok && regularFile(entry.Runtime.Node) && regularFile(script)
+}
+
+func regularFile(p string) bool {
+	info, err := os.Stat(p)
+	return err == nil && info.Mode().IsRegular()
 }

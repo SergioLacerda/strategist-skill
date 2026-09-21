@@ -1,7 +1,6 @@
 package rolevalidation
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -82,16 +81,6 @@ func resolveRankedRoleInvocationPlan(root, role, slot string, binding domain.Slo
 	return plan, nil
 }
 
-type rankedRuntimeState struct {
-	Entries []rankedRuntimeStateEntry `json:"entries"`
-}
-
-type rankedRuntimeStateEntry struct {
-	Slot           string `json:"slot"`
-	Provider       string `json:"provider"`
-	ContractDigest string `json:"contract_digest"`
-}
-
 func validateRankedRuntime(root string, plan domain.RoleInvocationPlan) error {
 	if plan.Runtime.Kind == domain.RankedRuntimeNone {
 		return nil
@@ -100,35 +89,29 @@ func validateRankedRuntime(root string, plan domain.RoleInvocationPlan) error {
 	if err != nil {
 		return err
 	}
-	entry, ok := findRankedRuntimeEntry(state, plan)
+	entry, ok := state.Entry(plan.Slot, plan.WeaponID)
 	if !ok {
 		return fmt.Errorf("ranked provider %q runtime binding is missing for slot %q", plan.WeaponID, plan.Slot)
 	}
 	if entry.ContractDigest != plan.WeaponDigest {
 		return fmt.Errorf("ranked provider %q runtime digest mismatch: expected=%s observed=%s", plan.WeaponID, plan.WeaponDigest, entry.ContractDigest)
 	}
+	if entry.Role != plan.Role {
+		return fmt.Errorf("ranked provider %q runtime was recorded for role %q, not %q; run `strategist install --wizard`", plan.WeaponID, entry.Role, plan.Role)
+	}
 	return validateRankedRuntimeRoot(root, plan)
 }
 
-func readRankedRuntimeState(root string, plan domain.RoleInvocationPlan) (rankedRuntimeState, error) {
-	stateRaw, err := os.ReadFile(filepath.Join(root, "ranked-runtimes.yaml")) //nolint:gosec // fixed runtime path
+func readRankedRuntimeState(root string, plan domain.RoleInvocationPlan) (domain.RankedRuntimeState, error) {
+	stateRaw, err := os.ReadFile(filepath.Join(root, domain.RankedRuntimeStatePath)) //nolint:gosec // fixed runtime path
 	if err != nil {
-		return rankedRuntimeState{}, fmt.Errorf("ranked provider %q runtime state is unavailable: %w", plan.WeaponID, err)
+		return domain.RankedRuntimeState{}, fmt.Errorf("ranked provider %q runtime state is unavailable: %w", plan.WeaponID, err)
 	}
-	var state rankedRuntimeState
-	if err := json.Unmarshal(stateRaw, &state); err != nil {
-		return rankedRuntimeState{}, fmt.Errorf("ranked provider %q runtime state is invalid: %w", plan.WeaponID, err)
+	state, err := domain.ParseRankedRuntimeState(stateRaw)
+	if err != nil {
+		return domain.RankedRuntimeState{}, fmt.Errorf("ranked provider %q runtime state is invalid (run `strategist upgrade`): %w", plan.WeaponID, err)
 	}
 	return state, nil
-}
-
-func findRankedRuntimeEntry(state rankedRuntimeState, plan domain.RoleInvocationPlan) (rankedRuntimeStateEntry, bool) {
-	for _, entry := range state.Entries {
-		if entry.Slot == plan.Slot && entry.Provider == plan.WeaponID {
-			return entry, true
-		}
-	}
-	return rankedRuntimeStateEntry{}, false
 }
 
 func validateRankedRuntimeRoot(root string, plan domain.RoleInvocationPlan) error {

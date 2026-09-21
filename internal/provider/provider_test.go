@@ -99,3 +99,21 @@ func copyFixture(t *testing.T) string {
 	require.NoError(t, copySource(fixturePath(t), target))
 	return target
 }
+
+func TestFailedAddPreservesActiveBindingAndExistingLock(t *testing.T) {
+	root := t.TempDir()
+	active := []byte("mode: custom\nbase_path: .analysis\nslots:\n  discovery: ranger\n  refinement: archivist\n  execution: sniper\n")
+	lock := []byte("schema_version: strategist-plugin-lock/v1\n")
+	require.NoError(t, os.WriteFile(filepath.Join(root, "active.yaml"), active, 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins.lock"), lock, 0o644))
+
+	_, err := Add(root, fixturePath(t), "refinement")
+	require.Error(t, err)
+	gotActive, readErr := os.ReadFile(filepath.Join(root, "active.yaml"))
+	require.NoError(t, readErr)
+	require.Equal(t, active, gotActive)
+	gotLock, readErr := os.ReadFile(filepath.Join(root, "plugins.lock"))
+	require.NoError(t, readErr)
+	require.Contains(t, string(gotLock), "schema_version: strategist-plugin-lock/v1")
+	require.NotContains(t, string(gotLock), "fixture-provider")
+}

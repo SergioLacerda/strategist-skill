@@ -1,8 +1,6 @@
 package runtimepayload
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -28,53 +26,45 @@ type ComponentEvidence struct {
 }
 
 // Materialize verifies every component needed for goos/goarch against the
-// manifest and only then extracts them into dest. Extraction goes to a staging
+// manifest and only then copies them into dest. Copying goes to a staging
 // directory that replaces dest at the end, so a failure leaves dest untouched
 // and nothing behind.
 func Materialize(src fs.FS, m Manifest, goos, goarch, dest string) (Evidence, error) {
-	comps, blobs, err := verifyComponents(src, m, goos, goarch)
+	comps, err := verifyComponents(src, m, goos, goarch)
 	if err != nil {
 		return Evidence{}, err
 	}
-	if err := activate(src, comps, blobs, dest); err != nil {
+	if err := activate(src, comps, dest); err != nil {
 		return Evidence{}, err
 	}
 	return newEvidence(m, comps), nil
 }
 
-func verifyComponents(src fs.FS, m Manifest, goos, goarch string) ([]Component, [][]byte, error) {
+// verifyComponents selects the components for goos/goarch and verifies every
+// directory tree in place against its pinned digest before anything is written.
+func verifyComponents(src fs.FS, m Manifest, goos, goarch string) ([]Component, error) {
 	if err := m.Validate(); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	comps, err := m.selectFor(goos, goarch)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	blobs := make([][]byte, len(comps))
-	for i, c := range comps {
-		if blobs[i], err = verifyComponent(src, c); err != nil {
-			return nil, nil, err
+	for _, c := range comps {
+		if err := verifyTree(src, c); err != nil {
+			return nil, err
 		}
 	}
-	return comps, blobs, nil
+	return comps, nil
 }
 
-// verifyComponent checks one component; directory trees are verified in place
-// (no blob), archives are read and verified into memory.
-func verifyComponent(src fs.FS, c Component) ([]byte, error) {
-	if c.Format == FormatDir {
-		return nil, verifyTree(src, c)
-	}
-	return readVerified(src, c)
-}
-
-// activate extracts into a staging directory and swaps it in for dest.
-func activate(src fs.FS, comps []Component, blobs [][]byte, dest string) error {
+// activate copies into a staging directory and swaps it in for dest.
+func activate(src fs.FS, comps []Component, dest string) error {
 	staging := dest + ".staging"
 	if err := os.RemoveAll(staging); err != nil {
 		return fmt.Errorf("clear staging %s: %w", staging, err)
 	}
-	if err := extractAll(src, comps, blobs, staging); err != nil {
+	if err := extractAll(src, comps, staging); err != nil {
 		return cleanupStaging(staging, err)
 	}
 	if err := swapIn(staging, dest); err != nil {
@@ -132,43 +122,16 @@ func (m Manifest) candidates(goos, goarch string) (order []string, chosen map[st
 
 func matches(declared, actual string) bool { return declared == AnyTarget || declared == actual }
 
-func readVerified(src fs.FS, c Component) ([]byte, error) {
-	data, err := fs.ReadFile(src, c.File)
-	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			return nil, fmt.Errorf("%w: %s (%s %s)", ErrPayloadMissing, c.File, c.Name, c.Version)
-		}
-		return nil, fmt.Errorf("read runtime payload %s: %w", c.File, err)
-	}
-	sum := sha256.Sum256(data)
-	if int64(len(data)) != c.Size || hex.EncodeToString(sum[:]) != c.SHA256 {
-		return nil, fmt.Errorf("%w: %s (%s %s)", ErrDigestMismatch, c.File, c.Name, c.Version)
-	}
-	return data, nil
-}
-
-func extractAll(src fs.FS, comps []Component, blobs [][]byte, staging string) error {
+func extractAll(src fs.FS, comps []Component, staging string) error {
 	budget := &budget{}
-	for i, c := range comps {
+	for _, c := range comps {
 		root := filepath.Join(staging, filepath.FromSlash(c.Dest))
 		if err := os.MkdirAll(root, 0o755); err != nil {
 			return fmt.Errorf("create %s: %w", root, err)
 		}
-		if err := extractComponent(src, c, blobs[i], root, budget); err != nil {
+		if err := copyTree(src, c.File, root, budget); err != nil {
 			return fmt.Errorf("extract %s: %w", c.File, err)
 		}
-	}
-	return nil
-}
-
-func extractComponent(src fs.FS, c Component, blob []byte, root string, b *budget) error {
-	switch c.Format {
-	case FormatTarGz:
-		return extractTarGz(blob, root, c.StripComponents, b)
-	case FormatZip:
-		return extractZip(blob, root, c.StripComponents, b)
-	case FormatDir:
-		return copyTree(src, c.File, root, b)
 	}
 	return nil
 }

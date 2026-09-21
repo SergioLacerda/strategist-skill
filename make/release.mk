@@ -4,16 +4,14 @@
 	release-test release-dry-run release snapshot clean compile-skill \
 	embed-skills embed-skills-check build-standalone standalone-smoke install-lite doctor install-hooks
 
-# install puts a STANDALONE binary in ~/.local/bin: it embeds the private runtime
-# of the Ranked provider (openspec-propose), so `strategist install --wizard`
-# works on a machine with no OpenSpec or Node. It fetches the pinned Node by
-# digest on the first run (needs network and python; cached afterwards).
+# install puts a standalone binary in ~/.local/bin. It embeds the OpenSpec
+# bundle; Ranked execution uses the client's validated host Node >=20.19.0.
 # Use install-lite for a binary without the runtime (resolves openspec from PATH).
 install: build-standalone
 	mkdir -p "$$HOME/.local/bin" && install -m 755 "$(STRATEGIST_BIN)" "$$HOME/.local/bin/strategist$(EXE)"
 	@# Prove the binary now on disk is the standalone one; a stale copy (or another
 	@# strategist earlier on PATH) would otherwise fail later with a misleading error.
-	@"$$HOME/.local/bin/strategist$(EXE)" version --build | grep -q "runtime payload: embedded" || { echo "[Strategist] ERROR: the installed binary has no embedded runtime; check 'command -v strategist' and 'strategist version --build'" >&2; exit 1; }
+	@"$$HOME/.local/bin/strategist$(EXE)" version --build | grep -q "runtime: embedded OpenSpec" || { echo "[Strategist] ERROR: the installed binary has no embedded OpenSpec bundle; check 'command -v strategist' and 'strategist version --build'" >&2; exit 1; }
 	@"$$HOME/.local/bin/strategist$(EXE)" version --build
 	@command -v strategist >/dev/null 2>&1 && [ "$$(command -v strategist)" != "$$HOME/.local/bin/strategist$(EXE)" ] && echo "[Strategist] WARNING: 'strategist' on PATH is $$(command -v strategist), not $$HOME/.local/bin/strategist$(EXE)" >&2 || true
 	@echo "[Strategist] standalone binary installed. Run: strategist install --wizard"
@@ -45,8 +43,16 @@ release-verify: ci-lint ci-test docs-governance-gate validate-fixtures vuln-ci r
 release-check:
 	"$(GORELEASER)" check
 
+# The module proxy occasionally drops a large download mid-stream (for example
+# "stream error ... INTERNAL_ERROR"); the module cache keeps what already
+# arrived, so a retry of the same pinned version is cheap and changes nothing.
 install-goreleaser:
-	GOCACHE="$(GOCACHE)" go install github.com/goreleaser/goreleaser/v2@$(GORELEASER_VERSION)
+	@for attempt in 1 2 3; do \
+	  GOCACHE="$(GOCACHE)" go install github.com/goreleaser/goreleaser/v2@$(GORELEASER_VERSION) && exit 0; \
+	  echo "install-goreleaser: attempt $$attempt failed" >&2; \
+	  [ "$$attempt" -lt 3 ] && sleep $$((attempt * 10)); \
+	done; \
+	echo "install-goreleaser: failed after 3 attempts" >&2; exit 1
 
 check-release-artifacts:
 	bash scripts/check-release-artifacts.sh
@@ -54,10 +60,9 @@ check-release-artifacts:
 check-release-assets:
 	bash scripts/check-release-assets.sh "$(TAG)" dist/published.tsv
 
-# Also covers the standalone build that embeds the runtime payload (fetches the
-# pinned Node for the host by digest, so it needs network).
+# Also covers the single host-Node runtime build.
 release-reproducible-check:
-	REPRODUCIBLE_PAYLOAD=1 bash scripts/check-reproducible-build.sh "$(GOCACHE)"
+	bash scripts/check-reproducible-build.sh "$(GOCACHE)"
 
 # release-test validates release config and local snapshot artifacts without publishing.
 release-test: release-check snapshot check-release-artifacts
@@ -80,18 +85,12 @@ clean:
 compile-skill:
 	strategist compile --root .strategist
 
-# build-standalone builds bin/strategist with the private runtime payload for
-# the host target embedded (fetches the pinned Node first; needs network unless
-# .cache/node-runtime is pre-seeded). Ordinary `make build` never embeds it.
-PYTHON ?= $(shell command -v python3 2>/dev/null || command -v python 2>/dev/null)
+# build-standalone is retained as the explicit release/install target, but it
+# now has the same deterministic embedded OpenSpec build as `make build`.
+build-standalone: build
 
-build-standalone:
-	@test -n "$(PYTHON)" || { echo "python3 (or python) is required to fetch the pinned Node; use 'make install-lite' to skip the embedded runtime" >&2; exit 1; }
-	"$(PYTHON)" scripts/fetch-node-runtime.py --host
-	GOCACHE="$(GOCACHE)" CGO_ENABLED=0 go build -tags strategist_payload -trimpath -ldflags="-s -w -X main.Version=$$(git describe --tags --dirty --always 2>/dev/null || echo dev)" -o "$(STRATEGIST_BIN)" ./cmd/strategist
-
-# standalone-smoke proves a payload build installs and passes check with an
-# empty PATH (no host openspec or node).
+# standalone-smoke proves the embedded OpenSpec bundle installs and passes
+# check using the supported host Node prerequisite.
 standalone-smoke:
 	./scripts/smoke-standalone-install.sh
 

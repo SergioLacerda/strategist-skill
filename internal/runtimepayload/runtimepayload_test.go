@@ -1,123 +1,70 @@
 package runtimepayload
 
 import (
-	"archive/tar"
-	"archive/zip"
-	"bytes"
-	"compress/gzip"
-	"crypto/sha256"
-	"encoding/hex"
-	"os"
+	"io/fs"
 	"path/filepath"
-	"runtime"
+	"strings"
 	"testing"
 	"testing/fstest"
 
 	"github.com/stretchr/testify/require"
 )
 
-type entry struct {
-	name string
-	body string
-	mode int64
-	link string
-}
-
-func tarGz(t *testing.T, entries ...entry) []byte {
+// treeComponent pins the directory tree dir of src as one component.
+func treeComponent(t *testing.T, src fstest.MapFS, name, goos, dir, dest string) Component {
 	t.Helper()
-	var buf bytes.Buffer
-	gz := gzip.NewWriter(&buf)
-	tw := tar.NewWriter(gz)
-	for _, e := range entries {
-		hdr := &tar.Header{Name: e.name, Mode: e.mode, Size: int64(len(e.body)), Typeflag: tar.TypeReg}
-		if e.link != "" {
-			hdr = &tar.Header{Name: e.name, Typeflag: tar.TypeSymlink, Linkname: e.link}
-		}
-		require.NoError(t, tw.WriteHeader(hdr))
-		if e.link == "" {
-			_, err := tw.Write([]byte(e.body))
-			require.NoError(t, err)
-		}
-	}
-	require.NoError(t, tw.Close())
-	require.NoError(t, gz.Close())
-	return buf.Bytes()
+	sum, size, err := TreeDigest(src, dir)
+	require.NoError(t, err)
+	return Component{Name: name, Version: "1.0.0", OS: goos, Arch: AnyTarget, File: dir, Format: FormatDir, SHA256: sum, Size: size, Dest: dest}
 }
 
-func zipBytes(t *testing.T, entries ...entry) []byte {
-	t.Helper()
-	var buf bytes.Buffer
-	zw := zip.NewWriter(&buf)
-	for _, e := range entries {
-		w, err := zw.Create(e.name)
-		require.NoError(t, err)
-		_, err = w.Write([]byte(e.body))
-		require.NoError(t, err)
-	}
-	require.NoError(t, zw.Close())
-	return buf.Bytes()
+func testManifest(components ...Component) Manifest {
+	return Manifest{SchemaVersion: SchemaVersion, Provider: "openspec-propose",
+		Launcher:   Launcher{Node: map[string]string{"default": "openspec/dist/openspec.mjs"}, Script: "openspec/dist/openspec.mjs"},
+		Components: components}
 }
 
-func digest(b []byte) string {
-	sum := sha256.Sum256(b)
-	return hex.EncodeToString(sum[:])
-}
-
-// fixture returns a manifest and payload FS with a node archive (per target)
-// and a platform-independent openspec archive.
+// fixture returns a manifest with a per-target component and a shared one, so
+// target selection and verification stay covered.
 func fixture(t *testing.T) (Manifest, fstest.MapFS) {
 	t.Helper()
-	nodeUnix := tarGz(t, entry{name: "node-v1/bin/node", body: "NODE", mode: 0o755}, entry{name: "node-v1/LICENSE", body: "lic", mode: 0o644})
-	nodeWin := zipBytes(t, entry{name: "node-v1/node.exe", body: "NODEEXE"}, entry{name: "node-v1/LICENSE", body: "lic"})
-	spec := tarGz(t, entry{name: "node_modules/@fission-ai/openspec/bin/openspec.js", body: "JS", mode: 0o644})
-	m := Manifest{
-		SchemaVersion: SchemaVersion,
-		Provider:      "openspec-propose",
-		Launcher:      Launcher{Node: map[string]string{"default": "node/bin/node", "windows": "node/node.exe"}, Script: "openspec/node_modules/@fission-ai/openspec/bin/openspec.js"},
-		Components: []Component{
-			{Name: "node", Version: "22.23.2", OS: "linux", Arch: "amd64", File: "node-linux-amd64.tar.gz", Format: FormatTarGz, SHA256: digest(nodeUnix), Size: int64(len(nodeUnix)), Dest: "node", StripComponents: 1},
-			{Name: "node", Version: "22.23.2", OS: "windows", Arch: "amd64", File: "node-windows-amd64.zip", Format: FormatZip, SHA256: digest(nodeWin), Size: int64(len(nodeWin)), Dest: "node", StripComponents: 1},
-			{Name: "openspec", Version: "1.10.0", OS: AnyTarget, Arch: AnyTarget, File: "openspec.tar.gz", Format: FormatTarGz, SHA256: digest(spec), Size: int64(len(spec)), Dest: "openspec"},
-		},
-	}
 	src := fstest.MapFS{
-		"node-linux-amd64.tar.gz": {Data: nodeUnix},
-		"node-windows-amd64.zip":  {Data: nodeWin},
-		"openspec.tar.gz":         {Data: spec},
+		"linux/bin/tool":          {Data: []byte("TOOL"), Mode: 0o755},
+		"windows/tool.exe":        {Data: []byte("TOOLEXE")},
+		"spec/dist/openspec.mjs":  {Data: []byte("JS")},
+		"spec/runtime.build.yaml": {Data: []byte("generated")},
 	}
+	m := testManifest(
+		treeComponent(t, src, "tool", "linux", "linux", "tool"),
+		treeComponent(t, src, "tool", "windows", "windows", "tool"),
+		treeComponent(t, src, "openspec", AnyTarget, "spec", "openspec"),
+	)
 	return m, src
 }
 
-func TestMaterializeExtractsVerifiedRuntimeForTarget(t *testing.T) {
+func TestMaterializeCopiesVerifiedRuntimeForTarget(t *testing.T) {
 	m, src := fixture(t)
 	dest := filepath.Join(t.TempDir(), "openspec-propose")
 
 	ev, err := Materialize(src, m, "linux", "amd64", dest)
 	require.NoError(t, err)
 
-	node, err := os.Stat(filepath.Join(dest, "node", "bin", "node"))
-	require.NoError(t, err)
-	if runtime.GOOS != "windows" { // Windows file modes carry no execute bit
-		require.NotZero(t, node.Mode()&0o111, "executable bit must be preserved")
-	}
-	require.FileExists(t, filepath.Join(dest, "openspec", "node_modules", "@fission-ai", "openspec", "bin", "openspec.js"))
+	require.FileExists(t, filepath.Join(dest, "tool", "bin", "tool"))
+	require.NoFileExists(t, filepath.Join(dest, "tool", "tool.exe"), "only the target's component is copied")
+	require.FileExists(t, filepath.Join(dest, "openspec", "dist", "openspec.mjs"))
+	require.NoFileExists(t, filepath.Join(dest, "openspec", "runtime.build.yaml"))
 	require.Len(t, ev.Components, 2)
-	require.Equal(t, "22.23.2", ev.Components[0].Version)
 	require.NotEmpty(t, ev.Components[0].SHA256)
 }
 
-func TestMaterializeZipTargetAndLauncherPaths(t *testing.T) {
+func TestMaterializeSelectsTheWindowsComponent(t *testing.T) {
 	m, src := fixture(t)
 	dest := filepath.Join(t.TempDir(), "rt")
 
 	_, err := Materialize(src, m, "windows", "amd64", dest)
-	require.NoError(t, err)
-	require.FileExists(t, filepath.Join(dest, "node", "node.exe"))
 
-	node, script, err := m.LauncherPaths(dest, "windows")
 	require.NoError(t, err)
-	require.Equal(t, filepath.Join(dest, "node", "node.exe"), node)
-	require.Equal(t, filepath.Join(dest, "openspec", "node_modules", "@fission-ai", "openspec", "bin", "openspec.js"), script)
+	require.FileExists(t, filepath.Join(dest, "tool", "tool.exe"))
 }
 
 func TestMaterializeRejectsUnsupportedTarget(t *testing.T) {
@@ -128,7 +75,8 @@ func TestMaterializeRejectsUnsupportedTarget(t *testing.T) {
 
 func TestMaterializeRejectsMissingPayload(t *testing.T) {
 	m, src := fixture(t)
-	delete(src, "openspec.tar.gz")
+	delete(src, "spec/dist/openspec.mjs")
+	delete(src, "spec/runtime.build.yaml")
 	dest := filepath.Join(t.TempDir(), "rt")
 
 	_, err := Materialize(src, m, "linux", "amd64", dest)
@@ -138,7 +86,7 @@ func TestMaterializeRejectsMissingPayload(t *testing.T) {
 
 func TestMaterializeRejectsDigestMismatchBeforeWriting(t *testing.T) {
 	m, src := fixture(t)
-	src["node-linux-amd64.tar.gz"] = &fstest.MapFile{Data: []byte("tampered")}
+	src["linux/bin/tool"] = &fstest.MapFile{Data: []byte("tampered")}
 	dest := filepath.Join(t.TempDir(), "rt")
 
 	_, err := Materialize(src, m, "linux", "amd64", dest)
@@ -146,25 +94,50 @@ func TestMaterializeRejectsDigestMismatchBeforeWriting(t *testing.T) {
 	require.NoDirExists(t, dest)
 }
 
-func TestMaterializeRejectsPathTraversalAndSymlinks(t *testing.T) {
-	for name, archive := range map[string][]byte{
-		"traversal": tarGz(t, entry{name: "../evil", body: "x", mode: 0o644}),
-		"absolute":  tarGz(t, entry{name: "/etc/evil", body: "x", mode: 0o644}),
-		"symlink":   tarGz(t, entry{name: "link", link: "/etc/passwd"}),
+// A tree entry that is a link, or a name Windows cannot store, is refused and
+// leaves nothing behind.
+func TestMaterializeRejectsLinksAndReservedNames(t *testing.T) {
+	for name, entry := range map[string]fstest.MapFS{
+		"symlink":       {"rt/link": {Data: []byte("/etc/passwd"), Mode: fs.ModeSymlink}},
+		"reserved name": {"rt/bin/NUL": {Data: []byte("x")}},
 	} {
 		t.Run(name, func(t *testing.T) {
-			m := Manifest{SchemaVersion: SchemaVersion, Provider: "p", Launcher: Launcher{Node: map[string]string{"default": "n"}, Script: "s"},
-				Components: []Component{{Name: "node", Version: "1", OS: AnyTarget, Arch: AnyTarget, File: "a.tar.gz", Format: FormatTarGz, SHA256: digest(archive), Size: int64(len(archive)), Dest: "node"}}}
-			src := fstest.MapFS{"a.tar.gz": {Data: archive}}
-			base := t.TempDir()
-			dest := filepath.Join(base, "rt")
+			entry["rt/ok.txt"] = &fstest.MapFile{Data: []byte("ok")}
+			m := testManifest(Component{Name: "openspec", Version: "1", OS: AnyTarget, Arch: AnyTarget, File: "rt", Format: FormatDir, SHA256: strings.Repeat("0", 64), Size: 1, Dest: "openspec"})
+			dest := filepath.Join(t.TempDir(), "rt")
 
-			_, err := Materialize(src, m, "linux", "amd64", dest)
-			require.Error(t, err)
+			err := copyTree(entry, "rt", dest, &budget{})
+
 			require.ErrorIs(t, err, ErrUnsafeArchive)
-			require.NoDirExists(t, dest, "failed extraction must leave nothing behind")
-			require.NoFileExists(t, filepath.Join(base, "evil"))
+			_, materializeErr := Materialize(entry, m, "linux", "amd64", dest+"-full")
+			require.Error(t, materializeErr)
+			require.NoDirExists(t, dest+"-full")
 		})
+	}
+}
+
+// The write target is re-checked at path level, independently of entryPath.
+func TestContainedTargetRejectsEscapes(t *testing.T) {
+	root := t.TempDir()
+
+	for _, rel := range []string{"../evil", "a/../../evil", ".."} {
+		_, err := containedTarget(root, rel)
+		require.ErrorIs(t, err, ErrUnsafeArchive, rel)
+	}
+	target, err := containedTarget(root, "dist/openspec.mjs")
+	require.NoError(t, err)
+	require.Equal(t, filepath.Join(root, "dist", "openspec.mjs"), target)
+}
+
+// Only directory trees ship; archive formats are refused at validation.
+func TestManifestRejectsArchiveFormats(t *testing.T) {
+	m, _ := fixture(t)
+	for _, format := range []string{"tar.gz", "zip", ""} {
+		bad := m
+		bad.Components = []Component{m.Components[2]}
+		bad.Components[0].Format = format
+
+		require.ErrorContains(t, bad.Validate(), "unsupported format", format)
 	}
 }
 
@@ -184,20 +157,6 @@ func TestParseManifestValidates(t *testing.T) {
 	require.NoError(t, err)
 	_, err = ParseManifest(raw)
 	require.Error(t, err)
-}
-
-func TestDefaultIsEmptyUntilAPayloadIsRegistered(t *testing.T) {
-	t.Cleanup(func() { Register(Manifest{}, nil) })
-	Register(Manifest{}, nil)
-	_, ok := Default()
-	require.False(t, ok, "builds without an embedded payload must report none")
-
-	m, src := fixture(t)
-	Register(m, src)
-	got, ok := Default()
-	require.True(t, ok)
-	require.Equal(t, m.Provider, got.Manifest.Provider)
-	require.NotNil(t, got.FS)
 }
 
 func treeFS() fstest.MapFS {
@@ -280,16 +239,4 @@ func TestEntryPathRejectsWindowsHostileNames(t *testing.T) {
 		require.True(t, ok, name)
 		require.Equal(t, name, rel)
 	}
-}
-
-func TestMaterializeRejectsReservedNameEntries(t *testing.T) {
-	archive := tarGz(t, entry{name: "bin/NUL", body: "x", mode: 0o644})
-	m := Manifest{SchemaVersion: SchemaVersion, Provider: "p", Launcher: Launcher{Node: map[string]string{"default": "n"}, Script: "s"},
-		Components: []Component{{Name: "node", Version: "1", OS: AnyTarget, Arch: AnyTarget, File: "a.tar.gz", Format: FormatTarGz, SHA256: digest(archive), Size: int64(len(archive)), Dest: "node"}}}
-	dest := filepath.Join(t.TempDir(), "rt")
-
-	_, err := Materialize(fstest.MapFS{"a.tar.gz": {Data: archive}}, m, "linux", "amd64", dest)
-
-	require.ErrorIs(t, err, ErrUnsafeArchive)
-	require.NoDirExists(t, dest)
 }

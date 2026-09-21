@@ -3,7 +3,6 @@ package install
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -29,22 +28,17 @@ func resolveRankedProvider(catalog pluginCatalog, binding domain.SlotBinding) (p
 
 // bootstrapRankedProvider resolves the executable, bootstraps the runtime root
 // and returns the private-runtime evidence (nil for a host executable).
-func bootstrapRankedProvider(ctx context.Context, strategistDir string, provider pluginCatalogProvider, runtime domain.RankedRuntimeContract) (*rankedRuntimeStateRuntime, error) {
+func bootstrapRankedProvider(ctx context.Context, strategistDir string, provider pluginCatalogProvider, runtime domain.RankedRuntimeContract) (*domain.RankedRuntimeStateRuntime, error) {
 	root, err := runtimefs.SafeJoinExisting(strategistDir, filepath.ToSlash(runtime.Root)[len(".strategist/"):])
 	if err != nil {
 		return nil, fmt.Errorf("ranked runtime provider %q root: %w", provider.ID, err)
 	}
-	exe, private, err := resolveRankedExecutable(strategistDir, provider.ID, runtime)
+	exe, private, err := resolveRankedExecutable(ctx, strategistDir, provider.ID, runtime)
 	if err != nil {
-		return nil, fmt.Errorf("ranked runtime provider %q: %w", provider.ID, err)
+		return nil, rankedRuntimeBootstrapError(provider.ID, err)
 	}
 	if err := bootstrapOpenSpecRuntimeWith(ctx, root, runtime, exe); err != nil {
 		return nil, rankedRuntimeBootstrapError(provider.ID, err)
-	}
-	if private == nil {
-		if msg := hostVersionSkewMessage(ctx, root, exe, runtime, provider.ID); msg != "" {
-			slog.WarnContext(ctx, "[Strategist] ranked runtime version skew", "provider", provider.ID, "detail", msg)
-		}
 	}
 	return private, nil
 }

@@ -33,17 +33,46 @@ var roleConformanceTestPaths = map[string]string{
 	"sniper":    "internal/handoff/role_provider_conformance_sniper_test.go",
 }
 
-// repoRoot resolves this Strategist repository's own root directory via
-// runtime.Caller, independent of the caller's working directory. Unlike
-// PrepareEmbeddedOptions.DefaultsRoot's CWD-relative default (which assumes
-// invocation from the repo root, true for `go run ./cmd/strategist ...`),
-// connectorDigest/testSuiteDigest must also resolve correctly under
-// `go test ./internal/install/...`, whose working directory is this
-// package's own directory, not the repo root.
+// repoRoot resolves this Strategist repository's own root directory. Source
+// builds use runtime.Caller; release builds use -trimpath, so their caller path
+// is an import path and must fall back to walking upward from the working
+// directory. prepare-embedded is a maintainer command and therefore requires a
+// checkout as its working directory or ancestor.
 func repoRoot() string {
 	_, thisFile, _, _ := runtime.Caller(0)
-	// thisFile is <repoRoot>/internal/install/embedded_skill_conformance.go.
-	return filepath.Dir(filepath.Dir(filepath.Dir(thisFile)))
+	if filepath.IsAbs(thisFile) {
+		root := filepath.Dir(filepath.Dir(filepath.Dir(thisFile)))
+		if repositoryRoot(root) {
+			return root
+		}
+	}
+	workingDir, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	return repositoryRootFrom(workingDir)
+}
+
+func repositoryRootFrom(dir string) string {
+	for {
+		if repositoryRoot(dir) {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return ""
+		}
+		dir = parent
+	}
+}
+
+func repositoryRoot(dir string) bool {
+	for _, path := range []string{"go.mod", nativeConnectorSourcePath} {
+		if _, err := os.Stat(filepath.Join(dir, path)); err != nil {
+			return false
+		}
+	}
+	return true
 }
 
 // hostAPIContractDigest computes the ADR-0043 DEC-006 "host API contract"

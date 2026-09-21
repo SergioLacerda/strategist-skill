@@ -189,21 +189,6 @@ printf '{"root":{"path":"%s"},"members":[],"status":[]}\n' "$(dirname "$PWD")"
 func TestInstall_WizardRankedPathBootstrapsContainedOpenSpecRuntime(t *testing.T) {
 	testutil.RequirePOSIXShell(t)
 	dir := t.TempDir()
-	binDir := t.TempDir()
-	openspec := filepath.Join(binDir, "openspec")
-	script := `#!/bin/sh
-set -eu
-test -z "${OPEN_SPEC_CONFIG:-}"
-printf '%s|%s\n' "$PWD" "$*" >> "$PWD/runtime-command.log"
-if [ "$1" = "init" ]; then
-  mkdir -p "$PWD/openspec"
-  printf 'schema: spec-driven\n' > "$PWD/openspec/config.yaml"
-  exit 0
-fi
-printf '{"root":{"path":"%s"},"members":[],"status":[]}\n' "$(dirname "$PWD")"
-`
-	require.NoError(t, os.WriteFile(openspec, []byte(script), 0o755))
-	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	t.Setenv("OPEN_SPEC_CONFIG", filepath.Join(t.TempDir(), "foreign-config.yaml"))
 
 	input := "en\nen\nen\nen\nepic\n.analysis\nbrainstorming::ranked\nopenspec-propose::ranked\nsniper::ranked\n\n"
@@ -221,19 +206,18 @@ printf '{"root":{"path":"%s"},"members":[],"status":[]}\n' "$(dirname "$PWD")"
 	require.NoError(t, err)
 	assert.Contains(t, string(state), "openspec-propose")
 	assert.Contains(t, string(state), "sha256:openspec-propose")
-
-	initLog, err := os.ReadFile(filepath.Join(strategist, "runtime-command.log"))
-	require.NoError(t, err)
-	healthLog, err := os.ReadFile(filepath.Join(strategist, "openspec", "runtime-command.log"))
-	require.NoError(t, err)
-	assert.Contains(t, string(initLog), strategist+"|init --profile core --tools codex")
-	assert.Contains(t, string(healthLog), filepath.Join(strategist, "openspec")+"|context --json")
+	assert.NotContains(t, string(state), `"mode":`)
+	assert.Contains(t, string(state), `"node": "/`)
+	assert.Contains(t, string(state), `"script": "weapon-runtime/openspec-propose/openspec/`)
 }
 
 type rankedWizardExtractor struct{}
 
 func (rankedWizardExtractor) Extract(targetDir string, withShim bool) error {
 	if err := (minimalExtractor{}).Extract(targetDir, withShim); err != nil {
+		return err
+	}
+	if err := copyOpenSpecRuntimeFixture(targetDir); err != nil {
 		return err
 	}
 	roleFiles := map[string]string{

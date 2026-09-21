@@ -6,9 +6,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
-	"testing/fstest"
 
-	"github.com/SergioLacerda/strategist-skill/internal/runtimepayload"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -75,23 +73,23 @@ func TestVersionIsHumanStatusCommand(t *testing.T) {
 
 // --- version --build ---
 
-func TestFormatBuildInfoShowsCommitPlatformAndPayload(t *testing.T) {
+func TestFormatBuildInfoShowsCommitPlatformAndEmbeddedOpenSpec(t *testing.T) {
 	settings := map[string]string{"vcs.revision": "895d45b1c2e3f4a5b6c7d8e9f0a1b2c3d4e5f607", "vcs.modified": "false"}
-	payload := &buildPayload{OpenSpec: "1.13.0", Node: "22.23.2"}
+	payload := &buildPayload{OpenSpec: "1.13.0"}
 
 	got := formatBuildInfo(settings, "windows", "amd64", payload)
 
 	assert.Equal(t, []string{
 		"commit: 895d45b1c2e3",
 		"platform: windows/amd64",
-		"runtime payload: embedded (openspec 1.13.0, node 22.23.2)",
+		"runtime: embedded OpenSpec 1.13.0; host Node >=20.19.0 required",
 	}, got)
 }
 
 func TestFormatBuildInfoFlagsDirtyTreesAndMissingInformation(t *testing.T) {
 	dirty := formatBuildInfo(map[string]string{"vcs.revision": "895d45b1c2e3f4a5", "vcs.modified": "true"}, "linux", "arm64", nil)
 	assert.Equal(t, "commit: 895d45b1c2e3 (modified)", dirty[0])
-	assert.Equal(t, "runtime payload: none (openspec resolved from PATH)", dirty[2])
+	assert.Equal(t, "runtime: embedded OpenSpec bundle; host Node >=20.19.0 required", dirty[2])
 
 	unknown := formatBuildInfo(nil, "linux", "amd64", nil)
 	assert.Equal(t, "commit: unknown", unknown[0])
@@ -114,17 +112,8 @@ func TestVersionCmd_BuildFlagAddsLinesButDefaultStaysOneLine(t *testing.T) {
 	assert.Equal(t, "V1.0.18\n", captureStdout(t, func() { versionCmd.Run(versionCmd, nil) }))
 }
 
-func TestEmbeddedPayloadSummarizesTheRegisteredComponentsOnly(t *testing.T) {
-	t.Cleanup(func() { runtimepayload.Register(runtimepayload.Manifest{}, nil) })
-
-	runtimepayload.Register(runtimepayload.Manifest{}, nil)
-	assert.Nil(t, embeddedPayload(), "no payload registered")
-
-	runtimepayload.Register(runtimepayload.Manifest{Components: []runtimepayload.Component{
-		{Name: "node", Version: "22.23.2"}, {Name: "openspec", Version: "1.13.0"}, {Name: "other", Version: "9.9.9"},
-	}}, fstest.MapFS{})
+func TestEmbeddedPayloadSummarizesTheEmbeddedOpenSpec(t *testing.T) {
 	got := embeddedPayload()
 	require.NotNil(t, got)
 	assert.Equal(t, "1.13.0", got.OpenSpec)
-	assert.Equal(t, "22.23.2", got.Node)
 }

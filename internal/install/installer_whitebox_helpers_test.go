@@ -13,6 +13,43 @@ import (
 // minimalExtractor creates the minimum .strategist/ layout needed by Install.
 type minimalExtractor struct{}
 
+// copyOpenSpecRuntimeFixture supplies the same prebuilt bundle that the
+// production extractor embeds, without making install tests import embed.
+func copyOpenSpecRuntimeFixture(targetDir string) error {
+	source := filepath.Join("..", "embed", "defaults", "skills", "openspec-propose", "runtime")
+	destination := filepath.Join(targetDir, "skills", "openspec-propose", "runtime")
+	return filepath.Walk(source, func(path string, info os.FileInfo, walkErr error) error {
+		return copyRuntimeFixtureEntry(source, destination, path, info, walkErr)
+	})
+}
+
+func copyRuntimeFixtureEntry(source, destination, path string, info os.FileInfo, walkErr error) error {
+	if walkErr != nil {
+		return walkErr
+	}
+	out, err := runtimeFixtureDestination(source, destination, path)
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		return os.MkdirAll(out, 0o755)
+	}
+	return copyRuntimeFixtureFile(path, out)
+}
+
+func runtimeFixtureDestination(source, destination, path string) (string, error) {
+	rel, err := filepath.Rel(source, path)
+	return filepath.Join(destination, rel), err
+}
+
+func copyRuntimeFixtureFile(source, destination string) error {
+	data, err := os.ReadFile(source)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(destination, data, 0o644)
+}
+
 func (m minimalExtractor) Extract(targetDir string, _ bool) error {
 	dirs := []string{
 		filepath.Join(targetDir, "personas"),

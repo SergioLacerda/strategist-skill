@@ -28,21 +28,12 @@ jobs:
       - name: Local CI lint gates
         run: make ci-lint
 
-      # The per-target payload files exist only under -tags strategist_payload, so
-      # an ordinary lint never compiles them. Fetch the host Node (digest-checked)
-      # so the tagged build type-checks, then lint with the tag: it is a superset
-      # of the untagged build.
-      - name: Fetch host Node for the payload build
-        run: python3 scripts/fetch-node-runtime.py --host
-
-      - name: Vet the payload build
-        run: go vet -tags strategist_payload ./...
-
+      # Every build embeds the same OpenSpec bundle and uses the host Node, so
+      # there is no build-tag variant to vet or lint separately.
       - name: Lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
           version: v2.13.2
-          args: --build-tags=strategist_payload
 
       - name: Embedded skill catalog drift check
         run: make embed-skills-check
@@ -66,10 +57,15 @@ jobs:
         shell: bash
         run: go test ./internal/domain ./internal/runtimeenv ./internal/install ./internal/check ./cmd/strategist
 
-      # Real Windows exec path: build with the embedded payload (fetches the
-      # pinned Node for windows/amd64 by digest), then install and check with
-      # an empty PATH. This is the evidence the POSIX-shell test fakes cannot give.
-      - name: Standalone payload smoke (empty PATH)
+      # The minimum supported host Node, so the smoke proves the >=20.19.0 floor.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '20.19'
+
+      # Real Windows exec path: build, then install and check with only the
+      # host Node on PATH (no OpenSpec, no npm). This is the evidence the
+      # POSIX-shell test fakes cannot give.
+      - name: Standalone smoke (host Node only on PATH)
         shell: bash
         run: ./scripts/smoke-standalone-install.sh
 
@@ -96,9 +92,14 @@ jobs:
       - name: Local CI test gates
         run: make ci-test
 
-      # Prove the shipped shape on Linux too: a payload build installs and passes
-      # check with an empty PATH (the Windows job proves the same on Windows).
-      - name: Standalone payload smoke (empty PATH)
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '20.19'
+
+      # Prove the shipped shape on Linux too: an ordinary build installs and
+      # passes check with only the minimum host Node on PATH (the Windows job
+      # proves the same on Windows).
+      - name: Standalone smoke (host Node only on PATH)
         run: ./scripts/smoke-standalone-install.sh
 
       - name: Generate coverage badge
