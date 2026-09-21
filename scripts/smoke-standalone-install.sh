@@ -17,9 +17,11 @@ py="$(command -v python3 || command -v python || true)"
 native() { if command -v cygpath >/dev/null 2>&1; then cygpath -m "$1"; else printf '%s' "$1"; fi; }
 
 bin="${1:-}"
+build_dir=""
 if [[ -z "$bin" ]]; then
   "$py" scripts/fetch-node-runtime.py --host
-  bin="$(mktemp -d)/strategist$(go env GOEXE)"
+  build_dir="$(mktemp -d)"
+  bin="$build_dir/strategist$(go env GOEXE)"
   CGO_ENABLED=0 go build -tags strategist_payload -trimpath -ldflags='-s -w' -o "$bin" ./cmd/strategist
 fi
 
@@ -28,7 +30,7 @@ bin="$(cd "$(dirname "$bin")" && pwd)/$(basename "$bin")"
 
 work="$(mktemp -d)"
 empty_path="$(mktemp -d)"
-trap 'rm -rf "$work" "$empty_path"' EXIT
+trap 'rm -rf "$work" "$empty_path" ${build_dir:+"$build_dir"}' EXIT
 nwork="$(native "$work")"
 npath="$(native "$empty_path")"
 

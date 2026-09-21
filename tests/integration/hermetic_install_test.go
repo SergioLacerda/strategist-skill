@@ -17,8 +17,9 @@ func TestE2E_CLI_CleanForceInstallIsHermeticAndReady(t *testing.T) {
 	t.Parallel()
 
 	workspace := t.TempDir()
+	env := withHostOpenSpec(t)
 	strategistDir := filepath.Join(workspace, ".strategist")
-	install := runStrategistCLI(t, workspace, "install", "--target", workspace, "--force", "--silent", "--no-shim")
+	install := runStrategistCLIWithEnv(t, workspace, env, "install", "--target", workspace, "--force", "--silent", "--no-shim")
 	require.Equal(t, 0, install.exitCode, install.output())
 
 	for _, path := range []string{
@@ -41,7 +42,7 @@ func TestE2E_CLI_CleanForceInstallIsHermeticAndReady(t *testing.T) {
 		"ui": "pt-BR", "docs": "en", "chat": "pt-BR", "code": "en",
 	}, config.Language)
 
-	check := runStrategistCLI(t, workspace, "check", "--root", strategistDir, "--json")
+	check := runStrategistCLIWithEnv(t, workspace, env, "check", "--root", strategistDir, "--json")
 	require.Equal(t, 0, check.exitCode, check.output())
 	assert.Contains(t, check.stdout, `"status": "ready"`)
 	assert.NoDirExists(t, filepath.Join(workspace, "openspec"))

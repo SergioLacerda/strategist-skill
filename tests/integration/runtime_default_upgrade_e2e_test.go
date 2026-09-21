@@ -22,10 +22,11 @@ func TestE2E_CLI_RuntimeDefaultAutoUpgrade(t *testing.T) {
 	t.Parallel()
 
 	workspace := t.TempDir()
+	env := withHostOpenSpec(t)
 	strategistDir := filepath.Join(workspace, ".strategist")
 	preflightPath := filepath.Join(strategistDir, "contracts", "machine", "preflight.yaml")
 
-	install := runStrategistCLI(t, workspace, "install", "--target", workspace, "--silent")
+	install := runStrategistCLIWithEnv(t, workspace, env, "install", "--target", workspace, "--silent")
 	require.Equal(t, 0, install.exitCode, install.output())
 
 	currentDefault, err := os.ReadFile(preflightPath)
@@ -38,19 +39,19 @@ func TestE2E_CLI_RuntimeDefaultAutoUpgrade(t *testing.T) {
 	require.NoError(t, os.WriteFile(preflightPath, oldDefault, 0o644))
 	rewriteManifestHash(t, strategistDir, "contracts/machine/preflight.yaml", domain.SHA256Hex(oldDefault))
 
-	checkStale := runStrategistCLI(t, workspace, "check", "--root", strategistDir)
+	checkStale := runStrategistCLIWithEnv(t, workspace, env, "check", "--root", strategistDir)
 	require.NotEqual(t, 0, checkStale.exitCode, checkStale.output())
 	assert.Contains(t, checkStale.stderr, "runtime_stale_auto_repairable")
 	assert.Contains(t, checkStale.stderr, "contracts/machine/preflight.yaml")
 
-	reinstall := runStrategistCLI(t, workspace, "install", "--target", workspace, "--silent")
+	reinstall := runStrategistCLIWithEnv(t, workspace, env, "install", "--target", workspace, "--silent")
 	require.Equal(t, 0, reinstall.exitCode, reinstall.output())
 
 	repaired, err := os.ReadFile(preflightPath)
 	require.NoError(t, err)
 	assert.Equal(t, string(currentDefault), string(repaired))
 
-	checkClean := runStrategistCLI(t, workspace, "check", "--root", strategistDir)
+	checkClean := runStrategistCLIWithEnv(t, workspace, env, "check", "--root", strategistDir)
 	assert.Equal(t, 0, checkClean.exitCode, checkClean.output())
 	assert.NotContains(t, checkClean.stderr, "runtime_stale")
 }

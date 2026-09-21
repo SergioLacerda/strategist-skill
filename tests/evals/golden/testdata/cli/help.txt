@@ -16,6 +16,7 @@ Available Commands:
   metrics         Report metrics computed from Strategist's own runtime memory
   mission         Report and inspect mission-level facts this binary cannot observe directly
   plugins         Inspect and evaluate Strategist plugin enforcement
+  provider        Validate and onboard local Strategist providers
   runbook         Operate on the typed docs/runbooks/*.runbook.yaml corpus
   sync-governance Sync .strategist/skill.yaml with active SDD governance mandates
   treasure-chest  Show treasure chest runtime status and index health
