@@ -43,14 +43,27 @@ clean_env=(env -i HOME="$nwork" USERPROFILE="$nwork" PATH="$npath")
 sysroot="${SYSTEMROOT:-${SystemRoot:-}}"
 [[ -z "$sysroot" ]] || clean_env+=(SystemRoot="$sysroot" TEMP="$nwork" TMP="$nwork")
 
+echo "smoke: host Node $node_version at $npath"
+
+# fail_with_log reports the command's own error line first (cobra prints it
+# above the usage text, which a plain tail would show instead), then the whole
+# log, so a CI failure is diagnosable from the job output alone.
+fail_with_log() {
+  echo "$1 failed:" >&2
+  grep -E '^(Error|\[Strategist\].*(failed|error))' "$2" >&2 || true
+  echo "---- full log ----" >&2
+  cat "$2" >&2
+  exit 1
+}
+
 # Accept the wizard defaults (the Ranked option is pre-selected).
 printf '\n%.0s' $(seq 80) | "${clean_env[@]}" "$bin" install --wizard --target "$nwork" >"$work/install.log" 2>&1 \
-  || { echo "install failed:" >&2; tail -8 "$work/install.log" >&2; exit 1; }
+  || fail_with_log install "$work/install.log"
 
 test -f "$work/.strategist/openspec/config.yaml" || { echo "missing openspec/config.yaml" >&2; exit 1; }
 test -f "$work/.strategist/weapon-runtime/openspec-propose/openspec/dist/core/artifact-graph/openspec.mjs" || { echo "missing embedded OpenSpec runtime" >&2; exit 1; }
 
-status="$(cd "$work" && "${clean_env[@]}" "$bin" check --json 2>/dev/null \
-  | node -e 'let s=""; process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).status))')"
-[[ "$status" == "ready" ]] || { echo "check status: $status" >&2; exit 1; }
+(cd "$work" && "${clean_env[@]}" "$bin" check --json >"$work/check.json" 2>"$work/check.log") || true
+status="$(node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.parse(s).status)}catch(e){console.log("unparseable")}})' <"$work/check.json")"
+[[ "$status" == "ready" ]] || { cat "$work/check.json" >>"$work/check.log"; fail_with_log "check (status=$status)" "$work/check.log"; }
 echo "standalone smoke OK: install + check ready with embedded OpenSpec and host Node"
