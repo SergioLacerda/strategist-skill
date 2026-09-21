@@ -1,5 +1,8 @@
 # Provider extension guide
 
+**Status:** Draft (v1, local-only provider onboarding)
+**Last Updated:** 2026-09-20
+
 This guide describes the local-only v1 path for adding a Strategist provider.
 It composes the existing package and adapter contracts; `skill.yaml` is only a
 read-only compatibility view and is never an authority for binding, trust, or
