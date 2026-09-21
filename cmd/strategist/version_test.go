@@ -6,7 +6,9 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"testing/fstest"
 
+	"github.com/SergioLacerda/strategist-skill/internal/runtimepayload"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -110,4 +112,19 @@ func TestVersionCmd_BuildFlagAddsLinesButDefaultStaysOneLine(t *testing.T) {
 
 	require.NoError(t, versionCmd.Flags().Set("build", "false"))
 	assert.Equal(t, "V1.0.18\n", captureStdout(t, func() { versionCmd.Run(versionCmd, nil) }))
+}
+
+func TestEmbeddedPayloadSummarizesTheRegisteredComponentsOnly(t *testing.T) {
+	t.Cleanup(func() { runtimepayload.Register(runtimepayload.Manifest{}, nil) })
+
+	runtimepayload.Register(runtimepayload.Manifest{}, nil)
+	assert.Nil(t, embeddedPayload(), "no payload registered")
+
+	runtimepayload.Register(runtimepayload.Manifest{Components: []runtimepayload.Component{
+		{Name: "node", Version: "22.23.2"}, {Name: "openspec", Version: "1.13.0"}, {Name: "other", Version: "9.9.9"},
+	}}, fstest.MapFS{})
+	got := embeddedPayload()
+	require.NotNil(t, got)
+	assert.Equal(t, "1.13.0", got.OpenSpec)
+	assert.Equal(t, "22.23.2", got.Node)
 }
