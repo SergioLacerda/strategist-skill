@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# Builds the CLI twice and fails if the bytes differ. Covers the plain build and,
-# with REPRODUCIBLE_PAYLOAD=1, the standalone build that embeds the private
-# runtime (fetches the pinned Node for the host by digest first).
+# Builds the CLI twice and fails if the bytes differ. The single build path
+# embeds the OpenSpec bundle and uses a validated host Node at installation.
 set -euo pipefail
 
 gocache="${1:-/tmp/go-build-cache}"
@@ -35,10 +34,3 @@ check_variant() {
 }
 
 check_variant plain ""
-
-if [[ "${REPRODUCIBLE_PAYLOAD:-0}" == "1" ]]; then
-  cd "$(dirname "$0")/.."
-  py="$(command -v python3 || command -v python)"
-  "$py" scripts/fetch-node-runtime.py --host >/dev/null
-  check_variant payload "strategist_payload"
-fi

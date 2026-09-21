@@ -8,6 +8,8 @@ import (
 	"runtime/debug"
 	"strings"
 
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/embed"
 	"github.com/SergioLacerda/strategist-skill/internal/runtimepayload"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
@@ -64,11 +66,12 @@ var versionCmd = &cobra.Command{
 }
 
 func init() {
-	versionCmd.Flags().Bool("build", false, "also print the commit, platform and embedded runtime payload of this binary")
+	versionCmd.Flags().Bool("build", false, "also print the commit, platform and embedded OpenSpec runtime of this binary")
 }
 
-// buildPayload summarizes the runtime payload compiled into a binary.
-type buildPayload struct{ OpenSpec, Node string }
+// buildPayload summarizes the OpenSpec bundle compiled into a binary. The
+// host Node is an installation prerequisite and is intentionally not bundled.
+type buildPayload struct{ OpenSpec string }
 
 // formatBuildInfo renders the extra `version --build` lines: enough to tell two
 // binaries apart (commit, platform) and whether the private runtime is inside.
@@ -83,9 +86,9 @@ func formatBuildInfo(settings map[string]string, goos, goarch string, payload *b
 			commit += " (modified)"
 		}
 	}
-	runtimeLine := "runtime payload: none (openspec resolved from PATH)"
+	runtimeLine := "runtime: embedded OpenSpec bundle; host Node >=" + domain.MinimumOpenSpecNodeVersion + " required"
 	if payload != nil {
-		runtimeLine = fmt.Sprintf("runtime payload: embedded (openspec %s, node %s)", payload.OpenSpec, payload.Node)
+		runtimeLine = fmt.Sprintf("runtime: embedded OpenSpec %s; host Node >=%s required", payload.OpenSpec, domain.MinimumOpenSpecNodeVersion)
 	}
 	return []string{"commit: " + commit, "platform: " + goos + "/" + goarch, runtimeLine}
 }
@@ -101,18 +104,9 @@ func vcsSettings() map[string]string {
 }
 
 func embeddedPayload() *buildPayload {
-	embedded, ok := runtimepayload.Default()
-	if !ok {
+	version, err := runtimepayload.EmbeddedOpenSpecVersion(embed.DefaultsFS())
+	if err != nil {
 		return nil
 	}
-	out := &buildPayload{}
-	for _, c := range embedded.Manifest.Components {
-		switch c.Name {
-		case "openspec":
-			out.OpenSpec = c.Version
-		case "node":
-			out.Node = c.Version
-		}
-	}
-	return out
+	return &buildPayload{OpenSpec: version}
 }

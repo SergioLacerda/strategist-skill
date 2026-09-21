@@ -11,39 +11,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const rankedRuntimeStatePath = "ranked-runtimes.yaml"
-
-type rankedRuntimeState struct {
-	SchemaVersion string                    `yaml:"schema_version" json:"schema_version"`
-	Entries       []rankedRuntimeStateEntry `yaml:"entries" json:"entries"`
-}
-
-// rankedRuntimeStateRuntime records the verified private runtime a Ranked
-// provider executes from. Paths are slash-separated and relative to the
-// Strategist root; it is absent when the provider uses a host executable.
-type rankedRuntimeStateRuntime struct {
-	Node       string                        `yaml:"node" json:"node"`
-	Script     string                        `yaml:"script" json:"script"`
-	Components []rankedRuntimeStateComponent `yaml:"components" json:"components"`
-}
-
-type rankedRuntimeStateComponent struct {
-	Name    string `yaml:"name" json:"name"`
-	Version string `yaml:"version" json:"version"`
-	SHA256  string `yaml:"sha256" json:"sha256"`
-}
-
-type rankedRuntimeStateEntry struct {
-	Role           string `yaml:"role" json:"role"`
-	Slot           string `yaml:"slot" json:"slot"`
-	Provider       string `yaml:"provider" json:"provider"`
-	ContractDigest string `yaml:"contract_digest" json:"contract_digest"`
-	Root           string `yaml:"root,omitempty" json:"root,omitempty"`
-	Kind           string `yaml:"kind" json:"kind"`
-
-	Runtime *rankedRuntimeStateRuntime `yaml:"runtime,omitempty" json:"runtime,omitempty"`
-}
-
 // prepareRankedProviderRuntimes materializes the runtime contract of each
 // selected Ranked slot after active.yaml/plugins.lock have been persisted.
 // It intentionally reads the installed catalog, not the build checkout, so
@@ -67,12 +34,12 @@ func prepareRankedProviderRuntimes(ctx context.Context, strategistDir string) er
 	return writeRankedRuntimeState(strategistDir, state)
 }
 
-func prepareRankedRuntimeState(ctx context.Context, strategistDir string, roles domain.RoleSlotMap, catalog pluginCatalog, bindings []domain.SlotBinding) (rankedRuntimeState, error) {
-	state := rankedRuntimeState{SchemaVersion: "strategist-ranked-runtime/v1"}
+func prepareRankedRuntimeState(ctx context.Context, strategistDir string, roles domain.RoleSlotMap, catalog pluginCatalog, bindings []domain.SlotBinding) (domain.RankedRuntimeState, error) {
+	state := domain.RankedRuntimeState{SchemaVersion: domain.RankedRuntimeStateSchemaVersion}
 	for _, binding := range bindings {
 		entry, required, err := prepareRankedBinding(ctx, strategistDir, roles, catalog, binding)
 		if err != nil {
-			return rankedRuntimeState{}, err
+			return domain.RankedRuntimeState{}, err
 		}
 		if required {
 			state.Entries = append(state.Entries, entry)
@@ -122,16 +89,16 @@ func loadRankedRuntimeInputs(strategistDir string) (domain.RoleSlotMap, pluginCa
 	return roles, catalog, nil
 }
 
-func prepareRankedBinding(ctx context.Context, strategistDir string, roles domain.RoleSlotMap, catalog pluginCatalog, binding domain.SlotBinding) (rankedRuntimeStateEntry, bool, error) {
+func prepareRankedBinding(ctx context.Context, strategistDir string, roles domain.RoleSlotMap, catalog pluginCatalog, binding domain.SlotBinding) (domain.RankedRuntimeStateEntry, bool, error) {
 	provider, runtime, err := resolveRankedProvider(catalog, binding)
 	if err != nil || runtime.Kind == domain.RankedRuntimeNone {
-		return rankedRuntimeStateEntry{}, false, err
+		return domain.RankedRuntimeStateEntry{}, false, err
 	}
 	private, err := bootstrapRankedProvider(ctx, strategistDir, provider, runtime)
 	if err != nil {
-		return rankedRuntimeStateEntry{}, false, err
+		return domain.RankedRuntimeStateEntry{}, false, err
 	}
-	return rankedRuntimeStateEntry{
+	return domain.RankedRuntimeStateEntry{
 		Runtime:        private,
 		Role:           roles[binding.Slot],
 		Slot:           binding.Slot,
@@ -140,10 +107,6 @@ func prepareRankedBinding(ctx context.Context, strategistDir string, roles domai
 		Root:           runtime.Root,
 		Kind:           runtime.Kind,
 	}, true, nil
-}
-
-func bootstrapOpenSpecRuntime(ctx context.Context, root string, runtime domain.RankedRuntimeContract) error {
-	return bootstrapOpenSpecRuntimeWith(ctx, root, runtime, hostOpenSpec)
 }
 
 func bootstrapOpenSpecRuntimeWith(ctx context.Context, root string, runtime domain.RankedRuntimeContract, exe rankedExecutable) error {

@@ -10,9 +10,6 @@ before:
     # fetch and integrity-check what the tagged commit already declares.
     - go mod download
     - go mod verify
-    # Standalone runtime: fetch the pinned Node for every target (digest-checked
-    # against runtime.lock.yaml) so each binary embeds its own private runtime.
-    - python3 scripts/fetch-node-runtime.py --all
 
 builds:
   - id: strategist
@@ -43,8 +40,6 @@ builds:
       - CGO_ENABLED=0
     flags:
       - -trimpath
-      # Embeds the per-target runtime payload (see internal/runtimepayload).
-      - -tags=strategist_payload
     ldflags:
       - -s -w -X main.Version={{.Version}}
     # Reproducibility: without this the embedded build timestamp is "now", so

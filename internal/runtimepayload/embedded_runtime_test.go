@@ -55,3 +55,47 @@ func TestSourceRuntimeIsIdenticalToEmbeddedMirror(t *testing.T) {
 func fsReadFile(f interface{ Open(string) (fs.File, error) }, name string) ([]byte, error) {
 	return fs.ReadFile(f.(fs.FS), name)
 }
+
+// materializedOpenSpec installs the embedded bundle under a temporary
+// weapon-runtime/<provider> directory and returns it with its recorded digest.
+func materializedOpenSpec(t *testing.T) (dir, digest string) {
+	t.Helper()
+	dir = filepath.Join(t.TempDir(), "weapon-runtime", "openspec-propose")
+	_, evidence, err := MaterializeOpenSpec(embed.DefaultsFS(), dir)
+	require.NoError(t, err)
+	require.Len(t, evidence.Components, 1)
+	return dir, evidence.Components[0].SHA256
+}
+
+func TestVerifyMaterializedOpenSpec_AcceptsFreshBundle(t *testing.T) {
+	dir, digest := materializedOpenSpec(t)
+
+	require.NoError(t, VerifyMaterializedOpenSpec(dir, digest))
+}
+
+func TestVerifyMaterializedOpenSpec_RejectsAlteredFile(t *testing.T) {
+	dir, digest := materializedOpenSpec(t)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "openspec", "package.json"), []byte("{}"), 0o644))
+
+	require.ErrorIs(t, VerifyMaterializedOpenSpec(dir, digest), ErrDigestMismatch)
+}
+
+func TestVerifyMaterializedOpenSpec_RejectsAddedFile(t *testing.T) {
+	dir, digest := materializedOpenSpec(t)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "openspec", "extra.mjs"), []byte("x"), 0o644))
+
+	require.ErrorIs(t, VerifyMaterializedOpenSpec(dir, digest), ErrDigestMismatch)
+}
+
+func TestVerifyMaterializedOpenSpec_ReportsMissingBundle(t *testing.T) {
+	dir, digest := materializedOpenSpec(t)
+	require.NoError(t, os.RemoveAll(filepath.Join(dir, "openspec")))
+
+	require.ErrorIs(t, VerifyMaterializedOpenSpec(dir, digest), ErrPayloadMissing)
+}
+
+func TestVerifyMaterializedOpenSpec_RequiresRecordedDigest(t *testing.T) {
+	dir, _ := materializedOpenSpec(t)
+
+	require.ErrorIs(t, VerifyMaterializedOpenSpec(dir, ""), ErrDigestMismatch)
+}

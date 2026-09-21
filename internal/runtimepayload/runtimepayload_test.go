@@ -63,8 +63,9 @@ func digest(b []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// fixture returns a manifest and payload FS with a node archive (per target)
-// and a platform-independent openspec archive.
+// fixture returns a manifest and source FS exercising every supported
+// component format (per-target tar.gz/zip archives and a shared archive), so
+// the generic materializer's extraction and verification stay covered.
 func fixture(t *testing.T) (Manifest, fstest.MapFS) {
 	t.Helper()
 	nodeUnix := tarGz(t, entry{name: "node-v1/bin/node", body: "NODE", mode: 0o755}, entry{name: "node-v1/LICENSE", body: "lic", mode: 0o644})
@@ -184,20 +185,6 @@ func TestParseManifestValidates(t *testing.T) {
 	require.NoError(t, err)
 	_, err = ParseManifest(raw)
 	require.Error(t, err)
-}
-
-func TestDefaultIsEmptyUntilAPayloadIsRegistered(t *testing.T) {
-	t.Cleanup(func() { Register(Manifest{}, nil) })
-	Register(Manifest{}, nil)
-	_, ok := Default()
-	require.False(t, ok, "builds without an embedded payload must report none")
-
-	m, src := fixture(t)
-	Register(m, src)
-	got, ok := Default()
-	require.True(t, ok)
-	require.Equal(t, m.Provider, got.Manifest.Provider)
-	require.NotNil(t, got.FS)
 }
 
 func treeFS() fstest.MapFS {

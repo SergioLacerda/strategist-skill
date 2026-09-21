@@ -11,4 +11,3 @@ internal/refinement	quality-maintainers	baseline coverage policy is pending a de
 internal/rolevalidation	quality-maintainers	baseline coverage policy is pending a dedicated role validation test budget
 internal/runtimeenv	quality-maintainers	baseline coverage policy is pending a dedicated runtime environment test budget
 treasure-chest/domain	quality-maintainers	baseline coverage policy is pending a dedicated Treasure Chest domain test budget
-internal/runtimepayload/bundled	quality-maintainers	production code lives behind the strategist_payload build tag (no statements in an ordinary build); its per-target files are pinned by embed_targets_test.go

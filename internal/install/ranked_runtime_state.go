@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
 
-func writeRankedRuntimeState(strategistDir string, state rankedRuntimeState) error {
+func writeRankedRuntimeState(strategistDir string, state domain.RankedRuntimeState) error {
 	if len(state.Entries) == 0 {
 		return nil
 	}
@@ -16,7 +18,7 @@ func writeRankedRuntimeState(strategistDir string, state rankedRuntimeState) err
 		return fmt.Errorf("marshal ranked runtime state: %w", err)
 	}
 	data = append(data, '\n')
-	return atomicWriteFile(filepath.Join(strategistDir, rankedRuntimeStatePath), data, 0o644)
+	return atomicWriteFile(filepath.Join(strategistDir, domain.RankedRuntimeStatePath), data, 0o644)
 }
 
 func openSpecCommandArgs(command, verb string) ([]string, error) {

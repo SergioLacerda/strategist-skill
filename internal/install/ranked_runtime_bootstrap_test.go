@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -16,6 +17,7 @@ import (
 func writeRankedRuntimeFixture(t *testing.T, root string, provider string, slot string, runtime domain.RankedRuntimeContract) {
 	t.Helper()
 	strategist := filepath.Join(root, ".strategist")
+	require.NoError(t, copyOpenSpecRuntimeFixture(strategist))
 	require.NoError(t, os.MkdirAll(filepath.Join(strategist, "roles"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(strategist, "plugins"), 0o755))
 	roleMap := []byte("discovery: ranger\nrefinement: archivist\nexecution: sniper\n")
@@ -39,7 +41,7 @@ func TestPrepareRankedProviderRuntimes_RangerNoneDoesNotCreateRuntime(t *testing
 	writeRankedRuntimeFixture(t, dir, "brainstorming", "discovery", domain.RankedRuntimeContract{Kind: domain.RankedRuntimeNone})
 
 	require.NoError(t, prepareRankedProviderRuntimes(context.Background(), filepath.Join(dir, ".strategist")))
-	_, err := os.Stat(filepath.Join(dir, ".strategist", rankedRuntimeStatePath))
+	_, err := os.Stat(filepath.Join(dir, ".strategist", domain.RankedRuntimeStatePath))
 	require.ErrorIs(t, err, os.ErrNotExist)
 }
 
@@ -51,7 +53,11 @@ func TestPrepareRankedProviderRuntimes_ArchivistBootstrapsOpenSpecRoot(t *testin
 	original := runRankedRuntimeCommand
 	t.Cleanup(func() { runRankedRuntimeCommand = original })
 	runRankedRuntimeCommand = func(_ context.Context, commandDir string, name string, args ...string) ([]byte, error) {
-		require.Equal(t, "openspec", name)
+		args = rankedRuntimeTestArgs(args)
+		if isHostNodeVersionProbe(args) {
+			return []byte("v20.19.0\n"), nil
+		}
+		require.NotEqual(t, "openspec", name)
 		if args[0] == "init" {
 			require.Equal(t, []string{"init", "--profile", "core", "--tools", "codex"}, args)
 			require.Equal(t, filepath.Join(dir, ".strategist"), commandDir)
@@ -65,8 +71,8 @@ func TestPrepareRankedProviderRuntimes_ArchivistBootstrapsOpenSpecRoot(t *testin
 
 	require.NoError(t, prepareRankedProviderRuntimes(context.Background(), filepath.Join(dir, ".strategist")))
 	require.FileExists(t, filepath.Join(dir, ".strategist", "openspec", "config.yaml"))
-	require.FileExists(t, filepath.Join(dir, ".strategist", rankedRuntimeStatePath))
-	state, err := os.ReadFile(filepath.Join(dir, ".strategist", rankedRuntimeStatePath))
+	require.FileExists(t, filepath.Join(dir, ".strategist", domain.RankedRuntimeStatePath))
+	state, err := os.ReadFile(filepath.Join(dir, ".strategist", domain.RankedRuntimeStatePath))
 	require.NoError(t, err)
 	require.Contains(t, string(state), "openspec-propose")
 }
@@ -83,6 +89,10 @@ func TestPrepareRankedProviderRuntimes_RemovesEmptyLegacyNestedRoot(t *testing.T
 	original := runRankedRuntimeCommand
 	t.Cleanup(func() { runRankedRuntimeCommand = original })
 	runRankedRuntimeCommand = func(_ context.Context, commandDir string, _ string, args ...string) ([]byte, error) {
+		args = rankedRuntimeTestArgs(args)
+		if isHostNodeVersionProbe(args) {
+			return []byte("v20.19.0\n"), nil
+		}
 		if args[0] == "init" {
 			require.NoError(t, os.WriteFile(filepath.Join(commandDir, "openspec", "config.yaml"), []byte("schema: spec-driven\n"), 0o644))
 		}
@@ -102,6 +112,10 @@ func TestPrepareRankedProviderRuntimes_RejectsOpenSpecSemanticRootMismatch(t *te
 	original := runRankedRuntimeCommand
 	t.Cleanup(func() { runRankedRuntimeCommand = original })
 	runRankedRuntimeCommand = func(_ context.Context, _ string, _ string, args ...string) ([]byte, error) {
+		args = rankedRuntimeTestArgs(args)
+		if isHostNodeVersionProbe(args) {
+			return []byte("v20.19.0\n"), nil
+		}
 		if args[0] == "init" {
 			require.NoError(t, os.WriteFile(filepath.Join(dir, ".strategist", "openspec", "config.yaml"), []byte("schema: spec-driven\n"), 0o644))
 		}
@@ -175,8 +189,22 @@ func TestPrepareRankedProviderRuntimes_RejectsUnexpectedLegacyContent(t *testing
 func setRankedRuntimeCommandForTest(t *testing.T, fn func(context.Context, string, string, []string) ([]byte, error)) {
 	t.Helper()
 	runRankedRuntimeCommand = func(ctx context.Context, commandDir, name string, args ...string) ([]byte, error) {
-		return fn(ctx, commandDir, name, args)
+		if isHostNodeVersionProbe(args) {
+			return []byte("v20.19.0\n"), nil
+		}
+		return fn(ctx, commandDir, name, rankedRuntimeTestArgs(args))
 	}
+}
+
+func rankedRuntimeTestArgs(args []string) []string {
+	if len(args) > 0 && strings.HasSuffix(args[0], ".mjs") {
+		return args[1:]
+	}
+	return args
+}
+
+func isHostNodeVersionProbe(args []string) bool {
+	return len(args) == 1 && args[0] == "--version"
 }
 
 func TestPrepareRankedProviderRuntimes_MissingExecutableIsActionable(t *testing.T) {

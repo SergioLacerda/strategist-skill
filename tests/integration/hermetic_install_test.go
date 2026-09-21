@@ -108,34 +108,11 @@ func TestE2E_CLI_ForceInstallPreservesHostDecoys(t *testing.T) {
 
 func TestE2E_CLI_WizardRankedInstallBootstrapsContainedRuntime(t *testing.T) {
 	workspace := t.TempDir()
-	binDir := t.TempDir()
-	openspec := filepath.Join(binDir, "openspec")
 	foreignConfig := filepath.Join(t.TempDir(), "foreign-config.yaml")
 	foreignBefore := []byte("foreign: untouched\n")
 	require.NoError(t, os.WriteFile(foreignConfig, foreignBefore, 0o644))
-	script := `#!/bin/sh
-set -eu
-test -z "${OPEN_SPEC_CONFIG:-}"
-if [ "$1" = "init" ]; then
-  ledger="$PWD/fixture-ledger.log"
-else
-  ledger="$(dirname "$PWD")/fixture-ledger.log"
-fi
-printf 'command|cwd=%s|argv=%s|home=%s|xdg_config=%s|xdg_cache=%s|xdg_data=%s\n' "$PWD" "$*" "${HOME:-}" "${XDG_CONFIG_HOME:-}" "${XDG_CACHE_HOME:-}" "${XDG_DATA_HOME:-}" >> "$ledger"
-record_write() {
-  printf 'write|%s\n' "$1" >> "$ledger"
-}
-if [ "$1" = "init" ]; then
-  mkdir -p "$PWD/openspec"
-  record_write "$PWD/openspec/config.yaml"
-  printf 'schema: spec-driven\n' > "$PWD/openspec/config.yaml"
-  exit 0
-fi
-printf '{"root":{"path":"%s"},"members":[],"status":[]}\n' "$(dirname "$PWD")"
-`
-	require.NoError(t, os.WriteFile(openspec, []byte(script), 0o755))
 	env := map[string]string{
-		"PATH":             binDir + string(os.PathListSeparator) + os.Getenv("PATH"),
+		"PATH":             os.Getenv("PATH"),
 		"OPEN_SPEC_CONFIG": foreignConfig,
 	}
 	input := strings.Join([]string{
@@ -165,6 +142,11 @@ printf '{"root":{"path":"%s"},"members":[],"status":[]}\n' "$(dirname "$PWD")"
 			ContractDigest string `yaml:"contract_digest"`
 			Root           string `yaml:"root"`
 			Kind           string `yaml:"kind"`
+			Runtime        struct {
+				Mode   string `yaml:"mode"`
+				Node   string `yaml:"node"`
+				Script string `yaml:"script"`
+			} `yaml:"runtime"`
 		} `yaml:"entries"`
 	}
 	require.NoError(t, yaml.Unmarshal(runtimeState, &state))
@@ -174,38 +156,17 @@ printf '{"root":{"path":"%s"},"members":[],"status":[]}\n' "$(dirname "$PWD")"
 	assert.NotEmpty(t, state.Entries[0].ContractDigest)
 	assert.Equal(t, ".strategist/openspec", state.Entries[0].Root)
 	assert.Equal(t, "openspec_root", state.Entries[0].Kind)
+	assert.True(t, filepath.IsAbs(state.Entries[0].Runtime.Node))
+	assert.Contains(t, state.Entries[0].Runtime.Script, "weapon-runtime/openspec-propose/openspec/")
+	assert.FileExists(t, filepath.Join(strategist, filepath.FromSlash(state.Entries[0].Runtime.Script)))
 
 	check := runStrategistCLIWithEnv(t, workspace, env, "check", "--root", strategist, "--json")
 	require.Equal(t, 0, check.exitCode, check.output())
 	assert.Contains(t, check.stdout, `"status": "ready"`)
 
-	ledger, err := os.ReadFile(filepath.Join(strategist, "fixture-ledger.log"))
-	require.NoError(t, err)
-	assert.Contains(t, string(ledger), "command|cwd="+strategist+"|argv=init --profile core --tools codex")
-	assert.Contains(t, string(ledger), "command|cwd="+filepath.Join(strategist, "openspec")+"|argv=context --json")
-	assert.Contains(t, string(ledger), "write|"+filepath.Join(strategist, "openspec", "config.yaml"))
-	assert.Contains(t, string(ledger), "home="+filepath.Join(strategist, "openspec", ".provider-home"))
-	assert.Contains(t, string(ledger), "xdg_config="+filepath.Join(strategist, "openspec", ".provider-config"))
-	assert.NotContains(t, string(ledger), "foreign-config.yaml")
-	assertWriteLedgerContained(t, string(ledger), strategist)
 	foreignAfter, err := os.ReadFile(foreignConfig)
 	require.NoError(t, err)
 	assert.Equal(t, foreignBefore, foreignAfter)
-}
-
-func assertWriteLedgerContained(t *testing.T, ledger string, allowedRoot string) {
-	t.Helper()
-	for _, line := range strings.Split(strings.TrimSpace(ledger), "\n") {
-		if !strings.HasPrefix(line, "write|") {
-			continue
-		}
-		path := strings.TrimPrefix(line, "write|")
-		rel, err := filepath.Rel(allowedRoot, path)
-		require.NoError(t, err, "write ledger path %q", path)
-		if rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) || filepath.IsAbs(rel) {
-			t.Fatalf("provider write escaped authorized root %q: %q", allowedRoot, path)
-		}
-	}
 }
 
 func directoryEntries(t *testing.T, dir, message string) []string {

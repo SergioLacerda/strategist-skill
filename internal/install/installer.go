@@ -118,7 +118,7 @@ func (s Service) runInstallSteps(ctx context.Context, strategistDir string, cfg 
 	if err := prepareRankedProviderRuntimes(ctx, strategistDir); err != nil {
 		return Report{}, fmt.Errorf("install: prepare ranked runtimes: %w", err)
 	}
-	tx.record(filepath.Join(strategistDir, rankedRuntimeStatePath))
+	tx.record(filepath.Join(strategistDir, domain.RankedRuntimeStatePath))
 	gitignoreManifest, err := ensureProjectGitignore(cfg)
 	if err != nil {
 		return Report{}, err

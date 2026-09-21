@@ -166,7 +166,7 @@ providers:
 	require.NoError(t, json.Unmarshal([]byte(out), &result))
 	assert.Equal(t, "ready", result.Status)
 
-	trustCheck, grantCheck := rankedCertificationReadiness(dir, "discovery", "brainstorming")
+	trustCheck, grantCheck, _ := rankedCertificationReadiness(dir, "discovery", "brainstorming")
 	assert.Equal(t, domain.ReadinessReady, trustCheck.Status)
 	assert.Equal(t, "ready_by_certification", trustCheck.ReasonCode)
 	assert.Equal(t, domain.ReadinessReady, grantCheck.Status)
@@ -221,7 +221,7 @@ providers:
 	require.NoError(t, json.Unmarshal([]byte(out), &result))
 	assert.Equal(t, "ready", result.Status)
 
-	trustCheck, grantCheck := rankedCertificationReadiness(dir, "refinement", "openspec-propose")
+	trustCheck, grantCheck, _ := rankedCertificationReadiness(dir, "refinement", "openspec-propose")
 	assert.Equal(t, domain.ReadinessReady, trustCheck.Status)
 	assert.Equal(t, "ready_by_certification", trustCheck.ReasonCode)
 	assert.Equal(t, domain.ReadinessReady, grantCheck.Status)
@@ -247,7 +247,7 @@ providers:
     canonical_role: ranger
 `), 0o644))
 
-	trustCheck, grantCheck := rankedCertificationReadiness(dir, "discovery", "brainstorming")
+	trustCheck, grantCheck, _ := rankedCertificationReadiness(dir, "discovery", "brainstorming")
 	assert.Equal(t, domain.ReadinessBlocked, trustCheck.Status)
 	assert.Equal(t, "ranked_not_certified", trustCheck.ReasonCode)
 	assert.Equal(t, domain.ReadinessBlocked, grantCheck.Status)
@@ -256,7 +256,7 @@ providers:
 func TestRankedCertificationReadiness_BlocksWhenCatalogMissing(t *testing.T) {
 	dir := t.TempDir()
 
-	trustCheck, grantCheck := rankedCertificationReadiness(dir, "discovery", "brainstorming")
+	trustCheck, grantCheck, _ := rankedCertificationReadiness(dir, "discovery", "brainstorming")
 	assert.Equal(t, domain.ReadinessBlocked, trustCheck.Status)
 	assert.Equal(t, "ranked_catalog_unreadable", trustCheck.ReasonCode)
 	assert.Equal(t, domain.ReadinessBlocked, grantCheck.Status)

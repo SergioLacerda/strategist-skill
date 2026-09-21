@@ -1,118 +1,63 @@
 package install
 
 import (
-	"archive/tar"
-	"bytes"
-	"compress/gzip"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
-	"testing/fstest"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/runtimepayload"
 	"github.com/stretchr/testify/require"
 )
 
-func tgz(t *testing.T, name, body string, mode int64) ([]byte, string) {
-	t.Helper()
-	var buf bytes.Buffer
-	gz := gzip.NewWriter(&buf)
-	tw := tar.NewWriter(gz)
-	require.NoError(t, tw.WriteHeader(&tar.Header{Name: name, Mode: mode, Size: int64(len(body)), Typeflag: tar.TypeReg}))
-	_, err := tw.Write([]byte(body))
-	require.NoError(t, err)
-	require.NoError(t, tw.Close())
-	require.NoError(t, gz.Close())
-	sum := sha256.Sum256(buf.Bytes())
-	return buf.Bytes(), hex.EncodeToString(sum[:])
-}
-
-// fakeNode stands in for the pinned Node: it emulates `openspec init` and
-// `openspec context --json` so the whole private-runtime path runs for real,
-// with no openspec on PATH. The subprocess PATH is only the private runtime
-// directory, so the script may use shell builtins and `command -p` only.
-const fakeNode = `#!/bin/sh
-case "$2" in
-  init) command -p mkdir -p openspec && printf 'schema: spec-driven\n' > openspec/config.yaml ;;
-  context) printf '{"root":{"path":"%s"}}' "${PWD%/*}" ;;
-esac
-`
-
-func registerFakePayload(t *testing.T) {
-	t.Helper()
-	nodeArc, nodeSum := tgz(t, "bin/node", fakeNode, 0o755)
-	specArc, specSum := tgz(t, "openspec.js", "// stub", 0o644)
-	m := runtimepayload.Manifest{
-		SchemaVersion: runtimepayload.SchemaVersion, Provider: "openspec-propose",
-		Launcher: runtimepayload.Launcher{Node: map[string]string{"default": "node/bin/node"}, Script: "openspec/openspec.js"},
-		Components: []runtimepayload.Component{
-			{Name: "node", Version: "22.0.0", OS: runtimepayload.AnyTarget, Arch: runtimepayload.AnyTarget, File: "node.tgz", Format: runtimepayload.FormatTarGz, SHA256: nodeSum, Size: int64(len(nodeArc)), Dest: "node"},
-			{Name: "openspec", Version: "1.10.0", OS: runtimepayload.AnyTarget, Arch: runtimepayload.AnyTarget, File: "openspec.tgz", Format: runtimepayload.FormatTarGz, SHA256: specSum, Size: int64(len(specArc)), Dest: "openspec"},
-		},
-	}
-	src := fstest.MapFS{"node.tgz": {Data: nodeArc}, "openspec.tgz": {Data: specArc}}
-	original := payloadSource
-	t.Cleanup(func() { payloadSource = original })
-	payloadSource = func() (runtimepayload.Embedded, bool) { return runtimepayload.Embedded{Manifest: m, FS: src}, true }
-}
-
-func TestPrepareRankedProviderRuntimes_UsesPrivateRuntimeWithoutHostOpenSpec(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("fake Node is a POSIX shell script")
-	}
+func TestPrepareRankedProviderRuntimes_UsesEmbeddedOpenSpecWithHostNode(t *testing.T) {
 	dir := t.TempDir()
-	writeRankedRuntimeFixture(t, dir, "openspec-propose", "refinement", domain.RankedRuntimeContract{
-		Kind: domain.RankedRuntimeOpenSpecRoot, Root: ".strategist/openspec", Bootstrap: "openspec init --profile core --tools codex", Healthcheck: "openspec context --json",
+	strategist := filepath.Join(dir, ".strategist")
+	writeRankedRuntimeFixture(t, dir, "openspec-propose", "refinement", openSpecContract("1.13.0", ""))
+
+	originalFind, originalVersion, originalRun := findHostNode, hostNodeVersion, runRankedRuntimeCommand
+	t.Cleanup(func() {
+		findHostNode, hostNodeVersion, runRankedRuntimeCommand = originalFind, originalVersion, originalRun
 	})
-	registerFakePayload(t)
-	t.Setenv("PATH", t.TempDir())
+	findHostNode = func(name string) (string, error) {
+		require.Equal(t, "node", name)
+		return filepath.Join(dir, "node", "node"), nil
+	}
+	hostNodeVersion = func(context.Context, string, string) ([]byte, error) { return []byte("v20.19.0\n"), nil }
+	runRankedRuntimeCommand = func(_ context.Context, commandDir, name string, args ...string) ([]byte, error) {
+		require.NotEqual(t, "openspec", name, "the embedded bundle must not resolve openspec from PATH")
+		require.True(t, filepath.IsAbs(name))
+		require.NotEmpty(t, args)
+		require.Contains(t, filepath.ToSlash(args[0]), "weapon-runtime/openspec-propose/openspec/")
+		verb := args[1]
+		if verb == "init" {
+			require.NoError(t, os.MkdirAll(filepath.Join(commandDir, "openspec"), 0o755))
+			require.NoError(t, os.WriteFile(filepath.Join(commandDir, "openspec", "config.yaml"), []byte("schema: spec-driven\n"), 0o644))
+		}
+		return []byte(`{"root":{"path":"` + filepath.ToSlash(strategist) + `"}}`), nil
+	}
 
-	require.NoError(t, prepareRankedProviderRuntimes(context.Background(), filepath.Join(dir, ".strategist")))
+	require.NoError(t, prepareRankedProviderRuntimes(context.Background(), strategist))
+	require.FileExists(t, filepath.Join(strategist, "weapon-runtime", "openspec-propose", "openspec", "dist", "core", "artifact-graph", "openspec.mjs"))
 
-	require.FileExists(t, filepath.Join(dir, ".strategist", "openspec", "config.yaml"))
-	require.FileExists(t, filepath.Join(dir, ".strategist", "weapon-runtime", "openspec-propose", "node", "bin", "node"))
-
-	raw, err := os.ReadFile(filepath.Join(dir, ".strategist", rankedRuntimeStatePath))
+	raw, err := os.ReadFile(filepath.Join(strategist, domain.RankedRuntimeStatePath))
 	require.NoError(t, err)
-	var state rankedRuntimeState
+	var state domain.RankedRuntimeState
 	require.NoError(t, json.Unmarshal(raw, &state))
-	require.Len(t, state.Entries, 1)
-	private := state.Entries[0].Runtime
-	require.NotNil(t, private)
-	require.Equal(t, "weapon-runtime/openspec-propose/node/bin/node", private.Node)
-	require.Equal(t, "weapon-runtime/openspec-propose/openspec/openspec.js", private.Script)
-	require.Len(t, private.Components, 2)
-	require.Equal(t, "1.10.0", private.Components[1].Version)
+	require.Equal(t, filepath.Join(dir, "node", "node"), state.Entries[0].Runtime.Node)
 }
 
-func TestPrepareRankedProviderRuntimes_CorruptPayloadFailsClosedWithoutFallback(t *testing.T) {
-	dir := t.TempDir()
-	writeRankedRuntimeFixture(t, dir, "openspec-propose", "refinement", domain.RankedRuntimeContract{
-		Kind: domain.RankedRuntimeOpenSpecRoot, Root: ".strategist/openspec", Bootstrap: "openspec init --profile core --tools codex", Healthcheck: "openspec context --json",
-	})
-	registerFakePayload(t)
-	original := payloadSource
-	payloadSource = func() (runtimepayload.Embedded, bool) {
-		e, ok := original()
-		e.FS = fstest.MapFS{"node.tgz": {Data: []byte("tampered")}, "openspec.tgz": {Data: []byte("x")}}
-		return e, ok
-	}
-	// A working host openspec must NOT rescue a bad private payload.
-	called := false
-	orig := runRankedRuntimeCommand
-	t.Cleanup(func() { runRankedRuntimeCommand = orig })
-	runRankedRuntimeCommand = func(context.Context, string, string, ...string) ([]byte, error) { called = true; return nil, nil }
+func TestHostNodeRuntimeRejectsUnsupportedNode(t *testing.T) {
+	originalFind, originalVersion := findHostNode, hostNodeVersion
+	t.Cleanup(func() { findHostNode, hostNodeVersion = originalFind, originalVersion })
+	findHostNode = func(string) (string, error) { return filepath.Join(t.TempDir(), "node"), nil }
+	hostNodeVersion = func(context.Context, string, string) ([]byte, error) { return []byte("v20.18.9\n"), nil }
 
-	err := prepareRankedProviderRuntimes(context.Background(), filepath.Join(dir, ".strategist"))
-	require.ErrorIs(t, err, runtimepayload.ErrDigestMismatch)
-	require.False(t, called, "no provider command may run after a payload failure")
-	require.NoDirExists(t, filepath.Join(dir, ".strategist", "weapon-runtime", "openspec-propose"))
+	_, _, err := resolveRankedExecutable(context.Background(), t.TempDir(), "openspec-propose", openSpecContract("1.13.0", ""))
+	require.ErrorContains(t, err, "Node >=20.19.0")
 }
 
 func openSpecContract(version, node string) domain.RankedRuntimeContract {
@@ -122,46 +67,74 @@ func openSpecContract(version, node string) domain.RankedRuntimeContract {
 	}
 }
 
-func TestHostVersionSkewMessageWarnsOnlyWhenPinnedAndDifferent(t *testing.T) {
-	original := runRankedRuntimeCommand
-	t.Cleanup(func() { runRankedRuntimeCommand = original })
-	reports := func(out string, err error) {
-		runRankedRuntimeCommand = func(_ context.Context, _ string, _ string, args ...string) ([]byte, error) {
-			require.Equal(t, []string{"--version"}, args)
-			return []byte(out), err
-		}
-	}
-
-	reports("1.10.0\n", nil)
-	msg := hostVersionSkewMessage(context.Background(), t.TempDir(), hostOpenSpec, openSpecContract("1.13.0", ""), "openspec-propose")
-	require.Contains(t, msg, domain.ReasonRankedRuntimeVersionSkew)
-	require.Contains(t, msg, "1.10.0")
-
-	reports("1.13.0\n", nil)
-	require.Empty(t, hostVersionSkewMessage(context.Background(), t.TempDir(), hostOpenSpec, openSpecContract("1.13.0", ""), "openspec-propose"))
-
-	reports("", os.ErrNotExist)
-	require.Contains(t, hostVersionSkewMessage(context.Background(), t.TempDir(), hostOpenSpec, openSpecContract("1.13.0", ""), "openspec-propose"), "unreadable")
-
-	runRankedRuntimeCommand = func(context.Context, string, string, ...string) ([]byte, error) {
-		t.Fatal("an unpinned contract must not probe the host version")
-		return nil, nil
-	}
-	require.Empty(t, hostVersionSkewMessage(context.Background(), t.TempDir(), hostOpenSpec, openSpecContract("", ""), "openspec-propose"))
-}
-
-func TestPrivateRuntimePinsMustMatchTheContract(t *testing.T) {
-	state := &rankedRuntimeStateRuntime{Components: []rankedRuntimeStateComponent{
-		{Name: "node", Version: "22.23.2"}, {Name: "openspec", Version: "1.13.0"},
+func TestOpenSpecPinMustMatchTheContract(t *testing.T) {
+	state := &domain.RankedRuntimeStateRuntime{Components: []domain.RankedRuntimeStateComponent{
+		{Name: "openspec", Version: "1.13.0"},
 	}}
 
-	require.NoError(t, checkPrivateRuntimePins(openSpecContract("1.13.0", "22.23.2"), state))
-	require.NoError(t, checkPrivateRuntimePins(openSpecContract("", ""), state), "unpinned contract accepts any payload")
+	require.NoError(t, checkOpenSpecPin(openSpecContract("1.13.0", "22.23.2"), state))
+	require.NoError(t, checkOpenSpecPin(openSpecContract("", ""), state), "unpinned contract accepts any bundle")
 
-	err := checkPrivateRuntimePins(openSpecContract("1.10.0", "22.23.2"), state)
+	err := checkOpenSpecPin(openSpecContract("1.10.0", "22.23.2"), state)
 	require.ErrorContains(t, err, domain.ReasonRankedRuntimePinMismatch)
-	require.ErrorContains(t, err, "openspec")
+	require.ErrorContains(t, err, "OpenSpec")
+}
 
-	err = checkPrivateRuntimePins(openSpecContract("1.13.0", "20.0.0"), state)
-	require.ErrorContains(t, err, "node")
+// D3 regression: the on-disk skill tree carries its own runtime.build.yaml, and
+// TreeDigest excludes that file from the digest it publishes, so a tampered
+// tree can certify itself. Materialization must therefore read the binary's
+// embedded defaults, not the extracted copy.
+func TestPrepareRankedProviderRuntimes_IgnoresATamperedOnDiskOpenSpecTree(t *testing.T) {
+	dir := t.TempDir()
+	strategist := filepath.Join(dir, ".strategist")
+	writeRankedRuntimeFixture(t, dir, "openspec-propose", "refinement", openSpecContract("1.13.0", ""))
+
+	// A genuinely self-consistent forgery: the certificate carries the real
+	// digest of the tampered content, which is possible precisely because
+	// TreeDigest excludes BuildInfoFile from what it covers.
+	rel := "skills/openspec-propose/runtime"
+	tree := filepath.Join(strategist, filepath.FromSlash(rel))
+	bundle := filepath.Join(tree, "dist", "core", "artifact-graph")
+	require.NoError(t, os.MkdirAll(bundle, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(bundle, "openspec.mjs"), []byte("// tampered\n"), 0o644))
+	digest, size, err := runtimepayload.TreeDigest(os.DirFS(strategist), rel)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(tree, runtimepayload.BuildInfoFile), []byte(fmt.Sprintf(
+		"version: 9.9.9\nbundle: dist/core/artifact-graph/openspec.mjs\ntree_sha256: %s\ntree_bytes: %d\n", digest, size)), 0o644))
+
+	// Sanity: the forgery does verify against itself, so the only thing that
+	// rejects it is reading the embedded authority instead.
+	selfCheck, _, selfErr := runtimepayload.MaterializeOpenSpec(os.DirFS(strategist), filepath.Join(t.TempDir(), "self"))
+	require.NoError(t, selfErr, "the forged tree certifies itself")
+	selfBody, readErr := os.ReadFile(selfCheck) //nolint:gosec // G304: test-controlled path
+	require.NoError(t, readErr)
+	require.Contains(t, string(selfBody), "tampered")
+
+	originalFind, originalVersion, originalRun := findHostNode, hostNodeVersion, runRankedRuntimeCommand
+	t.Cleanup(func() {
+		findHostNode, hostNodeVersion, runRankedRuntimeCommand = originalFind, originalVersion, originalRun
+	})
+	findHostNode = func(string) (string, error) { return filepath.Join(dir, "node", "node"), nil }
+	hostNodeVersion = func(context.Context, string, string) ([]byte, error) { return []byte("v20.19.0\n"), nil }
+	runRankedRuntimeCommand = func(_ context.Context, commandDir, _ string, args ...string) ([]byte, error) {
+		if args[1] == "init" {
+			require.NoError(t, os.MkdirAll(filepath.Join(commandDir, "openspec"), 0o755))
+			require.NoError(t, os.WriteFile(filepath.Join(commandDir, "openspec", "config.yaml"), []byte("schema: spec-driven\n"), 0o644))
+		}
+		return []byte(`{"root":{"path":"` + filepath.ToSlash(strategist) + `"}}`), nil
+	}
+
+	require.NoError(t, prepareRankedProviderRuntimes(context.Background(), strategist))
+
+	materialized := filepath.Join(strategist, "weapon-runtime", "openspec-propose", "openspec", "dist", "core", "artifact-graph", "openspec.mjs")
+	body, readErr := os.ReadFile(materialized) //nolint:gosec // G304: test-controlled path
+	require.NoError(t, readErr)
+	require.NotContains(t, string(body), "tampered", "the forged on-disk tree must never be materialized")
+
+	raw, stateErr := os.ReadFile(filepath.Join(strategist, domain.RankedRuntimeStatePath))
+	require.NoError(t, stateErr)
+	var state domain.RankedRuntimeState
+	require.NoError(t, json.Unmarshal(raw, &state))
+	require.NotEqual(t, "9.9.9", state.Entries[0].Runtime.Components[0].Version,
+		"recorded evidence must come from the embedded authority, not the forged certificate")
 }

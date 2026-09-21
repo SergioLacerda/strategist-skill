@@ -65,7 +65,10 @@ func TestPlatformEnvIsEmptyOffWindowsAndSkipsUnsetVariables(t *testing.T) {
 	require.Empty(t, platformEnv("windows", get))
 }
 
-func TestPrivateCommandRunsAbsoluteExecutableWithoutHostPath(t *testing.T) {
+// A private runtime is launched by absolute path and resolves no peer tool, so
+// its PATH is empty. Handing it the launcher's own directory would, in
+// host_node mode, be handing it a system binary directory such as /usr/bin.
+func TestPrivateCommandRunsAbsoluteExecutableWithAnEmptyPath(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("uses a POSIX shell script as the private executable")
 	}
@@ -78,7 +81,25 @@ func TestPrivateCommandRunsAbsoluteExecutableWithoutHostPath(t *testing.T) {
 	require.NoError(t, err)
 	out, err := cmd.Output()
 	require.NoError(t, err)
-	require.Equal(t, dir, string(out), "PATH must be the private runtime directory only")
+	require.Empty(t, string(out), "a private runtime subprocess must get an empty PATH")
+	require.Contains(t, cmd.Env, "PATH=", "PATH must be set and empty, not absent")
+}
+
+// The host Node's directory is a system binary directory. Regression guard for
+// the host_node hermeticity gap: it must not reach the subprocess.
+func TestPrivateCommandDoesNotExposeTheLauncherDirectoryInHostNodeMode(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses a POSIX shell script as the private executable")
+	}
+	hostBin := t.TempDir()
+	exe := filepath.Join(hostBin, "node")
+	require.NoError(t, os.WriteFile(exe, []byte("#!/bin/sh\nprintf '%s' \"$PATH\"\n"), 0o755))
+
+	cmd, err := PrivateCommand(context.Background(), t.TempDir(), exe)
+	require.NoError(t, err)
+	out, err := cmd.Output()
+	require.NoError(t, err)
+	require.NotContains(t, string(out), hostBin, "the launcher's own directory must not become the subprocess PATH")
 }
 
 func TestPrivateCommandRejectsRelativeOrMissingExecutable(t *testing.T) {

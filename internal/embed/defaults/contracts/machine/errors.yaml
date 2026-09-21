@@ -99,8 +99,15 @@ errors:
   - token: ranked_runtime_executable_missing
     emit: "check=blocked reason=ranked_runtime_executable_missing"
     scope: slot
-    reason: "a Ranked provider's runtime executable (for openspec-propose: openspec) is not available to Strategist"
-    action: "install the CLI at the version pinned by the provider contract so it is on PATH, then rerun strategist install or strategist check; see docs/runbooks/standalone-runtime-hermeticity.md"
+    reason: "a Ranked provider's recorded Node executable is not available to Strategist"
+    action: "install Node.js >=20.19.0, then rerun strategist install --wizard; OpenSpec and npm are embedded and do not need separate installation; see docs/runbooks/standalone-runtime-hermeticity.md"
+    enforced_by: machine_enforced
+
+  - token: ranked_runtime_host_node_unsupported
+    emit: "check=blocked reason=ranked_runtime_host_node_unsupported"
+    scope: slot
+    reason: "the recorded host Node executable does not meet the OpenSpec bundle minimum version"
+    action: "install Node.js >=20.19.0 and rerun strategist install --wizard to record the supported executable; see docs/runbooks/standalone-runtime-hermeticity.md"
     enforced_by: machine_enforced
 
   - token: ranked_runtime_pin_mismatch
@@ -113,8 +120,8 @@ errors:
   - token: ranked_runtime_version_skew
     emit: "check=ready reason=ranked_runtime_version_skew"
     scope: slot
-    reason: "a host executable resolved from PATH reports a version different from the provider contract pin (advisory, never blocks)"
-    action: "install the pinned version, or use a build that embeds the private runtime"
+    reason: "the recorded host Node satisfies the >=20.19.0 minimum but differs from the Node version the provider contract was certified with (advisory, never blocks)"
+    action: "no action required; install the certified Node version to remove the notice"
     enforced_by: machine_observed
 
   - token: ranked_runtime_digest_mismatch
@@ -134,8 +141,36 @@ errors:
   - token: ranked_runtime_state_invalid
     emit: "check=blocked reason=ranked_runtime_state_invalid"
     scope: slot
-    reason: "ranked-runtimes.yaml is unreadable, or records runtime paths outside weapon-runtime/"
+    reason: "ranked-runtimes.yaml is unreadable, records a relative host Node, a launcher outside weapon-runtime/<provider>/openspec/, or no OpenSpec bundle digest"
     action: "run `strategist upgrade`, or reinstall with `strategist install --wizard`; do not edit the state file by hand"
+    enforced_by: machine_enforced
+
+  - token: ranked_runtime_not_evaluated
+    emit: "check=unknown reason=ranked_runtime_not_evaluated"
+    scope: slot
+    reason: "the Ranked runtime is not evaluated because the provider's certification is already blocked (advisory; the certification reason is the one to fix)"
+    action: "fix the reported trust/permission_grant certification reason, then rerun strategist check"
+    enforced_by: machine_observed
+
+  - token: ranked_runtime_state_legacy
+    emit: "check=blocked reason=ranked_runtime_state_legacy"
+    scope: slot
+    reason: "ranked-runtimes.yaml was written by an earlier release (schema other than strategist-ranked-runtime/v2, for example a private-Node payload record) and is never reinterpreted"
+    action: "run `strategist upgrade` to re-record the runtime with the host Node, or reinstall with `strategist install --wizard`"
+    enforced_by: machine_enforced
+
+  - token: ranked_runtime_bundle_missing
+    emit: "check=blocked reason=ranked_runtime_bundle_missing"
+    scope: slot
+    reason: "the materialized OpenSpec bundle or its launcher under weapon-runtime/<provider>/openspec/ is absent"
+    action: "run `strategist upgrade` or `strategist install --wizard` to re-materialize the embedded bundle"
+    enforced_by: machine_enforced
+
+  - token: ranked_runtime_bundle_tampered
+    emit: "check=blocked reason=ranked_runtime_bundle_tampered"
+    scope: slot
+    reason: "the materialized OpenSpec bundle no longer matches the tree digest recorded at install; it is not executed"
+    action: "run `strategist upgrade` or `strategist install --wizard` to re-materialize the embedded bundle; do not edit files under weapon-runtime/"
     enforced_by: machine_enforced
 
   - token: ranked_runtime_binding_missing
@@ -163,14 +198,14 @@ errors:
     emit: "check=blocked reason=ranked_runtime_healthcheck_failed"
     scope: slot
     reason: "the provider runtime command failed or timed out"
-    action: "run `strategist version --build` to confirm the runtime payload is embedded, then reinstall with `strategist install --wizard`; the message carries the command output"
+    action: "run `strategist version --build` to confirm the embedded OpenSpec bundle and host Node requirement, then reinstall with `strategist install --wizard`; the message carries the command output"
     enforced_by: machine_enforced
 
   - token: ranked_runtime_healthcheck_timeout
     emit: "check=blocked reason=ranked_runtime_healthcheck_timeout"
     scope: slot
     reason: "the provider runtime did not answer its healthcheck within the configured time limit"
-    action: "retry; if the machine is slow on first launch (for example antivirus scanning a new node.exe) raise STRATEGIST_RANKED_HEALTHCHECK_TIMEOUT (for example 60s)"
+    action: "retry; if the machine is slow on first launch (for example antivirus scanning the host node.exe) raise STRATEGIST_RANKED_HEALTHCHECK_TIMEOUT (for example 60s)"
     enforced_by: machine_enforced
 
   - token: ranked_runtime_contract_invalid

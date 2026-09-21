@@ -1,11 +1,9 @@
-# Pins the Node runtime the prebuilt OpenSpec bundle (runtime/) executes on.
-# Consumed by scripts/fetch-node-runtime.py at build time: each official
-# archive is downloaded, verified against sha256 below, and only bin/node
-# (node.exe on Windows) plus the LICENSE are repackaged into the binary.
+# Legacy provenance lock retained with the source skill for compatibility. The
+# Strategist binary embeds only the OpenSpec bundle; Node is a host prerequisite
+# validated at installation (>=20.19.0) and is never fetched by the build.
 #
 # Digests are the official nodejs.org SHASUMS256.txt entries for the version.
-# Changing anything here changes the package digest, so run `make embed-skills`
-# and keep node_version in strategist.yaml equal to node.version.
+# The bundle digest remains authoritative in runtime/runtime.build.yaml.
 schema_version: strategist-runtime-lock/v1
 node:
   version: 22.23.2

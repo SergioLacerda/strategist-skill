@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/runtimepayload"
 	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -44,21 +43,21 @@ func bindingModes(t *testing.T, dir string) map[string]string {
 	return modes
 }
 
-// With an embedded payload the silent install must reach the same ranked
+// With a supported host Node the silent install must reach the same ranked
 // runtime state as the wizard install: nothing is left green but unrunnable.
-func TestSilentInstall_WithEmbeddedPayloadMaterializesRankedRuntime(t *testing.T) {
+func TestSilentInstall_WithHostNodeMaterializesRankedRuntime(t *testing.T) {
 	testutil.RequirePOSIXShell(t)
 	dir := t.TempDir()
-	registerFakePayload(t)
+	registerFakeHostNode(t, dir)
 	t.Setenv("PATH", t.TempDir())
 
 	require.NoError(t, silentInstall(t, dir))
 
 	require.Equal(t, domain.SlotBindingModeRanked, bindingModes(t, dir)["refinement"])
 	require.FileExists(t, filepath.Join(dir, ".strategist", "openspec", "config.yaml"))
-	raw, err := os.ReadFile(filepath.Join(dir, ".strategist", rankedRuntimeStatePath))
+	raw, err := os.ReadFile(filepath.Join(dir, ".strategist", domain.RankedRuntimeStatePath))
 	require.NoError(t, err)
-	var state rankedRuntimeState
+	var state domain.RankedRuntimeState
 	require.NoError(t, json.Unmarshal(raw, &state))
 	require.Len(t, state.Entries, 1)
 	require.Equal(t, "refinement", state.Entries[0].Slot)
@@ -70,7 +69,7 @@ func TestSilentInstall_WithEmbeddedPayloadMaterializesRankedRuntime(t *testing.T
 func TestSilentInstall_PromotesOnlyProvidersThatDeclareARuntime(t *testing.T) {
 	testutil.RequirePOSIXShell(t)
 	dir := t.TempDir()
-	registerFakePayload(t)
+	registerFakeHostNode(t, dir)
 	t.Setenv("PATH", t.TempDir())
 
 	require.NoError(t, silentInstall(t, dir))
@@ -79,17 +78,12 @@ func TestSilentInstall_PromotesOnlyProvidersThatDeclareARuntime(t *testing.T) {
 	require.NotEqual(t, domain.SlotBindingModeRanked, modes["discovery"])
 }
 
-// Without a payload the silent install stays as it was (custom) and does not
-// invent a runtime; the readiness gate is what reports the missing executable.
-func TestSilentInstall_WithoutPayloadStaysCustomAndMaterializesNothing(t *testing.T) {
+// Without a supported host Node the silent install fails closed instead of
+// activating a Ranked binding that cannot run.
+func TestSilentInstall_WithoutHostNodeFailsClosed(t *testing.T) {
 	dir := t.TempDir()
 	withoutHostOpenSpec(t)
-	original := payloadSource
-	t.Cleanup(func() { payloadSource = original })
-	payloadSource = func() (runtimepayload.Embedded, bool) { return runtimepayload.Embedded{}, false }
 
-	require.NoError(t, silentInstall(t, dir))
-
-	require.NotEqual(t, domain.SlotBindingModeRanked, bindingModes(t, dir)["refinement"])
-	require.NoDirExists(t, filepath.Join(dir, ".strategist", "weapon-runtime"))
+	err := silentInstall(t, dir)
+	require.ErrorContains(t, err, domain.ReasonRankedRuntimeExecutableMissing)
 }
