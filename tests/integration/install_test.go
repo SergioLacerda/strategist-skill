@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/embed"
 	"github.com/SergioLacerda/strategist-skill/internal/install"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,6 +23,8 @@ type mockExtractor struct {
 
 func (m *mockExtractor) ReadFile(relPath string) ([]byte, error) {
 	switch relPath {
+	case "leveling.yaml":
+		return (embed.Extractor{}).ReadFile("leveling.yaml")
 	case "SKILL.md":
 		return []byte("# SKILL\n"), nil
 	case "templates/epic-standalone.yaml":
@@ -57,6 +60,11 @@ func (m *mockExtractor) Extract(targetDir string, force bool) error {
 		filepath.Join(targetDir, "templates", "pragmatic-standalone.yaml"): "mode: pragmatic\nbase_path: .analysis\n",
 		filepath.Join(targetDir, "templates", "epic-standalone.yaml"):      "mode: epic\nbase_path: .analysis\n",
 	}
+	leveling, err := (embed.Extractor{}).ReadFile("leveling.yaml")
+	if err != nil {
+		return err
+	}
+	files[filepath.Join(targetDir, "leveling.yaml")] = string(leveling)
 	for path, content := range files {
 		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 			return err

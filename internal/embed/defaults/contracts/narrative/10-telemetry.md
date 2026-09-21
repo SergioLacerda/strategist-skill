@@ -34,6 +34,9 @@ Structured telemetry should preserve, when available:
 - `evidence_state`
 - `discovery_subtype`
 - `provider`
+- `model`
+- `effort`
+- `level_source`
 - `handoff_challenge.status`
 - `handoff_challenge.critical_failures`
 - `handoff_challenge.types`
@@ -55,6 +58,43 @@ Structured telemetry should preserve, when available:
 - `confidence.coverage_status`
 - `confidence.missing_reason`
 - `confidence.violation`
+
+## Role Level Fields
+
+`model`, `effort` and `level_source` (`manual` | `host` | `policy`) identify the level a role
+runs at and back the role-line level label. They are recorded for every role
+scope (Scout, Ranger, Archivist, Sniper, transport) and are `null` when no level
+is known — a missing level never blocks a mission. Within one phase every event
+carries the same tuple unless an escalation is recorded with its `reason`.
+
+At each role's phase start, run the role's `on_start` commands (declared in
+`roles/<id>.yaml`; the default is `strategist leveling label --role {role}
+--mission {mission_id}`, pass `--host-model`/`--host-effort` when the host
+reports them). A repeated role in one mission, such as an Archivist revision
+loop, passes `--run <n>` so each run keeps its own level. The command records
+the tuple in `.strategist/memory/role-levels.jsonl`, and later calls for the
+same mission and role reuse it; record an escalation with `--reason escalated`.
+Two forms show the level. Content templates (`<role>_start`, `<role>_done`,
+`<role>_task_done`, the gate prompt) use the stacked `{role_level_header}`; the
+short narration lines (`phase_announcements`) name the role with the inline
+`{role_level_tag}`, the `tag` field of `strategist leveling label --json`
+(`(Sonnet-High)`, empty when the level is unknown), for example
+`🎯 **Ranger(Sonnet-High):** ...`. Scout has a narration line (`scout_done`); the
+gate is not a role and carries no level. The per-role content keys are generated
+at compile time from generic `role_start`, `role_done` and `role_task_done`
+templates plus a phrase table, one set per registered role, so a new role needs
+no new template strings and the old keys stay valid as aliases. Each newly recorded
+tuple also emits the `role_level_resolved` event (DEBUG) with `role`, `model`,
+`effort`, `level_source` and, for an escalation, `reason`; the Archivist's tuple
+is repeated on its `handoff-metrics.jsonl` line.
+
+Resolution order is manual configuration, then host-reported values, then the
+LEVELING policy. Manual values come from the `leveling:` block of `active.yaml`
+(`mode: manual | automatic`; for manual, a per-role `model`/`effort` map); an
+absent block means automatic. LEVELING data is read on demand: the `leveling:`
+block first, and `leveling.yaml` plus the install authority only when a model or
+effort is still missing in automatic mode. A complete manual map, or a complete
+host report, never reads the policy.
 
 ## Scout Event
 

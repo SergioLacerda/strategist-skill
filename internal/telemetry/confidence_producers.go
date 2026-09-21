@@ -38,11 +38,16 @@ func (p ConfidenceProducerAdapter) RecordMissing(correlationKey, reason string) 
 	return AppendMissingConfidenceRecord(p.Path, p.Agent, p.MissionID, correlationKey, reason, time.Now().UTC().Format(time.RFC3339Nano))
 }
 
+// isConfidenceAgent accepts every registered role (exact id) plus the producers
+// that are not roles: the critic, mission quality and handoff challenge.
 func isConfidenceAgent(agent string) bool {
+	for _, id := range domain.DefaultRoleRegistry().IDs() {
+		if id == agent {
+			return true
+		}
+	}
 	switch agent {
-	case ConfidenceAgentScout, ConfidenceAgentRanger, ConfidenceAgentArchivist,
-		ConfidenceAgentCritic, ConfidenceAgentMissionQuality, ConfidenceAgentHandoffChallenge,
-		ConfidenceAgentSniper:
+	case ConfidenceAgentCritic, ConfidenceAgentMissionQuality, ConfidenceAgentHandoffChallenge:
 		return true
 	default:
 		return false

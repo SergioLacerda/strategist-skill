@@ -66,9 +66,12 @@ type WizardConfig struct {
 	// active.yaml (DiscoveryProvider/RefinementProvider stay a plain provider
 	// id either way) — only to plugins.lock's SlotBinding.Mode, the runtime
 	// reinforcement DEC-002 describes.
-	DiscoveryMode     string
-	RefinementMode    string
-	ExecutionMode     string // Ranked/Custom mode resolved for the execution binding
+	DiscoveryMode  string
+	RefinementMode string
+	ExecutionMode  string // Ranked/Custom mode resolved for the execution binding
+	// Leveling is the operator's manual/automatic model x effort choice; the
+	// zero value means the wizard step was not answered (treated as automatic).
+	Leveling          LevelingConfig
 	TreasureChestPath string // optional: path to a knowledge source (e.g. .sdd/source)
 	// AdrCanonicalPath is the optional, project-relative destination Sniper writes ADRs
 	// to instead of the <base_path>/archived/<mission_id>-adr.md fallback (see

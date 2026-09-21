@@ -43,6 +43,9 @@ func (s Service) finalizeUpgrade(strategistDir string, plan UpgradePlan, toWrite
 	}
 
 	fullManifest := domain.NewFullInstallManifest(packageID(s.Version), plan.embeddedHashes)
+	if err := s.applyLevelingAuthority(&fullManifest); err != nil {
+		return fmt.Errorf("upgrade: LEVELING authority: %w", err)
+	}
 	if err := saveInstallManifest(strategistDir, fullManifest); err != nil {
 		return fmt.Errorf("upgrade: save manifest: %w", err)
 	}

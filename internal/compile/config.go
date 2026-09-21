@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/i18n"
 )
 
@@ -58,6 +59,11 @@ func compilePersonas(root string, sources map[string]int64) (map[string]any, err
 		return nil, err
 	}
 	injectPTBRRuntime(personasRaw)
+	registry, err := domain.LoadRoleRegistry(filepath.Join(root, "roles"))
+	if err != nil {
+		return nil, fmt.Errorf("compile config: role registry: %w", err)
+	}
+	expandPersonaRoleMessages(personasRaw, registry)
 	return mapValuesToAny(personasRaw), nil
 }
 
@@ -91,6 +97,22 @@ func injectPTBRRuntime(personasRaw map[string]map[string]any) {
 		}
 		if pa, ok := phaseAnnouncements(raw); ok {
 			pa[i18n.LangPTBR] = ptBRPhaseAnnouncements.ToMap()
+		}
+	}
+}
+
+// expandPersonaRoleMessages expands the generic role templates of every language
+// of every persona into per-role message keys (see role_messages.go).
+func expandPersonaRoleMessages(personasRaw map[string]map[string]any, reg domain.RoleRegistry) {
+	for _, raw := range personasRaw {
+		cbl, ok := contentByLang(raw)
+		if !ok {
+			continue
+		}
+		for _, langContent := range cbl {
+			if content, ok := langContent.(map[string]any); ok {
+				expandRoleMessages(content, reg)
+			}
 		}
 	}
 }

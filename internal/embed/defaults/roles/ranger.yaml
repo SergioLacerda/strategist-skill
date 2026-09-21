@@ -1,5 +1,11 @@
 role: ranger
 slot: discovery
+phase: 1                        # checkpoint position (0 is pre-pipeline)
+pluggable: true                # an external provider may fill this role
+handoff_schema: schemas/handoff-ranger-to-archivist.schema.yaml
+on_start:                       # run when this role's phase starts; {role} and {mission_id} are substituted
+  - strategist leveling label --role {role} --mission {mission_id}
+# leveling: ranger             # optional LEVELING policy role; defaults to the role id
 
 # Canonical behaviors — read-only, source in skill.yaml.
 # Listed here for reference when writing custom_brief below.
@@ -32,6 +38,7 @@ canonical:
 
 # Contract
 must:
+  - "at phase start run the role's on_start commands to resolve and record the model x effort level, and show the role level header when the level is known (a missing level never blocks the mission)"
   - persist confidence at this boundary before finishing with `strategist metrics record --mission <mission_id> --agent ranger --claim-file <file>`;
     when no confidence summary exists, emit `--missing --correlation-key <key> --reason <why>` instead
   - load mission_contract and respect token_strategy.mode for context budget

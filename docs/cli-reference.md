@@ -85,6 +85,57 @@ strategist plugins authorize \
 
 ---
 
+## leveling
+
+Validates or evaluates the customer-editable `LEVELING` policy in
+`.strategist/leveling.yaml`.
+
+```bash
+strategist leveling validate
+strategist leveling validate --expected-digest <sha256>
+strategist leveling suggest --provider CODEX --role ranger [--json]
+strategist leveling label --role ranger --mission <id> [--run <n>] [--host-model sonnet --host-effort high] [--message <text>] [--width N] [--json]
+strategist metrics levels [--mission <id>] [--json] [--rotate --max-records N]
+```
+
+`leveling label` prints the role-line label (`Model-Effort`). Precedence is the
+manual choice in the `leveling:` block of `active.yaml`, then host-reported
+values, then the policy suggestion (`--provider` completes a missing one); the
+block is read first and `leveling.yaml` only when a value is still missing.
+`level_source` is recorded as `manual`, `host` or `policy`.
+With `--mission` the tuple is appended to `.strategist/memory/role-levels.jsonl`
+(`mission_id`, `role`, `model`, `effort`, `level_source`, `reason`, `timestamp`)
+and reused for the same mission and role, so every line of a phase agrees;
+`--json` also returns `tag`, the inline `(Model-Effort)` form (empty when the level
+is unknown) used by narration lines. `--reason escalated` records a new tuple, and `--run <n>` keeps a separate level for
+a repeated role in one mission (for example an Archivist revision loop). The role's
+phase counter and total come from the role registry (roles are read from the
+workspace's `roles/*.yaml`), and a role's `leveling` key selects the policy role.
+The ledger is compacted automatically past 512 KiB, always keeping the latest
+tuple of every mission, role and run. `--message` renders the full line:
+stacked (`Fase: 01/04`, role, `Model-Effort`, message) when `--width` is 0 or
+the one-line form does not fit, otherwise `Ranger(Sonnet-High) - <message>`. A
+policy problem or unknown level prints an unlabelled line with a warning and
+never fails.
+
+`metrics levels` reports the recorded levels: records, missions, unknown levels,
+escalations, and per role the levels and level sources; `--rotate` compacts the
+ledger to `--max-records` (default 2000) first.
+
+The default catalog contains ranked `CODEX` and `CLAUDE` profiles. Unknown
+ranked providers use the generic fallback and never inherit a ranked model
+name. Edit `leveling.yaml` to add a provider profile or change role criteria;
+invalid effort tiers and unsupported mappings fail closed. Supplying
+`--expected-digest` makes validation reject a stale policy before activation.
+The install wizard applies the same validation to its selected role/provider
+bindings; roles the operator sets manually skip the policy check.
+
+The installer also records the embedded LEVELING version/digest in
+`.install-manifest.json`. A stale authority blocks activation with
+`leveling_policy_stale`; an absent or untracked legacy policy requires the
+explicit `.strategist/.leveling-compat.yaml` marker (`version: 1`, `mode:
+legacy`).
+
 ## provider
 
 Validates and onboards an already-materialized local provider package. The
@@ -125,7 +176,7 @@ strategist install [--target=<dir>] [--wizard] [--silent] [--force]
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--target` | `.` (current directory) | Repository root where `.strategist/` will be created |
-| `--wizard` | `false` | Interactive mode: collects mode, base_path, and provider via prompts |
+| `--wizard` | `false` | Interactive mode: collects mode, base_path, providers, and whether model x effort is manual (default) or automatic, per role, via prompts |
 | `--silent` | `false` (default behavior when no flag is passed) | Installation without prompts, using **epic** profile defaults |
 | `--force` | `false` | Overwrite all files, including user-modified ones (default: preserve customizations that differ from the embedded default) |
 | `--strict-compile` | `false` | Make a `CompileAll` failure after extraction fatal — the install rolls back instead of completing with a partial/uncompiled runtime. Default is warning-only (install still completes) |

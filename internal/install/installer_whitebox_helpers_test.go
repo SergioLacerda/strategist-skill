@@ -51,6 +51,16 @@ func copyRuntimeFixtureFile(source, destination string) error {
 }
 
 func (m minimalExtractor) Extract(targetDir string, _ bool) error {
+	if err := createMinimalExtractorDirs(targetDir); err != nil {
+		return err
+	}
+	if err := writeMinimalExtractorFiles(targetDir); err != nil {
+		return err
+	}
+	return writeMinimalExtractorLeveling(targetDir)
+}
+
+func createMinimalExtractorDirs(targetDir string) error {
 	dirs := []string{
 		filepath.Join(targetDir, "personas"),
 		filepath.Join(targetDir, "roles"),
@@ -62,6 +72,10 @@ func (m minimalExtractor) Extract(targetDir string, _ bool) error {
 			return err
 		}
 	}
+	return nil
+}
+
+func writeMinimalExtractorFiles(targetDir string) error {
 	files := map[string]string{
 		filepath.Join(targetDir, "SKILL.md"):                               "# SKILL\n",
 		filepath.Join(targetDir, "knowledge.index.yaml"):                   "sources: []\n",
@@ -74,6 +88,17 @@ func (m minimalExtractor) Extract(targetDir string, _ bool) error {
 		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func writeMinimalExtractorLeveling(targetDir string) error {
+	leveling, err := os.ReadFile(filepath.Join("..", "embed", "defaults", "leveling.yaml"))
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(targetDir, "leveling.yaml"), leveling, 0o644); err != nil {
+		return err
 	}
 	return nil
 }
@@ -132,6 +157,8 @@ providers:
 
 func (m minimalExtractor) ReadFile(relPath string) ([]byte, error) {
 	switch relPath {
+	case "leveling.yaml":
+		return os.ReadFile(filepath.Join("..", "embed", "defaults", "leveling.yaml"))
 	case "templates/epic-standalone.yaml":
 		return []byte("mode: epic\nbase_path: .analysis\n"), nil
 	case "SKILL.md":

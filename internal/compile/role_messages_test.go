@@ -1,0 +1,63 @@
+package compile
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestPhaseProgress(t *testing.T) {
+	bar, pct := phaseProgress(1, 4)
+	assert.Equal(t, 25, pct)
+	assert.Equal(t, "████████▓░░░░░░░░░░░░░░░░░░░", bar)
+	bar, pct = phaseProgress(3, 4)
+	assert.Equal(t, 75, pct)
+	assert.Equal(t, "████████████████████████▓░░░", bar)
+	bar, pct = phaseProgress(4, 4)
+	assert.Equal(t, 100, pct)
+	assert.Equal(t, strings.Repeat("█", 28), bar)
+	bar, pct = phaseProgress(1, 0)
+	assert.Zero(t, pct)
+	assert.Equal(t, strings.Repeat("░", 28), bar)
+}
+
+func TestRoleEventAliasesMapOldKeysToTheGenericTemplates(t *testing.T) {
+	aliases := RoleEventAliases(domain.DefaultRoleRegistry())
+	assert.Equal(t, RoleEventAlias{Generic: "role_start", Role: "ranger"}, aliases["ranger_start"])
+	assert.Equal(t, RoleEventAlias{Generic: "role_done", Role: "archivist"}, aliases["archivist_done"])
+	assert.Equal(t, RoleEventAlias{Generic: "role_task_done", Role: "sniper"}, aliases["sniper_task_done"])
+	assert.NotContains(t, aliases, "scout_start", "pre-pipeline roles have no start/done lines")
+	assert.NotContains(t, aliases, "ranger_task_done", "only the execution role has a task line")
+}
+
+func TestExpandRoleMessagesUsesDefaultWordingForARoleWithoutPhrases(t *testing.T) {
+	reg, err := domain.NewRoleRegistry([]domain.Role{{ID: "scout"}, {ID: "ranger", Slot: "discovery", Phase: 1, Pluggable: true}, {ID: "auditor", Phase: 2}})
+	require.NoError(t, err)
+	content := map[string]any{
+		"role_start": "{role_emoji} {role_title}: {start_text}",
+		"role_done":  "{role_title} {done_text} {phase_pct}%{phase_mark} {artifact_label}",
+		"role_phrases": map[string]any{
+			"_default": map[string]any{"emoji": "E", "start_text": "go", "done_text": "ok", "artifact_label": "At:", "task_text": "must be ignored"},
+			"ranger":   map[string]any{"emoji": "R", "start_text": "recon"},
+		},
+	}
+	expandRoleMessages(content, reg)
+
+	assert.Equal(t, "R Ranger: recon", content["ranger_start"], "own wording wins")
+	assert.Equal(t, "E Auditor: go", content["auditor_start"], "the default wording covers a new role")
+	assert.Equal(t, "Ranger ok 50% · Ranger ✓ At:", content["ranger_done"], "non-final phase shows the role mark")
+	assert.Equal(t, "Auditor ok 100% ✓ At:", content["auditor_done"], "the final phase shows a bare mark")
+	assert.NotContains(t, content, "auditor_task_done", "task wording is opt-in per role")
+	for _, key := range []string{"role_start", "role_done", "role_phrases"} {
+		assert.NotContains(t, content, key)
+	}
+}
+
+func TestExpandRoleMessagesLeavesContentWithoutTemplatesUntouched(t *testing.T) {
+	content := map[string]any{"intake_summary": "x", "ranger_start": "hand written"}
+	expandRoleMessages(content, domain.DefaultRoleRegistry())
+	assert.Equal(t, map[string]any{"intake_summary": "x", "ranger_start": "hand written"}, content)
+}

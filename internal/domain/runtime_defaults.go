@@ -52,10 +52,12 @@ func NormativeRuntimeDefaultPaths() []string {
 
 // InstallManifest records the embedded defaults installed into a .strategist/ runtime.
 type InstallManifest struct {
-	Schema      string                `json:"schema"`
-	PackageID   string                `json:"package_id"`
-	InstalledAt string                `json:"installed_at"`
-	Files       []InstallManifestFile `json:"files"`
+	Schema                string                `json:"schema"`
+	PackageID             string                `json:"package_id"`
+	InstalledAt           string                `json:"installed_at"`
+	Files                 []InstallManifestFile `json:"files"`
+	LevelingPolicyVersion int                   `json:"leveling_policy_version,omitempty"`
+	LevelingPolicyDigest  string                `json:"leveling_policy_digest,omitempty"`
 }
 
 // InstallManifestFile records one installed default file hash.

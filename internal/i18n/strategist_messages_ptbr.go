@@ -2,14 +2,15 @@ package i18n
 
 // PTBRPhaseAnnouncements is the Portuguese (pt-BR) phase_announcements bundle.
 var PTBRPhaseAnnouncements = PhaseAnnouncementsMessages{
-	DiscoveryStarting:       "🎯 **Ranger:** Estou em campo. O reconhecimento começa agora.",
-	DiscoveryDone:           "🎯 **Ranger:** Missão de campo concluída. Passando o dossiê para o Archivist.",
-	RefinementStarting:      "📚 **Archivist:** Dossiê recebido. Iniciando análise sistemática.",
-	RefinementDone:          "📚 **Archivist:** Refinamento concluído. O plano está pronto para avaliação.",
+	DiscoveryStarting:       "🎯 **Ranger{role_level_tag}:** Estou em campo. O reconhecimento começa agora.",
+	DiscoveryDone:           "🎯 **Ranger{role_level_tag}:** Missão de campo concluída. Passando o dossiê para o Archivist.",
+	RefinementStarting:      "📚 **Archivist{role_level_tag}:** Dossiê recebido. Iniciando análise sistemática.",
+	RefinementDone:          "📚 **Archivist{role_level_tag}:** Refinamento concluído. O plano está pronto para avaliação.",
 	ApprovalGateShown:       "🚦 **Gate:** O trabalho está feito. A decisão é sua — o que construímos merece materialização de documentação?",
-	DocumentationStarting:   "🗡️ **Sniper:** Alvo confirmado. Silêncio — materializando documentação.",
-	DocumentationTargetDone: "🗡️ **Sniper:** Alvo {done}/{total} concluído.",
-	DocumentationDone:       "🗡️ **Sniper:** Concluído. Relatório entregue.",
+	DocumentationStarting:   "🗡️ **Sniper{role_level_tag}:** Alvo confirmado. Silêncio — materializando documentação.",
+	DocumentationTargetDone: "🗡️ **Sniper{role_level_tag}:** Alvo {done}/{total} concluído.",
+	DocumentationDone:       "🗡️ **Sniper{role_level_tag}:** Concluído. Relatório entregue.",
+	ScoutDone:               "🧭 **Scout{role_level_tag}:** Rota selecionada — {route}.",
 }
 
 // PTBRRuntime is the Portuguese (pt-BR) runtime message bundle.
@@ -19,23 +20,21 @@ var PTBRRuntime = RuntimeMessages{ //nolint:dupl
 	IntakeIndexModeNone: "⚠️ **Nota de governança:** `intake_index_mode: none` — nenhum contexto de governança" +
 		" foi indexado para esta query. Status atual do execution_gate: {execution_gate}.",
 
-	RangerStart: "🎯 **Ranger [{mission_id}]:** iniciando reconhecimento. skill={provider}",
-	RangerDone: "🎯 **Ranger [{mission_id}]:** missão de reconhecimento concluída.\n" +
-		"  ✶ channeling mana  ████████▓░░░░░░░░░░░░░░░░░░░  25% · Ranger ✓\n" +
-		"Artefato em: {artifact_path}",
+	RoleLevelHeader: "Fase: {phase_index}/04\n{role_name}\n{model_effort}",
 
-	ArchivistStart: "📚 **Archivist [{mission_id}]:** iniciando análise e refinamento. skill={provider}",
-	ArchivistDone: "📚 **Archivist [{mission_id}]:** análise refinada.\n" +
-		"  ✶ channeling mana  ████████████████▓░░░░░░░░░░░  50% · Archivist ✓\n" +
-		"Artefatos em: {artifact_path}",
+	RoleStart: "{role_level_header}\n{role_emoji} **{role_title} [{mission_id}]:** {start_text}",
+	RoleDone: "{role_level_header}\n{role_emoji} **{role_title} [{mission_id}]:** {done_text}\n" +
+		"  ✶ channeling mana  {phase_bar}  {phase_pct}%{phase_mark}\n" +
+		"{artifact_label} {artifact_path}",
+	RoleTaskDone: "{role_level_header}\n{role_emoji} **{role_title} [{mission_id}]:** {task_text}",
+	RolePhrases: map[string]RolePhrase{
+		"_default":  {Emoji: "🎭", StartText: "iniciando. skill={provider}", DoneText: "concluído.", ArtifactLabel: "Artefato em:"},
+		"ranger":    {Emoji: "🎯", StartText: "iniciando reconhecimento. skill={provider}", DoneText: "missão de reconhecimento concluída.", ArtifactLabel: "Artefato em:"},
+		"archivist": {Emoji: "📚", StartText: "iniciando análise e refinamento. skill={provider}", DoneText: "análise refinada.", ArtifactLabel: "Artefatos em:"},
+		"sniper":    {Emoji: "🗡️", StartText: "alvo confirmado — iniciando materialização de documentação.", DoneText: "materialização de documentação concluída.", ArtifactLabel: "Relatório em:", TaskText: "alvo {done}/{total} materializado — {task_title}"},
+	},
 
-	SniperStart:    "🗡️ **Sniper [{mission_id}]:** alvo confirmado — iniciando materialização de documentação.",
-	SniperTaskDone: "🗡️ **Sniper [{mission_id}]:** alvo {done}/{total} materializado — {task_title}",
-	SniperDone: "🗡️ **Sniper [{mission_id}]:** materialização de documentação concluída.\n" +
-		"  ✶ channeling mana  ████████████████████████████  100% ✓\n" +
-		"Relatório em: {artifact_path}",
-
-	ApprovalGatePrompt: "🚦 **Gate [{mission_id}]:** AGUARDANDO CONFIRMAÇÃO\n" +
+	ApprovalGatePrompt: "{role_level_header}\n🚦 **Gate [{mission_id}]:** AGUARDANDO CONFIRMAÇÃO\n" +
 		"  ✶ channeling mana  ████████████████████████▓░░░  75% · aguardando revisão\n\n" +
 		"Plano em: {artifact_path}\n\n" +
 		"Revisar e confirmar? (sim / nao / revisar)",

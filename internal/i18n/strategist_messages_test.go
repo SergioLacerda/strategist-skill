@@ -66,11 +66,11 @@ func TestENRuntimeHasDocumentationMaterializationSemantics(t *testing.T) {
 	for _, bad := range forbidden {
 		assert.NotContains(t, i18n.ENRuntime.ApprovalGatePrompt, bad,
 			"ENRuntime.ApprovalGatePrompt must not contain legacy execution term %q", bad)
-		assert.NotContains(t, i18n.ENRuntime.SniperDone, bad,
-			"ENRuntime.SniperDone must not contain legacy execution term %q", bad)
+		assert.NotContains(t, i18n.ENRuntime.RolePhrases["sniper"].DoneText, bad,
+			"ENRuntime sniper done wording must not contain legacy execution term %q", bad)
 	}
 
-	assert.Contains(t, i18n.ENRuntime.SniperStart, "materialization")
+	assert.Contains(t, i18n.ENRuntime.RolePhrases["sniper"].StartText, "materialization")
 	assert.Contains(t, i18n.ENRuntime.AdrGate, "Archive ADR")
 }
 
@@ -112,6 +112,12 @@ func assertMessageMapCoversStruct(t *testing.T, bundle any, got map[string]any) 
 		field := typ.Field(i)
 		key := snakeCase(field.Name)
 		assert.Contains(t, got, key)
+		if v.Field(i).Kind() == reflect.Map {
+			nested, ok := got[key].(map[string]any)
+			assert.True(t, ok, "field %s should map to a nested map under %q", field.Name, key)
+			assert.Len(t, nested, v.Field(i).Len(), "field %s", field.Name)
+			continue
+		}
 		assert.Equal(t, v.Field(i).String(), got[key], "field %s should map to %q", field.Name, key)
 	}
 }

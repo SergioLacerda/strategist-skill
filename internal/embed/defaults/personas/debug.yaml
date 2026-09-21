@@ -35,5 +35,9 @@ jsonl_event_schema:
     - mission_id
     - profile
     - payload
+    - role
+    - model
+    - effort
+    - level_source
   example: >
     {"level":"info","component":"strategist","event_type":"mission_done","mission_id":"example-id","profile":"debug","payload":{"status":"complete"}}

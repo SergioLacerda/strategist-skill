@@ -138,14 +138,16 @@ func indexOfCatalogProvider(providers []pluginCatalogProvider, id string) int {
 // obligations a Ranked candidate must satisfy before certification (ADR-0043
 // DEC-004, scoped down from the pending draft's full 10-step procedure): the
 // candidate must declare affinity for wantRole, and wantRole must itself own
-// a well-known handoff schema (domain.RoleHandoffSchema) — the fixed role
+// a well-known handoff schema (domain.RoleRegistry) — the fixed role
 // checkpoint that normalizes this weapon's output, per
 // docs/architecture/strategist-concepts.md's Ranked Class pipeline scope.
 func validateRankedCandidate(provider pluginCatalogProvider, wantRole string) error {
 	if !providerHasRole(provider, wantRole) {
 		return fmt.Errorf("role affinity missing %q (has %v)", wantRole, providerRoles(provider))
 	}
-	if _, ok := domain.RoleHandoffSchema[wantRole]; !ok && wantRole != "sniper" {
+	// A slot-bound role in the registry is certifiable: it either hands a schema
+	// downstream or is the terminal role. A slotless role (Scout) never is.
+	if role, ok := domain.DefaultRoleRegistry().Get(wantRole); !ok || role.Slot == "" {
 		return fmt.Errorf("role %q declares no handoff schema", wantRole)
 	}
 	if err := provider.Runtime.Validate(); err != nil {
@@ -163,7 +165,7 @@ func validateRankedCandidate(provider pluginCatalogProvider, wantRole string) er
 // changes it.
 func rankedCertificationDigest(provider pluginCatalogProvider, role string) string {
 	runtime := domain.NormalizeRankedRuntime(provider.Runtime)
-	input := provider.ID + "\t" + providerVersionOrDefault(provider.Version) + "\t" + role + "\t" + domain.RoleHandoffSchema[role] + "\t" + runtime.Kind + "\t" + runtime.Root + "\t" + runtime.Bootstrap + "\t" + runtime.Healthcheck
+	input := provider.ID + "\t" + providerVersionOrDefault(provider.Version) + "\t" + role + "\t" + domain.DefaultRoleRegistry().HandoffSchemaOf(role) + "\t" + runtime.Kind + "\t" + runtime.Root + "\t" + runtime.Bootstrap + "\t" + runtime.Healthcheck
 	// Pinned runtime identity is appended only when declared, so providers
 	// without it keep their existing digests.
 	if runtime.Version != "" || runtime.NodeVersion != "" {

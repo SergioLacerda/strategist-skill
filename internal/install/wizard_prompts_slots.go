@@ -21,7 +21,7 @@ import (
 func promptSlots(p Prompter, b i18n.WizardStrings, catalog pluginCatalog, providerRisk map[string]string) (discovery, refinement, execution, discoveryMode, refinementMode, executionMode string, err error) {
 	fmt.Println(b.HeaderSlots)
 
-	discoveryIDs, discoveryDefault, discoveryRankedID, discoveryExcluded := compatibleProviderOptions(catalog, "ranger", domain.RoleHandoffSchema["ranger"])
+	discoveryIDs, discoveryDefault, discoveryRankedID, discoveryExcluded := compatibleProviderOptions(catalog, slotRoleID(domain.SlotDiscovery), slotHandoffSchema(domain.SlotDiscovery))
 	printExcludedCandidates(discoveryExcluded)
 	if len(discoveryIDs) == 0 {
 		return "", "", "", "", "", "", fmt.Errorf("wizard: discovery: no compatible weapon for role ranger")
@@ -32,7 +32,7 @@ func promptSlots(p Prompter, b i18n.WizardStrings, catalog pluginCatalog, provid
 		return "", "", "", "", "", "", err
 	}
 
-	refinementIDs, refinementDefault, refinementRankedID, refinementExcluded := compatibleProviderOptions(catalog, "archivist", domain.RoleHandoffSchema["archivist"])
+	refinementIDs, refinementDefault, refinementRankedID, refinementExcluded := compatibleProviderOptions(catalog, slotRoleID(domain.SlotRefinement), slotHandoffSchema(domain.SlotRefinement))
 	printExcludedCandidates(refinementExcluded)
 	if len(refinementIDs) == 0 {
 		return "", "", "", "", "", "", fmt.Errorf("wizard: refinement: no compatible weapon for role archivist")
@@ -70,7 +70,7 @@ func printRankedRuntimeNote(b i18n.WizardStrings, catalog pluginCatalog, rankedI
 }
 
 func promptExecutionSlot(p Prompter, b i18n.WizardStrings, catalog pluginCatalog, providerRisk map[string]string) (string, string, error) {
-	ids, defaultID, rankedID, excluded := compatibleProviderOptions(catalog, "sniper", "")
+	ids, defaultID, rankedID, excluded := compatibleProviderOptions(catalog, slotRoleID(domain.SlotExecution), slotHandoffSchema(domain.SlotExecution))
 	printExcludedCandidates(excluded)
 	if len(ids) == 0 {
 		// Older synthetic extractors predate the catalogued internal skill.

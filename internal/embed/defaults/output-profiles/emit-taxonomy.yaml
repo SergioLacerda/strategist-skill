@@ -32,6 +32,9 @@ emits:
   pipeline_starting:           DEBUG
   compliance_summary:          DEBUG
   mission_metrics:             DEBUG
+  # Emitted by `strategist leveling label` when a new role level tuple is recorded;
+  # carries role, model, effort and level_source (see contracts/narrative/10-telemetry.md).
+  role_level_resolved:         DEBUG
   profile_source:              DEBUG
   treasure_chest_found:        INFO
   adr_opportunity:             DEBUG
@@ -39,6 +42,12 @@ emits:
   runbook_opportunity:         DEBUG
 
   # INFO — rendered through the active profile and visible in all output modes
+  # Generic role events. <role>_start, <role>_done and <role>_task_done are their
+  # aliases, generated per registered role at compile time from the generic role
+  # templates; an alias listed below must carry the same level as its generic key.
+  role_start:                  INFO
+  role_done:                   INFO
+  role_task_done:              INFO
   ranger_start:                INFO
   ranger_done:                 INFO
   archivist_start:             INFO

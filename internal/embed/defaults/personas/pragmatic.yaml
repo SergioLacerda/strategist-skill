@@ -57,22 +57,33 @@ content_by_lang:
       Sprint: {task_type} | delivery={delivery_strategy} | compat={legacy_compatibility} |
       urgency={urgency} | intent={execution_intent}
 
-    ranger_start: >
-      [{mission_id}] Analyst started discovery. Provider: {provider}.
-    ranger_done: >
-      [{mission_id}] Discovery done. Artifact: {artifact_path}
+    # Level header shown above role lines: the role's model and effort as visual
+    # feedback. Resolve {model_effort} with `strategist leveling label --role
+    # <role> --mission {mission_id}` (add --host-model/--host-effort when known);
+    # the command records the tuple for telemetry and reuses it for the whole
+    # phase. When the level is unknown, omit this header entirely and keep the
+    # unlabelled line — a missing level never blocks the mission.
+    role_level_header: |
+      Fase: {phase_index}/04
+      {role_name}
+      {model_effort}
 
-    archivist_start: >
-      [{mission_id}] Analyst started refinement. Provider: {provider}.
-    archivist_done: >
-      [{mission_id}] Refinement done. Artifacts: {artifact_path}
+    # Generic role message templates (see epic.yaml): expanded once per registered
+    # role at compile time; role_phrases holds the per-role wording.
+    role_start: |
+      {role_level_header}
+      [{mission_id}] {start_text}
+    role_done: |
+      {role_level_header}
+      [{mission_id}] {done_text} {artifact_label} {artifact_path}
+    role_phrases:
+      _default:  {start_text: "Role started. Provider: {provider}.", done_text: "Role done.", artifact_label: "Artifact:"}
+      ranger:    {start_text: "Analyst started discovery. Provider: {provider}.", done_text: "Discovery done.", artifact_label: "Artifact:"}
+      archivist: {start_text: "Analyst started refinement. Provider: {provider}.", done_text: "Refinement done.", artifact_label: "Artifacts:"}
+      sniper:    {start_text: "Sniper materializing documentation.", done_text: "Documentation materialized.", artifact_label: "Report:"}
 
-    sniper_start: >
-      [{mission_id}] Sniper materializing documentation.
-    sniper_done: >
-      [{mission_id}] Documentation materialized. Report: {artifact_path}
-
-    approval_gate_prompt: >
+    approval_gate_prompt: |
+      {role_level_header}
       [{mission_id}] Plan at: {artifact_path}
 
       Review and confirm? (yes / no / review)

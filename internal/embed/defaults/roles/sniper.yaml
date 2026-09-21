@@ -1,5 +1,10 @@
 role: sniper
 slot: execution
+phase: 4                        # the approval gate is step 3, immediately before this role
+pluggable: false               # native role today; no external provider
+on_start:                       # run when this role's phase starts; {role} and {mission_id} are substituted
+  - strategist leveling label --role {role} --mission {mission_id}
+# leveling: sniper
 
 
 # Canonical behaviors — read-only, source in skill.yaml.
@@ -18,6 +23,7 @@ canonical:
 
 # Contract
 must:
+  - "at phase start run the role's on_start commands to resolve and record the model x effort level, and show the role level header when the level is known (a missing level never blocks the mission)"
   - persist confidence at this boundary before finishing with `strategist metrics record --mission <mission_id> --agent sniper --claim-file <file>`;
     when no confidence summary exists, emit `--missing --correlation-key <key> --reason <why>` instead
   - declare the active documentation task at the start of each loop

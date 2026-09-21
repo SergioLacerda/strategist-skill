@@ -55,7 +55,8 @@ Archivist (`refinement`)
   `archivist_reopens_discovery_sources_without_declared_reason` forbidden_behaviors entry)
 - on completion, append one line to `.strategist/memory/handoff-metrics.jsonl`
   (skill.yaml#handoff_metrics_log) — nulls are expected for `brief_compression_ratio`/
-  `evidence_coverage_ratio` when the Ranger artifact did not populate `evidence_cards[]`
+  `evidence_coverage_ratio` when the Ranger artifact did not populate `evidence_cards[]`;
+  include the Archivist's `model`, `effort` and `level_source` (null when unknown)
 - produce the four-file refined package
 - preserve `evidence_pack_path` from the Ranger analysis artifact when present; the four-file package shape does not change
 - promote the Ranger analysis artifact from `pending/` into `<base_path>/refined/<mission_id>/analysis.md`

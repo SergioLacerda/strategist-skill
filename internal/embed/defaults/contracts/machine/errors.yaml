@@ -96,6 +96,48 @@ errors:
     action: "fix provider configuration or runtime installation, then rerun strategist check"
     enforced_by: agent_only
 
+  - token: leveling_policy_stale
+    emit: "error=leveling_policy_stale"
+    scope: slot
+    reason: "the embedded LEVELING policy differs from the installed authority or compatibility marker"
+    action: "run strategist upgrade or strategist install --wizard; do not edit the authority manifest by hand"
+    enforced_by: machine_enforced
+
+  - token: leveling_policy_digest_mismatch
+    emit: "error=leveling_policy_digest_mismatch"
+    scope: slot
+    reason: "the selected LEVELING policy digest differs from the expected workspace identity"
+    action: "restore the expected policy or update the workspace through the supported installer flow"
+    enforced_by: machine_enforced
+
+  - token: leveling_policy_missing
+    emit: "error=leveling_policy_missing"
+    scope: slot
+    reason: "the LEVELING policy is absent or an untracked override has no compatibility authority"
+    action: "run strategist install --wizard or add the documented versioned compatibility marker"
+    enforced_by: machine_enforced
+
+  - token: leveling_ranked_provider_ineligible
+    emit: "error=leveling_ranked_provider_ineligible"
+    scope: slot
+    reason: "the selected provider is not explicitly ranked or cannot execute the selected capability/effort"
+    action: "select a ranked provider with a complete LEVELING mapping or update the customer YAML"
+    enforced_by: machine_enforced
+
+  - token: leveling_signal_unknown
+    emit: "error=leveling_signal_unknown"
+    scope: slot
+    reason: "a LEVELING runtime signal is outside the documented enum"
+    action: "use the documented signal value and retry the selection"
+    enforced_by: machine_enforced
+
+  - token: leveling_mapping_invalid
+    emit: "error=leveling_mapping_invalid"
+    scope: slot
+    reason: "a LEVELING provider mapping contains an empty or unsupported value"
+    action: "fix the provider model or effort mapping in leveling.yaml and retry"
+    enforced_by: machine_enforced
+
   - token: ranked_runtime_executable_missing
     emit: "check=blocked reason=ranked_runtime_executable_missing"
     scope: slot

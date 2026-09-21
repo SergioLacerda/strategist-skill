@@ -53,6 +53,10 @@ feed once that lands.
 | `AttrEvidenceState` | `strategist.evidence_state` |
 | `AttrDiscoverySubtype` | `strategist.discovery_subtype` |
 | `AttrProvider` | `strategist.provider` |
+| `AttrModel` | `strategist.model` |
+| `AttrEffort` | `strategist.effort` |
+| `AttrLevelSource` | `strategist.level_source` |
+| `AttrRoleRun` | `strategist.role_run` |
 | `AttrConfidencePolicyVersion` | `strategist.confidence.policy_version` |
 | `AttrConfidenceEventID` | `strategist.confidence.event_id` |
 | `AttrConfidenceCorrelationKey` | `strategist.confidence.correlation_key` |

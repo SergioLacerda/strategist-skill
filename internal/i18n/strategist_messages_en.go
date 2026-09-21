@@ -8,23 +8,21 @@ var ENRuntime = RuntimeMessages{ //nolint:dupl
 	IntakeIndexModeNone: "⚠️ **Governance note:** `intake_index_mode: none` — no governance context was indexed" +
 		" for this query. Current execution_gate: {execution_gate}.",
 
-	RangerStart: "🎯 **Ranger [{mission_id}]:** starting reconnaissance. skill={provider}",
-	RangerDone: "🎯 **Ranger [{mission_id}]:** reconnaissance complete.\n" +
-		"  ✶ channeling mana  ████████▓░░░░░░░░░░░░░░░░░░░  25% · Ranger ✓\n" +
-		"Artifact at: {artifact_path}",
+	RoleLevelHeader: "Fase: {phase_index}/04\n{role_name}\n{model_effort}",
 
-	ArchivistStart: "📚 **Archivist [{mission_id}]:** starting analysis and refinement. skill={provider}",
-	ArchivistDone: "📚 **Archivist [{mission_id}]:** analysis refined.\n" +
-		"  ✶ channeling mana  ████████████████▓░░░░░░░░░░░  50% · Archivist ✓\n" +
-		"Artifacts at: {artifact_path}",
+	RoleStart: "{role_level_header}\n{role_emoji} **{role_title} [{mission_id}]:** {start_text}",
+	RoleDone: "{role_level_header}\n{role_emoji} **{role_title} [{mission_id}]:** {done_text}\n" +
+		"  ✶ channeling mana  {phase_bar}  {phase_pct}%{phase_mark}\n" +
+		"{artifact_label} {artifact_path}",
+	RoleTaskDone: "{role_level_header}\n{role_emoji} **{role_title} [{mission_id}]:** {task_text}",
+	RolePhrases: map[string]RolePhrase{
+		"_default":  {Emoji: "🎭", StartText: "starting. skill={provider}", DoneText: "complete.", ArtifactLabel: "Artifact at:"},
+		"ranger":    {Emoji: "🎯", StartText: "starting reconnaissance. skill={provider}", DoneText: "reconnaissance complete.", ArtifactLabel: "Artifact at:"},
+		"archivist": {Emoji: "📚", StartText: "starting analysis and refinement. skill={provider}", DoneText: "analysis refined.", ArtifactLabel: "Artifacts at:"},
+		"sniper":    {Emoji: "🗡️", StartText: "documentation target confirmed — starting materialization.", DoneText: "documentation materialization complete.", ArtifactLabel: "Report at:", TaskText: "target {done}/{total} materialized — {task_title}"},
+	},
 
-	SniperStart:    "🗡️ **Sniper [{mission_id}]:** documentation target confirmed — starting materialization.",
-	SniperTaskDone: "🗡️ **Sniper [{mission_id}]:** target {done}/{total} materialized — {task_title}",
-	SniperDone: "🗡️ **Sniper [{mission_id}]:** documentation materialization complete.\n" +
-		"  ✶ channeling mana  ████████████████████████████  100% ✓\n" +
-		"Report at: {artifact_path}",
-
-	ApprovalGatePrompt: "🚦 **Gate [{mission_id}]:** AWAITING CONFIRMATION\n" +
+	ApprovalGatePrompt: "{role_level_header}\n🚦 **Gate [{mission_id}]:** AWAITING CONFIRMATION\n" +
 		"  ✶ channeling mana  ████████████████████████▓░░░  75% · awaiting review\n\n" +
 		"Plan at: {artifact_path}\n\n" +
 		"Review and confirm? (yes / no / review)",

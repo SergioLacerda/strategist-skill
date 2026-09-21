@@ -62,9 +62,22 @@ func missingContractEvidence(c SkillPackageContract) []string {
 	return missing
 }
 
+// affinitySlot returns the slot a provider role affinity implies: the slot of a
+// registered slot-bound role, "auxiliary" for the auxiliary affinity, and "" for
+// anything else (including slotless roles such as Scout).
+func affinitySlot(role string) string {
+	if role == "auxiliary" {
+		return "auxiliary"
+	}
+	if r, ok := DefaultRoleRegistry().Get(role); ok && r.ID == role {
+		return r.Slot
+	}
+	return ""
+}
+
 func invalidRole(roles []string) bool {
 	for _, role := range roles {
-		if role != "ranger" && role != "archivist" && role != "sniper" && role != "auxiliary" {
+		if affinitySlot(role) == "" {
 			return true
 		}
 	}
@@ -82,7 +95,7 @@ func invalidSlot(slots []string) bool {
 
 func contradictoryAffinity(roles, slots []string) bool {
 	for _, role := range roles {
-		expected := map[string]string{"ranger": "discovery", "archivist": "refinement", "sniper": "execution", "auxiliary": "auxiliary"}[role]
+		expected := affinitySlot(role)
 		if expected != "" && !containsString(slots, expected) {
 			return true
 		}

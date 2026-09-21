@@ -2,6 +2,7 @@ package check
 
 import (
 	"fmt"
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"os"
 	"text/tabwriter"
 )
@@ -31,9 +32,11 @@ func writeCheckReadinessSection(w *tabwriter.Writer, resolutions map[string]slot
 	if _, err := fmt.Fprintln(w, "ROLE READINESS\t"); err != nil {
 		return fmt.Errorf("check: write readiness header: %w", err)
 	}
-	roles := map[string]string{"discovery": "ranger", "refinement": "archivist", "execution": "sniper"}
-	for _, slot := range []string{"discovery", "refinement", "execution"} {
-		if err := writeReadinessRow(w, slot, roles[slot], resolutions); err != nil {
+	registry := domain.DefaultRoleRegistry()
+	for _, required := range domain.RequiredSlots() {
+		slot := string(required)
+		role, _ := registry.RoleForSlot(slot)
+		if err := writeReadinessRow(w, slot, role.ID, resolutions); err != nil {
 			return err
 		}
 	}

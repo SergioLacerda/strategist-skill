@@ -49,7 +49,7 @@ func planRoleProviderEntry(extractor domain.FileExtractor, catalog pluginCatalog
 	if err != nil {
 		return RoleProviderPreviewEntry{}, fmt.Errorf("role/provider migration: slot %s: %w", slotName, err)
 	}
-	role := domain.RoleContractFromConfig(roleCfg, domain.RoleHandoffSchema[roleName])
+	role := domain.RoleContractFromConfig(roleCfg, domain.DefaultRoleRegistry().HandoffSchemaOf(roleName))
 	candidates := providerContractsForRole(catalog, roleName)
 	entry := RoleProviderPreviewEntry{Slot: slotName, RoleName: roleName, CurrentProviderID: activeSlots[slotName], Candidates: candidates}
 	if current := activeSlots[slotName]; current != "" {

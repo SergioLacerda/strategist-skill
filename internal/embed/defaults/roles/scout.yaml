@@ -1,0 +1,24 @@
+role: scout
+# Scout is the internal pre-pipeline Intake Router: it fills no slot and cannot
+# be plugged. It is defined here so every identity-bearing role shares one
+# definition shape (see internal_skills/scout for its behavior and SKILL.md).
+phase: 0
+pluggable: false
+on_start:                       # run when this role's phase starts; {role} and {mission_id} are substituted
+  - strategist leveling label --role {role} --mission {mission_id}
+# leveling: scout              # optional LEVELING policy role; defaults to the role id
+
+canonical:
+  - classify_request             # emit one route_decision (schemas/scout-route-decision.schema.yaml)
+  - select_route                 # critical_hit | implementation_short_route | full_pipeline
+
+must:
+  - "at phase start run the role's on_start commands to resolve and record the model x effort level, and show the role level header when the level is known (a missing level never blocks the mission)"
+  - emit exactly one auditable route_decision per request
+  - default to full_pipeline when in doubt or below the route confidence threshold
+
+must_not:
+  - perform discovery or read implementation surfaces beyond what is supplied
+  - invoke Sniper directly or bypass the Strategist Approval Gate
+
+custom_brief: ""

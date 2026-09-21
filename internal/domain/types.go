@@ -29,6 +29,9 @@ type ActiveConfig struct {
 	// also exists — see ResolutionPolicy and docs/adr/0028-native-role-resilient-baseline.md.
 	// Omitted or empty is valid and means EffectivePolicy() applies DefaultResolutionPolicy.
 	ProviderResolutionPolicy ResolutionPolicy `yaml:"provider_resolution_policy,omitempty"`
+	// Leveling is the optional operator choice between manual and automatic
+	// model x effort per role. Absent means automatic.
+	Leveling LevelingConfig `yaml:"leveling,omitempty"`
 }
 
 // ValidateNoLegacyFields returns an error if the config contains removed fields.
@@ -92,6 +95,18 @@ type RoleConfig struct {
 	Must        []string `yaml:"must"`
 	MustNot     []string `yaml:"must_not"`
 	CustomBrief string   `yaml:"custom_brief"`
+	// Phase is the role's checkpoint position (0 is pre-pipeline).
+	Phase int `yaml:"phase,omitempty"`
+	// Pluggable records whether an external provider may fill the role; nil means
+	// unspecified (legacy files), which still requires a slot.
+	Pluggable *bool `yaml:"pluggable,omitempty"`
+	// Leveling names the LEVELING policy role to use; empty means the role id.
+	Leveling string `yaml:"leveling,omitempty"`
+	// HandoffSchema is the schema the role hands downstream; empty for a terminal role.
+	HandoffSchema string `yaml:"handoff_schema,omitempty"`
+	// OnStart lists command templates the role runs when its phase starts;
+	// {role} and {mission_id} are substituted. Empty means the built-in default.
+	OnStart []string `yaml:"on_start,omitempty"`
 }
 
 // Validate returns an error if the role definition is missing required fields
@@ -102,7 +117,10 @@ func (r RoleConfig) Validate() error {
 		errs = append(errs, "role is required")
 	}
 	if r.Slot == "" {
-		errs = append(errs, "slot is required")
+		// A role without a slot cannot be plugged, so it must say so explicitly.
+		if r.Pluggable == nil || *r.Pluggable {
+			errs = append(errs, "slot is required")
+		}
 	} else if !IsValidSlot(r.Slot) {
 		errs = append(errs, fmt.Sprintf("slot %q is not one of %s", r.Slot, requiredSlotList))
 	}
@@ -150,6 +168,9 @@ func (c ActiveConfig) Validate() error {
 	}
 	errs = append(errs, validateActiveConfigSlots(c.Slots)...)
 	if err := c.ProviderResolutionPolicy.Validate(); err != nil {
+		errs = append(errs, err.Error())
+	}
+	if err := c.Leveling.Validate(); err != nil {
 		errs = append(errs, err.Error())
 	}
 	// Execution policy is fixed — no per-config validation needed.

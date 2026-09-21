@@ -17,6 +17,12 @@ type runtimeDefaultsExtractor struct {
 	files map[string][]byte
 }
 
+type strictMissingLevelingExtractor struct {
+	runtimeDefaultsExtractor
+}
+
+func (strictMissingLevelingExtractor) LevelingPolicyRequired() bool { return true }
+
 func newRuntimeDefaultsExtractor(overrides map[string]string) runtimeDefaultsExtractor {
 	files := map[string][]byte{
 		"templates/epic-standalone.yaml": []byte("mode: epic\nbase_path: .analysis\n"),
@@ -26,6 +32,8 @@ func newRuntimeDefaultsExtractor(overrides map[string]string) runtimeDefaultsExt
 		"personas/epic.yaml":             []byte("id: epic\ntone_directive: test\nphase_labels:\n  discovery: Ranger\n  refinement: Archivist\n  execution: Sniper\ndiagnostics:\n  pipeline_header: test\n  bootstrap_origin: test\n"),
 		"roles/default.yaml":             []byte("discovery: brainstorming\nrefinement: openspec-explore\nexecution: sniper\n"),
 	}
+	leveling, _ := os.ReadFile(filepath.Join("..", "embed", "defaults", "leveling.yaml"))
+	files["leveling.yaml"] = leveling
 	for _, file := range domain.NormativeRuntimeDefaultFiles() {
 		files[file.Path] = []byte(file.Path + " v1\n")
 	}
@@ -165,6 +173,15 @@ func TestPlanRuntimeDefaultUpgrade_EmbeddedHashError(t *testing.T) {
 	_, err := s.planRuntimeDefaultUpgrade(context.Background(), dir, false)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "read embedded normative default")
+}
+
+func TestPlanRuntimeDefaultUpgrade_ProductionRequiresEmbeddedLeveling(t *testing.T) {
+	t.Parallel()
+	ext := newRuntimeDefaultsExtractor(nil)
+	delete(ext.files, "leveling.yaml")
+	s := Service{Extractor: strictMissingLevelingExtractor{runtimeDefaultsExtractor: ext}, Compiler: nopCompiler{}}
+	_, err := s.planRuntimeDefaultUpgrade(context.Background(), t.TempDir(), false)
+	require.ErrorContains(t, err, "read embedded LEVELING policy")
 }
 
 func TestPlanRuntimeDefaultUpgrade_CorruptManifest(t *testing.T) {

@@ -44,3 +44,21 @@ func TestConfidenceProducerAdapterRecordsSupportedClaim(t *testing.T) {
 		t.Fatalf("record=%+v err=%v", record, err)
 	}
 }
+
+func TestIsConfidenceAgentFollowsTheRoleRegistry(t *testing.T) {
+	for _, id := range domain.DefaultRoleRegistry().IDs() {
+		if !isConfidenceAgent(id) {
+			t.Errorf("registered role %q must be a confidence agent", id)
+		}
+	}
+	for _, agent := range []string{ConfidenceAgentCritic, ConfidenceAgentMissionQuality, ConfidenceAgentHandoffChallenge} {
+		if !isConfidenceAgent(agent) {
+			t.Errorf("non-role producer %q must stay accepted", agent)
+		}
+	}
+	for _, agent := range []string{"gate", "Ranger", "", "transport"} {
+		if isConfidenceAgent(agent) {
+			t.Errorf("%q must not be a confidence agent", agent)
+		}
+	}
+}

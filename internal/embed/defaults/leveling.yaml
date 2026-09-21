@@ -1,0 +1,73 @@
+version: 1
+defaults:
+  effort_tiers: [none, low, medium, high, xhigh, max]
+  fallback:
+    capability: general
+    effort: medium
+    reason: generic_ranked_provider
+  roles:
+    scout:
+      capability: economical
+      effort: medium
+      criteria:
+        ambiguity: low
+        risk: low
+        scope: bounded
+        evidence: sufficient
+      escalation:
+        capability: reasoning
+        effort: high
+    ranger:
+      capability: reasoning
+      effort: high
+      criteria:
+        ambiguity: medium
+        risk: medium
+        scope: cross_module
+        evidence: sufficient
+      escalation:
+        capability: reasoning
+        effort: xhigh
+    archivist:
+      capability: reasoning
+      effort: high
+      criteria:
+        ambiguity: medium
+        risk: medium
+        scope: cross_module
+        evidence: sufficient
+      escalation:
+        capability: reasoning
+        effort: xhigh
+    sniper:
+      capability: economical
+      effort: medium
+      criteria:
+        ambiguity: low
+        risk: medium
+        scope: bounded
+        evidence: sufficient
+      escalation:
+        capability: reasoning
+        effort: high
+providers:
+  CODEX:
+    ranked: true
+    models:
+      general: codex-general
+      economical: codex-economical
+      reasoning: codex-reasoning
+    effort_tiers: [none, low, medium, high, xhigh, max]
+  CLAUDE:
+    ranked: true
+    models:
+      general: claude-general
+      economical: claude-economical
+      reasoning: claude-reasoning
+    # Short names shown on role log lines; presentation only, not part of the
+    # policy digest. Providers without `display` show the model id without its prefix.
+    display:
+      claude-general: Sonnet
+      claude-economical: Haiku
+      claude-reasoning: Opus
+    effort_tiers: [low, medium, high, xhigh]
