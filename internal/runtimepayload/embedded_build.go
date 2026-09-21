@@ -125,3 +125,21 @@ func (l layeredFS) Open(name string) (fs.File, error) {
 	}
 	return l.defaults.Open(name) //nolint:wrapcheck // fs.FS contract: callers expect the underlying *fs.PathError
 }
+
+// RegisterEmbedded composes and registers the payload of one target. It
+// registers nothing when composition fails, so a defective build can never
+// half-register.
+func RegisterEmbedded(defaults, nodeFS fs.FS, target string) error {
+	m, src, err := BuildEmbedded(defaults, nodeFS, target)
+	if err != nil {
+		return fmt.Errorf("runtime payload for %s: %w", target, err)
+	}
+	Register(m, src)
+	return nil
+}
+
+// InitFailureMessage is the text of the start-up failure for a payload build
+// whose embedded runtime cannot be composed.
+func InitFailureMessage(target string, err error) string {
+	return fmt.Sprintf("strategist: embedded runtime payload for %s is invalid: %v (this binary is defective; rebuild it with `make build-standalone` or use a release binary)", target, err)
+}

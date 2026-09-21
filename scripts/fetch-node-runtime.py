@@ -4,7 +4,7 @@
 Reads external-skills-source/openspec-propose/runtime.lock.yaml, downloads each
 official archive, verifies its sha256 against the lock, and repackages ONLY the
 node executable and LICENSE (no npm, headers or symlinks) into
-internal/runtimepayload/nodepayload/<target>/ for the strategist_payload build.
+internal/runtimepayload/bundled/nodepayload/<target>/ for the strategist_payload build.
 Output is deterministic (fixed mtimes and ownership).
 
 Usage: scripts/fetch-node-runtime.py <target>...   (e.g. linux-amd64 windows-amd64)
@@ -17,7 +17,7 @@ import gzip, hashlib, io, os, platform, re, sys, tarfile, urllib.request, zipfil
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOCK = os.path.join(ROOT, "external-skills-source/openspec-propose/runtime.lock.yaml")
-OUT = os.path.join(ROOT, "internal/runtimepayload/nodepayload")
+OUT = os.path.join(ROOT, "internal/runtimepayload/bundled/nodepayload")
 CACHE = os.environ.get("NODE_RUNTIME_CACHE", os.path.join(ROOT, ".cache/node-runtime"))
 
 

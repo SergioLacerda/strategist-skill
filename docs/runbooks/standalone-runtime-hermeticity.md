@@ -1,5 +1,11 @@
 # Standalone runtime evidence
 
+For local provider onboarding, keep the static and live dimensions separate:
+`strategist provider validate <source>` may prove package/adapter contract shape,
+but it reports `live_invocation: unknown` until an authorized runtime probe
+succeeds. Use `strategist provider add <source> --slot refinement|execution` to
+stage and bind a provider transactionally; discovery remains native Ranger.
+
 Standalone installation has four separate readiness dimensions. They must not
 be collapsed into a single green `strategist check` result.
 
@@ -112,3 +118,53 @@ it without OpenSpec, Node, `npm`, or anything on `PATH`.
   `strategist check` with an empty `PATH` and no OpenSpec on the machine. The
   Windows binary was also exercised under Wine earlier as supporting evidence.
   Not yet covered: macOS, and Windows on arm64 (both compile only).
+
+## Known limitations and diagnostics
+
+These describe the behavior of the current release. Each item names how to
+recognise it; the hardening package
+`20260920-standalone-runtime-hardening-sweep` tracks the fixes.
+
+- **Silent install does not materialize the runtime.** `strategist install`
+  without `--wizard` binds the refinement provider in `custom` mode. Even with an
+  embedded payload it creates no `.strategist/weapon-runtime/`, and
+  `strategist check` can still report `ready` on a machine with no `openspec`.
+  Use `strategist install --wizard` and keep the pre-selected Ranked option for
+  the refinement slot. Diagnostic: `.strategist/weapon-runtime/openspec-propose/`
+  and `ranked-runtimes.yaml` exist only after a Ranked install.
+- **`strategist upgrade` does not repair a stale ranked runtime.** After the
+  binary changes a provider's certification digest (for example when the pinned
+  runtime versions change), `strategist check` reports
+  `ranked_runtime_digest_mismatch` and `strategist upgrade` still ends with
+  "Upgrade complete". The only known repair is to rerun
+  `strategist install --wizard`. Diagnostic: the message lists `expected=` and
+  `observed=` digests and no remedy.
+- **Ranked reason codes without a catalog entry.** Only
+  `ranked_runtime_executable_missing`, `ranked_runtime_pin_mismatch` and
+  `ranked_runtime_version_skew` have entries in `machine/errors.yaml`. The
+  others (`binding_missing`, `state_missing`, `state_invalid`, `root_missing`,
+  `root_mismatch`, `healthcheck_failed`, `contract_invalid`) surface only their
+  raw detail text.
+- **Windows binary name.** A cross-build of `go build -o bin/strategist` for
+  Windows produced a file without `.exe`; `make build`, `make install` and
+  `make build-standalone` use that name. It runs from Git Bash but is not
+  resolved by `cmd` or PowerShell. Use a release binary
+  (`strategist-windows-*.exe`) or rename the file to `strategist.exe`. Whether
+  a native Windows build behaves the same has not been confirmed.
+- **Healthcheck time limit.** Ranked healthchecks give the runtime 10 seconds.
+  The Node cold path measured about 0.8 seconds on Linux; the first launch of a
+  freshly extracted `node.exe` on Windows is unmeasured. A timeout appears as
+  `ranked_runtime_healthcheck_failed`, indistinguishable from a failing command.
+  Every `strategist check` starts the runtime once.
+- **Reading a binary.** `strategist version --build` prints the commit,
+  platform and whether the runtime payload is embedded. `runtime payload: none`
+  on a client means the binary was built without `make install` /
+  `make build-standalone`.
+- **Development environment.** `golangci-lint` must be built with a Go at least
+  as new as `go.mod` (the pre-commit hook otherwise stops with a Go-version
+  error), and the local Go may be older than the `go.mod` patch level (the
+  repository then switches toolchain automatically, so check `go version`
+  inside the repository). Running `make` or `go` with a temporary `HOME` leaves
+  a read-only module cache that `rm -rf` cannot delete and can exhaust a small
+  `/tmp`. Any Go change alters the catalog `host_api_digest`; run
+  `strategist plugins prepare-embedded` before committing.

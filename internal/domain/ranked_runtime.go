@@ -40,9 +40,9 @@ const ReasonRankedRuntimeExecutableMissing = "ranked_runtime_executable_missing"
 // resolves the executable from PATH, so the remedies are a payload build or
 // providing it there.
 func RankedRuntimeExecutableMissingMessage(provider, executable string) string {
-	return fmt.Sprintf("reason=ranked_runtime_executable_missing: Ranked provider %q needs the %q executable at the version pinned by its contract, but it was not found on PATH "+
-		"and this strategist binary was built without the embedded runtime (`strategist version --build` shows \"runtime payload: none\"). "+
-		"Use a release binary, or build from source with `make build-standalone` (`make install` does this); "+
+	return fmt.Sprintf("Ranked provider %q needs the %q executable at the version pinned by its contract, but it was not found on PATH and no private runtime is installed. "+
+		"If `strategist version --build` shows an embedded runtime payload, run `strategist install --wizard` (keep the Ranked option) to materialize it. "+
+		"Otherwise this strategist binary was built without the embedded runtime (`runtime payload: none`): use a release binary, or build from source with `make build-standalone` (`make install` does this); "+
 		"alternatively install the pinned CLI so it is on PATH, then rerun. "+
 		"See docs/runbooks/standalone-runtime-hermeticity.md",
 		provider, executable)

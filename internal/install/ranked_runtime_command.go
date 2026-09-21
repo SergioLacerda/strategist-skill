@@ -35,7 +35,7 @@ var runRankedRuntimeCommand = func(ctx context.Context, dir string, name string,
 func rankedRuntimeBootstrapError(providerID string, err error) error {
 	var missing *runtimeenv.ExecutableNotFoundError
 	if errors.As(err, &missing) {
-		return fmt.Errorf("ranked runtime provider %q: %s: %w", providerID, domain.RankedRuntimeExecutableMissingMessage(providerID, missing.Name), err)
+		return fmt.Errorf("ranked runtime provider %q: reason=%s: %s: %w", providerID, domain.ReasonRankedRuntimeExecutableMissing, domain.RankedRuntimeExecutableMissingMessage(providerID, missing.Name), err)
 	}
 	return fmt.Errorf("ranked runtime provider %q: %w", providerID, err)
 }

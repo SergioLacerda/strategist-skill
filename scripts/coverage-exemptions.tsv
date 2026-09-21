@@ -6,7 +6,9 @@ internal/conformance	quality-maintainers	baseline coverage policy is pending a d
 internal/hardening	quality-maintainers	baseline coverage policy is pending a dedicated hardening test budget
 internal/mission	quality-maintainers	baseline coverage policy is pending a dedicated mission test budget
 internal/plugins/governance	quality-maintainers	baseline coverage policy is pending a dedicated governance plugin test budget
+internal/provider	quality-maintainers	local provider onboarding slice has focused contract/transaction tests (84.7%); dedicated error-matrix coverage budget remains outside this implementation slice
 internal/refinement	quality-maintainers	baseline coverage policy is pending a dedicated refinement test budget
 internal/rolevalidation	quality-maintainers	baseline coverage policy is pending a dedicated role validation test budget
 internal/runtimeenv	quality-maintainers	baseline coverage policy is pending a dedicated runtime environment test budget
 treasure-chest/domain	quality-maintainers	baseline coverage policy is pending a dedicated Treasure Chest domain test budget
+internal/runtimepayload/bundled	quality-maintainers	production code lives behind the strategist_payload build tag (no statements in an ordinary build); its per-target files are pinned by embed_targets_test.go

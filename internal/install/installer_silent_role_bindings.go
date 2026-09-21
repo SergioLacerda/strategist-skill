@@ -34,6 +34,10 @@ func (s Service) activateSilentRoleProviderBindings(strategistDir string, active
 	if err != nil {
 		return fmt.Errorf("activate role/provider migration: %w", err)
 	}
+	lockFile, err = promoteRuntimeProvidersToRanked(catalog, slots, lockFile)
+	if err != nil {
+		return fmt.Errorf("promote ranked runtime providers: %w", err)
+	}
 	if err := persistSilentBindings(strategistDir, lockFile); err != nil {
 		return err
 	}

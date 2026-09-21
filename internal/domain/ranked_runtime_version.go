@@ -9,6 +9,10 @@ import (
 // a host executable whose version differs from the provider contract's pin.
 const ReasonRankedRuntimeVersionSkew = "ranked_runtime_version_skew"
 
+// ReasonRankedRuntimeHealthcheckTimeout is the blocking reason code for a ranked
+// runtime that did not answer its healthcheck within the configured limit.
+const ReasonRankedRuntimeHealthcheckTimeout = "ranked_runtime_healthcheck_timeout"
+
 // ReasonRankedRuntimePinMismatch is the blocking reason code for a private
 // runtime whose component versions differ from the provider contract's pins: a
 // build defect, never accepted.

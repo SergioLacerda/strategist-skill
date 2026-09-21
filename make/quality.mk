@@ -21,7 +21,7 @@ lint-status:
 
 # lint is diagnostic-only: it must never rewrite source files.
 lint: fmt-check
-	GOCACHE=$(GOCACHE) GOLANGCI_LINT_CACHE=$(GOLANGCI_LINT_CACHE) GOTOOLCHAIN=$(PINNED_GOTOOLCHAIN) $(GOLANGCI_LINT) run ./...
+	GOCACHE="$(GOCACHE)" GOLANGCI_LINT_CACHE="$(GOLANGCI_LINT_CACHE)" GOTOOLCHAIN=$(PINNED_GOTOOLCHAIN) "$(GOLANGCI_LINT)" run ./...
 	@$(MAKE) complexity-report
 	@$(MAKE) go-file-size-report
 
@@ -30,7 +30,7 @@ lint: fmt-check
 # still fail here when they cannot be fixed automatically.
 lint-fix:
 	git ls-files -co --exclude-standard -z '*.go' | xargs -0r gofmt -w
-	GOCACHE=$(GOCACHE) GOLANGCI_LINT_CACHE=$(GOLANGCI_LINT_CACHE) GOTOOLCHAIN=$(PINNED_GOTOOLCHAIN) $(GOLANGCI_LINT) run --fix ./...
+	GOCACHE="$(GOCACHE)" GOLANGCI_LINT_CACHE="$(GOLANGCI_LINT_CACHE)" GOTOOLCHAIN=$(PINNED_GOTOOLCHAIN) "$(GOLANGCI_LINT)" run --fix ./...
 	@$(MAKE) fmt-check
 	@$(MAKE) complexity-report
 	@$(MAKE) go-file-size-report
@@ -45,7 +45,7 @@ go-file-size-report:
 	@bash scripts/go-file-size-report.sh
 
 install-gocognit:
-	@command -v $(GOCOGNIT) >/dev/null 2>&1 || GOCACHE=$(GOCACHE) go install github.com/uudashr/gocognit/cmd/gocognit@$(GOCOGNIT_VERSION)
+	@command -v "$(GOCOGNIT)" >/dev/null 2>&1 || GOCACHE="$(GOCACHE)" go install github.com/uudashr/gocognit/cmd/gocognit@$(GOCOGNIT_VERSION)
 
 quality-budget-gate: install-gocognit
 	bash scripts/check-quality-budgets.sh "$(QUALITY_BUDGETS)" "$(GOCOGNIT)" "$(COMPLEXITY_THRESHOLD)"
@@ -54,10 +54,10 @@ mutation-role-weapon:
 	bash scripts/mutation-role-weapon.sh
 
 install-govulncheck:
-	GOCACHE=$(GOCACHE) go install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION)
+	GOCACHE="$(GOCACHE)" go install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION)
 
 vuln:
-	GOTOOLCHAIN=$(PINNED_GOTOOLCHAIN) $(GOVULNCHECK) ./...
+	GOTOOLCHAIN=$(PINNED_GOTOOLCHAIN) "$(GOVULNCHECK)" ./...
 
 vuln-ci: install-govulncheck vuln
 
@@ -83,7 +83,7 @@ test-report:
 # cover-html writes an HTML coverage report without opening a browser.
 cover-html:
 	@mkdir -p $(COVERAGE_DIR)
-	GOCACHE=$(GOCACHE) go test -race -coverprofile=$(COVERAGE_PROFILE) -coverpkg=./internal/... ./internal/... ./tests/integration/...
+	GOCACHE="$(GOCACHE)" go test -race -coverprofile=$(COVERAGE_PROFILE) -coverpkg=./internal/... ./internal/... ./tests/integration/...
 	go tool cover -html=$(COVERAGE_PROFILE) -o $(COVERAGE_HTML)
 	@echo "report written to $(COVERAGE_HTML)"
 

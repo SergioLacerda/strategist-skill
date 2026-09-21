@@ -25,6 +25,7 @@ var humanStatusCommands = map[string]bool{
 	"treasure-chest": true,
 	"metrics":        true,
 	"handoff":        true,
+	"provider":       true,
 	"version":        true,
 }
 

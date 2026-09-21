@@ -106,9 +106,9 @@ func BoolFlag(cmd *cobra.Command, name string, fallback bool) bool {
 // ".strategist" when empty) and resolves its base_path to an absolute-or-
 // root-relative path. Returns the resolved strategistRoot and basePath.
 func ResolveActiveBasePath(root string) (strategistRoot, basePath string, err error) {
-	strategistRoot = root
-	if strategistRoot == "" {
-		strategistRoot = ".strategist"
+	strategistRoot, err = resolveActiveRoot(root)
+	if err != nil {
+		return "", "", err
 	}
 
 	activeYamlPath, err := runtimefs.SafeJoin(strategistRoot, "active.yaml")
@@ -131,6 +131,48 @@ func ResolveActiveBasePath(root string) (strategistRoot, basePath string, err er
 		basePath = filepath.Join(filepath.Dir(strategistRoot), basePath)
 	}
 	return strategistRoot, basePath, nil
+}
+
+// resolveActiveRoot anchors a relative .strategist root to the discovered
+// workspace instead of blindly appending it to the current directory. This is
+// important when commands run from an internal runtime such as
+// .strategist/openspec: --root .strategist must resolve to the ancestor
+// workspace root, never to .strategist/openspec/.strategist.
+func resolveActiveRoot(root string) (string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("resolve strategist root: %w", err)
+	}
+	switch {
+	case root == "":
+		return discoverRootOrDefault(cwd), nil
+	case filepath.IsAbs(root):
+		return filepath.Clean(root), nil
+	}
+	return resolveRelativeRoot(cwd, root)
+}
+
+// discoverRootOrDefault finds the enclosing .strategist, falling back to the
+// conventional relative name when there is none.
+func discoverRootOrDefault(cwd string) string {
+	strategistRoot, _, err := FindStrategistRoot(cwd)
+	if err != nil {
+		return ".strategist"
+	}
+	return strategistRoot
+}
+
+// resolveRelativeRoot anchors a relative .strategist to the discovered
+// workspace, and any other relative path to the current directory.
+func resolveRelativeRoot(cwd, root string) (string, error) {
+	if discovered, _, findErr := FindStrategistRoot(cwd); findErr == nil && filepath.Base(filepath.Clean(root)) == strategistDirName {
+		return discovered, nil
+	}
+	abs, err := filepath.Abs(root)
+	if err != nil {
+		return "", fmt.Errorf("resolve strategist root: %w", err)
+	}
+	return abs, nil
 }
 
 // TelemetryRunFromCmd extracts the MissionRun from the command context, if any.

@@ -105,5 +105,8 @@ func TestVerifyManifest_RejectsEscapingEntry(t *testing.T) {
 	testutil.WriteGzJSON(t, filepath.Join(compiledDir, ".manifest.gz"), map[string]any{"artifacts": map[string]string{"../outside.gz": "sha256:abc"}})
 	_, err := compile.VerifyManifest(compiledDir)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "escapes compiled runtime")
+	// The entry is rejected either by the containment check or, on Windows where
+	// filepath.Clean treats the path differently, by the clean-relative-path
+	// check that runs first. Both are rejections of the same escape.
+	assert.Regexp(t, `escapes compiled runtime|is not a clean relative path`, err.Error())
 }

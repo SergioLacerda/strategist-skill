@@ -22,6 +22,7 @@ one maintained reference.
 | Understand the architecture and internals | [`architecture/overview.md`](architecture/overview.md) and [`architecture/skill-internals.md`](architecture/skill-internals.md) |
 | See where governance sources live | [`architecture/governance-hierarchy.md`](architecture/governance-hierarchy.md) |
 | Configure or operate the skill | [`configuration.md`](configuration.md) and [`cli-reference.md`](cli-reference.md) |
+| Extend the provider lifecycle | [`provider-extension.md`](provider-extension.md) |
 | Review design decisions and taxonomy | [`adr/`](adr/) and [ADR-0034](adr/0034-role-and-skill-taxonomy.md) |
 | Understand runbooks, scripts, and `make` targets | [`makefile-scripts.md`](makefile-scripts.md) and [`runbooks/`](runbooks/) |
 | Understand testing, coverage, and performance | [`test-styles.md`](test-styles.md), [`test-coverage-gaps.md`](test-coverage-gaps.md), [`integration-coverage-gaps.md`](integration-coverage-gaps.md), and [`performance-baseline.md`](performance-baseline.md) |

@@ -10,10 +10,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"path"
 	"path/filepath"
-	"slices"
-	"strings"
 )
 
 func unsafeArchive(err error) error { return fmt.Errorf("%w: %v", ErrUnsafeArchive, err) }
@@ -143,33 +140,4 @@ func copyToFile(target string, perm fs.FileMode, r io.Reader, b *budget) error {
 		return fmt.Errorf("close %s: %w", target, closeErr)
 	}
 	return nil
-}
-
-// entryPath validates an archive entry name, applies strip, and returns the
-// relative slash path to write; ok is false when the entry is fully stripped.
-func entryPath(name string, strip int) (rel string, ok bool, err error) {
-	parts, err := entryParts(name)
-	if err != nil {
-		return "", false, err
-	}
-	if len(parts) <= strip {
-		return "", false, nil
-	}
-	rel = path.Clean(strings.Join(parts[strip:], "/"))
-	if rel == "." || strings.HasPrefix(rel, "../") {
-		return "", false, fmt.Errorf("%w: %q", ErrUnsafeArchive, name)
-	}
-	return rel, true, nil
-}
-
-// entryParts rejects absolute, drive/backslash and parent-traversal names.
-func entryParts(name string) ([]string, error) {
-	if name == "" || strings.HasPrefix(name, "/") || strings.Contains(name, `\`) || strings.Contains(name, ":") {
-		return nil, fmt.Errorf("%w: %q", ErrUnsafeArchive, name)
-	}
-	parts := strings.Split(strings.TrimSuffix(name, "/"), "/")
-	if slices.Contains(parts, "..") {
-		return nil, fmt.Errorf("%w: %q", ErrUnsafeArchive, name)
-	}
-	return parts, nil
 }

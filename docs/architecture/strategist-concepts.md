@@ -314,7 +314,7 @@ Each weapon is a skill with its own `skill.yaml` resolved in preflight by the St
 | refinement | `write_analysis` |
 | execution | `controlled` |
 
-To swap a weapon, change the slot value in `active.yaml` and ensure the new provider's `skill.yaml` exists at `.strategist/skills/<provider>/skill.yaml`.
+To swap a weapon, validate and onboard its local package with `strategist provider validate <source>` and `strategist provider add <source> --slot <slot>`. The package and adapter contracts plus `plugins.lock` own identity, compatibility, and binding; `.strategist/skills/<provider>/skill.yaml` is only a compatibility view. External discovery providers cannot replace native Ranger.
 
 ---
 

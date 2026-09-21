@@ -2,6 +2,7 @@ package runtimeenv
 
 import (
 	"context"
+	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -22,6 +23,7 @@ func TestForRootDoesNotInheritHostConfiguration(t *testing.T) {
 }
 
 func TestCommandUsesRestrictedEnvironment(t *testing.T) {
+	testutil.RequirePOSIXShell(t)
 	t.Setenv("OPEN_SPEC_CONFIG", "/outside/config.yaml")
 	cmd, err := Command(context.Background(), t.TempDir(), "sh", "-c", "test -z \"$OPEN_SPEC_CONFIG\" && test -n \"$PATH\"")
 	require.NoError(t, err)
@@ -126,6 +128,7 @@ func evalSymlinks(t *testing.T, path string) string {
 }
 
 func TestCommandUsesSameAbsoluteRootForDirAndEnv(t *testing.T) {
+	testutil.RequirePOSIXShell(t)
 	chdirTemp(t)
 	cmd, err := Command(context.Background(), "rt", "sh", "-c", "true")
 	require.NoError(t, err)

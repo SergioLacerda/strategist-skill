@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/runtimeenv"
@@ -128,7 +127,7 @@ func matchRankedRuntimeState(state rankedRuntimeStateCheck, slot, provider, expe
 			continue
 		}
 		if entry.ContractDigest != expectedDigest {
-			return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: "ranked_runtime_digest_mismatch", Detail: fmt.Sprintf("provider=%s expected=%s observed=%s", provider, expectedDigest, entry.ContractDigest)}
+			return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: "ranked_runtime_digest_mismatch", Detail: fmt.Sprintf("provider=%s expected=%s observed=%s remedy=run `strategist upgrade` (or `strategist install --wizard`) to re-record the runtime for this binary", provider, expectedDigest, entry.ContractDigest)}
 		}
 		return domain.ReadinessCheck{Status: domain.ReadinessReady}
 	}
@@ -148,7 +147,7 @@ func validateRankedRuntimeRoot(runtimeRoot, provider string) domain.ReadinessChe
 }
 
 func runRankedRuntimeHealthcheck(runtimeRoot, provider string) domain.ReadinessCheck {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), rankedHealthcheckTimeout())
 	defer cancel()
 	cmd, err := runtimeenv.Command(ctx, runtimeRoot, "openspec", "context", "--json")
 	if err != nil {
@@ -158,12 +157,15 @@ func runRankedRuntimeHealthcheck(runtimeRoot, provider string) domain.ReadinessC
 		}
 		return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: "ranked_runtime_healthcheck_failed", Detail: fmt.Sprintf("provider=%s root=%s error=%v", provider, runtimeRoot, err)}
 	}
-	return finishRankedRuntimeHealthcheck(cmd, runtimeRoot, provider)
+	return finishRankedRuntimeHealthcheck(ctx, cmd, runtimeRoot, provider)
 }
 
-func finishRankedRuntimeHealthcheck(cmd *exec.Cmd, runtimeRoot, provider string) domain.ReadinessCheck {
+func finishRankedRuntimeHealthcheck(ctx context.Context, cmd *exec.Cmd, runtimeRoot, provider string) domain.ReadinessCheck {
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: domain.ReasonRankedRuntimeHealthcheckTimeout, Detail: fmt.Sprintf("provider=%s root=%s the runtime did not answer within %s; raise the limit with %s (for example %s=60s) and rerun", provider, runtimeRoot, rankedHealthcheckTimeout(), rankedHealthcheckTimeoutEnv, rankedHealthcheckTimeoutEnv)}
+		}
 		return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: "ranked_runtime_healthcheck_failed", Detail: fmt.Sprintf("provider=%s root=%s error=%v output=%s", provider, runtimeRoot, err, strings.TrimSpace(string(output)))}
 	}
 	if err := domain.ValidateOpenSpecHealthcheck(output, runtimeRoot); err != nil {
@@ -180,7 +182,7 @@ func runPrivateRankedRuntimeHealthcheck(root, runtimeRoot, provider string, priv
 	if !ok {
 		return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: "ranked_runtime_state_invalid", Detail: fmt.Sprintf("provider=%s private runtime paths must be relative and under weapon-runtime/", provider)}
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), rankedHealthcheckTimeout())
 	defer cancel()
 	cmd, err := runtimeenv.PrivateCommand(ctx, runtimeRoot, node, script, "context", "--json")
 	if err != nil {
@@ -190,5 +192,5 @@ func runPrivateRankedRuntimeHealthcheck(root, runtimeRoot, provider string, priv
 		}
 		return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: "ranked_runtime_healthcheck_failed", Detail: fmt.Sprintf("provider=%s root=%s error=%v", provider, runtimeRoot, err)}
 	}
-	return finishRankedRuntimeHealthcheck(cmd, runtimeRoot, provider)
+	return finishRankedRuntimeHealthcheck(ctx, cmd, runtimeRoot, provider)
 }

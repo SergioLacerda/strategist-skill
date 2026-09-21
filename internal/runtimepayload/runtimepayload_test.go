@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"testing/fstest"
 
@@ -96,7 +97,9 @@ func TestMaterializeExtractsVerifiedRuntimeForTarget(t *testing.T) {
 
 	node, err := os.Stat(filepath.Join(dest, "node", "bin", "node"))
 	require.NoError(t, err)
-	require.NotZero(t, node.Mode()&0o111, "executable bit must be preserved")
+	if runtime.GOOS != "windows" { // Windows file modes carry no execute bit
+		require.NotZero(t, node.Mode()&0o111, "executable bit must be preserved")
+	}
 	require.FileExists(t, filepath.Join(dest, "openspec", "node_modules", "@fission-ai", "openspec", "bin", "openspec.js"))
 	require.Len(t, ev.Components, 2)
 	require.Equal(t, "22.23.2", ev.Components[0].Version)
@@ -261,4 +264,32 @@ func TestMaterializeRejectsTamperedDirectoryComponent(t *testing.T) {
 	missing := fstest.MapFS{}
 	_, err = Materialize(missing, m, "linux", "amd64", dest)
 	require.ErrorIs(t, err, ErrPayloadMissing)
+}
+
+func TestEntryPathRejectsWindowsHostileNames(t *testing.T) {
+	for _, name := range []string{
+		"CON", "con", "nul.txt", "AUX", "prn.log", "COM1", "com9.exe", "LPT1", "lpt9.txt",
+		"dir/CON", "dir/aux.md", "a.", "a ", "dir/b.", "dir/c ", "x/nul",
+	} {
+		_, _, err := entryPath(name, 0)
+		require.ErrorIs(t, err, ErrUnsafeArchive, name)
+	}
+	for _, name := range []string{"node.exe", "LICENSE", "bin/node", "console.js", "auxiliary/x", "comet", "lpt10", "dir/.hidden", "a.b"} {
+		rel, ok, err := entryPath(name, 0)
+		require.NoError(t, err, name)
+		require.True(t, ok, name)
+		require.Equal(t, name, rel)
+	}
+}
+
+func TestMaterializeRejectsReservedNameEntries(t *testing.T) {
+	archive := tarGz(t, entry{name: "bin/NUL", body: "x", mode: 0o644})
+	m := Manifest{SchemaVersion: SchemaVersion, Provider: "p", Launcher: Launcher{Node: map[string]string{"default": "n"}, Script: "s"},
+		Components: []Component{{Name: "node", Version: "1", OS: AnyTarget, Arch: AnyTarget, File: "a.tar.gz", Format: FormatTarGz, SHA256: digest(archive), Size: int64(len(archive)), Dest: "node"}}}
+	dest := filepath.Join(t.TempDir(), "rt")
+
+	_, err := Materialize(fstest.MapFS{"a.tar.gz": {Data: archive}}, m, "linux", "amd64", dest)
+
+	require.ErrorIs(t, err, ErrUnsafeArchive)
+	require.NoDirExists(t, dest)
 }

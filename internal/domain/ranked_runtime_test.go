@@ -124,7 +124,6 @@ func TestOpenSpecRuntimeRootSeparatorForms(t *testing.T) {
 func TestRankedRuntimeExecutableMissingMessageIsActionable(t *testing.T) {
 	msg := RankedRuntimeExecutableMissingMessage("openspec-propose", "openspec")
 
-	require.Contains(t, msg, ReasonRankedRuntimeExecutableMissing)
 	require.Contains(t, msg, `"openspec-propose"`)
 	require.Contains(t, msg, `"openspec"`)
 	require.Contains(t, msg, "PATH")

@@ -2,7 +2,7 @@
 	install release-verify release-check install-goreleaser \
 	check-release-artifacts check-release-assets release-reproducible-check \
 	release-test release-dry-run release snapshot clean compile-skill \
-	embed-skills embed-skills-check build-standalone standalone-smoke install-lite
+	embed-skills embed-skills-check build-standalone standalone-smoke install-lite doctor install-hooks
 
 # install puts a STANDALONE binary in ~/.local/bin: it embeds the private runtime
 # of the Ranked provider (openspec-propose), so `strategist install --wizard`
@@ -10,16 +10,16 @@
 # digest on the first run (needs network and python; cached afterwards).
 # Use install-lite for a binary without the runtime (resolves openspec from PATH).
 install: build-standalone
-	mkdir -p "$$HOME/.local/bin" && install -m 755 bin/strategist "$$HOME/.local/bin/strategist"
+	mkdir -p "$$HOME/.local/bin" && install -m 755 "$(STRATEGIST_BIN)" "$$HOME/.local/bin/strategist$(EXE)"
 	@# Prove the binary now on disk is the standalone one; a stale copy (or another
 	@# strategist earlier on PATH) would otherwise fail later with a misleading error.
-	@"$$HOME/.local/bin/strategist" version --build | grep -q "runtime payload: embedded" || { echo "[Strategist] ERROR: the installed binary has no embedded runtime; check 'command -v strategist' and 'strategist version --build'" >&2; exit 1; }
-	@"$$HOME/.local/bin/strategist" version --build
-	@command -v strategist >/dev/null 2>&1 && [ "$$(command -v strategist)" != "$$HOME/.local/bin/strategist" ] && echo "[Strategist] WARNING: 'strategist' on PATH is $$(command -v strategist), not $$HOME/.local/bin/strategist" >&2 || true
+	@"$$HOME/.local/bin/strategist$(EXE)" version --build | grep -q "runtime payload: embedded" || { echo "[Strategist] ERROR: the installed binary has no embedded runtime; check 'command -v strategist' and 'strategist version --build'" >&2; exit 1; }
+	@"$$HOME/.local/bin/strategist$(EXE)" version --build
+	@command -v strategist >/dev/null 2>&1 && [ "$$(command -v strategist)" != "$$HOME/.local/bin/strategist$(EXE)" ] && echo "[Strategist] WARNING: 'strategist' on PATH is $$(command -v strategist), not $$HOME/.local/bin/strategist$(EXE)" >&2 || true
 	@echo "[Strategist] standalone binary installed. Run: strategist install --wizard"
 
 install-lite: build
-	mkdir -p "$$HOME/.local/bin" && install -m 755 bin/strategist "$$HOME/.local/bin/strategist"
+	mkdir -p "$$HOME/.local/bin" && install -m 755 "$(STRATEGIST_BIN)" "$$HOME/.local/bin/strategist$(EXE)"
 	@echo "[Strategist] binary installed WITHOUT the embedded runtime (needs openspec on PATH for the Ranked provider)."
 
 # The sync-embed target was removed in W7a (Option B): internal/embed/defaults/ is now
@@ -31,22 +31,22 @@ install-lite: build
 # Run after adding/editing anything under external-skills-source/, then
 # commit the regenerated catalog.yaml, skill.yaml mirrors, and lock file.
 embed-skills: build
-	./bin/strategist plugins prepare-embedded
+	"./$(STRATEGIST_BIN)" plugins prepare-embedded
 
 # embed-skills-check fails non-zero on drift instead of writing — the CI gate
 # that catches an external-skills-source/ change that was never followed by
 # `make embed-skills`.
 embed-skills-check: build
-	./bin/strategist plugins prepare-embedded --check
+	"./$(STRATEGIST_BIN)" plugins prepare-embedded --check
 
 release-verify: ci-lint ci-test docs-governance-gate validate-fixtures vuln-ci release-reproducible-check embed-skills-check
 
 # release-check validates the GoReleaser config before a tag-triggered release.
 release-check:
-	$(GORELEASER) check
+	"$(GORELEASER)" check
 
 install-goreleaser:
-	GOCACHE=$(GOCACHE) go install github.com/goreleaser/goreleaser/v2@$(GORELEASER_VERSION)
+	GOCACHE="$(GOCACHE)" go install github.com/goreleaser/goreleaser/v2@$(GORELEASER_VERSION)
 
 check-release-artifacts:
 	bash scripts/check-release-artifacts.sh
@@ -66,11 +66,11 @@ release-dry-run: install-goreleaser release-test
 
 # release publishes to GitHub — requires GITHUB_TOKEN.
 release:
-	$(GORELEASER) release --clean
+	"$(GORELEASER)" release --clean
 
 # snapshot builds release artifacts locally without publishing (no token needed).
 snapshot:
-	$(GORELEASER) release --snapshot --clean --skip=publish
+	"$(GORELEASER)" release --snapshot --clean --skip=publish
 
 clean:
 	rm -rf bin/ dist/ coverage/ coverage.out coverage.html cover.out coverage_cmd.out
@@ -88,9 +88,23 @@ PYTHON ?= $(shell command -v python3 2>/dev/null || command -v python 2>/dev/nul
 build-standalone:
 	@test -n "$(PYTHON)" || { echo "python3 (or python) is required to fetch the pinned Node; use 'make install-lite' to skip the embedded runtime" >&2; exit 1; }
 	"$(PYTHON)" scripts/fetch-node-runtime.py --host
-	GOCACHE=$(GOCACHE) CGO_ENABLED=0 go build -tags strategist_payload -trimpath -ldflags="-s -w -X main.Version=$$(git describe --tags --dirty --always 2>/dev/null || echo dev)" -o bin/strategist ./cmd/strategist
+	GOCACHE="$(GOCACHE)" CGO_ENABLED=0 go build -tags strategist_payload -trimpath -ldflags="-s -w -X main.Version=$$(git describe --tags --dirty --always 2>/dev/null || echo dev)" -o "$(STRATEGIST_BIN)" ./cmd/strategist
 
 # standalone-smoke proves a payload build installs and passes check with an
 # empty PATH (no host openspec or node).
 standalone-smoke:
 	./scripts/smoke-standalone-install.sh
+
+# doctor checks the developer environment (Go and golangci-lint versions against
+# go.mod and the CI pin, python, a stale strategist on PATH, temp space, the
+# pre-commit hook) and names the remedy for each fault.
+doctor:
+	@bash scripts/doctor.sh
+
+# install-hooks copies the tracked pre-commit hook into .git/hooks (git does not
+# version that directory). An existing different hook is kept as pre-commit.bak.
+install-hooks:
+	@test -d .git || { echo "not a git checkout (.git missing)" >&2; exit 1; }
+	@if [ -f .git/hooks/pre-commit ] && ! cmp -s scripts/hooks/pre-commit .git/hooks/pre-commit; then cp -f .git/hooks/pre-commit .git/hooks/pre-commit.bak && echo "[Strategist] previous hook saved as .git/hooks/pre-commit.bak"; fi
+	@cp -f scripts/hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+	@echo "[Strategist] pre-commit hook installed from scripts/hooks/pre-commit"

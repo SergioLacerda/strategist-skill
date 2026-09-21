@@ -59,4 +59,4 @@ web/landing/coverage/
 
 # Build-time runtime payload (see scripts/fetch-node-runtime.py)
 .cache/
-internal/runtimepayload/nodepayload/
+internal/runtimepayload/bundled/nodepayload/

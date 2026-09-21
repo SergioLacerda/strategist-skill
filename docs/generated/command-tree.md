@@ -50,6 +50,9 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `authorize` — Compose authorization evidence for a governed target
   - `evaluate-write` — Report whether a write to --target is enforceably allowed under the active connector
   - `prepare-embedded` — Ingest external-skills-source/ into the embedded plugin catalog
+- `provider` — Validate and onboard local Strategist providers
+  - `add` — Stage and bind a validated local provider
+  - `validate` — Validate a local provider package without changing workspace state
 - `runbook` — Operate on the typed docs/runbooks/*.runbook.yaml corpus
   - `select` — Select applicable runbooks for the given mission signals
 - `sync-governance` — Sync .strategist/skill.yaml with active SDD governance mandates

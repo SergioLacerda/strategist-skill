@@ -85,6 +85,32 @@ strategist plugins authorize \
 
 ---
 
+## provider
+
+Validates and onboards an already-materialized local provider package. The
+source contains the existing `package.yaml` and `adapter.yaml` contracts; an
+optional `skill.yaml` is checked only as a compatibility view.
+
+```bash
+strategist provider validate <source> [--format table|json|yaml]
+strategist provider add <source> --slot refinement|execution [--root <dir>] [--format table|json|yaml]
+```
+
+`validate` is read-only and reports static readiness separately from
+`live_invocation`; static success leaves live invocation `unknown` until an
+authorized runtime probe succeeds. Version 1 accepts local directories only
+and rejects URLs or git references. `add` stages the source, advances the
+existing lock/binding generation, compiles the workspace, and records a
+recoverable transaction. Failed onboarding restores the previous binding.
+
+External providers cannot be added to `discovery`: native Ranger owns that
+route and the command fails closed with `native_role_authority`.
+
+See [Provider extension guide](provider-extension.md) for the source contract,
+upgrade, rollback, and evidence boundaries.
+
+---
+
 ## install
 
 Installs the Strategist skill in a target repository.

@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/stretchr/testify/require"
@@ -308,4 +309,101 @@ func TestHostVersionSkewCheckStaysReadyButReportsSkew(t *testing.T) {
 	require.NoError(t, os.WriteFile(script, []byte("#!/bin/sh\nprintf '1.13.0\\n'\n"), 0o755))
 	require.Nil(t, hostVersionSkewCheck(runtimeRoot, "openspec-propose", "1.13.0"))
 	require.Nil(t, hostVersionSkewCheck(runtimeRoot, "openspec-propose", ""), "no pin, no comparison")
+}
+
+func TestMatchRankedRuntimeStateDigestMismatchNamesTheRemedy(t *testing.T) {
+	state := rankedRuntimeStateCheck{Entries: []rankedRuntimeStateEntryCheck{{Slot: "refinement", Provider: "openspec-propose", ContractDigest: "sha256:old"}}}
+
+	got := matchRankedRuntimeState(state, "refinement", "openspec-propose", "sha256:new", ".strategist/openspec")
+
+	require.Equal(t, "ranked_runtime_digest_mismatch", got.ReasonCode)
+	require.Contains(t, got.Detail, "strategist upgrade")
+	require.Contains(t, got.Detail, "sha256:old")
+	require.Contains(t, got.Detail, "sha256:new")
+}
+
+func writeRuntimeCatalog(t *testing.T, root string, withRuntime bool) {
+	t.Helper()
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "plugins"), 0o755))
+	runtimeBlock := ""
+	if withRuntime {
+		runtimeBlock = "    runtime:\n      kind: openspec_root\n      root: .strategist/openspec\n      bootstrap: openspec init --profile core\n      healthcheck: openspec context --json\n"
+	}
+	body := "schema_version: strategist-plugin-catalog/v1\nproviders:\n  - id: provider\n    ranked: true\n    certification_digest: sha256:certified\n" + runtimeBlock
+	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins", "catalog.yaml"), []byte(body), 0o644))
+}
+
+// A provider that declares a runtime must not read as ready in custom mode when
+// there is no executable anywhere: that is the green-but-unusable workspace.
+func TestCustomRuntimeReadinessBlocksWhenNoExecutableAndNoPrivateRuntime(t *testing.T) {
+	root := t.TempDir()
+	writeRuntimeCatalog(t, root, true)
+	t.Setenv("PATH", t.TempDir())
+
+	got := customRuntimeReadiness(root, "refinement", "provider")
+
+	require.Equal(t, domain.ReadinessBlocked, got.Status)
+	require.Equal(t, domain.ReasonRankedRuntimeExecutableMissing, got.ReasonCode)
+	require.Contains(t, got.Detail, `"provider"`)
+	require.Contains(t, got.Detail, "strategist install --wizard")
+}
+
+func TestCustomRuntimeReadinessIsUnchangedWhenTheProviderNeedsNoRuntimeOrTheCatalogIsAbsent(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("PATH", t.TempDir())
+	require.Equal(t, domain.ReadinessUnknown, customRuntimeReadiness(root, "refinement", "provider").Status, "no catalog: nothing is known to be required")
+
+	writeRuntimeCatalog(t, root, false)
+	require.Equal(t, domain.ReadinessUnknown, customRuntimeReadiness(root, "refinement", "provider").Status)
+	require.Equal(t, domain.ReadinessUnknown, customRuntimeReadiness(root, "refinement", "someone-else").Status)
+}
+
+func TestCustomRuntimeReadinessAcceptsAHostExecutableOrARecordedPrivateRuntime(t *testing.T) {
+	testutil.RequirePOSIXShell(t)
+	root := t.TempDir()
+	writeRuntimeCatalog(t, root, true)
+
+	bin := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(bin, "openspec"), []byte("#!/bin/sh\nexit 0\n"), 0o755))
+	t.Setenv("PATH", bin)
+	require.Equal(t, domain.ReadinessReady, customRuntimeReadiness(root, "refinement", "provider").Status, "host executable")
+
+	t.Setenv("PATH", t.TempDir())
+	node := filepath.Join(root, "weapon-runtime", "provider", "node", "bin", "node")
+	require.NoError(t, os.MkdirAll(filepath.Dir(node), 0o755))
+	require.NoError(t, os.WriteFile(node, []byte("x"), 0o755))
+	state := `{"entries":[{"slot":"refinement","provider":"provider","runtime":{"node":"weapon-runtime/provider/node/bin/node","script":"weapon-runtime/provider/openspec/x.mjs"}}]}`
+	require.NoError(t, os.WriteFile(filepath.Join(root, "ranked-runtimes.yaml"), []byte(state), 0o644))
+	require.Equal(t, domain.ReadinessReady, customRuntimeReadiness(root, "refinement", "provider").Status, "recorded private runtime")
+}
+
+func TestRankedHealthcheckTimeoutIsConfigurableAndBounded(t *testing.T) {
+	t.Setenv(rankedHealthcheckTimeoutEnv, "")
+	require.Equal(t, defaultRankedHealthcheckTimeout, rankedHealthcheckTimeout())
+	require.GreaterOrEqual(t, defaultRankedHealthcheckTimeout.Seconds(), 30.0, "a cold first launch must not race the limit")
+
+	t.Setenv(rankedHealthcheckTimeoutEnv, "45s")
+	require.Equal(t, 45*time.Second, rankedHealthcheckTimeout())
+
+	for _, bad := range []string{"soon", "-5s", "0s", "24h"} {
+		t.Setenv(rankedHealthcheckTimeoutEnv, bad)
+		require.Equal(t, defaultRankedHealthcheckTimeout, rankedHealthcheckTimeout(), "invalid or out-of-range %q falls back", bad)
+	}
+}
+
+func TestRankedHealthcheckReportsATimeoutDistinctFromAFailure(t *testing.T) {
+	testutil.RequirePOSIXShell(t)
+	runtimeRoot := filepath.Join(t.TempDir(), "openspec")
+	require.NoError(t, os.MkdirAll(runtimeRoot, 0o755))
+	script := filepath.Join(t.TempDir(), "openspec")
+	require.NoError(t, os.WriteFile(script, []byte("#!/bin/sh\nsleep 5\n"), 0o755))
+	t.Setenv("PATH", filepath.Dir(script)+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv(rankedHealthcheckTimeoutEnv, "300ms")
+
+	got := runRankedRuntimeHealthcheck(runtimeRoot, "openspec-propose")
+
+	require.Equal(t, domain.ReadinessBlocked, got.Status)
+	require.Equal(t, domain.ReasonRankedRuntimeHealthcheckTimeout, got.ReasonCode)
+	require.Contains(t, got.Detail, "300ms")
+	require.Contains(t, got.Detail, rankedHealthcheckTimeoutEnv)
 }

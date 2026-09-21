@@ -50,3 +50,26 @@ func TestBuildEmbeddedFailsClosedOnVersionOrTargetSkew(t *testing.T) {
 	_, _, err = BuildEmbedded(defaults, fstest.MapFS{}, "linux-amd64")
 	require.ErrorIs(t, err, ErrPayloadMissing)
 }
+
+func TestRegisterEmbeddedRegistersOnlyAValidPayload(t *testing.T) {
+	t.Cleanup(func() { Register(Manifest{}, nil) })
+	Register(Manifest{}, nil)
+
+	err := RegisterEmbedded(embed.DefaultsFS(), fstest.MapFS{}, "linux-amd64")
+	require.ErrorIs(t, err, ErrPayloadMissing)
+	require.ErrorContains(t, err, "linux-amd64", "the message names the target so a broken release is diagnosable")
+	_, ok := Default()
+	require.False(t, ok, "a defective payload must never register")
+
+	require.NoError(t, RegisterEmbedded(embed.DefaultsFS(), nodeFSFor(t, "linux-amd64", "22.23.2"), "linux-amd64"))
+	got, ok := Default()
+	require.True(t, ok)
+	require.Equal(t, "openspec-propose", got.Manifest.Provider)
+}
+
+func TestInitFailureMessageNamesTheTargetAndTheCause(t *testing.T) {
+	msg := InitFailureMessage("windows-arm64", ErrDigestMismatch)
+	require.Contains(t, msg, "windows-arm64")
+	require.Contains(t, msg, ErrDigestMismatch.Error())
+	require.Contains(t, msg, "rebuild")
+}

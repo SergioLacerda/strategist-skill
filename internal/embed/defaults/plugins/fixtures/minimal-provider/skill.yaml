@@ -1,0 +1,6 @@
+id: fixture-provider
+canonical_role: archivist
+roles:
+  - archivist
+supported_slots:
+  - refinement

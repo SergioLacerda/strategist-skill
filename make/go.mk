@@ -20,31 +20,31 @@ fmt-check:
 	fi
 
 mod-tidy:
-	GOCACHE=$(GOCACHE) go mod tidy
+	GOCACHE="$(GOCACHE)" go mod tidy
 
 mod-check:
-	GOCACHE=$(GOCACHE) go mod tidy -diff
-	GOCACHE=$(GOCACHE) go mod verify
+	GOCACHE="$(GOCACHE)" go mod tidy -diff
+	GOCACHE="$(GOCACHE)" go mod verify
 
 vet:
-	GOCACHE=$(GOCACHE) go vet ./...
+	GOCACHE="$(GOCACHE)" go vet ./...
 
 build:
-	GOCACHE=$(GOCACHE) go build -ldflags="-s -w -X main.Version=$$(git describe --tags --dirty --always 2>/dev/null || echo dev)" -o bin/strategist ./cmd/strategist
+	GOCACHE="$(GOCACHE)" go build -ldflags="-s -w -X main.Version=$$(git describe --tags --dirty --always 2>/dev/null || echo dev)" -o "$(STRATEGIST_BIN)" ./cmd/strategist
 
 test:
-	GOCACHE=$(GOCACHE) go test -race ./...
+	GOCACHE="$(GOCACHE)" go test -race ./...
 
 test-all: test spec integration
 
 integration:
-	GOCACHE=$(GOCACHE) go test -race -tags=integration ./tests/integration/...
+	GOCACHE="$(GOCACHE)" go test -race -tags=integration ./tests/integration/...
 
 spec:
-	GOCACHE=$(GOCACHE) go test -race -tags=spec ./tests/spec/...
+	GOCACHE="$(GOCACHE)" go test -race -tags=spec ./tests/spec/...
 
 eval:
-	GOCACHE=$(GOCACHE) go test -race -tags=eval ./tests/evals/...
+	GOCACHE="$(GOCACHE)" go test -race -tags=eval ./tests/evals/...
 
 # golden runs the deterministic artifact snapshot suite. Wired into ci-test
 # (see the top-level Makefile) per docs/adr/0026-deterministic-golden-testing.md's
@@ -54,7 +54,7 @@ eval:
 # the `test` job's 15-minute timeout. Use `-run <pattern>` or `-update` (never in
 # CI — see tests/evals/golden/golden.go) for local iteration.
 golden:
-	GOCACHE=$(GOCACHE) go test -race -tags=golden ./tests/evals/golden/...
+	GOCACHE="$(GOCACHE)" go test -race -tags=golden ./tests/evals/golden/...
 
 # eval-promptfoo runs the Promptfoo-based artifact quality review config. Standalone and
 # manual — not wired into eval/test/test-all/ci-test/ci (see DEC-2 in
@@ -70,12 +70,12 @@ eval-promptfoo:
 	cd promptfoo && npx promptfoo eval
 
 validate-expanded:
-	GOCACHE=$(GOCACHE) go test ./internal/telemetry ./internal/embed
-	GOCACHE=$(GOCACHE) go test -tags=spec ./tests/spec/...
-	GOCACHE=$(GOCACHE) go test -tags=integration ./tests/integration/...
+	GOCACHE="$(GOCACHE)" go test ./internal/telemetry ./internal/embed
+	GOCACHE="$(GOCACHE)" go test -tags=spec ./tests/spec/...
+	GOCACHE="$(GOCACHE)" go test -tags=integration ./tests/integration/...
 
 validate-all:
-	GOCACHE=$(GOCACHE) go test ./cmd/strategist
+	GOCACHE="$(GOCACHE)" go test ./cmd/strategist
 	$(MAKE) validate-expanded
 
 # test-lite runs the isolated test slices that do not require downloading new modules.
@@ -83,18 +83,18 @@ test-lite: test-telemetry-lite test-compile-cache test-domain-architecture
 
 # test-telemetry-lite runs the telemetry subset that only depends on stdlib + local code.
 test-telemetry-lite:
-	GOCACHE=$(GOCACHE) go test -race internal/telemetry/schema.go internal/telemetry/policy_event.go internal/telemetry/mission_run.go internal/telemetry/mission_run_marks.go internal/telemetry/mission_metrics.go internal/telemetry/mission_token_usage.go internal/telemetry/jsonl.go internal/telemetry/policy_event_test.go internal/telemetry/mission_run_test.go internal/telemetry/mission_metrics_test.go
+	GOCACHE="$(GOCACHE)" go test -race internal/telemetry/schema.go internal/telemetry/policy_event.go internal/telemetry/mission_run.go internal/telemetry/mission_run_marks.go internal/telemetry/mission_metrics.go internal/telemetry/mission_token_usage.go internal/telemetry/jsonl.go internal/telemetry/policy_event_test.go internal/telemetry/mission_run_test.go internal/telemetry/mission_metrics_test.go
 
 # test-compile-cache runs the compile cache tests without the rest of the compile package suite.
 test-compile-cache:
-	GOCACHE=$(GOCACHE) go test -race internal/compile/cache.go internal/compile/cache_test.go
+	GOCACHE="$(GOCACHE)" go test -race internal/compile/cache.go internal/compile/cache_test.go
 
 # test-domain-architecture runs the dependency-isolation smoke test without the rest of the domain suite.
 test-domain-architecture:
-	GOCACHE=$(GOCACHE) go test -race internal/domain/architecture_test.go
+	GOCACHE="$(GOCACHE)" go test -race internal/domain/architecture_test.go
 
 bench:
-	GOCACHE=$(GOCACHE) go test -bench=. -benchmem ./...
+	GOCACHE="$(GOCACHE)" go test -bench=. -benchmem ./...
 
 validate-fixtures:
 	python3 -c "import yaml" || python3 -m pip install --user pyyaml

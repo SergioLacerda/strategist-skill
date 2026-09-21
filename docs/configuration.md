@@ -89,7 +89,9 @@ slots:
 
 The `mode` can be overridden per mission via `--mode=epic` without modifying this file.
 
-The `slots:` defines the explicit provider binding and is required. It is equivalent to declaring providers in `roles_config`, but takes precedence when both are present.
+The `slots:` defines the explicit provider binding and is required. It is equivalent to declaring providers in `roles_config`, but takes precedence when both are present. Local provider packages should be checked with `strategist provider validate <source>` and onboarded with `strategist provider add <source> --slot <slot>`; direct edits to generated provider mirrors or `plugins.lock` are not an onboarding path.
+
+The discovery slot remains owned by native Ranger. A catalog entry, `skill.yaml`, or static provider report does not authorize an external provider to replace that route. Attempts to onboard an external provider into `discovery` fail closed with `native_role_authority`.
 
 The `treasure_chests` field is optional. Each entry requires `id`, `path`, and `scope`. The `all` scope passes the chest to all slots; specific scopes (`discovery`, `refinement`, `execution`) restrict which slots receive the chest.
 
@@ -117,7 +119,7 @@ refinement: openspec-propose
 execution: sniper
 ```
 
-**Provider resolution:** the Strategist looks for `<provider_id>/skill.yaml` in the configured paths. If not found, stops with `slot_provider_not_found`.
+**Provider resolution:** the Strategist resolves the package/adapter contract and its persisted lock binding. The optional `<provider_id>/skill.yaml` file is a generated compatibility view, not the authority. If the selected provider is not materialized or its binding is absent, the pipeline stops with `slot_provider_not_found`.
 
 **risk_score validation:** each slot has a required risk_score. Mismatches stop the pipeline with `slot_risk_mismatch`.
 

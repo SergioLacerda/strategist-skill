@@ -1,6 +1,7 @@
 package install
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -26,17 +27,33 @@ func (s Service) ApplyUpgrade(strategistDir string, plan UpgradePlan, force bool
 		}
 	}
 
+	if err := s.finalizeUpgrade(strategistDir, plan, toWrite); err != nil {
+		return backupDir, err
+	}
+	return backupDir, nil
+}
+
+// finalizeUpgrade writes the selected files, saves the full-tree manifest and
+// reconciles ranked runtimes.
+func (s Service) finalizeUpgrade(strategistDir string, plan UpgradePlan, toWrite []string) error {
 	for _, p := range toWrite {
 		if err := s.writeUpgradeFile(strategistDir, p); err != nil {
-			return backupDir, err
+			return err
 		}
 	}
 
 	fullManifest := domain.NewFullInstallManifest(packageID(s.Version), plan.embeddedHashes)
 	if err := saveInstallManifest(strategistDir, fullManifest); err != nil {
-		return backupDir, fmt.Errorf("upgrade: save manifest: %w", err)
+		return fmt.Errorf("upgrade: save manifest: %w", err)
 	}
-	return backupDir, nil
+	// Ranked providers keep a runtime and a recorded digest that are derived
+	// from this binary, not from the embedded file tree above. Reconcile them so
+	// an upgrade leaves `strategist check` ready instead of blocked on a stale
+	// digest. A workspace with no ranked binding is untouched.
+	if err := prepareRankedProviderRuntimes(context.Background(), strategistDir); err != nil {
+		return fmt.Errorf("upgrade: reconcile ranked runtimes: %w", err)
+	}
+	return nil
 }
 
 func upgradeWriteSet(plan UpgradePlan, force bool) (toWrite, toBackup []string) {

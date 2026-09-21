@@ -2,7 +2,6 @@ package check
 
 import (
 	"context"
-	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/runtimeenv"
@@ -27,7 +26,7 @@ func hostVersionSkewCheck(runtimeRoot, provider, pin string) *domain.ReadinessCh
 	if pin == "" {
 		return nil
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), rankedHealthcheckTimeout())
 	defer cancel()
 	observed := ""
 	if cmd, err := runtimeenv.Command(ctx, runtimeRoot, "openspec", "--version"); err == nil {
