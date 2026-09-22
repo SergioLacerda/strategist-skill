@@ -32,7 +32,7 @@ per-workspace end-user command and does not touch .strategist/.
 Use --check in CI to fail non-zero on drift instead of writing.`,
 	}
 	cmd.Flags().StringVar(&opts.Source, "source", "external-skills-source", "directory of ORKA-shaped skill packages to ingest")
-	cmd.Flags().StringVar(&opts.DefaultsRoot, "defaults-root", filepath.Join("internal", "embed", "defaults"), "internal/embed/defaults root to generate catalog.yaml and skills/<id>/skill.yaml into")
+	cmd.Flags().StringVar(&opts.DefaultsRoot, "defaults-root", "internal/embed/defaults", "internal/embed/defaults root to generate catalog.yaml and skills/<id>/skill.yaml into")
 	cmd.Flags().StringVar(&opts.LockPath, "lock", install.EmbeddedSkillLockFileName, "path to the committed embedded-skill lock file")
 	cmd.Flags().BoolVar(&check, "check", false, "fail non-zero on drift instead of writing (for CI)")
 	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
