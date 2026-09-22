@@ -1,7 +1,9 @@
 package runtimepayload
 
 import (
+	"errors"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -350,5 +352,232 @@ func TestEntryPathStripAndTraversal(t *testing.T) {
 	require.ErrorIs(t, err, ErrUnsafeArchive)
 
 	_, _, err = entryPath("drive:path", 0)
+	require.ErrorIs(t, err, ErrUnsafeArchive)
+}
+
+type customErrCloser struct {
+	err error
+}
+
+func (c customErrCloser) Close() error {
+	return c.err
+}
+
+type errReader struct{}
+
+func (errReader) Read(_ []byte) (n int, err error) {
+	return 0, errors.New("read failure")
+}
+
+func TestCloseInto(t *testing.T) {
+	var err1 error
+	closeInto(customErrCloser{err: nil}, "test1", &err1)
+	require.NoError(t, err1)
+
+	var err2 error
+	closeInto(customErrCloser{err: errors.New("close failed")}, "test2", &err2)
+	require.ErrorContains(t, err2, "close test2: close failed")
+
+	initialErr := errors.New("initial failure")
+	err3 := initialErr
+	closeInto(customErrCloser{err: errors.New("close failed")}, "test3", &err3)
+	require.Equal(t, initialErr, err3)
+}
+
+func TestCleanupStaging_OnExtractionFailure(t *testing.T) {
+	src := fstest.MapFS{
+		"spec/link": {Data: []byte("/etc/passwd"), Mode: fs.ModeSymlink},
+	}
+	m := testManifest(Component{
+		Name: "openspec", Version: "1", OS: AnyTarget, Arch: AnyTarget,
+		File: "spec", Format: FormatDir, SHA256: strings.Repeat("0", 64), Size: 1, Dest: "openspec",
+	})
+	dest := filepath.Join(t.TempDir(), "target")
+	err := activate(src, m.Components, dest)
+	require.Error(t, err)
+	require.NoDirExists(t, dest+".staging", "staging directory must be cleaned up on failure")
+}
+
+func TestCopyToFile_Errors(t *testing.T) {
+	tempDir := t.TempDir()
+
+	filePathAsDir := filepath.Join(tempDir, "file_blocking_dir")
+	require.NoError(t, os.WriteFile(filePathAsDir, []byte("block"), 0o644))
+	targetUnderFile := filepath.Join(filePathAsDir, "sub.txt")
+	err := copyToFile(targetUnderFile, 0o644, strings.NewReader("data"), &budget{})
+	require.Error(t, err)
+	require.ErrorContains(t, err, "create")
+
+	targetFile := filepath.Join(tempDir, "read_err.txt")
+	err = copyToFile(targetFile, 0o644, errReader{}, &budget{})
+	require.Error(t, err)
+	require.ErrorContains(t, err, "write")
+}
+
+func TestWriteEntry_ErrorPaths(t *testing.T) {
+	tempDir := t.TempDir()
+	b := &budget{}
+
+	filePathAsDir := filepath.Join(tempDir, "file_parent")
+	require.NoError(t, os.WriteFile(filePathAsDir, []byte("block"), 0o644))
+	blockedName := filepath.Join("file_parent", "child.txt")
+	err := writeEntry(tempDir, blockedName, 0, 0o644, strings.NewReader("hi"), b)
+	require.Error(t, err)
+
+	limitBudget := &budget{files: maxExtractedFiles}
+	err = writeEntry(tempDir, "ok.txt", 0, 0o644, strings.NewReader("hi"), limitBudget)
+	require.ErrorIs(t, err, ErrUnsafeArchive)
+
+	err = writeEntry(tempDir, "../evil.txt", 0, 0o644, strings.NewReader("hi"), b)
+	require.ErrorIs(t, err, ErrUnsafeArchive)
+}
+
+func TestReadYAMLErrors(t *testing.T) {
+	var into struct {
+		Field string `yaml:"field"`
+	}
+	missingFS := fstest.MapFS{}
+	err := readYAML(missingFS, "nonexistent.yaml", &into)
+	require.ErrorIs(t, err, ErrPayloadMissing)
+
+	badFS := fstest.MapFS{
+		"bad.yaml": {Data: []byte("field: [unclosed list")},
+	}
+	err = readYAML(badFS, "bad.yaml", &into)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "parse bad.yaml")
+}
+
+func TestWindowsHostileSegment_StemCheck(t *testing.T) {
+	hostileNames := []string{
+		"CON.txt", "con.log", "NUL.dat", "AUX.yaml", "PRN.csv",
+		"COM1.bin", "com9.exe", "LPT1.dll", "lpt9.sh",
+	}
+	for _, name := range hostileNames {
+		_, _, err := entryPath(name, 0)
+		require.ErrorIs(t, err, ErrUnsafeArchive, name)
+	}
+}
+
+func TestManifest_Marshal(t *testing.T) {
+	m, _ := fixture(t)
+	raw, err := m.Marshal()
+	require.NoError(t, err)
+	require.Contains(t, string(raw), "schema_version")
+}
+
+type readErrFS struct {
+	fstest.MapFS
+}
+
+func (m readErrFS) Open(name string) (fs.File, error) {
+	if strings.HasSuffix(name, "fail.txt") {
+		return nil, errors.New("open failure")
+	}
+	return m.MapFS.Open(name)
+}
+
+func (m readErrFS) ReadFile(name string) ([]byte, error) {
+	if strings.HasSuffix(name, "fail.txt") {
+		return nil, errors.New("read failure")
+	}
+	return m.MapFS.ReadFile(name)
+}
+
+func TestTreeDigest_ReadError(t *testing.T) {
+	sys := readErrFS{
+		MapFS: fstest.MapFS{
+			"rt/fail.txt": {Data: []byte("fail")},
+		},
+	}
+	_, _, err := TreeDigest(sys, "rt")
+	require.Error(t, err)
+	require.ErrorContains(t, err, "read fail.txt")
+
+	b := &budget{}
+	err = copyTreeFile(sys, "rt", t.TempDir(), "fail.txt", b)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "open fail.txt")
+}
+
+func TestParseManifest_InvalidYAML(t *testing.T) {
+	_, err := ParseManifest([]byte(":\n  - : : invalid yaml"))
+	require.Error(t, err)
+	require.ErrorContains(t, err, "parse runtime payload manifest")
+}
+
+func TestMaterializeOpenSpec_MaterializeError(t *testing.T) {
+	badFS := fstest.MapFS{
+		openSpecTreeDir + "/" + BuildInfoFile: {
+			Data: []byte("version: '1.0.0'\nbundle: 'openspec.mjs'\ntree_sha256: 'badsha'\ntree_bytes: 10\n"),
+		},
+		openSpecTreeDir + "/openspec.mjs": {Data: []byte("console.log('hi');")},
+	}
+	_, _, err := MaterializeOpenSpec(badFS, t.TempDir())
+	require.Error(t, err)
+}
+
+func TestWindowsHostileSegment_EdgeCases(t *testing.T) {
+	require.False(t, windowsHostileSegment(""))
+	require.True(t, windowsHostileSegment("file."))
+	require.True(t, windowsHostileSegment("file "))
+	for _, res := range []string{"CON", "PRN", "AUX", "NUL", "COM1", "COM9", "LPT1", "LPT9"} {
+		require.True(t, windowsHostileSegment(res), res)
+		require.True(t, windowsHostileSegment(strings.ToLower(res)), res)
+		require.True(t, windowsHostileSegment(res+".ext"), res+".ext")
+	}
+	require.False(t, windowsHostileSegment("normal.txt"))
+}
+
+func TestWriteEntry_StripFully(t *testing.T) {
+	b := &budget{}
+	err := writeEntry(t.TempDir(), "a/b", 5, 0o644, strings.NewReader("hi"), b)
+	require.NoError(t, err)
+}
+
+func TestSwapIn_Error(t *testing.T) {
+	tempDir := t.TempDir()
+	staging := filepath.Join(tempDir, "staging")
+	require.NoError(t, os.MkdirAll(staging, 0o755))
+
+	badDest := filepath.Join(tempDir, "blocking_file", "dest")
+	require.NoError(t, os.WriteFile(filepath.Join(tempDir, "blocking_file"), []byte("file"), 0o644))
+
+	err := swapIn(staging, badDest)
+	require.Error(t, err)
+}
+
+func TestEmbeddedOpenSpecVersion_Success(t *testing.T) {
+	goodFS := fstest.MapFS{
+		openSpecTreeDir + "/" + BuildInfoFile: {
+			Data: []byte("version: '1.13.0'\nbundle: 'openspec.mjs'\ntree_sha256: 'abc'\ntree_bytes: 100\n"),
+		},
+	}
+	ver, err := EmbeddedOpenSpecVersion(goodFS)
+	require.NoError(t, err)
+	require.Equal(t, "1.13.0", ver)
+}
+
+func TestCleanupStaging_RemoveError(t *testing.T) {
+	tempDir := t.TempDir()
+	staging := filepath.Join(tempDir, "read_only_staging")
+	sub := filepath.Join(staging, "sub")
+	require.NoError(t, os.MkdirAll(sub, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(sub, "file"), []byte("x"), 0o444))
+	require.NoError(t, os.Chmod(sub, 0o555))
+	require.NoError(t, os.Chmod(staging, 0o555))
+	t.Cleanup(func() {
+		_ = os.Chmod(staging, 0o755)
+		_ = os.Chmod(sub, 0o755)
+	})
+
+	cause := errors.New("original cause")
+	err := cleanupStaging(staging, cause)
+	require.Error(t, err)
+	require.ErrorIs(t, err, cause)
+}
+
+func TestEntryPath_DotEdgeCase(t *testing.T) {
+	_, _, err := entryPath("dir/.", 1)
 	require.ErrorIs(t, err, ErrUnsafeArchive)
 }
