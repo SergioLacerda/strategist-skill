@@ -56,6 +56,9 @@ func skipTree(name string) error {
 	case ".git", "node_modules", "defaults", ".strategist", ".analysis":
 		return fs.SkipDir
 	}
+	if strings.HasPrefix(name, ".tmp-") {
+		return fs.SkipDir
+	}
 	return nil
 }
 

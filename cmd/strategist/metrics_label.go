@@ -12,10 +12,14 @@ type metricsLabelOptions struct {
 	Root, Mission, Subject, Label, Kind, Ref string
 }
 
-var metricsLabelCmd = &cobra.Command{
-	Use:   "label",
-	Short: "Record a reviewed ground-truth label for a mission",
-	Long: `Append one reviewed outcome to .strategist/memory/ground-truth-labels.jsonl.
+var metricsLabelCmd = newMetricsLabelCommand()
+
+func newMetricsLabelCommand() *cobra.Command {
+	opts := metricsLabelOptions{}
+	cmd := &cobra.Command{
+		Use:   "label",
+		Short: "Record a reviewed ground-truth label for a mission",
+		Long: `Append one reviewed outcome to .strategist/memory/ground-truth-labels.jsonl.
 
   --subject route                 labels: confirmed, reversed, risk_underclassified, user_override
   --subject handoff_application   labels: applied, not_applied
@@ -25,6 +29,19 @@ var metricsLabelCmd = &cobra.Command{
 --ref is mandatory: it must point to the review, event or check that decided
 the outcome. A label without a source is rejected. The first label per
 mission and subject wins; a repeat is reported and not written.`,
+	}
+	f := cmd.Flags()
+	f.StringVar(&opts.Root, flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
+	f.StringVar(&opts.Mission, "mission", "", "mission id the label applies to (required)")
+	f.StringVar(&opts.Subject, "subject", "", "route | handoff_application (required)")
+	f.StringVar(&opts.Label, "label", "", "reviewed outcome for the subject (required)")
+	f.StringVar(&opts.Kind, "kind", "", "user_revision | handoff_validation | downstream_verification (required)")
+	f.StringVar(&opts.Ref, "ref", "", "review, event or check that decided the outcome (required)")
+	requireFlags(cmd, "mission", "subject", "label", "kind", "ref")
+	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
+		return runMetricsLabel(cmd, opts)
+	}
+	return cmd
 }
 
 func runMetricsLabel(cmd *cobra.Command, opts metricsLabelOptions) error {
@@ -54,22 +71,6 @@ func runMetricsLabel(cmd *cobra.Command, opts metricsLabelOptions) error {
 		return fmt.Errorf("metrics label: write output: %w", err)
 	}
 	return nil
-}
-
-func init() {
-	opts := metricsLabelOptions{}
-	f := metricsLabelCmd.Flags()
-	f.StringVar(&opts.Root, flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
-	f.StringVar(&opts.Mission, "mission", "", "mission id the label applies to (required)")
-	f.StringVar(&opts.Subject, "subject", "", "route | handoff_application (required)")
-	f.StringVar(&opts.Label, "label", "", "reviewed outcome for the subject (required)")
-	f.StringVar(&opts.Kind, "kind", "", "user_revision | handoff_validation | downstream_verification (required)")
-	f.StringVar(&opts.Ref, "ref", "", "review, event or check that decided the outcome (required)")
-	requireFlags(metricsLabelCmd, "mission", "subject", "label", "kind", "ref")
-	metricsLabelCmd.RunE = func(cmd *cobra.Command, _ []string) error {
-		return runMetricsLabel(cmd, opts)
-	}
-	metricsCmd.AddCommand(metricsLabelCmd)
 }
 
 // requireFlags marks flags required; a missing flag name is a programming error.

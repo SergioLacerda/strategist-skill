@@ -57,7 +57,14 @@ func TestRenderHumanIncludesGateOutcomeAndEffectiveLevel(t *testing.T) {
 	var out bytes.Buffer
 	require.NoError(t, missionview.RenderHuman(&out, v))
 	assert.Contains(t, out.String(), "outcome: approved")
-	assert.Contains(t, out.String(), "ranger: Sonnet-High source=host")
+	assert.Contains(t, out.String(), "ranger: Sonnet-High source=host model_source=")
+}
+
+func TestBuildAndRenderHumanExposeProviderBinding(t *testing.T) {
+	v := missionview.Build(missionview.Input{Status: domain.MissionEngineStatus{MissionID: "m-1"}, Registry: domain.DefaultRoleRegistry(), SlotProviders: map[string]string{"discovery": "brainstorming"}})
+	var out bytes.Buffer
+	require.NoError(t, missionview.RenderHuman(&out, v))
+	assert.Contains(t, out.String(), "ranger (role) provider=brainstorming")
 }
 
 func TestRenderHumanPropagatesWriterFailures(t *testing.T) {

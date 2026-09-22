@@ -41,6 +41,7 @@ func Command(ctx context.Context, dir, name string, args ...string) (*exec.Cmd, 
 	cmd := exec.CommandContext(ctx, executable, args...) //nolint:gosec // executable is resolved through PATH before the restricted environment is applied
 	cmd.Dir = dir
 	cmd.Env = ForRoot(dir)
+	boundToProcessGroup(cmd)
 	return cmd, nil
 }
 
@@ -73,6 +74,7 @@ func PrivateCommand(ctx context.Context, dir, executable string, args ...string)
 	cmd := exec.CommandContext(ctx, executable, args...) //nolint:gosec // executable is a Strategist-materialized private runtime path
 	cmd.Dir = dir
 	cmd.Env = withPath(ForRoot(dir), "")
+	boundToProcessGroup(cmd)
 	return cmd, nil
 }
 

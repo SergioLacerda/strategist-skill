@@ -120,6 +120,7 @@ func TestInstallCmd_DefaultTarget(t *testing.T) {
 
 // TestInstallCmd_PrintsCompletion verifies the success message (install completes).
 func TestInstallCmd_PrintsCompletion(t *testing.T) {
+	useMinimalInstallExtractor(t)
 	dir := t.TempDir()
 
 	origTarget := installTarget
@@ -151,6 +152,7 @@ func TestInstallCmd_PrintsCompletion(t *testing.T) {
 // --- providers ---
 
 func TestInstallCmd_GlobalFlag_ResolvesHomeDefault(t *testing.T) {
+	useMinimalInstallExtractor(t)
 	origTarget := installTarget
 	origSilent := installSilent
 	origWizard := installWizard
@@ -200,6 +202,7 @@ func TestInstallCmd_BackupMessageWriteErrorOnClosedStdout(t *testing.T) {
 	if runtime.GOOS == "windows" || os.Getuid() == 0 {
 		t.Skip("permission tests do not apply on Windows or when running as root")
 	}
+	useMinimalInstallExtractor(t)
 	dir := t.TempDir()
 	setHomeEnv(t, t.TempDir())
 	origTarget, origForce := installTarget, installForce

@@ -23,14 +23,29 @@ type metricsLevelsOptions struct {
 	MaxRecords int
 }
 
-var metricsLevelsCmd = &cobra.Command{
-	Use:   "levels",
-	Short: "Report the model x effort levels recorded per role",
-	Long: `Report the levels recorded in .strategist/memory/role-levels.jsonl by
+var metricsLevelsCmd = newMetricsLevelsCommand()
+
+func newMetricsLevelsCommand() *cobra.Command {
+	opts := metricsLevelsOptions{}
+	cmd := &cobra.Command{
+		Use:   "levels",
+		Short: "Report the model x effort levels recorded per role",
+		Long: `Report the levels recorded in .strategist/memory/role-levels.jsonl by
 "strategist leveling label": records, missions, unknown levels, escalations, and
 per role the levels and level sources (manual, host, policy). An empty history
 reports zeros. With --rotate the ledger is compacted to --max-records records,
 always keeping the latest tuple of every mission, role and run.`,
+	}
+	f := cmd.Flags()
+	f.StringVar(&opts.Root, flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
+	f.StringVar(&opts.Mission, "mission", "", "scope the report to one mission")
+	f.BoolVar(&opts.JSON, "json", false, "emit JSON")
+	f.BoolVar(&opts.Rotate, "rotate", false, "compact the ledger first, keeping the latest tuple of every mission, role and run")
+	f.IntVar(&opts.MaxRecords, "max-records", defaultLedgerMaxRecords, "maximum records kept by --rotate")
+	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
+		return runMetricsLevels(cmd, opts)
+	}
+	return cmd
 }
 
 func runMetricsLevels(cmd *cobra.Command, opts metricsLevelsOptions) error {
@@ -136,18 +151,4 @@ func (r *reportWriter) result() error {
 		return fmt.Errorf("metrics levels: write output: %w", r.err)
 	}
 	return nil
-}
-
-func init() {
-	opts := metricsLevelsOptions{}
-	f := metricsLevelsCmd.Flags()
-	f.StringVar(&opts.Root, flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
-	f.StringVar(&opts.Mission, "mission", "", "scope the report to one mission")
-	f.BoolVar(&opts.JSON, "json", false, "emit JSON")
-	f.BoolVar(&opts.Rotate, "rotate", false, "compact the ledger first, keeping the latest tuple of every mission, role and run")
-	f.IntVar(&opts.MaxRecords, "max-records", defaultLedgerMaxRecords, "maximum records kept by --rotate")
-	metricsLevelsCmd.RunE = func(cmd *cobra.Command, _ []string) error {
-		return runMetricsLevels(cmd, opts)
-	}
-	metricsCmd.AddCommand(metricsLevelsCmd)
 }

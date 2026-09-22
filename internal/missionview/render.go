@@ -28,7 +28,11 @@ func renderMission(w io.Writer, v View) error {
 
 func renderJourney(w io.Writer, journey []JourneyEntry) error {
 	for _, step := range journey {
-		if err := writef(w, "  %d: %s (%s)\n", step.Phase, step.ID, step.Kind); err != nil {
+		provider := ""
+		if step.Provider != "" {
+			provider = fmt.Sprintf(" provider=%s", step.Provider)
+		}
+		if err := writef(w, "  %d: %s (%s)%s\n", step.Phase, step.ID, step.Kind, provider); err != nil {
 			return err
 		}
 	}
@@ -61,7 +65,8 @@ func renderLevelRole(w io.Writer, role LevelingRole) error {
 	if role.Effective == nil {
 		return writef(w, "  %s: unknown\n", role.Role)
 	}
-	return writef(w, "  %s: %s source=%s\n", role.Role, role.Effective.Label(), role.Effective.Source)
+	level := role.Effective
+	return writef(w, "  %s: %s source=%s model_source=%s effort_source=%s provider=%s capability=%s fallback_used=%t fallback_reason=%s policy_version=%d policy_digest=%s\n", level.Role, level.Label(), level.Source, level.ModelSource, level.EffortSource, level.Provider, level.Capability, level.FallbackUsed, level.FallbackReason, level.PolicyVersion, level.PolicyDigest)
 }
 
 func renderDiagnostics(w io.Writer, diagnostics []Diagnostic) error {

@@ -11,12 +11,23 @@ import (
 // evalRunCmd executes the internal/eval scenario battery via go test.
 // Design: .analysis/refined/20260804-eval-cli-subcommand/design.md.
 // Decisions (DEC-1..3): .analysis/archived/20260804-eval-cli-subcommand-adr.md.
-var evalRunCmd = &cobra.Command{
-	Use:   "run [pattern]",
-	Short: "Run the internal/eval scenario battery via go test",
-	Long: `Run Strategist's tagged eval scenario battery: go test -tags=eval <pattern>,
+var evalRunCmd = newEvalRunCommand()
+
+func newEvalRunCommand() *cobra.Command {
+	opts := evalRunOptions{}
+	cmd := &cobra.Command{
+		Use:   "run [pattern]",
+		Short: "Run the internal/eval scenario battery via go test",
+		Long: `Run Strategist's tagged eval scenario battery: go test -tags=eval <pattern>,
 defaulting to ./tests/evals/... when no pattern is given. Equivalent to "make eval"
 when run with no arguments. Shells out to the go toolchain — requires "go" on PATH.`,
+	}
+	cmd.Flags().BoolVar(&opts.Race, "race", true, "pass -race to go test")
+	cmd.Flags().StringVar(&opts.Root, flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		return runEvalRun(cmd, args, opts)
+	}
+	return cmd
 }
 
 type evalRunOptions struct {
@@ -66,14 +77,4 @@ func buildEvalRunGoTestArgs(pattern string, race bool) []string {
 		args = append(args, "-race")
 	}
 	return append(args, "-tags=eval", pattern)
-}
-
-func init() {
-	opts := evalRunOptions{}
-	evalRunCmd.Flags().BoolVar(&opts.Race, "race", true, "pass -race to go test")
-	evalRunCmd.Flags().StringVar(&opts.Root, flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
-	evalRunCmd.RunE = func(cmd *cobra.Command, args []string) error {
-		return runEvalRun(cmd, args, opts)
-	}
-	evalCmd.AddCommand(evalRunCmd)
 }

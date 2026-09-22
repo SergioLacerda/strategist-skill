@@ -386,3 +386,15 @@ func TestLabelJSONCarriesTheInlineTag(t *testing.T) {
 	require.NoError(t, json.Unmarshal(out.Bytes(), &payload))
 	assert.Empty(t, payload["tag"], "an unknown level has an empty tag")
 }
+
+func TestNewLevelingCommand_HasIsolatedCompleteSubcommandTree(t *testing.T) {
+	cmd := newLevelingCommand()
+
+	assert.NotSame(t, levelingCmd, cmd)
+	assert.Len(t, cmd.Commands(), 3)
+	for _, name := range []string{"validate", "suggest", "label"} {
+		subcommand, _, err := cmd.Find([]string{name})
+		require.NoError(t, err)
+		assert.NotSame(t, levelingCmd, subcommand)
+	}
+}

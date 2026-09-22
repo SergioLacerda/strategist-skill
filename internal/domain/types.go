@@ -87,7 +87,8 @@ func (p PersonaConfig) ValidateForRuntime() error {
 }
 
 // RoleSlotMap is the structure of roles/default.yaml — a slot→provider mapping,
-// mirroring the shape of active.yaml's slots field.
+// mirroring the shape of active.yaml's slots field. A skill provider resolves at
+// skills/<provider>/skill.yaml; native roles resolve through roles/<provider>.yaml.
 type RoleSlotMap map[string]string
 
 // Validate returns an error if any of the three required slots is missing or empty.

@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
@@ -13,10 +12,14 @@ type metricsScoutOptions struct {
 	Root string
 }
 
-var metricsScoutCmd = &cobra.Command{
-	Use:   "scout",
-	Short: "Report Scout routing metrics",
-	Long: `Report metrics computed from .strategist/memory/route-decisions.jsonl and
+var metricsScoutCmd = newMetricsScoutCommand()
+
+func newMetricsScoutCommand() *cobra.Command {
+	opts := metricsScoutOptions{}
+	cmd := &cobra.Command{
+		Use:   "scout",
+		Short: "Report Scout routing metrics",
+		Long: `Report metrics computed from .strategist/memory/route-decisions.jsonl and
 outcomes.jsonl: fallback_rate, unnecessary_pipeline_rate (Phase 1 —
 telemetry.ComputeRouteMetrics). The four reversal-dependent metrics
 (route_accuracy, direct_route_reversal_rate, risk_underclassification_rate,
@@ -26,6 +29,12 @@ least one decision has a label; otherwise calibration_status is no_sample.
 
 Runs cleanly against an empty .strategist/memory/ (no route-decisions.jsonl/
 outcomes.jsonl yet), printing sample_size: 0 rather than erroring.`,
+	}
+	cmd.Flags().StringVar(&opts.Root, flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
+	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
+		return runMetricsScout(cmd, opts)
+	}
+	return cmd
 }
 
 func runMetricsScout(cmd *cobra.Command, opts metricsScoutOptions) error {
@@ -48,10 +57,10 @@ func runMetricsScout(cmd *cobra.Command, opts metricsScoutOptions) error {
 	if err != nil {
 		return fmt.Errorf("metrics scout: %w", err)
 	}
-	if err := printRouteMetrics(os.Stdout, telemetry.ComputeRouteMetrics(decisions, outcomes)); err != nil {
+	if err := printRouteMetrics(cmd.OutOrStdout(), telemetry.ComputeRouteMetrics(decisions, outcomes)); err != nil {
 		return err
 	}
-	return printRouteGroundTruthMetrics(os.Stdout, telemetry.ComputeRouteGroundTruthMetrics(decisions, labels))
+	return printRouteGroundTruthMetrics(cmd.OutOrStdout(), telemetry.ComputeRouteGroundTruthMetrics(decisions, labels))
 }
 
 func printRouteGroundTruthMetrics(w io.Writer, m telemetry.RouteGroundTruthMetrics) error {
@@ -83,13 +92,4 @@ func printRouteMetrics(w io.Writer, m telemetry.RouteMetrics) error {
 		return fmt.Errorf("metrics scout: write output: %w", err)
 	}
 	return nil
-}
-
-func init() {
-	opts := metricsScoutOptions{}
-	metricsScoutCmd.Flags().StringVar(&opts.Root, flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
-	metricsScoutCmd.RunE = func(cmd *cobra.Command, _ []string) error {
-		return runMetricsScout(cmd, opts)
-	}
-	metricsCmd.AddCommand(metricsScoutCmd)
 }

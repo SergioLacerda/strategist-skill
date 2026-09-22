@@ -149,6 +149,10 @@ func init() {
 	rootCmd.AddCommand(validateCmd)
 	rootCmd.AddCommand(syncGovernanceCmd)
 	rootCmd.AddCommand(versionCmd)
+	registerMetrics(rootCmd)
+	registerMission(rootCmd)
+	registerLeveling(rootCmd)
+	registerEval(rootCmd)
 }
 
 // requireStrategistDir returns an error if .strategist/active.yaml is absent in

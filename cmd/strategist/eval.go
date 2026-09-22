@@ -31,6 +31,15 @@ func resolveEvalActionRoot(cmd *cobra.Command, action, explicitRoot string) (str
 	return strategistRoot, projectRoot, nil
 }
 
-func init() {
-	rootCmd.AddCommand(evalCmd)
+// registerEval attaches eval at the root composition boundary. Evaluation and
+// fixture-selection behavior remain owned by internal/eval.
+func registerEval(root *cobra.Command) {
+	evalCmd.AddCommand(evalRunCmd, evalHarvestCmd)
+	root.AddCommand(evalCmd)
+}
+
+func newEvalCommand() *cobra.Command {
+	cmd := &cobra.Command{Use: "eval", Short: "Strategist eval harness utilities"}
+	cmd.AddCommand(newEvalRunCommand(), newEvalHarvestCommand())
+	return cmd
 }

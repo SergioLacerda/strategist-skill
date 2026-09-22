@@ -29,6 +29,18 @@ func setupMissionReportUsageRoot(t *testing.T, missionID string) (strategistRoot
 	return strategistRoot
 }
 
+func TestNewMissionCommand_HasIsolatedCompleteSubcommandTree(t *testing.T) {
+	cmd := newMissionCommand()
+
+	assert.NotSame(t, missionCmd, cmd)
+	assert.Len(t, cmd.Commands(), 7)
+	for _, name := range []string{"start", "status", "submit", "context", "view", "normalize-openspec", "report-usage"} {
+		subcommand, _, err := cmd.Find([]string{name})
+		require.NoError(t, err)
+		assert.NotSame(t, missionCmd, subcommand)
+	}
+}
+
 func setMissionReportUsageFlags(t *testing.T, root, missionID string, tokensIn, tokensOut int64) {
 	t.Helper()
 	require.NoError(t, missionReportUsageCmd.Flags().Set(flagRoot, root))

@@ -21,10 +21,14 @@ type confidenceClaimFile struct {
 	Evidence []domain.Evidence      `yaml:"evidence"`
 }
 
-var metricsRecordCmd = &cobra.Command{
-	Use:   "record",
-	Short: "Record a confidence claim or an explicit missing-record for a boundary",
-	Long: `Persist one confidence observation from a producing boundary (scout, ranger,
+var metricsRecordCmd = newMetricsRecordCommand()
+
+func newMetricsRecordCommand() *cobra.Command {
+	opts := metricsRecordOptions{}
+	cmd := &cobra.Command{
+		Use:   "record",
+		Short: "Record a confidence claim or an explicit missing-record for a boundary",
+		Long: `Persist one confidence observation from a producing boundary (scout, ranger,
 archivist, critic, mission_quality, handoff_challenge, sniper) to
 .strategist/memory/confidence-records.jsonl.
 
@@ -34,6 +38,21 @@ archivist, critic, mission_quality, handoff_challenge, sniper) to
 
 An invalid claim is stored as a rejected record and reported, never dropped.
 Replays are idempotent. The record is advisory input to the Approval Gate.`,
+	}
+	f := cmd.Flags()
+	f.StringVar(&opts.Root, flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
+	f.StringVar(&opts.Mission, "mission", "", "mission id (required)")
+	f.StringVar(&opts.Run, "run", "", "optional explicit run id for a repeated role execution")
+	f.StringVar(&opts.Agent, "agent", "", "producing agent (required)")
+	f.StringVar(&opts.ClaimFile, "claim-file", "", "YAML file with the claim and its evidence")
+	f.BoolVar(&opts.Missing, "missing", false, "record an explicit missing-record instead of a claim")
+	f.StringVar(&opts.CorrelationKey, "correlation-key", "", "boundary correlation key (with --missing)")
+	f.StringVar(&opts.Reason, "reason", "", "why no summary was produced (with --missing)")
+	requireFlags(cmd, "mission", "agent")
+	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
+		return runMetricsRecord(cmd, opts)
+	}
+	return cmd
 }
 
 func runMetricsRecord(cmd *cobra.Command, opts metricsRecordOptions) error {
@@ -88,22 +107,4 @@ func recordClaim(cmd *cobra.Command, producer telemetry.ConfidenceProducerAdapte
 		return fmt.Errorf("metrics record: write output: %w", err)
 	}
 	return nil
-}
-
-func init() {
-	opts := metricsRecordOptions{}
-	f := metricsRecordCmd.Flags()
-	f.StringVar(&opts.Root, flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
-	f.StringVar(&opts.Mission, "mission", "", "mission id (required)")
-	f.StringVar(&opts.Run, "run", "", "optional explicit run id for a repeated role execution")
-	f.StringVar(&opts.Agent, "agent", "", "producing agent (required)")
-	f.StringVar(&opts.ClaimFile, "claim-file", "", "YAML file with the claim and its evidence")
-	f.BoolVar(&opts.Missing, "missing", false, "record an explicit missing-record instead of a claim")
-	f.StringVar(&opts.CorrelationKey, "correlation-key", "", "boundary correlation key (with --missing)")
-	f.StringVar(&opts.Reason, "reason", "", "why no summary was produced (with --missing)")
-	requireFlags(metricsRecordCmd, "mission", "agent")
-	metricsRecordCmd.RunE = func(cmd *cobra.Command, _ []string) error {
-		return runMetricsRecord(cmd, opts)
-	}
-	metricsCmd.AddCommand(metricsRecordCmd)
 }

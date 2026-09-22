@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"os"
 	"sort"
 
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
@@ -15,10 +14,21 @@ type metricsConfidenceOptions struct {
 	Mission string
 }
 
-var metricsConfidenceCmd = &cobra.Command{
-	Use:   "confidence",
-	Short: "Report cross-agent confidence metrics",
-	Long:  "Report comparable claim metrics from .strategist/memory/confidence-records.jsonl.\nThe confidence percentage is policy data; calibration_status and ground_truth_sample_size\nshow whether empirical evidence exists. Empty history reports no_sample.",
+var metricsConfidenceCmd = newMetricsConfidenceCommand()
+
+func newMetricsConfidenceCommand() *cobra.Command {
+	opts := metricsConfidenceOptions{}
+	cmd := &cobra.Command{
+		Use:   "confidence",
+		Short: "Report cross-agent confidence metrics",
+		Long:  "Report comparable claim metrics from .strategist/memory/confidence-records.jsonl.\nThe confidence percentage is policy data; calibration_status and ground_truth_sample_size\nshow whether empirical evidence exists. Empty history reports no_sample.",
+	}
+	cmd.Flags().StringVar(&opts.Root, flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
+	cmd.Flags().StringVar(&opts.Mission, "mission", "", "scope the review to one mission (used at the Approval Gate)")
+	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
+		return runMetricsConfidence(cmd, opts)
+	}
+	return cmd
 }
 
 func runMetricsConfidence(cmd *cobra.Command, opts metricsConfidenceOptions) error {
@@ -33,10 +43,10 @@ func runMetricsConfidence(cmd *cobra.Command, opts metricsConfidenceOptions) err
 	if err != nil {
 		return fmt.Errorf("metrics confidence: %w", err)
 	}
-	if err := printConfidenceMetrics(os.Stdout, review); err != nil {
+	if err := printConfidenceMetrics(cmd.OutOrStdout(), review); err != nil {
 		return err
 	}
-	return printGateOutcome(os.Stdout, root, opts.Mission)
+	return printGateOutcome(cmd.OutOrStdout(), root, opts.Mission)
 }
 
 // printGateOutcome shows the human gate outcome beside the advisory review
@@ -116,14 +126,4 @@ func printConfidenceMetrics(w io.Writer, review telemetry.ConfidenceGateReview) 
 		return fmt.Errorf("metrics confidence: write output: %w", err)
 	}
 	return nil
-}
-
-func init() {
-	opts := metricsConfidenceOptions{}
-	metricsConfidenceCmd.Flags().StringVar(&opts.Root, flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
-	metricsConfidenceCmd.Flags().StringVar(&opts.Mission, "mission", "", "scope the review to one mission (used at the Approval Gate)")
-	metricsConfidenceCmd.RunE = func(cmd *cobra.Command, _ []string) error {
-		return runMetricsConfidence(cmd, opts)
-	}
-	metricsCmd.AddCommand(metricsConfidenceCmd)
 }

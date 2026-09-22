@@ -80,7 +80,7 @@ update this file.
 PHASE         INVOKE SKILL                              WHAT NOT TO DO
 ─────────────────────────────────────────────────────────────────────────────
 discovery  →  see Discovery Routing below                explore or analyze the code directly
-refinement →  {{.Slots.Refinement}}                       write proposals or designs directly
+refinement →  {{.Slots.Refinement}} (see Refinement Routing below)  write proposals or designs directly
 execution  →  {{.Slots.Execution}}                        run git/edits/commits directly
 ```
 
@@ -98,6 +98,24 @@ This holds regardless of what `active.slots.discovery` is configured to (default
 `{{.Slots.Discovery}}`) — the external discovery plugin is never consulted for
 discovery invocation, for any subtype. See `03-discovery.md` § Discovery
 Subtypes.
+
+### Refinement Routing
+
+Whenever the refinement slot is bound to an external skill plugin (default:
+`{{.Slots.Refinement}}` — see `active.slots.refinement`), the parent agent
+embodies that plugin's declared canonical role before invoking the plugin's own
+CLI/tooling — the same mechanism already used for discovery/Ranger above and for
+execution/Sniper. Read the plugin's `skills/<provider>/skill.yaml#canonical_role`
+(a `refinement`-category plugin declares `canonical_role: archivist`) and load
+`roles/archivist.yaml` for that role's canonical abilities before acting.
+
+In particular, apply `roles/archivist.yaml#canonical.resolve_weapon_scratch_root`:
+read the bound plugin's `skill.yaml#scratch_root`, and when it is `runtime`, run
+the plugin's CLI with `.strategist/weapon-runtime/<provider_id>/` as its working
+directory — never the host repository root — before invoking it. A plugin's own
+root-autodetection (e.g. walking up from the working directory for a project
+marker) will silently initialize a new root wherever it is invoked from if this
+step is skipped, escaping the declared runtime into the host repository.
 
 Handoff contracts:
 - Ranger → Archivist: `.strategist/schemas/handoff-ranger-to-archivist.schema.yaml`

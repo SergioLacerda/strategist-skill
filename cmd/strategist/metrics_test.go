@@ -87,6 +87,28 @@ func TestPrintHandoffMetrics_WriteError(t *testing.T) {
 	assert.Contains(t, err.Error(), "write output")
 }
 
+func TestNewMetricsHandoffCommand_IsolatedAdapter(t *testing.T) {
+	cmd := newMetricsHandoffCommand()
+
+	assert.NotSame(t, metricsHandoffCmd, cmd)
+	assert.NotNil(t, cmd.RunE)
+	assert.NotNil(t, cmd.Flags().Lookup(flagRoot))
+	require.NoError(t, cmd.Flags().Set(flagRoot, t.TempDir()))
+	assert.Empty(t, metricsHandoffCmd.Flags().Lookup(flagRoot).Value.String())
+}
+
+func TestNewMetricsCommand_HasIsolatedCompleteSubcommandTree(t *testing.T) {
+	cmd := newMetricsCommand()
+
+	assert.NotSame(t, metricsCmd, cmd)
+	assert.Len(t, cmd.Commands(), 9)
+	for _, name := range []string{"handoff", "confidence", "fallback", "gate-outcome", "label", "levels", "record", "rollout-check", "scout"} {
+		subcommand, _, err := cmd.Find([]string{name})
+		require.NoError(t, err)
+		assert.NotSame(t, metricsCmd, subcommand)
+	}
+}
+
 func TestPrintRouteMetrics_WriteError(t *testing.T) {
 	err := printRouteMetrics(errorWriter{}, telemetry.RouteMetrics{})
 	require.Error(t, err)

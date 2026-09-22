@@ -22,16 +22,28 @@ type metricsHandoffOptions struct {
 	Root string
 }
 
-var metricsHandoffCmd = &cobra.Command{
-	Use:   "handoff",
-	Short: "Report Handoff Challenge governance metrics",
-	Long: `Report metrics computed from .strategist/memory/handoff-challenges.jsonl:
+var metricsHandoffCmd = newMetricsHandoffCommand()
+
+// newMetricsHandoffCommand creates an isolated Metrics adapter. Governance
+// rules and metric calculation remain owned by internal/telemetry.
+func newMetricsHandoffCommand() *cobra.Command {
+	opts := metricsHandoffOptions{}
+	cmd := &cobra.Command{
+		Use:   "handoff",
+		Short: "Report Handoff Challenge governance metrics",
+		Long: `Report metrics computed from .strategist/memory/handoff-challenges.jsonl:
   handoff_pass_rate, first_attempt_pass_rate, critical_constraint_recall,
   decision_classification_accuracy, scope_violation_rate, handoff_repair_rate,
   semantic_handoff_loss.
 
 Prints all rates as 0 (not an error) when no Handoff Challenge has run yet
 in this workspace.`,
+	}
+	cmd.Flags().StringVar(&opts.Root, flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
+	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
+		return runMetricsHandoff(cmd, opts)
+	}
+	return cmd
 }
 
 func runMetricsHandoff(cmd *cobra.Command, opts metricsHandoffOptions) error {
@@ -50,7 +62,7 @@ func runMetricsHandoff(cmd *cobra.Command, opts metricsHandoffOptions) error {
 	if err != nil {
 		return fmt.Errorf("metrics handoff: %w", err)
 	}
-	return printHandoffMetrics(os.Stdout, telemetry.ApplyHandoffApplicationGroundTruth(telemetry.ComputeHandoffMetrics(records), labels))
+	return printHandoffMetrics(cmd.OutOrStdout(), telemetry.ApplyHandoffApplicationGroundTruth(telemetry.ComputeHandoffMetrics(records), labels))
 }
 
 func resolveMetricsActionRoot(cmd *cobra.Command, action, explicitRoot string) (string, error) {
@@ -93,12 +105,47 @@ func printHandoffMetrics(w io.Writer, m telemetry.HandoffMetrics) error {
 	return nil
 }
 
-func init() {
-	opts := metricsHandoffOptions{}
-	metricsHandoffCmd.Flags().StringVar(&opts.Root, flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
-	metricsHandoffCmd.RunE = func(cmd *cobra.Command, _ []string) error {
-		return runMetricsHandoff(cmd, opts)
+// registerMetrics attaches the Metrics command family at the root composition
+// boundary. The global tree preserves legacy package-level test fixtures;
+// newMetricsCommand supplies an isolated equivalent for new tests.
+func registerMetrics(root *cobra.Command) {
+	registerMetricsSubcommands(metricsCmd)
+	root.AddCommand(metricsCmd)
+}
+
+func registerMetricsSubcommands(parent *cobra.Command) {
+	parent.AddCommand(
+		metricsHandoffCmd,
+		metricsConfidenceCmd,
+		metricsFallbackCmd,
+		metricsGateOutcomeCmd,
+		metricsLabelCmd,
+		metricsLevelsCmd,
+		metricsRecordCmd,
+		metricsRolloutCmd,
+		metricsScoutCmd,
+	)
+}
+
+// newMetricsCommand creates a fully isolated Metrics command tree for tests
+// and embedding. It is an adapter boundary only: business behavior remains in
+// internal/telemetry, internal/leveling and internal/domain.
+func newMetricsCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "metrics",
+		Short: "Report metrics computed from Strategist's own runtime memory",
+		Long:  "Report metrics computed from .strategist/memory/*.jsonl history. Each subcommand covers one metrics domain.",
 	}
-	metricsCmd.AddCommand(metricsHandoffCmd)
-	rootCmd.AddCommand(metricsCmd)
+	cmd.AddCommand(
+		newMetricsHandoffCommand(),
+		newMetricsConfidenceCommand(),
+		newMetricsFallbackCommand(),
+		newMetricsGateOutcomeCommand(),
+		newMetricsLabelCommand(),
+		newMetricsLevelsCommand(),
+		newMetricsRecordCommand(),
+		newMetricsRolloutCommand(),
+		newMetricsScoutCommand(),
+	)
+	return cmd
 }

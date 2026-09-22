@@ -59,6 +59,16 @@ func TestMetricsFallbackCmd_IsHumanStatusCommand(t *testing.T) {
 	assert.True(t, isHumanStatusCommand(metricsFallbackCmd))
 }
 
+func TestNewMetricsFallbackCommand_IsolatedAdapter(t *testing.T) {
+	cmd := newMetricsFallbackCommand()
+
+	assert.NotSame(t, metricsFallbackCmd, cmd)
+	assert.NotNil(t, cmd.RunE)
+	assert.NotNil(t, cmd.Flags().Lookup(flagRoot))
+	require.NoError(t, cmd.Flags().Set(flagRoot, t.TempDir()))
+	assert.Empty(t, metricsFallbackCmd.Flags().Lookup(flagRoot).Value.String())
+}
+
 // TestRunMetricsFallback_WithMissionRunDoesNotError covers runMetricsFallback's
 // "if run := telemetryRunFromCmd(cmd); run != nil { run.SetSilent() }"
 // branch, matching the sibling runMetricsHandoff/runMetricsScout tests.

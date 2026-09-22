@@ -18,11 +18,20 @@ type missionViewOptions struct {
 	JSON                 bool
 }
 
-var missionViewCmd = &cobra.Command{
-	Use:   "view",
-	Short: "Render a read-only mission experience view",
-	Long:  "Render lifecycle, roles, advisory confidence, Approval Gate outcome, and LEVELING provenance for one mission. This command never authorizes or advances a mission.",
-	RunE:  func(cmd *cobra.Command, _ []string) error { return runMissionView(cmd, missionViewOptionsFrom(cmd)) },
+var missionViewCmd = newMissionViewCommand()
+
+func newMissionViewCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "view",
+		Short: "Render a read-only mission experience view",
+		Long:  "Render lifecycle, roles, advisory confidence, Approval Gate outcome, and LEVELING provenance for one mission. This command never authorizes or advances a mission.",
+		RunE:  func(cmd *cobra.Command, _ []string) error { return runMissionView(cmd, missionViewOptionsFrom(cmd)) },
+	}
+	cmd.Flags().String(flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
+	cmd.Flags().String("mission-id", "", "mission identifier (required)")
+	cmd.Flags().String("run", "", "select one explicit repeated role run")
+	cmd.Flags().Bool("json", false, "emit strategist-mission-view/v1 JSON")
+	return cmd
 }
 
 func missionViewOptionsFrom(cmd *cobra.Command) missionViewOptions {
@@ -63,17 +72,9 @@ func loadMissionView(root string, status domain.MissionEngineStatus, run string)
 	if activeErr != nil {
 		active = domain.ActiveConfig{}
 	}
-	confidence, confidenceErr := telemetry.LoadConfidenceGateReview(root, status.MissionID)
+	confidence, confidenceErr := telemetry.LoadConfidenceGateReviewForRun(root, status.MissionID, run)
 	gateOutcome, gateErr := telemetry.GateOutcomeFor(root, status.MissionID)
 	levels, levelsErr := leveling.ReadRecords(filepath.Join(root, "memory", roleLevelLedger))
 	levels = filterLevelRecords(levels, status.MissionID)
 	return missionview.Build(missionview.Input{Status: status, Registry: reg, SlotProviders: active.Slots, Confidence: confidence, ConfidenceError: confidenceErr, GateOutcome: gateOutcome, GateError: gateErr, Levels: levels, LevelsError: levelsErr, Run: run})
-}
-
-func init() {
-	missionViewCmd.Flags().String(flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
-	missionViewCmd.Flags().String("mission-id", "", "mission identifier (required)")
-	missionViewCmd.Flags().String("run", "", "select one explicit repeated role run")
-	missionViewCmd.Flags().Bool("json", false, "emit strategist-mission-view/v1 JSON")
-	missionCmd.AddCommand(missionViewCmd)
 }

@@ -1,0 +1,46 @@
+schema_version: "1"
+runbook_id: test-scan-scope-hygiene
+runbook_type: analytical
+source_doc: docs/runbooks/test-scan-scope-hygiene.md
+
+applies_when:
+  - "A `go test` run — especially `go test -race ./...` / `make test` — prints no output for far longer than the previous package took, making the run look hung even though it eventually passes"
+  - "One test's duration dominates its package's total time while every other test in the same package finishes in milliseconds"
+
+objective: Diagnose and resolve a test whose filesystem walk (filepath.Walk/WalkDir) silently scans an untracked, gitignored directory because its directory-skip allowlist was not kept in sync, causing large unexplained slowdowns without any test failure.
+
+preconditions:
+  - "A go test run (ideally with -race, where the effect is most visible) that completes and passes, but takes noticeably, unexplainably longer than expected with a gap of silent output"
+
+analysis:
+  - "Re-run the suspect package in isolation with -v and no cache: `go test -race -count=1 -v ./<pkg>/...`"
+  - "Sort per-test PASS/FAIL lines by duration to find the outlier test dominating the package's total time"
+  - "Grep the slow test's source for `filepath.Walk` and locate its walk root and directory-skip allowlist"
+  - "Compare the skip allowlist against what is actually on disk at the walk root (`ls -a`, cross-checked with `.gitignore`); an untracked, gitignored directory not in the allowlist is the likely cause — confirm with `du -sh` / a file count"
+  - "Generalize the fix as a pattern (e.g. a name-prefix guard) rather than a one-off exact-name addition, since the untracked directory that triggered this is likely to recur under a different name"
+  - "Repo-wide grep for other `filepath.Walk`/`WalkDir` call sites in `*_test.go` and check each one's walk root — only a walk from the repo root, or any directory that could gain a new untracked sibling, is at risk"
+
+verification:
+  - "The isolated slow test's duration drops back in line with its neighbors"
+  - "The enclosing package's total duration drops correspondingly"
+  - "The full suite (`go test -race ./...` / `make test`) completes in a normal amount of time with all packages still passing"
+
+decision_gates:
+  - id: root-cause-confirmed
+    statement: "The slow test's own filepath.Walk root and skip allowlist have been inspected, and a specific untracked/gitignored directory not covered by the allowlist has been identified and measured (size/file count) as large enough to explain the observed slowdown — if not, do not assume this runbook's root cause applies; the slowdown may have a different cause"
+
+checks:
+  - id: slow-test-isolated-with-v-flag
+    level: mandatory
+  - id: skip-allowlist-diffed-against-disk
+    level: mandatory
+  - id: fix-generalized-as-pattern-not-one-off-name
+    level: recommended
+  - id: other-walk-call-sites-audited
+    level: recommended
+  - id: three-level-verification-clean
+    level: mandatory
+
+metadata:
+  version: 1
+  reviewed_at: "2026-09-21"

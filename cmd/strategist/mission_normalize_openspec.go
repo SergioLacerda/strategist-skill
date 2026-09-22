@@ -17,12 +17,29 @@ type missionNormalizeOpenSpecOptions struct {
 	Pending     string
 }
 
-var missionNormalizeOpenSpecCmd = &cobra.Command{
-	Use:   "normalize-openspec",
-	Short: "Publish a completed OpenSpec change into the refined mission package",
-	Long: `Validates a private OpenSpec change and atomically promotes its proposal,
+var missionNormalizeOpenSpecCmd = newMissionNormalizeOpenSpecCommand()
+
+func newMissionNormalizeOpenSpecCommand() *cobra.Command {
+	opts := missionNormalizeOpenSpecOptions{}
+	cmd := &cobra.Command{
+		Use:   "normalize-openspec",
+		Short: "Publish a completed OpenSpec change into the refined mission package",
+		Long: `Validates a private OpenSpec change and atomically promotes its proposal,
 design, tasks, and the mission analysis into <base_path>/refined/<mission_id>.
 OpenSpec specs and archive history remain private provider scratch.`,
+	}
+	cmd.Flags().StringVar(&opts.Root, flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
+	cmd.Flags().StringVar(&opts.MissionID, "mission-id", "", "canonical Strategist mission id (required)")
+	cmd.Flags().StringVar(&opts.ChangeID, "change-id", "", "completed OpenSpec change id (required)")
+	cmd.Flags().StringVar(&opts.RuntimeRoot, "runtime-root", "", "OpenSpec runtime root (default: <strategist-root>/openspec)")
+	cmd.Flags().StringVar(&opts.Pending, "pending-analysis", "", "pending analysis path (default: <base_path>/pending/<mission-id>-analysis.md)")
+	if err := cmd.MarkFlagRequired("change-id"); err != nil {
+		panic(err)
+	}
+	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
+		return runMissionNormalizeOpenSpec(cmd, opts)
+	}
+	return cmd
 }
 
 func runMissionNormalizeOpenSpec(cmd *cobra.Command, opts missionNormalizeOpenSpecOptions) error {
@@ -69,20 +86,4 @@ func resolvePath(value, fallback, projectRoot string) string {
 		return value
 	}
 	return filepath.Join(projectRoot, value)
-}
-
-func init() {
-	opts := missionNormalizeOpenSpecOptions{}
-	missionNormalizeOpenSpecCmd.Flags().StringVar(&opts.Root, flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
-	missionNormalizeOpenSpecCmd.Flags().StringVar(&opts.MissionID, "mission-id", "", "canonical Strategist mission id (required)")
-	missionNormalizeOpenSpecCmd.Flags().StringVar(&opts.ChangeID, "change-id", "", "completed OpenSpec change id (required)")
-	missionNormalizeOpenSpecCmd.Flags().StringVar(&opts.RuntimeRoot, "runtime-root", "", "OpenSpec runtime root (default: <strategist-root>/openspec)")
-	missionNormalizeOpenSpecCmd.Flags().StringVar(&opts.Pending, "pending-analysis", "", "pending analysis path (default: <base_path>/pending/<mission-id>-analysis.md)")
-	if err := missionNormalizeOpenSpecCmd.MarkFlagRequired("change-id"); err != nil {
-		panic(err)
-	}
-	missionNormalizeOpenSpecCmd.RunE = func(cmd *cobra.Command, _ []string) error {
-		return runMissionNormalizeOpenSpec(cmd, opts)
-	}
-	missionCmd.AddCommand(missionNormalizeOpenSpecCmd)
 }

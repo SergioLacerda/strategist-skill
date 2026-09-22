@@ -12,10 +12,14 @@ import (
 // TargetArtifactCheck-based content assertions. Design:
 // .analysis/refined/20260804-eval-harvest/design.md. Decisions (DEC-1..5):
 // .analysis/archived/20260804-eval-harvest-adr.md.
-var evalHarvestCmd = &cobra.Command{
-	Use:   "harvest [mission_id]",
-	Short: "Copy real mission artifacts into tests/evals/regression/ as fixtures",
-	Long: `Copy persisted artifacts from completed Strategist missions (analysis.md by
+var evalHarvestCmd = newEvalHarvestCommand()
+
+func newEvalHarvestCommand() *cobra.Command {
+	opts := evalHarvestOptions{}
+	cmd := &cobra.Command{
+		Use:   "harvest [mission_id]",
+		Short: "Copy real mission artifacts into tests/evals/regression/ as fixtures",
+		Long: `Copy persisted artifacts from completed Strategist missions (analysis.md by
 default) into tests/evals/regression/<mission_id>/, for use as real fixture content by
 internal/eval's TargetArtifactCheck-based content assertions.
 
@@ -28,6 +32,14 @@ aborting the run.
 No route_decision fixture type is produced: Scout's route_decision is never persisted
 to disk anywhere in this codebase (see .analysis/archived/20260804-eval-harvest-adr.md
 DEC-5).`,
+	}
+	cmd.Flags().BoolVar(&opts.All, "all", false, "harvest every mission found by treasure.ScanMissionsTolerant")
+	cmd.Flags().StringVar(&opts.Include, "include", "", "comma-separated extra artifact types: design,proposal,tasks,adr,report")
+	cmd.Flags().StringVar(&opts.Root, flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		return runEvalHarvest(cmd, args, opts)
+	}
+	return cmd
 }
 
 type evalHarvestOptions struct {
@@ -77,7 +89,9 @@ func runEvalHarvest(cmd *cobra.Command, args []string, opts evalHarvestOptions) 
 	if err != nil {
 		return err
 	}
-	fmt.Printf("[Strategist] eval harvest: %d mission(s), %d fixture file(s) written\n", len(missionIDs), written)
+	if _, err := fmt.Fprintf(cmd.OutOrStdout(), "[Strategist] eval harvest: %d mission(s), %d fixture file(s) written\n", len(missionIDs), written); err != nil {
+		return fmt.Errorf("eval harvest: write output: %w", err)
+	}
 	return nil
 }
 
@@ -93,15 +107,4 @@ func harvestMissions(basePath, destRoot string, missionIDs, includeTypes []strin
 		written += n
 	}
 	return written, nil
-}
-
-func init() {
-	opts := evalHarvestOptions{}
-	evalHarvestCmd.Flags().BoolVar(&opts.All, "all", false, "harvest every mission found by treasure.ScanMissionsTolerant")
-	evalHarvestCmd.Flags().StringVar(&opts.Include, "include", "", "comma-separated extra artifact types: design,proposal,tasks,adr,report")
-	evalHarvestCmd.Flags().StringVar(&opts.Root, flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
-	evalHarvestCmd.RunE = func(cmd *cobra.Command, args []string) error {
-		return runEvalHarvest(cmd, args, opts)
-	}
-	evalCmd.AddCommand(evalHarvestCmd)
 }

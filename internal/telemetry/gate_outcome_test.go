@@ -2,6 +2,7 @@ package telemetry
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -89,4 +90,18 @@ func TestLoadConfidenceGateReviewScopesByMission(t *testing.T) {
 	require.NoError(t, os.MkdirAll(ConfidenceHistoryPath(bad), 0o755))
 	_, err = LoadConfidenceGateReview(bad, "")
 	require.Error(t, err, "unreadable history must fail")
+}
+
+func TestLoadConfidenceGateReviewForRunScopesExplicitRun(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	path := ConfidenceHistoryPath(root)
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+	for _, run := range []string{"first", "second"} {
+		require.NoError(t, AppendMissingConfidenceRecordForRun(path, ConfidenceAgentRanger, "m1", run, "boundary", "not supplied", "2026-09-21T00:00:00Z"))
+	}
+
+	review, err := LoadConfidenceGateReviewForRun(root, "m1", "second")
+	require.NoError(t, err)
+	require.Equal(t, 1, review.Metrics.MissingRecords)
 }

@@ -13,7 +13,6 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/compile"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	embedpkg "github.com/SergioLacerda/strategist-skill/internal/embed"
-	"github.com/SergioLacerda/strategist-skill/internal/install"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
 )
@@ -164,17 +163,6 @@ func installConfigFromFlags() domain.InstallConfig {
 		StrictCompile: installStrictCompile,
 		NoShim:        installNoShim,
 		ShimPath:      installShimPath,
-	}
-}
-
-func installService(shimHome string) install.Service {
-	return install.Service{
-		Extractor:          embedpkg.Extractor{},
-		Lister:             embedpkg.Extractor{},
-		Compiler:           compile.Compiler{},
-		ShimHomeDir:        shimHome,
-		AwarenessRefresher: refreshAgentAwarenessFromEmbed,
-		Version:            Version,
 	}
 }
 

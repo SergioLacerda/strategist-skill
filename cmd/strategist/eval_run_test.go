@@ -26,6 +26,18 @@ func realProjectRootStrategistPath(t *testing.T) string {
 	return filepath.Join(projectRoot, ".strategist")
 }
 
+func TestNewEvalCommand_HasIsolatedCompleteSubcommandTree(t *testing.T) {
+	cmd := newEvalCommand()
+
+	assert.NotSame(t, evalCmd, cmd)
+	assert.Len(t, cmd.Commands(), 2)
+	for _, name := range []string{"run", "harvest"} {
+		subcommand, _, err := cmd.Find([]string{name})
+		require.NoError(t, err)
+		assert.NotSame(t, evalCmd, subcommand)
+	}
+}
+
 func setEvalRunFlags(t *testing.T, root string, race bool) {
 	t.Helper()
 	require.NoError(t, evalRunCmd.Flags().Set(flagRoot, root))

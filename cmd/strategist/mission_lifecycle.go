@@ -21,8 +21,17 @@ type missionLifecycleOptions struct {
 	MaxBytes  int
 }
 
-var missionStartCmd = &cobra.Command{Use: "start", Short: "Start a mission", RunE: func(cmd *cobra.Command, _ []string) error {
-	opts := missionLifecycleOptionsFrom(cmd)
+var missionStartCmd = newMissionStartCommand()
+
+func newMissionStartCommand() *cobra.Command {
+	cmd := &cobra.Command{Use: "start", Short: "Start a mission", RunE: func(cmd *cobra.Command, _ []string) error {
+		return runMissionStart(cmd, missionLifecycleOptionsFrom(cmd))
+	}}
+	configureMissionLifecycleFlags(cmd)
+	return cmd
+}
+
+func runMissionStart(cmd *cobra.Command, opts missionLifecycleOptions) error {
 	if err := requireMissionID(opts.MissionID); err != nil {
 		return err
 	}
@@ -30,10 +39,8 @@ var missionStartCmd = &cobra.Command{Use: "start", Short: "Start a mission", Run
 	if err != nil {
 		return fmt.Errorf("mission start: %w", err)
 	}
-	if _, err := os.Stat(missionPath(root, opts.MissionID)); err == nil {
-		return fmt.Errorf("mission start: mission %q already exists", opts.MissionID)
-	} else if !os.IsNotExist(err) {
-		return fmt.Errorf("mission start: inspect existing state: %w", err)
+	if err := requireNoExistingMission(root, opts.MissionID); err != nil {
+		return err
 	}
 	engine, status, err := domain.StartMission(domain.MissionStartRequest{MissionID: opts.MissionID})
 	if err != nil {
@@ -43,26 +50,51 @@ var missionStartCmd = &cobra.Command{Use: "start", Short: "Start a mission", Run
 		return fmt.Errorf("mission start: %w", err)
 	}
 	return writeMissionResult(cmd, opts.JSON, status)
-}}
+}
 
-var missionStatusCmd = &cobra.Command{Use: "status", Short: "Inspect a mission status", RunE: func(cmd *cobra.Command, _ []string) error {
-	opts := missionLifecycleOptionsFrom(cmd)
-	if err := requireMissionID(opts.MissionID); err != nil {
-		return err
+func requireNoExistingMission(root, missionID string) error {
+	if _, err := os.Stat(missionPath(root, missionID)); err == nil {
+		return fmt.Errorf("mission start: mission %q already exists", missionID)
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("mission start: inspect existing state: %w", err)
 	}
-	root, _, err := cliutil.ResolveActiveBasePath(opts.Root)
-	if err != nil {
-		return fmt.Errorf("mission status: %w", err)
-	}
-	_, status, err := loadMission(root, opts.MissionID)
-	if err != nil {
-		return fmt.Errorf("mission status: %w", err)
-	}
-	return writeMissionResult(cmd, opts.JSON, status)
-}}
+	return nil
+}
 
-var missionSubmitCmd = &cobra.Command{Use: "submit", Short: "Submit one authoritative mission event", RunE: func(cmd *cobra.Command, _ []string) error {
-	opts := missionLifecycleOptionsFrom(cmd)
+var missionStatusCmd = newMissionStatusCommand()
+
+func newMissionStatusCommand() *cobra.Command {
+	cmd := &cobra.Command{Use: "status", Short: "Inspect a mission status", RunE: func(cmd *cobra.Command, _ []string) error {
+		opts := missionLifecycleOptionsFrom(cmd)
+		if err := requireMissionID(opts.MissionID); err != nil {
+			return err
+		}
+		root, _, err := cliutil.ResolveActiveBasePath(opts.Root)
+		if err != nil {
+			return fmt.Errorf("mission status: %w", err)
+		}
+		_, status, err := loadMission(root, opts.MissionID)
+		if err != nil {
+			return fmt.Errorf("mission status: %w", err)
+		}
+		return writeMissionResult(cmd, opts.JSON, status)
+	}}
+	configureMissionLifecycleFlags(cmd)
+	return cmd
+}
+
+var missionSubmitCmd = newMissionSubmitCommand()
+
+func newMissionSubmitCommand() *cobra.Command {
+	cmd := &cobra.Command{Use: "submit", Short: "Submit one authoritative mission event", RunE: func(cmd *cobra.Command, _ []string) error {
+		return runMissionSubmit(cmd, missionLifecycleOptionsFrom(cmd))
+	}}
+	configureMissionLifecycleFlags(cmd)
+	cmd.Flags().String("event", "", "mission event to submit (required)")
+	return cmd
+}
+
+func runMissionSubmit(cmd *cobra.Command, opts missionLifecycleOptions) error {
 	if err := requireMissionID(opts.MissionID); err != nil {
 		return err
 	}
@@ -85,10 +117,23 @@ var missionSubmitCmd = &cobra.Command{Use: "submit", Short: "Submit one authorit
 		return fmt.Errorf("mission submit: %w", err)
 	}
 	return writeMissionResult(cmd, opts.JSON, status)
-}}
+}
 
-var missionContextCmd = &cobra.Command{Use: "context", Short: "Materialize declared mission context", RunE: func(cmd *cobra.Command, _ []string) error {
-	opts := missionLifecycleOptionsFrom(cmd)
+var missionContextCmd = newMissionContextCommand()
+
+func newMissionContextCommand() *cobra.Command {
+	cmd := &cobra.Command{Use: "context", Short: "Materialize declared mission context", RunE: func(cmd *cobra.Command, _ []string) error {
+		return runMissionContext(cmd, missionLifecycleOptionsFrom(cmd))
+	}}
+	configureMissionLifecycleFlags(cmd)
+	cmd.Flags().StringSlice("ref", nil, "declared workspace-relative context reference (repeatable)")
+	cmd.Flags().StringSlice("digest", nil, "expected sha256 digest for each --ref, in the same order")
+	cmd.Flags().Int("max-refs", domain.DefaultContextMaxReferences, "maximum number of references")
+	cmd.Flags().Int("max-bytes", domain.DefaultContextMaxBytes, "maximum materialized bytes")
+	return cmd
+}
+
+func runMissionContext(cmd *cobra.Command, opts missionLifecycleOptions) error {
 	if err := requireMissionID(opts.MissionID); err != nil {
 		return err
 	}
@@ -99,7 +144,14 @@ var missionContextCmd = &cobra.Command{Use: "context", Short: "Materialize decla
 	if _, _, err := loadMission(root, opts.MissionID); err != nil {
 		return fmt.Errorf("mission context: %w", err)
 	}
-	projectRoot := filepath.Dir(root)
+	materialized, err := domain.MaterializeContext(filepath.Dir(root), contextReferencesFrom(opts), opts.MaxRefs, opts.MaxBytes)
+	if err != nil {
+		return fmt.Errorf("mission context: %w", err)
+	}
+	return writeMissionResult(cmd, opts.JSON, materialized)
+}
+
+func contextReferencesFrom(opts missionLifecycleOptions) []domain.ContextReference {
 	refs := make([]domain.ContextReference, len(opts.Refs))
 	for i, ref := range opts.Refs {
 		refs[i] = domain.ContextReference{Ref: ref, Kind: "context"}
@@ -107,12 +159,14 @@ var missionContextCmd = &cobra.Command{Use: "context", Short: "Materialize decla
 			refs[i].Digest = opts.Digests[i]
 		}
 	}
-	materialized, err := domain.MaterializeContext(projectRoot, refs, opts.MaxRefs, opts.MaxBytes)
-	if err != nil {
-		return fmt.Errorf("mission context: %w", err)
-	}
-	return writeMissionResult(cmd, opts.JSON, materialized)
-}}
+	return refs
+}
+
+func configureMissionLifecycleFlags(cmd *cobra.Command) {
+	cmd.Flags().String(flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
+	cmd.Flags().String("mission-id", "", "mission identifier (required)")
+	cmd.Flags().Bool("json", false, "emit machine-readable JSON")
+}
 
 func missionLifecycleOptionsFrom(cmd *cobra.Command) missionLifecycleOptions {
 	return missionLifecycleOptions{
@@ -137,18 +191,4 @@ func intFlag(cmd *cobra.Command, name string, fallback int) int {
 		return fallback
 	}
 	return value
-}
-
-func init() {
-	for _, cmd := range []*cobra.Command{missionStartCmd, missionStatusCmd, missionSubmitCmd, missionContextCmd} {
-		cmd.Flags().String(flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
-		cmd.Flags().String("mission-id", "", "mission identifier (required)")
-		cmd.Flags().Bool("json", false, "emit machine-readable JSON")
-	}
-	missionSubmitCmd.Flags().String("event", "", "mission event to submit (required)")
-	missionContextCmd.Flags().StringSlice("ref", nil, "declared workspace-relative context reference (repeatable)")
-	missionContextCmd.Flags().StringSlice("digest", nil, "expected sha256 digest for each --ref, in the same order")
-	missionContextCmd.Flags().Int("max-refs", domain.DefaultContextMaxReferences, "maximum number of references")
-	missionContextCmd.Flags().Int("max-bytes", domain.DefaultContextMaxBytes, "maximum materialized bytes")
-	missionCmd.AddCommand(missionStartCmd, missionStatusCmd, missionSubmitCmd, missionContextCmd)
 }

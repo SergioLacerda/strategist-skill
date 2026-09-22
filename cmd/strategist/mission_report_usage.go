@@ -12,15 +12,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// missionCmd is the parent for Strategist mission-level commands that the
-// invoking agent (not this binary) drives directly, as opposed to
-// "metrics" (read-only, computed from runtime memory) or "handoff" (a
-// scoped verification tool for one transition).
-var missionCmd = &cobra.Command{
-	Use:   "mission",
-	Short: "Report and inspect mission-level facts this binary cannot observe directly",
-}
-
 type missionReportUsageOptions struct {
 	Root      string
 	MissionID string
@@ -35,10 +26,14 @@ type missionReportUsageOptions struct {
 // operator-supplied string.
 var missionIDPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]*$`)
 
-var missionReportUsageCmd = &cobra.Command{
-	Use:   "report-usage",
-	Short: "Record real token usage for a mission, reported by the invoking agent",
-	Long: `strategist mission report-usage records tokens_in/tokens_out for a
+var missionReportUsageCmd = newMissionReportUsageCommand()
+
+func newMissionReportUsageCommand() *cobra.Command {
+	opts := missionReportUsageOptions{}
+	cmd := &cobra.Command{
+		Use:   "report-usage",
+		Short: "Record real token usage for a mission, reported by the invoking agent",
+		Long: `strategist mission report-usage records tokens_in/tokens_out for a
 mission_id, as reported by the LLM agent (e.g. Claude Code) that invoked
 this CLI.
 
@@ -59,6 +54,15 @@ The record is appended to .strategist/memory/mission-token-usage.jsonl,
 one JSONL line per report. Comparing the reported total against
 skill.yaml's declarative token_budget is a natural follow-up, not done by
 this command.`,
+	}
+	cmd.Flags().StringVar(&opts.Root, flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
+	cmd.Flags().StringVar(&opts.MissionID, "mission-id", "", "mission_id to record usage against (required) — must match an existing pending/refined/archived artifact")
+	cmd.Flags().Int64Var(&opts.TokensIn, "tokens-in", 0, "real input token count from the invoking agent's own provider response (required, >= 0)")
+	cmd.Flags().Int64Var(&opts.TokensOut, "tokens-out", 0, "real output token count from the invoking agent's own provider response (required, >= 0)")
+	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
+		return runMissionReportUsage(cmd, opts)
+	}
+	return cmd
 }
 
 func runMissionReportUsage(cmd *cobra.Command, opts missionReportUsageOptions) error {
@@ -157,17 +161,4 @@ func missionIDKnown(basePath, id string) bool {
 		}
 	}
 	return false
-}
-
-func init() {
-	opts := missionReportUsageOptions{}
-	missionReportUsageCmd.Flags().StringVar(&opts.Root, flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
-	missionReportUsageCmd.Flags().StringVar(&opts.MissionID, "mission-id", "", "mission_id to record usage against (required) — must match an existing pending/refined/archived artifact")
-	missionReportUsageCmd.Flags().Int64Var(&opts.TokensIn, "tokens-in", 0, "real input token count from the invoking agent's own provider response (required, >= 0)")
-	missionReportUsageCmd.Flags().Int64Var(&opts.TokensOut, "tokens-out", 0, "real output token count from the invoking agent's own provider response (required, >= 0)")
-	missionReportUsageCmd.RunE = func(cmd *cobra.Command, _ []string) error {
-		return runMissionReportUsage(cmd, opts)
-	}
-	missionCmd.AddCommand(missionReportUsageCmd)
-	rootCmd.AddCommand(missionCmd)
 }
