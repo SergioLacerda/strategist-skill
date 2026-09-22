@@ -138,6 +138,27 @@ errors:
     action: "fix the provider model or effort mapping in leveling.yaml and retry"
     enforced_by: machine_enforced
 
+  - token: mission_view_confidence_unavailable
+    emit: "diagnostic=mission_view_confidence_unavailable"
+    scope: mission_view
+    reason: "the confidence history could not be read for a read-only mission view"
+    action: "inspect the confidence ledger; lifecycle state remains available"
+    enforced_by: machine_enforced
+
+  - token: mission_view_gate_outcome_unavailable
+    emit: "diagnostic=mission_view_gate_outcome_unavailable"
+    scope: mission_view
+    reason: "the Approval Gate outcome ledger could not be read"
+    action: "inspect the ground-truth ledger; do not infer authorization"
+    enforced_by: machine_enforced
+
+  - token: mission_view_leveling_unavailable
+    emit: "diagnostic=mission_view_leveling_unavailable"
+    scope: mission_view
+    reason: "the LEVELING ledger could not be read for a read-only mission view"
+    action: "inspect the role-level ledger; lifecycle state remains available"
+    enforced_by: machine_enforced
+
   - token: ranked_runtime_executable_missing
     emit: "check=blocked reason=ranked_runtime_executable_missing"
     scope: slot

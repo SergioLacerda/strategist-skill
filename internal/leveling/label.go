@@ -23,30 +23,18 @@ type Host struct {
 
 // Level is the model and effort a role runs at, plus where the value came from.
 type Level struct {
-	Role   string `json:"role" yaml:"role"`
-	Model  string `json:"model" yaml:"model"`
-	Effort string `json:"effort" yaml:"effort"`
-	Source string `json:"level_source" yaml:"level_source"`
-}
-
-// DisplayName returns the short model name for a provider model id: the
-// configured display name, otherwise the id without its `<provider>-` prefix
-// and with its first letter upper-cased.
-func (p Policy) DisplayName(provider, model string) string {
-	model = strings.TrimSpace(model)
-	if model == "" {
-		return ""
-	}
-	if profile, ok := p.Providers[strings.ToUpper(strings.TrimSpace(provider))]; ok {
-		if name := strings.TrimSpace(profile.Display[model]); name != "" {
-			return name
-		}
-	}
-	prefix := strings.ToLower(strings.TrimSpace(provider)) + "-"
-	if len(model) > len(prefix) && strings.EqualFold(model[:len(prefix)], prefix) {
-		model = model[len(prefix):]
-	}
-	return capitalize(model)
+	Role           string `json:"role" yaml:"role"`
+	Model          string `json:"model" yaml:"model"`
+	Effort         string `json:"effort" yaml:"effort"`
+	Source         string `json:"level_source" yaml:"level_source"`
+	Provider       string `json:"provider,omitempty" yaml:"provider,omitempty"`
+	ModelSource    string `json:"model_source,omitempty" yaml:"model_source,omitempty"`
+	EffortSource   string `json:"effort_source,omitempty" yaml:"effort_source,omitempty"`
+	Capability     string `json:"capability,omitempty" yaml:"capability,omitempty"`
+	FallbackUsed   bool   `json:"fallback_used,omitempty" yaml:"fallback_used,omitempty"`
+	FallbackReason string `json:"fallback_reason,omitempty" yaml:"fallback_reason,omitempty"`
+	PolicyVersion  int    `json:"policy_version,omitempty" yaml:"policy_version,omitempty"`
+	PolicyDigest   string `json:"policy_digest,omitempty" yaml:"policy_digest,omitempty"`
 }
 
 // Manual carries the operator's choice for a role from active.yaml.
@@ -84,14 +72,26 @@ func ResolveLevelLazy(load PolicyLoader, provider, role string, signals Signals,
 
 func fillLevelSource(level *Level, source, model, effort string) {
 	model, effort = capitalize(strings.TrimSpace(model)), strings.ToLower(strings.TrimSpace(effort))
-	if ((level.Model == "" && model != "") || (level.Effort == "" && effort != "")) && level.Source == "" {
+	setPrimarySource(level, source, model, effort)
+	fillModel(level, source, model)
+	fillEffort(level, source, effort)
+}
+
+func setPrimarySource(level *Level, source, model, effort string) {
+	if level.Source == "" && ((level.Model == "" && model != "") || (level.Effort == "" && effort != "")) {
 		level.Source = source
 	}
-	if level.Model == "" {
-		level.Model = model
+}
+
+func fillModel(level *Level, source, model string) {
+	if level.Model == "" && model != "" {
+		level.Model, level.ModelSource = model, source
 	}
-	if level.Effort == "" {
-		level.Effort = effort
+}
+
+func fillEffort(level *Level, source, effort string) {
+	if level.Effort == "" && effort != "" {
+		level.Effort, level.EffortSource = effort, source
 	}
 }
 
@@ -104,16 +104,19 @@ func completeLevelFromPolicy(load PolicyLoader, level Level, provider, role stri
 	if err != nil {
 		return Level{}, err
 	}
+	applyPolicyProvenance(&level, suggestion)
+	fillModel(&level, SourcePolicy, policy.DisplayName(suggestion.Provider, suggestion.Model))
+	fillEffort(&level, SourcePolicy, suggestion.Effort)
+	return level, nil
+}
+
+func applyPolicyProvenance(level *Level, suggestion Suggestion) {
 	if level.Source == "" {
 		level.Source = SourcePolicy
 	}
-	if level.Model == "" {
-		level.Model = policy.DisplayName(suggestion.Provider, suggestion.Model)
-	}
-	if level.Effort == "" {
-		level.Effort = suggestion.Effort
-	}
-	return level, nil
+	level.Provider, level.Capability = suggestion.Provider, suggestion.Capability
+	level.FallbackUsed, level.FallbackReason = suggestion.FallbackUsed, suggestion.FallbackReason
+	level.PolicyVersion, level.PolicyDigest = suggestion.PolicyVersion, suggestion.PolicyDigest
 }
 
 // Unknown reports whether no model or effort is known.

@@ -96,6 +96,22 @@ block first, and `leveling.yaml` plus the install authority only when a model or
 effort is still missing in automatic mode. A complete manual map, or a complete
 host report, never reads the policy.
 
+## Mission View
+
+`strategist mission view --mission-id <id> [--run <id>] [--json]` is a
+read-only projection over mission state, role registry, confidence history,
+Approval Gate labels, and the LEVELING ledger. It keeps the role journey and
+the Gate as distinct entries; confidence is always advisory evidence and never
+authorizes execution. JSON uses `strategist-mission-view/v1` and represents
+missing secondary data explicitly as `unavailable`, `unknown`, or
+`not_applicable`.
+
+New LEVELING ledger lines may include provider, model/effort sources,
+capability, fallback metadata, and policy identity. These fields are additive:
+legacy JSONL remains readable and its missing provenance is shown as unknown,
+never reconstructed from the current policy. Confidence records may likewise
+carry an optional explicit `run`; records without it remain mission-wide.
+
 ## Scout Event
 
 Scout's route-decision events are distinguished from Ranger's discovery-result

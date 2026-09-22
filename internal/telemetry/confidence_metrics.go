@@ -13,6 +13,7 @@ import (
 type ConfidenceRecord struct {
 	EventID            string   `json:"event_id,omitempty"`
 	MissionID          string   `json:"mission_id,omitempty"`
+	Run                string   `json:"run,omitempty"`
 	ClaimID            string   `json:"claim_id"`
 	Agent              string   `json:"agent"`
 	CorrelationKey     string   `json:"correlation_key,omitempty"`
@@ -117,7 +118,16 @@ func AppendConfidenceClaim(path, agent, missionID, timestamp string, claim domai
 
 // AppendConfidenceObservation persists accepted claims and rejected assertions.
 func AppendConfidenceObservation(path, agent, missionID, timestamp string, claim domain.ConfidenceClaim, evidence []domain.Evidence) (ConfidenceRecord, error) {
+	return AppendConfidenceObservationForRun(path, agent, missionID, "", timestamp, claim, evidence)
+}
+
+// AppendConfidenceObservationForRun is AppendConfidenceObservation with an
+// explicit optional run correlation. Empty run keeps legacy mission-wide
+// semantics.
+func AppendConfidenceObservationForRun(path, agent, missionID, run, timestamp string, claim domain.ConfidenceClaim, evidence []domain.Evidence) (ConfidenceRecord, error) {
 	record, err := NormalizeConfidenceClaim(agent, missionID, timestamp, claim, evidence)
+	record.Run = run
+	record.EventID = ConfidenceEventID(record)
 	if err == nil {
 		return record, AppendConfidenceRecord(path, record)
 	}
@@ -126,8 +136,9 @@ func AppendConfidenceObservation(path, agent, missionID, timestamp string, claim
 		level = ""
 	}
 	rejected := ConfidenceRecord{
-		EventID:           ConfidenceEventID(ConfidenceRecord{MissionID: missionID, Agent: agent, ClaimID: claim.ID, CorrelationKey: claim.CorrelationKey, ClaimKind: claim.ClaimKind, ConfidencePercent: claim.ConfidencePercent}),
+		EventID:           ConfidenceEventID(ConfidenceRecord{MissionID: missionID, Run: run, Agent: agent, ClaimID: claim.ID, CorrelationKey: claim.CorrelationKey, ClaimKind: claim.ClaimKind, ConfidencePercent: claim.ConfidencePercent}),
 		MissionID:         missionID,
+		Run:               run,
 		ClaimID:           claim.ID,
 		Agent:             agent,
 		CorrelationKey:    claim.CorrelationKey,
@@ -143,9 +154,21 @@ func AppendConfidenceObservation(path, agent, missionID, timestamp string, claim
 
 // AppendMissingConfidenceRecord makes absent producer coverage explicit.
 func AppendMissingConfidenceRecord(path, agent, missionID, correlationKey, reason, timestamp string) error {
+	return AppendMissingConfidenceRecordForRun(path, agent, missionID, "", correlationKey, reason, timestamp)
+}
+
+// AppendMissingConfidenceRecordForRun records missing coverage for one
+// explicit run without assigning legacy records to a run by inference.
+func AppendMissingConfidenceRecordForRun(path, agent, missionID, run, correlationKey, reason, timestamp string) error {
+	identity := []string{missionID}
+	if run != "" {
+		identity = append(identity, run)
+	}
+	identity = append(identity, agent, correlationKey, reason)
 	record := ConfidenceRecord{
-		EventID:        fmt.Sprintf("missing-%x", sha256.Sum256([]byte(strings.Join([]string{missionID, agent, correlationKey, reason}, "\x00")))),
+		EventID:        fmt.Sprintf("missing-%x", sha256.Sum256([]byte(strings.Join(identity, "\x00")))),
 		MissionID:      missionID,
+		Run:            run,
 		Agent:          agent,
 		CorrelationKey: correlationKey,
 		CoverageStatus: ConfidenceCoverageMissing,

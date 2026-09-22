@@ -3,12 +3,8 @@ package domain
 import (
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"sort"
 	"strings"
-
-	"gopkg.in/yaml.v3"
 )
 
 // gateStep is the pipeline step between refinement and execution. It is not a
@@ -62,33 +58,52 @@ func DefaultRoleRegistry() RoleRegistry {
 
 // NewRoleRegistry validates and orders a set of roles.
 func NewRoleRegistry(roles []Role) (RoleRegistry, error) {
-	seenID := map[string]bool{}
-	seenPhase := map[int]string{}
+	index := registryIndex{ids: map[string]bool{}, phases: map[int]string{}}
 	out := make([]Role, 0, len(roles))
 	for _, role := range roles {
-		role.ID = strings.ToLower(strings.TrimSpace(role.ID))
-		if err := validateRegistryRole(role); err != nil {
+		role.ID = normalizeRoleID(role.ID)
+		if err := index.add(role); err != nil {
 			return RoleRegistry{}, err
-		}
-		if seenID[role.ID] {
-			return RoleRegistry{}, fmt.Errorf("role registry: duplicate role %q", role.ID)
-		}
-		seenID[role.ID] = true
-		if role.Phase > 0 {
-			if other, dup := seenPhase[role.Phase]; dup {
-				return RoleRegistry{}, fmt.Errorf("role registry: roles %q and %q share phase %d", other, role.ID, role.Phase)
-			}
-			seenPhase[role.Phase] = role.ID
 		}
 		out = append(out, role)
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].Phase != out[j].Phase {
-			return out[i].Phase < out[j].Phase
-		}
-		return out[i].ID < out[j].ID
-	})
+	sortRoles(out)
 	return RoleRegistry{roles: out}, nil
+}
+
+// registryIndex tracks the ids and phases already taken while a registry is built.
+type registryIndex struct {
+	ids    map[string]bool
+	phases map[int]string
+}
+
+func (x *registryIndex) add(role Role) error {
+	if err := validateRegistryRole(role); err != nil {
+		return err
+	}
+	if x.ids[role.ID] {
+		return fmt.Errorf("role registry: duplicate role %q", role.ID)
+	}
+	x.ids[role.ID] = true
+	if role.Phase == 0 {
+		return nil
+	}
+	if other, taken := x.phases[role.Phase]; taken {
+		return fmt.Errorf("role registry: roles %q and %q share phase %d", other, role.ID, role.Phase)
+	}
+	x.phases[role.Phase] = role.ID
+	return nil
+}
+
+func normalizeRoleID(id string) string { return strings.ToLower(strings.TrimSpace(id)) }
+
+func sortRoles(roles []Role) {
+	sort.SliceStable(roles, func(i, j int) bool {
+		if roles[i].Phase != roles[j].Phase {
+			return roles[i].Phase < roles[j].Phase
+		}
+		return roles[i].ID < roles[j].ID
+	})
 }
 
 func validateRegistryRole(role Role) error {
@@ -113,152 +128,3 @@ func RoleFromConfig(cfg RoleConfig) Role {
 		HandoffSchema: cfg.HandoffSchema, Leveling: cfg.Leveling, OnStart: cfg.OnStart,
 	}
 }
-
-// LoadRoleRegistry overlays the roles/*.yaml definitions found in dir on the
-// built-in registry: a file replaces the role with the same id, and a new file
-// adds a role. A missing directory yields the built-ins; a malformed file is an
-// error. default.yaml (the slot map) is not a role definition.
-func LoadRoleRegistry(dir string) (RoleRegistry, error) {
-	merged := map[string]Role{}
-	for _, role := range DefaultRoleRegistry().roles {
-		merged[role.ID] = role
-	}
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return DefaultRoleRegistry(), nil
-		}
-		return RoleRegistry{}, fmt.Errorf("role registry: read %s: %w", dir, err)
-	}
-	for _, entry := range entries {
-		name := entry.Name()
-		if entry.IsDir() || filepath.Ext(name) != ".yaml" || name == "default.yaml" {
-			continue
-		}
-		raw, err := os.ReadFile(filepath.Join(dir, name)) //nolint:gosec // fixed directory below .strategist
-		if err != nil {
-			return RoleRegistry{}, fmt.Errorf("role registry: read %s: %w", name, err)
-		}
-		var cfg RoleConfig
-		if err := yaml.Unmarshal(raw, &cfg); err != nil {
-			return RoleRegistry{}, fmt.Errorf("role registry: parse %s: %w", name, err)
-		}
-		role := RoleFromConfig(cfg)
-		role.ID = strings.ToLower(strings.TrimSpace(role.ID))
-		if role.ID == "" {
-			return RoleRegistry{}, fmt.Errorf("role registry: %s: role is required", name)
-		}
-		merged[role.ID] = role
-	}
-	roles := make([]Role, 0, len(merged))
-	for _, role := range merged {
-		roles = append(roles, role)
-	}
-	return NewRoleRegistry(roles)
-}
-
-// Roles returns a copy of the ordered role list.
-func (r RoleRegistry) Roles() []Role { return append([]Role(nil), r.roles...) }
-
-// IDs returns the role ids ordered by phase.
-func (r RoleRegistry) IDs() []string {
-	ids := make([]string, len(r.roles))
-	for i, role := range r.roles {
-		ids[i] = role.ID
-	}
-	return ids
-}
-
-// Get returns a role by id (case-insensitive).
-func (r RoleRegistry) Get(id string) (Role, bool) {
-	want := strings.ToLower(strings.TrimSpace(id))
-	for _, role := range r.roles {
-		if role.ID == want {
-			return role, true
-		}
-	}
-	return Role{}, false
-}
-
-// Has reports whether id is a registered role.
-func (r RoleRegistry) Has(id string) bool {
-	_, ok := r.Get(id)
-	return ok
-}
-
-// RoleForSlot returns the role that fills a slot.
-func (r RoleRegistry) RoleForSlot(slot string) (Role, bool) {
-	for _, role := range r.roles {
-		if role.Slot != "" && role.Slot == slot {
-			return role, true
-		}
-	}
-	return Role{}, false
-}
-
-// PolicyRole returns the LEVELING policy role to use for id: the role's
-// `leveling` key, defaulting to the id itself (also for unregistered ids).
-func (r RoleRegistry) PolicyRole(id string) string {
-	if role, ok := r.Get(id); ok && strings.TrimSpace(role.Leveling) != "" {
-		return strings.ToLower(strings.TrimSpace(role.Leveling))
-	}
-	return strings.ToLower(strings.TrimSpace(id))
-}
-
-// HandoffSchemaOf returns the schema a role hands downstream, if any.
-func (r RoleRegistry) HandoffSchemaOf(id string) string {
-	role, _ := r.Get(id)
-	return role.HandoffSchema
-}
-
-// PhaseOf returns the checkpoint position of a role or of the approval gate,
-// which always sits immediately before the execution role.
-func (r RoleRegistry) PhaseOf(id string) (int, bool) {
-	if strings.EqualFold(strings.TrimSpace(id), gateStep) {
-		if exec, ok := r.RoleForSlot(string(SlotExecution)); ok && exec.Phase > 1 {
-			return exec.Phase - 1, true
-		}
-		return 0, false
-	}
-	role, ok := r.Get(id)
-	return role.Phase, ok
-}
-
-// PhaseTotal is the last checkpoint position, derived from the registry.
-func (r RoleRegistry) PhaseTotal() int {
-	total := 0
-	for _, role := range r.roles {
-		if role.Phase > total {
-			total = role.Phase
-		}
-	}
-	return total
-}
-
-// DefaultStartCommand resolves and records the role's level when its phase
-// starts, so the model x effort label is part of role invocation rather than
-// something the agent must remember.
-const DefaultStartCommand = "strategist leveling label --role {role} --mission {mission_id}"
-
-// StartCommands returns the commands a role runs when its phase starts, with
-// {role} and {mission_id} substituted. An unregistered role has none.
-func (r RoleRegistry) StartCommands(id, missionID string) []string {
-	role, ok := r.Get(id)
-	if !ok {
-		return nil
-	}
-	templates := role.OnStart
-	if len(templates) == 0 {
-		templates = []string{DefaultStartCommand}
-	}
-	replacer := strings.NewReplacer("{role}", role.ID, "{mission_id}", missionID)
-	out := make([]string, len(templates))
-	for i, template := range templates {
-		out[i] = replacer.Replace(template)
-	}
-	return out
-}
-
-// LevelingRoleIDs lists the roles whose model x effort can be chosen, in phase
-// order. It follows the built-in registry.
-func LevelingRoleIDs() []string { return DefaultRoleRegistry().IDs() }

@@ -11,8 +11,8 @@ import (
 )
 
 type metricsRecordOptions struct {
-	Root, Mission, Agent, ClaimFile, CorrelationKey, Reason string
-	Missing                                                 bool
+	Root, Mission, Run, Agent, ClaimFile, CorrelationKey, Reason string
+	Missing                                                      bool
 }
 
 // confidenceClaimFile is the producer input: one claim plus the evidence it cites.
@@ -48,6 +48,7 @@ func runMetricsRecord(cmd *cobra.Command, opts metricsRecordOptions) error {
 	if err != nil {
 		return fmt.Errorf("metrics record: %w", err)
 	}
+	producer = producer.WithRun(opts.Run)
 	if opts.Missing {
 		return recordMissing(cmd, producer, opts)
 	}
@@ -94,6 +95,7 @@ func init() {
 	f := metricsRecordCmd.Flags()
 	f.StringVar(&opts.Root, flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
 	f.StringVar(&opts.Mission, "mission", "", "mission id (required)")
+	f.StringVar(&opts.Run, "run", "", "optional explicit run id for a repeated role execution")
 	f.StringVar(&opts.Agent, "agent", "", "producing agent (required)")
 	f.StringVar(&opts.ClaimFile, "claim-file", "", "YAML file with the claim and its evidence")
 	f.BoolVar(&opts.Missing, "missing", false, "record an explicit missing-record instead of a claim")

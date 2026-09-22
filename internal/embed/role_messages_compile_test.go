@@ -70,22 +70,37 @@ func TestGenericRoleTemplatesReproduceTheOriginalMessages(t *testing.T) {
 	}
 }
 
+var (
+	genericSourceKeys = []string{"role_start", "role_done", "role_task_done", "role_phrases"}
+	compileTimeTokens = []string{"{role_title}", "{role_emoji}", "{start_text}", "{done_text}", "{artifact_label}", "{task_text}", "{phase_bar}", "{phase_pct}", "{phase_mark}"}
+)
+
 func TestCompiledMessagesCarryNoCompileTimePlaceholdersOrGenericKeys(t *testing.T) {
-	compileTime := []string{"{role_title}", "{role_emoji}", "{start_text}", "{done_text}", "{artifact_label}", "{task_text}", "{phase_bar}", "{phase_pct}", "{phase_mark}"}
 	personas := compiledPersonas(t, nil)
 	for _, persona := range []string{"epic", "pragmatic"} {
 		for _, lang := range []string{"en", "pt-BR"} {
-			content := langMap(t, personas, persona, "content_by_lang", lang)
-			for _, key := range []string{"role_start", "role_done", "role_task_done", "role_phrases"} {
-				assert.NotContains(t, content, key, "%s/%s: generic source key %s must not leak", persona, lang, key)
-			}
-			for key, value := range content {
-				text, _ := value.(string)
-				for _, token := range compileTime {
-					assert.NotContains(t, text, token, "%s/%s: %s", persona, lang, key)
-				}
-			}
+			assertNoCompileTimeLeaks(t, persona+"/"+lang, langMap(t, personas, persona, "content_by_lang", lang))
 		}
+	}
+}
+
+// assertNoCompileTimeLeaks checks that the generic source keys and the
+// compile-time placeholders never reach an agent-facing message.
+func assertNoCompileTimeLeaks(t *testing.T, label string, content map[string]any) {
+	t.Helper()
+	for _, key := range genericSourceKeys {
+		assert.NotContains(t, content, key, "%s: generic source key %s must not leak", label, key)
+	}
+	for key, value := range content {
+		assertNoTokens(t, label+": "+key, value)
+	}
+}
+
+func assertNoTokens(t *testing.T, label string, value any) {
+	t.Helper()
+	text, _ := value.(string)
+	for _, token := range compileTimeTokens {
+		assert.NotContains(t, text, token, label)
 	}
 }
 

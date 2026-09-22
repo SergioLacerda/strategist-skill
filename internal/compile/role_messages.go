@@ -95,19 +95,23 @@ func expandOne(content map[string]any, key, templateKey string, replacer *string
 }
 
 // rolePhraseFor returns the phrase table of a role, falling back to the
-// `_default` entry so a role without its own wording still renders.
+// `_default` entry so a role without its own wording still renders. The default
+// supplies emoji and generic wording only: task wording is opt-in per role.
 func rolePhraseFor(phrases map[string]any, id string) map[string]string {
-	out := map[string]string{}
-	for _, source := range []string{defaultPhrasesKey, id} {
-		for field, value := range asMap(phrases[source]) {
-			if text, ok := value.(string); ok {
-				out[field] = text
-			}
-		}
-		if source == defaultPhrasesKey {
-			// The default supplies emoji and generic wording only; task wording
-			// is opt-in per role.
-			delete(out, "task_text")
+	out := stringFields(asMap(phrases[defaultPhrasesKey]))
+	delete(out, "task_text")
+	for field, value := range stringFields(asMap(phrases[id])) {
+		out[field] = value
+	}
+	return out
+}
+
+// stringFields keeps the string-valued entries of a phrase table.
+func stringFields(entry map[string]any) map[string]string {
+	out := make(map[string]string, len(entry))
+	for field, value := range entry {
+		if text, ok := value.(string); ok {
+			out[field] = text
 		}
 	}
 	return out

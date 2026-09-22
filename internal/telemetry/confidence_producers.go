@@ -14,6 +14,14 @@ type ConfidenceProducerAdapter struct {
 	Path      string
 	Agent     string
 	MissionID string
+	Run       string
+}
+
+// WithRun scopes subsequently written observations to an explicit role run.
+// Empty preserves the legacy mission-wide record behavior.
+func (p ConfidenceProducerAdapter) WithRun(run string) ConfidenceProducerAdapter {
+	p.Run = run
+	return p
 }
 
 // NewConfidenceProducerAdapter creates the shared persistence boundary for a
@@ -30,12 +38,12 @@ func NewConfidenceProducerAdapter(path, agent, missionID string) (ConfidenceProd
 
 // RecordClaim validates and persists one claim observation.
 func (p ConfidenceProducerAdapter) RecordClaim(claim domain.ConfidenceClaim, evidence []domain.Evidence) (ConfidenceRecord, error) {
-	return AppendConfidenceObservation(p.Path, p.Agent, p.MissionID, time.Now().UTC().Format(time.RFC3339Nano), claim, evidence)
+	return AppendConfidenceObservationForRun(p.Path, p.Agent, p.MissionID, p.Run, time.Now().UTC().Format(time.RFC3339Nano), claim, evidence)
 }
 
 // RecordMissing persists an explicit missing-producer observation.
 func (p ConfidenceProducerAdapter) RecordMissing(correlationKey, reason string) error {
-	return AppendMissingConfidenceRecord(p.Path, p.Agent, p.MissionID, correlationKey, reason, time.Now().UTC().Format(time.RFC3339Nano))
+	return AppendMissingConfidenceRecordForRun(p.Path, p.Agent, p.MissionID, p.Run, correlationKey, reason, time.Now().UTC().Format(time.RFC3339Nano))
 }
 
 // isConfidenceAgent accepts every registered role (exact id) plus the producers

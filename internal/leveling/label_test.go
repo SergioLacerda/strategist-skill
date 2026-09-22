@@ -59,7 +59,7 @@ func TestResolveLevelHostWinsOverPolicy(t *testing.T) {
 	policy := defaultPolicy(t)
 	level, err := leveling.ResolveLevel(policy, "CLAUDE", "ranger", leveling.Signals{}, leveling.Host{Model: "sonnet", Effort: "high"})
 	require.NoError(t, err)
-	assert.Equal(t, leveling.Level{Role: "ranger", Model: "Sonnet", Effort: "high", Source: leveling.SourceHost}, level)
+	assert.Equal(t, leveling.Level{Role: "ranger", Model: "Sonnet", Effort: "high", Source: leveling.SourceHost, ModelSource: leveling.SourceHost, EffortSource: leveling.SourceHost}, level)
 	assert.Equal(t, "Sonnet-High", level.Label())
 }
 
@@ -219,7 +219,7 @@ func TestResolveLevelLazyManualCompleteNeverLoadsPolicy(t *testing.T) {
 	level, err := leveling.ResolveLevelLazy(loader.load, "CLAUDE", "ranger", leveling.Signals{},
 		leveling.Manual{Model: "sonnet", Effort: "high"}, leveling.Host{Model: "Opus", Effort: "low"})
 	require.NoError(t, err)
-	assert.Equal(t, leveling.Level{Role: "ranger", Model: "Sonnet", Effort: "high", Source: leveling.SourceManual}, level)
+	assert.Equal(t, leveling.Level{Role: "ranger", Model: "Sonnet", Effort: "high", Source: leveling.SourceManual, ModelSource: leveling.SourceManual, EffortSource: leveling.SourceManual}, level)
 	assert.Zero(t, loader.calls, "a complete manual choice must not read the policy")
 }
 
