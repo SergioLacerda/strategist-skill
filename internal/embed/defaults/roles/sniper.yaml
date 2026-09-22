@@ -2,8 +2,11 @@ role: sniper
 slot: execution
 phase: 4                        # the approval gate is step 3, immediately before this role
 pluggable: false               # native role today; no external provider
-on_start:                       # run when this role's phase starts; {role} and {mission_id} are substituted
-  - strategist leveling label --role {role} --mission {mission_id}
+on_start:                       # run when this role's phase starts; {role} and {mission_id} are substituted.
+                                 # --host-model/--host-effort are a literal reminder to fill in with the
+                                 # actual running model/effort — the CLI cannot infer them, and omitting
+                                 # them silently returns blank fields.
+  - strategist leveling label --role {role} --mission {mission_id} --host-model <your-model> --host-effort <your-effort>
 # leveling: sniper
 
 

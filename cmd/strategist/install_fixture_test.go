@@ -5,17 +5,43 @@ import (
 	"path/filepath"
 	"testing"
 
+	installadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/install"
+	"github.com/SergioLacerda/strategist-skill/internal/compile"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	embedpkg "github.com/SergioLacerda/strategist-skill/internal/embed"
+	internalinstall "github.com/SergioLacerda/strategist-skill/internal/install"
+	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/require"
 )
 
-// useMinimalInstallExtractor points installCmd at minimalInstallExtractor
-// for the duration of t, restoring the production extractor afterward.
-func useMinimalInstallExtractor(t *testing.T) {
+func newInstallTestCommand(t *testing.T, extractor domain.FileExtractor, flags map[string]string) *cobra.Command {
 	t.Helper()
-	orig := installExtractorOverride
-	t.Cleanup(func() { installExtractorOverride = orig })
-	installExtractorOverride = minimalInstallExtractor{}
+	cmd := installadapter.New(installTestDependencies(extractor))
+	for name, value := range flags {
+		require.NoError(t, cmd.Flags().Set(name, value))
+	}
+	return cmd
+}
+
+func installTestDependencies(extractor domain.FileExtractor) installadapter.Dependencies {
+	deps := installDependencies()
+	if extractor == nil {
+		return deps
+	}
+	deps.ServiceFactory = func(shimHome string) installadapter.Installer {
+		svc := internalinstall.Service{
+			Extractor:          extractor,
+			Compiler:           compile.Compiler{},
+			ShimHomeDir:        shimHome,
+			AwarenessRefresher: refreshAgentAwarenessFromEmbed,
+			Version:            Version,
+		}
+		if lister, ok := extractor.(domain.FileLister); ok {
+			svc.Lister = lister
+		}
+		return svc
+	}
+	return deps
 }
 
 // minimalInstallExtractor creates the minimum .strategist/ layout a silent

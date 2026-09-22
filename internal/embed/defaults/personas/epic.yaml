@@ -125,12 +125,10 @@ content_by_lang:
     role_done: |
       {role_level_header}
       {role_emoji} **{role_title} [{mission_id}]:** {done_text}
-        ✶ channeling mana  {phase_bar}  {phase_pct}%{phase_mark}
       {artifact_label} {artifact_path}
     role_task_done: |
       {role_level_header}
       {role_emoji} **{role_title} [{mission_id}]:** {task_text}
-        ✶ channeling mana  {bar}  {pct}%
     role_phrases:
       _default:  {emoji: "🎭", start_text: "starting. skill={provider}", done_text: "complete.", artifact_label: "Artifact at:"}
       ranger:    {emoji: "🎯", start_text: "starting reconnaissance. skill={provider}", done_text: "reconnaissance complete.", artifact_label: "Artifact at:"}
@@ -140,7 +138,6 @@ content_by_lang:
     approval_gate_prompt: |
       {role_level_header}
       🚦 **Gate [{mission_id}]:** AWAITING CONFIRMATION
-        ✶ channeling mana  ████████████████████████▓░░░  75% · awaiting review
 
       Plan at: {artifact_path}
 

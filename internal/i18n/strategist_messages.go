@@ -58,9 +58,9 @@ type RuntimeMessages struct {
 	// expands them once per registered role into the `<role>_start`,
 	// `<role>_done` and `<role>_task_done` keys (see internal/compile), so a new
 	// role needs no new template strings. Compile-time placeholders are
-	// {role_title}, {role_emoji}, {start_text}, {done_text}, {artifact_label},
-	// {task_text}, {phase_bar}, {phase_pct} and {phase_mark}; the rest are
-	// runtime placeholders. RolePhrases["_default"] words any role without its own.
+	// {role_title}, {role_emoji}, {start_text}, {done_text}, {artifact_label}
+	// and {task_text}; the rest are runtime placeholders.
+	// RolePhrases["_default"] words any role without its own.
 	RoleStart    string
 	RoleDone     string
 	RoleTaskDone string

@@ -52,6 +52,7 @@ are recorded in `scripts/coverage-exemptions.tsv`. Edit those sources, not this 
 | `internal/testutil` | 95% | raised from 0.0% to 100.0% (2026-08-30, direct helper tests added; no longer excluded from `make test`) - measured 100.0% |
 | `internal/runtimepayload` | 75% | embedded OpenSpec bundle verification/materialization gate - measured 79.6% (20260920-drift-a-windows-standalone-install) |
 | `internal/leveling` | 90% | provider-neutral LEVELING policy, fallback, and digest contract |
+| `internal/missionview` | 90% | read-only mission projection and deterministic renderer contract |
 
 ## Reviewed Exemptions
 
@@ -69,3 +70,9 @@ These production packages are present in the inventory but intentionally have no
 | `internal/rolevalidation` | quality-maintainers | baseline coverage policy is pending a dedicated role validation test budget |
 | `internal/runtimeenv` | quality-maintainers | baseline coverage policy is pending a dedicated runtime environment test budget |
 | `treasure-chest/domain` | quality-maintainers | baseline coverage policy is pending a dedicated Treasure Chest domain test budget |
+| `cmd/strategist/eval` | quality-maintainers | adapter extraction pending dedicated package-local coverage budget; existing CLI contract tests remain authoritative |
+| `cmd/strategist/install` | quality-maintainers | adapter extraction pending migration of hermetic CLI install fixtures to package-local tests |
+| `cmd/strategist/leveling` | quality-maintainers | adapter extraction pending dedicated package-local coverage budget; policy authority remains internal/leveling |
+| `cmd/strategist/metrics` | quality-maintainers | adapter-local metrics suite is established; dedicated error-matrix coverage budget remains pending |
+| `cmd/strategist/mission` | quality-maintainers | adapter extraction pending migration of mission lifecycle fixtures to package-local tests |
+| `cmd/strategist/plugins` | quality-maintainers | adapter extraction (cmd-plugins-extraction) pending a dedicated package-local coverage budget; measured 84.9% on 2026-09-22 |

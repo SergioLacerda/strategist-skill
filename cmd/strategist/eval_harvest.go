@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"path/filepath"
 
+	evaladapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/eval"
+	treasure "github.com/SergioLacerda/strategist-skill/treasure-chest"
 	"github.com/spf13/cobra"
 )
 
@@ -15,31 +16,7 @@ import (
 var evalHarvestCmd = newEvalHarvestCommand()
 
 func newEvalHarvestCommand() *cobra.Command {
-	opts := evalHarvestOptions{}
-	cmd := &cobra.Command{
-		Use:   "harvest [mission_id]",
-		Short: "Copy real mission artifacts into tests/evals/regression/ as fixtures",
-		Long: `Copy persisted artifacts from completed Strategist missions (analysis.md by
-default) into tests/evals/regression/<mission_id>/, for use as real fixture content by
-internal/eval's TargetArtifactCheck-based content assertions.
-
-Mission discovery reuses treasure.ScanMissionsTolerant — the same mechanism
-behind "strategist treasure-chest index" — so only missions with a tasks.md
-under <base_path>/refined/ or <base_path>/done/ are eligible. A mission
-whose tasks.md fails to parse is skipped with a warning rather than
-aborting the run.
-
-No route_decision fixture type is produced: Scout's route_decision is never persisted
-to disk anywhere in this codebase (see .analysis/archived/20260804-eval-harvest-adr.md
-DEC-5).`,
-	}
-	cmd.Flags().BoolVar(&opts.All, "all", false, "harvest every mission found by treasure.ScanMissionsTolerant")
-	cmd.Flags().StringVar(&opts.Include, "include", "", "comma-separated extra artifact types: design,proposal,tasks,adr,report")
-	cmd.Flags().StringVar(&opts.Root, flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
-	cmd.RunE = func(cmd *cobra.Command, args []string) error {
-		return runEvalHarvest(cmd, args, opts)
-	}
-	return cmd
+	return evaladapter.NewHarvest(evalHarvestDependencies())
 }
 
 type evalHarvestOptions struct {
@@ -59,40 +36,20 @@ var evalHarvestArtifactFiles = map[string]string{
 }
 
 func runEvalHarvest(cmd *cobra.Command, args []string, opts evalHarvestOptions) error {
-	if run := telemetryRunFromCmd(cmd); run != nil {
-		run.SetSilent()
-	}
-	opts.All = boolFlag(cmd, "all", opts.All)
-	opts.Include = stringFlag(cmd, "include", opts.Include)
-
-	strategistRoot, projectRoot, err := resolveEvalActionRoot(cmd, "harvest", opts.Root)
-	if err != nil {
-		return err
-	}
-	_, basePath, err := resolveDojoRoots(strategistRoot)
-	if err != nil {
-		return fmt.Errorf("eval harvest: %w", err)
-	}
-
-	missionIDs, warnings, err := selectHarvestMissionIDs(args, opts, basePath)
-	if err != nil {
-		return err
-	}
-	printEvalHarvestWarnings(cmd, warnings)
-	includeTypes, err := parseHarvestInclude(opts.Include)
-	if err != nil {
-		return err
-	}
-
-	destRoot := filepath.Join(projectRoot, "tests", "evals", "regression")
-	written, err := harvestMissions(basePath, destRoot, missionIDs, includeTypes)
-	if err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(cmd.OutOrStdout(), "[Strategist] eval harvest: %d mission(s), %d fixture file(s) written\n", len(missionIDs), written); err != nil {
-		return fmt.Errorf("eval harvest: write output: %w", err)
+	if err := evaladapter.RunHarvest(cmd, args, evalHarvestDependencies(), evaladapter.HarvestOptions{All: opts.All, Include: opts.Include, Root: opts.Root}); err != nil {
+		return fmt.Errorf("run eval harvest: %w", err)
 	}
 	return nil
+}
+
+func evalHarvestDependencies() evaladapter.HarvestDependencies {
+	return evaladapter.HarvestDependencies{RootFlag: flagRoot, ResolveRoot: resolveEvalActionRoot, ResolveBasePath: resolveDojoRoots, Select: func(args []string, opts evaladapter.HarvestOptions, base string) ([]string, []treasure.ScanWarning, error) {
+		return selectHarvestMissionIDs(args, evalHarvestOptions{All: opts.All, Include: opts.Include, Root: opts.Root}, base)
+	}, PrintWarnings: printEvalHarvestWarnings, ParseInclude: parseHarvestInclude, Harvest: harvestMissions, SilenceRun: func(cmd *cobra.Command) {
+		if run := telemetryRunFromCmd(cmd); run != nil {
+			run.SetSilent()
+		}
+	}}
 }
 
 // harvestMissions harvests every mission in missionIDs, returning the total

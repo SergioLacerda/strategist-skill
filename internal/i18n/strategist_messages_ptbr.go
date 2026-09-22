@@ -24,7 +24,6 @@ var PTBRRuntime = RuntimeMessages{ //nolint:dupl
 
 	RoleStart: "{role_level_header}\n{role_emoji} **{role_title} [{mission_id}]:** {start_text}",
 	RoleDone: "{role_level_header}\n{role_emoji} **{role_title} [{mission_id}]:** {done_text}\n" +
-		"  ✶ channeling mana  {phase_bar}  {phase_pct}%{phase_mark}\n" +
 		"{artifact_label} {artifact_path}",
 	RoleTaskDone: "{role_level_header}\n{role_emoji} **{role_title} [{mission_id}]:** {task_text}",
 	RolePhrases: map[string]RolePhrase{
@@ -34,8 +33,7 @@ var PTBRRuntime = RuntimeMessages{ //nolint:dupl
 		"sniper":    {Emoji: "🗡️", StartText: "alvo confirmado — iniciando materialização de documentação.", DoneText: "materialização de documentação concluída.", ArtifactLabel: "Relatório em:", TaskText: "alvo {done}/{total} materializado — {task_title}"},
 	},
 
-	ApprovalGatePrompt: "{role_level_header}\n🚦 **Gate [{mission_id}]:** AGUARDANDO CONFIRMAÇÃO\n" +
-		"  ✶ channeling mana  ████████████████████████▓░░░  75% · aguardando revisão\n\n" +
+	ApprovalGatePrompt: "{role_level_header}\n🚦 **Gate [{mission_id}]:** AGUARDANDO CONFIRMAÇÃO\n\n" +
 		"Plano em: {artifact_path}\n\n" +
 		"Revisar e confirmar? (sim / nao / revisar)",
 

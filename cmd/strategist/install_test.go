@@ -23,11 +23,8 @@ func TestInstallCmd_ErrorPath(t *testing.T) {
 	require.NoError(t, os.Chmod(dir, 0o444))
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
 
-	orig := installTarget
-	t.Cleanup(func() { installTarget = orig })
-	installTarget = dir
-
-	err := installCmd.RunE(installCmd, nil)
+	cmd := newInstallTestCommand(t, nil, map[string]string{"target": dir})
+	err := cmd.RunE(cmd, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "install")
 }
@@ -35,7 +32,7 @@ func TestInstallCmd_ErrorPath(t *testing.T) {
 func TestResolveInstallTarget_GlobalHomeDirError(t *testing.T) {
 	clearHomeEnv(t)
 
-	_, err := resolveInstallTarget("", true)
+	_, err := resolveRuntimeInstallTarget("", true)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "resolve home dir")
 }
@@ -43,25 +40,10 @@ func TestResolveInstallTarget_GlobalHomeDirError(t *testing.T) {
 func TestRunInstall_UserHomeDirError(t *testing.T) {
 	clearHomeEnv(t)
 
-	orig := installTarget
-	t.Cleanup(func() { installTarget = orig })
-	installTarget = t.TempDir()
-
-	err := installCmd.RunE(installCmd, nil)
+	cmd := newInstallTestCommand(t, nil, map[string]string{"target": t.TempDir()})
+	err := cmd.RunE(cmd, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "resolve home dir")
-}
-
-func TestMarkInstallRun_WithMissionRunAndWizard(t *testing.T) {
-	run := attachMissionRun(t, installCmd)
-	ctx := installCmd.Context()
-
-	assert.NotPanics(t, func() { markInstallRun(ctx, true) })
-	_ = run
-}
-
-func TestMarkInstallRun_NilRunNoPanic(t *testing.T) {
-	assert.NotPanics(t, func() { markInstallRun(context.Background(), false) })
 }
 
 func TestAddMissionLines_WithRun(t *testing.T) {
@@ -78,22 +60,12 @@ func TestCommandContext_NilContextReturnsBackground(t *testing.T) {
 }
 
 func TestInstallCmd_DefaultTarget(t *testing.T) {
-	// When installTarget is empty it defaults to "." — cover that branch.
+	// When --target is empty it defaults to "." — cover that branch.
 	// We expect an error (real install would touch ~/.claude/) so we
 	// use a read-only CWD to abort early inside the extractor.
 	if runtime.GOOS == "windows" || os.Getuid() == 0 {
 		t.Skip("permission tests do not apply on Windows or when running as root")
 	}
-	origTarget := installTarget
-	origSilent := installSilent
-	origWizard := installWizard
-	origGlobal := installGlobal
-	t.Cleanup(func() {
-		installTarget = origTarget
-		installSilent = origSilent
-		installWizard = origWizard
-		installGlobal = origGlobal
-	})
 
 	readOnly := t.TempDir()
 	require.NoError(t, os.Chmod(readOnly, 0o555))
@@ -104,42 +76,28 @@ func TestInstallCmd_DefaultTarget(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chdir(oldWd) })
 	require.NoError(t, os.Chdir(readOnly))
 
-	installTarget = "" // triggers the default cwd branch
-	installSilent = true
-	installWizard = false
-	installGlobal = false
-
-	err = installCmd.RunE(installCmd, nil)
+	cmd := newInstallTestCommand(t, nil, map[string]string{"silent": "true"})
+	err = cmd.RunE(cmd, nil)
 	require.Error(t, err) // extraction into read-only "." fails
-	wd, wdErr := os.Getwd()
-	require.NoError(t, wdErr)
-	assert.Equal(t, wd, installTarget) // default "." is normalized to the absolute cwd
 }
 
 // --- root / execute ---
 
 // TestInstallCmd_PrintsCompletion verifies the success message (install completes).
 func TestInstallCmd_PrintsCompletion(t *testing.T) {
-	useMinimalInstallExtractor(t)
 	dir := t.TempDir()
+	// installShim resolves os.UserHomeDir() and overwrites
+	// ~/.claude/skills/strategist/SKILL.md (plus the optional Gemini/Codex
+	// shims). Without this the test destroys the developer's installed skill.
+	setHomeEnv(t, t.TempDir())
 
-	origTarget := installTarget
-	origSilent := installSilent
-	origWizard := installWizard
-	origGlobal := installGlobal
-	t.Cleanup(func() {
-		installTarget = origTarget
-		installSilent = origSilent
-		installWizard = origWizard
-		installGlobal = origGlobal
+	cmd := newInstallTestCommand(t, minimalInstallExtractor{}, map[string]string{
+		"target": dir,
+		"silent": "true",
 	})
-	installTarget = dir
-	installSilent = true
-	installWizard = false
-	installGlobal = false
 
 	out := captureStdout(t, func() {
-		err := installCmd.RunE(installCmd, nil)
+		err := cmd.RunE(cmd, nil)
 		if err != nil {
 			// In some CI environments the shim step may fail — that's OK for
 			// this test; we just need to exercise the target-defaulting branch.
@@ -152,48 +110,30 @@ func TestInstallCmd_PrintsCompletion(t *testing.T) {
 // --- providers ---
 
 func TestInstallCmd_GlobalFlag_ResolvesHomeDefault(t *testing.T) {
-	useMinimalInstallExtractor(t)
-	origTarget := installTarget
-	origSilent := installSilent
-	origWizard := installWizard
-	origGlobal := installGlobal
-	t.Cleanup(func() {
-		installTarget = origTarget
-		installSilent = origSilent
-		installWizard = origWizard
-		installGlobal = origGlobal
-	})
-
 	home := t.TempDir()
 	setHomeEnv(t, home)
-	installTarget = ""
-	installSilent = true
-	installWizard = false
-	installGlobal = true
 
-	err := installCmd.RunE(installCmd, nil)
+	cmd := newInstallTestCommand(t, minimalInstallExtractor{}, map[string]string{
+		"silent": "true",
+		"global": "true",
+	})
+	err := cmd.RunE(cmd, nil)
 	require.NoError(t, err)
-	assert.Equal(t, home, installTarget)
+	assert.FileExists(t, filepath.Join(home, ".strategist", "SKILL.md"))
 }
 
-// TestInstallCmd_GlobalHomeDirErrorPropagatesFromRunInstall covers runInstall's
-// own "if err := resolveInstallTarget(...); err != nil { return err }" branch,
-// through the real command — TestResolveInstallTarget_GlobalHomeDirError
-// already covers resolveInstallTarget's own error return, but calls it
-// directly rather than through runInstall.
+// TestInstallCmd_GlobalHomeDirErrorPropagatesFromCommand covers target
+// resolution through the real adapter command.
 func TestInstallCmd_GlobalHomeDirErrorPropagatesFromRunInstall(t *testing.T) {
-	origTarget, origGlobal := installTarget, installGlobal
-	t.Cleanup(func() { installTarget = origTarget; installGlobal = origGlobal })
 	clearHomeEnv(t)
-	installTarget = ""
-	installGlobal = true
 
-	err := installCmd.RunE(installCmd, nil)
+	cmd := newInstallTestCommand(t, nil, map[string]string{"global": "true"})
+	err := cmd.RunE(cmd, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "resolve home dir")
 }
 
-// TestInstallCmd_BackupMessageWriteErrorOnClosedStdout covers runInstall's
+// TestInstallCmd_BackupMessageWriteErrorOnClosedStdout covers the adapter's
 // "if report.BackupDir != \"\" { if _, err := fmt.Fprintf(...); err != nil {
 // return fmt.Errorf(...) } }" branch: a second, forced install over
 // customized files produces a non-empty BackupDir, and a closed stdout makes
@@ -202,23 +142,22 @@ func TestInstallCmd_BackupMessageWriteErrorOnClosedStdout(t *testing.T) {
 	if runtime.GOOS == "windows" || os.Getuid() == 0 {
 		t.Skip("permission tests do not apply on Windows or when running as root")
 	}
-	useMinimalInstallExtractor(t)
 	dir := t.TempDir()
 	setHomeEnv(t, t.TempDir())
-	origTarget, origForce := installTarget, installForce
-	t.Cleanup(func() { installTarget = origTarget; installForce = origForce })
-	installTarget = dir
-	installForce = false
-	require.NoError(t, installCmd.RunE(installCmd, nil))
+	first := newInstallTestCommand(t, minimalInstallExtractor{}, map[string]string{"target": dir})
+	require.NoError(t, first.RunE(first, nil))
 
 	target := filepath.Join(dir, ".strategist", "SKILL.md")
 	original, err := os.ReadFile(target)
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(target, append(original, []byte("\n# local edit\n")...), 0o644))
 
-	installForce = true
+	second := newInstallTestCommand(t, minimalInstallExtractor{}, map[string]string{
+		"target": dir,
+		"force":  "true",
+	})
 	withClosedStdout(t, func() {
-		runErr := installCmd.RunE(installCmd, nil)
+		runErr := second.RunE(second, nil)
 		require.Error(t, runErr)
 		assert.Contains(t, runErr.Error(), "write output")
 	})

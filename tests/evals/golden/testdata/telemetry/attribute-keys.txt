@@ -25,6 +25,7 @@ strategist.correlation_id
 strategist.decision_reason
 strategist.discovery_subtype
 strategist.documentation_scope
+strategist.effort
 strategist.evidence_state
 strategist.gate.response
 strategist.gate.status
@@ -32,6 +33,7 @@ strategist.gate.type
 strategist.handoff_challenge.critical_failures
 strategist.handoff_challenge.status
 strategist.handoff_challenge.types
+strategist.level_source
 strategist.mandates.count
 strategist.metrics.lines_emitted
 strategist.metrics.t_archivist_to_gate_ms
@@ -48,12 +50,14 @@ strategist.metrics.tokens_out
 strategist.metrics.total_wall_time_ms
 strategist.mission
 strategist.mission_id
+strategist.model
 strategist.output_profile
 strategist.phase
 strategist.pipeline_route
 strategist.provider
 strategist.reason
 strategist.role
+strategist.role_run
 strategist.route
 strategist.route_confidence
 strategist.route_reason

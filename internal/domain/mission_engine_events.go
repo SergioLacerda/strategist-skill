@@ -17,6 +17,9 @@ const (
 	MissionEventNoTasks MissionEngineEvent = "refinement_done_no_tasks"
 	// MissionEventGateApproved approves the current gate.
 	MissionEventGateApproved MissionEngineEvent = "gate_approved"
+	// MissionEventGateApprovedAnalysisOnly accepts a package that has no
+	// documentation_target; the mission ends as analysis delivered.
+	MissionEventGateApprovedAnalysisOnly MissionEngineEvent = "gate_approved_analysis_only"
 	// MissionEventGateDenied denies the current gate.
 	MissionEventGateDenied MissionEngineEvent = "gate_denied"
 	// MissionEventGateTimeout closes an expired gate.
@@ -28,6 +31,9 @@ const (
 	MissionEventHandoffPassed MissionEngineEvent = "handoff_challenge_passed"
 	// MissionEventHandoffFailed returns a repairable handoff to Archivist.
 	MissionEventHandoffFailed MissionEngineEvent = "handoff_challenge_failed"
+	// MissionEventHandoffNotApplicable ends a mission whose accepted package has
+	// no documentation_target but that entered the handoff challenge anyway.
+	MissionEventHandoffNotApplicable MissionEngineEvent = "handoff_challenge_not_applicable"
 	// MissionEventHandoffExhausted is the fail-closed terminal outcome.
 	MissionEventHandoffExhausted MissionEngineEvent = "handoff_challenge_exhausted"
 	// MissionEventSniperDone signals execution completion.
@@ -51,9 +57,10 @@ func missionTransitionEvent(event MissionEngineEvent) (TransitionEvent, bool) {
 		MissionEventRefinementDone: EventArchivistTasks, MissionEventNoTasks: EventArchivistNoTasks,
 		MissionEventGateApproved: EventGateApproved, MissionEventGateDenied: EventGateDenied,
 		MissionEventGateTimeout: EventGateTimeout, MissionEventGateRevision: EventGateRevision,
-		MissionEventHandoffPassed: EventHandoffPassed, MissionEventHandoffFailed: EventHandoffFailed,
-		MissionEventHandoffExhausted: EventHandoffExhausted,
-		MissionEventSniperDone:       EventSniperDone, MissionEventRetryOK: EventRetryOK,
+		MissionEventGateApprovedAnalysisOnly: EventGateApprovedAnalysisOnly,
+		MissionEventHandoffPassed:            EventHandoffPassed, MissionEventHandoffFailed: EventHandoffFailed,
+		MissionEventHandoffExhausted: EventHandoffExhausted, MissionEventHandoffNotApplicable: EventHandoffNotApplicable,
+		MissionEventSniperDone: EventSniperDone, MissionEventRetryOK: EventRetryOK,
 		MissionEventSlotTransient: EventSlotTransient, MissionEventSlotPermanent: EventSlotPermanent,
 		MissionEventADRCriterion: EventADRCriterionMet, MissionEventADRApproved: EventADRApproved,
 		MissionEventADRDeclined: EventADRDeclined,
@@ -76,4 +83,12 @@ func phaseForState(state MissionState) PipelinePhase {
 		return PhaseRefinement
 	}
 	return PhaseRefinement
+}
+
+// MissionEventRequiresNoDocumentationTargets reports the events that end a
+// mission as analysis delivered after acceptance. They are valid only when the
+// accepted package declares no documentation_target, which the submitting
+// adapter checks against the refined tasks.md.
+func MissionEventRequiresNoDocumentationTargets(event MissionEngineEvent) bool {
+	return event == MissionEventGateApprovedAnalysisOnly || event == MissionEventHandoffNotApplicable
 }

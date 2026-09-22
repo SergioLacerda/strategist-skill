@@ -51,6 +51,7 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `start` — Start a mission
   - `status` — Inspect a mission status
   - `submit` — Submit one authoritative mission event
+  - `view` — Render a read-only mission experience view
 - `plugins` — Inspect and evaluate Strategist plugin enforcement
   - `authorize` — Compose authorization evidence for a governed target
   - `evaluate-write` — Report whether a write to --target is enforceably allowed under the active connector

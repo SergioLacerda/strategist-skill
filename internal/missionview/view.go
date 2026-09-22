@@ -17,6 +17,9 @@ const (
 	Unavailable   = "unavailable"
 	Unknown       = "unknown"
 	NotApplicable = "not_applicable"
+	// NoSample: the source was read but holds no calibrated sample yet, so
+	// the numbers it would show carry no information.
+	NoSample = "no_sample"
 )
 
 // Cataloged diagnostic reason codes. They describe only unavailable secondary
@@ -110,7 +113,7 @@ func Build(in Input) View {
 		Schema: SchemaVersion, MissionID: in.Status.MissionID, Run: in.Run,
 		Lifecycle:    Lifecycle{Phase: string(in.Status.Phase), State: string(in.Status.State), HandoffAttempt: in.Status.HandoffAttempt, HandoffStatus: in.Status.HandoffStatus, HandoffNextAction: in.Status.HandoffNextAction},
 		Journey:      buildJourney(in.Registry, in.SlotProviders),
-		Confidence:   ConfidenceSection{Availability: Available, Advisory: true, Review: &in.Confidence},
+		Confidence:   ConfidenceSection{Availability: confidenceAvailability(in.Confidence), Advisory: true, Review: &in.Confidence},
 		ApprovalGate: GateSection{Availability: Available, Outcome: in.GateOutcome},
 		Leveling:     buildLevels(in.Registry, in.Levels, in.Run),
 	}
@@ -153,7 +156,9 @@ func buildLevels(reg domain.RoleRegistry, records []leveling.Record, run string)
 	for _, role := range reg.Roles() {
 		section.Roles = append(section.Roles, levelRole(role.ID, byRole[role.ID], run))
 	}
-	if len(section.Roles) == 0 {
+	// The ledger was readable but holds nothing for this mission: every role
+	// is unresolved, which is not the same as "available".
+	if len(records) == 0 {
 		section.Availability = Unknown
 	}
 	return section
@@ -180,11 +185,4 @@ func effectiveRecord(records []leveling.Record, run string) *leveling.Record {
 		}
 	}
 	return nil
-}
-
-func selection(run string) string {
-	if run != "" {
-		return "selected_run"
-	}
-	return "latest_record"
 }

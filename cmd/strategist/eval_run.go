@@ -2,9 +2,8 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
 
+	evaladapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/eval"
 	"github.com/spf13/cobra"
 )
 
@@ -14,20 +13,7 @@ import (
 var evalRunCmd = newEvalRunCommand()
 
 func newEvalRunCommand() *cobra.Command {
-	opts := evalRunOptions{}
-	cmd := &cobra.Command{
-		Use:   "run [pattern]",
-		Short: "Run the internal/eval scenario battery via go test",
-		Long: `Run Strategist's tagged eval scenario battery: go test -tags=eval <pattern>,
-defaulting to ./tests/evals/... when no pattern is given. Equivalent to "make eval"
-when run with no arguments. Shells out to the go toolchain — requires "go" on PATH.`,
-	}
-	cmd.Flags().BoolVar(&opts.Race, "race", true, "pass -race to go test")
-	cmd.Flags().StringVar(&opts.Root, flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
-	cmd.RunE = func(cmd *cobra.Command, args []string) error {
-		return runEvalRun(cmd, args, opts)
-	}
-	return cmd
+	return evaladapter.NewRun(evalAdapterDependencies())
 }
 
 type evalRunOptions struct {
@@ -36,25 +22,8 @@ type evalRunOptions struct {
 }
 
 func runEvalRun(cmd *cobra.Command, args []string, opts evalRunOptions) error {
-	if run := telemetryRunFromCmd(cmd); run != nil {
-		run.SetSilent()
-	}
-	opts.Race = boolFlag(cmd, "race", opts.Race)
-	opts.Root = stringFlag(cmd, flagRoot, opts.Root)
-
-	_, projectRoot, err := resolveEvalActionRoot(cmd, "run", opts.Root)
-	if err != nil {
-		return err
-	}
-
-	goArgs := buildEvalRunGoTestArgs(resolveEvalRunPattern(args), opts.Race)
-
-	goTestCmd := exec.Command("go", goArgs...) //nolint:gosec // G204: args are a fixed literal ("test", "-race", "-tags=eval") plus a caller-supplied Go package pattern, not arbitrary shell input
-	goTestCmd.Dir = projectRoot
-	goTestCmd.Stdout = os.Stdout
-	goTestCmd.Stderr = os.Stderr
-	if err := goTestCmd.Run(); err != nil {
-		return fmt.Errorf("go test: %w", err)
+	if err := evaladapter.Run(cmd, args, evalAdapterDependencies(), opts.Root, opts.Race); err != nil {
+		return fmt.Errorf("run eval run: %w", err)
 	}
 	return nil
 }
@@ -62,19 +31,12 @@ func runEvalRun(cmd *cobra.Command, args []string, opts evalRunOptions) error {
 // resolveEvalRunPattern returns the Go package pattern to test: the first
 // non-empty positional argument, or "./tests/evals/..." when none is given.
 func resolveEvalRunPattern(args []string) string {
-	if len(args) > 0 && args[0] != "" {
-		return args[0]
-	}
-	return "./tests/evals/..."
+	return evaladapter.ResolvePattern(args)
 }
 
 // buildEvalRunGoTestArgs builds the "go test" argument list: -race is
 // included only when race is true (default), then -tags=eval and pattern
 // always follow, matching "make eval"'s own invocation shape.
 func buildEvalRunGoTestArgs(pattern string, race bool) []string {
-	args := []string{"test"}
-	if race {
-		args = append(args, "-race")
-	}
-	return append(args, "-tags=eval", pattern)
+	return evaladapter.BuildGoTestArgs(pattern, race)
 }

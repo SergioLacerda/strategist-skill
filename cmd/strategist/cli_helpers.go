@@ -22,10 +22,6 @@ func stringFlag(cmd *cobra.Command, name, fallback string) string {
 	return cliutil.StringFlag(cmd, name, fallback)
 }
 
-func boolFlag(cmd *cobra.Command, name string, fallback bool) bool {
-	return cliutil.BoolFlag(cmd, name, fallback)
-}
-
 func telemetryRunFromCmd(cmd *cobra.Command) *telemetry.MissionRun {
 	return cliutil.TelemetryRunFromCmd(cmd)
 }

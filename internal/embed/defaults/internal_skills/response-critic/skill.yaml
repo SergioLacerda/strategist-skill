@@ -25,7 +25,7 @@ output:
   notes: string | null
 
 behavior:
-  - Persist the critic boundary confidence with `strategist metrics record --mission <mission_id> --agent critic --claim-file <file>`;
+  - Persist the critic boundary confidence with `strategist metrics record --mission <mission_id> --agent response_critic --claim-file <file>`;
     if no confidence summary is available, persist an explicit missing-record with a correlation key and reason.
   - If rubric is null: return result=no_rubric, no score. Do not fail the mission.
   - For each must_have item: check if the slot output contains the expected section or evidence.

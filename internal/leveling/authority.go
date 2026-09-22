@@ -102,7 +102,10 @@ func readAuthorityManifest(root string) (domain.InstallManifest, bool, error) {
 
 func verifyManifestAuthority(defaults Policy, manifest domain.InstallManifest) error {
 	if manifest.LevelingPolicyVersion != defaults.Version || strings.TrimSpace(manifest.LevelingPolicyDigest) != defaults.Digest() {
-		return fmt.Errorf("leveling_policy_stale: embedded policy authority differs from install manifest (expected version=%d digest=%s, observed version=%d digest=%s)", manifest.LevelingPolicyVersion, manifest.LevelingPolicyDigest, defaults.Version, defaults.Digest())
+		// The embedded defaults are the authority, so they are the expected
+		// side; the install manifest is the observed, potentially stale one.
+		// Reinstalling or upgrading the workspace is what closes the gap.
+		return fmt.Errorf("leveling_policy_stale: install manifest differs from the embedded policy authority (expected version=%d digest=%s, observed version=%d digest=%s); run `strategist upgrade` to refresh the workspace manifest", defaults.Version, defaults.Digest(), manifest.LevelingPolicyVersion, manifest.LevelingPolicyDigest)
 	}
 	return nil
 }

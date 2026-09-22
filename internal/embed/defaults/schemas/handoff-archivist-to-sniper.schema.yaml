@@ -62,6 +62,8 @@ required_fields:
         type: list
         required: true
         item_fields: [id, statement, agent, correlation_key, claim_kind, confidence_percent, confidence_level, evidence_ids, evidence_classes, risk_level, ground_truth_ref, ground_truth_kind, ground_truth_outcome]
+        item_values:
+          evidence_classes: [explicit, corroborated_inference, weak_inference, unknown]   # schemas/evidence.schema.yaml#class
       open_questions:
         type: list
         required: false
@@ -70,6 +72,8 @@ required_fields:
         type: list
         required: false
         item_fields: [id, source_ref, class]
+        item_values:
+          class: [explicit, corroborated_inference, weak_inference, unknown]   # schemas/evidence.schema.yaml#class
       sample_size:
         type: integer
         required: true
@@ -86,7 +90,7 @@ required_fields:
     type: list
     description: Side quest strategy decisions made by Archivist — surfaced at approval gate
     required: false
-    item_fields: [id, description, strategy, estimated_impact, dependencies, status]
+    item_fields: [id, description, strategy, estimated_impact, dependencies, status, confidence_percent, investigation_required]
     item_values:
       strategy: [execute_together, execute_later, separate_mission, discard]
       estimated_impact: [low, medium, high]
@@ -97,6 +101,17 @@ required_fields:
       estimated_impact: "scope of effort if executed"
       dependencies: "list of other SQ ids or task ids this depends on"
       status: "sq_pending when gate opens; sq_backlog if user does not select it"
+      confidence_percent: >
+        optional, integer 0-100. Present only when investigation_required is
+        false/absent. Never fabricate a low or placeholder value to fill this
+        field — a side quest without enough evidence to assess is
+        investigation_required, not a low confidence_percent.
+      investigation_required: >
+        optional boolean, default false. true means the side quest cannot be
+        confidently assessed yet — the gate must show "precisa investigar"
+        instead of a percentage, and confidence_percent must be omitted. This
+        mirrors the existing claim_kind: question rule for tasks (a claim that
+        cannot support an assertion is a question, never a guessed percent).
   acceptance_checks:
     type: list
     required: true

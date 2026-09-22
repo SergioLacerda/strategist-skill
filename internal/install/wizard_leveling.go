@@ -2,7 +2,6 @@ package install
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -21,9 +20,8 @@ func validateWizardLeveling(strategistDir string, wc domain.WizardConfig, extrac
 	if strategistDir == "" {
 		return nil
 	}
-	// Roles the operator set manually need nothing from the policy; when every
-	// selected slot is manual the policy is not even read.
-	if needPolicy, total := wizardLevelingSelections(wc); total > 0 && len(needPolicy) == 0 {
+	// Manual is host passthrough: the policy is never read.
+	if wc.Leveling.HostPassthrough() {
 		return nil
 	}
 	policy, found, err := loadWizardLevelingPolicy(strategistDir, extractors...)
@@ -64,14 +62,11 @@ func legacyWizardLevelingPolicy(strategistDir string) (leveling.Policy, bool, er
 }
 
 func readWizardLevelingOverride(path string) ([]byte, bool, error) {
-	override, err := os.ReadFile(path) //nolint:gosec // fixed path below the selected .strategist root
-	if err == nil {
-		return override, true, nil
-	}
-	if !os.IsNotExist(err) {
+	override, found, err := leveling.ReadOverride(path)
+	if err != nil {
 		return nil, false, fmt.Errorf("read policy file: %w", err)
 	}
-	return nil, false, nil
+	return override, found, nil
 }
 
 func wizardLevelingDefaults(override []byte, extractors ...domain.FileExtractor) ([]byte, error) {
@@ -93,30 +88,24 @@ type wizardLevelingSelection struct {
 	role     string
 }
 
-// wizardLevelingSelections returns the slot bindings that still need the
-// LEVELING policy: those whose role is not fully set manually. total counts the
-// selected slots so the caller can tell "nothing selected" from "all manual".
-func wizardLevelingSelections(wc domain.WizardConfig) (needPolicy []wizardLevelingSelection, total int) {
+// wizardLevelingSelections returns the selected slot bindings the LEVELING
+// policy must resolve.
+func wizardLevelingSelections(wc domain.WizardConfig) []wizardLevelingSelection {
+	selections := make([]wizardLevelingSelection, 0, 3)
 	for _, selection := range []wizardLevelingSelection{
 		{wc.DiscoveryProvider, "ranger"},
 		{wc.RefinementProvider, "archivist"},
 		{wc.ExecutionProvider, "sniper"},
 	} {
-		if selection.provider == "" {
-			continue
+		if selection.provider != "" {
+			selections = append(selections, selection)
 		}
-		total++
-		if choice, manual := wc.Leveling.Choice(selection.role); manual && choice.Complete() {
-			continue
-		}
-		needPolicy = append(needPolicy, selection)
 	}
-	return needPolicy, total
+	return selections
 }
 
 func validateWizardLevelingSelections(policy leveling.Policy, wc domain.WizardConfig) error {
-	selections, _ := wizardLevelingSelections(wc)
-	for _, selection := range selections {
+	for _, selection := range wizardLevelingSelections(wc) {
 		if _, err := leveling.Suggest(policy, selection.provider, selection.role, leveling.Signals{}); err != nil {
 			return fmt.Errorf("resolve LEVELING binding for role %s/provider %s: %w", selection.role, selection.provider, err)
 		}

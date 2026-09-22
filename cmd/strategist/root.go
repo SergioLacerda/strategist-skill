@@ -10,6 +10,10 @@ import (
 	"path/filepath"
 	"time"
 
+	installadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/install"
+	metricsadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/metrics"
+	missionadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
+	pluginsadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/plugins"
 	"github.com/SergioLacerda/strategist-skill/internal/authorization"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/integrity"
@@ -143,14 +147,15 @@ func init() {
 		telemetry.FinishMission(cmd.Context())
 		return nil
 	}
-	rootCmd.AddCommand(installCmd)
+	installadapter.Register(rootCmd, installDependencies())
 	rootCmd.AddCommand(upgradeCmd)
 	rootCmd.AddCommand(compileCmd)
 	rootCmd.AddCommand(validateCmd)
 	rootCmd.AddCommand(syncGovernanceCmd)
 	rootCmd.AddCommand(versionCmd)
-	registerMetrics(rootCmd)
-	registerMission(rootCmd)
+	metricsadapter.Register(rootCmd, metricsDependencies(), roleLevelLedger, defaultLedgerMaxRecords)
+	missionadapter.Register(rootCmd, missionLifecycleDependencies(), missionViewDependencies(), missionNormalizeDependencies(), missionReportUsageDependencies())
+	pluginsadapter.Register(rootCmd)
 	registerLeveling(rootCmd)
 	registerEval(rootCmd)
 }

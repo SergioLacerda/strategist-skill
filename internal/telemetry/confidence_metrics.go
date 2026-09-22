@@ -131,6 +131,12 @@ func AppendConfidenceObservationForRun(path, agent, missionID, run, timestamp st
 	if err == nil {
 		return record, AppendConfidenceRecord(path, record)
 	}
+	// A rejected observation is keyed by its claim id. Without one it cannot be
+	// persisted, and building it anyway replaced the real cause with the
+	// rejected record's own "requires claim_id" validation error.
+	if claim.ID == "" {
+		return ConfidenceRecord{}, fmt.Errorf("confidence claim has no id; nothing recorded: %w", err)
+	}
 	level, levelErr := domain.ConfidenceLevelForPercent(claim.ConfidencePercent)
 	if levelErr != nil {
 		level = ""

@@ -46,8 +46,15 @@ Approval Gate acceptance means the refined analysis is correct and, if the packa
 
 If the accepted package contains `implementation_handoff` items, those items remain
 outside Strategist after the gate. The mission resolves as `analysis_delivered` when
-there are no accepted `documentation_target` items, or `documentation_applied` after
-Sniper materializes accepted documentation targets. In both cases, `implementation_handoff`
+there are no accepted `documentation_target` items — record the acceptance with the
+`gate_approved_analysis_only` event (`APPROVAL_GATE → DONE_ANALYSIS`), never with
+`gate_approved` (which enters the handoff challenge and can only end in `sniper_done`)
+or `gate_denied` (which records a rejection) — or `documentation_applied` after
+Sniper materializes accepted documentation targets. A mission that already
+entered the handoff challenge with such a package is closed with
+`handoff_challenge_not_applicable` (`HANDOFF_CHALLENGE → DONE_ANALYSIS`). Both
+analysis-only events are rejected when the refined `tasks.md` declares a
+`documentation_target`. In both cases, `implementation_handoff`
 items are reported as non-executable handoff work, not as a separate mission status.
 Executing the `implementation_handoff` items requires a separate coding task outside
 Strategist mode — the Approval Gate does not grant that authorization, regardless of
@@ -106,30 +113,59 @@ Gate display format:
    score: <0.00–1.00> — <pass|fail>
    gaps:  <must_have_missing / must_not_present items, if any>
 
-🧠 CONFIDENCE (if claims were emitted)
-   policy:       v1 — low 0–59% | medium 60–84% | high 85–100%
-   distribution: low=<n> medium=<n> high=<n>
-   per-agent: <agent>=<sample>/<coverage>/<calibration>, ...
-   claims:       questions=<n> assertions=<n>
-   evidence:     assertion coverage=<0.00–1.00> unsupported=<0.00–1.00>
-   calibration:  status=<no_sample|uncalibrated|observed|calibrated> sample=<n>
-   missing/rejected: missing=<n> rejected=<n> duplicate=<n>
-   violations:   <low/unsupported/contradictory assertions, if any>
+📋 TAREFA PRINCIPAL (if assertion claims were emitted)
+   <id> — <short label> — confiança: <confidence_percent>%
+   ...
 
-Confidence is a review signal, not an approval. Low-confidence or unsupported
-assertions default to `review`, while questions remain visible as questions.
-Policy percentages must not be presented as empirical calibration when the
-sample is `no_sample` or has no declared ground-truth event.
+❓ DÚVIDAS (open questions — claim_kind: question, if any)
+   <id> — <statement>
+   ...
 
 📄 DOCUMENTATION TARGETS (outside <base_path>, if any)
    <path> — <description>
 
 📦 SIDE QUESTS (if any)
-   [SQ-001] <description> — impact: <low|medium|high>
-   [SQ-002] <description> — impact: <low|medium|high>
+   [SQ-001] <description> — confiança: <confidence_percent>%
+   [SQ-002] <description> — confiança: precisa investigar
 
 Is the analysis correct?  (accept / review / reject)
 ```
+
+A `📋 TAREFA PRINCIPAL` row is one correlated `assertion` claim: id, a short
+label, and `confidence_percent`. A `❓ DÚVIDAS` row is one `claim_kind:
+question` claim, shown by statement only — never with a percentage, because a
+claim too uncertain to support an assertion is, by contract, a question
+(`machine/confidence-governance.yaml#rules.low_assertion_review`), not a
+manufactured low score. A side quest shows `confidence_percent` when Archivist
+assessed one, or the literal text "precisa investigar" when
+`investigation_required: true` — see `schemas/handoff-*.schema.yaml#side_quests`
+field_descriptions. Never invent or round a confidence value for either a
+claim or a side quest to avoid showing "precisa investigar"; an honest
+unknown is always preferable to a guessed number.
+
+If the loaded confidence review has `review_required: true` or any
+`violations`, append one line after the SIDE QUESTS block, e.g.:
+`⚠️  revisão recomendada — 1 afirmação sem evidência suficiente (detalhe:
+strategist metrics confidence --mission <id>)`. Otherwise omit the line
+entirely — do not restate `review_required: false` or an empty violations
+list.
+
+The full cross-agent calibration payload (policy version, low/medium/high
+distribution, per-agent sample/coverage/calibration, claim-kind counts,
+evidence coverage, calibration status, missing/rejected/duplicate counts) is
+not inlined at the gate. It stays available as an internal/debug surface via
+the pre-existing `strategist metrics confidence --mission <id>` and
+`strategist mission view --mission-id <id> --json` commands — no new command
+is introduced for this; both already materialize
+`internal/telemetry.LoadConfidenceGateReview`. This is a display
+simplification, not a data reduction: the gate decision (`review` default on
+`review_required`, low-confidence-must-be-a-question, etc.) still reads the
+full review, only the rendered chat message is per-item.
+
+Confidence is a review signal, not an approval. Low-confidence or unsupported
+assertions default to `review`, while questions remain visible as questions.
+Confidence percentages must not be presented as empirical calibration when
+the sample is `no_sample` or has no declared ground-truth event.
 
 Confidence cannot invoke Sniper by itself. The existing human
 Approval Gate remains mandatory, and `implementation_handoff` items remain

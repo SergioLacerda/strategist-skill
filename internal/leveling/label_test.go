@@ -214,44 +214,25 @@ func (c *countingLoader) load() (leveling.Policy, error) {
 	return c.policy, c.err
 }
 
-func TestResolveLevelLazyManualCompleteNeverLoadsPolicy(t *testing.T) {
-	loader := &countingLoader{policy: defaultPolicy(t)}
-	level, err := leveling.ResolveLevelLazy(loader.load, "CLAUDE", "ranger", leveling.Signals{},
-		leveling.Manual{Model: "sonnet", Effort: "high"}, leveling.Host{Model: "Opus", Effort: "low"})
-	require.NoError(t, err)
-	assert.Equal(t, leveling.Level{Role: "ranger", Model: "Sonnet", Effort: "high", Source: leveling.SourceManual, ModelSource: leveling.SourceManual, EffortSource: leveling.SourceManual}, level)
-	assert.Zero(t, loader.calls, "a complete manual choice must not read the policy")
-}
-
 func TestResolveLevelLazyHostCompleteNeverLoadsPolicy(t *testing.T) {
 	loader := &countingLoader{policy: defaultPolicy(t)}
-	level, err := leveling.ResolveLevelLazy(loader.load, "CLAUDE", "ranger", leveling.Signals{}, leveling.Manual{}, leveling.Host{Model: "Opus", Effort: "low"})
+	level, err := leveling.ResolveLevelLazy(loader.load, "CLAUDE", "ranger", leveling.Signals{}, leveling.Host{Model: "Opus", Effort: "low"})
 	require.NoError(t, err)
 	assert.Equal(t, leveling.SourceHost, level.Source)
 	assert.Zero(t, loader.calls)
 }
 
-func TestResolveLevelLazyFieldPrecedenceManualHostPolicy(t *testing.T) {
-	loader := &countingLoader{policy: defaultPolicy(t)}
-	level, err := leveling.ResolveLevelLazy(loader.load, "CLAUDE", "ranger", leveling.Signals{}, leveling.Manual{Model: "Opus"}, leveling.Host{Effort: "low"})
-	require.NoError(t, err)
-	assert.Equal(t, "Opus", level.Model, "manual model wins")
-	assert.Equal(t, "low", level.Effort, "host fills the missing effort")
-	assert.Equal(t, leveling.SourceManual, level.Source, "source names the highest-precedence contributor")
-	assert.Zero(t, loader.calls)
-}
-
 func TestResolveLevelLazyLoadsPolicyOnlyForMissingValues(t *testing.T) {
 	loader := &countingLoader{policy: defaultPolicy(t)}
-	level, err := leveling.ResolveLevelLazy(loader.load, "CLAUDE", "ranger", leveling.Signals{}, leveling.Manual{Model: "Opus"}, leveling.Host{})
+	level, err := leveling.ResolveLevelLazy(loader.load, "CLAUDE", "ranger", leveling.Signals{}, leveling.Host{Model: "Opus"})
 	require.NoError(t, err)
-	assert.Equal(t, "Opus", level.Model)
+	assert.Equal(t, "Opus", level.Model, "host model wins")
 	assert.Equal(t, "high", level.Effort, "effort completed from the policy")
-	assert.Equal(t, leveling.SourceManual, level.Source)
+	assert.Equal(t, leveling.SourceHost, level.Source, "source names the highest-precedence contributor")
 	assert.Equal(t, 1, loader.calls)
 
 	auto := &countingLoader{policy: defaultPolicy(t)}
-	level, err = leveling.ResolveLevelLazy(auto.load, "CLAUDE", "archivist", leveling.Signals{}, leveling.Manual{}, leveling.Host{})
+	level, err = leveling.ResolveLevelLazy(auto.load, "CLAUDE", "archivist", leveling.Signals{}, leveling.Host{})
 	require.NoError(t, err)
 	assert.Equal(t, leveling.SourcePolicy, level.Source)
 	assert.Equal(t, 1, auto.calls)
@@ -259,7 +240,7 @@ func TestResolveLevelLazyLoadsPolicyOnlyForMissingValues(t *testing.T) {
 
 func TestResolveLevelLazyWithoutProviderNeverLoadsPolicy(t *testing.T) {
 	loader := &countingLoader{policy: defaultPolicy(t)}
-	level, err := leveling.ResolveLevelLazy(loader.load, "", "ranger", leveling.Signals{}, leveling.Manual{Effort: "high"}, leveling.Host{})
+	level, err := leveling.ResolveLevelLazy(loader.load, "", "ranger", leveling.Signals{}, leveling.Host{Effort: "high"})
 	require.NoError(t, err)
 	assert.Equal(t, "High", level.Label())
 	assert.Zero(t, loader.calls)
@@ -267,12 +248,8 @@ func TestResolveLevelLazyWithoutProviderNeverLoadsPolicy(t *testing.T) {
 
 func TestResolveLevelLazySurfacesLoaderError(t *testing.T) {
 	loader := &countingLoader{err: assert.AnError}
-	_, err := leveling.ResolveLevelLazy(loader.load, "CLAUDE", "ranger", leveling.Signals{}, leveling.Manual{}, leveling.Host{})
+	_, err := leveling.ResolveLevelLazy(loader.load, "CLAUDE", "ranger", leveling.Signals{}, leveling.Host{})
 	require.ErrorIs(t, err, assert.AnError)
-}
-
-func TestManualSourceIsDistinct(t *testing.T) {
-	assert.Equal(t, "manual", leveling.SourceManual)
 }
 
 func TestRenderWithRegistryDerivesTotalAndPhase(t *testing.T) {

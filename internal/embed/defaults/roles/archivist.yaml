@@ -3,8 +3,11 @@ slot: refinement
 phase: 2
 pluggable: true
 handoff_schema: schemas/handoff-archivist-to-sniper.schema.yaml
-on_start:                       # run when this role's phase starts; {role} and {mission_id} are substituted
-  - strategist leveling label --role {role} --mission {mission_id}
+on_start:                       # run when this role's phase starts; {role} and {mission_id} are substituted.
+                                 # --host-model/--host-effort are a literal reminder to fill in with the
+                                 # actual running model/effort — the CLI cannot infer them, and omitting
+                                 # them silently returns blank fields.
+  - strategist leveling label --role {role} --mission {mission_id} --host-model <your-model> --host-effort <your-effort>
 # leveling: archivist
 
 # Canonical behaviors — read-only, source in skill.yaml.

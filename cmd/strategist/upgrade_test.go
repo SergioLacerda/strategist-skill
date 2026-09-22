@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	installadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/install"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -28,19 +30,8 @@ func installedTempDir(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
 
-	origTarget, origNoShim, origShimPath := installTarget, installNoShim, installShimPath
-	t.Cleanup(func() {
-		installTarget = origTarget
-		installNoShim = origNoShim
-		installShimPath = origShimPath
-	})
-	installTarget = dir
-	// The helper only needs the runtime under dir; avoid writing the user-level
-	// Claude shim, which is unavailable in read-only CI/test environments.
-	installNoShim = true
-	installShimPath = ""
-
-	require.NoError(t, installCmd.RunE(installCmd, nil))
+	cmd := &cobra.Command{Use: "install"}
+	require.NoError(t, installadapter.RunForTest(cmd, installDependencies(), installadapter.TestOptions{Target: dir, NoShim: true}))
 	return dir
 }
 

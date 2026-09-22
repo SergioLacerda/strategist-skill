@@ -61,7 +61,7 @@ Structured telemetry should preserve, when available:
 
 ## Role Level Fields
 
-`model`, `effort` and `level_source` (`manual` | `host` | `policy`) identify the level a role
+`model`, `effort` and `level_source` (`host` | `policy`) identify the level a role
 runs at and back the role-line level label. They are recorded for every role
 scope (Scout, Ranger, Archivist, Sniper, transport) and are `null` when no level
 is known — a missing level never blocks a mission. Within one phase every event
@@ -88,13 +88,13 @@ tuple also emits the `role_level_resolved` event (DEBUG) with `role`, `model`,
 `effort`, `level_source` and, for an escalation, `reason`; the Archivist's tuple
 is repeated on its `handoff-metrics.jsonl` line.
 
-Resolution order is manual configuration, then host-reported values, then the
-LEVELING policy. Manual values come from the `leveling:` block of `active.yaml`
-(`mode: manual | automatic`; for manual, a per-role `model`/`effort` map); an
-absent block means automatic. LEVELING data is read on demand: the `leveling:`
-block first, and `leveling.yaml` plus the install authority only when a model or
-effort is still missing in automatic mode. A complete manual map, or a complete
-host report, never reads the policy.
+The `leveling:` block of `active.yaml` (`mode: manual | automatic`; absent means
+automatic) selects the resolution. Manual is host passthrough: only
+host-reported values are used, the LEVELING policy is never read, and a value
+the host does not report stays unknown. Automatic uses host-reported values,
+then the LEVELING policy; `leveling.yaml` plus the install authority are read
+only when a model or effort is still missing. A complete host report never
+reads the policy.
 
 ## Mission View
 

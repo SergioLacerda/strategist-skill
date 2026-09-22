@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -23,8 +24,16 @@ type Record struct {
 	Timestamp string `json:"timestamp"`
 }
 
+// NormalizeRole is the canonical spelling of a role id in the ledger. Every
+// read and write goes through it, so `Ranger` and `ranger` are one role for
+// reuse, reporting and the mission view instead of three separate histories.
+func NormalizeRole(role string) string {
+	return strings.ToLower(strings.TrimSpace(role))
+}
+
 // AppendRecord appends a record as one JSON line, stamping the time when unset.
 func AppendRecord(path string, record Record) error {
+	record.Role = NormalizeRole(record.Role)
 	if record.Timestamp == "" {
 		record.Timestamp = time.Now().UTC().Format(time.RFC3339)
 	}
@@ -97,7 +106,11 @@ func scanLatestRecord(f *os.File, missionID, role, run string) (Record, bool, er
 
 func updateLatestRecord(raw []byte, missionID, role, run string, latest Record, found bool) (Record, bool) {
 	var record Record
-	if json.Unmarshal(raw, &record) != nil || record.MissionID != missionID || record.Role != role || record.Run != run {
+	if json.Unmarshal(raw, &record) != nil {
+		return latest, found
+	}
+	record.Role = NormalizeRole(record.Role)
+	if record.MissionID != missionID || record.Role != NormalizeRole(role) || record.Run != run {
 		return latest, found
 	}
 	return record, true

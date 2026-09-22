@@ -65,7 +65,7 @@ func TestClassifyRuntimeStale_UnknownManifestFile(t *testing.T) {
 		PackageID: "test",
 		Files:     []domain.InstallManifestFile{{Path: "other.yaml", Owner: domain.RuntimeFileNormative, SHA256: "abc"}},
 	}
-	decision := classifyRuntimeStale([]byte("content"), "SKILL.md", manifest, true, nil)
+	decision := classifyRuntimeStale([]byte("content"), []byte("embedded"), "SKILL.md", manifest, true, nil)
 	assert.Equal(t, domain.RuntimeDecisionUnknownManifest, decision)
 }
 
@@ -121,4 +121,19 @@ func TestValidateRuntimeDefaultParity_ManifestUnreadableStillChecksFiles(t *test
 		}
 	}
 	assert.True(t, found, "expected an 'install manifest unreadable' error, got: %v", errs)
+}
+
+// A check run by a binary older than the runtime must not advise reinstalling,
+// which would downgrade the runtime; it names the stale binary instead.
+func TestClassifyRuntimeStale_BinaryOlderThanRuntime(t *testing.T) {
+	newer, older := []byte("newer default"), []byte("older default")
+	manifest := domain.InstallManifest{Files: []domain.InstallManifestFile{{
+		Path: "SKILL.md", Owner: domain.RuntimeFileNormative,
+		SHA256: domain.SHA256Hex(newer), History: []string{domain.SHA256Hex(older)},
+	}}}
+	decision := classifyRuntimeStale(newer, older, "SKILL.md", manifest, true, nil)
+	assert.Equal(t, domain.RuntimeDecisionDowngrade, decision)
+	assert.Contains(t, domain.FormatRuntimeStaleDiagnostic("SKILL.md", decision), "make install")
+
+	assert.Equal(t, domain.RuntimeDecisionAutoUpgrade, classifyRuntimeStale(newer, []byte("brand new"), "SKILL.md", manifest, true, nil))
 }

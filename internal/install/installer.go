@@ -33,7 +33,8 @@ type Service struct {
 	WizardPrompter Prompter
 	// ShimHomeDir overrides os.UserHomeDir() for shim installation. Nil means use real home.
 	// Set this in tests to install the shim in a temporary directory.
-	ShimHomeDir string
+	ShimHomeDir    string
+	AllowDowngrade bool // upgrade only: accept an older binary's normative defaults (install uses InstallConfig)
 	// terminalDetector overrides TTY detection for tests. Nil means use term.IsTerminal.
 	terminalDetector func() bool
 	// stdinReader overrides os.Stdin for the TextPrompter fallback. Nil means use os.Stdin.
@@ -86,7 +87,7 @@ func (s Service) InstallWithReport(ctx context.Context, cfg domain.InstallConfig
 		}
 	}()
 
-	runtimePlan, err := s.planRuntimeDefaultUpgrade(ctx, strategistDir, cfg.Force)
+	runtimePlan, err := s.planRuntimeDefaultUpgrade(ctx, strategistDir, runtimeDefaultPolicy{Force: cfg.Force, AllowDowngrade: cfg.AllowDowngrade})
 	if err != nil {
 		return Report{}, err
 	}
@@ -163,20 +164,6 @@ func ensureProjectGitignore(cfg domain.InstallConfig) ([]string, error) {
 		return nil, nil
 	}
 	return []string{gitignorePath}, nil
-}
-
-func (s Service) finalizeInstall(ctx context.Context, cfg domain.InstallConfig, strategistDir string, plan runtimeDefaultPlan, fullHashes map[string]string) error {
-	if err := s.compileAfterInstall(ctx, cfg, strategistDir); err != nil {
-		return err
-	}
-	if s.AwarenessRefresher != nil {
-		s.AwarenessRefresher(strategistDir, cfg.Target, s.Version)
-	}
-	installManifest := buildInstallManifest(packageID(s.Version), plan, fullHashes)
-	if err := saveInstallManifest(strategistDir, installManifest); err != nil {
-		return err
-	}
-	return nil
 }
 
 // Ensure Service satisfies the domain interface via the adapter method below.

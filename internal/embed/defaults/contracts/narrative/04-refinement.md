@@ -34,7 +34,7 @@ Archivist (`refinement`)
 
 - before finishing, persist this boundary's confidence: `strategist metrics record --mission <mission_id> --agent archivist --claim-file <file>`,
   or, when no confidence summary was produced, `strategist metrics record --mission <mission_id> --agent archivist --missing --correlation-key <key> --reason <why>`;
-  never finish silently — Archivist also records the `critic` and `mission_quality` boundaries with the same command (see `machine/confidence-governance.yaml#producers`)
+  never finish silently — Archivist also records the critic (`--agent response_critic`) and `mission_quality` boundaries with the same command (see `machine/confidence-governance.yaml#producers`)
 - before invoking the selected refinement weapon's own CLI/tooling, apply
   `roles/archivist.yaml#canonical.resolve_weapon_scratch_root` — read
   `skills/<provider>/skill.yaml#scratch_root`, and when it is `runtime`, run the
@@ -113,6 +113,12 @@ package looks like, and a failed predicate is surfaced at the gate
 ## Gate Condition
 
 - if `tasks.md` is empty or absent, mission resolves as `analysis_delivered`
+  (`refinement_done_no_tasks`)
+- if `tasks.md` has tasks but none is a `documentation_target` (every item is
+  `implementation_handoff`, `analysis_artifact` or `out_of_scope`), submit
+  `refinement_done` and present the gate; on acceptance the mission resolves as
+  `analysis_delivered` through `gate_approved_analysis_only` (see
+  `05-approval-gate.md`). This is the same rule the gate contract states.
 
 ## Language
 

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	levelingadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/leveling"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/embed"
 	"github.com/SergioLacerda/strategist-skill/internal/leveling"
@@ -18,6 +19,21 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type levelingLabelOptions = levelingadapter.LabelOptions
+type labelResult = levelingadapter.LabelResult
+
+var levelingLabelOpts levelingLabelOptions
+
+var levelingLabelCmd = levelingadapter.NewLabel(levelingAdapterDependencies(), &levelingLabelOpts)
+
+func labelRole(load leveling.PolicyLoader, cfg domain.LevelingConfig, ledgerPath string, opts levelingLabelOptions) (labelResult, error) {
+	return levelingadapter.LabelRole(load, cfg, ledgerPath, opts)
+}
+
+func labelRoleWith(reg domain.RoleRegistry, load leveling.PolicyLoader, cfg domain.LevelingConfig, ledgerPath string, opts levelingLabelOptions) (labelResult, error) {
+	return levelingadapter.LabelRoleWith(reg, load, cfg, ledgerPath, opts)
+}
 
 func labelTestPolicy(t *testing.T) leveling.Policy {
 	t.Helper()
@@ -100,7 +116,8 @@ func TestLabelRoleUnknownIsNotReusedOnceALevelIsKnown(t *testing.T) {
 }
 
 func TestLevelingLabelCmdRegistered(t *testing.T) {
-	found, _, err := levelingCmd.Find([]string{"label"})
+	cmd := levelingadapter.New(levelingAdapterDependencies())
+	found, _, err := cmd.Find([]string{"label"})
 	require.NoError(t, err)
 	assert.Equal(t, "label", found.Name())
 }
@@ -116,31 +133,40 @@ func (c *countingPolicyLoader) load() (leveling.Policy, error) {
 	return leveling.Policy{}, assert.AnError
 }
 
-func TestLabelRoleManualCompleteNeverLoadsPolicyAndRecordsManualSource(t *testing.T) {
+func TestLabelRoleManualUsesHostAsIsAndNeverLoadsPolicy(t *testing.T) {
 	ledger := filepath.Join(t.TempDir(), "role-levels.jsonl")
 	loader := &countingPolicyLoader{}
-	cfg := domain.LevelingConfig{Mode: domain.LevelingModeManual, Roles: map[string]domain.LevelingRoleChoice{"ranger": {Model: "Sonnet", Effort: "high"}}}
+	cfg := domain.LevelingConfig{Mode: domain.LevelingModeManual}
 
-	got, err := labelRole(loader.load, cfg, ledger, levelingLabelOptions{Role: "ranger", Mission: "m1", Provider: "CLAUDE", HostModel: "opus", HostEffort: "low"})
+	got, err := labelRole(loader.load, cfg, ledger, levelingLabelOptions{Role: "ranger", Mission: "m1", Provider: "CLAUDE", HostModel: "claude-opus-5", HostEffort: "low"})
 	require.NoError(t, err)
-	assert.Equal(t, "Sonnet-High", got.Level.Label(), "manual wins over the host report")
+	assert.Equal(t, "Claude-opus-5-Low", got.Level.Label(), "the host's model and effort are never changed")
 	assert.Empty(t, got.Warning)
-	assert.Zero(t, loader.calls, "leveling.yaml is never read for a complete manual choice")
+	assert.Zero(t, loader.calls, "manual never reads leveling.yaml")
 
 	record, ok, err := leveling.LatestRecord(ledger, "m1", "ranger")
 	require.NoError(t, err)
 	require.True(t, ok)
-	assert.Equal(t, leveling.SourceManual, record.Source)
+	assert.Equal(t, leveling.SourceHost, record.Source)
 }
 
-func TestLabelRoleManualForOtherRoleFallsBackToAutomatic(t *testing.T) {
+func TestLabelRoleManualPartialHostIsNotCompletedByPolicy(t *testing.T) {
 	loader := &countingPolicyLoader{}
-	cfg := domain.LevelingConfig{Mode: domain.LevelingModeManual, Roles: map[string]domain.LevelingRoleChoice{"ranger": {Model: "Sonnet", Effort: "high"}}}
+	cfg := domain.LevelingConfig{Mode: domain.LevelingModeManual}
+	got, err := labelRole(loader.load, cfg, filepath.Join(t.TempDir(), "l.jsonl"), levelingLabelOptions{Role: "sniper", Provider: "CLAUDE", HostEffort: "high"})
+	require.NoError(t, err)
+	assert.Equal(t, "High", got.Level.Label())
+	assert.Zero(t, loader.calls, "a missing host model is not filled by the policy")
+}
+
+func TestLabelRoleManualSilentHostIsUnknownWithoutWarning(t *testing.T) {
+	loader := &countingPolicyLoader{}
+	cfg := domain.LevelingConfig{Mode: domain.LevelingModeManual}
 	got, err := labelRole(loader.load, cfg, filepath.Join(t.TempDir(), "l.jsonl"), levelingLabelOptions{Role: "sniper", Provider: "CLAUDE"})
 	require.NoError(t, err)
-	assert.Equal(t, 1, loader.calls, "an unconfigured role loads the policy on demand")
-	assert.True(t, got.Level.Unknown(), "a loader failure degrades to an unlabelled level")
-	assert.NotEmpty(t, got.Warning)
+	assert.True(t, got.Level.Unknown(), "no host report leaves the level unknown")
+	assert.Empty(t, got.Warning, "an unknown level never blocks the mission")
+	assert.Zero(t, loader.calls)
 }
 
 func TestLabelRoleAutomaticHostCompleteNeverLoadsPolicy(t *testing.T) {
@@ -158,14 +184,12 @@ func TestReadActiveLevelingConfig(t *testing.T) {
 	assert.Equal(t, domain.LevelingModeAutomatic, cfg.EffectiveMode(), "missing active.yaml is automatic")
 	assert.Empty(t, warn)
 
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte("mode: epic\nleveling:\n  mode: manual\n  roles:\n    ranger: {model: Sonnet, effort: high}\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte("mode: epic\nleveling:\n  mode: manual\n"), 0o600))
 	cfg, warn = readActiveLevelingConfig(dir)
 	assert.Empty(t, warn)
-	choice, ok := cfg.Choice("ranger")
-	require.True(t, ok)
-	assert.True(t, choice.Complete())
+	assert.True(t, cfg.HostPassthrough())
 
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte("leveling:\n  mode: manual\n  roles:\n    ranger: {model: S, effort: turbo}\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte("leveling:\n  mode: smart\n"), 0o600))
 	cfg, warn = readActiveLevelingConfig(dir)
 	assert.Contains(t, warn, "leveling_mapping_invalid")
 	assert.Equal(t, domain.LevelingModeAutomatic, cfg.EffectiveMode(), "an invalid block degrades to automatic")
@@ -179,13 +203,13 @@ func TestLevelingLabelCmdManualWorksWithoutPolicyFile(t *testing.T) {
 	tmp := t.TempDir()
 	root := filepath.Join(tmp, ".strategist")
 	testutil.MinimalRoot(t, root)
-	require.NoError(t, os.WriteFile(filepath.Join(root, "active.yaml"), []byte("mode: full\nbase_path: .analysis\nleveling:\n  mode: manual\n  roles:\n    archivist: {model: Opus, effort: medium}\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "active.yaml"), []byte("mode: full\nbase_path: .analysis\nleveling:\n  mode: manual\n"), 0o600))
 	require.NoFileExists(t, filepath.Join(root, "leveling.yaml"))
 	t.Chdir(tmp)
 
 	prev := levelingLabelOpts
 	t.Cleanup(func() { levelingLabelOpts = prev })
-	levelingLabelOpts = levelingLabelOptions{Role: "archivist", Mission: "m9", Message: "hello", Width: 80}
+	levelingLabelOpts = levelingLabelOptions{Role: "archivist", Mission: "m9", Message: "hello", Width: 80, HostModel: "Opus", HostEffort: "medium"}
 
 	var out, errOut bytes.Buffer
 	levelingLabelCmd.SetOut(&out)
@@ -218,7 +242,7 @@ func TestEmitRoleLevelCarriesLevelFieldsForTelemetry(t *testing.T) {
 	slog.SetDefault(slog.New(handler))
 	t.Cleanup(func() { slog.SetDefault(prev) })
 
-	emitRoleLevel(context.Background(), "m1", "2", leveling.Level{Role: "ranger", Model: "Sonnet", Effort: "high", Source: leveling.SourceManual}, "escalated")
+	emitRoleLevel(context.Background(), "m1", "2", leveling.Level{Role: "ranger", Model: "Sonnet", Effort: "high", Source: leveling.SourceHost}, "escalated")
 	require.Len(t, handler.records, 1)
 	assert.Contains(t, handler.records[0].Message, "role_level_resolved")
 	attrs := attrsOf(handler.records[0])
@@ -226,7 +250,7 @@ func TestEmitRoleLevelCarriesLevelFieldsForTelemetry(t *testing.T) {
 	assert.Equal(t, "ranger", attrs[telemetry.AttrRole])
 	assert.Equal(t, "Sonnet", attrs[telemetry.AttrModel])
 	assert.Equal(t, "high", attrs[telemetry.AttrEffort])
-	assert.Equal(t, "manual", attrs[telemetry.AttrLevelSource])
+	assert.Equal(t, "host", attrs[telemetry.AttrLevelSource])
 	assert.Equal(t, "escalated", attrs[telemetry.AttrReason])
 	assert.Equal(t, "2", attrs[telemetry.AttrRoleRun])
 }
@@ -351,13 +375,11 @@ func TestRoleStartHookResolvesAndRecordsTheLevelForEveryRole(t *testing.T) {
 
 		found, rest, err := rootCmd.Find(fields[1:])
 		require.NoError(t, err, id)
-		require.Same(t, levelingLabelCmd, found, "%s hook must invoke `leveling label`", id)
+		require.Equal(t, "label", found.Name(), "%s hook must invoke `leveling label`", id)
 
-		prev := levelingLabelOpts
-		t.Cleanup(func() { levelingLabelOpts = prev })
-		levelingLabelOpts = levelingLabelOptions{}
-		require.NoError(t, found.ParseFlags(rest), id)
-		opts := levelingLabelOpts
+		opts := levelingLabelOptions{}
+		cmd := levelingadapter.NewLabel(levelingAdapterDependencies(), &opts)
+		require.NoError(t, cmd.ParseFlags(rest), id)
 		opts.HostModel, opts.HostEffort = "Sonnet", "high"
 
 		ledger := filepath.Join(t.TempDir(), "l.jsonl")
@@ -373,28 +395,27 @@ func TestRoleStartHookResolvesAndRecordsTheLevelForEveryRole(t *testing.T) {
 
 func TestLabelJSONCarriesTheInlineTag(t *testing.T) {
 	var out bytes.Buffer
-	cmd := *levelingLabelCmd
+	cmd := *levelingadapter.NewLabel(levelingAdapterDependencies(), &levelingLabelOptions{})
 	cmd.SetOut(&out)
-	require.NoError(t, writeJSONLabel(&cmd, labelResult{Level: leveling.Level{Role: "ranger", Model: "Sonnet", Effort: "high", Source: leveling.SourceHost}}, "r"))
+	require.NoError(t, levelingadapter.WriteJSONLabel(&cmd, labelResult{Level: leveling.Level{Role: "ranger", Model: "Sonnet", Effort: "high", Source: leveling.SourceHost}}, "r"))
 	var payload map[string]any
 	require.NoError(t, json.Unmarshal(out.Bytes(), &payload))
 	assert.Equal(t, "(Sonnet-High)", payload["tag"])
 	assert.Equal(t, "Sonnet-High", payload["label"])
 
 	out.Reset()
-	require.NoError(t, writeJSONLabel(&cmd, labelResult{Level: leveling.Level{Role: "scout"}}, "r"))
+	require.NoError(t, levelingadapter.WriteJSONLabel(&cmd, labelResult{Level: leveling.Level{Role: "scout"}}, "r"))
 	require.NoError(t, json.Unmarshal(out.Bytes(), &payload))
 	assert.Empty(t, payload["tag"], "an unknown level has an empty tag")
 }
 
 func TestNewLevelingCommand_HasIsolatedCompleteSubcommandTree(t *testing.T) {
-	cmd := newLevelingCommand()
+	cmd := levelingadapter.New(levelingAdapterDependencies())
 
-	assert.NotSame(t, levelingCmd, cmd)
 	assert.Len(t, cmd.Commands(), 3)
 	for _, name := range []string{"validate", "suggest", "label"} {
 		subcommand, _, err := cmd.Find([]string{name})
 		require.NoError(t, err)
-		assert.NotSame(t, levelingCmd, subcommand)
+		assert.Equal(t, name, subcommand.Name())
 	}
 }

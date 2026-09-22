@@ -42,6 +42,9 @@ func scanRecords(r io.Reader, visit func(line string, record Record)) error {
 	for scanner.Scan() {
 		var record Record
 		if json.Unmarshal(scanner.Bytes(), &record) == nil {
+			// Legacy lines may carry a mixed-case role; normalize on read so
+			// reporting, rotation keys and the mission view see one role.
+			record.Role = NormalizeRole(record.Role)
 			visit(scanner.Text(), record)
 		}
 	}

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	installadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/install"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -34,16 +35,7 @@ func TestRunCompile_CompileAllError(t *testing.T) {
 }
 
 func TestRunInstall_RejectsConflictingShimFlags(t *testing.T) {
-	origNoShim := installNoShim
-	origShimPath := installShimPath
-	t.Cleanup(func() {
-		installNoShim = origNoShim
-		installShimPath = origShimPath
-	})
-	installNoShim = true
-	installShimPath = filepath.Join(t.TempDir(), "SKILL.md")
-
-	err := runInstall(&cobra.Command{Use: "install"}, nil)
+	err := installadapter.RunForTest(&cobra.Command{Use: "install"}, installDependencies(), installadapter.TestOptions{NoShim: true, ShimPath: filepath.Join(t.TempDir(), "SKILL.md")})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "mutually exclusive")
 }

@@ -12,6 +12,10 @@ type InstallConfig struct {
 	// Force overwrites all files, including user-modified ones.
 	// When false (default), files that differ from the embedded default are preserved.
 	Force bool
+	// AllowDowngrade lets an older binary replace normative runtime files a
+	// newer binary installed (a deliberate rollback). Without it the install
+	// fails with runtime_newer_than_binary.
+	AllowDowngrade bool
 	// StrictCompile makes a CompileAll failure fatal (triggers rollback) instead of
 	// warning-only. Default false preserves the existing warning-only behavior.
 	StrictCompile bool

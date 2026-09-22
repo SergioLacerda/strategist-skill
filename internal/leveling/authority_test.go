@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -110,4 +111,23 @@ func TestLoadAuthorizedRejectsStaleManifest(t *testing.T) {
 	_, decision, err := LoadAuthorized(root, defaults, defaults, "leveling.yaml")
 	require.ErrorContains(t, err, "leveling_policy_stale")
 	require.Equal(t, AuthorityStale, decision.Class)
+}
+
+// The stale-manifest diagnostic names the embedded authority as the expected
+// side and the install manifest as the observed one, and points at the remedy.
+func TestStaleManifestDiagnosticNamesEmbeddedPolicyAsExpected(t *testing.T) {
+	defaults := authorityDefaults(t)
+	policy, err := Parse(defaults)
+	require.NoError(t, err)
+	root := t.TempDir()
+	writeAuthorityManifest(t, root, policy.Version, "stale-digest")
+
+	_, _, err = LoadAuthorized(root, defaults, defaults, "leveling.yaml")
+	require.Error(t, err)
+	message := err.Error()
+	expectedAt, observedAt := strings.Index(message, "expected"), strings.Index(message, "observed")
+	require.True(t, expectedAt >= 0 && observedAt > expectedAt, message)
+	require.Contains(t, message[expectedAt:observedAt], policy.Digest(), "expected must be the embedded authority")
+	require.Contains(t, message[observedAt:], "stale-digest", "observed must be the install manifest")
+	require.Contains(t, message, "strategist upgrade")
 }

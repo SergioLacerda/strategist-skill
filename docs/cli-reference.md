@@ -98,11 +98,12 @@ strategist leveling label --role ranger --mission <id> [--run <n>] [--host-model
 strategist metrics levels [--mission <id>] [--json] [--rotate --max-records N]
 ```
 
-`leveling label` prints the role-line label (`Model-Effort`). Precedence is the
-manual choice in the `leveling:` block of `active.yaml`, then host-reported
-values, then the policy suggestion (`--provider` completes a missing one); the
-block is read first and `leveling.yaml` only when a value is still missing.
-`level_source` is recorded as `manual`, `host` or `policy`.
+`leveling label` prints the role-line label (`Model-Effort`). With
+`leveling.mode: manual` in `active.yaml` only host-reported values are used and
+the policy is never read. Otherwise host-reported values come first and the
+policy suggestion (`--provider`) completes a missing one; `leveling.yaml` is read
+only when a value is still missing. `level_source` is recorded as `host` or
+`policy`.
 With `--mission` the tuple is appended to `.strategist/memory/role-levels.jsonl`
 (`mission_id`, `role`, `model`, `effort`, `level_source`, `reason`, `timestamp`)
 and reused for the same mission and role, so every line of a phase agrees;
@@ -128,7 +129,7 @@ name. Edit `leveling.yaml` to add a provider profile or change role criteria;
 invalid effort tiers and unsupported mappings fail closed. Supplying
 `--expected-digest` makes validation reject a stale policy before activation.
 The install wizard applies the same validation to its selected role/provider
-bindings; roles the operator sets manually skip the policy check.
+bindings in automatic mode; manual mode skips the policy check.
 
 The installer also records the embedded LEVELING version/digest in
 `.install-manifest.json`. A stale authority blocks activation with
@@ -176,7 +177,7 @@ strategist install [--target=<dir>] [--wizard] [--silent] [--force]
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--target` | `.` (current directory) | Repository root where `.strategist/` will be created |
-| `--wizard` | `false` | Interactive mode: collects mode, base_path, providers, and whether model x effort is manual (default) or automatic, per role, via prompts |
+| `--wizard` | `false` | Interactive mode: collects mode, base_path, providers, and whether model x effort is manual (default, host passthrough) or automatic (LEVELING policy), via prompts |
 | `--silent` | `false` (default behavior when no flag is passed) | Installation without prompts, using **epic** profile defaults |
 | `--force` | `false` | Overwrite all files, including user-modified ones (default: preserve customizations that differ from the embedded default) |
 | `--strict-compile` | `false` | Make a `CompileAll` failure after extraction fatal — the install rolls back instead of completing with a partial/uncompiled runtime. Default is warning-only (install still completes) |

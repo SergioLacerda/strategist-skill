@@ -14,6 +14,7 @@ a file listed by `internal/domain/runtime_defaults.go` in
 - `runtime_stale_conflict`
 - `runtime_stale_auto_repairable`
 - `runtime_stale_unknown_manifest`
+- `runtime_newer_than_binary` (see "Binary older than the runtime" below)
 
 The usual trigger is editing an embedded default and invoking a previously
 built `strategist` binary, whose embedded copy still contains the old content.
@@ -101,6 +102,29 @@ Repeat for every path named by `NormativeRuntimeDefaultFiles()`, not just the
 first reported file. Do not copy one side over the other until the difference
 has been classified: the installed runtime may contain an intentional local
 edit, or the binary may still be from an unexpected installation.
+
+### Binary older than the runtime (`runtime_newer_than_binary`)
+
+The install manifest keeps each normative file's earlier installed hashes. When
+the running binary carries a default the runtime already moved past, `check`
+reports `runtime_newer_than_binary`, and `install`/`upgrade` refuse to write
+instead of silently rolling the runtime back. This happens when one session or
+checkout updated the runtime and another still uses an older `strategist` from
+`PATH` (the 2026-09-22 incident: `~/.local/bin/strategist`, built before the
+change, reverted freshly shipped contracts on every reinstall).
+
+Update the binary, not the runtime:
+
+```bash
+make install                  # rebuilds ~/.local/bin/strategist from this checkout
+strategist version --build
+(cd .strategist && strategist check)
+```
+
+After changing anything under `internal/embed/defaults/`, run `make install`
+before the next `strategist install` or `upgrade`, so the binary on `PATH`
+carries the same defaults as the source. Pass `--allow-downgrade` only for a
+deliberate rollback to an older release.
 
 ## Decision Point
 

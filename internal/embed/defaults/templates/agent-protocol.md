@@ -134,7 +134,7 @@ Linear checklist. Do not advance without completing each item.
 [ ] 4. context enrichment (skill: context-enrichment)
 [ ] 5. discovery → invoke internal_skills/ranger (native role, all discovery subtypes)
 [ ] 6. refinement → invoke {{.Slots.Refinement}}
-[ ] 7. approval gate  ← MANDATORY PAUSE — do not advance without explicit approval; timeout/decline ends as analysis-only
+[ ] 7. approval gate  ← MANDATORY PAUSE — do not advance without explicit approval; timeout/decline, or acceptance without documentation targets, ends as analysis-only
 [ ] 8. materialization → invoke {{.Slots.Execution}}  ← only after gate approved
 [ ] 9. learning (non-blocking)
 ```
@@ -147,6 +147,7 @@ Main mission evidence:
 - `tasks.md` exists when execution depends on refinement
 - approval gate was presented and explicitly approved before execution
 - approval gate timeout/decline terminates as analysis-only (`EventGateTimeout`/`EventGateDenied` → `StateDoneAnalysis`)
+- approval gate acceptance of a package with no `documentation_target` terminates as analysis-only (`EventGateApprovedAnalysisOnly` → `StateDoneAnalysis`)
 - approval gate revision request loops back to refinement, not a new mission (`EventGateRevision` → `StateRefinement`)
 
 **FSM scope (S7):** the internal state machine (`internal/domain/state_machine.go`)

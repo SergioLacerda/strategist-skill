@@ -4,8 +4,11 @@ role: scout
 # definition shape (see internal_skills/scout for its behavior and SKILL.md).
 phase: 0
 pluggable: false
-on_start:                       # run when this role's phase starts; {role} and {mission_id} are substituted
-  - strategist leveling label --role {role} --mission {mission_id}
+on_start:                       # run when this role's phase starts; {role} and {mission_id} are substituted.
+                                 # --host-model/--host-effort are a literal reminder to fill in with the
+                                 # actual running model/effort — the CLI cannot infer them, and omitting
+                                 # them silently returns blank fields.
+  - strategist leveling label --role {role} --mission {mission_id} --host-model <your-model> --host-effort <your-effort>
 # leveling: scout              # optional LEVELING policy role; defaults to the role id
 
 canonical:

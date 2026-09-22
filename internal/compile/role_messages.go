@@ -1,7 +1,6 @@
 package compile
 
 import (
-	"strconv"
 	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -18,8 +17,6 @@ const (
 	roleTaskDoneTemplate = "role_task_done"
 	rolePhrasesKey       = "role_phrases"
 	defaultPhrasesKey    = "_default"
-
-	progressBarWidth = 28
 )
 
 // RoleEventAlias names the generic template an old per-role event key expands.
@@ -53,17 +50,11 @@ func RoleEventAliases(reg domain.RoleRegistry) map[string]RoleEventAlias {
 // content wins over the generated one, so a hand-written message still works.
 func expandRoleMessages(content map[string]any, reg domain.RoleRegistry) {
 	phrases := asMap(content[rolePhrasesKey])
-	total := reg.PhaseTotal()
 	for _, role := range reg.Roles() {
 		if role.Phase <= 0 {
 			continue
 		}
 		phrase := rolePhraseFor(phrases, role.ID)
-		bar, pct := phaseProgress(role.Phase, total)
-		mark := " · " + roleDisplayName(role.ID) + " ✓"
-		if role.Phase >= total {
-			mark = " ✓"
-		}
 		replacer := strings.NewReplacer(
 			"{role_title}", roleDisplayName(role.ID),
 			"{role_emoji}", phrase["emoji"],
@@ -71,9 +62,6 @@ func expandRoleMessages(content map[string]any, reg domain.RoleRegistry) {
 			"{done_text}", phrase["done_text"],
 			"{artifact_label}", phrase["artifact_label"],
 			"{task_text}", phrase["task_text"],
-			"{phase_bar}", bar,
-			"{phase_pct}", strconv.Itoa(pct),
-			"{phase_mark}", mark,
 		)
 		expandOne(content, role.ID+"_start", roleStartTemplate, replacer, true)
 		expandOne(content, role.ID+"_done", roleDoneTemplate, replacer, phrase["done_text"] != "")
@@ -115,24 +103,6 @@ func stringFields(entry map[string]any) map[string]string {
 		}
 	}
 	return out
-}
-
-// phaseProgress renders the checkpoint progress bar and percentage of a phase.
-// The bar advances eight cells per quarter of a four-phase mission, with a
-// partial cell until the final phase, which is a full bar.
-func phaseProgress(phase, total int) (bar string, pct int) {
-	if total <= 0 {
-		return strings.Repeat("░", progressBarWidth), 0
-	}
-	pct = phase * 100 / total
-	if phase >= total {
-		return strings.Repeat("█", progressBarWidth), 100
-	}
-	full := 32 * phase / total
-	if full > progressBarWidth-1 {
-		full = progressBarWidth - 1
-	}
-	return strings.Repeat("█", full) + "▓" + strings.Repeat("░", progressBarWidth-1-full), pct
 }
 
 func roleDisplayName(id string) string {

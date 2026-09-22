@@ -29,7 +29,8 @@ type Role struct {
 	// Leveling names the LEVELING policy role to use; empty means the role id.
 	Leveling string
 	// OnStart lists command templates run when the role's phase starts; {role}
-	// and {mission_id} are substituted. Empty means DefaultStartCommand.
+	// and {mission_id} are substituted, `<your-model>`/`<your-effort>` are a
+	// literal reminder for the agent to fill in. Empty means DefaultStartCommand.
 	OnStart []string
 }
 

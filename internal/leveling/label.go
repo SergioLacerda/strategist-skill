@@ -10,7 +10,6 @@ import (
 
 // Level sources recorded next to every resolved level, in precedence order.
 const (
-	SourceManual = "manual"
 	SourceHost   = "host"
 	SourcePolicy = "policy"
 )
@@ -37,12 +36,6 @@ type Level struct {
 	PolicyDigest   string `json:"policy_digest,omitempty" yaml:"policy_digest,omitempty"`
 }
 
-// Manual carries the operator's choice for a role from active.yaml.
-type Manual struct {
-	Model  string
-	Effort string
-}
-
 // PolicyLoader loads the LEVELING policy. It is called at most once, and only
 // when a value is still missing after the cheaper sources.
 type PolicyLoader func() (Policy, error)
@@ -52,26 +45,31 @@ type PolicyLoader func() (Policy, error)
 // completed from the policy when a provider is given. Without a provider or host
 // data the level is unknown.
 func ResolveLevel(policy Policy, provider, role string, signals Signals, host Host) (Level, error) {
-	return ResolveLevelLazy(func() (Policy, error) { return policy, nil }, provider, role, signals, Manual{}, host)
+	return ResolveLevelLazy(func() (Policy, error) { return policy, nil }, provider, role, signals, host)
 }
 
 // ResolveLevelLazy resolves the level of a role field by field with the
-// precedence manual, then host, then policy. Level.Source names the
-// highest-precedence source that contributed. The policy is loaded through load
-// only when model or effort is still missing and a provider is given, so a
-// complete manual choice or a complete host report never reads LEVELING data.
-func ResolveLevelLazy(load PolicyLoader, provider, role string, signals Signals, manual Manual, host Host) (Level, error) {
-	level := Level{Role: strings.ToLower(strings.TrimSpace(role))}
-	fillLevelSource(&level, SourceManual, manual.Model, manual.Effort)
+// precedence host, then policy. Level.Source names the highest-precedence
+// source that contributed. The policy is loaded through load only when model or
+// effort is still missing and a provider is given, so a complete host report,
+// or an empty provider (manual mode: host passthrough), never reads LEVELING data.
+func ResolveLevelLazy(load PolicyLoader, provider, role string, signals Signals, host Host) (Level, error) {
+	level := Level{Role: NormalizeRole(role)}
 	fillLevelSource(&level, SourceHost, host.Model, host.Effort)
 	if strings.TrimSpace(provider) == "" || (level.Model != "" && level.Effort != "") {
+		// No policy is loaded on this path, so the model id can only be
+		// shortened by the policy-free fallback.
+		level.Model = displayFallback(provider, level.Model)
 		return level, nil
 	}
 	return completeLevelFromPolicy(load, level, provider, role, signals)
 }
 
+// fillLevelSource records a source's model and effort. The model is kept as the
+// raw id so a later policy load can still match it against the configured
+// display names; shortening happens once, at the end of resolution.
 func fillLevelSource(level *Level, source, model, effort string) {
-	model, effort = capitalize(strings.TrimSpace(model)), strings.ToLower(strings.TrimSpace(effort))
+	model, effort = strings.TrimSpace(model), strings.ToLower(strings.TrimSpace(effort))
 	setPrimarySource(level, source, model, effort)
 	fillModel(level, source, model)
 	fillEffort(level, source, effort)
@@ -105,6 +103,10 @@ func completeLevelFromPolicy(load PolicyLoader, level Level, provider, role stri
 		return Level{}, err
 	}
 	applyPolicyProvenance(&level, suggestion)
+	// A model already answered by the host is shortened through the same
+	// display table as a policy-selected one, so the label reads `Sonnet`
+	// rather than `Claude-sonnet-5` whichever source supplied it.
+	level.Model = policy.DisplayName(suggestion.Provider, level.Model)
 	fillModel(&level, SourcePolicy, policy.DisplayName(suggestion.Provider, suggestion.Model))
 	fillEffort(&level, SourcePolicy, suggestion.Effort)
 	return level, nil

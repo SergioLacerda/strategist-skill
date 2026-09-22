@@ -117,6 +117,13 @@ errors:
     action: "run strategist install --wizard or add the documented versioned compatibility marker"
     enforced_by: machine_enforced
 
+  - token: leveling_policy_unreadable
+    emit: "error=leveling_policy_unreadable"
+    scope: slot
+    reason: "the LEVELING policy override exists but cannot be read"
+    action: "fix the file's permissions or type (it must be a readable file) at .strategist/leveling.yaml"
+    enforced_by: machine_enforced
+
   - token: leveling_ranked_provider_ineligible
     emit: "error=leveling_ranked_provider_ineligible"
     scope: slot

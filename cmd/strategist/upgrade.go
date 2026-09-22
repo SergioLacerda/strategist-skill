@@ -18,6 +18,9 @@ var (
 	upgradeDryRun   bool
 	upgradeForce    bool
 	upgradeRollback string
+	// upgradeAllowDowngrade lets an older binary replace normative files a
+	// newer binary installed (deliberate rollback).
+	upgradeAllowDowngrade bool
 )
 
 var upgradeCmd = &cobra.Command{
@@ -42,7 +45,7 @@ under .strategist/.upgrade-backups/<timestamp>/ — restore it with
 }
 
 func runUpgrade(cmd *cobra.Command, _ []string) error {
-	target, err := resolveInstallTarget(upgradeTarget, upgradeGlobal)
+	target, err := resolveRuntimeInstallTarget(upgradeTarget, upgradeGlobal)
 	if err != nil {
 		return err
 	}
@@ -173,6 +176,8 @@ func upgradeService() install.Service {
 		Extractor: embedpkg.Extractor{},
 		Lister:    embedpkg.Extractor{},
 		Version:   Version,
+
+		AllowDowngrade: upgradeAllowDowngrade,
 	}
 }
 
@@ -181,5 +186,6 @@ func init() {
 	upgradeCmd.Flags().BoolVar(&upgradeGlobal, "global", false, "operate on the global root (default: local project)")
 	upgradeCmd.Flags().BoolVar(&upgradeDryRun, "dry-run", false, "show the upgrade plan without writing anything")
 	upgradeCmd.Flags().BoolVar(&upgradeForce, "force", false, "also overwrite customized files (default: preserve them)")
+	upgradeCmd.Flags().BoolVar(&upgradeAllowDowngrade, "allow-downgrade", false, "let this binary replace normative files installed by a newer binary (deliberate rollback; default: refuse with runtime_newer_than_binary)")
 	upgradeCmd.Flags().StringVar(&upgradeRollback, "rollback", "", `restore files from a previous upgrade's backup instead of upgrading ("latest" or a specific timestamp from .strategist/.upgrade-backups/)`)
 }

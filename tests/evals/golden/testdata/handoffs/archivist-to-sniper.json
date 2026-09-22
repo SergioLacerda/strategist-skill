@@ -53,6 +53,14 @@
             "ground_truth_kind",
             "ground_truth_outcome"
           ],
+          "item_values": {
+            "evidence_classes": [
+              "explicit",
+              "corroborated_inference",
+              "weak_inference",
+              "unknown"
+            ]
+          },
           "required": true,
           "type": "list"
         },
@@ -62,6 +70,14 @@
             "source_ref",
             "class"
           ],
+          "item_values": {
+            "class": [
+              "explicit",
+              "corroborated_inference",
+              "weak_inference",
+              "unknown"
+            ]
+          },
           "required": false,
           "type": "list"
         },
@@ -197,10 +213,12 @@
     "side_quests_approved": {
       "description": "Side quest strategy decisions made by Archivist — surfaced at approval gate",
       "field_descriptions": {
+        "confidence_percent": "optional, integer 0-100. Present only when investigation_required is false/absent. Never fabricate a low or placeholder value to fill this field — a side quest without enough evidence to assess is investigation_required, not a low confidence_percent.\n",
         "dependencies": "list of other SQ ids or task ids this depends on",
         "description": "brief description of the side quest",
         "estimated_impact": "scope of effort if executed",
         "id": "SQ-NNN format — matches ranger handoff id",
+        "investigation_required": "optional boolean, default false. true means the side quest cannot be confidently assessed yet — the gate must show \"precisa investigar\" instead of a percentage, and confidence_percent must be omitted. This mirrors the existing claim_kind: question rule for tasks (a claim that cannot support an assertion is a question, never a guessed percent).\n",
         "status": "sq_pending when gate opens; sq_backlog if user does not select it"
       },
       "item_fields": [
@@ -209,7 +227,9 @@
         "strategy",
         "estimated_impact",
         "dependencies",
-        "status"
+        "status",
+        "confidence_percent",
+        "investigation_required"
       ],
       "item_values": {
         "estimated_impact": [

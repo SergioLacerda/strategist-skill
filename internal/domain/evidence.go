@@ -90,12 +90,20 @@ const (
 	EvidenceClassUnknown               = "unknown"
 )
 
-var allowedEvidenceClasses = stringSet(
+// orderedEvidenceClasses is the single definition of the vocabulary;
+// schemas/evidence.schema.yaml#class and both handoff schemas must declare the
+// same values (a parity test guards drift).
+var orderedEvidenceClasses = []string{
 	EvidenceClassExplicit,
 	EvidenceClassCorroboratedInference,
 	EvidenceClassWeakInference,
 	EvidenceClassUnknown,
-)
+}
+
+var allowedEvidenceClasses = stringSet(orderedEvidenceClasses...)
+
+// EvidenceClasses lists the accepted evidence classes, strongest first.
+func EvidenceClasses() []string { return append([]string(nil), orderedEvidenceClasses...) }
 
 // ValidateEvidence checks an Evidence record against the required fields
 // and allowed values documented in schemas/evidence.schema.yaml.

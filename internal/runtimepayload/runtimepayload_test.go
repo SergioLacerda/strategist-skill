@@ -240,3 +240,115 @@ func TestEntryPathRejectsWindowsHostileNames(t *testing.T) {
 		require.Equal(t, name, rel)
 	}
 }
+
+func TestRegisterAndDefaultOpenSpec(t *testing.T) {
+	RegisterOpenSpec(nil)
+	_, ok := DefaultOpenSpec()
+	require.False(t, ok)
+
+	src := fstest.MapFS{}
+	RegisterOpenSpec(src)
+	got, ok := DefaultOpenSpec()
+	require.True(t, ok)
+	require.Equal(t, src, got)
+
+	// Reset
+	RegisterOpenSpec(nil)
+}
+
+func TestEmbeddedOpenSpecVersion_Errors(t *testing.T) {
+	missingFS := fstest.MapFS{}
+	_, err := EmbeddedOpenSpecVersion(missingFS)
+	require.ErrorIs(t, err, ErrPayloadMissing)
+
+	badYamlFS := fstest.MapFS{
+		openSpecTreeDir + "/" + BuildInfoFile: {Data: []byte("version: [invalid")},
+	}
+	_, err = EmbeddedOpenSpecVersion(badYamlFS)
+	require.Error(t, err)
+
+	emptyVerFS := fstest.MapFS{
+		openSpecTreeDir + "/" + BuildInfoFile: {Data: []byte("version: '  '")},
+	}
+	_, err = EmbeddedOpenSpecVersion(emptyVerFS)
+	require.ErrorContains(t, err, "no version")
+}
+
+func TestMaterializeOpenSpec_Errors(t *testing.T) {
+	missingFS := fstest.MapFS{}
+	_, _, err := MaterializeOpenSpec(missingFS, t.TempDir())
+	require.ErrorIs(t, err, ErrPayloadMissing)
+}
+
+func TestVerifyMaterializedOpenSpec_TreeDigestError(t *testing.T) {
+	err := VerifyMaterializedOpenSpec(filepath.Join(t.TempDir(), "nonexistent"), "somehash")
+	require.Error(t, err)
+}
+
+func TestBudgetLimits(t *testing.T) {
+	b := &budget{files: maxExtractedFiles}
+	require.ErrorIs(t, b.file(), ErrUnsafeArchive)
+
+	bBytes := &budget{bytes: maxExtractedBytes}
+	buf := strings.NewReader("hello")
+	err := copyToFile(filepath.Join(t.TempDir(), "f.txt"), 0o644, buf, bBytes)
+	require.ErrorIs(t, err, ErrUnsafeArchive)
+}
+
+func TestEntryPerm(t *testing.T) {
+	require.Equal(t, fs.FileMode(0o755), entryPerm(0o755))
+	require.Equal(t, fs.FileMode(0o644), entryPerm(0o644))
+}
+
+func TestManifestValidationEdgeCases(t *testing.T) {
+	m := Manifest{
+		SchemaVersion: SchemaVersion,
+		Provider:      "",
+		Launcher:      Launcher{Node: map[string]string{"default": "app.js"}, Script: "app.js"},
+		Components: []Component{
+			{Name: "c", Version: "1", OS: AnyTarget, Arch: AnyTarget, File: "f", Format: FormatDir, SHA256: strings.Repeat("a", 64), Size: 10, Dest: "d"},
+		},
+	}
+	require.ErrorContains(t, m.Validate(), "provider and components are required")
+
+	m.Provider = "p"
+	m.Launcher.Node = map[string]string{}
+	require.ErrorContains(t, m.Validate(), "launcher needs node.default")
+
+	m.Launcher.Node = map[string]string{"default": "/absolute/path"}
+	require.ErrorContains(t, m.Validate(), "must be clean and relative")
+
+	m.Launcher.Node = map[string]string{"default": "app.js"}
+	m.Components[0].Name = ""
+	require.ErrorContains(t, m.Validate(), "name, version, os and arch are required")
+
+	m.Components[0].Name = "c"
+	m.Components[0].File = "."
+	require.ErrorContains(t, m.Validate(), "file \".\" must be a clean relative path")
+
+	m.Components[0].File = "f"
+	m.Components[0].Size = 0
+	require.ErrorContains(t, m.Validate(), "size must be positive")
+
+	m.Components[0].Size = 10
+	m.Components[0].Dest = "/dest"
+	require.ErrorContains(t, m.Validate(), "dest \"/dest\" must be clean and relative")
+}
+
+func TestEntryPathStripAndTraversal(t *testing.T) {
+	_, ok, err := entryPath("a/b", 2)
+	require.NoError(t, err)
+	require.False(t, ok)
+
+	_, _, err = entryPath("a/../..", 1)
+	require.ErrorIs(t, err, ErrUnsafeArchive)
+
+	_, _, err = entryPath("", 0)
+	require.ErrorIs(t, err, ErrUnsafeArchive)
+
+	_, _, err = entryPath("/abs", 0)
+	require.ErrorIs(t, err, ErrUnsafeArchive)
+
+	_, _, err = entryPath("drive:path", 0)
+	require.ErrorIs(t, err, ErrUnsafeArchive)
+}

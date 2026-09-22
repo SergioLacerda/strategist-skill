@@ -42,6 +42,18 @@ func TestPersonaConfig_ValidateForRuntime(t *testing.T) {
 	require.ErrorContains(t, err, "phase_labels")
 	require.ErrorContains(t, err, "diagnostics.pipeline_header")
 	require.ErrorContains(t, err, "diagnostics.bootstrap_origin")
+
+	jsonl := domain.PersonaConfig{
+		ID:            "debug",
+		ToneDirective: "none",
+		PhaseLabels: domain.PhaseLabels{
+			Discovery:  "discovery",
+			Refinement: "refinement",
+			Execution:  "execution",
+		},
+		Diagnostics: domain.PersonaDiagnostics{Format: "jsonl"},
+	}
+	require.NoError(t, jsonl.ValidateForRuntime(), "format: jsonl bypasses profile rendering and needs no pipeline_header/bootstrap_origin")
 }
 
 func TestRoleConfig_Validate(t *testing.T) {

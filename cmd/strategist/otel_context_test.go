@@ -35,11 +35,7 @@ func TestCommandSpansPreserveMissionContext(t *testing.T) {
 
 	compileCtx, compileSpan := startCompileSpan(ctx)
 	compileSpan.End()
-	installCtx, installSpan := startInstallSpan(ctx)
-	installSpan.End()
 
 	assert.Equal(t, "kept", compileCtx.Value(key))
 	assert.Same(t, run, telemetry.MissionRunFromContext(compileCtx))
-	assert.Equal(t, "kept", installCtx.Value(key))
-	assert.Same(t, run, telemetry.MissionRunFromContext(installCtx))
 }

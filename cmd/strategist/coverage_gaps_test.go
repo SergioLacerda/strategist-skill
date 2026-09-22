@@ -109,37 +109,7 @@ func TestResolveDojoRoots_InvalidActiveYAML(t *testing.T) {
 	assert.Contains(t, err.Error(), "parse active.yaml")
 }
 
-// --- printInstallCompleteBanner: wizard=true mode ---
-
-func TestPrintInstallCompleteBanner_WizardMode(t *testing.T) {
-	out := captureStdout(t, func() {
-		printInstallCompleteBanner("/some/target", true, false)
-	})
-	assert.Contains(t, out, "wizard")
-	assert.Contains(t, out, "/some/target")
-	assert.NotContains(t, out, "partial")
-}
-
-func TestPrintInstallCompleteBanner_Partial(t *testing.T) {
-	out := captureStdout(t, func() {
-		printInstallCompleteBanner("/some/target", false, true)
-	})
-	assert.Contains(t, out, "partial")
-	assert.Contains(t, out, "strategist compile")
-	assert.Contains(t, out, "--strict-compile")
-}
-
-func TestInstallIsPartial(t *testing.T) {
-	dir := t.TempDir()
-	assert.True(t, installIsPartial(dir), "no manifest present must be reported as partial")
-
-	manifestPath := filepath.Join(dir, ".strategist", ".compiled", ".manifest.gz")
-	require.NoError(t, os.MkdirAll(filepath.Dir(manifestPath), 0o755))
-	require.NoError(t, os.WriteFile(manifestPath, []byte("x"), 0o644))
-	assert.False(t, installIsPartial(dir), "manifest present must not be reported as partial")
-}
-
-// --- resolveInstallTarget: walk-up finds existing .strategist/ ---
+// --- resolveRuntimeInstallTarget: walk-up finds existing .strategist/ ---
 
 func TestResolveInstallTarget_ExistingStrategistDir(t *testing.T) {
 	root := t.TempDir()
@@ -153,7 +123,7 @@ func TestResolveInstallTarget_ExistingStrategistDir(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chdir(oldWd) })
 	require.NoError(t, os.Chdir(subdir))
 
-	target, err := resolveInstallTarget("", false)
+	target, err := resolveRuntimeInstallTarget("", false)
 	require.NoError(t, err)
 	assert.Equal(t, root, target)
 }

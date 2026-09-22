@@ -18,6 +18,9 @@ import (
 // never deleted. Returns the backup dir (empty if nothing was overwritten).
 func (s Service) ApplyUpgrade(strategistDir string, plan UpgradePlan, force bool) (backupDir string, retErr error) {
 	toWrite, toBackup := upgradeWriteSet(plan, force)
+	if err := s.refuseNormativeDowngrade(strategistDir, plan.embeddedHashes, toWrite); err != nil {
+		return "", err
+	}
 
 	if len(toBackup) > 0 {
 		var err error
@@ -42,7 +45,7 @@ func (s Service) finalizeUpgrade(strategistDir string, plan UpgradePlan, toWrite
 		}
 	}
 
-	fullManifest := domain.NewFullInstallManifest(packageID(s.Version), plan.embeddedHashes)
+	fullManifest := withInstallHistory(strategistDir, domain.NewFullInstallManifest(packageID(s.Version), plan.embeddedHashes))
 	if err := s.applyLevelingAuthority(&fullManifest); err != nil {
 		return fmt.Errorf("upgrade: LEVELING authority: %w", err)
 	}

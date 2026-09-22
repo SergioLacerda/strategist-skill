@@ -13,8 +13,19 @@ import (
 // SkillName is the user-facing name of the model/effort selection skill.
 const SkillName = "LEVELING"
 
-var effortTiers = map[string]bool{
-	"none": true, "low": true, "medium": true, "high": true, "xhigh": true, "max": true,
+// orderedEffortTiers is the effort catalog in ascending order. It is the single
+// definition; effortTiers is the lookup built from it, and EffortTierNames
+// exposes it for diagnostics.
+var orderedEffortTiers = []string{"none", "low", "medium", "high", "xhigh", "max"}
+
+var effortTiers = newEffortTierSet(orderedEffortTiers)
+
+func newEffortTierSet(tiers []string) map[string]bool {
+	set := make(map[string]bool, len(tiers))
+	for _, tier := range tiers {
+		set[tier] = true
+	}
+	return set
 }
 
 // Policy is the complete provider-neutral LEVELING configuration.

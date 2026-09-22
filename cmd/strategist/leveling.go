@@ -1,106 +1,52 @@
 package main
 
 import (
-	"encoding/json"
+	"context"
+	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 
+	levelingadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/leveling"
+	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/embed"
 	"github.com/SergioLacerda/strategist-skill/internal/leveling"
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
 )
 
-var levelingCmd = &cobra.Command{
-	Use:   "leveling",
-	Short: "Suggest model and effort by role",
+const roleLevelLedger = "role-levels.jsonl"
+
+func levelingAdapterDependencies() levelingadapter.Dependencies {
+	return levelingadapter.Dependencies{
+		LoadPolicy:    loadLevelingPolicy,
+		WorkspaceRoot: levelingWorkspaceRoot,
+		LoadConfig:    readActiveLevelingConfig,
+		LoadRegistry:  loadRoleRegistry,
+		LedgerName:    roleLevelLedger,
+		RotateMax:     defaultLedgerMaxRecords,
+		EmitRoleLevel: emitRoleLevel,
+	}
 }
 
-var levelingValidateCmd = newLevelingValidateCommand()
-
-func newLevelingValidateCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "validate",
-		Short: "Validate the customer LEVELING policy",
-		RunE:  func(cmd *cobra.Command, _ []string) error { return runLevelingValidate(cmd) },
+func emitRoleLevel(ctx context.Context, missionID, run string, level leveling.Level, reason string) {
+	attrs := []any{
+		telemetry.AttrComponent, "leveling",
+		telemetry.AttrMissionID, missionID,
+		telemetry.AttrRole, level.Role,
+		telemetry.AttrModel, level.Model,
+		telemetry.AttrEffort, level.Effort,
+		telemetry.AttrLevelSource, level.Source,
 	}
-	cmd.Flags().String("expected-digest", "", "fail if the normalized policy digest differs")
-	return cmd
-}
-
-func runLevelingValidate(cmd *cobra.Command) error {
-	policy, path, err := loadLevelingPolicy()
-	if err != nil {
-		return err
+	if reason != "" {
+		attrs = append(attrs, telemetry.AttrReason, reason)
 	}
-	if expectedDigest := stringFlag(cmd, "expected-digest", ""); expectedDigest != "" {
-		if err := policy.VerifyDigest(expectedDigest); err != nil {
-			return fmt.Errorf("leveling: verify digest: %w", err)
-		}
+	if run != "" {
+		attrs = append(attrs, telemetry.AttrRoleRun, run)
 	}
-	if _, err := fmt.Fprintf(cmd.OutOrStdout(), "policy=%s version=%d digest=%s providers=%d\n", path, policy.Version, policy.Digest(), len(policy.Providers)); err != nil {
-		return fmt.Errorf("leveling: write validation result: %w", err)
-	}
-	return nil
-}
-
-type levelingSuggestOptions struct {
-	Provider, Role, Ambiguity, Risk, Scope, Evidence            string
-	ArchitecturalChange, SecuritySensitive, ConflictingEvidence bool
-	RepeatedFailures                                            int
-	JSON                                                        bool
-}
-
-var levelingSuggestCmd = newLevelingSuggestCommand()
-
-func newLevelingSuggestCommand() *cobra.Command {
-	opts := levelingSuggestOptions{}
-	cmd := &cobra.Command{
-		Use:   "suggest",
-		Short: "Suggest a model and effort for a role",
-		RunE:  func(cmd *cobra.Command, _ []string) error { return runLevelingSuggest(cmd, opts) },
-	}
-	configureLevelingSuggestFlags(cmd, &opts)
-	return cmd
-}
-
-func runLevelingSuggest(cmd *cobra.Command, opts levelingSuggestOptions) error {
-	policy, _, err := loadLevelingPolicy()
-	if err != nil {
-		return err
-	}
-	suggestion, err := leveling.Suggest(policy, opts.Provider, opts.Role, leveling.Signals{
-		Ambiguity: opts.Ambiguity, Risk: opts.Risk, Scope: opts.Scope, Evidence: opts.Evidence,
-		ArchitecturalChange: opts.ArchitecturalChange, SecuritySensitive: opts.SecuritySensitive,
-		ConflictingEvidence: opts.ConflictingEvidence, RepeatedFailures: opts.RepeatedFailures,
-	})
-	if err != nil {
-		return fmt.Errorf("leveling: suggest: %w", err)
-	}
-	if opts.JSON {
-		if err := json.NewEncoder(cmd.OutOrStdout()).Encode(suggestion); err != nil {
-			return fmt.Errorf("leveling: write suggestion: %w", err)
-		}
-		return nil
-	}
-	if _, err := fmt.Fprintf(cmd.OutOrStdout(), "provider=%s role=%s model=%s capability=%s effort=%s fallback_used=%t policy_digest=%s\n", suggestion.Provider, suggestion.Role, suggestion.Model, suggestion.Capability, suggestion.Effort, suggestion.FallbackUsed, suggestion.PolicyDigest); err != nil {
-		return fmt.Errorf("leveling: write suggestion: %w", err)
-	}
-	return nil
-}
-
-func configureLevelingSuggestFlags(cmd *cobra.Command, opts *levelingSuggestOptions) {
-	cmd.Flags().StringVar(&opts.Provider, "provider", "CODEX", "ranked provider identifier")
-	cmd.Flags().StringVar(&opts.Role, "role", "ranger", "Strategist role")
-	cmd.Flags().StringVar(&opts.Ambiguity, "ambiguity", "", "ambiguity signal: low, medium, or high")
-	cmd.Flags().StringVar(&opts.Risk, "risk", "", "risk signal: low, medium, or high")
-	cmd.Flags().StringVar(&opts.Scope, "scope", "", "scope signal: bounded or cross_module")
-	cmd.Flags().StringVar(&opts.Evidence, "evidence", "", "evidence signal: sufficient, insufficient, or conflicting")
-	cmd.Flags().BoolVar(&opts.ArchitecturalChange, "architectural-change", false, "mark an architectural change")
-	cmd.Flags().BoolVar(&opts.SecuritySensitive, "security-sensitive", false, "mark a security-sensitive task")
-	cmd.Flags().BoolVar(&opts.ConflictingEvidence, "conflicting-evidence", false, "mark conflicting evidence")
-	cmd.Flags().IntVar(&opts.RepeatedFailures, "repeated-failures", 0, "number of repeated failures")
-	cmd.Flags().BoolVar(&opts.JSON, "json", false, "emit JSON")
+	slog.InfoContext(ctx, "role_level_resolved", attrs...)
 }
 
 func loadLevelingPolicy() (leveling.Policy, string, error) {
@@ -109,9 +55,11 @@ func loadLevelingPolicy() (leveling.Policy, string, error) {
 		return leveling.Policy{}, "", err
 	}
 	path := filepath.Join(root, "leveling.yaml")
-	override, err := readLevelingOverride(path)
+	// Shared with the wizard: an unreadable file is leveling_policy_unreadable
+	// on both surfaces (it used to be reported as missing here).
+	override, _, err := leveling.ReadOverride(path)
 	if err != nil {
-		return leveling.Policy{}, path, fmt.Errorf("leveling_policy_missing: read policy: %w", err)
+		return leveling.Policy{}, path, fmt.Errorf("read policy: %w", err)
 	}
 	defaults, err := readEmbeddedLevelingDefaults()
 	if err != nil {
@@ -136,15 +84,32 @@ func levelingWorkspaceRoot() (string, error) {
 	return root, nil
 }
 
-func readLevelingOverride(path string) ([]byte, error) {
-	raw, err := os.ReadFile(path) //nolint:gosec // path is resolved below .strategist
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("read %s: %w", path, err)
+// readActiveLevelingConfig reads the `leveling:` block through the shared
+// active.yaml loader. A missing or unreadable file, or an invalid block,
+// degrades to automatic with a warning: labelling never blocks a mission.
+func readActiveLevelingConfig(root string) (domain.LevelingConfig, string) {
+	active, err := cliutil.LoadActiveConfig(root)
+	if errors.Is(err, os.ErrNotExist) {
+		return domain.LevelingConfig{}, ""
 	}
-	return raw, nil
+	if err != nil {
+		return domain.LevelingConfig{}, err.Error()
+	}
+	if err := active.Leveling.Validate(); err != nil {
+		return domain.LevelingConfig{}, err.Error()
+	}
+	return active.Leveling, ""
+}
+
+// loadRoleRegistry loads the workspace's roles/*.yaml over the built-in registry.
+// A broken role file degrades to the built-ins with a warning: labelling never
+// blocks a mission.
+func loadRoleRegistry(root string) (domain.RoleRegistry, string) {
+	reg, err := domain.LoadRoleRegistry(filepath.Join(root, "roles"))
+	if err != nil {
+		return domain.DefaultRoleRegistry(), err.Error()
+	}
+	return reg, ""
 }
 
 func readEmbeddedLevelingDefaults() ([]byte, error) {
@@ -162,14 +127,5 @@ func init() {
 // registerLeveling attaches LEVELING commands at root composition. Policy and
 // suggestion behavior remain owned by internal/leveling.
 func registerLeveling(root *cobra.Command) {
-	levelingCmd.AddCommand(levelingValidateCmd, levelingSuggestCmd, levelingLabelCmd)
-	root.AddCommand(levelingCmd)
-}
-
-// newLevelingCommand creates an isolated adapter tree. Policy loading,
-// validation and model/effort selection remain in internal/leveling.
-func newLevelingCommand() *cobra.Command {
-	cmd := &cobra.Command{Use: "leveling", Short: "Suggest model and effort by role"}
-	cmd.AddCommand(newLevelingValidateCommand(), newLevelingSuggestCommand(), newLevelingLabelCommand())
-	return cmd
+	levelingadapter.Register(root, levelingAdapterDependencies())
 }

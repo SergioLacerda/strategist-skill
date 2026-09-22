@@ -3,6 +3,7 @@ package missionview_test
 import (
 	"bytes"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -91,4 +92,20 @@ func journeyIDs(v missionview.View) []string {
 		ids[i] = step.ID
 	}
 	return ids
+}
+
+// A fresh mission has neither a calibrated confidence sample nor role-level
+// records; both are reported explicitly instead of as "available".
+func TestBuildReportsNoSampleAndUnknownForAFreshMission(t *testing.T) {
+	v := missionview.Build(missionview.Input{
+		Status:   domain.MissionEngineStatus{MissionID: "m1", Phase: domain.PhaseBootstrap, State: domain.StateInit},
+		Registry: domain.DefaultRoleRegistry(),
+	})
+	assert.Equal(t, missionview.NoSample, v.Confidence.Availability)
+	assert.Equal(t, missionview.Unknown, v.Leveling.Availability)
+
+	var out strings.Builder
+	require.NoError(t, missionview.RenderHuman(&out, v))
+	assert.Contains(t, out.String(), "availability: no_sample")
+	assert.Contains(t, out.String(), "availability: unknown")
 }

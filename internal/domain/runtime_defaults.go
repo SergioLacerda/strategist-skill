@@ -65,6 +65,11 @@ type InstallManifestFile struct {
 	Path   string               `json:"path"`
 	Owner  RuntimeFileOwnership `json:"owner"`
 	SHA256 string               `json:"sha256"`
+	// History lists the hashes this path was installed with before SHA256,
+	// most recent first (bounded). It lets install and check tell a downgrade
+	// (an older binary carrying a default this runtime already moved past)
+	// from a genuine upgrade, which content alone cannot.
+	History []string `json:"history,omitempty"`
 }
 
 // NewInstallManifest builds an install manifest from current embedded hashes.
@@ -112,6 +117,10 @@ const (
 	RuntimeDecisionConflict        RuntimeDefaultDecision = "conflict"
 	RuntimeDecisionUnknownManifest RuntimeDefaultDecision = "unknown_manifest"
 	RuntimeDecisionForceOverwrite  RuntimeDefaultDecision = "force_overwrite"
+	// RuntimeDecisionDowngrade: the runtime holds the last installed default,
+	// and the running binary carries one this runtime was installed with
+	// earlier — the binary is older than the runtime.
+	RuntimeDecisionDowngrade RuntimeDefaultDecision = "downgrade"
 )
 
 // RuntimeDefaultDecisionInput contains hash state for one runtime default decision.
@@ -120,12 +129,21 @@ type RuntimeDefaultDecisionInput struct {
 	CurrentHash  string
 	EmbeddedHash string
 	ManifestHash string
-	HasManifest  bool
-	Force        bool
+	// ManifestHistory is the manifest entry's History (earlier installed hashes).
+	ManifestHistory []string
+	HasManifest     bool
+	Force           bool
+	// AllowDowngrade accepts an older binary's default (explicit rollback).
+	AllowDowngrade bool
 }
 
 // DecideRuntimeDefaultUpdate chooses how to handle one normative runtime default.
 func DecideRuntimeDefaultUpdate(in RuntimeDefaultDecisionInput) RuntimeDefaultDecision {
+	// Checked before Force: --force overrides customizations, not the binary's
+	// age. Rolling back to an older default takes an explicit AllowDowngrade.
+	if isDowngrade(in) {
+		return RuntimeDecisionDowngrade
+	}
 	if in.Force {
 		return RuntimeDecisionForceOverwrite
 	}
@@ -149,6 +167,8 @@ func FormatRuntimeStaleDiagnostic(path string, decision RuntimeDefaultDecision) 
 	switch decision {
 	case RuntimeDecisionAutoUpgrade:
 		return fmt.Sprintf("runtime_stale_auto_repairable: normative file %q differs from embedded default and matches a previously installed default — run strategist install", path)
+	case RuntimeDecisionDowngrade:
+		return fmt.Sprintf("runtime_newer_than_binary: normative file %q was installed by a newer strategist binary than the one running — update the binary (make install) instead of reinstalling, or pass --allow-downgrade to roll back deliberately", path)
 	case RuntimeDecisionConflict:
 		return fmt.Sprintf("runtime_stale_conflict: normative file %q differs from embedded default and previous installed default — inspect the file or run strategist install --force", path)
 	case RuntimeDecisionUnknownManifest:

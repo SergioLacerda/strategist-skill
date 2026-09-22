@@ -85,12 +85,12 @@ func validateRuntimeDefaultFile(
 	}
 	return domain.FormatRuntimeStaleDiagnostic(
 		rel,
-		classifyRuntimeStale(runtimeRaw, rel, manifest, manifestLoaded, manifestErr),
+		classifyRuntimeStale(runtimeRaw, embeddedRaw, rel, manifest, manifestLoaded, manifestErr),
 	), true
 }
 
 func classifyRuntimeStale(
-	runtimeRaw []byte,
+	runtimeRaw, embeddedRaw []byte,
 	rel string,
 	manifest domain.InstallManifest,
 	manifestLoaded bool,
@@ -103,10 +103,13 @@ func classifyRuntimeStale(
 	if !ok {
 		return domain.RuntimeDecisionUnknownManifest
 	}
-	if domain.SHA256Hex(runtimeRaw) == manifestFile.SHA256 {
-		return domain.RuntimeDecisionAutoUpgrade
-	}
-	return domain.RuntimeDecisionConflict
+	// Same decision install makes: a runtime still holding its last installed
+	// default, checked by a binary whose default that runtime already moved
+	// past, means the binary is older — reinstalling would downgrade it.
+	return domain.DecideRuntimeDefaultUpdate(domain.RuntimeDefaultDecisionInput{
+		Exists: true, CurrentHash: domain.SHA256Hex(runtimeRaw), EmbeddedHash: domain.SHA256Hex(embeddedRaw),
+		ManifestHash: manifestFile.SHA256, ManifestHistory: manifestFile.History, HasManifest: true,
+	})
 }
 
 func readInstallManifest(root string) (domain.InstallManifest, bool, error) {

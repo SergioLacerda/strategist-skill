@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/authorization"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -96,8 +97,6 @@ func TestRenderPersonaHeader(t *testing.T) {
 
 // --- exitCodeFor ---
 
-// --- exitCodeFor ---
-
 func TestExitCodeFor(t *testing.T) {
 	t.Parallel()
 	assert.Equal(t, 2, exitCodeFor(domain.ErrPipelineBypassDetected))
@@ -106,6 +105,9 @@ func TestExitCodeFor(t *testing.T) {
 	assert.Equal(t, 3, exitCodeFor(domain.ErrManifestMissing))
 	assert.Equal(t, 1, exitCodeFor(errors.New("some generic error")))
 	assert.Equal(t, 2, exitCodeFor(fmt.Errorf("wrapped: %w", domain.ErrPipelineBypassDetected)))
+	assert.Equal(t, 2, exitCodeFor(fmt.Errorf("%w: denied", authorization.ErrDenied)))
+	assert.Equal(t, 2, exitCodeFor(fmt.Errorf("%w: blocked", authorization.ErrBlocked)))
+	assert.Equal(t, 3, exitCodeFor(fmt.Errorf("%w: stale", authorization.ErrStale)))
 }
 
 // --- requireStrategistDir ---

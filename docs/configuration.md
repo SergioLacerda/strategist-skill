@@ -159,26 +159,26 @@ through an optional per-model `display` name in `leveling.yaml`. The same
 ### Manual or automatic level
 
 The wizard's last step asks whether model x effort is decided **manually**
-(default; one choice for all roles, or one per role) or **automatically** by the
-LEVELING policy, and stores the answer in `active.yaml`. Accepting every default
-records a manual choice for all roles with effort `medium` and no model (the
-model then comes from the host or, on demand, the policy). A piped install script
-that ends before or inside this step records `automatic`:
+(default) or **automatically**, prints one notice explaining the choice, and
+stores only the mode in `active.yaml`. A piped install script that ends before
+this step records `automatic`:
 
 ```yaml
 leveling:
   mode: manual            # manual | automatic
-  roles:                  # manual only
-    ranger:    { model: Sonnet, effort: high }
-    archivist: { model: Opus,   effort: medium }
 ```
 
-Manual values win over host-reported values, which win over the LEVELING policy;
-`level_source` records `manual`, `host` or `policy`. A workspace without a
-`leveling:` block (an installation that predates this step) behaves as automatic. LEVELING data is read on demand: the
-`leveling:` block is read first, and `leveling.yaml` and the install authority
-are loaded only when automatic mode still lacks a model or effort. A complete
-manual map never reads the policy.
+- **manual** — each role runs with the model and effort set in the host/prompt;
+  Strategist never changes them. The LEVELING policy is never loaded, so a value
+  the host does not report stays unknown (the level label is then omitted; a
+  missing level never blocks a mission).
+- **automatic** — model and effort vary per role according to each role's
+  estimated load: host-reported values first, then the LEVELING policy completes
+  whatever is missing. `leveling.yaml` and the install authority are loaded only
+  when a value is still missing.
+
+`level_source` records `host` or `policy`. A workspace without a `leveling:`
+block behaves as automatic.
 
 Because personas render in the host chat, where width cannot be measured, the
 default layout is stacked:

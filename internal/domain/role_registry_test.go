@@ -138,7 +138,7 @@ func TestEveryRoleDeclaresTheLevelStartHook(t *testing.T) {
 	for _, id := range reg.IDs() {
 		commands := reg.StartCommands(id, "m-42")
 		require.NotEmpty(t, commands, "%s must resolve its level at start", id)
-		assert.Equal(t, []string{"strategist leveling label --role " + id + " --mission m-42"}, commands, id)
+		assert.Equal(t, []string{"strategist leveling label --role " + id + " --mission m-42 --host-model <your-model> --host-effort <your-effort>"}, commands, id)
 	}
 	assert.Empty(t, reg.StartCommands("transport", "m-42"), "an unregistered role has no hook")
 }

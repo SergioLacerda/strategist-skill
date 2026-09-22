@@ -170,7 +170,7 @@ func TestPlanRuntimeDefaultUpgrade_EmbeddedHashError(t *testing.T) {
 	// No normative files registered — every ReadFile call errors.
 	ext := runtimeDefaultsExtractor{files: map[string][]byte{}}
 	s := runtimeDefaultService(ext)
-	_, err := s.planRuntimeDefaultUpgrade(context.Background(), dir, false)
+	_, err := s.planRuntimeDefaultUpgrade(context.Background(), dir, runtimeDefaultPolicy{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "read embedded normative default")
 }
@@ -180,7 +180,7 @@ func TestPlanRuntimeDefaultUpgrade_ProductionRequiresEmbeddedLeveling(t *testing
 	ext := newRuntimeDefaultsExtractor(nil)
 	delete(ext.files, "leveling.yaml")
 	s := Service{Extractor: strictMissingLevelingExtractor{runtimeDefaultsExtractor: ext}, Compiler: nopCompiler{}}
-	_, err := s.planRuntimeDefaultUpgrade(context.Background(), t.TempDir(), false)
+	_, err := s.planRuntimeDefaultUpgrade(context.Background(), t.TempDir(), runtimeDefaultPolicy{})
 	require.ErrorContains(t, err, "read embedded LEVELING policy")
 }
 
@@ -190,7 +190,7 @@ func TestPlanRuntimeDefaultUpgrade_CorruptManifest(t *testing.T) {
 	require.NoError(t, os.MkdirAll(dir, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, domain.InstallManifestRelPath), []byte("not json"), 0o644))
 	s := runtimeDefaultService(newRuntimeDefaultsExtractor(nil))
-	_, err := s.planRuntimeDefaultUpgrade(context.Background(), dir, false)
+	_, err := s.planRuntimeDefaultUpgrade(context.Background(), dir, runtimeDefaultPolicy{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "install: parse manifest")
 }
@@ -220,7 +220,7 @@ func TestPlanRuntimeDefaultUpgrade_FileStatError(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chmod(contractsDir, 0o755) })
 
 	s := runtimeDefaultService(newRuntimeDefaultsExtractor(nil))
-	_, err := s.planRuntimeDefaultUpgrade(context.Background(), dir, false)
+	_, err := s.planRuntimeDefaultUpgrade(context.Background(), dir, runtimeDefaultPolicy{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "read normative runtime file")
 }

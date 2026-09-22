@@ -13,6 +13,9 @@ applies_when:
   - >-
     strategist check reports runtime_stale_unknown_manifest for a file listed by
     NormativeRuntimeDefaultFiles()
+  - >-
+    strategist check, install or upgrade reports runtime_newer_than_binary for a
+    file listed by NormativeRuntimeDefaultFiles()
 
 objective: >-
   Recover safely when the embedded defaults in the active strategist binary,

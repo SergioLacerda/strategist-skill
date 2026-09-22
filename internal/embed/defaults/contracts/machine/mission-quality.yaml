@@ -36,5 +36,5 @@ invariants:
     EvaluateMissionQuality is invoked conceptually by Archivist (agent-embodied),
     the same pattern already used for internal/handoff's verification model
   - the Critic and Mission Quality boundaries persist their confidence through
-    `strategist metrics record --agent critic|mission_quality` (or an explicit
+    `strategist metrics record --agent response_critic|mission_quality` (or an explicit
     missing-record); see confidence-governance.yaml#producers

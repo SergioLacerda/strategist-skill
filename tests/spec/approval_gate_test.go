@@ -121,6 +121,56 @@ func TestDriftPatternsIncludeApprovalGateCodeExecutionConfusion(t *testing.T) {
 	}
 }
 
+// TestApprovalGateShowsPerItemConfidenceSummary verifies the gate narrative
+// renders a per-item confidence summary (main task assertions, open
+// questions, side quests) instead of inlining the full cross-agent
+// calibration block, and still points to the existing debug/internal
+// commands for the detailed payload. See
+// .analysis/pending/20260922-approval-gate-confidence-summary/.
+func TestApprovalGateShowsPerItemConfidenceSummary(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "05-approval-gate.md")
+	content := readFile(t, path)
+	for _, needle := range []string{
+		"TAREFA PRINCIPAL",
+		"DÚVIDAS",
+		"precisa investigar",
+		"strategist metrics confidence --mission",
+		"strategist mission view --mission-id",
+		"Never invent or round a confidence value",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("%s missing per-item confidence summary term %q", path, needle)
+		}
+	}
+	assertNoToken(t, path, "🧠 CONFIDENCE")
+	assertNoToken(t, path, "distribution: low=<n>")
+}
+
+// TestSideQuestSchemasSupportInvestigationRequired verifies both handoff
+// schemas let a side quest declare it cannot be confidently assessed yet
+// (investigation_required) instead of forcing a fabricated confidence_percent.
+func TestSideQuestSchemasSupportInvestigationRequired(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "schemas", "handoff-ranger-to-archivist.schema.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "schemas", "handoff-archivist-to-sniper.schema.yaml"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"confidence_percent",
+			"investigation_required",
+			"Never fabricate a low or placeholder value",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing side-quest confidence field %q", path, needle)
+			}
+		}
+	}
+}
+
 // TestEvidencePackContractDefinesNonBlockingEmptyState verifies the Evidence Pack
 // contract (Track T-A) declares its fields and the empty-state non-blocking behavior,
 // and never turns evidence packs into a raw-chest-load or new retrieval unit.

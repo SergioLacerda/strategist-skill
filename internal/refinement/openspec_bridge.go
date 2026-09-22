@@ -30,8 +30,10 @@ type OpenSpecResult struct {
 var canonicalFiles = []string{"analysis.md", "proposal.md", "design.md", "tasks.md"}
 
 // NormalizeOpenSpec validates a completed OpenSpec change and atomically
-// publishes its four canonical files. Provider specs and archive history are
-// intentionally never copied. Existing identical output is idempotent;
+// publishes its four canonical files. Provider spec files and archive history
+// are never copied as files; the specs' requirements and scenarios are carried
+// into design.md under "Acceptance scenarios". After publishing, the change is
+// moved to changes/archive/. Existing identical output is idempotent;
 // conflicting output fails closed.
 func NormalizeOpenSpec(input OpenSpecInput) (OpenSpecResult, error) {
 	if err := validateInput(input); err != nil {
@@ -51,6 +53,11 @@ func NormalizeOpenSpec(input OpenSpecInput) (OpenSpecResult, error) {
 		return OpenSpecResult{}, err
 	}
 	if err := publishOrPromote(refined, input.PendingAnalysisPath, contents); err != nil {
+		return OpenSpecResult{}, err
+	}
+	// Published: the scratch change leaves the active list so the provider
+	// runtime does not accumulate finished changes.
+	if err := archiveChange(input.RuntimeRoot, changeDir, input.ChangeID); err != nil {
 		return OpenSpecResult{}, err
 	}
 	return result(refined, input), nil
@@ -84,6 +91,10 @@ func readContents(changeDir string, input OpenSpecInput) (map[string][]byte, err
 		if err != nil {
 			return nil, fmt.Errorf("openspec bridge: read %s: %w", name, err)
 		}
+	}
+	contents["design.md"], err = withAcceptanceScenarios(contents["design.md"], changeDir)
+	if err != nil {
+		return nil, err
 	}
 	return contents, nil
 }

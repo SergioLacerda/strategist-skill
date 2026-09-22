@@ -11,12 +11,12 @@ func TestResolveInstallTargetReturnsAbsolutePaths(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir)
 
-	explicit, err := resolveInstallTarget("sub", false)
+	explicit, err := resolveRuntimeInstallTarget("sub", false)
 	require.NoError(t, err)
 	require.True(t, filepath.IsAbs(explicit))
 	require.Equal(t, filepath.Join(dir, "sub"), explicit)
 
-	fallback, err := resolveInstallTarget("", false)
+	fallback, err := resolveRuntimeInstallTarget("", false)
 	require.NoError(t, err)
 	require.True(t, filepath.IsAbs(fallback))
 }

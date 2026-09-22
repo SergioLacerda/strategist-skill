@@ -2,6 +2,7 @@ package telemetry
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -28,7 +29,7 @@ func (p ConfidenceProducerAdapter) WithRun(run string) ConfidenceProducerAdapter
 // supported confidence-producing agent.
 func NewConfidenceProducerAdapter(path, agent, missionID string) (ConfidenceProducerAdapter, error) {
 	if !isConfidenceAgent(agent) {
-		return ConfidenceProducerAdapter{}, fmt.Errorf("confidence producer: unsupported agent %q", agent)
+		return ConfidenceProducerAdapter{}, fmt.Errorf("confidence producer: unsupported agent %q (want one of %s)", agent, strings.Join(ConfidenceAgents(), ", "))
 	}
 	if missionID == "" {
 		return ConfidenceProducerAdapter{}, fmt.Errorf("confidence producer: mission_id is required")
@@ -46,18 +47,19 @@ func (p ConfidenceProducerAdapter) RecordMissing(correlationKey, reason string) 
 	return AppendMissingConfidenceRecordForRun(p.Path, p.Agent, p.MissionID, p.Run, correlationKey, reason, time.Now().UTC().Format(time.RFC3339Nano))
 }
 
-// isConfidenceAgent accepts every registered role (exact id) plus the producers
-// that are not roles: the critic, mission quality and handoff challenge.
+// ConfidenceAgents lists every accepted producing agent: the registered roles
+// (exact ids, phase order) followed by the producers that are not roles — the
+// critic, mission quality and handoff challenge. There are no aliases.
+func ConfidenceAgents() []string {
+	agents := domain.DefaultRoleRegistry().IDs()
+	return append(agents, ConfidenceAgentCritic, ConfidenceAgentMissionQuality, ConfidenceAgentHandoffChallenge)
+}
+
 func isConfidenceAgent(agent string) bool {
-	for _, id := range domain.DefaultRoleRegistry().IDs() {
+	for _, id := range ConfidenceAgents() {
 		if id == agent {
 			return true
 		}
 	}
-	switch agent {
-	case ConfidenceAgentCritic, ConfidenceAgentMissionQuality, ConfidenceAgentHandoffChallenge:
-		return true
-	default:
-		return false
-	}
+	return false
 }

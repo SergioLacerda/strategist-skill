@@ -47,7 +47,7 @@ producers:
     - {agent: scout, owner: contracts/machine/scout-routing.yaml#emit.confidence_record}
     - {agent: ranger, owner: narrative/03-discovery.md#required-behavior}
     - {agent: archivist, owner: narrative/04-refinement.md#required-behavior}
-    - {agent: critic, owner: narrative/04-refinement.md#required-behavior}
+    - {agent: response_critic, owner: narrative/04-refinement.md#required-behavior}
     - {agent: mission_quality, owner: narrative/04-refinement.md#required-behavior}
     - {agent: handoff_challenge, owner: internal/mission/handoff.go}
     - {agent: sniper, owner: narrative/06-execution.md#required-behavior}

@@ -24,7 +24,9 @@ type RoleConfig struct {
 	// HandoffSchema is the schema the role hands downstream; empty for a terminal role.
 	HandoffSchema string `yaml:"handoff_schema,omitempty"`
 	// OnStart lists command templates the role runs when its phase starts;
-	// {role} and {mission_id} are substituted. Empty means the built-in default.
+	// {role} and {mission_id} are substituted, `<your-model>`/`<your-effort>`
+	// are a literal reminder for the agent to fill in. Empty means the
+	// built-in default.
 	OnStart []string `yaml:"on_start,omitempty"`
 }
 

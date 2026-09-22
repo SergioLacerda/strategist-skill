@@ -4,16 +4,14 @@ import (
 	"fmt"
 	"os"
 
+	evaladapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/eval"
 	"github.com/spf13/cobra"
 )
 
 // evalCmd is the parent for Strategist's internal/eval harness utilities.
 // Subcommands live in their own file, one per action (harvest here in
 // eval_harvest.go), mirroring metrics.go/metrics_scout.go's grouping.
-var evalCmd = &cobra.Command{
-	Use:   "eval",
-	Short: "Strategist eval harness utilities",
-}
+var evalCmd = evaladapter.NewParent()
 
 // resolveEvalActionRoot resolves both the .strategist root and its parent
 // project root for an eval subcommand. Unlike resolveMetricsActionRoot,
@@ -42,4 +40,15 @@ func newEvalCommand() *cobra.Command {
 	cmd := &cobra.Command{Use: "eval", Short: "Strategist eval harness utilities"}
 	cmd.AddCommand(newEvalRunCommand(), newEvalHarvestCommand())
 	return cmd
+}
+
+func evalAdapterDependencies() evaladapter.Dependencies {
+	return evaladapter.Dependencies{
+		RootFlag: flagRoot, ResolveRoot: resolveEvalActionRoot,
+		SilenceRun: func(cmd *cobra.Command) {
+			if run := telemetryRunFromCmd(cmd); run != nil {
+				run.SetSilent()
+			}
+		},
+	}
 }

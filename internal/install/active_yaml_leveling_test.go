@@ -33,24 +33,27 @@ func TestWriteActiveYAMLOmitsLevelingWhenNotAnswered(t *testing.T) {
 
 func TestWriteActiveYAMLRecordsAutomaticChoice(t *testing.T) {
 	raw, cfg := writtenActiveConfig(t, domain.WizardConfig{Leveling: domain.LevelingConfig{Mode: domain.LevelingModeAutomatic}})
-	assert.Contains(t, raw, "leveling:\n  mode: automatic")
-	assert.Empty(t, cfg.Leveling.Roles)
+	assert.Contains(t, raw, "leveling:\n  mode: automatic\n")
+	assert.Contains(t, raw, "automatic = the LEVELING policy picks them per")
+	assert.Equal(t, domain.LevelingModeAutomatic, cfg.Leveling.EffectiveMode())
 }
 
-func TestWriteActiveYAMLRecordsManualRoles(t *testing.T) {
-	roles := map[string]domain.LevelingRoleChoice{
-		"ranger":    {Model: "Sonnet", Effort: "high"},
-		"archivist": {Model: "Opus 4: deep", Effort: "medium"},
-	}
-	_, cfg := writtenActiveConfig(t, domain.WizardConfig{Leveling: domain.LevelingConfig{Mode: domain.LevelingModeManual, Roles: roles}})
+func TestWriteActiveYAMLRecordsManualModeOnly(t *testing.T) {
+	raw, cfg := writtenActiveConfig(t, domain.WizardConfig{Leveling: domain.LevelingConfig{Mode: domain.LevelingModeManual}})
 	require.NoError(t, cfg.Validate())
-	assert.Equal(t, domain.LevelingModeManual, cfg.Leveling.Mode)
-	assert.Equal(t, roles, cfg.Leveling.Roles, "special characters in a model name survive quoting")
+	assert.True(t, cfg.Leveling.HostPassthrough())
+	assert.Contains(t, raw, "manual = the host's model and effort are used as-is")
+	assert.NotContains(t, raw, "roles:", "manual stores no per-role values")
+}
+
+func TestLevelingActiveYAMLRejectsUnknownMode(t *testing.T) {
+	_, err := levelingActiveYAML(domain.LevelingConfig{Mode: "smart"})
+	require.ErrorContains(t, err, "leveling_mapping_invalid")
 }
 
 func TestApplyUpgradePreservesCustomLevelingBlock(t *testing.T) {
 	dir := t.TempDir()
-	original := "mode: epic\nbase_path: .analysis\nleveling:\n  mode: manual\n  roles:\n    ranger: {model: Sonnet, effort: high}\n"
+	original := "mode: epic\nbase_path: .analysis\nleveling:\n  mode: manual\n"
 	activePath := filepath.Join(dir, activeYAMLName)
 	require.NoError(t, os.WriteFile(activePath, []byte(original), 0o600))
 

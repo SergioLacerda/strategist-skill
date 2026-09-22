@@ -64,6 +64,14 @@ type PersonaConfig struct {
 
 // ValidateForRuntime checks all fields required for CLI bootstrap and check validation.
 func (p PersonaConfig) ValidateForRuntime() error {
+	errs := append(p.requiredFieldErrors(), p.Diagnostics.runtimeErrors()...)
+	if len(errs) == 0 {
+		return nil
+	}
+	return fmt.Errorf("persona config invalid: %s", strings.Join(errs, "; "))
+}
+
+func (p PersonaConfig) requiredFieldErrors() []string {
 	var errs []string
 	if p.ID == "" {
 		errs = append(errs, "id is required")
@@ -74,16 +82,26 @@ func (p PersonaConfig) ValidateForRuntime() error {
 	if p.PhaseLabels.Discovery == "" || p.PhaseLabels.Refinement == "" || p.PhaseLabels.Execution == "" {
 		errs = append(errs, "phase_labels.discovery/refinement/execution are required")
 	}
-	if p.Diagnostics.PipelineHeader == "" {
-		errs = append(errs, "diagnostics.pipeline_header is required")
-	}
-	if p.Diagnostics.BootstrapOrigin == "" {
-		errs = append(errs, "diagnostics.bootstrap_origin is required")
-	}
-	if len(errs) == 0 {
+	return errs
+}
+
+// runtimeErrors checks the bootstrap banner templates. format: jsonl personas
+// (e.g. debug) bypass all profile/narrative rendering by design — every event
+// is emitted as a structured JSON line instead, so a
+// pipeline_header/bootstrap_origin banner template is never read and is not
+// required.
+func (d PersonaDiagnostics) runtimeErrors() []string {
+	if d.Format == "jsonl" {
 		return nil
 	}
-	return fmt.Errorf("persona config invalid: %s", strings.Join(errs, "; "))
+	var errs []string
+	if d.PipelineHeader == "" {
+		errs = append(errs, "diagnostics.pipeline_header is required")
+	}
+	if d.BootstrapOrigin == "" {
+		errs = append(errs, "diagnostics.bootstrap_origin is required")
+	}
+	return errs
 }
 
 // RoleSlotMap is the structure of roles/default.yaml — a slot→provider mapping,

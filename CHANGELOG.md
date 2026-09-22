@@ -38,6 +38,10 @@ corresponding tag and GitHub Release.
   scenarios
 - Auto-generated contract and schema documentation indices, generated from
   source files
+- Command-tree snapshot test (`cmd/strategist/testdata/command_tree.golden`)
+  pinning the path, Use, Short, Long, aliases and flags of every
+  `strategist` command; regenerate with
+  `go test ./cmd/strategist -run CommandTreeSnapshot -update`
 
 ### Changed
 - Documentation and generation scripts now point to source files instead
@@ -50,8 +54,33 @@ corresponding tag and GitHub Release.
   installation and wizard workflows
 - Expanded gated CI metrics; added treasure chest grading evals and
   Critical Hit closure specs
+- Moved the `plugins` command family (`authorize`, `evaluate-write`,
+  `prepare-embedded`) out of `cmd/strategist` `package main` into the
+  `cmd/strategist/plugins` adapter package with explicit registration;
+  `active.yaml` write-scope resolution now lives in
+  `policy.WriteScopeFromActive`. Command paths, flags, output and exit codes
+  are unchanged
+- Moved the `mission` command family (`start`, `status`, `submit`,
+  `context`, `view`, `normalize-openspec`, `report-usage`) out of
+  `cmd/strategist` `package main` into the `cmd/strategist/mission` adapter
+  package with explicit dependency injection; transitions stay in
+  `internal/domain`. Command paths, flags, help text, output and exit codes
+  are unchanged
+- `mission submit` now rejects the analysis-only terminal events
+  `gate_approved_analysis_only` and `handoff_challenge_not_applicable` when
+  the mission's `refined/<id>/tasks.md` declares a `documentation_target`,
+  so accepted documentation targets reach Sniper instead of being dropped
+- Every `mission` subcommand now reports the same `--mission-id` error text
+  (`--mission-id is required` / `--mission-id "<id>" is malformed (want
+  lowercase letters, digits, and hyphens, …)`) behind its own command
+  prefix; previously `start`, `status`, `submit`, `context`, `view` and
+  `normalize-openspec` said `must use lowercase letters, digits, and
+  hyphens`. Exit codes are unchanged
 
 ### Fixed
+- `plugins prepare-embedded --check` drift hint and the embedded-skill
+  rollback runbook now name the real command, `strategist plugins
+  prepare-embedded` (previously `strategist plugin`)
 - Sorted and deduplicated test suite references in the contract index
   generation script
 - `resolveInstallableDefaultProviders` now propagates a `loadPluginCatalog`
@@ -68,6 +97,9 @@ corresponding tag and GitHub Release.
 - Unreferenced `SlotExtensionLabel` constant in `internal/domain/plugin_types.go`
 - `CheckRoleCompatibility` and `ResolveProviderBinding` from
   `internal/domain/role_provider_compatibility.go`: zero production callers
+- Legacy `package main` mission shims (`mission_lifecycle.go`, the
+  `mission*Cmd` package variables, `runMission*` wrappers and their flag
+  helpers): superseded by `cmd/strategist/mission`, test-only callers
 
 ---
 

@@ -67,28 +67,10 @@ func TestValidateWizardLevelingUsesPortableRuntimeRoot(t *testing.T) {
 	require.NoError(t, validateWizardLeveling(dir, domain.WizardConfig{DiscoveryProvider: "CODEX"}, minimalExtractor{}))
 }
 
-func manualLevelingFor(roles ...string) domain.LevelingConfig {
-	choices := map[string]domain.LevelingRoleChoice{}
-	for _, role := range roles {
-		choices[role] = domain.LevelingRoleChoice{Model: "Sonnet", Effort: "high"}
-	}
-	return domain.LevelingConfig{Mode: domain.LevelingModeManual, Roles: choices}
-}
-
-func TestValidateWizardLevelingSkipsPolicyWhenEverySlotRoleIsManual(t *testing.T) {
-	wc := domain.WizardConfig{DiscoveryProvider: "CODEX", RefinementProvider: "CLAUDE", ExecutionProvider: "sniper", Leveling: manualLevelingFor("ranger", "archivist", "sniper")}
+func TestValidateWizardLevelingManualNeverReadsPolicy(t *testing.T) {
+	wc := domain.WizardConfig{DiscoveryProvider: "CODEX", RefinementProvider: "CLAUDE", ExecutionProvider: "sniper", Leveling: domain.LevelingConfig{Mode: domain.LevelingModeManual}}
 	// No leveling.yaml and no compatibility marker: reading the policy would fail.
 	require.NoError(t, validateWizardLeveling(t.TempDir(), wc))
-}
-
-func TestValidateWizardLevelingStillChecksAutomaticRoles(t *testing.T) {
-	wc := domain.WizardConfig{DiscoveryProvider: "CODEX", RefinementProvider: "CLAUDE", Leveling: manualLevelingFor("ranger")}
-	require.ErrorContains(t, validateWizardLeveling(t.TempDir(), wc), "leveling_policy_missing")
-}
-
-func TestValidateWizardLevelingIgnoresIncompleteManualChoice(t *testing.T) {
-	wc := domain.WizardConfig{DiscoveryProvider: "CODEX", Leveling: domain.LevelingConfig{Mode: domain.LevelingModeManual, Roles: map[string]domain.LevelingRoleChoice{"ranger": {Effort: "high"}}}}
-	require.ErrorContains(t, validateWizardLeveling(t.TempDir(), wc), "leveling_policy_missing", "a partial choice still needs the policy to complete it")
 }
 
 func TestValidateWizardLevelingAutomaticModeUnchanged(t *testing.T) {

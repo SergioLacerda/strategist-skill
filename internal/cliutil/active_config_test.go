@@ -13,16 +13,14 @@ import (
 
 func TestLoadActiveConfigReadsTheLevelingBlock(t *testing.T) {
 	dir := t.TempDir()
-	body := "mode: epic\nbase_path: .analysis\nleveling:\n  mode: manual\n  roles:\n    ranger: {model: Sonnet, effort: high}\n"
+	body := "mode: epic\nbase_path: .analysis\nleveling:\n  mode: manual\n"
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "active.yaml"), []byte(body), 0o600))
 
 	cfg, err := cliutil.LoadActiveConfig(dir)
 	require.NoError(t, err)
 	assert.Equal(t, ".analysis", cfg.BasePath)
 	assert.Equal(t, domain.LevelingModeManual, cfg.Leveling.EffectiveMode())
-	choice, ok := cfg.Leveling.Choice("ranger")
-	require.True(t, ok)
-	assert.True(t, choice.Complete())
+	assert.True(t, cfg.Leveling.HostPassthrough())
 }
 
 func TestLoadActiveConfigMissingFileIsErrNotExist(t *testing.T) {

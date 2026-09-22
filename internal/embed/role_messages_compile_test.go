@@ -72,8 +72,35 @@ func TestGenericRoleTemplatesReproduceTheOriginalMessages(t *testing.T) {
 
 var (
 	genericSourceKeys = []string{"role_start", "role_done", "role_task_done", "role_phrases"}
+	// {phase_bar}, {phase_pct} and {phase_mark} are no longer defined by the
+	// compile step (the progress line was removed). They stay here as a
+	// tripwire: a template that reintroduces them would leak them unexpanded.
 	compileTimeTokens = []string{"{role_title}", "{role_emoji}", "{start_text}", "{done_text}", "{artifact_label}", "{task_text}", "{phase_bar}", "{phase_pct}", "{phase_mark}"}
+	// progressMarkers identify the removed "channeling mana" progress line.
+	progressMarkers = []string{"channeling mana", "█", "▓", "░", "{bar}", "{pct}"}
 )
+
+// Role, task and Approval Gate messages convey progress only through the
+// mission checkpoint and the phase header; no persona or language renders a
+// progress bar or percentage line.
+func TestCompiledMessagesCarryNoProgressBar(t *testing.T) {
+	personas := compiledPersonas(t, nil)
+	for _, persona := range []string{"epic", "pragmatic"} {
+		for _, lang := range []string{"en", "pt-BR"} {
+			assertNoProgressMarkers(t, persona+"/"+lang, langMap(t, personas, persona, "content_by_lang", lang))
+		}
+	}
+}
+
+func assertNoProgressMarkers(t *testing.T, label string, content map[string]any) {
+	t.Helper()
+	for key, value := range content {
+		text, _ := value.(string)
+		for _, marker := range progressMarkers {
+			assert.NotContains(t, text, marker, "%s: %s", label, key)
+		}
+	}
+}
 
 func TestCompiledMessagesCarryNoCompileTimePlaceholdersOrGenericKeys(t *testing.T) {
 	personas := compiledPersonas(t, nil)
@@ -118,9 +145,8 @@ func TestANewRoleGetsGenericMessagesInEveryPersonaAndLanguage(t *testing.T) {
 		}
 	}
 	epic := langMap(t, personas, "epic", "content_by_lang", "en")
-	assert.Contains(t, epic["auditor_done"], "100%", "phase 5 of 5 is the final phase")
 	assert.Contains(t, epic["auditor_done"], "Auditor", "the role name is derived from the registry")
-	assert.Contains(t, epic["ranger_done"], "20%", "progress is derived from the registry total")
+	assert.NotContains(t, epic["auditor_done"], "%", "done lines carry no progress percentage")
 }
 
 func TestExplicitMessageKeyOverridesTheGeneratedOne(t *testing.T) {

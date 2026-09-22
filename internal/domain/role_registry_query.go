@@ -82,11 +82,18 @@ func (r RoleRegistry) PhaseTotal() int {
 
 // DefaultStartCommand resolves and records the role's level when its phase
 // starts, so the model x effort label is part of role invocation rather than
-// something the agent must remember.
-const DefaultStartCommand = "strategist leveling label --role {role} --mission {mission_id}"
+// something the agent must remember. `<your-model>`/`<your-effort>` are a
+// literal reminder for the invoking agent to fill in, not a substituted
+// placeholder: the CLI cannot infer which model/effort is calling it, and an
+// invocation with those flags omitted silently returns blank fields (see
+// `20260922-strategist-ux-language-leveling-drift`). Only `{role}` and
+// `{mission_id}` are mechanically substituted by StartCommands below.
+const DefaultStartCommand = "strategist leveling label --role {role} --mission {mission_id} --host-model <your-model> --host-effort <your-effort>"
 
 // StartCommands returns the commands a role runs when its phase starts, with
-// {role} and {mission_id} substituted. An unregistered role has none.
+// {role} and {mission_id} substituted (`<your-model>`/`<your-effort>` are left
+// as-is for the invoking agent to replace with the actual running model and
+// effort). An unregistered role has none.
 func (r RoleRegistry) StartCommands(id, missionID string) []string {
 	role, ok := r.Get(id)
 	if !ok {

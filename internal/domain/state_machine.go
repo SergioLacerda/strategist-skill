@@ -35,12 +35,16 @@ var stateTransitions = map[MissionState]map[TransitionEvent]MissionState{
 		EventGateDenied:   StateDoneAnalysis,
 		EventGateApproved: StateHandoffChallenge,
 		EventGateTimeout:  StateDoneAnalysis,
-		EventGateRevision: StateRefinement, // D2: documented revision loop, now representable
+		// Accepted, but with no documentation_target: analysis delivered.
+		EventGateApprovedAnalysisOnly: StateDoneAnalysis,
+		EventGateRevision:             StateRefinement, // D2: documented revision loop, now representable
 	},
 	StateHandoffChallenge: {
 		EventHandoffPassed:    StateExecution,
 		EventHandoffFailed:    StateRefinement,
 		EventHandoffExhausted: StateBlocked,
+		// Accepted package with no documentation_target: nothing to execute.
+		EventHandoffNotApplicable: StateDoneAnalysis,
 	},
 	StateExecution: {
 		EventSniperDone:      StateDoneDelivery,

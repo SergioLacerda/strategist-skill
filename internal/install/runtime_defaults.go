@@ -21,7 +21,7 @@ type runtimeDefaultPlan struct {
 	levelingDigest  string
 }
 
-func (s Service) planRuntimeDefaultUpgrade(ctx context.Context, strategistDir string, force bool) (_ runtimeDefaultPlan, retErr error) {
+func (s Service) planRuntimeDefaultUpgrade(ctx context.Context, strategistDir string, policy runtimeDefaultPolicy) (_ runtimeDefaultPlan, retErr error) {
 	_, span := telemetry.Tracer().Start(ctx, "install.plan_runtime_defaults")
 	defer func() {
 		if retErr != nil {
@@ -47,7 +47,7 @@ func (s Service) planRuntimeDefaultUpgrade(ctx context.Context, strategistDir st
 		return runtimeDefaultPlan{}, err
 	}
 
-	if err := populateRuntimeDefaultPlan(&plan, strategistDir, embeddedHashes, manifest, manifestLoaded, force); err != nil {
+	if err := populateRuntimeDefaultPlan(&plan, strategistDir, embeddedHashes, manifest, manifestLoaded, policy); err != nil {
 		return runtimeDefaultPlan{}, err
 	}
 
@@ -106,9 +106,9 @@ func skipOptionalLevelingError(extractor domain.FileExtractor, err error) bool {
 	return errors.Is(err, os.ErrNotExist)
 }
 
-func populateRuntimeDefaultPlan(plan *runtimeDefaultPlan, strategistDir string, embeddedHashes map[string]string, manifest domain.InstallManifest, manifestLoaded, force bool) error {
+func populateRuntimeDefaultPlan(plan *runtimeDefaultPlan, strategistDir string, embeddedHashes map[string]string, manifest domain.InstallManifest, manifestLoaded bool, policy runtimeDefaultPolicy) error {
 	for _, file := range domain.NormativeRuntimeDefaultFiles() {
-		decision, err := planRuntimeDefaultFile(strategistDir, file.Path, embeddedHashes[file.Path], manifest, manifestLoaded, force)
+		decision, err := planRuntimeDefaultFile(strategistDir, file.Path, embeddedHashes[file.Path], manifest, manifestLoaded, policy)
 		if err != nil {
 			return err
 		}
@@ -124,7 +124,7 @@ func planRuntimeDefaultFile(
 	strategistDir, relPath, embeddedHash string,
 	manifest domain.InstallManifest,
 	manifestLoaded bool,
-	force bool,
+	policy runtimeDefaultPolicy,
 ) (domain.RuntimeDefaultDecision, error) {
 	runtimePath := filepath.Join(strategistDir, filepath.FromSlash(relPath))
 	currentHash, exists, readErr := runtimefs.ReadSHA256(runtimePath)
@@ -133,17 +133,20 @@ func planRuntimeDefaultFile(
 	}
 	manifestFile, hasManifestEntry := manifest.FileByPath(relPath)
 	return domain.DecideRuntimeDefaultUpdate(domain.RuntimeDefaultDecisionInput{
-		Exists:       exists,
-		CurrentHash:  currentHash,
-		EmbeddedHash: embeddedHash,
-		ManifestHash: manifestFile.SHA256,
-		HasManifest:  manifestLoaded && hasManifestEntry,
-		Force:        force,
+		Exists:          exists,
+		CurrentHash:     currentHash,
+		EmbeddedHash:    embeddedHash,
+		ManifestHash:    manifestFile.SHA256,
+		ManifestHistory: manifestFile.History,
+		HasManifest:     manifestLoaded && hasManifestEntry,
+		Force:           policy.Force,
+		AllowDowngrade:  policy.AllowDowngrade,
 	}), nil
 }
 
 func runtimeDefaultBlocksInstall(decision domain.RuntimeDefaultDecision) bool {
-	return decision == domain.RuntimeDecisionConflict || decision == domain.RuntimeDecisionUnknownManifest
+	return decision == domain.RuntimeDecisionConflict || decision == domain.RuntimeDecisionUnknownManifest ||
+		decision == domain.RuntimeDecisionDowngrade
 }
 
 func (s Service) embeddedNormativeHashes() (map[string]string, error) {
