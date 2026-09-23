@@ -118,7 +118,3 @@ func readEmbeddedLevelingDefaults() ([]byte, error) {
 	}
 	return raw, nil
 }
-
-func init() {
-	humanStatusCommands["leveling"] = true
-}

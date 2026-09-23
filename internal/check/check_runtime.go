@@ -46,14 +46,48 @@ func validateRuntimeDefaultParity(root string) []string {
 		errs = append(errs, fmt.Sprintf("runtime_stale: install manifest unreadable: %v", manifestErr))
 	}
 
-	for _, rel := range domain.NormativeRuntimeDefaultPaths() {
-		err, ok := validateRuntimeDefaultFile(root, rel, extractor, manifest, manifestLoaded, manifestErr)
-		if ok {
-			errs = append(errs, err)
+	for _, file := range domain.NormativeRuntimeDefaultFiles() {
+		if msg, ok := normativeFileFinding(root, file, extractor, manifest, manifestLoaded, manifestErr); ok {
+			errs = append(errs, msg)
 		}
 	}
+	return append(errs, missingGeneratedFiles(root)...)
+}
 
+// normativeFileFinding reports a Required file's absence (runtime_missing) or,
+// when it is present, its byte drift from the embedded default (runtime_stale).
+func normativeFileFinding(
+	root string,
+	file domain.RuntimeDefaultFile,
+	extractor embedpkg.Extractor,
+	manifest domain.InstallManifest,
+	manifestLoaded bool,
+	manifestErr error,
+) (string, bool) {
+	if file.Required && runtimeFileAbsent(root, file.Path) {
+		return domain.FormatRuntimeMissingDiagnostic(file.Path), true
+	}
+	return validateRuntimeDefaultFile(root, file.Path, extractor, manifest, manifestLoaded, manifestErr)
+}
+
+// missingGeneratedFiles reports generated runtime files (presence only: they
+// embed a timestamp, so a byte comparison would always report drift).
+func missingGeneratedFiles(root string) []string {
+	var errs []string
+	for _, rel := range domain.GeneratedRuntimeFilePaths() {
+		if runtimeFileAbsent(root, rel) {
+			errs = append(errs, domain.FormatGeneratedRuntimeMissingDiagnostic(rel))
+		}
+	}
 	return errs
+}
+
+// runtimeFileAbsent reports whether rel definitely does not exist under root.
+// Any other stat failure (for example a permission error) is not "absent": it is
+// left to the byte-parity read, which reports it as runtime_stale.
+func runtimeFileAbsent(root, rel string) bool {
+	_, err := os.Stat(filepath.Join(root, filepath.FromSlash(rel)))
+	return errors.Is(err, os.ErrNotExist)
 }
 
 func validateRuntimeDefaultFile(

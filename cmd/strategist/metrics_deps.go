@@ -13,11 +13,11 @@ import (
 
 func metricsDependencies() metricsadapter.Dependencies {
 	return metricsadapter.Dependencies{
-		RootFlag:        flagRoot,
+		RootFlag:        cliutil.FlagRoot,
 		ResolveRoot:     resolveMetricsRoot,
 		ResolveBasePath: resolveMetricsBasePath,
 		SilenceRun: func(cmd *cobra.Command) {
-			if run := telemetryRunFromCmd(cmd); run != nil {
+			if run := cliutil.TelemetryRunFromCmd(cmd); run != nil {
 				run.SetSilent()
 			}
 		},
@@ -31,7 +31,7 @@ func resolveMetricsRoot(cmd *cobra.Command, action, explicitRoot string) (string
 	}
 	rootInput := explicitRoot
 	if rootInput == "" {
-		rootInput = stringFlag(cmd, flagRoot, "")
+		rootInput = cliutil.StringFlag(cmd, cliutil.FlagRoot, "")
 	}
 	root, _, err := resolveStrategistRoot(rootInput, cwd)
 	if err != nil {
@@ -49,5 +49,8 @@ func resolveMetricsBasePath(strategistRoot string) (string, error) {
 	if errors.Is(err, fs.ErrNotExist) {
 		return "", nil
 	}
-	return basePath, fmt.Errorf("resolve active base path: %w", err)
+	if err != nil {
+		return "", fmt.Errorf("resolve active base path: %w", err)
+	}
+	return basePath, nil
 }

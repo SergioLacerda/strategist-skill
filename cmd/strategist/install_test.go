@@ -1,14 +1,11 @@
 package main
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
 
-	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -44,19 +41,6 @@ func TestRunInstall_UserHomeDirError(t *testing.T) {
 	err := cmd.RunE(cmd, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "resolve home dir")
-}
-
-func TestAddMissionLines_WithRun(t *testing.T) {
-	run := telemetry.NewMissionRun("test-install-lines")
-	ctx := telemetry.WithMissionRun(context.Background(), run)
-	assert.NotPanics(t, func() { addMissionLines(ctx, 3) })
-	assert.Equal(t, int64(3), run.Snapshot().LinesEmitted)
-}
-
-func TestCommandContext_NilContextReturnsBackground(t *testing.T) {
-	cmd := &cobra.Command{Use: "no-context-cmd"}
-	ctx := commandContext(cmd)
-	assert.NotNil(t, ctx)
 }
 
 func TestInstallCmd_DefaultTarget(t *testing.T) {

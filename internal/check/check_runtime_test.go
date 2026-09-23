@@ -1,6 +1,7 @@
 package check
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -136,4 +137,100 @@ func TestClassifyRuntimeStale_BinaryOlderThanRuntime(t *testing.T) {
 	assert.Contains(t, domain.FormatRuntimeStaleDiagnostic("SKILL.md", decision), "make install")
 
 	assert.Equal(t, domain.RuntimeDecisionAutoUpgrade, classifyRuntimeStale(newer, []byte("brand new"), "SKILL.md", manifest, true, nil))
+}
+
+func TestValidateRuntimeDefaultParity_CompleteRuntimeReportsNothing(t *testing.T) {
+	dir := t.TempDir()
+	writeNormativeRuntimeFiles(t, dir)
+
+	assert.Empty(t, validateRuntimeDefaultParity(dir))
+}
+
+func TestValidateRuntimeDefaultParity_ReportsEveryMissingRequiredFile(t *testing.T) {
+	for _, file := range domain.NormativeRuntimeDefaultFiles() {
+		t.Run(file.Path, func(t *testing.T) {
+			dir := t.TempDir()
+			writeNormativeRuntimeFiles(t, dir)
+			require.NoError(t, os.Remove(filepath.Join(dir, filepath.FromSlash(file.Path))))
+
+			errs := validateRuntimeDefaultParity(dir)
+
+			assert.Equal(t, []string{domain.FormatRuntimeMissingDiagnostic(file.Path)}, errs)
+		})
+	}
+}
+
+func TestValidateRuntimeDefaultParity_ReportsAMissingGeneratedFile(t *testing.T) {
+	for _, rel := range domain.GeneratedRuntimeFilePaths() {
+		t.Run(rel, func(t *testing.T) {
+			dir := t.TempDir()
+			writeNormativeRuntimeFiles(t, dir)
+			require.NoError(t, os.Remove(filepath.Join(dir, filepath.FromSlash(rel))))
+
+			errs := validateRuntimeDefaultParity(dir)
+
+			assert.Equal(t, []string{domain.FormatGeneratedRuntimeMissingDiagnostic(rel)}, errs)
+		})
+	}
+}
+
+func TestValidateRuntimeDefaultParity_DriftStillReportedNotAsMissing(t *testing.T) {
+	dir := t.TempDir()
+	writeNormativeRuntimeFiles(t, dir)
+	path := filepath.Join(dir, "SKILL.md")
+	require.NoError(t, os.WriteFile(path, []byte("edited\n"), 0o644))
+
+	errs := validateRuntimeDefaultParity(dir)
+
+	require.Len(t, errs, 1)
+	assert.Contains(t, errs[0], "runtime_stale")
+	assert.NotContains(t, errs[0], "runtime_missing")
+}
+
+func TestCheckCmd_JSON_BlockedWhenANormativeFileIsDeleted(t *testing.T) {
+	resetCheckFlags(t)
+	dir := minimalCheckRoot(t)
+	require.NoError(t, os.Remove(filepath.Join(dir, "SKILL.md")))
+	checkRoot = dir
+	checkJSON = true
+
+	out := captureStdout(t, func() {
+		require.Error(t, checkCmd.RunE(checkCmd, nil))
+	})
+
+	var result domain.PreflightResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	assert.Equal(t, "blocked", result.Status)
+	assert.Contains(t, strings.Join(result.Warnings, "\n"), domain.FormatRuntimeMissingDiagnostic("SKILL.md"))
+}
+
+func TestCheckCmd_JSON_BlockedWhenTheGeneratedAgentProtocolIsDeleted(t *testing.T) {
+	resetCheckFlags(t)
+	dir := minimalCheckRoot(t)
+	require.NoError(t, os.Remove(filepath.Join(dir, "agent-protocol.md")))
+	checkRoot = dir
+	checkJSON = true
+
+	out := captureStdout(t, func() {
+		require.Error(t, checkCmd.RunE(checkCmd, nil))
+	})
+
+	var result domain.PreflightResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	assert.Equal(t, "blocked", result.Status)
+	assert.Contains(t, strings.Join(result.Warnings, "\n"), domain.FormatGeneratedRuntimeMissingDiagnostic("agent-protocol.md"))
+}
+
+func TestCheckCmd_StrictReportsAMissingNormativeFile(t *testing.T) {
+	resetCheckFlags(t)
+	dir := minimalCheckRoot(t)
+	require.NoError(t, os.Remove(filepath.Join(dir, "protocol.md")))
+	checkRoot = dir
+	checkStrict = true
+
+	errOut := captureStderr(t, func() {
+		require.Error(t, checkCmd.RunE(checkCmd, nil))
+	})
+
+	assert.Contains(t, errOut, domain.FormatRuntimeMissingDiagnostic("protocol.md"))
 }

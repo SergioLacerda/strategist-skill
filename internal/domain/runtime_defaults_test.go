@@ -137,3 +137,27 @@ func TestFormatRuntimeStaleDiagnostic(t *testing.T) {
 		})
 	}
 }
+
+func TestFormatRuntimeMissingDiagnostic_NamesTheFileAndTheRepair(t *testing.T) {
+	msg := domain.FormatRuntimeMissingDiagnostic("SKILL.md")
+
+	assert.Equal(t, `runtime_missing: normative file "SKILL.md" is missing — run strategist install`, msg)
+}
+
+func TestFormatGeneratedRuntimeMissingDiagnostic_PointsAtCompile(t *testing.T) {
+	msg := domain.FormatGeneratedRuntimeMissingDiagnostic("agent-protocol.md")
+
+	assert.Equal(t, `runtime_missing: generated file "agent-protocol.md" is missing — run strategist compile`, msg)
+}
+
+func TestGeneratedRuntimeFilePaths_ListsTheAgentProtocol(t *testing.T) {
+	assert.Contains(t, domain.GeneratedRuntimeFilePaths(), "agent-protocol.md")
+}
+
+func TestNormativeRuntimeDefaultFiles_AreAllRequired(t *testing.T) {
+	// check enforces presence of every Required file; a file that is normative
+	// but not Required would silently keep being tolerated when absent.
+	for _, file := range domain.NormativeRuntimeDefaultFiles() {
+		assert.True(t, file.Required, file.Path)
+	}
+}

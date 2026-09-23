@@ -10,6 +10,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/compile"
 	embedpkg "github.com/SergioLacerda/strategist-skill/internal/embed"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
@@ -31,7 +32,7 @@ func runCompile(cmd *cobra.Command, _ []string) (retErr error) {
 		}
 	}
 
-	ctx := commandContext(cmd)
+	ctx := cliutil.CommandContext(cmd)
 	markCompileRun(ctx)
 	ctx, span := startCompileSpan(ctx)
 	defer func() {
@@ -42,7 +43,7 @@ func runCompile(cmd *cobra.Command, _ []string) (retErr error) {
 		span.End()
 	}()
 
-	addMissionLines(ctx, 1)
+	cliutil.AddMissionLines(ctx, 1)
 	slog.InfoContext(ctx, "[Strategist] compile running",
 		telemetry.AttrComponent, "compile",
 		telemetry.AttrRuntimeMode, "cli",
@@ -56,7 +57,7 @@ func runCompile(cmd *cobra.Command, _ []string) (retErr error) {
 		return fmt.Errorf("compile: compile all: %w", err)
 	}
 
-	addMissionLines(ctx, 2)
+	cliutil.AddMissionLines(ctx, 2)
 	slog.InfoContext(ctx, "[Strategist] compile complete",
 		telemetry.AttrComponent, "compile",
 		telemetry.AttrRuntimeMode, "cli",

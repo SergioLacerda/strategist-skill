@@ -75,6 +75,13 @@ errors:
     action: "run strategist compile to deploy identity files"
     enforced_by: machine_enforced
 
+  - token: runtime_missing
+    emit: "check=failed runtime_missing: <normative|generated> file <path> is missing"
+    scope: startup
+    reason: "a required normative runtime file, or the generated agent-protocol.md, is absent from the installed .strategist/ runtime"
+    action: "run strategist install to restore a missing normative file, or strategist compile to regenerate agent-protocol.md, then rerun strategist check"
+    enforced_by: machine_enforced
+
   - token: intake_conflict_unresolved
     emit: "error=intake_conflict_unresolved"
     scope: routing

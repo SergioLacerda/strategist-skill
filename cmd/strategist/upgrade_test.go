@@ -12,15 +12,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func resetUpgradeFlags(t *testing.T) {
+// newRealUpgradeCmd builds the upgrade command with the production wiring, so
+// these tests keep proving the real embedded tree and install service work
+// end to end; the adapter's own behavior is covered with fakes in
+// cmd/strategist/install.
+func newRealUpgradeCmd(t *testing.T, flags map[string]string) (*cobra.Command, *bytes.Buffer) {
 	t.Helper()
-	origTarget, origGlobal, origDry, origForce, origRollback :=
-		upgradeTarget, upgradeGlobal, upgradeDryRun, upgradeForce, upgradeRollback
-	t.Cleanup(func() {
-		upgradeTarget, upgradeGlobal, upgradeDryRun, upgradeForce, upgradeRollback =
-			origTarget, origGlobal, origDry, origForce, origRollback
-	})
-	upgradeTarget, upgradeGlobal, upgradeDryRun, upgradeForce, upgradeRollback = "", false, false, false, ""
+	cmd := installadapter.NewUpgrade(upgradeDependencies())
+	for name, value := range flags {
+		require.NoError(t, cmd.Flags().Set(name, value), name)
+	}
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	return cmd, &out
 }
 
 // installedTempDir runs a real silent install into a fresh temp dir and
@@ -36,18 +40,10 @@ func installedTempDir(t *testing.T) string {
 }
 
 func TestUpgradeCmd_DryRunOnFreshInstallReportsAllManaged(t *testing.T) {
-	resetUpgradeFlags(t)
 	dir := installedTempDir(t)
+	cmd, out := newRealUpgradeCmd(t, map[string]string{"target": dir, "dry-run": "true"})
 
-	upgradeTarget = dir
-	upgradeDryRun = true
-
-	var out bytes.Buffer
-	upgradeCmd.SetOut(&out)
-	t.Cleanup(func() { upgradeCmd.SetOut(nil) })
-
-	err := upgradeCmd.RunE(upgradeCmd, nil)
-	require.NoError(t, err)
+	require.NoError(t, cmd.RunE(cmd, nil))
 	assert.Contains(t, out.String(), "managed (no change):")
 	assert.Contains(t, out.String(), "dry run — nothing written")
 
@@ -56,7 +52,6 @@ func TestUpgradeCmd_DryRunOnFreshInstallReportsAllManaged(t *testing.T) {
 }
 
 func TestUpgradeCmd_ForceThenRollbackRoundTrip(t *testing.T) {
-	resetUpgradeFlags(t)
 	dir := installedTempDir(t)
 
 	target := filepath.Join(dir, ".strategist", "SKILL.md")
@@ -64,23 +59,16 @@ func TestUpgradeCmd_ForceThenRollbackRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(target, append(original, []byte("\n# user note\n")...), 0o644))
 
-	upgradeTarget = dir
-	upgradeForce = true
-	var out bytes.Buffer
-	upgradeCmd.SetOut(&out)
-	t.Cleanup(func() { upgradeCmd.SetOut(nil) })
-
-	require.NoError(t, upgradeCmd.RunE(upgradeCmd, nil))
+	forceCmd, out := newRealUpgradeCmd(t, map[string]string{"target": dir, "force": "true"})
+	require.NoError(t, forceCmd.RunE(forceCmd, nil))
 	assert.Contains(t, out.String(), "Backed up overwritten files to")
 
 	reverted, err := os.ReadFile(target)
 	require.NoError(t, err)
 	assert.Equal(t, string(original), string(reverted), "--force must overwrite the customized file")
 
-	upgradeForce = false
-	upgradeRollback = "latest"
-	out.Reset()
-	require.NoError(t, upgradeCmd.RunE(upgradeCmd, nil))
+	rollbackCmd, _ := newRealUpgradeCmd(t, map[string]string{"target": dir, "rollback": "latest"})
+	require.NoError(t, rollbackCmd.RunE(rollbackCmd, nil))
 
 	restored, err := os.ReadFile(target)
 	require.NoError(t, err)
@@ -88,22 +76,18 @@ func TestUpgradeCmd_ForceThenRollbackRoundTrip(t *testing.T) {
 }
 
 func TestUpgradeCmd_RollbackWithNoBackupsFails(t *testing.T) {
-	resetUpgradeFlags(t)
 	dir := installedTempDir(t)
+	cmd, _ := newRealUpgradeCmd(t, map[string]string{"target": dir, "rollback": "latest"})
 
-	upgradeTarget = dir
-	upgradeRollback = "latest"
+	err := cmd.RunE(cmd, nil)
 
-	err := upgradeCmd.RunE(upgradeCmd, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no backups found")
 }
 
 func TestUpgradeCmd_UnknownTargetPropagatesError(t *testing.T) {
-	resetUpgradeFlags(t)
 	clearHomeEnv(t)
+	cmd, _ := newRealUpgradeCmd(t, map[string]string{"global": "true"})
 
-	upgradeGlobal = true
-	err := upgradeCmd.RunE(upgradeCmd, nil)
-	require.Error(t, err)
+	require.Error(t, cmd.RunE(cmd, nil))
 }

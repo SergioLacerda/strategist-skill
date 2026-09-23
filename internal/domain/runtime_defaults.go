@@ -20,6 +20,9 @@ const (
 )
 
 // RuntimeDefaultFile describes one embedded default file tracked by Strategist.
+// Required files must be present in an installed runtime: `strategist check`
+// reports an absent one as runtime_missing, and a present one that differs from
+// the embedded default as runtime_stale.
 type RuntimeDefaultFile struct {
 	Path     string
 	Owner    RuntimeFileOwnership

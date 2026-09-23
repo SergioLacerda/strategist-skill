@@ -29,7 +29,8 @@ Checks performed:
   - roles/*.yaml: each has discovery, refinement, execution slots
   - knowledge.index.yaml: if present, valid YAML`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		if validateRoot == "" {
+		root := validateRoot
+		if root == "" {
 			cwd, cwdErr := os.Getwd()
 			if cwdErr != nil {
 				return fmt.Errorf("validate: get cwd: %w", cwdErr)
@@ -38,7 +39,7 @@ Checks performed:
 			if discErr != nil {
 				return fmt.Errorf("validate: runtime not found — run: strategist install")
 			}
-			validateRoot = discovered
+			root = discovered
 		}
 		ctx := cmd.Context()
 		if ctx == nil {
@@ -53,7 +54,7 @@ Checks performed:
 				attribute.String(telemetry.AttrComponent, "validate"),
 				attribute.String(telemetry.AttrRuntimeMode, "cli"),
 				attribute.String(telemetry.AttrOutputProfile, "default"),
-				attribute.String(telemetry.AttrTarget, validateRoot),
+				attribute.String(telemetry.AttrTarget, root),
 			),
 		)
 		defer span.End()
@@ -62,24 +63,24 @@ Checks performed:
 		checks := 0
 
 		// 1. active.yaml
-		activeErr := validate.ActiveYAML(filepath.Join(validateRoot, "active.yaml"))
+		activeErr := validate.ActiveYAML(filepath.Join(root, "active.yaml"))
 		checks++
 		if activeErr != nil {
 			errs = append(errs, fmt.Sprintf("active.yaml: %v", activeErr))
 		}
 
 		// 2. personas/*.yaml
-		personaErrs, personaChecks := validate.PersonasDir(filepath.Join(validateRoot, "personas"))
+		personaErrs, personaChecks := validate.PersonasDir(filepath.Join(root, "personas"))
 		checks += personaChecks
 		errs = append(errs, personaErrs...)
 
 		// 3. roles/*.yaml
-		roleErrs, roleChecks := validate.RolesDir(filepath.Join(validateRoot, "roles"))
+		roleErrs, roleChecks := validate.RolesDir(filepath.Join(root, "roles"))
 		checks += roleChecks
 		errs = append(errs, roleErrs...)
 
 		// 4. knowledge.index.yaml (optional)
-		kiPath := filepath.Join(validateRoot, "knowledge.index.yaml")
+		kiPath := filepath.Join(root, "knowledge.index.yaml")
 		if _, err := os.Stat(kiPath); err == nil {
 			checks++
 			if kiErr := validate.YAMLFile(kiPath); kiErr != nil {
@@ -93,7 +94,7 @@ Checks performed:
 			for _, e := range errs {
 				fmt.Fprintf(os.Stderr, "  ✗ %s\n", e)
 			}
-			return fmt.Errorf("validate: %d error(s) in %s", len(errs), validateRoot)
+			return fmt.Errorf("validate: %d error(s) in %s", len(errs), root)
 		}
 
 		if run != nil {
@@ -103,10 +104,10 @@ Checks performed:
 			telemetry.AttrComponent, "validate",
 			telemetry.AttrRuntimeMode, "cli",
 			telemetry.AttrOutputProfile, "default",
-			telemetry.AttrTarget, validateRoot,
+			telemetry.AttrTarget, root,
 			"checks", checks,
 		)
-		fmt.Printf("[Strategist] validate OK — %d check(s) passed (%s)\n", checks, validateRoot)
+		fmt.Printf("[Strategist] validate OK — %d check(s) passed (%s)\n", checks, root)
 		return nil
 	},
 }

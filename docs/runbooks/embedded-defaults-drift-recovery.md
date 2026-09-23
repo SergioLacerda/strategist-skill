@@ -15,6 +15,8 @@ a file listed by `internal/domain/runtime_defaults.go` in
 - `runtime_stale_auto_repairable`
 - `runtime_stale_unknown_manifest`
 - `runtime_newer_than_binary` (see "Binary older than the runtime" below)
+- `runtime_missing` (the file is absent, not different: run `strategist install`, or
+  `strategist compile` for the generated `agent-protocol.md`)
 
 The usual trigger is editing an embedded default and invoking a previously
 built `strategist` binary, whose embedded copy still contains the old content.

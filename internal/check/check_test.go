@@ -275,6 +275,7 @@ func TestCheckCmd_NativeRole_Sniper(t *testing.T) {
 		[]byte("mode: epic\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: sniper\n"),
 		0o644,
 	))
+	writeNormativeRuntimeFiles(t, dir)
 	writeMinimalIdentityFiles(t, dir)
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "plugins.lock"), []byte(`schema_version: strategist-plugin-lock-file/v1
 bindings:

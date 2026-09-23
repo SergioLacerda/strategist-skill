@@ -5,6 +5,7 @@ import (
 	"os"
 
 	evaladapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/eval"
+	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
 	"github.com/spf13/cobra"
 )
 
@@ -17,7 +18,7 @@ func resolveEvalActionRoot(cmd *cobra.Command, action, explicitRoot string) (str
 	if err != nil {
 		return "", "", fmt.Errorf("eval %s: get cwd: %w", action, err)
 	}
-	strategistRoot, projectRoot, err = resolveStrategistRoot(stringFlag(cmd, flagRoot, explicitRoot), cwd)
+	strategistRoot, projectRoot, err = resolveStrategistRoot(cliutil.StringFlag(cmd, cliutil.FlagRoot, explicitRoot), cwd)
 	if err != nil {
 		return "", "", fmt.Errorf("eval %s: %w", action, err)
 	}
@@ -26,10 +27,10 @@ func resolveEvalActionRoot(cmd *cobra.Command, action, explicitRoot string) (str
 
 func evalDependencies() evaladapter.Dependencies {
 	return evaladapter.Dependencies{
-		RootFlag:    flagRoot,
+		RootFlag:    cliutil.FlagRoot,
 		ResolveRoot: resolveEvalActionRoot,
 		SilenceRun: func(cmd *cobra.Command) {
-			if run := telemetryRunFromCmd(cmd); run != nil {
+			if run := cliutil.TelemetryRunFromCmd(cmd); run != nil {
 				run.SetSilent()
 			}
 		},
@@ -38,7 +39,7 @@ func evalDependencies() evaladapter.Dependencies {
 
 func evalHarvestDependencies() evaladapter.HarvestDependencies {
 	return evaladapter.HarvestDependencies{
-		RootFlag:        flagRoot,
+		RootFlag:        cliutil.FlagRoot,
 		ResolveRoot:     resolveEvalActionRoot,
 		ResolveBasePath: resolveDojoRoots,
 		Select:          evaladapter.SelectHarvestMissionIDs,
@@ -46,7 +47,7 @@ func evalHarvestDependencies() evaladapter.HarvestDependencies {
 		ParseInclude:    evaladapter.ParseHarvestInclude,
 		Harvest:         evaladapter.HarvestMissions,
 		SilenceRun: func(cmd *cobra.Command) {
-			if run := telemetryRunFromCmd(cmd); run != nil {
+			if run := cliutil.TelemetryRunFromCmd(cmd); run != nil {
 				run.SetSilent()
 			}
 		},

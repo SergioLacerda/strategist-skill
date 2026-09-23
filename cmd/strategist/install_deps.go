@@ -19,6 +19,24 @@ func installDependencies() installadapter.Dependencies {
 	}
 }
 
+func upgradeDependencies() installadapter.UpgradeDependencies {
+	return installadapter.UpgradeDependencies{
+		ResolveTarget:  resolveRuntimeInstallTarget,
+		ServiceFactory: newUpgradeService,
+	}
+}
+
+// newUpgradeService deliberately omits the Compiler, shim and awareness
+// refresher that newInstallService wires: upgrade reconciles files only.
+func newUpgradeService(allowDowngrade bool) installadapter.UpgradeService {
+	return internalinstall.Service{
+		Extractor:      embedpkg.Extractor{},
+		Lister:         embedpkg.Extractor{},
+		Version:        Version,
+		AllowDowngrade: allowDowngrade,
+	}
+}
+
 func resolveRuntimeInstallTarget(explicit string, global bool) (string, error) {
 	target, err := installadapter.ResolveTarget(explicit, global, findStrategistRoot)
 	if err != nil {

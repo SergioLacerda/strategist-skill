@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	internalinstall "github.com/SergioLacerda/strategist-skill/internal/install"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
@@ -72,7 +73,7 @@ func TestNewBuildsInstallCommandAndMapsFlags(t *testing.T) {
 
 func TestRegisterAttachesInstallCommand(t *testing.T) {
 	root := &cobra.Command{Use: "root"}
-	Register(root, fakeDeps(&fakeInstaller{}))
+	Register(root, fakeDeps(&fakeInstaller{}), UpgradeDependencies{})
 	found, _, err := root.Find([]string{"install"})
 	require.NoError(t, err)
 	assert.Equal(t, "install", found.Name())
@@ -157,12 +158,12 @@ func TestCommandContextAndTelemetryHelpers(t *testing.T) {
 	ctx := context.WithValue(context.Background(), key, "value")
 	cmd := &cobra.Command{Use: "install"}
 	cmd.SetContext(ctx)
-	assert.Equal(t, "value", commandContext(cmd).Value(key))
+	assert.Equal(t, "value", cliutil.CommandContext(cmd).Value(key))
 
 	run := telemetry.NewMissionRun("install-adapter-test")
 	runCtx := telemetry.WithMissionRun(context.Background(), run)
 	markInstallRun(runCtx, true)
-	addMissionLines(runCtx, 2)
+	cliutil.AddMissionLines(runCtx, 2)
 	snapshot := run.Snapshot()
 	assert.Equal(t, int64(2), snapshot.LinesEmitted)
 	assert.NotPanics(t, func() { markInstallRun(context.Background(), false) })

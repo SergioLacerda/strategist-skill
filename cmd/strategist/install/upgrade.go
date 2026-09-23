@@ -1,4 +1,4 @@
-package main
+package install
 
 import (
 	"fmt"
@@ -7,26 +7,35 @@ import (
 	"sort"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	embedpkg "github.com/SergioLacerda/strategist-skill/internal/embed"
-	"github.com/SergioLacerda/strategist-skill/internal/install"
+	internalinstall "github.com/SergioLacerda/strategist-skill/internal/install"
 	"github.com/spf13/cobra"
 )
 
-var (
-	upgradeTarget   string
-	upgradeGlobal   bool
-	upgradeDryRun   bool
-	upgradeForce    bool
-	upgradeRollback string
-	// upgradeAllowDowngrade lets an older binary replace normative files a
-	// newer binary installed (deliberate rollback).
-	upgradeAllowDowngrade bool
-)
+// UpgradeService plans and applies a runtime upgrade; production wires
+// internal/install.Service, tests supply a fake.
+type UpgradeService interface {
+	PlanUpgrade(strategistDir string) (internalinstall.UpgradePlan, error)
+	ApplyUpgrade(strategistDir string, plan internalinstall.UpgradePlan, force bool) (backupDir string, err error)
+}
 
-var upgradeCmd = &cobra.Command{
-	Use:   "upgrade",
-	Short: "Reconcile an installed .strategist/ runtime against the current embedded defaults",
-	Long: `Reconcile an installed .strategist/ runtime against the current embedded
+// UpgradeDependencies supplies host-specific concerns for the upgrade command.
+type UpgradeDependencies struct {
+	ResolveTarget  func(explicit string, global bool) (string, error)
+	ServiceFactory func(allowDowngrade bool) UpgradeService
+}
+
+type upgradeOptions struct {
+	Target, Rollback                      string
+	Global, DryRun, Force, AllowDowngrade bool
+}
+
+// NewUpgrade creates an isolated upgrade command with no package-level flag state.
+func NewUpgrade(deps UpgradeDependencies) *cobra.Command {
+	opts := upgradeOptions{}
+	cmd := &cobra.Command{
+		Use:   "upgrade",
+		Short: "Reconcile an installed .strategist/ runtime against the current embedded defaults",
+		Long: `Reconcile an installed .strategist/ runtime against the current embedded
 defaults across the full runtime tree (unlike a plain "strategist install",
 which only re-applies the small set of strictly-guarded normative files).
 
@@ -41,41 +50,53 @@ Use --dry-run to see the plan without writing anything. Any file upgrade
 overwrites (auto_upgrade, or customized with --force) is snapshotted first
 under .strategist/.upgrade-backups/<timestamp>/ — restore it with
 "strategist upgrade --rollback <timestamp>" (or --rollback latest).`,
-	RunE: runUpgrade,
+	}
+	flags := cmd.Flags()
+	flags.StringVar(&opts.Target, "target", "", "target repository root (default: current directory)")
+	flags.BoolVar(&opts.Global, "global", false, "operate on the global root (default: local project)")
+	flags.BoolVar(&opts.DryRun, "dry-run", false, "show the upgrade plan without writing anything")
+	flags.BoolVar(&opts.Force, "force", false, "also overwrite customized files (default: preserve them)")
+	flags.BoolVar(&opts.AllowDowngrade, "allow-downgrade", false, "let this binary replace normative files installed by a newer binary (deliberate rollback; default: refuse with runtime_newer_than_binary)")
+	flags.StringVar(&opts.Rollback, "rollback", "", `restore files from a previous upgrade's backup instead of upgrading ("latest" or a specific timestamp from .strategist/.upgrade-backups/)`)
+	cmd.RunE = func(cmd *cobra.Command, _ []string) error { return runUpgrade(cmd, deps, opts) }
+	return cmd
 }
 
-func runUpgrade(cmd *cobra.Command, _ []string) error {
-	target, err := resolveRuntimeInstallTarget(upgradeTarget, upgradeGlobal)
+func runUpgrade(cmd *cobra.Command, deps UpgradeDependencies, opts upgradeOptions) error {
+	if deps.ResolveTarget == nil {
+		return fmt.Errorf("upgrade: target resolver is not configured")
+	}
+	if deps.ServiceFactory == nil {
+		return fmt.Errorf("upgrade: service factory is not configured")
+	}
+	target, err := deps.ResolveTarget(opts.Target, opts.Global)
 	if err != nil {
 		return err
 	}
 	strategistDir := filepath.Join(target, ".strategist")
 
-	svc := upgradeService()
-
-	if upgradeRollback != "" {
-		return runUpgradeRollback(cmd, strategistDir, upgradeRollback)
+	if opts.Rollback != "" {
+		return runUpgradeRollback(cmd, strategistDir, opts.Rollback)
 	}
-
-	return executeUpgrade(cmd, svc, strategistDir)
+	return executeUpgrade(cmd, deps.ServiceFactory(opts.AllowDowngrade), strategistDir, opts)
 }
 
-func executeUpgrade(cmd *cobra.Command, svc install.Service, strategistDir string) error {
+func executeUpgrade(cmd *cobra.Command, svc UpgradeService, strategistDir string, opts upgradeOptions) error {
 	plan, err := svc.PlanUpgrade(strategistDir)
 	if err != nil {
 		return fmt.Errorf("upgrade: %w", err)
 	}
 
 	out := cmd.OutOrStdout()
-	if err := printUpgradePlan(out, plan, upgradeForce); err != nil {
+	if err := printUpgradePlan(out, plan, opts.Force); err != nil {
 		return fmt.Errorf("upgrade: %w", err)
 	}
 
-	if upgradeDryRun {
+	if opts.DryRun {
 		return writeUpgradeDryRun(out)
 	}
 
-	backupDir, err := svc.ApplyUpgrade(strategistDir, plan, upgradeForce)
+	backupDir, err := svc.ApplyUpgrade(strategistDir, plan, opts.Force)
 	if err != nil {
 		return fmt.Errorf("upgrade: %w", err)
 	}
@@ -111,7 +132,7 @@ func writeUpgradeComplete(out io.Writer) error {
 
 func runUpgradeRollback(cmd *cobra.Command, strategistDir, stamp string) error {
 	if stamp == "latest" {
-		stamps, err := install.ListUpgradeBackups(strategistDir)
+		stamps, err := internalinstall.ListUpgradeBackups(strategistDir)
 		if err != nil {
 			return fmt.Errorf("upgrade rollback: %w", err)
 		}
@@ -120,7 +141,7 @@ func runUpgradeRollback(cmd *cobra.Command, strategistDir, stamp string) error {
 		}
 		stamp = stamps[0]
 	}
-	count, err := install.RollbackUpgrade(strategistDir, stamp)
+	count, err := internalinstall.RollbackUpgrade(strategistDir, stamp)
 	if err != nil {
 		return fmt.Errorf("upgrade rollback: %w", err)
 	}
@@ -130,7 +151,7 @@ func runUpgradeRollback(cmd *cobra.Command, strategistDir, stamp string) error {
 	return nil
 }
 
-func printUpgradePlan(out io.Writer, plan install.UpgradePlan, force bool) error {
+func printUpgradePlan(out io.Writer, plan internalinstall.UpgradePlan, force bool) error {
 	byState := map[domain.RuntimeFileUpgradeState][]string{}
 	for _, e := range plan.Entries {
 		byState[e.State] = append(byState[e.State], e.Path)
@@ -169,23 +190,4 @@ func printUpgradeGroup(out io.Writer, label string, paths []string) error {
 		}
 	}
 	return nil
-}
-
-func upgradeService() install.Service {
-	return install.Service{
-		Extractor: embedpkg.Extractor{},
-		Lister:    embedpkg.Extractor{},
-		Version:   Version,
-
-		AllowDowngrade: upgradeAllowDowngrade,
-	}
-}
-
-func init() {
-	upgradeCmd.Flags().StringVar(&upgradeTarget, "target", "", "target repository root (default: current directory)")
-	upgradeCmd.Flags().BoolVar(&upgradeGlobal, "global", false, "operate on the global root (default: local project)")
-	upgradeCmd.Flags().BoolVar(&upgradeDryRun, "dry-run", false, "show the upgrade plan without writing anything")
-	upgradeCmd.Flags().BoolVar(&upgradeForce, "force", false, "also overwrite customized files (default: preserve them)")
-	upgradeCmd.Flags().BoolVar(&upgradeAllowDowngrade, "allow-downgrade", false, "let this binary replace normative files installed by a newer binary (deliberate rollback; default: refuse with runtime_newer_than_binary)")
-	upgradeCmd.Flags().StringVar(&upgradeRollback, "rollback", "", `restore files from a previous upgrade's backup instead of upgrading ("latest" or a specific timestamp from .strategist/.upgrade-backups/)`)
 }

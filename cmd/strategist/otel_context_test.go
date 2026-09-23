@@ -5,26 +5,10 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 type contextKey string
-
-func TestCommandContextPreservesCobraContext(t *testing.T) {
-	t.Parallel()
-
-	key := contextKey("otel-context-contract")
-	ctx := context.WithValue(context.Background(), key, "mission-context")
-	cmd := &cobra.Command{Use: "context-contract"}
-	cmd.SetContext(ctx)
-
-	got := commandContext(cmd)
-
-	require.NotNil(t, got)
-	assert.Equal(t, "mission-context", got.Value(key))
-}
 
 func TestCommandSpansPreserveMissionContext(t *testing.T) {
 	t.Parallel()

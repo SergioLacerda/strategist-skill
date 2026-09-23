@@ -143,7 +143,7 @@ func init() {
 
 	addOpts := providerOutputOptions{}
 	var root, slot string
-	providerAddCmd.Flags().StringVar(&root, flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
+	providerAddCmd.Flags().StringVar(&root, cliutil.FlagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
 	providerAddCmd.Flags().StringVar(&slot, "slot", "", "target slot: refinement or execution")
 	providerAddCmd.Flags().StringVar(&addOpts.Format, "format", cliutil.OutputFormatTable, "output format: table, json, or yaml")
 	providerAddCmd.RunE = func(cmd *cobra.Command, args []string) error {
@@ -151,5 +151,4 @@ func init() {
 	}
 
 	providerCmd.AddCommand(providerValidateCmd, providerAddCmd)
-	rootCmd.AddCommand(providerCmd)
 }

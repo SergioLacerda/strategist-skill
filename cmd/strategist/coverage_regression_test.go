@@ -8,7 +8,6 @@ import (
 
 	missionadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/install"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -87,25 +86,6 @@ func TestWriteMissionResultPropagatesWriterErrors(t *testing.T) {
 	err = writeMissionResult(cmd, true, status)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "encode mission result")
-}
-
-func TestPrintUpgradePlanListsEveryUpgradeState(t *testing.T) {
-	plan := install.UpgradePlan{Entries: []install.UpgradePlanEntry{
-		{Path: "managed.md", State: domain.UpgradeManaged},
-		{Path: "missing.md", State: domain.UpgradeMissing},
-		{Path: "auto.md", State: domain.UpgradeAutoUpgrade},
-		{Path: "custom.md", State: domain.UpgradeCustomized},
-		{Path: "orphan.md", State: domain.UpgradeOrphaned},
-	}}
-	var out bytes.Buffer
-	require.NoError(t, printUpgradePlan(&out, plan, false))
-	assert.Contains(t, out.String(), "missing (will write): 1")
-	assert.Contains(t, out.String(), "customized (preserved): 1")
-	assert.Contains(t, out.String(), "orphaned (not deleted — review manually): 1")
-
-	out.Reset()
-	require.NoError(t, printUpgradePlan(&out, plan, true))
-	assert.Contains(t, out.String(), "customized (will OVERWRITE — --force): 1")
 }
 
 func TestMissionStartAndStatusCommandsPersistState(t *testing.T) {

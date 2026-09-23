@@ -91,7 +91,7 @@ func TestMissionReportUsageCmd_RequiresTokensInFlag(t *testing.T) {
 }
 
 // TestRunMissionReportUsage_WithMissionRunSetsSilent covers the wired
-// SilenceRun dependency: "if run := telemetryRunFromCmd(cmd); run != nil {
+// SilenceRun dependency: "if run := cliutil.TelemetryRunFromCmd(cmd); run != nil {
 // run.SetSilent() }".
 func TestRunMissionReportUsage_WithMissionRunSetsSilent(t *testing.T) {
 	root := setupMissionReportUsageRoot(t, "20260830-silent-mission")

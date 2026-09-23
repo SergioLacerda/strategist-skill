@@ -44,6 +44,19 @@ corresponding tag and GitHub Release.
   `go test ./cmd/strategist -run CommandTreeSnapshot -update`
 
 ### Changed
+- **Stricter `strategist check`:** an absent `Required` normative runtime file
+  (`SKILL.md`, `skill.yaml`, `protocol.md`, `templates/agent-protocol.md`, three
+  contracts) or an absent generated `agent-protocol.md` is now reported as
+  `runtime_missing`, so `check --strict` fails and `check --json` returns
+  `status: blocked`. Before, only byte drift was reported and a runtime with
+  those files deleted was `ready`. Repair with `strategist install` (or
+  `strategist compile` for `agent-protocol.md`)
+- **Stricter `strategist validate`:** `active.yaml` is now checked with
+  `domain.ActiveConfig.Validate`, the same rules `compile` and `install` enforce,
+  so a missing required slot, an unknown `provider_resolution_policy` or an
+  invalid `leveling` block now fails validation (they passed before). The
+  `pragmatic|epic` mode rule is kept, and every problem is reported in one run.
+  Error text for missing `mode`/`base_path`/`slots` changed accordingly
 - Documentation and generation scripts now point to source files instead
   of gitignored build artifacts
 - Migrated treasure CLI logic into `internal/treasurecli`, decomposed into
@@ -78,6 +91,8 @@ corresponding tag and GitHub Release.
   hyphens`. Exit codes are unchanged
 
 ### Fixed
+- `strategist validate` no longer stores the discovered runtime root in its
+  `--root` variable, so a later invocation in the same process re-discovers it
 - `plugins prepare-embedded --check` drift hint and the embedded-skill
   rollback runbook now name the real command, `strategist plugins
   prepare-embedded` (previously `strategist plugin`)

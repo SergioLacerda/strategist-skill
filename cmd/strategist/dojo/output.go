@@ -1,14 +1,14 @@
-package main
+package dojo
 
 import (
 	"fmt"
-	"os"
+	"io"
 	"text/tabwriter"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
 
-func dojoItemLine(item domain.DojoCheckItem) string {
+func itemLine(item domain.DojoCheckItem) string {
 	if item.Passed {
 		return fmt.Sprintf("  %s\t✓\n", item.Label)
 	}
@@ -19,23 +19,23 @@ func dojoItemLine(item domain.DojoCheckItem) string {
 	return fmt.Sprintf("  %s\t✗   ← %s\n", item.Label, detail)
 }
 
-func dojoSummaryLine(result domain.DojoCheckResult) string {
+func summaryLine(result domain.DojoCheckResult) string {
 	if result.Passed() {
 		return fmt.Sprintf("result\tPASS (%d checks)\n", len(result.Items))
 	}
 	return fmt.Sprintf("result\tFAIL (%d of %d checks failed)\n", result.FailCount(), len(result.Items))
 }
 
-func printDojoResult(result domain.DojoCheckResult) error {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
+func printResult(out io.Writer, result domain.DojoCheckResult) error {
+	w := tabwriter.NewWriter(out, 0, 0, 3, ' ', 0)
 	lines := []string{
 		fmt.Sprintf("scenario\t%s\n", result.Scenario),
 		"────────────────────────────────────────────────────\n",
 	}
 	for _, item := range result.Items {
-		lines = append(lines, dojoItemLine(item))
+		lines = append(lines, itemLine(item))
 	}
-	lines = append(lines, "\n", dojoSummaryLine(result))
+	lines = append(lines, "\n", summaryLine(result))
 	for _, line := range lines {
 		if _, err := fmt.Fprint(w, line); err != nil {
 			return fmt.Errorf("dojo: write result: %w", err)

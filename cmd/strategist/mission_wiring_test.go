@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	missionadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
+	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -39,7 +40,7 @@ func TestRootRegistersWiredMissionTree(t *testing.T) {
 		sub, _, err := cmd.Find([]string{name})
 		require.NoError(t, err, name)
 		assert.Equal(t, name, sub.Name())
-		assert.NotNil(t, sub.Flags().Lookup(flagRoot), name)
+		assert.NotNil(t, sub.Flags().Lookup(cliutil.FlagRoot), name)
 	}
 }
 

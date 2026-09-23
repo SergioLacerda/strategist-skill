@@ -13,6 +13,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	internalinstall "github.com/SergioLacerda/strategist-skill/internal/install"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
@@ -85,9 +86,9 @@ without a writable home directory), or --shim-path to redirect it.`,
 	return cmd
 }
 
-// Register attaches the install command at the supplied root.
-func Register(root *cobra.Command, deps Dependencies) {
-	root.AddCommand(New(deps))
+// Register attaches the install and upgrade commands at the supplied root.
+func Register(root *cobra.Command, deps Dependencies, upgrade UpgradeDependencies) {
+	root.AddCommand(New(deps), NewUpgrade(upgrade))
 }
 
 // Run executes an installation from an explicit immutable command snapshot.
@@ -105,7 +106,7 @@ func Run(cmd *cobra.Command, deps Dependencies, opts options) (retErr error) {
 	if err != nil {
 		return err
 	}
-	ctx := commandContext(cmd)
+	ctx := cliutil.CommandContext(cmd)
 	markInstallRun(ctx, opts.Wizard)
 	ctx, span := startInstallSpan(ctx, target)
 	defer func() {
@@ -116,7 +117,7 @@ func Run(cmd *cobra.Command, deps Dependencies, opts options) (retErr error) {
 		span.End()
 	}()
 
-	addMissionLines(ctx, 1)
+	cliutil.AddMissionLines(ctx, 1)
 	slog.InfoContext(ctx, "[Strategist] install running", telemetry.AttrComponent, "install", telemetry.AttrRuntimeMode, "cli", telemetry.AttrOutputProfile, "default", telemetry.AttrTarget, target)
 	return execute(ctx, cmd, deps, target, opts)
 }
@@ -138,30 +139,19 @@ func execute(ctx context.Context, cmd *cobra.Command, deps Dependencies, target 
 			return fmt.Errorf("install: write output: %w", err)
 		}
 	}
-	addMissionLines(ctx, 2)
+	cliutil.AddMissionLines(ctx, 2)
 	partial := isPartial(target)
 	slog.InfoContext(ctx, "[Strategist] install complete", telemetry.AttrComponent, "install", telemetry.AttrRuntimeMode, "cli", telemetry.AttrOutputProfile, "default", telemetry.AttrTarget, target, "partial", partial)
 	printCompleteBanner(target, opts.Wizard, partial)
 	return nil
 }
 
-func commandContext(cmd *cobra.Command) context.Context {
-	if ctx := cmd.Context(); ctx != nil {
-		return ctx
-	}
-	return context.Background()
-}
 func markInstallRun(ctx context.Context, wizard bool) {
 	if run := telemetry.MissionRunFromContext(ctx); run != nil {
 		run.MarkRanger()
 		if wizard {
 			run.SetSilent()
 		}
-	}
-}
-func addMissionLines(ctx context.Context, lines int64) {
-	if run := telemetry.MissionRunFromContext(ctx); run != nil {
-		run.AddLines(lines)
 	}
 }
 func startInstallSpan(ctx context.Context, target string) (context.Context, trace.Span) {

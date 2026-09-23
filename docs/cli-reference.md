@@ -300,7 +300,7 @@ strategist validate [--root=<dir>]
 
 | File | What is checked |
 |------|----------------|
-| `active.yaml` | Exists, valid YAML, `mode` and `roles_config` fields present, `mode` is `pragmatic` or `epic` |
+| `active.yaml` | Exists, valid YAML, passes `domain.ActiveConfig` validation (`mode`, `base_path` and all three `slots` present; valid `provider_resolution_policy` and `leveling` — the same rules `compile` and `install` enforce), and `mode` is `pragmatic` or `epic` |
 | `personas/*.yaml` | Each file satisfies the same runtime contract `check` enforces: `id`, `tone_directive`, `phase_labels.{discovery,refinement,execution}`, `diagnostics.pipeline_header`, `diagnostics.bootstrap_origin` |
 | `roles/*.yaml` | A native role definition (has a `role` key) must have `role` and a `slot` that is one of `discovery`/`refinement`/`execution`. A slot map (e.g. `roles/default.yaml`, shaped like `active.yaml`'s `slots:`) must have all three slots present and non-empty |
 | `knowledge.index.yaml` | If present, valid YAML |
@@ -372,7 +372,8 @@ strategist check [--root=<dir>] [--strict] [--simulate]
   - Provider skills must declare the correct `risk_score`: `discovery`/`refinement` → `write_analysis`; `execution` → `controlled`
   - Native roles are validated against `domain.RoleConfig` (required `role` + valid `slot`), then accepted by slot match; no `risk_score` verification
 - Active persona file exists and contains required fields
-- Normative runtime files match embedded defaults (detects stale installs)
+- Every normative runtime file (`SKILL.md`, `skill.yaml`, `protocol.md`, `templates/agent-protocol.md`, the preflight, approval-gate and execution contracts, the identity drift patterns) and the generated `agent-protocol.md` **exists**; an absent file is reported as `runtime_missing` (repair: `strategist install`, or `strategist compile` for `agent-protocol.md`) and `--json` returns `status: blocked`
+- Normative runtime files match embedded defaults, byte for byte (detects stale installs)
 - With `--strict`: compiled artifacts exist and match the recorded manifest hashes (see `compile`)
 
 **Success output:**

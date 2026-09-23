@@ -15,7 +15,7 @@ import (
 
 func missionLifecycleDependencies() missionadapter.LifecycleDependencies {
 	return missionadapter.LifecycleDependencies{
-		RootFlag: flagRoot, RequireMissionID: requireMissionID,
+		RootFlag: cliutil.FlagRoot, RequireMissionID: requireMissionID,
 		ResolveBasePath: cliutil.ResolveActiveBasePath, RequireNoExisting: requireNoExistingMission,
 		Save: saveMission, Load: loadMission, InitiativeStart: startInitiativeConsultation,
 		WriteResult: writeMissionResult,
@@ -44,16 +44,16 @@ func startInitiativeConsultation(root, missionID string) error {
 }
 
 func missionViewDependencies() missionadapter.ViewDependencies {
-	return missionadapter.ViewDependencies{RootFlag: flagRoot, Ledger: roleLevelLedger, RequireMissionID: requireMissionID, ResolveBasePath: cliutil.ResolveActiveBasePath, Load: loadMission, FilterLevels: filterMissionLevelRecords}
+	return missionadapter.ViewDependencies{RootFlag: cliutil.FlagRoot, Ledger: roleLevelLedger, RequireMissionID: requireMissionID, ResolveBasePath: cliutil.ResolveActiveBasePath, Load: loadMission, FilterLevels: filterMissionLevelRecords}
 }
 
 func missionNormalizeDependencies() missionadapter.NormalizeDependencies {
-	return missionadapter.NormalizeDependencies{RootFlag: flagRoot, RequireMissionID: validateMissionID, ResolvePaths: resolveNormalizePaths}
+	return missionadapter.NormalizeDependencies{RootFlag: cliutil.FlagRoot, RequireMissionID: validateMissionID, ResolvePaths: resolveNormalizePaths}
 }
 
 func missionReportUsageDependencies() missionadapter.ReportUsageDependencies {
-	return missionadapter.ReportUsageDependencies{RootFlag: flagRoot, ResolveBasePath: cliutil.ResolveActiveBasePath, MissionKnown: missionIDKnown, SilenceRun: func(cmd *cobra.Command) {
-		if run := telemetryRunFromCmd(cmd); run != nil {
+	return missionadapter.ReportUsageDependencies{RootFlag: cliutil.FlagRoot, ResolveBasePath: cliutil.ResolveActiveBasePath, MissionKnown: missionIDKnown, SilenceRun: func(cmd *cobra.Command) {
+		if run := cliutil.TelemetryRunFromCmd(cmd); run != nil {
 			run.SetSilent()
 		}
 	}, Validate: validateMissionReportUsageOptions}
