@@ -85,6 +85,59 @@ strategist plugins authorize \
 
 ---
 
+## leveling
+
+Validates or evaluates the customer-editable `LEVELING` policy in
+`.strategist/leveling.yaml`.
+
+```bash
+strategist leveling validate
+strategist leveling validate --expected-digest <sha256>
+strategist leveling suggest --provider CODEX --role ranger [--json]
+strategist leveling label --role ranger --mission <id> [--run <n>] [--host-model sonnet --host-effort high] [--message <text>] [--width N] [--json]
+strategist metrics levels [--mission <id>] [--json] [--rotate --max-records N]
+```
+
+`leveling label` prints the role-line label (`Model-Effort`). With
+`leveling.mode: manual` in `active.yaml` only host-reported values are used and
+the policy is never read. Otherwise host-reported values come first and the
+policy suggestion (`--provider`) completes a missing one; `leveling.yaml` is read
+only when a value is still missing. `level_source` is recorded as `host` or
+`policy`.
+With `--mission` the tuple is appended to `.strategist/memory/role-levels.jsonl`
+(`mission_id`, `role`, `model`, `effort`, `level_source`, `reason`, `timestamp`)
+and reused for the same mission and role, so every line of a phase agrees;
+`--json` also returns `tag`, the inline `(Model-Effort)` form (empty when the level
+is unknown) used by narration lines. `--reason escalated` records a new tuple, and `--run <n>` keeps a separate level for
+a repeated role in one mission (for example an Archivist revision loop). The role's
+phase counter and total come from the role registry (roles are read from the
+workspace's `roles/*.yaml`), and a role's `leveling` key selects the policy role.
+The ledger is compacted automatically past 512 KiB, always keeping the latest
+tuple of every mission, role and run. `--message` renders the full line:
+stacked (`Fase: 01/04`, role, `Model-Effort`, message) when `--width` is 0 or
+the one-line form does not fit, otherwise `Ranger(Sonnet-High) - <message>`. A
+policy problem or unknown level prints an unlabelled line with a warning and
+never fails.
+
+`metrics levels` reports the recorded levels: records, missions, unknown levels,
+escalations, and per role the levels and level sources; `--rotate` compacts the
+ledger to `--max-records` (default 2000) first.
+
+The default catalog contains ranked `CODEX` and `CLAUDE` profiles. Unknown
+ranked providers use the generic fallback and never inherit a ranked model
+name. Edit `leveling.yaml` to add a provider profile or change role criteria;
+invalid effort tiers and unsupported mappings fail closed. Supplying
+`--expected-digest` makes validation reject a stale policy before activation.
+For new installations, the wizard uses effective automatic mode and applies
+the same validation to its selected role/provider bindings. Existing explicit
+manual mode remains a compatibility path and skips the policy check.
+
+The installer also records the embedded LEVELING version/digest in
+`.install-manifest.json`. A stale authority blocks activation with
+`leveling_policy_stale`; an absent or untracked legacy policy requires the
+explicit `.strategist/.leveling-compat.yaml` marker (`version: 1`, `mode:
+legacy`).
+
 ## provider
 
 Validates and onboards an already-materialized local provider package. The
@@ -125,7 +178,7 @@ strategist install [--target=<dir>] [--wizard] [--silent] [--force]
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--target` | `.` (current directory) | Repository root where `.strategist/` will be created |
-| `--wizard` | `false` | Interactive mode: collects mode, base_path, and provider via prompts |
+| `--wizard` | `false` | Interactive mode: collects mode, base_path, providers, and treasure chest settings; LEVELING is internal and automatic by default, without a mode prompt |
 | `--silent` | `false` (default behavior when no flag is passed) | Installation without prompts, using **epic** profile defaults |
 | `--force` | `false` | Overwrite all files, including user-modified ones (default: preserve customizations that differ from the embedded default) |
 | `--strict-compile` | `false` | Make a `CompileAll` failure after extraction fatal — the install rolls back instead of completing with a partial/uncompiled runtime. Default is warning-only (install still completes) |
@@ -247,7 +300,7 @@ strategist validate [--root=<dir>]
 
 | File | What is checked |
 |------|----------------|
-| `active.yaml` | Exists, valid YAML, `mode` and `roles_config` fields present, `mode` is `pragmatic` or `epic` |
+| `active.yaml` | Exists, valid YAML, passes `domain.ActiveConfig` validation (`mode`, `base_path` and all three `slots` present; valid `provider_resolution_policy` and `leveling` — the same rules `compile` and `install` enforce), and `mode` is `pragmatic` or `epic` |
 | `personas/*.yaml` | Each file satisfies the same runtime contract `check` enforces: `id`, `tone_directive`, `phase_labels.{discovery,refinement,execution}`, `diagnostics.pipeline_header`, `diagnostics.bootstrap_origin` |
 | `roles/*.yaml` | A native role definition (has a `role` key) must have `role` and a `slot` that is one of `discovery`/`refinement`/`execution`. A slot map (e.g. `roles/default.yaml`, shaped like `active.yaml`'s `slots:`) must have all three slots present and non-empty |
 | `knowledge.index.yaml` | If present, valid YAML |
@@ -319,7 +372,8 @@ strategist check [--root=<dir>] [--strict] [--simulate]
   - Provider skills must declare the correct `risk_score`: `discovery`/`refinement` → `write_analysis`; `execution` → `controlled`
   - Native roles are validated against `domain.RoleConfig` (required `role` + valid `slot`), then accepted by slot match; no `risk_score` verification
 - Active persona file exists and contains required fields
-- Normative runtime files match embedded defaults (detects stale installs)
+- Every normative runtime file (`SKILL.md`, `skill.yaml`, `protocol.md`, `templates/agent-protocol.md`, the preflight, approval-gate and execution contracts, the identity drift patterns) and the generated `agent-protocol.md` **exists**; an absent file is reported as `runtime_missing` (repair: `strategist install`, or `strategist compile` for `agent-protocol.md`) and `--json` returns `status: blocked`
+- Normative runtime files match embedded defaults, byte for byte (detects stale installs)
 - With `--strict`: compiled artifacts exist and match the recorded manifest hashes (see `compile`)
 
 **Success output:**

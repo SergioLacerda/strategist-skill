@@ -29,6 +29,9 @@ type ActiveConfig struct {
 	// also exists — see ResolutionPolicy and docs/adr/0028-native-role-resilient-baseline.md.
 	// Omitted or empty is valid and means EffectivePolicy() applies DefaultResolutionPolicy.
 	ProviderResolutionPolicy ResolutionPolicy `yaml:"provider_resolution_policy,omitempty"`
+	// Leveling is the optional operator choice between manual and automatic
+	// model x effort per role. Absent means automatic.
+	Leveling LevelingConfig `yaml:"leveling,omitempty"`
 }
 
 // ValidateNoLegacyFields returns an error if the config contains removed fields.
@@ -61,6 +64,14 @@ type PersonaConfig struct {
 
 // ValidateForRuntime checks all fields required for CLI bootstrap and check validation.
 func (p PersonaConfig) ValidateForRuntime() error {
+	errs := append(p.requiredFieldErrors(), p.Diagnostics.runtimeErrors()...)
+	if len(errs) == 0 {
+		return nil
+	}
+	return fmt.Errorf("persona config invalid: %s", strings.Join(errs, "; "))
+}
+
+func (p PersonaConfig) requiredFieldErrors() []string {
 	var errs []string
 	if p.ID == "" {
 		errs = append(errs, "id is required")
@@ -71,49 +82,31 @@ func (p PersonaConfig) ValidateForRuntime() error {
 	if p.PhaseLabels.Discovery == "" || p.PhaseLabels.Refinement == "" || p.PhaseLabels.Execution == "" {
 		errs = append(errs, "phase_labels.discovery/refinement/execution are required")
 	}
-	if p.Diagnostics.PipelineHeader == "" {
+	return errs
+}
+
+// runtimeErrors checks the bootstrap banner templates. format: jsonl personas
+// (e.g. debug) bypass all profile/narrative rendering by design — every event
+// is emitted as a structured JSON line instead, so a
+// pipeline_header/bootstrap_origin banner template is never read and is not
+// required.
+func (d PersonaDiagnostics) runtimeErrors() []string {
+	if d.Format == "jsonl" {
+		return nil
+	}
+	var errs []string
+	if d.PipelineHeader == "" {
 		errs = append(errs, "diagnostics.pipeline_header is required")
 	}
-	if p.Diagnostics.BootstrapOrigin == "" {
+	if d.BootstrapOrigin == "" {
 		errs = append(errs, "diagnostics.bootstrap_origin is required")
 	}
-	if len(errs) == 0 {
-		return nil
-	}
-	return fmt.Errorf("persona config invalid: %s", strings.Join(errs, "; "))
-}
-
-// RoleConfig is the structure of a native role definition file (roles/<name>.yaml),
-// e.g. roles/sniper.yaml — a role that declares its own slot and behavior contract
-// instead of being backed by a skills/<provider>/skill.yaml manifest.
-type RoleConfig struct {
-	Role        string   `yaml:"role"`
-	Slot        string   `yaml:"slot"`
-	Must        []string `yaml:"must"`
-	MustNot     []string `yaml:"must_not"`
-	CustomBrief string   `yaml:"custom_brief"`
-}
-
-// Validate returns an error if the role definition is missing required fields
-// or declares an unknown slot.
-func (r RoleConfig) Validate() error {
-	var errs []string
-	if r.Role == "" {
-		errs = append(errs, "role is required")
-	}
-	if r.Slot == "" {
-		errs = append(errs, "slot is required")
-	} else if !IsValidSlot(r.Slot) {
-		errs = append(errs, fmt.Sprintf("slot %q is not one of %s", r.Slot, requiredSlotList))
-	}
-	if len(errs) == 0 {
-		return nil
-	}
-	return fmt.Errorf("role config invalid: %s", strings.Join(errs, "; "))
+	return errs
 }
 
 // RoleSlotMap is the structure of roles/default.yaml — a slot→provider mapping,
-// mirroring the shape of active.yaml's slots field.
+// mirroring the shape of active.yaml's slots field. A skill provider resolves at
+// skills/<provider>/skill.yaml; native roles resolve through roles/<provider>.yaml.
 type RoleSlotMap map[string]string
 
 // Validate returns an error if any of the three required slots is missing or empty.
@@ -150,6 +143,9 @@ func (c ActiveConfig) Validate() error {
 	}
 	errs = append(errs, validateActiveConfigSlots(c.Slots)...)
 	if err := c.ProviderResolutionPolicy.Validate(); err != nil {
+		errs = append(errs, err.Error())
+	}
+	if err := c.Leveling.Validate(); err != nil {
 		errs = append(errs, err.Error())
 	}
 	// Execution policy is fixed — no per-config validation needed.

@@ -120,8 +120,9 @@ func TestRunWizard(t *testing.T) {
 	}{
 		{
 			name: "all defaults (empty lines)",
-			// 10 prompts: ui/doc/chat/code/mode/base/discovery/refinement/execution/chest
-			input:          "\n\n\n\n\n\n\n\n\n\n",
+			// 10 prompts: ui/doc/chat/code/mode/base/discovery/refinement/execution/chest.
+			// The invalid extra value proves the removed LEVELING prompt does not consume input.
+			input:          "\n\n\n\n\n\n\n\n\n\nunexpected-leveling-answer\n",
 			wantUILanguage: "en",
 			wantDocLang:    "en",
 			wantChatLang:   "en",
@@ -172,7 +173,7 @@ func TestRunWizard(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			wc, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(tt.input)), minimalExtractor{}, t.TempDir())
+			wc, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(tt.input)), minimalExtractor{}, "")
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantUILanguage, wc.UILanguage)
 			assert.Equal(t, tt.wantDocLang, wc.DocLanguage)
@@ -185,6 +186,7 @@ func TestRunWizard(t *testing.T) {
 			assert.Equal(t, tt.wantExecution, wc.ExecutionProvider)
 			assert.Equal(t, tt.wantExecMode, wc.ExecutionMode)
 			assert.Equal(t, tt.wantChestPath, wc.TreasureChestPath)
+			assert.Equal(t, domain.LevelingModeAutomatic, wc.Leveling.EffectiveMode())
 		})
 	}
 }
@@ -211,7 +213,7 @@ func TestWizardDoesNotAskPermissionLevel(t *testing.T) {
 	// 10 prompts: ui/doc/chat/code/mode/base/discovery/refinement/execution/chest
 	// If the wizard still prompts for execution mode or ADR, the input will be exhausted and the test errors.
 	input := "en\nen\npt-BR\nen\nepic\n.analysis\nbrainstorming\nopenspec-explore\nsdd-ask\n\n"
-	wc, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(input)), minimalExtractor{}, t.TempDir())
+	wc, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(input)), minimalExtractor{}, "")
 	require.NoError(t, err)
 	assert.Equal(t, "epic", wc.Mode)
 	assert.Equal(t, "brainstorming", wc.DiscoveryProvider)

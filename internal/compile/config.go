@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SergioLacerda/strategist-skill/internal/i18n"
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
 
 // Config reads active.yaml, personas/*.yaml and roles/*.yaml from root
@@ -58,6 +58,11 @@ func compilePersonas(root string, sources map[string]int64) (map[string]any, err
 		return nil, err
 	}
 	injectPTBRRuntime(personasRaw)
+	registry, err := domain.LoadRoleRegistry(filepath.Join(root, "roles"))
+	if err != nil {
+		return nil, fmt.Errorf("compile config: role registry: %w", err)
+	}
+	expandPersonaRoleMessages(personasRaw, registry)
 	return mapValuesToAny(personasRaw), nil
 }
 
@@ -80,37 +85,6 @@ func validateTypedPersonas(personasDir string) error {
 		}
 	}
 	return nil
-}
-
-func injectPTBRRuntime(personasRaw map[string]map[string]any) {
-	ptBRRuntime, _ := i18n.RuntimeBundleFor(i18n.LangPTBR)
-	ptBRPhaseAnnouncements, _ := i18n.PhaseAnnouncementsFor(i18n.LangPTBR)
-	for _, raw := range personasRaw {
-		if cbl, ok := contentByLang(raw); ok {
-			cbl[i18n.LangPTBR] = ptBRRuntime.ToMap()
-		}
-		if pa, ok := phaseAnnouncements(raw); ok {
-			pa[i18n.LangPTBR] = ptBRPhaseAnnouncements.ToMap()
-		}
-	}
-}
-
-func contentByLang(raw any) (map[string]any, bool) {
-	personaMap, ok := raw.(map[string]any)
-	if !ok {
-		return nil, false
-	}
-	cbl, ok := personaMap["content_by_lang"].(map[string]any)
-	return cbl, ok
-}
-
-func phaseAnnouncements(raw any) (map[string]any, bool) {
-	personaMap, ok := raw.(map[string]any)
-	if !ok {
-		return nil, false
-	}
-	pa, ok := personaMap["phase_announcements"].(map[string]any)
-	return pa, ok
 }
 
 func loadValidatedActiveRaw(activePath string) (map[string]any, error) {

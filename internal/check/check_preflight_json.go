@@ -30,7 +30,7 @@ import (
 // returned Warnings list for visibility but deliberately never influence
 // status, matching those conditions' own "Non-blocking" behavior in
 // contracts/machine/preflight.yaml.
-func buildPreflightResult(root, mode string, providers map[string]string, resolutions map[string]slotResolution, warnings, advisories []string) domain.PreflightResult {
+func buildPreflightResult(root, mode string, providers map[string]string, resolutions map[string]slotResolution, warnings, advisories []string, language *domain.PreflightLanguage) domain.PreflightResult {
 	status := "ready"
 	if len(warnings) > 0 {
 		status = "blocked"
@@ -69,6 +69,7 @@ func buildPreflightResult(root, mode string, providers map[string]string, resolu
 		Status:        status,
 		Identity:      domain.PreflightIdentity{Root: root, Mode: mode},
 		Bindings:      bindings,
+		Language:      language,
 		Warnings:      allWarnings,
 		Next:          next,
 	}
@@ -79,8 +80,8 @@ func buildPreflightResult(root, mode string, providers map[string]string, resolu
 // semantics (non-zero when warnings is non-empty) — mirroring --simulate's
 // behavior in check_simulate.go. It does not alter the default, human-readable
 // output path.
-func printPreflightJSON(root, mode string, providers map[string]string, resolutions map[string]slotResolution, warnings []string) error {
-	result := buildPreflightResult(root, mode, providers, resolutions, warnings, preflightAdvisories(root))
+func printPreflightJSON(root, mode string, providers map[string]string, resolutions map[string]slotResolution, warnings []string, language *domain.PreflightLanguage) error {
+	result := buildPreflightResult(root, mode, providers, resolutions, warnings, preflightAdvisories(root), language)
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(result); err != nil {
@@ -101,11 +102,12 @@ func printPreflightJSON(root, mode string, providers map[string]string, resoluti
 // `strategist check --json` returning one consistent shape regardless of
 // which check failed first. The returned error preserves the original
 // blocking error's exit-code/message semantics.
-func printPreflightJSONBlocked(root, mode string, blockingErr error) error {
+func printPreflightJSONBlocked(root, mode string, blockingErr error, language *domain.PreflightLanguage) error {
 	result := domain.PreflightResult{
 		SchemaVersion: domain.PreflightResultSchemaVersion,
 		Status:        "blocked",
 		Identity:      domain.PreflightIdentity{Root: root, Mode: mode},
+		Language:      language,
 		Warnings:      []string{blockingErr.Error()},
 		Next:          "resolve the warnings below, then rerun `strategist check`",
 	}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 	"github.com/spf13/cobra"
 )
@@ -41,7 +42,7 @@ Exits non-zero when verification fails, so callers can gate on it directly.`,
 }
 
 func runHandoffVerify(cmd *cobra.Command, opts handoffVerifyOptions) error {
-	if run := telemetryRunFromCmd(cmd); run != nil {
+	if run := cliutil.TelemetryRunFromCmd(cmd); run != nil {
 		run.SetSilent()
 	}
 
@@ -143,7 +144,7 @@ func resolveHandoffPolicy(opts handoffVerifyOptions) (handoff.Policy, error) {
 
 func init() {
 	opts := handoffVerifyOptions{}
-	handoffVerifyCmd.Flags().StringVar(&opts.Root, flagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
+	handoffVerifyCmd.Flags().StringVar(&opts.Root, cliutil.FlagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
 	handoffVerifyCmd.Flags().StringVar(&opts.Transition, "transition", "", "handoff transition (archivist_to_sniper, ranger_to_archivist, sniper_to_validation) — ignored if --policy is set")
 	handoffVerifyCmd.Flags().StringVar(&opts.Policy, "policy", "", "path to a policy YAML file, overriding the built-in default for --transition")
 	handoffVerifyCmd.Flags().StringVar(&opts.RiskLevel, "risk-level", "", "mission risk_level (low, medium, high) from intake — when set, resolves policy.Enabled/RequiredTypes from risk signals instead of the static per-transition default; ignored if --policy is set")
@@ -155,5 +156,4 @@ func init() {
 		return runHandoffVerify(cmd, opts)
 	}
 	handoffCmd.AddCommand(handoffVerifyCmd)
-	rootCmd.AddCommand(handoffCmd)
 }

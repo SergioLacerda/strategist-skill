@@ -139,7 +139,7 @@ func appendHandoffVerifyList(b *strings.Builder, label string, values []string) 
 }
 
 func recordHandoffVerify(cmd *cobra.Command, opts handoffVerifyOptions, result handoff.Result) error {
-	root, err := resolveMetricsActionRoot(cmd, "handoff verify", opts.Root)
+	root, err := resolveMetricsRoot(cmd, "handoff verify", opts.Root)
 	if err != nil {
 		return err
 	}

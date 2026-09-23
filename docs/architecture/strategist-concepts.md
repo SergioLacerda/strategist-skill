@@ -166,6 +166,58 @@ no `active.yaml` entry and no configurable provider:
 |------|------|----------|------------------|
 | **Scout** | pre-pipeline (internal, never a slot) | `read_only` | none — emits a `route_decision`, logged/telemetered only |
 
+### Role registry and role definition shape
+
+> Status: Tiers A and B are implemented. Tier C (one full template for every
+> role, dynamic slots) is planned and needs an approved RFC first; rollout is keyed by
+> tier (A first, B after A, C only after an approved RFC). Tracked by the refined
+> package `20260921-role-template-generalization`.
+
+`domain.RoleRegistry` is the single authority for role facts and covers the
+identity-bearing roles only — Scout, Ranger, Archivist and Sniper. Inline
+sub-routines (`prompt-intake`, `context-enrichment`, `dossier-builder`,
+`learning-curator`, `response-critic`) are not roles and stay out. The leveling
+label, the wizard, handoff-schema lookup, confidence-producer validation and
+provider role affinity all read the registry; a test fails if another list of role
+names appears in Go source.
+
+Each role has a definition (`roles/<id>.yaml`) of the same shape, including Scout
+(`roles/scout.yaml`):
+
+| Field | Meaning |
+|-------|---------|
+| `role`, `slot` | Role id and its slot; Scout has no slot |
+| `phase` | Position in the mission checkpoint; `0` is pre-pipeline. The approval gate is the step immediately before the execution role, and the `Fase: NN/MM` total is the last phase, so adding a role changes it without a code edit |
+| `pluggable` | Whether an external provider may fill the role. Records today's behavior: Ranger and Archivist `true`, Sniper and Scout `false`; the flag changes nothing by itself. A role without a slot must declare `pluggable: false` |
+| `handoff_schema` | Schema the role hands downstream; empty for the terminal role |
+| `leveling` | Optional name of the LEVELING policy role to use; defaults to the role id |
+| `on_start` | Commands the role runs when its phase starts; the default resolves and records the level (`strategist leveling label --role {role} --mission {mission_id}`), so the label is part of role invocation |
+| `must`, `must_not`, `custom_brief` | Behavior contract, unchanged |
+
+The registry loaded at runtime is the workspace's `roles/*.yaml` laid over the
+built-in registry: a file replaces the role with the same id and a new file adds
+a role, so a customized role file is honored. The built-in registry is checked
+against the embedded role files by a parity test. Editing a role file changes the
+Ranked certification `host_api_digest` of that role; after changing an embedded
+role file run `strategist plugins prepare-embedded` and commit the result.
+Whether the LEVELING policy is read at all stays governed by the `leveling.mode`
+switch (`manual` never reads it, `automatic` reads it on demand).
+
+Tier B replaced the hand-written per-role message strings with generic templates.
+A persona (or the pt-BR bundle in `internal/i18n`) declares `role_start`,
+`role_done` and `role_task_done` templates plus a `role_phrases` table (per-role
+emoji, wording and artifact label, with a `_default` entry). The compile step
+expands them once per registered role with a checkpoint phase into the
+`<role>_start`, `<role>_done` and `<role>_task_done` keys agents already read, so
+those keys are aliases (`compile.RoleEventAliases` lists them) and a hand-written
+key still wins. The progress bar and percentage come from the role's phase and the
+registry total, so adding a role needs no new strings and rescales the others. A
+golden test pins the generated messages to the pre-generalization output.
+Narration lines name the role with an inline level tag (`Ranger(Sonnet-High)`) and
+Scout has its own narration line; content templates keep the stacked header.
+Tier C (one full template for every role, dynamic slots) is a breaking change and
+requires an RFC first.
+
 ## Scout — Intake Router
 
 Scout classifies each request and decides the route before any slot runs. It is
@@ -320,10 +372,12 @@ To swap a weapon, validate and onboard its local package with `strategist provid
 
 ## Abilities
 
-Abilities are internal routines that run inside a Role/phase. Unlike Weapons, they are not configurable, not swappable, and have no `active.yaml` entry — they are built into Strategist itself (see `skill.yaml#taxonomy`). There are four:
+Abilities are internal routines that run inside a Role/phase. Unlike Weapons, they are not configurable, not swappable, and have no `active.yaml` entry — they are built into Strategist itself (see `skill.yaml#taxonomy`). There are six:
 
 | Ability | Runs in | What it does |
 |---------|---------|--------------|
+| **LEVELING** | Role selection, before provider invocation | Internal ability that selects model capability and effort from generic criteria, then maps to CODEX, CLAUDE, or the explicit generic fallback configured in `leveling.yaml`. It is automatic by default for new installations; the wizard does not expose a mode choice. Existing explicit `manual` and `automatic` modes remain runtime compatibility settings. The resulting model and effort are shown on every role log line and recorded in telemetry (see `docs/configuration.md` § Role level label). |
+| **INITIATIVE** | Role entry and handoff boundaries, consultative | Advises on diligence, alignment, obligations, evidence, and outcome correlation. It resolves one `advice_id` per role run, preserves explicit unknown/unavailable/not-comparable states, and may request re-evaluation when scope, evidence, risk, or obligations change. Its `recommended_capability` and `recommended_effort` are advisory labels only: INITIATIVE never changes LEVELING, selects a provider, bypasses the Approval Gate, or authorizes `implementation_handoff`. |
 | **Opportunist Attack** | Refinement (Archivist), post-refinement | Evaluates whether the refined work warrants an ADR, a Runbook, and/or a Treasure Chest registration — each surfaced as its own side quest at the gate. |
 | **Search** | Discovery (Ranger); cache reused by Refinement (Archivist) | Filters candidate Jewels/Potions from Treasure Chests before a chest is opened in full — part of the Retrieval Cascade's treasure-chest stage. |
 | **Critical Hit** | Scout (pre-pipeline route) | A labeled Ability, but mechanically a Route resolved by Scout, not a Role-internal routine — see § Critical Hit above. |

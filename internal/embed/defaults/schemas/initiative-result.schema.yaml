@@ -1,0 +1,19 @@
+schema_version: "1"
+description: >
+  Append-only INITIATIVE result correlated to one advice envelope. The result
+  is advisory and gate-independent.
+required_fields:
+  advice_id: string
+  mission_id: string
+  role: string
+  run_id: string
+  checks: list
+  gate_independent: boolean
+optional_fields:
+  deviations: list
+  evidence_refs: list
+  outcomes: list
+rules:
+  - satisfied checks require evidence_refs
+  - missing evidence produces a confidence ceiling or handoff challenge
+  - result does not authorize Approval Gate acceptance or implementation_handoff

@@ -4,6 +4,21 @@
 **Date:** 2026-09-20
 **Related:** ADR-0047, ADR-0048
 
+> 2026-09-22 reinforcement: the Approval Gate stopped inlining the full
+> cross-agent calibration payload (policy version, distribution, per-agent
+> metrics, evidence coverage, calibration status, missing/rejected/duplicate
+> counts) in the chat prompt. That payload remains this contract's
+> materialization of `LoadConfidenceGateReview`, unchanged in shape — it is
+> now read via the pre-existing `strategist metrics confidence --mission <id>`
+> / `strategist mission view --json` commands instead of being duplicated
+> into gate prose. The gate itself shows a per-item summary (task assertions
+> with `confidence_percent`, open questions with no percent, side quests with
+> `confidence_percent` or an honest `investigation_required` state) so the
+> low-confidence-must-be-a-question principle below extends visibly to side
+> quests, which previously had no confidence signal at all. See
+> `contracts/narrative/05-approval-gate.md` and
+> `.analysis/pending/20260922-approval-gate-confidence-summary/`.
+
 ## Context
 
 The workspace carried several unrelated confidence-like signals: the

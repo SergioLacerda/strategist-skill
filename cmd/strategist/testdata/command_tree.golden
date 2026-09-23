@@ -1,0 +1,657 @@
+== strategist
+use: strategist
+short: Strategist skill CLI
+long: |
+  Strategist — install, compile, and manage the Strategist skill for Claude agents.
+
+== strategist check
+use: check
+short: Pre-mission slot validation
+long: |
+  Validate that slot providers declared in active.yaml are installed and
+  satisfy their risk_score contracts.
+  
+  Checks performed:
+    - active.yaml is present and parseable
+    - For each slot (discovery, refinement, execution):
+        • skills/<provider>/skill.yaml exists (skill provider), OR
+          roles/<provider>.yaml exists with matching slot field (native role)
+        • skill providers must declare the correct risk_score for the slot contract:
+          discovery/refinement → write_analysis, execution → controlled
+        • native roles are accepted by slot field match; no risk_score check
+    - discovery and refinement must have one valid persisted weapon binding in plugins.lock
+    - role affinity and active.yaml/plugins.lock parity are validated fail-closed
+flag: --confirm-chat-language (string) default="" usage="acknowledge the chat language the invoking agent read and intends to use; if it does not match active.yaml's language.chat, check fails with warning=chat_language_mismatch instead of silently drifting"
+flag: --json (bool) default="false" usage="print one domain.PreflightResult JSON object ({schema_version, status, identity, bindings, language, warnings, next}) instead of the human-readable banner; does not run missions or mutate mission state; ranked providers may run their own healthcheck command, which can create provider-home directories under the runtime root"
+flag: --persona (string) default="" usage="persona/mode to read with --print-content-by-lang (default: active.yaml's mode)"
+flag: --print-content-by-lang (string) default="" usage="print personas.<persona>.content_by_lang.<lang> and phase_announcements.<lang> from the compiled artifact as JSON and exit; use this instead of reading persona YAML directly to resolve non-English chat templates and mission narration lines"
+flag: --root (string) default="" usage="path to .strategist/ root (default: .strategist)"
+flag: --simulate (bool) default="false" usage="print a readiness report (per-slot/persona status) instead of the pass/fail banner; does not run missions or mutate mission state; ranked providers may run their own healthcheck command, which can create provider-home directories under the runtime root"
+flag: --strict (bool) default="false" usage="additionally require compiled artifacts to exist and match the recorded manifest hashes"
+
+== strategist check-stale
+use: check-stale <artifact.gz>
+short: Check if a compiled artifact is stale (exit 0=fresh, exit 1=stale)
+flag: --json (bool) default="false" usage="print stale-check result as JSON"
+flag: --quiet (bool) default="false" usage="suppress human-readable stale output"
+
+== strategist compile
+use: compile
+short: Compile all skill artifacts from a .strategist/ root
+flag: --root (string) default="" usage="path to .strategist/ root (default: .strategist)"
+
+== strategist dojo
+use: dojo
+short: Health-check scenarios for the Strategist skill
+long: |
+  Dojo validates that Strategist is correctly installed, configured, and operating.
+  
+  Run a scenario check:
+    strategist dojo check <scenario>
+  
+  List available scenarios:
+    strategist dojo list
+
+== strategist dojo check
+use: check <scenario>
+short: Run offline checks for a dojo scenario
+flag: --files-only (bool) default="false" usage="skip checks that require an emit.log run (emit_log, timing, pipeline)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: .strategist)"
+
+== strategist dojo list
+use: list
+short: List available dojo scenarios
+flag: --root (string) default="" usage="path to .strategist/ root (default: .strategist)"
+
+== strategist eval
+use: eval
+short: Strategist eval harness utilities
+
+== strategist eval harvest
+use: harvest [mission_id]
+short: Copy real mission artifacts into tests/evals/regression/ as fixtures
+flag: --all (bool) default="false" usage="harvest every mission found"
+flag: --include (string) default="" usage="comma-separated extra artifact types"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist eval run
+use: run [pattern]
+short: Run the internal/eval scenario battery via go test
+flag: --race (bool) default="true" usage="pass -race to go test"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist handoff
+use: handoff
+short: Run and record Handoff Challenge verification
+
+== strategist handoff verify
+use: verify
+short: Verify a Handoff Challenge acknowledgment and record the result
+long: |
+  Runs internal/handoff.Verify deterministically against a challenges file and
+  an acknowledgment file, prints the result, and appends a ChallengeRecord to
+  .strategist/memory/handoff-challenges.jsonl.
+  
+  This gives the LLM agent embodying a Strategist role (Ranger, Archivist,
+  Sniper) a scriptable, deterministic tool to invoke instead of reasoning
+  through a Handoff Challenge unaided — see docs/architecture/strategist-concepts.md §
+  Handoff Challenge "Known Limitations" for why this command exists.
+  
+  Exits non-zero when verification fails, so callers can gate on it directly.
+flag: --ack (string) default="" usage="path to an acknowledgment YAML file (required)"
+flag: --attempt (int) default="1" usage="attempt number, for repair-loop tracking"
+flag: --challenges (string) default="" usage="path to a challenges YAML file (required)"
+flag: --mission-id (string) default="" usage="mission_id to record against (required)"
+flag: --policy (string) default="" usage="path to a policy YAML file, overriding the built-in default for --transition"
+flag: --risk-level (string) default="" usage="mission risk_level (low, medium, high) from intake — when set, resolves policy.Enabled/RequiredTypes from risk signals instead of the static per-transition default; ignored if --policy is set"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+flag: --transition (string) default="" usage="handoff transition (archivist_to_sniper, ranger_to_archivist, sniper_to_validation) — ignored if --policy is set"
+
+== strategist install
+use: install
+short: Install the Strategist skill into a target repository
+long: |
+  Install the Strategist skill into a target repository.
+  
+  Silent mode (default, no flags needed) writes epic-profile defaults and never
+  prompts. A CompileAll failure after extraction is warning-only by default —
+  install still completes with a partial/uncompiled runtime. Pass
+  --strict-compile to make that failure fatal (the install rolls back instead).
+  
+  By default a Claude Code shim is written to
+  ~/.claude/skills/strategist/SKILL.md so the skill is invocable outside this
+  repository. Use --no-shim to skip that write entirely (e.g. CI/containers
+  without a writable home directory), or --shim-path to redirect it.
+flag: --allow-downgrade (bool) default="false" usage="let this binary replace normative runtime files installed by a newer binary (deliberate rollback; default: refuse with runtime_newer_than_binary)"
+flag: --force (bool) default="false" usage="overwrite all files, including user-modified ones (default: preserve customizations)"
+flag: --global (bool) default="false" usage="install into global root (default: local project)"
+flag: --no-shim (bool) default="false" usage="skip writing the SKILL.md shim under ~/.claude/skills (mutually exclusive with --shim-path)"
+flag: --shim-path (string) default="" usage="write the SKILL.md shim to this path instead of the default ~/.claude/skills/strategist/SKILL.md (mutually exclusive with --no-shim)"
+flag: --silent (bool) default="false" usage="silent install with epic defaults (default)"
+flag: --strict-compile (bool) default="false" usage="fail install (and roll back) on a CompileAll error, instead of warning-only (default: warning-only)"
+flag: --target (string) default="" usage="target repository root (default: current directory)"
+flag: --wizard (bool) default="false" usage="interactive wizard for configuration"
+
+== strategist leveling
+use: leveling
+short: Suggest model and effort by role
+
+== strategist leveling label
+use: label
+short: Resolve and record the model/effort label shown on a role's log lines
+flag: --ambiguity (string) default="" usage="ambiguity signal: low, medium, or high"
+flag: --evidence (string) default="" usage="evidence signal: sufficient, insufficient, or conflicting"
+flag: --host-effort (string) default="" usage="effort reported by the host: none, low, medium, high, xhigh, max"
+flag: --host-model (string) default="" usage="model reported by the host; an unreplaced <placeholder> is ignored"
+flag: --json (bool) default="false" usage="emit JSON"
+flag: --message (string) default="" usage="message to render after the label"
+flag: --mission (string) default="" usage="mission id; records and reuses the level in .strategist/memory"
+flag: --provider (string) default="" usage="ranked provider used to complete a missing host value (optional)"
+flag: --reason (string) default="" usage="record a new tuple with this reason (for example escalated)"
+flag: --risk (string) default="" usage="risk signal: low, medium, or high"
+flag: --role (string) default="ranger" usage="role: scout, ranger, archivist, sniper, gate, or transport"
+flag: --run (string) default="" usage="run id for a repeated role in one mission (for example a revision loop); each run keeps its own level"
+flag: --scope (string) default="" usage="scope signal: bounded or cross_module"
+flag: --width (int) default="0" usage="measured terminal width; 0 (unmeasurable) selects the stacked layout"
+
+== strategist leveling suggest
+use: suggest
+short: Suggest a model and effort for a role
+flag: --ambiguity (string) default="" usage="ambiguity signal"
+flag: --architectural-change (bool) default="false" usage="mark an architectural change"
+flag: --conflicting-evidence (bool) default="false" usage="mark conflicting evidence"
+flag: --evidence (string) default="" usage="evidence signal"
+flag: --json (bool) default="false" usage="emit JSON"
+flag: --provider (string) default="CODEX" usage="ranked provider identifier"
+flag: --repeated-failures (int) default="0" usage="number of repeated failures"
+flag: --risk (string) default="" usage="risk signal"
+flag: --role (string) default="ranger" usage="Strategist role"
+flag: --scope (string) default="" usage="scope signal"
+flag: --security-sensitive (bool) default="false" usage="mark a security-sensitive task"
+
+== strategist leveling validate
+use: validate
+short: Validate the customer LEVELING policy
+flag: --expected-digest (string) default="" usage="fail if the normalized policy digest differs"
+
+== strategist metrics
+use: metrics
+short: Report metrics computed from Strategist's own runtime memory
+long: |
+  Report metrics computed from .strategist/memory/*.jsonl history. Each subcommand covers one metrics domain.
+
+== strategist metrics confidence
+use: confidence
+short: Report cross-agent confidence metrics
+flag: --mission (string) default="" usage="scope the review to one mission (used at the Approval Gate)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist metrics fallback
+use: fallback
+short: Report provider-fallback (ADR-0028) metrics
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist metrics gate-outcome
+use: gate-outcome
+short: Record the human Approval Gate outcome as ground truth
+flag: --mission (string) default="" usage="mission id (required)"
+flag: --outcome (string) default="" usage="accepted | revision_requested | rejected (required)"
+flag: --ref (string) default="" usage="gate event that recorded the human decision (required)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist metrics handoff
+use: handoff
+short: Report Handoff Challenge governance metrics
+long: |
+  Report Handoff Challenge governance metrics from .strategist/memory/handoff-challenges.jsonl.
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist metrics label
+use: label
+short: Record a reviewed ground-truth label for a mission
+flag: --kind (string) default="" usage="user_revision | handoff_validation | downstream_verification (required)"
+flag: --label (string) default="" usage="reviewed outcome for the subject (required)"
+flag: --mission (string) default="" usage="mission id the label applies to (required)"
+flag: --ref (string) default="" usage="review, event or check that decided the outcome (required)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+flag: --subject (string) default="" usage="route | handoff_application (required)"
+
+== strategist metrics levels
+use: levels
+short: Report the model x effort levels recorded per role
+flag: --json (bool) default="false" usage="emit JSON"
+flag: --max-records (int) default="2000" usage="maximum records kept by --rotate"
+flag: --mission (string) default="" usage="scope the report to one mission"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+flag: --rotate (bool) default="false" usage="compact the ledger first"
+
+== strategist metrics record
+use: record
+short: Record a confidence claim or an explicit missing-record for a boundary
+flag: --agent (string) default="" usage="producing agent (required)"
+flag: --claim-file (string) default="" usage="YAML file with the claim and its evidence; \"-\" reads it from standard input (preferred: no file is created), and a file inside the workspace base_path is rejected"
+flag: --correlation-key (string) default="" usage="boundary correlation key (with --missing)"
+flag: --missing (bool) default="false" usage="record an explicit missing-record instead of a claim"
+flag: --mission (string) default="" usage="mission id (required)"
+flag: --reason (string) default="" usage="why no summary was produced (with --missing)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+flag: --run (string) default="" usage="optional explicit run id for a repeated role execution"
+
+== strategist metrics rollout-check
+use: rollout-check
+short: Check whether a confidence enforcement mode is admissible
+flag: --enforcement (string) default="" usage="advisory | blocking (required)"
+flag: --review-file (string) default="" usage="recorded observe-mode review (YAML)"
+
+== strategist metrics scout
+use: scout
+short: Report Scout routing metrics
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist mission
+use: mission
+short: Report and inspect mission-level facts this binary cannot observe directly
+
+== strategist mission context
+use: context
+short: Materialize declared mission context
+flag: --digest (stringSlice) default="[]" usage="expected sha256 digest for each --ref, in the same order"
+flag: --json (bool) default="false" usage="emit machine-readable JSON"
+flag: --max-bytes (int) default="1048576" usage="maximum materialized bytes"
+flag: --max-refs (int) default="64" usage="maximum number of references"
+flag: --mission-id (string) default="" usage="mission identifier (required)"
+flag: --ref (stringSlice) default="[]" usage="declared workspace-relative context reference (repeatable)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist mission normalize-openspec
+use: normalize-openspec
+short: Publish a completed OpenSpec change into the refined mission package
+long: |
+  Validates a private OpenSpec change and atomically promotes its proposal,
+  design, tasks, and the mission analysis into <base_path>/refined/<mission_id>.
+  OpenSpec specs and archive history remain private provider scratch.
+flag: --change-id (string) default="" usage="completed OpenSpec change id (required)"
+flag: --mission-id (string) default="" usage="canonical Strategist mission id (required)"
+flag: --pending-analysis (string) default="" usage="pending analysis path (default: <base_path>/pending/<mission-id>-analysis.md)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+flag: --runtime-root (string) default="" usage="OpenSpec runtime root (default: <strategist-root>/openspec)"
+
+== strategist mission report-usage
+use: report-usage
+short: Record real token usage for a mission, reported by the invoking agent
+long: |
+  strategist mission report-usage records tokens_in/tokens_out for a
+  mission_id, as reported by the LLM agent (e.g. Claude Code) that invoked
+  this CLI.
+  
+  This binary is a CLI/contract layer: it never calls an LLM API itself and
+  has no direct visibility into how many tokens a model consumed. The
+  tokens_in/tokens_out values shown inline in persona chat templates
+  (mission_metrics diagnostics) are the agent's own self-reported estimate,
+  with no persisted record behind them until this command is run.
+  
+  --tokens-in and --tokens-out must be the real counts the invoking agent
+  read from its own provider response for this mission (e.g. Claude's
+  usage.input_tokens / usage.output_tokens across the conversation turns
+  spent on this mission_id) — not another estimate. Only the agent has
+  access to those numbers; this binary cannot verify them and does not try
+  to.
+  
+  The record is appended to .strategist/memory/mission-token-usage.jsonl,
+  one JSONL line per report. Comparing the reported total against
+  skill.yaml's declarative token_budget is a natural follow-up, not done by
+  this command.
+flag: --mission-id (string) default="" usage="mission_id to record usage against (required) — must match an existing pending/refined/archived artifact"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+flag: --tokens-in (int64) default="0" usage="real input token count from the invoking agent's own provider response (required, >= 0)"
+flag: --tokens-out (int64) default="0" usage="real output token count from the invoking agent's own provider response (required, >= 0)"
+
+== strategist mission start
+use: start
+short: Start a mission
+flag: --json (bool) default="false" usage="emit machine-readable JSON"
+flag: --mission-id (string) default="" usage="mission identifier (required)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist mission status
+use: status
+short: Inspect a mission status
+flag: --json (bool) default="false" usage="emit machine-readable JSON"
+flag: --mission-id (string) default="" usage="mission identifier (required)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist mission submit
+use: submit
+short: Submit one authoritative mission event
+flag: --event (string) default="" usage="mission event to submit (required)"
+flag: --json (bool) default="false" usage="emit machine-readable JSON"
+flag: --mission-id (string) default="" usage="mission identifier (required)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist mission view
+use: view
+short: Render a read-only mission experience view
+long: |
+  Render lifecycle, roles, advisory confidence, Approval Gate outcome, and LEVELING provenance for one mission. This command never authorizes or advances a mission.
+flag: --json (bool) default="false" usage="emit strategist-mission-view/v1 JSON"
+flag: --mission-id (string) default="" usage="mission identifier (required)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+flag: --run (string) default="" usage="select one explicit repeated role run"
+
+== strategist plugins
+use: plugins
+short: Inspect and evaluate Strategist plugin enforcement
+
+== strategist plugins authorize
+use: authorize
+short: Compose authorization evidence for a governed target
+long: |
+  Evaluates runtime readiness, persisted Role→Weapon bindings, the two
+  independent execution gates, and candidate write-target enforcement. The
+  command does not invoke external providers or intercept writes performed
+  outside the CLI. Use --json for stable machine-readable evidence.
+flag: --approval-gate (string) default="pending" usage="Strategist Approval Gate state: pending, accepted, denied, or revision"
+flag: --execution-gate (string) default="allowed" usage="local execution gate state: allowed or blocked"
+flag: --json (bool) default="false" usage="print the versioned machine-readable authorization report"
+flag: --mission (string) default="" usage="mission identifier to include in the report"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+flag: --target (string) default="" usage="candidate write path relative to the project root (required)"
+
+== strategist plugins evaluate-write
+use: evaluate-write
+short: Report whether a write to --target is enforceably allowed under the active connector
+long: |
+  Classifies --target against the mission's active.yaml base_path
+  (internal/plugins/policy.ClassifyWriteTarget), then checks that
+  classification against the native runtime connector's own enforcement
+  observation (internal/plugins/policy.EvaluateWrite).
+  
+  This is a scriptable, deterministic tool an agent embodying Sniper can
+  invoke before writing, rather than relying only on the write_scope/
+  approved_scope prose in roles/sniper.yaml — see
+  .analysis/refined/20260830-skill-gaps-triage/analysis.md Cluster 1 (K03) and
+  .analysis/refined/20260830-skill-gaps-followup/tasks.md item A4 for why a
+  CLI-exposed check, not internal Go interception, is the right shape here:
+  Sniper is a parent-agent-embodied native role, not a Go writer this binary
+  can intercept.
+  
+  Exits non-zero when the write is not enforceably allowed, so callers can
+  gate on it directly.
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+flag: --target (string) default="" usage="candidate write path to evaluate, relative to the project root (required)"
+
+== strategist plugins prepare-embedded
+use: prepare-embedded
+short: Ingest external-skills-source/ into the embedded plugin catalog
+long: |
+  Resolves every ORKA-shaped package under --source (each subdirectory
+  paired with a strategist.yaml project-adapter sidecar declaring
+  canonical_role/risk_score), verifies it, and merges the result into
+  internal/embed/defaults/plugins/catalog.yaml plus generated
+  internal/embed/defaults/skills/<id>/skill.yaml mirrors, recording exactly
+  what was embedded in a committed lock file.
+  
+  This is a maintainer/CI operation on this repository's own embedded
+  defaults (ADR-0032's pre-build ingestion pattern, generalized from Treasure
+  Chest to role-slot skills — see
+  .analysis/refined/20260913-embedded-skill-directory-catalog). It is not a
+  per-workspace end-user command and does not touch .strategist/.
+  
+  Use --check in CI to fail non-zero on drift instead of writing.
+flag: --check (bool) default="false" usage="fail non-zero on drift instead of writing (for CI)"
+flag: --defaults-root (string) default="internal/embed/defaults" usage="internal/embed/defaults root to generate catalog.yaml and skills/<id>/skill.yaml into"
+flag: --lock (string) default="external-skills-source.lock.yaml" usage="path to the committed embedded-skill lock file"
+flag: --source (string) default="external-skills-source" usage="directory of ORKA-shaped skill packages to ingest"
+
+== strategist provider
+use: provider
+short: Validate and onboard local Strategist providers
+
+== strategist provider add
+use: add <source> --slot <slot>
+short: Stage and bind a validated local provider
+flag: --format (string) default="table" usage="output format: table, json, or yaml"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+flag: --slot (string) default="" usage="target slot: refinement or execution"
+
+== strategist provider validate
+use: validate <source>
+short: Validate a local provider package without changing workspace state
+flag: --format (string) default="table" usage="output format: table, json, or yaml"
+
+== strategist runbook
+use: runbook
+short: Operate on the typed docs/runbooks/*.runbook.yaml corpus
+persistent: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist runbook select
+use: select
+short: Select applicable runbooks for the given mission signals
+long: |
+  Scores docs/runbooks/*.runbook.yaml sidecars against mission signals via
+  internal/runbook.Select(), bounded by internal/runbook.DefaultSelectionPolicy()
+  (at most one primary, at most two supporting runbooks, each with a non-empty
+  match reason). This is the select_runbook ability's concrete implementation
+  (see .strategist/roles/ranger.yaml#canonical.select_runbook and
+  contracts/narrative/03-discovery.md § Retrieval Cascade, stage 6).
+  
+  Prints an empty-result message (exit 0) when no runbook sidecar exists yet,
+  or when none match the given signals — neither case is an error.
+flag: --format (string) default="table" usage="output format: table or json"
+flag: --signal (stringArray) default="[]" usage="mission signal to match against runbook applies_when entries (repeatable; at least one required)"
+
+== strategist sync-governance
+use: sync-governance
+short: Sync .strategist/skill.yaml with active SDD governance mandates
+long: |
+  Reads .sdd/ governance mandates and reconciles .strategist/skill.yaml.
+  
+  Checks performed:
+    - Reads .sdd/metadata.json to verify governance fingerprint
+    - Reads .sdd/source/governance-core.json to extract active mandates
+    - Compares active mandates against compliance.mandates in skill.yaml
+    - Applies missing governance fields (validation_policy, budget_policy, telemetry_policy)
+    - Reports drift before applying changes
+  
+  Use --dry-run to preview changes without writing.
+flag: --dry-run (bool) default="false" usage="preview changes without writing"
+flag: --root (string) default="" usage="path to .strategist/ root (default: .strategist)"
+flag: --sdd (string) default="" usage="path to .sdd/ directory (default: .sdd)"
+
+== strategist treasure-chest
+use: treasure-chest
+short: Show treasure chest runtime status and index health
+long: |
+  Show the current treasure chest configuration, governance, index, and compiled artifact status.
+  
+  Default: read-only status view. Merges four runtime truth layers:
+    - .strategist/active.yaml         (configured/scoped chests)
+    - .strategist/treasure-chests.yaml (governed trust and routing policy)
+    - .strategist/knowledge.index.yaml (indexed retrieval sources)
+    - .strategist/.compiled/.index.gz  (compiled fast-path artifact)
+  
+  Use --index to rebuild the compiled knowledge index from declared sources.
+  Use --include-historical with --index to opt in to indexing T2/T3 sources.
+flag: --format (string) default="table" usage="output format: table or json"
+flag: --include-historical (bool) default="false" usage="include T2/T3 historical sources in index rebuild (requires --index)"
+flag: --index (bool) default="false" usage="rebuild compiled knowledge index from declared sources"
+flag: --scope (string) default="" usage="filter output by slot scope (e.g. discovery, refinement, execution)"
+persistent: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist treasure-chest add
+use: add <path>
+short: Register a new treasure chest across active/governed/indexed layers
+long: |
+  Add a treasure chest source, updating active.yaml, treasure-chests.yaml, and
+  knowledge.index.yaml together in one pass. Existing file comments/formatting are preserved.
+  
+  Leaves the compiled index (.compiled/.index.gz) stale unless --index is also passed.
+flag: --id (string) default="" usage="chest id (default: derived from the last path segment)"
+flag: --index (bool) default="false" usage="rebuild the compiled index immediately after adding"
+flag: --reviewed-by (string) default="human" usage="who reviewed this source"
+flag: --scope (string) default="all" usage="slot Scope: all, discovery, refinement, or execution"
+flag: --tags (string) default="" usage="comma-separated task_type tags (default: all)"
+flag: --trust-tier (string) default="T1" usage="trust tier: T0, T1, T2, or T3"
+
+== strategist treasure-chest doctor
+use: doctor
+short: Detect consistency drift across active.yaml, treasure-chests.yaml, and knowledge.index.yaml
+long: |
+  Read-only diagnostic for treasure-chest add/remove consistency.
+  
+  Reports chests present in one of the three registry truth layers
+  (active.yaml, treasure-chests.yaml, knowledge.index.yaml) but missing from
+  another — the divergence a batch write failure can leave behind.
+  
+  Detection only: no automatic repair is attempted. Exits non-zero when any
+  divergence is found.
+
+== strategist treasure-chest index
+use: index
+short: Rebuild the offline knowledge substrate (scan, propose jewels, refresh compiled index)
+long: |
+  Rebuild the offline knowledge substrate from declared sources and mission history.
+  
+  Responsibilities:
+    - Validate configured, governed, indexed, and compiled layers.
+    - Run the internal scan phase over <base_path>/refined/**/tasks.md and <base_path>/done/**.
+    - Detect and polish reusable knowledge units into deduplicated status:proposed jewels.
+    - Rebuild the compiled knowledge index (.strategist/.compiled/.index.gz).
+  
+  Use --include-historical to opt in to indexing T2/T3 sources into the compiled artifact.
+flag: --include-historical (bool) default="false" usage="include T2/T3 historical sources in the compiled index rebuild"
+
+== strategist treasure-chest items
+use: items
+short: Inspect and curate jewels and potions regardless of curation status
+
+== strategist treasure-chest items accept
+use: accept <item-id>...
+short: Promote item ids to status: accepted
+
+== strategist treasure-chest items check-evidence
+use: check-evidence <chest-id>
+short: Advisory scan for expired, duplicate, or conflicting jewels in a chest
+long: |
+  Runs three advisory checks over a chest's non-deprecated jewels:
+    expired    — valid_until has passed
+    duplicate  — same normalized statement (trimmed, case-folded)
+    conflict   — overlapping source_refs with a differing statement or status
+  
+  Never modifies a jewel. Always exits 0, regardless of findings — same
+  advisory-only posture as mission_quality, not a CI gate.
+
+== strategist treasure-chest items deprecate
+use: deprecate <item-id>...
+short: Mark item ids as status: deprecated
+
+== strategist treasure-chest items list
+use: list
+short: List items (jewels and/or potions), optionally filtered by kind, status, or chest
+long: |
+  Lists items across all chests.
+  
+  Without --status: shows proposed, accepted, and verified items (everything "alive").
+  deprecated items are excluded unless --status=all or --status=deprecated is given.
+  Without --kind: shows both jewels and potions.
+flag: --chest (string) default="" usage="filter by chest id"
+flag: --format (string) default="table" usage="output format: table or json"
+flag: --kind (string) default="" usage="filter by item kind: jewel or potion (default: both)"
+flag: --status (string) default="" usage="filter by status: all, proposed, accepted, verified, or deprecated (default: all except deprecated)"
+
+== strategist treasure-chest items migrate-status
+use: migrate-status
+short: One-time migration: rewrite legacy status: active jewels to status: accepted
+
+== strategist treasure-chest items show
+use: show <item-id>
+short: Show a single item's (jewel or potion) full content
+flag: --format (string) default="table" usage="output format: table or json"
+
+== strategist treasure-chest items verify
+use: verify <item-id>...
+short: Promote item ids to status: verified (requires --evidence)
+flag: --evidence (string) default="" usage="evidence reference recorded with verify (jewels only — see PromotePotion)"
+
+== strategist treasure-chest list
+use: list
+short: Show treasure chest runtime status (explicit name for the default view)
+flag: --format (string) default="table" usage="output format: table or json"
+flag: --scope (string) default="" usage="filter output by slot scope (e.g. discovery, refinement, execution)"
+
+== strategist treasure-chest remove
+use: remove [path]
+short: Tombstone a treasure chest (mark inactive, do not hard-delete)
+long: |
+  Remove a treasure chest from active.yaml's active declarations and mark it
+  status: inactive in treasure-chests.yaml and knowledge.index.yaml, preserving an audit
+  trail instead of hard-deleting the entry. Resolve by positional path or --id; if both are
+  given and disagree, the command stops with an ambiguity error.
+flag: --id (string) default="" usage="chest id to remove (alternative to positional path)"
+
+== strategist treasure-chest scan
+use: scan
+hidden: true
+short: [internal] Mine .analysis/refined and .analysis/done for recurring clusters and open gaps
+long: |
+  Internal phase folded into "strategist treasure-chest index" — not part of the
+  public steady-state UX. Kept as a standalone command for debugging/dry-run inspection of
+  the scan phase in isolation.
+  
+  Scan mission history for recurring themes and unresolved side quests.
+  
+  Input: <base_path>/refined/**/tasks.md and <base_path>/done/** only. Never reads
+  <base_path>/pending/ or <base_path>/archived/ reports.
+  
+  Method: lexical/tag matching only. No embeddings, no vector index.
+  
+  Output: .strategist/treasure/clusters/ and .strategist/treasure/gaps/, regenerated from
+  scratch on every run (safe to delete — see docs/configuration.md § Storage Domain).
+  
+  Use --dry-run to preview output without writing to disk.
+flag: --dry-run (bool) default="false" usage="print what would be written without touching disk"
+
+== strategist upgrade
+use: upgrade
+short: Reconcile an installed .strategist/ runtime against the current embedded defaults
+long: |
+  Reconcile an installed .strategist/ runtime against the current embedded
+  defaults across the full runtime tree (unlike a plain "strategist install",
+  which only re-applies the small set of strictly-guarded normative files).
+  
+  Every file is classified before anything is written:
+    managed      matches the current embedded default already — no-op
+    missing      part of current defaults, absent on disk — written
+    auto_upgrade on disk, matches what was last installed, embedded moved on — written
+    customized   on disk, diverges from what was last installed — preserved unless --force
+    orphaned     tracked by a prior install, no longer part of current defaults — reported, never deleted
+  
+  Use --dry-run to see the plan without writing anything. Any file upgrade
+  overwrites (auto_upgrade, or customized with --force) is snapshotted first
+  under .strategist/.upgrade-backups/<timestamp>/ — restore it with
+  "strategist upgrade --rollback <timestamp>" (or --rollback latest).
+flag: --allow-downgrade (bool) default="false" usage="let this binary replace normative files installed by a newer binary (deliberate rollback; default: refuse with runtime_newer_than_binary)"
+flag: --dry-run (bool) default="false" usage="show the upgrade plan without writing anything"
+flag: --force (bool) default="false" usage="also overwrite customized files (default: preserve them)"
+flag: --global (bool) default="false" usage="operate on the global root (default: local project)"
+flag: --rollback (string) default="" usage="restore files from a previous upgrade's backup instead of upgrading (\"latest\" or a specific timestamp from .strategist/.upgrade-backups/)"
+flag: --target (string) default="" usage="target repository root (default: current directory)"
+
+== strategist validate
+use: validate
+short: Validate the .strategist/ configuration tree
+long: |
+  Validate all configuration files inside a .strategist/ directory.
+  
+  Checks performed:
+    - active.yaml: exists, valid YAML, required fields (mode, base_path, slots)
+    - personas/*.yaml: each has tone_directive and phase_labels
+    - roles/*.yaml: each has discovery, refinement, execution slots
+    - knowledge.index.yaml: if present, valid YAML
+flag: --root (string) default="" usage="path to .strategist/ root (default: .strategist)"
+
+== strategist version
+use: version
+short: Print the strategist version
+flag: --build (bool) default="false" usage="also print the commit, platform and embedded OpenSpec runtime of this binary"
+

@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/spf13/cobra"
@@ -77,7 +78,7 @@ counterfactual_answers:
 
 func setHandoffVerifyFlags(t *testing.T, root, transition, policy, challenges, ack, missionID string, attempt int) {
 	t.Helper()
-	require.NoError(t, handoffVerifyCmd.Flags().Set(flagRoot, root))
+	require.NoError(t, handoffVerifyCmd.Flags().Set(cliutil.FlagRoot, root))
 	require.NoError(t, handoffVerifyCmd.Flags().Set("transition", transition))
 	require.NoError(t, handoffVerifyCmd.Flags().Set("policy", policy))
 	require.NoError(t, handoffVerifyCmd.Flags().Set("challenges", challenges))
@@ -368,7 +369,7 @@ func TestPrintHandoffVerifyResult_WriteError(t *testing.T) {
 }
 
 // TestRunHandoffVerify_WithMissionRunSetsSilent covers runHandoffVerify's own
-// "if run := telemetryRunFromCmd(cmd); run != nil { run.SetSilent() }" branch.
+// "if run := cliutil.TelemetryRunFromCmd(cmd); run != nil { run.SetSilent() }" branch.
 func TestRunHandoffVerify_WithMissionRunSetsSilent(t *testing.T) {
 	dir := t.TempDir()
 	testutil.MinimalRoot(t, dir)

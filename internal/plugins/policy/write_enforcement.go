@@ -30,6 +30,28 @@ type WriteScope struct {
 	RuntimeRoot        string
 }
 
+// defaultDocumentationRoot is used when active.yaml declares no
+// documentation_roots.
+const defaultDocumentationRoot = "docs"
+
+// WriteScopeFromActive resolves cfg's base_path and documentation_roots
+// against the project root that contains strategistRoot.
+func WriteScopeFromActive(strategistRoot string, cfg domain.ActiveConfig) (WriteScope, error) {
+	if cfg.BasePath == "" {
+		return WriteScope{}, fmt.Errorf("active.yaml: base_path is empty")
+	}
+	roots := cfg.DocumentationRoots
+	if len(roots) == 0 {
+		roots = []string{defaultDocumentationRoot}
+	}
+	projectRoot := filepath.Dir(strategistRoot)
+	scope := WriteScope{AnalysisRoot: filepath.Join(projectRoot, cfg.BasePath), RuntimeRoot: strategistRoot}
+	for _, root := range roots {
+		scope.DocumentationRoots = append(scope.DocumentationRoots, filepath.Join(projectRoot, root))
+	}
+	return scope, nil
+}
+
 // ClassifyWriteTarget maps a candidate write path to the PluginPermission
 // that governs it, given the mission's configured analysis base_path (read
 // from active.yaml — see domain.ActiveConfig.BasePath; this deliberately

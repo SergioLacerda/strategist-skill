@@ -86,9 +86,9 @@ func (e *MissionEngine) submitEarly(event MissionEngineEvent) error {
 	case MissionEventDiscoveryDone:
 		phaseEvent = EventDiscoveryDone
 	case MissionEventRefinementDone, MissionEventNoTasks,
-		MissionEventGateApproved, MissionEventGateDenied, MissionEventGateTimeout,
+		MissionEventGateApproved, MissionEventGateApprovedAnalysisOnly, MissionEventGateDenied, MissionEventGateTimeout,
 		MissionEventGateRevision, MissionEventHandoffPassed, MissionEventHandoffFailed,
-		MissionEventHandoffExhausted, MissionEventSniperDone, MissionEventRetryOK,
+		MissionEventHandoffExhausted, MissionEventHandoffNotApplicable, MissionEventSniperDone, MissionEventRetryOK,
 		MissionEventSlotTransient, MissionEventSlotPermanent, MissionEventADRCriterion,
 		MissionEventADRApproved, MissionEventADRDeclined:
 		return fmt.Errorf("mission engine: event %q is not an early-pipeline event", event)

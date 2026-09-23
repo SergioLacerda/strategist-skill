@@ -251,4 +251,47 @@ func TestValidateCmd_DefaultRoot(t *testing.T) {
 	assert.Contains(t, err.Error(), "runtime not found")
 }
 
+// runtimeAt moves a minimal valid runtime to <parent>/.strategist and returns
+// the parent (the project root the command discovers it from).
+func runtimeAt(t *testing.T) (project, strategistRoot string) {
+	t.Helper()
+	project = t.TempDir()
+	strategistRoot = filepath.Join(project, ".strategist")
+	require.NoError(t, os.Rename(minimalValidateRoot(t), strategistRoot))
+	return project, strategistRoot
+}
+
+// The discovered root must not be written back to the --root flag variable:
+// otherwise the first invocation's default silently becomes every later
+// invocation's explicit root.
+func TestValidateCmd_DiscoveredRootIsNotStoredInTheFlagVariable(t *testing.T) {
+	orig := validateRoot
+	t.Cleanup(func() { validateRoot = orig })
+	validateRoot = ""
+	project, strategistRoot := runtimeAt(t)
+	chdirForTest(t, project)
+
+	out := captureStdout(t, func() { require.NoError(t, validateCmd.RunE(validateCmd, nil)) })
+
+	assert.Contains(t, out, strategistRoot)
+	assert.Empty(t, validateRoot, "discovery must not overwrite the --root flag variable")
+}
+
+func TestValidateCmd_RediscoversTheRootOnEachInvocation(t *testing.T) {
+	orig := validateRoot
+	t.Cleanup(func() { validateRoot = orig })
+	validateRoot = ""
+
+	firstProject, firstRoot := runtimeAt(t)
+	chdirForTest(t, firstProject)
+	first := captureStdout(t, func() { require.NoError(t, validateCmd.RunE(validateCmd, nil)) })
+	assert.Contains(t, first, firstRoot)
+
+	secondProject, secondRoot := runtimeAt(t)
+	chdirForTest(t, secondProject)
+	second := captureStdout(t, func() { require.NoError(t, validateCmd.RunE(validateCmd, nil)) })
+	assert.Contains(t, second, secondRoot)
+	assert.NotContains(t, second, firstRoot)
+}
+
 // TestCompileCmd_PrintsCompletion verifies the success message path.

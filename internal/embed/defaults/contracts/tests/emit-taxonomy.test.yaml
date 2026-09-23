@@ -22,6 +22,14 @@ invariants:
     description: Pipeline starting is structured debug telemetry
     rule: emits.pipeline_starting == DEBUG
 
+  - id: generic_role_events_are_info
+    description: The generic role events are rendered through the active profile
+    rule: emits.role_start == INFO and emits.role_done == INFO and emits.role_task_done == INFO
+
+  - id: role_aliases_share_the_generic_level
+    description: A listed <role>_start, <role>_done or <role>_task_done key has the level of its generic role event
+    rule: for all listed aliases — emits[alias] == emits[generic]
+
 cases:
   - name: default_profile_hides_telemetry
     given:

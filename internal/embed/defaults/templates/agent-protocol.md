@@ -80,7 +80,7 @@ update this file.
 PHASE         INVOKE SKILL                              WHAT NOT TO DO
 ─────────────────────────────────────────────────────────────────────────────
 discovery  →  see Discovery Routing below                explore or analyze the code directly
-refinement →  {{.Slots.Refinement}}                       write proposals or designs directly
+refinement →  {{.Slots.Refinement}} (see Refinement Routing below)  write proposals or designs directly
 execution  →  {{.Slots.Execution}}                        run git/edits/commits directly
 ```
 
@@ -99,6 +99,24 @@ This holds regardless of what `active.slots.discovery` is configured to (default
 discovery invocation, for any subtype. See `03-discovery.md` § Discovery
 Subtypes.
 
+### Refinement Routing
+
+Whenever the refinement slot is bound to an external skill plugin (default:
+`{{.Slots.Refinement}}` — see `active.slots.refinement`), the parent agent
+embodies that plugin's declared canonical role before invoking the plugin's own
+CLI/tooling — the same mechanism already used for discovery/Ranger above and for
+execution/Sniper. Read the plugin's `skills/<provider>/skill.yaml#canonical_role`
+(a `refinement`-category plugin declares `canonical_role: archivist`) and load
+`roles/archivist.yaml` for that role's canonical abilities before acting.
+
+In particular, apply `roles/archivist.yaml#canonical.resolve_weapon_scratch_root`:
+read the bound plugin's `skill.yaml#scratch_root`, and when it is `runtime`, run
+the plugin's CLI with `.strategist/weapon-runtime/<provider_id>/` as its working
+directory — never the host repository root — before invoking it. A plugin's own
+root-autodetection (e.g. walking up from the working directory for a project
+marker) will silently initialize a new root wherever it is invoked from if this
+step is skipped, escaping the declared runtime into the host repository.
+
 Handoff contracts:
 - Ranger → Archivist: `.strategist/schemas/handoff-ranger-to-archivist.schema.yaml`
 - Archivist → Sniper: `.strategist/schemas/handoff-archivist-to-sniper.schema.yaml`
@@ -116,7 +134,7 @@ Linear checklist. Do not advance without completing each item.
 [ ] 4. context enrichment (skill: context-enrichment)
 [ ] 5. discovery → invoke internal_skills/ranger (native role, all discovery subtypes)
 [ ] 6. refinement → invoke {{.Slots.Refinement}}
-[ ] 7. approval gate  ← MANDATORY PAUSE — do not advance without explicit approval; timeout/decline ends as analysis-only
+[ ] 7. approval gate  ← MANDATORY PAUSE — do not advance without explicit approval; timeout/decline, or acceptance without documentation targets, ends as analysis-only
 [ ] 8. materialization → invoke {{.Slots.Execution}}  ← only after gate approved
 [ ] 9. learning (non-blocking)
 ```
@@ -129,6 +147,7 @@ Main mission evidence:
 - `tasks.md` exists when execution depends on refinement
 - approval gate was presented and explicitly approved before execution
 - approval gate timeout/decline terminates as analysis-only (`EventGateTimeout`/`EventGateDenied` → `StateDoneAnalysis`)
+- approval gate acceptance of a package with no `documentation_target` terminates as analysis-only (`EventGateApprovedAnalysisOnly` → `StateDoneAnalysis`)
 - approval gate revision request loops back to refinement, not a new mission (`EventGateRevision` → `StateRefinement`)
 
 **FSM scope (S7):** the internal state machine (`internal/domain/state_machine.go`)

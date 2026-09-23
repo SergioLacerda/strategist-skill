@@ -65,11 +65,16 @@ func preferredEvidenceClass(ids []string, evidence []domain.Evidence) string {
 func ConfidenceEventID(record ConfidenceRecord) string {
 	ids := append([]string(nil), record.EvidenceIDs...)
 	sort.Strings(ids)
-	seed := strings.Join([]string{
-		record.MissionID, record.Agent, record.ClaimID, record.CorrelationKey,
+	parts := []string{record.MissionID}
+	if record.Run != "" {
+		parts = append(parts, record.Run)
+	}
+	parts = append(parts,
+		record.Agent, record.ClaimID, record.CorrelationKey,
 		record.ClaimKind, fmt.Sprint(record.ConfidencePercent), strings.Join(ids, ","),
 		record.GroundTruthRef, record.GroundTruthKind, record.GroundTruthOutcome,
-	}, "\x00")
+	)
+	seed := strings.Join(parts, "\x00")
 	return fmt.Sprintf("ce-%x", sha256.Sum256([]byte(seed)))
 }
 

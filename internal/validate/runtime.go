@@ -4,6 +4,7 @@
 package validate
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,13 +14,26 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// ActiveYAML validates a .strategist/active.yaml file.
+// ActiveYAML validates a .strategist/active.yaml file. Field rules are owned by
+// domain.ActiveConfig.Validate (the same rules compile and install enforce);
+// this function only adds the mode whitelist, which has no domain owner. Both
+// are reported together so one run lists everything to fix.
 func ActiveYAML(path string) error {
 	cfg, err := readActiveConfigForValidation(path)
 	if err != nil {
 		return err
 	}
-	return validateActiveFields(cfg)
+	var problems []string
+	if err := cfg.Validate(); err != nil {
+		problems = append(problems, err.Error())
+	}
+	if cfg.Mode != "" && cfg.Mode != "pragmatic" && cfg.Mode != "epic" {
+		problems = append(problems, fmt.Sprintf("invalid mode %q (must be pragmatic or epic)", cfg.Mode))
+	}
+	if len(problems) == 0 {
+		return nil
+	}
+	return errors.New(strings.Join(problems, "; "))
 }
 
 func readActiveConfigForValidation(path string) (domain.ActiveConfig, error) {
@@ -35,22 +49,6 @@ func readActiveConfigForValidation(path string) (domain.ActiveConfig, error) {
 		return domain.ActiveConfig{}, fmt.Errorf("invalid YAML: %w", err)
 	}
 	return cfg, nil
-}
-
-func validateActiveFields(cfg domain.ActiveConfig) error {
-	if cfg.Mode == "" {
-		return fmt.Errorf("missing required field: mode")
-	}
-	if cfg.BasePath == "" {
-		return fmt.Errorf("missing required field: base_path")
-	}
-	if len(cfg.Slots) == 0 {
-		return fmt.Errorf("missing required field: slots")
-	}
-	if cfg.Mode != "pragmatic" && cfg.Mode != "epic" {
-		return fmt.Errorf("invalid mode %q (must be pragmatic or epic)", cfg.Mode)
-	}
-	return nil
 }
 
 // PersonasDir validates every *.yaml file under dir as a persona config.

@@ -22,6 +22,8 @@ func TestCmdThinness(t *testing.T) {
 		"sync_governance.go",
 		"sync_governance_report.go",
 		"validate.go",
+		"dojo/dojo.go",
+		"dojo/output.go",
 	}
 
 	fset := token.NewFileSet()

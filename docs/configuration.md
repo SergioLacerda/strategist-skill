@@ -21,6 +21,8 @@ All configuration files live in `.strategist/` inside the installed repository. 
     spec-driven.yaml           Configuration for spec-driven flow
   knowledge.index.yaml         Knowledge sources by task_type
   treasure-chests.yaml         Governed trust/routing/retrieval metadata per chest
+  leveling.yaml                Customer-editable LEVELING model/effort policy
+  .leveling-compat.yaml        Optional, versioned legacy-policy compatibility marker
   memory/
     source-hints.yaml          Learned priority adjustments (learning loop)
   .compiled/                   Compiled artifacts (do not edit manually)
@@ -94,6 +96,110 @@ The `slots:` defines the explicit provider binding and is required. It is equiva
 The discovery slot remains owned by native Ranger. A catalog entry, `skill.yaml`, or static provider report does not authorize an external provider to replace that route. Attempts to onboard an external provider into `discovery` fail closed with `native_role_authority`.
 
 The `treasure_chests` field is optional. Each entry requires `id`, `path`, and `scope`. The `all` scope passes the chest to all slots; specific scopes (`discovery`, `refinement`, `execution`) restrict which slots receive the chest.
+
+## LEVELING
+
+`leveling.yaml` is the customer-editable policy for the `LEVELING` ability. It
+selects a generic capability and effort tier from role signals, then maps the
+result to a ranked provider. The embedded defaults contain exactly two ranked
+examples: `CODEX` and `CLAUDE`.
+
+LEVELING is an internal ability and is active automatically for new
+installations. The install wizard no longer asks the operator to choose
+between manual and automatic resolution; it leaves the optional `leveling:`
+block absent, which resolves to automatic. Existing explicit `manual` or
+`automatic` blocks remain a runtime compatibility contract.
+
+Provider precedence is deterministic: generic role criteria are evaluated first,
+then an exact provider profile is used. A ranked provider without a profile uses
+`defaults.fallback` (the former “item 2” fallback) and never inherits another
+provider's model name. Invalid YAML, unknown effort tiers, or unsupported
+provider mappings fail closed. The install wizard validates the selected
+role/provider bindings against this policy before activation.
+
+```bash
+strategist leveling validate
+strategist leveling suggest --provider CODEX --role ranger --json
+```
+
+`strategist leveling validate --expected-digest <sha256>` fails closed when a
+recorded policy identity no longer matches the runtime file.
+
+The file is seeded by installation and preserved when customized. `strategist
+upgrade` reconciles it with the embedded default while retaining valid customer
+overrides.
+
+Every new installation records the embedded LEVELING version and digest in
+`.install-manifest.json`. The wizard and CLI compare that authority before
+activating a ranked binding; a mismatch is reported as `leveling_policy_stale`
+and never repairs the workspace automatically. If a legacy workspace has an
+untracked custom policy, it must opt in explicitly with:
+
+```yaml
+version: 1
+mode: legacy
+```
+
+saved as `.strategist/.leveling-compat.yaml`. A missing policy or an untracked
+override without this marker fails closed with `leveling_policy_missing`.
+An absent manifest is tolerated when the runtime policy bytes are the embedded
+defaults or when the explicit legacy marker is valid; an unreadable or
+malformed manifest is treated as stale and blocks both CLI and wizard paths.
+The same authority decision is used by both surfaces, so a standalone client
+cannot receive a different answer depending on which command activates the
+binding.
+
+The hermetic test suite exercises Windows-compatible runtime roots (including
+spaces in paths). A native Windows run remains the release validation gate for
+platform-specific permission and executable behavior; it must not be replaced
+by a Git/PATH/network-dependent local check.
+
+### Role level label
+
+Role log lines show the level each role runs at. The value comes from the host
+when it reports the running model and effort, otherwise from the LEVELING
+suggestion for that role; a model id such as `claude-reasoning` is rendered
+through an optional per-model `display` name in `leveling.yaml`. The same
+`model`, `effort` and `level_source` fields are recorded in telemetry.
+
+### Manual or automatic level
+
+New installations do not prompt for this setting. They leave the optional
+`leveling:` block absent, which resolves to `automatic`. Existing workspaces
+may continue to use an explicit mode in `active.yaml`:
+
+```yaml
+leveling:
+  mode: manual            # manual | automatic
+```
+
+- **manual** — each role runs with the model and effort set in the host/prompt;
+  Strategist never changes them. The LEVELING policy is never loaded, so a value
+  the host does not report stays unknown (the level label is then omitted; a
+  missing level never blocks a mission).
+- **automatic** — model and effort vary per role according to each role's
+  estimated load: host-reported values first, then the LEVELING policy completes
+  whatever is missing. `leveling.yaml` and the install authority are loaded only
+  when a value is still missing.
+
+`level_source` records `host` or `policy`. A workspace without a `leveling:`
+block behaves as automatic.
+
+Because personas render in the host chat, where width cannot be measured, the
+default layout is stacked:
+
+```text
+Fase: 01/04
+Ranger
+Sonnet-High
+<message>
+```
+
+The phase counter follows the four-step checkpoint (Ranger 1, Archivist 2,
+Gate 3, Sniper 4); Scout renders `Fase: 00/04` and transport lines omit the
+counter. A renderer that can measure width may use the one-line form
+`Ranger(Sonnet-High) - <message>` when it fits. If no level is known the line
+keeps the unlabelled format and the mission is never blocked.
 
 ---
 

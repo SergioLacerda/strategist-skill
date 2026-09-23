@@ -3,7 +3,6 @@ package install
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
@@ -121,6 +120,10 @@ func collectWizardConfig(p Prompter, catalog pluginCatalog, providerRisk map[str
 	if err != nil {
 		return domain.WizardConfig{}, err
 	}
+	// LEVELING is an internal ability and defaults to automatic when the
+	// optional active.yaml block is absent. Existing explicit manual/automatic
+	// blocks remain readable by the runtime; the new-install wizard does not
+	// expose that compatibility setting as an operator choice.
 	return domain.WizardConfig{Mode: mode, BasePath: basePath, UILanguage: uiLang, DocLanguage: normLang(docLang), ChatLanguage: normLang(chatLang), CodeLanguage: normLang(codeLang), DiscoveryProvider: discovery, RefinementProvider: refinement, ExecutionProvider: execution, DiscoveryMode: discoveryMode, RefinementMode: refinementMode, ExecutionMode: executionMode, TreasureChestPath: chestPath}, nil
 }
 
@@ -151,6 +154,9 @@ func validateAndActivatePluginPlan(extractor domain.FileExtractor, catalog plugi
 	fmt.Println(plan.RoleMigration.Preview())
 	logRoleBindingEvidence(plan.RoleMigration.Evidence())
 	if err := validateWizardRoleBindings(plan.RoleMigration); err != nil {
+		return domain.PluginLockFile{}, fmt.Errorf("wizard: %w", err)
+	}
+	if err := validateWizardLeveling(strategistDir, wc, extractor); err != nil {
 		return domain.PluginLockFile{}, fmt.Errorf("wizard: %w", err)
 	}
 
@@ -185,12 +191,3 @@ func validateAndActivatePluginPlan(extractor domain.FileExtractor, catalog plugi
 // promptLanguages, selectLang, promptWorkspace, promptTreasureChest,
 // promptSlots, and promptProvider live in wizard_prompts.go, split out to
 // keep this file under the repo's file-size budget.
-
-// normLang normalises language input to canonical form: "en" or "pt-BR".
-// Accepts "pt" (skill.yaml canonical) and "pt-BR" (legacy/UI form).
-func normLang(raw string) string {
-	if strings.EqualFold(raw, "pt-BR") || strings.EqualFold(raw, "pt") {
-		return "pt-BR"
-	}
-	return raw
-}

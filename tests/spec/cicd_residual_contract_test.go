@@ -87,7 +87,7 @@ func TestQualityAndSecurityGateContracts(t *testing.T) {
 			t.Fatalf("quality budget script missing %q", needle)
 		}
 	}
-	if !strings.Contains(budgets, "cmd/strategist/dojo.go\t230") {
+	if !strings.Contains(budgets, "treasure-chest/cli/treasure_chest_items.go\t250") {
 		t.Fatalf("quality budget manifest must record reviewed file-size baselines")
 	}
 	if strings.Contains(golangci, "- G304") {

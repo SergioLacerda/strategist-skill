@@ -106,7 +106,7 @@ mention, and it does not execute them.
 
 ## Required Behavior
 
-- before finishing, persist this boundary's confidence: `strategist metrics record --mission <mission_id> --agent sniper --claim-file <file>`,
+- before finishing, persist this boundary's confidence: `strategist metrics record --mission <mission_id> --agent sniper --claim-file -` (claim piped on stdin, never a file under `<base_path>`; see `machine/confidence-governance.yaml#producers.claim_placement`),
   or, when no confidence summary was produced, `strategist metrics record --mission <mission_id> --agent sniper --missing --correlation-key <key> --reason <why>`;
   never finish silently (see `machine/confidence-governance.yaml#producers`)
 - execute claim protocol before any action

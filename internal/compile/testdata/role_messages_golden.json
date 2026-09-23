@@ -1,0 +1,46 @@
+{
+ "epic/en": {
+  "approval_gate_prompt": "{role_level_header}\n🚦 **Gate [{mission_id}]:** AWAITING CONFIRMATION\n\nPlan at: {artifact_path}\n\nReview and confirm? (yes / no / review)\n",
+  "archivist_done": "{role_level_header}\n📚 **Archivist [{mission_id}]:** analysis refined.\nArtifacts at: {artifact_path}\n",
+  "archivist_start": "{role_level_header}\n📚 **Archivist [{mission_id}]:** starting analysis and refinement. skill={provider}\n",
+  "ranger_done": "{role_level_header}\n🎯 **Ranger [{mission_id}]:** reconnaissance complete.\nArtifact at: {artifact_path}\n",
+  "ranger_start": "{role_level_header}\n🎯 **Ranger [{mission_id}]:** starting reconnaissance. skill={provider}\n",
+  "role_level_header": "Fase: {phase_index}/04\n{role_name}\n{model_effort}\n",
+  "sniper_done": "{role_level_header}\n🗡️ **Sniper [{mission_id}]:** documentation materialization complete.\nReport at: {artifact_path}\n",
+  "sniper_start": "{role_level_header}\n🗡️ **Sniper [{mission_id}]:** documentation target confirmed — starting materialization.\n",
+  "sniper_task_done": "{role_level_header}\n🗡️ **Sniper [{mission_id}]:** target {done}/{total} materialized — {task_title}\n"
+ },
+ "epic/pt-BR": {
+  "approval_gate_prompt": "{role_level_header}\n🚦 **Gate [{mission_id}]:** AGUARDANDO CONFIRMAÇÃO\n\nPlano em: {artifact_path}\n\nRevisar e confirmar? (sim / nao / revisar)",
+  "archivist_done": "{role_level_header}\n📚 **Archivist [{mission_id}]:** análise refinada.\nArtefatos em: {artifact_path}",
+  "archivist_start": "{role_level_header}\n📚 **Archivist [{mission_id}]:** iniciando análise e refinamento. skill={provider}",
+  "ranger_done": "{role_level_header}\n🎯 **Ranger [{mission_id}]:** missão de reconhecimento concluída.\nArtefato em: {artifact_path}",
+  "ranger_start": "{role_level_header}\n🎯 **Ranger [{mission_id}]:** iniciando reconhecimento. skill={provider}",
+  "role_level_header": "Fase: {phase_index}/04\n{role_name}\n{model_effort}",
+  "sniper_done": "{role_level_header}\n🗡️ **Sniper [{mission_id}]:** materialização de documentação concluída.\nRelatório em: {artifact_path}",
+  "sniper_start": "{role_level_header}\n🗡️ **Sniper [{mission_id}]:** alvo confirmado — iniciando materialização de documentação.",
+  "sniper_task_done": "{role_level_header}\n🗡️ **Sniper [{mission_id}]:** alvo {done}/{total} materializado — {task_title}"
+ },
+ "pragmatic/en": {
+  "approval_gate_prompt": "{role_level_header}\n[{mission_id}] Plan at: {artifact_path}\n\nReview and confirm? (yes / no / review)\n",
+  "archivist_done": "{role_level_header}\n[{mission_id}] Refinement done. Artifacts: {artifact_path}\n",
+  "archivist_start": "{role_level_header}\n[{mission_id}] Analyst started refinement. Provider: {provider}.\n",
+  "ranger_done": "{role_level_header}\n[{mission_id}] Discovery done. Artifact: {artifact_path}\n",
+  "ranger_start": "{role_level_header}\n[{mission_id}] Analyst started discovery. Provider: {provider}.\n",
+  "role_level_header": "Fase: {phase_index}/04\n{role_name}\n{model_effort}\n",
+  "sniper_done": "{role_level_header}\n[{mission_id}] Documentation materialized. Report: {artifact_path}\n",
+  "sniper_start": "{role_level_header}\n[{mission_id}] Sniper materializing documentation.\n",
+  "sniper_task_done": null
+ },
+ "pragmatic/pt-BR": {
+  "approval_gate_prompt": "{role_level_header}\n🚦 **Gate [{mission_id}]:** AGUARDANDO CONFIRMAÇÃO\n\nPlano em: {artifact_path}\n\nRevisar e confirmar? (sim / nao / revisar)",
+  "archivist_done": "{role_level_header}\n📚 **Archivist [{mission_id}]:** análise refinada.\nArtefatos em: {artifact_path}",
+  "archivist_start": "{role_level_header}\n📚 **Archivist [{mission_id}]:** iniciando análise e refinamento. skill={provider}",
+  "ranger_done": "{role_level_header}\n🎯 **Ranger [{mission_id}]:** missão de reconhecimento concluída.\nArtefato em: {artifact_path}",
+  "ranger_start": "{role_level_header}\n🎯 **Ranger [{mission_id}]:** iniciando reconhecimento. skill={provider}",
+  "role_level_header": "Fase: {phase_index}/04\n{role_name}\n{model_effort}",
+  "sniper_done": "{role_level_header}\n🗡️ **Sniper [{mission_id}]:** materialização de documentação concluída.\nRelatório em: {artifact_path}",
+  "sniper_start": "{role_level_header}\n🗡️ **Sniper [{mission_id}]:** alvo confirmado — iniciando materialização de documentação.",
+  "sniper_task_done": "{role_level_header}\n🗡️ **Sniper [{mission_id}]:** alvo {done}/{total} materializado — {task_title}"
+ }
+}

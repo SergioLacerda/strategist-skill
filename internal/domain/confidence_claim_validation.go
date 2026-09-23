@@ -3,6 +3,7 @@ package domain
 import (
 	"errors"
 	"fmt"
+	"strings"
 )
 
 // ValidateConfidenceClaim enforces the fail-closed language/evidence rules at
@@ -124,7 +125,7 @@ func validateEvidenceClasses(classes []string) []error {
 	var errs []error
 	for i, class := range classes {
 		if _, ok := allowedEvidenceClasses[class]; !ok {
-			errs = append(errs, fmt.Errorf("confidence_invalid: evidence_classes[%d] %q is not allowed", i, class))
+			errs = append(errs, fmt.Errorf("confidence_invalid: evidence_classes[%d] %q is not allowed (want one of %s)", i, class, strings.Join(orderedEvidenceClasses, ", ")))
 		}
 	}
 	return errs

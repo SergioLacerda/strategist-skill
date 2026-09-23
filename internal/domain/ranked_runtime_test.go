@@ -34,6 +34,12 @@ func TestValidateOpenSpecHealthcheckAcceptsSemanticContainerRoot(t *testing.T) {
 	require.NoError(t, ValidateOpenSpecHealthcheck([]byte(output), runtimeRoot))
 }
 
+func TestValidateOpenSpecHealthcheckAcceptsWarningPrefix(t *testing.T) {
+	runtimeRoot := filepath.Join(t.TempDir(), ".strategist", "openspec")
+	output := "Warning: Node experimental feature enabled\n" + `{"root":{"path":"` + filepath.ToSlash(filepath.Dir(runtimeRoot)) + `"}}`
+	require.NoError(t, ValidateOpenSpecHealthcheck([]byte(output), runtimeRoot))
+}
+
 func TestValidateOpenSpecHealthcheckIsPathFormIndependent(t *testing.T) {
 	base := t.TempDir()
 	physical := filepath.Join(base, "real", ".strategist")

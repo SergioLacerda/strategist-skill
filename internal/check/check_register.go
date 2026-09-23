@@ -6,9 +6,10 @@ func init() {
 	checkCmd.Flags().StringVar(&checkRoot, "root", "", "path to .strategist/ root (default: .strategist)")
 	checkCmd.Flags().BoolVar(&checkStrict, "strict", false, "additionally require compiled artifacts to exist and match the recorded manifest hashes")
 	checkCmd.Flags().BoolVar(&checkSimulate, "simulate", false, "print a readiness report (per-slot/persona status) instead of the pass/fail banner; does not run missions or mutate mission state; ranked providers may run their own healthcheck command, which can create provider-home directories under the runtime root")
-	checkCmd.Flags().BoolVar(&checkJSON, "json", false, "print one domain.PreflightResult JSON object ({schema_version, status, identity, bindings, warnings, next}) instead of the human-readable banner; does not run missions or mutate mission state; ranked providers may run their own healthcheck command, which can create provider-home directories under the runtime root")
+	checkCmd.Flags().BoolVar(&checkJSON, "json", false, "print one domain.PreflightResult JSON object ({schema_version, status, identity, bindings, language, warnings, next}) instead of the human-readable banner; does not run missions or mutate mission state; ranked providers may run their own healthcheck command, which can create provider-home directories under the runtime root")
 	checkCmd.Flags().StringVar(&checkPrintContentByLang, "print-content-by-lang", "", "print personas.<persona>.content_by_lang.<lang> and phase_announcements.<lang> from the compiled artifact as JSON and exit; use this instead of reading persona YAML directly to resolve non-English chat templates and mission narration lines")
 	checkCmd.Flags().StringVar(&checkPrintContentByLangPersona, "persona", "", "persona/mode to read with --print-content-by-lang (default: active.yaml's mode)")
+	checkCmd.Flags().StringVar(&checkConfirmChatLanguage, "confirm-chat-language", "", "acknowledge the chat language the invoking agent read and intends to use; if it does not match active.yaml's language.chat, check fails with warning=chat_language_mismatch instead of silently drifting")
 }
 
 // Register attaches this package's top-level commands (check, check-stale)

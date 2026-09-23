@@ -2,17 +2,38 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/spf13/cobra"
 )
 
-func requireMissionID(id string) error {
+// missionIDPattern restricts --mission-id to the same safe character set
+// GenerateMissionID (internal/install/mission_id.go) produces:
+// lowercase/digits/hyphens. This also protects filesystem lookups keyed by
+// the id (missionPath, missionIDKnown's filepath.Glob) from path-traversal or
+// glob-metacharacter injection via an operator-supplied string.
+var missionIDPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]*$`)
+
+// validateMissionID is the single --mission-id check shared by every mission
+// subcommand. It returns an unprefixed error; callers add their command prefix.
+func validateMissionID(id string) error {
+	if id == "" {
+		return errors.New("--mission-id is required")
+	}
 	if !missionIDPattern.MatchString(id) {
-		return fmt.Errorf("mission: --mission-id must use lowercase letters, digits, and hyphens")
+		return fmt.Errorf("--mission-id %q is malformed (want lowercase letters, digits, and hyphens, e.g. 20260830-skill-gaps-triage)", id)
+	}
+	return nil
+}
+
+func requireMissionID(id string) error {
+	if err := validateMissionID(id); err != nil {
+		return fmt.Errorf("mission: %w", err)
 	}
 	return nil
 }

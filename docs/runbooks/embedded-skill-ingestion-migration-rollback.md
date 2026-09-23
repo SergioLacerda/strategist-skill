@@ -10,7 +10,7 @@ of user data.
 
 ## Applies to
 
-- `strategist plugin prepare-embedded`
+- `strategist plugins prepare-embedded`
 - the repository target that prepares embedded skills before build
 - release failures involving embedded skill artifacts or generated catalogs
 - migration of legacy Treasure Chest data to the external skill

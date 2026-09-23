@@ -72,6 +72,12 @@ adr:
 `, wc.AdrCanonicalPath)
 	}
 
+	levelingBlock, err := levelingActiveYAML(wc.Leveling)
+	if err != nil {
+		return err
+	}
+	content += levelingBlock
+
 	return writeActiveYAMLBytes(strategistDir, []byte(content))
 }
 

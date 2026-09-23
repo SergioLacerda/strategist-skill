@@ -1,5 +1,20 @@
 role: sniper
 slot: execution
+phase: 4                        # the approval gate is step 3, immediately before this role
+pluggable: false               # native role today; no external provider
+on_start:                       # run when this role's phase starts; {role} and {mission_id} are substituted.
+                                 # --host-model/--host-effort are a literal reminder to fill in with the
+                                 # actual running model/effort — the CLI cannot infer them, and omitting
+                                 # them silently returns blank fields.
+  - strategist leveling label --role {role} --mission {mission_id} --host-model <your-model> --host-effort <your-effort>
+# leveling: sniper
+
+# INITIATIVE is advisory metadata only; Approval Gate acceptance remains
+# independent and implementation authorization remains outside this ability.
+initiative:
+  on_start: consume_advice
+  on_result: emit_initiative_result
+  preserve: [advice_id, policy_version, policy_digest, deviations, evidence_refs]
 
 
 # Canonical behaviors — read-only, source in skill.yaml.
@@ -18,7 +33,8 @@ canonical:
 
 # Contract
 must:
-  - persist confidence at this boundary before finishing with `strategist metrics record --mission <mission_id> --agent sniper --claim-file <file>`;
+  - "at phase start run the role's on_start commands to resolve and record the model x effort level, and show the role level header when the level is known (a missing level never blocks the mission)"
+  - persist confidence at this boundary before finishing with `strategist metrics record --mission <mission_id> --agent sniper --claim-file -` (claim piped on stdin, never a file under `<base_path>`; see `machine/confidence-governance.yaml#producers.claim_placement`);
     when no confidence summary exists, emit `--missing --correlation-key <key> --reason <why>` instead
   - declare the active documentation task at the start of each loop
   - materialize only the single declared active documentation target

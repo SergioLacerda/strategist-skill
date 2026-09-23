@@ -59,7 +59,7 @@ emit:
   confidence_record:
     description: >
       After route_decision, persist Scout's confidence for the routing boundary:
-      `strategist metrics record --mission <mission_id> --agent scout --claim-file <file>`
+      `strategist metrics record --mission <mission_id> --agent scout --claim-file -` (claim piped on stdin, never a file under `<base_path>`; see `machine/confidence-governance.yaml#producers.claim_placement`)
       or `--missing --correlation-key scout-route --reason <why>`. Scout must never
       finish silently (confidence-governance.yaml#producers). Advisory only.
   on_route_selected:

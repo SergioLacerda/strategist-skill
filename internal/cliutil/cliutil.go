@@ -102,6 +102,26 @@ func BoolFlag(cmd *cobra.Command, name string, fallback bool) bool {
 	return fallback
 }
 
+// LoadActiveConfig reads and parses active.yaml from strategistRoot without
+// validating it, so callers that need only one block (for example `leveling:`)
+// share one parser instead of each unmarshalling the file. A missing file wraps
+// os.ErrNotExist so callers can tell it from a malformed one.
+func LoadActiveConfig(strategistRoot string) (domain.ActiveConfig, error) {
+	activeYamlPath, err := runtimefs.SafeJoin(strategistRoot, "active.yaml")
+	if err != nil {
+		return domain.ActiveConfig{}, fmt.Errorf("resolve active.yaml path: %w", err)
+	}
+	raw, err := os.ReadFile(activeYamlPath) //nolint:gosec // G304: path validated by runtimefs.SafeJoin, confined to strategistRoot
+	if err != nil {
+		return domain.ActiveConfig{}, fmt.Errorf("read active.yaml: %w", err)
+	}
+	var cfg domain.ActiveConfig
+	if err := yaml.Unmarshal(raw, &cfg); err != nil {
+		return domain.ActiveConfig{}, fmt.Errorf("parse active.yaml: %w", err)
+	}
+	return cfg, nil
+}
+
 // ResolveActiveBasePath reads active.yaml from strategistRoot (defaulting to
 // ".strategist" when empty) and resolves its base_path to an absolute-or-
 // root-relative path. Returns the resolved strategistRoot and basePath.
@@ -111,17 +131,9 @@ func ResolveActiveBasePath(root string) (strategistRoot, basePath string, err er
 		return "", "", err
 	}
 
-	activeYamlPath, err := runtimefs.SafeJoin(strategistRoot, "active.yaml")
+	cfg, err := LoadActiveConfig(strategistRoot)
 	if err != nil {
-		return "", "", fmt.Errorf("resolve active.yaml path: %w", err)
-	}
-	raw, err := os.ReadFile(activeYamlPath) //nolint:gosec // G304: path validated by runtimefs.SafeJoin, confined to strategistRoot
-	if err != nil {
-		return "", "", fmt.Errorf("read active.yaml: %w", err)
-	}
-	var cfg domain.ActiveConfig
-	if err := yaml.Unmarshal(raw, &cfg); err != nil {
-		return "", "", fmt.Errorf("parse active.yaml: %w", err)
+		return "", "", err
 	}
 	if cfg.BasePath == "" {
 		return "", "", fmt.Errorf("active.yaml: base_path is empty")

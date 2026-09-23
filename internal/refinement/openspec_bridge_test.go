@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,8 +35,11 @@ func TestNormalizeOpenSpecPublishesCanonicalPackageAndPromotesPending(t *testing
 	require.ErrorIs(t, err, os.ErrNotExist)
 	_, err = os.Stat(filepath.Join(result.RefinedPath, "specs"))
 	require.ErrorIs(t, err, os.ErrNotExist)
-	_, err = os.Stat(filepath.Join(runtime, "changes", "archive"))
-	require.ErrorIs(t, err, os.ErrNotExist)
+	_, err = os.Stat(changeDir)
+	require.ErrorIs(t, err, os.ErrNotExist, "a published change leaves the active list")
+	archived, err := filepath.Glob(filepath.Join(runtime, "changes", "archive", "*-"+change))
+	require.NoError(t, err)
+	assert.Len(t, archived, 1, "it is moved to changes/archive/<date>-<id>")
 }
 
 func TestNormalizeOpenSpecRejectsEscapingAndPartialOutput(t *testing.T) {

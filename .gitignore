@@ -25,6 +25,11 @@ generated/
 # Stray local build of the CLI binary at repo root (bin/strategist is the
 # documented, intentional build output location per CONTRIBUTING.md)
 /strategist
+# Same mistake, one level down: `go build` (or `go build .`) run from inside
+# cmd/strategist/ itself, with no -o, names the output after the package
+# directory and drops it right there. This one was previously committed by
+# accident (commit 4e83ede) since /strategist above doesn't reach it.
+/cmd/strategist/strategist
 # Local CLI build output. Release binaries are published through GitHub Releases.
 /bin/
 # GoReleaser output (local `goreleaser build/release --clean` runs)

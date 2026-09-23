@@ -1,5 +1,21 @@
 role: ranger
 slot: discovery
+phase: 1                        # checkpoint position (0 is pre-pipeline)
+pluggable: true                # an external provider may fill this role
+handoff_schema: schemas/handoff-ranger-to-archivist.schema.yaml
+on_start:                       # run when this role's phase starts; {role} and {mission_id} are substituted.
+                                 # --host-model/--host-effort are a literal reminder to fill in with the
+                                 # actual running model/effort — the CLI cannot infer them, and omitting
+                                 # them silently returns blank fields.
+  - strategist leveling label --role {role} --mission {mission_id} --host-model <your-model> --host-effort <your-effort>
+# leveling: ranger             # optional LEVELING policy role; defaults to the role id
+
+# INITIATIVE is consultative: resolve one advice envelope at role entry and
+# carry its advice_id through the run. It never replaces the LEVELING tuple.
+initiative:
+  on_start: resolve_advice
+  on_result: emit_initiative_result
+  preserve: [advice_id, policy_version, policy_digest, alignment, evidence_refs]
 
 # Canonical behaviors — read-only, source in skill.yaml.
 # Listed here for reference when writing custom_brief below.
@@ -32,7 +48,8 @@ canonical:
 
 # Contract
 must:
-  - persist confidence at this boundary before finishing with `strategist metrics record --mission <mission_id> --agent ranger --claim-file <file>`;
+  - "at phase start run the role's on_start commands to resolve and record the model x effort level, and show the role level header when the level is known (a missing level never blocks the mission)"
+  - persist confidence at this boundary before finishing with `strategist metrics record --mission <mission_id> --agent ranger --claim-file -` (claim piped on stdin, never a file under `<base_path>`; see `machine/confidence-governance.yaml#producers.claim_placement`);
     when no confidence summary exists, emit `--missing --correlation-key <key> --reason <why>` instead
   - load mission_contract and respect token_strategy.mode for context budget
   - separate facts, hypotheses, and ambiguities clearly

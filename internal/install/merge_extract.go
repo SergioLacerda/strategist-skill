@@ -133,8 +133,13 @@ func (s Service) writeUpgradeFiles(strategistDir string, paths []string) error {
 // (no Lister configured), so the manifest keeps its historical narrower
 // (normative-only) shape for backward compatibility.
 func buildInstallManifest(pkgID string, plan runtimeDefaultPlan, fullHashes map[string]string) domain.InstallManifest {
+	var manifest domain.InstallManifest
 	if fullHashes != nil {
-		return domain.NewFullInstallManifest(pkgID, fullHashes)
+		manifest = domain.NewFullInstallManifest(pkgID, fullHashes)
+	} else {
+		manifest = domain.NewInstallManifest(pkgID, plan.embeddedHashes)
 	}
-	return domain.NewInstallManifest(pkgID, plan.embeddedHashes)
+	manifest.LevelingPolicyVersion = plan.levelingVersion
+	manifest.LevelingPolicyDigest = plan.levelingDigest
+	return manifest
 }

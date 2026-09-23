@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
 	"testing"
 
+	missionadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
 	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,38 +31,16 @@ func setupMissionReportUsageRoot(t *testing.T, missionID string) (strategistRoot
 	return strategistRoot
 }
 
-func setMissionReportUsageFlags(t *testing.T, root, missionID string, tokensIn, tokensOut int64) {
-	t.Helper()
-	require.NoError(t, missionReportUsageCmd.Flags().Set(flagRoot, root))
-	require.NoError(t, missionReportUsageCmd.Flags().Set("mission-id", missionID))
-	require.NoError(t, missionReportUsageCmd.Flags().Set("tokens-in", strconv.FormatInt(tokensIn, 10)))
-	require.NoError(t, missionReportUsageCmd.Flags().Set("tokens-out", strconv.FormatInt(tokensOut, 10)))
-}
-
-// resetMissionReportUsageFlags restores every flag to its zero/default
-// state and clears Changed(), since missionReportUsageCmd is a package-level
-// singleton shared across tests (same pattern as
-// resetHandoffVerifyFlags/handoff_verify_test.go).
-func resetMissionReportUsageFlags(t *testing.T) {
-	t.Helper()
-	require.NoError(t, missionReportUsageCmd.Flags().Set(flagRoot, ""))
-	require.NoError(t, missionReportUsageCmd.Flags().Set("mission-id", ""))
-	require.NoError(t, missionReportUsageCmd.Flags().Set("tokens-in", "0"))
-	require.NoError(t, missionReportUsageCmd.Flags().Set("tokens-out", "0"))
-	missionReportUsageCmd.Flags().Lookup(flagRoot).Changed = false
-	missionReportUsageCmd.Flags().Lookup("mission-id").Changed = false
-	missionReportUsageCmd.Flags().Lookup("tokens-in").Changed = false
-	missionReportUsageCmd.Flags().Lookup("tokens-out").Changed = false
+// reportUsageArgs builds `report-usage` args for executeMission.
+func reportUsageArgs(root, missionID string, tokensIn, tokensOut int64) []string {
+	return []string{"report-usage", "--root", root, "--mission-id", missionID,
+		"--tokens-in", strconv.FormatInt(tokensIn, 10), "--tokens-out", strconv.FormatInt(tokensOut, 10)}
 }
 
 func TestMissionReportUsageCmd_RecordsRealTokenCounts(t *testing.T) {
 	root := setupMissionReportUsageRoot(t, "20260830-real-mission")
-	setMissionReportUsageFlags(t, root, "20260830-real-mission", 4096, 2048)
-	t.Cleanup(func() { resetMissionReportUsageFlags(t) })
-
-	out := captureStdout(t, func() {
-		require.NoError(t, missionReportUsageCmd.RunE(missionReportUsageCmd, nil))
-	})
+	out, err := executeMission(t, reportUsageArgs(root, "20260830-real-mission", 4096, 2048)...)
+	require.NoError(t, err)
 	assert.Contains(t, out, "mission_id=20260830-real-mission")
 	assert.Contains(t, out, "tokens_in=4096")
 	assert.Contains(t, out, "tokens_out=2048")
@@ -76,71 +56,52 @@ func TestMissionReportUsageCmd_RecordsRealTokenCounts(t *testing.T) {
 
 func TestMissionReportUsageCmd_RejectsUnknownMissionID(t *testing.T) {
 	root := setupMissionReportUsageRoot(t, "") // no mission directory created
-	setMissionReportUsageFlags(t, root, "20260830-does-not-exist", 10, 10)
-	t.Cleanup(func() { resetMissionReportUsageFlags(t) })
-
-	err := missionReportUsageCmd.RunE(missionReportUsageCmd, nil)
+	_, err := executeMission(t, reportUsageArgs(root, "20260830-does-not-exist", 10, 10)...)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown mission_id")
 }
 
 func TestMissionReportUsageCmd_RejectsNegativeTokens(t *testing.T) {
 	root := setupMissionReportUsageRoot(t, "20260830-neg-mission")
-	setMissionReportUsageFlags(t, root, "20260830-neg-mission", -1, 10)
-	t.Cleanup(func() { resetMissionReportUsageFlags(t) })
-
-	err := missionReportUsageCmd.RunE(missionReportUsageCmd, nil)
+	_, err := executeMission(t, reportUsageArgs(root, "20260830-neg-mission", -1, 10)...)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "tokens-in")
 }
 
 func TestMissionReportUsageCmd_RejectsMalformedMissionID(t *testing.T) {
 	root := setupMissionReportUsageRoot(t, "")
-	setMissionReportUsageFlags(t, root, "Not A Valid Id!!", 10, 10)
-	t.Cleanup(func() { resetMissionReportUsageFlags(t) })
-
-	err := missionReportUsageCmd.RunE(missionReportUsageCmd, nil)
+	_, err := executeMission(t, reportUsageArgs(root, "Not A Valid Id!!", 10, 10)...)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "malformed")
 }
 
 func TestMissionReportUsageCmd_RequiresMissionID(t *testing.T) {
 	root := setupMissionReportUsageRoot(t, "")
-	setMissionReportUsageFlags(t, root, "", 10, 10)
-	t.Cleanup(func() { resetMissionReportUsageFlags(t) })
-
-	err := missionReportUsageCmd.RunE(missionReportUsageCmd, nil)
+	_, err := executeMission(t, reportUsageArgs(root, "", 10, 10)...)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "--mission-id is required")
 }
 
 func TestMissionReportUsageCmd_RequiresTokensInFlag(t *testing.T) {
 	root := setupMissionReportUsageRoot(t, "20260830-req-mission")
-	t.Cleanup(func() { resetMissionReportUsageFlags(t) })
-	require.NoError(t, missionReportUsageCmd.Flags().Set(flagRoot, root))
-	require.NoError(t, missionReportUsageCmd.Flags().Set("mission-id", "20260830-req-mission"))
-	require.NoError(t, missionReportUsageCmd.Flags().Set("tokens-out", "10"))
 	// --tokens-in deliberately left unset (Changed()==false).
-
-	err := missionReportUsageCmd.RunE(missionReportUsageCmd, nil)
+	_, err := executeMission(t, "report-usage", "--root", root, "--mission-id", "20260830-req-mission", "--tokens-out", "10")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "--tokens-in is required")
 }
 
-// TestRunMissionReportUsage_WithMissionRunSetsSilent covers runMissionReportUsage's
-// "if run := telemetryRunFromCmd(cmd); run != nil { run.SetSilent() }" branch.
+// TestRunMissionReportUsage_WithMissionRunSetsSilent covers the wired
+// SilenceRun dependency: "if run := cliutil.TelemetryRunFromCmd(cmd); run != nil {
+// run.SetSilent() }".
 func TestRunMissionReportUsage_WithMissionRunSetsSilent(t *testing.T) {
 	root := setupMissionReportUsageRoot(t, "20260830-silent-mission")
-	attachMissionRun(t, missionReportUsageCmd)
-	setMissionReportUsageFlags(t, root, "20260830-silent-mission", 1, 1)
-	t.Cleanup(func() { resetMissionReportUsageFlags(t) })
-
-	out := captureStdout(t, func() {
-		require.NoError(t, runMissionReportUsage(missionReportUsageCmd, missionReportUsageOptions{
-			Root: root, MissionID: "20260830-silent-mission", TokensIn: 1, TokensOut: 1,
-		}))
-	})
-	assert.Contains(t, out, "recorded")
+	cmd := missionadapter.NewReportUsage(missionReportUsageDependencies())
+	attachMissionRun(t, cmd)
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetArgs(reportUsageArgs(root, "20260830-silent-mission", 1, 1)[1:])
+	require.NoError(t, cmd.Execute())
+	assert.Contains(t, out.String(), "recorded")
 }
 
 // TestMissionReportUsageCmd_RootResolutionErrorPropagates covers
@@ -148,10 +109,7 @@ func TestRunMissionReportUsage_WithMissionRunSetsSilent(t *testing.T) {
 // != nil { return fmt.Errorf(...) }" branch: --root points at a directory
 // with no active.yaml.
 func TestMissionReportUsageCmd_RootResolutionErrorPropagates(t *testing.T) {
-	setMissionReportUsageFlags(t, t.TempDir(), "20260830-no-active-yaml", 1, 1)
-	t.Cleanup(func() { resetMissionReportUsageFlags(t) })
-
-	err := missionReportUsageCmd.RunE(missionReportUsageCmd, nil)
+	_, err := executeMission(t, reportUsageArgs(t.TempDir(), "20260830-no-active-yaml", 1, 1)...)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "mission report-usage")
 }
@@ -166,10 +124,7 @@ func TestMissionReportUsageCmd_AppendErrorPropagates(t *testing.T) {
 	}
 	root := setupMissionReportUsageRoot(t, "20260830-blocked-mission")
 	require.NoError(t, os.WriteFile(filepath.Join(root, "memory"), []byte("x"), 0o644))
-	setMissionReportUsageFlags(t, root, "20260830-blocked-mission", 1, 1)
-	t.Cleanup(func() { resetMissionReportUsageFlags(t) })
-
-	err := missionReportUsageCmd.RunE(missionReportUsageCmd, nil)
+	_, err := executeMission(t, reportUsageArgs(root, "20260830-blocked-mission", 1, 1)...)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "mission report-usage")
 }
@@ -180,11 +135,12 @@ func TestMissionReportUsageCmd_AppendErrorPropagates(t *testing.T) {
 // %w", err) }" branch.
 func TestMissionReportUsageCmd_WriteOutputErrorPropagates(t *testing.T) {
 	root := setupMissionReportUsageRoot(t, "20260830-write-err-mission")
-	setMissionReportUsageFlags(t, root, "20260830-write-err-mission", 5, 5)
-	t.Cleanup(func() { resetMissionReportUsageFlags(t); missionReportUsageCmd.SetOut(nil) })
-	missionReportUsageCmd.SetOut(errorWriter{})
+	cmd := newWiredMissionCommand()
+	cmd.SetOut(errorWriter{})
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs(reportUsageArgs(root, "20260830-write-err-mission", 5, 5))
 
-	err := missionReportUsageCmd.RunE(missionReportUsageCmd, nil)
+	err := cmd.Execute()
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "write output")
 }
@@ -195,8 +151,4 @@ func TestMissionIDKnown(t *testing.T) {
 
 	assert.True(t, missionIDKnown(dir, "m-known"))
 	assert.False(t, missionIDKnown(dir, "m-unknown"))
-}
-
-func TestMissionCmd_IsHumanStatusCommand(t *testing.T) {
-	assert.False(t, isHumanStatusCommand(missionCmd))
 }

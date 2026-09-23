@@ -51,7 +51,7 @@ slots:
 `), 0o644))
 	err := ActiveYAML(filepath.Join(dir, "active.yaml"))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "missing required field: mode")
+	assert.Contains(t, err.Error(), "mode is required")
 }
 
 func TestValidateActiveYAML_MissingBasePath(t *testing.T) {
@@ -63,7 +63,7 @@ slots:
 `), 0o644))
 	err := ActiveYAML(filepath.Join(dir, "active.yaml"))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "missing required field: base_path")
+	assert.Contains(t, err.Error(), "base_path is required")
 }
 
 func TestValidateActiveYAML_MissingSlots(t *testing.T) {
@@ -74,7 +74,7 @@ base_path: .analysis
 `), 0o644))
 	err := ActiveYAML(filepath.Join(dir, "active.yaml"))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "missing required field: slots")
+	assert.Contains(t, err.Error(), "slots must have at least one entry")
 }
 
 func TestValidatePersonasDir_MissingDir(t *testing.T) {

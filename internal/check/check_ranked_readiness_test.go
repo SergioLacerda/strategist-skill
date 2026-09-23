@@ -346,6 +346,7 @@ func TestHostNodeRankedRuntimeHealthcheckRealOpenSpecPathForms(t *testing.T) {
 		"symlink":  filepath.Join(link, ".strategist", "openspec"),
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel() // cwd was fixed once by the parent's t.Chdir above; each subtest only reads it via a different root arg
 			result := runHostNodeRankedRuntimeHealthcheck(strategist, root, "openspec-propose", hostNodeContract(), state)
 			require.True(t, result.Ready(), result.Detail)
 		})
@@ -538,7 +539,12 @@ func TestRankedHealthcheckTimeoutIsConfigurableAndBounded(t *testing.T) {
 
 func TestRankedHealthcheckReportsATimeoutDistinctFromAFailure(t *testing.T) {
 	sleep := absoluteTool(t, "sleep")
-	strategist, runtimeRoot, state := hostRuntimeFixture(t, fakeHostNode("22.23.2", sleep+" 5"))
+	// 1s, not the timeout being tested (300ms): the process-group kill in
+	// runtimeenv.PrivateCommand (see command_unix.go) now reaps this
+	// grandchild on cancellation, so the exact duration no longer dominates
+	// the test's wall time — kept short only as a margin against a platform
+	// where that fix is a no-op (command_windows.go).
+	strategist, runtimeRoot, state := hostRuntimeFixture(t, fakeHostNode("22.23.2", sleep+" 1"))
 	t.Setenv(rankedHealthcheckTimeoutEnv, "300ms")
 
 	got := runHostNodeRankedRuntimeHealthcheck(strategist, runtimeRoot, "openspec-propose", hostNodeContract(), state)

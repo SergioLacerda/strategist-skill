@@ -39,6 +39,19 @@ itself a provenance-tracked manifest entry).
 | `strategist check`'s hash/fingerprint comparisons | `byte`, `provenance` | Two independent mechanisms: `internal/integrity` compares `active.yaml`'s current SHA256/size/mtime against the fingerprint sealed in `.config.lock` at the last CLI-trusted write (`ReasonUnmodified` = no drift) — byte identity plus provenance (did this file change since the CLI itself sealed it, not just "is it byte-different from something"). `internal/check/check_runtime.go#validateRuntimeDefaultParity` compares each on-disk runtime file's exact bytes against the embedded default and, on mismatch, classifies via `domain.RuntimeDefaultDecision` (`auto_upgrade` if the on-disk SHA256 matches the install manifest's recorded original, `conflict` otherwise) — byte comparison first, provenance classification second. |
 | `strategist check-stale` (`internal/stale`) | `byte`, `provenance` | `checkManifest` compares a compiled artifact's current SHA256 against the value recorded in `.manifest.gz` at compile time (byte). `checkArtifactSources` compares each declared source's current mtime/size against what was recorded when the artifact was compiled, flagging `source_newer` when a source outran its derived artifact — a provenance/lineage check (is the compiled artifact still a faithful derivative of its declared sources), not a byte or schema check on the artifact's own content. |
 
+## Presence Is Checked Separately
+
+The byte comparisons above only ever run on a file that exists. Absence is a
+different failure and is reported by its own diagnostic: `strategist check`
+emits `runtime_missing` when a `Required` normative default
+(`internal/domain/runtime_defaults.go#NormativeRuntimeDefaultFiles`) or a
+generated runtime file (`GeneratedRuntimeFilePaths`, currently
+`agent-protocol.md`) is absent, in plain, `--strict` and `--json` modes alike.
+Generated files are checked for presence only: `agent-protocol.md` embeds a
+generation timestamp, so a byte comparison would always report drift. Before
+2026-09-23 an absent file was skipped silently and `check --json` reported
+`ready`; `strategist upgrade --dry-run` was the only command that noticed.
+
 ## The Gap This Matrix Makes Visible
 
 **No detector in this repository covers `behavior` in the general sense**

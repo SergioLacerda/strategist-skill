@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/compile"
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/i18n"
 	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/stretchr/testify/assert"
@@ -49,11 +50,27 @@ content_by_lang:
 
 	ptBR, ok := cbl[i18n.LangPTBR].(map[string]any)
 	require.True(t, ok, "expected content_by_lang.pt-BR to be injected")
-	assert.Equal(t, sortedAnyMapKeys(i18n.PTBRRuntime.ToMap()), sortedAnyMapKeys(ptBR))
+	assert.Equal(t, sortedAnyMapKeys(expandedRuntimeKeys(i18n.PTBRRuntime.ToMap())), sortedAnyMapKeys(ptBR))
 
 	sourcePersona, err := os.ReadFile(filepath.Join(dir, "personas", "epic.yaml"))
 	require.NoError(t, err)
 	assert.NotContains(t, string(sourcePersona), i18n.LangPTBR)
+}
+
+// expandedRuntimeKeys is the bundle's key set after the compile step turned the
+// generic role templates into the per-role keys agents read.
+func expandedRuntimeKeys(bundle map[string]any) map[string]any {
+	out := make(map[string]any, len(bundle))
+	for key, value := range bundle {
+		out[key] = value
+	}
+	for _, generic := range []string{"role_start", "role_done", "role_task_done", "role_phrases"} {
+		delete(out, generic)
+	}
+	for alias := range compile.RoleEventAliases(domain.DefaultRoleRegistry()) {
+		out[alias] = ""
+	}
+	return out
 }
 
 func sortedAnyMapKeys(values map[string]any) []string {

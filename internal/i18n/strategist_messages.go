@@ -11,17 +11,10 @@ type RuntimeMessages struct {
 	IntakeIndexModeNone string
 
 	// Ranger (discovery) phase
-	RangerStart string
-	RangerDone  string
 
 	// Archivist (refinement) phase
-	ArchivistStart string
-	ArchivistDone  string
 
 	// Sniper (documentation materialization) phase
-	SniperStart    string
-	SniperTaskDone string
-	SniperDone     string
 
 	// Approval gate
 	ApprovalGatePrompt string
@@ -55,6 +48,24 @@ type RuntimeMessages struct {
 	MissionComplete         string
 	MissionMetrics          string
 
+	// RoleLevelHeader is the three-line header (phase counter, role, Model-Effort)
+	// shown above role lines; omitted when the level is unknown. Fixed layout,
+	// identical in every language. Resolve {model_effort} with
+	// `strategist leveling label`.
+	RoleLevelHeader string
+
+	// Generic role message templates and per-role wording. The compile step
+	// expands them once per registered role into the `<role>_start`,
+	// `<role>_done` and `<role>_task_done` keys (see internal/compile), so a new
+	// role needs no new template strings. Compile-time placeholders are
+	// {role_title}, {role_emoji}, {start_text}, {done_text}, {artifact_label}
+	// and {task_text}; the rest are runtime placeholders.
+	// RolePhrases["_default"] words any role without its own.
+	RoleStart    string
+	RoleDone     string
+	RoleTaskDone string
+	RolePhrases  map[string]RolePhrase
+
 	// Rendering helpers
 	PhaseTimelineEntry string
 	ArtifactEntry      string
@@ -66,13 +77,11 @@ func (m RuntimeMessages) ToMap() map[string]any {
 	return map[string]any{
 		"intake_summary":            m.IntakeSummary,
 		"intake_index_mode_none":    m.IntakeIndexModeNone,
-		"ranger_start":              m.RangerStart,
-		"ranger_done":               m.RangerDone,
-		"archivist_start":           m.ArchivistStart,
-		"archivist_done":            m.ArchivistDone,
-		"sniper_start":              m.SniperStart,
-		"sniper_task_done":          m.SniperTaskDone,
-		"sniper_done":               m.SniperDone,
+		"role_level_header":         m.RoleLevelHeader,
+		"role_start":                m.RoleStart,
+		"role_done":                 m.RoleDone,
+		"role_task_done":            m.RoleTaskDone,
+		"role_phrases":              rolePhrasesMap(m.RolePhrases),
 		"approval_gate_prompt":      m.ApprovalGatePrompt,
 		"opportunity_detected":      m.OpportunityDetected,
 		"opportunity_gate":          m.OpportunityGate,
@@ -108,6 +117,7 @@ type PhaseAnnouncementsMessages struct {
 	DocumentationStarting   string
 	DocumentationTargetDone string
 	DocumentationDone       string
+	ScoutDone               string
 }
 
 // ToMap converts PhaseAnnouncementsMessages to a map[string]any with snake_case
@@ -122,5 +132,31 @@ func (m PhaseAnnouncementsMessages) ToMap() map[string]any {
 		"documentation_starting":    m.DocumentationStarting,
 		"documentation_target_done": m.DocumentationTargetDone,
 		"documentation_done":        m.DocumentationDone,
+		"scout_done":                m.ScoutDone,
 	}
+}
+
+// RolePhrase is the wording of one role inside the generic role templates.
+type RolePhrase struct {
+	Emoji         string
+	StartText     string
+	DoneText      string
+	ArtifactLabel string
+	// TaskText is set only for a role that materializes tasks.
+	TaskText string
+}
+
+func rolePhrasesMap(phrases map[string]RolePhrase) map[string]any {
+	out := make(map[string]any, len(phrases))
+	for role, phrase := range phrases {
+		entry := map[string]any{
+			"emoji": phrase.Emoji, "start_text": phrase.StartText,
+			"done_text": phrase.DoneText, "artifact_label": phrase.ArtifactLabel,
+		}
+		if phrase.TaskText != "" {
+			entry["task_text"] = phrase.TaskText
+		}
+		out[role] = entry
+	}
+	return out
 }

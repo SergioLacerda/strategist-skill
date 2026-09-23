@@ -17,6 +17,12 @@ type runtimeDefaultsExtractor struct {
 	files map[string][]byte
 }
 
+type strictMissingLevelingExtractor struct {
+	runtimeDefaultsExtractor
+}
+
+func (strictMissingLevelingExtractor) LevelingPolicyRequired() bool { return true }
+
 func newRuntimeDefaultsExtractor(overrides map[string]string) runtimeDefaultsExtractor {
 	files := map[string][]byte{
 		"templates/epic-standalone.yaml": []byte("mode: epic\nbase_path: .analysis\n"),
@@ -26,6 +32,8 @@ func newRuntimeDefaultsExtractor(overrides map[string]string) runtimeDefaultsExt
 		"personas/epic.yaml":             []byte("id: epic\ntone_directive: test\nphase_labels:\n  discovery: Ranger\n  refinement: Archivist\n  execution: Sniper\ndiagnostics:\n  pipeline_header: test\n  bootstrap_origin: test\n"),
 		"roles/default.yaml":             []byte("discovery: brainstorming\nrefinement: openspec-explore\nexecution: sniper\n"),
 	}
+	leveling, _ := os.ReadFile(filepath.Join("..", "embed", "defaults", "leveling.yaml"))
+	files["leveling.yaml"] = leveling
 	for _, file := range domain.NormativeRuntimeDefaultFiles() {
 		files[file.Path] = []byte(file.Path + " v1\n")
 	}
@@ -162,9 +170,18 @@ func TestPlanRuntimeDefaultUpgrade_EmbeddedHashError(t *testing.T) {
 	// No normative files registered — every ReadFile call errors.
 	ext := runtimeDefaultsExtractor{files: map[string][]byte{}}
 	s := runtimeDefaultService(ext)
-	_, err := s.planRuntimeDefaultUpgrade(context.Background(), dir, false)
+	_, err := s.planRuntimeDefaultUpgrade(context.Background(), dir, runtimeDefaultPolicy{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "read embedded normative default")
+}
+
+func TestPlanRuntimeDefaultUpgrade_ProductionRequiresEmbeddedLeveling(t *testing.T) {
+	t.Parallel()
+	ext := newRuntimeDefaultsExtractor(nil)
+	delete(ext.files, "leveling.yaml")
+	s := Service{Extractor: strictMissingLevelingExtractor{runtimeDefaultsExtractor: ext}, Compiler: nopCompiler{}}
+	_, err := s.planRuntimeDefaultUpgrade(context.Background(), t.TempDir(), runtimeDefaultPolicy{})
+	require.ErrorContains(t, err, "read embedded LEVELING policy")
 }
 
 func TestPlanRuntimeDefaultUpgrade_CorruptManifest(t *testing.T) {
@@ -173,7 +190,7 @@ func TestPlanRuntimeDefaultUpgrade_CorruptManifest(t *testing.T) {
 	require.NoError(t, os.MkdirAll(dir, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, domain.InstallManifestRelPath), []byte("not json"), 0o644))
 	s := runtimeDefaultService(newRuntimeDefaultsExtractor(nil))
-	_, err := s.planRuntimeDefaultUpgrade(context.Background(), dir, false)
+	_, err := s.planRuntimeDefaultUpgrade(context.Background(), dir, runtimeDefaultPolicy{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "install: parse manifest")
 }
@@ -203,7 +220,7 @@ func TestPlanRuntimeDefaultUpgrade_FileStatError(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chmod(contractsDir, 0o755) })
 
 	s := runtimeDefaultService(newRuntimeDefaultsExtractor(nil))
-	_, err := s.planRuntimeDefaultUpgrade(context.Background(), dir, false)
+	_, err := s.planRuntimeDefaultUpgrade(context.Background(), dir, runtimeDefaultPolicy{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "read normative runtime file")
 }

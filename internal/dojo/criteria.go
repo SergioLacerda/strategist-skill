@@ -106,3 +106,18 @@ func validateTimingCriteria(tc *domain.DojoTimingCriteria) []string {
 	}
 	return nil
 }
+
+// ScenarioDescription returns the description declared by the scenario's
+// criteria.yaml, or "" when the file is missing or unparsable. It is used for
+// listing only, so it never fails: a broken scenario must not hide the others.
+func ScenarioDescription(dojoDir, scenario string) string {
+	raw, err := os.ReadFile(filepath.Join(dojoDir, scenario, "criteria.yaml")) //nolint:gosec // G304: reads criteria.yaml under a discovered scenario directory
+	if err != nil {
+		return ""
+	}
+	var c domain.DojoCriteria
+	if yaml.Unmarshal(raw, &c) != nil {
+		return ""
+	}
+	return c.Description
+}

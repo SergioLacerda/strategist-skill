@@ -2,25 +2,26 @@ package install
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/leveling"
 	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"go.opentelemetry.io/otel/codes"
 )
 
 type runtimeDefaultPlan struct {
-	embeddedHashes map[string]string
-	decisions      map[string]domain.RuntimeDefaultDecision
+	embeddedHashes  map[string]string
+	decisions       map[string]domain.RuntimeDefaultDecision
+	levelingVersion int
+	levelingDigest  string
 }
 
-func (s Service) planRuntimeDefaultUpgrade(ctx context.Context, strategistDir string, force bool) (_ runtimeDefaultPlan, retErr error) {
+func (s Service) planRuntimeDefaultUpgrade(ctx context.Context, strategistDir string, policy runtimeDefaultPolicy) (_ runtimeDefaultPlan, retErr error) {
 	_, span := telemetry.Tracer().Start(ctx, "install.plan_runtime_defaults")
 	defer func() {
 		if retErr != nil {
@@ -38,21 +39,76 @@ func (s Service) planRuntimeDefaultUpgrade(ctx context.Context, strategistDir st
 		embeddedHashes: embeddedHashes,
 		decisions:      map[string]domain.RuntimeDefaultDecision{},
 	}
+	if err := s.populateLevelingAuthority(&plan); err != nil {
+		return runtimeDefaultPlan{}, err
+	}
 	manifest, manifestLoaded, err := loadInstallManifest(strategistDir)
 	if err != nil {
 		return runtimeDefaultPlan{}, err
 	}
 
-	if err := populateRuntimeDefaultPlan(&plan, strategistDir, embeddedHashes, manifest, manifestLoaded, force); err != nil {
+	if err := populateRuntimeDefaultPlan(&plan, strategistDir, embeddedHashes, manifest, manifestLoaded, policy); err != nil {
 		return runtimeDefaultPlan{}, err
 	}
 
 	return plan, nil
 }
 
-func populateRuntimeDefaultPlan(plan *runtimeDefaultPlan, strategistDir string, embeddedHashes map[string]string, manifest domain.InstallManifest, manifestLoaded, force bool) error {
+func (s Service) populateLevelingAuthority(plan *runtimeDefaultPlan) error {
+	policy, err := s.embeddedLevelingPolicy()
+	if err != nil {
+		if skipOptionalLevelingError(s.Extractor, err) {
+			return nil
+		}
+		return err
+	}
+	plan.levelingVersion = policy.Version
+	plan.levelingDigest = policy.Digest()
+	return nil
+}
+
+func (s Service) applyLevelingAuthority(manifest *domain.InstallManifest) error {
+	policy, err := s.embeddedLevelingPolicy()
+	if err != nil {
+		if skipOptionalLevelingError(s.Extractor, err) {
+			return nil
+		}
+		return err
+	}
+	manifest.LevelingPolicyVersion = policy.Version
+	manifest.LevelingPolicyDigest = policy.Digest()
+	return nil
+}
+
+func (s Service) embeddedLevelingPolicy() (leveling.Policy, error) {
+	raw, err := s.Extractor.ReadFile("leveling.yaml")
+	if err != nil {
+		return leveling.Policy{}, fmt.Errorf("install: read embedded LEVELING policy: %w", err)
+	}
+	if len(raw) == 0 {
+		return leveling.Policy{}, fmt.Errorf("install: embedded LEVELING policy is empty")
+	}
+	policy, err := leveling.Parse(raw)
+	if err != nil {
+		return leveling.Policy{}, fmt.Errorf("install: parse embedded LEVELING policy: %w", err)
+	}
+	return policy, nil
+}
+
+type levelingPolicyRequired interface {
+	LevelingPolicyRequired() bool
+}
+
+func skipOptionalLevelingError(extractor domain.FileExtractor, err error) bool {
+	if _, required := extractor.(levelingPolicyRequired); required {
+		return false
+	}
+	return errors.Is(err, os.ErrNotExist)
+}
+
+func populateRuntimeDefaultPlan(plan *runtimeDefaultPlan, strategistDir string, embeddedHashes map[string]string, manifest domain.InstallManifest, manifestLoaded bool, policy runtimeDefaultPolicy) error {
 	for _, file := range domain.NormativeRuntimeDefaultFiles() {
-		decision, err := planRuntimeDefaultFile(strategistDir, file.Path, embeddedHashes[file.Path], manifest, manifestLoaded, force)
+		decision, err := planRuntimeDefaultFile(strategistDir, file.Path, embeddedHashes[file.Path], manifest, manifestLoaded, policy)
 		if err != nil {
 			return err
 		}
@@ -68,7 +124,7 @@ func planRuntimeDefaultFile(
 	strategistDir, relPath, embeddedHash string,
 	manifest domain.InstallManifest,
 	manifestLoaded bool,
-	force bool,
+	policy runtimeDefaultPolicy,
 ) (domain.RuntimeDefaultDecision, error) {
 	runtimePath := filepath.Join(strategistDir, filepath.FromSlash(relPath))
 	currentHash, exists, readErr := runtimefs.ReadSHA256(runtimePath)
@@ -77,17 +133,20 @@ func planRuntimeDefaultFile(
 	}
 	manifestFile, hasManifestEntry := manifest.FileByPath(relPath)
 	return domain.DecideRuntimeDefaultUpdate(domain.RuntimeDefaultDecisionInput{
-		Exists:       exists,
-		CurrentHash:  currentHash,
-		EmbeddedHash: embeddedHash,
-		ManifestHash: manifestFile.SHA256,
-		HasManifest:  manifestLoaded && hasManifestEntry,
-		Force:        force,
+		Exists:          exists,
+		CurrentHash:     currentHash,
+		EmbeddedHash:    embeddedHash,
+		ManifestHash:    manifestFile.SHA256,
+		ManifestHistory: manifestFile.History,
+		HasManifest:     manifestLoaded && hasManifestEntry,
+		Force:           policy.Force,
+		AllowDowngrade:  policy.AllowDowngrade,
 	}), nil
 }
 
 func runtimeDefaultBlocksInstall(decision domain.RuntimeDefaultDecision) bool {
-	return decision == domain.RuntimeDecisionConflict || decision == domain.RuntimeDecisionUnknownManifest
+	return decision == domain.RuntimeDecisionConflict || decision == domain.RuntimeDecisionUnknownManifest ||
+		decision == domain.RuntimeDecisionDowngrade
 }
 
 func (s Service) embeddedNormativeHashes() (map[string]string, error) {
@@ -133,41 +192,4 @@ func (s Service) applyRuntimeDefaultFile(strategistDir, relPath string, decision
 		return fmt.Errorf("install: write normative default %s: %w", relPath, err)
 	}
 	return nil
-}
-
-func saveInstallManifest(strategistDir string, manifest domain.InstallManifest) error {
-	data, err := json.MarshalIndent(manifest, "", "  ")
-	if err != nil {
-		return fmt.Errorf("install: marshal manifest: %w", err)
-	}
-	data = append(data, '\n')
-	path := filepath.Join(strategistDir, domain.InstallManifestRelPath)
-	if err := atomicWriteFile(path, data, 0o644); err != nil {
-		return fmt.Errorf("install: write manifest: %w", err)
-	}
-	return nil
-}
-
-func loadInstallManifest(strategistDir string) (domain.InstallManifest, bool, error) {
-	path := filepath.Join(strategistDir, domain.InstallManifestRelPath)
-	data, err := os.ReadFile(path) //nolint:gosec // G304: install manifest path is derived from the selected .strategist root
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return domain.InstallManifest{}, false, nil
-		}
-		return domain.InstallManifest{}, false, fmt.Errorf("install: read manifest: %w", err)
-	}
-	var manifest domain.InstallManifest
-	if err := json.Unmarshal(data, &manifest); err != nil {
-		return domain.InstallManifest{}, false, fmt.Errorf("install: parse manifest: %w", err)
-	}
-	return manifest, true, nil
-}
-
-func packageID(version string) string {
-	version = strings.TrimSpace(version)
-	if version == "" {
-		return "dev"
-	}
-	return version
 }

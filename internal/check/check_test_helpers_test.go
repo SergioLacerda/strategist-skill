@@ -139,6 +139,25 @@ func writeMinimalDomainIndexFiles(t *testing.T, dir string) {
 	require.NoError(t, os.WriteFile(filepath.Join(directivesDir, "core.yaml"), []byte("directives: []\n"), 0o644))
 }
 
+// writeNormativeRuntimeFiles writes every Required normative default (byte
+// identical to the embedded copy, so no runtime_stale finding) plus the
+// generated agent-protocol.md, i.e. the files `strategist check` requires to be
+// present. minimalCheckRoot calls it; hand-built fixtures that expect a ready
+// PreflightResult must call it too.
+func writeNormativeRuntimeFiles(t *testing.T, dir string) {
+	t.Helper()
+	for _, file := range domain.NormativeRuntimeDefaultFiles() {
+		raw, err := embedpkg.Extractor{}.ReadFile(file.Path)
+		require.NoError(t, err, file.Path)
+		path := filepath.Join(dir, filepath.FromSlash(file.Path))
+		require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+		require.NoError(t, os.WriteFile(path, raw, 0o644))
+	}
+	for _, rel := range domain.GeneratedRuntimeFilePaths() {
+		require.NoError(t, os.WriteFile(filepath.Join(dir, filepath.FromSlash(rel)), []byte("generated\n"), 0o644))
+	}
+}
+
 // minimalCheckRoot creates a .strategist/ tree suitable for checkCmd with all
 // three slot providers installed plus a valid epic persona. It also declares
 // the ADR-0035 DEC-001 permanent embedded-weapon roster
@@ -191,6 +210,7 @@ func minimalCheckRoot(t *testing.T) string {
 		[]byte("role: ranger\nslot: discovery\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "archivist.yaml"),
 		[]byte("role: archivist\nslot: refinement\n"), 0o644))
+	writeNormativeRuntimeFiles(t, dir)
 	writeMinimalIdentityFiles(t, dir)
 	writeMinimalDomainIndexFiles(t, dir)
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "plugins.lock"), []byte(`schema_version: strategist-plugin-lock-file/v1

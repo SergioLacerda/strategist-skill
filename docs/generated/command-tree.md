@@ -30,12 +30,17 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `verify` — Verify a Handoff Challenge acknowledgment and record the result
 - `help` — Help about any command
 - `install` — Install the Strategist skill into a target repository
+- `leveling` — Suggest model and effort by role
+  - `label` — Resolve and record the model/effort label shown on a role's log lines
+  - `suggest` — Suggest a model and effort for a role
+  - `validate` — Validate the customer LEVELING policy
 - `metrics` — Report metrics computed from Strategist's own runtime memory
   - `confidence` — Report cross-agent confidence metrics
   - `fallback` — Report provider-fallback (ADR-0028) metrics
   - `gate-outcome` — Record the human Approval Gate outcome as ground truth
   - `handoff` — Report Handoff Challenge governance metrics
   - `label` — Record a reviewed ground-truth label for a mission
+  - `levels` — Report the model x effort levels recorded per role
   - `record` — Record a confidence claim or an explicit missing-record for a boundary
   - `rollout-check` — Check whether a confidence enforcement mode is admissible
   - `scout` — Report Scout routing metrics
@@ -46,6 +51,7 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `start` — Start a mission
   - `status` — Inspect a mission status
   - `submit` — Submit one authoritative mission event
+  - `view` — Render a read-only mission experience view
 - `plugins` — Inspect and evaluate Strategist plugin enforcement
   - `authorize` — Compose authorization evidence for a governed target
   - `evaluate-write` — Report whether a write to --target is enforceably allowed under the active connector

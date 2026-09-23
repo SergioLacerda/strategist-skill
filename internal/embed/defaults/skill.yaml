@@ -55,6 +55,23 @@ taxonomy:
     - id: openspec-propose
       bound_to_slot: refinement
   abilities:
+    - id: leveling
+      display_name: LEVELING
+      runs_in: role selection (before provider invocation)
+      outputs: [model, capability, effort, escalation]
+      source: leveling.yaml
+      note: >
+        Selects model capability and effort from generic role criteria, then
+        maps the result to CODEX, CLAUDE, or the explicit generic fallback.
+    - id: initiative
+      display_name: INITIATIVE
+      runs_in: role entry and handoff boundaries (consultative)
+      outputs: [advice, diligence, alignment, initiative_result, outcome_correlation]
+      source: initiative.yaml
+      note: >
+        Advises the role before work begins and records evidence-backed results.
+        It never changes LEVELING's model, provider, capability, effort, or
+        level_source, and it never authorizes the Approval Gate or implementation.
     - id: opportunity_attack
       runs_in: refinement (Archivist, post-refinement, before completion_signal)
       outputs: [adr, runbook, treasure_chest]
@@ -451,12 +468,14 @@ handoff_metrics_log:
   path: ".strategist/memory/handoff-metrics.jsonl"
   emitted_by: archivist
   emitted_when: refinement_complete
-  fields: [mission_id, discovery_tokens, brief_tokens, brief_compression_ratio, refinement_reopens, evidence_coverage_ratio]
+  fields: [mission_id, discovery_tokens, brief_tokens, brief_compression_ratio, refinement_reopens, evidence_coverage_ratio, model, effort, level_source]
   note: >
     brief_compression_ratio and evidence_coverage_ratio require discovery_tokens and
     evidence_cards[] (schemas/handoff-ranger-to-archivist.schema.yaml) to be populated
     by the Ranger artifact; both are null until missions populate those fields —
-    expected during rollout, not a bug.
+    expected during rollout, not a bug. model, effort and level_source are the
+    Archivist's resolved level (`strategist leveling label --role archivist`);
+    null when unknown, and older lines without them remain valid.
 
 token_economy_stop_conditions:
   - id: ambiguous_task_no_criteria

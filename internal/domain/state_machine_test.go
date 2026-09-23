@@ -292,8 +292,8 @@ var allMissionStates = []domain.MissionState{
 
 var allTransitionEvents = []domain.TransitionEvent{
 	domain.EventManifestEmpty, domain.EventManifestNonEmpty,
-	domain.EventGateApproved, domain.EventGateDenied, domain.EventGateTimeout, domain.EventGateRevision,
-	domain.EventHandoffPassed, domain.EventHandoffFailed, domain.EventHandoffExhausted,
+	domain.EventGateApproved, domain.EventGateApprovedAnalysisOnly, domain.EventGateDenied, domain.EventGateTimeout, domain.EventGateRevision,
+	domain.EventHandoffPassed, domain.EventHandoffFailed, domain.EventHandoffExhausted, domain.EventHandoffNotApplicable,
 	domain.EventSniperDone, domain.EventArchivistNoTasks, domain.EventArchivistTasks,
 	domain.EventADRCriterionMet, domain.EventADRApproved, domain.EventADRDeclined,
 	domain.EventSlotTransient, domain.EventSlotPermanent, domain.EventRetryOK,

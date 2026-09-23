@@ -1,6 +1,8 @@
 package telemetry
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -42,5 +44,33 @@ func TestConfidenceProducerAdapterRecordsSupportedClaim(t *testing.T) {
 	record, err := producer.RecordClaim(claim, evidence)
 	if err != nil || record.Agent != ConfidenceAgentArchivist || record.EventID == "" {
 		t.Fatalf("record=%+v err=%v", record, err)
+	}
+}
+
+func TestIsConfidenceAgentFollowsTheRoleRegistry(t *testing.T) {
+	expectConfidenceAgents(t, true, domain.DefaultRoleRegistry().IDs()...)
+	expectConfidenceAgents(t, true, ConfidenceAgentCritic, ConfidenceAgentMissionQuality, ConfidenceAgentHandoffChallenge)
+	expectConfidenceAgents(t, false, "gate", "Ranger", "", "transport")
+}
+
+func TestConfidenceEventIDPreservesLegacyIdentityAndSeparatesRuns(t *testing.T) {
+	record := ConfidenceRecord{MissionID: "m1", Agent: "ranger", ClaimID: "c1", CorrelationKey: "k", ClaimKind: domain.ClaimKindAssertion, ConfidencePercent: 80, EvidenceIDs: []string{"e2", "e1"}}
+	legacySeed := "m1\x00ranger\x00c1\x00k\x00assertion\x0080\x00e1,e2\x00\x00\x00"
+	if want, got := fmt.Sprintf("ce-%x", sha256.Sum256([]byte(legacySeed))), ConfidenceEventID(record); want != got {
+		t.Fatalf("legacy event id = %q, want %q", got, want)
+	}
+	runRecord := record
+	runRecord.Run = "revision-2"
+	if ConfidenceEventID(record) == ConfidenceEventID(runRecord) {
+		t.Fatal("run-scoped event id must differ")
+	}
+}
+
+func expectConfidenceAgents(t *testing.T, want bool, agents ...string) {
+	t.Helper()
+	for _, agent := range agents {
+		if isConfidenceAgent(agent) != want {
+			t.Errorf("isConfidenceAgent(%q) = %t, want %t", agent, !want, want)
+		}
 	}
 }

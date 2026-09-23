@@ -64,6 +64,18 @@ const (
 	EventGateApproved     TransitionEvent = "gate_approved"
 	EventGateDenied       TransitionEvent = "gate_denied"
 	EventGateTimeout      TransitionEvent = "gate_timeout"
+	// EventGateApprovedAnalysisOnly is the Approval Gate's acceptance of a
+	// package with no documentation_target (every task is an
+	// implementation_handoff): the analysis is delivered and nothing is left for
+	// Sniper, so the mission ends instead of entering the handoff challenge.
+	// Distinct from EventGateDenied, which records a rejection.
+	EventGateApprovedAnalysisOnly TransitionEvent = "gate_approved_analysis_only"
+	// EventHandoffNotApplicable repairs a mission that entered the handoff
+	// challenge although its accepted package has no documentation_target
+	// (for example, gate_approved was used before
+	// EventGateApprovedAnalysisOnly existed): nothing can reach Sniper, so the
+	// mission ends as analysis delivered.
+	EventHandoffNotApplicable TransitionEvent = "handoff_challenge_not_applicable"
 	// EventGateRevision is the Approval Gate's revision_requested outcome (D2):
 	// contracts/narrative/05-approval-gate.md documents "Archivist revisits" as a
 	// valid, non-error resolution, distinct from EventGateDenied (rejected/timeout,

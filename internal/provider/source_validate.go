@@ -97,8 +97,8 @@ func legacySlotConflicts(source Source) []Reason {
 }
 
 func roleHasSlot(role string, slots []string) bool {
-	want := map[string]string{"ranger": "discovery", "archivist": "refinement", "sniper": "execution"}[role]
-	return want != "" && contains(slots, want)
+	registered, ok := domain.DefaultRoleRegistry().Get(role)
+	return ok && registered.ID == role && registered.Slot != "" && contains(slots, registered.Slot)
 }
 
 func contains(values []string, want string) bool {

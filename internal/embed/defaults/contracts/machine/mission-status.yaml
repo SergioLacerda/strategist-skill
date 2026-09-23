@@ -57,7 +57,13 @@ values:
     written_by: Approval Gate (on accept)
     allowed_successors: [sniper_running]
     fsm_state: StateExecution   # post EventGateApproved
-    note: The only "unclaimed" state — any Sniper may claim it (see handoff schema).
+    note: >
+      The only "unclaimed" state — any Sniper may claim it (see handoff schema).
+      Terminal, with no successor, when the accepted package has no
+      documentation_target: fsm_state is then StateDoneAnalysis, post
+      EventGateApprovedAnalysisOnly (or EventHandoffNotApplicable when the
+      mission already entered the handoff challenge), and the mission resolves
+      as analysis_delivered.
 
   - status: gate_revision_requested
     written_by: Approval Gate (on revision request)

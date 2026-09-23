@@ -33,16 +33,22 @@ role_emoji:
   gate: "🚦"
   opportunity: "⚔️"
 
+# Narration lines name the role with an inline level tag: {role_level_tag} is
+# "(Model-Effort)" (`strategist leveling label --json` field `tag`) or empty when
+# the level is unknown, so `**Ranger{role_level_tag}:**` reads `**Ranger(Sonnet-High):**`.
+# The gate is not a role and carries no tag. Content templates use the stacked
+# {role_level_header} instead.
 phase_announcements:
   en:
-    discovery_starting:            "🎯 **Ranger:** I'm in the field. Reconnaissance starts now."
-    discovery_done:                "🎯 **Ranger:** Field mission done. Handing the dossier to Archivist."
-    refinement_starting:           "📚 **Archivist:** Dossier received. Starting systematic analysis."
-    refinement_done:               "📚 **Archivist:** Refinement complete. The plan is ready for judgment."
+    discovery_starting:            "🎯 **Ranger{role_level_tag}:** I'm in the field. Reconnaissance starts now."
+    discovery_done:                "🎯 **Ranger{role_level_tag}:** Field mission done. Handing the dossier to Archivist."
+    refinement_starting:           "📚 **Archivist{role_level_tag}:** Dossier received. Starting systematic analysis."
+    refinement_done:               "📚 **Archivist{role_level_tag}:** Refinement complete. The plan is ready for judgment."
     approval_gate_shown:             "🚦 **Gate:** The work is done. The decision is yours — does what we built merit documentation materialization?"
-    documentation_starting:        "🗡️ **Sniper:** Target confirmed. Silence — materializing documentation."
-    documentation_target_done:     "🗡️ **Sniper:** Target {done}/{total} done."
-    documentation_done:            "🗡️ **Sniper:** Done. Report delivered."
+    documentation_starting:        "🗡️ **Sniper{role_level_tag}:** Target confirmed. Silence — materializing documentation."
+    documentation_target_done:     "🗡️ **Sniper{role_level_tag}:** Target {done}/{total} done."
+    documentation_done:            "🗡️ **Sniper{role_level_tag}:** Done. Report delivered."
+    scout_done:                    "🧭 **Scout{role_level_tag}:** Route selected — {route}."
 
 rendering_policy:
   profile_rendered_levels: [INFO, WARN, ERROR, FATAL]
@@ -97,33 +103,41 @@ content_by_lang:
       for this query. This is separate from the execution gate. Current execution_gate: {execution_gate}.
       Consider re-running with additional context if governance documents are needed.
 
-    ranger_start: >
-      🎯 **Ranger [{mission_id}]:** starting reconnaissance. skill={provider}
-    ranger_done: |
-      🎯 **Ranger [{mission_id}]:** reconnaissance complete.
-        ✶ channeling mana  ████████▓░░░░░░░░░░░░░░░░░░░  25% · Ranger ✓
-      Artifact at: {artifact_path}
+    # Level header shown above role lines: the role's model and effort as visual
+    # feedback. Resolve {model_effort} with `strategist leveling label --role
+    # <role> --mission {mission_id}` (add --host-model/--host-effort when known);
+    # the command records the tuple for telemetry and reuses it for the whole
+    # phase. When the level is unknown, omit this header entirely and keep the
+    # unlabelled line — a missing level never blocks the mission.
+    role_level_header: |
+      Fase: {phase_index}/04
+      {role_name}
+      {model_effort}
 
-    archivist_start: >
-      📚 **Archivist [{mission_id}]:** starting analysis and refinement. skill={provider}
-    archivist_done: |
-      📚 **Archivist [{mission_id}]:** analysis refined.
-        ✶ channeling mana  ████████████████▓░░░░░░░░░░░  50% · Archivist ✓
-      Artifacts at: {artifact_path}
-
-    sniper_start: >
-      🗡️ **Sniper [{mission_id}]:** documentation target confirmed — starting materialization.
-    sniper_task_done: |
-      🗡️ **Sniper [{mission_id}]:** target {done}/{total} materialized — {task_title}
-        ✶ channeling mana  {bar}  {pct}%
-    sniper_done: |
-      🗡️ **Sniper [{mission_id}]:** documentation materialization complete.
-        ✶ channeling mana  ████████████████████████████  100% ✓
-      Report at: {artifact_path}
+    # Generic role message templates. The compile step expands them once per
+    # registered role into <role>_start, <role>_done and <role>_task_done, so a new
+    # role needs no new strings; role_phrases holds the per-role wording and
+    # `_default` words any role without its own. A hand-written <role>_start key
+    # still wins over the generated one.
+    role_start: |
+      {role_level_header}
+      {role_emoji} **{role_title} [{mission_id}]:** {start_text}
+    role_done: |
+      {role_level_header}
+      {role_emoji} **{role_title} [{mission_id}]:** {done_text}
+      {artifact_label} {artifact_path}
+    role_task_done: |
+      {role_level_header}
+      {role_emoji} **{role_title} [{mission_id}]:** {task_text}
+    role_phrases:
+      _default:  {emoji: "🎭", start_text: "starting. skill={provider}", done_text: "complete.", artifact_label: "Artifact at:"}
+      ranger:    {emoji: "🎯", start_text: "starting reconnaissance. skill={provider}", done_text: "reconnaissance complete.", artifact_label: "Artifact at:"}
+      archivist: {emoji: "📚", start_text: "starting analysis and refinement. skill={provider}", done_text: "analysis refined.", artifact_label: "Artifacts at:"}
+      sniper:    {emoji: "🗡️", start_text: "documentation target confirmed — starting materialization.", done_text: "documentation materialization complete.", artifact_label: "Report at:", task_text: "target {done}/{total} materialized — {task_title}"}
 
     approval_gate_prompt: |
+      {role_level_header}
       🚦 **Gate [{mission_id}]:** AWAITING CONFIRMATION
-        ✶ channeling mana  ████████████████████████▓░░░  75% · awaiting review
 
       Plan at: {artifact_path}
 

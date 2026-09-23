@@ -46,14 +46,48 @@ func validateRuntimeDefaultParity(root string) []string {
 		errs = append(errs, fmt.Sprintf("runtime_stale: install manifest unreadable: %v", manifestErr))
 	}
 
-	for _, rel := range domain.NormativeRuntimeDefaultPaths() {
-		err, ok := validateRuntimeDefaultFile(root, rel, extractor, manifest, manifestLoaded, manifestErr)
-		if ok {
-			errs = append(errs, err)
+	for _, file := range domain.NormativeRuntimeDefaultFiles() {
+		if msg, ok := normativeFileFinding(root, file, extractor, manifest, manifestLoaded, manifestErr); ok {
+			errs = append(errs, msg)
 		}
 	}
+	return append(errs, missingGeneratedFiles(root)...)
+}
 
+// normativeFileFinding reports a Required file's absence (runtime_missing) or,
+// when it is present, its byte drift from the embedded default (runtime_stale).
+func normativeFileFinding(
+	root string,
+	file domain.RuntimeDefaultFile,
+	extractor embedpkg.Extractor,
+	manifest domain.InstallManifest,
+	manifestLoaded bool,
+	manifestErr error,
+) (string, bool) {
+	if file.Required && runtimeFileAbsent(root, file.Path) {
+		return domain.FormatRuntimeMissingDiagnostic(file.Path), true
+	}
+	return validateRuntimeDefaultFile(root, file.Path, extractor, manifest, manifestLoaded, manifestErr)
+}
+
+// missingGeneratedFiles reports generated runtime files (presence only: they
+// embed a timestamp, so a byte comparison would always report drift).
+func missingGeneratedFiles(root string) []string {
+	var errs []string
+	for _, rel := range domain.GeneratedRuntimeFilePaths() {
+		if runtimeFileAbsent(root, rel) {
+			errs = append(errs, domain.FormatGeneratedRuntimeMissingDiagnostic(rel))
+		}
+	}
 	return errs
+}
+
+// runtimeFileAbsent reports whether rel definitely does not exist under root.
+// Any other stat failure (for example a permission error) is not "absent": it is
+// left to the byte-parity read, which reports it as runtime_stale.
+func runtimeFileAbsent(root, rel string) bool {
+	_, err := os.Stat(filepath.Join(root, filepath.FromSlash(rel)))
+	return errors.Is(err, os.ErrNotExist)
 }
 
 func validateRuntimeDefaultFile(
@@ -85,12 +119,12 @@ func validateRuntimeDefaultFile(
 	}
 	return domain.FormatRuntimeStaleDiagnostic(
 		rel,
-		classifyRuntimeStale(runtimeRaw, rel, manifest, manifestLoaded, manifestErr),
+		classifyRuntimeStale(runtimeRaw, embeddedRaw, rel, manifest, manifestLoaded, manifestErr),
 	), true
 }
 
 func classifyRuntimeStale(
-	runtimeRaw []byte,
+	runtimeRaw, embeddedRaw []byte,
 	rel string,
 	manifest domain.InstallManifest,
 	manifestLoaded bool,
@@ -103,10 +137,13 @@ func classifyRuntimeStale(
 	if !ok {
 		return domain.RuntimeDecisionUnknownManifest
 	}
-	if domain.SHA256Hex(runtimeRaw) == manifestFile.SHA256 {
-		return domain.RuntimeDecisionAutoUpgrade
-	}
-	return domain.RuntimeDecisionConflict
+	// Same decision install makes: a runtime still holding its last installed
+	// default, checked by a binary whose default that runtime already moved
+	// past, means the binary is older — reinstalling would downgrade it.
+	return domain.DecideRuntimeDefaultUpdate(domain.RuntimeDefaultDecisionInput{
+		Exists: true, CurrentHash: domain.SHA256Hex(runtimeRaw), EmbeddedHash: domain.SHA256Hex(embeddedRaw),
+		ManifestHash: manifestFile.SHA256, ManifestHistory: manifestFile.History, HasManifest: true,
+	})
 }
 
 func readInstallManifest(root string) (domain.InstallManifest, bool, error) {

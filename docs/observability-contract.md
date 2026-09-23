@@ -68,6 +68,11 @@ All attributes are namespaced under `strategist.*`. Defined in `internal/telemet
 | `strategist.evidence_state` | string | `explicit`, `insufficient`, or `requires_discovery` |
 | `strategist.discovery_subtype` | string | `creative`, `evaluation`, `diagnostic`, or `closure_evidence` (set when `route=full_pipeline`) |
 | `strategist.provider` | string | Resolved discovery provider id, when `evidence_state=requires_discovery` |
+| `strategist.model` | string | Model display name a role runs at (host-reported or LEVELING policy); absent when unknown |
+| `strategist.effort` | string | Effort tier a role runs at (`low`, `medium`, `high`, ...); absent when unknown |
+| `strategist.level_source` | string | `manual`, `host` or `policy`; where `model`/`effort` came from |
+
+The DEBUG event `role_level_resolved` (emitted by `strategist leveling label` when a new tuple is recorded) carries `strategist.role`, `strategist.model`, `strategist.effort`, `strategist.level_source` and, for an escalation, `strategist.reason`; a repeated role (for example a revision loop) also carries `strategist.role_run`. Unknown values are emitted empty.
 
 Distinguished from Ranger discovery-result events by `strategist.component`:
 `component=scout` for the route decision, `component=ranger` for the discovery

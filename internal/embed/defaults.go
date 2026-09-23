@@ -20,6 +20,12 @@ var defaultsFS embed.FS
 // Extractor implements domain.FileExtractor using the embedded defaults.
 type Extractor struct{}
 
+// LevelingPolicyRequired marks the production embedded extractor as requiring
+// a valid LEVELING policy identity during install and upgrade. Test doubles
+// may intentionally omit the policy when exercising unrelated installer
+// behavior, but production extraction must fail closed.
+func (e Extractor) LevelingPolicyRequired() bool { return true }
+
 // Extract copies all embedded defaults into targetDir, preserving the directory
 // structure but stripping the leading "defaults/" path prefix.
 //

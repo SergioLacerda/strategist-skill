@@ -22,7 +22,17 @@ func (m *mockExtractor) Extract(targetDir string, _ bool) error {
 		return m.failWith
 	}
 	m.calledPaths = append(m.calledPaths, targetDir)
+	if err := createMockRuntimeDirs(targetDir); err != nil {
+		return err
+	}
+	files, err := mockRuntimeFiles(targetDir)
+	if err != nil {
+		return err
+	}
+	return writeMockRuntimeFiles(files)
+}
 
+func createMockRuntimeDirs(targetDir string) error {
 	dirs := []string{
 		filepath.Join(targetDir, "personas"),
 		filepath.Join(targetDir, "roles"),
@@ -35,7 +45,10 @@ func (m *mockExtractor) Extract(targetDir string, _ bool) error {
 			return err
 		}
 	}
+	return nil
+}
 
+func mockRuntimeFiles(targetDir string) (map[string]string, error) {
 	files := map[string]string{
 		filepath.Join(targetDir, "SKILL.md"):                               "# SKILL\n",
 		filepath.Join(targetDir, "knowledge.index.yaml"):                   "sources: []\n",
@@ -45,6 +58,15 @@ func (m *mockExtractor) Extract(targetDir string, _ bool) error {
 		filepath.Join(targetDir, "templates", "pragmatic-standalone.yaml"): "mode: pragmatic\nbase_path: .analysis\n",
 		filepath.Join(targetDir, "templates", "epic-standalone.yaml"):      "mode: epic\nbase_path: .analysis\n",
 	}
+	leveling, err := os.ReadFile(filepath.Join("..", "embed", "defaults", "leveling.yaml"))
+	if err != nil {
+		return nil, err
+	}
+	files[filepath.Join(targetDir, "leveling.yaml")] = string(leveling)
+	return files, nil
+}
+
+func writeMockRuntimeFiles(files map[string]string) error {
 	for path, content := range files {
 		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 			return err
@@ -55,6 +77,8 @@ func (m *mockExtractor) Extract(targetDir string, _ bool) error {
 
 func (m *mockExtractor) ReadFile(relPath string) ([]byte, error) {
 	switch relPath {
+	case "leveling.yaml":
+		return os.ReadFile(filepath.Join("..", "embed", "defaults", "leveling.yaml"))
 	case "templates/epic-standalone.yaml":
 		return []byte("mode: epic\nbase_path: .analysis\n"), nil
 	case "SKILL.md":
