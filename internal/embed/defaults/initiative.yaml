@@ -1,0 +1,40 @@
+version: "1"
+ability: initiative
+display_name: INITIATIVE
+mode: consultative
+authority:
+  owns: [advice, diligence, alignment, results, outcome_correlation]
+  does_not_own: [model, provider, capability, effort, level_source, approval_gate, implementation_authorization]
+records:
+  path: .strategist/memory/initiative-records.jsonl
+  append_only: true
+  correlation: [mission_id, role, run_id, advice_id]
+reevaluation_triggers:
+  - scope_changed
+  - security_risk_discovered
+  - conflicting_evidence
+  - handoff_challenged
+  - repeated_failure
+  - user_revision_requested
+  - mandatory_obligation_blocked
+profiles:
+  scout:
+    recommended_capability: economical
+    recommended_effort: medium
+    diligence: [classify_scope, surface_uncertainty]
+    confidence_ceiling: medium
+  ranger:
+    recommended_capability: reasoning
+    recommended_effort: high
+    diligence: [inspect_evidence, test_alternatives, record_obligations]
+    confidence_ceiling: high
+  archivist:
+    recommended_capability: reasoning
+    recommended_effort: high
+    diligence: [challenge_handoff, validate_contracts, correlate_outcomes]
+    confidence_ceiling: high
+  sniper:
+    recommended_capability: economical
+    recommended_effort: medium
+    diligence: [verify_scope, verify_gate, record_result]
+    confidence_ceiling: medium

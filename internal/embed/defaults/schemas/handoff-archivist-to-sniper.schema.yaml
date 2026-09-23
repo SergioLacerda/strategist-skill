@@ -158,3 +158,20 @@ required_fields:
           understood_refs: list
           classifications: object
           gate_allowed: boolean
+  initiative_result:
+    type: object
+    required: false
+    description: >
+      Result emitted by the consultative INITIATIVE ability. It is validated
+      by the next consumer but never authorizes the Approval Gate or execution.
+      Missing evidence is represented as a confidence limit or challenge.
+    fields:
+      advice_id: string
+      mission_id: string
+      role: string
+      run_id: string
+      checks: list
+      deviations: list
+      evidence_refs: list
+      outcomes: list
+      gate_independent: boolean

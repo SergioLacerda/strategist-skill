@@ -65,7 +65,17 @@ Archivist (`refinement`)
   include the Archivist's `model`, `effort` and `level_source` (null when unknown)
 - produce the four-file refined package
 - preserve `evidence_pack_path` from the Ranger analysis artifact when present; the four-file package shape does not change
-- promote the Ranger analysis artifact from `pending/` into `<base_path>/refined/<mission_id>/analysis.md`
+- promote the Ranger analysis artifact from `pending/` into `<base_path>/refined/<mission_id>/analysis.md`.
+  When the bound refinement weapon is `openspec-propose`, this promotion MUST be done by
+  running `strategist mission normalize-openspec --mission-id <mission_id> --change-id
+  <change_id>` against the completed OpenSpec change — never by hand-copying
+  `proposal.md`/`design.md`/`tasks.md` and manually editing frontmatter. That command
+  (`internal/refinement.NormalizeOpenSpec`) atomically publishes the four canonical files,
+  injects `provider`/`provider_change_id`/`provider_runtime` and `mission_status:
+  archivist_done` into the analysis frontmatter, and archives the completed change into
+  `changes/archive/`. Bypassing it and promoting by hand is a documented drift source (see
+  `.analysis/done/drift/` for the incident this codifies) — it silently loses the provider
+  metadata and leaves the change unarchived.
 - classify side quests and surface them at the approval gate
 - classify every `tasks.md` / `implementation_plan` item by `task_type`: `documentation_target`,
   `analysis_artifact`, `implementation_handoff`, or `out_of_scope` (see
@@ -90,6 +100,21 @@ Archivist (`refinement`)
   cleanup as an opportunity attack, not a main task. The main mission resolves as
   `analysis_delivered`. The cleanup is offered via `opportunity_gate` manifest.
 - never emit a single-file refined artifact as the canonical result
+
+### OpenSpec No-Spec-Delta Changes
+
+Most `cmd/` adapter-migration and pure-refactor missions produce an OpenSpec
+change with no capability/spec-level requirement changes. `openspec validate`
+rejects a zero-delta change unless its `.openspec.yaml` declares
+`skip_specs: true` — and setting that flag alone is not enough; the file also
+needs valid `schema`/`created` metadata or the marker is silently not
+honored. Use this minimal shape verbatim for that case:
+
+```yaml
+schema: spec-driven
+created: <YYYY-MM-DD>
+skip_specs: true
+```
 
 ### Optional Decision Ledger
 

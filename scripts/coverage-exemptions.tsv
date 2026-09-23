@@ -13,7 +13,6 @@ internal/runtimeenv	quality-maintainers	baseline coverage policy is pending a de
 treasure-chest/domain	quality-maintainers	baseline coverage policy is pending a dedicated Treasure Chest domain test budget
 cmd/strategist/eval	quality-maintainers	adapter extraction pending dedicated package-local coverage budget; existing CLI contract tests remain authoritative
 cmd/strategist/install	quality-maintainers	adapter extraction pending migration of hermetic CLI install fixtures to package-local tests
-cmd/strategist/leveling	quality-maintainers	adapter extraction pending dedicated package-local coverage budget; policy authority remains internal/leveling
 cmd/strategist/metrics	quality-maintainers	adapter-local metrics suite is established; dedicated error-matrix coverage budget remains pending
 cmd/strategist/mission	quality-maintainers	adapter extraction pending migration of mission lifecycle fixtures to package-local tests
 cmd/strategist/plugins	quality-maintainers	adapter extraction (cmd-plugins-extraction) pending a dedicated package-local coverage budget; measured 84.9% on 2026-09-22

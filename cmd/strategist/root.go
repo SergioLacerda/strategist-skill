@@ -10,7 +10,9 @@ import (
 	"path/filepath"
 	"time"
 
+	evaladapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/eval"
 	installadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/install"
+	levelingadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/leveling"
 	metricsadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/metrics"
 	missionadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
 	pluginsadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/plugins"
@@ -156,8 +158,8 @@ func init() {
 	metricsadapter.Register(rootCmd, metricsDependencies(), roleLevelLedger, defaultLedgerMaxRecords)
 	missionadapter.Register(rootCmd, missionLifecycleDependencies(), missionViewDependencies(), missionNormalizeDependencies(), missionReportUsageDependencies())
 	pluginsadapter.Register(rootCmd)
-	registerLeveling(rootCmd)
-	registerEval(rootCmd)
+	levelingadapter.Register(rootCmd, levelingAdapterDependencies())
+	evaladapter.Register(rootCmd, evalDependencies(), evalHarvestDependencies())
 }
 
 // requireStrategistDir returns an error if .strategist/active.yaml is absent in

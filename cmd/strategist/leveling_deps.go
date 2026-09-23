@@ -11,13 +11,14 @@ import (
 	levelingadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/leveling"
 	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/embed"
+	embedpkg "github.com/SergioLacerda/strategist-skill/internal/embed"
 	"github.com/SergioLacerda/strategist-skill/internal/leveling"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
-	"github.com/spf13/cobra"
 )
 
 const roleLevelLedger = "role-levels.jsonl"
+
+const defaultLedgerMaxRecords = 2000
 
 func levelingAdapterDependencies() levelingadapter.Dependencies {
 	return levelingadapter.Dependencies{
@@ -55,8 +56,6 @@ func loadLevelingPolicy() (leveling.Policy, string, error) {
 		return leveling.Policy{}, "", err
 	}
 	path := filepath.Join(root, "leveling.yaml")
-	// Shared with the wizard: an unreadable file is leveling_policy_unreadable
-	// on both surfaces (it used to be reported as missing here).
 	override, _, err := leveling.ReadOverride(path)
 	if err != nil {
 		return leveling.Policy{}, path, fmt.Errorf("read policy: %w", err)
@@ -113,7 +112,7 @@ func loadRoleRegistry(root string) (domain.RoleRegistry, string) {
 }
 
 func readEmbeddedLevelingDefaults() ([]byte, error) {
-	raw, err := (embed.Extractor{}).ReadFile("leveling.yaml")
+	raw, err := (embedpkg.Extractor{}).ReadFile("leveling.yaml")
 	if err != nil {
 		return nil, fmt.Errorf("read embedded leveling.yaml: %w", err)
 	}
@@ -122,10 +121,4 @@ func readEmbeddedLevelingDefaults() ([]byte, error) {
 
 func init() {
 	humanStatusCommands["leveling"] = true
-}
-
-// registerLeveling attaches LEVELING commands at root composition. Policy and
-// suggestion behavior remain owned by internal/leveling.
-func registerLeveling(root *cobra.Command) {
-	levelingadapter.Register(root, levelingAdapterDependencies())
 }

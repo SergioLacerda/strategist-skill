@@ -104,6 +104,12 @@ selects a generic capability and effort tier from role signals, then maps the
 result to a ranked provider. The embedded defaults contain exactly two ranked
 examples: `CODEX` and `CLAUDE`.
 
+LEVELING is an internal ability and is active automatically for new
+installations. The install wizard no longer asks the operator to choose
+between manual and automatic resolution; it leaves the optional `leveling:`
+block absent, which resolves to automatic. Existing explicit `manual` or
+`automatic` blocks remain a runtime compatibility contract.
+
 Provider precedence is deterministic: generic role criteria are evaluated first,
 then an exact provider profile is used. A ranked provider without a profile uses
 `defaults.fallback` (the former “item 2” fallback) and never inherits another
@@ -158,10 +164,9 @@ through an optional per-model `display` name in `leveling.yaml`. The same
 
 ### Manual or automatic level
 
-The wizard's last step asks whether model x effort is decided **manually**
-(default) or **automatically**, prints one notice explaining the choice, and
-stores only the mode in `active.yaml`. A piped install script that ends before
-this step records `automatic`:
+New installations do not prompt for this setting. They leave the optional
+`leveling:` block absent, which resolves to `automatic`. Existing workspaces
+may continue to use an explicit mode in `active.yaml`:
 
 ```yaml
 leveling:

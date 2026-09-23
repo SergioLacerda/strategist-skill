@@ -10,6 +10,13 @@ on_start:                       # run when this role's phase starts; {role} and 
   - strategist leveling label --role {role} --mission {mission_id} --host-model <your-model> --host-effort <your-effort>
 # leveling: ranger             # optional LEVELING policy role; defaults to the role id
 
+# INITIATIVE is consultative: resolve one advice envelope at role entry and
+# carry its advice_id through the run. It never replaces the LEVELING tuple.
+initiative:
+  on_start: resolve_advice
+  on_result: emit_initiative_result
+  preserve: [advice_id, policy_version, policy_digest, alignment, evidence_refs]
+
 # Canonical behaviors — read-only, source in skill.yaml.
 # Listed here for reference when writing custom_brief below.
 canonical:

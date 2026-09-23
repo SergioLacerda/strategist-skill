@@ -10,6 +10,13 @@ on_start:                       # run when this role's phase starts; {role} and 
   - strategist leveling label --role {role} --mission {mission_id} --host-model <your-model> --host-effort <your-effort>
 # leveling: archivist
 
+# Consume Ranger's initiative_result without recalculating the recommendation.
+# Missing evidence limits confidence and may challenge the handoff.
+initiative:
+  on_start: consume_advice
+  on_result: emit_initiative_result
+  preserve: [advice_id, policy_version, policy_digest, deviations, evidence_refs]
+
 # Canonical behaviors — read-only, source in skill.yaml.
 # Listed here for reference when writing custom_brief below.
 canonical:
@@ -35,6 +42,10 @@ canonical:
       - "<base_path>/refined/<mission_id>/design.md"
       - "<base_path>/refined/<mission_id>/tasks.md"
   - handoff_contract: "schemas/handoff-archivist-to-sniper.schema.yaml"
+  - promote_via_normalize_openspec:   # ability: when the bound weapon is openspec-propose, promotion is one command, not manual file copying
+      command: "strategist mission normalize-openspec --mission-id <mission_id> --change-id <change_id>"
+      effect: publishes the four canonical files, injects provider metadata and mission_status, archives the change
+      see: "contracts/narrative/04-refinement.md § Required Behavior"
 
 # Contract
 must:

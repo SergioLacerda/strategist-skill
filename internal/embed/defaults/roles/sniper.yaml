@@ -9,6 +9,13 @@ on_start:                       # run when this role's phase starts; {role} and 
   - strategist leveling label --role {role} --mission {mission_id} --host-model <your-model> --host-effort <your-effort>
 # leveling: sniper
 
+# INITIATIVE is advisory metadata only; Approval Gate acceptance remains
+# independent and implementation authorization remains outside this ability.
+initiative:
+  on_start: consume_advice
+  on_result: emit_initiative_result
+  preserve: [advice_id, policy_version, policy_digest, deviations, evidence_refs]
+
 
 # Canonical behaviors — read-only, source in skill.yaml.
 # Listed here for reference when writing custom_brief below.

@@ -63,6 +63,15 @@ taxonomy:
       note: >
         Selects model capability and effort from generic role criteria, then
         maps the result to CODEX, CLAUDE, or the explicit generic fallback.
+    - id: initiative
+      display_name: INITIATIVE
+      runs_in: role entry and handoff boundaries (consultative)
+      outputs: [advice, diligence, alignment, initiative_result, outcome_correlation]
+      source: initiative.yaml
+      note: >
+        Advises the role before work begins and records evidence-backed results.
+        It never changes LEVELING's model, provider, capability, effort, or
+        level_source, and it never authorizes the Approval Gate or implementation.
     - id: opportunity_attack
       runs_in: refinement (Archivist, post-refinement, before completion_signal)
       outputs: [adr, runbook, treasure_chest]

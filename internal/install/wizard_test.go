@@ -120,8 +120,9 @@ func TestRunWizard(t *testing.T) {
 	}{
 		{
 			name: "all defaults (empty lines)",
-			// 10 prompts: ui/doc/chat/code/mode/base/discovery/refinement/execution/chest
-			input:          "\n\n\n\n\n\n\n\n\n\n",
+			// 10 prompts: ui/doc/chat/code/mode/base/discovery/refinement/execution/chest.
+			// The invalid extra value proves the removed LEVELING prompt does not consume input.
+			input:          "\n\n\n\n\n\n\n\n\n\nunexpected-leveling-answer\n",
 			wantUILanguage: "en",
 			wantDocLang:    "en",
 			wantChatLang:   "en",
@@ -185,6 +186,7 @@ func TestRunWizard(t *testing.T) {
 			assert.Equal(t, tt.wantExecution, wc.ExecutionProvider)
 			assert.Equal(t, tt.wantExecMode, wc.ExecutionMode)
 			assert.Equal(t, tt.wantChestPath, wc.TreasureChestPath)
+			assert.Equal(t, domain.LevelingModeAutomatic, wc.Leveling.EffectiveMode())
 		})
 	}
 }

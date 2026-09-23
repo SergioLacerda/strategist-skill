@@ -37,6 +37,16 @@ Structured telemetry should preserve, when available:
 - `model`
 - `effort`
 - `level_source`
+- `ability`
+- `initiative.advice_id`
+- `initiative.policy_version`
+- `initiative.policy_digest`
+- `initiative.trigger`
+- `initiative.alignment`
+- `initiative.confidence_ceiling`
+- `initiative.result_status`
+- `initiative.evidence_refs`
+- `initiative.outcome_ids`
 - `handoff_challenge.status`
 - `handoff_challenge.critical_failures`
 - `handoff_challenge.types`
@@ -89,7 +99,9 @@ tuple also emits the `role_level_resolved` event (DEBUG) with `role`, `model`,
 is repeated on its `handoff-metrics.jsonl` line.
 
 The `leveling:` block of `active.yaml` (`mode: manual | automatic`; absent means
-automatic) selects the resolution. Manual is host passthrough: only
+automatic) selects the resolution. LEVELING is an internal ability and the
+install wizard leaves this optional block absent for new installations.
+Explicit modes remain runtime compatibility settings. Manual is host passthrough: only
 host-reported values are used, the LEVELING policy is never read, and a value
 the host does not report stays unknown. Automatic uses host-reported values,
 then the LEVELING policy; `leveling.yaml` plus the install authority are read
@@ -111,6 +123,17 @@ capability, fallback metadata, and policy identity. These fields are additive:
 legacy JSONL remains readable and its missing provenance is shown as unknown,
 never reconstructed from the current policy. Confidence records may likewise
 carry an optional explicit `run`; records without it remain mission-wide.
+
+INITIATIVE has a separate append-only ledger at
+`.strategist/memory/initiative-records.jsonl`, correlated by `mission_id`,
+`role`, `run_id`, and `advice_id`. It never writes `role-levels.jsonl` and never
+replaces the LEVELING tuple. A role resolves one advice envelope at entry and
+reuses its `advice_id` for local actions. Re-evaluation triggers create a new
+record with `supersedes`; prior advice remains immutable. `recommended_effort`
+and `recommended_capability` are advisory names only, not execution selectors.
+Missing evidence is represented as `unknown` or `unavailable`, and a blocked
+obligation may lower the confidence ceiling or challenge the handoff without
+authorizing or rejecting the Approval Gate.
 
 ## Scout Event
 
@@ -151,6 +174,10 @@ When Archivist -> Sniper `handoff_verification` is evaluated, telemetry should p
 These attributes are diagnostic. They never imply Approval Gate acceptance and never
 authorize Sniper materialization.
 
+INITIATIVE result attributes are equally diagnostic. They correlate diligence,
+alignment, evidence references, deviations, and outcome observations, but they
+cannot authorize `implementation_handoff` or bypass the independent Approval Gate.
+
 Confidence telemetry is comparable across agents only through the shared envelope
 above. Scout's `route_confidence`, critic scores, Mission Quality, timing, and
 handoff rates retain their own meanings and must not be converted into claim
@@ -167,6 +194,9 @@ at least three reviewed outcomes; observe-mode may report `no_sample`,
 
 - if a field is not yet emitted by runtime code, document the gap explicitly
 - contract updates should keep `internal/telemetry/schema.go` in sync
+- the current Go runtime exposes the INITIATIVE domain and contract fields; role
+  providers emit the advice/result envelope at prompt-time, so absent provider
+  evidence remains explicit rather than being synthesized by the CLI
 
 ## Chest Event Naming
 

@@ -120,11 +120,11 @@ func collectWizardConfig(p Prompter, catalog pluginCatalog, providerRisk map[str
 	if err != nil {
 		return domain.WizardConfig{}, err
 	}
-	levelingCfg, err := promptLeveling(p, b)
-	if err != nil {
-		return domain.WizardConfig{}, err
-	}
-	return domain.WizardConfig{Mode: mode, BasePath: basePath, UILanguage: uiLang, DocLanguage: normLang(docLang), ChatLanguage: normLang(chatLang), CodeLanguage: normLang(codeLang), DiscoveryProvider: discovery, RefinementProvider: refinement, ExecutionProvider: execution, DiscoveryMode: discoveryMode, RefinementMode: refinementMode, ExecutionMode: executionMode, TreasureChestPath: chestPath, Leveling: levelingCfg}, nil
+	// LEVELING is an internal ability and defaults to automatic when the
+	// optional active.yaml block is absent. Existing explicit manual/automatic
+	// blocks remain readable by the runtime; the new-install wizard does not
+	// expose that compatibility setting as an operator choice.
+	return domain.WizardConfig{Mode: mode, BasePath: basePath, UILanguage: uiLang, DocLanguage: normLang(docLang), ChatLanguage: normLang(chatLang), CodeLanguage: normLang(codeLang), DiscoveryProvider: discovery, RefinementProvider: refinement, ExecutionProvider: execution, DiscoveryMode: discoveryMode, RefinementMode: refinementMode, ExecutionMode: executionMode, TreasureChestPath: chestPath}, nil
 }
 
 // validateAndActivatePluginPlan runs every catalog-dependent Wizard check and

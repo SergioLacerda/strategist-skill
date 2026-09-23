@@ -23,9 +23,10 @@ contract: null
 
 `enforced_by` tags use the unified 3-tier vocabulary defined in
 `machine/errors.yaml` (`machine_enforced` / `machine_observed` /
-`agent_only`). All five items below are `agent_only` as of 2026-08-30: no Go
-code reads `tasks.md`, tracks whether the gate was presented, or validates
-gate-prompt content — this phase is entirely agent-narrative.
+`agent_only`). All six items below are `agent_only` as of 2026-09-23: no Go
+code reads `tasks.md`, tracks whether the gate was presented, validates
+gate-prompt content, or inspects which tool rendered it — this phase is
+entirely agent-narrative.
 
 - read `tasks.md` before deciding whether to present the gate — `enforced_by: agent_only`
 - stop and wait for explicit user review response before Sniper — `enforced_by: agent_only`
@@ -33,6 +34,26 @@ gate-prompt content — this phase is entirely agent-narrative.
 - re-emit mission checkpoint when documentation targets are accepted — `enforced_by: agent_only`
 - if `implementation_plan` contains any `task_type: implementation_handoff` item, state this
   explicitly in the gate prompt (see Gate Display With Implementation Handoff below) — `enforced_by: agent_only`
+- render the gate prompt as plain assistant chat text (see Presentation Channel below), never
+  through an interactive selection/dialog tool — `enforced_by: agent_only`
+
+## Presentation Channel
+
+The block templates in this contract (see Gate Display With Implementation Handoff and Side
+Quests at the Gate below) are the complete gate UX. The gate prompt is written as plain
+assistant chat text — the same conversational surface as every other Strategist-mediated
+message per `09-response.md` — and the user replies in free text matched against
+`accept_aliases` / `revision_aliases` / `reject_aliases` (`machine/approval-gate.yaml#responses`).
+
+The gate must never be rendered through an interactive selection/dialog tool (e.g. a
+multiple-choice or confirmation popup UI, such as Claude Code's `AskUserQuestion` tool). That
+channel truncates the block template into a short label, hides the full analysis content from
+the transcript, collapses the three-way accept/review/reject vocabulary into a forced single
+pick, and produces no reviewable text history of what was actually presented. If host UI ever
+folds a plain chat message into a collapsible/attachment-style presentation on its own, that is
+a host rendering choice outside Strategist's control — the contract requirement is only that
+the agent emits it as ordinary chat text, not through a tool call that asks for structured
+input.
 
 ## Gate Acceptance Is Not Code Mutation Approval
 

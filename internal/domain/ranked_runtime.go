@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -129,7 +130,13 @@ func ValidateOpenSpecHealthcheck(output []byte, runtimeRoot string) error {
 			Path string `json:"path"`
 		} `json:"root"`
 	}
-	if err := json.Unmarshal(output, &contextResult); err != nil {
+	payload := output
+	if start := bytes.IndexByte(output, '{'); start >= 0 {
+		if end := bytes.LastIndexByte(output, '}'); end > start {
+			payload = output[start : end+1]
+		}
+	}
+	if err := json.Unmarshal(payload, &contextResult); err != nil {
 		return fmt.Errorf("parse OpenSpec context: %w", err)
 	}
 	if contextResult.Root.Path == "" {

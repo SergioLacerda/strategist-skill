@@ -1,4 +1,4 @@
-package main
+package eval
 
 import (
 	"fmt"
@@ -6,6 +6,30 @@ import (
 	"os"
 	"path/filepath"
 )
+
+// harvestArtifactFiles maps an --include value to the filename it reads from
+// inside the mission directory. "adr" and "report" are handled separately
+// (harvestIncludeSource) since they live under <base_path>/archived/, not
+// inside the mission directory.
+var harvestArtifactFiles = map[string]string{
+	"design":   "design.md",
+	"proposal": "proposal.md",
+	"tasks":    "tasks.md",
+}
+
+// HarvestMissions harvests every mission in missionIDs, returning the total
+// fixture file count written across all of them.
+func HarvestMissions(basePath, destRoot string, missionIDs, includeTypes []string) (int, error) {
+	written := 0
+	for _, id := range missionIDs {
+		n, err := harvestMission(basePath, destRoot, id, includeTypes)
+		if err != nil {
+			return written, fmt.Errorf("eval harvest %s: %w", id, err)
+		}
+		written += n
+	}
+	return written, nil
+}
 
 // harvestMission copies the default analysis.md plus every requested
 // include type for one mission into destRoot/<mission_id>/, and returns how
@@ -47,7 +71,7 @@ func harvestIncludeSource(basePath, srcDir, destDir, missionID, includeType stri
 	case "report":
 		return filepath.Join(basePath, "archived", missionID+"-report.md"), filepath.Join(destDir, "report.md")
 	default:
-		filename := evalHarvestArtifactFiles[includeType]
+		filename := harvestArtifactFiles[includeType]
 		return filepath.Join(srcDir, filename), filepath.Join(destDir, filename)
 	}
 }

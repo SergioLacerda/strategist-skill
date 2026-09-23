@@ -1,0 +1,28 @@
+schema_version: "1"
+description: >
+  Consultative INITIATIVE advice. This schema is intentionally separate from
+  LEVELING. No top-level model, provider, capability, effort, level, or
+  level_source field may be written by this ability.
+authority:
+  owns: [advice, diligence, alignment]
+  forbidden_top_level_fields: [model, provider, capability, effort, level, level_source, resolved_execution_level]
+required_fields:
+  advice_id: string
+  mission_id: string
+  role: string
+  run_id: string
+  policy_version: string
+  policy_digest: string
+  trigger: [initial, scope_changed, security_risk_discovered, conflicting_evidence, handoff_challenged, repeated_failure, user_revision_requested, mandatory_obligation_blocked]
+  observed:
+    type: object
+    fields: [state, model, provider, effort, capability, level_source]
+  recommendation:
+    type: object
+    fields: [recommended_capability, recommended_effort, rationale]
+  alignment: [matched, below_recommendation, above_recommendation, unknown, unavailable, not_comparable]
+  diligence:
+    type: object
+    fields: [checks, confidence_ceiling]
+optional_fields:
+  supersedes: string

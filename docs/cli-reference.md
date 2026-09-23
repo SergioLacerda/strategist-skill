@@ -128,8 +128,9 @@ ranked providers use the generic fallback and never inherit a ranked model
 name. Edit `leveling.yaml` to add a provider profile or change role criteria;
 invalid effort tiers and unsupported mappings fail closed. Supplying
 `--expected-digest` makes validation reject a stale policy before activation.
-The install wizard applies the same validation to its selected role/provider
-bindings in automatic mode; manual mode skips the policy check.
+For new installations, the wizard uses effective automatic mode and applies
+the same validation to its selected role/provider bindings. Existing explicit
+manual mode remains a compatibility path and skips the policy check.
 
 The installer also records the embedded LEVELING version/digest in
 `.install-manifest.json`. A stale authority blocks activation with
@@ -177,7 +178,7 @@ strategist install [--target=<dir>] [--wizard] [--silent] [--force]
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--target` | `.` (current directory) | Repository root where `.strategist/` will be created |
-| `--wizard` | `false` | Interactive mode: collects mode, base_path, providers, and whether model x effort is manual (default, host passthrough) or automatic (LEVELING policy), via prompts |
+| `--wizard` | `false` | Interactive mode: collects mode, base_path, providers, and treasure chest settings; LEVELING is internal and automatic by default, without a mode prompt |
 | `--silent` | `false` (default behavior when no flag is passed) | Installation without prompts, using **epic** profile defaults |
 | `--force` | `false` | Overwrite all files, including user-modified ones (default: preserve customizations that differ from the embedded default) |
 | `--strict-compile` | `false` | Make a `CompileAll` failure after extraction fatal — the install rolls back instead of completing with a partial/uncompiled runtime. Default is warning-only (install still completes) |
