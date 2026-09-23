@@ -22,6 +22,7 @@ are recorded in `scripts/coverage-exemptions.tsv`. Edit those sources, not this 
 | `internal/embed` | 95% | embedded defaults availability gate - raised to 95% (20260901-coverage-standard-95) - measured 96.5% |
 | `internal/telemetry` | 90% | governance telemetry gate |
 | `cmd/strategist` | 90% | CLI contract surface gate - remeasured 94.1% after check* cluster moved to internal/check (20260816-cmd-strategist-cli-reorg) |
+| `cmd/strategist/leveling` | 90% | LEVELING CLI adapter contract surface gate - measured 90.9% after package-local migration (2026-09-22) |
 | `treasure-chest/cli` | 90% | treasure-chest/runbook CLI command cluster, extracted from cmd/strategist (20260806-treasure-chest-cmd-consolidation) - measured 95.5%; path updated from internal/treasurecli after in-repo isolation move (ADR 0040) |
 | `internal/cliutil` | 90% | shared CLI helpers extracted from cmd/strategist during the same move - measured 100% |
 | `internal/check` | 90% | check/check-stale CLI command cluster, extracted from cmd/strategist (20260816-cmd-strategist-cli-reorg) - measured 95.6% |
@@ -52,6 +53,7 @@ are recorded in `scripts/coverage-exemptions.tsv`. Edit those sources, not this 
 | `internal/testutil` | 95% | raised from 0.0% to 100.0% (2026-08-30, direct helper tests added; no longer excluded from `make test`) - measured 100.0% |
 | `internal/runtimepayload` | 75% | embedded OpenSpec bundle verification/materialization gate - measured 79.6% (20260920-drift-a-windows-standalone-install) |
 | `internal/leveling` | 90% | provider-neutral LEVELING policy, fallback, and digest contract |
+| `internal/initiative` | 90% | consultative INITIATIVE advice, result, authority, and append-only ledger contract |
 | `internal/missionview` | 90% | read-only mission projection and deterministic renderer contract |
 
 ## Reviewed Exemptions
@@ -72,7 +74,6 @@ These production packages are present in the inventory but intentionally have no
 | `treasure-chest/domain` | quality-maintainers | baseline coverage policy is pending a dedicated Treasure Chest domain test budget |
 | `cmd/strategist/eval` | quality-maintainers | adapter extraction pending dedicated package-local coverage budget; existing CLI contract tests remain authoritative |
 | `cmd/strategist/install` | quality-maintainers | adapter extraction pending migration of hermetic CLI install fixtures to package-local tests |
-| `cmd/strategist/leveling` | quality-maintainers | adapter extraction pending dedicated package-local coverage budget; policy authority remains internal/leveling |
 | `cmd/strategist/metrics` | quality-maintainers | adapter-local metrics suite is established; dedicated error-matrix coverage budget remains pending |
 | `cmd/strategist/mission` | quality-maintainers | adapter extraction pending migration of mission lifecycle fixtures to package-local tests |
 | `cmd/strategist/plugins` | quality-maintainers | adapter extraction (cmd-plugins-extraction) pending a dedicated package-local coverage budget; measured 84.9% on 2026-09-22 |

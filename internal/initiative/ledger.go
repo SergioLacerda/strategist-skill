@@ -37,6 +37,16 @@ func AppendRecord(path string, record Record) error {
 	if err := validateRecord(record); err != nil {
 		return err
 	}
+	if record.Kind != RecordKindAdvice {
+		return fmt.Errorf("initiative_record_invalid: result records must be appended by the validated runtime")
+	}
+	return withLedgerLock(path, func() error { return appendRecordUnlocked(path, record) })
+}
+
+func appendRecordUnlocked(path string, record Record) error {
+	if err := validateRecord(record); err != nil {
+		return err
+	}
 	if record.Timestamp == "" {
 		record.Timestamp = time.Now().UTC().Format(time.RFC3339Nano)
 	}

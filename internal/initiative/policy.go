@@ -63,12 +63,32 @@ func validateProfile(role string, profile Profile) error {
 }
 
 func validateReevaluationTriggers(triggers []Trigger) error {
+	seen := make(map[Trigger]struct{}, len(triggers))
 	for _, trigger := range triggers {
 		if !validTriggers[trigger] || trigger == TriggerInitial {
 			return fmt.Errorf("initiative_policy_invalid: invalid re-evaluation trigger %q", trigger)
 		}
+		if _, exists := seen[trigger]; exists {
+			return fmt.Errorf("initiative_policy_invalid: duplicate re-evaluation trigger %q", trigger)
+		}
+		seen[trigger] = struct{}{}
 	}
 	return nil
+}
+
+// AllowsTrigger reports whether trigger is explicitly enabled by the policy.
+// Initial advice is always allowed; every re-evaluation trigger must be
+// declared so a caller cannot invent a policy transition at runtime.
+func (p Policy) AllowsTrigger(trigger Trigger) bool {
+	if trigger == TriggerInitial {
+		return true
+	}
+	for _, allowed := range p.Triggers {
+		if allowed == trigger {
+			return true
+		}
+	}
+	return false
 }
 
 // Digest returns a stable hash of the policy's contents, used to detect

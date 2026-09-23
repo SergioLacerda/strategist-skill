@@ -28,6 +28,17 @@ type RoleConfig struct {
 	// are a literal reminder for the agent to fill in. Empty means the
 	// built-in default.
 	OnStart []string `yaml:"on_start,omitempty"`
+	// Initiative declares the internal consultative role-boundary hooks. It is
+	// additive metadata and never changes LEVELING resolution.
+	Initiative InitiativeHooks `yaml:"initiative,omitempty"`
+}
+
+// InitiativeHooks describes the advisory INITIATIVE lifecycle declared by a
+// role definition.
+type InitiativeHooks struct {
+	OnStart  string   `yaml:"on_start,omitempty"`
+	OnResult string   `yaml:"on_result,omitempty"`
+	Preserve []string `yaml:"preserve,omitempty"`
 }
 
 // Validate returns an error if the role definition is missing required fields

@@ -3,8 +3,10 @@
 package spec_test
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -115,6 +117,10 @@ var confidenceProducerContracts = []string{
 	"internal_skills/response-critic/skill.yaml",
 	"contracts/machine/scout-routing.yaml",
 	"contracts/machine/mission-quality.yaml",
+	"contracts/machine/confidence-governance.yaml",
+	"contracts/narrative/03-discovery.md",
+	"contracts/narrative/04-refinement.md",
+	"contracts/narrative/06-execution.md",
 }
 
 func TestConfidenceProducerContractsPublishCLI(t *testing.T) {
@@ -143,5 +149,59 @@ func TestConfidenceProducerContractsRuntimeParityWhenInstalled(t *testing.T) {
 		if defaults != mirror {
 			t.Fatalf("confidence producer mirror drift for %s", rel)
 		}
+	}
+}
+
+const claimPlacementOwner = "contracts/machine/confidence-governance.yaml"
+
+var claimFileArg = regexp.MustCompile("--claim-file\\s+(\\S+)")
+
+// TestConfidenceClaimPlacementIsStatedOnceAndReferenced walks every embedded
+// default so a newly added producer cannot leave the claim location
+// unspecified. The claim is transient CLI input: it is piped on stdin
+// (`--claim-file -`) and never written under the workspace base_path.
+func TestConfidenceClaimPlacementIsStatedOnceAndReferenced(t *testing.T) {
+	t.Parallel()
+	defaults := filepath.Join(repoRoot(t), "internal", "embed", "defaults")
+
+	owner := readFile(t, filepath.Join(defaults, claimPlacementOwner))
+	for _, want := range []string{"claim_placement:", "--claim-file -", "never stored under <base_path>", "confidence-records.jsonl", "confidence_summary"} {
+		if !strings.Contains(owner, want) {
+			t.Fatalf("%s must state the claim placement rule (missing %q)", claimPlacementOwner, want)
+		}
+	}
+
+	sites := 0
+	err := filepath.WalkDir(defaults, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.Contains("|.md|.yaml|.yml|", "|"+filepath.Ext(path)+"|") {
+			return err
+		}
+		raw, readErr := os.ReadFile(path) //nolint:gosec // repo-internal test walk
+		if readErr != nil {
+			return readErr
+		}
+		content := string(raw)
+		rel, _ := filepath.Rel(defaults, path)
+		rel = filepath.ToSlash(rel)
+		matches := claimFileArg.FindAllStringSubmatch(content, -1)
+		if len(matches) == 0 || rel == claimPlacementOwner {
+			return nil
+		}
+		sites++
+		for _, m := range matches {
+			if strings.Trim(m[1], "`") != "-" {
+				t.Errorf("%s: `--claim-file %s` must be `--claim-file -` (stdin); a claim file location invites files under base_path", rel, m[1])
+			}
+		}
+		if !strings.Contains(content, "producers.claim_placement") {
+			t.Errorf("%s: producer instruction must reference confidence-governance.yaml#producers.claim_placement", rel)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sites < 8 {
+		t.Fatalf("found %d producer sites using --claim-file, want at least 8; the walk or the wording regressed", sites)
 	}
 }

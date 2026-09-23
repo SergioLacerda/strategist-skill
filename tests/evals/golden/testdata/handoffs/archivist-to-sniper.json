@@ -202,6 +202,22 @@
       "required": true,
       "type": "list"
     },
+    "initiative_result": {
+      "description": "Result emitted by the consultative INITIATIVE ability. It is validated by the next consumer but never authorizes the Approval Gate or execution. Missing evidence is represented as a confidence limit or challenge.\n",
+      "fields": {
+        "advice_id": "string",
+        "checks": "list",
+        "deviations": "list",
+        "evidence_refs": "list",
+        "gate_independent": "boolean",
+        "mission_id": "string",
+        "outcomes": "list",
+        "role": "string",
+        "run_id": "string"
+      },
+      "required": false,
+      "type": "object"
+    },
     "mission_id": {
       "required": true,
       "type": "string"

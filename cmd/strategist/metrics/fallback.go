@@ -15,6 +15,11 @@ type Dependencies struct {
 	RootFlag    string
 	ResolveRoot func(cmd *cobra.Command, action, explicitRoot string) (string, error)
 	SilenceRun  func(cmd *cobra.Command)
+	// ResolveBasePath returns the workspace artifact root (active.yaml's
+	// base_path) for a resolved .strategist/ root. It returns "" with a nil
+	// error when the workspace declares none. Optional: a nil resolver
+	// disables the claim-location guard in `metrics record`.
+	ResolveBasePath func(strategistRoot string) (string, error)
 }
 
 // NewFallback creates a new Cobra command for reporting provider fallback metrics.

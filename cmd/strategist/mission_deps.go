@@ -3,14 +3,44 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	missionadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
 	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/initiative"
+	missionruntime "github.com/SergioLacerda/strategist-skill/internal/mission"
 	"github.com/spf13/cobra"
 )
 
 func missionLifecycleDependencies() missionadapter.LifecycleDependencies {
-	return missionadapter.LifecycleDependencies{RootFlag: flagRoot, RequireMissionID: requireMissionID, ResolveBasePath: cliutil.ResolveActiveBasePath, RequireNoExisting: requireNoExistingMission, Save: saveMission, Load: loadMission, WriteResult: writeMissionResult}
+	return missionadapter.LifecycleDependencies{
+		RootFlag: flagRoot, RequireMissionID: requireMissionID,
+		ResolveBasePath: cliutil.ResolveActiveBasePath, RequireNoExisting: requireNoExistingMission,
+		Save: saveMission, Load: loadMission, InitiativeStart: startInitiativeConsultation,
+		WriteResult: writeMissionResult,
+	}
+}
+
+func startInitiativeConsultation(root, missionID string) error {
+	registry, err := domain.LoadRoleRegistry(filepath.Join(root, "roles"))
+	if err != nil {
+		registry = domain.DefaultRoleRegistry()
+	}
+	lifecycle, err := missionruntime.NewDefaultRoleLifecycle(root, registry)
+	if err != nil {
+		return fmt.Errorf("create initiative lifecycle: %w", err)
+	}
+	_, err = lifecycle.Enter(missionruntime.InitiativeRoleEntry{
+		MissionID: missionID,
+		Role:      "scout",
+		RunID:     missionID,
+		Observed:  initiative.Observation{State: initiative.ObservationUnavailable},
+	})
+	if err != nil {
+		return fmt.Errorf("enter initiative role: %w", err)
+	}
+	return nil
 }
 
 func missionViewDependencies() missionadapter.ViewDependencies {

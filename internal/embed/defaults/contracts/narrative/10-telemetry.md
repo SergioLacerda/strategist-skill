@@ -47,6 +47,17 @@ Structured telemetry should preserve, when available:
 - `initiative.result_status`
 - `initiative.evidence_refs`
 - `initiative.outcome_ids`
+- `initiative.observed_model`
+- `initiative.observed_provider`
+- `initiative.observed_effort`
+- `initiative.observed_level_source`
+- `initiative.recommended_capability`
+- `initiative.recommended_effort`
+- `initiative.advice_reused`
+- `initiative.supersedes`
+- `initiative.deviation_ids`
+- `initiative.challenge_reasons`
+- `initiative.source_role`
 - `handoff_challenge.status`
 - `handoff_challenge.critical_failures`
 - `handoff_challenge.types`
@@ -135,6 +146,17 @@ Missing evidence is represented as `unknown` or `unavailable`, and a blocked
 obligation may lower the confidence ceiling or challenge the handoff without
 authorizing or rejecting the Approval Gate.
 
+The runtime emits the corresponding diagnostic events to
+`.strategist/memory/initiative-events.jsonl`. These events carry INITIATIVE
+observations and recommendations under `strategist.initiative.*`; they never
+overwrite the LEVELING `model`, `provider`, `effort`, or `level_source` fields.
+This local JSONL stream is the authoritative default INITIATIVE event sink;
+hosts may inject another `EventSink`, but delivery failures are surfaced to the
+role boundary rather than silently reported as complete advisory evidence. The
+mission-start adapter consults the declared Scout hook, while advisory
+handoffs consume the declared downstream hook before the mission transition is
+applied.
+
 ## Scout Event
 
 Scout's route-decision events are distinguished from Ranger's discovery-result
@@ -194,9 +216,10 @@ at least three reviewed outcomes; observe-mode may report `no_sample`,
 
 - if a field is not yet emitted by runtime code, document the gap explicitly
 - contract updates should keep `internal/telemetry/schema.go` in sync
-- the current Go runtime exposes the INITIATIVE domain and contract fields; role
-  providers emit the advice/result envelope at prompt-time, so absent provider
-  evidence remains explicit rather than being synthesized by the CLI
+- the current Go runtime exposes the INITIATIVE domain and contract fields; the
+  production mission-start and handoff adapters invoke declared lifecycle hooks,
+  while absent provider evidence remains explicit rather than being synthesized
+  as execution-level data
 
 ## Chest Event Naming
 

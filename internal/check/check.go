@@ -1,23 +1,6 @@
 package check
 
-import (
-	"context"
-	"fmt"
-	"os"
-	"path/filepath"
-	"time"
-
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/trace"
-
-	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
-	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/rolevalidation"
-	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
-	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
-)
+import "github.com/spf13/cobra"
 
 var (
 	checkRoot                      string
@@ -26,6 +9,7 @@ var (
 	checkJSON                      bool
 	checkPrintContentByLang        string
 	checkPrintContentByLangPersona string
+	checkConfirmChatLanguage       string
 	readGitConflictedPaths         = readGitConflictedPathsFromWorktree
 )
 
@@ -45,155 +29,5 @@ Checks performed:
       • native roles are accepted by slot field match; no risk_score check
   - discovery and refinement must have one valid persisted weapon binding in plugins.lock
   - role affinity and active.yaml/plugins.lock parity are validated fail-closed`,
-	RunE: func(cmd *cobra.Command, _ []string) (retErr error) {
-		root := checkRoot
-		if root == "" {
-			cwd, cwdErr := os.Getwd()
-			if cwdErr != nil {
-				return fmt.Errorf("[Strategist] check=blocked reason=cwd_error: %w", cwdErr)
-			}
-			discovered, _, discErr := cliutil.FindStrategistRoot(cwd)
-			if discErr != nil {
-				return fmt.Errorf("[Strategist] check=blocked reason=runtime_not_found\n→ Run: strategist install")
-			}
-			root = discovered
-		}
-		root, absErr := absoluteRoot(root)
-		if absErr != nil {
-			return fmt.Errorf("[Strategist] check=blocked reason=root_unresolvable: %w", absErr)
-		}
-
-		ctx := cmd.Context()
-		if ctx == nil {
-			ctx = context.Background()
-		}
-		_, span := telemetry.Tracer().Start(ctx, "strategist.check",
-			trace.WithAttributes(
-				attribute.String(telemetry.AttrComponent, "check"),
-				attribute.String(telemetry.AttrTarget, telemetry.SanitizePath(root)),
-			),
-		)
-		defer func() {
-			if retErr != nil {
-				span.RecordError(retErr)
-				span.SetStatus(codes.Error, retErr.Error())
-			}
-			span.End()
-		}()
-
-		activeYAML := filepath.Join(root, "active.yaml")
-		raw, err := os.ReadFile(activeYAML) //nolint:gosec // G304: active.yaml path is derived from the selected .strategist root
-		if err != nil {
-			if os.IsNotExist(err) {
-				return fmt.Errorf("[Strategist] check=blocked reason=active_yaml_not_found\n→ Run: strategist install")
-			}
-			return fmt.Errorf("[Strategist] check=blocked reason=active_yaml_read_error: %w", err)
-		}
-
-		var cfg domain.ActiveConfig
-		if err := yaml.Unmarshal(raw, &cfg); err != nil {
-			return fmt.Errorf("[Strategist] check=blocked reason=active_yaml_invalid_yaml: %w", err)
-		}
-
-		if checkPrintContentByLang != "" {
-			persona := checkPrintContentByLangPersona
-			if persona == "" {
-				persona = cfg.Mode
-			}
-			return printContentByLang(root, persona, checkPrintContentByLang)
-		}
-
-		if identityErr := checkIdentityFilesBlockingError(root); identityErr != nil {
-			if checkJSON {
-				return printPreflightJSONBlocked(root, cfg.Mode, identityErr)
-			}
-			return identityErr
-		}
-
-		providers := map[string]string{
-			"discovery":  cfg.Slots["discovery"],
-			"refinement": cfg.Slots["refinement"],
-			"execution":  cfg.Slots["execution"],
-		}
-
-		resolutions := map[string]slotResolution{}
-		var errs []string
-		for _, slot := range []string{"discovery", "refinement", "execution"} {
-			provider := providers[slot]
-			if provider == "" {
-				errs = append(errs, fmt.Sprintf("slot %s: no provider configured in active.yaml", slot))
-				continue
-			}
-			res, errMsg := resolveSlotProvider(root, slot, provider)
-			if errMsg != "" {
-				errs = append(errs, errMsg)
-				continue
-			}
-			resolutions[slot] = res
-		}
-		errs = append(errs, checkPluginLockParity(root, providers)...)
-		for _, failure := range rolevalidation.ValidateRuntimeBindings(root, cfg) {
-			errs = append(errs, failure.Error())
-		}
-
-		// Gate the exit code on plugin-readiness diagnostics, not just static
-		// YAML validation (see blockedReadinessErrorsForSlots/
-		// blockedReadinessErrors in check_readiness.go for why Blocked
-		// specifically, not the full Ready() bar) — this is what makes
-		// `strategist check` actually enforce the readiness handshake it has
-		// always computed and printed but never gated on.
-		errs = append(errs, blockedReadinessErrorsForSlots(resolutions, []string{"discovery", "refinement", "execution"})...)
-
-		errs = append(errs, validateActivePersona(root, cfg.Mode)...)
-
-		weaponBindings, weaponErr := verifyEmbeddedWeaponBindings(root)
-		if weaponErr != nil {
-			errs = append(errs, weaponErr.Error())
-		}
-		errs = append(errs, weaponBindingErrors(weaponBindings)...)
-
-		errs = append(errs, checkPluginLockParity(root, providers)...)
-
-		errs = append(errs, validateRuntimeDefaultParity(root)...)
-		emitErr := emitF3ConflictAttributionSignals(root, cfg.BasePath, time.Now())
-		if emitErr != nil {
-			fmt.Fprintf(os.Stderr, "  ⚠ f3_conflict_signal: %v\n", emitErr)
-		}
-
-		if checkStrict {
-			errs = append(errs, runStrictChecks(root)...)
-		}
-
-		decisionReason := "all_slots_ready"
-		for _, slot := range []string{"discovery", "refinement", "execution"} {
-			if providers[slot] == "" {
-				decisionReason = "slot_provider_missing:" + slot
-				break
-			}
-		}
-		if decisionReason == "all_slots_ready" && len(errs) > 0 {
-			decisionReason = "validation_failed"
-		}
-		span.SetAttributes(
-			attribute.String(telemetry.AttrPipelineRoute, "main"),
-			attribute.String(telemetry.AttrDecisionReason, decisionReason),
-		)
-
-		if checkSimulate {
-			return printSimulateReport(root, providers, resolutions, cfg.Mode, decisionReason, errs)
-		}
-
-		if checkJSON {
-			return printPreflightJSON(root, cfg.Mode, providers, resolutions, errs)
-		}
-
-		if len(errs) > 0 {
-			for _, e := range errs {
-				fmt.Fprintf(os.Stderr, "  ✗ %s\n", e)
-			}
-			return fmt.Errorf("[Strategist] check=failed errors=%d root=%s", len(errs), root)
-		}
-
-		return printCheckSuccess(root, providers, resolutions, cfg.Mode, weaponBindings)
-	},
+	RunE: func(cmd *cobra.Command, _ []string) error { return runCheck(cmd) },
 }

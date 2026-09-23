@@ -16,6 +16,7 @@ type LifecycleDependencies struct {
 	RequireNoExisting func(string, string) error
 	Save              func(string, domain.MissionEngineStatus) error
 	Load              func(string, string) (*domain.MissionEngine, domain.MissionEngineStatus, error)
+	InitiativeStart   func(string, string) error
 	WriteResult       func(*cobra.Command, bool, any) error
 }
 
@@ -54,6 +55,9 @@ func RunStart(cmd *cobra.Command, deps LifecycleDependencies, rootInput, mission
 	if err := deps.RequireNoExisting(root, missionID); err != nil {
 		return err
 	}
+	if err := runInitiativeStart(deps, root, missionID); err != nil {
+		return err
+	}
 	engine, status, err := domain.StartMission(domain.MissionStartRequest{MissionID: missionID})
 	if err != nil {
 		return fmt.Errorf("mission start: %w", err)
@@ -62,4 +66,14 @@ func RunStart(cmd *cobra.Command, deps LifecycleDependencies, rootInput, mission
 		return fmt.Errorf("mission start: %w", err)
 	}
 	return deps.WriteResult(cmd, asJSON, status)
+}
+
+func runInitiativeStart(deps LifecycleDependencies, root, missionID string) error {
+	if deps.InitiativeStart == nil {
+		return nil
+	}
+	if err := deps.InitiativeStart(root, missionID); err != nil {
+		return fmt.Errorf("mission start: initiative consultation: %w", err)
+	}
+	return nil
 }

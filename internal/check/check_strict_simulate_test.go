@@ -15,8 +15,10 @@ import (
 func resetCheckFlags(t *testing.T) {
 	t.Helper()
 	origRoot, origStrict, origSimulate, origJSON := checkRoot, checkStrict, checkSimulate, checkJSON
+	origConfirmChatLanguage := checkConfirmChatLanguage
 	t.Cleanup(func() {
 		checkRoot, checkStrict, checkSimulate, checkJSON = origRoot, origStrict, origSimulate, origJSON
+		checkConfirmChatLanguage = origConfirmChatLanguage
 	})
 }
 

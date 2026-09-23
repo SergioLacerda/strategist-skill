@@ -71,6 +71,12 @@ func (a Advisor) Advise(input AdviceInput) (Advice, error) {
 	if err := a.Policy.Validate(); err != nil {
 		return Advice{}, err
 	}
+	if !validTriggers[input.Trigger] {
+		return Advice{}, fmt.Errorf("initiative_advice_invalid: unknown trigger %q", input.Trigger)
+	}
+	if !a.Policy.AllowsTrigger(input.Trigger) {
+		return Advice{}, fmt.Errorf("initiative_advice_invalid: trigger %q is not enabled by policy", input.Trigger)
+	}
 	role, profile, sequence, err := a.resolveAdviceInput(input)
 	if err != nil {
 		return Advice{}, err

@@ -51,6 +51,11 @@ flowchart TD
 ### Mode 2: Historical Archiving Consolidation (Thematic Cold Storage)
 - **Trigger**: When `.analysis/done/` accumulates >20 completed missions/reports and requires clean-up to prevent workspace clutter while preserving cold history.
 - **Output Model**: 6 Thematic Domains in `.analysis/archived/` + clean `.analysis/done/` ready for active cycles.
+- **Precondition — verify closure before archiving**: "100% Done Cleanup" assumes every item already sitting in `.analysis/done/` reached a real Critical Hit closure (`11-critical-hit.md`). That is not always true — a package can end up in `done/` without one. Before classifying-and-moving, check each item's `mission_status` (canonical values: `.strategist/contracts/machine/mission-status.yaml`):
+  - `documentation_applied`, or `archivist_done`/`gate_analysis_accepted` with an empty/no `tasks.md` documentation-target list → genuinely terminal, safe to archive.
+  - Any other single status with open documentation targets, or `gate_pending` → not actually done; route back to `.analysis/refined/<id>/` instead of archiving it as history.
+  - A directory carrying more than one distinct `mission_status` internally is a mixed aggregate, not one atomic package — leave it for its own decomposition pass rather than moving or dissecting it.
+  This precondition was learned the hard way: missions `20260917-reorganizar-done-archived` and `20260923-reorganizar-done-archived` both archived only clearly-terminal items and left the rest as unclassified residuals; `20260923-reorg-residuals-audit` then found several of those residuals were themselves misclassified (empty-task terminal packages) or genuinely misplaced (open work parked in `done/`), and corrected them — see that mission's `manifest.md` for the worked example.
 
 ---
 

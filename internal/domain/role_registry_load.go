@@ -21,20 +21,37 @@ func LoadRoleRegistry(dir string) (RoleRegistry, error) {
 	if err != nil {
 		return RoleRegistry{}, err
 	}
-	merged := map[string]Role{}
-	for _, role := range DefaultRoleRegistry().roles {
-		merged[role.ID] = role
-	}
+	merged := defaultRolesByID()
 	for _, cfg := range configs {
-		role := RoleFromConfig(cfg)
-		role.ID = normalizeRoleID(role.ID)
-		merged[role.ID] = role
+		mergeRoleConfig(merged, cfg)
 	}
 	roles := make([]Role, 0, len(merged))
 	for _, role := range merged {
 		roles = append(roles, role)
 	}
 	return NewRoleRegistry(roles)
+}
+
+func defaultRolesByID() map[string]Role {
+	merged := make(map[string]Role)
+	for _, role := range DefaultRoleRegistry().roles {
+		merged[role.ID] = role
+	}
+	return merged
+}
+
+func mergeRoleConfig(merged map[string]Role, cfg RoleConfig) {
+	role := RoleFromConfig(cfg)
+	role.ID = normalizeRoleID(role.ID)
+	if role.Initiative.OnStart == "" && role.Initiative.OnResult == "" && len(role.Initiative.Preserve) == 0 {
+		if builtin, ok := merged[role.ID]; ok {
+			// A legacy role override that predates INITIATIVE must not
+			// silently disable the internal ability. A declared block can
+			// override the built-in hooks when custom behavior needs that.
+			role.Initiative = builtin.Initiative
+		}
+	}
+	merged[role.ID] = role
 }
 
 // readRoleConfigs parses every role definition file in dir.

@@ -20,6 +20,10 @@ type LiveHandoffInput struct {
 	Attempt                   int
 	ConfidenceSummary         *domain.ConfidenceSummary
 	PreviousConfidenceSummary *domain.ConfidenceSummary
+	// Initiative is optional for backward-compatible handoffs. When present,
+	// its advisory assessment may challenge the handoff but can never authorize
+	// the Approval Gate or replace LEVELING state.
+	Initiative *InitiativeHandoff
 }
 
 // ArchivistToSniper evaluates and persists one live handoff attempt, then
@@ -32,22 +36,12 @@ func ArchivistToSniper(engine *domain.MissionEngine, strategistRoot string, inpu
 	}
 	status := engine.Status()
 	result := handoff.Verify(input.Policy, input.Challenges, input.Ack)
-	record := telemetry.ChallengeRecord{
-		MissionID:                status.MissionID,
-		Transition:               input.Policy.Transition,
-		Attempt:                  input.Attempt,
-		Timestamp:                time.Now().UTC().Format(time.RFC3339Nano),
-		Status:                   result.Status,
-		Passed:                   result.Passed,
-		MissingRefs:              result.MissingRefs,
-		MissingChallenges:        result.MissingChallenges,
-		MisclassifiedRefs:        result.MisclassifiedRefs,
-		GateMismatch:             result.GateMismatch,
-		CounterfactualMismatches: result.CounterfactualMismatches,
-		ForbiddenClaimViolations: result.ForbiddenClaimViolations,
-		CriticalFailures:         result.CriticalFailures,
+	var err error
+	result, err = applyInitiativeChallenge(strategistRoot, input.Policy, result, input.Initiative)
+	if err != nil {
+		return status, result, err
 	}
-	if err := telemetry.AppendHandoffChallenge(telemetry.HandoffChallengeHistoryPath(strategistRoot), record); err != nil {
+	if err := persistHandoffAttempt(strategistRoot, status, input, result); err != nil {
 		return status, result, fmt.Errorf("live handoff: persist attempt: %w", err)
 	}
 	if err := persistHandoffConfidence(strategistRoot, status.MissionID, input); err != nil {
@@ -65,6 +59,52 @@ func ArchivistToSniper(engine *domain.MissionEngine, strategistRoot string, inpu
 		return status, result, fmt.Errorf("live handoff: apply outcome: %w", err)
 	}
 	return next, result, nil
+}
+
+func applyInitiativeChallenge(strategistRoot string, policy handoff.Policy, result handoff.Result, metadata *InitiativeHandoff) (handoff.Result, error) {
+	if metadata == nil {
+		return result, nil
+	}
+	if err := metadata.Validate(); err != nil {
+		return result, fmt.Errorf("live handoff: initiative metadata: %w", err)
+	}
+	initiativeRuntime, err := NewDefaultInitiativeRuntime(strategistRoot)
+	if err != nil {
+		return result, fmt.Errorf("live handoff: initiative runtime: %w", err)
+	}
+	if err := initiativeRuntime.ConsumeHandoff(*metadata); err != nil {
+		return result, fmt.Errorf("live handoff: consume initiative handoff: %w", err)
+	}
+	if !metadata.Assessment.Challenge {
+		return result, nil
+	}
+	return handoff.Result{
+		Status: handoff.StatusFailed, Passed: false,
+		MissingChallenges: []string{"initiative_result"},
+		CriticalFailures:  1, NextAction: policy.OnFailure,
+	}, nil
+}
+
+func persistHandoffAttempt(strategistRoot string, status domain.MissionEngineStatus, input LiveHandoffInput, result handoff.Result) error {
+	record := telemetry.ChallengeRecord{
+		MissionID:                status.MissionID,
+		Transition:               input.Policy.Transition,
+		Attempt:                  input.Attempt,
+		Timestamp:                time.Now().UTC().Format(time.RFC3339Nano),
+		Status:                   result.Status,
+		Passed:                   result.Passed,
+		MissingRefs:              result.MissingRefs,
+		MissingChallenges:        result.MissingChallenges,
+		MisclassifiedRefs:        result.MisclassifiedRefs,
+		GateMismatch:             result.GateMismatch,
+		CounterfactualMismatches: result.CounterfactualMismatches,
+		ForbiddenClaimViolations: result.ForbiddenClaimViolations,
+		CriticalFailures:         result.CriticalFailures,
+	}
+	if err := telemetry.AppendHandoffChallenge(telemetry.HandoffChallengeHistoryPath(strategistRoot), record); err != nil {
+		return fmt.Errorf("append handoff challenge: %w", err)
+	}
+	return nil
 }
 
 func persistHandoffConfidence(strategistRoot, missionID string, input LiveHandoffInput) error {

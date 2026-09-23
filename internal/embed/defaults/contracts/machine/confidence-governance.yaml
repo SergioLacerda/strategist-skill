@@ -42,7 +42,19 @@ rules:
     text: Confidence cannot invoke Sniper and implementation_handoff remains separate from documentation_target.
 
 producers:
-  command: "strategist metrics record --mission <id> --agent <agent> (--claim-file <file> | --missing --correlation-key <key> --reason <why>)"
+  command: "strategist metrics record --mission <id> --agent <agent> (--claim-file - | --missing --correlation-key <key> --reason <why>)"
+  claim_placement:
+    rule: >
+      The claim document (`claim:` plus optional `evidence:`) is supplied on standard
+      input with `--claim-file -`, for example through a shell heredoc. It is transient
+      CLI input and is never stored under <base_path> (pending/, refined/, done/,
+      archived/), inside a mission package, or anywhere else in the workspace artifact
+      tree; the CLI rejects a `--claim-file` path that resolves inside <base_path>.
+    durable_record: .strategist/memory/confidence-records.jsonl
+    narrative_record: >
+      The analysis artifact's `confidence_summary` keeps the claim statement and each
+      evidence source_ref (schemas/handoff-ranger-to-archivist.schema.yaml).
+    enforced_by: machine_enforced
   boundaries:
     - {agent: scout, owner: contracts/machine/scout-routing.yaml#emit.confidence_record}
     - {agent: ranger, owner: narrative/03-discovery.md#required-behavior}

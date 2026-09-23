@@ -34,7 +34,7 @@ canonical:
 # Contract
 must:
   - "at phase start run the role's on_start commands to resolve and record the model x effort level, and show the role level header when the level is known (a missing level never blocks the mission)"
-  - persist confidence at this boundary before finishing with `strategist metrics record --mission <mission_id> --agent sniper --claim-file <file>`;
+  - persist confidence at this boundary before finishing with `strategist metrics record --mission <mission_id> --agent sniper --claim-file -` (claim piped on stdin, never a file under `<base_path>`; see `machine/confidence-governance.yaml#producers.claim_placement`);
     when no confidence summary exists, emit `--missing --correlation-key <key> --reason <why>` instead
   - declare the active documentation task at the start of each loop
   - materialize only the single declared active documentation target

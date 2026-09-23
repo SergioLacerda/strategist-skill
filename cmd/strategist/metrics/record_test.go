@@ -1,8 +1,10 @@
 package metrics
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
@@ -82,4 +84,124 @@ func TestRecordRejectsCriticAndListsTheAcceptedAgents(t *testing.T) {
 	assert.Zero(t, ledgerLines(t, root))
 
 	require.NoError(t, RunRecord(cmd, testDependencies(), RecordOptions{Root: root, Mission: "m", Agent: "response_critic", Missing: true, CorrelationKey: "k", Reason: "r"}))
+}
+
+const validClaimYAML = `claim:
+  id: C-1
+  statement: a claim
+  agent: ranger
+  correlation_key: k
+  claim_kind: assertion
+  confidence_percent: 90
+  confidence_level: high
+  evidence_ids: [E-1]
+  evidence_classes: [explicit]
+evidence:
+  - {id: E-1, source_ref: a.go, class: explicit, confidence: high}
+`
+
+func recordFromStdin(t *testing.T, root, body string) error {
+	t.Helper()
+	cmd, _ := testCommand("metrics")
+	cmd.SetIn(strings.NewReader(body))
+	return RunRecord(cmd, testDependencies(), RecordOptions{Root: root, Mission: "m", Agent: "ranger", ClaimFile: "-"})
+}
+
+func TestRecordReadsTheClaimFromStandardInput(t *testing.T) {
+	root := testRoot(t)
+	require.NoError(t, recordFromStdin(t, root, validClaimYAML))
+	assert.Equal(t, 1, ledgerLines(t, root))
+}
+
+func TestRecordRejectsEmptyStandardInput(t *testing.T) {
+	root := testRoot(t)
+	err := recordFromStdin(t, root, "  \n")
+	require.ErrorContains(t, err, "standard input is empty")
+	assert.Zero(t, ledgerLines(t, root))
+}
+
+func TestRecordStdinAndFileFormsProduceTheSameEntry(t *testing.T) {
+	stdinRoot, fileRoot := testRoot(t), testRoot(t)
+	require.NoError(t, recordFromStdin(t, stdinRoot, validClaimYAML))
+	cmd, _ := testCommand("metrics")
+	require.NoError(t, RunRecord(cmd, testDependencies(), RecordOptions{Root: fileRoot, Mission: "m", Agent: "ranger", ClaimFile: writeClaimFile(t, validClaimYAML)}))
+
+	fromStdin, err := telemetry.ReadConfidenceRecords(telemetry.ConfidenceHistoryPath(stdinRoot))
+	require.NoError(t, err)
+	fromFile, err := telemetry.ReadConfidenceRecords(telemetry.ConfidenceHistoryPath(fileRoot))
+	require.NoError(t, err)
+	require.Len(t, fromStdin, 1)
+	require.Len(t, fromFile, 1)
+	fromStdin[0].Timestamp, fromFile[0].Timestamp = "", ""
+	assert.Equal(t, fromFile[0], fromStdin[0])
+}
+
+func depsWithBasePath(base string, err error) Dependencies {
+	deps := testDependencies()
+	deps.ResolveBasePath = func(string) (string, error) { return base, err }
+	return deps
+}
+
+func recordFile(t *testing.T, deps Dependencies, root, path string) error {
+	t.Helper()
+	cmd, _ := testCommand("metrics")
+	return RunRecord(cmd, deps, RecordOptions{Root: root, Mission: "m", Agent: "ranger", ClaimFile: path})
+}
+
+func TestRecordRejectsAClaimFileInsideBasePath(t *testing.T) {
+	root, base := testRoot(t), t.TempDir()
+	pending := filepath.Join(base, "pending")
+	require.NoError(t, os.MkdirAll(pending, 0o755))
+	inside := filepath.Join(pending, "m-ranger-confidence.yaml")
+	require.NoError(t, os.WriteFile(inside, []byte(validClaimYAML), 0o600))
+
+	err := recordFile(t, depsWithBasePath(base, nil), root, inside)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "workspace artifact tree")
+	assert.Contains(t, err.Error(), "--claim-file -")
+	assert.Zero(t, ledgerLines(t, root), "nothing is persisted for a rejected location")
+}
+
+func TestRecordGuardResolvesDotDotAndSymlinks(t *testing.T) {
+	root, base, outside := testRoot(t), t.TempDir(), t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(base, "pending"), 0o755))
+	realPath := filepath.Join(base, "pending", "claim.yaml")
+	require.NoError(t, os.WriteFile(realPath, []byte(validClaimYAML), 0o600))
+
+	dotdot := filepath.Join(outside, "..", filepath.Base(base), "pending", "claim.yaml")
+	require.ErrorContains(t, recordFile(t, depsWithBasePath(base, nil), root, dotdot), "workspace artifact tree")
+
+	link := filepath.Join(outside, "link.yaml")
+	if err := os.Symlink(realPath, link); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	require.ErrorContains(t, recordFile(t, depsWithBasePath(base, nil), root, link), "workspace artifact tree")
+	assert.Zero(t, ledgerLines(t, root))
+}
+
+func TestRecordAllowsAClaimFileOutsideBasePath(t *testing.T) {
+	root := testRoot(t)
+	require.NoError(t, recordFile(t, depsWithBasePath(t.TempDir(), nil), root, writeClaimFile(t, validClaimYAML)))
+	assert.Equal(t, 1, ledgerLines(t, root))
+}
+
+func TestRecordGuardFailsClosedWhenBasePathCannotBeResolved(t *testing.T) {
+	root := testRoot(t)
+	err := recordFile(t, depsWithBasePath("", errors.New("active.yaml: base_path is empty")), root, writeClaimFile(t, validClaimYAML))
+	require.ErrorContains(t, err, "resolve base_path")
+	assert.Zero(t, ledgerLines(t, root))
+}
+
+func TestRecordGuardIsSkippedWithoutAResolver(t *testing.T) {
+	root := testRoot(t)
+	require.NoError(t, recordFile(t, testDependencies(), root, writeClaimFile(t, validClaimYAML)))
+	assert.Equal(t, 1, ledgerLines(t, root))
+}
+
+func TestRecordStandardInputBypassesTheGuardByConstruction(t *testing.T) {
+	root := testRoot(t)
+	cmd, _ := testCommand("metrics")
+	cmd.SetIn(strings.NewReader(validClaimYAML))
+	require.NoError(t, RunRecord(cmd, depsWithBasePath(t.TempDir(), nil), RecordOptions{Root: root, Mission: "m", Agent: "ranger", ClaimFile: "-"}))
+	assert.Equal(t, 1, ledgerLines(t, root))
 }

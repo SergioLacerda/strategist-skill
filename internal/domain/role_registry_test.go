@@ -51,6 +51,19 @@ func TestRoleRegistryLookups(t *testing.T) {
 	assert.False(t, ok)
 }
 
+func TestRoleRegistryExposesIndependentInitiativeHooks(t *testing.T) {
+	reg := domain.DefaultRoleRegistry()
+	hooks, ok := reg.InitiativeHooksOf("ranger")
+	require.True(t, ok)
+	assert.Equal(t, "resolve_advice", hooks.OnStart)
+	assert.Equal(t, "emit_initiative_result", hooks.OnResult)
+	assert.Contains(t, hooks.Preserve, "advice_id")
+	assert.Contains(t, hooks.Preserve, "alignment")
+
+	_, ok = reg.InitiativeHooksOf("unknown")
+	assert.False(t, ok)
+}
+
 func TestRoleRegistryPhaseCounterIncludesGateAndDerivesTotal(t *testing.T) {
 	reg := domain.DefaultRoleRegistry()
 	for id, want := range map[string]int{"scout": 0, "ranger": 1, "archivist": 2, "gate": 3, "sniper": 4} {
@@ -110,6 +123,9 @@ func TestLoadRoleRegistryOverlaysFilesOnBuiltIns(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "scout", reg.PolicyRole("ranger"), "an explicit leveling key is honored")
 	assert.Equal(t, "schemas/custom.yaml", reg.HandoffSchemaOf("ranger"))
+	hooks, ok := reg.InitiativeHooksOf("ranger")
+	require.True(t, ok)
+	assert.Equal(t, "resolve_advice", hooks.OnStart, "legacy role overrides keep INITIATIVE enabled")
 	assert.True(t, reg.Has("auditor"), "a new role file adds a role")
 	assert.True(t, reg.Has("sniper"), "roles without files keep the built-in definition")
 	assert.Equal(t, 5, reg.PhaseTotal())

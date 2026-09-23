@@ -7,6 +7,7 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/handoff"
+	"github.com/SergioLacerda/strategist-skill/internal/initiative"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/stretchr/testify/require"
 )
@@ -99,6 +100,35 @@ func TestArchivistToSniper_PersistsOpenQuestions(t *testing.T) {
 	require.Len(t, records, 1)
 	require.Equal(t, "Q-001", records[0].ClaimID)
 	require.Equal(t, domain.ClaimKindQuestion, records[0].ClaimKind)
+}
+
+func TestArchivistToSniper_InitiativeChallengeReturnsToRefinement(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	engine := readyForHandoff(t, "initiative-challenge")
+	runtime, err := NewDefaultInitiativeRuntime(root)
+	require.NoError(t, err)
+	advice, err := runtime.EnterRole(InitiativeRoleEntry{MissionID: "initiative-challenge", Role: "archivist", RunID: "run-1"})
+	require.NoError(t, err)
+	handoffEnvelope, err := runtime.CompleteRole(advice, initiative.Result{
+		AdviceID: advice.AdviceID, MissionID: advice.MissionID, Role: advice.Role, RunID: advice.RunID,
+		GateIndependent: true,
+		Checks:          []initiative.ObligationCheck{{ID: "mandatory", Status: initiative.CheckBlocked}},
+	}, "sniper")
+	require.NoError(t, err)
+	require.True(t, handoffEnvelope.Assessment.Challenge)
+
+	status, result, err := ArchivistToSniper(engine, root, LiveHandoffInput{
+		Policy: handoff.DefaultPolicy(), Challenges: liveChallenges(false),
+		Ack: validAck(), Attempt: 1, Initiative: &handoffEnvelope,
+	})
+	require.NoError(t, err)
+	require.False(t, result.Passed)
+	require.Equal(t, domain.StateRefinement, status.State)
+	require.NotEqual(t, domain.StateExecution, status.State)
+	events, readErr := os.ReadFile(telemetry.InitiativeEventHistoryPath(root))
+	require.NoError(t, readErr)
+	require.Contains(t, string(events), "strategist.initiative.handoff_consumed")
 }
 
 func readyForHandoff(t *testing.T, id string) *domain.MissionEngine {

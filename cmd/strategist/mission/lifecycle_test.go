@@ -85,6 +85,39 @@ func TestLifecycle_StartStatusSubmitRoundTrip(t *testing.T) {
 	assert.NotEqual(t, started.Phase, decodeStatus(t, out).Phase)
 }
 
+func TestLifecycle_StartConsultsInitiativeBeforePersistence(t *testing.T) {
+	root := setupViewRoot(t, domain.MissionEngineStatus{})
+	deps := lifecycleDeps(t)
+	called := false
+	deps.InitiativeStart = func(gotRoot, missionID string) error {
+		called = true
+		assert.Equal(t, root, gotRoot)
+		assert.Equal(t, "m-initiative", missionID)
+		return nil
+	}
+	cmd := mission.NewStart(deps)
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{"--root", root, "--mission-id", "m-initiative"})
+	require.NoError(t, cmd.Execute())
+	assert.True(t, called)
+}
+
+func TestLifecycle_StartFailsClosedWhenInitiativeConsultationFails(t *testing.T) {
+	root := setupViewRoot(t, domain.MissionEngineStatus{})
+	deps := lifecycleDeps(t)
+	deps.InitiativeStart = func(string, string) error { return errors.New("initiative unavailable") }
+	cmd := mission.NewStart(deps)
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{"--root", root, "--mission-id", "m-initiative-fail"})
+	err := cmd.Execute()
+	require.ErrorContains(t, err, "initiative consultation")
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "missions"), 0o750))
+	_, statErr := os.Stat(filepath.Join(root, "missions", "m-initiative-fail.json"))
+	assert.ErrorIs(t, statErr, os.ErrNotExist)
+}
+
 func TestLifecycle_RejectsMissingMissionID(t *testing.T) {
 	root := setupViewRoot(t, domain.MissionEngineStatus{})
 	for name, newCmd := range map[string]func(mission.LifecycleDependencies) *cobra.Command{

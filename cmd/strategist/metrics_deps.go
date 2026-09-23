@@ -1,17 +1,21 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 
 	metricsadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/metrics"
+	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
 	"github.com/spf13/cobra"
 )
 
 func metricsDependencies() metricsadapter.Dependencies {
 	return metricsadapter.Dependencies{
-		RootFlag:    flagRoot,
-		ResolveRoot: resolveMetricsRoot,
+		RootFlag:        flagRoot,
+		ResolveRoot:     resolveMetricsRoot,
+		ResolveBasePath: resolveMetricsBasePath,
 		SilenceRun: func(cmd *cobra.Command) {
 			if run := telemetryRunFromCmd(cmd); run != nil {
 				run.SetSilent()
@@ -34,4 +38,16 @@ func resolveMetricsRoot(cmd *cobra.Command, action, explicitRoot string) (string
 		return "", fmt.Errorf("metrics %s: %w", action, err)
 	}
 	return root, nil
+}
+
+// resolveMetricsBasePath returns the workspace base_path for a resolved
+// .strategist/ root. A runtime without active.yaml has no workspace artifact
+// tree to protect, so it yields "" rather than an error; any other failure is
+// reported so the claim-location guard never silently turns off.
+func resolveMetricsBasePath(strategistRoot string) (string, error) {
+	_, basePath, err := cliutil.ResolveActiveBasePath(strategistRoot)
+	if errors.Is(err, fs.ErrNotExist) {
+		return "", nil
+	}
+	return basePath, fmt.Errorf("resolve active base path: %w", err)
 }

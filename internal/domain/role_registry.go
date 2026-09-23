@@ -32,6 +32,9 @@ type Role struct {
 	// and {mission_id} are substituted, `<your-model>`/`<your-effort>` are a
 	// literal reminder for the agent to fill in. Empty means DefaultStartCommand.
 	OnStart []string
+	// Initiative contains consultative hooks carried alongside, but independent
+	// from, the role's LEVELING facts.
+	Initiative InitiativeHooks
 }
 
 // RoleRegistry is the single authority for role facts (slot, phase order,
@@ -46,10 +49,10 @@ type RoleRegistry struct {
 // callers that know the workspace use LoadRoleRegistry to honor customizations.
 func DefaultRoleRegistry() RoleRegistry {
 	reg, err := NewRoleRegistry([]Role{
-		{ID: "scout", OnStart: []string{DefaultStartCommand}},
-		{ID: "ranger", Slot: string(SlotDiscovery), Phase: 1, Pluggable: true, HandoffSchema: "schemas/handoff-ranger-to-archivist.schema.yaml", OnStart: []string{DefaultStartCommand}},
-		{ID: "archivist", Slot: string(SlotRefinement), Phase: 2, Pluggable: true, HandoffSchema: "schemas/handoff-archivist-to-sniper.schema.yaml", OnStart: []string{DefaultStartCommand}},
-		{ID: "sniper", Slot: string(SlotExecution), Phase: 4, OnStart: []string{DefaultStartCommand}},
+		{ID: "scout", OnStart: []string{DefaultStartCommand}, Initiative: InitiativeHooks{OnStart: "resolve_advice", OnResult: "emit_initiative_result", Preserve: []string{"advice_id", "policy_version", "policy_digest", "alignment", "evidence_refs"}}},
+		{ID: "ranger", Slot: string(SlotDiscovery), Phase: 1, Pluggable: true, HandoffSchema: "schemas/handoff-ranger-to-archivist.schema.yaml", OnStart: []string{DefaultStartCommand}, Initiative: InitiativeHooks{OnStart: "resolve_advice", OnResult: "emit_initiative_result", Preserve: []string{"advice_id", "policy_version", "policy_digest", "alignment", "evidence_refs"}}},
+		{ID: "archivist", Slot: string(SlotRefinement), Phase: 2, Pluggable: true, HandoffSchema: "schemas/handoff-archivist-to-sniper.schema.yaml", OnStart: []string{DefaultStartCommand}, Initiative: InitiativeHooks{OnStart: "consume_advice", OnResult: "emit_initiative_result", Preserve: []string{"advice_id", "policy_version", "policy_digest", "deviations", "evidence_refs"}}},
+		{ID: "sniper", Slot: string(SlotExecution), Phase: 4, OnStart: []string{DefaultStartCommand}, Initiative: InitiativeHooks{OnStart: "consume_advice", OnResult: "emit_initiative_result", Preserve: []string{"advice_id", "policy_version", "policy_digest", "deviations", "evidence_refs"}}},
 	})
 	if err != nil {
 		panic("domain: invalid built-in role registry: " + err.Error())
@@ -127,5 +130,6 @@ func RoleFromConfig(cfg RoleConfig) Role {
 		ID: cfg.Role, Slot: cfg.Slot, Phase: cfg.Phase,
 		Pluggable:     cfg.Pluggable != nil && *cfg.Pluggable,
 		HandoffSchema: cfg.HandoffSchema, Leveling: cfg.Leveling, OnStart: cfg.OnStart,
+		Initiative: cfg.Initiative,
 	}
 }
