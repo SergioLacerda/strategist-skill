@@ -64,3 +64,42 @@ func writeResolverSkill(t *testing.T, dir, content string) {
 	require.NoError(t, os.MkdirAll(dir, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte(content), 0o644))
 }
+
+func TestResolveCustomProviderPackageRejectsIncompleteInputsAndMisses(t *testing.T) {
+	workspace := t.TempDir()
+	_, err := ResolveCustomProviderPackage(workspace, " ", nil)
+	require.ErrorContains(t, err, "provider id is empty")
+	_, err = ResolveCustomProviderPackage(" ", "sample-skill", nil)
+	require.ErrorContains(t, err, "workspace root is empty")
+	_, err = ResolveCustomProviderPackage(workspace, "sample-skill", nil)
+	require.ErrorContains(t, err, "was not found in local or global skill roots")
+}
+
+func TestResolveCustomProviderPackageRejectsIdentityMismatchAndNonDirectory(t *testing.T) {
+	workspace := t.TempDir()
+	writeResolverSkill(t, filepath.Join(workspace, ".agents", "skills", "other-name"), resolverSkill)
+	_, err := ResolveCustomProviderPackage(workspace, "other-name", nil)
+	require.ErrorContains(t, err, `declares package id "sample-skill"`)
+
+	skills := filepath.Join(workspace, ".codex", "skills")
+	require.NoError(t, os.MkdirAll(skills, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(skills, "flat-file"), []byte("x"), 0o644))
+	_, err = ResolveCustomProviderPackage(workspace, "flat-file", nil)
+	require.ErrorContains(t, err, "candidate is not a directory")
+}
+
+func TestPathPresentReportsStatFailures(t *testing.T) {
+	present, err := pathPresent(filepath.Join(t.TempDir(), "missing"))
+	require.NoError(t, err)
+	require.False(t, present)
+
+	file := filepath.Join(t.TempDir(), "file")
+	require.NoError(t, os.WriteFile(file, []byte("x"), 0o644))
+	_, err = pathPresent(filepath.Join(file, "child"))
+	require.ErrorContains(t, err, "stat ")
+}
+
+func TestDefaultGlobalProviderRootsRequiresHome(t *testing.T) {
+	require.Nil(t, DefaultGlobalProviderRoots(" "))
+	require.Len(t, DefaultGlobalProviderRoots("/home/user"), 2)
+}

@@ -41,6 +41,9 @@ func missionView(t *testing.T, workspace, missionID string) e2eMissionView {
 // nothing for the ranger; the Ranger on_start hook, run the way an agent runs
 // it (host model known, effort placeholder unreplaced), resolves a
 // policy-completed level in automatic mode; the mission view then reports it.
+// The host model is one the shipped policy lists exactly: a vendor-prefix match
+// such as claude-opus-5 is advisory and never supplies the policy effort (see
+// TestResolveLevelInferredKeepsPrefixMatchAdvisory).
 func TestE2E_CLI_MissionViewAndLevelingActivation(t *testing.T) {
 	t.Parallel()
 	workspace := t.TempDir()
@@ -59,7 +62,7 @@ func TestE2E_CLI_MissionViewAndLevelingActivation(t *testing.T) {
 	}
 
 	label := runStrategistCLI(t, workspace, "leveling", "label", "--role", "ranger", "--mission", "m-e2e",
-		"--host-model", "claude-opus-5", "--host-effort", "<your-effort>", "--json")
+		"--host-model", "claude-reasoning", "--host-effort", "<your-effort>", "--json")
 	require.Equal(t, 0, label.exitCode, label.output())
 	assert.Contains(t, label.stderr, "placeholder", "the unreplaced effort is reported, not recorded")
 
