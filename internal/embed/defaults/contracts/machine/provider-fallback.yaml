@@ -17,9 +17,10 @@ description: >
   contracts/narrative/00-routing.md § Provider Resolution Policy; this file
   is the machine-contract counterpart, in the same relationship
   scout-routing.yaml has to Scout's routing prose. This module never applies
-  to the discovery slot, which always resolves to the native Ranger role
-  regardless of provider_resolution_policy (see 00-routing.md § Discovery
-  Weapon Resolution by Subtype).
+  to the discovery slot: Ranger owns that route but must invoke the selected
+  Weapon, and an unavailable or incompatible Weapon fails closed with
+  role_invocation_failed (see 00-routing.md § Discovery Weapon Resolution by
+  Subtype).
 
 trigger_conditions:
   fallback_applicable:
@@ -67,8 +68,8 @@ invariants:
   - a fallback decision is NEVER recorded for outcome=blocked or
     outcome=no_fallback_available — nothing degraded in either case
   - a fallback decision is NEVER recorded for the discovery slot
-    (FallbackOutcomeAlwaysNative — always native by unconditional design, not
-    a policy-governed degradation)
+    (the selected Ranger Weapon is required; failure is
+    role_invocation_failed, not native degradation)
   - outcome=ask_required is NEVER recorded without explicit user confirmation
     already obtained — recording it is itself evidence the Approval Gate step
     (asking) already happened, never a substitute for having asked

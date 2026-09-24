@@ -30,7 +30,7 @@ func TestCheckCmd_Success(t *testing.T) {
 	assert.Contains(t, out, "sdd-ask")
 	assert.Contains(t, out, "binding=valid")
 	assert.NotContains(t, out, "fallback=ranger")
-	assert.NotContains(t, out, "always_native_no_policy")
+	assert.NotContains(t, out, "no_fallback_available")
 	assert.Contains(t, out, "epic")
 	assert.NotContains(t, out, "DELEGATION")
 	assert.NotContains(t, out, "delegation_capability")
@@ -233,6 +233,9 @@ func TestCheckCmd_NativeRole_Sniper(t *testing.T) {
 		body := "id: " + p.name + "\nrisk_score: " + p.riskScore + "\n"
 		if p.canonicalRole != "" {
 			body += "canonical_role: " + p.canonicalRole + "\n"
+			if p.canonicalRole == "ranger" {
+				body += "weapon_contract:\n  role_owner: ranger\n  participation: required\n  invocation_evidence: required\n  unavailable_behavior: role_invocation_failed\n  native_substitution: forbidden\n"
+			}
 		}
 		require.NoError(t, os.WriteFile(
 			filepath.Join(provDir, "skill.yaml"),

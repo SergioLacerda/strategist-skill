@@ -87,7 +87,32 @@ func (l RoleLifecycle) Enter(input InitiativeRoleEntry) (initiative.Advice, erro
 	if hooks.OnStart != "resolve_advice" {
 		return initiative.Advice{}, fmt.Errorf("initiative lifecycle: unsupported start hook %q", hooks.OnStart)
 	}
+	if input.Leveling == nil {
+		return initiative.Advice{}, fmt.Errorf("initiative lifecycle: LEVELING resolution is required before INITIATIVE")
+	}
+	if err := input.Leveling.ValidateForRole(input.Role); err != nil {
+		return initiative.Advice{}, fmt.Errorf("initiative lifecycle: validate LEVELING resolution: %w", err)
+	}
 	return l.runtime.EnterRole(input)
+}
+
+// Reevaluate invokes INITIATIVE only after LEVELING has emitted a fresh
+// resolution. The prior resolution remains in the old Advice record.
+func (l RoleLifecycle) Reevaluate(input InitiativeRoleEntry, trigger initiative.Trigger) (initiative.Advice, error) {
+	hooks, ok := l.registry.InitiativeHooksOf(input.Role)
+	if !ok || hooks.OnStart == "" {
+		return initiative.Advice{}, nil
+	}
+	if hooks.OnStart != "resolve_advice" {
+		return initiative.Advice{}, fmt.Errorf("initiative lifecycle: unsupported start hook %q", hooks.OnStart)
+	}
+	if input.Leveling == nil {
+		return initiative.Advice{}, fmt.Errorf("initiative lifecycle: LEVELING resolution is required before INITIATIVE re-evaluation")
+	}
+	if err := input.Leveling.ValidateForRole(input.Role); err != nil {
+		return initiative.Advice{}, fmt.Errorf("initiative lifecycle: validate LEVELING resolution: %w", err)
+	}
+	return l.runtime.Reevaluate(input, trigger)
 }
 
 // Complete invokes the declared INITIATIVE result hook for a role.
@@ -121,7 +146,7 @@ func (l RoleLifecycle) Consume(handoff InitiativeHandoff) error {
 func (r InitiativeRuntime) EnterRole(input InitiativeRoleEntry) (initiative.Advice, error) {
 	advice, reused, err := r.core.EnterRole(initiative.AdviceInput{
 		MissionID: input.MissionID, Role: input.Role, RunID: input.RunID,
-		Trigger: initiative.TriggerInitial, Observed: input.Observed,
+		Trigger: initiative.TriggerInitial, Observed: input.Observed, Leveling: input.Leveling,
 	})
 	if err != nil {
 		return initiative.Advice{}, fmt.Errorf("initiative runtime: enter role: %w", err)
@@ -137,7 +162,7 @@ func (r InitiativeRuntime) EnterRole(input InitiativeRoleEntry) (initiative.Advi
 func (r InitiativeRuntime) Reevaluate(input InitiativeRoleEntry, trigger initiative.Trigger) (initiative.Advice, error) {
 	advice, err := r.core.Reevaluate(initiative.AdviceInput{
 		MissionID: input.MissionID, Role: input.Role, RunID: input.RunID,
-		Trigger: trigger, Observed: input.Observed,
+		Trigger: trigger, Observed: input.Observed, Leveling: input.Leveling,
 	})
 	if err != nil {
 		return initiative.Advice{}, fmt.Errorf("initiative runtime: re-evaluate: %w", err)

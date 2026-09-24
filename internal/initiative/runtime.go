@@ -75,6 +75,31 @@ func validateReevaluationInput(policy Policy, input AdviceInput) error {
 	return nil
 }
 
+// validateAgainstPrevious checks that a re-evaluation carries a new LEVELING
+// event and supersedes the latest persisted advice.
+func validateAgainstPrevious(input AdviceInput, previous Record) error {
+	if err := validateReevaluationLeveling(input, previous); err != nil {
+		return err
+	}
+	if input.Supersedes != "" && input.Supersedes != previous.AdviceID {
+		return fmt.Errorf("initiative runtime: supersedes %q does not match latest advice %q", input.Supersedes, previous.AdviceID)
+	}
+	return nil
+}
+
+func validateReevaluationLeveling(input AdviceInput, previous Record) error {
+	if input.Leveling == nil {
+		return nil
+	}
+	if err := input.Leveling.ValidateForRole(input.Role); err != nil {
+		return err
+	}
+	if previous.Advice.Leveling != nil && input.Leveling.EventID == previous.Advice.Leveling.EventID {
+		return fmt.Errorf("initiative runtime: re-evaluation requires a new LEVELING event")
+	}
+	return nil
+}
+
 func (r Runtime) reevaluateLocked(input AdviceInput, advice *Advice) error {
 	previous, found, err := LatestAdvice(r.LedgerFile, input.MissionID, input.Role, input.RunID)
 	if err != nil {
@@ -83,8 +108,8 @@ func (r Runtime) reevaluateLocked(input AdviceInput, advice *Advice) error {
 	if !found || previous.Advice == nil {
 		return fmt.Errorf("initiative runtime: cannot re-evaluate without prior advice")
 	}
-	if input.Supersedes != "" && input.Supersedes != previous.AdviceID {
-		return fmt.Errorf("initiative runtime: supersedes %q does not match latest advice %q", input.Supersedes, previous.AdviceID)
+	if err := validateAgainstPrevious(input, previous); err != nil {
+		return err
 	}
 	input.Supersedes = previous.AdviceID
 	sequence, err := adviceSequence(r.LedgerFile, input.MissionID, input.Role, input.RunID)

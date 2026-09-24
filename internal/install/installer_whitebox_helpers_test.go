@@ -124,6 +124,12 @@ providers:
     risk_score: write_analysis
     category: discovery
     canonical_role: ranger
+    weapon_contract:
+      role_owner: ranger
+      participation: required
+      invocation_evidence: required
+      unavailable_behavior: role_invocation_failed
+      native_substitution: forbidden
     default: true
     installable: true
     legacy_manifest_path: skills/brainstorming/skill.yaml
@@ -174,7 +180,7 @@ func (m minimalExtractor) ReadFile(relPath string) ([]byte, error) {
 	case "roles/sniper.yaml":
 		return []byte("role: sniper\nslot: execution\n"), nil
 	case "skills/brainstorming/skill.yaml":
-		return []byte("id: brainstorming\nstatus: active\nrisk_score: write_analysis\nprovider_class: rankeado\nspecialization_taxonomy:\n  canonical_role: ranger\n  provider_class: rankeado\nauxiliary_tools_allowed:\n  - writing-plans\n"), nil
+		return []byte("id: brainstorming\nstatus: active\nrisk_score: write_analysis\nprovider_class: rankeado\nspecialization_taxonomy:\n  canonical_role: ranger\n  provider_class: rankeado\nweapon_contract:\n  role_owner: ranger\n  participation: required\n  invocation_evidence: required\n  unavailable_behavior: role_invocation_failed\n  native_substitution: forbidden\nauxiliary_tools_allowed:\n  - writing-plans\n"), nil
 	case "skills/openspec-explore/skill.yaml":
 		return []byte("id: openspec-explore\nstatus: active\nrisk_score: write_analysis\n"), nil
 	case "skills/openspec-propose/skill.yaml":

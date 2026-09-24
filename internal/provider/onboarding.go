@@ -116,12 +116,13 @@ func firstOr(values []string, fallback string) string {
 	return values[0]
 }
 
-func ensureBindable(report Report, slot string) error {
+func ensureBindable(report Report, _ string) error {
 	if !report.Validated {
 		return fmt.Errorf("provider validation failed: %s", strings.Join(reasonCodes(report.Reasons), ", "))
 	}
-	if slot == string(domain.SlotDiscovery) {
-		return fmt.Errorf("native_role_authority: discovery remains owned by native Ranger")
-	}
+	// Static onboarding records a candidate binding only. Discovery invocation
+	// remains a separate host boundary and is required at mission time; the
+	// absence of live evidence must not turn a valid Weapon package into an
+	// implicit native binding or prevent the operator from selecting it.
 	return nil
 }

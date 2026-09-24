@@ -10,9 +10,9 @@ import (
 
 // TestRoleLockDoesNotReferenceRemovedCapabilityCheck verifies the parent-agent
 // Role Lock in SKILL.md no longer references the removed subtype/weapon
-// manifest capability check — the configured discovery weapon is flexible
-// input to the fixed Ranger role, with no per-subtype manifest gate and no
-// native fallback (see .analysis/refined/20260728-ranger-drift-eval/).
+// manifest capability check — the configured discovery Weapon is required
+// input to the fixed Ranger role, which invokes and normalizes its untrusted
+// result without a native fallback.
 func TestRoleLockDoesNotReferenceRemovedCapabilityCheck(t *testing.T) {
 	t.Parallel()
 
@@ -20,7 +20,7 @@ func TestRoleLockDoesNotReferenceRemovedCapabilityCheck(t *testing.T) {
 	content := readFile(t, path)
 	for _, needle := range []string{
 		"Discovery subtypes are selected by Scout and executed under the fixed Ranger role",
-		"flexible input to",
+		"Ranger must invoke the configured discovery Weapon and normalize its untrusted",
 		"There is no fallback",
 	} {
 		if !strings.Contains(content, needle) {
@@ -39,7 +39,8 @@ func TestRoleLockDoesNotReferenceRemovedCapabilityCheck(t *testing.T) {
 
 // TestPreflightContractOmitsProviderCapabilityMismatch verifies preflight.yaml
 // no longer documents the removed post-route provider/subtype mismatch block —
-// discovery never reaches an external weapon, so there is nothing left to check.
+// discovery uses the selected Weapon contract, so there is no subtype-specific
+// capability gate left to check here.
 func TestPreflightContractOmitsProviderCapabilityMismatch(t *testing.T) {
 	t.Parallel()
 
@@ -57,7 +58,7 @@ func TestPreflightContractOmitsProviderCapabilityMismatch(t *testing.T) {
 
 // TestDriftPatternsCoverExternalDiscoveryWeaponRegression verifies the normative
 // drift-patterns.yaml teaches the successor pattern: never regress to invoking
-// an external weapon for discovery, for any subtype.
+// an incompatible discovery Weapon for any subtype.
 func TestDriftPatternsCoverExternalDiscoveryWeaponRegression(t *testing.T) {
 	t.Parallel()
 

@@ -9,11 +9,13 @@ import (
 // e.g. roles/sniper.yaml — a role that declares its own slot and behavior contract
 // instead of being backed by a skills/<provider>/skill.yaml manifest.
 type RoleConfig struct {
-	Role        string   `yaml:"role"`
-	Slot        string   `yaml:"slot"`
-	Must        []string `yaml:"must"`
-	MustNot     []string `yaml:"must_not"`
-	CustomBrief string   `yaml:"custom_brief"`
+	Role          string            `yaml:"role"`
+	Slot          string            `yaml:"slot"`
+	Origin        RoleOrigin        `yaml:"origin,omitempty"`
+	Extensibility RoleExtensibility `yaml:"extensibility,omitempty"`
+	Must          []string          `yaml:"must"`
+	MustNot       []string          `yaml:"must_not"`
+	CustomBrief   string            `yaml:"custom_brief"`
 	// Phase is the role's checkpoint position (0 is pre-pipeline).
 	Phase int `yaml:"phase,omitempty"`
 	// Pluggable records whether an external provider may fill the role; nil means
@@ -47,17 +49,72 @@ func (r RoleConfig) Validate() error {
 	var errs []string
 	if r.Role == "" {
 		errs = append(errs, "role is required")
+	} else if err := ValidateRoleReference(r.Role); err != nil {
+		errs = append(errs, err.Error())
 	}
-	if r.Slot == "" {
-		// A role without a slot cannot be plugged, so it must say so explicitly.
-		if r.Pluggable == nil || *r.Pluggable {
-			errs = append(errs, "slot is required")
-		}
-	} else if !IsValidSlot(r.Slot) {
-		errs = append(errs, fmt.Sprintf("slot %q is not one of %s", r.Slot, requiredSlotList))
+	errs = append(errs, r.taxonomyErrors()...)
+	if msg := r.slotError(); msg != "" {
+		errs = append(errs, msg)
 	}
 	if len(errs) == 0 {
 		return nil
 	}
 	return fmt.Errorf("role config invalid: %s", strings.Join(errs, "; "))
+}
+
+// taxonomyErrors reports invalid origin/extensibility values and a legacy
+// pluggable flag that contradicts an explicit extensibility.
+func (r RoleConfig) taxonomyErrors() []string {
+	var errs []string
+	if err := r.EffectiveOrigin().Validate(); err != nil {
+		errs = append(errs, err.Error())
+	}
+	extensibility := r.EffectiveExtensibility()
+	if err := extensibility.Validate(); err != nil {
+		errs = append(errs, err.Error())
+	}
+	if r.Extensibility != "" && r.Pluggable != nil && *r.Pluggable != extensibility.IsPluggable() {
+		errs = append(errs, "pluggable conflicts with extensibility")
+	}
+	return errs
+}
+
+// slotError returns the slot violation, or "" when the slot declaration is valid.
+func (r RoleConfig) slotError() string {
+	if r.Slot != "" {
+		if IsValidSlot(r.Slot) {
+			return ""
+		}
+		return fmt.Sprintf("slot %q is not one of %s", r.Slot, requiredSlotList)
+	}
+	// Legacy files without either taxonomy field must still make the
+	// slotless/fixed decision explicit.
+	if r.Extensibility == "" && r.Pluggable == nil {
+		return "slot is required or extensibility: fixed must be explicit"
+	}
+	if r.EffectiveExtensibility().IsPluggable() {
+		return "slot is required"
+	}
+	return ""
+}
+
+// EffectiveOrigin returns the canonical origin while keeping legacy role files
+// readable during the taxonomy migration.
+func (r RoleConfig) EffectiveOrigin() RoleOrigin {
+	if r.Origin == "" {
+		return RoleOriginNative
+	}
+	return r.Origin
+}
+
+// EffectiveExtensibility returns the canonical extensibility. The old
+// pluggable pointer remains a compatibility input only.
+func (r RoleConfig) EffectiveExtensibility() RoleExtensibility {
+	if r.Extensibility != "" {
+		return r.Extensibility
+	}
+	if r.Pluggable != nil && *r.Pluggable {
+		return RoleExtensibilityPluggable
+	}
+	return RoleExtensibilityFixed
 }

@@ -12,6 +12,10 @@ Resolve the route before any mission work starts.
 
 ## Routes
 
+Routes are one family in the canonical taxonomy: they name the pipeline shape
+selected by Scout, not a Role, Weapon, or provider. The current route names are
+`critical_hit`, `implementation_short_route`, and `full_pipeline`.
+
 - **Critical Hit** — internal capability for workspace artifact management
   (`pending/`, `refined/`, `archived/`, `done/`). Not a route mutually exclusive with the
   pipeline — may fire at intake or mid-mission. Two modes: plain move (no evaluation, no
@@ -63,8 +67,9 @@ and must select `full_pipeline` instead.
 
 ### Discovery Weapon Resolution by Subtype
 
-The selected discovery weapon is flexible input to the fixed Ranger role. The
-role remains authoritative: it reads `roles/ranger.yaml` and
+The selected discovery weapon is required input to the fixed Ranger role. The
+role remains authoritative: it invokes the selected Weapon, reads
+`roles/ranger.yaml` and
 `internal_skills/ranger/SKILL.md`, normalizes the weapon result into the
 canonical pending handoff, and owns the checkpoint, lock, state, and control
 log validation. A weapon that cannot satisfy that boundary is a hard error;
@@ -75,7 +80,8 @@ the pipeline does not silently substitute another weapon.
 There is no provider fallback policy. The selected weapon is immutable for the
 mission and operates inside its fixed role. If it is absent, incompatible, or
 cannot satisfy the role checkpoint, the pipeline emits a fatal error and stops.
-The native role is not substituted for the weapon. The Wizard and
+The stable failure reason is `role_invocation_failed`. The native role is not
+substituted for the weapon. The Wizard and
 `strategist check` must detect the invalid binding before mission execution.
 
 ## Main Mission Sequence

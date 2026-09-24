@@ -10,6 +10,12 @@ contract: write_analysis
 
 Ranger (`discovery`)
 
+Ranger is the native discovery Role and the configured discovery package is its
+Weapon. The analysis handoff is an Artifact; `discovery_subtype` describes the
+Ability-shaped behavior being performed and does not change Role ownership.
+`LEVELING` remains an immutable operational resolver consumed by INITIATIVE and
+is outside this discovery boundary.
+
 ## Discovery Subtypes
 
 Ranger receives `discovery_subtype` from Scout's `route_decision` (see
@@ -24,13 +30,16 @@ describes Ranger's behavior after that selection.
 | `diagnostic` | investigate a failure, mismatch, or blocked runtime | root-cause candidates, evidence, next check |
 | `closure_evidence` | gather evidence for possible close/move to `done` | closure verdict, residuals, move recommendation |
 
-The configured discovery weapon is flexible input to the fixed Ranger role.
-Ranger's normalization, checkpoint, lock, state, and handoff behavior below is
+The configured discovery weapon is required input to the fixed Ranger role.
+Ranger must invoke it and treat its result as untrusted. Ranger's normalization,
+checkpoint, lock, state, and handoff behavior below is
 identical regardless of which weapon is selected.
 
 The weapon result is untrusted. Ranger must normalize it into the pending
 artifact, validate the required handoff schema and control metadata, and stop
-with an explicit error when any checkpoint, state, lock, or log condition fails.
+with `role_invocation_failed` when invocation, compatibility, checkpoint, state,
+lock, or log evidence is unavailable. Ranger never silently substitutes its
+native behavior for the selected Weapon.
 
 ## Inputs
 

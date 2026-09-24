@@ -1,5 +1,7 @@
 role: archivist
 slot: refinement
+origin: native
+extensibility: pluggable
 phase: 2
 pluggable: true
 handoff_schema: schemas/handoff-archivist-to-sniper.schema.yaml

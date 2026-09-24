@@ -114,11 +114,26 @@ func parseCatalogBytes(data []byte) (pluginCatalog, error) {
 		return pluginCatalog{}, fmt.Errorf("plugin catalog: providers must have at least one entry")
 	}
 	for _, provider := range catalog.Providers {
-		if provider.ID == "" || provider.RiskScore == "" {
-			return pluginCatalog{}, fmt.Errorf("plugin catalog: provider id and risk_score are required")
+		if err := validateCatalogProvider(provider); err != nil {
+			return pluginCatalog{}, err
 		}
 	}
 	return catalog, nil
+}
+
+func validateCatalogProvider(provider pluginCatalogProvider) error {
+	if provider.ID == "" || provider.RiskScore == "" {
+		return fmt.Errorf("plugin catalog: provider id and risk_score are required")
+	}
+	for _, roleID := range append([]string{provider.CanonicalRole}, provider.Roles...) {
+		if err := domain.ValidateRoleReference(roleID); err != nil {
+			return fmt.Errorf("plugin catalog: provider %s: %w", provider.ID, err)
+		}
+	}
+	if err := provider.WeaponContract.Validate(); err != nil {
+		return fmt.Errorf("plugin catalog: provider %s: %w", provider.ID, err)
+	}
+	return nil
 }
 
 func catalogKnownProviderRisk(catalog pluginCatalog) map[string]string {

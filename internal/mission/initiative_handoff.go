@@ -16,6 +16,7 @@ type InitiativeRoleEntry struct {
 	Role      string
 	RunID     string
 	Observed  initiative.Observation
+	Leveling  *initiative.LevelingResolution
 }
 
 // InitiativeHandoff carries advisory metadata across a role boundary. It is

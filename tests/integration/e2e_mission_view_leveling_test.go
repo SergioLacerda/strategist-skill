@@ -37,10 +37,10 @@ func missionView(t *testing.T, workspace, missionID string) e2eMissionView {
 	return v
 }
 
-// A fresh mission shows explicit absence; the Ranger on_start hook, run the
-// way an agent runs it (host model known, effort placeholder unreplaced),
-// resolves a policy-completed level in automatic mode; the mission view then
-// reports it.
+// A fresh mission carries only the scout's mission_start LEVELING event and
+// nothing for the ranger; the Ranger on_start hook, run the way an agent runs
+// it (host model known, effort placeholder unreplaced), resolves a
+// policy-completed level in automatic mode; the mission view then reports it.
 func TestE2E_CLI_MissionViewAndLevelingActivation(t *testing.T) {
 	t.Parallel()
 	workspace := t.TempDir()
@@ -51,7 +51,12 @@ func TestE2E_CLI_MissionViewAndLevelingActivation(t *testing.T) {
 
 	fresh := missionView(t, workspace, "m-e2e")
 	assert.Equal(t, "no_sample", fresh.Confidence.Availability)
-	assert.Equal(t, "unknown", fresh.Leveling.Availability)
+	assert.Equal(t, "available", fresh.Leveling.Availability, "mission start persists the scout's LEVELING event")
+	for _, role := range fresh.Leveling.Roles {
+		if role.Role == "ranger" {
+			assert.Nil(t, role.Effective, "no ranger level exists before its on_start hook runs")
+		}
+	}
 
 	label := runStrategistCLI(t, workspace, "leveling", "label", "--role", "ranger", "--mission", "m-e2e",
 		"--host-model", "claude-opus-5", "--host-effort", "<your-effort>", "--json")

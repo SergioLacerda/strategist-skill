@@ -15,12 +15,14 @@ const RoleContractSchemaVersion = "strategist-role-contract/v1"
 // explicit schema version so ProviderContract can declare compatibility
 // against it without a second role registry (Decision 4: lifecycle reuse).
 type RoleContract struct {
-	SchemaVersion string   `yaml:"schema_version"`
-	Role          string   `yaml:"role"`
-	Slot          string   `yaml:"slot"`
-	Must          []string `yaml:"must"`
-	MustNot       []string `yaml:"must_not"`
-	HandoffSchema string   `yaml:"handoff_schema,omitempty"`
+	SchemaVersion string            `yaml:"schema_version"`
+	Role          string            `yaml:"role"`
+	Slot          string            `yaml:"slot"`
+	Origin        RoleOrigin        `yaml:"origin"`
+	Extensibility RoleExtensibility `yaml:"extensibility"`
+	Must          []string          `yaml:"must"`
+	MustNot       []string          `yaml:"must_not"`
+	HandoffSchema string            `yaml:"handoff_schema,omitempty"`
 }
 
 // RoleContractFromConfig derives a RoleContract from an existing native role
@@ -31,6 +33,8 @@ func RoleContractFromConfig(cfg RoleConfig, handoffSchema string) RoleContract {
 		SchemaVersion: RoleContractSchemaVersion,
 		Role:          cfg.Role,
 		Slot:          cfg.Slot,
+		Origin:        cfg.EffectiveOrigin(),
+		Extensibility: cfg.EffectiveExtensibility(),
 		Must:          cfg.Must,
 		MustNot:       cfg.MustNot,
 		HandoffSchema: handoffSchema,
@@ -47,6 +51,18 @@ func (r RoleContract) Validate() error {
 		errs = append(errs, "slot is required")
 	} else if !IsValidSlot(r.Slot) {
 		errs = append(errs, fmt.Sprintf("slot %q is not one of %s", r.Slot, requiredSlotList))
+	}
+	if err := ValidateRoleReference(r.Role); err != nil {
+		errs = append(errs, err.Error())
+	}
+	if err := r.Origin.Validate(); err != nil {
+		errs = append(errs, err.Error())
+	}
+	if err := r.Extensibility.Validate(); err != nil {
+		errs = append(errs, err.Error())
+	}
+	if r.Extensibility.IsPluggable() && r.Slot == "" {
+		errs = append(errs, "pluggable role contract requires a slot")
 	}
 	return joinPluginValidation("role contract", errs)
 }
@@ -145,32 +161,6 @@ type ProviderContract struct {
 	// for why the Wizard was loosened to CheckRoleAffinity instead of
 	// `strategist check` being tightened to match the old stricter check.
 	SupportedHandoffSchemas []string `yaml:"supported_handoff_schemas,omitempty"`
-}
-
-// Validate returns an error if required ProviderContract fields are missing
-// or hold an unknown enum value.
-func (p ProviderContract) Validate() error {
-	var errs []string
-	requireNonEmpty(&errs, "schema_version", p.SchemaVersion)
-	requireNonEmpty(&errs, "id", p.ID)
-	requireNonEmpty(&errs, "version", p.Version)
-	requireNonEmpty(&errs, "provider_schema_version", p.ProviderSchemaVersion)
-	if p.CanonicalRole == "" && len(p.Roles) == 0 {
-		errs = append(errs, "roles or canonical_role is required")
-	}
-	requireNonEmpty(&errs, "risk_score", p.RiskScore)
-	if p.Source == "" {
-		errs = append(errs, "source is required")
-	} else if !hasString(validProviderSources, string(p.Source)) {
-		errs = append(errs, fmt.Sprintf("source %q is not a known provider source", p.Source))
-	}
-	if p.Materialization != "" && !hasString(validMaterializationStates, string(p.Materialization)) {
-		errs = append(errs, fmt.Sprintf("materialization %q is not a known materialization state", p.Materialization))
-	}
-	if len(p.SupportedRoleContractVersions) == 0 {
-		errs = append(errs, "supported_role_contract_versions must have at least one entry")
-	}
-	return joinPluginValidation("provider contract", errs)
 }
 
 // CheckRoleAffinity and ProviderBinding live in

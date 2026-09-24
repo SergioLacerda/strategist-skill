@@ -50,16 +50,22 @@ type RuntimeLocator struct {
 type InvocationEnvelope struct {
 	SchemaVersion string
 	Instance      domain.InstalledInstance
+	Role          string
+	Slot          string
 	Entrypoint    string
 	MissionID     string
+	ArtifactPath  string
 	GateAllowed   bool
 }
 
 // ConnectorResult is a typed connector response for every operation.
 type ConnectorResult struct {
-	Status     domain.ReadinessStatus
-	ReasonCode string
-	Detail     string
+	Status             domain.ReadinessStatus
+	ReasonCode         string
+	Detail             string
+	ProviderID         string
+	Artifact           []byte
+	InvocationEvidence string
 }
 
 // ObservationResult includes enforcement evidence without substituting for it.

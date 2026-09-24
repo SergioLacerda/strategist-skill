@@ -62,16 +62,10 @@ type externalSkillAdapter struct {
 	WeaponContract        WeaponContract `yaml:"weapon_contract,omitempty"`
 }
 
-// WeaponContract makes the role/weapon participation boundary explicit in
-// generated catalog mirrors. It is descriptive metadata only; runtime
-// invocation still requires host evidence and never authorizes substitution.
-type WeaponContract struct {
-	RoleOwner           string `yaml:"role_owner,omitempty"`
-	Participation       string `yaml:"participation,omitempty"`
-	InvocationEvidence  string `yaml:"invocation_evidence,omitempty"`
-	UnavailableBehavior string `yaml:"unavailable_behavior,omitempty"`
-	NativeSubstitution  string `yaml:"native_substitution,omitempty"`
-}
+// WeaponContract is kept as an install-package alias for callers that parse
+// adapter/catalog manifests. Its canonical definition lives in domain so
+// readiness and ingestion enforce the same boundary.
+type WeaponContract = domain.WeaponContract
 
 func loadExternalSkillAdapter(dir, packageID string) (externalSkillAdapter, error) {
 	adapterRaw, err := os.ReadFile(filepath.Join(dir, externalSkillAdapterFileName)) //nolint:gosec // G304: operator-declared ingestion source
@@ -90,11 +84,34 @@ func loadExternalSkillAdapter(dir, packageID string) (externalSkillAdapter, erro
 }
 
 func validateExternalSkillAdapter(packageID string, adapter externalSkillAdapter) error {
+	if err := validateAdapterDeclaration(packageID, adapter); err != nil {
+		return err
+	}
+	return validateAdapterContracts(packageID, adapter)
+}
+
+// validateAdapterDeclaration checks the adapter's routing/risk declaration and
+// scratch root.
+func validateAdapterDeclaration(packageID string, adapter externalSkillAdapter) error {
 	if (adapter.CanonicalRole == "" && len(adapter.Roles) == 0 && !adapter.Lifecycle) || adapter.RiskScore == "" {
 		return fmt.Errorf("external skill %s: %s must declare canonical_role/roles or lifecycle and risk_score", packageID, externalSkillAdapterFileName)
 	}
 	if adapter.ScratchRoot != "" && adapter.ScratchRoot != "runtime" && adapter.ScratchRoot != "none" {
 		return fmt.Errorf("external skill %s: %s scratch_root must be \"runtime\" or \"none\", got %q", packageID, externalSkillAdapterFileName, adapter.ScratchRoot)
+	}
+	return nil
+}
+
+// validateAdapterContracts checks the role references, weapon contract and
+// runtime the adapter declares.
+func validateAdapterContracts(packageID string, adapter externalSkillAdapter) error {
+	for _, roleID := range append([]string{adapter.CanonicalRole}, adapter.Roles...) {
+		if err := domain.ValidateRoleReference(roleID); err != nil {
+			return fmt.Errorf("external skill %s: %s: %w", packageID, externalSkillAdapterFileName, err)
+		}
+	}
+	if err := adapter.WeaponContract.Validate(); err != nil {
+		return fmt.Errorf("external skill %s: %s: %w", packageID, externalSkillAdapterFileName, err)
 	}
 	adapter.Runtime = domain.NormalizeRankedRuntime(adapter.Runtime)
 	if err := adapter.Runtime.Validate(); err != nil {

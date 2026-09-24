@@ -53,15 +53,17 @@ the workspace, and records the transaction in
 restored when staging or compilation fails, so the previous last-known-good
 binding remains active.
 
-External providers cannot replace the native discovery authority:
+The native Ranger role owns discovery, but its selected Weapon is invoked through
+the role contract:
 
 ```text
 strategist provider add ./my-provider --slot discovery
 ```
 
-is rejected with `native_role_authority`; discovery remains owned by native
-Ranger. A catalog entry or static manifest is not proof that another provider
-can replace that route.
+is accepted only when the provider satisfies the discovery contract and Ranger can
+invoke and normalize its untrusted result. Missing or incompatible invocation fails
+closed with `role_invocation_failed`; there is no silent native substitution. A
+catalog entry or static manifest is not proof of runtime invocation.
 
 ## Upgrade and rollback
 

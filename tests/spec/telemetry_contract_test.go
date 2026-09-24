@@ -61,6 +61,31 @@ func TestTelemetryContractDefinesScoutFields(t *testing.T) {
 	}
 }
 
+// TestTelemetryContractDefinesRangerWeaponBoundary verifies that live Weapon
+// evidence and Ranger normalization remain distinct from static readiness.
+func TestTelemetryContractDefinesRangerWeaponBoundary(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "10-telemetry.md"),
+		filepath.Join(repoRoot(t), ".strategist", "contracts", "narrative", "10-telemetry.md"),
+	} {
+		content := readFile(t, path)
+		for _, needle := range []string{
+			"strategist.discovery.weapon_invocation",
+			"discovery.invocation_status",
+			"discovery.normalization_status",
+			"discovery.invocation_evidence",
+			"Static catalog/readiness results remain distinct",
+			"does not imply native substitution",
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("%s missing Ranger Weapon telemetry term %q", path, needle)
+			}
+		}
+	}
+}
+
 // TestRoutingContractDefinesPostRouteCapabilityCheck verifies 00-routing.md
 // describes the weapon-capability check running immediately after Scout emits
 // route_decision, before the discovery weapon is invoked.

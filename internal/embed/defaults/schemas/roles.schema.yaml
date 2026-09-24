@@ -2,6 +2,20 @@ schema: roles-config
 version: "1.0"
 description: Required fields for roles configuration used by Strategist.
 
+role_taxonomy:
+  origin:
+    type: enum
+    values: [native, external]
+    description: Contract owner; independent from provider pluggability.
+  extensibility:
+    type: enum
+    values: [fixed, pluggable]
+    description: Whether a provider may fill the role.
+  pluggable:
+    type: boolean
+    deprecated: true
+    description: Compatibility input derived from extensibility.
+
 required_fields:
   - discovery
   - refinement

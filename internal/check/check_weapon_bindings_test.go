@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -18,6 +19,9 @@ func writeWeaponFixture(t *testing.T, root, skillID, canonicalRole, roleYAML str
 	body := "id: " + skillID + "\nrisk_score: write_analysis\n"
 	if canonicalRole != "" {
 		body += "specialization_taxonomy:\n  canonical_role: " + canonicalRole + "\n"
+		if canonicalRole == "ranger" {
+			body += "weapon_contract:\n  role_owner: ranger\n  participation: required\n  invocation_evidence: required\n  unavailable_behavior: role_invocation_failed\n  native_substitution: forbidden\n"
+		}
 	}
 	require.NoError(t, os.WriteFile(filepath.Join(skillDir, "skill.yaml"), []byte(body), 0o644))
 
@@ -110,6 +114,34 @@ func TestVerifyEmbeddedWeaponBindings_ValidPairing(t *testing.T) {
 	for _, binding := range bindings {
 		assert.True(t, binding.OK, "unexpected failing binding: %+v", binding)
 	}
+}
+
+func TestSelectedDiscoveryWeaponRequiresBoundaryContract(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	writeDefaultRoleSlotMap(t, root)
+	writeWeaponFixture(t, root, "brainstorming", "ranger", "role: ranger\nslot: discovery\n")
+
+	// Remove the helper's valid contract so the failure is isolated to the
+	// discovery Weapon boundary rather than role or slot resolution.
+	skillPath := filepath.Join(root, "skills", "brainstorming", "skill.yaml")
+	require.NoError(t, os.WriteFile(skillPath, []byte("id: brainstorming\nrisk_score: write_analysis\nspecialization_taxonomy:\n  canonical_role: ranger\n"), 0o644))
+
+	err := validateSelectedDiscoveryWeaponContract(root, "brainstorming")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "discovery weapon contract missing")
+}
+
+func TestValidateWeaponBoundaryRejectsOwnerMismatch(t *testing.T) {
+	err := validateWeaponBoundary("discovery", "ranger", domain.WeaponContract{
+		RoleOwner:           "archivist",
+		Participation:       "required",
+		InvocationEvidence:  "required",
+		UnavailableBehavior: "role_invocation_failed",
+		NativeSubstitution:  "forbidden",
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "does not match role")
 }
 
 func TestVerifyEmbeddedWeaponBindings_MissingRoleFile(t *testing.T) {

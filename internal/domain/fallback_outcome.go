@@ -29,24 +29,17 @@ const (
 	// still emit degradation evidence (configured provider, effective provider,
 	// reason). Never implies Strategist Approval Gate acceptance.
 	FallbackOutcomeAutoNative FallbackOutcome = "auto_native"
-	// FallbackOutcomeAlwaysNative means the slot's resolution never depends on
-	// this policy at all — discovery always resolves to the native Ranger role,
-	// unconditionally, regardless of provider_resolution_policy or of what
-	// active.slots.discovery is configured to (see 00-routing.md § Discovery
-	// Weapon Resolution by Subtype). DecideSlotFallbackOutcome is the only
-	// producer of this value; DecideFallbackOutcome alone never returns it.
-	FallbackOutcomeAlwaysNative FallbackOutcome = "always_native_no_policy"
 )
 
-// discoverySlot names the one slot exempt from ADR-0028's policy table — see
-// FallbackOutcomeAlwaysNative.
+// discoverySlot names the route whose selected Weapon is required and cannot
+// degrade to native behavior.
 const discoverySlot = "discovery"
 
 // DecideFallbackOutcome combines fallbackAvailable (whether a compatible native
 // role exists for a slot) with policy's effective value into one deterministic
 // FallbackOutcome (ADR-0028). Callers resolving the discovery slot must use
 // DecideSlotFallbackOutcome instead — discovery is exempt from this table
-// entirely (see FallbackOutcomeAlwaysNative).
+// entirely; discovery is handled as FallbackOutcomeUnavailable.
 func DecideFallbackOutcome(policy ResolutionPolicy, fallbackAvailable bool) FallbackOutcome {
 	if !fallbackAvailable {
 		return FallbackOutcomeUnavailable
@@ -65,12 +58,13 @@ func DecideFallbackOutcome(policy ResolutionPolicy, fallbackAvailable bool) Fall
 	}
 }
 
-// DecideSlotFallbackOutcome is DecideFallbackOutcome, adjusted for the one slot
-// (discovery) whose resolution is not governed by provider_resolution_policy at
-// all. Every other slot defers entirely to DecideFallbackOutcome.
+// DecideSlotFallbackOutcome is DecideFallbackOutcome, adjusted for discovery:
+// no fallback outcome is available because Ranger must invoke the selected
+// Weapon and fail closed when it cannot. Every other slot defers entirely to
+// DecideFallbackOutcome.
 func DecideSlotFallbackOutcome(slot string, policy ResolutionPolicy, fallbackAvailable bool) FallbackOutcome {
 	if slot == discoverySlot {
-		return FallbackOutcomeAlwaysNative
+		return FallbackOutcomeUnavailable
 	}
 	return DecideFallbackOutcome(policy, fallbackAvailable)
 }

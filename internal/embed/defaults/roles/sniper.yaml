@@ -1,5 +1,7 @@
 role: sniper
 slot: execution
+origin: native
+extensibility: fixed
 phase: 4                        # the approval gate is step 3, immediately before this role
 pluggable: false               # native role today; no external provider
 on_start:                       # run when this role's phase starts; {role} and {mission_id} are substituted.

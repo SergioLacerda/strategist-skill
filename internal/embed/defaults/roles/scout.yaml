@@ -1,4 +1,6 @@
 role: scout
+origin: native
+extensibility: fixed
 # Scout is the internal pre-pipeline Intake Router: it fills no slot and cannot
 # be plugged. It is defined here so every identity-bearing role shares one
 # definition shape (see internal_skills/scout for its behavior and SKILL.md).

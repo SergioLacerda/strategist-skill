@@ -34,7 +34,7 @@ required_fields:
     allowed_values: [ask_required, auto_native]
     description: >
       domain.FallbackOutcome value. Only the two outcomes that represent an
-      applied fallback are valid here — blocked/unavailable/always_native
+      applied fallback are valid here — blocked/unavailable
       never produce a record.
   configured_provider:
     type: string
@@ -73,7 +73,8 @@ invariants:
   - outcome MUST equal what
     internal/domain.DecideSlotFallbackOutcome(slot, policy, fallback_available=true)
     computes for the record's own slot and policy — a mismatch means the
-    record misrepresents ADR-0028's policy table
+    record misrepresents ADR-0028's policy table. Discovery resolves to
+    no_fallback_available because its selected Weapon is required.
   - outcome=ask_required MUST carry user_confirmed=true — this is the
     structural guarantee that fallback never implies the Strategist Approval
     Gate was skipped

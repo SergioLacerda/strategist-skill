@@ -91,11 +91,30 @@ func TestDefaultInitiativeRuntimeRejectsPolicyMirrorDrift(t *testing.T) {
 func TestRoleLifecycleConsumesDeclaredHooks(t *testing.T) {
 	lifecycle, err := NewDefaultRoleLifecycle(t.TempDir(), domain.DefaultRoleRegistry())
 	require.NoError(t, err)
-	advice, err := lifecycle.Enter(InitiativeRoleEntry{MissionID: "hooks", Role: "ranger", RunID: "run"})
+	advice, err := lifecycle.Enter(InitiativeRoleEntry{MissionID: "hooks", Role: "ranger", RunID: "run", Leveling: testLeveling("level-1", "ranger")})
 	require.NoError(t, err)
 	handoff, err := lifecycle.Complete(advice, validMissionResult(advice), "archivist")
 	require.NoError(t, err)
 	require.NoError(t, lifecycle.Consume(handoff))
+}
+
+func TestRoleLifecycleRequiresLevelingBeforeInitiative(t *testing.T) {
+	lifecycle, err := NewDefaultRoleLifecycle(t.TempDir(), domain.DefaultRoleRegistry())
+	require.NoError(t, err)
+	_, err = lifecycle.Enter(InitiativeRoleEntry{MissionID: "missing-level", Role: "ranger", RunID: "run"})
+	require.ErrorContains(t, err, "LEVELING resolution is required")
+}
+
+func TestRoleLifecycleReevaluationRequiresNewLevelingEvent(t *testing.T) {
+	lifecycle, err := NewDefaultRoleLifecycle(t.TempDir(), domain.DefaultRoleRegistry())
+	require.NoError(t, err)
+	first, err := lifecycle.Enter(InitiativeRoleEntry{MissionID: "reeval-level", Role: "ranger", RunID: "run", Leveling: testLeveling("level-1", "ranger")})
+	require.NoError(t, err)
+	_, err = lifecycle.Reevaluate(InitiativeRoleEntry{MissionID: "reeval-level", Role: "ranger", RunID: "run", Leveling: testLeveling("level-1", "ranger")}, initiative.TriggerScopeChanged)
+	require.ErrorContains(t, err, "new LEVELING event")
+	second, err := lifecycle.Reevaluate(InitiativeRoleEntry{MissionID: "reeval-level", Role: "ranger", RunID: "run", Leveling: testLeveling("level-2", "ranger")}, initiative.TriggerScopeChanged)
+	require.NoError(t, err)
+	require.Equal(t, first.AdviceID, second.Supersedes)
 }
 
 func TestRoleLifecycleKeepsRolesWithoutHooksAsLegacyNoOp(t *testing.T) {
@@ -145,5 +164,13 @@ func validMissionResult(advice initiative.Advice) initiative.Result {
 		GateIndependent: true,
 		Checks:          []initiative.ObligationCheck{{ID: "inspect_evidence", Status: initiative.CheckSatisfied, EvidenceRefs: []initiative.EvidenceRef{{ID: "e-1", Class: "explicit"}}}},
 		EvidenceRefs:    []initiative.EvidenceRef{{ID: "e-1", Class: "explicit"}},
+	}
+}
+
+func testLeveling(eventID, role string) *initiative.LevelingResolution {
+	return &initiative.LevelingResolution{
+		EventID: eventID, Role: role, State: initiative.ObservationKnown,
+		Model: "host-model", Provider: "host", Effort: initiative.EffortHigh,
+		Capability: "reasoning", LevelSource: "host",
 	}
 }

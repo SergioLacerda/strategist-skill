@@ -20,6 +20,11 @@ func (a Advice) Validate() error {
 	if !a.hasValidDiligence() {
 		return fmt.Errorf("initiative_advice_invalid: diligence or alignment is incomplete")
 	}
+	if a.Leveling != nil {
+		if err := a.Leveling.ValidateFor(a.Role); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

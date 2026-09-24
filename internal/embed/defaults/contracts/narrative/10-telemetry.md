@@ -10,6 +10,14 @@ contract: null
 
 Keep the human narrative and the structured telemetry aligned.
 
+Telemetry uses the canonical taxonomy without collapsing families: `role` and
+`provider` identify Role and Weapon context, `ability` identifies reusable
+mission behavior, `route` identifies Scout's selected Route, and `artifact`
+identifies the materialized Artifact. Pipeline Services and Mechanisms are
+described by their event/component contracts; they are not emitted as Roles or
+providers. LEVELING fields record the immutable resolver snapshot consumed by
+INITIATIVE and never imply execution authorization.
+
 ## Canonical Event Payload
 
 Structured telemetry should preserve, when available:
@@ -34,6 +42,9 @@ Structured telemetry should preserve, when available:
 - `evidence_state`
 - `discovery_subtype`
 - `provider`
+- `discovery.invocation_status`
+- `discovery.normalization_status`
+- `discovery.invocation_evidence`
 - `model`
 - `effort`
 - `level_source`
@@ -135,7 +146,12 @@ legacy JSONL remains readable and its missing provenance is shown as unknown,
 never reconstructed from the current policy. Confidence records may likewise
 carry an optional explicit `run`; records without it remain mission-wide.
 
-INITIATIVE has a separate append-only ledger at
+LEVELING emits the role resolution event before the role-boundary INITIATIVE
+consultation. The consultation receives that event as an immutable snapshot;
+it may report alignment and diligence against the snapshot, but it cannot
+change model, provider, capability, effort, policy identity, or the LEVELING
+ledger. A re-evaluation is valid only after a new LEVELING event identity is
+provided. INITIATIVE has a separate append-only ledger at
 `.strategist/memory/initiative-records.jsonl`, correlated by `mission_id`,
 `role`, `run_id`, and `advice_id`. It never writes `role-levels.jsonl` and never
 replaces the LEVELING tuple. A role resolves one advice envelope at entry and
@@ -170,6 +186,19 @@ events by `component`:
 
 These are always separate events — a Scout route decision is never merged into a
 Ranger discovery-result payload, and vice versa.
+
+## Ranger Weapon Boundary
+
+The `strategist.discovery.weapon_invocation` event is emitted by the Ranger
+Weapon boundary when an authorized host supplies telemetry. It records
+`discovery.invocation_status` (`invoked` or `failed`) and
+`discovery.normalization_status` (`normalized`, `rejected`, or `not_attempted`).
+Successful events include `discovery.invocation_evidence`; provider payloads
+are never recorded. A failed event is `status: blocked`, carries
+`reason: role_invocation_failed`, and does not imply native substitution.
+
+Static catalog/readiness results remain distinct from this event: readiness can
+be `ready` while live invocation is still unknown.
 
 ## OTel Rule
 

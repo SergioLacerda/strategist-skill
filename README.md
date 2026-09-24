@@ -2,7 +2,7 @@
 
 [![Release](https://img.shields.io/github/v/release/SergioLacerda/strategist-skill?label=release)](https://github.com/SergioLacerda/strategist-skill/releases)
 [![CI](https://github.com/SergioLacerda/strategist-skill/actions/workflows/test.yml/badge.svg)](https://github.com/SergioLacerda/strategist-skill/actions/workflows/test.yml)
-[![Coverage](https://img.shields.io/badge/coverage-92.8%25-green)](docs/test-styles.md)
+[![Coverage](https://img.shields.io/badge/coverage-92.7%25-green)](docs/test-styles.md)
 [![Mutation](https://img.shields.io/badge/mutation-passing-brightgreen)](scripts/mutation-role-weapon.sh)
 [![Go](https://img.shields.io/badge/Go-1.26-blue)](https://go.dev)
 [![License](https://img.shields.io/github/license/SergioLacerda/strategist-skill)](LICENSE)
@@ -75,6 +75,34 @@ Sniper
 - **Sniper** handles the approved execution/documentation stage defined by the workflow.
 
 Acceptance at the Approval Gate authorizes only the declared documentation targets. Source code, tests, scripts, CI, and configuration changes remain a separate implementation handoff.
+
+### Runtime taxonomy
+
+The current runtime has four identity-bearing Roles: Scout (`native/fixed`),
+Ranger and Archivist (`native/pluggable`), and Sniper (`native/fixed`). Weapons
+are provider packages invoked by a Role; the selected Ranger discovery Weapon is
+required input whose untrusted result Ranger normalizes before the handoff. A
+missing or incompatible Weapon fails closed with `role_invocation_failed` and
+does not silently fall back to native behavior.
+
+INITIATIVE is a consultative Ability that reads the immutable operational resolver
+output produced by LEVELING. It
+cannot select or mutate the model, provider, capability, effort, Approval Gate,
+or implementation authorization. Prompt Intake, Context Enrichment, Dossier
+Builder, Response Critic, and Learning Curator are Pipeline Services, not Roles.
+
+The canonical taxonomy has seven families: Roles, Weapons, Abilities, Pipeline
+Services, Mechanisms, Routes, and Artifacts. Mechanisms name governance and
+integrity rules such as Role Contract, Weapon Binding, Handoff, Approval Gate,
+compatibility, and fingerprints; they are not executable Roles or providers.
+Routes name the pipeline shape selected by Scout, while Artifacts name the
+materialized results such as analysis, evidence packs, refined packages, and
+ADRs. See the [canonical taxonomy and responsibility matrix](docs/architecture/strategist-concepts.md#canonical-taxonomy).
+
+The historical phrases “internal role” and “external role” are compatibility
+notes only. Active documentation uses the independent `origin` and
+`extensibility` properties. Proposed names such as Pathfinder, Cartographer,
+Jeweler, and Jewelcrafter are not active Roles.
 
 ## Documentation
 

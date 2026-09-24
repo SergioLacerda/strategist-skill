@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -13,7 +12,6 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/rolevalidation"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -136,32 +134,6 @@ func resolveCheckProviders(root string, providers map[string]string) (map[string
 	}
 	errs = append(errs, checkPluginLockParity(root, providers)...)
 	return resolutions, errs
-}
-
-func collectCheckDiagnostics(root string, cfg domain.ActiveConfig, providers map[string]string, resolutions map[string]slotResolution, language *domain.PreflightLanguage) ([]string, []weaponBinding) {
-	var errs []string
-	for _, failure := range rolevalidation.ValidateRuntimeBindings(root, cfg) {
-		errs = append(errs, failure.Error())
-	}
-	errs = append(errs, blockedReadinessErrorsForSlots(resolutions, []string{"discovery", "refinement", "execution"})...)
-	errs = append(errs, validateActivePersona(root, cfg.Mode)...)
-	weaponBindings, weaponErr := verifyEmbeddedWeaponBindings(root)
-	if weaponErr != nil {
-		errs = append(errs, weaponErr.Error())
-	}
-	errs = append(errs, weaponBindingErrors(weaponBindings)...)
-	errs = append(errs, checkPluginLockParity(root, providers)...)
-	errs = append(errs, validateRuntimeDefaultParity(root)...)
-	if err := emitF3ConflictAttributionSignals(root, cfg.BasePath, time.Now()); err != nil {
-		fmt.Fprintf(os.Stderr, "  ⚠ f3_conflict_signal: %v\n", err)
-	}
-	if checkStrict {
-		errs = append(errs, runStrictChecks(root)...)
-	}
-	if checkConfirmChatLanguage != "" && language != nil && language.Chat != "" && checkConfirmChatLanguage != language.Chat {
-		errs = append(errs, fmt.Sprintf("chat_language_mismatch: confirmed=%s configured=%s", checkConfirmChatLanguage, language.Chat))
-	}
-	return errs, weaponBindings
 }
 
 func renderCheck(root, mode string, providers map[string]string, resolutions map[string]slotResolution, language *domain.PreflightLanguage, decisionReason string, errs []string, weaponBindings []weaponBinding) error {

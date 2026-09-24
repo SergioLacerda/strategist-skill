@@ -78,6 +78,17 @@ Distinguished from Ranger discovery-result events by `strategist.component`:
 `component=scout` for the route decision, `component=ranger` for the discovery
 result. See `contracts/narrative/10-telemetry.md` § Scout Event.
 
+### Ranger Weapon boundary
+
+The `strategist.discovery.weapon_invocation` event distinguishes live Weapon
+invocation from static readiness. It records
+`strategist.discovery.invocation_status` (`invoked` or `failed`) and
+`strategist.discovery.normalization_status` (`normalized`, `rejected`, or
+`not_attempted`). Successful events carry
+`strategist.discovery.invocation_evidence`; provider payloads are excluded.
+Failures are blocked with `strategist.reason=role_invocation_failed` and never
+represent a native fallback.
+
 ### Treasure Chest — Index / Mine / Jewels (target — not yet emitted)
 
 The fields below describe the **planned** telemetry/logs/metrics surface for the

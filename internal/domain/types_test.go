@@ -167,13 +167,13 @@ func TestDecideFallbackOutcome_UnrecognizedPolicyDefaultsToAskRequired(t *testin
 	assert.Equal(t, domain.FallbackOutcomeAskRequired, domain.DecideFallbackOutcome(domain.ResolutionPolicy("bogus"), true))
 }
 
-func TestDecideSlotFallbackOutcome_DiscoveryAlwaysExemptFromPolicy(t *testing.T) {
+func TestDecideSlotFallbackOutcome_DiscoveryHasNoNativeFallback(t *testing.T) {
 	t.Parallel()
 	for _, policy := range []domain.ResolutionPolicy{domain.ResolutionPolicyBlock, domain.ResolutionPolicyAsk, domain.ResolutionPolicyNative} {
-		assert.Equal(t, domain.FallbackOutcomeAlwaysNative, domain.DecideSlotFallbackOutcome("discovery", policy, true),
-			"discovery must ignore policy even when a fallback is available, policy=%q", policy)
-		assert.Equal(t, domain.FallbackOutcomeAlwaysNative, domain.DecideSlotFallbackOutcome("discovery", policy, false),
-			"discovery must ignore policy even when no fallback is available, policy=%q", policy)
+		assert.Equal(t, domain.FallbackOutcomeUnavailable, domain.DecideSlotFallbackOutcome("discovery", policy, true),
+			"discovery must fail closed even when a native role exists, policy=%q", policy)
+		assert.Equal(t, domain.FallbackOutcomeUnavailable, domain.DecideSlotFallbackOutcome("discovery", policy, false),
+			"discovery must fail closed when no fallback exists, policy=%q", policy)
 	}
 }
 

@@ -156,8 +156,9 @@ and rejects URLs or git references. `add` stages the source, advances the
 existing lock/binding generation, compiles the workspace, and records a
 recoverable transaction. Failed onboarding restores the previous binding.
 
-External providers cannot be added to `discovery`: native Ranger owns that
-route and the command fails closed with `native_role_authority`.
+External providers can participate in `discovery` only through the native Ranger
+route; the command fails closed with `role_invocation_failed` when the selected
+Weapon cannot be invoked or normalized.
 
 See [Provider extension guide](provider-extension.md) for the source contract,
 upgrade, rollback, and evidence boundaries.

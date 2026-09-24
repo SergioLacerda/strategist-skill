@@ -30,8 +30,9 @@ type weaponBinding struct {
 // currently guaranteed identical by any generator this check depends on, so
 // it reads whichever is present rather than assuming one).
 type skillTaxonomy struct {
-	CanonicalRole          string   `yaml:"canonical_role"`
-	Roles                  []string `yaml:"roles"`
+	CanonicalRole          string                `yaml:"canonical_role"`
+	Roles                  []string              `yaml:"roles"`
+	WeaponContract         domain.WeaponContract `yaml:"weapon_contract"`
 	SpecializationTaxonomy struct {
 		CanonicalRole string `yaml:"canonical_role"`
 	} `yaml:"specialization_taxonomy"`
@@ -116,10 +117,10 @@ func scanWeaponEntry(root, skillsDir string, entry os.DirEntry, roleSlotMap doma
 		// binding to validate.
 		return weaponBinding{}, false
 	}
-	return verifyOneWeaponBinding(root, skillID, canonicalRole, roleSlotMap, roleSlotMapErr), true
+	return verifyOneWeaponBinding(root, skillID, canonicalRole, taxonomy.WeaponContract, roleSlotMap, roleSlotMapErr), true
 }
 
-func verifyOneWeaponBinding(root, skillID, canonicalRole string, roleSlotMap domain.RoleSlotMap, roleSlotMapErr error) weaponBinding {
+func verifyOneWeaponBinding(root, skillID, canonicalRole string, weaponContract domain.WeaponContract, roleSlotMap domain.RoleSlotMap, roleSlotMapErr error) weaponBinding {
 	b := weaponBinding{SkillID: skillID, CanonicalRole: canonicalRole}
 
 	rolePath := filepath.Join(root, "roles", canonicalRole+".yaml")
@@ -147,20 +148,11 @@ func verifyOneWeaponBinding(root, skillID, canonicalRole string, roleSlotMap dom
 		b.Reason = fmt.Sprintf("roles/default.yaml maps slot %q to %q, not %q", roleCfg.Slot, roleSlotMap[roleCfg.Slot], canonicalRole)
 		return b
 	}
+	if err := validateWeaponBoundary(roleCfg.Slot, canonicalRole, weaponContract); err != nil {
+		b.Reason = err.Error()
+		return b
+	}
 
 	b.OK = true
 	return b
-}
-
-// weaponBindingErrors renders every failed binding as a check.go-style error
-// string, for inclusion in the same errs slice every other check.go
-// validation gates the command's exit code on.
-func weaponBindingErrors(bindings []weaponBinding) []string {
-	var errs []string
-	for _, b := range bindings {
-		if !b.OK {
-			errs = append(errs, fmt.Sprintf("weapon binding %s: %s", b.SkillID, b.Reason))
-		}
-	}
-	return errs
 }

@@ -41,6 +41,7 @@ type AdviceInput struct {
 	Trigger    Trigger
 	Sequence   int
 	Observed   Observation
+	Leveling   *LevelingResolution
 	Supersedes string
 }
 
@@ -48,18 +49,19 @@ type AdviceInput struct {
 // role. It never resolves or changes the execution level selected by
 // LEVELING.
 type Advice struct {
-	AdviceID       string           `json:"advice_id" yaml:"advice_id"`
-	MissionID      string           `json:"mission_id" yaml:"mission_id"`
-	Role           string           `json:"role" yaml:"role"`
-	RunID          string           `json:"run_id" yaml:"run_id"`
-	PolicyVersion  string           `json:"policy_version" yaml:"policy_version"`
-	PolicyDigest   string           `json:"policy_digest" yaml:"policy_digest"`
-	Trigger        Trigger          `json:"trigger" yaml:"trigger"`
-	Supersedes     string           `json:"supersedes,omitempty" yaml:"supersedes,omitempty"`
-	Observed       Observation      `json:"observed" yaml:"observed"`
-	Recommendation Recommendation   `json:"recommendation" yaml:"recommendation"`
-	Alignment      AlignmentState   `json:"alignment" yaml:"alignment"`
-	Diligence      DiligenceProfile `json:"diligence" yaml:"diligence"`
+	AdviceID       string              `json:"advice_id" yaml:"advice_id"`
+	MissionID      string              `json:"mission_id" yaml:"mission_id"`
+	Role           string              `json:"role" yaml:"role"`
+	RunID          string              `json:"run_id" yaml:"run_id"`
+	PolicyVersion  string              `json:"policy_version" yaml:"policy_version"`
+	PolicyDigest   string              `json:"policy_digest" yaml:"policy_digest"`
+	Trigger        Trigger             `json:"trigger" yaml:"trigger"`
+	Supersedes     string              `json:"supersedes,omitempty" yaml:"supersedes,omitempty"`
+	Leveling       *LevelingResolution `json:"leveling,omitempty" yaml:"leveling,omitempty"`
+	Observed       Observation         `json:"observed" yaml:"observed"`
+	Recommendation Recommendation      `json:"recommendation" yaml:"recommendation"`
+	Alignment      AlignmentState      `json:"alignment" yaml:"alignment"`
+	Diligence      DiligenceProfile    `json:"diligence" yaml:"diligence"`
 }
 
 // Advisor produces Advice from an AdviceInput according to its Policy.
@@ -93,6 +95,11 @@ func (a Advisor) resolveAdviceInput(input AdviceInput) (string, Profile, int, er
 	if err := validateAdviceIdentity(input, role); err != nil {
 		return "", Profile{}, 0, err
 	}
+	if input.Leveling != nil {
+		if err := input.Leveling.ValidateFor(role); err != nil {
+			return "", Profile{}, 0, err
+		}
+	}
 	profile, ok := a.Policy.Profile(role)
 	if !ok {
 		return "", Profile{}, 0, fmt.Errorf("initiative_advice_invalid: role %q is not in policy", role)
@@ -121,6 +128,13 @@ func validateAdviceIdentity(input AdviceInput, role string) error {
 }
 
 func buildAdvice(input AdviceInput, role string, profile Profile, policy Policy, sequence int) Advice {
+	observed := normalizeObservation(input.Observed)
+	var resolution *LevelingResolution
+	if input.Leveling != nil {
+		copyResolution := *input.Leveling
+		resolution = &copyResolution
+		observed = normalizeObservation(copyResolution.Observation())
+	}
 	return Advice{
 		AdviceID:      adviceID(input, policy.Digest(), sequence),
 		MissionID:     input.MissionID,
@@ -130,13 +144,14 @@ func buildAdvice(input AdviceInput, role string, profile Profile, policy Policy,
 		PolicyDigest:  policy.Digest(),
 		Trigger:       input.Trigger,
 		Supersedes:    input.Supersedes,
-		Observed:      normalizeObservation(input.Observed),
+		Leveling:      resolution,
+		Observed:      observed,
 		Recommendation: Recommendation{
 			RecommendedCapability: profile.RecommendedCapability,
 			RecommendedEffort:     profile.RecommendedEffort,
 			Rationale:             append([]string(nil), profile.Diligence...),
 		},
-		Alignment: AlignmentFor(input.Observed, profile.RecommendedEffort),
+		Alignment: AlignmentFor(observed, profile.RecommendedEffort),
 		Diligence: DiligenceProfile{Checks: append([]string(nil), profile.Diligence...), ConfidenceCeiling: profile.ConfidenceCeiling},
 	}
 }

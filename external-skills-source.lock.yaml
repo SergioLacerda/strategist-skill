@@ -2,11 +2,11 @@ schema_version: strategist-embedded-skill-lock/v1
 packages:
     - id: brainstorming
       version: 1.0.0
-      digest: sha256:1d2705a39ba2ae7e35c9c1df894ddea26ca7779d5a94d70f141f0eb4671cb402
+      digest: sha256:eb22f74426a7e894ec549946f372be8404aab4c420d89a553e795c5db9466b1e
       source: external-skills-source/brainstorming
       contract_version: skill-package/v1
-      original_digest: sha256:1d2705a39ba2ae7e35c9c1df894ddea26ca7779d5a94d70f141f0eb4671cb402
-      normalized_digest: sha256:f627a3887209783c24b70cd4ceb9ed4bb31468d97df17118e46c2ae7ffb27ff4
+      original_digest: sha256:eb22f74426a7e894ec549946f372be8404aab4c420d89a553e795c5db9466b1e
+      normalized_digest: sha256:09b58d9fef997a532a10eeefd9eb3f93534cbd19d6d89b75a95cdb53dc78476e
       transformation: none
       local_modifications: unknown
       verification_state: declared

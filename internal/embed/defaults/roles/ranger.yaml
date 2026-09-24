@@ -1,5 +1,7 @@
 role: ranger
 slot: discovery
+origin: native
+extensibility: pluggable
 phase: 1                        # checkpoint position (0 is pre-pipeline)
 pluggable: true                # an external provider may fill this role
 handoff_schema: schemas/handoff-ranger-to-archivist.schema.yaml

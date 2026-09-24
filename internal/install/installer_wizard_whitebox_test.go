@@ -43,6 +43,8 @@ func TestInstall_WizardPath(t *testing.T) {
 	brainstorming, err := os.ReadFile(filepath.Join(dir, ".strategist", "skills", "brainstorming", "skill.yaml"))
 	require.NoError(t, err)
 	assert.Contains(t, string(brainstorming), "risk_score: write_analysis")
+	assert.Contains(t, string(brainstorming), "invocation_evidence: required")
+	assert.Contains(t, string(brainstorming), "native_substitution: forbidden")
 
 	_, err = os.Stat(filepath.Join(dir, ".strategist", "skills", "openspec-explore", "skill.yaml"))
 	require.ErrorIs(t, err, os.ErrNotExist)

@@ -6,34 +6,30 @@
 
 ## Context
 
-Strategist has real, structural distinctions between its Roles and Skills that were
-never named as one coherent vocabulary: some Roles have no configurable slot at all
-(Scout and Strategist's other internal pipeline helpers), while others are pluggable
-by design (Ranger, Archivist, Sniper). Skills, in turn, split into three provenance
-tiers already visible in `plugins/catalog.yaml`, but without a name a user or
-contributor could reach for. Two decorative fields, `provider_class` and
-`specialization_taxonomy`, added complexity without being read by any selection or
-compatibility logic. This ADR names both taxonomies against the structural facts
-that already make them true, and removes the decorative fields, so future contracts,
-documentation, and code comments have one vocabulary to cite instead of re-deriving
-the distinction from first principles each time.
+Strategist has real distinctions between identity-bearing Roles, provider Skills,
+and internal pipeline services. Earlier documentation collapsed ownership and
+pluggability into "internal" versus "external", which made the discovery boundary
+ambiguous. This ADR names the independent dimensions and the route artifacts that
+connect them, so contracts, documentation, and code do not infer policy from
+directory names.
 
 ## Decision
 
-### 1. Papéis (Roles) — all 9 existing today
+### 1. Papéis (Roles)
 
-- **1.1 Papel Interno (6)** — a Role with `internal_skills/<name>/` but no
-  `roles/<name>.yaml` and no `active.yaml#slots` entry. Never customizable.
-  `scout`, `context-enrichment`, `dossier-builder`, `learning-curator`,
-  `prompt-intake`, `response-critic`.
-- **1.2 Papel Externo (3)** — a Role with both `internal_skills/<name>/` (native
-  fallback) and `roles/<name>.yaml` (role contract) and an `active.yaml#slots`
-  entry. Pluggable by design; `strategist check`'s SLOTS/READINESS output validates
-  invocability for exactly these before a mission starts. `ranger`, `archivist`,
-  `sniper`.
-  - Fixed-role guardrail: external providers may be selected for the role, but
-    Ranger remains authoritative for normalization and checkpoints. "Papel
-    Externo" names structural pluggability, not permission to bypass the role.
+Every role declares two independent contract fields:
+
+- `origin: native | external` identifies who owns the role contract.
+- `extensibility: fixed | pluggable` identifies whether a provider may fill the
+  role. The legacy `pluggable` field remains a derived compatibility input while
+  workspaces migrate.
+
+The current registry is deliberately small: Scout is `native/fixed`, Ranger and
+Archivist are `native/pluggable`, and Sniper is `native/fixed` for this change.
+`context-enrichment`, `dossier-builder`, `learning-curator`, `prompt-intake`, and
+`response-critic` are pipeline services, not additional identity-bearing roles.
+Unverified names such as Pathfinder, Cartographer, Jeweler, and Jewelcrafter are
+not activated by this ADR.
 
 ### 2. Skills ("Armas")
 
@@ -42,8 +38,9 @@ the distinction from first principles each time.
   altered by a user.
 - **2.2 Embarcada** — a Skill imported from the standard `external-skills-source/`
   path and materialized into the internal catalog (`compatibility_source: embedded`).
-  Selectable via the Wizard. **A Papel Externo with an active Embarcada Skill bound
-  to it is called an "Arma."**
+  Selectable via the Wizard. A selected Skill is a Weapon only when the owning role
+  invokes it through its declared contract; catalog metadata alone is not invocation
+  evidence.
 - **2.3 Externa** — a Skill outside the offered catalog, selected by the client from
   their own standalone workspace at Wizard time, known to Strategist (if at all) only
   by risk/compatibility metadata for validation, carrying a single
@@ -66,7 +63,21 @@ against today's catalog documents one known, pre-existing gap: `brainstorming`'s
 `writing-plans` dependency is not yet its own catalog entry — this ADR does not
 retroactively fabricate one; a future ingestion mission catalogues it for real.
 
-### 4. Simplified Arma model — one primary weapon per Papel, plus its dependencies
+### 4. Role-owned Weapon and Ability model
+
+Ranger owns the discovery route and must invoke the selected `brainstorming` Weapon.
+The Weapon result is untrusted input: Ranger normalizes and validates it before the
+handoff. Missing, incompatible, or failed invocation emits the stable
+`role_invocation_failed` outcome and fails closed; there is no silent native fallback.
+
+INITIATIVE is a consultative Ability. It consumes an immutable LEVELING resolution
+and may return advice, but cannot mutate the model, provider, capability, effort,
+gate, or implementation authorization. Prompt Intake, Context Enrichment, Dossier
+Builder, Response Critic, and Learning Curator remain pipeline services rather than
+Roles or Weapons.
+
+One primary Weapon per Role remains supported, via `default: true`, together with
+its dependencies:
 
 A Papel's candidate Armas are every catalog entry whose explicit `roles` affinity
 contains it. `canonical_role` remains a backwards-compatible single-role alias.
@@ -78,6 +89,31 @@ no code branched on their values for any selection or compatibility decision, an
 `dojo` manifest checker treats field names as generic, scenario-declared assertions,
 not semantically meaningful checks. This is a backend/data-model simplification only
 — no Wizard display change is included.
+
+### 5. Final seven-family nomenclature (2026-09-24)
+
+The public taxonomy is now canonical across architecture and contracts:
+
+The seven canonical families are Roles, Weapons, Abilities, Pipeline Services,
+Mechanisms, Routes, and Artifacts.
+
+| Family | Responsibility question | Examples |
+| --- | --- | --- |
+| Role | Who owns and performs a responsibility? | Scout, Ranger, Archivist, Sniper |
+| Weapon | Which bounded skill package does a pluggable Role employ? | `brainstorming`, `openspec-propose` |
+| Ability | Which reusable mission behavior is performed? | INITIATIVE, Search, Opportunity Attack, Side Quest |
+| Pipeline Service | Which fixed or conditional service supports the pipeline? | Prompt Intake, Context Enrichment, Dossier Builder, Response Critic, Learning Curator |
+| Mechanism | Which rule governs identity, transfer, authorization, or integrity? | Role Contract, Weapon Binding, Handoff, Approval Gate, compatibility, fingerprint |
+| Route | Which pipeline shape did Scout select? | `full_pipeline`, `implementation_short_route`, `critical_hit` |
+| Artifact | Which materialized result is transported or persisted? | analysis, dossier, evidence pack, refined package, ADR |
+
+`LEVELING` is an immutable operational resolver consumed by the INITIATIVE
+Ability. It is not a Role, Weapon, provider, Route, or execution authority.
+The role axes remain independent: `origin` identifies contract ownership and
+`extensibility` identifies whether a compatible Weapon/provider may fill the
+role. “Internal role” and “external role” are historical compatibility wording,
+not active taxonomy aliases. Pathfinder, Cartographer, Jeweler, and
+Jewelcrafter remain inactive proposals.
 
 ## Alternatives considered
 
@@ -117,7 +153,7 @@ not semantically meaningful checks. This is a backend/data-model simplification 
 
 ### Negative
 
-- Adds one more named concept ("Arma") atop an already dense vocabulary
+- Adds named concepts ("Arma", Ability, service, route, and artifact) atop an already dense vocabulary
   (Role/Provider/Binding/Source from `strategist-papeis-personagens-skills-nativas`);
   future documentation must keep the two vocabularies from drifting out of sync.
 - `brainstorming`'s own declared dependency is now visibly unresolved (via the new
@@ -126,14 +162,16 @@ not semantically meaningful checks. This is a backend/data-model simplification 
 
 ## Implementation boundary
 
-This ADR records the taxonomy and reflects work already landed in this mission:
+This ADR records the taxonomy and reflects work landed in this mission:
 the `compatibility_source` rename (`internal/embed/defaults/plugins/catalog.yaml`),
 removal of `provider_class`/`known_provider_class`/`specialization_taxonomy`
 (`internal/domain/install_types.go`, `internal/install/plugin_catalog.go`,
 `internal/install/plugin_catalog_legacy.go`, the two embedded `skill.yaml`
 manifests), wiring of `default`/`ProviderContract.Default`
-(`internal/install/role_provider_catalog_mapping.go`), and the dependency
-validator (`internal/install/plugin_catalog_dependencies.go`). It does not
+(`internal/install/role_provider_catalog_mapping.go`), the role origin and
+extensibility contract (`internal/domain/role_taxonomy.go`, role registry, and
+role manifests), Ranger Weapon fail-closed contract, and the dependency validator
+(`internal/install/plugin_catalog_dependencies.go`). It does not
 implement the `local_path` connector or the directory-to-catalog generator —
 those remain `20260913-embedded-skill-directory-catalog`'s scope, now declared to
 depend on this mission's dependency-validator landing first (see that mission's

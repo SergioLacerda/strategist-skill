@@ -184,6 +184,9 @@ func minimalCheckRoot(t *testing.T) string {
 		if provider.canonicalRole != "" {
 			body += "canonical_role: " + provider.canonicalRole + "\n"
 			body += "roles:\n  - " + provider.canonicalRole + "\n"
+			if provider.canonicalRole == "ranger" {
+				body += "weapon_contract:\n  role_owner: ranger\n  participation: required\n  invocation_evidence: required\n  unavailable_behavior: role_invocation_failed\n  native_substitution: forbidden\n"
+			}
 		}
 		require.NoError(t, os.WriteFile(
 			filepath.Join(provDir, "skill.yaml"),

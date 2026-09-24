@@ -10,7 +10,7 @@ description: >
   detects gaps between requirements and delivery, and updates requirements.
   Produces analysis and documentation only — never mutates code.
   Route selection (full pipeline or Critical Hit) is handled internally.
-  Internal role work follows the configured providers — Strategist never performs
+  Identity-bearing Role work follows the configured providers — Strategist never performs
   discovery, refinement, or execution directly.
 
 capability:
@@ -109,21 +109,10 @@ orchestration:
   slot_hierarchy:
     discovery:
       skill: ranger
-      # Ranger is the internal discovery persona. It owns discovery_subtype behavior
-      # (creative, evaluation, diagnostic, closure_evidence) and always performs
-      # discovery itself (native role) — no external weapon is ever consulted for
-      # discovery invocation, for any subtype (see contracts/narrative/00-routing.md
-      # § Discovery Weapon Resolution by Subtype; a live invocation of a
-      # manifest-compliant creative weapon surfaced contract-incompatible behavior,
-      # see .analysis/refined/20260728-ranger-drift-eval/).
-      may_delegate_to: []
-      # active.slots.discovery (default: brainstorming) is still validated at preflight
-      # (exists, invocable, matches the write_analysis risk contract) but is not
-      # invoked for discovery — the field is retained for provider-metadata/future use.
-      # openspec-explore is also registered here (canonical_role: ranger,
-      # corrected in docs/adr/0036-openspec-explore-canonical-role-correction.md)
-      # as a secondary, opt-in discovery weapon — same non-invocation rule
-      # applies: metadata only, never live-invoked for discovery.
+      # Ranger remains the native role owner, while the selected Weapon supplies
+      # bounded, untrusted discovery input. Ranger performs invocation through
+      # the host boundary, normalization, write-scope checks, and handoff.
+      may_delegate_to: [brainstorming, openspec-explore]
     refinement:
       skill: archivist
       # Archivist is the internal refinement persona. openspec-propose is its default

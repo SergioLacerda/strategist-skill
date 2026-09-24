@@ -82,11 +82,10 @@ func TestValidateFallbackDecision_RejectsUnconfirmedAsk(t *testing.T) {
 	}
 }
 
-func TestValidateFallbackDecision_DiscoverySlotAlwaysNativeMismatchesAskOrAutoNative(t *testing.T) {
+func TestValidateFallbackDecision_DiscoverySlotHasNoNativeFallback(t *testing.T) {
 	t.Parallel()
-	// Discovery is exempt from provider_resolution_policy entirely
-	// (FallbackOutcomeAlwaysNative) — a recorded decision claiming
-	// ask_required or auto_native for discovery can never match the table.
+	// Discovery cannot record a fallback decision: its selected Weapon is
+	// required, and invocation failure is role_invocation_failed.
 	facts := FallbackDecisionFacts{
 		Slot:    "discovery",
 		Policy:  ResolutionPolicyNative,
@@ -96,7 +95,7 @@ func TestValidateFallbackDecision_DiscoverySlotAlwaysNativeMismatchesAskOrAutoNa
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
-	if !strings.Contains(err.Error(), "always_native_no_policy") {
-		t.Fatalf("expected error to mention always_native_no_policy outcome, got: %v", err)
+	if !strings.Contains(err.Error(), "no_fallback_available") {
+		t.Fatalf("expected error to mention no_fallback_available outcome, got: %v", err)
 	}
 }

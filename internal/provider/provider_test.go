@@ -36,16 +36,20 @@ func TestValidateRejectsRemoteSourceWithoutMutation(t *testing.T) {
 	require.Equal(t, "native\n", string(raw))
 }
 
-func TestAddRejectsExternalDiscoveryBeforeMutation(t *testing.T) {
+func TestAddAllowsStaticDiscoveryBindingWithoutLiveInvocation(t *testing.T) {
 	root := t.TempDir()
+	require.NoError(t, copySource(filepath.Join("..", "embed", "defaults"), root))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "active.yaml"), []byte("mode: epic\nbase_path: .analysis\nslots:\n  discovery: fixture-provider\n  refinement: archivist\n  execution: sniper\n"), 0o644))
 	fixture := copyFixture(t)
 	require.NoError(t, os.WriteFile(filepath.Join(fixture, adapterManifestName), []byte("schema_version: strategist-plugin-adapter/v1\nid: fixture-provider\nadapter_revision: 1.0.0\nplugin_api_range: \"=1\"\nsupported_slots: [discovery]\nsupported_roles: [ranger]\nentrypoints: [host.prompt]\npackage_constraint: fixture-provider@1\nrequested_permissions: [workspace.read]\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(fixture, legacyManifestName), []byte("id: fixture-provider\ncanonical_role: ranger\nsupported_slots: [discovery]\n"), 0o644))
-	_, err := Add(root, fixture, "discovery")
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "native_role_authority")
-	_, statErr := os.Stat(filepath.Join(root, providerDirName))
-	require.ErrorIs(t, statErr, os.ErrNotExist)
+	result, err := Add(root, fixture, "discovery")
+	require.NoError(t, err)
+	require.Equal(t, "complete", result.TransactionState)
+	require.Equal(t, "unknown", string(result.Report.LiveInvocation.Status))
+	require.Equal(t, "live_probe_not_run", result.Report.LiveInvocation.ReasonCode)
+	_, statErr := os.Stat(filepath.Join(root, providerDirName, "fixture-provider@1.0.0"))
+	require.NoError(t, statErr)
 }
 
 func TestValidateRejectsLegacyAuthorityConflict(t *testing.T) {

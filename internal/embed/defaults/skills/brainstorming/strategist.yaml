@@ -13,9 +13,9 @@ default: true
 
 weapon_contract:
   role_owner: ranger
-  participation: advisory
+  participation: required
   invocation_evidence: required
-  unavailable_behavior: report_advisory
+  unavailable_behavior: role_invocation_failed
   native_substitution: forbidden
 
 # Upstream provenance (ADR-0029 DEC-002), evidence recorded in
@@ -37,7 +37,6 @@ license: MIT
 # writing-plans has never itself been a catalog entry (see
 # .analysis/done/20260913-role-skill-weapon-taxonomy/analysis.md KF-07) and
 # this package's own SKILL.md already states it makes no discovery-subtype
-# capability claim and is never actually invoked (discovery always resolves
-# to internal_skills/ranger). Fabricating a writing-plans package here just to
+# capability claim. Fabricating a writing-plans package here just to
 # satisfy the declared dependency would not be honest ingestion — see
 # .analysis/refined/20260913-embedded-skill-directory-catalog/tasks.md Task 7.

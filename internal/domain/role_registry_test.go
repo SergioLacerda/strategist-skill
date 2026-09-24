@@ -15,25 +15,32 @@ func TestDefaultRoleRegistryDescribesTodaysRoles(t *testing.T) {
 	assert.Equal(t, []string{"scout", "ranger", "archivist", "sniper"}, reg.IDs(), "ordered by phase")
 
 	cases := map[string]struct {
-		slot      string
-		phase     int
-		pluggable bool
+		slot          string
+		phase         int
+		origin        domain.RoleOrigin
+		extensibility domain.RoleExtensibility
+		pluggable     bool
 	}{
-		"scout":     {"", 0, false},
-		"ranger":    {"discovery", 1, true},
-		"archivist": {"refinement", 2, true},
-		"sniper":    {"execution", 4, false},
+		"scout":     {"", 0, domain.RoleOriginNative, domain.RoleExtensibilityFixed, false},
+		"ranger":    {"discovery", 1, domain.RoleOriginNative, domain.RoleExtensibilityPluggable, true},
+		"archivist": {"refinement", 2, domain.RoleOriginNative, domain.RoleExtensibilityPluggable, true},
+		"sniper":    {"execution", 4, domain.RoleOriginNative, domain.RoleExtensibilityFixed, false},
 	}
 	for id, want := range cases {
 		role, ok := reg.Get(id)
 		require.True(t, ok, id)
 		assert.Equal(t, want.slot, role.Slot, id)
 		assert.Equal(t, want.phase, role.Phase, id)
+		assert.Equal(t, want.origin, role.Origin, id)
+		assert.Equal(t, want.extensibility, role.Extensibility, id)
 		assert.Equal(t, want.pluggable, role.Pluggable, id)
 	}
 	assert.Equal(t, "schemas/handoff-ranger-to-archivist.schema.yaml", reg.HandoffSchemaOf("ranger"))
 	assert.Equal(t, "schemas/handoff-archivist-to-sniper.schema.yaml", reg.HandoffSchemaOf("archivist"))
 	assert.Empty(t, reg.HandoffSchemaOf("sniper"), "terminal role hands nothing downstream")
+	for _, unverified := range []string{"pathfinder", "cartographer", "jeweler", "jewelcrafter"} {
+		assert.False(t, reg.Has(unverified), "%s must not be activated by the current taxonomy", unverified)
+	}
 }
 
 func TestRoleRegistryLookups(t *testing.T) {
@@ -106,6 +113,35 @@ func TestRoleConfigSlotlessRoleMustDeclareNotPluggable(t *testing.T) {
 	require.Error(t, domain.RoleConfig{Role: "scout"}.Validate(), "legacy files still need a slot")
 	require.Error(t, domain.RoleConfig{Role: "scout", Pluggable: &yes}.Validate(), "a pluggable role needs a slot")
 	require.NoError(t, domain.RoleConfig{Role: "ranger", Slot: "discovery"}.Validate())
+	require.NoError(t, domain.RoleConfig{Role: "scout", Extensibility: domain.RoleExtensibilityFixed}.Validate())
+	require.Error(t, domain.RoleConfig{Role: "scout", Extensibility: domain.RoleExtensibilityPluggable}.Validate())
+}
+
+func TestRoleTaxonomyKeepsOriginIndependentFromExtensibility(t *testing.T) {
+	role := domain.Role{ID: "ranger", Origin: domain.RoleOriginExternal, Extensibility: domain.RoleExtensibilityFixed, Slot: "discovery"}
+	reg, err := domain.NewRoleRegistry([]domain.Role{role})
+	require.NoError(t, err)
+	got, ok := reg.Get("ranger")
+	require.True(t, ok)
+	assert.Equal(t, domain.RoleOriginExternal, got.Origin)
+	assert.Equal(t, domain.RoleExtensibilityFixed, got.Extensibility)
+	assert.False(t, got.Pluggable)
+}
+
+func TestRoleRegistryRejectsUnknownTaxonomyValues(t *testing.T) {
+	_, err := domain.NewRoleRegistry([]domain.Role{{ID: "ranger", Origin: "vendor", Slot: "discovery"}})
+	require.ErrorContains(t, err, "role origin")
+	_, err = domain.NewRoleRegistry([]domain.Role{{ID: "ranger", Extensibility: "conditional", Slot: "discovery"}})
+	require.ErrorContains(t, err, "role extensibility")
+}
+
+func TestRoleRegistryRejectsUnverifiedRoleActivation(t *testing.T) {
+	for _, roleID := range []string{"Pathfinder", "Cartographer", "Jeweler", "Jewelcrafter"} {
+		t.Run(roleID, func(t *testing.T) {
+			_, err := domain.NewRoleRegistry([]domain.Role{{ID: roleID}})
+			require.ErrorContains(t, err, "not approved for activation")
+		})
+	}
 }
 
 func writeRoleFile(t *testing.T, dir, name, body string) {

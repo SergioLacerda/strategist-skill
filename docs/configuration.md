@@ -93,7 +93,12 @@ The `mode` can be overridden per mission via `--mode=epic` without modifying thi
 
 The `slots:` defines the explicit provider binding and is required. It is equivalent to declaring providers in `roles_config`, but takes precedence when both are present. Local provider packages should be checked with `strategist provider validate <source>` and onboarded with `strategist provider add <source> --slot <slot>`; direct edits to generated provider mirrors or `plugins.lock` are not an onboarding path.
 
-The discovery slot remains owned by native Ranger. A catalog entry, `skill.yaml`, or static provider report does not authorize an external provider to replace that route. Attempts to onboard an external provider into `discovery` fail closed with `native_role_authority`.
+The discovery route remains owned by the native Ranger role, whose role contract is
+`origin: native` and `extensibility: pluggable`. Ranger must invoke the selected
+discovery Weapon, normalize its untrusted result, and reject an unavailable or
+incompatible Weapon with `role_invocation_failed`. A catalog entry, `skill.yaml`,
+or static provider report is not invocation evidence, and Ranger never silently
+substitutes its native behavior for a selected Weapon.
 
 The `treasure_chests` field is optional. Each entry requires `id`, `path`, and `scope`. The `all` scope passes the chest to all slots; specific scopes (`discovery`, `refinement`, `execution`) restrict which slots receive the chest.
 

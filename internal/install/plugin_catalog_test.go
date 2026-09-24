@@ -94,6 +94,17 @@ providers:
 	assert.Equal(t, map[string]string{"alpha": "skills/alpha/skill.yaml"}, got)
 }
 
+func TestPluginCatalogRejectsUnverifiedRoleAffinity(t *testing.T) {
+	_, err := parseCatalogBytes([]byte(`
+schema_version: strategist-plugin-catalog/v1
+providers:
+  - id: draft-role-weapon
+    risk_score: write_analysis
+    canonical_role: pathfinder
+`))
+	require.ErrorContains(t, err, "not approved for activation")
+}
+
 // TestResolveInstallableDefaultProvidersPropagatesCatalogError asserts SQ-2's
 // hardening (ADR-0035 Decision 2, no fallback substitution): a
 // loadPluginCatalog failure must return an error, not silently substitute
