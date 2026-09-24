@@ -145,7 +145,7 @@ func TestParseRejectsInvalidPolicy(t *testing.T) {
 func TestAppendRecordRejectsInvalidRecord(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "memory", "initiative-records.jsonl")
 	err := AppendRecord(path, Record{Kind: "bogus"})
-	require.ErrorContains(t, err, "unknown kind")
+	require.ErrorContains(t, err, "validated runtime")
 }
 
 func TestAppendRecordDefaultsTimestampForAdviceRecord(t *testing.T) {
@@ -196,10 +196,10 @@ func TestReadRecordsHandlesMissingAndInvalidPaths(t *testing.T) {
 
 func TestScanRecordsRejectsOversizedLine(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "records.jsonl")
-	oversized := bytes.Repeat([]byte("a"), 1<<20)
+	oversized := bytes.Repeat([]byte("a"), (1<<20)+2)
 	require.NoError(t, os.WriteFile(path, append(oversized, '\n'), 0o600))
 	_, err := ReadRecords(path)
-	require.ErrorContains(t, err, "read ledger")
+	require.ErrorContains(t, err, "initiative_ledger_record_oversized")
 }
 
 func TestLatestAdvicePropagatesReadError(t *testing.T) {
@@ -265,11 +265,11 @@ func TestAssessResultChallengesPartialCheck(t *testing.T) {
 	result := Result{
 		AdviceID: advice.AdviceID, MissionID: advice.MissionID, Role: advice.Role, RunID: advice.RunID,
 		GateIndependent: true,
-		Checks:          []ObligationCheck{{ID: "check-1", Status: CheckPartial}},
+		Checks:          []ObligationCheck{{ID: "inspect", Status: CheckPartial}},
 		EvidenceRefs:    []EvidenceRef{{ID: "e-1", Class: "explicit"}},
 	}
 	assessment, err := AssessResult(advice, result)
 	require.NoError(t, err)
 	require.True(t, assessment.Challenge)
-	require.Contains(t, assessment.Reasons, "partial_obligation:check-1")
+	require.Contains(t, assessment.Reasons, "partial_obligation:inspect")
 }

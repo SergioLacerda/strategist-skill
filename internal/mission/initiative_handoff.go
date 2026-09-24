@@ -48,9 +48,21 @@ func (h InitiativeHandoff) validateResult() error {
 	if err := h.Result.ValidateAgainst(h.Advice); err != nil {
 		return fmt.Errorf("initiative handoff: validate result: %w", err)
 	}
+	if h.Assessment.AssessmentID == "" {
+		return h.validateLegacyAssessment()
+	}
+	if err := initiative.ValidateAssessmentAgainst(h.Advice, h.Result, h.Assessment); err != nil {
+		return fmt.Errorf("initiative handoff: assessment does not match result: %w", err)
+	}
+	return nil
+}
+
+// validateLegacyAssessment checks a handoff that predates persisted
+// PRECISE-SHOT assessments against a fresh assessment of the same result.
+func (h InitiativeHandoff) validateLegacyAssessment() error {
 	assessment, err := initiative.AssessResult(h.Advice, h.Result)
 	if err != nil {
-		return fmt.Errorf("initiative handoff: assess result: %w", err)
+		return fmt.Errorf("initiative handoff: assess legacy result: %w", err)
 	}
 	if assessment.Challenge != h.Assessment.Challenge || assessment.ConfidenceCeiling != h.Assessment.ConfidenceCeiling || !slices.Equal(assessment.Reasons, h.Assessment.Reasons) {
 		return fmt.Errorf("initiative handoff: assessment does not match result")

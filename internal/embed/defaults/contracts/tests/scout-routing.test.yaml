@@ -22,12 +22,12 @@ invariants:
     description: Any ambiguous trigger condition routes conservatively to full_pipeline
     rule: condition_ambiguous == true → selected_route=full_pipeline
 
-  - id: discovery_always_resolves_to_native_ranger
+  - id: discovery_resolves_through_native_ranger
     description: >
-      Discovery invocation never depends on discovery_subtype or
-      active.slots.discovery — every subtype resolves to internal_skills/ranger.
-      No external discovery plugin manifest is ever consulted for discovery.
-    rule: for any discovery_subtype → discovery target == internal_skills/ranger (native_role)
+      Discovery invocation resolves to native Ranger, which invokes the selected
+      Weapon from active.slots.discovery and normalizes its untrusted result.
+      The Weapon never replaces Ranger and failure has no native fallback.
+    rule: for any discovery_subtype → discovery target == internal_skills/ranger (native_role) and selected Weapon == active.slots.discovery
 
 cases:
   - name: critical_hit_route_selected
@@ -66,7 +66,7 @@ cases:
       discovery_subtype: set
       action: Ranger performs discovery — Scout does not
 
-  - name: all_discovery_subtypes_resolve_to_native_ranger
+  - name: all_discovery_subtypes_resolve_through_native_ranger
     given:
       evidence_state: requires_discovery
       discovery_subtype: "creative"
@@ -74,6 +74,6 @@ cases:
     expect:
       handoff: "[Strategist] phase=intake status=handoff component=scout target=ranger weapon=internal_skills/ranger subtype=creative"
       action: >
-        discovery resolves to internal_skills/ranger regardless of
-        active.slots.discovery or discovery_subtype — no external discovery plugin
-        manifest is ever consulted for discovery invocation
+        Ranger resolves the selected active.slots.discovery Weapon and invokes it
+        through the host boundary before normalizing the result; the parent agent
+        never invokes the Weapon directly and Ranger remains authoritative

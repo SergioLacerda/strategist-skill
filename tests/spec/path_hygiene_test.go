@@ -357,7 +357,7 @@ func TestPreflightProviderManifestIsSlotAuthority(t *testing.T) {
 			"provider_manifest_is_slot_authority",
 			"brainstorming_creative_not_blocked_by_standalone_creative_first",
 			"subtype=creative",
-			"diagnostic_subtype_bypasses_external_weapon_for_native_ranger",
+			"diagnostic_subtype_uses_selected_weapon_through_ranger",
 			"weapon=internal_skills/ranger",
 		} {
 			if !strings.Contains(content, needle) {

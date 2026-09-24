@@ -1,6 +1,7 @@
 package initiative
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -60,7 +61,7 @@ func TestRuntimeRecordResultReturnsAdvisoryChallenge(t *testing.T) {
 	assessment, err := runtime.RecordResult(advice, Result{
 		AdviceID: advice.AdviceID, MissionID: advice.MissionID, Role: advice.Role, RunID: advice.RunID,
 		GateIndependent: true,
-		Checks:          []ObligationCheck{{ID: "verify_scope", Status: CheckBlocked}},
+		Checks:          []ObligationCheck{{ID: "verify_scope", Status: CheckBlocked}, {ID: "verify_gate", Status: CheckBlocked}, {ID: "record_result", Status: CheckBlocked}},
 	})
 	require.NoError(t, err)
 	require.True(t, assessment.Challenge)
@@ -169,10 +170,14 @@ func TestRuntimeConcurrentReevaluationsKeepSupersessionLineage(t *testing.T) {
 }
 
 func validResultForAdvice(advice Advice) Result {
-	return Result{
+	result := Result{
 		AdviceID: advice.AdviceID, MissionID: advice.MissionID, Role: advice.Role, RunID: advice.RunID,
 		GateIndependent: true,
-		Checks:          []ObligationCheck{{ID: "inspect_evidence", Status: CheckSatisfied, EvidenceRefs: []EvidenceRef{{ID: "e-1", Class: "explicit"}}}},
-		EvidenceRefs:    []EvidenceRef{{ID: "e-1", Class: "explicit"}},
 	}
+	for index, id := range advice.Diligence.Checks {
+		ref := EvidenceRef{ID: fmt.Sprintf("e-%d", index+1), Class: "explicit"}
+		result.Checks = append(result.Checks, ObligationCheck{ID: id, Status: CheckSatisfied, EvidenceRefs: []EvidenceRef{ref}})
+		result.EvidenceRefs = append(result.EvidenceRefs, ref)
+	}
+	return result
 }

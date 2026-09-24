@@ -119,6 +119,21 @@ contract:
         Remediation hint: "Run `strategist compile` to deploy identity files."
         Continue. Agent operates in degraded mode; SKILL.md patterns serve as fallback.
       enforced_by: machine_enforced
+    # Added 2026-09-24 (20260923-runtime-blind-spots, task 4.4): the 7 conditions
+    # above predate it. Unlike the advisory conditions, this one blocks — it is
+    # detected by internal/check/check_runtime.go and surfaced by
+    # `strategist check --json` as status=blocked.
+    - code: runtime_missing
+      trigger: >
+        a Required normative runtime file (domain.NormativeRuntimeDefaultFiles)
+        or the generated agent-protocol.md is absent from the installed .strategist/
+      behavior: >
+        Blocking. Emit:
+          "[Strategist] check=failed runtime_missing: <normative|generated> file <path> is missing"
+        Stop mission. Do not begin any phase work.
+        Remediation hint: "Run `strategist install` to restore a missing normative file,
+        or `strategist compile` to regenerate agent-protocol.md, then rerun `strategist check`."
+      enforced_by: machine_enforced
     - code: directives_missing
       trigger: directives/core.yaml absent after index.yaml load attempt
       behavior: >

@@ -120,15 +120,21 @@ func TestRoutingContractOmitsPostRouteCapabilityCheck(t *testing.T) {
 }
 
 // TestScoutRoutingMachineContractOmitsPostRouteCapabilityCheck verifies
-// scout-routing.yaml no longer defines the post_route_capability_check block —
-// it has no remaining caller once discovery never reaches an external weapon.
+// scout-routing.yaml has no separate post-route capability gate: the selected
+// Weapon is validated by Ranger's invocation and normalization boundary.
 func TestScoutRoutingMachineContractOmitsPostRouteCapabilityCheck(t *testing.T) {
 	t.Parallel()
 
 	path := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "scout-routing.yaml")
 	content := readFile(t, path)
-	if !strings.Contains(content, "discovery_always_resolves_to_native_ranger") {
-		t.Fatalf("%s missing discovery_always_resolves_to_native_ranger invariant", path)
+	for _, required := range []string{
+		"discovery_resolves_through_native_ranger",
+		"active.slots.discovery is required input",
+		"Ranger invokes and normalizes the Weapon",
+	} {
+		if !strings.Contains(content, required) {
+			t.Fatalf("%s missing selected-weapon Ranger invariant %q", path, required)
+		}
 	}
 	for _, forbidden := range []string{
 		"post_route_capability_check:",

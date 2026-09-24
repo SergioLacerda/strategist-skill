@@ -27,6 +27,7 @@ required_fields:
   diligence:
     type: object
     fields: [checks, confidence_ceiling]
+    confidence_ceiling: [low, medium, high]
 optional_fields:
   supersedes: string
   leveling: object

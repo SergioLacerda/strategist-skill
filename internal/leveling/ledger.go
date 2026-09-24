@@ -11,11 +11,17 @@ import (
 	"time"
 )
 
+// LedgerSchemaVersion is the schema version written on every ledger record.
+const LedgerSchemaVersion = "1"
+
+const maxLedgerRecordBytes = 1 << 20
+
 // Record is one persisted level tuple, appended to the role-level ledger so a
 // phase reuses one level and telemetry can group by it. Reason is set when a
 // new tuple supersedes an earlier one (for example `escalated`).
 type Record struct {
-	MissionID string `json:"mission_id"`
+	SchemaVersion string `json:"schema_version,omitempty"`
+	MissionID     string `json:"mission_id"`
 	// Run distinguishes repeated executions of the same role in one mission (for
 	// example an Archivist revision loop); empty is the default run.
 	Run string `json:"run,omitempty"`
@@ -34,15 +40,22 @@ func NormalizeRole(role string) string {
 // AppendRecord appends a record as one JSON line, stamping the time when unset.
 func AppendRecord(path string, record Record) error {
 	record.Role = NormalizeRole(record.Role)
+	if record.SchemaVersion == "" {
+		record.SchemaVersion = LedgerSchemaVersion
+	}
 	if record.Timestamp == "" {
 		record.Timestamp = time.Now().UTC().Format(time.RFC3339)
 	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+		return fmt.Errorf("leveling: create ledger directory: %w", err)
+	}
+	return withLedgerLock(path, func() error { return appendRecordUnlocked(path, record) })
+}
+
+func appendRecordUnlocked(path string, record Record) error {
 	encoded, err := json.Marshal(record)
 	if err != nil {
 		return fmt.Errorf("leveling: encode role level record: %w", err)
-	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
-		return fmt.Errorf("leveling: create ledger directory: %w", err)
 	}
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600) //nolint:gosec // path is resolved below .strategist/memory
 	if err != nil {
@@ -67,6 +80,17 @@ func LatestRecord(path, missionID, role string) (Record, bool, error) {
 // missing ledger or no match reports ok=false; malformed lines are skipped so a
 // damaged history never blocks a mission.
 func LatestRunRecord(path, missionID, role, run string) (latest Record, found bool, err error) {
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+		return Record{}, false, fmt.Errorf("leveling: create ledger directory: %w", err)
+	}
+	err = withLedgerLock(path, func() error {
+		latest, found, err = latestRunRecordUnlocked(path, missionID, role, run)
+		return err
+	})
+	return latest, found, err
+}
+
+func latestRunRecordUnlocked(path, missionID, role, run string) (latest Record, found bool, err error) {
 	f, err := openLedger(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return Record{}, false, nil
@@ -93,12 +117,16 @@ func openLedger(path string) (*os.File, error) {
 
 func scanLatestRecord(f *os.File, missionID, role, run string) (Record, bool, error) {
 	scanner := bufio.NewScanner(f)
+	scanner.Buffer(make([]byte, 64*1024), maxLedgerRecordBytes+1)
 	var latest Record
 	found := false
 	for scanner.Scan() {
 		latest, found = updateLatestRecord(scanner.Bytes(), missionID, role, run, latest, found)
 	}
 	if scanErr := scanner.Err(); scanErr != nil {
+		if strings.Contains(scanErr.Error(), "token too long") {
+			return Record{}, false, fmt.Errorf("leveling_ledger_record_oversized: maximum record size is %d bytes", maxLedgerRecordBytes)
+		}
 		return Record{}, false, fmt.Errorf("leveling: read role level ledger: %w", scanErr)
 	}
 	return latest, found, nil
@@ -106,8 +134,11 @@ func scanLatestRecord(f *os.File, missionID, role, run string) (Record, bool, er
 
 func updateLatestRecord(raw []byte, missionID, role, run string, latest Record, found bool) (Record, bool) {
 	var record Record
-	if json.Unmarshal(raw, &record) != nil {
+	if json.Unmarshal(raw, &record) != nil || (record.SchemaVersion != "" && record.SchemaVersion != LedgerSchemaVersion) {
 		return latest, found
+	}
+	if record.SchemaVersion == "" {
+		record.SchemaVersion = LedgerSchemaVersion
 	}
 	record.Role = NormalizeRole(record.Role)
 	if record.MissionID != missionID || record.Role != NormalizeRole(role) || record.Run != run {

@@ -34,7 +34,7 @@ Mechanisms, Routes, and Artifacts.
 | **Weapon** | Which bounded skill package does a pluggable Role employ? | `brainstorming`, `openspec-propose` |
 | **Ability** | Which reusable mission behavior is performed? | INITIATIVE, Search, Opportunity Attack, Side Quest |
 | **Pipeline Service** | Which fixed or contract-conditional service supports the pipeline? | Prompt Intake, Context Enrichment, Dossier Builder, Response Critic, Learning Curator |
-| **Mechanism** | Which runtime rule governs identity, transfer, authorization, or integrity? | Role Contract, Weapon Binding, Handoff, Approval Gate, compatibility, fingerprint |
+| **Mechanism** | Which runtime rule governs identity, transfer, authorization, or integrity? | Role Contract, Weapon Binding, Handoff, Approval Gate, compatibility, fingerprint, PRECISE-SHOT |
 | **Route** | Which pipeline shape did Scout select? | `full_pipeline`, `implementation_short_route`, `critical_hit` |
 | **Artifact** | Which materialized result is transported or persisted? | analysis, dossier, evidence pack, refined package, ADR |
 
@@ -42,6 +42,11 @@ Mechanisms, Routes, and Artifacts.
 Route, provider, or execution authority. It produces the resolution consumed by
 the INITIATIVE Ability. INITIATIVE may advise against that snapshot, but cannot
 mutate its model, provider, capability, effort, policy identity, or ledger.
+
+PRECISE-SHOT is an INITIATIVE-owned Mechanism with `PRECISE-SHOT` as its stable
+identifier and `TIRO PRECISO` as its pt-BR presentation label. It derives
+confidence and can request advisory LEVELING reconsideration, but it has no
+provider, model, effort, or Approval Gate authority.
 
 `Critical Hit` is classified primarily as a Route because Scout resolves it
 before the slot pipeline. Older narrative text may call its artifact-management

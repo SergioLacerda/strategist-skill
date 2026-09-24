@@ -228,12 +228,8 @@ func TestDiscoveryContractDefinesSubtypeVocabulary(t *testing.T) {
 }
 
 // TestAgentProtocolTemplateRoutesDiscoveryBySubtype verifies the compiled
-// agent-protocol template resolves discovery invocation conditionally on
-// discovery_subtype instead of unconditionally naming {{.Slots.Discovery}}.
-
-// TestAgentProtocolTemplateRoutesDiscoveryBySubtype verifies the compiled
-// agent-protocol template resolves discovery invocation conditionally on
-// discovery_subtype instead of unconditionally naming {{.Slots.Discovery}}.
+// agent-protocol template keeps Ranger authoritative while requiring the
+// configured discovery Weapon as its invocation input.
 func TestAgentProtocolTemplateRoutesDiscoveryBySubtype(t *testing.T) {
 	t.Parallel()
 
@@ -244,7 +240,9 @@ func TestAgentProtocolTemplateRoutesDiscoveryBySubtype(t *testing.T) {
 		"discovery_subtype",
 		"internal_skills/ranger",
 		"native_role",
-		"regardless of what `active.slots.discovery` is configured to",
+		"active.slots.discovery",
+		"selected Weapon",
+		"role_invocation_failed",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("%s missing discovery-by-subtype routing term %q", path, needle)

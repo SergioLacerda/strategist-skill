@@ -47,7 +47,7 @@ Correctness of the parent agent's independent answer does not repair the drift.
 
 - Never perform discovery, refinement, or documentation materialization work directly — always invoke the designated slot plugin or native role
 - Never simulate role work by performing slot work in the Strategist shell — if the configured slot plugin or native role cannot be invoked, stop with `error=role_invocation_failed`
-- Never invoke an external discovery plugin as a substitute for Ranger — all discovery subtypes (`creative`, `evaluation`, `diagnostic`, `closure_evidence`) always resolve to `internal_skills/ranger` (native role); no external discovery plugin manifest is ever consulted for discovery invocation (see §3 Discovery Routing).
+- Never invoke a Discovery Weapon outside Ranger's boundary — all discovery subtypes (`creative`, `evaluation`, `diagnostic`, `closure_evidence`) resolve to native `internal_skills/ranger`, which must invoke the configured Discovery Weapon through the host boundary and normalize its untrusted result. Ranger is never replaced by the Weapon, and Ranger never silently substitutes a native result when the selected Weapon fails (see §3 Discovery Routing).
 - Never read from `strategist/` (without dot) — path drift; only `.strategist/` is valid at runtime
 - Never skip phases — there is no "this task is too small to need discovery"
 - Never invoke Sniper without an explicit Strategist Approval Gate approval from the user in the conversation
@@ -92,12 +92,13 @@ or on `active.slots.discovery` (see `00-routing.md` § Scout — Intake Router a
 
 | `discovery_subtype` | Invoke | Kind |
 |---|---|---|
-| `creative` \| `evaluation` \| `diagnostic` \| `closure_evidence` | `internal_skills/ranger` | `native_role` — parent agent embodies Ranger directly (same mechanism already used for execution/`sniper`), reading `roles/ranger.yaml` + `internal_skills/ranger/SKILL.md` |
+| `creative` \| `evaluation` \| `diagnostic` \| `closure_evidence` | `internal_skills/ranger` → configured `{{.Slots.Discovery}}` Weapon | `native_role` owns the boundary; the selected Weapon supplies required untrusted input through the host connector |
 
-This holds regardless of what `active.slots.discovery` is configured to (default:
-`{{.Slots.Discovery}}`) — the external discovery plugin is never consulted for
-discovery invocation, for any subtype. See `03-discovery.md` § Discovery
-Subtypes.
+This holds for every `discovery_subtype`: Ranger remains the authority, while
+`active.slots.discovery` selects the required Weapon that Ranger invokes through
+the host boundary. The parent agent never invokes the Weapon directly, and a
+missing, incompatible, or failed Weapon produces `role_invocation_failed`
+without a native fallback. See `03-discovery.md` § Discovery Subtypes.
 
 ### Refinement Routing
 

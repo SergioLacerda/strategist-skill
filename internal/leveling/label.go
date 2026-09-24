@@ -27,6 +27,7 @@ type Level struct {
 	Effort         string `json:"effort" yaml:"effort"`
 	Source         string `json:"level_source" yaml:"level_source"`
 	Provider       string `json:"provider,omitempty" yaml:"provider,omitempty"`
+	ProviderMatch  string `json:"provider_match,omitempty" yaml:"provider_match,omitempty"`
 	ModelSource    string `json:"model_source,omitempty" yaml:"model_source,omitempty"`
 	EffortSource   string `json:"effort_source,omitempty" yaml:"effort_source,omitempty"`
 	Capability     string `json:"capability,omitempty" yaml:"capability,omitempty"`

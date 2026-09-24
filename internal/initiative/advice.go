@@ -29,8 +29,8 @@ type Recommendation struct {
 // DiligenceProfile lists the checks a role must perform and the confidence
 // ceiling it is bound by.
 type DiligenceProfile struct {
-	Checks            []string `json:"checks" yaml:"checks"`
-	ConfidenceCeiling string   `json:"confidence_ceiling" yaml:"confidence_ceiling"`
+	Checks            []string       `json:"checks" yaml:"checks"`
+	ConfidenceCeiling ConfidenceTier `json:"confidence_ceiling" yaml:"confidence_ceiling"`
 }
 
 // AdviceInput carries the context needed to produce an Advice.

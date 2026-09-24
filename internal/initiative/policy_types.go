@@ -15,6 +15,19 @@ const (
 	EffortHigh EffortTier = "high"
 	// EffortXHigh is the highest reasoning effort tier.
 	EffortXHigh EffortTier = "xhigh"
+	// EffortMax is the terminal effort tier owned by LEVELING. INITIATIVE
+	// observes it only to stop advisory escalation loops; it never selects it.
+	EffortMax EffortTier = "max"
+)
+
+// ConfidenceTier is the closed confidence vocabulary used by INITIATIVE.
+type ConfidenceTier string
+
+// Confidence tiers, ordered from least to most confident.
+const (
+	ConfidenceLow    ConfidenceTier = "low"
+	ConfidenceMedium ConfidenceTier = "medium"
+	ConfidenceHigh   ConfidenceTier = "high"
 )
 
 // AlignmentState describes how an observed effort compares to the
@@ -90,16 +103,34 @@ var validTriggers = map[Trigger]bool{
 
 // Profile is the per-role advice configuration within a Policy.
 type Profile struct {
-	RecommendedCapability string     `yaml:"recommended_capability" json:"recommended_capability"`
-	RecommendedEffort     EffortTier `yaml:"recommended_effort" json:"recommended_effort"`
-	Diligence             []string   `yaml:"diligence" json:"diligence"`
-	ConfidenceCeiling     string     `yaml:"confidence_ceiling" json:"confidence_ceiling"`
+	RecommendedCapability string         `yaml:"recommended_capability" json:"recommended_capability"`
+	RecommendedEffort     EffortTier     `yaml:"recommended_effort" json:"recommended_effort"`
+	Diligence             []string       `yaml:"diligence" json:"diligence"`
+	ConfidenceCeiling     ConfidenceTier `yaml:"confidence_ceiling" json:"confidence_ceiling"`
 }
 
 // Policy is the standalone INITIATIVE configuration mapping roles to
 // Profiles.
 type Policy struct {
-	Version  string             `yaml:"version" json:"version"`
-	Profiles map[string]Profile `yaml:"profiles" json:"profiles"`
-	Triggers []Trigger          `yaml:"reevaluation_triggers" json:"reevaluation_triggers"`
+	Version     string             `yaml:"version" json:"version"`
+	Ability     string             `yaml:"ability,omitempty" json:"ability,omitempty"`
+	DisplayName string             `yaml:"display_name,omitempty" json:"display_name,omitempty"`
+	Mode        string             `yaml:"mode,omitempty" json:"mode,omitempty"`
+	Authority   PolicyAuthority    `yaml:"authority,omitempty" json:"authority,omitempty"`
+	Records     PolicyRecords      `yaml:"records,omitempty" json:"records,omitempty"`
+	Profiles    map[string]Profile `yaml:"profiles" json:"profiles"`
+	Triggers    []Trigger          `yaml:"reevaluation_triggers" json:"reevaluation_triggers"`
+}
+
+// PolicyAuthority documents the boundary owned by INITIATIVE.
+type PolicyAuthority struct {
+	Owns       []string `yaml:"owns" json:"owns"`
+	DoesNotOwn []string `yaml:"does_not_own" json:"does_not_own"`
+}
+
+// PolicyRecords describes the independent append-only history.
+type PolicyRecords struct {
+	Path        string   `yaml:"path" json:"path"`
+	AppendOnly  bool     `yaml:"append_only" json:"append_only"`
+	Correlation []string `yaml:"correlation" json:"correlation"`
 }

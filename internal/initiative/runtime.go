@@ -161,24 +161,3 @@ func (r Runtime) enterRoleLocked(input AdviceInput, advice *Advice, reused *bool
 		RunID: advice.RunID, AdviceID: advice.AdviceID, Advice: advice,
 	})
 }
-
-func (r Runtime) recordResultLocked(advice Advice, result Result, assessment *ResultAssessment) error {
-	latest, found, err := LatestAdvice(r.LedgerFile, advice.MissionID, advice.Role, advice.RunID)
-	if err != nil {
-		return err
-	}
-	if !found || latest.Advice == nil {
-		return fmt.Errorf("initiative runtime: cannot record result without persisted advice")
-	}
-	if err := validatePersistedAdvice(advice, *latest.Advice, r.Advisor.Policy); err != nil {
-		return err
-	}
-	*assessment, err = AssessResult(advice, result)
-	if err != nil {
-		return err
-	}
-	return appendRecordUnlocked(r.LedgerFile, Record{
-		Kind: RecordKindResult, MissionID: result.MissionID, Role: result.Role,
-		RunID: result.RunID, AdviceID: result.AdviceID, Result: &result,
-	})
-}

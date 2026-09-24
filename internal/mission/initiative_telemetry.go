@@ -2,6 +2,7 @@ package mission
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/SergioLacerda/strategist-skill/internal/initiative"
@@ -19,6 +20,8 @@ func (r InitiativeRuntime) ConsumeHandoff(handoff InitiativeHandoff) error {
 	event.Attributes = map[string]any{
 		telemetry.AttrComponent:                   "initiative",
 		telemetry.AttrAbility:                     initiative.AbilityName,
+		telemetry.AttrInitiativeMechanism:         initiative.PreciseShotMechanism,
+		telemetry.AttrInitiativeMechanismLabel:    initiative.PreciseShotLabel("pt-BR"),
 		telemetry.AttrMissionID:                   handoff.Result.MissionID,
 		telemetry.AttrRole:                        handoff.ToRole,
 		telemetry.AttrRoleRun:                     handoff.Result.RunID,
@@ -27,6 +30,9 @@ func (r InitiativeRuntime) ConsumeHandoff(handoff InitiativeHandoff) error {
 		telemetry.AttrInitiativePolicyDigest:      handoff.Advice.PolicyDigest,
 		telemetry.AttrInitiativeResultStatus:      resultStatus(handoff.Assessment),
 		telemetry.AttrInitiativeConfidenceCeiling: handoff.Assessment.ConfidenceCeiling,
+		telemetry.AttrInitiativeAssessed:          handoff.Assessment.Assessed,
+		telemetry.AttrInitiativeEffective:         handoff.Assessment.Effective,
+		telemetry.AttrInitiativeAssessmentID:      handoff.Assessment.AssessmentID,
 		telemetry.AttrInitiativeSourceRole:        handoff.FromRole,
 	}
 	if err := r.eventSink.Emit(context.Background(), event); err != nil {
@@ -40,6 +46,8 @@ func (r InitiativeRuntime) emitAdvice(advice initiative.Advice, reused bool) err
 	event.Attributes = map[string]any{
 		telemetry.AttrComponent:                       "initiative",
 		telemetry.AttrAbility:                         initiative.AbilityName,
+		telemetry.AttrInitiativeMechanism:             initiative.PreciseShotMechanism,
+		telemetry.AttrInitiativeMechanismLabel:        initiative.PreciseShotLabel("pt-BR"),
 		telemetry.AttrMissionID:                       advice.MissionID,
 		telemetry.AttrRole:                            advice.Role,
 		telemetry.AttrRoleRun:                         advice.RunID,
@@ -68,26 +76,75 @@ func (r InitiativeRuntime) emitAdvice(advice initiative.Advice, reused bool) err
 
 func (r InitiativeRuntime) emitResult(advice initiative.Advice, result initiative.Result, assessment initiative.ResultAssessment) error {
 	event := telemetry.NewEvent("strategist.initiative.result", telemetry.SeverityDebug, result.RunID, true)
+	event.Body = initiativeAuditBody(result, assessment)
 	event.Attributes = map[string]any{
-		telemetry.AttrComponent:                   "initiative",
-		telemetry.AttrAbility:                     initiative.AbilityName,
-		telemetry.AttrMissionID:                   result.MissionID,
-		telemetry.AttrRole:                        result.Role,
-		telemetry.AttrRoleRun:                     result.RunID,
-		telemetry.AttrInitiativeAdviceID:          result.AdviceID,
-		telemetry.AttrInitiativePolicyVersion:     advice.PolicyVersion,
-		telemetry.AttrInitiativePolicyDigest:      advice.PolicyDigest,
-		telemetry.AttrInitiativeResultStatus:      resultStatus(assessment),
-		telemetry.AttrInitiativeConfidenceCeiling: assessment.ConfidenceCeiling,
-		telemetry.AttrInitiativeEvidenceRefs:      evidenceIDs(result.EvidenceRefs),
-		telemetry.AttrInitiativeOutcomeIDs:        outcomeIDs(result.Outcomes),
-		telemetry.AttrInitiativeDeviationIDs:      deviationIDs(result.Deviations),
-		telemetry.AttrInitiativeChallengeReasons:  append([]string(nil), assessment.Reasons...),
+		telemetry.AttrComponent:                     "initiative",
+		telemetry.AttrAbility:                       initiative.AbilityName,
+		telemetry.AttrInitiativeMechanism:           initiative.PreciseShotMechanism,
+		telemetry.AttrInitiativeMechanismLabel:      initiative.PreciseShotLabel("pt-BR"),
+		telemetry.AttrMissionID:                     result.MissionID,
+		telemetry.AttrRole:                          result.Role,
+		telemetry.AttrRoleRun:                       result.RunID,
+		telemetry.AttrInitiativeAdviceID:            result.AdviceID,
+		telemetry.AttrInitiativePolicyVersion:       advice.PolicyVersion,
+		telemetry.AttrInitiativePolicyDigest:        advice.PolicyDigest,
+		telemetry.AttrInitiativeResultStatus:        resultStatus(assessment),
+		telemetry.AttrInitiativeConfidenceCeiling:   assessment.ConfidenceCeiling,
+		telemetry.AttrInitiativeAssessed:            assessment.Assessed,
+		telemetry.AttrInitiativeEffective:           assessment.Effective,
+		telemetry.AttrInitiativeAssessmentID:        assessment.AssessmentID,
+		telemetry.AttrInitiativeInputDigest:         assessment.InputDigest,
+		telemetry.AttrInitiativeAlgorithmVersion:    assessment.AlgorithmVersion,
+		telemetry.AttrInitiativeCalibrationStatus:   assessment.CalibrationStatus,
+		telemetry.AttrInitiativeEvidenceExpected:    assessment.EvidenceSummary.Expected,
+		telemetry.AttrInitiativeEvidenceVerified:    assessment.EvidenceSummary.Verified,
+		telemetry.AttrInitiativeEvidenceSatisfied:   assessment.EvidenceSummary.Satisfied,
+		telemetry.AttrInitiativeEvidencePartial:     assessment.EvidenceSummary.Partial,
+		telemetry.AttrInitiativeEvidenceBlocked:     assessment.EvidenceSummary.Blocked,
+		telemetry.AttrInitiativeEvidenceMissing:     assessment.EvidenceSummary.Missing,
+		telemetry.AttrInitiativeEvidenceInvalid:     assessment.EvidenceSummary.Invalid,
+		telemetry.AttrInitiativeEvidenceConflicting: assessment.EvidenceSummary.Conflicting,
+		telemetry.AttrInitiativeReasonCount:         len(assessment.Reasons),
+	}
+	if assessment.Escalation != nil {
+		event.Attributes[telemetry.AttrInitiativeEscalationRequested] = true
+		// "accepted" means accepted by the bounded local advisory policy, not
+		// accepted by LEVELING and never an execution authorization.
+		event.Attributes[telemetry.AttrInitiativeEscalationAccepted] = assessment.Escalation.Status == initiative.EscalationRequested
+		event.Attributes[telemetry.AttrInitiativeEscalationOutcome] = assessment.Escalation.Status
+		event.Attributes[telemetry.AttrInitiativeEscalationStatus] = assessment.Escalation.Status
+		event.Attributes[telemetry.AttrInitiativeEscalationRequestID] = assessment.Escalation.RequestID
+	} else {
+		event.Attributes[telemetry.AttrInitiativeEscalationRequested] = false
+		event.Attributes[telemetry.AttrInitiativeEscalationAccepted] = false
+		event.Attributes[telemetry.AttrInitiativeEscalationOutcome] = "none"
 	}
 	if err := r.eventSink.Emit(context.Background(), event); err != nil {
 		return fmt.Errorf("initiative telemetry: emit result: %w", err)
 	}
 	return nil
+}
+
+// initiativeAuditBody keeps detailed, potentially high-cardinality material
+// in the event/audit body. The attributes above remain bounded categorical or
+// count fields and are therefore safe for telemetry dimensions.
+func initiativeAuditBody(result initiative.Result, assessment initiative.ResultAssessment) string {
+	body := struct {
+		EvidenceRefs     []string `json:"evidence_refs,omitempty"`
+		OutcomeIDs       []string `json:"outcome_ids,omitempty"`
+		DeviationIDs     []string `json:"deviation_ids,omitempty"`
+		ChallengeReasons []string `json:"challenge_reasons,omitempty"`
+	}{
+		EvidenceRefs:     evidenceIDs(result.EvidenceRefs),
+		OutcomeIDs:       outcomeIDs(result.Outcomes),
+		DeviationIDs:     deviationIDs(result.Deviations),
+		ChallengeReasons: append([]string(nil), assessment.Reasons...),
+	}
+	encoded, err := json.Marshal(body)
+	if err != nil {
+		return "{}"
+	}
+	return string(encoded)
 }
 
 func resultStatus(assessment initiative.ResultAssessment) string {

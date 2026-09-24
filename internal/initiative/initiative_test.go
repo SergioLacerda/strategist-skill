@@ -141,9 +141,9 @@ func TestResultValidationChallengesMissingEvidenceAndBlockedObligation(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := Result{AdviceID: advice.AdviceID, MissionID: "m", Role: "archivist", RunID: "r", GateIndependent: true, Checks: []ObligationCheck{{ID: "evidence", Status: CheckBlocked}}, EvidenceRefs: nil}
+	result := Result{AdviceID: advice.AdviceID, MissionID: "m", Role: "archivist", RunID: "r", GateIndependent: true, Checks: []ObligationCheck{{ID: "challenge_handoff", Status: CheckBlocked}, {ID: "validate_contracts", Status: CheckBlocked}, {ID: "correlate_outcomes", Status: CheckBlocked}}, EvidenceRefs: nil}
 	assessment, err := AssessResult(advice, result)
-	if err != nil || !assessment.Challenge || assessment.ConfidenceCeiling != "low" || len(assessment.Reasons) != 2 {
+	if err != nil || !assessment.Challenge || assessment.ConfidenceCeiling != "low" || len(assessment.Reasons) != 4 {
 		t.Fatalf("unexpected assessment: %+v err=%v", assessment, err)
 	}
 	bad := result
@@ -151,7 +151,7 @@ func TestResultValidationChallengesMissingEvidenceAndBlockedObligation(t *testin
 	if _, err := AssessResult(advice, bad); err == nil {
 		t.Fatal("result must not authorize the Approval Gate")
 	}
-	good := Result{AdviceID: advice.AdviceID, MissionID: "m", Role: "archivist", RunID: "r", GateIndependent: true, Checks: []ObligationCheck{{ID: "evidence", Status: CheckSatisfied, EvidenceRefs: []EvidenceRef{{ID: "e-1", Class: "explicit"}}}}, EvidenceRefs: []EvidenceRef{{ID: "e-1", Class: "explicit"}}, Outcomes: []OutcomeCorrelation{{ID: "out-1", Status: "observed", EvidenceRefs: []EvidenceRef{{ID: "e-1", Class: "explicit"}}}}}
+	good := Result{AdviceID: advice.AdviceID, MissionID: "m", Role: "archivist", RunID: "r", GateIndependent: true, Checks: []ObligationCheck{{ID: "challenge_handoff", Status: CheckSatisfied, EvidenceRefs: []EvidenceRef{{ID: "e-1", Class: "explicit"}}}, {ID: "validate_contracts", Status: CheckSatisfied, EvidenceRefs: []EvidenceRef{{ID: "e-2", Class: "explicit"}}}, {ID: "correlate_outcomes", Status: CheckSatisfied, EvidenceRefs: []EvidenceRef{{ID: "e-3", Class: "explicit"}}}}, EvidenceRefs: []EvidenceRef{{ID: "e-1", Class: "explicit"}, {ID: "e-2", Class: "explicit"}, {ID: "e-3", Class: "explicit"}}, Outcomes: []OutcomeCorrelation{{ID: "out-1", Status: "observed", EvidenceRefs: []EvidenceRef{{ID: "e-1", Class: "explicit"}}}}}
 	assessment, err = AssessResult(advice, good)
 	if err != nil || assessment.Challenge {
 		t.Fatalf("evidenced result should remain advisory without challenge: %+v %v", assessment, err)

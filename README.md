@@ -91,6 +91,11 @@ cannot select or mutate the model, provider, capability, effort, Approval Gate,
 or implementation authorization. Prompt Intake, Context Enrichment, Dossier
 Builder, Response Critic, and Learning Curator are Pipeline Services, not Roles.
 
+Its deterministic confidence mechanism is **PRECISE-SHOT** (`TIRO PRECISO` in
+pt-BR). The mechanism reports assessed, ceiling, and effective confidence and
+may request advisory LEVELING reconsideration; it never selects execution
+effort, invokes a provider, or bypasses the Approval Gate.
+
 The canonical taxonomy has seven families: Roles, Weapons, Abilities, Pipeline
 Services, Mechanisms, Routes, and Artifacts. Mechanisms name governance and
 integrity rules such as Role Contract, Weapon Binding, Handoff, Approval Gate,
