@@ -9,7 +9,7 @@ import (
 func validSkillPackageContract() SkillPackageContract {
 	return SkillPackageContract{
 		SchemaVersion: "skill-package/v1", ID: "example", Version: "1.0.0",
-		ContractVersion: "skill-package/v1", Capabilities: []string{"mission.refine"},
+		ContractVersion: CurrentSkillPackageContractVersion, Capabilities: []string{"mission.refine"},
 		SupportedRoles: []string{"archivist"}, SupportedSlots: []string{"refinement"},
 		EvidenceState: PackageEvidenceDeclared,
 		Provenance:    PackageProvenance{OriginalDigest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", NormalizedDigest: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", VerificationState: PackageEvidenceDeclared},
@@ -56,9 +56,10 @@ func TestNewSkillPackageContractProjectsExistingRecords(t *testing.T) {
 	require.NoError(t, contract.Validate())
 }
 
-func TestSupportsSkillPackageContractUsesCurrentAndPreviousWindow(t *testing.T) {
+func TestSupportsSkillPackageContractAcceptsOnlyCurrentVersion(t *testing.T) {
 	require.True(t, SupportsSkillPackageContract(CurrentSkillPackageContractVersion))
-	require.True(t, SupportsSkillPackageContract(PreviousSkillPackageContractVersion))
+	require.False(t, SupportsSkillPackageContract("skill-package/v1"))
+	require.False(t, SupportsSkillPackageContract("skill-package/v0"))
 	require.False(t, SupportsSkillPackageContract("skill-package/v99"))
 }
 

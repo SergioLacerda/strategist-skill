@@ -127,6 +127,17 @@ func TestResolutionPolicy_Validate(t *testing.T) {
 	require.ErrorContains(t, err, `provider_resolution_policy "silent" is not one of block, ask, native`)
 }
 
+func TestActiveConfigRejectsRetiredProviderResolutionPolicy(t *testing.T) {
+	t.Parallel()
+	base := domain.ActiveConfig{Mode: "epic", BasePath: ".analysis", Slots: map[string]string{
+		"discovery": "brainstorming", "refinement": "openspec-propose", "execution": "sniper",
+	}}
+	for _, policy := range []domain.ResolutionPolicy{domain.ResolutionPolicyBlock, domain.ResolutionPolicyAsk, domain.ResolutionPolicyNative} {
+		base.ProviderResolutionPolicy = policy
+		require.ErrorContains(t, base.Validate(), "provider_resolution_policy is retired")
+	}
+}
+
 func TestResolutionPolicy_EffectivePolicy(t *testing.T) {
 	t.Parallel()
 	assert.Equal(t, domain.ResolutionPolicyAsk, domain.ResolutionPolicy("").EffectivePolicy())

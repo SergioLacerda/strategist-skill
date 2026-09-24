@@ -301,7 +301,7 @@ strategist validate [--root=<dir>]
 
 | File | What is checked |
 |------|----------------|
-| `active.yaml` | Exists, valid YAML, passes `domain.ActiveConfig` validation (`mode`, `base_path` and all three `slots` present; valid `provider_resolution_policy` and `leveling` — the same rules `compile` and `install` enforce), and `mode` is `pragmatic` or `epic` |
+| `active.yaml` | Exists, valid YAML, passes `domain.ActiveConfig` validation (`mode`, `base_path` and all three `slots` present; retired `provider_resolution_policy` values are rejected; `leveling` uses the same rules `compile` and `install` enforce), and `mode` is `pragmatic` or `epic` |
 | `personas/*.yaml` | Each file satisfies the same runtime contract `check` enforces: `id`, `tone_directive`, `phase_labels.{discovery,refinement,execution}`, `diagnostics.pipeline_header`, `diagnostics.bootstrap_origin` |
 | `roles/*.yaml` | A native role definition (has a `role` key) must have `role` and a `slot` that is one of `discovery`/`refinement`/`execution`. A slot map (e.g. `roles/default.yaml`, shaped like `active.yaml`'s `slots:`) must have all three slots present and non-empty |
 | `knowledge.index.yaml` | If present, valid YAML |

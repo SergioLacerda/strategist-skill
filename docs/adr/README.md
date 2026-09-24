@@ -76,6 +76,7 @@ lookup by topic fast without moving any file.
 |---|---|
 | [0014](0014-monorepo-and-toolchain-policy.md) | Monorepo and toolchain policy |
 | [0023](0023-codeql-js-astro-coverage.md) | CodeQL Coverage: `javascript-typescript` Matrix Leg for `web/landing/` |
+| [0052](0052-cicd-enforcement-policy.md) | CI/CD enforcement policy (proposed) |
 
 ## Maintaining this index
 

@@ -62,6 +62,25 @@ baseline. For patch releases after `1.0.0`, GitHub Releases are authoritative
 for published notes and assets. Contributors should not invent or reconstruct
 patch notes in `CHANGELOG.md`; verify the tag and release page instead.
 
+### Cutting a release tag
+
+Releases are triggered by pushing a `vX.Y.Z` tag. The tag must be **annotated**
+and point at a commit already on `main`; the release workflow refuses anything
+else (`scripts/check-release-tag.sh`).
+
+```bash
+git switch main && git pull --ff-only
+make release-tag-test                      # the check itself, against throwaway repos
+git tag -a vX.Y.Z -m "vX.Y.Z"              # annotated, never `git tag vX.Y.Z`
+make release-tag-check TAG=vX.Y.Z MAIN_REF=main   # same check the workflow runs
+git push origin vX.Y.Z
+```
+
+Tags before the first annotated one (up to `v1.0.22`) are lightweight and are
+not re-publishable through this workflow. Signed tags (`git tag -s`) are
+recommended but not enforced yet; see `docs/adr/0052-cicd-enforcement-policy.md`
+and `docs/runbooks/cicd-enforcement-settings.md` for the GitHub-side rules.
+
 ### Landing page: build before preview
 
 `npm run preview` (Astro's own command) serves the contents of `dist/`,

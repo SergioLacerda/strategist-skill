@@ -8,6 +8,7 @@ limits:
 required:
   - schema_version
   - id
+  - kind
   - adapter_revision
   - plugin_api_range
   - supported_slots
@@ -16,6 +17,19 @@ required:
 properties:
   schema_version: {type: string}
   id: {type: namespaced_id}
+  kind:
+    type: enum
+    values: [atomic, composite]
+  runtime:
+    type: object
+    required: [kind]
+    properties:
+      kind:
+        type: enum
+        values: [embedded, host, executable, openspec_root]
+      host_api: {type: string}
+      root: {type: path}
+      entrypoint: {type: string}
   adapter_revision: {type: string}
   plugin_api_range: {type: range}
   supported_slots:
@@ -24,6 +38,21 @@ properties:
   supported_roles:
     type: array
     values: [ranger, archivist, sniper]
+  composition:
+    type: object
+    required: [strategy, components]
+    properties:
+      strategy:
+        type: enum
+        values: [ordered_dag]
+      components:
+        type: array
+        item:
+          required: [id, required]
+          properties:
+            id: {type: namespaced_id}
+            required: {type: boolean}
+            depends_on: {type: array}
   capabilities:
     type: array
     values: [discover, refine, materialize_docs]

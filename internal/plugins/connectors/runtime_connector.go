@@ -48,14 +48,19 @@ type RuntimeLocator struct {
 // docs/adr/0041-cli-enforcement-sequencing-and-role-invocation-plan-naming.md
 // D1.
 type InvocationEnvelope struct {
-	SchemaVersion string
-	Instance      domain.InstalledInstance
-	Role          string
-	Slot          string
-	Entrypoint    string
-	MissionID     string
-	ArtifactPath  string
-	GateAllowed   bool
+	SchemaVersion      string
+	Instance           domain.InstalledInstance
+	WeaponID           string
+	ComponentID        string
+	ParentInvocationID string
+	HostAPI            string
+	Role               string
+	Slot               string
+	Entrypoint         string
+	MissionID          string
+	ArtifactPath       string
+	WriteScope         string
+	GateAllowed        bool
 }
 
 // ConnectorResult is a typed connector response for every operation.

@@ -9,6 +9,7 @@ required:
   - schema_version
   - id
   - version
+  - kind
   - contract_version
   - capabilities
   - supported_slots
@@ -18,15 +19,46 @@ properties:
   schema_version: {type: string}
   id: {type: namespaced_id}
   version: {type: semver_or_label}
+  kind:
+    type: enum
+    values: [atomic, composite]
+  origin:
+    type: enum
+    values: [embedded, custom]
+  runtime:
+    type: object
+    required: [kind]
+    properties:
+      kind:
+        type: enum
+        values: [embedded, host, executable, openspec_root]
+      host_api: {type: string}
+      root: {type: path}
+      entrypoint: {type: string}
   contract_version:
     type: enum
-    values: [skill-package/v1, skill-package/v0]
+    values: [skill-package/v2]
   capabilities: {type: array}
   supported_roles: {type: array}
   supported_slots:
     type: array
     values: [discovery, refinement, execution, auxiliary]
   supported_handoff_schemas: {type: array}
+  composition:
+    type: object
+    required: [strategy, components]
+    properties:
+      strategy:
+        type: enum
+        values: [ordered_dag]
+      components:
+        type: array
+        item:
+          required: [id, required]
+          properties:
+            id: {type: namespaced_id}
+            required: {type: boolean}
+            depends_on: {type: array}
   compatibility_range: {type: range}
   provenance:
     type: object

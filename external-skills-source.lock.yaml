@@ -1,12 +1,15 @@
-schema_version: strategist-embedded-skill-lock/v1
+schema_version: strategist-embedded-skill-lock/v2
 packages:
     - id: brainstorming
       version: 1.0.0
-      digest: sha256:eb22f74426a7e894ec549946f372be8404aab4c420d89a553e795c5db9466b1e
+      kind: atomic
+      origin: embedded
+      runtime_kind: embedded
+      digest: sha256:00fc338319c2841cac1f4af2aec03d795913c4aad4f804d1589d62d83cc107c2
       source: external-skills-source/brainstorming
-      contract_version: skill-package/v1
-      original_digest: sha256:eb22f74426a7e894ec549946f372be8404aab4c420d89a553e795c5db9466b1e
-      normalized_digest: sha256:09b58d9fef997a532a10eeefd9eb3f93534cbd19d6d89b75a95cdb53dc78476e
+      contract_version: skill-package/v2
+      original_digest: sha256:00fc338319c2841cac1f4af2aec03d795913c4aad4f804d1589d62d83cc107c2
+      normalized_digest: sha256:cd0bf2b916a09e54f83faa2a853c992e51465884fee8947b1fbfb9e330c218d8
       transformation: none
       local_modifications: unknown
       verification_state: declared
@@ -15,13 +18,18 @@ packages:
       canonical_source: obra/superpowers
       upstream_revision: b36e0829c6d0140e93cfef2ca599b1b07d4a7797
       license: MIT
+      supported_slots:
+        - discovery
     - id: openspec-archive-change
       version: "1.0"
-      digest: sha256:4b643d2f34c4916563fbf83c3d9f871558590813dc79ff05483a64e98d6b3225
+      kind: atomic
+      origin: embedded
+      runtime_kind: host
+      digest: sha256:039517a2386237e42a63eb17cab3d375d25763218073b478edc75969bb74949d
       source: external-skills-source/openspec-archive-change
-      contract_version: skill-package/v1
-      original_digest: sha256:4b643d2f34c4916563fbf83c3d9f871558590813dc79ff05483a64e98d6b3225
-      normalized_digest: sha256:ed9a6188b50dab10ed99d32c9c03734845e2159be06730a0c7eeced79d89a4f5
+      contract_version: skill-package/v2
+      original_digest: sha256:039517a2386237e42a63eb17cab3d375d25763218073b478edc75969bb74949d
+      normalized_digest: sha256:a796947b11a1d88c5d28821837253123e5903e8051681542e45ac4b9704315a3
       transformation: none
       local_modifications: unknown
       verification_state: declared
@@ -30,13 +38,18 @@ packages:
       canonical_source: Fission-AI/OpenSpec
       upstream_revision: 1ebddd17f40dde15dfd28289e4493c3cf05ee9df
       license: MIT
+      supported_slots:
+        - execution
     - id: openspec-explore
       version: "1.0"
-      digest: sha256:9a976e674f2bbcc0c6131d7cacff1bcc5090b3b6dfc5b791d36abceadeb1e07e
+      kind: atomic
+      origin: embedded
+      runtime_kind: host
+      digest: sha256:fcaf34893d4e927113ad927462146031dddb380de4107ed802e7b30cb159247b
       source: external-skills-source/openspec-explore
-      contract_version: skill-package/v1
-      original_digest: sha256:9a976e674f2bbcc0c6131d7cacff1bcc5090b3b6dfc5b791d36abceadeb1e07e
-      normalized_digest: sha256:e57ebede8797fb9c957da992a5471592f3e4a9291a61930d8261c5246d09e756
+      contract_version: skill-package/v2
+      original_digest: sha256:fcaf34893d4e927113ad927462146031dddb380de4107ed802e7b30cb159247b
+      normalized_digest: sha256:94e6e23aba57e1f82e6667732b0e361d9695a700a49d58aef99514d2e688299e
       transformation: none
       local_modifications: unknown
       verification_state: declared
@@ -44,13 +57,18 @@ packages:
       normalized_digest_evidence: verified
       canonical_source: Fission-AI/OpenSpec
       upstream_revision: 1ebddd17f40dde15dfd28289e4493c3cf05ee9df
+      supported_slots:
+        - discovery
     - id: openspec-propose
       version: "1.0"
-      digest: sha256:496669ea08726c94ac03b3b2b90347ef215bd62a3b2f7337ba82b4b07d729752
+      kind: atomic
+      origin: embedded
+      runtime_kind: openspec_root
+      digest: sha256:ab35e0d73f418023a0bbd6ba5aab98ebf0f781351c3c4d13a493c8af8e9fdb0b
       source: external-skills-source/openspec-propose
-      contract_version: skill-package/v1
-      original_digest: sha256:496669ea08726c94ac03b3b2b90347ef215bd62a3b2f7337ba82b4b07d729752
-      normalized_digest: sha256:1bab86f2792accab714995fcbee76d731c664b167635505f623c545ebffacf70
+      contract_version: skill-package/v2
+      original_digest: sha256:ab35e0d73f418023a0bbd6ba5aab98ebf0f781351c3c4d13a493c8af8e9fdb0b
+      normalized_digest: sha256:cc741399c5e5a48afbe2df3d57db7f0582a03aacb18998fccd7777595de8ab24
       transformation: none
       local_modifications: unknown
       verification_state: declared
@@ -59,13 +77,18 @@ packages:
       canonical_source: Fission-AI/OpenSpec
       upstream_revision: 9d4e5974e5c0d9a09b9c6c1e1eb0975e80ec4461
       license: MIT
+      supported_slots:
+        - refinement
     - id: writing-plans
-      version: ""
-      digest: sha256:6d3a68e26e8792974721ed2325e7f5a78f6c4bc9dd44f2211e680426df0c93f5
+      version: 1.0.0
+      kind: atomic
+      origin: embedded
+      runtime_kind: host
+      digest: sha256:d0692cedae03045f561945af387eec08a3b5a2bd2a45aa4e487490771cd0b985
       source: external-skills-source/writing-plans
-      contract_version: skill-package/v1
-      original_digest: sha256:6d3a68e26e8792974721ed2325e7f5a78f6c4bc9dd44f2211e680426df0c93f5
-      normalized_digest: sha256:8f3baa399806a93309bb29b8f19db3e46c92533d7859e93cd3cf330644dbdcfa
+      contract_version: skill-package/v2
+      original_digest: sha256:d0692cedae03045f561945af387eec08a3b5a2bd2a45aa4e487490771cd0b985
+      normalized_digest: sha256:b4d2f11ca4c094dc10c389d0e9b0e00f28464fba1b1402f077bb13d028556de9
       transformation: none
       local_modifications: unknown
       verification_state: declared
@@ -74,3 +97,5 @@ packages:
       canonical_source: obra/superpowers
       upstream_revision: b36e0829c6d0140e93cfef2ca599b1b07d4a7797
       license: MIT
+      supported_slots:
+        - refinement

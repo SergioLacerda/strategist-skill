@@ -18,7 +18,7 @@ func seedDefaultsRootCatalog(t *testing.T, root string) {
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "plugins"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "roles"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "internal_skills", "sniper"), 0o755))
-	catalog := "schema_version: v1\nproviders:\n  - id: sniper\n    risk_score: controlled\n    compatibility_source: native_role\n"
+	catalog := "schema_version: strategist-plugin-catalog/v2\nproviders:\n  - id: sniper\n    risk_score: controlled\n    compatibility_source: native_role\n"
 	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins", "catalog.yaml"), []byte(catalog), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(root, "roles", "sniper.yaml"), []byte("role: sniper\nslot: execution\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(root, "internal_skills", "sniper", "SKILL.md"), []byte("# Sniper\n"), 0o644))

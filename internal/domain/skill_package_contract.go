@@ -22,10 +22,10 @@ const (
 	PackageEvidenceFailed PackageEvidenceState = "failed"
 	// PackageEvidenceBlocked indicates policy blocked metadata validation.
 	PackageEvidenceBlocked PackageEvidenceState = "blocked"
-	// CurrentSkillPackageContractVersion is the active package contract version.
-	CurrentSkillPackageContractVersion = "skill-package/v1"
-	// PreviousSkillPackageContractVersion is the supported compatibility version.
-	PreviousSkillPackageContractVersion = "skill-package/v0"
+	// CurrentSkillPackageContractVersion is the only supported package contract
+	// version. v2 is the strict Weapon vocabulary cutover: earlier contracts
+	// carry the legacy runtime kinds and are rejected, never translated.
+	CurrentSkillPackageContractVersion = "skill-package/v2"
 )
 
 // SkillPackageContract is the canonical projection of package and adapter
@@ -70,10 +70,10 @@ func NewSkillPackageContract(pkg PluginPackage, adapter AdapterContract) SkillPa
 	}
 }
 
-// SupportsSkillPackageContract reports the explicit current/N-1 compatibility
-// window. Unknown versions are rejected instead of being silently migrated.
+// SupportsSkillPackageContract reports whether version is the current package
+// contract. Every other version is rejected instead of being silently migrated.
 func SupportsSkillPackageContract(version string) bool {
-	return version == CurrentSkillPackageContractVersion || version == PreviousSkillPackageContractVersion
+	return version == CurrentSkillPackageContractVersion
 }
 
 // PackageProvenance records source facts without claiming facts that the

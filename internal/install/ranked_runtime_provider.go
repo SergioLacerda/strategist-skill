@@ -29,6 +29,9 @@ func resolveRankedProvider(catalog pluginCatalog, binding domain.SlotBinding) (p
 // bootstrapRankedProvider resolves the executable, bootstraps the runtime root
 // and returns the private-runtime evidence (nil for a host executable).
 func bootstrapRankedProvider(ctx context.Context, strategistDir string, provider pluginCatalogProvider, runtime domain.RankedRuntimeContract) (*domain.RankedRuntimeStateRuntime, error) {
+	if runtime.Kind != domain.RankedRuntimeOpenSpecRoot {
+		return nil, nil
+	}
 	root, err := runtimefs.SafeJoinExisting(strategistDir, filepath.ToSlash(runtime.Root)[len(".strategist/"):])
 	if err != nil {
 		return nil, fmt.Errorf("ranked runtime provider %q root: %w", provider.ID, err)

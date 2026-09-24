@@ -34,8 +34,14 @@ type CatalogRankedStamp struct {
 }
 
 type catalogRankedStampFile struct {
-	Providers []CatalogRankedStamp `yaml:"providers"`
+	SchemaVersion string               `yaml:"schema_version"`
+	Providers     []CatalogRankedStamp `yaml:"providers"`
 }
+
+// CurrentPluginCatalogSchemaVersion is the only accepted plugins/catalog.yaml
+// schema. v2 is the strict Weapon vocabulary cutover: a v1 catalog carries the
+// legacy runtime kinds and must be regenerated, never translated.
+const CurrentPluginCatalogSchemaVersion = "strategist-plugin-catalog/v2"
 
 // FindCatalogRankedStamp parses raw (a materialized plugins/catalog.yaml's
 // bytes) and returns the entry for providerID. rolevalidation and check
@@ -48,10 +54,17 @@ func FindCatalogRankedStamp(raw []byte, providerID string) (CatalogRankedStamp, 
 	if err := yaml.Unmarshal(raw, &file); err != nil {
 		return CatalogRankedStamp{}, false, fmt.Errorf("parse catalog: %w", err)
 	}
+	if file.SchemaVersion != CurrentPluginCatalogSchemaVersion {
+		return CatalogRankedStamp{}, false, fmt.Errorf("%w: catalog schema_version %q is not supported (want %q); regenerate or reinstall the workspace", ErrLegacyWeaponState, file.SchemaVersion, CurrentPluginCatalogSchemaVersion)
+	}
 	for _, p := range file.Providers {
-		if p.ID == providerID {
-			return p, true, nil
+		if p.ID != providerID {
+			continue
 		}
+		if isLegacyRuntimeKind(p.Runtime.Kind) {
+			return CatalogRankedStamp{}, false, fmt.Errorf("provider %s: %w", p.ID, unsupportedRuntimeKindError(p.Runtime.Kind))
+		}
+		return p, true, nil
 	}
 	return CatalogRankedStamp{}, false, nil
 }

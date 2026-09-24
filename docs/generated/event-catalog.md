@@ -85,11 +85,11 @@ feed once that lands.
 | `AttrInitiativeCalibrationStatus` | `strategist.initiative.calibration_status` |
 | `AttrInitiativeAssessed` | `strategist.initiative.assessed` |
 | `AttrInitiativeEffective` | `strategist.initiative.effective` |
+| `AttrInitiativeEvidenceExpected` | `strategist.initiative.evidence.expected` |
+| `AttrInitiativeEvidenceVerified` | `strategist.initiative.evidence.verified` |
 | `AttrInitiativeEvidenceSatisfied` | `strategist.initiative.evidence.satisfied` |
 | `AttrInitiativeEvidencePartial` | `strategist.initiative.evidence.partial` |
 | `AttrInitiativeEvidenceBlocked` | `strategist.initiative.evidence.blocked` |
-| `AttrInitiativeEvidenceExpected` | `strategist.initiative.evidence.expected` |
-| `AttrInitiativeEvidenceVerified` | `strategist.initiative.evidence.verified` |
 | `AttrInitiativeEvidenceMissing` | `strategist.initiative.evidence.missing` |
 | `AttrInitiativeEvidenceInvalid` | `strategist.initiative.evidence.invalid` |
 | `AttrInitiativeEvidenceConflicting` | `strategist.initiative.evidence.conflicting` |

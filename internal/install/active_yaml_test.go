@@ -452,4 +452,5 @@ func TestWriteActiveYAML_DoesNotEmitExecutionMode(t *testing.T) {
 	assert.NotContains(t, s, "execution_mode")
 	assert.NotContains(t, s, "git_persistence_mode")
 	assert.NotContains(t, s, "adr_enabled")
+	assert.NotContains(t, s, "provider_resolution_policy")
 }

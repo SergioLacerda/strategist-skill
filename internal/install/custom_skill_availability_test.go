@@ -18,10 +18,10 @@ func TestResolveCustomSkillAvailabilityUnavailableForUnknownID(t *testing.T) {
 	assert.NotEmpty(t, availability.Reason)
 }
 
-func TestResolveCustomSkillAvailabilityAvailableWhenInstalledUnderHome(t *testing.T) {
+func TestResolveCustomSkillAvailabilityAvailableWhenInstalledUnderGlobalAgents(t *testing.T) {
 	homeDir := t.TempDir()
 	testutil.SetHome(t, homeDir)
-	skillDir := filepath.Join(homeDir, claudeDirName, installedProvidersDirName, "my-team-skill")
+	skillDir := filepath.Join(homeDir, ".agents", installedProvidersDirName, "my-team-skill")
 	require.NoError(t, os.MkdirAll(skillDir, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(skillDir, "SKILL.md"),
 		[]byte("---\nname: my-team-skill\nmetadata:\n  version: \"1.0.0\"\n---\nbody\n"), 0o644))
@@ -73,7 +73,7 @@ func TestCheckCustomSkillAvailabilityPausesOnUnresolvableCustomID(t *testing.T) 
 func TestCheckCustomSkillAvailabilityAllowsResolvableWorkspaceSkill(t *testing.T) {
 	homeDir := t.TempDir()
 	testutil.SetHome(t, homeDir)
-	skillDir := filepath.Join(homeDir, claudeDirName, installedProvidersDirName, "my-team-skill")
+	skillDir := filepath.Join(homeDir, ".agents", installedProvidersDirName, "my-team-skill")
 	require.NoError(t, os.MkdirAll(skillDir, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(skillDir, "SKILL.md"),
 		[]byte("---\nname: my-team-skill\nmetadata:\n  version: \"1.0.0\"\n---\nbody\n"), 0o644))

@@ -42,10 +42,11 @@ capability:
 # docs/architecture/strategist-concepts.md § Abilities for the human-facing explanation.
 taxonomy:
   description: >
-    Weapons are embedded skill packages loaded from .strategist/skills/<id>/SKILL.md
-    and bound to a slot in active.yaml (orchestration.slot_hierarchy.*.may_delegate_to).
-    The external-skills-source tree is a build-time ingestion source only. Abilities
-    are internal routines that run inside a Role/phase — they are not configurable,
+    Weapons are skill packages loaded from .strategist/skills/<id>/SKILL.md and
+    bound one-at-a-time by Role and slot. A Weapon is atomic or composite; a
+    composite declares its component Weapons and deterministic dependency graph.
+    Every external-skills-source child is ingested as a Weapon. Abilities are
+    internal routines that run inside a Role/phase — they are not configurable,
     not swappable, and have no active.yaml entry.
   weapons:
     - id: brainstorming
@@ -53,6 +54,10 @@ taxonomy:
     - id: openspec-explore
       bound_to_slot: discovery
     - id: openspec-propose
+      bound_to_slot: refinement
+    - id: openspec-archive-change
+      bound_to_slot: execution
+    - id: writing-plans
       bound_to_slot: refinement
   abilities:
     - id: leveling
@@ -109,20 +114,20 @@ orchestration:
   slot_hierarchy:
     discovery:
       skill: ranger
-      # Ranger remains the native role owner, while the selected Weapon supplies
+      # Ranger remains the Role owner, while the selected Weapon supplies
       # bounded, untrusted discovery input. Ranger performs invocation through
       # the host boundary, normalization, write-scope checks, and handoff.
-      may_delegate_to: [brainstorming, openspec-explore]
+      weapons: [brainstorming, openspec-explore]
     refinement:
       skill: archivist
       # Archivist is the internal refinement persona. openspec-propose is its default
       # weapon (docs/adr/0035-embedded-weapon-fallback-policy.md DEC-004). Does not
       # replace the persona.
-      may_delegate_to: [openspec-propose, dossier-builder, context-enrichment]
+      weapons: [openspec-propose, writing-plans, dossier-builder, context-enrichment]
     execution:
       skill: sniper
       # Sniper is internal and controlled. It has no subtype customization.
-      may_delegate_to: [sdd-ask]
+      weapons: [sdd-ask, openspec-archive-change]
 
 parameters:
   - name: profile

@@ -26,6 +26,10 @@ type pluginOnboardingPlan struct {
 	// whole, since the legacy catalog/lock resolution above already is the
 	// authoritative gate for whether a slot's provider is usable.
 	RoleMigration RoleProviderMigrationPreview
+	// CustomProviders records local-first packages resolved for explicitly
+	// typed Custom providers. They are plan evidence, not embedded catalog
+	// entries.
+	CustomProviders map[string]customProviderResolution
 }
 
 type pluginProbeFunc func(domain.SlotBinding, domain.InstalledInstance) bool
@@ -33,12 +37,20 @@ type pluginProbeFunc func(domain.SlotBinding, domain.InstalledInstance) bool
 type pluginProbeResultFunc func(domain.SlotBinding, domain.InstalledInstance) lifecycle.ProbeOutcome
 
 func planPluginOnboarding(extractor domain.FileExtractor, catalog pluginCatalog, slots map[string]string) (pluginOnboardingPlan, error) {
-	requirements, err := onboardingRequirements(catalog, slots)
+	return planPluginOnboardingWithModes(extractor, catalog, slots, nil)
+}
+
+func planPluginOnboardingWithModes(extractor domain.FileExtractor, catalog pluginCatalog, slots, modes map[string]string) (pluginOnboardingPlan, error) {
+	resolvedCatalog, customProviders, err := catalogWithCustomProviders(catalog, slots, modes)
+	if err != nil {
+		return pluginOnboardingPlan{}, err
+	}
+	requirements, err := onboardingRequirements(resolvedCatalog, slots)
 	if err != nil {
 		return pluginOnboardingPlan{}, err
 	}
 
-	lock, err := plugins.Resolve(requirements, catalogResolverCandidates(catalog))
+	lock, err := plugins.Resolve(requirements, catalogResolverCandidates(resolvedCatalog))
 	if err != nil {
 		return pluginOnboardingPlan{}, fmt.Errorf("resolve plugin lock: %w", err)
 	}
@@ -49,7 +61,7 @@ func planPluginOnboarding(extractor domain.FileExtractor, catalog pluginCatalog,
 	}
 	changes := changesFromBindings(bindings)
 
-	roleMigration, err := PlanRoleProviderMigration(extractor, slots)
+	roleMigration, err := planRoleProviderMigrationWithCatalog(extractor, resolvedCatalog, slots)
 	if err != nil {
 		return pluginOnboardingPlan{}, fmt.Errorf("resolve role/provider bindings: %w", err)
 	}
@@ -65,6 +77,7 @@ func planPluginOnboarding(extractor domain.FileExtractor, catalog pluginCatalog,
 		Bindings:             bindings,
 		Changes:              changes,
 		RoleMigration:        roleMigration,
+		CustomProviders:      customProviders,
 	}, nil
 }
 
@@ -137,5 +150,13 @@ func wizardSlots(wc domain.WizardConfig) map[string]string {
 		"discovery":  wc.DiscoveryProvider,
 		"refinement": wc.RefinementProvider,
 		"execution":  wc.ExecutionProvider,
+	}
+}
+
+func wizardSlotModes(wc domain.WizardConfig) map[string]string {
+	return map[string]string{
+		"discovery":  wc.DiscoveryMode,
+		"refinement": wc.RefinementMode,
+		"execution":  wc.ExecutionMode,
 	}
 }

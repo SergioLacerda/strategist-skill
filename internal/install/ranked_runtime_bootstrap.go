@@ -91,7 +91,7 @@ func loadRankedRuntimeInputs(strategistDir string) (domain.RoleSlotMap, pluginCa
 
 func prepareRankedBinding(ctx context.Context, strategistDir string, roles domain.RoleSlotMap, catalog pluginCatalog, binding domain.SlotBinding) (domain.RankedRuntimeStateEntry, bool, error) {
 	provider, runtime, err := resolveRankedProvider(catalog, binding)
-	if err != nil || runtime.Kind == domain.RankedRuntimeNone {
+	if err != nil || runtime.Kind == domain.RankedRuntimeNone || runtime.Kind != domain.RankedRuntimeOpenSpecRoot {
 		return domain.RankedRuntimeStateEntry{}, false, err
 	}
 	private, err := bootstrapRankedProvider(ctx, strategistDir, provider, runtime)

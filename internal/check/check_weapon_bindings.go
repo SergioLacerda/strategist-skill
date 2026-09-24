@@ -111,12 +111,6 @@ func scanWeaponEntry(root, skillsDir string, entry os.DirEntry, roleSlotMap doma
 	if canonicalRole == "" {
 		return weaponBinding{}, false
 	}
-	if canonicalRole == "auxiliary" {
-		// Auxiliary tools are catalogued for explicit dependency resolution,
-		// not as mission weapons. They have no native role file or slot
-		// binding to validate.
-		return weaponBinding{}, false
-	}
 	return verifyOneWeaponBinding(root, skillID, canonicalRole, taxonomy.WeaponContract, roleSlotMap, roleSlotMapErr), true
 }
 

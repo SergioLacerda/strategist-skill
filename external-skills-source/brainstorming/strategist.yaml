@@ -2,11 +2,13 @@
 # brainstorming/SKILL.md package in this same directory. Project-specific
 # fields (canonical_role, risk_score, category) live here, never in SKILL.md
 # itself.
-canonical_role: ranger
 roles:
   - ranger
+kind: atomic
+supported_slots:
+  - discovery
 runtime:
-  kind: none
+  kind: embedded
 risk_score: write_analysis
 category: discovery
 default: true

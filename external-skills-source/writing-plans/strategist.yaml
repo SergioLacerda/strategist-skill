@@ -1,8 +1,13 @@
-canonical_role: auxiliary
 roles:
-  - auxiliary
+  - archivist
+kind: atomic
+supported_slots:
+  - refinement
 risk_score: write_analysis
 category: auxiliary
+runtime:
+  kind: host
+  host_api: strategist-host-skill/v1
 default: false
 scratch_root: runtime
 upstream_repo: obra/superpowers

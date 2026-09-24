@@ -48,25 +48,41 @@ func certifiedRankedStamp(root, slot, provider string) (domain.CatalogRankedStam
 
 func rankedRuntimeReadiness(root, slot, provider string, stamp domain.CatalogRankedStamp) domain.ReadinessCheck {
 	runtime := domain.NormalizeRankedRuntime(stamp.Runtime)
+	if runtime.Kind == domain.RankedRuntimeHost || runtime.Kind == domain.RankedRuntimeExecutable {
+		return domain.ReadinessCheck{Status: domain.ReadinessUnknown, ReasonCode: "ranked_runtime_requires_host_invocation", Detail: fmt.Sprintf("provider=%s runtime=%s requires the declared host connector", provider, runtime.Kind)}
+	}
 	if result := validateRankedRuntimeContract(runtime, slot, provider); !result.Ready() || runtime.Kind == domain.RankedRuntimeNone {
 		return result
 	}
-	state, result := readRankedRuntimeState(root, provider, runtime.Root)
+	if runtime.Kind == domain.RankedRuntimeEmbedded {
+		return domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "ranked_embedded_runtime_ready", Detail: fmt.Sprintf("provider=%s is executed by the Strategist embedded runtime", provider)}
+	}
+	runtimeRoot, recorded, result := recordedRankedRuntime(root, slot, provider, stamp, runtime)
 	if !result.Ready() {
 		return result
+	}
+	return runHostNodeRankedRuntimeHealthcheck(root, runtimeRoot, provider, runtime, recorded)
+}
+
+// recordedRankedRuntime loads the runtime state and returns the installed
+// runtime root and the runtime recorded for the slot/provider binding.
+func recordedRankedRuntime(root, slot, provider string, stamp domain.CatalogRankedStamp, runtime domain.RankedRuntimeContract) (string, domain.RankedRuntimeStateRuntime, domain.ReadinessCheck) {
+	state, result := readRankedRuntimeState(root, provider, runtime.Root)
+	if !result.Ready() {
+		return "", domain.RankedRuntimeStateRuntime{}, result
 	}
 	entry, result := matchRankedRuntimeState(state, slot, provider, stamp.CertificationDigest, expectedRankedRole(root, slot), runtime.Root)
 	if !result.Ready() {
-		return result
+		return "", domain.RankedRuntimeStateRuntime{}, result
 	}
 	runtimeRoot := rankedRuntimeRoot(root, runtime.Root)
 	if result := validateRankedRuntimeRoot(runtimeRoot, provider); !result.Ready() {
-		return result
+		return "", domain.RankedRuntimeStateRuntime{}, result
 	}
 	if entry.Runtime == nil {
-		return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: domain.ReasonRankedRuntimeStateInvalid, Detail: fmt.Sprintf("provider=%s runtime state records no runtime; run `strategist upgrade` or `strategist install --wizard`", provider)}
+		return "", domain.RankedRuntimeStateRuntime{}, domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: domain.ReasonRankedRuntimeStateInvalid, Detail: fmt.Sprintf("provider=%s runtime state records no runtime; run `strategist upgrade` or `strategist install --wizard`", provider)}
 	}
-	return runHostNodeRankedRuntimeHealthcheck(root, runtimeRoot, provider, runtime, *entry.Runtime)
+	return runtimeRoot, *entry.Runtime, domain.ReadinessCheck{Status: domain.ReadinessReady}
 }
 
 // expectedRankedRole is the role roles/default.yaml maps slot to, or "" when

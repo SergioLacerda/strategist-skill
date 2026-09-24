@@ -1,16 +1,21 @@
 # Strategist project adapter (ADR-0033 two-layer contract) for the portable
 # openspec-explore/SKILL.md package in this same directory.
 #
-# canonical_role: ranger — corrected from archivist (mission
+# roles: ranger — corrected from archivist (mission
 # 20260914-openspec-explore-canonical-role-correction,
 # docs/adr/0036-openspec-explore-canonical-role-correction.md). The prior
 # assignment was made from a Strategist-authored description, before the
 # real upstream package content (now vendored verbatim in SKILL.md) was
 # available: the real package is an explore/investigate/think-before-changing
 # workflow, which is discovery-shaped, not refinement-shaped.
-canonical_role: ranger
 roles:
   - ranger
+kind: atomic
+supported_slots:
+  - discovery
+runtime:
+  kind: host
+  host_api: strategist-host-skill/v1
 risk_score: write_analysis
 category: discovery
 # default: false — brainstorming remains the sole permanent discovery

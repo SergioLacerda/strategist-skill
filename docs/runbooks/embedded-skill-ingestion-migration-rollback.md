@@ -27,6 +27,18 @@ of user data.
 - A backup or recoverable copy of workspace runtime data exists before import.
 - No release build is allowed to refresh mutable tags implicitly.
 
+## Strict Weapon vocabulary cutover
+
+A workspace or generated catalog that still declares `runtime.kind:
+embedded_skill` or `host_skill`, a `strategist-plugin-catalog/v1` catalog, or a
+`strategist-embedded-skill-lock/v1` lock is blocked at readiness with
+`ranked_catalog_invalid` (or a prepare-embedded validation error) and a
+"regenerate or reinstall" diagnostic. Do not edit the state to translate it.
+Regenerate the repository sources with `strategist plugins prepare-embedded`,
+verify with `strategist plugins prepare-embedded --check`, and refresh a
+workspace with a clean `strategist install`. Rollback is a source-level revert
+followed by regeneration, never a runtime alias.
+
 ## Readiness states
 
 Classify the incident before changing anything:

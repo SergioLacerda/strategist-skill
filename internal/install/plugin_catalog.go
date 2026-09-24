@@ -9,21 +9,30 @@ import (
 
 const pluginCatalogPath = "plugins/catalog.yaml"
 
+// pluginCatalogSchemaVersion is the only accepted catalog schema. v2 is the
+// strict Weapon vocabulary cutover; v1 catalogs carry the legacy runtime kinds
+// and must be regenerated, never translated.
+const pluginCatalogSchemaVersion = domain.CurrentPluginCatalogSchemaVersion
+
 type pluginCatalog struct {
 	SchemaVersion string                  `yaml:"schema_version"`
 	Providers     []pluginCatalogProvider `yaml:"providers"`
 }
 
 type pluginCatalogProvider struct {
-	ID            string   `yaml:"id"`
-	Version       string   `yaml:"version,omitempty"`
-	SchemaVersion string   `yaml:"provider_schema_version,omitempty"`
-	Status        string   `yaml:"status,omitempty"`
-	RiskScore     string   `yaml:"risk_score"`
-	Category      string   `yaml:"category,omitempty"`
-	CanonicalRole string   `yaml:"canonical_role,omitempty"`
-	Roles         []string `yaml:"roles,omitempty"`
-	Lifecycle     bool     `yaml:"lifecycle,omitempty"`
+	ID            string            `yaml:"id"`
+	Version       string            `yaml:"version,omitempty"`
+	SchemaVersion string            `yaml:"provider_schema_version,omitempty"`
+	Kind          domain.WeaponKind `yaml:"kind,omitempty"`
+	// Origin records where the Weapon comes from (embedded or custom),
+	// independently of Runtime.Kind, which describes only how it is invoked.
+	Origin        domain.WeaponOrigin `yaml:"origin,omitempty"`
+	Status        string              `yaml:"status,omitempty"`
+	RiskScore     string              `yaml:"risk_score"`
+	Category      string              `yaml:"category,omitempty"`
+	CanonicalRole string              `yaml:"canonical_role,omitempty"`
+	Roles         []string            `yaml:"roles,omitempty"`
+	Lifecycle     bool                `yaml:"lifecycle,omitempty"`
 	// Default marks this provider as the primary Arma for its CanonicalRole
 	// among candidates sharing it — a selection preference, not proof of
 	// provenance, installation, or readiness (see domain.ProviderContract.Default).
@@ -51,6 +60,8 @@ type pluginCatalogProvider struct {
 	PolicyDigest     string                       `yaml:"policy_digest,omitempty"`
 	ConformanceLevel string                       `yaml:"conformance_level,omitempty"`
 	Runtime          domain.RankedRuntimeContract `yaml:"runtime,omitempty"`
+	SupportedSlots   []string                     `yaml:"supported_slots,omitempty"`
+	Composition      *domain.WeaponComposition    `yaml:"composition,omitempty"`
 	// UpstreamRepo through License are ADR-0029 DEC-002's per-provider
 	// upstream-identity fields — see externalSkillAdapter's own doc comment
 	// for the full rationale. Populated only for packages whose upstream
@@ -61,6 +72,7 @@ type pluginCatalogProvider struct {
 	UpstreamCommit        string                    `yaml:"upstream_commit,omitempty"`
 	UpstreamContentDigest string                    `yaml:"upstream_content_digest,omitempty"`
 	License               string                    `yaml:"license,omitempty"`
+	PackageDigest         string                    `yaml:"-"`
 	Description           string                    `yaml:"description,omitempty"`
 	AuxiliaryTools        []string                  `yaml:"auxiliary_tools_allowed,omitempty"`
 	Installable           bool                      `yaml:"installable,omitempty"`
@@ -97,6 +109,16 @@ func loadPluginCatalog(extractor domain.FileExtractor) (pluginCatalog, error) {
 	return parseCatalogBytes(data)
 }
 
+func validateCatalogSchemaVersion(version string) error {
+	if version == "" {
+		return fmt.Errorf("plugin catalog: schema_version is required")
+	}
+	if version != pluginCatalogSchemaVersion {
+		return fmt.Errorf("plugin catalog: schema_version %q is not supported (want %q); regenerate or reinstall the workspace", version, pluginCatalogSchemaVersion)
+	}
+	return nil
+}
+
 // parseCatalogBytes parses and validates raw catalog.yaml content, shared by
 // loadPluginCatalog (embed.FS-backed, runtime path) and PrepareEmbedded
 // (plain-filesystem-backed, maintainer/CI path — cmd/strategist's `strategist
@@ -107,8 +129,8 @@ func parseCatalogBytes(data []byte) (pluginCatalog, error) {
 	if err := yaml.Unmarshal(data, &catalog); err != nil {
 		return pluginCatalog{}, fmt.Errorf("plugin catalog: %w", err)
 	}
-	if catalog.SchemaVersion == "" {
-		return pluginCatalog{}, fmt.Errorf("plugin catalog: schema_version is required")
+	if err := validateCatalogSchemaVersion(catalog.SchemaVersion); err != nil {
+		return pluginCatalog{}, err
 	}
 	if len(catalog.Providers) == 0 {
 		return pluginCatalog{}, fmt.Errorf("plugin catalog: providers must have at least one entry")
@@ -118,22 +140,10 @@ func parseCatalogBytes(data []byte) (pluginCatalog, error) {
 			return pluginCatalog{}, err
 		}
 	}
+	if err := validateCatalogWeaponCompositions(catalog); err != nil {
+		return pluginCatalog{}, err
+	}
 	return catalog, nil
-}
-
-func validateCatalogProvider(provider pluginCatalogProvider) error {
-	if provider.ID == "" || provider.RiskScore == "" {
-		return fmt.Errorf("plugin catalog: provider id and risk_score are required")
-	}
-	for _, roleID := range append([]string{provider.CanonicalRole}, provider.Roles...) {
-		if err := domain.ValidateRoleReference(roleID); err != nil {
-			return fmt.Errorf("plugin catalog: provider %s: %w", provider.ID, err)
-		}
-	}
-	if err := provider.WeaponContract.Validate(); err != nil {
-		return fmt.Errorf("plugin catalog: provider %s: %w", provider.ID, err)
-	}
-	return nil
 }
 
 func catalogKnownProviderRisk(catalog pluginCatalog) map[string]string {

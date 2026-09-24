@@ -8,10 +8,12 @@ import (
 	"runtime"
 )
 
-// nativeConnectorSourcePath and roleConformanceTestPaths are repo-root-
-// relative paths to the Strategist tool's own implementation evidence for
-// ADR-0043 DEC-006's generic Ranked certification: the native-role
-// dispatch mechanism, and the per-role handoff-conformance test suites. Both
+// nativeConnectorSourcePath, embeddedConnectorSourcePath, and
+// roleConformanceTestPaths are repo-root-relative paths to the Strategist
+// tool's own implementation evidence for ADR-0043 DEC-006's generic Ranked
+// certification: the native-role dispatch mechanism, the in-process
+// embedded-skill dispatch mechanism, and the per-role handoff-conformance
+// test suites. Both
 // are Strategist-internal source files compiled into the
 // strategist binary — they never materialize into a target workspace's
 // .strategist/ tree, unlike a role's own contract files
@@ -19,9 +21,10 @@ import (
 // hostAPIContractDigest). Resolved against repoRoot(), not the caller's
 // working directory — see repoRoot's own doc comment for why.
 const (
-	nativeConnectorSourcePath = "internal/plugins/connectors/runtime_connector.go"
-	policySourcePath          = "internal/plugins/policy/grants.go"
-	policyEnforcementPath     = "internal/plugins/policy/write_enforcement.go"
+	nativeConnectorSourcePath   = "internal/plugins/connectors/runtime_connector.go"
+	embeddedConnectorSourcePath = "internal/plugins/connectors/embedded_weapon_connector.go"
+	policySourcePath            = "internal/plugins/policy/grants.go"
+	policyEnforcementPath       = "internal/plugins/policy/write_enforcement.go"
 )
 
 // roleConformanceTestPaths maps each Ranked-certifiable role to its own
@@ -90,13 +93,17 @@ func hostAPIContractDigest(defaultsRoot, role string) (string, error) {
 }
 
 // connectorDigest computes the ADR-0043 DEC-006 "connector" evidence: a
-// digest over the native-role dispatch mechanism's own source
-// (connectors.NativeRuntimeConnector). This is intentionally the same
-// value for every role certified this way — every native role shares the
-// same dispatch connector; the evidence is "this is the connector
-// mechanism in effect," not a per-role variant.
+// digest over both dispatch mechanisms that can execute a Ranked skill:
+// native-role dispatch and in-process embedded-skill dispatch. This is
+// intentionally the same value for every role certified this way — every
+// Ranked role shares the same connector mechanisms; the evidence is "these
+// are the connector mechanisms in effect," not a per-role variant.
 func connectorDigest() (string, error) {
-	return digestFiles(filepath.Join(repoRoot(), nativeConnectorSourcePath))
+	root := repoRoot()
+	return digestFiles(
+		filepath.Join(root, nativeConnectorSourcePath),
+		filepath.Join(root, embeddedConnectorSourcePath),
+	)
 }
 
 // policyDigest binds Ranked certification to the permission and write-policy

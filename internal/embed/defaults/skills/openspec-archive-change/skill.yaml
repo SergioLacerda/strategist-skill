@@ -4,7 +4,9 @@ schema_version: "1"
 status: active
 risk_score: write_analysis
 category: lifecycle
-canonical_role: 
+canonical_role: sniper
+roles:
+  - sniper
 
 description: >
   Archive a completed change in the experimental workflow. Use when the user wants to finalize and archive a change after implementation is complete.

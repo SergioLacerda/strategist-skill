@@ -145,7 +145,7 @@ func validateAndActivatePluginPlan(extractor domain.FileExtractor, catalog plugi
 		return domain.PluginLockFile{}, fmt.Errorf("wizard: %w", err)
 	}
 
-	plan, planErr := planPluginOnboarding(extractor, catalog, wizardSlots(wc))
+	plan, planErr := planPluginOnboardingWithModes(extractor, catalog, wizardSlots(wc), wizardSlotModes(wc))
 	if planErr != nil {
 		return domain.PluginLockFile{}, fmt.Errorf("wizard: plugin onboarding plan: %w", planErr)
 	}
@@ -171,6 +171,7 @@ func validateAndActivatePluginPlan(extractor domain.FileExtractor, catalog plugi
 	if err := validatePersistedRoleBindings(lockFile, plan.RoleMigration); err != nil {
 		return domain.PluginLockFile{}, fmt.Errorf("wizard: %w", err)
 	}
+	annotateCustomProviderInstances(&lockFile, plan.CustomProviders)
 
 	// docs/adr/0043-ranked-pipeline-pilot-implementation-decisions.md DEC-005:
 	// for every slot the Wizard resolved to Ranked, activate (copy) the

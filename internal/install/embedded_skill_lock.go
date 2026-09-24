@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"gopkg.in/yaml.v3"
 )
 
@@ -40,8 +41,8 @@ func validateEmbeddedSkillLockBytes(raw []byte) error {
 }
 
 func validateEmbeddedSkillLockSchema(lock EmbeddedSkillLock) error {
-	if lock.SchemaVersion != "strategist-embedded-skill-lock/v1" {
-		return fmt.Errorf("validate embedded skill lock: unsupported schema %q", lock.SchemaVersion)
+	if lock.SchemaVersion != embeddedSkillLockSchemaVersion {
+		return fmt.Errorf("validate embedded skill lock: unsupported schema %q (want %q); regenerate the lock with `strategist plugins prepare-embedded`", lock.SchemaVersion, embeddedSkillLockSchemaVersion)
 	}
 	return nil
 }
@@ -49,6 +50,9 @@ func validateEmbeddedSkillLockSchema(lock EmbeddedSkillLock) error {
 func validateEmbeddedSkillLockPackage(pkg EmbeddedSkillLockNode) error {
 	if incompleteLockProvenance(pkg) {
 		return fmt.Errorf("validate embedded skill lock: incomplete provenance for %q", pkg.ID)
+	}
+	if err := validateLockWeaponIdentity(pkg); err != nil {
+		return err
 	}
 	if lockDigestsMismatch(pkg) {
 		return fmt.Errorf("validate embedded skill lock: digest mismatch for %q", pkg.ID)
@@ -58,6 +62,16 @@ func validateEmbeddedSkillLockPackage(pkg EmbeddedSkillLockNode) error {
 	}
 	if !validLockEvidenceState(pkg.VerificationState) || !validLockEvidenceState(pkg.OriginalDigestEvidence) || !validLockEvidenceState(pkg.NormalizedDigestEvidence) {
 		return fmt.Errorf("validate embedded skill lock: invalid evidence state for %q", pkg.ID)
+	}
+	return nil
+}
+
+func validateLockWeaponIdentity(pkg EmbeddedSkillLockNode) error {
+	if err := domain.WeaponOrigin(pkg.Origin).Validate(); err != nil {
+		return fmt.Errorf("validate embedded skill lock: %q: %w", pkg.ID, err)
+	}
+	if err := domain.ValidateActiveRuntimeKind(pkg.RuntimeKind); err != nil {
+		return fmt.Errorf("validate embedded skill lock: %q: %w", pkg.ID, err)
 	}
 	return nil
 }

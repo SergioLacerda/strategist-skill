@@ -249,7 +249,7 @@ func (rankedWizardExtractor) ReadFile(relPath string) ([]byte, error) {
 	return minimalExtractor{}.ReadFile(relPath)
 }
 
-const rankedWizardCatalogYAML = `schema_version: strategist-plugin-catalog/v1
+const rankedWizardCatalogYAML = `schema_version: strategist-plugin-catalog/v2
 providers:
   - id: archivist
     risk_score: write_analysis

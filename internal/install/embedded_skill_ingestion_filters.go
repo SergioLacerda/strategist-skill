@@ -80,12 +80,7 @@ func filterAcceptedCandidates(candidates []IngestedSkill, baseProviders []plugin
 // ingested in the same batch as its master resolves correctly, recording a
 // rejection for any candidate whose declared dependency is still missing.
 func filterDependencyResolved(accepted []IngestedSkill, schemaVersion string, baseProviders []pluginCatalogProvider, result *IngestionResult) []IngestedSkill {
-	prospective := buildCatalog(schemaVersion, baseProviders, accepted)
-	violationsByID := map[string][]string{}
-	for _, violation := range ValidateCatalogDependencies(prospective) {
-		violationsByID[violation.ProviderID] = append(violationsByID[violation.ProviderID], violation.DependencyID)
-	}
-
+	violationsByID := dependencyViolations(buildCatalog(schemaVersion, baseProviders, accepted), accepted)
 	var ingested []IngestedSkill
 	for _, skill := range accepted {
 		if missing, ok := violationsByID[skill.ID]; ok {
@@ -98,6 +93,27 @@ func filterDependencyResolved(accepted []IngestedSkill, schemaVersion string, ba
 		ingested = append(ingested, skill)
 	}
 	return ingested
+}
+
+// dependencyViolations maps each provider with an unresolved dependency, or a
+// composite whose composition is invalid, to what is missing.
+func dependencyViolations(prospective pluginCatalog, accepted []IngestedSkill) map[string][]string {
+	violationsByID := map[string][]string{}
+	for _, violation := range ValidateCatalogDependencies(prospective) {
+		violationsByID[violation.ProviderID] = append(violationsByID[violation.ProviderID], violation.DependencyID)
+	}
+	if err := validateCatalogWeaponCompositions(prospective); err != nil {
+		addCompositionViolations(violationsByID, accepted, err)
+	}
+	return violationsByID
+}
+
+func addCompositionViolations(violationsByID map[string][]string, accepted []IngestedSkill, err error) {
+	for _, skill := range accepted {
+		if skill.Adapter.Kind == "composite" {
+			violationsByID[skill.ID] = append(violationsByID[skill.ID], err.Error())
+		}
+	}
 }
 
 // buildCatalog merges baseProviders with skills, sorted by id.

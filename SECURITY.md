@@ -70,6 +70,35 @@ detects a corrupted or tampered download). Users who want the stronger
 cosign/attestation guarantees should download the release asset manually and
 run the verification commands in this document.
 
+### Automated verification
+
+The release workflow does not stop at uploading assets. After publishing, it
+downloads them and runs `scripts/verify-published-release.sh`: `SHA256SUMS` must
+match, the linux binary's `strategist version` must report the release tag, every
+asset's Cosign bundle must verify against this repository's release workflow for
+that tag, every asset must carry a GitHub build-provenance attestation, and the
+CycloneDX SBOM must be a valid, non-empty document. Release tags must be annotated
+`vX.Y.Z` tags on a commit reachable from `main` (`scripts/check-release-tag.sh`).
+The same instructions are appended to every release body.
+
+## SLSA assessment
+
+Assessed 2026-09-24 against the SLSA v1.0 build track. This is an internal
+assessment, not a certified or formally claimed level.
+
+| Level | Requirement (summary) | Status |
+|---|---|---|
+| Build L1 | Provenance exists | Met: `actions/attest-build-provenance` attests every published binary via `SHA256SUMS`. |
+| Build L2 | Hosted build platform, signed provenance | Met in practice: GitHub-hosted runners, attestation signed through Sigstore. |
+| Build L3 | Provenance unforgeable by the build steps; isolated builds | Not met: build and attestation run in the same job, so the job's own steps could influence the provenance. |
+
+Decision: stay at the L2 shape and keep the "no formal SLSA level claim" wording
+above. Reaching L3 means moving the build and the attestation into a separate
+reusable workflow; that is deferred until a second maintainer or a consumer
+requirement justifies the extra release-pipeline complexity. Revisit together
+with the `release` Environment and signed-tag decisions in
+`docs/adr/0052-cicd-enforcement-policy.md`.
+
 ## Branch Protection (Recommended for forks)
 
 If forking this repository, enable these settings under **Settings → Branches → main**:

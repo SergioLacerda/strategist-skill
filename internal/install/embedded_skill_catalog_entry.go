@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"gopkg.in/yaml.v3"
 )
 
@@ -13,6 +14,8 @@ func catalogProviderFromIngestedSkill(skill IngestedSkill) pluginCatalogProvider
 		ID:                      skill.ID,
 		Version:                 skill.Package.Version,
 		SchemaVersion:           "1",
+		Kind:                    skill.Adapter.Kind,
+		Origin:                  domain.WeaponOriginEmbedded,
 		Status:                  "active",
 		RiskScore:               skill.Adapter.RiskScore,
 		Category:                skill.Adapter.Category,
@@ -29,6 +32,8 @@ func catalogProviderFromIngestedSkill(skill IngestedSkill) pluginCatalogProvider
 		ScratchRoot:             skill.Adapter.ScratchRoot,
 		WeaponContract:          skill.Adapter.WeaponContract,
 		Runtime:                 skill.Adapter.Runtime,
+		SupportedSlots:          skill.Adapter.SupportedSlots,
+		Composition:             skill.Adapter.Composition,
 		UpstreamRepo:            skill.Adapter.UpstreamRepo,
 		UpstreamSkillPath:       skill.Adapter.UpstreamSkillPath,
 		UpstreamVersion:         skill.Adapter.UpstreamVersion,

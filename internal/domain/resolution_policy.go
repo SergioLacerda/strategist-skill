@@ -2,10 +2,8 @@ package domain
 
 import "fmt"
 
-// ResolutionPolicy controls agent behavior when a configured slot provider passes
-// static `strategist check` validation (valid skill.yaml, matching risk_score) but
-// turns out not to be invocable at mission time, and a compatible native role
-// exists for the same slot. See docs/adr/0028-native-role-resilient-baseline.md.
+// ResolutionPolicy is a historical record type for retired provider-fallback
+// evidence. Active mission routing must not consume it.
 type ResolutionPolicy string
 
 const (
@@ -21,8 +19,7 @@ const (
 	ResolutionPolicyNative ResolutionPolicy = "native"
 )
 
-// DefaultResolutionPolicy is applied when active.yaml omits provider_resolution_policy
-// or sets it to the empty string. ADR-0028 recommends "ask" as the default.
+// DefaultResolutionPolicy is retained for historical outcome reconstruction.
 const DefaultResolutionPolicy = ResolutionPolicyAsk
 
 var validResolutionPolicies = map[ResolutionPolicy]bool{

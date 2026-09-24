@@ -412,6 +412,17 @@ Each weapon is a skill with its own `skill.yaml` resolved in preflight by the St
 | refinement | `write_analysis` |
 | execution | `controlled` |
 
+### Weapon origin and runtime
+
+Every Role-bindable package is a Weapon, atomic or composite; "skill" is only the upstream `SKILL.md` file format and never a Strategist package category. A Weapon declares two independent facts:
+
+| Field | Values | Meaning |
+|-------|--------|---------|
+| `origin` | `embedded`, `custom` | Where the Weapon comes from: the canonical embedded source, or an operator-provided package. |
+| `runtime.kind` | `embedded`, `host`, `executable`, `openspec_root` | How the Weapon is invoked. A custom Weapon may run through any of them. |
+
+The cutover is strict. The former runtime kinds `embedded_skill` and `host_skill` are rejected in manifests, catalogs, locks, and readiness with a diagnostic that directs the operator to regenerate or reinstall the workspace; they are never aliased, dual-read, dual-written, or converted, and no native fallback runs. The plugin catalog schema (`strategist-plugin-catalog/v2`), package contract (`skill-package/v2`), and embedded lock schema (`strategist-embedded-skill-lock/v2`) carry the new vocabulary. `internal/embed/defaults/` and `external-skills-source/` are the authoring sources; `.strategist/` is generated from them and is never edited by hand.
+
 To swap a weapon, validate and onboard its local package with `strategist provider validate <source>` and `strategist provider add <source> --slot <slot>`. The package and adapter contracts plus `plugins.lock` own identity, compatibility, and binding; `.strategist/skills/<provider>/skill.yaml` is only a compatibility view. Ranger invokes the selected discovery Weapon, normalizes its untrusted result, and fails closed with `role_invocation_failed` when invocation evidence is unavailable; it never silently substitutes native behavior.
 
 ---

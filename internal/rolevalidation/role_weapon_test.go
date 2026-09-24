@@ -63,7 +63,7 @@ func TestValidateRuntimeBindingsRejectsUncertifiedRankedMode(t *testing.T) {
     installed_instance_id: openspec-propose
 `)
 	writeRankedCatalogFile(t, root, `
-schema_version: strategist-plugin-catalog/v1
+schema_version: strategist-plugin-catalog/v2
 providers:
   - id: brainstorming
     canonical_role: ranger
@@ -86,7 +86,7 @@ func TestValidateRuntimeBindingsAcceptsCertifiedRankedMode(t *testing.T) {
     installed_instance_id: openspec-propose
 `)
 	writeRankedCatalogFile(t, root, `
-schema_version: strategist-plugin-catalog/v1
+schema_version: strategist-plugin-catalog/v2
 providers:
   - id: brainstorming
     canonical_role: ranger
@@ -114,7 +114,7 @@ func TestValidateRuntimeBindingsAcceptsCertifiedRankedModeOnRefinementSlot(t *te
     mode: ranked
 `)
 	writeRankedCatalogFile(t, root, `
-schema_version: strategist-plugin-catalog/v1
+schema_version: strategist-plugin-catalog/v2
 providers:
   - id: openspec-propose
     canonical_role: archivist
@@ -137,7 +137,7 @@ func TestValidateRuntimeBindingsRejectsRankedModeMissingFromCatalog(t *testing.T
     installed_instance_id: openspec-propose
 `)
 	writeRankedCatalogFile(t, root, `
-schema_version: strategist-plugin-catalog/v1
+schema_version: strategist-plugin-catalog/v2
 providers:
   - id: openspec-propose
     canonical_role: archivist

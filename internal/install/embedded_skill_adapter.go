@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"gopkg.in/yaml.v3"
@@ -25,12 +27,15 @@ const externalSkillAdapterFileName = "strategist.yaml"
 type externalSkillAdapter struct {
 	CanonicalRole  string                       `yaml:"canonical_role"`
 	Roles          []string                     `yaml:"roles,omitempty"`
+	Kind           domain.WeaponKind            `yaml:"kind"`
+	SupportedSlots []string                     `yaml:"supported_slots,omitempty"`
 	Capabilities   []string                     `yaml:"capabilities,omitempty"`
 	Lifecycle      bool                         `yaml:"lifecycle,omitempty"`
 	RiskScore      string                       `yaml:"risk_score"`
 	Category       string                       `yaml:"category"`
 	Default        bool                         `yaml:"default,omitempty"`
 	Runtime        domain.RankedRuntimeContract `yaml:"runtime,omitempty"`
+	Composition    *domain.WeaponComposition    `yaml:"composition,omitempty"`
 	AuxiliaryTools []string                     `yaml:"auxiliary_tools_allowed,omitempty"`
 	// ScratchRoot declares whether this weapon creates its own working/scratch
 	// files and, if so, that they belong in the runtime domain. Legal values:
@@ -93,13 +98,30 @@ func validateExternalSkillAdapter(packageID string, adapter externalSkillAdapter
 // validateAdapterDeclaration checks the adapter's routing/risk declaration and
 // scratch root.
 func validateAdapterDeclaration(packageID string, adapter externalSkillAdapter) error {
-	if (adapter.CanonicalRole == "" && len(adapter.Roles) == 0 && !adapter.Lifecycle) || adapter.RiskScore == "" {
-		return fmt.Errorf("external skill %s: %s must declare canonical_role/roles or lifecycle and risk_score", packageID, externalSkillAdapterFileName)
+	if len(adapter.Roles) == 0 || adapter.RiskScore == "" {
+		return fmt.Errorf("external skill %s: %s must declare roles and risk_score", packageID, externalSkillAdapterFileName)
 	}
-	if adapter.ScratchRoot != "" && adapter.ScratchRoot != "runtime" && adapter.ScratchRoot != "none" {
+	if !validAdapterKind(adapter.Kind) {
+		return fmt.Errorf("external skill %s: %s kind must be atomic or composite", packageID, externalSkillAdapterFileName)
+	}
+	if len(adapter.SupportedSlots) == 0 {
+		return fmt.Errorf("external skill %s: %s must declare supported_slots", packageID, externalSkillAdapterFileName)
+	}
+	if len(adapter.AuxiliaryTools) > 0 {
+		return fmt.Errorf("external skill %s: %s auxiliary_tools_allowed is legacy; declare Weapon composition instead", packageID, externalSkillAdapterFileName)
+	}
+	if !validScratchRoot(adapter.ScratchRoot) {
 		return fmt.Errorf("external skill %s: %s scratch_root must be \"runtime\" or \"none\", got %q", packageID, externalSkillAdapterFileName, adapter.ScratchRoot)
 	}
 	return nil
+}
+
+func validAdapterKind(kind domain.WeaponKind) bool {
+	return kind == domain.WeaponKindAtomic || kind == domain.WeaponKindComposite
+}
+
+func validScratchRoot(root string) bool {
+	return root == "" || root == "runtime" || root == "none"
 }
 
 // validateAdapterContracts checks the role references, weapon contract and
@@ -114,8 +136,16 @@ func validateAdapterContracts(packageID string, adapter externalSkillAdapter) er
 		return fmt.Errorf("external skill %s: %s: %w", packageID, externalSkillAdapterFileName, err)
 	}
 	adapter.Runtime = domain.NormalizeRankedRuntime(adapter.Runtime)
-	if err := adapter.Runtime.Validate(); err != nil {
+	if err := adapter.Runtime.ValidateActive(); err != nil {
 		return fmt.Errorf("external skill %s: %s runtime: %w", packageID, externalSkillAdapterFileName, err)
+	}
+	manifest := domain.WeaponManifest{
+		ID: packageID, Version: "external", Kind: adapter.Kind, Origin: domain.WeaponOriginEmbedded, Roles: adapter.Roles,
+		SupportedSlots: adapter.SupportedSlots, RiskScore: adapter.RiskScore,
+		Runtime: adapter.Runtime, Contract: adapter.WeaponContract, Composition: adapter.Composition,
+	}
+	if err := manifest.ValidateActive(); err != nil {
+		return fmt.Errorf("external skill %s: %s: %w", packageID, externalSkillAdapterFileName, err)
 	}
 	return nil
 }
@@ -128,5 +158,15 @@ func normalizeExternalSkillAdapter(adapter externalSkillAdapter) externalSkillAd
 		adapter.CanonicalRole = adapter.Roles[0]
 	}
 	adapter.Roles = normalizeRoles(adapter.Roles)
+	adapter.SupportedSlots = normalizeSlots(adapter.SupportedSlots)
 	return adapter
+}
+
+func normalizeSlots(slots []string) []string {
+	result := append([]string(nil), slots...)
+	for i := range result {
+		result[i] = strings.ToLower(strings.TrimSpace(result[i]))
+	}
+	sort.Strings(result)
+	return result
 }

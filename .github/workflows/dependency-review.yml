@@ -1,0 +1,35 @@
+name: Dependency Review
+
+on:
+  pull_request:
+
+# Deny by default; the job only reads the diff of the dependency graph.
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Fails a PR that adds or bumps a dependency with a known high/critical
+      # advisory or a strong-copyleft license (docs/adr/0052-cicd-enforcement-policy.md).
+      # Uses a deny list rather than an allow list on purpose: an allow list
+      # must enumerate every license of every existing Go and npm dependency
+      # and would fail on the first legitimate addition. Requires the
+      # repository's dependency graph to be enabled (default for public repos).
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
+        with:
+          fail-on-severity: high
+          deny-licenses: GPL-2.0-only, GPL-2.0-or-later, GPL-3.0-only, GPL-3.0-or-later, AGPL-3.0-only, AGPL-3.0-or-later

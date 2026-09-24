@@ -93,7 +93,7 @@ func minimalInstallExtractorContent() (map[string]string, error) {
 		"index.yaml":                          "load_always: []\nload_by_task_type: {}\n",
 		"templates/pragmatic-standalone.yaml": "mode: pragmatic\nbase_path: .analysis\n",
 		"templates/epic-standalone.yaml":      minimalEpicStandaloneYAML,
-		"plugins/catalog.yaml":                "schema_version: strategist-plugin-catalog/v1\nproviders: []\n",
+		"plugins/catalog.yaml":                "schema_version: strategist-plugin-catalog/v2\nproviders: []\n",
 		"leveling.yaml":                       string(leveling),
 	}, nil
 }

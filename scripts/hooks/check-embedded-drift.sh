@@ -8,7 +8,7 @@
 # Test knobs: STAGED_FILES (newline separated; default: the staged files) and
 # EMBED_CHECK_CMD (default: the real drift check).
 set -uo pipefail
-cd "$(dirname "$0")/../.."
+cd "$(dirname "$0")/../.." || exit 1
 
 staged="${STAGED_FILES-}"
 if [[ -z "${STAGED_FILES+x}" ]]; then

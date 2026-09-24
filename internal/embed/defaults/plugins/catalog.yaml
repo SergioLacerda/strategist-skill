@@ -1,4 +1,4 @@
-schema_version: strategist-plugin-catalog/v1
+schema_version: strategist-plugin-catalog/v2
 providers:
     - id: archivist
       risk_score: write_analysis
@@ -9,6 +9,8 @@ providers:
     - id: brainstorming
       version: 1.0.0
       provider_schema_version: "1"
+      kind: atomic
+      origin: embedded
       status: active
       risk_score: write_analysis
       category: discovery
@@ -17,16 +19,18 @@ providers:
         - ranger
       default: true
       ranked: true
-      certification_digest: sha256:0e1a2549c47847e3ad779deab356603aa6cff8b1d10aa3cb52848a0633cdcc4f
+      certification_digest: sha256:68367bd3fae882af6651556aef84faf803b48dbaa72e47a4379ffe5622f2750b
       ranked_binding_generation: 1
       ranked_binding_status: active
       host_api_digest: sha256:340602417915e4b7da5bff8b3b72e3d4013c9300b19d7d25962aa8db9840ea53
-      connector_digest: sha256:31d52406e48ac84143e74d45a9aff91f58d1416315ca334972f9ff8ebe491c69
+      connector_digest: sha256:c0d2a9db2e668f95a459b196d12e649994843dffc127a83346a70989361004c7
       test_suite_digest: sha256:ae9ea8e91ef985e4018a5c584174d5f7bcc2347d10821a3302a4638c4d863a42
       policy_digest: sha256:da69e2c49c45b15c3986ee480cc28964c700aa6ea653d57f9ef348185bd25f6f
       conformance_level: C1
       runtime:
-        kind: none
+        kind: embedded
+      supported_slots:
+        - discovery
       upstream_repo: obra/superpowers
       upstream_skill_path: skills/brainstorming/SKILL.md
       upstream_version: 6.3.0
@@ -49,10 +53,20 @@ providers:
     - id: openspec-archive-change
       version: "1.0"
       provider_schema_version: "1"
+      kind: atomic
+      origin: embedded
       status: active
       risk_score: write_analysis
       category: lifecycle
+      canonical_role: sniper
+      roles:
+        - sniper
       lifecycle: true
+      runtime:
+        kind: host
+        host_api: strategist-host-skill/v1
+      supported_slots:
+        - execution
       upstream_repo: Fission-AI/OpenSpec
       upstream_skill_path: skills/openspec-archive-change/SKILL.md
       upstream_version: 1.10.0
@@ -66,12 +80,19 @@ providers:
     - id: openspec-explore
       version: "1.0"
       provider_schema_version: "1"
+      kind: atomic
+      origin: embedded
       status: active
       risk_score: write_analysis
       category: discovery
       canonical_role: ranger
       roles:
         - ranger
+      runtime:
+        kind: host
+        host_api: strategist-host-skill/v1
+      supported_slots:
+        - discovery
       upstream_repo: Fission-AI/OpenSpec
       upstream_skill_path: skills/openspec-explore/SKILL.md
       upstream_version: 1.10.0
@@ -84,6 +105,8 @@ providers:
     - id: openspec-propose
       version: "1.0"
       provider_schema_version: "1"
+      kind: atomic
+      origin: embedded
       status: active
       risk_score: write_analysis
       category: refinement
@@ -96,7 +119,7 @@ providers:
       ranked_binding_generation: 1
       ranked_binding_status: active
       host_api_digest: sha256:e0898d3a756db1715ed1d8c32aa65c2026e8c78f2bfeed10d0f924f48e3344fc
-      connector_digest: sha256:31d52406e48ac84143e74d45a9aff91f58d1416315ca334972f9ff8ebe491c69
+      connector_digest: sha256:c0d2a9db2e668f95a459b196d12e649994843dffc127a83346a70989361004c7
       test_suite_digest: sha256:61bfd55e31ae3ae3501c5f5699e21e8c17873526a3b3ce8b7de2b47d946f1f92
       policy_digest: sha256:da69e2c49c45b15c3986ee480cc28964c700aa6ea653d57f9ef348185bd25f6f
       conformance_level: C1
@@ -107,6 +130,8 @@ providers:
         healthcheck: openspec context --json
         version: 1.13.0
         node_version: 22.23.2
+      supported_slots:
+        - refinement
       upstream_repo: Fission-AI/OpenSpec
       upstream_skill_path: skills/openspec-propose/SKILL.md
       upstream_version: 1.13.0
@@ -157,19 +182,27 @@ providers:
       ranked_binding_generation: 1
       ranked_binding_status: active
       host_api_digest: sha256:950a9a0f844beaa9ebcc9aa432040e65a06038dedac9f496692b420da163ebe4
-      connector_digest: sha256:31d52406e48ac84143e74d45a9aff91f58d1416315ca334972f9ff8ebe491c69
+      connector_digest: sha256:c0d2a9db2e668f95a459b196d12e649994843dffc127a83346a70989361004c7
       test_suite_digest: sha256:ab8013534d9373fcc289d338814f1fe1c860f57db9ad02d61f177de621c77557
       policy_digest: sha256:da69e2c49c45b15c3986ee480cc28964c700aa6ea653d57f9ef348185bd25f6f
       conformance_level: C1
       compatibility_source: native_role
     - id: writing-plans
+      version: 1.0.0
       provider_schema_version: "1"
+      kind: atomic
+      origin: embedded
       status: active
       risk_score: write_analysis
       category: auxiliary
-      canonical_role: auxiliary
+      canonical_role: archivist
       roles:
-        - auxiliary
+        - archivist
+      runtime:
+        kind: host
+        host_api: strategist-host-skill/v1
+      supported_slots:
+        - refinement
       upstream_repo: obra/superpowers
       upstream_skill_path: skills/writing-plans/SKILL.md
       upstream_version: 6.3.0

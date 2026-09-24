@@ -85,15 +85,16 @@ func TestVerifyEmbeddedWeaponBindings_SkipsSkillsWithoutCanonicalRole(t *testing
 	assert.False(t, found)
 }
 
-func TestVerifyEmbeddedWeaponBindings_SkipsAuxiliaryTools(t *testing.T) {
+func TestVerifyEmbeddedWeaponBindings_ReportsFormerAuxiliaryTools(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	writeWeaponFixture(t, root, "writing-plans", "auxiliary", "")
 
 	bindings, err := verifyEmbeddedWeaponBindings(root)
 	require.NoError(t, err)
-	_, found := findBinding(bindings, "writing-plans")
-	assert.False(t, found, "auxiliary tools must not be treated as mission role bindings")
+	binding, found := findBinding(bindings, "writing-plans")
+	assert.True(t, found, "every catalogued Weapon must receive an explicit binding result")
+	assert.Contains(t, binding.Reason, "role file missing")
 }
 
 func TestVerifyEmbeddedWeaponBindings_ValidPairing(t *testing.T) {

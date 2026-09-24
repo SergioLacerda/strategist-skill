@@ -19,6 +19,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v5
         with:
@@ -47,6 +49,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v5
         with:
@@ -71,7 +75,9 @@ jobs:
 
       # The blocking step above covers the packages that own the Windows runtime
       # behavior. This runs the whole tree so failures elsewhere are visible; it
-      # does not block until it has been green once (then drop continue-on-error).
+      # does not block until the promotion criteria hold (docs/adr/0052-cicd-enforcement-policy.md,
+      # decision 5): 30 consecutive green runs, zero unexplained failures, duration in budget.
+      # continue-on-error-catalog: owner=SergioLacerda reason=full Windows suite is evidence until the flakiness window is met remove-when=30 consecutive green runs with zero unexplained failures (then delete this line and make the step blocking)
       - name: Whole test tree (evidence, not yet blocking)
         shell: bash
         continue-on-error: true
@@ -83,6 +89,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v5
         with:
@@ -106,7 +114,7 @@ jobs:
         run: make coverage-badge
 
       - name: Upload coverage badge artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: coverage-badge
           path: |
@@ -131,6 +139,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v5
         with:
@@ -146,6 +156,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Fixture and schema validation
         run: make validate-fixtures
@@ -156,6 +168,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -172,6 +186,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v5
         with:
@@ -180,3 +196,63 @@ jobs:
 
       - name: Local release dry run
         run: make release-dry-run
+
+  # Static analysis of the CI itself (docs/adr/0052-cicd-enforcement-policy.md,
+  # decision 6). Not part of `lint`: these tools live outside the module graph,
+  # so they stay a separate job until they have a stable track record.
+  workflow-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v5
+        with:
+          go-version-file: "go.mod"
+          cache: true
+
+      - name: Install pinned workflow linters
+        run: |
+          make install-actionlint
+          make install-zizmor
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Workflow lint (actionlint, shellcheck, zizmor, release pin)
+        run: make workflow-lint
+        env:
+          # Enables zizmor's online audits (impostor commits, known-vulnerable actions).
+          GH_TOKEN: ${{ github.token }}
+
+  # Records per-job duration and outcome (and the Windows full-suite step's
+  # outcome) for every run: the data behind the promotion criteria in
+  # docs/adr/0052-cicd-enforcement-policy.md. Reporting only; never required.
+  ci-metrics:
+    needs: [lint, test-windows, test, security, validate, site-build, release-dry-run, workflow-lint]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Report job durations
+        run: bash scripts/report-job-durations.sh "${RUN_ID}" ci-metrics
+        env:
+          RUN_ID: ${{ github.run_id }}
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Upload job metrics
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ci-metrics
+          path: ci-metrics/
+          retention-days: 90
+

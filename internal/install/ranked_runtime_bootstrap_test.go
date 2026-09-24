@@ -28,7 +28,7 @@ func writeRankedRuntimeFixture(t *testing.T, root string, provider string, slot 
 	lockRaw, err := yaml.Marshal(lock)
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(filepath.Join(strategist, "plugins.lock"), lockRaw, 0o644))
-	catalog := pluginCatalog{SchemaVersion: "strategist-plugin-catalog/v1", Providers: []pluginCatalogProvider{{
+	catalog := pluginCatalog{SchemaVersion: "strategist-plugin-catalog/v2", Providers: []pluginCatalogProvider{{
 		ID: provider, RiskScore: "write_analysis", Ranked: true, CertificationDigest: "sha256:runtime-test", Runtime: runtime,
 	}}}
 	catalogRaw, err := yaml.Marshal(catalog)

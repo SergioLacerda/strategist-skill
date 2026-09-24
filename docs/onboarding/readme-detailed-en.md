@@ -293,7 +293,7 @@ INVOCATION
   │    2a. Loads .strategist/index.yaml → load_always files      │
   │    2b. Loads identity/what-i-am.yaml + drift-patterns.yaml   │
   │    2c. Resolves slot providers (roles/<config>.yaml)         │
-  │        skill_root → .claude/skills → registry                │
+  │        Ranked embedded payload, or Custom local-first roots   │
   │    2d. Validates risk contracts:                             │
   │        Ranger    → write_analysis                            │
   │        Archivist → write_analysis                            │
@@ -439,8 +439,12 @@ If found, loads only the files listed under `load_always`. No file outside the i
 
 **2c. Slot provider resolution**
 
-For each slot (discovery, refinement, execution), resolves the provider's `skill.yaml` from:
-`<skill_root>/skills/<provider>/skill.yaml` — single canonical path, no fallback chain.
+For each slot (discovery, refinement, execution), Ranked bindings use the
+certified embedded payload. Explicit Custom providers resolve their seed and
+entrypoint in this order: `./.agents/skills/<provider>`,
+`./.codex/skills/<provider>`, the host-provided global `.agents` root, then
+the host-provided global `.codex` root. A present but invalid local package
+blocks resolution; it never falls through to a global package.
 
 If no path resolves: emits a blocked event and stops.
 

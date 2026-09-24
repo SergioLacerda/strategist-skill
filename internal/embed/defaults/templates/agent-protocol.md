@@ -24,9 +24,9 @@ readiness — do not re-derive any of it narratively (e.g. do not separately
 ask "is `active.yaml` readable" or "are identity files present": both are
 already reflected in `warnings` if they matter). Route selection and role
 invocation remain internal Strategist responsibilities beyond this point.
-If a configured slot plugin or native role cannot be invoked, emit
-`error=role_invocation_failed` with the slot and provider id. The wire field name
-remains `provider` for backward compatibility.
+If the Weapon bound to a Role slot cannot be invoked, emit
+`error=role_invocation_failed` with the slot and Weapon id. The wire field name
+`provider` remains only for backward compatibility.
 
 ---
 
@@ -45,8 +45,8 @@ Correctness of the parent agent's independent answer does not repair the drift.
 
 ## 2. FORBIDDEN BEHAVIORS (NEVER DO)
 
-- Never perform discovery, refinement, or documentation materialization work directly — always invoke the designated slot plugin or native role
-- Never simulate role work by performing slot work in the Strategist shell — if the configured slot plugin or native role cannot be invoked, stop with `error=role_invocation_failed`
+- Never perform discovery, refinement, or documentation materialization work directly — the owning Role must invoke its bound Weapon through the host boundary
+- Never simulate Role work by performing slot work in the Strategist shell — if the configured Weapon cannot be invoked, stop with `error=role_invocation_failed`
 - Never invoke a Discovery Weapon outside Ranger's boundary — all discovery subtypes (`creative`, `evaluation`, `diagnostic`, `closure_evidence`) resolve to native `internal_skills/ranger`, which must invoke the configured Discovery Weapon through the host boundary and normalize its untrusted result. Ranger is never replaced by the Weapon, and Ranger never silently substitutes a native result when the selected Weapon fails (see §3 Discovery Routing).
 - Never read from `strategist/` (without dot) — path drift; only `.strategist/` is valid at runtime
 - Never skip phases — there is no "this task is too small to need discovery"
@@ -77,11 +77,11 @@ targets slot plugins. If `active.yaml` changes, run `strategist compile` to
 update this file.
 
 ```
-PHASE         INVOKE SKILL                              WHAT NOT TO DO
+PHASE         INVOKE WEAPON                             WHAT NOT TO DO
 ─────────────────────────────────────────────────────────────────────────────
-discovery  →  see Discovery Routing below                explore or analyze the code directly
-refinement →  {{.Slots.Refinement}} (see Refinement Routing below)  write proposals or designs directly
-execution  →  {{.Slots.Execution}}                        run git/edits/commits directly
+discovery  →  Ranger → {{.Slots.Discovery}}               explore or analyze the code directly
+refinement →  Archivist → {{.Slots.Refinement}}            write proposals or designs directly
+execution  →  Sniper → {{.Slots.Execution}}               run git/edits/commits directly
 ```
 
 ### Discovery Routing
@@ -92,27 +92,24 @@ or on `active.slots.discovery` (see `00-routing.md` § Scout — Intake Router a
 
 | `discovery_subtype` | Invoke | Kind |
 |---|---|---|
-| `creative` \| `evaluation` \| `diagnostic` \| `closure_evidence` | `internal_skills/ranger` → configured `{{.Slots.Discovery}}` Weapon | `native_role` owns the boundary; the selected Weapon supplies required untrusted input through the host connector |
+| `creative` \| `evaluation` \| `diagnostic` \| `closure_evidence` | `internal_skills/ranger` → configured `{{.Slots.Discovery}}` Weapon | `native_role` owns the boundary; Ranked uses the embedded connector, Custom uses its explicitly selected host connector |
 
 This holds for every `discovery_subtype`: Ranger remains the authority, while
-`active.slots.discovery` selects the required Weapon that Ranger invokes through
-the host boundary. The parent agent never invokes the Weapon directly, and a
-missing, incompatible, or failed Weapon produces `role_invocation_failed`
-without a native fallback. See `03-discovery.md` § Discovery Subtypes.
+`active.slots.discovery` selects the required Weapon. The parent agent never
+invokes the Weapon directly, and a missing, incompatible, or failed Weapon
+produces `role_invocation_failed` without a native fallback. See
+`03-discovery.md` § Discovery Subtypes.
 
 ### Refinement Routing
 
-Whenever the refinement slot is bound to an external skill plugin (default:
-`{{.Slots.Refinement}}` — see `active.slots.refinement`), the parent agent
-embodies that plugin's declared canonical role before invoking the plugin's own
-CLI/tooling — the same mechanism already used for discovery/Ranger above and for
-execution/Sniper. Read the plugin's `skills/<provider>/skill.yaml#canonical_role`
-(a `refinement`-category plugin declares `canonical_role: archivist`) and load
-`roles/archivist.yaml` for that role's canonical abilities before acting.
+Whenever the refinement slot is bound to an external Weapon (default:
+`{{.Slots.Refinement}}` — see `active.slots.refinement`), Archivist invokes the
+Weapon's declared runtime connector. Read `skills/<weapon>/skill.yaml#roles`
+and load `roles/archivist.yaml` for the Role contract before acting.
 
 In particular, apply `roles/archivist.yaml#canonical.resolve_weapon_scratch_root`:
-read the bound plugin's `skill.yaml#scratch_root`, and when it is `runtime`, run
-the plugin's CLI with `.strategist/weapon-runtime/<provider_id>/` as its working
+read the bound Weapon's `skill.yaml#scratch_root`, and when it is `runtime`, run
+the Weapon's CLI with `.strategist/weapon-runtime/<weapon_id>/` as its working
 directory — never the host repository root — before invoking it. A plugin's own
 root-autodetection (e.g. walking up from the working directory for a project
 marker) will silently initialize a new root wherever it is invoked from if this

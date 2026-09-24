@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/stretchr/testify/require"
 )
 
@@ -50,7 +51,7 @@ func TestBuildRoleInvocationPlan_ResolvesRankedBindingFromCatalog(t *testing.T) 
     installed_instance_id: openspec-propose
 `)
 	writeRankedCatalogFile(t, root, `
-schema_version: strategist-plugin-catalog/v1
+schema_version: strategist-plugin-catalog/v2
 providers:
   - id: brainstorming
     canonical_role: ranger
@@ -69,6 +70,31 @@ providers:
 	if plan.WeaponDigest != "sha256:1111111111111111111111111111111111111111111111111111111111111111" {
 		t.Fatalf("plan.WeaponDigest = %q, want the catalog certification digest", plan.WeaponDigest)
 	}
+}
+
+func TestBuildRoleInvocationPlan_EmbeddedRankedBindingNeedsNoRuntimeState(t *testing.T) {
+	root := writeValidationRoot(t, `
+  - slot: discovery
+    installed_instance_id: brainstorming
+    mode: ranked
+    generation: 1
+    status: active
+`)
+	writeRankedCatalogFile(t, root, `
+schema_version: strategist-plugin-catalog/v2
+providers:
+  - id: brainstorming
+    canonical_role: ranger
+    roles: [ranger]
+    ranked: true
+    certification_digest: sha256:embedded
+    runtime:
+      kind: embedded
+`)
+
+	plan, err := BuildRoleInvocationPlan(root, "discovery")
+	require.NoError(t, err)
+	require.Equal(t, domain.RankedRuntimeEmbedded, plan.Runtime.Kind)
 }
 
 func TestBuildRoleInvocationPlan_RankedBindingNotInCatalogErrors(t *testing.T) {
@@ -94,7 +120,7 @@ func TestBuildRoleInvocationPlan_ArchivistRequiresPreparedRuntime(t *testing.T) 
     status: active
 `)
 	writeRankedCatalogFile(t, root, `
-schema_version: strategist-plugin-catalog/v1
+schema_version: strategist-plugin-catalog/v2
 providers:
   - id: openspec-propose
     canonical_role: archivist

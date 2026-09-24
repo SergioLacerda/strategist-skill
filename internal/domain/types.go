@@ -24,10 +24,8 @@ type ActiveConfig struct {
 	ExecutionMode      string            `yaml:"execution_mode,omitempty"`
 	GitPersistenceMode string            `yaml:"git_persistence_mode,omitempty"`
 	Slots              map[string]string `yaml:"slots"`
-	// ProviderResolutionPolicy governs what happens when a configured skill_provider
-	// slot passes static `strategist check` validation but a compatible native role
-	// also exists — see ResolutionPolicy and docs/adr/0028-native-role-resilient-baseline.md.
-	// Omitted or empty is valid and means EffectivePolicy() applies DefaultResolutionPolicy.
+	// ProviderResolutionPolicy is retained only to detect stale installations.
+	// Active routing never applies it; non-empty values are rejected below.
 	ProviderResolutionPolicy ResolutionPolicy `yaml:"provider_resolution_policy,omitempty"`
 	// Leveling is the optional operator choice between manual and automatic
 	// model x effort per role. Absent means automatic.
@@ -144,6 +142,9 @@ func (c ActiveConfig) Validate() error {
 	errs = append(errs, validateActiveConfigSlots(c.Slots)...)
 	if err := c.ProviderResolutionPolicy.Validate(); err != nil {
 		errs = append(errs, err.Error())
+	}
+	if c.ProviderResolutionPolicy != "" {
+		errs = append(errs, "provider_resolution_policy is retired; remove it from active.yaml")
 	}
 	if err := c.Leveling.Validate(); err != nil {
 		errs = append(errs, err.Error())

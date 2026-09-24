@@ -142,7 +142,7 @@ bindings:
     status: enabled
 `), 0o644))
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "plugins"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "plugins", "catalog.yaml"), []byte(`schema_version: strategist-plugin-catalog/v1
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "plugins", "catalog.yaml"), []byte(`schema_version: strategist-plugin-catalog/v2
 providers:
   - id: brainstorming
     canonical_role: ranger
@@ -197,7 +197,7 @@ bindings:
     status: enabled
 `), 0o644))
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "plugins"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "plugins", "catalog.yaml"), []byte(`schema_version: strategist-plugin-catalog/v1
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "plugins", "catalog.yaml"), []byte(`schema_version: strategist-plugin-catalog/v2
 providers:
   - id: openspec-propose
     canonical_role: archivist
@@ -241,7 +241,7 @@ func TestBindingIsRanked(t *testing.T) {
 func TestRankedCertificationReadiness_BlocksWhenNotCertified(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "plugins"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "plugins", "catalog.yaml"), []byte(`schema_version: strategist-plugin-catalog/v1
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "plugins", "catalog.yaml"), []byte(`schema_version: strategist-plugin-catalog/v2
 providers:
   - id: brainstorming
     canonical_role: ranger

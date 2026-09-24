@@ -1,6 +1,7 @@
 package check
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -22,6 +23,9 @@ func customRuntimeReadiness(root, slot, provider string) domain.ReadinessCheck {
 		return notEvaluated
 	}
 	stamp, ok, err := domain.FindCatalogRankedStamp(raw, provider)
+	if errors.Is(err, domain.ErrLegacyWeaponState) {
+		return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: "ranked_catalog_invalid", Detail: err.Error()}
+	}
 	if err != nil || !ok {
 		return notEvaluated
 	}

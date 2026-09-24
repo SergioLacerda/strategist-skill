@@ -205,7 +205,7 @@ func TestRunWizardBlocksUnresolvedPluginPlanWhenCatalogExists(t *testing.T) {
 	t.Parallel()
 
 	ext := wizardCatalogExtractor{catalog: []byte(`
-schema_version: strategist-plugin-catalog/v1
+schema_version: strategist-plugin-catalog/v2
 providers:
   - id: brainstorming
     risk_score: write_analysis

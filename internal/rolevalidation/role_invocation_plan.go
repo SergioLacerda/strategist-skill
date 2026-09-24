@@ -82,7 +82,7 @@ func resolveRankedRoleInvocationPlan(root, role, slot string, binding domain.Slo
 }
 
 func validateRankedRuntime(root string, plan domain.RoleInvocationPlan) error {
-	if plan.Runtime.Kind == domain.RankedRuntimeNone {
+	if plan.Runtime.Kind == domain.RankedRuntimeNone || plan.Runtime.Kind == domain.RankedRuntimeEmbedded {
 		return nil
 	}
 	state, err := readRankedRuntimeState(root, plan)

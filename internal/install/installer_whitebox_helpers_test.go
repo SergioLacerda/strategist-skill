@@ -112,7 +112,7 @@ func writeMinimalExtractorLeveling(targetDir string) error {
 // successfully test) must serve a loadable catalog rather than relying on
 // the removed silent fallback. TestRunWizardBlocksOnUnreadableCatalog
 // (wizard_test.go) covers the failure path directly, with its own extractor.
-const minimalCatalogYAML = `schema_version: strategist-plugin-catalog/v1
+const minimalCatalogYAML = `schema_version: strategist-plugin-catalog/v2
 providers:
   - id: archivist
     risk_score: write_analysis

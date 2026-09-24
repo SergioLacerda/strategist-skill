@@ -74,12 +74,10 @@ func TestEmbeddedDefaults_BaselineWeaponRosterIsAlwaysEmbedded(t *testing.T) {
 	}
 }
 
-// TestEmbeddedDefaults_RequestedAuxiliaryOptionsAreAlwaysEmbedded protects
-// the two additional built-in options requested for the standalone catalog.
-// They are catalog entries and complete payload mirrors, but writing-plans is
-// auxiliary-only and archive remains a lifecycle utility; neither may be
-// promoted into a mission slot by inference.
-func TestEmbeddedDefaults_RequestedAuxiliaryOptionsAreAlwaysEmbedded(t *testing.T) {
+// TestEmbeddedDefaults_AdditionalWeaponsAreAlwaysEmbedded protects the two
+// additional source packages. They are complete Weapon entries; their
+// lifecycle/capability history does not create a second auxiliary taxonomy.
+func TestEmbeddedDefaults_AdditionalWeaponsAreAlwaysEmbedded(t *testing.T) {
 	t.Parallel()
 
 	raw, err := embedpkg.Extractor{}.ReadFile("plugins/catalog.yaml")
@@ -95,8 +93,8 @@ func TestEmbeddedDefaults_RequestedAuxiliaryOptionsAreAlwaysEmbedded(t *testing.
 		id            string
 		canonicalRole string
 	}{
-		{"writing-plans", "auxiliary"},
-		{"openspec-archive-change", ""},
+		{"writing-plans", "archivist"},
+		{"openspec-archive-change", "sniper"},
 	} {
 		entry, found := byID[want.id]
 		require.Truef(t, found, "requested option %q must be present in embedded catalog", want.id)

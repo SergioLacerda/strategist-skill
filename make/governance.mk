@@ -1,6 +1,14 @@
 .PHONY: \
 	analysis-structure-gate docs-governance-gate docs-generated-gate docs-links-gate docs-index-ownership-gate governance-check \
-	convergence-check contract-consistency-gate hooks-install
+	convergence-check contract-consistency-gate hooks-install \
+	workflow-catalog-gate
+
+# workflow-catalog-gate fails when a workflow uses `continue-on-error: true`
+# without an owner/reason/removal-condition catalog comment, and runs the
+# script's own tests against throwaway fixtures.
+workflow-catalog-gate:
+	bash scripts/check-continue-on-error.sh
+	bash scripts/test-check-continue-on-error.sh
 
 hooks-install:
 	bash .github/setup-precommit-hook.sh

@@ -83,27 +83,10 @@ func resolveExternalSkill(dir string) (IngestedSkill, error) {
 
 func validateIngestedSkillContract(pkg domain.PluginPackage, adapter externalSkillAdapter) error {
 	roles := append([]string(nil), adapter.Roles...)
-	slots := make([]string, 0, len(roles))
-	for _, role := range roles {
-		switch role {
-		case "ranger":
-			slots = append(slots, "discovery")
-		case "archivist":
-			slots = append(slots, "refinement")
-		case "sniper":
-			slots = append(slots, "execution")
-		case "auxiliary":
-			// Auxiliary tools are catalogued for explicit dependency
-			// resolution, but are never eligible for a mission slot binding.
-			slots = append(slots, "auxiliary")
-		}
-	}
-	if adapter.Lifecycle && len(slots) == 0 {
-		slots = []string{"discovery", "refinement", "execution"}
-	}
+	slots := append([]string(nil), adapter.SupportedSlots...)
 	capabilities := append([]string(nil), adapter.Capabilities...)
 	if len(capabilities) == 0 {
-		capabilities = []string{"role." + adapter.CanonicalRole}
+		capabilities = []string{"role." + roles[0]}
 	}
 	contract := domain.NewSkillPackageContract(pkg, domain.AdapterContract{
 		SupportedRoles: roles, SupportedSlots: slots, SupportedHandoffSchemas: adapter.SupportedHandoffSchemas,

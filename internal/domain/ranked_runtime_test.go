@@ -112,6 +112,19 @@ func TestOpenSpecRuntimeRootValidation(t *testing.T) {
 	require.NoError(t, contract(".strategist/a/openspec").Validate())
 }
 
+func TestEmbeddedSkillRuntimeIsInProcessAndRejectsExternalFields(t *testing.T) {
+	require.NoError(t, (RankedRuntimeContract{Kind: RankedRuntimeEmbedded}).Validate())
+	require.NoError(t, (RankedRuntimeContract{Kind: RankedRuntimeEmbedded}).ValidateActive())
+
+	for name, runtime := range map[string]RankedRuntimeContract{
+		"host api":   {Kind: RankedRuntimeEmbedded, HostAPI: "strategist-host-skill/v1"},
+		"entrypoint": {Kind: RankedRuntimeEmbedded, Entrypoint: "discover"},
+		"root":       {Kind: RankedRuntimeEmbedded, Root: ".strategist/brainstorming"},
+	} {
+		t.Run(name, func(t *testing.T) { require.Error(t, runtime.Validate()) })
+	}
+}
+
 // The catalog declares the root with forward slashes. On Windows the native
 // separator form must be judged the same way, not rejected by a raw
 // filepath.Clean comparison; on other platforms a backslash is a literal

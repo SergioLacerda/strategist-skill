@@ -145,6 +145,15 @@ func TestRankedRuntimeReadinessReportsRuntimeNotRequired(t *testing.T) {
 	require.Equal(t, "ranked_runtime_not_required", result.ReasonCode)
 }
 
+func TestRankedRuntimeReadinessAcceptsEmbeddedSkillWithoutRuntimeState(t *testing.T) {
+	result := rankedRuntimeReadiness(t.TempDir(), "discovery", "brainstorming", domain.CatalogRankedStamp{
+		Runtime: domain.RankedRuntimeContract{Kind: domain.RankedRuntimeEmbedded},
+	})
+
+	require.Equal(t, domain.ReadinessReady, result.Status)
+	require.Equal(t, "ranked_embedded_runtime_ready", result.ReasonCode)
+}
+
 func TestLiveHostAPIDigestFallsBackAndComputesMaterializedContract(t *testing.T) {
 	root := t.TempDir()
 	const fallback = "sha256:fallback"
@@ -175,7 +184,7 @@ func TestRankedCertificationReadinessReportsInvalidCatalogAndMissingRuntimeState
 	require.Equal(t, domain.ReadinessUnknown, runtimeCheck.Status, "no runtime verdict without a certified provider")
 
 	const digest = "sha256:certified"
-	require.NoError(t, os.WriteFile(filepath.Join(plugins, "catalog.yaml"), []byte(`schema_version: strategist-plugin-catalog/v1
+	require.NoError(t, os.WriteFile(filepath.Join(plugins, "catalog.yaml"), []byte(`schema_version: strategist-plugin-catalog/v2
 providers:
   - id: provider
     ranked: true
@@ -463,7 +472,7 @@ func writeRuntimeCatalog(t *testing.T, root string, withRuntime bool) {
 	if withRuntime {
 		runtimeBlock = "    runtime:\n      kind: openspec_root\n      root: .strategist/openspec\n      bootstrap: openspec init --profile core\n      healthcheck: openspec context --json\n"
 	}
-	body := "schema_version: strategist-plugin-catalog/v1\nproviders:\n  - id: provider\n    ranked: true\n    certification_digest: sha256:certified\n" + runtimeBlock
+	body := "schema_version: strategist-plugin-catalog/v2\nproviders:\n  - id: provider\n    ranked: true\n    certification_digest: sha256:certified\n" + runtimeBlock
 	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins", "catalog.yaml"), []byte(body), 0o644))
 }
 

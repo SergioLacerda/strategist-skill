@@ -2,6 +2,7 @@
 	install release-verify release-check install-goreleaser \
 	check-release-artifacts check-release-assets release-reproducible-check \
 	release-test release-dry-run release snapshot clean compile-skill \
+	release-tag-check release-tag-test release-script-test check-release-binaries verify-published-release \
 	embed-skills embed-skills-check build-standalone standalone-smoke install-lite doctor install-hooks
 
 # install puts a standalone binary in ~/.local/bin. It embeds the OpenSpec
@@ -39,6 +40,34 @@ embed-skills-check: build
 
 release-verify: ci-lint ci-test docs-governance-gate validate-fixtures vuln-ci release-reproducible-check embed-skills-check
 
+# release-tag-check fails unless TAG is an annotated vX.Y.Z tag whose commit is
+# reachable from origin/main (see scripts/check-release-tag.sh). The release
+# workflow runs it first in the verify job; locally: make release-tag-check TAG=v1.2.3
+release-tag-check:
+	bash scripts/check-release-tag.sh "$(TAG)" "$(or $(MAIN_REF),origin/main)"
+
+# release-tag-test exercises that check against throwaway repositories.
+release-tag-test:
+	bash scripts/test-check-release-tag.sh
+
+# release-script-test exercises the post-build / post-publish verification scripts
+# against fixtures and stubbed gh/cosign (no network, nothing published).
+release-script-test:
+	bash scripts/test-check-release-binaries.sh
+	bash scripts/test-verify-published-release.sh
+
+# check-release-binaries proves the built artifacts: checksums match SHA256SUMS
+# and the host binary runs with its embedded runtime. Pass VERSION=x.y.z to also
+# require that exact embedded version (a snapshot embeds SNAPSHOT and shows Vdev).
+check-release-binaries:
+	bash scripts/check-release-binaries.sh dist/published.tsv dist/SHA256SUMS $(VERSION)
+
+# verify-published-release proves an already-published GitHub Release: checksums,
+# embedded version == tag, cosign bundles, build attestations and the SBOM.
+# Needs gh, cosign and python3; used by the release workflow after publishing.
+verify-published-release:
+	bash scripts/verify-published-release.sh "$(TAG)" dist/published.tsv
+
 # release-check validates the GoReleaser config before a tag-triggered release.
 release-check:
 	"$(GORELEASER)" check
@@ -65,7 +94,7 @@ release-reproducible-check:
 	bash scripts/check-reproducible-build.sh "$(GOCACHE)"
 
 # release-test validates release config and local snapshot artifacts without publishing.
-release-test: release-check snapshot check-release-artifacts
+release-test: release-check snapshot check-release-artifacts check-release-binaries
 
 release-dry-run: install-goreleaser release-test
 

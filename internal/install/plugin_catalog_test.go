@@ -65,7 +65,7 @@ func TestLoadKnownProvidersPrefersPluginCatalog(t *testing.T) {
 	t.Parallel()
 
 	got := loadKnownProviders(catalogOnlyExtractor{catalog: []byte(`
-schema_version: strategist-plugin-catalog/v1
+schema_version: strategist-plugin-catalog/v2
 providers:
   - id: zeta
     risk_score: controlled
@@ -80,7 +80,7 @@ func TestResolveInstallableDefaultProvidersPrefersPluginCatalog(t *testing.T) {
 	t.Parallel()
 
 	got, err := resolveInstallableDefaultProviders(catalogOnlyExtractor{catalog: []byte(`
-schema_version: strategist-plugin-catalog/v1
+schema_version: strategist-plugin-catalog/v2
 providers:
   - id: alpha
     risk_score: write_analysis
@@ -96,7 +96,7 @@ providers:
 
 func TestPluginCatalogRejectsUnverifiedRoleAffinity(t *testing.T) {
 	_, err := parseCatalogBytes([]byte(`
-schema_version: strategist-plugin-catalog/v1
+schema_version: strategist-plugin-catalog/v2
 providers:
   - id: draft-role-weapon
     risk_score: write_analysis
@@ -123,7 +123,7 @@ func TestProviderManifestBytesUsesPluginCatalog(t *testing.T) {
 	t.Parallel()
 
 	data, err := providerManifestBytes(catalogOnlyExtractor{catalog: []byte(`
-schema_version: strategist-plugin-catalog/v1
+schema_version: strategist-plugin-catalog/v2
 providers:
   - id: alpha
     version: "1.0.0"

@@ -28,11 +28,29 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # Full history and every tag: the tag check needs origin/main and the
+          # real tag object (a checkout by SHA can otherwise flatten an annotated
+          # tag into a lightweight ref).
+          fetch-depth: 0
+
+      # First, before the expensive gates: the tag must be a vX.Y.Z annotated tag
+      # on a commit reachable from main, so a tag pushed on a side branch or a
+      # lightweight tag never reaches publishing.
+      - name: Verify release tag (annotated, reachable from main)
+        run: |
+          set -euo pipefail
+          git fetch --force --tags origin
+          git fetch origin +refs/heads/main:refs/remotes/origin/main
+          bash scripts/check-release-tag.sh "${GITHUB_REF_NAME}"
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v5
         with:
           go-version-file: "go.mod"
-          cache: true
+          # No dependency cache in a workflow that publishes signed artifacts: a
+          # poisoned cache entry must not be able to reach a release build.
+          cache: false
 
       - name: Local release verify
         run: make release-verify
@@ -49,8 +67,7 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: web/landing/package-lock.json
+          package-manager-cache: false   # no cache in the publishing workflow
 
       - name: Local web gates
         run: make ci-web
@@ -67,12 +84,15 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           fetch-depth: 0
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v5
         with:
           go-version-file: "go.mod"
-          cache: true
+          # No dependency cache in a workflow that publishes signed artifacts: a
+          # poisoned cache entry must not be able to reach a release build.
+          cache: false
 
       - name: Verify no pre-existing release for this tag
         # A GitHub Release created by hand (e.g. via the web UI) before this
@@ -94,7 +114,9 @@ jobs:
         uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
           distribution: goreleaser
-          version: "~> v2"
+          # Same version the release-dry-run job installs (GORELEASER_VERSION in
+          # the Makefile) — keep the two in step so a dry run proves the real release.
+          version: "v2.12.2"
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -170,5 +192,13 @@ jobs:
         # said it published, plus its signature bundle and the checksum file,
         # is actually retrievable from the GitHub Release.
         run: make check-release-assets TAG="${GITHUB_REF_NAME}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Beyond presence: download the published assets and prove them. Checksums,
+      # the linux binary's embedded version == the tag, every cosign bundle and
+      # GitHub attestation for this repository's release workflow, and the SBOM.
+      - name: Verify published release signatures, attestations and version
+        run: make verify-published-release TAG="${GITHUB_REF_NAME}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
