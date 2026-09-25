@@ -41,25 +41,14 @@ machine:
     bootstrap:   [machine/bootstrap.yaml, machine/keen-senses.yaml]
     intake:      [machine/intake.yaml, machine/scout-routing.yaml]
     discovery:   [machine/opportunity-attack.yaml]
-    refinement:  [machine/opportunity-attack.yaml, machine/handoff-contract.yaml, machine/mission-quality.yaml, machine/provider-fallback.yaml]
+    refinement:  [machine/opportunity-attack.yaml, machine/handoff-contract.yaml, machine/mission-quality.yaml]
     gate:        [machine/approval-gate.yaml, machine/confidence-governance.yaml, machine/riposte.yaml, machine/mission-quality.yaml]
     # riposte.yaml also fires at mission close (sq_backlog drain) — response phase:
     response:    [machine/riposte.yaml]
-    execution:   [machine/compliance-summary.yaml, machine/provider-fallback.yaml]
+    execution:   [machine/compliance-summary.yaml]
     adr:         [machine/adr.yaml]
     learning:    [machine/learning-curator.yaml, machine/learning-buffer.yaml]
     critical_hit: [machine/critical-hit.yaml]
-    # Superseded, not merely dormant: runbook-opportunity.yaml's signal
-    # semantics already migrated into opportunity-attack.yaml's
-    # activation_criteria.runbook_worthy / on_runbook_criteria_met (loaded
-    # live at refinement/gate) — see
-    # .analysis/refined/20260803-runbook-domain-and-cutover/analysis.md for
-    # the side-by-side comparison. "dormant" is not a real mission phase and
-    # this key is never loaded by the phase-loading procedure in
-    # agent-protocol.md — it exists only so
-    # TestContractIndexReferencesAllMachineContracts does not flag the file
-    # as orphaned.
-    dormant:     [machine/runbook-opportunity.yaml]
     compile:
       - machine/compile-all.yaml
       - machine/compile-config.yaml
@@ -80,3 +69,9 @@ machine:
     # blocked state — not tied to a single pipeline phase.
     errors:
       - machine/errors.yaml
+    # Mechanisms registry: the catalog of tools available to agents in a mission. It is
+    # NOT loaded by the phase-loading procedure and is not in always_load (M005 token
+    # economy): each role gets a role-scoped brief at phase start through its on_start
+    # hook (`strategist mechanisms brief --role {role}`), which reads this one file.
+    registry:
+      - machine/mechanisms.yaml

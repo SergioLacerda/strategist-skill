@@ -1,14 +1,14 @@
 role: sniper
 slot: execution
 origin: native
-extensibility: fixed
+extensibility: pluggable      # ranked `sniper` binding is the default; a custom Weapon only on explicit user choice (documentation-only, bind-time checked)
 phase: 4                        # the approval gate is step 3, immediately before this role
-pluggable: false               # native role today; no external provider
 on_start:                       # run when this role's phase starts; {role} and {mission_id} are substituted.
                                  # --host-model/--host-effort are a literal reminder to fill in with the
                                  # actual running model/effort — the CLI cannot infer them, and omitting
                                  # them silently returns blank fields.
   - strategist leveling label --role {role} --mission {mission_id} --host-model <your-model> --host-effort <your-effort>
+  - strategist mechanisms brief --role {role}   # the tools (Mechanisms and Abilities) available to this role
 # leveling: sniper
 
 # INITIATIVE is advisory metadata only; Approval Gate acceptance remains

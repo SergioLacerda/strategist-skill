@@ -18,8 +18,9 @@ type RoleConfig struct {
 	CustomBrief   string            `yaml:"custom_brief"`
 	// Phase is the role's checkpoint position (0 is pre-pipeline).
 	Phase int `yaml:"phase,omitempty"`
-	// Pluggable records whether an external provider may fill the role; nil means
-	// unspecified (legacy files), which still requires a slot.
+	// Pluggable exists only to detect the removed boolean `pluggable` key so a role
+	// file that still carries it is rejected with a message naming `extensibility`
+	// (see taxonomyErrors); nothing reads its value.
 	Pluggable *bool `yaml:"pluggable,omitempty"`
 	// Leveling names the LEVELING policy role to use; empty means the role id.
 	Leveling string `yaml:"leveling,omitempty"`
@@ -62,8 +63,8 @@ func (r RoleConfig) Validate() error {
 	return fmt.Errorf("role config invalid: %s", strings.Join(errs, "; "))
 }
 
-// taxonomyErrors reports invalid origin/extensibility values and a legacy
-// pluggable flag that contradicts an explicit extensibility.
+// taxonomyErrors reports invalid origin/extensibility values and the removed
+// boolean `pluggable` key.
 func (r RoleConfig) taxonomyErrors() []string {
 	var errs []string
 	if err := r.EffectiveOrigin().Validate(); err != nil {
@@ -73,8 +74,8 @@ func (r RoleConfig) taxonomyErrors() []string {
 	if err := extensibility.Validate(); err != nil {
 		errs = append(errs, err.Error())
 	}
-	if r.Extensibility != "" && r.Pluggable != nil && *r.Pluggable != extensibility.IsPluggable() {
-		errs = append(errs, "pluggable conflicts with extensibility")
+	if r.Pluggable != nil {
+		errs = append(errs, "the `pluggable` key was removed; declare `extensibility: fixed|pluggable`")
 	}
 	return errs
 }
@@ -87,9 +88,8 @@ func (r RoleConfig) slotError() string {
 		}
 		return fmt.Sprintf("slot %q is not one of %s", r.Slot, requiredSlotList)
 	}
-	// Legacy files without either taxonomy field must still make the
-	// slotless/fixed decision explicit.
-	if r.Extensibility == "" && r.Pluggable == nil {
+	// A slotless role must make the fixed decision explicit.
+	if r.Extensibility == "" {
 		return "slot is required or extensibility: fixed must be explicit"
 	}
 	if r.EffectiveExtensibility().IsPluggable() {
@@ -107,14 +107,11 @@ func (r RoleConfig) EffectiveOrigin() RoleOrigin {
 	return r.Origin
 }
 
-// EffectiveExtensibility returns the canonical extensibility. The old
-// pluggable pointer remains a compatibility input only.
+// EffectiveExtensibility returns the declared extensibility, or fixed when a
+// role file declares none.
 func (r RoleConfig) EffectiveExtensibility() RoleExtensibility {
 	if r.Extensibility != "" {
 		return r.Extensibility
-	}
-	if r.Pluggable != nil && *r.Pluggable {
-		return RoleExtensibilityPluggable
 	}
 	return RoleExtensibilityFixed
 }

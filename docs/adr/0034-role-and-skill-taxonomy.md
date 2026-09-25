@@ -3,6 +3,7 @@
 **Status:** Accepted
 **Date:** 2026-09-13
 **Mission:** `20260913-role-skill-weapon-taxonomy`
+**Amended by:** [ADR-0053](0053-taxonomy-classification-criterion-and-sniper-extensibility.md) (§1 Sniper extensibility, §4 INITIATIVE wording, §5 family nomenclature)
 
 ## Context
 

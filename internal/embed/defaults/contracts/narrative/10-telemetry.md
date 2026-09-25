@@ -11,9 +11,9 @@ contract: null
 Keep the human narrative and the structured telemetry aligned.
 
 Telemetry uses the canonical taxonomy without collapsing families: `role` and
-`provider` identify Role and Weapon context, `ability` identifies reusable
-mission behavior, `route` identifies Scout's selected Route, and `artifact`
-identifies the materialized Artifact. Pipeline Services and Mechanisms are
+`provider` identify Role and Weapon context, `ability` names the mission behavior (an Ability or a hybrid item), `route`
+identifies the Pipeline path Scout selected, and `artifact`
+identifies the generated Artifact. Pipeline stages and Mechanisms are
 described by their event/component contracts; they are not emitted as Roles or
 providers. LEVELING fields record the immutable resolver snapshot consumed by
 INITIATIVE and never imply execution authorization.

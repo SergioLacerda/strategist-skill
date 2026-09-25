@@ -36,7 +36,7 @@ func TestExternalSkillAdapterRejectsUnverifiedRoleAffinity(t *testing.T) {
 		Kind:           domain.WeaponKindAtomic,
 		SupportedSlots: []string{"discovery"},
 		RiskScore:      "write_analysis",
-		Runtime:        domain.RankedRuntimeContract{Kind: domain.RankedRuntimeHost, HostAPI: "strategist-host-skill/v1"},
+		Runtime:        domain.WeaponRuntime{Kind: domain.RankedRuntimeHost, HostAPI: "strategist-host-skill/v1"},
 	})
 	require.ErrorContains(t, err, "not approved for activation")
 }

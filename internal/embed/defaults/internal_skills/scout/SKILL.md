@@ -60,4 +60,7 @@ classification question, you have crossed into Ranger territory — select
 ## Completion
 
 1. Emit one `route_decision` conforming to `schemas/scout-route-decision.schema.yaml`.
-2. Emit: `scout: done | selected_route: <route> | mission_status: route_selected`
+2. Record it: pipe the `route_decision` JSON to `strategist mission route --mission-id <mission_id>`.
+   The execution boundary reads it back; without it the mission is held to the
+   `full_pipeline` evidence regime.
+3. Emit: `scout: done | selected_route: <route> | mission_status: route_selected`

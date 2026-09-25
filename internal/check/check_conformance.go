@@ -14,14 +14,22 @@ import (
 // invocation: that evidence belongs to the connector dimension and remains
 // unknown/unsupported when the host cannot provide it.
 func customConformanceReadiness(root, slot, provider, path string, probe connectors.ConnectorResult) domain.ReadinessCheck {
+	return customConformanceReadinessFor(root, slot, provider, func() ([]string, domain.ReadinessCheck) { return rolesFromView(path) }, probe)
+}
+
+// customConformanceReadinessFor is the conformance evidence for a Weapon; rolesOf
+// supplies its role affinity (from the catalog or the compat view) and is called
+// only after the slot's own role contract resolved, so the failure order is stable.
+func customConformanceReadinessFor(root, slot, provider string, rolesOf func() ([]string, domain.ReadinessCheck), probe connectors.ConnectorResult) domain.ReadinessCheck {
 	roleID, roleContract, failure := resolveCustomRole(root, slot)
 	if failure.Status != "" {
 		return failure
 	}
-	providerContract, failure := resolveCustomProvider(path, provider, slot, roleContract.SchemaVersion)
+	roles, failure := rolesOf()
 	if failure.Status != "" {
 		return failure
 	}
+	providerContract := customProviderContract(provider, slot, roleContract.SchemaVersion, roles)
 	result := providerContract.CheckRoleAffinity(roleContract)
 	if !result.Compatible {
 		return conformanceCheck(domain.ReadinessBlocked, "conformance_role_mismatch", formatRoleCompatibilityFailure(slot, provider, roleID, result))
@@ -51,15 +59,19 @@ func resolveCustomRole(root, slot string) (string, domain.RoleContract, domain.R
 	return roleID, domain.RoleContractFromConfig(roleCfg, ""), domain.ReadinessCheck{}
 }
 
-func resolveCustomProvider(path, provider, slot, roleSchema string) (domain.ProviderContract, domain.ReadinessCheck) {
+func rolesFromView(path string) ([]string, domain.ReadinessCheck) {
 	raw, err := os.ReadFile(path) //nolint:gosec // path is derived from the selected runtime provider
 	if err != nil {
-		return domain.ProviderContract{}, conformanceCheck(domain.ReadinessUnknown, "conformance_provider_manifest_unknown", err.Error())
+		return nil, conformanceCheck(domain.ReadinessUnknown, "conformance_provider_manifest_unknown", err.Error())
 	}
 	roles, err := loadProviderRoles(raw)
 	if err != nil || len(roles) == 0 {
-		return domain.ProviderContract{}, conformanceCheck(domain.ReadinessUnknown, "conformance_role_affinity_unknown", "provider does not declare canonical_role or roles")
+		return nil, conformanceCheck(domain.ReadinessUnknown, "conformance_role_affinity_unknown", "provider does not declare canonical_role or roles")
 	}
+	return roles, domain.ReadinessCheck{}
+}
+
+func customProviderContract(provider, slot, roleSchema string, roles []string) domain.ProviderContract {
 	return domain.ProviderContract{
 		SchemaVersion:                 roleSchema,
 		ID:                            provider,
@@ -70,7 +82,7 @@ func resolveCustomProvider(path, provider, slot, roleSchema string) (domain.Prov
 		RiskScore:                     slotContract[slot],
 		Source:                        domain.ProviderSourceExternal,
 		SupportedRoleContractVersions: []string{roleSchema},
-	}, domain.ReadinessCheck{}
+	}
 }
 
 func conformanceCheck(status domain.ReadinessStatus, reason, detail string) domain.ReadinessCheck {

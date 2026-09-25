@@ -25,11 +25,11 @@ packages:
       kind: atomic
       origin: embedded
       runtime_kind: host
-      digest: sha256:039517a2386237e42a63eb17cab3d375d25763218073b478edc75969bb74949d
+      digest: sha256:0c481abed141d482d04fa6594798495a9efd0a79b05973e3de7e98df0959523b
       source: external-skills-source/openspec-archive-change
       contract_version: skill-package/v2
-      original_digest: sha256:039517a2386237e42a63eb17cab3d375d25763218073b478edc75969bb74949d
-      normalized_digest: sha256:a796947b11a1d88c5d28821837253123e5903e8051681542e45ac4b9704315a3
+      original_digest: sha256:0c481abed141d482d04fa6594798495a9efd0a79b05973e3de7e98df0959523b
+      normalized_digest: sha256:475c8f90cfea6317acecec4e387d61401b86fa899256d73902a85f56445141e1
       transformation: none
       local_modifications: unknown
       verification_state: declared

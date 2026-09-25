@@ -141,21 +141,14 @@ func TestExtractor_Extract(t *testing.T) {
 		assert.NotContains(t, skill, "stage: quick_draw_gate")
 		assert.NotContains(t, skill, "write_quick_draw_without_gate")
 
-		// contracts/machine/quick-draw.yaml was renamed to runbook-opportunity.yaml
-		// and trimmed to the runbook_opportunity routine only — the idea-capture
-		// gate/pipeline is gone; the normalize+append machinery Riposte used to
-		// reuse from the old file now lives in riposte.yaml under Riposte's own
-		// names.
-		_, err = os.Stat(filepath.Join(dir, "contracts", "machine", "quick-draw.yaml"))
-		assert.True(t, os.IsNotExist(err), "contracts/machine/quick-draw.yaml should no longer exist")
-
-		runbookOpportunity, err := os.ReadFile(filepath.Join(dir, "contracts", "machine", "runbook-opportunity.yaml"))
-		require.NoError(t, err)
-		ro := string(runbookOpportunity)
-		assert.Contains(t, ro, "runbook_opportunity")
-		assert.NotContains(t, ro, "sim: proceed_to_sniper")
-		assert.NotContains(t, ro, "ranger_quick_draw:")
-		assert.NotContains(t, ro, "archivist_quick_draw:")
+		// contracts/machine/quick-draw.yaml was renamed to runbook-opportunity.yaml,
+		// which was later retired: its runbook_worthy signals live in
+		// opportunity-attack.yaml. The normalize+append machinery Riposte used to
+		// reuse from the old file lives in riposte.yaml under Riposte's own names.
+		for _, retired := range []string{"quick-draw.yaml", "runbook-opportunity.yaml"} {
+			_, err = os.Stat(filepath.Join(dir, "contracts", "machine", retired))
+			assert.True(t, os.IsNotExist(err), "contracts/machine/%s should no longer exist", retired)
+		}
 
 		riposte, err := os.ReadFile(filepath.Join(dir, "contracts", "machine", "riposte.yaml"))
 		require.NoError(t, err)

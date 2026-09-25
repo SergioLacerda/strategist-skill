@@ -97,7 +97,7 @@ func customCatalogProvider(evidence connectors.ResolvedProviderPackage, slot str
 		CanonicalRole: role, Roles: []string{role}, SupportedSlots: []string{slot},
 		SupportedHandoffSchemas: []string{slotHandoffSchema(domain.SlotName(slot))},
 		Installable:             true, CompatibilitySource: "external", PackageDigest: evidence.Package.Digest,
-		Runtime: domain.RankedRuntimeContract{Kind: domain.RankedRuntimeHost, HostAPI: "strategist-host-skill/v1"},
+		Runtime: domain.WeaponRuntime{Kind: domain.RankedRuntimeHost, HostAPI: "strategist-host-skill/v1"},
 		WeaponContract: domain.WeaponContract{
 			RoleOwner: role, Participation: "required", InvocationEvidence: "required",
 			UnavailableBehavior: "role_invocation_failed", NativeSubstitution: "forbidden",

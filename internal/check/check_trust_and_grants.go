@@ -37,7 +37,7 @@ func readPluginsLockFile(root string) domain.PluginLockFile {
 }
 
 // skillProviderTrustReadiness runs the same trust.Verify pipeline
-// internal/install/embedded_skill_ingestion_filters.go already uses for
+// internal/install/embedded_weapon_ingestion_filters.go already uses for
 // external-skill ingestion, against whatever trust policy is actually
 // configured (none, by default, for every provider — embedded or external).
 // This is a genuinely computed result, not

@@ -66,7 +66,7 @@ func rankedRuntimeReadiness(root, slot, provider string, stamp domain.CatalogRan
 
 // recordedRankedRuntime loads the runtime state and returns the installed
 // runtime root and the runtime recorded for the slot/provider binding.
-func recordedRankedRuntime(root, slot, provider string, stamp domain.CatalogRankedStamp, runtime domain.RankedRuntimeContract) (string, domain.RankedRuntimeStateRuntime, domain.ReadinessCheck) {
+func recordedRankedRuntime(root, slot, provider string, stamp domain.CatalogRankedStamp, runtime domain.WeaponRuntime) (string, domain.RankedRuntimeStateRuntime, domain.ReadinessCheck) {
 	state, result := readRankedRuntimeState(root, provider, runtime.Root)
 	if !result.Ready() {
 		return "", domain.RankedRuntimeStateRuntime{}, result
@@ -95,7 +95,7 @@ func expectedRankedRole(root, slot string) string {
 	return roles[slot]
 }
 
-func validateRankedRuntimeContract(runtime domain.RankedRuntimeContract, slot, provider string) domain.ReadinessCheck {
+func validateRankedRuntimeContract(runtime domain.WeaponRuntime, slot, provider string) domain.ReadinessCheck {
 	if err := runtime.Validate(); err != nil {
 		return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: "ranked_runtime_contract_invalid", Detail: fmt.Sprintf("role/provider=%s/%s: %v", slot, provider, err)}
 	}

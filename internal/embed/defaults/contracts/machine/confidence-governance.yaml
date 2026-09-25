@@ -45,8 +45,11 @@ producers:
   command: "strategist metrics record --mission <id> --agent <agent> (--claim-file - | --missing --correlation-key <key> --reason <why>)"
   claim_placement:
     rule: >
-      The claim document (`claim:` plus optional `evidence:`) is supplied on standard
-      input with `--claim-file -`, for example through a shell heredoc. It is transient
+      The claim document (`claim:` plus optional `evidence:`, or `claims:` — a list of every
+      claim the boundary declares — with one shared `evidence:` list) is supplied on standard
+      input with `--claim-file -`, for example through a shell heredoc. Prefer `claims:` so the
+      history holds the whole declared set rather than one claim per command; every claim in
+      the list must be the producing agent's own. It is transient
       CLI input and is never stored under <base_path> (pending/, refined/, done/,
       archived/), inside a mission package, or anywhere else in the workspace artifact
       tree; the CLI rejects a `--claim-file` path that resolves inside <base_path>.
@@ -78,12 +81,13 @@ metric_vocabulary:
     - question_preservation_rate
     - corrected_high_confidence_claim_rate
   denominator_policy:
-    assertion_evidence_coverage: "supported assertions / assertion records"
-    unsupported_assertion_rate: "unsupported assertion records / assertion records"
+    assertion_evidence_coverage: "supported assertions / assertion records (a rejected assertion record counts in the denominator, as unsupported)"
+    unsupported_assertion_rate: "unsupported assertion records / assertion records (a rejected assertion record counts in both the numerator and the denominator)"
     question_preservation_rate: "correlated question outputs preserved / correlated question inputs"
     corrected_high_confidence_claim_rate: "corrected high-confidence claims / high-confidence claims with reviewed ground truth"
     sample_unit: "one unique event_id; sample_size counts reviewed outcomes, not raw lines"
     missing_records: "excluded from validity denominators and reported separately"
+    rejected_records: "a rejected assertion record enters the assertion denominators as unsupported; a rejected question record enters no denominator; every rejected record is also reported separately and is not part of sample_size"
   independent:
     - route_confidence
     - critic_score

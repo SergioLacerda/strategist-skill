@@ -47,7 +47,7 @@ func customRuntimeReadiness(root, slot, provider string) domain.ReadinessCheck {
 	}
 }
 
-func runtimeExecutableName(runtime domain.RankedRuntimeContract) string {
+func runtimeExecutableName(runtime domain.WeaponRuntime) string {
 	if fields := strings.Fields(runtime.Bootstrap); len(fields) > 0 {
 		return fields[0]
 	}

@@ -10,6 +10,8 @@ import (
 	"testing"
 )
 
+// ADR-0053 fixed six families. The live documents define exactly those and no longer
+// present Pipeline Services or Routes as families.
 func TestCanonicalTaxonomyDocumentationDefinesAllFamilies(t *testing.T) {
 	t.Parallel()
 
@@ -17,23 +19,33 @@ func TestCanonicalTaxonomyDocumentationDefinesAllFamilies(t *testing.T) {
 	paths := []string{
 		filepath.Join(root, "docs", "architecture", "strategist-concepts.md"),
 		filepath.Join(root, "README.md"),
-		filepath.Join(root, "docs", "adr", "0034-role-and-skill-taxonomy.md"),
 		filepath.Join(root, "internal", "embed", "defaults", "SKILL.md"),
 	}
 	required := []string{
 		"Roles",
 		"Weapons",
 		"Abilities",
-		"Pipeline Services",
 		"Mechanisms",
-		"Routes",
+		"Pipeline",
 		"Artifacts",
+		"six",
+	}
+	retired := []string{
+		"Pipeline Services",
+		"seven canonical families",
+		"seven public families",
+		"seven families",
 	}
 	for _, path := range paths {
 		content := readFile(t, path)
 		for _, term := range required {
 			if !strings.Contains(content, term) {
 				t.Errorf("%s missing canonical taxonomy family %q", path, term)
+			}
+		}
+		for _, term := range retired {
+			if strings.Contains(content, term) {
+				t.Errorf("%s still uses retired taxonomy wording %q (ADR-0053)", path, term)
 			}
 		}
 	}

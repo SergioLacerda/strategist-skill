@@ -61,6 +61,10 @@ type InstallManifest struct {
 	Files                 []InstallManifestFile `json:"files"`
 	LevelingPolicyVersion int                   `json:"leveling_policy_version,omitempty"`
 	LevelingPolicyDigest  string                `json:"leveling_policy_digest,omitempty"`
+	// RuntimeLayoutGeneration is the RuntimeLayoutGeneration of the binary that
+	// last wrote this manifest; absent (zero) means a manifest that predates the
+	// marker.
+	RuntimeLayoutGeneration int `json:"runtime_layout_generation,omitempty"`
 }
 
 // InstallManifestFile records one installed default file hash.
@@ -86,10 +90,11 @@ func NewInstallManifest(packageID string, embeddedHashes map[string]string) Inst
 		})
 	}
 	return InstallManifest{
-		Schema:      "strategist.install-manifest.v1",
-		PackageID:   packageID,
-		InstalledAt: time.Now().UTC().Format(time.RFC3339),
-		Files:       files,
+		Schema:                  "strategist.install-manifest.v1",
+		PackageID:               packageID,
+		InstalledAt:             time.Now().UTC().Format(time.RFC3339),
+		Files:                   files,
+		RuntimeLayoutGeneration: RuntimeLayoutGeneration,
 	}
 }
 

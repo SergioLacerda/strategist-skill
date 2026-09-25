@@ -169,7 +169,7 @@ func TestCertifyRankedCandidates_IsDeterministic(t *testing.T) {
 }
 
 func TestRankedCertificationDigestCoversRuntimeIdentityOnlyWhenPinned(t *testing.T) {
-	provider := pluginCatalogProvider{ID: "openspec-propose", Runtime: domain.RankedRuntimeContract{
+	provider := pluginCatalogProvider{ID: "openspec-propose", Runtime: domain.WeaponRuntime{
 		Kind: domain.RankedRuntimeOpenSpecRoot, Root: ".strategist/openspec", Bootstrap: "openspec init", Healthcheck: "openspec context --json",
 	}}
 	unpinned := rankedCertificationDigest(provider, "archivist")
@@ -183,6 +183,6 @@ func TestRankedCertificationDigestCoversRuntimeIdentityOnlyWhenPinned(t *testing
 
 	other := pluginCatalogProvider{ID: "brainstorming"}
 	before := rankedCertificationDigest(other, "ranger")
-	other.Runtime = domain.RankedRuntimeContract{Kind: domain.RankedRuntimeNone}
+	other.Runtime = domain.WeaponRuntime{Kind: domain.RankedRuntimeNone}
 	require.Equal(t, before, rankedCertificationDigest(other, "ranger"), "providers without identity keep their digest")
 }

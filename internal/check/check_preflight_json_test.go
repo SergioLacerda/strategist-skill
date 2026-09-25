@@ -98,11 +98,7 @@ func TestCheckCmd_JSON_BindingsMatchResolvedProviderIDs(t *testing.T) {
 func TestCheckCmd_JSON_BindingStatusReflectsReadinessVector(t *testing.T) {
 	resetCheckFlags(t)
 	dir := minimalCheckRoot(t)
-	require.NoError(t, os.WriteFile(
-		filepath.Join(dir, "skills", "brainstorming", "skill.yaml"),
-		[]byte("id: not-brainstorming\nrisk_score: write_analysis\n"),
-		0o644,
-	))
+	require.NoError(t, os.Remove(filepath.Join(dir, "skills", "brainstorming", "SKILL.md")))
 	checkRoot = dir
 	checkJSON = true
 
@@ -116,7 +112,7 @@ func TestCheckCmd_JSON_BindingStatusReflectsReadinessVector(t *testing.T) {
 	assert.Equal(t, "blocked", result.Status)
 	for _, b := range result.Bindings {
 		if b.Slot == "discovery" {
-			assert.Equal(t, "blocked", b.Status, "discovery binding should be blocked due to entrypoint_id_mismatch")
+			assert.Equal(t, "blocked", b.Status, "discovery binding should be blocked due to entrypoint_payload_missing")
 		} else {
 			assert.Equal(t, "ready", b.Status, "slot %s should remain ready", b.Slot)
 		}

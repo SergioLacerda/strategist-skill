@@ -14,7 +14,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func writeRankedRuntimeFixture(t *testing.T, root string, provider string, slot string, runtime domain.RankedRuntimeContract) {
+func writeRankedRuntimeFixture(t *testing.T, root string, provider string, slot string, runtime domain.WeaponRuntime) {
 	t.Helper()
 	strategist := filepath.Join(root, ".strategist")
 	require.NoError(t, copyOpenSpecRuntimeFixture(strategist))
@@ -38,7 +38,7 @@ func writeRankedRuntimeFixture(t *testing.T, root string, provider string, slot 
 
 func TestPrepareRankedProviderRuntimes_RangerNoneDoesNotCreateRuntime(t *testing.T) {
 	dir := t.TempDir()
-	writeRankedRuntimeFixture(t, dir, "brainstorming", "discovery", domain.RankedRuntimeContract{Kind: domain.RankedRuntimeNone})
+	writeRankedRuntimeFixture(t, dir, "brainstorming", "discovery", domain.WeaponRuntime{Kind: domain.RankedRuntimeNone})
 
 	require.NoError(t, prepareRankedProviderRuntimes(context.Background(), filepath.Join(dir, ".strategist")))
 	_, err := os.Stat(filepath.Join(dir, ".strategist", domain.RankedRuntimeStatePath))
@@ -47,7 +47,7 @@ func TestPrepareRankedProviderRuntimes_RangerNoneDoesNotCreateRuntime(t *testing
 
 func TestPrepareRankedProviderRuntimes_ArchivistBootstrapsOpenSpecRoot(t *testing.T) {
 	dir := t.TempDir()
-	writeRankedRuntimeFixture(t, dir, "openspec-propose", "refinement", domain.RankedRuntimeContract{
+	writeRankedRuntimeFixture(t, dir, "openspec-propose", "refinement", domain.WeaponRuntime{
 		Kind: domain.RankedRuntimeOpenSpecRoot, Root: ".strategist/openspec", Bootstrap: "openspec init --profile core --tools codex", Healthcheck: "openspec context --json",
 	})
 	original := runRankedRuntimeCommand
@@ -79,7 +79,7 @@ func TestPrepareRankedProviderRuntimes_ArchivistBootstrapsOpenSpecRoot(t *testin
 
 func TestPrepareRankedProviderRuntimes_RemovesEmptyLegacyNestedRoot(t *testing.T) {
 	dir := t.TempDir()
-	writeRankedRuntimeFixture(t, dir, "openspec-propose", "refinement", domain.RankedRuntimeContract{
+	writeRankedRuntimeFixture(t, dir, "openspec-propose", "refinement", domain.WeaponRuntime{
 		Kind: domain.RankedRuntimeOpenSpecRoot, Root: ".strategist/openspec", Bootstrap: "openspec init --profile core --tools codex", Healthcheck: "openspec context --json",
 	})
 	root := filepath.Join(dir, ".strategist", "openspec")
@@ -106,7 +106,7 @@ func TestPrepareRankedProviderRuntimes_RemovesEmptyLegacyNestedRoot(t *testing.T
 
 func TestPrepareRankedProviderRuntimes_RejectsOpenSpecSemanticRootMismatch(t *testing.T) {
 	dir := t.TempDir()
-	writeRankedRuntimeFixture(t, dir, "openspec-propose", "refinement", domain.RankedRuntimeContract{
+	writeRankedRuntimeFixture(t, dir, "openspec-propose", "refinement", domain.WeaponRuntime{
 		Kind: domain.RankedRuntimeOpenSpecRoot, Root: ".strategist/openspec", Bootstrap: "openspec init --profile core --tools codex", Healthcheck: "openspec context --json",
 	})
 	original := runRankedRuntimeCommand
@@ -129,7 +129,7 @@ func TestPrepareRankedProviderRuntimes_RejectsOpenSpecSemanticRootMismatch(t *te
 
 func TestPrepareRankedProviderRuntimes_RejectsMalformedHealthcheck(t *testing.T) {
 	dir := t.TempDir()
-	writeRankedRuntimeFixture(t, dir, "openspec-propose", "refinement", domain.RankedRuntimeContract{
+	writeRankedRuntimeFixture(t, dir, "openspec-propose", "refinement", domain.WeaponRuntime{
 		Kind: domain.RankedRuntimeOpenSpecRoot, Root: ".strategist/openspec", Bootstrap: "openspec init", Healthcheck: "openspec context --json",
 	})
 	original := runRankedRuntimeCommand
@@ -147,7 +147,7 @@ func TestPrepareRankedProviderRuntimes_RejectsMalformedHealthcheck(t *testing.T)
 
 func TestPrepareRankedProviderRuntimes_RejectsFailedHealthcheck(t *testing.T) {
 	dir := t.TempDir()
-	writeRankedRuntimeFixture(t, dir, "openspec-propose", "refinement", domain.RankedRuntimeContract{
+	writeRankedRuntimeFixture(t, dir, "openspec-propose", "refinement", domain.WeaponRuntime{
 		Kind: domain.RankedRuntimeOpenSpecRoot, Root: ".strategist/openspec", Bootstrap: "openspec init", Healthcheck: "openspec context --json",
 	})
 	original := runRankedRuntimeCommand
@@ -166,7 +166,7 @@ func TestPrepareRankedProviderRuntimes_RejectsFailedHealthcheck(t *testing.T) {
 
 func TestPrepareRankedProviderRuntimes_RejectsUnexpectedLegacyContent(t *testing.T) {
 	dir := t.TempDir()
-	writeRankedRuntimeFixture(t, dir, "openspec-propose", "refinement", domain.RankedRuntimeContract{
+	writeRankedRuntimeFixture(t, dir, "openspec-propose", "refinement", domain.WeaponRuntime{
 		Kind: domain.RankedRuntimeOpenSpecRoot, Root: ".strategist/openspec", Bootstrap: "openspec init", Healthcheck: "openspec context --json",
 	})
 	root := filepath.Join(dir, ".strategist", "openspec")
@@ -209,7 +209,7 @@ func isHostNodeVersionProbe(args []string) bool {
 
 func TestPrepareRankedProviderRuntimes_MissingExecutableIsActionable(t *testing.T) {
 	dir := t.TempDir()
-	writeRankedRuntimeFixture(t, dir, "openspec-propose", "refinement", domain.RankedRuntimeContract{
+	writeRankedRuntimeFixture(t, dir, "openspec-propose", "refinement", domain.WeaponRuntime{
 		Kind: domain.RankedRuntimeOpenSpecRoot, Root: ".strategist/openspec", Bootstrap: "openspec init --profile core --tools codex", Healthcheck: "openspec context --json",
 	})
 	t.Setenv("PATH", t.TempDir())

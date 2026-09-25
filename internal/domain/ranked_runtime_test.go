@@ -94,8 +94,8 @@ func TestValidateOpenSpecHealthcheckDriftPipelineRegression(t *testing.T) {
 }
 
 func TestOpenSpecRuntimeRootValidation(t *testing.T) {
-	contract := func(root string) RankedRuntimeContract {
-		return RankedRuntimeContract{Kind: RankedRuntimeOpenSpecRoot, Root: root, Bootstrap: "openspec init", Healthcheck: "openspec context --json"}
+	contract := func(root string) WeaponRuntime {
+		return WeaponRuntime{Kind: RankedRuntimeOpenSpecRoot, Root: root, Bootstrap: "openspec init", Healthcheck: "openspec context --json"}
 	}
 	rejected := []string{
 		"", ".", "..", ".strategist", ".strategist/", "openspec",
@@ -113,10 +113,10 @@ func TestOpenSpecRuntimeRootValidation(t *testing.T) {
 }
 
 func TestEmbeddedSkillRuntimeIsInProcessAndRejectsExternalFields(t *testing.T) {
-	require.NoError(t, (RankedRuntimeContract{Kind: RankedRuntimeEmbedded}).Validate())
-	require.NoError(t, (RankedRuntimeContract{Kind: RankedRuntimeEmbedded}).ValidateActive())
+	require.NoError(t, (WeaponRuntime{Kind: RankedRuntimeEmbedded}).Validate())
+	require.NoError(t, (WeaponRuntime{Kind: RankedRuntimeEmbedded}).ValidateActive())
 
-	for name, runtime := range map[string]RankedRuntimeContract{
+	for name, runtime := range map[string]WeaponRuntime{
 		"host api":   {Kind: RankedRuntimeEmbedded, HostAPI: "strategist-host-skill/v1"},
 		"entrypoint": {Kind: RankedRuntimeEmbedded, Entrypoint: "discover"},
 		"root":       {Kind: RankedRuntimeEmbedded, Root: ".strategist/brainstorming"},
@@ -130,7 +130,7 @@ func TestEmbeddedSkillRuntimeIsInProcessAndRejectsExternalFields(t *testing.T) {
 // filepath.Clean comparison; on other platforms a backslash is a literal
 // character, so that spelling is not a valid root.
 func TestOpenSpecRuntimeRootSeparatorForms(t *testing.T) {
-	contract := RankedRuntimeContract{Kind: RankedRuntimeOpenSpecRoot, Root: `.strategist\openspec`, Bootstrap: "b", Healthcheck: "h"}
+	contract := WeaponRuntime{Kind: RankedRuntimeOpenSpecRoot, Root: `.strategist\openspec`, Bootstrap: "b", Healthcheck: "h"}
 	if filepath.Separator == '\\' {
 		require.NoError(t, contract.Validate())
 		contract.Root = `.strategist\..\openspec`
@@ -152,7 +152,7 @@ func TestRankedRuntimeExecutableMissingMessageIsActionable(t *testing.T) {
 }
 
 func TestRankedRuntimeContractValidatesPinnedIdentity(t *testing.T) {
-	base := RankedRuntimeContract{Kind: RankedRuntimeOpenSpecRoot, Root: ".strategist/openspec", Bootstrap: "openspec init", Healthcheck: "openspec context --json"}
+	base := WeaponRuntime{Kind: RankedRuntimeOpenSpecRoot, Root: ".strategist/openspec", Bootstrap: "openspec init", Healthcheck: "openspec context --json"}
 
 	pinned := base
 	pinned.Version, pinned.NodeVersion = "1.13.0", "22.23.2"
@@ -168,7 +168,7 @@ func TestRankedRuntimeContractValidatesPinnedIdentity(t *testing.T) {
 		require.Error(t, c.Validate(), bad)
 	}
 
-	none := RankedRuntimeContract{Kind: RankedRuntimeNone, Version: "1.0.0"}
+	none := WeaponRuntime{Kind: RankedRuntimeNone, Version: "1.0.0"}
 	require.Error(t, none.Validate(), "a provider without a runtime cannot declare a pinned version")
 }
 

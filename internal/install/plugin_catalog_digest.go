@@ -47,7 +47,7 @@ func catalogProviderDigest(provider pluginCatalogProvider) string {
 		return provider.PackageDigest
 	}
 	if provider.Installable {
-		if data, err := generateLegacyProviderManifest(pluginCatalog{SchemaVersion: "digest", Providers: []pluginCatalogProvider{provider}}, provider.ID); err == nil {
+		if data, err := normalizedDigestManifest(pluginCatalog{SchemaVersion: "digest", Providers: []pluginCatalogProvider{provider}}, provider.ID); err == nil {
 			sum := sha256.Sum256(data)
 			return fmt.Sprintf("sha256:%x", sum)
 		}

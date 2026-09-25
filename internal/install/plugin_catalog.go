@@ -52,16 +52,16 @@ type pluginCatalogProvider struct {
 	// HostAPIDigest, ConnectorDigest, TestSuiteDigest, PolicyDigest, and ConformanceLevel
 	// are ADR-0043 DEC-006's generic Ranked-certification evidence,
 	// computed once per (role, provider) pairing by
-	// internal/install/embedded_skill_conformance.go — never hardcoded to
+	// internal/install/embedded_weapon_conformance.go — never hardcoded to
 	// one pairing. Empty for every non-Ranked entry.
-	HostAPIDigest    string                       `yaml:"host_api_digest,omitempty"`
-	ConnectorDigest  string                       `yaml:"connector_digest,omitempty"`
-	TestSuiteDigest  string                       `yaml:"test_suite_digest,omitempty"`
-	PolicyDigest     string                       `yaml:"policy_digest,omitempty"`
-	ConformanceLevel string                       `yaml:"conformance_level,omitempty"`
-	Runtime          domain.RankedRuntimeContract `yaml:"runtime,omitempty"`
-	SupportedSlots   []string                     `yaml:"supported_slots,omitempty"`
-	Composition      *domain.WeaponComposition    `yaml:"composition,omitempty"`
+	HostAPIDigest    string                    `yaml:"host_api_digest,omitempty"`
+	ConnectorDigest  string                    `yaml:"connector_digest,omitempty"`
+	TestSuiteDigest  string                    `yaml:"test_suite_digest,omitempty"`
+	PolicyDigest     string                    `yaml:"policy_digest,omitempty"`
+	ConformanceLevel string                    `yaml:"conformance_level,omitempty"`
+	Runtime          domain.WeaponRuntime      `yaml:"runtime,omitempty"`
+	SupportedSlots   []string                  `yaml:"supported_slots,omitempty"`
+	Composition      *domain.WeaponComposition `yaml:"composition,omitempty"`
 	// UpstreamRepo through License are ADR-0029 DEC-002's per-provider
 	// upstream-identity fields — see externalSkillAdapter's own doc comment
 	// for the full rationale. Populated only for packages whose upstream

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -183,4 +184,33 @@ func writeValidationRoot(t *testing.T, bindings string) string {
 	require.NoError(t, os.WriteFile(filepath.Join(root, "skills", "openspec-propose", "skill.yaml"), []byte("risk_score: write_analysis\nroles:\n  - archivist\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins.lock"), []byte("schema_version: strategist-plugin-lock-file/v1\nbindings:\n"+bindings), 0o644))
 	return root
+}
+
+func TestValidateProviderManifestReadsTheCatalogWithoutAnyCompatView(t *testing.T) {
+	root := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "plugins"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins", "catalog.yaml"), []byte("schema_version: strategist-plugin-catalog/v2\nproviders:\n  - id: cat-archivist\n    risk_score: write_analysis\n    canonical_role: archivist\n    roles: [archivist]\n  - id: cat-wrong-risk\n    risk_score: controlled\n    roles: [archivist]\n"), 0o644))
+
+	assert.Empty(t, validateProviderManifest(root, "refinement", "archivist", "cat-archivist"), "no skills/ directory exists")
+
+	failures := validateProviderManifest(root, "refinement", "archivist", "cat-wrong-risk")
+	require.Len(t, failures, 1)
+	assert.Contains(t, failures[0].Reason, `risk_score="controlled"`)
+}
+
+// A native role listed in the catalog (compatibility_source native_role) is validated
+// as a native binding, not as a Weapon that lacks role affinity.
+func TestValidateProviderManifestSendsCatalogNativeRolesToTheNativeBranch(t *testing.T) {
+	root := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "plugins"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins", "catalog.yaml"), []byte("schema_version: strategist-plugin-catalog/v2\nproviders:\n  - id: archivist\n    risk_score: write_analysis\n    compatibility_source: native_role\n"), 0o644))
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "roles"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "roles", "archivist.yaml"), []byte("role: archivist\nslot: refinement\nextensibility: pluggable\n"), 0o644))
+
+	assert.Empty(t, validateProviderManifest(root, "refinement", "archivist", "archivist"))
+
+	require.NoError(t, os.Remove(filepath.Join(root, "roles", "archivist.yaml")))
+	failures := validateProviderManifest(root, "refinement", "archivist", "archivist")
+	require.Len(t, failures, 1)
+	assert.Contains(t, failures[0].Reason, "native role")
 }

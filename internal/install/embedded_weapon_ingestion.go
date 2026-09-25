@@ -11,7 +11,7 @@ import (
 )
 
 // externalSkillAdapter (the strategist.yaml sidecar type) and its
-// load/validate/normalize helpers live in embedded_skill_adapter.go, split
+// load/validate/normalize helpers live in embedded_weapon_adapter.go, split
 // out to keep this file under the repo's file-size budget.
 
 // IngestedSkill is one externally-sourced package that resolved, verified,
@@ -132,8 +132,8 @@ func IngestExternalSkills(sourceDir string, existingCatalog pluginCatalog, trust
 
 // resolveCandidates, supersedableBaseProviders, filterAcceptedCandidates,
 // filterDependencyResolved, buildCatalog, and trustReasonCodes live in
-// embedded_skill_ingestion_filters.go, split out to keep this file under the
+// embedded_weapon_ingestion_filters.go, split out to keep this file under the
 // repo's file-size budget.
 
 // catalogProviderFromIngestedSkill and skillDescription live in
-// embedded_skill_catalog_entry.go, split out for the same reason.
+// embedded_weapon_catalog_entry.go, split out for the same reason.

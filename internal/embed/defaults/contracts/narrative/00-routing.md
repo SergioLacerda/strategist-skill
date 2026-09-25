@@ -12,8 +12,8 @@ Resolve the route before any mission work starts.
 
 ## Routes
 
-Routes are one family in the canonical taxonomy: they name the pipeline shape
-selected by Scout, not a Role, Weapon, or provider. The current route names are
+Routes are not a taxonomy family: they are the Pipeline paths that Scout selects,
+never a Role, Weapon, or provider. The current route names are
 `critical_hit`, `implementation_short_route`, and `full_pipeline`.
 
 - **Critical Hit** — internal capability for workspace artifact management
@@ -155,12 +155,18 @@ When operating inside the main mission, consult contracts in this order:
 
 `enforced_by` tags use the unified 3-tier vocabulary defined in
 `machine/errors.yaml` (`machine_enforced` / `machine_observed` /
-`agent_only`). Reviewed against actual Go call sites (2026-08-30): every
-invariant below is `agent_only` — there is no live-mission FSM in Go that
-gates routing or execution; `internal/domain/pipeline_bypass.go`'s
-`EvaluatePipelineBypass` implements the matching decision logic for the first
-invariant but has zero non-test callers repo-wide, so it is not on a
-reachable path today.
+`agent_only`). Reviewed against actual Go call sites (2026-08-30, updated
+2026-09-25): the invariants below are `agent_only` except entry into execution.
+`strategist mission submit --event handoff_challenge_passed` runs
+`EvaluatePipelineBypass` (via `internal/mission.EvaluateExecutionEntry`) against
+the evidence the Scout-selected route needs, so a missing phase is rejected as
+`pipeline_bypass_detected`. Scout's `route_decision` reaches that check through
+`strategist mission route`; with no recorded decision the strictest regime
+(`full_pipeline`) applies. Routes map to evidence regimes as follows:
+`full_pipeline` needs discovery, refinement, tasks and the approved gate;
+`implementation_short_route` and `critical_hit` need the approved gate.
+
+- Entering execution without the evidence its route requires is rejected — `enforced_by: machine_enforced`
 
 - No direct repository mutation without canonical pipeline evidence — `enforced_by: agent_only`
 - No execution without explicit Strategist Approval Gate acceptance — `enforced_by: agent_only`

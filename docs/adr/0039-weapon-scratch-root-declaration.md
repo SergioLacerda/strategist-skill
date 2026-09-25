@@ -35,7 +35,7 @@ as `none`, preserving prior behavior for every skill that doesn't need one.
 
 ### D2 — Ingestion carries the field through as data
 
-`internal/install/embedded_skill_ingestion.go`'s `externalSkillAdapter` struct gained a
+`internal/install/embedded_weapon_ingestion.go`'s `externalSkillAdapter` struct gained a
 `ScratchRoot` field, validated against the two-value enum (fail closed — reject anything
 else, matching this file's existing validation style). It flows into
 `pluginCatalogProvider` (`internal/install/plugin_catalog.go`), the embedded catalog

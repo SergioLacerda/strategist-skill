@@ -4,8 +4,6 @@ schema_version: "1"
 status: active
 risk_score: write_analysis
 category: discovery
-skill_type: role_filler
-inherits_role: ranger
 
 description: >
   Discovery skill for the Strategist pipeline. Explores the mission space,

@@ -30,12 +30,12 @@ type RoleInvocationPlan struct {
 	// NewRankedRoleInvocationPlanFromCatalog — a deliberately separate
 	// resolution path (docs/adr/0043-ranked-pipeline-pilot-implementation-decisions.md),
 	// never a re-point of Custom's digest lookup.
-	WeaponID          string                `json:"weapon"`
-	WeaponDigest      string                `json:"weapon_digest,omitempty"`
-	BindingDigest     string                `json:"binding_digest,omitempty"`
-	BindingGeneration int64                 `json:"binding_generation,omitempty"`
-	BindingStatus     string                `json:"binding_status,omitempty"`
-	Runtime           RankedRuntimeContract `json:"runtime,omitempty"`
+	WeaponID          string        `json:"weapon"`
+	WeaponDigest      string        `json:"weapon_digest,omitempty"`
+	BindingDigest     string        `json:"binding_digest,omitempty"`
+	BindingGeneration int64         `json:"binding_generation,omitempty"`
+	BindingStatus     string        `json:"binding_status,omitempty"`
+	Runtime           WeaponRuntime `json:"runtime,omitempty"`
 
 	// RequiredContextRefs and OutputSchemaRef are populated by whatever
 	// composes a mission invocation (ContextComposer, doc 05 — not

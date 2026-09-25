@@ -147,7 +147,7 @@ func TestMigrationLabelRoleReportsRecordingAndRuns(t *testing.T) {
 }
 
 func TestMigrationLabelRoleUsesRoleLevelingKey(t *testing.T) {
-	reg, err := domain.NewRoleRegistry([]domain.Role{{ID: "scout"}, {ID: "ranger", Slot: "discovery", Phase: 1, Pluggable: true, Leveling: "sniper"}})
+	reg, err := domain.NewRoleRegistry([]domain.Role{{ID: "scout"}, {ID: "ranger", Slot: "discovery", Phase: 1, Extensibility: domain.RoleExtensibilityPluggable, Leveling: "sniper"}})
 	require.NoError(t, err)
 	policy := migrationPolicy(t)
 	got, err := LabelRoleWith(reg, migrationLoader(policy), domain.LevelingConfig{}, filepath.Join(t.TempDir(), "role-levels.jsonl"), LabelOptions{Role: "ranger", Provider: "CLAUDE"})

@@ -126,7 +126,7 @@ func TestLevelingLabelCmdReadsRolesFromWorkspace(t *testing.T) {
 	tmp := t.TempDir()
 	root := filepath.Join(tmp, ".strategist")
 	testutil.MinimalRoot(t, root)
-	require.NoError(t, os.WriteFile(filepath.Join(root, "roles", "auditor.yaml"), []byte("role: auditor\nphase: 5\npluggable: false\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "roles", "auditor.yaml"), []byte("role: auditor\nphase: 5\nextensibility: fixed\n"), 0o600))
 	t.Chdir(tmp)
 
 	prev := levelingLabelOpts
@@ -163,7 +163,8 @@ func TestRoleStartHookResolvesAndRecordsEveryRole(t *testing.T) {
 	policy := rootLevelingPolicy(t)
 	for _, id := range reg.IDs() {
 		commands := reg.StartCommands(id, "m-start")
-		require.Len(t, commands, 1, id)
+		require.NotEmpty(t, commands, id)
+		requireEveryStartCommandExists(t, id, commands)
 		fields := strings.Fields(commands[0])
 		require.Equal(t, "strategist", fields[0], id)
 
@@ -183,5 +184,18 @@ func TestRoleStartHookResolvesAndRecordsEveryRole(t *testing.T) {
 		require.NoError(t, err, id)
 		require.True(t, ok, "%s: the start hook must record its level", id)
 		assert.Equal(t, "Sonnet-High", record.Label(), id)
+	}
+}
+
+// requireEveryStartCommandExists guards the hook against naming a command the
+// CLI does not have: an agent that follows on_start must never hit a dead end.
+func requireEveryStartCommandExists(t *testing.T, role string, commands []string) {
+	t.Helper()
+	for _, command := range commands {
+		fields := strings.Fields(command)
+		require.Equal(t, "strategist", fields[0], role)
+		found, _, err := rootCmd.Find(fields[1:])
+		require.NoError(t, err, "%s: %q", role, command)
+		require.NotEqual(t, rootCmd.Name(), found.Name(), "%s: %q does not resolve to a command", role, command)
 	}
 }

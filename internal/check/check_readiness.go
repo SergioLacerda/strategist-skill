@@ -10,9 +10,33 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// readinessFacets are the dimensions that depend on where a Weapon's manifest
+// lives: the generated compat view file, or the catalog entry.
+type readinessFacets struct {
+	descriptor  domain.ReadinessCheck
+	source      domain.ReadinessCheck
+	entrypoint  domain.ReadinessCheck
+	detail      string
+	conformance func(probe connectors.ConnectorResult) domain.ReadinessCheck
+}
+
+// skillProviderReadiness is the readiness of a provider known only through its
+// generated compat view (the transitional branch).
 func skillProviderReadiness(root, slot, provider, path string) domain.PluginReadinessVector {
+	return weaponReadiness(root, slot, provider, readinessFacets{
+		descriptor: domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "legacy_descriptor_valid", Detail: path},
+		source:     domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "local_manifest_present", Detail: path},
+		entrypoint: probeSkillEntrypoint(provider, path),
+		detail:     path,
+		conformance: func(probe connectors.ConnectorResult) domain.ReadinessCheck {
+			return customConformanceReadiness(root, slot, provider, path, probe)
+		},
+	})
+}
+
+func weaponReadiness(root, slot, provider string, facets readinessFacets) domain.PluginReadinessVector {
 	connector := connectors.UnsupportedConnector{IDValue: "current-runtime", ConnectorAPIVersion: "strategist-connector-api/1"}
-	resolve := connector.Resolve(context.Background(), connectors.RuntimeLocator{ID: provider, Path: path})
+	resolve := connector.Resolve(context.Background(), connectors.RuntimeLocator{ID: provider, Path: facets.detail})
 	observe := connector.Observe(context.Background(), domain.InstalledInstance{ID: provider})
 	lock := readPluginsLockFile(root)
 	if bindingIsRanked(lock, slot, provider) {
@@ -24,7 +48,7 @@ func skillProviderReadiness(root, slot, provider, path string) domain.PluginRead
 		// dependencies dimension.
 		trustCheck, grantCheck, runtimeCheck := rankedCertificationReadiness(root, slot, provider)
 		certified := domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "ranked_certification_verified"}
-		return skillProviderVector(path, provider, certified, trustCheck, grantCheck, runtimeCheck, resolve, observe)
+		return vectorFromFacets(facets, certified, trustCheck, grantCheck, runtimeCheck, resolve, observe)
 	}
 	entrypoint := "refine"
 	if slot == string(domain.SlotDiscovery) {
@@ -33,40 +57,42 @@ func skillProviderReadiness(root, slot, provider, path string) domain.PluginRead
 	probe := connector.Probe(context.Background(), domain.InstalledInstance{ID: provider, ConnectorID: connector.Capabilities(context.Background()).ConnectorID}, entrypoint)
 	digest := lock.NodeDigest(provider, "adapter_contract")
 	trustCheck := skillProviderTrustReadiness(root, provider, digest)
-	grantCheck := skillProviderPermissionGrantReadinessFor(root, digest, requestedPermissions(path))
-	conformance := customConformanceReadiness(root, slot, provider, path, probe)
+	grantCheck := skillProviderPermissionGrantReadinessFor(root, digest, requestedPermissions(root, provider))
 	// Every non-Ranked binding must still not read ready without a runtime.
-	return skillProviderVector(path, provider, conformance, trustCheck, grantCheck, customRuntimeReadiness(root, slot, provider), resolve, observe)
+	return vectorFromFacets(facets, facets.conformance(probe), trustCheck, grantCheck, customRuntimeReadiness(root, slot, provider), resolve, observe)
 }
 
 func skillProviderVector(path, provider string, conformance, trustCheck, grantCheck, dependencies domain.ReadinessCheck, resolve connectors.ConnectorResult, observe connectors.ObservationResult) domain.PluginReadinessVector {
+	facets := readinessFacets{
+		descriptor: domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "legacy_descriptor_valid", Detail: path},
+		source:     domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "local_manifest_present", Detail: path},
+		entrypoint: probeSkillEntrypoint(provider, path),
+	}
+	return vectorFromFacets(facets, conformance, trustCheck, grantCheck, dependencies, resolve, observe)
+}
+
+func vectorFromFacets(facets readinessFacets, conformance, trustCheck, grantCheck, dependencies domain.ReadinessCheck, resolve connectors.ConnectorResult, observe connectors.ObservationResult) domain.PluginReadinessVector {
 	return domain.PluginReadinessVector{
-		Descriptor:          domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "legacy_descriptor_valid", Detail: path},
-		Source:              domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "local_manifest_present", Detail: path},
+		Descriptor:          facets.descriptor,
+		Source:              facets.source,
 		Conformance:         conformance,
 		Trust:               trustCheck,
 		Dependencies:        dependencies,
 		HostAPI:             domain.ReadinessCheck{Status: domain.ReadinessUnknown, ReasonCode: "host_api_not_declared"},
 		Connector:           connectorCheck(resolve),
-		Entrypoint:          probeSkillEntrypoint(provider, path),
+		Entrypoint:          facets.entrypoint,
 		PermissionGrant:     grantCheck,
 		EnforcementCoverage: connectorObservationCheck(observe),
 		ActiveBinding:       domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "active_yaml_slot_binding"},
 	}
 }
 
-func requestedPermissions(path string) []domain.PluginPermission {
-	raw, err := os.ReadFile(path) //nolint:gosec // path is the resolved runtime skill manifest
+func requestedPermissions(root, provider string) []domain.PluginPermission {
+	facts, err := domain.ResolveWeaponFacts(root, provider)
 	if err != nil {
 		return nil
 	}
-	var manifest struct {
-		Requested []domain.PluginPermission `yaml:"requested_permissions"`
-	}
-	if yaml.Unmarshal(raw, &manifest) != nil {
-		return nil
-	}
-	return manifest.Requested
+	return facts.RequestedPermissions
 }
 
 // bindingIsRanked reports whether slot's persisted plugins.lock binding for

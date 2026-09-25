@@ -40,9 +40,9 @@ This is not an inconsistency to fix — it reflects two different invocation sha
 
 | Skill | Shape | Why |
 |---|---|---|
-| `archivist` | `skill.yaml` + `SKILL.md` | Pipeline slot role (`skill_type: role_filler`) |
-| `ranger` | `skill.yaml` + `SKILL.md` | Pipeline slot role (`skill_type: role_filler`) |
-| `sniper` | `skill.yaml` + `SKILL.md` | Pipeline slot role (`skill_type: role_filler`) |
+| `archivist` | `skill.yaml` + `SKILL.md` | Pipeline slot role |
+| `ranger` | `skill.yaml` + `SKILL.md` | Pipeline slot role |
+| `sniper` | `skill.yaml` + `SKILL.md` | Pipeline slot role |
 | `scout` | `skill.yaml` + `SKILL.md` | Standalone addressable capability — internal Intake Router, no `active.yaml` slot, but its own persona ("You are Scout") |
 | `prompt-intake` | `skill.yaml` only | Inline classification sub-routine run by whichever agent is current; full algorithm (incl. `triage_questions`, `failure_modes`) already self-contained in `skill.yaml` |
 | `context-enrichment` | `skill.yaml` only | Inline retrieval sub-routine; `behavior` fully specifies the algorithm |

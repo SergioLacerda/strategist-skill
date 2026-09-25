@@ -41,6 +41,10 @@ type slotResolution struct {
 	kind      slotResolutionKind
 	path      string
 	readiness domain.PluginReadinessVector
+	// transitionalView marks a Weapon resolved through a hand-made compat view the
+	// catalog does not list (DEC-013): it stops resolving in the next runtime
+	// layout generation, so the operator is told.
+	transitionalView bool
 }
 
 // resolveSlotProvider resolves provider for slot through the two-branch model:
@@ -52,6 +56,9 @@ type slotResolution struct {
 // message that reads as "nothing here at all".
 func resolveSlotProvider(root, slot, provider string) (slotResolution, string) {
 	skillPath := filepath.Join(root, "skills", provider, "skill.yaml")
+	if res, msg, handled := resolveFromCatalog(root, slot, provider, skillPath); handled {
+		return res, msg
+	}
 	skillRaw, readErr := os.ReadFile(skillPath) //nolint:gosec // G304: provider manifest path is derived from the runtime skills directory
 	if readErr == nil {
 		return resolveSkillProviderSlot(root, slot, provider, skillPath, skillRaw)
@@ -62,21 +69,50 @@ func resolveSlotProvider(root, slot, provider string) (slotResolution, string) {
 	return resolveNativeRoleSlot(root, slot, provider, skillPath)
 }
 
+// resolveFromCatalog is the first step of slot resolution (DEC-010): a provider the
+// catalog lists is resolved from its catalog entry, whether or not a generated
+// compat view exists. A native_role entry takes the native branch, an embedded or
+// external entry the Weapon branch. A provider the catalog does not list is not
+// handled here and falls through to the transitional compat view and then to the
+// native role file. A package added with `provider add` is not resolved by this
+// path (U-01): DEC-010 step 2 is documented, not implemented.
+func resolveFromCatalog(root, slot, provider, skillPath string) (slotResolution, string, bool) {
+	facts, found, err := domain.ResolveCatalogWeaponFacts(root, provider)
+	if err != nil {
+		return slotResolution{}, fmt.Sprintf("slot %s: plugin catalog invalid: %v", slot, err), true
+	}
+	if !found {
+		return slotResolution{}, "", false
+	}
+	if facts.CompatibilitySource == "native_role" {
+		res, msg := resolveNativeRoleSlot(root, slot, provider, skillPath)
+		return res, msg, true
+	}
+	res, msg := resolveCatalogWeaponSlot(root, slot, provider, facts)
+	return res, msg, true
+}
+
 func resolveSkillProviderSlot(root, slot, provider, skillPath string, skillRaw []byte) (slotResolution, string) {
 	var skillDef struct {
 		RiskScore string `yaml:"risk_score"`
 	}
+	// The compat view must still parse (entrypoint probing reads it); risk and
+	// roles come from domain.ResolveWeaponFacts, where the catalog is the authority.
 	if yamlErr := yaml.Unmarshal(skillRaw, &skillDef); yamlErr != nil {
 		return slotResolution{}, fmt.Sprintf("slot %s: provider %q skill.yaml invalid: %v", slot, provider, yamlErr)
 	}
-	required := slotContract[slot]
-	if skillDef.RiskScore != required {
-		return slotResolution{}, fmt.Sprintf("slot %s: provider %q has risk_score=%q but slot requires %q — preflight will block", slot, provider, skillDef.RiskScore, required)
+	facts, err := domain.ResolveWeaponFactsFrom(root, provider, skillRaw)
+	if err != nil {
+		return slotResolution{}, fmt.Sprintf("slot %s: provider %q manifest unresolved: %v", slot, provider, err)
 	}
-	if errMsg := checkRoleProviderCompatibility(root, slot, provider, skillDef.RiskScore, skillRaw); errMsg != "" {
+	required := slotContract[slot]
+	if facts.RiskScore != required {
+		return slotResolution{}, fmt.Sprintf("slot %s: provider %q has risk_score=%q but slot requires %q — preflight will block", slot, provider, facts.RiskScore, required)
+	}
+	if errMsg := checkRoleFactsCompatibility(root, slot, provider, facts.RiskScore, facts.Roles); errMsg != "" {
 		return slotResolution{}, errMsg
 	}
-	return slotResolution{kind: slotResolutionSkillProvider, path: skillPath, readiness: skillProviderReadiness(root, slot, provider, skillPath)}, ""
+	return slotResolution{kind: slotResolutionSkillProvider, path: skillPath, readiness: skillProviderReadiness(root, slot, provider, skillPath), transitionalView: true}, ""
 }
 
 // checkRoleProviderCompatibility lives in check_role_compatibility.go, split

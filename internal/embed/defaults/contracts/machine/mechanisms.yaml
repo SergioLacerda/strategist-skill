@@ -1,0 +1,384 @@
+schema_version: "1"
+module: mechanisms
+type: registry
+description: >
+  The single catalog of the tools Strategist gives an agent in a mission:
+  Mechanisms (deterministic rules, enforced in code or in a contract) and the
+  Abilities that sit beside them (judgment-based behavior). It exists to make
+  agents aware of what is at their disposal, when it applies and how to invoke it.
+  An agent does not read this file: each role receives a role-scoped brief at
+  phase start (`strategist mechanisms brief --role {role}`, an on_start hook), so
+  the catalog is deliberately not in machine.always_load.
+
+# Row fields (validated by internal/mechanisms):
+#   id, display_name, family (mechanism | ability), owner_package, contract_file
+#   (defaults-relative; `;` separates several, `#` names a section),
+#   enforcement_kind (code | contract | prose), enforcement_tier (optional, the
+#   machine_enforced | machine_observed | agent_only vocabulary of errors.yaml),
+#   summary, when_to_use, invoked_by (roles, `all`, or `orchestrator`),
+#   how_to_invoke (a CLI command or a contract section), phase_scope,
+#   judgment_facet (hybrids: the agent-judgment side; `family` is the deterministic
+#   side).
+#
+# Claim placement for the confidence_governance row (stdin only, never a file under
+# base_path): confidence-governance.yaml#producers.claim_placement.
+#
+# Family criterion (docs/adr/0053): Mechanism = deterministic rule,
+# Ability = agent judgment. Items that have both are ONE row with a judgment_facet.
+
+mechanisms:
+  # --- Mechanisms -----------------------------------------------------------
+  - id: mission_status_fsm
+    display_name: Mission status FSM
+    family: mechanism
+    owner_package: internal/domain
+    contract_file: contracts/machine/mission-status.yaml
+    enforcement_kind: code
+    enforcement_tier: machine_enforced
+    summary: "the mission state moves only through validated events."
+    when_to_use: every phase boundary
+    invoked_by: [all]
+    how_to_invoke: "strategist mission start|status|submit --mission-id <id>"
+    phase_scope: [all]
+
+  - id: approval_gate
+    display_name: Approval Gate rules
+    family: mechanism
+    owner_package: internal/domain
+    contract_file: contracts/machine/approval-gate.yaml;contracts/narrative/05-approval-gate.md
+    enforcement_kind: code
+    enforcement_tier: machine_enforced
+    summary: "execution needs explicit user acceptance; acceptance never authorizes code changes."
+    when_to_use: after refinement, before any materialization
+    invoked_by: [archivist, sniper]
+    how_to_invoke: "05-approval-gate.md; `mission submit --event gate_approved`"
+    phase_scope: [approval_gate, execution]
+
+  - id: pipeline_bypass
+    display_name: Pipeline bypass guard
+    family: mechanism
+    owner_package: internal/domain;internal/mission
+    contract_file: contracts/narrative/00-routing.md;contracts/machine/scout-routing.yaml
+    enforcement_kind: code
+    enforcement_tier: machine_enforced
+    summary: entering execution without the evidence the Scout route requires is rejected as pipeline_bypass_detected.
+    when_to_use: automatically on `mission submit --event handoff_challenge_passed`; Scout records its route first
+    invoked_by: [scout, sniper]
+    how_to_invoke: "Scout: `strategist mission route --mission-id <id>` (route_decision JSON on stdin); the check itself is automatic"
+    phase_scope: [intake, execution]
+
+  - id: role_contract
+    display_name: Role Contract
+    family: mechanism
+    owner_package: internal/domain
+    contract_file: roles/ranger.yaml;roles/archivist.yaml;roles/sniper.yaml;roles/scout.yaml
+    enforcement_kind: code
+    enforcement_tier: machine_enforced
+    summary: "what a role must and must not do; its slot, phase and extensibility."
+    when_to_use: at role entry
+    invoked_by: [all]
+    how_to_invoke: "roles/<role>.yaml (must / must_not)"
+    phase_scope: [all]
+
+  - id: weapon_binding
+    display_name: Weapon Binding
+    family: mechanism
+    owner_package: internal/plugins;internal/provider;internal/rolevalidation
+    contract_file: plugins/catalog.yaml
+    enforcement_kind: code
+    enforcement_tier: machine_enforced
+    summary: "which Weapon fills a slot (ranked or custom); missing fails closed."
+    when_to_use: when a Weapon must be invoked or changed
+    invoked_by: [ranger, archivist, sniper]
+    how_to_invoke: "strategist provider validate|add <src> --slot <s>; strategist check"
+    phase_scope: [discovery, refinement, execution]
+
+  - id: preflight_compatibility
+    display_name: Preflight and compatibility check
+    family: mechanism
+    owner_package: internal/check
+    contract_file: contracts/machine/preflight.yaml
+    enforcement_kind: code
+    enforcement_tier: machine_enforced
+    summary: "slot, risk, role affinity, trust and grants are checked before a mission."
+    when_to_use: mission start or after a binding change
+    invoked_by: [all]
+    how_to_invoke: "strategist check --json"
+    phase_scope: [bootstrap]
+
+  - id: fingerprint_integrity
+    display_name: Fingerprint and integrity
+    family: mechanism
+    owner_package: internal/integrity;internal/stale;internal/compile
+    contract_file: contracts/machine/check-stale.yaml
+    enforcement_kind: code
+    enforcement_tier: machine_enforced
+    summary: "digests and layout generation detect source/runtime drift."
+    when_to_use: suspected stale runtime
+    invoked_by: [all]
+    how_to_invoke: "strategist check-stale; check (layout skew); upgrade --dry-run"
+    phase_scope: [bootstrap]
+
+  - id: trust_grants
+    display_name: Trust, grants and write scope
+    family: mechanism
+    owner_package: internal/plugins/trust;internal/plugins/policy
+    contract_file: contracts/machine/preflight.yaml
+    enforcement_kind: code
+    enforcement_tier: machine_enforced
+    summary: "a Weapon must be trusted and hold grants for what it requests."
+    when_to_use: binding or reviewing a custom Weapon
+    invoked_by: [ranger, archivist, sniper]
+    how_to_invoke: "strategist provider validate <src> --slot <s>; strategist check"
+    phase_scope: [bootstrap]
+
+  - id: handoff_contract
+    display_name: Handoff contract
+    family: mechanism
+    owner_package: internal/mission
+    contract_file: contracts/machine/handoff-contract.yaml;schemas/handoff-ranger-to-archivist.schema.yaml;schemas/handoff-archivist-to-sniper.schema.yaml
+    enforcement_kind: contract
+    enforcement_tier: agent_only
+    summary: "what each role hands the next: fields, dedup, verification."
+    when_to_use: when producing or consuming a handoff
+    invoked_by: [ranger, archivist, sniper]
+    how_to_invoke: "your handoff schema; reopen sources only with a declared reason"
+    phase_scope: [discovery, refinement, execution]
+
+  - id: handoff_challenge
+    display_name: Handoff Challenge
+    family: mechanism
+    owner_package: internal/handoff
+    contract_file: contracts/machine/handoff-contract.yaml
+    enforcement_kind: code
+    enforcement_tier: machine_observed
+    summary: "the receiver proves it kept the objective, boundary, classification, gate."
+    when_to_use: the handoff declares handoff_verification.required
+    invoked_by: [archivist, sniper]
+    how_to_invoke: "strategist handoff verify --transition <t> --challenges <f> --ack <f> --mission-id <id>"
+    phase_scope: [refinement, execution]
+
+  - id: confidence_governance
+    display_name: Confidence governance
+    family: mechanism
+    owner_package: internal/domain;internal/telemetry
+    contract_file: contracts/machine/confidence-governance.yaml
+    enforcement_kind: code
+    enforcement_tier: machine_observed
+    summary: "each boundary records claims with evidence; low confidence stays a question."
+    when_to_use: before a role finishes
+    invoked_by: [all]
+    how_to_invoke: "strategist metrics record --mission <id> --agent <role> --claim-file - (stdin)"
+    phase_scope: [all]
+
+  - id: mission_quality
+    display_name: Mission quality
+    family: mechanism
+    owner_package: internal/domain
+    contract_file: contracts/machine/mission-quality.yaml
+    enforcement_kind: contract
+    enforcement_tier: agent_only
+    summary: "advisory predicates over decisions and evidence, shown at the gate."
+    when_to_use: the package declares a decisions or evidence section
+    invoked_by: [archivist]
+    how_to_invoke: "mission-quality.yaml"
+    phase_scope: [refinement]
+
+  - id: compliance_summary
+    display_name: Compliance summary
+    family: mechanism
+    owner_package: contracts
+    contract_file: contracts/machine/compliance-summary.yaml
+    enforcement_kind: contract
+    enforcement_tier: agent_only
+    summary: the final compliance state and any blocking governance reason, before the mission result.
+    when_to_use: closing a mission
+    invoked_by: [sniper]
+    how_to_invoke: "contracts/machine/compliance-summary.yaml"
+    phase_scope: [execution]
+
+  - id: locks_transactions
+    display_name: Locks and transactions
+    family: mechanism
+    owner_package: internal/plugins/lifecycle;internal/initiative
+    contract_file: contracts/narrative/06-execution.md
+    enforcement_kind: code
+    enforcement_tier: machine_enforced
+    summary: plugin changes are transactional, ledgers are flock-guarded, and Sniper claims a mission with sniper_running.
+    when_to_use: automatic; Sniper claim protocol before any write
+    invoked_by: [sniper]
+    how_to_invoke: "Sniper claim protocol (06-execution.md); plugin locks are automatic"
+    phase_scope: [execution]
+
+  - id: control_log
+    display_name: Control log
+    family: mechanism
+    owner_package: ""
+    enforcement_kind: prose
+    summary: named in the Ranger and Archivist checkpoint prose; no artifact defines it yet.
+    when_to_use: unresolved, see the taxonomy review task on the control log
+    invoked_by: [orchestrator]
+    how_to_invoke: "none: prose only until defined"
+    phase_scope: [discovery, refinement]
+
+  - id: normalize_openspec
+    display_name: normalize-openspec
+    family: mechanism
+    owner_package: internal/refinement
+    contract_file: contracts/narrative/04-refinement.md
+    enforcement_kind: code
+    enforcement_tier: machine_enforced
+    summary: "publishes a finished OpenSpec change as the refined package; never hand-copy."
+    when_to_use: the openspec-propose Weapon finished its change
+    invoked_by: [archivist]
+    how_to_invoke: "strategist mission normalize-openspec --mission-id <id> --change-id <c>"
+    phase_scope: [refinement]
+
+  # --- Mechanisms that were once labelled Abilities (ADR-0053) --------------
+  - id: leveling
+    display_name: LEVELING
+    family: mechanism
+    owner_package: internal/leveling
+    contract_file: leveling.yaml
+    enforcement_kind: code
+    enforcement_tier: machine_observed
+    summary: "immutable model/effort resolver per role."
+    when_to_use: at every role start
+    invoked_by: [all]
+    how_to_invoke: "strategist leveling label --role {role} --mission <id> --host-model <m> --host-effort <e>"
+    phase_scope: [all]
+
+  - id: initiative
+    display_name: INITIATIVE
+    family: mechanism
+    owner_package: internal/initiative;internal/mission
+    contract_file: initiative.yaml;schemas/initiative-advice.schema.yaml;schemas/initiative-result.schema.yaml
+    enforcement_kind: code
+    enforcement_tier: machine_observed
+    summary: "one advice per role run; advisory, never changes LEVELING or the gate."
+    when_to_use: role entry and handoff boundaries
+    invoked_by: [all]
+    how_to_invoke: "role on_start hook; no command"
+    phase_scope: [all]
+    judgment_facet: the agent weighs the advice and records how it deviated
+
+  - id: precise_shot
+    display_name: PRECISE-SHOT (TIRO PRECISO)
+    family: mechanism
+    owner_package: internal/initiative
+    contract_file: initiative.yaml;schemas/initiative-result.schema.yaml
+    enforcement_kind: code
+    enforcement_tier: machine_observed
+    summary: "bounds a request to reconsider your LEVELING level (max, replay, cooldown)."
+    when_to_use: the role's own confidence assessment says the assigned level is not enough
+    invoked_by: [all]
+    how_to_invoke: "via the INITIATIVE result; no command"
+    phase_scope: [all]
+    judgment_facet: the agent assesses its own confidence and asks for reconsideration (TIRO PRECISO)
+
+  - id: critical_hit
+    display_name: Critical Hit
+    family: mechanism
+    owner_package: internal/domain
+    contract_file: contracts/machine/critical-hit.yaml;contracts/narrative/11-critical-hit.md
+    enforcement_kind: contract
+    enforcement_tier: agent_only
+    summary: moves or closes an analysis card without a full pipeline, only with an explicit request and evidence.
+    when_to_use: a plain move, or a closure move with a completion claim and evidence summary
+    invoked_by: [scout]
+    how_to_invoke: "Scout selects selected_route=critical_hit per critical-hit.yaml#trigger_conditions"
+    phase_scope: [intake]
+
+  - id: opportunity_attack
+    display_name: Opportunity Attack
+    family: mechanism
+    owner_package: contracts
+    contract_file: contracts/machine/opportunity-attack.yaml
+    enforcement_kind: contract
+    enforcement_tier: agent_only
+    summary: "after refinement, judges if an ADR, runbook or chest is warranted."
+    when_to_use: after refinement, before the completion signal
+    invoked_by: [archivist]
+    how_to_invoke: "opportunity-attack.yaml; OA-* at the gate"
+    phase_scope: [refinement]
+    judgment_facet: the agent detects the opportunity
+
+  - id: side_quest
+    display_name: Side Quest
+    family: mechanism
+    owner_package: contracts
+    contract_file: contracts/machine/opportunity-attack.yaml;contracts/narrative/05-approval-gate.md
+    enforcement_kind: contract
+    enforcement_tier: agent_only
+    summary: "adjacent work found mid-mission is shown at the gate, never absorbed."
+    when_to_use: any out-of-scope finding
+    invoked_by: [ranger, archivist]
+    how_to_invoke: "record in side_quests; Archivist sets the strategy"
+    phase_scope: [discovery, refinement]
+    judgment_facet: the agent detects the out-of-scope finding
+
+  # --- Abilities (agent judgment) -------------------------------------------
+  - id: search
+    display_name: Search
+    family: ability
+    owner_package: roles
+    contract_file: roles/ranger.yaml#canonical.search
+    enforcement_kind: contract
+    enforcement_tier: agent_only
+    summary: "filters jewel/potion candidates before a treasure chest is opened."
+    when_to_use: Retrieval Cascade stage 6, before consult_treasure_chests
+    invoked_by: [ranger, archivist]
+    how_to_invoke: "roles/ranger.yaml#canonical.search (Archivist reuses the hint)"
+    phase_scope: [discovery, refinement]
+
+  - id: select_runbook
+    display_name: select_runbook
+    family: ability
+    owner_package: internal/runbook
+    contract_file: roles/ranger.yaml#canonical.select_runbook;contracts/narrative/03-discovery.md
+    enforcement_kind: contract
+    enforcement_tier: agent_only
+    summary: scores runbook sidecars against mission signals; at most one primary and two supporting, each with a reason.
+    when_to_use: Retrieval Cascade stage 6, alongside Search
+    invoked_by: [ranger]
+    how_to_invoke: "strategist runbook select --format json --signal <signal>"
+    phase_scope: [discovery]
+
+  - id: riposte
+    display_name: Riposte
+    family: ability
+    owner_package: contracts
+    contract_file: contracts/machine/riposte.yaml
+    enforcement_kind: contract
+    enforcement_tier: agent_only
+    summary: "offers to capture a rejected/revised mission reason and unselected side quests as backlog."
+    when_to_use: gate reject or revision, and mission close with a side-quest backlog
+    invoked_by: [archivist, sniper]
+    how_to_invoke: "riposte.yaml"
+    phase_scope: [approval_gate, execution]
+
+  - id: resolve_weapon_scratch_root
+    display_name: resolve_weapon_scratch_root
+    family: ability
+    owner_package: roles
+    contract_file: roles/ranger.yaml#canonical.resolve_weapon_scratch_root;roles/archivist.yaml#canonical.resolve_weapon_scratch_root
+    enforcement_kind: contract
+    enforcement_tier: agent_only
+    summary: "run a runtime-scratch Weapon from .strategist/weapon-runtime/<id>/, not the repo root."
+    when_to_use: before invoking a Weapon whose catalog scratch_root is runtime
+    invoked_by: [ranger, archivist]
+    how_to_invoke: "plugins/catalog.yaml#scratch_root; cd into the weapon-runtime dir"
+    phase_scope: [discovery, refinement]
+
+  - id: keen_senses
+    display_name: Keen Senses
+    family: ability
+    owner_package: contracts
+    contract_file: contracts/machine/keen-senses.yaml
+    enforcement_kind: contract
+    enforcement_tier: agent_only
+    summary: at bootstrap, surfaces stale captured entries, jewels and treasure chests without acting on them.
+    when_to_use: bootstrap, after the stale scan
+    invoked_by: [orchestrator]
+    how_to_invoke: "contracts/machine/keen-senses.yaml"
+    phase_scope: [bootstrap]

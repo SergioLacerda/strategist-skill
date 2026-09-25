@@ -37,7 +37,7 @@ Archivist (`refinement`)
   never finish silently — Archivist also records the critic (`--agent response_critic`) and `mission_quality` boundaries with the same command (see `machine/confidence-governance.yaml#producers`)
 - before invoking the selected refinement weapon's own CLI/tooling, apply
   `roles/archivist.yaml#canonical.resolve_weapon_scratch_root` — read
-  `skills/<provider>/skill.yaml#scratch_root`, and when it is `runtime`, run the
+  `plugins/catalog.yaml#providers[id=<provider>].scratch_root`, and when it is `runtime`, run the
   weapon with `.strategist/weapon-runtime/<provider_id>/` as its working
   directory, never the host repository root (see `agent-protocol.md` §3
   Refinement Routing)
@@ -60,7 +60,9 @@ Archivist (`refinement`)
   the refined artifact that needed it (see skill.yaml's
   `archivist_reopens_discovery_sources_without_declared_reason` forbidden_behaviors entry)
 - on completion, append one line to `.strategist/memory/handoff-metrics.jsonl`
-  (skill.yaml#handoff_metrics_log) — nulls are expected for `brief_compression_ratio`/
+  (skill.yaml#handoff_metrics_log) with `strategist metrics handoff-record --mission <mission_id>`
+  (pass only the values that were measured; it never derives the two ratios, and a mission that
+  already has a line is left unchanged) — nulls are expected for `brief_compression_ratio`/
   `evidence_coverage_ratio` when the Ranger artifact did not populate `evidence_cards[]`;
   include the Archivist's `model`, `effort` and `level_source` (null when unknown)
 - produce the four-file refined package

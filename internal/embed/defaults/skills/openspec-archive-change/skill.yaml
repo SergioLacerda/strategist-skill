@@ -2,7 +2,7 @@ id: openspec-archive-change
 version: "1.0"
 schema_version: "1"
 status: active
-risk_score: write_analysis
+risk_score: controlled
 category: lifecycle
 canonical_role: sniper
 roles:

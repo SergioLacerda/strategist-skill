@@ -232,3 +232,30 @@ func TestValidateMissingConfidenceRecordRequiresIdentityAndCorrelation(t *testin
 		t.Fatalf("expected missing identity diagnostics, got %v", err)
 	}
 }
+
+// Pins the denominator policy documented in confidence-governance.yaml: a
+// rejected assertion counts as an unsupported assertion, while a rejected
+// question and a missing record stay out of the assertion denominators.
+func TestComputeConfidenceMetricsDenominatorPolicy(t *testing.T) {
+	t.Parallel()
+	supported := ConfidenceRecord{MissionID: "m", ClaimID: "a", Agent: "ranger", CorrelationKey: "k1", ClaimKind: domain.ClaimKindAssertion, ConfidenceLevel: domain.ConfidenceHigh, ConfidencePercent: 90, EvidenceIDs: []string{"E"}, EvidenceProvided: true, CoverageStatus: ConfidenceCoverageReported}
+	rejectedAssertion := ConfidenceRecord{MissionID: "m", ClaimID: "b", Agent: "ranger", CorrelationKey: "k2", ClaimKind: domain.ClaimKindAssertion, CoverageStatus: ConfidenceCoverageRejected, Violation: "bad"}
+	rejectedQuestion := ConfidenceRecord{MissionID: "m", ClaimID: "q", Agent: "ranger", CorrelationKey: "k3", ClaimKind: domain.ClaimKindQuestion, CoverageStatus: ConfidenceCoverageRejected, Violation: "bad"}
+	missing := ConfidenceRecord{MissionID: "m", Agent: "response_critic", CorrelationKey: "k4", CoverageStatus: ConfidenceCoverageMissing}
+
+	m := ComputeConfidenceMetrics([]ConfidenceRecord{supported, rejectedAssertion, rejectedQuestion, missing})
+
+	if m.SampleSize != 1 {
+		t.Fatalf("sample_size counts only valid records, got %d", m.SampleSize)
+	}
+	if m.RejectedRecords != 2 || m.MissingRecords != 1 {
+		t.Fatalf("discarded records = rejected %d missing %d", m.RejectedRecords, m.MissingRecords)
+	}
+	if m.AssertionEvidenceCoverage != 0.5 || m.UnsupportedAssertionRate != 0.5 {
+		t.Fatalf("1 supported of 2 assertion records (the rejected one counts): coverage=%v unsupported=%v", m.AssertionEvidenceCoverage, m.UnsupportedAssertionRate)
+	}
+	only := ComputeConfidenceMetrics([]ConfidenceRecord{rejectedQuestion, missing})
+	if only.UnsupportedAssertionRate != 0 || only.AssertionEvidenceCoverage != 0 {
+		t.Fatalf("a rejected question and a missing record never enter the assertion denominator: %+v", only)
+	}
+}

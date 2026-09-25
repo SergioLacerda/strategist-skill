@@ -103,17 +103,16 @@ contract:
 
   # enforced_by uses the unified 3-tier vocabulary defined in
   # contracts/machine/errors.yaml (machine_enforced / machine_observed /
-  # agent_only). Reviewed against actual Go call sites, 2026-08-30: every
-  # invariant below is agent_only today. There is no Go-side mission_status
-  # FSM (mission_status lives only as Markdown frontmatter the agent itself
-  # reads and writes), and internal/domain/pipeline_bypass.go's
-  # EvaluatePipelineBypass — the one Go function that would enforce the last
-  # two invariants — has zero non-test callers anywhere in the repo (verified
-  # by grep), so it does not sit on any live, reachable path. This gate's
-  # entire contract rests on the orchestrating agent following it; that is a
-  # real finding of this tagging pass, not an oversight in how the tags were
-  # applied — see .analysis/refined/20260830-skill-gaps-triage/tasks.md Task 1
-  # and its "cross-cutting pattern" note for the matching gap in related code.
+  # agent_only). Reviewed against actual Go call sites, 2026-08-30, and updated
+  # 2026-09-25: mission_status still lives only as Markdown frontmatter the agent
+  # reads and writes, so most invariants below stay agent_only. The one
+  # exception is entering execution: `strategist mission submit --event
+  # handoff_challenge_passed` now calls internal/mission.EvaluateExecutionEntry,
+  # which runs internal/domain.EvaluatePipelineBypass against the evidence the
+  # mission's Scout route requires (route recorded with `strategist mission
+  # route`) and returns a Go error, so that invariant is machine_enforced. The
+  # bypass check does not observe repository writes made outside that
+  # transition; direct mutation stays agent_only.
   invariants:
     - text: gate must emit status=analysis_accepted, status=revision_requested, or status=rejected before sniper is invoked
       enforced_by: agent_only
@@ -125,8 +124,10 @@ contract:
       enforced_by: agent_only
     - text: checkpoint is re-emitted on accept (not on revision or reject)
       enforced_by: agent_only
-    - text: direct repository mutation before acceptance emits reason=pipeline_bypass_detected
+    - text: direct repository mutation before acceptance emits reason=pipeline_bypass_detected (no Go code observes writes made outside the execution-entry transition)
       enforced_by: agent_only
+    - text: entering execution (mission submit --event handoff_challenge_passed) without the evidence the Scout-selected route requires is rejected with reason=pipeline_bypass_detected, expected_phase and missing_evidence
+      enforced_by: machine_enforced
     - text: pipeline_bypass_detected must include expected_phase=approval_gate and missing_evidence=approval_gate:analysis_accepted
       enforced_by: agent_only
     - text: confidence summary is advisory input and cannot auto-accept, auto-reject, or invoke Sniper

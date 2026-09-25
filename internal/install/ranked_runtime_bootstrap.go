@@ -109,7 +109,7 @@ func prepareRankedBinding(ctx context.Context, strategistDir string, roles domai
 	}, true, nil
 }
 
-func bootstrapOpenSpecRuntimeWith(ctx context.Context, root string, runtime domain.RankedRuntimeContract, exe rankedExecutable) error {
+func bootstrapOpenSpecRuntimeWith(ctx context.Context, root string, runtime domain.WeaponRuntime, exe rankedExecutable) error {
 	bootstrapArgs, err := openSpecCommandArgs(runtime.Bootstrap, "init")
 	if err != nil {
 		return fmt.Errorf("invalid bootstrap command: %w", err)

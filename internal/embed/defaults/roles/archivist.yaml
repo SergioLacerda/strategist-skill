@@ -3,13 +3,13 @@ slot: refinement
 origin: native
 extensibility: pluggable
 phase: 2
-pluggable: true
 handoff_schema: schemas/handoff-archivist-to-sniper.schema.yaml
 on_start:                       # run when this role's phase starts; {role} and {mission_id} are substituted.
                                  # --host-model/--host-effort are a literal reminder to fill in with the
                                  # actual running model/effort — the CLI cannot infer them, and omitting
                                  # them silently returns blank fields.
   - strategist leveling label --role {role} --mission {mission_id} --host-model <your-model> --host-effort <your-effort>
+  - strategist mechanisms brief --role {role}   # the tools (Mechanisms and Abilities) available to this role
 # leveling: archivist
 
 # Consume Ranger's initiative_result without recalculating the recommendation.
@@ -24,7 +24,7 @@ initiative:
 canonical:
   - load_ranger_analysis_artifact    # read handoff contract fields only; do NOT re-read full history
   - resolve_weapon_scratch_root:      # ability: cd into the resolved weapon's declared scratch root before invoking its own CLI/tooling
-      read: "skills/<resolved_provider>/skill.yaml#scratch_root"
+      read: "plugins/catalog.yaml#providers[id=<resolved_provider>].scratch_root"   # the catalog is the authority; skills/<id>/skill.yaml is only a generated compat view
       when: scratch_root == "runtime"
       action: >
         Before invoking this weapon's own CLI/tooling, ensure

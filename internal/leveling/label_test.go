@@ -265,7 +265,7 @@ func TestRenderWithRegistryDerivesTotalAndPhase(t *testing.T) {
 }
 
 func TestPolicyRoleUsesTheRoleLevelingKey(t *testing.T) {
-	reg, err := domain.NewRoleRegistry([]domain.Role{{ID: "ranger", Slot: "discovery", Phase: 1, Pluggable: true, Leveling: "archivist"}})
+	reg, err := domain.NewRoleRegistry([]domain.Role{{ID: "ranger", Slot: "discovery", Phase: 1, Extensibility: domain.RoleExtensibilityPluggable, Leveling: "archivist"}})
 	require.NoError(t, err)
 	policy := defaultPolicy(t)
 	got, err := leveling.Suggest(policy, "CLAUDE", reg.PolicyRole("ranger"), leveling.Signals{})

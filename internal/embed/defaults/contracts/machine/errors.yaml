@@ -33,7 +33,9 @@ description: >
 #     agent following contract/prose doctrine. A Go type or pure function that
 #     implements the logic but has zero non-test callers is agent_only, not
 #     machine_observed, until something on a live path actually invokes it
-#     (e.g. internal/domain/pipeline_bypass.go's EvaluatePipelineBypass today).
+#     (internal/domain/pipeline_bypass.go's EvaluatePipelineBypass was in that
+#     state until `mission submit` began calling it on the execution-entry
+#     transition; see the pipeline_bypass_detected entry).
 #
 # Every errors[] entry below was reviewed against its actual Go call sites
 # (2026-08-30): both former `enforced_by: binary` tokens (not_installed,
@@ -379,9 +381,9 @@ errors:
   - token: pipeline_bypass_detected
     emit: "error=pipeline_bypass_detected"
     scope: execution
-    reason: "repository mutation attempted without canonical pipeline evidence for the active route"
+    reason: "execution entered (or repository mutation attempted) without canonical pipeline evidence for the active route"
     action: "stop; complete the missing phase and resume through the pipeline"
-    enforced_by: agent_only
+    enforced_by: machine_enforced
 
   - token: already_claimed
     emit: "blocked reason=already_claimed"

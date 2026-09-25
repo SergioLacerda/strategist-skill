@@ -40,7 +40,7 @@ func TestValidateRankedRuntimeRootRejectsNestedOpenSpecConfig(t *testing.T) {
 }
 
 func TestValidateRankedRuntimeContractRejectsInvalidRuntime(t *testing.T) {
-	result := validateRankedRuntimeContract(domain.RankedRuntimeContract{Kind: "unsupported"}, "refinement", "provider")
+	result := validateRankedRuntimeContract(domain.WeaponRuntime{Kind: "unsupported"}, "refinement", "provider")
 
 	require.Equal(t, domain.ReadinessBlocked, result.Status)
 	require.Equal(t, "ranked_runtime_contract_invalid", result.ReasonCode)
@@ -48,7 +48,7 @@ func TestValidateRankedRuntimeContractRejectsInvalidRuntime(t *testing.T) {
 }
 
 func TestValidateRankedRuntimeContractAllowsNoRuntime(t *testing.T) {
-	result := validateRankedRuntimeContract(domain.RankedRuntimeContract{Kind: domain.RankedRuntimeNone}, "discovery", "provider")
+	result := validateRankedRuntimeContract(domain.WeaponRuntime{Kind: domain.RankedRuntimeNone}, "discovery", "provider")
 
 	require.Equal(t, domain.ReadinessReady, result.Status)
 	require.Equal(t, "ranked_runtime_not_required", result.ReasonCode)
@@ -111,7 +111,7 @@ func TestRankedRuntimeReadinessReportsMissingRoot(t *testing.T) {
 
 	result := rankedRuntimeReadiness(root, "refinement", "provider", domain.CatalogRankedStamp{
 		CertificationDigest: digest,
-		Runtime: domain.RankedRuntimeContract{
+		Runtime: domain.WeaponRuntime{
 			Kind: domain.RankedRuntimeOpenSpecRoot, Root: ".strategist/runtime", Bootstrap: "bootstrap", Healthcheck: "healthcheck",
 		},
 	})
@@ -129,7 +129,7 @@ func TestRankedRuntimeReadinessReportsAnEntryWithoutRuntime(t *testing.T) {
 
 	result := rankedRuntimeReadiness(root, "refinement", "provider", domain.CatalogRankedStamp{
 		CertificationDigest: digest,
-		Runtime:             domain.RankedRuntimeContract{Kind: domain.RankedRuntimeOpenSpecRoot, Root: ".strategist/runtime", Bootstrap: "bootstrap", Healthcheck: "healthcheck"},
+		Runtime:             domain.WeaponRuntime{Kind: domain.RankedRuntimeOpenSpecRoot, Root: ".strategist/runtime", Bootstrap: "bootstrap", Healthcheck: "healthcheck"},
 	})
 
 	require.Equal(t, domain.ReadinessBlocked, result.Status)
@@ -138,7 +138,7 @@ func TestRankedRuntimeReadinessReportsAnEntryWithoutRuntime(t *testing.T) {
 
 func TestRankedRuntimeReadinessReportsRuntimeNotRequired(t *testing.T) {
 	result := rankedRuntimeReadiness(t.TempDir(), "discovery", "brainstorming", domain.CatalogRankedStamp{
-		Runtime: domain.RankedRuntimeContract{Kind: domain.RankedRuntimeNone},
+		Runtime: domain.WeaponRuntime{Kind: domain.RankedRuntimeNone},
 	})
 
 	require.Equal(t, domain.ReadinessReady, result.Status)
@@ -147,7 +147,7 @@ func TestRankedRuntimeReadinessReportsRuntimeNotRequired(t *testing.T) {
 
 func TestRankedRuntimeReadinessAcceptsEmbeddedSkillWithoutRuntimeState(t *testing.T) {
 	result := rankedRuntimeReadiness(t.TempDir(), "discovery", "brainstorming", domain.CatalogRankedStamp{
-		Runtime: domain.RankedRuntimeContract{Kind: domain.RankedRuntimeEmbedded},
+		Runtime: domain.WeaponRuntime{Kind: domain.RankedRuntimeEmbedded},
 	})
 
 	require.Equal(t, domain.ReadinessReady, result.Status)
@@ -287,8 +287,8 @@ func hostRuntimeFixture(t *testing.T, nodeBody string) (strategist, runtimeRoot 
 
 // hostNodeContract is the certified runtime contract the host Node is checked
 // against.
-func hostNodeContract() domain.RankedRuntimeContract {
-	return domain.RankedRuntimeContract{
+func hostNodeContract() domain.WeaponRuntime {
+	return domain.WeaponRuntime{
 		Kind: domain.RankedRuntimeOpenSpecRoot, Root: ".strategist/openspec",
 		Bootstrap: "openspec init", Healthcheck: "openspec context --json",
 		Version: "1.13.0", NodeVersion: "22.23.2",

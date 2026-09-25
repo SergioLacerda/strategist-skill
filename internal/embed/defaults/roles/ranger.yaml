@@ -3,13 +3,13 @@ slot: discovery
 origin: native
 extensibility: pluggable
 phase: 1                        # checkpoint position (0 is pre-pipeline)
-pluggable: true                # an external provider may fill this role
 handoff_schema: schemas/handoff-ranger-to-archivist.schema.yaml
 on_start:                       # run when this role's phase starts; {role} and {mission_id} are substituted.
                                  # --host-model/--host-effort are a literal reminder to fill in with the
                                  # actual running model/effort — the CLI cannot infer them, and omitting
                                  # them silently returns blank fields.
   - strategist leveling label --role {role} --mission {mission_id} --host-model <your-model> --host-effort <your-effort>
+  - strategist mechanisms brief --role {role}   # the tools (Mechanisms and Abilities) available to this role
 # leveling: ranger             # optional LEVELING policy role; defaults to the role id
 
 # INITIATIVE is consultative: resolve one advice envelope at role entry and
@@ -24,7 +24,7 @@ initiative:
 canonical:
   - find_unexpected_items       # surface items outside declared mission scope
   - resolve_weapon_scratch_root: # ability: cd into the resolved weapon's declared scratch root before invoking its own CLI/tooling
-      read: "skills/<resolved_provider>/skill.yaml#scratch_root"
+      read: "plugins/catalog.yaml#providers[id=<resolved_provider>].scratch_root"   # the catalog is the authority; skills/<id>/skill.yaml is only a generated compat view
       when: scratch_root == "runtime"
       action: >
         Before invoking this weapon's own CLI/tooling, ensure
@@ -36,9 +36,13 @@ canonical:
       output: relevant_sources_hint     # carried in the handoff artifact, reused by Archivist by default
   - select_runbook:              # ability: scores docs/runbooks/*.runbook.yaml sidecars against mission signals
       when: same point as search — before consult_treasure_chests opens the runbooks chest (Retrieval Cascade stage 6)
+      must_invoke: true              # the pipeline runs it; skipping it leaves selected_runbooks_hint null (a reported gap)
+      invoke: "strategist runbook select --format json --signal <signal> [--signal <signal> ...]"
+      signals: [mission_contract.task_type, route_decision.discovery_subtype, salient keywords of the request]
       reads: docs/runbooks/*.runbook.yaml   # via internal/runbook.ParseSidecar
       policy: internal/runbook.DefaultSelectionPolicy()   # max_primary=1, max_supporting=2, require_reason=true
-      output: selected_runbooks_hint    # carried in the handoff artifact, reused by Archivist by default
+      output: selected_runbooks_hint    # list in the handoff artifact ([] = ran, no match), reused by Archivist by default
+      evidence: record the command, the signals and the result in the analysis artifact
   - consult_treasure_chests     # consult T0/T1 chests scoped to discovery before generating artifact
   - scope_observation:          # surface side quests and unexpected items during exploration
       detect: [treasure_chests, side_quests]

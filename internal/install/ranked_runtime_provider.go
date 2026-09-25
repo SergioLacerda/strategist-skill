@@ -11,13 +11,13 @@ import (
 
 // resolveRankedProvider finds the bound catalog provider and its validated
 // runtime contract; the provider must be certified.
-func resolveRankedProvider(catalog pluginCatalog, binding domain.SlotBinding) (pluginCatalogProvider, domain.RankedRuntimeContract, error) {
+func resolveRankedProvider(catalog pluginCatalog, binding domain.SlotBinding) (pluginCatalogProvider, domain.WeaponRuntime, error) {
 	provider, ok := findCatalogProvider(catalog, binding.InstalledInstanceID)
 	if !ok {
-		return provider, domain.RankedRuntimeContract{}, fmt.Errorf("ranked runtime provider %q is missing from catalog", binding.InstalledInstanceID)
+		return provider, domain.WeaponRuntime{}, fmt.Errorf("ranked runtime provider %q is missing from catalog", binding.InstalledInstanceID)
 	}
 	if !provider.Ranked || provider.CertificationDigest == "" {
-		return provider, domain.RankedRuntimeContract{}, fmt.Errorf("ranked runtime provider %q is not certified", provider.ID)
+		return provider, domain.WeaponRuntime{}, fmt.Errorf("ranked runtime provider %q is not certified", provider.ID)
 	}
 	runtime := domain.NormalizeRankedRuntime(provider.Runtime)
 	if err := runtime.Validate(); err != nil {
@@ -28,7 +28,7 @@ func resolveRankedProvider(catalog pluginCatalog, binding domain.SlotBinding) (p
 
 // bootstrapRankedProvider resolves the executable, bootstraps the runtime root
 // and returns the private-runtime evidence (nil for a host executable).
-func bootstrapRankedProvider(ctx context.Context, strategistDir string, provider pluginCatalogProvider, runtime domain.RankedRuntimeContract) (*domain.RankedRuntimeStateRuntime, error) {
+func bootstrapRankedProvider(ctx context.Context, strategistDir string, provider pluginCatalogProvider, runtime domain.WeaponRuntime) (*domain.RankedRuntimeStateRuntime, error) {
 	if runtime.Kind != domain.RankedRuntimeOpenSpecRoot {
 		return nil, nil
 	}

@@ -67,7 +67,7 @@ func TestWriteCatalogAndMirrors_FullSuccessWithNestedPackage(t *testing.T) {
 			ID:      "sample",
 			Dir:     sourceDir,
 			Package: domain.PluginPackage{Version: "1.0.0", Digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
-			Adapter: externalSkillAdapter{Runtime: domain.RankedRuntimeContract{Kind: domain.RankedRuntimeEmbedded}},
+			Adapter: externalSkillAdapter{Runtime: domain.WeaponRuntime{Kind: domain.RankedRuntimeEmbedded}},
 		}},
 		Catalog: pluginCatalog{SchemaVersion: "v1", Providers: []pluginCatalogProvider{{ID: "sample", RiskScore: "write_analysis"}}},
 	}

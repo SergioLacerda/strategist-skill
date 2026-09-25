@@ -108,7 +108,7 @@ Weapon's declared runtime connector. Read `skills/<weapon>/skill.yaml#roles`
 and load `roles/archivist.yaml` for the Role contract before acting.
 
 In particular, apply `roles/archivist.yaml#canonical.resolve_weapon_scratch_root`:
-read the bound Weapon's `skill.yaml#scratch_root`, and when it is `runtime`, run
+read the bound Weapon's catalog entry (`plugins/catalog.yaml`, `scratch_root`), and when it is `runtime`, run
 the Weapon's CLI with `.strategist/weapon-runtime/<weapon_id>/` as its working
 directory — never the host repository root — before invoking it. A plugin's own
 root-autodetection (e.g. walking up from the working directory for a project
@@ -136,6 +136,25 @@ Linear checklist. Do not advance without completing each item.
 [ ] 8. materialization → invoke {{.Slots.Execution}}  ← only after gate approved
 [ ] 9. learning (non-blocking)
 ```
+
+## Mission State Events
+
+The internal state machine moves only when an event is submitted, and the roles run as
+agents that never submit one — without this step a finished mission still reads
+`BOOTSTRAP/INIT`. The Strategist shell (the parent agent) submits each event with
+`strategist mission submit --mission-id <id> --event <event>`, once, after the step's own
+evidence exists. An event records a fact that already happened; it never replaces the
+phase's work or evidence, and it does not weaken the pipeline-bypass check at execution
+entry.
+
+| Pipeline step | Event submitted by the Strategist shell |
+|---|---|
+| 1. startup | `bootstrap_done` |
+| 2–4. intake, routing, context enrichment | `intake_done` (after `strategist mission route`) |
+| 5. discovery | `discovery_done` |
+| 6. refinement | `refinement_done`, or `refinement_done_no_tasks` when the package has no tasks |
+| 7. approval gate | `gate_approved` (documentation targets accepted), `gate_approved_analysis_only` (accepted with no `documentation_target`), `gate_revision_requested` (back to refinement, then `refinement_done` again), or `gate_denied` |
+| 8. materialization | `handoff_challenge_passed` (execution entry; machine-enforced against the route's evidence), then `sniper_done` |
 
 ## Canonical Pipeline Evidence
 

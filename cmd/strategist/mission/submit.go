@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	livemission "github.com/SergioLacerda/strategist-skill/internal/mission"
 	"github.com/SergioLacerda/strategist-skill/internal/refinement"
 	"github.com/spf13/cobra"
 )
@@ -24,22 +25,9 @@ func NewSubmit(deps LifecycleDependencies) *cobra.Command {
 // RunSubmit applies one event through the restored domain.MissionEngine and
 // persists the resulting status.
 func RunSubmit(cmd *cobra.Command, deps LifecycleDependencies, rootInput, missionID, event string, asJSON bool) error {
-	if err := deps.RequireMissionID(missionID); err != nil {
-		return err
-	}
-	if event == "" {
-		return fmt.Errorf("mission submit: --event is required")
-	}
-	root, basePath, err := deps.ResolveBasePath(rootInput)
+	root, engine, err := loadForSubmit(deps, rootInput, missionID, domain.MissionEngineEvent(event))
 	if err != nil {
-		return fmt.Errorf("mission submit: %w", err)
-	}
-	if err := requireAnalysisOnlyPackage(basePath, missionID, domain.MissionEngineEvent(event)); err != nil {
 		return err
-	}
-	engine, _, err := deps.Load(root, missionID)
-	if err != nil {
-		return fmt.Errorf("mission submit: %w", err)
 	}
 	status, err := engine.Submit(domain.MissionEngineEvent(event))
 	if err != nil {
@@ -49,6 +37,32 @@ func RunSubmit(cmd *cobra.Command, deps LifecycleDependencies, rootInput, missio
 		return fmt.Errorf("mission submit: %w", err)
 	}
 	return deps.WriteResult(cmd, asJSON, status)
+}
+
+// loadForSubmit validates the request, applies the pre-transition guards and
+// restores the mission engine the event will be submitted to.
+func loadForSubmit(deps LifecycleDependencies, rootInput, missionID string, event domain.MissionEngineEvent) (string, *domain.MissionEngine, error) {
+	if err := deps.RequireMissionID(missionID); err != nil {
+		return "", nil, err
+	}
+	if event == "" {
+		return "", nil, fmt.Errorf("mission submit: --event is required")
+	}
+	root, basePath, err := deps.ResolveBasePath(rootInput)
+	if err != nil {
+		return "", nil, fmt.Errorf("mission submit: %w", err)
+	}
+	if err := requireAnalysisOnlyPackage(basePath, missionID, event); err != nil {
+		return "", nil, err
+	}
+	engine, _, err := deps.Load(root, missionID)
+	if err != nil {
+		return "", nil, fmt.Errorf("mission submit: %w", err)
+	}
+	if err := requireExecutionEvidence(root, basePath, engine.Status(), event); err != nil {
+		return "", nil, err
+	}
+	return root, engine, nil
 }
 
 // requireAnalysisOnlyPackage rejects an analysis-only terminal event when the
@@ -65,6 +79,24 @@ func requireAnalysisOnlyPackage(basePath, missionID string, event domain.Mission
 	}
 	if has {
 		return fmt.Errorf("mission submit: rejected: %s requires a package with no documentation_target, but %s declares one — use gate_approved / handoff_challenge_passed so Sniper materializes it", event, tasks)
+	}
+	return nil
+}
+
+// requireExecutionEvidence is the live execution boundary: entering Sniper
+// execution is rejected as pipeline_bypass_detected unless the evidence the
+// mission's Scout route requires is present (see
+// internal/mission.EvaluateExecutionEntry). Every other event is unguarded.
+func requireExecutionEvidence(root, basePath string, status domain.MissionEngineStatus, event domain.MissionEngineEvent) error {
+	if event != domain.MissionEventHandoffPassed {
+		return nil
+	}
+	decision, err := livemission.EvaluateExecutionEntry(root, basePath, status)
+	if err != nil {
+		return fmt.Errorf("mission submit: %w", err)
+	}
+	if !decision.Allowed {
+		return fmt.Errorf("mission submit: rejected: %w", decision)
 	}
 	return nil
 }

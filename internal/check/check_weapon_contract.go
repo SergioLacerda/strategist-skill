@@ -2,11 +2,8 @@ package check
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"gopkg.in/yaml.v3"
 )
 
 func validateWeaponBoundary(slot, roleID string, contract domain.WeaponContract) error {
@@ -26,22 +23,17 @@ func validateWeaponBoundary(slot, roleID string, contract domain.WeaponContract)
 // to the provider actually selected for discovery. Optional catalogued Ranger
 // candidates may omit the contract until selected; the selected Weapon may not.
 func validateSelectedDiscoveryWeaponContract(root, provider string) error {
-	path := filepath.Join(root, "skills", provider, "skill.yaml")
-	raw, err := os.ReadFile(path) //nolint:gosec // path is derived from the selected runtime provider
+	facts, err := domain.ResolveWeaponFacts(root, provider)
 	if err != nil {
 		return fmt.Errorf("discovery weapon %q unavailable: %w", provider, err)
 	}
-	var taxonomy skillTaxonomy
-	if err := yaml.Unmarshal(raw, &taxonomy); err != nil {
-		return fmt.Errorf("discovery weapon %q manifest invalid: %w", provider, err)
-	}
-	if taxonomy.canonicalRole() != "ranger" {
+	if facts.CanonicalRole != "ranger" {
 		return fmt.Errorf("discovery weapon %q is incompatible with Ranger", provider)
 	}
-	if taxonomy.WeaponContract.IsZero() {
+	if facts.WeaponContract.IsZero() {
 		return fmt.Errorf("discovery weapon contract missing: invocation evidence and fail-closed behavior are required")
 	}
-	return validateWeaponBoundary(string(domain.SlotDiscovery), "ranger", taxonomy.WeaponContract)
+	return validateWeaponBoundary(string(domain.SlotDiscovery), "ranger", facts.WeaponContract)
 }
 
 // weaponBindingErrors renders every failed binding as a check.go-style error

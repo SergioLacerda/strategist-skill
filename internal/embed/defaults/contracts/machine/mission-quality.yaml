@@ -32,9 +32,13 @@ invariants:
     the Approval Gate, and never overrides Sniper's write-scope contract
   - a failed predicate is surfaced at the gate (see approval-gate.yaml#mission_quality_display)
     for the user's own judgment, the same way the Critic's score is advisory-only
-  - this contract does not define a CLI command or a Go call site — internal/domain's
-    EvaluateMissionQuality is invoked conceptually by Archivist (agent-embodied),
-    the same pattern already used for internal/handoff's verification model
+  - the command strategist metrics mission-quality --mission <id> evaluates the six predicates
+    over an explicit YAML document on standard input (decisions, evidence, acceptance_criteria,
+    and optionally previously_open_decision_ids and approved_scope_prefixes). It reads no mission
+    artifact on its own, because the ledger and the evidence it cites may live in different files
+    of the package, so the caller supplies them. It exits 0 even when a predicate fails, so it
+    stays advisory, and no decisions plus no evidence reports not_evaluated, which is not a
+    failure. internal/domain's EvaluateMissionQuality remains the only evaluator
   - the Critic and Mission Quality boundaries persist their confidence through
     `strategist metrics record --agent response_critic|mission_quality` (or an explicit
     missing-record); see confidence-governance.yaml#producers

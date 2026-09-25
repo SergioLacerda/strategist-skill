@@ -13,7 +13,7 @@ import (
 // contracts/machine/preflight.yaml.
 var directivesRelPath = filepath.Join("templates", "domain", "directives", "core.yaml")
 
-// preflightAdvisories detects the 3 non-blocking preflight.yaml conditions
+// preflightAdvisories detects the non-blocking preflight.yaml conditions
 // that are not check_identity.go's stricter identity_files_missing sibling:
 // index_yaml_not_found, compiled_artifact_corrupt, and directives_missing.
 // All three are documented in preflight.yaml as "Non-blocking... Continue" —
@@ -28,7 +28,7 @@ func preflightAdvisories(root string) []string {
 			"[Strategist] phase=preflight status=warn reason=directives_missing path=%s (continuing without behavioral directives)",
 			filepath.ToSlash(directivesRelPath)))
 	}
-	return advisories
+	return append(advisories, layoutSkewAdvisories(root)...)
 }
 
 // domainIndexAdvisories implements preflight.yaml's index_yaml_not_found and

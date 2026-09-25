@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -168,32 +169,12 @@ func writeNormativeRuntimeFiles(t *testing.T, dir string) {
 func minimalCheckRoot(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
-	for _, provider := range []struct {
-		name          string
-		riskScore     string
-		canonicalRole string
-	}{
-		{"brainstorming", "write_analysis", "ranger"},
-		{"openspec-explore", "write_analysis", "archivist"},
-		{"openspec-propose", "write_analysis", "archivist"},
-		{"sdd-ask", "controlled", ""},
-	} {
-		provDir := filepath.Join(dir, "skills", provider.name)
-		require.NoError(t, os.MkdirAll(provDir, 0o755))
-		body := "id: " + provider.name + "\nrisk_score: " + provider.riskScore + "\n"
-		if provider.canonicalRole != "" {
-			body += "canonical_role: " + provider.canonicalRole + "\n"
-			body += "roles:\n  - " + provider.canonicalRole + "\n"
-			if provider.canonicalRole == "ranger" {
-				body += "weapon_contract:\n  role_owner: ranger\n  participation: required\n  invocation_evidence: required\n  unavailable_behavior: role_invocation_failed\n  native_substitution: forbidden\n"
-			}
-		}
-		require.NoError(t, os.WriteFile(
-			filepath.Join(provDir, "skill.yaml"),
-			[]byte(body),
-			0o644,
-		))
-	}
+	testutil.WriteWeaponCatalog(t, dir,
+		testutil.CatalogProvider{ID: "brainstorming", Risk: "write_analysis", CanonicalRole: "ranger"},
+		testutil.CatalogProvider{ID: "openspec-explore", Risk: "write_analysis", CanonicalRole: "archivist"},
+		testutil.CatalogProvider{ID: "openspec-propose", Risk: "write_analysis", CanonicalRole: "archivist"},
+		testutil.CatalogProvider{ID: "sdd-ask", Risk: "controlled", Source: "external"},
+	)
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
 	require.NoError(t, os.WriteFile(
 		filepath.Join(dir, "personas", "epic.yaml"),
@@ -242,4 +223,33 @@ func writeInstallManifestForTest(t *testing.T, root, relPath, hash string) {
 	data, err := json.Marshal(manifest)
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(filepath.Join(root, domain.InstallManifestRelPath), data, 0o644))
+}
+
+// overwriteCatalogRisk changes one provider's risk_score in the fixture catalog (the
+// authority), which is how a test now makes a Weapon violate its slot contract.
+func overwriteCatalogRisk(t *testing.T, root, provider, risk string) {
+	t.Helper()
+	path := filepath.Join(root, "plugins", "catalog.yaml")
+	raw, err := os.ReadFile(path)
+	require.NoError(t, err)
+	marker := "  - id: " + provider + "\n    risk_score: "
+	text := string(raw)
+	i := strings.Index(text, marker)
+	require.GreaterOrEqual(t, i, 0, "provider %s not in the fixture catalog", provider)
+	start := i + len(marker)
+	end := start + strings.Index(text[start:], "\n")
+	require.NoError(t, os.WriteFile(path, []byte(text[:start]+risk+text[end:]), 0o644))
+}
+
+// appendFixtureProviders appends the fixture providers a test's own catalog literal
+// left out (their SKILL.md payloads already exist from minimalCheckRoot).
+func appendFixtureProviders(t *testing.T, root string, providers ...testutil.CatalogProvider) {
+	t.Helper()
+	f, err := os.OpenFile(filepath.Join(root, "plugins", "catalog.yaml"), os.O_APPEND|os.O_WRONLY, 0o644)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, f.Close()) }()
+	for _, p := range providers {
+		_, err = f.WriteString(testutil.CatalogEntryYAML(p))
+		require.NoError(t, err)
+	}
 }

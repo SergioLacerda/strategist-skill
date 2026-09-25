@@ -7,9 +7,10 @@ import (
 	"strings"
 )
 
-// RankedRuntimeContract describes the private runtime a build-certified
-// Ranked provider needs before it can be invoked.
-type RankedRuntimeContract struct {
+// WeaponRuntime is the runtime contract shared by all Weapon manifests. For a
+// build-certified Ranked provider it describes the private runtime the provider
+// needs before it can be invoked.
+type WeaponRuntime struct {
 	Kind        string `yaml:"kind"`
 	HostAPI     string `yaml:"host_api,omitempty"`
 	Root        string `yaml:"root,omitempty"`
@@ -56,7 +57,7 @@ func RankedRuntimeExecutableMissingMessage(provider, executable string) string {
 }
 
 // NormalizeRankedRuntime makes an omitted runtime declaration explicit.
-func NormalizeRankedRuntime(runtime RankedRuntimeContract) RankedRuntimeContract {
+func NormalizeRankedRuntime(runtime WeaponRuntime) WeaponRuntime {
 	if strings.TrimSpace(runtime.Kind) == "" {
 		runtime.Kind = RankedRuntimeNone
 	}
@@ -64,7 +65,7 @@ func NormalizeRankedRuntime(runtime RankedRuntimeContract) RankedRuntimeContract
 }
 
 // Validate checks that the runtime kind and its paths/commands are safe and complete.
-func (r RankedRuntimeContract) Validate() error {
+func (r WeaponRuntime) Validate() error {
 	normalized := NormalizeRankedRuntime(r)
 	switch normalized.Kind {
 	case RankedRuntimeNone:
@@ -82,14 +83,14 @@ func (r RankedRuntimeContract) Validate() error {
 	}
 }
 
-func validateNoRuntime(runtime RankedRuntimeContract) error {
+func validateNoRuntime(runtime WeaponRuntime) error {
 	if runtime.HostAPI != "" || runtime.Root != "" || runtime.Entrypoint != "" || runtime.Bootstrap != "" || runtime.Healthcheck != "" || runtime.Version != "" || runtime.NodeVersion != "" {
 		return fmt.Errorf("runtime kind %q cannot declare invocation or runtime fields", runtime.Kind)
 	}
 	return nil
 }
 
-func validateHostRuntime(runtime RankedRuntimeContract) error {
+func validateHostRuntime(runtime WeaponRuntime) error {
 	if strings.TrimSpace(runtime.HostAPI) == "" {
 		return fmt.Errorf("host runtime requires host_api")
 	}
@@ -99,14 +100,14 @@ func validateHostRuntime(runtime RankedRuntimeContract) error {
 	return nil
 }
 
-func validateEmbeddedRuntime(runtime RankedRuntimeContract) error {
+func validateEmbeddedRuntime(runtime WeaponRuntime) error {
 	if runtime.HostAPI != "" || runtime.Root != "" || runtime.Entrypoint != "" || runtime.Bootstrap != "" || runtime.Healthcheck != "" || runtime.Version != "" || runtime.NodeVersion != "" {
 		return fmt.Errorf("embedded runtime cannot declare host, executable, or external runtime fields")
 	}
 	return nil
 }
 
-func validateExecutableRuntime(runtime RankedRuntimeContract) error {
+func validateExecutableRuntime(runtime WeaponRuntime) error {
 	if strings.TrimSpace(runtime.Entrypoint) == "" {
 		return fmt.Errorf("executable runtime requires entrypoint")
 	}
@@ -116,7 +117,7 @@ func validateExecutableRuntime(runtime RankedRuntimeContract) error {
 	return nil
 }
 
-func validateOpenSpecRuntime(runtime RankedRuntimeContract) error {
+func validateOpenSpecRuntime(runtime WeaponRuntime) error {
 	if runtime.HostAPI != "" || runtime.Entrypoint != "" {
 		return fmt.Errorf("openspec runtime cannot declare host or executable fields")
 	}
@@ -129,7 +130,7 @@ func validateOpenSpecRuntime(runtime RankedRuntimeContract) error {
 	return validatePinnedVersions(runtime)
 }
 
-func validatePinnedVersions(runtime RankedRuntimeContract) error {
+func validatePinnedVersions(runtime WeaponRuntime) error {
 	for name, value := range map[string]string{"version": runtime.Version, "node_version": runtime.NodeVersion} {
 		if value != "" && !pinnedVersion.MatchString(value) {
 			return fmt.Errorf("openspec runtime %s must be an exact MAJOR.MINOR.PATCH version, got %q", name, value)
@@ -140,7 +141,7 @@ func validatePinnedVersions(runtime RankedRuntimeContract) error {
 
 // ValidateActive requires an explicit runtime for an active Weapon. Static
 // metadata alone is never sufficient to authorize invocation.
-func (r RankedRuntimeContract) ValidateActive() error {
+func (r WeaponRuntime) ValidateActive() error {
 	if err := r.Validate(); err != nil {
 		return err
 	}

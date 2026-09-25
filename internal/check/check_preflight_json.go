@@ -81,7 +81,7 @@ func buildPreflightResult(root, mode string, providers map[string]string, resolu
 // behavior in check_simulate.go. It does not alter the default, human-readable
 // output path.
 func printPreflightJSON(root, mode string, providers map[string]string, resolutions map[string]slotResolution, warnings []string, language *domain.PreflightLanguage) error {
-	result := buildPreflightResult(root, mode, providers, resolutions, warnings, preflightAdvisories(root), language)
+	result := buildPreflightResult(root, mode, providers, resolutions, warnings, append(preflightAdvisories(root), transitionalViewAdvisories(providers, resolutions)...), language)
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(result); err != nil {

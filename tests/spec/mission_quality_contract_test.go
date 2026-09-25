@@ -70,7 +70,8 @@ func TestMissionQualityContractIsAdvisoryNotBlocking(t *testing.T) {
 		"mission_quality is advisory only",
 		"never blocks a mission",
 		"never substitutes",
-		"this contract does not define a CLI command or a Go call site",
+		"It exits 0 even when a predicate fails, so it",
+		"stays advisory",
 	} {
 		if !strings.Contains(machine, needle) {
 			t.Fatalf("mission-quality contract missing invariant wording %q", needle)

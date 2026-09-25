@@ -1,6 +1,7 @@
 package rolevalidation
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -19,16 +20,20 @@ type skillManifest struct {
 func validateProviderManifest(root string, slot, role, provider string) []Failure {
 	// A native role binding is valid when its role contract is present and maps
 	// to the slot. External/embedded providers must additionally expose a valid
-	// manifest and explicit role affinity.
-	skillPath := filepath.Join(root, "skills", provider, "skill.yaml")
-	raw, err := os.ReadFile(skillPath) //nolint:gosec // path is derived from the runtime root and active provider
-	if os.IsNotExist(err) {
+	// manifest and explicit role affinity. The manifest is resolved with the
+	// catalog as the authority and the generated skills/<id>/skill.yaml view only
+	// as a fallback (domain.ResolveWeaponFacts).
+	facts, err := domain.ResolveWeaponFacts(root, provider)
+	if errors.Is(err, domain.ErrWeaponFactsNotFound) {
 		return validateNativeBinding(root, slot, role, provider)
 	}
 	if err != nil {
 		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("skill manifest unreadable: %v", err)}}
 	}
-	return validateSkillManifest(slot, role, provider, raw)
+	if facts.CompatibilitySource == "native_role" {
+		return validateNativeBinding(root, slot, role, provider)
+	}
+	return validateWeaponFacts(slot, role, provider, facts)
 }
 
 func validateSkillManifest(slot, role, provider string, raw []byte) []Failure {
@@ -36,16 +41,22 @@ func validateSkillManifest(slot, role, provider string, raw []byte) []Failure {
 	if err := yaml.Unmarshal(raw, &manifest); err != nil {
 		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("skill manifest invalid: %v", err)}}
 	}
-	requiredRisk := map[string]string{"discovery": "write_analysis", "refinement": "write_analysis"}[slot]
-	if manifest.RiskScore != requiredRisk {
-		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("risk_score=%q, requires %q", manifest.RiskScore, requiredRisk)}}
-	}
 	roles := manifest.Roles
 	if len(roles) == 0 && manifest.CanonicalRole != "" {
 		roles = []string{manifest.CanonicalRole}
 	}
-	if !contains(roles, role) {
-		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("role affinity %v does not include %q", roles, role)}}
+	return validateWeaponFacts(slot, role, provider, domain.WeaponFacts{RiskScore: manifest.RiskScore, Roles: roles})
+}
+
+// requiredSlotRisk is the risk_score each configurable slot requires.
+var requiredSlotRisk = map[string]string{"discovery": "write_analysis", "refinement": "write_analysis", "execution": "controlled"}
+
+func validateWeaponFacts(slot, role, provider string, facts domain.WeaponFacts) []Failure {
+	if required := requiredSlotRisk[slot]; facts.RiskScore != required {
+		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("risk_score=%q, requires %q", facts.RiskScore, required)}}
+	}
+	if !contains(facts.Roles, role) {
+		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("role affinity %v does not include %q", facts.Roles, role)}}
 	}
 	return nil
 }

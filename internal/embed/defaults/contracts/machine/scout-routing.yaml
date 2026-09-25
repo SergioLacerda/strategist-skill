@@ -77,15 +77,22 @@ emit:
       route_decision as one JSON line to
       <base_path>/.strategist/memory/route-decisions.jsonl (or
       .strategist/memory/route-decisions.jsonl for direct invocation, mirroring
-      where outcomes.jsonl/handoff-metrics.jsonl already live), using
-      internal/telemetry's AppendRouteDecisionLine (idempotent by mission_id,
-      same shared-flock discipline as AppendOutcomeLine). This is the durable
-      record that Scout routing metrics (route_accuracy, fallback_rate,
-      unnecessary_pipeline_rate, etc.) aggregate over — see
+      where outcomes.jsonl/handoff-metrics.jsonl already live), by piping the
+      route_decision JSON to `strategist mission route --mission-id <mission_id>`
+      (it validates the decision and calls internal/telemetry's
+      AppendRouteDecisionLine, idempotent by mission_id, same shared-flock
+      discipline as AppendOutcomeLine). This is the durable record that Scout
+      routing metrics (route_accuracy, fallback_rate, unnecessary_pipeline_rate,
+      etc.) aggregate over, and the input the execution boundary reads:
+      `strategist mission submit --event handoff_challenge_passed` applies the
+      pipeline-bypass evidence regime of the recorded route (full_pipeline needs
+      discovery, refinement, tasks and the approved gate; the narrow routes need
+      the approved gate). A mission with no recorded decision is held to the
+      full_pipeline regime — see
       .analysis/refined/20260803-scout-routing-metrics/ for the full design
       and phased metric rollout.
     write_scope: append-only, .strategist/memory/route-decisions.jsonl
-    non_blocking: true   # a persistence failure here must never block routing or the mission
+    non_blocking: true   # a persistence failure here must never block routing; an unrecorded decision only means execution entry is held to the strictest (full_pipeline) evidence
   on_fallback_to_full_pipeline:
     format: >
       "[Strategist] phase=intake status=fallback component=scout

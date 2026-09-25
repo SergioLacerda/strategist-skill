@@ -69,7 +69,21 @@ func (a AdapterContract) Validate() error {
 	}
 	requireNonEmpty(&errs, "package_constraint", a.PackageConstraint)
 	errs = appendInvalidPermissions(errs, a.RequestedPermissions)
+	errs = a.appendInvalidRiskAndScratch(errs)
 	return joinPluginValidation("adapter contract", errs)
+}
+
+// adapterRiskScores are the risk labels an adapter may declare.
+var adapterRiskScores = stringSet("read_only", "write_analysis", "controlled")
+
+func (a AdapterContract) appendInvalidRiskAndScratch(errs []string) []string {
+	if a.RiskScore != "" && !hasString(adapterRiskScores, a.RiskScore) {
+		errs = append(errs, fmt.Sprintf("risk_score %q is not one of read_only, write_analysis, controlled", a.RiskScore))
+	}
+	if a.ScratchRoot != "" && a.ScratchRoot != "runtime" {
+		errs = append(errs, fmt.Sprintf("scratch_root %q is not one of runtime", a.ScratchRoot))
+	}
+	return errs
 }
 
 func appendInvalidSlots(errs []string, slots []string) []string {

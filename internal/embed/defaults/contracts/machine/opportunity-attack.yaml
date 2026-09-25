@@ -26,10 +26,9 @@ contract:
     new_external_dependency: library, service, or protocol added
     # --- Runbook criterion (on_runbook_criteria_met below) ---
     runbook_worthy:
-      # D3 (strategist-ability-taxonomy-reorg): inherits the signal semantics of
-      # contracts/machine/runbook-opportunity.yaml#runbook_opportunity, evaluated
-      # here instead (post-refinement, inside Archivist). Same signal quality,
-      # new timing.
+      # D3 (strategist-ability-taxonomy-reorg): these signals were carried over
+      # from the retired runbook-opportunity contract and are evaluated here
+      # (post-refinement, inside Archivist).
       repeated_failure_with_recovery: refined work records a repeated operational failure and a known recovery sequence
       runtime_governance_diagnostic: refined work explains how an agent should diagnose or unblock a known runtime/provider/governance state
       executable_decision_procedure: refined work captures a decision procedure a future agent can execute without broad discovery

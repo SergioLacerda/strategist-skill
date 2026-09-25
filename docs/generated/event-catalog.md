@@ -53,6 +53,10 @@ feed once that lands.
 | `AttrEvidenceState` | `strategist.evidence_state` |
 | `AttrDiscoverySubtype` | `strategist.discovery_subtype` |
 | `AttrProvider` | `strategist.provider` |
+| `AttrWeapon` | `strategist.weapon` |
+| `AttrWeaponComponent` | `strategist.weapon.component` |
+| `AttrWeaponParentInvocation` | `strategist.weapon.parent_invocation_id` |
+| `AttrWeaponInvocationEvidence` | `strategist.weapon.invocation_evidence` |
 | `AttrModel` | `strategist.model` |
 | `AttrEffort` | `strategist.effort` |
 | `AttrLevelSource` | `strategist.level_source` |

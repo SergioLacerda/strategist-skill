@@ -79,30 +79,33 @@ Acceptance at the Approval Gate authorizes only the declared documentation targe
 ### Runtime taxonomy
 
 The current runtime has four identity-bearing Roles: Scout (`native/fixed`),
-Ranger and Archivist (`native/pluggable`), and Sniper (`native/fixed`). Weapons
-are provider packages invoked by a Role; the selected Ranger discovery Weapon is
+Ranger, Archivist and Sniper (`native/pluggable`). Sniper's ranked binding is the
+default and behaves as fixed; a custom Sniper Weapon needs an explicit user choice
+and stays documentation-only. Weapons are skill packages invoked by a Role; the selected Ranger discovery Weapon is
 required input whose untrusted result Ranger normalizes before the handoff. A
 missing or incompatible Weapon fails closed with `role_invocation_failed` and
 does not silently fall back to native behavior.
 
-INITIATIVE is a consultative Ability that reads the immutable operational resolver
+INITIATIVE is a consultative Mechanism that reads the immutable operational resolver
 output produced by LEVELING. It
 cannot select or mutate the model, provider, capability, effort, Approval Gate,
 or implementation authorization. Prompt Intake, Context Enrichment, Dossier
-Builder, Response Critic, and Learning Curator are Pipeline Services, not Roles.
+Builder, Response Critic, and Learning Curator are Pipeline routines, not Roles.
 
-Its deterministic confidence mechanism is **PRECISE-SHOT** (`TIRO PRECISO` in
-pt-BR). The mechanism reports assessed, ceiling, and effective confidence and
+**PRECISE-SHOT** (`TIRO PRECISO` in pt-BR) is one item with two facets: the agent
+assesses its own confidence (an Ability), and a deterministic rule bounds the
+request. It reports assessed, ceiling, and effective confidence and
 may request advisory LEVELING reconsideration; it never selects execution
 effort, invokes a provider, or bypasses the Approval Gate.
 
-The canonical taxonomy has seven families: Roles, Weapons, Abilities, Pipeline
-Services, Mechanisms, Routes, and Artifacts. Mechanisms name governance and
-integrity rules such as Role Contract, Weapon Binding, Handoff, Approval Gate,
-compatibility, and fingerprints; they are not executable Roles or providers.
-Routes name the pipeline shape selected by Scout, while Artifacts name the
-materialized results such as analysis, evidence packs, refined packages, and
-ADRs. See the [canonical taxonomy and responsibility matrix](docs/architecture/strategist-concepts.md#canonical-taxonomy).
+The canonical taxonomy has six families: Roles (agent personas), Weapons (external
+skills), Abilities (Feats, judgment-based behavior), Mechanisms (deterministic
+rules such as LEVELING, INITIATIVE, Weapon Binding, Handoff, and the Approval Gate
+rules), Pipeline (fixed stages and routines, including the routes Scout selects),
+and Artifacts (generated results with internal value such as analysis, evidence
+packs, refined packages, ADRs, and runbooks). Mechanisms are not executable Roles
+or providers. The criterion is in
+[ADR-0053](docs/adr/0053-taxonomy-classification-criterion-and-sniper-extensibility.md). See the [canonical taxonomy and responsibility matrix](docs/architecture/strategist-concepts.md#canonical-taxonomy).
 
 The historical phrases “internal role” and “external role” are compatibility
 notes only. Active documentation uses the independent `origin` and

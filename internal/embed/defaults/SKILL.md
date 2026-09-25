@@ -42,14 +42,16 @@ role-invocation failure.
 
 ## Canonical Taxonomy Vocabulary
 
-Use these seven public families consistently: Roles, Weapons, Abilities, Pipeline Services, Mechanisms, Routes, and Artifacts. Roles own responsibilities; Weapons
-are bounded skill packages; Abilities are reusable mission behaviors; Pipeline
-Services support the fixed or contract-conditional pipeline; Mechanisms govern
-identity, transfer, authorization, or integrity; Routes are Scout-selected
-pipeline shapes; and Artifacts are materialized or persisted results.
+Use these six public families consistently: Roles, Weapons, Abilities, Mechanisms, Pipeline, and Artifacts. Roles are agent personas that own responsibilities;
+Weapons are external skill packages employed by pluggable Roles; Abilities (Feats,
+pt-BR "Habilidades") are judgment-based agent behavior; Mechanisms are
+deterministic rules whose outcome is fixed by their inputs; Pipeline names the
+fixed stages and routines, including the routes Scout selects; and Artifacts are
+generated results with internal value. An item with both a judgment part and a
+deterministic part is one item with two facets (PRECISE-SHOT, Opportunity Attack).
 
-`LEVELING` is an immutable operational resolver consumed by the INITIATIVE
-Ability. It is not a Role, Weapon, provider, Route, or execution authority.
+`LEVELING` is an immutable operational resolver consumed by INITIATIVE; both are
+Mechanisms. LEVELING is not a Role, Weapon, provider, or execution authority.
 `origin` and `extensibility` are independent Role properties; “internal role” and
 “external role” are historical compatibility wording only. Pathfinder,
 Cartographer, Jeweler, and Jewelcrafter remain inactive proposals.

@@ -21,6 +21,7 @@ func New(lifecycle LifecycleDependencies, view ViewDependencies, normalize Norma
 		NewStart(lifecycle),
 		NewStatus(lifecycle),
 		NewSubmit(lifecycle),
+		NewRoute(lifecycle),
 		NewContext(lifecycle),
 		NewView(view),
 		NewNormalizeOpenSpec(normalize),

@@ -36,14 +36,6 @@ func testCommand(use string) (*cobra.Command, *bytes.Buffer) {
 	return cmd, &out
 }
 
-func runFallback(t *testing.T, deps Dependencies, root string, out *bytes.Buffer) error {
-	t.Helper()
-	cmd := NewFallback(deps)
-	cmd.SetOut(out)
-	require.NoError(t, cmd.Flags().Set(deps.RootFlag, root))
-	return cmd.RunE(cmd, nil)
-}
-
 func testRoot(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
@@ -54,8 +46,8 @@ func testRoot(t *testing.T) string {
 func TestNewBuildsCompleteIndependentCommandTree(t *testing.T) {
 	deps := testDependencies()
 	cmd := New(deps, testLedger, 20)
-	require.Len(t, cmd.Commands(), 9)
-	for _, name := range []string{"handoff", "confidence", "fallback", "gate-outcome", "label", "levels", "record", "rollout-check", "scout"} {
+	require.Len(t, cmd.Commands(), 10)
+	for _, name := range []string{"handoff", "handoff-record", "confidence", "gate-outcome", "label", "levels", "mission-quality", "record", "rollout-check", "scout"} {
 		found, _, err := cmd.Find([]string{name})
 		require.NoError(t, err)
 		assert.Equal(t, name, found.Name())
@@ -73,23 +65,16 @@ func TestReadCommandsReportEmptyAndRecordedHistory(t *testing.T) {
 	require.NoError(t, RunHandoff(cmd, deps, root))
 	assert.Contains(t, out.String(), "sample_size: 0")
 	out.Reset()
-	require.NoError(t, runFallback(t, deps, root, out))
-	assert.Contains(t, out.String(), "auto_native_rate: 0.00")
-	out.Reset()
 	require.NoError(t, RunScout(cmd, deps, root))
 	assert.Contains(t, out.String(), "fallback_rate: 0.00")
 
 	mem := filepath.Join(root, "memory")
 	require.NoError(t, os.MkdirAll(mem, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(mem, "handoff-challenges.jsonl"), []byte(`{"mission_id":"m","transition":"a","attempt":1,"status":"passed","passed":true}`+"\n"), 0o600))
-	require.NoError(t, os.WriteFile(filepath.Join(mem, "fallback-decisions.jsonl"), []byte(`{"mission_id":"m","outcome":"auto_native"}`+"\n"), 0o600))
 	require.NoError(t, os.WriteFile(filepath.Join(mem, "route-decisions.jsonl"), []byte(`{"mission_id":"m","selected_route":"full_pipeline","fallback_route":"full_pipeline"}`+"\n"), 0o600))
 	out.Reset()
 	require.NoError(t, RunHandoff(cmd, deps, root))
 	assert.Contains(t, out.String(), "handoff_pass_rate: 1.00")
-	out.Reset()
-	require.NoError(t, runFallback(t, deps, root, out))
-	assert.Contains(t, out.String(), "auto_native_rate: 1.00")
 	out.Reset()
 	require.NoError(t, RunScout(cmd, deps, root))
 	assert.Contains(t, out.String(), "fallback_rate: 1.00")
@@ -162,7 +147,6 @@ func TestMetricsErrorsAreScoped(t *testing.T) {
 	require.ErrorContains(t, RunLabel(cmd, deps, testRoot(t), "m", telemetry.GroundTruthSubjectGateOutcome, telemetry.GateOutcomeAccepted, "user_revision", "ref"), "metrics label")
 	bad := filepath.Join(t.TempDir(), "not-a-root")
 	require.NoError(t, os.WriteFile(bad, []byte("x"), 0o600))
-	require.ErrorContains(t, runFallback(t, deps, bad, &bytes.Buffer{}), "metrics fallback")
 	require.ErrorContains(t, RunScout(cmd, deps, bad), "metrics scout")
 	require.ErrorContains(t, RunConfidence(cmd, deps, bad, ""), "metrics confidence")
 	require.ErrorContains(t, RunLevels(cmd, deps, LevelsOptions{Root: bad}, testLedger), "metrics levels")
@@ -175,7 +159,6 @@ func (failingWriter) Write([]byte) (int, error) { return 0, fmt.Errorf("write fa
 func TestMetricRenderersPropagateWriterErrors(t *testing.T) {
 	w := failingWriter{}
 	require.Error(t, PrintHandoffMetrics(w, telemetry.HandoffMetrics{}))
-	require.Error(t, PrintFallbackMetrics(w, telemetry.FallbackMetrics{}))
 	require.Error(t, PrintRouteMetrics(w, telemetry.RouteMetrics{}))
 	require.Error(t, PrintRouteGroundTruthMetrics(w, telemetry.RouteGroundTruthMetrics{}))
 	require.Error(t, PrintConfidenceMetrics(w, telemetry.ConfidenceGateReview{}))

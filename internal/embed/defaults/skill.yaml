@@ -37,17 +37,20 @@ capability:
   route_decision: internal (Scout / intake routing layer — see internal_skills/scout)
   delegating_agent_contract: invoke with request context — route is resolved internally
 
-# Vocabulary layer distinguishing Weapons from Abilities. Documentation/naming only —
-# it does not change pipeline mechanism, routing, or the FSM. See
-# docs/architecture/strategist-concepts.md § Abilities for the human-facing explanation.
+# Vocabulary layer distinguishing Weapons from Mechanisms and Abilities. Documentation/naming
+# only — it does not change pipeline mechanism, routing, or the FSM. See
+# docs/architecture/strategist-concepts.md § Mechanisms and Abilities for the human-facing
+# explanation and docs/adr/0053 for the classification criterion. The full catalog is
+# contracts/machine/mechanisms.yaml; a test keeps this list consistent with it.
 taxonomy:
   description: >
     Weapons are skill packages loaded from .strategist/skills/<id>/SKILL.md and
     bound one-at-a-time by Role and slot. A Weapon is atomic or composite; a
     composite declares its component Weapons and deterministic dependency graph.
-    Every external-skills-source child is ingested as a Weapon. Abilities are
-    internal routines that run inside a Role/phase — they are not configurable,
-    not swappable, and have no active.yaml entry.
+    Every external-skills-source child is ingested as a Weapon. Mechanisms
+    (deterministic rules) and Abilities (judgment-based behavior) are internal
+    routines that run inside a Role/phase — they are not configurable, not
+    swappable, and have no active.yaml entry.
   weapons:
     - id: brainstorming
       bound_to_slot: discovery
@@ -59,7 +62,7 @@ taxonomy:
       bound_to_slot: execution
     - id: writing-plans
       bound_to_slot: refinement
-  abilities:
+  mechanisms:
     - id: leveling
       display_name: LEVELING
       runs_in: role selection (before provider invocation)
@@ -81,20 +84,21 @@ taxonomy:
       runs_in: refinement (Archivist, post-refinement, before completion_signal)
       outputs: [adr, runbook, treasure_chest]
       source: contracts/machine/opportunity-attack.yaml
+    - id: critical_hit
+      runs_in: scout (route resolved before Ranger/Archivist)
+      note: >
+        Deterministic activation rule applied by Scout; the route value
+        critical_hit (resolution_paths.critical_hit above) selects it. Not a
+        Role-internal routine.
+    - id: side_quest
+      runs_in: discovery or refinement (any phase)
+  abilities:
     - id: search
       runs_in: discovery (Ranger, consult_treasure_chests); cache reused by refinement (Archivist)
       consults: treasure_chest
       source: roles/ranger.yaml#canonical, roles/archivist.yaml#canonical
-    - id: critical_hit
-      runs_in: scout (route resolved before Ranger/Archivist)
-      note: >
-        Label only — Critical Hit is mechanically a Route resolved by Scout
-        (see resolution_paths.critical_hit above), not a Role-internal routine.
-        Unified here purely to reduce user-facing vocabulary.
-    - id: side_quest
-      runs_in: discovery or refinement (any phase)
   resources:
-    # Consulted by the Search ability. Not an Ability itself — never executable,
+    # Consulted by the Search Ability. Not an Ability itself — never executable,
     # never a route, never a slot.
     treasure_chest:
       consulted_by: search
@@ -102,12 +106,13 @@ taxonomy:
 
 orchestration:
   model: master_skill
-  # Scout is internal/built-in Strategist behavior — NOT a slot. It has no
-  # active.yaml entry, no roles/scout.yaml, and is never configurable.
-  # See internal_skills/scout/, schemas/scout-route-decision.schema.yaml, and
+  # Scout is built-in Strategist behavior — NOT a slot. It has no active.yaml
+  # entry and is never configurable (native/fixed; roles/scout.yaml only gives it
+  # the shared role shape). See internal_skills/scout/,
+  # schemas/scout-route-decision.schema.yaml, and
   # contracts/machine/scout-routing.yaml.
   scout:
-    internal_role: scout
+    role: scout
     owner: internal (orchestrator)
     pre_pipeline: true
     never_a_slot: true
@@ -123,10 +128,14 @@ orchestration:
       # Archivist is the internal refinement persona. openspec-propose is its default
       # weapon (docs/adr/0035-embedded-weapon-fallback-policy.md DEC-004). Does not
       # replace the persona.
-      weapons: [openspec-propose, writing-plans, dossier-builder, context-enrichment]
+      weapons: [openspec-propose, writing-plans]
     execution:
       skill: sniper
-      # Sniper is internal and controlled. It has no subtype customization.
+      # Sniper is native and pluggable, and controlled. Its ranked `sniper` binding
+      # is the default and behaves as fixed; a custom Weapon is accepted only on an
+      # explicit user choice, declares risk_score controlled and stays
+      # documentation-only (checked at `strategist provider add`). It has no
+      # subtype customization.
       weapons: [sdd-ask, openspec-archive-change]
 
 parameters:

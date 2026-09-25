@@ -15,11 +15,6 @@ const (
 	WeaponKindComposite WeaponKind = "composite"
 )
 
-// WeaponRuntime is the canonical runtime contract shared by all Weapon
-// manifests. The Ranked name remains only as a compatibility type name while
-// ingestion is migrated to the general Weapon model.
-type WeaponRuntime = RankedRuntimeContract
-
 // WeaponRuntimeKind names a runtime contract kind.
 type WeaponRuntimeKind = string
 

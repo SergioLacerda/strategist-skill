@@ -191,8 +191,8 @@ func TestNew_ComposesIsolatedCompleteTree(t *testing.T) {
 	}
 	first, second := build(), build()
 	assert.NotSame(t, first, second)
-	require.Len(t, first.Commands(), 7)
-	for _, name := range []string{"start", "status", "submit", "context", "view", "normalize-openspec", "report-usage"} {
+	require.Len(t, first.Commands(), 8)
+	for _, name := range []string{"start", "status", "submit", "route", "context", "view", "normalize-openspec", "report-usage"} {
 		a, _, err := first.Find([]string{name})
 		require.NoError(t, err)
 		b, _, err := second.Find([]string{name})

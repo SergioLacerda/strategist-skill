@@ -174,6 +174,22 @@ use: validate
 short: Validate the customer LEVELING policy
 flag: --expected-digest (string) default="" usage="fail if the normalized policy digest differs"
 
+== strategist mechanisms
+use: mechanisms
+short: Inspect the Mechanisms registry
+
+== strategist mechanisms brief
+use: brief --role <role>
+short: Print the tools (Mechanisms and Abilities) available to one role
+long: |
+  Prints the role-scoped view of the Mechanisms registry
+  (contracts/machine/mechanisms.yaml): what each tool is and how to invoke it.
+  Roles run it from their on_start hook so an agent in a mission knows what is at
+  its disposal. --full adds the enforcement tier and when to use each tool.
+flag: --full (bool) default="false" usage="include enforcement and when-to-use detail"
+flag: --role (string) default="" usage="role to print the brief for (required)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
 == strategist metrics
 use: metrics
 short: Report metrics computed from Strategist's own runtime memory
@@ -184,11 +200,6 @@ long: |
 use: confidence
 short: Report cross-agent confidence metrics
 flag: --mission (string) default="" usage="scope the review to one mission (used at the Approval Gate)"
-flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
-
-== strategist metrics fallback
-use: fallback
-short: Report provider-fallback (ADR-0028) metrics
 flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
 
 == strategist metrics gate-outcome
@@ -204,6 +215,22 @@ use: handoff
 short: Report Handoff Challenge governance metrics
 long: |
   Report Handoff Challenge governance metrics from .strategist/memory/handoff-challenges.jsonl.
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist metrics handoff-record
+use: handoff-record
+short: Record the Archivist's handoff metrics line for a mission
+long: |
+  Append the Archivist's per-refinement line to .strategist/memory/handoff-metrics.jsonl. Only the values passed are recorded; every other field is null, and the two ratios are never derived because the contracts do not define them. A mission that already has a line is left unchanged.
+flag: --brief-compression-ratio (float64) default="0" usage="brief compression ratio, as measured by the caller (omit when not measured)"
+flag: --brief-tokens (int64) default="0" usage="tokens in the discovery brief (omit when not measured)"
+flag: --discovery-tokens (int64) default="0" usage="tokens spent by discovery (omit when not measured)"
+flag: --effort (string) default="" usage="Archivist effort (omit when unknown)"
+flag: --evidence-coverage-ratio (float64) default="0" usage="evidence coverage ratio, as measured by the caller (omit when not measured)"
+flag: --level-source (string) default="" usage="how the level was resolved, for example host (omit when unknown)"
+flag: --mission (string) default="" usage="mission id (required)"
+flag: --model (string) default="" usage="Archivist model (omit when unknown)"
+flag: --reopens (int) default="0" usage="sources the Archivist reopened, each with a declared reason"
 flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
 
 == strategist metrics label
@@ -224,6 +251,14 @@ flag: --max-records (int) default="2000" usage="maximum records kept by --rotate
 flag: --mission (string) default="" usage="scope the report to one mission"
 flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
 flag: --rotate (bool) default="false" usage="compact the ledger first"
+
+== strategist metrics mission-quality
+use: mission-quality
+short: Evaluate the mission_quality predicates over a decisions/evidence document
+long: |
+  Read a YAML document from standard input (decisions, evidence, acceptance_criteria, and optionally previously_open_decision_ids and approved_scope_prefixes) and report each mission_quality predicate. The result is advisory: a failed predicate is reported and the command still exits 0. The command reads no mission artifact on its own; the caller supplies the ledger and the evidence it cites.
+flag: --mission (string) default="" usage="mission id (required)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
 
 == strategist metrics record
 use: record
@@ -305,6 +340,13 @@ flag: --mission-id (string) default="" usage="mission_id to record usage against
 flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
 flag: --tokens-in (int64) default="0" usage="real input token count from the invoking agent's own provider response (required, >= 0)"
 flag: --tokens-out (int64) default="0" usage="real output token count from the invoking agent's own provider response (required, >= 0)"
+
+== strategist mission route
+use: route
+short: Record Scout's route decision for a mission (JSON on stdin)
+flag: --json (bool) default="false" usage="emit machine-readable JSON"
+flag: --mission-id (string) default="" usage="mission identifier (required)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
 
 == strategist mission start
 use: start

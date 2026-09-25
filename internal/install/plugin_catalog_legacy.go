@@ -6,7 +6,20 @@ import (
 	"strings"
 )
 
+// generateLegacyProviderManifest is the compat view writer's entry point: the same
+// bytes as normalizedDigestManifest, kept as a separate name so the code that still
+// writes skills/<id>/skill.yaml (the installer and the embedded mirrors) is
+// distinguishable from the digest callers. It is removed together with those writers
+// when runtime layout generation N stops writing the view.
 func generateLegacyProviderManifest(catalog pluginCatalog, providerID string) ([]byte, error) {
+	return normalizedDigestManifest(catalog, providerID)
+}
+
+// normalizedDigestManifest renders the manifest that feeds the normalized package
+// digest and the catalog node digest. Its bytes are load-bearing: changing them
+// re-pins every embedded Weapon (lock files and certification pins), so the output
+// must stay byte-identical to what the compat view carried.
+func normalizedDigestManifest(catalog pluginCatalog, providerID string) ([]byte, error) {
 	provider, ok := findCatalogProvider(catalog, providerID)
 	if !ok {
 		return nil, fmt.Errorf("plugin catalog: provider %q not found", providerID)

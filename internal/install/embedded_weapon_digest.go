@@ -12,7 +12,7 @@ import (
 func withNormalizedSkillDigests(catalog pluginCatalog, skills []IngestedSkill) ([]IngestedSkill, error) {
 	withDigests := append([]IngestedSkill(nil), skills...)
 	for index := range withDigests {
-		manifest, err := generateLegacyProviderManifest(catalog, withDigests[index].ID)
+		manifest, err := normalizedDigestManifest(catalog, withDigests[index].ID)
 		if err != nil {
 			return nil, fmt.Errorf("generate normalized package evidence for %s: %w", withDigests[index].ID, err)
 		}

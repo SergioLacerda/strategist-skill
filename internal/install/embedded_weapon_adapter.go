@@ -25,18 +25,18 @@ const externalSkillAdapterFileName = "strategist.yaml"
 // adapter schema (T2); this is the smallest slice that lets a real ingestion
 // pipeline exist today without inventing that schema prematurely.
 type externalSkillAdapter struct {
-	CanonicalRole  string                       `yaml:"canonical_role"`
-	Roles          []string                     `yaml:"roles,omitempty"`
-	Kind           domain.WeaponKind            `yaml:"kind"`
-	SupportedSlots []string                     `yaml:"supported_slots,omitempty"`
-	Capabilities   []string                     `yaml:"capabilities,omitempty"`
-	Lifecycle      bool                         `yaml:"lifecycle,omitempty"`
-	RiskScore      string                       `yaml:"risk_score"`
-	Category       string                       `yaml:"category"`
-	Default        bool                         `yaml:"default,omitempty"`
-	Runtime        domain.RankedRuntimeContract `yaml:"runtime,omitempty"`
-	Composition    *domain.WeaponComposition    `yaml:"composition,omitempty"`
-	AuxiliaryTools []string                     `yaml:"auxiliary_tools_allowed,omitempty"`
+	CanonicalRole  string                    `yaml:"canonical_role"`
+	Roles          []string                  `yaml:"roles,omitempty"`
+	Kind           domain.WeaponKind         `yaml:"kind"`
+	SupportedSlots []string                  `yaml:"supported_slots,omitempty"`
+	Capabilities   []string                  `yaml:"capabilities,omitempty"`
+	Lifecycle      bool                      `yaml:"lifecycle,omitempty"`
+	RiskScore      string                    `yaml:"risk_score"`
+	Category       string                    `yaml:"category"`
+	Default        bool                      `yaml:"default,omitempty"`
+	Runtime        domain.WeaponRuntime      `yaml:"runtime,omitempty"`
+	Composition    *domain.WeaponComposition `yaml:"composition,omitempty"`
+	AuxiliaryTools []string                  `yaml:"auxiliary_tools_allowed,omitempty"`
 	// ScratchRoot declares whether this weapon creates its own working/scratch
 	// files and, if so, that they belong in the runtime domain. Legal values:
 	// "runtime" or "none" (or absent, which behaves as "none" — every skill

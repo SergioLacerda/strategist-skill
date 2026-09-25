@@ -168,7 +168,9 @@ required_fields:
       role: [primary, supporting]
     description: >
       Output of the select_runbook ability (contracts/narrative/03-discovery.md § Retrieval
-      Cascade, stage 6): docs/runbooks/*.runbook.yaml sidecars scored against mission
+      Cascade, stage 6), produced by running `strategist runbook select`: an empty list
+      means the command ran and nothing matched; null means it was not run.
+      docs/runbooks/*.runbook.yaml sidecars scored against mission
       signals via internal/runbook.Select(), bounded by
       internal/runbook.DefaultSelectionPolicy() (max_primary=1, max_supporting=2,
       require_reason=true — reason is always non-empty for a returned selection).

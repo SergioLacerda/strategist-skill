@@ -13,8 +13,8 @@ role_taxonomy:
     description: Whether a provider may fill the role.
   pluggable:
     type: boolean
-    deprecated: true
-    description: Compatibility input derived from extensibility.
+    removed: true
+    description: Removed. A role file that still declares it is rejected; declare extensibility instead.
 
 required_fields:
   - discovery

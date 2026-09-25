@@ -36,6 +36,7 @@ type legacyView struct {
 	CanonicalRole  string   `yaml:"canonical_role"`
 	Roles          []string `yaml:"roles"`
 	SupportedSlots []string `yaml:"supported_slots"`
+	RiskScore      string   `yaml:"risk_score"`
 }
 
 func loadSource(input string) (Source, []Reason) {

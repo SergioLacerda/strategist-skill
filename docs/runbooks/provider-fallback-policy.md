@@ -74,5 +74,4 @@ There is no active `provider_resolution_policy` field. If an older
 
 - `.strategist/contracts/machine/errors.yaml` — canonical reason/action text for each token
 - [ADR-0028](../adr/0028-native-role-resilient-baseline.md) — historical fallback decision
-- `.strategist/contracts/machine/provider-fallback.yaml` — retired migration contract
 - `docs/runbooks/role-invocation-failed.md` — dedicated runbook for `role_invocation_failed`, including the refinement-slot-specific escalation for when no alternative refinement provider exists at all

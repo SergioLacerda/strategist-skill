@@ -102,6 +102,16 @@ func (r RoleRegistry) PhaseTotal() int {
 // `{mission_id}` are mechanically substituted by StartCommands below.
 const DefaultStartCommand = "strategist leveling label --role {role} --mission {mission_id} --host-model <your-model> --host-effort <your-effort>"
 
+// MechanismsBriefCommand prints the role-scoped Mechanisms brief, so an agent
+// starts a phase knowing which tools it has and how to invoke them.
+const MechanismsBriefCommand = "strategist mechanisms brief --role {role}"
+
+// DefaultStartCommands is what a role runs at phase start when it declares none:
+// the level label, then the Mechanisms brief.
+func DefaultStartCommands() []string {
+	return []string{DefaultStartCommand, MechanismsBriefCommand}
+}
+
 // StartCommands returns the commands a role runs when its phase starts, with
 // {role} and {mission_id} substituted (`<your-model>`/`<your-effort>` are left
 // as-is for the invoking agent to replace with the actual running model and
@@ -113,7 +123,7 @@ func (r RoleRegistry) StartCommands(id, missionID string) []string {
 	}
 	templates := role.OnStart
 	if len(templates) == 0 {
-		templates = []string{DefaultStartCommand}
+		templates = DefaultStartCommands()
 	}
 	replacer := strings.NewReplacer("{role}", role.ID, "{mission_id}", missionID)
 	out := make([]string, len(templates))

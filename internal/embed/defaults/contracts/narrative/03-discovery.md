@@ -11,8 +11,8 @@ contract: write_analysis
 Ranger (`discovery`)
 
 Ranger is the native discovery Role and the configured discovery package is its
-Weapon. The analysis handoff is an Artifact; `discovery_subtype` describes the
-Ability-shaped behavior being performed and does not change Role ownership.
+Weapon. The analysis handoff is an Artifact; `discovery_subtype` names the
+kind of discovery being performed and does not change Role ownership.
 `LEVELING` remains an immutable operational resolver consumed by INITIATIVE and
 is outside this discovery boundary.
 
@@ -61,9 +61,11 @@ native behavior for the selected Weapon.
 - `relevant_sources_hint` produced by the Search ability during the Retrieval Cascade's
   treasure-chest stage; reused by Archivist by default (see `04-refinement.md`)
 - `selected_runbooks_hint` produced by the select_runbook ability during the same
-  Retrieval Cascade stage, when at least one runbook sidecar matched; null otherwise,
-  non-blocking. Reused by Archivist by default (see `04-refinement.md`), same reuse
-  policy as `relevant_sources_hint`.
+  Retrieval Cascade stage. Ranger always runs the command (stage 6 below), so the
+  field is a list whenever discovery ran the cascade: an empty list means the command
+  ran and nothing matched (non-blocking); null means it was not run, which is a gap
+  to report in `uncertainties`. Reused by Archivist by default (see `04-refinement.md`),
+  same reuse policy as `relevant_sources_hint`.
 
 ## Optional Handoff Challenge (Ranger → Archivist)
 
@@ -127,7 +129,13 @@ stage runs only if the previous stage did not reach `stop_when: sufficient_evide
    `selected_runbooks_hint` — a bounded, reasoned selection (at most one primary, at
    most two supporting runbooks, each with a non-empty match reason) distinct from
    Search's own unstructured jewel/potion relevance matching (see
-   `roles/ranger.yaml#canonical.select_runbook`)
+   `roles/ranger.yaml#canonical.select_runbook`). **Ranger MUST run `strategist
+   runbook select --format json --signal <signal> ...` at this point**, with one
+   `--signal` per mission signal (the mission's `task_type`, the Scout
+   `discovery_subtype`, and the salient keywords of the request), and record the
+   command, the signals and its result in the analysis artifact. No sidecar or no
+   match is a valid, non-blocking result (an empty list); skipping the command is
+   not, because a runbook that applies would silently never reach the mission
 7. semantic search, when a semantic provider is configured — optional, last resort
 
 `stop_when: sufficient_evidence` is met when either condition holds:

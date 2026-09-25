@@ -138,65 +138,6 @@ func TestActiveConfigRejectsRetiredProviderResolutionPolicy(t *testing.T) {
 	}
 }
 
-func TestResolutionPolicy_EffectivePolicy(t *testing.T) {
-	t.Parallel()
-	assert.Equal(t, domain.ResolutionPolicyAsk, domain.ResolutionPolicy("").EffectivePolicy())
-	assert.Equal(t, domain.DefaultResolutionPolicy, domain.ResolutionPolicy("").EffectivePolicy())
-	assert.Equal(t, domain.ResolutionPolicyBlock, domain.ResolutionPolicyBlock.EffectivePolicy())
-	assert.Equal(t, domain.ResolutionPolicyNative, domain.ResolutionPolicyNative.EffectivePolicy())
-}
-
-func TestDecideFallbackOutcome(t *testing.T) {
-	t.Parallel()
-
-	// No fallback available: policy is irrelevant, always FallbackOutcomeUnavailable.
-	for _, policy := range []domain.ResolutionPolicy{"", domain.ResolutionPolicyBlock, domain.ResolutionPolicyAsk, domain.ResolutionPolicyNative} {
-		assert.Equal(t, domain.FallbackOutcomeUnavailable, domain.DecideFallbackOutcome(policy, false),
-			"policy=%q fallbackAvailable=false", policy)
-	}
-
-	// Fallback available: outcome follows the effective policy's decision table.
-	cases := []struct {
-		policy domain.ResolutionPolicy
-		want   domain.FallbackOutcome
-	}{
-		{domain.ResolutionPolicyBlock, domain.FallbackOutcomeBlocked},
-		{domain.ResolutionPolicyAsk, domain.FallbackOutcomeAskRequired},
-		{domain.ResolutionPolicyNative, domain.FallbackOutcomeAutoNative},
-		{"", domain.FallbackOutcomeAskRequired}, // empty policy resolves to the "ask" default
-	}
-	for _, tc := range cases {
-		assert.Equal(t, tc.want, domain.DecideFallbackOutcome(tc.policy, true), "policy=%q", tc.policy)
-	}
-}
-
-func TestDecideFallbackOutcome_UnrecognizedPolicyDefaultsToAskRequired(t *testing.T) {
-	t.Parallel()
-	// An unrecognized policy value (should already be rejected by Validate() at
-	// config load time, but this function must still fail toward the more
-	// conservative, confirmation-gated outcome rather than silently auto-falling-back).
-	assert.Equal(t, domain.FallbackOutcomeAskRequired, domain.DecideFallbackOutcome(domain.ResolutionPolicy("bogus"), true))
-}
-
-func TestDecideSlotFallbackOutcome_DiscoveryHasNoNativeFallback(t *testing.T) {
-	t.Parallel()
-	for _, policy := range []domain.ResolutionPolicy{domain.ResolutionPolicyBlock, domain.ResolutionPolicyAsk, domain.ResolutionPolicyNative} {
-		assert.Equal(t, domain.FallbackOutcomeUnavailable, domain.DecideSlotFallbackOutcome("discovery", policy, true),
-			"discovery must fail closed even when a native role exists, policy=%q", policy)
-		assert.Equal(t, domain.FallbackOutcomeUnavailable, domain.DecideSlotFallbackOutcome("discovery", policy, false),
-			"discovery must fail closed when no fallback exists, policy=%q", policy)
-	}
-}
-
-func TestDecideSlotFallbackOutcome_OtherSlotsDeferToDecideFallbackOutcome(t *testing.T) {
-	t.Parallel()
-	for _, slot := range []string{"refinement", "execution"} {
-		assert.Equal(t, domain.FallbackOutcomeAutoNative, domain.DecideSlotFallbackOutcome(slot, domain.ResolutionPolicyNative, true), "slot=%s", slot)
-		assert.Equal(t, domain.FallbackOutcomeBlocked, domain.DecideSlotFallbackOutcome(slot, domain.ResolutionPolicyBlock, true), "slot=%s", slot)
-		assert.Equal(t, domain.FallbackOutcomeUnavailable, domain.DecideSlotFallbackOutcome(slot, domain.ResolutionPolicyNative, false), "slot=%s", slot)
-	}
-}
-
 func TestPersonaConfig_Validate(t *testing.T) {
 	t.Parallel()
 	require.NoError(t, domain.PersonaConfig{ID: "ranger", ToneDirective: "focused"}.Validate())

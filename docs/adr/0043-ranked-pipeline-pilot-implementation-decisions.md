@@ -77,7 +77,7 @@ permanent embedded pairing (ADR-0035).
 `strategist plugin prepare-embedded` step, not a new command — was already
 implicit in DEC-005 and is recorded here for completeness: that step already
 resolves, verifies, and merges packages into the catalog
-(`internal/install/embedded_skill_prepare.go`); the certification pass and
+(`internal/install/embedded_weapon_prepare.go`); the certification pass and
 DEC-005's pre-generation both extend it rather than introducing a second
 build-time entry point.)
 
@@ -162,7 +162,7 @@ foreclosing it).
 
 Concretely, this means:
 
-- `rankedCertificationPairs` (`internal/install/embedded_skill_certification.go`)
+- `rankedCertificationPairs` (`internal/install/embedded_weapon_certification.go`)
   may remain a declarative, explicit allow-list — DEC-004's "one pairing at
   a time, deliberate addition" principle is unchanged and still applies to
   *which* pairings get certified.
@@ -185,7 +185,7 @@ This amendment authorizes no code — the evidence-computation work remains
 `.analysis/pending/cli_refactor/20260916-conformance-wiring-and-adr0029-t2-decisions/`.
 
 **Implemented 2026-09-16, outside Strategist (direct user authorization).**
-`internal/install/embedded_skill_conformance.go` and
+`internal/install/embedded_weapon_conformance.go` and
 `internal/check/check_readiness.go`'s `evaluateRankedConformance` — see
 that mission's `tasks.md` task 1.1 for the full evidence summary. The
 generic-over-`(role, provider)` constraint above is satisfied: no function

@@ -66,6 +66,10 @@ func (t skillTaxonomy) roles() []string {
 // roster (DEC-001: brainstorming↔ranger, openspec-propose↔archivist),
 // never to every installed skill.
 func verifyEmbeddedWeaponBindings(root string) ([]weaponBinding, error) {
+	catalog, err := domain.ListCatalogWeaponFacts(root)
+	if err != nil {
+		return nil, fmt.Errorf("weapon bindings: %w", err)
+	}
 	skillsDir := filepath.Join(root, "skills")
 	entries, err := os.ReadDir(skillsDir)
 	if err != nil && !os.IsNotExist(err) {
@@ -77,13 +81,11 @@ func verifyEmbeddedWeaponBindings(root string) ([]weaponBinding, error) {
 	// function-level error so each expected binding receives an explicit reason.
 	roleSlotMap, roleSlotMapErr := loadRoleSlotMap(root)
 
-	var bindings []weaponBinding
-	for _, entry := range entries {
-		binding, ok := scanWeaponEntry(root, skillsDir, entry, roleSlotMap, roleSlotMapErr)
-		if ok {
-			bindings = append(bindings, binding)
-		}
-	}
+	// The catalog is the roster authority (DEC-009): every embedded entry that
+	// declares a canonical role is verified, with no compat view needed. A view
+	// directory the catalog does not list is still scanned during the transition.
+	bindings, cataloged := catalogWeaponBindings(root, catalog, roleSlotMap, roleSlotMapErr)
+	bindings = append(bindings, scanUncatalogedViews(root, skillsDir, entries, cataloged, roleSlotMap, roleSlotMapErr)...)
 	// The scan above is reactive (skill declares a role -> is the claim
 	// valid?). It never asks the converse question a role-focused reading of
 	// DEC-003 requires: does each permanent embedded-weapon pairing actually
@@ -149,4 +151,50 @@ func verifyOneWeaponBinding(root, skillID, canonicalRole string, weaponContract 
 
 	b.OK = true
 	return b
+}
+
+// catalogWeaponBindings verifies every embedded catalog entry that declares a
+// canonical role, and returns the ids it covered so the transitional view scan
+// skips them.
+func catalogWeaponBindings(root string, catalog []domain.WeaponFacts, roleSlotMap domain.RoleSlotMap, roleSlotMapErr error) ([]weaponBinding, map[string]bool) {
+	var bindings []weaponBinding
+	covered := map[string]bool{}
+	for _, facts := range catalog {
+		if facts.CompatibilitySource != "embedded" || facts.CanonicalRole == "" {
+			continue
+		}
+		covered[facts.ID] = true
+		b := verifyOneWeaponBinding(root, facts.ID, facts.CanonicalRole, facts.WeaponContract, roleSlotMap, roleSlotMapErr)
+		if b.OK {
+			b = requireSkillPayload(root, b)
+		}
+		bindings = append(bindings, b)
+	}
+	return bindings, covered
+}
+
+// requireSkillPayload is the roster's separate payload check: an embedded Weapon
+// must ship its skills/<id>/SKILL.md.
+func requireSkillPayload(root string, b weaponBinding) weaponBinding {
+	path := filepath.Join(root, "skills", b.SkillID, "SKILL.md")
+	if info, err := os.Stat(path); err != nil || info.Size() == 0 {
+		b.OK = false
+		b.Reason = fmt.Sprintf("embedded weapon payload missing or empty: %s", path)
+	}
+	return b
+}
+
+// scanUncatalogedViews is the transitional scan: a skills/<id>/skill.yaml view for a
+// Weapon the catalog does not list is still verified.
+func scanUncatalogedViews(root, skillsDir string, entries []os.DirEntry, cataloged map[string]bool, roleSlotMap domain.RoleSlotMap, roleSlotMapErr error) []weaponBinding {
+	var bindings []weaponBinding
+	for _, entry := range entries {
+		if cataloged[entry.Name()] {
+			continue
+		}
+		if binding, ok := scanWeaponEntry(root, skillsDir, entry, roleSlotMap, roleSlotMapErr); ok {
+			bindings = append(bindings, binding)
+		}
+	}
+	return bindings
 }

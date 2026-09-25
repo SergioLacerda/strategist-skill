@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -38,15 +39,24 @@ func TestRoleConfig_Validate_Taxonomy(t *testing.T) {
 	require.ErrorContains(t, r.Validate(), "role extensibility")
 }
 
-func TestRoleConfig_Validate_RejectsConflictingLegacyPluggable(t *testing.T) {
-	legacyFalse := false
-	r := domain.RoleConfig{
-		Role:          "ranger",
-		Slot:          "discovery",
-		Extensibility: domain.RoleExtensibilityPluggable,
-		Pluggable:     &legacyFalse,
+// The boolean `pluggable` key was replaced by `extensibility`. A role file that
+// still carries it is rejected with an error that names the replacement, instead
+// of being silently reinterpreted.
+func TestRoleConfig_Validate_RejectsTheRemovedPluggableKey(t *testing.T) {
+	for _, value := range []bool{true, false} {
+		v := value
+		r := domain.RoleConfig{Role: "ranger", Slot: "discovery", Extensibility: domain.RoleExtensibilityPluggable, Pluggable: &v}
+		err := r.Validate()
+		require.Error(t, err, "pluggable=%v", value)
+		assert.Contains(t, err.Error(), "`pluggable` key was removed")
+		assert.Contains(t, err.Error(), "extensibility: fixed|pluggable")
 	}
-	require.ErrorContains(t, r.Validate(), "pluggable conflicts with extensibility")
+}
+
+func TestRoleConfig_Validate_ExtensibilityIsTheOnlyDeclaration(t *testing.T) {
+	require.NoError(t, domain.RoleConfig{Role: "scout", Extensibility: domain.RoleExtensibilityFixed}.Validate())
+	require.ErrorContains(t, domain.RoleConfig{Role: "scout"}.Validate(), "extensibility: fixed must be explicit")
+	assert.Equal(t, domain.RoleExtensibilityFixed, domain.RoleConfig{Role: "scout"}.EffectiveExtensibility())
 }
 
 func TestRoleConfig_Validate_RejectsUnverifiedRoleActivation(t *testing.T) {
