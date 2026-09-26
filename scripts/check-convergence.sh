@@ -3,7 +3,7 @@ set -euo pipefail
 
 echo "Checking runtime/package-boundary convergence..."
 
-grep -q '"skills", mc.ExpectedProvider' internal/dojo/checker_manifest.go \
+grep -qE '"skills", [A-Za-z_.]*[Pp]rovider, "skill.yaml"' internal/dojo/checker_manifest.go \
   || { echo "DRIFT: dojo/checker_manifest.go uses old provider path (not skills/<provider>/skill.yaml)"; exit 1; }
 
 grep -q '"skills", "brainstorming"' internal/dojo/checker_manifest_test.go \

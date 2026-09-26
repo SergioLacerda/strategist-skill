@@ -112,3 +112,7 @@ strategist.sniper.conflict_count
 strategist.status
 strategist.target
 strategist.transition_group
+strategist.weapon
+strategist.weapon.component
+strategist.weapon.invocation_evidence
+strategist.weapon.parent_invocation_id
