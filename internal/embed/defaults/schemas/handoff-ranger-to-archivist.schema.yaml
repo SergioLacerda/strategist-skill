@@ -187,6 +187,16 @@ required_fields:
       Sources Ranger opened during discovery, with a fingerprint and how thoroughly
       each was read. Consumed by contracts/machine/handoff-contract.yaml to decide
       whether Archivist may reopen a source or must treat it as already covered.
+  weapon_invocation:
+    type: object
+    required: false
+    item_fields: [invoked, resolved_from, steps_dropped]
+    description: >
+      Invocation evidence for the discovery Weapon (contracts/narrative/03-discovery.md §
+      Weapon Profile for a Delegated Ranger): whether it was invoked, where it was actually
+      resolved (embedded runtime or host skill directory), and which Weapon steps were
+      dropped for a delegated run. Optional; it never names a different Weapon than the
+      one bound in active.yaml.
   evidence_cards:
     type: list
     required: false

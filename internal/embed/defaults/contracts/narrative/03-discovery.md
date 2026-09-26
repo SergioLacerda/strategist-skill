@@ -109,6 +109,27 @@ a `writing-plans` handoff, and does not require a design-doc commit as a
 completion condition. Those are `creative`-subtype obligations only (see
 `04-refinement.md` and Ranger's creative-subtype role directives).
 
+## Weapon Profile for a Delegated Ranger
+
+When Ranger runs as a delegated sub-role and reaches the Weapon through the host's copy of the
+skill, the Weapon is still invoked and its output is still normalized; nothing below substitutes
+it (`native_substitution: forbidden`). The profile only lists which Weapon steps do not apply to
+a delegated discovery run.
+
+| Keep | Drop |
+| --- | --- |
+| explore project context | the HARD-GATE user-approval step |
+| decompose into units | one-question-at-a-time dialogue |
+| alternatives with trade-offs and a recommendation | the second design document (the only artifact is `<base_path>/pending/<mission_id>-analysis.md`) |
+| YAGNI | the `git commit` of a design file |
+| | the spec-review gate and the `writing-plans` transition |
+
+Record what happened in the optional `weapon_invocation` field of the handoff
+(`schemas/handoff-ranger-to-archivist.schema.yaml`): `invoked`, `resolved_from` (where the Weapon
+was actually resolved, e.g. the embedded runtime or the host skill directory) and
+`steps_dropped`. This is the home of `invocation_evidence: required`; it does not change which
+Weapon is bound.
+
 ## Retrieval Cascade
 
 Ranger's source retrieval follows this order, normative rather than heuristic. Each
@@ -164,6 +185,11 @@ simultaneously (decision conflict) — see `00-routing.md`. `skill.yaml#budget_p
 - follow the Retrieval Cascade above; do not skip stages out of order
 - cite `evidence_pack_path` in the analysis artifact when the dossier provides one
 - write exactly one canonical analysis artifact for the handoff
+- when discovery opened any source, list it in `sources_consulted[]` (`source_path`,
+  `content_fingerprint`, `coverage_status`). For an `evaluation` or `diagnostic` subtype, also
+  cite the line ranges the Archivist must quote, so the refinement can quote them without
+  reopening the file (see `machine/handoff-contract.yaml#refinement_context_policy`). Without
+  the list that policy is inert and every Archivist read is unaccounted
 - include explicit sections for:
   - mission objective
   - known facts

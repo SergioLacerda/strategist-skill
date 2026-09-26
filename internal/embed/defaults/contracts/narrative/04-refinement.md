@@ -58,7 +58,14 @@ Archivist (`refinement`)
   check `contracts/machine/handoff-contract.yaml#refinement_context_policy` — reopen
   only for one of its `allowed_reasons`, and state the matching reason explicitly in
   the refined artifact that needed it (see skill.yaml's
-  `archivist_reopens_discovery_sources_without_declared_reason` forbidden_behaviors entry)
+  `archivist_reopens_discovery_sources_without_declared_reason` forbidden_behaviors entry).
+  A verification read of a `coverage_status: full` source is a reopen too: it is allowed only
+  as `stale_evidence_check` (the file changed after the Ranger artifact and the read stays
+  inside the line ranges Ranger cited). List every reopen in the refined artifact as a table
+  (`source_path`, `reason`, line range) — an empty table means zero reopens
+- pass `--reopens N` explicitly to `strategist metrics handoff-record`, where `N` is the number of
+  rows in that table; do not rely on the flag's default, which records 0 whether or not a
+  source was reopened
 - on completion, append one line to `.strategist/memory/handoff-metrics.jsonl`
   (skill.yaml#handoff_metrics_log) with `strategist metrics handoff-record --mission <mission_id>`
   (pass only the values that were measured; it never derives the two ratios, and a mission that

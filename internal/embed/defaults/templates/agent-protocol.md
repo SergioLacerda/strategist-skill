@@ -41,6 +41,24 @@ Any action that produces phase work without invoking the configured provider is
 If a provider cannot be invoked, emit the configured blocked state and stop.
 Correctness of the parent agent's independent answer does not repair the drift.
 
+### Shell operating rules
+
+These describe how the parent shell runs the CLI so that a step is not silently lost or redone.
+They are guidance (`enforced_by: agent_only`), not a gate.
+
+- Do not discard stderr of `strategist` commands, and read the returned status or JSON. A
+  `mission submit` that printed an error was not applied; check with `strategist mission status`
+  before repeating it. Quote arguments so the shell does not word-split them.
+- Drive missions with the installed `strategist` binary. A binary built from a dirty working
+  tree (version `...-dirty`) is acceptable only when the mission itself changes the CLI; record the
+  version header in that case.
+- The shell may author Scout's `route_decision` when it runs the pipeline; it records it through
+  `strategist mission route` like any other decision, and the record shows the shell wrote it.
+- A pending note written directly by the shell on an explicit user request needs no Riposte
+  capture metadata; Riposte's `origin: riposte` applies only to entries it captures itself.
+- No CLI emits the intake checkpoint, so a missing intake checkpoint is not a condition to hold
+  `intake_done`; submit it after `strategist mission route`.
+
 ---
 
 ## 2. FORBIDDEN BEHAVIORS (NEVER DO)
