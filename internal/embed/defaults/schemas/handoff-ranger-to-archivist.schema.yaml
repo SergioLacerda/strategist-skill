@@ -69,7 +69,7 @@ required_fields:
       evidence:
         type: list
         required: false
-        item_fields: [id, source_ref, class]
+        item_fields: [id, source_ref, class]   # optional per item: excerpt_anchor, hash, commit, excerpt, captured_at (schemas/evidence.schema.yaml)
         item_values:
           class: [explicit, corroborated_inference, weak_inference, unknown]   # schemas/evidence.schema.yaml#class
       sample_size:

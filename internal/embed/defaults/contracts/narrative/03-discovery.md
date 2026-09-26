@@ -199,6 +199,18 @@ simultaneously (decision conflict) — see `00-routing.md`. `skill.yaml#budget_p
   - recommended refinement focus
 - emit start, done, and opportunity events
 
+### Evidence That Rests on Runtime State
+
+Refined packages outlive the runtime that produced them: `.strategist/` is generated, gitignored
+and replaced by an upgrade or a reinstall. A finding that rests on runtime state (anything under
+`.strategist/`: memory logs, missions, generated files) is therefore quoted in the analysis
+artifact, not only pointed to: the value or lines relied on (`excerpt`, at most 1200 bytes, with
+`excerpt_anchor`) and the moment they were read (`captured_at`). Use the `evidence:` fields of
+`schemas/evidence.schema.yaml` when evidence entries are recorded, or quote the value inline in the
+`known_facts` line otherwise. The path stays as a pointer for whoever still has the source, never as
+the only evidence. Files tracked by git need only their path and anchor (and `commit` when it
+matters).
+
 ### Optional Evidence Recording
 
 Ranger MAY record individual findings as `evidence:` entries

@@ -103,6 +103,10 @@ Archivist (`refinement`)
   pending analysis, and an analysis-only accepted package that would gain a documentation target.
   The authorization reference is a human's words or gate event recorded verbatim; the command
   cannot verify it. The default mode is unchanged and still fails closed on a differing package.
+- keep Ranger's quoted evidence when it rests on runtime state (`excerpt`, `captured_at`; see
+  `03-discovery.md` § Evidence That Rests on Runtime State), and quote any runtime state the
+  refined files cite themselves (a value with its capture time) rather than pointing only at a
+  `.strategist/` path; the refined package must stay readable after the runtime is replaced
 - classify side quests and surface them at the approval gate
 - classify every `tasks.md` / `implementation_plan` item by `task_type`: `documentation_target`,
   `analysis_artifact`, `implementation_handoff`, or `out_of_scope` (see

@@ -55,3 +55,33 @@ fields:
       this against "now" is a caller concern — internal/domain stays free
       of a time dependency.
     required: false
+  excerpt_anchor:
+    type: string
+    required: false
+    description: >
+      Which part of source_ref was cited: a line range ("L12-L34"), a heading anchor
+      or a YAML path. Absent means the whole source.
+  hash:
+    type: string
+    required: false
+    description: >
+      sha256 hex digest of the cited excerpt (or of the whole source when only
+      file-level content was available). When excerpt is present, hash must be its digest.
+  commit:
+    type: string
+    required: false
+    description: Git commit the citation was verified against, for git-tracked sources.
+  excerpt:
+    type: string
+    required: false
+    description: >
+      The quoted value or lines the finding rests on, at most 1200 bytes (never a whole
+      file). Expected whenever source_ref points at mutable or regenerable state — anything
+      under .strategist/ (memory logs, missions, generated files) — so the refined package
+      stays checkable after that state changes or is reinstalled. The source_ref stays as a
+      pointer for whoever still has the source; it is not the only evidence.
+  captured_at:
+    type: string
+    format: RFC3339 timestamp
+    required: false
+    description: When excerpt was read. Required when excerpt is set.
