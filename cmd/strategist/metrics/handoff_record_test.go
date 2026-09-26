@@ -48,7 +48,43 @@ func TestHandoffRecordNeverDerivesTheRatios(t *testing.T) {
 
 	_, err = runHandoffRecord(t, root, "--mission", "m-2", "--brief-compression-ratio", "0.25", "--evidence-coverage-ratio", "0.8")
 	require.NoError(t, err)
-	assert.Contains(t, handoffFile(t, root), `"brief_compression_ratio":0.25,"refinement_reopens":0,"evidence_coverage_ratio":0.8`)
+	assert.Contains(t, handoffFile(t, root), `"brief_compression_ratio":0.25,"refinement_reopens":null,"evidence_coverage_ratio":0.8`)
+}
+
+// --reopens unset means "not measured" (null); an explicit 0 means "measured, none".
+func TestHandoffRecordWritesNullReopensUnlessMeasured(t *testing.T) {
+	root := testRoot(t)
+	_, err := runHandoffRecord(t, root, "--mission", "m-1")
+	require.NoError(t, err)
+	_, err = runHandoffRecord(t, root, "--mission", "m-2", "--reopens", "0")
+	require.NoError(t, err)
+	lines := strings.Split(handoffFile(t, root), "\n")
+	require.Len(t, lines, 2)
+	assert.Contains(t, lines[0], `"refinement_reopens":null`)
+	assert.Contains(t, lines[1], `"refinement_reopens":0`)
+}
+
+// A revised mission records one line per revision; the same revision twice is a no-op.
+func TestHandoffRecordWritesOneLinePerRevision(t *testing.T) {
+	root := testRoot(t)
+	_, err := runHandoffRecord(t, root, "--mission", "m-1", "--reopens", "0")
+	require.NoError(t, err)
+	_, err = runHandoffRecord(t, root, "--mission", "m-1", "--revision", "1", "--reopens", "1")
+	require.NoError(t, err)
+	out, err := runHandoffRecord(t, root, "--mission", "m-1", "--revision", "1", "--reopens", "4")
+	require.NoError(t, err)
+	assert.Contains(t, out, "already recorded for this mission; nothing written")
+	lines := strings.Split(handoffFile(t, root), "\n")
+	require.Len(t, lines, 2)
+	assert.NotContains(t, lines[0], `"revision"`)
+	assert.Contains(t, lines[1], `"revision":1`)
+	assert.Contains(t, lines[1], `"refinement_reopens":1`)
+}
+
+func TestHandoffRecordRejectsRevisionBelowOne(t *testing.T) {
+	root := testRoot(t)
+	_, err := runHandoffRecord(t, root, "--mission", "m-1", "--revision", "0")
+	require.ErrorContains(t, err, "revision must be >= 1")
 }
 
 func TestHandoffRecordIsIdempotentAndSaysSo(t *testing.T) {

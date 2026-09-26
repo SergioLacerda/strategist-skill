@@ -64,8 +64,16 @@ Archivist (`refinement`)
   inside the line ranges Ranger cited). List every reopen in the refined artifact as a table
   (`source_path`, `reason`, line range) — an empty table means zero reopens
 - pass `--reopens N` explicitly to `strategist metrics handoff-record`, where `N` is the number of
-  rows in that table; do not rely on the flag's default, which records 0 whether or not a
-  source was reopened
+  rows in that table (`0` when the table is empty). An unset `--reopens` records `null`, meaning
+  "not measured"; only an explicit `0` means "measured, none"
+- on a gate revision (`gate_revision_requested`), re-run the role's `on_start` leveling label for the
+  revised run and record the revised package with
+  `strategist metrics handoff-record --mission <mission_id> --revision <n>` (`n` starts at 1) so
+  each revision keeps its own metrics line and level row; the base line is left as recorded
+- when the invoking shell reports the token usage of the discovery run (the sub-role's own usage
+  summary, run at the gate and at DONE with `strategist mission report-usage`), pass it as
+  `--discovery-tokens`; omit the flag when nothing was reported. These counts are self-reported by
+  the invoking agent, so treat them as a weak signal, never as evidence of cost
 - on completion, append one line to `.strategist/memory/handoff-metrics.jsonl`
   (skill.yaml#handoff_metrics_log) with `strategist metrics handoff-record --mission <mission_id>`
   (pass only the values that were measured; it never derives the two ratios, and a mission that

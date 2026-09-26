@@ -19,17 +19,21 @@ func HandoffMetricsPath(strategistRoot string) string {
 
 // RefinementHandoffLine is one line of the handoff-metrics log. Pointer fields
 // are null when the value was not measured: the contract expects nulls during
-// rollout, so an unmeasured value is never guessed or derived.
+// rollout, so an unmeasured value is never guessed or derived. In particular a
+// null refinement_reopens means "not measured", while 0 means "measured, none".
 type RefinementHandoffLine struct {
 	MissionID             string   `json:"mission_id"`
 	DiscoveryTokens       *int64   `json:"discovery_tokens"`
 	BriefTokens           *int64   `json:"brief_tokens"`
 	BriefCompressionRatio *float64 `json:"brief_compression_ratio"`
-	RefinementReopens     int      `json:"refinement_reopens"`
+	RefinementReopens     *int     `json:"refinement_reopens"`
 	EvidenceCoverageRatio *float64 `json:"evidence_coverage_ratio"`
 	Model                 *string  `json:"model"`
 	Effort                *string  `json:"effort"`
 	LevelSource           *string  `json:"level_source"`
+	// Revision is the gate-revision number this line records; nil is the base
+	// line. It is omitted from the JSON when nil, so base lines are unchanged.
+	Revision *int `json:"revision,omitempty"`
 }
 
 // Validate rejects a line that would corrupt the history.
@@ -41,8 +45,10 @@ func (l RefinementHandoffLine) Validate() error {
 		return fmt.Errorf("handoff metrics: discovery_tokens must be >= 0")
 	case negativeInt(l.BriefTokens):
 		return fmt.Errorf("handoff metrics: brief_tokens must be >= 0")
-	case l.RefinementReopens < 0:
+	case l.RefinementReopens != nil && *l.RefinementReopens < 0:
 		return fmt.Errorf("handoff metrics: refinement_reopens must be >= 0")
+	case l.Revision != nil && *l.Revision < 1:
+		return fmt.Errorf("handoff metrics: revision must be >= 1")
 	case negativeFloat(l.BriefCompressionRatio):
 		return fmt.Errorf("handoff metrics: brief_compression_ratio must be >= 0")
 	case negativeFloat(l.EvidenceCoverageRatio):
@@ -55,7 +61,8 @@ func negativeInt(v *int64) bool     { return v != nil && *v < 0 }
 func negativeFloat(v *float64) bool { return v != nil && *v < 0 }
 
 // AppendRefinementHandoffLine appends the line unless the mission already has
-// one; it reports whether anything was written. The append is serialized with
+// one for the same revision (the base line has no revision); it reports whether
+// anything was written. The append is serialized with
 // an exclusive lock so concurrent roles cannot interleave or duplicate lines.
 func AppendRefinementHandoffLine(path string, line RefinementHandoffLine) (appended bool, err error) {
 	if err = line.Validate(); err != nil {
@@ -70,7 +77,7 @@ func AppendRefinementHandoffLine(path string, line RefinementHandoffLine) (appen
 		return false, err
 	}
 	defer releaseHandoffHistory(f, &err)
-	return appendHandoffLineLocked(f, line.MissionID, encoded)
+	return appendHandoffLineLocked(f, line.MissionID, line.Revision, encoded)
 }
 
 // openHandoffHistoryLocked opens (creating it and its directory) the history
@@ -97,8 +104,8 @@ func releaseHandoffHistory(f *os.File, err *error) {
 	closeFileWithContext(f, err, "close handoff metrics history")
 }
 
-func appendHandoffLineLocked(f *os.File, missionID string, encoded []byte) (bool, error) {
-	exists, err := handoffMissionRecorded(f, missionID)
+func appendHandoffLineLocked(f *os.File, missionID string, revision *int, encoded []byte) (bool, error) {
+	exists, err := handoffMissionRecorded(f, missionID, revision)
 	if err != nil || exists {
 		return false, err
 	}
@@ -111,9 +118,10 @@ func appendHandoffLineLocked(f *os.File, missionID string, encoded []byte) (bool
 	return true, nil
 }
 
-// handoffMissionRecorded scans the history for the mission. A line that does
-// not parse is skipped, like the other append-only histories in this package.
-func handoffMissionRecorded(f *os.File, missionID string) (bool, error) {
+// handoffMissionRecorded scans the history for the mission and revision. A line
+// that does not parse is skipped, like the other append-only histories in this
+// package.
+func handoffMissionRecorded(f *os.File, missionID string, revision *int) (bool, error) {
 	if _, err := f.Seek(0, io.SeekStart); err != nil {
 		return false, fmt.Errorf("handoff metrics: seek history start: %w", err)
 	}
@@ -121,10 +129,18 @@ func handoffMissionRecorded(f *os.File, missionID string) (bool, error) {
 	for scanner.Scan() {
 		var entry struct {
 			MissionID string `json:"mission_id"`
+			Revision  *int   `json:"revision"`
 		}
-		if json.Unmarshal(scanner.Bytes(), &entry) == nil && entry.MissionID == missionID {
+		if json.Unmarshal(scanner.Bytes(), &entry) == nil && entry.MissionID == missionID && sameRevision(entry.Revision, revision) {
 			return true, nil
 		}
 	}
 	return false, jsonlScannerErr(scanner, "handoff metrics: scan history")
+}
+
+func sameRevision(a, b *int) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
 }

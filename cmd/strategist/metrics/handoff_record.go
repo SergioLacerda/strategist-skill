@@ -11,7 +11,7 @@ import (
 type HandoffRecordOptions struct {
 	Root, Mission, Model, Effort, LevelSource string
 	DiscoveryTokens, BriefTokens              int64
-	Reopens                                   int
+	Reopens, Revision                         int
 	CompressionRatio, EvidenceCoverage        float64
 }
 
@@ -22,7 +22,7 @@ func NewHandoffRecord(deps Dependencies) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "handoff-record",
 		Short: "Record the Archivist's handoff metrics line for a mission",
-		Long:  "Append the Archivist's per-refinement line to .strategist/memory/handoff-metrics.jsonl. Only the values passed are recorded; every other field is null, and the two ratios are never derived because the contracts do not define them. A mission that already has a line is left unchanged.",
+		Long:  "Append the Archivist's per-refinement line to .strategist/memory/handoff-metrics.jsonl. Only the values passed are recorded; every other field is null (an unset --reopens is null, not 0), and the two ratios are never derived because the contracts do not define them. A mission that already has a line for the same revision is left unchanged; --revision <n> records one further line per gate revision.",
 	}
 	f := cmd.Flags()
 	f.StringVar(&opts.Root, deps.RootFlag, "", "path to .strategist/ root (default: auto-discovered from CWD)")
@@ -30,7 +30,8 @@ func NewHandoffRecord(deps Dependencies) *cobra.Command {
 	f.Int64Var(&opts.DiscoveryTokens, "discovery-tokens", 0, "tokens spent by discovery (omit when not measured)")
 	f.Int64Var(&opts.BriefTokens, "brief-tokens", 0, "tokens in the discovery brief (omit when not measured)")
 	f.Float64Var(&opts.CompressionRatio, "brief-compression-ratio", 0, "brief compression ratio, as measured by the caller (omit when not measured)")
-	f.IntVar(&opts.Reopens, "reopens", 0, "sources the Archivist reopened, each with a declared reason")
+	f.IntVar(&opts.Reopens, "reopens", 0, "sources the Archivist reopened, each with a declared reason (omit when not measured; 0 means measured, none)")
+	f.IntVar(&opts.Revision, "revision", 0, "gate revision number this line records (omit for the base line; one line is kept per revision)")
 	f.Float64Var(&opts.EvidenceCoverage, "evidence-coverage-ratio", 0, "evidence coverage ratio, as measured by the caller (omit when not measured)")
 	f.StringVar(&opts.Model, "model", "", "Archivist model (omit when unknown)")
 	f.StringVar(&opts.Effort, "effort", "", "Archivist effort (omit when unknown)")
@@ -69,7 +70,13 @@ func RunHandoffRecord(cmd *cobra.Command, deps Dependencies, opts HandoffRecordO
 // unmeasured field is never recorded as a zero.
 func handoffLineFromFlags(cmd *cobra.Command, opts HandoffRecordOptions) telemetry.RefinementHandoffLine {
 	flags := cmd.Flags()
-	line := telemetry.RefinementHandoffLine{MissionID: opts.Mission, RefinementReopens: opts.Reopens}
+	line := telemetry.RefinementHandoffLine{MissionID: opts.Mission}
+	if flags.Changed("reopens") {
+		line.RefinementReopens = &opts.Reopens
+	}
+	if flags.Changed("revision") {
+		line.Revision = &opts.Revision
+	}
 	if flags.Changed("discovery-tokens") {
 		line.DiscoveryTokens = &opts.DiscoveryTokens
 	}

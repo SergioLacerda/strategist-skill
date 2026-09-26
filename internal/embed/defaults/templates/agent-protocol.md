@@ -56,6 +56,10 @@ They are guidance (`enforced_by: agent_only`), not a gate.
   `strategist mission route` like any other decision, and the record shows the shell wrote it.
 - A pending note written directly by the shell on an explicit user request needs no Riposte
   capture metadata; Riposte's `origin: riposte` applies only to entries it captures itself.
+- Run `strategist mission report-usage --mission-id <id> --tokens-in <n> --tokens-out <n>` at the
+  gate and again at DONE, with the counts from your own provider response, and hand the discovery
+  run's usage to the Archivist for `--discovery-tokens` when the host reports it. Without a
+  usage record no waste or cost claim about a mission can be checked.
 - No CLI emits the intake checkpoint, so a missing intake checkpoint is not a condition to hold
   `intake_done`; submit it after `strategist mission route`.
 

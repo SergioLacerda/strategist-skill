@@ -190,7 +190,7 @@ Persist the confidence and refinement evidence a mission produces, in
 strategist metrics record --mission <id> --agent <agent> --claim-file - < claims.yaml
 strategist metrics record --mission <id> --agent <agent> --missing --correlation-key <key> --reason <why>
 strategist metrics mission-quality --mission <id> < ledger.yaml
-strategist metrics handoff-record --mission <id> [--model <m> --effort <e> --level-source <s> --reopens <n>]
+strategist metrics handoff-record --mission <id> [--model <m> --effort <e> --level-source <s> --reopens <n> --revision <n>]
 ```
 
 `metrics record` reads one YAML document from standard input (`--claim-file -`; no
@@ -267,10 +267,12 @@ check: unsupported_claims applicable=true passed=true
 
 `metrics handoff-record` appends the Archivist's per-refinement line to
 `.strategist/memory/handoff-metrics.jsonl`. Only the values passed are recorded;
-every other field is null, and the two ratios are never derived because the contracts
-do not define them. It is idempotent per mission: a mission that already has a line is
-left unchanged (`handoff metrics already recorded for this mission; nothing written`),
-so pass `--model`, `--effort`, `--level-source` and `--reopens` on the first run.
+every other field is null (an unset `--reopens` is `null`, meaning not measured; an explicit
+`0` means measured, none), and the two ratios are never derived because the contracts
+do not define them. It is idempotent per mission and revision: a mission that already has
+a line for the same revision is left unchanged (`handoff metrics already recorded for this
+mission; nothing written`), so pass `--model`, `--effort`, `--level-source` and `--reopens`
+on the first run. `--revision <n>` (n >= 1) records one further line for a gate revision.
 
 ---
 

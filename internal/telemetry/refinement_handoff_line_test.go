@@ -12,6 +12,7 @@ import (
 func i64(v int64) *int64     { return &v }
 func f64(v float64) *float64 { return &v }
 func str(v string) *string   { return &v }
+func intp(v int) *int        { return &v }
 func handoffLinePath(t *testing.T) string {
 	t.Helper()
 	return filepath.Join(t.TempDir(), "memory", "handoff-metrics.jsonl")
@@ -30,7 +31,7 @@ func readLines(t *testing.T, path string) []string {
 // be null during rollout, never guessed.
 func TestAppendRefinementHandoffLineWritesNullsForUnmeasuredFields(t *testing.T) {
 	path := handoffLinePath(t)
-	appended, err := AppendRefinementHandoffLine(path, RefinementHandoffLine{MissionID: "m-1", RefinementReopens: 1, Model: str("m"), Effort: str("low"), LevelSource: str("host")})
+	appended, err := AppendRefinementHandoffLine(path, RefinementHandoffLine{MissionID: "m-1", RefinementReopens: intp(1), Model: str("m"), Effort: str("low"), LevelSource: str("host")})
 	if err != nil || !appended {
 		t.Fatalf("appended=%v err=%v", appended, err)
 	}
@@ -41,6 +42,49 @@ func TestAppendRefinementHandoffLineWritesNullsForUnmeasuredFields(t *testing.T)
 	want := `{"mission_id":"m-1","discovery_tokens":null,"brief_tokens":null,"brief_compression_ratio":null,"refinement_reopens":1,"evidence_coverage_ratio":null,"model":"m","effort":"low","level_source":"host"}`
 	if lines[0] != want {
 		t.Fatalf("line =\n%s\nwant\n%s", lines[0], want)
+	}
+}
+
+// An unmeasured reopen count is null, never a silent 0: 0 means the Archivist
+// measured and found no reopen. A line without a revision carries no revision key.
+func TestAppendRefinementHandoffLineKeepsReopensNullUntilMeasured(t *testing.T) {
+	path := handoffLinePath(t)
+	if _, err := AppendRefinementHandoffLine(path, RefinementHandoffLine{MissionID: "unmeasured"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := AppendRefinementHandoffLine(path, RefinementHandoffLine{MissionID: "measured-zero", RefinementReopens: intp(0)}); err != nil {
+		t.Fatal(err)
+	}
+	lines := readLines(t, path)
+	if !strings.Contains(lines[0], `"refinement_reopens":null`) || strings.Contains(lines[0], `"revision"`) {
+		t.Fatalf("unmeasured line = %s", lines[0])
+	}
+	if !strings.Contains(lines[1], `"refinement_reopens":0`) {
+		t.Fatalf("measured zero line = %s", lines[1])
+	}
+}
+
+// One line per revision: the base line and each revision are separate records of
+// the same mission, and each is idempotent on its own.
+func TestAppendRefinementHandoffLineRecordsOneLinePerRevision(t *testing.T) {
+	path := handoffLinePath(t)
+	for _, line := range []RefinementHandoffLine{
+		{MissionID: "m-1"},
+		{MissionID: "m-1", Revision: intp(1), RefinementReopens: intp(2)},
+		{MissionID: "m-1", Revision: intp(1), RefinementReopens: intp(9)},
+		{MissionID: "m-1", Revision: intp(2)},
+		{MissionID: "m-1"},
+	} {
+		if _, err := AppendRefinementHandoffLine(path, line); err != nil {
+			t.Fatal(err)
+		}
+	}
+	lines := readLines(t, path)
+	if len(lines) != 3 {
+		t.Fatalf("want base + revision 1 + revision 2, got %v", lines)
+	}
+	if !strings.Contains(lines[1], `"revision":1`) || !strings.Contains(lines[1], `"refinement_reopens":2`) {
+		t.Fatalf("revision 1 line = %s", lines[1])
 	}
 }
 
@@ -67,7 +111,8 @@ func TestRefinementHandoffLineValidation(t *testing.T) {
 		"mission_id is required":               {},
 		"discovery_tokens must be >= 0":        {MissionID: "m", DiscoveryTokens: i64(-1)},
 		"brief_tokens must be >= 0":            {MissionID: "m", BriefTokens: i64(-1)},
-		"refinement_reopens must be >= 0":      {MissionID: "m", RefinementReopens: -1},
+		"refinement_reopens must be >= 0":      {MissionID: "m", RefinementReopens: intp(-1)},
+		"revision must be >= 1":                {MissionID: "m", Revision: intp(0)},
 		"brief_compression_ratio must be >= 0": {MissionID: "m", BriefCompressionRatio: f64(-0.1)},
 		"evidence_coverage_ratio must be >= 0": {MissionID: "m", EvidenceCoverageRatio: f64(-0.1)},
 	}

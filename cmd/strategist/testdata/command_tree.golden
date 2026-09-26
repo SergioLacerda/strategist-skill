@@ -222,7 +222,7 @@ flag: --root (string) default="" usage="path to .strategist/ root (default: auto
 use: handoff-record
 short: Record the Archivist's handoff metrics line for a mission
 long: |
-  Append the Archivist's per-refinement line to .strategist/memory/handoff-metrics.jsonl. Only the values passed are recorded; every other field is null, and the two ratios are never derived because the contracts do not define them. A mission that already has a line is left unchanged.
+  Append the Archivist's per-refinement line to .strategist/memory/handoff-metrics.jsonl. Only the values passed are recorded; every other field is null (an unset --reopens is null, not 0), and the two ratios are never derived because the contracts do not define them. A mission that already has a line for the same revision is left unchanged; --revision <n> records one further line per gate revision.
 flag: --brief-compression-ratio (float64) default="0" usage="brief compression ratio, as measured by the caller (omit when not measured)"
 flag: --brief-tokens (int64) default="0" usage="tokens in the discovery brief (omit when not measured)"
 flag: --discovery-tokens (int64) default="0" usage="tokens spent by discovery (omit when not measured)"
@@ -231,7 +231,8 @@ flag: --evidence-coverage-ratio (float64) default="0" usage="evidence coverage r
 flag: --level-source (string) default="" usage="how the level was resolved, for example host (omit when unknown)"
 flag: --mission (string) default="" usage="mission id (required)"
 flag: --model (string) default="" usage="Archivist model (omit when unknown)"
-flag: --reopens (int) default="0" usage="sources the Archivist reopened, each with a declared reason"
+flag: --reopens (int) default="0" usage="sources the Archivist reopened, each with a declared reason (omit when not measured; 0 means measured, none)"
+flag: --revision (int) default="0" usage="gate revision number this line records (omit for the base line; one line is kept per revision)"
 flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
 
 == strategist metrics label
