@@ -199,6 +199,7 @@ long: |
 == strategist metrics confidence
 use: confidence
 short: Report cross-agent confidence metrics
+flag: --declared (string) default="" usage="compare the claims a handoff declared with the persisted records: \"-\" reads a YAML document with a top-level confidence_summary from standard input (requires --mission; read-only)"
 flag: --mission (string) default="" usage="scope the review to one mission (used at the Approval Gate)"
 flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
 
@@ -264,7 +265,7 @@ flag: --root (string) default="" usage="path to .strategist/ root (default: auto
 use: record
 short: Record a confidence claim or an explicit missing-record for a boundary
 flag: --agent (string) default="" usage="producing agent (required)"
-flag: --claim-file (string) default="" usage="YAML file with the claim and its evidence; \"-\" reads it from standard input (preferred: no file is created), and a file inside the workspace base_path is rejected"
+flag: --claim-file (string) default="" usage="YAML document holding one claim: or a claims: list, with its evidence: list; \"-\" reads it from standard input (preferred: no file is created), and a file inside the workspace base_path is rejected"
 flag: --correlation-key (string) default="" usage="boundary correlation key (with --missing)"
 flag: --missing (bool) default="false" usage="record an explicit missing-record instead of a claim"
 flag: --mission (string) default="" usage="mission id (required)"
@@ -305,6 +306,9 @@ long: |
   Validates a private OpenSpec change and atomically promotes its proposal,
   design, tasks, and the mission analysis into <base_path>/refined/<mission_id>.
   OpenSpec specs and archive history remain private provider scratch.
+flag: --amend (bool) default="false" usage="amend an already published package with a new change instead of publishing (analysis.md, the mission status and the original provider_change_id are kept; the previous files are snapshotted under .amendments/)"
+flag: --amends (string) default="" usage="with --amend: the change being amended (the package's provider_change_id, or the previous amendment's change id)"
+flag: --authorization-ref (string) default="" usage="with --amend: the human authorization for the amendment (a quote or a gate event), recorded verbatim"
 flag: --change-id (string) default="" usage="completed OpenSpec change id (required)"
 flag: --mission-id (string) default="" usage="canonical Strategist mission id (required)"
 flag: --pending-analysis (string) default="" usage="pending analysis path (default: <base_path>/pending/<mission-id>-analysis.md)"
@@ -454,7 +458,7 @@ use: add <source> --slot <slot>
 short: Stage and bind a validated local provider
 flag: --format (string) default="table" usage="output format: table, json, or yaml"
 flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
-flag: --slot (string) default="" usage="target slot: refinement or execution"
+flag: --slot (string) default="" usage="target slot: discovery, refinement or execution"
 
 == strategist provider validate
 use: validate <source>

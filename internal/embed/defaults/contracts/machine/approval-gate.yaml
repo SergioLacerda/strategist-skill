@@ -44,6 +44,13 @@ contract:
     unavailable_confidence: review
     empty_history: no_sample
     policy_percentages_are_not_calibration: true
+    declared_comparison:
+      command: "strategist metrics confidence --mission <id> --declared -"   # reads the handoff confidence_summary on stdin
+      read_only: true
+      changes_review_required: false
+      display: conditional_line
+      shown_when: "declared_review: recommended"
+      omitted_when: "declared_review: none or the summary is not available"
 
   gate:
     emit_prompt_key: review_prompt

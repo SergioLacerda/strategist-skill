@@ -44,9 +44,15 @@ type WeaponFacts struct {
 	SupportedSlots      []string
 	RuntimeKind         string
 	RuntimeRoot         string
+	// RuntimeHostAPI is the host API the catalog runtime block declares, empty
+	// when it declares none.
+	RuntimeHostAPI string
 	// RequestedPermissions is what the Weapon asks to be granted; only an
 	// adapter.yaml declares it today (the catalog entry declares none).
 	RequestedPermissions []PluginPermission
+	// Entrypoints are the entrypoints an adapter.yaml declares; the catalog and the
+	// compat view declare none here.
+	Entrypoints []string
 }
 
 // weaponFactsDoc is the subset of a catalog entry, or of a generated
@@ -64,8 +70,9 @@ type weaponFactsDoc struct {
 	SupportedSlots       []string           `yaml:"supported_slots"`
 	RequestedPermissions []PluginPermission `yaml:"requested_permissions"`
 	Runtime              struct {
-		Kind string `yaml:"kind"`
-		Root string `yaml:"root"`
+		Kind    string `yaml:"kind"`
+		Root    string `yaml:"root"`
+		HostAPI string `yaml:"host_api"`
 	} `yaml:"runtime"`
 	SpecializationTaxonomy struct {
 		CanonicalRole string `yaml:"canonical_role"`
@@ -85,7 +92,7 @@ func (d weaponFactsDoc) manifest(source string) WeaponFacts {
 		ID: d.ID, Source: source, RiskScore: d.RiskScore, CanonicalRole: role,
 		Roles: roles, ScratchRoot: d.ScratchRoot, WeaponContract: d.WeaponContract,
 		CompatibilitySource: d.CompatibilitySource, Installable: d.Installable,
-		SupportedSlots: d.SupportedSlots, RuntimeKind: d.Runtime.Kind, RuntimeRoot: d.Runtime.Root,
+		SupportedSlots: d.SupportedSlots, RuntimeKind: d.Runtime.Kind, RuntimeRoot: d.Runtime.Root, RuntimeHostAPI: d.Runtime.HostAPI,
 		RequestedPermissions: d.RequestedPermissions,
 	}
 }

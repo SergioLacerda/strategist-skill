@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -210,30 +211,11 @@ func TestCheckCmd_NativeRole_Sniper(t *testing.T) {
 	// Install skill providers for discovery and refinement, declaring the
 	// ADR-0035 DEC-001 permanent embedded-weapon roster (brainstorming and
 	// openspec-propose) so the always-run weapon-binding check passes.
-	for _, p := range []struct {
-		name          string
-		riskScore     string
-		canonicalRole string
-	}{
-		{"brainstorming", "write_analysis", "ranger"},
-		{"openspec-explore", "write_analysis", "archivist"},
-		{"openspec-propose", "write_analysis", "archivist"},
-	} {
-		provDir := filepath.Join(dir, "skills", p.name)
-		require.NoError(t, os.MkdirAll(provDir, 0o755))
-		body := "id: " + p.name + "\nrisk_score: " + p.riskScore + "\n"
-		if p.canonicalRole != "" {
-			body += "canonical_role: " + p.canonicalRole + "\n"
-			if p.canonicalRole == "ranger" {
-				body += "weapon_contract:\n  role_owner: ranger\n  participation: required\n  invocation_evidence: required\n  unavailable_behavior: role_invocation_failed\n  native_substitution: forbidden\n"
-			}
-		}
-		require.NoError(t, os.WriteFile(
-			filepath.Join(provDir, "skill.yaml"),
-			[]byte(body),
-			0o644,
-		))
-	}
+	testutil.WriteWeaponCatalog(t, dir,
+		testutil.CatalogProvider{ID: "brainstorming", Risk: "write_analysis", CanonicalRole: "ranger"},
+		testutil.CatalogProvider{ID: "openspec-explore", Risk: "write_analysis", CanonicalRole: "archivist"},
+		testutil.CatalogProvider{ID: "openspec-propose", Risk: "write_analysis", CanonicalRole: "archivist"},
+	)
 	// Install sniper as a native role (no skills/sniper/skill.yaml), plus
 	// ranger/archivist role files and the slot->role map the weapon-binding
 	// check needs to validate the roster above.
@@ -295,21 +277,10 @@ bindings:
 
 func TestCheckCmd_NativeRole_InvalidRoleDefinition(t *testing.T) {
 	dir := t.TempDir()
-	for _, p := range []struct {
-		name      string
-		riskScore string
-	}{
-		{"brainstorming", "write_analysis"},
-		{"openspec-explore", "write_analysis"},
-	} {
-		provDir := filepath.Join(dir, "skills", p.name)
-		require.NoError(t, os.MkdirAll(provDir, 0o755))
-		require.NoError(t, os.WriteFile(
-			filepath.Join(provDir, "skill.yaml"),
-			[]byte("id: "+p.name+"\nrisk_score: "+p.riskScore+"\n"),
-			0o644,
-		))
-	}
+	testutil.WriteWeaponCatalog(t, dir,
+		testutil.CatalogProvider{ID: "brainstorming", Risk: "write_analysis"},
+		testutil.CatalogProvider{ID: "openspec-explore", Risk: "write_analysis"},
+	)
 	// Native role missing the required `slot` field.
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
 	require.NoError(t, os.WriteFile(
@@ -341,21 +312,10 @@ func TestCheckCmd_NativeRole_InvalidRoleDefinition(t *testing.T) {
 
 func TestCheckCmd_NativeRole_SlotMismatch(t *testing.T) {
 	dir := t.TempDir()
-	for _, p := range []struct {
-		name      string
-		riskScore string
-	}{
-		{"brainstorming", "write_analysis"},
-		{"openspec-explore", "write_analysis"},
-	} {
-		provDir := filepath.Join(dir, "skills", p.name)
-		require.NoError(t, os.MkdirAll(provDir, 0o755))
-		require.NoError(t, os.WriteFile(
-			filepath.Join(provDir, "skill.yaml"),
-			[]byte("id: "+p.name+"\nrisk_score: "+p.riskScore+"\n"),
-			0o644,
-		))
-	}
+	testutil.WriteWeaponCatalog(t, dir,
+		testutil.CatalogProvider{ID: "brainstorming", Risk: "write_analysis"},
+		testutil.CatalogProvider{ID: "openspec-explore", Risk: "write_analysis"},
+	)
 	// Role declares slot=discovery but active.yaml puts it in execution.
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
 	require.NoError(t, os.WriteFile(

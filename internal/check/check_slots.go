@@ -9,12 +9,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// slotContract maps slot names to their required risk_score contract.
-var slotContract = map[string]string{
-	"discovery":  "write_analysis",
-	"refinement": "write_analysis",
-	"execution":  "controlled",
-}
+// slotContract maps slot names to their required risk_score contract; it is the
+// list `provider add` also applies at bind time.
+var slotContract = domain.SlotRiskContract
 
 // slotResolutionKind identifies which of the two independent resolver branches
 // satisfied a slot: an external skill provider (skills/<provider>/skill.yaml,
@@ -59,6 +56,9 @@ func resolveSlotProvider(root, slot, provider string) (slotResolution, string) {
 	if res, msg, handled := resolveFromCatalog(root, slot, provider, skillPath); handled {
 		return res, msg
 	}
+	if res, msg, handled := resolveFromCustomBinding(root, slot, provider); handled {
+		return res, msg
+	}
 	skillRaw, readErr := os.ReadFile(skillPath) //nolint:gosec // G304: provider manifest path is derived from the runtime skills directory
 	if readErr == nil {
 		return resolveSkillProviderSlot(root, slot, provider, skillPath, skillRaw)
@@ -74,8 +74,8 @@ func resolveSlotProvider(root, slot, provider string) (slotResolution, string) {
 // compat view exists. A native_role entry takes the native branch, an embedded or
 // external entry the Weapon branch. A provider the catalog does not list is not
 // handled here and falls through to the transitional compat view and then to the
-// native role file. A package added with `provider add` is not resolved by this
-// path (U-01): DEC-010 step 2 is documented, not implemented.
+// native role file. A package added with `provider add` is resolved by the next
+// step, resolveFromCustomBinding (DEC-010 step 2).
 func resolveFromCatalog(root, slot, provider, skillPath string) (slotResolution, string, bool) {
 	facts, found, err := domain.ResolveCatalogWeaponFacts(root, provider)
 	if err != nil {

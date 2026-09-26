@@ -31,7 +31,26 @@ func activateThroughLifecycle(old, candidate domain.PluginLockFile, instanceID, 
 	if err := store.Activate(tx.ID, currentGeneration(old.Bindings, slot)); err != nil {
 		return domain.PluginInventory{}, nil, fmt.Errorf("activate lifecycle transaction: %w", err)
 	}
-	return store.Inventory, store.Bindings, nil
+	return store.Inventory, withCandidateBindingShape(store.Bindings, candidate.Bindings, slot), nil
+}
+
+// withCandidateBindingShape gives the activated slot binding the shape a fresh
+// custom binding carries. The lifecycle store only switches the instance and the
+// generation, so a binding that was ranked would otherwise stay ranked (and keep
+// its ranked grant) for a package that provider add binds as custom.
+func withCandidateBindingShape(activated, candidate []domain.SlotBinding, slot string) []domain.SlotBinding {
+	fresh, ok := existingBinding(candidate, slot)
+	if !ok {
+		return activated
+	}
+	out := append([]domain.SlotBinding(nil), activated...)
+	for i, binding := range out {
+		if binding.Slot == slot {
+			fresh.Generation = binding.Generation
+			out[i] = fresh
+		}
+	}
+	return out
 }
 
 func hasBinding(bindings []domain.SlotBinding, slot string) bool {

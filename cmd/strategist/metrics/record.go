@@ -22,7 +22,7 @@ func NewRecord(deps Dependencies) *cobra.Command {
 	f.StringVar(&opts.Mission, "mission", "", "mission id (required)")
 	f.StringVar(&opts.Run, "run", "", "optional explicit run id for a repeated role execution")
 	f.StringVar(&opts.Agent, "agent", "", "producing agent (required)")
-	f.StringVar(&opts.ClaimFile, "claim-file", "", `YAML file with the claim and its evidence; "-" reads it from standard input (preferred: no file is created), and a file inside the workspace base_path is rejected`)
+	f.StringVar(&opts.ClaimFile, "claim-file", "", `YAML document holding one claim: or a claims: list, with its evidence: list; "-" reads it from standard input (preferred: no file is created), and a file inside the workspace base_path is rejected`)
 	f.BoolVar(&opts.Missing, "missing", false, "record an explicit missing-record instead of a claim")
 	f.StringVar(&opts.CorrelationKey, "correlation-key", "", "boundary correlation key (with --missing)")
 	f.StringVar(&opts.Reason, "reason", "", "why no summary was produced (with --missing)")

@@ -1,8 +1,8 @@
-# Runbook: Embedded Skill Ingestion, Migration, and Rollback
+# Runbook: Embedded Weapon Ingestion, Migration, and Rollback
 
 ## Purpose
 
-Operate the build and release path for skills that are selected by the project,
+Operate the build and release path for Weapons (role-bindable packages) that are selected by the project,
 embedded into Strategist, or migrated from a core feature to an external skill.
 This runbook covers verification, failure handling, legacy-data preservation,
 and rollback. It does not authorize source changes, lock updates, or deletion
@@ -11,15 +11,15 @@ of user data.
 ## Applies to
 
 - `strategist plugins prepare-embedded`
-- the repository target that prepares embedded skills before build
-- release failures involving embedded skill artifacts or generated catalogs
+- the repository target that prepares embedded Weapons before build
+- release failures involving embedded Weapon artifacts or generated catalogs
 - migration of legacy Treasure Chest data to the external skill
 - rollback after failed verification, probe, activation, or migration
 
 ## Preconditions
 
 - The change has an approved package/adapter contract and implementation task.
-- The committed embedded-skill lock is available.
+- The committed embedded Weapon lock is available.
 - The selected artifact source, digest, license, provenance and adapter
   revision are known.
 - The external skill's migration/import contract exists before legacy data is
@@ -72,7 +72,7 @@ Do not treat a later state as proven when only an earlier state passed.
 7. Compare generated outputs with the committed state. Stop on drift unless a
    maintainer has explicitly started a lock/catalog update workflow.
 8. Run the package, adapter, command-tree and offline reproducibility checks.
-9. Build the binary and inspect the embedded skill inventory before release.
+9. Build the binary and inspect the embedded Weapon inventory before release.
 10. Record the exact package/adapter digests and readiness evidence in the
     build/release report.
 
@@ -87,7 +87,7 @@ Do not treat a later state as proven when only an earlier state passed.
 
 ### Schema/API/command collision failure
 
-- Do not register the skill.
+- Do not register the Weapon.
 - Report the conflicting field, API version, command path, or reserved flag.
 - Preserve the last known-good embedded catalog.
 - Return the package to its publisher/adapter maintainer for correction.
@@ -95,15 +95,15 @@ Do not treat a later state as proven when only an earlier state passed.
 ### Missing artifact or unavailable source
 
 - Keep the previous release/build inputs intact.
-- If the skill is optional, build without activating the new candidate and
-  report the embedded skill as unavailable.
-- If the release contract requires the skill, fail the release rather than
+- If the Weapon is optional, build without activating the new candidate and
+  report the embedded Weapon as unavailable.
+- If the release contract requires the Weapon, fail the release rather than
   shipping an incomplete inventory.
 
 ### Unsupported connector or invocation
 
 - Record `invocation_unsupported` or the connector-specific reason.
-- Do not label the skill healthy because it is embedded or command-registered.
+- Do not label the Weapon healthy because it is embedded or command-registered.
 - Preserve native Strategist behavior and any last-known-good binding.
 
 ## Legacy Treasure Chest migration
@@ -138,7 +138,7 @@ skill is absent or the import is incomplete.
 ### Runtime/activation rollback
 
 1. Keep the last-known-good embedded catalog or workspace binding active.
-2. Disable or quarantine the failed skill/instance.
+2. Disable or quarantine the failed Weapon/instance.
 3. Do not switch command bindings to an unprobed artifact.
 4. Capture the reason code, package/adapter digests, connector and binding
    generation.
@@ -161,7 +161,7 @@ skill is absent or the import is incomplete.
 - [ ] Artifact digest, license, provenance and API compatibility pass.
 - [ ] Dependencies and requested permissions are resolved.
 - [ ] Generated catalog and command registrations are deterministic.
-- [ ] Command paths do not collide with core or another embedded skill.
+- [ ] Command paths do not collide with core or another embedded Weapon.
 - [ ] Release inventory lists exact embedded IDs, versions and digests.
 - [ ] Embedded presence is not reported as live invocation or health.
 - [ ] Legacy data was inventoried and preserved before migration.

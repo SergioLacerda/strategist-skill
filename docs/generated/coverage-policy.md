@@ -52,6 +52,7 @@ are recorded in `scripts/coverage-exemptions.tsv`. Edit those sources, not this 
 | `internal/telemetry/sink/otel` | 95% | raised from 68.8% to 100.0% (2026-08-30, full severity-mapping table) - measured 100.0% |
 | `internal/telemetry/sink/slog` | 95% | raised from 68.8% to 100.0% (2026-08-30, full severity-mapping table) - measured 100.0% |
 | `internal/testutil` | 95% | raised from 0.0% to 100.0% (2026-08-30, direct helper tests added; no longer excluded from `make test`) - measured 100.0% |
+| `internal/testutil/customws` | 95% | provider-add workspace helper for rolevalidation/authorization regression tests (2026-09-25) - measured 100.0% |
 | `internal/runtimepayload` | 75% | embedded OpenSpec bundle verification/materialization gate - measured 79.6% (20260920-drift-a-windows-standalone-install) |
 | `internal/leveling` | 90% | provider-neutral LEVELING policy, fallback, and digest contract |
 | `internal/initiative` | 95% | consultative INITIATIVE advice, result, authority, and append-only ledger contract - raised to 95% after error-path tests, measured 97.0% (2026-09-23) |

@@ -45,7 +45,7 @@ jobs:
           git fetch origin +refs/heads/main:refs/remotes/origin/main
           bash scripts/check-release-tag.sh "${GITHUB_REF_NAME}"
 
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v5
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: "go.mod"
           # No dependency cache in a workflow that publishes signed artifacts: a
@@ -87,7 +87,7 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v5
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: "go.mod"
           # No dependency cache in a workflow that publishes signed artifacts: a

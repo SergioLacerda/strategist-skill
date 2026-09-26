@@ -67,7 +67,7 @@ producers:
     - {agent: handoff_challenge, owner: internal/mission/handoff.go}
     - {agent: sniper, owner: narrative/06-execution.md#required-behavior}
   silent_boundary: "A boundary that finishes without a record or an explicit missing-record is a coverage gap; the gate review reports missing records separately."
-  gate_review: "strategist metrics confidence --mission <id> is the gate-time materializer (telemetry.LoadConfidenceGateReview)."
+  gate_review: "strategist metrics confidence --mission <id> is the gate-time materializer (telemetry.LoadConfidenceGateReview). strategist metrics confidence --mission <id> --declared - (a handoff confidence_summary on stdin) appends a read-only comparison of the declared claims with the persisted records: declared_unpersisted, persisted_rejected, declared_mismatched, persisted_under_other_agent and declared_review; it never changes review_required."
   ground_truth: >
     The Approval Gate is the immutable point of human action and the only automatic ground-truth
     source: `strategist metrics gate-outcome --mission <id> --outcome accepted|revision_requested|rejected --ref <gate event>`.
@@ -85,6 +85,8 @@ metric_vocabulary:
     unsupported_assertion_rate: "unsupported assertion records / assertion records (a rejected assertion record counts in both the numerator and the denominator)"
     question_preservation_rate: "correlated question outputs preserved / correlated question inputs"
     corrected_high_confidence_claim_rate: "corrected high-confidence claims / high-confidence claims with reviewed ground truth"
+    per_agent_versus_mission: "the mission-level rates (assertion_evidence_coverage, unsupported_assertion_rate) count a rejected assertion record as unsupported; the per-agent rates (agent.<name>.*) are computed over that agent's reported records only and do not, so a mission and its agents can show different rates for the same history"
+    question_preservation_display: "the human output prints question_preservation_rate as n/a when there is no question; the JSON field and the computed metric stay 0"
     sample_unit: "one unique event_id; sample_size counts reviewed outcomes, not raw lines"
     missing_records: "excluded from validity denominators and reported separately"
     rejected_records: "a rejected assertion record enters the assertion denominators as unsupported; a rejected question record enters no denominator; every rejected record is also reported separately and is not part of sample_size"

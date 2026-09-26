@@ -171,6 +171,15 @@ strategist metrics confidence --mission <id>)`. Otherwise omit the line
 entirely — do not restate `review_required: false` or an empty violations
 list.
 
+When the handoff `confidence_summary` is available to the gate shell, pipe it to
+`strategist metrics confidence --mission <id> --declared -` (read-only: it writes nothing
+and never changes `review_required`). When its last line is `declared_review: recommended`,
+append one more line right after the review line, for example:
+`⚠️  N afirmações declaradas sem registro persistido (detalhe: strategist metrics confidence --mission <id> --declared -)`
+where N is the number of ids in the four unpersisted, rejected, mismatched and
+other-agent lists. When it is `declared_review: none`, or the summary is not available,
+omit the line — do not restate a clean comparison. The comparison is a flag of the existing command, not a new command.
+
 The full cross-agent calibration payload (policy version, low/medium/high
 distribution, per-agent sample/coverage/calibration, claim-kind counts,
 evidence coverage, calibration status, missing/rejected/duplicate counts) is

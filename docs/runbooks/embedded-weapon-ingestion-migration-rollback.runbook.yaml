@@ -1,21 +1,21 @@
 schema_version: "1"
-runbook_id: embedded-skill-ingestion-migration-rollback
+runbook_id: embedded-weapon-ingestion-migration-rollback
 runbook_type: operational
-source_doc: docs/runbooks/embedded-skill-ingestion-migration-rollback.md
+source_doc: docs/runbooks/embedded-weapon-ingestion-migration-rollback.md
 
 applies_when:
-  - "a committed embedded-skill lock is being prepared for a build or release"
-  - "embedded skill artifact, adapter, catalog, command registration, or provenance verification fails"
+  - "a committed embedded Weapon lock is being prepared for a build or release"
+  - "embedded Weapon artifact, adapter, catalog, command registration, or provenance verification fails"
   - "legacy Treasure Chest data is being imported into the external skill"
-  - "embedded skill activation, invocation, migration, or rollback fails"
+  - "embedded Weapon activation, invocation, migration, or rollback fails"
 
 objective: >
-  Verify and operate deterministic embedded-skill ingestion, preserve and migrate
+  Verify and operate deterministic embedded Weapon ingestion, preserve and migrate
   legacy data explicitly, and restore the last-known-good build or binding after
   verification, build, activation, or migration failure.
 
 preconditions:
-  - "The committed embedded-skill lock and adapter contract are available"
+  - "The committed embedded Weapon lock and adapter contract are available"
   - "The external skill migration/import contract exists before legacy data is touched"
   - "Legacy workspace data has a recoverable backup or preservation point"
   - "Ordinary release builds do not refresh mutable tags implicitly"
@@ -48,6 +48,6 @@ checks:
     level: mandatory
 
 metadata:
-  version: 1
-  reviewed_at: "2026-09-13"
+  version: 2
+  reviewed_at: "2026-09-25"
   related_adr: docs/adr/0032-external-skill-cli-embedding-and-treasure-chest-ownership.md

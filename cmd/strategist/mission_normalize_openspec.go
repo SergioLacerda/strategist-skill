@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"path/filepath"
 
 	missionadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
@@ -26,4 +27,18 @@ func resolvePath(value, fallback, projectRoot string) string {
 		return value
 	}
 	return filepath.Join(projectRoot, value)
+}
+
+// resolveNormalizeGateLabel reads the mission's gate outcome label, which an
+// amendment consults: a rejected analysis is not amended.
+func resolveNormalizeGateLabel(opts missionadapter.NormalizeOptions) (string, error) {
+	strategistRoot, _, err := cliutil.ResolveActiveBasePath(opts.Root)
+	if err != nil {
+		return "", fmt.Errorf("resolve active base path: %w", err)
+	}
+	label, err := telemetry.GateOutcomeFor(strategistRoot, opts.MissionID)
+	if err != nil {
+		return "", fmt.Errorf("gate outcome: %w", err)
+	}
+	return label, nil
 }

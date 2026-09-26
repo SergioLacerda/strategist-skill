@@ -11,11 +11,20 @@ import (
 
 // NewConfidence creates a new Cobra command for reporting confidence metrics.
 func NewConfidence(deps Dependencies) *cobra.Command {
-	var root, mission string
+	var root, mission, declared string
 	cmd := &cobra.Command{Use: "confidence", Short: "Report cross-agent confidence metrics"}
 	cmd.Flags().StringVar(&root, deps.RootFlag, "", "path to .strategist/ root (default: auto-discovered from CWD)")
 	cmd.Flags().StringVar(&mission, "mission", "", "scope the review to one mission (used at the Approval Gate)")
-	cmd.RunE = func(cmd *cobra.Command, _ []string) error { return RunConfidence(cmd, deps, root, mission) }
+	cmd.Flags().StringVar(&declared, "declared", "", `compare the claims a handoff declared with the persisted records: "-" reads a YAML document with a top-level confidence_summary from standard input (requires --mission; read-only)`)
+	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
+		if err := validateDeclaredFlag(mission, declared); err != nil {
+			return err
+		}
+		if declared != "" {
+			return runConfidenceDeclared(cmd, deps, root, mission)
+		}
+		return RunConfidence(cmd, deps, root, mission)
+	}
 	return cmd
 }
 
@@ -59,7 +68,7 @@ func PrintGateOutcome(w io.Writer, root, missionID string) error {
 // PrintConfidenceMetrics formats and writes confidence metrics output.
 func PrintConfidenceMetrics(w io.Writer, review telemetry.ConfidenceGateReview) error {
 	m := review.Metrics
-	out := fmt.Sprintf("policy_version: %s\nconfidence_distribution.low: %d\nconfidence_distribution.medium: %d\nconfidence_distribution.high: %d\nclaim_kinds.question: %d\nclaim_kinds.assertion: %d\nassertion_evidence_coverage: %.2f\nunsupported_assertion_rate: %.2f\nquestion_preservation_rate: %.2f\ncorrected_high_confidence_claim_rate: %.2f\nsample_size: %d\nground_truth_sample_size: %d\nmissing_records: %d\nrejected_records: %d\nduplicate_records: %d\nreview_required: %t\nconfidence_unavailable: %t\ncalibration_status: %s\n", m.PolicyVersion, m.Distribution["low"], m.Distribution["medium"], m.Distribution["high"], m.ClaimKinds["question"], m.ClaimKinds["assertion"], m.AssertionEvidenceCoverage, m.UnsupportedAssertionRate, m.QuestionPreservationRate, m.CorrectedHighConfidenceClaimRate, m.SampleSize, m.GroundTruthSampleSize, m.MissingRecords, m.RejectedRecords, m.DuplicateRecords, review.ReviewRequired, review.Unavailable, m.CalibrationStatus)
+	out := fmt.Sprintf("policy_version: %s\nconfidence_distribution.low: %d\nconfidence_distribution.medium: %d\nconfidence_distribution.high: %d\nclaim_kinds.question: %d\nclaim_kinds.assertion: %d\nassertion_evidence_coverage: %.2f\nunsupported_assertion_rate: %.2f\nquestion_preservation_rate: %s\ncorrected_high_confidence_claim_rate: %.2f\nsample_size: %d\nground_truth_sample_size: %d\nmissing_records: %d\nrejected_records: %d\nduplicate_records: %d\nreview_required: %t\nconfidence_unavailable: %t\ncalibration_status: %s\n", m.PolicyVersion, m.Distribution["low"], m.Distribution["medium"], m.Distribution["high"], m.ClaimKinds["question"], m.ClaimKinds["assertion"], m.AssertionEvidenceCoverage, m.UnsupportedAssertionRate, questionRateDisplay(m.ClaimKinds["question"], m.QuestionPreservationRate), m.CorrectedHighConfidenceClaimRate, m.SampleSize, m.GroundTruthSampleSize, m.MissingRecords, m.RejectedRecords, m.DuplicateRecords, review.ReviewRequired, review.Unavailable, m.CalibrationStatus)
 	agents := make([]string, 0, len(m.AgentMetrics))
 	for agent := range m.AgentMetrics {
 		agents = append(agents, agent)
@@ -67,10 +76,20 @@ func PrintConfidenceMetrics(w io.Writer, review telemetry.ConfidenceGateReview) 
 	sort.Strings(agents)
 	for _, agent := range agents {
 		a := m.AgentMetrics[agent]
-		out += fmt.Sprintf("agent.%s.sample_size: %d\nagent.%s.assertion_evidence_coverage: %.2f\nagent.%s.unsupported_assertion_rate: %.2f\nagent.%s.question_preservation_rate: %.2f\nagent.%s.corrected_high_confidence_claim_rate: %.2f\nagent.%s.ground_truth_sample_size: %d\nagent.%s.calibration_status: %s\n", agent, a.SampleSize, agent, a.AssertionEvidenceCoverage, agent, a.UnsupportedAssertionRate, agent, a.QuestionPreservationRate, agent, a.CorrectedHighConfidenceClaimRate, agent, a.GroundTruthSampleSize, agent, a.CalibrationStatus)
+		out += fmt.Sprintf("agent.%s.sample_size: %d\nagent.%s.assertion_evidence_coverage: %.2f\nagent.%s.unsupported_assertion_rate: %.2f\nagent.%s.question_preservation_rate: %s\nagent.%s.corrected_high_confidence_claim_rate: %.2f\nagent.%s.ground_truth_sample_size: %d\nagent.%s.calibration_status: %s\n", agent, a.SampleSize, agent, a.AssertionEvidenceCoverage, agent, a.UnsupportedAssertionRate, agent, questionRateDisplay(a.ClaimKinds["question"], a.QuestionPreservationRate), agent, a.CorrectedHighConfidenceClaimRate, agent, a.GroundTruthSampleSize, agent, a.CalibrationStatus)
 	}
 	if _, err := fmt.Fprint(w, out); err != nil {
 		return fmt.Errorf("metrics confidence: write output: %w", err)
 	}
 	return nil
+}
+
+// questionRateDisplay is the human rendering of question_preservation_rate: with no
+// question the rate has no denominator and prints n/a instead of a misleading 0.00.
+// The JSON field and the computed metric keep their value.
+func questionRateDisplay(questions int, rate float64) string {
+	if questions == 0 {
+		return "n/a"
+	}
+	return fmt.Sprintf("%.2f", rate)
 }

@@ -228,8 +228,8 @@ mechanisms:
     contract_file: contracts/narrative/04-refinement.md
     enforcement_kind: code
     enforcement_tier: machine_enforced
-    summary: "publishes a finished OpenSpec change as the refined package; never hand-copy."
-    when_to_use: the openspec-propose Weapon finished its change
+    summary: "publish/--amend an OpenSpec change as the refined package; never by hand."
+    when_to_use: the openspec-propose Weapon finished its change, or a human authorized an amendment of a published package (--amend --amends <previous> --authorization-ref <ref>)
     invoked_by: [archivist]
     how_to_invoke: "strategist mission normalize-openspec --mission-id <id> --change-id <c>"
     phase_scope: [refinement]

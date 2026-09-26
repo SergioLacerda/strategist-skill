@@ -14,7 +14,7 @@ func fixturePath(t *testing.T) string {
 }
 
 func TestValidateMinimalFixtureSeparatesStaticAndLiveEvidence(t *testing.T) {
-	report, err := Validate(fixturePath(t), "refinement")
+	report, err := Validate(analysisFixturePath(t), "refinement")
 	require.NoError(t, err)
 	require.True(t, report.Validated)
 	require.Equal(t, "fixture-provider", report.ProviderID)
@@ -41,7 +41,7 @@ func TestAddAllowsStaticDiscoveryBindingWithoutLiveInvocation(t *testing.T) {
 	require.NoError(t, copySource(filepath.Join("..", "embed", "defaults"), root))
 	require.NoError(t, os.WriteFile(filepath.Join(root, "active.yaml"), []byte("mode: epic\nbase_path: .analysis\nslots:\n  discovery: fixture-provider\n  refinement: archivist\n  execution: sniper\n"), 0o644))
 	fixture := copyFixture(t)
-	require.NoError(t, os.WriteFile(filepath.Join(fixture, adapterManifestName), []byte("schema_version: strategist-plugin-adapter/v1\nid: fixture-provider\nadapter_revision: 1.0.0\nplugin_api_range: \"=1\"\nsupported_slots: [discovery]\nsupported_roles: [ranger]\nentrypoints: [host.prompt]\npackage_constraint: fixture-provider@1\nrequested_permissions: [workspace.read]\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(fixture, adapterManifestName), []byte("schema_version: strategist-plugin-adapter/v1\nid: fixture-provider\nadapter_revision: 1.0.0\nplugin_api_range: \"=1\"\nsupported_slots: [discovery]\nsupported_roles: [ranger]\nentrypoints: [host.prompt]\npackage_constraint: fixture-provider@1\nrequested_permissions: [workspace.read]\nrisk_score: write_analysis\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(fixture, legacyManifestName), []byte("id: fixture-provider\ncanonical_role: ranger\nsupported_slots: [discovery]\n"), 0o644))
 	result, err := Add(root, fixture, "discovery")
 	require.NoError(t, err)
@@ -65,7 +65,7 @@ func TestAddRollsBackWhenCompileFails(t *testing.T) {
 	root := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(root, "active.yaml"), []byte("mode: custom\nbase_path: .analysis\nslots:\n  discovery: ranger\n  refinement: archivist\n  execution: sniper\n"), 0o644))
 
-	result, err := Add(root, fixturePath(t), "refinement")
+	result, err := Add(root, analysisFixturePath(t), "refinement")
 	require.Error(t, err)
 	require.Equal(t, "rolled_back", result.TransactionState)
 	_, statErr := os.Stat(filepath.Join(root, providerDirName, "fixture-provider@1.0.0"))
@@ -82,11 +82,11 @@ func TestAddCommitsBindingAndCompilesGovernedRuntime(t *testing.T) {
 	require.NoError(t, copySource(filepath.Join("..", "embed", "defaults"), root))
 	require.NoError(t, os.WriteFile(filepath.Join(root, "active.yaml"), []byte("mode: epic\nbase_path: .analysis\nknowledge_index_path: knowledge.index.yaml\nslots:\n  discovery: ranger\n  refinement: archivist\n  execution: sniper\n"), 0o644))
 
-	result, err := Add(root, fixturePath(t), "refinement")
+	result, err := Add(root, analysisFixturePath(t), "refinement")
 	require.NoError(t, err)
 	require.Equal(t, "complete", result.TransactionState)
 	require.Equal(t, int64(1), result.BindingGeneration)
-	replay, replayErr := Add(root, fixturePath(t), "refinement")
+	replay, replayErr := Add(root, analysisFixturePath(t), "refinement")
 	require.NoError(t, replayErr)
 	require.Equal(t, result.BindingGeneration, replay.BindingGeneration)
 	require.Equal(t, result.InstanceID, replay.InstanceID)
@@ -95,6 +95,19 @@ func TestAddCommitsBindingAndCompilesGovernedRuntime(t *testing.T) {
 	require.Contains(t, string(lockRaw), "fixture-provider@1.0.0")
 	_, compileErr := os.Stat(filepath.Join(root, ".compiled", ".manifest.gz"))
 	require.NoError(t, compileErr)
+}
+
+// analysisFixturePath is the minimal fixture bindable to the refinement slot: a
+// temp copy whose adapter declares the slot's risk_score, which the embedded
+// fixture does not (bind-time rule, DEC-204).
+func analysisFixturePath(t *testing.T) string {
+	t.Helper()
+	dir := copyFixture(t)
+	adapter := filepath.Join(dir, adapterManifestName)
+	raw, err := os.ReadFile(adapter)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(adapter, append(raw, []byte("risk_score: write_analysis\n")...), 0o644))
+	return dir
 }
 
 func copyFixture(t *testing.T) string {
@@ -111,7 +124,7 @@ func TestFailedAddPreservesActiveBindingAndExistingLock(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(root, "active.yaml"), active, 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins.lock"), lock, 0o644))
 
-	_, err := Add(root, fixturePath(t), "refinement")
+	_, err := Add(root, analysisFixturePath(t), "refinement")
 	require.Error(t, err)
 	gotActive, readErr := os.ReadFile(filepath.Join(root, "active.yaml"))
 	require.NoError(t, readErr)

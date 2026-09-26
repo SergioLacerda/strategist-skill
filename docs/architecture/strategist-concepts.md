@@ -363,7 +363,7 @@ for the normative rules. Examples of correct and incorrect behavior:
 > deliberately, not coincidentally reused.
 
 A **ranked class** is a Role that, at compile/build time, is already bound to a
-specific weapon (an embedded skill) — the binding is known before the mission
+specific weapon (an embedded Weapon, `origin: embedded`) — the binding is known before the mission
 runs, not resolved by the Wizard or discovered by the agent at runtime. This
 compile-time binding is built on the same certification pipeline the pending
 "Ranked Binding" draft describes (manifest/dependency/affinity/contract-test/

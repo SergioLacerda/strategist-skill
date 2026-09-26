@@ -199,3 +199,38 @@ install with every `skills/*/skill.yaml` removed passes `strategist check`.
 - This ADR is independent of ADR-0053. Neither depends on the other.
 - It corrects nothing in ADR-0030 §1–§9. It replaces the trigger in Migration step 8, sets the
   end of the dual-read in step 5, and is summarized in the ADR-0030 amendment.
+
+## Amendment 2026-09-26: `provider add` packages are resolved by `check` (closes U-01)
+
+Mission `20260925-sq002-provider-add-check-resolution` closed the open item U-01 above and
+implemented step 2 of Decision 9 (slot resolution order). It changes no decision of this ADR
+about the marker, the generations or the compat view.
+
+- **Resolution step.** After the catalog and before the transitional view, `strategist check`
+  resolves a slot whose `plugins.lock` binding has `mode: custom` and whose
+  `providers/<instance>/adapter.yaml` exists (`domain.ResolveCustomPackageFacts`). When no such
+  package is staged the step hands over, so a legacy binding or a hand-made view resolves as
+  before.
+- **Spelling.** `active.yaml` names the installed instance (`<package-id>@<version>`). The bare
+  package id is Blocked with `custom_package_use_instance_id`. `provider add` does not edit
+  `active.yaml`; it prints the line to set.
+- **Grant and digest identity.** The lock keys its nodes by package id, so the adapter digest is
+  looked up through the package id read from `providers/<instance>/package.yaml` and used as both
+  the package and the adapter digest. A missing digest is Blocked (`custom_package_digest_missing`)
+  and never `Unknown`, so a package cannot pass with its permissions unevaluated. There is still no
+  CLI that creates grants (side quest SQ-F).
+- **Mode.** `provider add` over a slot that was `ranked` now records a `custom` binding, with the
+  shape of a fresh custom binding; the fix lives in `internal/provider` and leaves the shared
+  lifecycle store untouched. Re-adding the same package heals a lock written by the old behavior.
+- **Bind-time rule.** For `discovery` and `refinement`, `provider add` refuses an adapter whose
+  `risk_score` is not the slot's contract (`analysis_risk_missing`, `analysis_risk_mismatch`),
+  through one list, `domain.SlotRiskContract`, that `check` also applies. The embedded
+  `minimal-provider` fixture declares no `risk_score`, so it cannot bind to those slots.
+- **Reason codes** are additive: `adapter_contract_valid`, `custom_package_present`,
+  `adapter_entrypoints_declared`, `adapter_entrypoints_missing`, `custom_package_digest_missing`,
+  `custom_package_use_instance_id`, and `host_api_declared` for catalog Weapons that declare a
+  host API. The retired view codes are not reused.
+
+Rejected alternatives: a reader without the mode fix (a stock install stays blocked); writing
+`active.yaml` from `provider add` (the operator's choice of slot owner is not the command's to
+make); looking the digest up by instance id (fails open).

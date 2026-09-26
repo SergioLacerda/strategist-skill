@@ -15,15 +15,22 @@ import (
 // affinity come from the catalog entry, and readiness from the catalog descriptor
 // and the Weapon's payload.
 func resolveCatalogWeaponSlot(root, slot, provider string, facts domain.WeaponFacts) (slotResolution, string) {
-	required := slotContract[slot]
-	if facts.RiskScore != required {
-		return slotResolution{}, fmt.Sprintf("slot %s: provider %q has risk_score=%q but slot requires %q — preflight will block", slot, provider, facts.RiskScore, required)
-	}
-	if errMsg := checkRoleFactsCompatibility(root, slot, provider, facts.RiskScore, facts.Roles); errMsg != "" {
+	if errMsg := checkSlotFacts(root, slot, provider, facts); errMsg != "" {
 		return slotResolution{}, errMsg
 	}
 	catalogPath := filepath.Join(root, "plugins", "catalog.yaml")
 	return slotResolution{kind: slotResolutionSkillProvider, path: catalogPath, readiness: catalogWeaponReadiness(root, slot, provider, catalogPath, facts)}, ""
+}
+
+// checkSlotFacts is the predicate every non-native Weapon must satisfy for a slot,
+// whichever manifest its facts came from: the slot's risk_score contract and the
+// role affinity. It returns an error message, empty when the Weapon fits the slot.
+func checkSlotFacts(root, slot, provider string, facts domain.WeaponFacts) string {
+	required := slotContract[slot]
+	if facts.RiskScore != required {
+		return fmt.Sprintf("slot %s: provider %q has risk_score=%q but slot requires %q — preflight will block", slot, provider, facts.RiskScore, required)
+	}
+	return checkRoleFactsCompatibility(root, slot, provider, facts.RiskScore, facts.Roles)
 }
 
 func catalogWeaponReadiness(root, slot, provider, catalogPath string, facts domain.WeaponFacts) domain.PluginReadinessVector {
@@ -31,6 +38,7 @@ func catalogWeaponReadiness(root, slot, provider, catalogPath string, facts doma
 		descriptor: domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "catalog_entry_valid", Detail: catalogPath},
 		source:     domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "catalog_entry_present", Detail: catalogPath},
 		entrypoint: catalogEntrypointCheck(root, provider, facts),
+		hostAPI:    catalogHostAPICheck(facts),
 		detail:     catalogPath,
 		conformance: func(probe connectors.ConnectorResult) domain.ReadinessCheck {
 			return customConformanceReadinessFor(root, slot, provider, func() ([]string, domain.ReadinessCheck) {
@@ -41,6 +49,23 @@ func catalogWeaponReadiness(root, slot, provider, catalogPath string, facts doma
 			}, probe)
 		},
 	})
+}
+
+// hostAPICheck reports a declared host API, or that the source declares none.
+func hostAPICheck(declared domain.ReadinessCheck) domain.ReadinessCheck {
+	if declared.ReasonCode != "" {
+		return declared
+	}
+	return domain.ReadinessCheck{Status: domain.ReadinessUnknown, ReasonCode: "host_api_not_declared"}
+}
+
+// catalogHostAPICheck reports the host API the catalog runtime block declares;
+// the zero check means the entry declares none.
+func catalogHostAPICheck(facts domain.WeaponFacts) domain.ReadinessCheck {
+	if facts.RuntimeHostAPI == "" {
+		return domain.ReadinessCheck{}
+	}
+	return domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "host_api_declared", Detail: facts.RuntimeHostAPI}
 }
 
 // catalogEntrypointCheck verifies the payload the Weapon's runtime kind needs: the

@@ -69,7 +69,7 @@ func TestValidateRejectsCustomSniperDeclaringRiskBelowControlled(t *testing.T) {
 
 func TestExecutionRulesDoNotChangeOtherSlots(t *testing.T) {
 	dir := copyFixture(t)
-	adapter := "schema_version: strategist-plugin-adapter/v1\nid: fixture-provider\nadapter_revision: 1.0.0\nplugin_api_range: \"=1\"\nsupported_slots: [refinement]\nsupported_roles: [archivist]\nentrypoints: [host.prompt]\npackage_constraint: fixture-provider@1\nrequested_permissions: [workspace.read, source.write]\n"
+	adapter := "schema_version: strategist-plugin-adapter/v1\nid: fixture-provider\nadapter_revision: 1.0.0\nplugin_api_range: \"=1\"\nsupported_slots: [refinement]\nsupported_roles: [archivist]\nentrypoints: [host.prompt]\npackage_constraint: fixture-provider@1\nrequested_permissions: [workspace.read, source.write]\nrisk_score: write_analysis\n"
 	require.NoError(t, os.WriteFile(filepath.Join(dir, adapterManifestName), []byte(adapter), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, legacyManifestName), []byte("id: fixture-provider\ncanonical_role: archivist\nsupported_slots: [refinement]\nrisk_score: write_analysis\n"), 0o644))
 

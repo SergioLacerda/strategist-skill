@@ -174,3 +174,30 @@ func TestSideQuestSchemasSupportInvestigationRequired(t *testing.T) {
 // TestEvidencePackContractDefinesNonBlockingEmptyState verifies the Evidence Pack
 // contract (Track T-A) declares its fields and the empty-state non-blocking behavior,
 // and never turns evidence packs into a raw-chest-load or new retrieval unit.
+
+// TestApprovalGateShowsDeclaredVersusPersistedClaims pins the conditional gate line
+// that exposes a handoff whose declared claims are not all persisted (DEC-002 b): the
+// line is shown only when the comparison recommends a review, and the comparison is
+// the read-only `--declared -` flag of `metrics confidence`, not a new command.
+func TestApprovalGateShowsDeclaredVersusPersistedClaims(t *testing.T) {
+	t.Parallel()
+
+	root := repoRoot(t)
+	narrative := filepath.Join(root, "internal", "embed", "defaults", "contracts", "narrative", "05-approval-gate.md")
+	for _, needle := range []string{
+		"--declared -",
+		"declared_review: recommended",
+		"afirmações declaradas sem registro persistido",
+		"omit the line",
+	} {
+		if !strings.Contains(readFile(t, narrative), needle) {
+			t.Fatalf("%s missing declared-versus-persisted term %q", narrative, needle)
+		}
+	}
+	machine := filepath.Join(root, "internal", "embed", "defaults", "contracts", "machine", "approval-gate.yaml")
+	for _, needle := range []string{"declared_comparison:", "shown_when: \"declared_review: recommended\"", "read_only: true"} {
+		if !strings.Contains(readFile(t, machine), needle) {
+			t.Fatalf("%s missing declared_comparison term %q", machine, needle)
+		}
+	}
+}

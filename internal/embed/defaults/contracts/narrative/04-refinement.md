@@ -78,6 +78,16 @@ Archivist (`refinement`)
   `changes/archive/`. Bypassing it and promoting by hand is a documented drift source (see
   `.analysis/done/drift/` for the incident this codifies) — it silently loses the provider
   metadata and leaves the change unarchived.
+- amend a package that is already published only through
+  `strategist mission normalize-openspec --mission-id <mission_id> --change-id <new_change>
+  --amend --amends <previous_change_id> --authorization-ref "<quote or gate event>"` — never by hand.
+  The mode replaces `proposal.md`, `design.md` and `tasks.md` with the new change, leaves
+  `analysis.md`, `mission_status` and the original `provider_change_id` untouched, records an
+  `amendments:` list in the replaced files' frontmatter, snapshots the previous files under
+  `<package>/.amendments/NNN/`, and refuses a claimed or applied package, a rejected mission, a
+  pending analysis, and an analysis-only accepted package that would gain a documentation target.
+  The authorization reference is a human's words or gate event recorded verbatim; the command
+  cannot verify it. The default mode is unchanged and still fails closed on a differing package.
 - classify side quests and surface them at the approval gate
 - classify every `tasks.md` / `implementation_plan` item by `task_type`: `documentation_target`,
   `analysis_artifact`, `implementation_handoff`, or `out_of_scope` (see

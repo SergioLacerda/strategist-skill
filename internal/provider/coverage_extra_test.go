@@ -152,7 +152,7 @@ func TestAddUsesExistingLifecycleBinding(t *testing.T) {
 		Bindings:  []domain.SlotBinding{{Slot: "refinement", InstalledInstanceID: "old", Generation: 7, Status: "active"}},
 	}
 	require.NoError(t, writeLock(root, old))
-	result, err := Add(root, fixturePath(t), "refinement")
+	result, err := Add(root, analysisFixturePath(t), "refinement")
 	require.NoError(t, err)
 	require.Equal(t, int64(8), result.BindingGeneration)
 }

@@ -211,3 +211,39 @@ func TestResolveWeaponFactsCatalogStillBeatsTheAdapter(t *testing.T) {
 	assert.Equal(t, domain.WeaponFactsSourceCatalog, facts.Source)
 	assert.Equal(t, "controlled", facts.RiskScore)
 }
+
+func TestResolveCustomPackageFactsReadsTheAdapterOfACustomBinding(t *testing.T) {
+	root := manifestRoot(t, manifestCatalog, nil)
+	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins.lock"), []byte("schema_version: strategist-plugin-lock-file/v1\nbindings:\n  - slot: refinement\n    installed_instance_id: fixture-provider@1.0.0\n    mode: custom\n    status: active\n"), 0o644))
+	writeCustomPackage(t, root, "fixture-provider@1.0.0", customAdapter)
+
+	facts, found, err := domain.ResolveCustomPackageFacts(root, "fixture-provider@1.0.0")
+
+	require.NoError(t, err)
+	require.True(t, found)
+	assert.Equal(t, domain.WeaponFactsSourceAdapter, facts.Source)
+	assert.Equal(t, "write_analysis", facts.RiskScore)
+	assert.Equal(t, []string{"archivist"}, facts.Roles)
+	assert.Equal(t, []string{"host.prompt"}, facts.Entrypoints)
+}
+
+func TestResolveCustomPackageFactsIgnoresARankedBinding(t *testing.T) {
+	root := manifestRoot(t, manifestCatalog, nil)
+	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins.lock"), []byte("schema_version: strategist-plugin-lock-file/v1\nbindings:\n  - slot: refinement\n    installed_instance_id: fixture-provider@1.0.0\n    mode: ranked\n    status: active\n"), 0o644))
+	writeCustomPackage(t, root, "fixture-provider@1.0.0", customAdapter)
+
+	_, found, err := domain.ResolveCustomPackageFacts(root, "fixture-provider@1.0.0")
+
+	require.NoError(t, err)
+	assert.False(t, found, "a ranked binding is never a custom package")
+}
+
+func TestResolveCustomPackageFactsWithoutAStagedAdapterIsNotFound(t *testing.T) {
+	root := manifestRoot(t, manifestCatalog, nil)
+	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins.lock"), []byte("schema_version: strategist-plugin-lock-file/v1\nbindings:\n  - slot: refinement\n    installed_instance_id: hand-made\n    status: active\n"), 0o644))
+
+	_, found, err := domain.ResolveCustomPackageFacts(root, "hand-made")
+
+	require.NoError(t, err)
+	assert.False(t, found, "a legacy binding with no providers/ package falls through to the other resolvers")
+}

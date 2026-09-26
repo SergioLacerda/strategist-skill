@@ -40,7 +40,7 @@ func Validate(input, requestedSlot string) (Report, error) {
 	}
 	report := buildReport(source, input, requestedSlot, reasons)
 	if len(reasons) > 0 {
-		return report, fmt.Errorf("provider validation failed: %s", reasons[0].Code)
+		return report, fmt.Errorf("provider validation failed: %s", describeReason(reasons[0]))
 	}
 	return report, nil
 }
@@ -97,6 +97,15 @@ func bindingReadiness(slot string, reasons []Reason) domain.ReadinessCheck {
 		return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: reasonCodes(reasons)[0]}
 	}
 	return domain.ReadinessCheck{Status: domain.ReadinessUnknown, ReasonCode: "binding_not_activated"}
+}
+
+// describeReason is the reason code, followed by its detail when it has one, so a
+// refused add tells the operator what to fix and not only which rule fired.
+func describeReason(reason Reason) string {
+	if reason.Detail == "" {
+		return reason.Code
+	}
+	return reason.Code + ": " + reason.Detail
 }
 
 func reasonCodes(reasons []Reason) []string {

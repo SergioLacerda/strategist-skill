@@ -3,7 +3,7 @@
 	check-release-artifacts check-release-assets release-reproducible-check \
 	release-test release-dry-run release snapshot clean compile-skill \
 	release-tag-check release-tag-test release-script-test check-release-binaries verify-published-release \
-	embed-skills embed-skills-check build-standalone standalone-smoke install-lite doctor install-hooks
+	embed-skills embed-skills-check skill-for-hire-pin-check skill-for-hire-pin-check-test build-standalone standalone-smoke install-lite doctor install-hooks
 
 # install puts a standalone binary in ~/.local/bin. It embeds the OpenSpec
 # bundle; Ranked execution uses the client's validated host Node >=20.19.0.
@@ -37,6 +37,18 @@ embed-skills: build
 # `make embed-skills`.
 embed-skills-check: build
 	"./$(STRATEGIST_BIN)" plugins prepare-embedded --check
+
+# skill-for-hire-pin-check compares the pin recorded in the (gitignored) pin note
+# with the live upstream release: tag commit, tarball sha256 digests and the
+# `immutable` flag. Read-only, needs network and curl, writes nothing. It is a
+# manual detection aid, deliberately outside ci and release-verify: it is not
+# an import and it does not update the pin. Override the note with PIN_NOTE=.
+# skill-for-hire-pin-check-test is its offline fixture test.
+skill-for-hire-pin-check:
+	bash scripts/check-skill-for-hire-pin.sh $(PIN_NOTE)
+
+skill-for-hire-pin-check-test:
+	bash scripts/test-check-skill-for-hire-pin.sh
 
 release-verify: ci-lint ci-test docs-governance-gate validate-fixtures vuln-ci release-reproducible-check embed-skills-check
 

@@ -33,10 +33,20 @@ func factsFromAdapter(strategistRoot, provider string) (WeaponFacts, bool, error
 	return adapterFacts(provider, adapter), true, nil
 }
 
+// ResolveCustomPackageFacts returns the facts of a package added with
+// `provider add` and bound with mode custom, looked up by its installed instance
+// id. It never consults the catalog or the compat view: slot resolution calls it
+// as its own step. A binding that is not custom, or a package that was never
+// staged under providers/, is reported as not found, never as an error.
+func ResolveCustomPackageFacts(strategistRoot, instance string) (WeaponFacts, bool, error) {
+	return factsFromAdapter(strategistRoot, instance)
+}
+
 func adapterFacts(provider string, adapter AdapterContract) WeaponFacts {
 	facts := WeaponFacts{
 		ID: provider, Source: WeaponFactsSourceAdapter, RiskScore: adapter.RiskScore, Roles: adapter.SupportedRoles,
 		ScratchRoot: adapter.ScratchRoot, SupportedSlots: adapter.SupportedSlots, RequestedPermissions: adapter.RequestedPermissions,
+		Entrypoints: adapter.Entrypoints,
 	}
 	if len(adapter.SupportedRoles) > 0 {
 		facts.CanonicalRole = adapter.SupportedRoles[0]

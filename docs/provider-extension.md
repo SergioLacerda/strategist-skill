@@ -53,6 +53,24 @@ the workspace, and records the transaction in
 restored when staging or compilation fails, so the previous last-known-good
 binding remains active.
 
+`provider add` does not edit `active.yaml`. It prints the line to set, for example
+`active.yaml: set slots.refinement to my-provider@1.0.0`, and `strategist check`
+keeps reporting the slot as diverging from `plugins.lock` until you do. Name the
+installed instance (`<package-id>@<version>`), not the bare package id: `check`
+rejects the package id with `custom_package_use_instance_id`. A package added this
+way is a `custom` binding, even over a slot whose previous binding was `ranked`.
+
+For the `discovery` and `refinement` slots the adapter must declare
+`risk_score: write_analysis`; `provider add` refuses a package that declares none
+or another value (`analysis_risk_missing`, `analysis_risk_mismatch`), because
+`check` would block it at mission time. The `execution` slot keeps its own rule.
+
+A package whose adapter requests permissions stays blocked in `check` with
+`permission_grant_missing` until a grant for its adapter digest exists in
+`.strategist/permission-grants.yaml`. There is no CLI to create grants yet, so the
+file is written by hand; a package whose lock entry has no adapter digest is
+blocked with `custom_package_digest_missing`.
+
 The native Ranger role owns discovery, but its selected Weapon is invoked through
 the role contract:
 

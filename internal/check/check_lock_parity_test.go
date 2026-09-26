@@ -77,3 +77,31 @@ func TestCheckPluginLockParityAcceptsMatchingBindings(t *testing.T) {
 
 	assert.Empty(t, errs)
 }
+
+// A custom package's binding is reconciled by naming its instance in active.yaml,
+// not by re-running install or compile, which cannot know the operator's choice.
+func TestCheckPluginLockParityForACustomPackageNamesTheInstance(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	content := "schema_version: strategist-plugin-lock-file/v1\nbindings:\n  - slot: refinement\n    installed_instance_id: fixture-provider@1.0.0\n    mode: custom\n"
+	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins.lock"), []byte(content), 0o644))
+
+	errs := checkPluginLockParity(root, map[string]string{"refinement": "openspec-propose"})
+
+	require.Len(t, errs, 1)
+	assert.Contains(t, errs[0], "slots.refinement")
+	assert.Contains(t, errs[0], "fixture-provider@1.0.0")
+	assert.NotContains(t, errs[0], "re-run `strategist install` or `strategist compile`")
+}
+
+func TestCheckPluginLockParityKeepsTheReconcileHintForOtherBindings(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	content := "schema_version: strategist-plugin-lock-file/v1\nbindings:\n  - slot: refinement\n    installed_instance_id: archivist\n    mode: ranked\n"
+	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins.lock"), []byte(content), 0o644))
+
+	errs := checkPluginLockParity(root, map[string]string{"refinement": "openspec-propose"})
+
+	require.Len(t, errs, 1)
+	assert.Contains(t, errs[0], "re-run `strategist install` or `strategist compile`")
+}

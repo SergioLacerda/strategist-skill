@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/testutil"
+	"github.com/SergioLacerda/strategist-skill/internal/testutil/customws"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -213,4 +215,67 @@ func TestValidateProviderManifestSendsCatalogNativeRolesToTheNativeBranch(t *tes
 	failures := validateProviderManifest(root, "refinement", "archivist", "archivist")
 	require.Len(t, failures, 1)
 	assert.Contains(t, failures[0].Reason, "native role")
+}
+
+// A clean install ships no skills/<id>/skill.yaml: bindings of cataloged Weapons
+// validate end to end from the catalog entry and the plugins.lock alone.
+func TestValidateRuntimeBindingsAcceptsCatalogedWeaponsWithNoCompatView(t *testing.T) {
+	root := t.TempDir()
+	testutil.WriteWeaponCatalog(t, root,
+		testutil.CatalogProvider{ID: "brainstorming", Risk: "write_analysis", CanonicalRole: "ranger"},
+		testutil.CatalogProvider{ID: "openspec-propose", Risk: "write_analysis", CanonicalRole: "archivist"},
+	)
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "roles"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "roles", "default.yaml"), []byte("discovery: ranger\nrefinement: archivist\nexecution: sniper\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins.lock"), []byte("schema_version: strategist-plugin-lock-file/v1\nbindings:\n  - slot: discovery\n    installed_instance_id: brainstorming\n  - slot: refinement\n    installed_instance_id: openspec-propose\n"), 0o644))
+	active := domain.ActiveConfig{Slots: map[string]string{"discovery": "brainstorming", "refinement": "openspec-propose"}}
+
+	require.Empty(t, ValidateRuntimeBindings(root, active))
+	for _, id := range []string{"brainstorming", "openspec-propose"} {
+		_, statErr := os.Stat(filepath.Join(root, "skills", id, "skill.yaml"))
+		require.ErrorIs(t, statErr, os.ErrNotExist, "the fixture writes no compat view for %s", id)
+	}
+}
+
+// After a real `provider add`, the slot names the package by its instance id and
+// the persisted binding is custom: the role validation accepts that spelling and
+// rejects the bare package id, the same rule `strategist check` applies.
+func TestValidateRuntimeBindingsAcceptsTheInstanceIdOfAnAddedPackage(t *testing.T) {
+	root := customws.Workspace(t)
+	active := domain.ActiveConfig{Slots: map[string]string{"discovery": "brainstorming", "refinement": customws.Instance}}
+
+	failures := ValidateRuntimeBindings(root, active)
+
+	for _, failure := range failures {
+		require.NotEqual(t, "refinement", failure.Slot, "instance-id spelling must validate: %v", failure)
+	}
+}
+
+func TestValidateRuntimeBindingsRejectsThePackageIdOfAnAddedPackage(t *testing.T) {
+	root := customws.Workspace(t)
+	active := domain.ActiveConfig{Slots: map[string]string{"discovery": "brainstorming", "refinement": "fixture-provider"}}
+
+	failures := ValidateRuntimeBindings(root, active)
+
+	var refinement []Failure
+	for _, failure := range failures {
+		if failure.Slot == "refinement" {
+			refinement = append(refinement, failure)
+		}
+	}
+	require.Len(t, refinement, 1)
+	require.Contains(t, refinement[0].Reason, `persisted binding points to "`+customws.Instance+`"`)
+}
+
+func TestBuildRoleInvocationPlanResolvesAnAddedPackageByItsInstanceId(t *testing.T) {
+	root := customws.Workspace(t)
+
+	plan, err := BuildRoleInvocationPlan(root, "refinement")
+
+	require.NoError(t, err)
+	require.Equal(t, customws.Instance, plan.WeaponID)
+	require.Equal(t, domain.SlotBindingModeCustom, plan.Mode)
+	require.Equal(t, "archivist", plan.Role)
+	require.Equal(t, int64(1), plan.BindingGeneration)
+	require.Equal(t, "active", plan.BindingStatus)
 }

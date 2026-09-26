@@ -119,16 +119,24 @@ func TestCatalogNativeRoleEntryTakesTheNativeBranchWithoutAFileProbe(t *testing.
 	assert.Equal(t, slotResolutionNativeRole, res.kind)
 }
 
-// U-01 (see .analysis/pending/20260925-u01-provider-add-check-resolution.md): a package
-// added with `provider add` is not resolved by `check`. DEC-010 step 2 is documented
-// but not implemented; this pins the known gap so closing it is a deliberate change.
-func TestProviderAddPackageIsStillNotResolvedByCheck(t *testing.T) {
+func TestCatalogWeaponHostAPIComesFromTheCatalogRuntimeBlock(t *testing.T) {
 	root := catalogRoot(t)
-	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins.lock"), []byte("schema_version: strategist-plugin-lock-file/v1\nbindings:\n  - slot: refinement\n    installed_instance_id: fixture-provider@1.0.0\n    mode: custom\n    status: active\n"), 0o644))
-	require.NoError(t, os.MkdirAll(filepath.Join(root, "providers", "fixture-provider@1.0.0"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(root, "providers", "fixture-provider@1.0.0", "adapter.yaml"), []byte("risk_score: write_analysis\nsupported_roles: [archivist]\n"), 0o644))
+	writePayload(t, root, "host-weapon")
 
-	_, errMsg := resolveSlotProvider(root, "refinement", "fixture-provider")
+	res, errMsg := resolveSlotProvider(root, "refinement", "host-weapon")
 
-	assert.Contains(t, errMsg, "not installed")
+	require.Empty(t, errMsg)
+	assert.Equal(t, domain.ReadinessReady, res.readiness.HostAPI.Status)
+	assert.Equal(t, "host_api_declared", res.readiness.HostAPI.ReasonCode)
+	assert.Equal(t, "strategist-host-skill/v1", res.readiness.HostAPI.Detail)
+}
+
+func TestCatalogWeaponWithoutAHostAPIKeepsTheNotDeclaredReason(t *testing.T) {
+	root := catalogRoot(t)
+
+	res, errMsg := resolveSlotProvider(root, "refinement", "rooted-weapon")
+
+	require.Empty(t, errMsg)
+	assert.Equal(t, domain.ReadinessUnknown, res.readiness.HostAPI.Status)
+	assert.Equal(t, "host_api_not_declared", res.readiness.HostAPI.ReasonCode)
 }

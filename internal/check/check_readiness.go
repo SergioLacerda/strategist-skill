@@ -13,9 +13,15 @@ import (
 // readinessFacets are the dimensions that depend on where a Weapon's manifest
 // lives: the generated compat view file, or the catalog entry.
 type readinessFacets struct {
-	descriptor  domain.ReadinessCheck
-	source      domain.ReadinessCheck
-	entrypoint  domain.ReadinessCheck
+	descriptor domain.ReadinessCheck
+	source     domain.ReadinessCheck
+	entrypoint domain.ReadinessCheck
+	// trustAndGrant overrides how trust and the permission grant are evaluated; nil
+	// keeps the default lookup keyed by the provider id.
+	trustAndGrant func(root, provider string, lock domain.PluginLockFile) (domain.ReadinessCheck, domain.ReadinessCheck)
+	// hostAPI is the host API dimension; the zero value means the source
+	// declares none (host_api_not_declared).
+	hostAPI     domain.ReadinessCheck
 	detail      string
 	conformance func(probe connectors.ConnectorResult) domain.ReadinessCheck
 }
@@ -55,9 +61,7 @@ func weaponReadiness(root, slot, provider string, facets readinessFacets) domain
 		entrypoint = "discover"
 	}
 	probe := connector.Probe(context.Background(), domain.InstalledInstance{ID: provider, ConnectorID: connector.Capabilities(context.Background()).ConnectorID}, entrypoint)
-	digest := lock.NodeDigest(provider, "adapter_contract")
-	trustCheck := skillProviderTrustReadiness(root, provider, digest)
-	grantCheck := skillProviderPermissionGrantReadinessFor(root, digest, requestedPermissions(root, provider))
+	trustCheck, grantCheck := facets.trustAndGrantChecks(root, provider, lock)
 	// Every non-Ranked binding must still not read ready without a runtime.
 	return vectorFromFacets(facets, facets.conformance(probe), trustCheck, grantCheck, customRuntimeReadiness(root, slot, provider), resolve, observe)
 }
@@ -78,7 +82,7 @@ func vectorFromFacets(facets readinessFacets, conformance, trustCheck, grantChec
 		Conformance:         conformance,
 		Trust:               trustCheck,
 		Dependencies:        dependencies,
-		HostAPI:             domain.ReadinessCheck{Status: domain.ReadinessUnknown, ReasonCode: "host_api_not_declared"},
+		HostAPI:             hostAPICheck(facets.hostAPI),
 		Connector:           connectorCheck(resolve),
 		Entrypoint:          facets.entrypoint,
 		PermissionGrant:     grantCheck,

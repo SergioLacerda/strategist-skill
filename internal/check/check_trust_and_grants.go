@@ -104,3 +104,13 @@ func skillProviderPermissionGrantReadinessFor(root, digest string, requested []d
 	}
 	return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: decision.Reasons[0].Code}
 }
+
+// trustAndGrantChecks is the trust and permission-grant readiness of provider:
+// the facet override when one is set, else the lookup keyed by the provider id.
+func (f readinessFacets) trustAndGrantChecks(root, provider string, lock domain.PluginLockFile) (domain.ReadinessCheck, domain.ReadinessCheck) {
+	if f.trustAndGrant != nil {
+		return f.trustAndGrant(root, provider, lock)
+	}
+	digest := lock.NodeDigest(provider, "adapter_contract")
+	return skillProviderTrustReadiness(root, provider, digest), skillProviderPermissionGrantReadinessFor(root, digest, requestedPermissions(root, provider))
+}

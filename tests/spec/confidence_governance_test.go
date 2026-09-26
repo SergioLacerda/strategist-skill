@@ -205,3 +205,23 @@ func TestConfidenceClaimPlacementIsStatedOnceAndReferenced(t *testing.T) {
 		t.Fatalf("found %d producer sites using --claim-file, want at least 8; the walk or the wording regressed", sites)
 	}
 }
+
+// TestConfidenceGovernanceDocumentsDenominatorScopeAndDeclaredComparison pins two
+// statements a reader would otherwise have to derive from code: the mission-level
+// rates and the per-agent rates use different denominators for a rejected assertion
+// (DEC-005 a), and the gate-time comparison of declared claims is the `--declared -`
+// flag of the same materializer.
+func TestConfidenceGovernanceDocumentsDenominatorScopeAndDeclaredComparison(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "confidence-governance.yaml")
+	content := readFile(t, path)
+	for _, needle := range []string{
+		"per_agent_versus_mission:",
+		"strategist metrics confidence --mission <id> --declared -",
+		"declared_unpersisted",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("%s missing term %q", path, needle)
+		}
+	}
+}
