@@ -133,6 +133,6 @@ authorize those code or runtime mutations.
 
 ## Operational Follow-up
 
-Use [Treasure Chest External Cutover and Removal](../runbooks/treasure-chest-external-cutover-and-removal.md)
+Use `docs/runbooks/treasure-chest-external-cutover-and-removal.md`
 for readiness diagnosis, migration, partial-write recovery, rollback, and
 stop conditions.

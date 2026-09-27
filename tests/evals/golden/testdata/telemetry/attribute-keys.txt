@@ -77,8 +77,12 @@ strategist.initiative.source_role
 strategist.initiative.supersedes
 strategist.initiative.trigger
 strategist.level_source
+strategist.leveling.capability
+strategist.leveling.policy_digest
+strategist.leveling.policy_version
 strategist.mandates.count
 strategist.metrics.lines_emitted
+strategist.metrics.scope
 strategist.metrics.t_archivist_to_gate_ms
 strategist.metrics.t_gate_to_sniper_ms
 strategist.metrics.t_gate_wait_ms

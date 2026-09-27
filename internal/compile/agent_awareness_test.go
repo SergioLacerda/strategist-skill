@@ -23,6 +23,26 @@ func TestAgentAwareness(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Run("creates codex commands seed when codex directory exists", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		codexDir := filepath.Join(dir, ".codex")
+		require.NoError(t, os.MkdirAll(codexDir, 0o755))
+
+		require.NoError(t, agentAwareness(dir))
+		codexCmdPath := filepath.Join(codexDir, "commands.md")
+		first, err := os.ReadFile(codexCmdPath)
+		require.NoError(t, err)
+		assert.Contains(t, string(first), "## Strategist Runtime Discovery")
+		assert.Contains(t, string(first), "strategist check --json")
+		assert.Contains(t, string(first), "error=role_invocation_failed")
+
+		require.NoError(t, agentAwareness(dir))
+		second, err := os.ReadFile(codexCmdPath)
+		require.NoError(t, err)
+		assert.Equal(t, string(first), string(second), "repeated awareness refresh must be idempotent")
+	})
+
 	t.Run("upserts claude-instructions section when file exists", func(t *testing.T) {
 		t.Parallel()
 		dir := t.TempDir()

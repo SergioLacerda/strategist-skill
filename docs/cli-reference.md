@@ -497,6 +497,12 @@ Validates operational readiness of the Strategist runtime — confirms the skill
 
 `check` does **not** test whether the environment can invoke external agents. It confirms the runtime is installed and configured. If a slot provider fails to be invoked during a mission, Strategist reports `role_invocation_failed` as an internal skill error — not a `check` failure.
 
+When the project already contains a `.codex/` directory, `check` also reports
+non-blocking CODEX bootstrap advisories: `codex_bootstrap_missing`,
+`codex_bootstrap_stale`, or `codex_bootstrap_unreadable`. These advisories cover
+the project-local `commands.md` seed only; they do not invoke CODEX or certify
+the provider. Repair them with `strategist compile` or reinstall the skill.
+
 ```
 strategist check [--root=<dir>] [--strict] [--simulate]
 ```
@@ -519,6 +525,7 @@ strategist check [--root=<dir>] [--strict] [--simulate]
 - Active persona file exists and contains required fields
 - Every normative runtime file (`SKILL.md`, `skill.yaml`, `protocol.md`, `templates/agent-protocol.md`, the preflight, approval-gate and execution contracts, the identity drift patterns) and the generated `agent-protocol.md` **exists**; an absent file is reported as `runtime_missing` (repair: `strategist install`, or `strategist compile` for `agent-protocol.md`) and `--json` returns `status: blocked`
 - Normative runtime files match embedded defaults, byte for byte (detects stale installs)
+- When `.codex/` exists, its generated `commands.md` seed is checked for presence and current Strategist Runtime Discovery content; drift is reported as a non-blocking advisory
 - With `--strict`: compiled artifacts exist and match the recorded manifest hashes (see `compile`)
 
 **Success output:**

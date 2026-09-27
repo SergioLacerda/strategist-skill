@@ -2,6 +2,7 @@ package filelock
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -76,4 +77,40 @@ func TestWithLock_CreatesParentDirectory(t *testing.T) {
 
 	err := WithLock(path, func() error { return nil })
 	require.NoError(t, err)
+}
+
+func TestWithLock_WrapsMkdirAllFailure(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	blocker := filepath.Join(dir, "blocker")
+	require.NoError(t, os.WriteFile(blocker, []byte("not a directory"), 0o600))
+
+	// The lock directory's parent is a regular file, so MkdirAll cannot
+	// create "blocker/sub" beneath it.
+	path := filepath.Join(blocker, "sub", "state")
+	err := WithLock(path, func() error { return nil })
+	require.ErrorContains(t, err, "filelock: create lock directory")
+}
+
+func TestWithLock_WrapsOpenLockFailure(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "state")
+	// Pre-create the lock path itself as a directory: opening it O_RDWR fails.
+	require.NoError(t, os.Mkdir(path+".lock", 0o750))
+
+	err := WithLock(path, func() error { return nil })
+	require.ErrorContains(t, err, "filelock: open lock")
+}
+
+func TestCloseLock_ReportsUnlockAndCloseFailures(t *testing.T) {
+	t.Parallel()
+	f, err := os.CreateTemp(t.TempDir(), "lock")
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+
+	// The file descriptor is already closed: unlocking and closing it again
+	// both fail, and closeLock reports both rather than only the first.
+	err = closeLock(f, true)
+	require.Error(t, err)
 }

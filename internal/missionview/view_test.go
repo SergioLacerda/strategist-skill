@@ -84,6 +84,56 @@ func TestBuild_TokenUsageErrorIsUnavailableWithDiagnostic(t *testing.T) {
 	assert.True(t, found, "expected a token-usage-unavailable diagnostic")
 }
 
+// TestRenderHumanIncludesAvailableTokenUsageDetails exercises the
+// Available-token-usage render path (totals, ledger comparison,
+// inconsistencies and per-record lines), which a mission with no reported
+// usage never reaches.
+func TestRenderHumanIncludesAvailableTokenUsageDetails(t *testing.T) {
+	records := []telemetry.MissionTokenUsageRecord{
+		{MissionID: "m-1", TokensIn: 100, TokensOut: 50, Source: telemetry.MissionUsageSourceAgentReport, ReportedAt: "2026-09-27T10:00:00Z"},
+		{MissionID: "m-1", TokensIn: 200, TokensOut: 75, Source: telemetry.MissionUsageSourceAgentReport, ReportedAt: "2026-09-27T11:00:00Z"},
+	}
+	v := missionview.Build(missionview.Input{
+		Status:              domain.MissionEngineStatus{MissionID: "m-1"},
+		Registry:            domain.DefaultRoleRegistry(),
+		TokenUsage:          records,
+		DeclaredTokenBudget: "high",
+		LevelsError:         errors.New("levels read failed"),
+	})
+	require.Equal(t, telemetry.TokenLedgerInconsistent, v.TokenUsage.LedgerComparison.Status)
+	require.NotEmpty(t, v.TokenUsage.LedgerComparison.Inconsistencies)
+	require.NotEmpty(t, v.Diagnostics)
+
+	var out bytes.Buffer
+	require.NoError(t, missionview.RenderHuman(&out, v))
+	rendered := out.String()
+	assert.Contains(t, rendered, "declared_token_budget: high")
+	assert.Contains(t, rendered, "total_tokens_in: 300\n  total_tokens_out: 125")
+	assert.Contains(t, rendered, "ledger_inconsistency: reported mission usage contains contradictory totals")
+	assert.Contains(t, rendered, "2026-09-27T10:00:00Z: tokens_in=100 tokens_out=50 source=agent_report")
+	assert.Contains(t, rendered, "mission_view_leveling_unavailable")
+}
+
+// TestRenderHumanPropagatesWriterFailuresForFullTokenUsage repeats the
+// writer-failure sweep against a View that actually reaches the
+// Available-token-usage branches, so every write call in that path (not just
+// the header) is proven to propagate a failure.
+func TestRenderHumanPropagatesWriterFailuresForFullTokenUsage(t *testing.T) {
+	v := missionview.Build(missionview.Input{
+		Status:   domain.MissionEngineStatus{MissionID: "m-1"},
+		Registry: domain.DefaultRoleRegistry(),
+		TokenUsage: []telemetry.MissionTokenUsageRecord{
+			{MissionID: "m-1", TokensIn: 100, TokensOut: 50, Source: telemetry.MissionUsageSourceAgentReport, ReportedAt: "2026-09-27T10:00:00Z"},
+		},
+		DeclaredTokenBudget: "high",
+		LevelsError:         errors.New("levels read failed"),
+	})
+	for failAt := 1; failAt <= 15; failAt++ {
+		err := missionview.RenderHuman(&failingWriter{failAt: failAt}, v)
+		assert.Error(t, err, "failAt=%d", failAt)
+	}
+}
+
 func TestBuildSelectsOnlyRequestedRun(t *testing.T) {
 	v := missionview.Build(missionview.Input{Status: domain.MissionEngineStatus{MissionID: "m-1"}, Registry: domain.DefaultRoleRegistry(), Run: "revision-2", Levels: []leveling.Record{
 		{MissionID: "m-1", Run: "revision-1", Level: leveling.Level{Role: "ranger", Model: "Old"}},

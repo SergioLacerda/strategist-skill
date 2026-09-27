@@ -24,7 +24,7 @@ func TestCatalogProviderFromIngestedSkill_CarriesUpstreamProvenance(t *testing.T
 			UpstreamSkillPath:     "skills/brainstorming/SKILL.md",
 			UpstreamVersion:       "6.3.0",
 			UpstreamCommit:        "b36e0829c6d0140e93cfef2ca599b1b07d4a7797",
-			UpstreamContentDigest: "sha256:74edf03ea6d24ef53db48677b93558d14a979bdf052ca3f57ecdca0c66791608",
+			UpstreamContentDigest: "sha256:51b1e5bb905d064fc7a451d4bf5472815282d7f5a123a6de840cfae778d5a955",
 		},
 		Package: domain.PluginPackage{Version: "1.0.0"},
 	}
@@ -34,7 +34,7 @@ func TestCatalogProviderFromIngestedSkill_CarriesUpstreamProvenance(t *testing.T
 	assert.Equal(t, "skills/brainstorming/SKILL.md", entry.UpstreamSkillPath)
 	assert.Equal(t, "6.3.0", entry.UpstreamVersion)
 	assert.Equal(t, "b36e0829c6d0140e93cfef2ca599b1b07d4a7797", entry.UpstreamCommit)
-	assert.Equal(t, "sha256:74edf03ea6d24ef53db48677b93558d14a979bdf052ca3f57ecdca0c66791608", entry.UpstreamContentDigest)
+	assert.Equal(t, "sha256:51b1e5bb905d064fc7a451d4bf5472815282d7f5a123a6de840cfae778d5a955", entry.UpstreamContentDigest)
 }
 
 // TestCatalogProviderFromIngestedSkill_UpstreamProvenanceEmptyWhenUndeclared

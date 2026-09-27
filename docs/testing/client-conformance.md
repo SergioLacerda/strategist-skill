@@ -24,6 +24,12 @@ identity, authority, digest, ordering, bounds, provenance, and fail-closed
 reason semantics. Live rows remain pending until a successful ready probe is
 provided; static catalog or manifest metadata never substitutes for that probe.
 
+The CODEX project bootstrap is a separate static dimension. When a project has
+`.codex/`, `strategist check` validates the generated `commands.md` seed and
+reports missing, stale, or unreadable content as a non-blocking advisory. This
+does not inspect the global CODEX skill loader and does not certify the live
+`codex-live-probe` row; that row still requires an authorized bounded runner.
+
 Evidence dimensions remain separate:
 
 - static evidence describes checked-in contracts and manifests;

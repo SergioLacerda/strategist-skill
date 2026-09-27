@@ -14,7 +14,7 @@ func writeResolvedDigestCatalog(t *testing.T) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "catalog.yaml")
 	body := "schema_version: strategist-plugin-catalog/v2\nproviders:\n" +
-		"  - id: brainstorming\n    risk_score: write_analysis\n    upstream_content_digest: sha256:74edf03ea6d24ef53db48677b93558d14a979bdf052ca3f57ecdca0c66791608\n" +
+		"  - id: brainstorming\n    risk_score: write_analysis\n    upstream_content_digest: sha256:51b1e5bb905d064fc7a451d4bf5472815282d7f5a123a6de840cfae778d5a955\n" +
 		"  - id: sniper\n    risk_score: controlled\n"
 	require.NoError(t, os.WriteFile(path, []byte(body), 0o644))
 	return path
@@ -25,7 +25,7 @@ func TestRunResolvedDigest_TrueCopyMatches(t *testing.T) {
 	var out bytes.Buffer
 	err := RunResolvedDigest(&out, ResolvedDigestOptions{
 		Catalog: writeResolvedDigestCatalog(t), Provider: "brainstorming",
-		Digest: "sha256:74edf03ea6d24ef53db48677b93558d14a979bdf052ca3f57ecdca0c66791608",
+		Digest: "sha256:51b1e5bb905d064fc7a451d4bf5472815282d7f5a123a6de840cfae778d5a955",
 	})
 	require.NoError(t, err)
 	assert.Contains(t, out.String(), "status=match")

@@ -33,6 +33,25 @@ see `.analysis/refined/20260728-ranger-drift-eval/`.)
    reinstall it.
 5. Rerun `strategist check` until STATUS reports `ok` before retrying the mission.
 
+### CODEX bootstrap-specific checks
+
+If the client is CODEX and the project contains `.codex/`, inspect the
+`strategist check --json` warnings for one of these non-blocking reasons:
+
+- `codex_bootstrap_missing` — create or refresh the seed with `strategist compile`
+  or reinstall;
+- `codex_bootstrap_stale` — the generated Strategist Runtime Discovery section
+  does not match the source writer;
+- `codex_bootstrap_unreadable` — the project-local seed cannot be read.
+
+These diagnostics cover `.codex/commands.md` in the project. Separately verify
+that the existing global CODEX shim at
+`~/.codex/skills/strategist/SKILL.md` has a `skill_root` pointing to the current
+`.strategist` directory and that the configured provider exists in the effective
+CODEX skill root. A static `check` result still does not prove live provider
+invocation; only an authorized `strategist-live-evidence/v1` probe can certify
+that client row.
+
 ## Ranked Runtime Escalation
 
 When the configured provider is a certified Ranked binding, `strategist check`

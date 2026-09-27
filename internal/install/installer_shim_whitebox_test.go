@@ -89,6 +89,25 @@ func TestInstallOptionalShims_GeminiAndCodex(t *testing.T) {
 	}
 }
 
+func TestInstallOptionalShims_CodexShimUsesCurrentSkillRootAndIsIdempotent(t *testing.T) {
+	t.Parallel()
+	home := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(home, ".codex"), 0o755))
+	skillRoot := filepath.Join(t.TempDir(), ".strategist")
+
+	installOptionalShims(context.Background(), home, "# SKILL", skillRoot)
+	shimPath := filepath.Join(home, ".codex", "skills", "strategist", "SKILL.md")
+	first, err := os.ReadFile(shimPath)
+	require.NoError(t, err)
+	assert.Contains(t, string(first), "skill_root: "+skillRoot)
+	assert.Contains(t, string(first), "# SKILL")
+
+	installOptionalShims(context.Background(), home, "# SKILL", skillRoot)
+	second, err := os.ReadFile(shimPath)
+	require.NoError(t, err)
+	assert.Equal(t, string(first), string(second), "reinstall must preserve identical CODEX shim content")
+}
+
 func TestInstallOptionalShims_SkipsWhenDirAbsent(t *testing.T) {
 	t.Parallel()
 	home := t.TempDir()

@@ -13,12 +13,12 @@ import (
 // contracts/machine/preflight.yaml.
 var directivesRelPath = filepath.Join("templates", "domain", "directives", "core.yaml")
 
-// preflightAdvisories detects the non-blocking preflight.yaml conditions
-// that are not check_identity.go's stricter identity_files_missing sibling:
-// index_yaml_not_found, compiled_artifact_corrupt, and directives_missing.
-// All three are documented in preflight.yaml as "Non-blocking... Continue" —
-// this function only makes them observable in PreflightResult.Warnings; it
-// never affects `strategist check`'s exit code or PreflightResult.Status
+// preflightAdvisories detects non-blocking preflight conditions that are not
+// check_identity.go's stricter identity_files_missing sibling, plus client
+// bootstrap advisories such as CODEX seed drift. These conditions are
+// documented as "Non-blocking... Continue" — this function only makes them
+// observable in PreflightResult.Warnings; it never affects `strategist check`'s
+// exit code or PreflightResult.Status
 // (see buildPreflightResult, which appends these after status is already
 // decided from the blocking warnings list).
 func preflightAdvisories(root string) []string {
@@ -28,7 +28,8 @@ func preflightAdvisories(root string) []string {
 			"[Strategist] phase=preflight status=warn reason=directives_missing path=%s (continuing without behavioral directives)",
 			filepath.ToSlash(directivesRelPath)))
 	}
-	return append(advisories, layoutSkewAdvisories(root)...)
+	advisories = append(advisories, layoutSkewAdvisories(root)...)
+	return append(advisories, codexBootstrapAdvisories(root)...)
 }
 
 // domainIndexAdvisories implements preflight.yaml's index_yaml_not_found and

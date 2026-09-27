@@ -15,7 +15,7 @@ func verifiedBrainstormingProvider(provider pluginCatalogProvider) pluginCatalog
 	provider.UpstreamSkillPath = "skills/brainstorming/SKILL.md"
 	provider.UpstreamVersion = "6.3.0"
 	provider.UpstreamCommit = "b36e0829c6d0140e93cfef2ca599b1b07d4a7797"
-	provider.UpstreamContentDigest = "sha256:74edf03ea6d24ef53db48677b93558d14a979bdf052ca3f57ecdca0c66791608"
+	provider.UpstreamContentDigest = "sha256:51b1e5bb905d064fc7a451d4bf5472815282d7f5a123a6de840cfae778d5a955"
 	provider.License = "MIT"
 	return provider
 }
