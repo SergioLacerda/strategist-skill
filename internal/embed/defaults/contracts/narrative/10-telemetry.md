@@ -101,7 +101,7 @@ carries the same tuple unless an escalation is recorded with its `reason`.
 
 At each role's phase start, run the role's `on_start` commands (declared in
 `roles/<id>.yaml`; the default is `strategist leveling label --role {role}
---mission {mission_id}`, pass `--host-model`/`--host-effort` when the host
+--mission {mission_id} --provider <provider>`, pass `--host-model`/`--host-effort` when the host
 reports them). A repeated role in one mission, such as an Archivist revision
 loop, passes `--run <n>` so each run keeps its own level. The command records
 the tuple in `.strategist/memory/role-levels.jsonl`, and later calls for the
@@ -116,8 +116,8 @@ gate is not a role and carries no level. The per-role content keys are generated
 at compile time from generic `role_start`, `role_done` and `role_task_done`
 templates plus a phrase table, one set per registered role, so a new role needs
 no new template strings and the old keys stay valid as aliases. Each newly recorded
-tuple also emits the `role_level_resolved` event (DEBUG) with `role`, `model`,
-`effort`, `level_source` and, for an escalation, `reason`; the Archivist's tuple
+tuple also emits the `role_level_resolved` event (DEBUG) with `role`, `provider`,
+`model`, `effort`, `level_source`, policy identity and, for an escalation, `reason`; the Archivist's tuple
 is repeated on its `handoff-metrics.jsonl` line.
 
 The `leveling:` block of `active.yaml` (`mode: manual | automatic`; absent means
@@ -126,9 +126,11 @@ install wizard leaves this optional block absent for new installations.
 Explicit modes remain runtime compatibility settings. Manual is host passthrough: only
 host-reported values are used, the LEVELING policy is never read, and a value
 the host does not report stays unknown. Automatic uses host-reported values,
-then the LEVELING policy; `leveling.yaml` plus the install authority are read
-only when a model or effort is still missing. A complete host report never
-reads the policy.
+then the LEVELING policy when an explicit provider is supplied; this preserves
+provider, capability, policy version and digest even when the host reports both
+model and effort. Without a provider, host values remain advisory and no policy
+authority is fabricated. Provider effort tiers are validated against the
+selected provider, not only the generic catalog.
 
 ## Mission View
 
@@ -235,6 +237,14 @@ handoff rates retain their own meanings and must not be converted into claim
 confidence. Calibration accuracy requires an explicit human revision, handoff
 validation, or downstream verification label; unlabeled records remain
 `uncalibrated`.
+
+Mission timing emitted by the CLI is explicitly `scope=per_invocation`: it
+describes one process invocation and must not be rendered as elapsed time for
+the whole mission or for a phase spanning multiple invocations. Provider-
+reported mission usage (`mission-token-usage.jsonl`) and handoff-local token
+estimates (`handoff-metrics.jsonl`) remain separate authorities; mission view
+may report provenance and contradictions advisory-first, but never derives a
+budget, phase total, or numeric target from either ledger.
 
 Confidence history is owned by the Strategist runtime at
 `.strategist/memory/confidence-records.jsonl`. The v1 calibrated state requires

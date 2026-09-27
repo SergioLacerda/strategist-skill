@@ -52,19 +52,23 @@ func DocumentationTargetPaths(tasksPath string) ([]string, error) {
 	seen := make(map[string]bool)
 	var paths []string
 	for _, line := range strings.Split(string(raw), "\n") {
-		if !documentationTargetMarker.MatchString(line) {
-			continue
-		}
-		match := documentationTargetPathToken.FindStringSubmatch(line)
-		if match == nil {
-			continue
-		}
-		path := match[1]
-		if seen[path] {
+		path, ok := documentationTargetPath(line)
+		if !ok || seen[path] {
 			continue
 		}
 		seen[path] = true
 		paths = append(paths, path)
 	}
 	return paths, nil
+}
+
+func documentationTargetPath(line string) (string, bool) {
+	if !documentationTargetMarker.MatchString(line) {
+		return "", false
+	}
+	match := documentationTargetPathToken.FindStringSubmatch(line)
+	if match == nil {
+		return "", false
+	}
+	return match[1], true
 }

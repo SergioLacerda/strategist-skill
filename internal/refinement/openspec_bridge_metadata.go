@@ -7,7 +7,7 @@ import (
 )
 
 func addMetadata(content []byte, input OpenSpecInput) []byte {
-	metadata := fmt.Sprintf("provider: openspec-propose\nprovider_change_id: %s\nprovider_runtime: %s\n", input.ChangeID, filepath.ToSlash(input.RuntimeRoot))
+	metadata := fmt.Sprintf("provider: openspec-propose\nprovider_change_id: %s\nprovider_runtime: %s\n", input.ChangeID, portableRuntimeRef(input))
 	text := string(content)
 	if strings.HasPrefix(text, "---\n") {
 		if end := strings.Index(text[4:], "\n---"); end >= 0 {
@@ -17,6 +17,18 @@ func addMetadata(content []byte, input OpenSpecInput) []byte {
 		}
 	}
 	return []byte("---\nmission_id: " + input.MissionID + "\nmission_status: archivist_done\n" + metadata + "---\n\n" + text)
+}
+
+// portableRuntimeRef keeps durable package metadata independent of the
+// absolute workspace checkout. The runtime remains an operational dependency
+// resolved from the active Strategist root; this field is provenance, not a
+// filesystem authority.
+func portableRuntimeRef(input OpenSpecInput) string {
+	relative, err := filepath.Rel(filepath.Dir(input.BasePath), input.RuntimeRoot)
+	if err == nil && relative != "" && relative != "." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) && relative != ".." {
+		return filepath.ToSlash(relative)
+	}
+	return ".strategist/openspec"
 }
 
 func hasMissionIdentity(content []byte, missionID string) bool {

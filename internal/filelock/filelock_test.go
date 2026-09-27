@@ -28,23 +28,7 @@ func TestWithLock_MutualExclusion(t *testing.T) {
 	errs := make(chan error, workers)
 
 	for i := 0; i < workers; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for j := 0; j < incrementsPerWorker; j++ {
-				err := WithLock(path, func() error {
-					// Read-then-write with no atomic op: only correct if
-					// WithLock actually serializes callers.
-					current := atomic.LoadInt64(&counter)
-					atomic.StoreInt64(&counter, current+1)
-					return nil
-				})
-				if err != nil {
-					errs <- err
-					return
-				}
-			}
-		}()
+		startLockWorker(&wg, path, incrementsPerWorker, &counter, errs)
 	}
 	wg.Wait()
 	close(errs)
@@ -52,6 +36,24 @@ func TestWithLock_MutualExclusion(t *testing.T) {
 		require.NoError(t, err)
 	}
 	require.Equal(t, int64(workers*incrementsPerWorker), atomic.LoadInt64(&counter))
+}
+
+func startLockWorker(wg *sync.WaitGroup, path string, increments int, counter *int64, errs chan<- error) {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for j := 0; j < increments; j++ {
+			err := WithLock(path, func() error {
+				current := atomic.LoadInt64(counter)
+				atomic.StoreInt64(counter, current+1)
+				return nil
+			})
+			if err != nil {
+				errs <- err
+				return
+			}
+		}
+	}()
 }
 
 func TestWithLock_ReleasesOnError(t *testing.T) {

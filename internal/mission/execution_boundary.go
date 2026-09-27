@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
 
@@ -56,6 +57,12 @@ func EvaluateExecutionEntry(strategistRoot, basePath string, status domain.Missi
 		return domain.PipelineBypassDecision{}, err
 	}
 	refined := filepath.Join(basePath, "refined", status.MissionID)
+	analysisPath := filepath.Join(refined, "analysis.md")
+	if handoff.HasHandoffMetadata(analysisPath) {
+		if err := handoff.ValidateArchivistPackage(refined, status.MissionID); err != nil {
+			return domain.PipelineBypassDecision{}, fmt.Errorf("validate Archivist handoff: %w", err)
+		}
+	}
 	gateApproved := status.State == domain.StateHandoffChallenge
 	return domain.EvaluatePipelineBypass(domain.PipelineEvidence{
 		Route:              domain.PipelineRouteForScoutRoute(selected),

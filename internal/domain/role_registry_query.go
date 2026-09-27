@@ -94,13 +94,13 @@ func (r RoleRegistry) PhaseTotal() int {
 
 // DefaultStartCommand resolves and records the role's level when its phase
 // starts, so the model x effort label is part of role invocation rather than
-// something the agent must remember. `<your-model>`/`<your-effort>` are a
-// literal reminder for the invoking agent to fill in, not a substituted
-// placeholder: the CLI cannot infer which model/effort is calling it, and an
-// invocation with those flags omitted silently returns blank fields (see
+// something the agent must remember. `<your-provider>`/`<your-model>`/
+// `<your-effort>` are literal reminders for the invoking agent to fill in, not
+// substituted placeholders: the CLI cannot infer which provider, model, or
+// effort is calling it, and omitted values lose policy provenance (see
 // `20260922-strategist-ux-language-leveling-drift`). Only `{role}` and
 // `{mission_id}` are mechanically substituted by StartCommands below.
-const DefaultStartCommand = "strategist leveling label --role {role} --mission {mission_id} --host-model <your-model> --host-effort <your-effort>"
+const DefaultStartCommand = "strategist leveling label --role {role} --mission {mission_id} --provider <your-provider> --host-model <your-model> --host-effort <your-effort>"
 
 // MechanismsBriefCommand prints the role-scoped Mechanisms brief, so an agent
 // starts a phase knowing which tools it has and how to invoke them.

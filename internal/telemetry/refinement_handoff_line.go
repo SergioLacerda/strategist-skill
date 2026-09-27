@@ -2,6 +2,7 @@ package telemetry
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -78,6 +79,32 @@ func AppendRefinementHandoffLine(path string, line RefinementHandoffLine) (appen
 	}
 	defer releaseHandoffHistory(f, &err)
 	return appendHandoffLineLocked(f, line.MissionID, line.Revision, encoded)
+}
+
+// ReadRefinementHandoffLines reads the append-only handoff ledger. Malformed
+// lines are ignored, matching the other advisory telemetry readers; callers
+// must not treat a missing or partial history as measured zero.
+func ReadRefinementHandoffLines(path string) ([]RefinementHandoffLine, error) {
+	f, err := os.Open(path) //nolint:gosec // runtime memory path is resolved by the caller
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("handoff metrics: open history: %w", err)
+	}
+	defer closeFileWithContext(f, &err, "close handoff metrics history")
+	scanner := newJSONLScanner(f)
+	var lines []RefinementHandoffLine
+	for scanner.Scan() {
+		var line RefinementHandoffLine
+		if json.Unmarshal(scanner.Bytes(), &line) == nil && line.Validate() == nil {
+			lines = append(lines, line)
+		}
+	}
+	if scanErr := jsonlScannerErr(scanner, "handoff metrics: scan history"); scanErr != nil {
+		return nil, scanErr
+	}
+	return lines, nil
 }
 
 // openHandoffHistoryLocked opens (creating it and its directory) the history

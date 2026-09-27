@@ -49,37 +49,43 @@ Exits non-zero when verification fails, so callers can gate on it directly.`,
 }
 
 func runHandoffVerify(cmd *cobra.Command, opts handoffVerifyOptions) error {
-	if run := cliutil.TelemetryRunFromCmd(cmd); run != nil {
-		run.SetSilent()
-	}
-
-	if err := validateHandoffVerifyOptions(opts); err != nil {
-		return fmt.Errorf("handoff verify: %w", err)
-	}
-	policy, challenges, ack, err := loadHandoffVerificationInputs(opts)
+	silenceHandoffTelemetry(cmd)
+	policy, challenges, ack, err := prepareHandoffVerificationInputs(opts)
 	if err != nil {
 		return fmt.Errorf("handoff verify: %w", err)
 	}
 
 	result := handoff.Verify(policy, challenges, ack)
-	if err := printHandoffVerifyResult(cmd, result); err != nil {
+	if err := finalizeHandoffVerification(cmd, opts, policy, result); err != nil {
 		return fmt.Errorf("handoff verify: %w", err)
 	}
+	return nil
+}
 
-	// A malformed policy (StatusPolicyInvalid) is a configuration error, not
-	// an observation about what the respondent preserved — it is never
-	// recorded. handoff-challenges.jsonl is append-only, so a wrong record
-	// here would be permanent, and SemanticHandoffLoss.Recall would be
-	// penalized for a YAML typo it was never meant to measure (ADR-0057 §
-	// A3, design.md task 2.5).
+func silenceHandoffTelemetry(cmd *cobra.Command) {
+	if run := cliutil.TelemetryRunFromCmd(cmd); run != nil {
+		run.SetSilent()
+	}
+}
+
+func prepareHandoffVerificationInputs(opts handoffVerifyOptions) (handoff.Policy, []handoff.Challenge, handoff.Acknowledgment, error) {
+	if err := validateHandoffVerifyOptions(opts); err != nil {
+		return handoff.Policy{}, nil, handoff.Acknowledgment{}, err
+	}
+	return loadHandoffVerificationInputs(opts)
+}
+
+func finalizeHandoffVerification(cmd *cobra.Command, opts handoffVerifyOptions, policy handoff.Policy, result handoff.Result) error {
+	if err := printHandoffVerifyResult(cmd, result); err != nil {
+		return err
+	}
 	if result.Status != handoff.StatusPolicyInvalid {
 		if err := recordHandoffVerify(cmd, opts, policy, result); err != nil {
-			return fmt.Errorf("handoff verify: %w", err)
+			return err
 		}
 	}
-
 	if !result.Passed {
-		return fmt.Errorf("handoff verify: failed (status=%s, critical_failures=%d)", result.Status, result.CriticalFailures)
+		return fmt.Errorf("failed (status=%s, critical_failures=%d)", result.Status, result.CriticalFailures)
 	}
 	return nil
 }

@@ -83,29 +83,7 @@ func TestLockMission_SerializesConcurrentCallers(t *testing.T) {
 	errs := make(chan error, workers)
 
 	for i := 0; i < workers; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for j := 0; j < incrementsPerWorker; j++ {
-				err := lockMission(root, missionID, func() error {
-					// Plain (non-atomic) read-then-write, exactly like
-					// internal/filelock's own TestWithLock_MutualExclusion:
-					// this is only correct if lockMission truly serializes
-					// callers. atomic.Load/Store here are for the race
-					// detector's benefit (flock is invisible to it, so a
-					// plain int would falsely report a race even though the
-					// OS-level lock genuinely prevents concurrent access) —
-					// they are not what makes this test's assertion valid.
-					current := atomic.LoadInt64(&counter)
-					atomic.StoreInt64(&counter, current+1)
-					return nil
-				})
-				if err != nil {
-					errs <- err
-					return
-				}
-			}
-		}()
+		startMissionLockWorker(&wg, root, missionID, incrementsPerWorker, &counter, errs)
 	}
 	wg.Wait()
 	close(errs)
@@ -113,6 +91,27 @@ func TestLockMission_SerializesConcurrentCallers(t *testing.T) {
 		require.NoError(t, err)
 	}
 	require.Equal(t, int64(workers*incrementsPerWorker), atomic.LoadInt64(&counter))
+}
+
+func startMissionLockWorker(wg *sync.WaitGroup, root, missionID string, increments int, counter *int64, errs chan<- error) {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for j := 0; j < increments; j++ {
+			err := lockMission(root, missionID, func() error {
+				// Atomic operations keep the race detector from reporting the
+				// OS-level lock as a data race; serialization still comes from
+				// lockMission.
+				current := atomic.LoadInt64(counter)
+				atomic.StoreInt64(counter, current+1)
+				return nil
+			})
+			if err != nil {
+				errs <- err
+				return
+			}
+		}
+	}()
 }
 
 // TestLockMission_DifferentMissionsDoNotBlockEachOther confirms the lock is

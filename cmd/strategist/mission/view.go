@@ -85,6 +85,7 @@ func LoadView(root string, status domain.MissionEngineStatus, run, ledger string
 	levels, levelsErr := leveling.ReadRecords(filepath.Join(root, "memory", ledger))
 	levels = filter(levels, status.MissionID)
 	tokenUsage, tokenUsageErr := readMissionTokenUsage(root, status.MissionID)
+	handoffMetrics, handoffMetricsErr := readRefinementHandoffMetrics(root, status.MissionID)
 	declaredBudget, budgetErr := readDeclaredTokenBudget(root)
 	_ = budgetErr // absent/unparseable skill.yaml: display-only, not a diagnosed failure (no Diagnostic entry for it)
 	return missionview.Build(missionview.Input{
@@ -93,7 +94,22 @@ func LoadView(root string, status domain.MissionEngineStatus, run, ledger string
 		GateOutcome: gateOutcome, GateError: gateErr,
 		Levels: levels, LevelsError: levelsErr, Run: run,
 		TokenUsage: tokenUsage, TokenUsageError: tokenUsageErr, DeclaredTokenBudget: declaredBudget,
+		HandoffMetrics: handoffMetrics, HandoffMetricsError: handoffMetricsErr,
 	})
+}
+
+func readRefinementHandoffMetrics(root, missionID string) ([]telemetry.RefinementHandoffLine, error) {
+	all, err := telemetry.ReadRefinementHandoffLines(telemetry.HandoffMetricsPath(root))
+	if err != nil {
+		return nil, fmt.Errorf("read handoff metrics: %w", err)
+	}
+	filtered := make([]telemetry.RefinementHandoffLine, 0, len(all))
+	for _, line := range all {
+		if line.MissionID == missionID {
+			filtered = append(filtered, line)
+		}
+	}
+	return filtered, nil
 }
 
 // readMissionTokenUsage reads the mission-token-usage ledger and filters it

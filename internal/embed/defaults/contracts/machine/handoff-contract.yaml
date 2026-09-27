@@ -80,12 +80,6 @@ handoff_verification_policy:
     - destructive_operation_possible
     - security_sensitive_task
 
-  skip_when:
-    - informational_only
-    - no_critical_constraints
-    - no_unresolved_questions
-    - no_forbidden_scope_beyond_sniper_defaults
-
   challenge_types:
     objective: receiver identifies the approved mission objective
     boundary: receiver identifies excluded or forbidden scope

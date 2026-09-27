@@ -480,6 +480,13 @@ handoff_metrics_log:
     Archivist's resolved level (`strategist leveling label --role archivist`);
     null when unknown, and older lines without them remain valid.
 
+token_telemetry_boundary: >
+  MissionRun timing has scope=per_invocation and is not mission-level elapsed time.
+  mission-token-usage.jsonl is the authority for provider-reported mission usage;
+  handoff-metrics.jsonl is the authority for handoff-local estimates. Mission view
+  may compare provenance and surface contradictions advisory-first, but must not
+  derive budgets, phase totals, or numeric targets from these ledgers.
+
 token_economy_stop_conditions:
   - id: ambiguous_task_no_criteria
     trigger: task_is_ambiguous and acceptance_criteria_missing

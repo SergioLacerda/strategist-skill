@@ -21,14 +21,15 @@ type TokenUsageSection struct {
 	TotalTokensIn       int64                               `json:"total_tokens_in"`
 	TotalTokensOut      int64                               `json:"total_tokens_out"`
 	Records             []telemetry.MissionTokenUsageRecord `json:"records,omitempty"`
+	LedgerComparison    telemetry.TokenLedgerComparison     `json:"ledger_comparison"`
 }
 
 // buildTokenUsage sums the mission's reported token-usage records.
 // Availability is NotApplicable when none were ever reported for this
 // mission — the common case (most missions run through a host agent that
 // never calls `mission report-usage`), not an error.
-func buildTokenUsage(records []telemetry.MissionTokenUsageRecord, declaredBudget string) TokenUsageSection {
-	section := TokenUsageSection{Availability: NotApplicable, DeclaredTokenBudget: declaredBudget}
+func buildTokenUsage(records []telemetry.MissionTokenUsageRecord, handoff []telemetry.RefinementHandoffLine, declaredBudget string) TokenUsageSection {
+	section := TokenUsageSection{Availability: NotApplicable, DeclaredTokenBudget: declaredBudget, LedgerComparison: telemetry.CompareTokenLedgers(records, handoff)}
 	if len(records) == 0 {
 		return section
 	}

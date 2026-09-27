@@ -44,6 +44,7 @@ feed once that lands.
 | `AttrTokensIn` | `strategist.metrics.tokens_in` |
 | `AttrTokensOut` | `strategist.metrics.tokens_out` |
 | `AttrLinesEmitted` | `strategist.metrics.lines_emitted` |
+| `AttrMetricsScope` | `strategist.metrics.scope` |
 | `AttrPipelineRoute` | `strategist.pipeline_route` |
 | `AttrDecisionReason` | `strategist.decision_reason` |
 | `AttrRole` | `strategist.role` |
@@ -60,6 +61,9 @@ feed once that lands.
 | `AttrModel` | `strategist.model` |
 | `AttrEffort` | `strategist.effort` |
 | `AttrLevelSource` | `strategist.level_source` |
+| `AttrLevelingCapability` | `strategist.leveling.capability` |
+| `AttrLevelingPolicyVersion` | `strategist.leveling.policy_version` |
+| `AttrLevelingPolicyDigest` | `strategist.leveling.policy_digest` |
 | `AttrAbility` | `strategist.ability` |
 | `AttrInitiativeAdviceID` | `strategist.initiative.advice_id` |
 | `AttrInitiativeMechanism` | `strategist.initiative.mechanism` |

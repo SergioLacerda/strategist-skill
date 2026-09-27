@@ -51,15 +51,17 @@ func ResolveLevel(policy Policy, provider, role string, signals Signals, host Ho
 
 // ResolveLevelLazy resolves the level of a role field by field with the
 // precedence host, then policy. Level.Source names the highest-precedence
-// source that contributed. The policy is loaded through load only when model or
-// effort is still missing and a provider is given, so a complete host report,
-// or an empty provider (manual mode: host passthrough), never reads LEVELING data.
+// source that contributed. An explicit provider is authority-bearing: even a
+// complete host report loads policy so provider, capability, version, digest,
+// display mapping, and provider-specific effort validation are preserved. An
+// empty provider remains host passthrough and never reads policy.
 func ResolveLevelLazy(load PolicyLoader, provider, role string, signals Signals, host Host) (Level, error) {
 	level := Level{Role: NormalizeRole(role)}
 	fillLevelSource(&level, SourceHost, host.Model, host.Effort)
-	if strings.TrimSpace(provider) == "" || (level.Model != "" && level.Effort != "") {
+	if strings.TrimSpace(provider) == "" {
 		// No policy is loaded on this path, so the model id can only be
-		// shortened by the policy-free fallback.
+		// shortened by the policy-free fallback. This is intentional for
+		// manual/host-passthrough mode: no provider authority was supplied.
 		level.Model = displayFallback(provider, level.Model)
 		return level, nil
 	}
@@ -98,6 +100,9 @@ func completeLevelFromPolicy(load PolicyLoader, level Level, provider, role stri
 	policy, err := load()
 	if err != nil {
 		return Level{}, err
+	}
+	if level.Effort != "" && !policy.ProviderSupportsEffort(provider, level.Effort) {
+		return Level{}, fmt.Errorf("leveling_ranked_provider_ineligible: provider %q cannot execute host effort %q for role %q", strings.ToUpper(strings.TrimSpace(provider)), level.Effort, strings.ToLower(strings.TrimSpace(role)))
 	}
 	suggestion, err := Suggest(policy, provider, role, signals)
 	if err != nil {

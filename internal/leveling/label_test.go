@@ -59,7 +59,11 @@ func TestResolveLevelHostWinsOverPolicy(t *testing.T) {
 	policy := defaultPolicy(t)
 	level, err := leveling.ResolveLevel(policy, "CLAUDE", "ranger", leveling.Signals{}, leveling.Host{Model: "sonnet", Effort: "high"})
 	require.NoError(t, err)
-	assert.Equal(t, leveling.Level{Role: "ranger", Model: "Sonnet", Effort: "high", Source: leveling.SourceHost, ModelSource: leveling.SourceHost, EffortSource: leveling.SourceHost}, level)
+	assert.Equal(t, "CLAUDE", level.Provider)
+	assert.Equal(t, "reasoning", level.Capability)
+	assert.NotEmpty(t, level.PolicyDigest)
+	assert.Equal(t, policy.Version, level.PolicyVersion)
+	assert.Equal(t, leveling.Level{Role: "ranger", Model: "Sonnet", Effort: "high", Source: leveling.SourceHost, Provider: "CLAUDE", ModelSource: leveling.SourceHost, EffortSource: leveling.SourceHost, Capability: "reasoning", PolicyVersion: policy.Version, PolicyDigest: policy.Digest()}, level)
 	assert.Equal(t, "Sonnet-High", level.Label())
 }
 
@@ -214,12 +218,14 @@ func (c *countingLoader) load() (leveling.Policy, error) {
 	return c.policy, c.err
 }
 
-func TestResolveLevelLazyHostCompleteNeverLoadsPolicy(t *testing.T) {
+func TestResolveLevelLazyHostCompleteWithProviderLoadsPolicyProvenance(t *testing.T) {
 	loader := &countingLoader{policy: defaultPolicy(t)}
 	level, err := leveling.ResolveLevelLazy(loader.load, "CLAUDE", "ranger", leveling.Signals{}, leveling.Host{Model: "Opus", Effort: "low"})
 	require.NoError(t, err)
 	assert.Equal(t, leveling.SourceHost, level.Source)
-	assert.Zero(t, loader.calls)
+	assert.Equal(t, "CLAUDE", level.Provider)
+	assert.NotEmpty(t, level.PolicyDigest)
+	assert.Equal(t, 1, loader.calls)
 }
 
 func TestResolveLevelLazyLoadsPolicyOnlyForMissingValues(t *testing.T) {
@@ -244,6 +250,13 @@ func TestResolveLevelLazyWithoutProviderNeverLoadsPolicy(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "High", level.Label())
 	assert.Zero(t, loader.calls)
+}
+
+func TestResolveLevelRejectsHostEffortMissingFromProvider(t *testing.T) {
+	policy := defaultPolicy(t)
+	_, err := leveling.ResolveLevel(policy, "CLAUDE", "ranger", leveling.Signals{}, leveling.Host{Model: "Opus", Effort: "max"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `provider "CLAUDE" cannot execute host effort "max"`)
 }
 
 func TestResolveLevelLazySurfacesLoaderError(t *testing.T) {

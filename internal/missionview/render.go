@@ -3,6 +3,8 @@ package missionview
 import (
 	"fmt"
 	"io"
+
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
 
 // RenderHuman writes a deterministic concise representation of a View.
@@ -77,21 +79,49 @@ func renderLevelRole(w io.Writer, role LevelingRole) error {
 // without a numeric verdict — see TokenUsageSection's doc comment for why no
 // pass/fail comparison is made.
 func renderTokenUsage(w io.Writer, usage TokenUsageSection) error {
-	if err := writef(w, "Token Usage\n  availability: %s\n", usage.Availability); err != nil {
+	if err := renderTokenUsageHeader(w, usage); err != nil {
 		return err
-	}
-	if usage.DeclaredTokenBudget != "" {
-		if err := writef(w, "  declared_token_budget: %s\n", usage.DeclaredTokenBudget); err != nil {
-			return err
-		}
 	}
 	if usage.Availability != Available {
 		return nil
 	}
+	return renderAvailableTokenUsage(w, usage)
+}
+
+func renderTokenUsageHeader(w io.Writer, usage TokenUsageSection) error {
+	if err := writef(w, "Token Usage\n  availability: %s\n", usage.Availability); err != nil {
+		return err
+	}
+	if usage.DeclaredTokenBudget == "" {
+		return nil
+	}
+	return writef(w, "  declared_token_budget: %s\n", usage.DeclaredTokenBudget)
+}
+
+func renderAvailableTokenUsage(w io.Writer, usage TokenUsageSection) error {
 	if err := writef(w, "  total_tokens_in: %d\n  total_tokens_out: %d\n", usage.TotalTokensIn, usage.TotalTokensOut); err != nil {
 		return err
 	}
-	for _, rec := range usage.Records {
+	if err := writef(w, "  ledger_comparison: %s reported_records=%d handoff_records=%d\n", usage.LedgerComparison.Status, usage.LedgerComparison.ReportedRecordCount, usage.LedgerComparison.HandoffRecordCount); err != nil {
+		return err
+	}
+	if err := renderLedgerInconsistencies(w, usage.LedgerComparison.Inconsistencies); err != nil {
+		return err
+	}
+	return renderTokenRecords(w, usage.Records)
+}
+
+func renderLedgerInconsistencies(w io.Writer, inconsistencies []string) error {
+	for _, inconsistency := range inconsistencies {
+		if err := writef(w, "  ledger_inconsistency: %s\n", inconsistency); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func renderTokenRecords(w io.Writer, records []telemetry.MissionTokenUsageRecord) error {
+	for _, rec := range records {
 		if err := writef(w, "  %s: tokens_in=%d tokens_out=%d source=%s\n", rec.ReportedAt, rec.TokensIn, rec.TokensOut, rec.Source); err != nil {
 			return err
 		}

@@ -3,6 +3,7 @@ internal/stale	90	staleness contract gate
 internal/compile	95	compiled artifact contract gate - raised to 95% (20260901-coverage-standard-95) - measured 96.1%
 internal/install	90	installer and runtime materialization gate
 internal/embed	95	embedded defaults availability gate - raised to 95% (20260901-coverage-standard-95) - measured 96.5%
+internal/filelock	95	cross-platform exclusive file-lock primitive used by ledger writers
 internal/telemetry	90	governance telemetry gate
 cmd/strategist	90	CLI contract surface gate - remeasured 94.1% after check* cluster moved to internal/check (20260816-cmd-strategist-cli-reorg)
 cmd/strategist/leveling	90	LEVELING CLI adapter contract surface gate - measured 90.9% after package-local migration (2026-09-22)
