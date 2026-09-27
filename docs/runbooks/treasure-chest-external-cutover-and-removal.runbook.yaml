@@ -1,0 +1,59 @@
+schema_version: "1"
+runbook_id: treasure-chest-external-cutover-and-removal
+runbook_type: operational
+source_doc: docs/runbooks/treasure-chest-external-cutover-and-removal.md
+
+applies_when:
+  - "the skill-for-hire Treasure Chest Weapon is being admitted, activated, cut over, or removed"
+  - "the external provider is missing, contract-only, unpinned, incompatible, unverifiable, unavailable, degraded, or fails delegate, probe, or health evidence"
+  - "the in-repository treasure-chest package and an external provider appear active together"
+  - "Ranger or Archivist cannot retrieve bounded offline data through JEWELCRAFTER with identity, contract version, provenance, and readiness"
+  - "migration reports duplicates, partial writes, index inconsistency, missing provenance, or source/destination mismatch"
+  - "the compatibility strategist treasure-chest namespace silently selects a local or other-role fallback"
+
+objective: "Move Treasure Chest to one externally owned implementation while preserving legacy data, provenance, rollback, and fail-closed behavior."
+
+preconditions:
+  - "the mission Approval Gate and any separate implementation authorization are known"
+  - "provider identity, immutable reference, provenance, API contract, delegate, probe, health, and rollback reference are available or the run is explicitly diagnostic"
+  - "JEWELCRAFTER is the mediated boundary for Ranger and Archivist"
+  - "legacy sources and .strategist state are available for read-only inspection"
+  - "the migration manifest is versioned, idempotent, provenance-preserving, and has a destination and rollback reference"
+
+verification:
+  - "all seven provider readiness dimensions are recorded independently"
+  - "Ranger and Archivist use the JEWELCRAFTER-mediated boundary with bounded, source-backed responses"
+  - "the compatibility CLI delegates explicitly or reports actionable readiness/migration failure"
+  - "contract mock evidence is marked synthetic and cannot activate a production profile"
+  - "legacy data, source fingerprints, manifest, destination evidence, and last-known-good state remain preserved"
+  - "repeated migration is idempotent and partial writes stop without blind retry"
+  - "generated/default parity, coverage, quality, architecture, and repository-reference gates pass before package removal"
+
+checks:
+  - id: capture-treasure-boundary-state
+    level: mandatory
+  - id: confirm-external-ownership-and-mediated-consumers
+    level: mandatory
+  - id: classify-external-provider-readiness
+    level: mandatory
+  - id: inventory-legacy-data-and-validate-manifest
+    level: mandatory
+  - id: verify-explicit-contract-mock-selection
+    level: conditional
+    when: "provider mode is mock or external repository is unavailable during contract testing"
+  - id: execute-namespace-cutover
+    level: conditional
+    when: "readiness, consumer migration, manifest, and parity gates pass"
+  - id: recover-partial-write-or-index-mismatch
+    level: conditional
+    when: "migration or chest operation has unknown, partial, duplicate, conflicting, or unreadable state"
+  - id: preserve-last-known-good-and-rollback-reference
+    level: mandatory
+  - id: verify-final-removal-gates
+    level: mandatory
+  - id: stop-on-provider-ownership-data-or-authorization-conflict
+    level: mandatory
+
+metadata:
+  version: 1
+  reviewed_at: "2026-09-27"
