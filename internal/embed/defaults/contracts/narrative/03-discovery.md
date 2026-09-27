@@ -111,10 +111,15 @@ completion condition. Those are `creative`-subtype obligations only (see
 
 ## Weapon Profile for a Delegated Ranger
 
-When Ranger runs as a delegated sub-role and reaches the Weapon through the host's copy of the
-skill, the Weapon is still invoked and its output is still normalized; nothing below substitutes
-it (`native_substitution: forbidden`). The profile only lists which Weapon steps do not apply to
-a delegated discovery run.
+When Ranger runs as a delegated sub-role, it reaches the Weapon through the host skill loader: the
+host's own copy of the skill, resolved by the host (for example from a user skills directory), not
+an in-process embedded connector. No production code wires an embedded connector or an invoker for a
+sub-role, so this channel is a defined degrade of the embedded one, not a claim of live embedded
+invocation. It changes nothing else: the Weapon is still invoked, its output is still untrusted and
+normalized by Ranger, and `native_substitution: forbidden` is unchanged. Nothing below substitutes
+the Weapon; the profile only lists which Weapon steps do not apply to a delegated discovery run.
+This contract does not certify the host copy: the roster and certification digests describe the
+embedded package, not the file the host loader served.
 
 | Keep | Drop |
 | --- | --- |
@@ -124,11 +129,12 @@ a delegated discovery run.
 | YAGNI | the `git commit` of a design file |
 | | the spec-review gate and the `writing-plans` transition |
 
-Record what happened in the optional `weapon_invocation` field of the handoff
-(`schemas/handoff-ranger-to-archivist.schema.yaml`): `invoked`, `resolved_from` (where the Weapon
-was actually resolved, e.g. the embedded runtime or the host skill directory) and
-`steps_dropped`. This is the home of `invocation_evidence: required`; it does not change which
-Weapon is bound.
+`weapon_invocation` is required for a delegated run and optional otherwise. Record it in the handoff
+(`schemas/handoff-ranger-to-archivist.schema.yaml`): `invoked`, `resolved_from` (where the Weapon was
+actually resolved, e.g. the embedded runtime or the host skill directory), `steps_dropped`, and
+`resolved_digest`, the `sha256:<64 hex>` of the raw bytes of the file the loader served. This is the
+home of `invocation_evidence: required`; it does not change which Weapon is bound, and no comparison
+of `resolved_digest` with the catalog pin is defined yet.
 
 ## Retrieval Cascade
 

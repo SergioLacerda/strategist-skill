@@ -450,6 +450,28 @@ flag: --defaults-root (string) default="internal/embed/defaults" usage="internal
 flag: --lock (string) default="external-skills-source.lock.yaml" usage="path to the committed embedded-skill lock file"
 flag: --source (string) default="external-skills-source" usage="directory of ORKA-shaped skill packages to ingest"
 
+== strategist plugins resolved-digest
+use: resolved-digest
+short: Report whether a resolved Weapon file matches its catalog pin
+long: |
+  Compares a Weapon's upstream_content_digest pin (internal/embed/defaults/
+  plugins/catalog.yaml) with a resolved digest — either a value already
+  computed by the caller (--resolved-digest, e.g. from a Ranger handoff's
+  weapon_invocation.resolved_digest) or a file this command hashes itself
+  (--file, sha256 of its raw bytes). It reads only; it never invokes the
+  Weapon and an unavailable pin is reported as pin_unavailable, never as a
+  match (see contracts/narrative/03-discovery.md § Weapon Profile for a
+  Delegated Ranger and design.md DEC-301/DEC-302 of the mission above).
+  
+  Exits non-zero on a mismatch, so callers can gate on it directly. A missing
+  or unavailable pin, or a caller that supplied no digest, exits 0 and reports
+  the status: this command answers "what do we know", not "is this Weapon
+  trusted".
+flag: --catalog (string) default="internal/embed/defaults/plugins/catalog.yaml" usage="path to the embedded plugin catalog"
+flag: --file (string) default="" usage="path to a resolved Weapon file to hash and compare (mutually exclusive with --resolved-digest)"
+flag: --provider (string) default="" usage="Weapon id to look up in the catalog (required)"
+flag: --resolved-digest (string) default="" usage="an already-computed sha256:<64 hex> digest to compare (mutually exclusive with --file)"
+
 == strategist provider
 use: provider
 short: Validate and onboard local Strategist providers

@@ -442,6 +442,8 @@ The cutover is strict. The former runtime kinds `embedded_skill` and `host_skill
 
 To swap a weapon, validate and onboard its local package with `strategist provider validate <source>` and `strategist provider add <source> --slot <slot>`. The package and adapter contracts plus `plugins.lock` own identity, compatibility, and binding; `.strategist/skills/<provider>/skill.yaml` is only a compatibility view. Ranger invokes the selected discovery Weapon, normalizes its untrusted result, and fails closed with `role_invocation_failed` when invocation evidence is unavailable; it never silently substitutes native behavior.
 
+A delegated sub-role (a Role run as a sub-agent rather than in the primary conversation) reaches its Weapon through the host's own skill loader — a copy the host resolves, not an in-process embedded connector (ADR-0055; no production code wires one). This is a defined degrade, not live embedded invocation: the Weapon is still invoked and its output still normalized, but the host copy is neither pinned nor certified. `weapon_invocation` in the discovery handoff (`schemas/handoff-ranger-to-archivist.schema.yaml`) records what happened, required for a delegated run: `invoked`, `resolved_from`, `steps_dropped`, and `resolved_digest` (`sha256:<64 hex>` of the raw bytes the loader served). `strategist plugins resolved-digest --provider <id> --resolved-digest <value>` (or `--file <path>` to hash it locally) reports match/mismatch/pin-unavailable against the catalog's `upstream_content_digest`, read-only; no rule yet says what a mismatch should trigger beyond that report.
+
 ---
 
 ## Mechanisms and Abilities

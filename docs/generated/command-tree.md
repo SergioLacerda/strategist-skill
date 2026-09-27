@@ -60,6 +60,7 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `authorize` — Compose authorization evidence for a governed target
   - `evaluate-write` — Report whether a write to --target is enforceably allowed under the active connector
   - `prepare-embedded` — Ingest external-skills-source/ into the embedded plugin catalog
+  - `resolved-digest` — Report whether a resolved Weapon file matches its catalog pin
 - `provider` — Validate and onboard local Strategist providers
   - `add` — Stage and bind a validated local provider
   - `validate` — Validate a local provider package without changing workspace state

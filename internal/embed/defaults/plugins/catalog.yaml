@@ -16,7 +16,7 @@ providers:
         - ranger
       default: true
       ranked: true
-      certification_digest: sha256:68367bd3fae882af6651556aef84faf803b48dbaa72e47a4379ffe5622f2750b
+      certification_digest: sha256:193df24a8a33d2acdcf9099a49269c72f758c6847937c60e93e6af6a82de5327
       ranked_binding_generation: 1
       ranked_binding_status: active
       host_api_digest: sha256:95092798211e88138c37570ecfbebf8901df8feb4537348e9990dd59e489a025
@@ -25,7 +25,8 @@ providers:
       policy_digest: sha256:da69e2c49c45b15c3986ee480cc28964c700aa6ea653d57f9ef348185bd25f6f
       conformance_level: C1
       runtime:
-        kind: embedded
+        kind: host
+        host_api: strategist-host-skill/v1
       supported_slots:
         - discovery
       upstream_repo: obra/superpowers

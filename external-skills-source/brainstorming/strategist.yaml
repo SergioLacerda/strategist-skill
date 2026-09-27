@@ -8,7 +8,8 @@ kind: atomic
 supported_slots:
   - discovery
 runtime:
-  kind: embedded
+  kind: host
+  host_api: strategist-host-skill/v1
 risk_score: write_analysis
 category: discovery
 default: true
