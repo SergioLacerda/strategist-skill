@@ -3,9 +3,16 @@ package handoff
 import "strings"
 
 // Verify evaluates Sniper acknowledgment against Archivist challenges.
+//
+// A malformed policy is reported as StatusPolicyInvalid with its errors in
+// PolicyErrors, not as a semantic failure: it is a configuration defect, not
+// evidence about what the respondent did or did not preserve, and
+// policy.OnFailure ("return_to_archivist" by default) must not fire for it —
+// Archivist did not author the policy file and cannot repair it. See
+// StatusPolicyInvalid's doc comment.
 func Verify(policy Policy, challenges []Challenge, ack Acknowledgment) Result {
 	if err := ValidatePolicy(policy); err != nil {
-		return failedResult(policy, []string{err.Error()}, nil, nil, false, nil, nil)
+		return policyInvalidResult(err)
 	}
 	if !policy.Enabled {
 		return Result{Status: StatusSkipped, Passed: true}
@@ -27,6 +34,8 @@ func Verify(policy Policy, challenges []Challenge, ack Acknowledgment) Result {
 	}
 	return result
 }
+
+// policyInvalidResult and policyErrorMessages live in verify_policy_invalid.go.
 
 func failedResult(policy Policy, missingRefs, missingChallenges, misclassified []string, gateMismatch bool, counterfactualMismatches, forbiddenClaimViolations []string) Result {
 	criticalFailures := len(missingRefs) + len(missingChallenges) + len(misclassified) +
@@ -94,13 +103,22 @@ func appendUnseenRefs(missing, refs []string, seen, missingSet map[string]bool) 
 	return missing
 }
 
+// misclassifiedRefs deduplicates the same way missingSourceRefs does (F-H5,
+// design.md task 2.7): before this fix, a ref whose classification several
+// challenges each asserted contributed one CriticalFailures count and one
+// misclassified_refs entry per challenge that named it, so the same wrong
+// answer was double-counted depending on how many challenges happened to
+// reference it — an accounting artifact, not a second distinct failure.
 func misclassifiedRefs(challenges []Challenge, got map[string]string) []string {
+	seen := make(map[string]bool)
 	var bad []string
 	for _, ch := range challenges {
 		for ref, expected := range ch.ExpectedClassification {
-			if got[ref] != expected {
-				bad = append(bad, ref)
+			if got[ref] == expected || seen[ref] {
+				continue
 			}
+			seen[ref] = true
+			bad = append(bad, ref)
 		}
 	}
 	return bad

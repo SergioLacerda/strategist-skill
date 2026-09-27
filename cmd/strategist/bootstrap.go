@@ -26,6 +26,18 @@ var humanStatusCommands = map[string]bool{
 	"leveling":       true,
 }
 
+// missionIDFromFlags reads --mission-id from cmd's already-parsed flag set,
+// when the running command declares one. Returns "" when the command has no
+// such flag or it was left unset, so the caller's synthetic fallback id is
+// used unchanged.
+func missionIDFromFlags(cmd *cobra.Command) string {
+	flag := cmd.Flags().Lookup("mission-id")
+	if flag == nil {
+		return ""
+	}
+	return flag.Value.String()
+}
+
 // isHumanStatusCommand reports whether cmd or any of its ancestors is a
 // human-status command. Subcommands (e.g. "add" under "treasure-chest")
 // report their own Name(), not their parent's, so the check must walk up
@@ -94,8 +106,33 @@ func warnIfConfigModified() {
 // config-integrity warning around every command run.
 func installRootHooks(root *cobra.Command) {
 	root.PersistentPreRunE = func(cmd *cobra.Command, _ []string) error {
-		ctx := context.Background()
+		// Preserve whatever context the caller already set (F-X2, ADR-0057 §
+		// design.md task 5.3) instead of discarding it for a fresh
+		// context.Background(). Harmless today because root.go calls
+		// Execute() (which itself defaults to context.Background()), but a
+		// silent bug the moment anything switches to ExecuteContext for
+		// signal handling or an OTel root span: cancellation or span
+		// context set before Execute would never reach any command.
+		// otel_context_test.go already asserts that spans preserve mission
+		// context; this is the same guarantee one level up.
+		ctx := cmd.Context()
+		if ctx == nil {
+			ctx = context.Background()
+		}
 		run := telemetry.NewMissionRun(fmt.Sprintf("%s-%d", cmd.Name(), time.Now().UnixNano()))
+		// Bind the ambient MissionRun to the real --mission-id when the
+		// running command declares one (F-T1, ADR-0057/design.md task 3.1):
+		// cobra parses the leaf command's flags before any PersistentPreRunE
+		// runs, so this is already available here. Without it, every
+		// metrics line named a synthetic "<subcommand>-<nanos>" id that
+		// could never be joined back to the mission it measured — including
+		// the mission's own `mission start`/`submit` output, which printed
+		// the real mission_id right next to a metrics line naming a
+		// different one. Commands with no --mission-id flag keep the
+		// synthetic id, which is still unique and still logged.
+		if id := missionIDFromFlags(cmd); id != "" {
+			run.MissionID = id
+		}
 		ctx = telemetry.WithMissionRun(ctx, run)
 		run.MarkIntake()
 		run.AddLines(1)

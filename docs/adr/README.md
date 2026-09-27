@@ -42,6 +42,7 @@ lookup by topic fast without moving any file.
 | [0053](0053-taxonomy-classification-criterion-and-sniper-extensibility.md) | Taxonomy classification criterion and Sniper extensibility (amends 0034) |
 | [0054](0054-versioned-runtime-layout-marker.md) | Versioned runtime-layout marker for retiring the generated compat view (refines 0030) |
 | [0055](0055-delegated-weapon-channel-is-the-host-skill-loader.md) | A delegated Role reaches an embedded Weapon through the host skill loader (extends 0029; proposed) |
+| [0057](0057-mission-state-concurrency-and-atomicity.md) | Mission state concurrency and atomicity: flock plus atomic rename (revisits 0008; proposed) |
 
 ### Knowledge & Jewels
 

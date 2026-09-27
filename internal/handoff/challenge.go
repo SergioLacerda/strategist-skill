@@ -91,6 +91,18 @@ const (
 	StatusPassed = "passed"
 	// StatusFailed means verification found blocking failures.
 	StatusFailed = "failed"
+	// StatusPolicyInvalid means the supplied Policy itself failed
+	// ValidatePolicy — a configuration error, not a semantic failure by the
+	// respondent. It is a distinct status from StatusFailed (F-H4 / ADR-0057
+	// § A3, design.md task 2.5): passing the policy's own validation error
+	// through Result.MissingRefs previously made a malformed policy
+	// indistinguishable from a respondent who failed to preserve a real
+	// reference, corrupting SemanticHandoffLoss's recall metric with
+	// configuration errors it was never meant to measure. A caller that
+	// only branches on Passed still sees a clean failure (Passed is false
+	// either way); a caller that inspects Status or PolicyErrors can tell
+	// the two apart.
+	StatusPolicyInvalid = "policy_invalid"
 )
 
 // Challenge is one Archivist-authored verification question for Sniper.
@@ -130,6 +142,11 @@ type Result struct {
 	GateMismatch             bool
 	CounterfactualMismatches []string
 	ForbiddenClaimViolations []string
-	CriticalFailures         int
-	NextAction               string
+	// PolicyErrors carries ValidatePolicy's own errors when Status ==
+	// StatusPolicyInvalid. It is the sole channel for a malformed policy —
+	// see StatusPolicyInvalid's doc comment for why this is kept separate
+	// from MissingRefs.
+	PolicyErrors     []string
+	CriticalFailures int
+	NextAction       string
 }

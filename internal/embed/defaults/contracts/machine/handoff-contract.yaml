@@ -102,3 +102,50 @@ handoff_verification_policy:
       must pass before Sniper materializes any documentation target
     - "passing handoff_verification never grants execution by itself and never bypasses mission_status: gate_analysis_accepted"
     - "validation is deterministic first: required refs, forbidden claims, classifications, and gate state; LLM judging is not the MVP authority"
+
+sniper_to_validation_policy:
+  owner: unowned
+  transition: sniper_to_validation
+  status: documented_but_unconsumed
+  description: >
+    The third Handoff Challenge transition (quiz.txt § "Executor -> validação/
+    reconciliação", see .analysis/refined/20260805-quiz-handoff-challenge-evaluation/):
+    after Sniper materializes documentation, a validation/reconciliation pass would
+    confirm it understood which files were meant to change and which deviations were
+    authorized. internal/handoff already implements this transition in full —
+    TransitionSniperToValidation, its own challenge-type set, SniperToValidationPolicy()
+    (Enabled: false by default, matching ranger_to_archivist's own advisory-first
+    posture), and `strategist handoff verify --transition sniper_to_validation` invokes
+    it — but this file, until now, named only the other two transitions, and
+    Strategist's pipeline has no dedicated "Validator" role to consume the result.
+    This entry documents existing, already-invocable code (ADR-0057 § design.md task
+    5.5 / F-H8); it does not add, enable, or wire anything new.
+
+  default_policy:
+    enabled: false
+    required_types: [boundary, classification]
+    require_all_critical: true
+    max_attempts: 2
+    on_failure: return_to_archivist
+
+  challenge_types:
+    boundary: receiver identifies which files were declared in scope (materialized) vs. explicitly out of scope
+    classification: receiver distinguishes authorized deviations from unauthorized ones
+    counterfactual: receiver applies a concrete constraint/invariant to a short scenario, not merely restates it
+
+  consumer:
+    role: none
+    note: >
+      No Strategist role invokes this transition today. Its challenges are consumed
+      only by whatever process reviews a Sniper completion report by hand (a human,
+      a follow-up mission, or a future dedicated role) — the same way the completion
+      report itself (06-execution.md) already exists without a formal consumer role.
+      Assigning an owning role, and deciding require_when/skip_when for this
+      transition, is a distinct decision this entry deliberately does not make.
+
+  invariants:
+    - this transition is advisory-first like ranger_to_archivist — enabled defaults to
+      false, unlike archivist_to_sniper's default_policy
+    - documenting this transition here does not authorize any role to invoke it as
+      part of the standard mission sequence (00-routing.md's Main Mission Sequence,
+      Critical Hit Sequence, and Implementation Short Route are unchanged)

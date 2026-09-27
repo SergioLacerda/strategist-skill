@@ -26,6 +26,69 @@ func TestVerifyPassesCompleteAcknowledgment(t *testing.T) {
 	assert.Zero(t, result.CriticalFailures)
 }
 
+// TestVerify_MalformedPolicyIsPolicyInvalidNotMissingRefs covers ADR-0057 §
+// A3 (F-H4, design.md task 2.5): a policy that fails ValidatePolicy is
+// reported as StatusPolicyInvalid with its errors in PolicyErrors, never
+// folded into MissingRefs. Before this fix, the exact reproduction below
+// (a required_types entry not allowed for the transition) surfaced as
+// missing_refs: [handoff_policy_invalid: ...] — indistinguishable from a real
+// semantic failure and permanently corrupting SemanticHandoffLoss.Recall once
+// recorded.
+func TestVerify_MalformedPolicyIsPolicyInvalidNotMissingRefs(t *testing.T) {
+	t.Parallel()
+
+	policy := Policy{
+		Enabled:       true,
+		Transition:    TransitionArchivistToSniper,
+		RequiredTypes: []string{ChallengeObjective, "bogus_type"},
+		MaxAttempts:   2,
+		OnFailure:     FailureActionReturnToArchivist,
+	}
+
+	result := Verify(policy, nil, Acknowledgment{})
+
+	require.False(t, result.Passed)
+	assert.Equal(t, StatusPolicyInvalid, result.Status)
+	assert.Empty(t, result.MissingRefs, "a policy error must never be reported as a missing reference")
+	assert.Empty(t, result.MissingChallenges)
+	assert.Empty(t, result.NextAction, "a malformed policy is not a repairable semantic failure — return_to_archivist must not fire for it")
+	require.Len(t, result.PolicyErrors, 1)
+	assert.Contains(t, result.PolicyErrors[0], `challenge type "bogus_type" is not allowed`)
+}
+
+// TestVerify_MisclassifiedRefIsCountedOnceAcrossChallenges covers F-H5
+// (design.md task 2.7): a ref whose classification is asserted by more than
+// one challenge contributes exactly one failure, matching
+// missingSourceRefs's own dedup behavior rather than one entry per
+// referencing challenge.
+func TestVerify_MisclassifiedRefIsCountedOnceAcrossChallenges(t *testing.T) {
+	t.Parallel()
+
+	policy := Policy{
+		Enabled:       true,
+		Transition:    TransitionArchivistToSniper,
+		RequiredTypes: []string{ChallengeClassification},
+		MaxAttempts:   2,
+		OnFailure:     FailureActionReturnToArchivist,
+	}
+	challenges := []Challenge{
+		{ID: "HC-1", Type: ChallengeClassification, SourceRefs: []string{"D-001"},
+			ExpectedClassification: map[string]string{"D-001": DecisionApproved}},
+		{ID: "HC-2", Type: ChallengeClassification, SourceRefs: []string{"D-001"},
+			ExpectedClassification: map[string]string{"D-001": DecisionApproved}},
+	}
+	ack := Acknowledgment{
+		UnderstoodRefs:  []string{"D-001"},
+		Classifications: map[string]string{"D-001": QuestionUnresolved}, // wrong on purpose
+	}
+
+	result := Verify(policy, challenges, ack)
+
+	require.False(t, result.Passed)
+	assert.Equal(t, []string{"D-001"}, result.MisclassifiedRefs)
+	assert.Equal(t, 1, result.CriticalFailures)
+}
+
 func TestVerifyFailsMissingAcknowledgment(t *testing.T) {
 	t.Parallel()
 

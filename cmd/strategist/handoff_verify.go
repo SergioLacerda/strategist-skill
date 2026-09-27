@@ -39,6 +39,13 @@ through a Handoff Challenge unaided — see docs/architecture/strategist-concept
 Handoff Challenge "Known Limitations" for why this command exists.
 
 Exits non-zero when verification fails, so callers can gate on it directly.`,
+	// A failed verification (including a policy_invalid result) is a valid,
+	// expected outcome of a correct invocation, not a flag/argument usage
+	// error (F-X3, ADR-0057/design.md task 5.4) — Cobra's default of
+	// printing the full flag-usage block on any non-nil RunE error buried
+	// the actual 5-line result under 12 lines of help text. The exit code
+	// and printed result are unchanged; only the usage dump is suppressed.
+	SilenceUsage: true,
 }
 
 func runHandoffVerify(cmd *cobra.Command, opts handoffVerifyOptions) error {
@@ -59,8 +66,16 @@ func runHandoffVerify(cmd *cobra.Command, opts handoffVerifyOptions) error {
 		return fmt.Errorf("handoff verify: %w", err)
 	}
 
-	if err := recordHandoffVerify(cmd, opts, result); err != nil {
-		return fmt.Errorf("handoff verify: %w", err)
+	// A malformed policy (StatusPolicyInvalid) is a configuration error, not
+	// an observation about what the respondent preserved — it is never
+	// recorded. handoff-challenges.jsonl is append-only, so a wrong record
+	// here would be permanent, and SemanticHandoffLoss.Recall would be
+	// penalized for a YAML typo it was never meant to measure (ADR-0057 §
+	// A3, design.md task 2.5).
+	if result.Status != handoff.StatusPolicyInvalid {
+		if err := recordHandoffVerify(cmd, opts, policy, result); err != nil {
+			return fmt.Errorf("handoff verify: %w", err)
+		}
 	}
 
 	if !result.Passed {

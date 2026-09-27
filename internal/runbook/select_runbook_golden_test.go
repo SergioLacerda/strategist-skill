@@ -137,6 +137,23 @@ func TestSelect_GoldenAgainstRealRunbookFixtures(t *testing.T) {
 			signals:     MissionSignals{"flaky test observed in the nightly run"},
 			wantMatch:   false,
 		},
+		{
+			// F-X1 (ADR-0057/design.md task 5.1): before SignalSkillCorpusHealthReview
+			// existed, this exact signal set — the one Ranger actually passed during
+			// mission 20260927-strategist-hardening-review — matched none of the 28
+			// sidecars, including this one, whose own applies_when describes exactly
+			// this kind of mission.
+			name:        "skill_corpus_health_review: diagnostic/hardening mission signals match via vocabulary",
+			sidecarFile: "deep-analysis-workflow.runbook.yaml",
+			signals:     MissionSignals{"diagnostic", "hardening", "handoff", "telemetry", "leveling", "token_metrics"},
+			wantMatch:   true,
+		},
+		{
+			name:        "skill_corpus_health_review: unrelated ci failure signal does not match",
+			sidecarFile: "deep-analysis-workflow.runbook.yaml",
+			signals:     MissionSignals{"flaky test observed in the nightly run"},
+			wantMatch:   false,
+		},
 	}
 
 	for _, tc := range cases {

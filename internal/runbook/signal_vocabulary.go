@@ -8,7 +8,7 @@ import "strings"
 // changed materially, so callers pinning behavior (e.g. the golden
 // selection tests in select_runbook_golden_test.go) have an explicit
 // signal that the vocabulary — not just the code around it — has drifted.
-const SignalVocabularyVersion = 1
+const SignalVocabularyVersion = 2
 
 // CanonicalSignal is a controlled-vocabulary term naming one underlying
 // trigger condition that both a runbook's applies_when prose and a
@@ -23,8 +23,11 @@ const SignalVocabularyVersion = 1
 type CanonicalSignal string
 
 // Canonical signal terms, derived from what docs/runbooks/*.runbook.yaml
-// files actually declare in applies_when as of SignalVocabularyVersion 1
-// (see signalAliases for the source runbook of each real-text alias).
+// files actually declare in applies_when as of SignalVocabularyVersion 2
+// (see signalAliases for the source runbook of each real-text alias). The
+// first 9 (through SignalComplexityRefactor) are all incident-shaped, from
+// version 1; SignalSkillCorpusHealthReview is version 2's addition, the
+// first analytical-work signal (F-X1, ADR-0057/design.md task 5.1).
 // Adding a new runbook whose applies_when describes a genuinely new
 // trigger condition should add a new canonical term here (and bump
 // SignalVocabularyVersion) rather than folding an unrelated concept into
@@ -78,6 +81,21 @@ const (
 	// asking for a narrow, behavior-preserving refactor.
 	// Real source: docs/runbooks/refactoring-for-agent-operations.runbook.yaml.
 	SignalComplexityRefactor CanonicalSignal = "complexity_refactor"
+
+	// SignalSkillCorpusHealthReview covers a periodic or triggered analytical
+	// review of the governed skill corpus itself (contracts + schemas +
+	// runtime code) — as opposed to every other canonical signal above,
+	// which covers a specific operational incident. Added for F-X1
+	// (ADR-0057/design.md task 5.1): the vocabulary's original 9 signals
+	// were all incident-shaped, so a diagnostic/hardening review mission
+	// like the one that found this gap could never select
+	// deep-analysis-workflow, whose own applies_when describes exactly this
+	// kind of review, through select_runbook — the command ran (per
+	// 03-discovery.md's own requirement) and correctly reported "no runbook
+	// matched," because nothing in the vocabulary spanned analytical work,
+	// not because the command was skipped.
+	// Real source: docs/runbooks/deep-analysis-workflow.runbook.yaml.
+	SignalSkillCorpusHealthReview CanonicalSignal = "skill_corpus_health_review"
 )
 
 // signalAliases maps each canonical signal to the free-text phrases that
@@ -144,6 +162,14 @@ var signalAliases = map[CanonicalSignal][]string{
 		"wrapcheck",          // real: refactoring-for-agent-operations
 		"complexity tooling", // real: refactoring-for-agent-operations
 		"reduce complexity below a numeric limit", // real: refactoring-for-agent-operations
+	},
+	SignalSkillCorpusHealthReview: {
+		"periodic health review of the skill corpus", // real: deep-analysis-workflow
+		"structural refactor",                        // real: deep-analysis-workflow
+		"drift/consistency incidents",                // real: deep-analysis-workflow
+		"onboarding review of an unfamiliar skill",   // real: deep-analysis-workflow
+		"diagnostic", // operator synonym / Scout discovery_subtype
+		"hardening",  // operator synonym / mission task_type
 	},
 }
 

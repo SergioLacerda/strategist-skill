@@ -35,6 +35,7 @@ const (
 	AttrTokensIn         = "strategist.metrics.tokens_in"
 	AttrTokensOut        = "strategist.metrics.tokens_out"
 	AttrLinesEmitted     = "strategist.metrics.lines_emitted"
+	AttrMetricsScope     = "strategist.metrics.scope"
 
 	// AttrPipelineRoute and AttrDecisionReason are the canonical attribute names for
 	// route-decision telemetry (mission route, e.g. "main", and a short

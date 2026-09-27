@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -21,7 +20,7 @@ func missionLifecycleDependencies() missionadapter.LifecycleDependencies {
 		RootFlag: cliutil.FlagRoot, RequireMissionID: requireMissionID,
 		ResolveBasePath: cliutil.ResolveActiveBasePath, RequireNoExisting: requireNoExistingMission,
 		Save: saveMission, Load: loadMission, InitiativeStart: startInitiativeConsultation,
-		WriteResult: writeMissionResult,
+		WriteResult: writeMissionResult, Lock: lockMission,
 	}
 }
 
@@ -57,18 +56,19 @@ func resolveMissionLeveling(root, missionID, role, runID string) (initiative.Lev
 		return initiative.LevelingResolution{}, fmt.Errorf("read LEVELING ledger: %w", err)
 	}
 	if !found {
-		level, resolveErr := leveling.ResolveLevel(leveling.Policy{}, "", role, leveling.Signals{}, leveling.Host{})
-		if resolveErr != nil {
-			return initiative.LevelingResolution{}, fmt.Errorf("resolve role level: %w", resolveErr)
-		}
+		// No prior ledger entry, and this call site has no host or provider
+		// data to resolve from (mission start, before the role's own on_start
+		// hook ever runs) — leveling.ResolveLevel(Policy{}, "", role, ...,
+		// Host{}) with everything empty can only ever return an Unknown()
+		// level, so it, its append, and its role_level_resolved log line are
+		// skipped rather than recording a tuple that says nothing (F-L4,
+		// ADR-0057/design.md task 4.4). Any distribution computed over the
+		// ledger is unaffected: a row with empty model/effort/level_source
+		// carried no information to begin with.
 		record = leveling.Record{
-			MissionID: missionID, Run: runID, Level: level,
+			MissionID: missionID, Run: runID, Level: leveling.Level{Role: leveling.NormalizeRole(role)},
 			Reason: "mission_start", Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
 		}
-		if err := leveling.AppendRecord(path, record); err != nil {
-			return initiative.LevelingResolution{}, fmt.Errorf("persist LEVELING event: %w", err)
-		}
-		emitRoleLevel(context.Background(), missionID, runID, record.Level, record.Reason)
 	}
 	state := initiative.ObservationUnavailable
 	if !record.Unknown() {

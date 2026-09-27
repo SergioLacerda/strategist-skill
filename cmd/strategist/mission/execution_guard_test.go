@@ -5,10 +5,12 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	mission "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
 	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -56,6 +58,52 @@ func TestSubmit_EnteringExecutionRequiresPipelineEvidence(t *testing.T) {
 	out, err = runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", "m-guard", "--event", string(domain.MissionEventHandoffPassed))
 	require.NoError(t, err)
 	assert.Equal(t, domain.StateExecution, decodeStatus(t, out).State)
+}
+
+// TestSubmit_HandoffPassedRecordsSniperClaim covers ADR-0057 § A1
+// (design.md Batch A / task 2.3): the real `mission submit --event
+// handoff_challenge_passed` path records a Sniper claim for each declared
+// documentation_target, without the operator having to invoke a separate
+// command — the fix for F-H1's previously-unreachable collision tripwire.
+func TestSubmit_HandoffPassedRecordsSniperClaim(t *testing.T) {
+	root := setupViewRoot(t, domain.MissionEngineStatus{})
+	advanceToHandoffChallenge(t, root, "m-claim")
+
+	_, basePath, err := cliutil.ResolveActiveBasePath(root)
+	require.NoError(t, err)
+	dir := filepath.Join(basePath, "refined", "m-claim")
+	require.NoError(t, os.MkdirAll(dir, 0o750))
+	for _, name := range []string{"analysis.md", "proposal.md", "design.md"} {
+		require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte("x\n"), 0o600))
+	}
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "tasks.md"), []byte(
+		"- [ ] 1.1 [documentation_target] Write `docs/example-target.md` for this test.\n",
+	), 0o600))
+
+	_, err = runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", "m-claim", "--event", string(domain.MissionEventHandoffPassed))
+	require.NoError(t, err)
+
+	records, err := telemetry.ReadRecentSniperClaims(telemetry.SniperClaimHistoryPath(root), time.Now(), telemetry.SniperClaimWindow)
+	require.NoError(t, err)
+	require.Len(t, records, 1)
+	assert.Equal(t, "m-claim", records[0].MissionID)
+	assert.Equal(t, "docs/example-target.md", records[0].TargetPath)
+}
+
+// TestSubmit_HandoffPassedWithNoDocumentationTargetRecordsNoClaim confirms an
+// analysis-only accepted package (writeRefinedPackage's empty tasks.md)
+// records nothing — there is no Sniper target to claim.
+func TestSubmit_HandoffPassedWithNoDocumentationTargetRecordsNoClaim(t *testing.T) {
+	root := setupViewRoot(t, domain.MissionEngineStatus{})
+	advanceToHandoffChallenge(t, root, "m-no-claim")
+	writeRefinedPackage(t, root, "m-no-claim")
+
+	_, err := runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", "m-no-claim", "--event", string(domain.MissionEventHandoffPassed))
+	require.NoError(t, err)
+
+	records, err := telemetry.ReadRecentSniperClaims(telemetry.SniperClaimHistoryPath(root), time.Now(), telemetry.SniperClaimWindow)
+	require.NoError(t, err)
+	require.Empty(t, records)
 }
 
 func TestSubmit_ScoutRouteDecisionNarrowsTheEvidenceRegime(t *testing.T) {

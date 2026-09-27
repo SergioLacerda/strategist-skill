@@ -19,6 +19,9 @@ func RenderHuman(w io.Writer, v View) error {
 	if err := renderLevels(w, v.Leveling); err != nil {
 		return err
 	}
+	if err := renderTokenUsage(w, v.TokenUsage); err != nil {
+		return err
+	}
 	return renderDiagnostics(w, v.Diagnostics)
 }
 
@@ -67,6 +70,33 @@ func renderLevelRole(w io.Writer, role LevelingRole) error {
 	}
 	level := role.Effective
 	return writef(w, "  %s: %s source=%s model_source=%s effort_source=%s provider=%s capability=%s fallback_used=%t fallback_reason=%s policy_version=%d policy_digest=%s\n", level.Role, level.Label(), level.Source, level.ModelSource, level.EffortSource, level.Provider, level.Capability, level.FallbackUsed, level.FallbackReason, level.PolicyVersion, level.PolicyDigest)
+}
+
+// renderTokenUsage prints the reported token-usage section (F-T2, ADR-0057 §
+// design.md task 3.3). The declared budget tier is shown next to the totals
+// without a numeric verdict — see TokenUsageSection's doc comment for why no
+// pass/fail comparison is made.
+func renderTokenUsage(w io.Writer, usage TokenUsageSection) error {
+	if err := writef(w, "Token Usage\n  availability: %s\n", usage.Availability); err != nil {
+		return err
+	}
+	if usage.DeclaredTokenBudget != "" {
+		if err := writef(w, "  declared_token_budget: %s\n", usage.DeclaredTokenBudget); err != nil {
+			return err
+		}
+	}
+	if usage.Availability != Available {
+		return nil
+	}
+	if err := writef(w, "  total_tokens_in: %d\n  total_tokens_out: %d\n", usage.TotalTokensIn, usage.TotalTokensOut); err != nil {
+		return err
+	}
+	for _, rec := range usage.Records {
+		if err := writef(w, "  %s: tokens_in=%d tokens_out=%d source=%s\n", rec.ReportedAt, rec.TokensIn, rec.TokensOut, rec.Source); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func renderDiagnostics(w io.Writer, diagnostics []Diagnostic) error {

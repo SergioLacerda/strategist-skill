@@ -3,6 +3,7 @@ package mission
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
@@ -11,6 +12,7 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/missionview"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 // ViewDependencies injects root resolution, mission loading and LEVELING
@@ -82,5 +84,56 @@ func LoadView(root string, status domain.MissionEngineStatus, run, ledger string
 	gateOutcome, gateErr := telemetry.GateOutcomeFor(root, status.MissionID)
 	levels, levelsErr := leveling.ReadRecords(filepath.Join(root, "memory", ledger))
 	levels = filter(levels, status.MissionID)
-	return missionview.Build(missionview.Input{Status: status, Registry: reg, SlotProviders: active.Slots, Confidence: confidence, ConfidenceError: confidenceErr, GateOutcome: gateOutcome, GateError: gateErr, Levels: levels, LevelsError: levelsErr, Run: run})
+	tokenUsage, tokenUsageErr := readMissionTokenUsage(root, status.MissionID)
+	declaredBudget, budgetErr := readDeclaredTokenBudget(root)
+	_ = budgetErr // absent/unparseable skill.yaml: display-only, not a diagnosed failure (no Diagnostic entry for it)
+	return missionview.Build(missionview.Input{
+		Status: status, Registry: reg, SlotProviders: active.Slots,
+		Confidence: confidence, ConfidenceError: confidenceErr,
+		GateOutcome: gateOutcome, GateError: gateErr,
+		Levels: levels, LevelsError: levelsErr, Run: run,
+		TokenUsage: tokenUsage, TokenUsageError: tokenUsageErr, DeclaredTokenBudget: declaredBudget,
+	})
+}
+
+// readMissionTokenUsage reads the mission-token-usage ledger and filters it
+// to missionID — the ledger is shared across every mission that has ever
+// called `mission report-usage` (F-T2, ADR-0057 § design.md task 3.3).
+func readMissionTokenUsage(root, missionID string) ([]telemetry.MissionTokenUsageRecord, error) {
+	all, err := telemetry.ReadMissionTokenUsage(telemetry.MissionTokenUsageHistoryPath(root))
+	if err != nil {
+		return nil, fmt.Errorf("read mission token usage: %w", err)
+	}
+	filtered := make([]telemetry.MissionTokenUsageRecord, 0, len(all))
+	for _, rec := range all {
+		if rec.MissionID == missionID {
+			filtered = append(filtered, rec)
+		}
+	}
+	return filtered, nil
+}
+
+// skillYAMLBudgetPolicy is the minimal shape this reads from skill.yaml —
+// budget_policy.token_budget only, not the full document.
+type skillYAMLBudgetPolicy struct {
+	BudgetPolicy struct {
+		TokenBudget string `yaml:"token_budget"`
+	} `yaml:"budget_policy"`
+}
+
+// readDeclaredTokenBudget reads skill.yaml's declared budget_policy.token_budget
+// verbatim — a qualitative tier (e.g. "high"), not a token count. A missing or
+// unparseable skill.yaml returns "" rather than an error: this is
+// display-only context for the token usage section, not a secondary
+// authority whose absence merits a Diagnostic.
+func readDeclaredTokenBudget(root string) (string, error) {
+	data, err := os.ReadFile(filepath.Join(root, "skill.yaml")) //nolint:gosec // G304: root is the discovered/validated .strategist runtime root
+	if err != nil {
+		return "", fmt.Errorf("read skill.yaml: %w", err)
+	}
+	var y skillYAMLBudgetPolicy
+	if err := yaml.Unmarshal(data, &y); err != nil {
+		return "", fmt.Errorf("parse skill.yaml: %w", err)
+	}
+	return y.BudgetPolicy.TokenBudget, nil
 }

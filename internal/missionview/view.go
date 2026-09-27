@@ -28,20 +28,24 @@ const (
 	ReasonMissionViewConfidenceUnavailable  = "mission_view_confidence_unavailable"
 	ReasonMissionViewGateOutcomeUnavailable = "mission_view_gate_outcome_unavailable"
 	ReasonMissionViewLevelingUnavailable    = "mission_view_leveling_unavailable"
+	ReasonMissionViewTokenUsageUnavailable  = "mission_view_token_usage_unavailable"
 )
 
 // Input contains values already loaded from their respective authorities.
 type Input struct {
-	Status          domain.MissionEngineStatus
-	Registry        domain.RoleRegistry
-	SlotProviders   map[string]string
-	Confidence      telemetry.ConfidenceGateReview
-	ConfidenceError error
-	GateOutcome     string
-	GateError       error
-	Levels          []leveling.Record
-	LevelsError     error
-	Run             string
+	Status              domain.MissionEngineStatus
+	Registry            domain.RoleRegistry
+	SlotProviders       map[string]string
+	Confidence          telemetry.ConfidenceGateReview
+	ConfidenceError     error
+	GateOutcome         string
+	GateError           error
+	Levels              []leveling.Record
+	LevelsError         error
+	Run                 string
+	TokenUsage          []telemetry.MissionTokenUsageRecord
+	TokenUsageError     error
+	DeclaredTokenBudget string
 }
 
 // View is the complete read-only mission projection.
@@ -54,6 +58,7 @@ type View struct {
 	Confidence   ConfidenceSection `json:"confidence"`
 	ApprovalGate GateSection       `json:"approval_gate"`
 	Leveling     LevelingSection   `json:"leveling"`
+	TokenUsage   TokenUsageSection `json:"token_usage"`
 	Diagnostics  []Diagnostic      `json:"diagnostics"`
 }
 
@@ -101,6 +106,8 @@ type LevelingRole struct {
 	History   []leveling.Record `json:"history,omitempty"`
 }
 
+// TokenUsageSection and buildTokenUsage live in token_usage.go.
+
 // Diagnostic describes an unavailable secondary authority and its remedy.
 type Diagnostic struct {
 	Reason string `json:"reason"`
@@ -116,6 +123,7 @@ func Build(in Input) View {
 		Confidence:   ConfidenceSection{Availability: confidenceAvailability(in.Confidence), Advisory: true, Review: &in.Confidence},
 		ApprovalGate: GateSection{Availability: Available, Outcome: in.GateOutcome},
 		Leveling:     buildLevels(in.Registry, in.Levels, in.Run),
+		TokenUsage:   buildTokenUsage(in.TokenUsage, in.DeclaredTokenBudget),
 	}
 	if in.ConfidenceError != nil {
 		v.Confidence = ConfidenceSection{Availability: Unavailable, Advisory: true}
@@ -130,6 +138,10 @@ func Build(in Input) View {
 	if in.LevelsError != nil {
 		v.Leveling = LevelingSection{Availability: Unavailable, Selection: selection(in.Run)}
 		v.Diagnostics = append(v.Diagnostics, Diagnostic{Reason: ReasonMissionViewLevelingUnavailable, Action: "inspect role-level ledger"})
+	}
+	if in.TokenUsageError != nil {
+		v.TokenUsage = TokenUsageSection{Availability: Unavailable, DeclaredTokenBudget: in.DeclaredTokenBudget}
+		v.Diagnostics = append(v.Diagnostics, Diagnostic{Reason: ReasonMissionViewTokenUsageUnavailable, Action: "inspect mission-token-usage ledger"})
 	}
 	return v
 }
