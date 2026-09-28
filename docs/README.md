@@ -25,6 +25,8 @@ one maintained reference.
 | Extend the provider lifecycle | [`provider-extension.md`](provider-extension.md) |
 | Review design decisions and taxonomy | [`adr/`](adr/) and [ADR-0034](adr/0034-role-and-skill-taxonomy.md) |
 | Understand runbooks, scripts, and `make` targets | [`makefile-scripts.md`](makefile-scripts.md) and [`runbooks/`](runbooks/) |
+| Follow the v1.0.23 release checklist | [`release-checklist-v1-0-23.md`](release-checklist-v1-0-23.md) |
+| Follow the v1.0.25 release checklist | [`release-checklist-v1-0-25.md`](release-checklist-v1-0-25.md) |
 | Understand testing, coverage, and performance | [`test-styles.md`](test-styles.md), [`test-coverage-gaps.md`](test-coverage-gaps.md), [`integration-coverage-gaps.md`](integration-coverage-gaps.md), and [`performance-baseline.md`](performance-baseline.md) |
 | Understand drift detection and learning | [`drift-detection-matrix.md`](drift-detection-matrix.md) and [`learning-pipeline.md`](learning-pipeline.md) |
 | Consume telemetry and observability | [`observability-contract.md`](observability-contract.md) |
