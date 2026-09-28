@@ -76,7 +76,19 @@ release-script-test:
 # check-release-binaries proves the built artifacts: checksums match SHA256SUMS
 # and the host binary runs with its embedded runtime. Pass VERSION=x.y.z to also
 # require that exact embedded version (a snapshot embeds SNAPSHOT and shows Vdev).
+#
+# It regenerates dist/published.tsv inline first, rather than declaring
+# check-release-artifacts as a prerequisite: make runs a .PHONY target at most
+# once per invocation, so a prerequisite is silently skipped when
+# check-release-artifacts already ran as an earlier goal on the same command
+# line (`make check-release-artifacts snapshot check-release-binaries`) — and
+# in that order snapshot's --clean has since wiped dist/, published.tsv
+# included. Running the script from this recipe executes every time, so the
+# check always reads a published.tsv that matches the dist/ on disk, whatever
+# order these targets were invoked in. Cheap and idempotent: it only re-reads
+# dist/artifacts.json and rewrites the same lines.
 check-release-binaries:
+	bash scripts/check-release-artifacts.sh
 	bash scripts/check-release-binaries.sh dist/published.tsv dist/SHA256SUMS $(VERSION)
 
 # verify-published-release proves an already-published GitHub Release: checksums,
