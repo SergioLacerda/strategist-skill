@@ -97,7 +97,7 @@ func TestCanonicalTaxonomySourceAndRuntimeMirrorsStayInParity(t *testing.T) {
 		if err != nil {
 			t.Fatalf("read embedded source %s: %v", sourceRel, err)
 		}
-		runtime, err := os.ReadFile(filepath.Join(root, ".strategist", runtimeRel))
+		runtime, err := os.ReadFile(filepath.Join(isolatedStrategistDir(t), runtimeRel))
 		if err != nil {
 			t.Fatalf("read runtime mirror %s: %v", runtimeRel, err)
 		}

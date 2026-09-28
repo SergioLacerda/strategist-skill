@@ -68,7 +68,7 @@ func TestTelemetryContractDefinesRangerWeaponBoundary(t *testing.T) {
 
 	for _, path := range []string{
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "10-telemetry.md"),
-		filepath.Join(repoRoot(t), ".strategist", "contracts", "narrative", "10-telemetry.md"),
+		filepath.Join(isolatedStrategistDir(t), "contracts", "narrative", "10-telemetry.md"),
 	} {
 		content := readFile(t, path)
 		for _, needle := range []string{
