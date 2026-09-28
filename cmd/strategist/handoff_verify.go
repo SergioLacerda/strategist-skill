@@ -39,32 +39,53 @@ through a Handoff Challenge unaided — see docs/architecture/strategist-concept
 Handoff Challenge "Known Limitations" for why this command exists.
 
 Exits non-zero when verification fails, so callers can gate on it directly.`,
+	// A failed verification (including a policy_invalid result) is a valid,
+	// expected outcome of a correct invocation, not a flag/argument usage
+	// error (F-X3, ADR-0057/design.md task 5.4) — Cobra's default of
+	// printing the full flag-usage block on any non-nil RunE error buried
+	// the actual 5-line result under 12 lines of help text. The exit code
+	// and printed result are unchanged; only the usage dump is suppressed.
+	SilenceUsage: true,
 }
 
 func runHandoffVerify(cmd *cobra.Command, opts handoffVerifyOptions) error {
-	if run := cliutil.TelemetryRunFromCmd(cmd); run != nil {
-		run.SetSilent()
-	}
-
-	if err := validateHandoffVerifyOptions(opts); err != nil {
-		return fmt.Errorf("handoff verify: %w", err)
-	}
-	policy, challenges, ack, err := loadHandoffVerificationInputs(opts)
+	silenceHandoffTelemetry(cmd)
+	policy, challenges, ack, err := prepareHandoffVerificationInputs(opts)
 	if err != nil {
 		return fmt.Errorf("handoff verify: %w", err)
 	}
 
 	result := handoff.Verify(policy, challenges, ack)
+	if err := finalizeHandoffVerification(cmd, opts, policy, result); err != nil {
+		return fmt.Errorf("handoff verify: %w", err)
+	}
+	return nil
+}
+
+func silenceHandoffTelemetry(cmd *cobra.Command) {
+	if run := cliutil.TelemetryRunFromCmd(cmd); run != nil {
+		run.SetSilent()
+	}
+}
+
+func prepareHandoffVerificationInputs(opts handoffVerifyOptions) (handoff.Policy, []handoff.Challenge, handoff.Acknowledgment, error) {
+	if err := validateHandoffVerifyOptions(opts); err != nil {
+		return handoff.Policy{}, nil, handoff.Acknowledgment{}, err
+	}
+	return loadHandoffVerificationInputs(opts)
+}
+
+func finalizeHandoffVerification(cmd *cobra.Command, opts handoffVerifyOptions, policy handoff.Policy, result handoff.Result) error {
 	if err := printHandoffVerifyResult(cmd, result); err != nil {
-		return fmt.Errorf("handoff verify: %w", err)
+		return err
 	}
-
-	if err := recordHandoffVerify(cmd, opts, result); err != nil {
-		return fmt.Errorf("handoff verify: %w", err)
+	if result.Status != handoff.StatusPolicyInvalid {
+		if err := recordHandoffVerify(cmd, opts, policy, result); err != nil {
+			return err
+		}
 	}
-
 	if !result.Passed {
-		return fmt.Errorf("handoff verify: failed (status=%s, critical_failures=%d)", result.Status, result.CriticalFailures)
+		return fmt.Errorf("failed (status=%s, critical_failures=%d)", result.Status, result.CriticalFailures)
 	}
 	return nil
 }

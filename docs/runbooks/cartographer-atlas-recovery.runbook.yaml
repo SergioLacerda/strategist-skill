@@ -1,0 +1,56 @@
+schema_version: "1"
+runbook_id: cartographer-atlas-recovery
+runbook_type: operational
+source_doc: docs/runbooks/cartographer-atlas-recovery.md
+
+applies_when:
+  - "CARTOGRAPHER or the atlas support binding is missing, duplicated, unverified, degraded, blocked, or unavailable"
+  - "ATLAS package, identity, provenance, API, delegate, probe, or health evidence is missing, stale, malformed, or contradictory"
+  - "the .strategist/.data-structure projection is stale, unknown, missing, corrupt, or inconsistent with canonical source fingerprints"
+  - "Ranger or Archivist receives structure evidence without bounded scope, source digest, provenance, captured-at time, freshness, provider mode, or readiness"
+  - "production appears to switch from ATLAS to atlas-mock, JEWELCRAFTER, or native structure generation without explicit selection"
+
+objective: "Recover or diagnose CARTOGRAPHER and ATLAS structure retrieval while preserving exclusive ownership, fail-closed readiness, source provenance, and last-known-good derived data."
+
+preconditions:
+  - "the mission Approval Gate and any separate implementation authorization are known"
+  - "the active provider mode is recorded as external or explicitly selected mock"
+  - "CARTOGRAPHER is the only owner of atlas and JEWELCRAFTER remains the only owner of treasure/BAU DO TESOURO"
+  - "canonical sources and the active Strategist configuration are available for read-only inspection"
+  - "any migration has a pinned identity, digest, provenance record, API contract, and rollback reference"
+
+verification:
+  - "CARTOGRAPHER remains the sole atlas owner and the three mission slots are unchanged"
+  - "all seven ATLAS readiness dimensions are recorded independently"
+  - "projection source fingerprints, freshness/TTL, provenance, and captured-at metadata are present"
+  - "stale, missing, corrupt, unavailable, blocked, or unverified states are returned truthfully"
+  - "production ATLAS failure does not select atlas-mock, JEWELCRAFTER, or native structure generation"
+  - "Ranger and Archivist receive bounded source-backed responses through CARTOGRAPHER"
+  - "canonical sources, locks, provider data, and last-known-good projection remain preserved"
+
+checks:
+  - id: capture-boundary-state
+    level: mandatory
+  - id: confirm-cartographer-ownership
+    level: mandatory
+  - id: classify-atlas-readiness
+    level: mandatory
+  - id: verify-projection-freshness-and-provenance
+    level: mandatory
+  - id: verify-explicit-mock-selection
+    level: conditional
+    when: "provider mode is mock"
+  - id: quarantine-corrupt-derived-projection
+    level: conditional
+    when: "the structure projection is missing or corrupt"
+  - id: preserve-last-known-good-state
+    level: mandatory
+  - id: verify-migration-and-rollback-evidence
+    level: conditional
+    when: "provider admission or projection migration is requested"
+  - id: stop-on-ownership-or-trust-conflict
+    level: mandatory
+
+metadata:
+  version: 1
+  reviewed_at: "2026-09-27"

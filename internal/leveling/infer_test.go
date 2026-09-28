@@ -14,19 +14,21 @@ func TestProviderForModel(t *testing.T) {
 	assert.Equal(t, "CLAUDE", policy.ProviderForModel(" Claude-Sonnet-5 "), "case and space insensitive")
 	assert.Empty(t, policy.ProviderForModel("gemini-2"), "an unknown vendor never borrows another provider")
 	assert.Empty(t, policy.ProviderForModel(""))
+	assert.Equal(t, leveling.ProviderMatchInferred, policy.MatchProvider("claude-opus-5").Match)
+	assert.Equal(t, leveling.ProviderMatchExact, policy.MatchProvider("claude-general").Match)
+	assert.Equal(t, leveling.ProviderMatchUnknown, policy.MatchProvider("gemini-2").Match)
 }
 
-// The role on_start hook passes --host-model but no --provider. In automatic
-// mode the policy completes the missing effort for the inferred provider.
-func TestResolveLevelInferredCompletesTheHookLevel(t *testing.T) {
+// Prefix inference remains observable but advisory; it cannot silently supply
+// an authority-bearing policy effort.
+func TestResolveLevelInferredKeepsPrefixMatchAdvisory(t *testing.T) {
 	loader := &countingLoader{policy: defaultPolicy(t)}
 	level, err := leveling.ResolveLevelInferred(loader.load, "archivist", leveling.Signals{}, leveling.Host{Model: "claude-opus-5"})
 	require.NoError(t, err)
-	assert.Equal(t, "CLAUDE", level.Provider)
-	assert.NotEmpty(t, level.Effort, "effort comes from the policy")
-	assert.Equal(t, leveling.SourcePolicy, level.EffortSource)
+	assert.Empty(t, level.Provider)
+	assert.Empty(t, level.Effort, "prefix inference must not provide policy effort")
+	assert.Equal(t, string(leveling.ProviderMatchInferred), level.ProviderMatch)
 	assert.Equal(t, leveling.SourceHost, level.ModelSource)
-	assert.Equal(t, "Opus-5", level.Model, "the vendor prefix is shortened")
 	assert.Equal(t, 1, loader.calls)
 }
 

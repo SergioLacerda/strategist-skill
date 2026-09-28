@@ -36,6 +36,49 @@ out-of-order events without persisting a state change. The existing
 versioned `InvocationEnvelope` remains the standalone invocation contract and
 continues to derive its binding from `RoleInvocationPlan`.
 
+## mission normalize-openspec
+
+Publishes a completed OpenSpec change as the refined mission package, or amends a
+package that is already published.
+
+```bash
+strategist mission normalize-openspec --mission-id <id> --change-id <change> [--pending-analysis <path>] [--runtime-root <dir>]
+strategist mission normalize-openspec --mission-id <id> --change-id <new-change> --amend --amends <previous-change> --authorization-ref "<quote or gate event>"
+```
+
+The default mode validates the private change, atomically promotes its `proposal.md`,
+`design.md` and `tasks.md` plus the mission analysis into
+`<base_path>/refined/<mission_id>/`, and archives the change under
+`changes/archive/`. An existing package is compared byte for byte; any difference fails
+closed (`existing refined package conflicts with provider change`) and nothing is written.
+
+`--amend` is the only sanctioned way to change a package after it was published. It
+replaces `proposal.md`, `design.md` and `tasks.md` with the new change and leaves
+`analysis.md`, `mission_status` and the original `provider_change_id` untouched. Each
+replaced file gains an append-only `amendments:` frontmatter list (`amendment`,
+`change_id`, `at`, `authorization_ref`, `previous_sha256`), and the previous three files
+are snapshotted under `<package>/.amendments/NNN/` with a `manifest.yaml` (change ids,
+timestamp, authorization reference, gate label or `none`, and previous and new digests).
+The amending change is then archived. `--amends` and `--authorization-ref` are required
+with `--amend` and rejected without it; `--pending-analysis` is rejected with it.
+
+```text
+mission_id=m-1 provider_change_id=c-1 refined=<base_path>/refined/m-1 amendment=001 status=gate_analysis_accepted
+```
+
+An amendment is refused, with nothing written, when: the package is missing or lacks a
+file; `analysis.md` carries another `mission_id`; `mission_status` is not one of
+`archivist_done`, `gate_pending`, `gate_revision_requested` or `gate_analysis_accepted`;
+the package is `claimed_by` someone; a pending analysis exists for the mission;
+`--amends` is not the package's `provider_change_id` (first amendment) or the previous
+amendment's change id; the mission's gate outcome label is `rejected`; the new change is
+incomplete; the reference is empty, multi-line or holds control characters; or an
+analysis-only accepted package would gain a documentation target. The reference is
+recorded verbatim: the command cannot verify that a human wrote it. If a replacement
+fails midway, the three files are restored from the snapshot.
+
+---
+
 ## plugins authorize
 
 Composes the authorization evidence required before a governed target write.
@@ -138,6 +181,101 @@ The installer also records the embedded LEVELING version/digest in
 explicit `.strategist/.leveling-compat.yaml` marker (`version: 1`, `mode:
 legacy`).
 
+## metrics record, confidence --declared, mission-quality and handoff-record
+
+Persist the confidence and refinement evidence a mission produces, in
+`.strategist/memory/`.
+
+```bash
+strategist metrics record --mission <id> --agent <agent> --claim-file - < claims.yaml
+strategist metrics record --mission <id> --agent <agent> --missing --correlation-key <key> --reason <why>
+strategist metrics mission-quality --mission <id> < ledger.yaml
+strategist metrics handoff-record --mission <id> [--model <m> --effort <e> --level-source <s> --reopens <n> --revision <n>]
+```
+
+`metrics record` reads one YAML document from standard input (`--claim-file -`; no
+file is created, and a file inside the workspace `base_path` is rejected). The
+document holds either one `claim:` or a `claims:` list, plus an `evidence:` list
+shared by its claims. A `claims:` batch records every declared claim, questions
+included, so the history holds the whole declared set and not one claim per
+command:
+
+```yaml
+claims:
+  - {id: C-1, statement: "the command exists", agent: ranger, correlation_key: k1, claim_kind: assertion, confidence_percent: 90, evidence_ids: [E-1], evidence_classes: [explicit]}
+  - {id: Q-1, statement: "is it documented", agent: ranger, correlation_key: k2, claim_kind: question, confidence_percent: 30}
+evidence:
+  - {id: E-1, source_ref: a.go, class: explicit, confidence: high}
+```
+
+```text
+coverage_status: reported
+claim: C-1
+violation:
+coverage_status: reported
+claim: Q-1
+violation:
+recorded: 2 (reported 2, rejected 0)
+```
+
+A batch is validated as a whole before anything is written: a claim with no id, a
+claim declared by another agent, a repeated id, an empty list or `claim:` together
+with `claims:` writes nothing and fails. Each claim then keeps the per-claim rule:
+an invalid one is persisted as `rejected` and the command exits non-zero naming it.
+`--missing` records that a boundary produced no summary instead of a claim
+(`missing-record recorded: agent=... mission=... correlation_key=...`).
+
+`metrics confidence --declared -` compares the claims a handoff declared with the
+records persisted for the mission. It needs `--mission`, accepts only `-` (the summary
+is read from standard input, so the `confidence_summary` block of a `tasks.md` handoff
+can be piped as it is), and is read-only: it writes no history and does not change
+`review_required`. The existing output is printed first, unchanged, and the comparison
+follows it. Each declared claim is matched on `(agent, claim id)`:
+
+```text
+declared_claims: 18
+declared_assertions: 14
+declared_questions: 4
+persisted_claims: 18
+declared_unpersisted: none          # claims never recorded, as <agent>/<id>
+persisted_rejected: none            # the only record for the claim was rejected
+declared_mismatched: none           # recorded, but kind, percent, level or correlation key differ
+persisted_under_other_agent: none   # the same id was recorded under another agent
+question_preservation_declared: 4/4 # or: n/a (no questions declared)
+declared_review: none               # recommended when any list above is not none
+```
+
+Only the fields the comparison keys on are validated (`id`, `agent`, a known
+`claim_kind`, a `confidence_percent` in range), so the blocks Archivists write are
+accepted. `missing` records never count as persisted, and statements are not compared
+because a persisted record carries none. With no question, the human
+`metrics confidence` output prints `question_preservation_rate: n/a` (mission and per
+agent) instead of `0.00`; the JSON field and the computed metric keep their value.
+
+`metrics mission-quality` reads a YAML document from standard input (`decisions`,
+`evidence`, `acceptance_criteria`, and optionally `previously_open_decision_ids` and
+`approved_scope_prefixes`) and prints one line per `mission_quality` predicate. It is
+advisory: a failed predicate is reported and the command still exits 0. It reads no
+mission artifact on its own, and it does not persist anything.
+
+```text
+mission: <id>
+mission_quality: passed
+check: unsupported_claims applicable=true passed=true
+...
+```
+
+`metrics handoff-record` appends the Archivist's per-refinement line to
+`.strategist/memory/handoff-metrics.jsonl`. Only the values passed are recorded;
+every other field is null (an unset `--reopens` is `null`, meaning not measured; an explicit
+`0` means measured, none), and the two ratios are never derived because the contracts
+do not define them. It is idempotent per mission and revision: a mission that already has
+a line for the same revision is left unchanged (`handoff metrics already recorded for this
+mission; nothing written`), so pass `--model`, `--effort`, `--level-source` and `--reopens`
+on the first run. `--revision <n>` (n >= 1) records one further line for a gate revision.
+
+---
+
 ## provider
 
 Validates and onboards an already-materialized local provider package. The
@@ -146,7 +284,7 @@ optional `skill.yaml` is checked only as a compatibility view.
 
 ```bash
 strategist provider validate <source> [--format table|json|yaml]
-strategist provider add <source> --slot refinement|execution [--root <dir>] [--format table|json|yaml]
+strategist provider add <source> --slot discovery|refinement|execution [--root <dir>] [--format table|json|yaml]
 ```
 
 `validate` is read-only and reports static readiness separately from
@@ -155,9 +293,16 @@ authorized runtime probe succeeds. Version 1 accepts local directories only
 and rejects URLs or git references. `add` stages the source, advances the
 existing lock/binding generation, compiles the workspace, and records a
 recoverable transaction. Failed onboarding restores the previous binding.
+`add` records the binding in `plugins.lock` only and prints the `active.yaml`
+line to set (`slots.<slot>` to the instance id, `<package-id>@<version>`);
+`strategist check` reads the slot's provider from `active.yaml`. `validate` has
+no `--slot` flag: it checks the package contract without binding it to a slot.
+For `discovery` and `refinement` the adapter must declare `risk_score:
+write_analysis`, or `add` refuses it.
 
-External providers cannot be added to `discovery`: native Ranger owns that
-route and the command fails closed with `native_role_authority`.
+External providers can participate in `discovery` only through the native Ranger
+route; the command fails closed with `role_invocation_failed` when the selected
+Weapon cannot be invoked or normalized.
 
 See [Provider extension guide](provider-extension.md) for the source contract,
 upgrade, rollback, and evidence boundaries.
@@ -300,7 +445,7 @@ strategist validate [--root=<dir>]
 
 | File | What is checked |
 |------|----------------|
-| `active.yaml` | Exists, valid YAML, passes `domain.ActiveConfig` validation (`mode`, `base_path` and all three `slots` present; valid `provider_resolution_policy` and `leveling` — the same rules `compile` and `install` enforce), and `mode` is `pragmatic` or `epic` |
+| `active.yaml` | Exists, valid YAML, passes `domain.ActiveConfig` validation (`mode`, `base_path` and all three `slots` present; retired `provider_resolution_policy` values are rejected; `leveling` uses the same rules `compile` and `install` enforce), and `mode` is `pragmatic` or `epic` |
 | `personas/*.yaml` | Each file satisfies the same runtime contract `check` enforces: `id`, `tone_directive`, `phase_labels.{discovery,refinement,execution}`, `diagnostics.pipeline_header`, `diagnostics.bootstrap_origin` |
 | `roles/*.yaml` | A native role definition (has a `role` key) must have `role` and a `slot` that is one of `discovery`/`refinement`/`execution`. A slot map (e.g. `roles/default.yaml`, shaped like `active.yaml`'s `slots:`) must have all three slots present and non-empty |
 | `knowledge.index.yaml` | If present, valid YAML |
@@ -352,6 +497,12 @@ Validates operational readiness of the Strategist runtime — confirms the skill
 
 `check` does **not** test whether the environment can invoke external agents. It confirms the runtime is installed and configured. If a slot provider fails to be invoked during a mission, Strategist reports `role_invocation_failed` as an internal skill error — not a `check` failure.
 
+When the project already contains a `.codex/` directory, `check` also reports
+non-blocking CODEX bootstrap advisories: `codex_bootstrap_missing`,
+`codex_bootstrap_stale`, or `codex_bootstrap_unreadable`. These advisories cover
+the project-local `commands.md` seed only; they do not invoke CODEX or certify
+the provider. Repair them with `strategist compile` or reinstall the skill.
+
 ```
 strategist check [--root=<dir>] [--strict] [--simulate]
 ```
@@ -374,6 +525,7 @@ strategist check [--root=<dir>] [--strict] [--simulate]
 - Active persona file exists and contains required fields
 - Every normative runtime file (`SKILL.md`, `skill.yaml`, `protocol.md`, `templates/agent-protocol.md`, the preflight, approval-gate and execution contracts, the identity drift patterns) and the generated `agent-protocol.md` **exists**; an absent file is reported as `runtime_missing` (repair: `strategist install`, or `strategist compile` for `agent-protocol.md`) and `--json` returns `status: blocked`
 - Normative runtime files match embedded defaults, byte for byte (detects stale installs)
+- When `.codex/` exists, its generated `commands.md` seed is checked for presence and current Strategist Runtime Discovery content; drift is reported as a non-blocking advisory
 - With `--strict`: compiled artifacts exist and match the recorded manifest hashes (see `compile`)
 
 **Success output:**

@@ -33,7 +33,9 @@ description: >
 #     agent following contract/prose doctrine. A Go type or pure function that
 #     implements the logic but has zero non-test callers is agent_only, not
 #     machine_observed, until something on a live path actually invokes it
-#     (e.g. internal/domain/pipeline_bypass.go's EvaluatePipelineBypass today).
+#     (internal/domain/pipeline_bypass.go's EvaluatePipelineBypass was in that
+#     state until `mission submit` began calling it on the execution-entry
+#     transition; see the pipeline_bypass_detected entry).
 #
 # Every errors[] entry below was reviewed against its actual Go call sites
 # (2026-08-30): both former `enforced_by: binary` tokens (not_installed,
@@ -229,6 +231,20 @@ errors:
     action: "fix the reported trust/permission_grant certification reason, then rerun strategist check"
     enforced_by: machine_observed
 
+  - token: ranked_runtime_requires_host_invocation
+    emit: "check=unknown reason=ranked_runtime_requires_host_invocation"
+    scope: slot
+    reason: "the provider's host or executable runtime cannot be proven by static readiness; only a live invocation through the declared host connector proves it (advisory, never blocks)"
+    action: "invoke the Weapon through its declared host connector; a failed invocation stops the mission with role_invocation_failed and no fallback runs"
+    enforced_by: machine_observed
+
+  - token: ranked_embedded_runtime_ready
+    emit: "check=ready reason=ranked_embedded_runtime_ready"
+    scope: slot
+    reason: "the provider runs on the Strategist embedded runtime, which needs no private runtime root, host Node, or host connector (success detail, never blocks)"
+    action: "no action required"
+    enforced_by: machine_observed
+
   - token: ranked_runtime_state_legacy
     emit: "check=blocked reason=ranked_runtime_state_legacy"
     scope: slot
@@ -365,9 +381,9 @@ errors:
   - token: pipeline_bypass_detected
     emit: "error=pipeline_bypass_detected"
     scope: execution
-    reason: "repository mutation attempted without canonical pipeline evidence for the active route"
+    reason: "execution entered (or repository mutation attempted) without canonical pipeline evidence for the active route"
     action: "stop; complete the missing phase and resume through the pipeline"
-    enforced_by: agent_only
+    enforced_by: machine_enforced
 
   - token: already_claimed
     emit: "blocked reason=already_claimed"

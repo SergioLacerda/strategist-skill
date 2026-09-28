@@ -81,6 +81,19 @@ type Provider struct {
 	Display map[string]string `yaml:"display,omitempty" json:"-"`
 }
 
+// ProviderSupportsEffort reports whether a resolved provider declares the
+// supplied effort tier. The generic catalog remains the vocabulary baseline;
+// execution authority belongs to the selected provider profile.
+func (p Policy) ProviderSupportsEffort(provider, effort string) bool {
+	providerID := strings.ToUpper(strings.TrimSpace(provider))
+	effort = strings.ToLower(strings.TrimSpace(effort))
+	profile, ok := p.Providers[providerID]
+	if !ok || !profile.Ranked || effort == "" {
+		return false
+	}
+	return contains(profile.EffortTiers, effort)
+}
+
 // Signals are runtime facts used to decide whether a role should escalate.
 type Signals struct {
 	Ambiguity           string

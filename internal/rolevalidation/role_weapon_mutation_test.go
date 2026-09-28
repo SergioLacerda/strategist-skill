@@ -68,7 +68,7 @@ func TestRoleWeaponCriticalMutants(t *testing.T) {
     installed_instance_id: openspec-propose
 `,
 			catalog: `
-schema_version: strategist-plugin-catalog/v1
+schema_version: strategist-plugin-catalog/v2
 providers:
   - id: brainstorming
     canonical_role: ranger
@@ -88,7 +88,7 @@ providers:
     installed_instance_id: openspec-propose
 `,
 			catalog: `
-schema_version: strategist-plugin-catalog/v1
+schema_version: strategist-plugin-catalog/v2
 providers:
   - id: brainstorming
     canonical_role: archivist

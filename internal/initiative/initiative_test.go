@@ -54,6 +54,43 @@ func TestAdvisorKeepsLevelingAuthoritySeparate(t *testing.T) {
 	require.NoError(t, ValidateAdviceJSON(mustJSON(t, advice)), "valid advice JSON rejected")
 }
 
+func TestAdvisorCopiesLevelingResolutionBeforeConsultation(t *testing.T) {
+	resolution := &LevelingResolution{
+		EventID: "level-1", Role: "ranger", State: ObservationKnown,
+		Model: "host-model", Provider: "host", Effort: EffortHigh,
+		Capability: "reasoning", LevelSource: "host",
+	}
+	advice, err := (Advisor{Policy: DefaultPolicy()}).Advise(AdviceInput{
+		MissionID: "m-level", Role: "ranger", RunID: "run", Trigger: TriggerInitial,
+		Leveling: resolution,
+	})
+	require.NoError(t, err)
+	resolution.Model = "mutated-after-consultation"
+	resolution.Provider = "mutated-provider"
+	require.NotNil(t, advice.Leveling)
+	require.Equal(t, "host-model", advice.Leveling.Model)
+	require.Equal(t, "host", advice.Leveling.Provider)
+	require.Equal(t, "host-model", advice.Observed.Model)
+}
+
+func TestAdvisorRejectsLevelingResolutionForAnotherRole(t *testing.T) {
+	_, err := (Advisor{Policy: DefaultPolicy()}).Advise(AdviceInput{
+		MissionID: "m-level-role", Role: "ranger", RunID: "run", Trigger: TriggerInitial,
+		Leveling: &LevelingResolution{EventID: "level-1", Role: "sniper", State: ObservationKnown},
+	})
+	require.ErrorContains(t, err, "resolution role does not match")
+}
+
+func TestRuntimeReevaluationRejectsTheSameLevelingEvent(t *testing.T) {
+	runtime, err := NewRuntime(t.TempDir(), DefaultPolicy())
+	require.NoError(t, err)
+	resolution := &LevelingResolution{EventID: "level-1", Role: "ranger", State: ObservationKnown, Effort: EffortHigh}
+	_, _, err = runtime.EnterRole(AdviceInput{MissionID: "m-level-retry", Role: "ranger", RunID: "run", Trigger: TriggerInitial, Leveling: resolution})
+	require.NoError(t, err)
+	_, err = runtime.Reevaluate(AdviceInput{MissionID: "m-level-retry", Role: "ranger", RunID: "run", Trigger: TriggerScopeChanged, Leveling: resolution})
+	require.ErrorContains(t, err, "new LEVELING event")
+}
+
 func TestAdvisorReevaluationRequiresSupersession(t *testing.T) {
 	advisor := Advisor{Policy: DefaultPolicy()}
 	_, err := advisor.Advise(AdviceInput{MissionID: "m", Role: "ranger", RunID: "r", Trigger: TriggerScopeChanged})
@@ -104,9 +141,9 @@ func TestResultValidationChallengesMissingEvidenceAndBlockedObligation(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := Result{AdviceID: advice.AdviceID, MissionID: "m", Role: "archivist", RunID: "r", GateIndependent: true, Checks: []ObligationCheck{{ID: "evidence", Status: CheckBlocked}}, EvidenceRefs: nil}
+	result := Result{AdviceID: advice.AdviceID, MissionID: "m", Role: "archivist", RunID: "r", GateIndependent: true, Checks: []ObligationCheck{{ID: "challenge_handoff", Status: CheckBlocked}, {ID: "validate_contracts", Status: CheckBlocked}, {ID: "correlate_outcomes", Status: CheckBlocked}}, EvidenceRefs: nil}
 	assessment, err := AssessResult(advice, result)
-	if err != nil || !assessment.Challenge || assessment.ConfidenceCeiling != "low" || len(assessment.Reasons) != 2 {
+	if err != nil || !assessment.Challenge || assessment.ConfidenceCeiling != "low" || len(assessment.Reasons) != 4 {
 		t.Fatalf("unexpected assessment: %+v err=%v", assessment, err)
 	}
 	bad := result
@@ -114,7 +151,7 @@ func TestResultValidationChallengesMissingEvidenceAndBlockedObligation(t *testin
 	if _, err := AssessResult(advice, bad); err == nil {
 		t.Fatal("result must not authorize the Approval Gate")
 	}
-	good := Result{AdviceID: advice.AdviceID, MissionID: "m", Role: "archivist", RunID: "r", GateIndependent: true, Checks: []ObligationCheck{{ID: "evidence", Status: CheckSatisfied, EvidenceRefs: []EvidenceRef{{ID: "e-1", Class: "explicit"}}}}, EvidenceRefs: []EvidenceRef{{ID: "e-1", Class: "explicit"}}, Outcomes: []OutcomeCorrelation{{ID: "out-1", Status: "observed", EvidenceRefs: []EvidenceRef{{ID: "e-1", Class: "explicit"}}}}}
+	good := Result{AdviceID: advice.AdviceID, MissionID: "m", Role: "archivist", RunID: "r", GateIndependent: true, Checks: []ObligationCheck{{ID: "challenge_handoff", Status: CheckSatisfied, EvidenceRefs: []EvidenceRef{{ID: "e-1", Class: "explicit"}}}, {ID: "validate_contracts", Status: CheckSatisfied, EvidenceRefs: []EvidenceRef{{ID: "e-2", Class: "explicit"}}}, {ID: "correlate_outcomes", Status: CheckSatisfied, EvidenceRefs: []EvidenceRef{{ID: "e-3", Class: "explicit"}}}}, EvidenceRefs: []EvidenceRef{{ID: "e-1", Class: "explicit"}, {ID: "e-2", Class: "explicit"}, {ID: "e-3", Class: "explicit"}}, Outcomes: []OutcomeCorrelation{{ID: "out-1", Status: "observed", EvidenceRefs: []EvidenceRef{{ID: "e-1", Class: "explicit"}}}}}
 	assessment, err = AssessResult(advice, good)
 	if err != nil || assessment.Challenge {
 		t.Fatalf("evidenced result should remain advisory without challenge: %+v %v", assessment, err)

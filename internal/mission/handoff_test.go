@@ -113,7 +113,7 @@ func TestArchivistToSniper_InitiativeChallengeReturnsToRefinement(t *testing.T) 
 	handoffEnvelope, err := runtime.CompleteRole(advice, initiative.Result{
 		AdviceID: advice.AdviceID, MissionID: advice.MissionID, Role: advice.Role, RunID: advice.RunID,
 		GateIndependent: true,
-		Checks:          []initiative.ObligationCheck{{ID: "mandatory", Status: initiative.CheckBlocked}},
+		Checks:          []initiative.ObligationCheck{{ID: "challenge_handoff", Status: initiative.CheckBlocked}, {ID: "validate_contracts", Status: initiative.CheckBlocked}, {ID: "correlate_outcomes", Status: initiative.CheckBlocked}},
 	}, "sniper")
 	require.NoError(t, err)
 	require.True(t, handoffEnvelope.Assessment.Challenge)

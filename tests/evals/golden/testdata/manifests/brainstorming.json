@@ -13,8 +13,8 @@
   "weapon_contract": {
     "invocation_evidence": "required",
     "native_substitution": "forbidden",
-    "participation": "advisory",
+    "participation": "required",
     "role_owner": "ranger",
-    "unavailable_behavior": "report_advisory"
+    "unavailable_behavior": "role_invocation_failed"
   }
 }

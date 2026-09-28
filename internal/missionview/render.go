@@ -3,6 +3,8 @@ package missionview
 import (
 	"fmt"
 	"io"
+
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
 
 // RenderHuman writes a deterministic concise representation of a View.
@@ -17,6 +19,9 @@ func RenderHuman(w io.Writer, v View) error {
 		return err
 	}
 	if err := renderLevels(w, v.Leveling); err != nil {
+		return err
+	}
+	if err := renderTokenUsage(w, v.TokenUsage); err != nil {
 		return err
 	}
 	return renderDiagnostics(w, v.Diagnostics)
@@ -67,6 +72,61 @@ func renderLevelRole(w io.Writer, role LevelingRole) error {
 	}
 	level := role.Effective
 	return writef(w, "  %s: %s source=%s model_source=%s effort_source=%s provider=%s capability=%s fallback_used=%t fallback_reason=%s policy_version=%d policy_digest=%s\n", level.Role, level.Label(), level.Source, level.ModelSource, level.EffortSource, level.Provider, level.Capability, level.FallbackUsed, level.FallbackReason, level.PolicyVersion, level.PolicyDigest)
+}
+
+// renderTokenUsage prints the reported token-usage section (F-T2, ADR-0057 §
+// design.md task 3.3). The declared budget tier is shown next to the totals
+// without a numeric verdict — see TokenUsageSection's doc comment for why no
+// pass/fail comparison is made.
+func renderTokenUsage(w io.Writer, usage TokenUsageSection) error {
+	if err := renderTokenUsageHeader(w, usage); err != nil {
+		return err
+	}
+	if usage.Availability != Available {
+		return nil
+	}
+	return renderAvailableTokenUsage(w, usage)
+}
+
+func renderTokenUsageHeader(w io.Writer, usage TokenUsageSection) error {
+	if err := writef(w, "Token Usage\n  availability: %s\n", usage.Availability); err != nil {
+		return err
+	}
+	if usage.DeclaredTokenBudget == "" {
+		return nil
+	}
+	return writef(w, "  declared_token_budget: %s\n", usage.DeclaredTokenBudget)
+}
+
+func renderAvailableTokenUsage(w io.Writer, usage TokenUsageSection) error {
+	if err := writef(w, "  total_tokens_in: %d\n  total_tokens_out: %d\n", usage.TotalTokensIn, usage.TotalTokensOut); err != nil {
+		return err
+	}
+	if err := writef(w, "  ledger_comparison: %s reported_records=%d handoff_records=%d\n", usage.LedgerComparison.Status, usage.LedgerComparison.ReportedRecordCount, usage.LedgerComparison.HandoffRecordCount); err != nil {
+		return err
+	}
+	if err := renderLedgerInconsistencies(w, usage.LedgerComparison.Inconsistencies); err != nil {
+		return err
+	}
+	return renderTokenRecords(w, usage.Records)
+}
+
+func renderLedgerInconsistencies(w io.Writer, inconsistencies []string) error {
+	for _, inconsistency := range inconsistencies {
+		if err := writef(w, "  ledger_inconsistency: %s\n", inconsistency); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func renderTokenRecords(w io.Writer, records []telemetry.MissionTokenUsageRecord) error {
+	for _, rec := range records {
+		if err := writef(w, "  %s: tokens_in=%d tokens_out=%d source=%s\n", rec.ReportedAt, rec.TokensIn, rec.TokensOut, rec.Source); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func renderDiagnostics(w io.Writer, diagnostics []Diagnostic) error {

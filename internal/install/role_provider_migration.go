@@ -22,15 +22,18 @@ const roleSlotMapPath = "roles/default.yaml"
 // runWizard already reads from, so this never touches the runtime
 // .strategist/ tree (FileExtractor.ReadFile is write-only there).
 func PlanRoleProviderMigration(extractor domain.FileExtractor, activeSlots map[string]string) (RoleProviderMigrationPreview, error) {
-	roleSlotMap, err := loadRoleSlotMap(extractor)
-	if err != nil {
-		return RoleProviderMigrationPreview{}, fmt.Errorf("role/provider migration: %w", err)
-	}
 	catalog, err := loadPluginCatalog(extractor)
 	if err != nil {
 		return RoleProviderMigrationPreview{}, fmt.Errorf("role/provider migration: %w", err)
 	}
+	return planRoleProviderMigrationWithCatalog(extractor, catalog, activeSlots)
+}
 
+func planRoleProviderMigrationWithCatalog(extractor domain.FileExtractor, catalog pluginCatalog, activeSlots map[string]string) (RoleProviderMigrationPreview, error) {
+	roleSlotMap, err := loadRoleSlotMap(extractor)
+	if err != nil {
+		return RoleProviderMigrationPreview{}, fmt.Errorf("role/provider migration: %w", err)
+	}
 	entries := make([]RoleProviderPreviewEntry, 0, len(domain.RequiredSlots()))
 	for _, slot := range domain.RequiredSlots() {
 		entry, err := planRoleProviderEntry(extractor, catalog, roleSlotMap, activeSlots, slot)

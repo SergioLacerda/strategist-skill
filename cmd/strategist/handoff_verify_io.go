@@ -114,6 +114,7 @@ func printHandoffVerifyResult(cmd *cobra.Command, result handoff.Result) error {
 	fmt.Fprintf(&b, "status: %s\n", result.Status)
 	fmt.Fprintf(&b, "passed: %t\n", result.Passed)
 	fmt.Fprintf(&b, "critical_failures: %d\n", result.CriticalFailures)
+	appendHandoffVerifyList(&b, "policy_errors", result.PolicyErrors)
 	appendHandoffVerifyList(&b, "missing_refs", result.MissingRefs)
 	appendHandoffVerifyList(&b, "missing_challenges", result.MissingChallenges)
 	appendHandoffVerifyList(&b, "misclassified_refs", result.MisclassifiedRefs)
@@ -138,14 +139,24 @@ func appendHandoffVerifyList(b *strings.Builder, label string, values []string) 
 	fmt.Fprintf(b, "%s: %v\n", label, values)
 }
 
-func recordHandoffVerify(cmd *cobra.Command, opts handoffVerifyOptions, result handoff.Result) error {
+// recordHandoffVerify appends result to handoff-challenges.jsonl. transition
+// resolves opts.Transition, falling back to the resolved policy's own
+// Transition field: --transition is documented as "ignored if --policy is
+// set", so a --policy-driven verification with no --transition flag
+// previously recorded an empty Transition, un-bucketing it from every
+// per-transition handoff metric (F-H3, design.md task 2.6).
+func recordHandoffVerify(cmd *cobra.Command, opts handoffVerifyOptions, policy handoff.Policy, result handoff.Result) error {
 	root, err := resolveMetricsRoot(cmd, "handoff verify", opts.Root)
 	if err != nil {
 		return err
 	}
+	transition := opts.Transition
+	if transition == "" {
+		transition = policy.Transition
+	}
 	rec := telemetry.ChallengeRecord{
 		MissionID:                opts.MissionID,
-		Transition:               opts.Transition,
+		Transition:               transition,
 		Attempt:                  opts.Attempt,
 		Timestamp:                time.Now().UTC().Format(time.RFC3339),
 		Status:                   result.Status,

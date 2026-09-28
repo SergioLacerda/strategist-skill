@@ -51,6 +51,13 @@ Before writing the artifact:
 | Exists + status `gate_rejected` | Do not reprocess; report status |
 | Exists + status `documentation_applied` | Emit warning, do not reprocess |
 
+## Runbook Selection
+
+At Retrieval Cascade stage 6, run `strategist runbook select --format json --signal <signal> ...`
+(one `--signal` per mission signal: `task_type`, `discovery_subtype`, and the salient keywords
+of the request) and record its result in `selected_runbooks_hint`. An empty list means it ran
+and nothing matched; `null` is reserved for "not run" and must be reported in `uncertainties`.
+
 ## Scope Observations
 
 Surface cross-phase observations during exploration:

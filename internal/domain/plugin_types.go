@@ -126,6 +126,13 @@ type AdapterContract struct {
 	Entrypoints             []string           `yaml:"entrypoints"`
 	PackageConstraint       string             `yaml:"package_constraint"`
 	RequestedPermissions    []PluginPermission `yaml:"requested_permissions"`
+	// RiskScore and ScratchRoot are the Weapon's risk label and runtime scratch
+	// declaration. They live in the adapter, the Strategist-owned compatibility
+	// layer, so they are read from here and not from a compat skill.yaml view.
+	// RiskScore is a migration label, not the permission authority (ADR-0030):
+	// grants are.
+	RiskScore   string `yaml:"risk_score,omitempty"`
+	ScratchRoot string `yaml:"scratch_root,omitempty"`
 }
 
 // CompatibilityReason identifies one structured compatibility failure.

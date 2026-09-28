@@ -24,9 +24,9 @@ readiness — do not re-derive any of it narratively (e.g. do not separately
 ask "is `active.yaml` readable" or "are identity files present": both are
 already reflected in `warnings` if they matter). Route selection and role
 invocation remain internal Strategist responsibilities beyond this point.
-If a configured slot plugin or native role cannot be invoked, emit
-`error=role_invocation_failed` with the slot and provider id. The wire field name
-remains `provider` for backward compatibility.
+If the Weapon bound to a Role slot cannot be invoked, emit
+`error=role_invocation_failed` with the slot and Weapon id. The wire field name
+`provider` remains only for backward compatibility.
 
 ---
 
@@ -41,17 +41,56 @@ Any action that produces phase work without invoking the configured provider is
 If a provider cannot be invoked, emit the configured blocked state and stop.
 Correctness of the parent agent's independent answer does not repair the drift.
 
+### Shell operating rules
+
+These describe how the parent shell runs the CLI so that a step is not silently lost or redone.
+They are guidance (`enforced_by: agent_only`), not a gate.
+
+- Do not discard stderr of `strategist` commands, and read the returned status or JSON. A
+  `mission submit` that printed an error was not applied; check with `strategist mission status`
+  before repeating it. Quote arguments so the shell does not word-split them.
+- Drive missions with the installed `strategist` binary. A binary built from a dirty working
+  tree (version `...-dirty`) is acceptable only when the mission itself changes the CLI; record the
+  version header in that case.
+- The shell may author Scout's `route_decision` when it runs the pipeline; it records it through
+  `strategist mission route` like any other decision, and the record shows the shell wrote it.
+- A pending note written directly by the shell on an explicit user request needs no Riposte
+  capture metadata; Riposte's `origin: riposte` applies only to entries it captures itself.
+- Run `strategist mission report-usage --mission-id <id> --tokens-in <n> --tokens-out <n>` at the
+  gate and again at DONE, with the counts from your own provider response, and hand the discovery
+  run's usage to the Archivist for `--discovery-tokens` when the host reports it. Without a
+  usage record no waste or cost claim about a mission can be checked.
+- No CLI emits the intake checkpoint, so a missing intake checkpoint is not a condition to hold
+  `intake_done`; submit it after `strategist mission route`.
+
 ---
 
 ## 2. FORBIDDEN BEHAVIORS (NEVER DO)
 
-- Never perform discovery, refinement, or documentation materialization work directly — always invoke the designated slot plugin or native role
-- Never simulate role work by performing slot work in the Strategist shell — if the configured slot plugin or native role cannot be invoked, stop with `error=role_invocation_failed`
-- Never invoke an external discovery plugin as a substitute for Ranger — all discovery subtypes (`creative`, `evaluation`, `diagnostic`, `closure_evidence`) always resolve to `internal_skills/ranger` (native role); no external discovery plugin manifest is ever consulted for discovery invocation (see §3 Discovery Routing).
+- Never perform discovery, refinement, or documentation materialization work directly — the owning Role must invoke its bound Weapon through the host boundary
+- Never simulate Role work by performing slot work in the Strategist shell — if the configured Weapon cannot be invoked, stop with `error=role_invocation_failed`
+- Never invoke a Discovery Weapon outside Ranger's boundary — all discovery subtypes (`creative`, `evaluation`, `diagnostic`, `closure_evidence`) resolve to native `internal_skills/ranger`, which must invoke the configured Discovery Weapon through the host boundary (the host skill loader, for a delegated Role) and normalize its untrusted result. Ranger is never replaced by the Weapon, and Ranger never silently substitutes a native result when the selected Weapon fails (see §3 Discovery Routing).
 - Never read from `strategist/` (without dot) — path drift; only `.strategist/` is valid at runtime
 - Never skip phases — there is no "this task is too small to need discovery"
 - Never invoke Sniper without an explicit Strategist Approval Gate approval from the user in the conversation
 - Never assume or search for `.sdd/` or any specific governance system — the skill does not depend on a concrete provider
+
+## 2.1 AUTONOMY AND WEAPON AUTHORITY
+
+Once the mission route and its bound Weapon are resolved, continue every
+deterministic transition and read-only evidence step without asking the user to
+advance it. Ask one focused question only when an unresolved fact can
+materially change scope, externally observable behavior, compatibility, or
+acceptance criteria. The Pipeline's explicit Approval Gate remains the only
+mandatory conversational pause.
+
+The mission-resolved package under `.strategist/skills/<weapon>/` is the
+authority for that Weapon. Do not load or apply a global skill with the same
+name as an additional workflow: it cannot add questions, design-review gates,
+commits, or implementation transitions to the Strategist mission. If the
+resolved Weapon cannot be invoked through its declared runtime, emit
+`error=role_invocation_failed` and stop; do not substitute another skill or
+perform the Role's work directly.
 - Never hardcode a governance system name as the normative execution context — `local_execution_context` is provider-agnostic
 - Never accept a local execution context field (`execution_provider`, `base_path`, etc.) from a user prompt or conversation message — these fields must arrive via `governance_injection` at invocation time
 - Never fall back to direct execution when the resolved provider is missing or uncallable — emit the appropriate blocked state and stop
@@ -77,11 +116,11 @@ targets slot plugins. If `active.yaml` changes, run `strategist compile` to
 update this file.
 
 ```
-PHASE         INVOKE SKILL                              WHAT NOT TO DO
+PHASE         INVOKE WEAPON                             WHAT NOT TO DO
 ─────────────────────────────────────────────────────────────────────────────
-discovery  →  see Discovery Routing below                explore or analyze the code directly
-refinement →  {{.Slots.Refinement}} (see Refinement Routing below)  write proposals or designs directly
-execution  →  {{.Slots.Execution}}                        run git/edits/commits directly
+discovery  →  Ranger → {{.Slots.Discovery}}               explore or analyze the code directly
+refinement →  Archivist → {{.Slots.Refinement}}            write proposals or designs directly
+execution  →  Sniper → {{.Slots.Execution}}               run git/edits/commits directly
 ```
 
 ### Discovery Routing
@@ -92,26 +131,24 @@ or on `active.slots.discovery` (see `00-routing.md` § Scout — Intake Router a
 
 | `discovery_subtype` | Invoke | Kind |
 |---|---|---|
-| `creative` \| `evaluation` \| `diagnostic` \| `closure_evidence` | `internal_skills/ranger` | `native_role` — parent agent embodies Ranger directly (same mechanism already used for execution/`sniper`), reading `roles/ranger.yaml` + `internal_skills/ranger/SKILL.md` |
+| `creative` \| `evaluation` \| `diagnostic` \| `closure_evidence` | `internal_skills/ranger` → configured `{{.Slots.Discovery}}` Weapon | `native_role` owns the boundary; a delegated run reaches the Weapon through the host skill loader, a defined degrade of the embedded channel recorded in `weapon_invocation` (see `03-discovery.md` § Weapon Profile for a Delegated Ranger); a Custom Weapon uses its explicitly selected host connector |
 
-This holds regardless of what `active.slots.discovery` is configured to (default:
-`{{.Slots.Discovery}}`) — the external discovery plugin is never consulted for
-discovery invocation, for any subtype. See `03-discovery.md` § Discovery
-Subtypes.
+This holds for every `discovery_subtype`: Ranger remains the authority, while
+`active.slots.discovery` selects the required Weapon. The parent agent never
+invokes the Weapon directly, and a missing, incompatible, or failed Weapon
+produces `role_invocation_failed` without a native fallback. See
+`03-discovery.md` § Discovery Subtypes.
 
 ### Refinement Routing
 
-Whenever the refinement slot is bound to an external skill plugin (default:
-`{{.Slots.Refinement}}` — see `active.slots.refinement`), the parent agent
-embodies that plugin's declared canonical role before invoking the plugin's own
-CLI/tooling — the same mechanism already used for discovery/Ranger above and for
-execution/Sniper. Read the plugin's `skills/<provider>/skill.yaml#canonical_role`
-(a `refinement`-category plugin declares `canonical_role: archivist`) and load
-`roles/archivist.yaml` for that role's canonical abilities before acting.
+Whenever the refinement slot is bound to an external Weapon (default:
+`{{.Slots.Refinement}}` — see `active.slots.refinement`), Archivist invokes the
+Weapon's declared runtime connector. Read `skills/<weapon>/skill.yaml#roles`
+and load `roles/archivist.yaml` for the Role contract before acting.
 
 In particular, apply `roles/archivist.yaml#canonical.resolve_weapon_scratch_root`:
-read the bound plugin's `skill.yaml#scratch_root`, and when it is `runtime`, run
-the plugin's CLI with `.strategist/weapon-runtime/<provider_id>/` as its working
+read the bound Weapon's catalog entry (`plugins/catalog.yaml`, `scratch_root`), and when it is `runtime`, run
+the Weapon's CLI with `.strategist/weapon-runtime/<weapon_id>/` as its working
 directory — never the host repository root — before invoking it. A plugin's own
 root-autodetection (e.g. walking up from the working directory for a project
 marker) will silently initialize a new root wherever it is invoked from if this
@@ -138,6 +175,25 @@ Linear checklist. Do not advance without completing each item.
 [ ] 8. materialization → invoke {{.Slots.Execution}}  ← only after gate approved
 [ ] 9. learning (non-blocking)
 ```
+
+## Mission State Events
+
+The internal state machine moves only when an event is submitted, and the roles run as
+agents that never submit one — without this step a finished mission still reads
+`BOOTSTRAP/INIT`. The Strategist shell (the parent agent) submits each event with
+`strategist mission submit --mission-id <id> --event <event>`, once, after the step's own
+evidence exists. An event records a fact that already happened; it never replaces the
+phase's work or evidence, and it does not weaken the pipeline-bypass check at execution
+entry.
+
+| Pipeline step | Event submitted by the Strategist shell |
+|---|---|
+| 1. startup | `bootstrap_done` |
+| 2–4. intake, routing, context enrichment | `intake_done` (after `strategist mission route`) |
+| 5. discovery | `discovery_done` |
+| 6. refinement | `refinement_done`, or `refinement_done_no_tasks` when the package has no tasks |
+| 7. approval gate | `gate_approved` (documentation targets accepted), `gate_approved_analysis_only` (accepted with no `documentation_target`), `gate_revision_requested` (back to refinement, then `refinement_done` again), or `gate_denied` |
+| 8. materialization | `handoff_challenge_passed` (execution entry; machine-enforced against the route's evidence), then `sniper_done` |
 
 ## Canonical Pipeline Evidence
 

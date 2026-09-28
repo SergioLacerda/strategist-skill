@@ -36,11 +36,11 @@ func (e rankedExecutable) args(rest []string) []string {
 // resolveRankedExecutable materializes the embedded, digest-verified OpenSpec
 // bundle and runs it with a validated host Node. OpenSpec is never resolved
 // from PATH; only the host Node executable is discovered there.
-func resolveRankedExecutable(ctx context.Context, strategistDir, providerID string, contract domain.RankedRuntimeContract) (rankedExecutable, *domain.RankedRuntimeStateRuntime, error) {
+func resolveRankedExecutable(ctx context.Context, strategistDir, providerID string, contract domain.WeaponRuntime) (rankedExecutable, *domain.RankedRuntimeStateRuntime, error) {
 	return resolveHostNodeRuntime(ctx, strategistDir, providerID, contract)
 }
 
-func resolveHostNodeRuntime(ctx context.Context, strategistDir, providerID string, contract domain.RankedRuntimeContract) (rankedExecutable, *domain.RankedRuntimeStateRuntime, error) {
+func resolveHostNodeRuntime(ctx context.Context, strategistDir, providerID string, contract domain.WeaponRuntime) (rankedExecutable, *domain.RankedRuntimeStateRuntime, error) {
 	node, err := resolveHostNode(ctx, strategistDir)
 	if err != nil {
 		return rankedExecutable{}, nil, err
@@ -96,7 +96,7 @@ func resolveHostNode(ctx context.Context, strategistDir string) (string, error) 
 // checkOpenSpecPin fails closed when the embedded bundle is not the version
 // the certified provider contract pins. An unpinned contract accepts any
 // embedded bundle.
-func checkOpenSpecPin(contract domain.RankedRuntimeContract, state *domain.RankedRuntimeStateRuntime) error {
+func checkOpenSpecPin(contract domain.WeaponRuntime, state *domain.RankedRuntimeStateRuntime) error {
 	for _, c := range state.Components {
 		if c.Name == "openspec" && contract.Version != "" && contract.Version != c.Version {
 			return fmt.Errorf("error=ranked_runtime_pin_mismatch: embedded OpenSpec is %s but the provider contract pins %s", c.Version, contract.Version)

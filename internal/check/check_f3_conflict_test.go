@@ -200,6 +200,107 @@ func TestEmitF3ConflictAttributionSignals_ReadRecentClaimsError(t *testing.T) {
 	}
 }
 
+// writeMissionPhase writes a minimal missions/<id>.json with just enough
+// shape for ReadMissionPhase's json.Unmarshal into domain.MissionEngineStatus
+// to succeed. It deliberately does not go through domain.RestoreMission's
+// full validation — ReadMissionPhase doesn't either, by design (see its doc
+// comment).
+func writeMissionPhase(t *testing.T, root, missionID, phase string) {
+	t.Helper()
+	dir := filepath.Join(root, "missions")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("mkdir missions: %v", err)
+	}
+	body := `{"mission_id":"` + missionID + `","phase":"` + phase + `","state":"IGNORED"}`
+	if err := os.WriteFile(filepath.Join(dir, missionID+".json"), []byte(body), 0o644); err != nil {
+		t.Fatalf("write mission state: %v", err)
+	}
+}
+
+// TestEmitF3ConflictAttributionSignals_TerminalMissionClaimReleased covers
+// ADR-0057 § A2 / design.md task 2.4: a claim from a mission that has already
+// reached DONE is excluded from collision detection, so two sequential,
+// fully completed missions touching the same target inside
+// SniperClaimWindow do not report a false collision.
+func TestEmitF3ConflictAttributionSignals_TerminalMissionClaimReleased(t *testing.T) {
+	// no t.Parallel() — mutates package global and slog default
+	root := filepath.Join(t.TempDir(), ".strategist")
+	now := time.Date(2026, 9, 27, 12, 0, 0, 0, time.UTC)
+	claimPath := telemetry.SniperClaimHistoryPath(root)
+	for _, rec := range []telemetry.SniperClaimRecord{
+		{MissionID: "m-done-1", BasePath: ".analysis", TargetPath: "docs/a.md", ClaimedAt: now.Add(-48 * time.Hour)},
+		{MissionID: "m-done-2", BasePath: ".analysis", TargetPath: "docs/a.md", ClaimedAt: now.Add(-time.Hour)},
+	} {
+		if err := telemetry.AppendSniperClaim(claimPath, rec); err != nil {
+			t.Fatalf("append claim: %v", err)
+		}
+	}
+	// Both missions completed — their claims on the same target must not
+	// collide.
+	writeMissionPhase(t, root, "m-done-1", "DONE")
+	writeMissionPhase(t, root, "m-done-2", "DONE")
+
+	origReader := readGitConflictedPaths
+	readGitConflictedPaths = func(string) ([]string, error) { return nil, nil }
+	t.Cleanup(func() { readGitConflictedPaths = origReader })
+
+	var buf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo})))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+
+	if err := emitF3ConflictAttributionSignals(root, ".analysis", now); err != nil {
+		t.Fatalf("emit f3 signals: %v", err)
+	}
+	out := buf.String()
+	if strings.Contains(out, "signal=sniper_claim_collision") {
+		t.Fatalf("expected no claim collision signal once both missions are terminal, got: %s", out)
+	}
+}
+
+// TestEmitF3ConflictAttributionSignals_InFlightMissionClaimsStillCollide is
+// the sibling of the terminal-release test: two missions that have NOT
+// reached a terminal phase still collide on the same target, and a mission
+// with no readable state file at all is conservatively treated as still
+// live rather than silently excused.
+func TestEmitF3ConflictAttributionSignals_InFlightMissionClaimsStillCollide(t *testing.T) {
+	// no t.Parallel() — mutates package global and slog default
+	root := filepath.Join(t.TempDir(), ".strategist")
+	now := time.Date(2026, 9, 27, 12, 0, 0, 0, time.UTC)
+	claimPath := telemetry.SniperClaimHistoryPath(root)
+	for _, rec := range []telemetry.SniperClaimRecord{
+		{MissionID: "m-inflight", BasePath: ".analysis", TargetPath: "docs/b.md", ClaimedAt: now.Add(-time.Hour)},
+		{MissionID: "m-unreadable", BasePath: ".analysis", TargetPath: "docs/b.md", ClaimedAt: now.Add(-time.Minute)},
+	} {
+		if err := telemetry.AppendSniperClaim(claimPath, rec); err != nil {
+			t.Fatalf("append claim: %v", err)
+		}
+	}
+	// m-inflight has an explicit non-terminal phase; m-unreadable has no
+	// state file at all (found=false), which must still be treated as live.
+	writeMissionPhase(t, root, "m-inflight", "EXECUTION")
+
+	origReader := readGitConflictedPaths
+	readGitConflictedPaths = func(string) ([]string, error) { return nil, nil }
+	t.Cleanup(func() { readGitConflictedPaths = origReader })
+
+	var buf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo})))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+
+	if err := emitF3ConflictAttributionSignals(root, ".analysis", now); err != nil {
+		t.Fatalf("emit f3 signals: %v", err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "signal=sniper_claim_collision") {
+		t.Fatalf("expected claim collision signal for two in-flight/unreadable missions, got: %s", out)
+	}
+	if !strings.Contains(out, "docs/b.md") {
+		t.Fatalf("expected target path in emitted signal, got: %s", out)
+	}
+}
+
 func TestReadGitConflictedPathsFromWorktree_CleanRepoSuccess(t *testing.T) {
 	t.Parallel()
 	if _, err := exec.LookPath("git"); err != nil {

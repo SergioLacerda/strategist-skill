@@ -60,6 +60,32 @@ release:
     name: strategist-skill
   draft: false
   replace_existing_artifacts: true
+  # Verification instructions in every release body. The release workflow runs
+  # the same checks after publishing (scripts/verify-published-release.sh); keep
+  # this text in step with SECURITY.md § Verifying Release Integrity.
+  footer: |
+    ## Verify this release
+
+    Replace `strategist-linux-amd64` with the asset you downloaded.
+
+    ```bash
+    # Checksums
+    sha256sum --check --ignore-missing SHA256SUMS
+
+    # GitHub build provenance
+    gh attestation verify strategist-linux-amd64 --owner SergioLacerda
+
+    # Cosign keyless signature (download strategist-linux-amd64.bundle too)
+    cosign verify-blob strategist-linux-amd64 \
+      --bundle strategist-linux-amd64.bundle \
+      --certificate-identity "https://github.com/SergioLacerda/strategist-skill/.github/workflows/release.yml@refs/tags/{{ .Tag }}" \
+      --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+
+    # The binary reports this release
+    chmod +x strategist-linux-amd64 && ./strategist-linux-amd64 version   # V{{ .Version }}
+    ```
+
+    Details and rationale: [SECURITY.md](https://github.com/SergioLacerda/strategist-skill/blob/main/SECURITY.md#verifying-release-integrity).
 
 changelog:
   sort: asc

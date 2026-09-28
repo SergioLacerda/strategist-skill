@@ -4,6 +4,8 @@ package leveling
 // checks. They are catalogued as machine-enforced because callers return these
 // errors on their reachable activation paths.
 const (
+	ReasonLevelingLedgerRecordOversized    = "leveling_ledger_record_oversized"
+	ReasonLevelingLockUnavailable          = "leveling_ledger_lock_unavailable"
 	ReasonLevelingPolicyStale              = "leveling_policy_stale"
 	ReasonLevelingPolicyDigestMismatch     = "leveling_policy_digest_mismatch"
 	ReasonLevelingPolicyMissing            = "leveling_policy_missing"

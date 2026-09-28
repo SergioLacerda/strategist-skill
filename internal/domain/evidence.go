@@ -4,7 +4,13 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
+	"time"
 )
+
+// MaxEvidenceExcerptBytes bounds Evidence.Excerpt: it quotes the value or the lines
+// relied on, never a whole file.
+const MaxEvidenceExcerptBytes = 1200
 
 // Evidence is a graded, sourced claim backing one or more Decisions —
 // critique_skill.txt item 3's "finding → source → snippet/hash →
@@ -43,6 +49,23 @@ type Evidence struct {
 	// URL, a human conversation, a generated artifact) or when the caller
 	// did not resolve a commit at construction time.
 	Commit string `yaml:"commit,omitempty"`
+	// Excerpt is the quoted value or lines the finding rests on. It is required in
+	// practice when SourceRef points at mutable or regenerable state (runtime logs,
+	// generated files): the package must stay checkable after that state is gone.
+	// Bounded by MaxEvidenceExcerptBytes; Hash, when set, is its digest.
+	Excerpt string `yaml:"excerpt,omitempty"`
+	// CapturedAt is the RFC3339 moment Excerpt was read. Required when Excerpt is set.
+	CapturedAt string `yaml:"captured_at,omitempty"`
+}
+
+// WithCapture returns a copy carrying the quoted excerpt and the time it was
+// captured. Hash is derived from the excerpt unless one is already set.
+func (e Evidence) WithCapture(excerpt, capturedAt string) Evidence {
+	e.Excerpt, e.CapturedAt = excerpt, capturedAt
+	if e.Hash == "" && excerpt != "" {
+		e.Hash = HashExcerpt(excerpt)
+	}
+	return e
 }
 
 // NewEvidence builds an Evidence record and derives Hash from excerpt (a
@@ -117,5 +140,35 @@ func ValidateEvidence(e Evidence) error {
 	if err := validateConfidenceCompatibility(e.Confidence, e.ConfidencePercent); err != nil {
 		errs = append(errs, err)
 	}
+	errs = append(errs, validateEvidenceCapture(e)...)
 	return errors.Join(errs...)
+}
+
+// validateEvidenceCapture checks the optional capture fields; an evidence record
+// without them is valid.
+func validateEvidenceCapture(e Evidence) []error {
+	var errs []error
+	if e.CapturedAt != "" {
+		if _, err := time.Parse(time.RFC3339, e.CapturedAt); err != nil {
+			errs = append(errs, errors.New("evidence_invalid: captured_at must be an RFC3339 timestamp"))
+		}
+	}
+	if e.Excerpt != "" {
+		errs = append(errs, validateEvidenceExcerpt(e)...)
+	}
+	return errs
+}
+
+func validateEvidenceExcerpt(e Evidence) []error {
+	var errs []error
+	if e.CapturedAt == "" {
+		errs = append(errs, errors.New("evidence_invalid: captured_at is required when excerpt is set"))
+	}
+	if len(e.Excerpt) > MaxEvidenceExcerptBytes {
+		errs = append(errs, fmt.Errorf("evidence_invalid: excerpt must be at most %d bytes", MaxEvidenceExcerptBytes))
+	}
+	if e.Hash != "" && e.Hash != HashExcerpt(e.Excerpt) {
+		errs = append(errs, errors.New("evidence_invalid: hash does not match excerpt"))
+	}
+	return errs
 }

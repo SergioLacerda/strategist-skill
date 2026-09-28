@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"gopkg.in/yaml.v3"
@@ -39,28 +40,41 @@ func checkPluginLockParity(root string, activeSlots map[string]string) []string 
 }
 
 func lockParityErrors(lock domain.PluginLockFile, activeSlots map[string]string) []string {
-	lockedBySlot := make(map[string]string, len(lock.Bindings))
+	lockedBySlot := make(map[string]domain.SlotBinding, len(lock.Bindings))
 	for _, binding := range lock.Bindings {
 		if binding.Slot != "" && binding.InstalledInstanceID != "" {
-			lockedBySlot[binding.Slot] = binding.InstalledInstanceID
+			lockedBySlot[binding.Slot] = binding
 		}
 	}
 
 	return mismatchedLockBindings(lockedBySlot, activeSlots)
 }
 
-func mismatchedLockBindings(lockedBySlot, activeSlots map[string]string) []string {
+func mismatchedLockBindings(lockedBySlot map[string]domain.SlotBinding, activeSlots map[string]string) []string {
 	var errs []string
 	for _, slot := range []string{"discovery", "refinement", "execution"} {
-		lockedProvider, hasLockEntry := lockedBySlot[slot]
+		locked, hasLockEntry := lockedBySlot[slot]
 		activeProvider := activeSlots[slot]
-		if !hasLockEntry || activeProvider == "" || lockedProvider == activeProvider {
+		if !hasLockEntry || activeProvider == "" || locked.InstalledInstanceID == activeProvider {
 			continue
 		}
-		errs = append(errs, fmt.Sprintf(
-			"slot %s: active.yaml configures %q but plugins.lock already resolved %q for this slot — re-run `strategist install` or `strategist compile` to reconcile (see docs/runbooks/role-invocation-failed.md)",
-			slot, activeProvider, lockedProvider,
-		))
+		errs = append(errs, parityMessage(slot, activeProvider, locked))
 	}
 	return errs
+}
+
+// parityMessage explains one divergence. A package added with `provider add` is a
+// custom binding whose instance id carries a version; install and compile cannot
+// choose it for the operator, so the fix is to name it in active.yaml.
+func parityMessage(slot, activeProvider string, locked domain.SlotBinding) string {
+	if locked.EffectiveMode() == domain.SlotBindingModeCustom && strings.Contains(locked.InstalledInstanceID, "@") {
+		return fmt.Sprintf(
+			"slot %s: active.yaml configures %q but plugins.lock binds the custom package %q for this slot — set slots.%s to %s in active.yaml (see docs/provider-extension.md)",
+			slot, activeProvider, locked.InstalledInstanceID, slot, locked.InstalledInstanceID,
+		)
+	}
+	return fmt.Sprintf(
+		"slot %s: active.yaml configures %q but plugins.lock already resolved %q for this slot — re-run `strategist install` or `strategist compile` to reconcile (see docs/runbooks/role-invocation-failed.md)",
+		slot, activeProvider, locked.InstalledInstanceID,
+	)
 }

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -30,7 +31,7 @@ func TestCheckCmd_Success(t *testing.T) {
 	assert.Contains(t, out, "sdd-ask")
 	assert.Contains(t, out, "binding=valid")
 	assert.NotContains(t, out, "fallback=ranger")
-	assert.NotContains(t, out, "always_native_no_policy")
+	assert.NotContains(t, out, "no_fallback_available")
 	assert.Contains(t, out, "epic")
 	assert.NotContains(t, out, "DELEGATION")
 	assert.NotContains(t, out, "delegation_capability")
@@ -171,12 +172,8 @@ func TestCheckCmd_ProviderNotInstalled(t *testing.T) {
 
 func TestCheckCmd_WrongRiskScore(t *testing.T) {
 	dir := minimalCheckRoot(t)
-	// overwrite brainstorming with wrong risk_score
-	require.NoError(t, os.WriteFile(
-		filepath.Join(dir, "skills", "brainstorming", "skill.yaml"),
-		[]byte("id: brainstorming\nrisk_score: controlled\n"),
-		0o644,
-	))
+	// the catalog (the authority) declares a risk_score the slot does not accept
+	overwriteCatalogRisk(t, dir, "brainstorming", "controlled")
 
 	orig := checkRoot
 	t.Cleanup(func() { checkRoot = orig })
@@ -189,15 +186,10 @@ func TestCheckCmd_WrongRiskScore(t *testing.T) {
 
 func TestCheckCmd_BlockedReadinessEntrypointFailsExitCode(t *testing.T) {
 	dir := minimalCheckRoot(t)
-	// The manifest's declared id no longer matches the provider it resolves
-	// for — probeSkillEntrypoint must report this as Blocked, and check must
-	// gate its exit code on that (1a): a slot that resolves and passes
-	// static risk_score validation can still be genuinely not-ready.
-	require.NoError(t, os.WriteFile(
-		filepath.Join(dir, "skills", "brainstorming", "skill.yaml"),
-		[]byte("id: not-brainstorming\nrisk_score: write_analysis\n"),
-		0o644,
-	))
+	// The Weapon's payload is gone: the catalog entrypoint check must report this as
+	// Blocked, and check must gate its exit code on that (1a): a slot that resolves
+	// and passes static risk_score validation can still be genuinely not-ready.
+	require.NoError(t, os.Remove(filepath.Join(dir, "skills", "brainstorming", "SKILL.md")))
 
 	orig := checkRoot
 	t.Cleanup(func() { checkRoot = orig })
@@ -211,7 +203,7 @@ func TestCheckCmd_BlockedReadinessEntrypointFailsExitCode(t *testing.T) {
 	assert.Contains(t, runErr.Error(), "check=failed")
 	assert.Contains(t, stderr, "slot discovery")
 	assert.Contains(t, stderr, "entrypoint")
-	assert.Contains(t, stderr, "entrypoint_id_mismatch")
+	assert.Contains(t, stderr, "entrypoint_payload_missing")
 }
 
 func TestCheckCmd_NativeRole_Sniper(t *testing.T) {
@@ -219,27 +211,11 @@ func TestCheckCmd_NativeRole_Sniper(t *testing.T) {
 	// Install skill providers for discovery and refinement, declaring the
 	// ADR-0035 DEC-001 permanent embedded-weapon roster (brainstorming and
 	// openspec-propose) so the always-run weapon-binding check passes.
-	for _, p := range []struct {
-		name          string
-		riskScore     string
-		canonicalRole string
-	}{
-		{"brainstorming", "write_analysis", "ranger"},
-		{"openspec-explore", "write_analysis", "archivist"},
-		{"openspec-propose", "write_analysis", "archivist"},
-	} {
-		provDir := filepath.Join(dir, "skills", p.name)
-		require.NoError(t, os.MkdirAll(provDir, 0o755))
-		body := "id: " + p.name + "\nrisk_score: " + p.riskScore + "\n"
-		if p.canonicalRole != "" {
-			body += "canonical_role: " + p.canonicalRole + "\n"
-		}
-		require.NoError(t, os.WriteFile(
-			filepath.Join(provDir, "skill.yaml"),
-			[]byte(body),
-			0o644,
-		))
-	}
+	testutil.WriteWeaponCatalog(t, dir,
+		testutil.CatalogProvider{ID: "brainstorming", Risk: "write_analysis", CanonicalRole: "ranger"},
+		testutil.CatalogProvider{ID: "openspec-explore", Risk: "write_analysis", CanonicalRole: "archivist"},
+		testutil.CatalogProvider{ID: "openspec-propose", Risk: "write_analysis", CanonicalRole: "archivist"},
+	)
 	// Install sniper as a native role (no skills/sniper/skill.yaml), plus
 	// ranger/archivist role files and the slot->role map the weapon-binding
 	// check needs to validate the roster above.
@@ -301,21 +277,10 @@ bindings:
 
 func TestCheckCmd_NativeRole_InvalidRoleDefinition(t *testing.T) {
 	dir := t.TempDir()
-	for _, p := range []struct {
-		name      string
-		riskScore string
-	}{
-		{"brainstorming", "write_analysis"},
-		{"openspec-explore", "write_analysis"},
-	} {
-		provDir := filepath.Join(dir, "skills", p.name)
-		require.NoError(t, os.MkdirAll(provDir, 0o755))
-		require.NoError(t, os.WriteFile(
-			filepath.Join(provDir, "skill.yaml"),
-			[]byte("id: "+p.name+"\nrisk_score: "+p.riskScore+"\n"),
-			0o644,
-		))
-	}
+	testutil.WriteWeaponCatalog(t, dir,
+		testutil.CatalogProvider{ID: "brainstorming", Risk: "write_analysis"},
+		testutil.CatalogProvider{ID: "openspec-explore", Risk: "write_analysis"},
+	)
 	// Native role missing the required `slot` field.
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
 	require.NoError(t, os.WriteFile(
@@ -347,21 +312,10 @@ func TestCheckCmd_NativeRole_InvalidRoleDefinition(t *testing.T) {
 
 func TestCheckCmd_NativeRole_SlotMismatch(t *testing.T) {
 	dir := t.TempDir()
-	for _, p := range []struct {
-		name      string
-		riskScore string
-	}{
-		{"brainstorming", "write_analysis"},
-		{"openspec-explore", "write_analysis"},
-	} {
-		provDir := filepath.Join(dir, "skills", p.name)
-		require.NoError(t, os.MkdirAll(provDir, 0o755))
-		require.NoError(t, os.WriteFile(
-			filepath.Join(provDir, "skill.yaml"),
-			[]byte("id: "+p.name+"\nrisk_score: "+p.riskScore+"\n"),
-			0o644,
-		))
-	}
+	testutil.WriteWeaponCatalog(t, dir,
+		testutil.CatalogProvider{ID: "brainstorming", Risk: "write_analysis"},
+		testutil.CatalogProvider{ID: "openspec-explore", Risk: "write_analysis"},
+	)
 	// Role declares slot=discovery but active.yaml puts it in execution.
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
 	require.NoError(t, os.WriteFile(

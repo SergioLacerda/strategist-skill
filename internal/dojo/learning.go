@@ -38,7 +38,7 @@ var nextActionHints = map[FailureReason]string{
 	FailureMissingCanary:   "Check that generated file content includes the required section or text.",
 	FailureForbiddenEmit:   "A role emitted an event it should not have — review pipeline routing.",
 	FailureMissingEmit:     "Re-run the scenario; a required emit event was not observed in emit.log.",
-	FailureManifestDrift:   "Check the provider's skill.yaml for the expected fields.",
+	FailureManifestDrift:   "Check the provider's plugins/catalog.yaml entry for the expected fields.",
 	FailureTiming:          "Investigate a wall-time regression in the run.",
 	FailurePipeline:        "Review which slots were invoked and where the pipeline stopped.",
 	FailureCriteria:        "Fix criteria.yaml — it failed schema validation before any check ran.",

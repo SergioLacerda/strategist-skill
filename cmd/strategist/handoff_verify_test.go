@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"os"
 	"path/filepath"
@@ -483,6 +484,117 @@ func TestHandoffVerifyCmd_RangerToArchivistWithoutRiskLevelForcesEnabled(t *test
 	assert.Contains(t, out, "status: failed")
 }
 
+// TestHandoffVerifyCmd_MalformedPolicyIsNotRecorded is the CLI-level
+// reproduction of F-H4 / ADR-0057 § A3 (design.md task 2.5): a policy file
+// with a challenge type not allowed for its own transition previously
+// surfaced as `missing_refs: [handoff_policy_invalid: ...]` and was
+// permanently appended to handoff-challenges.jsonl. It must now report
+// status=policy_invalid with the error in policy_errors, never in
+// missing_refs, and must not be recorded at all.
+func TestHandoffVerifyCmd_MalformedPolicyIsNotRecorded(t *testing.T) {
+	dir := t.TempDir()
+	testutil.MinimalRoot(t, dir)
+	policy := writeHandoffVerifyFixture(t, dir, "policy.yaml", `
+transition: archivist_to_sniper
+enabled: true
+required_types: [objective, bogus_type]
+max_attempts: 2
+on_failure: return_to_archivist
+`)
+	challenges := writeHandoffVerifyFixture(t, dir, "challenges.yaml", "challenges: []\n")
+	ack := writeHandoffVerifyFixture(t, dir, "ack.yaml", "understood_refs: []\n")
+	setHandoffVerifyFlags(t, dir, "", policy, challenges, ack, "m-policy-invalid", 1)
+	t.Cleanup(func() { resetHandoffVerifyFlags(t) })
+
+	var runErr error
+	out := captureStdout(t, func() {
+		runErr = handoffVerifyCmd.RunE(handoffVerifyCmd, nil)
+	})
+
+	require.Error(t, runErr)
+	assert.Contains(t, out, "status: policy_invalid")
+	assert.Contains(t, out, "policy_errors:")
+	assert.Contains(t, out, `challenge type "bogus_type" is not allowed`)
+	assert.NotContains(t, out, "missing_refs:", "a policy error must never be reported as a missing reference")
+
+	_, err := os.Stat(filepath.Join(dir, "memory", "handoff-challenges.jsonl"))
+	require.True(t, os.IsNotExist(err), "a malformed policy must not be recorded to the append-only handoff-challenges.jsonl")
+}
+
+// TestHandoffVerifyCmd_PolicyFileTransitionFallback covers F-H3 / design.md
+// task 2.6: a --policy-driven verification with no --transition flag records
+// the policy file's own transition, not an empty string.
+func TestHandoffVerifyCmd_PolicyFileTransitionFallback(t *testing.T) {
+	dir := t.TempDir()
+	testutil.MinimalRoot(t, dir)
+	policy := writeHandoffVerifyFixture(t, dir, "policy.yaml", `
+transition: archivist_to_sniper
+enabled: false
+required_types: [objective]
+max_attempts: 2
+on_failure: return_to_archivist
+`)
+	challenges := writeHandoffVerifyFixture(t, dir, "challenges.yaml", "challenges: []\n")
+	ack := writeHandoffVerifyFixture(t, dir, "ack.yaml", "understood_refs: []\n")
+	setHandoffVerifyFlags(t, dir, "", policy, challenges, ack, "m-policy-transition", 1)
+	t.Cleanup(func() { resetHandoffVerifyFlags(t) })
+
+	captureStdout(t, func() {
+		require.NoError(t, handoffVerifyCmd.RunE(handoffVerifyCmd, nil))
+	})
+
+	data, err := os.ReadFile(filepath.Join(dir, "memory", "handoff-challenges.jsonl"))
+	require.NoError(t, err)
+	assert.Contains(t, string(data), `"transition":"archivist_to_sniper"`)
+	assert.NotContains(t, string(data), `"transition":""`)
+}
+
+// TestHandoffVerifyCmd_FailureSuppressesUsageBlock covers F-X3 (ADR-0057/
+// design.md task 5.4): a failed verification is a valid, expected outcome of
+// a correct invocation, not a flag/argument usage error. Only a full
+// cmd.Execute() call exercises Cobra's own post-RunE usage-printing wrapper
+// — every other test in this file calls RunE directly, bypassing it
+// entirely, which is why this needs its own Execute()-based test rather than
+// reusing captureStdout+RunE.
+func TestHandoffVerifyCmd_FailureSuppressesUsageBlock(t *testing.T) {
+	dir := t.TempDir()
+	testutil.MinimalRoot(t, dir)
+	challenges := writeHandoffVerifyFixture(t, dir, "challenges.yaml", handoffVerifyChallengesYAML)
+	ack := writeHandoffVerifyFixture(t, dir, "ack.yaml", handoffVerifyAckFailYAML)
+
+	// handoffVerifyCmd is a package-level command already attached under
+	// rootCmd (handoff -> verify): Command.Execute() redirects to c.Root(),
+	// so args/output must be set on rootCmd itself for a real dispatch —
+	// calling handoffVerifyCmd.Execute() directly would instead execute
+	// rootCmd's own top-level help.
+	var out, errOut bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&errOut)
+	rootCmd.SetArgs([]string{
+		"handoff", "verify",
+		"--" + cliutil.FlagRoot, dir,
+		"--transition", "archivist_to_sniper",
+		"--challenges", challenges,
+		"--ack", ack,
+		"--mission-id", "m-usage-block",
+		"--attempt", "1",
+	})
+	t.Cleanup(func() {
+		resetHandoffVerifyFlags(t)
+		rootCmd.SetArgs(nil)
+		rootCmd.SetOut(nil)
+		rootCmd.SetErr(nil)
+	})
+
+	err := rootCmd.Execute()
+	require.Error(t, err)
+
+	assert.Contains(t, out.String(), "status: failed", "the actual result must still print")
+	assert.Contains(t, errOut.String(), "Error:", "the error message itself is not suppressed")
+	assert.NotContains(t, errOut.String(), "Usage:", "the flag-usage block must be suppressed for a verification failure")
+	assert.NotContains(t, errOut.String(), "--challenges", "the flag list must not be dumped for a verification failure")
+}
+
 func TestRecordHandoffVerify_AppendErrorPropagates(t *testing.T) {
 	dir := t.TempDir()
 	blocker := filepath.Join(dir, "blocker")
@@ -490,6 +602,6 @@ func TestRecordHandoffVerify_AppendErrorPropagates(t *testing.T) {
 	setHandoffVerifyFlags(t, blocker, "archivist_to_sniper", "", "", "", "m-1", 1)
 	t.Cleanup(func() { resetHandoffVerifyFlags(t) })
 
-	err := recordHandoffVerify(handoffVerifyCmd, handoffVerifyOptions{Root: blocker, MissionID: "m-1", Attempt: 1}, handoff.Result{Status: "passed", Passed: true})
+	err := recordHandoffVerify(handoffVerifyCmd, handoffVerifyOptions{Root: blocker, MissionID: "m-1", Attempt: 1}, handoff.Policy{Transition: "archivist_to_sniper"}, handoff.Result{Status: "passed", Passed: true})
 	require.ErrorContains(t, err, "record handoff challenge")
 }

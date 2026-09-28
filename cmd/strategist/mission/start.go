@@ -18,6 +18,23 @@ type LifecycleDependencies struct {
 	Load              func(string, string) (*domain.MissionEngine, domain.MissionEngineStatus, error)
 	InitiativeStart   func(string, string) error
 	WriteResult       func(*cobra.Command, bool, any) error
+	// Lock, when set, serializes a mission's read-modify-write critical
+	// section (RequireNoExisting/Load through Save) against concurrent CLI
+	// invocations for the same mission id (ADR-0057 § D2 — mission state
+	// concurrency). Nil is a valid, backward-compatible no-op: fn runs
+	// unguarded, which is what every pre-existing caller and test fake
+	// already did before this field existed.
+	Lock func(root, missionID string, fn func() error) error
+}
+
+// withMissionLock runs fn under deps.Lock when one is configured, or
+// unguarded otherwise. See LifecycleDependencies.Lock's doc comment for why
+// nil is a safe default.
+func withMissionLock(deps LifecycleDependencies, root, missionID string, fn func() error) error {
+	if deps.Lock == nil {
+		return fn()
+	}
+	return deps.Lock(root, missionID, fn)
 }
 
 // lifecycleFlags holds the --root/--mission-id/--json values shared by the
@@ -44,6 +61,12 @@ func NewStart(deps LifecycleDependencies) *cobra.Command {
 }
 
 // RunStart creates and persists a new mission through domain.StartMission.
+//
+// The existence check, INITIATIVE consultation, engine creation and save all
+// run inside one lock acquisition (deps.Lock, when configured), so two
+// concurrent `mission start` calls for the same mission id cannot both pass
+// RequireNoExisting before either has saved — the check-then-create race
+// ADR-0057 § D2 closes alongside RunSubmit's own read-modify-write.
 func RunStart(cmd *cobra.Command, deps LifecycleDependencies, rootInput, missionID string, asJSON bool) error {
 	if err := deps.RequireMissionID(missionID); err != nil {
 		return err
@@ -52,20 +75,39 @@ func RunStart(cmd *cobra.Command, deps LifecycleDependencies, rootInput, mission
 	if err != nil {
 		return fmt.Errorf("mission start: %w", err)
 	}
-	if err := deps.RequireNoExisting(root, missionID); err != nil {
+	var status domain.MissionEngineStatus
+	err = withMissionLock(deps, root, missionID, func() error {
+		s, lockedErr := startLocked(deps, root, missionID)
+		if lockedErr != nil {
+			return lockedErr
+		}
+		status = s
+		return nil
+	})
+	if err != nil {
 		return err
 	}
+	return deps.WriteResult(cmd, asJSON, status)
+}
+
+// startLocked is RunStart's check-then-create critical section: the existence
+// check, INITIATIVE consultation, engine creation, and save. Extracted out of
+// RunStart's own lock closure for the same reason as submitLocked.
+func startLocked(deps LifecycleDependencies, root, missionID string) (domain.MissionEngineStatus, error) {
+	if err := deps.RequireNoExisting(root, missionID); err != nil {
+		return domain.MissionEngineStatus{}, err
+	}
 	if err := runInitiativeStart(deps, root, missionID); err != nil {
-		return err
+		return domain.MissionEngineStatus{}, err
 	}
 	engine, status, err := domain.StartMission(domain.MissionStartRequest{MissionID: missionID})
 	if err != nil {
-		return fmt.Errorf("mission start: %w", err)
+		return domain.MissionEngineStatus{}, fmt.Errorf("mission start: %w", err)
 	}
 	if err := deps.Save(root, engine.Status()); err != nil {
-		return fmt.Errorf("mission start: %w", err)
+		return domain.MissionEngineStatus{}, fmt.Errorf("mission start: %w", err)
 	}
-	return deps.WriteResult(cmd, asJSON, status)
+	return status, nil
 }
 
 func runInitiativeStart(deps LifecycleDependencies, root, missionID string) error {

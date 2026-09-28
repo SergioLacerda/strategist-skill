@@ -116,13 +116,15 @@ func TestMigrationManualModeUsesHostOnly(t *testing.T) {
 	assert.True(t, got.Level.Unknown())
 }
 
-func TestMigrationAutomaticCompleteHostNeverLoadsPolicy(t *testing.T) {
+func TestAutomaticCompleteHostWithProviderLoadsPolicy(t *testing.T) {
 	loaderCalls := 0
-	loader := func() (core.Policy, error) { loaderCalls++; return core.Policy{}, assert.AnError }
+	loader := func() (core.Policy, error) { loaderCalls++; return migrationPolicy(t), nil }
 	got, err := LabelRole(loader, domain.LevelingConfig{Mode: domain.LevelingModeAutomatic}, filepath.Join(t.TempDir(), "role-levels.jsonl"), LabelOptions{Role: "ranger", Provider: "CLAUDE", HostModel: "opus", HostEffort: "low"})
 	require.NoError(t, err)
 	assert.Equal(t, "Opus-Low", got.Level.Label())
-	assert.Zero(t, loaderCalls)
+	assert.Equal(t, 1, loaderCalls)
+	assert.Equal(t, "CLAUDE", got.Level.Provider)
+	assert.NotEmpty(t, got.Level.PolicyDigest)
 }
 
 func TestMigrationLabelRoleReportsRecordingAndRuns(t *testing.T) {
@@ -147,7 +149,7 @@ func TestMigrationLabelRoleReportsRecordingAndRuns(t *testing.T) {
 }
 
 func TestMigrationLabelRoleUsesRoleLevelingKey(t *testing.T) {
-	reg, err := domain.NewRoleRegistry([]domain.Role{{ID: "scout"}, {ID: "ranger", Slot: "discovery", Phase: 1, Pluggable: true, Leveling: "sniper"}})
+	reg, err := domain.NewRoleRegistry([]domain.Role{{ID: "scout"}, {ID: "ranger", Slot: "discovery", Phase: 1, Extensibility: domain.RoleExtensibilityPluggable, Leveling: "sniper"}})
 	require.NoError(t, err)
 	policy := migrationPolicy(t)
 	got, err := LabelRoleWith(reg, migrationLoader(policy), domain.LevelingConfig{}, filepath.Join(t.TempDir(), "role-levels.jsonl"), LabelOptions{Role: "ranger", Provider: "CLAUDE"})

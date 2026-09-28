@@ -41,9 +41,9 @@ func TestPluginCatalogGeneratesLegacyProviderManifests(t *testing.T) {
 	catalog, err := loadPluginCatalog(ext)
 	require.NoError(t, err)
 
-	for provider, legacyPath := range installableDefaultProviders {
+	for provider := range installableDefaultProviders {
 		provider := provider
-		legacyPath := legacyPath
+		legacyPath := "skills/" + provider + "/skill.yaml"
 		t.Run(provider, func(t *testing.T) {
 			t.Parallel()
 			generated, err := generateLegacyProviderManifest(catalog, provider)
@@ -65,7 +65,7 @@ func TestLoadKnownProvidersPrefersPluginCatalog(t *testing.T) {
 	t.Parallel()
 
 	got := loadKnownProviders(catalogOnlyExtractor{catalog: []byte(`
-schema_version: strategist-plugin-catalog/v1
+schema_version: strategist-plugin-catalog/v2
 providers:
   - id: zeta
     risk_score: controlled
@@ -80,7 +80,7 @@ func TestResolveInstallableDefaultProvidersPrefersPluginCatalog(t *testing.T) {
 	t.Parallel()
 
 	got, err := resolveInstallableDefaultProviders(catalogOnlyExtractor{catalog: []byte(`
-schema_version: strategist-plugin-catalog/v1
+schema_version: strategist-plugin-catalog/v2
 providers:
   - id: alpha
     risk_score: write_analysis
@@ -91,7 +91,38 @@ providers:
 `)})
 
 	require.NoError(t, err)
-	assert.Equal(t, map[string]string{"alpha": "skills/alpha/skill.yaml"}, got)
+	assert.Equal(t, map[string]string{"alpha": "alpha"}, got)
+}
+
+// Installable detection keys on `installable: true`, not on legacy_manifest_path: an
+// entry that no longer carries the legacy path is still installable.
+func TestInstallableDetectionDoesNotDependOnLegacyManifestPath(t *testing.T) {
+	t.Parallel()
+
+	got, err := resolveInstallableDefaultProviders(catalogOnlyExtractor{catalog: []byte(`
+schema_version: strategist-plugin-catalog/v2
+providers:
+  - id: no-legacy-path
+    risk_score: write_analysis
+    installable: true
+  - id: not-installable
+    risk_score: write_analysis
+    legacy_manifest_path: skills/not-installable/skill.yaml
+`)})
+
+	require.NoError(t, err)
+	assert.Equal(t, map[string]string{"no-legacy-path": "no-legacy-path"}, got)
+}
+
+func TestPluginCatalogRejectsUnverifiedRoleAffinity(t *testing.T) {
+	_, err := parseCatalogBytes([]byte(`
+schema_version: strategist-plugin-catalog/v2
+providers:
+  - id: draft-role-weapon
+    risk_score: write_analysis
+    canonical_role: pathfinder
+`))
+	require.ErrorContains(t, err, "not approved for activation")
 }
 
 // TestResolveInstallableDefaultProvidersPropagatesCatalogError asserts SQ-2's
@@ -112,7 +143,7 @@ func TestProviderManifestBytesUsesPluginCatalog(t *testing.T) {
 	t.Parallel()
 
 	data, err := providerManifestBytes(catalogOnlyExtractor{catalog: []byte(`
-schema_version: strategist-plugin-catalog/v1
+schema_version: strategist-plugin-catalog/v2
 providers:
   - id: alpha
     version: "1.0.0"
@@ -216,4 +247,22 @@ func (defaultsExtractor) ReadFile(relPath string) ([]byte, error) {
 		return nil, fmt.Errorf("read defaults fixture %s: %w", relPath, err)
 	}
 	return data, nil
+}
+
+// The generator has two roles that outlive each other: the normalized-digest input (kept)
+// and the compat view writer (removed with the writers in generation N). The digest
+// callers use normalizedDigestManifest; the view writers keep generateLegacyProviderManifest,
+// a thin wrapper. Their bytes must stay identical, or every embedded Weapon is re-pinned.
+func TestDigestManifestAndViewWriterEmitIdenticalBytes(t *testing.T) {
+	t.Parallel()
+
+	catalog, err := loadPluginCatalog(defaultsExtractor{})
+	require.NoError(t, err)
+	for provider := range installableDefaultProviders {
+		digestInput, err := normalizedDigestManifest(catalog, provider)
+		require.NoError(t, err, provider)
+		viewOutput, err := generateLegacyProviderManifest(catalog, provider)
+		require.NoError(t, err, provider)
+		assert.Equal(t, string(digestInput), string(viewOutput), provider)
+	}
 }

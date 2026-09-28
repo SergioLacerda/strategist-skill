@@ -41,6 +41,18 @@ func emitRoleLevel(ctx context.Context, missionID, run string, level leveling.Le
 		telemetry.AttrEffort, level.Effort,
 		telemetry.AttrLevelSource, level.Source,
 	}
+	if level.Provider != "" {
+		attrs = append(attrs, telemetry.AttrProvider, level.Provider)
+	}
+	if level.Capability != "" {
+		attrs = append(attrs, telemetry.AttrLevelingCapability, level.Capability)
+	}
+	if level.PolicyVersion != 0 {
+		attrs = append(attrs, telemetry.AttrLevelingPolicyVersion, level.PolicyVersion)
+	}
+	if level.PolicyDigest != "" {
+		attrs = append(attrs, telemetry.AttrLevelingPolicyDigest, level.PolicyDigest)
+	}
 	if reason != "" {
 		attrs = append(attrs, telemetry.AttrReason, reason)
 	}

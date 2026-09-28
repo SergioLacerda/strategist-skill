@@ -17,7 +17,7 @@ func TestValidateCatalogDependenciesFlagsMissingAuxiliaryTool(t *testing.T) {
 	t.Parallel()
 
 	catalog := pluginCatalog{
-		SchemaVersion: "strategist-plugin-catalog/v1",
+		SchemaVersion: "strategist-plugin-catalog/v2",
 		Providers: []pluginCatalogProvider{
 			{ID: "master", RiskScore: "write_analysis", AuxiliaryTools: []string{"missing-helper"}},
 		},
@@ -39,7 +39,7 @@ func TestValidateCatalogDependenciesPassesWhenAuxiliaryToolIsCatalogued(t *testi
 	t.Parallel()
 
 	catalog := pluginCatalog{
-		SchemaVersion: "strategist-plugin-catalog/v1",
+		SchemaVersion: "strategist-plugin-catalog/v2",
 		Providers: []pluginCatalogProvider{
 			{ID: "master", RiskScore: "write_analysis", AuxiliaryTools: []string{"helper"}},
 			{ID: "helper", RiskScore: "write_analysis"},
@@ -56,7 +56,7 @@ func TestValidateCatalogDependenciesFlagsMissingStructuredDependency(t *testing.
 	t.Parallel()
 
 	catalog := pluginCatalog{
-		SchemaVersion: "strategist-plugin-catalog/v1",
+		SchemaVersion: "strategist-plugin-catalog/v2",
 		Providers: []pluginCatalogProvider{
 			{ID: "master", RiskScore: "write_analysis", Dependencies: []pluginCatalogDependency{
 				{ID: "missing-dep", Kind: "adapter_contract", Constraint: "*"},
@@ -76,7 +76,7 @@ func TestValidateCatalogDependenciesIgnoresOptionalMissingDependency(t *testing.
 	t.Parallel()
 
 	catalog := pluginCatalog{
-		SchemaVersion: "strategist-plugin-catalog/v1",
+		SchemaVersion: "strategist-plugin-catalog/v2",
 		Providers: []pluginCatalogProvider{
 			{ID: "master", RiskScore: "write_analysis", Dependencies: []pluginCatalogDependency{
 				{ID: "optional-extra", Kind: "adapter_contract", Constraint: "*", Optional: true},

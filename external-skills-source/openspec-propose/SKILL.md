@@ -20,6 +20,21 @@ from the workspace root, initialize the runtime lazily, or offer initialization
 as a remedy for a missing prepared runtime; Strategist must report
 `error=role_invocation_failed` instead.
 
+In this provider mode, every `openspec` command below means the private launcher
+recorded in `.strategist/ranked-runtimes.yaml`, not an `openspec` executable
+resolved from `PATH`. For the shipped `openspec-propose` runtime, from
+`.strategist/openspec`, invoke it as:
+
+```bash
+/usr/bin/node ../weapon-runtime/openspec-propose/openspec/dist/core/artifact-graph/openspec.mjs <command>
+```
+
+Read the recorded absolute Node path and relative script before invoking when
+they differ from this example. Both paths must remain the recorded, contained
+private runtime paths. A missing, altered, or unparsable record is
+`error=role_invocation_failed`; do not fall back to `PATH` or a global OpenSpec
+installation.
+
 The provider's OpenSpec files are private scratch output. They must never be
 materialized as Strategist refinement artifacts in `docs/plans/` or any other
 repository planning directory. Archivist normalizes the result into

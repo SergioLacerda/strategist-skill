@@ -107,6 +107,64 @@ func TestCheckCmd_JSON_DirectivesMissingIsAdvisoryOnly(t *testing.T) {
 	assert.Contains(t, result.Warnings[0], "reason=directives_missing")
 }
 
+func TestCheckCmd_JSON_CodexBootstrapMissingIsAdvisoryOnly(t *testing.T) {
+	resetCheckFlags(t)
+	dir := minimalCheckRoot(t)
+	require.NoError(t, os.Mkdir(filepath.Join(dir, ".codex"), 0o755))
+	checkRoot = dir
+	checkJSON = true
+
+	out := captureStdout(t, func() {
+		err := checkCmd.RunE(checkCmd, nil)
+		require.NoError(t, err)
+	})
+
+	var result domain.PreflightResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	assert.Equal(t, "ready", result.Status)
+	assert.Contains(t, strings.Join(result.Warnings, "\n"), "reason=codex_bootstrap_missing")
+}
+
+func TestCheckCmd_JSON_CodexBootstrapStaleIsAdvisoryOnly(t *testing.T) {
+	resetCheckFlags(t)
+	dir := minimalCheckRoot(t)
+	codexDir := filepath.Join(dir, ".codex")
+	require.NoError(t, os.Mkdir(codexDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(codexDir, "commands.md"), []byte("# Old commands\n"), 0o644))
+	checkRoot = dir
+	checkJSON = true
+
+	out := captureStdout(t, func() {
+		err := checkCmd.RunE(checkCmd, nil)
+		require.NoError(t, err)
+	})
+
+	var result domain.PreflightResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	assert.Equal(t, "ready", result.Status)
+	assert.Contains(t, strings.Join(result.Warnings, "\n"), "reason=codex_bootstrap_stale")
+}
+
+func TestCheckCmd_JSON_CodexBootstrapUnreadableIsAdvisoryOnly(t *testing.T) {
+	resetCheckFlags(t)
+	dir := minimalCheckRoot(t)
+	codexDir := filepath.Join(dir, ".codex")
+	require.NoError(t, os.Mkdir(codexDir, 0o755))
+	require.NoError(t, os.Mkdir(filepath.Join(codexDir, "commands.md"), 0o755))
+	checkRoot = dir
+	checkJSON = true
+
+	out := captureStdout(t, func() {
+		err := checkCmd.RunE(checkCmd, nil)
+		require.NoError(t, err)
+	})
+
+	var result domain.PreflightResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	assert.Equal(t, "ready", result.Status)
+	assert.Contains(t, strings.Join(result.Warnings, "\n"), "reason=codex_bootstrap_unreadable")
+}
+
 // TestCheckCmd_JSON_AdvisoriesCoexistWithBlockingWarnings confirms an
 // advisory doesn't get lost or double-count status when a real blocking
 // warning is also present — both must appear in Warnings, and Status must

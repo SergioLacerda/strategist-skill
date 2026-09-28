@@ -63,3 +63,27 @@ records and does not bypass or auto-accept the gate.
   not conflict; legacy records never imply ground truth or calibration.
 - Authoring defaults under `internal/embed/defaults/` are the source; the
   `.strategist/` runtime mirrors them and parity is checked by tests.
+
+## Amendment 2026-09-26: declared claims versus persisted records
+
+Mission `20260925-confidence-drift-gate-refinement` added a read-only comparison at the gate; it
+changes no metric, policy percentage or enforcement mode.
+
+- **Comparison.** `strategist metrics confidence --mission <id> --declared -` reads a handoff
+  `confidence_summary` on standard input and classifies each declared claim by `(agent, claim id)`
+  as persisted, `declared_unpersisted`, `persisted_rejected`, `declared_mismatched` (kind, percent,
+  level or correlation key differ) or `persisted_under_other_agent`. It writes nothing and never
+  changes `review_required`. It validates only what it keys on (id, agent, known kind, percent in
+  range) because the summaries Archivists write carry a `policy_version` of `"1"` and evidence
+  without a confidence, which the strict validator rejects. The gate shows one line, only when
+  `declared_review: recommended`.
+- **Denominators.** Mission-level rates count a rejected assertion record as unsupported;
+  per-agent rates do not. This is now stated in `confidence-governance.yaml`, not unified.
+- **Display.** With no question, the human output prints `question_preservation_rate: n/a`; the
+  JSON field and the computed metric keep 0.
+- **Batch recording.** `metrics record` accepts a `claims:` list so the whole declared set reaches
+  the history; the per-claim rejection rule is unchanged.
+
+Rejected alternatives: unifying the two denominators (changes historical numbers); repairing drift
+at the gate (the comparison exposes it, a human decides); a new command (a flag of the existing
+materializer cannot diverge from it).

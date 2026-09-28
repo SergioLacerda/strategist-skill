@@ -73,14 +73,16 @@ func TestEffortTierNamesMatchValidation(t *testing.T) {
 	assert.False(t, leveling.ValidEffortTier("banana"))
 }
 
-// H4: a host model id is shortened without loading the policy when the host
-// answered completely, and through the configured display table otherwise.
-func TestHostModelUsesDisplayFallbackWithoutLoadingPolicy(t *testing.T) {
+// H4: an explicit provider loads the policy even when the host answered
+// completely, preserving provider authority while retaining fallback display.
+func TestHostModelUsesDisplayFallbackWithProviderProvenance(t *testing.T) {
 	loader := &countingLoader{policy: defaultPolicy(t)}
 	level, err := leveling.ResolveLevelLazy(loader.load, "CLAUDE", "ranger", leveling.Signals{}, leveling.Host{Model: "claude-sonnet-5", Effort: "medium"})
 	require.NoError(t, err)
-	assert.Equal(t, "Sonnet-5-Medium", level.Label(), "the provider prefix is dropped without reading the policy")
-	assert.Zero(t, loader.calls, "a complete host report must still never read the policy")
+	assert.Equal(t, "Sonnet-Medium", level.Label(), "the configured host alias is used for the provider")
+	assert.Equal(t, "CLAUDE", level.Provider)
+	assert.NotEmpty(t, level.PolicyDigest)
+	assert.Equal(t, 1, loader.calls, "an explicit provider is policy-backed even for a complete host report")
 }
 
 func TestPartialHostModelUsesConfiguredDisplayName(t *testing.T) {
@@ -90,6 +92,12 @@ func TestPartialHostModelUsesConfiguredDisplayName(t *testing.T) {
 	assert.Equal(t, "Sonnet", level.Model, "a host model is mapped through the policy display table once the policy is loaded")
 	assert.Equal(t, leveling.SourceHost, level.ModelSource)
 	assert.Equal(t, 1, loader.calls)
+}
+
+func TestConfiguredDisplayAliasesCoverRealHostModelIDs(t *testing.T) {
+	policy := defaultPolicy(t)
+	assert.Equal(t, "Opus", policy.DisplayName("CLAUDE", "claude-opus-5"))
+	assert.Equal(t, "Sonnet", policy.DisplayName("CLAUDE", "claude-sonnet-5"))
 }
 
 func TestModelWithoutProviderIsOnlyCapitalized(t *testing.T) {

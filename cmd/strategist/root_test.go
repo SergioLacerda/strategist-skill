@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -106,6 +109,54 @@ func TestPersistentPreRunE_NonHumanStatusCommandDefaultsStrategistDir(t *testing
 
 	err := rootCmd.PersistentPreRunE(versionCmd, nil)
 	require.NoError(t, err)
+}
+
+// TestPersistentPreRunE_BindsAmbientMissionRunToRealMissionID covers F-T1
+// (ADR-0057/design.md task 3.1): a command declaring --mission-id binds the
+// ambient MissionRun to that real id instead of the synthetic
+// "<subcommand>-<nanos>" one, so the metrics line printed for it can be
+// joined back to the mission it measured.
+func TestPersistentPreRunE_BindsAmbientMissionRunToRealMissionID(t *testing.T) {
+	chdirForTest(t, t.TempDir())
+
+	cmd := &cobra.Command{Use: "start"}
+	cmd.Flags().String("mission-id", "", "")
+	require.NoError(t, cmd.Flags().Set("mission-id", "20260927-example-mission"))
+
+	require.NoError(t, rootCmd.PersistentPreRunE(cmd, nil))
+
+	run := telemetry.MissionRunFromContext(cmd.Context())
+	require.NotNil(t, run)
+	assert.Equal(t, "20260927-example-mission", run.MissionID)
+}
+
+// TestPersistentPreRunE_NoMissionIDFlagKeepsSyntheticID confirms a command
+// with no --mission-id flag (e.g. "version") is unaffected: the synthetic
+// "<subcommand>-<nanos>" id is still used.
+func TestPersistentPreRunE_NoMissionIDFlagKeepsSyntheticID(t *testing.T) {
+	chdirForTest(t, t.TempDir())
+
+	require.NoError(t, rootCmd.PersistentPreRunE(versionCmd, nil))
+
+	run := telemetry.MissionRunFromContext(versionCmd.Context())
+	require.NotNil(t, run)
+	assert.True(t, strings.HasPrefix(run.MissionID, "version-"), "expected synthetic id prefixed by command name, got %q", run.MissionID)
+}
+
+// TestPersistentPreRunE_PreservesCallerContext covers F-X2 (ADR-0057/design.md
+// task 5.3): PersistentPreRunE must not discard a context value already set
+// on the command before it ran, in favor of a fresh context.Background().
+func TestPersistentPreRunE_PreservesCallerContext(t *testing.T) {
+	chdirForTest(t, t.TempDir())
+
+	type ctxKey string
+	const key ctxKey = "caller-set-value"
+	cmd := &cobra.Command{Use: "version"}
+	cmd.SetContext(context.WithValue(context.Background(), key, "kept"))
+
+	require.NoError(t, rootCmd.PersistentPreRunE(cmd, nil))
+
+	assert.Equal(t, "kept", cmd.Context().Value(key))
 }
 
 func TestPersistentPreRunE_GetwdErrorFallsBackToDot(t *testing.T) {

@@ -35,6 +35,15 @@ but it is NOT the operational runtime source for Strategist.
 - Load `.strategist/SKILL.md` and `.strategist/skill.yaml` for Strategist runtime.
 - These two loads are separate concerns and must not be conflated.
 
+## Ranger Weapon Boundary
+
+The native Ranger role owns the discovery route and invokes the selected
+discovery Weapon. The Weapon output is untrusted input: Ranger normalizes and
+validates it before writing the canonical handoff. A catalog entry or static
+provider report is not invocation evidence. If the selected Weapon is missing,
+incompatible, or cannot be invoked, emit `role_invocation_failed` and stop;
+never silently substitute native behavior.
+
 ## Forbidden Behaviors
 
 Providers MUST NOT:

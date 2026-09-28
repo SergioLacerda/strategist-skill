@@ -2,9 +2,11 @@
 	install release-verify release-check install-goreleaser \
 	check-release-artifacts check-release-assets release-reproducible-check \
 	release-test release-dry-run release snapshot clean compile-skill \
-	embed-skills embed-skills-check build-standalone standalone-smoke install-lite doctor install-hooks
+	release-tag-check release-tag-test release-script-test check-release-binaries verify-published-release \
+	embed-skills embed-skills-check skill-for-hire-pin-check skill-for-hire-pin-check-test build-standalone standalone-smoke install-lite doctor install-hooks
 
-# install puts a standalone binary in ~/.local/bin. It embeds the OpenSpec
+# install puts a standalone binary in ~/.local/bin and synchronizes the current
+# checkout through that exact freshly installed binary. It embeds the OpenSpec
 # bundle; Ranked execution uses the client's validated host Node >=20.19.0.
 # Use install-lite for a binary without the runtime (resolves openspec from PATH).
 install: build-standalone
@@ -13,8 +15,12 @@ install: build-standalone
 	@# strategist earlier on PATH) would otherwise fail later with a misleading error.
 	@"$$HOME/.local/bin/strategist$(EXE)" version --build | grep -q "runtime: embedded OpenSpec" || { echo "[Strategist] ERROR: the installed binary has no embedded OpenSpec bundle; check 'command -v strategist' and 'strategist version --build'" >&2; exit 1; }
 	@"$$HOME/.local/bin/strategist$(EXE)" version --build
+	@# Refresh the workspace runtime, generated agent awareness, and existing
+	@# client shims from the same binary that was just installed. Do not resolve
+	@# strategist through PATH: PATH may still point at an older checkout.
+	@"$$HOME/.local/bin/strategist$(EXE)" install --target "$(CURDIR)" --silent --strict-compile
 	@command -v strategist >/dev/null 2>&1 && [ "$$(command -v strategist)" != "$$HOME/.local/bin/strategist$(EXE)" ] && echo "[Strategist] WARNING: 'strategist' on PATH is $$(command -v strategist), not $$HOME/.local/bin/strategist$(EXE)" >&2 || true
-	@echo "[Strategist] standalone binary installed. Run: strategist install --wizard"
+	@echo "[Strategist] standalone binary installed and current checkout synchronized."
 
 install-lite: build
 	mkdir -p "$$HOME/.local/bin" && install -m 755 "$(STRATEGIST_BIN)" "$$HOME/.local/bin/strategist$(EXE)"
@@ -37,7 +43,47 @@ embed-skills: build
 embed-skills-check: build
 	"./$(STRATEGIST_BIN)" plugins prepare-embedded --check
 
+# skill-for-hire-pin-check compares the pin recorded in the (gitignored) pin note
+# with the live upstream release: tag commit, tarball sha256 digests and the
+# `immutable` flag. Read-only, needs network and curl, writes nothing. It is a
+# manual detection aid, deliberately outside ci and release-verify: it is not
+# an import and it does not update the pin. Override the note with PIN_NOTE=.
+# skill-for-hire-pin-check-test is its offline fixture test.
+skill-for-hire-pin-check:
+	bash scripts/check-skill-for-hire-pin.sh $(PIN_NOTE)
+
+skill-for-hire-pin-check-test:
+	bash scripts/test-check-skill-for-hire-pin.sh
+
 release-verify: ci-lint ci-test docs-governance-gate validate-fixtures vuln-ci release-reproducible-check embed-skills-check
+
+# release-tag-check fails unless TAG is an annotated vX.Y.Z tag whose commit is
+# reachable from origin/main (see scripts/check-release-tag.sh). The release
+# workflow runs it first in the verify job; locally: make release-tag-check TAG=v1.2.3
+release-tag-check:
+	bash scripts/check-release-tag.sh "$(TAG)" "$(or $(MAIN_REF),origin/main)"
+
+# release-tag-test exercises that check against throwaway repositories.
+release-tag-test:
+	bash scripts/test-check-release-tag.sh
+
+# release-script-test exercises the post-build / post-publish verification scripts
+# against fixtures and stubbed gh/cosign (no network, nothing published).
+release-script-test:
+	bash scripts/test-check-release-binaries.sh
+	bash scripts/test-verify-published-release.sh
+
+# check-release-binaries proves the built artifacts: checksums match SHA256SUMS
+# and the host binary runs with its embedded runtime. Pass VERSION=x.y.z to also
+# require that exact embedded version (a snapshot embeds SNAPSHOT and shows Vdev).
+check-release-binaries:
+	bash scripts/check-release-binaries.sh dist/published.tsv dist/SHA256SUMS $(VERSION)
+
+# verify-published-release proves an already-published GitHub Release: checksums,
+# embedded version == tag, cosign bundles, build attestations and the SBOM.
+# Needs gh, cosign and python3; used by the release workflow after publishing.
+verify-published-release:
+	bash scripts/verify-published-release.sh "$(TAG)" dist/published.tsv
 
 # release-check validates the GoReleaser config before a tag-triggered release.
 release-check:
@@ -65,7 +111,7 @@ release-reproducible-check:
 	bash scripts/check-reproducible-build.sh "$(GOCACHE)"
 
 # release-test validates release config and local snapshot artifacts without publishing.
-release-test: release-check snapshot check-release-artifacts
+release-test: release-check snapshot check-release-artifacts check-release-binaries
 
 release-dry-run: install-goreleaser release-test
 

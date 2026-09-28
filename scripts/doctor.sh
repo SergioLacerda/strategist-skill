@@ -5,7 +5,7 @@
 #
 # Test knobs: DOCTOR_MIN_TMP_MB (default 2048).
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 
 fail=0
 warns=0

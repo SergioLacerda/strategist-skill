@@ -1,0 +1,64 @@
+schema_version: "1"
+runbook_id: jewelcrafter-offline-curation-recovery
+runbook_type: operational
+source_doc: docs/runbooks/jewelcrafter-offline-curation-recovery.md
+
+applies_when:
+  - "JEWELCRAFTER, the treasure support slot, or the BAU DO TESOURO skill-for-hire provider is unavailable, degraded, unverified, expired, or corrupt"
+  - "Ranger or Archivist needs offline BAU DO TESOURO data"
+  - "the external provider cannot be imported and an integration test needs the explicit bau-do-tesouro-mock provider"
+  - "the embedded internal Jewelcrafter skill is being assessed for controlled retirement"
+
+objective: "Recover or diagnose JEWELCRAFTER offline queries and the BAU DO TESOURO support binding while preserving single-owner authority, explicit Mock selection, fail-closed readiness, and source/data immutability."
+
+preconditions:
+  - "JEWELCRAFTER is the only Role allowed to handle the BAU DO TESOURO Weapon"
+  - "Ranger and Archivist consume a read-only offline query boundary and do not call the provider directly"
+  - "the external skill-for-hire provider and bau-do-tesouro-mock use the same bounded query/response envelope"
+  - "Mock is selected only by an explicit test/development profile and never by production fallback"
+  - "provider readiness requires package, immutable identity, provenance, API, delegate, probe, and health evidence"
+
+decision_gates:
+  - id: identify-provider-mode
+    statement: "Record whether the active provider mode is external or explicitly selected mock; do not infer mode from cache or catalog state."
+  - id: confirm-jewelcrafter-authority
+    statement: "Confirm the request passed through JEWELCRAFTER and that no consumer role invoked the Weapon or provider directly."
+  - id: readiness-evidence
+    statement: "Keep the support binding unavailable/degraded when any required external evidence is missing."
+  - id: preserve-derived-boundary
+    statement: "Recovery may rebuild only derived offline data and must not mutate source documents, Treasure Chest data, or Git state."
+
+verification:
+  - "Query results include requester, correlation id, source digest, provenance, captured-at time, TTL/freshness, provider mode, and readiness state"
+  - "External unavailability does not activate Mock unless the profile explicitly selects it"
+  - "Mock responses are deterministic and visibly synthetic"
+  - "Ranger and Archivist have no direct provider or external Weapon path"
+  - "Internal-skill removal is blocked until Role, provider, consumer, parity, rollback, and conformance checks pass"
+
+checks:
+  - id: record-requester-and-correlation
+    level: mandatory
+  - id: confirm-single-jewelcrafter-owner
+    level: mandatory
+  - id: classify-external-readiness
+    level: conditional
+    when: "provider mode is external"
+  - id: verify-explicit-mock-selection
+    level: conditional
+    when: "provider mode is mock"
+  - id: return-unavailable-without-implicit-fallback
+    level: mandatory
+  - id: validate-offline-provenance-and-ttl
+    level: mandatory
+  - id: quarantine-and-rebuild-corrupt-derived-index
+    level: conditional
+    when: "offline index or provider metadata is corrupt"
+  - id: preserve-source-and-treasure-chest-data
+    level: mandatory
+  - id: verify-internal-skill-retirement-gate
+    level: conditional
+    when: "embedded internal Jewelcrafter skill removal is requested"
+
+metadata:
+  version: 1
+  reviewed_at: "2026-09-27"

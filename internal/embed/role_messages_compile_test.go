@@ -133,7 +133,7 @@ func assertNoTokens(t *testing.T, label string, value any) {
 
 func TestANewRoleGetsGenericMessagesInEveryPersonaAndLanguage(t *testing.T) {
 	personas := compiledPersonas(t, func(root string) {
-		require.NoError(t, os.WriteFile(filepath.Join(root, "roles", "auditor.yaml"), []byte("role: auditor\nphase: 5\npluggable: false\n"), 0o600))
+		require.NoError(t, os.WriteFile(filepath.Join(root, "roles", "auditor.yaml"), []byte("role: auditor\nphase: 5\nextensibility: fixed\n"), 0o600))
 	})
 	for _, persona := range []string{"epic", "pragmatic"} {
 		for _, lang := range []string{"en", "pt-BR"} {

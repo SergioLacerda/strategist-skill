@@ -1,5 +1,13 @@
 lifecycle: true
-risk_score: write_analysis
+roles:
+  - sniper
+kind: atomic
+supported_slots:
+  - execution
+runtime:
+  kind: host
+  host_api: strategist-host-skill/v1
+risk_score: controlled
 category: lifecycle
 upstream_repo: Fission-AI/OpenSpec
 upstream_skill_path: skills/openspec-archive-change/SKILL.md

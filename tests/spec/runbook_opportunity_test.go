@@ -3,77 +3,49 @@
 package spec_test
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
 
-// TestRunbookOpportunityIsExplicitGateOnly verifies the runbook_opportunity
-// routine (source and embedded mirror) is advisory-only: it must declare that
-// it never writes a runbook file directly, that the runbook gate option is
-// only offered when warranted, and that candidate creation requires its own
-// explicit confirmation independent of any other gate response.
-func TestRunbookOpportunityIsExplicitGateOnly(t *testing.T) {
+// TestOpportunityAttackRunbookIsExplicitGateOnly verifies the runbook side of
+// Opportunity Attack (the superseded runbook-opportunity contract's signals now
+// live here) is advisory-only: it only surfaces a proposed candidate as a side
+// quest, never writes canonical docs/runbooks/ content from its own action, and
+// never promotes a candidate without a gate approval.
+func TestOpportunityAttackRunbookIsExplicitGateOnly(t *testing.T) {
 	t.Parallel()
 
-	for _, path := range []string{
-		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "runbook-opportunity.yaml"),
+	path := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "opportunity-attack.yaml")
+	content := readFile(t, path)
+	for _, needle := range []string{
+		"status: proposed",
+		"never a trusted docs/runbooks/ entry without human review",
+		"writing directly to docs/runbooks/<slug>.md from *this* action",
+		"promoting the candidate to canonical without a gate approval",
+		"Opportunity Attack never writes docs/runbooks/ or treasure-chests.yaml directly, only surfaces the side quest",
 	} {
-		content := readFile(t, path)
-		for _, needle := range []string{
-			"phase: runbook_opportunity",
-			"MUST NOT write a runbook file directly",
-			"MUST NOT perform discovery beyond the already-normalized idea",
-			"runbook: create_runbook_candidate    # only shown when runbook_opportunity.warranted=true",
-			"requires its own explicit confirmation",
-		} {
-			if !strings.Contains(content, needle) {
-				t.Fatalf("%s missing explicit-gate-only term %q", path, needle)
-			}
+		if !strings.Contains(content, needle) {
+			t.Fatalf("%s missing explicit-gate-only term %q", path, needle)
 		}
 	}
 }
 
-// TestRunbookOpportunityDoesNotClaimADROrClosureRole verifies the routine
-// explicitly defers ADR-worthiness to Opportunity Attack and card
-// closure/movement to Critical Hit, rather than growing into either role.
-func TestRunbookOpportunityDoesNotClaimADROrClosureRole(t *testing.T) {
+// TestRunbookOpportunityContractIsRetired guards the removal of the superseded
+// runbook-opportunity contract: its file and its `dormant` index key must not
+// return, and nothing may still point at it as a live contract.
+func TestRunbookOpportunityContractIsRetired(t *testing.T) {
 	t.Parallel()
 
-	for _, path := range []string{
-		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "runbook-opportunity.yaml"),
-	} {
-		content := readFile(t, path)
-		for _, needle := range []string{
-			"MUST NOT evaluate ADR-worthiness — that remains Opportunity Attack's responsibility",
-			"MUST NOT evaluate card closure or movement — that remains Critical Hit's responsibility",
-		} {
-			if !strings.Contains(content, needle) {
-				t.Fatalf("%s missing role-deferral term %q", path, needle)
-			}
-		}
+	defaults := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts")
+	if _, err := os.Stat(filepath.Join(defaults, "machine", "runbook-opportunity.yaml")); !os.IsNotExist(err) {
+		t.Fatalf("machine/runbook-opportunity.yaml must stay retired (err=%v)", err)
 	}
-}
-
-// TestRunbookCandidateNeverWritesCanonicalDirectly verifies
-// sniper_runbook_opportunity's candidate action can only produce a
-// reviewable candidate — never a direct write to the canonical
-// docs/runbooks/ tree — and that promotion to canonical requires human
-// acceptance.
-func TestRunbookCandidateNeverWritesCanonicalDirectly(t *testing.T) {
-	t.Parallel()
-
-	for _, path := range []string{
-		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "machine", "runbook-opportunity.yaml"),
-	} {
-		content := readFile(t, path)
-		for _, needle := range []string{
-			"writing directly to docs/runbooks/<slug>.md from this phase",
-			"promoting the candidate to canonical without human acceptance",
-		} {
-			if !strings.Contains(content, needle) {
-				t.Fatalf("%s missing candidate-forbidden term %q", path, needle)
-			}
+	index := readFile(t, filepath.Join(defaults, "index.yaml"))
+	for _, forbidden := range []string{"runbook-opportunity", "dormant:"} {
+		if strings.Contains(index, forbidden) {
+			t.Fatalf("contracts/index.yaml must not mention %q", forbidden)
 		}
 	}
 }

@@ -22,7 +22,7 @@ import (
 // version the provider contract certified is reported as a non-blocking skew:
 // the runtime exists to run on the Node the client already has, so the
 // difference informs rather than blocks.
-func runHostNodeRankedRuntimeHealthcheck(root, runtimeRoot, provider string, contract domain.RankedRuntimeContract, state domain.RankedRuntimeStateRuntime) domain.ReadinessCheck {
+func runHostNodeRankedRuntimeHealthcheck(root, runtimeRoot, provider string, contract domain.WeaponRuntime, state domain.RankedRuntimeStateRuntime) domain.ReadinessCheck {
 	script, result := verifiedRankedBundle(root, provider, state)
 	if !result.Ready() {
 		return result

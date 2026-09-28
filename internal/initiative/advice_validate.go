@@ -3,6 +3,7 @@ package initiative
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 // Validate checks that the advice's identity, trigger, recommendation, and
@@ -19,6 +20,11 @@ func (a Advice) Validate() error {
 	}
 	if !a.hasValidDiligence() {
 		return fmt.Errorf("initiative_advice_invalid: diligence or alignment is incomplete")
+	}
+	if a.Leveling != nil {
+		if err := a.Leveling.ValidateFor(a.Role); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -40,7 +46,24 @@ func (a Advice) hasValidRecommendation() bool {
 }
 
 func (a Advice) hasValidDiligence() bool {
-	return validAlignment(a.Alignment) && len(a.Diligence.Checks) > 0 && a.Diligence.ConfidenceCeiling != ""
+	return validAlignment(a.Alignment) && len(a.Diligence.Checks) > 0 &&
+		validateConfidenceTier(a.Diligence.ConfidenceCeiling) == nil &&
+		uniqueNonEmpty(a.Diligence.Checks)
+}
+
+// uniqueNonEmpty reports whether every check is non-blank and appears once.
+func uniqueNonEmpty(checks []string) bool {
+	seen := make(map[string]struct{}, len(checks))
+	for _, check := range checks {
+		if strings.TrimSpace(check) == "" {
+			return false
+		}
+		if _, exists := seen[check]; exists {
+			return false
+		}
+		seen[check] = struct{}{}
+	}
+	return true
 }
 
 // ValidateAdviceJSON decodes raw as an Advice envelope, rejecting any

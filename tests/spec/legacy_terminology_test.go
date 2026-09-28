@@ -171,7 +171,7 @@ func TestRoleInvocationFailureContractPresent(t *testing.T) {
 		if !strings.Contains(content, "role_invocation_failed") {
 			t.Fatalf("%s missing error state \"role_invocation_failed\"", path)
 		}
-		if !strings.Contains(content, "simulate role work") {
+		if !strings.Contains(strings.ToLower(content), "simulate role work") {
 			t.Fatalf("%s missing NEVER DO rule about simulating role work", path)
 		}
 	}

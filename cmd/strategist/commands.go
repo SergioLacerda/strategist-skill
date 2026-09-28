@@ -19,7 +19,7 @@ import (
 // the calls below does not affect help output.
 func registerCommands(root *cobra.Command) {
 	installadapter.Register(root, installDependencies(), upgradeDependencies())
-	root.AddCommand(compileCmd, validateCmd, syncGovernanceCmd, versionCmd, providerCmd, handoffCmd)
+	root.AddCommand(compileCmd, validateCmd, syncGovernanceCmd, versionCmd, providerCmd, handoffCmd, mechanismsCmd)
 	check.Register(root)
 	treasurecli.Register(root)
 	metricsadapter.Register(root, metricsDependencies(), roleLevelLedger, defaultLedgerMaxRecords)

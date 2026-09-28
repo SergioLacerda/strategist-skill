@@ -18,7 +18,7 @@ func TestRoleEventAliasesMapOldKeysToTheGenericTemplates(t *testing.T) {
 }
 
 func TestExpandRoleMessagesUsesDefaultWordingForARoleWithoutPhrases(t *testing.T) {
-	reg, err := domain.NewRoleRegistry([]domain.Role{{ID: "scout"}, {ID: "ranger", Slot: "discovery", Phase: 1, Pluggable: true}, {ID: "auditor", Phase: 2}})
+	reg, err := domain.NewRoleRegistry([]domain.Role{{ID: "scout"}, {ID: "ranger", Slot: "discovery", Phase: 1, Extensibility: domain.RoleExtensibilityPluggable}, {ID: "auditor", Phase: 2}})
 	require.NoError(t, err)
 	content := map[string]any{
 		"role_start": "{role_emoji} {role_title}: {start_text}",

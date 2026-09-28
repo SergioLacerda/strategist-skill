@@ -70,4 +70,10 @@ providers:
       claude-general: Sonnet
       claude-economical: Haiku
       claude-reasoning: Opus
+      # Common host model ids are explicit aliases, not policy model ids. They
+      # keep role labels stable while the provider/capability provenance stays
+      # in the LEVELING ledger.
+      claude-sonnet-5: Sonnet
+      claude-haiku-4: Haiku
+      claude-opus-5: Opus
     effort_tiers: [low, medium, high, xhigh]

@@ -97,8 +97,9 @@ func TestValidateProvider(t *testing.T) {
 func TestInstallableDefaultProviders(t *testing.T) {
 	t.Parallel()
 
-	assert.Equal(t, "skills/brainstorming/skill.yaml", installableDefaultProviders["brainstorming"])
-	assert.Equal(t, "skills/openspec-explore/skill.yaml", installableDefaultProviders["openspec-explore"])
+	assert.Equal(t, "brainstorming", installableDefaultProviders["brainstorming"])
+	assert.Equal(t, "openspec-explore", installableDefaultProviders["openspec-explore"])
+	assert.Equal(t, "openspec-propose", installableDefaultProviders["openspec-propose"])
 }
 
 func TestRunWizard(t *testing.T) {

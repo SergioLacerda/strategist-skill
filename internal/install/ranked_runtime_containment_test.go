@@ -30,7 +30,7 @@ printf '{"root":{"path":"%s"},"members":[],"status":[]}\n' "$(command -p dirname
 	require.NoError(t, os.WriteFile(script, []byte(scriptBody), 0o755))
 	t.Setenv("OPEN_SPEC_CONFIG", filepath.Join(t.TempDir(), "foreign-config.yaml"))
 
-	runtime := domain.RankedRuntimeContract{
+	runtime := domain.WeaponRuntime{
 		Kind:        domain.RankedRuntimeOpenSpecRoot,
 		Root:        ".strategist/openspec",
 		Bootstrap:   "openspec init --profile core --tools codex",

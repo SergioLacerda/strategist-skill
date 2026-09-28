@@ -37,10 +37,16 @@ func missionView(t *testing.T, workspace, missionID string) e2eMissionView {
 	return v
 }
 
-// A fresh mission shows explicit absence; the Ranger on_start hook, run the
-// way an agent runs it (host model known, effort placeholder unreplaced),
+// A fresh mission resolves the scout's LEVELING tuple with no host or
+// provider data (mission start, before the role's own on_start hook ever
+// runs), so the tuple carries no information and mission start does not
+// persist it (F-L4, ADR-0057/design.md task 4.4); the ledger stays empty and
+// the mission view reports Leveling unknown. The Ranger on_start hook, run
+// the way an agent runs it (host model known, effort placeholder unreplaced),
 // resolves a policy-completed level in automatic mode; the mission view then
-// reports it.
+// reports it. The host model is one the shipped policy lists exactly: a
+// vendor-prefix match such as claude-opus-5 is advisory and never supplies
+// the policy effort (see TestResolveLevelInferredKeepsPrefixMatchAdvisory).
 func TestE2E_CLI_MissionViewAndLevelingActivation(t *testing.T) {
 	t.Parallel()
 	workspace := t.TempDir()
@@ -51,10 +57,15 @@ func TestE2E_CLI_MissionViewAndLevelingActivation(t *testing.T) {
 
 	fresh := missionView(t, workspace, "m-e2e")
 	assert.Equal(t, "no_sample", fresh.Confidence.Availability)
-	assert.Equal(t, "unknown", fresh.Leveling.Availability)
+	assert.Equal(t, "unknown", fresh.Leveling.Availability, "an empty scout tuple is never persisted (F-L4)")
+	for _, role := range fresh.Leveling.Roles {
+		if role.Role == "ranger" {
+			assert.Nil(t, role.Effective, "no ranger level exists before its on_start hook runs")
+		}
+	}
 
 	label := runStrategistCLI(t, workspace, "leveling", "label", "--role", "ranger", "--mission", "m-e2e",
-		"--host-model", "claude-opus-5", "--host-effort", "<your-effort>", "--json")
+		"--host-model", "claude-reasoning", "--host-effort", "<your-effort>", "--json")
 	require.Equal(t, 0, label.exitCode, label.output())
 	assert.Contains(t, label.stderr, "placeholder", "the unreplaced effort is reported, not recorded")
 

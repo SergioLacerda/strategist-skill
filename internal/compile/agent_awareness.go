@@ -1,6 +1,7 @@
 package compile
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -45,32 +46,65 @@ Discovery contract: ` + "`" + `.strategist/provider-discovery.md` + "`"
 // via the markdown section mechanism. One entry per supported coding-agent seed:
 // CODEX, Claude, Copilot.
 var seedTargets = []struct {
-	relPath string
-	label   string
+	relPath                string
+	label                  string
+	createWhenParentExists bool
 }{
-	{filepath.Join(".claude", "claude-instructions.md"), "claude-instructions"},
-	{filepath.Join(".codex", "commands.md"), "codex commands"},
-	{filepath.Join(".github", "copilot-instructions.md"), "copilot"},
+	{relPath: filepath.Join(".claude", "claude-instructions.md"), label: "claude-instructions"},
+	{relPath: filepath.Join(".codex", "commands.md"), label: "codex commands", createWhenParentExists: true},
+	{relPath: filepath.Join(".github", "copilot-instructions.md"), label: "copilot"},
 }
 
-// agentAwareness upserts per-agent seed files at projectRoot if they already exist,
-// then runs ideAwareness for IDE-level workspace registration. Does not create seed
-// files that do not exist. Failures per file are logged and skipped — this function
-// always returns nil (non-blocking by contract).
+// agentAwareness refreshes per-agent seed files at projectRoot, creating the
+// CODEX seed only when its parent directory already exists. It then runs
+// ideAwareness for IDE-level workspace registration. Failures per file are
+// logged and skipped — this function always returns nil (non-blocking by
+// contract).
 func agentAwareness(projectRoot string) error {
 	for _, t := range seedTargets {
-		upsertIfExists(filepath.Join(projectRoot, t.relPath), upsertSection, t.label)
+		upsertSeed(filepath.Join(projectRoot, t.relPath), t.createWhenParentExists, upsertSection, t.label)
 	}
 	return ideAwareness(projectRoot)
 }
 
-func upsertIfExists(path string, update func(string) error, label string) {
-	if _, err := os.Stat(path); err != nil {
+func upsertSeed(path string, createWhenParentExists bool, update func(string) error, label string) {
+	if !seedReady(path, createWhenParentExists, label) {
 		return
 	}
 	if err := update(path); err != nil {
 		slog.Warn("[Strategist] agent awareness: "+label+" update failed", "error", err)
 	}
+}
+
+// seedReady reports whether path is an existing seed file ready to be
+// upserted, creating it first when createWhenParentExists and its parent
+// directory already exists. Failures are logged and treated as "not
+// ready" (non-blocking by contract).
+func seedReady(path string, createWhenParentExists bool, label string) bool {
+	info, err := os.Stat(path)
+	switch {
+	case err == nil && !info.IsDir():
+		return true
+	case errors.Is(err, os.ErrNotExist) && createWhenParentExists:
+		return createSeedFile(path, label)
+	case errors.Is(err, os.ErrNotExist):
+		return false
+	default:
+		slog.Warn("[Strategist] agent awareness: "+label+" stat failed", "error", err)
+		return false
+	}
+}
+
+func createSeedFile(path, label string) bool {
+	parentInfo, parentErr := os.Stat(filepath.Dir(path))
+	if parentErr != nil || !parentInfo.IsDir() {
+		return false
+	}
+	if err := writeFile(path, nil, label); err != nil {
+		slog.Warn("[Strategist] agent awareness: "+label+" create failed", "error", err)
+		return false
+	}
+	return true
 }
 
 // RefreshAgentAwareness is the single coordinating entry point for both the

@@ -4,7 +4,10 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/SergioLacerda/strategist-skill/internal/testutil/customws"
 )
 
 func TestBuildAllowedAnalysisTargetKeepsLiveEvidenceUnverified(t *testing.T) {
@@ -138,4 +141,41 @@ bindings:
     status: active
 `)
 	return root
+}
+
+// After a real `provider add`, active.yaml names the package by its instance id;
+// the binding dimension resolves every slot to its persisted binding, so the
+// authorization boundary does not reject an added package for its spelling.
+func TestBuildResolvesAnAddedPackageNamedByItsInstanceId(t *testing.T) {
+	root := customws.Workspace(t)
+
+	report, err := Build(Request{Root: root, Target: ".analysis/refined/mission/tasks.md", ApprovalGate: "accepted"})
+
+	if err != nil {
+		t.Fatalf("Build() error = %v (report=%+v)", err, report)
+	}
+	if dimension := findDimension(report, "binding"); dimension.ReasonCode != "role_provider_binding_verified" {
+		t.Fatalf("binding dimension did not verify: %+v", dimension)
+	}
+}
+
+func TestBuildBlocksAnAddedPackageNamedByItsPackageId(t *testing.T) {
+	root := customws.Workspace(t)
+	active := filepath.Join(root, "active.yaml")
+	raw, err := os.ReadFile(active)
+	if err != nil {
+		t.Fatal(err)
+	}
+	edited := strings.Replace(string(raw), "refinement: "+customws.Instance, "refinement: fixture-provider", 1)
+	if err := os.WriteFile(active, []byte(edited), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	report, err := Build(Request{Root: root, Target: ".analysis/refined/mission/tasks.md", ApprovalGate: "accepted"})
+
+	// Editing active.yaml also makes the compiled runtime stale, which outranks the
+	// binding in the final decision; the binding dimension is what this pins.
+	if err == nil || findDimension(report, "binding").ReasonCode != "active_binding_mismatch" {
+		t.Fatalf("package-id spelling must block on the binding: report=%+v err=%v", report, err)
+	}
 }

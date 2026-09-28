@@ -20,8 +20,8 @@ func inferTestPolicy(t *testing.T) internal.Policy {
 	return policy
 }
 
-// G1: in automatic mode the role on_start hook (host model, no provider) now
-// yields a policy-completed level instead of an empty one.
+// G1: prefix inference is observable but advisory and cannot supply an
+// authority-bearing policy effort.
 func TestLabelAutomaticModeInfersTheProviderFromTheHostModel(t *testing.T) {
 	calls := 0
 	load := func() (internal.Policy, error) { calls++; return inferTestPolicy(t), nil }
@@ -30,8 +30,9 @@ func TestLabelAutomaticModeInfersTheProviderFromTheHostModel(t *testing.T) {
 
 	got, err := LabelRoleWith(domain.DefaultRoleRegistry(), load, domain.LevelingConfig{Mode: domain.LevelingModeAutomatic}, ledger, opts)
 	require.NoError(t, err)
-	assert.Equal(t, "CLAUDE", got.Level.Provider)
-	assert.NotEmpty(t, got.Level.Effort, "the policy fills the effort the hook could not")
+	assert.Empty(t, got.Level.Provider)
+	assert.Empty(t, got.Level.Effort, "prefix inference must not fill policy effort")
+	assert.Equal(t, "prefix_inferred", got.Level.ProviderMatch)
 	assert.Equal(t, 1, calls)
 
 	manualCalls := 0

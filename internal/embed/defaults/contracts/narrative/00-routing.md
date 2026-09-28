@@ -12,6 +12,10 @@ Resolve the route before any mission work starts.
 
 ## Routes
 
+Routes are not a taxonomy family: they are the Pipeline paths that Scout selects,
+never a Role, Weapon, or provider. The current route names are
+`critical_hit`, `implementation_short_route`, and `full_pipeline`.
+
 - **Critical Hit** — internal capability for workspace artifact management
   (`pending/`, `refined/`, `archived/`, `done/`). Not a route mutually exclusive with the
   pipeline — may fire at intake or mid-mission. Two modes: plain move (no evaluation, no
@@ -63,8 +67,9 @@ and must select `full_pipeline` instead.
 
 ### Discovery Weapon Resolution by Subtype
 
-The selected discovery weapon is flexible input to the fixed Ranger role. The
-role remains authoritative: it reads `roles/ranger.yaml` and
+The selected discovery weapon is required input to the fixed Ranger role. The
+role remains authoritative: it invokes the selected Weapon, reads
+`roles/ranger.yaml` and
 `internal_skills/ranger/SKILL.md`, normalizes the weapon result into the
 canonical pending handoff, and owns the checkpoint, lock, state, and control
 log validation. A weapon that cannot satisfy that boundary is a hard error;
@@ -75,7 +80,8 @@ the pipeline does not silently substitute another weapon.
 There is no provider fallback policy. The selected weapon is immutable for the
 mission and operates inside its fixed role. If it is absent, incompatible, or
 cannot satisfy the role checkpoint, the pipeline emits a fatal error and stops.
-The native role is not substituted for the weapon. The Wizard and
+The stable failure reason is `role_invocation_failed`. The native role is not
+substituted for the weapon. The Wizard and
 `strategist check` must detect the invalid binding before mission execution.
 
 ## Main Mission Sequence
@@ -149,12 +155,18 @@ When operating inside the main mission, consult contracts in this order:
 
 `enforced_by` tags use the unified 3-tier vocabulary defined in
 `machine/errors.yaml` (`machine_enforced` / `machine_observed` /
-`agent_only`). Reviewed against actual Go call sites (2026-08-30): every
-invariant below is `agent_only` — there is no live-mission FSM in Go that
-gates routing or execution; `internal/domain/pipeline_bypass.go`'s
-`EvaluatePipelineBypass` implements the matching decision logic for the first
-invariant but has zero non-test callers repo-wide, so it is not on a
-reachable path today.
+`agent_only`). Reviewed against actual Go call sites (2026-08-30, updated
+2026-09-25): the invariants below are `agent_only` except entry into execution.
+`strategist mission submit --event handoff_challenge_passed` runs
+`EvaluatePipelineBypass` (via `internal/mission.EvaluateExecutionEntry`) against
+the evidence the Scout-selected route needs, so a missing phase is rejected as
+`pipeline_bypass_detected`. Scout's `route_decision` reaches that check through
+`strategist mission route`; with no recorded decision the strictest regime
+(`full_pipeline`) applies. Routes map to evidence regimes as follows:
+`full_pipeline` needs discovery, refinement, tasks and the approved gate;
+`implementation_short_route` and `critical_hit` need the approved gate.
+
+- Entering execution without the evidence its route requires is rejected — `enforced_by: machine_enforced`
 
 - No direct repository mutation without canonical pipeline evidence — `enforced_by: agent_only`
 - No execution without explicit Strategist Approval Gate acceptance — `enforced_by: agent_only`

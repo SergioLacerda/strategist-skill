@@ -9,9 +9,9 @@ roles:
   - ranger
 weapon_contract:
   role_owner: ranger
-  participation: advisory
+  participation: required
   invocation_evidence: required
-  unavailable_behavior: report_advisory
+  unavailable_behavior: role_invocation_failed
   native_substitution: forbidden
 
 description: >

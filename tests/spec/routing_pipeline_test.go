@@ -365,9 +365,8 @@ func TestRoleLockForbidsSkippingScout(t *testing.T) {
 }
 
 // TestRoutingContractDefinesDiscoveryWeaponResolutionBySubtype verifies
-// 00-routing.md normatively states that evaluation/diagnostic/closure_evidence
-// discovery subtypes always resolve to internal_skills/ranger, bypassing the
-// configured external weapon.
+// 00-routing.md normatively states that the selected Weapon is required input
+// to the fixed Ranger boundary for every discovery subtype.
 
 // TestShortRouteAnnotationRequiresExplicitEvidence verifies 00-routing.md
 // narrows Implementation Short Route's ability to annotate implementation status

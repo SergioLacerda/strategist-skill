@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 )
 
 // OpenSpecInput identifies one completed provider change and its Strategist
@@ -78,6 +80,26 @@ func readContents(changeDir string, input OpenSpecInput) (map[string][]byte, err
 	if err := requireFiles(changeDir, canonicalFiles[1:]); err != nil {
 		return nil, fmt.Errorf("openspec bridge: incomplete change: %w", err)
 	}
+	analysis, err := readPendingAnalysis(input)
+	if err != nil {
+		return nil, err
+	}
+	contents := map[string][]byte{"analysis.md": addMetadata(analysis, input)}
+	canonical, err := readCanonicalFiles(changeDir)
+	if err != nil {
+		return nil, err
+	}
+	for name, content := range canonical {
+		contents[name] = content
+	}
+	contents["design.md"], err = withAcceptanceScenarios(contents["design.md"], changeDir)
+	if err != nil {
+		return nil, err
+	}
+	return contents, nil
+}
+
+func readPendingAnalysis(input OpenSpecInput) ([]byte, error) {
 	analysis, err := os.ReadFile(input.PendingAnalysisPath)
 	if err != nil {
 		return nil, fmt.Errorf("openspec bridge: read pending analysis: %w", err)
@@ -85,16 +107,22 @@ func readContents(changeDir string, input OpenSpecInput) (map[string][]byte, err
 	if !hasMissionIdentity(analysis, input.MissionID) {
 		return nil, fmt.Errorf("openspec bridge: pending analysis mission_id does not match %q", input.MissionID)
 	}
-	contents := map[string][]byte{"analysis.md": addMetadata(analysis, input)}
+	if handoff.HasNormalizedRangerMetadata(input.PendingAnalysisPath) {
+		if err := handoff.ValidateRangerArtifact(input.PendingAnalysisPath, input.MissionID); err != nil {
+			return nil, fmt.Errorf("openspec bridge: %w", err)
+		}
+	}
+	return analysis, nil
+}
+
+func readCanonicalFiles(changeDir string) (map[string][]byte, error) {
+	contents := make(map[string][]byte, len(canonicalFiles)-1)
 	for _, name := range canonicalFiles[1:] {
-		contents[name], err = os.ReadFile(filepath.Join(changeDir, name)) //nolint:gosec // changeDir is contained under the validated runtime root
+		content, err := os.ReadFile(filepath.Join(changeDir, name)) //nolint:gosec // changeDir is contained under the validated runtime root
 		if err != nil {
 			return nil, fmt.Errorf("openspec bridge: read %s: %w", name, err)
 		}
-	}
-	contents["design.md"], err = withAcceptanceScenarios(contents["design.md"], changeDir)
-	if err != nil {
-		return nil, err
+		contents[name] = content
 	}
 	return contents, nil
 }

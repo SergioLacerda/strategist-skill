@@ -184,7 +184,7 @@ flowchart TD
 | Slot `discovery` (Ranger) | pluggable | `write_analysis` | `<base_path>/pending/<mission_id>-analysis.md` |
 | `opportunity_attack` | Archivist routine / ADR evaluation | — | — |
 | Slot `refinement` (Archivist) | pluggable | `write_analysis` | `<base_path>/refined/` |
-| Slot `execution` (Sniper) | pluggable | `controlled` | `<base_path>/archived/` and approved `.md` documentation |
+| Slot `execution` (Sniper) | fixed | `controlled` | `<base_path>/archived/` and approved `.md` documentation |
 | `response-critic` | internal sub-skill | `read_only` | — |
 | `learning-curator` | internal sub-skill | `read_only` | `memory/` (with approval) |
 

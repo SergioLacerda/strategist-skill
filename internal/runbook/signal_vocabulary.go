@@ -8,7 +8,7 @@ import "strings"
 // changed materially, so callers pinning behavior (e.g. the golden
 // selection tests in select_runbook_golden_test.go) have an explicit
 // signal that the vocabulary — not just the code around it — has drifted.
-const SignalVocabularyVersion = 1
+const SignalVocabularyVersion = 2
 
 // CanonicalSignal is a controlled-vocabulary term naming one underlying
 // trigger condition that both a runbook's applies_when prose and a
@@ -23,8 +23,11 @@ const SignalVocabularyVersion = 1
 type CanonicalSignal string
 
 // Canonical signal terms, derived from what docs/runbooks/*.runbook.yaml
-// files actually declare in applies_when as of SignalVocabularyVersion 1
-// (see signalAliases for the source runbook of each real-text alias).
+// files actually declare in applies_when as of SignalVocabularyVersion 2
+// (see signalAliases for the source runbook of each real-text alias). The
+// first 9 (through SignalComplexityRefactor) are all incident-shaped, from
+// version 1; SignalSkillCorpusHealthReview is version 2's addition, the
+// first analytical-work signal (F-X1, ADR-0057/design.md task 5.1).
 // Adding a new runbook whose applies_when describes a genuinely new
 // trigger condition should add a new canonical term here (and bump
 // SignalVocabularyVersion) rather than folding an unrelated concept into
@@ -78,74 +81,22 @@ const (
 	// asking for a narrow, behavior-preserving refactor.
 	// Real source: docs/runbooks/refactoring-for-agent-operations.runbook.yaml.
 	SignalComplexityRefactor CanonicalSignal = "complexity_refactor"
-)
 
-// signalAliases maps each canonical signal to the free-text phrases that
-// should resolve to it. Most entries are phrases lifted verbatim from a
-// real docs/runbooks/*.runbook.yaml applies_when entry (see the const
-// block above for which file); a few are explicitly-marked plausible
-// operator synonyms for the same underlying condition, included so that a
-// mission's own phrasing of a symptom — which will rarely match a
-// runbook author's prose verbatim — still resolves to the right
-// canonical signal. Matching is case-insensitive substring containment
-// (see canonicalSignalsIn), so an alias should be specific enough that it
-// does not also occur, by coincidence, in an unrelated runbook's prose.
-var signalAliases = map[CanonicalSignal][]string{
-	SignalCITestFailure: {
-		"go test -tags spec ./tests/spec/...", // real: verifying-test-failures
-		"ci test suite is red",                // operator synonym
-		"flaky test",                          // operator synonym
-		"tests are failing",                   // operator synonym
-	},
-	SignalDependencyUpgrade: {
-		"npm audit fix --force",    // real: verifying-dependency-upgrades
-		"breaking change",          // real: verifying-dependency-upgrades
-		"major-version jump",       // real: verifying-dependency-upgrades
-		"dependency bump",          // operator synonym
-		"go.mod dependency bumped", // operator synonym
-	},
-	SignalReleaseToolVersionDrift: {
-		"tag-triggered release fails",        // real: release-tool-version-drift
-		"bump, pin, or unpin a tool version", // real: release-tool-version-drift
-		"deprecation warning",                // real: release-tool-version-drift
-		"adding a new tool to the pipeline",  // real: release-tool-version-drift
-	},
-	SignalConcurrentSessionCollision: {
-		"two claude sessions running against the same", // real: concurrent-session-sniper-collision
-		"sniper materializing to the same file",        // real: concurrent-session-sniper-collision
-		"git conflict at commit time",                  // real: concurrent-session-sniper-collision
-	},
-	SignalProviderInvocationFailure: {
-		"role_invocation_failed",  // real: role-invocation-failed, provider-fallback-policy
-		"role_provider_invalid",   // real: provider-fallback-policy
-		"slot_provider_not_found", // real: provider-fallback-policy
-		"slot_risk_mismatch",      // real: provider-fallback-policy
-	},
-	SignalExecutionProviderMissing: {
-		"local_execution_provider_missing", // real: delegated-execution-blocked
-		"execution_provider_unavailable",   // real: delegated-execution-blocked
-		"local_execution_context_bypass",   // real: delegated-execution-blocked
-	},
-	SignalTreasureChestPartialWrite: {
-		"left in an inconsistent state", // real: treasure-chest-partial-write
-		"write <path>: create temp",     // real: treasure-chest-partial-write
-		"rename temp",                   // real: treasure-chest-partial-write
-		"already committed",             // real: treasure-chest-partial-write
-	},
-	SignalVerifyingImplementedDemands: {
-		"already finished",     // real: verifying-implemented-demands
-		"move it to done",      // real: verifying-implemented-demands
-		"bootstrap stale scan", // real: verifying-implemented-demands
-		"refined/<mission_id>", // real: verifying-implemented-demands
-	},
-	SignalComplexityRefactor: {
-		"golangci-lint",      // real: refactoring-for-agent-operations
-		"gocritic",           // real: refactoring-for-agent-operations
-		"wrapcheck",          // real: refactoring-for-agent-operations
-		"complexity tooling", // real: refactoring-for-agent-operations
-		"reduce complexity below a numeric limit", // real: refactoring-for-agent-operations
-	},
-}
+	// SignalSkillCorpusHealthReview covers a periodic or triggered analytical
+	// review of the governed skill corpus itself (contracts + schemas +
+	// runtime code) — as opposed to every other canonical signal above,
+	// which covers a specific operational incident. Added for F-X1
+	// (ADR-0057/design.md task 5.1): the vocabulary's original 9 signals
+	// were all incident-shaped, so a diagnostic/hardening review mission
+	// like the one that found this gap could never select
+	// deep-analysis-workflow, whose own applies_when describes exactly this
+	// kind of review, through select_runbook — the command ran (per
+	// 03-discovery.md's own requirement) and correctly reported "no runbook
+	// matched," because nothing in the vocabulary spanned analytical work,
+	// not because the command was skipped.
+	// Real source: docs/runbooks/deep-analysis-workflow.runbook.yaml.
+	SignalSkillCorpusHealthReview CanonicalSignal = "skill_corpus_health_review"
+)
 
 // canonicalSignalsIn returns the set of canonical signals whose canonical
 // term itself, or one of its aliases, appears (case-insensitively) as a

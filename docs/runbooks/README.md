@@ -104,9 +104,8 @@ freshness: fresh|stale|unknown
 ```
 
 As of this writing, no runtime-optimized runbook artifact exists yet — the
-`runbook_opportunity` routine (see
-`.strategist/contracts/machine/runbook-opportunity.yaml`) only creates reviewable
-candidates, never a runtime index. This policy is documented ahead of that surface
+Opportunity Attack's runbook side (`.strategist/contracts/machine/opportunity-attack.yaml`,
+`on_runbook_criteria_met`) only surfaces reviewable candidates, never a runtime index. This policy is documented ahead of that surface
 being built so a future implementation has a lookup order to follow instead of
 inventing one under time pressure. See `SQ-001` in
 `.analysis/done/2026-07-25-quick-draw-runbook-opportunity/proposal.md` for the
@@ -122,12 +121,12 @@ deferred Treasure Chest / compiled-index integration question.
 3. If both exist and `source_hash` disagrees with the canonical file's current
    hash, report the runtime artifact as stale and prefer canonical source.
 4. If neither exists, fall back to normal discovery and, if appropriate, let the
-   `runbook_opportunity` routine propose a new candidate.
+   Opportunity Attack propose a new candidate.
 
 ## Candidates vs accepted runbooks
 
-A runbook candidate produced by the `runbook_opportunity` routine (see
-`.strategist/contracts/machine/runbook-opportunity.yaml#phases.sniper_runbook_opportunity.runbook_candidate_action`)
+A runbook candidate produced by Opportunity Attack (see
+`.strategist/contracts/machine/opportunity-attack.yaml#on_runbook_criteria_met`)
 is a request for a runbook, not an accepted runbook. It is only promoted into this
-directory after explicit human review — the routine itself never writes directly to
+directory after explicit human review — Opportunity Attack itself never writes directly to
 `docs/runbooks/<slug>.md`.

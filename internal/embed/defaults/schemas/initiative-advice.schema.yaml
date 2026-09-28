@@ -14,6 +14,9 @@ required_fields:
   policy_version: string
   policy_digest: string
   trigger: [initial, scope_changed, security_risk_discovered, conflicting_evidence, handoff_challenged, repeated_failure, user_revision_requested, mandatory_obligation_blocked]
+  leveling:
+    type: object
+    fields: [event_id, role, state, model, provider, effort, capability, level_source, policy_digest]
   observed:
     type: object
     fields: [state, model, provider, effort, capability, level_source]
@@ -24,5 +27,7 @@ required_fields:
   diligence:
     type: object
     fields: [checks, confidence_ceiling]
+    confidence_ceiling: [low, medium, high]
 optional_fields:
   supersedes: string
+  leveling: object

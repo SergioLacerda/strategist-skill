@@ -13,8 +13,8 @@ phase_labels:
     phase labels are resolved from the active persona at runtime.
     pragmatic: analysis / refinement / execution
     epic: Ranger / Archivist / Sniper
-    Internal role names (Ranger/Archivist/Sniper) appear in SKILL.md prose and persona labels;
-    external slot keys (discovery/refinement/execution) appear in roles YAML and progress events.
+    Canonical Role names (Ranger/Archivist/Sniper) appear in SKILL.md prose and persona labels;
+    slot keys (discovery/refinement/execution) remain independent fields in roles YAML and progress events.
 
 statuses:
   running:

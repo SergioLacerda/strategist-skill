@@ -110,9 +110,10 @@ func NewFullInstallManifest(packageID string, pathHashes map[string]string) Inst
 	}
 
 	return InstallManifest{
-		Schema:      "strategist.install-manifest.v1",
-		PackageID:   packageID,
-		InstalledAt: time.Now().UTC().Format(time.RFC3339),
-		Files:       files,
+		Schema:                  "strategist.install-manifest.v1",
+		PackageID:               packageID,
+		InstalledAt:             time.Now().UTC().Format(time.RFC3339),
+		Files:                   files,
+		RuntimeLayoutGeneration: RuntimeLayoutGeneration,
 	}
 }

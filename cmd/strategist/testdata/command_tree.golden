@@ -174,6 +174,22 @@ use: validate
 short: Validate the customer LEVELING policy
 flag: --expected-digest (string) default="" usage="fail if the normalized policy digest differs"
 
+== strategist mechanisms
+use: mechanisms
+short: Inspect the Mechanisms registry
+
+== strategist mechanisms brief
+use: brief --role <role>
+short: Print the tools (Mechanisms and Abilities) available to one role
+long: |
+  Prints the role-scoped view of the Mechanisms registry
+  (contracts/machine/mechanisms.yaml): what each tool is and how to invoke it.
+  Roles run it from their on_start hook so an agent in a mission knows what is at
+  its disposal. --full adds the enforcement tier and when to use each tool.
+flag: --full (bool) default="false" usage="include enforcement and when-to-use detail"
+flag: --role (string) default="" usage="role to print the brief for (required)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
 == strategist metrics
 use: metrics
 short: Report metrics computed from Strategist's own runtime memory
@@ -183,12 +199,8 @@ long: |
 == strategist metrics confidence
 use: confidence
 short: Report cross-agent confidence metrics
+flag: --declared (string) default="" usage="compare the claims a handoff declared with the persisted records: \"-\" reads a YAML document with a top-level confidence_summary from standard input (requires --mission; read-only)"
 flag: --mission (string) default="" usage="scope the review to one mission (used at the Approval Gate)"
-flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
-
-== strategist metrics fallback
-use: fallback
-short: Report provider-fallback (ADR-0028) metrics
 flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
 
 == strategist metrics gate-outcome
@@ -204,6 +216,23 @@ use: handoff
 short: Report Handoff Challenge governance metrics
 long: |
   Report Handoff Challenge governance metrics from .strategist/memory/handoff-challenges.jsonl.
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist metrics handoff-record
+use: handoff-record
+short: Record the Archivist's handoff metrics line for a mission
+long: |
+  Append the Archivist's per-refinement line to .strategist/memory/handoff-metrics.jsonl. Only the values passed are recorded; every other field is null (an unset --reopens is null, not 0), and the two ratios are never derived because the contracts do not define them. A mission that already has a line for the same revision is left unchanged; --revision <n> records one further line per gate revision.
+flag: --brief-compression-ratio (float64) default="0" usage="brief compression ratio, as measured by the caller (omit when not measured)"
+flag: --brief-tokens (int64) default="0" usage="tokens in the discovery brief (omit when not measured)"
+flag: --discovery-tokens (int64) default="0" usage="tokens spent by discovery (omit when not measured)"
+flag: --effort (string) default="" usage="Archivist effort (omit when unknown)"
+flag: --evidence-coverage-ratio (float64) default="0" usage="evidence coverage ratio, as measured by the caller (omit when not measured)"
+flag: --level-source (string) default="" usage="how the level was resolved, for example host (omit when unknown)"
+flag: --mission (string) default="" usage="mission id (required)"
+flag: --model (string) default="" usage="Archivist model (omit when unknown)"
+flag: --reopens (int) default="0" usage="sources the Archivist reopened, each with a declared reason (omit when not measured; 0 means measured, none)"
+flag: --revision (int) default="0" usage="gate revision number this line records (omit for the base line; one line is kept per revision)"
 flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
 
 == strategist metrics label
@@ -225,11 +254,19 @@ flag: --mission (string) default="" usage="scope the report to one mission"
 flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
 flag: --rotate (bool) default="false" usage="compact the ledger first"
 
+== strategist metrics mission-quality
+use: mission-quality
+short: Evaluate the mission_quality predicates over a decisions/evidence document
+long: |
+  Read a YAML document from standard input (decisions, evidence, acceptance_criteria, and optionally previously_open_decision_ids and approved_scope_prefixes) and report each mission_quality predicate. The result is advisory: a failed predicate is reported and the command still exits 0. The command reads no mission artifact on its own; the caller supplies the ledger and the evidence it cites.
+flag: --mission (string) default="" usage="mission id (required)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
 == strategist metrics record
 use: record
 short: Record a confidence claim or an explicit missing-record for a boundary
 flag: --agent (string) default="" usage="producing agent (required)"
-flag: --claim-file (string) default="" usage="YAML file with the claim and its evidence; \"-\" reads it from standard input (preferred: no file is created), and a file inside the workspace base_path is rejected"
+flag: --claim-file (string) default="" usage="YAML document holding one claim: or a claims: list, with its evidence: list; \"-\" reads it from standard input (preferred: no file is created), and a file inside the workspace base_path is rejected"
 flag: --correlation-key (string) default="" usage="boundary correlation key (with --missing)"
 flag: --missing (bool) default="false" usage="record an explicit missing-record instead of a claim"
 flag: --mission (string) default="" usage="mission id (required)"
@@ -270,6 +307,9 @@ long: |
   Validates a private OpenSpec change and atomically promotes its proposal,
   design, tasks, and the mission analysis into <base_path>/refined/<mission_id>.
   OpenSpec specs and archive history remain private provider scratch.
+flag: --amend (bool) default="false" usage="amend an already published package with a new change instead of publishing (analysis.md, the mission status and the original provider_change_id are kept; the previous files are snapshotted under .amendments/)"
+flag: --amends (string) default="" usage="with --amend: the change being amended (the package's provider_change_id, or the previous amendment's change id)"
+flag: --authorization-ref (string) default="" usage="with --amend: the human authorization for the amendment (a quote or a gate event), recorded verbatim"
 flag: --change-id (string) default="" usage="completed OpenSpec change id (required)"
 flag: --mission-id (string) default="" usage="canonical Strategist mission id (required)"
 flag: --pending-analysis (string) default="" usage="pending analysis path (default: <base_path>/pending/<mission-id>-analysis.md)"
@@ -305,6 +345,13 @@ flag: --mission-id (string) default="" usage="mission_id to record usage against
 flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
 flag: --tokens-in (int64) default="0" usage="real input token count from the invoking agent's own provider response (required, >= 0)"
 flag: --tokens-out (int64) default="0" usage="real output token count from the invoking agent's own provider response (required, >= 0)"
+
+== strategist mission route
+use: route
+short: Record Scout's route decision for a mission (JSON on stdin)
+flag: --json (bool) default="false" usage="emit machine-readable JSON"
+flag: --mission-id (string) default="" usage="mission identifier (required)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
 
 == strategist mission start
 use: start
@@ -403,6 +450,28 @@ flag: --defaults-root (string) default="internal/embed/defaults" usage="internal
 flag: --lock (string) default="external-skills-source.lock.yaml" usage="path to the committed embedded-skill lock file"
 flag: --source (string) default="external-skills-source" usage="directory of ORKA-shaped skill packages to ingest"
 
+== strategist plugins resolved-digest
+use: resolved-digest
+short: Report whether a resolved Weapon file matches its catalog pin
+long: |
+  Compares a Weapon's upstream_content_digest pin (internal/embed/defaults/
+  plugins/catalog.yaml) with a resolved digest — either a value already
+  computed by the caller (--resolved-digest, e.g. from a Ranger handoff's
+  weapon_invocation.resolved_digest) or a file this command hashes itself
+  (--file, sha256 of its raw bytes). It reads only; it never invokes the
+  Weapon and an unavailable pin is reported as pin_unavailable, never as a
+  match (see contracts/narrative/03-discovery.md § Weapon Profile for a
+  Delegated Ranger and design.md DEC-301/DEC-302 of the mission above).
+  
+  Exits non-zero on a mismatch, so callers can gate on it directly. A missing
+  or unavailable pin, or a caller that supplied no digest, exits 0 and reports
+  the status: this command answers "what do we know", not "is this Weapon
+  trusted".
+flag: --catalog (string) default="internal/embed/defaults/plugins/catalog.yaml" usage="path to the embedded plugin catalog"
+flag: --file (string) default="" usage="path to a resolved Weapon file to hash and compare (mutually exclusive with --resolved-digest)"
+flag: --provider (string) default="" usage="Weapon id to look up in the catalog (required)"
+flag: --resolved-digest (string) default="" usage="an already-computed sha256:<64 hex> digest to compare (mutually exclusive with --file)"
+
 == strategist provider
 use: provider
 short: Validate and onboard local Strategist providers
@@ -412,7 +481,7 @@ use: add <source> --slot <slot>
 short: Stage and bind a validated local provider
 flag: --format (string) default="table" usage="output format: table, json, or yaml"
 flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
-flag: --slot (string) default="" usage="target slot: refinement or execution"
+flag: --slot (string) default="" usage="target slot: discovery, refinement or execution"
 
 == strategist provider validate
 use: validate <source>

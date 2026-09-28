@@ -9,6 +9,7 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/leveling"
 	"github.com/SergioLacerda/strategist-skill/internal/missionview"
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -26,6 +27,111 @@ func TestBuildKeepsRegistryOrderAndGateSeparate(t *testing.T) {
 	assert.Equal(t, "gate", v.Journey[3].Kind)
 	assert.True(t, v.Confidence.Advisory)
 	assert.Equal(t, "latest_record", v.Leveling.Selection)
+}
+
+// TestBuild_TokenUsageNotApplicableWhenNoneReported covers F-T2 (ADR-0057 §
+// design.md task 3.3): a mission with no reported usage is NotApplicable,
+// not Unavailable — nothing has gone wrong, most missions never call
+// `mission report-usage`.
+func TestBuild_TokenUsageNotApplicableWhenNoneReported(t *testing.T) {
+	v := missionview.Build(missionview.Input{
+		Status:   domain.MissionEngineStatus{MissionID: "m-1"},
+		Registry: domain.DefaultRoleRegistry(),
+	})
+	assert.Equal(t, missionview.NotApplicable, v.TokenUsage.Availability)
+	assert.Zero(t, v.TokenUsage.TotalTokensIn)
+	assert.Zero(t, v.TokenUsage.TotalTokensOut)
+	assert.Empty(t, v.TokenUsage.Records)
+}
+
+// TestBuild_TokenUsageSumsReportedRecords covers the same task: two reported
+// records show both individually and summed, and the declared budget tier is
+// carried through verbatim.
+func TestBuild_TokenUsageSumsReportedRecords(t *testing.T) {
+	records := []telemetry.MissionTokenUsageRecord{
+		{MissionID: "m-1", TokensIn: 100, TokensOut: 50, Source: telemetry.MissionUsageSourceAgentReport, ReportedAt: "2026-09-27T10:00:00Z"},
+		{MissionID: "m-1", TokensIn: 200, TokensOut: 75, Source: telemetry.MissionUsageSourceAgentReport, ReportedAt: "2026-09-27T11:00:00Z"},
+	}
+	v := missionview.Build(missionview.Input{
+		Status:              domain.MissionEngineStatus{MissionID: "m-1"},
+		Registry:            domain.DefaultRoleRegistry(),
+		TokenUsage:          records,
+		DeclaredTokenBudget: "high",
+	})
+	assert.Equal(t, missionview.Available, v.TokenUsage.Availability)
+	assert.Equal(t, "high", v.TokenUsage.DeclaredTokenBudget)
+	assert.Equal(t, int64(300), v.TokenUsage.TotalTokensIn)
+	assert.Equal(t, int64(125), v.TokenUsage.TotalTokensOut)
+	require.Len(t, v.TokenUsage.Records, 2)
+}
+
+// TestBuild_TokenUsageErrorIsUnavailableWithDiagnostic covers the read-error
+// path, mirroring the existing Confidence/Gate/Levels error handling this
+// package already tests.
+func TestBuild_TokenUsageErrorIsUnavailableWithDiagnostic(t *testing.T) {
+	v := missionview.Build(missionview.Input{
+		Status:          domain.MissionEngineStatus{MissionID: "m-1"},
+		Registry:        domain.DefaultRoleRegistry(),
+		TokenUsageError: errors.New("token usage read failed"),
+	})
+	assert.Equal(t, missionview.Unavailable, v.TokenUsage.Availability)
+	found := false
+	for _, d := range v.Diagnostics {
+		if d.Reason == missionview.ReasonMissionViewTokenUsageUnavailable {
+			found = true
+		}
+	}
+	assert.True(t, found, "expected a token-usage-unavailable diagnostic")
+}
+
+// TestRenderHumanIncludesAvailableTokenUsageDetails exercises the
+// Available-token-usage render path (totals, ledger comparison,
+// inconsistencies and per-record lines), which a mission with no reported
+// usage never reaches.
+func TestRenderHumanIncludesAvailableTokenUsageDetails(t *testing.T) {
+	records := []telemetry.MissionTokenUsageRecord{
+		{MissionID: "m-1", TokensIn: 100, TokensOut: 50, Source: telemetry.MissionUsageSourceAgentReport, ReportedAt: "2026-09-27T10:00:00Z"},
+		{MissionID: "m-1", TokensIn: 200, TokensOut: 75, Source: telemetry.MissionUsageSourceAgentReport, ReportedAt: "2026-09-27T11:00:00Z"},
+	}
+	v := missionview.Build(missionview.Input{
+		Status:              domain.MissionEngineStatus{MissionID: "m-1"},
+		Registry:            domain.DefaultRoleRegistry(),
+		TokenUsage:          records,
+		DeclaredTokenBudget: "high",
+		LevelsError:         errors.New("levels read failed"),
+	})
+	require.Equal(t, telemetry.TokenLedgerInconsistent, v.TokenUsage.LedgerComparison.Status)
+	require.NotEmpty(t, v.TokenUsage.LedgerComparison.Inconsistencies)
+	require.NotEmpty(t, v.Diagnostics)
+
+	var out bytes.Buffer
+	require.NoError(t, missionview.RenderHuman(&out, v))
+	rendered := out.String()
+	assert.Contains(t, rendered, "declared_token_budget: high")
+	assert.Contains(t, rendered, "total_tokens_in: 300\n  total_tokens_out: 125")
+	assert.Contains(t, rendered, "ledger_inconsistency: reported mission usage contains contradictory totals")
+	assert.Contains(t, rendered, "2026-09-27T10:00:00Z: tokens_in=100 tokens_out=50 source=agent_report")
+	assert.Contains(t, rendered, "mission_view_leveling_unavailable")
+}
+
+// TestRenderHumanPropagatesWriterFailuresForFullTokenUsage repeats the
+// writer-failure sweep against a View that actually reaches the
+// Available-token-usage branches, so every write call in that path (not just
+// the header) is proven to propagate a failure.
+func TestRenderHumanPropagatesWriterFailuresForFullTokenUsage(t *testing.T) {
+	v := missionview.Build(missionview.Input{
+		Status:   domain.MissionEngineStatus{MissionID: "m-1"},
+		Registry: domain.DefaultRoleRegistry(),
+		TokenUsage: []telemetry.MissionTokenUsageRecord{
+			{MissionID: "m-1", TokensIn: 100, TokensOut: 50, Source: telemetry.MissionUsageSourceAgentReport, ReportedAt: "2026-09-27T10:00:00Z"},
+		},
+		DeclaredTokenBudget: "high",
+		LevelsError:         errors.New("levels read failed"),
+	})
+	for failAt := 1; failAt <= 15; failAt++ {
+		err := missionview.RenderHuman(&failingWriter{failAt: failAt}, v)
+		assert.Error(t, err, "failAt=%d", failAt)
+	}
 }
 
 func TestBuildSelectsOnlyRequestedRun(t *testing.T) {

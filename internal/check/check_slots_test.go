@@ -463,7 +463,7 @@ func TestResolveSlotProvider_CatalogedProviderWithoutHandoffSchemaUsesRoleCheckp
 		[]byte("id: openspec-propose\nrisk_score: write_analysis\ncanonical_role: archivist\n"), 0o644))
 	pluginsDir := filepath.Join(dir, "plugins")
 	require.NoError(t, os.MkdirAll(pluginsDir, 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(pluginsDir, "catalog.yaml"), []byte(`schema_version: strategist-plugin-catalog/v1
+	require.NoError(t, os.WriteFile(filepath.Join(pluginsDir, "catalog.yaml"), []byte(`schema_version: strategist-plugin-catalog/v2
 providers:
   - id: openspec-propose
     canonical_role: archivist

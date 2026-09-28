@@ -39,6 +39,10 @@ lookup by topic fast without moving any file.
 | [0038](0038-docs-information-architecture-and-mandate-layer.md) | Docs information architecture and mandate layer |
 | [0039](0039-weapon-scratch-root-declaration.md) | Weapon scratch-root declaration |
 | [0051](0051-remote-provider-acquisition-and-trust-policy.md) | Remote provider acquisition and trust policy (proposed) |
+| [0053](0053-taxonomy-classification-criterion-and-sniper-extensibility.md) | Taxonomy classification criterion and Sniper extensibility (amends 0034) |
+| [0054](0054-versioned-runtime-layout-marker.md) | Versioned runtime-layout marker for retiring the generated compat view (refines 0030) |
+| [0055](0055-delegated-weapon-channel-is-the-host-skill-loader.md) | A delegated Role reaches an embedded Weapon through the host skill loader (extends 0029; proposed) |
+| [0057](0057-mission-state-concurrency-and-atomicity.md) | Mission state concurrency and atomicity: flock plus atomic rename (revisits 0008; proposed) |
 
 ### Knowledge & Jewels
 
@@ -76,6 +80,7 @@ lookup by topic fast without moving any file.
 |---|---|
 | [0014](0014-monorepo-and-toolchain-policy.md) | Monorepo and toolchain policy |
 | [0023](0023-codeql-js-astro-coverage.md) | CodeQL Coverage: `javascript-typescript` Matrix Leg for `web/landing/` |
+| [0052](0052-cicd-enforcement-policy.md) | CI/CD enforcement policy (proposed) |
 
 ## Maintaining this index
 

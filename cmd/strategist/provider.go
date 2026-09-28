@@ -103,10 +103,20 @@ func printProviderHuman(cmd *cobra.Command, value any) error {
 	case providerpkg.Report:
 		return printProviderReport(out, report)
 	case providerpkg.AddResult:
-		return writeProviderLine(out, "provider=%s instance=%s slot=%s generation=%d transaction=%s live_invocation=%s\n", report.Report.ProviderID, report.InstanceID, report.Report.RequestedSlot, report.BindingGeneration, report.TransactionState, report.Report.LiveInvocation.Status)
+		return printAddResult(out, report)
 	default:
 		return fmt.Errorf("provider: unsupported output type %T", value)
 	}
+}
+
+// printAddResult prints the add line, then the active.yaml line the operator must
+// set: provider add records the binding in plugins.lock only, and check reads the
+// slot's provider from active.yaml.
+func printAddResult(out io.Writer, report providerpkg.AddResult) error {
+	if err := writeProviderLine(out, "provider=%s instance=%s slot=%s generation=%d transaction=%s live_invocation=%s\n", report.Report.ProviderID, report.InstanceID, report.Report.RequestedSlot, report.BindingGeneration, report.TransactionState, report.Report.LiveInvocation.Status); err != nil {
+		return err
+	}
+	return writeProviderLine(out, "active.yaml: set slots.%s to %s\n", report.Report.RequestedSlot, report.InstanceID)
 }
 
 func printProviderReport(out io.Writer, report providerpkg.Report) error {
@@ -144,7 +154,7 @@ func init() {
 	addOpts := providerOutputOptions{}
 	var root, slot string
 	providerAddCmd.Flags().StringVar(&root, cliutil.FlagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
-	providerAddCmd.Flags().StringVar(&slot, "slot", "", "target slot: refinement or execution")
+	providerAddCmd.Flags().StringVar(&slot, "slot", "", "target slot: discovery, refinement or execution")
 	providerAddCmd.Flags().StringVar(&addOpts.Format, "format", cliutil.OutputFormatTable, "output format: table, json, or yaml")
 	providerAddCmd.RunE = func(cmd *cobra.Command, args []string) error {
 		return runProviderAdd(cmd, args, root, slot, addOpts)

@@ -22,8 +22,19 @@ properties:
         id: {type: string}
         kind:
           type: enum
-          values: [package, adapter_contract, dependency, connector, trust_policy]
+          values: [package, adapter_contract, dependency, connector, trust_policy, weapon, composition_edge]
         digest: {type: digest}
+        weapon_kind:
+          type: enum
+          values: [atomic, composite]
+        origin:
+          type: enum
+          values: [embedded, custom]
+        runtime_kind:
+          type: enum
+          values: [embedded, host, executable, openspec_root]
+        component_id: {type: string}
+        depends_on: {type: array}
   conflict_explanation: {type: array}
 forbidden_authorities:
   - trusted_publishers

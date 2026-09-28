@@ -40,7 +40,7 @@ func Validate(input, requestedSlot string) (Report, error) {
 	}
 	report := buildReport(source, input, requestedSlot, reasons)
 	if len(reasons) > 0 {
-		return report, fmt.Errorf("provider validation failed: %s", reasons[0].Code)
+		return report, fmt.Errorf("provider validation failed: %s", describeReason(reasons[0]))
 	}
 	return report, nil
 }
@@ -99,6 +99,15 @@ func bindingReadiness(slot string, reasons []Reason) domain.ReadinessCheck {
 	return domain.ReadinessCheck{Status: domain.ReadinessUnknown, ReasonCode: "binding_not_activated"}
 }
 
+// describeReason is the reason code, followed by its detail when it has one, so a
+// refused add tells the operator what to fix and not only which rule fired.
+func describeReason(reason Reason) string {
+	if reason.Detail == "" {
+		return reason.Code
+	}
+	return reason.Code + ": " + reason.Detail
+}
+
 func reasonCodes(reasons []Reason) []string {
 	codes := make([]string, 0, len(reasons))
 	for _, reason := range reasons {
@@ -116,12 +125,13 @@ func firstOr(values []string, fallback string) string {
 	return values[0]
 }
 
-func ensureBindable(report Report, slot string) error {
+func ensureBindable(report Report, _ string) error {
 	if !report.Validated {
 		return fmt.Errorf("provider validation failed: %s", strings.Join(reasonCodes(report.Reasons), ", "))
 	}
-	if slot == string(domain.SlotDiscovery) {
-		return fmt.Errorf("native_role_authority: discovery remains owned by native Ranger")
-	}
+	// Static onboarding records a candidate binding only. Discovery invocation
+	// remains a separate host boundary and is required at mission time; the
+	// absence of live evidence must not turn a valid Weapon package into an
+	// implicit native binding or prevent the operator from selecting it.
 	return nil
 }

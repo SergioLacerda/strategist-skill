@@ -94,7 +94,7 @@ func TestEmitRoleLevelCarriesLevelFieldsForTelemetry(t *testing.T) {
 	slog.SetDefault(slog.New(handler))
 	t.Cleanup(func() { slog.SetDefault(previous) })
 
-	emitRoleLevel(context.Background(), "m1", "2", leveling.Level{Role: "ranger", Model: "Sonnet", Effort: "high", Source: leveling.SourceHost}, "escalated")
+	emitRoleLevel(context.Background(), "m1", "2", leveling.Level{Role: "ranger", Model: "Sonnet", Effort: "high", Source: leveling.SourceHost, Provider: "CLAUDE", Capability: "reasoning", PolicyVersion: 1, PolicyDigest: "digest"}, "escalated")
 	require.Len(t, handler.records, 1)
 	attrs := rootAttrsOf(handler.records[0])
 	assert.Equal(t, "m1", attrs[telemetry.AttrMissionID])
@@ -102,6 +102,10 @@ func TestEmitRoleLevelCarriesLevelFieldsForTelemetry(t *testing.T) {
 	assert.Equal(t, "Sonnet", attrs[telemetry.AttrModel])
 	assert.Equal(t, "high", attrs[telemetry.AttrEffort])
 	assert.Equal(t, "host", attrs[telemetry.AttrLevelSource])
+	assert.Equal(t, "CLAUDE", attrs[telemetry.AttrProvider])
+	assert.Equal(t, "reasoning", attrs[telemetry.AttrLevelingCapability])
+	assert.Equal(t, int64(1), attrs[telemetry.AttrLevelingPolicyVersion])
+	assert.Equal(t, "digest", attrs[telemetry.AttrLevelingPolicyDigest])
 	assert.Equal(t, "escalated", attrs[telemetry.AttrReason])
 	assert.Equal(t, "2", attrs[telemetry.AttrRoleRun])
 }
@@ -126,7 +130,7 @@ func TestLevelingLabelCmdReadsRolesFromWorkspace(t *testing.T) {
 	tmp := t.TempDir()
 	root := filepath.Join(tmp, ".strategist")
 	testutil.MinimalRoot(t, root)
-	require.NoError(t, os.WriteFile(filepath.Join(root, "roles", "auditor.yaml"), []byte("role: auditor\nphase: 5\npluggable: false\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "roles", "auditor.yaml"), []byte("role: auditor\nphase: 5\nextensibility: fixed\n"), 0o600))
 	t.Chdir(tmp)
 
 	prev := levelingLabelOpts
@@ -163,7 +167,8 @@ func TestRoleStartHookResolvesAndRecordsEveryRole(t *testing.T) {
 	policy := rootLevelingPolicy(t)
 	for _, id := range reg.IDs() {
 		commands := reg.StartCommands(id, "m-start")
-		require.Len(t, commands, 1, id)
+		require.NotEmpty(t, commands, id)
+		requireEveryStartCommandExists(t, id, commands)
 		fields := strings.Fields(commands[0])
 		require.Equal(t, "strategist", fields[0], id)
 
@@ -174,7 +179,7 @@ func TestRoleStartHookResolvesAndRecordsEveryRole(t *testing.T) {
 		opts := levelingadapter.LabelOptions{}
 		cmd := levelingadapter.NewLabel(levelingAdapterDependencies(), &opts)
 		require.NoError(t, cmd.ParseFlags(rest), id)
-		opts.HostModel, opts.HostEffort = "Sonnet", "high"
+		opts.Provider, opts.HostModel, opts.HostEffort = "CLAUDE", "Sonnet", "high"
 		ledger := filepath.Join(t.TempDir(), "role-levels.jsonl")
 		result, err := levelingadapter.LabelRoleWith(reg, func() (leveling.Policy, error) { return policy, nil }, domain.LevelingConfig{}, ledger, opts)
 		require.NoError(t, err, id)
@@ -183,5 +188,18 @@ func TestRoleStartHookResolvesAndRecordsEveryRole(t *testing.T) {
 		require.NoError(t, err, id)
 		require.True(t, ok, "%s: the start hook must record its level", id)
 		assert.Equal(t, "Sonnet-High", record.Label(), id)
+	}
+}
+
+// requireEveryStartCommandExists guards the hook against naming a command the
+// CLI does not have: an agent that follows on_start must never hit a dead end.
+func requireEveryStartCommandExists(t *testing.T, role string, commands []string) {
+	t.Helper()
+	for _, command := range commands {
+		fields := strings.Fields(command)
+		require.Equal(t, "strategist", fields[0], role)
+		found, _, err := rootCmd.Find(fields[1:])
+		require.NoError(t, err, "%s: %q", role, command)
+		require.NotEqual(t, rootCmd.Name(), found.Name(), "%s: %q does not resolve to a command", role, command)
 	}
 }

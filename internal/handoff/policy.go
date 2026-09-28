@@ -1,7 +1,5 @@
 package handoff
 
-import "fmt"
-
 // Policy decides whether a semantic handoff challenge is required for a transition.
 // It is intentionally data-only so contracts, fixtures, and runtime code can share
 // the same vocabulary without depending on provider invocation.
@@ -12,6 +10,9 @@ type Policy struct {
 	RequireAllCritical bool
 	MaxAttempts        int
 	OnFailure          string
+	RequireWhen        []PolicyPredicate
+	SkipWhen           []PolicyPredicate
+	RequirePrecedence  bool
 	// ForbiddenClaims lists claims the acknowledgment must never assert,
 	// independent of which challenges were generated — a policy-level
 	// safety net, not tied to a specific Challenge. Each entry is either
@@ -21,6 +22,25 @@ type Policy struct {
 	// assert via ExpectedClassification/ExpectedGateAllowed.
 	ForbiddenClaims []string
 }
+
+// PolicyPredicate is a machine-evaluated condition from a handoff policy
+// contract. RequireWhen is an OR list; SkipWhen is an AND list. If both match,
+// require precedence keeps a risk-bearing handoff fail-closed.
+type PolicyPredicate string
+
+// Predicate values a handoff policy contract's RequireWhen/SkipWhen lists reference.
+const (
+	PredicateMandatoryConstraintsPresent          PolicyPredicate = "mandatory_constraints_present"
+	PredicateUnresolvedQuestionsPresent           PolicyPredicate = "unresolved_questions_present"
+	PredicateForbiddenScopePresent                PolicyPredicate = "forbidden_scope_present"
+	PredicateImplementationHandoffPresent         PolicyPredicate = "implementation_handoff_present"
+	PredicateDestructiveOperationPossible         PolicyPredicate = "destructive_operation_possible"
+	PredicateSecuritySensitiveTask                PolicyPredicate = "security_sensitive_task"
+	PredicateInformationalOnly                    PolicyPredicate = "informational_only"
+	PredicateNoCriticalConstraints                PolicyPredicate = "no_critical_constraints"
+	PredicateNoUnresolvedQuestions                PolicyPredicate = "no_unresolved_questions"
+	PredicateNoForbiddenScopeBeyondSniperDefaults PolicyPredicate = "no_forbidden_scope_beyond_sniper_defaults"
+)
 
 // RiskSignals describe handoff traits that make a challenge mandatory.
 type RiskSignals struct {
@@ -44,6 +64,21 @@ func DefaultPolicy() Policy {
 		RequireAllCritical: true,
 		MaxAttempts:        2,
 		OnFailure:          FailureActionReturnToArchivist,
+		RequireWhen: []PolicyPredicate{
+			PredicateMandatoryConstraintsPresent,
+			PredicateUnresolvedQuestionsPresent,
+			PredicateForbiddenScopePresent,
+			PredicateImplementationHandoffPresent,
+			PredicateDestructiveOperationPossible,
+			PredicateSecuritySensitiveTask,
+		},
+		SkipWhen: []PolicyPredicate{
+			PredicateInformationalOnly,
+			PredicateNoCriticalConstraints,
+			PredicateNoUnresolvedQuestions,
+			PredicateNoForbiddenScopeBeyondSniperDefaults,
+		},
+		RequirePrecedence: true,
 	}
 }
 
@@ -146,51 +181,6 @@ func RiskSignalsForLevel(riskLevel string) RiskSignals {
 	}
 }
 
-// ResolvePolicyForMission builds the handoff policy for transition with
-// Enabled/RequiredTypes driven by the mission's actual risk_level, instead
-// of the fixed advisory-first Enabled: false baked into
-// RangerToArchivistPolicy and SniperToValidationPolicy. This is the
-// missing caller identified by
-// .analysis/refined/20260830-skill-gaps-triage/analysis.md Cluster 11
-// (K22): RequiredByRisk/StatusForRisk already existed but nothing invoked
-// them against real mission state.
-//
-// TransitionArchivistToSniper is unaffected by riskLevel: per
-// handoff-contract.yaml's handoff_verification_policy.default_policy, it
-// is Strategist's MVP challenge and stays required by default regardless
-// of risk classification; RangerToArchivistPolicy and
-// SniperToValidationPolicy are advisory-first extensions (see their doc
-// comments) that this function activates only when the mission's risk
-// signals warrant it.
-//
-// Returns an error for a transition string that isn't one of the three
-// known constants, so callers can distinguish "risk resolution ran and
-// found nothing required" from "transition not recognized" — a zero-value
-// Policy would silently look like the former.
-func ResolvePolicyForMission(riskLevel, transition string) (Policy, error) {
-	switch transition {
-	case TransitionArchivistToSniper:
-		return DefaultPolicy(), nil
-	case TransitionRangerToArchivist:
-		return riskGatedPolicy(RangerToArchivistPolicy(), riskLevel), nil
-	case TransitionSniperToValidation:
-		return riskGatedPolicy(SniperToValidationPolicy(), riskLevel), nil
-	default:
-		return Policy{}, fmt.Errorf("handoff: unknown transition %q (want %s, %s, or %s)",
-			transition, TransitionArchivistToSniper, TransitionRangerToArchivist, TransitionSniperToValidation)
-	}
-}
-
-// riskGatedPolicy flips base.Enabled on/off per riskLevel's derived risk
-// signals, clearing RequiredTypes when the challenge isn't required so a
-// skipped policy doesn't advertise required types it will never enforce
-// (Verify already short-circuits on !Enabled, but a cleared list keeps the
-// returned Policy value self-consistent for callers that inspect it
-// directly, e.g. to log or serialize).
-func riskGatedPolicy(base Policy, riskLevel string) Policy {
-	base.Enabled = StatusForRisk(RiskSignalsForLevel(riskLevel)) == StatusRequired
-	if !base.Enabled {
-		base.RequiredTypes = nil
-	}
-	return base
-}
+// ResolvePolicyForMission, riskGatedPolicy, and the predicate-matching
+// helpers live in policy_risk_gate.go, split out to keep this file under the
+// repo's file-size budget.

@@ -4,7 +4,6 @@ schema_version: "1"
 status: draft
 risk_score: write_analysis
 category: knowledge
-skill_type: support
 
 description: >
   Non-pipeline internal skill that maps and organizes the offline document

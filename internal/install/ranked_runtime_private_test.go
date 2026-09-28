@@ -60,8 +60,8 @@ func TestHostNodeRuntimeRejectsUnsupportedNode(t *testing.T) {
 	require.ErrorContains(t, err, "Node >=20.19.0")
 }
 
-func openSpecContract(version, node string) domain.RankedRuntimeContract {
-	return domain.RankedRuntimeContract{
+func openSpecContract(version, node string) domain.WeaponRuntime {
+	return domain.WeaponRuntime{
 		Kind: domain.RankedRuntimeOpenSpecRoot, Root: ".strategist/openspec", Bootstrap: "openspec init", Healthcheck: "openspec context --json",
 		Version: version, NodeVersion: node,
 	}

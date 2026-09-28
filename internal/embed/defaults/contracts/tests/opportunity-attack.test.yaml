@@ -22,6 +22,18 @@ invariants:
     description: Technical failure does not stop the pipeline
     rule: opportunity_attack_failed → emit failed reason=<why>, continue to next step
 
+  - id: runbook_side_quest_advisory_only
+    description: The runbook side quest (OA-RUNBOOK) is offered only when a runbook_worthy signal is met and never writes a runbook itself
+    rule: Opportunity Attack only surfaces a status=proposed candidate at the gate; writing directly to docs/runbooks/<slug>.md from this action is forbidden
+
+  - id: runbook_candidate_needs_gate_approval
+    description: A runbook candidate is never promoted to canonical without a gate approval and human review
+    rule: promoting the candidate to canonical without a gate approval is forbidden; ADR, runbook and chest stay independent outputs
+
+  - id: no_closure_role
+    description: Opportunity Attack does not evaluate implementation completion or card closure
+    rule: Opportunity Attack MUST NOT move cards to done/ — that is Critical Hit's remit
+
 cases:
   - name: ranger_scope_observation_no_items
     given:
@@ -72,3 +84,20 @@ cases:
     expect:
       emit: "[Strategist] phase=archivist opportunity_attack=failed reason=file not found"
       pipeline: continues
+
+  - name: runbook_worthy_signal_met
+    given:
+      role: archivist
+      four_refined_artifacts: present
+      runbook_worthy_signal: repeated_failure_with_recovery
+    expect:
+      action: add OA-RUNBOOK-{mission_id} to the opportunity manifest as a proposed candidate
+      forbidden: writing directly to docs/runbooks/<slug>.md
+
+  - name: runbook_not_warranted
+    given:
+      role: archivist
+      four_refined_artifacts: present
+      runbook_worthy_signal: none
+    expect:
+      output: { runbook_warranted: false }

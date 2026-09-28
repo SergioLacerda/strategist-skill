@@ -50,5 +50,5 @@ Conformance demand.
 - `docs/adr/0045-ranked-testsuitedigest-shared-pin.md`
 - `.analysis/refined/20260916-unificar-ranked-runtime-conformance/`
 - `internal/handoff/policy.go`
-- `internal/install/embedded_skill_conformance.go`
+- `internal/install/embedded_weapon_conformance.go`
 

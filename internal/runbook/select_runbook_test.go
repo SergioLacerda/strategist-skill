@@ -301,3 +301,66 @@ func hasRejection(rejections []Rejection, runbookID, reason string) bool {
 	}
 	return false
 }
+
+// A placeholder group such as <discovery|refinement|execution> names the values a
+// slot may take; it is not a situation. A generic mission signal that equals one
+// of those values must not select the runbook.
+func TestSelect_SignalInsideAPlaceholderGroupDoesNotMatch(t *testing.T) {
+	t.Parallel()
+	candidates := []Runbook{{
+		RunbookID:   "provider-fallback-policy",
+		AppliesWhen: []string{"error=slot_risk_mismatch observed, with slot=<discovery|refinement|execution> in the error context"},
+	}}
+	for _, signal := range []string{"refinement", "discovery", "execution", "diagnostic"} {
+		assertRejectedAsNoMatch(t, candidates, signal)
+	}
+}
+
+func assertRejectedAsNoMatch(t *testing.T, candidates []Runbook, signal string) {
+	t.Helper()
+	selections, rejections, err := Select(candidates, MissionSignals{signal}, DefaultSelectionPolicy())
+	if err != nil {
+		t.Fatalf("signal %q: unexpected error: %v", signal, err)
+	}
+	if len(selections) != 0 {
+		t.Fatalf("signal %q selected %+v through a placeholder group", signal, selections)
+	}
+	if len(rejections) != 1 || rejections[0].Reason != "no_matching_signal" {
+		t.Fatalf("signal %q: want one no_matching_signal rejection, got %+v", signal, rejections)
+	}
+}
+
+// The raw fallback matches whole words: a signal that only appears inside a longer
+// word is not a match, while the same signal as a word or phrase still is.
+func TestSelect_RawSignalMatchesWholeWordsOnly(t *testing.T) {
+	t.Parallel()
+	candidates := []Runbook{{RunbookID: "verifying-test-failures", AppliesWhen: []string{"flaky test suspected in the pipeline"}}}
+	cases := map[string]bool{
+		"flaky test":                true,
+		"pipeline":                  true,
+		"Flaky Test Suspected":      true,
+		"pipe":                      false,
+		"test suspect":              false,
+		"error=x":                   false,
+		"suspected in the pipeline": true,
+	}
+	for signal, want := range cases {
+		selections, _, err := Select(candidates, MissionSignals{signal}, DefaultSelectionPolicy())
+		if err != nil {
+			t.Fatalf("signal %q: unexpected error: %v", signal, err)
+		}
+		if got := len(selections) == 1; got != want {
+			t.Fatalf("signal %q: matched=%v, want %v", signal, got, want)
+		}
+	}
+}
+
+// Signals and triggers written with punctuation (error tokens) keep matching as before.
+func TestSelect_RawSignalWithPunctuationStillMatches(t *testing.T) {
+	t.Parallel()
+	candidates := []Runbook{{RunbookID: "role-invocation-failed", AppliesWhen: []string{"error=role_invocation_failed observed, with slot=<discovery|refinement|execution> in the error context"}}}
+	selections, _, err := Select(candidates, MissionSignals{"error=role_invocation_failed"}, DefaultSelectionPolicy())
+	if err != nil || len(selections) != 1 {
+		t.Fatalf("selections=%+v err=%v", selections, err)
+	}
+}

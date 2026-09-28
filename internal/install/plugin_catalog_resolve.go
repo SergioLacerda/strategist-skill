@@ -6,17 +6,20 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
 
+// catalogInstallableDefaultProviders maps every catalog entry flagged
+// `installable: true` to its own id. Installability is that flag alone; it does not
+// depend on legacy_manifest_path, the generated compat view's location.
 func catalogInstallableDefaultProviders(catalog pluginCatalog) map[string]string {
 	installable := map[string]string{}
 	for _, provider := range catalog.Providers {
-		if provider.Installable && provider.LegacyManifestPath != "" {
-			installable[provider.ID] = provider.LegacyManifestPath
+		if provider.Installable {
+			installable[provider.ID] = provider.ID
 		}
 	}
 	return installable
 }
 
-// resolveInstallableDefaultProviders returns the provider -> legacy-manifest-path
+// resolveInstallableDefaultProviders returns the installable provider -> provider id
 // map used to decide which providers get a written skill.yaml on install. It
 // propagates a loadPluginCatalog failure instead of silently substituting
 // installableDefaultProviders (ADR-0035 Decision 2: no fallback substitution).

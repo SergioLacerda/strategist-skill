@@ -158,9 +158,8 @@ func TestRangerAndArchivistThreadEvidencePackPath(t *testing.T) {
 
 // TestRoutingContractDefinesDiscoveryWeaponResolutionBySubtype verifies
 // 00-routing.md normatively states that the configured discovery weapon is
-// flexible input to the fixed Ranger role, and that a weapon which cannot
-// satisfy Ranger's normalization/checkpoint boundary is a fatal error rather
-// than something the pipeline silently substitutes another provider for.
+// required input to Ranger, and that a weapon which cannot satisfy Ranger's
+// normalization/checkpoint boundary fails closed.
 func TestRoutingContractDefinesDiscoveryWeaponResolutionBySubtype(t *testing.T) {
 	t.Parallel()
 
@@ -187,9 +186,9 @@ func TestDiscoveryWeaponContractRequiresExplicitRuntimeEvidence(t *testing.T) {
 	} {
 		content := readFile(t, path)
 		for _, needle := range []string{
-			"participation: advisory",
+			"participation: required",
 			"invocation_evidence: required",
-			"unavailable_behavior: report_advisory",
+			"unavailable_behavior: role_invocation_failed",
 			"native_substitution: forbidden",
 		} {
 			if !strings.Contains(content, needle) {
@@ -229,12 +228,8 @@ func TestDiscoveryContractDefinesSubtypeVocabulary(t *testing.T) {
 }
 
 // TestAgentProtocolTemplateRoutesDiscoveryBySubtype verifies the compiled
-// agent-protocol template resolves discovery invocation conditionally on
-// discovery_subtype instead of unconditionally naming {{.Slots.Discovery}}.
-
-// TestAgentProtocolTemplateRoutesDiscoveryBySubtype verifies the compiled
-// agent-protocol template resolves discovery invocation conditionally on
-// discovery_subtype instead of unconditionally naming {{.Slots.Discovery}}.
+// agent-protocol template keeps Ranger authoritative while requiring the
+// configured discovery Weapon as its invocation input.
 func TestAgentProtocolTemplateRoutesDiscoveryBySubtype(t *testing.T) {
 	t.Parallel()
 
@@ -245,7 +240,9 @@ func TestAgentProtocolTemplateRoutesDiscoveryBySubtype(t *testing.T) {
 		"discovery_subtype",
 		"internal_skills/ranger",
 		"native_role",
-		"regardless of what `active.slots.discovery` is configured to",
+		"active.slots.discovery",
+		"selected Weapon",
+		"role_invocation_failed",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("%s missing discovery-by-subtype routing term %q", path, needle)
@@ -264,7 +261,7 @@ func TestDiscoveryContractDescribesUniformWeaponHandling(t *testing.T) {
 	path := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "contracts", "narrative", "03-discovery.md")
 	content := readFile(t, path)
 	for _, needle := range []string{
-		"flexible input to the fixed Ranger role",
+		"configured discovery weapon is required input to the fixed Ranger role",
 		"identical regardless of which weapon is selected",
 	} {
 		if !strings.Contains(content, needle) {

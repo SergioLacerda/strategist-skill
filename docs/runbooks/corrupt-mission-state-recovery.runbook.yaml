@@ -1,0 +1,69 @@
+schema_version: "1"
+runbook_id: corrupt-mission-state-recovery
+runbook_type: operational
+source_doc: docs/runbooks/corrupt-mission-state-recovery.md
+
+applies_when:
+  - "A strategist mission subcommand fails with invalid persisted state, an unexpected end of JSON input, or a restore mission state error against missions/<mission-id>.json"
+  - "The mission state file is truncated or unparseable after a mission submit was interrupted mid-write"
+  - "A mission reports an earlier phase than the events already accepted, because two parallel sessions submitted events for the same mission id and one write was lost"
+  - "A mission state file is missing while its analysis artifacts still exist"
+
+objective: Classify and recover a corrupt, truncated, stale or missing mission state file without fabricating a phase the mission never reached and without letting a repaired state file substitute for the evidence its route requires.
+
+preconditions:
+  - "The operator has confirmed that no other agent or session is still writing the mission"
+  - "The damaged missions/<mission-id>.json has been read without being modified"
+  - "base_path is resolved from active.yaml rather than assumed to be .analysis"
+  - "The damaged file can be snapshotted outside missions/ before any repair"
+
+decision_gates:
+  - id: cause-classified
+    statement: "The failure is classified as missing file, truncated write, lost update, or invalid state before any write to missions/<mission-id>.json"
+  - id: no-concurrent-owner
+    statement: "No live agent, lock or active session still owns the mission, established before any event is resubmitted"
+  - id: snapshot-created
+    statement: "The damaged state file is preserved outside missions/ before any repair is attempted"
+  - id: phase-agrees-with-artifacts
+    statement: "The recovered phase agrees with the mission_status frontmatter of the analysis artifact; where they disagree the frontmatter wins"
+  - id: execution-evidence-intact
+    statement: "No mission entered EXECUTION during recovery without the evidence its Scout route requires"
+
+verification:
+  - "Confirm strategist check --json reports status ready"
+  - "Confirm strategist mission status --mission-id <id> returns a phase and state without error"
+  - "Confirm the reported phase agrees with the analysis artifact frontmatter"
+  - "Confirm the damaged snapshot is preserved outside missions/"
+  - "Confirm no source, test, configuration or Git mutation was performed"
+
+checks:
+  - id: read-only-before-classification
+    level: mandatory
+  - id: no-concurrent-owner
+    level: mandatory
+  - id: snapshot-before-repair
+    level: mandatory
+  - id: resolve-base-path-from-active-yaml-not-hardcoded
+    level: mandatory
+  - id: no-git-mutation
+    level: mandatory
+  - id: prefer-new-mission-id-over-hand-written-state
+    level: mandatory
+  - id: repair-is-not-implementation-evidence
+    level: mandatory
+  - id: do-not-syntactically-repair-a-truncated-file
+    level: recommended
+
+rollback:
+  - "Restore the Step 2 snapshot over missions/<mission-id>.json and follow the missing-file path instead"
+
+related:
+  - docs/adr/0057-mission-state-concurrency-and-atomicity.md
+  - docs/adr/0008-single-session-assumption.md
+  - docs/runbooks/restarting-orphaned-strategist-missions.md
+  - docs/runbooks/concurrent-session-sniper-collision.md
+
+metadata:
+  version: 1
+  owner: strategist-maintainers
+  reviewed_at: "2026-09-27"

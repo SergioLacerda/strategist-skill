@@ -27,20 +27,15 @@ patterns:
 
   - id: external_discovery_weapon_regression
     symptom: >
-      I am about to invoke an external discovery plugin (e.g. the skill configured at
-      active.slots.discovery) for discovery, for any discovery_subtype — reverting to
-      a mechanism that was removed after a live invocation of a manifest-compliant
-      discovery plugin (declared discovery_subtype_support: creative: native) surfaced
-      structural incompatibilities with Ranger's autonomous single-shot contract that
-      the manifest declaration could not have caught (see
-      .analysis/refined/20260728-ranger-drift-eval/).
+      I am about to invoke the configured Discovery Weapon directly, outside the
+      native Ranger boundary, or to replace that Weapon with an unrecorded native
+      result for a discovery_subtype.
     correction: >
-      Stop. Discovery always resolves to internal_skills/ranger (native role), for
-      every discovery_subtype — never to an external discovery plugin (see
-      contracts/narrative/00-routing.md § Discovery Plugin Resolution by Subtype).
-      Embody Ranger directly: read roles/ranger.yaml + internal_skills/ranger/SKILL.md
-      and perform discovery under that contract. active.slots.discovery remains
-      configured/preflight-validated but is never invoked for discovery.
+      Stop. Resolve the native `internal_skills/ranger` boundary first, invoke the selected
+      active.slots.discovery Weapon through the host connector, and normalize its
+      untrusted result under Ranger's contract. Missing, incompatible, or failed
+      invocation emits role_invocation_failed; never invoke the Weapon directly
+      and never silently substitute a native result.
 
   - id: silent_phase_advance
     symptom: >

@@ -129,6 +129,62 @@ func TestRunView_JSONOutput(t *testing.T) {
 	assert.Equal(t, "m-json-cli", v.MissionID)
 }
 
+// TestRunView_SurfacesReportedTokenUsageAndDeclaredBudget covers F-T2
+// (ADR-0057/design.md task 3.3): `mission view` reads
+// memory/mission-token-usage.jsonl (its first reader), filters it to this
+// mission, sums the totals, and carries skill.yaml's declared
+// budget_policy.token_budget tier alongside them verbatim.
+func TestRunView_SurfacesReportedTokenUsageAndDeclaredBudget(t *testing.T) {
+	root := setupViewRoot(t, domain.MissionEngineStatus{MissionID: "m-tokens", Phase: domain.PhaseBootstrap, State: domain.StateInit})
+	require.NoError(t, os.WriteFile(filepath.Join(root, "skill.yaml"), []byte("budget_policy:\n  token_budget: high\n"), 0o644))
+
+	usagePath := telemetry.MissionTokenUsageHistoryPath(root)
+	require.NoError(t, telemetry.AppendMissionTokenUsage(usagePath, telemetry.MissionTokenUsageRecord{
+		MissionID: "m-tokens", TokensIn: 100, TokensOut: 40,
+		Source: telemetry.MissionUsageSourceAgentReport, ReportedAt: "2026-09-27T10:00:00Z",
+	}))
+	require.NoError(t, telemetry.AppendMissionTokenUsage(usagePath, telemetry.MissionTokenUsageRecord{
+		MissionID: "m-tokens", TokensIn: 200, TokensOut: 60,
+		Source: telemetry.MissionUsageSourceAgentReport, ReportedAt: "2026-09-27T11:00:00Z",
+	}))
+	// A record for a different mission must not leak into m-tokens's totals.
+	require.NoError(t, telemetry.AppendMissionTokenUsage(usagePath, telemetry.MissionTokenUsageRecord{
+		MissionID: "m-other", TokensIn: 9999, TokensOut: 9999,
+		Source: telemetry.MissionUsageSourceAgentReport, ReportedAt: "2026-09-27T12:00:00Z",
+	}))
+
+	out, err := runView(t, "--root", root, "--mission-id", "m-tokens", "--json")
+	require.NoError(t, err)
+
+	var v missionview.View
+	require.NoError(t, json.Unmarshal([]byte(out), &v))
+	assert.Equal(t, missionview.Available, v.TokenUsage.Availability)
+	assert.Equal(t, "high", v.TokenUsage.DeclaredTokenBudget)
+	assert.Equal(t, int64(300), v.TokenUsage.TotalTokensIn)
+	assert.Equal(t, int64(100), v.TokenUsage.TotalTokensOut)
+	require.Len(t, v.TokenUsage.Records, 2)
+
+	humanOut, err := runView(t, "--root", root, "--mission-id", "m-tokens")
+	require.NoError(t, err)
+	assert.Contains(t, humanOut, "Token Usage")
+	assert.Contains(t, humanOut, "declared_token_budget: high")
+	assert.Contains(t, humanOut, "total_tokens_in: 300")
+}
+
+// TestRunView_NoTokenUsageReportedIsNotApplicable confirms a mission with no
+// usage.jsonl at all — the common case — reports not_applicable rather than
+// an error.
+func TestRunView_NoTokenUsageReportedIsNotApplicable(t *testing.T) {
+	root := setupViewRoot(t, domain.MissionEngineStatus{MissionID: "m-no-usage", Phase: domain.PhaseBootstrap, State: domain.StateInit})
+
+	out, err := runView(t, "--root", root, "--mission-id", "m-no-usage", "--json")
+	require.NoError(t, err)
+
+	var v missionview.View
+	require.NoError(t, json.Unmarshal([]byte(out), &v))
+	assert.Equal(t, missionview.NotApplicable, v.TokenUsage.Availability)
+}
+
 func TestRunView_MissingMissionIDErrors(t *testing.T) {
 	root := setupViewRoot(t, domain.MissionEngineStatus{})
 	_, err := runView(t, "--root", root)

@@ -13,7 +13,7 @@ import (
 func TestPrepareRankedBindingRejectsRuntimeSymlinkEscape(t *testing.T) {
 	dir := t.TempDir()
 	strategist := filepath.Join(dir, ".strategist")
-	writeRankedRuntimeFixture(t, dir, "openspec-propose", "refinement", domain.RankedRuntimeContract{
+	writeRankedRuntimeFixture(t, dir, "openspec-propose", "refinement", domain.WeaponRuntime{
 		Kind: domain.RankedRuntimeOpenSpecRoot, Root: ".strategist/openspec",
 		Bootstrap: "openspec init", Healthcheck: "openspec context --json",
 	})

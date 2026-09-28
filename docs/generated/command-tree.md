@@ -34,13 +34,16 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `label` — Resolve and record the model/effort label shown on a role's log lines
   - `suggest` — Suggest a model and effort for a role
   - `validate` — Validate the customer LEVELING policy
+- `mechanisms` — Inspect the Mechanisms registry
+  - `brief` — Print the tools (Mechanisms and Abilities) available to one role
 - `metrics` — Report metrics computed from Strategist's own runtime memory
   - `confidence` — Report cross-agent confidence metrics
-  - `fallback` — Report provider-fallback (ADR-0028) metrics
   - `gate-outcome` — Record the human Approval Gate outcome as ground truth
   - `handoff` — Report Handoff Challenge governance metrics
+  - `handoff-record` — Record the Archivist's handoff metrics line for a mission
   - `label` — Record a reviewed ground-truth label for a mission
   - `levels` — Report the model x effort levels recorded per role
+  - `mission-quality` — Evaluate the mission_quality predicates over a decisions/evidence document
   - `record` — Record a confidence claim or an explicit missing-record for a boundary
   - `rollout-check` — Check whether a confidence enforcement mode is admissible
   - `scout` — Report Scout routing metrics
@@ -48,6 +51,7 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `context` — Materialize declared mission context
   - `normalize-openspec` — Publish a completed OpenSpec change into the refined mission package
   - `report-usage` — Record real token usage for a mission, reported by the invoking agent
+  - `route` — Record Scout's route decision for a mission (JSON on stdin)
   - `start` — Start a mission
   - `status` — Inspect a mission status
   - `submit` — Submit one authoritative mission event
@@ -56,6 +60,7 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `authorize` — Compose authorization evidence for a governed target
   - `evaluate-write` — Report whether a write to --target is enforceably allowed under the active connector
   - `prepare-embedded` — Ingest external-skills-source/ into the embedded plugin catalog
+  - `resolved-digest` — Report whether a resolved Weapon file matches its catalog pin
 - `provider` — Validate and onboard local Strategist providers
   - `add` — Stage and bind a validated local provider
   - `validate` — Validate a local provider package without changing workspace state

@@ -7,11 +7,13 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/conformance"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	pluginconformance "github.com/SergioLacerda/strategist-skill/internal/plugins/conformance"
 	"github.com/SergioLacerda/strategist-skill/internal/plugins/connectors"
+	"github.com/SergioLacerda/strategist-skill/internal/provider"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -129,6 +131,77 @@ func TestClientMatrixKeepsStaticAndUnsupportedEvidenceFailClosed(t *testing.T) {
 	staticProbe := native.Probe(context.TODO(), domain.InstalledInstance{ID: "provider"}, "invoke")
 	assert.Equal(t, domain.ReadinessUnknown, staticProbe.Status)
 	assert.Equal(t, pluginconformance.EvidenceUnknown, pluginconformance.StateForReadiness(staticProbe.Status))
+}
+
+type conformanceDiscoveryConnector struct {
+	connectors.UnsupportedConnector
+	result connectors.ConnectorResult
+}
+
+func (c conformanceDiscoveryConnector) Capabilities(context.Context) connectors.RuntimeCapabilities {
+	return connectors.RuntimeCapabilities{ConnectorID: c.IDValue, CanInvoke: true}
+}
+
+func (c conformanceDiscoveryConnector) Invoke(context.Context, connectors.InvocationEnvelope) connectors.ConnectorResult {
+	return c.result
+}
+
+func TestDiscoveryConformanceRequiresHostInvocationEvidence(t *testing.T) {
+	request := provider.DiscoveryWeaponRequest{
+		MissionID:    "conformance-mission",
+		Role:         "ranger",
+		Slot:         string(domain.SlotDiscovery),
+		ProviderID:   "brainstorming",
+		ArtifactPath: ".analysis/pending/conformance-mission.md",
+		ReceiptStore: provider.NewMemoryReceiptNonceStore(),
+	}
+	connector := conformanceDiscoveryConnector{
+		UnsupportedConnector: connectors.UnsupportedConnector{IDValue: "host-loader"},
+		result: connectors.ConnectorResult{
+			Status:             domain.ReadinessReady,
+			ProviderID:         "brainstorming",
+			InvocationEvidence: "host-conformance-run",
+			Artifact:           []byte("# Findings\n\nUntrusted result."),
+			InvocationReceipt: connectors.InvocationReceipt{
+				SchemaVersion: connectors.InvocationReceiptSchemaVersion, MissionID: "conformance-mission", Role: "ranger", ProviderID: "brainstorming",
+				ResolvedLocation: "skills/brainstorming/SKILL.md", ResolvedDigest: "sha256:test", Nonce: "conformance-1", IssuedAt: time.Now(), CapabilityIsolation: connectors.CapabilityIsolationUnverified,
+			},
+		},
+	}
+	artifact, err := provider.InvokeDiscoveryViaConnector(context.Background(), request, domain.InstalledInstance{ID: "brainstorming"}, connector, nil, "run-1")
+	require.NoError(t, err)
+	assert.Equal(t, "host-conformance-run", artifact.InvocationEvidence)
+	assert.Contains(t, string(artifact.Content), "mission_status: ranger_pending")
+
+	_, err = provider.InvokeDiscoveryViaConnector(context.Background(), request, domain.InstalledInstance{ID: "brainstorming"}, connectors.NativeRuntimeConnector{ConnectorID: "native", ConnectorAPIVersion: "v1"}, nil, "run-1")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "role_invocation_failed")
+}
+
+func TestCodexAndClaudeReceiptConformance(t *testing.T) {
+	for _, client := range []string{"codex", "claude"} {
+		t.Run(client, func(t *testing.T) {
+			request := provider.DiscoveryWeaponRequest{
+				MissionID: "receipt-" + client, Role: "ranger", Slot: string(domain.SlotDiscovery), ProviderID: "brainstorming",
+				ArtifactPath: ".analysis/pending/receipt-" + client + ".md", ReceiptStore: provider.NewMemoryReceiptNonceStore(),
+			}
+			receipt := connectors.InvocationReceipt{
+				SchemaVersion: connectors.InvocationReceiptSchemaVersion, MissionID: request.MissionID, Role: request.Role, ProviderID: request.ProviderID,
+				ResolvedLocation: "skills/brainstorming/SKILL.md", ResolvedDigest: "sha256:test", Nonce: client + "-nonce", IssuedAt: time.Now(), CapabilityIsolation: connectors.CapabilityIsolationUnverified,
+			}
+			connector := conformanceDiscoveryConnector{
+				UnsupportedConnector: connectors.UnsupportedConnector{IDValue: client + "-host"},
+				result:               connectors.ConnectorResult{Status: domain.ReadinessReady, ProviderID: request.ProviderID, InvocationEvidence: client + "-host-run", Artifact: []byte("# Findings"), InvocationReceipt: receipt},
+			}
+			artifact, err := provider.InvokeDiscoveryViaConnector(context.Background(), request, domain.InstalledInstance{ID: request.ProviderID}, connector, nil, client+"-run")
+			require.NoError(t, err)
+			assert.Contains(t, string(artifact.Content), "mission_status: ranger_pending")
+
+			_, err = provider.InvokeDiscoveryViaConnector(context.Background(), request, domain.InstalledInstance{ID: request.ProviderID}, connector, nil, client+"-run")
+			require.ErrorContains(t, err, "role_invocation_failed")
+			require.ErrorContains(t, err, "replayed")
+		})
+	}
 }
 
 func TestLiveProbeRequiresCertifiedEvidence(t *testing.T) {

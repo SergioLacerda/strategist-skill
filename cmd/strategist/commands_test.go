@@ -13,7 +13,7 @@ import (
 func TestRootCmd_RegistersEveryTopLevelCommand(t *testing.T) {
 	want := []string{
 		"check", "check-stale", "compile", "dojo", "eval", "handoff", "install",
-		"leveling", "metrics", "mission", "plugins", "provider", "runbook", "sync-governance",
+		"leveling", "mechanisms", "metrics", "mission", "plugins", "provider", "runbook", "sync-governance",
 		"treasure-chest", "upgrade", "validate", "version",
 	}
 

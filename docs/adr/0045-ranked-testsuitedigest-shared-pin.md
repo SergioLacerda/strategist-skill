@@ -8,7 +8,7 @@
 
 ADR-0043's DEC-006 amendment required the Ranked-certification
 evidence-computation code
-(`internal/install/embedded_skill_conformance.go`) to be generic over
+(`internal/install/embedded_weapon_conformance.go`) to be generic over
 `(role, provider)`, anticipating a second pairing beyond the pilot
 (Ranger↔`brainstorming`). `hostAPIContractDigest(defaultsRoot, role)` is
 genuinely role-parameterized — it reads `roles/<role>.yaml` +

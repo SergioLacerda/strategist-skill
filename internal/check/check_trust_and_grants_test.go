@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -142,11 +143,19 @@ bindings:
     status: enabled
 `), 0o644))
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "plugins"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "plugins", "catalog.yaml"), []byte(`schema_version: strategist-plugin-catalog/v1
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "plugins", "catalog.yaml"), []byte(`schema_version: strategist-plugin-catalog/v2
 providers:
   - id: brainstorming
+    risk_score: write_analysis
     canonical_role: ranger
     roles: [ranger]
+    weapon_contract:
+      role_owner: ranger
+      participation: required
+      invocation_evidence: required
+      unavailable_behavior: role_invocation_failed
+      native_substitution: forbidden
+    compatibility_source: embedded
     ranked: true
     certification_digest: sha256:1111111111111111111111111111111111111111111111111111111111111111
     host_api_digest: sha256:2222222222222222222222222222222222222222222222222222222222222222
@@ -154,6 +163,7 @@ providers:
     test_suite_digest: sha256:4444444444444444444444444444444444444444444444444444444444444444
     conformance_level: C1
 `), 0o644))
+	appendFixtureProviders(t, dir, testutil.CatalogProvider{ID: "openspec-explore", Risk: "write_analysis", CanonicalRole: "archivist"}, testutil.CatalogProvider{ID: "openspec-propose", Risk: "write_analysis", CanonicalRole: "archivist"}, testutil.CatalogProvider{ID: "sdd-ask", Risk: "controlled", Source: "external"})
 	checkRoot = dir
 	checkJSON = true
 
@@ -197,11 +207,13 @@ bindings:
     status: enabled
 `), 0o644))
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "plugins"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "plugins", "catalog.yaml"), []byte(`schema_version: strategist-plugin-catalog/v1
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "plugins", "catalog.yaml"), []byte(`schema_version: strategist-plugin-catalog/v2
 providers:
   - id: openspec-propose
+    risk_score: write_analysis
     canonical_role: archivist
     roles: [archivist]
+    compatibility_source: embedded
     ranked: true
     certification_digest: sha256:1111111111111111111111111111111111111111111111111111111111111111
     host_api_digest: sha256:2222222222222222222222222222222222222222222222222222222222222222
@@ -209,6 +221,7 @@ providers:
     test_suite_digest: sha256:4444444444444444444444444444444444444444444444444444444444444444
     conformance_level: C1
 `), 0o644))
+	appendFixtureProviders(t, dir, testutil.CatalogProvider{ID: "brainstorming", Risk: "write_analysis", CanonicalRole: "ranger"}, testutil.CatalogProvider{ID: "sdd-ask", Risk: "controlled", Source: "external"})
 	checkRoot = dir
 	checkJSON = true
 
@@ -241,9 +254,10 @@ func TestBindingIsRanked(t *testing.T) {
 func TestRankedCertificationReadiness_BlocksWhenNotCertified(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "plugins"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "plugins", "catalog.yaml"), []byte(`schema_version: strategist-plugin-catalog/v1
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "plugins", "catalog.yaml"), []byte(`schema_version: strategist-plugin-catalog/v2
 providers:
   - id: brainstorming
+    risk_score: write_analysis
     canonical_role: ranger
 `), 0o644))
 

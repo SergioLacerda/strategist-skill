@@ -37,7 +37,7 @@ Archivist (`refinement`)
   never finish silently — Archivist also records the critic (`--agent response_critic`) and `mission_quality` boundaries with the same command (see `machine/confidence-governance.yaml#producers`)
 - before invoking the selected refinement weapon's own CLI/tooling, apply
   `roles/archivist.yaml#canonical.resolve_weapon_scratch_root` — read
-  `skills/<provider>/skill.yaml#scratch_root`, and when it is `runtime`, run the
+  `plugins/catalog.yaml#providers[id=<provider>].scratch_root`, and when it is `runtime`, run the
   weapon with `.strategist/weapon-runtime/<provider_id>/` as its working
   directory, never the host repository root (see `agent-protocol.md` §3
   Refinement Routing)
@@ -58,9 +58,26 @@ Archivist (`refinement`)
   check `contracts/machine/handoff-contract.yaml#refinement_context_policy` — reopen
   only for one of its `allowed_reasons`, and state the matching reason explicitly in
   the refined artifact that needed it (see skill.yaml's
-  `archivist_reopens_discovery_sources_without_declared_reason` forbidden_behaviors entry)
+  `archivist_reopens_discovery_sources_without_declared_reason` forbidden_behaviors entry).
+  A verification read of a `coverage_status: full` source is a reopen too: it is allowed only
+  as `stale_evidence_check` (the file changed after the Ranger artifact and the read stays
+  inside the line ranges Ranger cited). List every reopen in the refined artifact as a table
+  (`source_path`, `reason`, line range) — an empty table means zero reopens
+- pass `--reopens N` explicitly to `strategist metrics handoff-record`, where `N` is the number of
+  rows in that table (`0` when the table is empty). An unset `--reopens` records `null`, meaning
+  "not measured"; only an explicit `0` means "measured, none"
+- on a gate revision (`gate_revision_requested`), re-run the role's `on_start` leveling label for the
+  revised run and record the revised package with
+  `strategist metrics handoff-record --mission <mission_id> --revision <n>` (`n` starts at 1) so
+  each revision keeps its own metrics line and level row; the base line is left as recorded
+- when the invoking shell reports the token usage of the discovery run (the sub-role's own usage
+  summary, run at the gate and at DONE with `strategist mission report-usage`), pass it as
+  `--discovery-tokens`; omit the flag when nothing was reported. These counts are self-reported by
+  the invoking agent, so treat them as a weak signal, never as evidence of cost
 - on completion, append one line to `.strategist/memory/handoff-metrics.jsonl`
-  (skill.yaml#handoff_metrics_log) — nulls are expected for `brief_compression_ratio`/
+  (skill.yaml#handoff_metrics_log) with `strategist metrics handoff-record --mission <mission_id>`
+  (pass only the values that were measured; it never derives the two ratios, and a mission that
+  already has a line is left unchanged) — nulls are expected for `brief_compression_ratio`/
   `evidence_coverage_ratio` when the Ranger artifact did not populate `evidence_cards[]`;
   include the Archivist's `model`, `effort` and `level_source` (null when unknown)
 - produce the four-file refined package
@@ -76,6 +93,20 @@ Archivist (`refinement`)
   `changes/archive/`. Bypassing it and promoting by hand is a documented drift source (see
   `.analysis/done/drift/` for the incident this codifies) — it silently loses the provider
   metadata and leaves the change unarchived.
+- amend a package that is already published only through
+  `strategist mission normalize-openspec --mission-id <mission_id> --change-id <new_change>
+  --amend --amends <previous_change_id> --authorization-ref "<quote or gate event>"` — never by hand.
+  The mode replaces `proposal.md`, `design.md` and `tasks.md` with the new change, leaves
+  `analysis.md`, `mission_status` and the original `provider_change_id` untouched, records an
+  `amendments:` list in the replaced files' frontmatter, snapshots the previous files under
+  `<package>/.amendments/NNN/`, and refuses a claimed or applied package, a rejected mission, a
+  pending analysis, and an analysis-only accepted package that would gain a documentation target.
+  The authorization reference is a human's words or gate event recorded verbatim; the command
+  cannot verify it. The default mode is unchanged and still fails closed on a differing package.
+- keep Ranger's quoted evidence when it rests on runtime state (`excerpt`, `captured_at`; see
+  `03-discovery.md` § Evidence That Rests on Runtime State), and quote any runtime state the
+  refined files cite themselves (a value with its capture time) rather than pointing only at a
+  `.strategist/` path; the refined package must stay readable after the runtime is replaced
 - classify side quests and surface them at the approval gate
 - classify every `tasks.md` / `implementation_plan` item by `task_type`: `documentation_target`,
   `analysis_artifact`, `implementation_handoff`, or `out_of_scope` (see

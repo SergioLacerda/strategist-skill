@@ -280,14 +280,27 @@ func TestFindCatalogRankedStampAndPhaseError(t *testing.T) {
 	if _, _, err := FindCatalogRankedStamp([]byte(":\n\t- x"), "p"); err == nil {
 		t.Fatal("expected parse error")
 	}
-	if _, found, err := FindCatalogRankedStamp([]byte("providers: []\n"), "p"); err != nil || found {
+	if _, found, err := FindCatalogRankedStamp([]byte("schema_version: strategist-plugin-catalog/v2\nproviders: []\n"), "p"); err != nil || found {
 		t.Fatalf("found=%v err=%v", found, err)
 	}
-	if s, found, err := FindCatalogRankedStamp([]byte("providers:\n  - id: p\n    ranked: true\n"), "p"); err != nil || !found || s.ID != "p" {
+	if s, found, err := FindCatalogRankedStamp([]byte("schema_version: strategist-plugin-catalog/v2\nproviders:\n  - id: p\n    ranked: true\n"), "p"); err != nil || !found || s.ID != "p" {
 		t.Fatalf("stamp=%+v found=%v err=%v", s, found, err)
 	}
 	msg := ErrOutOfOrderPhaseSubmit{Current: PhaseBootstrap, Event: PhaseEvent("x")}.Error()
 	if !strings.Contains(msg, "not valid from phase") {
 		t.Fatal(msg)
+	}
+}
+
+func TestFindCatalogRankedStampRejectsLegacyWeaponVocabulary(t *testing.T) {
+	t.Parallel()
+	if _, _, err := FindCatalogRankedStamp([]byte("schema_version: strategist-plugin-catalog/v1\nproviders:\n  - id: p\n"), "p"); err == nil || !strings.Contains(err.Error(), "regenerate or reinstall") {
+		t.Fatalf("legacy catalog schema must be rejected with a migration diagnostic, got %v", err)
+	}
+	for _, legacy := range []string{"embedded_skill", "host_skill"} {
+		raw := "schema_version: strategist-plugin-catalog/v2\nproviders:\n  - id: p\n    runtime:\n      kind: " + legacy + "\n"
+		if _, found, err := FindCatalogRankedStamp([]byte(raw), "p"); err == nil || found || !strings.Contains(err.Error(), "regenerate or reinstall") {
+			t.Fatalf("legacy runtime %s must be rejected, found=%v err=%v", legacy, found, err)
+		}
 	}
 }

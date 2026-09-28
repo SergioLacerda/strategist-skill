@@ -4,8 +4,6 @@ schema_version: "1"
 status: active
 risk_score: write_analysis
 category: refinement
-skill_type: role_filler
-inherits_role: archivist
 
 description: >
   Reads the Ranger analysis artifact from <base_path>/pending/ and produces an

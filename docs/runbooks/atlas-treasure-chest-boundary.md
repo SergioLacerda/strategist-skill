@@ -75,4 +75,4 @@ change.
 - [ADR-0049](../adr/0049-atlas-treasure-chest-boundary.md)
 - [ADR-0032](../adr/0032-external-skill-cli-embedding-and-treasure-chest-ownership.md)
 - [ADR-0040](../adr/0040-treasure-chest-in-repo-isolation-staging.md)
-- [Embedded skill ingestion, migration, and rollback](embedded-skill-ingestion-migration-rollback.md)
+- [Embedded Weapon ingestion, migration, and rollback](embedded-weapon-ingestion-migration-rollback.md)

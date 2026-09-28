@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -15,11 +16,14 @@ import (
 func DefaultPolicy() Policy {
 	return Policy{
 		Version: "1",
+		Ability: "initiative", DisplayName: "INITIATIVE", Mode: "consultative",
+		Authority: PolicyAuthority{Owns: []string{"advice", "diligence", "alignment", "results", "outcome_correlation"}, DoesNotOwn: []string{"model", "provider", "capability", "effort", "level_source", "approval_gate", "implementation_authorization"}},
+		Records:   PolicyRecords{Path: ".strategist/memory/initiative-records.jsonl", AppendOnly: true, Correlation: []string{"mission_id", "role", "run_id", "advice_id"}},
 		Profiles: map[string]Profile{
-			"scout":     {RecommendedCapability: "economical", RecommendedEffort: EffortMedium, Diligence: []string{"classify_scope", "surface_uncertainty"}, ConfidenceCeiling: "medium"},
-			"ranger":    {RecommendedCapability: "reasoning", RecommendedEffort: EffortHigh, Diligence: []string{"inspect_evidence", "test_alternatives", "record_obligations"}, ConfidenceCeiling: "high"},
-			"archivist": {RecommendedCapability: "reasoning", RecommendedEffort: EffortHigh, Diligence: []string{"challenge_handoff", "validate_contracts", "correlate_outcomes"}, ConfidenceCeiling: "high"},
-			"sniper":    {RecommendedCapability: "economical", RecommendedEffort: EffortMedium, Diligence: []string{"verify_scope", "verify_gate", "record_result"}, ConfidenceCeiling: "medium"},
+			"scout":     {RecommendedCapability: "economical", RecommendedEffort: EffortMedium, Diligence: []string{"classify_scope", "surface_uncertainty"}, ConfidenceCeiling: ConfidenceMedium},
+			"ranger":    {RecommendedCapability: "reasoning", RecommendedEffort: EffortHigh, Diligence: []string{"inspect_evidence", "test_alternatives", "record_obligations"}, ConfidenceCeiling: ConfidenceHigh},
+			"archivist": {RecommendedCapability: "reasoning", RecommendedEffort: EffortHigh, Diligence: []string{"challenge_handoff", "validate_contracts", "correlate_outcomes"}, ConfidenceCeiling: ConfidenceHigh},
+			"sniper":    {RecommendedCapability: "economical", RecommendedEffort: EffortMedium, Diligence: []string{"verify_scope", "verify_gate", "record_result"}, ConfidenceCeiling: ConfidenceMedium},
 		},
 		Triggers: []Trigger{TriggerScopeChanged, TriggerSecurityRiskDiscovered, TriggerConflictingEvidence, TriggerHandoffChallenged, TriggerRepeatedFailure, TriggerUserRevisionRequested, TriggerMandatoryObligationBlocked},
 	}
@@ -56,8 +60,29 @@ func validateProfile(role string, profile Profile) error {
 	if !validEffort(profile.RecommendedEffort) {
 		return fmt.Errorf("initiative_policy_invalid: role %q has invalid recommended effort %q", role, profile.RecommendedEffort)
 	}
-	if len(profile.Diligence) == 0 || strings.TrimSpace(profile.ConfidenceCeiling) == "" {
+	if len(profile.Diligence) == 0 {
 		return fmt.Errorf("initiative_policy_invalid: role %q requires diligence and confidence ceiling", role)
+	}
+	if err := validateDiligenceChecks(role, profile.Diligence); err != nil {
+		return err
+	}
+	if err := validateConfidenceTier(profile.ConfidenceCeiling); err != nil {
+		return fmt.Errorf("initiative_policy_invalid: role %q: %w", role, err)
+	}
+	return nil
+}
+
+func validateDiligenceChecks(role string, diligence []string) error {
+	seen := make(map[string]struct{}, len(diligence))
+	for _, check := range diligence {
+		check = strings.TrimSpace(check)
+		if check == "" {
+			return fmt.Errorf("initiative_policy_invalid: role %q contains an empty diligence check", role)
+		}
+		if _, exists := seen[check]; exists {
+			return fmt.Errorf("initiative_policy_invalid: role %q contains duplicate diligence check %q", role, check)
+		}
+		seen[check] = struct{}{}
 	}
 	return nil
 }
@@ -112,8 +137,17 @@ func (p Policy) Profile(role string) (Profile, bool) {
 // dependency on LEVELING's parser or policy type.
 func Parse(raw []byte) (Policy, error) {
 	var policy Policy
-	if err := yaml.Unmarshal(raw, &policy); err != nil {
+	decoder := yaml.NewDecoder(strings.NewReader(string(raw)))
+	decoder.KnownFields(true)
+	if err := decoder.Decode(&policy); err != nil {
 		return Policy{}, fmt.Errorf("initiative_policy_invalid: parse: %w", err)
+	}
+	var extra any
+	if err := decoder.Decode(&extra); err != io.EOF {
+		if err == nil {
+			return Policy{}, fmt.Errorf("initiative_policy_invalid: multiple YAML documents are not supported")
+		}
+		return Policy{}, fmt.Errorf("initiative_policy_invalid: parse trailing document: %w", err)
 	}
 	if err := policy.Validate(); err != nil {
 		return Policy{}, err
@@ -125,10 +159,19 @@ func normalizeRole(role string) string { return strings.ToLower(strings.TrimSpac
 
 func validEffort(effort EffortTier) bool {
 	switch effort {
-	case EffortLow, EffortMedium, EffortHigh, EffortXHigh:
+	case EffortLow, EffortMedium, EffortHigh, EffortXHigh, EffortMax:
 		return true
 	default:
 		return false
+	}
+}
+
+func validateConfidenceTier(tier ConfidenceTier) error {
+	switch tier {
+	case ConfidenceLow, ConfidenceMedium, ConfidenceHigh:
+		return nil
+	default:
+		return fmt.Errorf("initiative_confidence_tier_invalid: %q", tier)
 	}
 }
 
@@ -142,6 +185,8 @@ func effortRank(effort EffortTier) (int, bool) {
 		return 3, true
 	case EffortXHigh:
 		return 4, true
+	case EffortMax:
+		return 5, true
 	default:
 		return 0, false
 	}

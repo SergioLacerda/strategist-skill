@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	livemission "github.com/SergioLacerda/strategist-skill/internal/mission"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
 
@@ -35,10 +36,18 @@ func emitF3ConflictAttributionSignals(strategistRoot, basePath string, now time.
 // two or more distinct missions claiming the same target — from recorded
 // claim history (memory/sniper-claims.jsonl). This is the Git-conflict
 // signal's sibling above, following the same "strategist check reads
-// recorded history and emits" pattern rather than live write-path
-// interception, since no live Go call site claims a target today (Sniper is
-// a parent-agent-embodied native role — see policy.EvaluateWrite's own doc
-// comment).
+// recorded history and emits" pattern. Claims are now written at
+// handoff_challenge_passed (internal/mission.RecordSniperClaims, ADR-0057 §
+// A1), so this reader is no longer permanently starved.
+//
+// Claims belonging to a mission that has already reached a terminal phase are
+// excluded before collision detection (ADR-0057 § A2 / design.md task 2.4):
+// SniperClaimWindow's 30-day age cutoff cannot by itself distinguish "still
+// working" from "finished yesterday", so two sequential, fully completed
+// missions touching the same target inside that window would otherwise
+// report a false collision forever. A mission whose state cannot be read is
+// conservatively treated as still live — an unreadable mission is a reason to
+// keep surfacing a possible collision, not to suppress it.
 func emitF3ClaimCollisionSignals(strategistRoot string, now time.Time) error {
 	claims, err := telemetry.ReadRecentSniperClaims(
 		telemetry.SniperClaimHistoryPath(strategistRoot),
@@ -48,10 +57,32 @@ func emitF3ClaimCollisionSignals(strategistRoot string, now time.Time) error {
 	if err != nil {
 		return fmt.Errorf("read recent sniper claims: %w", err)
 	}
-	for _, signal := range telemetry.DetectClaimCollisions(claims) {
+	live := liveClaimsOnly(strategistRoot, claims)
+	for _, signal := range telemetry.DetectClaimCollisions(live) {
 		telemetry.EmitClaimCollisionSignal(signal)
 	}
 	return nil
+}
+
+// liveClaimsOnly filters out claims whose owning mission has already reached
+// a terminal phase, per emitF3ClaimCollisionSignals's doc comment. It caches
+// one phase lookup per distinct mission id so a claim history with many
+// records from the same mission reads that mission's state file once.
+func liveClaimsOnly(strategistRoot string, claims []telemetry.SniperClaimRecord) []telemetry.SniperClaimRecord {
+	terminal := make(map[string]bool)
+	live := make([]telemetry.SniperClaimRecord, 0, len(claims))
+	for _, claim := range claims {
+		done, cached := terminal[claim.MissionID]
+		if !cached {
+			phase, found := livemission.ReadMissionPhase(strategistRoot, claim.MissionID)
+			done = found && livemission.Terminal(phase)
+			terminal[claim.MissionID] = done
+		}
+		if !done {
+			live = append(live, claim)
+		}
+	}
+	return live
 }
 
 func readGitConflictedPathsFromWorktree(worktreeRoot string) ([]string, error) {

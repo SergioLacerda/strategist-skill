@@ -13,6 +13,8 @@ func validRoleContract() domain.RoleContract {
 		SchemaVersion: domain.RoleContractSchemaVersion,
 		Role:          "sniper",
 		Slot:          "execution",
+		Origin:        domain.RoleOriginNative,
+		Extensibility: domain.RoleExtensibilityFixed,
 		Must:          []string{"execute approved tasks"},
 		MustNot:       []string{"bypass the approval gate"},
 	}
@@ -48,6 +50,23 @@ func TestRoleContractFromConfigReusesRoleConfigAsSourceOfTruth(t *testing.T) {
 	assert.Equal(t, cfg.Slot, contract.Slot)
 	assert.Equal(t, cfg.Must, contract.Must)
 	assert.Equal(t, cfg.MustNot, contract.MustNot)
+	assert.Equal(t, domain.RoleOriginNative, contract.Origin)
+	assert.Equal(t, domain.RoleExtensibilityFixed, contract.Extensibility)
+	require.NoError(t, contract.Validate())
+}
+
+func TestRoleContractCarriesIndependentTaxonomy(t *testing.T) {
+	t.Parallel()
+
+	contract := domain.RoleContractFromConfig(domain.RoleConfig{
+		Role:          "ranger",
+		Slot:          "discovery",
+		Origin:        domain.RoleOriginNative,
+		Extensibility: domain.RoleExtensibilityPluggable,
+	}, "schemas/handoff-ranger-to-archivist.schema.yaml")
+
+	assert.Equal(t, domain.RoleOriginNative, contract.Origin)
+	assert.Equal(t, domain.RoleExtensibilityPluggable, contract.Extensibility)
 	require.NoError(t, contract.Validate())
 }
 
@@ -117,4 +136,26 @@ func TestCheckRoleAffinityAcceptsMatchingRoleAndVersion(t *testing.T) {
 	result := validProviderContract().CheckRoleAffinity(validRoleContract())
 	assert.True(t, result.Compatible)
 	assert.Empty(t, result.Reasons)
+}
+
+func TestProviderContractValidateRejectsUnverifiedRoleAffinity(t *testing.T) {
+	t.Parallel()
+
+	contract := validProviderContract()
+	contract.CanonicalRole = "pathfinder"
+
+	err := contract.Validate()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not approved for activation")
+}
+
+func TestRoleContractValidateRejectsUnverifiedRole(t *testing.T) {
+	t.Parallel()
+
+	contract := validRoleContract()
+	contract.Role = "jewelcrafter"
+
+	err := contract.Validate()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not approved for activation")
 }

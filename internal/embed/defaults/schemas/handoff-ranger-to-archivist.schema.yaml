@@ -69,7 +69,7 @@ required_fields:
       evidence:
         type: list
         required: false
-        item_fields: [id, source_ref, class]
+        item_fields: [id, source_ref, class]   # optional per item: excerpt_anchor, hash, commit, excerpt, captured_at (schemas/evidence.schema.yaml)
         item_values:
           class: [explicit, corroborated_inference, weak_inference, unknown]   # schemas/evidence.schema.yaml#class
       sample_size:
@@ -168,7 +168,9 @@ required_fields:
       role: [primary, supporting]
     description: >
       Output of the select_runbook ability (contracts/narrative/03-discovery.md § Retrieval
-      Cascade, stage 6): docs/runbooks/*.runbook.yaml sidecars scored against mission
+      Cascade, stage 6), produced by running `strategist runbook select`: an empty list
+      means the command ran and nothing matched; null means it was not run.
+      docs/runbooks/*.runbook.yaml sidecars scored against mission
       signals via internal/runbook.Select(), bounded by
       internal/runbook.DefaultSelectionPolicy() (max_primary=1, max_supporting=2,
       require_reason=true — reason is always non-empty for a returned selection).
@@ -185,6 +187,21 @@ required_fields:
       Sources Ranger opened during discovery, with a fingerprint and how thoroughly
       each was read. Consumed by contracts/machine/handoff-contract.yaml to decide
       whether Archivist may reopen a source or must treat it as already covered.
+  weapon_invocation:
+    type: object
+    required: false
+    required_when: delegated_run
+    item_fields: [invoked, resolved_from, steps_dropped, resolved_digest, receipt_status, pin_status, capability_isolation]
+    description: >
+      Invocation evidence for the discovery Weapon (contracts/narrative/03-discovery.md §
+      Weapon Profile for a Delegated Ranger): whether it was invoked, where it was actually
+      resolved (embedded runtime or host skill directory), which Weapon steps were dropped
+      for a delegated run, and resolved_digest, the sha256:<64 hex> of the raw bytes of the
+      file the loader served. Required when Ranger runs as a delegated sub-role, optional
+      otherwise, so existing artifacts still validate. For delegated runs Ranger validates the
+      host-issued invocation receipt before promotion, compares a declared catalog pin, and records
+      only redacted receipt_status, pin_status, and capability_isolation. A valid receipt does not
+      prove parent-agent capability isolation.
   evidence_cards:
     type: list
     required: false

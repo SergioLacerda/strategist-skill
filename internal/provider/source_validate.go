@@ -21,6 +21,8 @@ func validateSource(source Source, requestedSlot string) []Reason {
 	reasons = append(reasons, validateProvenance(source)...)
 	reasons = append(reasons, validateAdapterCompatibility(source, requestedSlot)...)
 	reasons = append(reasons, validateLegacyView(source)...)
+	reasons = append(reasons, validateExecutionBinding(source, requestedSlot)...)
+	reasons = append(reasons, validateAnalysisBinding(source, requestedSlot)...)
 	return reasons
 }
 

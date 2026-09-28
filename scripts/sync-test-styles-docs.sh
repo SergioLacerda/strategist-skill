@@ -13,7 +13,8 @@ fi
 
 pkg_cov() {
   local pkg="$1"
-  local profile="$coverage_dir/$(echo "$pkg" | tr '/:' '__').out"
+  local profile
+  profile="$coverage_dir/$(echo "$pkg" | tr '/:' '__').out"
   if [[ ! -f "$profile" ]]; then
     GOCACHE="$go_cache" go test -coverprofile="$profile" -coverpkg="./$pkg" "./$pkg" >/dev/null 2>&1 || true
   fi

@@ -8,9 +8,11 @@
 # mission 20260913-wizard-hardcoded-fallback-maps-cleanup), superseding
 # openspec-explore, which remains a secondary, opt-in option (see its own
 # strategist.yaml in this directory).
-canonical_role: archivist
 roles:
   - archivist
+kind: atomic
+supported_slots:
+  - refinement
 risk_score: write_analysis
 category: refinement
 default: true

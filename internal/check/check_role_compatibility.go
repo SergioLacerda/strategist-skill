@@ -41,6 +41,19 @@ import (
 // The catalog handoff declaration remains available for full compatibility
 // checks, but it is intentionally not part of this role-selection gate.
 func checkRoleProviderCompatibility(root, slot, provider, riskScore string, skillRaw []byte) string {
+	roles, err := loadProviderRoles(skillRaw)
+	if err != nil {
+		return ""
+	}
+	return checkRoleFactsCompatibility(root, slot, provider, riskScore, roles)
+}
+
+// checkRoleFactsCompatibility is the affinity check over roles already resolved
+// from the Weapon's manifest (catalog first, compat view as fallback).
+func checkRoleFactsCompatibility(root, slot, provider, riskScore string, roles []string) string {
+	if len(roles) == 0 {
+		return ""
+	}
 	roleSlotMap, err := loadRoleSlotMap(root)
 	if err != nil {
 		return ""
@@ -53,11 +66,6 @@ func checkRoleProviderCompatibility(root, slot, provider, riskScore string, skil
 	if err != nil {
 		return ""
 	}
-	roles, err := loadProviderRoles(skillRaw)
-	if err != nil || len(roles) == 0 {
-		return ""
-	}
-
 	roleContract := domain.RoleContractFromConfig(roleCfg, "")
 	providerContract := domain.ProviderContract{
 		SchemaVersion:                 roleContract.SchemaVersion,

@@ -20,9 +20,9 @@ import (
 // prompt is shown (see runWizard), rather than silently degrading to this
 // map's values.
 var installableDefaultProviders = map[string]string{
-	defaultSkillBySlot["discovery"]:  "skills/brainstorming/skill.yaml",
-	"openspec-explore":               "skills/openspec-explore/skill.yaml",
-	defaultSkillBySlot["refinement"]: "skills/openspec-propose/skill.yaml",
+	defaultSkillBySlot["discovery"]:  "brainstorming",
+	"openspec-explore":               "openspec-explore",
+	defaultSkillBySlot["refinement"]: "openspec-propose",
 }
 
 // knownProviderRisk is historical static metadata for loadKnownProviders'
@@ -38,10 +38,9 @@ var knownProviderRisk = map[string]string{
 	"openspec-explore":               "write_analysis",
 	defaultSkillBySlot["refinement"]: "write_analysis",
 	"openspec-apply-change":          "controlled",
-	"openspec-archive-change":        "write_analysis",
+	"openspec-archive-change":        "controlled",
 	nativeExecutionProvider:          "controlled",
 	"sdd-ask":                        "controlled",
-	"batata":                         "controlled",
 	"sdd-diagnose":                   "write_analysis",
 	"sdd-converge":                   "controlled",
 	"sdd-correct":                    "controlled",

@@ -9,6 +9,21 @@ const (
 	MissionRouteDirectExecute    = "direct_execute"
 )
 
+// PipelineRouteForScoutRoute maps the route Scout selected (see
+// scout-route-decision.schema.yaml#selected_route) onto the two evidence regimes
+// EvaluatePipelineBypass knows. Only the full pipeline needs the discovery,
+// refinement and tasks evidence; the narrow routes (Critical Hit and the
+// Implementation Short Route) still need an approved gate. Anything else,
+// including no recorded decision, maps to the strictest regime.
+func PipelineRouteForScoutRoute(selected string) string {
+	switch selected {
+	case "critical_hit", "implementation_short_route":
+		return MissionRouteDirectExecute
+	default:
+		return MissionRouteMain
+	}
+}
+
 // PipelineEvidence captures the mission state used to detect pipeline bypass attempts.
 type PipelineEvidence struct {
 	Route              string

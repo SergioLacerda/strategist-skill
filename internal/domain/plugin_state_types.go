@@ -6,6 +6,9 @@ type InstalledInstance struct {
 	PackageDigest        string `yaml:"package_digest"`
 	AdapterDigest        string `yaml:"adapter_digest"`
 	ConnectorID          string `yaml:"connector_id"`
+	ProviderOrigin       string `yaml:"provider_origin,omitempty"`
+	SeedPath             string `yaml:"seed_path,omitempty"`
+	Entrypoint           string `yaml:"entrypoint,omitempty"`
 	LockDigest           string `yaml:"lock_digest"`
 	TrustPolicyRevision  string `yaml:"trust_policy_revision"`
 	VerificationEvidence string `yaml:"verification_evidence"`

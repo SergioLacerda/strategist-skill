@@ -46,3 +46,19 @@ The only foreseen exception is `sdd_injection`, which can inject the execution p
 - Fully automated CI/CD is not possible with the skill in default mode — requires human intervention on every mission
 - "Batch processing" flows need a different approach — the Strategist is not the right tool for unsupervised automation
 - May seem excessive for small tasks, but the cost of a "yes" is less than the cost of an unintended execution
+
+## Amendment 2026-09-26: amending a package after the gate
+
+`strategist mission normalize-openspec --amend` lets a refined package be amended after it was
+published, including after `gate_analysis_accepted`. It does not weaken this decision:
+
+- it never changes `mission_status`, so it can neither open nor close the gate, and it refuses a
+  claimed or applied package, a mission whose gate outcome is `rejected`, and an analysis-only
+  accepted package that would gain a `documentation_target` (an accepted analysis-only gate never
+  authorizes Sniper to write documentation it did not cover);
+- it requires a recorded human authorization reference, kept verbatim; the command cannot verify a
+  human, like `metrics gate-outcome --ref`;
+- `analysis.md` stays byte-identical, and the previous `proposal.md`, `design.md` and `tasks.md` are
+  snapshotted under `.amendments/NNN/` so the pre-amendment gate content stays reviewable.
+
+An amendment that changes what the human accepted is expected to go through a new gate round; the command enforces only the checks above and does not judge the content.

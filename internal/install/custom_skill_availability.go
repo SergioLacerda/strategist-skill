@@ -3,7 +3,6 @@ package install
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/plugins/connectors"
 )
@@ -20,22 +19,21 @@ type CustomSkillAvailability struct {
 	Reason    string
 }
 
-// resolveCustomSkillAvailability attempts local_path/already_installed
-// resolution (ADR-0029 design.md § Wizard behavior) for a Wizard-typed
-// custom skill id against the user's own standalone workspace —
-// ~/.claude/skills/<id>/, the same location installShimStep already writes
-// Strategist's own shim to (see paths.go#defaultShimPath). It never searches
-// external-skills-source/ (that directory is for build-time embedding, not
-// an end user's own already-installed skills) and it never fabricates
-// availability — a lookup failure for any reason (no home directory, no such
-// skill, malformed SKILL.md) is reported as unavailable.
+// resolveCustomSkillAvailability attempts local-first provider resolution for
+// a Wizard-typed Custom skill. It never searches external-skills-source/
+// (that directory is for build-time embedding, not an end user's installed
+// skills) and it never fabricates availability — a lookup failure for any
+// reason is reported as unavailable.
 func resolveCustomSkillAvailability(id string) CustomSkillAvailability {
+	workspaceRoot, err := os.Getwd()
+	if err != nil {
+		return CustomSkillAvailability{Reason: fmt.Sprintf("cannot resolve workspace directory: %v", err)}
+	}
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return CustomSkillAvailability{Reason: fmt.Sprintf("cannot resolve home directory: %v", err)}
 	}
-	dir := filepath.Join(homeDir, claudeDirName, installedProvidersDirName, id)
-	if _, err := connectors.ResolveLocalPackage(dir); err != nil {
+	if _, err = connectors.ResolveCustomProviderPackage(workspaceRoot, id, connectors.DefaultGlobalProviderRoots(homeDir)); err != nil {
 		return CustomSkillAvailability{Reason: err.Error()}
 	}
 	return CustomSkillAvailability{Available: true}
@@ -59,7 +57,7 @@ func checkCustomSkillAvailability(providerRisk map[string]string, slots map[stri
 		}
 		availability := resolveCustomSkillAvailability(value)
 		if !availability.Available {
-			return fmt.Errorf("skill %q for slot %s is unavailable (configured_unverified): %s — install it under ~/.claude/skills/%s/ first, or choose a listed provider", value, slot, availability.Reason, value)
+			return fmt.Errorf("skill %q for slot %s is unavailable (configured_unverified): %s — install it under a local .agents/.codex skill root or a global provider root first, or choose a listed provider", value, slot, availability.Reason)
 		}
 	}
 	return nil

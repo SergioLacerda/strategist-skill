@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/embed"
 	"github.com/SergioLacerda/strategist-skill/internal/initiative"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
@@ -61,59 +60,6 @@ func NewDefaultInitiativeRuntime(strategistRoot string) (InitiativeRuntime, erro
 	return NewInitiativeRuntime(strategistRoot, policy)
 }
 
-// NewDefaultRoleLifecycle creates the production role-boundary adapter using
-// the canonical policy and the registry's declared INITIATIVE hooks.
-func NewDefaultRoleLifecycle(strategistRoot string, registry domain.RoleRegistry) (RoleLifecycle, error) {
-	runtime, err := NewDefaultInitiativeRuntime(strategistRoot)
-	if err != nil {
-		return RoleLifecycle{}, fmt.Errorf("initiative lifecycle: create runtime: %w", err)
-	}
-	return RoleLifecycle{runtime: runtime, registry: registry}, nil
-}
-
-// RoleLifecycle is the production adapter between role declarations and the
-// consultative runtime. A missing hook is a deliberate legacy no-op.
-type RoleLifecycle struct {
-	runtime  InitiativeRuntime
-	registry domain.RoleRegistry
-}
-
-// Enter invokes the declared INITIATIVE start hook for a role.
-func (l RoleLifecycle) Enter(input InitiativeRoleEntry) (initiative.Advice, error) {
-	hooks, ok := l.registry.InitiativeHooksOf(input.Role)
-	if !ok || hooks.OnStart == "" {
-		return initiative.Advice{}, nil
-	}
-	if hooks.OnStart != "resolve_advice" {
-		return initiative.Advice{}, fmt.Errorf("initiative lifecycle: unsupported start hook %q", hooks.OnStart)
-	}
-	return l.runtime.EnterRole(input)
-}
-
-// Complete invokes the declared INITIATIVE result hook for a role.
-func (l RoleLifecycle) Complete(advice initiative.Advice, result initiative.Result, toRole string) (InitiativeHandoff, error) {
-	hooks, ok := l.registry.InitiativeHooksOf(advice.Role)
-	if !ok || hooks.OnResult == "" {
-		return InitiativeHandoff{}, nil
-	}
-	if hooks.OnResult != "emit_initiative_result" {
-		return InitiativeHandoff{}, fmt.Errorf("initiative lifecycle: unsupported result hook %q", hooks.OnResult)
-	}
-	return l.runtime.CompleteRole(advice, result, toRole)
-}
-
-// Consume invokes the declared INITIATIVE consume hook for a handoff.
-func (l RoleLifecycle) Consume(handoff InitiativeHandoff) error {
-	hooks, ok := l.registry.InitiativeHooksOf(handoff.ToRole)
-	if !ok || hooks.OnStart == "" {
-		return nil
-	}
-	if hooks.OnStart != "consume_advice" {
-		return fmt.Errorf("initiative lifecycle: unsupported consume hook %q", hooks.OnStart)
-	}
-	return l.runtime.ConsumeHandoff(handoff)
-}
-
 // EnterRole resolves one advice envelope at role entry and emits one
 // diagnostic event. Repeated entry for the same mission/role/run reuses the
 // existing advice identity and emits a reuse marker without appending a new
@@ -121,7 +67,7 @@ func (l RoleLifecycle) Consume(handoff InitiativeHandoff) error {
 func (r InitiativeRuntime) EnterRole(input InitiativeRoleEntry) (initiative.Advice, error) {
 	advice, reused, err := r.core.EnterRole(initiative.AdviceInput{
 		MissionID: input.MissionID, Role: input.Role, RunID: input.RunID,
-		Trigger: initiative.TriggerInitial, Observed: input.Observed,
+		Trigger: initiative.TriggerInitial, Observed: input.Observed, Leveling: input.Leveling,
 	})
 	if err != nil {
 		return initiative.Advice{}, fmt.Errorf("initiative runtime: enter role: %w", err)
@@ -137,7 +83,7 @@ func (r InitiativeRuntime) EnterRole(input InitiativeRoleEntry) (initiative.Advi
 func (r InitiativeRuntime) Reevaluate(input InitiativeRoleEntry, trigger initiative.Trigger) (initiative.Advice, error) {
 	advice, err := r.core.Reevaluate(initiative.AdviceInput{
 		MissionID: input.MissionID, Role: input.Role, RunID: input.RunID,
-		Trigger: trigger, Observed: input.Observed,
+		Trigger: trigger, Observed: input.Observed, Leveling: input.Leveling,
 	})
 	if err != nil {
 		return initiative.Advice{}, fmt.Errorf("initiative runtime: re-evaluate: %w", err)
@@ -155,9 +101,21 @@ func (r InitiativeRuntime) CompleteRole(advice initiative.Advice, result initiat
 	if strings.TrimSpace(toRole) == "" {
 		return InitiativeHandoff{}, fmt.Errorf("initiative handoff: destination role is required")
 	}
+	if err := validateInitiativeTransition(advice.Role, toRole); err != nil {
+		return InitiativeHandoff{}, err
+	}
 	assessment, err := r.core.RecordResult(advice, result)
 	if err != nil {
 		return InitiativeHandoff{}, fmt.Errorf("initiative runtime: record result: %w", err)
+	}
+	// RecordResult assigns deterministic identity metadata for first revisions;
+	// expose that same persisted revision in the handoff envelope so replay
+	// validation compares the exact record that was assessed.
+	if result.ResultID == "" {
+		result.ResultID = assessment.ResultID
+	}
+	if result.Sequence == 0 {
+		result.Sequence = assessment.ResultSequence
 	}
 	handoff := InitiativeHandoff{
 		FromRole: advice.Role, ToRole: toRole, Advice: advice,

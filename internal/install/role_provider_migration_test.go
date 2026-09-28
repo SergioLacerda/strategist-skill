@@ -405,22 +405,23 @@ func findSlotBinding(bindings []domain.SlotBinding, slot string) (domain.SlotBin
 func TestActivateRoleProviderMigrationHandlesNoCurrentProvider(t *testing.T) {
 	t.Parallel()
 
-	// "execution" is intentionally left unset: sniper is the sole catalog
-	// candidate for the sniper role, so it still resolves unambiguously with
-	// no preference, unlike "refinement" (archivist vs openspec-explore).
+	// "execution" is intentionally left unset. After every external skill is
+	// catalogued as a Weapon, sniper and openspec-archive-change are both
+	// legitimate candidates; the migration must surface that ambiguity instead
+	// of silently selecting a native fallback.
 	preview, err := PlanRoleProviderMigration(defaultsExtractor{}, map[string]string{
 		"discovery":  "brainstorming",
 		"refinement": "archivist",
 	})
 	require.NoError(t, err)
-	require.True(t, preview.FullyResolved())
+	require.False(t, preview.FullyResolved())
 
 	execution := preview.Entries[2]
 	require.Equal(t, "execution", execution.Slot)
 	require.Empty(t, execution.CurrentProviderID)
 
 	_, err = activateRoleProviderMigration("", domain.PluginLock{}, preview)
-	require.NoError(t, err)
+	require.ErrorContains(t, err, "not_fully_resolved")
 }
 
 func TestPlanRoleProviderMigration_LoadRoleSlotMapErrorPropagates(t *testing.T) {

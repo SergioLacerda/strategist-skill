@@ -2,7 +2,7 @@
 
 [![Release](https://img.shields.io/github/v/release/SergioLacerda/strategist-skill?label=release)](https://github.com/SergioLacerda/strategist-skill/releases)
 [![CI](https://github.com/SergioLacerda/strategist-skill/actions/workflows/test.yml/badge.svg)](https://github.com/SergioLacerda/strategist-skill/actions/workflows/test.yml)
-[![Coverage](https://img.shields.io/badge/coverage-92.8%25-green)](docs/test-styles.md)
+[![Coverage](https://img.shields.io/badge/coverage-92.5%25-green)](docs/test-styles.md)
 [![Mutation](https://img.shields.io/badge/mutation-passing-brightgreen)](scripts/mutation-role-weapon.sh)
 [![Go](https://img.shields.io/badge/Go-1.26-blue)](https://go.dev)
 [![License](https://img.shields.io/github/license/SergioLacerda/strategist-skill)](LICENSE)
@@ -75,6 +75,42 @@ Sniper
 - **Sniper** handles the approved execution/documentation stage defined by the workflow.
 
 Acceptance at the Approval Gate authorizes only the declared documentation targets. Source code, tests, scripts, CI, and configuration changes remain a separate implementation handoff.
+
+### Runtime taxonomy
+
+The current runtime has four identity-bearing Roles: Scout (`native/fixed`),
+Ranger, Archivist and Sniper (`native/pluggable`). Sniper's ranked binding is the
+default and behaves as fixed; a custom Sniper Weapon needs an explicit user choice
+and stays documentation-only. Weapons are skill packages invoked by a Role; the selected Ranger discovery Weapon is
+required input whose untrusted result Ranger normalizes before the handoff. A
+missing or incompatible Weapon fails closed with `role_invocation_failed` and
+does not silently fall back to native behavior.
+
+INITIATIVE is a consultative Mechanism that reads the immutable operational resolver
+output produced by LEVELING. It
+cannot select or mutate the model, provider, capability, effort, Approval Gate,
+or implementation authorization. Prompt Intake, Context Enrichment, Dossier
+Builder, Response Critic, and Learning Curator are Pipeline routines, not Roles.
+
+**PRECISE-SHOT** (`TIRO PRECISO` in pt-BR) is one item with two facets: the agent
+assesses its own confidence (an Ability), and a deterministic rule bounds the
+request. It reports assessed, ceiling, and effective confidence and
+may request advisory LEVELING reconsideration; it never selects execution
+effort, invokes a provider, or bypasses the Approval Gate.
+
+The canonical taxonomy has six families: Roles (agent personas), Weapons (external
+skills), Abilities (Feats, judgment-based behavior), Mechanisms (deterministic
+rules such as LEVELING, INITIATIVE, Weapon Binding, Handoff, and the Approval Gate
+rules), Pipeline (fixed stages and routines, including the routes Scout selects),
+and Artifacts (generated results with internal value such as analysis, evidence
+packs, refined packages, ADRs, and runbooks). Mechanisms are not executable Roles
+or providers. The criterion is in
+[ADR-0053](docs/adr/0053-taxonomy-classification-criterion-and-sniper-extensibility.md). See the [canonical taxonomy and responsibility matrix](docs/architecture/strategist-concepts.md#canonical-taxonomy).
+
+The historical phrases “internal role” and “external role” are compatibility
+notes only. Active documentation uses the independent `origin` and
+`extensibility` properties. Proposed names such as Pathfinder, Cartographer,
+Jeweler, and Jewelcrafter are not active Roles.
 
 ## Documentation
 

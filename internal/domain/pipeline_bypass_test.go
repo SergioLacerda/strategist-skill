@@ -129,3 +129,19 @@ func TestEvaluatePipelineBypass_NormalizesEmptyEvidence(t *testing.T) {
 	assert.Equal(t, "direct repository mutation", decision.AttemptedAction)
 	assert.Contains(t, decision.MissingEvidence, ".analysis/refined/")
 }
+
+// Scout names routes with its own vocabulary; the bypass evaluation knows two
+// evidence regimes. The mapping is explicit and fails closed to the strictest.
+func TestPipelineRouteForScoutRoute(t *testing.T) {
+	t.Parallel()
+	cases := map[string]string{
+		"full_pipeline":              domain.MissionRouteMain,
+		"implementation_short_route": domain.MissionRouteDirectExecute,
+		"critical_hit":               domain.MissionRouteDirectExecute,
+		"":                           domain.MissionRouteMain,
+		"something_new":              domain.MissionRouteMain,
+	}
+	for scout, want := range cases {
+		assert.Equal(t, want, domain.PipelineRouteForScoutRoute(scout), "scout route %q", scout)
+	}
+}

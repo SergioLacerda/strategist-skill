@@ -144,3 +144,65 @@ func TestHashExcerpt_IsDeterministicAndSensitiveToContent(t *testing.T) {
 		t.Fatal("expected non-empty hash")
 	}
 }
+
+// A citation of mutable state (for example a runtime log) carries the quoted value
+// and the moment it was captured, so the package can be checked without the source.
+func TestEvidenceWithCapture_QuotesTheValueAndHashesIt(t *testing.T) {
+	t.Parallel()
+	e := validEvidence().WithCapture("refinement_reopens: 0 (5 of 5 lines)", "2026-09-26T18:00:00Z")
+	if e.Excerpt != "refinement_reopens: 0 (5 of 5 lines)" || e.CapturedAt != "2026-09-26T18:00:00Z" {
+		t.Fatalf("capture not stored: %+v", e)
+	}
+	if e.Hash != HashExcerpt(e.Excerpt) {
+		t.Fatalf("hash %q does not match the excerpt", e.Hash)
+	}
+	if err := ValidateEvidence(e); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestEvidenceWithCapture_KeepsAnExistingHash(t *testing.T) {
+	t.Parallel()
+	e := validEvidence()
+	e.Hash = "preset"
+	if got := e.WithCapture("x", "2026-09-26T18:00:00Z").Hash; got != "preset" {
+		t.Fatalf("an existing hash must not be overwritten, got %q", got)
+	}
+}
+
+func TestValidateEvidence_CaptureFields(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name   string
+		mutate func(e Evidence) Evidence
+		want   string
+	}{
+		{"captured_at not RFC3339", func(e Evidence) Evidence { e.CapturedAt = "yesterday"; return e }, "captured_at must be an RFC3339 timestamp"},
+		{"excerpt without captured_at", func(e Evidence) Evidence { e.Excerpt = "value"; return e }, "captured_at is required when excerpt is set"},
+		{"excerpt too long", func(e Evidence) Evidence {
+			e.Excerpt, e.CapturedAt = strings.Repeat("a", MaxEvidenceExcerptBytes+1), "2026-09-26T18:00:00Z"
+			return e
+		}, "excerpt must be at most"},
+		{"hash disagrees with excerpt", func(e Evidence) Evidence {
+			e.Excerpt, e.CapturedAt, e.Hash = "value", "2026-09-26T18:00:00Z", "deadbeef"
+			return e
+		}, "hash does not match excerpt"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			err := ValidateEvidence(tc.mutate(validEvidence()))
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("want error containing %q, got %v", tc.want, err)
+			}
+		})
+	}
+}
+
+// The capture fields are optional: an evidence record without them stays valid.
+func TestValidateEvidence_CaptureFieldsAreOptional(t *testing.T) {
+	t.Parallel()
+	if err := ValidateEvidence(validEvidence()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}

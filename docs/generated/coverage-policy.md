@@ -20,6 +20,7 @@ are recorded in `scripts/coverage-exemptions.tsv`. Edit those sources, not this 
 | `internal/compile` | 95% | compiled artifact contract gate - raised to 95% (20260901-coverage-standard-95) - measured 96.1% |
 | `internal/install` | 90% | installer and runtime materialization gate |
 | `internal/embed` | 95% | embedded defaults availability gate - raised to 95% (20260901-coverage-standard-95) - measured 96.5% |
+| `internal/filelock` | 95% | cross-platform exclusive file-lock primitive used by ledger writers |
 | `internal/telemetry` | 90% | governance telemetry gate |
 | `cmd/strategist` | 90% | CLI contract surface gate - remeasured 94.1% after check* cluster moved to internal/check (20260816-cmd-strategist-cli-reorg) |
 | `cmd/strategist/leveling` | 90% | LEVELING CLI adapter contract surface gate - measured 90.9% after package-local migration (2026-09-22) |
@@ -41,7 +42,7 @@ are recorded in `scripts/coverage-exemptions.tsv`. Edit those sources, not this 
 | `internal/governancebridge` | 0% | pure interface/type declarations, no executable statements ("[no statements]") - see 20260830-pending-v3-disposition E4 |
 | `internal/plugins` | 95% | raised from 85.8% to 98.6% (2026-08-30, resolver edge-case tests) - measured 98.6% |
 | `internal/plugins/conformance` | 95% | raised from 74.3% to 97.1% (2026-08-30, Validate/Stale/levelRank edge cases) - measured 97.1% |
-| `internal/plugins/connectors` | 95% | raised from 78.9% to 100.0% (2026-08-30, NativeRuntimeConnector branch coverage) - remeasured 97.3% after local_path_connector.go file-size split (digestPackageDirectory relErr branch still unreachable) |
+| `internal/plugins/connectors` | 95% | raised from 78.9% to 100.0% (2026-08-30, NativeRuntimeConnector branch coverage) - remeasured 99.0% after Weapon connector and provider-root tests (packageRelPath/readBoundedPackageData error branches still unreachable) |
 | `internal/plugins/lifecycle` | 95% | raised from 79.3% to 97.3% (2026-08-30, idempotency/error-path tests) - measured 97.3% |
 | `internal/plugins/policy` | 95% | raised from 94.1% to 100.0% (2026-08-30, adapter-digest branches) - measured 100.0% |
 | `internal/plugins/trust` | 95% | raised from 88.5% to 100.0% (2026-08-30, publisher/source/freshness/deprecation edge cases) - measured 100.0% |
@@ -52,10 +53,13 @@ are recorded in `scripts/coverage-exemptions.tsv`. Edit those sources, not this 
 | `internal/telemetry/sink/otel` | 95% | raised from 68.8% to 100.0% (2026-08-30, full severity-mapping table) - measured 100.0% |
 | `internal/telemetry/sink/slog` | 95% | raised from 68.8% to 100.0% (2026-08-30, full severity-mapping table) - measured 100.0% |
 | `internal/testutil` | 95% | raised from 0.0% to 100.0% (2026-08-30, direct helper tests added; no longer excluded from `make test`) - measured 100.0% |
+| `internal/testutil/customws` | 95% | provider-add workspace helper for rolevalidation/authorization regression tests (2026-09-25) - measured 100.0% |
 | `internal/runtimepayload` | 75% | embedded OpenSpec bundle verification/materialization gate - measured 79.6% (20260920-drift-a-windows-standalone-install) |
 | `internal/leveling` | 90% | provider-neutral LEVELING policy, fallback, and digest contract |
 | `internal/initiative` | 95% | consultative INITIATIVE advice, result, authority, and append-only ledger contract - raised to 95% after error-path tests, measured 97.0% (2026-09-23) |
 | `internal/missionview` | 90% | read-only mission projection and deterministic renderer contract |
+| `internal/weapon` | 95% | Role-scoped Weapon resolution and composite invocation contract - measured 100.0% |
+| `internal/mechanisms` | 90% | Mechanisms registry: parsing, validation and role-scoped brief that reach agents in a mission |
 
 ## Reviewed Exemptions
 

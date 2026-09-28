@@ -17,6 +17,21 @@ corresponding tag and GitHub Release.
 ## [Unreleased]
 
 ### Added
+- `strategist mission normalize-openspec --amend --amends <change> --authorization-ref <ref>`,
+  a sanctioned amendment of an already published refined package: `analysis.md`, the
+  mission status and the original `provider_change_id` are kept, the replaced files record
+  an `amendments:` list, and the previous files are snapshotted under `.amendments/NNN/`
+- `strategist metrics confidence --declared -`, a read-only comparison of the claims a
+  handoff `confidence_summary` declares with the persisted confidence records
+  (`declared_unpersisted`, `persisted_rejected`, `declared_mismatched`,
+  `persisted_under_other_agent`), with a conditional line at the Approval Gate
+- `strategist metrics record` accepts a `claims:` list, with a shared `evidence:`
+  list, in one stdin document, so the whole declared claim set (questions included)
+  reaches the confidence history; the single `claim:` form is unchanged
+- `strategist metrics mission-quality`, an advisory evaluation of the
+  `mission_quality` predicates over a decisions/evidence document on stdin
+- `strategist metrics handoff-record`, which writes the Archivist's line in
+  `handoff-metrics.jsonl` (idempotent per mission)
 - `strategist upgrade` command: backup-protected file application, expanded
   policy validation, and updated runtime discovery protocols
 - `InstallWithReport`, exposing backup directory paths to CLI users
@@ -44,6 +59,24 @@ corresponding tag and GitHub Release.
   `go test ./cmd/strategist -run CommandTreeSnapshot -update`
 
 ### Changed
+- `strategist metrics confidence` prints `question_preservation_rate: n/a` (mission and
+  per agent) when there is no question, instead of `0.00`; the JSON field and the
+  computed metric are unchanged
+- `strategist check` resolves a package added with `strategist provider add`
+  (a `custom` binding in `plugins.lock` whose `providers/<instance>/adapter.yaml`
+  describes it), naming the instance id (`<package-id>@<version>`) in `active.yaml`.
+  New additive readiness reason codes: `adapter_contract_valid`,
+  `custom_package_present`, `adapter_entrypoints_declared`,
+  `adapter_entrypoints_missing`, `custom_package_digest_missing` and
+  `custom_package_use_instance_id`; catalog Weapons also report `host_api_declared`
+  when the catalog runtime block declares a host API. A custom package's grant
+  readiness is Blocked, never Unknown, when its lock digest is missing.
+- `strategist provider add` records a `custom` binding even over a slot that was
+  `ranked`; a lock written by the previous behavior heals by re-running the same
+  `provider add`. It refuses a `discovery` or `refinement` adapter that does not
+  declare `risk_score: write_analysis`, prints the `active.yaml` line to set, and
+  the lock-parity warning for a custom package names that line instead of advising
+  `install` or `compile`. `--slot` help now lists `discovery`.
 - **Stricter `strategist check`:** an absent `Required` normative runtime file
   (`SKILL.md`, `skill.yaml`, `protocol.md`, `templates/agent-protocol.md`, three
   contracts) or an absent generated `agent-protocol.md` is now reported as

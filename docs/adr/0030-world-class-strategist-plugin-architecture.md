@@ -286,3 +286,45 @@ Each slice must preserve an operational native-only Strategist installation.
 ## Scope Boundary
 
 This ADR records the target architecture and phased migration. It does not authorize or implement schemas, connectors, resolver, lockfile, trust system, permission grants, transaction engine, wizard changes, tests, remote distribution, or source/config mutations. Those remain separately authorized implementation work.
+
+## Amendment 2026-09-25: authority for risk_score and scratch_root, and the compat view marker
+
+Decided in the taxonomy adherence review (mission `20260924-taxonomy-adherence-review`, task
+7.4), refined by mission `20260925-compat-view-removal-refinement`, and updated after its
+implementation (waves 0 to 3). The versioned marker is recorded in
+[ADR-0054](0054-versioned-runtime-layout-marker.md).
+
+- **Authority.** A Weapon's `risk_score` and `scratch_root` are declared in the catalog entry
+  (`plugins/catalog.yaml`) for cataloged Weapons, and in `adapter.yaml`
+  (`AdapterContract.risk_score`, `AdapterContract.scratch_root`) for a package added with
+  `strategist provider add`. `internal/domain.ResolveWeaponFacts` resolves them in this order:
+  the catalog entry, then the `adapter.yaml` of a `plugins.lock` custom binding, then the
+  generated `.strategist/skills/<id>/skill.yaml` view as a transitional fallback for a provider
+  the catalog does not list. The view never overrides the catalog.
+  `risk_score` stays a migration label; permission authority is the grant (see Decision 6
+  above).
+- **Exception to Decision 5.** Decision 5 makes the lock the authority for resolved state.
+  For a cataloged Weapon, slot resolution now reads the catalog entry first, and the lock
+  binding is consulted only for custom providers. This is deliberate: the catalog is the
+  embedded, digest-pinned description of the Weapon, and the lock records which instance is
+  bound.
+- **Readers moved.** Preflight (`internal/check`), role validation
+  (`internal/rolevalidation`), the embedded roster and binding enumeration, readiness
+  probing, the dojo, the grant readiness (`requested_permissions`), and the Ranger and
+  Archivist `scratch_root` instruction read the catalog-first facts. Installable detection is
+  keyed on the catalog's `installable` flag. `provider add` bind checks read the package's own
+  `adapter.yaml`.
+- **Removal marker, not a window.** There is no calendar window. The only readers of the view
+  are Strategist's own code, so its retirement is gated by a **versioned marker internalized
+  in Strategist**, kept outside every digest input (ADR-0054). Generation 1 (N-1: layout-aware,
+  view still shipped) is implemented. Generation 2 (N: the view is no longer written or
+  shipped) waits for generation 1 to ship one release first.
+- **Still open.**
+  - The installer still writes the view, and the embedded mirrors, the drift check, and
+    fixtures that test the transitional branch still reference it, until generation 2.
+  - `strategist check` does not resolve a package added with `provider add` (U-01). That is a
+    separate mission.
+
+  The generator also feeds the normalized package digest, so its output stays byte-identical
+  (the lock files must not change) instead of re-pinning every embedded Weapon. It is now
+  split into `normalizedDigestManifest` (digest input) and a thin view writer.

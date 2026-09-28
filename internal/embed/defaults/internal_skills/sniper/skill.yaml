@@ -4,8 +4,6 @@ schema_version: "1"
 status: active
 risk_score: controlled
 category: documentation
-skill_type: role_filler
-inherits_role: sniper
 
 description: >
   Documentation materialization skill for the Strategist pipeline. Materializes approved

@@ -117,3 +117,28 @@ func TestRunProviderValidateReportsAnInvalidSourceAfterPrintingTheReport(t *test
 	require.ErrorContains(t, err, "provider validate")
 	require.Contains(t, output.String(), "status=invalid", "the report is printed before the error is returned")
 }
+
+func TestPrintProviderOutputTellsTheOperatorWhichActiveYamlLineToSet(t *testing.T) {
+	for _, format := range []string{"table", ""} {
+		cmd := &cobra.Command{Use: "provider"}
+		var output bytes.Buffer
+		cmd.SetOut(&output)
+
+		require.NoError(t, printProviderOutput(cmd, sampleAddResult(), format), format)
+
+		require.Contains(t, output.String(), "provider=fixture-provider instance=fixture-provider@1.0.0 slot=discovery", "the existing line is unchanged")
+		require.Contains(t, output.String(), "active.yaml: set slots.discovery to fixture-provider@1.0.0\n", format)
+	}
+}
+
+func TestPrintProviderOutputKeepsMachineFormatsFree(t *testing.T) {
+	for _, format := range []string{"json", "yaml"} {
+		cmd := &cobra.Command{Use: "provider"}
+		var output bytes.Buffer
+		cmd.SetOut(&output)
+
+		require.NoError(t, printProviderOutput(cmd, sampleAddResult(), format), format)
+
+		require.NotContains(t, output.String(), "active.yaml: set slots", format)
+	}
+}

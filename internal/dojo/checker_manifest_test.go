@@ -252,3 +252,53 @@ func TestCheckManifests_Empty(t *testing.T) {
 	items := dojo.CheckManifests(criteria, t.TempDir())
 	assert.Empty(t, items)
 }
+
+// The Weapon's manifest is its catalog entry: exists and fields are evaluated against
+// plugins/catalog.yaml, with no skills/<id>/skill.yaml compat view present.
+func TestCheckManifests_ReadsTheCatalogEntryWithoutAnyView(t *testing.T) {
+	strategistDir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(strategistDir, "plugins"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(strategistDir, "plugins", "catalog.yaml"), []byte("schema_version: strategist-plugin-catalog/v2\nproviders:\n  - id: brainstorming\n    canonical_role: ranger\n    runtime:\n      kind: embedded\n"), 0o644))
+	criteria := domain.DojoCriteria{ManifestChecks: []domain.DojoManifestCheck{
+		{Slot: "discovery", ExpectedProvider: "brainstorming", ManifestExists: true, FieldsPresent: []string{"canonical_role", "runtime.kind"}},
+		{Slot: "execution", ExpectedProvider: "sdd-ask", ManifestExists: false},
+	}}
+
+	items := dojo.CheckManifests(criteria, strategistDir)
+
+	require.NotEmpty(t, items)
+	for _, it := range items {
+		assert.True(t, it.Passed, "expected pass: %s — %s", it.Label, it.Detail)
+		assert.Contains(t, it.Label, "manifest", "labels keep the prefix ClassifyFailures relies on")
+		assert.NotContains(t, it.Label, "skill.yaml", "the label no longer names the compat view")
+	}
+}
+
+func TestCheckManifests_CatalogEntryWinsOverAStaleView(t *testing.T) {
+	strategistDir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(strategistDir, "plugins"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(strategistDir, "plugins", "catalog.yaml"), []byte("schema_version: strategist-plugin-catalog/v2\nproviders:\n  - id: brainstorming\n    canonical_role: ranger\n"), 0o644))
+	require.NoError(t, os.MkdirAll(filepath.Join(strategistDir, "skills", "brainstorming"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(strategistDir, "skills", "brainstorming", "skill.yaml"), []byte("stale_only_field: x\n"), 0o644))
+	criteria := domain.DojoCriteria{ManifestChecks: []domain.DojoManifestCheck{
+		{Slot: "discovery", ExpectedProvider: "brainstorming", ManifestExists: true, FieldsPresent: []string{"stale_only_field"}},
+	}}
+
+	items := dojo.CheckManifests(criteria, strategistDir)
+
+	require.NotEmpty(t, items)
+	assert.False(t, items[len(items)-1].Passed, "a field only the stale view has is not present in the manifest")
+}
+
+func TestCheckManifests_UnreadableCatalogFailsTheCheck(t *testing.T) {
+	strategistDir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(strategistDir, "plugins"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(strategistDir, "plugins", "catalog.yaml"), []byte("providers: [unclosed"), 0o644))
+
+	items := dojo.CheckManifests(domain.DojoCriteria{ManifestChecks: []domain.DojoManifestCheck{
+		{Slot: "discovery", ExpectedProvider: "brainstorming", ManifestExists: true},
+	}}, strategistDir)
+
+	require.NotEmpty(t, items)
+	assert.False(t, items[0].Passed)
+}

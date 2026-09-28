@@ -25,23 +25,30 @@ const (
 // Cataloged diagnostic reason codes. They describe only unavailable secondary
 // read sources; none is an execution or authorization decision.
 const (
-	ReasonMissionViewConfidenceUnavailable  = "mission_view_confidence_unavailable"
-	ReasonMissionViewGateOutcomeUnavailable = "mission_view_gate_outcome_unavailable"
-	ReasonMissionViewLevelingUnavailable    = "mission_view_leveling_unavailable"
+	ReasonMissionViewConfidenceUnavailable     = "mission_view_confidence_unavailable"
+	ReasonMissionViewGateOutcomeUnavailable    = "mission_view_gate_outcome_unavailable"
+	ReasonMissionViewLevelingUnavailable       = "mission_view_leveling_unavailable"
+	ReasonMissionViewTokenUsageUnavailable     = "mission_view_token_usage_unavailable"
+	ReasonMissionViewHandoffMetricsUnavailable = "mission_view_handoff_metrics_unavailable"
 )
 
 // Input contains values already loaded from their respective authorities.
 type Input struct {
-	Status          domain.MissionEngineStatus
-	Registry        domain.RoleRegistry
-	SlotProviders   map[string]string
-	Confidence      telemetry.ConfidenceGateReview
-	ConfidenceError error
-	GateOutcome     string
-	GateError       error
-	Levels          []leveling.Record
-	LevelsError     error
-	Run             string
+	Status              domain.MissionEngineStatus
+	Registry            domain.RoleRegistry
+	SlotProviders       map[string]string
+	Confidence          telemetry.ConfidenceGateReview
+	ConfidenceError     error
+	GateOutcome         string
+	GateError           error
+	Levels              []leveling.Record
+	LevelsError         error
+	Run                 string
+	TokenUsage          []telemetry.MissionTokenUsageRecord
+	TokenUsageError     error
+	HandoffMetrics      []telemetry.RefinementHandoffLine
+	HandoffMetricsError error
+	DeclaredTokenBudget string
 }
 
 // View is the complete read-only mission projection.
@@ -54,6 +61,7 @@ type View struct {
 	Confidence   ConfidenceSection `json:"confidence"`
 	ApprovalGate GateSection       `json:"approval_gate"`
 	Leveling     LevelingSection   `json:"leveling"`
+	TokenUsage   TokenUsageSection `json:"token_usage"`
 	Diagnostics  []Diagnostic      `json:"diagnostics"`
 }
 
@@ -101,6 +109,8 @@ type LevelingRole struct {
 	History   []leveling.Record `json:"history,omitempty"`
 }
 
+// TokenUsageSection and buildTokenUsage live in token_usage.go.
+
 // Diagnostic describes an unavailable secondary authority and its remedy.
 type Diagnostic struct {
 	Reason string `json:"reason"`
@@ -116,6 +126,7 @@ func Build(in Input) View {
 		Confidence:   ConfidenceSection{Availability: confidenceAvailability(in.Confidence), Advisory: true, Review: &in.Confidence},
 		ApprovalGate: GateSection{Availability: Available, Outcome: in.GateOutcome},
 		Leveling:     buildLevels(in.Registry, in.Levels, in.Run),
+		TokenUsage:   buildTokenUsage(in.TokenUsage, in.HandoffMetrics, in.DeclaredTokenBudget),
 	}
 	if in.ConfidenceError != nil {
 		v.Confidence = ConfidenceSection{Availability: Unavailable, Advisory: true}
@@ -131,58 +142,13 @@ func Build(in Input) View {
 		v.Leveling = LevelingSection{Availability: Unavailable, Selection: selection(in.Run)}
 		v.Diagnostics = append(v.Diagnostics, Diagnostic{Reason: ReasonMissionViewLevelingUnavailable, Action: "inspect role-level ledger"})
 	}
+	if in.TokenUsageError != nil {
+		v.TokenUsage = TokenUsageSection{Availability: Unavailable, DeclaredTokenBudget: in.DeclaredTokenBudget}
+		v.Diagnostics = append(v.Diagnostics, Diagnostic{Reason: ReasonMissionViewTokenUsageUnavailable, Action: "inspect mission-token-usage ledger"})
+	}
+	if in.HandoffMetricsError != nil {
+		v.TokenUsage.LedgerComparison = telemetry.TokenLedgerComparison{Status: telemetry.TokenLedgerReportedOnly}
+		v.Diagnostics = append(v.Diagnostics, Diagnostic{Reason: ReasonMissionViewHandoffMetricsUnavailable, Action: "inspect handoff-metrics ledger"})
+	}
 	return v
-}
-
-func buildJourney(reg domain.RoleRegistry, providers map[string]string) []JourneyEntry {
-	roles := reg.Roles()
-	out := make([]JourneyEntry, 0, len(roles)+1)
-	for _, role := range roles {
-		if phase, ok := reg.PhaseOf("gate"); ok && role.Phase == phase+1 {
-			out = append(out, JourneyEntry{Kind: "gate", ID: "gate", Phase: phase})
-		}
-		entry := JourneyEntry{Kind: "role", ID: role.ID, Phase: role.Phase}
-		if role.Slot != "" {
-			entry.Provider = providers[role.Slot]
-		}
-		out = append(out, entry)
-	}
-	return out
-}
-
-func buildLevels(reg domain.RoleRegistry, records []leveling.Record, run string) LevelingSection {
-	byRole := groupLevelRecords(records)
-	section := LevelingSection{Availability: Available, Selection: selection(run)}
-	for _, role := range reg.Roles() {
-		section.Roles = append(section.Roles, levelRole(role.ID, byRole[role.ID], run))
-	}
-	// The ledger was readable but holds nothing for this mission: every role
-	// is unresolved, which is not the same as "available".
-	if len(records) == 0 {
-		section.Availability = Unknown
-	}
-	return section
-}
-
-func groupLevelRecords(records []leveling.Record) map[string][]leveling.Record {
-	byRole := make(map[string][]leveling.Record)
-	for _, record := range records {
-		byRole[record.Role] = append(byRole[record.Role], record)
-	}
-	return byRole
-}
-
-func levelRole(role string, records []leveling.Record, run string) LevelingRole {
-	history := append([]leveling.Record(nil), records...)
-	return LevelingRole{Role: role, History: history, Effective: effectiveRecord(history, run)}
-}
-
-func effectiveRecord(records []leveling.Record, run string) *leveling.Record {
-	for i := len(records) - 1; i >= 0; i-- {
-		if run == "" || records[i].Run == run {
-			record := records[i]
-			return &record
-		}
-	}
-	return nil
 }

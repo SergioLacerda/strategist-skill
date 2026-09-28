@@ -13,11 +13,12 @@ func New(deps Dependencies, ledger string, defaultMax int) *cobra.Command {
 	}
 	cmd.AddCommand(
 		NewHandoff(deps),
+		NewHandoffRecord(deps),
 		NewConfidence(deps),
-		NewFallback(deps),
 		NewGateOutcome(deps),
 		NewLabel(deps),
 		NewLevels(deps, ledger, defaultMax),
+		NewMissionQuality(deps),
 		NewRecord(deps),
 		NewRollout(),
 		NewScout(deps),

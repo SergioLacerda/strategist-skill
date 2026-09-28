@@ -22,7 +22,7 @@ import (
 // change to this table, never a side effect. There are none left at the moment.
 
 const (
-	matrixActive = "mode: epic\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n  refinement: openspec-propose\n  execution: sniper\nprovider_resolution_policy: ask\n"
+	matrixActive = "mode: epic\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n  refinement: openspec-propose\n  execution: sniper\n"
 	matrixSlots  = "discovery: brainstorming\nrefinement: archivist\nexecution: sniper\n"
 	matrixPerson = "id: %s\ntone_directive: precise\nphase_labels:\n  discovery: analysis\n  refinement: refinement\n  execution: execution\ndiagnostics:\n  pipeline_header: \"[Strategist] pipeline=starting\"\n  bootstrap_origin: \"[Strategist] profile_path={path}\"\n"
 )

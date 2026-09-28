@@ -3,6 +3,9 @@ description: >
   Append-only INITIATIVE result correlated to one advice envelope. The result
   is advisory and gate-independent.
 required_fields:
+  schema_version: string
+  result_id: string
+  sequence: integer
   advice_id: string
   mission_id: string
   role: string
@@ -10,10 +13,22 @@ required_fields:
   checks: list
   gate_independent: boolean
 optional_fields:
+  supersedes: string
   deviations: list
   evidence_refs: list
   outcomes: list
+  assessment:
+    type: object
+    fields: [schema_version, mechanism, algorithm_version, calibration_status, assessment_id, input_digest, advice_id, policy_version, policy_digest, result_id, result_sequence, challenge, assessed, ceiling, confidence_ceiling, effective, reasons, evidence_summary, escalation]
+    mechanism: [PRECISE-SHOT]
+    assessed: [low, medium, high]
+    ceiling: [low, medium, high]
+    effective: [low, medium, high]
+    calibration_status: [no_sample, uncalibrated]
 rules:
-  - satisfied checks require evidence_refs
-  - missing evidence produces a confidence ceiling or handoff challenge
+  - result checks must exactly match the Advice diligence IDs
+  - satisfied checks require valid linked evidence_refs
+  - not_applicable checks require a non-empty reason
+  - result revisions require supersedes and monotonic sequence metadata
+  - missing or invalid evidence produces a confidence ceiling or handoff challenge
   - result does not authorize Approval Gate acceptance or implementation_handoff

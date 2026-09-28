@@ -74,12 +74,10 @@ func TestEmbeddedDefaults_BaselineWeaponRosterIsAlwaysEmbedded(t *testing.T) {
 	}
 }
 
-// TestEmbeddedDefaults_RequestedAuxiliaryOptionsAreAlwaysEmbedded protects
-// the two additional built-in options requested for the standalone catalog.
-// They are catalog entries and complete payload mirrors, but writing-plans is
-// auxiliary-only and archive remains a lifecycle utility; neither may be
-// promoted into a mission slot by inference.
-func TestEmbeddedDefaults_RequestedAuxiliaryOptionsAreAlwaysEmbedded(t *testing.T) {
+// TestEmbeddedDefaults_AdditionalWeaponsAreAlwaysEmbedded protects the two
+// additional source packages. They are complete Weapon entries; their
+// lifecycle/capability history does not create a second auxiliary taxonomy.
+func TestEmbeddedDefaults_AdditionalWeaponsAreAlwaysEmbedded(t *testing.T) {
 	t.Parallel()
 
 	raw, err := embedpkg.Extractor{}.ReadFile("plugins/catalog.yaml")
@@ -95,8 +93,8 @@ func TestEmbeddedDefaults_RequestedAuxiliaryOptionsAreAlwaysEmbedded(t *testing.
 		id            string
 		canonicalRole string
 	}{
-		{"writing-plans", "auxiliary"},
-		{"openspec-archive-change", ""},
+		{"writing-plans", "archivist"},
+		{"openspec-archive-change", "sniper"},
 	} {
 		entry, found := byID[want.id]
 		require.Truef(t, found, "requested option %q must be present in embedded catalog", want.id)
@@ -108,4 +106,22 @@ func TestEmbeddedDefaults_RequestedAuxiliaryOptionsAreAlwaysEmbedded(t *testing.
 			require.NoErrorf(t, err, "skills/%s/%s must be embedded", want.id, payload)
 		}
 	}
+}
+
+func TestEmbeddedDefaults_ArchivistAndProtocolPreserveAutonomousPrivateRuntimeContract(t *testing.T) {
+
+	t.Parallel()
+
+	extractor := embedpkg.Extractor{}
+	provider, err := extractor.ReadFile("skills/openspec-propose/SKILL.md")
+	require.NoError(t, err)
+	assert.Contains(t, string(provider), "private launcher")
+	assert.Contains(t, string(provider), "ranked-runtimes.yaml")
+	assert.Contains(t, string(provider), "do not fall back to `PATH`")
+
+	protocol, err := extractor.ReadFile("templates/agent-protocol.md")
+	require.NoError(t, err)
+	assert.Contains(t, string(protocol), "AUTONOMY AND WEAPON AUTHORITY")
+	assert.Contains(t, string(protocol), "deterministic transition")
+	assert.Contains(t, string(protocol), "global skill with the same")
 }

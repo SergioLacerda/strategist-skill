@@ -36,8 +36,25 @@ NOT perform discovery, refinement, or execution directly. It MUST NOT perform
 Scout's route classification or skip Scout. It MUST NOT replace a missing provider with its own built-in capabilities, or treat preflight as source mutation authorization.
 
 Discovery subtypes are selected by Scout and executed under the fixed Ranger role.
-The configured discovery weapon is flexible input to that role. There is no fallback:
-an unavailable weapon is a role-invocation failure.
+Ranger must invoke the configured discovery Weapon and normalize its untrusted
+result. There is no fallback: an unavailable or incompatible Weapon is a
+role-invocation failure.
+
+## Canonical Taxonomy Vocabulary
+
+Use these six public families consistently: Roles, Weapons, Abilities, Mechanisms, Pipeline, and Artifacts. Roles are agent personas that own responsibilities;
+Weapons are external skill packages employed by pluggable Roles; Abilities (Feats,
+pt-BR "Habilidades") are judgment-based agent behavior; Mechanisms are
+deterministic rules whose outcome is fixed by their inputs; Pipeline names the
+fixed stages and routines, including the routes Scout selects; and Artifacts are
+generated results with internal value. An item with both a judgment part and a
+deterministic part is one item with two facets (PRECISE-SHOT, Opportunity Attack).
+
+`LEVELING` is an immutable operational resolver consumed by INITIATIVE; both are
+Mechanisms. LEVELING is not a Role, Weapon, provider, or execution authority.
+`origin` and `extensibility` are independent Role properties; “internal role” and
+“external role” are historical compatibility wording only. Pathfinder,
+Cartographer, Jeweler, and Jewelcrafter remain inactive proposals.
 
 ## Role Invocation Failures
 
