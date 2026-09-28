@@ -30,7 +30,12 @@ func customRuntimeReadiness(root, slot, provider string) domain.ReadinessCheck {
 		return notEvaluated
 	}
 	runtime := domain.NormalizeRankedRuntime(stamp.Runtime)
-	if runtime.Kind == domain.RankedRuntimeNone {
+	switch runtime.Kind {
+	case domain.RankedRuntimeNone, domain.RankedRuntimeHost, domain.RankedRuntimeEmbedded:
+		// None needs nothing; a host-channel Weapon is resolved by the host
+		// skill loader (ADR-0055) and an embedded Weapon runs in-process —
+		// neither depends on a local executable, so this dimension has
+		// nothing to evaluate for them.
 		return notEvaluated
 	}
 	if recordedPrivateRuntimeUsable(root, slot, provider) {
@@ -47,7 +52,16 @@ func customRuntimeReadiness(root, slot, provider string) domain.ReadinessCheck {
 	}
 }
 
+// runtimeExecutableName reports the command a runtime kind needs on PATH (or
+// recorded as a private runtime): an executable kind names it explicitly via
+// Entrypoint, while an OpenSpec-root runtime's bootstrap command's first word
+// names it, defaulting to "openspec" when Bootstrap is unset.
 func runtimeExecutableName(runtime domain.WeaponRuntime) string {
+	if runtime.Kind == domain.RankedRuntimeExecutable {
+		if fields := strings.Fields(runtime.Entrypoint); len(fields) > 0 {
+			return fields[0]
+		}
+	}
 	if fields := strings.Fields(runtime.Bootstrap); len(fields) > 0 {
 		return fields[0]
 	}
