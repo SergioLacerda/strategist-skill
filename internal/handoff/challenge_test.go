@@ -149,6 +149,42 @@ func TestValidatePolicyRequiresPrecedenceForMixedPredicates(t *testing.T) {
 	require.ErrorContains(t, ValidatePolicy(policy), "require precedence is required")
 }
 
+func TestValidatePolicy_UnknownPredicates(t *testing.T) {
+	t.Parallel()
+
+	requireUnknown := DefaultPolicy()
+	requireUnknown.RequireWhen = []PolicyPredicate{"not_a_real_predicate"}
+	requireUnknown.RequirePrecedence = true
+	require.ErrorContains(t, ValidatePolicy(requireUnknown), "unknown require_when predicate")
+
+	skipUnknown := DefaultPolicy()
+	skipUnknown.SkipWhen = []PolicyPredicate{"not_a_real_predicate"}
+	skipUnknown.RequirePrecedence = true
+	require.ErrorContains(t, ValidatePolicy(skipUnknown), "unknown skip_when predicate")
+}
+
+func TestValidatePolicy_TransitionRequired(t *testing.T) {
+	t.Parallel()
+
+	require.ErrorContains(t, ValidatePolicy(Policy{Enabled: true, RequiredTypes: []string{ChallengeObjective}}), "transition is required")
+}
+
+func TestValidatePolicy_MaxAttemptsMustBeNonNegative(t *testing.T) {
+	t.Parallel()
+
+	invalid := DefaultPolicy()
+	invalid.MaxAttempts = -1
+	require.ErrorContains(t, ValidatePolicy(invalid), "max_attempts must be >= 0")
+}
+
+func TestValidatePolicy_OnFailureMustBeSupported(t *testing.T) {
+	t.Parallel()
+
+	invalid := DefaultPolicy()
+	invalid.OnFailure = "escalate_to_human"
+	require.ErrorContains(t, ValidatePolicy(invalid), "on_failure")
+}
+
 func TestDefaultPolicy_UnchangedByRangerToArchivistAddition(t *testing.T) {
 	t.Parallel()
 

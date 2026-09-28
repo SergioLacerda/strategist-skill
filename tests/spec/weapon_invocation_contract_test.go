@@ -50,7 +50,7 @@ func TestWeaponInvocationSchemaRequiresItForDelegatedRuns(t *testing.T) {
 	requireAll(t, "weapon_invocation block", schema[start:end],
 		"required: false",
 		"required_when: delegated_run",
-		"item_fields: [invoked, resolved_from, steps_dropped, resolved_digest]",
+		"item_fields: [invoked, resolved_from, steps_dropped, resolved_digest, receipt_status, pin_status, capability_isolation]",
 		"sha256:<64 hex>",
 		"raw bytes",
 	)
