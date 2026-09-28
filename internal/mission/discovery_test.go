@@ -3,9 +3,11 @@ package mission
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/plugins/connectors"
+	"github.com/SergioLacerda/strategist-skill/internal/provider"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,12 +28,13 @@ func (c *missionDiscoveryConnector) Invoke(_ context.Context, envelope connector
 	return connectors.ConnectorResult{
 		Status: domain.ReadinessReady, ProviderID: envelope.Instance.ID,
 		InvocationEvidence: "mission-host-run-1", Artifact: []byte("# Untrusted findings\n\nbody"),
+		InvocationReceipt: connectors.InvocationReceipt{SchemaVersion: connectors.InvocationReceiptSchemaVersion, MissionID: envelope.MissionID, Role: envelope.Role, ProviderID: envelope.Instance.ID, ResolvedLocation: "skills/brainstorming/SKILL.md", ResolvedDigest: "sha256:test", Nonce: "mission-1", IssuedAt: time.Now(), CapabilityIsolation: connectors.CapabilityIsolationUnverified},
 	}
 }
 
 func TestInvokeRangerDiscoveryBuildsTrustedRoleBoundaryAndNormalizesResult(t *testing.T) {
 	connector := &missionDiscoveryConnector{}
-	got, err := InvokeRangerDiscovery(context.Background(), "mission-1", "brainstorming", ".analysis/pending/mission-1.md", domain.InstalledInstance{ID: "brainstorming"}, connector, nil, "run-1")
+	got, err := InvokeRangerDiscoveryWithReceiptStore(context.Background(), "mission-1", "brainstorming", ".analysis/pending/mission-1.md", domain.InstalledInstance{ID: "brainstorming"}, connector, provider.NewMemoryReceiptNonceStore(), nil, "run-1")
 	require.NoError(t, err)
 	require.True(t, connector.called)
 	require.Equal(t, "brainstorming", got.ProviderID)

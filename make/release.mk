@@ -5,7 +5,8 @@
 	release-tag-check release-tag-test release-script-test check-release-binaries verify-published-release \
 	embed-skills embed-skills-check skill-for-hire-pin-check skill-for-hire-pin-check-test build-standalone standalone-smoke install-lite doctor install-hooks
 
-# install puts a standalone binary in ~/.local/bin. It embeds the OpenSpec
+# install puts a standalone binary in ~/.local/bin and synchronizes the current
+# checkout through that exact freshly installed binary. It embeds the OpenSpec
 # bundle; Ranked execution uses the client's validated host Node >=20.19.0.
 # Use install-lite for a binary without the runtime (resolves openspec from PATH).
 install: build-standalone
@@ -14,8 +15,12 @@ install: build-standalone
 	@# strategist earlier on PATH) would otherwise fail later with a misleading error.
 	@"$$HOME/.local/bin/strategist$(EXE)" version --build | grep -q "runtime: embedded OpenSpec" || { echo "[Strategist] ERROR: the installed binary has no embedded OpenSpec bundle; check 'command -v strategist' and 'strategist version --build'" >&2; exit 1; }
 	@"$$HOME/.local/bin/strategist$(EXE)" version --build
+	@# Refresh the workspace runtime, generated agent awareness, and existing
+	@# client shims from the same binary that was just installed. Do not resolve
+	@# strategist through PATH: PATH may still point at an older checkout.
+	@"$$HOME/.local/bin/strategist$(EXE)" install --target "$(CURDIR)" --silent --strict-compile
 	@command -v strategist >/dev/null 2>&1 && [ "$$(command -v strategist)" != "$$HOME/.local/bin/strategist$(EXE)" ] && echo "[Strategist] WARNING: 'strategist' on PATH is $$(command -v strategist), not $$HOME/.local/bin/strategist$(EXE)" >&2 || true
-	@echo "[Strategist] standalone binary installed. Run: strategist install --wizard"
+	@echo "[Strategist] standalone binary installed and current checkout synchronized."
 
 install-lite: build
 	mkdir -p "$$HOME/.local/bin" && install -m 755 "$(STRATEGIST_BIN)" "$$HOME/.local/bin/strategist$(EXE)"

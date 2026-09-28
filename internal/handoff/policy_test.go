@@ -87,15 +87,21 @@ func TestResolvePolicyForMission_LowRiskLeavesSniperToValidationDisabled(t *test
 	assert.Empty(t, p.RequiredTypes)
 }
 
-func TestResolvePolicyForMission_ArchivistToSniperAlwaysEnabledRegardlessOfRisk(t *testing.T) {
+func TestResolvePolicyForMission_ArchivistToSniperSkipsOnlyInformationalLowRisk(t *testing.T) {
 	t.Parallel()
 
-	for _, level := range []string{"low", "medium", "high", ""} {
+	for _, level := range []string{"medium", "high", ""} {
 		p, err := ResolvePolicyForMission(level, TransitionArchivistToSniper)
 		require.NoError(t, err)
-		assert.True(t, p.Enabled, "MVP transition stays required by default regardless of risk_level %q", level)
-		assert.Equal(t, DefaultPolicy(), p)
+		assert.True(t, p.Enabled, "risk-bearing or unknown mission must require the challenge for risk_level %q", level)
+		assert.NotEmpty(t, p.RequiredTypes)
 	}
+
+	p, err := ResolvePolicyForMission("low", TransitionArchivistToSniper)
+	require.NoError(t, err)
+	assert.False(t, p.Enabled, "informational low-risk missions may skip only the semantic challenge")
+	assert.Empty(t, p.RequiredTypes)
+	assert.True(t, p.RequirePrecedence)
 }
 
 func TestResolvePolicyForMission_UnknownTransitionErrors(t *testing.T) {

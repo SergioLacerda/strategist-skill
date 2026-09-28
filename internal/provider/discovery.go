@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/SergioLacerda/strategist-skill/internal/plugins/connectors"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
 
@@ -22,6 +23,11 @@ type DiscoveryWeaponRequest struct {
 	Slot         string
 	ProviderID   string
 	ArtifactPath string
+	CatalogPath  string
+	ReceiptStore ReceiptNonceStore
+	// CapabilityIsolationVerified is host conformance evidence, not a claim
+	// supplied by the receipt itself.
+	CapabilityIsolationVerified bool
 }
 
 // DiscoveryWeaponResponse is the untrusted result returned by a host skill
@@ -31,6 +37,7 @@ type DiscoveryWeaponResponse struct {
 	ProviderID         string
 	InvocationEvidence string
 	Artifact           []byte
+	InvocationReceipt  connectors.InvocationReceipt
 }
 
 // DiscoveryWeaponInvoker is the narrow host integration point. The CLI does
@@ -70,22 +77,22 @@ func invokeAndNormalizeDiscovery(ctx context.Context, request DiscoveryWeaponReq
 	if runID == "" {
 		runID = request.MissionID
 	}
-	fail := func(normalizationStatus string, err error) (NormalizedDiscoveryArtifact, error) {
-		if telemetryErr := emitDiscoveryTelemetry(ctx, sink, runID, request, telemetry.DiscoveryInvocationFailed, normalizationStatus, ""); telemetryErr != nil {
+	fail := func(normalizationStatus string, verification discoveryReceiptVerification, err error) (NormalizedDiscoveryArtifact, error) {
+		if telemetryErr := emitDiscoveryTelemetry(ctx, sink, runID, request, telemetry.DiscoveryInvocationFailed, normalizationStatus, "", verification); telemetryErr != nil {
 			return NormalizedDiscoveryArtifact{}, invocationFailure(fmt.Errorf("emit discovery telemetry: %w", telemetryErr))
 		}
 		return NormalizedDiscoveryArtifact{}, invocationFailure(err)
 	}
-	response, status, err := callDiscoveryWeapon(ctx, request, invoke)
+	response, status, verification, err := callDiscoveryWeapon(ctx, request, invoke)
 	if err != nil {
-		return fail(status, err)
+		return fail(status, verification, err)
 	}
 	evidence := response.InvocationEvidence
 	content, err := normalizeDiscoveryArtifact(request, response)
 	if err != nil {
-		return fail(telemetry.DiscoveryNormalizationRejected, err)
+		return fail(telemetry.DiscoveryNormalizationRejected, verification, err)
 	}
-	if telemetryErr := emitDiscoveryTelemetry(ctx, sink, runID, request, telemetry.DiscoveryInvocationInvoked, telemetry.DiscoveryNormalizationNormalized, response.InvocationEvidence); telemetryErr != nil {
+	if telemetryErr := emitDiscoveryTelemetry(ctx, sink, runID, request, telemetry.DiscoveryInvocationInvoked, telemetry.DiscoveryNormalizationNormalized, response.InvocationEvidence, verification); telemetryErr != nil {
 		return NormalizedDiscoveryArtifact{}, invocationFailure(fmt.Errorf("emit discovery telemetry: %w", telemetryErr))
 	}
 	return NormalizedDiscoveryArtifact{
@@ -100,28 +107,36 @@ func invokeAndNormalizeDiscovery(ctx context.Context, request DiscoveryWeaponReq
 // callDiscoveryWeapon validates the request, invokes the host adapter and checks
 // the response identity and evidence. The returned status is the normalization
 // status to record if the call fails.
-func callDiscoveryWeapon(ctx context.Context, request DiscoveryWeaponRequest, invoke DiscoveryWeaponInvoker) (DiscoveryWeaponResponse, string, error) {
+func callDiscoveryWeapon(ctx context.Context, request DiscoveryWeaponRequest, invoke DiscoveryWeaponInvoker) (DiscoveryWeaponResponse, string, discoveryReceiptVerification, error) {
 	if err := validateDiscoveryRequest(request); err != nil {
-		return DiscoveryWeaponResponse{}, telemetry.DiscoveryNormalizationNotAttempted, err
+		return DiscoveryWeaponResponse{}, telemetry.DiscoveryNormalizationNotAttempted, failedReceiptVerification(), err
 	}
 	if invoke == nil {
-		return DiscoveryWeaponResponse{}, telemetry.DiscoveryNormalizationNotAttempted, fmt.Errorf("discovery Weapon invoker is unavailable")
+		return DiscoveryWeaponResponse{}, telemetry.DiscoveryNormalizationNotAttempted, failedReceiptVerification(), fmt.Errorf("discovery Weapon invoker is unavailable")
 	}
 	response, err := invoke(ctx, request)
 	if err != nil {
-		return DiscoveryWeaponResponse{}, telemetry.DiscoveryNormalizationNotAttempted, err
+		return DiscoveryWeaponResponse{}, telemetry.DiscoveryNormalizationNotAttempted, failedReceiptVerification(), err
 	}
 	if response.ProviderID != request.ProviderID {
-		return DiscoveryWeaponResponse{}, telemetry.DiscoveryNormalizationRejected, fmt.Errorf("provider identity mismatch: expected %q, got %q", request.ProviderID, response.ProviderID)
+		return DiscoveryWeaponResponse{}, telemetry.DiscoveryNormalizationRejected, failedReceiptVerification(), fmt.Errorf("provider identity mismatch: expected %q, got %q", request.ProviderID, response.ProviderID)
 	}
 	response.InvocationEvidence = strings.TrimSpace(response.InvocationEvidence)
 	if response.InvocationEvidence == "" {
-		return DiscoveryWeaponResponse{}, telemetry.DiscoveryNormalizationRejected, fmt.Errorf("invocation evidence is required")
+		return DiscoveryWeaponResponse{}, telemetry.DiscoveryNormalizationRejected, failedReceiptVerification(), fmt.Errorf("invocation evidence is required")
 	}
-	return response, "", nil
+	verification, err := validateInvocationReceipt(request, response.InvocationReceipt)
+	if err != nil {
+		return DiscoveryWeaponResponse{}, telemetry.DiscoveryNormalizationRejected, verification, err
+	}
+	return response, "", verification, nil
 }
 
-func emitDiscoveryTelemetry(ctx context.Context, sink telemetry.EventSink, runID string, request DiscoveryWeaponRequest, invocationStatus, normalizationStatus, evidence string) error {
+// discoveryReceiptVerification and its validation helpers live in
+// discovery_receipt_verification.go, split out to keep this file under the
+// repo's file-size budget.
+
+func emitDiscoveryTelemetry(ctx context.Context, sink telemetry.EventSink, runID string, request DiscoveryWeaponRequest, invocationStatus, normalizationStatus, evidence string, verification discoveryReceiptVerification) error {
 	if sink == nil {
 		return nil
 	}
@@ -129,7 +144,7 @@ func emitDiscoveryTelemetry(ctx context.Context, sink telemetry.EventSink, runID
 	if invocationStatus == telemetry.DiscoveryInvocationInvoked && normalizationStatus == telemetry.DiscoveryNormalizationNormalized {
 		reason = ""
 	}
-	event := telemetry.NewDiscoveryWeaponEvent(runID, request.ProviderID, request.ArtifactPath, invocationStatus, normalizationStatus, evidence, reason)
+	event := telemetry.NewDiscoveryWeaponEvent(runID, request.ProviderID, request.ArtifactPath, invocationStatus, normalizationStatus, evidence, reason, verification.authenticated, verification.pinStatus, verification.isolation)
 	if err := sink.Emit(ctx, event); err != nil {
 		return fmt.Errorf("emit discovery telemetry: %w", err)
 	}

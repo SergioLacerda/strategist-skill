@@ -107,3 +107,21 @@ func TestEmbeddedDefaults_AdditionalWeaponsAreAlwaysEmbedded(t *testing.T) {
 		}
 	}
 }
+
+func TestEmbeddedDefaults_ArchivistAndProtocolPreserveAutonomousPrivateRuntimeContract(t *testing.T) {
+
+	t.Parallel()
+
+	extractor := embedpkg.Extractor{}
+	provider, err := extractor.ReadFile("skills/openspec-propose/SKILL.md")
+	require.NoError(t, err)
+	assert.Contains(t, string(provider), "private launcher")
+	assert.Contains(t, string(provider), "ranked-runtimes.yaml")
+	assert.Contains(t, string(provider), "do not fall back to `PATH`")
+
+	protocol, err := extractor.ReadFile("templates/agent-protocol.md")
+	require.NoError(t, err)
+	assert.Contains(t, string(protocol), "AUTONOMY AND WEAPON AUTHORITY")
+	assert.Contains(t, string(protocol), "deterministic transition")
+	assert.Contains(t, string(protocol), "global skill with the same")
+}

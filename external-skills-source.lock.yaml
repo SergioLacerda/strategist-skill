@@ -64,11 +64,11 @@ packages:
       kind: atomic
       origin: embedded
       runtime_kind: openspec_root
-      digest: sha256:ab35e0d73f418023a0bbd6ba5aab98ebf0f781351c3c4d13a493c8af8e9fdb0b
+      digest: sha256:19912f74fa38a78fd7e43d7c4aec4f848ae6782b792882914066a302ad63a292
       source: external-skills-source/openspec-propose
       contract_version: skill-package/v2
-      original_digest: sha256:ab35e0d73f418023a0bbd6ba5aab98ebf0f781351c3c4d13a493c8af8e9fdb0b
-      normalized_digest: sha256:cc741399c5e5a48afbe2df3d57db7f0582a03aacb18998fccd7777595de8ab24
+      original_digest: sha256:19912f74fa38a78fd7e43d7c4aec4f848ae6782b792882914066a302ad63a292
+      normalized_digest: sha256:a3e92ab41bab2b452985a2ceccf8074c25a1bbcf8a7e2b87556ca30f7458191a
       transformation: none
       local_modifications: unknown
       verification_state: declared

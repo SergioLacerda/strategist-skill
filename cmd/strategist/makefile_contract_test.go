@@ -111,4 +111,19 @@ func TestMakeGoFileSizeReport_PrintsNoneWhenNoLargeFilesExist(t *testing.T) {
 	assert.Contains(t, output, "none")
 }
 
+func TestMakeInstallSynchronizesWithFreshlyInstalledBinary(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("Makefile contract requires POSIX shell; use Git Bash or WSL on Windows")
+	}
+
+	makefile, err := os.ReadFile("../../make/release.mk")
+	require.NoError(t, err)
+	source := string(makefile)
+
+	assert.Contains(t, source, `"$$HOME/.local/bin/strategist$(EXE)" version --build`)
+	assert.Contains(t, source, `"$$HOME/.local/bin/strategist$(EXE)" install --target "$(CURDIR)" --silent --strict-compile`)
+	assert.Contains(t, source, "current checkout synchronized")
+}
+
 // --- dojoItemLine ---

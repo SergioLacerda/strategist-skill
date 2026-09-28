@@ -14,7 +14,7 @@ func TestNewDiscoveryWeaponEventRecordsSuccessfulBoundary(t *testing.T) {
 	event := telemetry.NewDiscoveryWeaponEvent(
 		"mission-1", "brainstorming", ".analysis/pending/mission-1-analysis.md",
 		telemetry.DiscoveryInvocationInvoked, telemetry.DiscoveryNormalizationNormalized,
-		"host-run-42", "",
+		"host-run-42", "", "authenticated", "match", "unverified",
 	)
 
 	require.NoError(t, event.Validate())
@@ -24,6 +24,9 @@ func TestNewDiscoveryWeaponEventRecordsSuccessfulBoundary(t *testing.T) {
 	assert.Equal(t, telemetry.DiscoveryInvocationInvoked, event.Attributes[telemetry.AttrDiscoveryInvocationStatus])
 	assert.Equal(t, telemetry.DiscoveryNormalizationNormalized, event.Attributes[telemetry.AttrDiscoveryNormalization])
 	assert.Equal(t, "host-run-42", event.Attributes[telemetry.AttrInvocationEvidence])
+	assert.Equal(t, "authenticated", event.Attributes[telemetry.AttrReceiptAuthentication])
+	assert.Equal(t, "match", event.Attributes[telemetry.AttrReceiptPinStatus])
+	assert.Equal(t, "unverified", event.Attributes[telemetry.AttrCapabilityIsolation])
 }
 
 func TestNewDiscoveryWeaponEventRecordsFailClosedBoundaryWithoutPayload(t *testing.T) {
@@ -32,7 +35,7 @@ func TestNewDiscoveryWeaponEventRecordsFailClosedBoundaryWithoutPayload(t *testi
 	event := telemetry.NewDiscoveryWeaponEvent(
 		"mission-1", "brainstorming", "/secret/mission.md",
 		telemetry.DiscoveryInvocationFailed, telemetry.DiscoveryNormalizationNotAttempted,
-		"", "role_invocation_failed",
+		"", "role_invocation_failed", "failed", "not_checked", "unverified",
 	)
 
 	require.NoError(t, event.Validate())

@@ -20,13 +20,25 @@ type RuntimeConnector interface {
 
 // RuntimeCapabilities declares what a connector can truthfully perform.
 type RuntimeCapabilities struct {
-	ConnectorID           string
-	ConnectorAPI          string
-	CanResolve            bool
-	CanProbe              bool
-	CanInvoke             bool
-	CanRemove             bool
-	CanObserve            bool
+	ConnectorID  string
+	ConnectorAPI string
+	CanResolve   bool
+	CanProbe     bool
+	CanInvoke    bool
+	CanRemove    bool
+	CanObserve   bool
+	// CanEnforcePermissions reports whether this connector can observe LOCAL
+	// write-scope policy enforcement (Observe, policy.EnforcementReport) — a
+	// same-process, no-host-dependency check of whether a write target is
+	// inside the active base_path. It is NOT evidence of host-level LLM
+	// tool-session capability isolation for a delegated role (see
+	// internal/provider/discovery_connector.go, which reuses this same field
+	// for that unrelated meaning when populating
+	// InvocationReceipt.CapabilityIsolation). The two concerns share this
+	// field only by historical accident; do not read one as proof of the
+	// other. See .analysis/pending/drift_pipeline/
+	// 20260927-provider-boundary-host-conformance-track-a-capability-isolation.md
+	// for the investigation this comment resolves.
 	CanEnforcePermissions bool
 }
 
@@ -71,6 +83,7 @@ type ConnectorResult struct {
 	ProviderID         string
 	Artifact           []byte
 	InvocationEvidence string
+	InvocationReceipt  InvocationReceipt
 }
 
 // ObservationResult includes enforcement evidence without substituting for it.
@@ -118,76 +131,11 @@ func (c UnsupportedConnector) Observe(context.Context, domain.InstalledInstance)
 	}
 }
 
-// NativeRuntimeConnector reports static visibility for current in-process defaults.
-type NativeRuntimeConnector struct {
-	ConnectorID           string
-	ConnectorAPIVersion   string
-	EnforcementObservable bool
-}
-
-// Capabilities reports static in-process connector abilities.
-func (c NativeRuntimeConnector) Capabilities(context.Context) RuntimeCapabilities {
-	return RuntimeCapabilities{
-		ConnectorID:           c.ConnectorID,
-		ConnectorAPI:          c.ConnectorAPIVersion,
-		CanResolve:            true,
-		CanProbe:              true,
-		CanObserve:            c.EnforcementObservable,
-		CanEnforcePermissions: c.EnforcementObservable,
-	}
-}
-
-// Resolve validates that a local runtime locator is complete.
-func (c NativeRuntimeConnector) Resolve(_ context.Context, locator RuntimeLocator) ConnectorResult {
-	if locator.ID == "" || locator.Path == "" {
-		return ConnectorResult{Status: domain.ReadinessBlocked, ReasonCode: "locator_incomplete"}
-	}
-	return ConnectorResult{Status: domain.ReadinessReady, ReasonCode: "resolved_local_locator", Detail: locator.Path}
-}
-
-// Probe validates static probe inputs without claiming live readiness. Input
-// validation is useful, but it is not evidence that an external runtime was
-// reached or that its entrypoint can execute.
-func (c NativeRuntimeConnector) Probe(_ context.Context, instance domain.InstalledInstance, entrypoint string) ConnectorResult {
-	if instance.ID == "" || entrypoint == "" {
-		return ConnectorResult{Status: domain.ReadinessBlocked, ReasonCode: "probe_input_incomplete"}
-	}
-	return ConnectorResult{Status: domain.ReadinessUnknown, ReasonCode: "probe_not_verified", Detail: "static connector performed no runtime invocation"}
-}
-
-// Invoke reports that static connectors do not claim invocation authority.
-func (c NativeRuntimeConnector) Invoke(context.Context, InvocationEnvelope) ConnectorResult {
-	return unsupported("invoke_not_claimed_by_static_connector")
-}
-
-// Remove reports that static connectors do not own removal.
-func (c NativeRuntimeConnector) Remove(context.Context, domain.InstalledInstance) ConnectorResult {
-	return unsupported("remove_not_owned_by_static_connector")
-}
-
-// Observe reports static enforcement evidence when configured.
-func (c NativeRuntimeConnector) Observe(context.Context, domain.InstalledInstance) ObservationResult {
-	if c.EnforcementObservable {
-		return ObservationResult{
-			ConnectorResult: ConnectorResult{Status: domain.ReadinessReady, ReasonCode: "enforcement_observed"},
-			Enforcement: policy.EnforcementReport{
-				ConnectorID: c.ConnectorID,
-				Enforceable: []domain.PluginPermission{
-					domain.PluginPermissionReadWorkspace,
-					domain.PluginPermissionWriteAnalysis,
-				},
-			},
-		}
-	}
-	return ObservationResult{
-		ConnectorResult: unsupported("enforcement_unsupported"),
-		Enforcement:     policy.EnforcementReport{ConnectorID: c.ConnectorID, Limitations: []string{"enforcement_not_supported"}},
-	}
-}
-
 func unsupported(reason string) ConnectorResult {
 	return ConnectorResult{Status: domain.ReadinessUnsupported, ReasonCode: reason}
 }
 
-// NativeRoleConnector lives in native_role_connector.go, split out to keep
-// this file under the repo's file-size budget.
+// InvocationReceipt and its validation live in invocation_receipt.go;
+// NativeRuntimeConnector and its methods live in native_runtime_connector.go;
+// NativeRoleConnector lives in native_role_connector.go — all split out to
+// keep this file under the repo's file-size budget.

@@ -16,11 +16,12 @@ func InvokeDiscoveryViaConnector(ctx context.Context, request DiscoveryWeaponReq
 	if connector == nil {
 		return InvokeAndNormalizeDiscoveryWithTelemetry(ctx, request, nil, sink, runID)
 	}
+	capabilities := connector.Capabilities(ctx)
+	request.CapabilityIsolationVerified = capabilities.CanEnforcePermissions
 	return InvokeAndNormalizeDiscoveryWithTelemetry(ctx, request, func(invokeCtx context.Context, invokeRequest DiscoveryWeaponRequest) (DiscoveryWeaponResponse, error) {
 		if instance.ID != invokeRequest.ProviderID {
 			return DiscoveryWeaponResponse{}, fmt.Errorf("connector instance %q does not match selected Weapon %q", instance.ID, invokeRequest.ProviderID)
 		}
-		capabilities := connector.Capabilities(invokeCtx)
 		if !capabilities.CanInvoke {
 			return DiscoveryWeaponResponse{}, fmt.Errorf("connector %q cannot invoke discovery Weapon", capabilities.ConnectorID)
 		}
@@ -39,6 +40,7 @@ func InvokeDiscoveryViaConnector(ctx context.Context, request DiscoveryWeaponReq
 			ProviderID:         result.ProviderID,
 			InvocationEvidence: result.InvocationEvidence,
 			Artifact:           result.Artifact,
+			InvocationReceipt:  result.InvocationReceipt,
 		}, nil
 	}, sink, runID)
 }

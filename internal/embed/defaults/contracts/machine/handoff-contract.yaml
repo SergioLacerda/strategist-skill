@@ -72,13 +72,20 @@ handoff_verification_policy:
     on_failure: return_to_archivist
 
   require_when:
-    - approval_gate_present
     - mandatory_constraints_present
     - unresolved_questions_present
     - forbidden_scope_present
     - implementation_handoff_present
     - destructive_operation_possible
     - security_sensitive_task
+
+  skip_when:
+    - informational_only
+    - no_critical_constraints
+    - no_unresolved_questions
+    - no_forbidden_scope_beyond_sniper_defaults
+
+  precedence: require_when_over_skip_when
 
   challenge_types:
     objective: receiver identifies the approved mission objective
@@ -94,6 +101,10 @@ handoff_verification_policy:
   invariants:
     - handoff_verification is optional for backward compatibility, but when required it
       must pass before Sniper materializes any documentation target
+    - the Strategist Approval Gate is mandatory on every route and is never skipped by
+      this policy; skip_when applies only to the semantic Archivist-to-Sniper challenge
+    - require_when predicates are ORed, skip_when predicates are ANDed, and any
+      matching require_when predicate takes precedence over skip_when
     - "passing handoff_verification never grants execution by itself and never bypasses mission_status: gate_analysis_accepted"
     - "validation is deterministic first: required refs, forbidden claims, classifications, and gate state; LLM judging is not the MVP authority"
 

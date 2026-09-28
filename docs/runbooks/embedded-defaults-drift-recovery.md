@@ -115,18 +115,19 @@ checkout updated the runtime and another still uses an older `strategist` from
 `PATH` (the 2026-09-22 incident: `~/.local/bin/strategist`, built before the
 change, reverted freshly shipped contracts on every reinstall).
 
-Update the binary, not the runtime:
+Update the binary and synchronize the runtime from the same checkout:
 
 ```bash
-make install                  # rebuilds ~/.local/bin/strategist from this checkout
+make install                  # rebuilds the binary and refreshes this checkout's runtime/seeds
 strategist version --build
 (cd .strategist && strategist check)
 ```
 
 After changing anything under `internal/embed/defaults/`, run `make install`
-before the next `strategist install` or `upgrade`, so the binary on `PATH`
-carries the same defaults as the source. Pass `--allow-downgrade` only for a
-deliberate rollback to an older release.
+before the next mission. The target invokes the newly installed absolute binary
+for `strategist install`, so the binary, `.strategist/` runtime, generated
+Codex seed, and existing client shims carry the same defaults. Pass
+`--allow-downgrade` only for a deliberate rollback to an older release.
 
 ## Decision Point
 

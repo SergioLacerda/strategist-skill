@@ -191,16 +191,17 @@ required_fields:
     type: object
     required: false
     required_when: delegated_run
-    item_fields: [invoked, resolved_from, steps_dropped, resolved_digest]
+    item_fields: [invoked, resolved_from, steps_dropped, resolved_digest, receipt_status, pin_status, capability_isolation]
     description: >
       Invocation evidence for the discovery Weapon (contracts/narrative/03-discovery.md §
       Weapon Profile for a Delegated Ranger): whether it was invoked, where it was actually
       resolved (embedded runtime or host skill directory), which Weapon steps were dropped
       for a delegated run, and resolved_digest, the sha256:<64 hex> of the raw bytes of the
       file the loader served. Required when Ranger runs as a delegated sub-role, optional
-      otherwise, so existing artifacts still validate. It is self-reported by the invoking
-      agent, never names a different Weapon than the one bound in active.yaml, and is not
-      compared with the catalog pin by any rule yet.
+      otherwise, so existing artifacts still validate. For delegated runs Ranger validates the
+      host-issued invocation receipt before promotion, compares a declared catalog pin, and records
+      only redacted receipt_status, pin_status, and capability_isolation. A valid receipt does not
+      prove parent-agent capability isolation.
   evidence_cards:
     type: list
     required: false

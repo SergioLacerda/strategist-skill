@@ -132,6 +132,23 @@ func TestValidatePolicy_ForbiddenClaims(t *testing.T) {
 	require.ErrorContains(t, ValidatePolicy(emptyRef), "forbidden_claims entry")
 }
 
+func TestValidatePolicyRejectsContradictoryRequireAndSkipPredicates(t *testing.T) {
+	t.Parallel()
+
+	policy := DefaultPolicy()
+	policy.RequireWhen = []PolicyPredicate{PredicateUnresolvedQuestionsPresent}
+	policy.SkipWhen = []PolicyPredicate{PredicateUnresolvedQuestionsPresent}
+	require.ErrorContains(t, ValidatePolicy(policy), "cannot appear in both")
+}
+
+func TestValidatePolicyRequiresPrecedenceForMixedPredicates(t *testing.T) {
+	t.Parallel()
+
+	policy := DefaultPolicy()
+	policy.RequirePrecedence = false
+	require.ErrorContains(t, ValidatePolicy(policy), "require precedence is required")
+}
+
 func TestDefaultPolicy_UnchangedByRangerToArchivistAddition(t *testing.T) {
 	t.Parallel()
 

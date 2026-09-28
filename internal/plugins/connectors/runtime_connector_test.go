@@ -3,12 +3,29 @@ package connectors_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/plugins/connectors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestValidateInvocationReceiptRejectsUnsafeOrIncompleteFields(t *testing.T) {
+	t.Parallel()
+
+	valid := connectors.InvocationReceipt{
+		SchemaVersion: connectors.InvocationReceiptSchemaVersion, MissionID: "mission", Role: "ranger", ProviderID: "brainstorming",
+		ResolvedLocation: "skills/brainstorming/SKILL.md", ResolvedDigest: "sha256:test", Nonce: "nonce", IssuedAt: time.Now(), CapabilityIsolation: connectors.CapabilityIsolationUnverified,
+	}
+	require.NoError(t, connectors.ValidateInvocationReceipt(valid))
+
+	valid.ResolvedLocation = "/home/agent/skill.md"
+	require.ErrorContains(t, connectors.ValidateInvocationReceipt(valid), "location")
+	valid.ResolvedLocation = "skills/brainstorming/SKILL.md"
+	valid.CapabilityIsolation = "claimed"
+	require.ErrorContains(t, connectors.ValidateInvocationReceipt(valid), "capability isolation")
+}
 
 func TestUnsupportedConnectorReturnsTypedUnsupportedResults(t *testing.T) {
 	t.Parallel()

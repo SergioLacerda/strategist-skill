@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/plugins/connectors"
@@ -37,6 +38,7 @@ func TestInvokeDiscoveryViaConnectorBridgesHostResultToRanger(t *testing.T) {
 			Status:             domain.ReadinessReady,
 			ProviderID:         "brainstorming",
 			InvocationEvidence: "host-run-42",
+			InvocationReceipt:  connectors.InvocationReceipt{SchemaVersion: connectors.InvocationReceiptSchemaVersion, MissionID: "mission-1", Role: "ranger", ProviderID: "brainstorming", ResolvedLocation: "skills/brainstorming/SKILL.md", ResolvedDigest: "sha256:test", Nonce: "connector-1", IssuedAt: time.Now(), CapabilityIsolation: connectors.CapabilityIsolationUnverified},
 			Artifact:           []byte("# Findings\n\nUntrusted result."),
 		},
 	}
@@ -93,4 +95,19 @@ func TestInvokeDiscoveryViaConnectorRejectsInstanceMismatch(t *testing.T) {
 	assert.Contains(t, err.Error(), "role_invocation_failed")
 	assert.Contains(t, err.Error(), "does not match selected Weapon")
 	assert.False(t, connector.invoked)
+}
+
+func TestInvokeDiscoveryViaConnectorAcceptsVerifiedIsolationOnlyFromEnforcingHost(t *testing.T) {
+	t.Parallel()
+
+	request := validDiscoveryRequest()
+	connector := &discoveryConnector{
+		caps: connectors.RuntimeCapabilities{ConnectorID: "scoped-host", CanInvoke: true, CanEnforcePermissions: true},
+		result: connectors.ConnectorResult{
+			Status: domain.ReadinessReady, ProviderID: "brainstorming", InvocationEvidence: "host-run-verified", Artifact: []byte("# Findings"),
+			InvocationReceipt: connectors.InvocationReceipt{SchemaVersion: connectors.InvocationReceiptSchemaVersion, MissionID: request.MissionID, Role: request.Role, ProviderID: request.ProviderID, ResolvedLocation: "skills/brainstorming/SKILL.md", ResolvedDigest: "sha256:test", Nonce: "verified-isolation", IssuedAt: time.Now(), CapabilityIsolation: connectors.CapabilityIsolationVerified},
+		},
+	}
+	_, err := InvokeDiscoveryViaConnector(context.Background(), request, domain.InstalledInstance{ID: "brainstorming"}, connector, nil, "run-1")
+	require.NoError(t, err)
 }

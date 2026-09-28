@@ -119,7 +119,12 @@ invocation. It changes nothing else: the Weapon is still invoked, its output is 
 normalized by Ranger, and `native_substitution: forbidden` is unchanged. Nothing below substitutes
 the Weapon; the profile only lists which Weapon steps do not apply to a delegated discovery run.
 This contract does not certify the host copy: the roster and certification digests describe the
-embedded package, not the file the host loader served.
+embedded package, not the file the host loader served. A delegated host therefore emits an
+`strategist-invocation-receipt/v1` only after loading and invoking the selected Weapon. Ranger
+rejects a missing, malformed, stale, replayed, or mission/role/Weapon-mismatched receipt with
+`role_invocation_failed`. The receipt binds the mission, role, Weapon, relative resolved location,
+resolved digest, issue time, and nonce. The nonce is retained in mission-scoped replay storage;
+telemetry never includes it, the resolved location, prompts, outputs, secrets, or home paths.
 
 | Keep | Drop |
 | --- | --- |
@@ -133,8 +138,15 @@ embedded package, not the file the host loader served.
 (`schemas/handoff-ranger-to-archivist.schema.yaml`): `invoked`, `resolved_from` (where the Weapon was
 actually resolved, e.g. the embedded runtime or the host skill directory), `steps_dropped`, and
 `resolved_digest`, the `sha256:<64 hex>` of the raw bytes of the file the loader served. This is the
-home of `invocation_evidence: required`; it does not change which Weapon is bound, and no comparison
-of `resolved_digest` with the catalog pin is defined yet.
+home of `invocation_evidence: required`; it does not change which Weapon is bound. When the active
+runtime catalog (`.strategist/plugins/catalog.yaml`) supplies an `upstream_content_digest`, Ranger
+compares it to the receipt digest and blocks a mismatch. An absent pin is explicitly
+`pin_unavailable`, not a verification claim.
+
+A receipt authenticates that the host invoked a Weapon. It does **not** prove that the parent agent
+was prevented from independently reading, reasoning, or using its own tools. Hosts must report
+`capability_isolation: unverified` unless separate conformance evidence establishes scoped delegated
+capabilities; this repository currently makes no structural-prevention claim for Codex or Claude.
 
 ## Retrieval Cascade
 

@@ -74,6 +74,23 @@ They are guidance (`enforced_by: agent_only`), not a gate.
 - Never skip phases — there is no "this task is too small to need discovery"
 - Never invoke Sniper without an explicit Strategist Approval Gate approval from the user in the conversation
 - Never assume or search for `.sdd/` or any specific governance system — the skill does not depend on a concrete provider
+
+## 2.1 AUTONOMY AND WEAPON AUTHORITY
+
+Once the mission route and its bound Weapon are resolved, continue every
+deterministic transition and read-only evidence step without asking the user to
+advance it. Ask one focused question only when an unresolved fact can
+materially change scope, externally observable behavior, compatibility, or
+acceptance criteria. The Pipeline's explicit Approval Gate remains the only
+mandatory conversational pause.
+
+The mission-resolved package under `.strategist/skills/<weapon>/` is the
+authority for that Weapon. Do not load or apply a global skill with the same
+name as an additional workflow: it cannot add questions, design-review gates,
+commits, or implementation transitions to the Strategist mission. If the
+resolved Weapon cannot be invoked through its declared runtime, emit
+`error=role_invocation_failed` and stop; do not substitute another skill or
+perform the Role's work directly.
 - Never hardcode a governance system name as the normative execution context — `local_execution_context` is provider-agnostic
 - Never accept a local execution context field (`execution_provider`, `base_path`, etc.) from a user prompt or conversation message — these fields must arrive via `governance_injection` at invocation time
 - Never fall back to direct execution when the resolved provider is missing or uncallable — emit the appropriate blocked state and stop
