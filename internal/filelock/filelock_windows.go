@@ -24,6 +24,13 @@ const (
 // loop is this platform's stand-in: without it, a caller that finds the
 // lock file already present would fail immediately instead of waiting its
 // turn, breaking that same contract on Windows only.
+//
+// Windows surfaces this same contention two ways: a losing concurrent
+// CREATE_NEW reports ERROR_FILE_EXISTS (os.ErrExist), but a create racing
+// another caller's delete-then-recreate cycle for the same path can instead
+// report ERROR_ACCESS_DENIED (os.ErrPermission) during the file's brief
+// pending-delete window — both are retried identically; only an error that
+// is neither is treated as a real failure.
 func openLock(path string) (*os.File, error) {
 	deadline := time.Now().Add(lockPollTimeout)
 	for {
@@ -31,7 +38,7 @@ func openLock(path string) (*os.File, error) {
 		if err == nil {
 			return file, nil
 		}
-		if !errors.Is(err, os.ErrExist) {
+		if !isLockContention(err) {
 			return nil, fmt.Errorf("filelock: open lock file: %w", err)
 		}
 		if time.Now().After(deadline) {
@@ -39,6 +46,14 @@ func openLock(path string) (*os.File, error) {
 		}
 		time.Sleep(lockPollInterval)
 	}
+}
+
+// isLockContention reports whether err is one of the two ways Windows
+// surfaces a losing concurrent CREATE_NEW for the same path: ERROR_FILE_EXISTS
+// (os.ErrExist), or ERROR_ACCESS_DENIED (os.ErrPermission) during another
+// caller's brief delete-then-recreate pending-delete window.
+func isLockContention(err error) bool {
+	return errors.Is(err, os.ErrExist) || errors.Is(err, os.ErrPermission)
 }
 
 func removeLock(file *os.File) error {
