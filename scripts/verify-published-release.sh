@@ -29,10 +29,18 @@ trap 'rm -rf "$dl"' EXIT
 gh release download "$tag" --repo "$repo" --dir "$dl"
 
 # Published names paired with the downloaded files, for the shared binary check.
+# gh release download restores no execute bit — GitHub Releases store assets
+# as opaque bytes, so a binary that was +x when uploaded comes back plain
+# (0644-ish, per the runner's umask). check-release-binaries.sh's other
+# caller (the local GoReleaser dry run) never hits this because those
+# binaries are freshly built, already +x. Set it here, once, for every
+# downloaded asset (harmless on the non-binary ones) rather than inside that
+# shared script, which has no reason to know this path's provenance differs.
 : > "$dl/downloaded.tsv"
 while IFS=$'\t' read -r _ name; do
   [[ -n "$name" ]] || continue
   [[ -s "$dl/$name" ]] || fail "release $tag: asset '$name' was not downloadable"
+  chmod +x "$dl/$name"
   printf '%s\t%s\n' "$dl/$name" "$name" >> "$dl/downloaded.tsv"
 done < "$published"
 

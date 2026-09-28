@@ -24,7 +24,11 @@ printf 'dist/x\t%s\n' "$host" > "$tmp/published.tsv"
 cat > "$tmp/bin/gh" <<STUB
 #!/bin/sh
 case "\$1 \$2" in
-  "release download") dir=; while [ \$# -gt 0 ]; do [ "\$1" = "--dir" ] && dir=\$2; shift; done; cp -r "$release"/. "\$dir" ;;
+  # cp -r preserves the source's mode bits, but a real gh release download
+  # never does -- GitHub Releases stores an asset as opaque bytes with no
+  # unix permissions, so a binary that was +x when uploaded always comes
+  # back plain. Strip it here so this stub doesn't hide that gap.
+  "release download") dir=; while [ \$# -gt 0 ]; do [ "\$1" = "--dir" ] && dir=\$2; shift; done; cp -r "$release"/. "\$dir"; chmod -x "\$dir/$host" ;;
   "attestation verify") [ -z "\${FAIL_ATTEST:-}" ] ;;
   *) exit 1 ;;
 esac
