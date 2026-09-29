@@ -14,6 +14,7 @@ func TestValidateRangerArtifactRequiresNormalizedSections(t *testing.T) {
 schema_version: strategist-ranger-discovery/v1
 mission_id: m-1
 mission_status: ranger_done
+sources_consulted: []
 ---
 
 ## mission_objective
@@ -148,4 +149,11 @@ func TestValidateArchivistPackageRequiresClassifiedTasks(t *testing.T) {
 	if err := ValidateArchivistPackage(dir, "m-1"); err != nil {
 		t.Fatalf("ValidateArchivistPackage: %v", err)
 	}
+}
+
+func TestValidateRangerArtifactRequiresSourcesConsulted(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "analysis.md")
+	content := "---\nmission_id: m-1\nmission_status: ranger_done\n---\n\n## mission_objective\n## known_facts\n## confidence_summary\n## handoff\n"
+	require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
+	require.ErrorContains(t, ValidateRangerArtifact(path, "m-1"), "sources_consulted")
 }

@@ -179,7 +179,7 @@ required_fields:
       contracts/machine/handoff-contract.yaml#refinement_context_policy).
   sources_consulted:
     type: list
-    required: false
+    required: true
     item_fields: [source_path, content_fingerprint, coverage_status]
     item_values:
       coverage_status: [full, partial, skimmed]
@@ -187,6 +187,8 @@ required_fields:
       Sources Ranger opened during discovery, with a fingerprint and how thoroughly
       each was read. Consumed by contracts/machine/handoff-contract.yaml to decide
       whether Archivist may reopen a source or must treat it as already covered.
+      The key must be present in the frontmatter; an empty list means discovery opened
+      no source. Enforced by internal/handoff.ValidateRangerArtifact.
   weapon_invocation:
     type: object
     required: false

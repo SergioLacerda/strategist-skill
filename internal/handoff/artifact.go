@@ -34,6 +34,9 @@ func ValidateRangerArtifact(path, missionID string) error {
 	if err := validateIdentity(frontmatter, missionID, []string{"ranger_pending", "ranger_done"}); err != nil {
 		return fmt.Errorf("handoff_artifact_invalid: Ranger artifact: %w", err)
 	}
+	if _, ok := frontmatter["sources_consulted"].([]any); !ok {
+		return fmt.Errorf("handoff_artifact_invalid: Ranger artifact is missing list field %q (use an empty list when no source was opened)", "sources_consulted")
+	}
 	for _, section := range requiredRangerSections {
 		if !hasSection(body, section) {
 			return fmt.Errorf("handoff_artifact_invalid: Ranger artifact is missing section %q", section)

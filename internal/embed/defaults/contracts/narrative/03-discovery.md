@@ -203,7 +203,7 @@ simultaneously (decision conflict) — see `00-routing.md`. `skill.yaml#budget_p
 - follow the Retrieval Cascade above; do not skip stages out of order
 - cite `evidence_pack_path` in the analysis artifact when the dossier provides one
 - write exactly one canonical analysis artifact for the handoff
-- when discovery opened any source, list it in `sources_consulted[]` (`source_path`,
+- always declare `sources_consulted[]` in the frontmatter (an empty list when discovery opened no source); list every opened source in it (`source_path`,
   `content_fingerprint`, `coverage_status`). For an `evaluation` or `diagnostic` subtype, also
   cite the line ranges the Archivist must quote, so the refinement can quote them without
   reopening the file (see `machine/handoff-contract.yaml#refinement_context_policy`). Without
