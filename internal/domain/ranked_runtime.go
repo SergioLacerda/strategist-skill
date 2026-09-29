@@ -46,6 +46,11 @@ const (
 // machine/errors.yaml).
 const ReasonRankedRuntimeExecutableMissing = "ranked_runtime_executable_missing"
 
+// ReasonRankedExternalRuntimeForbidden is emitted when a build-certified
+// Ranked Weapon attempts to use a host or executable boundary. Ranked bindings
+// must stay inside Strategist-owned runtimes.
+const ReasonRankedExternalRuntimeForbidden = "ranked_external_runtime_forbidden"
+
 // RankedRuntimeExecutableMissingMessage explains a missing Node executable in
 // operator terms. Every binary embeds OpenSpec; payload builds embed Node too,
 // while ordinary go-install builds use the supported host Node runtime.

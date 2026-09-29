@@ -25,7 +25,7 @@ type HostWeaponConnector struct {
 // Capabilities reports what the connector can do; invocation requires an Invoker.
 func (c HostWeaponConnector) Capabilities(context.Context) RuntimeCapabilities {
 	return RuntimeCapabilities{
-		ConnectorID: c.ConnectorID, ConnectorAPI: c.ConnectorAPIVersion,
+		ConnectorID: c.ConnectorID, ConnectorAPI: c.ConnectorAPIVersion, RuntimeKind: domain.RankedRuntimeHost,
 		CanResolve: true, CanProbe: true, CanInvoke: c.Invoker != nil,
 	}
 }

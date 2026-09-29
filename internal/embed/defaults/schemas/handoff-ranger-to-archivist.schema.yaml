@@ -197,13 +197,14 @@ required_fields:
     description: >
       Invocation evidence for the discovery Weapon (contracts/narrative/03-discovery.md §
       Weapon Profile for a Delegated Ranger): whether it was invoked, where it was actually
-      resolved (embedded runtime or host skill directory), which Weapon steps were dropped
-      for a delegated run, and resolved_digest, the sha256:<64 hex> of the raw bytes of the
-      file the loader served. Required when Ranger runs as a delegated sub-role, optional
-      otherwise, so existing artifacts still validate. For delegated runs Ranger validates the
-      host-issued invocation receipt before promotion, compares a declared catalog pin, and records
-      only redacted receipt_status, pin_status, and capability_isolation. A valid receipt does not
-      prove parent-agent capability isolation.
+      resolved (Strategist's embedded runtime for Ranked Weapons or the declared host skill
+      directory for Custom Weapons), which Weapon steps were dropped for a delegated run, and
+      resolved_digest, the sha256:<64 hex> of the bytes resolved by the selected runtime. Required
+      when Ranger runs as a delegated sub-role, optional otherwise, so existing artifacts still
+      validate. Embedded Ranked invocation records internal evidence without a host receipt;
+      Custom host invocation validates the host-issued receipt before promotion, compares a
+      declared catalog pin, and records only redacted receipt_status, pin_status, and
+      capability_isolation. A valid receipt does not prove parent-agent capability isolation.
   evidence_cards:
     type: list
     required: false

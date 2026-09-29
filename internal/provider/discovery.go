@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/plugins/connectors"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
@@ -22,6 +23,7 @@ type DiscoveryWeaponRequest struct {
 	Role         string
 	Slot         string
 	ProviderID   string
+	RuntimeKind  string
 	ArtifactPath string
 	CatalogPath  string
 	ReceiptStore ReceiptNonceStore
@@ -124,6 +126,13 @@ func callDiscoveryWeapon(ctx context.Context, request DiscoveryWeaponRequest, in
 	response.InvocationEvidence = strings.TrimSpace(response.InvocationEvidence)
 	if response.InvocationEvidence == "" {
 		return DiscoveryWeaponResponse{}, telemetry.DiscoveryNormalizationRejected, failedReceiptVerification(), fmt.Errorf("invocation evidence is required")
+	}
+	if request.RuntimeKind == domain.RankedRuntimeEmbedded {
+		return response, "", discoveryReceiptVerification{
+			authenticated: "embedded",
+			pinStatus:     "not_applicable",
+			isolation:     "not_applicable",
+		}, nil
 	}
 	verification, err := validateInvocationReceipt(request, response.InvocationReceipt)
 	if err != nil {

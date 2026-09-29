@@ -19,6 +19,11 @@ type embeddedWeaponRosterCatalogEntry struct {
 	Installable         bool   `yaml:"installable"`
 	CanonicalRole       string `yaml:"canonical_role"`
 	CompatibilitySource string `yaml:"compatibility_source"`
+	Ranked              bool   `yaml:"ranked"`
+	Runtime             struct {
+		Kind    string `yaml:"kind"`
+		HostAPI string `yaml:"host_api"`
+	} `yaml:"runtime"`
 }
 
 type embeddedWeaponRosterCatalog struct {
@@ -61,6 +66,11 @@ func TestEmbeddedDefaults_BaselineWeaponRosterIsAlwaysEmbedded(t *testing.T) {
 		assert.Equalf(t, "embedded", entry.CompatibilitySource, "%s must remain compatibility_source: embedded", want.id)
 		assert.Truef(t, entry.Installable, "%s must remain installable (a real Wizard option)", want.id)
 		assert.Equalf(t, want.canonicalRole, entry.CanonicalRole, "%s must declare canonical_role %q", want.id, want.canonicalRole)
+		if want.id == "brainstorming" {
+			assert.True(t, entry.Ranked, "brainstorming must remain Ranked")
+			assert.Equal(t, "embedded", entry.Runtime.Kind, "brainstorming must use the Strategist-owned runtime")
+			assert.Empty(t, entry.Runtime.HostAPI, "brainstorming must not declare a host loader")
+		}
 
 		// The generated per-skill manifest mirror must also actually exist —
 		// this is what a real strategist install extracts into a workspace's

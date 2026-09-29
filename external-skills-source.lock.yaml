@@ -4,12 +4,12 @@ packages:
       version: 1.0.0
       kind: atomic
       origin: embedded
-      runtime_kind: host
-      digest: sha256:6860a85af4c07c21aac500a9b9126193c846d7e757ff1742b6b405f4ca0f1051
+      runtime_kind: embedded
+      digest: sha256:03dc7d9e2891e2e8adf102e914db792deae8ee9754e2e8b2e2a8d9daa86be032
       source: external-skills-source/brainstorming
       contract_version: skill-package/v2
-      original_digest: sha256:6860a85af4c07c21aac500a9b9126193c846d7e757ff1742b6b405f4ca0f1051
-      normalized_digest: sha256:f116151025365ec0f7958af3081d27ee62226aa747a373c033f33e265f82a864
+      original_digest: sha256:03dc7d9e2891e2e8adf102e914db792deae8ee9754e2e8b2e2a8d9daa86be032
+      normalized_digest: sha256:7f799ccf03827651bff0a850e9dc2e2e0b40b02fce0a7f3d0da9e447d46abec8
       transformation: none
       local_modifications: unknown
       verification_state: declared

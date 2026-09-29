@@ -111,20 +111,19 @@ completion condition. Those are `creative`-subtype obligations only (see
 
 ## Weapon Profile for a Delegated Ranger
 
-When Ranger runs as a delegated sub-role, it reaches the Weapon through the host skill loader: the
-host's own copy of the skill, resolved by the host (for example from a user skills directory), not
-an in-process embedded connector. No production code wires an embedded connector or an invoker for a
-sub-role, so this channel is a defined degrade of the embedded one, not a claim of live embedded
-invocation. It changes nothing else: the Weapon is still invoked, its output is still untrusted and
-normalized by Ranger, and `native_substitution: forbidden` is unchanged. Nothing below substitutes
-the Weapon; the profile only lists which Weapon steps do not apply to a delegated discovery run.
-This contract does not certify the host copy: the roster and certification digests describe the
-embedded package, not the file the host loader served. A delegated host therefore emits an
-`strategist-invocation-receipt/v1` only after loading and invoking the selected Weapon. Ranger
-rejects a missing, malformed, stale, replayed, or mission/role/Weapon-mismatched receipt with
-`role_invocation_failed`. The receipt binds the mission, role, Weapon, relative resolved location,
-resolved digest, issue time, and nonce. The nonce is retained in mission-scoped replay storage;
-telemetry never includes it, the resolved location, prompts, outputs, secrets, or home paths.
+When Ranger runs as a delegated sub-role, it reaches a Ranked Weapon through Strategist's
+in-process embedded connector. The host agent (Codex, Claude, or another supported host) starts
+the Strategist flow, but it does not resolve a second copy from a user skill directory and does
+not load the Ranked Weapon through an external host loader. The embedded package is the certified
+authority; `native_substitution: forbidden` remains unchanged, and a missing embedded invoker
+stops the mission with `role_invocation_failed` rather than falling back externally.
+
+An explicitly typed Custom Weapon is different: it may use its declared host connector and must
+produce a `strategist-invocation-receipt/v1`. Ranger rejects a missing, malformed, stale, replayed,
+or mission/role/Weapon-mismatched receipt with `role_invocation_failed`. The receipt binds the
+mission, role, Weapon, relative resolved location, resolved digest, issue time, and nonce. The
+nonce is retained in mission-scoped replay storage; telemetry never includes it, the resolved
+location, prompts, outputs, secrets, or home paths.
 
 | Keep | Drop |
 | --- | --- |
@@ -135,13 +134,14 @@ telemetry never includes it, the resolved location, prompts, outputs, secrets, o
 | | the spec-review gate and the `writing-plans` transition |
 
 `weapon_invocation` is required for a delegated run and optional otherwise. Record it in the handoff
-(`schemas/handoff-ranger-to-archivist.schema.yaml`): `invoked`, `resolved_from` (where the Weapon was
-actually resolved, e.g. the embedded runtime or the host skill directory), `steps_dropped`, and
-`resolved_digest`, the `sha256:<64 hex>` of the raw bytes of the file the loader served. This is the
-home of `invocation_evidence: required`; it does not change which Weapon is bound. When the active
-runtime catalog (`.strategist/plugins/catalog.yaml`) supplies an `upstream_content_digest`, Ranger
-compares it to the receipt digest and blocks a mismatch. An absent pin is explicitly
-`pin_unavailable`, not a verification claim.
+(`schemas/handoff-ranger-to-archivist.schema.yaml`): `invoked`, `resolved_from` (the embedded runtime
+for Ranked Weapons, or the declared host skill directory for Custom), `steps_dropped`, and
+`resolved_digest`, the `sha256:<64 hex>` of the bytes resolved by the selected runtime. Embedded
+invocation records internal evidence and does not fabricate a host receipt; Custom host invocation
+uses the receipt described above. This is the home of `invocation_evidence: required`; it does not
+change which Weapon is bound. When the active runtime catalog (`.strategist/plugins/catalog.yaml`)
+supplies an `upstream_content_digest`, Ranger compares it to the resolved digest and blocks a
+mismatch. An absent pin is explicitly `pin_unavailable`, not a verification claim.
 
 A receipt authenticates that the host invoked a Weapon. It does **not** prove that the parent agent
 was prevented from independently reading, reasoning, or using its own tools. Hosts must report

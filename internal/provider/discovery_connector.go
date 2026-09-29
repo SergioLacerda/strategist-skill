@@ -18,6 +18,7 @@ func InvokeDiscoveryViaConnector(ctx context.Context, request DiscoveryWeaponReq
 	}
 	capabilities := connector.Capabilities(ctx)
 	request.CapabilityIsolationVerified = capabilities.CanEnforcePermissions
+	request.RuntimeKind = capabilities.RuntimeKind
 	return InvokeAndNormalizeDiscoveryWithTelemetry(ctx, request, func(invokeCtx context.Context, invokeRequest DiscoveryWeaponRequest) (DiscoveryWeaponResponse, error) {
 		if instance.ID != invokeRequest.ProviderID {
 			return DiscoveryWeaponResponse{}, fmt.Errorf("connector instance %q does not match selected Weapon %q", instance.ID, invokeRequest.ProviderID)

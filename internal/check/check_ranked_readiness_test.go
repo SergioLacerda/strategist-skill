@@ -154,6 +154,19 @@ func TestRankedRuntimeReadinessAcceptsEmbeddedSkillWithoutRuntimeState(t *testin
 	require.Equal(t, "ranked_embedded_runtime_ready", result.ReasonCode)
 }
 
+func TestRankedRuntimeReadinessRejectsExternalRuntimeKinds(t *testing.T) {
+	for _, kind := range []string{domain.RankedRuntimeHost, domain.RankedRuntimeExecutable} {
+		t.Run(kind, func(t *testing.T) {
+			result := rankedRuntimeReadiness(t.TempDir(), "discovery", "brainstorming", domain.CatalogRankedStamp{
+				Runtime: domain.WeaponRuntime{Kind: kind, HostAPI: "strategist-host-skill/v1", Entrypoint: "brainstorming"},
+			})
+
+			require.Equal(t, domain.ReadinessBlocked, result.Status)
+			require.Equal(t, domain.ReasonRankedExternalRuntimeForbidden, result.ReasonCode)
+		})
+	}
+}
+
 func TestLiveHostAPIDigestFallsBackAndComputesMaterializedContract(t *testing.T) {
 	root := t.TempDir()
 	const fallback = "sha256:fallback"

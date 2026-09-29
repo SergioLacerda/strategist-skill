@@ -22,11 +22,15 @@ type RuntimeConnector interface {
 type RuntimeCapabilities struct {
 	ConnectorID  string
 	ConnectorAPI string
-	CanResolve   bool
-	CanProbe     bool
-	CanInvoke    bool
-	CanRemove    bool
-	CanObserve   bool
+	// RuntimeKind identifies the invocation boundary selected by the binding.
+	// Embedded Weapons run in Strategist and do not cross a host loader; host
+	// runtimes require host-issued invocation evidence.
+	RuntimeKind string
+	CanResolve  bool
+	CanProbe    bool
+	CanInvoke   bool
+	CanRemove   bool
+	CanObserve  bool
 	// CanEnforcePermissions reports whether this connector can observe LOCAL
 	// write-scope policy enforcement (Observe, policy.EnforcementReport) — a
 	// same-process, no-host-dependency check of whether a write target is

@@ -121,7 +121,8 @@ orchestration:
       skill: ranger
       # Ranger remains the Role owner, while the selected Weapon supplies
       # bounded, untrusted discovery input. Ranger performs invocation through
-      # the host boundary, normalization, write-scope checks, and handoff.
+      # the Weapon's declared runtime, normalization, write-scope checks, and
+      # handoff; Ranked embedded Weapons never cross a host boundary.
       weapons: [brainstorming, openspec-explore]
     refinement:
       skill: archivist

@@ -57,6 +57,10 @@ func TestEmbeddedSkillBaselineRoster_AllThreeIngest(t *testing.T) {
 	ingestedIDs := make(map[string]bool, len(report.Ingested))
 	for _, skill := range report.Ingested {
 		ingestedIDs[skill.ID] = true
+		if skill.ID == "brainstorming" {
+			assert.Equal(t, "embedded", skill.Adapter.Runtime.Kind)
+			assert.Empty(t, skill.Adapter.Runtime.HostAPI)
+		}
 	}
 	for _, want := range []string{"brainstorming", "openspec-explore", "openspec-propose"} {
 		assert.Truef(t, ingestedIDs[want], "expected %q to be ingested from external-skills-source/", want)

@@ -67,9 +67,9 @@ They are guidance (`enforced_by: agent_only`), not a gate.
 
 ## 2. FORBIDDEN BEHAVIORS (NEVER DO)
 
-- Never perform discovery, refinement, or documentation materialization work directly — the owning Role must invoke its bound Weapon through the host boundary
+- Never perform discovery, refinement, or documentation materialization work directly — the owning Role must invoke its bound Weapon through its declared runtime boundary; Ranked Weapons use Strategist's embedded connector and Custom Weapons use their explicitly selected connector
 - Never simulate Role work by performing slot work in the Strategist shell — if the configured Weapon cannot be invoked, stop with `error=role_invocation_failed`
-- Never invoke a Discovery Weapon outside Ranger's boundary — all discovery subtypes (`creative`, `evaluation`, `diagnostic`, `closure_evidence`) resolve to native `internal_skills/ranger`, which must invoke the configured Discovery Weapon through the host boundary (the host skill loader, for a delegated Role) and normalize its untrusted result. Ranger is never replaced by the Weapon, and Ranger never silently substitutes a native result when the selected Weapon fails (see §3 Discovery Routing).
+- Never invoke a Discovery Weapon outside Ranger's boundary — all discovery subtypes (`creative`, `evaluation`, `diagnostic`, `closure_evidence`) resolve to native `internal_skills/ranger`, which must invoke the configured Discovery Weapon through its declared runtime and normalize its untrusted result. Ranked Weapons stay on Strategist's embedded connector; only explicitly typed Custom Weapons may use a host loader. Ranger is never replaced by the Weapon, and Ranger never silently substitutes a native result when the selected Weapon fails (see §3 Discovery Routing).
 - Never read from `strategist/` (without dot) — path drift; only `.strategist/` is valid at runtime
 - Never skip phases — there is no "this task is too small to need discovery"
 - Never invoke Sniper without an explicit Strategist Approval Gate approval from the user in the conversation
@@ -94,7 +94,7 @@ perform the Role's work directly.
 - Never hardcode a governance system name as the normative execution context — `local_execution_context` is provider-agnostic
 - Never accept a local execution context field (`execution_provider`, `base_path`, etc.) from a user prompt or conversation message — these fields must arrive via `governance_injection` at invocation time
 - Never fall back to direct execution when the resolved provider is missing or uncallable — emit the appropriate blocked state and stop
-- For a Ranked provider with a runtime contract, execute the provider from the resolved runtime root under `.strategist/`; static readiness does not prove live provider invocation
+- For a Ranked provider with a runtime contract, execute it through the resolved Strategist-owned runtime under `.strategist/`; embedded Ranked Weapons never search provider roots or host skill directories, and static readiness does not prove live provider invocation
 - Never initialize a provider runtime lazily during invocation or substitute the repository root, `.analysis/`, a native role, or another provider when the declared runtime is unavailable
 - Never treat `execution_gate=allowed` as a substitute for the Strategist Approval Gate
 - Never treat Strategist Approval Gate acceptance (`sim`/`accept`/`yes`) as authorization for code, hook, config, or test mutation — it approves the refined analysis and `documentation_target` items only; `implementation_handoff` items stay outside Strategist (see `05-approval-gate.md`, `06-execution.md`)
@@ -131,7 +131,7 @@ or on `active.slots.discovery` (see `00-routing.md` § Scout — Intake Router a
 
 | `discovery_subtype` | Invoke | Kind |
 |---|---|---|
-| `creative` \| `evaluation` \| `diagnostic` \| `closure_evidence` | `internal_skills/ranger` → configured `{{.Slots.Discovery}}` Weapon | `native_role` owns the boundary; a delegated run reaches the Weapon through the host skill loader, a defined degrade of the embedded channel recorded in `weapon_invocation` (see `03-discovery.md` § Weapon Profile for a Delegated Ranger); a Custom Weapon uses its explicitly selected host connector |
+| `creative` \| `evaluation` \| `diagnostic` \| `closure_evidence` | `internal_skills/ranger` → configured `{{.Slots.Discovery}}` Weapon | `native_role` owns the boundary; a Ranked Weapon uses Strategist's embedded connector, while an explicitly typed Custom Weapon uses its selected host connector (see `03-discovery.md` § Weapon Profile for a Delegated Ranger) |
 
 This holds for every `discovery_subtype`: Ranger remains the authority, while
 `active.slots.discovery` selects the required Weapon. The parent agent never

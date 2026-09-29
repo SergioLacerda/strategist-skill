@@ -25,7 +25,7 @@ type EmbeddedWeaponConnector struct {
 // Capabilities reports the in-process capabilities; it can invoke only when an invoker is supplied.
 func (c EmbeddedWeaponConnector) Capabilities(context.Context) RuntimeCapabilities {
 	return RuntimeCapabilities{
-		ConnectorID: c.ConnectorID, ConnectorAPI: c.ConnectorAPIVersion,
+		ConnectorID: c.ConnectorID, ConnectorAPI: c.ConnectorAPIVersion, RuntimeKind: domain.RankedRuntimeEmbedded,
 		CanResolve: true, CanProbe: true, CanInvoke: c.Invoker != nil,
 	}
 }

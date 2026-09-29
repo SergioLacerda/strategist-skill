@@ -54,6 +54,24 @@ func TestInvokeDiscoveryViaConnectorBridgesHostResultToRanger(t *testing.T) {
 	assert.Contains(t, string(got.Content), "mission_status: ranger_pending")
 }
 
+func TestInvokeDiscoveryViaConnectorAcceptsEmbeddedEvidenceWithoutHostReceipt(t *testing.T) {
+	t.Parallel()
+
+	connector := &discoveryConnector{
+		caps: connectors.RuntimeCapabilities{ConnectorID: "embedded-runtime", RuntimeKind: domain.RankedRuntimeEmbedded, CanInvoke: true},
+		result: connectors.ConnectorResult{
+			Status:             domain.ReadinessReady,
+			ProviderID:         "brainstorming",
+			InvocationEvidence: "embedded-weapon:brainstorming",
+			Artifact:           []byte("# Findings\n\nUntrusted result."),
+		},
+	}
+
+	got, err := InvokeDiscoveryViaConnector(context.Background(), validDiscoveryRequest(), domain.InstalledInstance{ID: "brainstorming"}, connector, nil, "run-embedded")
+	require.NoError(t, err)
+	assert.Equal(t, "embedded-weapon:brainstorming", got.InvocationEvidence)
+}
+
 func TestInvokeDiscoveryViaConnectorFailsClosedWhenConnectorCannotInvoke(t *testing.T) {
 	t.Parallel()
 
