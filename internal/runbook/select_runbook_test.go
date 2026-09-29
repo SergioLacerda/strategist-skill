@@ -1,6 +1,7 @@
 package runbook
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -362,5 +363,60 @@ func TestSelect_RawSignalWithPunctuationStillMatches(t *testing.T) {
 	selections, _, err := Select(candidates, MissionSignals{"error=role_invocation_failed"}, DefaultSelectionPolicy())
 	if err != nil || len(selections) != 1 {
 		t.Fatalf("selections=%+v err=%v", selections, err)
+	}
+}
+
+// A declared Signals value matches a mission signal through the same
+// canonical-vocabulary/alias resolution applies_when prose uses, even when
+// AppliesWhen itself shares no substring with the mission signal at all.
+func TestSelect_DeclaredSignalMatchesWithNoAppliesWhenOverlap(t *testing.T) {
+	t.Parallel()
+	candidates := []Runbook{{
+		RunbookID:   "deep-analysis-workflow",
+		AppliesWhen: []string{"quarterly compliance sweep of an unrelated subsystem"},
+		Signals:     []string{string(SignalSkillCorpusHealthReview)},
+	}}
+	selections, _, err := Select(candidates, MissionSignals{"hardening"}, DefaultSelectionPolicy())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(selections) != 1 || selections[0].RunbookID != "deep-analysis-workflow" {
+		t.Fatalf("expected declared Signals to select the candidate, got %+v", selections)
+	}
+	if !strings.Contains(selections[0].Reason, "signal:"+string(SignalSkillCorpusHealthReview)) {
+		t.Fatalf("expected reason to name the matched signal, got %q", selections[0].Reason)
+	}
+}
+
+// Signals supplements AppliesWhen rather than replacing it: a candidate
+// whose AppliesWhen matches but whose Signals does not is still selected on
+// the strength of the prose match alone.
+func TestSelect_UnmatchedDeclaredSignalDoesNotSuppressAppliesWhenMatch(t *testing.T) {
+	t.Parallel()
+	candidates := []Runbook{{
+		RunbookID:   "verifying-test-failures",
+		AppliesWhen: []string{"CI test suite is red"},
+		Signals:     []string{string(SignalDependencyUpgrade)},
+	}}
+	selections, _, err := Select(candidates, MissionSignals{"CI test suite is red"}, DefaultSelectionPolicy())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(selections) != 1 {
+		t.Fatalf("expected the applies_when match to still select the candidate, got %+v", selections)
+	}
+}
+
+// A candidate with no declared Signals (every sidecar in the tree today)
+// behaves exactly as it did before the field existed.
+func TestSelect_EmptyDeclaredSignalsIsByteForByteUnchanged(t *testing.T) {
+	t.Parallel()
+	signals := MissionSignals{"CI test suite is red", "flaky test suspected"}
+	selections, _, err := Select(candidateRunbooks(), signals, DefaultSelectionPolicy())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(selections) == 0 || selections[0].RunbookID != "verifying-test-failures" {
+		t.Fatalf("expected unchanged behavior for candidates without declared Signals, got %+v", selections)
 	}
 }

@@ -83,6 +83,41 @@ func TestValidateRunbook_InvalidRunbookType(t *testing.T) {
 	_ = rb
 }
 
+func TestParseSidecar_SignalsOptionalAndDefaultsEmpty(t *testing.T) {
+	t.Parallel()
+	rb, err := ParseSidecar([]byte(validSidecarYAML()))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(rb.Signals) != 0 {
+		t.Fatalf("expected no signals declared by a sidecar predating the field, got %v", rb.Signals)
+	}
+}
+
+func TestParseSidecar_SignalsAcceptsCanonicalVocabularyValue(t *testing.T) {
+	t.Parallel()
+	withSignals := strings.Replace(validSidecarYAML(), "applies_when:", "signals:\n  - dependency_upgrade\napplies_when:", 1)
+	rb, err := ParseSidecar([]byte(withSignals))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(rb.Signals) != 1 || rb.Signals[0] != string(SignalDependencyUpgrade) {
+		t.Fatalf("expected signals [%q], got %v", SignalDependencyUpgrade, rb.Signals)
+	}
+}
+
+func TestParseSidecar_SignalsRejectsValueOutsideVocabulary(t *testing.T) {
+	t.Parallel()
+	withSignals := strings.Replace(validSidecarYAML(), "applies_when:", "signals:\n  - not_a_real_canonical_signal\napplies_when:", 1)
+	_, err := ParseSidecar([]byte(withSignals))
+	if err == nil {
+		t.Fatal("expected error for a signals[] value outside the controlled vocabulary")
+	}
+	if !strings.Contains(err.Error(), "signals[]") {
+		t.Errorf("expected error to mention signals[], got: %v", err)
+	}
+}
+
 func TestValidateRunbook_CascadesToNestedCheckAndGate(t *testing.T) {
 	t.Parallel()
 	bad := strings.Replace(validSidecarYAML(), "level: mandatory", "level: bogus", 1)

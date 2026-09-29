@@ -70,6 +70,22 @@ func TestEvaluateWriteInScope_DeniesRuntimeAndResolvedPlans(t *testing.T) {
 	assert.False(t, policy.EvaluateWriteInScope(scope, "project-docs/plans/change.md", report).Allowed)
 }
 
+// A literal docs/plans write is forbidden even under an atypical
+// documentation_roots configuration that does not name "docs" at all — the
+// configured-root check alone would classify it as a generic source write
+// (not under any configured documentation root), which a connector
+// enforcing WriteSource could then wrongly allow.
+func TestEvaluateWriteInScope_DeniesLiteralDocsPlansEvenWithNonStandardDocumentationRoot(t *testing.T) {
+	t.Parallel()
+	scope := policy.WriteScope{AnalysisRoot: "workspace/notes", DocumentationRoots: []string{"project-docs"}, RuntimeRoot: ".strategist"}
+	report := policy.EnforcementReport{ConnectorID: "test", Enforceable: []domain.PluginPermission{
+		domain.PluginPermissionWriteDocs, domain.PluginPermissionWriteSource,
+	}}
+	decision := policy.EvaluateWriteInScope(scope, "docs/plans/change.md", report)
+	assert.False(t, decision.Allowed, "docs/plans must be forbidden regardless of documentation_roots configuration")
+	assert.Equal(t, domain.PluginPermissionWriteDocs, decision.Permission)
+}
+
 // --- EvaluateWrite ---
 
 func TestEvaluateWrite_AllowsEnforceableAnalysisWrite(t *testing.T) {

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/plugins"
 	"gopkg.in/yaml.v3"
 )
 
@@ -36,7 +37,31 @@ func checkPluginLockParity(root string, activeSlots map[string]string) []string 
 	if yaml.Unmarshal(raw, &lock) != nil {
 		return nil
 	}
-	return lockParityErrors(lock, activeSlots)
+	var errs []string
+	errs = append(errs, lockDigestErrors(lock.Lock)...)
+	errs = append(errs, lockParityErrors(lock, activeSlots)...)
+	return errs
+}
+
+// lockDigestErrors checks the lock graph's internal self-consistency —
+// whether graph_digest still matches a fresh digest of its own nodes — when
+// a resolved Lock block is present. Only the Custom pipeline's provider
+// migration populates Lock (role_provider_migration.go); a zero-value Lock
+// (empty schema_version) is a legitimate state for a Ranked-only or
+// not-yet-resolved workspace, not corruption, so it is silently skipped
+// rather than reported — mirroring checkPluginLockParity's own "no lock is
+// not an error" stance for the file as a whole.
+func lockDigestErrors(lock domain.PluginLock) []string {
+	if lock.SchemaVersion == "" {
+		return nil
+	}
+	if err := plugins.VerifyLockDigest(lock); err != nil {
+		return []string{fmt.Sprintf(
+			"plugins.lock: %v — the lock graph may have been hand-edited or corrupted; re-run `strategist install` or `strategist compile` to regenerate it",
+			err,
+		)}
+	}
+	return nil
 }
 
 func lockParityErrors(lock domain.PluginLockFile, activeSlots map[string]string) []string {

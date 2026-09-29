@@ -68,11 +68,8 @@ func Resolve(requirements []Requirement, candidates []Candidate) (domain.PluginL
 
 // VerifyLock verifies that a lock can replay from local candidates without selection.
 func VerifyLock(lock domain.PluginLock, candidates []Candidate) error {
-	if lock.SchemaVersion != lockSchemaVersion {
-		return fmt.Errorf("lock_schema_unsupported: %s", lock.SchemaVersion)
-	}
-	if got := DigestLockNodes(lock.Nodes); got != lock.GraphDigest {
-		return fmt.Errorf("lock_graph_digest_mismatch: got %s want %s", got, lock.GraphDigest)
+	if err := VerifyLockDigest(lock); err != nil {
+		return err
 	}
 	byPinnedIdentity := map[string]bool{}
 	for _, candidate := range candidates {

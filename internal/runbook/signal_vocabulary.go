@@ -98,6 +98,16 @@ const (
 	SignalSkillCorpusHealthReview CanonicalSignal = "skill_corpus_health_review"
 )
 
+// allowedSignals is the set of values a sidecar's optional Signals field
+// (runbook.go) may declare — exactly the CanonicalSignal terms above. Kept
+// in sync by construction: every const here is listed once.
+var allowedSignals = stringSet(
+	string(SignalCITestFailure), string(SignalDependencyUpgrade), string(SignalReleaseToolVersionDrift),
+	string(SignalConcurrentSessionCollision), string(SignalProviderInvocationFailure), string(SignalExecutionProviderMissing),
+	string(SignalTreasureChestPartialWrite), string(SignalVerifyingImplementedDemands), string(SignalComplexityRefactor),
+	string(SignalSkillCorpusHealthReview),
+)
+
 // canonicalSignalsIn returns the set of canonical signals whose canonical
 // term itself, or one of its aliases, appears (case-insensitively) as a
 // substring of text. An empty text or one that matches no known term/alias
