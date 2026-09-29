@@ -41,8 +41,15 @@ func runWithHomeGuardRunner(runFn func() int) int {
 	}
 	before := snapshotUserShims(home)
 	code := runFn()
-	if violations := changedUserShims(home, before); len(violations) > 0 && code == 0 {
-		reportHomeViolations(violations)
+	violations := changedUserShims(home, before)
+	if len(violations) == 0 {
+		return code
+	}
+	// A HOME violation is always reported, even when the run already failed
+	// for an unrelated reason — otherwise the corruption signal is silently
+	// dropped behind the ordinary failure.
+	reportHomeViolations(violations)
+	if code == 0 {
 		return 1
 	}
 	return code

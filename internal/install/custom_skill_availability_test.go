@@ -11,7 +11,7 @@ import (
 )
 
 func TestResolveCustomSkillAvailabilityUnavailableForUnknownID(t *testing.T) {
-	t.Parallel()
+	testutil.SetHome(t, t.TempDir())
 
 	availability := resolveCustomSkillAvailability("definitely-not-a-real-installed-skill-id-xyz")
 	assert.False(t, availability.Available)
@@ -58,7 +58,7 @@ func TestCheckCustomSkillAvailabilitySkipsRegistryKnownEntries(t *testing.T) {
 }
 
 func TestCheckCustomSkillAvailabilityPausesOnUnresolvableCustomID(t *testing.T) {
-	t.Parallel()
+	testutil.SetHome(t, t.TempDir())
 
 	err := checkCustomSkillAvailability(map[string]string{"brainstorming": "write_analysis"}, map[string]string{
 		"discovery":  "brainstorming",
