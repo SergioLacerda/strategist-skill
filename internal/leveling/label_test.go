@@ -259,6 +259,55 @@ func TestResolveLevelRejectsHostEffortMissingFromProvider(t *testing.T) {
 	assert.Contains(t, err.Error(), `provider "CLAUDE" cannot execute host effort "max"`)
 }
 
+// TestResolveLevelNamesTheActualIneligibilityCause guards the split of the
+// former single leveling_ranked_provider_ineligible reason: an unknown
+// provider id, a non-ranked provider, and a genuinely unsupported effort
+// tier are different caller-facing problems with different fixes, so each
+// must surface its own reason code and message rather than being reported as
+// an effort-tier mismatch regardless of cause.
+func TestResolveLevelNamesTheActualIneligibilityCause(t *testing.T) {
+	notRanked := defaultPolicy(t)
+	notRanked.Providers["CODEX"] = leveling.Provider{Models: map[string]string{"economical": "x"}, EffortTiers: []string{"medium"}}
+
+	tests := []struct {
+		name           string
+		policy         leveling.Policy
+		provider       string
+		wantReason     string
+		wantMsgContain string
+	}{
+		{
+			name:           "provider id not declared in the policy",
+			policy:         defaultPolicy(t),
+			provider:       "ANTHROPIC",
+			wantReason:     "leveling_provider_unknown",
+			wantMsgContain: `provider "ANTHROPIC" is not declared in the LEVELING policy`,
+		},
+		{
+			name:           "provider declared but not ranked",
+			policy:         notRanked,
+			provider:       "CODEX",
+			wantReason:     "leveling_provider_not_ranked",
+			wantMsgContain: `provider "CODEX" is not a ranked provider in the LEVELING policy`,
+		},
+		{
+			name:           "ranked provider does not declare this effort tier",
+			policy:         defaultPolicy(t),
+			provider:       "CLAUDE",
+			wantReason:     "leveling_ranked_provider_ineligible",
+			wantMsgContain: `provider "CLAUDE" cannot execute host effort "max" for role "ranger"`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := leveling.ResolveLevel(tt.policy, tt.provider, "ranger", leveling.Signals{}, leveling.Host{Model: "Opus", Effort: "max"})
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.wantReason)
+			assert.Contains(t, err.Error(), tt.wantMsgContain)
+		})
+	}
+}
+
 func TestResolveLevelLazySurfacesLoaderError(t *testing.T) {
 	loader := &countingLoader{err: assert.AnError}
 	_, err := leveling.ResolveLevelLazy(loader.load, "CLAUDE", "ranger", leveling.Signals{}, leveling.Host{})

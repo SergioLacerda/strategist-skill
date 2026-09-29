@@ -81,17 +81,46 @@ type Provider struct {
 	Display map[string]string `yaml:"display,omitempty" json:"-"`
 }
 
-// ProviderSupportsEffort reports whether a resolved provider declares the
-// supplied effort tier. The generic catalog remains the vocabulary baseline;
-// execution authority belongs to the selected provider profile.
-func (p Policy) ProviderSupportsEffort(provider, effort string) bool {
+// ProviderEffortEligibility distinguishes why a provider profile does or does
+// not support a requested effort tier, so a caller can report the actual
+// cause instead of one collapsed diagnostic: an unknown provider id and a
+// genuinely unsupported effort tier have different fixes (a typo in the call
+// versus a policy change).
+type ProviderEffortEligibility int
+
+const (
+	// EffortEligible means the provider is known, ranked, and declares the
+	// requested effort tier.
+	EffortEligible ProviderEffortEligibility = iota
+	// EffortProviderUnknown means no provider with this id is declared in
+	// the policy at all.
+	EffortProviderUnknown
+	// EffortProviderNotRanked means the provider is declared but not marked
+	// ranked, or no effort tier was supplied to check.
+	EffortProviderNotRanked
+	// EffortTierUnsupported means the provider is known and ranked, but its
+	// declared effort tiers do not include the requested one.
+	EffortTierUnsupported
+)
+
+// ProviderSupportsEffort reports why a resolved provider does or does not
+// declare the supplied effort tier. The generic catalog remains the
+// vocabulary baseline; execution authority belongs to the selected provider
+// profile.
+func (p Policy) ProviderSupportsEffort(provider, effort string) ProviderEffortEligibility {
 	providerID := strings.ToUpper(strings.TrimSpace(provider))
 	effort = strings.ToLower(strings.TrimSpace(effort))
 	profile, ok := p.Providers[providerID]
-	if !ok || !profile.Ranked || effort == "" {
-		return false
+	if !ok {
+		return EffortProviderUnknown
 	}
-	return contains(profile.EffortTiers, effort)
+	if !profile.Ranked || effort == "" {
+		return EffortProviderNotRanked
+	}
+	if !contains(profile.EffortTiers, effort) {
+		return EffortTierUnsupported
+	}
+	return EffortEligible
 }
 
 // Signals are runtime facts used to decide whether a role should escalate.

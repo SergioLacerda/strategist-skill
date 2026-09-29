@@ -102,6 +102,44 @@ func TestArchivistToSniper_PersistsOpenQuestions(t *testing.T) {
 	require.Equal(t, domain.ClaimKindQuestion, records[0].ClaimKind)
 }
 
+// TestArchivistToSniper_ForeignAgentClaimIsRecordedNotRejectedUnderHandoffChallenge
+// characterizes AR-008 (.analysis/done/confidence-and-metrics-integrity/
+// 20260926-confidence-drift-residual-uncertainties.md): persistHandoffConfidence
+// has no caller today (DEC-009 "not now" stands), but if it is ever wired, a
+// confidence_summary carrying another role's claim is not rejected — it is
+// persisted a second time under the fixed handoff_challenge producer agent,
+// not the claim's own declared agent. This pins that behavior so a future
+// change to it is a deliberate decision, not a silent regression.
+func TestArchivistToSniper_ForeignAgentClaimIsRecordedNotRejectedUnderHandoffChallenge(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	engine := readyForHandoff(t, "foreign-agent-claim")
+	status, result, err := ArchivistToSniper(engine, root, LiveHandoffInput{
+		Policy: handoff.DefaultPolicy(), Challenges: liveChallenges(false),
+		Ack: validAck(), Attempt: 1,
+		ConfidenceSummary: &domain.ConfidenceSummary{
+			PolicyVersion:     domain.ConfidencePolicyVersion,
+			CalibrationStatus: domain.CalibrationNoSample,
+			OpenQuestions: []domain.ConfidenceClaim{{
+				ID: "Q-RANGER-1", Statement: "Was this claim declared by Ranger, not the handoff challenge?", Agent: "ranger",
+				CorrelationKey: "foreign-agent-question", ClaimKind: domain.ClaimKindQuestion,
+				ConfidencePercent: 40,
+			}},
+		},
+	})
+	require.NoError(t, err)
+	require.True(t, result.Passed)
+	require.Equal(t, domain.StateExecution, status.State)
+
+	records, err := telemetry.ReadConfidenceRecords(telemetry.ConfidenceHistoryPath(root))
+	require.NoError(t, err)
+	require.Len(t, records, 1, "the foreign-agent claim is recorded, not rejected")
+	require.Equal(t, "Q-RANGER-1", records[0].ClaimID)
+	require.Equal(t, telemetry.ConfidenceAgentHandoffChallenge, records[0].Agent,
+		"persisted under the producer's fixed agent, not the claim's own declared agent (ranger) — "+
+			"a summary combining claims from several agents would double-count sample_size if this producer were ever wired to a live caller")
+}
+
 func TestArchivistToSniper_InitiativeChallengeReturnsToRefinement(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()

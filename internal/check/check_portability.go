@@ -23,22 +23,38 @@ func reportRefinedPortability(w io.Writer, strategistRoot, basePath string) {
 	if err != nil {
 		return
 	}
+	report := formatRefinedPortabilityFindings(refinedRoot, entries)
+	if report == "" {
+		return
+	}
+	if _, err := io.WriteString(w, report); err != nil {
+		return // advisory output only; a failed write must not affect check
+	}
+}
+
+// formatRefinedPortabilityFindings renders one warning line per portability
+// finding across every package directory in entries, skipping non-directory
+// entries. Split out of reportRefinedPortability to keep cognitive complexity
+// within budget.
+func formatRefinedPortabilityFindings(refinedRoot string, entries []os.DirEntry) string {
 	var out strings.Builder
 	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-		findings, err := refinement.CheckPackagePortability(filepath.Join(refinedRoot, entry.Name()))
-		if err != nil {
-			continue // package without analysis.md: not a portability concern
-		}
-		for _, f := range findings {
-			fmt.Fprintf(&out, "  ⚠ package_portability: %s: %s\n", f.Path, f.Reason)
+		if entry.IsDir() {
+			writePackagePortabilityFindings(&out, filepath.Join(refinedRoot, entry.Name()))
 		}
 	}
-	if out.Len() > 0 {
-		if _, err := io.WriteString(w, out.String()); err != nil {
-			return // advisory output only; a failed write must not affect check
-		}
+	return out.String()
+}
+
+// writePackagePortabilityFindings appends one warning line per finding for a
+// single refined package directory. A package without analysis.md is not a
+// portability concern and is silently skipped.
+func writePackagePortabilityFindings(out *strings.Builder, pkgDir string) {
+	findings, err := refinement.CheckPackagePortability(pkgDir)
+	if err != nil {
+		return
+	}
+	for _, f := range findings {
+		fmt.Fprintf(out, "  ⚠ package_portability: %s: %s\n", f.Path, f.Reason)
 	}
 }

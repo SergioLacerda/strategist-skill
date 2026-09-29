@@ -328,3 +328,25 @@ func TestRunView_LevelingFallbackRendersProvenance(t *testing.T) {
 	assert.True(t, sniper.Effective.FallbackUsed)
 	assert.Equal(t, "unrecognized_provider", sniper.Effective.FallbackReason)
 }
+
+// TestLoadViewRejectsNilFilterLevels guards the FilterLevels dependency
+// contract: a nil filter is a missing collaborator, the same class of
+// problem view.go's own doc comment already treats every other secondary
+// source failure as — an explicit error, never a zero value or a silent
+// pass-through of every record unfiltered.
+func TestLoadViewRejectsNilFilterLevels(t *testing.T) {
+	missionID := "m-nil-filter"
+	status := domain.MissionEngineStatus{MissionID: missionID, Phase: domain.PhaseDiscovery, State: domain.StateInit}
+	_, err := mission.LoadView(t.TempDir(), status, "", "role-levels.jsonl", nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "FilterLevels")
+}
+
+// TestLoadViewAcceptsNonNilFilterLevels is the non-nil control case, so the
+// guard above is proven to reject only nil, not every call.
+func TestLoadViewAcceptsNonNilFilterLevels(t *testing.T) {
+	missionID := "m-non-nil-filter"
+	status := domain.MissionEngineStatus{MissionID: missionID, Phase: domain.PhaseDiscovery, State: domain.StateInit}
+	_, err := mission.LoadView(t.TempDir(), status, "", "role-levels.jsonl", testFilterLevels)
+	require.NoError(t, err)
+}
