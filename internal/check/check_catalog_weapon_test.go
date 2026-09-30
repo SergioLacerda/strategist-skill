@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -51,8 +52,8 @@ func catalogRoot(t *testing.T) string {
 
 func writePayload(t *testing.T, root, provider string) {
 	t.Helper()
-	require.NoError(t, os.MkdirAll(filepath.Join(root, "skills", provider), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(root, "skills", provider, "SKILL.md"), []byte("# skill\n"), 0o644))
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "skills", provider+"@0.0.0"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "skills", provider+"@0.0.0", "SKILL.md"), []byte("# skill\n"), 0o644))
 }
 
 func TestCatalogWeaponResolvesWithoutAnyCompatView(t *testing.T) {
@@ -79,8 +80,8 @@ func TestCatalogWeaponEntrypointBlocksWhenThePayloadIsMissingOrEmpty(t *testing.
 	assert.Equal(t, domain.ReadinessBlocked, res.readiness.Entrypoint.Status)
 	assert.Equal(t, "entrypoint_payload_missing", res.readiness.Entrypoint.ReasonCode)
 
-	require.NoError(t, os.MkdirAll(filepath.Join(root, "skills", "host-weapon"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(root, "skills", "host-weapon", "SKILL.md"), nil, 0o644))
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "skills", "host-weapon@0.0.0"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "skills", "host-weapon@0.0.0", "SKILL.md"), nil, 0o644))
 	res, _ = resolveSlotProvider(root, "refinement", "host-weapon")
 	assert.Equal(t, "entrypoint_payload_empty", res.readiness.Entrypoint.ReasonCode)
 }
@@ -139,4 +140,31 @@ func TestCatalogWeaponWithoutAHostAPIKeepsTheNotDeclaredReason(t *testing.T) {
 	require.Empty(t, errMsg)
 	assert.Equal(t, domain.ReadinessUnknown, res.readiness.HostAPI.Status)
 	assert.Equal(t, "host_api_not_declared", res.readiness.HostAPI.ReasonCode)
+}
+
+func TestCatalogWeaponPayloadIsResolvedByIDAndVersion(t *testing.T) {
+	root := t.TempDir()
+	testutil.WriteWeaponCatalog(t, root, testutil.CatalogProvider{ID: "demo", Version: "2.0.0", Risk: "write_analysis", CanonicalRole: "archivist"})
+
+	facts, err := domain.ResolveWeaponFacts(root, "demo")
+	require.NoError(t, err)
+	require.Equal(t, "2.0.0", facts.Version)
+	assert.Equal(t, domain.ReadinessReady, catalogEntrypointCheck(root, facts).Status, "skills/demo@2.0.0/SKILL.md exists")
+
+	// The payload of another version never satisfies this one.
+	require.NoError(t, os.Rename(filepath.Join(root, "skills", "demo@2.0.0"), filepath.Join(root, "skills", "demo@1.0.0")))
+	check := catalogEntrypointCheck(root, facts)
+	assert.Equal(t, domain.ReadinessBlocked, check.Status)
+	assert.Equal(t, "entrypoint_payload_missing", check.ReasonCode)
+}
+
+func TestCatalogWeaponPayloadIsFoundWhenTheSlotNamesAnIDAtVersionReference(t *testing.T) {
+	root := t.TempDir()
+	testutil.WriteWeaponCatalog(t, root, testutil.CatalogProvider{ID: "demo", Version: "2.0.0", Risk: "write_analysis", CanonicalRole: "archivist"})
+
+	facts, err := domain.ResolveWeaponFacts(root, "demo@2.0.0")
+	require.NoError(t, err)
+
+	check := catalogEntrypointCheck(root, facts)
+	assert.Equal(t, domain.ReadinessReady, check.Status, "the payload dir is built from the catalog id and version, not from the reference text")
 }

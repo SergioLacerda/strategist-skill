@@ -10,28 +10,35 @@ provider=<configured_provider>
 
 ## Root Cause
 
-The configured slot provider's `skill.yaml` is missing, schema-invalid, or not
-callable in the current runtime — the provider is not installed, is installed at
-the wrong path, or the installed runtime doesn't expose it as a skill. This is
-specifically about the provider being uninvokable, not about what it does once
-invoked: standalone `SKILL.md` style quirks are not this condition either —
-preflight validates only that the manifest exists and matches the slot's risk
-contract. (Discovery no longer invokes an external weapon at all — all
-discovery subtypes resolve to `internal_skills/ranger` natively — so
-discovery-subtype coverage is not a runtime condition of any kind anymore;
-see `.analysis/refined/20260728-ranger-drift-eval/`.)
+The selected Role/Weapon binding is not executable in the declared runtime.
+For Custom bindings this can still mean a missing or invalid external
+connector. For Ranked bindings it means the persisted `plugins.lock` record
+does not match the compiled catalog, the Embedded dispatch is unavailable, or
+the explicitly registered prompt bridge could not execute the embedded
+payload. Ranked execution never repairs itself by reading a host skill
+directory or substituting a native Role.
 
 ## Resolution Steps
 
 1. Run `strategist check` — confirms the current slot → provider mapping and
    whether it reports `ok`.
-2. Confirm the provider is actually installed where Strategist expects a skill
-   (e.g. `~/.claude/skills/<provider>/`).
-3. Confirm `.strategist/active.yaml`'s `slots.<phase>` value matches an installed
-   provider's id exactly — typos are the most common cause.
-4. If the provider's `skill.yaml` exists but fails schema validation, fix or
-   reinstall it.
-5. Rerun `strategist check` until STATUS reports `ok` before retrying the mission.
+2. Identify the binding mode in `.strategist/plugins.lock`. For `mode: ranked`,
+   compare Role, slot, Weapon, source digest, execution mode, connector,
+   entrypoint, and binding digest with `.strategist/plugins/catalog.yaml`; for
+   `mode: custom`, continue with the external connector checks below.
+3. Confirm `.strategist/active.yaml`'s `slots.<phase>` value matches the lock
+   binding exactly. If a Ranked record differs, rerun the governed install or
+   wizard so the lock is materialized from the compiled catalog.
+4. For a Ranked `prompt_bridge` Weapon, register the host-agent bridge at the
+   adapter boundary and retry. The bridge must consume Strategist's embedded
+   payload; it must not resolve another skill path. Without that bridge, the
+   correct result is `role_invocation_failed`.
+5. For a Custom binding, confirm the provider is installed where its explicit
+   connector expects it (for example, `~/.claude/skills/<provider>/`) and that
+   its manifest is valid.
+6. Rerun `strategist check` until static binding integrity is ready before
+   retrying the mission. Static readiness does not by itself certify a live
+   prompt-bridge invocation.
 
 ### CODEX bootstrap-specific checks
 
@@ -73,9 +80,11 @@ the role/provider runtime contract and its prepared state before retrying:
    Do not fall back silently to native Archivist, another provider, the
    repository root, or `.analysis`.
 
-For `ranger -> brainstorming` with `runtime.kind: none`, no OpenSpec runtime is
-required or created. Static certification, project-contract readiness, and live
-provider invocation must be reported as separate evidence dimensions.
+For `ranger -> brainstorming`, the compiled binding selects the Embedded
+`prompt_bridge` mode and the payload is read from the CLI's embedded defaults.
+No OpenSpec runtime or host skill loader is required. Static certification,
+binding integrity, and live bridge invocation remain separate evidence
+dimensions.
 
 ## Refinement-Specific Escalation
 

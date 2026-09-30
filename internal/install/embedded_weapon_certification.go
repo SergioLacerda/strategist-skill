@@ -17,10 +17,14 @@ import (
 // the TestSuiteDigest evidence caveat this pairing accepts). Extending
 // Ranked to another pairing requires a deliberate addition here, never
 // automatic certification of every embedded candidate.
+//
+// Pins are keyed by Weapon identity, "id@version" (ADR-0061 Decision 10):
+// certification is per version, so a new version of a pinned Weapon is not
+// Ranked until it is pinned here, and is only selectable as Custom meanwhile.
 var rankedCertificationPairs = map[string]string{
-	"brainstorming":    "ranger",
-	"openspec-propose": "archivist",
-	"sniper":           "sniper",
+	"brainstorming@1.0.0":  "ranger",
+	"openspec-propose@1.0": "archivist",
+	"sniper@0.0.0":         "sniper",
 }
 
 // certifyRankedCandidates stamps ranked/certification_digest (plus the
@@ -35,8 +39,8 @@ var rankedCertificationPairs = map[string]string{
 // candidate that does not actually satisfy it. defaultsRoot locates the
 // role contract files DEC-006's host-API-contract digest reads.
 func certifyRankedCandidates(catalog *pluginCatalog, defaultsRoot string) error {
-	for id, wantRole := range rankedCertificationPairs {
-		if err := certifyRankedCandidate(catalog, defaultsRoot, id, wantRole); err != nil {
+	for identity, wantRole := range rankedCertificationPairs {
+		if err := certifyRankedCandidate(catalog, defaultsRoot, identity, wantRole); err != nil {
 			return err
 		}
 	}
@@ -46,11 +50,12 @@ func certifyRankedCandidates(catalog *pluginCatalog, defaultsRoot string) error 
 // certifyRankedCandidate stamps catalog.Providers[idx] (id's entry) in
 // place, or is a no-op when id is absent — split out of
 // certifyRankedCandidates to keep its loop body a single call.
-func certifyRankedCandidate(catalog *pluginCatalog, defaultsRoot, id, wantRole string) error {
-	idx := indexOfCatalogProvider(catalog.Providers, id)
+func certifyRankedCandidate(catalog *pluginCatalog, defaultsRoot, identity, wantRole string) error {
+	idx := indexOfCatalogProviderIdentity(catalog.Providers, identity)
 	if idx < 0 {
 		return nil
 	}
+	id := catalog.Providers[idx].ID
 	provider := catalog.Providers[idx]
 	if err := validateRankedCandidate(provider, wantRole); err != nil {
 		return fmt.Errorf("certify ranked candidate %q: %w", id, err)
@@ -125,9 +130,9 @@ func rankedConformanceEvidence(defaultsRoot, role, _ string) (rankedConformanceE
 	return rankedConformanceEvidenceSet{hostAPI: hostAPI, connector: connector, testSuite: testSuite, policy: policy}, nil
 }
 
-func indexOfCatalogProvider(providers []pluginCatalogProvider, id string) int {
+func indexOfCatalogProviderIdentity(providers []pluginCatalogProvider, identity string) int {
 	for i, p := range providers {
-		if p.ID == id {
+		if providerIdentity(p) == identity {
 			return i
 		}
 	}

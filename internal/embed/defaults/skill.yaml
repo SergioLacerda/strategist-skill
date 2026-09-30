@@ -30,9 +30,9 @@ capability:
         artifact management within workspace folders (analysis_move). Two modes: plain
         move (no evaluation, no evidence) and closure move (explicit implementation/
         validation claim + evidence summary, closing a pending/refined package into
-        done/). Does NOT fire automatically when a main_mission reaches
+        done/). Does NOT fire automatically when a full_pipeline reaches
         documentation_applied — that is documentation completion, not implementation
-        evidence. A completed main_mission normally ends with its package in refined/.
+        evidence. A completed full_pipeline normally ends with its package in refined/.
         Never infers completion on its own.
   route_decision: internal (Scout / intake routing layer — see internal_skills/scout)
   delegating_agent_contract: invoke with request context — route is resolved internally

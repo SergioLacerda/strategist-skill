@@ -43,7 +43,9 @@ func TestPluginCatalogGeneratesLegacyProviderManifests(t *testing.T) {
 
 	for provider := range installableDefaultProviders {
 		provider := provider
-		legacyPath := "skills/" + provider + "/skill.yaml"
+		entry, ok := findCatalogProvider(catalog, provider)
+		require.True(t, ok, provider)
+		legacyPath := "skills/" + providerPayloadDirName(entry) + "/skill.yaml"
 		t.Run(provider, func(t *testing.T) {
 			t.Parallel()
 			generated, err := generateLegacyProviderManifest(catalog, provider)

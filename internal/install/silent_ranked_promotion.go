@@ -23,7 +23,7 @@ func promoteRuntimeProvidersToRanked(catalog pluginCatalog, slots map[string]str
 // providerNeedsRankedRuntime reports whether the provider is certified, ranked
 // and declares a runtime that must be materialized.
 func providerNeedsRankedRuntime(catalog pluginCatalog, providerID string) bool {
-	provider, ok := findCatalogProvider(catalog, providerID)
+	provider, ok := findCatalogProviderRef(catalog, providerID)
 	if !ok || !provider.Ranked || provider.CertificationDigest == "" {
 		return false
 	}

@@ -176,3 +176,57 @@ func TestRoleBindingLockNodeIsDeterministicAndParticipatesInLockDigest(t *testin
 	require.NotEmpty(t, combined)
 	assert.Regexp(t, `^sha256:[a-f0-9]{64}$`, combined)
 }
+
+func TestResolveRoleBindingKeepsTwoVersionsOfOneIDAsDistinctCandidates(t *testing.T) {
+	t.Parallel()
+
+	role := rangerRole()
+	candidates := []domain.ProviderContract{
+		rangerProvider(domain.ProviderSourceEmbedded, "1.4.0"),
+		rangerProvider(domain.ProviderSourceEmbedded, "2.0.0"),
+	}
+
+	_, err := plugins.ResolveRoleBinding(role, candidates, "", "")
+	require.ErrorContains(t, err, "role_binding_ambiguous", "two versions are two candidates, not an id_shadowing collision")
+	assert.NotContains(t, err.Error(), "id_shadowing")
+	assert.Contains(t, err.Error(), "brainstorming@1.4.0")
+	assert.Contains(t, err.Error(), "brainstorming@2.0.0")
+
+	binding, err := plugins.ResolveRoleBinding(role, candidates, "", "brainstorming@2.0.0")
+	require.NoError(t, err)
+	assert.Equal(t, "2.0.0", binding.Provider.Version)
+
+	binding, err = plugins.ResolveRoleBinding(role, candidates, "", "brainstorming@1.4.0")
+	require.NoError(t, err)
+	assert.Equal(t, "1.4.0", binding.Provider.Version)
+}
+
+func TestResolveRoleBindingPlainIDNeverPicksAmongVersions(t *testing.T) {
+	t.Parallel()
+
+	role := rangerRole()
+	candidates := []domain.ProviderContract{
+		rangerProvider(domain.ProviderSourceEmbedded, "1.4.0"),
+		rangerProvider(domain.ProviderSourceEmbedded, "2.0.0"),
+	}
+
+	_, err := plugins.ResolveRoleBinding(role, candidates, "", "brainstorming")
+	require.ErrorContains(t, err, "role_binding_ambiguous")
+
+	_, err = plugins.ResolveRoleBinding(role, candidates, "", "brainstorming@9.9.9")
+	require.ErrorContains(t, err, "role_binding_ambiguous", "an uncatalogued version resolves to nothing")
+}
+
+func TestResolveRoleBindingStillRejectsTheSameIdentityFromTwoSources(t *testing.T) {
+	t.Parallel()
+
+	candidates := []domain.ProviderContract{
+		rangerProvider(domain.ProviderSourceEmbedded, "2.0.0"),
+		rangerProvider(domain.ProviderSourceExternal, "2.0.0"),
+		rangerProvider(domain.ProviderSourceEmbedded, "1.4.0"),
+	}
+
+	_, err := plugins.ResolveRoleBinding(rangerRole(), candidates, "", "")
+	require.ErrorContains(t, err, "id_shadowing")
+	assert.Contains(t, err.Error(), "brainstorming")
+}

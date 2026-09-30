@@ -20,23 +20,24 @@ providers:
       ranked_binding_generation: 1
       ranked_binding_status: active
       host_api_digest: sha256:cdd882725f100eee6147ba878fffbb59ee69c0f8731d6ae1925fe020efca2687
-      connector_digest: sha256:15a66d280c4f3ac9410ea527242c31c5fac75d4e637f118146b5e285203a97ca
+      connector_digest: sha256:713cbd1f26a65d73e74d8a0aceba98a181dd7f4e3b950ac419ce7bac3bfec13c
       test_suite_digest: sha256:ae9ea8e91ef985e4018a5c584174d5f7bcc2347d10821a3302a4638c4d863a42
       policy_digest: sha256:29c491811afac9107cfcbc46c5fd75cc8ea28b9703f425cd841300af65ba4c84
       conformance_level: C1
       runtime:
         kind: embedded
+        execution_mode: prompt_bridge
       supported_slots:
         - discovery
       upstream_repo: obra/superpowers
       upstream_skill_path: skills/brainstorming/SKILL.md
       upstream_version: 6.3.0
       upstream_commit: b36e0829c6d0140e93cfef2ca599b1b07d4a7797
-      upstream_content_digest: sha256:51b1e5bb905d064fc7a451d4bf5472815282d7f5a123a6de840cfae778d5a955
+      upstream_content_digest: sha256:74edf03ea6d24ef53db48677b93558d14a979bdf052ca3f57ecdca0c66791608
       license: MIT
-      description: Flexible brainstorming weapon for Ranger discovery; Ranger owns normalization into the canonical pending artifact and handoff.
+      description: You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements and design before implementation.
       installable: true
-      legacy_manifest_path: skills/brainstorming/skill.yaml
+      legacy_manifest_path: skills/brainstorming@1.0.0/skill.yaml
       compatibility_source: embedded
       weapon_contract:
         role_owner: ranger
@@ -72,7 +73,7 @@ providers:
       license: MIT
       description: Archive a completed change in the experimental workflow. Use when the user wants to finalize and archive a change after implementation is complete.
       installable: true
-      legacy_manifest_path: skills/openspec-archive-change/skill.yaml
+      legacy_manifest_path: skills/openspec-archive-change@1.0/skill.yaml
       compatibility_source: embedded
     - id: openspec-explore
       version: "1.0"
@@ -97,7 +98,7 @@ providers:
       upstream_content_digest: sha256:7e0281fc4f094dcced0c5469e7cbceba2dce9f113f22a4e34efcdce4315edf81
       description: Enter explore mode - a thinking partner for exploring ideas, investigating problems, and clarifying requirements. Use when the user wants to think through something before or during a change.
       installable: true
-      legacy_manifest_path: skills/openspec-explore/skill.yaml
+      legacy_manifest_path: skills/openspec-explore@1.0/skill.yaml
       compatibility_source: embedded
     - id: openspec-propose
       version: "1.0"
@@ -116,7 +117,7 @@ providers:
       ranked_binding_generation: 1
       ranked_binding_status: active
       host_api_digest: sha256:4150758da3cb70317d85da0437b373a03f036dcca4e06650f4f039a17aed99a7
-      connector_digest: sha256:15a66d280c4f3ac9410ea527242c31c5fac75d4e637f118146b5e285203a97ca
+      connector_digest: sha256:713cbd1f26a65d73e74d8a0aceba98a181dd7f4e3b950ac419ce7bac3bfec13c
       test_suite_digest: sha256:61bfd55e31ae3ae3501c5f5699e21e8c17873526a3b3ce8b7de2b47d946f1f92
       policy_digest: sha256:29c491811afac9107cfcbc46c5fd75cc8ea28b9703f425cd841300af65ba4c84
       conformance_level: C1
@@ -137,7 +138,7 @@ providers:
       license: MIT
       description: Propose a new change with all artifacts generated in one step. Use when the user wants to quickly describe what they want to build and get a complete proposal with design, specs, and tasks ready for implementation.
       installable: true
-      legacy_manifest_path: skills/openspec-propose/skill.yaml
+      legacy_manifest_path: skills/openspec-propose@1.0/skill.yaml
       compatibility_source: embedded
       scratch_root: runtime
     - id: ranger
@@ -179,7 +180,7 @@ providers:
       ranked_binding_generation: 1
       ranked_binding_status: active
       host_api_digest: sha256:1416b8a00decead8d6175194e5f2c4610dd3f3d203a14e51211239195cb97cc6
-      connector_digest: sha256:15a66d280c4f3ac9410ea527242c31c5fac75d4e637f118146b5e285203a97ca
+      connector_digest: sha256:713cbd1f26a65d73e74d8a0aceba98a181dd7f4e3b950ac419ce7bac3bfec13c
       test_suite_digest: sha256:ab8013534d9373fcc289d338814f1fe1c860f57db9ad02d61f177de621c77557
       policy_digest: sha256:29c491811afac9107cfcbc46c5fd75cc8ea28b9703f425cd841300af65ba4c84
       conformance_level: C1
@@ -208,6 +209,216 @@ providers:
       license: MIT
       description: Use when you have a spec or requirements for a multi-step task, before touching code
       installable: true
-      legacy_manifest_path: skills/writing-plans/skill.yaml
+      legacy_manifest_path: skills/writing-plans@1.0.0/skill.yaml
       compatibility_source: embedded
       scratch_root: runtime
+weapons:
+    - id: archivist
+      version: 0.0.0
+      digest: sha256:a2399058d71ef04a5634f2eb9597533279ee88ab0a2f6f6444cb47ce2b70a816
+      origin: embedded
+      runtime:
+        kind: embedded
+        execution_mode: code
+      connector_id: strategist-native-role
+      entrypoint: invoke
+      supported_roles:
+        - archivist
+    - id: brainstorming
+      version: 1.0.0
+      digest: sha256:048e1cdd5e4878187fc075fb98f4d569d21fbcea229c7d122ab8064c06b3c29c
+      source_digest: sha256:74edf03ea6d24ef53db48677b93558d14a979bdf052ca3f57ecdca0c66791608
+      origin: embedded
+      runtime:
+        kind: embedded
+        execution_mode: prompt_bridge
+      connector_id: strategist-embedded
+      entrypoint: discover
+      supported_roles:
+        - ranger
+      supported_slots:
+        - discovery
+    - id: openspec-archive-change
+      version: "1.0"
+      digest: sha256:2e621cfa8be10a5a3c10b2a2d6071e5f42b22f51ac66c8703e4efc7eae431f8f
+      source_digest: sha256:e111d71216167eea10cec26abe8f6e15d925efeef2fd9925ffa219f55145acce
+      origin: embedded
+      runtime:
+        kind: host
+        host_api: strategist-host-skill/v1
+      connector_id: strategist-host
+      entrypoint: execute
+      supported_roles:
+        - sniper
+      supported_slots:
+        - execution
+    - id: openspec-explore
+      version: "1.0"
+      digest: sha256:454906068ae472cb207391a47c9d2430a5fa4f1868fb790cee7539b6a2d229db
+      source_digest: sha256:7e0281fc4f094dcced0c5469e7cbceba2dce9f113f22a4e34efcdce4315edf81
+      origin: embedded
+      runtime:
+        kind: host
+        host_api: strategist-host-skill/v1
+      connector_id: strategist-host
+      entrypoint: discover
+      supported_roles:
+        - ranger
+      supported_slots:
+        - discovery
+    - id: openspec-propose
+      version: "1.0"
+      digest: sha256:66c0dd48a419ba7206fa3c2c3071e7a554545c8c57907d242ddeff2048ead680
+      source_digest: sha256:d26cbb1790bf8afcf7c868547da5ece9b2280a6dc6134f9343e6e885d128fe4b
+      origin: embedded
+      runtime:
+        kind: openspec_root
+        root: .strategist/openspec
+        bootstrap: openspec init --profile core --tools codex
+        healthcheck: openspec context --json
+        version: 1.13.0
+        node_version: 22.23.2
+      connector_id: strategist-ranked-runtime
+      entrypoint: refine
+      supported_roles:
+        - archivist
+      supported_slots:
+        - refinement
+    - id: ranger
+      version: 0.0.0
+      digest: sha256:ef43bd9c3c2f2b1d0a33897b77b1628c7f87fa56baf31e0f2200b17810414ade
+      origin: embedded
+      runtime:
+        kind: embedded
+        execution_mode: code
+      connector_id: strategist-native-role
+      entrypoint: invoke
+      supported_roles:
+        - ranger
+    - id: sniper
+      version: 0.0.0
+      digest: sha256:4b0036990938dd5fb236967e8acbec321c4d01fb65358c8a0b1a14abf024d601
+      origin: embedded
+      runtime:
+        kind: embedded
+        execution_mode: code
+      connector_id: strategist-native-role
+      entrypoint: execute
+      supported_roles:
+        - sniper
+    - id: writing-plans
+      version: 1.0.0
+      digest: sha256:e40bd0442cc9625a60b65888faf8eef36c097ed2214b4d59c25eb52362fa3a89
+      source_digest: sha256:ee4d7025f7a7df44ace6e22604e93126402117172baf94406a5bbd33c8f41d5c
+      origin: embedded
+      runtime:
+        kind: host
+        host_api: strategist-host-skill/v1
+      connector_id: strategist-host
+      entrypoint: refine
+      supported_roles:
+        - archivist
+      supported_slots:
+        - refinement
+roles:
+    - id: archivist
+      slot: refinement
+      contract_digest: sha256:5df7083f255d422bd0075b66807e2c1e0c2e88bf72a8714d2506de45aba8c13c
+      handoff_schema: schemas/handoff-archivist-to-sniper.schema.yaml
+    - id: ranger
+      slot: discovery
+      contract_digest: sha256:a9e647e6d714faf075e801c54fb9182827ea330ce2bbe90353ecf90461d21006
+      handoff_schema: schemas/handoff-ranger-to-archivist.schema.yaml
+    - id: sniper
+      slot: execution
+      contract_digest: sha256:dbb7f4fba82242b6352a0204934da0678fe300e9da81f0a5d6f41d0a388f583b
+compatibility:
+    - role: archivist
+      slot: refinement
+      weapon_id: openspec-propose
+      weapon_version: "1.0"
+      weapon_digest: sha256:66c0dd48a419ba7206fa3c2c3071e7a554545c8c57907d242ddeff2048ead680
+      handoff_schema: schemas/handoff-archivist-to-sniper.schema.yaml
+      source: declared
+    - role: archivist
+      slot: refinement
+      weapon_id: writing-plans
+      weapon_version: 1.0.0
+      weapon_digest: sha256:e40bd0442cc9625a60b65888faf8eef36c097ed2214b4d59c25eb52362fa3a89
+      handoff_schema: schemas/handoff-archivist-to-sniper.schema.yaml
+      source: declared
+    - role: ranger
+      slot: discovery
+      weapon_id: brainstorming
+      weapon_version: 1.0.0
+      weapon_digest: sha256:048e1cdd5e4878187fc075fb98f4d569d21fbcea229c7d122ab8064c06b3c29c
+      handoff_schema: schemas/handoff-ranger-to-archivist.schema.yaml
+      source: declared
+    - role: ranger
+      slot: discovery
+      weapon_id: openspec-explore
+      weapon_version: "1.0"
+      weapon_digest: sha256:454906068ae472cb207391a47c9d2430a5fa4f1868fb790cee7539b6a2d229db
+      handoff_schema: schemas/handoff-ranger-to-archivist.schema.yaml
+      source: declared
+    - role: sniper
+      slot: execution
+      weapon_id: openspec-archive-change
+      weapon_version: "1.0"
+      weapon_digest: sha256:2e621cfa8be10a5a3c10b2a2d6071e5f42b22f51ac66c8703e4efc7eae431f8f
+      source: declared
+ranked_bindings:
+    - role: archivist
+      slot: refinement
+      weapon_id: openspec-propose
+      weapon_version: "1.0"
+      weapon_digest: sha256:66c0dd48a419ba7206fa3c2c3071e7a554545c8c57907d242ddeff2048ead680
+      role_digest: sha256:5df7083f255d422bd0075b66807e2c1e0c2e88bf72a8714d2506de45aba8c13c
+      binding_digest: sha256:30e0b2a369c715164ccfbad4af3a6e95382aeeb102c15cd41430e9a937462828
+      source_digest: sha256:d26cbb1790bf8afcf7c868547da5ece9b2280a6dc6134f9343e6e885d128fe4b
+      execution_mode: ""
+      certification_digest: sha256:3347d054cb8ca2ae7c311ee2dd872b5f1bbb958eb8c5c35b2e5bf8606caf2816
+      connector_id: strategist-ranked-runtime
+      runtime:
+        kind: openspec_root
+        root: .strategist/openspec
+        bootstrap: openspec init --profile core --tools codex
+        healthcheck: openspec context --json
+        version: 1.13.0
+        node_version: 22.23.2
+      entrypoint: refine
+      generation: 1
+      status: active
+    - role: ranger
+      slot: discovery
+      weapon_id: brainstorming
+      weapon_version: 1.0.0
+      weapon_digest: sha256:048e1cdd5e4878187fc075fb98f4d569d21fbcea229c7d122ab8064c06b3c29c
+      role_digest: sha256:a9e647e6d714faf075e801c54fb9182827ea330ce2bbe90353ecf90461d21006
+      binding_digest: sha256:07df400efa1b046e2ab1b5478a60e3ef93cf791a7032af3841b45086039d0b34
+      source_digest: sha256:74edf03ea6d24ef53db48677b93558d14a979bdf052ca3f57ecdca0c66791608
+      execution_mode: prompt_bridge
+      certification_digest: sha256:68367bd3fae882af6651556aef84faf803b48dbaa72e47a4379ffe5622f2750b
+      connector_id: strategist-embedded
+      runtime:
+        kind: embedded
+        execution_mode: prompt_bridge
+      entrypoint: discover
+      generation: 1
+      status: active
+    - role: sniper
+      slot: execution
+      weapon_id: sniper
+      weapon_version: 0.0.0
+      weapon_digest: sha256:4b0036990938dd5fb236967e8acbec321c4d01fb65358c8a0b1a14abf024d601
+      role_digest: sha256:dbb7f4fba82242b6352a0204934da0678fe300e9da81f0a5d6f41d0a388f583b
+      binding_digest: sha256:3b4f0c816651ab9c3192134c33dbe03917b6c8ffa0dd9c6b76d2e15a4ebed2c1
+      execution_mode: code
+      certification_digest: sha256:9cc5a46c11978922b2ea916f9da438b580c81cfbba3ea863b24576808e4955b6
+      connector_id: strategist-native-role
+      runtime:
+        kind: embedded
+        execution_mode: code
+      entrypoint: execute
+      generation: 1
+      status: active

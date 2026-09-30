@@ -395,7 +395,7 @@ func materializedHostRuntime(t *testing.T) (repo, strategist string, state domai
 	strategist = filepath.Join(repo, ".strategist")
 	require.NoError(t, os.MkdirAll(filepath.Join(strategist, "openspec"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(strategist, "openspec", "config.yaml"), []byte("schema: spec-driven\n"), 0o644))
-	script, evidence, err := runtimepayload.MaterializeOpenSpec(embed.DefaultsFS(), filepath.Join(strategist, "weapon-runtime", "openspec-propose"))
+	script, evidence, err := runtimepayload.MaterializeOpenSpec(embed.DefaultsFS(), filepath.Join(strategist, "weapon-runtime", "openspec-propose"), "")
 	require.NoError(t, err)
 	rel, err := filepath.Rel(strategist, script)
 	require.NoError(t, err)

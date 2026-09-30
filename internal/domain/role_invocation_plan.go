@@ -31,8 +31,13 @@ type RoleInvocationPlan struct {
 	// resolution path (docs/adr/0043-ranked-pipeline-pilot-implementation-decisions.md),
 	// never a re-point of Custom's digest lookup.
 	WeaponID          string        `json:"weapon"`
+	WeaponVersion     string        `json:"weapon_version,omitempty"`
 	WeaponDigest      string        `json:"weapon_digest,omitempty"`
+	SourceDigest      string        `json:"source_digest,omitempty"`
 	BindingDigest     string        `json:"binding_digest,omitempty"`
+	ExecutionMode     string        `json:"execution_mode,omitempty"`
+	ConnectorID       string        `json:"connector_id,omitempty"`
+	Entrypoint        string        `json:"entrypoint,omitempty"`
 	BindingGeneration int64         `json:"binding_generation,omitempty"`
 	BindingStatus     string        `json:"binding_status,omitempty"`
 	Runtime           WeaponRuntime `json:"runtime,omitempty"`

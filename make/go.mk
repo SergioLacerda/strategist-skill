@@ -29,7 +29,7 @@ mod-check:
 vet:
 	GOCACHE="$(GOCACHE)" go vet ./...
 
-build:
+build: generate-embedded
 	GOCACHE="$(GOCACHE)" go build -ldflags="-s -w -X main.Version=$$(git describe --tags --dirty --always 2>/dev/null || echo dev)" -o "$(STRATEGIST_BIN)" ./cmd/strategist
 
 test:

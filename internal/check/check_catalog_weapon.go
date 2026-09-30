@@ -37,7 +37,7 @@ func catalogWeaponReadiness(root, slot, provider, catalogPath string, facts doma
 	return weaponReadiness(root, slot, provider, readinessFacets{
 		descriptor: domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "catalog_entry_valid", Detail: catalogPath},
 		source:     domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "catalog_entry_present", Detail: catalogPath},
-		entrypoint: catalogEntrypointCheck(root, provider, facts),
+		entrypoint: catalogEntrypointCheck(root, facts),
 		hostAPI:    catalogHostAPICheck(facts),
 		detail:     catalogPath,
 		conformance: func(probe connectors.ConnectorResult) domain.ReadinessCheck {
@@ -71,10 +71,10 @@ func catalogHostAPICheck(facts domain.WeaponFacts) domain.ReadinessCheck {
 // catalogEntrypointCheck verifies the payload the Weapon's runtime kind needs: the
 // host and embedded kinds need their SKILL.md, an openspec_root runtime needs its
 // root directory. It is a static presence check, not a live invocation.
-func catalogEntrypointCheck(root, provider string, facts domain.WeaponFacts) domain.ReadinessCheck {
+func catalogEntrypointCheck(root string, facts domain.WeaponFacts) domain.ReadinessCheck {
 	switch facts.RuntimeKind {
 	case "host", "embedded":
-		return payloadCheck(filepath.Join(root, "skills", provider, "SKILL.md"))
+		return payloadCheck(filepath.Join(root, "skills", domain.WeaponPayloadDirName(facts.ID, facts.Version), "SKILL.md"))
 	case "openspec_root":
 		return runtimeRootCheck(root, facts.RuntimeRoot)
 	default:

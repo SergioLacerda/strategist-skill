@@ -56,8 +56,8 @@ func planRoleProviderEntry(extractor domain.FileExtractor, catalog pluginCatalog
 	candidates := providerContractsForRole(catalog, roleName)
 	entry := RoleProviderPreviewEntry{Slot: slotName, RoleName: roleName, CurrentProviderID: activeSlots[slotName], Candidates: candidates}
 	if current := activeSlots[slotName]; current != "" {
-		if _, ok := findCatalogProvider(catalog, current); !ok {
-			entry.ResolutionError = fmt.Sprintf("unresolved_active_slot: %s provider %s not found in catalog", slotName, current)
+		if _, ok := findCatalogProviderRef(catalog, current); !ok {
+			entry.ResolutionError = fmt.Sprintf("unresolved_active_slot: %s provider %s not found in catalog%s", slotName, current, unresolvedRefHint(catalog, current))
 			return entry, nil
 		}
 	}
@@ -102,6 +102,7 @@ func applyRoleProviderMigration(store *lifecycle.Store, preview RoleProviderMigr
 			SchemaVersion:       "strategist-plugin-binding/v1",
 			Slot:                entry.Slot,
 			InstalledInstanceID: entry.Resolved.Provider.ID,
+			Role:                entry.RoleName,
 			Status:              "enabled",
 			Mode:                domain.SlotBindingModeCustom,
 		}
@@ -177,7 +178,7 @@ func seedRoleProviderMigrationEntry(store *lifecycle.Store, entry RoleProviderPr
 		}
 		if _, ok := store.Binding(entry.Slot); !ok {
 			store.Bindings = append(store.Bindings, domain.SlotBinding{
-				Slot: entry.Slot, InstalledInstanceID: entry.CurrentProviderID, Generation: 1, Status: "enabled",
+				Slot: entry.Slot, InstalledInstanceID: entry.CurrentProviderID, Role: entry.RoleName, Generation: 1, Status: "enabled",
 				Mode: domain.SlotBindingModeCustom,
 			})
 		}

@@ -28,10 +28,10 @@ func TestWriteWeaponCatalogWritesEntriesAndPayloads(t *testing.T) {
 	assert.Contains(t, text, "      kind: host", "the default runtime kind")
 	assert.Contains(t, text, "      kind: embedded", "an explicit runtime kind")
 	assert.Contains(t, text, "  - id: sniper\n    risk_score: controlled\n    compatibility_source: native_role\n")
-	assert.FileExists(t, filepath.Join(root, "skills", "brainstorming", "SKILL.md"))
-	assert.FileExists(t, filepath.Join(root, "skills", "sdd-ask", "SKILL.md"))
-	assert.NoFileExists(t, filepath.Join(root, "skills", "sniper", "SKILL.md"), "a native role has no Weapon payload")
-	assert.NoFileExists(t, filepath.Join(root, "skills", "no-payload", "SKILL.md"))
+	assert.FileExists(t, filepath.Join(root, "skills", "brainstorming@0.0.0", "SKILL.md"))
+	assert.FileExists(t, filepath.Join(root, "skills", "sdd-ask@0.0.0", "SKILL.md"))
+	assert.NoFileExists(t, filepath.Join(root, "skills", "sniper@0.0.0", "SKILL.md"), "a native role has no Weapon payload")
+	assert.NoFileExists(t, filepath.Join(root, "skills", "no-payload@0.0.0", "SKILL.md"))
 }
 
 func TestCatalogEntryYAMLRendersOneEntry(t *testing.T) {

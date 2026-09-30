@@ -1,40 +1,75 @@
 package check
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+	"path/filepath"
 
-// embeddedWeaponRoster is the permanent embedded weapon<->role pairing
-// baseline fixed by docs/adr/0035-embedded-weapon-fallback-policy.md DEC-001:
-// brainstorming<->ranger (discovery) and openspec-propose<->archivist
-// (refinement). The execution slot's embedded weapon (paired with sniper) is
-// explicitly deferred by that ADR and is intentionally not listed here.
-var embeddedWeaponRoster = []struct {
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
+)
+
+// rosterPairing is one Weapon<->Role pairing the compiled registry certifies
+// for a skill-payload Weapon.
+type rosterPairing struct {
 	SkillID       string
 	CanonicalRole string
-}{
-	{SkillID: "brainstorming", CanonicalRole: "ranger"},
-	{SkillID: "openspec-propose", CanonicalRole: "archivist"},
+}
+
+// registryRosterID names the failing row reported when the compiled registry
+// cannot be read, so an unreadable registry is never a silent empty roster.
+const registryRosterID = "compiled-registry"
+
+// registryRoster derives the expected embedded weapon<->role pairings from the
+// compiled registry in <root>/plugins/catalog.yaml (ADR-0060 Decision 5). Ranked
+// bindings whose Weapon runs as native role code (execution_mode code) are not
+// skill payloads and are not scanned as Weapons.
+func registryRoster(root string) ([]rosterPairing, error) {
+	raw, err := os.ReadFile(filepath.Join(root, "plugins", "catalog.yaml")) //nolint:gosec // G304: fixed path under the runtime root
+	if err != nil {
+		return nil, fmt.Errorf("read compiled registry catalog: %w", err)
+	}
+	registry, err := domain.ParseCompiledRegistryCatalog(raw)
+	if err != nil {
+		return nil, fmt.Errorf("parse compiled registry: %w", err)
+	}
+	pairings := make([]rosterPairing, 0, len(registry.RankedBindings))
+	for _, binding := range registry.RankedBindings {
+		if binding.Runtime.ExecutionMode == domain.WeaponExecutionModeCode {
+			continue
+		}
+		pairings = append(pairings, rosterPairing{SkillID: binding.WeaponID, CanonicalRole: binding.Role})
+	}
+	return pairings, nil
 }
 
 // verifyEmbeddedWeaponRoster reports one failing weaponBinding for every
-// embeddedWeaponRoster pairing whose SkillID does not appear at all among
-// bindings already computed by the skill->role scan.
-func verifyEmbeddedWeaponRoster(bindings []weaponBinding) []weaponBinding {
+// registry-derived pairing whose SkillID does not appear at all among bindings
+// already computed by the skill->role scan, or one failing row when the
+// registry itself is unavailable.
+func verifyEmbeddedWeaponRoster(root string, bindings []weaponBinding) []weaponBinding {
+	expected, err := registryRoster(root)
+	if err != nil {
+		return []weaponBinding{{
+			SkillID: registryRosterID,
+			Reason:  fmt.Sprintf("compiled registry unavailable, permanent pairings cannot be derived (ADR-0060): %v", err),
+		}}
+	}
 	present := make(map[string]bool, len(bindings))
 	for _, b := range bindings {
 		present[b.SkillID] = true
 	}
 	var missing []weaponBinding
-	for _, expected := range embeddedWeaponRoster {
-		if present[expected.SkillID] {
+	for _, pairing := range expected {
+		if present[pairing.SkillID] {
 			continue
 		}
 		missing = append(missing, weaponBinding{
-			SkillID:       expected.SkillID,
-			CanonicalRole: expected.CanonicalRole,
+			SkillID:       pairing.SkillID,
+			CanonicalRole: pairing.CanonicalRole,
 			OK:            false,
 			Reason: fmt.Sprintf(
-				"embedded weapon missing from <root>/skills/ (expected permanent pairing %s<->%s, docs/adr/0035-embedded-weapon-fallback-policy.md DEC-001)",
-				expected.SkillID, expected.CanonicalRole),
+				"embedded weapon missing from <root>/skills/ (registry pairing %s<->%s, ADR-0060)",
+				pairing.SkillID, pairing.CanonicalRole),
 		})
 	}
 	return missing

@@ -100,7 +100,7 @@ func (s Service) extractUpgradeRuntimeTree(strategistDir string, force bool) (ma
 	// own full install manifest — this function's caller (prepareRuntime)
 	// already returns plan.embeddedHashes for finalizeInstall to persist the
 	// manifest once, and calling ApplyUpgrade here would write it twice.
-	toWrite, toBackup := upgradeWriteSet(plan, force)
+	toWrite, toBackup, _ := upgradeWriteSet(plan, force) // install never deletes: legacy-layout removal is an upgrade step
 	backupDir := ""
 	if len(toBackup) > 0 {
 		backupDir, err = s.snapshotBeforeUpgrade(strategistDir, toBackup)

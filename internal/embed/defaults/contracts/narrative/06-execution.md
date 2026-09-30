@@ -127,7 +127,7 @@ mention, and it does not execute them.
 only. It is documentation completion, not implementation or validation evidence, and it
 does not by itself trigger Critical Hit closure to `done/`. The package remains in
 `<base_path>/refined/<mission_id>/` — that is the normal, expected terminal state for a
-main_mission, not an unfinished step. Critical Hit closure requires an explicit
+full_pipeline, not an unfinished step. Critical Hit closure requires an explicit
 implementation/validation claim plus a supplied evidence summary, entirely separate from
 Sniper reaching `documentation_applied` (see `11-critical-hit.md` → Stale Card Detection
 and → Insufficient Evidence).

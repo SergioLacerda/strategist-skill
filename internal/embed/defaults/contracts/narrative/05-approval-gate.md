@@ -255,7 +255,7 @@ vocabulary — see `contracts/machine/mission-status.yaml`), not this list.
 
 The Strategist Approval Gate is mandatory whenever Strategist participates in a request — regardless of:
 - invocation mode (direct or delegated)
-- route (Main Mission, Critical Hit, Implementation Short Route)
+- route (Full Pipeline, Critical Hit, Implementation Short Route)
 - external approvals granted by the invoking context, parent orchestrator, or governance system
 - `execution_gate=allowed` from the local execution context
 

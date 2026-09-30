@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
 )
 
@@ -19,6 +20,30 @@ var defaultsFS embed.FS
 
 // Extractor implements domain.FileExtractor using the embedded defaults.
 type Extractor struct{}
+
+// unsafePayloadSegment reports a Weapon id or version that is empty or could
+// escape the flat skills/<id>@<version>/ directory.
+func unsafePayloadSegment(segment string) bool {
+	return strings.TrimSpace(segment) == "" || strings.ContainsAny(segment, "/\\") || segment == "." || segment == ".."
+}
+
+// ReadEmbeddedWeaponPayload returns the canonical embedded SKILL.md bytes of one
+// Weapon version (skills/<id>@<version>/) and their raw SHA-256 digest. It never consults a filesystem path or host skill
+// loader at runtime.
+func (e Extractor) ReadEmbeddedWeaponPayload(weaponID, version string) ([]byte, string, error) {
+	if unsafePayloadSegment(weaponID) || strings.Contains(weaponID, "@") {
+		return nil, "", fmt.Errorf("embed: invalid Weapon id %q", weaponID)
+	}
+	if unsafePayloadSegment(version) {
+		return nil, "", fmt.Errorf("embed: invalid Weapon version %q for %q", version, weaponID)
+	}
+	data, err := e.ReadFile(filepath.Join("skills", domain.WeaponPayloadDirName(weaponID, version), "SKILL.md"))
+	if err != nil {
+		return nil, "", err
+	}
+	sum := sha256.Sum256(data)
+	return data, fmt.Sprintf("sha256:%x", sum), nil
+}
 
 // LevelingPolicyRequired marks the production embedded extractor as requiring
 // a valid LEVELING policy identity during install and upgrade. Test doubles

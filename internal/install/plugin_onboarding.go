@@ -88,10 +88,13 @@ func onboardingRequirements(catalog pluginCatalog, slots map[string]string) ([]p
 		if provider == "" {
 			return nil, fmt.Errorf("unresolved_active_slot: %s has empty provider", slot)
 		}
-		if _, ok := findCatalogProvider(catalog, provider); !ok {
-			return nil, fmt.Errorf("unresolved_active_slot: %s provider %s", slot, provider)
+		resolved, ok := findCatalogProviderRef(catalog, provider)
+		if !ok {
+			return nil, fmt.Errorf("unresolved_active_slot: %s provider %s%s", slot, provider, unresolvedRefHint(catalog, provider))
 		}
-		requirements = append(requirements, plugins.Requirement{ID: provider, Kind: "adapter_contract", Constraint: "*"})
+		// The requirement pins the resolved id@version, so the resolver can never
+		// pick "the highest" of several catalogued versions.
+		requirements = append(requirements, plugins.Requirement{ID: resolved.ID, Kind: "adapter_contract", Constraint: providerVersionOrDefault(resolved.Version)})
 	}
 	return requirements, nil
 }

@@ -247,3 +247,79 @@ func TestResolveCustomPackageFactsWithoutAStagedAdapterIsNotFound(t *testing.T) 
 	require.NoError(t, err)
 	assert.False(t, found, "a legacy binding with no providers/ package falls through to the other resolvers")
 }
+
+const versionedManifestCatalog = `schema_version: strategist-plugin-catalog/v2
+providers:
+  - id: demo
+    version: "1.4.0"
+    risk_score: write_analysis
+    canonical_role: ranger
+    scratch_root: none
+  - id: demo
+    version: "2.0.0"
+    risk_score: write_analysis
+    canonical_role: ranger
+    scratch_root: runtime
+  - id: solo
+    version: "1.0.0"
+    risk_score: write_analysis
+    canonical_role: ranger
+`
+
+func TestResolveWeaponFactsResolvesAnIDAtVersionReference(t *testing.T) {
+	root := manifestRoot(t, versionedManifestCatalog, nil)
+
+	older, err := domain.ResolveWeaponFacts(root, "demo@1.4.0")
+	require.NoError(t, err)
+	assert.Equal(t, "1.4.0", older.Version)
+	assert.Equal(t, "none", older.ScratchRoot)
+
+	newer, err := domain.ResolveWeaponFacts(root, "demo@2.0.0")
+	require.NoError(t, err)
+	assert.Equal(t, "2.0.0", newer.Version)
+	assert.Equal(t, "runtime", newer.ScratchRoot, "each version keeps its own manifest")
+}
+
+func TestResolveWeaponFactsRefusesAPlainIDWithSeveralVersions(t *testing.T) {
+	root := manifestRoot(t, versionedManifestCatalog, nil)
+
+	_, err := domain.ResolveWeaponFacts(root, "demo")
+
+	require.ErrorIs(t, err, domain.ErrWeaponFactsAmbiguous)
+	require.ErrorContains(t, err, "demo@1.4.0")
+	require.ErrorContains(t, err, "demo@2.0.0")
+
+	solo, err := domain.ResolveWeaponFacts(root, "solo")
+	require.NoError(t, err, "a plain id resolves while exactly one version exists")
+	assert.Equal(t, "1.0.0", solo.Version)
+}
+
+func TestResolveWeaponFactsReportsAnUncataloguedVersion(t *testing.T) {
+	root := manifestRoot(t, versionedManifestCatalog, nil)
+
+	_, err := domain.ResolveWeaponFacts(root, "demo@9.9.9")
+
+	require.ErrorIs(t, err, domain.ErrWeaponFactsNotFound)
+}
+
+func TestResolveWeaponFactsKeepsACustomNameAtVersionOutsideTheCatalogOnItsOwnPath(t *testing.T) {
+	root := manifestRoot(t, versionedManifestCatalog, map[string]string{"team-skill@1.2.0": "id: team-skill\nrisk_score: write_analysis\ncanonical_role: ranger\n"})
+
+	facts, err := domain.ResolveWeaponFacts(root, "team-skill@1.2.0")
+
+	require.NoError(t, err)
+	assert.Equal(t, domain.WeaponFactsSourceCompatView, facts.Source)
+}
+
+func TestWeaponRefMatchesBinding(t *testing.T) {
+	ranked := domain.SlotBinding{InstalledInstanceID: "demo", WeaponVersion: "2.0.0"}
+	custom := domain.SlotBinding{InstalledInstanceID: "team-skill@1.2.0"}
+
+	assert.True(t, domain.WeaponRefMatchesBinding("demo@2.0.0", ranked))
+	assert.True(t, domain.WeaponRefMatchesBinding("demo", ranked), "a plain id matches the locked id")
+	assert.False(t, domain.WeaponRefMatchesBinding("demo@1.4.0", ranked), "another version never matches")
+	assert.False(t, domain.WeaponRefMatchesBinding("other", ranked))
+	assert.False(t, domain.WeaponRefMatchesBinding("", ranked))
+	assert.True(t, domain.WeaponRefMatchesBinding("team-skill@1.2.0", custom), "a custom package id already carries its version")
+	assert.False(t, domain.WeaponRefMatchesBinding("team-skill@9.9.9", custom))
+}

@@ -21,24 +21,24 @@ import (
 func promptSlots(p Prompter, b i18n.WizardStrings, catalog pluginCatalog, providerRisk map[string]string) (discovery, refinement, execution, discoveryMode, refinementMode, executionMode string, err error) {
 	fmt.Println(b.HeaderSlots)
 
-	discoveryIDs, discoveryDefault, discoveryRankedID, discoveryExcluded := compatibleProviderOptions(catalog, slotRoleID(domain.SlotDiscovery), slotHandoffSchema(domain.SlotDiscovery))
-	printExcludedCandidates(discoveryExcluded)
-	if len(discoveryIDs) == 0 {
+	discoveryOptions := compatibleSlotOptions(catalog, slotRoleID(domain.SlotDiscovery), slotHandoffSchema(domain.SlotDiscovery))
+	printExcludedCandidates(discoveryOptions.excluded)
+	if len(discoveryOptions.ids) == 0 {
 		return "", "", "", "", "", "", fmt.Errorf("wizard: discovery: no compatible weapon for role ranger")
 	}
-	printRankedRuntimeNote(b, catalog, discoveryRankedID)
-	discovery, discoveryMode, err = promptSlotProvider(p, b.PromptDiscovery, discoveryIDs, discoveryDefault, discoveryRankedID, b.LabelCustomInput, providerRisk, "write_analysis", "discovery")
+	printRankedRuntimeNote(b, catalog, discoveryOptions.rankedDefault)
+	discovery, discoveryMode, err = promptSlotOptions(p, b.PromptDiscovery, discoveryOptions, b.LabelCustomInput, providerRisk, "write_analysis", "discovery")
 	if err != nil {
 		return "", "", "", "", "", "", err
 	}
 
-	refinementIDs, refinementDefault, refinementRankedID, refinementExcluded := compatibleProviderOptions(catalog, slotRoleID(domain.SlotRefinement), slotHandoffSchema(domain.SlotRefinement))
-	printExcludedCandidates(refinementExcluded)
-	if len(refinementIDs) == 0 {
+	refinementOptions := compatibleSlotOptions(catalog, slotRoleID(domain.SlotRefinement), slotHandoffSchema(domain.SlotRefinement))
+	printExcludedCandidates(refinementOptions.excluded)
+	if len(refinementOptions.ids) == 0 {
 		return "", "", "", "", "", "", fmt.Errorf("wizard: refinement: no compatible weapon for role archivist")
 	}
-	printRankedRuntimeNote(b, catalog, refinementRankedID)
-	refinement, refinementMode, err = promptSlotProvider(p, b.PromptRefinement, refinementIDs, refinementDefault, refinementRankedID, b.LabelCustomInput, providerRisk, "write_analysis", "refinement")
+	printRankedRuntimeNote(b, catalog, refinementOptions.rankedDefault)
+	refinement, refinementMode, err = promptSlotOptions(p, b.PromptRefinement, refinementOptions, b.LabelCustomInput, providerRisk, "write_analysis", "refinement")
 	if err != nil {
 		return "", "", "", "", "", "", err
 	}
@@ -56,7 +56,7 @@ func rankedRuntimeNote(b i18n.WizardStrings, catalog pluginCatalog, rankedID str
 	if rankedID == "" {
 		return ""
 	}
-	provider, ok := findCatalogProvider(catalog, rankedID)
+	provider, ok := findCatalogProviderRef(catalog, rankedID)
 	if !ok || domain.NormalizeRankedRuntime(provider.Runtime).Kind == domain.RankedRuntimeNone {
 		return ""
 	}
@@ -70,67 +70,14 @@ func printRankedRuntimeNote(b i18n.WizardStrings, catalog pluginCatalog, rankedI
 }
 
 func promptExecutionSlot(p Prompter, b i18n.WizardStrings, catalog pluginCatalog, providerRisk map[string]string) (string, string, error) {
-	ids, defaultID, rankedID, excluded := compatibleProviderOptions(catalog, slotRoleID(domain.SlotExecution), slotHandoffSchema(domain.SlotExecution))
-	printExcludedCandidates(excluded)
-	if len(ids) == 0 {
+	options := compatibleSlotOptions(catalog, slotRoleID(domain.SlotExecution), slotHandoffSchema(domain.SlotExecution))
+	printExcludedCandidates(options.excluded)
+	if len(options.ids) == 0 {
 		// Older synthetic extractors predate the catalogued internal skill.
 		provider, err := promptProvider(p, b.PromptExecution, nativeExecutionProvider, []string{nativeExecutionProvider}, b.LabelCustomInput, providerRisk, "controlled", "execution")
 		return provider, domain.SlotBindingModeCustom, err
 	}
-	return promptSlotProvider(p, b.PromptExecution, ids, defaultID, rankedID, b.LabelCustomInput, providerRisk, "controlled", "execution")
-}
-
-// excludedProviderOption records why compatibleProviderOptions did not offer
-// a given catalog candidate, so promptSlots can print it instead of letting
-// the operator wonder whether an empty-looking option list is a bug or an
-// intended exclusion (see .analysis/refined/
-// 20260914-wizard-weapon-options-not-listed/design.md Task 3).
-type excludedProviderOption struct {
-	id      string
-	reasons []domain.CompatibilityReason
-}
-
-// compatibleProviderOptions returns the catalog candidate IDs for roleName
-// that role-affinity validation reports compatible, plus
-// which one should be pre-selected: whichever compatible candidate is
-// marked default in the catalog, or the first compatible one otherwise; the
-// id of the certified-Ranked candidate for roleName, if any (empty when
-// none — docs/adr/0043-ranked-pipeline-pilot-implementation-decisions.md);
-// and the candidates that were excluded along with their compatibility
-// reasons. When nothing is compatible, the id list is empty and the caller
-// must fail before activation. Native roles are not substitutes for the
-// required discovery/refinement weapons.
-func compatibleProviderOptions(catalog pluginCatalog, roleName, handoffSchema string) (ids []string, defaultID, rankedID string, excluded []excludedProviderOption) {
-	role := domain.RoleContract{
-		SchemaVersion: domain.RoleContractSchemaVersion,
-		Role:          roleName,
-		HandoffSchema: handoffSchema,
-	}
-	for _, candidate := range providerContractsForRole(catalog, roleName) {
-		ids, defaultID, excluded = appendProviderOption(ids, defaultID, excluded, candidate, role)
-		if candidate.Ranked && candidate.CertificationDigest != "" {
-			rankedID = candidate.ID
-		}
-	}
-	if defaultID == "" && len(ids) > 0 {
-		defaultID = ids[0]
-	}
-	return ids, defaultID, rankedID, excluded
-}
-
-func appendProviderOption(ids []string, defaultID string, excluded []excludedProviderOption, candidate domain.ProviderContract, role domain.RoleContract) ([]string, string, []excludedProviderOption) {
-	if candidate.Source == domain.ProviderSourceNativeRole && (!candidate.Ranked || candidate.CertificationDigest == "") {
-		return ids, defaultID, excluded
-	}
-	result := candidate.CheckRoleAffinity(role)
-	if !result.Compatible {
-		return ids, defaultID, append(excluded, excludedProviderOption{id: candidate.ID, reasons: result.Reasons})
-	}
-	ids = append(ids, candidate.ID)
-	if candidate.Default {
-		defaultID = candidate.ID
-	}
-	return ids, defaultID, excluded
+	return promptSlotOptions(p, b.PromptExecution, options, b.LabelCustomInput, providerRisk, "controlled", "execution")
 }
 
 // printExcludedCandidates prints one line per candidate compatibleProviderOptions

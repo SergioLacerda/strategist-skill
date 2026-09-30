@@ -137,7 +137,7 @@ bindings:
   - slot: discovery
     installed_instance_id: brainstorming
     mode: ranked
-    status: enabled
+`+rankedLockFields(t, "ranger")+`    status: enabled
   - slot: refinement
     installed_instance_id: openspec-explore
     status: enabled
@@ -164,6 +164,7 @@ providers:
     conformance_level: C1
 `), 0o644))
 	appendFixtureProviders(t, dir, testutil.CatalogProvider{ID: "openspec-explore", Risk: "write_analysis", CanonicalRole: "archivist"}, testutil.CatalogProvider{ID: "openspec-propose", Risk: "write_analysis", CanonicalRole: "archivist"}, testutil.CatalogProvider{ID: "sdd-ask", Risk: "controlled", Source: "external"})
+	appendRegistrySections(t, dir, fixtureRegistry())
 	checkRoot = dir
 	checkJSON = true
 
@@ -204,7 +205,7 @@ bindings:
   - slot: refinement
     installed_instance_id: openspec-propose
     mode: ranked
-    status: enabled
+`+rankedLockFields(t, "archivist")+`    status: enabled
 `), 0o644))
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "plugins"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "plugins", "catalog.yaml"), []byte(`schema_version: strategist-plugin-catalog/v2
@@ -222,6 +223,7 @@ providers:
     conformance_level: C1
 `), 0o644))
 	appendFixtureProviders(t, dir, testutil.CatalogProvider{ID: "brainstorming", Risk: "write_analysis", CanonicalRole: "ranger"}, testutil.CatalogProvider{ID: "sdd-ask", Risk: "controlled", Source: "external"})
+	appendRegistrySections(t, dir, fixtureRegistry())
 	checkRoot = dir
 	checkJSON = true
 

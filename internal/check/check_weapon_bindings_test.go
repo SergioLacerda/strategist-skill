@@ -46,6 +46,7 @@ func writeDefaultRoleSlotMap(t *testing.T, root string) {
 // missing-pairing rows to the result.
 func writeFullRoster(t *testing.T, root string) {
 	t.Helper()
+	writeRegistryCatalog(t, root, fixtureRegistry())
 	writeWeaponFixture(t, root, "brainstorming", "ranger", "role: ranger\nslot: discovery\n")
 	writeWeaponFixture(t, root, "openspec-propose", "archivist", "role: archivist\nslot: refinement\n")
 }
@@ -62,25 +63,51 @@ func findBinding(bindings []weaponBinding, skillID string) (weaponBinding, bool)
 
 func TestVerifyEmbeddedWeaponBindings_NoSkillsDir_ReportsMissingRoster(t *testing.T) {
 	t.Parallel()
-	bindings, err := verifyEmbeddedWeaponBindings(t.TempDir())
+	root := t.TempDir()
+	writeRegistryCatalog(t, root, fixtureRegistry())
+	bindings, err := verifyEmbeddedWeaponBindings(root)
 	require.NoError(t, err)
-	require.Len(t, bindings, len(embeddedWeaponRoster))
+	require.Len(t, bindings, 2, "the native sniper role is not a scanned Weapon")
 	for _, b := range bindings {
 		assert.False(t, b.OK)
 		assert.Contains(t, b.Reason, "embedded weapon missing")
 	}
 }
 
+func TestVerifyEmbeddedWeaponBindings_UnavailableRegistryIsAFailingRowNotAnEmptyRoster(t *testing.T) {
+	t.Parallel()
+	bindings, err := verifyEmbeddedWeaponBindings(t.TempDir())
+	require.NoError(t, err)
+	require.Len(t, bindings, 1)
+	assert.Equal(t, registryRosterID, bindings[0].SkillID)
+	assert.False(t, bindings[0].OK)
+	assert.Contains(t, bindings[0].Reason, "compiled registry unavailable")
+}
+
+func TestVerifyEmbeddedWeaponBindings_RosterFollowsTheRegistryNotAHardcodedList(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	registry := fixtureRegistry()
+	registry.RankedBindings = registry.RankedBindings[:1] // only ranger<->brainstorming is certified
+	writeRegistryCatalog(t, root, registry)
+
+	bindings, err := verifyEmbeddedWeaponBindings(root)
+	require.NoError(t, err)
+	require.Len(t, bindings, 1)
+	assert.Equal(t, "brainstorming", bindings[0].SkillID)
+}
+
 func TestVerifyEmbeddedWeaponBindings_SkipsSkillsWithoutCanonicalRole(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
+	writeRegistryCatalog(t, root, fixtureRegistry())
 	writeWeaponFixture(t, root, "sdd-ask", "", "")
 
 	bindings, err := verifyEmbeddedWeaponBindings(root)
 	require.NoError(t, err)
 	// sdd-ask itself declares no canonical_role and is skipped; the rows
 	// present are the roster's missing-pairing rows, not sdd-ask.
-	require.Len(t, bindings, len(embeddedWeaponRoster))
+	require.Len(t, bindings, 2)
 	_, found := findBinding(bindings, "sdd-ask")
 	assert.False(t, found)
 }
@@ -148,6 +175,7 @@ func TestValidateWeaponBoundaryRejectsOwnerMismatch(t *testing.T) {
 func TestVerifyEmbeddedWeaponBindings_MissingRoleFile(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
+	writeRegistryCatalog(t, root, fixtureRegistry())
 	writeDefaultRoleSlotMap(t, root)
 	writeWeaponFixture(t, root, "openspec-propose", "archivist", "") // no role file written
 
@@ -168,6 +196,7 @@ func TestVerifyEmbeddedWeaponBindings_MissingRoleFile(t *testing.T) {
 func TestVerifyEmbeddedWeaponBindings_RoleSlotMapMismatch(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
+	writeRegistryCatalog(t, root, fixtureRegistry())
 	writeDefaultRoleSlotMap(t, root) // refinement: archivist
 	// A skill that claims canonical_role=ranger for a role file whose own
 	// slot is "refinement" — roles/default.yaml maps refinement to
@@ -180,9 +209,9 @@ func TestVerifyEmbeddedWeaponBindings_RoleSlotMapMismatch(t *testing.T) {
 	require.True(t, found)
 	assert.False(t, b.OK)
 	assert.Contains(t, b.Reason, "roles/default.yaml maps slot")
-	// Neither roster pairing's directory exists in this fixture.
-	for _, expected := range embeddedWeaponRoster {
-		rb, found := findBinding(bindings, expected.SkillID)
+	// Neither registry pairing's directory exists in this fixture.
+	for _, id := range []string{"brainstorming", "openspec-propose"} {
+		rb, found := findBinding(bindings, id)
 		require.True(t, found)
 		assert.False(t, rb.OK)
 	}
@@ -261,13 +290,20 @@ func TestVerifyEmbeddedWeaponBindings_MissingRoleSlotMap(t *testing.T) {
 	assert.Contains(t, b.Reason, "roles/default.yaml unreadable")
 }
 
+func rosterRegistryRoot(t *testing.T) string {
+	t.Helper()
+	root := t.TempDir()
+	writeRegistryCatalog(t, root, fixtureRegistry())
+	return root
+}
+
 func TestVerifyEmbeddedWeaponRoster_AllPresent(t *testing.T) {
 	t.Parallel()
 	bindings := []weaponBinding{
 		{SkillID: "brainstorming", OK: true},
 		{SkillID: "openspec-propose", OK: true},
 	}
-	assert.Empty(t, verifyEmbeddedWeaponRoster(bindings))
+	assert.Empty(t, verifyEmbeddedWeaponRoster(rosterRegistryRoot(t), bindings))
 }
 
 func TestVerifyEmbeddedWeaponRoster_ReportsMissingPairing(t *testing.T) {
@@ -275,31 +311,31 @@ func TestVerifyEmbeddedWeaponRoster_ReportsMissingPairing(t *testing.T) {
 	bindings := []weaponBinding{
 		{SkillID: "brainstorming", OK: true},
 	}
-	missing := verifyEmbeddedWeaponRoster(bindings)
+	missing := verifyEmbeddedWeaponRoster(rosterRegistryRoot(t), bindings)
 	require.Len(t, missing, 1)
 	assert.Equal(t, "openspec-propose", missing[0].SkillID)
 	assert.Equal(t, "archivist", missing[0].CanonicalRole)
 	assert.False(t, missing[0].OK)
 	assert.Contains(t, missing[0].Reason, "embedded weapon missing")
-	assert.Contains(t, missing[0].Reason, "DEC-001")
+	assert.Contains(t, missing[0].Reason, "ADR-0060")
 }
 
 func TestVerifyEmbeddedWeaponRoster_PresentButFailingIsNotDoubleReported(t *testing.T) {
 	t.Parallel()
-	// A roster pairing whose skill directory exists but fails some other
+	// A registry pairing whose skill directory exists but fails some other
 	// check (e.g. missing role file) is already reported by that check —
 	// presence, not validity, is verifyEmbeddedWeaponRoster's only concern.
 	bindings := []weaponBinding{
 		{SkillID: "brainstorming", OK: false, Reason: "role file missing"},
 		{SkillID: "openspec-propose", OK: true},
 	}
-	assert.Empty(t, verifyEmbeddedWeaponRoster(bindings))
+	assert.Empty(t, verifyEmbeddedWeaponRoster(rosterRegistryRoot(t), bindings))
 }
 
 func TestVerifyEmbeddedWeaponRoster_EmptyBindings(t *testing.T) {
 	t.Parallel()
-	missing := verifyEmbeddedWeaponRoster(nil)
-	require.Len(t, missing, len(embeddedWeaponRoster))
+	missing := verifyEmbeddedWeaponRoster(rosterRegistryRoot(t), nil)
+	require.Len(t, missing, 2)
 }
 
 func TestWeaponBindingErrors(t *testing.T) {

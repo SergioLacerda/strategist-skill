@@ -3,7 +3,7 @@
 	check-release-artifacts check-release-assets release-reproducible-check \
 	release-test release-dry-run release snapshot clean compile-skill \
 	release-tag-check release-tag-test release-script-test check-release-binaries verify-published-release \
-	embed-skills embed-skills-check skill-for-hire-pin-check skill-for-hire-pin-check-test build-standalone standalone-smoke install-lite doctor install-hooks
+	embed-skills embed-skills-check generate-embedded generate-embedded-check skill-for-hire-pin-check skill-for-hire-pin-check-test build-standalone standalone-smoke install-lite doctor install-hooks
 
 # install puts a standalone binary in ~/.local/bin and synchronizes the current
 # checkout through that exact freshly installed binary. It embeds the OpenSpec
@@ -29,19 +29,21 @@ install-lite: build
 # The sync-embed target was removed in W7a (Option B): internal/embed/defaults/ is now
 # the single authoring source embedded directly via go:embed — there is nothing to sync.
 
-# embed-skills ingests external-skills-source/ into the embedded plugin
-# catalog (ADR-0032's pre-build ingestion pattern, generalized to role-slot
-# skills — see .analysis/done/20260913-embedded-skill-directory-catalog).
-# Run after adding/editing anything under external-skills-source/, then
-# commit the regenerated catalog.yaml, skill.yaml mirrors, and lock file.
-embed-skills: build
-	"./$(STRATEGIST_BIN)" plugins prepare-embedded
+# generate-embedded ingests external-skills-source/ and materializes the
+# complete build-time Role/Weapon/Ranked registry before compilation. It uses
+# go run so the generator never depends on a stale final binary and cannot
+# create a build -> embed -> build cycle.
+generate-embedded:
+	GOCACHE="$(GOCACHE)" go run ./cmd/strategist plugins prepare-embedded
 
-# embed-skills-check fails non-zero on drift instead of writing — the CI gate
-# that catches an external-skills-source/ change that was never followed by
-# `make embed-skills`.
-embed-skills-check: build
-	"./$(STRATEGIST_BIN)" plugins prepare-embedded --check
+# generate-embedded-check is the read-only CI gate for generated catalog,
+# mirror, registry, and source-lock drift.
+generate-embedded-check:
+	GOCACHE="$(GOCACHE)" go run ./cmd/strategist plugins prepare-embedded --check
+
+# Compatibility aliases retained for existing operator and hook commands.
+embed-skills: generate-embedded
+embed-skills-check: generate-embedded-check
 
 # skill-for-hire-pin-check compares the pin recorded in the (gitignored) pin note
 # with the live upstream release: tag commit, tarball sha256 digests and the

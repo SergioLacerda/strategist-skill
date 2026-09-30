@@ -29,10 +29,63 @@ func BuildRoleInvocationPlan(root, slot string) (domain.RoleInvocationPlan, erro
 	if !binding.ValidMode() {
 		return domain.RoleInvocationPlan{}, fmt.Errorf("role invocation plan: slot %q has invalid binding mode %q", slot, binding.Mode)
 	}
+	if plan, resolved, err := resolveCompiledRoleInvocationPlan(root, role, slot, lock); resolved {
+		return finalizeCompiledPlan(root, plan, err)
+	}
 	if binding.EffectiveMode() != domain.SlotBindingModeRanked {
 		return resolveCustomRoleInvocationPlan(role, slot, lock)
 	}
 	return resolveRankedRoleInvocationPlan(root, role, slot, binding)
+}
+
+func finalizeCompiledPlan(root string, plan domain.RoleInvocationPlan, err error) (domain.RoleInvocationPlan, error) {
+	if err != nil {
+		return domain.RoleInvocationPlan{}, fmt.Errorf("role invocation plan: %w", err)
+	}
+	if plan.Mode != domain.SlotBindingModeRanked {
+		return plan, nil
+	}
+	if err := validateRankedRuntime(root, plan); err != nil {
+		return domain.RoleInvocationPlan{}, fmt.Errorf("role invocation plan: %w", err)
+	}
+	return plan, nil
+}
+
+func resolveCompiledRoleInvocationPlan(root, role, slot string, lock domain.PluginLockFile) (domain.RoleInvocationPlan, bool, error) {
+	binding, err := domain.SingleLockBindingForSlot(lock, slot)
+	if err != nil {
+		return domain.RoleInvocationPlan{}, true, fmt.Errorf("resolve lock binding for slot %q: %w", slot, err)
+	}
+	active, err := readActiveConfig(root)
+	if err != nil {
+		return domain.RoleInvocationPlan{}, false, nil
+	}
+	raw, err := os.ReadFile(filepath.Join(root, "plugins", "catalog.yaml")) //nolint:gosec // fixed runtime path
+	if err != nil {
+		return domain.RoleInvocationPlan{}, false, nil
+	}
+	registry, err := domain.ParseCompiledRegistryCatalog(raw)
+	if err != nil {
+		return domain.RoleInvocationPlan{}, false, nil
+	}
+	resolved, err := domain.ResolveRoleWeaponBinding(active, lock, registry, role, slot)
+	if err != nil {
+		return domain.RoleInvocationPlan{}, true, fmt.Errorf("resolve role weapon binding for role %q: %w", role, err)
+	}
+	plan := domain.RoleInvocationPlan{
+		Role: resolved.Role, Slot: resolved.Slot, Mode: resolved.Mode, WeaponID: resolved.WeaponID, WeaponVersion: resolved.WeaponVersion,
+		WeaponDigest: resolved.WeaponDigest, SourceDigest: resolved.SourceDigest, BindingDigest: resolved.BindingDigest,
+		ExecutionMode: resolved.ExecutionMode, ConnectorID: resolved.ConnectorID, Entrypoint: resolved.Entrypoint,
+		BindingGeneration: binding.Generation, BindingStatus: binding.Status,
+		Runtime: domain.WeaponRuntime{Kind: resolved.RuntimeKind},
+	}
+	if resolved.Mode == domain.SlotBindingModeRanked {
+		compiled, _ := registry.RankedBinding(role, slot, resolved.WeaponID, resolved.WeaponVersion)
+		plan.Runtime = compiled.Runtime
+		plan.BindingGeneration = compiled.Generation
+		plan.BindingStatus = compiled.Status
+	}
+	return plan, true, nil
 }
 
 // loadRoleAndLockForSlot reads slot's mapped native role and plugins.lock,
@@ -132,19 +185,4 @@ func rankedRuntimeRoot(root, runtimeRoot string) (string, error) {
 		return "", fmt.Errorf("ranked runtime root %q is outside .strategist", runtimeRoot)
 	}
 	return filepath.Join(root, filepath.FromSlash(strings.TrimPrefix(rootSlash, strategistPrefix))), nil
-}
-
-// readCatalogRankedStamp reads the materialized plugins/catalog.yaml under
-// root and returns providerID's certification stamp, the same tolerant-read
-// shape as readLock/readRoleMap in this package.
-func readCatalogRankedStamp(root, providerID string) (domain.CatalogRankedStamp, bool, error) {
-	raw, err := os.ReadFile(filepath.Join(root, "plugins", "catalog.yaml")) //nolint:gosec // G304: fixed runtime path
-	if err != nil {
-		return domain.CatalogRankedStamp{}, false, fmt.Errorf("read plugins/catalog.yaml: %w", err)
-	}
-	stamp, ok, err := domain.FindCatalogRankedStamp(raw, providerID)
-	if err != nil {
-		return domain.CatalogRankedStamp{}, false, fmt.Errorf("find catalog ranked stamp: %w", err)
-	}
-	return stamp, ok, nil
 }

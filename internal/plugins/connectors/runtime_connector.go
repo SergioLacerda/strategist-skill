@@ -67,6 +67,7 @@ type InvocationEnvelope struct {
 	SchemaVersion      string
 	Instance           domain.InstalledInstance
 	WeaponID           string
+	WeaponVersion      string
 	ComponentID        string
 	ParentInvocationID string
 	HostAPI            string
@@ -75,19 +76,22 @@ type InvocationEnvelope struct {
 	Entrypoint         string
 	MissionID          string
 	ArtifactPath       string
+	BindingDigest      string
+	SourceDigest       string
 	WriteScope         string
 	GateAllowed        bool
 }
 
 // ConnectorResult is a typed connector response for every operation.
 type ConnectorResult struct {
-	Status             domain.ReadinessStatus
-	ReasonCode         string
-	Detail             string
-	ProviderID         string
-	Artifact           []byte
-	InvocationEvidence string
-	InvocationReceipt  InvocationReceipt
+	Status                    domain.ReadinessStatus
+	ReasonCode                string
+	Detail                    string
+	ProviderID                string
+	Artifact                  []byte
+	InvocationEvidence        string
+	InvocationReceipt         InvocationReceipt
+	EmbeddedInvocationReceipt EmbeddedInvocationReceipt
 }
 
 // ObservationResult includes enforcement evidence without substituting for it.

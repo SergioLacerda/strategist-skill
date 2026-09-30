@@ -11,7 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const embeddedRuntimeDirPath = "skills/openspec-propose/runtime"
+const embeddedRuntimeDirPath = "skills/openspec-propose@1.0/runtime"
 
 type buildInfo struct {
 	Version      string `yaml:"version"`
@@ -61,7 +61,7 @@ func fsReadFile(f interface{ Open(string) (fs.File, error) }, name string) ([]by
 func materializedOpenSpec(t *testing.T) (dir, digest string) {
 	t.Helper()
 	dir = filepath.Join(t.TempDir(), "weapon-runtime", "openspec-propose")
-	_, evidence, err := MaterializeOpenSpec(embed.DefaultsFS(), dir)
+	_, evidence, err := MaterializeOpenSpec(embed.DefaultsFS(), dir, "")
 	require.NoError(t, err)
 	require.Len(t, evidence.Components, 1)
 	return dir, evidence.Components[0].SHA256

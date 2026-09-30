@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
@@ -110,14 +111,14 @@ func bindingsForSlot(lock domain.PluginLockFile, slot string) []domain.SlotBindi
 // split out of persistedSlotBinding, which only handles the zero-or-many
 // cases, to keep each function's branching shallow.
 func validateSingleSlotBinding(root string, slot, role, provider string, binding domain.SlotBinding) []Failure {
-	if binding.InstalledInstanceID != provider {
-		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("persisted binding points to %q, not active provider", binding.InstalledInstanceID)}}
+	if !domain.WeaponRefMatchesBinding(provider, binding) {
+		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("persisted binding points to %q, not active provider", domain.WeaponRef(binding.InstalledInstanceID, binding.WeaponVersion))}}
 	}
 	if !binding.ValidMode() {
 		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("persisted binding has invalid mode %q", binding.Mode)}}
 	}
 	if mode := binding.EffectiveMode(); mode == domain.SlotBindingModeRanked {
-		return validateRankedSlotBinding(root, slot, role, provider)
+		return validateRankedSlotBinding(root, slot, role, provider, binding)
 	}
 	return nil
 }
@@ -125,12 +126,15 @@ func validateSingleSlotBinding(root string, slot, role, provider string, binding
 // validateRankedSlotBinding validates a Ranked binding against the catalog's
 // certification stamp instead of Custom's manifest/risk_score checks (see
 // docs/adr/0043-ranked-pipeline-pilot-implementation-decisions.md DEC-003).
-func validateRankedSlotBinding(root, slot, role, provider string) []Failure {
+func validateRankedSlotBinding(root, slot, role, provider string, binding domain.SlotBinding) []Failure {
 	raw, err := os.ReadFile(filepath.Join(root, "plugins", "catalog.yaml")) //nolint:gosec // G304: fixed runtime path
 	if err != nil {
 		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("plugins/catalog.yaml unreadable: %v", err)}}
 	}
-	stamp, ok, err := domain.FindCatalogRankedStamp(raw, provider)
+	if strings.Contains(string(raw), "ranked_bindings:") {
+		return validateCompiledRankedSlotBinding(slot, role, binding.InstalledInstanceID, binding, raw)
+	}
+	stamp, ok, err := domain.FindCatalogRankedStamp(raw, binding.InstalledInstanceID)
 	if err != nil {
 		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("plugins/catalog.yaml invalid: %v", err)}}
 	}
@@ -144,4 +148,37 @@ func validateRankedSlotBinding(root, slot, role, provider string) []Failure {
 		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("certified provider role affinity does not include %q", role)}}
 	}
 	return nil
+}
+
+func validateCompiledRankedSlotBinding(slot, role, provider string, lockBinding domain.SlotBinding, raw []byte) []Failure {
+	registry, err := domain.ParseCompiledRegistryCatalog(raw)
+	if err != nil {
+		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("compiled role/weapon registry invalid: %v", err)}}
+	}
+	fail := func(reason string) []Failure {
+		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: reason}}
+	}
+	if lockBinding.WeaponVersion == "" {
+		return fail(fmt.Sprintf("plugins.lock Ranked binding has no weapon_version; re-run install to migrate the lock (certified: %s)", registry.RankedOfferNames(role, slot)))
+	}
+	compiled, ok := registry.RankedBinding(role, slot, provider, lockBinding.WeaponVersion)
+	if !ok {
+		return fail(fmt.Sprintf("compiled Ranked binding for %s/%s does not certify %s (certified: %s)", role, slot, domain.WeaponIdentity(provider, lockBinding.WeaponVersion), registry.RankedOfferNames(role, slot)))
+	}
+	if lockBinding.Role != "" && lockBinding.Role != role {
+		return fail("plugins.lock Ranked binding Role does not match the role map")
+	}
+	if !lockMatchesCompiled(lockBinding, compiled) {
+		return fail("plugins.lock Ranked binding does not match the compiled registry")
+	}
+	return nil
+}
+
+// lockMatchesCompiled reports whether every resolved field the lock persists
+// equals the compiled Ranked binding.
+func lockMatchesCompiled(lock domain.SlotBinding, compiled domain.CompiledRankedBinding) bool {
+	return lock.WeaponDigest == compiled.WeaponDigest && lock.SourceDigest == compiled.SourceDigest &&
+		lock.BindingDigest == compiled.BindingDigest && lock.ExecutionMode == compiled.ExecutionMode &&
+		lock.RuntimeKind == compiled.Runtime.Kind && lock.ConnectorID == compiled.ConnectorID &&
+		lock.Entrypoint == compiled.Entrypoint && lock.CertificationDigest == compiled.CertificationDigest
 }

@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
-	"sort"
 
-	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	internalinstall "github.com/SergioLacerda/strategist-skill/internal/install"
 	"github.com/spf13/cobra"
 )
@@ -147,47 +145,6 @@ func runUpgradeRollback(cmd *cobra.Command, strategistDir, stamp string) error {
 	}
 	if _, err := fmt.Fprintf(cmd.OutOrStdout(), "Restored %d file(s) from backup %s.\n", count, stamp); err != nil {
 		return fmt.Errorf("write output: %w", err)
-	}
-	return nil
-}
-
-func printUpgradePlan(out io.Writer, plan internalinstall.UpgradePlan, force bool) error {
-	byState := map[domain.RuntimeFileUpgradeState][]string{}
-	for _, e := range plan.Entries {
-		byState[e.State] = append(byState[e.State], e.Path)
-	}
-
-	if _, err := fmt.Fprintf(out, "managed (no change):     %d\n", len(byState[domain.UpgradeManaged])); err != nil {
-		return fmt.Errorf("write output: %w", err)
-	}
-	if err := printUpgradeGroup(out, "missing (will write)", byState[domain.UpgradeMissing]); err != nil {
-		return err
-	}
-	if err := printUpgradeGroup(out, "auto_upgrade (will write)", byState[domain.UpgradeAutoUpgrade]); err != nil {
-		return err
-	}
-	label := "customized (preserved)"
-	if force {
-		label = "customized (will OVERWRITE — --force)"
-	}
-	if err := printUpgradeGroup(out, label, byState[domain.UpgradeCustomized]); err != nil {
-		return err
-	}
-	return printUpgradeGroup(out, "orphaned (not deleted — review manually)", byState[domain.UpgradeOrphaned])
-}
-
-func printUpgradeGroup(out io.Writer, label string, paths []string) error {
-	if len(paths) == 0 {
-		return nil
-	}
-	sort.Strings(paths)
-	if _, err := fmt.Fprintf(out, "%s: %d\n", label, len(paths)); err != nil {
-		return fmt.Errorf("write output: %w", err)
-	}
-	for _, p := range paths {
-		if _, err := fmt.Fprintf(out, "  - %s\n", p); err != nil {
-			return fmt.Errorf("write output: %w", err)
-		}
 	}
 	return nil
 }

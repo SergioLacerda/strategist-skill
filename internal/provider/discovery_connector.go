@@ -27,21 +27,51 @@ func InvokeDiscoveryViaConnector(ctx context.Context, request DiscoveryWeaponReq
 			return DiscoveryWeaponResponse{}, fmt.Errorf("connector %q cannot invoke discovery Weapon", capabilities.ConnectorID)
 		}
 		result := connector.Invoke(invokeCtx, connectors.InvocationEnvelope{
-			Instance:     instance,
-			Role:         invokeRequest.Role,
-			Slot:         invokeRequest.Slot,
-			Entrypoint:   "discover",
-			MissionID:    invokeRequest.MissionID,
-			ArtifactPath: invokeRequest.ArtifactPath,
+			Instance:      instance,
+			Role:          invokeRequest.Role,
+			Slot:          invokeRequest.Slot,
+			WeaponID:      invokeRequest.ProviderID,
+			Entrypoint:    discoveryEntrypoint(invokeRequest),
+			MissionID:     invokeRequest.MissionID,
+			ArtifactPath:  invokeRequest.ArtifactPath,
+			BindingDigest: invokeRequest.BindingDigest,
+			SourceDigest:  invokeRequest.SourceDigest,
 		})
 		if result.Status != domain.ReadinessReady {
 			return DiscoveryWeaponResponse{}, fmt.Errorf("connector invocation blocked: status=%s reason=%s", result.Status, result.ReasonCode)
 		}
 		return DiscoveryWeaponResponse{
-			ProviderID:         result.ProviderID,
-			InvocationEvidence: result.InvocationEvidence,
-			Artifact:           result.Artifact,
-			InvocationReceipt:  result.InvocationReceipt,
+			ProviderID:                result.ProviderID,
+			InvocationEvidence:        result.InvocationEvidence,
+			Artifact:                  result.Artifact,
+			InvocationReceipt:         result.InvocationReceipt,
+			EmbeddedInvocationReceipt: result.EmbeddedInvocationReceipt,
 		}, nil
 	}, sink, runID)
+}
+
+// InvokeDiscoveryViaRoleWeaponBinding resolves the connector from the
+// already-validated Role→Weapon binding before entering Ranger normalization.
+// Ranked bindings use only the supplied Strategist dispatch table; Custom
+// bindings use only the explicit connector supplied by the host adapter.
+func InvokeDiscoveryViaRoleWeaponBinding(ctx context.Context, request DiscoveryWeaponRequest, instance domain.InstalledInstance, binding domain.RoleWeaponBinding, embedded connectors.EmbeddedWeaponDispatch, custom connectors.RuntimeConnector, sink telemetry.EventSink, runID string) (NormalizedDiscoveryArtifact, error) {
+	if binding.Role != request.Role || binding.Slot != request.Slot || binding.WeaponID != request.ProviderID {
+		return NormalizedDiscoveryArtifact{}, fmt.Errorf("role_invocation_failed: Role/Weapon binding does not match discovery request")
+	}
+	request.BindingDigest = binding.BindingDigest
+	request.SourceDigest = binding.SourceDigest
+	request.Entrypoint = binding.Entrypoint
+	request.RuntimeKind = binding.RuntimeKind
+	connector, err := connectors.ResolveRoleWeaponConnector(ctx, binding, embedded, custom)
+	if err != nil {
+		return NormalizedDiscoveryArtifact{}, fmt.Errorf("role_invocation_failed: %w", err)
+	}
+	return InvokeDiscoveryViaConnector(ctx, request, instance, connector, sink, runID)
+}
+
+func discoveryEntrypoint(request DiscoveryWeaponRequest) string {
+	if request.Entrypoint != "" {
+		return request.Entrypoint
+	}
+	return "discover"
 }

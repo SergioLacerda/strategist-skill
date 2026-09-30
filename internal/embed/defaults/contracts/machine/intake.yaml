@@ -42,7 +42,7 @@ contract:
   routing_matrix:
     evaluation_order:
       1: direct_execute  # automatic classifier (Critical Hit) — checked first
-      2: main_mission    # default, always safe
+      2: full_pipeline   # default, always safe
     critical_hit_conditions:
       task_type_allow: [analysis_move]
       risk_level_require: low
@@ -51,7 +51,7 @@ contract:
       target_path_require: ["<base_path>/pending/", "<base_path>/refined/", "<base_path>/archived/"]
       keyword_deny: [investigar, propor, auditar, projetar, redesenhar, arquitetura, refatorar]
       task_type_deny: [architecture_analysis, refactor, security_audit, new_feature]
-      tie_break: main_mission
+      tie_break: full_pipeline
     emit_on_route_selected:
       format: "[Strategist] phase=intake route_selected={route} task_type={task_type} risk_level={risk_level}"
       level: INFO

@@ -35,3 +35,15 @@ func readLock(root string) (domain.PluginLockFile, error) {
 	}
 	return lock, nil
 }
+
+func readActiveConfig(root string) (domain.ActiveConfig, error) {
+	raw, err := os.ReadFile(filepath.Join(root, "active.yaml")) //nolint:gosec // fixed runtime path
+	if err != nil {
+		return domain.ActiveConfig{}, fmt.Errorf("read active.yaml: %w", err)
+	}
+	var active domain.ActiveConfig
+	if err := yaml.Unmarshal(raw, &active); err != nil {
+		return domain.ActiveConfig{}, fmt.Errorf("unmarshal active.yaml: %w", err)
+	}
+	return active, nil
+}

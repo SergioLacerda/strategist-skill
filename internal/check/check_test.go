@@ -189,7 +189,7 @@ func TestCheckCmd_BlockedReadinessEntrypointFailsExitCode(t *testing.T) {
 	// The Weapon's payload is gone: the catalog entrypoint check must report this as
 	// Blocked, and check must gate its exit code on that (1a): a slot that resolves
 	// and passes static risk_score validation can still be genuinely not-ready.
-	require.NoError(t, os.Remove(filepath.Join(dir, "skills", "brainstorming", "SKILL.md")))
+	require.NoError(t, os.Remove(filepath.Join(dir, "skills", "brainstorming@0.0.0", "SKILL.md")))
 
 	orig := checkRoot
 	t.Cleanup(func() { checkRoot = orig })
@@ -216,6 +216,7 @@ func TestCheckCmd_NativeRole_Sniper(t *testing.T) {
 		testutil.CatalogProvider{ID: "openspec-explore", Risk: "write_analysis", CanonicalRole: "archivist"},
 		testutil.CatalogProvider{ID: "openspec-propose", Risk: "write_analysis", CanonicalRole: "archivist"},
 	)
+	appendRegistrySections(t, dir, fixtureRegistry())
 	// Install sniper as a native role (no skills/sniper/skill.yaml), plus
 	// ranger/archivist role files and the slot->role map the weapon-binding
 	// check needs to validate the roster above.

@@ -22,7 +22,11 @@ type UpgradePlanEntry struct {
 // UpgradePlan is the full-tree upgrade decision set for one .strategist/
 // root, computed by PlanUpgrade without writing anything.
 type UpgradePlan struct {
-	Entries        []UpgradePlanEntry
+	Entries []UpgradePlanEntry
+	// LockMigration names the slots whose persisted Ranked binding has no
+	// weapon_version yet; applying the upgrade fills it from the certified
+	// binding (ADR-0061 Decision 10). Empty when nothing needs migrating.
+	LockMigration  []string
 	embeddedHashes map[string]string
 }
 
@@ -52,10 +56,18 @@ func (s Service) PlanUpgrade(strategistDir string) (UpgradePlan, error) {
 	if err != nil {
 		return UpgradePlan{}, err
 	}
-	entries = append(entries, orphanEntries(manifest, manifestLoaded, embeddedHashes)...)
+	orphans, err := orphanEntries(strategistDir, manifest, manifestLoaded, embeddedHashes)
+	if err != nil {
+		return UpgradePlan{}, err
+	}
+	entries = append(entries, orphans...)
+	lockMigration, err := lockSlotsNeedingMigration(strategistDir)
+	if err != nil {
+		return UpgradePlan{}, err
+	}
 
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Path < entries[j].Path })
-	return UpgradePlan{Entries: entries, embeddedHashes: embeddedHashes}, nil
+	return UpgradePlan{Entries: entries, LockMigration: lockMigration, embeddedHashes: embeddedHashes}, nil
 }
 
 func (s Service) hashEmbeddedPaths(paths []string) (map[string]string, error) {
@@ -98,20 +110,4 @@ func planEntriesForCurrentTree(
 		entries = append(entries, UpgradePlanEntry{Path: p, State: state})
 	}
 	return entries, nil
-}
-
-// orphanEntries reports every manifest-tracked path that is no longer part
-// of the current embedded tree (embeddedHashes has no entry for it).
-func orphanEntries(manifest domain.InstallManifest, manifestLoaded bool, embeddedHashes map[string]string) []UpgradePlanEntry {
-	if !manifestLoaded {
-		return nil
-	}
-	var orphans []UpgradePlanEntry
-	for _, f := range manifest.Files {
-		if _, stillEmbedded := embeddedHashes[f.Path]; stillEmbedded {
-			continue
-		}
-		orphans = append(orphans, UpgradePlanEntry{Path: f.Path, State: domain.UpgradeOrphaned})
-	}
-	return orphans
 }

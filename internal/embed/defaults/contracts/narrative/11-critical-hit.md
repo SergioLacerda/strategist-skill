@@ -37,7 +37,7 @@ In both modes, Critical Hit does not perform analysis and does not evaluate docu
 content beyond what closure mode explicitly requires (the evidence summary, supplied by
 the user or delegating agent — never invented). If a request is ambiguous between a plain
 move and a closure, or between Critical Hit and full analysis, it falls back to
-`main_mission`.
+`full_pipeline`.
 
 The route is selected internally by the routing layer after intake, or re-evaluated
 at any phase transition during an in-flight mission. The delegating agent does not
@@ -77,7 +77,7 @@ And **none** of these are true, for either mode:
 - The demand is only partially implemented, with declared residual work (closure move only)
 - Completion is being inferred solely from code changes with no explicit evidence (closure move only)
 
-**When in doubt → main_mission. Conservatism is the safe default.**
+**When in doubt → full_pipeline. Conservatism is the safe default.**
 
 Critical Hit never evaluates whether a demand was implemented beyond the evidence
 explicitly supplied for a closure move. It never decides implementation status on its own.
@@ -86,7 +86,7 @@ explicitly supplied for a closure move. It never decides implementation status o
 
 A Strategist analysis/refinement mission finishing is not, by itself, evidence that the
 underlying demand was implemented or validated. Leaving a package in `refined/` after a
-main_mission completes is the normal, expected end state — not a gap to be closed. Stale
+full_pipeline completes is the normal, expected end state — not a gap to be closed. Stale
 Card Detection exists only to surface packages that already carry implementation or
 validation evidence but have not yet been moved, not to nudge every completed mission
 toward `done/`.
@@ -125,9 +125,9 @@ Critical Hit self-checks at three points:
    missions is a separate, not-yet-scoped demand; this escalation path does not attempt
    that fix.
 
-Reaching `documentation_applied` at the end of main_mission execution does **not** trigger
+Reaching `documentation_applied` at the end of full_pipeline execution does **not** trigger
 a closure check. It is documentation completion only (see `06-execution.md`). A completed
-main_mission ends with its package in `refined/`, and that is correct — it does not require
+full_pipeline ends with its package in `refined/`, and that is correct — it does not require
 Critical Hit to fire, and Critical Hit does not run an automatic candidacy check at that
 point.
 
@@ -175,7 +175,7 @@ A closure move MUST collect or receive, at minimum:
 - unresolved residuals, if any
 
 If evidence is missing or insufficient, the closure move MUST NOT proceed. Fall back to
-requesting the missing evidence, or to `main_mission` if the request is ambiguous.
+requesting the missing evidence, or to `full_pipeline` if the request is ambiguous.
 
 This is the same `evidence_state: explicit` bar Scout uses to route a request to
 `critical_hit`/short route instead of `full_pipeline` (see `00-routing.md` § Scout —
@@ -185,7 +185,7 @@ invented or inferred.
 
 ## Pipeline Difference
 
-| Phase | main_mission | Critical Hit (plain) | Critical Hit (closure) |
+| Phase | full_pipeline | Critical Hit (plain) | Critical Hit (closure) |
 |-------|-------------|----------------------|-------------------------|
 | Ranger discovery | ✅ | ❌ skipped | ❌ skipped |
 | Archivist refinement | ✅ | ❌ skipped | ❌ skipped |
@@ -259,7 +259,7 @@ StateDirectExec   → [EventSlotPermanent]                          → StateBlo
 The same FSM shape covers both plain and closure moves; the mode only changes what
 Sniper writes at `StateDirectExec` and what the inline gate displays. Stale-card
 detection happens before `StateInit` — it decides whether `EventCriticalHitIntent` fires
-proactively at discovery or intake, never automatically from a main_mission reaching
+proactively at discovery or intake, never automatically from a full_pipeline reaching
 `documentation_applied` alone.
 
 ## Invariants
@@ -273,7 +273,7 @@ proactively at discovery or intake, never automatically from a main_mission reac
 - Never mutates source code
 - Stale-card detection surfaces candidates only — it never auto-closes a package
 - Reaching `documentation_applied` does NOT trigger a closure candidacy check and does NOT
-  imply the package should move to `done/` — a main_mission ending with its package in
+  imply the package should move to `done/` — a full_pipeline ending with its package in
   `refined/` is the normal, expected terminal state, not a condition to correct
 - None of `documentation_applied`, a Sniper report, Approval Gate acceptance, or a
   fully-checked `tasks.md` alone constitutes closure evidence (see Insufficient Evidence)
@@ -282,5 +282,5 @@ proactively at discovery or intake, never automatically from a main_mission reac
 - The bootstrap git-scope scan (Trigger 3) surfaces candidates only — like the other two
   triggers, it never closes a package and never substitutes for an explicit evidence
   summary at the closure gate
-- If any condition is ambiguous, fall back to `main_mission`
+- If any condition is ambiguous, fall back to `full_pipeline`
 - `StateDirectDone` is absorbing — no further transitions

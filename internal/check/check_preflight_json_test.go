@@ -98,7 +98,7 @@ func TestCheckCmd_JSON_BindingsMatchResolvedProviderIDs(t *testing.T) {
 func TestCheckCmd_JSON_BindingStatusReflectsReadinessVector(t *testing.T) {
 	resetCheckFlags(t)
 	dir := minimalCheckRoot(t)
-	require.NoError(t, os.Remove(filepath.Join(dir, "skills", "brainstorming", "SKILL.md")))
+	require.NoError(t, os.Remove(filepath.Join(dir, "skills", "brainstorming@0.0.0", "SKILL.md")))
 	checkRoot = dir
 	checkJSON = true
 

@@ -22,8 +22,11 @@ func catalogHasDrifted(existingPath, wantPath string) (bool, error) {
 
 func mirrorsHaveDrifted(ingested []IngestedSkill, defaultsRoot, tmpRoot string) (bool, error) {
 	for _, skill := range ingested {
-		wantDir := filepath.Join(tmpRoot, "skills", skill.ID)
-		gotDir := filepath.Join(defaultsRoot, "skills", skill.ID)
+		if _, err := os.Stat(legacyMirrorDir(defaultsRoot, skill)); err == nil {
+			return true, nil // an id-only mirror directory is stale under the versioned layout
+		}
+		wantDir := filepath.Join(tmpRoot, "skills", skillPayloadDirName(skill))
+		gotDir := filepath.Join(defaultsRoot, "skills", skillPayloadDirName(skill))
 		drifted, err := directoriesHaveDrifted(wantDir, gotDir)
 		if err != nil {
 			return false, fmt.Errorf("check embedded drift: compare %s and %s: %w", wantDir, gotDir, err)

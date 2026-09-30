@@ -18,6 +18,7 @@ type embeddedWeaponRosterCatalogEntry struct {
 	ID                  string `yaml:"id"`
 	Installable         bool   `yaml:"installable"`
 	CanonicalRole       string `yaml:"canonical_role"`
+	Version             string `yaml:"version"`
 	CompatibilitySource string `yaml:"compatibility_source"`
 	Ranked              bool   `yaml:"ranked"`
 	Runtime             struct {
@@ -28,6 +29,18 @@ type embeddedWeaponRosterCatalogEntry struct {
 
 type embeddedWeaponRosterCatalog struct {
 	Providers []embeddedWeaponRosterCatalogEntry `yaml:"providers"`
+	Weapons   []struct {
+		ID string `yaml:"id"`
+	} `yaml:"weapons"`
+	Roles []struct {
+		ID   string `yaml:"id"`
+		Slot string `yaml:"slot"`
+	} `yaml:"roles"`
+	RankedBindings []struct {
+		Role     string `yaml:"role"`
+		Slot     string `yaml:"slot"`
+		WeaponID string `yaml:"weapon_id"`
+	} `yaml:"ranked_bindings"`
 }
 
 // TestEmbeddedDefaults_BaselineWeaponRosterIsAlwaysEmbedded guards the
@@ -75,11 +88,11 @@ func TestEmbeddedDefaults_BaselineWeaponRosterIsAlwaysEmbedded(t *testing.T) {
 		// The generated per-skill manifest mirror must also actually exist —
 		// this is what a real strategist install extracts into a workspace's
 		// .strategist/skills/<id>/skill.yaml.
-		_, err := embedpkg.Extractor{}.ReadFile("skills/" + want.id + "/skill.yaml")
+		_, err := embedpkg.Extractor{}.ReadFile("skills/" + payloadDirName(want.id, entry.Version) + "/skill.yaml")
 		require.NoErrorf(t, err, "skills/%s/skill.yaml must be embedded alongside its catalog entry", want.id)
-		_, err = embedpkg.Extractor{}.ReadFile("skills/" + want.id + "/SKILL.md")
+		_, err = embedpkg.Extractor{}.ReadFile("skills/" + payloadDirName(want.id, entry.Version) + "/SKILL.md")
 		require.NoErrorf(t, err, "skills/%s/SKILL.md must be embedded alongside its catalog entry", want.id)
-		_, err = embedpkg.Extractor{}.ReadFile("skills/" + want.id + "/strategist.yaml")
+		_, err = embedpkg.Extractor{}.ReadFile("skills/" + payloadDirName(want.id, entry.Version) + "/strategist.yaml")
 		require.NoErrorf(t, err, "skills/%s/strategist.yaml must be embedded alongside its catalog entry", want.id)
 	}
 }
@@ -112,9 +125,43 @@ func TestEmbeddedDefaults_AdditionalWeaponsAreAlwaysEmbedded(t *testing.T) {
 		assert.Truef(t, entry.Installable, "%s must remain installable", want.id)
 		assert.Equal(t, want.canonicalRole, entry.CanonicalRole)
 		for _, payload := range []string{"skill.yaml", "SKILL.md", "strategist.yaml"} {
-			_, err := embedpkg.Extractor{}.ReadFile("skills/" + want.id + "/" + payload)
+			_, err := embedpkg.Extractor{}.ReadFile("skills/" + payloadDirName(want.id, entry.Version) + "/" + payload)
 			require.NoErrorf(t, err, "skills/%s/%s must be embedded", want.id, payload)
 		}
+	}
+}
+
+func TestEmbeddedDefaults_CompiledRoleWeaponRegistryIsComplete(t *testing.T) {
+	t.Parallel()
+
+	raw, err := embedpkg.Extractor{}.ReadFile("plugins/catalog.yaml")
+	require.NoError(t, err)
+	var catalog embeddedWeaponRosterCatalog
+	require.NoError(t, yaml.Unmarshal(raw, &catalog))
+
+	weapons := make(map[string]bool, len(catalog.Weapons))
+	for _, weapon := range catalog.Weapons {
+		weapons[weapon.ID] = true
+	}
+	roles := make(map[string]string, len(catalog.Roles))
+	for _, role := range catalog.Roles {
+		roles[role.ID] = role.Slot
+	}
+	bindings := make(map[string]string, len(catalog.RankedBindings))
+	for _, binding := range catalog.RankedBindings {
+		bindings[binding.Role+"/"+binding.Slot] = binding.WeaponID
+	}
+
+	for _, want := range []struct {
+		role, slot, weapon string
+	}{
+		{"ranger", "discovery", "brainstorming"},
+		{"archivist", "refinement", "openspec-propose"},
+		{"sniper", "execution", "sniper"},
+	} {
+		require.Equal(t, want.slot, roles[want.role], "compiled Role %s", want.role)
+		require.True(t, weapons[want.weapon], "compiled Weapon %s", want.weapon)
+		assert.Equal(t, want.weapon, bindings[want.role+"/"+want.slot], "compiled Ranked binding %s/%s", want.role, want.slot)
 	}
 }
 
@@ -123,7 +170,7 @@ func TestEmbeddedDefaults_ArchivistAndProtocolPreserveAutonomousPrivateRuntimeCo
 	t.Parallel()
 
 	extractor := embedpkg.Extractor{}
-	provider, err := extractor.ReadFile("skills/openspec-propose/SKILL.md")
+	provider, err := extractor.ReadFile("skills/openspec-propose@1.0/SKILL.md")
 	require.NoError(t, err)
 	assert.Contains(t, string(provider), "private launcher")
 	assert.Contains(t, string(provider), "ranked-runtimes.yaml")
@@ -134,4 +181,13 @@ func TestEmbeddedDefaults_ArchivistAndProtocolPreserveAutonomousPrivateRuntimeCo
 	assert.Contains(t, string(protocol), "AUTONOMY AND WEAPON AUTHORITY")
 	assert.Contains(t, string(protocol), "deterministic transition")
 	assert.Contains(t, string(protocol), "global skill with the same")
+}
+
+// payloadDirName mirrors the versioned skills/<id>@<version>/ layout (ADR-0061
+// Decision 11); an entry without a version is catalogued under 0.0.0.
+func payloadDirName(id, version string) string {
+	if version == "" {
+		version = "0.0.0"
+	}
+	return id + "@" + version
 }

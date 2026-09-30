@@ -18,7 +18,12 @@ func providerContractsForRole(catalog pluginCatalog, roleName string) []domain.P
 		}
 		contracts = append(contracts, providerContractFromCatalogEntry(provider))
 	}
-	sort.Slice(contracts, func(i, j int) bool { return contracts[i].ID < contracts[j].ID })
+	sort.Slice(contracts, func(i, j int) bool {
+		if contracts[i].ID != contracts[j].ID {
+			return contracts[i].ID < contracts[j].ID
+		}
+		return domain.CompareWeaponVersions(contracts[i].Version, contracts[j].Version) < 0
+	})
 	return contracts
 }
 

@@ -201,3 +201,22 @@ func TestRegister_AttachesInstallAndUpgrade(t *testing.T) {
 	assert.True(t, names["install"])
 	assert.True(t, names["upgrade"])
 }
+
+func TestUpgrade_DryRunPrintsTheLayoutAndLockMigration(t *testing.T) {
+	fake := &fakeUpgrader{plan: internalinstall.UpgradePlan{
+		Entries: []internalinstall.UpgradePlanEntry{
+			{Path: "skills/demo/SKILL.md", State: domain.UpgradeLegacyLayout},
+			{Path: "skills/demo/skill.yaml", State: domain.UpgradeOrphaned},
+		},
+		LockMigration: []string{"discovery", "refinement"},
+	}}
+
+	out, err := upgradeOutput(t, fakeUpgradeDeps(fake, ""), map[string]string{"target": "/work", "dry-run": "true"})
+
+	require.NoError(t, err)
+	assert.Contains(t, out, "legacy_layout (will migrate: snapshot, then remove): 1")
+	assert.Contains(t, out, "skills/demo/SKILL.md")
+	assert.Contains(t, out, "orphaned (not deleted — review manually): 1")
+	assert.Contains(t, out, "plugins.lock (will migrate: weapon_version): discovery, refinement")
+	assert.Zero(t, fake.applyCalls)
+}

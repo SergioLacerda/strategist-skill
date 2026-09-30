@@ -37,10 +37,10 @@ type RouteValidationDecision struct {
 // the hook before they have full request classification signals.
 func ValidateRouteDecision(route string, metadata RouteRequestMetadata) RouteValidationDecision {
 	if route == "" {
-		route = MissionRouteMain
+		route = MissionRouteFullPipeline
 	}
 	switch route {
-	case MissionRouteMain:
+	case MissionRouteFullPipeline:
 		return allowedRoute(route)
 	case MissionRouteDirectExecute:
 		return validateDirectExecuteRoute(route, metadata)

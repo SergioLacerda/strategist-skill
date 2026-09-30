@@ -75,6 +75,12 @@ func resolveExternalSkill(dir string) (IngestedSkill, error) {
 	if err != nil {
 		return IngestedSkill{}, err
 	}
+	if pkg.Version == "" {
+		pkg.Version = adapter.Version
+	}
+	if pkg.Version == "" {
+		return IngestedSkill{}, fmt.Errorf("external skill %s: SKILL.md or %s must declare version", pkg.ID, externalSkillAdapterFileName)
+	}
 	if err := validateIngestedSkillContract(pkg, adapter); err != nil {
 		return IngestedSkill{}, fmt.Errorf("external skill %s: %w", pkg.ID, err)
 	}
@@ -119,13 +125,13 @@ func IngestExternalSkills(sourceDir string, existingCatalog pluginCatalog, trust
 	}
 
 	var result IngestionResult
-	candidates, candidateIDs := resolveCandidates(dirs, &result)
-	baseProviders := supersedableBaseProviders(existingCatalog.Providers, candidateIDs)
+	candidates, candidateIdentities := resolveCandidates(dirs, &result)
+	baseProviders := supersedableBaseProviders(existingCatalog.Providers, candidateIdentities)
 	accepted := filterAcceptedCandidates(candidates, baseProviders, trustPolicy, &result)
 	result.Ingested = filterDependencyResolved(accepted, existingCatalog.SchemaVersion, baseProviders, &result)
 
 	sort.Slice(result.Rejected, func(i, j int) bool { return result.Rejected[i].ID < result.Rejected[j].ID })
-	sort.Slice(result.Ingested, func(i, j int) bool { return result.Ingested[i].ID < result.Ingested[j].ID })
+	sort.Slice(result.Ingested, func(i, j int) bool { return skillIdentity(result.Ingested[i]) < skillIdentity(result.Ingested[j]) })
 	result.Catalog = buildCatalog(existingCatalog.SchemaVersion, baseProviders, result.Ingested)
 	return result, nil
 }

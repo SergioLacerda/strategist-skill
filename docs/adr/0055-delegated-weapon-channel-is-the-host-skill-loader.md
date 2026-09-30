@@ -1,7 +1,12 @@
 # ADR-0055 — A delegated Role reaches an embedded Weapon through the host skill loader
 
-**Status:** Proposed. The decisions below were approved at the Approval Gate on 2026-09-26; this text
-is a draft for review and becomes Accepted when the maintainer accepts it.
+> Superseded for Ranked internal Weapons by the build-owned Role/Weapon registry
+> and Embedded prompt-bridge design in `docs/plans/2026-09-29-binding-weapons-runtime.md`.
+> Custom Weapons retain the explicit host-connector policy described below.
+
+**Status:** Superseded for Ranked internal Weapons. The historical decision remains
+useful as evidence for the former delegated-host behavior; it is not an authority
+for current Ranked dispatch.
 **Date:** 2026-09-26
 **Mission:** `20260926-embedded-weapon-channel-refinement` (extends [ADR-0029](0029-external-skill-provider-lifecycle.md);
 related: [ADR-0027](0027-refinement-native-role-for-light-client.md), [ADR-0035](0035-embedded-weapon-fallback-policy.md))
@@ -65,6 +70,21 @@ recertifies both. That is the main reason to keep this decision out of the conne
 - Code that no production path reaches still contributes to `connector_digest`. Whether to remove it is a separate
   mission, not decided here.
 - No Go code enforces `weapon_invocation`; a contract test pins the wording and the schema field.
+
+## Current Ranked boundary
+
+The current build flow embeds the canonical Weapon payload and generates the
+Role, Weapon, and Ranked binding registry before compiling the CLI. A Ranked
+binding is materialized into `plugins.lock` with its source digest, execution
+mode, connector, entrypoint, and binding digest. Runtime resolution compares
+that lock record with the compiled registry and fails closed on drift.
+
+For an Embedded `prompt_bridge` Weapon, the host agent may supply model
+execution through the explicitly registered bridge, but it receives the
+payload selected by the compiled registry. It must not load
+`/home/.../skills`, `external-skills-source`, or `skill-for-hire`, and it must
+not replace the selected Weapon with a native Role. A missing bridge is
+`role_invocation_failed`, not permission to use the historical host loader.
 
 ## Open questions
 

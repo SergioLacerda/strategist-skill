@@ -3,7 +3,6 @@ package install
 import (
 	"fmt"
 	"path/filepath"
-	"sort"
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -12,32 +11,41 @@ import (
 
 // resolveCandidates resolves every scanned directory into an IngestedSkill,
 // recording a rejection (never a silent drop) for any that fails to resolve.
-func resolveCandidates(dirs []string, result *IngestionResult) (candidates []IngestedSkill, candidateIDs map[string]bool) {
-	candidateIDs = make(map[string]bool, len(dirs))
+func resolveCandidates(dirs []string, result *IngestionResult) (candidates []IngestedSkill, candidateIdentities map[string]bool) {
+	candidateIdentities = make(map[string]bool, len(dirs))
 	for _, dir := range dirs {
 		skill, err := resolveExternalSkill(dir)
 		if err != nil {
 			result.Rejected = append(result.Rejected, IngestionRejection{ID: filepath.Base(dir), Reason: err.Error()})
 			continue
 		}
+		identity := skillIdentity(skill)
+		if candidateIdentities[identity] {
+			result.Rejected = append(result.Rejected, IngestionRejection{
+				ID:     skill.ID,
+				Reason: fmt.Sprintf("duplicate_identity: %s is provided by more than one package directory (%s)", identity, filepath.Base(dir)),
+			})
+			continue
+		}
 		candidates = append(candidates, skill)
-		candidateIDs[skill.ID] = true
+		candidateIdentities[identity] = true
 	}
-	return candidates, candidateIDs
+	return candidates, candidateIdentities
 }
 
 // supersedableBaseProviders returns existingProviders minus any embedded
-// entry sharing an id with this run's candidates — a candidate re-ingesting
-// an id it already holds in the catalog is a refresh, not a collision. This
+// entry sharing an id@version with this run's candidates — a candidate
+// re-ingesting an identity it already holds in the catalog is a refresh, not a
+// collision, while another version of the same id is kept alongside it. This
 // is what makes IngestExternalSkills idempotent across repeated runs
 // (tasks.md Task 2.5): a hand-authored native_role/external entry sharing an
 // id with a candidate is still a real collision and is still rejected by
 // filterAcceptedCandidates's id_shadowing check.
-func supersedableBaseProviders(existingProviders []pluginCatalogProvider, candidateIDs map[string]bool) []pluginCatalogProvider {
+func supersedableBaseProviders(existingProviders []pluginCatalogProvider, candidateIdentities map[string]bool) []pluginCatalogProvider {
 	base := make([]pluginCatalogProvider, 0, len(existingProviders))
 	for _, provider := range existingProviders {
-		if provider.CompatibilitySource == "embedded" && candidateIDs[provider.ID] {
-			continue // superseded by this run's re-ingestion of the same id
+		if provider.CompatibilitySource == "embedded" && candidateIdentities[providerIdentity(provider)] {
+			continue // superseded by this run's re-ingestion of the same id@version
 		}
 		base = append(base, provider)
 	}
@@ -47,10 +55,7 @@ func supersedableBaseProviders(existingProviders []pluginCatalogProvider, candid
 // filterAcceptedCandidates applies id_shadowing and trust verification, in
 // that order, recording a rejection for each candidate that fails either.
 func filterAcceptedCandidates(candidates []IngestedSkill, baseProviders []pluginCatalogProvider, trustPolicy domain.TrustPolicy, result *IngestionResult) []IngestedSkill {
-	existingIDs := make(map[string]bool, len(baseProviders))
-	for _, provider := range baseProviders {
-		existingIDs[provider.ID] = true
-	}
+	existingIDs := shadowingIDs(baseProviders)
 
 	now := time.Now()
 	var accepted []IngestedSkill
@@ -122,7 +127,7 @@ func buildCatalog(schemaVersion string, baseProviders []pluginCatalogProvider, s
 	for _, skill := range skills {
 		catalog.Providers = append(catalog.Providers, catalogProviderFromIngestedSkill(skill))
 	}
-	sort.Slice(catalog.Providers, func(i, j int) bool { return catalog.Providers[i].ID < catalog.Providers[j].ID })
+	sortCatalogProviders(catalog.Providers)
 	return catalog
 }
 
@@ -132,4 +137,17 @@ func trustReasonCodes(result trust.Result) []string {
 		codes = append(codes, reason.Code)
 	}
 	return codes
+}
+
+// shadowingIDs returns the ids a candidate may not reuse. Only a non-embedded
+// entry shadows an id, whatever its version: an embedded entry of another
+// version of the same id coexists (ADR-0061 Decision 8).
+func shadowingIDs(baseProviders []pluginCatalogProvider) map[string]bool {
+	ids := make(map[string]bool, len(baseProviders))
+	for _, provider := range baseProviders {
+		if provider.CompatibilitySource != "embedded" {
+			ids[provider.ID] = true
+		}
+	}
+	return ids
 }

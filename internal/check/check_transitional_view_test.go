@@ -64,6 +64,7 @@ func TestCheckCmd_JSON_UncatalogedViewIsAdvisoryOnly(t *testing.T) {
 		testutil.CatalogProvider{ID: "openspec-propose", Risk: "write_analysis", CanonicalRole: "archivist"},
 		testutil.CatalogProvider{ID: "sdd-ask", Risk: "controlled", Source: "external"},
 	)
+	appendRegistrySections(t, dir, fixtureRegistry())
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "skills", "openspec-explore"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "skills", "openspec-explore", "skill.yaml"), []byte("id: openspec-explore\nrisk_score: write_analysis\ncanonical_role: archivist\nroles:\n  - archivist\n"), 0o644))
 	checkRoot = dir

@@ -175,6 +175,7 @@ func minimalCheckRoot(t *testing.T) string {
 		testutil.CatalogProvider{ID: "openspec-propose", Risk: "write_analysis", CanonicalRole: "archivist"},
 		testutil.CatalogProvider{ID: "sdd-ask", Risk: "controlled", Source: "external"},
 	)
+	appendRegistrySections(t, dir, fixtureRegistry())
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
 	require.NoError(t, os.WriteFile(
 		filepath.Join(dir, "personas", "epic.yaml"),

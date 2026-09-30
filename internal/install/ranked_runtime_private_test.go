@@ -56,7 +56,7 @@ func TestHostNodeRuntimeRejectsUnsupportedNode(t *testing.T) {
 	findHostNode = func(string) (string, error) { return filepath.Join(t.TempDir(), "node"), nil }
 	hostNodeVersion = func(context.Context, string, string) ([]byte, error) { return []byte("v20.18.9\n"), nil }
 
-	_, _, err := resolveRankedExecutable(context.Background(), t.TempDir(), "openspec-propose", openSpecContract("1.13.0", ""))
+	_, _, err := resolveRankedExecutable(context.Background(), t.TempDir(), "openspec-propose", "", openSpecContract("1.13.0", ""))
 	require.ErrorContains(t, err, "Node >=20.19.0")
 }
 
@@ -92,7 +92,7 @@ func TestPrepareRankedProviderRuntimes_IgnoresATamperedOnDiskOpenSpecTree(t *tes
 	// A genuinely self-consistent forgery: the certificate carries the real
 	// digest of the tampered content, which is possible precisely because
 	// TreeDigest excludes BuildInfoFile from what it covers.
-	rel := "skills/openspec-propose/runtime"
+	rel := "skills/" + openSpecProposePayloadDir + "/runtime"
 	tree := filepath.Join(strategist, filepath.FromSlash(rel))
 	bundle := filepath.Join(tree, "dist", "core", "artifact-graph")
 	require.NoError(t, os.MkdirAll(bundle, 0o755))
@@ -104,7 +104,7 @@ func TestPrepareRankedProviderRuntimes_IgnoresATamperedOnDiskOpenSpecTree(t *tes
 
 	// Sanity: the forgery does verify against itself, so the only thing that
 	// rejects it is reading the embedded authority instead.
-	selfCheck, _, selfErr := runtimepayload.MaterializeOpenSpec(os.DirFS(strategist), filepath.Join(t.TempDir(), "self"))
+	selfCheck, _, selfErr := runtimepayload.MaterializeOpenSpec(os.DirFS(strategist), filepath.Join(t.TempDir(), "self"), "")
 	require.NoError(t, selfErr, "the forged tree certifies itself")
 	selfBody, readErr := os.ReadFile(selfCheck) //nolint:gosec // G304: test-controlled path
 	require.NoError(t, readErr)

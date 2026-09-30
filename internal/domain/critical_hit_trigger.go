@@ -15,7 +15,7 @@ const (
 
 const (
 	criticalHitReasonConditionsNotMet = "conditions_not_met"
-	criticalHitFallbackMainMission    = "main_mission"
+	criticalHitFallbackFullPipeline   = "full_pipeline"
 )
 
 // CriticalHitEvidence mirrors PipelineEvidence's shape: plain fields, no I/O,
@@ -46,14 +46,18 @@ type CriticalHitDecision struct {
 	FallbackRoute string
 }
 
-// EvaluateCriticalHit determines whether e satisfies the plain-move or
-// closure-move trigger conditions from
-// contracts/machine/critical-hit.yaml#trigger_conditions.
+// EvaluateCriticalHit runs Critical Hit through its deterministic activation
+// flow. A mode must select one of the contract's declared trigger condition
+// sets; unknown modes fail closed to the full pipeline.
 func EvaluateCriticalHit(e CriticalHitEvidence) CriticalHitDecision {
-	if e.Mode == CriticalHitModeClosure {
+	switch e.Mode {
+	case CriticalHitModePlain:
+		return evaluatePlainMove(e)
+	case CriticalHitModeClosure:
 		return evaluateClosureMove(e)
+	default:
+		return blockedCriticalHitDecision(e.Mode)
 	}
-	return evaluatePlainMove(e)
 }
 
 func evaluatePlainMove(e CriticalHitEvidence) CriticalHitDecision {
@@ -103,7 +107,7 @@ func blockedCriticalHitDecision(mode CriticalHitMode) CriticalHitDecision {
 		Allowed:       false,
 		Mode:          mode,
 		Reason:        criticalHitReasonConditionsNotMet,
-		FallbackRoute: criticalHitFallbackMainMission,
+		FallbackRoute: criticalHitFallbackFullPipeline,
 	}
 }
 

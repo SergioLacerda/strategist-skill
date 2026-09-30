@@ -96,17 +96,17 @@ func TestCloseCardIsNotASeparateRoute(t *testing.T) {
 
 // TestDocumentationAppliedDoesNotTriggerClosure verifies the corrected
 // lifecycle model: reaching documentation_applied at the end of a
-// main_mission is documentation completion only, does not trigger a Critical
+// full_pipeline is documentation completion only, does not trigger a Critical
 // Hit closure candidacy check, and does not imply the package should move to
-// done/. A completed main_mission ending with its package in refined/ is the
+// done/. A completed full_pipeline ending with its package in refined/ is the
 // normal, expected terminal state — not a gap the pipeline auto-corrects.
 // This supersedes the earlier (incorrect) auto-closure-check design.
 
 // TestDocumentationAppliedDoesNotTriggerClosure verifies the corrected
 // lifecycle model: reaching documentation_applied at the end of a
-// main_mission is documentation completion only, does not trigger a Critical
+// full_pipeline is documentation completion only, does not trigger a Critical
 // Hit closure candidacy check, and does not imply the package should move to
-// done/. A completed main_mission ending with its package in refined/ is the
+// done/. A completed full_pipeline ending with its package in refined/ is the
 // normal, expected terminal state — not a gap the pipeline auto-corrects.
 // This supersedes the earlier (incorrect) auto-closure-check design.
 func TestDocumentationAppliedDoesNotTriggerClosure(t *testing.T) {
@@ -136,8 +136,8 @@ func TestDocumentationAppliedDoesNotTriggerClosure(t *testing.T) {
 		if strings.Contains(content, "closure_check") {
 			t.Fatalf("%s still contains the superseded closure_check step in the Main Mission Sequence", path)
 		}
-		if !strings.Contains(content, "Main mission completion does not imply implementation completion") {
-			t.Fatalf("%s missing the corrected main-mission-completion statement", path)
+		if !strings.Contains(content, "Full pipeline completion does not imply implementation completion") {
+			t.Fatalf("%s missing the corrected full-pipeline-completion statement", path)
 		}
 	}
 

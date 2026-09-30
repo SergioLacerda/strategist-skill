@@ -152,5 +152,5 @@ sniper_to_validation_policy:
     - this transition is advisory-first like ranger_to_archivist — enabled defaults to
       false, unlike archivist_to_sniper's default_policy
     - documenting this transition here does not authorize any role to invoke it as
-      part of the standard mission sequence (00-routing.md's Main Mission Sequence,
+      part of the standard mission sequence (00-routing.md's Full Pipeline Sequence,
       Critical Hit Sequence, and Implementation Short Route are unchanged)

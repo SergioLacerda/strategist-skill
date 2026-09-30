@@ -54,8 +54,7 @@ func needsCustomProjection(catalog pluginCatalog, providerID, mode string) bool 
 	if mode != domain.SlotBindingModeCustom || providerID == "" {
 		return false
 	}
-	_, known := findCatalogProvider(catalog, providerID)
-	return !known
+	return !catalogKnowsRef(catalog, providerID)
 }
 
 // customProviderEnv is the workspace and global-root context Custom provider

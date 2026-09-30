@@ -3,7 +3,6 @@ package plugins
 import (
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -68,50 +67,7 @@ func versionSatisfiesPart(version, part string) bool {
 }
 
 func compareVersions(left, right string) int {
-	leftParts := versionParts(left)
-	rightParts := versionParts(right)
-	for i := 0; i < len(leftParts) || i < len(rightParts); i++ {
-		if comparison := compareVersionPart(leftParts, rightParts, i); comparison != 0 {
-			return comparison
-		}
-	}
-	return strings.Compare(left, right)
-}
-
-func compareVersionPart(left, right []int, index int) int {
-	var l, r int
-	if index < len(left) {
-		l = left[index]
-	}
-	if index < len(right) {
-		r = right[index]
-	}
-	if l < r {
-		return -1
-	}
-	if l > r {
-		return 1
-	}
-	return 0
-}
-
-func versionParts(version string) []int {
-	raw := strings.Split(version, ".")
-	parts := make([]int, 0, len(raw))
-	for _, part := range raw {
-		part = strings.TrimSpace(part)
-		if part == "" {
-			parts = append(parts, 0)
-			continue
-		}
-		n, err := strconv.Atoi(part)
-		if err != nil {
-			parts = append(parts, 0)
-			continue
-		}
-		parts = append(parts, n)
-	}
-	return parts
+	return domain.CompareWeaponVersions(left, right)
 }
 
 func normalizeConstraint(constraint string) string {

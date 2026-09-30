@@ -15,8 +15,12 @@ func NewParent() *cobra.Command {
 // New composes the complete Mission command family. The CLI root supplies
 // runtime-specific persistence and path dependencies; transition semantics
 // remain owned by internal/domain.
-func New(lifecycle LifecycleDependencies, view ViewDependencies, normalize NormalizeDependencies, usage ReportUsageDependencies) *cobra.Command {
+func New(lifecycle LifecycleDependencies, view ViewDependencies, normalize NormalizeDependencies, usage ReportUsageDependencies, invocation ...InvocationDependencies) *cobra.Command {
 	cmd := NewParent()
+	var invocationDeps InvocationDependencies
+	if len(invocation) > 0 {
+		invocationDeps = invocation[0]
+	}
 	cmd.AddCommand(
 		NewStart(lifecycle),
 		NewStatus(lifecycle),
@@ -26,11 +30,13 @@ func New(lifecycle LifecycleDependencies, view ViewDependencies, normalize Norma
 		NewView(view),
 		NewNormalizeOpenSpec(normalize),
 		NewReportUsage(usage),
+		NewInvoke(invocationDeps),
+		NewComplete(invocationDeps),
 	)
 	return cmd
 }
 
 // Register attaches Mission at the root composition boundary.
-func Register(root *cobra.Command, lifecycle LifecycleDependencies, view ViewDependencies, normalize NormalizeDependencies, usage ReportUsageDependencies) {
-	root.AddCommand(New(lifecycle, view, normalize, usage))
+func Register(root *cobra.Command, lifecycle LifecycleDependencies, view ViewDependencies, normalize NormalizeDependencies, usage ReportUsageDependencies, invocation ...InvocationDependencies) {
+	root.AddCommand(New(lifecycle, view, normalize, usage, invocation...))
 }

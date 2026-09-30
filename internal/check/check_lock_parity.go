@@ -80,7 +80,7 @@ func mismatchedLockBindings(lockedBySlot map[string]domain.SlotBinding, activeSl
 	for _, slot := range []string{"discovery", "refinement", "execution"} {
 		locked, hasLockEntry := lockedBySlot[slot]
 		activeProvider := activeSlots[slot]
-		if !hasLockEntry || activeProvider == "" || locked.InstalledInstanceID == activeProvider {
+		if !hasLockEntry || activeProvider == "" || domain.WeaponRefMatchesBinding(activeProvider, locked) {
 			continue
 		}
 		errs = append(errs, parityMessage(slot, activeProvider, locked))

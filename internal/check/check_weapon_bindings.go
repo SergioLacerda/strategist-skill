@@ -17,42 +17,10 @@ import (
 type weaponBinding struct {
 	SkillID       string
 	CanonicalRole string
+	PayloadDir    string // skills/ directory name of a catalogued Weapon (id@version); empty for a hand-made view
 	Slot          string // resolved from roles/<CanonicalRole>.yaml's own slot field; empty when Reason is set before the role file is read
 	OK            bool
 	Reason        string // non-empty only when OK is false
-}
-
-// skillTaxonomy accepts canonical_role in either shape a skill.yaml may
-// carry it in: top-level (the internal/embed/defaults/skills/<id>/skill.yaml
-// authoring convention brainstorming and openspec-explore already use) or
-// nested under specialization_taxonomy (the shape a compiled runtime
-// instance's .strategist/skills/<id>/skill.yaml may carry — the two are not
-// currently guaranteed identical by any generator this check depends on, so
-// it reads whichever is present rather than assuming one).
-type skillTaxonomy struct {
-	CanonicalRole          string                `yaml:"canonical_role"`
-	Roles                  []string              `yaml:"roles"`
-	WeaponContract         domain.WeaponContract `yaml:"weapon_contract"`
-	SpecializationTaxonomy struct {
-		CanonicalRole string `yaml:"canonical_role"`
-	} `yaml:"specialization_taxonomy"`
-}
-
-func (t skillTaxonomy) canonicalRole() string {
-	if t.CanonicalRole != "" {
-		return t.CanonicalRole
-	}
-	return t.SpecializationTaxonomy.CanonicalRole
-}
-
-func (t skillTaxonomy) roles() []string {
-	if len(t.Roles) > 0 {
-		return t.Roles
-	}
-	if role := t.canonicalRole(); role != "" {
-		return []string{role}
-	}
-	return nil
 }
 
 // verifyEmbeddedWeaponBindings scans every skill manifest under
@@ -92,7 +60,7 @@ func verifyEmbeddedWeaponBindings(root string) ([]weaponBinding, error) {
 	// exist at all? A pairing whose skill directory is entirely absent
 	// produces zero rows from the scan above — silence, not a reported
 	// failure. verifyEmbeddedWeaponRoster closes that direction.
-	bindings = append(bindings, verifyEmbeddedWeaponRoster(bindings)...)
+	bindings = append(bindings, verifyEmbeddedWeaponRoster(root, bindings)...)
 	return bindings, nil
 }
 
@@ -163,8 +131,11 @@ func catalogWeaponBindings(root string, catalog []domain.WeaponFacts, roleSlotMa
 		if facts.CompatibilitySource != "embedded" || facts.CanonicalRole == "" {
 			continue
 		}
+		payloadDir := domain.WeaponPayloadDirName(facts.ID, facts.Version)
 		covered[facts.ID] = true
+		covered[payloadDir] = true
 		b := verifyOneWeaponBinding(root, facts.ID, facts.CanonicalRole, facts.WeaponContract, roleSlotMap, roleSlotMapErr)
+		b.PayloadDir = payloadDir
 		if b.OK {
 			b = requireSkillPayload(root, b)
 		}
@@ -174,9 +145,9 @@ func catalogWeaponBindings(root string, catalog []domain.WeaponFacts, roleSlotMa
 }
 
 // requireSkillPayload is the roster's separate payload check: an embedded Weapon
-// must ship its skills/<id>/SKILL.md.
+// must ship its skills/<id>@<version>/SKILL.md.
 func requireSkillPayload(root string, b weaponBinding) weaponBinding {
-	path := filepath.Join(root, "skills", b.SkillID, "SKILL.md")
+	path := filepath.Join(root, "skills", b.PayloadDir, "SKILL.md")
 	if info, err := os.Stat(path); err != nil || info.Size() == 0 {
 		b.OK = false
 		b.Reason = fmt.Sprintf("embedded weapon payload missing or empty: %s", path)

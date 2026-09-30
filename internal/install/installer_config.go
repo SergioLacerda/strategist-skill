@@ -147,14 +147,15 @@ func (s Service) writeSelectedProviderManifest(strategistDir, provider string) e
 	if err != nil {
 		return fmt.Errorf("resolve installable providers for %s: %w", provider, err)
 	}
-	if _, ok := installable[provider]; !ok {
+	providerID, _ := domain.ParseWeaponRef(provider)
+	if _, ok := installable[providerID]; !ok {
 		return nil
 	}
 	data, err := providerManifestBytes(s.Extractor, provider)
 	if err != nil {
 		return err
 	}
-	providerDir := filepath.Join(strategistDir, installedProvidersDirName, provider)
+	providerDir := filepath.Join(strategistDir, installedProvidersDirName, providerID)
 	targetPath := filepath.Join(providerDir, skillYAMLName)
 	if err := atomicWriteFile(targetPath, data, 0o644); err != nil {
 		return fmt.Errorf("write %s: %w", targetPath, err)
@@ -167,11 +168,11 @@ func providerManifestBytes(extractor domain.FileExtractor, provider string) ([]b
 	if err != nil {
 		return nil, fmt.Errorf("load plugin catalog for %s: %w", provider, err)
 	}
-	data, err := generateLegacyProviderManifest(catalog, provider)
-	if err != nil {
-		return nil, err
+	entry, ok := findCatalogProviderRef(catalog, provider)
+	if !ok {
+		return nil, fmt.Errorf("plugin catalog: provider %q not found%s", provider, unresolvedRefHint(catalog, provider))
 	}
-	return data, nil
+	return normalizedDigestManifestFor(entry), nil
 }
 
 // resolvePrompter returns the Prompter to use for wizard mode.

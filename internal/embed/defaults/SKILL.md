@@ -29,11 +29,24 @@ the compact entrypoint contract; it must not duplicate those procedures.
 
 When this skill is invoked, the parent agent MUST NOT solve the user's task directly.
 
-The parent agent MUST resolve the route through Strategist, load the configured
-provider from `.strategist/skills/<provider>/`, and relay the provider through
-the Ranger → Archivist → Approval Gate → Sniper pipeline. The parent agent MUST
+The parent agent MUST resolve the route through Strategist and relay work
+through the Ranger → Archivist → Approval Gate → Sniper pipeline. For a Ranked
+binding, it MUST NOT load a same-named skill from `.strategist/skills/`, a global
+skill directory, `external-skills-source`, or a host loader. It MUST create the
+mission state with `strategist mission start --mission-id <id>`, then submit `bootstrap_done`,
+record the Scout route, and then submit `intake_done`. For a Ranked binding with
+`runtime.kind: embedded`, it invokes the resolved slot with `strategist mission invoke --mission-id <id> --role <role> --slot <slot> --json`
+and returns exactly one raw completion object to `strategist mission complete --request-id <id> --json`. A Ranked `runtime.kind: openspec_root` instead runs
+its compiled private OpenSpec runtime and publishes the completed change through
+`strategist mission normalize-openspec`; `mission invoke` is not its executor.
+When a nested host process is available, a Ranked Embedded invocation may instead
+use `--host codex|claude --context "<original user request>"`; the bridge executes
+only the compiled payload and completes the invocation itself.
+The parent agent MUST
 NOT perform discovery, refinement, or execution directly. It MUST NOT perform
-Scout's route classification or skip Scout. It MUST NOT replace a missing provider with its own built-in capabilities, or treat preflight as source mutation authorization.
+Scout's route classification or skip Scout. It MUST NOT replace a missing
+provider with its own built-in capabilities, or treat preflight as source
+mutation authorization.
 
 Discovery subtypes are selected by Scout and executed under the fixed Ranger role.
 Ranger must invoke the configured discovery Weapon and normalize its untrusted
@@ -71,8 +84,14 @@ preflight diagnostic, not permission to bypass the pipeline.
 - `internal/embed/defaults/` — the single authoring and generation source.
 - `.strategist/` — runtime instance; only operational read target during a
   mission.
-- Provider packages are self-contained under
-  `.strategist/skills/<provider_id>/` and their declared runtime roots.
+- `.strategist/skills/<provider_id>/` is a generated compatibility/provenance
+  projection; it is not the runtime source for Ranked Embedded invocation.
+- Ranked Embedded runtime reads the compiled catalog and payload through
+  `mission invoke`; only an explicitly typed Custom binding may use its
+  recorded external connector or host loader.
+- Ranked `openspec_root` runtime uses the compiled private runtime rooted at
+  `.strategist/openspec`; its provider output is published only through
+  `mission normalize-openspec`.
 - Workspace artifacts resolve through `base_path` in `.strategist/active.yaml`;
   `.analysis/` is not a hardcoded `.analysis/` invariant runtime root.
 - Final Strategist artifacts belong under `<base_path>/pending/` or

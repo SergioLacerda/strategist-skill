@@ -76,11 +76,12 @@ Rules:
     criteria and the gate are deterministic.
 - The Approval Gate splits across two families: the stage is Pipeline, and its
   governing rules are Mechanisms. Side Quest follows the same split.
-- Critical Hit is a Mechanism. It will be refactored to follow the same
-  activation flow as the other Mechanisms. That is an isolated refactor after
-  this implementation, with low confidence. Scout's route value `critical_hit`
-  stays for now.
-- The `main_mission` vs `full_pipeline` naming is deferred to that refactor.
+- Critical Hit is a Mechanism. Its activation flow is mode-selected and
+  deterministic: only `plain` and `closure` modes are evaluated, and an
+  unknown or unsatisfied mode fails closed to `full_pipeline`. Scout's route
+  value `critical_hit` remains unchanged.
+- `full_pipeline` is the canonical name of the default route. The historical
+  `main_mission` identifier is not a route value.
 - The registry field `enforcement_kind` (`code | contract | prose`) records how
   each Mechanism is enforced.
 
@@ -197,8 +198,6 @@ amendment, and the family reclassification of the live documents (task 9.1).
 
 Not done, tracked in the refined `tasks.md`:
 
-- the Critical Hit activation-flow refactor and the `main_mission` vs `full_pipeline` naming
-  (task 9.2), an isolated change with low confidence;
 - 9.3 (L2b) and 9.4 (L5) exit conditions;
 - the removal mission for the L16 SDD adapter surface.
 

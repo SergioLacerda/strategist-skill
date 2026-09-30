@@ -289,6 +289,14 @@ flag: --root (string) default="" usage="path to .strategist/ root (default: auto
 use: mission
 short: Report and inspect mission-level facts this binary cannot observe directly
 
+== strategist mission complete
+use: complete
+short: Complete one embedded Weapon invocation
+flag: --json (bool) default="false" usage="emit machine-readable JSON"
+flag: --mission-id (string) default="" usage="mission identifier (required)"
+flag: --request-id (string) default="" usage="pending invocation request identifier (required)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
 == strategist mission context
 use: context
 short: Materialize declared mission context
@@ -299,6 +307,17 @@ flag: --max-refs (int) default="64" usage="maximum number of references"
 flag: --mission-id (string) default="" usage="mission identifier (required)"
 flag: --ref (stringSlice) default="[]" usage="declared workspace-relative context reference (repeatable)"
 flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist mission invoke
+use: invoke
+short: Invoke one embedded Weapon through a host bridge
+flag: --context (string) default="" usage="original user request supplied to an explicit host bridge"
+flag: --host (string) default="" usage="execute through host (codex or claude); omit to emit the request"
+flag: --json (bool) default="false" usage="emit machine-readable JSON"
+flag: --mission-id (string) default="" usage="mission identifier (required)"
+flag: --role (string) default="ranger" usage="Role to invoke"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+flag: --slot (string) default="" usage="pipeline slot to invoke (required)"
 
 == strategist mission normalize-openspec
 use: normalize-openspec
@@ -471,6 +490,30 @@ flag: --catalog (string) default="internal/embed/defaults/plugins/catalog.yaml" 
 flag: --file (string) default="" usage="path to a resolved Weapon file to hash and compare (mutually exclusive with --resolved-digest)"
 flag: --provider (string) default="" usage="Weapon id to look up in the catalog (required)"
 flag: --resolved-digest (string) default="" usage="an already-computed sha256:<64 hex> digest to compare (mutually exclusive with --file)"
+
+== strategist plugins scaffold-sidecar
+use: scaffold-sidecar <package-dir>
+short: Generate a package's strategist.yaml sidecar deterministically
+long: |
+  Generates <package-dir>/strategist.yaml from the operator's declaration and
+  the package (ADR-0061). --role and --slot are required and are the human
+  confirmation; they are never inferred. version comes from SKILL.md
+  metadata.version, or from --version when the package declares none; risk_score, category and the ranger weapon_contract are
+  derived by fixed rules. upstream_* and license are filled only from an explicit
+  --provenance file. openspec_root additionally needs the package's runtime/
+  bundle, runtime.lock.yaml and a runtime: block in the provenance file.
+  
+  An existing sidecar is never overwritten without --force. --check writes
+  nothing and fails non-zero when the file is missing or differs from the
+  regenerated one. The command touches only <package-dir>/strategist.yaml.
+flag: --check (bool) default="false" usage="fail non-zero on drift instead of writing (for CI)"
+flag: --default (bool) default="false" usage="mark the Weapon as the default for its slot"
+flag: --force (bool) default="false" usage="overwrite an existing, differing sidecar"
+flag: --provenance (string) default="" usage="explicit provenance file supplying upstream_*, license and the openspec_root runtime block"
+flag: --role (stringArray) default="[]" usage="Role the Weapon serves (repeatable, required)"
+flag: --runtime (string) default="embedded" usage="runtime kind: embedded or openspec_root"
+flag: --slot (stringArray) default="[]" usage="slot the Weapon supports (repeatable, required)"
+flag: --version (string) default="" usage="package version, used only when SKILL.md carries no metadata.version"
 
 == strategist provider
 use: provider

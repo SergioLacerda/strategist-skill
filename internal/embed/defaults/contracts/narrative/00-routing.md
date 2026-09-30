@@ -21,21 +21,21 @@ never a Role, Weapon, or provider. The current route names are
   pipeline — may fire at intake or mid-mission. Two modes: plain move (no evaluation, no
   evidence) and closure move (relocate a `pending/`/`refined/` package into `done/`,
   requires an explicit completion/validation claim and a supplied evidence summary).
-  Reaching `documentation_applied` at the end of a main_mission is documentation
+  Reaching `documentation_applied` at the end of a `full_pipeline` is documentation
   completion, not implementation/validation evidence, and does not by itself make a
   package a closure candidate. Never infers implementation status on its own. See
   `critical-hit.yaml` and `11-critical-hit.md`.
 - **Implementation Short Route** — for already-refined implementation/materialization requests
-- **Main Mission** — every other request
+- **Full Pipeline** — every other request
 
 ## Route Selection Order
 
 1. Critical Hit conditions satisfied (see `critical-hit.yaml`) → Critical Hit
    (plain move, or closure move when an explicit completion claim + evidence are present)
 2. Implementation Short Route conditions satisfied → Implementation Short Route
-3. Default → Main Mission
+3. Default → Full Pipeline
 
-**When in doubt → Main Mission. Conservatism is the safe default.**
+**When in doubt → Full Pipeline. Conservatism is the safe default.**
 
 ## Scout — Intake Router
 
@@ -84,11 +84,11 @@ The stable failure reason is `role_invocation_failed`. The native role is not
 substituted for the weapon. The Wizard and
 `strategist check` must detect the invalid binding before mission execution.
 
-## Main Mission Sequence
+## Full Pipeline Sequence
 
 `bootstrap → preflight → intake → discovery → refinement → approval_gate → execution? → adr? → learning`
 
-Main mission completion does not imply implementation completion. The refined package
+Full pipeline completion does not imply implementation completion. The refined package
 remains in `<base_path>/refined/<mission_id>/` by default — that is the normal, expected
 terminal state for an analysis/refinement mission, not a gap to be closed. `done/` is
 reached only through a separate Critical Hit closure, triggered by an explicit
@@ -117,7 +117,7 @@ Short route conditions (ALL must hold):
 - code mutation is not required
 - Git mutation is not required
 
-This route skips full Ranger/Archivist expansion only when context is already refined enough. It does NOT skip the Strategist Approval Gate. If any condition fails, fall through to Main Mission.
+This route skips full Ranger/Archivist expansion only when context is already refined enough. It does NOT skip the Strategist Approval Gate. If any condition fails, fall through to Full Pipeline.
 
 ### Annotation Limits
 
@@ -135,7 +135,7 @@ Still delegates execution to the resolved provider. Direct execution by the Stra
 
 ## Contract Lookup
 
-When operating inside the main mission, consult contracts in this order:
+When operating inside the full pipeline, consult contracts in this order:
 
 1. `01-bootstrap.md`
 2. `02-intake.md`
@@ -173,14 +173,14 @@ the evidence the Scout-selected route needs, so a missing phase is rejected as
 - No slot work performed by Strategist itself — `enforced_by: agent_only`
 - The invoking local context (any adapter, orchestrator, or harness) may block or permit execution — it does NOT replace the canonical pipeline sequence once Strategist is invoked — `enforced_by: agent_only`
 - `execution_gate=allowed` from local context never substitutes the Strategist Approval Gate (explicit user approval) — `enforced_by: agent_only`
-- The Strategist Approval Gate is required on all routes: Critical Hit, Implementation Short Route, and Main Mission — `enforced_by: agent_only`
+- The Strategist Approval Gate is required on all routes: Critical Hit, Implementation Short Route, and Full Pipeline — `enforced_by: agent_only`
 - A missing or uncallable resolved execution provider is a blocked state — never a reason for direct execution — `enforced_by: agent_only`
 
 ## Scope Invariant
 
 Strategist produces analysis and documentation only.
 Code mutation is never in scope — on any route, including Critical Hit.
-Route selection (Critical Hit vs Implementation Short Route vs Main Mission) is handled
+Route selection (Critical Hit vs Implementation Short Route vs Full Pipeline) is handled
 internally by Scout, the Intake Router — the delegating agent does not need to specify a route.
 
 Requests to remove, edit, merge, or refactor source files or tests are not Critical Hit.

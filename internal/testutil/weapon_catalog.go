@@ -16,7 +16,8 @@ type CatalogProvider struct {
 	CanonicalRole string // empty for a Weapon with no role affinity
 	Source        string // compatibility_source; default "embedded"
 	RuntimeKind   string // runtime.kind; default "host"
-	NoPayload     bool   // skip writing skills/<id>/SKILL.md
+	Version       string // catalog version; empty is catalogued under 0.0.0
+	NoPayload     bool   // skip writing skills/<id>@<version>/SKILL.md
 }
 
 // WriteWeaponCatalog writes a valid plugins/catalog.yaml under a .strategist root
@@ -32,7 +33,7 @@ func WriteWeaponCatalog(t testing.TB, strategistRoot string, providers ...Catalo
 		if p.NoPayload || p.Source == "native_role" {
 			continue
 		}
-		dir := filepath.Join(strategistRoot, "skills", p.ID)
+		dir := filepath.Join(strategistRoot, "skills", payloadDirName(p))
 		require.NoError(t, os.MkdirAll(dir, 0o755))
 		require.NoError(t, os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte("# "+p.ID+"\n"), 0o644))
 	}
@@ -56,7 +57,11 @@ func writeCatalogEntry(b *strings.Builder, p CatalogProvider) {
 	if kind == "" {
 		kind = "host"
 	}
-	b.WriteString("  - id: " + p.ID + "\n    risk_score: " + p.Risk + "\n    compatibility_source: " + source + "\n")
+	b.WriteString("  - id: " + p.ID + "\n")
+	if p.Version != "" {
+		b.WriteString("    version: \"" + p.Version + "\"\n")
+	}
+	b.WriteString("    risk_score: " + p.Risk + "\n    compatibility_source: " + source + "\n")
 	if p.CanonicalRole != "" {
 		b.WriteString("    canonical_role: " + p.CanonicalRole + "\n    roles:\n      - " + p.CanonicalRole + "\n")
 		if p.CanonicalRole == "ranger" {
@@ -66,4 +71,14 @@ func writeCatalogEntry(b *strings.Builder, p CatalogProvider) {
 	if source != "native_role" {
 		b.WriteString("    runtime:\n      kind: " + kind + "\n")
 	}
+}
+
+// payloadDirName is the versioned skills/<id>@<version>/ directory of a fixture
+// Weapon (ADR-0061 Decision 11); no version means 0.0.0.
+func payloadDirName(p CatalogProvider) string {
+	version := p.Version
+	if version == "" {
+		version = "0.0.0"
+	}
+	return p.ID + "@" + version
 }

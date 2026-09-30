@@ -37,7 +37,7 @@ func TestExtractor_ReadFile(t *testing.T) {
 	t.Run("reads embedded default provider manifests", func(t *testing.T) {
 		t.Parallel()
 
-		brainstorming, err := embedpkg.Extractor{}.ReadFile("skills/brainstorming/skill.yaml")
+		brainstorming, err := embedpkg.Extractor{}.ReadFile("skills/brainstorming@1.0.0/skill.yaml")
 		require.NoError(t, err)
 		assert.Contains(t, string(brainstorming), "id: brainstorming")
 		assert.Contains(t, string(brainstorming), "status: active")
@@ -54,7 +54,7 @@ func TestExtractor_ReadFile(t *testing.T) {
 		// declared dependency was not honest ingestion.
 		assert.NotContains(t, string(brainstorming), "auxiliary_tools_allowed")
 
-		openspecExplore, err := embedpkg.Extractor{}.ReadFile("skills/openspec-explore/skill.yaml")
+		openspecExplore, err := embedpkg.Extractor{}.ReadFile("skills/openspec-explore@1.0/skill.yaml")
 		require.NoError(t, err)
 		assert.Contains(t, string(openspecExplore), "id: openspec-explore")
 		assert.Contains(t, string(openspecExplore), "status: active")
@@ -282,4 +282,27 @@ func TestExtractor_Extract(t *testing.T) {
 		require.NoError(t, err)
 		assert.Contains(t, string(indexYAML), "narrative/07-adr.md")
 	})
+}
+
+func TestEmbeddedSkillRankedInvocationProtocol(t *testing.T) {
+	t.Parallel()
+
+	doc, err := embedpkg.Extractor{}.ReadFile("SKILL.md")
+	require.NoError(t, err)
+	text := string(doc)
+
+	assert.Contains(t, text, "strategist mission start --mission-id <id>")
+	assert.Contains(t, text, "strategist mission invoke --mission-id <id> --role <role>")
+	assert.Contains(t, text, "strategist mission complete --request-id <id> --json")
+	assert.Contains(t, text, "submit `bootstrap_done`")
+	assert.Contains(t, text, "Ranked `runtime.kind: openspec_root`")
+	assert.Contains(t, text, "`mission invoke` is not its executor")
+	assert.NotContains(t, text, "load the configured provider from `.strategist/skills/<provider>/`")
+	assert.Contains(t, text, "not the runtime source for Ranked Embedded invocation")
+
+	protocol, err := embedpkg.Extractor{}.ReadFile("templates/agent-protocol.md")
+	require.NoError(t, err)
+	assert.Contains(t, string(protocol), "Start each mission with `strategist mission start --mission-id <id>`")
+	assert.Contains(t, string(protocol), "submit `bootstrap_done` before recording a route")
+	assert.Contains(t, string(protocol), "For `runtime.kind: openspec_root`")
 }

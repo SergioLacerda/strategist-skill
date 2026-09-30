@@ -17,34 +17,49 @@ import (
 // updated full-tree install manifest. Orphaned entries are only reported —
 // never deleted. Returns the backup dir (empty if nothing was overwritten).
 func (s Service) ApplyUpgrade(strategistDir string, plan UpgradePlan, force bool) (backupDir string, retErr error) {
-	toWrite, toBackup := upgradeWriteSet(plan, force)
+	toWrite, toBackup, toRemove := upgradeWriteSet(plan, force)
 	if err := s.refuseNormativeDowngrade(strategistDir, plan.embeddedHashes, toWrite); err != nil {
 		return "", err
 	}
 
-	if len(toBackup) > 0 {
+	// Everything the upgrade will overwrite or delete is snapshotted first, so
+	// `upgrade --rollback` can restore it: replaced files, the legacy layout
+	// files, and the install manifest and lock the migration rewrites.
+	snapshot := append(append([]string{}, toBackup...), toRemove...)
+	snapshot = append(snapshot, migrationStateFiles(strategistDir, plan, len(toRemove) > 0)...)
+	if len(snapshot) > 0 {
 		var err error
-		backupDir, err = s.snapshotBeforeUpgrade(strategistDir, toBackup)
+		backupDir, err = s.snapshotBeforeUpgrade(strategistDir, snapshot)
 		if err != nil {
 			return "", fmt.Errorf("upgrade: snapshot before write: %w", err)
 		}
 	}
 
-	if err := s.finalizeUpgrade(strategistDir, plan, toWrite); err != nil {
+	if err := s.finalizeUpgrade(strategistDir, plan, toWrite, toRemove); err != nil {
 		return backupDir, err
 	}
 	return backupDir, nil
 }
 
-// finalizeUpgrade writes the selected files, saves the full-tree manifest and
-// reconciles ranked runtimes.
-func (s Service) finalizeUpgrade(strategistDir string, plan UpgradePlan, toWrite []string) error {
+// finalizeUpgrade writes the selected files, removes the migrated legacy
+// files, saves the full-tree manifest, migrates the lock and reconciles ranked
+// runtimes.
+func (s Service) finalizeUpgrade(strategistDir string, plan UpgradePlan, toWrite, toRemove []string) error {
 	for _, p := range toWrite {
 		if err := s.writeUpgradeFile(strategistDir, p); err != nil {
 			return err
 		}
 	}
+	if err := removeLegacyLayoutFiles(strategistDir, toRemove); err != nil {
+		return err
+	}
+	if err := s.saveUpgradeManifest(strategistDir, plan); err != nil {
+		return err
+	}
+	return s.reconcileUpgradedState(strategistDir, plan)
+}
 
+func (s Service) saveUpgradeManifest(strategistDir string, plan UpgradePlan) error {
 	fullManifest := withInstallHistory(strategistDir, domain.NewFullInstallManifest(packageID(s.Version), plan.embeddedHashes))
 	if err := s.applyLevelingAuthority(&fullManifest); err != nil {
 		return fmt.Errorf("upgrade: LEVELING authority: %w", err)
@@ -52,19 +67,32 @@ func (s Service) finalizeUpgrade(strategistDir string, plan UpgradePlan, toWrite
 	if err := saveInstallManifest(strategistDir, fullManifest); err != nil {
 		return fmt.Errorf("upgrade: save manifest: %w", err)
 	}
-	// Ranked providers keep a runtime and a recorded digest that are derived
-	// from this binary, not from the embedded file tree above. Reconcile them so
-	// an upgrade leaves `strategist check` ready instead of blocked on a stale
-	// digest. A workspace with no ranked binding is untouched.
+	return nil
+}
+
+// reconcileUpgradedState brings the state derived from this binary in line with
+// the files just written: the weapon_version a pre-ADR-0061 Ranked lock lacks,
+// taken from the certified binding of the catalog the upgrade wrote, and the
+// Ranked runtimes and their recorded digest, so an upgrade leaves `strategist
+// check` ready instead of blocked on a stale value. A workspace with no Ranked
+// binding is untouched.
+func (s Service) reconcileUpgradedState(strategistDir string, plan UpgradePlan) error {
+	if len(plan.LockMigration) > 0 {
+		if err := s.refreshInstalledRankedBindings(strategistDir); err != nil {
+			return fmt.Errorf("upgrade: migrate plugins.lock: %w", err)
+		}
+	}
 	if err := prepareRankedProviderRuntimes(context.Background(), strategistDir); err != nil {
 		return fmt.Errorf("upgrade: reconcile ranked runtimes: %w", err)
 	}
 	return nil
 }
 
-func upgradeWriteSet(plan UpgradePlan, force bool) (toWrite, toBackup []string) {
+func upgradeWriteSet(plan UpgradePlan, force bool) (toWrite, toBackup, toRemove []string) {
 	for _, e := range plan.Entries {
 		switch e.State {
+		case domain.UpgradeLegacyLayout:
+			toRemove = append(toRemove, e.Path)
 		case domain.UpgradeMissing:
 			toWrite = append(toWrite, e.Path)
 		case domain.UpgradeAutoUpgrade:
@@ -79,7 +107,7 @@ func upgradeWriteSet(plan UpgradePlan, force bool) (toWrite, toBackup []string) 
 			// no-op: already current, or not ours to touch automatically.
 		}
 	}
-	return toWrite, toBackup
+	return toWrite, toBackup, toRemove
 }
 
 func (s Service) writeUpgradeFile(strategistDir, relPath string) error {

@@ -5,7 +5,7 @@ import "fmt"
 // Pipeline bypass reasons and mission route identifiers.
 const (
 	PipelineBypassDetectedReason = "pipeline_bypass_detected"
-	MissionRouteMain             = "main"
+	MissionRouteFullPipeline     = "full_pipeline"
 	MissionRouteDirectExecute    = "direct_execute"
 )
 
@@ -20,7 +20,7 @@ func PipelineRouteForScoutRoute(selected string) string {
 	case "critical_hit", "implementation_short_route":
 		return MissionRouteDirectExecute
 	default:
-		return MissionRouteMain
+		return MissionRouteFullPipeline
 	}
 }
 
@@ -63,10 +63,10 @@ func EvaluatePipelineBypass(e PipelineEvidence) PipelineBypassDecision {
 	if e.Route == MissionRouteDirectExecute {
 		return evaluateDirectExecuteBypass(e)
 	}
-	return evaluateMainRouteBypass(e)
+	return evaluateFullPipelineBypass(e)
 }
 
-func evaluateMainRouteBypass(e PipelineEvidence) PipelineBypassDecision {
+func evaluateFullPipelineBypass(e PipelineEvidence) PipelineBypassDecision {
 	if !e.DiscoveryPresent {
 		return discoveryBypassDecision(e)
 	}
@@ -135,7 +135,7 @@ func blockedBypassDecision(e PipelineEvidence, expectedPhase, missingEvidence, r
 
 func normalizePipelineEvidence(e PipelineEvidence) PipelineEvidence {
 	if e.Route == "" {
-		e.Route = MissionRouteMain
+		e.Route = MissionRouteFullPipeline
 	}
 	if e.BasePath == "" {
 		e.BasePath = ".analysis"

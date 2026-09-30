@@ -2,8 +2,6 @@ package domain
 
 import (
 	"fmt"
-	"path"
-	"path/filepath"
 	"strings"
 )
 
@@ -11,12 +9,13 @@ import (
 // build-certified Ranked provider it describes the private runtime the provider
 // needs before it can be invoked.
 type WeaponRuntime struct {
-	Kind        string `yaml:"kind"`
-	HostAPI     string `yaml:"host_api,omitempty"`
-	Root        string `yaml:"root,omitempty"`
-	Entrypoint  string `yaml:"entrypoint,omitempty"`
-	Bootstrap   string `yaml:"bootstrap,omitempty"`
-	Healthcheck string `yaml:"healthcheck,omitempty"`
+	Kind          string `yaml:"kind"`
+	ExecutionMode string `yaml:"execution_mode,omitempty"`
+	HostAPI       string `yaml:"host_api,omitempty"`
+	Root          string `yaml:"root,omitempty"`
+	Entrypoint    string `yaml:"entrypoint,omitempty"`
+	Bootstrap     string `yaml:"bootstrap,omitempty"`
+	Healthcheck   string `yaml:"healthcheck,omitempty"`
 	// Version and NodeVersion pin the runtime identity (the provider CLI and
 	// the Node it runs on). Optional, but when present they are part of the
 	// certification digest: changing either re-certifies the provider.
@@ -25,6 +24,11 @@ type WeaponRuntime struct {
 }
 
 const (
+	// WeaponExecutionModeCode identifies a Strategist-owned executable adapter.
+	WeaponExecutionModeCode = "code"
+	// WeaponExecutionModePromptBridge identifies a prompt-only Weapon whose
+	// canonical payload is embedded and delivered through an internal bridge.
+	WeaponExecutionModePromptBridge = "prompt_bridge"
 	// RankedRuntimeNone marks a provider that needs no private runtime.
 	RankedRuntimeNone = "none"
 	// RankedRuntimeOpenSpecRoot marks a provider backed by an initialized OpenSpec root.
@@ -72,6 +76,9 @@ func NormalizeRankedRuntime(runtime WeaponRuntime) WeaponRuntime {
 // Validate checks that the runtime kind and its paths/commands are safe and complete.
 func (r WeaponRuntime) Validate() error {
 	normalized := NormalizeRankedRuntime(r)
+	if err := validateExecutionMode(normalized); err != nil {
+		return err
+	}
 	switch normalized.Kind {
 	case RankedRuntimeNone:
 		return validateNoRuntime(normalized)
@@ -85,6 +92,22 @@ func (r WeaponRuntime) Validate() error {
 		return validateOpenSpecRuntime(normalized)
 	default:
 		return unsupportedRuntimeKindError(r.Kind)
+	}
+}
+
+func validateExecutionMode(runtime WeaponRuntime) error {
+	switch runtime.ExecutionMode {
+	case "":
+		return nil
+	case WeaponExecutionModeCode:
+		return nil
+	case WeaponExecutionModePromptBridge:
+		if runtime.Kind != RankedRuntimeEmbedded {
+			return fmt.Errorf("prompt bridge execution requires embedded runtime, got %q", runtime.Kind)
+		}
+		return nil
+	default:
+		return fmt.Errorf("unsupported execution mode %q", runtime.ExecutionMode)
 	}
 }
 
@@ -154,32 +177,4 @@ func (r WeaponRuntime) ValidateActive() error {
 		return fmt.Errorf("active Weapon requires an invocable runtime")
 	}
 	return nil
-}
-
-// isSafeRuntimeRoot accepts only a canonical slash-separated path under
-// .strategist. The separator is normalized before the cleanliness comparison:
-// on Windows filepath.Clean rewrites "/" to "\\", so comparing the raw string
-// against its cleaned form would reject the catalog's own declaration.
-func isSafeRuntimeRoot(root string) bool {
-	if root == "" || filepath.IsAbs(root) {
-		return false
-	}
-	slash := filepath.ToSlash(root)
-	if !hasSafeRuntimePrefix(slash) {
-		return false
-	}
-	return safeRuntimeSegments(slash)
-}
-
-func hasSafeRuntimePrefix(slash string) bool {
-	return !path.IsAbs(slash) && path.Clean(slash) == slash && strings.HasPrefix(slash, ".strategist/")
-}
-
-func safeRuntimeSegments(slash string) bool {
-	for _, segment := range strings.Split(slash, "/") {
-		if segment == ".." || strings.Contains(segment, ":") {
-			return false
-		}
-	}
-	return true
 }
