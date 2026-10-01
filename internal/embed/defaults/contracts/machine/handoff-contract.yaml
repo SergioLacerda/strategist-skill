@@ -55,6 +55,48 @@ contract:
 
   write_scope: read-only (Archivist reads this contract; it does not write to it)
 
+archivist_entry_policy:
+  owner: strategist
+  transition: ranger_to_archivist
+  status: lifecycle_owned
+  description: >
+    Conditional semantic handoff challenge between normalized Ranger discovery
+    and Archivist refinement. The normalized Ranger artifact must carry the
+    closed ranger_handoff_policy_facts block from
+    schemas/handoff-ranger-to-archivist.schema.yaml. Strategist persists one
+    tamper-evident outcome per attempt and consumes it immediately before the
+    Archivist provider invocation.
+
+  facts:
+    source: ranger_handoff_policy_facts
+    schema_version: strategist-ranger-handoff-policy-facts/v1
+    fields: [require_recall, require_boundary, require_classification, require_verdict, informational_only]
+    invalid_values: [missing, null, unknown, wrong_schema_version, contradictory, ambiguous]
+    invalid_action: deny_archivist_invocation
+
+  producer:
+    event: normalized_ranger_artifact
+    outcome: missions/handoff/<mission_id>/ranger_to_archivist/attempt-N.json
+    command: strategist handoff evaluate-ranger
+    standalone_verify_is_diagnostic_only: true
+
+  consumer:
+    boundary: mission invoke --slot refinement --role archivist
+    checks: [mission_id, transition, artifact_digest, policy_id, result, integrity, replay]
+    consume_before_provider_invocation: true
+    denied_when: [missing, failed, stale, cross_mission, policy_mismatch, replayed, tampered, unknown_result]
+
+  telemetry:
+    event: strategist.handoff.ranger_to_archivist
+    contract_id: ranger-to-archivist-handoff/v1
+    privacy: no_artifact_body_answers_or_digest
+
+  invariants:
+    - the coarse mission-risk policy is not lifecycle authority for this transition
+    - an absent or invalid facts block never becomes an automatic skip
+    - a diagnostic handoff verify result never authorizes Archivist execution
+    - Sniper-to-Validation remains advisory and has no standard pipeline consumer
+
 handoff_verification_policy:
   owner: archivist
   transition: archivist_to_sniper

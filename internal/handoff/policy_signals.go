@@ -27,6 +27,9 @@ func ResolveArchivistPolicy(signals RiskSignals) Policy {
 func PolicyIdentity(policy Policy) string {
 	base := DefaultPolicy()
 	types := append([]string(nil), base.RequiredTypes...)
+	if policy.Transition != TransitionArchivistToSniper {
+		types = append([]string(nil), policy.RequiredTypes...)
+	}
 	sort.Strings(types)
 	parts := []string{
 		"strategist-handoff-policy/v1", policy.Transition, predicateList(policy.RequireWhen), predicateList(policy.SkipWhen),

@@ -25,31 +25,66 @@ func completeMissionInvocation(ctx context.Context, input missionadapter.Invocat
 		return domain.MissionInvocationOutcome{}, fmt.Errorf("invocation_telemetry_unavailable: mission completion requires a configured telemetry sink")
 	}
 	store := missionruntime.NewInvocationStore(input.Root)
-	issued, err := store.Get(input.RequestID)
+	record, release, err := claimCompletableInvocation(store, input)
 	if err != nil {
-		return domain.MissionInvocationOutcome{}, fmt.Errorf("load mission invocation: %w", err)
-	}
-	release, err := store.ClaimTarget(issued.Request.MissionID, issued.Request.Role, issued.Request.Slot)
-	if err != nil {
-		return domain.MissionInvocationOutcome{}, fmt.Errorf("claim mission invocation: %w", err)
+		return domain.MissionInvocationOutcome{}, err
 	}
 	defer release()
-	// Re-read under the lease: another completion may have finished meanwhile.
-	record, err := loadCompletableInvocation(store, input)
-	if err != nil {
-		return domain.MissionInvocationOutcome{}, err
-	}
-	if err := verifyExecutionAdapter(record, input); err != nil {
-		return domain.MissionInvocationOutcome{}, err
-	}
-	if err := verifyInvocationStillCurrent(input.Root, record); err != nil {
-		return domain.MissionInvocationOutcome{}, err
-	}
 	artifactPath, err := publishDiscoveryArtifact(ctx, store, input, record)
 	if err != nil {
 		return domain.MissionInvocationOutcome{}, err
 	}
+	if err := recordRangerHandoffAfterPublish(ctx, input, record); err != nil {
+		return domain.MissionInvocationOutcome{}, err
+	}
 	return domain.MissionInvocationOutcome{RequestID: input.RequestID, MissionID: record.Request.MissionID, Status: "normalized", ArtifactPath: artifactPath, BindingDigest: record.Request.BindingDigest, SourceDigest: record.Request.SourceDigest}, nil
+}
+
+// claimCompletableInvocation leases the publication target and re-reads the
+// request under the lease (another completion may have finished meanwhile),
+// then verifies the adapter and that the request is still current. The caller
+// releases the lease; on any error it is already released.
+func claimCompletableInvocation(store missionruntime.InvocationStore, input missionadapter.InvocationCompleteInput) (domain.MissionInvocationRecord, func(), error) {
+	issued, err := store.Get(input.RequestID)
+	if err != nil {
+		return domain.MissionInvocationRecord{}, nil, fmt.Errorf("load mission invocation: %w", err)
+	}
+	release, err := store.ClaimTarget(issued.Request.MissionID, issued.Request.Role, issued.Request.Slot)
+	if err != nil {
+		return domain.MissionInvocationRecord{}, nil, fmt.Errorf("claim mission invocation: %w", err)
+	}
+	record, err := verifyClaimedInvocation(store, input)
+	if err != nil {
+		release()
+		return domain.MissionInvocationRecord{}, nil, err
+	}
+	return record, release, nil
+}
+
+func verifyClaimedInvocation(store missionruntime.InvocationStore, input missionadapter.InvocationCompleteInput) (domain.MissionInvocationRecord, error) {
+	record, err := loadCompletableInvocation(store, input)
+	if err != nil {
+		return domain.MissionInvocationRecord{}, err
+	}
+	if err := verifyExecutionAdapter(record, input); err != nil {
+		return domain.MissionInvocationRecord{}, err
+	}
+	if err := verifyInvocationStillCurrent(input.Root, record); err != nil {
+		return domain.MissionInvocationRecord{}, err
+	}
+	return record, nil
+}
+
+// recordRangerHandoffAfterPublish records the Ranger-to-Archivist handoff once
+// a discovery artifact is published; other roles and slots have none.
+func recordRangerHandoffAfterPublish(ctx context.Context, input missionadapter.InvocationCompleteInput, record domain.MissionInvocationRecord) error {
+	if record.Request.Role != "ranger" || record.Request.Slot != string(domain.SlotDiscovery) {
+		return nil
+	}
+	if err := missionruntime.EnsureRangerToArchivistOutcomeWithTelemetry(ctx, input.Root, input.BasePath, record.Request.MissionID, input.Sink, record.Request.MissionID); err != nil {
+		return fmt.Errorf("ranger-to-archivist handoff: %w", err)
+	}
+	return nil
 }
 
 // verifyInvocationStillCurrent rejects a request whose mission left discovery

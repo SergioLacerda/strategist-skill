@@ -174,6 +174,8 @@ func invocationFailure(err error) error {
 // both the host-bridge prompt and the manual `mission invoke` request.
 const DiscoveryOutputContract = "Return Markdown that starts with YAML frontmatter containing a `sources_consulted` list " +
 	"(each item: source_path, content_fingerprint, coverage_status; use an empty list when no source was opened) " +
+	"and a `ranger_handoff_policy_facts` object with schema_version `strategist-ranger-handoff-policy-facts/v1`, " +
+	"boolean fields require_recall, require_boundary, require_classification, require_verdict and informational_only; " +
 	"and optionally `confidence_score`, `discovery_subtype` and `evaluation_verdict`. " +
 	"The body must contain these exact second-level headings: `## mission_objective`, `## known_facts`, " +
 	"`## uncertainties`, `## affected_scope`, `## side_quests`, `## confidence_summary`, " +

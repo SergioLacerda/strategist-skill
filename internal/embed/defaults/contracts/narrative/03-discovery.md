@@ -67,14 +67,22 @@ native behavior for the selected Weapon.
   to report in `uncertainties`. Reused by Archivist by default (see `04-refinement.md`),
   same reuse policy as `relevant_sources_hint`.
 
-## Optional Handoff Challenge (Ranger → Archivist)
+## Conditional Handoff Challenge (Ranger → Archivist)
 
-Archivist MAY apply a `ranger_to_archivist` Handoff Challenge
-(`internal/handoff`, `TransitionRangerToArchivist`) against this handoff to
-verify it correctly restated the artifact's content before refinement
-proceeds. Its challenge-type vocabulary is fitted to this handoff's actual
-content, not a reuse of the Archivist → Sniper MVP's `objective`/`gate`
-types:
+The normalized artifact MUST publish the typed
+`ranger_handoff_policy_facts` block defined by
+`schemas/handoff-ranger-to-archivist.schema.yaml`. Strategist derives the
+challenge requirement exclusively from those facts and records a durable,
+correlated outcome before Archivist refinement. Missing, malformed, unknown,
+or contradictory facts fail closed; they are never inferred from a coarse risk
+label and never become an automatic skip.
+
+When one or more `require_*` facts are true, the lifecycle-owned
+`ranger_to_archivist` Handoff Challenge (`internal/handoff`,
+`TransitionRangerToArchivist`) verifies that Archivist correctly restated the
+artifact before refinement proceeds. Its challenge-type vocabulary is fitted
+to this handoff's actual content, not a reuse of the Archivist → Sniper MVP's
+`objective`/`gate` types:
 
 | Type | Validates |
 | --- | --- |
@@ -83,12 +91,13 @@ types:
 | `classification` | Archivist distinguishes a `known_facts` entry from an `uncertainties` entry |
 | `verdict` | *(only when `discovery_subtype: evaluation`)* Archivist correctly restates `evaluation_verdict` |
 
-This is advisory-first: no policy in this workspace currently sets
-`RequiredTypes` for `ranger_to_archivist`, mirroring the MVP's own
-"don't block low-risk or documentation-only transitions by default"
-posture. Wiring a required-by-default risk policy for this transition is a
-future decision, not made here — see
-`.analysis/refined/20260803-handoff-challenge-extensions/design.md` § Item 1.
+After Ranger normalization, Strategist may record an automatic `skipped`
+outcome only when the typed facts explicitly authorize an informational-only
+handoff. A required challenge without valid answers records `failed` and
+blocks the Archivist boundary until a bounded retry passes. Run
+`strategist handoff evaluate-ranger` to inspect or submit the lifecycle-owned
+evaluation; the standalone `strategist handoff verify` command remains
+diagnostic-only and never authorizes refinement.
 
 ## Evaluation Discovery Procedure
 

@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// OutcomeSchemaVersion identifies a durable Archivist-to-Sniper outcome record.
+// OutcomeSchemaVersion identifies a durable handoff outcome record.
 const OutcomeSchemaVersion = "strategist-handoff-outcome/v1"
 
 // Terminal outcome results. Only passed and policy-authorized skipped may
@@ -39,16 +39,17 @@ func SignalsRecordOf(s RiskSignals) SignalsRecord {
 	}
 }
 
-// Outcome is the durable, tamper-evident terminal record of one evaluation of
-// the Archivist-to-Sniper handoff. It is correlated by mission, transition,
-// package content identity and attempt; entering execution consumes it.
+// Outcome is the durable, tamper-evident terminal record of one handoff
+// evaluation. Archivist-to-Sniper uses PackageDigest; Ranger-to-Archivist uses
+// ArtifactDigest. The transition determines which identity is authoritative.
 type Outcome struct {
-	SchemaVersion string `json:"schema_version"`
-	MissionID     string `json:"mission_id"`
-	Transition    string `json:"transition"`
-	PackageDigest string `json:"package_digest"`
-	Attempt       int    `json:"attempt"`
-	Result        string `json:"result"`
+	SchemaVersion  string `json:"schema_version"`
+	MissionID      string `json:"mission_id"`
+	Transition     string `json:"transition"`
+	PackageDigest  string `json:"package_digest"`
+	ArtifactDigest string `json:"artifact_digest,omitempty"`
+	Attempt        int    `json:"attempt"`
+	Result         string `json:"result"`
 	// PolicyID identifies the rules the outcome was decided under.
 	PolicyID string `json:"policy_id"`
 	// Required reports whether the policy required the semantic challenge.
@@ -105,8 +106,14 @@ func (o Outcome) VerifyIntegrity() error {
 
 func (o Outcome) validateShape() error {
 	switch {
-	case o.MissionID == "" || o.Transition == "" || o.PackageDigest == "" || o.PolicyID == "":
-		return fmt.Errorf("handoff_outcome_invalid: mission, transition, package digest and policy identity are required")
+	case o.MissionID == "" || o.Transition == "" || o.PolicyID == "":
+		return fmt.Errorf("handoff_outcome_invalid: mission, transition and policy identity are required")
+	case o.Transition == TransitionArchivistToSniper && o.PackageDigest == "":
+		return fmt.Errorf("handoff_outcome_invalid: package digest is required for %q", TransitionArchivistToSniper)
+	case o.Transition == TransitionRangerToArchivist && o.ArtifactDigest == "":
+		return fmt.Errorf("handoff_outcome_invalid: artifact digest is required for %q", TransitionRangerToArchivist)
+	case o.Transition != TransitionArchivistToSniper && o.Transition != TransitionRangerToArchivist:
+		return fmt.Errorf("handoff_outcome_invalid: transition %q is not lifecycle-owned", o.Transition)
 	case o.Attempt < 1:
 		return fmt.Errorf("handoff_outcome_invalid: attempt must be positive, got %d", o.Attempt)
 	case o.GateObserved == "":

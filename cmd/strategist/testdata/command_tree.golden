@@ -107,6 +107,14 @@ flag: --mission-id (string) default="" usage="mission whose Archivist-to-Sniper 
 flag: --risk-level (string) default="" usage="optional intake risk_level (low, medium, high); can only make the result stricter"
 flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
 
+== strategist handoff evaluate-ranger
+use: evaluate-ranger
+short: Evaluate and persist the Ranger-to-Archivist lifecycle outcome
+flag: --ack (string) default="" usage="path to an acknowledgment YAML file when the typed facts require a challenge"
+flag: --challenges (string) default="" usage="path to a challenges YAML file when the typed facts require a challenge"
+flag: --mission-id (string) default="" usage="mission whose Ranger-to-Archivist handoff is evaluated (required)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
 == strategist handoff verify
 use: verify
 short: Verify a Handoff Challenge acknowledgment and record the result

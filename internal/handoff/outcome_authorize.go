@@ -18,7 +18,7 @@ const consumedFile = "consumed.json"
 
 // Consumed reports whether execution entry already used this outcome.
 func (s OutcomeStore) Consumed(outcome Outcome) (bool, error) {
-	dir, err := s.dir(outcome.MissionID)
+	dir, err := s.dirFor(outcome.MissionID, outcome.Transition)
 	if err != nil {
 		return false, err
 	}
@@ -39,7 +39,7 @@ func (s OutcomeStore) Consumed(outcome Outcome) (bool, error) {
 // Consume marks the outcome used. It is exclusive, so a second consumption of
 // the same mission fails.
 func (s OutcomeStore) Consume(outcome Outcome) error {
-	dir, err := s.dir(outcome.MissionID)
+	dir, err := s.dirFor(outcome.MissionID, outcome.Transition)
 	if err != nil {
 		return err
 	}
@@ -58,6 +58,8 @@ func (s OutcomeStore) Consume(outcome Outcome) error {
 type ExecutionCheck struct {
 	MissionID      string
 	PackageDigest  string
+	ArtifactDigest string
+	Transition     string
 	PolicyID       string
 	SkipAuthorized bool
 }
@@ -67,7 +69,11 @@ type ExecutionCheck struct {
 // package under the current policy, has not been used, and is either passed or
 // a skip the current signals still authorize. Anything else denies.
 func (s OutcomeStore) AuthorizeExecution(check ExecutionCheck) (Outcome, error) {
-	outcome, err := s.Latest(check.MissionID)
+	transition := check.Transition
+	if transition == "" {
+		transition = TransitionArchivistToSniper
+	}
+	outcome, err := s.LatestFor(check.MissionID, transition)
 	if err != nil {
 		return Outcome{}, err
 	}
@@ -85,16 +91,49 @@ func (s OutcomeStore) AuthorizeExecution(check ExecutionCheck) (Outcome, error) 
 }
 
 func correlateOutcome(outcome Outcome, check ExecutionCheck) error {
+	expectedTransition := check.Transition
+	if expectedTransition == "" {
+		expectedTransition = TransitionArchivistToSniper
+	}
+	if err := correlateIdentity(outcome, check, expectedTransition); err != nil {
+		return err
+	}
+	if err := correlateRevision(outcome, check, expectedTransition); err != nil {
+		return err
+	}
+	return authorizeResult(outcome, check)
+}
+
+// correlateIdentity checks the outcome belongs to this mission, transition and
+// handoff policy.
+func correlateIdentity(outcome Outcome, check ExecutionCheck, expectedTransition string) error {
 	switch {
 	case outcome.MissionID != check.MissionID:
 		return fmt.Errorf("handoff_outcome_cross_mission: outcome belongs to mission %q, not %q", outcome.MissionID, check.MissionID)
-	case outcome.Transition != TransitionArchivistToSniper:
-		return fmt.Errorf("handoff_outcome_transition_mismatch: outcome is for %q, not %q", outcome.Transition, TransitionArchivistToSniper)
-	case outcome.PackageDigest != check.PackageDigest:
-		return fmt.Errorf("handoff_outcome_stale: the refined package changed after the outcome was recorded (outcome %s, package %s); verify the handoff again", outcome.PackageDigest, check.PackageDigest)
+	case outcome.Transition != expectedTransition:
+		return fmt.Errorf("handoff_outcome_transition_mismatch: outcome is for %q, not %q", outcome.Transition, expectedTransition)
 	case outcome.PolicyID != check.PolicyID:
 		return fmt.Errorf("handoff_outcome_policy_mismatch: the outcome was decided under a different handoff policy")
 	}
+	return nil
+}
+
+// correlateRevision checks the outcome still describes the current artifact
+// (Ranger) or refined package (Archivist).
+func correlateRevision(outcome Outcome, check ExecutionCheck, expectedTransition string) error {
+	if expectedTransition == TransitionRangerToArchivist {
+		if outcome.ArtifactDigest != check.ArtifactDigest {
+			return fmt.Errorf("handoff_outcome_stale: the Ranger artifact changed after the outcome was recorded (outcome %s, artifact %s); evaluate the handoff again", outcome.ArtifactDigest, check.ArtifactDigest)
+		}
+		return nil
+	}
+	if outcome.PackageDigest != check.PackageDigest {
+		return fmt.Errorf("handoff_outcome_stale: the refined package changed after the outcome was recorded (outcome %s, package %s); verify the handoff again", outcome.PackageDigest, check.PackageDigest)
+	}
+	return nil
+}
+
+func authorizeResult(outcome Outcome, check ExecutionCheck) error {
 	switch outcome.Result {
 	case OutcomePassed:
 		return nil

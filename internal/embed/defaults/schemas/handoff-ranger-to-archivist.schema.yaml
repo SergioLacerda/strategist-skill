@@ -7,6 +7,27 @@ description: >
   the orchestrator must be able to locate them.
 
 required_fields:
+  # This typed block is the only lifecycle authority for the conditional
+  # Ranger-to-Archivist challenge. Missing, null, unknown, or contradictory
+  # values are indeterminate and must fail closed at the Archivist boundary.
+  ranger_handoff_policy_facts:
+    type: object
+    required: true
+    fields:
+      schema_version:
+        type: string
+        required: true
+        allowed_values: [strategist-ranger-handoff-policy-facts/v1]
+      require_recall: {type: boolean, required: true}
+      require_boundary: {type: boolean, required: true}
+      require_classification: {type: boolean, required: true}
+      require_verdict: {type: boolean, required: true}
+      informational_only: {type: boolean, required: true}
+    invariants:
+      - informational_only is true exactly when every require_* value is false
+      - informational_only false requires at least one require_* value to be true
+      - the Archivist boundary derives the challenge policy from this block,
+        never from coarse risk labels or a standalone diagnostic result
   mission_id:
     type: string
     required: true

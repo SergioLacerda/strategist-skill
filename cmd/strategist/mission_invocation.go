@@ -66,11 +66,26 @@ func buildMissionInvocation(ctx context.Context, input missionadapter.Invocation
 	if err != nil {
 		return domain.MissionInvocationRequest{}, err
 	}
+	if err := authorizeArchivistEntry(input); err != nil {
+		return domain.MissionInvocationRequest{}, err
+	}
 	store := missionruntime.NewInvocationStore(input.Root)
 	if err := store.Put(domain.MissionInvocationRecord{Request: request, CreatedAt: now, ExpiresAt: now.Add(invocationLifetime), ExecutionAdapter: domain.ExecutionAdapterCurrentHost}); err != nil {
 		return domain.MissionInvocationRequest{}, fmt.Errorf("persist mission invocation: %w", err)
 	}
 	return request, nil
+}
+
+// authorizeArchivistEntry requires the Ranger-to-Archivist handoff outcome
+// before an Archivist refinement request is issued; other roles pass.
+func authorizeArchivistEntry(input missionadapter.InvocationBuildInput) error {
+	if input.Role != "archivist" || input.Slot != string(domain.SlotRefinement) {
+		return nil
+	}
+	if _, err := missionruntime.AuthorizeRangerToArchivist(input.Root, input.BasePath, input.MissionID); err != nil {
+		return fmt.Errorf("role_invocation_failed: %w", err)
+	}
+	return nil
 }
 
 func resolveMissionInvocationWeapon(input missionadapter.InvocationBuildInput) (domain.RoleWeaponBinding, domain.CompiledWeapon, []byte, string, error) {
