@@ -116,7 +116,7 @@ providers:
       certification_digest: sha256:3347d054cb8ca2ae7c311ee2dd872b5f1bbb958eb8c5c35b2e5bf8606caf2816
       ranked_binding_generation: 1
       ranked_binding_status: active
-      host_api_digest: sha256:4150758da3cb70317d85da0437b373a03f036dcca4e06650f4f039a17aed99a7
+      host_api_digest: sha256:f0c4cecf0a0a687547a7fac558e5ad603af10caafa6e1a75d7c4414bdc774a32
       connector_digest: sha256:713cbd1f26a65d73e74d8a0aceba98a181dd7f4e3b950ac419ce7bac3bfec13c
       test_suite_digest: sha256:61bfd55e31ae3ae3501c5f5699e21e8c17873526a3b3ce8b7de2b47d946f1f92
       policy_digest: sha256:29c491811afac9107cfcbc46c5fd75cc8ea28b9703f425cd841300af65ba4c84
@@ -323,7 +323,7 @@ weapons:
 roles:
     - id: archivist
       slot: refinement
-      contract_digest: sha256:5df7083f255d422bd0075b66807e2c1e0c2e88bf72a8714d2506de45aba8c13c
+      contract_digest: sha256:3d2e2073af1cf8ae25f48476ce1b37e8f476b41f63d12f6b82005c12ade82903
       handoff_schema: schemas/handoff-archivist-to-sniper.schema.yaml
     - id: ranger
       slot: discovery
@@ -373,8 +373,8 @@ ranked_bindings:
       weapon_id: openspec-propose
       weapon_version: "1.0"
       weapon_digest: sha256:66c0dd48a419ba7206fa3c2c3071e7a554545c8c57907d242ddeff2048ead680
-      role_digest: sha256:5df7083f255d422bd0075b66807e2c1e0c2e88bf72a8714d2506de45aba8c13c
-      binding_digest: sha256:30e0b2a369c715164ccfbad4af3a6e95382aeeb102c15cd41430e9a937462828
+      role_digest: sha256:3d2e2073af1cf8ae25f48476ce1b37e8f476b41f63d12f6b82005c12ade82903
+      binding_digest: sha256:d754cd416d3b62b1b9b981a17ff3aed11a6d0088ee9821b4681edea928f6f603
       source_digest: sha256:d26cbb1790bf8afcf7c868547da5ece9b2280a6dc6134f9343e6e885d128fe4b
       execution_mode: ""
       certification_digest: sha256:3347d054cb8ca2ae7c311ee2dd872b5f1bbb958eb8c5c35b2e5bf8606caf2816

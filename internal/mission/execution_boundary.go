@@ -21,37 +21,57 @@ const executionEntryAction = "enter execution (handoff_challenge_passed)"
 // an absent timestamp is filled in. It reports false when a decision for the
 // mission was already recorded (the history is idempotent by mission_id).
 func RecordRouteDecision(strategistRoot, missionID string, raw []byte) (bool, error) {
-	var decision telemetry.RouteDecision
-	if err := json.Unmarshal(raw, &decision); err != nil {
-		return false, fmt.Errorf("route decision is not valid JSON: %w", err)
-	}
-	if decision.MissionID != missionID {
-		return false, fmt.Errorf("route decision mission_id %q does not match mission %q", decision.MissionID, missionID)
-	}
-	if decision.Timestamp == "" {
-		decision.Timestamp = time.Now().UTC().Format(time.RFC3339Nano)
-	}
-	line, err := json.Marshal(decision)
+	decision, err := parseRouteDecision(missionID, raw)
 	if err != nil {
-		return false, fmt.Errorf("encode route decision: %w", err)
+		return false, err
 	}
-	if err := os.MkdirAll(filepath.Dir(telemetry.RouteDecisionHistoryPath(strategistRoot)), 0o755); err != nil { //nolint:gosec // G301: runtime memory directory
-		return false, fmt.Errorf("create route decision directory: %w", err)
-	}
-	appended, err := telemetry.AppendRouteDecisionLine(telemetry.RouteDecisionHistoryPath(strategistRoot), string(line))
+	appended, decision, err := appendRouteDecision(strategistRoot, decision)
 	if err != nil {
-		return false, fmt.Errorf("append route decision: %w", err)
-	}
-	if !appended {
-		decision, err = persistedRouteDecision(strategistRoot, missionID)
-		if err != nil {
-			return false, err
-		}
+		return false, err
 	}
 	if err := recordScoutRouteConfidence(strategistRoot, decision); err != nil {
 		return appended, fmt.Errorf("record Scout route confidence: %w", err)
 	}
 	return appended, nil
+}
+
+// parseRouteDecision decodes Scout's decision, checks it belongs to missionID
+// and fills an absent timestamp.
+func parseRouteDecision(missionID string, raw []byte) (telemetry.RouteDecision, error) {
+	var decision telemetry.RouteDecision
+	if err := json.Unmarshal(raw, &decision); err != nil {
+		return telemetry.RouteDecision{}, fmt.Errorf("route decision is not valid JSON: %w", err)
+	}
+	if decision.MissionID != missionID {
+		return telemetry.RouteDecision{}, fmt.Errorf("route decision mission_id %q does not match mission %q", decision.MissionID, missionID)
+	}
+	if decision.Timestamp == "" {
+		decision.Timestamp = time.Now().UTC().Format(time.RFC3339Nano)
+	}
+	return decision, nil
+}
+
+// appendRouteDecision appends the decision to the history. When one was already
+// recorded for the mission it reports false and returns the persisted decision,
+// which is the one the confidence claim must describe.
+func appendRouteDecision(strategistRoot string, decision telemetry.RouteDecision) (bool, telemetry.RouteDecision, error) {
+	line, err := json.Marshal(decision)
+	if err != nil {
+		return false, decision, fmt.Errorf("encode route decision: %w", err)
+	}
+	historyPath := telemetry.RouteDecisionHistoryPath(strategistRoot)
+	if err := os.MkdirAll(filepath.Dir(historyPath), 0o755); err != nil { //nolint:gosec // G301: runtime memory directory
+		return false, decision, fmt.Errorf("create route decision directory: %w", err)
+	}
+	appended, err := telemetry.AppendRouteDecisionLine(historyPath, string(line))
+	if err != nil {
+		return false, decision, fmt.Errorf("append route decision: %w", err)
+	}
+	if appended {
+		return true, decision, nil
+	}
+	persisted, err := persistedRouteDecision(strategistRoot, decision.MissionID)
+	return false, persisted, err
 }
 
 func persistedRouteDecision(strategistRoot, missionID string) (telemetry.RouteDecision, error) {
