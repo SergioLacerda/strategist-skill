@@ -88,7 +88,11 @@ func missionViewDependencies() missionadapter.ViewDependencies {
 }
 
 func missionNormalizeDependencies() missionadapter.NormalizeDependencies {
-	return missionadapter.NormalizeDependencies{RootFlag: cliutil.FlagRoot, RequireMissionID: validateMissionID, ResolvePaths: resolveNormalizePaths, GateLabel: resolveNormalizeGateLabel}
+	return missionadapter.NormalizeDependencies{
+		RootFlag: cliutil.FlagRoot, RequireMissionID: validateMissionID,
+		ResolvePaths: resolveNormalizePaths, RecordConfidence: recordNormalizeConfidence,
+		GateLabel: resolveNormalizeGateLabel,
+	}
 }
 
 func missionReportUsageDependencies() missionadapter.ReportUsageDependencies {

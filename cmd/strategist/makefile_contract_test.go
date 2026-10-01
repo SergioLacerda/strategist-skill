@@ -122,8 +122,22 @@ func TestMakeInstallSynchronizesWithFreshlyInstalledBinary(t *testing.T) {
 	source := string(makefile)
 
 	assert.Contains(t, source, `"$$HOME/.local/bin/strategist$(EXE)" version --build`)
+	assert.Contains(t, source, `cmp -s "$(STRATEGIST_BIN)" "$$HOME/.local/bin/strategist$(EXE)"`)
+	assert.Contains(t, source, `git rev-parse --short=12 HEAD`)
 	assert.Contains(t, source, `"$$HOME/.local/bin/strategist$(EXE)" install --target "$(CURDIR)" --silent --strict-compile`)
+	assert.Contains(t, source, `"$$HOME/.local/bin/strategist$(EXE)" check --json`)
 	assert.Contains(t, source, "current checkout synchronized")
+}
+
+func TestMakeBuildChecksGeneratedArtifactsAndReportsTheBuiltVersion(t *testing.T) {
+	t.Parallel()
+
+	makefile, err := os.ReadFile("../../make/go.mk")
+	require.NoError(t, err)
+	source := string(makefile)
+
+	assert.Contains(t, source, `go run ./cmd/strategist plugins prepare-embedded --check`)
+	assert.Contains(t, source, `"$(STRATEGIST_BIN)" version --build`)
 }
 
 // --- dojoItemLine ---

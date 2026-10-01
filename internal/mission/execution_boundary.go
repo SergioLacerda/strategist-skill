@@ -3,6 +3,7 @@ package mission
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"time"
@@ -41,7 +42,65 @@ func RecordRouteDecision(strategistRoot, missionID string, raw []byte) (bool, er
 	if err != nil {
 		return false, fmt.Errorf("append route decision: %w", err)
 	}
+	if !appended {
+		decision, err = persistedRouteDecision(strategistRoot, missionID)
+		if err != nil {
+			return false, err
+		}
+	}
+	if err := recordScoutRouteConfidence(strategistRoot, decision); err != nil {
+		return appended, fmt.Errorf("record Scout route confidence: %w", err)
+	}
 	return appended, nil
+}
+
+func persistedRouteDecision(strategistRoot, missionID string) (telemetry.RouteDecision, error) {
+	decisions, err := telemetry.ReadRouteDecisions(telemetry.RouteDecisionHistoryPath(strategistRoot))
+	if err != nil {
+		return telemetry.RouteDecision{}, fmt.Errorf("read persisted route decision: %w", err)
+	}
+	for _, decision := range decisions {
+		if decision.MissionID == missionID {
+			return decision, nil
+		}
+	}
+	return telemetry.RouteDecision{}, fmt.Errorf("persisted route decision for mission %q was not found", missionID)
+}
+
+func recordScoutRouteConfidence(strategistRoot string, decision telemetry.RouteDecision) error {
+	percent := int(math.Round(decision.RouteConfidence * 100))
+	level, err := domain.ConfidenceLevelForPercent(percent)
+	if err != nil {
+		return fmt.Errorf("derive Scout route confidence level: %w", err)
+	}
+	kind := domain.ClaimKindAssertion
+	statement := fmt.Sprintf("Scout selected route %q for request category %q.", decision.SelectedRoute, decision.RequestCategory)
+	if level == domain.ConfidenceLow {
+		kind = domain.ClaimKindQuestion
+		statement = fmt.Sprintf("Is route %q appropriate for request category %q?", decision.SelectedRoute, decision.RequestCategory)
+	}
+	evidenceID := "scout-route-decision"
+	evidence := []domain.Evidence{{
+		ID: evidenceID, SourceRef: telemetry.RouteDecisionHistoryRelPath + "#mission_id=" + decision.MissionID,
+		Class: domain.EvidenceClassExplicit, Confidence: level, ConfidencePercent: &percent,
+	}}
+	claim := domain.ConfidenceClaim{
+		ID: "scout-route", Statement: statement, Agent: telemetry.ConfidenceAgentScout,
+		CorrelationKey: "scout-route", ClaimKind: kind, ConfidencePercent: percent,
+		ConfidenceLevel: level, EvidenceIDs: []string{evidenceID},
+		EvidenceClasses: []string{domain.EvidenceClassExplicit}, CalibrationStatus: domain.CalibrationNoSample,
+	}
+	producer, err := telemetry.NewConfidenceProducerAdapter(
+		telemetry.ConfidenceHistoryPath(strategistRoot), telemetry.ConfidenceAgentScout, decision.MissionID,
+	)
+	if err != nil {
+		return fmt.Errorf("create Scout confidence producer: %w", err)
+	}
+	_, err = producer.RecordClaim(claim, evidence)
+	if err != nil {
+		return fmt.Errorf("persist Scout confidence: %w", err)
+	}
+	return nil
 }
 
 // EvaluateExecutionEntry asks domain.EvaluatePipelineBypass whether the mission

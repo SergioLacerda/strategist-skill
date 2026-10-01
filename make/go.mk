@@ -31,6 +31,8 @@ vet:
 
 build: generate-embedded
 	GOCACHE="$(GOCACHE)" go build -ldflags="-s -w -X main.Version=$$(git describe --tags --dirty --always 2>/dev/null || echo dev)" -o "$(STRATEGIST_BIN)" ./cmd/strategist
+	GOCACHE="$(GOCACHE)" go run ./cmd/strategist plugins prepare-embedded --check
+	"$(STRATEGIST_BIN)" version --build
 
 test:
 	GOCACHE="$(GOCACHE)" go test -race ./...

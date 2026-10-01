@@ -23,6 +23,18 @@ var requiredRangerSections = []string{
 // compatibility is deliberately not checked here; that belongs to the
 // provider binding boundary.
 func ValidateRangerArtifact(path, missionID string) error {
+	return validateRangerArtifact(path, missionID, []string{"ranger_pending", "ranger_done"})
+}
+
+// ValidateRangerArtifactForRefinement validates the same normalized discovery
+// envelope after Archivist has claimed it. archivist_pending is a legitimate
+// transient state at this boundary; accepting it here does not widen the
+// earlier Ranger completion boundary.
+func ValidateRangerArtifactForRefinement(path, missionID string) error {
+	return validateRangerArtifact(path, missionID, []string{"ranger_pending", "ranger_done", "archivist_pending"})
+}
+
+func validateRangerArtifact(path, missionID string, statuses []string) error {
 	content, err := readArtifact(path)
 	if err != nil {
 		return fmt.Errorf("handoff_artifact_invalid: read Ranger artifact: %w", err)
@@ -31,7 +43,7 @@ func ValidateRangerArtifact(path, missionID string) error {
 	if err != nil {
 		return fmt.Errorf("handoff_artifact_invalid: Ranger artifact: %w", err)
 	}
-	if err := validateIdentity(frontmatter, missionID, []string{"ranger_pending", "ranger_done"}); err != nil {
+	if err := validateIdentity(frontmatter, missionID, statuses); err != nil {
 		return fmt.Errorf("handoff_artifact_invalid: Ranger artifact: %w", err)
 	}
 	if _, ok := frontmatter["sources_consulted"].([]any); !ok {

@@ -70,6 +70,8 @@ func TestBuildMissionInvocationIssuesARankedEmbeddedRequest(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, request.Payload)
 	require.Equal(t, "brainstorming", request.Weapon.ID)
+	require.Contains(t, request.Input["execution_contract"], "single-shot")
+	require.Contains(t, request.Input["execution_contract"], "do not ask the user questions")
 	require.Contains(t, request.Input["output_contract"], "## mission_objective")
 	require.Equal(t, "evaluate", request.Input["request_context"])
 }

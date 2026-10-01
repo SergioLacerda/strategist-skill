@@ -109,3 +109,11 @@ const DiscoveryOutputContract = "Return Markdown that starts with YAML frontmatt
 	"`## uncertainties`, `## affected_scope`, `## side_quests`, `## confidence_summary`, " +
 	"`## recommended_refinement_focus` and `## handoff`. Strategist overwrites identity fields " +
 	"(mission_id, mission_status, schema_version, provider_id)."
+
+// DiscoveryExecutionContract adapts an interactive external skill to Ranger's
+// single-shot, read-only Weapon boundary. The host executes the compiled
+// payload, but Strategist remains the owner of user interaction and approval.
+const DiscoveryExecutionContract = "Execute the compiled Weapon payload once as a single-shot, read-only Ranger discovery call. " +
+	"Use the payload's analysis methods, but do not ask the user questions, wait for an approval, invoke another skill, " +
+	"write files, or perform implementation. Any interactive or implementation gate inside the payload belongs to its " +
+	"standalone workflow and is not part of this adapter. Return only the discovery handoff required by output_contract."

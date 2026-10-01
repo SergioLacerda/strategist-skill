@@ -31,7 +31,7 @@ func TestNormalizeOpenSpecCarriesAcceptanceScenariosIntoDesign(t *testing.T) {
 		require.NoError(t, os.WriteFile(filepath.Join(dir, "spec.md"), []byte(spec), 0o644))
 	}
 
-	result, err := NormalizeOpenSpec(OpenSpecInput{MissionID: "m-2", BasePath: base, RuntimeRoot: runtime, ChangeID: "two-caps", PendingAnalysisPath: pending})
+	result, err := NormalizeOpenSpec(OpenSpecInput{MissionID: "m-2", BasePath: base, RuntimeRoot: runtime, ChangeID: "two-caps", PendingAnalysisPath: pending, RecordConfidence: noopConfidenceRecorder})
 	require.NoError(t, err)
 	design, err := os.ReadFile(filepath.Join(result.RefinedPath, "design.md"))
 	require.NoError(t, err)

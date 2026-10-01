@@ -108,6 +108,7 @@ func newMissionInvocationRequest(input missionadapter.InvocationBuildInput, bind
 	now := time.Now().UTC()
 	requestInput := map[string]any{}
 	if input.Role == "ranger" {
+		requestInput["execution_contract"] = provider.DiscoveryExecutionContract
 		requestInput["output_contract"] = provider.DiscoveryOutputContract
 	}
 	if strings.TrimSpace(input.RequestContext) != "" {

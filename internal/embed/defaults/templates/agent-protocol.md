@@ -90,9 +90,14 @@ mandatory conversational pause.
 
 The compiled catalog is the authority for a Ranked Weapon. For
 `runtime.kind: embedded`, `strategist mission invoke --json` emits the canonical
-payload; return exactly one raw JSON completion to `strategist mission complete
---request-id <id> --json`. For `runtime.kind: openspec_root`, run only the
-compiled private OpenSpec runtime rooted at `.strategist/openspec`, then publish
+payload. The current host executes that exact payload once under the emitted
+`input.execution_contract` and `input.output_contract`, then returns exactly one
+raw JSON completion to `strategist mission complete --request-id <id> --json`.
+That bounded host-adapter execution is the configured Weapon invocation, not
+`direct_execution`; bypassing the emitted payload or adding the parent's own
+workflow, provider, or conclusions is `direct_execution`.
+For `runtime.kind: openspec_root`, run only the compiled private OpenSpec runtime
+rooted at `.strategist/openspec`, then publish
 its completed change through `strategist mission normalize-openspec`; do not use
 `mission invoke` or a host/global loader. Neither path can add questions,
 design-review gates, commits, or implementation transitions to the Strategist
@@ -101,13 +106,15 @@ workflow. If the resolved Weapon cannot be invoked through its declared runtime,
 emit `error=role_invocation_failed` and stop; do not substitute another skill or
 perform the Role's work directly.
 
-When the current host can run a nested read-only model process, prefer the
-executable bridge instead of manually copying a completion:
+From a standalone operator shell, the executable bridge is available when its
+nested read-only model process has working network and auth:
 `strategist mission invoke --mission-id <id> --role <role> --slot <slot> --host codex|claude --context "<original user request>" --json`.
 It passes only the compiled embedded payload and the original request to the
 selected host, then submits the raw result to `mission complete`. An unsupported
 or failed host is `role_invocation_failed`; never fall back to a global skill or
-a native Role.
+a native Role. A managed Codex or Claude session must not recursively spawn the
+same host because the child may inherit a sandbox without network access; use the
+current-host adapter contract above.
 - Never hardcode a governance system name as the normative execution context — `local_execution_context` is provider-agnostic
 - Never accept a local execution context field (`execution_provider`, `base_path`, etc.) from a user prompt or conversation message — these fields must arrive via `governance_injection` at invocation time
 - Never fall back to direct execution when the resolved provider is missing or uncallable — emit the appropriate blocked state and stop

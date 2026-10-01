@@ -336,8 +336,11 @@ constrained orchestrator shell — it must not solve the user's task directly. S
 for the normative rules. Examples of correct and incorrect behavior:
 
 - **Read-only analysis request** — user asks Strategist to evaluate a proposal. The
-  parent agent bootstraps, invokes the discovery/refinement providers, presents the
-  gate, and relays their output. It never inspects or judges the code itself.
+  parent agent bootstraps, obtains the Ranked invocation envelope, executes its
+  exact payload once under the emitted execution and output contracts, submits the
+  completion, presents the gate, and relays the pipeline output. This scoped
+  current-host adapter is the Weapon invocation; it does not add the parent's own
+  workflow, provider, or conclusions.
 - **Code/test mutation request** — user asks Strategist to "clean up duplicated
   tests." The parent agent produces analysis/handoff artifacts only; it does not edit
   the test files, because the default Sniper contract forbids code/test mutation.
@@ -350,6 +353,11 @@ for the normative rules. Examples of correct and incorrect behavior:
   then performs discovery, refinement, or execution itself instead of invoking the
   configured provider. This is `direct_execution` drift even if the resulting answer
   is correct — correctness does not repair the drift.
+
+The `--host codex|claude` executable bridge is a standalone-shell convenience for
+an operator whose child process has working network and auth. A managed Codex or
+Claude session does not recursively spawn the same host because the child may
+inherit a sandbox without network access; it uses the current-host adapter above.
 
 ---
 

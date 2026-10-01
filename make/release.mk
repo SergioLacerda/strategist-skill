@@ -11,6 +11,8 @@
 # Use install-lite for a binary without the runtime (resolves openspec from PATH).
 install: build-standalone
 	mkdir -p "$$HOME/.local/bin" && install -m 755 "$(STRATEGIST_BIN)" "$$HOME/.local/bin/strategist$(EXE)"
+	@cmp -s "$(STRATEGIST_BIN)" "$$HOME/.local/bin/strategist$(EXE)" || { echo "[Strategist] ERROR: installed binary differs from the binary produced by make build" >&2; exit 1; }
+	@expected_commit="$$(git rev-parse --short=12 HEAD)"; "$$HOME/.local/bin/strategist$(EXE)" version --build | grep -q "commit: $$expected_commit" || { echo "[Strategist] ERROR: installed binary was not built from HEAD $$expected_commit" >&2; exit 1; }
 	@# Prove the binary now on disk is the standalone one; a stale copy (or another
 	@# strategist earlier on PATH) would otherwise fail later with a misleading error.
 	@"$$HOME/.local/bin/strategist$(EXE)" version --build | grep -q "runtime: embedded OpenSpec" || { echo "[Strategist] ERROR: the installed binary has no embedded OpenSpec bundle; check 'command -v strategist' and 'strategist version --build'" >&2; exit 1; }
@@ -19,6 +21,7 @@ install: build-standalone
 	@# client shims from the same binary that was just installed. Do not resolve
 	@# strategist through PATH: PATH may still point at an older checkout.
 	@"$$HOME/.local/bin/strategist$(EXE)" install --target "$(CURDIR)" --silent --strict-compile
+	@"$$HOME/.local/bin/strategist$(EXE)" check --json
 	@command -v strategist >/dev/null 2>&1 && [ "$$(command -v strategist)" != "$$HOME/.local/bin/strategist$(EXE)" ] && echo "[Strategist] WARNING: 'strategist' on PATH is $$(command -v strategist), not $$HOME/.local/bin/strategist$(EXE)" >&2 || true
 	@echo "[Strategist] standalone binary installed and current checkout synchronized."
 

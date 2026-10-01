@@ -166,6 +166,33 @@ func TestRunClaudeBinaryRejectsRunawayOutput(t *testing.T) {
 func TestHostBridgePromptCarriesTheDiscoveryOutputContract(t *testing.T) {
 	prompt := hostBridgePrompt(domain.MissionInvocationRequest{Weapon: domain.MissionWeaponIdentity{ID: "w"}, Payload: "p"}, "ctx")
 
+	require.Contains(t, prompt, "single-shot")
+	require.Contains(t, prompt, "do not ask the user questions")
 	require.Contains(t, prompt, "## mission_objective")
 	require.Contains(t, prompt, "sources_consulted")
+}
+
+func TestRunCodexPromptExecutesTheHostBinaryAndReadsItsResult(t *testing.T) {
+	bin := t.TempDir()
+	script := `#!/bin/sh
+output=""
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "--output-last-message" ]; then
+    shift
+    output="$1"
+  fi
+  shift
+done
+cat >/dev/null
+printf '%s\n' '## mission_objective' 'delegated' > "$output"
+`
+	require.NoError(t, os.WriteFile(filepath.Join(bin, "codex"), []byte(script), 0o700))
+	t.Setenv("PATH", bin+":"+os.Getenv("PATH"))
+	t.Setenv("CODEX_HOME", t.TempDir())
+
+	got, err := runCodexPrompt(t.Context(), t.TempDir(), "compiled weapon prompt")
+
+	require.NoError(t, err)
+	require.Contains(t, got, "## mission_objective")
+	require.Contains(t, got, "delegated")
 }

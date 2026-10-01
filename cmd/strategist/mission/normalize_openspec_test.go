@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/stretchr/testify/require"
 )
 
@@ -32,6 +33,7 @@ func normalizeFixture(t *testing.T) (mission.NormalizeDependencies, string) {
 		ResolvePaths: func(mission.NormalizeOptions) (string, string, string, error) {
 			return base, runtime, pending, nil
 		},
+		RecordConfidence: func(mission.NormalizeOptions, domain.ConfidenceClaim, []domain.Evidence) error { return nil },
 	}
 	return deps, filepath.Join(base, "refined", "m-1")
 }
@@ -50,11 +52,17 @@ func runNormalize(t *testing.T, deps mission.NormalizeDependencies, args ...stri
 // M016 pin: the default invocation prints exactly this line.
 func TestNormalizeOpenSpecDefaultOutputLineIsPinned(t *testing.T) {
 	deps, refined := normalizeFixture(t)
+	var recorded domain.ConfidenceClaim
+	deps.RecordConfidence = func(_ mission.NormalizeOptions, claim domain.ConfidenceClaim, _ []domain.Evidence) error {
+		recorded = claim
+		return nil
+	}
 
 	out, err := runNormalize(t, deps, "--mission-id", "m-1", "--change-id", "c-1")
 
 	require.NoError(t, err)
 	require.Equal(t, "mission_id=m-1 provider_change_id=c-1 refined="+refined+" status=archivist_done\n", out)
+	require.Equal(t, "archivist", recorded.Agent)
 }
 
 // amendFixture publishes change c-1 through the default path, moves the package to

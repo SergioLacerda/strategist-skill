@@ -3,6 +3,7 @@ package mission
 import (
 	"fmt"
 
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/refinement"
 	"github.com/spf13/cobra"
 )
@@ -21,6 +22,7 @@ type NormalizeDependencies struct {
 	RootFlag         string
 	RequireMissionID func(string) error
 	ResolvePaths     func(NormalizeOptions) (string, string, string, error)
+	RecordConfidence func(NormalizeOptions, domain.ConfidenceClaim, []domain.Evidence) error
 	// GateLabel returns the mission's gate outcome label ("" when none); it is
 	// consulted only by --amend. Nil means no label is known.
 	GateLabel func(NormalizeOptions) (string, error)
@@ -68,7 +70,16 @@ func RunNormalizeOpenSpec(cmd *cobra.Command, deps NormalizeDependencies, opts N
 	if opts.Amend {
 		return runAmend(cmd, deps, opts, basePath, runtimeRoot)
 	}
-	result, err := refinement.NormalizeOpenSpec(refinement.OpenSpecInput{MissionID: opts.MissionID, BasePath: basePath, RuntimeRoot: runtimeRoot, ChangeID: opts.ChangeID, PendingAnalysisPath: pending})
+	if deps.RecordConfidence == nil {
+		return fmt.Errorf("mission normalize-openspec: Archivist confidence recorder is unavailable")
+	}
+	result, err := refinement.NormalizeOpenSpec(refinement.OpenSpecInput{
+		MissionID: opts.MissionID, BasePath: basePath, RuntimeRoot: runtimeRoot,
+		ChangeID: opts.ChangeID, PendingAnalysisPath: pending,
+		RecordConfidence: func(claim domain.ConfidenceClaim, evidence []domain.Evidence) error {
+			return deps.RecordConfidence(opts, claim, evidence)
+		},
+	})
 	if err != nil {
 		return fmt.Errorf("mission normalize-openspec: %w", err)
 	}

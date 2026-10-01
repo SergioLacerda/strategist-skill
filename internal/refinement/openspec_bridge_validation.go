@@ -23,6 +23,9 @@ func validateInput(input OpenSpecInput) error {
 	if filepath.Clean(input.RuntimeRoot) == filepath.Clean(input.BasePath) {
 		return fmt.Errorf("runtime root must remain separate from base path")
 	}
+	if input.RecordConfidence == nil {
+		return fmt.Errorf("archivist confidence recorder is required")
+	}
 	return nil
 }
 

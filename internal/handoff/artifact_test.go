@@ -34,6 +34,35 @@ handoff
 	}
 }
 
+func TestValidateRangerArtifactForRefinementAcceptsArchivistPending(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "analysis.md")
+	content := `---
+schema_version: strategist-ranger-discovery/v1
+mission_id: m-1
+mission_status: archivist_pending
+sources_consulted: []
+---
+
+## mission_objective
+objective
+## known_facts
+facts
+## confidence_summary
+summary
+## handoff
+handoff
+`
+	require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
+	require.NoError(t, ValidateRangerArtifactForRefinement(path, "m-1"))
+}
+
+func TestValidateRangerArtifactForRefinementRejectsPostRefinementStatus(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "analysis.md")
+	content := "---\nschema_version: strategist-ranger-discovery/v1\nmission_id: m-1\nmission_status: gate_pending\nsources_consulted: []\n---\n\n## mission_objective\n## known_facts\n## confidence_summary\n## handoff\n"
+	require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
+	require.ErrorContains(t, ValidateRangerArtifactForRefinement(path, "m-1"), "mission_status")
+}
+
 func TestValidateRangerArtifactRejectsMissingSection(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "analysis.md")
 	content := "---\nmission_id: m-1\nmission_status: ranger_done\n---\n\n## mission_objective\n"
