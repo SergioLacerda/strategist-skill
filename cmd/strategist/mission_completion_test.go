@@ -34,12 +34,14 @@ func completionFixture(t *testing.T, phase domain.PipelinePhase) (string, missio
 	return root, missionadapter.InvocationCompleteInput{
 		Root: root, BasePath: filepath.Join(filepath.Dir(root), ".analysis"), RequestID: completionRequestID,
 		Completion: domain.MissionInvocationCompletion{RequestID: completionRequestID, Result: "body"},
+		Adapter:    domain.ExecutionAdapterCurrentHost,
+		Sink:       &captureSink{},
 	}
 }
 
 func TestCompleteMissionInvocationRejectsAConcurrentCompletion(t *testing.T) {
 	root, input := completionFixture(t, domain.PhaseDiscovery)
-	_, err := missionruntime.NewInvocationStore(root).Claim(completionRequestID)
+	_, err := missionruntime.NewInvocationStore(root).ClaimTarget("m1", "ranger", string(domain.SlotDiscovery))
 	require.NoError(t, err)
 
 	_, err = completeMissionInvocation(t.Context(), input)
@@ -88,18 +90,6 @@ func TestCompleteMissionInvocationRejectsAnExpiredRequest(t *testing.T) {
 	_, err = completeMissionInvocation(t.Context(), input)
 
 	require.ErrorContains(t, err, "invocation_request_expired")
-}
-
-func TestRefuseArtifactOverwrite(t *testing.T) {
-	dir := t.TempDir()
-	pending := filepath.Join(dir, "pending.md")
-	promoted := filepath.Join(dir, "promoted.md")
-	require.NoError(t, os.WriteFile(pending, []byte("---\nmission_status: ranger_pending\n---\n"), 0o600))
-	require.NoError(t, os.WriteFile(promoted, []byte("---\nmission_status: archivist_done\n---\n"), 0o600))
-
-	require.NoError(t, refuseArtifactOverwrite(filepath.Join(dir, "absent.md")))
-	require.NoError(t, refuseArtifactOverwrite(pending))
-	require.ErrorContains(t, refuseArtifactOverwrite(promoted), "invocation_artifact_exists")
 }
 
 func TestDiscoveryArtifactPathsRejectsWorkspaceEscape(t *testing.T) {

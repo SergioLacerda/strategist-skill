@@ -9,6 +9,7 @@ import (
 	missionadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	strategistembed "github.com/SergioLacerda/strategist-skill/internal/embed"
+	missionruntime "github.com/SergioLacerda/strategist-skill/internal/mission"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
@@ -117,6 +118,8 @@ func TestInvokeHostCompleteEndToEndThenReplayIsRejected(t *testing.T) {
 	complete := missionadapter.InvocationCompleteInput{
 		Root: root, BasePath: input.BasePath, RequestID: request.RequestID,
 		Completion: domain.MissionInvocationCompletion{RequestID: request.RequestID, Result: flowResult},
+		Adapter:    domain.ExecutionAdapterCurrentHost,
+		Sink:       &captureSink{},
 	}
 
 	outcome, err := completeMissionInvocation(t.Context(), complete)
@@ -142,6 +145,8 @@ func TestCompleteRejectsACompletionAfterTheBindingChanged(t *testing.T) {
 	_, err = completeMissionInvocation(t.Context(), missionadapter.InvocationCompleteInput{
 		Root: root, BasePath: input.BasePath, RequestID: request.RequestID,
 		Completion: domain.MissionInvocationCompletion{RequestID: request.RequestID, Result: flowResult},
+		Adapter:    domain.ExecutionAdapterCurrentHost,
+		Sink:       &captureSink{},
 	})
 
 	require.Error(t, err)
@@ -156,4 +161,33 @@ func rankedWorkspaceRebind(t *testing.T, root, digest string) {
 	require.NoError(t, yaml.Unmarshal(raw, &lock))
 	lock.Bindings[0].BindingDigest = digest
 	writeYAML(t, path, lock)
+}
+
+func TestIssuedRequestPersistsAPromptNonceThatTheReceiptMustEcho(t *testing.T) {
+	root := rankedWorkspace(t, nil)
+	request, err := buildMissionInvocation(t.Context(), flowBuildInput(root))
+	require.NoError(t, err)
+	require.Len(t, request.Nonce, 16)
+
+	stored, err := missionruntime.NewInvocationStore(root).Get(request.RequestID)
+	require.NoError(t, err)
+	require.Equal(t, request.Nonce, stored.Request.Nonce)
+	require.Contains(t, hostBridgePrompt(stored.Request, "ctx"), "<original-user-request-"+request.Nonce+">")
+}
+
+func TestCompletionCompactsTheRecordAndStillRejectsReplay(t *testing.T) {
+	root, input := publishFixture(t)
+
+	_, err := completeMissionInvocation(t.Context(), input)
+	require.NoError(t, err)
+
+	raw, err := os.ReadFile(filepath.Join(root, "missions", "invocations", input.RequestID+".json"))
+	require.NoError(t, err)
+	require.Contains(t, string(raw), `"payload": ""`, "completed records must not retain the Weapon payload")
+	require.NotContains(t, string(raw), "request_context")
+	require.Contains(t, string(raw), `"state": "completed"`)
+	require.Contains(t, string(raw), "artifact_digest")
+
+	_, err = completeMissionInvocation(t.Context(), input)
+	require.ErrorContains(t, err, "invocation_replay")
 }

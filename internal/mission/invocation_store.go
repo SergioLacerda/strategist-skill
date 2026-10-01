@@ -33,6 +33,9 @@ func (s InvocationStore) Put(record domain.MissionInvocationRecord) error {
 	if !invocationIDPattern.MatchString(record.Request.RequestID) {
 		return fmt.Errorf("mission invocation: malformed request_id %q", record.Request.RequestID)
 	}
+	if err := requireCommittableAdapter(record.ExecutionAdapter); err != nil {
+		return err
+	}
 	path, err := s.path(record.Request.RequestID)
 	if err != nil {
 		return err
@@ -49,8 +52,37 @@ func (s InvocationStore) Put(record domain.MissionInvocationRecord) error {
 	return atomicWriteJSON(path, record)
 }
 
-// Get loads a pending request and rejects expired or consumed state.
+// requireCommittableAdapter accepts an absent adapter (a pre-field record) or a
+// mode Strategist may commit; anything else is outside the closed vocabulary.
+func requireCommittableAdapter(adapter domain.MissionExecutionAdapter) error {
+	if adapter != "" && !adapter.Committable() {
+		return fmt.Errorf("invocation_adapter_unknown: %q is not a committable execution adapter", adapter)
+	}
+	return nil
+}
+
+// Get loads a request that can still be completed: pending or processing. It
+// rejects a completed request as a replay, and a pending one past its expiry.
+// A processing request is never expired out from under its recovery.
 func (s InvocationStore) Get(requestID string) (domain.MissionInvocationRecord, error) {
+	record, err := s.load(requestID)
+	if err != nil {
+		return domain.MissionInvocationRecord{}, err
+	}
+	switch record.EffectiveState() {
+	case domain.InvocationStateCompleted:
+		return domain.MissionInvocationRecord{}, fmt.Errorf("invocation_replay: request %q was already consumed", requestID)
+	case domain.InvocationStatePending:
+		if !record.ExpiresAt.IsZero() && s.now().After(record.ExpiresAt) {
+			return domain.MissionInvocationRecord{}, fmt.Errorf("invocation_request_expired: request %q expired", requestID)
+		}
+	case domain.InvocationStateProcessing:
+		// Never expired: a committed completion must stay recoverable.
+	}
+	return record, nil
+}
+
+func (s InvocationStore) load(requestID string) (domain.MissionInvocationRecord, error) {
 	path, err := s.path(requestID)
 	if err != nil {
 		return domain.MissionInvocationRecord{}, err
@@ -63,29 +95,7 @@ func (s InvocationStore) Get(requestID string) (domain.MissionInvocationRecord, 
 	if err := json.Unmarshal(raw, &record); err != nil {
 		return domain.MissionInvocationRecord{}, fmt.Errorf("mission invocation: parse request: %w", err)
 	}
-	if record.Consumed {
-		return domain.MissionInvocationRecord{}, fmt.Errorf("invocation_replay: request %q was already consumed", requestID)
-	}
-	if !record.ExpiresAt.IsZero() && s.now().After(record.ExpiresAt) {
-		return domain.MissionInvocationRecord{}, fmt.Errorf("invocation_request_expired: request %q expired", requestID)
-	}
 	return record, nil
-}
-
-// Consume marks a request as used after normalization and artifact persistence.
-func (s InvocationStore) Consume(requestID string) error {
-	record, err := s.Get(requestID)
-	if err != nil {
-		return err
-	}
-	now := s.now()
-	record.Consumed = true
-	record.ConsumedAt = &now
-	path, err := s.path(requestID)
-	if err != nil {
-		return err
-	}
-	return atomicWriteJSON(path, record)
 }
 
 func (s InvocationStore) now() time.Time {
@@ -114,41 +124,4 @@ func atomicWriteJSON(path string, value any) error {
 		return fmt.Errorf("mission invocation: persist request: %w", err)
 	}
 	return nil
-}
-
-// invocationRetention is how long consumed or expired records stay on disk.
-const invocationRetention = 24 * time.Hour
-
-// prune removes records that were consumed or expired more than
-// invocationRetention ago. It is best-effort: a failure never blocks a request.
-func (s InvocationStore) prune(dir string) {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return
-	}
-	cutoff := s.now().Add(-invocationRetention)
-	for _, entry := range entries {
-		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
-			continue
-		}
-		path := filepath.Join(dir, entry.Name())
-		if s.recordIsStale(path, cutoff) {
-			_ = os.Remove(path) //nolint:errcheck // best-effort retention cleanup.
-		}
-	}
-}
-
-func (s InvocationStore) recordIsStale(path string, cutoff time.Time) bool {
-	raw, err := os.ReadFile(path) //nolint:gosec // G304: path is listed from the store directory.
-	if err != nil {
-		return false
-	}
-	var record domain.MissionInvocationRecord
-	if json.Unmarshal(raw, &record) != nil {
-		return false
-	}
-	if record.Consumed && record.ConsumedAt != nil {
-		return record.ConsumedAt.Before(cutoff)
-	}
-	return !record.ExpiresAt.IsZero() && record.ExpiresAt.Before(cutoff)
 }

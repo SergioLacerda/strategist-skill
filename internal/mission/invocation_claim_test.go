@@ -11,42 +11,61 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestClaimIsExclusiveUntilReleased(t *testing.T) {
+func TestClaimTargetIsExclusiveUntilReleased(t *testing.T) {
 	store := NewInvocationStore(t.TempDir())
 
-	release, err := store.Claim("inv_12345678")
+	release, err := store.ClaimTarget("m1", "ranger", "discovery")
 	require.NoError(t, err)
-	_, err = store.Claim("inv_12345678")
+	_, err = store.ClaimTarget("m1", "ranger", "discovery")
 	require.ErrorContains(t, err, "invocation_in_progress")
+
+	other, err := store.ClaimTarget("m2", "ranger", "discovery")
+	require.NoError(t, err, "a different mission target is independent")
+	other()
 
 	release()
 	release()
-	again, err := store.Claim("inv_12345678")
+	again, err := store.ClaimTarget("m1", "ranger", "discovery")
 	require.NoError(t, err)
 	again()
 }
 
-func TestClaimReclaimsAStaleMarker(t *testing.T) {
+func TestClaimTargetReclaimsAnOldLeaseWhoseOwnerIsGone(t *testing.T) {
 	store := NewInvocationStore(t.TempDir())
-	_, err := store.Claim("inv_12345678")
+	_, err := store.ClaimTarget("m1", "ranger", "discovery")
 	require.NoError(t, err)
-	path, err := store.claimPath("inv_12345678")
+	path, err := store.targetLeasePath("m1", "ranger", "discovery")
 	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(path, []byte("2147483646"), 0o600))
 	old := time.Now().Add(-2 * invocationClaimTTL)
 	require.NoError(t, os.Chtimes(path, old, old))
 
-	release, err := store.Claim("inv_12345678")
+	release, err := store.ClaimTarget("m1", "ranger", "discovery")
 
 	require.NoError(t, err)
 	release()
 }
 
-func TestClaimRejectsMalformedRequestID(t *testing.T) {
-	_, err := NewInvocationStore(t.TempDir()).Claim("../escape")
-	require.ErrorContains(t, err, "malformed request_id")
+func TestClaimTargetKeepsAnOldLeaseWhoseOwnerIsAlive(t *testing.T) {
+	store := NewInvocationStore(t.TempDir())
+	_, err := store.ClaimTarget("m1", "ranger", "discovery")
+	require.NoError(t, err)
+	path, err := store.targetLeasePath("m1", "ranger", "discovery")
+	require.NoError(t, err)
+	old := time.Now().Add(-2 * invocationClaimTTL)
+	require.NoError(t, os.Chtimes(path, old, old))
+
+	_, err = store.ClaimTarget("m1", "ranger", "discovery")
+
+	require.ErrorContains(t, err, "invocation_in_progress")
 }
 
-func TestClaimAllowsExactlyOneConcurrentWinner(t *testing.T) {
+func TestClaimTargetRejectsAnIncompleteTarget(t *testing.T) {
+	_, err := NewInvocationStore(t.TempDir()).ClaimTarget("m1", "", "discovery")
+	require.ErrorContains(t, err, "required")
+}
+
+func TestClaimTargetAllowsExactlyOneConcurrentWinner(t *testing.T) {
 	store := NewInvocationStore(t.TempDir())
 	var wins int
 	var mu sync.Mutex
@@ -55,7 +74,7 @@ func TestClaimAllowsExactlyOneConcurrentWinner(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if _, err := store.Claim("inv_12345678"); err == nil {
+			if _, err := store.ClaimTarget("m1", "ranger", "discovery"); err == nil {
 				mu.Lock()
 				wins++
 				mu.Unlock()

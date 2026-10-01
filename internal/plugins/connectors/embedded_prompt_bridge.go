@@ -51,7 +51,14 @@ type EmbeddedInvocationReceipt struct {
 	// RequestID ties the receipt to the single-use mission invocation request
 	// it completes. Optional: in-process embedded invocations have no request.
 	RequestID string
-	IssuedAt  time.Time
+	// Nonce is the request's prompt-delimiter nonce, echoed as non-authenticating
+	// correlation evidence. Optional for the same reason as RequestID.
+	Nonce string
+	// ExecutionAdapter and ChildPolicyID carry Strategist-committed adapter
+	// provenance. Neither is a capability-isolation claim.
+	ExecutionAdapter domain.MissionExecutionAdapter
+	ChildPolicyID    string
+	IssuedAt         time.Time
 }
 
 // EmbeddedInvocationReceiptSchemaVersion identifies the supported receipt schema.
@@ -82,6 +89,25 @@ func (r EmbeddedInvocationReceipt) Validate() error {
 	}
 	if r.IssuedAt.IsZero() {
 		return fmt.Errorf("embedded invocation receipt issued time is required")
+	}
+	return r.validateAdapterProvenance()
+}
+
+// validateAdapterProvenance accepts an absent adapter (in-process embedded
+// invocations have none) but rejects an unknown mode, and requires a policy
+// identity exactly when Strategist launched a child.
+func (r EmbeddedInvocationReceipt) validateAdapterProvenance() error {
+	if r.ExecutionAdapter == "" {
+		if r.ChildPolicyID != "" {
+			return fmt.Errorf("embedded invocation receipt child policy requires an execution adapter")
+		}
+		return nil
+	}
+	if !r.ExecutionAdapter.Known() {
+		return fmt.Errorf("embedded invocation receipt execution adapter %q is unknown", r.ExecutionAdapter)
+	}
+	if r.ExecutionAdapter.IsChild() != (r.ChildPolicyID != "") {
+		return fmt.Errorf("embedded invocation receipt child policy must be present exactly for child adapters")
 	}
 	return nil
 }

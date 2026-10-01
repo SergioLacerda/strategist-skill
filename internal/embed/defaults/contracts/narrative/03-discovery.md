@@ -143,6 +143,18 @@ change which Weapon is bound. When the active runtime catalog (`.strategist/plug
 supplies an `upstream_content_digest`, Ranger compares it to the resolved digest and blocks a
 mismatch. An absent pin is explicitly `pin_unavailable`, not a verification claim.
 
+Ranked Embedded invocation also records which Strategist-owned adapter produced the completion:
+`current_host_adapter` (the managed current host returned it through `mission complete`),
+`codex_child`, or `claude_child` (Strategist launched the child through `mission invoke --host`).
+Strategist commits the mode in the durable request before the child runs and the completion path
+declares its own adapter; the mode is never read from completion JSON or Weapon output, and a
+mismatch fails with `invocation_adapter_mismatch` before any artifact is published. A request
+issued before the field existed reads as `current_host_adapter_unverified` and is never treated
+as a child. The normalized artifact records `execution_adapter`, `invocation_request_id` and, for
+a child, `child_policy_id` (a versioned hash of the restrictions Strategist configured), always
+beside `capability_isolation: unverified`. Configured child restrictions prove what Strategist
+requested, not what the provider enforced.
+
 A receipt authenticates that the host invoked a Weapon. It does **not** prove that the parent agent
 was prevented from independently reading, reasoning, or using its own tools. Hosts must report
 `capability_isolation: unverified` unless separate conformance evidence establishes scoped delegated

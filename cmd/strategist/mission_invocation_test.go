@@ -196,3 +196,72 @@ printf '%s\n' '## mission_objective' 'delegated' > "$output"
 	require.Contains(t, got, "## mission_objective")
 	require.Contains(t, got, "delegated")
 }
+
+func writeFakeHost(t *testing.T, name, script string) string {
+	t.Helper()
+	bin := filepath.Join(t.TempDir(), name)
+	require.NoError(t, os.WriteFile(bin, []byte(script), 0o700))
+	return bin
+}
+
+func TestRunClaudeBinaryRejectsRunawayStderr(t *testing.T) {
+	bin := writeFakeHost(t, "claude", "#!/bin/sh\nyes x | head -c 3000000 >&2\nprintf ok\n")
+
+	_, err := runClaudeBinary(t.Context(), bin, t.TempDir(), "p", 1024)
+
+	require.ErrorIs(t, err, errHostOutputTooLarge)
+}
+
+func TestRunCodexBinaryRejectsRunawayStdout(t *testing.T) {
+	bin := writeFakeHost(t, "codex", "#!/bin/sh\ncat >/dev/null\nyes x | head -c 100000\n")
+	t.Setenv("CODEX_HOME", t.TempDir())
+
+	_, err := runCodexBinary(t.Context(), bin, t.TempDir(), "p", 1024)
+
+	require.ErrorIs(t, err, errHostOutputTooLarge)
+}
+
+func TestRunCodexBinaryRejectsRunawayStderr(t *testing.T) {
+	bin := writeFakeHost(t, "codex", "#!/bin/sh\ncat >/dev/null\nyes x | head -c 3000000 >&2\n")
+	t.Setenv("CODEX_HOME", t.TempDir())
+
+	_, err := runCodexBinary(t.Context(), bin, t.TempDir(), "p", maxHostResultBytes)
+
+	require.ErrorIs(t, err, errHostOutputTooLarge)
+}
+
+func TestHostFailureKeepsABoundedStderrTail(t *testing.T) {
+	bin := writeFakeHost(t, "codex", "#!/bin/sh\ncat >/dev/null\nyes line | head -c 100000 >&2\necho final-cause >&2\nexit 3\n")
+	t.Setenv("CODEX_HOME", t.TempDir())
+
+	_, err := runCodexBinary(t.Context(), bin, t.TempDir(), "p", maxHostResultBytes)
+
+	require.Error(t, err)
+	require.ErrorContains(t, err, "final-cause")
+	require.Less(t, len(err.Error()), maxHostFailureDetailBytes+200)
+}
+
+func TestHostStderrNeverEntersASuccessfulResult(t *testing.T) {
+	bin := writeFakeHost(t, "codex", `#!/bin/sh
+output=""
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "--output-last-message" ]; then shift; output="$1"; fi
+  shift
+done
+cat >/dev/null
+echo noisy-diagnostic >&2
+echo "## mission_objective" > "$output"
+`)
+	t.Setenv("CODEX_HOME", t.TempDir())
+
+	got, err := runCodexBinary(t.Context(), bin, t.TempDir(), "p", maxHostResultBytes)
+
+	require.NoError(t, err)
+	require.NotContains(t, got, "noisy-diagnostic")
+}
+
+func TestHostBridgePromptUsesThePersistedRequestNonce(t *testing.T) {
+	request := domain.MissionInvocationRequest{Weapon: domain.MissionWeaponIdentity{ID: "w"}, Payload: "p", Nonce: "0123456789abcdef"}
+
+	require.Contains(t, hostBridgePrompt(request, "ctx"), "<original-user-request-0123456789abcdef>")
+}

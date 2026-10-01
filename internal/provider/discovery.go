@@ -30,6 +30,16 @@ type DiscoveryWeaponRequest struct {
 	ArtifactPath  string
 	CatalogPath   string
 	ReceiptStore  ReceiptNonceStore
+	// InvocationNonce, when set, must equal the embedded receipt's Nonce. It
+	// correlates a request with its receipt; it does not authenticate the host.
+	InvocationNonce string
+	// ExecutionAdapter and ChildPolicyID, when set, must equal the receipt's.
+	// They are provenance only: embedded discovery stays capability_isolation=unverified.
+	ExecutionAdapter domain.MissionExecutionAdapter
+	ChildPolicyID    string
+	// InvocationRequestID is the durable request identity. It correlates
+	// repeated attempts in telemetry and, when set, must equal the receipt's.
+	InvocationRequestID string
 	// CapabilityIsolationVerified is host conformance evidence, not a claim
 	// supplied by the receipt itself.
 	CapabilityIsolationVerified bool
@@ -156,23 +166,7 @@ func verifyDiscoveryReceipt(request DiscoveryWeaponRequest, response DiscoveryWe
 	if err := validateEmbeddedInvocationReceipt(request, response.EmbeddedInvocationReceipt); err != nil {
 		return failedReceiptVerification(), err
 	}
-	return discoveryReceiptVerification{authenticated: "embedded", pinStatus: "not_applicable", isolation: "not_applicable"}, nil
-}
-
-func validateEmbeddedInvocationReceipt(request DiscoveryWeaponRequest, receipt connectors.EmbeddedInvocationReceipt) error {
-	if err := receipt.Validate(); err != nil {
-		return fmt.Errorf("validate embedded invocation receipt: %w", err)
-	}
-	if receipt.MissionID != request.MissionID || receipt.Role != request.Role || receipt.Slot != request.Slot || receipt.WeaponID != request.ProviderID {
-		return fmt.Errorf("embedded invocation receipt identity mismatch")
-	}
-	if request.BindingDigest != "" && receipt.BindingDigest != request.BindingDigest {
-		return fmt.Errorf("embedded invocation receipt binding digest mismatch")
-	}
-	if request.SourceDigest != "" && receipt.SourceDigest != request.SourceDigest {
-		return fmt.Errorf("embedded invocation receipt source digest mismatch")
-	}
-	return nil
+	return discoveryReceiptVerification{authenticated: "embedded", pinStatus: "not_applicable", isolation: connectors.CapabilityIsolationUnverified}, nil
 }
 
 // discoveryReceiptVerification and its validation helpers live in
@@ -188,6 +182,8 @@ func emitDiscoveryTelemetry(ctx context.Context, sink telemetry.EventSink, runID
 		reason = ""
 	}
 	event := telemetry.NewDiscoveryWeaponEvent(runID, request.ProviderID, request.ArtifactPath, invocationStatus, normalizationStatus, evidence, reason, verification.authenticated, verification.pinStatus, verification.isolation)
+	event = telemetry.WithDiscoveryAdapterProvenance(event, string(request.ExecutionAdapter), request.ChildPolicyID)
+	event = telemetry.WithDiscoveryRequestCorrelation(event, request.InvocationRequestID)
 	if err := sink.Emit(ctx, event); err != nil {
 		return fmt.Errorf("emit discovery telemetry: %w", err)
 	}

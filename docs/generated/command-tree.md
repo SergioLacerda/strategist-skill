@@ -48,7 +48,9 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `rollout-check` — Check whether a confidence enforcement mode is admissible
   - `scout` — Report Scout routing metrics
 - `mission` — Report and inspect mission-level facts this binary cannot observe directly
+  - `complete` — Complete one embedded Weapon invocation
   - `context` — Materialize declared mission context
+  - `invoke` — Invoke one embedded Weapon through a host bridge
   - `normalize-openspec` — Publish a completed OpenSpec change into the refined mission package
   - `report-usage` — Record real token usage for a mission, reported by the invoking agent
   - `route` — Record Scout's route decision for a mission (JSON on stdin)
@@ -61,6 +63,7 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `evaluate-write` — Report whether a write to --target is enforceably allowed under the active connector
   - `prepare-embedded` — Ingest external-skills-source/ into the embedded plugin catalog
   - `resolved-digest` — Report whether a resolved Weapon file matches its catalog pin
+  - `scaffold-sidecar` — Generate a package's strategist.yaml sidecar deterministically
 - `provider` — Validate and onboard local Strategist providers
   - `add` — Stage and bind a validated local provider
   - `validate` — Validate a local provider package without changing workspace state

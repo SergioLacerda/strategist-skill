@@ -45,6 +45,9 @@ Structured telemetry should preserve, when available:
 - `discovery.invocation_status`
 - `discovery.normalization_status`
 - `discovery.invocation_evidence`
+- `discovery.execution_adapter`
+- `discovery.child_policy_id`
+- `discovery.invocation_request_id`
 - `model`
 - `effort`
 - `level_source`
@@ -196,7 +199,23 @@ Weapon boundary when an authorized host supplies telemetry. It records
 `discovery.invocation_status` (`invoked` or `failed`) and
 `discovery.normalization_status` (`normalized`, `rejected`, or `not_attempted`).
 Successful events include `discovery.invocation_evidence`; provider payloads
-are never recorded. A failed event is `status: blocked`, carries
+are never recorded. Ranked Embedded events add `discovery.execution_adapter`
+(`current_host_adapter`, `codex_child`, or `claude_child`, committed by
+Strategist) and, for a child, `discovery.child_policy_id`; they report
+`discovery.capability_isolation` as `unverified` and never include prompts,
+outputs, the nonce, secrets, or home paths.
+
+CLI mission completion (`mission complete` and `mission invoke --host`) emits this
+event through the sink selected by the telemetry configuration at command time
+(slog, or OTel when an endpoint is configured), wrapped by the usual
+strict/non-strict policy: a non-strict delivery failure is logged and the
+completion proceeds, a strict one is returned and no artifact is published. Each
+normalization attempt emits exactly one event carrying
+`discovery.invocation_request_id`, the durable request identity. Delivery is
+at-least-once: telemetry and artifact publication are not one transaction, so a
+retry after an interrupted completion re-emits for the same request id and
+consumers should treat repeats as possible duplicates. Recovery that only
+finalizes an already published artifact does not normalize again and emits nothing. A failed event is `status: blocked`, carries
 `reason: role_invocation_failed`, and does not imply native substitution.
 
 Static catalog/readiness results remain distinct from this event: readiness can

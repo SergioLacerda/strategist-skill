@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -14,51 +13,43 @@ import (
 	missionruntime "github.com/SergioLacerda/strategist-skill/internal/mission"
 	"github.com/SergioLacerda/strategist-skill/internal/plugins/connectors"
 	"github.com/SergioLacerda/strategist-skill/internal/provider"
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
 )
 
+// completeMissionInvocation publishes the pending Ranger artifact for one
+// request. The publication target (mission, Role, slot) is leased before any
+// state or artifact is inspected, so two request IDs can never race over it.
 func completeMissionInvocation(ctx context.Context, input missionadapter.InvocationCompleteInput) (domain.MissionInvocationOutcome, error) {
+	if input.Sink == nil {
+		return domain.MissionInvocationOutcome{}, fmt.Errorf("invocation_telemetry_unavailable: mission completion requires a configured telemetry sink")
+	}
 	store := missionruntime.NewInvocationStore(input.Root)
-	release, err := store.Claim(input.RequestID)
+	issued, err := store.Get(input.RequestID)
+	if err != nil {
+		return domain.MissionInvocationOutcome{}, fmt.Errorf("load mission invocation: %w", err)
+	}
+	release, err := store.ClaimTarget(issued.Request.MissionID, issued.Request.Role, issued.Request.Slot)
 	if err != nil {
 		return domain.MissionInvocationOutcome{}, fmt.Errorf("claim mission invocation: %w", err)
 	}
 	defer release()
+	// Re-read under the lease: another completion may have finished meanwhile.
 	record, err := loadCompletableInvocation(store, input)
 	if err != nil {
+		return domain.MissionInvocationOutcome{}, err
+	}
+	if err := verifyExecutionAdapter(record, input); err != nil {
 		return domain.MissionInvocationOutcome{}, err
 	}
 	if err := verifyInvocationStillCurrent(input.Root, record); err != nil {
 		return domain.MissionInvocationOutcome{}, err
 	}
-	artifactPath, err := persistDiscoveryArtifact(ctx, input, record)
+	artifactPath, err := publishDiscoveryArtifact(ctx, store, input, record)
 	if err != nil {
 		return domain.MissionInvocationOutcome{}, err
 	}
-	if err := store.Consume(input.RequestID); err != nil {
-		return domain.MissionInvocationOutcome{}, fmt.Errorf("consume mission invocation: %w", err)
-	}
 	return domain.MissionInvocationOutcome{RequestID: input.RequestID, MissionID: record.Request.MissionID, Status: "normalized", ArtifactPath: artifactPath, BindingDigest: record.Request.BindingDigest, SourceDigest: record.Request.SourceDigest}, nil
-}
-
-// persistDiscoveryArtifact normalizes the raw completion and writes the pending
-// Ranger artifact, returning its workspace-relative path.
-func persistDiscoveryArtifact(ctx context.Context, input missionadapter.InvocationCompleteInput, record domain.MissionInvocationRecord) (string, error) {
-	artifactPath, artifactAbsolute, err := discoveryArtifactPaths(input.Root, input.BasePath, record.Request.MissionID)
-	if err != nil {
-		return "", fmt.Errorf("normalize discovery completion: %w", err)
-	}
-	artifact, err := normalizeDiscoveryInvocation(ctx, record, artifactPath, input.Completion.Result)
-	if err != nil {
-		return "", err
-	}
-	if err := refuseArtifactOverwrite(artifactAbsolute); err != nil {
-		return "", err
-	}
-	if err := writeMissionArtifact(artifactAbsolute, artifact.Content); err != nil {
-		return "", err
-	}
-	return artifactPath, nil
 }
 
 // verifyInvocationStillCurrent rejects a request whose mission left discovery
@@ -80,22 +71,6 @@ func verifyInvocationStillCurrent(root string, record domain.MissionInvocationRe
 	return nil
 }
 
-// refuseArtifactOverwrite lets a completion replace only a pending Ranger
-// artifact; a promoted, approved or claimed artifact is never overwritten.
-func refuseArtifactOverwrite(path string) error {
-	existing, err := os.ReadFile(path) //nolint:gosec // G304: path is built by discoveryArtifactPaths inside the workspace.
-	if os.IsNotExist(err) {
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("inspect existing discovery artifact: %w", err)
-	}
-	if !bytes.Contains(existing, []byte("mission_status: ranger_pending")) {
-		return fmt.Errorf("invocation_artifact_exists: %s is not a pending Ranger artifact and will not be overwritten", filepath.Base(path))
-	}
-	return nil
-}
-
 func loadCompletableInvocation(store missionruntime.InvocationStore, input missionadapter.InvocationCompleteInput) (domain.MissionInvocationRecord, error) {
 	record, err := store.Get(input.RequestID)
 	if err != nil {
@@ -113,24 +88,26 @@ func loadCompletableInvocation(store missionruntime.InvocationStore, input missi
 	return record, nil
 }
 
-func normalizeDiscoveryInvocation(ctx context.Context, record domain.MissionInvocationRecord, artifactPath, result string) (provider.NormalizedDiscoveryArtifact, error) {
+func normalizeDiscoveryInvocation(ctx context.Context, sink telemetry.EventSink, record domain.MissionInvocationRecord, artifactPath, result string) (provider.NormalizedDiscoveryArtifact, error) {
 	request := provider.DiscoveryWeaponRequest{
 		MissionID: record.Request.MissionID, Role: record.Request.Role, Slot: record.Request.Slot,
 		ProviderID: record.Request.Weapon.ID, RuntimeKind: domain.RankedRuntimeEmbedded,
 		BindingDigest: record.Request.BindingDigest, SourceDigest: record.Request.SourceDigest,
-		Entrypoint: record.Request.Entrypoint, ArtifactPath: artifactPath,
+		Entrypoint: record.Request.Entrypoint, ArtifactPath: artifactPath, InvocationNonce: record.Request.Nonce,
+		ExecutionAdapter: record.EffectiveAdapter(), ChildPolicyID: record.ChildPolicyID,
+		InvocationRequestID: record.Request.RequestID,
 	}
-	artifact, err := provider.InvokeAndNormalizeDiscovery(ctx, request, func(context.Context, provider.DiscoveryWeaponRequest) (provider.DiscoveryWeaponResponse, error) {
+	artifact, err := provider.InvokeAndNormalizeDiscoveryWithTelemetry(ctx, request, func(context.Context, provider.DiscoveryWeaponRequest) (provider.DiscoveryWeaponResponse, error) {
 		return provider.DiscoveryWeaponResponse{
 			ProviderID: record.Request.Weapon.ID, InvocationEvidence: "embedded_prompt_bridge",
 			Artifact: []byte(result), EmbeddedInvocationReceipt: connectors.EmbeddedInvocationReceipt{
 				SchemaVersion: connectors.EmbeddedInvocationReceiptSchemaVersion, MissionID: record.Request.MissionID,
 				Role: record.Request.Role, Slot: record.Request.Slot, WeaponID: record.Request.Weapon.ID,
 				Entrypoint: record.Request.Entrypoint, BindingDigest: record.Request.BindingDigest,
-				SourceDigest: record.Request.SourceDigest, RequestID: record.Request.RequestID, IssuedAt: record.CreatedAt,
+				SourceDigest: record.Request.SourceDigest, RequestID: record.Request.RequestID, Nonce: record.Request.Nonce, ExecutionAdapter: record.EffectiveAdapter(), ChildPolicyID: record.ChildPolicyID, IssuedAt: record.CreatedAt,
 			},
 		}, nil
-	})
+	}, sink, "")
 	if err != nil {
 		return provider.NormalizedDiscoveryArtifact{}, fmt.Errorf("normalize discovery completion: %w", err)
 	}

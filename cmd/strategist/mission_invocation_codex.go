@@ -11,6 +11,12 @@ import (
 )
 
 func runCodexPrompt(ctx context.Context, workspace, prompt string) (string, error) {
+	return runCodexBinary(ctx, "codex", workspace, prompt, maxHostResultBytes)
+}
+
+func runCodexBinary(ctx context.Context, binary, workspace, prompt string, limit int) (string, error) {
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	stateDir, err := os.MkdirTemp("", "strategist-codex-state-*")
 	if err != nil {
 		return "", fmt.Errorf("create Codex transient state directory: %w", err)
@@ -22,15 +28,16 @@ func runCodexPrompt(ctx context.Context, workspace, prompt string) (string, erro
 		return "", err
 	}
 	//nolint:gosec // G204: Codex is a fixed executable selected by the closed host switch.
-	cmd := exec.CommandContext(ctx, "codex", codexExecArgs(stateDir, outputPath, workspace)...)
+	cmd := exec.CommandContext(runCtx, binary, codexExecArgs(stateDir, outputPath, workspace)...)
 	cmd.Stdin = strings.NewReader(prompt)
 	cmd.Dir = workspace
 	cmd.Env = codexBridgeEnv(os.Environ(), stateDir)
 	if err := linkCodexAuth(os.Environ(), stateDir); err != nil {
 		return "", err
 	}
-	if output, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("codex host bridge: %w: %s", err, strings.TrimSpace(string(output)))
+	streams := attachHostStreams(cmd, cancel, limit)
+	if err := cmd.Run(); err != nil {
+		return "", streams.failure("codex", err)
 	}
 	if info, err := os.Stat(outputPath); err == nil && info.Size() > maxHostResultBytes {
 		return "", fmt.Errorf("codex host bridge: %w", errHostOutputTooLarge)

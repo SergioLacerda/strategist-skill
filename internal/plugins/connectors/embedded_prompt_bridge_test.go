@@ -65,3 +65,36 @@ func TestEmbeddedInvocationReceiptRejectsIncompleteIdentity(t *testing.T) {
 	receipt := EmbeddedInvocationReceipt{SchemaVersion: EmbeddedInvocationReceiptSchemaVersion, IssuedAt: time.Now()}
 	assert.ErrorContains(t, receipt.Validate(), "embedded invocation receipt mission is required")
 }
+
+func TestEmbeddedInvocationReceiptValidatesAdapterProvenance(t *testing.T) {
+	base := func() EmbeddedInvocationReceipt {
+		return EmbeddedInvocationReceipt{
+			SchemaVersion: EmbeddedInvocationReceiptSchemaVersion, MissionID: "m", Role: "ranger", Slot: "discovery", WeaponID: "w",
+			Entrypoint: "e", BindingDigest: "b", SourceDigest: "s", IssuedAt: time.Now(),
+		}
+	}
+	cases := map[string]struct {
+		adapter domain.MissionExecutionAdapter
+		policy  string
+		want    string
+	}{
+		"in-process receipt without adapter": {"", "", ""},
+		"current host":                       {domain.ExecutionAdapterCurrentHost, "", ""},
+		"child with policy":                  {domain.ExecutionAdapterCodexChild, "p", ""},
+		"pre-field compatibility reading":    {domain.ExecutionAdapterCurrentHostUnverified, "", ""},
+		"unknown adapter":                    {"hacked", "", "unknown"},
+		"child without policy":               {domain.ExecutionAdapterClaudeChild, "", "child policy"},
+		"current host with a child policy":   {domain.ExecutionAdapterCurrentHost, "p", "child policy"},
+		"policy without adapter":             {"", "p", "requires an execution adapter"},
+	}
+	for name, tc := range cases {
+		receipt := base()
+		receipt.ExecutionAdapter, receipt.ChildPolicyID = tc.adapter, tc.policy
+		err := receipt.Validate()
+		if tc.want == "" {
+			require.NoError(t, err, name)
+		} else {
+			require.ErrorContains(t, err, tc.want, name)
+		}
+	}
+}

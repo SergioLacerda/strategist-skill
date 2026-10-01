@@ -3,6 +3,7 @@ package mission
 import (
 	"fmt"
 
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/spf13/cobra"
 )
 
@@ -35,7 +36,7 @@ func RunComplete(cmd *cobra.Command, deps InvocationDependencies, f *invocationF
 	if err != nil {
 		return fmt.Errorf("mission complete: %w", err)
 	}
-	outcome, err := deps.Complete(cmd.Context(), InvocationCompleteInput{Root: root, BasePath: basePath, RequestID: f.requestID, Completion: completion})
+	outcome, err := deps.Complete(cmd.Context(), InvocationCompleteInput{Root: root, BasePath: basePath, RequestID: f.requestID, Completion: completion, Adapter: domain.ExecutionAdapterCurrentHost, Sink: deps.sink()})
 	if err != nil {
 		return fmt.Errorf("mission complete: %w", err)
 	}

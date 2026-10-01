@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
 )
 
@@ -21,6 +22,11 @@ type InvocationDependencies struct {
 	ExecuteHost      func(context.Context, string, string, string, domain.MissionInvocationRequest) (domain.MissionInvocationCompletion, error)
 	WriteResult      func(*cobra.Command, bool, any) error
 	ReadCompletion   func(*cobra.Command) (domain.MissionInvocationCompletion, error)
+	// TelemetrySink selects the discovery event sink when a completion runs.
+	// Production composition builds it from the existing telemetry
+	// configuration; tests inject capture or failing sinks. A nil function
+	// leaves the completion without a sink, which the runtime refuses.
+	TelemetrySink func() telemetry.EventSink
 }
 
 // InvocationBuildInput identifies the immutable Weapon request to build.
@@ -39,6 +45,21 @@ type InvocationCompleteInput struct {
 	BasePath   string
 	RequestID  string
 	Completion domain.MissionInvocationCompletion
+	// Adapter is the execution path the calling CLI command itself owns:
+	// `mission complete` is the current-host return channel, `mission invoke
+	// --host` is a child. It is never read from the completion.
+	Adapter domain.MissionExecutionAdapter
+	// Sink receives the provider-owned discovery invocation event. It is
+	// required: completion has no sinkless normalization path.
+	Sink telemetry.EventSink
+}
+
+// sink resolves the configured telemetry sink for one completion.
+func (d InvocationDependencies) sink() telemetry.EventSink {
+	if d.TelemetrySink == nil {
+		return nil
+	}
+	return d.TelemetrySink()
 }
 
 type invocationFlags struct {
@@ -125,11 +146,15 @@ func executeHostInvocation(cmd *cobra.Command, deps InvocationDependencies, f *i
 	if deps.ExecuteHost == nil {
 		return fmt.Errorf("mission invoke: host bridge is unavailable")
 	}
+	adapter, err := domain.ChildAdapterForHost(f.host)
+	if err != nil {
+		return fmt.Errorf("mission invoke: invocation_adapter_unknown: %w", err)
+	}
 	completion, err := deps.ExecuteHost(cmd.Context(), root, f.host, f.requestContext, request)
 	if err != nil {
 		return fmt.Errorf("mission invoke: role_invocation_failed: %w", err)
 	}
-	outcome, err := deps.Complete(cmd.Context(), InvocationCompleteInput{Root: root, BasePath: basePath, RequestID: request.RequestID, Completion: completion})
+	outcome, err := deps.Complete(cmd.Context(), InvocationCompleteInput{Root: root, BasePath: basePath, RequestID: request.RequestID, Completion: completion, Adapter: adapter, Sink: deps.sink()})
 	if err != nil {
 		return fmt.Errorf("mission invoke: %w", err)
 	}

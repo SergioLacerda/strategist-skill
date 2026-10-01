@@ -5,9 +5,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"os"
-	"path/filepath"
-	"reflect"
 	"strings"
 	"time"
 
@@ -17,7 +14,8 @@ import (
 	strategistembed "github.com/SergioLacerda/strategist-skill/internal/embed"
 	missionruntime "github.com/SergioLacerda/strategist-skill/internal/mission"
 	"github.com/SergioLacerda/strategist-skill/internal/provider"
-	"gopkg.in/yaml.v3"
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
+	telemetrysink "github.com/SergioLacerda/strategist-skill/internal/telemetry/sink"
 )
 
 // invocationLifetime covers a manual host run (the agent works between invoke
@@ -34,7 +32,16 @@ func missionInvocationDependencies() missionadapter.InvocationDependencies {
 		},
 		Build: buildMissionInvocation, Complete: completeMissionInvocation, ExecuteHost: executeMissionHost,
 		WriteResult: writeMissionResult, ReadCompletion: readMissionCompletion,
+		TelemetrySink: selectDiscoveryTelemetrySink,
 	}
+}
+
+// selectDiscoveryTelemetrySink applies the existing telemetry selection policy
+// (slog or OTel, resilient per STRATEGIST_TELEMETRY_STRICT) to the environment
+// read when the command runs. There is no external governance bridge in
+// ordinary CLI composition, which selects no alternate sink.
+func selectDiscoveryTelemetrySink() telemetry.EventSink {
+	return telemetrysink.Select(telemetry.FromEnv(), nil)
 }
 
 func cliutilFlagRoot() string { return cliutil.FlagRoot }
@@ -60,7 +67,7 @@ func buildMissionInvocation(ctx context.Context, input missionadapter.Invocation
 		return domain.MissionInvocationRequest{}, err
 	}
 	store := missionruntime.NewInvocationStore(input.Root)
-	if err := store.Put(domain.MissionInvocationRecord{Request: request, CreatedAt: now, ExpiresAt: now.Add(invocationLifetime)}); err != nil {
+	if err := store.Put(domain.MissionInvocationRecord{Request: request, CreatedAt: now, ExpiresAt: now.Add(invocationLifetime), ExecutionAdapter: domain.ExecutionAdapterCurrentHost}); err != nil {
 		return domain.MissionInvocationRequest{}, fmt.Errorf("persist mission invocation: %w", err)
 	}
 	return request, nil
@@ -120,7 +127,7 @@ func newMissionInvocationRequest(input missionadapter.InvocationBuildInput, bind
 		Weapon:        domain.MissionWeaponIdentity{ID: weapon.ID, Version: weapon.Version, Digest: weapon.Digest},
 		BindingDigest: binding.BindingDigest, SourceDigest: sourceDigest,
 		ExecutionMode: binding.ExecutionMode, Entrypoint: binding.Entrypoint,
-		Payload: string(payload), Input: requestInput,
+		Payload: string(payload), Input: requestInput, Nonce: newPromptNonce(),
 	}, now, nil
 }
 
@@ -133,55 +140,6 @@ func validateEmbeddedInvocationBinding(binding domain.RoleWeaponBinding) error {
 	}
 	if binding.RuntimeKind != domain.RankedRuntimeEmbedded {
 		return fmt.Errorf("role_invocation_failed: mission invoke only supports runtime kind %q, got %q", domain.RankedRuntimeEmbedded, binding.RuntimeKind)
-	}
-	return nil
-}
-
-func loadMissionInvocationState(root string) (domain.ActiveConfig, domain.PluginLockFile, domain.CompiledRegistry, error) {
-	activeRaw, err := os.ReadFile(filepath.Join(root, "active.yaml")) //nolint:gosec // G304: root is resolved by the CLI runtime boundary.
-	if err != nil {
-		return domain.ActiveConfig{}, domain.PluginLockFile{}, domain.CompiledRegistry{}, fmt.Errorf("read active.yaml: %w", err)
-	}
-	var active domain.ActiveConfig
-	if err := yaml.Unmarshal(activeRaw, &active); err != nil {
-		return domain.ActiveConfig{}, domain.PluginLockFile{}, domain.CompiledRegistry{}, fmt.Errorf("parse active.yaml: %w", err)
-	}
-	lockRaw, err := os.ReadFile(filepath.Join(root, "plugins.lock")) //nolint:gosec // G304: root is resolved by the CLI runtime boundary.
-	if err != nil {
-		return domain.ActiveConfig{}, domain.PluginLockFile{}, domain.CompiledRegistry{}, fmt.Errorf("read plugins.lock: %w", err)
-	}
-	var lock domain.PluginLockFile
-	if err := yaml.Unmarshal(lockRaw, &lock); err != nil {
-		return domain.ActiveConfig{}, domain.PluginLockFile{}, domain.CompiledRegistry{}, fmt.Errorf("parse plugins.lock: %w", err)
-	}
-	catalogRaw, err := os.ReadFile(filepath.Join(root, "plugins", "catalog.yaml")) //nolint:gosec // G304: root is resolved by the CLI runtime boundary.
-	if err != nil {
-		return domain.ActiveConfig{}, domain.PluginLockFile{}, domain.CompiledRegistry{}, fmt.Errorf("read compiled catalog: %w", err)
-	}
-	registry, err := domain.ParseCompiledRegistryCatalog(catalogRaw)
-	if err != nil {
-		return domain.ActiveConfig{}, domain.PluginLockFile{}, domain.CompiledRegistry{}, fmt.Errorf("parse compiled catalog: %w", err)
-	}
-	if err := requireRegistryMatchesBinary(registry); err != nil {
-		return domain.ActiveConfig{}, domain.PluginLockFile{}, domain.CompiledRegistry{}, err
-	}
-	return active, lock, registry, nil
-}
-
-// requireRegistryMatchesBinary anchors the Weapon/Role/binding registry to the
-// catalog compiled into this binary: the workspace copy is user-writable, so a
-// divergent registry is rejected instead of trusted.
-func requireRegistryMatchesBinary(workspace domain.CompiledRegistry) error {
-	raw, err := (strategistembed.Extractor{}).ReadFile("plugins/catalog.yaml")
-	if err != nil {
-		return fmt.Errorf("read embedded catalog: %w", err)
-	}
-	embedded, err := domain.ParseCompiledRegistryCatalog(raw)
-	if err != nil {
-		return fmt.Errorf("parse embedded catalog: %w", err)
-	}
-	if !reflect.DeepEqual(embedded, workspace) {
-		return fmt.Errorf("compiled_registry_drift: the workspace plugins/catalog.yaml registry differs from the one compiled into this binary; run `strategist upgrade` to restore it")
 	}
 	return nil
 }

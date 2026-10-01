@@ -1,9 +1,7 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"fmt"
 	"os"
 	"os/exec"
 	"strings"
@@ -31,14 +29,9 @@ func runClaudeBinary(ctx context.Context, binary, workspace, prompt string, limi
 	cmd := exec.CommandContext(runCtx, binary, claudeArgs(os.Getenv("ANTHROPIC_API_KEY") != "")...)
 	cmd.Dir = workspace
 	cmd.Stdin = strings.NewReader(prompt)
-	stdout := &cappedBuffer{limit: limit, cancel: cancel}
-	var stderr bytes.Buffer
-	cmd.Stdout, cmd.Stderr = stdout, &stderr
+	streams := attachHostStreams(cmd, cancel, limit)
 	if err := cmd.Run(); err != nil {
-		if stdout.tooLarge {
-			return "", fmt.Errorf("claude host bridge: %w", errHostOutputTooLarge)
-		}
-		return "", fmt.Errorf("claude host bridge: %w: %s", err, strings.TrimSpace(stderr.String()))
+		return "", streams.failure("claude", err)
 	}
-	return requireHostResult(stdout.buf.Bytes())
+	return requireHostResult(streams.stdout.buf.Bytes())
 }

@@ -21,6 +21,9 @@ const (
 	AttrReceiptAuthentication     = "strategist.discovery.receipt_authentication"
 	AttrReceiptPinStatus          = "strategist.discovery.receipt_pin_status"
 	AttrCapabilityIsolation       = "strategist.discovery.capability_isolation"
+	AttrExecutionAdapter          = "strategist.discovery.execution_adapter"
+	AttrChildPolicyID             = "strategist.discovery.child_policy_id"
+	AttrInvocationRequestID       = "strategist.discovery.invocation_request_id"
 )
 
 // NewDiscoveryWeaponEvent builds the auditable Ranger boundary event. The
@@ -56,6 +59,31 @@ func NewDiscoveryWeaponEvent(runID, provider, artifactPath, invocationStatus, no
 	}
 	if reason != "" {
 		event.Attributes[AttrReason] = reason
+	}
+	return event
+}
+
+// WithDiscoveryAdapterProvenance adds the Strategist-committed execution
+// adapter and, for a child, its versioned policy identity. Both are closed or
+// derived values; no prompt, output, nonce, secret or path is recorded.
+func WithDiscoveryAdapterProvenance(event Event, adapter, childPolicyID string) Event {
+	if adapter == "" {
+		return event
+	}
+	event.Attributes[AttrExecutionAdapter] = adapter
+	if childPolicyID != "" {
+		event.Attributes[AttrChildPolicyID] = childPolicyID
+	}
+	return event
+}
+
+// WithDiscoveryRequestCorrelation adds the durable invocation request
+// identity so repeated attempts for one request can be correlated. Delivery
+// is at-least-once across crash recovery, so a consumer may see the same
+// request more than once; the identity is a random handle, not a secret.
+func WithDiscoveryRequestCorrelation(event Event, requestID string) Event {
+	if requestID != "" {
+		event.Attributes[AttrInvocationRequestID] = requestID
 	}
 	return event
 }

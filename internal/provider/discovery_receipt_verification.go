@@ -81,3 +81,44 @@ func verifyReceiptPin(request DiscoveryWeaponRequest, receipt connectors.Invocat
 	}
 	return verification, nil
 }
+
+func validateEmbeddedInvocationReceipt(request DiscoveryWeaponRequest, receipt connectors.EmbeddedInvocationReceipt) error {
+	if err := receipt.Validate(); err != nil {
+		return fmt.Errorf("validate embedded invocation receipt: %w", err)
+	}
+	if receipt.MissionID != request.MissionID || receipt.Role != request.Role || receipt.Slot != request.Slot || receipt.WeaponID != request.ProviderID {
+		return fmt.Errorf("embedded invocation receipt identity mismatch")
+	}
+	return validateEmbeddedReceiptEvidence(request, receipt)
+}
+
+// validateEmbeddedReceiptEvidence checks the digests and the correlation nonce
+// the request pinned; empty request values are not constrained.
+func validateEmbeddedReceiptEvidence(request DiscoveryWeaponRequest, receipt connectors.EmbeddedInvocationReceipt) error {
+	if request.BindingDigest != "" && receipt.BindingDigest != request.BindingDigest {
+		return fmt.Errorf("embedded invocation receipt binding digest mismatch")
+	}
+	if request.SourceDigest != "" && receipt.SourceDigest != request.SourceDigest {
+		return fmt.Errorf("embedded invocation receipt source digest mismatch")
+	}
+	if request.InvocationNonce != "" && receipt.Nonce != request.InvocationNonce {
+		return fmt.Errorf("embedded invocation receipt nonce mismatch")
+	}
+	return validateEmbeddedReceiptAdapter(request, receipt)
+}
+
+// validateEmbeddedReceiptAdapter binds the receipt's adapter provenance to the
+// mode Strategist committed for the request. Constrains nothing when the
+// request pins no adapter.
+func validateEmbeddedReceiptAdapter(request DiscoveryWeaponRequest, receipt connectors.EmbeddedInvocationReceipt) error {
+	if request.InvocationRequestID != "" && receipt.RequestID != request.InvocationRequestID {
+		return fmt.Errorf("embedded invocation receipt request id mismatch")
+	}
+	if request.ExecutionAdapter == "" {
+		return nil
+	}
+	if receipt.ExecutionAdapter != request.ExecutionAdapter || receipt.ChildPolicyID != request.ChildPolicyID {
+		return fmt.Errorf("embedded invocation receipt execution adapter mismatch")
+	}
+	return nil
+}

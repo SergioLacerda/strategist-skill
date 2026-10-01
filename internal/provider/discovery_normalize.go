@@ -7,6 +7,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/plugins/connectors"
 	"gopkg.in/yaml.v3"
 )
 
@@ -60,18 +61,56 @@ func normalizeDiscoveryArtifact(request DiscoveryWeaponRequest, response Discove
 		// The handoff requires the list; an absent one means "no source reported".
 		frontmatter["sources_consulted"] = []any{}
 	}
-	frontmatter["schema_version"] = DiscoveryArtifactSchemaVersion
-	frontmatter["mission_id"] = request.MissionID
-	frontmatter["mission_status"] = "ranger_pending"
-	frontmatter["analysis_artifact_path"] = request.ArtifactPath
-	frontmatter["provider_id"] = request.ProviderID
-	frontmatter["invocation_evidence"] = strings.TrimSpace(response.InvocationEvidence)
+	stampTrustedDiscoveryMetadata(frontmatter, request, response)
 
 	encoded, err := yaml.Marshal(frontmatter)
 	if err != nil {
 		return nil, fmt.Errorf("marshal normalized discovery metadata: %w", err)
 	}
 	return append(append([]byte("---\n"), append(encoded, []byte("---\n\n")...)...), append(bytes.TrimSpace(body), '\n')...), nil
+}
+
+// stampTrustedDiscoveryMetadata overwrites every identity and ownership field
+// with Ranger's own request and host evidence. The request id is replaced when
+// this completion has one and removed otherwise, so a provider can never forge it.
+func stampTrustedDiscoveryMetadata(frontmatter map[string]any, request DiscoveryWeaponRequest, response DiscoveryWeaponResponse) {
+	frontmatter["schema_version"] = DiscoveryArtifactSchemaVersion
+	frontmatter["mission_id"] = request.MissionID
+	frontmatter["mission_status"] = "ranger_pending"
+	frontmatter["analysis_artifact_path"] = request.ArtifactPath
+	frontmatter["provider_id"] = request.ProviderID
+	frontmatter["invocation_evidence"] = strings.TrimSpace(response.InvocationEvidence)
+	if requestID := response.EmbeddedInvocationReceipt.RequestID; requestID != "" {
+		frontmatter[InvocationRequestIDKey] = requestID
+	} else {
+		delete(frontmatter, InvocationRequestIDKey)
+	}
+	stampAdapterProvenance(frontmatter, response.EmbeddedInvocationReceipt)
+}
+
+// Trusted adapter-provenance frontmatter fields. A provider-supplied value for
+// any of them is always discarded.
+const (
+	ExecutionAdapterKey    = "execution_adapter"
+	ChildPolicyIDKey       = "child_policy_id"
+	CapabilityIsolationKey = "capability_isolation"
+)
+
+// stampAdapterProvenance records which Strategist-committed adapter produced the
+// result. Capability isolation is always unverified: configured child
+// restrictions and request identity never establish parent isolation.
+func stampAdapterProvenance(frontmatter map[string]any, receipt connectors.EmbeddedInvocationReceipt) {
+	delete(frontmatter, ExecutionAdapterKey)
+	delete(frontmatter, ChildPolicyIDKey)
+	delete(frontmatter, CapabilityIsolationKey)
+	if receipt.ExecutionAdapter == "" {
+		return
+	}
+	frontmatter[ExecutionAdapterKey] = string(receipt.ExecutionAdapter)
+	frontmatter[CapabilityIsolationKey] = connectors.CapabilityIsolationUnverified
+	if receipt.ChildPolicyID != "" {
+		frontmatter[ChildPolicyIDKey] = receipt.ChildPolicyID
+	}
 }
 
 func splitDiscoveryFrontmatter(raw []byte) (map[string]any, []byte, error) {
@@ -93,6 +132,37 @@ func splitDiscoveryFrontmatter(raw []byte) (map[string]any, []byte, error) {
 		return nil, nil, fmt.Errorf("parse discovery artifact frontmatter: %w", err)
 	}
 	return frontmatter, content[closing+4:], nil
+}
+
+// InvocationRequestIDKey is the trusted frontmatter field that binds a pending
+// artifact to the single mission invocation request that produced it.
+const InvocationRequestIDKey = "invocation_request_id"
+
+// DiscoveryProvenance is the ownership identity parsed from an artifact's
+// frontmatter. It is read from structure, never from body text.
+type DiscoveryProvenance struct {
+	MissionID string
+	Status    string
+	RequestID string
+}
+
+// ParseDiscoveryProvenance parses the frontmatter of an existing discovery
+// artifact. A missing or malformed frontmatter is an error, so an artifact
+// whose ownership cannot be established is never treated as owned.
+func ParseDiscoveryProvenance(raw []byte) (DiscoveryProvenance, error) {
+	content := bytes.TrimSpace(raw)
+	if !bytes.HasPrefix(content, []byte("---")) {
+		return DiscoveryProvenance{}, fmt.Errorf("discovery artifact has no frontmatter")
+	}
+	frontmatter, _, err := splitDiscoveryFrontmatter(raw)
+	if err != nil {
+		return DiscoveryProvenance{}, err
+	}
+	text := func(key string) string {
+		value, _ := frontmatter[key].(string) //nolint:errcheck // a non-string value is treated as absent.
+		return strings.TrimSpace(value)
+	}
+	return DiscoveryProvenance{MissionID: text("mission_id"), Status: text("mission_status"), RequestID: text(InvocationRequestIDKey)}, nil
 }
 
 func invocationFailure(err error) error {

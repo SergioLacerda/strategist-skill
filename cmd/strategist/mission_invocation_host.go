@@ -4,14 +4,17 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	missionruntime "github.com/SergioLacerda/strategist-skill/internal/mission"
 	"github.com/SergioLacerda/strategist-skill/internal/provider"
 )
 
@@ -20,6 +23,11 @@ const (
 	hostBridgeTimeout = 30 * time.Minute
 	// maxHostResultBytes matches the normalizer's artifact ceiling.
 	maxHostResultBytes = 4 << 20
+	// maxHostStderrBytes bounds the diagnostic stream so a chatty or runaway
+	// host cannot exhaust memory; the whole run fails closed past it.
+	maxHostStderrBytes = 1 << 20
+	// maxHostFailureDetailBytes is how much of the stream tail a failure reports.
+	maxHostFailureDetailBytes = 2 << 10
 )
 
 var errHostOutputTooLarge = errors.New("host bridge output exceeds the size limit")
@@ -45,12 +53,46 @@ func (c *cappedBuffer) Write(p []byte) (int, error) {
 	return n, nil
 }
 
+// hostStreams holds the bounded stdout and stderr of one child process.
+type hostStreams struct {
+	stdout, stderr *cappedBuffer
+}
+
+// attachHostStreams caps both child streams; exceeding either cancels the run.
+func attachHostStreams(cmd *exec.Cmd, cancel context.CancelFunc, stdoutLimit int) hostStreams {
+	streams := hostStreams{
+		stdout: &cappedBuffer{limit: stdoutLimit, cancel: cancel},
+		stderr: &cappedBuffer{limit: maxHostStderrBytes, cancel: cancel},
+	}
+	cmd.Stdout, cmd.Stderr = streams.stdout, streams.stderr
+	return streams
+}
+
+// failure describes a failed run: an oversized stream is reported as such,
+// otherwise the error carries a bounded tail of the diagnostic output.
+func (h hostStreams) failure(host string, runErr error) error {
+	if h.stdout.tooLarge || h.stderr.tooLarge {
+		return fmt.Errorf("%s host bridge: %w", host, errHostOutputTooLarge)
+	}
+	detail := h.stderr.buf.Bytes()
+	if len(bytes.TrimSpace(detail)) == 0 {
+		detail = h.stdout.buf.Bytes()
+	}
+	if len(detail) > maxHostFailureDetailBytes {
+		detail = detail[len(detail)-maxHostFailureDetailBytes:]
+	}
+	return fmt.Errorf("%s host bridge: %w: %s", host, runErr, strings.TrimSpace(string(detail)))
+}
+
 // maxHostContextBytes bounds the untrusted request context embedded in a host prompt.
 const maxHostContextBytes = 64 << 10
 
 func executeMissionHost(ctx context.Context, root, host, requestContext string, request domain.MissionInvocationRequest) (domain.MissionInvocationCompletion, error) {
 	if len(requestContext) > maxHostContextBytes {
 		return domain.MissionInvocationCompletion{}, fmt.Errorf("host bridge context exceeds %d bytes", maxHostContextBytes)
+	}
+	if err := commitChildAdapter(root, host, request.RequestID); err != nil {
+		return domain.MissionInvocationCompletion{}, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, hostBridgeTimeout)
 	defer cancel()
@@ -61,8 +103,44 @@ func executeMissionHost(ctx context.Context, root, host, requestContext string, 
 	return domain.MissionInvocationCompletion{RequestID: request.RequestID, Result: result}, nil
 }
 
+// hostBridgePrompt delimits untrusted context with the request's persisted
+// nonce, so the delimiter in the prompt is the one the receipt later echoes. A
+// request without one (issued before the nonce existed) gets a fresh nonce.
+// commitChildAdapter durably records which child Strategist is about to launch,
+// before it runs, so completion can only attribute the result to that child.
+func commitChildAdapter(root, host, requestID string) error {
+	adapter, err := domain.ChildAdapterForHost(host)
+	if err != nil {
+		return fmt.Errorf("invocation_adapter_unknown: %w", err)
+	}
+	if err := missionruntime.NewInvocationStore(root).CommitExecutionAdapter(requestID, adapter, childPolicyID(host)); err != nil {
+		return fmt.Errorf("commit execution adapter: %w", err)
+	}
+	return nil
+}
+
+// childPolicyID is the deterministic, versioned identity of the restrictions
+// Strategist configures for a child. It hashes the real argument lists with
+// per-run paths neutralized, so changing a flag changes the identity. It
+// proves what was requested, not that the provider enforced it.
+func childPolicyID(host string) string {
+	var args []string
+	switch host {
+	case "codex":
+		args = codexExecArgs("<state>", "<output>", "<workspace>")
+	case "claude":
+		args = claudeArgs(false) // --bare selects authentication, not a restriction.
+	}
+	sum := sha256.Sum256([]byte(host + "\x00" + strings.Join(args, "\x00")))
+	return "strategist-child-policy/v1:" + host + ":" + hex.EncodeToString(sum[:8])
+}
+
 func hostBridgePrompt(request domain.MissionInvocationRequest, requestContext string) string {
-	return hostBridgePromptWithNonce(request, requestContext, newPromptNonce())
+	nonce := request.Nonce
+	if nonce == "" {
+		nonce = newPromptNonce()
+	}
+	return hostBridgePromptWithNonce(request, requestContext, nonce)
 }
 
 // newPromptNonce returns a per-request random suffix so untrusted text cannot
