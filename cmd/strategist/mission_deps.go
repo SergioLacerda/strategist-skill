@@ -20,8 +20,16 @@ func missionLifecycleDependencies() missionadapter.LifecycleDependencies {
 		RootFlag: cliutil.FlagRoot, RequireMissionID: requireMissionID,
 		ResolveBasePath: cliutil.ResolveActiveBasePath, RequireNoExisting: requireNoExistingMission,
 		Save: saveMission, Load: loadMission, InitiativeStart: startInitiativeConsultation,
-		WriteResult: writeMissionResult, Lock: lockMission,
+		WriteResult: writeMissionResult, Lock: lockMission, ADRCanonicalPath: adrCanonicalPath,
 	}
+}
+
+func adrCanonicalPath(root string) (string, error) {
+	cfg, err := cliutil.LoadActiveConfig(root)
+	if err != nil {
+		return "", fmt.Errorf("read adr.canonical_path: %w", err)
+	}
+	return cfg.ADR.CanonicalPath, nil
 }
 
 func startInitiativeConsultation(root, missionID string) error {

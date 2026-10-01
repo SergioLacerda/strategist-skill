@@ -16,19 +16,38 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// advanceToHandoffChallenge drives a mission through the real submit command
-// up to the state that precedes execution.
-func advanceToHandoffChallenge(t *testing.T, root, id string) {
+// startAtApprovalGate drives a mission through the real submit command up to
+// the main Approval Gate, before the package is accepted.
+func startAtApprovalGate(t *testing.T, root, id string) {
 	t.Helper()
 	_, err := runLifecycle(t, mission.NewStart, "--root", root, "--mission-id", id)
 	require.NoError(t, err)
 	for _, event := range []domain.MissionEngineEvent{
 		domain.MissionEventBootstrapDone, domain.MissionEventIntakeDone, domain.MissionEventDiscoveryDone,
-		domain.MissionEventRefinementDone, domain.MissionEventGateApproved,
+		domain.MissionEventRefinementDone,
 	} {
 		_, err = runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", id, "--event", string(event))
 		require.NoError(t, err, event)
 	}
+}
+
+// advanceToHandoffChallenge drives a mission through a real gate acceptance
+// with the default informational package already present, so the accepted
+// package digest is available to the handoff boundary.
+func advanceToHandoffChallenge(t *testing.T, root, id string) {
+	t.Helper()
+	startAtApprovalGate(t, root, id)
+	writeRefinedPackage(t, root, id)
+	_, err := runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", id, "--event", string(domain.MissionEventGateApproved))
+	require.NoError(t, err, domain.MissionEventGateApproved)
+}
+
+func advanceToHandoffChallengeWithPackage(t *testing.T, root, id, facts, tasks string) {
+	t.Helper()
+	startAtApprovalGate(t, root, id)
+	writeTypedPackage(t, root, id, facts, tasks)
+	_, err := runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", id, "--event", string(domain.MissionEventGateApproved))
+	require.NoError(t, err, domain.MissionEventGateApproved)
 }
 
 const informationalFacts = `handoff_policy_facts:
@@ -93,8 +112,11 @@ func evaluateHandoff(t *testing.T, root, id string, input livemission.ArchivistH
 func TestSubmit_EnteringExecutionRequiresPipelineEvidence(t *testing.T) {
 	root := setupViewRoot(t, domain.MissionEngineStatus{})
 	advanceToHandoffChallenge(t, root, "m-guard")
+	_, basePath, err := cliutil.ResolveActiveBasePath(root)
+	require.NoError(t, err)
+	require.NoError(t, os.RemoveAll(filepath.Join(basePath, "refined", "m-guard")))
 
-	_, err := runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", "m-guard", "--event", string(domain.MissionEventHandoffSatisfied))
+	_, err = runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", "m-guard", "--event", string(domain.MissionEventHandoffSatisfied))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), domain.PipelineBypassDetectedReason)
 	assert.Contains(t, err.Error(), "expected_phase=ranger")
@@ -121,9 +143,7 @@ func TestSubmit_EnteringExecutionRequiresPipelineEvidence(t *testing.T) {
 // command — the fix for F-H1's previously-unreachable collision tripwire.
 func TestSubmit_HandoffPassedRecordsSniperClaim(t *testing.T) {
 	root := setupViewRoot(t, domain.MissionEngineStatus{})
-	advanceToHandoffChallenge(t, root, "m-claim")
-
-	writeTypedPackage(t, root, "m-claim", informationalFacts, "- [ ] 1.1 [documentation_target] Write `docs/example-target.md` for this test.\n")
+	advanceToHandoffChallengeWithPackage(t, root, "m-claim", informationalFacts, "- [ ] 1.1 [documentation_target] Write `docs/example-target.md` for this test.\n")
 	_, err := evaluateHandoff(t, root, "m-claim", livemission.ArchivistHandoffInput{})
 	require.NoError(t, err)
 

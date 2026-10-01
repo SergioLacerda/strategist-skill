@@ -25,6 +25,9 @@ type LifecycleDependencies struct {
 	// unguarded, which is what every pre-existing caller and test fake
 	// already did before this field existed.
 	Lock func(root, missionID string, fn func() error) error
+	// ADRCanonicalPath reads active.yaml#adr.canonical_path for the
+	// accept-side-quest command. Nil means no canonical path is configured.
+	ADRCanonicalPath func(root string) (string, error)
 }
 
 // withMissionLock runs fn under deps.Lock when one is configured, or

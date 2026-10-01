@@ -316,6 +316,22 @@ flag: --root (string) default="" usage="path to .strategist/ root (default: auto
 use: mission
 short: Report and inspect mission-level facts this binary cannot observe directly
 
+== strategist mission accept-side-quest
+use: accept-side-quest
+short: Record the user's acceptance of the mission's OA-ADR side quest at the Approval Gate
+flag: --json (bool) default="false" usage="emit machine-readable JSON"
+flag: --mission-id (string) default="" usage="mission identifier (required)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+flag: --side-quest (string) default="" usage="side quest id, OA-ADR-<mission_id> (required)"
+
+== strategist mission adr-target
+use: adr-target
+short: Resolve and reserve the accepted OA-ADR destination at materialization time
+flag: --json (bool) default="false" usage="emit machine-readable JSON"
+flag: --mission-id (string) default="" usage="mission identifier (required)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+flag: --slug (string) default="" usage="title slug used when the canonical ADR directory is numbered (default: mission id)"
+
 == strategist mission complete
 use: complete
 short: Complete one embedded Weapon invocation
@@ -334,6 +350,14 @@ flag: --max-refs (int) default="64" usage="maximum number of references"
 flag: --mission-id (string) default="" usage="mission identifier (required)"
 flag: --ref (stringSlice) default="[]" usage="declared workspace-relative context reference (repeatable)"
 flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist mission decline-side-quest
+use: decline-side-quest
+short: Record the user's decline of the mission's OA-ADR side quest at the Approval Gate
+flag: --json (bool) default="false" usage="emit machine-readable JSON"
+flag: --mission-id (string) default="" usage="mission identifier (required)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+flag: --side-quest (string) default="" usage="side quest id, OA-ADR-<mission_id> (required)"
 
 == strategist mission invoke
 use: invoke

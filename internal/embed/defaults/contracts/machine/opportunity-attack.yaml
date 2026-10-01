@@ -112,7 +112,12 @@ contract:
     # a mission may have zero, one, or more approved at the same gate.
     OA-ADR:
       action: sniper_creates_adr_as_execution_task
-      artifact_path: "<base_path>/archived/<mission_id>-adr.md"
+      # Recorded with `strategist mission accept-side-quest`; the destination is
+      # resolved at materialization time by `strategist mission adr-target`:
+      # <adr.canonical_path>/<adr_filename> when active.yaml#adr.canonical_path is
+      # configured, else <base_path>/archived/<mission_id>-adr.md
+      # (see contracts/machine/adr.yaml and contracts/narrative/07-adr.md).
+      artifact_path: "resolved by strategist mission adr-target"
     OA-RUNBOOK:
       action: sniper_creates_runbook_candidate_as_execution_task
       preferred_form: >

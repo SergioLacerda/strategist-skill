@@ -52,6 +52,9 @@ func EvaluateArchivistHandoff(strategistRoot, basePath string, status domain.Mis
 	if err != nil {
 		return ArchivistHandoffResult{}, fmt.Errorf("evaluate handoff: %w", err)
 	}
+	if err := requireApprovedPackageDigest(status, derived.digest); err != nil {
+		return ArchivistHandoffResult{}, fmt.Errorf("evaluate handoff: %w", err)
+	}
 	store := handoff.NewOutcomeStore(strategistRoot)
 	attempt, err := nextHandoffAttempt(store, status.MissionID, derived.digest, derived.policy)
 	if err != nil {
@@ -96,6 +99,20 @@ func deriveHandoff(basePath, missionID, riskLevel string) (derivedHandoff, error
 		return derivedHandoff{}, err
 	}
 	return derivedHandoff{extracted: extracted, digest: digest, policy: policy}, nil
+}
+
+// requireApprovedPackageDigest closes the pre-evaluation re-approval gap: the
+// handoff may only evaluate the exact refined package whose digest was captured
+// when the main Approval Gate was accepted.
+func requireApprovedPackageDigest(status domain.MissionEngineStatus, current string) error {
+	approved := status.ApprovalGatePackageDigest
+	if approved == "" {
+		return fmt.Errorf("handoff_gate_package_digest_missing: mission %q has no package digest captured at Approval Gate acceptance; accept the gate again", status.MissionID)
+	}
+	if approved != current {
+		return fmt.Errorf("handoff_package_changed_after_gate: mission %q was approved for package %s but the current package is %s; accept the Approval Gate again", status.MissionID, approved, current)
+	}
+	return nil
 }
 
 func (d derivedHandoff) outcome(status domain.MissionEngineStatus, attempt int, result handoff.Result) handoff.Outcome {

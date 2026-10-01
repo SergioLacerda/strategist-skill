@@ -10,12 +10,17 @@ type MissionStartRequest struct {
 // MissionEngineStatus is the durable, implementation-neutral state needed to
 // replay or restore a mission transition sequence.
 type MissionEngineStatus struct {
-	MissionID         string        `json:"mission_id"`
-	Phase             PipelinePhase `json:"phase"`
-	State             MissionState  `json:"state"`
-	HandoffAttempt    int           `json:"handoff_attempt,omitempty"`
-	HandoffStatus     string        `json:"handoff_status,omitempty"`
-	HandoffNextAction string        `json:"handoff_next_action,omitempty"`
+	MissionID string        `json:"mission_id"`
+	Phase     PipelinePhase `json:"phase"`
+	State     MissionState  `json:"state"`
+	// ApprovalGatePackageDigest binds the human gate acceptance to the exact
+	// refined package that was reviewed. It is populated by the command
+	// boundary when the main Approval Gate is accepted and is intentionally
+	// independent from the handoff outcome digest.
+	ApprovalGatePackageDigest string `json:"approval_gate_package_digest,omitempty"`
+	HandoffAttempt            int    `json:"handoff_attempt,omitempty"`
+	HandoffStatus             string `json:"handoff_status,omitempty"`
+	HandoffNextAction         string `json:"handoff_next_action,omitempty"`
 }
 
 // MissionEngine is the single mission-level transition facade. The phase and
@@ -51,6 +56,24 @@ func RestoreMission(status MissionEngineStatus) (*MissionEngine, error) {
 // Status returns the current durable status.
 func (e *MissionEngine) Status() MissionEngineStatus {
 	return e.status
+}
+
+// RecordApprovalGatePackageDigest binds the accepted main Approval Gate to the
+// package revision that was reviewed. The command boundary computes the digest
+// from the refined package while holding the mission lock; this method only
+// commits that already-derived fact to the mission state.
+func (e *MissionEngine) RecordApprovalGatePackageDigest(digest string) (MissionEngineStatus, error) {
+	if e == nil {
+		return MissionEngineStatus{}, fmt.Errorf("mission engine: engine is nil")
+	}
+	if e.status.State != StateHandoffChallenge {
+		return e.status, fmt.Errorf("mission engine: approval gate package digest requires the handoff challenge state, got %q", e.status.State)
+	}
+	if digest == "" {
+		return e.status, fmt.Errorf("mission engine: approval gate package digest is required")
+	}
+	e.status.ApprovalGatePackageDigest = digest
+	return e.status, nil
 }
 
 // Submit applies one event. Invalid or out-of-order events leave the engine
@@ -111,5 +134,11 @@ func (e *MissionEngine) submitFSM(event MissionEngineEvent) (MissionEngineStatus
 	}
 	e.status.State = next
 	e.status.Phase = phaseForState(next)
+	if next != StateExecution {
+		// A new handoff challenge must be explicitly bound by the command
+		// boundary after the gate event is accepted. Never carry a prior
+		// package binding across a new gate or another state transition.
+		e.status.ApprovalGatePackageDigest = ""
+	}
 	return e.status, nil
 }

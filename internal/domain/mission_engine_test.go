@@ -51,6 +51,52 @@ func TestMissionEngine_FullPipelineProgression(t *testing.T) {
 	}
 }
 
+func TestMissionEngine_ApprovalGatePackageDigestRequiresExplicitBinding(t *testing.T) {
+	engine, _, err := StartMission(MissionStartRequest{MissionID: "m-gate-digest"})
+	require.NoError(t, err)
+	submitMissionEvents(t, engine, []MissionEngineEvent{
+		MissionEventBootstrapDone,
+		MissionEventIntakeDone,
+		MissionEventDiscoveryDone,
+		MissionEventRefinementDone,
+	})
+
+	_, err = engine.RecordApprovalGatePackageDigest("sha256:before-gate")
+	require.Error(t, err)
+
+	submitMissionEvents(t, engine, []MissionEngineEvent{MissionEventGateApproved})
+	status, err := engine.RecordApprovalGatePackageDigest("sha256:approved")
+	require.NoError(t, err)
+	require.Equal(t, "sha256:approved", status.ApprovalGatePackageDigest)
+
+	status, err = engine.Submit(MissionEventHandoffFailed)
+	require.NoError(t, err)
+	require.Empty(t, status.ApprovalGatePackageDigest)
+}
+
+func TestMissionEngine_NewGateDoesNotCarryAnOldPackageDigest(t *testing.T) {
+	engine, _, err := StartMission(MissionStartRequest{MissionID: "m-gate-refresh"})
+	require.NoError(t, err)
+	submitMissionEvents(t, engine, []MissionEngineEvent{
+		MissionEventBootstrapDone,
+		MissionEventIntakeDone,
+		MissionEventDiscoveryDone,
+		MissionEventRefinementDone,
+		MissionEventGateApproved,
+	})
+	_, err = engine.RecordApprovalGatePackageDigest("sha256:first")
+	require.NoError(t, err)
+
+	_, err = engine.RecordHandoffEvaluation(HandoffEvaluation{
+		Attempt: 1, MaxAttempts: 2, Result: HandoffEvaluationFailed, Status: "failed",
+	})
+	require.NoError(t, err)
+	require.Empty(t, engine.Status().ApprovalGatePackageDigest)
+
+	submitMissionEvents(t, engine, []MissionEngineEvent{MissionEventRefinementDone, MissionEventGateApproved})
+	require.Empty(t, engine.Status().ApprovalGatePackageDigest)
+}
+
 func submitMissionEvents(t *testing.T, engine *MissionEngine, events []MissionEngineEvent) {
 	t.Helper()
 	for _, event := range events {

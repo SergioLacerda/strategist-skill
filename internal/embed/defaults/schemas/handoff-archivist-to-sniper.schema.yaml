@@ -147,7 +147,7 @@ required_fields:
       integrity: digest of every other field
   side_quests_approved:
     type: list
-    description: Side quest strategy decisions made by Archivist — surfaced at approval gate
+    description: Side quest strategy decisions made by Archivist — surfaced at approval gate. An accepted OA-ADR-<mission_id> entry is recorded by `strategist mission accept-side-quest` and becomes the mission's gate-derived ADR documentation target
     required: false
     item_fields: [id, description, strategy, estimated_impact, dependencies, status, confidence_percent, investigation_required]
     item_values:

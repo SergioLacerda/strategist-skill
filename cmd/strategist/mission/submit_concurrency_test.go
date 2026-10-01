@@ -51,6 +51,7 @@ func advanceToApprovalGate(t *testing.T, deps mission.LifecycleDependencies, roo
 	_, status, err := deps.Load(root, missionID)
 	require.NoError(t, err)
 	require.Equal(t, domain.PhaseApprovalGate, status.Phase)
+	writeRefinedPackage(t, root, missionID)
 }
 
 // TestRunSubmit_ConcurrentCompetingEventsNeverLoseTheWinnersWrite covers

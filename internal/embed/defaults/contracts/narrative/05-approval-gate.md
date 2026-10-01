@@ -75,7 +75,16 @@ Sniper materializes accepted documentation targets. A mission that already
 entered the handoff challenge with such a package is closed with
 `handoff_challenge_not_applicable` (`HANDOFF_CHALLENGE → DONE_ANALYSIS`). Both
 analysis-only events are rejected when the refined `tasks.md` declares a
-`documentation_target`. In both cases, `implementation_handoff`
+`documentation_target`, and also when the user accepted the package's `OA-ADR-<mission_id>`
+side quest: the accepted ADR is a gate-derived documentation target even when every main
+task is an `implementation_handoff`. The shell records that decision before the gate event
+with `strategist mission accept-side-quest --mission-id <id> --side-quest OA-ADR-<id>`
+(or `decline-side-quest`), which validates the id against the package's
+`side_quests_approved`, requires the Approval Gate and writes a durable, integrity-protected
+record under `missions/side-quests/`. With an accepted record the machine rejects
+`gate_approved_analysis_only` and `handoff_challenge_not_applicable` with
+`gate_event_conflicts_with_accepted_side_quest` and leaves the mission state unchanged; use
+`gate_approved`, which seals the record. Without a record nothing changes. In both cases, `implementation_handoff`
 items are reported as non-executable handoff work, not as a separate mission status.
 Executing the `implementation_handoff` items requires a separate coding task outside
 Strategist mode — the Approval Gate does not grant that authorization, regardless of

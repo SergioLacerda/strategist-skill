@@ -23,6 +23,9 @@ func AuthorizeHandoffExecution(strategistRoot, basePath string, status domain.Mi
 	if err != nil {
 		return handoff.Outcome{}, fmt.Errorf("authorize execution: %w", err)
 	}
+	if err := requireApprovedPackageDigest(status, digest); err != nil {
+		return handoff.Outcome{}, fmt.Errorf("authorize execution: %w", err)
+	}
 	policy := handoff.ResolveArchivistPolicy(extracted.Signals)
 	if err := requireConsistentMetadata(refined, policy.Enabled); err != nil {
 		return handoff.Outcome{}, fmt.Errorf("authorize execution: %w", err)

@@ -67,6 +67,7 @@ func (e *MissionEngine) applyFailedEvaluation(next MissionEngineStatus, evaluati
 		event = MissionEventHandoffExhausted
 	}
 	previous := e.status
+	next.ApprovalGatePackageDigest = ""
 	e.status = next
 	status, err := e.submitFSM(event)
 	if err != nil {

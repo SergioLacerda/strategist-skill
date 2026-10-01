@@ -93,8 +93,14 @@ After the claim protocol and before starting the materialization loop, Sniper MU
 - items described as implementation, refactor, hook changes, test creation, or code edits,
   even when not explicitly tagged `task_type`.
 
-If any such item is present and is not explicitly a `documentation_target`, Sniper MUST NOT
-start materialization. It stops immediately with:
+When the mission has an accepted `OA-ADR-<mission_id>` record (see `07-adr.md`), the ADR is
+the single derived documentation target: `implementation_handoff` items in the package are
+reported as non-executable out-of-scope work and are not by themselves a scope violation;
+the claim protocol above is unchanged, and Sniper writes only the path returned by
+`strategist mission adr-target`.
+
+If any such item is present and is not explicitly a `documentation_target` (or the derived
+OA-ADR target above), Sniper MUST NOT start materialization. It stops immediately with:
 
 ```text
 blocked reason=documentation_scope_violation

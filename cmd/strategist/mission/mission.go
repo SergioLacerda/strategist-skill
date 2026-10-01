@@ -32,6 +32,9 @@ func New(lifecycle LifecycleDependencies, view ViewDependencies, normalize Norma
 		NewReportUsage(usage),
 		NewInvoke(invocationDeps),
 		NewComplete(invocationDeps),
+		NewAcceptSideQuest(lifecycle),
+		NewDeclineSideQuest(lifecycle),
+		NewADRTarget(lifecycle),
 	)
 	return cmd
 }

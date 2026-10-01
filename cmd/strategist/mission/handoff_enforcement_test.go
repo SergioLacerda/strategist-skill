@@ -63,8 +63,7 @@ func failingChallenge() livemission.ArchivistHandoffInput {
 func handoffRoot(t *testing.T, id, facts, tasks string) string {
 	t.Helper()
 	root := setupViewRoot(t, domain.MissionEngineStatus{})
-	advanceToHandoffChallenge(t, root, id)
-	writeTypedPackage(t, root, id, facts, tasks)
+	advanceToHandoffChallengeWithPackage(t, root, id, facts, tasks)
 	return root
 }
 
@@ -152,6 +151,20 @@ func TestAmendedPackageAfterAFailureCannotEnterExecutionWithoutANewGate(t *testi
 	assert.NotEqual(t, domain.StateExecution, missionStatus(t, root, "m-regate").State)
 }
 
+// The Approval Gate must bind the package revision before any handoff outcome
+// exists. An amendment made after acceptance but before the first evaluation
+// therefore requires a new gate and cannot be evaluated in place.
+func TestAmendedPackageBeforeFirstEvaluationCannotUseTheOldGate(t *testing.T) {
+	root := handoffRoot(t, "m-gate-digest", informationalFacts, analysisOnlyTasks)
+	writeTypedPackage(t, root, "m-gate-digest", informationalFacts, analysisOnlyTasks+"- [ ] 1.2 [analysis_artifact] amended after gate acceptance\n")
+
+	_, err := evaluateHandoff(t, root, "m-gate-digest", livemission.ArchivistHandoffInput{})
+
+	require.ErrorContains(t, err, "handoff_package_changed_after_gate")
+	assert.Empty(t, outcomeFiles(t, root, "m-gate-digest"), "a stale gate must not create an authorizing outcome")
+	assert.Equal(t, domain.StateHandoffChallenge, missionStatus(t, root, "m-gate-digest").State)
+}
+
 func TestLastFailedAttemptBlocksTheMission(t *testing.T) {
 	root := handoffRoot(t, "m-exhaust", requiredFacts, analysisOnlyTasks)
 	_, err := evaluateHandoff(t, root, "m-exhaust", failingChallenge())
@@ -174,9 +187,9 @@ func TestPackageChangedAfterAPassedOutcomeMustReturnToRefinement(t *testing.T) {
 
 	_, err = evaluateHandoff(t, root, "m-after-pass", passingChallenge())
 
-	require.ErrorContains(t, err, "handoff_package_changed_after_outcome")
+	require.ErrorContains(t, err, "handoff_package_changed_after_gate")
 	_, err = submitSatisfied(t, root, "m-after-pass")
-	require.ErrorContains(t, err, "handoff_outcome_stale")
+	require.ErrorContains(t, err, "handoff_package_changed_after_gate")
 }
 
 func TestExecutionEntryDeniesAnOutcomeTheMissionStateDoesNotRecord(t *testing.T) {
@@ -253,7 +266,7 @@ func TestAmendingThePackageAfterTheOutcomeMakesItStale(t *testing.T) {
 
 	_, err = submitSatisfied(t, root, "m-stale")
 
-	require.ErrorContains(t, err, "handoff_outcome_stale")
+	require.ErrorContains(t, err, "handoff_package_changed_after_gate")
 }
 
 func TestAmendingFactsSoTheSkipIsNoLongerAuthorizedDeniesEntry(t *testing.T) {
@@ -265,7 +278,7 @@ func TestAmendingFactsSoTheSkipIsNoLongerAuthorizedDeniesEntry(t *testing.T) {
 	_, err = submitSatisfied(t, root, "m-facts")
 
 	require.Error(t, err)
-	assert.True(t, strings.Contains(err.Error(), "handoff_outcome_stale") || strings.Contains(err.Error(), "handoff_outcome_skip_not_authorized"), err.Error())
+	assert.True(t, strings.Contains(err.Error(), "handoff_package_changed_after_gate") || strings.Contains(err.Error(), "handoff_outcome_skip_not_authorized"), err.Error())
 }
 
 func TestTamperedOutcomeDeniesEntry(t *testing.T) {
@@ -314,7 +327,8 @@ func TestReplayingAConsumedOutcomeIsDenied(t *testing.T) {
 
 	_, basePath, err := cliutil.ResolveActiveBasePath(root)
 	require.NoError(t, err)
-	_, err = livemission.AuthorizeHandoffExecution(root, basePath, domain.MissionEngineStatus{MissionID: "m-replay"})
+	status := missionStatus(t, root, "m-replay")
+	_, err = livemission.AuthorizeHandoffExecution(root, basePath, status)
 
 	require.ErrorContains(t, err, "handoff_outcome_replayed")
 	_, err = evaluateHandoff(t, root, "m-replay", livemission.ArchivistHandoffInput{})
@@ -413,7 +427,7 @@ func TestOptionalHandoffMetadataMustMirrorTheDerivedPolicy(t *testing.T) {
 		_, err = submitSatisfied(t, root, "m-meta-edit")
 
 		require.Error(t, err)
-		assert.True(t, strings.Contains(err.Error(), "handoff_metadata_mismatch") || strings.Contains(err.Error(), "handoff_outcome_stale"), err.Error())
+		assert.True(t, strings.Contains(err.Error(), "handoff_metadata_mismatch") || strings.Contains(err.Error(), "handoff_package_changed_after_gate"), err.Error())
 	})
 	t.Run("non-boolean metadata is rejected", func(t *testing.T) {
 		root := handoffRoot(t, "m-meta-bad", informationalFacts, analysisOnlyTasks+"\n```yaml\nhandoff_verification:\n  required: maybe\n```\n")

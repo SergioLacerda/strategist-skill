@@ -41,15 +41,21 @@ func newRecordFixture(t *testing.T, id, facts string) recordFixture {
 	t.Helper()
 	engine, _, err := domain.StartMission(domain.MissionStartRequest{MissionID: id})
 	require.NoError(t, err)
+	fixture := recordFixture{root: t.TempDir(), basePath: t.TempDir(), id: id, engine: engine}
+	fixture.writePackage(t, facts, "- [ ] 1.1 [analysis_artifact] record the evidence\n")
 	for _, event := range []domain.MissionEngineEvent{
 		domain.MissionEventBootstrapDone, domain.MissionEventIntakeDone, domain.MissionEventDiscoveryDone,
-		domain.MissionEventRefinementDone, domain.MissionEventGateApproved,
+		domain.MissionEventRefinementDone,
 	} {
 		_, err = engine.Submit(event)
 		require.NoError(t, err)
 	}
-	fixture := recordFixture{root: t.TempDir(), basePath: t.TempDir(), id: id, engine: engine}
-	fixture.writePackage(t, facts, "- [ ] 1.1 [analysis_artifact] record the evidence\n")
+	_, err = engine.Submit(domain.MissionEventGateApproved)
+	require.NoError(t, err)
+	digest, err := handoff.PackageDigest(filepath.Join(fixture.basePath, "refined", id))
+	require.NoError(t, err)
+	_, err = engine.RecordApprovalGatePackageDigest(digest)
+	require.NoError(t, err)
 	return fixture
 }
 

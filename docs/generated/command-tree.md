@@ -49,8 +49,11 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `rollout-check` — Check whether a confidence enforcement mode is admissible
   - `scout` — Report Scout routing metrics
 - `mission` — Report and inspect mission-level facts this binary cannot observe directly
+  - `accept-side-quest` — Record the user's acceptance of the mission's OA-ADR side quest at the Approval Gate
+  - `adr-target` — Resolve and reserve the accepted OA-ADR destination at materialization time
   - `complete` — Complete one embedded Weapon invocation
   - `context` — Materialize declared mission context
+  - `decline-side-quest` — Record the user's decline of the mission's OA-ADR side quest at the Approval Gate
   - `invoke` — Invoke one embedded Weapon through a host bridge
   - `normalize-openspec` — Publish a completed OpenSpec change into the refined mission package
   - `report-usage` — Record real token usage for a mission, reported by the invoking agent

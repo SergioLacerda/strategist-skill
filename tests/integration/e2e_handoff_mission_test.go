@@ -26,11 +26,17 @@ func TestE2E_LiveArchivistToSniperChallengeEnforcesTransition(t *testing.T) {
 	require.NoError(t, err)
 	for _, event := range []domain.MissionEngineEvent{
 		domain.MissionEventBootstrapDone, domain.MissionEventIntakeDone, domain.MissionEventDiscoveryDone,
-		domain.MissionEventRefinementDone, domain.MissionEventGateApproved,
+		domain.MissionEventRefinementDone,
 	} {
 		_, err = engine.Submit(event)
 		require.NoError(t, err)
 	}
+	_, err = engine.Submit(domain.MissionEventGateApproved)
+	require.NoError(t, err)
+	digest, err := handoff.PackageDigest(filepath.Join(basePath, "refined", "e2e-live-handoff"))
+	require.NoError(t, err)
+	_, err = engine.RecordApprovalGatePackageDigest(digest)
+	require.NoError(t, err)
 
 	failed, failedStatus, _, err := mission.RecordArchivistHandoff(root, basePath, engine, mission.ArchivistHandoffInput{
 		Challenges: e2eChallenges(false), Ack: handoff.Acknowledgment{},
@@ -42,6 +48,10 @@ func TestE2E_LiveArchivistToSniperChallengeEnforcesTransition(t *testing.T) {
 	_, err = engine.Submit(domain.MissionEventRefinementDone)
 	require.NoError(t, err)
 	_, err = engine.Submit(domain.MissionEventGateApproved)
+	require.NoError(t, err)
+	digest, err = handoff.PackageDigest(filepath.Join(basePath, "refined", "e2e-live-handoff"))
+	require.NoError(t, err)
+	_, err = engine.RecordApprovalGatePackageDigest(digest)
 	require.NoError(t, err)
 	passed, passedStatus, _, err := mission.RecordArchivistHandoff(root, basePath, engine, mission.ArchivistHandoffInput{
 		Challenges: e2eChallenges(false), Ack: e2eValidAck(),

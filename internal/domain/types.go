@@ -30,6 +30,15 @@ type ActiveConfig struct {
 	// Leveling is the optional operator choice between manual and automatic
 	// model x effort per role. Absent means automatic.
 	Leveling LevelingConfig `yaml:"leveling,omitempty"`
+	// ADR configures where accepted Opportunity Attack ADRs are materialized.
+	ADR ADRConfig `yaml:"adr,omitempty"`
+}
+
+// ADRConfig is the optional active.yaml adr block.
+type ADRConfig struct {
+	// CanonicalPath is the project-relative directory holding numbered ADRs.
+	// Empty means the archived fallback under base_path.
+	CanonicalPath string `yaml:"canonical_path,omitempty"`
 }
 
 // ValidateNoLegacyFields returns an error if the config contains removed fields.

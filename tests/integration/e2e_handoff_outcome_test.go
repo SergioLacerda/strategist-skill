@@ -40,7 +40,7 @@ func startMissionAtHandoff(t *testing.T, workspace, missionID, facts, tasks stri
 	t.Helper()
 	start := runStrategistCLI(t, workspace, "mission", "start", "--mission-id", missionID)
 	require.Equal(t, 0, start.exitCode, start.output())
-	for _, event := range []string{"bootstrap_done", "intake_done", "discovery_done", "refinement_done", "gate_approved"} {
+	for _, event := range []string{"bootstrap_done", "intake_done", "discovery_done", "refinement_done"} {
 		res := runStrategistCLI(t, workspace, "mission", "submit", "--mission-id", missionID, "--event", event)
 		require.Equal(t, 0, res.exitCode, event+": "+res.output())
 	}
@@ -53,6 +53,8 @@ func startMissionAtHandoff(t *testing.T, workspace, missionID, facts, tasks stri
 	for name, content := range files {
 		require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644))
 	}
+	res := runStrategistCLI(t, workspace, "mission", "submit", "--mission-id", missionID, "--event", "gate_approved")
+	require.Equal(t, 0, res.exitCode, res.output())
 }
 
 func TestE2E_CLI_HandoffOutcomeGuardsExecutionEntry(t *testing.T) {
