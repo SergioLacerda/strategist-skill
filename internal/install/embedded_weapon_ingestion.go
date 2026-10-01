@@ -75,6 +75,9 @@ func resolveExternalSkill(dir string) (IngestedSkill, error) {
 	if err != nil {
 		return IngestedSkill{}, err
 	}
+	if err := verifyUpstreamPin(dir, pkg.ID, adapter); err != nil {
+		return IngestedSkill{}, err
+	}
 	if pkg.Version == "" {
 		pkg.Version = adapter.Version
 	}
@@ -85,6 +88,23 @@ func resolveExternalSkill(dir string) (IngestedSkill, error) {
 		return IngestedSkill{}, fmt.Errorf("external skill %s: %w", pkg.ID, err)
 	}
 	return IngestedSkill{ID: pkg.ID, Dir: dir, Package: pkg, Adapter: adapter}, nil
+}
+
+// verifyUpstreamPin fails when a declared upstream_content_digest pin does not
+// match the local SKILL.md bytes and the adapter does not admit that it is an
+// adapted copy. An absent pin is explicitly unverified and is not an error.
+func verifyUpstreamPin(dir, id string, adapter externalSkillAdapter) error {
+	if adapter.UpstreamContentDigest == "" || adapter.LocalModifications {
+		return nil
+	}
+	local, err := HashFileSHA256(filepath.Join(dir, "SKILL.md"))
+	if err != nil {
+		return fmt.Errorf("external skill %s: %w", id, err)
+	}
+	if local != adapter.UpstreamContentDigest {
+		return fmt.Errorf("external skill %s: upstream_pin_mismatch: SKILL.md hashes to %s but upstream_content_digest pins %s; declare local_modifications: true if the copy is intentionally adapted", id, local, adapter.UpstreamContentDigest)
+	}
+	return nil
 }
 
 func validateIngestedSkillContract(pkg domain.PluginPackage, adapter externalSkillAdapter) error {

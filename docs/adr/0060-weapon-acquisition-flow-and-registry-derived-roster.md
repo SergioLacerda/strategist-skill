@@ -89,3 +89,5 @@ mission found the separation of Roster, Compatibility, Binding and Runtime imple
 This ADR records decisions only. It does not authorize source, test, configuration or generated
 artifact changes; those are implementation handoffs in
 `.analysis/refined/20260930-review-roster-weapons/tasks.md` (items 2.1-2.4) and need a separate approval.
+
+> **Status note (2026-09-30):** items 2.1-2.3 (registry-derived roster, `id@version` identity, wizard version listing) and the sidecar scaffolding landed in `e9b7c98`. Item 2.4 (rename to `input/weapons/`) is closed by decision D2 and will not be implemented.

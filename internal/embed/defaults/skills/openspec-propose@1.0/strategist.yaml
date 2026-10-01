@@ -44,6 +44,8 @@ upstream_version: "1.13.0"
 upstream_commit: 9d4e5974e5c0d9a09b9c6c1e1eb0975e80ec4461
 upstream_content_digest: sha256:af5f5e5ebd0c8af4ee4498e1f7a3e196395030507e51adb52393e181f73a5c89
 license: MIT
+# The local SKILL.md is an adapted copy of the pinned upstream file (see above).
+local_modifications: true
 
 # scratch_root: runtime — this weapon's own openspec CLI creates working
 # files (openspec/changes/<id>/) that must live in the runtime domain

@@ -2,6 +2,7 @@ package install
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 
@@ -52,7 +53,7 @@ func (s Service) PlanUpgrade(strategistDir string) (UpgradePlan, error) {
 		return UpgradePlan{}, err
 	}
 
-	entries, err := planEntriesForCurrentTree(strategistDir, paths, embeddedHashes, manifest, manifestLoaded)
+	entries, err := s.planCurrentTreeWithRegistryRefresh(strategistDir, paths, embeddedHashes, manifest, manifestLoaded)
 	if err != nil {
 		return UpgradePlan{}, err
 	}
@@ -68,6 +69,66 @@ func (s Service) PlanUpgrade(strategistDir string) (UpgradePlan, error) {
 
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Path < entries[j].Path })
 	return UpgradePlan{Entries: entries, LockMigration: lockMigration, embeddedHashes: embeddedHashes}, nil
+}
+
+// refreshDriftedRegistryCatalog promotes a locally edited plugins/catalog.yaml
+// to an automatic (backed-up) upgrade when its compiled registry differs from
+// the one built into this binary. The registry is binary-owned: mission invoke
+// refuses a divergent workspace copy, so "preserve customizations" would leave
+// the workspace unusable. Catalogs that only differ outside the registry
+// sections stay customized and are preserved.
+func (s Service) planCurrentTreeWithRegistryRefresh(strategistDir string, paths []string, embeddedHashes map[string]string, manifest domain.InstallManifest, manifestLoaded bool) ([]UpgradePlanEntry, error) {
+	entries, err := planEntriesForCurrentTree(strategistDir, paths, embeddedHashes, manifest, manifestLoaded)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.refreshCatalogEntry(strategistDir, entries); err != nil {
+		return nil, err
+	}
+	return entries, nil
+}
+
+// refreshCatalogEntry promotes a customized catalog entry to an automatic
+// (backed-up) upgrade when its registry drifted from the binary.
+func (s Service) refreshCatalogEntry(strategistDir string, entries []UpgradePlanEntry) error {
+	i := customizedCatalogIndex(entries)
+	if i < 0 {
+		return nil
+	}
+	drifted, err := s.catalogRegistryDrifted(strategistDir)
+	if err != nil || !drifted {
+		return err
+	}
+	entries[i].State = domain.UpgradeAutoUpgrade
+	return nil
+}
+
+func customizedCatalogIndex(entries []UpgradePlanEntry) int {
+	for i, entry := range entries {
+		if entry.Path == pluginCatalogPath && entry.State == domain.UpgradeCustomized {
+			return i
+		}
+	}
+	return -1
+}
+
+// catalogRegistryDrifted reports whether the workspace catalog's registry
+// differs from (or cannot be parsed against) the embedded one.
+func (s Service) catalogRegistryDrifted(strategistDir string) (bool, error) {
+	runtimePath, err := runtimefs.SafeJoin(strategistDir, filepath.FromSlash(pluginCatalogPath))
+	if err != nil {
+		return false, fmt.Errorf("upgrade: resolve %s: %w", pluginCatalogPath, err)
+	}
+	workspaceRaw, err := os.ReadFile(runtimePath) //nolint:gosec // G304: SafeJoin-resolved path under the runtime root
+	if err != nil {
+		return false, fmt.Errorf("upgrade: read %s: %w", pluginCatalogPath, err)
+	}
+	embeddedRaw, err := s.Extractor.ReadFile(pluginCatalogPath)
+	if err != nil {
+		return false, fmt.Errorf("upgrade: read embedded %s: %w", pluginCatalogPath, err)
+	}
+	drifted, err := domain.CompiledRegistryDrift(workspaceRaw, embeddedRaw)
+	return drifted || err != nil, nil // an unparseable workspace catalog cannot be trusted either
 }
 
 func (s Service) hashEmbeddedPaths(paths []string) (map[string]string, error) {

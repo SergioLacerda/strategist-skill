@@ -48,7 +48,10 @@ type EmbeddedInvocationReceipt struct {
 	Entrypoint    string
 	BindingDigest string
 	SourceDigest  string
-	IssuedAt      time.Time
+	// RequestID ties the receipt to the single-use mission invocation request
+	// it completes. Optional: in-process embedded invocations have no request.
+	RequestID string
+	IssuedAt  time.Time
 }
 
 // EmbeddedInvocationReceiptSchemaVersion identifies the supported receipt schema.

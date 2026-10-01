@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	embedpkg "github.com/SergioLacerda/strategist-skill/internal/embed"
 )
 
 // directivesRelPath mirrors identityRelPaths' convention (check_identity.go)
@@ -28,6 +31,7 @@ func preflightAdvisories(root string) []string {
 			"[Strategist] phase=preflight status=warn reason=directives_missing path=%s (continuing without behavioral directives)",
 			filepath.ToSlash(directivesRelPath)))
 	}
+	advisories = append(advisories, registryDriftAdvisories(root)...)
 	advisories = append(advisories, layoutSkewAdvisories(root)...)
 	return append(advisories, codexBootstrapAdvisories(root)...)
 }
@@ -80,4 +84,37 @@ func verifyGzJSONParses(path string) error {
 		return fmt.Errorf("decode %s: %w", path, err)
 	}
 	return nil
+}
+
+// registryDriftAdvisories reports a workspace plugins/catalog.yaml whose
+// compiled registry differs from the one built into this binary. Mission
+// invocation refuses such a workspace (compiled_registry_drift), so preflight
+// surfaces it early. A missing catalog is reported by the other checks.
+func registryDriftAdvisories(root string) []string {
+	return registryDriftAdvisoriesAgainst(root, embeddedCatalogReader)
+}
+
+// embeddedCatalogReader yields the catalog compiled into this binary; tests
+// substitute it to keep fixture workspaces independent of the shipped registry.
+var embeddedCatalogReader = func() ([]byte, error) {
+	return embedpkg.Extractor{}.ReadFile("plugins/catalog.yaml")
+}
+
+func registryDriftAdvisoriesAgainst(root string, readEmbedded func() ([]byte, error)) []string {
+	workspaceRaw, err := os.ReadFile(filepath.Join(root, "plugins", "catalog.yaml")) //nolint:gosec // G304: fixed path under the runtime root
+	if err != nil {
+		return nil
+	}
+	embeddedRaw, err := readEmbedded()
+	if err != nil {
+		return nil
+	}
+	drifted, err := domain.CompiledRegistryDrift(workspaceRaw, embeddedRaw)
+	if err != nil {
+		return []string{fmt.Sprintf("[Strategist] phase=preflight status=warn reason=compiled_registry_unreadable: %v (run `strategist upgrade`)", err)}
+	}
+	if !drifted {
+		return nil
+	}
+	return []string{"[Strategist] phase=preflight status=warn reason=compiled_registry_drift path=plugins/catalog.yaml (the workspace registry differs from this binary; mission invoke will refuse it — run `strategist upgrade`)"}
 }

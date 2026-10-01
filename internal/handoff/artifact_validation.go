@@ -76,10 +76,7 @@ func validateTaskClassifications(tasks []byte) error {
 			continue
 		}
 		seen = true
-		if !strings.Contains(line, "[analysis_artifact]") &&
-			!strings.Contains(line, "[implementation_handoff]") &&
-			!strings.Contains(line, "[documentation_target]") &&
-			!strings.Contains(line, "[out_of_scope]") {
+		if !hasTaskClassification(line) {
 			return fmt.Errorf("task has no explicit classification: %q", line)
 		}
 	}
@@ -87,4 +84,17 @@ func validateTaskClassifications(tasks []byte) error {
 		return fmt.Errorf("no classified tasks found")
 	}
 	return nil
+}
+
+var taskClassifications = []string{"analysis_artifact", "implementation_handoff", "documentation_target", "out_of_scope"}
+
+// hasTaskClassification accepts both the bare `[classification]` token and the
+// `[task_type: classification]` form OpenSpec-generated task lists use.
+func hasTaskClassification(line string) bool {
+	for _, classification := range taskClassifications {
+		if strings.Contains(line, "["+classification+"]") || strings.Contains(line, "[task_type: "+classification+"]") {
+			return true
+		}
+	}
+	return false
 }

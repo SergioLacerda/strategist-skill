@@ -56,6 +56,10 @@ func normalizeDiscoveryArtifact(request DiscoveryWeaponRequest, response Discove
 	}
 	// Provider-controlled identity fields are overwritten by Ranger's trusted
 	// request and host evidence before the artifact reaches the pending path.
+	if _, ok := frontmatter["sources_consulted"].([]any); !ok {
+		// The handoff requires the list; an absent one means "no source reported".
+		frontmatter["sources_consulted"] = []any{}
+	}
 	frontmatter["schema_version"] = DiscoveryArtifactSchemaVersion
 	frontmatter["mission_id"] = request.MissionID
 	frontmatter["mission_status"] = "ranger_pending"
@@ -94,3 +98,14 @@ func splitDiscoveryFrontmatter(raw []byte) (map[string]any, []byte, error) {
 func invocationFailure(err error) error {
 	return fmt.Errorf("role_invocation_failed: %w", err)
 }
+
+// DiscoveryOutputContract tells a Weapon executor the shape Ranger's
+// normalization and the Archivist handoff require. It is the single source for
+// both the host-bridge prompt and the manual `mission invoke` request.
+const DiscoveryOutputContract = "Return Markdown that starts with YAML frontmatter containing a `sources_consulted` list " +
+	"(each item: source_path, content_fingerprint, coverage_status; use an empty list when no source was opened) " +
+	"and optionally `confidence_score`, `discovery_subtype` and `evaluation_verdict`. " +
+	"The body must contain these exact second-level headings: `## mission_objective`, `## known_facts`, " +
+	"`## uncertainties`, `## affected_scope`, `## side_quests`, `## confidence_summary`, " +
+	"`## recommended_refinement_focus` and `## handoff`. Strategist overwrites identity fields " +
+	"(mission_id, mission_status, schema_version, provider_id)."

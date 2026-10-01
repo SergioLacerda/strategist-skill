@@ -77,6 +77,14 @@ func TestValidateTaskClassifications(t *testing.T) {
 		err := validateTaskClassifications([]byte("- [ ] 1.1 change source\n"))
 		require.ErrorContains(t, err, "no explicit classification")
 	})
+	t.Run("task_type form", func(t *testing.T) {
+		err := validateTaskClassifications([]byte("- [ ] 1.1 [task_type: documentation_target] note\n"))
+		require.NoError(t, err)
+	})
+	t.Run("unknown task_type", func(t *testing.T) {
+		err := validateTaskClassifications([]byte("- [ ] 1.1 [task_type: whatever] note\n"))
+		require.ErrorContains(t, err, "no explicit classification")
+	})
 	t.Run("classified task", func(t *testing.T) {
 		err := validateTaskClassifications([]byte("- [ ] 1.1 [implementation_handoff] change source\n"))
 		require.NoError(t, err)

@@ -45,6 +45,7 @@ func (s InvocationStore) Put(record domain.MissionInvocationRecord) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return fmt.Errorf("mission invocation: create request directory: %w", err)
 	}
+	s.prune(filepath.Dir(path))
 	return atomicWriteJSON(path, record)
 }
 
@@ -109,25 +110,45 @@ func atomicWriteJSON(path string, value any) error {
 	if err != nil {
 		return fmt.Errorf("mission invocation: encode request: %w", err)
 	}
-	tmp, err := os.CreateTemp(filepath.Dir(path), ".invocation-*.tmp")
-	if err != nil {
-		return fmt.Errorf("mission invocation: create temporary request: %w", err)
-	}
-	tmpPath := tmp.Name()
-	defer func() { _ = os.Remove(tmpPath) }() //nolint:errcheck // best-effort cleanup of an uncommitted temporary request.
-	if err := tmp.Chmod(0o600); err != nil {
-		_ = tmp.Close() //nolint:errcheck // best-effort cleanup before returning the chmod error.
-		return fmt.Errorf("mission invocation: protect temporary request: %w", err)
-	}
-	if _, err := tmp.Write(append(data, '\n')); err != nil {
-		_ = tmp.Close() //nolint:errcheck // best-effort cleanup before returning the write error.
-		return fmt.Errorf("mission invocation: write temporary request: %w", err)
-	}
-	if err := tmp.Close(); err != nil {
-		return fmt.Errorf("mission invocation: close temporary request: %w", err)
-	}
-	if err := os.Rename(tmpPath, path); err != nil {
+	if err := WriteFileAtomic(path, append(data, '\n'), 0o600); err != nil {
 		return fmt.Errorf("mission invocation: persist request: %w", err)
 	}
 	return nil
+}
+
+// invocationRetention is how long consumed or expired records stay on disk.
+const invocationRetention = 24 * time.Hour
+
+// prune removes records that were consumed or expired more than
+// invocationRetention ago. It is best-effort: a failure never blocks a request.
+func (s InvocationStore) prune(dir string) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	cutoff := s.now().Add(-invocationRetention)
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
+			continue
+		}
+		path := filepath.Join(dir, entry.Name())
+		if s.recordIsStale(path, cutoff) {
+			_ = os.Remove(path) //nolint:errcheck // best-effort retention cleanup.
+		}
+	}
+}
+
+func (s InvocationStore) recordIsStale(path string, cutoff time.Time) bool {
+	raw, err := os.ReadFile(path) //nolint:gosec // G304: path is listed from the store directory.
+	if err != nil {
+		return false
+	}
+	var record domain.MissionInvocationRecord
+	if json.Unmarshal(raw, &record) != nil {
+		return false
+	}
+	if record.Consumed && record.ConsumedAt != nil {
+		return record.ConsumedAt.Before(cutoff)
+	}
+	return !record.ExpiresAt.IsZero() && record.ExpiresAt.Before(cutoff)
 }

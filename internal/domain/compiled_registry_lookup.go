@@ -2,6 +2,7 @@ package domain
 
 import (
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -94,4 +95,19 @@ func ParseCompiledRegistryCatalog(raw []byte) (CompiledRegistry, error) {
 		return CompiledRegistry{}, err
 	}
 	return r, nil
+}
+
+// CompiledRegistryDrift reports whether the registry sections (Weapons, Roles,
+// compatibility and Ranked bindings) of two catalogs differ. Only those
+// sections are compared: the catalog's provider list is workspace-editable.
+func CompiledRegistryDrift(workspaceRaw, embeddedRaw []byte) (bool, error) {
+	workspace, err := ParseCompiledRegistryCatalog(workspaceRaw)
+	if err != nil {
+		return false, fmt.Errorf("workspace catalog: %w", err)
+	}
+	embedded, err := ParseCompiledRegistryCatalog(embeddedRaw)
+	if err != nil {
+		return false, fmt.Errorf("embedded catalog: %w", err)
+	}
+	return !reflect.DeepEqual(workspace, embedded), nil
 }

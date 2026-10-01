@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"time"
 
@@ -15,10 +16,13 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	strategistembed "github.com/SergioLacerda/strategist-skill/internal/embed"
 	missionruntime "github.com/SergioLacerda/strategist-skill/internal/mission"
+	"github.com/SergioLacerda/strategist-skill/internal/provider"
 	"gopkg.in/yaml.v3"
 )
 
-const invocationLifetime = 5 * time.Minute
+// invocationLifetime covers a manual host run (the agent works between invoke
+// and complete); host-bridge runs are bounded by the shorter hostBridgeTimeout.
+const invocationLifetime = time.Hour
 
 func missionInvocationDependencies() missionadapter.InvocationDependencies {
 	return missionadapter.InvocationDependencies{
@@ -103,6 +107,9 @@ func newMissionInvocationRequest(input missionadapter.InvocationBuildInput, bind
 	}
 	now := time.Now().UTC()
 	requestInput := map[string]any{}
+	if input.Role == "ranger" {
+		requestInput["output_contract"] = provider.DiscoveryOutputContract
+	}
 	if strings.TrimSpace(input.RequestContext) != "" {
 		requestInput["request_context"] = input.RequestContext
 	}
@@ -154,7 +161,28 @@ func loadMissionInvocationState(root string) (domain.ActiveConfig, domain.Plugin
 	if err != nil {
 		return domain.ActiveConfig{}, domain.PluginLockFile{}, domain.CompiledRegistry{}, fmt.Errorf("parse compiled catalog: %w", err)
 	}
+	if err := requireRegistryMatchesBinary(registry); err != nil {
+		return domain.ActiveConfig{}, domain.PluginLockFile{}, domain.CompiledRegistry{}, err
+	}
 	return active, lock, registry, nil
+}
+
+// requireRegistryMatchesBinary anchors the Weapon/Role/binding registry to the
+// catalog compiled into this binary: the workspace copy is user-writable, so a
+// divergent registry is rejected instead of trusted.
+func requireRegistryMatchesBinary(workspace domain.CompiledRegistry) error {
+	raw, err := (strategistembed.Extractor{}).ReadFile("plugins/catalog.yaml")
+	if err != nil {
+		return fmt.Errorf("read embedded catalog: %w", err)
+	}
+	embedded, err := domain.ParseCompiledRegistryCatalog(raw)
+	if err != nil {
+		return fmt.Errorf("parse embedded catalog: %w", err)
+	}
+	if !reflect.DeepEqual(embedded, workspace) {
+		return fmt.Errorf("compiled_registry_drift: the workspace plugins/catalog.yaml registry differs from the one compiled into this binary; run `strategist upgrade` to restore it")
+	}
+	return nil
 }
 
 func newInvocationID() (string, error) {

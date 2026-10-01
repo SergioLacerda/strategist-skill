@@ -223,10 +223,11 @@ func TestRankedProviderAdaptersDeclareWorkspaceArtifactBoundary(t *testing.T) {
 	if err := (embedpkg.Extractor{}).Extract(runtimeRoot, false); err != nil {
 		t.Fatalf("extract embedded runtime: %v", err)
 	}
+	// brainstorming ships byte-identical to its upstream digest, so its workspace
+	// boundary is enforced by the embedded host-bridge prompt, not by payload edits.
 	providers := []string{
-		"skills/brainstorming/SKILL.md",
-		"skills/openspec-propose/SKILL.md",
-		"skills/writing-plans/SKILL.md",
+		"skills/openspec-propose@1.0/SKILL.md",
+		"skills/writing-plans@1.0.0/SKILL.md",
 	}
 	for _, rel := range providers {
 		rel := rel
@@ -241,7 +242,7 @@ func TestRankedProviderAdaptersDeclareWorkspaceArtifactBoundary(t *testing.T) {
 				if !strings.Contains(content, "<base_path>") {
 					t.Fatalf("%s adapter %s must resolve final artifacts from <base_path>", rel, name)
 				}
-				if rel == "skills/writing-plans/SKILL.md" && !strings.Contains(content, ".strategist/weapon-runtime/writing-plans/") {
+				if rel == "skills/writing-plans@1.0.0/SKILL.md" && !strings.Contains(content, ".strategist/weapon-runtime/writing-plans/") {
 					t.Fatalf("%s adapter %s must declare its Strategist-private runtime scratch path", rel, name)
 				}
 			}

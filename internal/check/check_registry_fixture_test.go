@@ -53,13 +53,31 @@ func fixtureRegistry() domain.CompiledRegistry {
 // generated plugins/catalog.yaml carries next to its providers.
 func registrySectionsYAML(t *testing.T, registry domain.CompiledRegistry) string {
 	t.Helper()
+	body, err := registrySectionsBody(registry)
+	require.NoError(t, err)
+	return body
+}
+
+func registrySectionsBody(registry domain.CompiledRegistry) (string, error) {
 	raw, err := yaml.Marshal(struct {
 		Weapons        []domain.CompiledWeapon        `yaml:"weapons"`
 		Roles          []domain.CompiledRole          `yaml:"roles"`
 		RankedBindings []domain.CompiledRankedBinding `yaml:"ranked_bindings"`
 	}{registry.Weapons, registry.Roles, registry.RankedBindings})
-	require.NoError(t, err)
-	return string(raw)
+	return string(raw), err
+}
+
+// TestMain points the embedded-catalog seam at the fixture registry so the
+// suite's workspaces are not flagged as drifted from the shipped registry.
+func TestMain(m *testing.M) {
+	body, err := registrySectionsBody(fixtureRegistry())
+	if err != nil {
+		panic(err)
+	}
+	embeddedCatalogReader = func() ([]byte, error) {
+		return []byte("schema_version: strategist-plugin-catalog/v2\n" + body), nil
+	}
+	os.Exit(m.Run())
 }
 
 // writeRegistryCatalog writes a catalog holding only the compiled registry.
