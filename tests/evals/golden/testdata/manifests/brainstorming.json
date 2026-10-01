@@ -1,7 +1,7 @@
 {
   "canonical_role": "ranger",
   "category": "discovery",
-  "description": "Flexible brainstorming weapon for Ranger discovery; Ranger owns normalization into the canonical pending artifact and handoff.\n",
+  "description": "You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements and design before implementation.\n",
   "id": "brainstorming",
   "risk_score": "write_analysis",
   "roles": [

@@ -13,13 +13,6 @@ on_start:                       # run when this role's phase starts; {role} and 
   - strategist mechanisms brief --role {role}   # the tools (Mechanisms and Abilities) available to this role
 # leveling: archivist
 
-# Consume Ranger's initiative_result without recalculating the recommendation.
-# Missing evidence limits confidence and may challenge the handoff.
-initiative:
-  on_start: consume_advice
-  on_result: emit_initiative_result
-  preserve: [advice_id, policy_version, policy_digest, deviations, evidence_refs]
-
 # Canonical behaviors — read-only, source in skill.yaml.
 # Listed here for reference when writing custom_brief below.
 canonical:

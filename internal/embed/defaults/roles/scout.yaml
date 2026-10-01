@@ -18,8 +18,6 @@ on_start:                       # run when this role's phase starts; {role} and 
 # and the LEVELING tuple remain independent decisions.
 initiative:
   on_start: resolve_advice
-  on_result: emit_initiative_result
-  preserve: [advice_id, policy_version, policy_digest, alignment, evidence_refs]
 
 canonical:
   - classify_request             # emit one route_decision (schemas/scout-route-decision.schema.yaml)

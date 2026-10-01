@@ -26,12 +26,20 @@ set -euo pipefail
 
 fail=0
 
+existing_go_files() {
+    git ls-files -co --exclude-standard -z '*.go' | while IFS= read -r -d '' file; do
+        if [[ -f "$file" ]]; then
+            printf '%s\0' "$file"
+        fi
+    done
+}
+
 # 1. Format
-unformatted=$(git ls-files -co --exclude-standard -z '*.go' | xargs -0r gofmt -l)
+unformatted=$(existing_go_files | xargs -0r gofmt -l)
 if [ -n "$unformatted" ]; then
     echo "pre-commit: gofmt issues in:" >&2
     echo "$unformatted" | sed 's/^/  /' >&2
-    echo "  run: git ls-files -co --exclude-standard -z '*.go' | xargs -0r gofmt -w" >&2
+    echo "  run: make fmt" >&2
     fail=1
 fi
 
@@ -78,7 +86,7 @@ chmod +x "$HOOK_FILE"
 echo "pre-commit hook installed at $HOOK_FILE"
 echo ""
 echo "Gates:"
-echo "  • git ls-files -co --exclude-standard -z '*.go' | xargs -0r gofmt -l"
+echo "  • make fmt-check"
 echo "  • go vet ./..."
 echo "  • go build ./..."
 echo "  • golangci-lint run ./...  (skipped if not installed)"

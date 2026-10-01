@@ -3,6 +3,7 @@ package refinement
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/handoff"
@@ -58,6 +59,24 @@ func TestNormalizeOpenSpecPublishesTheDeclaredHandoffFactsAsAnEvaluablePackage(t
 	assert.True(t, signals.Signals.MandatoryConstraintsPresent)
 	assert.True(t, signals.Signals.ForbiddenScopePresent)
 	assert.True(t, handoff.ResolveArchivistPolicy(signals.Signals).Enabled)
+}
+
+func TestNormalizeOpenSpecDoesNotConfuseRangerFactsWithArchivistFacts(t *testing.T) {
+	input, _ := factsFixture(t, "m-ranger-facts")
+	raw, err := os.ReadFile(input.PendingAnalysisPath)
+	require.NoError(t, err)
+	rangerFacts := "ranger_handoff_policy_facts:\n  schema_version: strategist-ranger-handoff-policy-facts/v1\n  require_recall: false\n  require_boundary: false\n  require_classification: false\n  require_verdict: false\n  informational_only: true\n"
+	updated := strings.Replace(string(raw), "\n---\n", "\n"+rangerFacts+"---\n", 1)
+	require.NoError(t, os.WriteFile(input.PendingAnalysisPath, []byte(updated), 0o644))
+	input.HandoffFacts = validFacts()
+
+	result, err := NormalizeOpenSpec(input)
+
+	require.NoError(t, err)
+	published, err := os.ReadFile(filepath.Join(result.RefinedPath, "analysis.md"))
+	require.NoError(t, err)
+	assert.Contains(t, string(published), "ranger_handoff_policy_facts:")
+	assert.Contains(t, string(published), "handoff_policy_facts:")
 }
 
 func TestNormalizeOpenSpecWithoutFactsPublishesNoBlockAndTheExtractorReportsIt(t *testing.T) {

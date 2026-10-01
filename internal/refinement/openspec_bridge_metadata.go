@@ -17,7 +17,11 @@ func addMetadata(content []byte, input OpenSpecInput) ([]byte, error) {
 	}
 	metadata += facts
 	text := string(content)
-	if strings.Contains(text, handoff.PolicyFactsKey+":") {
+	containsFacts, err := frontmatterContainsKey(text, handoff.PolicyFactsKey)
+	if err != nil {
+		return nil, err
+	}
+	if containsFacts {
 		return nil, fmt.Errorf("openspec bridge: pending analysis already carries %s; Archivist declares it at publication", handoff.PolicyFactsKey)
 	}
 	if strings.HasPrefix(text, "---\n") {
@@ -28,6 +32,22 @@ func addMetadata(content []byte, input OpenSpecInput) ([]byte, error) {
 		}
 	}
 	return []byte("---\nmission_id: " + input.MissionID + "\nmission_status: archivist_done\n" + metadata + "---\n\n" + text), nil
+}
+
+func frontmatterContainsKey(text, key string) (bool, error) {
+	if !strings.HasPrefix(text, "---\n") {
+		return false, nil
+	}
+	end := strings.Index(text[4:], "\n---")
+	if end < 0 {
+		return false, nil
+	}
+	var frontmatter map[string]any
+	if err := yaml.Unmarshal([]byte(text[4:4+end]), &frontmatter); err != nil {
+		return false, fmt.Errorf("openspec bridge: parse pending frontmatter: %w", err)
+	}
+	_, ok := frontmatter[key]
+	return ok, nil
 }
 
 // validateHandoffFacts rejects a facts mapping that handoff.ParsePolicyFacts

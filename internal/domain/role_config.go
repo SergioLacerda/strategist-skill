@@ -36,12 +36,11 @@ type RoleConfig struct {
 	Initiative InitiativeHooks `yaml:"initiative,omitempty"`
 }
 
-// InitiativeHooks describes the advisory INITIATIVE lifecycle declared by a
-// role definition.
+// InitiativeHooks describes the advisory INITIATIVE entry hook declared by a
+// role definition. Result and handoff hooks are intentionally not part of the
+// current role contract.
 type InitiativeHooks struct {
-	OnStart  string   `yaml:"on_start,omitempty"`
-	OnResult string   `yaml:"on_result,omitempty"`
-	Preserve []string `yaml:"preserve,omitempty"`
+	OnStart string `yaml:"on_start,omitempty"`
 }
 
 // Validate returns an error if the role definition is missing required fields

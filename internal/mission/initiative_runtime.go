@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/embed"
 	"github.com/SergioLacerda/strategist-skill/internal/initiative"
@@ -13,8 +12,8 @@ import (
 	jsonlsink "github.com/SergioLacerda/strategist-skill/internal/telemetry/sink/jsonl"
 )
 
-// InitiativeRuntime wires the existing INITIATIVE domain to role boundaries,
-// its independent append-only ledger, and a diagnostic telemetry stream.
+// InitiativeRuntime wires the existing INITIATIVE domain to the Scout entry
+// consultation, its independent append-only ledger, and diagnostic telemetry.
 type InitiativeRuntime struct {
 	core      initiative.Runtime
 	eventSink telemetry.EventSink
@@ -76,56 +75,4 @@ func (r InitiativeRuntime) EnterRole(input InitiativeRoleEntry) (initiative.Advi
 		return initiative.Advice{}, err
 	}
 	return advice, nil
-}
-
-// Reevaluate records one explicit advice supersession and emits its
-// diagnostic event. The previous record is never rewritten.
-func (r InitiativeRuntime) Reevaluate(input InitiativeRoleEntry, trigger initiative.Trigger) (initiative.Advice, error) {
-	advice, err := r.core.Reevaluate(initiative.AdviceInput{
-		MissionID: input.MissionID, Role: input.Role, RunID: input.RunID,
-		Trigger: trigger, Observed: input.Observed, Leveling: input.Leveling,
-	})
-	if err != nil {
-		return initiative.Advice{}, fmt.Errorf("initiative runtime: re-evaluate: %w", err)
-	}
-	if err := r.emitAdvice(advice, false); err != nil {
-		return initiative.Advice{}, err
-	}
-	return advice, nil
-}
-
-// CompleteRole validates and persists a role result, returning an additive
-// handoff envelope for the next consumer. A challenge is observable but does
-// not authorize or reject the Approval Gate.
-func (r InitiativeRuntime) CompleteRole(advice initiative.Advice, result initiative.Result, toRole string) (InitiativeHandoff, error) {
-	if strings.TrimSpace(toRole) == "" {
-		return InitiativeHandoff{}, fmt.Errorf("initiative handoff: destination role is required")
-	}
-	if err := validateInitiativeTransition(advice.Role, toRole); err != nil {
-		return InitiativeHandoff{}, err
-	}
-	assessment, err := r.core.RecordResult(advice, result)
-	if err != nil {
-		return InitiativeHandoff{}, fmt.Errorf("initiative runtime: record result: %w", err)
-	}
-	// RecordResult assigns deterministic identity metadata for first revisions;
-	// expose that same persisted revision in the handoff envelope so replay
-	// validation compares the exact record that was assessed.
-	if result.ResultID == "" {
-		result.ResultID = assessment.ResultID
-	}
-	if result.Sequence == 0 {
-		result.Sequence = assessment.ResultSequence
-	}
-	handoff := InitiativeHandoff{
-		FromRole: advice.Role, ToRole: toRole, Advice: advice,
-		Result: result, Assessment: assessment,
-	}
-	if err := handoff.Validate(); err != nil {
-		return InitiativeHandoff{}, err
-	}
-	if err := r.emitResult(advice, result, assessment); err != nil {
-		return InitiativeHandoff{}, err
-	}
-	return handoff, nil
 }

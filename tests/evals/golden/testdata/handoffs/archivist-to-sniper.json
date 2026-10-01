@@ -114,6 +114,72 @@
       "required": true,
       "type": "string"
     },
+    "handoff_outcome": {
+      "description": "Durable terminal record written by `strategist handoff evaluate` under missions/handoff/<mission_id>/attempt-<n>.json. It is runtime state, not a package field; a package may mirror it as handoff_verification metadata but metadata presence is never proof, and a mismatch with the persisted outcome fails closed.\n",
+      "fields": {
+        "attempt": "integer, derived from the recorded outcomes",
+        "gate_observed": "mission state the Approval Gate evidence was read from",
+        "integrity": "digest of every other field",
+        "mission_id": "string",
+        "package_digest": "sha256 of proposal.md, design.md, tasks.md, the analysis.md body and its handoff_policy_facts",
+        "policy_id": "digest of the policy rules the outcome was decided under",
+        "provenance": "list of {signal, source, detail}",
+        "required": "boolean",
+        "result": {
+          "allowed_values": [
+            "passed",
+            "failed",
+            "skipped"
+          ],
+          "type": "string"
+        },
+        "schema_version": "strategist-handoff-outcome/v1",
+        "signals": "the evaluated require/skip signals",
+        "transition": "archivist_to_sniper"
+      },
+      "required": false,
+      "type": "object"
+    },
+    "handoff_policy_facts": {
+      "description": "Typed facts Archivist declares so the handoff challenge policy can be derived without reading prose. Every field is required: an absent or null field makes a require_when predicate unknowable and the package is rejected, never inferred. implementation_handoff_present is not declared; it is derived from the task_type of each tasks.md / implementation_plan item. The Approval Gate is not a fact here.\n",
+      "fields": {
+        "destructive_operation_possible": {
+          "type": "boolean"
+        },
+        "forbidden_scope": {
+          "description": "Scope forbidden beyond Sniper's defaults; empty list when none",
+          "type": "list"
+        },
+        "informational_only": {
+          "description": "true only for a documentation-only package. Declaring it while any require fact holds (a list above is non-empty, a flag above is true, or a task is an implementation_handoff) is contradictory and rejected.\n",
+          "type": "boolean"
+        },
+        "mandatory_constraints": {
+          "description": "Constraints Sniper must honor; empty list when none",
+          "type": "list"
+        },
+        "schema_version": {
+          "allowed_values": [
+            "strategist-handoff-policy-facts/v1"
+          ],
+          "type": "string"
+        },
+        "security_sensitive_task": {
+          "type": "boolean"
+        },
+        "unresolved_questions": {
+          "description": "Open questions carried into the handoff; empty list when none",
+          "type": "list"
+        }
+      },
+      "location": "frontmatter of analysis.md (key handoff_policy_facts)",
+      "required": true,
+      "rules": [
+        "the optional intake risk_level may only make the derived policy stricter",
+        "a package whose handoff_policy_facts are absent, unknown, null or contradictory has no evaluable policy"
+      ],
+      "type": "object"
+    },
     "handoff_verification": {
       "description": "Optional semantic handoff challenge metadata for the Archivist -> Sniper transition. This complements YAML structure validation; it never replaces the Strategist Approval Gate.\n",
       "fields": {
@@ -202,22 +268,6 @@
       "required": true,
       "type": "list"
     },
-    "initiative_result": {
-      "description": "Result emitted by the consultative INITIATIVE ability. It is validated by the next consumer but never authorizes the Approval Gate or execution. Missing evidence is represented as a confidence limit or challenge.\n",
-      "fields": {
-        "advice_id": "string",
-        "checks": "list",
-        "deviations": "list",
-        "evidence_refs": "list",
-        "gate_independent": "boolean",
-        "mission_id": "string",
-        "outcomes": "list",
-        "role": "string",
-        "run_id": "string"
-      },
-      "required": false,
-      "type": "object"
-    },
     "mission_id": {
       "required": true,
       "type": "string"
@@ -227,7 +277,7 @@
       "type": "string"
     },
     "side_quests_approved": {
-      "description": "Side quest strategy decisions made by Archivist — surfaced at approval gate",
+      "description": "Side quest strategy decisions made by Archivist — surfaced at approval gate. An accepted OA-ADR-<mission_id> entry is recorded by `strategist mission accept-side-quest` and becomes the mission's gate-derived ADR documentation target",
       "field_descriptions": {
         "confidence_percent": "optional, integer 0-100. Present only when investigation_required is false/absent. Never fabricate a low or placeholder value to fill this field — a side quest without enough evidence to assess is investigation_required, not a low confidence_percent.\n",
         "dependencies": "list of other SQ ids or task ids this depends on",

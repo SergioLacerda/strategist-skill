@@ -56,16 +56,13 @@ func (r RoleRegistry) HandoffSchemaOf(id string) string {
 	return role.HandoffSchema
 }
 
-// InitiativeHooksOf returns the consultative hooks declared by a role.
+// InitiativeHooksOf returns the consultative entry hook declared by a role.
 func (r RoleRegistry) InitiativeHooksOf(id string) (InitiativeHooks, bool) {
 	role, ok := r.Get(id)
 	if !ok {
 		return InitiativeHooks{}, false
 	}
-	return InitiativeHooks{
-		OnStart: role.Initiative.OnStart, OnResult: role.Initiative.OnResult,
-		Preserve: append([]string(nil), role.Initiative.Preserve...),
-	}, true
+	return InitiativeHooks{OnStart: role.Initiative.OnStart}, true
 }
 
 // PhaseOf returns the checkpoint position of a role or of the approval gate,
