@@ -11,13 +11,13 @@ import "fmt"
 // (K22): RequiredByRisk/StatusForRisk already existed but nothing invoked
 // them against real mission state.
 //
-// TransitionArchivistToSniper uses the contract's low-risk skip predicates:
-// informational missions may skip only the semantic challenge, while any
-// matching risk predicate requires it. The Approval Gate remains mandatory
-// independently of this policy. RangerToArchivistPolicy and
+// TransitionArchivistToSniper is deliberately not resolved here: a coarse
+// label cannot establish the contract's require/skip facts, so that transition
+// derives its signals from the validated package (ExtractRiskSignals) and its
+// policy from ResolveArchivistPolicy. RangerToArchivistPolicy and
 // SniperToValidationPolicy remain advisory-first extensions (see their doc
-// comments) that this function activates when the mission's risk signals
-// warrant it.
+// comments) that this function activates when the mission's risk label
+// warrants it; their activation is audited separately.
 //
 // Returns an error for a transition string that isn't one of the three
 // known constants, so callers can distinguish "risk resolution ran and
@@ -26,7 +26,7 @@ import "fmt"
 func ResolvePolicyForMission(riskLevel, transition string) (Policy, error) {
 	switch transition {
 	case TransitionArchivistToSniper:
-		return riskGatedPolicy(DefaultPolicy(), riskLevel), nil
+		return Policy{}, fmt.Errorf("handoff: %s is not resolved from a coarse risk level; derive RiskSignals from the validated package with ExtractRiskSignals and call ResolveArchivistPolicy", TransitionArchivistToSniper)
 	case TransitionRangerToArchivist:
 		return riskGatedPolicy(RangerToArchivistPolicy(), riskLevel), nil
 	case TransitionSniperToValidation:

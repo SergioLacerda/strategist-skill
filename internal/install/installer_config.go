@@ -34,7 +34,7 @@ func (s Service) applyConfig(ctx context.Context, strategistDir string, cfg doma
 	if !cfg.Wizard {
 		return s.applySilentConfig(ctx, strategistDir, cfg)
 	}
-	return s.applyWizardConfig(ctx, strategistDir)
+	return s.applyWizardConfig(ctx, strategistDir, cfg.Verbose)
 }
 
 func (s Service) applySilentConfig(_ context.Context, strategistDir string, cfg domain.InstallConfig) error {
@@ -43,7 +43,7 @@ func (s Service) applySilentConfig(_ context.Context, strategistDir string, cfg 
 		return nil // preserve user customizations
 	}
 	if cfg.Force && runtimefs.Exists(activeYAMLPath) {
-		slog.Info("[Strategist] install force-overwriting user-owned config",
+		slog.Warn("[Strategist] install force-overwriting user-owned config",
 			telemetry.AttrComponent, "install",
 			"path", activeYAMLPath,
 		)
@@ -92,9 +92,9 @@ func (s Service) activateSilentBindings(strategistDir string, data []byte) error
 	return nil
 }
 
-func (s Service) applyWizardConfig(ctx context.Context, strategistDir string) error {
+func (s Service) applyWizardConfig(ctx context.Context, strategistDir string, verbose bool) error {
 	p := s.resolvePrompter()
-	wc, err := runWizard(ctx, p, s.Extractor, strategistDir)
+	wc, err := runWizard(ctx, p, s.Extractor, strategistDir, verbose)
 	if err != nil {
 		return fmt.Errorf("install: wizard: %w", err)
 	}

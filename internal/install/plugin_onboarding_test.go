@@ -215,7 +215,7 @@ providers:
 
 	_, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(
 		"en\nen\nen\nen\nepic\n.analysis\nbrainstorming\nmissing-refinement\nsniper\n\n",
-	)), ext, "")
+	)), ext, "", false)
 
 	// The wizard fails before activation because the catalog has no compatible
 	// refinement weapon for the fixed Archivist role.

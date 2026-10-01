@@ -14,7 +14,7 @@ import (
 )
 
 // executionEntryAction names the guarded transition in a bypass decision.
-const executionEntryAction = "enter execution (handoff_challenge_passed)"
+const executionEntryAction = "enter execution (handoff_challenge_satisfied)"
 
 // RecordRouteDecision persists Scout's route_decision for a mission so the
 // execution boundary can read it back. The decision must belong to missionID;

@@ -1,6 +1,7 @@
 package check
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -33,11 +34,54 @@ func resolveFromCustomBinding(root, slot, provider string) (slotResolution, stri
 	if instance != provider {
 		return slotResolution{}, fmt.Sprintf("slot %s: custom_package_use_instance_id: active.yaml names package %q; name the installed instance %q", slot, provider, instance), true
 	}
+	if errMsg := reconcileInstalledCustomPackage(root, slot, binding, facts); errMsg != "" {
+		return slotResolution{}, errMsg, true
+	}
 	if errMsg := checkSlotFacts(root, slot, provider, facts); errMsg != "" {
 		return slotResolution{}, errMsg, true
 	}
 	adapterPath := filepath.Join(root, "providers", instance, "adapter.yaml")
 	return slotResolution{kind: slotResolutionSkillProvider, path: adapterPath, readiness: customPackageReadiness(root, slot, instance, adapterPath, facts)}, "", true
+}
+
+// reconcileInstalledCustomPackage runs the shared Custom binding validator
+// against what the installed providers/<instance>/ files say. The external
+// source the package was acquired from is never consulted. A failure is the
+// slot's error message, with reinstall guidance; nothing is repaired.
+func reconcileInstalledCustomPackage(root, slot string, binding domain.SlotBinding, facts domain.WeaponFacts) string {
+	evidence, err := installedCustomEvidence(root, binding.InstalledInstanceID, facts)
+	if err != nil {
+		return fmt.Sprintf("slot %s: custom_binding_invalid: %v; %s", slot, err, domain.CustomReinstallGuidance)
+	}
+	role, _ := domain.DefaultRoleRegistry().RoleForSlot(slot)
+	if err := domain.ReconcileCustomPackageBinding(readPluginsLockFile(root), role.ID, slot, evidence); err != nil {
+		return fmt.Sprintf("slot %s: %v", slot, err)
+	}
+	return ""
+}
+
+// installedCustomEvidence reads the identity and digests the installed package
+// and adapter files carry. The adapter digest is recomputed from the bytes on
+// disk, so an edited adapter no longer matches the lock.
+func installedCustomEvidence(root, instance string, facts domain.WeaponFacts) (domain.CustomPackageEvidence, error) {
+	dir := filepath.Join(root, "providers", instance)
+	rawPackage, err := os.ReadFile(filepath.Join(dir, "package.yaml")) //nolint:gosec // G304: path derived from the runtime root and a locked instance id
+	if err != nil {
+		return domain.CustomPackageEvidence{}, fmt.Errorf("read installed package.yaml: %w", err)
+	}
+	var pkg domain.PluginPackage
+	if err := yaml.Unmarshal(rawPackage, &pkg); err != nil {
+		return domain.CustomPackageEvidence{}, fmt.Errorf("parse installed package.yaml: %w", err)
+	}
+	rawAdapter, err := os.ReadFile(filepath.Join(dir, "adapter.yaml")) //nolint:gosec // G304: path derived from the runtime root and a locked instance id
+	if err != nil {
+		return domain.CustomPackageEvidence{}, fmt.Errorf("read installed adapter.yaml: %w", err)
+	}
+	sum := sha256.Sum256(rawAdapter)
+	return domain.CustomPackageEvidence{
+		PackageID: pkg.ID, Version: pkg.Version, PackageDigest: pkg.Digest, AdapterDigest: fmt.Sprintf("sha256:%x", sum),
+		Roles: facts.Roles, Slots: facts.SupportedSlots, Entrypoints: facts.Entrypoints,
+	}, nil
 }
 
 // customBindingFor finds the custom binding of slot for provider, spelled as the

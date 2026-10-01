@@ -81,7 +81,7 @@ const (
 	// valid, non-error resolution, distinct from EventGateDenied (rejected/timeout,
 	// terminal). See contracts/machine/mission-status.yaml's gate_revision_requested entry.
 	EventGateRevision     TransitionEvent = "gate_revision_requested"
-	EventHandoffPassed    TransitionEvent = "handoff_challenge_passed"
+	EventHandoffSatisfied TransitionEvent = "handoff_challenge_satisfied"
 	EventHandoffFailed    TransitionEvent = "handoff_challenge_failed"
 	EventHandoffExhausted TransitionEvent = "handoff_challenge_exhausted"
 	EventSniperDone       TransitionEvent = "sniper_done"

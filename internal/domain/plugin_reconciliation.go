@@ -2,29 +2,50 @@ package domain
 
 import "fmt"
 
-// ReconcileCustomPackageBinding verifies that package evidence agrees with
-// the durable Custom binding. It never repairs or rewrites the lock.
-func ReconcileCustomPackageBinding(lock PluginLockFile, role, slot string, contract SkillPackageContract) error {
-	if err := contract.Validate(); err != nil {
-		return fmt.Errorf("plugin reconciliation: invalid package contract: %w", err)
-	}
+// CustomPackageEvidence is what the installed providers/<instance>/ files
+// say about a Custom package: the facts reconciliation compares to the binding.
+type CustomPackageEvidence struct {
+	PackageID     string
+	Version       string
+	PackageDigest string
+	AdapterDigest string
+	Roles         []string
+	Slots         []string
+	Entrypoints   []string
+}
+
+// ReconcileCustomPackageBinding verifies that the installed package evidence
+// agrees with the durable Custom binding, after the shared completeness
+// validation. It never repairs or rewrites the lock.
+func ReconcileCustomPackageBinding(lock PluginLockFile, role, slot string, evidence CustomPackageEvidence) error {
 	binding, err := SingleLockBindingForSlot(lock, slot)
 	if err != nil {
-		return fmt.Errorf("plugin reconciliation: custom binding missing: %w", err)
+		return customRejection("custom binding missing: %v", err)
 	}
-	if binding.EffectiveMode() != SlotBindingModeCustom {
-		return fmt.Errorf("plugin reconciliation: slot %q is %s, not custom", slot, binding.EffectiveMode())
+	if err := ValidateCustomBinding(lock, binding, role, slot); err != nil {
+		return err
 	}
-	if binding.InstalledInstanceID != contract.ID {
-		return fmt.Errorf("plugin reconciliation: slot %q binds %q, package evidence identifies %q", slot, binding.InstalledInstanceID, contract.ID)
+	if want := CustomInstanceID(evidence.PackageID, evidence.Version); binding.InstalledInstanceID != want {
+		return customRejection("slot %q binds %q, installed package evidence identifies %q", slot, binding.InstalledInstanceID, want)
 	}
-	if got := lock.NodeDigest(contract.ID, string(PluginResourceAdapter)); got == "" {
-		return fmt.Errorf("plugin reconciliation: adapter digest missing for %q", contract.ID)
-	} else if got != contract.Provenance.NormalizedDigest {
-		return fmt.Errorf("plugin reconciliation: adapter digest mismatch for %q: lock=%s package=%s", contract.ID, got, contract.Provenance.NormalizedDigest)
+	if evidence.PackageDigest != binding.SourceDigest {
+		return customRejection("package digest mismatch for %q: binding=%s installed=%s", evidence.PackageID, binding.SourceDigest, evidence.PackageDigest)
 	}
-	if got := lock.NodeDigest(role+":"+contract.ID, string(PluginResourceBinding)); got == "" {
-		return fmt.Errorf("plugin reconciliation: role binding digest missing for %q", role+":"+contract.ID)
+	if evidence.AdapterDigest != binding.WeaponDigest {
+		return customRejection("adapter digest mismatch for %q: binding=%s installed=%s", evidence.PackageID, binding.WeaponDigest, evidence.AdapterDigest)
+	}
+	return reconcileCustomAffinity(binding, role, slot, evidence)
+}
+
+func reconcileCustomAffinity(binding SlotBinding, role, slot string, evidence CustomPackageEvidence) error {
+	if !containsString(evidence.Roles, role) {
+		return customRejection("installed package %q does not declare Role %q", evidence.PackageID, role)
+	}
+	if !containsString(evidence.Slots, slot) {
+		return customRejection("installed package %q does not declare slot %q", evidence.PackageID, slot)
+	}
+	if !containsString(evidence.Entrypoints, binding.Entrypoint) {
+		return customRejection("installed package %q does not declare entrypoint %q", evidence.PackageID, binding.Entrypoint)
 	}
 	return nil
 }

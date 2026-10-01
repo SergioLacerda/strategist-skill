@@ -28,6 +28,7 @@ func TestPlanPluginOnboardingResolvesExplicitCustomProviderFromLocalRuntime(t *t
 	providerDir := filepath.Join(workspace, ".agents", installedProvidersDirName, "team-brainstorming")
 	require.NoError(t, os.MkdirAll(providerDir, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(providerDir, "SKILL.md"), []byte("---\nname: team-brainstorming\nmetadata:\n  version: \"2.0.0\"\n---\nbody\n"), 0o644))
+	scaffoldHostPackage(t, providerDir, "ranger", "discovery")
 
 	catalog, err := loadPluginCatalog(files)
 	require.NoError(t, err)
@@ -53,4 +54,12 @@ func TestPlanPluginOnboardingResolvesExplicitCustomProviderFromLocalRuntime(t *t
 	require.Empty(t, discovery.ResolutionError)
 	assert.Equal(t, "team-brainstorming", discovery.Resolved.Provider.ID)
 	assert.Equal(t, domain.ProviderSourceExternal, discovery.Resolved.Provider.Source)
+}
+
+// scaffoldHostPackage writes the Strategist sidecar a wizard-selected host
+// Weapon must declare, through the real generator, never inferred by the wizard.
+func scaffoldHostPackage(t *testing.T, dir, role, slot string) {
+	t.Helper()
+	_, err := ScaffoldSidecar(SidecarScaffoldOptions{PackageDir: dir, Roles: []string{role}, Slots: []string{slot}})
+	require.NoError(t, err)
 }

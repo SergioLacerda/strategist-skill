@@ -84,6 +84,29 @@ flag: --root (string) default="" usage="path to .strategist/ root (default: auto
 use: handoff
 short: Run and record Handoff Challenge verification
 
+== strategist handoff evaluate
+use: evaluate
+short: Evaluate the Archivist-to-Sniper handoff and record its outcome
+long: |
+  Evaluates the Archivist-to-Sniper handoff of a mission: validates its refined
+  package, derives the policy signals from the package's typed facts, resolves the
+  policy, runs the semantic challenge when it is required, and durably records a
+  terminal outcome (passed, failed, or a policy-authorized skip) correlated to the
+  mission, the package revision and the attempt, and records the handoff confidence
+  (or an explicit missing-record). A failed outcome returns the mission to refinement,
+  so a repaired package needs a new Approval Gate acceptance; the last allowed failure
+  blocks it. A passed or skipped outcome does not enter execution by itself.
+  The policy is never chosen by the caller. --risk-level is the optional coarse
+  intake label and can only make the result stricter. The Approval Gate must
+  already be accepted. Entering execution (mission submit --event
+  handoff_challenge_satisfied) verifies and consumes this outcome.
+flag: --ack (string) default="" usage="path to an acknowledgment YAML file (needed when the package requires the challenge)"
+flag: --challenges (string) default="" usage="path to a challenges YAML file (needed when the package requires the challenge)"
+flag: --confidence-summary (string) default="" usage="optional YAML file with the declared handoff confidence_summary; without it a missing-record is written"
+flag: --mission-id (string) default="" usage="mission whose Archivist-to-Sniper handoff is evaluated (required)"
+flag: --risk-level (string) default="" usage="optional intake risk_level (low, medium, high); can only make the result stricter"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
 == strategist handoff verify
 use: verify
 short: Verify a Handoff Challenge acknowledgment and record the result
@@ -98,6 +121,9 @@ long: |
   Handoff Challenge "Known Limitations" for why this command exists.
   
   Exits non-zero when verification fails, so callers can gate on it directly.
+  This command never authorizes execution. The Archivist-to-Sniper transition is
+  decided by 'strategist handoff evaluate', which derives its policy from the
+  refined package and records the durable outcome execution entry requires.
 flag: --ack (string) default="" usage="path to an acknowledgment YAML file (required)"
 flag: --attempt (int) default="1" usage="attempt number, for repair-loop tracking"
 flag: --challenges (string) default="" usage="path to a challenges YAML file (required)"
@@ -105,7 +131,7 @@ flag: --mission-id (string) default="" usage="mission_id to record against (requ
 flag: --policy (string) default="" usage="path to a policy YAML file, overriding the built-in default for --transition"
 flag: --risk-level (string) default="" usage="mission risk_level (low, medium, high) from intake — when set, resolves policy.Enabled/RequiredTypes from risk signals instead of the static per-transition default; ignored if --policy is set"
 flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
-flag: --transition (string) default="" usage="handoff transition (archivist_to_sniper, ranger_to_archivist, sniper_to_validation) — ignored if --policy is set"
+flag: --transition (string) default="" usage="handoff transition (ranger_to_archivist or sniper_to_validation; archivist_to_sniper is decided by 'handoff evaluate') — ignored if --policy is set"
 
 == strategist install
 use: install
@@ -130,6 +156,7 @@ flag: --shim-path (string) default="" usage="write the SKILL.md shim to this pat
 flag: --silent (bool) default="false" usage="silent install with epic defaults (default)"
 flag: --strict-compile (bool) default="false" usage="fail install (and roll back) on a CompileAll error, instead of warning-only (default: warning-only)"
 flag: --target (string) default="" usage="target repository root (default: current directory)"
+flag: --verbose (bool) default="false" usage="show the INFO log lines, the wizard section headers and the role/provider migration preview that install hides by default"
 flag: --wizard (bool) default="false" usage="interactive wizard for configuration"
 
 == strategist leveling
@@ -330,6 +357,7 @@ flag: --amend (bool) default="false" usage="amend an already published package w
 flag: --amends (string) default="" usage="with --amend: the change being amended (the package's provider_change_id, or the previous amendment's change id)"
 flag: --authorization-ref (string) default="" usage="with --amend: the human authorization for the amendment (a quote or a gate event), recorded verbatim"
 flag: --change-id (string) default="" usage="completed OpenSpec change id (required)"
+flag: --handoff-facts (string) default="" usage="YAML file with the typed handoff_policy_facts mapping, written into the published analysis.md frontmatter so `handoff evaluate` can derive the policy (publication only; an amendment keeps analysis.md byte-identical)"
 flag: --mission-id (string) default="" usage="canonical Strategist mission id (required)"
 flag: --pending-analysis (string) default="" usage="pending analysis path (default: <base_path>/pending/<mission-id>-analysis.md)"
 flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"

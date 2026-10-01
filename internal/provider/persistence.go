@@ -56,7 +56,11 @@ func alreadyBound(lock domain.PluginLockFile, source Source, report Report, inst
 	}
 	samePackage := lock.NodeDigest(source.Package.ID, string(domain.PluginResourcePackage)) == source.Package.Digest
 	sameAdapter := lock.NodeDigest(source.Package.ID, string(domain.PluginResourceAdapter)) == report.AdapterDigest
-	return binding.Generation, samePackage && sameAdapter
+	// A binding that predates the complete Custom contract is not "already
+	// bound": adding again is how an operator replaces it.
+	role, _ := domain.DefaultRoleRegistry().RoleForSlot(slot)
+	complete := domain.ValidateCustomBinding(lock, binding, role.ID, slot) == nil
+	return binding.Generation, samePackage && sameAdapter && complete
 }
 
 // removeStage deletes a failed staging directory and returns cause, joined with
@@ -89,7 +93,35 @@ func stageSource(root string, source Source, instanceID string) (string, bool, e
 	return target, true, nil
 }
 
-func buildLock(old domain.PluginLockFile, source Source, report Report, instanceID, slot string) domain.PluginLockFile {
+// customFacts derives the normalized facts a complete Custom binding needs
+// from the validated source, the canonical slot-to-role map and the staged
+// local_path connector. Nothing is inferred beyond that: a source with no
+// declared entrypoint cannot be bound.
+func customFacts(source Source, report Report, slot string) (domain.CustomPackageFacts, error) {
+	role, ok := domain.DefaultRoleRegistry().RoleForSlot(slot)
+	if !ok {
+		return domain.CustomPackageFacts{}, fmt.Errorf("provider add: slot %q has no owning Role", slot)
+	}
+	entrypoint := ""
+	if len(source.Adapter.Entrypoints) > 0 {
+		entrypoint = source.Adapter.Entrypoints[0]
+	}
+	return domain.CustomPackageFacts{
+		PackageID: source.Package.ID, PackageVersion: source.Package.Version, Role: role.ID, Slot: slot,
+		PackageDigest: source.Package.Digest, AdapterDigest: report.AdapterDigest,
+		RuntimeKind: domain.RankedRuntimeHost, ConnectorID: "local_path", Entrypoint: entrypoint,
+	}, nil
+}
+
+func buildLock(old domain.PluginLockFile, source Source, report Report, instanceID, slot string) (domain.PluginLockFile, error) {
+	facts, err := customFacts(source, report, slot)
+	if err != nil {
+		return domain.PluginLockFile{}, err
+	}
+	evidence, err := domain.NewCustomBindingEvidence(facts, nextGeneration(old, slot), "active")
+	if err != nil {
+		return domain.PluginLockFile{}, fmt.Errorf("provider add: %w", err)
+	}
 	lock := old
 	lock.Inventory.Instances = append([]domain.InstalledInstance(nil), old.Inventory.Instances...)
 	lock.Bindings = append([]domain.SlotBinding(nil), old.Bindings...)
@@ -105,60 +137,12 @@ func buildLock(old domain.PluginLockFile, source Source, report Report, instance
 	for i := range lock.Inventory.Instances {
 		lock.Inventory.Instances[i].LastKnownGood = lock.Inventory.Instances[i].ID == instanceID
 	}
-	lock.Bindings = replaceBinding(lock.Bindings, domain.SlotBinding{
-		SchemaVersion: "strategist-plugin-binding/v1", Slot: slot, InstalledInstanceID: instanceID,
-		Generation: nextGeneration(old, slot), Status: "active", Mode: domain.SlotBindingModeCustom,
-	})
-	lock.Lock = replaceLockNodes(lock.Lock, source.Package.ID, source.Package.Digest, report.AdapterDigest)
+	lock.Bindings = replaceBinding(lock.Bindings, evidence.Binding)
+	lock.Lock = replaceLockNodes(lock.Lock, evidence.Nodes)
 	lock.Lock.SchemaVersion = "strategist-plugin-lock/v1"
 	lock.Lock.GraphDigest = plugins.DigestLockNodes(lock.Lock.Nodes)
 	lock.Lock.ResolutionID = lock.Lock.GraphDigest
-	return lock
-}
-
-func existingBinding(bindings []domain.SlotBinding, slot string) (domain.SlotBinding, bool) {
-	for _, binding := range bindings {
-		if binding.Slot == slot {
-			return binding, true
-		}
-	}
-	return domain.SlotBinding{}, false
-}
-
-func replaceInstance(instances []domain.InstalledInstance, candidate domain.InstalledInstance) []domain.InstalledInstance {
-	for i, instance := range instances {
-		if instance.ID == candidate.ID {
-			instances[i] = candidate
-			return instances
-		}
-	}
-	return append(instances, candidate)
-}
-
-func replaceBinding(bindings []domain.SlotBinding, candidate domain.SlotBinding) []domain.SlotBinding {
-	for i, binding := range bindings {
-		if binding.Slot == candidate.Slot {
-			candidate.Generation = binding.Generation + 1
-			bindings[i] = candidate
-			return bindings
-		}
-	}
-	return append(bindings, candidate)
-}
-
-func replaceLockNodes(lock domain.PluginLock, id, packageDigest, adapterDigest string) domain.PluginLock {
-	filtered := make([]domain.PluginLockNode, 0, len(lock.Nodes)+2)
-	for _, node := range lock.Nodes {
-		if (node.ID == id && node.Kind == string(domain.PluginResourcePackage)) || (node.ID == id && node.Kind == string(domain.PluginResourceAdapter)) {
-			continue
-		}
-		filtered = append(filtered, node)
-	}
-	filtered = append(filtered,
-		domain.PluginLockNode{ID: id, Kind: string(domain.PluginResourcePackage), Digest: packageDigest},
-		domain.PluginLockNode{ID: id, Kind: string(domain.PluginResourceAdapter), Digest: adapterDigest})
-	lock.Nodes = filtered
-	return lock
+	return lock, nil
 }
 
 func nextGeneration(lock domain.PluginLockFile, slot string) int64 {

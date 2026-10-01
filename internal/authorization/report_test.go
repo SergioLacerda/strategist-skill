@@ -7,7 +7,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/testutil/customws"
+	"gopkg.in/yaml.v3"
 )
 
 func TestBuildAllowedAnalysisTargetKeepsLiveEvidenceUnverified(t *testing.T) {
@@ -115,31 +117,28 @@ func writeAuthorizationFixture(t *testing.T) string {
 	if err := os.MkdirAll(filepath.Join(root, "roles"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	write("active.yaml", "mode: epic\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n  refinement: openspec-propose\n  execution: sniper\n")
+	write("active.yaml", "mode: epic\nbase_path: .analysis\nslots:\n  discovery: brainstorming@1.0.0\n  refinement: openspec-propose@1.0.0\n  execution: sniper@1.0.0\n")
 	write("roles/default.yaml", "discovery: ranger\nrefinement: archivist\nexecution: sniper\n")
-	write("plugins.lock", `schema_version: strategist-plugin-lock-file/v1
-lock:
-  nodes:
-    - id: brainstorming
-      kind: adapter_contract
-      digest: sha256:brainstorming
-    - id: openspec-propose
-      kind: adapter_contract
-      digest: sha256:openspec
-    - id: sniper
-      kind: adapter_contract
-      digest: sha256:sniper
-bindings:
-  - slot: discovery
-    installed_instance_id: brainstorming
-    status: active
-  - slot: refinement
-    installed_instance_id: openspec-propose
-    status: active
-  - slot: execution
-    installed_instance_id: sniper
-    status: active
-`)
+	lock := domain.PluginLockFile{SchemaVersion: domain.PluginLockFileSchemaVersion}
+	for _, weapon := range []struct{ id, role, slot string }{
+		{"brainstorming", "ranger", "discovery"}, {"openspec-propose", "archivist", "refinement"}, {"sniper", "sniper", "execution"},
+	} {
+		evidence, err := domain.NewCustomBindingEvidence(domain.CustomPackageFacts{
+			PackageID: weapon.id, PackageVersion: "1.0.0", Role: weapon.role, Slot: weapon.slot,
+			PackageDigest: "sha256:pkg-" + weapon.id, AdapterDigest: "sha256:adapter-" + weapon.id,
+			RuntimeKind: domain.RankedRuntimeHost, ConnectorID: "local_path", Entrypoint: "host.prompt",
+		}, 1, "active")
+		if err != nil {
+			t.Fatal(err)
+		}
+		lock.Bindings = append(lock.Bindings, evidence.Binding)
+		lock.Lock.Nodes = append(lock.Lock.Nodes, evidence.Nodes...)
+	}
+	raw, err := yaml.Marshal(lock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	write("plugins.lock", string(raw))
 	return root
 }
 

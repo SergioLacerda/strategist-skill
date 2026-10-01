@@ -17,7 +17,7 @@ import (
 // <basePath>/refined/<missionID>/tasks.md — the write side of ADR-0008's F3
 // revisit tripwire claim-collision signal, which internal/check's
 // emitF3ClaimCollisionSignals reads back. It is called from
-// cmd/strategist/mission's RunSubmit at handoff_challenge_passed, deriving
+// cmd/strategist/mission's RunSubmit at handoff_challenge_satisfied, deriving
 // target paths from the approved package rather than adding an agent
 // obligation that can be forgotten (ADR-0057 § A1 / design.md Batch A).
 //

@@ -1,6 +1,8 @@
 package check
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -9,6 +11,7 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/plugins/governance"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -49,19 +52,36 @@ func customWorkspace(t *testing.T, o customOpts) string {
 		adapter += "risk_score: " + o.risk + "\n"
 	}
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "adapter.yaml"), []byte(adapter), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "package.yaml"), []byte("id: fixture-provider\nversion: 1.0.0\n"), 0o644))
-	lock := "schema_version: strategist-plugin-lock-file/v1\nbindings:\n  - slot: refinement\n    installed_instance_id: " + customInstance + "\n    mode: " + o.mode + "\n    status: active\n"
-	if !o.noNode {
-		lock += "lock:\n  nodes:\n    - id: fixture-provider\n      kind: adapter_contract\n      digest: " + customDigest + "\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "package.yaml"), []byte("id: fixture-provider\nversion: 1.0.0\ndigest: "+customDigest+"\n"), 0o644))
+	adapterSum := sha256.Sum256([]byte(adapter))
+	evidence, err := domain.NewCustomBindingEvidence(domain.CustomPackageFacts{
+		PackageID: "fixture-provider", PackageVersion: "1.0.0", Role: "archivist", Slot: "refinement",
+		PackageDigest: customDigest, AdapterDigest: fmt.Sprintf("sha256:%x", adapterSum),
+		RuntimeKind: domain.RankedRuntimeHost, ConnectorID: "local_path", Entrypoint: "host.prompt",
+	}, 1, "active")
+	require.NoError(t, err)
+	evidence.Binding.Mode = o.mode
+	nodes := evidence.Nodes
+	if o.noNode {
+		nodes = nil
 	}
-	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins.lock"), []byte(lock), 0o644))
+	raw, err := yaml.Marshal(domain.PluginLockFile{
+		SchemaVersion: domain.PluginLockFileSchemaVersion,
+		Bindings:      []domain.SlotBinding{evidence.Binding},
+		Lock:          domain.PluginLock{Nodes: nodes},
+	})
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins.lock"), raw, 0o644))
 	return root
 }
 
 func grantFor(t *testing.T, root string, permissions ...domain.PluginPermission) {
 	t.Helper()
+	adapter, err := os.ReadFile(filepath.Join(root, "providers", customInstance, "adapter.yaml"))
+	require.NoError(t, err)
+	adapterDigest := fmt.Sprintf("sha256:%x", sha256.Sum256(adapter))
 	require.NoError(t, governance.SaveGrants(root, domain.PermissionGrantFile{Grants: []domain.PermissionGrant{
-		{SchemaVersion: domain.PermissionGrantFileSchemaVersion, ID: "grant-1", PackageDigest: customDigest, AdapterDigest: customDigest, GrantedPermissions: permissions},
+		{SchemaVersion: domain.PermissionGrantFileSchemaVersion, ID: "grant-1", PackageDigest: adapterDigest, AdapterDigest: adapterDigest, GrantedPermissions: permissions},
 	}}))
 }
 
@@ -100,9 +120,10 @@ func TestCustomPackageWithoutALockDigestFailsClosed(t *testing.T) {
 
 	res, errMsg := resolveSlotProvider(root, "refinement", customInstance)
 
-	require.Empty(t, errMsg)
-	assert.Equal(t, domain.ReadinessBlocked, res.readiness.PermissionGrant.Status, "an unknown digest is never Unknown for a custom package")
-	assert.Equal(t, "custom_package_digest_missing", res.readiness.PermissionGrant.ReasonCode)
+	assert.Empty(t, res.path)
+	assert.Contains(t, errMsg, "custom_binding_invalid", "a binding without lock evidence is rejected before readiness")
+	assert.Contains(t, errMsg, "no package evidence")
+	assert.Contains(t, errMsg, "re-add the package")
 }
 
 func TestCustomPackageBoundAsRankedStaysUnresolved(t *testing.T) {

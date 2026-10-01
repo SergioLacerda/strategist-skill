@@ -29,7 +29,7 @@ func Workspace(t testing.TB) string {
 	t.Helper()
 	root := t.TempDir()
 	require.NoError(t, embed.Extractor{}.Extract(root, true))
-	require.NoError(t, os.WriteFile(filepath.Join(root, "active.yaml"), []byte("mode: epic\nbase_path: .analysis\nknowledge_index_path: knowledge.index.yaml\nslots:\n  discovery: brainstorming\n  refinement: "+Instance+"\n  execution: sniper\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "active.yaml"), []byte("mode: epic\nbase_path: .analysis\nknowledge_index_path: knowledge.index.yaml\nslots:\n  discovery: brainstorming@1.0.0\n  refinement: "+Instance+"\n  execution: sniper\n"), 0o644))
 
 	pkg := t.TempDir()
 	for _, name := range []string{"package.yaml", "adapter.yaml", "skill.yaml"} {
@@ -53,7 +53,14 @@ func addDiscoveryBinding(t testing.TB, root string) {
 	require.NoError(t, err)
 	var lock domain.PluginLockFile
 	require.NoError(t, yaml.Unmarshal(raw, &lock))
-	lock.Bindings = append(lock.Bindings, domain.SlotBinding{SchemaVersion: "strategist-plugin-binding/v1", Slot: "discovery", InstalledInstanceID: "brainstorming", Generation: 1, Status: "active", Mode: domain.SlotBindingModeCustom})
+	evidence, err := domain.NewCustomBindingEvidence(domain.CustomPackageFacts{
+		PackageID: "brainstorming", PackageVersion: "1.0.0", Role: "ranger", Slot: "discovery",
+		PackageDigest: "sha256:fixture-package", AdapterDigest: "sha256:fixture-adapter",
+		RuntimeKind: domain.RankedRuntimeHost, ConnectorID: "local_path", Entrypoint: "host.prompt",
+	}, 1, "active")
+	require.NoError(t, err)
+	lock.Bindings = append(lock.Bindings, evidence.Binding)
+	lock.Lock.Nodes = append(lock.Lock.Nodes, evidence.Nodes...)
 	out, err := yaml.Marshal(lock)
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(path, out, 0o644))

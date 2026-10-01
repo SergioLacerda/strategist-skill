@@ -38,7 +38,10 @@ Sniper) a scriptable, deterministic tool to invoke instead of reasoning
 through a Handoff Challenge unaided — see docs/architecture/strategist-concepts.md §
 Handoff Challenge "Known Limitations" for why this command exists.
 
-Exits non-zero when verification fails, so callers can gate on it directly.`,
+Exits non-zero when verification fails, so callers can gate on it directly.
+This command never authorizes execution. The Archivist-to-Sniper transition is
+decided by 'strategist handoff evaluate', which derives its policy from the
+refined package and records the durable outcome execution entry requires.`,
 	// A failed verification (including a policy_invalid result) is a valid,
 	// expected outcome of a correct invocation, not a flag/argument usage
 	// error (F-X3, ADR-0057/design.md task 5.4) — Cobra's default of
@@ -50,6 +53,9 @@ Exits non-zero when verification fails, so callers can gate on it directly.`,
 
 func runHandoffVerify(cmd *cobra.Command, opts handoffVerifyOptions) error {
 	silenceHandoffTelemetry(cmd)
+	if opts.Transition == handoff.TransitionArchivistToSniper {
+		return fmt.Errorf("handoff verify: %s is decided by 'strategist handoff evaluate', which derives the policy from the refined package and records the outcome execution entry requires; verify no longer handles this transition", handoff.TransitionArchivistToSniper)
+	}
 	policy, challenges, ack, err := prepareHandoffVerificationInputs(opts)
 	if err != nil {
 		return fmt.Errorf("handoff verify: %w", err)
@@ -147,8 +153,6 @@ func resolveHandoffPolicy(opts handoffVerifyOptions) (handoff.Policy, error) {
 		return p, nil
 	}
 	switch opts.Transition {
-	case handoff.TransitionArchivistToSniper:
-		return handoff.DefaultPolicy(), nil
 	case handoff.TransitionRangerToArchivist:
 		p := handoff.RangerToArchivistPolicy()
 		p.Enabled = true // CLI invocation is an explicit request to verify — advisory default doesn't apply here
@@ -166,7 +170,7 @@ func resolveHandoffPolicy(opts handoffVerifyOptions) (handoff.Policy, error) {
 func init() {
 	opts := handoffVerifyOptions{}
 	handoffVerifyCmd.Flags().StringVar(&opts.Root, cliutil.FlagRoot, "", "path to .strategist/ root (default: auto-discovered from CWD)")
-	handoffVerifyCmd.Flags().StringVar(&opts.Transition, "transition", "", "handoff transition (archivist_to_sniper, ranger_to_archivist, sniper_to_validation) — ignored if --policy is set")
+	handoffVerifyCmd.Flags().StringVar(&opts.Transition, "transition", "", "handoff transition (ranger_to_archivist or sniper_to_validation; archivist_to_sniper is decided by 'handoff evaluate') — ignored if --policy is set")
 	handoffVerifyCmd.Flags().StringVar(&opts.Policy, "policy", "", "path to a policy YAML file, overriding the built-in default for --transition")
 	handoffVerifyCmd.Flags().StringVar(&opts.RiskLevel, "risk-level", "", "mission risk_level (low, medium, high) from intake — when set, resolves policy.Enabled/RequiredTypes from risk signals instead of the static per-transition default; ignored if --policy is set")
 	handoffVerifyCmd.Flags().StringVar(&opts.Challenges, "challenges", "", "path to a challenges YAML file (required)")

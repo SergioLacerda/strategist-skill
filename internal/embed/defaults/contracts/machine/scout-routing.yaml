@@ -86,7 +86,7 @@ emit:
       discipline as AppendOutcomeLine). This is the durable record that Scout
       routing metrics (route_accuracy, fallback_rate, unnecessary_pipeline_rate,
       etc.) aggregate over, and the input the execution boundary reads:
-      `strategist mission submit --event handoff_challenge_passed` applies the
+      `strategist mission submit --event handoff_challenge_satisfied` applies the
       pipeline-bypass evidence regime of the recorded route (full_pipeline needs
       discovery, refinement, tasks and the approved gate; the narrow routes need
       the approved gate). A mission with no recorded decision is held to the

@@ -74,6 +74,11 @@ the accepted handoff for optional `handoff_verification` metadata.
 - If repair is required, emit `blocked reason=handoff_challenge_repair_required` and
   return to Archivist refinement; do not decide the repair inside Sniper.
 
+Execution entry itself (`strategist mission submit --event handoff_challenge_satisfied`) is
+machine-enforced: it is rejected unless the mission has a durable `strategist handoff evaluate`
+outcome that is intact, belongs to this mission, matches the current package revision and policy,
+has not been used, and is `passed` or a `skipped` the package facts still authorize.
+
 Passing handoff verification never authorizes materialization by itself and never replaces Approval Gate acceptance. Sniper still requires `mission_status: gate_analysis_accepted`, an allowed write scope, and a clean Pre-Materialization Scan.
 
 ## Pre-Materialization Scan

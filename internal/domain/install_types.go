@@ -16,6 +16,10 @@ type InstallConfig struct {
 	// newer binary installed (a deliberate rollback). Without it the install
 	// fails with runtime_newer_than_binary.
 	AllowDowngrade bool
+	// Verbose restores the display `install` hides by default: INFO log lines
+	// (handled by the CLI), the wizard section headers and the role/provider
+	// migration preview. It never changes what is installed.
+	Verbose bool
 	// StrictCompile makes a CompileAll failure fatal (triggers rollback) instead of
 	// warning-only. Default false preserves the existing warning-only behavior.
 	StrictCompile bool

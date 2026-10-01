@@ -2,10 +2,12 @@ package mission
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/refinement"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 // NormalizeOptions carries the `mission normalize-openspec` flag values.
@@ -15,6 +17,9 @@ type NormalizeOptions struct {
 	// AuthorizationRef are its required companions.
 	Amend                    bool
 	Amends, AuthorizationRef string
+	// HandoffFacts is an optional YAML file with the typed handoff_policy_facts
+	// mapping Archivist declares at publication.
+	HandoffFacts string
 }
 
 // NormalizeDependencies injects mission-id validation and path resolution.
@@ -47,6 +52,7 @@ OpenSpec specs and archive history remain private provider scratch.`,
 	f.BoolVar(&opts.Amend, "amend", false, "amend an already published package with a new change instead of publishing (analysis.md, the mission status and the original provider_change_id are kept; the previous files are snapshotted under .amendments/)")
 	f.StringVar(&opts.Amends, "amends", "", "with --amend: the change being amended (the package's provider_change_id, or the previous amendment's change id)")
 	f.StringVar(&opts.AuthorizationRef, "authorization-ref", "", "with --amend: the human authorization for the amendment (a quote or a gate event), recorded verbatim")
+	f.StringVar(&opts.HandoffFacts, "handoff-facts", "", "YAML file with the typed handoff_policy_facts mapping, written into the published analysis.md frontmatter so `handoff evaluate` can derive the policy (publication only; an amendment keeps analysis.md byte-identical)")
 	if err := cmd.MarkFlagRequired("change-id"); err != nil {
 		panic(err)
 	}
@@ -68,14 +74,33 @@ func RunNormalizeOpenSpec(cmd *cobra.Command, deps NormalizeDependencies, opts N
 		return fmt.Errorf("mission normalize-openspec: %w", err)
 	}
 	if opts.Amend {
-		return runAmend(cmd, deps, opts, basePath, runtimeRoot)
+		return runAmendChecked(cmd, deps, opts, basePath, runtimeRoot)
+	}
+	return runPublish(cmd, deps, opts, basePath, runtimeRoot, pending)
+}
+
+// runAmendChecked refuses facts with --amend: an amendment keeps analysis.md
+// byte-identical, so the facts are declared at publication.
+func runAmendChecked(cmd *cobra.Command, deps NormalizeDependencies, opts NormalizeOptions, basePath, runtimeRoot string) error {
+	if opts.HandoffFacts != "" {
+		return fmt.Errorf("mission normalize-openspec: --handoff-facts cannot be used with --amend: an amendment keeps analysis.md byte-identical; declare the facts at publication")
+	}
+	return runAmend(cmd, deps, opts, basePath, runtimeRoot)
+}
+
+// runPublish publishes the change and, when facts were not declared, says so on
+// stderr: the package then has no evaluable handoff policy.
+func runPublish(cmd *cobra.Command, deps NormalizeDependencies, opts NormalizeOptions, basePath, runtimeRoot, pending string) error {
+	facts, err := readHandoffFacts(opts.HandoffFacts)
+	if err != nil {
+		return fmt.Errorf("mission normalize-openspec: %w", err)
 	}
 	if deps.RecordConfidence == nil {
 		return fmt.Errorf("mission normalize-openspec: Archivist confidence recorder is unavailable")
 	}
 	result, err := refinement.NormalizeOpenSpec(refinement.OpenSpecInput{
 		MissionID: opts.MissionID, BasePath: basePath, RuntimeRoot: runtimeRoot,
-		ChangeID: opts.ChangeID, PendingAnalysisPath: pending,
+		ChangeID: opts.ChangeID, PendingAnalysisPath: pending, HandoffFacts: facts,
 		RecordConfidence: func(claim domain.ConfidenceClaim, evidence []domain.Evidence) error {
 			return deps.RecordConfidence(opts, claim, evidence)
 		},
@@ -83,8 +108,36 @@ func RunNormalizeOpenSpec(cmd *cobra.Command, deps NormalizeDependencies, opts N
 	if err != nil {
 		return fmt.Errorf("mission normalize-openspec: %w", err)
 	}
+	return reportPublished(cmd, opts, result, facts == nil)
+}
+
+func reportPublished(cmd *cobra.Command, opts NormalizeOptions, result refinement.OpenSpecResult, factsMissing bool) error {
+	if factsMissing {
+		if _, err := fmt.Fprintf(cmd.ErrOrStderr(), "[Strategist] warning=handoff_policy_facts_not_declared mission_id=%s: `strategist handoff evaluate` rejects this package until handoff_policy_facts is declared (--handoff-facts)\n", opts.MissionID); err != nil {
+			return fmt.Errorf("mission normalize-openspec: write output: %w", err)
+		}
+	}
 	if _, err := fmt.Fprintf(cmd.OutOrStdout(), "mission_id=%s provider_change_id=%s refined=%s status=archivist_done\n", opts.MissionID, result.ProviderChangeID, result.RefinedPath); err != nil {
 		return fmt.Errorf("mission normalize-openspec: write output: %w", err)
 	}
 	return nil
+}
+
+// readHandoffFacts loads the optional facts file; an empty path declares none.
+func readHandoffFacts(path string) (map[string]any, error) {
+	if path == "" {
+		return nil, nil
+	}
+	raw, err := os.ReadFile(path) //nolint:gosec // G304: operator-supplied facts file path, same trust level as the other normalize inputs
+	if err != nil {
+		return nil, fmt.Errorf("read handoff facts: %w", err)
+	}
+	var facts map[string]any
+	if err := yaml.Unmarshal(raw, &facts); err != nil {
+		return nil, fmt.Errorf("parse handoff facts: %w", err)
+	}
+	if len(facts) == 0 {
+		return nil, fmt.Errorf("handoff facts file %s is empty", path)
+	}
+	return facts, nil
 }

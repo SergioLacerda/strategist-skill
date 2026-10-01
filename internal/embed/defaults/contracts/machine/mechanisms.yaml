@@ -62,7 +62,7 @@ mechanisms:
     enforcement_kind: code
     enforcement_tier: machine_enforced
     summary: entering execution without the evidence the Scout route requires is rejected as pipeline_bypass_detected.
-    when_to_use: automatically on `mission submit --event handoff_challenge_passed`; Scout records its route first
+    when_to_use: automatically on `mission submit --event handoff_challenge_satisfied`; Scout records its route first
     invoked_by: [scout, sniper]
     how_to_invoke: "Scout: `strategist mission route --mission-id <id>` (route_decision JSON on stdin); the check itself is automatic"
     phase_scope: [intake, execution]

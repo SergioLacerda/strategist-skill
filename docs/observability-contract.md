@@ -181,6 +181,12 @@ This line is emitted to **stdout** unconditionally, before any slog output.
 
 ### `strategist install`
 
+`install` displays only WARN and above by default: the INFO events below are
+still emitted (and exported to OpenTelemetry when it is configured) but the
+default handler hides them unless `--verbose` is given. `--verbose` also prints
+the wizard section headers and the role/provider migration preview. No other
+command changes its display level.
+
 ```
 [Strategist] pipeline=starting mission_id=...
 [Strategist] install starting  target=<dir>

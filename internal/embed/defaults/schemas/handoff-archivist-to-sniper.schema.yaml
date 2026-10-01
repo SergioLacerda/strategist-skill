@@ -86,6 +86,65 @@ required_fields:
         required: true
       violations:
         type: list
+  handoff_policy_facts:
+    type: object
+    required: true
+    location: frontmatter of analysis.md (key handoff_policy_facts)
+    description: >
+      Typed facts Archivist declares so the handoff challenge policy can be derived
+      without reading prose. Every field is required: an absent or null field makes a
+      require_when predicate unknowable and the package is rejected, never inferred.
+      implementation_handoff_present is not declared; it is derived from the task_type of
+      each tasks.md / implementation_plan item. The Approval Gate is not a fact here.
+    fields:
+      schema_version:
+        type: string
+        allowed_values: ["strategist-handoff-policy-facts/v1"]
+      mandatory_constraints:
+        type: list
+        description: Constraints Sniper must honor; empty list when none
+      unresolved_questions:
+        type: list
+        description: Open questions carried into the handoff; empty list when none
+      forbidden_scope:
+        type: list
+        description: Scope forbidden beyond Sniper's defaults; empty list when none
+      destructive_operation_possible:
+        type: boolean
+      security_sensitive_task:
+        type: boolean
+      informational_only:
+        type: boolean
+        description: >
+          true only for a documentation-only package. Declaring it while any require fact
+          holds (a list above is non-empty, a flag above is true, or a task is an
+          implementation_handoff) is contradictory and rejected.
+    rules:
+      - the optional intake risk_level may only make the derived policy stricter
+      - a package whose handoff_policy_facts are absent, unknown, null or contradictory has no evaluable policy
+  handoff_outcome:
+    type: object
+    required: false
+    description: >
+      Durable terminal record written by `strategist handoff evaluate` under
+      missions/handoff/<mission_id>/attempt-<n>.json. It is runtime state, not a package
+      field; a package may mirror it as handoff_verification metadata but metadata presence
+      is never proof, and a mismatch with the persisted outcome fails closed.
+    fields:
+      schema_version: strategist-handoff-outcome/v1
+      mission_id: string
+      transition: archivist_to_sniper
+      package_digest: sha256 of proposal.md, design.md, tasks.md, the analysis.md body and its handoff_policy_facts
+      attempt: integer, derived from the recorded outcomes
+      result:
+        type: string
+        allowed_values: [passed, failed, skipped]
+      policy_id: digest of the policy rules the outcome was decided under
+      required: boolean
+      signals: the evaluated require/skip signals
+      provenance: list of {signal, source, detail}
+      gate_observed: mission state the Approval Gate evidence was read from
+      integrity: digest of every other field
   side_quests_approved:
     type: list
     description: Side quest strategy decisions made by Archivist — surfaced at approval gate

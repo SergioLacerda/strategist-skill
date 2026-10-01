@@ -220,7 +220,7 @@ entry.
 | 5. discovery | `discovery_done` |
 | 6. refinement | `refinement_done`, or `refinement_done_no_tasks` when the package has no tasks |
 | 7. approval gate | `gate_approved` (documentation targets accepted), `gate_approved_analysis_only` (accepted with no `documentation_target`), `gate_revision_requested` (back to refinement, then `refinement_done` again), or `gate_denied` |
-| 8. materialization | `handoff_challenge_passed` (execution entry; machine-enforced against the route's evidence), then `sniper_done` |
+| 8. materialization | `strategist handoff evaluate --mission-id <id>` (records the durable handoff outcome), then `handoff_challenge_satisfied` (execution entry; machine-enforced against the route's evidence and that outcome), then `sniper_done` |
 
 ## Canonical Pipeline Evidence
 

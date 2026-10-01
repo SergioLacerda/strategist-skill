@@ -4,19 +4,55 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+
+	"github.com/SergioLacerda/strategist-skill/internal/handoff"
+	"gopkg.in/yaml.v3"
 )
 
-func addMetadata(content []byte, input OpenSpecInput) []byte {
+func addMetadata(content []byte, input OpenSpecInput) ([]byte, error) {
 	metadata := fmt.Sprintf("provider: openspec-propose\nprovider_change_id: %s\nprovider_runtime: %s\n", input.ChangeID, portableRuntimeRef(input))
+	facts, err := handoffFactsYAML(input.HandoffFacts)
+	if err != nil {
+		return nil, err
+	}
+	metadata += facts
 	text := string(content)
+	if strings.Contains(text, handoff.PolicyFactsKey+":") {
+		return nil, fmt.Errorf("openspec bridge: pending analysis already carries %s; Archivist declares it at publication", handoff.PolicyFactsKey)
+	}
 	if strings.HasPrefix(text, "---\n") {
 		if end := strings.Index(text[4:], "\n---"); end >= 0 {
 			pos := 4 + end
 			header := replaceMetadata(text[:pos], "mission_status", "archivist_done")
-			return []byte(header + "\n" + metadata + text[pos:])
+			return []byte(header + "\n" + metadata + text[pos:]), nil
 		}
 	}
-	return []byte("---\nmission_id: " + input.MissionID + "\nmission_status: archivist_done\n" + metadata + "---\n\n" + text)
+	return []byte("---\nmission_id: " + input.MissionID + "\nmission_status: archivist_done\n" + metadata + "---\n\n" + text), nil
+}
+
+// validateHandoffFacts rejects a facts mapping that handoff.ParsePolicyFacts
+// would reject, before anything is published. A nil mapping is allowed.
+func validateHandoffFacts(facts map[string]any) error {
+	if facts == nil {
+		return nil
+	}
+	if _, err := handoff.ParsePolicyFacts(map[string]any{handoff.PolicyFactsKey: facts}); err != nil {
+		return fmt.Errorf("openspec bridge: %w", err)
+	}
+	return nil
+}
+
+// handoffFactsYAML renders the facts as a frontmatter block with stable key
+// order, or "" when none were declared.
+func handoffFactsYAML(facts map[string]any) (string, error) {
+	if facts == nil {
+		return "", nil
+	}
+	encoded, err := yaml.Marshal(map[string]any{handoff.PolicyFactsKey: facts})
+	if err != nil {
+		return "", fmt.Errorf("openspec bridge: encode %s: %w", handoff.PolicyFactsKey, err)
+	}
+	return string(encoded), nil
 }
 
 // portableRuntimeRef keeps durable package metadata independent of the

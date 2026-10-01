@@ -85,10 +85,26 @@ func TestBuildMissionInvocationRejectsALockThatDriftedFromTheCompiledBinding(t *
 	require.ErrorContains(t, err, "does not match compiled binding")
 }
 
-func TestBuildMissionInvocationRefusesACustomBinding(t *testing.T) {
+func TestBuildMissionInvocationRejectsAPartialCustomBinding(t *testing.T) {
 	root := rankedWorkspace(t, func(b *domain.SlotBinding) { b.Mode = domain.SlotBindingModeCustom })
 
 	_, err := buildMissionInvocation(t.Context(), flowBuildInput(root))
+
+	require.ErrorContains(t, err, "custom_binding_invalid")
+}
+
+func TestBuildMissionInvocationRefusesACompleteCustomBinding(t *testing.T) {
+	root := rankedWorkspace(t, nil)
+	evidence, err := domain.NewCustomBindingEvidence(domain.CustomPackageFacts{
+		PackageID: "brainstorming", PackageVersion: "1.0.0", Role: "ranger", Slot: "discovery",
+		PackageDigest: "sha256:pkg", AdapterDigest: "sha256:adapter",
+		RuntimeKind: domain.RankedRuntimeHost, ConnectorID: "local_path", Entrypoint: "host.prompt",
+	}, 1, "active")
+	require.NoError(t, err)
+	writeYAML(t, filepath.Join(root, "active.yaml"), domain.ActiveConfig{Slots: map[string]string{"discovery": evidence.Binding.InstalledInstanceID}})
+	writeYAML(t, filepath.Join(root, "plugins.lock"), domain.PluginLockFile{Bindings: []domain.SlotBinding{evidence.Binding}, Lock: domain.PluginLock{Nodes: evidence.Nodes}})
+
+	_, err = buildMissionInvocation(t.Context(), flowBuildInput(root))
 
 	require.ErrorContains(t, err, "only supports Ranked")
 }

@@ -17,10 +17,10 @@ func validateWizardPlanInputs(providerRisk map[string]string, wc domain.WizardCo
 	return nil
 }
 
-func activateWizardPlan(extractor domain.FileExtractor, catalog pluginCatalog, wc domain.WizardConfig, strategistDir string, plan pluginOnboardingPlan) (domain.PluginLockFile, error) {
+func activateWizardPlan(extractor domain.FileExtractor, catalog pluginCatalog, wc domain.WizardConfig, strategistDir string, plan pluginOnboardingPlan, verbose bool) (domain.PluginLockFile, error) {
 	// Task 4.1: show Role separately from its resolved/candidate Providers
 	// instead of only validating the legacy slot/catalog shape above.
-	fmt.Println(plan.RoleMigration.Preview())
+	printMigrationPreview(plan.RoleMigration, verbose)
 	logRoleBindingEvidence(plan.RoleMigration.Evidence())
 	if err := validateWizardRoleBindings(plan.RoleMigration); err != nil {
 		return domain.PluginLockFile{}, fmt.Errorf("wizard: %w", err)
@@ -55,5 +55,20 @@ func activateWizardPlan(extractor domain.FileExtractor, catalog pluginCatalog, w
 	if err != nil {
 		return domain.PluginLockFile{}, fmt.Errorf("wizard: enrich Role/Weapon bindings: %w", err)
 	}
+	// Last step, so no later enrichment can overwrite the complete Custom
+	// binding: normalize each typed Custom host Weapon into the installed
+	// package representation and bind it with full evidence.
+	lockFile, err = materializeCustomProviders(strategistDir, lockFile, plan.CustomProviders)
+	if err != nil {
+		return domain.PluginLockFile{}, fmt.Errorf("wizard: %w", err)
+	}
 	return lockFile, nil
+}
+
+// printMigrationPreview shows the role/provider migration preview only in
+// verbose mode; the binding evidence stays available through the INFO events.
+func printMigrationPreview(preview RoleProviderMigrationPreview, verbose bool) {
+	if verbose {
+		fmt.Println(preview.Preview())
+	}
 }

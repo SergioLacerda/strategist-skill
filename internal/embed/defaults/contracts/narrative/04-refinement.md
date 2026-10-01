@@ -121,11 +121,26 @@ Archivist (`refinement`)
   Sniper-executable. `implementation_handoff` items (code, hook, config, or test mutation)
   must never be phrased as executable Sniper tasks — they are handed off, not queued
   for materialization.
-- evaluate `contracts/machine/handoff-contract.yaml#handoff_verification_policy`
-  for Archivist -> Sniper handoffs. When the policy triggers, include optional
-  `handoff_verification` metadata in the handoff with `objective`, `boundary`,
-  `classification`, and `gate` challenge types. This semantic acknowledgment
-  complements the YAML structure contract; it never replaces Approval Gate review.
+- declare the typed `handoff_policy_facts` block in the frontmatter of `analysis.md`
+  (`handoff-archivist-to-sniper.schema.yaml#handoff_policy_facts`): `mandatory_constraints`,
+  `unresolved_questions` and `forbidden_scope` as lists, `destructive_operation_possible`,
+  `security_sensitive_task` and `informational_only` as booleans. Every field is required and
+  nothing is inferred from prose; `informational_only: true` is rejected when any require fact
+  holds. Publish it with `strategist mission normalize-openspec --handoff-facts <file>` (a YAML
+  mapping of those fields); without the flag the command warns, and a package without the block
+  has no evaluable handoff policy and cannot enter execution. An amendment keeps `analysis.md`
+  byte-identical, so the facts are declared at publication, not by `--amend`.
+- the Archivist -> Sniper policy (`contracts/machine/handoff-contract.yaml#handoff_verification_policy`)
+  is derived from the package, never chosen by the caller: after the Approval Gate is accepted
+  run `strategist handoff evaluate --mission-id <id>` (adding `--challenges` and `--ack` when the
+  package requires the challenge, with `objective`, `boundary`, `classification` and `gate`
+  challenge types). It records a durable passed, failed or policy-authorized skipped outcome.
+  The command also records the handoff confidence (`--confidence-summary`, or an explicit
+  missing-record) and the failure loop: a failed outcome returns the mission to refinement,
+  so a repaired package needs a new Approval Gate acceptance, and the last allowed failure
+  blocks the mission. A passed or skipped outcome does not enter execution by itself.
+  This semantic acknowledgment complements the YAML structure contract; it never replaces
+  Approval Gate review.
 - a second Handoff Challenge transition, `ranger_to_archivist`, is available in
   `internal/handoff` (`TransitionRangerToArchivist`, challenge types `recall`,
   `boundary`, `classification`, `verdict` — see `03-discovery.md` § Optional

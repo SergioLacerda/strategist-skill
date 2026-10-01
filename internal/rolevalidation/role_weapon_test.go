@@ -3,6 +3,7 @@ package rolevalidation
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -10,6 +11,7 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/testutil/customws"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
 func TestValidateRuntimeBindingsAcceptsValidExternalBindings(t *testing.T) {
@@ -278,4 +280,95 @@ func TestBuildRoleInvocationPlanResolvesAnAddedPackageByItsInstanceId(t *testing
 	require.Equal(t, "archivist", plan.Role)
 	require.Equal(t, int64(1), plan.BindingGeneration)
 	require.Equal(t, "active", plan.BindingStatus)
+}
+
+func TestBuildRoleInvocationPlanOfAnAddedPackageCarriesTheCompleteBinding(t *testing.T) {
+	root := customws.Workspace(t)
+
+	plan, err := BuildRoleInvocationPlan(root, "refinement")
+
+	require.NoError(t, err)
+	require.NotEmpty(t, plan.WeaponDigest)
+	require.NotEmpty(t, plan.SourceDigest)
+	require.NotEmpty(t, plan.BindingDigest)
+	require.Equal(t, "fixture-provider", strings.Split(plan.WeaponID, "@")[0])
+	require.Equal(t, "1.0.0", plan.WeaponVersion)
+	require.Equal(t, domain.RankedRuntimeHost, plan.Runtime.Kind)
+	require.Equal(t, "local_path", plan.ConnectorID)
+	require.Equal(t, "host.prompt", plan.Entrypoint)
+}
+
+// Every tampered or missing piece of evidence a real `provider add` left in
+// plugins.lock fails closed with reinstall guidance and never rewrites the lock.
+func TestBuildRoleInvocationPlanOfAnAddedPackageFailsClosedOnTamperedEvidence(t *testing.T) {
+	cases := map[string]func(*domain.PluginLockFile){
+		"incomplete adapter digest": func(l *domain.PluginLockFile) { l.Bindings[bindingIndex(l, "refinement")].WeaponDigest = "" },
+		"incomplete binding digest": func(l *domain.PluginLockFile) { l.Bindings[bindingIndex(l, "refinement")].BindingDigest = "" },
+		"identity mismatch": func(l *domain.PluginLockFile) {
+			l.Bindings[bindingIndex(l, "refinement")].InstalledInstanceID = "fixture-provider"
+		},
+		"version mismatch":    func(l *domain.PluginLockFile) { l.Bindings[bindingIndex(l, "refinement")].WeaponVersion = "9.9.9" },
+		"role mismatch":       func(l *domain.PluginLockFile) { l.Bindings[bindingIndex(l, "refinement")].Role = "ranger" },
+		"tampered entrypoint": func(l *domain.PluginLockFile) { l.Bindings[bindingIndex(l, "refinement")].Entrypoint = "elsewhere" },
+		"tampered runtime":    func(l *domain.PluginLockFile) { l.Bindings[bindingIndex(l, "refinement")].RuntimeKind = "executable" },
+		"tampered package node": func(l *domain.PluginLockFile) {
+			l.Lock.Nodes[nodeIndex(l, "fixture-provider", "package")].Digest = "sha256:x"
+		},
+		"tampered adapter node": func(l *domain.PluginLockFile) {
+			l.Lock.Nodes[nodeIndex(l, "fixture-provider", "adapter_contract")].Digest = "sha256:x"
+		},
+		"missing role-binding node": func(l *domain.PluginLockFile) { dropNode(l, domain.CustomRoleBindingNodeKind) },
+	}
+	for name, mutate := range cases {
+		root := customws.Workspace(t)
+		path := filepath.Join(root, "plugins.lock")
+		raw, err := os.ReadFile(path)
+		require.NoError(t, err)
+		var lock domain.PluginLockFile
+		require.NoError(t, yaml.Unmarshal(raw, &lock))
+		mutate(&lock)
+		tampered, err := yaml.Marshal(lock)
+		require.NoError(t, err)
+		require.NoError(t, os.WriteFile(path, tampered, 0o644))
+
+		_, err = BuildRoleInvocationPlan(root, "refinement")
+
+		if name == "role mismatch" {
+			require.ErrorContains(t, err, "does not match requested Role", name) // rejected earlier by binding resolution
+		} else {
+			require.ErrorContains(t, err, "custom_binding_invalid", name)
+			require.ErrorContains(t, err, "re-add the package", name)
+		}
+		after, readErr := os.ReadFile(path)
+		require.NoError(t, readErr)
+		require.Equal(t, tampered, after, "%s: the lock is never repaired", name)
+	}
+}
+
+func bindingIndex(lock *domain.PluginLockFile, slot string) int {
+	for i, binding := range lock.Bindings {
+		if binding.Slot == slot {
+			return i
+		}
+	}
+	panic("no binding for slot " + slot)
+}
+
+func nodeIndex(lock *domain.PluginLockFile, id, kind string) int {
+	for i, node := range lock.Lock.Nodes {
+		if node.ID == id && node.Kind == kind {
+			return i
+		}
+	}
+	panic("no node " + id + "/" + kind)
+}
+
+func dropNode(lock *domain.PluginLockFile, kind string) {
+	kept := lock.Lock.Nodes[:0]
+	for _, node := range lock.Lock.Nodes {
+		if node.Kind != kind {
+			kept = append(kept, node)
+		}
+	}
+	lock.Lock.Nodes = kept
 }

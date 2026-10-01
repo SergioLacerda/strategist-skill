@@ -26,7 +26,7 @@ func validateInput(input OpenSpecInput) error {
 	if input.RecordConfidence == nil {
 		return fmt.Errorf("archivist confidence recorder is required")
 	}
-	return nil
+	return validateHandoffFacts(input.HandoffFacts)
 }
 
 func validateComponents(input OpenSpecInput) error {

@@ -157,7 +157,7 @@ When operating inside the full pipeline, consult contracts in this order:
 `machine/errors.yaml` (`machine_enforced` / `machine_observed` /
 `agent_only`). Reviewed against actual Go call sites (2026-08-30, updated
 2026-09-25): the invariants below are `agent_only` except entry into execution.
-`strategist mission submit --event handoff_challenge_passed` runs
+`strategist mission submit --event handoff_challenge_satisfied` runs
 `EvaluatePipelineBypass` (via `internal/mission.EvaluateExecutionEntry`) against
 the evidence the Scout-selected route needs, so a missing phase is rejected as
 `pipeline_bypass_detected`. Scout's `route_decision` reaches that check through

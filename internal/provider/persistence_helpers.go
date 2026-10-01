@@ -43,3 +43,56 @@ func compileWorkspace(root string) error {
 	}
 	return nil
 }
+func existingBinding(bindings []domain.SlotBinding, slot string) (domain.SlotBinding, bool) {
+	for _, binding := range bindings {
+		if binding.Slot == slot {
+			return binding, true
+		}
+	}
+	return domain.SlotBinding{}, false
+}
+
+func replaceInstance(instances []domain.InstalledInstance, candidate domain.InstalledInstance) []domain.InstalledInstance {
+	for i, instance := range instances {
+		if instance.ID == candidate.ID {
+			instances[i] = candidate
+			return instances
+		}
+	}
+	return append(instances, candidate)
+}
+
+func replaceBinding(bindings []domain.SlotBinding, candidate domain.SlotBinding) []domain.SlotBinding {
+	for i, binding := range bindings {
+		if binding.Slot == candidate.Slot {
+			candidate.Generation = binding.Generation + 1
+			bindings[i] = candidate
+			return bindings
+		}
+	}
+	return append(bindings, candidate)
+}
+
+// replaceLockNodes publishes nodes, replacing any node with the same id and kind.
+func replaceLockNodes(lock domain.PluginLock, nodes []domain.PluginLockNode) domain.PluginLock {
+	filtered := make([]domain.PluginLockNode, 0, len(lock.Nodes)+len(nodes))
+	for _, node := range lock.Nodes {
+		if !hasLockNode(nodes, node) {
+			filtered = append(filtered, node)
+		}
+	}
+	merged := make([]domain.PluginLockNode, 0, len(filtered)+len(nodes))
+	merged = append(merged, filtered...)
+	merged = append(merged, nodes...)
+	lock.Nodes = merged
+	return lock
+}
+
+func hasLockNode(nodes []domain.PluginLockNode, candidate domain.PluginLockNode) bool {
+	for _, node := range nodes {
+		if node.ID == candidate.ID && node.Kind == candidate.Kind {
+			return true
+		}
+	}
+	return false
+}

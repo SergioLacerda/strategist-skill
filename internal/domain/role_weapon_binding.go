@@ -67,6 +67,15 @@ func ResolveRoleWeaponBinding(active ActiveConfig, lock PluginLockFile, registry
 	if binding.EffectiveMode() == SlotBindingModeRanked {
 		return resolveRankedBinding(binding, registry, role, slot)
 	}
+	return resolveCustomBinding(lock, binding, role, slot)
+}
+
+// resolveCustomBinding applies the shared Custom validator before it projects
+// the persisted binding: a partial binding is an error, never a sparse result.
+func resolveCustomBinding(lock PluginLockFile, binding SlotBinding, role, slot string) (RoleWeaponBinding, error) {
+	if err := ValidateCustomBinding(lock, binding, role, slot); err != nil {
+		return RoleWeaponBinding{}, fmt.Errorf("role/weapon binding: %w", err)
+	}
 	return RoleWeaponBinding{
 		Role: role, Slot: slot, WeaponID: binding.InstalledInstanceID, WeaponVersion: binding.WeaponVersion, Mode: SlotBindingModeCustom,
 		WeaponDigest: binding.WeaponDigest, BindingDigest: binding.BindingDigest, Origin: binding.Origin,

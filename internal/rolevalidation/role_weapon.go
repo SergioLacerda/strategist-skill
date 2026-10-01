@@ -112,7 +112,7 @@ func bindingsForSlot(lock domain.PluginLockFile, slot string) []domain.SlotBindi
 // cases, to keep each function's branching shallow.
 func validateSingleSlotBinding(root string, slot, role, provider string, binding domain.SlotBinding) []Failure {
 	if !domain.WeaponRefMatchesBinding(provider, binding) {
-		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("persisted binding points to %q, not active provider", domain.WeaponRef(binding.InstalledInstanceID, binding.WeaponVersion))}}
+		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("persisted binding points to %q, not active provider", binding.Ref())}}
 	}
 	if !binding.ValidMode() {
 		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("persisted binding has invalid mode %q", binding.Mode)}}

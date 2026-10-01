@@ -32,7 +32,7 @@ func TestAgentProtocolNamesTheMissionEventOfEveryPipelineStep(t *testing.T) {
 		domain.MissionEventRefinementDone, domain.MissionEventNoTasks,
 		domain.MissionEventGateApproved, domain.MissionEventGateApprovedAnalysisOnly,
 		domain.MissionEventGateRevision, domain.MissionEventGateDenied,
-		domain.MissionEventHandoffPassed, domain.MissionEventSniperDone,
+		domain.MissionEventHandoffSatisfied, domain.MissionEventSniperDone,
 	}
 	last := -1
 	for _, event := range ordered {
@@ -48,7 +48,7 @@ func TestAgentProtocolNamesTheMissionEventOfEveryPipelineStep(t *testing.T) {
 		}
 		last = at
 	}
-	for _, needle := range []string{"Strategist shell", "never replaces", "handoff_challenge_passed"} {
+	for _, needle := range []string{"Strategist shell", "never replaces", "handoff_challenge_satisfied"} {
 		if !strings.Contains(section, needle) {
 			t.Fatalf("Mission State Events section is missing %q", needle)
 		}

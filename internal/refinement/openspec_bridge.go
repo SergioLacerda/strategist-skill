@@ -24,6 +24,11 @@ type OpenSpecInput struct {
 	// package is published. The callback is required so refinement cannot
 	// finish silently when telemetry storage is unavailable.
 	RecordConfidence func(domain.ConfidenceClaim, []domain.Evidence) error
+	// HandoffFacts is the optional typed handoff_policy_facts mapping Archivist
+	// declares at publication. It is validated with handoff.ParsePolicyFacts and
+	// written into the published analysis.md frontmatter; nil publishes none and
+	// leaves the package without an evaluable handoff policy.
+	HandoffFacts map[string]any
 }
 
 // OpenSpecResult describes the canonical package published by the bridge.
@@ -92,7 +97,11 @@ func readContents(changeDir string, input OpenSpecInput) (map[string][]byte, err
 	if err != nil {
 		return nil, err
 	}
-	contents := map[string][]byte{"analysis.md": addMetadata(analysis, input)}
+	withMetadata, err := addMetadata(analysis, input)
+	if err != nil {
+		return nil, err
+	}
+	contents := map[string][]byte{"analysis.md": withMetadata}
 	canonical, err := readCanonicalFiles(changeDir)
 	if err != nil {
 		return nil, err

@@ -37,7 +37,7 @@ func emitF3ConflictAttributionSignals(strategistRoot, basePath string, now time.
 // claim history (memory/sniper-claims.jsonl). This is the Git-conflict
 // signal's sibling above, following the same "strategist check reads
 // recorded history and emits" pattern. Claims are now written at
-// handoff_challenge_passed (internal/mission.RecordSniperClaims, ADR-0057 §
+// handoff_challenge_satisfied (internal/mission.RecordSniperClaims, ADR-0057 §
 // A1), so this reader is no longer permanently starved.
 //
 // Claims belonging to a mission that has already reached a terminal phase are

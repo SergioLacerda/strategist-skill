@@ -115,7 +115,7 @@ func TestHandoffVerifyCmd_PassesAndRecords(t *testing.T) {
 	testutil.MinimalRoot(t, dir)
 	challenges := writeHandoffVerifyFixture(t, dir, "challenges.yaml", handoffVerifyChallengesYAML)
 	ack := writeHandoffVerifyFixture(t, dir, "ack.yaml", handoffVerifyAckPassYAML)
-	setHandoffVerifyFlags(t, dir, "archivist_to_sniper", "", challenges, ack, "m-pass", 1)
+	setHandoffVerifyFlags(t, dir, "sniper_to_validation", "", challenges, ack, "m-pass", 1)
 	t.Cleanup(func() { resetHandoffVerifyFlags(t) })
 
 	out := captureStdout(t, func() {
@@ -136,7 +136,7 @@ func TestHandoffVerifyCmd_FailsAndStillRecords(t *testing.T) {
 	testutil.MinimalRoot(t, dir)
 	challenges := writeHandoffVerifyFixture(t, dir, "challenges.yaml", handoffVerifyChallengesYAML)
 	ack := writeHandoffVerifyFixture(t, dir, "ack.yaml", handoffVerifyAckFailYAML)
-	setHandoffVerifyFlags(t, dir, "archivist_to_sniper", "", challenges, ack, "m-fail", 2)
+	setHandoffVerifyFlags(t, dir, "sniper_to_validation", "", challenges, ack, "m-fail", 2)
 	t.Cleanup(func() { resetHandoffVerifyFlags(t) })
 
 	var runErr error
@@ -309,7 +309,7 @@ forbidden_claims:
 func TestHandoffVerifyCmd_MissingRequiredFlags(t *testing.T) {
 	dir := t.TempDir()
 	testutil.MinimalRoot(t, dir)
-	setHandoffVerifyFlags(t, dir, "archivist_to_sniper", "", "", "", "", 1)
+	setHandoffVerifyFlags(t, dir, "sniper_to_validation", "", "", "", "", 1)
 	t.Cleanup(func() { resetHandoffVerifyFlags(t) })
 
 	err := handoffVerifyCmd.RunE(handoffVerifyCmd, nil)
@@ -380,7 +380,7 @@ func TestRunHandoffVerify_WithMissionRunSetsSilent(t *testing.T) {
 	attachMissionRun(t, handoffVerifyCmd)
 	_ = captureStdout(t, func() {
 		err := runHandoffVerify(handoffVerifyCmd, handoffVerifyOptions{
-			Root: dir, Transition: "archivist_to_sniper",
+			Root: dir, Transition: "sniper_to_validation",
 			Challenges: challenges, Ack: ack, MissionID: "m-silent", Attempt: 1,
 		})
 		require.NoError(t, err)
@@ -395,7 +395,7 @@ func TestHandoffVerifyCmd_ChallengesReadErrorPropagates(t *testing.T) {
 	dir := t.TempDir()
 	testutil.MinimalRoot(t, dir)
 	ack := writeHandoffVerifyFixture(t, dir, "ack.yaml", handoffVerifyAckPassYAML)
-	setHandoffVerifyFlags(t, dir, "archivist_to_sniper", "", filepath.Join(dir, "missing-challenges.yaml"), ack, "m-1", 1)
+	setHandoffVerifyFlags(t, dir, "sniper_to_validation", "", filepath.Join(dir, "missing-challenges.yaml"), ack, "m-1", 1)
 	t.Cleanup(func() { resetHandoffVerifyFlags(t) })
 
 	err := handoffVerifyCmd.RunE(handoffVerifyCmd, nil)
@@ -410,7 +410,7 @@ func TestHandoffVerifyCmd_AckReadErrorPropagates(t *testing.T) {
 	dir := t.TempDir()
 	testutil.MinimalRoot(t, dir)
 	challenges := writeHandoffVerifyFixture(t, dir, "challenges.yaml", handoffVerifyChallengesYAML)
-	setHandoffVerifyFlags(t, dir, "archivist_to_sniper", "", challenges, filepath.Join(dir, "missing-ack.yaml"), "m-1", 1)
+	setHandoffVerifyFlags(t, dir, "sniper_to_validation", "", challenges, filepath.Join(dir, "missing-ack.yaml"), "m-1", 1)
 	t.Cleanup(func() { resetHandoffVerifyFlags(t) })
 
 	err := handoffVerifyCmd.RunE(handoffVerifyCmd, nil)
@@ -427,7 +427,7 @@ func TestHandoffVerifyCmd_PrintResultWriteErrorPropagates(t *testing.T) {
 	testutil.MinimalRoot(t, dir)
 	challenges := writeHandoffVerifyFixture(t, dir, "challenges.yaml", handoffVerifyChallengesYAML)
 	ack := writeHandoffVerifyFixture(t, dir, "ack.yaml", handoffVerifyAckPassYAML)
-	setHandoffVerifyFlags(t, dir, "archivist_to_sniper", "", challenges, ack, "m-1", 1)
+	setHandoffVerifyFlags(t, dir, "sniper_to_validation", "", challenges, ack, "m-1", 1)
 	t.Cleanup(func() { resetHandoffVerifyFlags(t); handoffVerifyCmd.SetOut(nil) })
 	handoffVerifyCmd.SetOut(errorWriter{})
 
@@ -448,7 +448,7 @@ func TestHandoffVerifyCmd_RecordErrorPropagates(t *testing.T) {
 	require.NoError(t, os.WriteFile(blocker, []byte("x"), 0o644))
 	challenges := writeHandoffVerifyFixture(t, dir, "challenges.yaml", handoffVerifyChallengesYAML)
 	ack := writeHandoffVerifyFixture(t, dir, "ack.yaml", handoffVerifyAckPassYAML)
-	setHandoffVerifyFlags(t, blocker, "archivist_to_sniper", "", challenges, ack, "m-1", 1)
+	setHandoffVerifyFlags(t, blocker, "sniper_to_validation", "", challenges, ack, "m-1", 1)
 	t.Cleanup(func() { resetHandoffVerifyFlags(t) })
 
 	var runErr error
@@ -573,7 +573,7 @@ func TestHandoffVerifyCmd_FailureSuppressesUsageBlock(t *testing.T) {
 	rootCmd.SetArgs([]string{
 		"handoff", "verify",
 		"--" + cliutil.FlagRoot, dir,
-		"--transition", "archivist_to_sniper",
+		"--transition", "sniper_to_validation",
 		"--challenges", challenges,
 		"--ack", ack,
 		"--mission-id", "m-usage-block",
@@ -599,7 +599,7 @@ func TestRecordHandoffVerify_AppendErrorPropagates(t *testing.T) {
 	dir := t.TempDir()
 	blocker := filepath.Join(dir, "blocker")
 	require.NoError(t, os.WriteFile(blocker, []byte("x"), 0o644))
-	setHandoffVerifyFlags(t, blocker, "archivist_to_sniper", "", "", "", "m-1", 1)
+	setHandoffVerifyFlags(t, blocker, "sniper_to_validation", "", "", "", "m-1", 1)
 	t.Cleanup(func() { resetHandoffVerifyFlags(t) })
 
 	err := recordHandoffVerify(handoffVerifyCmd, handoffVerifyOptions{Root: blocker, MissionID: "m-1", Attempt: 1}, handoff.Policy{Transition: "archivist_to_sniper"}, handoff.Result{Status: "passed", Passed: true})

@@ -114,7 +114,7 @@ contract:
   # 2026-09-25: mission_status still lives only as Markdown frontmatter the agent
   # reads and writes, so most invariants below stay agent_only. The one
   # exception is entering execution: `strategist mission submit --event
-  # handoff_challenge_passed` now calls internal/mission.EvaluateExecutionEntry,
+  # handoff_challenge_satisfied` now calls internal/mission.EvaluateExecutionEntry,
   # which runs internal/domain.EvaluatePipelineBypass against the evidence the
   # mission's Scout route requires (route recorded with `strategist mission
   # route`) and returns a Go error, so that invariant is machine_enforced. The
@@ -133,7 +133,7 @@ contract:
       enforced_by: agent_only
     - text: direct repository mutation before acceptance emits reason=pipeline_bypass_detected (no Go code observes writes made outside the execution-entry transition)
       enforced_by: agent_only
-    - text: entering execution (mission submit --event handoff_challenge_passed) without the evidence the Scout-selected route requires is rejected with reason=pipeline_bypass_detected, expected_phase and missing_evidence
+    - text: entering execution (mission submit --event handoff_challenge_satisfied) without the evidence the Scout-selected route requires is rejected with reason=pipeline_bypass_detected, expected_phase and missing_evidence
       enforced_by: machine_enforced
     - text: pipeline_bypass_detected must include expected_phase=approval_gate and missing_evidence=approval_gate:analysis_accepted
       enforced_by: agent_only

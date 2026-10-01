@@ -81,7 +81,10 @@ func (a *addTxn) activate() (domain.PluginLockFile, string, error) {
 	if err != nil {
 		return domain.PluginLockFile{}, "staging_failed", err
 	}
-	newLock := buildLock(a.oldLock, a.source, a.report, a.instanceID, a.slot)
+	newLock, err := buildLock(a.oldLock, a.source, a.report, a.instanceID, a.slot)
+	if err != nil {
+		return domain.PluginLockFile{}, "binding_derivation_failed", err
+	}
 	inventory, bindings, err := activateThroughLifecycle(a.oldLock, newLock, a.instanceID, a.slot)
 	if err != nil {
 		return newLock, "activation_failed", err

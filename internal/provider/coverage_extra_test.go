@@ -118,7 +118,7 @@ func TestLifecycleAndLockHelpersCoverExistingState(t *testing.T) {
 
 	require.Equal(t, []domain.InstalledInstance{{ID: "new"}}, replaceInstance(nil, domain.InstalledInstance{ID: "new"}))
 	require.Equal(t, "updated", replaceInstance([]domain.InstalledInstance{{ID: "new"}}, domain.InstalledInstance{ID: "new", State: "updated"})[0].State)
-	lock := replaceLockNodes(old.Lock, "fixture-provider", "new-package", "new-adapter")
+	lock := replaceLockNodes(old.Lock, []domain.PluginLockNode{{ID: "fixture-provider", Kind: string(domain.PluginResourcePackage), Digest: "new-package"}, {ID: "fixture-provider", Kind: string(domain.PluginResourceAdapter), Digest: "new-adapter"}})
 	require.Len(t, lock.Nodes, 2)
 	require.Equal(t, int64(1), nextGeneration(domain.PluginLockFile{}, "refinement"))
 	require.Equal(t, "new", findInstance(candidate.Inventory, "new").ID)

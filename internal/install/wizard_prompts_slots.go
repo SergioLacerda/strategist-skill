@@ -18,8 +18,10 @@ import (
 // (compatibleProviderOptions), not a hardcoded slice. Handoff production is a
 // fixed role checkpoint, so a weapon is not hidden merely because its adapter
 // does not declare the handoff schema.
-func promptSlots(p Prompter, b i18n.WizardStrings, catalog pluginCatalog, providerRisk map[string]string) (discovery, refinement, execution, discoveryMode, refinementMode, executionMode string, err error) {
-	fmt.Println(b.HeaderSlots)
+func promptSlots(p Prompter, b i18n.WizardStrings, catalog pluginCatalog, providerRisk map[string]string, verbose bool) (discovery, refinement, execution, discoveryMode, refinementMode, executionMode string, err error) {
+	if verbose {
+		fmt.Println(b.HeaderSlots)
+	}
 
 	discoveryOptions := compatibleSlotOptions(catalog, slotRoleID(domain.SlotDiscovery), slotHandoffSchema(domain.SlotDiscovery))
 	printExcludedCandidates(discoveryOptions.excluded)

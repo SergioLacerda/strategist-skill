@@ -54,7 +54,32 @@ func TestResolveRoleWeaponBinding_RejectsIntentAndLockDrift(t *testing.T) {
 	require.ErrorContains(t, err, "does not match")
 }
 
+func completeCustomLock(t *testing.T) domain.PluginLockFile {
+	t.Helper()
+	evidence, err := domain.NewCustomBindingEvidence(domain.CustomPackageFacts{
+		PackageID: "third-party", PackageVersion: "2.0.0", Role: "ranger", Slot: "discovery",
+		PackageDigest: "sha256:pkg", AdapterDigest: "sha256:adapter",
+		RuntimeKind: domain.RankedRuntimeHost, ConnectorID: "host", Entrypoint: "discover",
+	}, 1, "active")
+	require.NoError(t, err)
+	return domain.PluginLockFile{Bindings: []domain.SlotBinding{evidence.Binding}, Lock: domain.PluginLock{Nodes: evidence.Nodes}}
+}
+
 func TestResolveRoleWeaponBinding_CustomUsesPersistedBinding(t *testing.T) {
+	t.Parallel()
+	active := domain.ActiveConfig{Slots: map[string]string{"discovery": "third-party@2.0.0"}}
+
+	binding, err := domain.ResolveRoleWeaponBinding(active, completeCustomLock(t), domain.CompiledRegistry{}, "ranger", "discovery")
+
+	require.NoError(t, err)
+	assert.Equal(t, domain.SlotBindingModeCustom, binding.Mode)
+	assert.Equal(t, "host", binding.ConnectorID)
+	assert.Equal(t, "third-party@2.0.0", binding.WeaponID)
+	assert.Equal(t, "sha256:adapter", binding.WeaponDigest)
+	assert.NotEmpty(t, binding.BindingDigest)
+}
+
+func TestResolveRoleWeaponBinding_RejectsAPartialCustomBinding(t *testing.T) {
 	t.Parallel()
 	active := domain.ActiveConfig{Slots: map[string]string{"discovery": "third-party"}}
 	lock := domain.PluginLockFile{Bindings: []domain.SlotBinding{{
@@ -62,10 +87,10 @@ func TestResolveRoleWeaponBinding_CustomUsesPersistedBinding(t *testing.T) {
 		Origin: string(domain.WeaponOriginCustom), RuntimeKind: domain.RankedRuntimeHost, ConnectorID: "host", Entrypoint: "discover",
 	}}}
 
-	binding, err := domain.ResolveRoleWeaponBinding(active, lock, domain.CompiledRegistry{}, "ranger", "discovery")
-	require.NoError(t, err)
-	assert.Equal(t, domain.SlotBindingModeCustom, binding.Mode)
-	assert.Equal(t, "host", binding.ConnectorID)
+	_, err := domain.ResolveRoleWeaponBinding(active, lock, domain.CompiledRegistry{}, "ranger", "discovery")
+
+	require.ErrorContains(t, err, "custom_binding_invalid")
+	require.ErrorContains(t, err, "re-add the package")
 }
 
 func TestResolveRoleWeaponBinding_RankedSelectsTheLockedVersionAmongCertifiedOnes(t *testing.T) {

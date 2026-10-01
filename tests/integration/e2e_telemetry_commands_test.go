@@ -52,23 +52,19 @@ func TestE2E_CLI_MetricsHandoff_EmptyMemory(t *testing.T) {
 	assert.Contains(t, result.output(), "sample_size: 0")
 }
 
-// TestE2E_CLI_HandoffVerify_ThenMetricsHandoff runs `handoff verify` against
-// a passing challenges/acknowledgment pair, confirms it appends to
-// .strategist/memory/handoff-challenges.jsonl, and then confirms `metrics
-// handoff` picks up that recorded attempt — exercising
+// TestE2E_CLI_HandoffEvaluate_ThenMetricsHandoff runs `handoff evaluate` on a
+// package that requires the challenge, with a passing challenges/acknowledgment
+// pair, confirms it appends to .strategist/memory/handoff-challenges.jsonl, and
+// then confirms `metrics handoff` picks up that recorded attempt — exercising
 // internal/telemetry.AppendHandoffChallenge, ReadHandoffChallenges, and
 // ComputeHandoffMetrics with a real, non-empty record, not just the
 // empty-file path above.
-func TestE2E_CLI_HandoffVerify_ThenMetricsHandoff(t *testing.T) {
+func TestE2E_CLI_HandoffEvaluate_ThenMetricsHandoff(t *testing.T) {
 	t.Parallel()
 
 	workspace, strategistDir := installedTelemetryWorkspace(t)
+	startMissionAtHandoff(t, workspace, "e2e-handoff-pass", requiredPackageFacts, implementationPackageTasks)
 
-	// Matches DefaultPolicy() (cmd/strategist/handoff_verify.go via
-	// internal/handoff.DefaultPolicy) required types for archivist_to_sniper:
-	// objective, boundary, classification, gate — same fixture shape proven
-	// to pass in cmd/strategist/handoff_verify_test.go's
-	// handoffVerifyChallengesYAML/handoffVerifyAckPassYAML.
 	challengesPath := filepath.Join(workspace, "challenges.yaml")
 	require.NoError(t, os.WriteFile(challengesPath, []byte(`
 challenges:
@@ -104,15 +100,15 @@ classifications:
 gate_allowed: false
 `), 0o644))
 
-	verify := runStrategistCLI(t, workspace,
-		"handoff", "verify",
-		"--transition", "archivist_to_sniper",
+	evaluate := runStrategistCLI(t, workspace,
+		"handoff", "evaluate",
 		"--challenges", challengesPath,
 		"--ack", ackPath,
 		"--mission-id", "e2e-handoff-pass",
 	)
-	require.Equal(t, 0, verify.exitCode, verify.output())
-	assert.Contains(t, verify.output(), "passed: true")
+	require.Equal(t, 0, evaluate.exitCode, evaluate.output())
+	assert.Contains(t, evaluate.output(), "outcome: passed")
+	assert.Contains(t, evaluate.output(), "passed: true")
 
 	historyPath := filepath.Join(strategistDir, "memory", "handoff-challenges.jsonl")
 	history, err := os.ReadFile(historyPath)
