@@ -392,8 +392,10 @@ flag: --change-id (string) default="" usage="completed OpenSpec change id (requi
 flag: --handoff-facts (string) default="" usage="YAML file with the typed handoff_policy_facts mapping, written into the published analysis.md frontmatter so `handoff evaluate` can derive the policy (publication only; an amendment keeps analysis.md byte-identical)"
 flag: --mission-id (string) default="" usage="canonical Strategist mission id (required)"
 flag: --pending-analysis (string) default="" usage="pending analysis path (default: <base_path>/pending/<mission-id>-analysis.md)"
+flag: --reason (string) default="" usage="with --amend: correction rationale recorded in amendment lineage"
 flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
 flag: --runtime-root (string) default="" usage="OpenSpec runtime root (default: <strategist-root>/openspec)"
+flag: --supersedes-mission-id (string) default="" usage="with --amend: prior mission id this lineage supersedes, recorded for audit"
 
 == strategist mission report-usage
 use: report-usage

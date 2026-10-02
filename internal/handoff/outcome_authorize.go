@@ -16,13 +16,20 @@ type consumedMarker struct {
 
 const consumedFile = "consumed.json"
 
+func consumedMarkerFile(attempt int) string {
+	if attempt <= 1 {
+		return consumedFile
+	}
+	return fmt.Sprintf("consumed-%03d.json", attempt)
+}
+
 // Consumed reports whether execution entry already used this outcome.
 func (s OutcomeStore) Consumed(outcome Outcome) (bool, error) {
 	dir, err := s.dirFor(outcome.MissionID, outcome.Transition)
 	if err != nil {
 		return false, err
 	}
-	raw, err := os.ReadFile(filepath.Join(dir, consumedFile)) //nolint:gosec // G304: path is derived from a validated mission id
+	raw, err := os.ReadFile(filepath.Join(dir, consumedMarkerFile(outcome.Attempt))) //nolint:gosec // G304: path is derived from a validated mission id
 	if errors.Is(err, os.ErrNotExist) {
 		return false, nil
 	}
@@ -47,7 +54,7 @@ func (s OutcomeStore) Consume(outcome Outcome) error {
 	if err != nil {
 		return fmt.Errorf("handoff_outcome_persist_failed: encode consumed marker: %w", err)
 	}
-	if err := linkExclusive(dir, consumedFile, append(raw, '\n')); err != nil {
+	if err := linkExclusive(dir, consumedMarkerFile(outcome.Attempt), append(raw, '\n')); err != nil {
 		return fmt.Errorf("handoff_outcome_persist_failed: %w", err)
 	}
 	return nil
@@ -79,6 +86,13 @@ func (s OutcomeStore) AuthorizeExecution(check ExecutionCheck) (Outcome, error) 
 	}
 	if err := correlateOutcome(outcome, check); err != nil {
 		return Outcome{}, err
+	}
+	invalidated, err := s.isInvalidated(outcome)
+	if err != nil {
+		return Outcome{}, err
+	}
+	if invalidated {
+		return Outcome{}, fmt.Errorf("handoff_outcome_invalidated: the outcome for mission %q attempt %d was invalidated after package repair; accept the Approval Gate and verify the handoff again", outcome.MissionID, outcome.Attempt)
 	}
 	consumed, err := s.Consumed(outcome)
 	if err != nil {

@@ -2,6 +2,7 @@ package mission
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -25,6 +26,21 @@ func requireAnalysisOnlyPackage(basePath, missionID string, event domain.Mission
 	}
 	if has {
 		return fmt.Errorf("mission submit: rejected: %s requires a package with no documentation_target, but %s declares one — use gate_approved, then verify the handoff and submit handoff_challenge_satisfied so Sniper materializes it", event, tasks)
+	}
+	return nil
+}
+
+func requireAuthoredPackageRepair(basePath, missionID string, event domain.MissionEngineEvent) error {
+	if event != domain.MissionEventRefinementArtifactInvalid {
+		return nil
+	}
+	tasksPath := filepath.Join(basePath, "refined", missionID, "tasks.md")
+	raw, err := os.ReadFile(tasksPath) //nolint:gosec // path is <base_path>/refined/<mission_id>/tasks.md
+	if err != nil {
+		return fmt.Errorf("mission submit: authored-package repair requires readable tasks.md: %w", err)
+	}
+	if _, err := refinement.ValidateDocumentationTargetContent(raw); err == nil {
+		return fmt.Errorf("mission submit: authored-package repair requires a malformed documentation_target")
 	}
 	return nil
 }

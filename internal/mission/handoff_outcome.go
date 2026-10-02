@@ -124,39 +124,6 @@ func (d derivedHandoff) outcome(status domain.MissionEngineStatus, attempt int, 
 	}
 }
 
-// nextHandoffAttempt numbers the next evaluation. A new evaluation is only
-// possible after a failed outcome (which returns the mission to refinement and
-// a new Approval Gate) and while attempts remain: an unused passed or skipped
-// outcome stands for the revision the gate approved, and a package changed
-// after it must go back through refinement, never be re-evaluated in place.
-func nextHandoffAttempt(store handoff.OutcomeStore, missionID, digest string, policy handoff.Policy) (int, error) {
-	attempt, err := store.NextAttempt(missionID)
-	if err != nil {
-		return 0, fmt.Errorf("evaluate handoff: %w", err)
-	}
-	if attempt == 1 {
-		return 1, nil
-	}
-	latest, err := store.Latest(missionID)
-	if err != nil {
-		return 0, fmt.Errorf("evaluate handoff: %w", err)
-	}
-	if latest.Result != handoff.OutcomeFailed {
-		return 0, unfailedOutcomeError(latest, digest)
-	}
-	if policy.MaxAttempts > 0 && attempt > policy.MaxAttempts {
-		return 0, fmt.Errorf("handoff_attempts_exhausted: mission %q used all %d attempts", missionID, policy.MaxAttempts)
-	}
-	return attempt, nil
-}
-
-func unfailedOutcomeError(latest handoff.Outcome, digest string) error {
-	if latest.PackageDigest != digest {
-		return fmt.Errorf("handoff_package_changed_after_outcome: mission %q has a %s outcome (attempt %d) for another package revision; return to refinement with handoff_challenge_failed and accept the Approval Gate again", latest.MissionID, latest.Result, latest.Attempt)
-	}
-	return fmt.Errorf("handoff_outcome_already_recorded: mission %q already has a %s outcome for this package revision (attempt %d)", latest.MissionID, latest.Result, latest.Attempt)
-}
-
 // challengeResult runs the semantic challenge when the policy requires it, and
 // records it in the challenge history. A skipped policy needs no challenge.
 func challengeResult(strategistRoot string, status domain.MissionEngineStatus, policy handoff.Policy, attempt int, input ArchivistHandoffInput) (handoff.Result, error) {

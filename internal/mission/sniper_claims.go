@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 	"github.com/SergioLacerda/strategist-skill/internal/refinement"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
@@ -30,10 +31,17 @@ func RecordSniperClaims(strategistRoot, basePath, missionID string, now time.Tim
 	if err != nil {
 		return 0, fmt.Errorf("record sniper claims: %w", err)
 	}
+	if len(targets) == 0 {
+		return 0, nil
+	}
 	claimPath := telemetry.SniperClaimHistoryPath(strategistRoot)
+	packageDigest := ""
+	if digest, digestErr := handoff.PackageDigest(filepath.Join(basePath, "refined", missionID)); digestErr == nil {
+		packageDigest = digest
+	}
 	for _, target := range targets {
 		rec := telemetry.SniperClaimRecord{
-			MissionID: missionID, BasePath: basePath, TargetPath: target, ClaimedAt: now,
+			MissionID: missionID, BasePath: basePath, TargetPath: target, PackageDigest: packageDigest, ClaimedAt: now,
 		}
 		if err := telemetry.AppendSniperClaim(claimPath, rec); err != nil {
 			return 0, fmt.Errorf("record sniper claims: %w", err)

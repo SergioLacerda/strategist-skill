@@ -159,10 +159,26 @@ func requireSniperMaterializations(root string, record domain.MissionInvocationR
 
 func sniperMaterializationTargets(records []telemetry.SniperMaterializationRecord, record domain.MissionInvocationRecord) map[string]bool {
 	seen := make(map[string]bool, len(records))
+	expectedDigest := requestedPackageDigest(record)
 	for _, materialization := range records {
-		if materialization.MissionID == record.Request.MissionID && !materialization.MaterializedAt.Before(record.CreatedAt) {
+		if materializationMatchesRequest(materialization, record, expectedDigest) {
 			seen[materialization.TargetPath] = true
 		}
 	}
 	return seen
+}
+
+func requestedPackageDigest(record domain.MissionInvocationRecord) string {
+	if raw, ok := record.Request.Input["approval_gate_package_digest"]; ok {
+		if digest, ok := raw.(string); ok {
+			return digest
+		}
+	}
+	return ""
+}
+
+func materializationMatchesRequest(materialization telemetry.SniperMaterializationRecord, record domain.MissionInvocationRecord, expectedDigest string) bool {
+	return materialization.MissionID == record.Request.MissionID &&
+		(materialization.PackageDigest == "" || materialization.PackageDigest == expectedDigest) &&
+		!materialization.MaterializedAt.Before(record.CreatedAt)
 }

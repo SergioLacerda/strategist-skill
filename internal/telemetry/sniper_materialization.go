@@ -22,6 +22,7 @@ type SniperMaterializationRecord struct {
 	MissionID      string    `json:"mission_id"`
 	BasePath       string    `json:"base_path"`
 	TargetPath     string    `json:"target_path"`
+	PackageDigest  string    `json:"package_digest,omitempty"`
 	MaterializedAt time.Time `json:"materialized_at"`
 }
 

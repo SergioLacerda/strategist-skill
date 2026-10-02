@@ -51,6 +51,45 @@ func TestMissionEngine_FullPipelineProgression(t *testing.T) {
 	}
 }
 
+func TestMissionEngine_InvalidRefinementArtifactReturnsToRefinement(t *testing.T) {
+	engine, _, err := StartMission(MissionStartRequest{MissionID: "m-artifact-repair"})
+	require.NoError(t, err)
+	submitMissionEvents(t, engine, []MissionEngineEvent{
+		MissionEventBootstrapDone,
+		MissionEventIntakeDone,
+		MissionEventDiscoveryDone,
+		MissionEventRefinementDone,
+		MissionEventGateApproved,
+		MissionEventHandoffSatisfied,
+	})
+
+	status, err := engine.Submit(MissionEventRefinementArtifactInvalid)
+	require.NoError(t, err)
+	require.Equal(t, StateRefinement, status.State)
+	require.Equal(t, PhaseRefinement, status.Phase)
+}
+
+func TestMissionEngine_InvalidRefinementArtifactDoesNotReplacePermanentFailure(t *testing.T) {
+	engine, _, err := StartMission(MissionStartRequest{MissionID: "m-artifact-failure"})
+	require.NoError(t, err)
+	submitMissionEvents(t, engine, []MissionEngineEvent{
+		MissionEventBootstrapDone,
+		MissionEventIntakeDone,
+		MissionEventDiscoveryDone,
+		MissionEventRefinementDone,
+		MissionEventGateApproved,
+		MissionEventHandoffSatisfied,
+	})
+
+	status, err := engine.Submit(MissionEventSlotPermanent)
+	require.NoError(t, err)
+	require.Equal(t, StateBlocked, status.State)
+
+	_, err = engine.Submit(MissionEventRefinementArtifactInvalid)
+	require.Error(t, err)
+	require.Equal(t, StateBlocked, engine.Status().State)
+}
+
 func TestMissionEngine_ApprovalGatePackageDigestRequiresExplicitBinding(t *testing.T) {
 	engine, _, err := StartMission(MissionStartRequest{MissionID: "m-gate-digest"})
 	require.NoError(t, err)

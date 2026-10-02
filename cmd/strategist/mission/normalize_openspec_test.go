@@ -34,8 +34,25 @@ func normalizeFixture(t *testing.T) (mission.NormalizeDependencies, string) {
 			return base, runtime, pending, nil
 		},
 		RecordConfidence: func(mission.NormalizeOptions, domain.ConfidenceClaim, []domain.Evidence) error { return nil },
+		LoadMission: func(opts mission.NormalizeOptions) (domain.MissionEngineStatus, error) {
+			return loadNormalizeFixtureMission(base, opts)
+		},
 	}
 	return deps, filepath.Join(base, "refined", "m-1")
+}
+
+func loadNormalizeFixtureMission(base string, opts mission.NormalizeOptions) (domain.MissionEngineStatus, error) {
+	if !opts.Amend {
+		return domain.MissionEngineStatus{MissionID: opts.MissionID, Phase: domain.PhaseRefinement, State: domain.StateRefinement}, nil
+	}
+	raw, err := os.ReadFile(filepath.Join(base, "refined", opts.MissionID, "analysis.md"))
+	if err != nil {
+		return domain.MissionEngineStatus{}, err
+	}
+	if strings.Contains(string(raw), "mission_status: gate_analysis_accepted") {
+		return domain.MissionEngineStatus{MissionID: opts.MissionID, Phase: domain.PhaseDone, State: domain.StateDoneAnalysis}, nil
+	}
+	return domain.MissionEngineStatus{MissionID: opts.MissionID, Phase: domain.PhaseRefinement, State: domain.StateRefinement}, nil
 }
 
 func runNormalize(t *testing.T, deps mission.NormalizeDependencies, args ...string) (string, error) {

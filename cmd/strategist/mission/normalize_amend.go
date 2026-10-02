@@ -3,6 +3,7 @@ package mission
 import (
 	"fmt"
 
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/refinement"
 	"github.com/spf13/cobra"
 )
@@ -13,7 +14,10 @@ import (
 func validateAmendFlags(cmd *cobra.Command, opts NormalizeOptions) error {
 	values := map[string]string{"--amends": opts.Amends, "--authorization-ref": opts.AuthorizationRef}
 	if !opts.Amend {
-		return requireOnlyWithAmend(values)
+		return requireOnlyWithAmend(map[string]string{
+			"--amends": opts.Amends, "--authorization-ref": opts.AuthorizationRef,
+			"--reason": opts.Reason, "--supersedes-mission-id": opts.SupersedesMissionID,
+		})
 	}
 	if cmd.Flags().Changed("pending-analysis") {
 		return fmt.Errorf("--pending-analysis cannot be used with --amend: an amendment never consumes a pending analysis")
@@ -43,16 +47,13 @@ func requireAmendValues(values map[string]string) error {
 
 // runAmend applies an amendment through refinement.AmendOpenSpec.
 func runAmend(cmd *cobra.Command, deps NormalizeDependencies, opts NormalizeOptions, basePath, runtimeRoot string) error {
-	label := ""
-	if deps.GateLabel != nil {
-		var err error
-		if label, err = deps.GateLabel(opts); err != nil {
-			return fmt.Errorf("mission normalize-openspec: read gate label: %w", err)
-		}
+	persisted, label, err := loadAmendContext(deps, opts)
+	if err != nil {
+		return err
 	}
 	result, err := refinement.AmendOpenSpec(refinement.AmendInput{
 		MissionID: opts.MissionID, BasePath: basePath, RuntimeRoot: runtimeRoot, ChangeID: opts.ChangeID,
-		Amends: opts.Amends, AuthorizationRef: opts.AuthorizationRef, GateLabel: label,
+		Amends: opts.Amends, AuthorizationRef: opts.AuthorizationRef, GateLabel: label, PersistedStatus: persisted, Reason: opts.Reason, SupersedesMissionID: opts.SupersedesMissionID,
 	})
 	if err != nil {
 		return fmt.Errorf("mission normalize-openspec: %w", err)
@@ -64,4 +65,30 @@ func runAmend(cmd *cobra.Command, deps NormalizeDependencies, opts NormalizeOpti
 		return fmt.Errorf("mission normalize-openspec: write output: %w", err)
 	}
 	return nil
+}
+
+func loadAmendContext(deps NormalizeDependencies, opts NormalizeOptions) (domain.MissionEngineStatus, string, error) {
+	if deps.LoadMission == nil {
+		return domain.MissionEngineStatus{}, "", fmt.Errorf("mission normalize-openspec: persisted FSM state loader is unavailable")
+	}
+	persisted, err := deps.LoadMission(opts)
+	if err != nil {
+		return domain.MissionEngineStatus{}, "", fmt.Errorf("mission normalize-openspec: read persisted FSM state: %w", err)
+	}
+	label, err := loadAmendGateLabel(deps, opts)
+	if err != nil {
+		return domain.MissionEngineStatus{}, "", err
+	}
+	return persisted, label, nil
+}
+
+func loadAmendGateLabel(deps NormalizeDependencies, opts NormalizeOptions) (string, error) {
+	if deps.GateLabel == nil {
+		return "", nil
+	}
+	label, err := deps.GateLabel(opts)
+	if err != nil {
+		return "", fmt.Errorf("mission normalize-openspec: read gate label: %w", err)
+	}
+	return label, nil
 }

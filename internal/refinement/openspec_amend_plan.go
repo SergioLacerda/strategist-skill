@@ -23,7 +23,8 @@ type amendmentPlan struct {
 	status, original                string
 	at                              time.Time
 	previous, next                  map[string][]byte
-	analysisSHA                     string
+	analysisSHA, packageSHA         string
+	reason, disposition             string
 }
 
 // planAmendment reads and checks everything; it writes nothing.
@@ -99,6 +100,7 @@ func (p *amendmentPlan) loadPackage() error {
 		p.previous[name] = raw
 	}
 	p.analysisSHA = digest(p.previous["analysis.md"])
+	p.packageSHA = canonicalPackageDigest(p.previous)
 	return nil
 }
 
@@ -115,6 +117,9 @@ func (p *amendmentPlan) checkState() error {
 	}
 	if frontmatterValue(analysis, "claimed_by") != "" {
 		return fmt.Errorf("openspec amend: the package is claimed_by %q; it cannot be amended", frontmatterValue(analysis, "claimed_by"))
+	}
+	if err := p.checkPersistedState(); err != nil {
+		return err
 	}
 	return p.checkChain()
 }
@@ -134,9 +139,6 @@ func (p *amendmentPlan) checkChain() error {
 	}
 	if p.input.Amends != expected {
 		return fmt.Errorf("openspec amend: --amends %q does not match the change being amended (%q)", p.input.Amends, expected)
-	}
-	if p.input.GateLabel == "rejected" {
-		return fmt.Errorf("openspec amend: the mission's gate outcome is rejected; a rejected analysis is not amended")
 	}
 	p.number = number + 1
 	p.snapshotDir = filepath.Join(p.refined, ".amendments", fmt.Sprintf("%03d", p.number))

@@ -48,6 +48,9 @@ const (
 	MissionEventSlotTransient MissionEngineEvent = "slot_transient_failure"
 	// MissionEventSlotPermanent records a terminal slot failure.
 	MissionEventSlotPermanent MissionEngineEvent = "slot_permanent_failure"
+	// MissionEventRefinementArtifactInvalid returns execution to refinement when
+	// the accepted authored package fails pre-materialization validation.
+	MissionEventRefinementArtifactInvalid MissionEngineEvent = "refinement_artifact_invalid"
 	// MissionEventADRCriterion signals that the ADR criterion was met.
 	MissionEventADRCriterion MissionEngineEvent = "adr_criterion_met"
 	// MissionEventADRApproved approves the ADR gate.
@@ -66,7 +69,8 @@ func missionTransitionEvent(event MissionEngineEvent) (TransitionEvent, bool) {
 		MissionEventHandoffExhausted: EventHandoffExhausted, MissionEventHandoffNotApplicable: EventHandoffNotApplicable,
 		MissionEventSniperDone: EventSniperDone, MissionEventRetryOK: EventRetryOK,
 		MissionEventSlotTransient: EventSlotTransient, MissionEventSlotPermanent: EventSlotPermanent,
-		MissionEventADRCriterion: EventADRCriterionMet, MissionEventADRApproved: EventADRApproved,
+		MissionEventRefinementArtifactInvalid: EventRefinementArtifactInvalid,
+		MissionEventADRCriterion:              EventADRCriterionMet, MissionEventADRApproved: EventADRApproved,
 		MissionEventADRDeclined: EventADRDeclined,
 	}
 	value, ok := transitions[event]

@@ -26,18 +26,19 @@ const (
 )
 
 // SniperClaimRecord records one mission's claim of a target path — appended
-// when Sniper (or the parent-agent-embodied native role standing in for it)
-// begins materializing a documentation target, before either commit or
+// when Sniper (or the parent-agent-embodied native role standing in for it) begins
+// materializing a documentation target, before either commit or
 // mission close. This is the claim-collision half of ADR-0008's F3 revisit
 // tripwire (docs/adr/0008-single-session-assumption.md § F3 revisit
 // tripwire): two or more distinct Sniper sessions claiming the same target
 // before either commits, the signal sniper_conflict.go's
 // f3ConflictThreshold doc comment names as "not instrumented here."
 type SniperClaimRecord struct {
-	MissionID  string    `json:"mission_id"`
-	BasePath   string    `json:"base_path"`
-	TargetPath string    `json:"target_path"`
-	ClaimedAt  time.Time `json:"claimed_at"`
+	MissionID     string    `json:"mission_id"`
+	BasePath      string    `json:"base_path"`
+	TargetPath    string    `json:"target_path"`
+	PackageDigest string    `json:"package_digest,omitempty"`
+	ClaimedAt     time.Time `json:"claimed_at"`
 }
 
 // SniperClaimHistoryPath returns the default runtime memory path for Sniper claim history.
@@ -191,10 +192,5 @@ func FormatClaimCollisionSignal(s ClaimCollisionSignal) string {
 
 // EmitClaimCollisionSignal logs the signal through slog with canonical attributes.
 func EmitClaimCollisionSignal(s ClaimCollisionSignal) {
-	slog.Info(
-		FormatClaimCollisionSignal(s),
-		AttrBasePath, SanitizePath(s.BasePath),
-		AttrTarget, SanitizePath(s.TargetPath),
-		AttrClaimMissionIDs, strings.Join(s.MissionIDs, ","),
-	)
+	slog.Info(FormatClaimCollisionSignal(s), AttrBasePath, SanitizePath(s.BasePath), AttrTarget, SanitizePath(s.TargetPath), AttrClaimMissionIDs, strings.Join(s.MissionIDs, ","))
 }

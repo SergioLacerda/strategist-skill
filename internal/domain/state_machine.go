@@ -47,10 +47,11 @@ var stateTransitions = map[MissionState]map[TransitionEvent]MissionState{
 		EventHandoffNotApplicable: StateDoneAnalysis,
 	},
 	StateExecution: {
-		EventSniperDone:      StateDoneDelivery,
-		EventSniperSideQuest: StateSideQuestGate,
-		EventSlotTransient:   StateRetryingExecution,
-		EventSlotPermanent:   StateBlocked,
+		EventSniperDone:                StateDoneDelivery,
+		EventSniperSideQuest:           StateSideQuestGate,
+		EventSlotTransient:             StateRetryingExecution,
+		EventSlotPermanent:             StateBlocked,
+		EventRefinementArtifactInvalid: StateRefinement,
 	},
 	StateDoneAnalysis: {
 		EventADRCriterionMet: StateADRGate1,

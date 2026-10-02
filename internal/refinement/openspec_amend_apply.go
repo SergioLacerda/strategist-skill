@@ -21,16 +21,22 @@ type amendmentFile struct {
 
 // amendmentManifest is written beside the snapshot of one amendment.
 type amendmentManifest struct {
-	MissionID        string                   `yaml:"mission_id"`
-	Amendment        int                      `yaml:"amendment"`
-	ChangeID         string                   `yaml:"change_id"`
-	Amends           string                   `yaml:"amends"`
-	At               string                   `yaml:"at"`
-	AuthorizationRef string                   `yaml:"authorization_ref"`
-	GateLabel        string                   `yaml:"gate_label"`
-	Status           string                   `yaml:"status"`
-	AnalysisSHA256   string                   `yaml:"analysis_sha256"`
-	Files            map[string]amendmentFile `yaml:"files"`
+	MissionID         string                   `yaml:"mission_id"`
+	Amendment         int                      `yaml:"amendment"`
+	ChangeID          string                   `yaml:"change_id"`
+	Amends            string                   `yaml:"amends"`
+	DerivedFrom       string                   `yaml:"derived_from"`
+	SupersedesMission string                   `yaml:"supersedes_mission_id"`
+	SourceDigest      string                   `yaml:"source_digest"`
+	PackageDigest     string                   `yaml:"package_digest"`
+	Reason            string                   `yaml:"reason"`
+	Disposition       string                   `yaml:"disposition"`
+	At                string                   `yaml:"at"`
+	AuthorizationRef  string                   `yaml:"authorization_ref"`
+	GateLabel         string                   `yaml:"gate_label"`
+	Status            string                   `yaml:"status"`
+	AnalysisSHA256    string                   `yaml:"analysis_sha256"`
+	Files             map[string]amendmentFile `yaml:"files"`
 }
 
 // apply stamps the new files, snapshots the previous ones with a manifest, replaces
@@ -39,7 +45,7 @@ type amendmentManifest struct {
 func (p *amendmentPlan) apply() error {
 	stamped := make(map[string][]byte, len(amendedFiles))
 	for _, name := range amendedFiles {
-		stamped[name] = withAmendments(p.next[name], p.previous[name], p.number, p.input.ChangeID, p.input.AuthorizationRef, p.at)
+		stamped[name] = withAmendments(p.next[name], p.previous[name], p.number, p.input.ChangeID, p.input.AuthorizationRef, p.at, p)
 	}
 	if err := p.snapshot(stamped); err != nil {
 		return err
@@ -84,6 +90,8 @@ func (p *amendmentPlan) manifest(stamped map[string][]byte) amendmentManifest {
 	}
 	return amendmentManifest{
 		MissionID: p.input.MissionID, Amendment: p.number, ChangeID: p.input.ChangeID, Amends: p.input.Amends,
+		DerivedFrom: p.input.Amends, SupersedesMission: p.input.SupersedesMissionID, SourceDigest: p.analysisSHA,
+		PackageDigest: p.packageSHA, Reason: p.reason, Disposition: p.disposition,
 		At: p.at.Format(time.RFC3339), AuthorizationRef: p.input.AuthorizationRef, GateLabel: label,
 		Status: p.status, AnalysisSHA256: p.analysisSHA, Files: files,
 	}

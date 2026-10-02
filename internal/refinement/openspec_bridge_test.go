@@ -106,6 +106,34 @@ func TestNormalizeOpenSpecRejectsMissionIdentityMismatch(t *testing.T) {
 	require.ErrorContains(t, err, "mission_id does not match")
 }
 
+func TestNormalizeOpenSpecRejectsMalformedDocumentationTargetBeforePublication(t *testing.T) {
+	project := t.TempDir()
+	base := filepath.Join(project, ".analysis")
+	runtime := filepath.Join(project, ".strategist", "openspec")
+	pending := filepath.Join(base, "pending", "m-1-analysis.md")
+	changeDir := filepath.Join(runtime, "changes", "change")
+	require.NoError(t, os.MkdirAll(filepath.Dir(pending), 0o755))
+	require.NoError(t, os.MkdirAll(changeDir, 0o755))
+	require.NoError(t, os.WriteFile(pending, []byte("---\nmission_id: m-1\nmission_status: archivist_pending\n---\n"), 0o644))
+	for _, name := range []string{"proposal.md", "design.md"} {
+		require.NoError(t, os.WriteFile(filepath.Join(changeDir, name), []byte(name), 0o644))
+	}
+	require.NoError(t, os.WriteFile(filepath.Join(changeDir, "tasks.md"), []byte("- [ ] 1.1 [documentation_target] Write the guide\n"), 0o644))
+
+	_, err := NormalizeOpenSpec(OpenSpecInput{
+		MissionID: "m-1", BasePath: base, RuntimeRoot: runtime, ChangeID: "change",
+		PendingAnalysisPath: pending, RecordConfidence: noopConfidenceRecorder,
+	})
+
+	require.ErrorContains(t, err, "validate documentation targets")
+	_, statErr := os.Stat(filepath.Join(base, "refined", "m-1"))
+	require.ErrorIs(t, statErr, os.ErrNotExist)
+	_, statErr = os.Stat(changeDir)
+	require.NoError(t, statErr, "provider change remains active for repair")
+	_, statErr = os.Stat(pending)
+	require.NoError(t, statErr, "pending analysis remains available")
+}
+
 func TestNormalizeOpenSpecFailsBeforePublicationWhenArchivistConfidenceCannotBeRecorded(t *testing.T) {
 	project := t.TempDir()
 	base := filepath.Join(project, ".analysis")

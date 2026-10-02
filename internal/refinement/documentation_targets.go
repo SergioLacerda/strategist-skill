@@ -34,13 +34,12 @@ func HasDocumentationTargets(tasksPath string) (bool, error) {
 // identifier or command name in backticks is not mistaken for a target path.
 var documentationTargetPathToken = regexp.MustCompile("`([\\w./-]+/[\\w.-]+\\.[a-zA-Z0-9]+)`")
 
-// DocumentationTargetPaths extracts the file paths named on each
-// [documentation_target] line of tasksPath, in file order, deduplicated. A
-// missing file, or a documentation_target line with no backtick-quoted
-// path-shaped token, yields no paths for that line rather than an error —
-// this is a best-effort extraction for the Sniper claim tripwire (ADR-0057
-// §2.3), not a schema-validated field, and a line this cannot parse is a gap
-// in coverage, not a fatal one.
+// DocumentationTargetPaths validates and extracts the file paths named on each
+// documentation_target line of tasksPath, in file order, deduplicated. A
+// documentation_target without an explicit repository-relative path is an
+// invalid package and returns an error. The same validator is used by
+// normalization and execution authorization so a package cannot pass the gate
+// and fail only when Sniper starts.
 func DocumentationTargetPaths(tasksPath string) ([]string, error) {
 	raw, err := os.ReadFile(tasksPath) //nolint:gosec // path is <base_path>/refined/<mission_id>/tasks.md
 	if errors.Is(err, os.ErrNotExist) {
@@ -49,11 +48,25 @@ func DocumentationTargetPaths(tasksPath string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("refinement: read %s: %w", tasksPath, err)
 	}
+	return ValidateDocumentationTargetContent(raw)
+}
+
+// ValidateDocumentationTargetContent validates and extracts every declared
+// documentation target from tasks content. It is intentionally content-based
+// so normalization can validate provider output before writing the canonical
+// refined package.
+func ValidateDocumentationTargetContent(raw []byte) ([]string, error) {
 	seen := make(map[string]bool)
 	var paths []string
-	for _, line := range strings.Split(string(raw), "\n") {
+	for lineNumber, line := range strings.Split(string(raw), "\n") {
+		if !documentationTargetMarker.MatchString(line) {
+			continue
+		}
 		path, ok := documentationTargetPath(line)
-		if !ok || seen[path] {
+		if !ok {
+			return nil, fmt.Errorf("refinement: documentation_target on line %d requires an explicit backtick-quoted repository-relative path", lineNumber+1)
+		}
+		if seen[path] {
 			continue
 		}
 		seen[path] = true
@@ -70,5 +83,21 @@ func documentationTargetPath(line string) (string, bool) {
 	if match == nil {
 		return "", false
 	}
-	return match[1], true
+	path := match[1]
+	if unsafeDocumentationPath(path) {
+		return "", false
+	}
+	return path, true
+}
+
+func unsafeDocumentationPath(path string) bool {
+	if strings.HasPrefix(path, "/") || strings.HasPrefix(path, "./") || strings.Contains(path, "\\") {
+		return true
+	}
+	for _, segment := range strings.Split(path, "/") {
+		if segment == "" || segment == "." || segment == ".." {
+			return true
+		}
+	}
+	return false
 }

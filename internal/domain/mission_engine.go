@@ -104,7 +104,7 @@ func (e *MissionEngine) submitEarly(event MissionEngineEvent) error {
 		MissionEventGateApproved, MissionEventGateApprovedAnalysisOnly, MissionEventGateDenied, MissionEventGateTimeout,
 		MissionEventGateRevision, MissionEventHandoffSatisfied, MissionEventHandoffFailed,
 		MissionEventHandoffExhausted, MissionEventHandoffNotApplicable, MissionEventSniperDone, MissionEventRetryOK,
-		MissionEventSlotTransient, MissionEventSlotPermanent, MissionEventADRCriterion,
+		MissionEventSlotTransient, MissionEventSlotPermanent, MissionEventRefinementArtifactInvalid, MissionEventADRCriterion,
 		MissionEventADRApproved, MissionEventADRDeclined, obsoleteMissionEventHandoffPassed:
 		return fmt.Errorf("mission engine: event %q is not an early-pipeline event", event)
 	}
@@ -134,6 +134,10 @@ func (e *MissionEngine) submitFSM(event MissionEngineEvent) (MissionEngineStatus
 	}
 	e.status.State = next
 	e.status.Phase = phaseForState(next)
+	if event == MissionEventRefinementArtifactInvalid {
+		e.status.HandoffStatus = ""
+		e.status.HandoffNextAction = "reapprove_gate"
+	}
 	if next != StateExecution {
 		// A new handoff challenge must be explicitly bound by the command
 		// boundary after the gate event is accepted. Never carry a prior

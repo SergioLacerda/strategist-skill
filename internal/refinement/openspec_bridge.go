@@ -29,6 +29,15 @@ type OpenSpecInput struct {
 	// written into the published analysis.md frontmatter; nil publishes none and
 	// leaves the package without an evaluable handoff policy.
 	HandoffFacts map[string]any
+	// RecordPublication persists a publication event separately from Sniper
+	// materialization telemetry. Nil is permitted for library-only callers.
+	RecordPublication func(PackagePublication) error
+}
+
+// PackagePublication identifies a newly published canonical package.
+type PackagePublication struct {
+	MissionID, ProviderChangeID, SourceDigest, PackageDigest string
+	PublishedAt                                              time.Time
 }
 
 // OpenSpecResult describes the canonical package published by the bridge.
@@ -59,7 +68,14 @@ func NormalizeOpenSpec(input OpenSpecInput) (OpenSpecResult, error) {
 	if err != nil {
 		return OpenSpecResult{}, err
 	}
+	if _, err := ValidateDocumentationTargetContent(contents["tasks.md"]); err != nil {
+		return OpenSpecResult{}, fmt.Errorf("openspec bridge: validate documentation targets: %w", err)
+	}
 
+	return publishOpenSpec(input, changeDir, contents)
+}
+
+func publishOpenSpec(input OpenSpecInput, changeDir string, contents map[string][]byte) (OpenSpecResult, error) {
 	refined, err := validatedRefinedPath(input)
 	if err != nil {
 		return OpenSpecResult{}, err
@@ -67,26 +83,42 @@ func NormalizeOpenSpec(input OpenSpecInput) (OpenSpecResult, error) {
 	if err := recordArchivistConfidence(input); err != nil {
 		return OpenSpecResult{}, fmt.Errorf("openspec bridge: record Archivist confidence: %w", err)
 	}
-	if err := publishOrPromote(refined, input.PendingAnalysisPath, contents); err != nil {
+	published, err := publishOrPromote(refined, input.PendingAnalysisPath, contents)
+	if err != nil {
 		return OpenSpecResult{}, err
 	}
-	// Published: the scratch change leaves the active list so the provider
-	// runtime does not accumulate finished changes.
+	if err := recordPackagePublication(input, contents, published); err != nil {
+		return OpenSpecResult{}, err
+	}
 	if err := archiveChange(input.RuntimeRoot, changeDir, input.ChangeID); err != nil {
 		return OpenSpecResult{}, err
 	}
 	return result(refined, input), nil
 }
 
-func publishOrPromote(refined, pending string, contents map[string][]byte) error {
+func recordPackagePublication(input OpenSpecInput, contents map[string][]byte, published bool) error {
+	if !published || input.RecordPublication == nil {
+		return nil
+	}
+	publication := PackagePublication{
+		MissionID: input.MissionID, ProviderChangeID: input.ChangeID,
+		SourceDigest: digest(contents["analysis.md"]), PackageDigest: canonicalPackageDigest(contents), PublishedAt: time.Now().UTC(),
+	}
+	if err := input.RecordPublication(publication); err != nil {
+		return fmt.Errorf("openspec bridge: record package publication: %w", err)
+	}
+	return nil
+}
+
+func publishOrPromote(refined, pending string, contents map[string][]byte) (bool, error) {
 	existing, err := existingPackage(refined, contents)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if existing {
-		return removePending(pending)
+		return false, removePending(pending)
 	}
-	return publish(refined, pending, contents)
+	return true, publish(refined, pending, contents)
 }
 
 func readContents(changeDir string, input OpenSpecInput) (map[string][]byte, error) {
