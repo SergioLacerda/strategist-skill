@@ -2,9 +2,7 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,7 +13,6 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/plugins/connectors"
 	"github.com/SergioLacerda/strategist-skill/internal/provider"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
-	"github.com/spf13/cobra"
 )
 
 // completeMissionInvocation publishes the pending Ranger artifact for one
@@ -178,19 +175,4 @@ func writeMissionArtifact(path string, content []byte) error {
 		return fmt.Errorf("write normalized artifact: %w", err)
 	}
 	return nil
-}
-
-func readMissionCompletion(cmd *cobra.Command) (domain.MissionInvocationCompletion, error) {
-	var completion domain.MissionInvocationCompletion
-	decoder := json.NewDecoder(cmd.InOrStdin())
-	if err := decoder.Decode(&completion); err != nil {
-		return domain.MissionInvocationCompletion{}, fmt.Errorf("read completion JSON: %w", err)
-	}
-	var extra any
-	if err := decoder.Decode(&extra); err == nil {
-		return domain.MissionInvocationCompletion{}, fmt.Errorf("read completion JSON: more than one object was supplied")
-	} else if err != io.EOF {
-		return domain.MissionInvocationCompletion{}, fmt.Errorf("read completion JSON: trailing data: %w", err)
-	}
-	return completion, nil
 }

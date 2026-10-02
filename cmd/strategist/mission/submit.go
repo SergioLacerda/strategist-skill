@@ -132,6 +132,9 @@ func preflightSubmit(root, basePath, missionID string, status domain.MissionEngi
 	if err := livemission.RequireNoAcceptedSideQuest(root, missionID, evt); err != nil {
 		return submitPreflight{}, fmt.Errorf("mission submit: rejected: %w", err)
 	}
+	if err := validateSubmitArtifacts(basePath, missionID, evt); err != nil {
+		return submitPreflight{}, fmt.Errorf("mission submit: rejected: %w", err)
+	}
 	gateDigest, err := approvalGatePackageDigest(basePath, status, evt)
 	if err != nil {
 		return submitPreflight{}, fmt.Errorf("mission submit: rejected: %w", err)

@@ -360,6 +360,8 @@ func TestApprovalGateIsIndependentOfTheHandoffOutcome(t *testing.T) {
 		root := setupViewRoot(t, domain.MissionEngineStatus{})
 		_, err := runLifecycle(t, mission.NewStart, "--root", root, "--mission-id", "m-nogate")
 		require.NoError(t, err)
+		writeDiscoveryArtifact(t, root, "m-nogate")
+		writeRefinedPackage(t, root, "m-nogate")
 		for _, event := range []domain.MissionEngineEvent{domain.MissionEventBootstrapDone, domain.MissionEventIntakeDone, domain.MissionEventDiscoveryDone, domain.MissionEventRefinementDone} {
 			_, err = runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", "m-nogate", "--event", string(event))
 			require.NoError(t, err)
@@ -380,6 +382,8 @@ func TestApprovalGateIsIndependentOfTheHandoffOutcome(t *testing.T) {
 		root := setupViewRoot(t, domain.MissionEngineStatus{})
 		_, err := runLifecycle(t, mission.NewStart, "--root", root, "--mission-id", "m-analysis")
 		require.NoError(t, err)
+		writeDiscoveryArtifact(t, root, "m-analysis")
+		writeRefinedPackage(t, root, "m-analysis")
 		for _, event := range []domain.MissionEngineEvent{domain.MissionEventBootstrapDone, domain.MissionEventIntakeDone, domain.MissionEventDiscoveryDone, domain.MissionEventRefinementDone} {
 			_, err = runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", "m-analysis", "--event", string(event))
 			require.NoError(t, err)

@@ -45,6 +45,8 @@ func lockedLifecycleDeps(t *testing.T) mission.LifecycleDependencies {
 func advanceToApprovalGate(t *testing.T, deps mission.LifecycleDependencies, root, missionID string) {
 	t.Helper()
 	require.NoError(t, mission.RunStart(newTestCmd(t), deps, root, missionID, false))
+	writeDiscoveryArtifact(t, root, missionID)
+	writeRefinedPackage(t, root, missionID)
 	for _, event := range []string{"bootstrap_done", "intake_done", "discovery_done", "refinement_done"} {
 		require.NoError(t, mission.RunSubmit(newTestCmd(t), deps, root, missionID, event, false))
 	}

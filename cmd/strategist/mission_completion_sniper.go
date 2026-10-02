@@ -59,8 +59,12 @@ func verifySniperAuthorization(input missionadapter.InvocationCompleteInput, rec
 	if input.Adapter != domain.ExecutionAdapterCurrentHost {
 		return fmt.Errorf("invocation_adapter_mismatch: Sniper execution requires the current-host adapter")
 	}
-	if !strings.Contains(input.Completion.Result, "sniper: done") || !strings.Contains(input.Completion.Result, "mission_status: documentation_applied") {
-		return fmt.Errorf("role_invocation_failed: Sniper completion signal is invalid")
+	expectedReportPath, err := sniperReportRelativePath(input.Root, input.BasePath, record.Request.MissionID)
+	if err != nil {
+		return err
+	}
+	if err := verifySniperCompletionSignal(input.Completion.Result, expectedReportPath); err != nil {
+		return err
 	}
 	_, status, err := loadMission(input.Root, record.Request.MissionID)
 	if err != nil {
@@ -74,6 +78,28 @@ func verifySniperAuthorization(input missionadapter.InvocationCompleteInput, rec
 		return fmt.Errorf("role_invocation_failed: approval_gate_package_changed: Sniper request is no longer authorized")
 	}
 	return nil
+}
+
+func sniperReportRelativePath(root, basePath, missionID string) (string, error) {
+	report := filepath.Join(basePath, "archived", missionID+"-report.md")
+	relative, err := filepath.Rel(filepath.Dir(root), report)
+	if err != nil || filepath.IsAbs(relative) || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("role_invocation_failed: Sniper report path escapes workspace")
+	}
+	return filepath.ToSlash(relative), nil
+}
+
+// verifySniperCompletionSignal accepts exactly the protocol line declared by
+// Sniper. Substring checks allow frontmatter, a second status, or a forged
+// report_path to masquerade as a completion signal; the canonical report and
+// materialization ledger are verified separately after this parser succeeds.
+func verifySniperCompletionSignal(raw, expectedReportPath string) error {
+	line := strings.TrimSpace(raw)
+	expected := "sniper: done | report_path: " + expectedReportPath + " | mission_status: documentation_applied"
+	if line == expected || line == "Return: "+expected {
+		return nil
+	}
+	return fmt.Errorf("role_invocation_failed: Sniper completion signal is invalid")
 }
 
 func verifySniperLifecycleAndTasks(refined, missionID string) ([]string, error) {

@@ -22,6 +22,8 @@ func startAtApprovalGate(t *testing.T, root, id string) {
 	t.Helper()
 	_, err := runLifecycle(t, mission.NewStart, "--root", root, "--mission-id", id)
 	require.NoError(t, err)
+	writeDiscoveryArtifact(t, root, id)
+	writeRefinedPackage(t, root, id)
 	for _, event := range []domain.MissionEngineEvent{
 		domain.MissionEventBootstrapDone, domain.MissionEventIntakeDone, domain.MissionEventDiscoveryDone,
 		domain.MissionEventRefinementDone,
@@ -29,6 +31,16 @@ func startAtApprovalGate(t *testing.T, root, id string) {
 		_, err = runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", id, "--event", string(event))
 		require.NoError(t, err, event)
 	}
+}
+
+func writeDiscoveryArtifact(t *testing.T, root, id string) {
+	t.Helper()
+	_, basePath, err := cliutil.ResolveActiveBasePath(root)
+	require.NoError(t, err)
+	dir := filepath.Join(basePath, "pending")
+	require.NoError(t, os.MkdirAll(dir, 0o750))
+	content := "---\nschema_version: strategist-ranger-discovery/v1\nmission_id: " + id + "\nmission_status: ranger_pending\nsources_consulted: []\n---\n\n## mission_objective\nobjective\n## known_facts\nfacts\n## confidence_summary\nconfidence\n## handoff\nhandoff\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, id+"-analysis.md"), []byte(content), 0o600))
 }
 
 // advanceToHandoffChallenge drives a mission through a real gate acceptance

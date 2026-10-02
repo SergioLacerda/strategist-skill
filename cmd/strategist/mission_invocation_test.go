@@ -40,6 +40,15 @@ func TestReadMissionCompletionAcceptsOneObject(t *testing.T) {
 	require.Equal(t, domain.MissionInvocationCompletion{RequestID: "inv_12345678", Result: "ok"}, got)
 }
 
+func TestReadMissionCompletionRejectsDuplicateAndUnknownFields(t *testing.T) {
+	cmd := &cobra.Command{}
+	cmd.SetIn(strings.NewReader(`{"request_id":"inv_12345678","request_id":"inv_87654321","result":"ok"}`))
+
+	_, err := readMissionCompletion(cmd)
+
+	require.ErrorContains(t, err, "duplicate field")
+}
+
 func TestValidateEmbeddedInvocationBinding(t *testing.T) {
 	t.Run("accepts Ranked Embedded", func(t *testing.T) {
 		err := validateEmbeddedInvocationBinding(domain.RoleWeaponBinding{Mode: domain.SlotBindingModeRanked, RuntimeKind: domain.RankedRuntimeEmbedded})
