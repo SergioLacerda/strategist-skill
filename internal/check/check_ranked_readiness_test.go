@@ -224,7 +224,12 @@ func TestBlockedRuntimeIsReportedAsTheDependenciesDimension(t *testing.T) {
 	blocked := domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: domain.ReasonRankedRuntimeStateLegacy, Detail: "x"}
 	ready := domain.ReadinessCheck{Status: domain.ReadinessReady}
 
-	errs := blockedReadinessErrors("refinement", skillProviderVector("p", "provider", ready, ready, ready, blocked, connectors.ConnectorResult{}, connectors.ObservationResult{}))
+	vector := vectorFromFacets(readinessFacets{
+		descriptor: domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "catalog_entry_valid"},
+		source:     domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "catalog_entry_present"},
+		entrypoint: domain.ReadinessCheck{Status: domain.ReadinessReady},
+	}, ready, ready, ready, blocked, connectors.ConnectorResult{}, connectors.ObservationResult{})
+	errs := blockedReadinessErrors("refinement", vector)
 
 	var runtimeErrs []string
 	for _, e := range errs {
@@ -368,7 +373,9 @@ func TestHostNodeRankedRuntimeHealthcheckRealOpenSpecPathForms(t *testing.T) {
 		"symlink":  filepath.Join(link, ".strategist", "openspec"),
 	} {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel() // cwd was fixed once by the parent's t.Chdir above; each subtest only reads it via a different root arg
+			// The subtests share one materialized OpenSpec runtime and its provider
+			// state directory. Keep them serial so the real runtime cannot race
+			// while resolving the three path spellings.
 			result := runHostNodeRankedRuntimeHealthcheck(strategist, root, "openspec-propose", hostNodeContract(), state)
 			require.True(t, result.Ready(), result.Detail)
 		})

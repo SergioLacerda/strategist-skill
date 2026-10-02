@@ -3,14 +3,19 @@ set -euo pipefail
 
 echo "Checking runtime/package-boundary convergence..."
 
-grep -qE '"skills", [A-Za-z_.]*[Pp]rovider, "skill.yaml"' internal/dojo/checker_manifest.go \
-  || { echo "DRIFT: dojo/checker_manifest.go uses old provider path (not skills/<provider>/skill.yaml)"; exit 1; }
+grep -q 'filepath.Join(strategistDir, "plugins", "catalog.yaml")' internal/dojo/checker_manifest.go \
+  || { echo "DRIFT: dojo/checker_manifest.go is not reading the plugin catalog authority"; exit 1; }
 
-grep -q '"skills", "brainstorming"' internal/dojo/checker_manifest_test.go \
-  || { echo "DRIFT: dojo/checker_manifest_test.go uses old provider path"; exit 1; }
+if grep -qE '"skills".*"skill.yaml"' internal/dojo/checker_manifest.go; then
+  echo "DRIFT: dojo/checker_manifest.go still reads a provider compatibility view"
+  exit 1
+fi
 
-grep -q 'skills/<provider>/skill.yaml' internal/domain/types.go \
-  || { echo "DRIFT: internal/domain/types.go lost the canonical provider path skills/<provider>/skill.yaml"; exit 1; }
+grep -q 'filepath.Join(strategistDir, "plugins", "catalog.yaml")' internal/dojo/checker_manifest_test.go \
+  || { echo "DRIFT: dojo/checker_manifest_test.go does not exercise the plugin catalog authority"; exit 1; }
+
+grep -q 'cataloged/custom Weapons' internal/domain/types.go \
+  || { echo "DRIFT: internal/domain/types.go lost catalog-first RoleSlotMap resolution"; exit 1; }
 
 test ! -d strategist \
   || { echo "DRIFT: strategist/ exists — the authoring mirror was retired (W7a); author in internal/embed/defaults/"; exit 1; }

@@ -13,10 +13,9 @@ import (
 
 func TestCheckManifests_Pass(t *testing.T) {
 	strategistDir := t.TempDir()
-	providerDir := filepath.Join(strategistDir, "skills", "brainstorming")
-	require.NoError(t, os.MkdirAll(providerDir, 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(providerDir, "skill.yaml"),
-		[]byte("canonical_role: ranger\nprovider_class: rankeado\n"), 0o644))
+	require.NoError(t, os.MkdirAll(filepath.Join(strategistDir, "plugins"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(strategistDir, "plugins", "catalog.yaml"),
+		[]byte("schema_version: strategist-plugin-catalog/v2\nproviders:\n  - id: brainstorming\n    canonical_role: ranger\n    provider_class: rankeado\n"), 0o644))
 
 	criteria := domain.DojoCriteria{
 		ManifestChecks: []domain.DojoManifestCheck{
@@ -85,10 +84,9 @@ func TestCheckManifests_FieldMissing(t *testing.T) {
 
 func TestCheckManifests_NestedFieldPresent(t *testing.T) {
 	strategistDir := t.TempDir()
-	providerDir := filepath.Join(strategistDir, "skills", "brainstorming")
-	require.NoError(t, os.MkdirAll(providerDir, 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(providerDir, "skill.yaml"),
-		[]byte("specialization_taxonomy:\n  canonical_role: ranger\n"), 0o644))
+	require.NoError(t, os.MkdirAll(filepath.Join(strategistDir, "plugins"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(strategistDir, "plugins", "catalog.yaml"),
+		[]byte("schema_version: strategist-plugin-catalog/v2\nproviders:\n  - id: brainstorming\n    specialization_taxonomy:\n      canonical_role: ranger\n"), 0o644))
 
 	criteria := domain.DojoCriteria{
 		ManifestChecks: []domain.DojoManifestCheck{
@@ -110,10 +108,9 @@ func TestCheckManifests_FieldInsideListIsFound(t *testing.T) {
 	// Exercises manifestSliceHasKeyAnywhere: a plain (non-dotted) field lookup
 	// must also search inside YAML sequences, not just nested maps.
 	strategistDir := t.TempDir()
-	providerDir := filepath.Join(strategistDir, "skills", "brainstorming")
-	require.NoError(t, os.MkdirAll(providerDir, 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(providerDir, "skill.yaml"),
-		[]byte("items:\n  - name: unrelated\n  - canonical_role: ranger\n"), 0o644))
+	require.NoError(t, os.MkdirAll(filepath.Join(strategistDir, "plugins"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(strategistDir, "plugins", "catalog.yaml"),
+		[]byte("schema_version: strategist-plugin-catalog/v2\nproviders:\n  - id: brainstorming\n    items:\n      - name: unrelated\n      - canonical_role: ranger\n"), 0o644))
 
 	criteria := domain.DojoCriteria{
 		ManifestChecks: []domain.DojoManifestCheck{

@@ -12,8 +12,8 @@ import (
 
 // CheckManifests validates the manifest_checks section of criteria.
 // strategistDir is the path to the .strategist/ directory. A Weapon's manifest is
-// its plugins/catalog.yaml entry; a provider the catalog does not list is read from
-// the transitional skills/<id>/skill.yaml compat view.
+// its plugins/catalog.yaml entry. Generation-2 compatibility views are not
+// manifest authorities.
 func CheckManifests(criteria domain.DojoCriteria, strategistDir string) []domain.DojoCheckItem {
 	var items []domain.DojoCheckItem
 
@@ -36,24 +36,9 @@ func CheckManifests(criteria domain.DojoCriteria, strategistDir string) []domain
 	return items
 }
 
-// loadManifestDoc returns the provider's manifest as a generic document: its catalog
-// entry, or the compat view when the catalog does not list it.
+// loadManifestDoc returns the provider's catalog manifest as a generic document.
 func loadManifestDoc(strategistDir, provider string) (map[string]any, bool, error) {
-	if doc, found, err := catalogEntryDoc(strategistDir, provider); err != nil || found {
-		return doc, found, err
-	}
-	raw, err := os.ReadFile(filepath.Join(strategistDir, "skills", provider, "skill.yaml")) //nolint:gosec // G304: path derived from the scenario criteria
-	if os.IsNotExist(err) {
-		return nil, false, nil
-	}
-	if err != nil {
-		return nil, false, fmt.Errorf("read compat view for %s: %w", provider, err)
-	}
-	var doc map[string]any
-	if err := yaml.Unmarshal(raw, &doc); err != nil {
-		return nil, false, fmt.Errorf("parse compat view for %s: %w", provider, err)
-	}
-	return doc, true, nil
+	return catalogEntryDoc(strategistDir, provider)
 }
 
 func catalogEntryDoc(strategistDir, provider string) (map[string]any, bool, error) {

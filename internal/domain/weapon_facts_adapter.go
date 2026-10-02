@@ -35,7 +35,7 @@ func factsFromAdapter(strategistRoot, provider string) (WeaponFacts, bool, error
 
 // ResolveCustomPackageFacts returns the facts of a package added with
 // `provider add` and bound with mode custom, looked up by its installed instance
-// id. It never consults the catalog or the compat view: slot resolution calls it
+// id. It never consults the catalog or any provider view: slot resolution calls it
 // as its own step. A binding that is not custom, or a package that was never
 // staged under providers/, is reported as not found, never as an error.
 func ResolveCustomPackageFacts(strategistRoot, instance string) (WeaponFacts, bool, error) {

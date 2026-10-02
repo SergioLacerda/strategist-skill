@@ -45,8 +45,8 @@ func hasPersistedRankedBinding(lockFile domain.PluginLockFile) bool {
 	return false
 }
 
-// activateSilentRoleProviderBindings resolves and persists plugins.lock plus
-// the selected providers' skill manifests for a silent install's template
+// activateSilentRoleProviderBindings resolves and persists plugins.lock for
+// a silent install's template
 // slots, mirroring applyWizardConfig's activation path for interactively
 // chosen slots. Split out of installer_config.go to keep that file under the
 // repo's file-size budget.
@@ -69,10 +69,6 @@ func (s Service) activateSilentRoleProviderBindings(strategistDir string, active
 	}
 	if err := persistSilentBindings(strategistDir, lockFile); err != nil {
 		return err
-	}
-	wc := domain.WizardConfig{DiscoveryProvider: slots["discovery"], RefinementProvider: slots["refinement"]}
-	if err := s.writeSelectedProviderManifests(strategistDir, wc); err != nil {
-		return fmt.Errorf("write provider manifests: %w", err)
 	}
 	return nil
 }

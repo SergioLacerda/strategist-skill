@@ -56,8 +56,9 @@ weapon version). The migration is one command, and it is reversible.
    `.strategist/.upgrade-backups/<stamp>/`, writes the versioned layout, removes the
    legacy files and the directories left empty, and fills `weapon_version` from the
    certified binding. A legacy file the operator edited is never removed: it stays
-   `orphaned` and is reported. The installer-owned `skills/<id>/skill.yaml` compat view
-   is left alone.
+   `orphaned` and is reported. The installer-owned legacy provider view
+   is reported as an orphan and left in place for inspection; generation-2
+   resolution never consults it.
 3. Verify: `strategist check --json` reports `status: ready`.
 4. Roll back: `strategist upgrade --rollback latest` restores the legacy files, the lock
    and the manifest byte for byte. It does not delete the versioned directories the

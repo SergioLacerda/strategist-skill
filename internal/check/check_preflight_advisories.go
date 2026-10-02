@@ -33,7 +33,44 @@ func preflightAdvisories(root string) []string {
 	}
 	advisories = append(advisories, registryDriftAdvisories(root)...)
 	advisories = append(advisories, layoutSkewAdvisories(root)...)
+	advisories = append(advisories, compatViewResidualAdvisories(root)...)
 	return append(advisories, codexBootstrapAdvisories(root)...)
+}
+
+// compatViewResidualAdvisories reports cataloged Weapons whose old id-only
+// compatibility view remains in a generation-2 workspace. The file is never
+// read for authority and is never deleted automatically; this is visibility
+// only, so residual state cannot change readiness or the check exit status.
+func compatViewResidualAdvisories(root string) []string {
+	if domain.RuntimeLayoutGeneration < 2 {
+		return nil
+	}
+	facts, err := domain.ListCatalogWeaponFacts(root)
+	if err != nil {
+		return nil
+	}
+	seen := make(map[string]bool)
+	var advisories []string
+	for _, fact := range facts {
+		if advisory := compatViewResidualAdvisory(root, fact, seen); advisory != "" {
+			advisories = append(advisories, advisory)
+		}
+	}
+	return advisories
+}
+
+func compatViewResidualAdvisory(root string, fact domain.WeaponFacts, seen map[string]bool) string {
+	if fact.CompatibilitySource == "native_role" || seen[fact.ID] {
+		return ""
+	}
+	seen[fact.ID] = true
+	path := filepath.Join(root, "skills", fact.ID, "skill.yaml")
+	if _, err := os.Stat(path); err != nil {
+		return ""
+	}
+	return fmt.Sprintf(
+		"[Strategist] phase=preflight status=warn reason=compat_view_residual provider=%s path=%s (the generation-2 compatibility view is non-authoritative and edits no longer affect resolution)",
+		fact.ID, path)
 }
 
 // domainIndexAdvisories implements preflight.yaml's index_yaml_not_found and

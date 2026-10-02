@@ -430,7 +430,9 @@ slots:
   execution: sniper              # Sniper's weapon
 ```
 
-Each weapon is a skill with its own `skill.yaml` registered at build time by the Strategist. A Ranked Weapon is not resolved from a host skill directory at runtime. The weapon's risk contract (`risk_score`) must match the slot contract:
+Each weapon is a skill package registered in the plugin catalog at build time by
+the Strategist. A Ranked Weapon is not resolved from a host skill directory at
+runtime. The weapon's risk contract (`risk_score`) must match the slot contract:
 
 | Slot | Expected risk_score |
 |------|---------------------|
@@ -449,7 +451,7 @@ Every Role-bindable package is a Weapon, atomic or composite; "skill" is only th
 
 The cutover is strict. The former runtime kinds `embedded_skill` and `host_skill` are rejected in manifests, catalogs, locks, and readiness with a diagnostic that directs the operator to regenerate or reinstall the workspace; they are never aliased, dual-read, dual-written, or converted, and no native fallback runs. The plugin catalog schema (`strategist-plugin-catalog/v2`), package contract (`skill-package/v2`), and embedded lock schema (`strategist-embedded-skill-lock/v2`) carry the new vocabulary. `internal/embed/defaults/` and `external-skills-source/` are the authoring sources; `.strategist/` is generated from them and is never edited by hand.
 
-To swap a weapon, validate and onboard its local package with `strategist provider validate <source>` and `strategist provider add <source> --slot <slot>`. The package and adapter contracts plus `plugins.lock` own identity, compatibility, and binding; `.strategist/skills/<provider>/skill.yaml` is only a compatibility view. Ranger invokes the selected discovery Weapon, normalizes its untrusted result, and fails closed with `role_invocation_failed` when invocation evidence is unavailable; it never silently substitutes native behavior.
+To swap a weapon, validate and onboard its local package with `strategist provider validate <source>` and `strategist provider add <source> --slot <slot>`. The catalog or package/adapter contracts plus `plugins.lock` own identity, compatibility, and binding; provider compatibility views are not generated or consulted at runtime. Ranger invokes the selected discovery Weapon, normalizes its untrusted result, and fails closed with `role_invocation_failed` when invocation evidence is unavailable; it never silently substitutes native behavior.
 
 A delegated sub-role (a Role run as a sub-agent rather than in the primary conversation) reaches a Ranked Weapon through Strategist's in-process embedded connector. Codex, Claude, and other hosts may supply the explicitly registered prompt bridge, but they do not resolve a second copy from a user skill directory. The bridge receives the payload selected by the compiled binding; it cannot read `external-skills-source`, `skill-for-hire`, or substitute a native Role. An explicitly typed Custom Weapon may use its declared host connector; its invocation evidence is separately authenticated. `weapon_invocation` in the discovery handoff (`schemas/handoff-ranger-to-archivist.schema.yaml`) records what happened, required for a delegated run: `invoked`, `resolved_from`, `steps_dropped`, and `resolved_digest` (`sha256:<64 hex>` of the bytes resolved by the selected runtime). Ranked embedded invocation records internal evidence without fabricating a host receipt; a missing dispatch or prompt bridge fails closed with `role_invocation_failed`.
 
@@ -490,7 +492,7 @@ strategist dojo list                        # lists available scenarios
 Reads the scenario's `criteria.yaml` and verifies:
 - **files_created**: files exist, contain required sections and canary strings
 - **emit_log**: expected OTEL events present/absent in `.last-run/<scenario>/emit.log`
-- **manifest_checks**: provider manifests exist with required fields
+- **manifest_checks**: catalog provider entries exist with required fields
 
 ### Layer 2 — LLM (real pipeline with synthetic input)
 
@@ -505,7 +507,7 @@ Runs the full pipeline with input from `<base_path>/dojo/<scenario>/input.yaml`,
 | Scenario | What it validates |
 |----------|------------------|
 | `treasure-chest` | Planted chest found and canary `TORNEIO_DO_DOJO` incorporated in the analysis |
-| `ranger-weapons` | Discovery provider manifest exists with a `canonical_role` field |
+| `ranger-weapons` | Discovery catalog entry exists with a `canonical_role` field |
 
 ### Scenario structure
 

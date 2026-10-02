@@ -27,12 +27,12 @@ contract:
       type: object
       description: >
         Resolved slot target paths for discovery, refinement, execution. Each slot
-        resolves through one of two independent branches: an external skill plugin
-        (skills/<provider>/skill.yaml, validated against the slot's required
-        risk_score) or a built-in Strategist native role (roles/<provider>.yaml,
-        validated against role schema plus slot match). These are different
-        authorities — a native role is never required to declare risk_score, and a
-        skill plugin manifest is never validated against native role schema.
+        resolves through one of three authorities: a cataloged Weapon, a bound
+        custom package, or a built-in Strategist native role. Catalog/custom
+        Weapons are validated against the slot's required risk_score; native
+        roles are validated against role schema plus slot match. These are
+        different authorities — a native role is never required to declare
+        risk_score, and a Weapon is never validated as a native role.
     - name: preflight_status
       type: string
       description: '"done" on success'
@@ -75,27 +75,26 @@ contract:
       enforced_by: machine_enforced
     - code: slot_provider_not_found
       trigger: >
-        Neither skills/<provider>/skill.yaml nor roles/<provider>.yaml can be resolved
-        for the configured slot plugin — the two-branch resolver (skill plugin,
-        then native role) found no match in either search path.
+        Neither a catalog entry or bound custom package nor roles/<provider>.yaml
+        can be resolved for the configured slot provider — the catalog/custom
+        authority and native-role branches found no match.
       behavior: Emit blocked event with reason=slot_provider_not_found, stop mission
       enforced_by: machine_enforced
     - code: slot_risk_mismatch
       trigger: >
-        A skill plugin's risk_score does not match the required contract for its
-        slot. This applies only to the skill-plugin branch — native roles
-        (roles/<provider>.yaml) are validated against role schema plus slot match
-        instead, and do not declare or require risk_score.
+        A cataloged Weapon or bound custom package's risk_score does not match
+        the required contract for its slot. Native roles (roles/<provider>.yaml)
+        are validated against role schema plus slot match instead, and do not
+        declare or require risk_score.
       behavior: Emit blocked event with reason=slot_risk_mismatch slot=<label>, stop mission
       enforced_by: machine_enforced
     - code: role_invocation_failed
       trigger: >
         Strategist attempts to invoke a configured slot plugin or native role and the invocation fails
-        because either branch of the two-branch resolver is invalid: the skill plugin
-        manifest at skill_root/skills/<provider>/skill.yaml is schema-invalid, or the
-        native role definition at skill_root/roles/<provider>.yaml is malformed YAML,
-        fails role schema validation, or declares a mismatched slot — or the provider is
-        otherwise unavailable or not callable from the installed runtime.
+        because the catalog/custom authority is invalid, or the native role
+        definition at skill_root/roles/<provider>.yaml is malformed YAML, fails
+        role schema validation, or declares a mismatched slot — or the provider
+        is otherwise unavailable or not callable from the installed runtime.
         Standalone SKILL.md style, subtype coverage, or creative-first instructions are not provider-invalid conditions.
       behavior: >
         Emit:

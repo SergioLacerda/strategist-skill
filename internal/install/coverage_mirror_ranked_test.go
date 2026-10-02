@@ -35,7 +35,7 @@ func TestCopySkillPackageRejectsUnsafeEntries(t *testing.T) {
 func TestWriteSkillMirrorFailures(t *testing.T) {
 	t.Parallel()
 	err := writeSkillMirror(pluginCatalog{}, IngestedSkill{ID: "ghost"}, t.TempDir())
-	require.ErrorContains(t, err, "generate mirror for ghost")
+	require.NoError(t, err)
 
 	blocker := filepath.Join(t.TempDir(), "root")
 	require.NoError(t, os.WriteFile(blocker, nil, 0o644))

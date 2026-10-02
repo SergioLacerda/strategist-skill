@@ -49,7 +49,7 @@ func checkRoleProviderCompatibility(root, slot, provider, riskScore string, skil
 }
 
 // checkRoleFactsCompatibility is the affinity check over roles already resolved
-// from the Weapon's manifest (catalog first, compat view as fallback).
+// from the catalog or a bound custom adapter.
 func checkRoleFactsCompatibility(root, slot, provider, riskScore string, roles []string) string {
 	if len(roles) == 0 {
 		return ""

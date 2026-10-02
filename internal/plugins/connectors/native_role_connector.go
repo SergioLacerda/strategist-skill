@@ -26,7 +26,7 @@ import (
 // separate process this CLI does not control, start, or observe — claiming
 // CanInvoke=true for that case from a static `strategist check` pass would
 // be a fabricated guarantee, not a verified one. UnsupportedConnector (used
-// today for skill providers, see check_slots.go's skillProviderReadiness)
+// today for cataloged and custom Weapons, see check_slots.go's weapon readiness)
 // remains the honest connector for that case.
 type NativeRoleConnector struct {
 	NativeRuntimeConnector

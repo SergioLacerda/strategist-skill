@@ -96,8 +96,8 @@ The `slots:` defines the explicit provider binding and is required. It is equiva
 The discovery route remains owned by the native Ranger role, whose role contract is
 `origin: native` and `extensibility: pluggable`. Ranger must invoke the selected
 discovery Weapon, normalize its untrusted result, and reject an unavailable or
-incompatible Weapon with `role_invocation_failed`. A catalog entry, `skill.yaml`,
-or static provider report is not invocation evidence, and Ranger never silently
+incompatible Weapon with `role_invocation_failed`. A catalog entry or static
+provider report is not invocation evidence, and Ranger never silently
 substitutes its native behavior for a selected Weapon.
 
 The `treasure_chests` field is optional. Each entry requires `id`, `path`, and `scope`. The `all` scope passes the chest to all slots; specific scopes (`discovery`, `refinement`, `execution`) restrict which slots receive the chest.
@@ -230,7 +230,7 @@ refinement: openspec-propose
 execution: sniper
 ```
 
-**Provider resolution:** the Strategist resolves the package/adapter contract and its persisted lock binding. The optional `<provider_id>/skill.yaml` file is a generated compatibility view, not the authority. If the selected provider is not materialized or its binding is absent, the pipeline stops with `slot_provider_not_found`.
+**Provider resolution:** the Strategist resolves a catalog entry, a bound custom package, or a native role contract. Provider `skill.yaml` compatibility views are no longer generated or consulted for authority. If the selected provider is not materialized or its binding is absent, the pipeline stops with `slot_provider_not_found`.
 
 **risk_score validation:** each slot has a required risk_score. Mismatches stop the pipeline with `slot_risk_mismatch`.
 

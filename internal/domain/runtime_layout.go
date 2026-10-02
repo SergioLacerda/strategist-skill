@@ -13,4 +13,4 @@ package domain
 // value. It is copied into the install manifest (InstallManifest.RuntimeLayoutGeneration)
 // and never enters a digest input: it is not part of the generated skill manifest,
 // the catalog stamps, the lock files or the ranked certification pins.
-const RuntimeLayoutGeneration = 1
+const RuntimeLayoutGeneration = 2

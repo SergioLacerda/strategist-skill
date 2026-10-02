@@ -40,12 +40,8 @@ func TestInstall_WizardPath(t *testing.T) {
 	assert.Contains(t, s, "execution: sdd-ask")
 	assert.NotContains(t, s, "execution: sniper")
 
-	brainstorming, err := os.ReadFile(filepath.Join(dir, ".strategist", "skills", "brainstorming", "skill.yaml"))
-	require.NoError(t, err)
-	assert.Contains(t, string(brainstorming), "risk_score: write_analysis")
-	assert.Contains(t, string(brainstorming), "invocation_evidence: required")
-	assert.Contains(t, string(brainstorming), "native_substitution: forbidden")
-
+	_, err = os.Stat(filepath.Join(dir, ".strategist", "skills", "brainstorming", "skill.yaml"))
+	require.ErrorIs(t, err, os.ErrNotExist)
 	_, err = os.Stat(filepath.Join(dir, ".strategist", "skills", "openspec-explore", "skill.yaml"))
 	require.ErrorIs(t, err, os.ErrNotExist)
 }
@@ -121,15 +117,15 @@ func TestInstall_WizardPath_Defaults(t *testing.T) {
 	assert.Contains(t, s, "execution: sniper")
 
 	_, err = os.Stat(filepath.Join(dir, ".strategist", "skills", "brainstorming", "skill.yaml"))
-	require.NoError(t, err)
+	require.ErrorIs(t, err, os.ErrNotExist)
 	_, err = os.Stat(filepath.Join(dir, ".strategist", "skills", "openspec-propose", "skill.yaml"))
-	require.NoError(t, err)
-	// openspec-explore is not selected by defaults — it must not be materialized.
+	require.ErrorIs(t, err, os.ErrNotExist)
+	// No compatibility view is materialized for any provider.
 	_, err = os.Stat(filepath.Join(dir, ".strategist", "skills", "openspec-explore", "skill.yaml"))
 	require.ErrorIs(t, err, os.ErrNotExist)
 }
 
-func TestInstall_WizardPath_ExplicitDefaultProvidersMaterializeManifests(t *testing.T) {
+func TestInstall_WizardPath_ExplicitDefaultProvidersDoNotMaterializeManifests(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
@@ -137,13 +133,10 @@ func TestInstall_WizardPath_ExplicitDefaultProvidersMaterializeManifests(t *test
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
 	require.NoError(t, err)
 
-	brainstorming, err := os.ReadFile(filepath.Join(dir, ".strategist", "skills", "brainstorming", "skill.yaml"))
-	require.NoError(t, err)
-	assert.Contains(t, string(brainstorming), "risk_score: write_analysis")
-
-	openspecExplore, err := os.ReadFile(filepath.Join(dir, ".strategist", "skills", "openspec-explore", "skill.yaml"))
-	require.NoError(t, err)
-	assert.Contains(t, string(openspecExplore), "risk_score: write_analysis")
+	_, err = os.Stat(filepath.Join(dir, ".strategist", "skills", "brainstorming", "skill.yaml"))
+	require.ErrorIs(t, err, os.ErrNotExist)
+	_, err = os.Stat(filepath.Join(dir, ".strategist", "skills", "openspec-explore", "skill.yaml"))
+	require.ErrorIs(t, err, os.ErrNotExist)
 }
 
 // TestInstall_WizardPath_PersistsRankedBindingModes protects the full wizard

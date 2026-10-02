@@ -8,7 +8,7 @@ import (
 
 // catalogInstallableDefaultProviders maps every catalog entry flagged
 // `installable: true` to its own id. Installability is that flag alone; it does not
-// depend on legacy_manifest_path, the generated compat view's location.
+// depend on legacy_manifest_path, retained only as compatibility metadata.
 func catalogInstallableDefaultProviders(catalog pluginCatalog) map[string]string {
 	installable := map[string]string{}
 	for _, provider := range catalog.Providers {
@@ -20,7 +20,7 @@ func catalogInstallableDefaultProviders(catalog pluginCatalog) map[string]string
 }
 
 // resolveInstallableDefaultProviders returns the installable provider -> provider id
-// map used to decide which providers get a written skill.yaml on install. It
+// map used to decide which providers are eligible for default binding. It
 // propagates a loadPluginCatalog failure instead of silently substituting
 // installableDefaultProviders (ADR-0035 Decision 2: no fallback substitution).
 // In practice this error branch is unreachable via either of this function's

@@ -29,7 +29,7 @@ func TestLayoutSkewAdvisoryWhenTheRuntimeIsNewerThanTheBinary(t *testing.T) {
 
 	require.Len(t, advisories, 1)
 	assert.Contains(t, advisories[0], "reason=runtime_layout_newer_than_binary")
-	assert.Contains(t, advisories[0], "runtime_generation=2")
+	assert.Contains(t, advisories[0], "runtime_generation=3")
 	assert.NotContains(t, advisories[0], "reason=runtime_newer_than_binary", "a different reason code from the blocking hash-based check")
 }
 

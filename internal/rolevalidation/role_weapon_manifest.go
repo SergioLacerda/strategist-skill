@@ -20,9 +20,8 @@ type skillManifest struct {
 func validateProviderManifest(root string, slot, role, provider string) []Failure {
 	// A native role binding is valid when its role contract is present and maps
 	// to the slot. External/embedded providers must additionally expose a valid
-	// manifest and explicit role affinity. The manifest is resolved with the
-	// catalog as the authority and the generated skills/<id>/skill.yaml view only
-	// as a fallback (domain.ResolveWeaponFacts).
+	// manifest and explicit role affinity. The facts are resolved from the
+	// catalog or a bound custom adapter (domain.ResolveWeaponFacts).
 	facts, err := domain.ResolveWeaponFacts(root, provider)
 	if errors.Is(err, domain.ErrWeaponFactsNotFound) {
 		return validateNativeBinding(root, slot, role, provider)

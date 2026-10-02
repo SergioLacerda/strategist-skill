@@ -279,8 +279,9 @@ on the first run. `--revision <n>` (n >= 1) records one further line for a gate 
 ## provider
 
 Validates and onboards an already-materialized local provider package. The
-source contains the existing `package.yaml` and `adapter.yaml` contracts; an
-optional `skill.yaml` is checked only as a compatibility view.
+source contains the existing `package.yaml` and `adapter.yaml` contracts. A
+legacy `skill.yaml`, when present in the source, is not generated into the
+runtime and is not an authority for resolution.
 
 ```bash
 strategist provider validate <source> [--format table|json|yaml]
@@ -517,11 +518,11 @@ strategist check [--root=<dir>] [--strict] [--simulate]
 
 - `active.yaml` present and parseable
 - For each slot (`discovery`, `refinement`, `execution`):
-  - `skills/<provider>/skill.yaml` exists (provider skill), **or** `roles/<provider>.yaml` exists with the slot field (native role)
-  - Provider skills must declare the correct `risk_score`: `discovery`/`refinement` → `write_analysis`; `execution` → `controlled`
+  - `plugins/catalog.yaml` or a bound custom package resolves the provider, **or** `roles/<provider>.yaml` exists with the slot field (native role)
+  - Cataloged Weapons and bound custom packages must declare the correct `risk_score`: `discovery`/`refinement` → `write_analysis`; `execution` → `controlled`
   - Native roles are validated against `domain.RoleConfig` (required `role` + valid `slot`), then accepted by slot match; no `risk_score` verification
 - Active persona file exists and contains required fields
-- Every normative runtime file (`SKILL.md`, `skill.yaml`, `protocol.md`, `templates/agent-protocol.md`, the preflight, approval-gate and execution contracts, the identity drift patterns) and the generated `agent-protocol.md` **exists**; an absent file is reported as `runtime_missing` (repair: `strategist install`, or `strategist compile` for `agent-protocol.md`) and `--json` returns `status: blocked`
+- Every normative runtime file (the root `skill.yaml`, `protocol.md`, `templates/agent-protocol.md`, the preflight, approval-gate and execution contracts, the identity drift patterns) and the generated `agent-protocol.md` **exists**; an absent file is reported as `runtime_missing` (repair: `strategist install`, or `strategist compile` for `agent-protocol.md`) and `--json` returns `status: blocked`
 - Normative runtime files match embedded defaults, byte for byte (detects stale installs)
 - When `.codex/` exists, its generated `commands.md` seed is checked for presence and current Strategist Runtime Discovery content; drift is reported as a non-blocking advisory
 - With `--strict`: compiled artifacts exist and match the recorded manifest hashes (see `compile`)
@@ -560,7 +561,7 @@ Note: `--simulate` reports readiness for the CLI-known `main` pipeline route onl
 
 **Failure output:**
 ```
-  ✗ slot execution: provider "sniper" not installed (missing .strategist/skills/sniper/skill.yaml)
+  ✗ slot execution: provider "sniper" not installed (missing catalog/custom binding or .strategist/roles/sniper.yaml)
 [Strategist] check=failed errors=1 root=.strategist
 ```
 

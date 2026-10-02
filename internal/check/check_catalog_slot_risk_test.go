@@ -45,17 +45,13 @@ func TestEmbeddedCatalogRiskMatchesSlotContract(t *testing.T) {
 
 func TestExecutionSlotRejectsCustomSkillProviderBelowControlled(t *testing.T) {
 	root := t.TempDir()
-	require.NoError(t, os.MkdirAll(filepath.Join(root, "skills", "custom-sniper"), 0o755))
-	manifest := func(risk string) []byte {
-		return []byte("id: custom-sniper\nrisk_score: " + risk + "\ncanonical_role: sniper\nroles: [sniper]\n")
-	}
-	skillPath := filepath.Join(root, "skills", "custom-sniper", "skill.yaml")
-
-	require.NoError(t, os.WriteFile(skillPath, manifest("write_analysis"), 0o644))
-	_, errMsg := resolveSkillProviderSlot(root, "execution", "custom-sniper", skillPath, manifest("write_analysis"))
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "plugins"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins", "catalog.yaml"), []byte("schema_version: strategist-plugin-catalog/v2\nproviders:\n  - id: custom-sniper\n    risk_score: write_analysis\n    canonical_role: sniper\n    roles: [sniper]\n"), 0o644))
+	_, errMsg := resolveSlotProvider(root, "execution", "custom-sniper")
 	assert.Contains(t, errMsg, `requires "controlled"`)
 
-	_, errMsg = resolveSkillProviderSlot(root, "execution", "custom-sniper", skillPath, manifest("controlled"))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins", "catalog.yaml"), []byte("schema_version: strategist-plugin-catalog/v2\nproviders:\n  - id: custom-sniper\n    risk_score: controlled\n    canonical_role: sniper\n    roles: [sniper]\n"), 0o644))
+	_, errMsg = resolveSlotProvider(root, "execution", "custom-sniper")
 	assert.NotContains(t, errMsg, "requires", "a controlled custom Sniper satisfies the slot contract")
 }
 
@@ -65,14 +61,9 @@ func TestSlotRiskComesFromTheCatalogNotTheCompatView(t *testing.T) {
 	root := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "plugins"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins", "catalog.yaml"), []byte("schema_version: strategist-plugin-catalog/v2\nproviders:\n  - id: cat-sniper\n    risk_score: controlled\n    canonical_role: sniper\n    roles: [sniper]\n  - id: cat-low\n    risk_score: write_analysis\n    canonical_role: sniper\n    roles: [sniper]\n"), 0o644))
-	stale := func(risk string) []byte {
-		return []byte("risk_score: " + risk + "\ncanonical_role: sniper\nroles: [sniper]\n")
-	}
-	path := filepath.Join(root, "skills", "x", "skill.yaml")
-
-	_, errMsg := resolveSkillProviderSlot(root, "execution", "cat-sniper", path, stale("write_analysis"))
+	_, errMsg := resolveSlotProvider(root, "execution", "cat-sniper")
 	assert.NotContains(t, errMsg, "requires", "the catalog says controlled; the stale view is ignored")
 
-	_, errMsg = resolveSkillProviderSlot(root, "execution", "cat-low", path, stale("controlled"))
+	_, errMsg = resolveSlotProvider(root, "execution", "cat-low")
 	assert.Contains(t, errMsg, `requires "controlled"`, "the catalog says write_analysis; the stale view cannot raise it")
 }

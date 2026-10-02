@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // knownProvidersExtractor serves a synthetic templates/known-providers.yaml.
@@ -62,22 +61,4 @@ func (p partialExtractor) ReadFile(relPath string) ([]byte, error) {
 		return nil, fmt.Errorf("partialExtractor: injected failure for %s", relPath)
 	}
 	return minimalExtractor{}.ReadFile(relPath)
-}
-
-// TestWriteSelectedProviderManifests_ReadFileFails proves manifest writing
-// fails closed when the catalog cannot be read; no legacy manifest fallback is
-// consulted. Since resolveInstallableDefaultProviders started propagating this
-// error (ADR-0035 Decision 2 / SQ-2 hardening), the failure now surfaces at
-// that earlier call rather than at the later providerManifestBytes call — the
-// caller-visible contract (error, no silent fallback) is unchanged.
-func TestWriteSelectedProviderManifests_ReadFileFails(t *testing.T) {
-	t.Parallel()
-	dir := t.TempDir()
-	ext := partialExtractor{failPaths: map[string]bool{
-		pluginCatalogPath: true,
-	}}
-	svc := Service{Extractor: ext, Compiler: nopCompiler{}, ShimHomeDir: t.TempDir()}
-	err := svc.writeSelectedProviderManifest(dir, "brainstorming")
-	require.Error(t, err)
-	assert.ErrorContains(t, err, "brainstorming")
 }

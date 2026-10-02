@@ -18,7 +18,7 @@ func customConformanceReadiness(root, slot, provider, path string, probe connect
 }
 
 // customConformanceReadinessFor is the conformance evidence for a Weapon; rolesOf
-// supplies its role affinity (from the catalog or the compat view) and is called
+// supplies its role affinity from the catalog or custom package and is called
 // only after the slot's own role contract resolved, so the failure order is stable.
 func customConformanceReadinessFor(root, slot, provider string, rolesOf func() ([]string, domain.ReadinessCheck), probe connectors.ConnectorResult) domain.ReadinessCheck {
 	roleID, roleContract, failure := resolveCustomRole(root, slot)

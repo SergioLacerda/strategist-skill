@@ -167,8 +167,8 @@ produces `role_invocation_failed` without a native fallback. See
 
 Whenever the refinement slot is bound to an external Weapon (default:
 `{{.Slots.Refinement}}` — see `active.slots.refinement`), Archivist invokes the
-Weapon's declared runtime connector. Read `skills/<weapon>/skill.yaml#roles`
-and load `roles/archivist.yaml` for the Role contract before acting. For
+Weapon's declared runtime connector. Read the bound Weapon's catalog or custom
+adapter facts and load `roles/archivist.yaml` for the Role contract before acting. For
 Ranked `openspec_root`, the declared root is `.strategist/openspec`; the bundled
 launcher under `.strategist/weapon-runtime/openspec-propose/` is an executable
 asset, not a replacement project root.

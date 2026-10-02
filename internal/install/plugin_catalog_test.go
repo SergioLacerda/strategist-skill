@@ -34,35 +34,6 @@ func TestPluginCatalogGeneratesKnownProvidersView(t *testing.T) {
 	assert.Equal(t, legacyDoc.Providers, generatedDoc.Providers)
 }
 
-func TestPluginCatalogGeneratesLegacyProviderManifests(t *testing.T) {
-	t.Parallel()
-
-	ext := defaultsExtractor{}
-	catalog, err := loadPluginCatalog(ext)
-	require.NoError(t, err)
-
-	for provider := range installableDefaultProviders {
-		provider := provider
-		entry, ok := findCatalogProvider(catalog, provider)
-		require.True(t, ok, provider)
-		legacyPath := "skills/" + providerPayloadDirName(entry) + "/skill.yaml"
-		t.Run(provider, func(t *testing.T) {
-			t.Parallel()
-			generated, err := generateLegacyProviderManifest(catalog, provider)
-			require.NoError(t, err)
-			assert.Equal(t, string(generated), string(mustGenerateLegacyProviderManifest(t, catalog, provider)))
-
-			legacyBytes, err := ext.ReadFile(legacyPath)
-			require.NoError(t, err)
-
-			var generatedDoc, legacyDoc map[string]any
-			require.NoError(t, yaml.Unmarshal(generated, &generatedDoc))
-			require.NoError(t, yaml.Unmarshal(legacyBytes, &legacyDoc))
-			assert.Equal(t, legacyDoc, generatedDoc)
-		})
-	}
-}
-
 func TestLoadKnownProvidersPrefersPluginCatalog(t *testing.T) {
 	t.Parallel()
 
@@ -141,34 +112,6 @@ func TestResolveInstallableDefaultProvidersPropagatesCatalogError(t *testing.T) 
 	assert.Nil(t, got)
 }
 
-func TestProviderManifestBytesUsesPluginCatalog(t *testing.T) {
-	t.Parallel()
-
-	data, err := providerManifestBytes(catalogOnlyExtractor{catalog: []byte(`
-schema_version: strategist-plugin-catalog/v2
-providers:
-  - id: alpha
-    version: "1.0.0"
-    provider_schema_version: "1"
-    status: active
-    risk_score: write_analysis
-    category: discovery
-    canonical_role: ranger
-    description: Generated from catalog.
-    installable: true
-    legacy_manifest_path: skills/alpha/skill.yaml
-`)}, "alpha")
-	require.NoError(t, err)
-
-	var manifest map[string]any
-	require.NoError(t, yaml.Unmarshal(data, &manifest))
-	assert.Equal(t, "alpha", manifest["id"])
-	assert.Equal(t, "write_analysis", manifest["risk_score"])
-	assert.Equal(t, "ranger", manifest["canonical_role"])
-	assert.NotContains(t, manifest, "provider_class")
-	assert.NotContains(t, manifest, "specialization_taxonomy")
-}
-
 func TestPluginCatalogFeedsDeterministicResolverLock(t *testing.T) {
 	t.Parallel()
 
@@ -195,7 +138,7 @@ func TestPluginCatalogFeedsDeterministicResolverLock(t *testing.T) {
 	require.NoError(t, plugins.VerifyLock(first, candidates))
 }
 
-func TestPluginCatalogCandidateDigestTracksGeneratedLegacyManifest(t *testing.T) {
+func TestPluginCatalogCandidateDigestTracksNormalizedManifest(t *testing.T) {
 	t.Parallel()
 
 	ext := defaultsExtractor{}
@@ -204,18 +147,11 @@ func TestPluginCatalogCandidateDigestTracksGeneratedLegacyManifest(t *testing.T)
 
 	provider, ok := findCatalogProvider(catalog, "brainstorming")
 	require.True(t, ok)
-	generated, err := generateLegacyProviderManifest(catalog, "brainstorming")
+	generated, err := normalizedDigestManifest(catalog, "brainstorming")
 	require.NoError(t, err)
 
 	sum := sha256.Sum256(generated)
 	assert.Equal(t, fmt.Sprintf("sha256:%x", sum), catalogProviderDigest(provider))
-}
-
-func mustGenerateLegacyProviderManifest(t *testing.T, catalog pluginCatalog, provider string) []byte {
-	t.Helper()
-	generated, err := generateLegacyProviderManifest(catalog, provider)
-	require.NoError(t, err)
-	return generated
 }
 
 func reverseCatalogCandidates(in []plugins.Candidate) []plugins.Candidate {
@@ -249,22 +185,4 @@ func (defaultsExtractor) ReadFile(relPath string) ([]byte, error) {
 		return nil, fmt.Errorf("read defaults fixture %s: %w", relPath, err)
 	}
 	return data, nil
-}
-
-// The generator has two roles that outlive each other: the normalized-digest input (kept)
-// and the compat view writer (removed with the writers in generation N). The digest
-// callers use normalizedDigestManifest; the view writers keep generateLegacyProviderManifest,
-// a thin wrapper. Their bytes must stay identical, or every embedded Weapon is re-pinned.
-func TestDigestManifestAndViewWriterEmitIdenticalBytes(t *testing.T) {
-	t.Parallel()
-
-	catalog, err := loadPluginCatalog(defaultsExtractor{})
-	require.NoError(t, err)
-	for provider := range installableDefaultProviders {
-		digestInput, err := normalizedDigestManifest(catalog, provider)
-		require.NoError(t, err, provider)
-		viewOutput, err := generateLegacyProviderManifest(catalog, provider)
-		require.NoError(t, err, provider)
-		assert.Equal(t, string(digestInput), string(viewOutput), provider)
-	}
 }

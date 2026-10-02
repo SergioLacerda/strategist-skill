@@ -12,13 +12,9 @@ const (
 	// WeaponFactsSourceAdapter is the adapter.yaml of a package added with
 	// `provider add` and bound with mode custom.
 	WeaponFactsSourceAdapter = "adapter"
-	// WeaponFactsSourceCompatView is the generated skills/<id>/skill.yaml
-	// compatibility view, consulted only for a provider the catalog does not
-	// list (ADR-0030: a migration label, never an authority).
-	WeaponFactsSourceCompatView = "compat_view"
 )
 
-// ErrWeaponFactsNotFound means neither the catalog nor the compatibility view
+// ErrWeaponFactsNotFound means neither the catalog nor a bound custom package
 // describes the provider.
 var ErrWeaponFactsNotFound = errors.New("weapon facts not found")
 
@@ -30,8 +26,8 @@ var ErrWeaponFactsAmbiguous = errors.New("weapon reference is ambiguous across v
 // validation need about one Weapon, independent of where they were read from.
 type WeaponFacts struct {
 	ID string
-	// Version is the catalogued version; empty for a provider known only through
-	// the compat view. Together with ID it names the skills/<id>@<version>/ payload.
+	// Version is the catalogued or adapter-declared version. Together with ID it
+	// names the skills/<id>@<version>/ payload when the Weapon has one.
 	Version        string
 	Source         string
 	RiskScore      string
@@ -40,7 +36,7 @@ type WeaponFacts struct {
 	ScratchRoot    string
 	WeaponContract WeaponContract
 	// CompatibilitySource is the catalog classification (native_role, embedded,
-	// external); empty for a provider known only through the compat view.
+	// external).
 	CompatibilitySource string
 	Installable         bool
 	SupportedSlots      []string
@@ -52,14 +48,14 @@ type WeaponFacts struct {
 	// RequestedPermissions is what the Weapon asks to be granted; only an
 	// adapter.yaml declares it today (the catalog entry declares none).
 	RequestedPermissions []PluginPermission
-	// Entrypoints are the entrypoints an adapter.yaml declares; the catalog and the
-	// compat view declare none here.
+	// Entrypoints are the entrypoints an adapter.yaml declares; catalog entries do
+	// not declare them here.
 	Entrypoints []string
 }
 
-// weaponFactsDoc is the subset of a catalog entry, or of a generated
-// skills/<id>/skill.yaml, that WeaponFacts reads. Both carry these keys; the
-// nested specialization_taxonomy shape is accepted for compiled runtime copies.
+// weaponFactsDoc is the subset of a catalog entry or adapter document that
+// WeaponFacts reads. The nested specialization_taxonomy shape is accepted for
+// compiled runtime copies.
 type weaponFactsDoc struct {
 	ID                   string             `yaml:"id"`
 	Version              string             `yaml:"version"`
@@ -102,18 +98,9 @@ func (d weaponFactsDoc) manifest(source string) WeaponFacts {
 
 // ResolveWeaponFacts returns the manifest of provider under a .strategist
 // root. The catalog entry is the authority; the adapter.yaml of a package bound
-// with mode custom comes next; the generated compatibility view is read last,
-// and only for a provider neither of them describes. An unreadable catalog is an
-// error: a broken authority never silently falls back.
+// with mode custom comes next. An unreadable catalog is an error: a broken
+// authority never silently falls back.
 func ResolveWeaponFacts(strategistRoot, provider string) (WeaponFacts, error) {
-	return ResolveWeaponFactsFrom(strategistRoot, provider, nil)
-}
-
-// ResolveWeaponFactsFrom is ResolveWeaponFacts for a caller that has already
-// read the provider's compatibility view: when the catalog does not list the
-// provider, compat is parsed instead of being read from disk again. A nil compat
-// reads skills/<id>/skill.yaml.
-func ResolveWeaponFactsFrom(strategistRoot, provider string, compat []byte) (WeaponFacts, error) {
 	facts, found, err := factsFromCatalog(strategistRoot, provider)
 	if err != nil || found {
 		return facts, err
@@ -121,15 +108,12 @@ func ResolveWeaponFactsFrom(strategistRoot, provider string, compat []byte) (Wea
 	if facts, found, err = factsFromAdapter(strategistRoot, provider); err != nil || found {
 		return facts, err
 	}
-	if compat != nil {
-		return parseCompatView(provider, compat)
-	}
-	return factsFromCompatView(strategistRoot, provider)
+	return WeaponFacts{}, ErrWeaponFactsNotFound
 }
 
 // ResolveCatalogWeaponFacts returns the catalog entry of provider, if the
 // catalog lists it. Unlike ResolveWeaponFacts it never falls back to an
-// adapter.yaml or to the compat view; slot resolution uses it to tell a
+// adapter.yaml; slot resolution uses it to tell a
 // cataloged Weapon from a provider the catalog does not know.
 func ResolveCatalogWeaponFacts(strategistRoot, provider string) (WeaponFacts, bool, error) {
 	return factsFromCatalog(strategistRoot, provider)

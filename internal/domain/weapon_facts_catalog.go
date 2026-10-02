@@ -73,23 +73,3 @@ func catalogDocVersion(doc weaponFactsDoc) string {
 	}
 	return doc.Version
 }
-
-func factsFromCompatView(strategistRoot, provider string) (WeaponFacts, error) {
-	raw, err := os.ReadFile(filepath.Join(strategistRoot, "skills", provider, "skill.yaml")) //nolint:gosec // G304: path derived from the runtime root and provider id
-	if errors.Is(err, os.ErrNotExist) {
-		return WeaponFacts{}, fmt.Errorf("%w: %s", ErrWeaponFactsNotFound, provider)
-	}
-	if err != nil {
-		return WeaponFacts{}, fmt.Errorf("read compat view for %s: %w", provider, err)
-	}
-	return parseCompatView(provider, raw)
-}
-
-func parseCompatView(provider string, raw []byte) (WeaponFacts, error) {
-	var doc weaponFactsDoc
-	if err := yaml.Unmarshal(raw, &doc); err != nil {
-		return WeaponFacts{}, fmt.Errorf("parse compat view for %s: %w", provider, err)
-	}
-	doc.ID = provider
-	return doc.manifest(WeaponFactsSourceCompatView), nil
-}

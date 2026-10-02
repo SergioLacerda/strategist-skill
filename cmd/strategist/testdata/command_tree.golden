@@ -14,9 +14,9 @@ long: |
   Checks performed:
     - active.yaml is present and parseable
     - For each slot (discovery, refinement, execution):
-        • skills/<provider>/skill.yaml exists (skill provider), OR
+        • plugins/catalog.yaml or a bound custom provider resolves the Weapon, OR
           roles/<provider>.yaml exists with matching slot field (native role)
-        • skill providers must declare the correct risk_score for the slot contract:
+        • cataloged Weapons and bound custom providers must declare the correct risk_score for the slot contract:
           discovery/refinement → write_analysis, execution → controlled
         • native roles are accepted by slot field match; no risk_score check
     - discovery and refinement must have one valid persisted weapon binding in plugins.lock
@@ -513,9 +513,9 @@ long: |
   Resolves every ORKA-shaped package under --source (each subdirectory
   paired with a strategist.yaml project-adapter sidecar declaring
   canonical_role/risk_score), verifies it, and merges the result into
-  internal/embed/defaults/plugins/catalog.yaml plus generated
-  internal/embed/defaults/skills/<id>/skill.yaml mirrors, recording exactly
-  what was embedded in a committed lock file.
+  internal/embed/defaults/plugins/catalog.yaml and the committed provenance
+  lock. Generation-2 embedded payloads do not include generated
+  skills/<id>/skill.yaml compatibility mirrors.
   
   This is a maintainer/CI operation on this repository's own embedded
   defaults (ADR-0032's pre-build ingestion pattern, generalized from Treasure
@@ -525,7 +525,7 @@ long: |
   
   Use --check in CI to fail non-zero on drift instead of writing.
 flag: --check (bool) default="false" usage="fail non-zero on drift instead of writing (for CI)"
-flag: --defaults-root (string) default="internal/embed/defaults" usage="internal/embed/defaults root to generate catalog.yaml and skills/<id>/skill.yaml into"
+flag: --defaults-root (string) default="internal/embed/defaults" usage="internal/embed/defaults root to generate catalog.yaml and versioned skill payloads into"
 flag: --lock (string) default="external-skills-source.lock.yaml" usage="path to the committed embedded-skill lock file"
 flag: --source (string) default="external-skills-source" usage="directory of ORKA-shaped skill packages to ingest"
 

@@ -168,18 +168,6 @@ func writeWizardLevelingFixture(t *testing.T, dir string) {
 	require.NoError(t, os.WriteFile(filepath.Join(dir, levelingPolicyPath), raw, 0o600))
 }
 
-func TestWriteSelectedProviderManifest_WriteError(t *testing.T) {
-	t.Parallel()
-	skipIfPermissionTestUnsupported(t)
-	dir := t.TempDir()
-	require.NoError(t, os.Chmod(dir, 0o555))
-	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
-	s := Service{Extractor: minimalExtractor{}}
-	err := s.writeSelectedProviderManifest(dir, "brainstorming")
-	require.Error(t, err)
-	assert.ErrorContains(t, err, "write ")
-}
-
 func TestResolvePrompter_DefaultsToTUIWhenNoOverrides(t *testing.T) {
 	t.Parallel()
 	s := Service{terminalDetector: func() bool { return true }}
@@ -259,6 +247,6 @@ func TestApplySilentConfig_ActivatesRoleProviderBindings(t *testing.T) {
 	assert.Contains(t, string(lockData), "brainstorming")
 	assert.Contains(t, string(lockData), "openspec-propose")
 
-	assert.FileExists(t, filepath.Join(dir, ".strategist", "skills", "brainstorming", "skill.yaml"))
-	assert.FileExists(t, filepath.Join(dir, ".strategist", "skills", "openspec-propose", "skill.yaml"))
+	assert.NoFileExists(t, filepath.Join(dir, ".strategist", "skills", "brainstorming", "skill.yaml"))
+	assert.NoFileExists(t, filepath.Join(dir, ".strategist", "skills", "openspec-propose", "skill.yaml"))
 }

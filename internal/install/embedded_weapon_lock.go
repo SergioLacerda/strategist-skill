@@ -9,7 +9,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// WriteCatalogAndMirrors writes the merged catalog, mirrors, and provenance lock.
+// WriteCatalogAndMirrors writes the merged catalog, versioned package payloads,
+// and provenance lock. The historical name remains part of the maintainer API;
+// generated compatibility views are intentionally no longer materialized.
 func WriteCatalogAndMirrors(result IngestionResult, defaultsRoot, catalogPath, lockPath string) error {
 	if err := writeCatalog(result.Catalog, catalogPath); err != nil {
 		return err

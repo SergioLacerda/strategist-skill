@@ -98,7 +98,6 @@ func TestCustomPackageResolvesByItsInstanceId(t *testing.T) {
 	assert.Equal(t, "adapter_entrypoints_declared", res.readiness.Entrypoint.ReasonCode)
 	assert.Equal(t, domain.ReadinessReady, res.readiness.PermissionGrant.Status)
 	assert.Equal(t, "no_permissions_requested", res.readiness.PermissionGrant.ReasonCode)
-	assert.False(t, res.transitionalView)
 }
 
 func TestCustomPackageRequestingPermissionsIsBlockedUntilGranted(t *testing.T) {

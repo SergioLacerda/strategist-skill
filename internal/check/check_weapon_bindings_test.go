@@ -3,6 +3,7 @@ package check
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -10,8 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// writeWeaponFixture writes a minimal <root>/skills/<id>/skill.yaml and,
-// when roleYAML is non-empty, a matching <root>/roles/<role>.yaml.
+// writeWeaponFixture writes a minimal catalog entry and versioned payload,
+// plus a legacy view only where a test explicitly needs residual state.
 func writeWeaponFixture(t *testing.T, root, skillID, canonicalRole, roleYAML string) {
 	t.Helper()
 	skillDir := filepath.Join(root, "skills", skillID)
@@ -24,12 +25,39 @@ func writeWeaponFixture(t *testing.T, root, skillID, canonicalRole, roleYAML str
 		}
 	}
 	require.NoError(t, os.WriteFile(filepath.Join(skillDir, "skill.yaml"), []byte(body), 0o644))
+	if canonicalRole != "" {
+		payloadDir := filepath.Join(root, "skills", skillID+"@0.0.0")
+		require.NoError(t, os.MkdirAll(payloadDir, 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(payloadDir, "SKILL.md"), []byte("# payload\n"), 0o644))
+		appendFixtureCatalogProvider(t, root, skillID, canonicalRole)
+	}
 
 	if roleYAML != "" {
 		rolesDir := filepath.Join(root, "roles")
 		require.NoError(t, os.MkdirAll(rolesDir, 0o755))
 		require.NoError(t, os.WriteFile(filepath.Join(rolesDir, canonicalRole+".yaml"), []byte(roleYAML), 0o644))
 	}
+}
+
+func appendFixtureCatalogProvider(t *testing.T, root, skillID, canonicalRole string) {
+	t.Helper()
+	path := filepath.Join(root, "plugins", "catalog.yaml")
+	raw, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return
+	}
+	require.NoError(t, err)
+	entry := "    - id: " + skillID + "\n      risk_score: write_analysis\n      compatibility_source: embedded\n      canonical_role: " + canonicalRole + "\n      roles: [" + canonicalRole + "]\n"
+	text := string(raw)
+	switch {
+	case !strings.Contains(text, "\nproviders:\n") && !strings.HasPrefix(text, "providers:\n"):
+		text = strings.Replace(text, "schema_version: strategist-plugin-catalog/v2\n", "schema_version: strategist-plugin-catalog/v2\nproviders:\n"+entry, 1)
+	case strings.Contains(text, "\nweapons:\n"):
+		text = strings.Replace(text, "\nweapons:\n", "\n"+entry+"\nweapons:\n", 1)
+	default:
+		text += "\n" + entry
+	}
+	require.NoError(t, os.WriteFile(path, []byte(text), 0o644))
 }
 
 func writeDefaultRoleSlotMap(t *testing.T, root string) {
@@ -115,6 +143,7 @@ func TestVerifyEmbeddedWeaponBindings_SkipsSkillsWithoutCanonicalRole(t *testing
 func TestVerifyEmbeddedWeaponBindings_ReportsFormerAuxiliaryTools(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
+	writeRegistryCatalog(t, root, fixtureRegistry())
 	writeWeaponFixture(t, root, "writing-plans", "auxiliary", "")
 
 	bindings, err := verifyEmbeddedWeaponBindings(root)
@@ -148,6 +177,7 @@ func TestSelectedDiscoveryWeaponRequiresBoundaryContract(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	writeDefaultRoleSlotMap(t, root)
+	writeRegistryCatalog(t, root, fixtureRegistry())
 	writeWeaponFixture(t, root, "brainstorming", "ranger", "role: ranger\nslot: discovery\n")
 
 	// Remove the helper's valid contract so the failure is isolated to the
@@ -221,6 +251,7 @@ func TestVerifyEmbeddedWeaponBindings_InvalidRoleConfig(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	writeDefaultRoleSlotMap(t, root)
+	writeRegistryCatalog(t, root, fixtureRegistry())
 	// slot missing entirely from the role file — RoleConfig.Validate fails.
 	writeWeaponFixture(t, root, "broken-skill", "archivist", "role: archivist\n")
 
@@ -232,7 +263,7 @@ func TestVerifyEmbeddedWeaponBindings_InvalidRoleConfig(t *testing.T) {
 	assert.Contains(t, b.Reason, "role config invalid")
 }
 
-func TestVerifyEmbeddedWeaponBindings_MalformedSkillYAML(t *testing.T) {
+func TestVerifyEmbeddedWeaponBindings_IgnoresMalformedResidualView(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	skillDir := filepath.Join(root, "skills", "broken")
@@ -241,10 +272,8 @@ func TestVerifyEmbeddedWeaponBindings_MalformedSkillYAML(t *testing.T) {
 
 	bindings, err := verifyEmbeddedWeaponBindings(root)
 	require.NoError(t, err)
-	b, found := findBinding(bindings, "broken")
-	require.True(t, found)
-	assert.False(t, b.OK)
-	assert.Contains(t, b.Reason, "skill.yaml invalid")
+	_, found := findBinding(bindings, "broken")
+	assert.False(t, found, "a residual skill.yaml is not a roster authority")
 }
 
 func TestVerifyEmbeddedWeaponBindings_SkipsNonDirectoryEntry(t *testing.T) {
@@ -266,6 +295,7 @@ func TestVerifyEmbeddedWeaponBindings_RoleFileMalformedYAML(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	writeDefaultRoleSlotMap(t, root)
+	writeRegistryCatalog(t, root, fixtureRegistry())
 	writeWeaponFixture(t, root, "broken-role-yaml", "archivist", "role: [unterminated")
 
 	bindings, err := verifyEmbeddedWeaponBindings(root)
@@ -280,6 +310,7 @@ func TestVerifyEmbeddedWeaponBindings_MissingRoleSlotMap(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	// No roles/default.yaml written at all.
+	writeRegistryCatalog(t, root, fixtureRegistry())
 	writeWeaponFixture(t, root, "brainstorming", "ranger", "role: ranger\nslot: discovery\n")
 
 	bindings, err := verifyEmbeddedWeaponBindings(root)

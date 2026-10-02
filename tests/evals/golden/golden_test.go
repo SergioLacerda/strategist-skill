@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	embedpkg "github.com/SergioLacerda/strategist-skill/internal/embed"
+	"gopkg.in/yaml.v3"
 )
 
 func TestDeterministicArtifacts(t *testing.T) {
@@ -29,7 +30,9 @@ func TestDeterministicArtifacts(t *testing.T) {
 		load   func(*testing.T) []byte
 	}{
 		{"handoff-manifest", "handoffs/archivist-to-sniper.json", Normalized, read(root, "internal/embed/defaults/schemas/handoff-archivist-to-sniper.schema.yaml")},
-		{"provider-manifest", "manifests/brainstorming.json", Normalized, read(root, "internal/embed/defaults/skills/brainstorming@1.0.0/skill.yaml")},
+		{"provider-catalog", "catalog/brainstorming.json", Normalized, func(t *testing.T) []byte {
+			return readCatalogProvider(t, root, "brainstorming")
+		}},
 		{"telemetry-attributes", "telemetry/attribute-keys.txt", Exact, telemetryAttributes(root)},
 		{"cli-help", "cli/help.txt", Exact, cliHelp(root)},
 		{"rendered-schema", "schemas/intake.json", Normalized, read(root, "internal/embed/defaults/schemas/intake.schema.yaml")},
@@ -138,7 +141,7 @@ func TestEmbeddedDefaultsMatchCanonicalSources(t *testing.T) {
 	}
 	for _, rel := range []string{
 		"schemas/handoff-archivist-to-sniper.schema.yaml",
-		"skills/brainstorming@1.0.0/skill.yaml",
+		"plugins/catalog.yaml",
 		"templates/epic-standalone.yaml",
 	} {
 		t.Run(rel, func(t *testing.T) {
@@ -149,6 +152,29 @@ func TestEmbeddedDefaultsMatchCanonicalSources(t *testing.T) {
 			}
 		})
 	}
+}
+
+func readCatalogProvider(t *testing.T, root, providerID string) []byte {
+	t.Helper()
+	raw := readFile(t, filepath.Join(root, "internal", "embed", "defaults", "plugins", "catalog.yaml"))
+	var catalog struct {
+		Providers []map[string]any `yaml:"providers"`
+	}
+	if err := yamlUnmarshal(raw, &catalog); err != nil {
+		t.Fatal(err)
+	}
+	for _, provider := range catalog.Providers {
+		if provider["id"] != providerID {
+			continue
+		}
+		encoded, err := yaml.Marshal(provider)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return encoded
+	}
+	t.Fatalf("provider %q not found in embedded catalog", providerID)
+	return nil
 }
 
 func TestCanonicalizeStructuredValuesDeterministically(t *testing.T) {

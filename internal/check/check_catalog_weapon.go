@@ -11,7 +11,7 @@ import (
 )
 
 // resolveCatalogWeaponSlot resolves a Weapon the plugin catalog lists (embedded or
-// external) without reading any generated skills/<id>/skill.yaml: risk and role
+// external) without reading any generated provider view: risk and role
 // affinity come from the catalog entry, and readiness from the catalog descriptor
 // and the Weapon's payload.
 func resolveCatalogWeaponSlot(root, slot, provider string, facts domain.WeaponFacts) (slotResolution, string) {

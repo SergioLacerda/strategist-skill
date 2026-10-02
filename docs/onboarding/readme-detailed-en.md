@@ -773,7 +773,7 @@ Template for use with SDD: `templates/epic-sdd.yaml`
 
 | Code | Condition | Resolution |
 |------|-----------|------------|
-| `slot_provider_not_found` | Provider's skill.yaml not found | Check id in roles config and skill root path |
+| `slot_provider_not_found` | Catalog/custom provider or native role not found | Check the provider id, catalog/binding, and runtime root |
 | `slot_risk_mismatch` | Ranger ≠ `write_analysis`, Archivist ≠ `write_analysis`, or Sniper ≠ `controlled` | Replace provider |
 | `intake_conflict_unresolved` | Two mutually exclusive constraint aliases in the prompt | User must clarify |
 | `preflight_failed` | Any preflight check failed | See emitted reason code |

@@ -64,25 +64,20 @@ func TestResolveWeaponFactsPrefersTheCatalogOverAStaleCompatView(t *testing.T) {
 	assert.Equal(t, domain.WeaponFactsSourceCatalog, manifest.Source)
 }
 
-func TestResolveWeaponFactsFallsBackToTheCompatViewForUnlistedProviders(t *testing.T) {
+func TestResolveWeaponFactsRejectsAnUnlistedProviderEvenWhenACompatViewRemains(t *testing.T) {
 	root := manifestRoot(t, manifestCatalog, map[string]string{"custom": "risk_score: write_analysis\ncanonical_role: archivist\nscratch_root: runtime\n"})
 
-	manifest, err := domain.ResolveWeaponFacts(root, "custom")
+	_, err := domain.ResolveWeaponFacts(root, "custom")
 
-	require.NoError(t, err)
-	assert.Equal(t, domain.WeaponFactsSourceCompatView, manifest.Source)
-	assert.Equal(t, "write_analysis", manifest.RiskScore)
-	assert.Equal(t, []string{"archivist"}, manifest.Roles, "roles fall back to the canonical role")
-	assert.Equal(t, "runtime", manifest.ScratchRoot)
+	require.ErrorIs(t, err, domain.ErrWeaponFactsNotFound)
 }
 
-func TestResolveWeaponFactsFallsBackWhenTheCatalogIsAbsent(t *testing.T) {
+func TestResolveWeaponFactsRequiresCatalogOrBoundCustomPackage(t *testing.T) {
 	root := manifestRoot(t, "", map[string]string{"legacy": "risk_score: controlled\nroles: [sniper]\n"})
 
-	manifest, err := domain.ResolveWeaponFacts(root, "legacy")
+	_, err := domain.ResolveWeaponFacts(root, "legacy")
 
-	require.NoError(t, err)
-	assert.Equal(t, domain.WeaponFactsSourceCompatView, manifest.Source)
+	require.ErrorIs(t, err, domain.ErrWeaponFactsNotFound)
 }
 
 func TestResolveWeaponFactsReportsAnUnknownProvider(t *testing.T) {
@@ -102,26 +97,12 @@ func TestResolveWeaponFactsRejectsAMalformedCatalog(t *testing.T) {
 }
 
 func TestResolveWeaponFactsNestedCanonicalRoleShape(t *testing.T) {
-	root := manifestRoot(t, "", map[string]string{"nested": "risk_score: write_analysis\nspecialization_taxonomy:\n  canonical_role: ranger\n"})
+	root := manifestRoot(t, "schema_version: strategist-plugin-catalog/v2\nproviders:\n  - id: nested\n    risk_score: write_analysis\n    specialization_taxonomy:\n      canonical_role: ranger\n", nil)
 
 	manifest, err := domain.ResolveWeaponFacts(root, "nested")
 
 	require.NoError(t, err)
 	assert.Equal(t, []string{"ranger"}, manifest.Roles)
-}
-
-func TestResolveWeaponFactsFromUsesTheSuppliedCompatBytesWithoutTouchingDisk(t *testing.T) {
-	root := manifestRoot(t, manifestCatalog, nil)
-
-	facts, err := domain.ResolveWeaponFactsFrom(root, "in-memory", []byte("risk_score: write_analysis\ncanonical_role: archivist\n"))
-
-	require.NoError(t, err)
-	assert.Equal(t, domain.WeaponFactsSourceCompatView, facts.Source)
-	assert.Equal(t, []string{"archivist"}, facts.Roles)
-
-	catalog, err := domain.ResolveWeaponFactsFrom(root, "cat-weapon", []byte("risk_score: write_analysis\n"))
-	require.NoError(t, err)
-	assert.Equal(t, "controlled", catalog.RiskScore, "the catalog still wins over supplied compat bytes")
 }
 
 func TestResolveWeaponFactsCarriesTheCatalogClassification(t *testing.T) {
@@ -302,13 +283,12 @@ func TestResolveWeaponFactsReportsAnUncataloguedVersion(t *testing.T) {
 	require.ErrorIs(t, err, domain.ErrWeaponFactsNotFound)
 }
 
-func TestResolveWeaponFactsKeepsACustomNameAtVersionOutsideTheCatalogOnItsOwnPath(t *testing.T) {
+func TestResolveWeaponFactsRejectsAnUnboundCustomNameAtVersion(t *testing.T) {
 	root := manifestRoot(t, versionedManifestCatalog, map[string]string{"team-skill@1.2.0": "id: team-skill\nrisk_score: write_analysis\ncanonical_role: ranger\n"})
 
-	facts, err := domain.ResolveWeaponFacts(root, "team-skill@1.2.0")
+	_, err := domain.ResolveWeaponFacts(root, "team-skill@1.2.0")
 
-	require.NoError(t, err)
-	assert.Equal(t, domain.WeaponFactsSourceCompatView, facts.Source)
+	require.ErrorIs(t, err, domain.ErrWeaponFactsNotFound)
 }
 
 func TestWeaponRefMatchesBinding(t *testing.T) {

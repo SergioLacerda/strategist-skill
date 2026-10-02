@@ -13,9 +13,8 @@ import (
 // list `provider add` also applies at bind time.
 var slotContract = domain.SlotRiskContract
 
-// slotResolutionKind identifies which of the two independent resolver branches
-// satisfied a slot: an external skill provider (skills/<provider>/skill.yaml,
-// validated against risk_score) or a built-in Strategist native role
+// slotResolutionKind identifies which of the independent resolver branches
+// satisfied a slot: a catalog/custom Weapon or a built-in Strategist native role
 // (roles/<provider>.yaml, validated against RoleConfig.Validate + slot match).
 // These are different authorities and must never be collapsed into one another
 // — see .strategist/contracts/machine/preflight.yaml and design.md for
@@ -38,45 +37,33 @@ type slotResolution struct {
 	kind      slotResolutionKind
 	path      string
 	readiness domain.PluginReadinessVector
-	// transitionalView marks a Weapon resolved through a hand-made compat view the
-	// catalog does not list (DEC-013): it stops resolving in the next runtime
-	// layout generation, so the operator is told.
-	transitionalView bool
 }
 
-// resolveSlotProvider resolves provider for slot through the two-branch model:
-// first as an external skill provider, then as a native Strategist role. On
+// resolveSlotProvider resolves provider for slot through catalog/custom Weapon
+// authority, then as a native Strategist role. On
 // success it returns the resolution and an empty error message. On failure it
 // returns a precise, branch-specific error message — a malformed or invalid
 // native role file is never collapsed into a generic "provider not installed"
 // message, since that would hide a real, fixable role-definition bug behind a
 // message that reads as "nothing here at all".
 func resolveSlotProvider(root, slot, provider string) (slotResolution, string) {
-	skillPath := filepath.Join(root, "skills", provider, "skill.yaml")
-	if res, msg, handled := resolveFromCatalog(root, slot, provider, skillPath); handled {
+	if res, msg, handled := resolveFromCatalog(root, slot, provider); handled {
 		return res, msg
 	}
 	if res, msg, handled := resolveFromCustomBinding(root, slot, provider); handled {
 		return res, msg
 	}
-	skillRaw, readErr := os.ReadFile(skillPath) //nolint:gosec // G304: provider manifest path is derived from the runtime skills directory
-	if readErr == nil {
-		return resolveSkillProviderSlot(root, slot, provider, skillPath, skillRaw)
-	}
-	if !os.IsNotExist(readErr) {
-		return slotResolution{}, fmt.Sprintf("slot %s: read %s: %v", slot, skillPath, readErr)
-	}
-	return resolveNativeRoleSlot(root, slot, provider, skillPath)
+	return resolveNativeRoleSlot(root, slot, provider)
 }
 
 // resolveFromCatalog is the first step of slot resolution (DEC-010): a provider the
-// catalog lists is resolved from its catalog entry, whether or not a generated
-// compat view exists. A native_role entry takes the native branch, an embedded or
+// catalog lists is resolved from its catalog entry. A native_role entry takes the
+// native branch, an embedded or
 // external entry the Weapon branch. A provider the catalog does not list is not
-// handled here and falls through to the transitional compat view and then to the
-// native role file. A package added with `provider add` is resolved by the next
-// step, resolveFromCustomBinding (DEC-010 step 2).
-func resolveFromCatalog(root, slot, provider, skillPath string) (slotResolution, string, bool) {
+// handled here and falls through to the native role file. A package added with
+// `provider add` is resolved by the next step, resolveFromCustomBinding (DEC-010
+// step 2).
+func resolveFromCatalog(root, slot, provider string) (slotResolution, string, bool) {
 	facts, found, err := domain.ResolveCatalogWeaponFacts(root, provider)
 	if err != nil {
 		return slotResolution{}, fmt.Sprintf("slot %s: plugin catalog invalid: %v", slot, err), true
@@ -85,45 +72,22 @@ func resolveFromCatalog(root, slot, provider, skillPath string) (slotResolution,
 		return slotResolution{}, "", false
 	}
 	if facts.CompatibilitySource == "native_role" {
-		res, msg := resolveNativeRoleSlot(root, slot, provider, skillPath)
+		res, msg := resolveNativeRoleSlot(root, slot, provider)
 		return res, msg, true
 	}
 	res, msg := resolveCatalogWeaponSlot(root, slot, provider, facts)
 	return res, msg, true
 }
 
-func resolveSkillProviderSlot(root, slot, provider, skillPath string, skillRaw []byte) (slotResolution, string) {
-	var skillDef struct {
-		RiskScore string `yaml:"risk_score"`
-	}
-	// The compat view must still parse (entrypoint probing reads it); risk and
-	// roles come from domain.ResolveWeaponFacts, where the catalog is the authority.
-	if yamlErr := yaml.Unmarshal(skillRaw, &skillDef); yamlErr != nil {
-		return slotResolution{}, fmt.Sprintf("slot %s: provider %q skill.yaml invalid: %v", slot, provider, yamlErr)
-	}
-	facts, err := domain.ResolveWeaponFactsFrom(root, provider, skillRaw)
-	if err != nil {
-		return slotResolution{}, fmt.Sprintf("slot %s: provider %q manifest unresolved: %v", slot, provider, err)
-	}
-	required := slotContract[slot]
-	if facts.RiskScore != required {
-		return slotResolution{}, fmt.Sprintf("slot %s: provider %q has risk_score=%q but slot requires %q — preflight will block", slot, provider, facts.RiskScore, required)
-	}
-	if errMsg := checkRoleFactsCompatibility(root, slot, provider, facts.RiskScore, facts.Roles); errMsg != "" {
-		return slotResolution{}, errMsg
-	}
-	return slotResolution{kind: slotResolutionSkillProvider, path: skillPath, readiness: skillProviderReadiness(root, slot, provider, skillPath), transitionalView: true}, ""
-}
-
 // checkRoleProviderCompatibility lives in check_role_compatibility.go, split
 // out to keep this file under the repo's file-size budget.
 
-func resolveNativeRoleSlot(root, slot, provider, skillPath string) (slotResolution, string) {
+func resolveNativeRoleSlot(root, slot, provider string) (slotResolution, string) {
 	rolePath := filepath.Join(root, "roles", provider+".yaml")
 	roleRaw, roleErr := os.ReadFile(rolePath) //nolint:gosec // G304: native role path is derived from the runtime roles directory
 	if roleErr != nil {
 		if os.IsNotExist(roleErr) {
-			return slotResolution{}, fmt.Sprintf("slot %s: provider %q not installed (missing %s)", slot, provider, skillPath)
+			return slotResolution{}, fmt.Sprintf("slot %s: provider %q not installed (missing catalog/custom binding or %s)", slot, provider, rolePath)
 		}
 		return slotResolution{}, fmt.Sprintf("slot %s: role %q unreadable: %v", slot, provider, roleErr)
 	}
@@ -155,7 +119,6 @@ func loadRoleSlotMap(root string) (domain.RoleSlotMap, error) {
 	return roleMap, nil
 }
 
-// Plugin-readiness vector computation (skillProviderReadiness,
-// nativeRoleReadiness, probeSkillEntrypoint, blockedReadinessErrors, and
+// Plugin-readiness vector computation (nativeRoleReadiness, blockedReadinessErrors, and
 // their helpers) lives in check_readiness.go, split out to keep this file
 // under the repo's file-size budget.

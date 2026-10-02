@@ -22,9 +22,9 @@ satisfy their risk_score contracts.
 Checks performed:
   - active.yaml is present and parseable
   - For each slot (discovery, refinement, execution):
-      • skills/<provider>/skill.yaml exists (skill provider), OR
+      • plugins/catalog.yaml or a bound custom provider resolves the Weapon, OR
         roles/<provider>.yaml exists with matching slot field (native role)
-      • skill providers must declare the correct risk_score for the slot contract:
+      • cataloged Weapons and bound custom providers must declare the correct risk_score for the slot contract:
         discovery/refinement → write_analysis, execution → controlled
       • native roles are accepted by slot field match; no risk_score check
   - discovery and refinement must have one valid persisted weapon binding in plugins.lock

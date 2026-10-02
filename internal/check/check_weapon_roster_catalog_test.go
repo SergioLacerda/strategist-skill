@@ -99,7 +99,9 @@ func TestRosterReportsAnEmbeddedWeaponWhoseSkillPayloadIsMissing(t *testing.T) {
 
 func TestRosterDoesNotDuplicateACatalogedWeaponThatAlsoHasAView(t *testing.T) {
 	root := rosterRoot(t)
-	writeWeaponFixture(t, root, "brainstorming", "ranger", "")
+	residual := filepath.Join(root, "skills", "brainstorming", "skill.yaml")
+	require.NoError(t, os.MkdirAll(filepath.Dir(residual), 0o755))
+	require.NoError(t, os.WriteFile(residual, []byte("id: brainstorming\ncanonical_role: ranger\n"), 0o644))
 
 	bindings, err := verifyEmbeddedWeaponBindings(root)
 
@@ -113,15 +115,17 @@ func TestRosterDoesNotDuplicateACatalogedWeaponThatAlsoHasAView(t *testing.T) {
 	assert.Equal(t, 1, count)
 }
 
-// A hand-placed view for a Weapon the catalog does not list is still scanned
-// (transitional, DEC-013).
-func TestRosterStillScansAnUncatalogedViewDuringTheTransition(t *testing.T) {
+// A hand-placed view for a Weapon the catalog does not list is non-authoritative
+// after generation 2 and is not part of the embedded roster.
+func TestRosterIgnoresAnUncatalogedResidualView(t *testing.T) {
 	root := rosterRoot(t)
-	writeWeaponFixture(t, root, "hand-made", "archivist", "")
+	residual := filepath.Join(root, "skills", "hand-made", "skill.yaml")
+	require.NoError(t, os.MkdirAll(filepath.Dir(residual), 0o755))
+	require.NoError(t, os.WriteFile(residual, []byte("id: hand-made\ncanonical_role: archivist\n"), 0o644))
 
 	bindings, err := verifyEmbeddedWeaponBindings(root)
 
 	require.NoError(t, err)
 	_, ok := findBinding(bindings, "hand-made")
-	assert.True(t, ok)
+	assert.False(t, ok)
 }

@@ -37,7 +37,7 @@ func TestWriteSkillMirrorsKeepsTwoVersionsSideBySide(t *testing.T) {
 		got, err := os.ReadFile(filepath.Join(defaults, "skills", "demo@"+version, "SKILL.md"))
 		require.NoError(t, err)
 		assert.Equal(t, want, string(got), "each version keeps its own payload")
-		assert.FileExists(t, filepath.Join(defaults, "skills", "demo@"+version, "skill.yaml"))
+		assert.NoFileExists(t, filepath.Join(defaults, "skills", "demo@"+version, "skill.yaml"))
 	}
 	assert.NoDirExists(t, filepath.Join(defaults, "skills", "demo"), "no id-only directory is created")
 }

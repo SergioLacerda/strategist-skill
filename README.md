@@ -164,7 +164,7 @@ When integrating external skills:
 
 - preserve the upstream name, project, and public URL;
 - do not imply ownership of upstream prompts, artifacts, or implementation;
-- prefer canonical manifests/adapters in `.strategist/skills/<provider>/skill.yaml` instead of duplicating upstream content.
+- prefer the catalog authority in `.strategist/plugins/catalog.yaml` and versioned payloads in `.strategist/skills/<provider>@<version>/SKILL.md` instead of duplicating upstream content.
 
 ## License
 

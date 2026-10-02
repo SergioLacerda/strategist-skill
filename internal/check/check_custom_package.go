@@ -15,9 +15,8 @@ import (
 // resolveFromCustomBinding is the second step of slot resolution (DEC-010): a
 // package added with `strategist provider add` is a custom binding in plugins.lock
 // whose staged providers/<instance>/adapter.yaml describes the Weapon. It runs
-// after the catalog and before the transitional view, and hands over (handled
-// false) whenever no such package is staged, so a legacy binding or a hand-made
-// view keeps resolving exactly as before.
+// after the catalog and hands over (handled false) whenever no such package is
+// staged, allowing native-role resolution to handle the remaining branch.
 func resolveFromCustomBinding(root, slot, provider string) (slotResolution, string, bool) {
 	binding, ok := customBindingFor(readPluginsLockFile(root), slot, provider)
 	if !ok {
