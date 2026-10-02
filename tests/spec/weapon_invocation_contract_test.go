@@ -19,6 +19,7 @@ func defaultsFile(t *testing.T, parts ...string) string {
 
 func requireAll(t *testing.T, label, content string, needles ...string) {
 	t.Helper()
+	content = strings.Join(strings.Fields(content), " ") // contracts hard-wrap prose
 	for _, needle := range needles {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("%s must contain %q", label, needle)
@@ -30,11 +31,11 @@ func TestWeaponProfileNamesTheAcceptedDegrade(t *testing.T) {
 	t.Parallel()
 	discovery := defaultsFile(t, "contracts", "narrative", "03-discovery.md")
 	requireAll(t, "03-discovery.md", discovery,
-		"host skill loader",
-		"defined degrade",
-		"`native_substitution: forbidden` is unchanged",
+		"in-process embedded connector",
+		"does not load the Ranked Weapon through an external host loader",
+		"`native_substitution: forbidden` remains unchanged",
 		"`weapon_invocation` is required for a delegated run",
-		"does not certify the host copy",
+		"explicitly typed Custom Weapon",
 		"`resolved_digest`",
 	)
 }
@@ -52,7 +53,7 @@ func TestWeaponInvocationSchemaRequiresItForDelegatedRuns(t *testing.T) {
 		"required_when: delegated_run",
 		"item_fields: [invoked, resolved_from, steps_dropped, resolved_digest, receipt_status, pin_status, capability_isolation]",
 		"sha256:<64 hex>",
-		"raw bytes",
+		"bytes resolved by the selected runtime",
 	)
 }
 
@@ -63,8 +64,9 @@ func TestAgentProtocolStatesOneDiscoveryChannel(t *testing.T) {
 		t.Fatal("agent-protocol.md must not claim the embedded connector as the discovery channel: no production code wires it")
 	}
 	requireAll(t, "agent-protocol.md", protocol,
-		"host skill loader",
+		"Ranked Weapons stay on Strategist's embedded connector",
+		"only explicitly typed Custom Weapons may use a host loader",
 		"03-discovery.md",
-		"weapon_invocation",
+		"Weapon Profile for a Delegated Ranger",
 	)
 }

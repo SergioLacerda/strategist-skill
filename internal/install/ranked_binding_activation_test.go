@@ -88,6 +88,29 @@ func TestApplyRankedBindingChoices_NoopWhenNoSlotIsRanked(t *testing.T) {
 	assert.Equal(t, lockFile, got)
 }
 
+func TestRefreshPersistedRankedBindingsReplacesOnlyRankedRecords(t *testing.T) {
+	catalog := rankedFixtureCatalog()
+	lockFile := domain.PluginLockFile{Bindings: []domain.SlotBinding{
+		{Slot: "discovery", InstalledInstanceID: "brainstorming", Role: "ranger", Mode: domain.SlotBindingModeRanked, WeaponVersion: "stale", BindingDigest: "sha256:stale"},
+		{Slot: "refinement", InstalledInstanceID: "openspec-propose", Role: "archivist", Mode: domain.SlotBindingModeCustom, WeaponVersion: "custom-version", BindingDigest: "sha256:custom"},
+	}}
+
+	got, err := refreshPersistedRankedBindings(catalog, lockFile)
+	require.NoError(t, err)
+
+	discovery := findBindingBySlot(t, got.Bindings, "discovery")
+	wantDiscovery, err := rankedBindingForSlot(catalog, "discovery", "brainstorming")
+	require.NoError(t, err)
+	require.Equal(t, domain.SlotBindingModeRanked, discovery.Mode)
+	require.Equal(t, wantDiscovery.WeaponVersion, discovery.WeaponVersion)
+	require.Equal(t, wantDiscovery.BindingDigest, discovery.BindingDigest)
+
+	refinement := findBindingBySlot(t, got.Bindings, "refinement")
+	require.Equal(t, domain.SlotBindingModeCustom, refinement.Mode)
+	require.Equal(t, "custom-version", refinement.WeaponVersion)
+	require.Equal(t, "sha256:custom", refinement.BindingDigest)
+}
+
 func TestApplyRankedBindingChoices_ErrorsWhenProviderNotCertified(t *testing.T) {
 	catalog := pluginCatalog{Providers: []pluginCatalogProvider{
 		{ID: "openspec-explore", RiskScore: "write_analysis", CanonicalRole: "ranger", CompatibilitySource: "embedded"},
@@ -97,6 +120,29 @@ func TestApplyRankedBindingChoices_ErrorsWhenProviderNotCertified(t *testing.T) 
 	_, err := applyRankedBindingChoices(catalog, wc, domain.PluginLockFile{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not a certified ranked candidate")
+}
+
+func TestEnrichLockBindingMetadataPreservesCompiledRankedIdentity(t *testing.T) {
+	catalog := rankedFixtureCatalog()
+	catalog.RankedBindings = []domain.CompiledRankedBinding{{
+		Role: "archivist", Slot: "refinement", WeaponID: "openspec-propose",
+		WeaponDigest: "sha256:weapon", SourceDigest: "sha256:source", BindingDigest: "sha256:binding", ExecutionMode: domain.WeaponExecutionModePromptBridge, CertificationDigest: "sha256:certification",
+		ConnectorID: "strategist-embedded", Runtime: domain.WeaponRuntime{Kind: domain.RankedRuntimeEmbedded, ExecutionMode: domain.WeaponExecutionModePromptBridge},
+		Entrypoint: "refine", Generation: 4, Status: "active",
+	}}
+	lock := domain.PluginLockFile{Bindings: []domain.SlotBinding{{
+		Slot: "refinement", InstalledInstanceID: "openspec-propose", Role: "archivist", Mode: domain.SlotBindingModeRanked,
+		ConnectorID: "strategist-embedded", RuntimeKind: domain.RankedRuntimeEmbedded,
+	}}}
+
+	got, err := enrichLockBindingMetadata(catalog, lock)
+	require.NoError(t, err)
+	binding := findBindingBySlot(t, got.Bindings, "refinement")
+	assert.Equal(t, "strategist-embedded", binding.ConnectorID)
+	assert.Equal(t, "sha256:binding", binding.BindingDigest)
+	assert.Equal(t, "sha256:source", binding.SourceDigest)
+	assert.Equal(t, domain.WeaponExecutionModePromptBridge, binding.ExecutionMode)
+	assert.Equal(t, int64(4), binding.Generation)
 }
 
 func findBindingBySlot(t *testing.T, bindings []domain.SlotBinding, slot string) domain.SlotBinding {

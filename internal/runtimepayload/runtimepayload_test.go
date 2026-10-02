@@ -264,13 +264,13 @@ func TestEmbeddedOpenSpecVersion_Errors(t *testing.T) {
 	require.ErrorIs(t, err, ErrPayloadMissing)
 
 	badYamlFS := fstest.MapFS{
-		openSpecTreeDir + "/" + BuildInfoFile: {Data: []byte("version: [invalid")},
+		testOpenSpecTreeDir + "/" + BuildInfoFile: {Data: []byte("version: [invalid")},
 	}
 	_, err = EmbeddedOpenSpecVersion(badYamlFS)
 	require.Error(t, err)
 
 	emptyVerFS := fstest.MapFS{
-		openSpecTreeDir + "/" + BuildInfoFile: {Data: []byte("version: '  '")},
+		testOpenSpecTreeDir + "/" + BuildInfoFile: {Data: []byte("version: '  '")},
 	}
 	_, err = EmbeddedOpenSpecVersion(emptyVerFS)
 	require.ErrorContains(t, err, "no version")
@@ -278,7 +278,7 @@ func TestEmbeddedOpenSpecVersion_Errors(t *testing.T) {
 
 func TestMaterializeOpenSpec_Errors(t *testing.T) {
 	missingFS := fstest.MapFS{}
-	_, _, err := MaterializeOpenSpec(missingFS, t.TempDir())
+	_, _, err := MaterializeOpenSpec(missingFS, t.TempDir(), "")
 	require.ErrorIs(t, err, ErrPayloadMissing)
 }
 
@@ -508,12 +508,12 @@ func TestParseManifest_InvalidYAML(t *testing.T) {
 
 func TestMaterializeOpenSpec_MaterializeError(t *testing.T) {
 	badFS := fstest.MapFS{
-		openSpecTreeDir + "/" + BuildInfoFile: {
+		testOpenSpecTreeDir + "/" + BuildInfoFile: {
 			Data: []byte("version: '1.0.0'\nbundle: 'openspec.mjs'\ntree_sha256: 'badsha'\ntree_bytes: 10\n"),
 		},
-		openSpecTreeDir + "/openspec.mjs": {Data: []byte("console.log('hi');")},
+		testOpenSpecTreeDir + "/openspec.mjs": {Data: []byte("console.log('hi');")},
 	}
-	_, _, err := MaterializeOpenSpec(badFS, t.TempDir())
+	_, _, err := MaterializeOpenSpec(badFS, t.TempDir(), "")
 	require.Error(t, err)
 }
 
@@ -549,7 +549,7 @@ func TestSwapIn_Error(t *testing.T) {
 
 func TestEmbeddedOpenSpecVersion_Success(t *testing.T) {
 	goodFS := fstest.MapFS{
-		openSpecTreeDir + "/" + BuildInfoFile: {
+		testOpenSpecTreeDir + "/" + BuildInfoFile: {
 			Data: []byte("version: '1.13.0'\nbundle: 'openspec.mjs'\ntree_sha256: 'abc'\ntree_bytes: 100\n"),
 		},
 	}
@@ -580,4 +580,38 @@ func TestCleanupStaging_RemoveError(t *testing.T) {
 func TestEntryPath_DotEdgeCase(t *testing.T) {
 	_, _, err := entryPath("dir/.", 1)
 	require.ErrorIs(t, err, ErrUnsafeArchive)
+}
+
+// testOpenSpecTreeDir is where the tests place the embedded OpenSpec bundle:
+// the versioned payload directory of openspec-propose.
+const testOpenSpecTreeDir = "skills/openspec-propose@1.0.0/runtime"
+
+func TestResolveOpenSpecTreeDirRefusesToChooseBetweenVersions(t *testing.T) {
+	t.Parallel()
+	two := fstest.MapFS{
+		"skills/openspec-propose@1.0.0/runtime/x": {Data: []byte("x")},
+		"skills/openspec-propose@2.0.0/runtime/x": {Data: []byte("x")},
+	}
+	_, err := resolveOpenSpecTreeDir(two, "")
+	require.ErrorContains(t, err, "ambiguous")
+
+	one := fstest.MapFS{"skills/openspec-propose@1.0.0/runtime/x": {Data: []byte("x")}}
+	dir, err := resolveOpenSpecTreeDir(one, "")
+	require.NoError(t, err)
+	require.Equal(t, "skills/openspec-propose@1.0.0/runtime", dir)
+}
+
+func TestResolveOpenSpecTreeDirSelectsTheNamedWeaponVersion(t *testing.T) {
+	t.Parallel()
+	two := fstest.MapFS{
+		"skills/openspec-propose@1.0.0/runtime/x": {Data: []byte("x")},
+		"skills/openspec-propose@2.0.0/runtime/x": {Data: []byte("x")},
+	}
+
+	dir, err := resolveOpenSpecTreeDir(two, "2.0.0")
+	require.NoError(t, err, "a named version resolves even when several are embedded")
+	require.Equal(t, "skills/openspec-propose@2.0.0/runtime", dir)
+
+	_, err = resolveOpenSpecTreeDir(two, "3.0.0")
+	require.ErrorIs(t, err, ErrPayloadMissing, "an unknown version never resolves to another one")
 }

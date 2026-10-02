@@ -39,6 +39,35 @@ verify with `strategist plugins prepare-embedded --check`, and refresh a
 workspace with a clean `strategist install`. Rollback is a source-level revert
 followed by regeneration, never a runtime alias.
 
+## Versioned Weapon layout migration (ADR-0061)
+
+Embedded Weapon payloads live in `skills/<id>@<version>/`, and a Ranked lock binding
+records `weapon_version`. A workspace installed before this layout has the id-only
+`skills/<id>/` directories and a lock without `weapon_version`; its `strategist
+check` is blocked (`embedded weapon payload missing`, or a Ranked lock with no
+weapon version). The migration is one command, and it is reversible.
+
+1. Preview: `strategist upgrade --dry-run`. The plan lists the new versioned files as
+   `missing`, the untouched id-only files as `legacy_layout (will migrate: snapshot,
+   then remove)`, and the slots whose lock gains a version as `plugins.lock (will
+   migrate: weapon_version)`.
+2. Apply: `strategist upgrade`. It snapshots every legacy file it removes, the
+   `plugins.lock`, `ranked-runtimes.yaml` and the install manifest into
+   `.strategist/.upgrade-backups/<stamp>/`, writes the versioned layout, removes the
+   legacy files and the directories left empty, and fills `weapon_version` from the
+   certified binding. A legacy file the operator edited is never removed: it stays
+   `orphaned` and is reported. The installer-owned `skills/<id>/skill.yaml` compat view
+   is left alone.
+3. Verify: `strategist check --json` reports `status: ready`.
+4. Roll back: `strategist upgrade --rollback latest` restores the legacy files, the lock
+   and the manifest byte for byte. It does not delete the versioned directories the
+   upgrade wrote; they are inert under the restored state and the next upgrade reuses
+   them.
+
+A lock with several certified versions of one Weapon is not migrated automatically:
+the upgrade leaves it untouched, and `check` names the certified `id@version` options.
+Re-run the Wizard (`strategist install --wizard`) and choose the version.
+
 ## Readiness states
 
 Classify the incident before changing anything:

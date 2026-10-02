@@ -14,7 +14,7 @@ description: >
   move mode), and closing a pending/refined package into done/ once implementation
   is complete and evidence is supplied (closure mode). Not a route mutually
   exclusive with the pipeline — may fire at intake or mid-mission. Does NOT fire
-  automatically when a main_mission reaches documentation_applied — that is
+  automatically when a full_pipeline reaches documentation_applied — that is
   documentation completion, not implementation/validation evidence (see
   insufficient_evidence and stale_card_detection below). Opportunity Attack never
   performs card closure; it only evaluates ADR need during Archivist refinement.
@@ -62,8 +62,8 @@ stale_card_detection:
   behavior: >
     Detection only surfaces a candidate and proposes the closure inline gate. It never
     auto-closes and never substitutes for explicit user confirmation and evidence_summary.
-    A main_mission reaching documentation_applied does NOT trigger this detection by
-    itself — see insufficient_evidence above. Ending a main_mission with its package in
+    A full_pipeline reaching documentation_applied does NOT trigger this detection by
+    itself — see insufficient_evidence above. Ending a full_pipeline with its package in
     refined/ is the normal, expected terminal state. evidence_summary_present here uses
     the same evidence_state: explicit bar as Scout's route decision
     (see contracts/machine/scout-routing.yaml#evidence_state_classification).
@@ -152,5 +152,5 @@ invariants:
   - Never infer completion from source code inspection alone
   - Never mutate source code
   - Stale-card detection surfaces candidates only — never auto-closes
-  - If any condition is ambiguous, route to main_mission — conservatism is the safe default
+  - If any condition is ambiguous, route to full_pipeline — conservatism is the safe default
   - Approval gate cannot be bypassed even in Critical Hit (either mode)

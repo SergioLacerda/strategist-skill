@@ -56,7 +56,16 @@ func RunView(cmd *cobra.Command, deps ViewDependencies, rootInput, missionID, ru
 	if err != nil {
 		return fmt.Errorf("mission view: %w", err)
 	}
-	view := LoadView(root, status, run, deps.Ledger, deps.FilterLevels)
+	view, err := LoadView(root, status, run, deps.Ledger, deps.FilterLevels)
+	if err != nil {
+		return fmt.Errorf("mission view: %w", err)
+	}
+	return renderView(cmd, view, asJSON)
+}
+
+// renderView writes the assembled view as JSON or human text, split out of
+// RunView to keep its own cognitive complexity within budget.
+func renderView(cmd *cobra.Command, view missionview.View, asJSON bool) error {
 	if asJSON {
 		if err := json.NewEncoder(cmd.OutOrStdout()).Encode(view); err != nil {
 			return fmt.Errorf("mission view: write output: %w", err)
@@ -70,8 +79,14 @@ func RunView(cmd *cobra.Command, deps ViewDependencies, rootInput, missionID, ru
 }
 
 // LoadView assembles the missionview.View input; secondary sources that fail
-// to load are passed through as explicit errors, never as zero values.
-func LoadView(root string, status domain.MissionEngineStatus, run, ledger string, filter func([]leveling.Record, string) []leveling.Record) missionview.View {
+// to load are passed through as explicit errors, never as zero values. A nil
+// filter is the same class of problem — a missing collaborator — so it fails
+// closed with an explicit error too, rather than panicking or silently
+// passing every record through unfiltered.
+func LoadView(root string, status domain.MissionEngineStatus, run, ledger string, filter func([]leveling.Record, string) []leveling.Record) (missionview.View, error) {
+	if filter == nil {
+		return missionview.View{}, fmt.Errorf("FilterLevels dependency is nil")
+	}
 	reg, regErr := domain.LoadRoleRegistry(filepath.Join(root, "roles"))
 	if regErr != nil {
 		reg = domain.DefaultRoleRegistry()
@@ -95,7 +110,7 @@ func LoadView(root string, status domain.MissionEngineStatus, run, ledger string
 		Levels: levels, LevelsError: levelsErr, Run: run,
 		TokenUsage: tokenUsage, TokenUsageError: tokenUsageErr, DeclaredTokenBudget: declaredBudget,
 		HandoffMetrics: handoffMetrics, HandoffMetricsError: handoffMetricsErr,
-	})
+	}), nil
 }
 
 func readRefinementHandoffMetrics(root, missionID string) ([]telemetry.RefinementHandoffLine, error) {

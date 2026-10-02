@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/integrity"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
@@ -108,6 +109,7 @@ func installRootHooks(root *cobra.Command) {
 	root.PersistentPreRunE = rootPreRun
 	root.PersistentPostRunE = func(cmd *cobra.Command, _ []string) error {
 		telemetry.FinishMission(cmd.Context())
+		restoreDisplayLevel()
 		return nil
 	}
 }
@@ -141,6 +143,7 @@ func rootPreRun(cmd *cobra.Command, _ []string) error {
 		run.MissionID = id
 	}
 	ctx = telemetry.WithMissionRun(ctx, run)
+	setDisplayRestore(cliutil.ApplyDisplayLevel(cmd))
 	run.MarkIntake()
 	run.AddLines(1)
 

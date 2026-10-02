@@ -7,17 +7,11 @@ handoff_schema: schemas/handoff-archivist-to-sniper.schema.yaml
 on_start:                       # run when this role's phase starts; {role} and {mission_id} are substituted.
                                  # --provider/--host-model/--host-effort are literal reminders to fill in with the
                                  # actual running model/effort — the CLI cannot infer them, and omitting
-                                 # them silently returns blank fields.
-  - strategist leveling label --role {role} --mission {mission_id} --provider <your-provider> --host-model <your-model> --host-effort <your-effort>
+                                 # them silently returns blank fields. --provider is a LEVELING policy id
+                                 # (.strategist/leveling.yaml#providers, e.g. CLAUDE or CODEX), not a vendor name.
+  - strategist leveling label --role {role} --mission {mission_id} --provider <policy-provider-id> --host-model <your-model> --host-effort <your-effort>
   - strategist mechanisms brief --role {role}   # the tools (Mechanisms and Abilities) available to this role
 # leveling: archivist
-
-# Consume Ranger's initiative_result without recalculating the recommendation.
-# Missing evidence limits confidence and may challenge the handoff.
-initiative:
-  on_start: consume_advice
-  on_result: emit_initiative_result
-  preserve: [advice_id, policy_version, policy_digest, deviations, evidence_refs]
 
 # Canonical behaviors — read-only, source in skill.yaml.
 # Listed here for reference when writing custom_brief below.
@@ -46,15 +40,19 @@ canonical:
   - handoff_contract: "schemas/handoff-archivist-to-sniper.schema.yaml"
   - promote_via_normalize_openspec:   # ability: when the bound weapon is openspec-propose, promotion is one command, not manual file copying
       command: "strategist mission normalize-openspec --mission-id <mission_id> --change-id <change_id>"
-      effect: publishes the four canonical files, injects provider metadata and mission_status, archives the change
+      effect: records Archivist confidence, publishes the four canonical files, injects provider metadata and mission_status, archives the change
       see: "contracts/narrative/04-refinement.md § Required Behavior"
 
 # Contract
 must:
   - "at phase start run the role's on_start commands to resolve and record the model x effort level, and show the role level header when the level is known (a missing level never blocks the mission)"
-  - persist confidence at this boundary before finishing with `strategist metrics record --mission <mission_id> --agent archivist --claim-file -` (claim piped on stdin, never a file under `<base_path>`; see `machine/confidence-governance.yaml#producers.claim_placement`);
-    when no confidence summary exists, emit `--missing --correlation-key <key> --reason <why>` instead; record critic and mission_quality
-    boundaries with their respective agent values when those evaluations run
+  - persist confidence at this boundary before finishing; `mission normalize-openspec`
+    records the OpenSpec canonical-artifact claim automatically and fails closed before
+    publication if persistence fails; other refinement paths use `strategist metrics record
+    --mission <mission_id> --agent archivist --claim-file -` (see
+    `machine/confidence-governance.yaml#producers.claim_placement`), or an explicit
+    `--missing`; record critic and mission_quality boundaries with their respective agent values
+    when those evaluations run
   - load only the Ranger analysis artifact (do NOT re-read full history)
   - write all conversational/user-facing prose (questions, framing, confirmations —
     anything other than the four written artifact files) in the `chat_language`

@@ -20,6 +20,9 @@ func seedDefaultsRootCatalog(t *testing.T, root string) {
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "internal_skills", "sniper"), 0o755))
 	catalog := "schema_version: strategist-plugin-catalog/v2\nproviders:\n  - id: sniper\n    risk_score: controlled\n    compatibility_source: native_role\n"
 	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins", "catalog.yaml"), []byte(catalog), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "roles", "default.yaml"), []byte("discovery: ranger\nrefinement: archivist\nexecution: sniper\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "roles", "ranger.yaml"), []byte("role: ranger\nslot: discovery\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "roles", "archivist.yaml"), []byte("role: archivist\nslot: refinement\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(root, "roles", "sniper.yaml"), []byte("role: sniper\nslot: execution\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(root, "internal_skills", "sniper", "SKILL.md"), []byte("# Sniper\n"), 0o644))
 }
@@ -48,9 +51,9 @@ func TestPrepareEmbedded_WritesCatalogMirrorsAndLock(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(catalogBytes), "sample-skill")
 
-	assert.FileExists(t, filepath.Join(defaultsRoot, "skills", "sample-skill", "skill.yaml"))
-	assert.FileExists(t, filepath.Join(defaultsRoot, "skills", "sample-skill", "SKILL.md"))
-	assert.FileExists(t, filepath.Join(defaultsRoot, "skills", "sample-skill", "strategist.yaml"))
+	assert.FileExists(t, filepath.Join(defaultsRoot, "skills", "sample-skill@1.0.0", "skill.yaml"))
+	assert.FileExists(t, filepath.Join(defaultsRoot, "skills", "sample-skill@1.0.0", "SKILL.md"))
+	assert.FileExists(t, filepath.Join(defaultsRoot, "skills", "sample-skill@1.0.0", "strategist.yaml"))
 
 	lockBytes, err := os.ReadFile(opts.LockPath)
 	require.NoError(t, err)
@@ -185,8 +188,8 @@ func TestMirrorsHaveDrifted(t *testing.T) {
 
 	t.Run("got file missing counts as drifted", func(t *testing.T) {
 		tmpRoot := t.TempDir()
-		require.NoError(t, os.MkdirAll(filepath.Join(tmpRoot, "skills", "sample"), 0o755))
-		require.NoError(t, os.WriteFile(filepath.Join(tmpRoot, "skills", "sample", "skill.yaml"), []byte("a"), 0o644))
+		require.NoError(t, os.MkdirAll(filepath.Join(tmpRoot, "skills", "sample@0.0.0"), 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(tmpRoot, "skills", "sample@0.0.0", "skill.yaml"), []byte("a"), 0o644))
 
 		drifted, err := mirrorsHaveDrifted([]IngestedSkill{{ID: "sample"}}, t.TempDir(), tmpRoot)
 		require.NoError(t, err)
@@ -196,10 +199,10 @@ func TestMirrorsHaveDrifted(t *testing.T) {
 	t.Run("differing content counts as drifted", func(t *testing.T) {
 		tmpRoot := t.TempDir()
 		defaultsRoot := t.TempDir()
-		require.NoError(t, os.MkdirAll(filepath.Join(tmpRoot, "skills", "sample"), 0o755))
-		require.NoError(t, os.WriteFile(filepath.Join(tmpRoot, "skills", "sample", "skill.yaml"), []byte("a"), 0o644))
-		require.NoError(t, os.MkdirAll(filepath.Join(defaultsRoot, "skills", "sample"), 0o755))
-		require.NoError(t, os.WriteFile(filepath.Join(defaultsRoot, "skills", "sample", "skill.yaml"), []byte("b"), 0o644))
+		require.NoError(t, os.MkdirAll(filepath.Join(tmpRoot, "skills", "sample@0.0.0"), 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(tmpRoot, "skills", "sample@0.0.0", "skill.yaml"), []byte("a"), 0o644))
+		require.NoError(t, os.MkdirAll(filepath.Join(defaultsRoot, "skills", "sample@0.0.0"), 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(defaultsRoot, "skills", "sample@0.0.0", "skill.yaml"), []byte("b"), 0o644))
 
 		drifted, err := mirrorsHaveDrifted([]IngestedSkill{{ID: "sample"}}, defaultsRoot, tmpRoot)
 		require.NoError(t, err)
@@ -209,10 +212,10 @@ func TestMirrorsHaveDrifted(t *testing.T) {
 	t.Run("identical content is not drifted", func(t *testing.T) {
 		tmpRoot := t.TempDir()
 		defaultsRoot := t.TempDir()
-		require.NoError(t, os.MkdirAll(filepath.Join(tmpRoot, "skills", "sample"), 0o755))
-		require.NoError(t, os.WriteFile(filepath.Join(tmpRoot, "skills", "sample", "skill.yaml"), []byte("same"), 0o644))
-		require.NoError(t, os.MkdirAll(filepath.Join(defaultsRoot, "skills", "sample"), 0o755))
-		require.NoError(t, os.WriteFile(filepath.Join(defaultsRoot, "skills", "sample", "skill.yaml"), []byte("same"), 0o644))
+		require.NoError(t, os.MkdirAll(filepath.Join(tmpRoot, "skills", "sample@0.0.0"), 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(tmpRoot, "skills", "sample@0.0.0", "skill.yaml"), []byte("same"), 0o644))
+		require.NoError(t, os.MkdirAll(filepath.Join(defaultsRoot, "skills", "sample@0.0.0"), 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(defaultsRoot, "skills", "sample@0.0.0", "skill.yaml"), []byte("same"), 0o644))
 
 		drifted, err := mirrorsHaveDrifted([]IngestedSkill{{ID: "sample"}}, defaultsRoot, tmpRoot)
 		require.NoError(t, err)

@@ -59,7 +59,7 @@ func TestEvaluateCriticalHit_PlainMove_BlocksWrongTaskType(t *testing.T) {
 
 	assert.False(t, decision.Allowed)
 	assert.Equal(t, "conditions_not_met", decision.Reason)
-	assert.Equal(t, "main_mission", decision.FallbackRoute)
+	assert.Equal(t, "full_pipeline", decision.FallbackRoute)
 }
 
 func TestEvaluateCriticalHit_PlainMove_BlocksSourceOutsideAnalysisFolders(t *testing.T) {
@@ -180,4 +180,17 @@ func TestEvaluateCriticalHit_ClosureMove_BlocksPartialImplementationWithResidual
 	decision := domain.EvaluateCriticalHit(e)
 
 	assert.False(t, decision.Allowed)
+}
+
+func TestEvaluateCriticalHit_BlocksUnknownMode(t *testing.T) {
+	t.Parallel()
+	e := validPlainMoveEvidence()
+	e.Mode = "unknown"
+
+	decision := domain.EvaluateCriticalHit(e)
+
+	assert.False(t, decision.Allowed)
+	assert.Equal(t, domain.CriticalHitMode("unknown"), decision.Mode)
+	assert.Equal(t, "conditions_not_met", decision.Reason)
+	assert.Equal(t, "full_pipeline", decision.FallbackRoute)
 }

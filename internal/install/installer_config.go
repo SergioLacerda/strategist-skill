@@ -34,7 +34,7 @@ func (s Service) applyConfig(ctx context.Context, strategistDir string, cfg doma
 	if !cfg.Wizard {
 		return s.applySilentConfig(ctx, strategistDir, cfg)
 	}
-	return s.applyWizardConfig(ctx, strategistDir)
+	return s.applyWizardConfig(ctx, strategistDir, cfg.Verbose)
 }
 
 func (s Service) applySilentConfig(_ context.Context, strategistDir string, cfg domain.InstallConfig) error {
@@ -43,7 +43,7 @@ func (s Service) applySilentConfig(_ context.Context, strategistDir string, cfg 
 		return nil // preserve user customizations
 	}
 	if cfg.Force && runtimefs.Exists(activeYAMLPath) {
-		slog.Info("[Strategist] install force-overwriting user-owned config",
+		slog.Warn("[Strategist] install force-overwriting user-owned config",
 			telemetry.AttrComponent, "install",
 			"path", activeYAMLPath,
 		)
@@ -92,9 +92,9 @@ func (s Service) activateSilentBindings(strategistDir string, data []byte) error
 	return nil
 }
 
-func (s Service) applyWizardConfig(ctx context.Context, strategistDir string) error {
+func (s Service) applyWizardConfig(ctx context.Context, strategistDir string, verbose bool) error {
 	p := s.resolvePrompter()
-	wc, err := runWizard(ctx, p, s.Extractor, strategistDir)
+	wc, err := runWizard(ctx, p, s.Extractor, strategistDir, verbose)
 	if err != nil {
 		return fmt.Errorf("install: wizard: %w", err)
 	}
@@ -147,14 +147,15 @@ func (s Service) writeSelectedProviderManifest(strategistDir, provider string) e
 	if err != nil {
 		return fmt.Errorf("resolve installable providers for %s: %w", provider, err)
 	}
-	if _, ok := installable[provider]; !ok {
+	providerID, _ := domain.ParseWeaponRef(provider)
+	if _, ok := installable[providerID]; !ok {
 		return nil
 	}
 	data, err := providerManifestBytes(s.Extractor, provider)
 	if err != nil {
 		return err
 	}
-	providerDir := filepath.Join(strategistDir, installedProvidersDirName, provider)
+	providerDir := filepath.Join(strategistDir, installedProvidersDirName, providerID)
 	targetPath := filepath.Join(providerDir, skillYAMLName)
 	if err := atomicWriteFile(targetPath, data, 0o644); err != nil {
 		return fmt.Errorf("write %s: %w", targetPath, err)
@@ -167,11 +168,11 @@ func providerManifestBytes(extractor domain.FileExtractor, provider string) ([]b
 	if err != nil {
 		return nil, fmt.Errorf("load plugin catalog for %s: %w", provider, err)
 	}
-	data, err := generateLegacyProviderManifest(catalog, provider)
-	if err != nil {
-		return nil, err
+	entry, ok := findCatalogProviderRef(catalog, provider)
+	if !ok {
+		return nil, fmt.Errorf("plugin catalog: provider %q not found%s", provider, unresolvedRefHint(catalog, provider))
 	}
-	return data, nil
+	return normalizedDigestManifestFor(entry), nil
 }
 
 // resolvePrompter returns the Prompter to use for wizard mode.

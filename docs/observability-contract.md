@@ -86,6 +86,16 @@ invocation from static readiness. It records
 `strategist.discovery.normalization_status` (`normalized`, `rejected`, or
 `not_attempted`). Successful events carry
 `strategist.discovery.invocation_evidence`; provider payloads are excluded.
+Ranked Embedded events also carry `strategist.discovery.execution_adapter`
+(`current_host_adapter`, `codex_child` or `claude_child`, committed by
+Strategist and never taken from a completion) and, for a child,
+`strategist.discovery.child_policy_id`. `strategist.discovery.capability_isolation`
+stays `unverified`: configured child restrictions are not parent isolation.
+CLI mission completion emits this event through the configured sink, with
+`strategist.discovery.invocation_request_id` (the durable request identity)
+for correlation. Delivery is at-least-once: a retry after an interrupted
+completion re-emits for the same request, so repeats may be duplicates.
+Strict mode returns a delivery failure; non-strict mode fails open.
 Failures are blocked with `strategist.reason=role_invocation_failed` and never
 represent a native fallback.
 
@@ -170,6 +180,12 @@ This line is emitted to **stdout** unconditionally, before any slog output.
 ## Event sequence per command
 
 ### `strategist install`
+
+`install` displays only WARN and above by default: the INFO events below are
+still emitted (and exported to OpenTelemetry when it is configured) but the
+default handler hides them unless `--verbose` is given. `--verbose` also prints
+the wizard section headers and the role/provider migration preview. No other
+command changes its display level.
 
 ```
 [Strategist] pipeline=starting mission_id=...

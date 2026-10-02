@@ -231,12 +231,12 @@ errors:
     action: "fix the reported trust/permission_grant certification reason, then rerun strategist check"
     enforced_by: machine_observed
 
-  - token: ranked_runtime_requires_host_invocation
-    emit: "check=unknown reason=ranked_runtime_requires_host_invocation"
+  - token: ranked_external_runtime_forbidden
+    emit: "check=blocked reason=ranked_external_runtime_forbidden"
     scope: slot
-    reason: "the provider's host or executable runtime cannot be proven by static readiness; only a live invocation through the declared host connector proves it (advisory, never blocks)"
-    action: "invoke the Weapon through its declared host connector; a failed invocation stops the mission with role_invocation_failed and no fallback runs"
-    enforced_by: machine_observed
+    reason: "a Ranked binding may not invoke a host or executable runtime; use the certified embedded or private Strategist runtime"
+    action: "regenerate or reinstall the workspace with the Ranked provider's internal runtime; no external fallback is permitted"
+    enforced_by: machine_enforced
 
   - token: ranked_embedded_runtime_ready
     emit: "check=ready reason=ranked_embedded_runtime_ready"

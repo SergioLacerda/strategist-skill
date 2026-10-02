@@ -132,7 +132,7 @@ func TestApplyWizardConfig_WriteActiveYAMLFails(t *testing.T) {
 		Extractor:      minimalExtractor{},
 		WizardPrompter: NewTextPrompter(strings.NewReader("en\nen\nen\nen\nepic\n.analysis\nbrainstorming\nopenspec-explore\nsdd-ask\n\n")),
 	}
-	err := s.applyWizardConfig(context.Background(), dir)
+	err := s.applyWizardConfig(context.Background(), dir, false)
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "write active.yaml")
 }
@@ -144,7 +144,7 @@ func TestApplyWizardConfig_WriteKnowledgeIndexFails(t *testing.T) {
 	// Extract() is never called here, so knowledge.index.yaml never lands on disk.
 	input := "en\nen\nen\nen\nepic\n.analysis\nbrainstorming\nopenspec-explore\nsdd-ask\n.sdd/source\n"
 	s := Service{Extractor: minimalExtractor{}, WizardPrompter: NewTextPrompter(strings.NewReader(input))}
-	err := s.applyWizardConfig(context.Background(), dir)
+	err := s.applyWizardConfig(context.Background(), dir, false)
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "write knowledge.index.yaml")
 }
@@ -156,7 +156,7 @@ func TestApplyWizardConfig_WriteTreasureChestManifestFails(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "knowledge.index.yaml"), []byte("sources: []\n"), 0o644))
 	input := "en\nen\nen\nen\nepic\n.analysis\nbrainstorming\nopenspec-explore\nsdd-ask\n.sdd/source\n"
 	s := Service{Extractor: minimalExtractor{}, WizardPrompter: NewTextPrompter(strings.NewReader(input))}
-	err := s.applyWizardConfig(context.Background(), dir)
+	err := s.applyWizardConfig(context.Background(), dir, false)
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "write treasure-chests.yaml")
 }

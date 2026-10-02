@@ -40,7 +40,7 @@ var stateTransitions = map[MissionState]map[TransitionEvent]MissionState{
 		EventGateRevision:             StateRefinement, // D2: documented revision loop, now representable
 	},
 	StateHandoffChallenge: {
-		EventHandoffPassed:    StateExecution,
+		EventHandoffSatisfied: StateExecution,
 		EventHandoffFailed:    StateRefinement,
 		EventHandoffExhausted: StateBlocked,
 		// Accepted package with no documentation_target: nothing to execute.

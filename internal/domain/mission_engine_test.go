@@ -37,7 +37,10 @@ func TestMissionEngine_FullPipelineProgression(t *testing.T) {
 	if got := engine.Status(); got.State != StateHandoffChallenge {
 		t.Fatalf("state before handoff = %q", got.State)
 	}
-	if _, err := engine.SubmitHandoff(HandoffOutcome{Attempt: 1, MaxAttempts: 2, Passed: true, Status: "passed"}); err != nil {
+	if _, err := engine.RecordHandoffEvaluation(HandoffEvaluation{Attempt: 1, MaxAttempts: 2, Result: HandoffEvaluationPassed, Status: "passed"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := engine.Submit(MissionEventHandoffSatisfied); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := engine.Submit(MissionEventSniperDone); err != nil {
@@ -46,6 +49,52 @@ func TestMissionEngine_FullPipelineProgression(t *testing.T) {
 	if got := engine.Status(); got.Phase != PhaseDone || got.State != StateDoneDelivery {
 		t.Fatalf("final status = %+v", got)
 	}
+}
+
+func TestMissionEngine_ApprovalGatePackageDigestRequiresExplicitBinding(t *testing.T) {
+	engine, _, err := StartMission(MissionStartRequest{MissionID: "m-gate-digest"})
+	require.NoError(t, err)
+	submitMissionEvents(t, engine, []MissionEngineEvent{
+		MissionEventBootstrapDone,
+		MissionEventIntakeDone,
+		MissionEventDiscoveryDone,
+		MissionEventRefinementDone,
+	})
+
+	_, err = engine.RecordApprovalGatePackageDigest("sha256:before-gate")
+	require.Error(t, err)
+
+	submitMissionEvents(t, engine, []MissionEngineEvent{MissionEventGateApproved})
+	status, err := engine.RecordApprovalGatePackageDigest("sha256:approved")
+	require.NoError(t, err)
+	require.Equal(t, "sha256:approved", status.ApprovalGatePackageDigest)
+
+	status, err = engine.Submit(MissionEventHandoffFailed)
+	require.NoError(t, err)
+	require.Empty(t, status.ApprovalGatePackageDigest)
+}
+
+func TestMissionEngine_NewGateDoesNotCarryAnOldPackageDigest(t *testing.T) {
+	engine, _, err := StartMission(MissionStartRequest{MissionID: "m-gate-refresh"})
+	require.NoError(t, err)
+	submitMissionEvents(t, engine, []MissionEngineEvent{
+		MissionEventBootstrapDone,
+		MissionEventIntakeDone,
+		MissionEventDiscoveryDone,
+		MissionEventRefinementDone,
+		MissionEventGateApproved,
+	})
+	_, err = engine.RecordApprovalGatePackageDigest("sha256:first")
+	require.NoError(t, err)
+
+	_, err = engine.RecordHandoffEvaluation(HandoffEvaluation{
+		Attempt: 1, MaxAttempts: 2, Result: HandoffEvaluationFailed, Status: "failed",
+	})
+	require.NoError(t, err)
+	require.Empty(t, engine.Status().ApprovalGatePackageDigest)
+
+	submitMissionEvents(t, engine, []MissionEngineEvent{MissionEventRefinementDone, MissionEventGateApproved})
+	require.Empty(t, engine.Status().ApprovalGatePackageDigest)
 }
 
 func submitMissionEvents(t *testing.T, engine *MissionEngine, events []MissionEngineEvent) {
@@ -123,7 +172,7 @@ func submitGateApproved(engine *MissionEngine) error {
 
 func failHandoff(t *testing.T, engine *MissionEngine, attempt int) {
 	t.Helper()
-	_, err := engine.SubmitHandoff(HandoffOutcome{Attempt: attempt, MaxAttempts: 2, Passed: false, Status: "failed", NextAction: "return_to_archivist"})
+	_, err := engine.RecordHandoffEvaluation(HandoffEvaluation{Attempt: attempt, MaxAttempts: 2, Result: HandoffEvaluationFailed, Status: "failed", NextAction: "return_to_archivist"})
 	require.NoError(t, err)
 }
 
@@ -135,26 +184,6 @@ func submitRetry(engine *MissionEngine) error {
 func submitEvent(engine *MissionEngine, event MissionEngineEvent) error {
 	_, err := engine.Submit(event)
 	return err
-}
-
-func TestMissionEngine_RejectsHandoffReplayAndInvalidAttempt(t *testing.T) {
-	engine, _, err := StartMission(MissionStartRequest{MissionID: "m-7"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	submitMissionEvents(t, engine, []MissionEngineEvent{
-		MissionEventBootstrapDone, MissionEventIntakeDone, MissionEventDiscoveryDone,
-		MissionEventRefinementDone, MissionEventGateApproved,
-	})
-	if _, err := engine.SubmitHandoff(HandoffOutcome{Attempt: 2, MaxAttempts: 2, Passed: true, Status: "passed"}); err == nil {
-		t.Fatal("expected non-sequential attempt to fail")
-	}
-	if _, err := engine.SubmitHandoff(HandoffOutcome{Attempt: 1, MaxAttempts: 2, Passed: true, Status: "passed"}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := engine.SubmitHandoff(HandoffOutcome{Attempt: 1, MaxAttempts: 2, Passed: true, Status: "passed"}); err == nil {
-		t.Fatal("expected replay to fail after transition")
-	}
 }
 
 func TestMissionEngine_HandoffCannotBypassApprovalGate(t *testing.T) {
@@ -169,8 +198,8 @@ func TestMissionEngine_HandoffCannotBypassApprovalGate(t *testing.T) {
 	if got := engine.Status(); got.State != StateApprovalGate {
 		t.Fatalf("state before approval = %q", got.State)
 	}
-	if _, err := engine.SubmitHandoff(HandoffOutcome{Attempt: 1, MaxAttempts: 2, Passed: true, Status: "passed"}); err == nil {
-		t.Fatal("expected handoff to require the independent Approval Gate")
+	if _, err := engine.RecordHandoffEvaluation(HandoffEvaluation{Attempt: 1, MaxAttempts: 2, Result: HandoffEvaluationPassed, Status: "passed"}); err == nil {
+		t.Fatal("expected handoff evaluation to require the independent Approval Gate")
 	}
 }
 

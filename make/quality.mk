@@ -29,7 +29,7 @@ lint: fmt-check
 # as lint. Complexity and file-size findings remain manual work and therefore
 # still fail here when they cannot be fixed automatically.
 lint-fix:
-	git ls-files -co --exclude-standard -z '*.go' | xargs -0r gofmt -w
+	git ls-files -co --exclude-standard -z '*.go' | xargs -0r -n1 sh -c 'if test -f "$$1"; then gofmt -w "$$1"; fi' sh
 	GOCACHE="$(GOCACHE)" GOLANGCI_LINT_CACHE="$(GOLANGCI_LINT_CACHE)" GOTOOLCHAIN=$(PINNED_GOTOOLCHAIN) "$(GOLANGCI_LINT)" run --fix ./...
 	@$(MAKE) fmt-check
 	@$(MAKE) complexity-report
@@ -103,4 +103,3 @@ sync-readme-badge:
 # docs/test-styles.md differ from measured coverage by more than 1.0 point.
 coverage-docs-drift-check:
 	@bash scripts/check-coverage-docs-drift.sh "$(COVERAGE_DIR)" "$(GOCACHE)"
-

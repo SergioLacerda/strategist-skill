@@ -34,7 +34,7 @@ func bindingsFromSlots(slots map[string]string, lock domain.PluginLock) ([]domai
 	}
 	bindings := make([]domain.SlotBinding, 0, len(slots))
 	for _, slot := range sortedSlotNames(slots) {
-		node, ok := nodesByID[slots[slot]]
+		node, ok := lockNodeForRef(nodesByID, slots[slot])
 		if !ok {
 			return nil, fmt.Errorf("unresolved_binding: %s provider %s", slot, slots[slot])
 		}
@@ -68,6 +68,19 @@ func changesFromBindings(bindings []domain.SlotBinding) []string {
 		changes = append(changes, fmt.Sprintf("slot %s -> %s", binding.Slot, binding.InstalledInstanceID))
 	}
 	return changes
+}
+
+// lockNodeForRef finds the lock node an active.yaml slot value names: the whole
+// string as a node id first (a Custom package id), then the id part of an
+// "id@version" reference. The requirement already pinned the version, so the
+// node for that id is the referenced one.
+func lockNodeForRef(nodesByID map[string]domain.PluginLockNode, ref string) (domain.PluginLockNode, bool) {
+	if node, ok := nodesByID[ref]; ok {
+		return node, true
+	}
+	id, _ := domain.ParseWeaponRef(ref)
+	node, ok := nodesByID[id]
+	return node, ok
 }
 
 func installedInstanceID(node domain.PluginLockNode) string {

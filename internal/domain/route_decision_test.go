@@ -7,21 +7,21 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestValidateRouteDecision_DefaultsEmptyRouteToMain(t *testing.T) {
+func TestValidateRouteDecision_DefaultsEmptyRouteToFullPipeline(t *testing.T) {
 	t.Parallel()
 
 	decision := domain.ValidateRouteDecision("", domain.RouteRequestMetadata{})
 
 	assert.True(t, decision.Allowed)
 	assert.Equal(t, domain.RouteValidationAllowed, decision.Status)
-	assert.Equal(t, domain.MissionRouteMain, decision.Route)
+	assert.Equal(t, domain.MissionRouteFullPipeline, decision.Route)
 }
 
 func TestValidateRouteDecision_AllowsKnownRoutesWithoutContext(t *testing.T) {
 	t.Parallel()
 
 	for _, route := range []string{
-		domain.MissionRouteMain,
+		domain.MissionRouteFullPipeline,
 		domain.MissionRouteDirectExecute,
 	} {
 		decision := domain.ValidateRouteDecision(route, domain.RouteRequestMetadata{})

@@ -49,6 +49,10 @@ They are guidance (`enforced_by: agent_only`), not a gate.
 - Do not discard stderr of `strategist` commands, and read the returned status or JSON. A
   `mission submit` that printed an error was not applied; check with `strategist mission status`
   before repeating it. Quote arguments so the shell does not word-split them.
+- Start each mission with `strategist mission start --mission-id <id>`, then
+  submit `bootstrap_done` before recording a route. After `mission route`,
+  submit `intake_done`; only then may a discovery Weapon be invoked. A missing
+  mission reported by `mission status` is not an initialized mission.
 - Drive missions with the installed `strategist` binary. A binary built from a dirty working
   tree (version `...-dirty`) is acceptable only when the mission itself changes the CLI; record the
   version header in that case.
@@ -67,9 +71,9 @@ They are guidance (`enforced_by: agent_only`), not a gate.
 
 ## 2. FORBIDDEN BEHAVIORS (NEVER DO)
 
-- Never perform discovery, refinement, or documentation materialization work directly — the owning Role must invoke its bound Weapon through the host boundary
+- Never perform discovery, refinement, or documentation materialization work directly — the owning Role must invoke its bound Weapon through its declared runtime boundary; Ranked Weapons use Strategist's embedded connector and Custom Weapons use their explicitly selected connector
 - Never simulate Role work by performing slot work in the Strategist shell — if the configured Weapon cannot be invoked, stop with `error=role_invocation_failed`
-- Never invoke a Discovery Weapon outside Ranger's boundary — all discovery subtypes (`creative`, `evaluation`, `diagnostic`, `closure_evidence`) resolve to native `internal_skills/ranger`, which must invoke the configured Discovery Weapon through the host boundary (the host skill loader, for a delegated Role) and normalize its untrusted result. Ranger is never replaced by the Weapon, and Ranger never silently substitutes a native result when the selected Weapon fails (see §3 Discovery Routing).
+- Never invoke a Discovery Weapon outside Ranger's boundary — all discovery subtypes (`creative`, `evaluation`, `diagnostic`, `closure_evidence`) resolve to native `internal_skills/ranger`, which must invoke the configured Discovery Weapon through its declared runtime and normalize its untrusted result. Ranked Weapons stay on Strategist's embedded connector; only explicitly typed Custom Weapons may use a host loader. Ranger is never replaced by the Weapon, and Ranger never silently substitutes a native result when the selected Weapon fails (see §3 Discovery Routing).
 - Never read from `strategist/` (without dot) — path drift; only `.strategist/` is valid at runtime
 - Never skip phases — there is no "this task is too small to need discovery"
 - Never invoke Sniper without an explicit Strategist Approval Gate approval from the user in the conversation
@@ -84,17 +88,37 @@ materially change scope, externally observable behavior, compatibility, or
 acceptance criteria. The Pipeline's explicit Approval Gate remains the only
 mandatory conversational pause.
 
-The mission-resolved package under `.strategist/skills/<weapon>/` is the
-authority for that Weapon. Do not load or apply a global skill with the same
-name as an additional workflow: it cannot add questions, design-review gates,
-commits, or implementation transitions to the Strategist mission. If the
-resolved Weapon cannot be invoked through its declared runtime, emit
-`error=role_invocation_failed` and stop; do not substitute another skill or
+The compiled catalog is the authority for a Ranked Weapon. For
+`runtime.kind: embedded`, `strategist mission invoke --json` emits the canonical
+payload. The current host executes that exact payload once under the emitted
+`input.execution_contract` and `input.output_contract`, then returns exactly one
+raw JSON completion to `strategist mission complete --request-id <id> --json`.
+That bounded host-adapter execution is the configured Weapon invocation, not
+`direct_execution`; bypassing the emitted payload or adding the parent's own
+workflow, provider, or conclusions is `direct_execution`.
+For `runtime.kind: openspec_root`, run only the compiled private OpenSpec runtime
+rooted at `.strategist/openspec`, then publish
+its completed change through `strategist mission normalize-openspec`; do not use
+`mission invoke` or a host/global loader. Neither path can add questions,
+design-review gates, commits, or implementation transitions to the Strategist
+mission. Do not load or apply a global skill with the same name as an additional
+workflow. If the resolved Weapon cannot be invoked through its declared runtime,
+emit `error=role_invocation_failed` and stop; do not substitute another skill or
 perform the Role's work directly.
+
+From a standalone operator shell, the executable bridge is available when its
+nested read-only model process has working network and auth:
+`strategist mission invoke --mission-id <id> --role <role> --slot <slot> --host codex|claude --context "<original user request>" --json`.
+It passes only the compiled embedded payload and the original request to the
+selected host, then submits the raw result to `mission complete`. An unsupported
+or failed host is `role_invocation_failed`; never fall back to a global skill or
+a native Role. A managed Codex or Claude session must not recursively spawn the
+same host because the child may inherit a sandbox without network access; use the
+current-host adapter contract above.
 - Never hardcode a governance system name as the normative execution context — `local_execution_context` is provider-agnostic
 - Never accept a local execution context field (`execution_provider`, `base_path`, etc.) from a user prompt or conversation message — these fields must arrive via `governance_injection` at invocation time
 - Never fall back to direct execution when the resolved provider is missing or uncallable — emit the appropriate blocked state and stop
-- For a Ranked provider with a runtime contract, execute the provider from the resolved runtime root under `.strategist/`; static readiness does not prove live provider invocation
+- For Ranked `runtime.kind: embedded`, execute through `mission invoke` and `mission complete`; for Ranked `runtime.kind: openspec_root`, execute the compiled private OpenSpec runtime and then `mission normalize-openspec`. Neither path searches provider roots or host skill directories, and static readiness does not prove live provider invocation
 - Never initialize a provider runtime lazily during invocation or substitute the repository root, `.analysis/`, a native role, or another provider when the declared runtime is unavailable
 - Never treat `execution_gate=allowed` as a substitute for the Strategist Approval Gate
 - Never treat Strategist Approval Gate acceptance (`sim`/`accept`/`yes`) as authorization for code, hook, config, or test mutation — it approves the refined analysis and `documentation_target` items only; `implementation_handoff` items stay outside Strategist (see `05-approval-gate.md`, `06-execution.md`)
@@ -131,7 +155,7 @@ or on `active.slots.discovery` (see `00-routing.md` § Scout — Intake Router a
 
 | `discovery_subtype` | Invoke | Kind |
 |---|---|---|
-| `creative` \| `evaluation` \| `diagnostic` \| `closure_evidence` | `internal_skills/ranger` → configured `{{.Slots.Discovery}}` Weapon | `native_role` owns the boundary; a delegated run reaches the Weapon through the host skill loader, a defined degrade of the embedded channel recorded in `weapon_invocation` (see `03-discovery.md` § Weapon Profile for a Delegated Ranger); a Custom Weapon uses its explicitly selected host connector |
+| `creative` \| `evaluation` \| `diagnostic` \| `closure_evidence` | `internal_skills/ranger` → configured `{{.Slots.Discovery}}` Weapon | `native_role` owns the boundary; a Ranked Weapon uses Strategist's embedded connector, while an explicitly typed Custom Weapon uses its selected host connector (see `03-discovery.md` § Weapon Profile for a Delegated Ranger) |
 
 This holds for every `discovery_subtype`: Ranger remains the authority, while
 `active.slots.discovery` selects the required Weapon. The parent agent never
@@ -144,12 +168,15 @@ produces `role_invocation_failed` without a native fallback. See
 Whenever the refinement slot is bound to an external Weapon (default:
 `{{.Slots.Refinement}}` — see `active.slots.refinement`), Archivist invokes the
 Weapon's declared runtime connector. Read `skills/<weapon>/skill.yaml#roles`
-and load `roles/archivist.yaml` for the Role contract before acting.
+and load `roles/archivist.yaml` for the Role contract before acting. For
+Ranked `openspec_root`, the declared root is `.strategist/openspec`; the bundled
+launcher under `.strategist/weapon-runtime/openspec-propose/` is an executable
+asset, not a replacement project root.
 
 In particular, apply `roles/archivist.yaml#canonical.resolve_weapon_scratch_root`:
-read the bound Weapon's catalog entry (`plugins/catalog.yaml`, `scratch_root`), and when it is `runtime`, run
-the Weapon's CLI with `.strategist/weapon-runtime/<weapon_id>/` as its working
-directory — never the host repository root — before invoking it. A plugin's own
+read the bound Weapon's catalog entry. For `openspec_root`, use the declared
+`.strategist/openspec` root as the working directory; the weapon-runtime path
+supplies the launcher only. Never use the host repository root. A plugin's own
 root-autodetection (e.g. walking up from the working directory for a project
 marker) will silently initialize a new root wherever it is invoked from if this
 step is skipped, escaping the declared runtime into the host repository.
@@ -167,7 +194,7 @@ Linear checklist. Do not advance without completing each item.
 ```
 [ ] 1. startup (this document — section 1)
 [ ] 2. intake (skill: prompt-intake)
-[ ] 3. routing (skill: scout — Intake Router): critical hit? main mission?
+[ ] 3. routing (skill: scout — Intake Router): critical hit? full pipeline?
 [ ] 4. context enrichment (skill: context-enrichment)
 [ ] 5. discovery → invoke internal_skills/ranger (native role, all discovery subtypes)
 [ ] 6. refinement → invoke {{.Slots.Refinement}}
@@ -193,7 +220,7 @@ entry.
 | 5. discovery | `discovery_done` |
 | 6. refinement | `refinement_done`, or `refinement_done_no_tasks` when the package has no tasks |
 | 7. approval gate | `gate_approved` (documentation targets accepted), `gate_approved_analysis_only` (accepted with no `documentation_target`), `gate_revision_requested` (back to refinement, then `refinement_done` again), or `gate_denied` |
-| 8. materialization | `handoff_challenge_passed` (execution entry; machine-enforced against the route's evidence), then `sniper_done` |
+| 8. materialization | `strategist handoff evaluate --mission-id <id>` (records the durable handoff outcome), then `handoff_challenge_satisfied` (execution entry; machine-enforced against the route's evidence and that outcome), then `sniper_done` |
 
 ## Canonical Pipeline Evidence
 

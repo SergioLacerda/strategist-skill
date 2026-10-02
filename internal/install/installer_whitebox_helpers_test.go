@@ -10,14 +10,18 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
 
+// openSpecProposePayloadDir is the versioned skills/ directory of the embedded
+// openspec-propose Weapon (ADR-0061 Decision 11).
+const openSpecProposePayloadDir = "openspec-propose@1.0"
+
 // minimalExtractor creates the minimum .strategist/ layout needed by Install.
 type minimalExtractor struct{}
 
 // copyOpenSpecRuntimeFixture supplies the same prebuilt bundle that the
 // production extractor embeds, without making install tests import embed.
 func copyOpenSpecRuntimeFixture(targetDir string) error {
-	source := filepath.Join("..", "embed", "defaults", "skills", "openspec-propose", "runtime")
-	destination := filepath.Join(targetDir, "skills", "openspec-propose", "runtime")
+	source := filepath.Join("..", "embed", "defaults", "skills", openSpecProposePayloadDir, "runtime")
+	destination := filepath.Join(targetDir, "skills", openSpecProposePayloadDir, "runtime")
 	return filepath.Walk(source, func(path string, info os.FileInfo, walkErr error) error {
 		return copyRuntimeFixtureEntry(source, destination, path, info, walkErr)
 	})

@@ -24,6 +24,20 @@ func normalizedDigestManifest(catalog pluginCatalog, providerID string) ([]byte,
 	if !ok {
 		return nil, fmt.Errorf("plugin catalog: provider %q not found", providerID)
 	}
+	return normalizedDigestManifestFor(provider), nil
+}
+
+// skillDigestManifest renders the manifest of one exact ingested id@version, so
+// two versions of an id never resolve to each other's entry.
+func skillDigestManifest(catalog pluginCatalog, skill IngestedSkill) ([]byte, error) {
+	provider, ok := findCatalogProviderVersion(catalog, skill.ID, providerVersionOrDefault(skill.Package.Version))
+	if !ok {
+		return nil, fmt.Errorf("plugin catalog: provider %q not found", skillIdentity(skill))
+	}
+	return normalizedDigestManifestFor(provider), nil
+}
+
+func normalizedDigestManifestFor(provider pluginCatalogProvider) []byte {
 	var buf bytes.Buffer
 	writeLegacyProviderField(&buf, "id", provider.ID)
 	writeLegacyProviderQuotedField(&buf, "version", provider.Version)
@@ -38,7 +52,7 @@ func normalizedDigestManifest(catalog pluginCatalog, providerID string) ([]byte,
 	buf.WriteString("\n")
 	writeLegacyDescription(&buf, provider.Description)
 	writeLegacyAuxiliaryTools(&buf, provider.AuxiliaryTools)
-	return buf.Bytes(), nil
+	return buf.Bytes()
 }
 
 func writeLegacyWeaponContract(buf *bytes.Buffer, contract WeaponContract) {

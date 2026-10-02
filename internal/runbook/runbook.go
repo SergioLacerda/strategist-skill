@@ -25,7 +25,13 @@ type Runbook struct {
 	SourceDoc     string `yaml:"source_doc"`
 
 	AppliesWhen []string `yaml:"applies_when"`
-	Objective   string   `yaml:"objective"`
+	// Signals is an optional, author-declared shortcut into the controlled
+	// vocabulary (signal_vocabulary.go): each entry must be one of the
+	// CanonicalSignal values. It supplements AppliesWhen's free-text prose
+	// matching rather than replacing it — a sidecar with no Signals matches
+	// exactly as it did before this field existed (see select_runbook_match.go).
+	Signals   []string `yaml:"signals,omitempty"`
+	Objective string   `yaml:"objective"`
 
 	Preconditions []string       `yaml:"preconditions,omitempty"`
 	Analysis      []string       `yaml:"analysis,omitempty"`
@@ -85,6 +91,13 @@ func ParseSidecar(data []byte) (Runbook, error) {
 // values documented in design.md § Sidecar Schema, cascading into every
 // nested Check and DecisionGate.
 func ValidateRunbook(rb Runbook) error {
+	errs := validateRunbookFields(rb)
+	errs = append(errs, validateRunbookSignals(rb.Signals)...)
+	errs = append(errs, validateRunbookNested(rb.DecisionGates, rb.Checks)...)
+	return errors.Join(errs...)
+}
+
+func validateRunbookFields(rb Runbook) []error {
 	var errs []error
 	errs = append(errs, validateNamedValue("runbook_invalid", "schema_version", rb.SchemaVersion, nil)...)
 	errs = append(errs, validateNamedValue("runbook_invalid", "runbook_id", rb.RunbookID, nil)...)
@@ -94,16 +107,28 @@ func ValidateRunbook(rb Runbook) error {
 	if len(rb.AppliesWhen) == 0 {
 		errs = append(errs, errors.New("runbook_invalid: applies_when is required and must be non-empty"))
 	}
+	return errs
+}
 
-	for _, gate := range rb.DecisionGates {
+func validateRunbookSignals(signals []string) []error {
+	var errs []error
+	for _, signal := range signals {
+		errs = append(errs, validateNamedValue("runbook_invalid", "signals[]", signal, allowedSignals)...)
+	}
+	return errs
+}
+
+func validateRunbookNested(gates []DecisionGate, checks []Check) []error {
+	var errs []error
+	for _, gate := range gates {
 		if err := ValidateDecisionGate(gate); err != nil {
 			errs = append(errs, err)
 		}
 	}
-	for _, check := range rb.Checks {
+	for _, check := range checks {
 		if err := ValidateCheck(check); err != nil {
 			errs = append(errs, err)
 		}
 	}
-	return errors.Join(errs...)
+	return errs
 }

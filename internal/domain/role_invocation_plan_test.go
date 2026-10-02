@@ -2,20 +2,24 @@ package domain
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
 func fixtureLockForRoleInvocationPlan() PluginLockFile {
+	evidence, err := NewCustomBindingEvidence(CustomPackageFacts{
+		PackageID: "brainstorming", PackageVersion: "1.0.0", Role: "ranger", Slot: "discovery",
+		PackageDigest: "sha256:package", AdapterDigest: "sha256:weapon",
+		RuntimeKind: RankedRuntimeHost, ConnectorID: "local_path", Entrypoint: "discover",
+	}, 3, "enabled")
+	if err != nil {
+		panic(err)
+	}
 	return PluginLockFile{
 		SchemaVersion: PluginLockFileSchemaVersion,
-		Lock: PluginLock{
-			Nodes: []PluginLockNode{
-				{ID: "brainstorming", Kind: "adapter_contract", Digest: "sha256:weapon"},
-				{ID: "ranger:brainstorming", Kind: "role_provider_binding", Digest: "sha256:binding"},
-			},
-		},
+		Lock:          PluginLock{Nodes: evidence.Nodes},
 		Bindings: []SlotBinding{
-			{Slot: "discovery", InstalledInstanceID: "brainstorming", Generation: 3, Status: "enabled"},
+			evidence.Binding,
 			{Slot: "refinement", InstalledInstanceID: "openspec-propose", Generation: 1, Status: "enabled"},
 		},
 	}
@@ -33,11 +37,16 @@ func TestNewRoleInvocationPlanFromLock_FieldForFieldEqualityWithSourceRecord(t *
 		Role:              "ranger",
 		Slot:              "discovery",
 		Mode:              SlotBindingModeCustom,
-		WeaponID:          "brainstorming",
+		WeaponID:          "brainstorming@1.0.0",
+		WeaponVersion:     "1.0.0",
 		WeaponDigest:      "sha256:weapon",
-		BindingDigest:     "sha256:binding",
+		SourceDigest:      "sha256:package",
+		BindingDigest:     lock.Bindings[0].BindingDigest,
+		ConnectorID:       "local_path",
+		Entrypoint:        "discover",
 		BindingGeneration: 3,
 		BindingStatus:     "enabled",
+		Runtime:           WeaponRuntime{Kind: RankedRuntimeHost},
 	}
 	if !reflect.DeepEqual(plan, want) {
 		t.Fatalf("plan = %+v, want %+v", plan, want)
@@ -152,17 +161,15 @@ func TestSlotBinding_ValidMode(t *testing.T) {
 	}
 }
 
-func TestNewRoleInvocationPlanFromLock_MissingDigestsAreEmptyNotFabricated(t *testing.T) {
+func TestNewRoleInvocationPlanFromLock_RejectsAPartialCustomBinding(t *testing.T) {
 	lock := PluginLockFile{
 		Bindings: []SlotBinding{{Slot: "discovery", InstalledInstanceID: "brainstorming"}},
 	}
 
-	plan, err := NewRoleInvocationPlanFromLock("ranger", "discovery", lock)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if plan.WeaponDigest != "" || plan.BindingDigest != "" {
-		t.Fatalf("expected empty digests when lock has no matching nodes, got weapon=%q binding=%q", plan.WeaponDigest, plan.BindingDigest)
+	_, err := NewRoleInvocationPlanFromLock("ranger", "discovery", lock)
+
+	if err == nil || !strings.Contains(err.Error(), "custom_binding_invalid") {
+		t.Fatalf("a partial Custom binding must be rejected, got %v", err)
 	}
 }
 

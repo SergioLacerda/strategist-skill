@@ -16,7 +16,7 @@ func init() {
 }
 
 func TestRankedRuntimeTestDefaultsExist(t *testing.T) {
-	if _, err := os.Stat(filepath.Join("..", "embed", "defaults", "skills", "openspec-propose", "runtime", "runtime.build.yaml")); err != nil {
+	if _, err := os.Stat(filepath.Join("..", "embed", "defaults", "skills", openSpecProposePayloadDir, "runtime", "runtime.build.yaml")); err != nil {
 		t.Fatal(err)
 	}
 }

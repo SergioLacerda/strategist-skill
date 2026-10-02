@@ -310,7 +310,7 @@ func TestRunWizard_EOFPrompts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := runWizard(context.Background(), p(tt.input), minimalExtractor{}, "")
+			_, err := runWizard(context.Background(), p(tt.input), minimalExtractor{}, "", false)
 			require.Error(t, err)
 			assert.ErrorContains(t, err, tt.wantError)
 		})
@@ -394,7 +394,7 @@ func TestPromptSlots_UnknownProviderPrintsWarning(t *testing.T) {
 	input := "custom-ranger\nopenspec-explore\nsdd-ask\n\n"
 	catalog, err := parseCatalogBytes([]byte(minimalCatalogYAML))
 	require.NoError(t, err)
-	discovery, refinement, execution, _, _, _, err := promptSlots(NewTextPrompter(strings.NewReader(input)), b, catalog, knownProviderRisk)
+	discovery, refinement, execution, _, _, _, err := promptSlots(NewTextPrompter(strings.NewReader(input)), b, catalog, knownProviderRisk, false)
 	require.NoError(t, err)
 	assert.Equal(t, "custom-ranger", discovery)
 	assert.Equal(t, "openspec-explore", refinement)
@@ -413,7 +413,7 @@ func TestRunWizardBlocksOnUnresolvedCustomSkill(t *testing.T) {
 	t.Setenv("HOME", homeDir) // no skill installed under homeDir — deliberately unresolvable
 
 	input := "en\nen\nen\nen\nepic\n.analysis\ndefinitely-not-a-real-installed-skill-id-xyz\nopenspec-explore\nsdd-ask\n\n"
-	_, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(input)), minimalExtractor{}, "")
+	_, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(input)), minimalExtractor{}, "", false)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "configured_unverified")
 }
@@ -423,7 +423,7 @@ func TestRunWizardBlocksOnUnresolvedCustomExecutionProvider(t *testing.T) {
 	t.Setenv("HOME", homeDir)
 
 	input := "en\nen\nen\nen\nepic\n.analysis\nbrainstorming\nopenspec-propose\ncustom-execution\n\n"
-	_, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(input)), minimalExtractor{}, "")
+	_, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(input)), minimalExtractor{}, "", false)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "configured_unverified")
 }

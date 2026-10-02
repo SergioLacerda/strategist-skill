@@ -32,13 +32,21 @@ func bindingEvidence(root string, active domain.ActiveConfig) Dimension {
 	for _, slot := range []string{"discovery", "refinement"} {
 		plan, err := rolevalidation.BuildRoleInvocationPlan(root, slot)
 		if err != nil {
-			return Dimension{Name: "binding", Status: "blocked", EvidenceState: "failed", ReasonCode: bindingReason(err), Detail: fmt.Sprintf("slot=%s provider=%s: %v", slot, active.Slots[slot], err), Required: true}
+			return bindingFailureDimension(slot, active.Slots[slot], err)
 		}
-		if plan.WeaponID != active.Slots[slot] {
+		if !domain.WeaponRefMatchesBinding(active.Slots[slot], domain.SlotBinding{InstalledInstanceID: plan.WeaponID, WeaponVersion: plan.WeaponVersion}) {
 			return Dimension{Name: "binding", Status: "blocked", EvidenceState: "failed", ReasonCode: "active_binding_mismatch", Detail: fmt.Sprintf("slot=%s active=%s plan=%s", slot, active.Slots[slot], plan.WeaponID), Required: true}
 		}
 	}
 	return Dimension{Name: "binding", Status: "ready", EvidenceState: "static", ReasonCode: "role_provider_binding_verified", Detail: "all slots resolve to their persisted Role→Weapon bindings", Required: true}
+}
+
+func bindingFailureDimension(slot, provider string, err error) Dimension {
+	reason := bindingReason(err)
+	if strings.Contains(err.Error(), "active Weapon") {
+		reason = "active_binding_mismatch"
+	}
+	return Dimension{Name: "binding", Status: "blocked", EvidenceState: "failed", ReasonCode: reason, Detail: fmt.Sprintf("slot=%s provider=%s: %v", slot, provider, err), Required: true}
 }
 
 func loadRoleMap(root string) (domain.RoleSlotMap, error) {

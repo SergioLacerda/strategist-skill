@@ -36,11 +36,11 @@ func (e rankedExecutable) args(rest []string) []string {
 // resolveRankedExecutable materializes the embedded, digest-verified OpenSpec
 // bundle and runs it with a validated host Node. OpenSpec is never resolved
 // from PATH; only the host Node executable is discovered there.
-func resolveRankedExecutable(ctx context.Context, strategistDir, providerID string, contract domain.WeaponRuntime) (rankedExecutable, *domain.RankedRuntimeStateRuntime, error) {
-	return resolveHostNodeRuntime(ctx, strategistDir, providerID, contract)
+func resolveRankedExecutable(ctx context.Context, strategistDir, providerID, weaponVersion string, contract domain.WeaponRuntime) (rankedExecutable, *domain.RankedRuntimeStateRuntime, error) {
+	return resolveHostNodeRuntime(ctx, strategistDir, providerID, weaponVersion, contract)
 }
 
-func resolveHostNodeRuntime(ctx context.Context, strategistDir, providerID string, contract domain.WeaponRuntime) (rankedExecutable, *domain.RankedRuntimeStateRuntime, error) {
+func resolveHostNodeRuntime(ctx context.Context, strategistDir, providerID, weaponVersion string, contract domain.WeaponRuntime) (rankedExecutable, *domain.RankedRuntimeStateRuntime, error) {
 	node, err := resolveHostNode(ctx, strategistDir)
 	if err != nil {
 		return rankedExecutable{}, nil, err
@@ -57,7 +57,7 @@ func resolveHostNodeRuntime(ctx context.Context, strategistDir, providerID strin
 	if !ok {
 		return rankedExecutable{}, nil, fmt.Errorf("embedded OpenSpec defaults are unavailable; rebuild Strategist with the embedded skill bundle")
 	}
-	script, evidence, err := runtimepayload.MaterializeOpenSpec(defaults, dest)
+	script, evidence, err := runtimepayload.MaterializeOpenSpec(defaults, dest, weaponVersion)
 	if err != nil {
 		return rankedExecutable{}, nil, fmt.Errorf("embedded OpenSpec runtime: %w", err)
 	}

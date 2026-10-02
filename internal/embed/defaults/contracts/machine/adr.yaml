@@ -8,6 +8,13 @@ description: >
 contract:
   trigger: gate_analysis_accepted (gate acceptance) of OA-ADR side quest
   executor: sniper
+  machine_surface:
+    accept: "strategist mission accept-side-quest --mission-id <id> --side-quest OA-ADR-<id>"
+    decline: "strategist mission decline-side-quest --mission-id <id> --side-quest OA-ADR-<id>"
+    destination: "strategist mission adr-target --mission-id <id> [--slug <slug>]"
+    record: "missions/side-quests/<mission_id>.json"
+    rejected_events: [gate_approved_analysis_only, handoff_challenge_not_applicable]
+    rejection_reason: gate_event_conflicts_with_accepted_side_quest
 
   template:
     language_source: active.language.docs

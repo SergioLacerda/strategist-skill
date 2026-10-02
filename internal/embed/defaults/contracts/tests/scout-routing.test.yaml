@@ -75,5 +75,5 @@ cases:
       handoff: "[Strategist] phase=intake status=handoff component=scout target=ranger weapon=internal_skills/ranger subtype=creative"
       action: >
         Ranger resolves the selected active.slots.discovery Weapon and invokes it
-        through the host boundary before normalizing the result; the parent agent
-        never invokes the Weapon directly and Ranger remains authoritative
+        through its declared runtime before normalizing the result; the parent
+        agent never invokes the Weapon directly and Ranger remains authoritative

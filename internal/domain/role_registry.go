@@ -51,10 +51,10 @@ type RoleRegistry struct {
 // callers that know the workspace use LoadRoleRegistry to honor customizations.
 func DefaultRoleRegistry() RoleRegistry {
 	reg, err := NewRoleRegistry([]Role{
-		{ID: "scout", Origin: RoleOriginNative, Extensibility: RoleExtensibilityFixed, OnStart: DefaultStartCommands(), Initiative: InitiativeHooks{OnStart: "resolve_advice", OnResult: "emit_initiative_result", Preserve: []string{"advice_id", "policy_version", "policy_digest", "alignment", "evidence_refs"}}},
-		{ID: "ranger", Origin: RoleOriginNative, Extensibility: RoleExtensibilityPluggable, Slot: string(SlotDiscovery), Phase: 1, HandoffSchema: "schemas/handoff-ranger-to-archivist.schema.yaml", OnStart: DefaultStartCommands(), Initiative: InitiativeHooks{OnStart: "resolve_advice", OnResult: "emit_initiative_result", Preserve: []string{"advice_id", "policy_version", "policy_digest", "alignment", "evidence_refs"}}},
-		{ID: "archivist", Origin: RoleOriginNative, Extensibility: RoleExtensibilityPluggable, Slot: string(SlotRefinement), Phase: 2, HandoffSchema: "schemas/handoff-archivist-to-sniper.schema.yaml", OnStart: DefaultStartCommands(), Initiative: InitiativeHooks{OnStart: "consume_advice", OnResult: "emit_initiative_result", Preserve: []string{"advice_id", "policy_version", "policy_digest", "deviations", "evidence_refs"}}},
-		{ID: "sniper", Origin: RoleOriginNative, Extensibility: RoleExtensibilityPluggable, Slot: string(SlotExecution), Phase: 4, OnStart: DefaultStartCommands(), Initiative: InitiativeHooks{OnStart: "consume_advice", OnResult: "emit_initiative_result", Preserve: []string{"advice_id", "policy_version", "policy_digest", "deviations", "evidence_refs"}}},
+		{ID: "scout", Origin: RoleOriginNative, Extensibility: RoleExtensibilityFixed, OnStart: DefaultStartCommands(), Initiative: InitiativeHooks{OnStart: "resolve_advice"}},
+		{ID: "ranger", Origin: RoleOriginNative, Extensibility: RoleExtensibilityPluggable, Slot: string(SlotDiscovery), Phase: 1, HandoffSchema: "schemas/handoff-ranger-to-archivist.schema.yaml", OnStart: DefaultStartCommands()},
+		{ID: "archivist", Origin: RoleOriginNative, Extensibility: RoleExtensibilityPluggable, Slot: string(SlotRefinement), Phase: 2, HandoffSchema: "schemas/handoff-archivist-to-sniper.schema.yaml", OnStart: DefaultStartCommands()},
+		{ID: "sniper", Origin: RoleOriginNative, Extensibility: RoleExtensibilityPluggable, Slot: string(SlotExecution), Phase: 4, OnStart: DefaultStartCommands()},
 	})
 	if err != nil {
 		panic("domain: invalid built-in role registry: " + err.Error())

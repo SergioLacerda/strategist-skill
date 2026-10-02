@@ -4,12 +4,12 @@ packages:
       version: 1.0.0
       kind: atomic
       origin: embedded
-      runtime_kind: host
-      digest: sha256:6860a85af4c07c21aac500a9b9126193c846d7e757ff1742b6b405f4ca0f1051
+      runtime_kind: embedded
+      digest: sha256:f7fb9827151a3c2fe5b5a57f20168b2fae94f7e824acecb752045d277ff09a7c
       source: external-skills-source/brainstorming
       contract_version: skill-package/v2
-      original_digest: sha256:6860a85af4c07c21aac500a9b9126193c846d7e757ff1742b6b405f4ca0f1051
-      normalized_digest: sha256:f116151025365ec0f7958af3081d27ee62226aa747a373c033f33e265f82a864
+      original_digest: sha256:f7fb9827151a3c2fe5b5a57f20168b2fae94f7e824acecb752045d277ff09a7c
+      normalized_digest: sha256:647fbf6e2effe8d9d0bfe1621e4b7342d5a3026cc79b6eadb97038f04d99d034
       transformation: none
       local_modifications: unknown
       verification_state: declared
@@ -45,11 +45,11 @@ packages:
       kind: atomic
       origin: embedded
       runtime_kind: host
-      digest: sha256:fcaf34893d4e927113ad927462146031dddb380de4107ed802e7b30cb159247b
+      digest: sha256:5553fd1197ff69cd7a5762cde9f736791dd3746d5c311631aa026af7bef43833
       source: external-skills-source/openspec-explore
       contract_version: skill-package/v2
-      original_digest: sha256:fcaf34893d4e927113ad927462146031dddb380de4107ed802e7b30cb159247b
-      normalized_digest: sha256:94e6e23aba57e1f82e6667732b0e361d9695a700a49d58aef99514d2e688299e
+      original_digest: sha256:5553fd1197ff69cd7a5762cde9f736791dd3746d5c311631aa026af7bef43833
+      normalized_digest: sha256:af75c6834c806fdc3859f18d81d17ccd76cf40bf09dde4a03a1853987301f3f1
       transformation: none
       local_modifications: unknown
       verification_state: declared
@@ -64,11 +64,11 @@ packages:
       kind: atomic
       origin: embedded
       runtime_kind: openspec_root
-      digest: sha256:19912f74fa38a78fd7e43d7c4aec4f848ae6782b792882914066a302ad63a292
+      digest: sha256:9a22fa418f8072c04bf4767086f057b0972d4f3076e10ba6a1a9549d9503a7c7
       source: external-skills-source/openspec-propose
       contract_version: skill-package/v2
-      original_digest: sha256:19912f74fa38a78fd7e43d7c4aec4f848ae6782b792882914066a302ad63a292
-      normalized_digest: sha256:a3e92ab41bab2b452985a2ceccf8074c25a1bbcf8a7e2b87556ca30f7458191a
+      original_digest: sha256:9a22fa418f8072c04bf4767086f057b0972d4f3076e10ba6a1a9549d9503a7c7
+      normalized_digest: sha256:c92b798c444c6669953d594dad7183485cec80787f0dd7b04decf4080325c268
       transformation: none
       local_modifications: unknown
       verification_state: declared
@@ -84,11 +84,11 @@ packages:
       kind: atomic
       origin: embedded
       runtime_kind: host
-      digest: sha256:d0692cedae03045f561945af387eec08a3b5a2bd2a45aa4e487490771cd0b985
+      digest: sha256:a5733669bb9419319aca304b0120868583bf4c7e923156c7d1fd9b87c806affd
       source: external-skills-source/writing-plans
       contract_version: skill-package/v2
-      original_digest: sha256:d0692cedae03045f561945af387eec08a3b5a2bd2a45aa4e487490771cd0b985
-      normalized_digest: sha256:b4d2f11ca4c094dc10c389d0e9b0e00f28464fba1b1402f077bb13d028556de9
+      original_digest: sha256:a5733669bb9419319aca304b0120868583bf4c7e923156c7d1fd9b87c806affd
+      normalized_digest: sha256:9375b10b83bf2d6fbe192e7b0286ee21d480691c074ab083006d1a77c2898e40
       transformation: none
       local_modifications: unknown
       verification_state: declared

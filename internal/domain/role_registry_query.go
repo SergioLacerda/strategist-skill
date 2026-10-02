@@ -56,16 +56,13 @@ func (r RoleRegistry) HandoffSchemaOf(id string) string {
 	return role.HandoffSchema
 }
 
-// InitiativeHooksOf returns the consultative hooks declared by a role.
+// InitiativeHooksOf returns the consultative entry hook declared by a role.
 func (r RoleRegistry) InitiativeHooksOf(id string) (InitiativeHooks, bool) {
 	role, ok := r.Get(id)
 	if !ok {
 		return InitiativeHooks{}, false
 	}
-	return InitiativeHooks{
-		OnStart: role.Initiative.OnStart, OnResult: role.Initiative.OnResult,
-		Preserve: append([]string(nil), role.Initiative.Preserve...),
-	}, true
+	return InitiativeHooks{OnStart: role.Initiative.OnStart}, true
 }
 
 // PhaseOf returns the checkpoint position of a role or of the approval gate,
@@ -94,13 +91,18 @@ func (r RoleRegistry) PhaseTotal() int {
 
 // DefaultStartCommand resolves and records the role's level when its phase
 // starts, so the model x effort label is part of role invocation rather than
-// something the agent must remember. `<your-provider>`/`<your-model>`/
+// something the agent must remember. `<policy-provider-id>`/`<your-model>`/
 // `<your-effort>` are literal reminders for the invoking agent to fill in, not
 // substituted placeholders: the CLI cannot infer which provider, model, or
 // effort is calling it, and omitted values lose policy provenance (see
-// `20260922-strategist-ux-language-leveling-drift`). Only `{role}` and
+// `20260922-strategist-ux-language-leveling-drift`). `<policy-provider-id>`
+// specifically names the value space: a provider id declared in
+// `.strategist/leveling.yaml#providers` (e.g. CLAUDE or CODEX), not a vendor
+// name — an operator supplying a vendor name (e.g. "anthropic") gets a
+// `leveling_provider_unknown` diagnostic naming the actual cause (see
+// `20260928-leveling-label-failure-writes-blank-row.md`). Only `{role}` and
 // `{mission_id}` are mechanically substituted by StartCommands below.
-const DefaultStartCommand = "strategist leveling label --role {role} --mission {mission_id} --provider <your-provider> --host-model <your-model> --host-effort <your-effort>"
+const DefaultStartCommand = "strategist leveling label --role {role} --mission {mission_id} --provider <policy-provider-id> --host-model <your-model> --host-effort <your-effort>"
 
 // MechanismsBriefCommand prints the role-scoped Mechanisms brief, so an agent
 // starts a phase knowing which tools it has and how to invoke them.

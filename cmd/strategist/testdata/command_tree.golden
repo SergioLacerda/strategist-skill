@@ -84,6 +84,37 @@ flag: --root (string) default="" usage="path to .strategist/ root (default: auto
 use: handoff
 short: Run and record Handoff Challenge verification
 
+== strategist handoff evaluate
+use: evaluate
+short: Evaluate the Archivist-to-Sniper handoff and record its outcome
+long: |
+  Evaluates the Archivist-to-Sniper handoff of a mission: validates its refined
+  package, derives the policy signals from the package's typed facts, resolves the
+  policy, runs the semantic challenge when it is required, and durably records a
+  terminal outcome (passed, failed, or a policy-authorized skip) correlated to the
+  mission, the package revision and the attempt, and records the handoff confidence
+  (or an explicit missing-record). A failed outcome returns the mission to refinement,
+  so a repaired package needs a new Approval Gate acceptance; the last allowed failure
+  blocks it. A passed or skipped outcome does not enter execution by itself.
+  The policy is never chosen by the caller. --risk-level is the optional coarse
+  intake label and can only make the result stricter. The Approval Gate must
+  already be accepted. Entering execution (mission submit --event
+  handoff_challenge_satisfied) verifies and consumes this outcome.
+flag: --ack (string) default="" usage="path to an acknowledgment YAML file (needed when the package requires the challenge)"
+flag: --challenges (string) default="" usage="path to a challenges YAML file (needed when the package requires the challenge)"
+flag: --confidence-summary (string) default="" usage="optional YAML file with the declared handoff confidence_summary; without it a missing-record is written"
+flag: --mission-id (string) default="" usage="mission whose Archivist-to-Sniper handoff is evaluated (required)"
+flag: --risk-level (string) default="" usage="optional intake risk_level (low, medium, high); can only make the result stricter"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist handoff evaluate-ranger
+use: evaluate-ranger
+short: Evaluate and persist the Ranger-to-Archivist lifecycle outcome
+flag: --ack (string) default="" usage="path to an acknowledgment YAML file when the typed facts require a challenge"
+flag: --challenges (string) default="" usage="path to a challenges YAML file when the typed facts require a challenge"
+flag: --mission-id (string) default="" usage="mission whose Ranger-to-Archivist handoff is evaluated (required)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
 == strategist handoff verify
 use: verify
 short: Verify a Handoff Challenge acknowledgment and record the result
@@ -98,6 +129,9 @@ long: |
   Handoff Challenge "Known Limitations" for why this command exists.
   
   Exits non-zero when verification fails, so callers can gate on it directly.
+  This command never authorizes execution. The Archivist-to-Sniper transition is
+  decided by 'strategist handoff evaluate', which derives its policy from the
+  refined package and records the durable outcome execution entry requires.
 flag: --ack (string) default="" usage="path to an acknowledgment YAML file (required)"
 flag: --attempt (int) default="1" usage="attempt number, for repair-loop tracking"
 flag: --challenges (string) default="" usage="path to a challenges YAML file (required)"
@@ -105,7 +139,7 @@ flag: --mission-id (string) default="" usage="mission_id to record against (requ
 flag: --policy (string) default="" usage="path to a policy YAML file, overriding the built-in default for --transition"
 flag: --risk-level (string) default="" usage="mission risk_level (low, medium, high) from intake — when set, resolves policy.Enabled/RequiredTypes from risk signals instead of the static per-transition default; ignored if --policy is set"
 flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
-flag: --transition (string) default="" usage="handoff transition (archivist_to_sniper, ranger_to_archivist, sniper_to_validation) — ignored if --policy is set"
+flag: --transition (string) default="" usage="handoff transition (ranger_to_archivist or sniper_to_validation; archivist_to_sniper is decided by 'handoff evaluate') — ignored if --policy is set"
 
 == strategist install
 use: install
@@ -130,6 +164,7 @@ flag: --shim-path (string) default="" usage="write the SKILL.md shim to this pat
 flag: --silent (bool) default="false" usage="silent install with epic defaults (default)"
 flag: --strict-compile (bool) default="false" usage="fail install (and roll back) on a CompileAll error, instead of warning-only (default: warning-only)"
 flag: --target (string) default="" usage="target repository root (default: current directory)"
+flag: --verbose (bool) default="false" usage="show the INFO log lines, the wizard section headers and the role/provider migration preview that install hides by default"
 flag: --wizard (bool) default="false" usage="interactive wizard for configuration"
 
 == strategist leveling
@@ -289,6 +324,30 @@ flag: --root (string) default="" usage="path to .strategist/ root (default: auto
 use: mission
 short: Report and inspect mission-level facts this binary cannot observe directly
 
+== strategist mission accept-side-quest
+use: accept-side-quest
+short: Record the user's acceptance of the mission's OA-ADR side quest at the Approval Gate
+flag: --json (bool) default="false" usage="emit machine-readable JSON"
+flag: --mission-id (string) default="" usage="mission identifier (required)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+flag: --side-quest (string) default="" usage="side quest id, OA-ADR-<mission_id> (required)"
+
+== strategist mission adr-target
+use: adr-target
+short: Resolve and reserve the accepted OA-ADR destination at materialization time
+flag: --json (bool) default="false" usage="emit machine-readable JSON"
+flag: --mission-id (string) default="" usage="mission identifier (required)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+flag: --slug (string) default="" usage="title slug used when the canonical ADR directory is numbered (default: mission id)"
+
+== strategist mission complete
+use: complete
+short: Complete one embedded Weapon invocation
+flag: --json (bool) default="false" usage="emit machine-readable JSON"
+flag: --mission-id (string) default="" usage="mission identifier (required)"
+flag: --request-id (string) default="" usage="pending invocation request identifier (required)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
 == strategist mission context
 use: context
 short: Materialize declared mission context
@@ -299,6 +358,25 @@ flag: --max-refs (int) default="64" usage="maximum number of references"
 flag: --mission-id (string) default="" usage="mission identifier (required)"
 flag: --ref (stringSlice) default="[]" usage="declared workspace-relative context reference (repeatable)"
 flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist mission decline-side-quest
+use: decline-side-quest
+short: Record the user's decline of the mission's OA-ADR side quest at the Approval Gate
+flag: --json (bool) default="false" usage="emit machine-readable JSON"
+flag: --mission-id (string) default="" usage="mission identifier (required)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+flag: --side-quest (string) default="" usage="side quest id, OA-ADR-<mission_id> (required)"
+
+== strategist mission invoke
+use: invoke
+short: Invoke one embedded Weapon through a host bridge
+flag: --context (string) default="" usage="original user request supplied to an explicit host bridge"
+flag: --host (string) default="" usage="execute through host (codex or claude); omit to emit the request"
+flag: --json (bool) default="false" usage="emit machine-readable JSON"
+flag: --mission-id (string) default="" usage="mission identifier (required)"
+flag: --role (string) default="ranger" usage="Role to invoke"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+flag: --slot (string) default="" usage="pipeline slot to invoke (required)"
 
 == strategist mission normalize-openspec
 use: normalize-openspec
@@ -311,6 +389,7 @@ flag: --amend (bool) default="false" usage="amend an already published package w
 flag: --amends (string) default="" usage="with --amend: the change being amended (the package's provider_change_id, or the previous amendment's change id)"
 flag: --authorization-ref (string) default="" usage="with --amend: the human authorization for the amendment (a quote or a gate event), recorded verbatim"
 flag: --change-id (string) default="" usage="completed OpenSpec change id (required)"
+flag: --handoff-facts (string) default="" usage="YAML file with the typed handoff_policy_facts mapping, written into the published analysis.md frontmatter so `handoff evaluate` can derive the policy (publication only; an amendment keeps analysis.md byte-identical)"
 flag: --mission-id (string) default="" usage="canonical Strategist mission id (required)"
 flag: --pending-analysis (string) default="" usage="pending analysis path (default: <base_path>/pending/<mission-id>-analysis.md)"
 flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
@@ -471,6 +550,30 @@ flag: --catalog (string) default="internal/embed/defaults/plugins/catalog.yaml" 
 flag: --file (string) default="" usage="path to a resolved Weapon file to hash and compare (mutually exclusive with --resolved-digest)"
 flag: --provider (string) default="" usage="Weapon id to look up in the catalog (required)"
 flag: --resolved-digest (string) default="" usage="an already-computed sha256:<64 hex> digest to compare (mutually exclusive with --file)"
+
+== strategist plugins scaffold-sidecar
+use: scaffold-sidecar <package-dir>
+short: Generate a package's strategist.yaml sidecar deterministically
+long: |
+  Generates <package-dir>/strategist.yaml from the operator's declaration and
+  the package (ADR-0061). --role and --slot are required and are the human
+  confirmation; they are never inferred. version comes from SKILL.md
+  metadata.version, or from --version when the package declares none; risk_score, category and the ranger weapon_contract are
+  derived by fixed rules. upstream_* and license are filled only from an explicit
+  --provenance file. openspec_root additionally needs the package's runtime/
+  bundle, runtime.lock.yaml and a runtime: block in the provenance file.
+  
+  An existing sidecar is never overwritten without --force. --check writes
+  nothing and fails non-zero when the file is missing or differs from the
+  regenerated one. The command touches only <package-dir>/strategist.yaml.
+flag: --check (bool) default="false" usage="fail non-zero on drift instead of writing (for CI)"
+flag: --default (bool) default="false" usage="mark the Weapon as the default for its slot"
+flag: --force (bool) default="false" usage="overwrite an existing, differing sidecar"
+flag: --provenance (string) default="" usage="explicit provenance file supplying upstream_*, license and the openspec_root runtime block"
+flag: --role (stringArray) default="[]" usage="Role the Weapon serves (repeatable, required)"
+flag: --runtime (string) default="embedded" usage="runtime kind: embedded or openspec_root"
+flag: --slot (stringArray) default="[]" usage="slot the Weapon supports (repeatable, required)"
+flag: --version (string) default="" usage="package version, used only when SKILL.md carries no metadata.version"
 
 == strategist provider
 use: provider

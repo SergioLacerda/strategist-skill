@@ -30,9 +30,9 @@ capability:
         artifact management within workspace folders (analysis_move). Two modes: plain
         move (no evaluation, no evidence) and closure move (explicit implementation/
         validation claim + evidence summary, closing a pending/refined package into
-        done/). Does NOT fire automatically when a main_mission reaches
+        done/). Does NOT fire automatically when a full_pipeline reaches
         documentation_applied — that is documentation completion, not implementation
-        evidence. A completed main_mission normally ends with its package in refined/.
+        evidence. A completed full_pipeline normally ends with its package in refined/.
         Never infers completion on its own.
   route_decision: internal (Scout / intake routing layer — see internal_skills/scout)
   delegating_agent_contract: invoke with request context — route is resolved internally
@@ -73,11 +73,11 @@ taxonomy:
         maps the result to CODEX, CLAUDE, or the explicit generic fallback.
     - id: initiative
       display_name: INITIATIVE
-      runs_in: role entry and handoff boundaries (consultative)
-      outputs: [advice, diligence, alignment, initiative_result, outcome_correlation]
+      runs_in: Scout role entry (consultative)
+      outputs: [advice, diligence, alignment]
       source: initiative.yaml
       note: >
-        Advises the role before work begins and records evidence-backed results.
+        Advises Scout before route selection.
         It never changes LEVELING's model, provider, capability, effort, or
         level_source, and it never authorizes the Approval Gate or implementation.
     - id: opportunity_attack
@@ -121,7 +121,8 @@ orchestration:
       skill: ranger
       # Ranger remains the Role owner, while the selected Weapon supplies
       # bounded, untrusted discovery input. Ranger performs invocation through
-      # the host boundary, normalization, write-scope checks, and handoff.
+      # the Weapon's declared runtime, normalization, write-scope checks, and
+      # handoff; Ranked embedded Weapons never cross a host boundary.
       weapons: [brainstorming, openspec-explore]
     refinement:
       skill: archivist

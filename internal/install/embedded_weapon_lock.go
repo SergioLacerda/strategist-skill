@@ -126,7 +126,7 @@ func writeSkillMirrors(catalog pluginCatalog, skills []IngestedSkill, defaultsRo
 			return err
 		}
 	}
-	return nil
+	return removeLegacyMirrorDirs(skills, defaultsRoot)
 }
 
 func writeEmbeddedSkillLock(skills []IngestedSkill, path string) error {

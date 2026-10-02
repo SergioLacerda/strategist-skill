@@ -7,6 +7,27 @@ description: >
   the orchestrator must be able to locate them.
 
 required_fields:
+  # This typed block is the only lifecycle authority for the conditional
+  # Ranger-to-Archivist challenge. Missing, null, unknown, or contradictory
+  # values are indeterminate and must fail closed at the Archivist boundary.
+  ranger_handoff_policy_facts:
+    type: object
+    required: true
+    fields:
+      schema_version:
+        type: string
+        required: true
+        allowed_values: [strategist-ranger-handoff-policy-facts/v1]
+      require_recall: {type: boolean, required: true}
+      require_boundary: {type: boolean, required: true}
+      require_classification: {type: boolean, required: true}
+      require_verdict: {type: boolean, required: true}
+      informational_only: {type: boolean, required: true}
+    invariants:
+      - informational_only is true exactly when every require_* value is false
+      - informational_only false requires at least one require_* value to be true
+      - the Archivist boundary derives the challenge policy from this block,
+        never from coarse risk labels or a standalone diagnostic result
   mission_id:
     type: string
     required: true
@@ -179,7 +200,7 @@ required_fields:
       contracts/machine/handoff-contract.yaml#refinement_context_policy).
   sources_consulted:
     type: list
-    required: false
+    required: true
     item_fields: [source_path, content_fingerprint, coverage_status]
     item_values:
       coverage_status: [full, partial, skimmed]
@@ -187,6 +208,8 @@ required_fields:
       Sources Ranger opened during discovery, with a fingerprint and how thoroughly
       each was read. Consumed by contracts/machine/handoff-contract.yaml to decide
       whether Archivist may reopen a source or must treat it as already covered.
+      The key must be present in the frontmatter; an empty list means discovery opened
+      no source. Enforced by internal/handoff.ValidateRangerArtifact.
   weapon_invocation:
     type: object
     required: false
@@ -195,13 +218,14 @@ required_fields:
     description: >
       Invocation evidence for the discovery Weapon (contracts/narrative/03-discovery.md §
       Weapon Profile for a Delegated Ranger): whether it was invoked, where it was actually
-      resolved (embedded runtime or host skill directory), which Weapon steps were dropped
-      for a delegated run, and resolved_digest, the sha256:<64 hex> of the raw bytes of the
-      file the loader served. Required when Ranger runs as a delegated sub-role, optional
-      otherwise, so existing artifacts still validate. For delegated runs Ranger validates the
-      host-issued invocation receipt before promotion, compares a declared catalog pin, and records
-      only redacted receipt_status, pin_status, and capability_isolation. A valid receipt does not
-      prove parent-agent capability isolation.
+      resolved (Strategist's embedded runtime for Ranked Weapons or the declared host skill
+      directory for Custom Weapons), which Weapon steps were dropped for a delegated run, and
+      resolved_digest, the sha256:<64 hex> of the bytes resolved by the selected runtime. Required
+      when Ranger runs as a delegated sub-role, optional otherwise, so existing artifacts still
+      validate. Embedded Ranked invocation records internal evidence without a host receipt;
+      Custom host invocation validates the host-issued receipt before promotion, compares a
+      declared catalog pin, and records only redacted receipt_status, pin_status, and
+      capability_isolation. A valid receipt does not prove parent-agent capability isolation.
   evidence_cards:
     type: list
     required: false
@@ -237,36 +261,3 @@ required_fields:
           confidence is a float in [0.0, 1.0]. promoted_to_decision is a bool set
           only by Archivist during refinement, never by Ranger — an inference
           becomes a decision during refinement, never during discovery.
-  initiative_context:
-    type: object
-    required: false
-    description: >
-      Consultative INITIATIVE envelope. Optional for legacy handoffs. It is
-      advisory metadata and must not replace any LEVELING model, provider,
-      capability, effort, or level_source field.
-    fields:
-      advice_id: string
-      policy_version: string
-      policy_digest: string
-      trigger: string
-      alignment: [matched, below_recommendation, above_recommendation, unknown, unavailable, not_comparable]
-      recommended_capability: string
-      recommended_effort: [low, medium, high, xhigh]
-      confidence_ceiling: string
-      evidence_refs: list
-  initiative_result:
-    type: object
-    required: false
-    description: >
-      Ranger's append-only diligence/result observation. Archivist validates it
-      and preserves its advice_id; it does not recalculate or replace advice.
-    fields:
-      advice_id: string
-      mission_id: string
-      role: string
-      run_id: string
-      checks: list
-      deviations: list
-      evidence_refs: list
-      outcomes: list
-      gate_independent: boolean

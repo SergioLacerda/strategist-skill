@@ -55,6 +55,48 @@ contract:
 
   write_scope: read-only (Archivist reads this contract; it does not write to it)
 
+archivist_entry_policy:
+  owner: strategist
+  transition: ranger_to_archivist
+  status: lifecycle_owned
+  description: >
+    Conditional semantic handoff challenge between normalized Ranger discovery
+    and Archivist refinement. The normalized Ranger artifact must carry the
+    closed ranger_handoff_policy_facts block from
+    schemas/handoff-ranger-to-archivist.schema.yaml. Strategist persists one
+    tamper-evident outcome per attempt and consumes it immediately before the
+    Archivist provider invocation.
+
+  facts:
+    source: ranger_handoff_policy_facts
+    schema_version: strategist-ranger-handoff-policy-facts/v1
+    fields: [require_recall, require_boundary, require_classification, require_verdict, informational_only]
+    invalid_values: [missing, null, unknown, wrong_schema_version, contradictory, ambiguous]
+    invalid_action: deny_archivist_invocation
+
+  producer:
+    event: normalized_ranger_artifact
+    outcome: missions/handoff/<mission_id>/ranger_to_archivist/attempt-N.json
+    command: strategist handoff evaluate-ranger
+    standalone_verify_is_diagnostic_only: true
+
+  consumer:
+    boundary: mission invoke --slot refinement --role archivist
+    checks: [mission_id, transition, artifact_digest, policy_id, result, integrity, replay]
+    consume_before_provider_invocation: true
+    denied_when: [missing, failed, stale, cross_mission, policy_mismatch, replayed, tampered, unknown_result]
+
+  telemetry:
+    event: strategist.handoff.ranger_to_archivist
+    contract_id: ranger-to-archivist-handoff/v1
+    privacy: no_artifact_body_answers_or_digest
+
+  invariants:
+    - the coarse mission-risk policy is not lifecycle authority for this transition
+    - an absent or invalid facts block never becomes an automatic skip
+    - a diagnostic handoff verify result never authorizes Archivist execution
+    - Sniper-to-Validation remains advisory and has no standard pipeline consumer
+
 handoff_verification_policy:
   owner: archivist
   transition: archivist_to_sniper
@@ -87,6 +129,38 @@ handoff_verification_policy:
 
   precedence: require_when_over_skip_when
 
+  signal_derivation:
+    description: >
+      require_when/skip_when predicates are derived from the validated refined package by
+      one extractor (internal/handoff.ExtractRiskSignals), never from a coarse risk label
+      or a caller-supplied flag.
+    sources:
+      implementation_handoff_present: task_type of each tasks.md / implementation_plan item
+      mandatory_constraints_present: handoff_policy_facts.mandatory_constraints (analysis.md frontmatter)
+      unresolved_questions_present: handoff_policy_facts.unresolved_questions
+      forbidden_scope_present: handoff_policy_facts.forbidden_scope
+      destructive_operation_possible: handoff_policy_facts.destructive_operation_possible
+      security_sensitive_task: handoff_policy_facts.security_sensitive_task
+      informational_only: handoff_policy_facts.informational_only, valid only when no require fact holds
+    coarse_risk_level: optional intake label; may add require signals, never removes one
+    unknowable_facts: absent, null, unknown or contradictory handoff_policy_facts are rejected, never inferred
+
+  terminal_outcome:
+    description: >
+      `strategist handoff evaluate` records one durable, tamper-evident outcome per attempt,
+      correlated by mission, transition, package content identity and attempt. Entering
+      execution (`mission submit --event handoff_challenge_satisfied`) verifies the current
+      outcome and consumes it.
+    results: [passed, failed, skipped]
+    authorizes_execution: [passed, skipped]
+    skipped_requires: the current package facts still authorize the skip
+    denied_when: [missing, failed, stale, cross_mission, replayed, unknown_result, tampered, policy_mismatch, state_mismatch]
+    failure_loop: >
+      Every evaluation records its attempt, status and next action in mission state. A failed
+      outcome returns the mission to refinement (a new Approval Gate acceptance is required before
+      the repaired package can be evaluated again) and the last allowed failed attempt blocks it.
+      A passed or skipped outcome changes no state; entering execution consumes it.
+
   challenge_types:
     objective: receiver identifies the approved mission objective
     boundary: receiver identifies excluded or forbidden scope
@@ -106,6 +180,7 @@ handoff_verification_policy:
     - require_when predicates are ORed, skip_when predicates are ANDed, and any
       matching require_when predicate takes precedence over skip_when
     - "passing handoff_verification never grants execution by itself and never bypasses mission_status: gate_analysis_accepted"
+    - "the event handoff_challenge_satisfied is accepted only against a durable correlated outcome; the event name alone proves nothing, and the former event name handoff_challenge_passed is rejected as unsupported"
     - "validation is deterministic first: required refs, forbidden claims, classifications, and gate state; LLM judging is not the MVP authority"
 
 sniper_to_validation_policy:
@@ -152,5 +227,5 @@ sniper_to_validation_policy:
     - this transition is advisory-first like ranger_to_archivist — enabled defaults to
       false, unlike archivist_to_sniper's default_policy
     - documenting this transition here does not authorize any role to invoke it as
-      part of the standard mission sequence (00-routing.md's Main Mission Sequence,
+      part of the standard mission sequence (00-routing.md's Full Pipeline Sequence,
       Critical Hit Sequence, and Implementation Short Route are unchanged)

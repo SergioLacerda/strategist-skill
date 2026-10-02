@@ -135,14 +135,13 @@ func TestShippedRegistryNamesTheDecidedItems(t *testing.T) {
 	for _, row := range reg.Rows {
 		byID[row.ID] = row
 	}
-	mechanisms := []string{"critical_hit", "opportunity_attack", "initiative", "leveling", "precise_shot", "approval_gate", "handoff_challenge", "confidence_governance", "pipeline_bypass", "weapon_binding"}
+	mechanisms := []string{"critical_hit", "opportunity_attack", "initiative", "leveling", "approval_gate", "handoff_challenge", "confidence_governance", "pipeline_bypass", "weapon_binding"}
 	for _, id := range mechanisms {
 		assert.Equal(t, FamilyMechanism, byID[id].Family, id)
 	}
 	for _, id := range []string{"search", "select_runbook", "riposte"} {
 		assert.Equal(t, FamilyAbility, byID[id].Family, id)
 	}
-	assert.NotEmpty(t, byID["precise_shot"].JudgmentFacet, "PRECISE-SHOT is a hybrid: its judgment facet is named")
 	assert.Equal(t, "strategist runbook select --format json --signal <signal>", byID["select_runbook"].HowToInvoke)
 }
 

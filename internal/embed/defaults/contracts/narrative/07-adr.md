@@ -25,13 +25,16 @@ Create an ADR (Architectural Decision Record) when the refined work contains dec
 
 - **Archivist** evaluates ADR necessity after writing all four refined artifacts, using the criteria in `machine/opportunity-attack.yaml`
 - If criteria met → Archivist surfaces `[OA-ADR-{mission_id}]` at the approval gate as a side quest
-- If user approves at gate → **Sniper** resolves the destination (below) and creates the ADR as an execution task
-- If user declines at gate → ADR is not created; outcome logged
+- If user approves at gate → the shell records it with `strategist mission accept-side-quest`; the accepted record makes the ADR the mission's single gate-derived documentation target (the machine rejects the analysis-only gate events), and **Sniper** creates the ADR as an execution task at the path returned by `strategist mission adr-target`
+- If user declines at gate → `strategist mission decline-side-quest`; ADR is not created, `adr-target` fails with `adr_side_quest_not_accepted`, and outcome logged
 - Pending/refined card closure remains a **Critical Hit** responsibility and requires the closure evidence defined in `11-critical-hit.md`
 
 ## Canonical Destination Resolution
 
-Before writing, Sniper reads `active.yaml#adr.canonical_path` (optional string, project-relative path; no default — absence is a fully supported state, not an error):
+Before writing, Sniper runs `strategist mission adr-target --mission-id <id> [--slug <title-slug>]`,
+which applies this section at materialization time, reserves the path once in the accepted
+record, returns the same path on every repeat call, and records the Sniper claim for it.
+The rule it applies reads `active.yaml#adr.canonical_path` (optional string, project-relative path; no default — absence is a fully supported state, not an error):
 
 - **Configured** → the ADR is written **only** to `<adr.canonical_path>/<adr_filename>`. It is not also written to `<base_path>/archived/`. This avoids two sources of truth for the same decision.
 - **Absent** → today's behavior is unchanged: `<base_path>/archived/<mission_id>-adr.md`.

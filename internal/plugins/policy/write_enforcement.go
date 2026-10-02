@@ -117,7 +117,12 @@ func EvaluateWriteInScope(scope WriteScope, targetPath string, report Enforcemen
 		return WriteDecision{Allowed: false, Permission: domain.PluginPermissionWriteSource,
 			Reason: fmt.Sprintf("write to %q is forbidden inside runtime root %q", targetPath, scope.RuntimeRoot)}
 	}
-	if isForbiddenRefinementPath(scope.DocumentationRoots, targetPath) {
+	// Both checks run: isForbiddenRefinementPath catches <configured doc
+	// root>/plans (whatever documentation_roots names), while
+	// IsForbiddenStrategistRefinementPath separately guarantees the literal
+	// docs/plans is forbidden even when documentation_roots is configured to
+	// something else entirely — neither is a superset of the other.
+	if isForbiddenRefinementPath(scope.DocumentationRoots, targetPath) || IsForbiddenStrategistRefinementPath(targetPath) {
 		return WriteDecision{
 			Allowed:    false,
 			Permission: domain.PluginPermissionWriteDocs,

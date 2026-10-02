@@ -315,7 +315,7 @@ Installs the Strategist skill in a target repository.
 
 ```
 strategist install [--target=<dir>] [--wizard] [--silent] [--force]
-                    [--strict-compile] [--no-shim | --shim-path=<path>]
+                    [--strict-compile] [--no-shim | --shim-path=<path>] [--verbose]
 ```
 
 **Flags:**
@@ -329,6 +329,7 @@ strategist install [--target=<dir>] [--wizard] [--silent] [--force]
 | `--strict-compile` | `false` | Make a `CompileAll` failure after extraction fatal — the install rolls back instead of completing with a partial/uncompiled runtime. Default is warning-only (install still completes) |
 | `--no-shim` | `false` | Skip writing the SKILL.md shim entirely — no write to `~/.claude/skills` at all. Useful for CI/containers without a writable home directory. Mutually exclusive with `--shim-path` |
 | `--shim-path` | `` (default: `~/.claude/skills/strategist/SKILL.md`) | Write the shim to this path instead of the default home-relative location. Mutually exclusive with `--no-shim` |
+| `--verbose` | `false` | Show what `install` hides by default: the INFO log lines, the two wizard section headers and the role/provider migration preview. WARN lines, the prompts, the Ranked Node note and the result banner are always shown |
 
 **What it does:**
 
@@ -355,10 +356,7 @@ strategist install --target=/path/to/project
 curl -fsSL https://raw.githubusercontent.com/SergioLacerda/strategist-skill/main/bootstrap.sh | bash
 ```
 
-**Success output:**
-```
-[Strategist] install complete → .
-```
+**Success output:** the boxed `STRATEGIST ◆ install complete` banner. The INFO events (`install starting`, `install complete`, ...) are still emitted to telemetry but are displayed only with `--verbose`.
 
 ---
 

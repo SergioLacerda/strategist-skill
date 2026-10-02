@@ -7,17 +7,11 @@ handoff_schema: schemas/handoff-ranger-to-archivist.schema.yaml
 on_start:                       # run when this role's phase starts; {role} and {mission_id} are substituted.
                                  # --provider/--host-model/--host-effort are literal reminders to fill in with the
                                  # actual running model/effort — the CLI cannot infer them, and omitting
-                                 # them silently returns blank fields.
-  - strategist leveling label --role {role} --mission {mission_id} --provider <your-provider> --host-model <your-model> --host-effort <your-effort>
+                                 # them silently returns blank fields. --provider is a LEVELING policy id
+                                 # (.strategist/leveling.yaml#providers, e.g. CLAUDE or CODEX), not a vendor name.
+  - strategist leveling label --role {role} --mission {mission_id} --provider <policy-provider-id> --host-model <your-model> --host-effort <your-effort>
   - strategist mechanisms brief --role {role}   # the tools (Mechanisms and Abilities) available to this role
 # leveling: ranger             # optional LEVELING policy role; defaults to the role id
-
-# INITIATIVE is consultative: resolve one advice envelope at role entry and
-# carry its advice_id through the run. It never replaces the LEVELING tuple.
-initiative:
-  on_start: resolve_advice
-  on_result: emit_initiative_result
-  preserve: [advice_id, policy_version, policy_digest, alignment, evidence_refs]
 
 # Canonical behaviors — read-only, source in skill.yaml.
 # Listed here for reference when writing custom_brief below.

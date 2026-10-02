@@ -48,6 +48,16 @@ func TestRunWithHomeGuard_ExecutionPaths(t *testing.T) {
 	resFail := runWithHomeGuardRunner(func() int { return 42 })
 	assert.Equal(t, 42, resFail)
 
+	// Violation run that also fails for an unrelated reason: the violation
+	// must still be reported, not silently dropped behind the failing code.
+	resBoth := runWithHomeGuardRunner(func() int {
+		claude := filepath.Join(fakeHome, userShimRelPaths[0])
+		require.NoError(t, os.MkdirAll(filepath.Dir(claude), 0o750))
+		require.NoError(t, os.WriteFile(claude, []byte("leak-and-fail"), 0o600))
+		return 7
+	})
+	assert.Equal(t, 7, resBoth, "the original failing code is preserved")
+
 	// Error resolving user home
 	t.Setenv("HOME", "")
 	t.Setenv("USERPROFILE", "")

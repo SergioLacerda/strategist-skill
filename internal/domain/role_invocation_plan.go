@@ -31,8 +31,13 @@ type RoleInvocationPlan struct {
 	// resolution path (docs/adr/0043-ranked-pipeline-pilot-implementation-decisions.md),
 	// never a re-point of Custom's digest lookup.
 	WeaponID          string        `json:"weapon"`
+	WeaponVersion     string        `json:"weapon_version,omitempty"`
 	WeaponDigest      string        `json:"weapon_digest,omitempty"`
+	SourceDigest      string        `json:"source_digest,omitempty"`
 	BindingDigest     string        `json:"binding_digest,omitempty"`
+	ExecutionMode     string        `json:"execution_mode,omitempty"`
+	ConnectorID       string        `json:"connector_id,omitempty"`
+	Entrypoint        string        `json:"entrypoint,omitempty"`
 	BindingGeneration int64         `json:"binding_generation,omitempty"`
 	BindingStatus     string        `json:"binding_status,omitempty"`
 	Runtime           WeaponRuntime `json:"runtime,omitempty"`
@@ -70,13 +75,21 @@ func NewRoleInvocationPlanFromLock(role, slot string, lock PluginLockFile) (Role
 	if mode := binding.EffectiveMode(); mode != SlotBindingModeCustom {
 		return RoleInvocationPlan{}, fmt.Errorf("role invocation plan: slot %q has mode %q — use NewRankedRoleInvocationPlanFromCatalog for a Ranked binding", slot, mode)
 	}
+	if err := ValidateCustomBinding(lock, binding, role, slot); err != nil {
+		return RoleInvocationPlan{}, fmt.Errorf("role invocation plan: %w", err)
+	}
 	return RoleInvocationPlan{
 		Role:              role,
 		Slot:              slot,
 		Mode:              binding.EffectiveMode(),
 		WeaponID:          binding.InstalledInstanceID,
-		WeaponDigest:      lock.NodeDigest(binding.InstalledInstanceID, "adapter_contract"),
-		BindingDigest:     lock.NodeDigest(role+":"+binding.InstalledInstanceID, "role_provider_binding"),
+		WeaponVersion:     binding.WeaponVersion,
+		WeaponDigest:      binding.WeaponDigest,
+		SourceDigest:      binding.SourceDigest,
+		BindingDigest:     binding.BindingDigest,
+		ConnectorID:       binding.ConnectorID,
+		Entrypoint:        binding.Entrypoint,
+		Runtime:           WeaponRuntime{Kind: binding.RuntimeKind},
 		BindingGeneration: binding.Generation,
 		BindingStatus:     binding.Status,
 	}, nil

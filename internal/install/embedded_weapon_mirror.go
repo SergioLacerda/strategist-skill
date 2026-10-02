@@ -6,12 +6,33 @@ import (
 	"path/filepath"
 )
 
+// legacyMirrorDir is the pre-ADR-0061 skills/<id>/ directory of an ingested id.
+func legacyMirrorDir(defaultsRoot string, skill IngestedSkill) string {
+	return filepath.Join(defaultsRoot, "skills", skill.ID)
+}
+
+// removeLegacyMirrorDirs deletes the id-only mirror directories the versioned
+// skills/<id>@<version>/ layout replaces. Only ids ingested in this run are
+// touched, and a versioned directory is never mistaken for a legacy one.
+func removeLegacyMirrorDirs(skills []IngestedSkill, defaultsRoot string) error {
+	for _, skill := range skills {
+		dir := legacyMirrorDir(defaultsRoot, skill)
+		if dir == filepath.Join(defaultsRoot, "skills", skillPayloadDirName(skill)) {
+			continue
+		}
+		if err := os.RemoveAll(dir); err != nil {
+			return fmt.Errorf("remove legacy mirror %s: %w", dir, err)
+		}
+	}
+	return nil
+}
+
 func writeSkillMirror(catalog pluginCatalog, skill IngestedSkill, defaultsRoot string) error {
-	manifest, err := generateLegacyProviderManifest(catalog, skill.ID)
+	manifest, err := skillDigestManifest(catalog, skill)
 	if err != nil {
 		return fmt.Errorf("generate mirror for %s: %w", skill.ID, err)
 	}
-	mirrorDir := filepath.Join(defaultsRoot, "skills", skill.ID)
+	mirrorDir := filepath.Join(defaultsRoot, "skills", skillPayloadDirName(skill))
 	if err := os.MkdirAll(mirrorDir, 0o755); err != nil {
 		return fmt.Errorf("mkdir %s: %w", mirrorDir, err)
 	}

@@ -65,7 +65,7 @@ func compatibleProviders(role domain.RoleContract, candidates []domain.ProviderC
 
 func sortedCompatibleProviders(role domain.RoleContract, candidates []domain.ProviderContract) []domain.ProviderContract {
 	compatible := compatibleProviders(role, candidates)
-	sort.Slice(compatible, func(i, j int) bool { return compatible[i].ID < compatible[j].ID })
+	sort.Slice(compatible, func(i, j int) bool { return providerIdentity(compatible[i]) < providerIdentity(compatible[j]) })
 	return compatible
 }
 
@@ -77,7 +77,7 @@ func chooseRoleBinding(role domain.RoleContract, compatible []domain.ProviderCon
 		return domain.ProviderBinding{Role: role, Provider: compatible[0], Compatibility: compatible[0].CheckRoleAffinity(role)}, nil
 	default:
 		if preferredProviderID != "" {
-			if winner, ok := findByID(compatible, preferredProviderID); ok {
+			if winner, ok := findByRef(compatible, preferredProviderID); ok {
 				return domain.ProviderBinding{Role: role, Provider: winner, Compatibility: winner.CheckRoleAffinity(role)}, nil
 			}
 		}
@@ -85,77 +85,33 @@ func chooseRoleBinding(role domain.RoleContract, compatible []domain.ProviderCon
 	}
 }
 
-// deduplicateShadowedIDs collapses candidates that share an ID across
-// different Source values into the single candidate whose Source equals
-// shadowOverride. An empty shadowOverride, or a collision none of whose
-// candidates match it, is rejected with a stable id_shadowing error — a
-// Provider ID never silently shadows another.
-func deduplicateShadowedIDs(candidates []domain.ProviderContract, shadowOverride domain.ProviderSource) ([]domain.ProviderContract, error) {
-	byID := map[string][]domain.ProviderContract{}
-	ids := make([]string, 0, len(candidates))
+// findByRef resolves a preferred "id" or "id@version" reference. A plain id
+// resolves only while exactly one version of it is a candidate; with several it
+// stays ambiguous rather than picking one.
+func findByRef(candidates []domain.ProviderContract, ref string) (domain.ProviderContract, bool) {
+	id, version := domain.ParseWeaponRef(ref)
+	var found domain.ProviderContract
+	count := 0
 	for _, candidate := range candidates {
-		if _, seen := byID[candidate.ID]; !seen {
-			ids = append(ids, candidate.ID)
-		}
-		byID[candidate.ID] = append(byID[candidate.ID], candidate)
-	}
-	sort.Strings(ids)
-
-	deduped := make([]domain.ProviderContract, 0, len(candidates))
-	for _, id := range ids {
-		winner, err := deduplicateShadowedGroup(id, byID[id], shadowOverride)
-		if err != nil {
-			return nil, err
-		}
-		deduped = append(deduped, winner)
-	}
-	return deduped, nil
-}
-
-func deduplicateShadowedGroup(id string, group []domain.ProviderContract, shadowOverride domain.ProviderSource) (domain.ProviderContract, error) {
-	if len(group) == 1 {
-		return group[0], nil
-	}
-	if shadowOverride == "" {
-		return domain.ProviderContract{}, fmt.Errorf("id_shadowing: id=%s sources=%s requires an explicit shadow override", id, sourceList(group))
-	}
-	winner, ok := findBySource(group, shadowOverride)
-	if !ok {
-		return domain.ProviderContract{}, fmt.Errorf("id_shadowing: id=%s sources=%s does not include override source %s", id, sourceList(group), shadowOverride)
-	}
-	return winner, nil
-}
-
-func findBySource(group []domain.ProviderContract, source domain.ProviderSource) (domain.ProviderContract, bool) {
-	for _, candidate := range group {
-		if candidate.Source == source {
-			return candidate, true
+		if candidate.ID == id && (version == "" || candidate.Version == version) {
+			found = candidate
+			count++
 		}
 	}
-	return domain.ProviderContract{}, false
-}
-
-func findByID(candidates []domain.ProviderContract, id string) (domain.ProviderContract, bool) {
-	for _, candidate := range candidates {
-		if candidate.ID == id {
-			return candidate, true
-		}
-	}
-	return domain.ProviderContract{}, false
-}
-
-func sourceList(group []domain.ProviderContract) string {
-	sources := make([]string, 0, len(group))
-	for _, candidate := range group {
-		sources = append(sources, string(candidate.Source))
-	}
-	sort.Strings(sources)
-	return strings.Join(sources, ",")
+	return found, count == 1
 }
 
 func candidateIDs(candidates []domain.ProviderContract) []string {
 	ids := make([]string, 0, len(candidates))
+	perID := make(map[string]int, len(candidates))
 	for _, candidate := range candidates {
+		perID[candidate.ID]++
+	}
+	for _, candidate := range candidates {
+		if perID[candidate.ID] > 1 {
+			ids = append(ids, providerIdentity(candidate))
+			continue
+		}
 		ids = append(ids, candidate.ID)
 	}
 	sort.Strings(ids)

@@ -6,6 +6,7 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFSMNominalRoute(t *testing.T) {
@@ -16,7 +17,7 @@ func TestFSMNominalRoute(t *testing.T) {
 		domain.EventManifestEmpty,    // SideQuestScan -> Refinement (no side quests)
 		domain.EventArchivistTasks,   // Refinement -> ApprovalGate
 		domain.EventGateApproved,     // ApprovalGate -> HandoffChallenge
-		domain.EventHandoffPassed,    // HandoffChallenge -> Execution
+		domain.EventHandoffSatisfied, // HandoffChallenge -> Execution
 		domain.EventSniperDone,       // Execution -> DoneDelivery
 	}
 	state := domain.StateInit
@@ -49,10 +50,10 @@ func TestFSMGateTimeoutTerminatesAnalysis(t *testing.T) {
 func TestFSMGateRevisionLoop(t *testing.T) {
 	t.Parallel()
 	state := domain.RunStateMachine(domain.StateApprovalGate, []domain.TransitionEvent{
-		domain.EventGateRevision,   // ApprovalGate -> Refinement
-		domain.EventArchivistTasks, // Refinement -> ApprovalGate (re-presented)
-		domain.EventGateApproved,   // ApprovalGate -> HandoffChallenge
-		domain.EventHandoffPassed,  // HandoffChallenge -> Execution
+		domain.EventGateRevision,     // ApprovalGate -> Refinement
+		domain.EventArchivistTasks,   // Refinement -> ApprovalGate (re-presented)
+		domain.EventGateApproved,     // ApprovalGate -> HandoffChallenge
+		domain.EventHandoffSatisfied, // HandoffChallenge -> Execution
 	})
 	assert.Equal(t, domain.StateExecution, state)
 }
@@ -293,7 +294,7 @@ var allMissionStates = []domain.MissionState{
 var allTransitionEvents = []domain.TransitionEvent{
 	domain.EventManifestEmpty, domain.EventManifestNonEmpty,
 	domain.EventGateApproved, domain.EventGateApprovedAnalysisOnly, domain.EventGateDenied, domain.EventGateTimeout, domain.EventGateRevision,
-	domain.EventHandoffPassed, domain.EventHandoffFailed, domain.EventHandoffExhausted, domain.EventHandoffNotApplicable,
+	domain.EventHandoffSatisfied, domain.EventHandoffFailed, domain.EventHandoffExhausted, domain.EventHandoffNotApplicable,
 	domain.EventSniperDone, domain.EventArchivistNoTasks, domain.EventArchivistTasks,
 	domain.EventADRCriterionMet, domain.EventADRApproved, domain.EventADRDeclined,
 	domain.EventSlotTransient, domain.EventSlotPermanent, domain.EventRetryOK,
@@ -366,4 +367,15 @@ func nextSeenGateApproved(state domain.MissionState, ev domain.TransitionEvent, 
 		return false
 	}
 	return seenGateApproved
+}
+
+func TestObsoleteHandoffPassedEventIsRejectedWithAnExplicitDiagnostic(t *testing.T) {
+	engine, status, err := domain.StartMission(domain.MissionStartRequest{MissionID: "m1"})
+	require.NoError(t, err)
+
+	_, err = engine.Submit(domain.MissionEngineEvent("handoff_challenge_passed"))
+
+	require.ErrorContains(t, err, "unsupported_event")
+	require.ErrorContains(t, err, "handoff_challenge_satisfied")
+	assert.Equal(t, status, engine.Status(), "a rejected event leaves the engine unchanged")
 }

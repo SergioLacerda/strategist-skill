@@ -75,10 +75,36 @@ func resolveExternalSkill(dir string) (IngestedSkill, error) {
 	if err != nil {
 		return IngestedSkill{}, err
 	}
+	if err := verifyUpstreamPin(dir, pkg.ID, adapter); err != nil {
+		return IngestedSkill{}, err
+	}
+	if pkg.Version == "" {
+		pkg.Version = adapter.Version
+	}
+	if pkg.Version == "" {
+		return IngestedSkill{}, fmt.Errorf("external skill %s: SKILL.md or %s must declare version", pkg.ID, externalSkillAdapterFileName)
+	}
 	if err := validateIngestedSkillContract(pkg, adapter); err != nil {
 		return IngestedSkill{}, fmt.Errorf("external skill %s: %w", pkg.ID, err)
 	}
 	return IngestedSkill{ID: pkg.ID, Dir: dir, Package: pkg, Adapter: adapter}, nil
+}
+
+// verifyUpstreamPin fails when a declared upstream_content_digest pin does not
+// match the local SKILL.md bytes and the adapter does not admit that it is an
+// adapted copy. An absent pin is explicitly unverified and is not an error.
+func verifyUpstreamPin(dir, id string, adapter externalSkillAdapter) error {
+	if adapter.UpstreamContentDigest == "" || adapter.LocalModifications {
+		return nil
+	}
+	local, err := HashFileSHA256(filepath.Join(dir, "SKILL.md"))
+	if err != nil {
+		return fmt.Errorf("external skill %s: %w", id, err)
+	}
+	if local != adapter.UpstreamContentDigest {
+		return fmt.Errorf("external skill %s: upstream_pin_mismatch: SKILL.md hashes to %s but upstream_content_digest pins %s; declare local_modifications: true if the copy is intentionally adapted", id, local, adapter.UpstreamContentDigest)
+	}
+	return nil
 }
 
 func validateIngestedSkillContract(pkg domain.PluginPackage, adapter externalSkillAdapter) error {
@@ -119,13 +145,13 @@ func IngestExternalSkills(sourceDir string, existingCatalog pluginCatalog, trust
 	}
 
 	var result IngestionResult
-	candidates, candidateIDs := resolveCandidates(dirs, &result)
-	baseProviders := supersedableBaseProviders(existingCatalog.Providers, candidateIDs)
+	candidates, candidateIdentities := resolveCandidates(dirs, &result)
+	baseProviders := supersedableBaseProviders(existingCatalog.Providers, candidateIdentities)
 	accepted := filterAcceptedCandidates(candidates, baseProviders, trustPolicy, &result)
 	result.Ingested = filterDependencyResolved(accepted, existingCatalog.SchemaVersion, baseProviders, &result)
 
 	sort.Slice(result.Rejected, func(i, j int) bool { return result.Rejected[i].ID < result.Rejected[j].ID })
-	sort.Slice(result.Ingested, func(i, j int) bool { return result.Ingested[i].ID < result.Ingested[j].ID })
+	sort.Slice(result.Ingested, func(i, j int) bool { return skillIdentity(result.Ingested[i]) < skillIdentity(result.Ingested[j]) })
 	result.Catalog = buildCatalog(existingCatalog.SchemaVersion, baseProviders, result.Ingested)
 	return result, nil
 }

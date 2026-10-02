@@ -71,7 +71,7 @@ from still-open work.
   `docs/runbooks/demands-and-docs-reorganization.md` instead.
 - Any move would place a file outside the backlog's own `base_path`, or
   would touch non-`.md` files — outside this runbook's scope; fall back to
-  `main_mission` judgment.
+  `full_pipeline` judgment.
 
 ## Reference
 

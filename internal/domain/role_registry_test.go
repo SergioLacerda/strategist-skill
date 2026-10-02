@@ -56,14 +56,15 @@ func TestRoleRegistryLookups(t *testing.T) {
 	assert.False(t, ok)
 }
 
-func TestRoleRegistryExposesIndependentInitiativeHooks(t *testing.T) {
+func TestRoleRegistryExposesScoutInitiativeEntryHookOnly(t *testing.T) {
 	reg := domain.DefaultRoleRegistry()
 	hooks, ok := reg.InitiativeHooksOf("ranger")
 	require.True(t, ok)
+	assert.Empty(t, hooks.OnStart)
+
+	hooks, ok = reg.InitiativeHooksOf("scout")
+	require.True(t, ok)
 	assert.Equal(t, "resolve_advice", hooks.OnStart)
-	assert.Equal(t, "emit_initiative_result", hooks.OnResult)
-	assert.Contains(t, hooks.Preserve, "advice_id")
-	assert.Contains(t, hooks.Preserve, "alignment")
 
 	_, ok = reg.InitiativeHooksOf("unknown")
 	assert.False(t, ok)
@@ -156,7 +157,7 @@ func TestLoadRoleRegistryOverlaysFilesOnBuiltIns(t *testing.T) {
 	assert.Equal(t, "schemas/custom.yaml", reg.HandoffSchemaOf("ranger"))
 	hooks, ok := reg.InitiativeHooksOf("ranger")
 	require.True(t, ok)
-	assert.Equal(t, "resolve_advice", hooks.OnStart, "legacy role overrides keep INITIATIVE enabled")
+	assert.Empty(t, hooks.OnStart, "role overrides do not reintroduce retired boundary hooks")
 	assert.True(t, reg.Has("auditor"), "a new role file adds a role")
 	assert.True(t, reg.Has("sniper"), "roles without files keep the built-in definition")
 	assert.Equal(t, 5, reg.PhaseTotal())
@@ -185,7 +186,7 @@ func TestEveryRoleDeclaresTheLevelStartHook(t *testing.T) {
 	for _, id := range reg.IDs() {
 		commands := reg.StartCommands(id, "m-42")
 		require.NotEmpty(t, commands, "%s must resolve its level at start", id)
-		assert.Equal(t, "strategist leveling label --role "+id+" --mission m-42 --provider <your-provider> --host-model <your-model> --host-effort <your-effort>", commands[0], "the level label runs first for "+id)
+		assert.Equal(t, "strategist leveling label --role "+id+" --mission m-42 --provider <policy-provider-id> --host-model <your-model> --host-effort <your-effort>", commands[0], "the level label runs first for "+id)
 	}
 	assert.Empty(t, reg.StartCommands("transport", "m-42"), "an unregistered role has no hook")
 }

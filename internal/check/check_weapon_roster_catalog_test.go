@@ -51,7 +51,8 @@ func rosterRoot(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "plugins"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins", "catalog.yaml"), []byte(rosterCatalog), 0o644))
+	catalog := rosterCatalog + registrySectionsYAML(t, fixtureRegistry())
+	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins", "catalog.yaml"), []byte(catalog), 0o644))
 	writeDefaultRoleSlotMap(t, root)
 	for role, slot := range map[string]string{"ranger": "discovery", "archivist": "refinement", "sniper": "execution"} {
 		require.NoError(t, os.WriteFile(filepath.Join(root, "roles", role+".yaml"), []byte("role: "+role+"\nslot: "+slot+"\nextensibility: pluggable\n"), 0o644))
@@ -85,7 +86,7 @@ func TestRosterComesFromTheCatalogWithoutAnyCompatView(t *testing.T) {
 
 func TestRosterReportsAnEmbeddedWeaponWhoseSkillPayloadIsMissing(t *testing.T) {
 	root := rosterRoot(t)
-	require.NoError(t, os.Remove(filepath.Join(root, "skills", "brainstorming", "SKILL.md")))
+	require.NoError(t, os.Remove(filepath.Join(root, "skills", "brainstorming@0.0.0", "SKILL.md")))
 
 	bindings, err := verifyEmbeddedWeaponBindings(root)
 

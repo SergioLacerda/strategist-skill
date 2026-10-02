@@ -124,3 +124,8 @@ required evidence and handoff fields, and obey the existing lock, control log,
 approval, and mission-status transitions before emitting the Archivist
 handoff. If normalization or any checkpoint validation fails, stop with an
 explicit error and do not advance the pipeline.
+
+For the OpenSpec path, `strategist mission normalize-openspec` persists
+Archivist's canonical-artifact confidence claim before publication. Do not emit a
+second record for that same boundary. A confidence persistence failure leaves the
+provider change active and must be retried after the storage problem is corrected.

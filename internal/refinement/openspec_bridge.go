@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 )
 
@@ -19,6 +20,15 @@ type OpenSpecInput struct {
 	RuntimeRoot         string
 	ChangeID            string
 	PendingAnalysisPath string
+	// RecordConfidence persists Archivist's own boundary claim before any
+	// package is published. The callback is required so refinement cannot
+	// finish silently when telemetry storage is unavailable.
+	RecordConfidence func(domain.ConfidenceClaim, []domain.Evidence) error
+	// HandoffFacts is the optional typed handoff_policy_facts mapping Archivist
+	// declares at publication. It is validated with handoff.ParsePolicyFacts and
+	// written into the published analysis.md frontmatter; nil publishes none and
+	// leaves the package without an evaluable handoff policy.
+	HandoffFacts map[string]any
 }
 
 // OpenSpecResult describes the canonical package published by the bridge.
@@ -54,6 +64,9 @@ func NormalizeOpenSpec(input OpenSpecInput) (OpenSpecResult, error) {
 	if err != nil {
 		return OpenSpecResult{}, err
 	}
+	if err := recordArchivistConfidence(input); err != nil {
+		return OpenSpecResult{}, fmt.Errorf("openspec bridge: record Archivist confidence: %w", err)
+	}
 	if err := publishOrPromote(refined, input.PendingAnalysisPath, contents); err != nil {
 		return OpenSpecResult{}, err
 	}
@@ -84,7 +97,11 @@ func readContents(changeDir string, input OpenSpecInput) (map[string][]byte, err
 	if err != nil {
 		return nil, err
 	}
-	contents := map[string][]byte{"analysis.md": addMetadata(analysis, input)}
+	withMetadata, err := addMetadata(analysis, input)
+	if err != nil {
+		return nil, err
+	}
+	contents := map[string][]byte{"analysis.md": withMetadata}
 	canonical, err := readCanonicalFiles(changeDir)
 	if err != nil {
 		return nil, err
@@ -108,7 +125,7 @@ func readPendingAnalysis(input OpenSpecInput) ([]byte, error) {
 		return nil, fmt.Errorf("openspec bridge: pending analysis mission_id does not match %q", input.MissionID)
 	}
 	if handoff.HasNormalizedRangerMetadata(input.PendingAnalysisPath) {
-		if err := handoff.ValidateRangerArtifact(input.PendingAnalysisPath, input.MissionID); err != nil {
+		if err := handoff.ValidateRangerArtifactForRefinement(input.PendingAnalysisPath, input.MissionID); err != nil {
 			return nil, fmt.Errorf("openspec bridge: %w", err)
 		}
 	}

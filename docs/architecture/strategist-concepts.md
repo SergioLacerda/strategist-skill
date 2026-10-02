@@ -58,10 +58,10 @@ PRECISE-SHOT has `PRECISE-SHOT` as its stable identifier. Its deterministic face
 owned by INITIATIVE: it derives confidence and can request advisory LEVELING
 reconsideration, but it has no provider, model, effort, or Approval Gate authority.
 
-`Critical Hit` is a Mechanism: its activation is a deterministic rule that Scout applies
-before the slot pipeline, and the route value `critical_hit` selects it. It is never a
-selectable Role, Weapon, or provider. Refactoring it to the same activation flow as the
-other Mechanisms is a separate, later change.
+`Critical Hit` is a Mechanism: its activation is a deterministic, mode-selected rule that
+Scout applies before the slot pipeline, and the route value `critical_hit` selects it.
+Only the declared `plain` and `closure` modes can activate; an unknown or unsatisfied
+mode fails closed to `full_pipeline`. It is never a selectable Role, Weapon, or provider.
 
 The agent-facing catalog of Mechanisms and Abilities is
 `contracts/machine/mechanisms.yaml`. Agents do not read it directly: each role receives a
@@ -84,13 +84,13 @@ When a request arrives, the intake/routing layer classifies it and selects one o
 |-------|------|----------|
 | **Critical Hit** | Move/archive `.md` artifacts inside `<base_path>` | `intake → inline_gate → sniper` |
 | **Implementation Short Route** | Already-refined materialization with sufficient context | `intake → validation → approval_gate → execution` |
-| **Main Mission** | Everything else (default) | `intake → discovery → refinement → approval_gate → execution` |
+| **Full Pipeline** | Everything else (default) | `intake → discovery → refinement → approval_gate → execution` |
 
-The caller does not specify a route. When in doubt, Strategist defaults to **Main Mission** (conservatism is the safe default).
+The caller does not specify a route. When in doubt, Strategist defaults to **Full Pipeline** (conservatism is the safe default).
 
 ### Critical Hit
 
-Critical Hit is a narrow short route for **artifact maintenance** only — moving, archiving, or reopening `.md` files within the workspace folders (`pending/`, `refined/`, `archived/`). It does **not** perform analysis, evaluate implementation, detect gaps, or redesign requirements. Those tasks always go through Main Mission.
+Critical Hit is a narrow short route for **artifact maintenance** only — moving, archiving, or reopening `.md` files within the workspace folders (`pending/`, `refined/`, `archived/`). It does **not** perform analysis, evaluate implementation, detect gaps, or redesign requirements. Those tasks always go through Full Pipeline.
 
 Critical Hit is a **Mechanism** (see § Mechanisms and Abilities below). Scout applies its activation rule and resolves the route before Ranger/Archivist ever run, so it is not a Role routine.
 
@@ -336,8 +336,11 @@ constrained orchestrator shell — it must not solve the user's task directly. S
 for the normative rules. Examples of correct and incorrect behavior:
 
 - **Read-only analysis request** — user asks Strategist to evaluate a proposal. The
-  parent agent bootstraps, invokes the discovery/refinement providers, presents the
-  gate, and relays their output. It never inspects or judges the code itself.
+  parent agent bootstraps, obtains the Ranked invocation envelope, executes its
+  exact payload once under the emitted execution and output contracts, submits the
+  completion, presents the gate, and relays the pipeline output. This scoped
+  current-host adapter is the Weapon invocation; it does not add the parent's own
+  workflow, provider, or conclusions.
 - **Code/test mutation request** — user asks Strategist to "clean up duplicated
   tests." The parent agent produces analysis/handoff artifacts only; it does not edit
   the test files, because the default Sniper contract forbids code/test mutation.
@@ -350,6 +353,11 @@ for the normative rules. Examples of correct and incorrect behavior:
   then performs discovery, refinement, or execution itself instead of invoking the
   configured provider. This is `direct_execution` drift even if the resulting answer
   is correct — correctness does not repair the drift.
+
+The `--host codex|claude` executable bridge is a standalone-shell convenience for
+an operator whose child process has working network and auth. A managed Codex or
+Claude session does not recursively spawn the same host because the child may
+inherit a sandbox without network access; it uses the current-host adapter above.
 
 ---
 
@@ -378,7 +386,7 @@ In the Wizard, this surfaces as two paths for a pluggable Role:
 - **Custom** — bind the Role to an external weapon yourself (today's existing
   flow, unchanged).
 
-> **Pipeline scope** (added 2026-09-16, mission
+> **Pipeline scope** (updated 2026-09-29, mission
 > `20260916-ranked-vs-custom-binding-pipelines`): Ready Role/Ranked and Custom
 > are two separate pipelines, not two layers of the same mechanism. Custom's
 > runtime machinery — the readiness vector (`domain.PluginReadinessVector`),
@@ -388,23 +396,24 @@ In the Wizard, this surfaces as two paths for a pluggable Role:
 > verification. A ranked class's binding is already certified at build time,
 > so it does not go through any of that: no wizard-time validation, no
 > runtime trust check, no permission-grant negotiation. Ranked never calls
-> into Custom's checks. Per ADR-0042, a Ranked binding's own runtime record
-> in `plugins.lock` (`mode: ranked`) is optional, non-authoritative
-> redundancy if it exists at all — the build-time certification is the sole
-> authority — so `SlotBinding` does not need a separate on-disk file per
-> pipeline; only Custom's record is mandatory.
+> into Custom's checks. The compiled registry is authoritative for the
+> immutable Role/Weapon association; `plugins.lock` is the workspace-local
+> materialized choice and must preserve the compiled Role, Weapon, runtime,
+> execution mode, connector, entrypoint, and digests. Runtime resolution
+> compares both before dispatch.
 
-A large part of the existing catalog/selection structure is expected to be
-reused rather than replaced: whatever is deterministic resolves at the CLI/build
-step, while formal contracts and definitions live in the runtime (`.strategist/`),
-keeping the agent-facing surface light.
+A large part of the existing catalog/selection structure is reused: whatever is
+deterministic resolves at the CLI/build step, while the compiled registry and
+embedded payloads remain the runtime authority. `active.yaml` records intent;
+it cannot create a new Ranked association. Custom bindings still use their
+explicit external connector lifecycle.
 
-This is a high-level definition only. The full mechanism — the certification
-pipeline's own steps, the `plugins.lock` shape, and exactly which existing
-fields (e.g. `default: true`) are reused vs. extended — is designed separately
-in `.analysis/pending/cli-enforcement-refactor/02-ranked-role-binding.md`,
-**not yet approved**. Do not treat this section as authorizing that design;
-it only fixes the term's meaning going forward.
+The implementation details are governed by the approved
+`docs/plans/2026-09-29-binding-weapons-runtime.md` plan and its design source
+`.analysis/pending/2026-09-29-binding-weapons-design.md`: build generation is
+the registration boundary, the wizard materializes the selected immutable
+binding, and runtime dispatch uses that binding without external Ranked
+resolution.
 
 ---
 
@@ -421,7 +430,7 @@ slots:
   execution: sniper              # Sniper's weapon
 ```
 
-Each weapon is a skill with its own `skill.yaml` resolved in preflight by the Strategist. The weapon's risk contract (`risk_score`) must match the slot contract:
+Each weapon is a skill with its own `skill.yaml` registered at build time by the Strategist. A Ranked Weapon is not resolved from a host skill directory at runtime. The weapon's risk contract (`risk_score`) must match the slot contract:
 
 | Slot | Expected risk_score |
 |------|---------------------|
@@ -442,7 +451,7 @@ The cutover is strict. The former runtime kinds `embedded_skill` and `host_skill
 
 To swap a weapon, validate and onboard its local package with `strategist provider validate <source>` and `strategist provider add <source> --slot <slot>`. The package and adapter contracts plus `plugins.lock` own identity, compatibility, and binding; `.strategist/skills/<provider>/skill.yaml` is only a compatibility view. Ranger invokes the selected discovery Weapon, normalizes its untrusted result, and fails closed with `role_invocation_failed` when invocation evidence is unavailable; it never silently substitutes native behavior.
 
-A delegated sub-role (a Role run as a sub-agent rather than in the primary conversation) reaches its Weapon through the host's own skill loader — a copy the host resolves, not an in-process embedded connector (ADR-0055; no production code wires one). This is a defined degrade, not live embedded invocation: the Weapon is still invoked and its output still normalized, but the host copy is neither pinned nor certified. `weapon_invocation` in the discovery handoff (`schemas/handoff-ranger-to-archivist.schema.yaml`) records what happened, required for a delegated run: `invoked`, `resolved_from`, `steps_dropped`, and `resolved_digest` (`sha256:<64 hex>` of the raw bytes the loader served). `strategist plugins resolved-digest --provider <id> --resolved-digest <value>` (or `--file <path>` to hash it locally) reports match/mismatch/pin-unavailable against the catalog's `upstream_content_digest`, read-only; no rule yet says what a mismatch should trigger beyond that report.
+A delegated sub-role (a Role run as a sub-agent rather than in the primary conversation) reaches a Ranked Weapon through Strategist's in-process embedded connector. Codex, Claude, and other hosts may supply the explicitly registered prompt bridge, but they do not resolve a second copy from a user skill directory. The bridge receives the payload selected by the compiled binding; it cannot read `external-skills-source`, `skill-for-hire`, or substitute a native Role. An explicitly typed Custom Weapon may use its declared host connector; its invocation evidence is separately authenticated. `weapon_invocation` in the discovery handoff (`schemas/handoff-ranger-to-archivist.schema.yaml`) records what happened, required for a delegated run: `invoked`, `resolved_from`, `steps_dropped`, and `resolved_digest` (`sha256:<64 hex>` of the bytes resolved by the selected runtime). Ranked embedded invocation records internal evidence without fabricating a host receipt; a missing dispatch or prompt bridge fails closed with `role_invocation_failed`.
 
 ---
 

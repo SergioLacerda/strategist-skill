@@ -43,11 +43,10 @@ func defaultRolesByID() map[string]Role {
 func mergeRoleConfig(merged map[string]Role, cfg RoleConfig) {
 	role := RoleFromConfig(cfg)
 	role.ID = normalizeRoleID(role.ID)
-	if role.Initiative.OnStart == "" && role.Initiative.OnResult == "" && len(role.Initiative.Preserve) == 0 {
+	if role.Initiative.OnStart == "" {
 		if builtin, ok := merged[role.ID]; ok {
-			// A legacy role override that predates INITIATIVE must not
-			// silently disable the internal ability. A declared block can
-			// override the built-in hooks when custom behavior needs that.
+			// A role override that omits INITIATIVE keeps the built-in entry
+			// hook; only an explicit entry declaration changes it.
 			role.Initiative = builtin.Initiative
 		}
 	}

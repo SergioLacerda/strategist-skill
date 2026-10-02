@@ -7,6 +7,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/plugins/connectors"
 	"gopkg.in/yaml.v3"
 )
 
@@ -56,18 +57,71 @@ func normalizeDiscoveryArtifact(request DiscoveryWeaponRequest, response Discove
 	}
 	// Provider-controlled identity fields are overwritten by Ranger's trusted
 	// request and host evidence before the artifact reaches the pending path.
-	frontmatter["schema_version"] = DiscoveryArtifactSchemaVersion
-	frontmatter["mission_id"] = request.MissionID
-	frontmatter["mission_status"] = "ranger_pending"
-	frontmatter["analysis_artifact_path"] = request.ArtifactPath
-	frontmatter["provider_id"] = request.ProviderID
-	frontmatter["invocation_evidence"] = strings.TrimSpace(response.InvocationEvidence)
+	if err := normalizeSourcesConsulted(frontmatter); err != nil {
+		return nil, err
+	}
+	stampTrustedDiscoveryMetadata(frontmatter, request, response)
 
 	encoded, err := yaml.Marshal(frontmatter)
 	if err != nil {
 		return nil, fmt.Errorf("marshal normalized discovery metadata: %w", err)
 	}
 	return append(append([]byte("---\n"), append(encoded, []byte("---\n\n")...)...), append(bytes.TrimSpace(body), '\n')...), nil
+}
+
+func normalizeSourcesConsulted(frontmatter map[string]any) error {
+	sources, present := frontmatter["sources_consulted"]
+	if !present {
+		frontmatter["sources_consulted"] = []any{}
+		return nil
+	}
+	if _, ok := sources.([]any); !ok {
+		return fmt.Errorf("discovery artifact sources_consulted must be a list")
+	}
+	return nil
+}
+
+// stampTrustedDiscoveryMetadata overwrites every identity and ownership field
+// with Ranger's own request and host evidence. The request id is replaced when
+// this completion has one and removed otherwise, so a provider can never forge it.
+func stampTrustedDiscoveryMetadata(frontmatter map[string]any, request DiscoveryWeaponRequest, response DiscoveryWeaponResponse) {
+	frontmatter["schema_version"] = DiscoveryArtifactSchemaVersion
+	frontmatter["mission_id"] = request.MissionID
+	frontmatter["mission_status"] = "ranger_pending"
+	frontmatter["analysis_artifact_path"] = request.ArtifactPath
+	frontmatter["provider_id"] = request.ProviderID
+	frontmatter["invocation_evidence"] = strings.TrimSpace(response.InvocationEvidence)
+	if requestID := response.EmbeddedInvocationReceipt.RequestID; requestID != "" {
+		frontmatter[InvocationRequestIDKey] = requestID
+	} else {
+		delete(frontmatter, InvocationRequestIDKey)
+	}
+	stampAdapterProvenance(frontmatter, response.EmbeddedInvocationReceipt)
+}
+
+// Trusted adapter-provenance frontmatter fields. A provider-supplied value for
+// any of them is always discarded.
+const (
+	ExecutionAdapterKey    = "execution_adapter"
+	ChildPolicyIDKey       = "child_policy_id"
+	CapabilityIsolationKey = "capability_isolation"
+)
+
+// stampAdapterProvenance records which Strategist-committed adapter produced the
+// result. Capability isolation is always unverified: configured child
+// restrictions and request identity never establish parent isolation.
+func stampAdapterProvenance(frontmatter map[string]any, receipt connectors.EmbeddedInvocationReceipt) {
+	delete(frontmatter, ExecutionAdapterKey)
+	delete(frontmatter, ChildPolicyIDKey)
+	delete(frontmatter, CapabilityIsolationKey)
+	if receipt.ExecutionAdapter == "" {
+		return
+	}
+	frontmatter[ExecutionAdapterKey] = string(receipt.ExecutionAdapter)
+	frontmatter[CapabilityIsolationKey] = connectors.CapabilityIsolationUnverified
+	if receipt.ChildPolicyID != "" {
+		frontmatter[ChildPolicyIDKey] = receipt.ChildPolicyID
+	}
 }
 
 func splitDiscoveryFrontmatter(raw []byte) (map[string]any, []byte, error) {

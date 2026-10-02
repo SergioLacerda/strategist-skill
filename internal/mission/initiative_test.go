@@ -2,7 +2,6 @@ package mission
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -14,45 +13,6 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/stretchr/testify/require"
 )
-
-func TestInitiativeRuntimeRoleEntryResultAndHandoffAreCorrelated(t *testing.T) {
-	root := t.TempDir()
-	runtime, err := NewDefaultInitiativeRuntime(root)
-	require.NoError(t, err)
-
-	advice, err := runtime.EnterRole(InitiativeRoleEntry{
-		MissionID: "m-runtime", Role: "ranger", RunID: "run-1",
-		Observed: initiative.Observation{State: initiative.ObservationKnown, Effort: initiative.EffortHigh, Model: "host-model", Provider: "host", LevelSource: "host"},
-	})
-	require.NoError(t, err)
-
-	handoff, err := runtime.CompleteRole(advice, initiative.Result{
-		AdviceID: advice.AdviceID, MissionID: advice.MissionID, Role: advice.Role, RunID: advice.RunID,
-		GateIndependent: true,
-		Checks:          []initiative.ObligationCheck{{ID: "inspect_evidence", Status: initiative.CheckSatisfied, EvidenceRefs: []initiative.EvidenceRef{{ID: "e-1", Class: "explicit"}}}, {ID: "test_alternatives", Status: initiative.CheckSatisfied, EvidenceRefs: []initiative.EvidenceRef{{ID: "e-2", Class: "explicit"}}}, {ID: "record_obligations", Status: initiative.CheckSatisfied, EvidenceRefs: []initiative.EvidenceRef{{ID: "e-3", Class: "explicit"}}}},
-		EvidenceRefs:    []initiative.EvidenceRef{{ID: "e-1", Class: "explicit"}, {ID: "e-2", Class: "explicit"}, {ID: "e-3", Class: "explicit"}},
-		Outcomes:        []initiative.OutcomeCorrelation{{ID: "out-1", Status: "observed"}},
-	}, "archivist")
-	require.NoError(t, err)
-	require.NoError(t, handoff.Validate())
-	require.False(t, handoff.Assessment.Challenge)
-	require.NoError(t, runtime.ConsumeHandoff(handoff))
-
-	records, err := initiative.ReadRecords(initiative.LedgerPath(root))
-	require.NoError(t, err)
-	require.Len(t, records, 2)
-	require.Equal(t, advice.AdviceID, records[1].AdviceID)
-	_, err = os.Stat(filepath.Join(root, "memory", "initiative-events.jsonl"))
-	require.NoError(t, err)
-	events, err := os.ReadFile(filepath.Join(root, "memory", "initiative-events.jsonl"))
-	require.NoError(t, err)
-	require.Contains(t, string(events), advice.AdviceID)
-	require.Contains(t, string(events), "strategist.initiative.recommended_effort")
-	require.NotContains(t, string(events), `"strategist.effort"`)
-	require.Contains(t, string(events), "strategist.initiative.result")
-	_, err = os.Stat(filepath.Join(root, "memory", "role-levels.jsonl"))
-	require.ErrorIs(t, err, os.ErrNotExist, "INITIATIVE must not write the LEVELING ledger")
-}
 
 func TestInitiativeRuntimePreservesUnknownObservation(t *testing.T) {
 	root := t.TempDir()
@@ -89,61 +49,19 @@ func TestDefaultInitiativeRuntimeRejectsPolicyMirrorDrift(t *testing.T) {
 	require.ErrorContains(t, err, "policy mirror drift")
 }
 
-func TestRoleLifecycleConsumesDeclaredHooks(t *testing.T) {
-	lifecycle, err := NewDefaultRoleLifecycle(t.TempDir(), domain.DefaultRoleRegistry())
-	require.NoError(t, err)
-	advice, err := lifecycle.Enter(InitiativeRoleEntry{MissionID: "hooks", Role: "ranger", RunID: "run", Leveling: testLeveling("level-1", "ranger")})
-	require.NoError(t, err)
-	handoff, err := lifecycle.Complete(advice, validMissionResult(advice), "archivist")
-	require.NoError(t, err)
-	require.NoError(t, lifecycle.Consume(handoff))
-}
-
 func TestRoleLifecycleRequiresLevelingBeforeInitiative(t *testing.T) {
 	lifecycle, err := NewDefaultRoleLifecycle(t.TempDir(), domain.DefaultRoleRegistry())
 	require.NoError(t, err)
-	_, err = lifecycle.Enter(InitiativeRoleEntry{MissionID: "missing-level", Role: "ranger", RunID: "run"})
+	_, err = lifecycle.Enter(InitiativeRoleEntry{MissionID: "missing-level", Role: "scout", RunID: "run"})
 	require.ErrorContains(t, err, "LEVELING resolution is required")
 }
 
-func TestRoleLifecycleReevaluationRequiresNewLevelingEvent(t *testing.T) {
+func TestRoleLifecycleDoesNotExposeRetiredBoundaryHooks(t *testing.T) {
 	lifecycle, err := NewDefaultRoleLifecycle(t.TempDir(), domain.DefaultRoleRegistry())
 	require.NoError(t, err)
-	first, err := lifecycle.Enter(InitiativeRoleEntry{MissionID: "reeval-level", Role: "ranger", RunID: "run", Leveling: testLeveling("level-1", "ranger")})
-	require.NoError(t, err)
-	_, err = lifecycle.Reevaluate(InitiativeRoleEntry{MissionID: "reeval-level", Role: "ranger", RunID: "run", Leveling: testLeveling("level-1", "ranger")}, initiative.TriggerScopeChanged)
-	require.ErrorContains(t, err, "new LEVELING event")
-	second, err := lifecycle.Reevaluate(InitiativeRoleEntry{MissionID: "reeval-level", Role: "ranger", RunID: "run", Leveling: testLeveling("level-2", "ranger")}, initiative.TriggerScopeChanged)
-	require.NoError(t, err)
-	require.Equal(t, first.AdviceID, second.Supersedes)
-}
-
-func TestRoleLifecycleKeepsRolesWithoutHooksAsLegacyNoOp(t *testing.T) {
-	registry, err := domain.NewRoleRegistry([]domain.Role{{ID: "legacy", Phase: 1}})
-	require.NoError(t, err)
-	lifecycle, err := NewDefaultRoleLifecycle(t.TempDir(), registry)
-	require.NoError(t, err)
-	advice, err := lifecycle.Enter(InitiativeRoleEntry{MissionID: "legacy", Role: "legacy", RunID: "run"})
+	advice, err := lifecycle.Enter(InitiativeRoleEntry{MissionID: "ranger", Role: "ranger", RunID: "run", Leveling: testLeveling("level-1", "ranger")})
 	require.NoError(t, err)
 	require.Empty(t, advice.AdviceID)
-}
-
-func TestInitiativeHandoffRejectsInvalidTransitionAndTamperedReasons(t *testing.T) {
-	runtime, err := NewDefaultInitiativeRuntime(t.TempDir())
-	require.NoError(t, err)
-	advice, err := runtime.EnterRole(InitiativeRoleEntry{MissionID: "integrity", Role: "ranger", RunID: "run"})
-	require.NoError(t, err)
-	handoff, err := runtime.CompleteRole(advice, initiative.Result{
-		AdviceID: advice.AdviceID, MissionID: advice.MissionID, Role: advice.Role, RunID: advice.RunID,
-		GateIndependent: true,
-		Checks:          []initiative.ObligationCheck{{ID: "inspect_evidence", Status: initiative.CheckPartial}, {ID: "test_alternatives", Status: initiative.CheckPartial}, {ID: "record_obligations", Status: initiative.CheckPartial}},
-		EvidenceRefs:    []initiative.EvidenceRef{{ID: "e-1", Class: "explicit"}},
-	}, "archivist")
-	require.NoError(t, err)
-	handoff.Assessment.Reasons = []string{"tampered"}
-	require.ErrorContains(t, handoff.Validate(), "assessment does not match")
-	_, err = runtime.CompleteRole(advice, validMissionResult(advice), "sniper")
-	require.ErrorContains(t, err, "transition")
 }
 
 func TestInitiativeRuntimeSurfacesEventSinkFailure(t *testing.T) {
@@ -153,31 +71,11 @@ func TestInitiativeRuntimeSurfacesEventSinkFailure(t *testing.T) {
 	require.ErrorIs(t, err, errInitiativeSink)
 }
 
-func TestInitiativeAuditBodyKeepsDetailedListsOutOfAttributes(t *testing.T) {
-	result := initiative.Result{EvidenceRefs: []initiative.EvidenceRef{{ID: "e-1"}}, Outcomes: []initiative.OutcomeCorrelation{{ID: "o-1"}}, Deviations: []initiative.Deviation{{ObligationID: "check-1"}}}
-	body := initiativeAuditBody(result, initiative.ResultAssessment{Reasons: []string{"reason-1"}})
-	var decoded map[string]any
-	require.NoError(t, json.Unmarshal([]byte(body), &decoded))
-	require.Equal(t, []any{"e-1"}, decoded["evidence_refs"])
-	require.Equal(t, []any{"o-1"}, decoded["outcome_ids"])
-	require.Equal(t, []any{"check-1"}, decoded["deviation_ids"])
-	require.Equal(t, []any{"reason-1"}, decoded["challenge_reasons"])
-}
-
 var errInitiativeSink = errors.New("event sink unavailable")
 
 type failingInitiativeSink struct{}
 
 func (failingInitiativeSink) Emit(context.Context, telemetry.Event) error { return errInitiativeSink }
-
-func validMissionResult(advice initiative.Advice) initiative.Result {
-	return initiative.Result{
-		AdviceID: advice.AdviceID, MissionID: advice.MissionID, Role: advice.Role, RunID: advice.RunID,
-		GateIndependent: true,
-		Checks:          []initiative.ObligationCheck{{ID: "inspect_evidence", Status: initiative.CheckSatisfied, EvidenceRefs: []initiative.EvidenceRef{{ID: "e-1", Class: "explicit"}}}, {ID: "test_alternatives", Status: initiative.CheckSatisfied, EvidenceRefs: []initiative.EvidenceRef{{ID: "e-2", Class: "explicit"}}}, {ID: "record_obligations", Status: initiative.CheckSatisfied, EvidenceRefs: []initiative.EvidenceRef{{ID: "e-3", Class: "explicit"}}}},
-		EvidenceRefs:    []initiative.EvidenceRef{{ID: "e-1", Class: "explicit"}, {ID: "e-2", Class: "explicit"}, {ID: "e-3", Class: "explicit"}},
-	}
-}
 
 func testLeveling(eventID, role string) *initiative.LevelingResolution {
 	return &initiative.LevelingResolution{

@@ -3,9 +3,6 @@ package leveling
 import (
 	"fmt"
 	"strings"
-	"unicode/utf8"
-
-	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
 
 // Level sources recorded next to every resolved level, in precedence order.
@@ -101,8 +98,18 @@ func completeLevelFromPolicy(load PolicyLoader, level Level, provider, role stri
 	if err != nil {
 		return Level{}, err
 	}
-	if level.Effort != "" && !policy.ProviderSupportsEffort(provider, level.Effort) {
-		return Level{}, fmt.Errorf("leveling_ranked_provider_ineligible: provider %q cannot execute host effort %q for role %q", strings.ToUpper(strings.TrimSpace(provider)), level.Effort, strings.ToLower(strings.TrimSpace(role)))
+	if level.Effort != "" {
+		providerID := strings.ToUpper(strings.TrimSpace(provider))
+		switch policy.ProviderSupportsEffort(provider, level.Effort) {
+		case EffortEligible:
+			// Continue below; the host-reported effort is valid for this provider.
+		case EffortProviderUnknown:
+			return Level{}, fmt.Errorf("%s: provider %q is not declared in the LEVELING policy", ReasonLevelingProviderUnknown, providerID)
+		case EffortProviderNotRanked:
+			return Level{}, fmt.Errorf("%s: provider %q is not a ranked provider in the LEVELING policy", ReasonLevelingProviderNotRanked, providerID)
+		case EffortTierUnsupported:
+			return Level{}, fmt.Errorf("%s: provider %q cannot execute host effort %q for role %q", ReasonLevelingRankedProviderIneligible, providerID, level.Effort, strings.ToLower(strings.TrimSpace(role)))
+		}
 	}
 	suggestion, err := Suggest(policy, provider, role, signals)
 	if err != nil {
@@ -125,70 +132,4 @@ func applyPolicyProvenance(level *Level, suggestion Suggestion) {
 	level.Provider, level.Capability = suggestion.Provider, suggestion.Capability
 	level.FallbackUsed, level.FallbackReason = suggestion.FallbackUsed, suggestion.FallbackReason
 	level.PolicyVersion, level.PolicyDigest = suggestion.PolicyVersion, suggestion.PolicyDigest
-}
-
-// Unknown reports whether no model or effort is known.
-func (l Level) Unknown() bool { return l.Model == "" && l.Effort == "" }
-
-// Label renders `Model-Effort`, or an empty string when the level is unknown.
-func (l Level) Label() string {
-	switch {
-	case l.Model != "" && l.Effort != "":
-		return l.Model + "-" + capitalize(l.Effort)
-	case l.Model != "":
-		return l.Model
-	default:
-		return capitalize(l.Effort)
-	}
-}
-
-// Tag renders the inline form `(Model-Effort)` used right after a role name in a
-// narration line, or an empty string when the level is unknown.
-func (l Level) Tag() string {
-	if l.Unknown() {
-		return ""
-	}
-	return "(" + l.Label() + ")"
-}
-
-// Render formats one role message. When width cannot be measured (width <= 0)
-// or the inline form does not fit, the stacked layout is used:
-//
-//	Fase: 01/04
-//	Ranger
-//	Sonnet-High
-//	<message>
-//
-// Otherwise it renders `Ranger(Sonnet-High) - <message>`. An unknown level
-// keeps the unlabelled `Role - <message>` form.
-func Render(level Level, message string, width int) string {
-	return RenderWith(domain.DefaultRoleRegistry(), level, message, width)
-}
-
-// RenderWith is Render with an explicit role registry, which supplies the phase
-// counter of each role and its derived total. Roles the registry does not know
-// (for example transport) omit the counter.
-func RenderWith(reg domain.RoleRegistry, level Level, message string, width int) string {
-	name := capitalize(level.Role)
-	if level.Unknown() {
-		return fmt.Sprintf("%s - %s", name, message)
-	}
-	inline := fmt.Sprintf("%s(%s) - %s", name, level.Label(), message)
-	if width > 0 && !strings.Contains(message, "\n") && utf8.RuneCountInString(inline) <= width {
-		return inline
-	}
-	lines := make([]string, 0, 4)
-	if phase, ok := reg.PhaseOf(level.Role); ok {
-		lines = append(lines, fmt.Sprintf("Fase: %02d/%02d", phase, reg.PhaseTotal()))
-	}
-	lines = append(lines, name, level.Label(), message)
-	return strings.Join(lines, "\n")
-}
-
-func capitalize(value string) string {
-	if value == "" {
-		return ""
-	}
-	r, size := utf8.DecodeRuneInString(value)
-	return strings.ToUpper(string(r)) + value[size:]
 }

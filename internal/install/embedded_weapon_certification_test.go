@@ -37,7 +37,7 @@ func TestCertifyRankedCandidates_StampsPinnedPairing(t *testing.T) {
 	defaultsRoot := t.TempDir()
 	writeRoleContractFixture(t, defaultsRoot, "ranger")
 	catalog := pluginCatalog{Providers: []pluginCatalogProvider{
-		verifiedBrainstormingProvider(pluginCatalogProvider{ID: "brainstorming", RiskScore: "write_analysis", CanonicalRole: "ranger", Roles: []string{"ranger"}, Default: true}),
+		verifiedBrainstormingProvider(pluginCatalogProvider{ID: "brainstorming", Version: "1.0.0", RiskScore: "write_analysis", CanonicalRole: "ranger", Roles: []string{"ranger"}, Default: true}),
 		{ID: "openspec-explore", RiskScore: "write_analysis", CanonicalRole: "ranger"},
 	}}
 
@@ -75,8 +75,8 @@ func TestCertifyRankedCandidates_StampsBothPinnedPairings(t *testing.T) {
 	writeRoleContractFixture(t, defaultsRoot, "ranger")
 	writeRoleContractFixture(t, defaultsRoot, "archivist")
 	catalog := pluginCatalog{Providers: []pluginCatalogProvider{
-		verifiedBrainstormingProvider(pluginCatalogProvider{ID: "brainstorming", RiskScore: "write_analysis", CanonicalRole: "ranger", Roles: []string{"ranger"}, Default: true}),
-		{ID: "openspec-propose", RiskScore: "write_analysis", CanonicalRole: "archivist", Roles: []string{"archivist"}, Default: true,
+		verifiedBrainstormingProvider(pluginCatalogProvider{ID: "brainstorming", Version: "1.0.0", RiskScore: "write_analysis", CanonicalRole: "ranger", Roles: []string{"ranger"}, Default: true}),
+		{ID: "openspec-propose", Version: "1.0", RiskScore: "write_analysis", CanonicalRole: "archivist", Roles: []string{"archivist"}, Default: true,
 			UpstreamRepo: "Fission-AI/OpenSpec", UpstreamSkillPath: "skills/openspec-propose/SKILL.md", UpstreamVersion: "1.10.0",
 			UpstreamCommit: "1ebddd17f40dde15dfd28289e4493c3cf05ee9df", UpstreamContentDigest: "sha256:c0537ce311115878e7e0a04e6ff4fc6456056f21024079c228b6b24325e38613", License: "MIT"},
 	}}
@@ -120,7 +120,7 @@ func TestCertifyRankedCandidates_SkipsAbsentPinnedPairing(t *testing.T) {
 
 func TestCertifyRankedCandidates_RejectsMissingRoleAffinity(t *testing.T) {
 	catalog := pluginCatalog{Providers: []pluginCatalogProvider{
-		{ID: "brainstorming", RiskScore: "write_analysis", CanonicalRole: "archivist", Roles: []string{"archivist"}},
+		{ID: "brainstorming", Version: "1.0.0", RiskScore: "write_analysis", CanonicalRole: "archivist", Roles: []string{"archivist"}},
 	}}
 
 	err := certifyRankedCandidates(&catalog, t.TempDir())
@@ -132,7 +132,7 @@ func TestCertifyRankedCandidates_RejectsIncompleteProvenance(t *testing.T) {
 	defaultsRoot := t.TempDir()
 	writeRoleContractFixture(t, defaultsRoot, "ranger")
 	catalog := pluginCatalog{Providers: []pluginCatalogProvider{{
-		ID: "brainstorming", RiskScore: "write_analysis", CanonicalRole: "ranger", Roles: []string{"ranger"},
+		ID: "brainstorming", Version: "1.0.0", RiskScore: "write_analysis", CanonicalRole: "ranger", Roles: []string{"ranger"},
 	}}}
 
 	err := certifyRankedCandidates(&catalog, defaultsRoot)
@@ -185,4 +185,25 @@ func TestRankedCertificationDigestCoversRuntimeIdentityOnlyWhenPinned(t *testing
 	before := rankedCertificationDigest(other, "ranger")
 	other.Runtime = domain.WeaponRuntime{Kind: domain.RankedRuntimeNone}
 	require.Equal(t, before, rankedCertificationDigest(other, "ranger"), "providers without identity keep their digest")
+}
+
+func TestCertifyRankedCandidates_CertifiesOnlyThePinnedVersion(t *testing.T) {
+	defaultsRoot := t.TempDir()
+	writeRoleContractFixture(t, defaultsRoot, "ranger")
+	version := func(v string) pluginCatalogProvider {
+		return verifiedBrainstormingProvider(pluginCatalogProvider{ID: "brainstorming", Version: v, RiskScore: "write_analysis", CanonicalRole: "ranger", Roles: []string{"ranger"}})
+	}
+	catalog := pluginCatalog{Providers: []pluginCatalogProvider{version("1.0.0"), version("2.0.0")}}
+
+	require.NoError(t, certifyRankedCandidates(&catalog, defaultsRoot))
+
+	pinned, ok := findCatalogProviderVersion(catalog, "brainstorming", "1.0.0")
+	require.True(t, ok)
+	assert.True(t, pinned.Ranked, "the pinned version is certified")
+	assert.NotEmpty(t, pinned.CertificationDigest)
+
+	other, ok := findCatalogProviderVersion(catalog, "brainstorming", "2.0.0")
+	require.True(t, ok)
+	assert.False(t, other.Ranked, "an unpinned version is never Ranked: it can only be Custom")
+	assert.Empty(t, other.CertificationDigest)
 }

@@ -37,7 +37,7 @@ func TestRegister_CommandTreeParity(t *testing.T) {
 	for _, sub := range parent.Commands() {
 		names = append(names, sub.Name())
 	}
-	assert.Equal(t, []string{"authorize", "evaluate-write", "prepare-embedded", "resolved-digest"}, names)
+	assert.Equal(t, []string{"authorize", "evaluate-write", "prepare-embedded", "resolved-digest", "scaffold-sidecar"}, names)
 
 	want := map[string]map[string]string{
 		"authorize": {
@@ -48,6 +48,10 @@ func TestRegister_CommandTreeParity(t *testing.T) {
 		"prepare-embedded": {
 			"source": "external-skills-source", "defaults-root": filepath.Join("internal", "embed", "defaults"),
 			"lock": "external-skills-source.lock.yaml", "check": "false",
+		},
+		"scaffold-sidecar": {
+			"role": "[]", "slot": "[]", "runtime": "embedded", "provenance": "", "version": "",
+			"default": "false", "force": "false", "check": "false",
 		},
 		"resolved-digest": {
 			"catalog":  filepath.Join("internal", "embed", "defaults", "plugins", "catalog.yaml"),

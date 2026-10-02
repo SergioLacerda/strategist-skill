@@ -60,5 +60,5 @@ func TestHandoffNotApplicableEndsAStuckAnalysisOnlyMission(t *testing.T) {
 	}
 	assert.Equal(t, domain.StateDoneAnalysis, engine.Status().State)
 	assert.True(t, domain.MissionEventRequiresNoDocumentationTargets(domain.MissionEventHandoffNotApplicable))
-	assert.False(t, domain.MissionEventRequiresNoDocumentationTargets(domain.MissionEventHandoffPassed))
+	assert.False(t, domain.MissionEventRequiresNoDocumentationTargets(domain.MissionEventHandoffSatisfied))
 }

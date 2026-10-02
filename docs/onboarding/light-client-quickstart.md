@@ -14,7 +14,7 @@ docs use for their own pipeline.
 
 | Step | Role | Question it answers | CLI involved? |
 |---|---|---|---|
-| 1 | Scout | *Which route does this request need?* (Critical Hit / Implementation Short Route / Main Mission) | No — built-in classification |
+| 1 | Scout | *Which route does this request need?* (Critical Hit / Implementation Short Route / Full Pipeline) | No — built-in classification |
 | 2 | Ranger | *What do we know, and what's missing?* | No — native role, reads `.strategist/roles/ranger.yaml` |
 | 3 | Archivist | *What's the approved plan?* | No — native role, reads `.strategist/roles/archivist.yaml` |
 | 4 | Gate | *Does this plan deserve to be materialized?* | No — a conversational yes/no with the user |

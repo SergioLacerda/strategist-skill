@@ -62,7 +62,7 @@ mechanisms:
     enforcement_kind: code
     enforcement_tier: machine_enforced
     summary: entering execution without the evidence the Scout route requires is rejected as pipeline_bypass_detected.
-    when_to_use: automatically on `mission submit --event handoff_challenge_passed`; Scout records its route first
+    when_to_use: automatically on `mission submit --event handoff_challenge_satisfied`; Scout records its route first
     invoked_by: [scout, sniper]
     how_to_invoke: "Scout: `strategist mission route --mission-id <id>` (route_decision JSON on stdin); the check itself is automatic"
     phase_scope: [intake, execution]
@@ -252,29 +252,15 @@ mechanisms:
     display_name: INITIATIVE
     family: mechanism
     owner_package: internal/initiative;internal/mission
-    contract_file: initiative.yaml;schemas/initiative-advice.schema.yaml;schemas/initiative-result.schema.yaml
+    contract_file: initiative.yaml;schemas/initiative-advice.schema.yaml
     enforcement_kind: code
     enforcement_tier: machine_observed
-    summary: "one advice per role run; advisory, never changes LEVELING or the gate."
-    when_to_use: role entry and handoff boundaries
-    invoked_by: [all]
+    summary: "one advisory consultation at Scout role entry; never changes LEVELING or the gate."
+    when_to_use: Scout role entry
+    invoked_by: [scout]
     how_to_invoke: "role on_start hook; no command"
-    phase_scope: [all]
-    judgment_facet: the agent weighs the advice and records how it deviated
-
-  - id: precise_shot
-    display_name: PRECISE-SHOT (TIRO PRECISO)
-    family: mechanism
-    owner_package: internal/initiative
-    contract_file: initiative.yaml;schemas/initiative-result.schema.yaml
-    enforcement_kind: code
-    enforcement_tier: machine_observed
-    summary: "bounds a request to reconsider your LEVELING level (max, replay, cooldown)."
-    when_to_use: the role's own confidence assessment says the assigned level is not enough
-    invoked_by: [all]
-    how_to_invoke: "via the INITIATIVE result; no command"
-    phase_scope: [all]
-    judgment_facet: the agent assesses its own confidence and asks for reconsideration (TIRO PRECISO)
+    phase_scope: [scout]
+    judgment_facet: Scout weighs the advice while selecting the route
 
   - id: critical_hit
     display_name: Critical Hit

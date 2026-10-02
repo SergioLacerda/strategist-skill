@@ -27,6 +27,7 @@ func collectCheckDiagnostics(root string, cfg domain.ActiveConfig, providers map
 	if err := emitF3ConflictAttributionSignals(root, cfg.BasePath, time.Now()); err != nil {
 		fmt.Fprintf(os.Stderr, "  ⚠ f3_conflict_signal: %v\n", err)
 	}
+	reportRefinedPortability(os.Stderr, root, cfg.BasePath)
 	if checkStrict {
 		errs = append(errs, runStrictChecks(root)...)
 	}

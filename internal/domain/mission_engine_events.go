@@ -1,5 +1,7 @@
 package domain
 
+import "fmt"
+
 // MissionEngineEvent is the single event vocabulary accepted by the mission
 // level transition boundary.
 type MissionEngineEvent string
@@ -26,9 +28,11 @@ const (
 	MissionEventGateTimeout MissionEngineEvent = "gate_timeout"
 	// MissionEventGateRevision requests refinement again.
 	MissionEventGateRevision MissionEngineEvent = "gate_revision_requested"
-	// MissionEventHandoffPassed is emitted only after the challenge result has
-	// been persisted successfully at the live Archivist->Sniper boundary.
-	MissionEventHandoffPassed MissionEngineEvent = "handoff_challenge_passed"
+	// MissionEventHandoffSatisfied enters execution. It is accepted only when a
+	// durable outcome correlated to this mission, the archivist_to_sniper
+	// transition and the current package revision records a passed challenge or
+	// a policy-authorized skip; the event name alone proves nothing.
+	MissionEventHandoffSatisfied MissionEngineEvent = "handoff_challenge_satisfied"
 	// MissionEventHandoffFailed returns a repairable handoff to Archivist.
 	MissionEventHandoffFailed MissionEngineEvent = "handoff_challenge_failed"
 	// MissionEventHandoffNotApplicable ends a mission whose accepted package has
@@ -58,7 +62,7 @@ func missionTransitionEvent(event MissionEngineEvent) (TransitionEvent, bool) {
 		MissionEventGateApproved: EventGateApproved, MissionEventGateDenied: EventGateDenied,
 		MissionEventGateTimeout: EventGateTimeout, MissionEventGateRevision: EventGateRevision,
 		MissionEventGateApprovedAnalysisOnly: EventGateApprovedAnalysisOnly,
-		MissionEventHandoffPassed:            EventHandoffPassed, MissionEventHandoffFailed: EventHandoffFailed,
+		MissionEventHandoffSatisfied:         EventHandoffSatisfied, MissionEventHandoffFailed: EventHandoffFailed,
 		MissionEventHandoffExhausted: EventHandoffExhausted, MissionEventHandoffNotApplicable: EventHandoffNotApplicable,
 		MissionEventSniperDone: EventSniperDone, MissionEventRetryOK: EventRetryOK,
 		MissionEventSlotTransient: EventSlotTransient, MissionEventSlotPermanent: EventSlotPermanent,
@@ -91,4 +95,16 @@ func phaseForState(state MissionState) PipelinePhase {
 // adapter checks against the refined tasks.md.
 func MissionEventRequiresNoDocumentationTargets(event MissionEngineEvent) bool {
 	return event == MissionEventGateApprovedAnalysisOnly || event == MissionEventHandoffNotApplicable
+}
+
+// obsoleteMissionEventHandoffPassed is the event handoff_challenge_satisfied
+// replaced. It is deliberately not an alias: it has no transition and is
+// rejected with an explicit diagnostic so a stale producer fails visibly.
+const obsoleteMissionEventHandoffPassed MissionEngineEvent = "handoff_challenge_passed"
+
+func rejectObsoleteEvent(event MissionEngineEvent) error {
+	if event == obsoleteMissionEventHandoffPassed {
+		return fmt.Errorf("mission engine: unsupported_event: %q was replaced by %q and is no longer accepted", event, MissionEventHandoffSatisfied)
+	}
+	return nil
 }

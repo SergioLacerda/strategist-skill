@@ -116,6 +116,9 @@ func (s Service) runInstallSteps(ctx context.Context, strategistDir string, cfg 
 		return Report{}, err
 	}
 	tx.record(created...)
+	if err := s.refreshInstalledRankedBindings(strategistDir); err != nil {
+		return Report{}, fmt.Errorf("install: refresh ranked bindings: %w", err)
+	}
 	if err := prepareRankedProviderRuntimes(ctx, strategistDir); err != nil {
 		return Report{}, fmt.Errorf("install: prepare ranked runtimes: %w", err)
 	}

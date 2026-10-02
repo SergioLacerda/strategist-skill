@@ -13,5 +13,5 @@ input:
       D-001: approved_decision
       Q-001: unresolved_question
     gate_allowed: false
-expected_event: "phase=execution status=handoff_challenge_passed reason=handoff_challenge_passed"
+expected_event: "phase=execution status=handoff_challenge_satisfied reason=handoff_challenge_satisfied"
 

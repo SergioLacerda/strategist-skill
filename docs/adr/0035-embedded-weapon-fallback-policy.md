@@ -114,3 +114,14 @@ runtime, configuration, source-code, or test changes — see
 `.analysis/refined/20260913-wizard-hardcoded-fallback-maps-cleanup/tasks.md`
 for the implementation handoff, which remains outside Strategist's execution
 scope (code/config mutation is not Sniper-executable).
+
+## Amendment — 2026-09-30 (mission `20260930-review-roster-weapons`)
+
+[ADR-0060](0060-weapon-acquisition-flow-and-registry-derived-roster.md) refines Decision 1
+and Decision 3 of this ADR. The fixed two-pairing embedded roster
+(`brainstorming↔ranger`, `openspec-propose↔archivist`) and the `strategist check` linkage
+verification remain the required behavior. The mechanism changes: the pairings are to be
+derived from the compiled registry (`CompiledRegistry.Compatibility`) instead of the hardcoded
+`embeddedWeaponRoster` list in `internal/check/check_weapon_roster.go`, and the execution-slot
+pairing this ADR deferred is resolved by that same change. This amendment is documentation
+only; the code change is an implementation handoff and needs its own approval.

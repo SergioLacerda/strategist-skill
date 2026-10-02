@@ -2,6 +2,7 @@ package install
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
@@ -29,32 +30,68 @@ func applyRankedBindingChoices(catalog pluginCatalog, wc domain.WizardConfig, lo
 		if mode != domain.SlotBindingModeRanked {
 			continue
 		}
-		contract, err := rankedContractForProvider(catalog, slots[slot])
+		binding, err := rankedBindingForSlot(catalog, slot, slots[slot])
 		if err != nil {
 			return domain.PluginLockFile{}, fmt.Errorf("apply ranked binding: slot %s: %w", slot, err)
 		}
 		lockFile.Bindings = replaceSlotBinding(lockFile.Bindings, domain.SlotBinding{
 			SchemaVersion:       "strategist-plugin-binding/v1",
 			Slot:                slot,
-			InstalledInstanceID: contract.ID,
-			Generation:          contract.RankedBindingGeneration,
-			Status:              contract.RankedBindingStatus,
+			InstalledInstanceID: binding.WeaponID,
+			Role:                binding.Role,
+			WeaponVersion:       binding.WeaponVersion,
+			WeaponDigest:        binding.WeaponDigest,
+			SourceDigest:        binding.SourceDigest,
+			BindingDigest:       binding.BindingDigest,
+			ExecutionMode:       binding.ExecutionMode,
+			Origin:              string(domain.WeaponOriginEmbedded),
+			RuntimeKind:         binding.Runtime.Kind,
+			ConnectorID:         binding.ConnectorID,
+			Entrypoint:          binding.Entrypoint,
+			CertificationDigest: binding.CertificationDigest,
+			Generation:          binding.Generation,
+			Status:              binding.Status,
 			Mode:                domain.SlotBindingModeRanked,
 		})
 	}
 	return lockFile, nil
 }
 
-func rankedContractForProvider(catalog pluginCatalog, providerID string) (domain.ProviderContract, error) {
-	provider, ok := findCatalogProvider(catalog, providerID)
-	if !ok {
-		return domain.ProviderContract{}, fmt.Errorf("provider %q not found in catalog", providerID)
+// refreshPersistedRankedBindings replaces only bindings that were already
+// selected as Ranked with their immutable catalog records. Reinstalling an
+// existing runtime preserves active.yaml and therefore cannot rely on the
+// wizard's mode fields to perform this refresh. Custom selections are user
+// choices and are deliberately left untouched.
+func refreshPersistedRankedBindings(catalog pluginCatalog, lockFile domain.PluginLockFile) (domain.PluginLockFile, error) {
+	for _, existing := range lockFile.Bindings {
+		if existing.EffectiveMode() != domain.SlotBindingModeRanked {
+			continue
+		}
+		binding, err := rankedBindingForSlot(catalog, existing.Slot, existing.InstalledInstanceID)
+		if err != nil {
+			return domain.PluginLockFile{}, fmt.Errorf("refresh ranked binding: slot %s: %w", existing.Slot, err)
+		}
+		lockFile.Bindings = replaceSlotBinding(lockFile.Bindings, domain.SlotBinding{
+			SchemaVersion:       "strategist-plugin-binding/v1",
+			Slot:                existing.Slot,
+			InstalledInstanceID: binding.WeaponID,
+			Role:                binding.Role,
+			WeaponVersion:       binding.WeaponVersion,
+			WeaponDigest:        binding.WeaponDigest,
+			SourceDigest:        binding.SourceDigest,
+			BindingDigest:       binding.BindingDigest,
+			ExecutionMode:       binding.ExecutionMode,
+			Origin:              string(domain.WeaponOriginEmbedded),
+			RuntimeKind:         binding.Runtime.Kind,
+			ConnectorID:         binding.ConnectorID,
+			Entrypoint:          binding.Entrypoint,
+			CertificationDigest: binding.CertificationDigest,
+			Generation:          binding.Generation,
+			Status:              binding.Status,
+			Mode:                domain.SlotBindingModeRanked,
+		})
 	}
-	contract := providerContractFromCatalogEntry(provider)
-	if !contract.Ranked || contract.CertificationDigest == "" {
-		return domain.ProviderContract{}, fmt.Errorf("provider %q is not a certified ranked candidate", providerID)
-	}
-	return contract, nil
+	return lockFile, nil
 }
 
 // replaceSlotBinding overwrites bindings' entry for replacement.Slot in
@@ -67,4 +104,73 @@ func replaceSlotBinding(bindings []domain.SlotBinding, replacement domain.SlotBi
 		}
 	}
 	return append(bindings, replacement)
+}
+
+// enrichLockBindingMetadata projects the catalog's immutable Weapon identity
+// into the workspace lock for Custom bindings as well as legacy bindings that
+// were created before the Role/Weapon fields existed. Ranked bindings are
+// already copied from the compiled registry and are only completed when a
+// legacy fixture omitted the newer fields.
+func enrichLockBindingMetadata(catalog pluginCatalog, lockFile domain.PluginLockFile) (domain.PluginLockFile, error) {
+	for i, binding := range lockFile.Bindings {
+		enriched, ok := enrichBinding(catalog, lockFile, binding)
+		if ok {
+			lockFile.Bindings[i] = enriched
+		}
+	}
+	return lockFile, nil
+}
+
+func enrichBinding(catalog pluginCatalog, lockFile domain.PluginLockFile, binding domain.SlotBinding) (domain.SlotBinding, bool) {
+	if binding.EffectiveMode() == domain.SlotBindingModeRanked {
+		if enriched, ok := enrichCompiledRankedBinding(catalog, binding); ok {
+			return enriched, true
+		}
+	}
+	providerID := binding.InstalledInstanceID
+	if at := strings.IndexByte(providerID, '@'); at > 0 {
+		providerID = providerID[:at]
+	}
+	provider, ok := findCatalogProvider(catalog, providerID)
+	if !ok {
+		return binding, false
+	}
+	role := binding.Role
+	if role == "" {
+		role = slotRoleID(domain.SlotName(binding.Slot))
+	}
+	runtime, connectorID := bindingRuntimeIdentity(provider)
+	binding.Role = role
+	binding.WeaponDigest = catalogProviderDigest(provider)
+	binding.Origin = bindingOrigin(provider)
+	binding.RuntimeKind = runtime.Kind
+	binding.ConnectorID = connectorID
+	binding.Entrypoint = compiledEntrypoint(provider.SupportedSlots, provider.ID)
+	if binding.BindingDigest == "" {
+		binding.BindingDigest = lockFile.NodeDigest(role+":"+provider.ID, "role_provider_binding")
+	}
+	return binding, true
+}
+
+func enrichCompiledRankedBinding(catalog pluginCatalog, binding domain.SlotBinding) (domain.SlotBinding, bool) {
+	ref := domain.WeaponIdentity(binding.InstalledInstanceID, binding.WeaponVersion)
+	if binding.WeaponVersion == "" {
+		ref = binding.InstalledInstanceID
+	}
+	if compiled, found, err := selectCompiledRankedBinding(catalog.RankedBindings, binding.Role, binding.Slot, ref); err == nil && found {
+		binding.WeaponVersion = compiled.WeaponVersion
+		binding.WeaponDigest = compiled.WeaponDigest
+		binding.SourceDigest = compiled.SourceDigest
+		binding.BindingDigest = compiled.BindingDigest
+		binding.ExecutionMode = compiled.ExecutionMode
+		binding.Origin = string(domain.WeaponOriginEmbedded)
+		binding.RuntimeKind = compiled.Runtime.Kind
+		binding.ConnectorID = compiled.ConnectorID
+		binding.Entrypoint = compiled.Entrypoint
+		binding.CertificationDigest = compiled.CertificationDigest
+		binding.Generation = compiled.Generation
+		binding.Status = compiled.Status
+		return binding, true
+	}
+	return binding, false
 }

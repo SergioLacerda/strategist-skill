@@ -15,7 +15,7 @@ golden:
     contracts: [handoff-archivist-to-sniper]
     update_reason: "Pin the Archivist to Sniper handoff schema shape."
   - id: provider-manifest
-    source: internal/embed/defaults/skills/brainstorming/skill.yaml
+    source: internal/embed/defaults/skills/brainstorming@1.0.0/skill.yaml
     mode: normalized
     contracts: [discovery-provider, write-analysis]
     update_reason: "Pin the embedded provider compatibility descriptor."

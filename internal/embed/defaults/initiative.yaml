@@ -3,7 +3,7 @@ ability: initiative
 display_name: INITIATIVE
 mode: consultative
 authority:
-  owns: [advice, diligence, alignment, results, outcome_correlation]
+  owns: [advice, diligence, alignment]
   does_not_own: [model, provider, capability, effort, level_source, approval_gate, implementation_authorization]
 records:
   path: .strategist/memory/initiative-records.jsonl

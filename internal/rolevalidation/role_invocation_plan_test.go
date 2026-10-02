@@ -7,28 +7,74 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
+// completeCustomLockYAML renders a plugins.lock whose discovery slot carries a
+// complete Custom binding and its lock evidence, as `provider add` produces.
+func completeCustomLockYAML(t *testing.T, mutate func(*domain.PluginLockFile)) string {
+	t.Helper()
+	evidence, err := domain.NewCustomBindingEvidence(domain.CustomPackageFacts{
+		PackageID: "brainstorming", PackageVersion: "1.0.0", Role: "ranger", Slot: "discovery",
+		PackageDigest: "sha256:pkg", AdapterDigest: "sha256:adapter",
+		RuntimeKind: domain.RankedRuntimeHost, ConnectorID: "local_path", Entrypoint: "discover",
+	}, 1, "active")
+	require.NoError(t, err)
+	lock := domain.PluginLockFile{
+		SchemaVersion: domain.PluginLockFileSchemaVersion,
+		Bindings:      []domain.SlotBinding{evidence.Binding},
+		Lock:          domain.PluginLock{Nodes: evidence.Nodes},
+	}
+	if mutate != nil {
+		mutate(&lock)
+	}
+	raw, err := yaml.Marshal(lock)
+	require.NoError(t, err)
+	return string(raw)
+}
+
+func writeCustomValidationRoot(t *testing.T, mutate func(*domain.PluginLockFile)) string {
+	t.Helper()
+	root := writeValidationRoot(t, "")
+	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins.lock"), []byte(completeCustomLockYAML(t, mutate)), 0o644))
+	return root
+}
+
 func TestBuildRoleInvocationPlan_ResolvesRoleFromSlotMapAndLock(t *testing.T) {
-	root := writeValidationRoot(t, `
-  - slot: discovery
-    installed_instance_id: brainstorming
-  - slot: refinement
-    installed_instance_id: openspec-propose
-`)
+	root := writeCustomValidationRoot(t, nil)
 
 	plan, err := BuildRoleInvocationPlan(root, "discovery")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	require.NoError(t, err)
+	require.Equal(t, "ranger", plan.Role)
+	require.Equal(t, "discovery", plan.Slot)
+	require.Equal(t, "brainstorming@1.0.0", plan.WeaponID)
+	require.Equal(t, "sha256:adapter", plan.WeaponDigest)
+	require.NotEmpty(t, plan.BindingDigest)
+	require.Equal(t, "discover", plan.Entrypoint)
+}
+
+func TestBuildRoleInvocationPlan_RejectsIncompleteOrTamperedCustomBindings(t *testing.T) {
+	cases := map[string]func(*domain.PluginLockFile){
+		"missing weapon digest":       func(l *domain.PluginLockFile) { l.Bindings[0].WeaponDigest = "" },
+		"missing role-binding digest": func(l *domain.PluginLockFile) { l.Bindings[0].BindingDigest = "" },
+		"missing role":                func(l *domain.PluginLockFile) { l.Bindings[0].Role = "" },
+		"bare package id":             func(l *domain.PluginLockFile) { l.Bindings[0].InstalledInstanceID = "brainstorming" },
+		"tampered entrypoint":         func(l *domain.PluginLockFile) { l.Bindings[0].Entrypoint = "other" },
+		"tampered lock node":          func(l *domain.PluginLockFile) { l.Lock.Nodes[1].Digest = "sha256:other" },
+		"missing lock node":           func(l *domain.PluginLockFile) { l.Lock.Nodes = l.Lock.Nodes[:2] },
 	}
-	if plan.Role != "ranger" {
-		t.Fatalf("plan.Role = %q, want %q", plan.Role, "ranger")
-	}
-	if plan.Slot != "discovery" {
-		t.Fatalf("plan.Slot = %q, want %q", plan.Slot, "discovery")
-	}
-	if plan.WeaponID != "brainstorming" {
-		t.Fatalf("plan.WeaponID = %q, want %q", plan.WeaponID, "brainstorming")
+	for name, mutate := range cases {
+		root := writeCustomValidationRoot(t, mutate)
+		before, err := os.ReadFile(filepath.Join(root, "plugins.lock"))
+		require.NoError(t, err)
+
+		_, err = BuildRoleInvocationPlan(root, "discovery")
+
+		require.ErrorContains(t, err, "custom_binding_invalid", name)
+		require.ErrorContains(t, err, "re-add the package", name)
+		after, readErr := os.ReadFile(filepath.Join(root, "plugins.lock"))
+		require.NoError(t, readErr)
+		require.Equal(t, before, after, "%s: the lock is never repaired", name)
 	}
 }
 

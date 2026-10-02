@@ -11,6 +11,8 @@ const (
 	ReasonLevelingPolicyMissing            = "leveling_policy_missing"
 	ReasonLevelingPolicyUnreadable         = "leveling_policy_unreadable"
 	ReasonLevelingRankedProviderIneligible = "leveling_ranked_provider_ineligible"
+	ReasonLevelingProviderUnknown          = "leveling_provider_unknown"
+	ReasonLevelingProviderNotRanked        = "leveling_provider_not_ranked"
 	ReasonLevelingSignalUnknown            = "leveling_signal_unknown"
 	ReasonLevelingMappingInvalid           = "leveling_mapping_invalid"
 )

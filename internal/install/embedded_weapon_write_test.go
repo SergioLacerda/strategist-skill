@@ -69,7 +69,7 @@ func TestWriteCatalogAndMirrors_FullSuccessWithNestedPackage(t *testing.T) {
 			Package: domain.PluginPackage{Version: "1.0.0", Digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
 			Adapter: externalSkillAdapter{Runtime: domain.WeaponRuntime{Kind: domain.RankedRuntimeEmbedded}},
 		}},
-		Catalog: pluginCatalog{SchemaVersion: "v1", Providers: []pluginCatalogProvider{{ID: "sample", RiskScore: "write_analysis"}}},
+		Catalog: pluginCatalog{SchemaVersion: "v1", Providers: []pluginCatalogProvider{{ID: "sample", Version: "1.0.0", RiskScore: "write_analysis"}}},
 	}
 	dir := t.TempDir()
 	catalogPath := filepath.Join(dir, "catalog.yaml")
@@ -80,9 +80,9 @@ func TestWriteCatalogAndMirrors_FullSuccessWithNestedPackage(t *testing.T) {
 
 	assert.FileExists(t, catalogPath)
 	assert.FileExists(t, lockPath)
-	assert.FileExists(t, filepath.Join(dir, "skills", "sample", "skill.yaml"))
-	assert.FileExists(t, filepath.Join(dir, "skills", "sample", "SKILL.md"))
-	assert.FileExists(t, filepath.Join(dir, "skills", "sample", "references", "notes.md"))
+	assert.FileExists(t, filepath.Join(dir, "skills", "sample@1.0.0", "skill.yaml"))
+	assert.FileExists(t, filepath.Join(dir, "skills", "sample@1.0.0", "SKILL.md"))
+	assert.FileExists(t, filepath.Join(dir, "skills", "sample@1.0.0", "references", "notes.md"))
 
 	lockBytes, err := os.ReadFile(lockPath)
 	require.NoError(t, err)
@@ -165,8 +165,8 @@ func TestWriteCatalogAndMirrors_WriteMirrorErrorPropagates(t *testing.T) {
 	}
 	dir := t.TempDir()
 	// skill.yaml already exists as a directory, so writing the mirror file fails.
-	require.NoError(t, os.MkdirAll(filepath.Join(dir, "skills", "sample", "skill.yaml"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "skills", "sample@0.0.0", "skill.yaml"), 0o755))
 
 	err := WriteCatalogAndMirrors(result, dir, filepath.Join(dir, "catalog.yaml"), filepath.Join(dir, "lock.yaml"))
-	require.ErrorContains(t, err, "write "+filepath.Join(dir, "skills", "sample", "skill.yaml"))
+	require.ErrorContains(t, err, "write "+filepath.Join(dir, "skills", "sample@0.0.0", "skill.yaml"))
 }

@@ -11,7 +11,7 @@ func New() *cobra.Command {
 		Use:   "plugins",
 		Short: "Inspect and evaluate Strategist plugin enforcement",
 	}
-	cmd.AddCommand(NewAuthorize(), NewEvaluateWrite(), NewPrepareEmbedded(), NewResolvedDigest())
+	cmd.AddCommand(NewAuthorize(), NewEvaluateWrite(), NewPrepareEmbedded(), NewResolvedDigest(), NewScaffoldSidecar())
 	return cmd
 }
 

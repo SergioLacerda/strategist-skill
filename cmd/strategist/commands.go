@@ -23,7 +23,7 @@ func registerCommands(root *cobra.Command) {
 	check.Register(root)
 	treasurecli.Register(root)
 	metricsadapter.Register(root, metricsDependencies(), roleLevelLedger, defaultLedgerMaxRecords)
-	missionadapter.Register(root, missionLifecycleDependencies(), missionViewDependencies(), missionNormalizeDependencies(), missionReportUsageDependencies())
+	missionadapter.Register(root, missionLifecycleDependencies(), missionViewDependencies(), missionNormalizeDependencies(), missionReportUsageDependencies(), missionInvocationDependencies())
 	pluginsadapter.Register(root)
 	dojoadapter.Register(root, dojoDependencies())
 	levelingadapter.Register(root, levelingAdapterDependencies())

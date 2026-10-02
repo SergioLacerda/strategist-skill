@@ -15,8 +15,12 @@ const pluginCatalogPath = "plugins/catalog.yaml"
 const pluginCatalogSchemaVersion = domain.CurrentPluginCatalogSchemaVersion
 
 type pluginCatalog struct {
-	SchemaVersion string                  `yaml:"schema_version"`
-	Providers     []pluginCatalogProvider `yaml:"providers"`
+	SchemaVersion  string                         `yaml:"schema_version"`
+	Providers      []pluginCatalogProvider        `yaml:"providers"`
+	Weapons        []domain.CompiledWeapon        `yaml:"weapons,omitempty"`
+	Roles          []domain.CompiledRole          `yaml:"roles,omitempty"`
+	Compatibility  []domain.CompiledCompatibility `yaml:"compatibility,omitempty"`
+	RankedBindings []domain.CompiledRankedBinding `yaml:"ranked_bindings,omitempty"`
 }
 
 type pluginCatalogProvider struct {
@@ -91,6 +95,11 @@ type pluginCatalogProvider struct {
 	// omitted (behaves as "none").
 	ScratchRoot    string         `yaml:"scratch_root,omitempty"`
 	WeaponContract WeaponContract `yaml:"weapon_contract,omitempty"`
+
+	// sourcePath is populated only while the maintainer is compiling a catalog
+	// from an on-disk source package. It is deliberately not serialized: the
+	// generated catalog must never turn a source checkout into runtime input.
+	sourcePath string
 }
 
 type pluginCatalogDependency struct {
@@ -132,18 +141,25 @@ func parseCatalogBytes(data []byte) (pluginCatalog, error) {
 	if err := validateCatalogSchemaVersion(catalog.SchemaVersion); err != nil {
 		return pluginCatalog{}, err
 	}
-	if len(catalog.Providers) == 0 {
-		return pluginCatalog{}, fmt.Errorf("plugin catalog: providers must have at least one entry")
-	}
-	for _, provider := range catalog.Providers {
-		if err := validateCatalogProvider(provider); err != nil {
-			return pluginCatalog{}, err
-		}
-	}
-	if err := validateCatalogWeaponCompositions(catalog); err != nil {
+	if err := validateParsedCatalog(catalog); err != nil {
 		return pluginCatalog{}, err
 	}
 	return catalog, nil
+}
+
+func validateParsedCatalog(catalog pluginCatalog) error {
+	if len(catalog.Providers) == 0 {
+		return fmt.Errorf("plugin catalog: providers must have at least one entry")
+	}
+	for _, provider := range catalog.Providers {
+		if err := validateCatalogProvider(provider); err != nil {
+			return err
+		}
+	}
+	if err := validateCatalogIdentities(catalog.Providers); err != nil {
+		return err
+	}
+	return validateCatalogWeaponCompositions(catalog)
 }
 
 func catalogKnownProviderRisk(catalog pluginCatalog) map[string]string {
@@ -159,12 +175,3 @@ func catalogKnownProviderRisk(catalog pluginCatalog) map[string]string {
 // repo's file-size budget. generateKnownProvidersYAML, catalogResolverCandidates,
 // catalogProviderDigest, catalogDependencies, and providerVersionOrDefault
 // live in plugin_catalog_digest.go, for the same reason.
-
-func findCatalogProvider(catalog pluginCatalog, providerID string) (pluginCatalogProvider, bool) {
-	for _, provider := range catalog.Providers {
-		if provider.ID == providerID {
-			return provider, true
-		}
-	}
-	return pluginCatalogProvider{}, false
-}

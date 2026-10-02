@@ -106,7 +106,8 @@ func wizardLevelingSelections(wc domain.WizardConfig) []wizardLevelingSelection 
 
 func validateWizardLevelingSelections(policy leveling.Policy, wc domain.WizardConfig) error {
 	for _, selection := range wizardLevelingSelections(wc) {
-		if _, err := leveling.Suggest(policy, selection.provider, selection.role, leveling.Signals{}); err != nil {
+		providerID, _ := domain.ParseWeaponRef(selection.provider)
+		if _, err := leveling.Suggest(policy, providerID, selection.role, leveling.Signals{}); err != nil {
 			return fmt.Errorf("resolve LEVELING binding for role %s/provider %s: %w", selection.role, selection.provider, err)
 		}
 	}

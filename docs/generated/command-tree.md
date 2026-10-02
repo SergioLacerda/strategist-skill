@@ -27,6 +27,8 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `harvest` — Copy real mission artifacts into tests/evals/regression/ as fixtures
   - `run` — Run the internal/eval scenario battery via go test
 - `handoff` — Run and record Handoff Challenge verification
+  - `evaluate` — Evaluate the Archivist-to-Sniper handoff and record its outcome
+  - `evaluate-ranger` — Evaluate and persist the Ranger-to-Archivist lifecycle outcome
   - `verify` — Verify a Handoff Challenge acknowledgment and record the result
 - `help` — Help about any command
 - `install` — Install the Strategist skill into a target repository
@@ -48,7 +50,12 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `rollout-check` — Check whether a confidence enforcement mode is admissible
   - `scout` — Report Scout routing metrics
 - `mission` — Report and inspect mission-level facts this binary cannot observe directly
+  - `accept-side-quest` — Record the user's acceptance of the mission's OA-ADR side quest at the Approval Gate
+  - `adr-target` — Resolve and reserve the accepted OA-ADR destination at materialization time
+  - `complete` — Complete one embedded Weapon invocation
   - `context` — Materialize declared mission context
+  - `decline-side-quest` — Record the user's decline of the mission's OA-ADR side quest at the Approval Gate
+  - `invoke` — Invoke one embedded Weapon through a host bridge
   - `normalize-openspec` — Publish a completed OpenSpec change into the refined mission package
   - `report-usage` — Record real token usage for a mission, reported by the invoking agent
   - `route` — Record Scout's route decision for a mission (JSON on stdin)
@@ -61,6 +68,7 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `evaluate-write` — Report whether a write to --target is enforceably allowed under the active connector
   - `prepare-embedded` — Ingest external-skills-source/ into the embedded plugin catalog
   - `resolved-digest` — Report whether a resolved Weapon file matches its catalog pin
+  - `scaffold-sidecar` — Generate a package's strategist.yaml sidecar deterministically
 - `provider` — Validate and onboard local Strategist providers
   - `add` — Stage and bind a validated local provider
   - `validate` — Validate a local provider package without changing workspace state

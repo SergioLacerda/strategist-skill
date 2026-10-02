@@ -41,7 +41,7 @@ func (f bridgeFixture) change(t *testing.T, id, body string) {
 }
 
 func (f bridgeFixture) normalize(id string) (OpenSpecResult, error) {
-	return NormalizeOpenSpec(OpenSpecInput{MissionID: f.mission, BasePath: f.base, RuntimeRoot: f.runtime, ChangeID: id, PendingAnalysisPath: f.pending})
+	return NormalizeOpenSpec(OpenSpecInput{MissionID: f.mission, BasePath: f.base, RuntimeRoot: f.runtime, ChangeID: id, PendingAnalysisPath: f.pending, RecordConfidence: noopConfidenceRecorder})
 }
 
 func readAll(t *testing.T, dir string) map[string]string {

@@ -6,7 +6,7 @@ import "github.com/SergioLacerda/strategist-skill/internal/telemetry"
 // usage (`strategist mission report-usage`), giving
 // memory/mission-token-usage.jsonl its first reader (F-T2, ADR-0057 §
 // design.md task 3.3 — the code change
-// .analysis/pending/20260925-token-economy-baseline-protocol.md's own § 1
+// .analysis/pending/melhorias/confidence-and-metrics-improvements/20260925-token-economy-baseline-protocol.md's own § 1
 // and Open Items defer). DeclaredTokenBudget is skill.yaml's
 // budget_policy.token_budget verbatim (a qualitative tier — "high", not a
 // token count): it is surfaced next to the reported totals for the reader to

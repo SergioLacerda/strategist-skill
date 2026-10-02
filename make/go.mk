@@ -6,10 +6,10 @@
 	bench validate-fixtures
 
 fmt:
-	git ls-files -co --exclude-standard -z '*.go' | xargs -0r gofmt -w
+	git ls-files -co --exclude-standard -z '*.go' | xargs -0r -n1 sh -c 'if test -f "$$1"; then gofmt -w "$$1"; fi' sh
 
 fmt-check:
-	@files="$$(git ls-files -co --exclude-standard -z '*.go' | xargs -0r gofmt -l)"; \
+	@files="$$(git ls-files -co --exclude-standard -z '*.go' | xargs -0r -n1 sh -c 'if test -f "$$1"; then gofmt -l "$$1"; fi' sh)"; \
 	if [ -n "$$files" ]; then \
 		echo "fmt-check: unformatted Go files detected:" >&2; \
 		printf '%s\n' "$$files" | sed 's/^/  - /' >&2; \
@@ -29,8 +29,10 @@ mod-check:
 vet:
 	GOCACHE="$(GOCACHE)" go vet ./...
 
-build:
+build: generate-embedded
 	GOCACHE="$(GOCACHE)" go build -ldflags="-s -w -X main.Version=$$(git describe --tags --dirty --always 2>/dev/null || echo dev)" -o "$(STRATEGIST_BIN)" ./cmd/strategist
+	GOCACHE="$(GOCACHE)" go run ./cmd/strategist plugins prepare-embedded --check
+	"$(STRATEGIST_BIN)" version --build
 
 test:
 	GOCACHE="$(GOCACHE)" go test -race ./...

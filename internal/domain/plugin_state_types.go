@@ -36,6 +36,17 @@ type SlotBinding struct {
 	SchemaVersion       string `yaml:"schema_version"`
 	Slot                string `yaml:"slot"`
 	InstalledInstanceID string `yaml:"installed_instance_id"`
+	Role                string `yaml:"role,omitempty"`
+	WeaponVersion       string `yaml:"weapon_version,omitempty"`
+	WeaponDigest        string `yaml:"weapon_digest,omitempty"`
+	SourceDigest        string `yaml:"source_digest,omitempty"`
+	BindingDigest       string `yaml:"binding_digest,omitempty"`
+	ExecutionMode       string `yaml:"execution_mode,omitempty"`
+	Origin              string `yaml:"origin,omitempty"`
+	RuntimeKind         string `yaml:"runtime_kind,omitempty"`
+	ConnectorID         string `yaml:"connector_id,omitempty"`
+	Entrypoint          string `yaml:"entrypoint,omitempty"`
+	CertificationDigest string `yaml:"certification_digest,omitempty"`
 	GrantID             string `yaml:"grant_id,omitempty"`
 	Generation          int64  `yaml:"generation"`
 	Status              string `yaml:"status"`

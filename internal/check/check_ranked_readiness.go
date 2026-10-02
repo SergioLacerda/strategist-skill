@@ -49,7 +49,7 @@ func certifiedRankedStamp(root, slot, provider string) (domain.CatalogRankedStam
 func rankedRuntimeReadiness(root, slot, provider string, stamp domain.CatalogRankedStamp) domain.ReadinessCheck {
 	runtime := domain.NormalizeRankedRuntime(stamp.Runtime)
 	if runtime.Kind == domain.RankedRuntimeHost || runtime.Kind == domain.RankedRuntimeExecutable {
-		return domain.ReadinessCheck{Status: domain.ReadinessUnknown, ReasonCode: "ranked_runtime_requires_host_invocation", Detail: fmt.Sprintf("provider=%s runtime=%s requires the declared host connector", provider, runtime.Kind)}
+		return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: domain.ReasonRankedExternalRuntimeForbidden, Detail: fmt.Sprintf("provider=%s runtime=%s is not allowed for a Ranked binding", provider, runtime.Kind)}
 	}
 	if result := validateRankedRuntimeContract(runtime, slot, provider); !result.Ready() || runtime.Kind == domain.RankedRuntimeNone {
 		return result

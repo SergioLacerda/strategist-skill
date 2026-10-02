@@ -2,6 +2,7 @@ package install
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
@@ -44,19 +45,53 @@ func splitRankedChoice(choice, rankedID string) (provider, mode string) {
 	return choice, domain.SlotBindingModeCustom
 }
 
-// promptSlotProvider prompts for a discovery/refinement slot's provider,
-// presenting the certified-Ranked option (if any) alongside Custom's full
-// candidate list, and returns the resolved plain provider id plus which
-// pipeline mode the operator's choice resolved to.
-func promptSlotProvider(p Prompter, prompt string, ids []string, defaultID, rankedID, customLabel string, providerRisk map[string]string, expectedRisk, field string) (provider, mode string, err error) {
-	options, uiDefault := withRankedOption(ids, defaultID, rankedID)
-	choice, err := p.SelectOrInput(prompt, uiDefault, options, customLabel)
+// withRankedOptions is withRankedOption for several certified versions: one
+// synthetic "<ref>::ranked" entry per certified reference is prepended to the
+// Custom list, and the pre-selection is the Ranked default, or the Custom
+// default when no version is certified.
+func withRankedOptions(options slotOptions) (menu []string, uiDefault string) {
+	if len(options.rankedRefs) == 0 {
+		return options.ids, options.defaultID
+	}
+	menu = make([]string, 0, len(options.rankedRefs)+len(options.ids))
+	for _, ref := range options.rankedRefs {
+		menu = append(menu, ref+rankedOptionSuffix)
+	}
+	menu = append(menu, options.ids...)
+	return menu, options.rankedDefault + rankedOptionSuffix
+}
+
+// splitRankedChoiceAmong inverts withRankedOptions. A "<ref>::ranked" choice is
+// Ranked only when ref is one of the offered certified references; every other
+// choice, including a free-typed id, is Custom and passes through unchanged.
+func splitRankedChoiceAmong(choice string, rankedRefs []string) (provider, mode string) {
+	if ref, found := strings.CutSuffix(choice, rankedOptionSuffix); found {
+		for _, offered := range rankedRefs {
+			if ref == offered {
+				return ref, domain.SlotBindingModeRanked
+			}
+		}
+	}
+	return choice, domain.SlotBindingModeCustom
+}
+
+// promptSlotOptions prompts for a slot's provider from versioned options and
+// returns the chosen reference plus the pipeline mode it resolved to.
+func promptSlotOptions(p Prompter, prompt string, options slotOptions, customLabel string, providerRisk map[string]string, expectedRisk, field string) (provider, mode string, err error) {
+	menu, uiDefault := withRankedOptions(options)
+	choice, err := p.SelectOrInput(prompt, uiDefault, menu, customLabel)
 	if err != nil {
 		return "", "", fmt.Errorf("wizard: %s: %w", field, err)
 	}
-	provider, mode = splitRankedChoice(choice, rankedID)
-	if w := validateProvider(providerRisk, provider, expectedRisk); w != "" {
+	provider, mode = splitRankedChoiceAmong(choice, options.rankedRefs)
+	if w := validateProvider(providerRisk, domainProviderID(provider), expectedRisk); w != "" {
 		fmt.Println(w)
 	}
 	return provider, mode, nil
+}
+
+// domainProviderID is the id part of a Weapon reference, for checks keyed by id.
+func domainProviderID(ref string) string {
+	id, _ := domain.ParseWeaponRef(ref)
+	return id
 }

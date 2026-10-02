@@ -36,7 +36,7 @@ func bootstrapRankedProvider(ctx context.Context, strategistDir string, provider
 	if err != nil {
 		return nil, fmt.Errorf("ranked runtime provider %q root: %w", provider.ID, err)
 	}
-	exe, private, err := resolveRankedExecutable(ctx, strategistDir, provider.ID, runtime)
+	exe, private, err := resolveRankedExecutable(ctx, strategistDir, provider.ID, provider.Version, runtime)
 	if err != nil {
 		return nil, rankedRuntimeBootstrapError(provider.ID, err)
 	}

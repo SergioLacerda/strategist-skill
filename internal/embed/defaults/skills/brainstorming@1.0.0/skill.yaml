@@ -1,0 +1,18 @@
+id: brainstorming
+version: "1.0.0"
+schema_version: "1"
+status: active
+risk_score: write_analysis
+category: discovery
+canonical_role: ranger
+roles:
+  - ranger
+weapon_contract:
+  role_owner: ranger
+  participation: required
+  invocation_evidence: required
+  unavailable_behavior: role_invocation_failed
+  native_substitution: forbidden
+
+description: >
+  You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements and design before implementation.

@@ -37,3 +37,14 @@ func InvokeRangerDiscoveryWithVerification(ctx context.Context, missionID, provi
 	}
 	return artifact, nil
 }
+
+// InvokeRangerDiscoveryWithRoleWeaponBinding is the binding-aware mission
+// entrypoint. Ranked execution can only use the supplied compiled Embedded
+// dispatch; Custom execution can only use its explicit connector.
+func InvokeRangerDiscoveryWithRoleWeaponBinding(ctx context.Context, request provider.DiscoveryWeaponRequest, instance domain.InstalledInstance, binding domain.RoleWeaponBinding, embedded connectors.EmbeddedWeaponDispatch, custom connectors.RuntimeConnector, sink telemetry.EventSink, runID string) (provider.NormalizedDiscoveryArtifact, error) {
+	artifact, err := provider.InvokeDiscoveryViaRoleWeaponBinding(ctx, request, instance, binding, embedded, custom, sink, runID)
+	if err != nil {
+		return provider.NormalizedDiscoveryArtifact{}, fmt.Errorf("invoke Ranger discovery via Role Weapon binding: %w", err)
+	}
+	return artifact, nil
+}

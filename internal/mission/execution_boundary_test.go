@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -115,12 +116,42 @@ func TestRecordRouteDecisionValidatesAndIsIdempotent(t *testing.T) {
 	appended, err := RecordRouteDecision(root, boundaryMission, []byte(valid))
 	require.NoError(t, err)
 	assert.True(t, appended)
+	records, err := telemetry.ReadConfidenceRecords(telemetry.ConfidenceHistoryPath(root))
+	require.NoError(t, err)
+	require.Len(t, records, 1)
+	assert.Equal(t, telemetry.ConfidenceAgentScout, records[0].Agent)
+	assert.Equal(t, "scout-route", records[0].CorrelationKey)
+	assert.Equal(t, 90, records[0].ConfidencePercent)
 	appended, err = RecordRouteDecision(root, boundaryMission, []byte(valid))
 	require.NoError(t, err)
 	assert.False(t, appended, "a second decision for the same mission is skipped")
+	records, err = telemetry.ReadConfidenceRecords(telemetry.ConfidenceHistoryPath(root))
+	require.NoError(t, err)
+	assert.Len(t, records, 1, "replaying a route must not duplicate Scout confidence")
+	changedReplay := `{"mission_id":"` + boundaryMission + `","request_category":"general","selected_route":"critical_hit","route_reason":"changed","route_confidence":0.7,"evidence_state":"explicit","fallback_route":"full_pipeline"}`
+	appended, err = RecordRouteDecision(root, boundaryMission, []byte(changedReplay))
+	require.NoError(t, err)
+	assert.False(t, appended)
+	records, err = telemetry.ReadConfidenceRecords(telemetry.ConfidenceHistoryPath(root))
+	require.NoError(t, err)
+	assert.Len(t, records, 1, "a conflicting replay must use the persisted route as confidence authority")
 
 	_, err = RecordRouteDecision(root, "another-mission", []byte(valid))
 	require.Error(t, err, "the decision must belong to the mission it is recorded for")
 	_, err = RecordRouteDecision(root, boundaryMission, []byte(`{"mission_id":"`+boundaryMission+`","selected_route":"nope"}`))
 	require.Error(t, err)
+}
+
+func TestRecordRouteDecisionPreservesLowConfidenceAsAQuestion(t *testing.T) {
+	root := t.TempDir()
+	raw := `{"mission_id":"low-route","request_category":"general","selected_route":"full_pipeline","route_reason":"uncertain","route_confidence":0.5,"evidence_state":"insufficient","fallback_route":"full_pipeline"}`
+
+	appended, err := RecordRouteDecision(root, "low-route", []byte(raw))
+	require.NoError(t, err)
+	assert.True(t, appended)
+	records, err := telemetry.ReadConfidenceRecords(telemetry.ConfidenceHistoryPath(root))
+	require.NoError(t, err)
+	require.Len(t, records, 1)
+	assert.Equal(t, domain.ClaimKindQuestion, records[0].ClaimKind)
+	assert.Equal(t, telemetry.ConfidenceCoverageReported, records[0].CoverageStatus)
 }

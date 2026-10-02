@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/plugins/connectors"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
@@ -18,13 +19,27 @@ const maxDiscoveryArtifactBytes = 4 << 20
 // DiscoveryWeaponRequest is the trusted invocation context supplied by
 // Ranger. A Weapon cannot replace these identity fields through its response.
 type DiscoveryWeaponRequest struct {
-	MissionID    string
-	Role         string
-	Slot         string
-	ProviderID   string
-	ArtifactPath string
-	CatalogPath  string
-	ReceiptStore ReceiptNonceStore
+	MissionID     string
+	Role          string
+	Slot          string
+	ProviderID    string
+	RuntimeKind   string
+	BindingDigest string
+	SourceDigest  string
+	Entrypoint    string
+	ArtifactPath  string
+	CatalogPath   string
+	ReceiptStore  ReceiptNonceStore
+	// InvocationNonce, when set, must equal the embedded receipt's Nonce. It
+	// correlates a request with its receipt; it does not authenticate the host.
+	InvocationNonce string
+	// ExecutionAdapter and ChildPolicyID, when set, must equal the receipt's.
+	// They are provenance only: embedded discovery stays capability_isolation=unverified.
+	ExecutionAdapter domain.MissionExecutionAdapter
+	ChildPolicyID    string
+	// InvocationRequestID is the durable request identity. It correlates
+	// repeated attempts in telemetry and, when set, must equal the receipt's.
+	InvocationRequestID string
 	// CapabilityIsolationVerified is host conformance evidence, not a claim
 	// supplied by the receipt itself.
 	CapabilityIsolationVerified bool
@@ -34,10 +49,11 @@ type DiscoveryWeaponRequest struct {
 // loader. InvocationEvidence is supplied by that host boundary; a provider
 // response alone never certifies that invocation occurred.
 type DiscoveryWeaponResponse struct {
-	ProviderID         string
-	InvocationEvidence string
-	Artifact           []byte
-	InvocationReceipt  connectors.InvocationReceipt
+	ProviderID                string
+	InvocationEvidence        string
+	Artifact                  []byte
+	InvocationReceipt         connectors.InvocationReceipt
+	EmbeddedInvocationReceipt connectors.EmbeddedInvocationReceipt
 }
 
 // DiscoveryWeaponInvoker is the narrow host integration point. The CLI does
@@ -108,28 +124,49 @@ func invokeAndNormalizeDiscovery(ctx context.Context, request DiscoveryWeaponReq
 // the response identity and evidence. The returned status is the normalization
 // status to record if the call fails.
 func callDiscoveryWeapon(ctx context.Context, request DiscoveryWeaponRequest, invoke DiscoveryWeaponInvoker) (DiscoveryWeaponResponse, string, discoveryReceiptVerification, error) {
-	if err := validateDiscoveryRequest(request); err != nil {
-		return DiscoveryWeaponResponse{}, telemetry.DiscoveryNormalizationNotAttempted, failedReceiptVerification(), err
-	}
-	if invoke == nil {
-		return DiscoveryWeaponResponse{}, telemetry.DiscoveryNormalizationNotAttempted, failedReceiptVerification(), fmt.Errorf("discovery Weapon invoker is unavailable")
-	}
-	response, err := invoke(ctx, request)
+	response, status, err := invokeDiscoveryAdapter(ctx, request, invoke)
 	if err != nil {
-		return DiscoveryWeaponResponse{}, telemetry.DiscoveryNormalizationNotAttempted, failedReceiptVerification(), err
+		return DiscoveryWeaponResponse{}, status, failedReceiptVerification(), err
 	}
-	if response.ProviderID != request.ProviderID {
-		return DiscoveryWeaponResponse{}, telemetry.DiscoveryNormalizationRejected, failedReceiptVerification(), fmt.Errorf("provider identity mismatch: expected %q, got %q", request.ProviderID, response.ProviderID)
-	}
-	response.InvocationEvidence = strings.TrimSpace(response.InvocationEvidence)
-	if response.InvocationEvidence == "" {
-		return DiscoveryWeaponResponse{}, telemetry.DiscoveryNormalizationRejected, failedReceiptVerification(), fmt.Errorf("invocation evidence is required")
-	}
-	verification, err := validateInvocationReceipt(request, response.InvocationReceipt)
+	verification, err := verifyDiscoveryReceipt(request, response)
 	if err != nil {
 		return DiscoveryWeaponResponse{}, telemetry.DiscoveryNormalizationRejected, verification, err
 	}
 	return response, "", verification, nil
+}
+
+// invokeDiscoveryAdapter runs the adapter and checks provider identity and
+// invocation evidence, returning the failure normalization status on error.
+func invokeDiscoveryAdapter(ctx context.Context, request DiscoveryWeaponRequest, invoke DiscoveryWeaponInvoker) (DiscoveryWeaponResponse, string, error) {
+	if err := validateDiscoveryRequest(request); err != nil {
+		return DiscoveryWeaponResponse{}, telemetry.DiscoveryNormalizationNotAttempted, err
+	}
+	if invoke == nil {
+		return DiscoveryWeaponResponse{}, telemetry.DiscoveryNormalizationNotAttempted, fmt.Errorf("discovery Weapon invoker is unavailable")
+	}
+	response, err := invoke(ctx, request)
+	if err != nil {
+		return DiscoveryWeaponResponse{}, telemetry.DiscoveryNormalizationNotAttempted, err
+	}
+	if response.ProviderID != request.ProviderID {
+		return DiscoveryWeaponResponse{}, telemetry.DiscoveryNormalizationRejected, fmt.Errorf("provider identity mismatch: expected %q, got %q", request.ProviderID, response.ProviderID)
+	}
+	response.InvocationEvidence = strings.TrimSpace(response.InvocationEvidence)
+	if response.InvocationEvidence == "" {
+		return DiscoveryWeaponResponse{}, telemetry.DiscoveryNormalizationRejected, fmt.Errorf("invocation evidence is required")
+	}
+	return response, "", nil
+}
+
+// verifyDiscoveryReceipt checks the receipt matching the request runtime kind.
+func verifyDiscoveryReceipt(request DiscoveryWeaponRequest, response DiscoveryWeaponResponse) (discoveryReceiptVerification, error) {
+	if request.RuntimeKind != domain.RankedRuntimeEmbedded {
+		return validateInvocationReceipt(request, response.InvocationReceipt)
+	}
+	if err := validateEmbeddedInvocationReceipt(request, response.EmbeddedInvocationReceipt); err != nil {
+		return failedReceiptVerification(), err
+	}
+	return discoveryReceiptVerification{authenticated: "embedded", pinStatus: "not_applicable", isolation: connectors.CapabilityIsolationUnverified}, nil
 }
 
 // discoveryReceiptVerification and its validation helpers live in
@@ -145,6 +182,8 @@ func emitDiscoveryTelemetry(ctx context.Context, sink telemetry.EventSink, runID
 		reason = ""
 	}
 	event := telemetry.NewDiscoveryWeaponEvent(runID, request.ProviderID, request.ArtifactPath, invocationStatus, normalizationStatus, evidence, reason, verification.authenticated, verification.pinStatus, verification.isolation)
+	event = telemetry.WithDiscoveryAdapterProvenance(event, string(request.ExecutionAdapter), request.ChildPolicyID)
+	event = telemetry.WithDiscoveryRequestCorrelation(event, request.InvocationRequestID)
 	if err := sink.Emit(ctx, event); err != nil {
 		return fmt.Errorf("emit discovery telemetry: %w", err)
 	}

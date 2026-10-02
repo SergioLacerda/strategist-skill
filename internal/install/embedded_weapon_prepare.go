@@ -108,5 +108,13 @@ func ingestForOptions(opts PrepareEmbeddedOptions) (IngestionResult, error) {
 	if err := certifyRankedCandidates(&result.Catalog, opts.DefaultsRoot); err != nil {
 		return IngestionResult{}, fmt.Errorf("certify ranked candidates: %w", err)
 	}
+	registry, err := buildCompiledRegistry(result.Catalog, opts.DefaultsRoot)
+	if err != nil {
+		return IngestionResult{}, fmt.Errorf("build compiled registry: %w", err)
+	}
+	result.Catalog.Roles = registry.Roles
+	result.Catalog.Weapons = registry.Weapons
+	result.Catalog.Compatibility = registry.Compatibility
+	result.Catalog.RankedBindings = registry.RankedBindings
 	return result, nil
 }

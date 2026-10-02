@@ -119,7 +119,7 @@ The FSM rejects an event that is invalid for the current state, so a wrong guess
 than corrupting further. Resubmit only events whose work you confirmed in Step 3 — an event is a
 claim that a phase completed, and the execution boundary
 (`internal/mission.EvaluateExecutionEntry`) checks that claim against real evidence when
-`handoff_challenge_passed` is submitted.
+`handoff_challenge_satisfied` is submitted.
 
 **Before resubmitting, establish that the concurrent writer is gone.** A lost update means two
 writers existed; resubmitting while the second is still running reproduces the race.

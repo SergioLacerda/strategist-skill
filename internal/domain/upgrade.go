@@ -30,6 +30,11 @@ const (
 	// the current embedded defaults (removed from the distribution). Never
 	// deleted automatically — reported so the user can decide.
 	UpgradeOrphaned RuntimeFileUpgradeState = "orphaned"
+	// UpgradeLegacyLayout: an untouched orphan of the pre-ADR-0061 id-only
+	// skills/<id>/ layout, for an id the versioned skills/<id>@<version>/ layout
+	// now replaces. Unlike a plain orphan it is migrated: snapshotted into the
+	// upgrade backup, then removed. A modified file is never classified so.
+	UpgradeLegacyLayout RuntimeFileUpgradeState = "legacy_layout"
 )
 
 // UpgradeFileInput carries one file's hash state into DecideUpgradeFileState.
@@ -75,7 +80,7 @@ func UpgradeFileWillWrite(state RuntimeFileUpgradeState, force bool) bool {
 		return true
 	case UpgradeCustomized:
 		return force
-	case UpgradeManaged, UpgradeOrphaned:
+	case UpgradeManaged, UpgradeOrphaned, UpgradeLegacyLayout:
 		return false
 	default:
 		return false

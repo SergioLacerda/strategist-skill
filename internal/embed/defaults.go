@@ -6,12 +6,10 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
-	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 
-	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
 
 //go:embed all:defaults
@@ -19,6 +17,46 @@ var defaultsFS embed.FS
 
 // Extractor implements domain.FileExtractor using the embedded defaults.
 type Extractor struct{}
+
+// unsafePayloadSegment reports a Weapon id or version that is empty or could
+// escape the flat skills/<id>@<version>/ directory.
+func unsafePayloadSegment(segment string) bool {
+	return strings.TrimSpace(segment) == "" || strings.ContainsAny(segment, "/\\") || segment == "." || segment == ".."
+}
+
+// ReadEmbeddedWeaponPayload returns the canonical embedded SKILL.md bytes of one
+// Weapon version (skills/<id>@<version>/) and their raw SHA-256 digest. It never consults a filesystem path or host skill
+// loader at runtime.
+func (e Extractor) ReadEmbeddedWeaponPayload(weaponID, version string) ([]byte, string, error) {
+	if unsafePayloadSegment(weaponID) || strings.Contains(weaponID, "@") {
+		return nil, "", fmt.Errorf("embed: invalid Weapon id %q", weaponID)
+	}
+	if unsafePayloadSegment(version) {
+		return nil, "", fmt.Errorf("embed: invalid Weapon version %q for %q", version, weaponID)
+	}
+	data, err := e.ReadFile(strings.Join([]string{"skills", domain.WeaponPayloadDirName(weaponID, version), "SKILL.md"}, "/"))
+	if err != nil {
+		return nil, "", err
+	}
+	sum := sha256.Sum256(data)
+	return data, fmt.Sprintf("sha256:%x", sum), nil
+}
+
+// ReadEmbeddedNativeRolePayload returns the canonical SKILL.md bytes for a
+// native Role provider and their raw SHA-256 digest. Native Roles are compiled
+// as Ranked embedded Weapons, but their payload authority lives under
+// internal_skills/<role>/ rather than the versioned external skill mirror.
+func (e Extractor) ReadEmbeddedNativeRolePayload(roleID string) ([]byte, string, error) {
+	if unsafePayloadSegment(roleID) || strings.Contains(roleID, "@") {
+		return nil, "", fmt.Errorf("embed: invalid native Role id %q", roleID)
+	}
+	data, err := e.ReadFile(strings.Join([]string{"internal_skills", roleID, "SKILL.md"}, "/"))
+	if err != nil {
+		return nil, "", err
+	}
+	sum := sha256.Sum256(data)
+	return data, fmt.Sprintf("sha256:%x", sum), nil
+}
 
 // LevelingPolicyRequired marks the production embedded extractor as requiring
 // a valid LEVELING policy identity during install and upgrade. Test doubles
@@ -70,96 +108,6 @@ func (e Extractor) AllPaths() ([]string, error) {
 	}
 	sort.Strings(paths)
 	return paths, nil
-}
-
-// extractFS copies files from src under root into targetDir.
-// Separated from Extract to allow injecting arbitrary fs.FS in tests.
-func extractFS(src fs.FS, root, targetDir string, force bool) error {
-	if err := fs.WalkDir(src, root, makeWalkFn(src, root, targetDir, force)); err != nil {
-		return fmt.Errorf("embed: %w", err)
-	}
-	return nil
-}
-
-func makeWalkFn(src fs.FS, root, targetDir string, force bool) fs.WalkDirFunc {
-	return func(path string, d fs.DirEntry, err error) error {
-		rel, ok, err := embeddedRelPath(path, root, err)
-		if err != nil || !ok {
-			return err
-		}
-		dst := filepath.Join(targetDir, rel)
-		if d.IsDir() {
-			return ensureEmbedDir(dst)
-		}
-		return writeEmbedFile(src, path, dst, force)
-	}
-}
-
-func embeddedRelPath(path, root string, walkErr error) (string, bool, error) {
-	if walkErr != nil {
-		return "", false, fmt.Errorf("embed: walk %s: %w", path, walkErr)
-	}
-	rel := strings.TrimPrefix(path, root+"/")
-	if rel == root || rel == "" {
-		return "", false, nil
-	}
-	return rel, true, nil
-}
-
-func ensureEmbedDir(dst string) error {
-	if mkErr := os.MkdirAll(dst, 0o755); mkErr != nil {
-		return fmt.Errorf("embed: mkdir %s: %w", dst, mkErr)
-	}
-	return nil
-}
-
-type extractMode bool
-
-const (
-	extractMerge     extractMode = false
-	extractOverwrite extractMode = true
-)
-
-func extractModeFor(force bool) extractMode {
-	if force {
-		return extractOverwrite
-	}
-	return extractMerge
-}
-
-// writeEmbedFile writes embedded file src/path to dst.
-// In merge mode, if dst already exists and its content differs from the
-// embedded version, the file is skipped to preserve user customizations.
-func writeEmbedFile(src fs.FS, path, dst string, force bool) error {
-	mode := extractModeFor(force)
-	data, readErr := fs.ReadFile(src, path)
-	if readErr != nil {
-		return fmt.Errorf("embed: read %s: %w", path, readErr)
-	}
-	if mode == extractMerge {
-		if userModified(dst, data) {
-			return nil // preserve user's version
-		}
-	}
-	if writeErr := runtimefs.WriteFile(dst, data, 0o644); writeErr != nil {
-		return fmt.Errorf("embed: write %s: %w", dst, writeErr)
-	}
-	return nil
-}
-
-// userModified reports true when dst exists on disk AND its content differs
-// from the embedded bytes — meaning the user has customized the file.
-func userModified(dst string, embedded []byte) bool {
-	embeddedHash := fmt.Sprintf("%x", sha256Bytes(embedded))
-	existingHash, exists, err := runtimefs.ReadSHA256(dst)
-	if err != nil || !exists {
-		return false // file doesn't exist or cannot be read — not user-modified
-	}
-	return existingHash != embeddedHash
-}
-
-func sha256Bytes(data []byte) [32]byte {
-	return sha256.Sum256(data)
 }
 
 // DefaultsFS returns the embedded defaults tree rooted at defaults/, for

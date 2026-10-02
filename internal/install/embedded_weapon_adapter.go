@@ -25,6 +25,9 @@ const externalSkillAdapterFileName = "strategist.yaml"
 // adapter schema (T2); this is the smallest slice that lets a real ingestion
 // pipeline exist today without inventing that schema prematurely.
 type externalSkillAdapter struct {
+	// Version is the normalized package/adapter version used when an upstream
+	// SKILL.md does not carry ORKA metadata.version.
+	Version        string                    `yaml:"version,omitempty"`
 	CanonicalRole  string                    `yaml:"canonical_role"`
 	Roles          []string                  `yaml:"roles,omitempty"`
 	Kind           domain.WeaponKind         `yaml:"kind"`
@@ -58,13 +61,16 @@ type externalSkillAdapter struct {
 	// provenance has not yet been researched simply omits them (see
 	// docs/adr/0029-external-skill-provider-lifecycle.md's own Context for
 	// which packages already have this evidence recorded).
-	UpstreamRepo          string         `yaml:"upstream_repo,omitempty"`
-	UpstreamSkillPath     string         `yaml:"upstream_skill_path,omitempty"`
-	UpstreamVersion       string         `yaml:"upstream_version,omitempty"`
-	UpstreamCommit        string         `yaml:"upstream_commit,omitempty"`
-	UpstreamContentDigest string         `yaml:"upstream_content_digest,omitempty"`
-	License               string         `yaml:"license,omitempty"`
-	WeaponContract        WeaponContract `yaml:"weapon_contract,omitempty"`
+	UpstreamRepo          string `yaml:"upstream_repo,omitempty"`
+	UpstreamSkillPath     string `yaml:"upstream_skill_path,omitempty"`
+	UpstreamVersion       string `yaml:"upstream_version,omitempty"`
+	UpstreamCommit        string `yaml:"upstream_commit,omitempty"`
+	UpstreamContentDigest string `yaml:"upstream_content_digest,omitempty"`
+	License               string `yaml:"license,omitempty"`
+	// LocalModifications declares that the local SKILL.md intentionally differs
+	// from the bytes pinned by UpstreamContentDigest (an adapted copy).
+	LocalModifications bool           `yaml:"local_modifications,omitempty"`
+	WeaponContract     WeaponContract `yaml:"weapon_contract,omitempty"`
 }
 
 // WeaponContract is kept as an install-package alias for callers that parse

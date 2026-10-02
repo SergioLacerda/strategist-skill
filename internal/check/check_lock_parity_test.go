@@ -5,9 +5,17 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/plugins"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
+
+// pluginLockSchemaVersion mirrors plugins.lockSchemaVersion (unexported,
+// internal/plugins/resolver.go), which VerifyLockDigest requires an exact
+// match against.
+const pluginLockSchemaVersion = "strategist-plugin-lock/v1"
 
 func writePluginLockFixture(t *testing.T, root, refinementID string) {
 	t.Helper()
@@ -92,6 +100,53 @@ func TestCheckPluginLockParityForACustomPackageNamesTheInstance(t *testing.T) {
 	assert.Contains(t, errs[0], "slots.refinement")
 	assert.Contains(t, errs[0], "fixture-provider@1.0.0")
 	assert.NotContains(t, errs[0], "re-run `strategist install` or `strategist compile`")
+}
+
+// A plugins.lock without a resolved lock: block (the common case — only the
+// Custom pipeline's provider migration populates it) is not treated as
+// corruption; the digest check is silently skipped.
+func TestCheckPluginLockParitySkipsDigestCheckWhenLockBlockAbsent(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	writePluginLockFixture(t, root, "archivist")
+
+	errs := checkPluginLockParity(root, map[string]string{
+		"discovery": "ranger", "refinement": "archivist", "execution": "sniper",
+	})
+	assert.Empty(t, errs)
+}
+
+func TestCheckPluginLockParityAcceptsConsistentLockDigest(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	nodes := []domain.PluginLockNode{{ID: "brainstorming", Kind: "adapter_contract", Digest: "sha256:aaa"}}
+	digest := plugins.DigestLockNodes(nodes)
+	writePluginLockWithLockBlock(t, root, domain.PluginLock{SchemaVersion: pluginLockSchemaVersion, GraphDigest: digest, Nodes: nodes})
+
+	errs := checkPluginLockParity(root, map[string]string{})
+	assert.Empty(t, errs, "a lock whose graph_digest matches its nodes must not be reported")
+}
+
+func TestCheckPluginLockParityReportsHandEditedLockDigest(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	nodes := []domain.PluginLockNode{{ID: "brainstorming", Kind: "adapter_contract", Digest: "sha256:aaa"}}
+	// graph_digest deliberately does not match a fresh digest of nodes,
+	// simulating a hand edit of one without recomputing the other.
+	writePluginLockWithLockBlock(t, root, domain.PluginLock{SchemaVersion: pluginLockSchemaVersion, GraphDigest: "sha256:stale", Nodes: nodes})
+
+	errs := checkPluginLockParity(root, map[string]string{})
+	require.Len(t, errs, 1)
+	assert.Contains(t, errs[0], "lock_graph_digest_mismatch")
+	assert.Contains(t, errs[0], "hand-edited or corrupted")
+}
+
+func writePluginLockWithLockBlock(t *testing.T, root string, lock domain.PluginLock) {
+	t.Helper()
+	file := domain.PluginLockFile{SchemaVersion: "strategist-plugin-lock-file/v1", Lock: lock}
+	raw, err := yaml.Marshal(file)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins.lock"), raw, 0o644))
 }
 
 func TestCheckPluginLockParityKeepsTheReconcileHintForOtherBindings(t *testing.T) {

@@ -63,7 +63,7 @@ func TestEvaluatePipelineBypass_BlocksWithoutTasksOrGate(t *testing.T) {
 	assert.Equal(t, "approval_gate:approved", noGate.MissingEvidence)
 }
 
-func TestEvaluatePipelineBypass_AllowsMainPipelineAfterGate(t *testing.T) {
+func TestEvaluatePipelineBypass_AllowsFullPipelineAfterGate(t *testing.T) {
 	t.Parallel()
 	decision := domain.EvaluatePipelineBypass(domain.PipelineEvidence{
 		BasePath:          ".analysis",
@@ -135,11 +135,11 @@ func TestEvaluatePipelineBypass_NormalizesEmptyEvidence(t *testing.T) {
 func TestPipelineRouteForScoutRoute(t *testing.T) {
 	t.Parallel()
 	cases := map[string]string{
-		"full_pipeline":              domain.MissionRouteMain,
+		"full_pipeline":              domain.MissionRouteFullPipeline,
 		"implementation_short_route": domain.MissionRouteDirectExecute,
 		"critical_hit":               domain.MissionRouteDirectExecute,
-		"":                           domain.MissionRouteMain,
-		"something_new":              domain.MissionRouteMain,
+		"":                           domain.MissionRouteFullPipeline,
+		"something_new":              domain.MissionRouteFullPipeline,
 	}
 	for scout, want := range cases {
 		assert.Equal(t, want, domain.PipelineRouteForScoutRoute(scout), "scout route %q", scout)

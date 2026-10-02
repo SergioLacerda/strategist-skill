@@ -110,6 +110,18 @@ func TestDocumentationPipelineDoesNotContainLegacyExecutionTerms(t *testing.T) {
 //   - strategist/contracts/adr.md — docs: pt-BR language mapping (data).
 //   - strategist/contracts/machine/critical-hit.yaml — reserved input tokens with inline doc.
 
+// isRuntimeExecutionModeFile reports whether path legitimately declares the
+// compiled Weapon runtime field `execution_mode` (code | prompt_bridge), a
+// different concept from the removed Sniper-era `execution_mode`.
+func isRuntimeExecutionModeFile(root, path string) bool {
+	rel, err := filepath.Rel(root, path)
+	if err != nil {
+		return false
+	}
+	rel = filepath.ToSlash(rel)
+	return rel == "plugins/catalog.yaml" || (strings.HasPrefix(rel, "skills/") && strings.HasSuffix(rel, "/strategist.yaml"))
+}
+
 // TestStrategistNoLegacyExecutionTerminology scans strategist/ for forbidden legacy terms
 // that were replaced by documentation-materialization semantics.
 func TestStrategistNoLegacyExecutionTerminology(t *testing.T) {
@@ -143,6 +155,9 @@ func TestStrategistNoLegacyExecutionTerminology(t *testing.T) {
 		}
 		content := string(data)
 		for _, term := range forbidden {
+			if term == "execution_mode" && isRuntimeExecutionModeFile(strategistDir, path) {
+				continue
+			}
 			if strings.Contains(content, term) {
 				t.Errorf("legacy terminology violation: %s contains forbidden term %q", path, term)
 			}
@@ -298,7 +313,7 @@ func TestSkillDeclaresRoleLockForParentAgent(t *testing.T) {
 	for _, path := range []string{
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "SKILL.md"),
 	} {
-		content := readFile(t, path)
+		content := strings.Join(strings.Fields(readFile(t, path)), " ")
 		for _, needle := range []string{
 			"When this skill is invoked, the parent agent MUST NOT solve the user's task directly.",
 			"role_invocation_failed",

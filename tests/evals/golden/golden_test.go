@@ -29,7 +29,7 @@ func TestDeterministicArtifacts(t *testing.T) {
 		load   func(*testing.T) []byte
 	}{
 		{"handoff-manifest", "handoffs/archivist-to-sniper.json", Normalized, read(root, "internal/embed/defaults/schemas/handoff-archivist-to-sniper.schema.yaml")},
-		{"provider-manifest", "manifests/brainstorming.json", Normalized, read(root, "internal/embed/defaults/skills/brainstorming/skill.yaml")},
+		{"provider-manifest", "manifests/brainstorming.json", Normalized, read(root, "internal/embed/defaults/skills/brainstorming@1.0.0/skill.yaml")},
 		{"telemetry-attributes", "telemetry/attribute-keys.txt", Exact, telemetryAttributes(root)},
 		{"cli-help", "cli/help.txt", Exact, cliHelp(root)},
 		{"rendered-schema", "schemas/intake.json", Normalized, read(root, "internal/embed/defaults/schemas/intake.schema.yaml")},
@@ -138,7 +138,7 @@ func TestEmbeddedDefaultsMatchCanonicalSources(t *testing.T) {
 	}
 	for _, rel := range []string{
 		"schemas/handoff-archivist-to-sniper.schema.yaml",
-		"skills/brainstorming/skill.yaml",
+		"skills/brainstorming@1.0.0/skill.yaml",
 		"templates/epic-standalone.yaml",
 	} {
 		t.Run(rel, func(t *testing.T) {

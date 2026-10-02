@@ -51,7 +51,8 @@ func TestE2E_CLI_InstallCompileValidateCheckStale(t *testing.T) {
 
 	install := runStrategistCLI(t, workspace, "install", "--target", workspace, "--silent")
 	require.Equal(t, 0, install.exitCode, install.output())
-	assert.Contains(t, install.output(), "[Strategist] install complete")
+	assert.Contains(t, install.output(), "install complete", "the result banner is shown by default")
+	assert.NotContains(t, install.output(), "[Strategist] install complete", "the INFO line is hidden by default")
 	assert.FileExists(t, filepath.Join(strategistDir, "active.yaml"))
 	assert.FileExists(t, filepath.Join(strategistDir, "SKILL.md"))
 	assert.FileExists(t, filepath.Join(strategistDir, "knowledge.index.yaml"))

@@ -73,6 +73,13 @@ jobs:
         shell: bash
         run: ./scripts/smoke-standalone-install.sh
 
+      # Regression guard: make install must invoke the binary it just installed
+      # by its absolute path, never a PATH-resolved `strategist`. Skips (does
+      # not fail) if `make` is unavailable in this environment.
+      - name: make install uses the absolute installed path
+        shell: bash
+        run: ./scripts/test-make-install-absolute-path.sh
+
       # The blocking step above covers the packages that own the Windows runtime
       # behavior. This runs the whole tree so failures elsewhere are visible; it
       # does not block until the promotion criteria hold (docs/adr/0052-cicd-enforcement-policy.md,
@@ -109,6 +116,11 @@ jobs:
       # proves the same on Windows).
       - name: Standalone smoke (host Node only on PATH)
         run: ./scripts/smoke-standalone-install.sh
+
+      # Regression guard: make install must invoke the binary it just installed
+      # by its absolute path, never a PATH-resolved `strategist`.
+      - name: make install uses the absolute installed path
+        run: ./scripts/test-make-install-absolute-path.sh
 
       - name: Generate coverage badge
         run: make coverage-badge

@@ -8,6 +8,7 @@ applies_when:
   - "embedded Weapon artifact, adapter, catalog, command registration, or provenance verification fails"
   - "legacy Treasure Chest data is being imported into the external skill"
   - "embedded Weapon activation, invocation, migration, or rollback fails"
+  - "a workspace installed before the versioned skills/<id>@<version>/ layout has a blocked check or a Ranked lock without weapon_version"
 
 objective: >
   Verify and operate deterministic embedded Weapon ingestion, preserve and migrate

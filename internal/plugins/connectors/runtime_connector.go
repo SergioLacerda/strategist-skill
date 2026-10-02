@@ -22,11 +22,15 @@ type RuntimeConnector interface {
 type RuntimeCapabilities struct {
 	ConnectorID  string
 	ConnectorAPI string
-	CanResolve   bool
-	CanProbe     bool
-	CanInvoke    bool
-	CanRemove    bool
-	CanObserve   bool
+	// RuntimeKind identifies the invocation boundary selected by the binding.
+	// Embedded Weapons run in Strategist and do not cross a host loader; host
+	// runtimes require host-issued invocation evidence.
+	RuntimeKind string
+	CanResolve  bool
+	CanProbe    bool
+	CanInvoke   bool
+	CanRemove   bool
+	CanObserve  bool
 	// CanEnforcePermissions reports whether this connector can observe LOCAL
 	// write-scope policy enforcement (Observe, policy.EnforcementReport) — a
 	// same-process, no-host-dependency check of whether a write target is
@@ -63,6 +67,7 @@ type InvocationEnvelope struct {
 	SchemaVersion      string
 	Instance           domain.InstalledInstance
 	WeaponID           string
+	WeaponVersion      string
 	ComponentID        string
 	ParentInvocationID string
 	HostAPI            string
@@ -71,19 +76,22 @@ type InvocationEnvelope struct {
 	Entrypoint         string
 	MissionID          string
 	ArtifactPath       string
+	BindingDigest      string
+	SourceDigest       string
 	WriteScope         string
 	GateAllowed        bool
 }
 
 // ConnectorResult is a typed connector response for every operation.
 type ConnectorResult struct {
-	Status             domain.ReadinessStatus
-	ReasonCode         string
-	Detail             string
-	ProviderID         string
-	Artifact           []byte
-	InvocationEvidence string
-	InvocationReceipt  InvocationReceipt
+	Status                    domain.ReadinessStatus
+	ReasonCode                string
+	Detail                    string
+	ProviderID                string
+	Artifact                  []byte
+	InvocationEvidence        string
+	InvocationReceipt         InvocationReceipt
+	EmbeddedInvocationReceipt EmbeddedInvocationReceipt
 }
 
 // ObservationResult includes enforcement evidence without substituting for it.

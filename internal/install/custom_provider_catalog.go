@@ -13,6 +13,10 @@ import (
 type customProviderResolution struct {
 	Package connectors.ResolvedProviderPackage
 	Slot    string
+	// Declaration and Version come from the package's Strategist sidecar; they
+	// are what normalization writes into the installed package representation.
+	Declaration externalSkillAdapter
+	Version     string
 }
 
 // catalogWithCustomProviders projects explicitly typed, non-catalog Custom
@@ -54,8 +58,7 @@ func needsCustomProjection(catalog pluginCatalog, providerID, mode string) bool 
 	if mode != domain.SlotBindingModeCustom || providerID == "" {
 		return false
 	}
-	_, known := findCatalogProvider(catalog, providerID)
-	return !known
+	return !catalogKnowsRef(catalog, providerID)
 }
 
 // customProviderEnv is the workspace and global-root context Custom provider
@@ -82,18 +85,22 @@ func resolveCustomSlotProvider(env customProviderEnv, providerID, slot string) (
 	if err != nil {
 		return pluginCatalogProvider{}, customProviderResolution{}, fmt.Errorf("resolve Custom provider %q for slot %s: %w", providerID, slot, err)
 	}
-	provider := customCatalogProvider(packageEvidence, slot)
+	declaration, version, err := declaredCustomPackage(packageEvidence, slot)
+	if err != nil {
+		return pluginCatalogProvider{}, customProviderResolution{}, fmt.Errorf("custom provider %q for slot %s: %w", providerID, slot, err)
+	}
+	provider := customCatalogProvider(packageEvidence, slot, version, declaration.RiskScore)
 	if err := validateCatalogProvider(provider); err != nil {
 		return pluginCatalogProvider{}, customProviderResolution{}, fmt.Errorf("custom provider %q for slot %s: %w", providerID, slot, err)
 	}
-	return provider, customProviderResolution{Package: packageEvidence, Slot: slot}, nil
+	return provider, customProviderResolution{Package: packageEvidence, Slot: slot, Declaration: declaration, Version: version}, nil
 }
 
-func customCatalogProvider(evidence connectors.ResolvedProviderPackage, slot string) pluginCatalogProvider {
+func customCatalogProvider(evidence connectors.ResolvedProviderPackage, slot, version, riskScore string) pluginCatalogProvider {
 	role := slotRoleID(domain.SlotName(slot))
 	return pluginCatalogProvider{
-		ID: evidence.Package.ID, Version: evidence.Package.Version, SchemaVersion: "1",
-		Kind: domain.WeaponKindAtomic, Origin: domain.WeaponOriginCustom, Status: "active", RiskScore: customRiskForSlot(slot),
+		ID: evidence.Package.ID, Version: version, SchemaVersion: "1",
+		Kind: domain.WeaponKindAtomic, Origin: domain.WeaponOriginCustom, Status: "active", RiskScore: riskScore,
 		CanonicalRole: role, Roles: []string{role}, SupportedSlots: []string{slot},
 		SupportedHandoffSchemas: []string{slotHandoffSchema(domain.SlotName(slot))},
 		Installable:             true, CompatibilitySource: "external", PackageDigest: evidence.Package.Digest,
@@ -103,13 +110,6 @@ func customCatalogProvider(evidence connectors.ResolvedProviderPackage, slot str
 			UnavailableBehavior: "role_invocation_failed", NativeSubstitution: "forbidden",
 		},
 	}
-}
-
-func customRiskForSlot(slot string) string {
-	if slot == string(domain.SlotExecution) {
-		return "controlled"
-	}
-	return "write_analysis"
 }
 
 func annotateCustomProviderInstances(lockFile *domain.PluginLockFile, providers map[string]customProviderResolution) {

@@ -37,6 +37,7 @@ type options struct {
 	Target, ShimPath                                     string
 	Silent, Wizard, Global, Force, StrictCompile, NoShim bool
 	AllowDowngrade                                       bool
+	Verbose                                              bool
 }
 
 // TestOptions is an explicit command snapshot for adapter tests and external
@@ -45,6 +46,7 @@ type TestOptions struct {
 	Target, ShimPath                                     string
 	Silent, Wizard, Global, Force, StrictCompile, NoShim bool
 	AllowDowngrade                                       bool
+	Verbose                                              bool
 }
 
 // RunForTest runs the install command from an explicit TestOptions snapshot
@@ -80,8 +82,10 @@ without a writable home directory), or --shim-path to redirect it.`,
 	flags.BoolVar(&opts.Force, "force", false, "overwrite all files, including user-modified ones (default: preserve customizations)")
 	flags.BoolVar(&opts.AllowDowngrade, "allow-downgrade", false, "let this binary replace normative runtime files installed by a newer binary (deliberate rollback; default: refuse with runtime_newer_than_binary)")
 	flags.BoolVar(&opts.StrictCompile, "strict-compile", false, "fail install (and roll back) on a CompileAll error, instead of warning-only (default: warning-only)")
+	flags.BoolVar(&opts.Verbose, "verbose", false, "show the INFO log lines, the wizard section headers and the role/provider migration preview that install hides by default")
 	flags.BoolVar(&opts.NoShim, "no-shim", false, "skip writing the SKILL.md shim under ~/.claude/skills (mutually exclusive with --shim-path)")
 	flags.StringVar(&opts.ShimPath, "shim-path", "", "write the SKILL.md shim to this path instead of the default ~/.claude/skills/strategist/SKILL.md (mutually exclusive with --no-shim)")
+	cliutil.QuietByDefault(cmd)
 	cmd.RunE = func(cmd *cobra.Command, _ []string) error { return Run(cmd, deps, opts) }
 	return cmd
 }
@@ -130,7 +134,7 @@ func execute(ctx context.Context, cmd *cobra.Command, deps Dependencies, target 
 	if deps.ServiceFactory == nil {
 		return fmt.Errorf("install: service factory is not configured")
 	}
-	report, err := deps.ServiceFactory(shimHome).InstallWithReport(ctx, domain.InstallConfig{Target: target, Silent: opts.Silent, Wizard: opts.Wizard, Global: opts.Global, Force: opts.Force, AllowDowngrade: opts.AllowDowngrade, StrictCompile: opts.StrictCompile, NoShim: opts.NoShim, ShimPath: opts.ShimPath})
+	report, err := deps.ServiceFactory(shimHome).InstallWithReport(ctx, domain.InstallConfig{Target: target, Silent: opts.Silent, Wizard: opts.Wizard, Global: opts.Global, Force: opts.Force, AllowDowngrade: opts.AllowDowngrade, StrictCompile: opts.StrictCompile, NoShim: opts.NoShim, ShimPath: opts.ShimPath, Verbose: opts.Verbose})
 	if err != nil {
 		return fmt.Errorf("install: %w", err)
 	}

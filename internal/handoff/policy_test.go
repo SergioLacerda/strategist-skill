@@ -87,21 +87,54 @@ func TestResolvePolicyForMission_LowRiskLeavesSniperToValidationDisabled(t *test
 	assert.Empty(t, p.RequiredTypes)
 }
 
-func TestResolvePolicyForMission_ArchivistToSniperSkipsOnlyInformationalLowRisk(t *testing.T) {
+func TestResolvePolicyForMission_ArchivistToSniperIsNotResolvedFromACoarseLabel(t *testing.T) {
 	t.Parallel()
 
-	for _, level := range []string{"medium", "high", ""} {
-		p, err := ResolvePolicyForMission(level, TransitionArchivistToSniper)
-		require.NoError(t, err)
-		assert.True(t, p.Enabled, "risk-bearing or unknown mission must require the challenge for risk_level %q", level)
-		assert.NotEmpty(t, p.RequiredTypes)
+	for _, level := range []string{"low", "medium", "high", ""} {
+		_, err := ResolvePolicyForMission(level, TransitionArchivistToSniper)
+		require.ErrorContains(t, err, "ExtractRiskSignals", level)
 	}
+}
 
-	p, err := ResolvePolicyForMission("low", TransitionArchivistToSniper)
-	require.NoError(t, err)
-	assert.False(t, p.Enabled, "informational low-risk missions may skip only the semantic challenge")
-	assert.Empty(t, p.RequiredTypes)
-	assert.True(t, p.RequirePrecedence)
+func TestResolveArchivistPolicy_SkipsOnlyAFullyInformationalPackage(t *testing.T) {
+	t.Parallel()
+
+	skipped := ResolveArchivistPolicy(RiskSignals{InformationalOnly: true})
+	assert.False(t, skipped.Enabled)
+	assert.Empty(t, skipped.RequiredTypes)
+	assert.True(t, skipped.RequirePrecedence)
+
+	for name, signals := range map[string]RiskSignals{
+		"nothing declared":        {},
+		"implementation handoff":  {InformationalOnly: true, ImplementationHandoffPresent: true},
+		"mandatory constraints":   {InformationalOnly: true, MandatoryConstraintsPresent: true},
+		"unresolved questions":    {InformationalOnly: true, UnresolvedQuestionsPresent: true},
+		"forbidden scope":         {InformationalOnly: true, ForbiddenScopePresent: true},
+		"destructive operation":   {InformationalOnly: true, DestructiveOperationPossible: true},
+		"security sensitive task": {InformationalOnly: true, SecuritySensitiveTask: true},
+	} {
+		policy := ResolveArchivistPolicy(signals)
+		assert.True(t, policy.Enabled, name)
+		assert.NotEmpty(t, policy.RequiredTypes, name)
+	}
+}
+
+func TestResolveArchivistPolicy_ApprovalGateIsNeverAnInput(t *testing.T) {
+	t.Parallel()
+
+	assert.False(t, ResolveArchivistPolicy(RiskSignals{InformationalOnly: true, ApprovalGatePresent: true}).Enabled,
+		"the Approval Gate is independent: its presence neither requires nor skips the challenge")
+}
+
+func TestPolicyIdentityIsStableAndIgnoresPerPackageEnablement(t *testing.T) {
+	t.Parallel()
+
+	required := ResolveArchivistPolicy(RiskSignals{})
+	skipped := ResolveArchivistPolicy(RiskSignals{InformationalOnly: true})
+	assert.Equal(t, PolicyIdentity(required), PolicyIdentity(skipped))
+	changed := DefaultPolicy()
+	changed.MaxAttempts++
+	assert.NotEqual(t, PolicyIdentity(DefaultPolicy()), PolicyIdentity(changed))
 }
 
 func TestResolvePolicyForMission_UnknownTransitionErrors(t *testing.T) {

@@ -2,11 +2,6 @@ package domain
 
 import (
 	"errors"
-	"fmt"
-	"os"
-	"path/filepath"
-
-	"gopkg.in/yaml.v3"
 )
 
 // Where a resolved Weapon manifest came from.
@@ -27,10 +22,17 @@ const (
 // describes the provider.
 var ErrWeaponFactsNotFound = errors.New("weapon facts not found")
 
+// ErrWeaponFactsAmbiguous means a plain id names several catalogued versions;
+// the reference must be written id@version (ADR-0061 Decision 9).
+var ErrWeaponFactsAmbiguous = errors.New("weapon reference is ambiguous across versions")
+
 // WeaponFacts is the risk, role and runtime facts preflight and role
 // validation need about one Weapon, independent of where they were read from.
 type WeaponFacts struct {
-	ID             string
+	ID string
+	// Version is the catalogued version; empty for a provider known only through
+	// the compat view. Together with ID it names the skills/<id>@<version>/ payload.
+	Version        string
 	Source         string
 	RiskScore      string
 	CanonicalRole  string
@@ -60,6 +62,7 @@ type WeaponFacts struct {
 // nested specialization_taxonomy shape is accepted for compiled runtime copies.
 type weaponFactsDoc struct {
 	ID                   string             `yaml:"id"`
+	Version              string             `yaml:"version"`
 	RiskScore            string             `yaml:"risk_score"`
 	CanonicalRole        string             `yaml:"canonical_role"`
 	Roles                []string           `yaml:"roles"`
@@ -89,7 +92,7 @@ func (d weaponFactsDoc) manifest(source string) WeaponFacts {
 		roles = []string{role}
 	}
 	return WeaponFacts{
-		ID: d.ID, Source: source, RiskScore: d.RiskScore, CanonicalRole: role,
+		ID: d.ID, Version: d.Version, Source: source, RiskScore: d.RiskScore, CanonicalRole: role,
 		Roles: roles, ScratchRoot: d.ScratchRoot, WeaponContract: d.WeaponContract,
 		CompatibilitySource: d.CompatibilitySource, Installable: d.Installable,
 		SupportedSlots: d.SupportedSlots, RuntimeKind: d.Runtime.Kind, RuntimeRoot: d.Runtime.Root, RuntimeHostAPI: d.Runtime.HostAPI,
@@ -144,54 +147,4 @@ func ListCatalogWeaponFacts(strategistRoot string) ([]WeaponFacts, error) {
 		out = append(out, doc.manifest(WeaponFactsSourceCatalog))
 	}
 	return out, nil
-}
-
-func readCatalogDocs(strategistRoot string) ([]weaponFactsDoc, error) {
-	raw, err := os.ReadFile(filepath.Join(strategistRoot, "plugins", "catalog.yaml")) //nolint:gosec // G304: fixed path under the runtime root
-	if errors.Is(err, os.ErrNotExist) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("read plugin catalog: %w", err)
-	}
-	var file struct {
-		Providers []weaponFactsDoc `yaml:"providers"`
-	}
-	if err := yaml.Unmarshal(raw, &file); err != nil {
-		return nil, fmt.Errorf("parse plugin catalog: %w", err)
-	}
-	return file.Providers, nil
-}
-
-func factsFromCatalog(strategistRoot, provider string) (WeaponFacts, bool, error) {
-	docs, err := readCatalogDocs(strategistRoot)
-	if err != nil {
-		return WeaponFacts{}, false, err
-	}
-	for _, entry := range docs {
-		if entry.ID == provider {
-			return entry.manifest(WeaponFactsSourceCatalog), true, nil
-		}
-	}
-	return WeaponFacts{}, false, nil
-}
-
-func factsFromCompatView(strategistRoot, provider string) (WeaponFacts, error) {
-	raw, err := os.ReadFile(filepath.Join(strategistRoot, "skills", provider, "skill.yaml")) //nolint:gosec // G304: path derived from the runtime root and provider id
-	if errors.Is(err, os.ErrNotExist) {
-		return WeaponFacts{}, fmt.Errorf("%w: %s", ErrWeaponFactsNotFound, provider)
-	}
-	if err != nil {
-		return WeaponFacts{}, fmt.Errorf("read compat view for %s: %w", provider, err)
-	}
-	return parseCompatView(provider, raw)
-}
-
-func parseCompatView(provider string, raw []byte) (WeaponFacts, error) {
-	var doc weaponFactsDoc
-	if err := yaml.Unmarshal(raw, &doc); err != nil {
-		return WeaponFacts{}, fmt.Errorf("parse compat view for %s: %w", provider, err)
-	}
-	doc.ID = provider
-	return doc.manifest(WeaponFactsSourceCompatView), nil
 }

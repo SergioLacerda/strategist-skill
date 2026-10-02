@@ -25,6 +25,9 @@ type LifecycleDependencies struct {
 	// unguarded, which is what every pre-existing caller and test fake
 	// already did before this field existed.
 	Lock func(root, missionID string, fn func() error) error
+	// ADRCanonicalPath reads active.yaml#adr.canonical_path for the
+	// accept-side-quest command. Nil means no canonical path is configured.
+	ADRCanonicalPath func(root string) (string, error)
 }
 
 // withMissionLock runs fn under deps.Lock when one is configured, or
@@ -91,18 +94,20 @@ func RunStart(cmd *cobra.Command, deps LifecycleDependencies, rootInput, mission
 }
 
 // startLocked is RunStart's check-then-create critical section: the existence
-// check, INITIATIVE consultation, engine creation, and save. Extracted out of
+// check, engine creation, INITIATIVE consultation, and save. The engine is
+// created first so a failed StartMission never leaves an orphaned INITIATIVE
+// record. Extracted out of
 // RunStart's own lock closure for the same reason as submitLocked.
 func startLocked(deps LifecycleDependencies, root, missionID string) (domain.MissionEngineStatus, error) {
 	if err := deps.RequireNoExisting(root, missionID); err != nil {
 		return domain.MissionEngineStatus{}, err
 	}
-	if err := runInitiativeStart(deps, root, missionID); err != nil {
-		return domain.MissionEngineStatus{}, err
-	}
 	engine, status, err := domain.StartMission(domain.MissionStartRequest{MissionID: missionID})
 	if err != nil {
 		return domain.MissionEngineStatus{}, fmt.Errorf("mission start: %w", err)
+	}
+	if err := runInitiativeStart(deps, root, missionID); err != nil {
+		return domain.MissionEngineStatus{}, err
 	}
 	if err := deps.Save(root, engine.Status()); err != nil {
 		return domain.MissionEngineStatus{}, fmt.Errorf("mission start: %w", err)

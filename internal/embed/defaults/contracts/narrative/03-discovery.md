@@ -67,14 +67,22 @@ native behavior for the selected Weapon.
   to report in `uncertainties`. Reused by Archivist by default (see `04-refinement.md`),
   same reuse policy as `relevant_sources_hint`.
 
-## Optional Handoff Challenge (Ranger → Archivist)
+## Conditional Handoff Challenge (Ranger → Archivist)
 
-Archivist MAY apply a `ranger_to_archivist` Handoff Challenge
-(`internal/handoff`, `TransitionRangerToArchivist`) against this handoff to
-verify it correctly restated the artifact's content before refinement
-proceeds. Its challenge-type vocabulary is fitted to this handoff's actual
-content, not a reuse of the Archivist → Sniper MVP's `objective`/`gate`
-types:
+The normalized artifact MUST publish the typed
+`ranger_handoff_policy_facts` block defined by
+`schemas/handoff-ranger-to-archivist.schema.yaml`. Strategist derives the
+challenge requirement exclusively from those facts and records a durable,
+correlated outcome before Archivist refinement. Missing, malformed, unknown,
+or contradictory facts fail closed; they are never inferred from a coarse risk
+label and never become an automatic skip.
+
+When one or more `require_*` facts are true, the lifecycle-owned
+`ranger_to_archivist` Handoff Challenge (`internal/handoff`,
+`TransitionRangerToArchivist`) verifies that Archivist correctly restated the
+artifact before refinement proceeds. Its challenge-type vocabulary is fitted
+to this handoff's actual content, not a reuse of the Archivist → Sniper MVP's
+`objective`/`gate` types:
 
 | Type | Validates |
 | --- | --- |
@@ -83,12 +91,13 @@ types:
 | `classification` | Archivist distinguishes a `known_facts` entry from an `uncertainties` entry |
 | `verdict` | *(only when `discovery_subtype: evaluation`)* Archivist correctly restates `evaluation_verdict` |
 
-This is advisory-first: no policy in this workspace currently sets
-`RequiredTypes` for `ranger_to_archivist`, mirroring the MVP's own
-"don't block low-risk or documentation-only transitions by default"
-posture. Wiring a required-by-default risk policy for this transition is a
-future decision, not made here — see
-`.analysis/refined/20260803-handoff-challenge-extensions/design.md` § Item 1.
+After Ranger normalization, Strategist may record an automatic `skipped`
+outcome only when the typed facts explicitly authorize an informational-only
+handoff. A required challenge without valid answers records `failed` and
+blocks the Archivist boundary until a bounded retry passes. Run
+`strategist handoff evaluate-ranger` to inspect or submit the lifecycle-owned
+evaluation; the standalone `strategist handoff verify` command remains
+diagnostic-only and never authorizes refinement.
 
 ## Evaluation Discovery Procedure
 
@@ -111,20 +120,19 @@ completion condition. Those are `creative`-subtype obligations only (see
 
 ## Weapon Profile for a Delegated Ranger
 
-When Ranger runs as a delegated sub-role, it reaches the Weapon through the host skill loader: the
-host's own copy of the skill, resolved by the host (for example from a user skills directory), not
-an in-process embedded connector. No production code wires an embedded connector or an invoker for a
-sub-role, so this channel is a defined degrade of the embedded one, not a claim of live embedded
-invocation. It changes nothing else: the Weapon is still invoked, its output is still untrusted and
-normalized by Ranger, and `native_substitution: forbidden` is unchanged. Nothing below substitutes
-the Weapon; the profile only lists which Weapon steps do not apply to a delegated discovery run.
-This contract does not certify the host copy: the roster and certification digests describe the
-embedded package, not the file the host loader served. A delegated host therefore emits an
-`strategist-invocation-receipt/v1` only after loading and invoking the selected Weapon. Ranger
-rejects a missing, malformed, stale, replayed, or mission/role/Weapon-mismatched receipt with
-`role_invocation_failed`. The receipt binds the mission, role, Weapon, relative resolved location,
-resolved digest, issue time, and nonce. The nonce is retained in mission-scoped replay storage;
-telemetry never includes it, the resolved location, prompts, outputs, secrets, or home paths.
+When Ranger runs as a delegated sub-role, it reaches a Ranked Weapon through Strategist's
+in-process embedded connector. The host agent (Codex, Claude, or another supported host) starts
+the Strategist flow, but it does not resolve a second copy from a user skill directory and does
+not load the Ranked Weapon through an external host loader. The embedded package is the certified
+authority; `native_substitution: forbidden` remains unchanged, and a missing embedded invoker
+stops the mission with `role_invocation_failed` rather than falling back externally.
+
+An explicitly typed Custom Weapon is different: it may use its declared host connector and must
+produce a `strategist-invocation-receipt/v1`. Ranger rejects a missing, malformed, stale, replayed,
+or mission/role/Weapon-mismatched receipt with `role_invocation_failed`. The receipt binds the
+mission, role, Weapon, relative resolved location, resolved digest, issue time, and nonce. The
+nonce is retained in mission-scoped replay storage; telemetry never includes it, the resolved
+location, prompts, outputs, secrets, or home paths.
 
 | Keep | Drop |
 | --- | --- |
@@ -135,13 +143,26 @@ telemetry never includes it, the resolved location, prompts, outputs, secrets, o
 | | the spec-review gate and the `writing-plans` transition |
 
 `weapon_invocation` is required for a delegated run and optional otherwise. Record it in the handoff
-(`schemas/handoff-ranger-to-archivist.schema.yaml`): `invoked`, `resolved_from` (where the Weapon was
-actually resolved, e.g. the embedded runtime or the host skill directory), `steps_dropped`, and
-`resolved_digest`, the `sha256:<64 hex>` of the raw bytes of the file the loader served. This is the
-home of `invocation_evidence: required`; it does not change which Weapon is bound. When the active
-runtime catalog (`.strategist/plugins/catalog.yaml`) supplies an `upstream_content_digest`, Ranger
-compares it to the receipt digest and blocks a mismatch. An absent pin is explicitly
-`pin_unavailable`, not a verification claim.
+(`schemas/handoff-ranger-to-archivist.schema.yaml`): `invoked`, `resolved_from` (the embedded runtime
+for Ranked Weapons, or the declared host skill directory for Custom), `steps_dropped`, and
+`resolved_digest`, the `sha256:<64 hex>` of the bytes resolved by the selected runtime. Embedded
+invocation records internal evidence and does not fabricate a host receipt; Custom host invocation
+uses the receipt described above. This is the home of `invocation_evidence: required`; it does not
+change which Weapon is bound. When the active runtime catalog (`.strategist/plugins/catalog.yaml`)
+supplies an `upstream_content_digest`, Ranger compares it to the resolved digest and blocks a
+mismatch. An absent pin is explicitly `pin_unavailable`, not a verification claim.
+
+Ranked Embedded invocation also records which Strategist-owned adapter produced the completion:
+`current_host_adapter` (the managed current host returned it through `mission complete`),
+`codex_child`, or `claude_child` (Strategist launched the child through `mission invoke --host`).
+Strategist commits the mode in the durable request before the child runs and the completion path
+declares its own adapter; the mode is never read from completion JSON or Weapon output, and a
+mismatch fails with `invocation_adapter_mismatch` before any artifact is published. A request
+issued before the field existed reads as `current_host_adapter_unverified` and is never treated
+as a child. The normalized artifact records `execution_adapter`, `invocation_request_id` and, for
+a child, `child_policy_id` (a versioned hash of the restrictions Strategist configured), always
+beside `capability_isolation: unverified`. Configured child restrictions prove what Strategist
+requested, not what the provider enforced.
 
 A receipt authenticates that the host invoked a Weapon. It does **not** prove that the parent agent
 was prevented from independently reading, reasoning, or using its own tools. Hosts must report
@@ -203,7 +224,7 @@ simultaneously (decision conflict) — see `00-routing.md`. `skill.yaml#budget_p
 - follow the Retrieval Cascade above; do not skip stages out of order
 - cite `evidence_pack_path` in the analysis artifact when the dossier provides one
 - write exactly one canonical analysis artifact for the handoff
-- when discovery opened any source, list it in `sources_consulted[]` (`source_path`,
+- always declare `sources_consulted[]` in the frontmatter (an empty list when discovery opened no source); list every opened source in it (`source_path`,
   `content_fingerprint`, `coverage_status`). For an `evaluation` or `diagnostic` subtype, also
   cite the line ranges the Archivist must quote, so the refinement can quote them without
   reopening the file (see `machine/handoff-contract.yaml#refinement_context_policy`). Without

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/stretchr/testify/require"
 )
 
@@ -32,6 +33,7 @@ func normalizeFixture(t *testing.T) (mission.NormalizeDependencies, string) {
 		ResolvePaths: func(mission.NormalizeOptions) (string, string, string, error) {
 			return base, runtime, pending, nil
 		},
+		RecordConfidence: func(mission.NormalizeOptions, domain.ConfidenceClaim, []domain.Evidence) error { return nil },
 	}
 	return deps, filepath.Join(base, "refined", "m-1")
 }
@@ -50,11 +52,17 @@ func runNormalize(t *testing.T, deps mission.NormalizeDependencies, args ...stri
 // M016 pin: the default invocation prints exactly this line.
 func TestNormalizeOpenSpecDefaultOutputLineIsPinned(t *testing.T) {
 	deps, refined := normalizeFixture(t)
+	var recorded domain.ConfidenceClaim
+	deps.RecordConfidence = func(_ mission.NormalizeOptions, claim domain.ConfidenceClaim, _ []domain.Evidence) error {
+		recorded = claim
+		return nil
+	}
 
 	out, err := runNormalize(t, deps, "--mission-id", "m-1", "--change-id", "c-1")
 
 	require.NoError(t, err)
 	require.Equal(t, "mission_id=m-1 provider_change_id=c-1 refined="+refined+" status=archivist_done\n", out)
+	require.Equal(t, "archivist", recorded.Agent)
 }
 
 // amendFixture publishes change c-1 through the default path, moves the package to
@@ -134,4 +142,73 @@ func TestNormalizeOpenSpecDefaultStillFailsClosedOnADifferingPackage(t *testing.
 	_, err = runNormalize(t, deps, "--mission-id", "m-1", "--change-id", "c-2")
 
 	require.ErrorContains(t, err, "existing refined package conflicts with provider change")
+}
+
+const factsFile = `schema_version: strategist-handoff-policy-facts/v1
+mandatory_constraints: []
+unresolved_questions: []
+forbidden_scope: []
+destructive_operation_possible: false
+security_sensitive_task: false
+informational_only: true
+`
+
+func runNormalizeWithStderr(t *testing.T, deps mission.NormalizeDependencies, args ...string) (string, string, error) {
+	t.Helper()
+	cmd := mission.NewNormalizeOpenSpec(deps)
+	var out, errOut bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&errOut)
+	cmd.SetArgs(args)
+	err := cmd.Execute()
+	return out.String(), errOut.String(), err
+}
+
+func TestNormalizeOpenSpecPublishesDeclaredHandoffFacts(t *testing.T) {
+	deps, refined := normalizeFixture(t)
+	facts := filepath.Join(t.TempDir(), "facts.yaml")
+	require.NoError(t, os.WriteFile(facts, []byte(factsFile), 0o644))
+
+	out, stderr, err := runNormalizeWithStderr(t, deps, "--mission-id", "m-1", "--change-id", "c-1", "--handoff-facts", facts)
+
+	require.NoError(t, err)
+	require.Contains(t, out, "status=archivist_done")
+	require.NotContains(t, stderr, "handoff_policy_facts_not_declared")
+	raw, readErr := os.ReadFile(filepath.Join(refined, "analysis.md"))
+	require.NoError(t, readErr)
+	require.Contains(t, string(raw), "handoff_policy_facts:")
+	require.Contains(t, string(raw), "informational_only: true")
+}
+
+func TestNormalizeOpenSpecReportsMissingHandoffFactsWithoutDefaultingThem(t *testing.T) {
+	deps, refined := normalizeFixture(t)
+
+	out, stderr, err := runNormalizeWithStderr(t, deps, "--mission-id", "m-1", "--change-id", "c-1")
+
+	require.NoError(t, err)
+	require.Equal(t, "mission_id=m-1 provider_change_id=c-1 refined="+refined+" status=archivist_done\n", out, "the pinned output line is unchanged")
+	require.Contains(t, stderr, "handoff_policy_facts_not_declared")
+	raw, readErr := os.ReadFile(filepath.Join(refined, "analysis.md"))
+	require.NoError(t, readErr)
+	require.NotContains(t, string(raw), "handoff_policy_facts")
+}
+
+func TestNormalizeOpenSpecRejectsABadFactsFileAndFactsWithAmend(t *testing.T) {
+	deps, _ := normalizeFixture(t)
+	dir := t.TempDir()
+	bad := filepath.Join(dir, "bad.yaml")
+	require.NoError(t, os.WriteFile(bad, []byte("schema_version: strategist-handoff-policy-facts/v1\n"), 0o644))
+	empty := filepath.Join(dir, "empty.yaml")
+	require.NoError(t, os.WriteFile(empty, nil, 0o644))
+
+	_, _, err := runNormalizeWithStderr(t, deps, "--mission-id", "m-1", "--change-id", "c-1", "--handoff-facts", bad)
+	require.ErrorContains(t, err, "handoff_policy_facts_missing")
+	_, _, err = runNormalizeWithStderr(t, deps, "--mission-id", "m-1", "--change-id", "c-1", "--handoff-facts", empty)
+	require.ErrorContains(t, err, "is empty")
+	_, _, err = runNormalizeWithStderr(t, deps, "--mission-id", "m-1", "--change-id", "c-1", "--handoff-facts", filepath.Join(dir, "absent.yaml"))
+	require.ErrorContains(t, err, "read handoff facts")
+
+	amendDeps, _ := amendFixture(t)
+	_, _, err = runNormalizeWithStderr(t, amendDeps, "--mission-id", "m-1", "--change-id", "c-2", "--amend", "--amends", "c-1", "--authorization-ref", "ok", "--handoff-facts", bad)
+	require.ErrorContains(t, err, "cannot be used with --amend")
 }

@@ -74,7 +74,7 @@ func validateProvider(registry map[string]string, provider, expectedRisk string)
 // persisted to plugins.lock (docs/adr/0037-wizard-role-binding-persistence.md).
 // An empty strategistDir skips that persistence step (see
 // activateRoleProviderMigration).
-func runWizard(ctx context.Context, p Prompter, extractor domain.FileExtractor, strategistDir string) (_ domain.WizardConfig, retErr error) {
+func runWizard(ctx context.Context, p Prompter, extractor domain.FileExtractor, strategistDir string, verbose bool) (_ domain.WizardConfig, retErr error) {
 	_, span := telemetry.Tracer().Start(ctx, "install.wizard")
 	defer func() {
 		if retErr != nil {
@@ -90,19 +90,20 @@ func runWizard(ctx context.Context, p Prompter, extractor domain.FileExtractor, 
 	}
 
 	providerRisk := loadKnownProviders(extractor)
-	wc, err := collectWizardConfig(p, catalog, providerRisk, extractor)
+	wc, err := collectWizardConfig(p, catalog, providerRisk, extractor, verbose)
 	if err != nil {
 		return domain.WizardConfig{}, err
 	}
-	lockFile, err := validateAndActivatePluginPlan(extractor, catalog, providerRisk, wc, strategistDir)
+	lockFile, err := validateAndActivatePluginPlan(extractor, catalog, providerRisk, wc, strategistDir, verbose)
 	if err != nil {
 		return domain.WizardConfig{}, err
 	}
+	wc = pinCustomInstanceRefs(wc, lockFile)
 	wc.ResolvedPluginLock = lockFile
 	return wc, nil
 }
 
-func collectWizardConfig(p Prompter, catalog pluginCatalog, providerRisk map[string]string, extractor domain.FileExtractor) (domain.WizardConfig, error) {
+func collectWizardConfig(p Prompter, catalog pluginCatalog, providerRisk map[string]string, extractor domain.FileExtractor, verbose bool) (domain.WizardConfig, error) {
 	skillCfg := loadSkillConfig(extractor)
 	uiLang, docLang, chatLang, codeLang, b, err := promptLanguages(p, skillCfg)
 	if err != nil {
@@ -112,11 +113,11 @@ func collectWizardConfig(p Prompter, catalog pluginCatalog, providerRisk map[str
 	if err != nil {
 		return domain.WizardConfig{}, err
 	}
-	discovery, refinement, execution, discoveryMode, refinementMode, executionMode, err := promptSlots(p, b, catalog, providerRisk)
+	discovery, refinement, execution, discoveryMode, refinementMode, executionMode, err := promptSlots(p, b, catalog, providerRisk, verbose)
 	if err != nil {
 		return domain.WizardConfig{}, err
 	}
-	chestPath, err := promptTreasureChest(p, b)
+	chestPath, err := promptTreasureChest(p, b, verbose)
 	if err != nil {
 		return domain.WizardConfig{}, err
 	}
@@ -136,53 +137,15 @@ func collectWizardConfig(p Prompter, catalog pluginCatalog, providerRisk map[str
 // zero-value when the migration was not fully resolved this run — the caller
 // (applyWizardConfig) writes it to disk only after active.yaml lands
 // (docs/adr/0037-wizard-role-binding-persistence.md).
-func validateAndActivatePluginPlan(extractor domain.FileExtractor, catalog pluginCatalog, providerRisk map[string]string, wc domain.WizardConfig, strategistDir string) (domain.PluginLockFile, error) {
-	// Task 6: pause on a custom skill the registry has no opinion on AND
-	// that cannot be resolved as an already-installed workspace skill —
-	// distinct from validateProvider's non-blocking risk-mismatch warning
-	// already applied per-field earlier in runWizard.
-	if err := checkCustomSkillAvailability(providerRisk, wizardSlots(wc)); err != nil {
-		return domain.PluginLockFile{}, fmt.Errorf("wizard: %w", err)
+func validateAndActivatePluginPlan(extractor domain.FileExtractor, catalog pluginCatalog, providerRisk map[string]string, wc domain.WizardConfig, strategistDir string, verbose bool) (domain.PluginLockFile, error) {
+	if err := validateWizardPlanInputs(providerRisk, wc); err != nil {
+		return domain.PluginLockFile{}, err
 	}
-
-	plan, planErr := planPluginOnboardingWithModes(extractor, catalog, wizardSlots(wc), wizardSlotModes(wc))
-	if planErr != nil {
-		return domain.PluginLockFile{}, fmt.Errorf("wizard: plugin onboarding plan: %w", planErr)
-	}
-	// Task 4.1: show Role separately from its resolved/candidate Providers
-	// instead of only validating the legacy slot/catalog shape above.
-	fmt.Println(plan.RoleMigration.Preview())
-	logRoleBindingEvidence(plan.RoleMigration.Evidence())
-	if err := validateWizardRoleBindings(plan.RoleMigration); err != nil {
-		return domain.PluginLockFile{}, fmt.Errorf("wizard: %w", err)
-	}
-	if err := validateWizardLeveling(strategistDir, wc, extractor); err != nil {
-		return domain.PluginLockFile{}, fmt.Errorf("wizard: %w", err)
-	}
-
-	// .analysis/refined/20260913-embedded-skill-directory-catalog Task 5:
-	// actually drive the resolved bindings through the real staged/probed/
-	// active lifecycle instead of only previewing them —
-	// ApplyRoleProviderMigration previously had zero production callers.
-	lockFile, err := activateRoleProviderMigration(strategistDir, plan.Lock, plan.RoleMigration)
+	plan, err := planPluginOnboardingWithModes(extractor, catalog, wizardSlots(wc), wizardSlotModes(wc))
 	if err != nil {
-		return domain.PluginLockFile{}, fmt.Errorf("wizard: activate role/provider migration: %w", err)
+		return domain.PluginLockFile{}, fmt.Errorf("wizard: plugin onboarding plan: %w", err)
 	}
-	if err := validatePersistedRoleBindings(lockFile, plan.RoleMigration); err != nil {
-		return domain.PluginLockFile{}, fmt.Errorf("wizard: %w", err)
-	}
-	annotateCustomProviderInstances(&lockFile, plan.CustomProviders)
-
-	// docs/adr/0043-ranked-pipeline-pilot-implementation-decisions.md DEC-005:
-	// for every slot the Wizard resolved to Ranked, activate (copy) the
-	// pre-generated certification-time SlotBinding over the Custom-mode one
-	// activateRoleProviderMigration just wrote — every other slot (the
-	// overwhelming majority: every existing installation) is untouched.
-	lockFile, err = applyRankedBindingChoices(catalog, wc, lockFile)
-	if err != nil {
-		return domain.PluginLockFile{}, fmt.Errorf("wizard: %w", err)
-	}
-	return lockFile, nil
+	return activateWizardPlan(extractor, catalog, wc, strategistDir, plan, verbose)
 }
 
 // validateWizardRoleBindings and validatePersistedRoleBindings live in

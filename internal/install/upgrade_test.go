@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -481,4 +482,80 @@ func TestSnapshotBeforeUpgrade(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "content", string(got))
 	})
+}
+
+const registryCatalogFixture = `schema_version: strategist-plugin-catalog/v2
+providers: []
+weapons:
+  - id: w
+    version: "1.0"
+    digest: sha256:w
+    source_digest: sha256:s
+    origin: embedded
+    runtime: {kind: embedded, execution_mode: prompt_bridge}
+    connector_id: c
+    supported_roles: [ranger]
+roles:
+  - id: ranger
+    slot: discovery
+    origin: native
+    extensibility: pluggable
+    contract_digest: sha256:r
+compatibility: []
+ranked_bindings: []
+`
+
+func TestPlanUpgrade_RefreshesACustomizedCatalogWhoseRegistryDrifted(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	embedded := registryCatalogFixture
+	edited := strings.Replace(registryCatalogFixture, "sha256:s", "sha256:tampered", 1)
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "plugins"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "plugins", "catalog.yaml"), []byte(edited), 0o600))
+	svc := upgradeTestService(map[string][]byte{"plugins/catalog.yaml": []byte(embedded)})
+
+	plan, err := svc.PlanUpgrade(dir)
+
+	require.NoError(t, err)
+	require.Len(t, plan.Entries, 1)
+	assert.Equal(t, domain.UpgradeAutoUpgrade, plan.Entries[0].State)
+}
+
+func TestPlanUpgrade_PreservesACustomizedCatalogWhoseRegistryMatches(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	edited := "# local note\n" + registryCatalogFixture
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "plugins"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "plugins", "catalog.yaml"), []byte(edited), 0o600))
+	svc := upgradeTestService(map[string][]byte{"plugins/catalog.yaml": []byte(registryCatalogFixture)})
+
+	plan, err := svc.PlanUpgrade(dir)
+
+	require.NoError(t, err)
+	assert.Equal(t, domain.UpgradeCustomized, plan.Entries[0].State)
+}
+
+func TestApplyUpgrade_OverwritesADriftedCatalogAndKeepsABackup(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	edited := strings.Replace(registryCatalogFixture, "sha256:s", "sha256:tampered", 1)
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "plugins"), 0o755))
+	path := filepath.Join(dir, "plugins", "catalog.yaml")
+	require.NoError(t, os.WriteFile(path, []byte(edited), 0o600))
+	svc := upgradeTestService(map[string][]byte{"plugins/catalog.yaml": []byte(registryCatalogFixture)})
+	plan, err := svc.PlanUpgrade(dir)
+	require.NoError(t, err)
+
+	backupDir, err := svc.ApplyUpgrade(dir, plan, false)
+
+	require.NoError(t, err)
+	got, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Equal(t, registryCatalogFixture, string(got))
+	saved, err := os.ReadFile(filepath.Join(backupDir, "plugins", "catalog.yaml"))
+	require.NoError(t, err)
+	assert.Equal(t, edited, string(saved))
 }

@@ -59,7 +59,7 @@ func TestEmbeddedCatalogEntriesAreEmbeddedOriginWeaponsWithCanonicalRuntime(t *t
 }
 
 func TestCustomCatalogProviderIsCustomOriginHostWeapon(t *testing.T) {
-	provider := customCatalogProvider(connectors.ResolvedProviderPackage{Package: domain.PluginPackage{ID: "my-weapon", Version: "1.0.0", Digest: "sha256:x"}}, "discovery")
+	provider := customCatalogProvider(connectors.ResolvedProviderPackage{Package: domain.PluginPackage{ID: "my-weapon", Version: "1.0.0", Digest: "sha256:x"}}, "discovery", "1.0.0", "write_analysis")
 
 	require.Equal(t, domain.WeaponOriginCustom, provider.Origin)
 	require.Equal(t, domain.RankedRuntimeHost, provider.Runtime.Kind)

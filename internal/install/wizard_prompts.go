@@ -46,8 +46,10 @@ func promptWorkspace(p Prompter, b i18n.WizardStrings, skillCfg skillConfig) (st
 	return mode, basePath, nil
 }
 
-func promptTreasureChest(p Prompter, b i18n.WizardStrings) (string, error) {
-	fmt.Println(b.HeaderChest)
+func promptTreasureChest(p Prompter, b i18n.WizardStrings, verbose bool) (string, error) {
+	if verbose {
+		fmt.Println(b.HeaderChest)
+	}
 	chestPath, err := p.Input(b.PromptChestPath, "")
 	if err != nil {
 		return "", fmt.Errorf("wizard: treasure_chest: %w", err)

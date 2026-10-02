@@ -10,23 +10,17 @@ type MissionStartRequest struct {
 // MissionEngineStatus is the durable, implementation-neutral state needed to
 // replay or restore a mission transition sequence.
 type MissionEngineStatus struct {
-	MissionID         string        `json:"mission_id"`
-	Phase             PipelinePhase `json:"phase"`
-	State             MissionState  `json:"state"`
-	HandoffAttempt    int           `json:"handoff_attempt,omitempty"`
-	HandoffStatus     string        `json:"handoff_status,omitempty"`
-	HandoffNextAction string        `json:"handoff_next_action,omitempty"`
-}
-
-// HandoffOutcome is the already-verified and persisted result of the live
-// Archivist-to-Sniper boundary. The domain consumes this neutral contract and
-// does not depend on the handoff or telemetry packages.
-type HandoffOutcome struct {
-	Attempt     int
-	MaxAttempts int
-	Passed      bool
-	NextAction  string
-	Status      string
+	MissionID string        `json:"mission_id"`
+	Phase     PipelinePhase `json:"phase"`
+	State     MissionState  `json:"state"`
+	// ApprovalGatePackageDigest binds the human gate acceptance to the exact
+	// refined package that was reviewed. It is populated by the command
+	// boundary when the main Approval Gate is accepted and is intentionally
+	// independent from the handoff outcome digest.
+	ApprovalGatePackageDigest string `json:"approval_gate_package_digest,omitempty"`
+	HandoffAttempt            int    `json:"handoff_attempt,omitempty"`
+	HandoffStatus             string `json:"handoff_status,omitempty"`
+	HandoffNextAction         string `json:"handoff_next_action,omitempty"`
 }
 
 // MissionEngine is the single mission-level transition facade. The phase and
@@ -64,11 +58,32 @@ func (e *MissionEngine) Status() MissionEngineStatus {
 	return e.status
 }
 
+// RecordApprovalGatePackageDigest binds the accepted main Approval Gate to the
+// package revision that was reviewed. The command boundary computes the digest
+// from the refined package while holding the mission lock; this method only
+// commits that already-derived fact to the mission state.
+func (e *MissionEngine) RecordApprovalGatePackageDigest(digest string) (MissionEngineStatus, error) {
+	if e == nil {
+		return MissionEngineStatus{}, fmt.Errorf("mission engine: engine is nil")
+	}
+	if e.status.State != StateHandoffChallenge {
+		return e.status, fmt.Errorf("mission engine: approval gate package digest requires the handoff challenge state, got %q", e.status.State)
+	}
+	if digest == "" {
+		return e.status, fmt.Errorf("mission engine: approval gate package digest is required")
+	}
+	e.status.ApprovalGatePackageDigest = digest
+	return e.status, nil
+}
+
 // Submit applies one event. Invalid or out-of-order events leave the engine
 // unchanged and return an error.
 func (e *MissionEngine) Submit(event MissionEngineEvent) (MissionEngineStatus, error) {
 	if e == nil {
 		return MissionEngineStatus{}, fmt.Errorf("mission engine: engine is nil")
+	}
+	if err := rejectObsoleteEvent(event); err != nil {
+		return e.status, err
 	}
 	if earlyMissionPhase(e.status.Phase) {
 		return e.status, e.submitEarly(event)
@@ -87,10 +102,10 @@ func (e *MissionEngine) submitEarly(event MissionEngineEvent) error {
 		phaseEvent = EventDiscoveryDone
 	case MissionEventRefinementDone, MissionEventNoTasks,
 		MissionEventGateApproved, MissionEventGateApprovedAnalysisOnly, MissionEventGateDenied, MissionEventGateTimeout,
-		MissionEventGateRevision, MissionEventHandoffPassed, MissionEventHandoffFailed,
+		MissionEventGateRevision, MissionEventHandoffSatisfied, MissionEventHandoffFailed,
 		MissionEventHandoffExhausted, MissionEventHandoffNotApplicable, MissionEventSniperDone, MissionEventRetryOK,
 		MissionEventSlotTransient, MissionEventSlotPermanent, MissionEventADRCriterion,
-		MissionEventADRApproved, MissionEventADRDeclined:
+		MissionEventADRApproved, MissionEventADRDeclined, obsoleteMissionEventHandoffPassed:
 		return fmt.Errorf("mission engine: event %q is not an early-pipeline event", event)
 	}
 	transitions, ok := phaseTransitions[e.status.Phase]
@@ -108,54 +123,6 @@ func (e *MissionEngine) submitEarly(event MissionEngineEvent) error {
 	return nil
 }
 
-// SubmitHandoff consumes one persisted live challenge result. It is the only
-// route from the independent Approval Gate into Sniper execution. Failed
-// attempts return to Archivist until the policy limit is reached, then remain
-// blocked. Replaying an attempt is rejected because the state is no longer at
-// the handoff boundary or the attempt number is not the next one.
-func (e *MissionEngine) SubmitHandoff(outcome HandoffOutcome) (MissionEngineStatus, error) {
-	if err := e.validateHandoffSubmission(outcome); err != nil {
-		if e == nil {
-			return MissionEngineStatus{}, err
-		}
-		return e.status, err
-	}
-	e.applyHandoffOutcome(outcome)
-	return e.submitFSM(handoffOutcomeEvent(outcome))
-}
-
-func (e *MissionEngine) validateHandoffSubmission(outcome HandoffOutcome) error {
-	if e == nil {
-		return fmt.Errorf("mission engine: engine is nil")
-	}
-	if e.status.State != StateHandoffChallenge {
-		return fmt.Errorf("mission engine: handoff challenge is not pending from state %q", e.status.State)
-	}
-	if outcome.Attempt <= 0 || outcome.MaxAttempts <= 0 {
-		return fmt.Errorf("mission engine: handoff attempt and max attempts must be positive")
-	}
-	if outcome.Attempt != e.status.HandoffAttempt+1 {
-		return fmt.Errorf("mission engine: handoff attempt %d is not next attempt %d", outcome.Attempt, e.status.HandoffAttempt+1)
-	}
-	return nil
-}
-
-func (e *MissionEngine) applyHandoffOutcome(outcome HandoffOutcome) {
-	e.status.HandoffAttempt = outcome.Attempt
-	e.status.HandoffStatus = outcome.Status
-	e.status.HandoffNextAction = outcome.NextAction
-}
-
-func handoffOutcomeEvent(outcome HandoffOutcome) MissionEngineEvent {
-	if outcome.Passed {
-		return MissionEventHandoffPassed
-	}
-	if outcome.Attempt >= outcome.MaxAttempts {
-		return MissionEventHandoffExhausted
-	}
-	return MissionEventHandoffFailed
-}
-
 func (e *MissionEngine) submitFSM(event MissionEngineEvent) (MissionEngineStatus, error) {
 	transition, ok := missionTransitionEvent(event)
 	if !ok {
@@ -167,5 +134,11 @@ func (e *MissionEngine) submitFSM(event MissionEngineEvent) (MissionEngineStatus
 	}
 	e.status.State = next
 	e.status.Phase = phaseForState(next)
+	if next != StateExecution {
+		// A new handoff challenge must be explicitly bound by the command
+		// boundary after the gate event is accepted. Never carry a prior
+		// package binding across a new gate or another state transition.
+		e.status.ApprovalGatePackageDigest = ""
+	}
 	return e.status, nil
 }
