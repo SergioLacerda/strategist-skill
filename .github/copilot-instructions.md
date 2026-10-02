@@ -89,6 +89,6 @@ Mandatory restrictions after bootstrap:
 When Strategist was explicitly invoked but `.strategist/` is absent:
 → emit `error=not_installed`, instruct the user to run `strategist install`, stop.
 
-`.sdd/` is governance — it is not part of the Strategist runtime.
+`A provisioned governance source` is governance — it is not part of the Strategist runtime.
 `.strategist/agent-protocol.md` is the runtime authority for agent behavior.
 Discovery contract: `.strategist/provider-discovery.md`

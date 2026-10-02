@@ -19,7 +19,7 @@ contract: null
 - resolved `active`
 - resolved `persona`
 - resolved slot plugin/native-role provider ids
-- `governance_mode` — `standalone` or the adapter name (e.g. `sdd`, `custom`)
+- `governance_mode` — `standalone` or the explicitly selected adapter name (e.g. `providence`)
 - `governance_source` — origin of the active governance (path or adapter id; `none` in standalone mode)
 - `governance_adapter` — adapter responsible for governance injection, if any
 - `stale_scan_candidates` — list of `mission_id`s flagged by the bootstrap stale

@@ -9,24 +9,25 @@ import (
 	"go.opentelemetry.io/otel/codes"
 
 	"github.com/SergioLacerda/strategist-skill/internal/governance"
+	"github.com/SergioLacerda/strategist-skill/internal/governance/providence"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
 )
 
 var (
 	syncGovernanceRoot   string
-	syncGovernanceSddDir string
+	syncGovernanceDir    string
 	syncGovernanceDryRun bool
 )
 
 var syncGovernanceCmd = &cobra.Command{
 	Use:   "sync-governance",
-	Short: "Sync .strategist/skill.yaml with active SDD governance mandates",
-	Long: `Reads .sdd/ governance mandates and reconciles .strategist/skill.yaml.
+	Short: "Sync .strategist/skill.yaml with explicitly provisioned governance",
+	Long: `Reads the explicitly selected governance directory and reconciles .strategist/skill.yaml.
 
 Checks performed:
-  - Reads .sdd/metadata.json to verify governance fingerprint
-  - Reads .sdd/source/governance-core.json to extract active mandates
+  - Reads the source metadata to verify the governance fingerprint
+  - Reads source/governance-core.json to extract active mandates
   - Compares active mandates against compliance.mandates in skill.yaml
   - Applies missing governance fields (validation_policy, budget_policy, telemetry_policy)
   - Reports drift before applying changes
@@ -55,7 +56,10 @@ func runSyncGovernanceCmd(cmd *cobra.Command, _ []string) (retErr error) {
 		span.End()
 	}()
 
-	report, err := governance.RunSync(syncGovernanceRoot, syncGovernanceSddDir, syncGovernanceDryRun)
+	if syncGovernanceDir == "" {
+		return fmt.Errorf("sync-governance: --governance-dir is required")
+	}
+	report, err := governance.RunSync(syncGovernanceRoot, providence.New(), syncGovernanceDir, syncGovernanceDryRun)
 	if err != nil {
 		return fmt.Errorf("sync-governance: %w", err)
 	}
@@ -89,13 +93,13 @@ func applySyncGovernanceDefaults() {
 	if syncGovernanceRoot == "" {
 		syncGovernanceRoot = ".strategist"
 	}
-	if syncGovernanceSddDir == "" {
-		syncGovernanceSddDir = ".sdd"
-	}
 }
 
 func init() {
 	syncGovernanceCmd.Flags().StringVar(&syncGovernanceRoot, "root", "", "path to .strategist/ root (default: .strategist)")
-	syncGovernanceCmd.Flags().StringVar(&syncGovernanceSddDir, "sdd", "", "path to .sdd/ directory (default: .sdd)")
+	syncGovernanceCmd.Flags().StringVar(&syncGovernanceDir, "governance-dir", "", "path to the explicitly provisioned governance directory")
 	syncGovernanceCmd.Flags().BoolVar(&syncGovernanceDryRun, "dry-run", false, "preview changes without writing")
+	if err := syncGovernanceCmd.MarkFlagRequired("governance-dir"); err != nil {
+		panic(err)
+	}
 }

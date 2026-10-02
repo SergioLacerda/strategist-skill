@@ -31,7 +31,7 @@ func captureWizardStdout(t *testing.T, fn func()) string {
 }
 
 func wizardInputFor(lang string) string {
-	return lang + "\n" + lang + "\n" + lang + "\nen\nepic\n/workspace\nbrainstorming\narchivist\nsdd-ask\n\n"
+	return lang + "\n" + lang + "\n" + lang + "\nen\nepic\n/workspace\nbrainstorming\narchivist\nfixture-provider\n\n"
 }
 
 func runDisplayWizard(t *testing.T, lang string, verbose bool) string {

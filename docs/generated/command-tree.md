@@ -74,7 +74,7 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `validate` — Validate a local provider package without changing workspace state
 - `runbook` — Operate on the typed docs/runbooks/*.runbook.yaml corpus
   - `select` — Select applicable runbooks for the given mission signals
-- `sync-governance` — Sync .strategist/skill.yaml with active SDD governance mandates
+- `sync-governance` — Sync .strategist/skill.yaml with explicitly provisioned governance
 - `treasure-chest` — Show treasure chest runtime status and index health
   - `add` — Register a new treasure chest across active/governed/indexed layers
   - `doctor` — Detect consistency drift across active.yaml, treasure-chests.yaml, and knowledge.index.yaml

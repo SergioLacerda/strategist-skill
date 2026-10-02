@@ -61,7 +61,7 @@ func TestSeverityNumber_String(t *testing.T) {
 
 func TestAuthorityExternal(t *testing.T) {
 	t.Parallel()
-	assert.Equal(t, "external:sdd", telemetry.AuthorityExternal("sdd"))
+	assert.Equal(t, "external:providence", telemetry.AuthorityExternal("providence"))
 	assert.Equal(t, "strategist-local", telemetry.AuthorityStrategistLocal)
 }
 

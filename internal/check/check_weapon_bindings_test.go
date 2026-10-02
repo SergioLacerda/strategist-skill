@@ -129,14 +129,14 @@ func TestVerifyEmbeddedWeaponBindings_SkipsSkillsWithoutCanonicalRole(t *testing
 	t.Parallel()
 	root := t.TempDir()
 	writeRegistryCatalog(t, root, fixtureRegistry())
-	writeWeaponFixture(t, root, "sdd-ask", "", "")
+	writeWeaponFixture(t, root, "fixture-provider", "", "")
 
 	bindings, err := verifyEmbeddedWeaponBindings(root)
 	require.NoError(t, err)
-	// sdd-ask itself declares no canonical_role and is skipped; the rows
-	// present are the roster's missing-pairing rows, not sdd-ask.
+	// fixture-provider itself declares no canonical_role and is skipped; the rows
+	// present are the roster's missing-pairing rows, not fixture-provider.
 	require.Len(t, bindings, 2)
-	_, found := findBinding(bindings, "sdd-ask")
+	_, found := findBinding(bindings, "fixture-provider")
 	assert.False(t, found)
 }
 

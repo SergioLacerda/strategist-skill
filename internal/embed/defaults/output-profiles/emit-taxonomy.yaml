@@ -1,4 +1,4 @@
-# Severity levels align with sdd_telemetry/constants.py (TRACE=1, DEBUG=5, INFO=9)
+# Severity levels align with the OpenTelemetry severity scale (TRACE=1, DEBUG=5, INFO=9)
 # and internal/telemetry/schema.go (strategist.* attribute namespace).
 # OTEL export is never filtered — this taxonomy controls agent-side stdout only.
 # INFO events are rendered through the active profile.

@@ -38,11 +38,11 @@ aplicar_alteracoes: false
 slots:
   discovery: brainstorming
   refinement: openspec-explore
-  execution: sdd-ask
+  execution: fixture-provider
 
 treasure_chests:
   - id: source
-    path: .sdd/source
+    path: governance/source
     scope: all
 `)
 	require.NoError(t, os.WriteFile(filepath.Join(root, "active.yaml"), activeData, 0o644))

@@ -18,7 +18,7 @@ import (
 func TestInstall_WizardPath(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	svc := newSvcW(t, "en\nen\npt-BR\nen\nepic\n/workspace\nbrainstorming\narchivist\nsdd-ask\n\n")
+	svc := newSvcW(t, "en\nen\npt-BR\nen\nepic\n/workspace\nbrainstorming\narchivist\nfixture-provider\n\n")
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
 	require.NoError(t, err)
 
@@ -37,7 +37,7 @@ func TestInstall_WizardPath(t *testing.T) {
 	assert.NotContains(t, s, "git_persistence_mode")
 	assert.Contains(t, s, "discovery: brainstorming")
 	assert.Contains(t, s, "refinement: archivist")
-	assert.Contains(t, s, "execution: sdd-ask")
+	assert.Contains(t, s, "execution: fixture-provider")
 	assert.NotContains(t, s, "execution: sniper")
 
 	_, err = os.Stat(filepath.Join(dir, ".strategist", "skills", "brainstorming", "skill.yaml"))
@@ -55,7 +55,7 @@ func TestInstall_WizardPath(t *testing.T) {
 func TestInstall_WizardPath_PersistsPluginLock(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	svc := newSvcW(t, "en\nen\npt-BR\nen\nepic\n/workspace\nbrainstorming\narchivist\nsdd-ask\n\n")
+	svc := newSvcW(t, "en\nen\npt-BR\nen\nepic\n/workspace\nbrainstorming\narchivist\nfixture-provider\n\n")
 	require.NoError(t, svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true}))
 
 	data, err := os.ReadFile(filepath.Join(dir, ".strategist", "plugins.lock"))
@@ -79,7 +79,7 @@ func TestInstall_WizardPath_PersistsPluginLock(t *testing.T) {
 func TestInstall_WizardPath_WithChest(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	svc := newSvcW(t, "en\nen\nen\nen\npragmatic\n.analysis\nbrainstorming\nopenspec-explore\nsdd-ask\n.sdd/source\n")
+	svc := newSvcW(t, "en\nen\nen\nen\npragmatic\n.analysis\nbrainstorming\nopenspec-explore\nfixture-provider\ngovernance/source\n")
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
 	require.NoError(t, err)
 
@@ -87,7 +87,7 @@ func TestInstall_WizardPath_WithChest(t *testing.T) {
 	require.NoError(t, readErr)
 	s := string(ki)
 	assert.Contains(t, s, "id: source")
-	assert.Contains(t, s, "path: .sdd/source")
+	assert.Contains(t, s, "path: governance/source")
 	assert.Contains(t, s, "tags: [all]")
 	assert.NotContains(t, s, "sources: []")
 }
@@ -129,7 +129,7 @@ func TestInstall_WizardPath_ExplicitDefaultProvidersDoNotMaterializeManifests(t 
 	t.Parallel()
 
 	dir := t.TempDir()
-	svc := newSvcW(t, "en\nen\nen\nen\nepic\n.analysis\nbrainstorming\nopenspec-explore\nsdd-ask\n\n")
+	svc := newSvcW(t, "en\nen\nen\nen\nepic\n.analysis\nbrainstorming\nopenspec-explore\nfixture-provider\n\n")
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
 	require.NoError(t, err)
 
@@ -298,7 +298,7 @@ func TestRunWizard_EOFPrompts(t *testing.T) {
 		{name: "seventh discovery", input: "en\nen\nen\nen\npragmatic\n.\n", wantError: "discovery"},
 		{name: "eighth refinement", input: "en\nen\nen\nen\npragmatic\n.\nbrainstorming\n", wantError: "refinement"},
 		{name: "ninth execution", input: "en\nen\nen\nen\npragmatic\n.\nbrainstorming\nopenspec-explore\n", wantError: "execution"},
-		{name: "tenth chest", input: "en\nen\nen\nen\npragmatic\n.\nbrainstorming\nopenspec-explore\nsdd-ask\n", wantError: "treasure_chest"},
+		{name: "tenth chest", input: "en\nen\nen\nen\npragmatic\n.\nbrainstorming\nopenspec-explore\nfixture-provider\n", wantError: "treasure_chest"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -361,7 +361,7 @@ func TestInstall_WizardPath_AwarenessRefresherCalled(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	called := false
-	svc := newSvcW(t, "en\nen\npt-BR\nen\nepic\n/workspace\nbrainstorming\nopenspec-propose\narchivist\nsdd-ask\n\n")
+	svc := newSvcW(t, "en\nen\npt-BR\nen\nepic\n/workspace\nbrainstorming\nopenspec-propose\narchivist\nfixture-provider\n\n")
 	svc.AwarenessRefresher = func(strategistRoot, projectRoot, _ string) bool {
 		called = true
 		assert.Equal(t, filepath.Join(dir, ".strategist"), strategistRoot)
@@ -384,14 +384,14 @@ func TestInstall_WizardPath_AwarenessRefresherCalled(t *testing.T) {
 func TestPromptSlots_UnknownProviderPrintsWarning(t *testing.T) {
 	t.Parallel()
 	b := i18n.BundleFor("en")
-	input := "custom-ranger\nopenspec-explore\nsdd-ask\n\n"
+	input := "custom-ranger\nopenspec-explore\nfixture-provider\n\n"
 	catalog, err := parseCatalogBytes([]byte(minimalCatalogYAML))
 	require.NoError(t, err)
 	discovery, refinement, execution, _, _, _, err := promptSlots(NewTextPrompter(strings.NewReader(input)), b, catalog, knownProviderRisk, false)
 	require.NoError(t, err)
 	assert.Equal(t, "custom-ranger", discovery)
 	assert.Equal(t, "openspec-explore", refinement)
-	assert.Equal(t, "sdd-ask", execution)
+	assert.Equal(t, "fixture-provider", execution)
 }
 
 // TestRunWizardBlocksOnUnresolvedCustomSkill covers docs/adr/0029's converse
@@ -405,7 +405,7 @@ func TestRunWizardBlocksOnUnresolvedCustomSkill(t *testing.T) {
 	homeDir := t.TempDir()
 	t.Setenv("HOME", homeDir) // no skill installed under homeDir — deliberately unresolvable
 
-	input := "en\nen\nen\nen\nepic\n.analysis\ndefinitely-not-a-real-installed-skill-id-xyz\nopenspec-explore\nsdd-ask\n\n"
+	input := "en\nen\nen\nen\nepic\n.analysis\ndefinitely-not-a-real-installed-skill-id-xyz\nopenspec-explore\nfixture-provider\n\n"
 	_, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(input)), minimalExtractor{}, "", false)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "configured_unverified")

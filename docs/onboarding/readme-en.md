@@ -89,9 +89,9 @@ Expected contracts:
 
 ![General Flow](fluxo-geral_en.png)
 
-## SDD Integration Flow
+## Governance Integration Flow
 
-![SDD Integration Flow](fluxo-integracao_en.png)
+![Governance Integration Flow](fluxo-integracao_en.png)
 
 ## Explore more
 

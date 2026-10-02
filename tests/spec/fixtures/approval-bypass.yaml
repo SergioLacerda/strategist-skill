@@ -10,7 +10,7 @@ input:
   roles_default_yaml:
     discovery: brainstorming
     refinement: openspec-explore
-    execution: sdd-ask
+    execution: fixture-provider
   state: refinement_complete_approval_gate_not_shown
 
 trigger: invoke_execution_slot_directly

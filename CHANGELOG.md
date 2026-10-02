@@ -16,6 +16,16 @@ corresponding tag and GitHub Release.
 
 ## [Unreleased]
 
+### Changed
+- Governance synchronization now consumes an explicit provider-agnostic source
+  and normalized snapshot. Providence is supported as an explicit reference
+  adapter; no governance model or directory is auto-detected.
+
+### Removed
+- The breaking `v1.0.28` boundary removes the `--sdd` flag, SDD-specific
+  aliases/defaults, implicit `.sdd` probing, dual-read, and silent governance
+  fallback. Invalid explicit governance sources fail closed.
+
 ### Added
 - `strategist mission normalize-openspec --amend --amends <change> --authorization-ref <ref>`,
   a sanctioned amendment of an already published refined package: `analysis.md`, the

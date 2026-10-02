@@ -87,7 +87,7 @@ internal/
     schema.go            Attribute constants: strategist.phase, strategist.cache.hit, etc.
                          No-op automatic when OTEL_EXPORTER_OTLP_ENDPOINT is not set.
 
-  governance/            Synchronizes Strategist manifests with SDD governance metadata
+  governance/            Synchronizes Strategist manifests with an explicit governance source
   i18n/                  Language selection, reserved-term checks, and localized CLI strings
   integrity/             Runtime config integrity lock and warning support
   authorization/          Authorization and permission-grant checks

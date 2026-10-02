@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const fullActiveYAML = "mode: full\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: sdd-ask\n"
+const fullActiveYAML = "mode: full\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: fixture-provider\n"
 
 // copyTestdata copies the tree rooted at testdata/<fixture> into dst.
 func copyTestdata(t testing.TB, fixture, dst string) {
@@ -139,7 +139,7 @@ func TestCompileConfig(t *testing.T) {
 				testutil.MinimalRoot(t, dir)
 				require.NoError(t, os.WriteFile(
 					filepath.Join(dir, "active.yaml"),
-					[]byte("mode: full\nbase_path: .analysis\nroles_config: roles/default.yaml\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: sdd-ask\n"),
+					[]byte("mode: full\nbase_path: .analysis\nroles_config: roles/default.yaml\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: fixture-provider\n"),
 					0o644,
 				))
 			},

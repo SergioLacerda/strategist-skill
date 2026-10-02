@@ -49,7 +49,7 @@ func TestAgentProtocol(t *testing.T) {
 		assert.Contains(t, s, "version: 1.0.0")
 		assert.Contains(t, s, "Discovery slot: brainstorming")
 		assert.Contains(t, s, "Refinement slot: openspec-explore")
-		assert.Contains(t, s, "Execution slot: sdd-ask")
+		assert.Contains(t, s, "Execution slot: fixture-provider")
 	})
 
 	t.Run("upserts body when file exists", func(t *testing.T) {

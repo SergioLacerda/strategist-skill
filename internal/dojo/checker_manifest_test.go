@@ -47,7 +47,7 @@ func TestCheckManifests_ManifestMissing(t *testing.T) {
 func TestCheckManifests_ManifestExpectedAbsent_IsAbsent(t *testing.T) {
 	criteria := domain.DojoCriteria{
 		ManifestChecks: []domain.DojoManifestCheck{
-			{Slot: "execution", ExpectedProvider: "sdd-ask", ManifestExists: false},
+			{Slot: "execution", ExpectedProvider: "fixture-provider", ManifestExists: false},
 		},
 	}
 	items := dojo.CheckManifests(criteria, t.TempDir())
@@ -258,7 +258,7 @@ func TestCheckManifests_ReadsTheCatalogEntryWithoutAnyView(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(strategistDir, "plugins", "catalog.yaml"), []byte("schema_version: strategist-plugin-catalog/v2\nproviders:\n  - id: brainstorming\n    canonical_role: ranger\n    runtime:\n      kind: embedded\n"), 0o644))
 	criteria := domain.DojoCriteria{ManifestChecks: []domain.DojoManifestCheck{
 		{Slot: "discovery", ExpectedProvider: "brainstorming", ManifestExists: true, FieldsPresent: []string{"canonical_role", "runtime.kind"}},
-		{Slot: "execution", ExpectedProvider: "sdd-ask", ManifestExists: false},
+		{Slot: "execution", ExpectedProvider: "fixture-provider", ManifestExists: false},
 	}}
 
 	items := dojo.CheckManifests(criteria, strategistDir)

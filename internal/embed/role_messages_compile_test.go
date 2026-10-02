@@ -23,7 +23,7 @@ func compiledPersonas(t *testing.T, mutate func(root string)) map[string]any {
 	root := t.TempDir()
 	require.NoError(t, embed.Extractor{}.Extract(root, false))
 	require.NoError(t, os.WriteFile(filepath.Join(root, "active.yaml"),
-		[]byte("mode: full\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: sdd-ask\n"), 0o600))
+		[]byte("mode: full\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: fixture-provider\n"), 0o600))
 	if mutate != nil {
 		mutate(root)
 	}

@@ -117,13 +117,13 @@ receives it. This exists because
 a Strategist mission's own closing text is routinely copied verbatim into unrelated
 follow-up prompts and other skills/CLIs; without a fixed, unmissable boundary sentence,
 the boundary depends on the agent choosing to restate it, which is not reliable (see
-`.analysis/refined/20260729-strategist-sddask-handoff-drift/` for the incident this
+`.analysis/refined/20260729-provider-handoff-drift/` for the incident this
 codifies). Wording is not prescribed beyond the required content above — it must be
 written in `active.language.chat` like the rest of the conversational envelope, and it is
 additive: it does not replace `{mission_id}`/`{next_action}`, it follows them.
 
-This clause does not extend Strategist's authority into `.sdd/` or any other concrete
-governance system — it states only that *this* mission's own approval state is not
+This clause does not extend Strategist's authority into a provisioned governance
+directory or any other concrete governance system — it states only that *this* mission's own approval state is not
 transferable; it says nothing about what another system's own gates require.
 
 ## Mission Close Sequence (profile=epic)

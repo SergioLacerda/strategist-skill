@@ -20,7 +20,7 @@
 This detailed README is structured for two audiences:
 
 - **Quick pass (5-10 min)**: `Overview` → `Mission Pipeline` → `Stop Conditions` → `Forbidden Behaviors`.
-- **Implementation/Operations**: follow the full order from `Installation` → `File Structure` → `Technical Flow` → `Slot Configuration` → `SDD Integration`.
+- **Implementation/Operations**: follow the full order from `Installation` → `File Structure` → `Technical Flow` → `Slot Configuration` → `Governance Integration`.
 
 ### Quick Index
 
@@ -33,7 +33,7 @@ This detailed README is structured for two audiences:
 - [Operation Modes (Personas)](#operation-modes-personas)
 - [Knowledge System](#knowledge-system)
 - [Slot Configuration (roles)](#slot-configuration-roles)
-- [SDD Integration (Optional)](#sdd-integration-optional)
+- [Governance Integration (Optional)](#governance-integration-optional)
 - [Stop Conditions](#stop-conditions)
 - [Forbidden Behaviors](#forbidden-behaviors)
 - [Drift Self-Correction](#drift-self-correction)
@@ -63,7 +63,7 @@ Sniper (execution) -> Role responsible for materializing the approved documentat
 Each role has a defined function, but the interesting part is that you can specify which skill fulfills that role.
 Strategist orchestrates the flow, validates contracts, emits progress events, and enforces the approval gate.
 
-It is **standalone by default** and can optionally integrate as a plugin into governance models (harness engineering) such as the **SDD Harness**.
+It is **standalone by default** and can optionally integrate with an explicitly provisioned governance model such as **Providence**.
 
 ---
 
@@ -116,9 +116,8 @@ strategist/
 │   └── progress-contract.yaml       ← progress event format
 │
 ├── templates/
-│   ├── pragmatic-standalone.yaml    ← active.yaml template: pragmatic, no SDD
-│   ├── epic-standalone.yaml         ← active.yaml template: epic, no SDD
-│   ├── epic-sdd.yaml                ← active.yaml template: epic, with SDD injection
+│   ├── pragmatic-standalone.yaml    ← active.yaml template: pragmatic, no provisioned governance
+│   ├── epic-standalone.yaml         ← active.yaml template: epic, no provisioned governance
 │   ├── known-providers.yaml         ← catalog of known providers for the wizard
 │   └── domain/                      ← workspace templates (.strategist/)
 │       ├── index.yaml
@@ -284,7 +283,7 @@ INVOCATION
   │ 1. Bootstrap                                                 │
   │    • Loads active.yaml (single source of config)             │
   │    • Resolves persona → tone_directive + phase_labels        │
-  │    • SDD injection (if plugin active): overrides Sniper slot,│
+  │    • Provisioned governance injection (if active): overrides Sniper slot,│
   │      base_path, knowledge_paths, governance_context          │
   └──────────────────────────┬───────────────────────────────────┘
                              │
@@ -378,7 +377,7 @@ GATE AND EXECUTION
 ```
 User prompt
   ↓
-Bootstrap (active.yaml + persona + SDD injection)
+Bootstrap (active.yaml + persona + optional governance injection)
   ↓
 Preflight (validates slots, loads internal domain)
   ↓
@@ -653,7 +652,7 @@ Strategist has two modes with the **same pipeline** and a **different voice**.
 | **Refinement label** | `refinement` | `archivist` |
 | **Execution label** | `execution` | `sniper` |
 | **Approval prompt** | "Refinement complete. Proceed?" | "Authorize Sniper deployment?" |
-| **Default template** | `pragmatic-standalone.yaml` | `epic-standalone.yaml` / `epic-sdd.yaml` |
+| **Default template** | `pragmatic-standalone.yaml` | `epic-standalone.yaml` |
 
 Selection:
 - Via `active.yaml`: `mode: pragmatic` or `mode: epic`
@@ -744,19 +743,18 @@ Per-mission override: `--roles mission`
 
 ---
 
-## SDD Integration (Optional)
+## Governance Integration (Optional)
 
-Strategist can receive governance context from SDD or another governance adapter.
+Strategist can receive governance context from Providence or another explicitly selected governance adapter.
 
 When active, a governance adapter may inject policy context:
 
 ```yaml
 governance_injection:
-  provider: sdd
+  provider: providence
   execution_gate: allowed
-  base_path: .sdd/analysis          # overrides base_path
+  base_path: .analysis              # governance does not replace the Strategist runtime
   knowledge_paths:
-    - .sdd/docs                     # added to knowledge index
 ```
 
 **Rules:**
@@ -765,7 +763,6 @@ governance_injection:
 - `knowledge_paths` are **added** to sources, not replaced
 - governance context is read-only and does not override `protocol.md`
 
-Template for use with SDD: `templates/epic-sdd.yaml`
 
 ---
 
@@ -798,7 +795,7 @@ The following behaviors are **never allowed**:
 
 5. **Write to `memory/` without approval** — the `learning-curator` must present proposed entries for review before any write.
 
-6. **Resolve the execution slot from an undeclared source** — the execution slot provider must come from `roles/<config>.yaml` or `sdd_injection.execution_provider`.
+6. **Resolve the execution slot from an undeclared source** — the execution slot provider must come from `roles/<config>.yaml` or `governance_injection.execution_provider`.
 
 7. **Skip preflight** — preflight runs before intake, on every invocation, including re-invocations with the same config.
 
@@ -820,7 +817,7 @@ When `drift-patterns.yaml` is loaded, the agent checks patterns before each phas
 | `silent_phase_advance` | About to start next phase without emitting a `done` event | Emit `done` event first. |
 | `approval_bypass` | About to invoke Sniper without asking the user | Stop. Present approval gate prompt. |
 | `scope_expansion` | Addressing something outside the user's mission | Stop. Return to mission scope. |
-| `sniper_provider_override` | Resolved Sniper from a source other than roles config or sdd_injection | Stop. Re-resolve from declared source. |
+| `sniper_provider_override` | Resolved Sniper from a source other than roles config or governance_injection | Stop. Re-resolve from declared source. |
 | `side_quest_approval_bypass` | About to move files from opportunity_attack without passing through the main gate | Stop. Side quests only execute after explicit approval at the main gate. |
 | `route_plan_creation_to_sniper` | About to ask Sniper to create a document, spec, or plan | Stop. Artifact creation is Archivist's work. Return to phase 5c. |
 | `opportunity_attack_as_slot` | About to delegate Opportunity Attack (ADR evaluation) to Ranger or Sniper | Stop. Opportunity Attack is internal to Archivist — run it after the four refined artifacts are written. |
@@ -831,7 +828,7 @@ When `drift-patterns.yaml` is loaded, the agent checks patterns before each phas
 
 ### Standalone-first
 
-Strategist does not require SDD or any governance framework. SDD integration is optional and additive — it does not modify pipeline logic.
+Strategist does not require Providence or any governance framework. Governance integration is optional and additive — it does not modify pipeline logic.
 
 ### Identical pipeline for both modes
 

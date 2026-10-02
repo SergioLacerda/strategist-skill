@@ -45,6 +45,7 @@ lookup by topic fast without moving any file.
 | [0057](0057-mission-state-concurrency-and-atomicity.md) | Mission state concurrency and atomicity: flock plus atomic rename (revisits 0008; proposed) |
 | [0060](0060-weapon-acquisition-flow-and-registry-derived-roster.md) | Weapon acquisition flow and registry-derived roster (refines 0035; Weapon identity id@version) |
 | [0061](0061-weapon-sidecar-generation-and-versioned-catalog.md) | Weapon sidecar generation contract and versioned catalog layout (extends 0060) |
+| [0062](0062-governance-compatibility-implementation.md) | Provider-agnostic governance compatibility implementation |
 
 ### Knowledge & Jewels
 

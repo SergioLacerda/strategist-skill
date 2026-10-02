@@ -33,11 +33,11 @@ aplicar_alteracoes: false
 slots:
   discovery: brainstorming
   refinement: openspec-explore
-  execution: sdd-ask
+  execution: fixture-provider
 
 treasure_chests:
   - id: source
-    path: .sdd/source
+    path: governance/source
     scope: all
 `)
 	require.NoError(t, os.WriteFile(filepath.Join(strategistDir, "active.yaml"), activeYAML, 0o644))
@@ -158,6 +158,6 @@ func TestE2E_CLI_TreasureChestsFlowIntoCompiledConfig(t *testing.T) {
 	first, ok := treasureChests[0].(map[string]any)
 	require.True(t, ok, "treasure chest entry must be an object")
 	assert.Equal(t, "source", first["id"])
-	assert.Equal(t, ".sdd/source", first["path"])
+	assert.Equal(t, "governance/source", first["path"])
 	assert.Equal(t, "all", first["scope"])
 }

@@ -10,7 +10,7 @@ input:
   roles_default_yaml:
     discovery: bad-provider
     refinement: openspec-explore
-    execution: sdd-ask
+    execution: fixture-provider
   provider_skill_yaml:
     name: bad-provider
     risk_score: controlled

@@ -80,7 +80,7 @@ type WizardConfig struct {
 	// Leveling is the operator's manual/automatic model x effort choice; the
 	// zero value means the wizard step was not answered (treated as automatic).
 	Leveling          LevelingConfig
-	TreasureChestPath string // optional: path to a knowledge source (e.g. .sdd/source)
+	TreasureChestPath string // optional: path to a knowledge source (e.g. governance/source)
 	// AdrCanonicalPath is the optional, project-relative destination Sniper writes ADRs
 	// to instead of the <base_path>/archived/<mission_id>-adr.md fallback (see
 	// contracts/narrative/07-adr.md § Canonical Destination Resolution). Empty means

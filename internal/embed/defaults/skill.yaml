@@ -137,7 +137,7 @@ orchestration:
       # explicit user choice, declares risk_score controlled and stays
       # documentation-only (checked at `strategist provider add`). It has no
       # subtype customization.
-      weapons: [sdd-ask, openspec-archive-change]
+      weapons: [openspec-archive-change]
 
 parameters:
   - name: profile
@@ -399,11 +399,11 @@ execution_provider_resolution:
       action: block
       message: "resolved execution_provider cannot be invoked; fix provider configuration or runtime installation"
 
-# Governance compliance — synced via `strategist sync-governance`
+# Governance compliance — compared by `strategist sync-governance`
 compliance:
   mandates: [M001, M002, M003, M016]   # mandates fully satisfied
   partial: [M005, M007, M008, M015]    # mandates partially satisfied (see sync-governance)
-  validated_by: self                   # "sdd-governance" when registered in SDD registry
+  validated_by: self                   # an explicitly provisioned provider may validate this
 
 validation_policy:
   require_preflight: true
@@ -530,10 +530,10 @@ telemetry_policy:
 # Provider skill.yaml should declare:
 #   compliance:
 #     mandates: [M007, M015, ...]
-#     validated_by: sdd-governance
+#     validated_by: external-governance
 provider_compliance:
   governance_injection_trust: auto     # providers from governance_injection are trusted without re-validation
-  external_trust: risk_score_only      # non-SDD providers: validate risk_score only (current behavior)
+  external_trust: risk_score_only      # external providers: validate risk_score only (current behavior)
 
 forbidden_behaviors:
   - materialize_documentation_without_review_acceptance

@@ -75,7 +75,7 @@ const (
 
 // AuthorityExternal formats the Event.Attributes[AttrEventAuthority] value
 // for a decision made by an external governance provider identified by providerID
-// (e.g. AuthorityExternal("sdd") -> "external:sdd").
+// (e.g. AuthorityExternal("provider") -> "external:provider").
 func AuthorityExternal(providerID string) string {
 	return authorityExternalPrefix + providerID
 }

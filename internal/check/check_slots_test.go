@@ -153,8 +153,8 @@ func TestCheckRoleProviderCompatibility_SlotNotMappedToARole(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "default.yaml"),
 		[]byte("discovery: ranger\nrefinement: archivist\n"), 0o644))
 
-	errMsg := checkRoleProviderCompatibility(dir, "execution", "sdd-ask", "controlled",
-		[]byte("id: sdd-ask\n"))
+	errMsg := checkRoleProviderCompatibility(dir, "execution", "fixture-provider", "controlled",
+		[]byte("id: fixture-provider\n"))
 	assert.Empty(t, errMsg)
 }
 
@@ -239,9 +239,9 @@ func TestCheckRoleProviderCompatibility_SkillDeclaresNoCanonicalRole(t *testing.
 	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "archivist.yaml"),
 		[]byte("role: archivist\nslot: refinement\n"), 0o644))
 
-	// sdd-ask declares no canonical_role — not every provider is expected to.
-	errMsg := checkRoleProviderCompatibility(dir, "refinement", "sdd-ask", "controlled",
-		[]byte("id: sdd-ask\n"))
+	// fixture-provider declares no canonical_role — not every provider is expected to.
+	errMsg := checkRoleProviderCompatibility(dir, "refinement", "fixture-provider", "controlled",
+		[]byte("id: fixture-provider\n"))
 	assert.Empty(t, errMsg)
 }
 

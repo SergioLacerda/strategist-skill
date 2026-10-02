@@ -88,7 +88,6 @@ func TestValidateProvider(t *testing.T) {
 
 	assert.Empty(t, validateProvider(knownProviderRisk, "brainstorming", "write_analysis"))
 	assert.Empty(t, validateProvider(knownProviderRisk, "openspec-explore", "write_analysis"))
-	assert.Empty(t, validateProvider(knownProviderRisk, "sdd-ask", "controlled"))
 	assert.Contains(t, validateProvider(knownProviderRisk, "brainstorming", "controlled"), "preflight will block at runtime")
 	assert.Contains(t, validateProvider(knownProviderRisk, "unknown-provider", "write_analysis"), "slot plugin")
 	assert.Contains(t, validateProvider(knownProviderRisk, "unknown-provider", "write_analysis"), "known plugin catalog")
@@ -139,7 +138,7 @@ func TestRunWizard(t *testing.T) {
 		},
 		{
 			name:           "en ui, custom languages and slots with chest",
-			input:          "en\nen\npt-BR\nen\nepic\n/workspace\nbrainstorming\narchivist\nbatata\n.sdd/source\n",
+			input:          "en\nen\npt-BR\nen\nepic\n/workspace\nbrainstorming\narchivist\nbatata\ngovernance/source\n",
 			wantUILanguage: "en",
 			wantDocLang:    "en",
 			wantChatLang:   "pt-BR",
@@ -152,7 +151,7 @@ func TestRunWizard(t *testing.T) {
 			// binding; it is never silently replaced by the native Sniper role.
 			wantExecution: "batata",
 			wantExecMode:  domain.SlotBindingModeCustom,
-			wantChestPath: ".sdd/source",
+			wantChestPath: "governance/source",
 		},
 		{
 			name:           "pt-BR ui language",
@@ -213,7 +212,7 @@ func TestWizardDoesNotAskPermissionLevel(t *testing.T) {
 	// Input has no legacy execution_mode / apply_workspace / git_persistence_mode / adr tokens.
 	// 10 prompts: ui/doc/chat/code/mode/base/discovery/refinement/execution/chest
 	// If the wizard still prompts for execution mode or ADR, the input will be exhausted and the test errors.
-	input := "en\nen\npt-BR\nen\nepic\n.analysis\nbrainstorming\nopenspec-explore\nsdd-ask\n\n"
+	input := "en\nen\npt-BR\nen\nepic\n.analysis\nbrainstorming\nopenspec-explore\nsniper\n\n"
 	wc, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(input)), minimalExtractor{}, "", false)
 	require.NoError(t, err)
 	assert.Equal(t, "epic", wc.Mode)

@@ -24,14 +24,14 @@ It MUST NOT improvise a substitute runtime from any other source.
 2. Bootstrap checks whether `.strategist/` exists locally.
 3. If present, provider loads `.strategist/SKILL.md`.
 4. Provider loads `.strategist/skill.yaml`.
-5. Provider applies governance context from `.sdd/` as already expected by its bootstrap.
+5. Provider applies governance context from the explicitly provisioned directory declared by its bootstrap.
 
 ## Governance Relationship
 
-`.sdd/` is the governance authority. It may constrain or enrich execution context,
-but it is NOT the operational runtime source for Strategist.
+An explicitly provisioned governance source may constrain or enrich execution
+context, but it is NOT the operational runtime source for Strategist.
 
-- Load `.sdd/agent-instructions.md` for governance bootstrap.
+- Load the provisioned governance bootstrap declared by the invoking context.
 - Load `.strategist/SKILL.md` and `.strategist/skill.yaml` for Strategist runtime.
 - These two loads are separate concerns and must not be conflated.
 
@@ -48,7 +48,7 @@ never silently substitute native behavior.
 
 Providers MUST NOT:
 
-- Treat `.sdd/` as a substitute for `.strategist/` when activating Strategist.
+- Treat any governance source as a substitute for `.strategist/` when activating Strategist.
 - Load files from the source tree `strategist/` (without the leading dot) during runtime.
 - Silently activate a global Strategist equivalent when `.strategist/` is absent.
 - Re-explain the full Strategist runtime contract in provider-local bootstrap files.

@@ -614,21 +614,21 @@ flag: --signal (stringArray) default="[]" usage="mission signal to match against
 
 == strategist sync-governance
 use: sync-governance
-short: Sync .strategist/skill.yaml with active SDD governance mandates
+short: Sync .strategist/skill.yaml with explicitly provisioned governance
 long: |
-  Reads .sdd/ governance mandates and reconciles .strategist/skill.yaml.
+  Reads the explicitly selected governance directory and reconciles .strategist/skill.yaml.
   
   Checks performed:
-    - Reads .sdd/metadata.json to verify governance fingerprint
-    - Reads .sdd/source/governance-core.json to extract active mandates
+    - Reads the source metadata to verify the governance fingerprint
+    - Reads source/governance-core.json to extract active mandates
     - Compares active mandates against compliance.mandates in skill.yaml
     - Applies missing governance fields (validation_policy, budget_policy, telemetry_policy)
     - Reports drift before applying changes
   
   Use --dry-run to preview changes without writing.
 flag: --dry-run (bool) default="false" usage="preview changes without writing"
+flag: --governance-dir (string) default="" usage="path to the explicitly provisioned governance directory"
 flag: --root (string) default="" usage="path to .strategist/ root (default: .strategist)"
-flag: --sdd (string) default="" usage="path to .sdd/ directory (default: .sdd)"
 
 == strategist treasure-chest
 use: treasure-chest

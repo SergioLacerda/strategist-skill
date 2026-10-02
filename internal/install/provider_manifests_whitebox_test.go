@@ -25,10 +25,10 @@ func TestLoadKnownProviders(t *testing.T) {
 
 	t.Run("reads valid providers yaml", func(t *testing.T) {
 		t.Parallel()
-		ext := knownProvidersExtractor{yaml: "providers:\n  brainstorming: write_analysis\n  sdd-ask: controlled\n"}
+		ext := knownProvidersExtractor{yaml: "providers:\n  brainstorming: write_analysis\n  fixture-provider: controlled\n"}
 		got := loadKnownProviders(ext)
 		assert.Equal(t, "write_analysis", got["brainstorming"])
-		assert.Equal(t, "controlled", got["sdd-ask"])
+		assert.Equal(t, "controlled", got["fixture-provider"])
 	})
 
 	t.Run("falls back to static map when providers map is empty", func(t *testing.T) {

@@ -3,4 +3,4 @@ base_path: .analysis
 slots:
   discovery: brainstorming
   refinement: openspec-explore
-  execution: sdd-ask
+  execution: fixture-provider

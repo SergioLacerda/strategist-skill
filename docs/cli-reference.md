@@ -645,7 +645,7 @@ strategist treasure-chest [flags]
 ```
 CHESTS                                             
 ID       PATH          SCOPE   TRUST   FRESHNESS   DRIFT
-source   .sdd/source   all     T1      unknown     none
+source   governance/source   all     T1      unknown     none
 
 INDEX                                                       
 artifact      .strategist/.compiled/.index.gz               
@@ -1029,7 +1029,7 @@ checks) — both deliberately deferred; see
 
 ## sync-governance
 
-Synchronizes `.strategist/skill.yaml` with the active SDD governance mandates.
+Synchronizes `.strategist/skill.yaml` with explicitly provisioned governance mandates.
 
 ```
 strategist sync-governance [flags]
@@ -1040,13 +1040,13 @@ strategist sync-governance [flags]
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--root` | `.strategist` | Path to the `.strategist/` root |
-| `--sdd` | `.sdd` | Path to the `.sdd/` directory |
+| `--governance-dir` | required | Path to the explicitly provisioned governance directory |
 | `--dry-run` | `false` | Displays changes without writing |
 
 **What it does:**
 
-1. Reads `.sdd/metadata.json` to verify the governance fingerprint
-2. Reads `.sdd/source/governance-core.json` to extract active mandates
+1. Reads the selected source metadata to verify the governance fingerprint
+2. Reads `source/governance-core.json` to extract active mandates
 3. Compares active mandates against `compliance.mandates` in `skill.yaml`
 4. Applies missing governance fields (`validation_policy`, `budget_policy`, `telemetry_policy`)
 5. Reports drift before applying changes
@@ -1055,13 +1055,14 @@ strategist sync-governance [flags]
 
 ```bash
 # Check drift without writing
-strategist sync-governance --dry-run
+strategist sync-governance --governance-dir .providence --dry-run
 
 # Apply synchronization
-strategist sync-governance
+strategist sync-governance --governance-dir .providence
 ```
 
-Requires `.sdd/` to be present in the repository (SDD governance). Without `.sdd/`, the command returns an error.
+Requires an explicit `--governance-dir`. Strategist does not auto-detect a governance model or directory; an invalid
+explicit source returns an error without falling back to standalone behavior.
 
 ---
 

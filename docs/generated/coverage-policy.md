@@ -31,6 +31,7 @@ are recorded in `scripts/coverage-exemptions.tsv`. Edit those sources, not this 
 | `internal/dojo` | 90% | widened cover-gate scope (T3) - measured 90.6% |
 | `internal/domain` | 90% | widened cover-gate scope (T3) - measured 95.1% |
 | `internal/governance` | 95% | widened cover-gate scope (T3) - raised to 95% (20260901-coverage-standard-95) - measured 96.0% |
+| `internal/governance/providence` | 95% | provider adapter contract and deterministic source validation |
 | `internal/handoff` | 95% | widened cover-gate scope (T3) - raised to 95% (20260901-coverage-standard-95) - measured 96.2% |
 | `internal/i18n` | 95% | widened cover-gate scope (T3) - raised to 95% (20260901-coverage-standard-95) - measured 100.0% |
 | `internal/runbook` | 90% | widened cover-gate scope (T3) - measured 95.4% |

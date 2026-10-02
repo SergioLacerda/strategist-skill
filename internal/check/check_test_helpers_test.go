@@ -173,7 +173,7 @@ func minimalCheckRoot(t *testing.T) string {
 		testutil.CatalogProvider{ID: "brainstorming", Risk: "write_analysis", CanonicalRole: "ranger"},
 		testutil.CatalogProvider{ID: "openspec-explore", Risk: "write_analysis", CanonicalRole: "archivist"},
 		testutil.CatalogProvider{ID: "openspec-propose", Risk: "write_analysis", CanonicalRole: "archivist"},
-		testutil.CatalogProvider{ID: "sdd-ask", Risk: "controlled", Source: "external"},
+		testutil.CatalogProvider{ID: "fixture-provider", Risk: "controlled", Source: "external"},
 	)
 	appendRegistrySections(t, dir, fixtureRegistry())
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
@@ -184,7 +184,7 @@ func minimalCheckRoot(t *testing.T) string {
 	))
 	require.NoError(t, os.WriteFile(
 		filepath.Join(dir, "active.yaml"),
-		[]byte("mode: epic\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: sdd-ask\n"),
+		[]byte("mode: epic\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: fixture-provider\n"),
 		0o644,
 	))
 	rolesDir := filepath.Join(dir, "roles")

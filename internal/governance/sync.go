@@ -1,5 +1,5 @@
-// Package governance reconciles .strategist/skill.yaml with the active SDD
-// governance mandates declared under .sdd/.
+// Package governance reconciles .strategist/skill.yaml with an explicitly
+// provisioned governance source.
 package governance
 
 import (
@@ -21,27 +21,17 @@ type SyncReport struct {
 	DryRun                bool
 }
 
-// SDDMetadata is the subset of .sdd/metadata.json read during a sync.
-type SDDMetadata struct {
-	Version      string `json:"version"`
-	Fingerprints struct {
-		Combined string `json:"combined"`
-	} `json:"fingerprints"`
-	GovernanceFingerprint string            `json:"governance_fingerprint"` // fallback field name
-	Mandates              map[string]string `json:"mandates"`
-}
-
-// RunSync reads .sdd/ governance state and reconciles skillRoot/skill.yaml
-// against it, applying missing governance fields unless dryRun is set.
-func RunSync(skillRoot, sddDir string, dryRun bool) (SyncReport, error) {
+// RunSync reads an explicitly selected governance source and reconciles
+// skillRoot/skill.yaml against it, applying missing governance fields unless
+// dryRun is set.
+func RunSync(skillRoot string, source Source, governanceDir string, dryRun bool) (SyncReport, error) {
 	report := SyncReport{DryRun: dryRun}
-
-	fp, activeMandates, err := readGovernance(sddDir)
+	snapshot, err := snapshotFor(source, governanceDir)
 	if err != nil {
 		return report, err
 	}
-	report.GovernanceFingerprint = fp
-	report.MandatesActive = activeMandates
+	report.GovernanceFingerprint = snapshot.Fingerprint
+	report.MandatesActive = snapshot.ActiveMandates
 
 	skillPath := filepath.Join(skillRoot, "skill.yaml")
 	skill, err := readSkill(skillPath)
@@ -52,16 +42,37 @@ func RunSync(skillRoot, sddDir string, dryRun bool) (SyncReport, error) {
 	computeComplianceGaps(&report, skill)
 	changed := applyMissingFields(skill, &report)
 
-	if changed && !dryRun {
-		if err := writeSyncedSkill(skillPath, skill); err != nil {
-			return report, err
-		}
+	if err := persistIfNeeded(skillPath, skill, changed, dryRun); err != nil {
+		return report, err
 	}
 
 	return report, nil
 }
 
-func writeSyncedSkill(skillPath string, skill map[string]any) error {
+func snapshotFor(source Source, governanceDir string) (Snapshot, error) {
+	if source == nil {
+		return Snapshot{}, fmt.Errorf("governance source is required")
+	}
+	snapshot, err := source.Snapshot(governanceDir)
+	if err != nil {
+		return Snapshot{}, fmt.Errorf("read governance source snapshot: %w", err)
+	}
+	return validateSnapshot(source, governanceDir, snapshot)
+}
+
+func persistIfNeeded(skillPath string, skill map[string]any, changed, dryRun bool) error {
+	if !changed || dryRun {
+		return nil
+	}
+	return writeSyncedSkill(skillPath, skill)
+}
+
+func writeSyncedSkill(skillPath string, skill map[string]any) (err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err = fmt.Errorf("marshal skill.yaml: %v", recovered)
+		}
+	}()
 	out, err := yaml.Marshal(skill)
 	if err != nil {
 		return fmt.Errorf("marshal skill.yaml: %w", err)
@@ -71,10 +82,6 @@ func writeSyncedSkill(skillPath string, skill map[string]any) error {
 	}
 	return nil
 }
-
-// readGovernance, readSDDMetadata, readGovernanceCore, and activeMandateIDs
-// live in sync_governance_source.go, split out to keep this file under the
-// repo's file-size budget.
 
 func readSkill(skillPath string) (map[string]any, error) {
 	skillRaw, err := os.ReadFile(skillPath) //nolint:gosec // G304: skill manifest path is derived from the configured skill root

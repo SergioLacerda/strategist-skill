@@ -147,7 +147,7 @@ func TestPrintExcludedCandidatesPrintsEachIDWithItsReasons(t *testing.T) {
 	t.Parallel()
 	excluded := []excludedProviderOption{
 		{
-			id: "sdd-ask",
+			id: "fixture-provider",
 			reasons: []domain.CompatibilityReason{
 				{Dimension: "role_affinity", Code: "role_mismatch", Detail: "provider declares roles [sniper], role contract is \"archivist\""},
 			},
@@ -165,7 +165,7 @@ func TestPrintExcludedCandidatesPrintsEachIDWithItsReasons(t *testing.T) {
 	require.NoError(t, printExcludedCandidatesTo(&buf, excluded))
 	out := buf.String()
 
-	assert.Contains(t, out, "sdd-ask: excluded — role_mismatch: provider declares roles [sniper], role contract is \"archivist\"")
+	assert.Contains(t, out, "fixture-provider: excluded — role_mismatch: provider declares roles [sniper], role contract is \"archivist\"")
 	assert.Contains(t, out, "batata: excluded — unsupported_handoff_schema: batata does not declare support for handoff schema x; unsupported_role_contract_version: batata does not declare support for role contract v1")
 }
 
