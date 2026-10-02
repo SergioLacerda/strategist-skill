@@ -1,86 +1,11 @@
 package mission
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
 )
-
-// InvocationDependencies contains the production boundary for the two-phase
-// host bridge. The adapter owns file loading and normalization; this package
-// owns CLI flags and JSON transport only.
-type InvocationDependencies struct {
-	RootFlag         string
-	RequireMissionID func(string) error
-	ResolveBasePath  func(string) (string, string, error)
-	LoadMission      func(root, missionID string) (domain.MissionEngineStatus, error)
-	Build            func(context.Context, InvocationBuildInput) (domain.MissionInvocationRequest, error)
-	Complete         func(context.Context, InvocationCompleteInput) (domain.MissionInvocationOutcome, error)
-	ExecuteHost      func(context.Context, string, string, string, domain.MissionInvocationRequest) (domain.MissionInvocationCompletion, error)
-	WriteResult      func(*cobra.Command, bool, any) error
-	ReadCompletion   func(*cobra.Command) (domain.MissionInvocationCompletion, error)
-	// TelemetrySink selects the discovery event sink when a completion runs.
-	// Production composition builds it from the existing telemetry
-	// configuration; tests inject capture or failing sinks. A nil function
-	// leaves the completion without a sink, which the runtime refuses.
-	TelemetrySink func() telemetry.EventSink
-}
-
-// InvocationBuildInput identifies the immutable Weapon request to build.
-type InvocationBuildInput struct {
-	Root           string
-	BasePath       string
-	MissionID      string
-	Role           string
-	Slot           string
-	RequestContext string
-}
-
-// InvocationCompleteInput identifies and supplies one host completion.
-type InvocationCompleteInput struct {
-	Root       string
-	BasePath   string
-	RequestID  string
-	Completion domain.MissionInvocationCompletion
-	// Adapter is the execution path the calling CLI command itself owns:
-	// `mission complete` is the current-host return channel, `mission invoke
-	// --host` is a child. It is never read from the completion.
-	Adapter domain.MissionExecutionAdapter
-	// Sink receives the provider-owned discovery invocation event. It is
-	// required: completion has no sinkless normalization path.
-	Sink telemetry.EventSink
-}
-
-// sink resolves the configured telemetry sink for one completion.
-func (d InvocationDependencies) sink() telemetry.EventSink {
-	if d.TelemetrySink == nil {
-		return nil
-	}
-	return d.TelemetrySink()
-}
-
-type invocationFlags struct {
-	root, missionID, role, slot, requestID, host, requestContext string
-	asJSON                                                       bool
-}
-
-// NewInvoke builds `mission invoke`, which either emits one immutable JSON
-// request or executes it through an explicitly selected host bridge.
-func NewInvoke(deps InvocationDependencies) *cobra.Command {
-	cmd := &cobra.Command{Use: "invoke", Short: "Invoke one embedded Weapon through a host bridge"}
-	f := bindInvocationFlags(cmd, deps)
-	cmd.Flags().StringVar(&f.role, "role", "ranger", "Role to invoke")
-	cmd.Flags().StringVar(&f.slot, "slot", "", "pipeline slot to invoke (required)")
-	cmd.Flags().StringVar(&f.host, "host", "", "execute through host (codex or claude); omit to emit the request")
-	cmd.Flags().StringVar(&f.requestContext, "context", "", "original user request supplied to an explicit host bridge")
-	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
-		return RunInvoke(cmd, deps, f)
-	}
-	return cmd
-}
 
 // RunInvoke validates the request and emits only the bridge envelope.
 func RunInvoke(cmd *cobra.Command, deps InvocationDependencies, f *invocationFlags) error {
@@ -91,11 +16,32 @@ func RunInvoke(cmd *cobra.Command, deps InvocationDependencies, f *invocationFla
 	if err != nil {
 		return err
 	}
+	if err := validateInvocationDispatch(f); err != nil {
+		return err
+	}
 	request, err := buildInvocationRequest(cmd, deps, f, root, basePath)
 	if err != nil {
 		return err
 	}
 	return dispatchInvocation(cmd, deps, f, root, basePath, request)
+}
+
+// validateInvocationDispatch runs before Build persists a single-use request.
+// Invalid child-host dispatch must not leave an orphan pending invocation.
+func validateInvocationDispatch(f *invocationFlags) error {
+	if f.host == "" {
+		return nil
+	}
+	if f.requestContext == "" {
+		return fmt.Errorf("mission invoke: --context is required with --host")
+	}
+	if f.slot == string(domain.SlotExecution) {
+		return fmt.Errorf("mission invoke: execution requires the current-host adapter; child host bridges are read-only")
+	}
+	if _, err := domain.ChildAdapterForHost(f.host); err != nil {
+		return fmt.Errorf("mission invoke: invocation_adapter_unknown: %w", err)
+	}
+	return nil
 }
 
 func resolveInvocationRuntime(deps InvocationDependencies, f *invocationFlags) (string, string, error) {
@@ -165,6 +111,7 @@ func validateInvocationPhase(status domain.MissionEngineStatus, slot string) err
 	expected, ok := map[string]domain.PipelinePhase{
 		string(domain.SlotDiscovery):  domain.PhaseDiscovery,
 		string(domain.SlotRefinement): domain.PhaseRefinement,
+		string(domain.SlotExecution):  domain.PhaseExecution,
 	}[slot]
 	if !ok {
 		return fmt.Errorf("slot %q has no host invocation boundary", slot)
@@ -173,12 +120,4 @@ func validateInvocationPhase(status domain.MissionEngineStatus, slot string) err
 		return fmt.Errorf("slot %q requires phase %q, got %q", slot, expected, status.Phase)
 	}
 	return nil
-}
-
-func bindInvocationFlags(cmd *cobra.Command, deps InvocationDependencies) *invocationFlags {
-	f := &invocationFlags{}
-	cmd.Flags().StringVar(&f.root, deps.RootFlag, "", "path to .strategist/ root (default: auto-discovered from CWD)")
-	cmd.Flags().StringVar(&f.missionID, "mission-id", "", "mission identifier (required)")
-	cmd.Flags().BoolVar(&f.asJSON, "json", false, "emit machine-readable JSON")
-	return f
 }

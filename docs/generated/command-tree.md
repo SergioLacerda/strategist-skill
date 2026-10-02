@@ -28,6 +28,7 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `run` — Run the internal/eval scenario battery via go test
 - `handoff` — Run and record Handoff Challenge verification
   - `evaluate` — Evaluate the Archivist-to-Sniper handoff and record its outcome
+  - `evaluate-ranger` — Evaluate and persist the Ranger-to-Archivist lifecycle outcome
   - `verify` — Verify a Handoff Challenge acknowledgment and record the result
 - `help` — Help about any command
 - `install` — Install the Strategist skill into a target repository

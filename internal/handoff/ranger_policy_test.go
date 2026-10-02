@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -58,6 +59,35 @@ func TestReadRangerPolicyFactsRejectsMissingUnknownAndContradictoryFacts(t *test
 	}
 }
 
+func TestReadRangerPolicyFactsRejectsUnreadableMalformedAndMismatchedArtifacts(t *testing.T) {
+	_, err := ReadRangerPolicyFacts(filepath.Join(t.TempDir(), "missing.md"), "m-ranger")
+	require.ErrorContains(t, err, "read Ranger artifact")
+
+	malformed := rangerArtifactFixture(t, "not frontmatter\n")
+	_, err = ReadRangerPolicyFacts(malformed, "m-ranger")
+	require.ErrorContains(t, err, "frontmatter")
+
+	mismatched := rangerArtifactFixture(t, strings.Replace(rangerFactsArtifact, "mission_id: m-ranger", "mission_id: another", 1))
+	_, err = ReadRangerPolicyFacts(mismatched, "m-ranger")
+	require.ErrorContains(t, err, "mission_id")
+}
+
+func TestReadRangerPolicyFactsRejectsArtifactWithoutNormalizedSources(t *testing.T) {
+	content := strings.Replace(rangerFactsArtifact, "sources_consulted: []\n", "", 1)
+	_, err := ReadRangerPolicyFacts(rangerArtifactFixture(t, content), "m-ranger")
+	require.ErrorContains(t, err, "sources_consulted")
+}
+
+func TestRangerPolicyFactsValidationRejectsWrongSchemaAndIncompleteFacts(t *testing.T) {
+	wrongSchema := RangerPolicyFacts{SchemaVersion: "wrong", RequireRecall: boolPointer(true), RequireBoundary: boolPointer(false), RequireClassification: boolPointer(false), RequireVerdict: boolPointer(false), InformationalOnly: boolPointer(false)}
+	_, err := RangerToArchivistPolicyForFacts(wrongSchema)
+	require.ErrorContains(t, err, "schema_version")
+
+	incomplete := RangerPolicyFacts{SchemaVersion: RangerPolicyFactsSchemaVersion}
+	_, err = RangerToArchivistPolicyForFacts(incomplete)
+	require.ErrorContains(t, err, "all require_*")
+}
+
 func replaceRangerFacts(content, replacement string) string {
 	start := strings.Index(content, "ranger_handoff_policy_facts:")
 	end := strings.Index(content[start:], "discovery_subtype:")
@@ -80,6 +110,21 @@ func TestRangerPolicyFactsDeriveOnlyDeclaredChallengeTypes(t *testing.T) {
 	withoutVerdict, err := RangerToArchivistPolicyForFacts(facts)
 	require.NoError(t, err)
 	require.NotEqual(t, PolicyIdentity(policy), PolicyIdentity(withoutVerdict))
+}
+
+func TestRangerPolicyProvenanceReportsOnlyRequiredFacts(t *testing.T) {
+	facts := RangerPolicyFacts{
+		RequireRecall:         boolPointer(true),
+		RequireBoundary:       boolPointer(false),
+		RequireClassification: boolPointer(true),
+		RequireVerdict:        nil,
+	}
+
+	got := RangerPolicyProvenance(facts)
+	assert.Equal(t, []SignalProvenance{
+		{Signal: "require_recall", Source: "ranger_artifact.frontmatter#ranger_handoff_policy_facts"},
+		{Signal: "require_classification", Source: "ranger_artifact.frontmatter#ranger_handoff_policy_facts"},
+	}, got)
 }
 
 func boolPointer(value bool) *bool { return &value }

@@ -3,6 +3,8 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -86,8 +88,8 @@ func TestCodexExecArgsUsesPrivateTransientState(t *testing.T) {
 		"--ignore-rules",
 		"--sandbox", "read-only",
 		"--skip-git-repo-check",
-		"--config", `sqlite_home="` + stateDir + `"`,
-		"--config", `log_dir="` + filepath.Join(stateDir, "log") + `"`,
+		"--config", `sqlite_home=` + strconv.Quote(stateDir),
+		"--config", `log_dir=` + strconv.Quote(filepath.Join(stateDir, "log")),
 		"--output-last-message", "/tmp/result.md",
 		"--cd", "/workspace",
 		"-",
@@ -128,6 +130,7 @@ func TestClaudeArgsKeepPromptOffArgvAndToolsNonVariadic(t *testing.T) {
 }
 
 func TestRunClaudePromptSendsPromptOnStdinAndSeparatesStderr(t *testing.T) {
+	skipPOSIXHostFixture(t)
 	bin := t.TempDir()
 	script := "#!/bin/sh\ncat >&2 <<'EOF'\nwarn\nEOF\nprintf 'got:'; cat\n"
 	require.NoError(t, os.WriteFile(filepath.Join(bin, "claude"), []byte(script), 0o700))
@@ -155,6 +158,7 @@ func TestLinkCodexAuthToleratesMissingCredentials(t *testing.T) {
 }
 
 func TestRunClaudeBinaryRejectsRunawayOutput(t *testing.T) {
+	skipPOSIXHostFixture(t)
 	bin := filepath.Join(t.TempDir(), "claude")
 	require.NoError(t, os.WriteFile(bin, []byte("#!/bin/sh\nyes x | head -c 100000\n"), 0o700))
 
@@ -173,6 +177,7 @@ func TestHostBridgePromptCarriesTheDiscoveryOutputContract(t *testing.T) {
 }
 
 func TestRunCodexPromptExecutesTheHostBinaryAndReadsItsResult(t *testing.T) {
+	skipPOSIXHostFixture(t)
 	bin := t.TempDir()
 	script := `#!/bin/sh
 output=""
@@ -199,9 +204,17 @@ printf '%s\n' '## mission_objective' 'delegated' > "$output"
 
 func writeFakeHost(t *testing.T, name, script string) string {
 	t.Helper()
+	skipPOSIXHostFixture(t)
 	bin := filepath.Join(t.TempDir(), name)
 	require.NoError(t, os.WriteFile(bin, []byte(script), 0o700))
 	return bin
+}
+
+func skipPOSIXHostFixture(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("host fixture uses a POSIX shell script")
+	}
 }
 
 func TestRunClaudeBinaryRejectsRunawayStderr(t *testing.T) {

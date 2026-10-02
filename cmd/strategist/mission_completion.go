@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	missionadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -21,15 +22,18 @@ import (
 // request. The publication target (mission, Role, slot) is leased before any
 // state or artifact is inspected, so two request IDs can never race over it.
 func completeMissionInvocation(ctx context.Context, input missionadapter.InvocationCompleteInput) (domain.MissionInvocationOutcome, error) {
-	if input.Sink == nil {
-		return domain.MissionInvocationOutcome{}, fmt.Errorf("invocation_telemetry_unavailable: mission completion requires a configured telemetry sink")
-	}
 	store := missionruntime.NewInvocationStore(input.Root)
 	record, release, err := claimCompletableInvocation(store, input)
 	if err != nil {
 		return domain.MissionInvocationOutcome{}, err
 	}
 	defer release()
+	if record.Request.Role == "sniper" && record.Request.Slot == string(domain.SlotExecution) {
+		return completeSniperInvocation(store, input, record)
+	}
+	if input.Sink == nil {
+		return domain.MissionInvocationOutcome{}, fmt.Errorf("invocation_telemetry_unavailable: mission completion requires a configured telemetry sink")
+	}
 	artifactPath, err := publishDiscoveryArtifact(ctx, store, input, record)
 	if err != nil {
 		return domain.MissionInvocationOutcome{}, err
@@ -87,12 +91,17 @@ func recordRangerHandoffAfterPublish(ctx context.Context, input missionadapter.I
 	return nil
 }
 
-// verifyInvocationStillCurrent rejects a request whose mission left discovery
+// verifyInvocationStillCurrent rejects a request whose mission left its slot
 // or whose Ranked binding changed after the request was issued.
 func verifyInvocationStillCurrent(root string, record domain.MissionInvocationRecord) error {
+	expected := map[string]domain.PipelinePhase{
+		string(domain.SlotDiscovery):  domain.PhaseDiscovery,
+		string(domain.SlotRefinement): domain.PhaseRefinement,
+		string(domain.SlotExecution):  domain.PhaseExecution,
+	}[record.Request.Slot]
 	phase, found := missionruntime.ReadMissionPhase(root, record.Request.MissionID)
-	if !found || phase != domain.PhaseDiscovery {
-		return fmt.Errorf("invocation_phase_mismatch: mission %q is not in %s (found=%t, phase=%q)", record.Request.MissionID, domain.PhaseDiscovery, found, phase)
+	if expected == "" || !found || phase != expected {
+		return fmt.Errorf("invocation_phase_mismatch: mission %q is not in %s (found=%t, phase=%q)", record.Request.MissionID, expected, found, phase)
 	}
 	binding, _, _, _, err := resolveMissionInvocationWeapon(missionadapter.InvocationBuildInput{
 		Root: root, MissionID: record.Request.MissionID, Role: record.Request.Role, Slot: record.Request.Slot,
@@ -117,7 +126,9 @@ func loadCompletableInvocation(store missionruntime.InvocationStore, input missi
 	if input.Completion.RequestID != record.Request.RequestID {
 		return domain.MissionInvocationRecord{}, fmt.Errorf("invocation_binding_mismatch: completion request_id does not match pending request")
 	}
-	if record.Request.Role != "ranger" || record.Request.Slot != string(domain.SlotDiscovery) {
+	registered := (record.Request.Role == "ranger" && record.Request.Slot == string(domain.SlotDiscovery)) ||
+		(record.Request.Role == "sniper" && record.Request.Slot == string(domain.SlotExecution))
+	if !registered {
 		return domain.MissionInvocationRecord{}, fmt.Errorf("role_invocation_failed: completion normalization is not registered for %s/%s", record.Request.Role, record.Request.Slot)
 	}
 	return record, nil
@@ -153,7 +164,7 @@ func discoveryArtifactPaths(root, basePath, missionID string) (string, string, e
 	workspace := filepath.Dir(root)
 	absolute := filepath.Join(basePath, "pending", missionID+"-analysis.md")
 	relative, err := filepath.Rel(workspace, absolute)
-	if err != nil || filepath.IsAbs(relative) || relative == ".." || len(relative) < 3 || relative[:3] == "../" {
+	if err != nil || filepath.IsAbs(relative) || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
 		return "", "", fmt.Errorf("role_invocation_failed: discovery artifact path escapes workspace")
 	}
 	return filepath.ToSlash(relative), absolute, nil

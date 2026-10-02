@@ -216,6 +216,7 @@ weapons:
     - id: archivist
       version: 0.0.0
       digest: sha256:a2399058d71ef04a5634f2eb9597533279ee88ab0a2f6f6444cb47ce2b70a816
+      source_digest: sha256:2658654da3add1a6f415e406b8488c167cfd96b0bc36ebdae547eb9c583b14f4
       origin: embedded
       runtime:
         kind: embedded
@@ -287,6 +288,7 @@ weapons:
     - id: ranger
       version: 0.0.0
       digest: sha256:ef43bd9c3c2f2b1d0a33897b77b1628c7f87fa56baf31e0f2200b17810414ade
+      source_digest: sha256:e4a1203f10e429b14b1437b9998213552e02edc9ec868b74ecb07d5279c44be0
       origin: embedded
       runtime:
         kind: embedded
@@ -298,6 +300,7 @@ weapons:
     - id: sniper
       version: 0.0.0
       digest: sha256:4b0036990938dd5fb236967e8acbec321c4d01fb65358c8a0b1a14abf024d601
+      source_digest: sha256:a8aa1480da64fdc802a05d006b16ebb9e584727fa3f371d9e6c1f49baca86fe9
       origin: embedded
       runtime:
         kind: embedded
@@ -412,7 +415,8 @@ ranked_bindings:
       weapon_version: 0.0.0
       weapon_digest: sha256:4b0036990938dd5fb236967e8acbec321c4d01fb65358c8a0b1a14abf024d601
       role_digest: sha256:dbb7f4fba82242b6352a0204934da0678fe300e9da81f0a5d6f41d0a388f583b
-      binding_digest: sha256:3b4f0c816651ab9c3192134c33dbe03917b6c8ffa0dd9c6b76d2e15a4ebed2c1
+      binding_digest: sha256:2b6e722d1428819a01696300e46d033531afceec000ec93095083b4bf3449a6c
+      source_digest: sha256:a8aa1480da64fdc802a05d006b16ebb9e584727fa3f371d9e6c1f49baca86fe9
       execution_mode: code
       certification_digest: sha256:9cc5a46c11978922b2ea916f9da438b580c81cfbba3ea863b24576808e4955b6
       connector_id: strategist-native-role

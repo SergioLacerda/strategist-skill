@@ -320,6 +320,15 @@ func TestNormalizeDiscoveryArtifactDefaultsSourcesConsulted(t *testing.T) {
 	require.Contains(t, string(kept), "source_path: a.go")
 }
 
+func TestNormalizeDiscoveryArtifactRejectsMalformedSourcesConsulted(t *testing.T) {
+	request := DiscoveryWeaponRequest{MissionID: "m1", ProviderID: "brainstorming", ArtifactPath: ".analysis/pending/m1-analysis.md"}
+	_, err := normalizeDiscoveryArtifact(request, DiscoveryWeaponResponse{
+		Artifact:           []byte("---\nsources_consulted: forged-string\n---\nbody\n"),
+		InvocationEvidence: "e",
+	})
+	require.ErrorContains(t, err, "sources_consulted must be a list")
+}
+
 func TestDiscoveryOutputContractNamesTheRequiredHandoffSections(t *testing.T) {
 	for _, section := range []string{"## mission_objective", "## known_facts", "## confidence_summary", "## handoff", "sources_consulted"} {
 		require.Contains(t, DiscoveryOutputContract, section)

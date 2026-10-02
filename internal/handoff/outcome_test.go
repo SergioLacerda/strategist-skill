@@ -96,6 +96,20 @@ func TestOutcomeStoreRejectsInvalidDuplicateAndOutOfSequenceRecords(t *testing.T
 	require.NoError(t, err)
 }
 
+func TestOutcomeSealRejectsInvalidShape(t *testing.T) {
+	cases := map[string]Outcome{
+		"missing mission identity": {Transition: TransitionArchivistToSniper, PackageDigest: "sha256:pkg", Attempt: 1, Result: OutcomePassed, PolicyID: "policy", GateObserved: "gate"},
+		"missing package digest":   {MissionID: "m1", Transition: TransitionArchivistToSniper, Attempt: 1, Result: OutcomePassed, PolicyID: "policy", GateObserved: "gate"},
+		"missing artifact digest":  {MissionID: "m1", Transition: TransitionRangerToArchivist, Attempt: 1, Result: OutcomePassed, PolicyID: "policy", GateObserved: "gate"},
+		"unknown transition":       {MissionID: "m1", Transition: "unknown", PackageDigest: "sha256:pkg", Attempt: 1, Result: OutcomePassed, PolicyID: "policy", GateObserved: "gate"},
+		"non-positive attempt":     {MissionID: "m1", Transition: TransitionArchivistToSniper, PackageDigest: "sha256:pkg", Attempt: 0, Result: OutcomePassed, PolicyID: "policy", GateObserved: "gate"},
+	}
+	for name, outcome := range cases {
+		_, err := outcome.Seal(time.Now())
+		require.Error(t, err, name)
+	}
+}
+
 func TestOutcomeStoreRejectsMalformedMissionIds(t *testing.T) {
 	store := fixedStore(t)
 	for _, id := range []string{"", "..", "a/b", `a\b`} {
@@ -104,6 +118,21 @@ func TestOutcomeStoreRejectsMalformedMissionIds(t *testing.T) {
 		_, err := store.Append(o)
 		require.Error(t, err, id)
 	}
+}
+
+func TestOutcomeStoreRejectsInvalidRuntimeAndTransition(t *testing.T) {
+	_, err := (OutcomeStore{}).NextAttempt("m1")
+	require.ErrorContains(t, err, "runtime root is required")
+
+	store := fixedStore(t)
+	_, err = store.NextAttemptFor("m1", "unknown")
+	require.ErrorContains(t, err, "transition")
+}
+
+func TestLatestForReportsMissingRangerOutcome(t *testing.T) {
+	store := fixedStore(t)
+	_, err := store.LatestFor("m1", TransitionRangerToArchivist)
+	require.ErrorContains(t, err, "no Ranger-to-Archivist outcome")
 }
 
 func TestAuthorizeExecutionAcceptsOnlyPassedOrAuthorizedSkips(t *testing.T) {

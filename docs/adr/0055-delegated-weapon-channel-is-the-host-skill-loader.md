@@ -82,7 +82,7 @@ that lock record with the compiled registry and fails closed on drift.
 For an Embedded `prompt_bridge` Weapon, the host agent may supply model
 execution through the explicitly registered bridge, but it receives the
 payload selected by the compiled registry. It must not load
-`/home/.../skills`, `external-skills-source`, or `skill-for-hire`, and it must
+`<host-skill-root>/skills`, `external-skills-source`, or `skill-for-hire`, and it must
 not replace the selected Weapon with a native Role. A missing bridge is
 `role_invocation_failed`, not permission to use the historical host loader.
 

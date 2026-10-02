@@ -5,13 +5,13 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
 	missionadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
 	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	strategistembed "github.com/SergioLacerda/strategist-skill/internal/embed"
 	missionruntime "github.com/SergioLacerda/strategist-skill/internal/mission"
 	"github.com/SergioLacerda/strategist-skill/internal/provider"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
@@ -69,57 +69,14 @@ func buildMissionInvocation(ctx context.Context, input missionadapter.Invocation
 	if err := authorizeArchivistEntry(input); err != nil {
 		return domain.MissionInvocationRequest{}, err
 	}
+	if err := authorizeSniperEntry(input); err != nil {
+		return domain.MissionInvocationRequest{}, err
+	}
 	store := missionruntime.NewInvocationStore(input.Root)
 	if err := store.Put(domain.MissionInvocationRecord{Request: request, CreatedAt: now, ExpiresAt: now.Add(invocationLifetime), ExecutionAdapter: domain.ExecutionAdapterCurrentHost}); err != nil {
 		return domain.MissionInvocationRequest{}, fmt.Errorf("persist mission invocation: %w", err)
 	}
 	return request, nil
-}
-
-// authorizeArchivistEntry requires the Ranger-to-Archivist handoff outcome
-// before an Archivist refinement request is issued; other roles pass.
-func authorizeArchivistEntry(input missionadapter.InvocationBuildInput) error {
-	if input.Role != "archivist" || input.Slot != string(domain.SlotRefinement) {
-		return nil
-	}
-	if _, err := missionruntime.AuthorizeRangerToArchivist(input.Root, input.BasePath, input.MissionID); err != nil {
-		return fmt.Errorf("role_invocation_failed: %w", err)
-	}
-	return nil
-}
-
-func resolveMissionInvocationWeapon(input missionadapter.InvocationBuildInput) (domain.RoleWeaponBinding, domain.CompiledWeapon, []byte, string, error) {
-	active, lock, registry, err := loadMissionInvocationState(input.Root)
-	if err != nil {
-		return domain.RoleWeaponBinding{}, domain.CompiledWeapon{}, nil, "", err
-	}
-	binding, weapon, err := resolveEmbeddedInvocationBinding(active, lock, registry, input)
-	if err != nil {
-		return domain.RoleWeaponBinding{}, domain.CompiledWeapon{}, nil, "", err
-	}
-	payload, sourceDigest, err := (strategistembed.Extractor{}).ReadEmbeddedWeaponPayload(binding.WeaponID, binding.WeaponVersion)
-	if err != nil {
-		return domain.RoleWeaponBinding{}, domain.CompiledWeapon{}, nil, "", fmt.Errorf("embedded_payload_mismatch: %w", err)
-	}
-	if sourceDigest != binding.SourceDigest || sourceDigest != weapon.SourceDigest {
-		return domain.RoleWeaponBinding{}, domain.CompiledWeapon{}, nil, "", fmt.Errorf("embedded_payload_mismatch: payload digest does not match compiled binding")
-	}
-	return binding, weapon, payload, sourceDigest, nil
-}
-
-func resolveEmbeddedInvocationBinding(active domain.ActiveConfig, lock domain.PluginLockFile, registry domain.CompiledRegistry, input missionadapter.InvocationBuildInput) (domain.RoleWeaponBinding, domain.CompiledWeapon, error) {
-	binding, err := domain.ResolveRoleWeaponBinding(active, lock, registry, input.Role, input.Slot)
-	if err != nil {
-		return domain.RoleWeaponBinding{}, domain.CompiledWeapon{}, fmt.Errorf("role_invocation_failed: %w", err)
-	}
-	if err := validateEmbeddedInvocationBinding(binding); err != nil {
-		return domain.RoleWeaponBinding{}, domain.CompiledWeapon{}, err
-	}
-	weapon, ok := registry.Weapon(binding.WeaponID, binding.WeaponVersion)
-	if !ok {
-		return domain.RoleWeaponBinding{}, domain.CompiledWeapon{}, fmt.Errorf("compiled_binding_missing: Weapon %q is not in the compiled registry", domain.WeaponIdentity(binding.WeaponID, binding.WeaponVersion))
-	}
-	return binding, weapon, nil
 }
 
 func newMissionInvocationRequest(input missionadapter.InvocationBuildInput, binding domain.RoleWeaponBinding, weapon domain.CompiledWeapon, payload []byte, sourceDigest string) (domain.MissionInvocationRequest, time.Time, error) {
@@ -133,6 +90,17 @@ func newMissionInvocationRequest(input missionadapter.InvocationBuildInput, bind
 		requestInput["execution_contract"] = provider.DiscoveryExecutionContract
 		requestInput["output_contract"] = provider.DiscoveryOutputContract
 	}
+	if input.Role == "sniper" && input.Slot == string(domain.SlotExecution) {
+		_, status, loadErr := loadMission(input.Root, input.MissionID)
+		if loadErr != nil {
+			return domain.MissionInvocationRequest{}, time.Time{}, fmt.Errorf("load Sniper mission authorization: %w", loadErr)
+		}
+		requestInput["execution_contract"] = provider.SniperExecutionContract
+		requestInput["output_contract"] = provider.SniperOutputContract
+		requestInput["refined_package"] = filepath.ToSlash(filepath.Join(input.BasePath, "refined", input.MissionID))
+		requestInput["report_path"] = filepath.ToSlash(filepath.Join(input.BasePath, "archived", input.MissionID+"-report.md"))
+		requestInput["approval_gate_package_digest"] = status.ApprovalGatePackageDigest
+	}
 	if strings.TrimSpace(input.RequestContext) != "" {
 		requestInput["request_context"] = input.RequestContext
 	}
@@ -144,19 +112,6 @@ func newMissionInvocationRequest(input missionadapter.InvocationBuildInput, bind
 		ExecutionMode: binding.ExecutionMode, Entrypoint: binding.Entrypoint,
 		Payload: string(payload), Input: requestInput, Nonce: newPromptNonce(),
 	}, now, nil
-}
-
-func validateEmbeddedInvocationBinding(binding domain.RoleWeaponBinding) error {
-	if binding.Mode != domain.SlotBindingModeRanked {
-		return fmt.Errorf("role_invocation_failed: mission invoke only supports Ranked Embedded prompt-bridge bindings")
-	}
-	if binding.RuntimeKind == domain.RankedRuntimeOpenSpecRoot {
-		return fmt.Errorf("role_invocation_failed: Ranked openspec_root bindings execute through their declared private runtime and mission normalize-openspec, not mission invoke")
-	}
-	if binding.RuntimeKind != domain.RankedRuntimeEmbedded {
-		return fmt.Errorf("role_invocation_failed: mission invoke only supports runtime kind %q, got %q", domain.RankedRuntimeEmbedded, binding.RuntimeKind)
-	}
-	return nil
 }
 
 func newInvocationID() (string, error) {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/filelock"
 )
 
 // BeginProcessing durably commits a completion to publish artifactDigest at
@@ -84,6 +85,19 @@ func (s InvocationStore) write(requestID string, record domain.MissionInvocation
 // as current_host_adapter (including a pre-field record) is never upgraded,
 // and a committed child mode cannot change.
 func (s InvocationStore) CommitExecutionAdapter(requestID string, adapter domain.MissionExecutionAdapter, policyID string) error {
+	path, err := s.path(requestID)
+	if err != nil {
+		return err
+	}
+	if err := filelock.WithLock(path, func() error {
+		return s.commitExecutionAdapter(requestID, adapter, policyID)
+	}); err != nil {
+		return fmt.Errorf("commit invocation adapter: %w", err)
+	}
+	return nil
+}
+
+func (s InvocationStore) commitExecutionAdapter(requestID string, adapter domain.MissionExecutionAdapter, policyID string) error {
 	record, err := s.Get(requestID)
 	if err != nil {
 		return err

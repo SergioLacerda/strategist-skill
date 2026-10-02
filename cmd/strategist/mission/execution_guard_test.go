@@ -42,6 +42,26 @@ func advanceToHandoffChallenge(t *testing.T, root, id string) {
 	require.NoError(t, err, domain.MissionEventGateApproved)
 }
 
+func TestSubmit_GateApprovalAdvancesRefinedAnalysisStatus(t *testing.T) {
+	root := setupViewRoot(t, domain.MissionEngineStatus{})
+	startAtApprovalGate(t, root, "m-gate-status")
+	writeRefinedPackage(t, root, "m-gate-status")
+	_, basePath, err := cliutil.ResolveActiveBasePath(root)
+	require.NoError(t, err)
+	analysisPath := filepath.Join(basePath, "refined", "m-gate-status", "analysis.md")
+	raw, err := os.ReadFile(analysisPath)
+	require.NoError(t, err)
+	raw = []byte(strings.Replace(string(raw), "mission_status: gate_analysis_accepted", "mission_status: archivist_done", 1))
+	require.NoError(t, os.WriteFile(analysisPath, raw, 0o600))
+
+	_, err = runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", "m-gate-status", "--event", string(domain.MissionEventGateApproved))
+	require.NoError(t, err)
+
+	updated, err := os.ReadFile(analysisPath)
+	require.NoError(t, err)
+	assert.Contains(t, string(updated), "mission_status: gate_analysis_accepted")
+}
+
 func advanceToHandoffChallengeWithPackage(t *testing.T, root, id, facts, tasks string) {
 	t.Helper()
 	startAtApprovalGate(t, root, id)

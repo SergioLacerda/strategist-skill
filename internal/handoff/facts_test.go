@@ -146,3 +146,10 @@ func TestPackageDigestIgnoresStatusButNotContent(t *testing.T) {
 		require.NoError(t, os.WriteFile(path, original, 0o644))
 	}
 }
+
+func TestPackageDigestRejectsMalformedAnalysis(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "analysis.md"), []byte("not frontmatter\n"), 0o600))
+	_, err := PackageDigest(dir)
+	require.ErrorContains(t, err, "frontmatter is missing")
+}

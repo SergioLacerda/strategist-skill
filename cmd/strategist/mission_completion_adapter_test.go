@@ -25,6 +25,7 @@ func readArtifact(t *testing.T, input missionadapter.InvocationCompleteInput) st
 // no live provider or developer configuration is needed.
 func fakeChildHost(t *testing.T, name string) {
 	t.Helper()
+	skipPOSIXHostFixture(t)
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("CODEX_HOME", t.TempDir())
 	t.Setenv("ANTHROPIC_API_KEY", "")

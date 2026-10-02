@@ -110,7 +110,7 @@ func compileCatalogWeapon(provider pluginCatalogProvider, defaultsRoot string) (
 	if err != nil {
 		return domain.CompiledWeapon{}, false, err
 	}
-	if provider.CompatibilitySource == "embedded" && sourceDigest == "" {
+	if (provider.CompatibilitySource == "embedded" || provider.CompatibilitySource == "native_role") && sourceDigest == "" {
 		return domain.CompiledWeapon{}, false, fmt.Errorf("embedded_payload_missing: Weapon %q has no SKILL.md payload", provider.ID)
 	}
 	runtime, connectorID := bindingRuntimeIdentity(provider)
@@ -125,6 +125,9 @@ func compileCatalogWeapon(provider pluginCatalogProvider, defaultsRoot string) (
 func catalogWeaponPayloadPath(provider pluginCatalogProvider, defaultsRoot string) string {
 	if provider.sourcePath != "" {
 		return filepath.Join(provider.sourcePath, "SKILL.md")
+	}
+	if provider.CompatibilitySource == "native_role" {
+		return filepath.Join(defaultsRoot, "internal_skills", provider.ID, "SKILL.md")
 	}
 	return filepath.Join(defaultsRoot, "skills", providerPayloadDirName(provider), "SKILL.md")
 }

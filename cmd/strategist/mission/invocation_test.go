@@ -41,7 +41,8 @@ func TestInvokeRequiresTheSlotPhase(t *testing.T) {
 func TestValidateInvocationPhase(t *testing.T) {
 	require.NoError(t, validateInvocationPhase(domain.MissionEngineStatus{Phase: domain.PhaseDiscovery}, "discovery"))
 	require.NoError(t, validateInvocationPhase(domain.MissionEngineStatus{Phase: domain.PhaseRefinement}, "refinement"))
-	require.ErrorContains(t, validateInvocationPhase(domain.MissionEngineStatus{Phase: domain.PhaseDiscovery}, "execution"), "has no host invocation boundary")
+	require.NoError(t, validateInvocationPhase(domain.MissionEngineStatus{Phase: domain.PhaseExecution}, "execution"))
+	require.ErrorContains(t, validateInvocationPhase(domain.MissionEngineStatus{Phase: domain.PhaseDiscovery}, "execution"), `requires phase "EXECUTION"`)
 }
 
 func TestCompleteReadsOneRawResponse(t *testing.T) {
@@ -92,9 +93,32 @@ func TestInvokePassesRequestContextToTheImmutableRequest(t *testing.T) {
 
 func TestInvokeHostBridgeRequiresContext(t *testing.T) {
 	deps := invocationTestDependencies(domain.MissionInvocationRequest{Protocol: domain.MissionInvocationProtocolVersion, RequestID: "inv_12345678", MissionID: "mission", Role: "ranger", Slot: "discovery", Weapon: domain.MissionWeaponIdentity{ID: "brainstorming", Version: "1.0.0", Digest: "sha256:weapon"}, BindingDigest: "sha256:binding", SourceDigest: "sha256:source", ExecutionMode: "prompt_bridge", Entrypoint: "discover", Payload: "payload"})
+	built := false
+	deps.Build = func(context.Context, InvocationBuildInput) (domain.MissionInvocationRequest, error) {
+		built = true
+		return domain.MissionInvocationRequest{}, nil
+	}
 	cmd := NewInvoke(deps)
 	cmd.SetArgs([]string{"--mission-id", "mission", "--slot", "discovery", "--host", "codex"})
 	require.ErrorContains(t, cmd.Execute(), "--context is required with --host")
+	require.False(t, built)
+}
+
+func TestInvokeExecutionRejectsReadOnlyChildBeforeBuild(t *testing.T) {
+	deps := invocationTestDependencies(domain.MissionInvocationRequest{})
+	deps.LoadMission = func(string, string) (domain.MissionEngineStatus, error) {
+		return domain.MissionEngineStatus{MissionID: "mission", Phase: domain.PhaseExecution, State: domain.StateExecution}, nil
+	}
+	built := false
+	deps.Build = func(context.Context, InvocationBuildInput) (domain.MissionInvocationRequest, error) {
+		built = true
+		return domain.MissionInvocationRequest{}, nil
+	}
+	cmd := NewInvoke(deps)
+	cmd.SetArgs([]string{"--mission-id", "mission", "--slot", "execution", "--role", "sniper", "--host", "codex", "--context", "apply docs"})
+
+	require.ErrorContains(t, cmd.Execute(), "execution requires the current-host adapter")
+	require.False(t, built)
 }
 
 func invocationTestDependencies(request domain.MissionInvocationRequest) InvocationDependencies {

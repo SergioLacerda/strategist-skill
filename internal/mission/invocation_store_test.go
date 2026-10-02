@@ -116,6 +116,29 @@ func TestCommitExecutionAdapterNeverUpgradesAPreFieldRecord(t *testing.T) {
 	require.ErrorContains(t, store.CommitExecutionAdapter(record.Request.RequestID, domain.ExecutionAdapterCodexChild, "p"), "invocation_adapter_mismatch")
 }
 
+func TestCommitExecutionAdapterSerializesCompetingChildren(t *testing.T) {
+	now := time.Date(2026, 9, 29, 12, 0, 0, 0, time.UTC)
+	store := InvocationStore{Root: t.TempDir(), Clock: func() time.Time { return now }}
+	record := domain.MissionInvocationRecord{Request: validMissionInvocationRequest(), CreatedAt: now, ExpiresAt: now.Add(time.Minute), ExecutionAdapter: domain.ExecutionAdapterCurrentHost}
+	require.NoError(t, store.Put(record))
+
+	start := make(chan struct{})
+	errs := make(chan error, 2)
+	for _, candidate := range []domain.MissionExecutionAdapter{domain.ExecutionAdapterCodexChild, domain.ExecutionAdapterClaudeChild} {
+		go func(adapter domain.MissionExecutionAdapter) {
+			<-start
+			errs <- store.CommitExecutionAdapter(record.Request.RequestID, adapter, "policy-"+string(adapter))
+		}(candidate)
+	}
+	close(start)
+	first, second := <-errs, <-errs
+	require.NotEqual(t, first == nil, second == nil, "exactly one competing commitment must win: first=%v second=%v", first, second)
+
+	got, err := store.Get(record.Request.RequestID)
+	require.NoError(t, err)
+	require.True(t, got.ExecutionAdapter == domain.ExecutionAdapterCodexChild || got.ExecutionAdapter == domain.ExecutionAdapterClaudeChild)
+}
+
 func TestPutRejectsAnUncommittableAdapter(t *testing.T) {
 	now := time.Date(2026, 9, 29, 12, 0, 0, 0, time.UTC)
 	store := InvocationStore{Root: t.TempDir(), Clock: func() time.Time { return now }}

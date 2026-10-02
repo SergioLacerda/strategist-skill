@@ -2,6 +2,7 @@ package mission
 
 import (
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -81,13 +82,41 @@ func submitLocked(deps LifecycleDependencies, root, basePath, missionID string, 
 	if err != nil {
 		return domain.MissionEngineStatus{}, err
 	}
-	if err := deps.Save(root, status); err != nil {
+	analysisPath := filepath.Join(basePath, "refined", missionID, "analysis.md")
+	original, changed, err := acceptGateAnalysis(analysisPath, evt, pre.gateDigest)
+	if err != nil {
 		return domain.MissionEngineStatus{}, fmt.Errorf("mission submit: %w", err)
+	}
+	if err := persistSubmitState(deps, root, status, analysisPath, original, changed); err != nil {
+		return domain.MissionEngineStatus{}, err
 	}
 	if err := finishSubmit(root, basePath, missionID, evt, pre.outcome); err != nil {
 		return domain.MissionEngineStatus{}, fmt.Errorf("mission submit: %w", err)
 	}
 	return status, nil
+}
+
+func persistSubmitState(deps LifecycleDependencies, root string, status domain.MissionEngineStatus, analysisPath string, original []byte, changed bool) error {
+	if err := deps.Save(root, status); err != nil {
+		if changed {
+			if restoreErr := handoff.RestoreAnalysis(analysisPath, original); restoreErr != nil {
+				return fmt.Errorf("mission submit: %v; rollback failed: %w", err, restoreErr)
+			}
+		}
+		return fmt.Errorf("mission submit: %w", err)
+	}
+	return nil
+}
+
+func acceptGateAnalysis(path string, evt domain.MissionEngineEvent, gateDigest string) ([]byte, bool, error) {
+	if evt != domain.MissionEventGateApproved || gateDigest == "" {
+		return nil, false, nil
+	}
+	original, changed, err := handoff.AcceptAnalysisAtGate(path)
+	if err != nil {
+		return nil, false, fmt.Errorf("accept approval-gate analysis: %w", err)
+	}
+	return original, changed, nil
 }
 
 // submitPreflight is what the guards derive before the event is applied.

@@ -35,3 +35,19 @@ func TestExtractorReadEmbeddedWeaponPayloadRejectsUnsafeOrMissingVersion(t *test
 	_, _, err = (Extractor{}).ReadEmbeddedWeaponPayload("brainstorming", "9.9.9")
 	require.Error(t, err, "an unknown version never resolves to another one")
 }
+
+func TestExtractorReadEmbeddedNativeRolePayload(t *testing.T) {
+	payload, digest, err := (Extractor{}).ReadEmbeddedNativeRolePayload("sniper")
+	require.NoError(t, err)
+	assert.Contains(t, string(payload), "# Sniper")
+	assert.Regexp(t, `^sha256:[a-f0-9]{64}$`, digest)
+}
+
+func TestExtractorReadEmbeddedNativeRolePayloadRejectsUnsafeOrMissingRole(t *testing.T) {
+	for _, roleID := range []string{"", ".", "..", "../sniper", "nested/sniper", `nested\\sniper`, "sniper@0.0.0", "missing"} {
+		t.Run(roleID, func(t *testing.T) {
+			_, _, err := (Extractor{}).ReadEmbeddedNativeRolePayload(roleID)
+			require.Error(t, err)
+		})
+	}
+}
