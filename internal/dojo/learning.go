@@ -3,7 +3,6 @@ package dojo
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -134,14 +133,18 @@ func WriteLesson(basePath string, result domain.DojoCheckResult) error {
 	if result.Passed() {
 		return nil
 	}
+	paths, err := NewStoragePaths(basePath, result.Scenario)
+	if err != nil {
+		return err
+	}
 	content := GenerateLesson(result, ClassifyFailures(result.Items))
-	dir := filepath.Join(basePath, "dojo", ".last-run", result.Scenario)
-	if err := os.MkdirAll(dir, 0o755); err != nil { //nolint:gosec // G301: dojo storage domain, not source
-		return fmt.Errorf("dojo: create %s: %w", dir, err)
-	}
-	path := filepath.Join(dir, "lesson.md")
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil { //nolint:gosec // G306: dojo storage domain
-		return fmt.Errorf("dojo: write %s: %w", path, err)
-	}
-	return nil
+	return withStorageLock(paths, func() error {
+		if err := os.MkdirAll(paths.LastRunDir, 0o755); err != nil { //nolint:gosec // G301: dojo storage domain, not source
+			return fmt.Errorf("dojo: create %s: %w", paths.LastRunDir, err)
+		}
+		if err := atomicWriteFile(paths.LessonPath, []byte(content), 0o644); err != nil { //nolint:gosec // G306: dojo storage domain
+			return fmt.Errorf("dojo: write %s: %w", paths.LessonPath, err)
+		}
+		return nil
+	})
 }

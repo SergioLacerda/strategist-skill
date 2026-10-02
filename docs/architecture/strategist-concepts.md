@@ -494,6 +494,38 @@ Reads the scenario's `criteria.yaml` and verifies:
 - **emit_log**: expected OTEL events present/absent in `.last-run/<scenario>/emit.log`
 - **manifest_checks**: catalog provider entries exist with required fields
 
+### Dojo state ownership and lifecycle
+
+The configured `base_path` is the compatibility owner of the dojo domain. The
+public paths are stable and relative to that root:
+
+```
+<base_path>/dojo/<scenario>/criteria.yaml       # durable scenario input
+<base_path>/dojo/.last-run/<scenario>/emit.log  # replaceable diagnostic evidence
+<base_path>/dojo/.last-run/<scenario>/result.json
+<base_path>/dojo/.last-run/<scenario>/lesson.md # durable failure learning
+<base_path>/dojo/.history.jsonl                 # durable aggregate history
+```
+
+Criteria, lessons, and aggregate history belong in workspace backups. The
+latest result is retained derived evidence; the emit log is replaceable and may
+be recreated by a later run. Both remain in the workspace dojo domain for
+compatibility. Reinstalling or regenerating `.strategist` must not remove
+durable dojo state.
+
+The scenario identity is `dojo/<scenario>` under the configured base path. The
+CLI rejects path-like scenario names, so a check cannot write outside that
+domain. Persistence uses an atomic latest-result replacement and serializes
+state writes; a malformed or orphaned result/history is reported for recovery.
+A persistence warning is separate from the checker verdict: a failed check
+remains failed, and a passed check remains passed even when its learning write
+needs retry.
+
+No automatic migration, first-run move, cleanup, symlink, or dual-write path is
+provided. A future relocation requires an explicit accepted implementation that
+first discovers existing state, previews the operation, preserves the source on
+partial failure, and defines rollback before changing writes.
+
 ### Layer 2 — LLM (real pipeline with synthetic input)
 
 ```

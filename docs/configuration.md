@@ -91,6 +91,28 @@ slots:
 
 The `mode` can be overridden per mission via `--mode=epic` without modifying this file.
 
+### Dojo base-path contract
+
+`base_path` is also the owning root for the public Dojo state contract. Dojo
+scenarios are read from `<base_path>/dojo/<scenario>/criteria.yaml`; checks
+retain their result, lesson, emit evidence, and aggregate history under
+`<base_path>/dojo/.last-run/<scenario>/` and `<base_path>/dojo/.history.jsonl`.
+
+The ownership classes are intentionally different even when the files share a
+directory: criteria, lessons, and history are durable workspace artifacts;
+`result.json` is retained latest-run evidence; and `emit.log` is replaceable
+diagnostic evidence. Back up the configured base path to preserve user-facing
+dojo learning. Reinstalling or regenerating `.strategist` is not a migration
+and must not be used as a substitute for that backup.
+
+`strategist dojo check` keeps checker verdicts separate from persistence
+warnings. It writes the latest result atomically, serializes concurrent state
+writes, and reports malformed or orphaned state without silently repairing it.
+There is currently no automatic migration, cleanup, symlink, or dual-write
+compatibility path. Any future relocation requires a separately accepted,
+read-preserving migration contract with preview, rollback, and partial-failure
+recovery semantics.
+
 The `slots:` defines the explicit provider binding and is required. It is equivalent to declaring providers in `roles_config`, but takes precedence when both are present. Local provider packages should be checked with `strategist provider validate <source>` and onboarded with `strategist provider add <source> --slot <slot>`; direct edits to generated provider mirrors or `plugins.lock` are not an onboarding path.
 
 The discovery route remains owned by the native Ranger role, whose role contract is
