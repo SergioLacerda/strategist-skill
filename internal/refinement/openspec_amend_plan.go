@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 	"unicode"
+
+	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 )
 
 // amendableStatuses are the mission statuses at which a refined package may still be
@@ -169,6 +171,15 @@ func (p *amendmentPlan) loadChange() error {
 // checkTargets refuses turning an analysis-only accepted package into one that asks
 // Sniper to materialize documentation: the acceptance did not cover that.
 func (p *amendmentPlan) checkTargets() error {
+	contents := map[string][]byte{
+		"analysis.md": p.previous["analysis.md"],
+		"proposal.md": p.next["proposal.md"],
+		"design.md":   p.next["design.md"],
+		"tasks.md":    p.next["tasks.md"],
+	}
+	if _, err := handoff.ValidateRefinedPackageContent(contents, p.input.MissionID); err != nil {
+		return fmt.Errorf("openspec amend: validate refined package: %w", err)
+	}
 	if p.status == "gate_analysis_accepted" && !documentationTargetMarker.Match(p.previous["tasks.md"]) && documentationTargetMarker.Match(p.next["tasks.md"]) {
 		return fmt.Errorf("openspec amend: an analysis-only accepted package may not gain a documentation target")
 	}

@@ -105,7 +105,7 @@ func TestAmendOpenSpecRefusesEveryUnmetPrecondition(t *testing.T) {
 		"accepted package gains documentation targets": {status: "gate_analysis_accepted", mutate: func(t *testing.T, f bridgeFixture, _ *AmendInput) {
 			path := filepath.Join(f.runtime, "changes", "second", "tasks.md")
 			require.NoError(t, os.WriteFile(path, []byte("- [ ] 1.1 [documentation_target] write it\n"), 0o644))
-		}, want: "documentation target"},
+		}, want: "documentation_target"},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {

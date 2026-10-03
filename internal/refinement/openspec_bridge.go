@@ -68,8 +68,8 @@ func NormalizeOpenSpec(input OpenSpecInput) (OpenSpecResult, error) {
 	if err != nil {
 		return OpenSpecResult{}, err
 	}
-	if _, err := ValidateDocumentationTargetContent(contents["tasks.md"]); err != nil {
-		return OpenSpecResult{}, fmt.Errorf("openspec bridge: validate documentation targets: %w", err)
+	if _, err := handoff.ValidateRefinedPackageContent(contents, input.MissionID); err != nil {
+		return OpenSpecResult{}, fmt.Errorf("openspec bridge: validate refined package: %w", err)
 	}
 
 	return publishOpenSpec(input, changeDir, contents)

@@ -1,11 +1,33 @@
 # Strategist Philosophy and Engineering Principles
 
 **Status:** Accepted
-**Last Updated:** 2026-09-18
+**Last Updated:** 2026-10-02
 
-This document states the reasons behind the Strategist contracts. The numbered
-runtime contracts and the Go implementation remain authoritative for behavior;
-this page explains the principles that changes must preserve.
+This document states the reasons behind the Strategist contracts. It and
+[ADR-0064](../adr/0064-canonical-seven-family-taxonomy.md) are authoritative for
+the canonical conceptual vocabulary. Numbered runtime contracts and the Go
+implementation remain authoritative for current behavior; when they still use
+older terminology, documentation must label that as implementation state rather
+than silently redefining the canonical model.
+
+## Seven families, one responsibility test
+
+Strategist uses seven canonical families:
+
+| Family | Responsibility |
+| --- | --- |
+| **Role** | Owns judgment, responsibility, and handoffs. |
+| **Weapon** | Supplies an equipable external skill package to a Role. |
+| **Feat** | Expresses contextual, judgment-based behavior. |
+| **Tool** | Performs an operation over inputs and produces a result. |
+| **Mechanism** | Enforces a deterministic invariant, policy, or validation rule. |
+| **Stage** | Defines a governed operational flow that may contain several phases. |
+| **Artifact** | Materializes state, evidence, decisions, or knowledge. |
+
+The family follows responsibility, not file type or implementation shape. A
+serialized contract is an Artifact; the rules it declares are Mechanisms. A
+Role may invoke a Feat, use a Tool, and wield a Weapon inside one Stage without
+merging those responsibilities.
 
 ## Fixed pipeline, replaceable weapons
 
@@ -35,6 +57,11 @@ Missing, stale, unsupported, failed, or contradictory evidence fails closed.
 The system does not repair a binding, choose a native fallback, or infer live
 behavior from a catalog entry.
 
+Architecture statements use five independent evidence states: **conceptual**,
+**accepted**, **implemented**, **verified**, and **invocable**. Acceptance does
+not prove implementation; implementation does not prove verification; and
+verification does not prove a live, authorized invocation path.
+
 ## One mission transition facade
 
 `MissionEngine` is the mission-level transition facade. Callers submit the
@@ -42,6 +69,12 @@ mission event vocabulary through it; validation, replay, restore, gate ordering,
 and retry boundaries remain consistent across live and restored missions. The
 lower-level transition table is an implementation detail, not a second public
 authority.
+
+The operational flows are Stages: **FULL** for discovery through governed
+delivery, **SHORT** for bounded materialization, and **ROSTER** for Weapon
+discovery, compatibility, selection, and binding. Discovery, refinement,
+approval, and delivery are phases within a Stage. Route identifiers are
+compatibility-level selection outcomes, not another taxonomy family.
 
 ## Approval before materialization
 
@@ -67,3 +100,7 @@ tests, and downstream consumers. Prefer a narrow behavior-preserving change,
 add a regression test at the violated boundary, regenerate derived artifacts,
 and run the smallest relevant hermetic gate before broader validation. Do not
 close an analysis package or call a release complete from checkboxes alone.
+
+Documentation may lead an implementation migration, but it must say so. A
+taxonomy decision creates a target model; source/runtime vocabulary changes
+remain separate work until implemented and verified with evidence.

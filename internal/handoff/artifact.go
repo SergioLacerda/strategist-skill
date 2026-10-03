@@ -81,26 +81,63 @@ func HasNormalizedRangerMetadata(path string) bool {
 	return HasHandoffMetadata(path) && bytes.Contains(content, []byte("schema_version:"))
 }
 
-// ValidateArchivistPackage validates the package consumed at the Archivist to
-// Sniper boundary. It accepts Markdown task plans because OpenSpec's task
-// artifact is intentionally human-readable, but every task must carry an
-// explicit handoff classification.
-func ValidateArchivistPackage(refined, missionID string) error {
+// RefinedPackage is the single typed projection authorized to cross the gate.
+// Its target list is consumed by execution preparation instead of reparsing
+// mutable tasks after lifecycle state has changed.
+type RefinedPackage struct {
+	MissionID            string
+	DocumentationTargets []string
+}
+
+// LoadRefinedPackageForGate loads and validates the package authorized to cross
+// the gate.
+func LoadRefinedPackageForGate(refined, missionID string) (RefinedPackage, error) {
 	analysisPath := filepath.Join(refined, "analysis.md")
 	if err := validateArchivistAnalysis(analysisPath, missionID); err != nil {
-		return err
+		return RefinedPackage{}, err
 	}
-	if err := validateArchivistFiles(refined); err != nil {
-		return err
+	files := make(map[string][]byte, len([]string{"analysis.md", "proposal.md", "design.md", "tasks.md"}))
+	for _, name := range []string{"analysis.md", "proposal.md", "design.md", "tasks.md"} {
+		raw, err := readArtifact(filepath.Join(refined, name))
+		if err != nil {
+			return RefinedPackage{}, fmt.Errorf("handoff_artifact_invalid: read Archivist %s: %w", name, err)
+		}
+		files[name] = raw
 	}
-	tasks, err := readArchivistTasks(refined)
+	return ValidateRefinedPackageContent(files, missionID)
+}
+
+// ValidateRefinedPackageContent validates the staged package used by both
+// provider publication and amendment planning before it reaches disk.
+func ValidateRefinedPackageContent(files map[string][]byte, missionID string) (RefinedPackage, error) {
+	frontmatter, err := validateRefinedAnalysis(files, missionID)
 	if err != nil {
-		return err
+		return RefinedPackage{}, err
 	}
-	if err := validateTaskClassifications(tasks); err != nil {
-		return fmt.Errorf("handoff_artifact_invalid: Archivist tasks: %w", err)
+	if err := validateRefinedSupportFiles(files); err != nil {
+		return RefinedPackage{}, err
 	}
-	return nil
+	targets, err := validateRefinedTasks(files["tasks.md"])
+	if err != nil {
+		return RefinedPackage{}, err
+	}
+	if err := requireRefinedTargetFacts(frontmatter, targets); err != nil {
+		return RefinedPackage{}, err
+	}
+	return RefinedPackage{MissionID: missionID, DocumentationTargets: targets}, nil
+}
+
+// ValidateRefinedPackageForGate validates the package at the gate boundary.
+func ValidateRefinedPackageForGate(refined, missionID string) error {
+	_, err := LoadRefinedPackageForGate(refined, missionID)
+	return err
+}
+
+// ValidateArchivistPackage is retained as the boundary's historical name for
+// callers outside the gate path. New package-to-gate callers use
+// ValidateRefinedPackageForGate explicitly.
+func ValidateArchivistPackage(refined, missionID string) error {
+	return ValidateRefinedPackageForGate(refined, missionID)
 }
 
 func validateArchivistAnalysis(path, missionID string) error {
@@ -117,17 +154,9 @@ func validateArchivistAnalysis(path, missionID string) error {
 	}); err != nil {
 		return fmt.Errorf("handoff_artifact_invalid: Archivist analysis: %w", err)
 	}
-	return nil
-}
-
-func validateArchivistFiles(refined string) error {
-	for _, name := range []string{"proposal.md", "design.md", "tasks.md"} {
-		content, err := readArtifact(filepath.Join(refined, name))
-		if err != nil {
-			return fmt.Errorf("handoff_artifact_invalid: read Archivist %s: %w", name, err)
-		}
-		if len(bytes.TrimSpace(content)) == 0 {
-			return fmt.Errorf("handoff_artifact_invalid: Archivist %s is empty", name)
+	if _, declared := frontmatter[PolicyFactsKey]; declared {
+		if _, err := ParsePolicyFacts(frontmatter); err != nil {
+			return fmt.Errorf("handoff_artifact_invalid: Archivist analysis: %w", err)
 		}
 	}
 	return nil

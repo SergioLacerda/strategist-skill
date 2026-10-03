@@ -239,6 +239,22 @@ func TestAuthoredPackageRepairRejectsAValidPackage(t *testing.T) {
 	assert.Equal(t, domain.StateHandoffChallenge, missionStatus(t, root, "m-repair-valid").State)
 }
 
+func TestExecutionPreflightRejectsMalformedTargetBeforeStateOrOutcomeMutation(t *testing.T) {
+	root := handoffRoot(t, "m-preflight-target", informationalFacts, "- [ ] 1.1 [documentation_target] Write `docs/valid.md`\n")
+	_, err := evaluateHandoff(t, root, "m-preflight-target", livemission.ArchivistHandoffInput{})
+	require.NoError(t, err)
+
+	_, basePath, err := cliutil.ResolveActiveBasePath(root)
+	require.NoError(t, err)
+	badTasks := filepath.Join(basePath, "refined", "m-preflight-target", "tasks.md")
+	require.NoError(t, os.WriteFile(badTasks, []byte("- [ ] 1.1 [documentation_target] Write it\n"), 0o600))
+
+	_, err = submitSatisfied(t, root, "m-preflight-target")
+	require.ErrorContains(t, err, "explicit backtick-quoted repository-relative path")
+	assert.Equal(t, domain.StateHandoffChallenge, missionStatus(t, root, "m-preflight-target").State)
+	assert.NotContains(t, outcomeFiles(t, root, "m-preflight-target"), "consumed.json")
+}
+
 func TestExecutionEntryDeniesAnOutcomeTheMissionStateDoesNotRecord(t *testing.T) {
 	root := handoffRoot(t, "m-drift", informationalFacts, analysisOnlyTasks)
 	store := handoff.NewOutcomeStore(root)

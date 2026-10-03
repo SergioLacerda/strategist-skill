@@ -2,7 +2,7 @@
 
 **Status:** Accepted for implementation
 **Date:** 2026-10-02
-**Related:** `docs/adr/0055-governance-compatibility.md` (accepted governance contract record; its numeric slot predates this implementation ADR)
+**Related:** [ADR-0063](0063-governance-compatibility.md) (accepted governance contract record, renumbered to resolve the historical ADR-0055 collision)
 **Implementation plan:** `docs/plans/2026-10-02-governance-compatibility-implementation.md`
 
 ## Release boundary
@@ -15,7 +15,7 @@ for the final tag and release publication.
 
 ## Implementation decision
 
-Implement the provider-agnostic contract recorded in ADR-0055. Strategist has
+Implement the provider-agnostic contract recorded in ADR-0063. Strategist has
 no implicit governance model or directory. No source or injection means
 standalone operation. An explicitly selected source is normalized, correlated,
 validated, and consumed only when it has sufficient authority; malformed,

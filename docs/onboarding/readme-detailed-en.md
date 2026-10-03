@@ -1,6 +1,6 @@
 # Strategist Skill — Detailed Technical Documentation
 
-> Current behavior note (2026-06-26): Strategist now operates as a
+> Current behavior note (2026-10-02): Strategist now operates as a
 > documentation, diagram, and analysis orchestrator. Sniper remains the executor
 > in the lore, but its default execution scope is approved documentation targets;
 > implementation handoffs are reported and require a separate coding task. This detailed onboarding file is being
@@ -43,7 +43,7 @@ This detailed README is structured for two audiences:
 ### Executive Summary
 
 - Multi-phase orchestrator with pluggable slots: Ranger, Archivist, and Sniper.
-- Single pipeline with **mandatory approval gate** before execution.
+- Governed Stages with a **mandatory approval gate** before documentation materialization.
 - Selective knowledge system via `knowledge.index.yaml` + `source-hints`.
 - Non-blocking learning loop (learning failures do not block mission result).
 - Strong safety constraints: stop conditions, forbidden behaviors, and drift self-correction.
@@ -53,17 +53,30 @@ This detailed README is structured for two audiences:
 **Strategist** is an autonomous skill for orchestrating documentation, diagram,
 and analysis missions for AI agents.
 
-It coordinates multi-phase work through three pluggable roles (slots):
+The FULL Stage coordinates multi-phase work through three pluggable Roles (slots):
 
 ```
 Ranger (discovery) -> Role responsible for exploring the problem scope from the initial prompt
 Archivist (refinement) -> Role responsible for refining the problem scope and creating an execution plan
 Sniper (execution) -> Role responsible for materializing the approved documentation/handoff plan
 ```
-Each role has a defined function, but the interesting part is that you can specify which skill fulfills that role.
+Each Role has a defined function, and its configured Weapon is the external skill
+package that fulfills that pluggable responsibility. Runtime fields and older prose
+may still use `provider` or `skill` as compatibility vocabulary; those labels are not
+additional conceptual families.
 Strategist orchestrates the flow, validates contracts, emits progress events, and enforces the approval gate.
 
 It is **standalone by default** and can optionally integrate with an explicitly provisioned governance model such as **Providence**.
+
+### Canonical taxonomy and evidence
+
+[ADR-0064](../adr/0064-canonical-seven-family-taxonomy.md) defines seven
+documentation families: **Role, Weapon, Feat, Tool, Mechanism, Stage, and
+Artifact**. INITIATIVE is a Feat, LEVELING is a Tool, and FULL/SHORT/ROSTER are
+Stages. A runtime filename or accepted decision is not proof of live capability:
+conceptual, accepted, implemented, verified, and invocable states must be stated
+and evidenced independently. This document describes current runtime identifiers
+where necessary, but they do not override the canonical conceptual model.
 
 ---
 
@@ -163,7 +176,7 @@ strategist/
 
 ## Mission Pipeline
 
-Complete pipeline: Ranger → Archivist → approval gate → Sniper
+FULL Stage: Ranger → Archivist → approval gate → Sniper
 
 ### Business Flow: Iteration Between Roles
 
@@ -192,7 +205,7 @@ Complete pipeline: Ranger → Archivist → approval gate → Sniper
                          │    proposal.md             │
                          │    design.md               │
                          │    tasks.md                │
-                         │  → Opportunity Attack      │
+                         │  → Opportunity Attack Feat │
                          │    (ADR evaluation after   │
                          │     4 artifacts written)   │
                          └─────────────┬──────────────┘
@@ -325,7 +338,7 @@ MISSION PHASES
   │     input: discovery artifact + any side quests detected     │
   │     → refined/<mission_id>/                                  │
   │         analysis.md  proposal.md  design.md  tasks.md        │
-  │     → Opportunity Attack (ADR evaluation — internal to       │
+  │     → Opportunity Attack Feat (ADR evaluation — internal to  │
   │         Archivist, after all 4 artifacts are written)        │
   │     emit: phase=<archivist_label> status=done                │
   └──────────────────────────┬───────────────────────────────────┘
@@ -390,7 +403,7 @@ Ranger / discovery (discovery slot)
   ↓
 Archivist / refinement (refinement slot)
   → analysis.md, proposal.md, design.md, tasks.md
-  → Opportunity Attack (ADR evaluation — internal to Archivist, after 4 artifacts)
+  → Opportunity Attack Feat (ADR evaluation — internal to Archivist, after 4 Artifacts)
   ↓
 Approval Gate ← MANDATORY STOP (if tasks.md is not empty)
   also covers pending side quests consolidated by Archivist
@@ -534,7 +547,10 @@ Artifact produced: `<base_path>/refined/<mission_id>/` (subdirectory with four f
 - `design.md` — how (architecture, affected components, decisions)
 - `tasks.md` — numbered documentation/materialization steps (Sniper input)
 
-After writing all four artifacts, Archivist runs **Opportunity Attack** (ADR evaluation): assesses whether the refined artifacts justify opening an ADR. This is internal to the Archivist — not delegated to a slot.
+After writing all four Artifacts, Archivist applies the **Opportunity Attack Feat**
+(ADR evaluation): it assesses whether the refined package justifies opening an ADR.
+The contextual detection is a Feat; deterministic eligibility and gate behavior are
+Mechanisms. It is internal to the Archivist and is not delegated to another slot.
 
 Rules:
 - Archivist never produces a standalone `.md` in `refined/` — always the subdirectory with the four files
@@ -799,7 +815,7 @@ The following behaviors are **never allowed**:
 
 7. **Skip preflight** — preflight runs before intake, on every invocation, including re-invocations with the same config.
 
-8. **Delegate Opportunity Attack to a slot provider** — ADR evaluation is internal to the Archivist after writing the four refined artifacts. It is not a separate Strategist phase and is not delegated to Ranger or Sniper.
+8. **Delegate Opportunity Attack to a slot provider** — Opportunity Attack is an Archivist Feat applied after writing the four refined Artifacts. It is not a separate Stage or slot and is not delegated to Ranger or Sniper.
 
 9. **Ask the Sniper to create documents, specs, or plans** — creation of analysis artifacts is the Archivist's responsibility (contract: `write_analysis`). Sniper executes; it never writes analyses.
 
@@ -820,7 +836,7 @@ When `drift-patterns.yaml` is loaded, the agent checks patterns before each phas
 | `sniper_provider_override` | Resolved Sniper from a source other than roles config or governance_injection | Stop. Re-resolve from declared source. |
 | `side_quest_approval_bypass` | About to move files from opportunity_attack without passing through the main gate | Stop. Side quests only execute after explicit approval at the main gate. |
 | `route_plan_creation_to_sniper` | About to ask Sniper to create a document, spec, or plan | Stop. Artifact creation is Archivist's work. Return to phase 5c. |
-| `opportunity_attack_as_slot` | About to delegate Opportunity Attack (ADR evaluation) to Ranger or Sniper | Stop. Opportunity Attack is internal to Archivist — run it after the four refined artifacts are written. |
+| `opportunity_attack_as_slot` | About to delegate Opportunity Attack (ADR evaluation) to Ranger or Sniper | Stop. Opportunity Attack is an Archivist Feat — apply it after the four refined Artifacts are written. |
 
 ---
 

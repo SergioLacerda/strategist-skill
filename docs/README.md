@@ -1,7 +1,7 @@
 # Documentation — Strategist Skill
 
 **Status:** Accepted
-**Last Updated:** 2026-09-15
+**Last Updated:** 2026-10-02
 
 This is the entry point for all skill documentation. Start with the repository
 `QUICKSTART.md` for a first mission, then use the intent index below to choose
@@ -23,7 +23,7 @@ one maintained reference.
 | See where governance sources live | [`architecture/governance-hierarchy.md`](architecture/governance-hierarchy.md) |
 | Configure or operate the skill | [`configuration.md`](configuration.md) and [`cli-reference.md`](cli-reference.md) |
 | Extend the provider lifecycle | [`provider-extension.md`](provider-extension.md) |
-| Review design decisions and taxonomy | [`adr/`](adr/) and [ADR-0034](adr/0034-role-and-skill-taxonomy.md) |
+| Review design decisions and the canonical taxonomy | [`adr/`](adr/), [ADR-0064](adr/0064-canonical-seven-family-taxonomy.md), and [`architecture/strategist-concepts.md`](architecture/strategist-concepts.md) |
 | Understand runbooks, scripts, and `make` targets | [`makefile-scripts.md`](makefile-scripts.md) and [`runbooks/`](runbooks/) |
 | Follow the v1.0.23 release checklist | [`release-checklist-v1-0-23.md`](release-checklist-v1-0-23.md) |
 | Follow the v1.0.25 release checklist | [`release-checklist-v1-0-25.md`](release-checklist-v1-0-25.md) |
@@ -42,6 +42,14 @@ The canonical authored onboarding surfaces are listed in
 [`index-ownership.tsv`](index-ownership.tsv). The deterministic ownership gate
 checks only that allowlist. Generated references, ADRs, and runbooks are
 explicitly excluded because they retain their own indexes.
+
+The canonical conceptual model has seven families: **Role, Weapon, Feat, Tool,
+Mechanism, Stage, and Artifact**. [ADR-0064](adr/0064-canonical-seven-family-taxonomy.md)
+owns that decision; [`architecture/strategist-philosophy.md`](architecture/strategist-philosophy.md)
+explains the rationale, and [`architecture/strategist-concepts.md`](architecture/strategist-concepts.md)
+is the maintained reference. Runtime schemas and registries may retain earlier
+labels until a separately approved implementation wave migrates them. Documentation
+must distinguish conceptual, accepted, implemented, verified, and invocable states.
 
 ---
 

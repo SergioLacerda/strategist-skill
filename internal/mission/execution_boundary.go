@@ -138,7 +138,7 @@ func EvaluateExecutionEntry(strategistRoot, basePath string, status domain.Missi
 	refined := filepath.Join(basePath, "refined", status.MissionID)
 	analysisPath := filepath.Join(refined, "analysis.md")
 	if handoff.HasHandoffMetadata(analysisPath) {
-		if err := handoff.ValidateArchivistPackage(refined, status.MissionID); err != nil {
+		if err := handoff.ValidateRefinedPackageForGate(refined, status.MissionID); err != nil {
 			return domain.PipelineBypassDecision{}, fmt.Errorf("validate Archivist handoff: %w", err)
 		}
 	}

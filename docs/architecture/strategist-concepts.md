@@ -1,7 +1,7 @@
 # Strategist — Core Concepts
 
 **Status:** Accepted
-**Last Updated:** 2026-09-24 (canonical taxonomy and authority boundaries)
+**Last Updated:** 2026-10-02 (seven-family taxonomy and evidence states)
 
 See [`strategist-philosophy.md`](strategist-philosophy.md) for the rationale
 behind the fixed pipeline, replaceable weapons, evidence authorities, and
@@ -21,58 +21,76 @@ Callers delegate a request to Strategist as a single skill. Strategist decides t
 
 ## Canonical Taxonomy
 
-The public vocabulary has six families, fixed by
-[ADR-0053](../adr/0053-taxonomy-classification-criterion-and-sniper-extensibility.md).
-Each family answers a different question; the examples below are current runtime
-concepts, not a request to activate any proposed role.
-
-The six canonical families are Roles, Weapons, Abilities, Mechanisms, Pipeline,
-and Artifacts.
+The public vocabulary has seven families, fixed by
+[ADR-0064](../adr/0064-canonical-seven-family-taxonomy.md). ADR-0053 remains
+historical evidence of the prior six-family model; current runtime contracts may
+still expose that vocabulary until a separately approved implementation wave
+migrates them.
 
 | Family | Criterion | Current examples |
 |--------|-----------|------------------|
 | **Role** | Agents acting as personas that own a responsibility | Scout, Ranger, Archivist, Sniper |
 | **Weapon** | External skill packages employed by a pluggable Role | `brainstorming`, `openspec-propose` |
-| **Ability** (Feat, pt-BR "Habilidade") | Behavior the agent performs by judgment-based reasoning | Search, Riposte, `select_runbook`, Keen Senses |
-| **Mechanism** | Deterministic rule: the outcome is fixed by its inputs, enforced in code or in a contract | LEVELING, INITIATIVE, Critical Hit, Approval Gate rules, Side Quest rules, Handoff, Weapon Binding, fingerprint |
-| **Pipeline** | Fixed stages and routines, including the routes Scout selects | discovery, refinement, Approval Gate stage, Prompt Intake, Context Enrichment, Dossier Builder, Response Critic, Learning Curator; `full_pipeline`, `implementation_short_route`, `critical_hit` |
-| **Artifact** | Generated items with internal value | analysis, dossier, evidence pack, refined package, ADR, runbook |
+| **Feat** | Contextual behavior performed through judgment | INITIATIVE, Search, Riposte, Critical Hit, Opportunity Attack |
+| **Tool** | Operation that evaluates inputs and produces a result | LEVELING, Weapon Discovery, Compatibility Resolver, Binding Resolver |
+| **Mechanism** | Deterministic rule whose outcome is fixed by explicit inputs | Approval rules, handoff validation, binding rules, fingerprint integrity, budget enforcement |
+| **Stage** | Governed operational flow that may contain several phases | FULL, SHORT, ROSTER |
+| **Artifact** | Materialized state, evidence, decision, or knowledge | analysis, dossier, refined package, ADR, Weapon Roster, Weapon Binding |
 
-The bare word "Ability" means Feat or Habilidade, nothing broader. Routes are not a
-family: a route is a Pipeline path that Scout selects.
+Routes are not a family. Scout selects a route identifier, which chooses an
+eligible Stage or bounded capability under current runtime vocabulary.
 
-An item that has both a judgment part and a deterministic part is **one item with two
-facets**, not two items. PRECISE-SHOT (`TIRO PRECISO` is its pt-BR label) is the agent's
-self-assessment of confidence plus the rule that bounds the request. Opportunity
-Attack is the agent detecting an opportunity plus the deterministic activation criteria
-and gate. The Approval Gate and Side Quest split the same way: the stage belongs to
-Pipeline and the rules that govern it are Mechanisms.
+An item may expose multiple facets, but each facet must be classified explicitly.
+Opportunity Attack is a Feat when Archivist recognizes a documentation opportunity;
+its activation criteria and gate rules are Mechanisms. A serialized handoff is an
+Artifact; validation of that handoff is a Mechanism.
 
-`LEVELING` is an immutable operational resolver and a Mechanism, not a Role, Weapon,
-provider, or execution authority. It produces the resolution consumed by INITIATIVE, also
-a Mechanism with a judgment facet (the agent weighs the advice). INITIATIVE may advise
-against that snapshot, but cannot mutate its model, provider, capability, effort,
-policy identity, or ledger.
+`LEVELING` is an immutable operational resolver and a Tool, not a Role, Weapon,
+Mechanism, provider, or execution authority. It consumes structured mission and
+confidence inputs and produces an effort resolution. Its versioned policy and budget
+enforcement are Mechanisms.
 
-PRECISE-SHOT has `PRECISE-SHOT` as its stable identifier. Its deterministic facet is
-owned by INITIATIVE: it derives confidence and can request advisory LEVELING
-reconsideration, but it has no provider, model, effort, or Approval Gate authority.
+`INITIATIVE` is a Feat. It consumes the LEVELING resolution and applies contextual
+judgment about diligence, alignment, evidence, and escalation. It may request a new
+resolution when permitted, but cannot mutate an existing resolution, select a provider,
+bypass the Approval Gate, or authorize execution.
 
-`Critical Hit` is a Mechanism: its activation is a deterministic, mode-selected rule that
-Scout applies before the slot pipeline, and the route value `critical_hit` selects it.
-Only the declared `plain` and `closure` modes can activate; an unknown or unsatisfied
-mode fails closed to `full_pipeline`. It is never a selectable Role, Weapon, or provider.
+`PRECISE-SHOT` remains the stable identifier for confidence self-assessment. Its
+evaluation method may be supplied by a Weapon; confidence validation and request bounds
+remain Mechanisms.
 
-The agent-facing catalog of Mechanisms and Abilities is
-`contracts/machine/mechanisms.yaml`. Agents do not read it directly: each role receives a
-scoped brief at phase start (`strategist mechanisms brief --role <role>`).
+`Critical Hit` is a Feat with deterministic eligibility Mechanisms. Scout applies the
+eligibility rule, and the route value `critical_hit` selects the bounded flow. Only the
+declared `plain` and `closure` modes can activate; an unknown or unsatisfied mode fails
+closed to `full_pipeline`.
+
+The agent-facing registry currently named `contracts/machine/mechanisms.yaml` catalogs
+Tools, Mechanisms, and Feats for runtime consumption. That filename is current-runtime
+compatibility evidence, not a competing conceptual taxonomy. Each Role receives a scoped
+brief at phase start (`strategist mechanisms brief --role <role>`).
 
 Role ownership and extensibility remain orthogonal: `origin: native|external`
 identifies the contract owner, while `extensibility: fixed|pluggable` identifies
 whether a compatible Weapon/provider may fill the role. “Internal role” and
 “external role” are historical compatibility wording only, never aliases for
-either property. Pathfinder, Cartographer, Jeweler, and Jewelcrafter remain
-inactive proposals and are not part of the current taxonomy.
+either property. The existence and availability of Pathfinder, Cartographer,
+Jeweler, Jewelcrafter, and Sharpshooter must be stated through the evidence-state
+matrix below rather than inferred from a name or an accepted ADR.
+
+### Evidence-state matrix
+
+| State | Required meaning |
+| --- | --- |
+| **Conceptual** | The entity is defined in the target model. |
+| **Accepted** | An authoritative ADR or gate accepts the entity or boundary. |
+| **Implemented** | Current source or runtime represents the entity. |
+| **Verified** | Current evidence validates the stated implementation scope. |
+| **Invocable** | A working and authorized runtime path can invoke it. |
+
+These states are independent. For example, ADR acceptance can establish a Role as
+accepted without proving that it is registered, verified, or invocable. Current
+documentation must name the strongest evidenced state and must not promote one state
+to another by implication.
 
 ---
 
@@ -92,11 +110,11 @@ The caller does not specify a route. When in doubt, Strategist defaults to **Ful
 
 Critical Hit is a narrow short route for **artifact maintenance** only — moving, archiving, or reopening `.md` files within the workspace folders (`pending/`, `refined/`, `archived/`). It does **not** perform analysis, evaluate implementation, detect gaps, or redesign requirements. Those tasks always go through Full Pipeline.
 
-Critical Hit is a **Mechanism** (see § Mechanisms and Abilities below). Scout applies its activation rule and resolves the route before Ranger/Archivist ever run, so it is not a Role routine.
+Critical Hit is a **Feat** with deterministic eligibility Mechanisms (see § Tools, Mechanisms, and Feats below). Scout applies its activation rule and resolves the route before Ranger/Archivist ever run, so it is not a Role routine.
 
 ### Opportunity Attack
 
-Opportunity Attack is an **Archivist routine** that evaluates ADR, Runbook, and Treasure Chest necessity after all four refined artifacts are written (see `contracts/machine/opportunity-attack.yaml`). Each of the three outputs is offered independently as its own side quest at the approval gate. Opportunity Attack is not a route selector — it does not decide between short and full route. Routing is owned by the intake/routing layer.
+Opportunity Attack is an **Archivist Feat** that evaluates ADR, Runbook, and Treasure Chest necessity after all four refined artifacts are written (see `contracts/machine/opportunity-attack.yaml`). Each of the three outputs is offered independently as its own side quest at the approval gate. Opportunity Attack is not a route selector — it does not decide between SHORT and FULL. Routing is owned by the intake/routing layer.
 
 ### Runbook Domain Model (typed sidecars)
 
@@ -457,23 +475,40 @@ A delegated sub-role (a Role run as a sub-agent rather than in the primary conve
 
 ---
 
-## Mechanisms and Abilities
+## Tools, Mechanisms, and Feats
 
-Both run inside a Role or phase. Unlike Weapons, they are not configurable, not swappable, and have no `active.yaml` entry — they are built into Strategist itself (see `skill.yaml#taxonomy` and `contracts/machine/mechanisms.yaml`). A **Mechanism** is a deterministic rule; an **Ability** (Feat) is judgment-based agent behavior. The tables list the items that `skill.yaml#taxonomy` names; the registry lists them all.
+These families may operate inside a Role or Stage, but they express different
+responsibilities. The current runtime registry filename
+`contracts/machine/mechanisms.yaml` is retained for compatibility and may contain
+entries from all three families until the implementation taxonomy is migrated.
 
-| Mechanism | Runs in | What it does |
-|-----------|---------|--------------|
-| **LEVELING** | Role selection, before provider invocation | Selects model capability and effort from generic criteria, then maps to CODEX, CLAUDE, or the explicit generic fallback configured in `leveling.yaml`. It is automatic by default for new installations; the wizard does not expose a mode choice. Existing explicit `manual` and `automatic` modes remain runtime compatibility settings. The resulting model and effort are shown on every role log line and recorded in telemetry (see `docs/configuration.md` § Role level label). |
-| **INITIATIVE** | Role entry and handoff boundaries, consultative | Consumes the immutable LEVELING resolution emitted before role entry, then advises on diligence, alignment, obligations, evidence, and outcome correlation. It resolves one `advice_id` per role run, preserves explicit unknown/unavailable/not-comparable states, and may request re-evaluation only after a new LEVELING event when scope, evidence, risk, or obligations change. Its `recommended_capability` and `recommended_effort` are advisory labels only: INITIATIVE never changes LEVELING, selects a provider, bypasses the Approval Gate, or authorizes `implementation_handoff`. Judgment facet: the agent weighs the advice and records how it deviated. |
-| **Opportunity Attack** | Refinement (Archivist), post-refinement | Evaluates whether the refined work warrants an ADR, a Runbook, and/or a Treasure Chest registration — each surfaced as its own side quest at the gate. Judgment facet: the agent detects the opportunity. |
-| **Critical Hit** | Scout (pre-pipeline route) | Moves or closes an analysis card without a full pipeline, only on an explicit request — see § Critical Hit above. |
-| **Side Quest** | Discovery or Refinement, any phase | Adjacent work detected during exploration or refinement is classified and surfaced at the gate rather than silently expanded into the current mission. Judgment facet: the agent detects the out-of-scope finding. |
+| Tool | Runs in | What it does |
+|------|---------|--------------|
+| **LEVELING** | Before Role invocation | Evaluates mission inputs and resolves capability and effort. The resulting model and effort are shown on Role log lines and recorded in telemetry (see `docs/configuration.md` § Role level label). |
+| **Weapon Discovery** | Configuration and readiness | Finds declared Weapon packages without deciding whether they may be bound. |
+| **Compatibility Resolver** | Configuration and readiness | Evaluates compatibility inputs and returns a result. |
+| **Binding Resolver** | Configuration and readiness | Resolves a permitted Role-to-Weapon binding from explicit contracts. |
 
-| Ability | Runs in | What it does |
-|---------|---------|--------------|
-| **Search** | Discovery (Ranger); cache reused by Refinement (Archivist) | Filters candidate Jewels/Potions from Treasure Chests before a chest is opened in full — part of the Retrieval Cascade's treasure-chest stage. |
+| Feat | Runs in | What it does |
+|------|---------|--------------|
+| **INITIATIVE** | Role entry and handoff boundaries | Applies contextual judgment to immutable LEVELING output and mission evidence. It may request a new resolution when permitted, but cannot mutate an existing resolution, select a provider, bypass the Approval Gate, or authorize execution. |
+| **Search** | Discovery (Ranger); cache reused by Refinement (Archivist) | Filters candidate Jewels and Potions before opening a Treasure Chest in full. |
+| **Opportunity Attack** | Refinement (Archivist), post-refinement | Detects whether refined work warrants an ADR, Runbook, or Treasure Chest registration, each surfaced independently at the gate. |
+| **Critical Hit** | Scout, before the main pipeline | Recognizes a bounded artifact-maintenance request; deterministic eligibility Mechanisms decide whether the Feat may activate. |
+| **Side Quest** | Discovery or Refinement | Detects adjacent work and surfaces it at the gate instead of silently expanding mission scope. |
 
-**Treasure Chest is a resource, not an Ability.** It is the offline knowledge source that Search consults — it never runs, decides, or executes anything on its own. A Treasure Chest holds two kinds of entries: **Jewel** (a fact extracted from a past mission) and **Potion** (an index entry for a runbook under `docs/runbooks/`).
+| Mechanism | Deterministic responsibility |
+|-----------|------------------------------|
+| **Approval rules** | Decide whether accepted evidence authorizes documentation materialization. |
+| **Handoff validation** | Validate the schema, integrity, and semantic acknowledgment of Role transitions. |
+| **Binding rules** | Enforce declared Role-to-Weapon compatibility and fail-closed resolution. |
+| **Fingerprint integrity** | Detect drift between governed sources and generated runtime artifacts. |
+| **Budget enforcement** | Apply explicit effort and retry limits to mission execution. |
+
+**Treasure Chest is a resource, not a Feat.** It is the offline knowledge source
+that Search consults; it never runs, decides, or executes on its own. A Treasure
+Chest holds two kinds of entries: **Jewel** (a fact extracted from a past mission)
+and **Potion** (an index entry for a runbook under `docs/runbooks/`).
 
 ---
 

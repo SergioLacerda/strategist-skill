@@ -48,6 +48,7 @@ type submitPreflight struct {
 	gateDigest    string
 	outcome       *handoff.Outcome
 	packageDigest string
+	claimTargets  []string
 }
 
 func preflightSubmit(root, basePath, missionID string, status domain.MissionEngineStatus, evt domain.MissionEngineEvent) (submitPreflight, error) {
@@ -72,11 +73,32 @@ func preflightSubmit(root, basePath, missionID string, status domain.MissionEngi
 	if err != nil {
 		return submitPreflight{}, err
 	}
-	return submitPreflight{gateDigest: gateDigest, outcome: outcome, packageDigest: packageDigest}, nil
+	claimTargets, err := preflightSniperClaims(basePath, missionID, evt)
+	if err != nil {
+		return submitPreflight{}, err
+	}
+	return submitPreflight{gateDigest: gateDigest, outcome: outcome, packageDigest: packageDigest, claimTargets: claimTargets}, nil
+}
+
+// preflightSniperClaims validates every claim target before the FSM is
+// advanced. RecordSniperClaims repeats the extraction when it appends the
+// telemetry records, but this earlier pass is the transactional boundary for
+// deterministic package errors: malformed targets cannot leave a mission in
+// execution merely because claim recording would reject them later.
+func preflightSniperClaims(basePath, missionID string, event domain.MissionEngineEvent) ([]string, error) {
+	if event != domain.MissionEventHandoffSatisfied {
+		return nil, nil
+	}
+	refined := filepath.Join(basePath, "refined", missionID)
+	pkg, err := handoff.LoadRefinedPackageForGate(refined, missionID)
+	if err != nil {
+		return nil, fmt.Errorf("mission submit: rejected: preflight sniper claims: %w", err)
+	}
+	return pkg.DocumentationTargets, nil
 }
 
 func repairPackageDigest(basePath, missionID string, event domain.MissionEngineEvent) (string, error) {
-	if event != domain.MissionEventRefinementArtifactInvalid {
+	if event != domain.MissionEventRefinementArtifactInvalid && event != domain.MissionEventHandoffSatisfied {
 		return "", nil
 	}
 	digest, err := handoff.PackageDigest(filepath.Join(basePath, "refined", missionID))
@@ -107,18 +129,64 @@ func applySubmit(engine *domain.MissionEngine, evt domain.MissionEngineEvent, ga
 	return status, nil
 }
 
-func finishSubmit(root, basePath, missionID string, evt domain.MissionEngineEvent, outcome *handoff.Outcome) error {
+func finishSubmit(root, basePath, missionID string, evt domain.MissionEngineEvent, outcome *handoff.Outcome, entry *executionEntry) error {
 	if err := livemission.SealSideQuestOnGateApproval(root, missionID, evt, time.Now()); err != nil {
 		return fmt.Errorf("seal side quest: %w", err)
 	}
-	return commitExecutionEntry(root, basePath, missionID, evt, outcome)
+	if entry != nil {
+		entry.SideQuestSealed = true
+		if err := saveExecutionEntry(root, entry); err != nil {
+			return err
+		}
+	}
+	return commitExecutionEntry(root, basePath, missionID, evt, outcome, entry)
 }
 
-func commitExecutionEntry(root, basePath, missionID string, event domain.MissionEngineEvent, outcome *handoff.Outcome) error {
-	if outcome != nil {
-		if err := livemission.ConsumeHandoffOutcome(root, *outcome); err != nil {
-			return fmt.Errorf("consume handoff outcome: %w", err)
-		}
+func consumeExecutionOutcome(root string, outcome handoff.Outcome) error {
+	consumed, err := handoff.NewOutcomeStore(root).Consumed(outcome)
+	if err != nil {
+		return fmt.Errorf("read handoff outcome: %w", err)
+	}
+	if consumed {
+		return nil
+	}
+	if err := executionEntryConsume(root, outcome); err != nil {
+		return fmt.Errorf("consume handoff outcome: %w", err)
+	}
+	return nil
+}
+
+func recordExecutionEntryClaims(root, basePath, missionID string, entry *executionEntry) error {
+	if _, err := executionEntryRecordClaims(root, basePath, missionID, entry.ID, entry.Targets, time.Now().UTC()); err != nil {
+		return fmt.Errorf("record sniper claims: %w", err)
+	}
+	entry.ClaimsRecorded, entry.Completed = true, true
+	return saveExecutionEntry(root, entry)
+}
+
+func persistExecutionOutcome(root string, outcome *handoff.Outcome, entry *executionEntry) error {
+	if outcome == nil {
+		return nil
+	}
+	if err := consumeExecutionOutcome(root, *outcome); err != nil {
+		return err
+	}
+	if entry == nil {
+		return nil
+	}
+	entry.OutcomeConsumed = true
+	if err := saveExecutionEntry(root, entry); err != nil {
+		return err
+	}
+	return nil
+}
+
+func commitExecutionEntry(root, basePath, missionID string, event domain.MissionEngineEvent, outcome *handoff.Outcome, entry *executionEntry) error {
+	if err := persistExecutionOutcome(root, outcome, entry); err != nil {
+		return err
+	}
+	if entry != nil && event == domain.MissionEventHandoffSatisfied {
+		return recordExecutionEntryClaims(root, basePath, missionID, entry)
 	}
 	return recordSniperClaimsOnHandoffPassed(root, basePath, missionID, event)
 }

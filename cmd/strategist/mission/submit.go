@@ -67,8 +67,11 @@ func RunSubmit(cmd *cobra.Command, deps LifecycleDependencies, rootInput, missio
 // is a single, flat sequence rather than nested inside an anonymous function
 // (which gocognit weighs more heavily for nesting).
 func submitLocked(deps LifecycleDependencies, root, basePath, missionID string, evt domain.MissionEngineEvent) (domain.MissionEngineStatus, error) {
-	engine, _, err := deps.Load(root, missionID)
+	engine, persisted, err := deps.Load(root, missionID)
 	if err != nil {
+		return domain.MissionEngineStatus{}, fmt.Errorf("mission submit: %w", err)
+	}
+	if err := recoverExecutionEntry(root, basePath, missionID, persisted); err != nil {
 		return domain.MissionEngineStatus{}, fmt.Errorf("mission submit: %w", err)
 	}
 	pre, err := preflightSubmit(root, basePath, missionID, engine.Status(), evt)
@@ -98,11 +101,37 @@ func commitSubmit(deps LifecycleDependencies, root, basePath, missionID string, 
 	if err != nil {
 		return fmt.Errorf("mission submit: %w", err)
 	}
+	entry, err := prepareCommitEntry(root, missionID, pre, status)
+	if err != nil {
+		return err
+	}
+	if err := persistCommitState(deps, root, status, analysisPath, original, changed, entry); err != nil {
+		return err
+	}
+	if err := finishSubmit(root, basePath, missionID, evt, pre.outcome, entry); err != nil {
+		return fmt.Errorf("mission submit: %w", err)
+	}
+	return nil
+}
+
+func prepareCommitEntry(root, missionID string, pre submitPreflight, status domain.MissionEngineStatus) (*executionEntry, error) {
+	entry, err := prepareExecutionEntry(root, missionID, pre.packageDigest, pre.claimTargets, pre.outcome, status)
+	if err != nil {
+		return nil, fmt.Errorf("mission submit: prepare execution entry: %w", err)
+	}
+	return entry, nil
+}
+
+func persistCommitState(deps LifecycleDependencies, root string, status domain.MissionEngineStatus, analysisPath string, original []byte, changed bool, entry *executionEntry) error {
 	if err := persistSubmitState(deps, root, status, analysisPath, original, changed); err != nil {
 		return err
 	}
-	if err := finishSubmit(root, basePath, missionID, evt, pre.outcome); err != nil {
-		return fmt.Errorf("mission submit: %w", err)
+	if entry == nil {
+		return nil
+	}
+	entry.StateSaved = true
+	if err := saveExecutionEntry(root, entry); err != nil {
+		return fmt.Errorf("mission submit: persist execution entry: %w", err)
 	}
 	return nil
 }

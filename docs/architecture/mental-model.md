@@ -1,7 +1,7 @@
 # Strategist — Mental Model
 
 **Status:** Accepted
-**Last Updated:** 2026-06-26
+**Last Updated:** 2026-10-02
 
 ## One sentence
 
@@ -46,16 +46,33 @@ materializes approved docs/handoff.**
 Each phase writes versioned artifacts to `.analysis/` so the process is auditable
 and resumable. If something goes wrong mid-execution, you can see exactly where it stopped.
 
+### The seven-family vocabulary
+
+Strategist describes its model through seven distinct families: **Role** (who owns
+a responsibility), **Weapon** (the external package a pluggable Role employs),
+**Feat** (contextual behavior), **Tool** (an operation that produces a result),
+**Mechanism** (a deterministic rule), **Stage** (a governed flow), and **Artifact**
+(materialized state or evidence). FULL, SHORT, and ROSTER are Stages; INITIATIVE is
+a Feat; LEVELING is a Tool; and the Weapon Roster is an Artifact. Routes select an
+eligible Stage or bounded capability but are not an eighth family.
+
+This conceptual vocabulary is governed by
+[ADR-0064](../adr/0064-canonical-seven-family-taxonomy.md). A concept being accepted
+does not by itself prove that it is implemented, verified, or invocable; current
+runtime labels may lag until a separately approved implementation wave.
+
 ### What each role does
 
 | Role | Neutral name | Responsibility |
 |------|-------------|----------------|
-| Strategist | Orchestrator | Coordinates the mission; guards the gate |
 | Scout | Router | Classifies the request and picks the route before Ranger ever runs |
 | Ranger | Discoverer | Gathers requirements and maps the terrain |
 | Archivist | Spec Writer | Turns the discovery report into an actionable spec |
 | Sniper | Executor | Materializes the approved documentation/handoff — surgically, minimally |
-| Wizard | Installer | Installs the party into your repository |
+
+Strategist is the orchestrator, not an additional Role in the seven-family roster.
+Wizard is an installer-facing persona in current documentation, not evidence of an
+implemented or invocable mission Role.
 
 ---
 

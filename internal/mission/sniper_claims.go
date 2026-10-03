@@ -26,21 +26,48 @@ import (
 // nothing and is not an error: an analysis-only accepted package has nothing
 // for Sniper to claim.
 func RecordSniperClaims(strategistRoot, basePath, missionID string, now time.Time) (int, error) {
-	tasksPath := filepath.Join(basePath, "refined", missionID, "tasks.md")
-	targets, err := refinement.DocumentationTargetPaths(tasksPath)
+	return RecordSniperClaimsForEntry(strategistRoot, basePath, missionID, "", nil, now)
+}
+
+// RecordSniperClaimsForEntry projects the immutable target snapshot of one
+// execution entry. It never re-parses tasks when targets are supplied.
+func RecordSniperClaimsForEntry(strategistRoot, basePath, missionID, entryID string, targets []string, now time.Time) (int, error) {
+	var err error
+	targets, err = resolveSniperClaimTargets(basePath, missionID, targets)
 	if err != nil {
-		return 0, fmt.Errorf("record sniper claims: %w", err)
+		return 0, err
 	}
 	if len(targets) == 0 {
 		return 0, nil
 	}
 	claimPath := telemetry.SniperClaimHistoryPath(strategistRoot)
-	packageDigest := ""
-	if digest, digestErr := handoff.PackageDigest(filepath.Join(basePath, "refined", missionID)); digestErr == nil {
-		packageDigest = digest
+	packageDigest := sniperClaimPackageDigest(basePath, missionID)
+	return appendSniperClaims(claimPath, entryID, missionID, basePath, targets, packageDigest, now)
+}
+
+func resolveSniperClaimTargets(basePath, missionID string, targets []string) ([]string, error) {
+	if targets != nil {
+		return targets, nil
 	}
+	tasksPath := filepath.Join(basePath, "refined", missionID, "tasks.md")
+	resolved, err := refinement.DocumentationTargetPaths(tasksPath)
+	if err != nil {
+		return nil, fmt.Errorf("record sniper claims: %w", err)
+	}
+	return resolved, nil
+}
+
+func sniperClaimPackageDigest(basePath, missionID string) string {
+	refinedPath := filepath.Join(basePath, "refined", missionID)
+	if digest, err := handoff.PackageDigest(refinedPath); err == nil {
+		return digest
+	}
+	return ""
+}
+
+func appendSniperClaims(claimPath, entryID, missionID, basePath string, targets []string, packageDigest string, now time.Time) (int, error) {
 	for _, target := range targets {
-		rec := telemetry.SniperClaimRecord{
+		rec := telemetry.SniperClaimRecord{ExecutionEntryID: entryID,
 			MissionID: missionID, BasePath: basePath, TargetPath: target, PackageDigest: packageDigest, ClaimedAt: now,
 		}
 		if err := telemetry.AppendSniperClaim(claimPath, rec); err != nil {

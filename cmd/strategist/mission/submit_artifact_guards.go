@@ -21,7 +21,7 @@ func validateSubmitArtifacts(basePath, missionID string, event domain.MissionEng
 	case domain.MissionEventRefinementDone, domain.MissionEventGateApproved,
 		domain.MissionEventGateApprovedAnalysisOnly:
 		refined := filepath.Join(basePath, "refined", missionID)
-		if err := handoff.ValidateArchivistPackage(refined, missionID); err != nil {
+		if err := handoff.ValidateRefinedPackageForGate(refined, missionID); err != nil {
 			return fmt.Errorf("refined package validation failed: %w", err)
 		}
 	case domain.MissionEventBootstrapDone, domain.MissionEventIntakeDone,

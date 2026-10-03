@@ -5,11 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"os"
 	"path/filepath"
-	"sort"
-	"strings"
 	"time"
 )
 
@@ -34,11 +31,14 @@ const (
 // before either commits, the signal sniper_conflict.go's
 // f3ConflictThreshold doc comment names as "not instrumented here."
 type SniperClaimRecord struct {
-	MissionID     string    `json:"mission_id"`
-	BasePath      string    `json:"base_path"`
-	TargetPath    string    `json:"target_path"`
-	PackageDigest string    `json:"package_digest,omitempty"`
-	ClaimedAt     time.Time `json:"claimed_at"`
+	// ExecutionEntryID correlates an idempotent execution-entry projection.
+	// Empty is retained for historical JSONL compatibility.
+	ExecutionEntryID string    `json:"execution_entry_id,omitempty"`
+	MissionID        string    `json:"mission_id"`
+	BasePath         string    `json:"base_path"`
+	TargetPath       string    `json:"target_path"`
+	PackageDigest    string    `json:"package_digest,omitempty"`
+	ClaimedAt        time.Time `json:"claimed_at"`
 }
 
 // SniperClaimHistoryPath returns the default runtime memory path for Sniper claim history.
@@ -57,8 +57,37 @@ func AppendSniperClaim(path string, rec SniperClaimRecord) (err error) {
 		return fmt.Errorf("open sniper claim history: %w", err)
 	}
 	defer closeFileWithContext(f, &err, "close sniper claim history")
+	if rec.ExecutionEntryID != "" {
+		if exists, readErr := sniperClaimProjectionExists(path, rec); readErr != nil {
+			return readErr
+		} else if exists {
+			return nil
+		}
+	}
 
 	return writeSniperClaimLine(f, rec)
+}
+
+func sniperClaimProjectionExists(path string, want SniperClaimRecord) (bool, error) {
+	f, err := os.Open(path) //nolint:gosec // runtime-owned history
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("open sniper claim history: %w", err)
+	}
+	defer f.Close() //nolint:errcheck
+	s := newJSONLScanner(f)
+	for s.Scan() {
+		var got SniperClaimRecord
+		if json.Unmarshal(s.Bytes(), &got) == nil && got.ExecutionEntryID == want.ExecutionEntryID && got.TargetPath == want.TargetPath {
+			return true, nil
+		}
+	}
+	if err := jsonlScannerErr(s, "scan sniper claim history"); err != nil {
+		return false, err
+	}
+	return false, nil
 }
 
 func writeSniperClaimLine(f *os.File, rec SniperClaimRecord) error {
@@ -112,85 +141,4 @@ func parseSniperClaimLine(line []byte, cutoff, now time.Time) (rec SniperClaimRe
 		return rec, false
 	}
 	return rec, true
-}
-
-// ClaimCollisionSignal reports two or more distinct missions having claimed
-// the same target path within the caller-supplied window — the
-// claim-collision half of ADR-0008's F3 revisit tripwire.
-type ClaimCollisionSignal struct {
-	BasePath   string
-	TargetPath string
-	// MissionIDs is the sorted, deduplicated set of distinct missions that
-	// claimed TargetPath within the window.
-	MissionIDs []string
-}
-
-// DetectClaimCollisions groups records by TargetPath and reports one
-// ClaimCollisionSignal per target claimed by two or more distinct
-// MissionIDs. A single mission claiming (or re-claiming) the same target
-// multiple times is not a collision — only distinct missions targeting the
-// same path count, matching ADR-0008's own framing ("two or more distinct
-// Sniper sessions claiming the same target").
-func DetectClaimCollisions(records []SniperClaimRecord) []ClaimCollisionSignal {
-	if len(records) == 0 {
-		return nil
-	}
-	missionsByTarget, basePathByTarget, targetOrder := groupClaimsByTarget(records)
-	return collisionSignals(missionsByTarget, basePathByTarget, targetOrder)
-}
-
-func groupClaimsByTarget(records []SniperClaimRecord) (map[string]map[string]bool, map[string]string, []string) {
-	missionsByTarget := make(map[string]map[string]bool)
-	basePathByTarget := make(map[string]string)
-	var targetOrder []string
-	for _, rec := range records {
-		if _, ok := missionsByTarget[rec.TargetPath]; !ok {
-			missionsByTarget[rec.TargetPath] = make(map[string]bool)
-			basePathByTarget[rec.TargetPath] = rec.BasePath
-			targetOrder = append(targetOrder, rec.TargetPath)
-		}
-		missionsByTarget[rec.TargetPath][rec.MissionID] = true
-	}
-	return missionsByTarget, basePathByTarget, targetOrder
-}
-
-func collisionSignals(missionsByTarget map[string]map[string]bool, basePathByTarget map[string]string, targetOrder []string) []ClaimCollisionSignal {
-	var signals []ClaimCollisionSignal
-	for _, target := range targetOrder {
-		missions := missionsByTarget[target]
-		if !ClaimCollisionThresholdMet(len(missions)) {
-			continue
-		}
-		ids := make([]string, 0, len(missions))
-		for id := range missions {
-			ids = append(ids, id)
-		}
-		sort.Strings(ids)
-		signals = append(signals, ClaimCollisionSignal{
-			BasePath:   basePathByTarget[target],
-			TargetPath: target,
-			MissionIDs: ids,
-		})
-	}
-	return signals
-}
-
-// ClaimCollisionThresholdMet reports whether distinctMissionCount meets
-// ADR-0008's F3 revisit tripwire threshold for claim-collision attribution:
-// two or more distinct missions claiming the same target.
-func ClaimCollisionThresholdMet(distinctMissionCount int) bool {
-	return distinctMissionCount >= 2
-}
-
-// FormatClaimCollisionSignal returns a canonical progress-contract line for a claim collision signal.
-func FormatClaimCollisionSignal(s ClaimCollisionSignal) string {
-	return fmt.Sprintf(
-		"[Strategist] signal=sniper_claim_collision base_path=%s target=%s missions=%s",
-		SanitizePath(s.BasePath), SanitizePath(s.TargetPath), strings.Join(s.MissionIDs, ","),
-	)
-}
-
-// EmitClaimCollisionSignal logs the signal through slog with canonical attributes.
-func EmitClaimCollisionSignal(s ClaimCollisionSignal) {
-	slog.Info(FormatClaimCollisionSignal(s), AttrBasePath, SanitizePath(s.BasePath), AttrTarget, SanitizePath(s.TargetPath), AttrClaimMissionIDs, strings.Join(s.MissionIDs, ","))
 }

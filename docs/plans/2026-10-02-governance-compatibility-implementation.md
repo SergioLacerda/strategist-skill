@@ -17,7 +17,7 @@
 - Modify: `CHANGELOG.md`
 - Modify: `docs/adr/README.md`
 
-**Step 1:** Record the repository's next flat release label (`v1.0.28`), the removal of SDD-specific flags/aliases/fallbacks, and the required CHANGELOG `Removed`/`Changed` entries. ADR-0055 is already occupied by an unrelated accepted record, so this implementation ADR uses the next free number.
+**Step 1:** Record the repository's next flat release label (`v1.0.28`), the removal of SDD-specific flags/aliases/fallbacks, and the required CHANGELOG `Removed`/`Changed` entries. Preserve the delegated-Weapon decision as ADR-0055, retain this implementation record as ADR-0062, and reference the renumbered governance contract at ADR-0063.
 
 **Step 2:** Run `bash scripts/check-doc-links.sh` and inspect the ADR/index diff.
 

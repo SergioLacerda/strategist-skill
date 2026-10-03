@@ -34,7 +34,7 @@ func (f bridgeFixture) change(t *testing.T, id, body string) {
 	dir := filepath.Join(f.runtime, "changes", id)
 	require.NoError(t, os.MkdirAll(dir, 0o755))
 	for _, name := range []string{"proposal.md", "design.md", "tasks.md"} {
-		require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte("# "+name+" "+body+"\n"), 0o644))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, name), canonicalTestArtifact(name, body), 0o644))
 	}
 	require.NoError(t, os.MkdirAll(filepath.Dir(f.pending), 0o755))
 	require.NoError(t, os.WriteFile(f.pending, []byte("---\nmission_id: "+f.mission+"\nmission_status: archivist_pending\n---\n\n# Analysis\n"), 0o644))

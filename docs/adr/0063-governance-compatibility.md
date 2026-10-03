@@ -1,4 +1,4 @@
-# ADR: Provider-agnostic governance compatibility boundary
+# ADR-0063 — Provider-agnostic governance compatibility boundary
 
 **Status:** Accepted
 **Date:** 2026-10-02

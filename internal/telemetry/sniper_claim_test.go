@@ -39,6 +39,25 @@ func TestAppendSniperClaim_ThenReadRecentSniperClaims_RoundTrips(t *testing.T) {
 	}
 }
 
+func TestAppendSniperClaim_DeduplicatesExecutionEntryProjection(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "claims.jsonl")
+	now := time.Date(2026, 10, 3, 0, 0, 0, 0, time.UTC)
+	rec := SniperClaimRecord{ExecutionEntryID: "entry-1", MissionID: "m-1", TargetPath: "docs/a.md", ClaimedAt: now}
+	if err := AppendSniperClaim(path, rec); err != nil {
+		t.Fatal(err)
+	}
+	if err := AppendSniperClaim(path, rec); err != nil {
+		t.Fatal(err)
+	}
+	claims, err := ReadRecentSniperClaims(path, now.Add(time.Minute), time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(claims) != 1 {
+		t.Fatalf("claims = %d, want 1", len(claims))
+	}
+}
+
 func TestReadRecentSniperClaims_MissingFileReturnsNilNil(t *testing.T) {
 	t.Parallel()
 	got, err := ReadRecentSniperClaims(filepath.Join(t.TempDir(), "missing.jsonl"), time.Now(), SniperClaimWindow)
