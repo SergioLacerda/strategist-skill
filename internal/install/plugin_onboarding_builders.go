@@ -40,6 +40,7 @@ func bindingsFromSlots(slots map[string]string, lock domain.PluginLock) ([]domai
 		}
 		bindings = append(bindings, domain.SlotBinding{
 			SchemaVersion:       "strategist-plugin-binding/v1",
+			TaxonomyVersion:     domain.CanonicalTaxonomyVersion,
 			Slot:                slot,
 			InstalledInstanceID: installedInstanceID(node),
 			Generation:          0,

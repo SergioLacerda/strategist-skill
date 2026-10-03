@@ -21,6 +21,7 @@ func missionLifecycleDependencies() missionadapter.LifecycleDependencies {
 		ResolveBasePath: cliutil.ResolveActiveBasePath, RequireNoExisting: requireNoExistingMission,
 		Save: saveMission, Load: loadMission, InitiativeStart: startInitiativeConsultation,
 		WriteResult: writeMissionResult, Lock: lockMission, ADRCanonicalPath: adrCanonicalPath,
+		TelemetrySink: selectDiscoveryTelemetrySink,
 	}
 }
 

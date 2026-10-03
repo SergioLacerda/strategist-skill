@@ -13,7 +13,7 @@ import (
 func TestDefaultPolicyIsDeterministicAndValidated(t *testing.T) {
 	policy := DefaultPolicy()
 	require.NoError(t, policy.Validate(), "default policy must validate")
-	require.Equal(t, "initiative", policy.Feat)
+	require.Equal(t, FeatID, policy.Feat)
 
 	require.NotEmpty(t, policy.Digest(), "policy digest must be stable")
 	require.Equal(t, policy.Digest(), DefaultPolicy().Digest(), "policy digest must be stable")
@@ -22,12 +22,12 @@ func TestDefaultPolicyIsDeterministicAndValidated(t *testing.T) {
 	changed.Profiles["ranger"] = Profile{RecommendedCapability: "economical", RecommendedEffort: EffortLow, Diligence: []string{"one"}, ConfidenceCeiling: "low"}
 	require.NotEqual(t, policy.Digest(), changed.Digest(), "policy digest must identify changed policy")
 
-	invalid := Policy{Version: "1", Profiles: map[string]Profile{"ranger": {RecommendedCapability: "reasoning", RecommendedEffort: "invalid", Diligence: []string{"x"}, ConfidenceCeiling: "low"}}}
+	invalid := Policy{Version: "1", Authority: DefaultAuthority(), Profiles: map[string]Profile{"ranger": {RecommendedCapability: "reasoning", RecommendedEffort: "invalid", Diligence: []string{"x"}, ConfidenceCeiling: "low"}}}
 	err := invalid.Validate()
 	require.Error(t, err, "expected invalid effort error")
 	require.Contains(t, err.Error(), "invalid recommended effort")
 
-	parsed, err := Parse([]byte("version: '1'\nfeat: initiative\nprofiles:\n  ranger:\n    recommended_capability: reasoning\n    recommended_effort: high\n    diligence: [inspect]\n    confidence_ceiling: high\nreevaluation_triggers: [scope_changed]\n"))
+	parsed, err := Parse([]byte("version: '1'\nfeat: initiative\nauthority:\n  owns: [advice, diligence, alignment]\n  does_not_own: [model, provider, capability, effort, level_source, role_binding, weapon_binding, stage, route, pipeline_bypass, approval_gate, implementation_authorization]\nprofiles:\n  ranger:\n    recommended_capability: reasoning\n    recommended_effort: high\n    diligence: [inspect]\n    confidence_ceiling: high\nreevaluation_triggers: [scope_changed]\n"))
 	require.NoError(t, err, "standalone policy parse failed")
 	require.Equal(t, "initiative", parsed.Feat)
 	require.NotEmpty(t, parsed.Digest(), "standalone policy parse failed")

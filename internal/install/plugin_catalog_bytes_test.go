@@ -3,6 +3,7 @@ package install
 import (
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -40,6 +41,14 @@ func TestParseCatalogBytes_Success(t *testing.T) {
 	catalog, err := parseCatalogBytes([]byte("schema_version: strategist-plugin-catalog/v2\nproviders:\n  - id: sniper\n    risk_score: controlled\n"))
 	require.NoError(t, err)
 	assert.Equal(t, "strategist-plugin-catalog/v2", catalog.SchemaVersion)
+	assert.Equal(t, domain.CanonicalTaxonomyVersion, catalog.TaxonomyVersion)
 	require.Len(t, catalog.Providers, 1)
 	assert.Equal(t, "sniper", catalog.Providers[0].ID)
+}
+
+func TestParseCatalogBytes_RejectsUnknownTaxonomyVersion(t *testing.T) {
+	t.Parallel()
+
+	_, err := parseCatalogBytes([]byte("schema_version: strategist-plugin-catalog/v2\ntaxonomy_version: strategist-taxonomy/v0\nproviders:\n  - id: sniper\n    risk_score: controlled\n"))
+	require.ErrorContains(t, err, "unsupported taxonomy version")
 }

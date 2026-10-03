@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
 )
 
@@ -28,6 +29,9 @@ type LifecycleDependencies struct {
 	// ADRCanonicalPath reads active.yaml#adr.canonical_path for the
 	// accept-side-quest command. Nil means no canonical path is configured.
 	ADRCanonicalPath func(root string) (string, error)
+	// TelemetrySink selects the route-resolution sink. Nil keeps the adapter
+	// compatible with callers that only need durable route history.
+	TelemetrySink func() telemetry.EventSink
 }
 
 // withMissionLock runs fn under deps.Lock when one is configured, or

@@ -95,19 +95,19 @@ func TestAdviseRejectsUnknownTrigger(t *testing.T) {
 }
 
 func TestPolicyValidateRejectsEmptyProfiles(t *testing.T) {
-	err := (Policy{Version: "1"}).Validate()
+	err := (Policy{Version: "1", Authority: DefaultAuthority()}).Validate()
 	require.ErrorContains(t, err, "profiles are required")
 }
 
 func TestValidateProfileRejectsMissingCapability(t *testing.T) {
-	policy := Policy{Version: "1", Profiles: map[string]Profile{
+	policy := Policy{Version: "1", Authority: DefaultAuthority(), Profiles: map[string]Profile{
 		"ranger": {RecommendedCapability: "", RecommendedEffort: EffortHigh, Diligence: []string{"x"}, ConfidenceCeiling: "high"},
 	}}
 	require.ErrorContains(t, policy.Validate(), "has no recommended capability")
 }
 
 func TestValidateProfileRejectsMissingDiligence(t *testing.T) {
-	policy := Policy{Version: "1", Profiles: map[string]Profile{
+	policy := Policy{Version: "1", Authority: DefaultAuthority(), Profiles: map[string]Profile{
 		"ranger": {RecommendedCapability: "reasoning", RecommendedEffort: EffortHigh, Diligence: nil, ConfidenceCeiling: "high"},
 	}}
 	require.ErrorContains(t, policy.Validate(), "requires diligence and confidence ceiling")
@@ -130,6 +130,18 @@ func TestPolicyAllowsOnlyDeclaredReevaluationTriggers(t *testing.T) {
 	require.True(t, policy.AllowsTrigger(TriggerInitial))
 	require.True(t, policy.AllowsTrigger(TriggerScopeChanged))
 	require.False(t, policy.AllowsTrigger(Trigger("not_declared")))
+}
+
+func TestPolicyAuthorityRequiresNegativeBoundary(t *testing.T) {
+	policy := DefaultPolicy()
+	policy.Authority.DoesNotOwn = []string{"provider"}
+	require.ErrorContains(t, policy.Validate(), "authority.does_not_own must include \"model\"")
+}
+
+func TestPolicyAuthorityRejectsOwnershipOverlap(t *testing.T) {
+	policy := DefaultPolicy()
+	policy.Authority.Owns = append(policy.Authority.Owns, "provider")
+	require.ErrorContains(t, policy.Validate(), "cannot be both owned and forbidden")
 }
 
 func TestParseRejectsMalformedYAML(t *testing.T) {

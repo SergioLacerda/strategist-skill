@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
 
 // RouteDecision is the canonical JSON structure written to route-decisions.jsonl
@@ -23,8 +25,16 @@ type RouteDecision struct {
 	EvidenceState    string  `json:"evidence_state"`
 	DiscoverySubtype string  `json:"discovery_subtype,omitempty"`
 	FallbackRoute    string  `json:"fallback_route"`
-	Provider         string  `json:"provider,omitempty"`
-	Timestamp        string  `json:"timestamp"`
+	// Stage fields are canonical projections of SelectedRoute. SelectedRoute
+	// remains the legacy correlation value during migration.
+	Stage              string `json:"stage,omitempty"`
+	StageTrigger       string `json:"stage_trigger,omitempty"`
+	StageRole          string `json:"stage_role,omitempty"`
+	StageFeat          string `json:"stage_feat,omitempty"`
+	StagePolicyVersion string `json:"stage_policy_version,omitempty"`
+	StageReason        string `json:"stage_reason,omitempty"`
+	Provider           string `json:"provider,omitempty"`
+	Timestamp          string `json:"timestamp"`
 }
 
 // allowedSelectedRoutes mirrors scout-route-decision.schema.yaml#selected_route.allowed_values.
@@ -56,8 +66,24 @@ func ValidateRouteDecisionLine(line string) error {
 	errs = append(errs, routeConfidenceRange(d.RouteConfidence)...)
 	errs = append(errs, allowedRouteValue("evidence_state", d.EvidenceState, allowedEvidenceStates)...)
 	errs = append(errs, fallbackRouteValue(d.FallbackRoute)...)
+	errs = append(errs, stageProjectionValue(d)...)
 	errs = append(errs, requiredRouteField("timestamp", d.Timestamp)...)
 	return errors.Join(errs...)
+}
+
+func stageProjectionValue(d RouteDecision) []error {
+	if d.Stage == "" {
+		return nil // legacy history predates the canonical Stage projection
+	}
+	stage := domain.Stage(d.Stage)
+	if err := stage.Validate(); err != nil {
+		return []error{err}
+	}
+	var errs []error
+	errs = append(errs, requiredRouteField("stage_trigger", d.StageTrigger)...)
+	errs = append(errs, requiredRouteField("stage_policy_version", d.StagePolicyVersion)...)
+	errs = append(errs, requiredRouteField("stage_reason", d.StageReason)...)
+	return errs
 }
 
 func requiredRouteField(name, value string) []error {

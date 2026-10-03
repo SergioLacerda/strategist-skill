@@ -34,6 +34,7 @@ const (
 // SlotBinding is the local operator's slot selection.
 type SlotBinding struct {
 	SchemaVersion       string `yaml:"schema_version"`
+	TaxonomyVersion     string `yaml:"taxonomy_version,omitempty"`
 	Slot                string `yaml:"slot"`
 	InstalledInstanceID string `yaml:"installed_instance_id"`
 	Role                string `yaml:"role,omitempty"`
@@ -162,10 +163,11 @@ const PluginLockFileSchemaVersion = "strategist-plugin-lock-file/v1"
 // maps — those are per-run activation journal state, not durable
 // configuration to persist across invocations.
 type PluginLockFile struct {
-	SchemaVersion string          `yaml:"schema_version"`
-	Lock          PluginLock      `yaml:"lock"`
-	Inventory     PluginInventory `yaml:"inventory"`
-	Bindings      []SlotBinding   `yaml:"bindings"`
+	SchemaVersion    string                  `yaml:"schema_version"`
+	Lock             PluginLock              `yaml:"lock"`
+	Inventory        PluginInventory         `yaml:"inventory"`
+	Bindings         []SlotBinding           `yaml:"bindings"`
+	BindingArtifacts []WeaponBindingArtifact `yaml:"binding_artifacts,omitempty"`
 }
 
 // NodeDigest returns the digest of the single lock node matching id and kind

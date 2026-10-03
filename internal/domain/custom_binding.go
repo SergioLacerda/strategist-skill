@@ -59,7 +59,7 @@ func NewCustomBindingEvidence(facts CustomPackageFacts, generation int64, status
 	instance := facts.InstanceID()
 	digest := customRoleBindingDigest(facts)
 	binding := SlotBinding{
-		SchemaVersion: "strategist-plugin-binding/v1", Slot: facts.Slot, InstalledInstanceID: instance, Role: facts.Role,
+		SchemaVersion: "strategist-plugin-binding/v1", TaxonomyVersion: CanonicalTaxonomyVersion, Slot: facts.Slot, InstalledInstanceID: instance, Role: facts.Role,
 		WeaponVersion: facts.PackageVersion, WeaponDigest: facts.AdapterDigest, SourceDigest: facts.PackageDigest,
 		BindingDigest: digest, Origin: string(WeaponOriginCustom), RuntimeKind: facts.RuntimeKind,
 		ConnectorID: facts.ConnectorID, Entrypoint: facts.Entrypoint,
@@ -111,6 +111,9 @@ func customRejection(format string, args ...any) error {
 // mission planning). It never repairs, infers or rewrites anything: a missing,
 // mismatched or tampered value is an error that names the evidence.
 func ValidateCustomBinding(lock PluginLockFile, binding SlotBinding, role, slot string) error {
+	if err := ValidateTaxonomyVersion(binding.TaxonomyVersion); err != nil {
+		return customRejection("slot %q has invalid taxonomy version: %v", slot, err)
+	}
 	if err := validateCustomBindingFields(binding, role, slot); err != nil {
 		return err
 	}

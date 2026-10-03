@@ -78,11 +78,12 @@ func ParseWeaponRef(ref string) (id, version string) {
 // ParseCompiledRegistryCatalog reads the registry sections from catalog YAML.
 func ParseCompiledRegistryCatalog(raw []byte) (CompiledRegistry, error) {
 	var e struct {
-		SchemaVersion  string                  `yaml:"schema_version"`
-		Weapons        []CompiledWeapon        `yaml:"weapons"`
-		Roles          []CompiledRole          `yaml:"roles"`
-		Compatibility  []CompiledCompatibility `yaml:"compatibility"`
-		RankedBindings []CompiledRankedBinding `yaml:"ranked_bindings"`
+		SchemaVersion   string                  `yaml:"schema_version"`
+		TaxonomyVersion string                  `yaml:"taxonomy_version"`
+		Weapons         []CompiledWeapon        `yaml:"weapons"`
+		Roles           []CompiledRole          `yaml:"roles"`
+		Compatibility   []CompiledCompatibility `yaml:"compatibility"`
+		RankedBindings  []CompiledRankedBinding `yaml:"ranked_bindings"`
 	}
 	if err := yaml.Unmarshal(raw, &e); err != nil {
 		return CompiledRegistry{}, fmt.Errorf("parse compiled registry catalog: %w", err)
@@ -90,7 +91,11 @@ func ParseCompiledRegistryCatalog(raw []byte) (CompiledRegistry, error) {
 	if e.SchemaVersion == "" {
 		return CompiledRegistry{}, fmt.Errorf("parse compiled registry catalog: catalog schema_version is required")
 	}
-	r := CompiledRegistry{SchemaVersion: CompiledRegistrySchemaVersion, Weapons: e.Weapons, Roles: e.Roles, Compatibility: e.Compatibility, RankedBindings: e.RankedBindings}
+	taxonomyVersion := e.TaxonomyVersion
+	if taxonomyVersion == "" {
+		taxonomyVersion = CanonicalTaxonomyVersion
+	}
+	r := CompiledRegistry{SchemaVersion: CompiledRegistrySchemaVersion, TaxonomyVersion: taxonomyVersion, Weapons: e.Weapons, Roles: e.Roles, Compatibility: e.Compatibility, RankedBindings: e.RankedBindings}
 	if err := r.Validate(); err != nil {
 		return CompiledRegistry{}, err
 	}

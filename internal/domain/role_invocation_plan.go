@@ -12,8 +12,9 @@ import "fmt"
 // docs/adr/0041-cli-enforcement-sequencing-and-role-invocation-plan-naming.md
 // D1 for the naming rationale that keeps them separate.
 type RoleInvocationPlan struct {
-	Role string `json:"role"`
-	Slot string `json:"slot"`
+	Role            string `json:"role"`
+	Slot            string `json:"slot"`
+	TaxonomyVersion string `json:"taxonomy_version,omitempty"`
 
 	// Mode is the source binding's EffectiveMode() (SlotBindingModeCustom or
 	// SlotBindingModeRanked). NewRoleInvocationPlanFromLock only resolves
@@ -81,6 +82,7 @@ func NewRoleInvocationPlanFromLock(role, slot string, lock PluginLockFile) (Role
 	return RoleInvocationPlan{
 		Role:              role,
 		Slot:              slot,
+		TaxonomyVersion:   CanonicalTaxonomyVersion,
 		Mode:              binding.EffectiveMode(),
 		WeaponID:          binding.InstalledInstanceID,
 		WeaponVersion:     binding.WeaponVersion,
@@ -105,6 +107,9 @@ func NewRoleInvocationPlanFromLock(role, slot string, lock PluginLockFile) (Role
 // certified, matches binding's provider, and declares affinity for role —
 // fail-closed on any mismatch rather than trusting an inconsistent pairing.
 func NewRankedRoleInvocationPlanFromCatalog(role, slot string, binding SlotBinding, stamp CatalogRankedStamp) (RoleInvocationPlan, error) {
+	if err := ValidateTaxonomyVersion(binding.TaxonomyVersion); err != nil {
+		return RoleInvocationPlan{}, fmt.Errorf("role invocation plan: %w", err)
+	}
 	if !stamp.Certified() {
 		return RoleInvocationPlan{}, fmt.Errorf("role invocation plan: provider %q is not a certified ranked candidate", stamp.ID)
 	}
@@ -121,8 +126,10 @@ func NewRankedRoleInvocationPlanFromCatalog(role, slot string, binding SlotBindi
 	return RoleInvocationPlan{
 		Role:              role,
 		Slot:              slot,
+		TaxonomyVersion:   CanonicalTaxonomyVersion,
 		Mode:              SlotBindingModeRanked,
 		WeaponID:          stamp.ID,
+		WeaponVersion:     binding.WeaponVersion,
 		WeaponDigest:      stamp.CertificationDigest,
 		BindingDigest:     stamp.CertificationDigest,
 		BindingGeneration: binding.Generation,
@@ -162,6 +169,9 @@ func SingleLockBindingForSlot(lock PluginLockFile, slot string) (SlotBinding, er
 	case 0:
 		return SlotBinding{}, fmt.Errorf("role invocation plan: no persisted weapon binding for slot %q", slot)
 	case 1:
+		if err := ValidateTaxonomyVersion(matches[0].TaxonomyVersion); err != nil {
+			return SlotBinding{}, fmt.Errorf("role invocation plan: %w", err)
+		}
 		return matches[0], nil
 	default:
 		return SlotBinding{}, fmt.Errorf("role invocation plan: plugins.lock has %d bindings for slot %q", len(matches), slot)

@@ -53,6 +53,29 @@ func TestBuildRoleInvocationPlan_ResolvesRoleFromSlotMapAndLock(t *testing.T) {
 	require.Equal(t, "discover", plan.Entrypoint)
 }
 
+func TestBuildRoleLoadoutComposesPinnedWeaponAndCapabilities(t *testing.T) {
+	root := writeCustomValidationRoot(t, nil)
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "contracts", "machine"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "contracts", "machine", "mechanisms.yaml"), []byte(`schema_version: "1"
+mechanisms:
+  - id: initiative
+    family: feat
+    enforcement_kind: code
+    summary: advise
+    invoked_by: [ranger]
+    how_to_invoke: consult
+    phase_scope: [discovery]
+`), 0o644))
+	resolution, err := domain.ResolveStage(domain.StageResolutionRequest{Route: "full_pipeline", Role: "ranger"})
+	require.NoError(t, err)
+
+	loadout, err := BuildRoleLoadout(root, "discovery", resolution)
+	require.NoError(t, err)
+	require.NoError(t, loadout.Validate())
+	require.Len(t, loadout.Feats, 1)
+	require.Equal(t, "initiative", loadout.Feats[0].ID)
+}
+
 func TestBuildRoleInvocationPlan_RejectsIncompleteOrTamperedCustomBindings(t *testing.T) {
 	cases := map[string]func(*domain.PluginLockFile){
 		"missing weapon digest":       func(l *domain.PluginLockFile) { l.Bindings[0].WeaponDigest = "" },

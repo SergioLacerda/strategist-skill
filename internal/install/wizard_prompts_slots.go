@@ -23,7 +23,8 @@ func promptSlots(p Prompter, b i18n.WizardStrings, catalog pluginCatalog, provid
 		fmt.Println(b.HeaderSlots)
 	}
 
-	discoveryOptions := compatibleSlotOptions(catalog, slotRoleID(domain.SlotDiscovery), slotHandoffSchema(domain.SlotDiscovery))
+	optionSet := newInstallOptionSet(catalog)
+	discoveryOptions := optionSet.forSlot(string(domain.SlotDiscovery))
 	printExcludedCandidates(discoveryOptions.excluded)
 	if len(discoveryOptions.ids) == 0 {
 		return "", "", "", "", "", "", fmt.Errorf("wizard: discovery: no compatible weapon for role ranger")
@@ -34,7 +35,7 @@ func promptSlots(p Prompter, b i18n.WizardStrings, catalog pluginCatalog, provid
 		return "", "", "", "", "", "", err
 	}
 
-	refinementOptions := compatibleSlotOptions(catalog, slotRoleID(domain.SlotRefinement), slotHandoffSchema(domain.SlotRefinement))
+	refinementOptions := optionSet.forSlot(string(domain.SlotRefinement))
 	printExcludedCandidates(refinementOptions.excluded)
 	if len(refinementOptions.ids) == 0 {
 		return "", "", "", "", "", "", fmt.Errorf("wizard: refinement: no compatible weapon for role archivist")
@@ -72,7 +73,7 @@ func printRankedRuntimeNote(b i18n.WizardStrings, catalog pluginCatalog, rankedI
 }
 
 func promptExecutionSlot(p Prompter, b i18n.WizardStrings, catalog pluginCatalog, providerRisk map[string]string) (string, string, error) {
-	options := compatibleSlotOptions(catalog, slotRoleID(domain.SlotExecution), slotHandoffSchema(domain.SlotExecution))
+	options := newInstallOptionSet(catalog).forSlot(string(domain.SlotExecution))
 	printExcludedCandidates(options.excluded)
 	if len(options.ids) == 0 {
 		// Older synthetic extractors predate the catalogued internal skill.

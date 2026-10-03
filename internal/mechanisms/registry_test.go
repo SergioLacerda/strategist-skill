@@ -44,7 +44,7 @@ func TestParseAcceptsAValidRegistry(t *testing.T) {
 
 func TestParseRejectsInvalidRows(t *testing.T) {
 	cases := map[string]string{
-		"duplicate id":       strings.Replace(validRegistry, "id: search", "id: gate", 1),
+		"duplicate identity": strings.Replace(validRegistry, "id: everywhere", "id: gate", 1),
 		"unknown family":     strings.Replace(validRegistry, "family: feat", "family: route", 1),
 		"unknown kind":       strings.Replace(validRegistry, "enforcement_kind: contract", "enforcement_kind: magic", 1),
 		"unknown tier":       strings.Replace(validRegistry, "machine_enforced", "sort_of", 1),
@@ -52,11 +52,79 @@ func TestParseRejectsInvalidRows(t *testing.T) {
 		"missing invoked_by": strings.Replace(validRegistry, "invoked_by: [ranger]\n", "", 1),
 		"unknown role":       strings.Replace(validRegistry, "invoked_by: [ranger]", "invoked_by: [wizard]", 1),
 		"no rows":            "schema_version: \"1\"\nmechanisms: []\n",
+		"unsupported schema": strings.Replace(validRegistry, `schema_version: "1"`, `schema_version: "2"`, 1),
 	}
 	for name, raw := range cases {
 		_, err := Parse([]byte(raw))
 		assert.Error(t, err, name)
 	}
+}
+
+func TestParseUsesFamilyAwareIdentities(t *testing.T) {
+	raw := strings.Replace(validRegistry, "id: search", "id: gate", 1)
+	reg, err := Parse([]byte(raw))
+	require.NoError(t, err)
+
+	mechanism, err := reg.Rows[0].CanonicalIdentity()
+	require.NoError(t, err)
+	feat, err := reg.Rows[1].CanonicalIdentity()
+	require.NoError(t, err)
+	assert.NotEqual(t, mechanism, feat)
+	assert.Equal(t, domain.TaxonomyMechanism, mechanism.Family)
+	assert.Equal(t, domain.TaxonomyFeat, feat.Family)
+}
+
+func TestParseAcceptsAllCanonicalFamilies(t *testing.T) {
+	raw := `schema_version: "1"
+mechanisms:
+  - id: ranger
+    family: role
+    enforcement_kind: contract
+    summary: role identity
+    invoked_by: [all]
+    how_to_invoke: role.yaml
+  - id: native-search
+    version: 1.0.0
+    family: weapon
+    enforcement_kind: code
+    summary: pinned weapon identity
+    invoked_by: [ranger]
+    how_to_invoke: embedded payload
+  - id: full
+    family: stage
+    enforcement_kind: code
+    summary: governed stage
+    invoked_by: [orchestrator]
+    how_to_invoke: stage resolver
+  - id: roster-plan
+    family: artifact
+    enforcement_kind: contract
+    summary: reproducible plan
+    invoked_by: [orchestrator]
+    how_to_invoke: install plan
+`
+	reg, err := Parse([]byte(raw))
+	require.NoError(t, err)
+	require.Len(t, reg.Rows, 4)
+
+	identities := make([]domain.CanonicalIdentity, 0, len(reg.Rows))
+	for _, row := range reg.Rows {
+		identity, identityErr := row.CanonicalIdentity()
+		require.NoError(t, identityErr)
+		identities = append(identities, identity)
+	}
+	assert.Equal(t, domain.TaxonomyRole, identities[0].Family)
+	assert.Equal(t, domain.TaxonomyWeapon, identities[1].Family)
+	assert.Equal(t, "1.0.0", identities[1].Version)
+	assert.Equal(t, domain.TaxonomyStage, identities[2].Family)
+	assert.Equal(t, domain.TaxonomyArtifact, identities[3].Family)
+}
+
+func TestParseRejectsUnversionedWeaponIdentity(t *testing.T) {
+	raw := strings.Replace(validRegistry, "family: feat", "family: weapon", 1)
+	_, err := Parse([]byte(raw))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "requires version")
 }
 
 func TestForRoleIncludesAllRowsAndRoleRows(t *testing.T) {
@@ -66,6 +134,37 @@ func TestForRoleIncludesAllRowsAndRoleRows(t *testing.T) {
 	assert.Equal(t, []string{"gate", "everywhere"}, rowIDs(reg.ForRole("sniper")))
 	assert.Equal(t, []string{"search", "everywhere"}, rowIDs(reg.ForRole("ranger")))
 	assert.Equal(t, []string{"everywhere"}, rowIDs(reg.ForRole("scout")))
+}
+
+func TestRoleLoadoutCapabilitiesSeparatesFeatsAndTools(t *testing.T) {
+	reg, err := Parse([]byte(validRegistry))
+	require.NoError(t, err)
+	feats, tools := reg.RoleLoadoutCapabilities("ranger", "discovery")
+	assert.Equal(t, []string{"search"}, capabilityIDs(feats))
+	assert.Empty(t, tools)
+}
+
+func TestBuildRoleLoadoutCombinesStageAndPinnedWeapon(t *testing.T) {
+	reg, err := Parse([]byte(validRegistry))
+	require.NoError(t, err)
+	resolution, err := domain.ResolveStage(domain.StageResolutionRequest{Route: "full_pipeline", Role: "ranger"})
+	require.NoError(t, err)
+	loadout, err := reg.BuildRoleLoadout(resolution, domain.RoleInvocationPlan{
+		Role: "ranger", Slot: "discovery", WeaponID: "brainstorming", WeaponVersion: "1.0.0",
+		WeaponDigest: "sha256:weapon", BindingDigest: "sha256:binding",
+		Runtime: domain.WeaponRuntime{Kind: domain.RankedRuntimeEmbedded},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, domain.StageFull, loadout.Resolution.Stage)
+	assert.Equal(t, []string{"search"}, capabilityIDs(loadout.Feats))
+}
+
+func capabilityIDs(capabilities []domain.LoadoutCapability) []string {
+	ids := make([]string, 0, len(capabilities))
+	for _, capability := range capabilities {
+		ids = append(ids, capability.ID)
+	}
+	return ids
 }
 
 func TestBriefIsCompactAndNamesHowToInvoke(t *testing.T) {
@@ -82,6 +181,39 @@ func TestBriefIsCompactAndNamesHowToInvoke(t *testing.T) {
 	full := reg.BriefFull("sniper")
 	assert.Contains(t, full, "code/machine_enforced")
 	assert.Contains(t, full, "use: before execution")
+}
+
+func TestBriefForStageScopesAwarenessToRoleAndStage(t *testing.T) {
+	raw := validRegistry + `
+  - id: discovery-only
+    family: tool
+    enforcement_kind: code
+    summary: discovery-only operation
+    invoked_by: [ranger]
+    how_to_invoke: discovery tool
+    phase_scope: [discovery]
+`
+	reg, err := Parse([]byte(raw))
+	require.NoError(t, err)
+
+	short, err := reg.BriefForStage("ranger", domain.StageShort)
+	require.NoError(t, err)
+	assert.Contains(t, short, "search")
+	assert.NotContains(t, short, "discovery-only")
+	assert.Contains(t, short, "SHORT")
+
+	full, err := reg.BriefFullForStage("ranger", domain.StageFull)
+	require.NoError(t, err)
+	assert.Contains(t, full, "discovery-only")
+	assert.Contains(t, full, "code")
+}
+
+func TestBriefForStageRejectsUnknownStage(t *testing.T) {
+	reg, err := Parse([]byte(validRegistry))
+	require.NoError(t, err)
+	_, err = reg.BriefForStage("ranger", domain.Stage("UNKNOWN"))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "is not canonical")
 }
 
 func rowIDs(rows []Row) []string {

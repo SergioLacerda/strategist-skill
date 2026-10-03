@@ -220,10 +220,12 @@ long: |
   Prints the role-scoped view of the Mechanisms registry
   (contracts/machine/mechanisms.yaml): what each tool is and how to invoke it.
   Roles run it from their on_start hook so an agent in a mission knows what is at
-  its disposal. --full adds the enforcement tier and when to use each tool.
+  its disposal. --stage narrows the view to a canonical Stage and its phases.
+  --full adds the enforcement tier and when to use each tool.
 flag: --full (bool) default="false" usage="include enforcement and when-to-use detail"
 flag: --role (string) default="" usage="role to print the brief for (required)"
 flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+flag: --stage (string) default="" usage="canonical Stage to scope awareness to (FULL, SHORT, or ROSTER)"
 
 == strategist metrics
 use: metrics

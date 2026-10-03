@@ -10,7 +10,8 @@ description: >
   the catalog is deliberately not in machine.always_load.
 
 # Row fields (validated by internal/mechanisms):
-#   id, display_name, family (mechanism | feat | tool), owner_package, contract_file
+#   id, version (required for weapon rows), display_name, family (role | weapon |
+#   feat | tool | mechanism | stage | artifact), owner_package, contract_file
 #   (defaults-relative; `;` separates several, `#` names a section),
 #   enforcement_kind (code | contract | prose), enforcement_tier (optional, the
 #   machine_enforced | machine_observed | agent_only vocabulary of errors.yaml),

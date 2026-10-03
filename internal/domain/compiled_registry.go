@@ -11,11 +11,12 @@ const CompiledRegistrySchemaVersion = "strategist-compiled-role-weapon-registry/
 // CompiledRegistry is the build-time immutable view of the internal Weapon,
 // Role, and Ranked binding graph.
 type CompiledRegistry struct {
-	SchemaVersion  string                  `yaml:"schema_version"`
-	Weapons        []CompiledWeapon        `yaml:"weapons"`
-	Roles          []CompiledRole          `yaml:"roles"`
-	Compatibility  []CompiledCompatibility `yaml:"compatibility,omitempty"`
-	RankedBindings []CompiledRankedBinding `yaml:"ranked_bindings"`
+	SchemaVersion   string                  `yaml:"schema_version"`
+	TaxonomyVersion string                  `yaml:"taxonomy_version,omitempty"`
+	Weapons         []CompiledWeapon        `yaml:"weapons"`
+	Roles           []CompiledRole          `yaml:"roles"`
+	Compatibility   []CompiledCompatibility `yaml:"compatibility,omitempty"`
+	RankedBindings  []CompiledRankedBinding `yaml:"ranked_bindings"`
 }
 
 // CompiledWeapon is the normalized build identity of one Weapon.
@@ -77,6 +78,9 @@ type CompiledRankedBinding struct {
 func (r CompiledRegistry) Validate() error {
 	if r.SchemaVersion != CompiledRegistrySchemaVersion {
 		return fmt.Errorf("compiled registry: unsupported schema %q", r.SchemaVersion)
+	}
+	if err := ValidateTaxonomyVersion(r.TaxonomyVersion); err != nil {
+		return fmt.Errorf("compiled registry: %w", err)
 	}
 	if len(r.Weapons) == 0 {
 		return fmt.Errorf("compiled registry: weapons must not be empty")

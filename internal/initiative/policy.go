@@ -16,8 +16,8 @@ import (
 func DefaultPolicy() Policy {
 	return Policy{
 		Version: "1",
-		Feat:    "initiative", DisplayName: "INITIATIVE", Mode: "consultative",
-		Authority: PolicyAuthority{Owns: []string{"advice", "diligence", "alignment"}, DoesNotOwn: []string{"model", "provider", "capability", "effort", "level_source", "approval_gate", "implementation_authorization"}},
+		Feat:    FeatID, DisplayName: FeatName, Mode: "consultative",
+		Authority: DefaultAuthority(),
 		Records:   PolicyRecords{Path: ".strategist/memory/initiative-records.jsonl", AppendOnly: true, Correlation: []string{"mission_id", "role", "run_id", "advice_id"}},
 		Profiles: map[string]Profile{
 			"scout":     {RecommendedCapability: "economical", RecommendedEffort: EffortMedium, Diligence: []string{"classify_scope", "surface_uncertainty"}, ConfidenceCeiling: ConfidenceMedium},
@@ -41,8 +41,11 @@ func (p Policy) Validate() error {
 	if err := validateProfiles(p.Profiles); err != nil {
 		return err
 	}
-	if strings.TrimSpace(p.Feat) != "initiative" {
-		return fmt.Errorf("initiative_policy_invalid: feat must be initiative")
+	if err := validateAuthorityBoundary(p.Authority); err != nil {
+		return err
+	}
+	if strings.TrimSpace(p.Feat) != FeatID {
+		return fmt.Errorf("initiative_policy_invalid: feat must be %s", FeatID)
 	}
 	return validateReevaluationTriggers(p.Triggers)
 }

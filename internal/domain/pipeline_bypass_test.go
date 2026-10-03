@@ -145,3 +145,22 @@ func TestPipelineRouteForScoutRoute(t *testing.T) {
 		assert.Equal(t, want, domain.PipelineRouteForScoutRoute(scout), "scout route %q", scout)
 	}
 }
+
+func TestPipelineRouteForStageUsesCanonicalStage(t *testing.T) {
+	t.Parallel()
+	assert.Equal(t, domain.MissionRouteFullPipeline, domain.PipelineRouteForStage(domain.StageFull))
+	assert.Equal(t, domain.MissionRouteDirectExecute, domain.PipelineRouteForStage(domain.StageShort))
+	assert.Equal(t, domain.MissionRouteFullPipeline, domain.PipelineRouteForStage(domain.StageRoster))
+	assert.Equal(t, domain.MissionRouteFullPipeline, domain.PipelineRouteForStage(domain.Stage("unknown")))
+}
+
+func TestEvaluatePipelineBypassPrefersCanonicalStageOverLegacyRoute(t *testing.T) {
+	t.Parallel()
+	decision := domain.EvaluatePipelineBypass(domain.PipelineEvidence{
+		Stage:              domain.StageShort,
+		Route:              domain.MissionRouteFullPipeline,
+		DirectGateApproved: false,
+	})
+	assert.False(t, decision.Allowed)
+	assert.Equal(t, "direct_gate", decision.ExpectedPhase)
+}

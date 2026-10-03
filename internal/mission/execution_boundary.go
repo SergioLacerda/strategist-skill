@@ -16,25 +16,6 @@ import (
 // executionEntryAction names the guarded transition in a bypass decision.
 const executionEntryAction = "enter execution (handoff_challenge_satisfied)"
 
-// RecordRouteDecision persists Scout's route_decision for a mission so the
-// execution boundary can read it back. The decision must belong to missionID;
-// an absent timestamp is filled in. It reports false when a decision for the
-// mission was already recorded (the history is idempotent by mission_id).
-func RecordRouteDecision(strategistRoot, missionID string, raw []byte) (bool, error) {
-	decision, err := parseRouteDecision(missionID, raw)
-	if err != nil {
-		return false, err
-	}
-	appended, decision, err := appendRouteDecision(strategistRoot, decision)
-	if err != nil {
-		return false, err
-	}
-	if err := recordScoutRouteConfidence(strategistRoot, decision); err != nil {
-		return appended, fmt.Errorf("record Scout route confidence: %w", err)
-	}
-	return appended, nil
-}
-
 // parseRouteDecision decodes Scout's decision, checks it belongs to missionID
 // and fills an absent timestamp.
 func parseRouteDecision(missionID string, raw []byte) (telemetry.RouteDecision, error) {
@@ -48,6 +29,24 @@ func parseRouteDecision(missionID string, raw []byte) (telemetry.RouteDecision, 
 	if decision.Timestamp == "" {
 		decision.Timestamp = time.Now().UTC().Format(time.RFC3339Nano)
 	}
+	resolution, err := domain.ResolveStage(domain.StageResolutionRequest{
+		Route:            decision.SelectedRoute,
+		PolicyVersion:    "route-resolution/v1",
+		MissionExecution: true,
+	})
+	if err != nil {
+		return telemetry.RouteDecision{}, fmt.Errorf("resolve route Stage: %w", err)
+	}
+	artifact, err := domain.NewStageResolutionArtifact(resolution, decision.RequestCategory)
+	if err != nil {
+		return telemetry.RouteDecision{}, fmt.Errorf("build Stage resolution artifact: %w", err)
+	}
+	decision.Stage = string(artifact.Stage)
+	decision.StageTrigger = artifact.Trigger
+	decision.StageRole = artifact.Role
+	decision.StageFeat = artifact.Feat
+	decision.StagePolicyVersion = artifact.PolicyVersion
+	decision.StageReason = artifact.Reason
 	return decision, nil
 }
 
@@ -131,7 +130,7 @@ func recordScoutRouteConfidence(strategistRoot string, decision telemetry.RouteD
 // mission engine itself, which reaches the handoff challenge only through an
 // approved Approval Gate.
 func EvaluateExecutionEntry(strategistRoot, basePath string, status domain.MissionEngineStatus) (domain.PipelineBypassDecision, error) {
-	selected, err := recordedRoute(strategistRoot, status.MissionID)
+	decision, err := recordedRouteDecision(strategistRoot, status.MissionID)
 	if err != nil {
 		return domain.PipelineBypassDecision{}, err
 	}
@@ -143,8 +142,14 @@ func EvaluateExecutionEntry(strategistRoot, basePath string, status domain.Missi
 		}
 	}
 	gateApproved := status.State == domain.StateHandoffChallenge
+	stage := domain.Stage(decision.Stage)
+	route := domain.PipelineRouteForScoutRoute(decision.SelectedRoute)
+	if stage != "" {
+		route = domain.PipelineRouteForStage(stage)
+	}
 	return domain.EvaluatePipelineBypass(domain.PipelineEvidence{
-		Route:              domain.PipelineRouteForScoutRoute(selected),
+		Stage:              stage,
+		Route:              route,
 		BasePath:           basePath,
 		MissionID:          status.MissionID,
 		AttemptedAction:    executionEntryAction,
@@ -159,20 +164,3 @@ func EvaluateExecutionEntry(strategistRoot, basePath string, status domain.Missi
 
 // recordedRoute returns the selected_route Scout recorded for the mission, or ""
 // when none was recorded.
-func recordedRoute(strategistRoot, missionID string) (string, error) {
-	decisions, err := telemetry.ReadRouteDecisions(telemetry.RouteDecisionHistoryPath(strategistRoot))
-	if err != nil {
-		return "", fmt.Errorf("read route decisions: %w", err)
-	}
-	for _, decision := range decisions {
-		if decision.MissionID == missionID {
-			return decision.SelectedRoute, nil
-		}
-	}
-	return "", nil
-}
-
-func fileExists(path string) bool {
-	info, err := os.Stat(path)
-	return err == nil && !info.IsDir()
-}

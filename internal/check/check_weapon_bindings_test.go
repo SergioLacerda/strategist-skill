@@ -50,6 +50,8 @@ func appendFixtureCatalogProvider(t *testing.T, root, skillID, canonicalRole str
 	entry := "    - id: " + skillID + "\n      risk_score: write_analysis\n      compatibility_source: embedded\n      canonical_role: " + canonicalRole + "\n      roles: [" + canonicalRole + "]\n"
 	text := string(raw)
 	switch {
+	case strings.Contains(text, "\nproviders: []\n"):
+		text = strings.Replace(text, "\nproviders: []\n", "\nproviders:\n"+entry, 1)
 	case !strings.Contains(text, "\nproviders:\n") && !strings.HasPrefix(text, "providers:\n"):
 		text = strings.Replace(text, "schema_version: strategist-plugin-catalog/v2\n", "schema_version: strategist-plugin-catalog/v2\nproviders:\n"+entry, 1)
 	case strings.Contains(text, "\nweapons:\n"):

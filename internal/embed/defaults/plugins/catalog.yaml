@@ -1,4 +1,5 @@
 schema_version: strategist-plugin-catalog/v2
+taxonomy_version: strategist-taxonomy/v1
 providers:
     - id: archivist
       risk_score: write_analysis

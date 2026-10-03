@@ -1,7 +1,12 @@
 package initiative
 
-// FeatName identifies the INITIATIVE Feat.
-const FeatName = "INITIATIVE"
+const (
+	// FeatID is the canonical taxonomy identity used in policy, registry, and
+	// persisted correlation fields. It is intentionally lowercase and stable.
+	FeatID = "initiative"
+	// FeatName is the presentation label retained for human-facing output.
+	FeatName = "INITIATIVE"
+)
 
 // EffortTier is the reasoning effort level a role is expected to apply.
 type EffortTier string

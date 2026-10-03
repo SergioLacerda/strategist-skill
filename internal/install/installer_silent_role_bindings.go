@@ -12,21 +12,18 @@ import (
 // upgrade or reinstall that preserves active.yaml. It does not infer Ranked
 // mode from a provider id, so a Custom binding remains the user's choice.
 func (s Service) refreshInstalledRankedBindings(strategistDir string) error {
-	lockFile, err := readPluginLockFile(strategistDir)
+	lockFile, ok, err := readRankedRefreshLock(strategistDir)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return fmt.Errorf("read plugins.lock: %w", err)
+		return err
 	}
-	if !hasPersistedRankedBinding(lockFile) {
+	if !ok {
 		return nil
 	}
 	catalog, err := loadPluginCatalog(s.Extractor)
 	if err != nil {
 		return fmt.Errorf("load plugin catalog: %w", err)
 	}
-	refreshed, err := refreshPersistedRankedBindings(catalog, lockFile)
+	refreshed, err := refreshRankedLock(catalog, lockFile)
 	if err != nil {
 		return err
 	}
@@ -34,6 +31,25 @@ func (s Service) refreshInstalledRankedBindings(strategistDir string) error {
 		return fmt.Errorf("write plugins.lock: %w", err)
 	}
 	return nil
+}
+
+func readRankedRefreshLock(strategistDir string) (domain.PluginLockFile, bool, error) {
+	lockFile, err := readPluginLockFile(strategistDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return domain.PluginLockFile{}, false, nil
+		}
+		return domain.PluginLockFile{}, false, fmt.Errorf("read plugins.lock: %w", err)
+	}
+	return lockFile, hasPersistedRankedBinding(lockFile), nil
+}
+
+func refreshRankedLock(catalog pluginCatalog, lockFile domain.PluginLockFile) (domain.PluginLockFile, error) {
+	refreshed, err := refreshPersistedRankedBindings(catalog, lockFile)
+	if err != nil {
+		return domain.PluginLockFile{}, err
+	}
+	return attachWeaponBindingArtifacts(refreshed)
 }
 
 func hasPersistedRankedBinding(lockFile domain.PluginLockFile) bool {
@@ -67,6 +83,10 @@ func (s Service) activateSilentRoleProviderBindings(strategistDir string, active
 	if err != nil {
 		return fmt.Errorf("enrich Role/Weapon bindings: %w", err)
 	}
+	lockFile, err = attachWeaponBindingArtifacts(lockFile)
+	if err != nil {
+		return err
+	}
 	if err := persistSilentBindings(strategistDir, lockFile); err != nil {
 		return err
 	}
@@ -90,6 +110,9 @@ func (s Service) loadSilentBindingPlan(activeYAMLData []byte) (map[string]string
 	plan, err := planPluginOnboarding(s.Extractor, catalog, slots)
 	if err != nil {
 		return nil, pluginCatalog{}, pluginOnboardingPlan{}, fmt.Errorf("plugin onboarding plan: %w", err)
+	}
+	if err := plan.bindInstallContext(cfg.Mode, cfg.BasePath, slots, nil); err != nil {
+		return nil, pluginCatalog{}, pluginOnboardingPlan{}, fmt.Errorf("install plan context: %w", err)
 	}
 	return slots, catalog, plan, nil
 }

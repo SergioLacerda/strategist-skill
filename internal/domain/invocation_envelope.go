@@ -26,6 +26,7 @@ type InvocationComponent struct {
 // phase invocation. Components from future phases are never included.
 type InvocationEnvelope struct {
 	SchemaVersion       string                `json:"schema_version"`
+	TaxonomyVersion     string                `json:"taxonomy_version,omitempty"`
 	MissionID           string                `json:"mission_id"`
 	Phase               PipelinePhase         `json:"phase"`
 	Role                string                `json:"role"`
@@ -62,10 +63,12 @@ func ComposeInvocationEnvelope(request ComposeInvocationRequest) (InvocationEnve
 		refs = append(refs, component.Ref)
 	}
 	plan := request.Plan
+	plan.TaxonomyVersion = CanonicalTaxonomyVersion
 	plan.RequiredContextRefs = refs
 	plan.OutputSchemaRef = outputSchema
 	envelope := InvocationEnvelope{
 		SchemaVersion:       InvocationEnvelopeSchemaVersion,
+		TaxonomyVersion:     CanonicalTaxonomyVersion,
 		MissionID:           request.MissionID,
 		Phase:               request.Phase,
 		Role:                request.Plan.Role,
@@ -93,6 +96,9 @@ func validateInvocationRequest(request ComposeInvocationRequest) (string, error)
 	}
 	if request.Plan.Role == "" || request.Plan.Slot == "" || request.Plan.WeaponID == "" {
 		return "", fmt.Errorf("invocation envelope: role, slot, and provider are required")
+	}
+	if err := ValidateTaxonomyVersion(request.Plan.TaxonomyVersion); err != nil {
+		return "", fmt.Errorf("invocation envelope: %w", err)
 	}
 	outputSchema := request.OutputSchemaRef
 	if outputSchema == "" {

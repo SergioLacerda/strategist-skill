@@ -5,6 +5,7 @@ import (
 	"io"
 
 	livemission "github.com/SergioLacerda/strategist-skill/internal/mission"
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
 )
 
@@ -38,7 +39,11 @@ func RunRoute(cmd *cobra.Command, deps LifecycleDependencies, rootInput, mission
 	if err != nil {
 		return fmt.Errorf("mission route: read route decision: %w", err)
 	}
-	appended, err := livemission.RecordRouteDecision(root, missionID, raw)
+	var sink telemetry.EventSink
+	if deps.TelemetrySink != nil {
+		sink = deps.TelemetrySink()
+	}
+	appended, err := livemission.RecordRouteDecisionWithTelemetry(cmd.Context(), root, missionID, raw, sink)
 	if err != nil {
 		return fmt.Errorf("mission route: %w", err)
 	}

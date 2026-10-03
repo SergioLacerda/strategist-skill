@@ -46,28 +46,38 @@ func WeaponRefMatchesBinding(ref string, binding SlotBinding) bool {
 // ResolveRoleWeaponBinding reconciles operator intent, the persisted lock,
 // and the build registry. It performs no filesystem or connector I/O.
 func ResolveRoleWeaponBinding(active ActiveConfig, lock PluginLockFile, registry CompiledRegistry, role, slot string) (RoleWeaponBinding, error) {
-	providerID := active.Slots[slot]
-	if providerID == "" {
-		return RoleWeaponBinding{}, fmt.Errorf("role/weapon binding: active.yaml has no Weapon for slot %q", slot)
-	}
-	binding, err := SingleLockBindingForSlot(lock, slot)
+	binding, err := validateRoleWeaponBindingInputs(active, lock, registry, role, slot)
 	if err != nil {
 		return RoleWeaponBinding{}, err
 	}
-	if !binding.ValidMode() {
-		return RoleWeaponBinding{}, fmt.Errorf("role/weapon binding: slot %q has invalid mode %q", slot, binding.Mode)
-	}
-	if !WeaponRefMatchesBinding(providerID, binding) {
-		return RoleWeaponBinding{}, fmt.Errorf("role/weapon binding: active Weapon %q does not match lock Weapon %q for slot %q", providerID, binding.InstalledInstanceID, slot)
-	}
-	if binding.Role != "" && binding.Role != role {
-		return RoleWeaponBinding{}, fmt.Errorf("role/weapon binding: lock Role %q does not match requested Role %q", binding.Role, role)
-	}
-
 	if binding.EffectiveMode() == SlotBindingModeRanked {
 		return resolveRankedBinding(binding, registry, role, slot)
 	}
 	return resolveCustomBinding(lock, binding, role, slot)
+}
+
+func validateRoleWeaponBindingInputs(active ActiveConfig, lock PluginLockFile, registry CompiledRegistry, role, slot string) (SlotBinding, error) {
+	providerID := active.Slots[slot]
+	if providerID == "" {
+		return SlotBinding{}, fmt.Errorf("role/weapon binding: active.yaml has no Weapon for slot %q", slot)
+	}
+	binding, err := SingleLockBindingForSlot(lock, slot)
+	if err != nil {
+		return SlotBinding{}, err
+	}
+	if !binding.ValidMode() {
+		return SlotBinding{}, fmt.Errorf("role/weapon binding: slot %q has invalid mode %q", slot, binding.Mode)
+	}
+	if !WeaponRefMatchesBinding(providerID, binding) {
+		return SlotBinding{}, fmt.Errorf("role/weapon binding: active Weapon %q does not match lock Weapon %q for slot %q", providerID, binding.InstalledInstanceID, slot)
+	}
+	if binding.Role != "" && binding.Role != role {
+		return SlotBinding{}, fmt.Errorf("role/weapon binding: lock Role %q does not match requested Role %q", binding.Role, role)
+	}
+	if err := ValidateRoleWeaponIdentity(registry, role, slot, binding); err != nil {
+		return SlotBinding{}, err
+	}
+	return binding, nil
 }
 
 // resolveCustomBinding applies the shared Custom validator before it projects

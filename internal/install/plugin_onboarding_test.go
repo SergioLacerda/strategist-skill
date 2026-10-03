@@ -28,6 +28,9 @@ func TestPlanPluginOnboardingFromActiveSlotsProducesPreviewableBindings(t *testi
 
 	assert.True(t, plan.RequiresConfirmation)
 	assert.Equal(t, "strategist-plugin-onboarding-plan/v1", plan.SchemaVersion)
+	require.NoError(t, plan.InstallPlan.Validate())
+	require.NoError(t, plan.Roster.Validate())
+	assert.Len(t, plan.Selections, 3)
 	assert.Len(t, plan.Inventory.Instances, 3)
 	assert.Len(t, plan.Bindings, 3)
 	// 3 legacy adapter_contract nodes + 3 role_provider_binding nodes — this
@@ -36,6 +39,7 @@ func TestPlanPluginOnboardingFromActiveSlotsProducesPreviewableBindings(t *testi
 	// TestPlanRoleProviderMigrationValidatesOpenspecProposeAsArchivistMigrationCase).
 	assert.Len(t, plan.Lock.Nodes, 6)
 	assert.Contains(t, plan.Preview(), "slot discovery -> brainstorming@")
+	assert.Contains(t, plan.Preview(), "install plan sha256:")
 	assert.Contains(t, plan.Preview(), "lock ")
 	for _, binding := range plan.Bindings {
 		assert.NotEmpty(t, binding.InstalledInstanceID)

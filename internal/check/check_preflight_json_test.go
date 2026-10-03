@@ -25,6 +25,7 @@ func TestCheckCmd_JSON_Success(t *testing.T) {
 	var result domain.PreflightResult
 	require.NoError(t, json.Unmarshal([]byte(out), &result))
 	assert.Equal(t, domain.PreflightResultSchemaVersion, result.SchemaVersion)
+	assert.Equal(t, domain.CanonicalTaxonomyVersion, result.TaxonomyVersion)
 	assert.Equal(t, "ready", result.Status)
 	assert.Equal(t, dir, result.Identity.Root)
 	assert.Equal(t, "epic", result.Identity.Mode)

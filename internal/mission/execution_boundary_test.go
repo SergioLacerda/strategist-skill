@@ -1,6 +1,8 @@
 package mission
 
 import (
+	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -10,6 +12,16 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type routeTelemetrySink struct {
+	events []telemetry.Event
+	err    error
+}
+
+func (s *routeTelemetrySink) Emit(_ context.Context, event telemetry.Event) error {
+	s.events = append(s.events, event)
+	return s.err
+}
 
 const boundaryMission = "20260925-boundary"
 
@@ -140,6 +152,50 @@ func TestRecordRouteDecisionValidatesAndIsIdempotent(t *testing.T) {
 	require.Error(t, err, "the decision must belong to the mission it is recorded for")
 	_, err = RecordRouteDecision(root, boundaryMission, []byte(`{"mission_id":"`+boundaryMission+`","selected_route":"nope"}`))
 	require.Error(t, err)
+}
+
+func TestRecordRouteDecisionPersistsCanonicalStageProjection(t *testing.T) {
+	root := t.TempDir()
+	raw := `{"mission_id":"stage-route","request_category":"general","selected_route":"critical_hit","route_reason":"bounded","route_confidence":0.9,"evidence_state":"explicit","fallback_route":"full_pipeline"}`
+
+	appended, err := RecordRouteDecision(root, "stage-route", []byte(raw))
+	require.NoError(t, err)
+	require.True(t, appended)
+
+	decisions, err := telemetry.ReadRouteDecisions(telemetry.RouteDecisionHistoryPath(root))
+	require.NoError(t, err)
+	require.Len(t, decisions, 1)
+	assert.Equal(t, "SHORT", decisions[0].Stage)
+	assert.Equal(t, "general", decisions[0].StageTrigger)
+	assert.Equal(t, "route-resolution/v1", decisions[0].StagePolicyVersion)
+	assert.Contains(t, decisions[0].StageReason, "Critical Hit")
+}
+
+func TestRecordRouteDecisionWithTelemetryEmitsOnlyForNewDecision(t *testing.T) {
+	root := t.TempDir()
+	raw := `{"mission_id":"stage-event","request_category":"general","selected_route":"critical_hit","route_reason":"bounded","route_confidence":0.9,"evidence_state":"explicit","fallback_route":"full_pipeline"}`
+	sink := &routeTelemetrySink{}
+
+	appended, err := RecordRouteDecisionWithTelemetry(context.Background(), root, "stage-event", []byte(raw), sink)
+	require.NoError(t, err)
+	require.True(t, appended)
+	require.Len(t, sink.events, 1)
+	assert.Equal(t, telemetry.StageResolutionEventName, sink.events[0].Name)
+	assert.Equal(t, "SHORT", sink.events[0].Attributes[telemetry.AttrStage])
+
+	appended, err = RecordRouteDecisionWithTelemetry(context.Background(), root, "stage-event", []byte(raw), sink)
+	require.NoError(t, err)
+	assert.False(t, appended)
+	assert.Len(t, sink.events, 1)
+}
+
+func TestRecordRouteDecisionWithTelemetryPropagatesSinkFailure(t *testing.T) {
+	root := t.TempDir()
+	raw := `{"mission_id":"stage-event-fail","request_category":"general","selected_route":"full_pipeline","route_reason":"default","route_confidence":0.9,"evidence_state":"explicit","fallback_route":"full_pipeline"}`
+	sink := &routeTelemetrySink{err: fmt.Errorf("sink offline")}
+
+	_, err := RecordRouteDecisionWithTelemetry(context.Background(), root, "stage-event-fail", []byte(raw), sink)
+	require.ErrorContains(t, err, "emit Stage resolution telemetry")
 }
 
 func TestRecordRouteDecisionPreservesLowConfidenceAsAQuestion(t *testing.T) {

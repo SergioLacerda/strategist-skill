@@ -157,6 +157,21 @@ func writeNormativeRuntimeFiles(t *testing.T, dir string) {
 	for _, rel := range domain.GeneratedRuntimeFilePaths() {
 		require.NoError(t, os.WriteFile(filepath.Join(dir, filepath.FromSlash(rel)), []byte("generated\n"), 0o644))
 	}
+	writeRoleSourceFiles(t, dir)
+}
+
+func writeRoleSourceFiles(t *testing.T, dir string) {
+	t.Helper()
+	extractor := embedpkg.Extractor{}
+	for _, roleID := range []string{"scout", "ranger", "archivist", "sniper"} {
+		for _, path := range []string{"roles/" + roleID + ".yaml", "internal_skills/" + roleID + "/skill.yaml"} {
+			raw, err := extractor.ReadFile(path)
+			require.NoError(t, err, path)
+			fullPath := filepath.Join(dir, filepath.FromSlash(path))
+			require.NoError(t, os.MkdirAll(filepath.Dir(fullPath), 0o755))
+			require.NoError(t, os.WriteFile(fullPath, raw, 0o644))
+		}
+	}
 }
 
 // minimalCheckRoot creates a .strategist/ tree suitable for checkCmd with all

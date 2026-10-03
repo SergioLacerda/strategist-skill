@@ -145,6 +145,9 @@ func validateAndActivatePluginPlan(extractor domain.FileExtractor, catalog plugi
 	if err != nil {
 		return domain.PluginLockFile{}, fmt.Errorf("wizard: plugin onboarding plan: %w", err)
 	}
+	if err := plan.bindInstallContext(wc.Mode, wc.BasePath, wizardSlots(wc), wizardSlotModes(wc)); err != nil {
+		return domain.PluginLockFile{}, fmt.Errorf("wizard: install plan context: %w", err)
+	}
 	return activateWizardPlan(extractor, catalog, wc, strategistDir, plan, verbose)
 }
 

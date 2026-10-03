@@ -26,6 +26,13 @@ mechanisms:
     summary: filters
     invoked_by: [ranger]
     how_to_invoke: ranger.yaml
+  - id: discovery-only
+    family: tool
+    enforcement_kind: code
+    summary: discovery operation
+    invoked_by: [ranger]
+    how_to_invoke: discovery.yaml
+    phase_scope: [discovery]
 `
 
 func mechanismsRoot(t *testing.T) string {
@@ -67,6 +74,17 @@ func TestMechanismsBriefFullAddsEnforcementDetail(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, out, "before execution")
 	assert.Contains(t, out, "[code]")
+}
+
+func TestMechanismsBriefCanBeScopedToAStage(t *testing.T) {
+	root := mechanismsRoot(t)
+
+	out, err := runMechanisms(t, "brief", "--role", "ranger", "--stage", "short", "--root", root)
+
+	require.NoError(t, err)
+	assert.Contains(t, out, "SHORT")
+	assert.Contains(t, out, "search")
+	assert.NotContains(t, out, "discovery-only")
 }
 
 func TestMechanismsBriefRejectsAnUnknownRole(t *testing.T) {

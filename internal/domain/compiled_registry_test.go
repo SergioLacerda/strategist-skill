@@ -42,6 +42,14 @@ func TestCompiledRegistryValidateAndLookup(t *testing.T) {
 	assert.Equal(t, "brainstorming", binding.WeaponID)
 }
 
+func TestCompiledRegistryRejectsUnknownTaxonomyVersion(t *testing.T) {
+	t.Parallel()
+
+	registry := validCompiledRegistry()
+	registry.TaxonomyVersion = "strategist-taxonomy/v0"
+	require.ErrorContains(t, registry.Validate(), "unsupported taxonomy version")
+}
+
 func TestCompiledRegistryRejectsDuplicateAndBrokenBindings(t *testing.T) {
 	t.Parallel()
 
