@@ -1,7 +1,7 @@
 package initiative
 
-// AbilityName identifies the INITIATIVE ability.
-const AbilityName = "INITIATIVE"
+// FeatName identifies the INITIATIVE Feat.
+const FeatName = "INITIATIVE"
 
 // EffortTier is the reasoning effort level a role is expected to apply.
 type EffortTier string
@@ -113,7 +113,7 @@ type Profile struct {
 // Profiles.
 type Policy struct {
 	Version     string             `yaml:"version" json:"version"`
-	Ability     string             `yaml:"ability,omitempty" json:"ability,omitempty"`
+	Feat        string             `yaml:"feat,omitempty" json:"feat,omitempty"`
 	DisplayName string             `yaml:"display_name,omitempty" json:"display_name,omitempty"`
 	Mode        string             `yaml:"mode,omitempty" json:"mode,omitempty"`
 	Authority   PolicyAuthority    `yaml:"authority,omitempty" json:"authority,omitempty"`

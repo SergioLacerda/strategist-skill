@@ -11,7 +11,7 @@ contract: null
 Keep the human narrative and the structured telemetry aligned.
 
 Telemetry uses the canonical taxonomy without collapsing families: `role` and
-`provider` identify Role and Weapon context, `ability` names the mission behavior (an Ability or a hybrid item), `route`
+`provider` identify Role and Weapon context, `feat` names the contextual mission behavior (a Feat or a hybrid item), `route`
 identifies the Pipeline path Scout selected, and `artifact`
 identifies the generated Artifact. Pipeline stages and Mechanisms are
 described by their event/component contracts; they are not emitted as Roles or
@@ -51,7 +51,8 @@ Structured telemetry should preserve, when available:
 - `model`
 - `effort`
 - `level_source`
-- `ability`
+- `feat`
+- `initiative.feat`
 - `initiative.advice_id`
 - `initiative.policy_version`
 - `initiative.policy_digest`
@@ -124,7 +125,7 @@ tuple also emits the `role_level_resolved` event (DEBUG) with `role`, `provider`
 is repeated on its `handoff-metrics.jsonl` line.
 
 The `leveling:` block of `active.yaml` (`mode: manual | automatic`; absent means
-automatic) selects the resolution. LEVELING is an internal ability and the
+automatic) selects the resolution. LEVELING is an internal Tool and the
 install wizard leaves this optional block absent for new installations.
 Explicit modes remain runtime compatibility settings. Manual is host passthrough: only
 host-reported values are used, the LEVELING policy is never read, and a value

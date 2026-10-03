@@ -21,7 +21,7 @@ mechanisms:
     how_to_invoke: mission submit
     when_to_use: before execution
   - id: search
-    family: ability
+    family: feat
     enforcement_kind: contract
     summary: filters
     invoked_by: [ranger]

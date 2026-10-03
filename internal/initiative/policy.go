@@ -16,7 +16,7 @@ import (
 func DefaultPolicy() Policy {
 	return Policy{
 		Version: "1",
-		Ability: "initiative", DisplayName: "INITIATIVE", Mode: "consultative",
+		Feat:    "initiative", DisplayName: "INITIATIVE", Mode: "consultative",
 		Authority: PolicyAuthority{Owns: []string{"advice", "diligence", "alignment"}, DoesNotOwn: []string{"model", "provider", "capability", "effort", "level_source", "approval_gate", "implementation_authorization"}},
 		Records:   PolicyRecords{Path: ".strategist/memory/initiative-records.jsonl", AppendOnly: true, Correlation: []string{"mission_id", "role", "run_id", "advice_id"}},
 		Profiles: map[string]Profile{
@@ -40,6 +40,9 @@ func (p Policy) Validate() error {
 	}
 	if err := validateProfiles(p.Profiles); err != nil {
 		return err
+	}
+	if strings.TrimSpace(p.Feat) != "initiative" {
+		return fmt.Errorf("initiative_policy_invalid: feat must be initiative")
 	}
 	return validateReevaluationTriggers(p.Triggers)
 }

@@ -10,21 +10,21 @@ on_start:                       # run when this role's phase starts; {role} and 
                                  # them silently returns blank fields. --provider is a LEVELING policy id
                                  # (.strategist/leveling.yaml#providers, e.g. CLAUDE or CODEX), not a vendor name.
   - strategist leveling label --role {role} --mission {mission_id} --provider <policy-provider-id> --host-model <your-model> --host-effort <your-effort>
-  - strategist mechanisms brief --role {role}   # the tools (Mechanisms and Abilities) available to this role
+  - strategist mechanisms brief --role {role}   # the Tools, Mechanisms, and Feats available to this role
 # leveling: archivist
 
 # Canonical behaviors — read-only, source in skill.yaml.
 # Listed here for reference when writing custom_brief below.
 canonical:
   - load_ranger_analysis_artifact    # read handoff contract fields only; do NOT re-read full history
-  - resolve_weapon_scratch_root:      # ability: cd into the resolved weapon's declared scratch root before invoking its own CLI/tooling
+  - resolve_weapon_scratch_root:      # Tool: cd into the resolved Weapon's declared scratch root before invoking its own CLI/tooling
       read: "plugins/catalog.yaml#providers[id=<resolved_provider>].scratch_root"   # the catalog is the authority; skills/<id>/skill.yaml is only a generated compat view
       when: scratch_root == "runtime"
       action: >
         Before invoking this weapon's own CLI/tooling, ensure
         .strategist/weapon-runtime/<provider_id>/ exists (create if absent)
         and run the weapon with that as the working directory.
-  - reuse_search_cache:               # ability: reuse Ranger's Search/select_runbook output by default
+  - reuse_search_cache:               # Feat result: reuse Ranger's Search/select_runbook output by default
       default: [reuse_ranger_relevant_sources_hint, reuse_ranger_selected_runbooks_hint]    # from handoff-ranger-to-archivist.schema.yaml#relevant_sources_hint / #selected_runbooks_hint
       rerun_requires: declared_reason  # see contracts/machine/handoff-contract.yaml#refinement_context_policy.allowed_reasons
   - consult_treasure_chests          # consult chests scoped to refinement
@@ -38,7 +38,7 @@ canonical:
       - "<base_path>/refined/<mission_id>/design.md"
       - "<base_path>/refined/<mission_id>/tasks.md"
   - handoff_contract: "schemas/handoff-archivist-to-sniper.schema.yaml"
-  - promote_via_normalize_openspec:   # ability: when the bound weapon is openspec-propose, promotion is one command, not manual file copying
+  - promote_via_normalize_openspec:   # Tool: when the bound Weapon is openspec-propose, promotion is one command, not manual file copying
       command: "strategist mission normalize-openspec --mission-id <mission_id> --change-id <change_id>"
       effect: records Archivist confidence, publishes the four canonical files, injects provider metadata and mission_status, archives the change
       see: "contracts/narrative/04-refinement.md § Required Behavior"

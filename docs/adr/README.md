@@ -18,6 +18,7 @@ lookup by topic fast without moving any file.
 | [0002](0002-defaults-embutidos-embed-fs.md) | Defaults embedded in the binary via embed.FS |
 | [0007](0007-structural-compression-agent-contract.md) | Structural Compression Pipeline — Agent Contract vs Go Runtime |
 | [0025](0025-generated-documentation-anti-drift.md) | Generated Documentation and AI-First Anti-Drift |
+| [0031](0031-release-consumption-for-downstream-repos.md) | Release consumption for downstream repos |
 
 ### Pipeline & Governance Mechanics
 
@@ -33,11 +34,22 @@ lookup by topic fast without moving any file.
 | [0024](0024-pluggable-governance-and-telemetry.md) | Pluggable Governance and AI-First Telemetry |
 | [0027](0027-refinement-native-role-for-light-client.md) | Refinement (Archivist) as a native role — mission-scoped precedent |
 | [0028](0028-native-role-resilient-baseline.md) | Native roles as the resilient baseline |
+| [0029](0029-external-skill-provider-lifecycle.md) | External skill provider lifecycle |
+| [0030](0030-world-class-strategist-plugin-architecture.md) | World-class Strategist plugin architecture |
+| [0032](0032-external-skill-cli-embedding-and-treasure-chest-ownership.md) | External skill CLI embedding and Treasure Chest ownership |
+| [0033](0033-orka-skill-package-and-project-adapter-boundary.md) | Orka skill package and project adapter boundary |
+| [0034](0034-role-and-skill-taxonomy.md) | Role and Skill Taxonomy |
 | [0035](0035-embedded-weapon-fallback-policy.md) | Embedded weapon roster and fallback notification policy |
 | [0036](0036-openspec-explore-canonical-role-correction.md) | openspec-explore's canonical role: ranger, not archivist |
 | [0037](0037-wizard-role-binding-persistence.md) | Wizard role binding persistence (discovery + refinement) |
 | [0038](0038-docs-information-architecture-and-mandate-layer.md) | Docs information architecture and mandate layer |
 | [0039](0039-weapon-scratch-root-declaration.md) | Weapon scratch-root declaration |
+| [0041](0041-cli-enforcement-sequencing-and-role-invocation-plan-naming.md) | CLI enforcement sequencing and role invocation plan naming |
+| [0042](0042-ranked-custom-binding-persistence.md) | Ranked/custom binding persistence |
+| [0043](0043-ranked-pipeline-pilot-implementation-decisions.md) | Ranked pipeline pilot implementation decisions |
+| [0044](0044-preflight-startup-consumes-preflightresult.md) | Preflight startup consumes PreflightResult |
+| [0047](0047-hardening-authorities-and-outcomes.md) | Hardening authorities and outcomes |
+| [0048](0048-skill-package-evidence-authorities.md) | Skill package evidence authorities |
 | [0051](0051-remote-provider-acquisition-and-trust-policy.md) | Remote provider acquisition and trust policy (proposed) |
 | [0053](0053-taxonomy-classification-criterion-and-sniper-extensibility.md) | Taxonomy classification criterion and Sniper extensibility (amends 0034) |
 | [0054](0054-versioned-runtime-layout-marker.md) | Versioned runtime-layout marker for retiring the generated compat view (refines 0030) |
@@ -58,6 +70,9 @@ lookup by topic fast without moving any file.
 | [0040](0040-treasure-chest-in-repo-isolation-staging.md) | Treasure Chest in-repo isolation staging (Jewelcrafter role) |
 | [0049](0049-atlas-treasure-chest-boundary.md) | Atlas/Treasure Chest staged capability boundary |
 | [0050](0050-confidence-governance-contract.md) | Versioned confidence governance contract |
+| [0056](0056-jewelcrafter-public-role-and-bau-tesouro-binding.md) | Jewelcrafter public role and BAU/Tesouro binding |
+| [0058](0058-cartographer-atlas-structure-boundary.md) | Cartographer/Atlas structure boundary |
+| [0059](0059-treasure-chest-core-removal-and-external-cutover.md) | Treasure Chest core removal and external cutover |
 
 ### Execution (Sniper)
 
@@ -78,6 +93,8 @@ lookup by topic fast without moving any file.
 | [0021](0021-eval-cli-subcommand.md) | `strategist eval run`: Wrap `go test`, One Flexible Subcommand |
 | [0022](0022-treasure-scan-sq-block-bug.md) | `eval harvest --all`: Tolerant Scan, No Parser Change |
 | [0026](0026-deterministic-golden-testing.md) | Deterministic Golden Testing for Generated Artifacts |
+| [0045](0045-ranked-testsuitedigest-shared-pin.md) | Ranked TestSuiteDigest shared pin |
+| [0046](0046-per-role-testsuitedigest-fulfills-dec003.md) | Per-role TestSuiteDigest fulfills DEC-003 |
 
 ### Project & Tooling
 

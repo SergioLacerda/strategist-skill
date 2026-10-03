@@ -23,7 +23,7 @@ mechanisms:
     invoked_by: [archivist, sniper]
     how_to_invoke: mission submit
   - id: search
-    family: ability
+    family: feat
     enforcement_kind: contract
     summary: filters candidates
     invoked_by: [ranger]
@@ -45,7 +45,7 @@ func TestParseAcceptsAValidRegistry(t *testing.T) {
 func TestParseRejectsInvalidRows(t *testing.T) {
 	cases := map[string]string{
 		"duplicate id":       strings.Replace(validRegistry, "id: search", "id: gate", 1),
-		"unknown family":     strings.Replace(validRegistry, "family: ability", "family: route", 1),
+		"unknown family":     strings.Replace(validRegistry, "family: feat", "family: route", 1),
 		"unknown kind":       strings.Replace(validRegistry, "enforcement_kind: contract", "enforcement_kind: magic", 1),
 		"unknown tier":       strings.Replace(validRegistry, "machine_enforced", "sort_of", 1),
 		"missing summary":    strings.Replace(validRegistry, "summary: filters candidates\n", "", 1),
@@ -135,12 +135,15 @@ func TestShippedRegistryNamesTheDecidedItems(t *testing.T) {
 	for _, row := range reg.Rows {
 		byID[row.ID] = row
 	}
-	mechanisms := []string{"critical_hit", "opportunity_attack", "initiative", "leveling", "approval_gate", "handoff_challenge", "confidence_governance", "pipeline_bypass", "weapon_binding"}
+	mechanisms := []string{"approval_gate", "handoff_challenge", "confidence_governance", "pipeline_bypass", "weapon_binding"}
 	for _, id := range mechanisms {
 		assert.Equal(t, FamilyMechanism, byID[id].Family, id)
 	}
-	for _, id := range []string{"search", "select_runbook", "riposte"} {
-		assert.Equal(t, FamilyAbility, byID[id].Family, id)
+	for _, id := range []string{"leveling", "normalize_openspec", "resolve_weapon_scratch_root"} {
+		assert.Equal(t, FamilyTool, byID[id].Family, id)
+	}
+	for _, id := range []string{"initiative", "critical_hit", "opportunity_attack", "side_quest", "search", "select_runbook", "riposte", "keen_senses"} {
+		assert.Equal(t, FamilyFeat, byID[id].Family, id)
 	}
 	assert.Equal(t, "strategist runbook select --format json --signal <signal>", byID["select_runbook"].HowToInvoke)
 }
@@ -157,7 +160,8 @@ func TestSkillTaxonomyListsMatchTheRegistryFamilies(t *testing.T) {
 	var skill struct {
 		Taxonomy struct {
 			Mechanisms []item `yaml:"mechanisms"`
-			Abilities  []item `yaml:"abilities"`
+			Feats      []item `yaml:"feats"`
+			Tools      []item `yaml:"tools"`
 		} `yaml:"taxonomy"`
 	}
 	require.NoError(t, yaml.Unmarshal(raw, &skill))
@@ -166,12 +170,16 @@ func TestSkillTaxonomyListsMatchTheRegistryFamilies(t *testing.T) {
 		families[row.ID] = row.Family
 	}
 	require.NotEmpty(t, skill.Taxonomy.Mechanisms)
-	require.NotEmpty(t, skill.Taxonomy.Abilities)
+	require.NotEmpty(t, skill.Taxonomy.Feats)
+	require.NotEmpty(t, skill.Taxonomy.Tools)
 	for _, m := range skill.Taxonomy.Mechanisms {
 		assert.Equalf(t, FamilyMechanism, families[m.ID], "skill.yaml lists %q as a Mechanism", m.ID)
 	}
-	for _, a := range skill.Taxonomy.Abilities {
-		assert.Equalf(t, FamilyAbility, families[a.ID], "skill.yaml lists %q as an Ability", a.ID)
+	for _, f := range skill.Taxonomy.Feats {
+		assert.Equalf(t, FamilyFeat, families[f.ID], "skill.yaml lists %q as a Feat", f.ID)
+	}
+	for _, tool := range skill.Taxonomy.Tools {
+		assert.Equalf(t, FamilyTool, families[tool.ID], "skill.yaml lists %q as a Tool", tool.ID)
 	}
 }
 
@@ -215,7 +223,7 @@ func TestOrchestratorRowsAppearInNoRoleBrief(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Empty(t, reg.ForRole("scout"))
-	assert.Equal(t, "Tools available to scout:\n", reg.Brief("scout"))
+	assert.Equal(t, "Tools, Mechanisms, and Feats available to scout:\n", reg.Brief("scout"))
 }
 
 // SQ-004: the tools agents reported missing from the brief.
@@ -226,9 +234,9 @@ func TestShippedRegistryCoversTheToolsAgentsFoundMissing(t *testing.T) {
 		byID[row.ID] = row
 	}
 
-	assert.Equal(t, FamilyMechanism, byID["normalize_openspec"].Family)
+	assert.Equal(t, FamilyTool, byID["normalize_openspec"].Family)
 	assert.Contains(t, byID["normalize_openspec"].HowToInvoke, "strategist mission normalize-openspec")
-	assert.Equal(t, FamilyAbility, byID["resolve_weapon_scratch_root"].Family)
+	assert.Equal(t, FamilyTool, byID["resolve_weapon_scratch_root"].Family)
 	assert.Contains(t, byID["handoff_challenge"].HowToInvoke, "--transition", "the flag a Sniper needed and did not find")
 	assert.Contains(t, rowIDs(reg.ForRole("archivist")), "normalize_openspec")
 	assert.Contains(t, rowIDs(reg.ForRole("ranger")), "resolve_weapon_scratch_root")

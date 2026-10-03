@@ -37,7 +37,7 @@ func (r Registry) BriefFull(role string) string { return r.render(role, true) }
 
 func (r Registry) render(role string, full bool) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "Tools available to %s:\n", role)
+	fmt.Fprintf(&b, "Tools, Mechanisms, and Feats available to %s:\n", role)
 	for _, row := range r.ForRole(role) {
 		b.WriteString(briefLine(row, full))
 	}

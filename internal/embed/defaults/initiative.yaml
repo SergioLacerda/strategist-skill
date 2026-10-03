@@ -1,5 +1,5 @@
 version: "1"
-ability: initiative
+feat: initiative
 display_name: INITIATIVE
 mode: consultative
 authority:

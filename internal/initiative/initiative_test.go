@@ -13,6 +13,7 @@ import (
 func TestDefaultPolicyIsDeterministicAndValidated(t *testing.T) {
 	policy := DefaultPolicy()
 	require.NoError(t, policy.Validate(), "default policy must validate")
+	require.Equal(t, "initiative", policy.Feat)
 
 	require.NotEmpty(t, policy.Digest(), "policy digest must be stable")
 	require.Equal(t, policy.Digest(), DefaultPolicy().Digest(), "policy digest must be stable")
@@ -26,8 +27,9 @@ func TestDefaultPolicyIsDeterministicAndValidated(t *testing.T) {
 	require.Error(t, err, "expected invalid effort error")
 	require.Contains(t, err.Error(), "invalid recommended effort")
 
-	parsed, err := Parse([]byte("version: '1'\nprofiles:\n  ranger:\n    recommended_capability: reasoning\n    recommended_effort: high\n    diligence: [inspect]\n    confidence_ceiling: high\nreevaluation_triggers: [scope_changed]\n"))
+	parsed, err := Parse([]byte("version: '1'\nfeat: initiative\nprofiles:\n  ranger:\n    recommended_capability: reasoning\n    recommended_effort: high\n    diligence: [inspect]\n    confidence_ceiling: high\nreevaluation_triggers: [scope_changed]\n"))
 	require.NoError(t, err, "standalone policy parse failed")
+	require.Equal(t, "initiative", parsed.Feat)
 	require.NotEmpty(t, parsed.Digest(), "standalone policy parse failed")
 }
 

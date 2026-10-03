@@ -1,8 +1,7 @@
-// Package mechanisms loads and validates the Mechanisms registry: the single
-// machine-readable catalog of the tools Strategist gives an agent in a mission
-// (Mechanisms, and the Abilities they sit beside), each with when to use it and
-// how to invoke it. Its purpose is awareness: a role gets a compact, role-scoped
-// brief at phase start instead of having to remember what exists.
+// Package mechanisms loads and validates the compatibility registry of mission
+// primitives Strategist gives an agent: Tools, Mechanisms, and Feats, each with
+// when to use it and how to invoke it. Its purpose is awareness: a role gets a
+// compact, role-scoped brief at phase start instead of having to remember what exists.
 package mechanisms
 
 import (
@@ -21,7 +20,8 @@ const RegistryRelPath = "contracts/machine/mechanisms.yaml"
 // Families a registry row may belong to.
 const (
 	FamilyMechanism = "mechanism"
-	FamilyAbility   = "ability"
+	FamilyFeat      = "feat"
+	FamilyTool      = "tool"
 )
 
 // AllRoles marks a row every role should see.
@@ -32,7 +32,7 @@ const AllRoles = "all"
 const OrchestratorRole = "orchestrator"
 
 var (
-	validFamilies = map[string]bool{FamilyMechanism: true, FamilyAbility: true}
+	validFamilies = map[string]bool{FamilyMechanism: true, FamilyFeat: true, FamilyTool: true}
 	validKinds    = map[string]bool{"code": true, "contract": true, "prose": true}
 	validTiers    = map[string]bool{"": true, "machine_enforced": true, "machine_observed": true, "agent_only": true}
 )

@@ -11,7 +11,7 @@ on_start:                       # run when this role's phase starts; {role} and 
                                  # them silently returns blank fields. --provider is a LEVELING policy id
                                  # (.strategist/leveling.yaml#providers, e.g. CLAUDE or CODEX), not a vendor name.
   - strategist leveling label --role {role} --mission {mission_id} --provider <policy-provider-id> --host-model <your-model> --host-effort <your-effort>
-  - strategist mechanisms brief --role {role}   # the tools (Mechanisms and Abilities) available to this role
+  - strategist mechanisms brief --role {role}   # the Tools, Mechanisms, and Feats available to this role
 # leveling: scout              # optional LEVELING policy role; defaults to the role id
 
 # Scout may consult INITIATIVE for diligence before route selection; the route

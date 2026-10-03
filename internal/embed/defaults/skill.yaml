@@ -18,8 +18,8 @@ capability:
   never_produces: [code_mutation, git_mutation, direct_execution]
   resolution_paths:
     # NOTE: resolution_paths above are pipeline routes, distinct from the
-    # Weapon/Ability taxonomy below. A route selects which pipeline shape runs;
-    # Weapons and Abilities describe what runs inside a slot/role once a route
+    # Weapon/Feat/Tool taxonomy below. A route selects which pipeline shape runs;
+    # Weapons, Feats, Tools, and Mechanisms describe what runs inside a slot/role once a route
     # is selected.
     full_pipeline:
       sequence: [intake, discovery, refinement, approval_gate, execution]
@@ -37,20 +37,21 @@ capability:
   route_decision: internal (Scout / intake routing layer — see internal_skills/scout)
   delegating_agent_contract: invoke with request context — route is resolved internally
 
-# Vocabulary layer distinguishing Weapons from Mechanisms and Abilities. Documentation/naming
+# Vocabulary layer distinguishing Weapons, Feats, Tools, and Mechanisms. Documentation/naming
 # only — it does not change pipeline mechanism, routing, or the FSM. See
-# docs/architecture/strategist-concepts.md § Mechanisms and Abilities for the human-facing
-# explanation and docs/adr/0053 for the classification criterion. The full catalog is
+# docs/architecture/strategist-concepts.md for the human-facing explanation and
+# docs/adr/0064 for the canonical classification. The full catalog is
 # contracts/machine/mechanisms.yaml; a test keeps this list consistent with it.
 taxonomy:
   description: >
     Weapons are skill packages loaded from .strategist/skills/<id>/SKILL.md and
     bound one-at-a-time by Role and slot. A Weapon is atomic or composite; a
     composite declares its component Weapons and deterministic dependency graph.
-    Every external-skills-source child is ingested as a Weapon. Mechanisms
-    (deterministic rules) and Abilities (judgment-based behavior) are internal
-    routines that run inside a Role/phase — they are not configurable, not
-    swappable, and have no active.yaml entry.
+    Every external-skills-source child is ingested as a Weapon. Feats
+    (contextual judgment), Tools (operations), and Mechanisms (deterministic
+    rules) are internal routines that run inside a Role/phase — they are not
+    configurable, not swappable, and have no active.yaml entry. Routes are
+    selection outcomes, not a taxonomy family.
   weapons:
     - id: brainstorming
       bound_to_slot: discovery
@@ -62,7 +63,7 @@ taxonomy:
       bound_to_slot: execution
     - id: writing-plans
       bound_to_slot: refinement
-  mechanisms:
+  tools:
     - id: leveling
       display_name: LEVELING
       runs_in: role selection (before provider invocation)
@@ -71,6 +72,22 @@ taxonomy:
       note: >
         Selects model capability and effort from generic role criteria, then
         maps the result to CODEX, CLAUDE, or the explicit generic fallback.
+    - id: normalize_openspec
+      runs_in: refinement (Archivist)
+      outputs: [analysis, proposal, design, tasks]
+      source: contracts/narrative/04-refinement.md
+    - id: resolve_weapon_scratch_root
+      runs_in: discovery or refinement before Weapon invocation
+      outputs: [resolved_working_directory]
+      source: roles/ranger.yaml#canonical.resolve_weapon_scratch_root
+  mechanisms:
+    - id: approval_gate
+      runs_in: approval_gate
+      source: contracts/machine/approval-gate.yaml
+    - id: handoff_contract
+      runs_in: every role boundary
+      source: contracts/machine/handoff-contract.yaml
+  feats:
     - id: initiative
       display_name: INITIATIVE
       runs_in: Scout role entry (consultative)
@@ -80,25 +97,30 @@ taxonomy:
         Advises Scout before route selection.
         It never changes LEVELING's model, provider, capability, effort, or
         level_source, and it never authorizes the Approval Gate or implementation.
+    - id: critical_hit
+      runs_in: scout (route resolved before Ranger/Archivist)
+      source: contracts/machine/critical-hit.yaml
     - id: opportunity_attack
       runs_in: refinement (Archivist, post-refinement, before completion_signal)
       outputs: [adr, runbook, treasure_chest]
       source: contracts/machine/opportunity-attack.yaml
-    - id: critical_hit
-      runs_in: scout (route resolved before Ranger/Archivist)
-      note: >
-        Deterministic activation rule applied by Scout; the route value
-        critical_hit (resolution_paths.critical_hit above) selects it. Not a
-        Role-internal routine.
     - id: side_quest
       runs_in: discovery or refinement (any phase)
-  abilities:
     - id: search
       runs_in: discovery (Ranger, consult_treasure_chests); cache reused by refinement (Archivist)
       consults: treasure_chest
       source: roles/ranger.yaml#canonical, roles/archivist.yaml#canonical
+    - id: select_runbook
+      runs_in: discovery (Ranger)
+      source: roles/ranger.yaml#canonical.select_runbook
+    - id: riposte
+      runs_in: approval_gate or execution
+      source: contracts/machine/riposte.yaml
+    - id: keen_senses
+      runs_in: bootstrap
+      source: contracts/machine/keen-senses.yaml
   resources:
-    # Consulted by the Search Ability. Not an Ability itself — never executable,
+    # Consulted by the Search Feat. Not a Feat itself — never executable,
     # never a route, never a slot.
     treasure_chest:
       consulted_by: search

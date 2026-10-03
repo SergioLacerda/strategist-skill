@@ -28,7 +28,7 @@ func newMechanismsBriefCmd() *cobra.Command {
 	var full bool
 	cmd := &cobra.Command{
 		Use:   "brief --role <role>",
-		Short: "Print the tools (Mechanisms and Abilities) available to one role",
+		Short: "Print the Tools, Mechanisms, and Feats available to one role",
 		Long: `Prints the role-scoped view of the Mechanisms registry
 (contracts/machine/mechanisms.yaml): what each tool is and how to invoke it.
 Roles run it from their on_start hook so an agent in a mission knows what is at

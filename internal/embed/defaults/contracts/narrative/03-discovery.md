@@ -58,9 +58,9 @@ native behavior for the selected Weapon.
   required when `discovery_subtype: evaluation`
 - opportunity manifest summary when present
 - `evidence_pack_path` when the context-enrichment dossier's `source_cards` are non-empty (see `machine/context-enrichment.yaml#evidence_pack`); null otherwise, non-blocking
-- `relevant_sources_hint` produced by the Search ability during the Retrieval Cascade's
+- `relevant_sources_hint` produced by the Search Feat during the Retrieval Cascade's
   treasure-chest stage; reused by Archivist by default (see `04-refinement.md`)
-- `selected_runbooks_hint` produced by the select_runbook ability during the same
+- `selected_runbooks_hint` produced by the select_runbook Feat during the same
   Retrieval Cascade stage. Ranger always runs the command (stage 6 below), so the
   field is a list whenever discovery ran the cascade: an empty list means the command
   ran and nothing matched (non-blocking); null means it was not run, which is a gap
@@ -179,11 +179,11 @@ stage runs only if the previous stage did not reach `stop_when: sufficient_evide
 3. keyword search over the workspace
 4. symbol search (definitions, references)
 5. architecture / structure index, when one exists for the workspace
-6. treasure chests (`consult_treasure_chests`) — the **Search** ability runs as a
+6. treasure chests (`consult_treasure_chests`) — the **Search** Feat runs as a
    sub-routine of this stage, before `consult_treasure_chests` opens any chest: it
    filters candidate jewels/potions and produces `relevant_sources_hint`, so a whole
    chest is not paid for when a jewel/potion already summarizes what would be found
-   there (see `roles/ranger.yaml#canonical.search`). The **select_runbook** ability
+   there (see `roles/ranger.yaml#canonical.search`). The **select_runbook** Feat
    runs alongside Search, at the same point: it scores `docs/runbooks/*.runbook.yaml`
    sidecars against mission signals via `internal/runbook.Select()` and produces
    `selected_runbooks_hint` — a bounded, reasoned selection (at most one primary, at

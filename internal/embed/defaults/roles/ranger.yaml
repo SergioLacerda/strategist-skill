@@ -10,25 +10,25 @@ on_start:                       # run when this role's phase starts; {role} and 
                                  # them silently returns blank fields. --provider is a LEVELING policy id
                                  # (.strategist/leveling.yaml#providers, e.g. CLAUDE or CODEX), not a vendor name.
   - strategist leveling label --role {role} --mission {mission_id} --provider <policy-provider-id> --host-model <your-model> --host-effort <your-effort>
-  - strategist mechanisms brief --role {role}   # the tools (Mechanisms and Abilities) available to this role
+  - strategist mechanisms brief --role {role}   # the Tools, Mechanisms, and Feats available to this role
 # leveling: ranger             # optional LEVELING policy role; defaults to the role id
 
 # Canonical behaviors — read-only, source in skill.yaml.
 # Listed here for reference when writing custom_brief below.
 canonical:
   - find_unexpected_items       # surface items outside declared mission scope
-  - resolve_weapon_scratch_root: # ability: cd into the resolved weapon's declared scratch root before invoking its own CLI/tooling
+  - resolve_weapon_scratch_root: # Tool: cd into the resolved Weapon's declared scratch root before invoking its own CLI/tooling
       read: "plugins/catalog.yaml#providers[id=<resolved_provider>].scratch_root"   # the catalog is the authority; skills/<id>/skill.yaml is only a generated compat view
       when: scratch_root == "runtime"
       action: >
         Before invoking this weapon's own CLI/tooling, ensure
         .strategist/weapon-runtime/<provider_id>/ exists (create if absent)
         and run the weapon with that as the working directory.
-  - search:                     # ability: filters jewel/potion candidates from treasure chests
+  - search:                     # Feat: filters jewel/potion candidates from treasure chests
       when: before consult_treasure_chests decides which chests to open (Retrieval Cascade stage 6)
       filters: [jewel, potion]
       output: relevant_sources_hint     # carried in the handoff artifact, reused by Archivist by default
-  - select_runbook:              # ability: scores docs/runbooks/*.runbook.yaml sidecars against mission signals
+  - select_runbook:              # Feat: scores docs/runbooks/*.runbook.yaml sidecars against mission signals
       when: same point as search — before consult_treasure_chests opens the runbooks chest (Retrieval Cascade stage 6)
       must_invoke: true              # the pipeline runs it; skipping it leaves selected_runbooks_hint null (a reported gap)
       invoke: "strategist runbook select --format json --signal <signal> [--signal <signal> ...]"

@@ -2,7 +2,7 @@ schema_version: "1"
 description: >
   Consultative INITIATIVE advice. This schema is intentionally separate from
   LEVELING. No top-level model, provider, capability, effort, level, or
-  level_source field may be written by this ability.
+  level_source field may be written by this Feat.
 authority:
   owns: [advice, diligence, alignment]
   forbidden_top_level_fields: [model, provider, capability, effort, level, level_source, resolved_execution_level]

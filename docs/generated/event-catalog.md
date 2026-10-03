@@ -64,10 +64,10 @@ feed once that lands.
 | `AttrLevelingCapability` | `strategist.leveling.capability` |
 | `AttrLevelingPolicyVersion` | `strategist.leveling.policy_version` |
 | `AttrLevelingPolicyDigest` | `strategist.leveling.policy_digest` |
-| `AttrAbility` | `strategist.ability` |
+| `AttrFeat` | `strategist.feat` |
 | `AttrInitiativeAdviceID` | `strategist.initiative.advice_id` |
-| `AttrInitiativeMechanism` | `strategist.initiative.mechanism` |
-| `AttrInitiativeMechanismLabel` | `strategist.initiative.mechanism_label` |
+| `AttrInitiativeFeat` | `strategist.initiative.feat` |
+| `AttrInitiativeFeatLabel` | `strategist.initiative.feat_label` |
 | `AttrInitiativePolicyVersion` | `strategist.initiative.policy_version` |
 | `AttrInitiativePolicyDigest` | `strategist.initiative.policy_digest` |
 | `AttrInitiativeTrigger` | `strategist.initiative.trigger` |

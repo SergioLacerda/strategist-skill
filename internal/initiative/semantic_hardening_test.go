@@ -10,7 +10,7 @@ import (
 )
 
 func TestParseRejectsUnknownFieldsAndConfidenceTiers(t *testing.T) {
-	base := "version: '1'\nprofiles:\n  ranger:\n    recommended_capability: reasoning\n    recommended_effort: high\n    diligence: [inspect]\n    confidence_ceiling: %s\nreevaluation_triggers: [scope_changed]\n"
+	base := "version: '1'\nfeat: initiative\nprofiles:\n  ranger:\n    recommended_capability: reasoning\n    recommended_effort: high\n    diligence: [inspect]\n    confidence_ceiling: %s\nreevaluation_triggers: [scope_changed]\n"
 	_, err := Parse([]byte("version: '1'\nunknown: true\n"))
 	require.ErrorContains(t, err, "field unknown not found")
 	_, err = Parse([]byte(fmt.Sprintf(base, "trusted")))
