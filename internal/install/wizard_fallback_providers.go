@@ -40,14 +40,6 @@ var knownProviderRisk = map[string]string{
 	"openspec-apply-change":          "controlled",
 	"openspec-archive-change":        "controlled",
 	nativeExecutionProvider:          "controlled",
-	"sdd-ask":                        "controlled",
-	"sdd-diagnose":                   "write_analysis",
-	"sdd-converge":                   "controlled",
-	"sdd-correct":                    "controlled",
-	"sdd-stabilize":                  "controlled",
-	"sdd-validate-governance":        "write_analysis",
-	"sdd-organize":                   "write_analysis",
-	"sdd-review-architecture":        "write_analysis",
 	"archivist":                      "write_analysis",
 }
 

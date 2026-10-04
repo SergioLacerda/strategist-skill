@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/SergioLacerda/strategist-skill/internal/catalog"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
 
@@ -28,7 +29,7 @@ func registryRoster(root string) ([]rosterPairing, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read compiled registry catalog: %w", err)
 	}
-	registry, err := domain.ParseCompiledRegistryCatalog(raw)
+	registry, err := catalog.ParseCompiledRegistryCatalog(raw)
 	if err != nil {
 		return nil, fmt.Errorf("parse compiled registry: %w", err)
 	}

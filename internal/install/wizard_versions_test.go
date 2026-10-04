@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/plugins"
+	"github.com/SergioLacerda/strategist-skill/internal/tools/resolver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -131,7 +131,7 @@ func TestOnboardingPinsTheChosenVersionInsteadOfTheHighestOne(t *testing.T) {
 	require.Len(t, requirements, 1)
 	assert.Equal(t, "1.4.0", requirements[0].Constraint, "an older chosen version is pinned exactly: no 'latest' selection")
 
-	lock, err := plugins.Resolve(requirements, catalogResolverCandidates(catalog))
+	lock, err := resolver.Resolve(requirements, catalogResolverCandidates(catalog))
 	require.NoError(t, err)
 	bindings, err := bindingsFromSlots(map[string]string{"discovery": "brainstorming@1.4.0"}, lock)
 	require.NoError(t, err)

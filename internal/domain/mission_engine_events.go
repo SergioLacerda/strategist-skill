@@ -48,12 +48,23 @@ const (
 	MissionEventSlotTransient MissionEngineEvent = "slot_transient_failure"
 	// MissionEventSlotPermanent records a terminal slot failure.
 	MissionEventSlotPermanent MissionEngineEvent = "slot_permanent_failure"
+	// MissionEventRefinementArtifactInvalid returns execution to refinement when
+	// the accepted authored package fails pre-materialization validation.
+	MissionEventRefinementArtifactInvalid MissionEngineEvent = "refinement_artifact_invalid"
 	// MissionEventADRCriterion signals that the ADR criterion was met.
 	MissionEventADRCriterion MissionEngineEvent = "adr_criterion_met"
 	// MissionEventADRApproved approves the ADR gate.
 	MissionEventADRApproved MissionEngineEvent = "adr_approved"
 	// MissionEventADRDeclined declines the ADR gate.
 	MissionEventADRDeclined MissionEngineEvent = "adr_declined"
+	// MissionEventCriticalHitIntent records a Role-owned gated SHORT request.
+	MissionEventCriticalHitIntent MissionEngineEvent = "critical_hit_intent"
+	// MissionEventCriticalHitGateApproved enters the ordinary execution state
+	// after explicit Critical Hit approval.
+	MissionEventCriticalHitGateApproved MissionEngineEvent = "critical_hit_gate_approved"
+	// MissionEventCriticalHitGateDeclined closes the Critical Hit attempt
+	// without entering execution.
+	MissionEventCriticalHitGateDeclined MissionEngineEvent = "critical_hit_gate_declined"
 )
 
 func missionTransitionEvent(event MissionEngineEvent) (TransitionEvent, bool) {
@@ -66,8 +77,11 @@ func missionTransitionEvent(event MissionEngineEvent) (TransitionEvent, bool) {
 		MissionEventHandoffExhausted: EventHandoffExhausted, MissionEventHandoffNotApplicable: EventHandoffNotApplicable,
 		MissionEventSniperDone: EventSniperDone, MissionEventRetryOK: EventRetryOK,
 		MissionEventSlotTransient: EventSlotTransient, MissionEventSlotPermanent: EventSlotPermanent,
-		MissionEventADRCriterion: EventADRCriterionMet, MissionEventADRApproved: EventADRApproved,
-		MissionEventADRDeclined: EventADRDeclined,
+		MissionEventRefinementArtifactInvalid: EventRefinementArtifactInvalid,
+		MissionEventADRCriterion:              EventADRCriterionMet, MissionEventADRApproved: EventADRApproved,
+		MissionEventADRDeclined:             EventADRDeclined,
+		MissionEventCriticalHitGateApproved: EventCriticalHitGateApproved,
+		MissionEventCriticalHitGateDeclined: EventCriticalHitGateDeclined,
 	}
 	value, ok := transitions[event]
 	return value, ok

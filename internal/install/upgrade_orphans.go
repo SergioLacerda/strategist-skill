@@ -12,7 +12,8 @@ import (
 
 // orphanEntries reports every manifest-tracked path that is no longer part
 // of the current embedded tree (embeddedHashes has no entry for it). An
-// untouched file of the legacy id-only skills layout is reported as migratable.
+// untouched file of the legacy id-only skills layout is reported as migratable;
+// the retired provider view is always reported as an orphan.
 func orphanEntries(strategistDir string, manifest domain.InstallManifest, manifestLoaded bool, embeddedHashes map[string]string) ([]UpgradePlanEntry, error) {
 	if !manifestLoaded {
 		return nil, nil
@@ -23,7 +24,7 @@ func orphanEntries(strategistDir string, manifest domain.InstallManifest, manife
 		if _, stillEmbedded := embeddedHashes[f.Path]; stillEmbedded {
 			continue
 		}
-		state, err := orphanState(strategistDir, f, versioned)
+		state, err := orphanState(strategistDir, f, versioned, manifest.RuntimeLayoutGeneration)
 		if err != nil {
 			return nil, err
 		}
@@ -34,7 +35,13 @@ func orphanEntries(strategistDir string, manifest domain.InstallManifest, manife
 
 // orphanState is UpgradeLegacyLayout for an untouched legacy-layout file of an
 // id the versioned layout replaces, UpgradeOrphaned otherwise.
-func orphanState(strategistDir string, file domain.InstallManifestFile, versioned map[string]bool) (domain.RuntimeFileUpgradeState, error) {
+func orphanState(strategistDir string, file domain.InstallManifestFile, versioned map[string]bool, generation int) (domain.RuntimeFileUpgradeState, error) {
+	// The id-only compatibility view is never migrated. The generation check
+	// keeps the pre-generation-2 transitional classification explicit while
+	// generation 2 treats the view as a retired orphan.
+	if isRetiredCompatViewPath(file.Path, versioned, generation) || isCompatViewPath(file.Path, versioned) {
+		return domain.UpgradeOrphaned, nil
+	}
 	if !isLegacyLayoutPath(file.Path, versioned) {
 		return domain.UpgradeOrphaned, nil
 	}
@@ -78,6 +85,15 @@ func isLegacyLayoutPath(path string, versioned map[string]bool) bool {
 		return false
 	}
 	return parts[2] != "skill.yaml"
+}
+
+func isCompatViewPath(path string, versioned map[string]bool) bool {
+	parts := strings.SplitN(path, "/", 3)
+	return len(parts) == 3 && parts[0] == "skills" && !strings.Contains(parts[1], "@") && versioned[parts[1]] && parts[2] == "skill.yaml"
+}
+
+func isRetiredCompatViewPath(path string, versioned map[string]bool, generation int) bool {
+	return generation >= 2 && isCompatViewPath(path, versioned)
 }
 
 // lockSlotsNeedingMigration lists the slots whose persisted Ranked binding has

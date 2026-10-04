@@ -7,6 +7,7 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/testutil"
+	"github.com/SergioLacerda/strategist-skill/internal/weapon"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -146,7 +147,7 @@ func TestCatalogWeaponPayloadIsResolvedByIDAndVersion(t *testing.T) {
 	root := t.TempDir()
 	testutil.WriteWeaponCatalog(t, root, testutil.CatalogProvider{ID: "demo", Version: "2.0.0", Risk: "write_analysis", CanonicalRole: "archivist"})
 
-	facts, err := domain.ResolveWeaponFacts(root, "demo")
+	facts, err := weapon.ResolveWeaponFacts(root, "demo")
 	require.NoError(t, err)
 	require.Equal(t, "2.0.0", facts.Version)
 	assert.Equal(t, domain.ReadinessReady, catalogEntrypointCheck(root, facts).Status, "skills/demo@2.0.0/SKILL.md exists")
@@ -162,7 +163,7 @@ func TestCatalogWeaponPayloadIsFoundWhenTheSlotNamesAnIDAtVersionReference(t *te
 	root := t.TempDir()
 	testutil.WriteWeaponCatalog(t, root, testutil.CatalogProvider{ID: "demo", Version: "2.0.0", Risk: "write_analysis", CanonicalRole: "archivist"})
 
-	facts, err := domain.ResolveWeaponFacts(root, "demo@2.0.0")
+	facts, err := weapon.ResolveWeaponFacts(root, "demo@2.0.0")
 	require.NoError(t, err)
 
 	check := catalogEntrypointCheck(root, facts)

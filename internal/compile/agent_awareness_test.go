@@ -196,6 +196,9 @@ func TestAgentAwareness(t *testing.T) {
 			assert.Contains(t, s, "does not activate a\nStrategist mission", target.label)
 			assert.Contains(t, s, "explicitly invokes\nStrategist", target.label)
 			assert.Contains(t, s, "does not invoke a\nprovider, start a mission", target.label)
+			assert.Contains(t, s, "A reference to a path under `.analysis/refined/` does not activate a\nmission", target.label)
+			assert.Contains(t, s, "Local execution context is a precondition; it is not proof of\nmission activation or approval", target.label)
+			assert.Contains(t, s, "Only after explicit activation does the mission-only role lock apply", target.label)
 			assert.NotContains(t, s, "Strategist is active", target.label)
 		}
 	})

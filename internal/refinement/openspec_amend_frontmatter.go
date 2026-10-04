@@ -62,9 +62,10 @@ func priorAmendmentEntries(content []byte) string {
 // withAmendments stamps next with the amendments list of previous plus one new
 // entry. The digest of next itself lives only in the manifest: a file cannot
 // contain its own digest.
-func withAmendments(next, previous []byte, number int, changeID, ref string, at time.Time) []byte {
-	entry := fmt.Sprintf("  - amendment: %d\n    change_id: %s\n    at: %s\n    authorization_ref: %s\n    previous_sha256: %s\n",
-		number, changeID, at.Format(time.RFC3339), strconv.Quote(ref), digest(previous))
+func withAmendments(next, previous []byte, number int, changeID, ref string, at time.Time, plan *amendmentPlan) []byte {
+	entry := fmt.Sprintf("  - amendment: %d\n    change_id: %s\n    at: %s\n    authorization_ref: %s\n    derived_from: %s\n    supersedes_mission_id: %s\n    source_digest: %s\n    package_digest: %s\n    reason: %s\n    disposition: %s\n    previous_sha256: %s\n",
+		number, changeID, at.Format(time.RFC3339), strconv.Quote(ref), plan.input.Amends, plan.input.SupersedesMissionID,
+		plan.analysisSHA, plan.packageSHA, plan.reason, plan.disposition, digest(previous))
 	block := "amendments:\n" + priorAmendmentEntries(previous) + entry
 	header := frontmatterHeader(next)
 	if header == "" {

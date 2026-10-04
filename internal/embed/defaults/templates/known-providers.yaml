@@ -1,15 +1,15 @@
 # Strategist legacy provider-id risk registry.
-# Consulted during preflight when a slot plugin's SKILL.md or skill.yaml
-# does not declare risk_score.
+# Current preflight reads risk_score from the catalog or bound custom adapter;
+# this file remains for older provider-id metadata and documentation.
 # Values: read_only | write_analysis | controlled | orchestrator
 # Add entries here for any custom slot plugins you use.
 #
 # Slot plugin categories:
 #   neutral  — no external governance dependency; usable in standalone mode
-#   sdd      — SDD-specific; require sdd-analysis-plugin-protocol in target repo
 #
 # The Strategist core does not enforce category — it is informational only.
-# Use neutral slot plugins in standalone templates; sdd slot plugins via governance_injection.
+# Use neutral slot plugins in standalone templates; provisioned governance is
+# supplied through governance_injection.
 
 providers:
   # native roles — built-in execution roles resolved via roles/<name>.yaml
@@ -24,13 +24,3 @@ providers:
   openspec-archive-change: controlled
   writing-plans: write_analysis
   archivist: write_analysis
-
-  # sdd — concrete SDD adapter providers
-  sdd-ask: controlled
-  sdd-diagnose: write_analysis
-  sdd-converge: controlled
-  sdd-correct: controlled
-  sdd-stabilize: controlled
-  sdd-validate-governance: write_analysis
-  sdd-organize: write_analysis
-  sdd-review-architecture: write_analysis

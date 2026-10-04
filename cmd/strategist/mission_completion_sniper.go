@@ -32,12 +32,18 @@ func completeSniperInvocation(store missionruntime.InvocationStore, input missio
 	if err := store.Complete(record.Request.RequestID, digest); err != nil {
 		return domain.MissionInvocationOutcome{}, fmt.Errorf("complete mission invocation: %w", err)
 	}
+	if err := completeCriticalHitMission(input.Root, record.Request.MissionID); err != nil {
+		return domain.MissionInvocationOutcome{}, err
+	}
 	return domain.MissionInvocationOutcome{RequestID: input.RequestID, MissionID: record.Request.MissionID, Status: "verified", ArtifactPath: artifactPath, BindingDigest: record.Request.BindingDigest, SourceDigest: record.Request.SourceDigest}, nil
 }
 
 func verifySniperCompletion(input missionadapter.InvocationCompleteInput, record domain.MissionInvocationRecord) (string, []byte, error) {
 	if err := verifySniperAuthorization(input, record); err != nil {
 		return "", nil, err
+	}
+	if isCriticalHitInvocation(input.Root, record.Request.MissionID) {
+		return verifyCriticalHitCompletion(input, record)
 	}
 	refined := filepath.Join(input.BasePath, "refined", record.Request.MissionID)
 	targets, err := verifySniperLifecycleAndTasks(refined, record.Request.MissionID)
@@ -59,8 +65,12 @@ func verifySniperAuthorization(input missionadapter.InvocationCompleteInput, rec
 	if input.Adapter != domain.ExecutionAdapterCurrentHost {
 		return fmt.Errorf("invocation_adapter_mismatch: Sniper execution requires the current-host adapter")
 	}
-	if !strings.Contains(input.Completion.Result, "sniper: done") || !strings.Contains(input.Completion.Result, "mission_status: documentation_applied") {
-		return fmt.Errorf("role_invocation_failed: Sniper completion signal is invalid")
+	expectedReportPath, err := sniperReportRelativePath(input.Root, input.BasePath, record.Request.MissionID)
+	if err != nil {
+		return err
+	}
+	if err := verifySniperCompletionSignal(input.Completion.Result, expectedReportPath); err != nil {
+		return err
 	}
 	_, status, err := loadMission(input.Root, record.Request.MissionID)
 	if err != nil {
@@ -74,6 +84,28 @@ func verifySniperAuthorization(input missionadapter.InvocationCompleteInput, rec
 		return fmt.Errorf("role_invocation_failed: approval_gate_package_changed: Sniper request is no longer authorized")
 	}
 	return nil
+}
+
+func sniperReportRelativePath(root, basePath, missionID string) (string, error) {
+	report := filepath.Join(basePath, "archived", missionID+"-report.md")
+	relative, err := filepath.Rel(filepath.Dir(root), report)
+	if err != nil || filepath.IsAbs(relative) || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("role_invocation_failed: Sniper report path escapes workspace")
+	}
+	return filepath.ToSlash(relative), nil
+}
+
+// verifySniperCompletionSignal accepts exactly the protocol line declared by
+// Sniper. Substring checks allow frontmatter, a second status, or a forged
+// report_path to masquerade as a completion signal; the canonical report and
+// materialization ledger are verified separately after this parser succeeds.
+func verifySniperCompletionSignal(raw, expectedReportPath string) error {
+	line := strings.TrimSpace(raw)
+	expected := "sniper: done | report_path: " + expectedReportPath + " | mission_status: documentation_applied"
+	if line == expected || line == "Return: "+expected {
+		return nil
+	}
+	return fmt.Errorf("role_invocation_failed: Sniper completion signal is invalid")
 }
 
 func verifySniperLifecycleAndTasks(refined, missionID string) ([]string, error) {
@@ -133,10 +165,26 @@ func requireSniperMaterializations(root string, record domain.MissionInvocationR
 
 func sniperMaterializationTargets(records []telemetry.SniperMaterializationRecord, record domain.MissionInvocationRecord) map[string]bool {
 	seen := make(map[string]bool, len(records))
+	expectedDigest := requestedPackageDigest(record)
 	for _, materialization := range records {
-		if materialization.MissionID == record.Request.MissionID && !materialization.MaterializedAt.Before(record.CreatedAt) {
+		if materializationMatchesRequest(materialization, record, expectedDigest) {
 			seen[materialization.TargetPath] = true
 		}
 	}
 	return seen
+}
+
+func requestedPackageDigest(record domain.MissionInvocationRecord) string {
+	if raw, ok := record.Request.Input["approval_gate_package_digest"]; ok {
+		if digest, ok := raw.(string); ok {
+			return digest
+		}
+	}
+	return ""
+}
+
+func materializationMatchesRequest(materialization telemetry.SniperMaterializationRecord, record domain.MissionInvocationRecord, expectedDigest string) bool {
+	return materialization.MissionID == record.Request.MissionID &&
+		(materialization.PackageDigest == "" || materialization.PackageDigest == expectedDigest) &&
+		!materialization.MaterializedAt.Before(record.CreatedAt)
 }

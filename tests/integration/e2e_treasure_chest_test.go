@@ -21,7 +21,7 @@ import (
 
 // installedTreasureChestWorkspace installs and compiles a workspace whose
 // active.yaml declares a treasure chest (via writeHappyPathActiveYAML,
-// chest id "source", path ".sdd/source") but does not write a matching
+// chest id "source", path "governance/source") but does not write a matching
 // treasure-chests.yaml — deliberately, so `doctor` below exercises its real
 // divergence-detection path instead of a synthetic always-green fixture.
 func installedTreasureChestWorkspace(t *testing.T) (workspace, strategistDir string) {

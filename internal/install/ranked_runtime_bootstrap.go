@@ -129,7 +129,7 @@ func validateExistingOpenSpecRuntime(ctx context.Context, root string, exe ranke
 	if err != nil {
 		return fmt.Errorf("healthcheck failed: %w", err)
 	}
-	if err := domain.ValidateOpenSpecHealthcheck(output, root); err != nil {
+	if err := domain.ValidateOpenSpecHealthcheck(output, root, runtimefs.PathResolver{}); err != nil {
 		return fmt.Errorf("healthcheck failed: %w", err)
 	}
 	return removeLegacyNestedOpenSpecRoot(root)

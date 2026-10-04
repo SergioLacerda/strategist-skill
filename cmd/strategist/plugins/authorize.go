@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 
+	authorizationapp "github.com/SergioLacerda/strategist-skill/internal/application/authorization"
 	"github.com/SergioLacerda/strategist-skill/internal/authorization"
 	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
 	"github.com/spf13/cobra"
@@ -58,17 +59,65 @@ func RunAuthorize(out io.Writer, opts AuthorizeOptions) error {
 	if err != nil {
 		return fmt.Errorf("plugins authorize: resolve Strategist root: %w", err)
 	}
-	report, reportErr := authorization.Build(authorization.Request{
+	report, reportErr := authorizationapp.Authorize(authorizationapp.AuthorizationRequest{
 		Root: root, Target: opts.Target, MissionID: opts.MissionID,
 		ApprovalGate: opts.ApprovalGate, ExecutionGate: opts.ExecutionGate,
+	}, func(request authorizationapp.AuthorizationRequest) (authorizationapp.AuthorizationReport, error) {
+		authorizationReport, buildErr := authorization.Build(authorization.Request{
+			Root: request.Root, Target: request.Target, MissionID: request.MissionID,
+			ApprovalGate: request.ApprovalGate, ExecutionGate: request.ExecutionGate,
+		})
+		return applicationAuthorizationReport(authorizationReport), buildErr
 	})
-	if err := printAuthorization(out, opts.JSON, report); err != nil {
+	if err := printAuthorization(out, opts.JSON, authorizationReport(report)); err != nil {
 		return err
 	}
 	if reportErr != nil {
 		return fmt.Errorf("plugins authorize: %w", reportErr)
 	}
 	return nil
+}
+
+//nolint:dupl // bidirectional DTO adapters intentionally mirror the report fields.
+func applicationAuthorizationReport(report authorization.Report) authorizationapp.AuthorizationReport {
+	dimensions := mapAuthorizationDimensions(report.Dimensions, func(dimension authorization.Dimension) authorizationapp.AuthorizationDimension {
+		return authorizationapp.AuthorizationDimension{
+			Name: dimension.Name, Status: dimension.Status, EvidenceState: dimension.EvidenceState,
+			ReasonCode: dimension.ReasonCode, Detail: dimension.Detail, Required: dimension.Required,
+		}
+	})
+	return authorizationapp.AuthorizationReport{
+		SchemaVersion: report.SchemaVersion, GeneratedAt: report.GeneratedAt, Root: report.Root,
+		Target: report.Target, MissionID: report.MissionID, Role: report.Role,
+		Provider: report.Provider, Permission: report.Permission, Decision: report.Decision,
+		ReasonCode: report.ReasonCode, ExitClass: report.ExitClass, Dimensions: dimensions,
+		Limitations: report.Limitations,
+	}
+}
+
+//nolint:dupl // bidirectional DTO adapters intentionally mirror the report fields.
+func authorizationReport(report authorizationapp.AuthorizationReport) authorization.Report {
+	dimensions := mapAuthorizationDimensions(report.Dimensions, func(dimension authorizationapp.AuthorizationDimension) authorization.Dimension {
+		return authorization.Dimension{
+			Name: dimension.Name, Status: dimension.Status, EvidenceState: dimension.EvidenceState,
+			ReasonCode: dimension.ReasonCode, Detail: dimension.Detail, Required: dimension.Required,
+		}
+	})
+	return authorization.Report{
+		SchemaVersion: report.SchemaVersion, GeneratedAt: report.GeneratedAt, Root: report.Root,
+		Target: report.Target, MissionID: report.MissionID, Role: report.Role,
+		Provider: report.Provider, Permission: report.Permission, Decision: report.Decision,
+		ReasonCode: report.ReasonCode, ExitClass: report.ExitClass, Dimensions: dimensions,
+		Limitations: report.Limitations,
+	}
+}
+
+func mapAuthorizationDimensions[S any, D any](dimensions []S, convert func(S) D) []D {
+	converted := make([]D, 0, len(dimensions))
+	for _, dimension := range dimensions {
+		converted = append(converted, convert(dimension))
+	}
+	return converted
 }
 
 func printAuthorization(out io.Writer, asJSON bool, report authorization.Report) error {

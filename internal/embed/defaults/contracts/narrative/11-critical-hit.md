@@ -9,20 +9,32 @@ contract: controlled
 
 ## Purpose
 
-Internal capability for **workspace artifact management** — moving, archiving,
+Contextual **Feat** for workspace artifact management — moving, archiving,
 reopening, or closing `.md` analysis/documentation artifacts between the workspace
-folders (`pending/`, `refined/`, `archived/`, `done/`) without running the full
-Ranger/Archivist pipeline.
+folders (`pending/`, `refined/`, `archived/`, `done/`) through a bounded `SHORT`
+request without running the full Ranger/Archivist pipeline. Deterministic
+eligibility is Mechanism-backed policy; the Feat result is passive and Scout
+remains the current Role owner of the Stage request.
 
 Critical Hit is the only Strategist capability that closes finalized analysis cards
 from `pending/` or `refined/` into `done/`. Opportunity Attack is unrelated to this
 movement; it only evaluates whether refined work should produce an ADR side quest.
 
-Critical Hit is not a route mutually exclusive with the pipeline — it is an internal
-capability that may fire at intake, or mid-mission at any phase boundary, whenever the
-current request reduces to a pure artifact move/closure. Firing Critical Hit mid-mission
-does not abandon or restart the enclosing mission; it handles the move and returns
-control to wherever the mission was.
+`critical_hit` is not a taxonomy family. It is a compatibility route selected by
+the current intake boundary while the canonical target is Stage `SHORT`. Critical
+Hit may be activated at intake, or re-evaluated at a phase boundary, whenever the
+current request reduces to a pure artifact move/closure. The Feat itself never
+selects, opens, or executes a Stage, and it never authorizes source, test,
+configuration, or Git mutation.
+
+## Migration Boundaries
+
+The current canonical/runtime search found no live `main_mission` route identifier;
+the historical spelling remains unchanged and no blind rename is required. No live
+QUICK-DRAW implementation or bounded `opportunist_attack` provenance was found, so
+neither concept is added and no shared Feat abstraction is introduced by analogy.
+ADR-0064 is the current seven-family taxonomy authority; ADR-0053 is historical
+classification evidence only.
 
 Critical Hit has two modes:
 

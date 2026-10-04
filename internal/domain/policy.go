@@ -96,6 +96,9 @@ const (
 	// Slot failure classification events (protocol §Slot Failure Classification).
 	EventSlotTransient TransitionEvent = "slot_transient_failure"
 	EventSlotPermanent TransitionEvent = "slot_permanent_failure"
+	// EventRefinementArtifactInvalid returns the same mission to Archivist when
+	// an accepted authored package is invalid before documentation materializes.
+	EventRefinementArtifactInvalid TransitionEvent = "refinement_artifact_invalid"
 	// EventRetryOK is the retry-success signal for the StateRetrying* states (S9):
 	// previously EventManifestNonEmpty did double duty here and at the side-quest
 	// manifest scan, two unrelated meanings on one token. Manifest events now
@@ -110,6 +113,10 @@ const (
 	EventDirectHitIntent    TransitionEvent = "direct_hit_intent"
 	EventDirectGateApproved TransitionEvent = "direct_gate_approved"
 	EventDirectGateDeclined TransitionEvent = "direct_gate_declined"
+	// Critical Hit Stage events use the ordinary execution state. The legacy
+	// direct events remain compatibility vocabulary only.
+	EventCriticalHitGateApproved TransitionEvent = "critical_hit_gate_approved"
+	EventCriticalHitGateDeclined TransitionEvent = "critical_hit_gate_declined"
 )
 
 // TransitionDecision is the deterministic result of policy evaluation.

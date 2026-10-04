@@ -192,6 +192,69 @@ func TestPackageChangedAfterAPassedOutcomeMustReturnToRefinement(t *testing.T) {
 	require.ErrorContains(t, err, "handoff_package_changed_after_gate")
 }
 
+func TestAuthoredPackageRepairInvalidatesGateAndHandoffEvidence(t *testing.T) {
+	root := handoffRoot(t, "m-repair", informationalFacts, analysisOnlyTasks)
+	_, err := evaluateHandoff(t, root, "m-repair", livemission.ArchivistHandoffInput{})
+	require.NoError(t, err)
+	_, err = submitSatisfied(t, root, "m-repair")
+	require.NoError(t, err)
+
+	_, basePath, err := cliutil.ResolveActiveBasePath(root)
+	require.NoError(t, err)
+	originalDigest, err := handoff.PackageDigest(filepath.Join(basePath, "refined", "m-repair"))
+	require.NoError(t, err)
+	writeTypedPackage(t, root, "m-repair", informationalFacts, "- [ ] 1.1 [documentation_target] Write the guide without an explicit path\n")
+	_, err = runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", "m-repair", "--event", string(domain.MissionEventRefinementArtifactInvalid))
+	require.NoError(t, err)
+
+	status := missionStatus(t, root, "m-repair")
+	assert.Equal(t, domain.StateRefinement, status.State)
+	assert.Empty(t, status.ApprovalGatePackageDigest)
+	assert.Empty(t, status.HandoffStatus)
+	assert.Equal(t, "reapprove_gate", status.HandoffNextAction)
+	tombstone := filepath.Join(basePath, "refined", "m-repair", ".repair-evidence", "repair-001.json")
+	assert.FileExists(t, tombstone)
+	tombstoneRaw, err := os.ReadFile(tombstone)
+	require.NoError(t, err)
+	assert.Contains(t, string(tombstoneRaw), originalDigest)
+	assert.Contains(t, string(tombstoneRaw), `"original_state": "EXECUTION"`)
+	assert.Contains(t, string(tombstoneRaw), `"result_state": "REFINEMENT"`)
+	assert.FileExists(t, filepath.Join(root, "missions", "handoff", "m-repair", "invalidated-001.json"))
+
+	writeTypedPackage(t, root, "m-repair", informationalFacts, "- [ ] 1.1 [documentation_target] Write `docs/repaired.md` after the repair\n")
+	_, err = runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", "m-repair", "--event", string(domain.MissionEventRefinementDone))
+	require.NoError(t, err)
+	_, err = runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", "m-repair", "--event", string(domain.MissionEventGateApproved))
+	require.NoError(t, err)
+	_, err = evaluateHandoff(t, root, "m-repair", livemission.ArchivistHandoffInput{})
+	require.NoError(t, err, "the new gate permits a new handoff outcome")
+	_, err = submitSatisfied(t, root, "m-repair")
+	require.NoError(t, err, "the corrected package enters execution only after new gate and handoff evidence")
+}
+
+func TestAuthoredPackageRepairRejectsAValidPackage(t *testing.T) {
+	root := handoffRoot(t, "m-repair-valid", informationalFacts, analysisOnlyTasks)
+	_, err := runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", "m-repair-valid", "--event", string(domain.MissionEventRefinementArtifactInvalid))
+	require.ErrorContains(t, err, "requires a malformed documentation_target")
+	assert.Equal(t, domain.StateHandoffChallenge, missionStatus(t, root, "m-repair-valid").State)
+}
+
+func TestExecutionPreflightRejectsMalformedTargetBeforeStateOrOutcomeMutation(t *testing.T) {
+	root := handoffRoot(t, "m-preflight-target", informationalFacts, "- [ ] 1.1 [documentation_target] Write `docs/valid.md`\n")
+	_, err := evaluateHandoff(t, root, "m-preflight-target", livemission.ArchivistHandoffInput{})
+	require.NoError(t, err)
+
+	_, basePath, err := cliutil.ResolveActiveBasePath(root)
+	require.NoError(t, err)
+	badTasks := filepath.Join(basePath, "refined", "m-preflight-target", "tasks.md")
+	require.NoError(t, os.WriteFile(badTasks, []byte("- [ ] 1.1 [documentation_target] Write it\n"), 0o600))
+
+	_, err = submitSatisfied(t, root, "m-preflight-target")
+	require.ErrorContains(t, err, "explicit backtick-quoted repository-relative path")
+	assert.Equal(t, domain.StateHandoffChallenge, missionStatus(t, root, "m-preflight-target").State)
+	assert.NotContains(t, outcomeFiles(t, root, "m-preflight-target"), "consumed.json")
+}
+
 func TestExecutionEntryDeniesAnOutcomeTheMissionStateDoesNotRecord(t *testing.T) {
 	root := handoffRoot(t, "m-drift", informationalFacts, analysisOnlyTasks)
 	store := handoff.NewOutcomeStore(root)
@@ -360,6 +423,8 @@ func TestApprovalGateIsIndependentOfTheHandoffOutcome(t *testing.T) {
 		root := setupViewRoot(t, domain.MissionEngineStatus{})
 		_, err := runLifecycle(t, mission.NewStart, "--root", root, "--mission-id", "m-nogate")
 		require.NoError(t, err)
+		writeDiscoveryArtifact(t, root, "m-nogate")
+		writeRefinedPackage(t, root, "m-nogate")
 		for _, event := range []domain.MissionEngineEvent{domain.MissionEventBootstrapDone, domain.MissionEventIntakeDone, domain.MissionEventDiscoveryDone, domain.MissionEventRefinementDone} {
 			_, err = runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", "m-nogate", "--event", string(event))
 			require.NoError(t, err)
@@ -380,6 +445,8 @@ func TestApprovalGateIsIndependentOfTheHandoffOutcome(t *testing.T) {
 		root := setupViewRoot(t, domain.MissionEngineStatus{})
 		_, err := runLifecycle(t, mission.NewStart, "--root", root, "--mission-id", "m-analysis")
 		require.NoError(t, err)
+		writeDiscoveryArtifact(t, root, "m-analysis")
+		writeRefinedPackage(t, root, "m-analysis")
 		for _, event := range []domain.MissionEngineEvent{domain.MissionEventBootstrapDone, domain.MissionEventIntakeDone, domain.MissionEventDiscoveryDone, domain.MissionEventRefinementDone} {
 			_, err = runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", "m-analysis", "--event", string(event))
 			require.NoError(t, err)

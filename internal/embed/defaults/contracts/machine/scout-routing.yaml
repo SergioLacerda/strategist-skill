@@ -14,7 +14,9 @@ description: >
   compact route_decision (see
   schemas/scout-route-decision.schema.yaml) — it never performs discovery itself,
   never invokes Sniper directly, never bypasses the Strategist Approval Gate, and
-  never replaces Ranger when evidence review is required.
+  never replaces Ranger when evidence review is required. For Critical Hit, Scout
+  owns the contextual Feat activation and submits the resulting StageRequest;
+  critical_hit is a compatibility route and SHORT is the canonical Stage.
 
 trigger_conditions:
   critical_hit_candidate:

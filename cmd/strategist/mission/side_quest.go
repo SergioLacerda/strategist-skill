@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	livemission "github.com/SergioLacerda/strategist-skill/internal/mission"
 	"github.com/spf13/cobra"
@@ -91,12 +92,12 @@ func runADRTarget(cmd *cobra.Command, deps LifecycleDependencies, f *lifecycleFl
 	}
 	var path string
 	err = withMissionLock(deps, root, f.missionID, func() error {
-		_, status, loadErr := deps.Load(root, f.missionID)
-		if loadErr != nil {
-			return loadErr
+		var lockedErr error
+		path, lockedErr = resolveADRTarget(deps, root, basePath, f.missionID, slug)
+		if lockedErr != nil {
+			return fmt.Errorf("reserve ADR target: %w", lockedErr)
 		}
-		path, loadErr = reserveTarget(root, basePath, f.missionID, slug, status.State)
-		return loadErr
+		return nil
 	})
 	if err != nil {
 		return fmt.Errorf("mission adr-target: %w", err)
@@ -104,9 +105,31 @@ func runADRTarget(cmd *cobra.Command, deps LifecycleDependencies, f *lifecycleFl
 	return deps.WriteResult(cmd, f.asJSON, ADRTargetResult{MissionID: f.missionID, SideQuestID: livemission.OAADRSideQuestID(f.missionID), Path: path})
 }
 
-func reserveTarget(root, basePath, missionID, slug string, state domain.MissionState) (string, error) {
+func resolveADRTarget(deps LifecycleDependencies, root, basePath, missionID, slug string) (string, error) {
+	path, err := application.ReserveADRTarget(application.ADRTargetRequest{
+		StrategistRoot: root, BasePath: basePath, MissionID: missionID, Slug: slug, Now: time.Now(),
+	}, func(loadRoot, loadMissionID string) (domain.MissionState, error) {
+		return loadMissionState(deps, loadRoot, loadMissionID)
+	}, func(request application.ADRTargetRequest, state domain.MissionState) (string, error) {
+		return reserveTarget(request.StrategistRoot, request.BasePath, request.MissionID, request.Slug, state, request.Now)
+	})
+	if err != nil {
+		return "", fmt.Errorf("reserve ADR target: %w", err)
+	}
+	return path, nil
+}
+
+func loadMissionState(deps LifecycleDependencies, root, missionID string) (domain.MissionState, error) {
+	_, status, err := deps.Load(root, missionID)
+	if err != nil {
+		return "", err
+	}
+	return status.State, nil
+}
+
+func reserveTarget(root, basePath, missionID, slug string, state domain.MissionState, now time.Time) (string, error) {
 	path, err := livemission.ReserveADRTarget(livemission.ADRTargetRequest{
-		StrategistRoot: root, BasePath: basePath, MissionID: missionID, Slug: slug, State: state, Now: time.Now(),
+		StrategistRoot: root, BasePath: basePath, MissionID: missionID, Slug: slug, State: state, Now: now,
 	})
 	if err != nil {
 		return "", fmt.Errorf("reserve target: %w", err)
@@ -115,16 +138,36 @@ func reserveTarget(root, basePath, missionID, slug string, state domain.MissionS
 }
 
 func decideLocked(deps LifecycleDependencies, root, basePath, canonical, missionID, sideQuest, decision string) (livemission.AcceptedSideQuest, error) {
-	_, status, err := deps.Load(root, missionID)
-	if err != nil {
-		return livemission.AcceptedSideQuest{}, err
-	}
-	rec, err := livemission.DecideSideQuest(livemission.SideQuestDecision{
+	result, err := application.DecideSideQuest(application.SideQuestDecisionRequest{
 		StrategistRoot: root, BasePath: basePath, MissionID: missionID, SideQuestID: sideQuest,
-		Decision: decision, State: status.State, CanonicalPath: canonical, Now: time.Now(),
+		Decision: decision, CanonicalPath: canonical, Now: time.Now(),
+	}, func(loadRoot, loadMissionID string) (domain.MissionState, error) {
+		return loadMissionState(deps, loadRoot, loadMissionID)
+	}, func(request application.SideQuestDecisionRequest) (application.SideQuestDecisionResult, error) {
+		rec, decideErr := livemission.DecideSideQuest(livemission.SideQuestDecision{
+			StrategistRoot: request.StrategistRoot, BasePath: request.BasePath, MissionID: request.MissionID,
+			SideQuestID: request.SideQuestID, Decision: request.Decision, State: request.State,
+			CanonicalPath: request.CanonicalPath, Now: request.Now,
+		})
+		if decideErr != nil {
+			return application.SideQuestDecisionResult{}, fmt.Errorf("decide side quest: %w", decideErr)
+		}
+		return application.SideQuestDecisionResult{
+			SchemaVersion: rec.SchemaVersion, MissionID: rec.MissionID, SideQuestID: rec.SideQuestID,
+			Kind: rec.Kind, Decision: rec.Decision,
+			Destination:  application.DestinationRule{CanonicalPath: rec.Destination.CanonicalPath, Fallback: rec.Destination.Fallback},
+			ReservedPath: rec.ReservedPath, Claimed: rec.Claimed, Sealed: rec.Sealed,
+			DecidedAt: rec.DecidedAt, SealedAt: rec.SealedAt, Integrity: rec.Integrity,
+		}, nil
 	})
 	if err != nil {
 		return livemission.AcceptedSideQuest{}, fmt.Errorf("record decision: %w", err)
 	}
-	return rec, nil
+	return livemission.AcceptedSideQuest{
+		SchemaVersion: result.SchemaVersion, MissionID: result.MissionID, SideQuestID: result.SideQuestID,
+		Kind: result.Kind, Decision: result.Decision,
+		Destination:  livemission.DestinationRule{CanonicalPath: result.Destination.CanonicalPath, Fallback: result.Destination.Fallback},
+		ReservedPath: result.ReservedPath, Claimed: result.Claimed, Sealed: result.Sealed,
+		DecidedAt: result.DecidedAt, SealedAt: result.SealedAt, Integrity: result.Integrity,
+	}, nil
 }

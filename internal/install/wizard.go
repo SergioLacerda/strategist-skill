@@ -3,8 +3,10 @@ package install
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/i18n"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"go.opentelemetry.io/otel/codes"
 	"gopkg.in/yaml.v3"
@@ -94,6 +96,10 @@ func runWizard(ctx context.Context, p Prompter, extractor domain.FileExtractor, 
 	if err != nil {
 		return domain.WizardConfig{}, err
 	}
+	wc.IntegrationChoice, err = promptIntegration(p, i18n.BundleFor(wc.UILanguage), strategistDir, os.Stdout)
+	if err != nil {
+		return domain.WizardConfig{}, err
+	}
 	lockFile, err := validateAndActivatePluginPlan(extractor, catalog, providerRisk, wc, strategistDir, verbose)
 	if err != nil {
 		return domain.WizardConfig{}, err
@@ -144,6 +150,9 @@ func validateAndActivatePluginPlan(extractor domain.FileExtractor, catalog plugi
 	plan, err := planPluginOnboardingWithModes(extractor, catalog, wizardSlots(wc), wizardSlotModes(wc))
 	if err != nil {
 		return domain.PluginLockFile{}, fmt.Errorf("wizard: plugin onboarding plan: %w", err)
+	}
+	if err := plan.bindInstallContext(wc.Mode, wc.BasePath, wizardSlots(wc), wizardSlotModes(wc)); err != nil {
+		return domain.PluginLockFile{}, fmt.Errorf("wizard: install plan context: %w", err)
 	}
 	return activateWizardPlan(extractor, catalog, wc, strategistDir, plan, verbose)
 }

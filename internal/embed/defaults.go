@@ -13,7 +13,9 @@ import (
 )
 
 //go:embed all:defaults
-var defaultsFS embed.FS
+var embeddedDefaultsFS embed.FS
+
+var defaultsFS fs.FS = embeddedDefaultsFS
 
 // Extractor implements domain.FileExtractor using the embedded defaults.
 type Extractor struct{}

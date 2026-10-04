@@ -24,6 +24,7 @@ func collectCheckDiagnostics(root string, cfg domain.ActiveConfig, providers map
 	errs = append(errs, discoveryWeaponErrors(root, providers, resolutions)...)
 	errs = append(errs, checkPluginLockParity(root, providers)...)
 	errs = append(errs, validateRuntimeDefaultParity(root)...)
+	errs = append(errs, validateRoleSourceParity(root)...)
 	if err := emitF3ConflictAttributionSignals(root, cfg.BasePath, time.Now()); err != nil {
 		fmt.Fprintf(os.Stderr, "  ⚠ f3_conflict_signal: %v\n", err)
 	}

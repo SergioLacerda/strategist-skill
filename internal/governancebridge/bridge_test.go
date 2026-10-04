@@ -22,7 +22,7 @@ var _ governancebridge.GovernanceBridge = fakeBridge{}
 
 func TestGovernanceBridge_Evaluate(t *testing.T) {
 	t.Parallel()
-	want := governancebridge.GovernanceDecision{Allowed: true, Authority: "external:sdd", CorrelationID: "c-1"}
+	want := governancebridge.GovernanceDecision{Allowed: true, Authority: "external:providence", CorrelationID: "c-1"}
 	b := fakeBridge{decision: want}
 
 	got, err := b.Evaluate(context.Background(), governancebridge.GovernanceRequest{

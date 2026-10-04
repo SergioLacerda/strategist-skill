@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
@@ -150,15 +151,11 @@ func recordHandoffVerify(cmd *cobra.Command, opts handoffVerifyOptions, policy h
 	if err != nil {
 		return err
 	}
-	transition := opts.Transition
-	if transition == "" {
-		transition = policy.Transition
-	}
-	rec := telemetry.ChallengeRecord{
+	input := application.HandoffChallengeInput{
 		MissionID:                opts.MissionID,
-		Transition:               transition,
+		Transition:               opts.Transition,
+		PolicyTransition:         policy.Transition,
 		Attempt:                  opts.Attempt,
-		Timestamp:                time.Now().UTC().Format(time.RFC3339),
 		Status:                   result.Status,
 		Passed:                   result.Passed,
 		MissingRefs:              result.MissingRefs,
@@ -169,7 +166,9 @@ func recordHandoffVerify(cmd *cobra.Command, opts handoffVerifyOptions, policy h
 		ForbiddenClaimViolations: result.ForbiddenClaimViolations,
 		CriticalFailures:         result.CriticalFailures,
 	}
-	if err := telemetry.AppendHandoffChallenge(telemetry.HandoffChallengeHistoryPath(root), rec); err != nil {
+	if err := application.RecordHandoffChallenge(input, time.Now(), func(record application.HandoffChallengeRecord) error {
+		return telemetry.AppendHandoffChallenge(telemetry.HandoffChallengeHistoryPath(root), telemetryChallengeRecord(record))
+	}); err != nil {
 		return fmt.Errorf("record handoff challenge: %w", err)
 	}
 	return nil

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/SergioLacerda/strategist-skill/internal/catalog"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
 
@@ -64,7 +65,7 @@ func resolveCompiledRoleInvocationPlan(root, role, slot string, lock domain.Plug
 	if err != nil {
 		return domain.RoleInvocationPlan{}, false, nil
 	}
-	registry, err := domain.ParseCompiledRegistryCatalog(raw)
+	registry, err := catalog.ParseCompiledRegistryCatalog(raw)
 	if err != nil {
 		return domain.RoleInvocationPlan{}, false, nil
 	}
@@ -73,7 +74,7 @@ func resolveCompiledRoleInvocationPlan(root, role, slot string, lock domain.Plug
 		return domain.RoleInvocationPlan{}, true, fmt.Errorf("resolve role weapon binding for role %q: %w", role, err)
 	}
 	plan := domain.RoleInvocationPlan{
-		Role: resolved.Role, Slot: resolved.Slot, Mode: resolved.Mode, WeaponID: resolved.WeaponID, WeaponVersion: resolved.WeaponVersion,
+		Role: resolved.Role, Slot: resolved.Slot, TaxonomyVersion: domain.CanonicalTaxonomyVersion, Mode: resolved.Mode, WeaponID: resolved.WeaponID, WeaponVersion: resolved.WeaponVersion,
 		WeaponDigest: resolved.WeaponDigest, SourceDigest: resolved.SourceDigest, BindingDigest: resolved.BindingDigest,
 		ExecutionMode: resolved.ExecutionMode, ConnectorID: resolved.ConnectorID, Entrypoint: resolved.Entrypoint,
 		BindingGeneration: binding.Generation, BindingStatus: binding.Status,

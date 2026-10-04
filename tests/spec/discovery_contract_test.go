@@ -182,7 +182,7 @@ func TestDiscoveryWeaponContractRequiresExplicitRuntimeEvidence(t *testing.T) {
 
 	for _, path := range []string{
 		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "internal_skills", "ranger", "skill.yaml"),
-		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "skills", "brainstorming@1.0.0", "skill.yaml"),
+		filepath.Join(repoRoot(t), "internal", "embed", "defaults", "plugins", "catalog.yaml"),
 	} {
 		content := readFile(t, path)
 		for _, needle := range []string{
@@ -335,7 +335,7 @@ func TestRangerRoleFileReferencesEvaluationVerdict(t *testing.T) {
 func TestBrainstormingProviderDoesNotDeclareDiscoverySubtypeSupport(t *testing.T) {
 	t.Parallel()
 
-	path := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "skills", "brainstorming@1.0.0", "skill.yaml")
+	path := filepath.Join(repoRoot(t), "internal", "embed", "defaults", "plugins", "catalog.yaml")
 	content := readFile(t, path)
 	for _, needle := range []string{
 		"canonical_role: ranger",

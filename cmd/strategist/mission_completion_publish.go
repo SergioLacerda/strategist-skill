@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -108,27 +106,9 @@ func resumeCommittedCompletion(store missionruntime.InvocationStore, record doma
 // processing before it writes, a pre-existing artifact is always another
 // request's, a promoted one, or one whose ownership cannot be established.
 func requireTargetFree(path, requestID string) error {
-	existing, err := os.ReadFile(path) //nolint:gosec // G304: path is built by discoveryArtifactPaths inside the workspace.
-	if os.IsNotExist(err) {
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("inspect existing discovery artifact: %w", err)
-	}
-	provenance, err := provider.ParseDiscoveryProvenance(existing)
-	switch {
-	case err != nil:
-		return fmt.Errorf("invocation_artifact_exists: %s has unreadable frontmatter and will not be overwritten: %w", filepath.Base(path), err)
-	case provenance.Status != "ranger_pending":
-		return fmt.Errorf("invocation_artifact_exists: %s is not a pending Ranger artifact and will not be overwritten", filepath.Base(path))
-	case provenance.RequestID == "":
-		return fmt.Errorf("invocation_artifact_exists: %s is pending but carries no request provenance; remove it to issue a new request", filepath.Base(path))
-	default:
-		return fmt.Errorf("invocation_artifact_exists: %s is owned by request %q, not %q", filepath.Base(path), provenance.RequestID, requestID)
-	}
+	return wrapMissionError(missionruntime.RequireArtifactTargetFree(path, requestID))
 }
 
 func contentDigest(content []byte) string {
-	sum := sha256.Sum256(content)
-	return "sha256:" + hex.EncodeToString(sum[:])
+	return missionruntime.ContentDigest(content)
 }

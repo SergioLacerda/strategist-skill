@@ -39,7 +39,7 @@ provider never mutates `Makefile` or creates shell scripts itself).
 | `scripts/complexity-report.sh` | `complexity-report` | Lists functions over the cognitive-complexity threshold; threshold is `$(COMPLEXITY_THRESHOLD)` (default `15`), unified with `quality-budget-gate`'s source (previously hardcoded `7`) |
 | `scripts/go-file-size-report.sh` | `go-file-size-report` | Lists Go source files over 200 lines |
 | `scripts/coverage-per-package.sh` | `cover` | Prints per-package coverage summary (distinct from `cover-gate`'s pass/fail check) |
-| `scripts/check-convergence.sh` | `convergence-check` | Runs the four repository drift assertions (provider paths, retired `strategist/` mirror, etc.) |
+| `scripts/check-convergence.sh` | `convergence-check` | Runs the repository drift assertions for catalog authority, retired provider views, the retired `strategist/` mirror, and the authoring tree |
 | `scripts/check-governance-redirectors.sh` | `governance-check` | Validates `CLAUDE.md`/`AGENTS.md`/`GEMINI.md` carry the required governance fingerprint and redirector reference |
 | `scripts/test-style-report.sh` | `test-report` | Prints one status row per test style (unit, spec, integration, eval, eval-promptfoo, web) — from the separate `20260804-test-coverage-visibility-by-style` mission |
 

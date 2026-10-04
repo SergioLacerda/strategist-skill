@@ -15,11 +15,29 @@ func authorizeSniperEntry(input missionadapter.InvocationBuildInput) error {
 	if input.Role != "sniper" || input.Slot != string(domain.SlotExecution) {
 		return nil
 	}
+	_, status, err := loadMission(input.Root, input.MissionID)
+	if err != nil {
+		return fmt.Errorf("role_invocation_failed: %w", err)
+	}
+	if status.Stage == domain.StageShort && status.StageFeat == "critical_hit" {
+		return authorizeCriticalHitEntry(status)
+	}
 	tasksPath := filepath.Join(input.BasePath, "refined", input.MissionID, "tasks.md")
 	if err := requireSniperTargets(tasksPath); err != nil {
 		return err
 	}
 	return requireSniperGateDigest(input)
+}
+
+func authorizeCriticalHitEntry(status domain.MissionEngineStatus) error {
+	if status.State != domain.StateExecution || !status.StageGateApproved {
+		return fmt.Errorf("role_invocation_failed: Critical Hit execution requires explicit gate approval")
+	}
+	expected := domain.CriticalHitStageApprovalDigest(status)
+	if expected == "" || status.ApprovalGatePackageDigest != expected {
+		return fmt.Errorf("role_invocation_failed: Critical Hit approval evidence is missing or stale")
+	}
+	return nil
 }
 
 func requireSniperTargets(tasksPath string) error {

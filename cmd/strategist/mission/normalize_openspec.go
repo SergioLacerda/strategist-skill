@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/refinement"
 	"github.com/spf13/cobra"
@@ -15,8 +16,9 @@ type NormalizeOptions struct {
 	Root, MissionID, ChangeID, RuntimeRoot, Pending string
 	// Amend switches to the post-publication amendment mode; Amends and
 	// AuthorizationRef are its required companions.
-	Amend                    bool
-	Amends, AuthorizationRef string
+	Amend                       bool
+	Amends, AuthorizationRef    string
+	Reason, SupersedesMissionID string
 	// HandoffFacts is an optional YAML file with the typed handoff_policy_facts
 	// mapping Archivist declares at publication.
 	HandoffFacts string
@@ -24,13 +26,16 @@ type NormalizeOptions struct {
 
 // NormalizeDependencies injects mission-id validation and path resolution.
 type NormalizeDependencies struct {
-	RootFlag         string
-	RequireMissionID func(string) error
-	ResolvePaths     func(NormalizeOptions) (string, string, string, error)
-	RecordConfidence func(NormalizeOptions, domain.ConfidenceClaim, []domain.Evidence) error
+	RootFlag          string
+	RequireMissionID  func(string) error
+	ResolvePaths      func(NormalizeOptions) (string, string, string, error)
+	RecordConfidence  func(NormalizeOptions, domain.ConfidenceClaim, []domain.Evidence) error
+	RecordPublication func(NormalizeOptions, refinement.PackagePublication) error
 	// GateLabel returns the mission's gate outcome label ("" when none); it is
 	// consulted only by --amend. Nil means no label is known.
 	GateLabel func(NormalizeOptions) (string, error)
+	// LoadMission reads the persisted FSM snapshot used to authorize amendments.
+	LoadMission func(NormalizeOptions) (domain.MissionEngineStatus, error)
 }
 
 // NewNormalizeOpenSpec builds `mission normalize-openspec`.
@@ -52,6 +57,8 @@ OpenSpec specs and archive history remain private provider scratch.`,
 	f.BoolVar(&opts.Amend, "amend", false, "amend an already published package with a new change instead of publishing (analysis.md, the mission status and the original provider_change_id are kept; the previous files are snapshotted under .amendments/)")
 	f.StringVar(&opts.Amends, "amends", "", "with --amend: the change being amended (the package's provider_change_id, or the previous amendment's change id)")
 	f.StringVar(&opts.AuthorizationRef, "authorization-ref", "", "with --amend: the human authorization for the amendment (a quote or a gate event), recorded verbatim")
+	f.StringVar(&opts.Reason, "reason", "", "with --amend: correction rationale recorded in amendment lineage")
+	f.StringVar(&opts.SupersedesMissionID, "supersedes-mission-id", "", "with --amend: prior mission id this lineage supersedes, recorded for audit")
 	f.StringVar(&opts.HandoffFacts, "handoff-facts", "", "YAML file with the typed handoff_policy_facts mapping, written into the published analysis.md frontmatter so `handoff evaluate` can derive the policy (publication only; an amendment keeps analysis.md byte-identical)")
 	if err := cmd.MarkFlagRequired("change-id"); err != nil {
 		panic(err)
@@ -98,11 +105,22 @@ func runPublish(cmd *cobra.Command, deps NormalizeDependencies, opts NormalizeOp
 	if deps.RecordConfidence == nil {
 		return fmt.Errorf("mission normalize-openspec: Archivist confidence recorder is unavailable")
 	}
-	result, err := refinement.NormalizeOpenSpec(refinement.OpenSpecInput{
+	result, err := application.PublishOpenSpec(application.NormalizeOpenSpecRequest{
 		MissionID: opts.MissionID, BasePath: basePath, RuntimeRoot: runtimeRoot,
 		ChangeID: opts.ChangeID, PendingAnalysisPath: pending, HandoffFacts: facts,
+	}, application.NormalizeOpenSpecPorts{
 		RecordConfidence: func(claim domain.ConfidenceClaim, evidence []domain.Evidence) error {
 			return deps.RecordConfidence(opts, claim, evidence)
+		},
+		RecordPublication: func(publication application.NormalizeOpenSpecPublication) error {
+			if deps.RecordPublication == nil {
+				return nil
+			}
+			return deps.RecordPublication(opts, refinement.PackagePublication{
+				MissionID: publication.MissionID, ProviderChangeID: publication.ProviderChangeID,
+				SourceDigest: publication.SourceDigest, PackageDigest: publication.PackageDigest,
+				PublishedAt: publication.PublishedAt,
+			})
 		},
 	})
 	if err != nil {
@@ -111,7 +129,7 @@ func runPublish(cmd *cobra.Command, deps NormalizeDependencies, opts NormalizeOp
 	return reportPublished(cmd, opts, result, facts == nil)
 }
 
-func reportPublished(cmd *cobra.Command, opts NormalizeOptions, result refinement.OpenSpecResult, factsMissing bool) error {
+func reportPublished(cmd *cobra.Command, opts NormalizeOptions, result application.NormalizeOpenSpecResult, factsMissing bool) error {
 	if factsMissing {
 		if _, err := fmt.Fprintf(cmd.ErrOrStderr(), "[Strategist] warning=handoff_policy_facts_not_declared mission_id=%s: `strategist handoff evaluate` rejects this package until handoff_policy_facts is declared (--handoff-facts)\n", opts.MissionID); err != nil {
 			return fmt.Errorf("mission normalize-openspec: write output: %w", err)

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -39,7 +40,16 @@ func publishedAt(t *testing.T, status, extra string) bridgeFixture {
 }
 
 func (f bridgeFixture) amendInput(change, amends string) AmendInput {
-	return AmendInput{MissionID: f.mission, BasePath: f.base, RuntimeRoot: f.runtime, ChangeID: change, Amends: amends, AuthorizationRef: "user: amend it (2026-09-26)", GateLabel: "", Now: amendClock}
+	raw, _ := os.ReadFile(filepath.Join(f.refined, "analysis.md"))
+	status := frontmatterValue(raw, "mission_status")
+	persisted := domain.MissionEngineStatus{MissionID: f.mission, Phase: domain.PhaseRefinement, State: domain.StateRefinement}
+	if status == "gate_pending" {
+		persisted.Phase, persisted.State = domain.PhaseApprovalGate, domain.StateApprovalGate
+	}
+	if status == "gate_analysis_accepted" {
+		persisted.Phase, persisted.State = domain.PhaseDone, domain.StateDoneAnalysis
+	}
+	return AmendInput{MissionID: f.mission, BasePath: f.base, RuntimeRoot: f.runtime, ChangeID: change, Amends: amends, AuthorizationRef: "user: amend it (2026-09-26)", GateLabel: "", PersistedStatus: persisted, Now: amendClock}
 }
 
 // newChange writes the amending change (the pending analysis stays absent: an amend
@@ -95,7 +105,7 @@ func TestAmendOpenSpecRefusesEveryUnmetPrecondition(t *testing.T) {
 		"accepted package gains documentation targets": {status: "gate_analysis_accepted", mutate: func(t *testing.T, f bridgeFixture, _ *AmendInput) {
 			path := filepath.Join(f.runtime, "changes", "second", "tasks.md")
 			require.NoError(t, os.WriteFile(path, []byte("- [ ] 1.1 [documentation_target] write it\n"), 0o644))
-		}, want: "documentation target"},
+		}, want: "documentation_target"},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -147,6 +157,35 @@ func TestAmendOpenSpecAcceptsEveryAllowedStatusAndKeepsTheAnalysisByteIdentical(
 	}
 }
 
+func TestAmendOpenSpecRejectsBlockedStateWithoutRepair(t *testing.T) {
+	f := publishedAt(t, "gate_analysis_accepted", "")
+	f.newChange(t, "second", "v2")
+	in := f.amendInput("second", "first")
+	in.PersistedStatus.Phase, in.PersistedStatus.State = domain.PhaseBlocked, domain.StateBlocked
+	_, err := AmendOpenSpec(in)
+	require.ErrorContains(t, err, "disagrees")
+}
+
+func TestAmendOpenSpecRejectsDivergentGateTelemetry(t *testing.T) {
+	f := publishedAt(t, "archivist_done", "")
+	f.newChange(t, "second", "v2")
+	in := f.amendInput("second", "first")
+	in.GateLabel = "revision_requested"
+	_, err := AmendOpenSpec(in)
+	require.ErrorContains(t, err, "telemetry label")
+}
+
+func TestAmendOpenSpecAllowsARepairAuthorizedState(t *testing.T) {
+	f := publishedAt(t, "gate_analysis_accepted", "")
+	f.newChange(t, "second", "v2")
+	require.NoError(t, os.WriteFile(filepath.Join(f.refined, "tasks.md"), []byte("- [ ] 1.1 [documentation_target] write `docs/repaired.md`\n"), 0o644))
+	in := f.amendInput("second", "first")
+	in.PersistedStatus.Phase, in.PersistedStatus.State = domain.PhaseRefinement, domain.StateRefinement
+	in.PersistedStatus.HandoffNextAction = "reapprove_gate"
+	_, err := AmendOpenSpec(in)
+	require.NoError(t, err)
+}
+
 func TestAmendOpenSpecRecordsAmendmentsInFrontmatterAndManifest(t *testing.T) {
 	f := publishedAt(t, "gate_analysis_accepted", "")
 	f.newChange(t, "second", "v2")
@@ -161,6 +200,11 @@ func TestAmendOpenSpecRecordsAmendmentsInFrontmatterAndManifest(t *testing.T) {
 	assert.Contains(t, tasks, "change_id: second")
 	assert.Contains(t, tasks, "at: 2026-09-26T10:00:00Z")
 	assert.Contains(t, tasks, `authorization_ref: "user: amend it (2026-09-26)"`)
+	assert.Contains(t, tasks, "derived_from: first")
+	assert.Contains(t, tasks, "source_digest:")
+	assert.Contains(t, tasks, "package_digest: sha256:")
+	assert.Contains(t, tasks, "reason: same_mission_amendment")
+	assert.Contains(t, tasks, "disposition: same_mission_amendment")
 	assert.Contains(t, tasks, "previous_sha256: "+sha([]byte(previous["tasks.md"])))
 
 	snapshot := filepath.Join(f.refined, ".amendments", "001")
@@ -177,6 +221,12 @@ func TestAmendOpenSpecRecordsAmendmentsInFrontmatterAndManifest(t *testing.T) {
 	assert.Equal(t, 1, manifest.Amendment)
 	assert.Equal(t, "second", manifest.ChangeID)
 	assert.Equal(t, "first", manifest.Amends)
+	assert.Equal(t, "first", manifest.DerivedFrom)
+	assert.Empty(t, manifest.SupersedesMission)
+	assert.NotEmpty(t, manifest.SourceDigest)
+	assert.Contains(t, manifest.PackageDigest, "sha256:")
+	assert.Equal(t, "same_mission_amendment", manifest.Reason)
+	assert.Equal(t, "same_mission_amendment", manifest.Disposition)
 	assert.Equal(t, "none", manifest.GateLabel)
 	assert.Equal(t, "user: amend it (2026-09-26)", manifest.AuthorizationRef)
 	assert.Equal(t, sha([]byte(previous["analysis.md"])), manifest.AnalysisSHA256)
@@ -184,16 +234,15 @@ func TestAmendOpenSpecRecordsAmendmentsInFrontmatterAndManifest(t *testing.T) {
 	assert.Equal(t, sha([]byte(tasks)), manifest.Files["tasks.md"].NewSHA256)
 }
 
-func TestAmendOpenSpecArchivesTheNewChangeAndChainsTheNextAmendment(t *testing.T) {
+func TestAmendOpenSpecRemovesTheNewScratchAndChainsTheNextAmendment(t *testing.T) {
 	f := publishedAt(t, "archivist_done", "")
 	f.newChange(t, "second", "v2")
 	_, err := AmendOpenSpec(f.amendInput("second", "first"))
 	require.NoError(t, err)
 	_, statErr := os.Stat(filepath.Join(f.runtime, "changes", "second"))
 	require.ErrorIs(t, statErr, os.ErrNotExist, "the amending change leaves the active list")
-	archived, err := filepath.Glob(filepath.Join(f.runtime, "changes", "archive", "*-second"))
-	require.NoError(t, err)
-	assert.Len(t, archived, 1)
+	_, statErr = os.Stat(filepath.Join(f.runtime, "changes", "archive"))
+	require.ErrorIs(t, statErr, os.ErrNotExist, "the amending scratch is not privately archived")
 
 	f.newChange(t, "third", "v3")
 	_, err = AmendOpenSpec(f.amendInput("third", "first"))

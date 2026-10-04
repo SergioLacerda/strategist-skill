@@ -1,0 +1,16 @@
+---
+export interface Props { epicHref?: string }
+const { epicHref = '#allies' } = Astro.props;
+---
+<footer class="footer">
+  <a href="https://github.com/SergioLacerda/strategist-skill/blob/main/QUICKSTART.md" target="_blank" rel="noopener noreferrer" data-pt="Quickstart do repositório ↗" data-en="Repository quickstart ↗">Quickstart do repositório ↗</a>
+  <span aria-hidden="true"> · </span>
+  <a href="https://github.com/SergioLacerda/strategist-skill" target="_blank" rel="noopener noreferrer">strategist-skill</a>
+  <span aria-hidden="true"> · </span>
+  <a href={epicHref} data-pt="Aliados" data-en="Allies">Aliados</a>
+</footer>
+<style>
+  .footer { margin-top: 28px; padding-top: 22px; border-top: 1px solid rgba(232,194,90,.16); text-align: center; color: #6c5c3e; font: 12px/1.6 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .06em; }
+  .footer a { color: #b8933f; text-decoration: none; }
+  .footer a:hover { color: #e8c25a; }
+</style>

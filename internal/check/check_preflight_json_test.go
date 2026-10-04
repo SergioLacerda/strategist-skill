@@ -25,6 +25,7 @@ func TestCheckCmd_JSON_Success(t *testing.T) {
 	var result domain.PreflightResult
 	require.NoError(t, json.Unmarshal([]byte(out), &result))
 	assert.Equal(t, domain.PreflightResultSchemaVersion, result.SchemaVersion)
+	assert.Equal(t, domain.CanonicalTaxonomyVersion, result.TaxonomyVersion)
 	assert.Equal(t, "ready", result.Status)
 	assert.Equal(t, dir, result.Identity.Root)
 	assert.Equal(t, "epic", result.Identity.Mode)
@@ -80,7 +81,7 @@ func TestCheckCmd_JSON_BindingsMatchResolvedProviderIDs(t *testing.T) {
 	wantProviders := map[string]string{
 		"discovery":  "brainstorming",
 		"refinement": "openspec-explore",
-		"execution":  "sdd-ask",
+		"execution":  "fixture-provider",
 	}
 	got := map[string]string{}
 	for _, b := range result.Bindings {
@@ -154,7 +155,7 @@ func TestCheckCmd_JSON_LanguageSurfacedFromActiveYAML(t *testing.T) {
 	dir := minimalCheckRoot(t)
 	require.NoError(t, os.WriteFile(
 		filepath.Join(dir, "active.yaml"),
-		[]byte("mode: epic\nbase_path: .analysis\nlanguage:\n  ui: pt-BR\n  docs: en\n  chat: pt-BR\n  code: en\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: sdd-ask\n"),
+		[]byte("mode: epic\nbase_path: .analysis\nlanguage:\n  ui: pt-BR\n  docs: en\n  chat: pt-BR\n  code: en\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: fixture-provider\n"),
 		0o644,
 	))
 	checkRoot = dir
@@ -204,7 +205,7 @@ func TestCheckCmd_JSON_ConfirmChatLanguageMismatchWarns(t *testing.T) {
 	dir := minimalCheckRoot(t)
 	require.NoError(t, os.WriteFile(
 		filepath.Join(dir, "active.yaml"),
-		[]byte("mode: epic\nbase_path: .analysis\nlanguage:\n  ui: pt-BR\n  docs: en\n  chat: pt-BR\n  code: en\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: sdd-ask\n"),
+		[]byte("mode: epic\nbase_path: .analysis\nlanguage:\n  ui: pt-BR\n  docs: en\n  chat: pt-BR\n  code: en\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: fixture-provider\n"),
 		0o644,
 	))
 	checkRoot = dir
@@ -229,7 +230,7 @@ func TestCheckCmd_JSON_ConfirmChatLanguageMatchStaysReady(t *testing.T) {
 	dir := minimalCheckRoot(t)
 	require.NoError(t, os.WriteFile(
 		filepath.Join(dir, "active.yaml"),
-		[]byte("mode: epic\nbase_path: .analysis\nlanguage:\n  ui: pt-BR\n  docs: en\n  chat: pt-BR\n  code: en\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: sdd-ask\n"),
+		[]byte("mode: epic\nbase_path: .analysis\nlanguage:\n  ui: pt-BR\n  docs: en\n  chat: pt-BR\n  code: en\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: fixture-provider\n"),
 		0o644,
 	))
 	checkRoot = dir

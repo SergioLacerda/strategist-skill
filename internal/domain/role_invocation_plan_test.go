@@ -36,6 +36,7 @@ func TestNewRoleInvocationPlanFromLock_FieldForFieldEqualityWithSourceRecord(t *
 	want := RoleInvocationPlan{
 		Role:              "ranger",
 		Slot:              "discovery",
+		TaxonomyVersion:   CanonicalTaxonomyVersion,
 		Mode:              SlotBindingModeCustom,
 		WeaponID:          "brainstorming@1.0.0",
 		WeaponVersion:     "1.0.0",
@@ -81,7 +82,7 @@ func TestNewRoleInvocationPlanFromLock_RankedModeIsRejected(t *testing.T) {
 }
 
 func TestNewRankedRoleInvocationPlanFromCatalog_Success(t *testing.T) {
-	binding := SlotBinding{Slot: "discovery", InstalledInstanceID: "brainstorming", Generation: 1, Status: "active", Mode: SlotBindingModeRanked}
+	binding := SlotBinding{Slot: "discovery", InstalledInstanceID: "brainstorming", WeaponVersion: "1.0.0", Generation: 1, Status: "active", Mode: SlotBindingModeRanked}
 	stamp := CatalogRankedStamp{ID: "brainstorming", CanonicalRole: "ranger", Roles: []string{"ranger"}, Ranked: true, CertificationDigest: "sha256:cert"}
 
 	plan, err := NewRankedRoleInvocationPlanFromCatalog("ranger", "discovery", binding, stamp)
@@ -89,8 +90,8 @@ func TestNewRankedRoleInvocationPlanFromCatalog_Success(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	want := RoleInvocationPlan{
-		Role: "ranger", Slot: "discovery", Mode: SlotBindingModeRanked,
-		WeaponID: "brainstorming", WeaponDigest: "sha256:cert", BindingDigest: "sha256:cert",
+		Role: "ranger", Slot: "discovery", TaxonomyVersion: CanonicalTaxonomyVersion, Mode: SlotBindingModeRanked,
+		WeaponID: "brainstorming", WeaponVersion: "1.0.0", WeaponDigest: "sha256:cert", BindingDigest: "sha256:cert",
 		BindingGeneration: 1, BindingStatus: "active",
 		Runtime: WeaponRuntime{Kind: RankedRuntimeNone},
 	}

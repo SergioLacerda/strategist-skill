@@ -1,0 +1,48 @@
+{
+  "canonical_role": "ranger",
+  "category": "discovery",
+  "certification_digest": "<hash>",
+  "compatibility_source": "embedded",
+  "conformance_level": "C1",
+  "connector_digest": "<hash>",
+  "default": true,
+  "description": "You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements and design before implementation.",
+  "host_api_digest": "<hash>",
+  "id": "brainstorming",
+  "installable": true,
+  "kind": "atomic",
+  "legacy_manifest_path": "skills/brainstorming@1.0.0/skill.yaml",
+  "license": "MIT",
+  "origin": "embedded",
+  "policy_digest": "<hash>",
+  "provider_schema_version": "1",
+  "ranked": true,
+  "ranked_binding_generation": 1,
+  "ranked_binding_status": "active",
+  "risk_score": "write_analysis",
+  "roles": [
+    "ranger"
+  ],
+  "runtime": {
+    "execution_mode": "prompt_bridge",
+    "kind": "embedded"
+  },
+  "status": "active",
+  "supported_slots": [
+    "discovery"
+  ],
+  "test_suite_digest": "<hash>",
+  "upstream_commit": "b36e0829c6d0140e93cfef2ca599b1b07d4a7797",
+  "upstream_content_digest": "<hash>",
+  "upstream_repo": "obra/superpowers",
+  "upstream_skill_path": "skills/brainstorming/SKILL.md",
+  "upstream_version": "6.3.0",
+  "version": "1.0.0",
+  "weapon_contract": {
+    "invocation_evidence": "required",
+    "native_substitution": "forbidden",
+    "participation": "required",
+    "role_owner": "ranger",
+    "unavailable_behavior": "role_invocation_failed"
+  }
+}

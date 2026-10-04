@@ -14,11 +14,11 @@ golden:
     mode: normalized
     contracts: [handoff-archivist-to-sniper]
     update_reason: "Pin the Archivist to Sniper handoff schema shape."
-  - id: provider-manifest
-    source: internal/embed/defaults/skills/brainstorming@1.0.0/skill.yaml
+  - id: provider-catalog
+    source: internal/embed/defaults/plugins/catalog.yaml#providers[id=brainstorming]
     mode: normalized
     contracts: [discovery-provider, write-analysis]
-    update_reason: "Pin the embedded provider compatibility descriptor."
+    update_reason: "Pin the embedded catalog authority for the brainstorming provider."
   - id: telemetry-attributes
     source: internal/telemetry/schema.go
     mode: exact

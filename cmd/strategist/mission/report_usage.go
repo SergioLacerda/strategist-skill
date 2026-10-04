@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
 )
@@ -74,17 +75,21 @@ func RunReportUsage(cmd *cobra.Command, deps ReportUsageDependencies, opts Repor
 	if err != nil {
 		return fmt.Errorf("mission report-usage: %w", err)
 	}
-	if !deps.MissionKnown(basePath, opts.MissionID) {
-		return fmt.Errorf("mission report-usage: unknown mission_id %q (no pending/refined/archived artifact found under %s)", opts.MissionID, basePath)
-	}
-	run := telemetry.NewMissionRun(opts.MissionID)
-	run.SetTokens(opts.TokensIn, opts.TokensOut)
-	snapshot := run.Snapshot()
-	rec := telemetry.MissionTokenUsageRecord{MissionID: snapshot.MissionID, TokensIn: snapshot.TokensIn, TokensOut: snapshot.TokensOut, Source: telemetry.MissionUsageSourceAgentReport, ReportedAt: time.Now().UTC().Format(time.RFC3339)}
-	if err := telemetry.AppendMissionTokenUsage(telemetry.MissionTokenUsageHistoryPath(strategistRoot), rec); err != nil {
+	record, err := application.RecordMissionTokenUsage(strategistRoot, basePath, application.MissionTokenUsageInput{
+		MissionID: opts.MissionID, TokensIn: opts.TokensIn, TokensOut: opts.TokensOut,
+	}, time.Now(), application.MissionTokenUsagePorts{
+		MissionKnown: deps.MissionKnown,
+		Append: func(root string, record application.MissionTokenUsageRecord) error {
+			return telemetry.AppendMissionTokenUsage(telemetry.MissionTokenUsageHistoryPath(root), telemetry.MissionTokenUsageRecord{
+				MissionID: record.MissionID, TokensIn: record.TokensIn, TokensOut: record.TokensOut,
+				Source: record.Source, ReportedAt: record.ReportedAt,
+			})
+		},
+	})
+	if err != nil {
 		return fmt.Errorf("mission report-usage: %w", err)
 	}
-	if _, err := fmt.Fprintf(cmd.OutOrStdout(), "mission_id=%s tokens_in=%d tokens_out=%d source=%s recorded\n", rec.MissionID, rec.TokensIn, rec.TokensOut, rec.Source); err != nil {
+	if _, err := fmt.Fprintf(cmd.OutOrStdout(), "mission_id=%s tokens_in=%d tokens_out=%d source=%s recorded\n", record.MissionID, record.TokensIn, record.TokensOut, record.Source); err != nil {
 		return fmt.Errorf("mission report-usage: write output: %w", err)
 	}
 	return nil

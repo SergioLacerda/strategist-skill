@@ -21,6 +21,10 @@ import (
 //go:embed testdata/client-matrix.yaml
 var matrixFixture embed.FS
 
+type contextReader func(string) ([]byte, error)
+
+func (r contextReader) ReadFile(ref string) ([]byte, error) { return r(ref) }
+
 func TestClientMatrixIsValidAndReportsStructuralEvidenceDeterministically(t *testing.T) {
 	data, err := matrixFixture.ReadFile("testdata/client-matrix.yaml")
 	require.NoError(t, err)
@@ -102,11 +106,14 @@ func TestClientAdapterSmokeUsesHermeticRootsAndContextAuthority(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(project, "b.md"), []byte("b"), 0o600))
 	require.NoError(t, os.WriteFile(filepath.Join(project, "a.md"), []byte("a"), 0o600))
 
-	first, err := domain.MaterializeContext(project, []domain.ContextReference{
+	reader := contextReader(func(ref string) ([]byte, error) {
+		return os.ReadFile(filepath.Join(project, filepath.FromSlash(ref)))
+	})
+	first, err := domain.MaterializeContext(reader, []domain.ContextReference{
 		{Ref: "b.md", Kind: "context"}, {Ref: "a.md", Kind: "context"},
 	}, 4, 20)
 	require.NoError(t, err)
-	second, err := domain.MaterializeContext(project, []domain.ContextReference{
+	second, err := domain.MaterializeContext(reader, []domain.ContextReference{
 		{Ref: "a.md", Kind: "context"}, {Ref: "b.md", Kind: "context"},
 	}, 4, 20)
 	require.NoError(t, err)
@@ -333,7 +340,10 @@ func TestContextMaterializationRejectsEscapingAndAbsoluteReferences(t *testing.T
 	root := t.TempDir()
 	cases := []string{"../outside.md", filepath.Join(root, "absolute.md")}
 	for _, ref := range cases {
-		_, err := domain.MaterializeContext(root, []domain.ContextReference{{Ref: ref, Kind: "context"}}, 4, 20)
+		reader := contextReader(func(ref string) ([]byte, error) {
+			return os.ReadFile(filepath.Join(root, filepath.FromSlash(ref)))
+		})
+		_, err := domain.MaterializeContext(reader, []domain.ContextReference{{Ref: ref, Kind: "context"}}, 4, 20)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid relative reference")
 	}

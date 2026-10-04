@@ -3,6 +3,7 @@ package check
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -32,7 +33,7 @@ func fixtureRegistry() domain.CompiledRegistry {
 		}
 	}
 	return domain.CompiledRegistry{
-		SchemaVersion: domain.CompiledRegistrySchemaVersion,
+		SchemaVersion: domain.CompiledRegistrySchemaVersion, TaxonomyVersion: domain.CanonicalTaxonomyVersion,
 		Weapons: []domain.CompiledWeapon{
 			weapon("brainstorming", bridge), weapon("openspec-propose", bridge), weapon("sniper", code),
 		},
@@ -60,10 +61,11 @@ func registrySectionsYAML(t *testing.T, registry domain.CompiledRegistry) string
 
 func registrySectionsBody(registry domain.CompiledRegistry) (string, error) {
 	raw, err := yaml.Marshal(struct {
-		Weapons        []domain.CompiledWeapon        `yaml:"weapons"`
-		Roles          []domain.CompiledRole          `yaml:"roles"`
-		RankedBindings []domain.CompiledRankedBinding `yaml:"ranked_bindings"`
-	}{registry.Weapons, registry.Roles, registry.RankedBindings})
+		TaxonomyVersion string                         `yaml:"taxonomy_version"`
+		Weapons         []domain.CompiledWeapon        `yaml:"weapons"`
+		Roles           []domain.CompiledRole          `yaml:"roles"`
+		RankedBindings  []domain.CompiledRankedBinding `yaml:"ranked_bindings"`
+	}{registry.TaxonomyVersion, registry.Weapons, registry.Roles, registry.RankedBindings})
 	return string(raw), err
 }
 
@@ -83,7 +85,9 @@ func TestMain(m *testing.M) {
 // writeRegistryCatalog writes a catalog holding only the compiled registry.
 func writeRegistryCatalog(t *testing.T, root string, registry domain.CompiledRegistry) {
 	t.Helper()
-	body := "schema_version: strategist-plugin-catalog/v2\n" + registrySectionsYAML(t, registry)
+	sections := registrySectionsYAML(t, registry)
+	sections = strings.Replace(sections, "weapons:\n", "providers: []\nweapons:\n", 1)
+	body := "schema_version: strategist-plugin-catalog/v2\n" + sections
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "plugins"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins", "catalog.yaml"), []byte(body), 0o644))
 }

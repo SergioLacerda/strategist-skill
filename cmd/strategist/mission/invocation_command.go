@@ -3,6 +3,7 @@ package mission
 import (
 	"context"
 
+	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
@@ -18,9 +19,12 @@ type InvocationDependencies struct {
 	LoadMission      func(root, missionID string) (domain.MissionEngineStatus, error)
 	Build            func(context.Context, InvocationBuildInput) (domain.MissionInvocationRequest, error)
 	Complete         func(context.Context, InvocationCompleteInput) (domain.MissionInvocationOutcome, error)
-	ExecuteHost      func(context.Context, string, string, string, domain.MissionInvocationRequest) (domain.MissionInvocationCompletion, error)
-	WriteResult      func(*cobra.Command, bool, any) error
-	ReadCompletion   func(*cobra.Command) (domain.MissionInvocationCompletion, error)
+	// ListRequests summarizes the request records of one mission, or of every
+	// mission when the id is empty. It is read-only.
+	ListRequests   func(root, missionID string) (domain.MissionInvocationListing, error)
+	ExecuteHost    func(context.Context, string, string, string, domain.MissionInvocationRequest) (domain.MissionInvocationCompletion, error)
+	WriteResult    func(*cobra.Command, bool, any) error
+	ReadCompletion func(*cobra.Command) (domain.MissionInvocationCompletion, error)
 	// TelemetrySink selects the discovery event sink when a completion runs.
 	// Production composition builds it from the existing telemetry
 	// configuration; tests inject capture or failing sinks. A nil function
@@ -28,15 +32,9 @@ type InvocationDependencies struct {
 	TelemetrySink func() telemetry.EventSink
 }
 
-// InvocationBuildInput identifies the immutable Weapon request to build.
-type InvocationBuildInput struct {
-	Root           string
-	BasePath       string
-	MissionID      string
-	Role           string
-	Slot           string
-	RequestContext string
-}
+// InvocationBuildInput remains a CLI-package alias for existing adapters and
+// tests; the application package owns the request contract.
+type InvocationBuildInput = application.InvocationBuildRequest
 
 // InvocationCompleteInput identifies and supplies one host completion.
 type InvocationCompleteInput struct {

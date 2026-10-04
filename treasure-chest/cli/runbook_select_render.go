@@ -7,7 +7,7 @@ import (
 	"sort"
 	"text/tabwriter"
 
-	"github.com/SergioLacerda/strategist-skill/internal/runbook"
+	selectrunbook "github.com/SergioLacerda/strategist-skill/internal/feats/select_runbook"
 )
 
 // runbookSelectionRow is one Selection rendered for CLI output, shaped to
@@ -28,7 +28,7 @@ type runbookSelectionRow struct {
 func sortRunbookSelectionRows(rows []runbookSelectionRow) {
 	sort.Slice(rows, func(i, k int) bool {
 		if rows[i].Role != rows[k].Role {
-			return rows[i].Role == string(runbook.RolePrimary)
+			return rows[i].Role == string(selectrunbook.RolePrimary)
 		}
 		return rows[i].RunbookID < rows[k].RunbookID
 	})

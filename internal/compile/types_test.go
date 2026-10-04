@@ -14,7 +14,7 @@ func TestActiveConfig_Validate_Valid(t *testing.T) {
 		Slots: map[string]string{
 			"discovery":  "brainstorming",
 			"refinement": "openspec-explore",
-			"execution":  "sdd-ask",
+			"execution":  "fixture-provider",
 		},
 	}
 	if err := cfg.Validate(); err != nil {
@@ -36,7 +36,7 @@ func TestActiveConfig_Validate_MissingFields(t *testing.T) {
 				Slots: map[string]string{
 					"discovery":  "brainstorming",
 					"refinement": "openspec-explore",
-					"execution":  "sdd-ask",
+					"execution":  "fixture-provider",
 				},
 			},
 			want: "mode is required",
@@ -48,7 +48,7 @@ func TestActiveConfig_Validate_MissingFields(t *testing.T) {
 				Slots: map[string]string{
 					"discovery":  "brainstorming",
 					"refinement": "openspec-explore",
-					"execution":  "sdd-ask",
+					"execution":  "fixture-provider",
 				},
 			},
 			want: "base_path is required",

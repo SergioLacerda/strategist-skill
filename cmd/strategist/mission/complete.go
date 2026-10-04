@@ -1,8 +1,10 @@
 package mission
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/spf13/cobra"
 )
@@ -25,9 +27,6 @@ func RunComplete(cmd *cobra.Command, deps InvocationDependencies, f *invocationF
 	if deps.Complete == nil || deps.WriteResult == nil || deps.ReadCompletion == nil {
 		return fmt.Errorf("mission complete: invocation runtime is unavailable")
 	}
-	if f.requestID == "" {
-		return fmt.Errorf("mission complete: --request-id is required")
-	}
 	root, basePath, err := deps.ResolveBasePath(f.root)
 	if err != nil {
 		return fmt.Errorf("mission complete: %w", err)
@@ -36,7 +35,14 @@ func RunComplete(cmd *cobra.Command, deps InvocationDependencies, f *invocationF
 	if err != nil {
 		return fmt.Errorf("mission complete: %w", err)
 	}
-	outcome, err := deps.Complete(cmd.Context(), InvocationCompleteInput{Root: root, BasePath: basePath, RequestID: f.requestID, Completion: completion, Adapter: domain.ExecutionAdapterCurrentHost, Sink: deps.sink()})
+	outcome, err := application.CompleteInvocation(cmd.Context(), application.InvocationCompletionRequest{
+		Root: root, BasePath: basePath, RequestID: f.requestID, Completion: completion, Adapter: domain.ExecutionAdapterCurrentHost,
+	}, func(ctx context.Context, request application.InvocationCompletionRequest) (domain.MissionInvocationOutcome, error) {
+		return deps.Complete(ctx, InvocationCompleteInput{
+			Root: request.Root, BasePath: request.BasePath, RequestID: request.RequestID,
+			Completion: request.Completion, Adapter: request.Adapter, Sink: deps.sink(),
+		})
+	})
 	if err != nil {
 		return fmt.Errorf("mission complete: %w", err)
 	}

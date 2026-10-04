@@ -9,7 +9,7 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/embed"
-	"github.com/SergioLacerda/strategist-skill/internal/initiative"
+	"github.com/SergioLacerda/strategist-skill/internal/feats/initiative"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/stretchr/testify/require"
 )
@@ -71,11 +71,34 @@ func TestInitiativeRuntimeSurfacesEventSinkFailure(t *testing.T) {
 	require.ErrorIs(t, err, errInitiativeSink)
 }
 
+func TestInitiativeRuntimeEmitsCanonicalFeatTelemetry(t *testing.T) {
+	sink := &capturingInitiativeSink{}
+	runtime, err := NewInitiativeRuntimeWithSink(t.TempDir(), initiative.DefaultPolicy(), sink)
+	require.NoError(t, err)
+
+	_, err = runtime.EnterRole(InitiativeRoleEntry{MissionID: "feat-telemetry", Role: "ranger", RunID: "run"})
+	require.NoError(t, err)
+	require.Len(t, sink.events, 1)
+	require.Equal(t, initiative.FeatName, sink.events[0].Attributes[telemetry.AttrFeat])
+	require.Equal(t, initiative.FeatName, sink.events[0].Attributes[telemetry.AttrInitiativeFeat])
+	require.Equal(t, initiative.FeatName, sink.events[0].Attributes[telemetry.AttrInitiativeFeatLabel])
+	require.NotContains(t, sink.events[0].Attributes, "strategist.ability")
+}
+
 var errInitiativeSink = errors.New("event sink unavailable")
 
 type failingInitiativeSink struct{}
 
 func (failingInitiativeSink) Emit(context.Context, telemetry.Event) error { return errInitiativeSink }
+
+type capturingInitiativeSink struct {
+	events []telemetry.Event
+}
+
+func (s *capturingInitiativeSink) Emit(_ context.Context, event telemetry.Event) error {
+	s.events = append(s.events, event)
+	return nil
+}
 
 func testLeveling(eventID, role string) *initiative.LevelingResolution {
 	return &initiative.LevelingResolution{

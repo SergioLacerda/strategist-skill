@@ -29,7 +29,7 @@ import (
 //     already surfaced elsewhere (check_weapon_bindings.go)
 //     and are not duplicated here;
 //   - the skill.yaml declares no canonical_role at all — not every skill
-//     provider is expected to declare one (e.g. sdd-ask), and the execution
+//     provider is expected to declare one (e.g. fixture-provider), and the execution
 //     slot's embedded weapon is explicitly deferred by
 //     the fixed embedded-weapon roster.
 //
@@ -49,7 +49,7 @@ func checkRoleProviderCompatibility(root, slot, provider, riskScore string, skil
 }
 
 // checkRoleFactsCompatibility is the affinity check over roles already resolved
-// from the Weapon's manifest (catalog first, compat view as fallback).
+// from the catalog or a bound custom adapter.
 func checkRoleFactsCompatibility(root, slot, provider, riskScore string, roles []string) string {
 	if len(roles) == 0 {
 		return ""

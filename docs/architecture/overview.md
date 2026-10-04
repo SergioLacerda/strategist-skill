@@ -6,7 +6,7 @@ the implementation layout; the philosophy page describes the invariants that
 must survive implementation changes.
 
 **Status:** Accepted
-**Last Updated:** 2026-08-03
+**Last Updated:** 2026-10-02
 
 ## Overview
 
@@ -19,6 +19,13 @@ The project is composed of two independent layers:
 | **Runtime instance** | `.strategist/` | Operational instructions read by the agent: pipeline, slots, personas, contracts |
 
 The binary **does not execute missions**. It prepares the environment so the agent can run the skill correctly. During a mission, the agent reads `.strategist/`; the retired root `strategist/` authoring mirror is not a current build, documentation, or runtime source.
+
+This implementation map uses the seven-family conceptual vocabulary established by
+[ADR-0064](../adr/0064-canonical-seven-family-taxonomy.md): Role, Weapon, Feat,
+Tool, Mechanism, Stage, and Artifact. Runtime filenames, schemas, and Go identifiers
+are implementation evidence and may retain earlier labels until a separately approved
+migration; they do not redefine the conceptual taxonomy. Acceptance, implementation,
+verification, and invocability must be evidenced independently.
 
 ---
 
@@ -87,7 +94,7 @@ internal/
     schema.go            Attribute constants: strategist.phase, strategist.cache.hit, etc.
                          No-op automatic when OTEL_EXPORTER_OTLP_ENDPOINT is not set.
 
-  governance/            Synchronizes Strategist manifests with SDD governance metadata
+  governance/            Synchronizes Strategist manifests with an explicit governance source
   i18n/                  Language selection, reserved-term checks, and localized CLI strings
   integrity/             Runtime config integrity lock and warning support
   authorization/          Authorization and permission-grant checks
@@ -108,6 +115,39 @@ internal/
   testutil/              Shared test helpers
     testutil.go          MinimalRoot, temporary directory fixtures
 ```
+
+### System-boundary namespace contract
+
+The repository may use `internal/system/<package>` as a filesystem and import
+namespace for independently owned system-boundary packages. The bounded
+membership set is:
+
+| Package | Ownership |
+|---------|-----------|
+| `catalog` | YAML catalog adaptation and delegation to domain semantic contracts |
+| `check` | Cobra wiring and preflight orchestration |
+| `filelock` | Cross-platform process-lock mechanism |
+| `integrity` | Trusted configuration and compiled-runtime integrity detection |
+| `stale` | Derived-artifact and source-lineage detection |
+| `validate` | Filesystem, YAML, and configuration input validation |
+
+This is a namespace contract, not an aggregate Go package: each member keeps
+its own package API, tests, owner, and dependency direction. Membership is
+limited to a system-boundary package with an independently reviewable
+responsibility; new members require an explicit architecture decision and a
+written rationale. The namespace must not become a generic utilities bucket.
+
+Sibling isolation remains mandatory. Packages in the namespace must not import
+one another merely because they share a directory; dependencies must point to
+lower-level neutral primitives, domain contracts, or approved adapters. In
+particular, `integrity` and `stale` remain separate detectors, while `check`
+continues to orchestrate preflight and `catalog` continues to adapt catalog
+data rather than becoming a validator implementation.
+
+The physical relocation to this namespace is deliberately not performed by
+this evaluation. Current import paths remain authoritative until a separate,
+explicitly approved migration updates consumers, generated inventories, and
+architecture checks together.
 
 ---
 
@@ -142,8 +182,8 @@ compile.Compiler.CompileAll(.strategist/, knowledge.index.yaml)
 
 ### Flow notes (recent features)
 
-- **Pipeline sequence**: Scout (pre-pipeline, internal) classifies the request and
-  selects a route. Only the `full_pipeline` route reaches the three-slot chain, which
+- **Stage sequence**: Scout (pre-pipeline, internal) classifies the request and
+  selects a route. Only the `full_pipeline` route reaches the FULL Stage's three-slot chain, which
   remains `Ranger -> Archivist -> Approval Gate -> Sniper`. Scout never replaces a
   slot and is not itself a slot — see [`strategist-concepts.md`](strategist-concepts.md) § Scout —
   Intake Router.
@@ -152,9 +192,9 @@ compile.Compiler.CompileAll(.strategist/, knowledge.index.yaml)
 - **Ranked versus Custom discovery**: Ranked Brainstorming uses the certified `embedded` runtime connector inside Strategist and never searches provider roots. An explicitly typed Custom provider resolves its seed and `SKILL.md` entrypoint local-first (`.agents`, then `.codex`, then host-provided global roots), records origin/digest evidence, and still requires a selected live host adapter for invocation.
 - **Canonical discovery handoff**: Ranger produces `<base_path>/pending/<mission_id>-analysis.md`; Archivist consumes that artifact and promotes the refined package to `<base_path>/refined/<mission_id>/`.
 - **Documentation-only execution**: Sniper maintains the executor narrative, but its current execution is materialization of documentation, diagrams, analyses, and approved handoffs. Source code changes are outside the contract.
-- **Opportunity Attack (`opportunity_attack`)**: Archivist-owned ADR evaluation after all four refined artifacts (`analysis.md`, `proposal.md`, `design.md`, `tasks.md`) are written.
-- **Critical Hit**: analysis file management route for moving `.md` artifacts within `pending/`, `refined/`, and `archived/` inside `<base_path>`.
-- **Side Quests**: cross-phase scope observations; Ranger, Archivist, and Sniper may detect them; Archivist consolidates pre-execution findings at the gate; Sniper reports newly discovered side quests.
+- **Opportunity Attack (`opportunity_attack`)**: Archivist Feat that evaluates ADR opportunities after all four refined Artifacts (`analysis.md`, `proposal.md`, `design.md`, `tasks.md`) are written; its eligibility and gate rules are Mechanisms.
+- **Critical Hit**: Feat with deterministic eligibility Mechanisms for bounded analysis-Artifact maintenance within `pending/`, `refined/`, and `archived/` inside `<base_path>`.
+- **Side Quests**: Feat-level cross-phase scope observations; Ranger, Archivist, and Sniper may detect them; Archivist consolidates pre-execution findings at the gate; Sniper reports newly discovered side quests.
 - **Treasure Chest knowledge flow (`treasure_chests`)**: full documents in a configured
   chest are the source of truth. `strategist treasure-chest index` scans them offline
   and writes deduplicated `status: proposed` jewels and potions (compact, source-linked

@@ -24,8 +24,18 @@ func PipelineRouteForScoutRoute(selected string) string {
 	}
 }
 
+// PipelineRouteForStage maps the canonical Stage to the historical evidence
+// regime. Unknown and planning-only stages fail closed to FULL.
+func PipelineRouteForStage(stage Stage) string {
+	if stage == StageShort {
+		return MissionRouteDirectExecute
+	}
+	return MissionRouteFullPipeline
+}
+
 // PipelineEvidence captures the mission state used to detect pipeline bypass attempts.
 type PipelineEvidence struct {
+	Stage              Stage
 	Route              string
 	BasePath           string
 	MissionID          string
@@ -134,6 +144,9 @@ func blockedBypassDecision(e PipelineEvidence, expectedPhase, missingEvidence, r
 }
 
 func normalizePipelineEvidence(e PipelineEvidence) PipelineEvidence {
+	if e.Stage != "" {
+		e.Route = PipelineRouteForStage(e.Stage)
+	}
 	if e.Route == "" {
 		e.Route = MissionRouteFullPipeline
 	}

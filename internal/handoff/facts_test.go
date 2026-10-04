@@ -20,7 +20,7 @@ const factsBlockClean = `handoff_policy_facts:
   informational_only: true
 `
 
-const tasksInformational = "## Tasks\n\n- [ ] 1.1 [task_type: documentation_target] write the ADR\n- [ ] 1.2 [analysis_artifact] record evidence\n"
+const tasksInformational = "## Tasks\n\n- [ ] 1.1 [task_type: documentation_target] write `docs/adr/decision.md`\n- [ ] 1.2 [analysis_artifact] record evidence\n"
 const tasksWithImplementation = tasksInformational + "- [ ] 2.1 [task_type: implementation_handoff] change the code\n"
 
 // writeRefined writes a minimal valid Archivist package; facts is the YAML
@@ -133,7 +133,7 @@ func TestPackageDigestIgnoresStatusButNotContent(t *testing.T) {
 	assert.Equal(t, before, sameStatus, "advancing mission_status is not a new package revision")
 
 	for _, change := range []struct{ file, from, to string }{
-		{"tasks.md", "ADR", "ADR (amended)"}, {"design.md", "design", "design v2"}, {"proposal.md", "proposal", "proposal v2"},
+		{"tasks.md", "decision.md", "decision-amended.md"}, {"design.md", "design", "design v2"}, {"proposal.md", "proposal", "proposal v2"},
 		{"analysis.md", "body", "different body"}, {"analysis.md", "informational_only: true", "informational_only: false"},
 	} {
 		path := filepath.Join(refined, change.file)

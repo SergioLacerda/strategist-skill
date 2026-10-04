@@ -14,9 +14,9 @@ long: |
   Checks performed:
     - active.yaml is present and parseable
     - For each slot (discovery, refinement, execution):
-        • skills/<provider>/skill.yaml exists (skill provider), OR
+        • plugins/catalog.yaml or a bound custom provider resolves the Weapon, OR
           roles/<provider>.yaml exists with matching slot field (native role)
-        • skill providers must declare the correct risk_score for the slot contract:
+        • cataloged Weapons and bound custom providers must declare the correct risk_score for the slot contract:
           discovery/refinement → write_analysis, execution → controlled
         • native roles are accepted by slot field match; no risk_score check
     - discovery and refinement must have one valid persisted weapon binding in plugins.lock
@@ -159,6 +159,7 @@ long: |
 flag: --allow-downgrade (bool) default="false" usage="let this binary replace normative runtime files installed by a newer binary (deliberate rollback; default: refuse with runtime_newer_than_binary)"
 flag: --force (bool) default="false" usage="overwrite all files, including user-modified ones (default: preserve customizations)"
 flag: --global (bool) default="false" usage="install into global root (default: local project)"
+flag: --integration (string) default="" usage="silent selection for the optional external provider integration: enable, disable or keep (default: no selection; a new install records no decision and an upgrade preserves the existing one)"
 flag: --no-shim (bool) default="false" usage="skip writing the SKILL.md shim under ~/.claude/skills (mutually exclusive with --shim-path)"
 flag: --shim-path (string) default="" usage="write the SKILL.md shim to this path instead of the default ~/.claude/skills/strategist/SKILL.md (mutually exclusive with --no-shim)"
 flag: --silent (bool) default="false" usage="silent install with epic defaults (default)"
@@ -166,6 +167,40 @@ flag: --strict-compile (bool) default="false" usage="fail install (and roll back
 flag: --target (string) default="" usage="target repository root (default: current directory)"
 flag: --verbose (bool) default="false" usage="show the INFO log lines, the wizard section headers and the role/provider migration preview that install hides by default"
 flag: --wizard (bool) default="false" usage="interactive wizard for configuration"
+
+== strategist integrations
+use: integrations
+short: Inspect and change the optional external provider integration
+long: |
+  Manage the optional provider integration (JEV) that pre-checks handoff conformance.
+  Strategist works unchanged without it: a provider that is disabled, unreachable or not
+  confident enough leaves every handoff on the main path. The operator decision lives in
+  .strategist/integrations.yaml; the credential is only a reference (env: or dotenv:) and is
+  never stored, printed or sent anywhere but the configured endpoint.
+
+== strategist integrations disable
+use: disable
+short: Record the decision not to use the provider; recorded outcomes and settings are kept
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist integrations doctor
+use: doctor
+short: Report declared, bound, enabled, compatible and available state without calling the provider
+flag: --json (bool) default="false" usage="emit machine-readable JSON"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist integrations enable
+use: enable
+short: Record the decision to use the provider (documented defaults, credential stays a reference)
+flag: --credential-ref (string) default="" usage="credential reference, env:NAME or dotenv:<path>#NAME (default: dotenv:.env#TYPESAFE_API_KEY)"
+flag: --endpoint (string) default="" usage="provider HTTPS endpoint (default: the documented JEV endpoint)"
+flag: --model (string) default="" usage="pinned provider model (default: the documented resolved model)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist integrations probe
+use: probe
+short: Send one synthetic, non-mission message to record availability
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
 
 == strategist leveling
 use: leveling
@@ -215,15 +250,17 @@ short: Inspect the Mechanisms registry
 
 == strategist mechanisms brief
 use: brief --role <role>
-short: Print the tools (Mechanisms and Abilities) available to one role
+short: Print the Tools, Mechanisms, and Feats available to one role
 long: |
   Prints the role-scoped view of the Mechanisms registry
   (contracts/machine/mechanisms.yaml): what each tool is and how to invoke it.
   Roles run it from their on_start hook so an agent in a mission knows what is at
-  its disposal. --full adds the enforcement tier and when to use each tool.
+  its disposal. --stage narrows the view to a canonical Stage and its phases.
+  --full adds the enforcement tier and when to use each tool.
 flag: --full (bool) default="false" usage="include enforcement and when-to-use detail"
 flag: --role (string) default="" usage="role to print the brief for (required)"
 flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+flag: --stage (string) default="" usage="canonical Stage to scope awareness to (FULL, SHORT, or ROSTER)"
 
 == strategist metrics
 use: metrics
@@ -392,8 +429,10 @@ flag: --change-id (string) default="" usage="completed OpenSpec change id (requi
 flag: --handoff-facts (string) default="" usage="YAML file with the typed handoff_policy_facts mapping, written into the published analysis.md frontmatter so `handoff evaluate` can derive the policy (publication only; an amendment keeps analysis.md byte-identical)"
 flag: --mission-id (string) default="" usage="canonical Strategist mission id (required)"
 flag: --pending-analysis (string) default="" usage="pending analysis path (default: <base_path>/pending/<mission-id>-analysis.md)"
+flag: --reason (string) default="" usage="with --amend: correction rationale recorded in amendment lineage"
 flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
 flag: --runtime-root (string) default="" usage="OpenSpec runtime root (default: <strategist-root>/openspec)"
+flag: --supersedes-mission-id (string) default="" usage="with --amend: prior mission id this lineage supersedes, recorded for audit"
 
 == strategist mission report-usage
 use: report-usage
@@ -424,6 +463,13 @@ flag: --mission-id (string) default="" usage="mission_id to record usage against
 flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
 flag: --tokens-in (int64) default="0" usage="real input token count from the invoking agent's own provider response (required, >= 0)"
 flag: --tokens-out (int64) default="0" usage="real output token count from the invoking agent's own provider response (required, >= 0)"
+
+== strategist mission requests
+use: requests
+short: List embedded invocation requests (read-only; never prints payload or nonce)
+flag: --json (bool) default="false" usage="emit machine-readable JSON"
+flag: --mission-id (string) default="" usage="only list the requests of this mission (default: every mission)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
 
 == strategist mission route
 use: route
@@ -513,9 +559,9 @@ long: |
   Resolves every ORKA-shaped package under --source (each subdirectory
   paired with a strategist.yaml project-adapter sidecar declaring
   canonical_role/risk_score), verifies it, and merges the result into
-  internal/embed/defaults/plugins/catalog.yaml plus generated
-  internal/embed/defaults/skills/<id>/skill.yaml mirrors, recording exactly
-  what was embedded in a committed lock file.
+  internal/embed/defaults/plugins/catalog.yaml and the committed provenance
+  lock. Generation-2 embedded payloads do not include generated
+  skills/<id>/skill.yaml compatibility mirrors.
   
   This is a maintainer/CI operation on this repository's own embedded
   defaults (ADR-0032's pre-build ingestion pattern, generalized from Treasure
@@ -525,7 +571,7 @@ long: |
   
   Use --check in CI to fail non-zero on drift instead of writing.
 flag: --check (bool) default="false" usage="fail non-zero on drift instead of writing (for CI)"
-flag: --defaults-root (string) default="internal/embed/defaults" usage="internal/embed/defaults root to generate catalog.yaml and skills/<id>/skill.yaml into"
+flag: --defaults-root (string) default="internal/embed/defaults" usage="internal/embed/defaults root to generate catalog.yaml and versioned skill payloads into"
 flag: --lock (string) default="external-skills-source.lock.yaml" usage="path to the committed embedded-skill lock file"
 flag: --source (string) default="external-skills-source" usage="directory of ORKA-shaped skill packages to ingest"
 
@@ -601,7 +647,8 @@ use: select
 short: Select applicable runbooks for the given mission signals
 long: |
   Scores docs/runbooks/*.runbook.yaml sidecars against mission signals via
-  internal/runbook.Select(), bounded by internal/runbook.DefaultSelectionPolicy()
+  internal/feats/select_runbook.Select(), bounded by
+  internal/feats/select_runbook.DefaultSelectionPolicy()
   (at most one primary, at most two supporting runbooks, each with a non-empty
   match reason). This is the select_runbook ability's concrete implementation
   (see .strategist/roles/ranger.yaml#canonical.select_runbook and
@@ -614,21 +661,21 @@ flag: --signal (stringArray) default="[]" usage="mission signal to match against
 
 == strategist sync-governance
 use: sync-governance
-short: Sync .strategist/skill.yaml with active SDD governance mandates
+short: Sync .strategist/skill.yaml with explicitly provisioned governance
 long: |
-  Reads .sdd/ governance mandates and reconciles .strategist/skill.yaml.
+  Reads the explicitly selected governance directory and reconciles .strategist/skill.yaml.
   
   Checks performed:
-    - Reads .sdd/metadata.json to verify governance fingerprint
-    - Reads .sdd/source/governance-core.json to extract active mandates
+    - Reads the source metadata to verify the governance fingerprint
+    - Reads source/governance-core.json to extract active mandates
     - Compares active mandates against compliance.mandates in skill.yaml
     - Applies missing governance fields (validation_policy, budget_policy, telemetry_policy)
     - Reports drift before applying changes
   
   Use --dry-run to preview changes without writing.
 flag: --dry-run (bool) default="false" usage="preview changes without writing"
+flag: --governance-dir (string) default="" usage="path to the explicitly provisioned governance directory"
 flag: --root (string) default="" usage="path to .strategist/ root (default: .strategist)"
-flag: --sdd (string) default="" usage="path to .sdd/ directory (default: .sdd)"
 
 == strategist treasure-chest
 use: treasure-chest

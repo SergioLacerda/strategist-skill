@@ -77,6 +77,32 @@ func TestValidateRouteDecisionLine_InvalidValues(t *testing.T) {
 	}
 }
 
+func TestValidateRouteDecisionLine_RejectsInvalidCanonicalStageProjection(t *testing.T) {
+	t.Parallel()
+	line := `{"mission_id":"m-stage","request_category":"general","selected_route":"full_pipeline","route_reason":"r","route_confidence":0.5,"evidence_state":"explicit","fallback_route":"full_pipeline","stage":"UNKNOWN","stage_policy_version":"route-resolution/v1","stage_reason":"bad","timestamp":"2026-08-03T00:00:00Z"}`
+
+	err := ValidateRouteDecisionLine(line)
+	if err == nil {
+		t.Fatal("expected invalid canonical stage to be rejected")
+	}
+	if !strings.Contains(err.Error(), "stage") {
+		t.Fatalf("error should mention stage: %v", err)
+	}
+}
+
+func TestValidateRouteDecisionLine_RequiresStageTriggerForCanonicalProjection(t *testing.T) {
+	t.Parallel()
+	line := `{"mission_id":"m-stage","request_category":"general","selected_route":"full_pipeline","route_reason":"r","route_confidence":0.5,"evidence_state":"explicit","fallback_route":"full_pipeline","stage":"FULL","stage_policy_version":"route-resolution/v1","stage_reason":"resolved","timestamp":"2026-08-03T00:00:00Z"}`
+
+	err := ValidateRouteDecisionLine(line)
+	if err == nil {
+		t.Fatal("expected canonical Stage projection without trigger to be rejected")
+	}
+	if !strings.Contains(err.Error(), "stage_trigger") {
+		t.Fatalf("error should mention stage_trigger: %v", err)
+	}
+}
+
 func TestValidateRouteDecisionLine_NotJSON(t *testing.T) {
 	t.Parallel()
 	if err := ValidateRouteDecisionLine("not json"); err == nil {

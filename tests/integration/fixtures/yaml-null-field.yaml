@@ -10,7 +10,7 @@ input:
   roles_default_yaml:
     discovery: brainstorming
     refinement: openspec-explore
-    execution: sdd-ask
+    execution: fixture-provider
 
 trigger: run_preflight
 

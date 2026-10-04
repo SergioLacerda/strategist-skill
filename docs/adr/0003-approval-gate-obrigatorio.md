@@ -32,7 +32,7 @@ forbidden_behaviors:
 
 Any path that reaches the execution slot without an affirmative user response is a bug, not a feature. If the gate is denied or there are no materialization tasks, the valid result is to deliver the analysis/refinement without executing Sniper.
 
-The only foreseen exception is `sdd_injection`, which can inject the execution provider but cannot remove the gate.
+The only foreseen extension is `governance_injection`, which can inject the execution provider but cannot remove the gate.
 
 ## Consequences
 

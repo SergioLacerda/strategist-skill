@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	internal "github.com/SergioLacerda/strategist-skill/internal/leveling"
+	internal "github.com/SergioLacerda/strategist-skill/internal/tools/leveling"
 	"github.com/spf13/cobra"
 )
 

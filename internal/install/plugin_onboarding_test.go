@@ -9,6 +9,7 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/plugins"
 	"github.com/SergioLacerda/strategist-skill/internal/plugins/lifecycle"
+	"github.com/SergioLacerda/strategist-skill/internal/tools/resolver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -28,6 +29,9 @@ func TestPlanPluginOnboardingFromActiveSlotsProducesPreviewableBindings(t *testi
 
 	assert.True(t, plan.RequiresConfirmation)
 	assert.Equal(t, "strategist-plugin-onboarding-plan/v1", plan.SchemaVersion)
+	require.NoError(t, plan.InstallPlan.Validate())
+	require.NoError(t, plan.Roster.Validate())
+	assert.Len(t, plan.Selections, 3)
 	assert.Len(t, plan.Inventory.Instances, 3)
 	assert.Len(t, plan.Bindings, 3)
 	// 3 legacy adapter_contract nodes + 3 role_provider_binding nodes — this
@@ -36,6 +40,7 @@ func TestPlanPluginOnboardingFromActiveSlotsProducesPreviewableBindings(t *testi
 	// TestPlanRoleProviderMigrationValidatesOpenspecProposeAsArchivistMigrationCase).
 	assert.Len(t, plan.Lock.Nodes, 6)
 	assert.Contains(t, plan.Preview(), "slot discovery -> brainstorming@")
+	assert.Contains(t, plan.Preview(), "install plan sha256:")
 	assert.Contains(t, plan.Preview(), "lock ")
 	for _, binding := range plan.Bindings {
 		assert.NotEmpty(t, binding.InstalledInstanceID)
@@ -72,7 +77,7 @@ func TestPlanPluginOnboardingIncludesRoleProviderBindingLockNodes(t *testing.T) 
 		assert.NotEmpty(t, node.Digest)
 	}
 	assert.Equal(t, 3, roleNodes, "expected one role_provider_binding node per resolved slot")
-	assert.Equal(t, plugins.DigestLockNodes(plan.Lock.Nodes), plan.Lock.GraphDigest)
+	assert.Equal(t, resolver.DigestLockNodes(plan.Lock.Nodes), plan.Lock.GraphDigest)
 }
 
 // TestPlanPluginOnboardingRoleBindingLockNodesReplayDeterministically proves

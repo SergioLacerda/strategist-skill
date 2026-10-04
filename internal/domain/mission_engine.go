@@ -13,10 +13,16 @@ type MissionEngineStatus struct {
 	MissionID string        `json:"mission_id"`
 	Phase     PipelinePhase `json:"phase"`
 	State     MissionState  `json:"state"`
+	// Stage fields bind a short-stage request to the mission FSM. They are
+	// optional for ordinary full-pipeline missions and required for Critical Hit.
+	Stage              Stage  `json:"stage,omitempty"`
+	StageFeat          string `json:"stage_feat,omitempty"`
+	StageCorrelationID string `json:"stage_correlation_id,omitempty"`
+	StageGateRequired  bool   `json:"stage_gate_required,omitempty"`
+	StageGateApproved  bool   `json:"stage_gate_approved,omitempty"`
 	// ApprovalGatePackageDigest binds the human gate acceptance to the exact
-	// refined package that was reviewed. It is populated by the command
-	// boundary when the main Approval Gate is accepted and is intentionally
-	// independent from the handoff outcome digest.
+	// refined package that was reviewed. For Critical Hit SHORT it carries the
+	// deterministic Stage approval digest instead of a refined-package digest.
 	ApprovalGatePackageDigest string `json:"approval_gate_package_digest,omitempty"`
 	HandoffAttempt            int    `json:"handoff_attempt,omitempty"`
 	HandoffStatus             string `json:"handoff_status,omitempty"`
@@ -86,6 +92,9 @@ func (e *MissionEngine) Submit(event MissionEngineEvent) (MissionEngineStatus, e
 		return e.status, err
 	}
 	if earlyMissionPhase(e.status.Phase) {
+		if event == MissionEventCriticalHitIntent {
+			return e.submitCriticalHitIntent()
+		}
 		return e.status, e.submitEarly(event)
 	}
 	return e.submitFSM(event)
@@ -104,8 +113,9 @@ func (e *MissionEngine) submitEarly(event MissionEngineEvent) error {
 		MissionEventGateApproved, MissionEventGateApprovedAnalysisOnly, MissionEventGateDenied, MissionEventGateTimeout,
 		MissionEventGateRevision, MissionEventHandoffSatisfied, MissionEventHandoffFailed,
 		MissionEventHandoffExhausted, MissionEventHandoffNotApplicable, MissionEventSniperDone, MissionEventRetryOK,
-		MissionEventSlotTransient, MissionEventSlotPermanent, MissionEventADRCriterion,
-		MissionEventADRApproved, MissionEventADRDeclined, obsoleteMissionEventHandoffPassed:
+		MissionEventSlotTransient, MissionEventSlotPermanent, MissionEventRefinementArtifactInvalid, MissionEventADRCriterion,
+		MissionEventADRApproved, MissionEventADRDeclined, MissionEventCriticalHitIntent,
+		MissionEventCriticalHitGateApproved, MissionEventCriticalHitGateDeclined, obsoleteMissionEventHandoffPassed:
 		return fmt.Errorf("mission engine: event %q is not an early-pipeline event", event)
 	}
 	transitions, ok := phaseTransitions[e.status.Phase]
@@ -124,6 +134,9 @@ func (e *MissionEngine) submitEarly(event MissionEngineEvent) error {
 }
 
 func (e *MissionEngine) submitFSM(event MissionEngineEvent) (MissionEngineStatus, error) {
+	if err := e.validateCriticalHitGateEvent(event); err != nil {
+		return e.status, err
+	}
 	transition, ok := missionTransitionEvent(event)
 	if !ok {
 		return e.status, fmt.Errorf("mission engine: event %q is not valid from phase %q", event, e.status.Phase)
@@ -134,6 +147,11 @@ func (e *MissionEngine) submitFSM(event MissionEngineEvent) (MissionEngineStatus
 	}
 	e.status.State = next
 	e.status.Phase = phaseForState(next)
+	e.recordCriticalHitGateOutcome(event)
+	if event == MissionEventRefinementArtifactInvalid {
+		e.status.HandoffStatus = ""
+		e.status.HandoffNextAction = "reapprove_gate"
+	}
 	if next != StateExecution {
 		// A new handoff challenge must be explicitly bound by the command
 		// boundary after the gate event is accepted. Never carry a prior

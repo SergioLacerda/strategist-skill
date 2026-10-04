@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/SergioLacerda/strategist-skill/internal/catalog"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
 
@@ -134,7 +135,7 @@ func validateRankedSlotBinding(root, slot, role, provider string, binding domain
 	if strings.Contains(string(raw), "ranked_bindings:") {
 		return validateCompiledRankedSlotBinding(slot, role, binding.InstalledInstanceID, binding, raw)
 	}
-	stamp, ok, err := domain.FindCatalogRankedStamp(raw, binding.InstalledInstanceID)
+	stamp, ok, err := catalog.FindRankedStamp(raw, binding.InstalledInstanceID)
 	if err != nil {
 		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("plugins/catalog.yaml invalid: %v", err)}}
 	}
@@ -151,7 +152,7 @@ func validateRankedSlotBinding(root, slot, role, provider string, binding domain
 }
 
 func validateCompiledRankedSlotBinding(slot, role, provider string, lockBinding domain.SlotBinding, raw []byte) []Failure {
-	registry, err := domain.ParseCompiledRegistryCatalog(raw)
+	registry, err := catalog.ParseCompiledRegistryCatalog(raw)
 	if err != nil {
 		return []Failure{{Slot: slot, Role: role, Provider: provider, Reason: fmt.Sprintf("compiled role/weapon registry invalid: %v", err)}}
 	}

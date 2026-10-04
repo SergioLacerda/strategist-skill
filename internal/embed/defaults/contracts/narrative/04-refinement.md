@@ -55,8 +55,8 @@ Archivist (`refinement`)
   control-log validation fails;
 
 - treat the Ranger transient analysis artifact as the canonical refinement input
-- reuse the Ranger artifact's `relevant_sources_hint` (Search ability output) and
-  `selected_runbooks_hint` (select_runbook ability output) by default instead of
+- reuse the Ranger artifact's `relevant_sources_hint` (Search Feat output) and
+  `selected_runbooks_hint` (select_runbook Feat output) by default instead of
   re-running Search or select_runbook; only re-run either with a declared reason
   from `contracts/machine/handoff-contract.yaml#refinement_context_policy.allowed_reasons`
   (see `roles/archivist.yaml#canonical.reuse_search_cache`)
@@ -96,10 +96,11 @@ Archivist (`refinement`)
   `proposal.md`/`design.md`/`tasks.md` and manually editing frontmatter. That command
   (`internal/refinement.NormalizeOpenSpec`) atomically publishes the four canonical files,
   injects `provider`/`provider_change_id`/`provider_runtime` and `mission_status:
-  archivist_done` into the analysis frontmatter, and archives the completed change into
-  `changes/archive/`. Bypassing it and promoting by hand is a documented drift source (see
+  archivist_done` into the analysis frontmatter, records the durable publication in
+  `.strategist/memory/refined-package-publications.jsonl`, and removes the private provider
+  scratch change. Bypassing it and promoting by hand is a documented drift source (see
   `.analysis/done/drift/` for the incident this codifies) — it silently loses the provider
-  metadata and leaves the change unarchived.
+  metadata, publication evidence, or private provider scratch behind.
 - amend a package that is already published only through
   `strategist mission normalize-openspec --mission-id <mission_id> --change-id <new_change>
   --amend --amends <previous_change_id> --authorization-ref "<quote or gate event>"` — never by hand.

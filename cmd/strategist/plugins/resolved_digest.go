@@ -1,11 +1,10 @@
 package plugins
 
 import (
-	"errors"
 	"fmt"
 	"io"
-	"strings"
 
+	"github.com/SergioLacerda/strategist-skill/internal/application/digest"
 	"github.com/SergioLacerda/strategist-skill/internal/install"
 	"github.com/spf13/cobra"
 )
@@ -60,11 +59,19 @@ trusted".`,
 // hashing --file), compares it against the catalog pin, prints the result,
 // and returns a non-nil error on mismatch so CI/scripts can gate on it.
 func RunResolvedDigest(out io.Writer, opts ResolvedDigestOptions) error {
-	digest, err := resolvedDigestInput(opts)
+	resolvedDigest, err := digest.ResolveDigestInput(opts.Digest, opts.File, install.HashFileSHA256)
 	if err != nil {
 		return fmt.Errorf("resolved-digest: %w", err)
 	}
-	result, err := install.CompareResolvedDigest(opts.Catalog, opts.Provider, digest)
+	result, err := digest.CompareResolvedDigest(opts.Provider, resolvedDigest, func(provider, resolved string) (digest.ResolvedDigestComparison, error) {
+		comparison, compareErr := install.CompareResolvedDigest(opts.Catalog, provider, resolved)
+		if compareErr != nil {
+			return digest.ResolvedDigestComparison{}, fmt.Errorf("compare resolved digest: %w", compareErr)
+		}
+		return digest.ResolvedDigestComparison{
+			Status: digest.ResolvedDigestStatus(comparison.Status), Pin: comparison.Pin, Resolved: comparison.Resolved,
+		}, nil
+	})
 	if err != nil {
 		return fmt.Errorf("resolved-digest: %w", err)
 	}
@@ -72,26 +79,10 @@ func RunResolvedDigest(out io.Writer, opts ResolvedDigestOptions) error {
 		opts.Provider, result.Status, displayOrNone(result.Pin), displayOrNone(result.Resolved)); err != nil {
 		return fmt.Errorf("resolved-digest: write output: %w", err)
 	}
-	if result.Status == install.ResolvedDigestMismatch {
+	if result.Status == digest.ResolvedDigestMismatch {
 		return fmt.Errorf("resolved-digest: mismatch for provider %q", opts.Provider)
 	}
 	return nil
-}
-
-func resolvedDigestInput(opts ResolvedDigestOptions) (string, error) {
-	hasDigest, hasFile := strings.TrimSpace(opts.Digest) != "", strings.TrimSpace(opts.File) != ""
-	switch {
-	case hasDigest && hasFile:
-		return "", errors.New("--resolved-digest and --file are mutually exclusive")
-	case hasFile:
-		digest, err := install.HashFileSHA256(opts.File)
-		if err != nil {
-			return "", fmt.Errorf("resolved-digest: %w", err)
-		}
-		return digest, nil
-	default:
-		return opts.Digest, nil
-	}
 }
 
 func displayOrNone(value string) string {

@@ -89,9 +89,9 @@ Expected contracts:
 
 ![General Flow](fluxo-geral_en.png)
 
-## SDD Integration Flow
+## Governance Integration Flow
 
-![SDD Integration Flow](fluxo-integracao_en.png)
+![Governance Integration Flow](fluxo-integracao_en.png)
 
 ## Explore more
 
@@ -123,7 +123,7 @@ Expected contracts:
 - `make cover` — generates coverage for packages listed in `scripts/coverage-packages.tsv`
 - `make cover-gate` — fails if any manifest-listed package is below its threshold
 - `make cover-html` — generates a consolidated `coverage/coverage.html` report
-- When contributing external skills used as wizard default providers, preserve attribution to the upstream project and include an installable canonical manifest at `.strategist/skills/<provider>/skill.yaml`.
+- When contributing external skills used as wizard default providers, preserve attribution to the upstream project and include the package/adapter metadata consumed by `strategist plugins prepare-embedded`; runtime provider views are not generated.
 
 ```bash
 make build

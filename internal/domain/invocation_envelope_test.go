@@ -1,6 +1,9 @@
 package domain
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestComposeInvocationEnvelope_ExcludesFutureAndUnselectedComponents(t *testing.T) {
 	envelope, err := ComposeInvocationEnvelope(ComposeInvocationRequest{
@@ -18,11 +21,24 @@ func TestComposeInvocationEnvelope_ExcludesFutureAndUnselectedComponents(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
+	if envelope.TaxonomyVersion != CanonicalTaxonomyVersion {
+		t.Fatalf("taxonomy_version = %q, want %q", envelope.TaxonomyVersion, CanonicalTaxonomyVersion)
+	}
 	if len(envelope.Components) != 2 {
 		t.Fatalf("components = %+v", envelope.Components)
 	}
 	if envelope.RequiredContextRefs[0] != "protocol.md" || envelope.OutputSchemaRef != "ranger-to-archivist/v1" {
 		t.Fatalf("unexpected envelope = %+v", envelope)
+	}
+}
+
+func TestComposeInvocationEnvelopeRejectsUnknownTaxonomyVersion(t *testing.T) {
+	_, err := ComposeInvocationEnvelope(ComposeInvocationRequest{
+		MissionID: "mission-1", Phase: PhaseDiscovery, OutputSchemaRef: "ranger/v1",
+		Plan: RoleInvocationPlan{Role: "ranger", Slot: "discovery", WeaponID: "brainstorming", TaxonomyVersion: "strategist-taxonomy/v0"},
+	})
+	if err == nil || !strings.Contains(err.Error(), "unsupported taxonomy version") {
+		t.Fatalf("expected taxonomy version error, got %v", err)
 	}
 }
 

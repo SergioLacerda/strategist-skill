@@ -13,23 +13,23 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// writeSddFixtures creates .sdd/metadata.json and .sdd/source/governance-core.json
+// writeGovernanceFixtures creates metadata.json and source/governance-core.json
 // under dir with the given mandate IDs, all marked type=MANDATE status=required.
-func writeSddFixtures(t *testing.T, dir string, mandateIDs []string) {
+func writeGovernanceFixtures(t *testing.T, dir string, mandateIDs []string) {
 	t.Helper()
-	sddDir := filepath.Join(dir, ".sdd")
-	require.NoError(t, os.MkdirAll(filepath.Join(sddDir, "source"), 0o755))
+	governanceDir := filepath.Join(dir, "governance")
+	require.NoError(t, os.MkdirAll(filepath.Join(governanceDir, "source"), 0o755))
 
 	meta := map[string]any{"fingerprints": map[string]any{"combined": "abc123"}}
 	metaRaw, _ := json.Marshal(meta)
-	require.NoError(t, os.WriteFile(filepath.Join(sddDir, "metadata.json"), metaRaw, 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(governanceDir, "metadata.json"), metaRaw, 0o644))
 
 	items := make([]map[string]any, 0, len(mandateIDs))
 	for _, id := range mandateIDs {
 		items = append(items, map[string]any{"id": id, "type": "MANDATE", "status": "required"})
 	}
 	coreRaw, _ := json.Marshal(map[string]any{"items": items})
-	require.NoError(t, os.WriteFile(filepath.Join(sddDir, "source", "governance-core.json"), coreRaw, 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(governanceDir, "source", "governance-core.json"), coreRaw, 0o644))
 }
 
 // writeSkillYAML marshals data as YAML and writes it to dir/.strategist/skill.yaml (or subpath).
@@ -84,17 +84,17 @@ func TestPrintSyncReport_Applied(t *testing.T) {
 
 func TestSyncGovernanceCmd_Success(t *testing.T) {
 	dir := t.TempDir()
-	writeSddFixtures(t, dir, []string{"M001"})
+	writeGovernanceFixtures(t, dir, []string{"M001"})
 	writeSkillYAML(t, dir, ".strategist/skill.yaml", map[string]any{
 		"compliance":        map[string]any{"mandates": []any{"M001"}},
 		"validation_policy": map[string]any{},
 		"budget_policy":     map[string]any{},
 		"telemetry_policy":  map[string]any{},
 	})
-	origRoot, origSdd := syncGovernanceRoot, syncGovernanceSddDir
-	t.Cleanup(func() { syncGovernanceRoot = origRoot; syncGovernanceSddDir = origSdd })
+	origRoot, origGovernance := syncGovernanceRoot, syncGovernanceDir
+	t.Cleanup(func() { syncGovernanceRoot = origRoot; syncGovernanceDir = origGovernance })
 	syncGovernanceRoot = filepath.Join(dir, ".strategist")
-	syncGovernanceSddDir = filepath.Join(dir, ".sdd")
+	syncGovernanceDir = filepath.Join(dir, "governance")
 
 	_ = captureStdout(t, func() {
 		require.NoError(t, syncGovernanceCmd.RunE(syncGovernanceCmd, nil))
@@ -103,17 +103,17 @@ func TestSyncGovernanceCmd_Success(t *testing.T) {
 
 func TestSyncGovernanceCmd_WithMissionRunDoesNotError(t *testing.T) {
 	dir := t.TempDir()
-	writeSddFixtures(t, dir, []string{"M001"})
+	writeGovernanceFixtures(t, dir, []string{"M001"})
 	writeSkillYAML(t, dir, ".strategist/skill.yaml", map[string]any{
 		"compliance":        map[string]any{"mandates": []any{"M001"}},
 		"validation_policy": map[string]any{},
 		"budget_policy":     map[string]any{},
 		"telemetry_policy":  map[string]any{},
 	})
-	origRoot, origSdd := syncGovernanceRoot, syncGovernanceSddDir
-	t.Cleanup(func() { syncGovernanceRoot = origRoot; syncGovernanceSddDir = origSdd })
+	origRoot, origGovernance := syncGovernanceRoot, syncGovernanceDir
+	t.Cleanup(func() { syncGovernanceRoot = origRoot; syncGovernanceDir = origGovernance })
 	syncGovernanceRoot = filepath.Join(dir, ".strategist")
-	syncGovernanceSddDir = filepath.Join(dir, ".sdd")
+	syncGovernanceDir = filepath.Join(dir, "governance")
 	attachMissionRun(t, syncGovernanceCmd)
 
 	_ = captureStdout(t, func() {
@@ -122,10 +122,10 @@ func TestSyncGovernanceCmd_WithMissionRunDoesNotError(t *testing.T) {
 }
 
 func TestSyncGovernanceCmd_ErrorPath(t *testing.T) {
-	origRoot, origSdd := syncGovernanceRoot, syncGovernanceSddDir
-	t.Cleanup(func() { syncGovernanceRoot = origRoot; syncGovernanceSddDir = origSdd })
+	origRoot, origGovernance := syncGovernanceRoot, syncGovernanceDir
+	t.Cleanup(func() { syncGovernanceRoot = origRoot; syncGovernanceDir = origGovernance })
 	syncGovernanceRoot = filepath.Join(t.TempDir(), ".strategist")
-	syncGovernanceSddDir = filepath.Join(t.TempDir(), ".sdd")
+	syncGovernanceDir = filepath.Join(t.TempDir(), "governance")
 
 	err := syncGovernanceCmd.RunE(syncGovernanceCmd, nil)
 	require.Error(t, err)
@@ -133,19 +133,20 @@ func TestSyncGovernanceCmd_ErrorPath(t *testing.T) {
 }
 
 func TestSyncGovernanceCmd_DefaultFlags(t *testing.T) {
-	// When root/sdd are empty the RunE sets them to defaults; since no .sdd
-	// exists in the temp CWD the command should return an error.
-	origRoot, origSdd := syncGovernanceRoot, syncGovernanceSddDir
-	t.Cleanup(func() { syncGovernanceRoot = origRoot; syncGovernanceSddDir = origSdd })
+	// When root/governance-dir are empty the command must fail closed; no
+	// governance directory is auto-detected or assigned a default.
+	origRoot, origGovernance := syncGovernanceRoot, syncGovernanceDir
+	t.Cleanup(func() { syncGovernanceRoot = origRoot; syncGovernanceDir = origGovernance })
 	syncGovernanceRoot = ""
-	syncGovernanceSddDir = ""
+	syncGovernanceDir = ""
 
 	chdirForTest(t, t.TempDir())
 
 	err := syncGovernanceCmd.RunE(syncGovernanceCmd, nil)
 	require.Error(t, err)
 	assert.Equal(t, ".strategist", syncGovernanceRoot)
-	assert.Equal(t, ".sdd", syncGovernanceSddDir)
+	assert.Empty(t, syncGovernanceDir)
+	assert.Contains(t, err.Error(), "--governance-dir is required")
 }
 
 // --- addLine ---

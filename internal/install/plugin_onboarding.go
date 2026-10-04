@@ -5,8 +5,10 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/SergioLacerda/strategist-skill/internal/application/installplan"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/plugins"
+	domaininstallplan "github.com/SergioLacerda/strategist-skill/internal/domain/installplan"
+	domainroster "github.com/SergioLacerda/strategist-skill/internal/domain/roster"
 	"github.com/SergioLacerda/strategist-skill/internal/plugins/lifecycle"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
@@ -14,10 +16,16 @@ import (
 type pluginOnboardingPlan struct {
 	SchemaVersion        string
 	RequiresConfirmation bool
-	Lock                 domain.PluginLock
-	Inventory            domain.PluginInventory
-	Bindings             []domain.SlotBinding
-	Changes              []string
+	// InstallPlan is the shared, read-only ROSTER plan consumed by both the
+	// interactive Wizard and headless installation before activation.
+	InstallPlan domaininstallplan.InstallPlan
+	Options     installOptionSet
+	Roster      domainroster.WeaponRosterArtifact
+	Selections  []domainroster.WeaponSelectionArtifact
+	Lock        domain.PluginLock
+	Inventory   domain.PluginInventory
+	Bindings    []domain.SlotBinding
+	Changes     []string
 	// RoleMigration is the Role/Provider convergence preview for the same
 	// slots (tasks.md Task 4.1/4.2, strategist-papeis-personagens-skills-nativas).
 	// It is additive evidence over the legacy Lock/Bindings above, never a
@@ -36,76 +44,20 @@ type pluginProbeFunc func(domain.SlotBinding, domain.InstalledInstance) bool
 
 type pluginProbeResultFunc func(domain.SlotBinding, domain.InstalledInstance) lifecycle.ProbeOutcome
 
+func (p *pluginOnboardingPlan) bindInstallContext(mode, basePath string, slots, modes map[string]string) error {
+	installPlan, err := installplan.PlanInstall(installplan.Input{
+		Stage: domain.StageRoster, Mode: mode, BasePath: basePath,
+		Slots: slots, SlotModes: modes, Lock: p.Lock, Bindings: p.Bindings,
+	})
+	if err != nil {
+		return fmt.Errorf("create install plan: %w", err)
+	}
+	p.InstallPlan = installPlan
+	return nil
+}
+
 func planPluginOnboarding(extractor domain.FileExtractor, catalog pluginCatalog, slots map[string]string) (pluginOnboardingPlan, error) {
 	return planPluginOnboardingWithModes(extractor, catalog, slots, nil)
-}
-
-func planPluginOnboardingWithModes(extractor domain.FileExtractor, catalog pluginCatalog, slots, modes map[string]string) (pluginOnboardingPlan, error) {
-	resolvedCatalog, customProviders, err := catalogWithCustomProviders(catalog, slots, modes)
-	if err != nil {
-		return pluginOnboardingPlan{}, err
-	}
-	requirements, err := onboardingRequirements(resolvedCatalog, slots)
-	if err != nil {
-		return pluginOnboardingPlan{}, err
-	}
-
-	lock, err := plugins.Resolve(requirements, catalogResolverCandidates(resolvedCatalog))
-	if err != nil {
-		return pluginOnboardingPlan{}, fmt.Errorf("resolve plugin lock: %w", err)
-	}
-	instances := inventoryFromLock(lock)
-	bindings, err := bindingsFromSlots(slots, lock)
-	if err != nil {
-		return pluginOnboardingPlan{}, err
-	}
-	changes := changesFromBindings(bindings)
-
-	roleMigration, err := planRoleProviderMigrationWithCatalog(extractor, resolvedCatalog, slots)
-	if err != nil {
-		return pluginOnboardingPlan{}, fmt.Errorf("resolve role/provider bindings: %w", err)
-	}
-	lock.Nodes = appendRoleMigrationNodes(lock.Nodes, roleMigration)
-	lock.GraphDigest = plugins.DigestLockNodes(lock.Nodes)
-	lock.ResolutionID = lock.GraphDigest
-
-	return pluginOnboardingPlan{
-		SchemaVersion:        "strategist-plugin-onboarding-plan/v1",
-		RequiresConfirmation: true,
-		Lock:                 lock,
-		Inventory:            domain.PluginInventory{SchemaVersion: "strategist-plugin-inventory/v1", Instances: instances},
-		Bindings:             bindings,
-		Changes:              changes,
-		RoleMigration:        roleMigration,
-		CustomProviders:      customProviders,
-	}, nil
-}
-
-func onboardingRequirements(catalog pluginCatalog, slots map[string]string) ([]plugins.Requirement, error) {
-	requirements := make([]plugins.Requirement, 0, len(slots))
-	for _, slot := range sortedSlotNames(slots) {
-		provider := slots[slot]
-		if provider == "" {
-			return nil, fmt.Errorf("unresolved_active_slot: %s has empty provider", slot)
-		}
-		resolved, ok := findCatalogProviderRef(catalog, provider)
-		if !ok {
-			return nil, fmt.Errorf("unresolved_active_slot: %s provider %s%s", slot, provider, unresolvedRefHint(catalog, provider))
-		}
-		// The requirement pins the resolved id@version, so the resolver can never
-		// pick "the highest" of several catalogued versions.
-		requirements = append(requirements, plugins.Requirement{ID: resolved.ID, Kind: "adapter_contract", Constraint: providerVersionOrDefault(resolved.Version)})
-	}
-	return requirements, nil
-}
-
-func appendRoleMigrationNodes(nodes []domain.PluginLockNode, migration RoleProviderMigrationPreview) []domain.PluginLockNode {
-	for _, entry := range migration.Entries {
-		if entry.ResolutionError == "" {
-			nodes = append(nodes, plugins.RoleBindingLockNode(entry.Resolved))
-		}
-	}
-	return nodes
 }
 
 // logRoleBindingEvidence logs one line per role/provider binding evidence
@@ -128,6 +80,9 @@ func logRoleBindingEvidence(events []telemetry.Event) {
 func (p pluginOnboardingPlan) Preview() string {
 	var b strings.Builder
 	b.WriteString("plugin onboarding plan\n")
+	b.WriteString("install plan ")
+	b.WriteString(p.InstallPlan.PlanDigest)
+	b.WriteString("\n")
 	b.WriteString("lock ")
 	b.WriteString(p.Lock.GraphDigest)
 	b.WriteString("\n")

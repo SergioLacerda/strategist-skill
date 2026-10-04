@@ -27,8 +27,8 @@ type PrepareEmbeddedReport struct {
 	Rejected []IngestionRejection
 }
 
-// PrepareEmbedded ingests opts.Source and writes the merged catalog, mirrors,
-// and lock to disk. Any rejection is reported, never silently dropped, but a
+// PrepareEmbedded ingests opts.Source and writes the merged catalog and lock to
+// disk. Any rejection is reported, never silently dropped, but a
 // rejection does not itself fail the run — only a hard I/O or parse error
 // does. Callers that want CI to fail on any rejection should inspect
 // report.Rejected themselves (see plugins_prepare_embedded.go).

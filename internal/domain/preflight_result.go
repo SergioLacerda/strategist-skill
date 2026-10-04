@@ -21,13 +21,14 @@ const PreflightResultSchemaVersion = "strategist-preflight-result/v1"
 // of check_slots.go/role_weapon.go directly — this type does not attempt to
 // anticipate that shape today.
 type PreflightResult struct {
-	SchemaVersion string             `json:"schema_version"`
-	Status        string             `json:"status"` // "ready" | "blocked"
-	Identity      PreflightIdentity  `json:"identity"`
-	Bindings      []PreflightBinding `json:"bindings"`
-	Language      *PreflightLanguage `json:"language,omitempty"`
-	Warnings      []string           `json:"warnings"`
-	Next          string             `json:"next,omitempty"`
+	SchemaVersion   string             `json:"schema_version"`
+	TaxonomyVersion string             `json:"taxonomy_version,omitempty"`
+	Status          string             `json:"status"` // "ready" | "blocked"
+	Identity        PreflightIdentity  `json:"identity"`
+	Bindings        []PreflightBinding `json:"bindings"`
+	Language        *PreflightLanguage `json:"language,omitempty"`
+	Warnings        []string           `json:"warnings"`
+	Next            string             `json:"next,omitempty"`
 }
 
 // PreflightIdentity identifies the workspace a PreflightResult was computed for.

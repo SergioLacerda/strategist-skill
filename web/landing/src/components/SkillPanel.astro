@@ -15,5 +15,5 @@ const { icon, eyebrow, title } = Astro.props;
   )}
   {eyebrow && <div style="font-size:var(--fs-caption); letter-spacing:.2em; text-transform:uppercase; color:var(--text-label); margin-bottom:5px;">{eyebrow}</div>}
   <h3 style="font-family:var(--font-grimoire); font-weight:700; font-size:20px; color:var(--amber-hi); margin:0 0 8px; letter-spacing:.02em; line-height:1.12;">{title}</h3>
-  <p style="margin:0; font-size:var(--fs-sm); color:var(--muted); line-height:var(--lh-body);"><slot /></p>
+  <div style="margin:0; font-size:var(--fs-sm); color:var(--muted); line-height:var(--lh-body);"><slot /></div>
 </div>

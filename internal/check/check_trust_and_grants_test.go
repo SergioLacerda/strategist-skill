@@ -163,7 +163,7 @@ providers:
     test_suite_digest: sha256:4444444444444444444444444444444444444444444444444444444444444444
     conformance_level: C1
 `), 0o644))
-	appendFixtureProviders(t, dir, testutil.CatalogProvider{ID: "openspec-explore", Risk: "write_analysis", CanonicalRole: "archivist"}, testutil.CatalogProvider{ID: "openspec-propose", Risk: "write_analysis", CanonicalRole: "archivist"}, testutil.CatalogProvider{ID: "sdd-ask", Risk: "controlled", Source: "external"})
+	appendFixtureProviders(t, dir, testutil.CatalogProvider{ID: "openspec-explore", Risk: "write_analysis", CanonicalRole: "archivist"}, testutil.CatalogProvider{ID: "openspec-propose", Risk: "write_analysis", CanonicalRole: "archivist"}, testutil.CatalogProvider{ID: "fixture-provider", Risk: "controlled", Source: "external"})
 	appendRegistrySections(t, dir, fixtureRegistry())
 	checkRoot = dir
 	checkJSON = true
@@ -194,7 +194,7 @@ func TestCheckCmd_JSON_RankedBindingReadyByCertification_RefinementSlot(t *testi
 	dir := minimalCheckRoot(t)
 	require.NoError(t, os.WriteFile(
 		filepath.Join(dir, "active.yaml"),
-		[]byte("mode: epic\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n  refinement: openspec-propose\n  execution: sdd-ask\n"),
+		[]byte("mode: epic\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n  refinement: openspec-propose\n  execution: fixture-provider\n"),
 		0o644,
 	))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "plugins.lock"), []byte(`schema_version: strategist-plugin-lock-file/v1
@@ -222,7 +222,7 @@ providers:
     test_suite_digest: sha256:4444444444444444444444444444444444444444444444444444444444444444
     conformance_level: C1
 `), 0o644))
-	appendFixtureProviders(t, dir, testutil.CatalogProvider{ID: "brainstorming", Risk: "write_analysis", CanonicalRole: "ranger"}, testutil.CatalogProvider{ID: "sdd-ask", Risk: "controlled", Source: "external"})
+	appendFixtureProviders(t, dir, testutil.CatalogProvider{ID: "brainstorming", Risk: "write_analysis", CanonicalRole: "ranger"}, testutil.CatalogProvider{ID: "fixture-provider", Risk: "controlled", Source: "external"})
 	appendRegistrySections(t, dir, fixtureRegistry())
 	checkRoot = dir
 	checkJSON = true

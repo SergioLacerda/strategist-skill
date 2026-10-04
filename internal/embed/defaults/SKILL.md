@@ -13,6 +13,11 @@ operation. The presence of `.strategist/` and a `strategist check --json` result
 make Strategist available for inspection, but do not invoke it, start a mission,
 or change how an ordinary direct request is handled.
 
+A reference to a path under `.analysis/refined/` does not activate a Strategist
+mission. A local execution context is only a precondition; it is not proof of
+mission activation or approval. The parent-agent role lock begins only after an
+explicit Strategist invocation transitions the request into an active mission.
+
 ## ENTRYPOINT — after explicit invocation
 
 1. Verify `.strategist/` exists; otherwise emit `error=not_installed`.
@@ -56,16 +61,19 @@ role-invocation failure.
 
 ## Canonical Taxonomy Vocabulary
 
-Use these six public families consistently: Roles, Weapons, Abilities, Mechanisms, Pipeline, and Artifacts. Roles are agent personas that own responsibilities;
-Weapons are external skill packages employed by pluggable Roles; Abilities (Feats,
-pt-BR "Habilidades") are judgment-based agent behavior; Mechanisms are
-deterministic rules whose outcome is fixed by their inputs; Pipeline names the
-fixed stages and routines, including the routes Scout selects; and Artifacts are
-generated results with internal value. An item with both a judgment part and a
-deterministic part is one item with two facets (PRECISE-SHOT, Opportunity Attack).
+Use these seven public families consistently: Roles, Weapons, Feats, Tools,
+Mechanisms, Stages, and Artifacts. Roles are agent personas that own
+responsibilities; Weapons are external skill packages employed by pluggable
+Roles; Feats are contextual, judgment-based behavior; Tools perform operations;
+Mechanisms enforce deterministic rules; Stages frame governed workflows; and
+Artifacts preserve generated results. Routes are selection outcomes, not a family.
+An item with both a judgment part and a deterministic part is one item with two
+facets (PRECISE-SHOT, Opportunity Attack).
 
-`LEVELING` is an immutable operational resolver consumed by INITIATIVE; both are
-Mechanisms. LEVELING is not a Role, Weapon, provider, or execution authority.
+`LEVELING` is an immutable operational resolver consumed by the INITIATIVE Feat;
+it is a Tool. LEVELING is not a Role, Weapon, provider, or execution authority.
+`INITIATIVE` is a Feat, not a Mechanism. Its contextual advice cannot mutate the
+LEVELING resolution, provider, gate, or implementation authorization.
 `origin` and `extensibility` are independent Role properties; “internal role” and
 “external role” are historical compatibility wording only. Pathfinder,
 Cartographer, Jeweler, and Jewelcrafter remain inactive proposals.

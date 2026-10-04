@@ -3,7 +3,7 @@ package metrics
 import "github.com/spf13/cobra"
 
 // New creates the complete Metrics command family. Runtime-memory behavior
-// remains delegated to internal/telemetry and internal/leveling; the CLI root
+// remains delegated to internal/telemetry and internal/tools/leveling; the CLI root
 // provides only environment-specific dependencies.
 func New(deps Dependencies, ledger string, defaultMax int) *cobra.Command {
 	cmd := &cobra.Command{

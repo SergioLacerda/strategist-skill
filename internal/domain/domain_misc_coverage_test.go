@@ -31,27 +31,27 @@ func TestValidateMissionStatusBranches(t *testing.T) {
 
 func TestMaterializeContextRequestAndReferenceValidation(t *testing.T) {
 	t.Parallel()
-	_, err := MaterializeContext("", nil, 0, 0)
-	mustFail(t, err, "root is required")
+	_, err := MaterializeContext(nil, nil, 0, 0)
+	mustFail(t, err, "reader is required")
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "a.md"), []byte("hello"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	for _, ref := range []string{"", "/abs", "a/../a.md", ".", "..", "../x"} {
-		_, err := MaterializeContext(root, []ContextReference{{Ref: ref, Kind: "k"}}, 0, 0)
+		_, err := MaterializeContext(testContextReader(root), []ContextReference{{Ref: ref, Kind: "k"}}, 0, 0)
 		mustFail(t, err, "invalid relative reference")
 	}
-	_, err = MaterializeContext(root, []ContextReference{{Ref: "a.md", Kind: "k"}, {Ref: "b.md", Kind: "k"}}, 1, 0)
+	_, err = MaterializeContext(testContextReader(root), []ContextReference{{Ref: "a.md", Kind: "k"}, {Ref: "b.md", Kind: "k"}}, 1, 0)
 	mustFail(t, err, "reference limit")
-	_, err = MaterializeContext(root, []ContextReference{{Ref: "missing.md", Kind: "k"}}, 0, 0)
+	_, err = MaterializeContext(testContextReader(root), []ContextReference{{Ref: "missing.md", Kind: "k"}}, 0, 0)
 	mustFail(t, err, "blocked reference")
-	_, err = MaterializeContext(root, []ContextReference{{Ref: "a.md", Kind: "k"}}, 0, 2)
+	_, err = MaterializeContext(testContextReader(root), []ContextReference{{Ref: "a.md", Kind: "k"}}, 0, 2)
 	mustFail(t, err, "byte limit")
-	_, err = MaterializeContext(root, []ContextReference{{Ref: "a.md", Kind: "k", Digest: "sha256:bad"}}, 0, 0)
+	_, err = MaterializeContext(testContextReader(root), []ContextReference{{Ref: "a.md", Kind: "k", Digest: "sha256:bad"}}, 0, 0)
 	mustFail(t, err, "digest mismatch")
-	_, err = MaterializeContext(root, []ContextReference{{Ref: "a.md", Kind: "k"}, {Ref: "a.md", Kind: "k"}}, 0, 0)
+	_, err = MaterializeContext(testContextReader(root), []ContextReference{{Ref: "a.md", Kind: "k"}, {Ref: "a.md", Kind: "k"}}, 0, 0)
 	mustFail(t, err, "duplicate")
-	res, err := MaterializeContext(root, []ContextReference{{Ref: "a.md", Kind: "k"}, {Ref: "a.md", Kind: "j"}}, 0, 0)
+	res, err := MaterializeContext(testContextReader(root), []ContextReference{{Ref: "a.md", Kind: "k"}, {Ref: "a.md", Kind: "j"}}, 0, 0)
 	if err != nil || len(res.References) != 2 || res.References[0].Kind != "j" {
 		t.Fatalf("res=%+v err=%v", res, err)
 	}

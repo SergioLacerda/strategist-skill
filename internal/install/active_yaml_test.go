@@ -28,10 +28,10 @@ func TestWriteKnowledgeIndexSource(t *testing.T) {
 		{
 			name:      "chest path replaces placeholder",
 			initialKI: "sources: []\n",
-			cfg:       domain.WizardConfig{TreasureChestPath: ".sdd/source"},
+			cfg:       domain.WizardConfig{TreasureChestPath: "governance/source"},
 			wantContain: []string{
 				"id: source",
-				"path: .sdd/source",
+				"path: governance/source",
 				"tags: [all]",
 			},
 			wantAbsent: []string{"sources: []"},
@@ -77,7 +77,7 @@ func TestWriteKnowledgeIndexSource_AlreadyConfigured(t *testing.T) {
 	kiPath := filepath.Join(dir, "knowledge.index.yaml")
 	initial := "sources:\n  - id: already-set\n"
 	require.NoError(t, os.WriteFile(kiPath, []byte(initial), 0o644))
-	err := writeKnowledgeIndexSource(dir, domain.WizardConfig{TreasureChestPath: ".sdd/source"})
+	err := writeKnowledgeIndexSource(dir, domain.WizardConfig{TreasureChestPath: "governance/source"})
 	require.NoError(t, err)
 	data, readErr := os.ReadFile(kiPath)
 	require.NoError(t, readErr)
@@ -92,7 +92,7 @@ func TestWriteKnowledgeIndexSource_CorruptedTemplate(t *testing.T) {
 	dir := t.TempDir()
 	kiPath := filepath.Join(dir, "knowledge.index.yaml")
 	require.NoError(t, os.WriteFile(kiPath, []byte("# empty\nunrelated: true\n"), 0o644))
-	err := writeKnowledgeIndexSource(dir, domain.WizardConfig{TreasureChestPath: ".sdd/source"})
+	err := writeKnowledgeIndexSource(dir, domain.WizardConfig{TreasureChestPath: "governance/source"})
 	require.ErrorContains(t, err, `placeholder "sources: []" not found`)
 	assert.ErrorContains(t, err, `"sources:" key absent`)
 }
@@ -106,7 +106,7 @@ func TestWriteKnowledgeIndexSource_SecondRunIsIdempotent(t *testing.T) {
 	dir := t.TempDir()
 	kiPath := filepath.Join(dir, "knowledge.index.yaml")
 	require.NoError(t, os.WriteFile(kiPath, []byte("sources: []\n"), 0o644))
-	cfg := domain.WizardConfig{TreasureChestPath: ".sdd/source"}
+	cfg := domain.WizardConfig{TreasureChestPath: "governance/source"}
 
 	require.NoError(t, writeKnowledgeIndexSource(dir, cfg), "first run must substitute")
 	afterFirst, err := os.ReadFile(kiPath)
@@ -122,7 +122,7 @@ func TestWriteKnowledgeIndexSource_SecondRunIsIdempotent(t *testing.T) {
 func TestWriteKnowledgeIndexSource_MissingFile(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	err := writeKnowledgeIndexSource(dir, domain.WizardConfig{TreasureChestPath: ".sdd/source"})
+	err := writeKnowledgeIndexSource(dir, domain.WizardConfig{TreasureChestPath: "governance/source"})
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "read knowledge.index.yaml")
 }
@@ -137,7 +137,7 @@ func TestWriteKnowledgeIndexSource_WriteError(t *testing.T) {
 	// failure mode that blocks them is a read-only directory, not a read-only file.
 	require.NoError(t, os.Chmod(dir, 0o555))
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
-	err := writeKnowledgeIndexSource(dir, domain.WizardConfig{TreasureChestPath: ".sdd/source"})
+	err := writeKnowledgeIndexSource(dir, domain.WizardConfig{TreasureChestPath: "governance/source"})
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "write knowledge.index.yaml")
 }
@@ -160,11 +160,11 @@ func TestWriteTreasureChestManifest(t *testing.T) {
 		{
 			name:      "chest path replaces placeholder",
 			initialTC: "chests: []\n",
-			cfg:       domain.WizardConfig{TreasureChestPath: ".sdd/source"},
+			cfg:       domain.WizardConfig{TreasureChestPath: "governance/source"},
 			wantContain: []string{
 				"id: source",
 				"title: source",
-				"path: .sdd/source",
+				"path: governance/source",
 				"tier: T1",
 			},
 			wantAbsent: []string{"chests: []"},
@@ -193,7 +193,7 @@ func TestWriteTreasureChestManifest(t *testing.T) {
 func TestWriteTreasureChestManifest_MissingFile(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	err := writeTreasureChestManifest(dir, domain.WizardConfig{TreasureChestPath: ".sdd/source"})
+	err := writeTreasureChestManifest(dir, domain.WizardConfig{TreasureChestPath: "governance/source"})
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "read treasure-chests.yaml")
 }
@@ -207,7 +207,7 @@ func TestWriteTreasureChestManifest_AlreadyConfigured(t *testing.T) {
 	tcPath := filepath.Join(dir, "treasure-chests.yaml")
 	initial := "chests:\n  - id: already-set\n"
 	require.NoError(t, os.WriteFile(tcPath, []byte(initial), 0o644))
-	err := writeTreasureChestManifest(dir, domain.WizardConfig{TreasureChestPath: ".sdd/source"})
+	err := writeTreasureChestManifest(dir, domain.WizardConfig{TreasureChestPath: "governance/source"})
 	require.NoError(t, err)
 	data, readErr := os.ReadFile(tcPath)
 	require.NoError(t, readErr)
@@ -221,7 +221,7 @@ func TestWriteTreasureChestManifest_CorruptedTemplate(t *testing.T) {
 	dir := t.TempDir()
 	tcPath := filepath.Join(dir, "treasure-chests.yaml")
 	require.NoError(t, os.WriteFile(tcPath, []byte("# empty\nunrelated: true\n"), 0o644))
-	err := writeTreasureChestManifest(dir, domain.WizardConfig{TreasureChestPath: ".sdd/source"})
+	err := writeTreasureChestManifest(dir, domain.WizardConfig{TreasureChestPath: "governance/source"})
 	require.ErrorContains(t, err, `placeholder "chests: []" not found`)
 	assert.ErrorContains(t, err, `"chests:" key absent`)
 }
@@ -234,7 +234,7 @@ func TestWriteTreasureChestManifest_WriteError(t *testing.T) {
 	require.NoError(t, os.WriteFile(tcPath, []byte("chests: []\n"), 0o644))
 	require.NoError(t, os.Chmod(dir, 0o555))
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
-	err := writeTreasureChestManifest(dir, domain.WizardConfig{TreasureChestPath: ".sdd/source"})
+	err := writeTreasureChestManifest(dir, domain.WizardConfig{TreasureChestPath: "governance/source"})
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "write treasure-chests.yaml")
 }
@@ -261,7 +261,7 @@ func TestWriteTreasureChestManifest_SecondRunIsIdempotent(t *testing.T) {
 	dir := t.TempDir()
 	tcPath := filepath.Join(dir, "treasure-chests.yaml")
 	require.NoError(t, os.WriteFile(tcPath, []byte("chests: []\n"), 0o644))
-	cfg := domain.WizardConfig{TreasureChestPath: ".sdd/source"}
+	cfg := domain.WizardConfig{TreasureChestPath: "governance/source"}
 
 	require.NoError(t, writeTreasureChestManifest(dir, cfg), "first run must substitute")
 	afterFirst, err := os.ReadFile(tcPath)
@@ -280,7 +280,7 @@ func TestTreasureChestID(t *testing.T) {
 		path string
 		want string
 	}{
-		{".sdd/source", "source"},
+		{"governance/source", "source"},
 		{"source", "source"},
 		{"/absolute/path/to/chest", "chest"},
 		{"trailing/slash/", "slash"},
@@ -341,12 +341,12 @@ func TestWriteActiveYAML(t *testing.T) {
 				DiscoveryProvider:  "brainstorming",
 				RefinementProvider: "openspec-explore",
 				ExecutionProvider:  "sniper",
-				TreasureChestPath:  ".sdd/source",
+				TreasureChestPath:  "governance/source",
 			},
 			wantContain: []string{
 				"treasure_chests:",
 				"id: source",
-				"path: .sdd/source",
+				"path: governance/source",
 				"scope: all",
 			},
 		},
@@ -443,7 +443,7 @@ func TestWriteActiveYAML_DoesNotEmitExecutionMode(t *testing.T) {
 		CodeLanguage:       "en",
 		DiscoveryProvider:  "brainstorming",
 		RefinementProvider: "openspec-explore",
-		ExecutionProvider:  "sdd-ask",
+		ExecutionProvider:  "fixture-provider",
 	}
 	require.NoError(t, writeActiveYAML(dir, cfg))
 	data, err := os.ReadFile(filepath.Join(dir, "active.yaml"))

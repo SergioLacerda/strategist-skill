@@ -146,8 +146,9 @@ docs: add observability-contract.md
 
 ## Governance files
 
-The `.sdd/` directory contains governance artifacts managed by the SDD CLI.
-Do not edit files under `.sdd/` manually — use `sdd` commands or the Strategist
+Provisioned governance directories contain governance artifacts managed by the
+owning governance environment. Do not edit files under a provisioned governance
+directory manually — use the owning governance commands or the Strategist
 skill to propose changes through the pipeline.
 
 ## Getting help

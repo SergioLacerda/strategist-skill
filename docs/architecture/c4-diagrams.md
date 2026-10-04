@@ -218,7 +218,7 @@ The pipeline stops immediately on any of these conditions:
 | Code | Cause |
 |------|-------|
 | `preflight_failed` | Any preflight check failed |
-| `slot_provider_not_found` | Provider skill.yaml not found |
+| `slot_provider_not_found` | Catalog/custom provider or native role not found |
 | `slot_risk_mismatch` | Provider risk_score incorrect for the slot |
 | `intake_conflict_unresolved` | Two mutually exclusive aliases in the prompt |
 | `user_denies_execution` | User declined at the approval gate (not an error) |

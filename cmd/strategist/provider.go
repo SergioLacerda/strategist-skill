@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 
+	providerapp "github.com/SergioLacerda/strategist-skill/internal/application/provider"
 	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
 	providerpkg "github.com/SergioLacerda/strategist-skill/internal/provider"
 	"github.com/spf13/cobra"
@@ -34,8 +35,13 @@ var providerAddCmd = &cobra.Command{
 }
 
 func runProviderValidate(cmd *cobra.Command, args []string, opts providerOutputOptions) error {
-	report, err := providerpkg.Validate(args[0], "")
-	if printErr := printProviderOutput(cmd, report, opts.Format); printErr != nil {
+	report, err := providerapp.ValidateProvider(args[0], "", providerapp.ProviderPorts{
+		Validate: func(source, requestedSlot string) (providerapp.ProviderReport, error) {
+			providerReport, validateErr := providerpkg.Validate(source, requestedSlot)
+			return applicationProviderReport(providerReport), validateErr
+		},
+	})
+	if printErr := printProviderOutput(cmd, providerReport(report), opts.Format); printErr != nil {
 		return printErr
 	}
 	if err != nil {
@@ -56,8 +62,13 @@ func runProviderAdd(cmd *cobra.Command, args []string, root, slot string, opts p
 	if err != nil {
 		return fmt.Errorf("provider add: %w", err)
 	}
-	result, err := providerpkg.Add(strategistRoot, args[0], slot)
-	if printErr := printProviderOutput(cmd, result, opts.Format); printErr != nil {
+	result, err := providerapp.AddProvider(strategistRoot, args[0], slot, providerapp.ProviderPorts{
+		Add: func(root, source, requestedSlot string) (providerapp.ProviderAddResult, error) {
+			providerResult, addErr := providerpkg.Add(root, source, requestedSlot)
+			return applicationProviderAddResult(providerResult), addErr
+		},
+	})
+	if printErr := printProviderOutput(cmd, providerAddResult(result), opts.Format); printErr != nil {
 		return printErr
 	}
 	if err != nil {

@@ -5,7 +5,7 @@
 # docs/runbooks/*.md) or by the agent during discovery/refinement consultation of
 # the "runbooks" chest — no pre-approval gate; trust is capped at the parent
 # chest's trust.tier. See .analysis/refined/runbook-jewel-relevance-mechanism/
-# design.md for the full rationale and the Search ability this index feeds.
+# design.md for the full rationale and the Search Feat this index feeds.
 # Format version: 1
 
 schema_version: "1"

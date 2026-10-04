@@ -78,6 +78,10 @@ archivist_entry_policy:
     event: normalized_ranger_artifact
     outcome: missions/handoff/<mission_id>/ranger_to_archivist/attempt-N.json
     command: strategist handoff evaluate-ranger
+    on_normalization: >
+      records an automatic skipped outcome only when the typed facts authorize it;
+      when a challenge is required it records no outcome, consumes no attempt and
+      emits an awaiting_challenge event, leaving the consumer denied as missing
     standalone_verify_is_diagnostic_only: true
 
   consumer:
@@ -229,3 +233,56 @@ sniper_to_validation_policy:
     - documenting this transition here does not authorize any role to invoke it as
       part of the standard mission sequence (00-routing.md's Full Pipeline Sequence,
       Critical Hit Sequence, and Implementation Short Route are unchanged)
+
+delegated_validation:
+  owner: strategist
+  status: lifecycle_owned
+  adr_ref: docs/adr/0065-provider-integration-mechanism.md
+  applies_to: [ranger_to_archivist, archivist_to_sniper]
+  consumer: machine/provider-integration.yaml#handoff_consumer
+  description: >
+    An enabled external provider (the Provider Integration Mechanism, first provider
+    JEV) may satisfy one semantic check on a lifecycle handoff transition. The change
+    is additive: an outcome without a delegation is byte-identical to one recorded
+    before the field existed, and every existing outcome still verifies. The main path
+    is unchanged and is always the fallback.
+
+  delegable_checks:
+    - input_output_conformance   # semantic conformance to the contract criteria, what the agent does today
+  never_delegated:
+    - artifact_integrity         # digests, tamper evidence, replay, cross-mission binding
+    - approval_gate              # the user's decision
+    - authorization
+    - policy_facts               # typed facts are derived, never inferred
+    - receiver_comprehension     # a provider evaluates the text it is shown, not the receiver
+
+  outcome_field:
+    name: delegation
+    covered_by: outcome integrity digest
+    provenance_required: [provider, model, binding_digest, capability, criterion, subject, checks, confidence, threshold]
+    usage: [input_tokens, output_tokens]
+
+  decision_rule:
+    owner: strategist (local, deterministic)
+    approved_when: confidence strictly above the configured threshold (default 0.90)
+    note: >
+      Approved is derived locally from the recorded confidence and threshold, never read
+      from the provider. A call that does not approve leaves the handoff on main and
+      records no delegation. An approval never records a handoff pass by itself: the
+      deterministic challenge verification still runs and decides the outcome result.
+
+  fail_closed_when:
+    - a delegation lacks any required provenance field
+    - a delegation names a check outside delegable_checks
+    - the recorded confidence is not strictly above the recorded threshold
+    - the delegation's subject is not the artifact digest (Ranger) or package digest (Archivist) the outcome is bound to
+    - the record was written without sealing, detected again when execution is authorized
+
+  denied_tokens:
+    - handoff_delegation_invalid
+    - handoff_delegation_forbidden_check
+
+  invariants:
+    - delegation never changes policy, the policy identity, the Approval Gate or authorization
+    - the policy identity is unchanged by this block, so in-flight outcomes remain valid
+    - a provider failure of any kind falls back to the main path and never blocks a handoff

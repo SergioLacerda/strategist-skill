@@ -89,13 +89,17 @@ func runCheck(cmd *cobra.Command, deps Dependencies, root string, filesOnly bool
 		return err
 	}
 
-	scenarioDir := filepath.Join(basePath, "dojo", scenario)
+	paths, err := internaldojo.NewStoragePaths(basePath, scenario)
+	if err != nil {
+		return fmt.Errorf("dojo check: %w", err)
+	}
+	scenarioDir := paths.ScenarioDir
 	criteria, err := internaldojo.LoadCriteria(scenarioDir)
 	if err != nil {
 		return fmt.Errorf("dojo check: %w", err)
 	}
 
-	emitLogPath := filepath.Join(basePath, "dojo", ".last-run", scenario, "emit.log")
+	emitLogPath := paths.EmitLogPath
 	startedAt := time.Now()
 	result := internaldojo.Run(criteria, basePath, strategistRoot, emitLogPath, filesOnly)
 	finishedAt := time.Now()
@@ -117,7 +121,7 @@ func runCheck(cmd *cobra.Command, deps Dependencies, root string, filesOnly bool
 // health check first, a learning tool second.
 func persistResult(errOut io.Writer, basePath string, result domain.DojoCheckResult, startedAt, finishedAt time.Time) {
 	if err := internaldojo.PersistResult(basePath, result, startedAt, finishedAt); err != nil {
-		fmt.Fprintf(errOut, "dojo: warning: failed to persist result: %v\n", err) //nolint:errcheck // best-effort warning: a failed stderr write must not change the check result
+		fmt.Fprintf(errOut, "dojo: warning: failed to persist result (check verdict preserved): %v\n", err) //nolint:errcheck // best-effort warning: a failed stderr write must not change the check result
 	}
 	if err := internaldojo.WriteLesson(basePath, result); err != nil {
 		fmt.Fprintf(errOut, "dojo: warning: failed to write lesson: %v\n", err) //nolint:errcheck // best-effort warning: a failed stderr write must not change the check result

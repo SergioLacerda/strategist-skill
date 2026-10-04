@@ -2,16 +2,16 @@ schema_version: "1"
 module: mechanisms
 type: registry
 description: >
-  The single catalog of the tools Strategist gives an agent in a mission:
-  Mechanisms (deterministic rules, enforced in code or in a contract) and the
-  Abilities that sit beside them (judgment-based behavior). It exists to make
+  The single compatibility catalog of Tools, Mechanisms, and Feats Strategist
+  gives an agent in a mission. It exists to make
   agents aware of what is at their disposal, when it applies and how to invoke it.
   An agent does not read this file: each role receives a role-scoped brief at
   phase start (`strategist mechanisms brief --role {role}`, an on_start hook), so
   the catalog is deliberately not in machine.always_load.
 
 # Row fields (validated by internal/mechanisms):
-#   id, display_name, family (mechanism | ability), owner_package, contract_file
+#   id, version (required for weapon rows), display_name, family (role | weapon |
+#   feat | tool | mechanism | stage | artifact), owner_package, contract_file
 #   (defaults-relative; `;` separates several, `#` names a section),
 #   enforcement_kind (code | contract | prose), enforcement_tier (optional, the
 #   machine_enforced | machine_observed | agent_only vocabulary of errors.yaml),
@@ -23,8 +23,10 @@ description: >
 # Claim placement for the confidence_governance row (stdin only, never a file under
 # base_path): confidence-governance.yaml#producers.claim_placement.
 #
-# Family criterion (docs/adr/0053): Mechanism = deterministic rule,
-# Ability = agent judgment. Items that have both are ONE row with a judgment_facet.
+# Family criterion (docs/adr/0064): Mechanism = deterministic rule, Feat =
+# contextual agent judgment, Tool = operation that evaluates inputs and returns a
+# result. Items that have both deterministic and judgment facets are ONE row with
+# a judgment_facet.
 
 mechanisms:
   # --- Mechanisms -----------------------------------------------------------
@@ -200,7 +202,7 @@ mechanisms:
   - id: locks_transactions
     display_name: Locks and transactions
     family: mechanism
-    owner_package: internal/plugins/lifecycle;internal/initiative
+    owner_package: internal/plugins/lifecycle;internal/feats/initiative
     contract_file: contracts/narrative/06-execution.md
     enforcement_kind: code
     enforcement_tier: machine_enforced
@@ -223,7 +225,7 @@ mechanisms:
 
   - id: normalize_openspec
     display_name: normalize-openspec
-    family: mechanism
+    family: tool
     owner_package: internal/refinement
     contract_file: contracts/narrative/04-refinement.md
     enforcement_kind: code
@@ -234,11 +236,11 @@ mechanisms:
     how_to_invoke: "strategist mission normalize-openspec --mission-id <id> --change-id <c>"
     phase_scope: [refinement]
 
-  # --- Mechanisms that were once labelled Abilities (ADR-0053) --------------
+  # --- Tools and Feats formerly collapsed into the six-family model ----------
   - id: leveling
     display_name: LEVELING
-    family: mechanism
-    owner_package: internal/leveling
+    family: tool
+    owner_package: internal/tools/leveling
     contract_file: leveling.yaml
     enforcement_kind: code
     enforcement_tier: machine_observed
@@ -250,8 +252,8 @@ mechanisms:
 
   - id: initiative
     display_name: INITIATIVE
-    family: mechanism
-    owner_package: internal/initiative;internal/mission
+    family: feat
+    owner_package: internal/feats/initiative;internal/mission
     contract_file: initiative.yaml;schemas/initiative-advice.schema.yaml
     enforcement_kind: code
     enforcement_tier: machine_observed
@@ -264,20 +266,20 @@ mechanisms:
 
   - id: critical_hit
     display_name: Critical Hit
-    family: mechanism
-    owner_package: internal/domain
+    family: feat
+    owner_package: internal/feats/critical_hit
     contract_file: contracts/machine/critical-hit.yaml;contracts/narrative/11-critical-hit.md
     enforcement_kind: contract
     enforcement_tier: agent_only
-    summary: moves or closes an analysis card without a full pipeline, only with an explicit request and evidence.
+    summary: contextual Feat activated by Scout; deterministic eligibility is Mechanism-backed, and eligible results request SHORT while preserving the critical_hit compatibility route.
     when_to_use: a plain move, or a closure move with a completion claim and evidence summary
     invoked_by: [scout]
-    how_to_invoke: "Scout selects selected_route=critical_hit per critical-hit.yaml#trigger_conditions"
+    how_to_invoke: "Scout evaluates the Critical Hit Feat and submits its typed StageRequest; selected_route=critical_hit remains a compatibility output per critical-hit.yaml#trigger_conditions"
     phase_scope: [intake]
 
   - id: opportunity_attack
     display_name: Opportunity Attack
-    family: mechanism
+    family: feat
     owner_package: contracts
     contract_file: contracts/machine/opportunity-attack.yaml
     enforcement_kind: contract
@@ -291,7 +293,7 @@ mechanisms:
 
   - id: side_quest
     display_name: Side Quest
-    family: mechanism
+    family: feat
     owner_package: contracts
     contract_file: contracts/machine/opportunity-attack.yaml;contracts/narrative/05-approval-gate.md
     enforcement_kind: contract
@@ -303,10 +305,10 @@ mechanisms:
     phase_scope: [discovery, refinement]
     judgment_facet: the agent detects the out-of-scope finding
 
-  # --- Abilities (agent judgment) -------------------------------------------
+  # --- Feats (contextual agent judgment) ------------------------------------
   - id: search
     display_name: Search
-    family: ability
+    family: feat
     owner_package: roles
     contract_file: roles/ranger.yaml#canonical.search
     enforcement_kind: contract
@@ -319,8 +321,8 @@ mechanisms:
 
   - id: select_runbook
     display_name: select_runbook
-    family: ability
-    owner_package: internal/runbook
+    family: feat
+    owner_package: internal/feats/select_runbook
     contract_file: roles/ranger.yaml#canonical.select_runbook;contracts/narrative/03-discovery.md
     enforcement_kind: contract
     enforcement_tier: agent_only
@@ -332,7 +334,7 @@ mechanisms:
 
   - id: riposte
     display_name: Riposte
-    family: ability
+    family: feat
     owner_package: contracts
     contract_file: contracts/machine/riposte.yaml
     enforcement_kind: contract
@@ -345,7 +347,7 @@ mechanisms:
 
   - id: resolve_weapon_scratch_root
     display_name: resolve_weapon_scratch_root
-    family: ability
+    family: tool
     owner_package: roles
     contract_file: roles/ranger.yaml#canonical.resolve_weapon_scratch_root;roles/archivist.yaml#canonical.resolve_weapon_scratch_root
     enforcement_kind: contract
@@ -358,7 +360,7 @@ mechanisms:
 
   - id: keen_senses
     display_name: Keen Senses
-    family: ability
+    family: feat
     owner_package: contracts
     contract_file: contracts/machine/keen-senses.yaml
     enforcement_kind: contract
@@ -368,3 +370,16 @@ mechanisms:
     invoked_by: [orchestrator]
     how_to_invoke: "contracts/machine/keen-senses.yaml"
     phase_scope: [bootstrap]
+
+  - id: provider_integration
+    display_name: Provider Integration
+    family: mechanism
+    owner_package: internal/integration
+    contract_file: contracts/machine/provider-integration.yaml
+    enforcement_kind: code
+    enforcement_tier: machine_observed
+    summary: "decides per attempt whether an external provider serves a call or main does, and never grants authority to its answer."
+    when_to_use: at every lifecycle handoff evaluation (Ranger to Archivist, Archivist to Sniper) when an integration is enabled; a failure falls back to main and never blocks
+    invoked_by: [archivist, sniper]
+    how_to_invoke: "strategist handoff evaluate-ranger | handoff evaluate (automatic when .strategist/integrations.yaml enables a provider)"
+    phase_scope: [refinement, execution]

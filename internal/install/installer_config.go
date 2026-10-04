@@ -32,7 +32,10 @@ func (s Service) applyConfig(ctx context.Context, strategistDir string, cfg doma
 	}()
 
 	if !cfg.Wizard {
-		return s.applySilentConfig(ctx, strategistDir, cfg)
+		if err := s.applySilentConfig(ctx, strategistDir, cfg); err != nil {
+			return err
+		}
+		return applyIntegrationChoice(strategistDir, cfg.Integration)
 	}
 	return s.applyWizardConfig(ctx, strategistDir, cfg.Verbose)
 }
@@ -110,9 +113,6 @@ func (s Service) persistWizardConfig(strategistDir string, wc domain.WizardConfi
 			return fmt.Errorf("install: write plugins.lock: %w", err)
 		}
 	}
-	if err := s.writeSelectedProviderManifests(strategistDir, wc); err != nil {
-		return fmt.Errorf("install: write provider manifests: %w", err)
-	}
 	if err := writeKnowledgeIndexSource(strategistDir, wc); err != nil {
 		return fmt.Errorf("install: write knowledge.index.yaml: %w", err)
 	}
@@ -122,57 +122,7 @@ func (s Service) persistWizardConfig(strategistDir string, wc domain.WizardConfi
 	if err := persistGovernanceState(strategistDir, wc.GovernancePolicy, wc.PermissionGrants); err != nil {
 		return fmt.Errorf("install: write governance state: %w", err)
 	}
-	return nil
-}
-
-func (s Service) writeSelectedProviderManifests(strategistDir string, wc domain.WizardConfig) error {
-	slog.Info("[Strategist] install writing-manifests",
-		telemetry.AttrComponent, "install",
-		"discovery_provider", wc.DiscoveryProvider,
-		"refinement_provider", wc.RefinementProvider,
-	)
-	selectedProviders := []string{wc.DiscoveryProvider, wc.RefinementProvider}
-
-	for _, provider := range selectedProviders {
-		if err := s.writeSelectedProviderManifest(strategistDir, provider); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (s Service) writeSelectedProviderManifest(strategistDir, provider string) error {
-	installable, err := resolveInstallableDefaultProviders(s.Extractor)
-	if err != nil {
-		return fmt.Errorf("resolve installable providers for %s: %w", provider, err)
-	}
-	providerID, _ := domain.ParseWeaponRef(provider)
-	if _, ok := installable[providerID]; !ok {
-		return nil
-	}
-	data, err := providerManifestBytes(s.Extractor, provider)
-	if err != nil {
-		return err
-	}
-	providerDir := filepath.Join(strategistDir, installedProvidersDirName, providerID)
-	targetPath := filepath.Join(providerDir, skillYAMLName)
-	if err := atomicWriteFile(targetPath, data, 0o644); err != nil {
-		return fmt.Errorf("write %s: %w", targetPath, err)
-	}
-	return nil
-}
-
-func providerManifestBytes(extractor domain.FileExtractor, provider string) ([]byte, error) {
-	catalog, err := loadPluginCatalog(extractor)
-	if err != nil {
-		return nil, fmt.Errorf("load plugin catalog for %s: %w", provider, err)
-	}
-	entry, ok := findCatalogProviderRef(catalog, provider)
-	if !ok {
-		return nil, fmt.Errorf("plugin catalog: provider %q not found%s", provider, unresolvedRefHint(catalog, provider))
-	}
-	return normalizedDigestManifestFor(entry), nil
+	return applyIntegrationChoice(strategistDir, wc.IntegrationChoice)
 }
 
 // resolvePrompter returns the Prompter to use for wizard mode.

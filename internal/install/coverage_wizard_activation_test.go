@@ -41,3 +41,13 @@ func TestActivateWizardPlanFailureModes(t *testing.T) {
 	_, err = activateWizardPlan(defaultsExtractor{}, catalog, wc, blocker, plan, false)
 	require.Error(t, err)
 }
+
+func TestActivateWizardPlanProducesBindingArtifacts(t *testing.T) {
+	catalog, plan, wc := defaultOnboardingPlan(t)
+
+	lock, err := activateWizardPlan(defaultsExtractor{}, catalog, wc, "", plan, false)
+	require.NoError(t, err)
+	require.NotEmpty(t, lock.BindingArtifacts)
+	require.LessOrEqual(t, len(lock.BindingArtifacts), len(lock.Bindings))
+	require.NoError(t, domain.ValidateWeaponBindingArtifacts(lock.Bindings, lock.BindingArtifacts))
+}

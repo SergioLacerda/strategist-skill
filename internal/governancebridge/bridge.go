@@ -1,9 +1,7 @@
 // Package governancebridge defines Strategist's pluggable interface for
-// delegating policy enforcement to an external governance system, without
-// Strategist knowing that provider's internal logic (item 4 of the
-// governança-plugável document; UNC-02 resolution: this is a new package —
-// internal/governance stays intact as the concrete .sdd/ adapter, see
-// internal/governance/bridge_adapter.go).
+// delegating policy enforcement to an explicitly provisioned external
+// governance system, without Strategist knowing that provider's internal
+// logic.
 //
 // A nil GovernanceBridge is the common, fully-supported case: Strategist
 // runs standalone with no external governance configured (acceptance check

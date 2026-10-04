@@ -123,7 +123,7 @@ func addCompositionViolations(violationsByID map[string][]string, accepted []Ing
 
 // buildCatalog merges baseProviders with skills, sorted by id.
 func buildCatalog(schemaVersion string, baseProviders []pluginCatalogProvider, skills []IngestedSkill) pluginCatalog {
-	catalog := pluginCatalog{SchemaVersion: schemaVersion, Providers: append([]pluginCatalogProvider(nil), baseProviders...)}
+	catalog := pluginCatalog{SchemaVersion: schemaVersion, TaxonomyVersion: domain.CanonicalTaxonomyVersion, Providers: append([]pluginCatalogProvider(nil), baseProviders...)}
 	for _, skill := range skills {
 		catalog.Providers = append(catalog.Providers, catalogProviderFromIngestedSkill(skill))
 	}

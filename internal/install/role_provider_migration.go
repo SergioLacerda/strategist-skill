@@ -100,6 +100,7 @@ func applyRoleProviderMigration(store *lifecycle.Store, preview RoleProviderMigr
 		}
 		desired := domain.SlotBinding{
 			SchemaVersion:       "strategist-plugin-binding/v1",
+			TaxonomyVersion:     domain.CanonicalTaxonomyVersion,
 			Slot:                entry.Slot,
 			InstalledInstanceID: entry.Resolved.Provider.ID,
 			Role:                entry.RoleName,
@@ -178,7 +179,8 @@ func seedRoleProviderMigrationEntry(store *lifecycle.Store, entry RoleProviderPr
 		}
 		if _, ok := store.Binding(entry.Slot); !ok {
 			store.Bindings = append(store.Bindings, domain.SlotBinding{
-				Slot: entry.Slot, InstalledInstanceID: entry.CurrentProviderID, Role: entry.RoleName, Generation: 1, Status: "enabled",
+				TaxonomyVersion: domain.CanonicalTaxonomyVersion,
+				Slot:            entry.Slot, InstalledInstanceID: entry.CurrentProviderID, Role: entry.RoleName, Generation: 1, Status: "enabled",
 				Mode: domain.SlotBindingModeCustom,
 			})
 		}

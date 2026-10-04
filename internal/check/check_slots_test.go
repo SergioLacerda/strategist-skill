@@ -12,30 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestResolveSlotProvider_SkillYAMLUnreadablePermission(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("chmod not reliable on windows")
-	}
-	dir := t.TempDir()
-	skillDir := filepath.Join(dir, "skills", "brainstorming")
-	require.NoError(t, os.MkdirAll(skillDir, 0o755))
-	skillPath := filepath.Join(skillDir, "skill.yaml")
-	require.NoError(t, os.WriteFile(skillPath, []byte("id: brainstorming\n"), 0o000))
-	t.Cleanup(func() { _ = os.Chmod(skillPath, 0o644) })
-	if os.Getuid() == 0 {
-		t.Skip("running as root — file permission checks do not apply")
-	}
-
-	_, errMsg := resolveSlotProvider(dir, "discovery", "brainstorming")
-	assert.Contains(t, errMsg, "read")
-	assert.Contains(t, errMsg, skillPath)
-}
-
-func TestResolveSkillProviderSlot_InvalidYAML(t *testing.T) {
-	_, errMsg := resolveSkillProviderSlot(t.TempDir(), "discovery", "brainstorming", "/tmp/skill.yaml", []byte("id: [unterminated\n"))
-	assert.Contains(t, errMsg, "skill.yaml invalid")
-}
-
 func TestResolveNativeRoleSlot_UnreadablePermission(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("chmod not reliable on windows")
@@ -50,7 +26,7 @@ func TestResolveNativeRoleSlot_UnreadablePermission(t *testing.T) {
 		t.Skip("running as root — file permission checks do not apply")
 	}
 
-	_, errMsg := resolveNativeRoleSlot(dir, "execution", "sniper", filepath.Join(dir, "skills", "sniper", "skill.yaml"))
+	_, errMsg := resolveNativeRoleSlot(dir, "execution", "sniper")
 	assert.Contains(t, errMsg, "unreadable")
 }
 
@@ -60,60 +36,8 @@ func TestResolveNativeRoleSlot_MalformedYAML(t *testing.T) {
 	require.NoError(t, os.MkdirAll(rolesDir, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "sniper.yaml"), []byte("role: [unterminated\n"), 0o644))
 
-	_, errMsg := resolveNativeRoleSlot(dir, "execution", "sniper", filepath.Join(dir, "skills", "sniper", "skill.yaml"))
+	_, errMsg := resolveNativeRoleSlot(dir, "execution", "sniper")
 	assert.Contains(t, errMsg, "malformed YAML")
-}
-
-func TestResolveSkillProviderSlot_AttachesUnsupportedReadiness(t *testing.T) {
-	t.Parallel()
-
-	// skillPath is fabricated and never written to disk, so the entrypoint
-	// probe (probeSkillEntrypoint) correctly reports the file as missing
-	// rather than the old hardcoded "entrypoint_probe_unsupported" — the
-	// probe is now a real static check, not a no-op.
-	res, errMsg := resolveSkillProviderSlot(t.TempDir(), "discovery", "brainstorming", "skills/brainstorming/skill.yaml", []byte("risk_score: write_analysis\n"))
-	require.Empty(t, errMsg)
-
-	assert.Equal(t, slotResolutionSkillProvider, res.kind)
-	assert.False(t, res.readiness.Ready())
-	assert.Contains(t, res.readiness.ReasonCodes(), "connector_unsupported")
-	assert.Contains(t, res.readiness.ReasonCodes(), "entrypoint_file_missing")
-}
-
-func TestResolveSkillProviderSlot_EntrypointProbeVerifiesRealManifest(t *testing.T) {
-	t.Parallel()
-
-	dir := t.TempDir()
-	skillDir := filepath.Join(dir, "skills", "brainstorming")
-	require.NoError(t, os.MkdirAll(skillDir, 0o755))
-	skillPath := filepath.Join(skillDir, "skill.yaml")
-	require.NoError(t, os.WriteFile(skillPath, []byte("id: brainstorming\nrisk_score: write_analysis\n"), 0o644))
-
-	res, errMsg := resolveSkillProviderSlot(dir, "discovery", "brainstorming", skillPath, []byte("risk_score: write_analysis\n"))
-	require.Empty(t, errMsg)
-
-	assert.Equal(t, domain.ReadinessReady, res.readiness.Entrypoint.Status)
-	assert.Equal(t, "entrypoint_manifest_verified", res.readiness.Entrypoint.ReasonCode)
-}
-
-func TestResolveSkillProviderSlot_ClassifiesCustomContractEvidence(t *testing.T) {
-	t.Parallel()
-
-	dir := t.TempDir()
-	require.NoError(t, os.MkdirAll(filepath.Join(dir, "roles"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "roles", "default.yaml"), []byte("discovery: ranger\nrefinement: archivist\nexecution: sniper\n"), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "roles", "ranger.yaml"), []byte("role: ranger\nslot: discovery\n"), 0o644))
-	skillPath := filepath.Join(dir, "skills", "brainstorming", "skill.yaml")
-	require.NoError(t, os.MkdirAll(filepath.Dir(skillPath), 0o755))
-	raw := []byte("id: brainstorming\nrisk_score: write_analysis\ncanonical_role: ranger\nroles:\n  - ranger\n")
-	require.NoError(t, os.WriteFile(skillPath, raw, 0o644))
-
-	res, errMsg := resolveSkillProviderSlot(dir, "discovery", "brainstorming", skillPath, raw)
-	require.Empty(t, errMsg)
-	assert.Equal(t, domain.ReadinessUnsupported, res.readiness.Conformance.Status)
-	assert.Equal(t, "probe_unsupported", res.readiness.Conformance.ReasonCode)
-	assert.Equal(t, "unsupported", res.readiness.Conformance.EvidenceState)
-	assert.Contains(t, res.readiness.Conformance.Detail, "state=unsupported")
 }
 
 func TestCustomConformanceReadinessMapsExplicitProbeEvidence(t *testing.T) {
@@ -147,73 +71,6 @@ func TestCustomConformanceReadinessMapsExplicitProbeEvidence(t *testing.T) {
 			assert.Equal(t, tc.probe.ReasonCode, got.ReasonCode)
 		})
 	}
-}
-
-func TestResolveSkillProviderSlot_MissingCustomAffinityIsUnknown(t *testing.T) {
-	t.Parallel()
-
-	dir := t.TempDir()
-	skillPath := filepath.Join(dir, "skills", "custom", "skill.yaml")
-	require.NoError(t, os.MkdirAll(filepath.Dir(skillPath), 0o755))
-	raw := []byte("id: custom\nrisk_score: write_analysis\n")
-	require.NoError(t, os.WriteFile(skillPath, raw, 0o644))
-
-	res, errMsg := resolveSkillProviderSlot(dir, "discovery", "custom", skillPath, raw)
-	require.Empty(t, errMsg)
-	assert.Equal(t, domain.ReadinessUnknown, res.readiness.Conformance.Status)
-	assert.Equal(t, "conformance_role_mapping_unknown", res.readiness.Conformance.ReasonCode)
-}
-
-func TestResolveSkillProviderSlot_EntrypointProbeBlocksIDMismatch(t *testing.T) {
-	t.Parallel()
-
-	dir := t.TempDir()
-	skillDir := filepath.Join(dir, "skills", "brainstorming")
-	require.NoError(t, os.MkdirAll(skillDir, 0o755))
-	skillPath := filepath.Join(skillDir, "skill.yaml")
-	require.NoError(t, os.WriteFile(skillPath, []byte("id: some-other-id\nrisk_score: write_analysis\n"), 0o644))
-
-	res, errMsg := resolveSkillProviderSlot(dir, "discovery", "brainstorming", skillPath, []byte("risk_score: write_analysis\n"))
-	require.Empty(t, errMsg)
-
-	assert.Equal(t, domain.ReadinessBlocked, res.readiness.Entrypoint.Status)
-	assert.Equal(t, "entrypoint_id_mismatch", res.readiness.Entrypoint.ReasonCode)
-}
-
-func TestProbeSkillEntrypoint_EmptyFile(t *testing.T) {
-	t.Parallel()
-
-	dir := t.TempDir()
-	path := filepath.Join(dir, "skill.yaml")
-	require.NoError(t, os.WriteFile(path, []byte{}, 0o644))
-
-	check := probeSkillEntrypoint("brainstorming", path)
-	assert.Equal(t, domain.ReadinessBlocked, check.Status)
-	assert.Equal(t, "entrypoint_file_empty", check.ReasonCode)
-}
-
-func TestProbeSkillEntrypoint_UnparseableYAML(t *testing.T) {
-	t.Parallel()
-
-	dir := t.TempDir()
-	path := filepath.Join(dir, "skill.yaml")
-	require.NoError(t, os.WriteFile(path, []byte("id: [unterminated\n"), 0o644))
-
-	check := probeSkillEntrypoint("brainstorming", path)
-	assert.Equal(t, domain.ReadinessBlocked, check.Status)
-	assert.Equal(t, "entrypoint_manifest_unparseable", check.ReasonCode)
-}
-
-func TestProbeSkillEntrypoint_MissingID(t *testing.T) {
-	t.Parallel()
-
-	dir := t.TempDir()
-	path := filepath.Join(dir, "skill.yaml")
-	require.NoError(t, os.WriteFile(path, []byte("risk_score: write_analysis\n"), 0o644))
-
-	check := probeSkillEntrypoint("brainstorming", path)
-	assert.Equal(t, domain.ReadinessBlocked, check.Status)
-	assert.Equal(t, "entrypoint_id_missing", check.ReasonCode)
 }
 
 // --- blockedReadinessErrors ---
@@ -263,7 +120,7 @@ func TestResolveNativeRoleSlot_AttachesNativeReadiness(t *testing.T) {
 	rolePath := filepath.Join(rolesDir, "sniper.yaml")
 	require.NoError(t, os.WriteFile(rolePath, []byte("role: sniper\nslot: execution\n"), 0o644))
 
-	res, errMsg := resolveNativeRoleSlot(dir, "execution", "sniper", filepath.Join(dir, "skills", "sniper", "skill.yaml"))
+	res, errMsg := resolveNativeRoleSlot(dir, "execution", "sniper")
 	require.Empty(t, errMsg)
 
 	assert.Equal(t, slotResolutionNativeRole, res.kind)
@@ -296,8 +153,8 @@ func TestCheckRoleProviderCompatibility_SlotNotMappedToARole(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "default.yaml"),
 		[]byte("discovery: ranger\nrefinement: archivist\n"), 0o644))
 
-	errMsg := checkRoleProviderCompatibility(dir, "execution", "sdd-ask", "controlled",
-		[]byte("id: sdd-ask\n"))
+	errMsg := checkRoleProviderCompatibility(dir, "execution", "fixture-provider", "controlled",
+		[]byte("id: fixture-provider\n"))
 	assert.Empty(t, errMsg)
 }
 
@@ -382,9 +239,9 @@ func TestCheckRoleProviderCompatibility_SkillDeclaresNoCanonicalRole(t *testing.
 	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "archivist.yaml"),
 		[]byte("role: archivist\nslot: refinement\n"), 0o644))
 
-	// sdd-ask declares no canonical_role — not every provider is expected to.
-	errMsg := checkRoleProviderCompatibility(dir, "refinement", "sdd-ask", "controlled",
-		[]byte("id: sdd-ask\n"))
+	// fixture-provider declares no canonical_role — not every provider is expected to.
+	errMsg := checkRoleProviderCompatibility(dir, "refinement", "fixture-provider", "controlled",
+		[]byte("id: fixture-provider\n"))
 	assert.Empty(t, errMsg)
 }
 
@@ -438,6 +295,8 @@ func TestResolveSlotProvider_RoleIncompatibleProviderBlocksSlotResolution(t *tes
 		[]byte("discovery: ranger\nrefinement: archivist\nexecution: sniper\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(rolesDir, "archivist.yaml"),
 		[]byte("role: archivist\nslot: refinement\n"), 0o644))
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "plugins"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "plugins", "catalog.yaml"), []byte("schema_version: strategist-plugin-catalog/v2\nproviders:\n  - id: mis-wired-provider\n    risk_score: write_analysis\n    canonical_role: ranger\n    roles: [ranger]\n"), 0o644))
 	skillDir := filepath.Join(dir, "skills", "mis-wired-provider")
 	require.NoError(t, os.MkdirAll(skillDir, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(skillDir, "skill.yaml"),

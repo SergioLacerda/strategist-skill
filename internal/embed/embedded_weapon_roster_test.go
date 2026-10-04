@@ -1,6 +1,7 @@
 package embed_test
 
 import (
+	"io/fs"
 	"testing"
 
 	embedpkg "github.com/SergioLacerda/strategist-skill/internal/embed"
@@ -85,11 +86,10 @@ func TestEmbeddedDefaults_BaselineWeaponRosterIsAlwaysEmbedded(t *testing.T) {
 			assert.Empty(t, entry.Runtime.HostAPI, "brainstorming must not declare a host loader")
 		}
 
-		// The generated per-skill manifest mirror must also actually exist —
-		// this is what a real strategist install extracts into a workspace's
-		// .strategist/skills/<id>/skill.yaml.
+		// Generation 2 ships the versioned payload but no generated
+		// skills/<id>@<version>/skill.yaml compatibility mirror.
 		_, err := embedpkg.Extractor{}.ReadFile("skills/" + payloadDirName(want.id, entry.Version) + "/skill.yaml")
-		require.NoErrorf(t, err, "skills/%s/skill.yaml must be embedded alongside its catalog entry", want.id)
+		require.ErrorIs(t, err, fs.ErrNotExist, "skills/%s/skill.yaml must not be embedded", want.id)
 		_, err = embedpkg.Extractor{}.ReadFile("skills/" + payloadDirName(want.id, entry.Version) + "/SKILL.md")
 		require.NoErrorf(t, err, "skills/%s/SKILL.md must be embedded alongside its catalog entry", want.id)
 		_, err = embedpkg.Extractor{}.ReadFile("skills/" + payloadDirName(want.id, entry.Version) + "/strategist.yaml")
@@ -124,7 +124,9 @@ func TestEmbeddedDefaults_AdditionalWeaponsAreAlwaysEmbedded(t *testing.T) {
 		assert.Equal(t, "embedded", entry.CompatibilitySource)
 		assert.Truef(t, entry.Installable, "%s must remain installable", want.id)
 		assert.Equal(t, want.canonicalRole, entry.CanonicalRole)
-		for _, payload := range []string{"skill.yaml", "SKILL.md", "strategist.yaml"} {
+		_, err := embedpkg.Extractor{}.ReadFile("skills/" + payloadDirName(want.id, entry.Version) + "/skill.yaml")
+		require.ErrorIs(t, err, fs.ErrNotExist, "skills/%s/skill.yaml must not be embedded", want.id)
+		for _, payload := range []string{"SKILL.md", "strategist.yaml"} {
 			_, err := embedpkg.Extractor{}.ReadFile("skills/" + payloadDirName(want.id, entry.Version) + "/" + payload)
 			require.NoErrorf(t, err, "skills/%s/%s must be embedded", want.id, payload)
 		}
@@ -175,12 +177,20 @@ func TestEmbeddedDefaults_ArchivistAndProtocolPreserveAutonomousPrivateRuntimeCo
 	assert.Contains(t, string(provider), "private launcher")
 	assert.Contains(t, string(provider), "ranked-runtimes.yaml")
 	assert.Contains(t, string(provider), "do not fall back to `PATH`")
+	assert.NotContains(t, string(provider), "openspec change validate")
 
 	protocol, err := extractor.ReadFile("templates/agent-protocol.md")
 	require.NoError(t, err)
 	assert.Contains(t, string(protocol), "AUTONOMY AND WEAPON AUTHORITY")
 	assert.Contains(t, string(protocol), "deterministic transition")
 	assert.Contains(t, string(protocol), "global skill with the same")
+
+	refinement, err := extractor.ReadFile("contracts/narrative/04-refinement.md")
+	require.NoError(t, err)
+	assert.Contains(t, string(refinement), "refined-package-publications.jsonl")
+	assert.Contains(t, string(refinement), "removes the private provider")
+	assert.Contains(t, string(refinement), "scratch change")
+	assert.NotContains(t, string(refinement), "changes/archive/")
 }
 
 // payloadDirName mirrors the versioned skills/<id>@<version>/ layout (ADR-0061

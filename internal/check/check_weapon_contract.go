@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/weapon"
 )
 
 func validateWeaponBoundary(slot, roleID string, contract domain.WeaponContract) error {
@@ -23,7 +24,7 @@ func validateWeaponBoundary(slot, roleID string, contract domain.WeaponContract)
 // to the provider actually selected for discovery. Optional catalogued Ranger
 // candidates may omit the contract until selected; the selected Weapon may not.
 func validateSelectedDiscoveryWeaponContract(root, provider string) error {
-	facts, err := domain.ResolveWeaponFacts(root, provider)
+	facts, err := weapon.ResolveWeaponFacts(root, provider)
 	if err != nil {
 		return fmt.Errorf("discovery weapon %q unavailable: %w", provider, err)
 	}

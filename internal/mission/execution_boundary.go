@@ -9,31 +9,13 @@ import (
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	criticalhit "github.com/SergioLacerda/strategist-skill/internal/feats/critical_hit"
 	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
 
 // executionEntryAction names the guarded transition in a bypass decision.
 const executionEntryAction = "enter execution (handoff_challenge_satisfied)"
-
-// RecordRouteDecision persists Scout's route_decision for a mission so the
-// execution boundary can read it back. The decision must belong to missionID;
-// an absent timestamp is filled in. It reports false when a decision for the
-// mission was already recorded (the history is idempotent by mission_id).
-func RecordRouteDecision(strategistRoot, missionID string, raw []byte) (bool, error) {
-	decision, err := parseRouteDecision(missionID, raw)
-	if err != nil {
-		return false, err
-	}
-	appended, decision, err := appendRouteDecision(strategistRoot, decision)
-	if err != nil {
-		return false, err
-	}
-	if err := recordScoutRouteConfidence(strategistRoot, decision); err != nil {
-		return appended, fmt.Errorf("record Scout route confidence: %w", err)
-	}
-	return appended, nil
-}
 
 // parseRouteDecision decodes Scout's decision, checks it belongs to missionID
 // and fills an absent timestamp.
@@ -48,6 +30,38 @@ func parseRouteDecision(missionID string, raw []byte) (telemetry.RouteDecision, 
 	if decision.Timestamp == "" {
 		decision.Timestamp = time.Now().UTC().Format(time.RFC3339Nano)
 	}
+	stageRequest := domain.StageRequest{
+		Route:            decision.SelectedRoute,
+		PolicyVersion:    "route-resolution/v1",
+		MissionID:        decision.MissionID,
+		MissionExecution: true,
+	}
+	if decision.SelectedRoute == criticalhit.FeatID {
+		// Scout remains the intake owner during the compatibility migration.
+		// The route is retained only for downstream consumers; the domain
+		// resolution is still a SHORT Stage with explicit Feat context.
+		stageRequest.Role = "scout"
+		stageRequest.Feat = criticalhit.FeatID
+		stageRequest.MissionID = decision.MissionID
+		stageRequest.CorrelationKey = decision.MissionID + ":" + criticalhit.FeatID
+		stageRequest.GateRequired = true
+	}
+	resolution, err := domain.ResolveStage(stageRequest)
+	if err != nil {
+		return telemetry.RouteDecision{}, fmt.Errorf("resolve route Stage: %w", err)
+	}
+	artifact, err := domain.NewStageResolutionArtifact(resolution, decision.RequestCategory)
+	if err != nil {
+		return telemetry.RouteDecision{}, fmt.Errorf("build Stage resolution artifact: %w", err)
+	}
+	decision.Stage = string(artifact.Stage)
+	decision.StageTrigger = artifact.Trigger
+	decision.StageRole = artifact.Role
+	decision.StageFeat = artifact.Feat
+	decision.StageCorrelationID = artifact.CorrelationKey
+	decision.StageGateRequired = artifact.GateRequired
+	decision.StagePolicyVersion = artifact.PolicyVersion
+	decision.StageReason = artifact.Reason
 	return decision, nil
 }
 
@@ -131,48 +145,45 @@ func recordScoutRouteConfidence(strategistRoot string, decision telemetry.RouteD
 // mission engine itself, which reaches the handoff challenge only through an
 // approved Approval Gate.
 func EvaluateExecutionEntry(strategistRoot, basePath string, status domain.MissionEngineStatus) (domain.PipelineBypassDecision, error) {
-	selected, err := recordedRoute(strategistRoot, status.MissionID)
+	decision, err := recordedRouteDecision(strategistRoot, status.MissionID)
 	if err != nil {
 		return domain.PipelineBypassDecision{}, err
 	}
 	refined := filepath.Join(basePath, "refined", status.MissionID)
 	analysisPath := filepath.Join(refined, "analysis.md")
 	if handoff.HasHandoffMetadata(analysisPath) {
-		if err := handoff.ValidateArchivistPackage(refined, status.MissionID); err != nil {
+		if err := handoff.ValidateRefinedPackageForGate(refined, status.MissionID); err != nil {
 			return domain.PipelineBypassDecision{}, fmt.Errorf("validate Archivist handoff: %w", err)
 		}
 	}
-	gateApproved := status.State == domain.StateHandoffChallenge
+	// Full-pipeline execution is authorized by the handoff challenge. A
+	// Critical Hit SHORT execution is authorized by its explicit Stage gate and
+	// enters the ordinary StateExecution state, so it must not be mistaken for
+	// an unapproved DONE_ANALYSIS replay.
+	gateApproved := executionGateApproved(status)
+	stage := domain.Stage(decision.Stage)
+	route := domain.PipelineRouteForScoutRoute(decision.SelectedRoute)
+	if stage != "" {
+		route = domain.PipelineRouteForStage(stage)
+	}
 	return domain.EvaluatePipelineBypass(domain.PipelineEvidence{
-		Route:              domain.PipelineRouteForScoutRoute(selected),
+		Stage:              stage,
+		Route:              route,
 		BasePath:           basePath,
 		MissionID:          status.MissionID,
 		AttemptedAction:    executionEntryAction,
 		DiscoveryPresent:   fileExists(filepath.Join(refined, "analysis.md")),
 		RefinementPresent:  fileExists(filepath.Join(refined, "proposal.md")) && fileExists(filepath.Join(refined, "design.md")),
 		TasksPresent:       fileExists(filepath.Join(refined, "tasks.md")),
-		GatePresented:      gateApproved,
+		GatePresented:      gateApproved || status.StageGateRequired,
 		GateApproved:       gateApproved,
 		DirectGateApproved: gateApproved,
 	}), nil
 }
 
-// recordedRoute returns the selected_route Scout recorded for the mission, or ""
-// when none was recorded.
-func recordedRoute(strategistRoot, missionID string) (string, error) {
-	decisions, err := telemetry.ReadRouteDecisions(telemetry.RouteDecisionHistoryPath(strategistRoot))
-	if err != nil {
-		return "", fmt.Errorf("read route decisions: %w", err)
-	}
-	for _, decision := range decisions {
-		if decision.MissionID == missionID {
-			return decision.SelectedRoute, nil
-		}
-	}
-	return "", nil
+func executionGateApproved(status domain.MissionEngineStatus) bool {
+	return status.State == domain.StateHandoffChallenge || status.StageGateApproved
 }
 
-func fileExists(path string) bool {
-	info, err := os.Stat(path)
-	return err == nil && !info.IsDir()
-}
+// recordedRoute returns the selected_route Scout recorded for the mission, or ""
+// when none was recorded.

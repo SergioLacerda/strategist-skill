@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/roles/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -151,7 +152,7 @@ func TestLoadRoleRegistryOverlaysFilesOnBuiltIns(t *testing.T) {
 	writeRoleFile(t, dir, "ranger.yaml", "role: ranger\nslot: discovery\nphase: 1\nextensibility: pluggable\nleveling: scout\nhandoff_schema: schemas/custom.yaml\ncanonical:\n  - x\n")
 	writeRoleFile(t, dir, "auditor.yaml", "role: auditor\nphase: 5\nextensibility: fixed\n")
 
-	reg, err := domain.LoadRoleRegistry(dir)
+	reg, err := roles.LoadRoleRegistry(dir)
 	require.NoError(t, err)
 	assert.Equal(t, "scout", reg.PolicyRole("ranger"), "an explicit leveling key is honored")
 	assert.Equal(t, "schemas/custom.yaml", reg.HandoffSchemaOf("ranger"))
@@ -164,7 +165,7 @@ func TestLoadRoleRegistryOverlaysFilesOnBuiltIns(t *testing.T) {
 }
 
 func TestLoadRoleRegistryMissingDirUsesBuiltIns(t *testing.T) {
-	reg, err := domain.LoadRoleRegistry(filepath.Join(t.TempDir(), "absent"))
+	reg, err := roles.LoadRoleRegistry(filepath.Join(t.TempDir(), "absent"))
 	require.NoError(t, err)
 	assert.Equal(t, domain.DefaultRoleRegistry().IDs(), reg.IDs())
 }
@@ -172,7 +173,7 @@ func TestLoadRoleRegistryMissingDirUsesBuiltIns(t *testing.T) {
 func TestLoadRoleRegistryRejectsMalformedRoleFile(t *testing.T) {
 	dir := t.TempDir()
 	writeRoleFile(t, dir, "broken.yaml", ":\n - [nope")
-	_, err := domain.LoadRoleRegistry(dir)
+	_, err := roles.LoadRoleRegistry(dir)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "broken.yaml")
 }
@@ -194,7 +195,7 @@ func TestEveryRoleDeclaresTheLevelStartHook(t *testing.T) {
 func TestStartCommandsComeFromTheRoleDefinition(t *testing.T) {
 	dir := t.TempDir()
 	writeRoleFile(t, dir, "ranger.yaml", "role: ranger\nslot: discovery\nphase: 1\nextensibility: pluggable\non_start:\n  - strategist leveling label --role {role} --mission {mission_id} --run 2\n")
-	reg, err := domain.LoadRoleRegistry(dir)
+	reg, err := roles.LoadRoleRegistry(dir)
 	require.NoError(t, err)
 	assert.Equal(t, []string{"strategist leveling label --role ranger --mission m9 --run 2"}, reg.StartCommands("ranger", "m9"))
 }

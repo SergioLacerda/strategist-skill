@@ -1,7 +1,7 @@
 # Governance Hierarchy — Where Each Layer Actually Lives
 
 **Status:** Accepted
-**Date:** 2026-09-15
+**Date:** 2026-10-02
 **Mission:** `20260915-adr-hierarchy-docs-reorg`
 
 This page is a locator, not a rewrite. It maps the conceptual
@@ -12,8 +12,8 @@ canonical source instead of copying it.
 
 | Layer | Purpose | Where it lives today |
 | --- | --- | --- |
-| **Philosophy** | Identity, values, why the project exists | Not currently formalized as a standalone document. Informally expressed in [`docs/README.md`](../README.md)'s framing and `.strategist/SKILL.md`'s "What Strategist Does" section. This is a real gap, named here rather than silently filled — closing it is a separate, future decision, not assumed by this page. |
-| **Principles** | Engineering criteria derived from the philosophy | Same status as Philosophy: not yet a standalone document. Partially visible in [`strategist-concepts.md`](strategist-concepts.md) and scattered ADR "Context" sections. |
+| **Philosophy** | Identity, values, why the project exists | [`strategist-philosophy.md`](strategist-philosophy.md) is the canonical authored philosophy surface. |
+| **Principles** | Engineering criteria derived from the philosophy | [`strategist-philosophy.md`](strategist-philosophy.md) defines the durable principles; [`strategist-concepts.md`](strategist-concepts.md) applies them to the maintained conceptual model. |
 | **Mandates / Policies** | Normative, verifiable rules that must survive implementation changes | `.strategist/contracts/` — machine contracts (`contracts/machine/*.yaml`, e.g. `errors.yaml`, `approval-gate.yaml`) and narrative contracts (`contracts/narrative/*.md`, e.g. `00-routing.md`), generated from this project's own `internal/embed/defaults/contracts/`. This is the project's normative-and-durable rule surface — nothing about `.strategist/` is renamed or restructured by this page; it only points at what already exists there. |
 | **ADR** | Contextual, historical decisions: what problem, what alternatives, what was chosen | [`docs/adr/`](../adr/) — flat by [ADR-0015](../adr/0015-adr-index-by-theme-not-subfolders.md), indexed by theme in [`docs/adr/README.md`](../adr/README.md). |
 | **Implementation** | Materialization of the decision | The codebase itself (`internal/`, `cmd/`). |
@@ -30,18 +30,18 @@ no mechanism to keep hand-written prose in sync with the actual enforced contrac
 [ADR-0038](../adr/0038-docs-information-architecture-and-mandate-layer.md) for the full
 decision record.
 
-## Relationship to ADR-0034's Role/Skill/Weapon taxonomy
+## Relationship to the canonical seven-family taxonomy
 
-The Papel (Role) / Skill / Arma (Weapon) vocabulary — a separate, already-accepted
-taxonomy for *who executes* a mission phase and *what capability* they use — is defined
-in [ADR-0034](../adr/0034-role-and-skill-taxonomy.md) and is orthogonal to the governance
-ladder above: it describes execution structure, not normative-rule layering.
+[ADR-0064](../adr/0064-canonical-seven-family-taxonomy.md) defines the current
+doc-facing families: Role, Weapon, Feat, Tool, Mechanism, Stage, and Artifact. This
+taxonomy is orthogonal to the governance ladder above: the taxonomy identifies what
+kind of system entity is being discussed, while the ladder identifies the authority
+of the statement about it.
 
-**Papel/Arma is the canonical, doc-facing vocabulary.** A later, still-pending proposal
-(`strategist-papeis-personagens-skills-nativas`) independently introduced
-`Role`/`Provider`/`Binding`/`Source` for the same underlying concepts; those names now
-also exist as real Go types (`internal/domain/role_provider_contract.go`) and remain
-valid as internal implementation naming, but they do not supersede or compete with
-ADR-0034's Papel/Arma taxonomy for documentation and conceptual framing. Renaming the
-Go types to match is an explicit non-goal here — a separate, larger decision if ever
-pursued, not made by this note.
+[ADR-0034](../adr/0034-role-and-skill-taxonomy.md) remains historical decision evidence
+for the Role/Weapon distinction, and [ADR-0053](../adr/0053-taxonomy-classification-criterion-and-sniper-extensibility.md)
+records the superseded six-family model. Current Go types, schemas, and runtime registry
+filenames may retain earlier vocabulary as implementation evidence. They do not
+supersede ADR-0064, and their migration requires a separately approved implementation
+wave. A conceptual or accepted entity must not be described as implemented, verified,
+or invocable without evidence for that stronger state.

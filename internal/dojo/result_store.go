@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
@@ -15,6 +14,7 @@ import (
 // written to <base_path>/dojo/.last-run/<scenario>/result.json.
 type ResultRecord struct {
 	Scenario   string                 `json:"scenario"`
+	ScenarioID string                 `json:"scenario_id,omitempty"`
 	Passed     bool                   `json:"passed"`
 	FailCount  int                    `json:"fail_count"`
 	Reasons    []FailureReason        `json:"reasons,omitempty"`
@@ -27,6 +27,7 @@ type ResultRecord struct {
 // <base_path>/dojo/.history.jsonl for trend mining across runs.
 type RunRecord struct {
 	Scenario   string          `json:"scenario"`
+	ScenarioID string          `json:"scenario_id,omitempty"`
 	Passed     bool            `json:"passed"`
 	FailCount  int             `json:"fail_count"`
 	Reasons    []FailureReason `json:"reasons,omitempty"`
@@ -38,8 +39,13 @@ type RunRecord struct {
 // appends a compact record to <base_path>/dojo/.history.jsonl. Both writes stay inside
 // the dojo storage domain — they never touch source, jewels, or governance files.
 func PersistResult(basePath string, result domain.DojoCheckResult, startedAt, finishedAt time.Time) error {
+	paths, err := NewStoragePaths(basePath, result.Scenario)
+	if err != nil {
+		return err
+	}
 	record := ResultRecord{
 		Scenario:   result.Scenario,
+		ScenarioID: paths.ScenarioID,
 		Passed:     result.Passed(),
 		FailCount:  result.FailCount(),
 		Reasons:    ClassifyFailures(result.Items),
@@ -47,57 +53,65 @@ func PersistResult(basePath string, result domain.DojoCheckResult, startedAt, fi
 		StartedAt:  startedAt.UTC().Format(time.RFC3339),
 		FinishedAt: finishedAt.UTC().Format(time.RFC3339),
 	}
-	if err := writeResultJSON(basePath, record); err != nil {
-		return err
-	}
-	return appendHistory(basePath, RunRecord{
+	entry := RunRecord{
 		Scenario:   record.Scenario,
+		ScenarioID: record.ScenarioID,
 		Passed:     record.Passed,
 		FailCount:  record.FailCount,
 		Reasons:    record.Reasons,
 		StartedAt:  record.StartedAt,
 		FinishedAt: record.FinishedAt,
+	}
+	return withStorageLock(paths, func() error {
+		if err := writeResultJSON(paths, record); err != nil {
+			return err
+		}
+		return appendHistory(paths, entry)
 	})
 }
 
-func writeResultJSON(basePath string, record ResultRecord) error {
-	dir := filepath.Join(basePath, "dojo", ".last-run", record.Scenario)
-	if err := os.MkdirAll(dir, 0o755); err != nil { //nolint:gosec // G301: dojo storage domain, not source
-		return fmt.Errorf("dojo: create %s: %w", dir, err)
+func writeResultJSON(paths StoragePaths, record ResultRecord) error {
+	if err := os.MkdirAll(paths.LastRunDir, 0o755); err != nil { //nolint:gosec // G301: dojo storage domain, not source
+		return fmt.Errorf("dojo: create %s: %w", paths.LastRunDir, err)
 	}
 	data, err := json.MarshalIndent(record, "", "  ")
 	if err != nil {
 		return fmt.Errorf("dojo: marshal result: %w", err)
 	}
-	path := filepath.Join(dir, "result.json")
-	if err := os.WriteFile(path, data, 0o644); err != nil { //nolint:gosec // G306: dojo storage domain
-		return fmt.Errorf("dojo: write %s: %w", path, err)
+	if err := atomicWriteFile(paths.ResultPath, data, 0o644); err != nil { //nolint:gosec // G306: dojo storage domain
+		return fmt.Errorf("dojo: write %s: %w", paths.ResultPath, err)
 	}
 	return nil
 }
 
-func appendHistory(basePath string, entry RunRecord) error {
-	dir := filepath.Join(basePath, "dojo")
-	if err := os.MkdirAll(dir, 0o755); err != nil { //nolint:gosec // G301: dojo storage domain, not source
-		return fmt.Errorf("dojo: create %s: %w", dir, err)
+func appendHistory(paths StoragePaths, entry RunRecord) error {
+	if err := os.MkdirAll(paths.DojoRoot, 0o755); err != nil { //nolint:gosec // G301: dojo storage domain, not source
+		return fmt.Errorf("dojo: create %s: %w", paths.DojoRoot, err)
 	}
 	data, err := json.Marshal(entry)
 	if err != nil {
 		return fmt.Errorf("dojo: marshal history entry: %w", err)
 	}
-	path := filepath.Join(dir, ".history.jsonl")
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644) //nolint:gosec // G302/G304: dojo storage domain
+	f, err := os.OpenFile(paths.HistoryPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644) //nolint:gosec // G302/G304: dojo storage domain
 	if err != nil {
-		return fmt.Errorf("dojo: open %s: %w", path, err)
+		return fmt.Errorf("dojo: open %s: %w", paths.HistoryPath, err)
 	}
-	if _, err := f.Write(append(data, '\n')); err != nil {
-		if closeErr := f.Close(); closeErr != nil {
-			return fmt.Errorf("dojo: append %s: %w", path, errors.Join(err, closeErr))
-		}
-		return fmt.Errorf("dojo: append %s: %w", path, err)
+	writeErr := writeHistoryRecord(f, append(data, '\n'))
+	closeErr := f.Close()
+	if err := errors.Join(writeErr, closeErr); err != nil {
+		return fmt.Errorf("dojo: append %s: %w", paths.HistoryPath, err)
 	}
-	if err := f.Close(); err != nil {
-		return fmt.Errorf("dojo: close %s: %w", path, err)
+	return nil
+}
+
+func writeHistoryRecord(f *os.File, data []byte) error {
+	if n, err := f.Write(data); err != nil {
+		return fmt.Errorf("write history record: %w", err)
+	} else if n != len(data) {
+		return errors.New("short history write")
+	}
+	if err := f.Sync(); err != nil {
+		return fmt.Errorf("sync history record: %w", err)
 	}
 	return nil
 }

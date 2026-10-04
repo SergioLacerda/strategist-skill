@@ -25,7 +25,7 @@ func normalizeFixture(t *testing.T) (mission.NormalizeDependencies, string) {
 	require.NoError(t, os.MkdirAll(change, 0o755))
 	require.NoError(t, os.WriteFile(pending, []byte("---\nmission_id: m-1\nmission_status: archivist_pending\n---\n\n# Analysis\n"), 0o644))
 	for _, name := range []string{"proposal.md", "design.md", "tasks.md"} {
-		require.NoError(t, os.WriteFile(filepath.Join(change, name), []byte("# "+name+"\n"), 0o644))
+		require.NoError(t, os.WriteFile(filepath.Join(change, name), normalizeArtifact(name, ""), 0o644))
 	}
 	deps := mission.NormalizeDependencies{
 		RootFlag:         "root",
@@ -34,8 +34,25 @@ func normalizeFixture(t *testing.T) (mission.NormalizeDependencies, string) {
 			return base, runtime, pending, nil
 		},
 		RecordConfidence: func(mission.NormalizeOptions, domain.ConfidenceClaim, []domain.Evidence) error { return nil },
+		LoadMission: func(opts mission.NormalizeOptions) (domain.MissionEngineStatus, error) {
+			return loadNormalizeFixtureMission(base, opts)
+		},
 	}
 	return deps, filepath.Join(base, "refined", "m-1")
+}
+
+func loadNormalizeFixtureMission(base string, opts mission.NormalizeOptions) (domain.MissionEngineStatus, error) {
+	if !opts.Amend {
+		return domain.MissionEngineStatus{MissionID: opts.MissionID, Phase: domain.PhaseRefinement, State: domain.StateRefinement}, nil
+	}
+	raw, err := os.ReadFile(filepath.Join(base, "refined", opts.MissionID, "analysis.md"))
+	if err != nil {
+		return domain.MissionEngineStatus{}, err
+	}
+	if strings.Contains(string(raw), "mission_status: gate_analysis_accepted") {
+		return domain.MissionEngineStatus{MissionID: opts.MissionID, Phase: domain.PhaseDone, State: domain.StateDoneAnalysis}, nil
+	}
+	return domain.MissionEngineStatus{MissionID: opts.MissionID, Phase: domain.PhaseRefinement, State: domain.StateRefinement}, nil
 }
 
 func runNormalize(t *testing.T, deps mission.NormalizeDependencies, args ...string) (string, error) {
@@ -82,9 +99,16 @@ func amendFixture(t *testing.T) (mission.NormalizeDependencies, string) {
 	change := filepath.Join(runtime, "changes", "c-2")
 	require.NoError(t, os.MkdirAll(change, 0o755))
 	for _, name := range []string{"proposal.md", "design.md", "tasks.md"} {
-		require.NoError(t, os.WriteFile(filepath.Join(change, name), []byte("# "+name+" v2\n"), 0o644))
+		require.NoError(t, os.WriteFile(filepath.Join(change, name), normalizeArtifact(name, "v2"), 0o644))
 	}
 	return deps, refined
+}
+
+func normalizeArtifact(name, suffix string) []byte {
+	if name == "tasks.md" {
+		return []byte("- [ ] 1.1 [task_type: analysis_artifact] record evidence " + suffix + "\n")
+	}
+	return []byte("# " + name + " " + suffix + "\n")
 }
 
 func TestNormalizeOpenSpecAmendAppliesAndReportsTheAmendment(t *testing.T) {

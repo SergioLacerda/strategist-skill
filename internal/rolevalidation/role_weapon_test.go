@@ -98,6 +98,10 @@ providers:
     roles: [ranger]
     ranked: true
     certification_digest: sha256:1111111111111111111111111111111111111111111111111111111111111111
+  - id: openspec-propose
+    risk_score: write_analysis
+    canonical_role: archivist
+    roles: [archivist]
 `)
 	active := domain.ActiveConfig{Slots: map[string]string{
 		"discovery": "brainstorming", "refinement": "openspec-propose",
@@ -121,6 +125,10 @@ func TestValidateRuntimeBindingsAcceptsCertifiedRankedModeOnRefinementSlot(t *te
 	writeRankedCatalogFile(t, root, `
 schema_version: strategist-plugin-catalog/v2
 providers:
+  - id: brainstorming
+    risk_score: write_analysis
+    canonical_role: ranger
+    roles: [ranger]
   - id: openspec-propose
     canonical_role: archivist
     roles: [archivist]
@@ -183,7 +191,9 @@ func writeValidationRoot(t *testing.T, bindings string) string {
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "roles"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "skills", "brainstorming"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "skills", "openspec-propose"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "plugins"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(root, "roles", "default.yaml"), []byte("discovery: ranger\nrefinement: archivist\nexecution: sniper\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins", "catalog.yaml"), []byte("schema_version: strategist-plugin-catalog/v2\nproviders:\n  - id: brainstorming\n    risk_score: write_analysis\n    canonical_role: ranger\n    roles: [ranger]\n    compatibility_source: embedded\n  - id: openspec-propose\n    risk_score: write_analysis\n    canonical_role: archivist\n    roles: [archivist]\n    compatibility_source: embedded\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(root, "skills", "brainstorming", "skill.yaml"), []byte("risk_score: write_analysis\nroles:\n  - ranger\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(root, "skills", "openspec-propose", "skill.yaml"), []byte("risk_score: write_analysis\nroles:\n  - archivist\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins.lock"), []byte("schema_version: strategist-plugin-lock-file/v1\nbindings:\n"+bindings), 0o644))

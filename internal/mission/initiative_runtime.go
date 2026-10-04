@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/embed"
-	"github.com/SergioLacerda/strategist-skill/internal/initiative"
+	"github.com/SergioLacerda/strategist-skill/internal/feats/initiative"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	jsonlsink "github.com/SergioLacerda/strategist-skill/internal/telemetry/sink/jsonl"
 )

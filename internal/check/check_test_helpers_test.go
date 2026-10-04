@@ -157,6 +157,21 @@ func writeNormativeRuntimeFiles(t *testing.T, dir string) {
 	for _, rel := range domain.GeneratedRuntimeFilePaths() {
 		require.NoError(t, os.WriteFile(filepath.Join(dir, filepath.FromSlash(rel)), []byte("generated\n"), 0o644))
 	}
+	writeRoleSourceFiles(t, dir)
+}
+
+func writeRoleSourceFiles(t *testing.T, dir string) {
+	t.Helper()
+	extractor := embedpkg.Extractor{}
+	for _, roleID := range []string{"scout", "ranger", "archivist", "sniper"} {
+		for _, path := range []string{"roles/" + roleID + ".yaml", "internal_skills/" + roleID + "/skill.yaml"} {
+			raw, err := extractor.ReadFile(path)
+			require.NoError(t, err, path)
+			fullPath := filepath.Join(dir, filepath.FromSlash(path))
+			require.NoError(t, os.MkdirAll(filepath.Dir(fullPath), 0o755))
+			require.NoError(t, os.WriteFile(fullPath, raw, 0o644))
+		}
+	}
 }
 
 // minimalCheckRoot creates a .strategist/ tree suitable for checkCmd with all
@@ -173,7 +188,7 @@ func minimalCheckRoot(t *testing.T) string {
 		testutil.CatalogProvider{ID: "brainstorming", Risk: "write_analysis", CanonicalRole: "ranger"},
 		testutil.CatalogProvider{ID: "openspec-explore", Risk: "write_analysis", CanonicalRole: "archivist"},
 		testutil.CatalogProvider{ID: "openspec-propose", Risk: "write_analysis", CanonicalRole: "archivist"},
-		testutil.CatalogProvider{ID: "sdd-ask", Risk: "controlled", Source: "external"},
+		testutil.CatalogProvider{ID: "fixture-provider", Risk: "controlled", Source: "external"},
 	)
 	appendRegistrySections(t, dir, fixtureRegistry())
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "personas"), 0o755))
@@ -184,7 +199,7 @@ func minimalCheckRoot(t *testing.T) string {
 	))
 	require.NoError(t, os.WriteFile(
 		filepath.Join(dir, "active.yaml"),
-		[]byte("mode: epic\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: sdd-ask\n"),
+		[]byte("mode: epic\nbase_path: .analysis\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: fixture-provider\n"),
 		0o644,
 	))
 	rolesDir := filepath.Join(dir, "roles")

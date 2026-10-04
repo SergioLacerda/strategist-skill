@@ -297,7 +297,7 @@ var allTransitionEvents = []domain.TransitionEvent{
 	domain.EventHandoffSatisfied, domain.EventHandoffFailed, domain.EventHandoffExhausted, domain.EventHandoffNotApplicable,
 	domain.EventSniperDone, domain.EventArchivistNoTasks, domain.EventArchivistTasks,
 	domain.EventADRCriterionMet, domain.EventADRApproved, domain.EventADRDeclined,
-	domain.EventSlotTransient, domain.EventSlotPermanent, domain.EventRetryOK,
+	domain.EventSlotTransient, domain.EventSlotPermanent, domain.EventRefinementArtifactInvalid, domain.EventRetryOK,
 	domain.EventSniperSideQuest,
 	domain.EventDirectHitIntent, domain.EventDirectGateApproved, domain.EventDirectGateDeclined,
 }

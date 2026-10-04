@@ -157,7 +157,7 @@ providers:
   - id: ranger
     risk_score: write_analysis
     compatibility_source: native_role
-  - id: sdd-ask
+  - id: fixture-provider
     risk_score: controlled
     compatibility_source: external
   - id: sniper

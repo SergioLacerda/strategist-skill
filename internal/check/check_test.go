@@ -28,7 +28,7 @@ func TestCheckCmd_Success(t *testing.T) {
 	assert.Contains(t, out, "ok")
 	assert.Contains(t, out, "brainstorming")
 	assert.Contains(t, out, "openspec-explore")
-	assert.Contains(t, out, "sdd-ask")
+	assert.Contains(t, out, "fixture-provider")
 	assert.Contains(t, out, "binding=valid")
 	assert.NotContains(t, out, "fallback=ranger")
 	assert.NotContains(t, out, "no_fallback_available")
@@ -129,7 +129,7 @@ func TestCheckCmd_EmptyMode(t *testing.T) {
 	dir := minimalCheckRoot(t)
 	require.NoError(t, os.WriteFile(
 		filepath.Join(dir, "active.yaml"),
-		[]byte("base_path: .analysis\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: sdd-ask\n"),
+		[]byte("base_path: .analysis\nslots:\n  discovery: brainstorming\n  refinement: openspec-explore\n  execution: fixture-provider\n"),
 		0o644,
 	))
 
@@ -156,7 +156,7 @@ func TestCheckCmd_ProviderNotInstalled(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.WriteFile(
 		filepath.Join(dir, "active.yaml"),
-		[]byte("mode: epic\nbase_path: .analysis\nslots:\n  discovery: missing-provider\n  refinement: openspec-explore\n  execution: sdd-ask\n"),
+		[]byte("mode: epic\nbase_path: .analysis\nslots:\n  discovery: missing-provider\n  refinement: openspec-explore\n  execution: fixture-provider\n"),
 		0o644,
 	))
 	writeMinimalIdentityFiles(t, dir)
@@ -420,7 +420,7 @@ func TestCheckCmd_EmptyProviderConfig(t *testing.T) {
 	dir := minimalCheckRoot(t)
 	require.NoError(t, os.WriteFile(
 		filepath.Join(dir, "active.yaml"),
-		[]byte("mode: epic\nbase_path: .analysis\nslots:\n  discovery: \"\"\n  refinement: openspec-explore\n  execution: sdd-ask\n"),
+		[]byte("mode: epic\nbase_path: .analysis\nslots:\n  discovery: \"\"\n  refinement: openspec-explore\n  execution: fixture-provider\n"),
 		0o644,
 	))
 

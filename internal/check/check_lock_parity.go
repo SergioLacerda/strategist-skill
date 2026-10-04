@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/plugins"
+	"github.com/SergioLacerda/strategist-skill/internal/tools/resolver"
 	"gopkg.in/yaml.v3"
 )
 
@@ -55,7 +55,7 @@ func lockDigestErrors(lock domain.PluginLock) []string {
 	if lock.SchemaVersion == "" {
 		return nil
 	}
-	if err := plugins.VerifyLockDigest(lock); err != nil {
+	if err := resolver.VerifyLockDigest(lock); err != nil {
 		return []string{fmt.Sprintf(
 			"plugins.lock: %v — the lock graph may have been hand-edited or corrupted; re-run `strategist install` or `strategist compile` to regenerate it",
 			err,

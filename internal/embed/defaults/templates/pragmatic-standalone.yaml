@@ -1,6 +1,6 @@
 # active.yaml — pragmatic standalone template
 # Generated from: templates/pragmatic-standalone.yaml
-# Mode: standalone (no SDD integration)
+# Mode: standalone (no provisioned governance)
 
 mode: pragmatic
 

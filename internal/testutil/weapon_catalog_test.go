@@ -14,7 +14,7 @@ func TestWriteWeaponCatalogWritesEntriesAndPayloads(t *testing.T) {
 
 	WriteWeaponCatalog(t, root,
 		CatalogProvider{ID: "brainstorming", Risk: "write_analysis", CanonicalRole: "ranger"},
-		CatalogProvider{ID: "sdd-ask", Risk: "controlled", Source: "external", RuntimeKind: "embedded"},
+		CatalogProvider{ID: "fixture-provider", Risk: "controlled", Source: "external", RuntimeKind: "embedded"},
 		CatalogProvider{ID: "sniper", Risk: "controlled", Source: "native_role"},
 		CatalogProvider{ID: "no-payload", Risk: "write_analysis", NoPayload: true},
 	)
@@ -29,7 +29,7 @@ func TestWriteWeaponCatalogWritesEntriesAndPayloads(t *testing.T) {
 	assert.Contains(t, text, "      kind: embedded", "an explicit runtime kind")
 	assert.Contains(t, text, "  - id: sniper\n    risk_score: controlled\n    compatibility_source: native_role\n")
 	assert.FileExists(t, filepath.Join(root, "skills", "brainstorming@0.0.0", "SKILL.md"))
-	assert.FileExists(t, filepath.Join(root, "skills", "sdd-ask@0.0.0", "SKILL.md"))
+	assert.FileExists(t, filepath.Join(root, "skills", "fixture-provider@0.0.0", "SKILL.md"))
 	assert.NoFileExists(t, filepath.Join(root, "skills", "sniper@0.0.0", "SKILL.md"), "a native role has no Weapon payload")
 	assert.NoFileExists(t, filepath.Join(root, "skills", "no-payload@0.0.0", "SKILL.md"))
 }

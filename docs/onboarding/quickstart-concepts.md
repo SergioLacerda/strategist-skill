@@ -14,6 +14,13 @@ Use this page when you want the complete mental model before opening your first 
 
 Strategist analyzes and materializes documentation. Source-code and Git mutation are outside its default contract.
 
+The canonical model has seven families: **Role, Weapon, Feat, Tool, Mechanism,
+Stage, and Artifact**. FULL, SHORT, and ROSTER are Stages; INITIATIVE is a Feat;
+LEVELING is a Tool; and a Weapon Roster is an Artifact. Routes choose eligible
+flows but are not a family. See
+[ADR-0064](../adr/0064-canonical-seven-family-taxonomy.md). Conceptual or accepted
+status does not imply implemented, verified, or invocable runtime behavior.
+
 ## Lifecycle
 
 ```mermaid
@@ -69,7 +76,7 @@ Examples are available as completed mission packages under `.analysis/refined/`;
 ## Choose the next reference
 
 - [Mental model](../architecture/mental-model.md) — why the pipeline and Gate exist.
-- [Core concepts](../architecture/strategist-concepts.md) — routes, roles, providers, abilities, handoffs, and Dojo.
+- [Core concepts](../architecture/strategist-concepts.md) — routes, Roles, Weapons, Feats, Tools, Mechanisms, Stages, Artifacts, handoffs, and Dojo.
 - [Architecture](../architecture/overview.md) — implementation structure and runtime model.
 - [Configuration](../configuration.md) — profiles, slots, paths, and languages.
 - [CLI reference](../cli-reference.md) — installation, compilation, checks, and maintenance.

@@ -13,7 +13,7 @@ import (
 // so the value is pinned: changing it without changing this test is a review
 // signal, not an accident.
 func TestRuntimeLayoutGenerationIsPinned(t *testing.T) {
-	assert.Equal(t, 1, domain.RuntimeLayoutGeneration, "generation N-1: layout-aware, the compat view is still shipped")
+	assert.Equal(t, 2, domain.RuntimeLayoutGeneration, "generation N: the compat view is no longer written or shipped")
 }
 
 func TestInstallManifestConstructorsStampTheBinaryGeneration(t *testing.T) {

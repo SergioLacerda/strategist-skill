@@ -4,35 +4,33 @@ version: "1.0"
 invariants:
   - id: slot_resolution_order
     description: >
-      Slot target resolved through two independent branches, tried in order: an external
-      skill plugin first, then a built-in Strategist native role. These are different
-      authorities with different validation rules — a native role match is not a
-      fallback within the skill-plugin branch, and neither branch is ever skipped
-      based on the other's absence alone.
+      Slot target resolved from a cataloged Weapon, a bound custom package, or a
+      built-in Strategist native role. These are different authorities with
+      different validation rules and are never collapsed into one another.
     rule: >
-      resolve provider from skill_root/skills/<provider>/skill.yaml (validate
+      resolve provider from the catalog or bound custom package (validate
       risk_score) — if absent, resolve from skill_root/roles/<provider>.yaml
       (validate role schema + slot match) — if neither resolves, emit
       slot_provider_not_found
 
   - id: provider_manifest_is_slot_authority
-    description: Slot plugin capability is determined only by the strategist skill plugin manifest
-    rule: standalone SKILL.md style or creative-first instructions must not cause role_invocation_failed when skill_root/skills/<provider>/skill.yaml satisfies the slot contract
+    description: Slot Weapon capability is determined by the catalog or bound custom package
+    rule: standalone SKILL.md style or creative-first instructions must not cause role_invocation_failed when the catalog or custom package satisfies the slot contract
 
   - id: native_role_is_valid_slot_authority
     description: >
       A built-in Strategist native role (e.g. sniper) satisfies the execution slot
-      through skill_root/roles/<provider>.yaml without requiring a corresponding
-      skills/<provider>/skill.yaml manifest, and without declaring risk_score.
+      through skill_root/roles/<provider>.yaml without requiring a provider view,
+      and without declaring risk_score.
     rule: >
       skill_root/roles/<provider>.yaml with valid role schema and role.slot ==
       configured slot → slot resolves, no risk_score required
 
   - id: risk_mismatch_blocks
     description: >
-      Slot with wrong risk_score stops the mission. Applies only to the
-      skill-plugin branch — native roles are validated by role schema plus slot
-      match instead, never by risk_score.
+      Slot with wrong risk_score stops the mission. Applies to cataloged Weapons
+      and bound custom packages — native roles are validated by role schema plus
+      slot match instead, never by risk_score.
     rule: slot.risk_score != expected → emit blocked reason=slot_risk_mismatch
 
   - id: governance_mode_declared
@@ -67,15 +65,15 @@ cases:
   - name: brainstorming_creative_not_blocked_by_standalone_creative_first
     given:
       discovery_provider: brainstorming
-      provider_manifest_path: skill_root/skills/brainstorming/skill.yaml
-      provider_manifest_risk_score: write_analysis
+      provider_catalog_entry: plugins/catalog.yaml#providers[id=brainstorming]
+      provider_risk_score: write_analysis
       discovery_subtype: creative
       standalone_skill_md_style: creative-first
     expect:
       no_emit: "[Strategist] phase=preflight status=blocked reason=role_invocation_failed slot=discovery provider=brainstorming"
       note: >
         active.slots.discovery (brainstorming) is preflight-validated
-        (manifest exists, risk_score matches) and then invoked by Ranger through
+        (catalog entry exists, risk_score matches) and then invoked by Ranger through
         the selected-Weapon boundary — see contracts/narrative/00-routing.md
         § Discovery Weapon Resolution by Subtype.
       handoff: "[Strategist] phase=intake status=handoff component=scout target=ranger weapon=internal_skills/ranger subtype=creative"

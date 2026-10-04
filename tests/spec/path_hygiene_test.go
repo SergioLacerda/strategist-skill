@@ -67,18 +67,18 @@ func TestRuntimeContractsDoNotReferenceSourceTreeSchemas(t *testing.T) {
 	}
 }
 
-func TestCanonicalProviderPathIsSkillsSubdirectory(t *testing.T) {
+func TestCatalogIsProviderAuthority(t *testing.T) {
 	t.Parallel()
 
-	// Guard canonical runtime path in normative surfaces — no root-level .strategist/<provider>/ lookup.
-	mustContainCanonical := []string{
+	// Guard the catalog as the canonical provider authority in normative surfaces.
+	mustContainAuthority := []string{
 		filepath.Join(repoRoot(t), "docs", "architecture", "strategist-concepts.md"),
 		filepath.Join(repoRoot(t), "internal", "domain", "types.go"),
 	}
-	for _, path := range mustContainCanonical {
+	for _, path := range mustContainAuthority {
 		content := readFile(t, path)
-		if !strings.Contains(content, "skills/<provider>/skill.yaml") {
-			t.Fatalf("%s missing canonical provider path skills/<provider>/skill.yaml", path)
+		if !strings.Contains(content, "catalog") {
+			t.Fatalf("%s missing catalog provider authority", path)
 		}
 	}
 
@@ -253,21 +253,20 @@ func TestRankedProviderAdaptersDeclareWorkspaceArtifactBoundary(t *testing.T) {
 	}
 }
 
-// TestNoRootLevelProviderLookupInCode ensures resolver-facing code never references
-// a root-level .strategist/<provider>/skill.yaml without the skills/ subdirectory.
-// This guards the canonical runtime layout contract: all external provider manifests
-// must resolve from .strategist/skills/<provider>/skill.yaml.
+// TestNoRootLevelProviderLookupInCode ensures resolver-facing code never falls
+// back to an unscoped provider manifest path.
 func TestNoRootLevelProviderLookupInCode(t *testing.T) {
 	t.Parallel()
 
-	// These files contain the resolver logic; they must use the skills/ subdirectory.
+	// These files contain the resolver logic; provider authority is catalog/custom
+	// data, with native roles in the roles/ directory.
 	files := []string{
 		filepath.Join(repoRoot(t), "internal", "check", "check.go"),
 		filepath.Join(repoRoot(t), "internal", "dojo", "checker.go"),
 	}
 
 	// Forbidden: join(root, provider, "skill.yaml") without the "skills" segment.
-	// Canonical: join(root, "skills", provider, "skill.yaml").
+	// No provider manifest join is canonical for resolution anymore.
 	forbidden := []string{
 		`filepath.Join(root, provider,`,
 		`filepath.Join(strategistDir, provider,`,
@@ -277,7 +276,7 @@ func TestNoRootLevelProviderLookupInCode(t *testing.T) {
 		content := readFile(t, path)
 		for _, pattern := range forbidden {
 			if strings.Contains(content, pattern) {
-				t.Fatalf("%s contains root-level provider lookup %q — must use skills/<provider>/skill.yaml", path, pattern)
+				t.Fatalf("%s contains unscoped provider lookup %q", path, pattern)
 			}
 		}
 	}
@@ -337,7 +336,7 @@ func TestPreflightProviderManifestIsSlotAuthority(t *testing.T) {
 	for _, path := range contractFiles {
 		content := readFile(t, path)
 		for _, needle := range []string{
-			"skill_root/skills/<provider>/skill.yaml",
+			"catalog/custom authority",
 			"Standalone SKILL.md style",
 			"creative-first instructions are not provider-invalid conditions",
 		} {

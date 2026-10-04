@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/plugins"
+	"github.com/SergioLacerda/strategist-skill/internal/tools/resolver"
 )
 
 // AddResult describes a committed local onboarding transaction.
@@ -140,7 +140,7 @@ func buildLock(old domain.PluginLockFile, source Source, report Report, instance
 	lock.Bindings = replaceBinding(lock.Bindings, evidence.Binding)
 	lock.Lock = replaceLockNodes(lock.Lock, evidence.Nodes)
 	lock.Lock.SchemaVersion = "strategist-plugin-lock/v1"
-	lock.Lock.GraphDigest = plugins.DigestLockNodes(lock.Lock.Nodes)
+	lock.Lock.GraphDigest = resolver.DigestLockNodes(lock.Lock.Nodes)
 	lock.Lock.ResolutionID = lock.Lock.GraphDigest
 	return lock, nil
 }

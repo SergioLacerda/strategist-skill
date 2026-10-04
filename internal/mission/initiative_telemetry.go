@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/SergioLacerda/strategist-skill/internal/initiative"
+	"github.com/SergioLacerda/strategist-skill/internal/feats/initiative"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
 
@@ -12,9 +12,9 @@ func (r InitiativeRuntime) emitAdvice(advice initiative.Advice, reused bool) err
 	event := telemetry.NewEvent("strategist.initiative.advice", telemetry.SeverityDebug, advice.RunID, true)
 	event.Attributes = map[string]any{
 		telemetry.AttrComponent:                       "initiative",
-		telemetry.AttrAbility:                         initiative.AbilityName,
-		telemetry.AttrInitiativeMechanism:             initiative.AbilityName,
-		telemetry.AttrInitiativeMechanismLabel:        initiative.AbilityName,
+		telemetry.AttrFeat:                            initiative.FeatName,
+		telemetry.AttrInitiativeFeat:                  initiative.FeatName,
+		telemetry.AttrInitiativeFeatLabel:             initiative.FeatName,
 		telemetry.AttrMissionID:                       advice.MissionID,
 		telemetry.AttrRole:                            advice.Role,
 		telemetry.AttrRoleRun:                         advice.RunID,

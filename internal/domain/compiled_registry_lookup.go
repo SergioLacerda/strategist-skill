@@ -2,11 +2,8 @@ package domain
 
 import (
 	"fmt"
-	"reflect"
 	"sort"
 	"strings"
-
-	"gopkg.in/yaml.v3"
 )
 
 // Identity is the Weapon's registry identity, "id@version".
@@ -75,39 +72,30 @@ func ParseWeaponRef(ref string) (id, version string) {
 	return id, version
 }
 
-// ParseCompiledRegistryCatalog reads the registry sections from catalog YAML.
-func ParseCompiledRegistryCatalog(raw []byte) (CompiledRegistry, error) {
-	var e struct {
-		SchemaVersion  string                  `yaml:"schema_version"`
-		Weapons        []CompiledWeapon        `yaml:"weapons"`
-		Roles          []CompiledRole          `yaml:"roles"`
-		Compatibility  []CompiledCompatibility `yaml:"compatibility"`
-		RankedBindings []CompiledRankedBinding `yaml:"ranked_bindings"`
-	}
-	if err := yaml.Unmarshal(raw, &e); err != nil {
-		return CompiledRegistry{}, fmt.Errorf("parse compiled registry catalog: %w", err)
-	}
+// CompiledRegistryDocument is the decoded registry section of catalog.yaml.
+// YAML decoding is owned by internal/catalog; this type and its validation are
+// kept in the domain so runtime adapters cannot invent a second contract.
+type CompiledRegistryDocument struct {
+	SchemaVersion   string                  `yaml:"schema_version"`
+	TaxonomyVersion string                  `yaml:"taxonomy_version"`
+	Weapons         []CompiledWeapon        `yaml:"weapons"`
+	Roles           []CompiledRole          `yaml:"roles"`
+	Compatibility   []CompiledCompatibility `yaml:"compatibility"`
+	RankedBindings  []CompiledRankedBinding `yaml:"ranked_bindings"`
+}
+
+// CompiledRegistryFromDocument validates and materializes a decoded registry.
+func CompiledRegistryFromDocument(e CompiledRegistryDocument) (CompiledRegistry, error) {
 	if e.SchemaVersion == "" {
 		return CompiledRegistry{}, fmt.Errorf("parse compiled registry catalog: catalog schema_version is required")
 	}
-	r := CompiledRegistry{SchemaVersion: CompiledRegistrySchemaVersion, Weapons: e.Weapons, Roles: e.Roles, Compatibility: e.Compatibility, RankedBindings: e.RankedBindings}
+	taxonomyVersion := e.TaxonomyVersion
+	if taxonomyVersion == "" {
+		taxonomyVersion = CanonicalTaxonomyVersion
+	}
+	r := CompiledRegistry{SchemaVersion: CompiledRegistrySchemaVersion, TaxonomyVersion: taxonomyVersion, Weapons: e.Weapons, Roles: e.Roles, Compatibility: e.Compatibility, RankedBindings: e.RankedBindings}
 	if err := r.Validate(); err != nil {
 		return CompiledRegistry{}, err
 	}
 	return r, nil
-}
-
-// CompiledRegistryDrift reports whether the registry sections (Weapons, Roles,
-// compatibility and Ranked bindings) of two catalogs differ. Only those
-// sections are compared: the catalog's provider list is workspace-editable.
-func CompiledRegistryDrift(workspaceRaw, embeddedRaw []byte) (bool, error) {
-	workspace, err := ParseCompiledRegistryCatalog(workspaceRaw)
-	if err != nil {
-		return false, fmt.Errorf("workspace catalog: %w", err)
-	}
-	embedded, err := ParseCompiledRegistryCatalog(embeddedRaw)
-	if err != nil {
-		return false, fmt.Errorf("embedded catalog: %w", err)
-	}
-	return !reflect.DeepEqual(workspace, embedded), nil
 }

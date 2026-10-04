@@ -65,13 +65,14 @@ func buildPreflightResult(root, mode string, providers map[string]string, resolu
 	allWarnings = append(allWarnings, advisories...)
 
 	return domain.PreflightResult{
-		SchemaVersion: domain.PreflightResultSchemaVersion,
-		Status:        status,
-		Identity:      domain.PreflightIdentity{Root: root, Mode: mode},
-		Bindings:      bindings,
-		Language:      language,
-		Warnings:      allWarnings,
-		Next:          next,
+		SchemaVersion:   domain.PreflightResultSchemaVersion,
+		TaxonomyVersion: domain.CanonicalTaxonomyVersion,
+		Status:          status,
+		Identity:        domain.PreflightIdentity{Root: root, Mode: mode},
+		Bindings:        bindings,
+		Language:        language,
+		Warnings:        allWarnings,
+		Next:            next,
 	}
 }
 
@@ -81,7 +82,7 @@ func buildPreflightResult(root, mode string, providers map[string]string, resolu
 // behavior in check_simulate.go. It does not alter the default, human-readable
 // output path.
 func printPreflightJSON(root, mode string, providers map[string]string, resolutions map[string]slotResolution, warnings []string, language *domain.PreflightLanguage) error {
-	result := buildPreflightResult(root, mode, providers, resolutions, warnings, append(preflightAdvisories(root), transitionalViewAdvisories(providers, resolutions)...), language)
+	result := buildPreflightResult(root, mode, providers, resolutions, warnings, preflightAdvisories(root), language)
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(result); err != nil {
@@ -104,12 +105,13 @@ func printPreflightJSON(root, mode string, providers map[string]string, resoluti
 // blocking error's exit-code/message semantics.
 func printPreflightJSONBlocked(root, mode string, blockingErr error, language *domain.PreflightLanguage) error {
 	result := domain.PreflightResult{
-		SchemaVersion: domain.PreflightResultSchemaVersion,
-		Status:        "blocked",
-		Identity:      domain.PreflightIdentity{Root: root, Mode: mode},
-		Language:      language,
-		Warnings:      []string{blockingErr.Error()},
-		Next:          "resolve the warnings below, then rerun `strategist check`",
+		SchemaVersion:   domain.PreflightResultSchemaVersion,
+		TaxonomyVersion: domain.CanonicalTaxonomyVersion,
+		Status:          "blocked",
+		Identity:        domain.PreflightIdentity{Root: root, Mode: mode},
+		Language:        language,
+		Warnings:        []string{blockingErr.Error()},
+		Next:            "resolve the warnings below, then rerun `strategist check`",
 	}
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")

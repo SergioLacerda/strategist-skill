@@ -22,6 +22,8 @@ func startAtApprovalGate(t *testing.T, root, id string) {
 	t.Helper()
 	_, err := runLifecycle(t, mission.NewStart, "--root", root, "--mission-id", id)
 	require.NoError(t, err)
+	writeDiscoveryArtifact(t, root, id)
+	writeRefinedPackage(t, root, id)
 	for _, event := range []domain.MissionEngineEvent{
 		domain.MissionEventBootstrapDone, domain.MissionEventIntakeDone, domain.MissionEventDiscoveryDone,
 		domain.MissionEventRefinementDone,
@@ -29,6 +31,16 @@ func startAtApprovalGate(t *testing.T, root, id string) {
 		_, err = runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", id, "--event", string(event))
 		require.NoError(t, err, event)
 	}
+}
+
+func writeDiscoveryArtifact(t *testing.T, root, id string) {
+	t.Helper()
+	_, basePath, err := cliutil.ResolveActiveBasePath(root)
+	require.NoError(t, err)
+	dir := filepath.Join(basePath, "pending")
+	require.NoError(t, os.MkdirAll(dir, 0o750))
+	content := "---\nschema_version: strategist-ranger-discovery/v1\nmission_id: " + id + "\nmission_status: ranger_pending\nsources_consulted: []\n---\n\n## mission_objective\nobjective\n## known_facts\nfacts\n## confidence_summary\nconfidence\n## handoff\nhandoff\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, id+"-analysis.md"), []byte(content), 0o600))
 }
 
 // advanceToHandoffChallenge drives a mission through a real gate acceptance
@@ -211,6 +223,40 @@ func TestSubmit_ScoutRouteDecisionNarrowsTheEvidenceRegime(t *testing.T) {
 	out, err := runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", "m-short", "--event", string(domain.MissionEventHandoffSatisfied))
 	require.NoError(t, err, "the short route needs the approved gate and a recorded handoff outcome")
 	assert.Equal(t, domain.StateExecution, decodeStatus(t, out).State)
+}
+
+func TestCriticalHitRoutePersistsGateBeforeExecution(t *testing.T) {
+	root := setupViewRoot(t, domain.MissionEngineStatus{})
+	_, err := runLifecycle(t, mission.NewStart, "--root", root, "--mission-id", "m-critical-route")
+	require.NoError(t, err)
+	_, err = runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", "m-critical-route", "--event", string(domain.MissionEventBootstrapDone))
+	require.NoError(t, err)
+
+	deps := lifecycleDeps(t)
+	deps.ActivateCriticalHit = func(gotRoot, missionID string) (domain.MissionEngineStatus, error) {
+		return livemission.ActivateCriticalHitRoute(gotRoot, missionID, testLoadMission, func(root string, status domain.MissionEngineStatus) error {
+			writeMissionState(t, root, status)
+			return nil
+		})
+	}
+	cmd := mission.NewRoute(deps)
+	cmd.SetIn(strings.NewReader(`{"mission_id":"m-critical-route","request_category":"analysis_move","selected_route":"critical_hit","route_reason":"eligible","route_confidence":0.95,"evidence_state":"explicit","fallback_route":"full_pipeline"}`))
+	cmd.SetArgs([]string{"--root", root, "--mission-id", "m-critical-route"})
+	require.NoError(t, cmd.Execute())
+
+	out, err := runLifecycle(t, mission.NewStatus, "--root", root, "--mission-id", "m-critical-route")
+	require.NoError(t, err)
+	status := decodeStatus(t, out)
+	require.Equal(t, domain.StateApprovalGate, status.State)
+	require.Equal(t, domain.PhaseApprovalGate, status.Phase)
+	require.False(t, status.StageGateApproved)
+
+	out, err = runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", "m-critical-route", "--event", string(domain.MissionEventCriticalHitGateApproved))
+	require.NoError(t, err)
+	status = decodeStatus(t, out)
+	require.Equal(t, domain.StateExecution, status.State)
+	require.Equal(t, domain.PhaseExecution, status.Phase)
+	require.True(t, status.StageGateApproved)
 }
 
 func TestRoute_RejectsDecisionForAnotherMission(t *testing.T) {

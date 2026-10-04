@@ -22,7 +22,7 @@ func TestNormalizeOpenSpecCarriesAcceptanceScenariosIntoDesign(t *testing.T) {
 	require.NoError(t, os.WriteFile(pending, []byte("---\nmission_id: m-2\nmission_status: archivist_pending\n---\n"), 0o644))
 	for _, name := range []string{"proposal.md", "design.md", "tasks.md"} {
 		require.NoError(t, os.MkdirAll(changeDir, 0o755))
-		require.NoError(t, os.WriteFile(filepath.Join(changeDir, name), []byte("# "+name+"\n"), 0o644))
+		require.NoError(t, os.WriteFile(filepath.Join(changeDir, name), canonicalTestArtifact(name, ""), 0o644))
 	}
 	for capability, requirement := range map[string]string{"zeta": "Zeta works", "alpha/beta": "Beta works"} {
 		dir := filepath.Join(changeDir, "specs", filepath.FromSlash(capability))

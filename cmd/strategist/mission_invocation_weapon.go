@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	missionadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
+	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	strategistembed "github.com/SergioLacerda/strategist-skill/internal/embed"
 )
@@ -59,14 +60,5 @@ func resolveEmbeddedInvocationBinding(active domain.ActiveConfig, lock domain.Pl
 }
 
 func validateEmbeddedInvocationBinding(binding domain.RoleWeaponBinding) error {
-	if binding.Mode != domain.SlotBindingModeRanked {
-		return fmt.Errorf("role_invocation_failed: mission invoke only supports Ranked Embedded prompt-bridge bindings")
-	}
-	if binding.RuntimeKind == domain.RankedRuntimeOpenSpecRoot {
-		return fmt.Errorf("role_invocation_failed: Ranked openspec_root bindings execute through their declared private runtime and mission normalize-openspec, not mission invoke")
-	}
-	if binding.RuntimeKind != domain.RankedRuntimeEmbedded {
-		return fmt.Errorf("role_invocation_failed: mission invoke only supports runtime kind %q, got %q", domain.RankedRuntimeEmbedded, binding.RuntimeKind)
-	}
-	return nil
+	return wrapMissionError(application.ValidateEmbeddedInvocationBinding(binding))
 }

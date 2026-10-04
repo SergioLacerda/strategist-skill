@@ -7,10 +7,18 @@ unverified, degraded, stale, corrupt, incompatible, or unavailable. Preserve
 the canonical Strategist documentation and the last-known-good derived
 structure projection throughout the procedure.
 
-This runbook covers the external `skill-for-hire` ATLAS Weapon and the explicit
-`atlas-mock` mode used by hermetic tests or development profiles. It does not
-authorize code changes, binding rewrites, provider fallback, or deletion of
-canonical data.
+This runbook covers the accepted external ATLAS Weapon boundary and the explicit
+`atlas-mock` mode only when current configuration and evidence establish their
+implementation. It does not authorize code changes, binding rewrites, provider
+fallback, or deletion of canonical data.
+
+Under the canonical seven-family model, CARTOGRAPHER is a Role, ATLAS is its
+external Weapon, readiness checks are Tools constrained by deterministic
+Mechanisms, and the structure projection and binding records are Artifacts. These
+classifications are conceptual; [ADR-0058](../adr/0058-cartographer-atlas-structure-boundary.md)
+establishes the accepted boundary but does not by itself prove implementation,
+verification, or live invocability. Collect each stronger evidence state
+independently. See [ADR-0064](../adr/0064-canonical-seven-family-taxonomy.md).
 
 ## Trigger
 
@@ -150,7 +158,7 @@ Do not accept mutable tags, silently refresh a remote reference, rewrite
 
 - [ ] CARTOGRAPHER remains the sole owner of the `atlas` support binding.
 - [ ] JEWELCRAFTER remains the sole owner of `treasure`/BAU DO TESOURO.
-- [ ] The three mission slots and one-pipeline sequence are unchanged.
+- [ ] The FULL Stage's three mission slots and governed sequence are unchanged.
 - [ ] Package, identity, provenance, API, delegate, probe, and health evidence
       are recorded separately.
 - [ ] The projection has source fingerprints, freshness/TTL, provenance, and a
@@ -187,4 +195,3 @@ Stop and escalate when:
 - [ADR-0056 — JEWELCRAFTER Public Support Role and BAU DO TESOURO Binding](../adr/0056-jewelcrafter-public-role-and-bau-tesouro-binding.md)
 - [Atlas/Treasure Chest Boundary Evidence](atlas-treasure-chest-boundary.md)
 - [Embedded Weapon Ingestion, Migration, and Rollback](embedded-weapon-ingestion-migration-rollback.md)
-

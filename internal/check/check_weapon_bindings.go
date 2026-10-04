@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/weapon"
 	"gopkg.in/yaml.v3"
 )
 
@@ -17,15 +18,14 @@ import (
 type weaponBinding struct {
 	SkillID       string
 	CanonicalRole string
-	PayloadDir    string // skills/ directory name of a catalogued Weapon (id@version); empty for a hand-made view
+	PayloadDir    string // skills/ directory name of a catalogued Weapon (id@version)
 	Slot          string // resolved from roles/<CanonicalRole>.yaml's own slot field; empty when Reason is set before the role file is read
 	OK            bool
 	Reason        string // non-empty only when OK is false
 }
 
-// verifyEmbeddedWeaponBindings scans every skill manifest under
-// <root>/skills/*/skill.yaml. For each one declaring
-// specialization_taxonomy.canonical_role, it verifies the claimed pairing is
+// verifyEmbeddedWeaponBindings scans the catalog roster. For each embedded
+// entry declaring a canonical_role, it verifies the claimed pairing is
 // structurally intact end to end: the target role file
 // (<root>/roles/<canonical_role>.yaml) exists and is a valid RoleConfig, and
 // roles/default.yaml maps that role's own declared slot back to the same
@@ -34,54 +34,22 @@ type weaponBinding struct {
 // roster (DEC-001: brainstorming↔ranger, openspec-propose↔archivist),
 // never to every installed skill.
 func verifyEmbeddedWeaponBindings(root string) ([]weaponBinding, error) {
-	catalog, err := domain.ListCatalogWeaponFacts(root)
+	catalog, err := weapon.ListCatalogWeaponFacts(root)
 	if err != nil {
 		return nil, fmt.Errorf("weapon bindings: %w", err)
 	}
-	skillsDir := filepath.Join(root, "skills")
-	entries, err := os.ReadDir(skillsDir)
-	if err != nil && !os.IsNotExist(err) {
-		return nil, fmt.Errorf("weapon bindings: read %s: %w", skillsDir, err)
-	}
-
 	// A missing/invalid roles/default.yaml is surfaced per-binding below
 	// (each binding needing it fails with an explicit reason), not as a
 	// function-level error so each expected binding receives an explicit reason.
 	roleSlotMap, roleSlotMapErr := loadRoleSlotMap(root)
 
 	// The catalog is the roster authority (DEC-009): every embedded entry that
-	// declares a canonical role is verified, with no compat view needed. A view
-	// directory the catalog does not list is still scanned during the transition.
-	bindings, cataloged := catalogWeaponBindings(root, catalog, roleSlotMap, roleSlotMapErr)
-	bindings = append(bindings, scanUncatalogedViews(root, skillsDir, entries, cataloged, roleSlotMap, roleSlotMapErr)...)
-	// The scan above is reactive (skill declares a role -> is the claim
-	// valid?). It never asks the converse question a role-focused reading of
-	// DEC-003 requires: does each permanent embedded-weapon pairing actually
-	// exist at all? A pairing whose skill directory is entirely absent
-	// produces zero rows from the scan above — silence, not a reported
-	// failure. verifyEmbeddedWeaponRoster closes that direction.
+	// declares a canonical role is verified without reading any compatibility
+	// view. verifyEmbeddedWeaponRoster closes the converse direction by ensuring
+	// every permanent pairing has a payload.
+	bindings, _ := catalogWeaponBindings(root, catalog, roleSlotMap, roleSlotMapErr)
 	bindings = append(bindings, verifyEmbeddedWeaponRoster(root, bindings)...)
 	return bindings, nil
-}
-
-func scanWeaponEntry(root, skillsDir string, entry os.DirEntry, roleSlotMap domain.RoleSlotMap, roleSlotMapErr error) (weaponBinding, bool) {
-	if !entry.IsDir() {
-		return weaponBinding{}, false
-	}
-	skillID := entry.Name()
-	raw, err := os.ReadFile(filepath.Join(skillsDir, skillID, "skill.yaml")) //nolint:gosec // G304: path derived from the runtime skills directory
-	if err != nil {
-		return weaponBinding{}, false
-	}
-	var taxonomy skillTaxonomy
-	if err := yaml.Unmarshal(raw, &taxonomy); err != nil {
-		return weaponBinding{SkillID: skillID, Reason: fmt.Sprintf("skill.yaml invalid: %v", err)}, true
-	}
-	canonicalRole := taxonomy.canonicalRole()
-	if canonicalRole == "" {
-		return weaponBinding{}, false
-	}
-	return verifyOneWeaponBinding(root, skillID, canonicalRole, taxonomy.WeaponContract, roleSlotMap, roleSlotMapErr), true
 }
 
 func verifyOneWeaponBinding(root, skillID, canonicalRole string, weaponContract domain.WeaponContract, roleSlotMap domain.RoleSlotMap, roleSlotMapErr error) weaponBinding {
@@ -122,8 +90,7 @@ func verifyOneWeaponBinding(root, skillID, canonicalRole string, weaponContract 
 }
 
 // catalogWeaponBindings verifies every embedded catalog entry that declares a
-// canonical role, and returns the ids it covered so the transitional view scan
-// skips them.
+// canonical role.
 func catalogWeaponBindings(root string, catalog []domain.WeaponFacts, roleSlotMap domain.RoleSlotMap, roleSlotMapErr error) ([]weaponBinding, map[string]bool) {
 	var bindings []weaponBinding
 	covered := map[string]bool{}
@@ -153,19 +120,4 @@ func requireSkillPayload(root string, b weaponBinding) weaponBinding {
 		b.Reason = fmt.Sprintf("embedded weapon payload missing or empty: %s", path)
 	}
 	return b
-}
-
-// scanUncatalogedViews is the transitional scan: a skills/<id>/skill.yaml view for a
-// Weapon the catalog does not list is still verified.
-func scanUncatalogedViews(root, skillsDir string, entries []os.DirEntry, cataloged map[string]bool, roleSlotMap domain.RoleSlotMap, roleSlotMapErr error) []weaponBinding {
-	var bindings []weaponBinding
-	for _, entry := range entries {
-		if cataloged[entry.Name()] {
-			continue
-		}
-		if binding, ok := scanWeaponEntry(root, skillsDir, entry, roleSlotMap, roleSlotMapErr); ok {
-			bindings = append(bindings, binding)
-		}
-	}
-	return bindings
 }

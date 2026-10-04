@@ -18,17 +18,34 @@ func validateWizardPlanInputs(providerRisk map[string]string, wc domain.WizardCo
 }
 
 func activateWizardPlan(extractor domain.FileExtractor, catalog pluginCatalog, wc domain.WizardConfig, strategistDir string, plan pluginOnboardingPlan, verbose bool) (domain.PluginLockFile, error) {
+	if err := validateWizardActivationInputs(extractor, wc, plan, strategistDir, verbose); err != nil {
+		return domain.PluginLockFile{}, err
+	}
+	lockFile, err := applyWizardActivation(extractor, catalog, wc, strategistDir, plan)
+	if err != nil {
+		return domain.PluginLockFile{}, err
+	}
+	return lockFile, nil
+}
+
+func validateWizardActivationInputs(extractor domain.FileExtractor, wc domain.WizardConfig, plan pluginOnboardingPlan, strategistDir string, verbose bool) error {
+	if err := plan.InstallPlan.Validate(); err != nil {
+		return fmt.Errorf("wizard: invalid install plan: %w", err)
+	}
 	// Task 4.1: show Role separately from its resolved/candidate Providers
 	// instead of only validating the legacy slot/catalog shape above.
 	printMigrationPreview(plan.RoleMigration, verbose)
 	logRoleBindingEvidence(plan.RoleMigration.Evidence())
 	if err := validateWizardRoleBindings(plan.RoleMigration); err != nil {
-		return domain.PluginLockFile{}, fmt.Errorf("wizard: %w", err)
+		return fmt.Errorf("wizard: %w", err)
 	}
 	if err := validateWizardLeveling(strategistDir, wc, extractor); err != nil {
-		return domain.PluginLockFile{}, fmt.Errorf("wizard: %w", err)
+		return fmt.Errorf("wizard: %w", err)
 	}
+	return nil
+}
 
+func applyWizardActivation(_ domain.FileExtractor, catalog pluginCatalog, wc domain.WizardConfig, strategistDir string, plan pluginOnboardingPlan) (domain.PluginLockFile, error) {
 	// .analysis/refined/20260913-embedded-skill-directory-catalog Task 5:
 	// actually drive the resolved bindings through the real staged/probed/
 	// active lifecycle instead of only previewing them —
@@ -59,6 +76,10 @@ func activateWizardPlan(extractor domain.FileExtractor, catalog pluginCatalog, w
 	// binding: normalize each typed Custom host Weapon into the installed
 	// package representation and bind it with full evidence.
 	lockFile, err = materializeCustomProviders(strategistDir, lockFile, plan.CustomProviders)
+	if err != nil {
+		return domain.PluginLockFile{}, fmt.Errorf("wizard: %w", err)
+	}
+	lockFile, err = attachWeaponBindingArtifacts(lockFile)
 	if err != nil {
 		return domain.PluginLockFile{}, fmt.Errorf("wizard: %w", err)
 	}

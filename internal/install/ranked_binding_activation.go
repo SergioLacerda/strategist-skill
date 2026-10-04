@@ -36,6 +36,7 @@ func applyRankedBindingChoices(catalog pluginCatalog, wc domain.WizardConfig, lo
 		}
 		lockFile.Bindings = replaceSlotBinding(lockFile.Bindings, domain.SlotBinding{
 			SchemaVersion:       "strategist-plugin-binding/v1",
+			TaxonomyVersion:     domain.CanonicalTaxonomyVersion,
 			Slot:                slot,
 			InstalledInstanceID: binding.WeaponID,
 			Role:                binding.Role,
@@ -73,6 +74,7 @@ func refreshPersistedRankedBindings(catalog pluginCatalog, lockFile domain.Plugi
 		}
 		lockFile.Bindings = replaceSlotBinding(lockFile.Bindings, domain.SlotBinding{
 			SchemaVersion:       "strategist-plugin-binding/v1",
+			TaxonomyVersion:     domain.CanonicalTaxonomyVersion,
 			Slot:                existing.Slot,
 			InstalledInstanceID: binding.WeaponID,
 			Role:                binding.Role,
@@ -127,20 +129,31 @@ func enrichBinding(catalog pluginCatalog, lockFile domain.PluginLockFile, bindin
 			return enriched, true
 		}
 	}
+	provider, ok := catalogProviderForBinding(catalog, binding)
+	if !ok {
+		return binding, false
+	}
+	return applyCatalogBindingMetadata(lockFile, binding, provider), true
+}
+
+func catalogProviderForBinding(catalog pluginCatalog, binding domain.SlotBinding) (pluginCatalogProvider, bool) {
 	providerID := binding.InstalledInstanceID
 	if at := strings.IndexByte(providerID, '@'); at > 0 {
 		providerID = providerID[:at]
 	}
-	provider, ok := findCatalogProvider(catalog, providerID)
-	if !ok {
-		return binding, false
-	}
+	return findCatalogProvider(catalog, providerID)
+}
+
+func applyCatalogBindingMetadata(lockFile domain.PluginLockFile, binding domain.SlotBinding, provider pluginCatalogProvider) domain.SlotBinding {
 	role := binding.Role
 	if role == "" {
 		role = slotRoleID(domain.SlotName(binding.Slot))
 	}
 	runtime, connectorID := bindingRuntimeIdentity(provider)
 	binding.Role = role
+	if binding.WeaponVersion == "" {
+		binding.WeaponVersion = providerVersionOrDefault(provider.Version)
+	}
 	binding.WeaponDigest = catalogProviderDigest(provider)
 	binding.Origin = bindingOrigin(provider)
 	binding.RuntimeKind = runtime.Kind
@@ -149,7 +162,7 @@ func enrichBinding(catalog pluginCatalog, lockFile domain.PluginLockFile, bindin
 	if binding.BindingDigest == "" {
 		binding.BindingDigest = lockFile.NodeDigest(role+":"+provider.ID, "role_provider_binding")
 	}
-	return binding, true
+	return binding
 }
 
 func enrichCompiledRankedBinding(catalog pluginCatalog, binding domain.SlotBinding) (domain.SlotBinding, bool) {

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	missionadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
+	catalogadapter "github.com/SergioLacerda/strategist-skill/internal/catalog"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	strategistembed "github.com/SergioLacerda/strategist-skill/internal/embed"
 	missionruntime "github.com/SergioLacerda/strategist-skill/internal/mission"
@@ -27,7 +28,7 @@ func rankedWorkspace(t *testing.T, mutate func(*domain.SlotBinding)) string {
 	catalog, err := (strategistembed.Extractor{}).ReadFile("plugins/catalog.yaml")
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins", "catalog.yaml"), catalog, 0o600))
-	registry, err := domain.ParseCompiledRegistryCatalog(catalog)
+	registry, err := catalogadapter.ParseCompiledRegistryCatalog(catalog)
 	require.NoError(t, err)
 	ranked := registry.RankedBindingsFor("ranger", "discovery")
 	require.NotEmpty(t, ranked)

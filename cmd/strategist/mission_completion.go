@@ -2,20 +2,15 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
-	"strings"
 
 	missionadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
+	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	missionruntime "github.com/SergioLacerda/strategist-skill/internal/mission"
 	"github.com/SergioLacerda/strategist-skill/internal/plugins/connectors"
 	"github.com/SergioLacerda/strategist-skill/internal/provider"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
-	"github.com/spf13/cobra"
 )
 
 // completeMissionInvocation publishes the pending Ranger artifact for one
@@ -85,7 +80,8 @@ func recordRangerHandoffAfterPublish(ctx context.Context, input missionadapter.I
 	if record.Request.Role != "ranger" || record.Request.Slot != string(domain.SlotDiscovery) {
 		return nil
 	}
-	if err := missionruntime.EnsureRangerToArchivistOutcomeWithTelemetry(ctx, input.Root, input.BasePath, record.Request.MissionID, input.Sink, record.Request.MissionID); err != nil {
+	delegate := rangerDelegate(ctx, input.Root, input.BasePath, record.Request.MissionID)
+	if err := missionruntime.EnsureRangerToArchivistOutcomeWithDelegation(ctx, input.Root, input.BasePath, record.Request.MissionID, input.Sink, record.Request.MissionID, delegate); err != nil {
 		return fmt.Errorf("ranger-to-archivist handoff: %w", err)
 	}
 	return nil
@@ -120,16 +116,8 @@ func loadCompletableInvocation(store missionruntime.InvocationStore, input missi
 	if err != nil {
 		return domain.MissionInvocationRecord{}, fmt.Errorf("load mission invocation: %w", err)
 	}
-	if err := input.Completion.Validate(); err != nil {
-		return domain.MissionInvocationRecord{}, fmt.Errorf("validate mission completion: %w", err)
-	}
-	if input.Completion.RequestID != record.Request.RequestID {
-		return domain.MissionInvocationRecord{}, fmt.Errorf("invocation_binding_mismatch: completion request_id does not match pending request")
-	}
-	registered := (record.Request.Role == "ranger" && record.Request.Slot == string(domain.SlotDiscovery)) ||
-		(record.Request.Role == "sniper" && record.Request.Slot == string(domain.SlotExecution))
-	if !registered {
-		return domain.MissionInvocationRecord{}, fmt.Errorf("role_invocation_failed: completion normalization is not registered for %s/%s", record.Request.Role, record.Request.Slot)
+	if err := application.ValidateInvocationCompletion(record, input.Completion); err != nil {
+		return domain.MissionInvocationRecord{}, wrapMissionError(err)
 	}
 	return record, nil
 }
@@ -161,36 +149,10 @@ func normalizeDiscoveryInvocation(ctx context.Context, sink telemetry.EventSink,
 }
 
 func discoveryArtifactPaths(root, basePath, missionID string) (string, string, error) {
-	workspace := filepath.Dir(root)
-	absolute := filepath.Join(basePath, "pending", missionID+"-analysis.md")
-	relative, err := filepath.Rel(workspace, absolute)
-	if err != nil || filepath.IsAbs(relative) || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
-		return "", "", fmt.Errorf("role_invocation_failed: discovery artifact path escapes workspace")
-	}
-	return filepath.ToSlash(relative), absolute, nil
+	relative, absolute, err := missionruntime.DiscoveryArtifactPaths(root, basePath, missionID)
+	return relative, absolute, wrapMissionError(err)
 }
 
 func writeMissionArtifact(path string, content []byte) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return fmt.Errorf("write normalized artifact: create directory: %w", err)
-	}
-	if err := missionruntime.WriteFileAtomic(path, content, 0o644); err != nil {
-		return fmt.Errorf("write normalized artifact: %w", err)
-	}
-	return nil
-}
-
-func readMissionCompletion(cmd *cobra.Command) (domain.MissionInvocationCompletion, error) {
-	var completion domain.MissionInvocationCompletion
-	decoder := json.NewDecoder(cmd.InOrStdin())
-	if err := decoder.Decode(&completion); err != nil {
-		return domain.MissionInvocationCompletion{}, fmt.Errorf("read completion JSON: %w", err)
-	}
-	var extra any
-	if err := decoder.Decode(&extra); err == nil {
-		return domain.MissionInvocationCompletion{}, fmt.Errorf("read completion JSON: more than one object was supplied")
-	} else if err != io.EOF {
-		return domain.MissionInvocationCompletion{}, fmt.Errorf("read completion JSON: trailing data: %w", err)
-	}
-	return completion, nil
+	return wrapMissionError(missionruntime.WriteDiscoveryArtifact(path, content))
 }

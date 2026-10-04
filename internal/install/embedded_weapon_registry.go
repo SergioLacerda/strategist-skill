@@ -28,11 +28,12 @@ func buildCompiledRegistry(catalog pluginCatalog, defaultsRoot string) (domain.C
 		return domain.CompiledRegistry{}, err
 	}
 	registry := domain.CompiledRegistry{
-		SchemaVersion:  domain.CompiledRegistrySchemaVersion,
-		Weapons:        weapons,
-		Roles:          roles,
-		Compatibility:  buildCompiledCompatibility(weapons, roles),
-		RankedBindings: bindings,
+		SchemaVersion:   domain.CompiledRegistrySchemaVersion,
+		TaxonomyVersion: domain.CanonicalTaxonomyVersion,
+		Weapons:         weapons,
+		Roles:           roles,
+		Compatibility:   buildCompiledCompatibility(weapons, roles),
+		RankedBindings:  bindings,
 	}
 	if err := registry.Validate(); err != nil {
 		return domain.CompiledRegistry{}, fmt.Errorf("validate compiled registry: %w", err)

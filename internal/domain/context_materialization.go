@@ -4,8 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"os"
-	"path/filepath"
+	"path"
 	"sort"
 	"strings"
 )
@@ -24,6 +23,13 @@ type ContextReference struct {
 	Digest string `json:"digest,omitempty"`
 }
 
+// ContextReader is the filesystem port used by context materialization. The
+// domain validates references and computes deterministic evidence; callers own
+// how a reference is read from a workspace, archive, or test fixture.
+type ContextReader interface {
+	ReadFile(ref string) ([]byte, error)
+}
+
 // MaterializedContext is the verified, deterministic context result.
 type MaterializedContext struct {
 	References []MaterializedReference `json:"references"`
@@ -40,10 +46,10 @@ type MaterializedReference struct {
 	Content    string `json:"content"`
 }
 
-// MaterializeContext resolves only declared files under root. It is
+// MaterializeContext resolves only declared references through reader. It is
 // deterministic, bounded, and deliberately does not synthesize content.
-func MaterializeContext(root string, refs []ContextReference, maxRefs, maxBytes int) (MaterializedContext, error) {
-	maxBytes, err := validateMaterializationRequest(root, refs, maxRefs, maxBytes)
+func MaterializeContext(reader ContextReader, refs []ContextReference, maxRefs, maxBytes int) (MaterializedContext, error) {
+	maxBytes, err := validateMaterializationRequest(reader, refs, maxRefs, maxBytes)
 	if err != nil {
 		return MaterializedContext{}, err
 	}
@@ -51,7 +57,7 @@ func MaterializeContext(root string, refs []ContextReference, maxRefs, maxBytes 
 	result := MaterializedContext{References: make([]MaterializedReference, 0, len(ordered))}
 	seen := make(map[string]struct{}, len(ordered))
 	for _, ref := range ordered {
-		materialized, err := materializeReference(root, ref, seen, maxBytes-result.Bytes)
+		materialized, err := materializeReference(reader, ref, seen, maxBytes-result.Bytes)
 		if err != nil {
 			return MaterializedContext{}, err
 		}
@@ -63,12 +69,12 @@ func MaterializeContext(root string, refs []ContextReference, maxRefs, maxBytes 
 	return result, nil
 }
 
-func materializeReference(root string, ref ContextReference, seen map[string]struct{}, remaining int) (MaterializedReference, error) {
+func materializeReference(reader ContextReader, ref ContextReference, seen map[string]struct{}, remaining int) (MaterializedReference, error) {
 	_, err := validateContextReference(ref, seen)
 	if err != nil {
 		return MaterializedReference{}, err
 	}
-	data, err := os.ReadFile(filepath.Join(root, ref.Ref)) //nolint:gosec // ref is validated as relative and clean
+	data, err := reader.ReadFile(ref.Ref)
 	if err != nil {
 		return MaterializedReference{}, fmt.Errorf("context materialization: blocked reference %q: %w", ref.Ref, err)
 	}
@@ -82,9 +88,9 @@ func materializeReference(root string, ref ContextReference, seen map[string]str
 	return MaterializedReference{Ref: ref.Ref, Kind: ref.Kind, Digest: digest, Provenance: "workspace:" + ref.Ref, Content: string(data)}, nil
 }
 
-func validateMaterializationRequest(root string, refs []ContextReference, maxRefs, maxBytes int) (int, error) {
-	if root == "" {
-		return 0, fmt.Errorf("context materialization: root is required")
+func validateMaterializationRequest(reader ContextReader, refs []ContextReference, maxRefs, maxBytes int) (int, error) {
+	if reader == nil {
+		return 0, fmt.Errorf("context materialization: reader is required")
 	}
 	if maxRefs <= 0 {
 		maxRefs = DefaultContextMaxReferences
@@ -110,7 +116,7 @@ func sortContextReferences(refs []ContextReference) []ContextReference {
 }
 
 func validateContextReference(ref ContextReference, seen map[string]struct{}) (string, error) {
-	if ref.Ref == "" || filepath.IsAbs(ref.Ref) || filepath.Clean(ref.Ref) != ref.Ref || ref.Ref == "." || ref.Ref == ".." || containsParentPathComponent(ref.Ref) {
+	if ref.Ref == "" || path.IsAbs(ref.Ref) || path.Clean(ref.Ref) != ref.Ref || ref.Ref == "." || ref.Ref == ".." || containsParentPathComponent(ref.Ref) {
 		return "", fmt.Errorf("context materialization: invalid relative reference %q", ref.Ref)
 	}
 	key := ref.Ref + "\x00" + ref.Kind
@@ -121,7 +127,7 @@ func validateContextReference(ref ContextReference, seen map[string]struct{}) (s
 }
 
 func containsParentPathComponent(ref string) bool {
-	for _, component := range strings.Split(filepath.ToSlash(ref), "/") {
+	for _, component := range strings.Split(strings.ReplaceAll(ref, `\`, "/"), "/") {
 		if component == ".." {
 			return true
 		}

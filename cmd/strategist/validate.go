@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
-	"github.com/SergioLacerda/strategist-skill/internal/validate"
 	"github.com/spf13/cobra"
 )
 
@@ -59,34 +58,9 @@ Checks performed:
 		)
 		defer span.End()
 
-		var errs []string
-		checks := 0
-
-		// 1. active.yaml
-		activeErr := validate.ActiveYAML(filepath.Join(root, "active.yaml"))
-		checks++
-		if activeErr != nil {
-			errs = append(errs, fmt.Sprintf("active.yaml: %v", activeErr))
-		}
-
-		// 2. personas/*.yaml
-		personaErrs, personaChecks := validate.PersonasDir(filepath.Join(root, "personas"))
-		checks += personaChecks
-		errs = append(errs, personaErrs...)
-
-		// 3. roles/*.yaml
-		roleErrs, roleChecks := validate.RolesDir(filepath.Join(root, "roles"))
-		checks += roleChecks
-		errs = append(errs, roleErrs...)
-
-		// 4. knowledge.index.yaml (optional)
-		kiPath := filepath.Join(root, "knowledge.index.yaml")
-		if _, err := os.Stat(kiPath); err == nil {
-			checks++
-			if kiErr := validate.YAMLFile(kiPath); kiErr != nil {
-				errs = append(errs, fmt.Sprintf("knowledge.index.yaml: %v", kiErr))
-			}
-		}
+		report := application.ValidateWorkspace(root)
+		errs := report.Errors
+		checks := report.Checks
 
 		if len(errs) > 0 {
 			span.SetStatus(codes.Error, "validation failed")

@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/leveling"
 	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
+	"github.com/SergioLacerda/strategist-skill/internal/tools/leveling"
 	"go.opentelemetry.io/otel/codes"
 )
 

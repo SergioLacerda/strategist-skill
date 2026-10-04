@@ -22,6 +22,11 @@ type ArchivistHandoffInput struct {
 	// an explicit missing-record is written instead; either way the record is
 	// persisted before the outcome, so a recording failure authorizes nothing.
 	ConfidenceSummary *domain.ConfidenceSummary
+	// Delegation is the optional provenance of a provider-satisfied conformance
+	// check, computed by the caller for the package digest it just read. It is
+	// attached only when valid for the revision recorded and never decides the
+	// outcome.
+	Delegation *handoff.Delegation
 }
 
 // ArchivistHandoffResult is the production evaluation of the
@@ -67,7 +72,7 @@ func EvaluateArchivistHandoff(strategistRoot, basePath string, status domain.Mis
 	if err := persistHandoffConfidence(strategistRoot, status.MissionID, attempt, input.ConfidenceSummary); err != nil {
 		return ArchivistHandoffResult{}, fmt.Errorf("evaluate handoff: handoff_outcome_persist_failed: %w", err)
 	}
-	outcome, err := store.Append(derived.outcome(status, attempt, result))
+	outcome, err := store.Append(derived.outcome(status, attempt, result).WithDelegation(input.Delegation))
 	if err != nil {
 		return ArchivistHandoffResult{}, fmt.Errorf("evaluate handoff: %w", err)
 	}
@@ -122,39 +127,6 @@ func (d derivedHandoff) outcome(status domain.MissionEngineStatus, attempt int, 
 		Signals: handoff.SignalsRecordOf(d.extracted.Signals), Provenance: d.extracted.Provenance, GateObserved: string(status.State),
 		ChallengeStatus: result.Status, CriticalFailures: result.CriticalFailures,
 	}
-}
-
-// nextHandoffAttempt numbers the next evaluation. A new evaluation is only
-// possible after a failed outcome (which returns the mission to refinement and
-// a new Approval Gate) and while attempts remain: an unused passed or skipped
-// outcome stands for the revision the gate approved, and a package changed
-// after it must go back through refinement, never be re-evaluated in place.
-func nextHandoffAttempt(store handoff.OutcomeStore, missionID, digest string, policy handoff.Policy) (int, error) {
-	attempt, err := store.NextAttempt(missionID)
-	if err != nil {
-		return 0, fmt.Errorf("evaluate handoff: %w", err)
-	}
-	if attempt == 1 {
-		return 1, nil
-	}
-	latest, err := store.Latest(missionID)
-	if err != nil {
-		return 0, fmt.Errorf("evaluate handoff: %w", err)
-	}
-	if latest.Result != handoff.OutcomeFailed {
-		return 0, unfailedOutcomeError(latest, digest)
-	}
-	if policy.MaxAttempts > 0 && attempt > policy.MaxAttempts {
-		return 0, fmt.Errorf("handoff_attempts_exhausted: mission %q used all %d attempts", missionID, policy.MaxAttempts)
-	}
-	return attempt, nil
-}
-
-func unfailedOutcomeError(latest handoff.Outcome, digest string) error {
-	if latest.PackageDigest != digest {
-		return fmt.Errorf("handoff_package_changed_after_outcome: mission %q has a %s outcome (attempt %d) for another package revision; return to refinement with handoff_challenge_failed and accept the Approval Gate again", latest.MissionID, latest.Result, latest.Attempt)
-	}
-	return fmt.Errorf("handoff_outcome_already_recorded: mission %q already has a %s outcome for this package revision (attempt %d)", latest.MissionID, latest.Result, latest.Attempt)
 }
 
 // challengeResult runs the semantic challenge when the policy requires it, and

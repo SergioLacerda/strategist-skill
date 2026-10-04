@@ -5,6 +5,12 @@
 **Mission:** `20260913-role-skill-weapon-taxonomy`
 **Amended by:** [ADR-0053](0053-taxonomy-classification-criterion-and-sniper-extensibility.md) (§1 Sniper extensibility, §4 INITIATIVE wording, §5 family nomenclature)
 
+> **Historical taxonomy note (2026-10-03):** This ADR remains the historical
+> decision record for its mission. Its section 4 classifications and section 5
+> family nomenclature are superseded for canonical documentation by
+> [ADR-0064](0064-canonical-seven-family-taxonomy.md). The original decision,
+> amendment history, and implementation boundary below are retained unchanged.
+
 ## Context
 
 Strategist has real distinctions between identity-bearing Roles, provider Skills,

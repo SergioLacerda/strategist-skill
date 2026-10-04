@@ -33,7 +33,7 @@ func TestWriteCatalogAndMirrors_GenerateMirrorErrorPropagates(t *testing.T) {
 	dir := t.TempDir()
 
 	err := WriteCatalogAndMirrors(result, dir, filepath.Join(dir, "catalog.yaml"), filepath.Join(dir, "lock.yaml"))
-	require.ErrorContains(t, err, "generate mirror for ghost")
+	require.ErrorContains(t, err, "generate normalized package evidence for ghost")
 }
 
 func TestWriteCatalogAndMirrors_MkdirMirrorDirErrorPropagates(t *testing.T) {
@@ -80,7 +80,7 @@ func TestWriteCatalogAndMirrors_FullSuccessWithNestedPackage(t *testing.T) {
 
 	assert.FileExists(t, catalogPath)
 	assert.FileExists(t, lockPath)
-	assert.FileExists(t, filepath.Join(dir, "skills", "sample@1.0.0", "skill.yaml"))
+	assert.NoFileExists(t, filepath.Join(dir, "skills", "sample@1.0.0", "skill.yaml"))
 	assert.FileExists(t, filepath.Join(dir, "skills", "sample@1.0.0", "SKILL.md"))
 	assert.FileExists(t, filepath.Join(dir, "skills", "sample@1.0.0", "references", "notes.md"))
 
@@ -156,17 +156,18 @@ func TestCopySkillFile_WriteErrorPropagates(t *testing.T) {
 	require.ErrorContains(t, err, "write "+target)
 }
 
-func TestWriteCatalogAndMirrors_WriteMirrorErrorPropagates(t *testing.T) {
+func TestWriteCatalogAndMirrors_CopyPackageErrorPropagates(t *testing.T) {
 	t.Parallel()
 
+	sourceDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "SKILL.md"), []byte("payload"), 0o644))
+	require.NoError(t, os.Symlink(filepath.Join(sourceDir, "SKILL.md"), filepath.Join(sourceDir, "link.md")))
 	result := IngestionResult{
-		Ingested: []IngestedSkill{{ID: "sample"}},
+		Ingested: []IngestedSkill{{ID: "sample", Dir: sourceDir}},
 		Catalog:  pluginCatalog{SchemaVersion: "v1", Providers: []pluginCatalogProvider{{ID: "sample", RiskScore: "write_analysis"}}},
 	}
 	dir := t.TempDir()
-	// skill.yaml already exists as a directory, so writing the mirror file fails.
-	require.NoError(t, os.MkdirAll(filepath.Join(dir, "skills", "sample@0.0.0", "skill.yaml"), 0o755))
 
 	err := WriteCatalogAndMirrors(result, dir, filepath.Join(dir, "catalog.yaml"), filepath.Join(dir, "lock.yaml"))
-	require.ErrorContains(t, err, "write "+filepath.Join(dir, "skills", "sample@0.0.0", "skill.yaml"))
+	require.ErrorContains(t, err, "copy package for sample")
 }

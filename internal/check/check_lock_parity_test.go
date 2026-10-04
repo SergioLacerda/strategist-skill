@@ -6,14 +6,14 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/plugins"
+	"github.com/SergioLacerda/strategist-skill/internal/tools/resolver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
 
-// pluginLockSchemaVersion mirrors plugins.lockSchemaVersion (unexported,
-// internal/plugins/resolver.go), which VerifyLockDigest requires an exact
+// pluginLockSchemaVersion mirrors the resolver's lock schema (unexported,
+// internal/tools/resolver/resolver.go), which VerifyLockDigest requires an exact
 // match against.
 const pluginLockSchemaVersion = "strategist-plugin-lock/v1"
 
@@ -120,7 +120,7 @@ func TestCheckPluginLockParityAcceptsConsistentLockDigest(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	nodes := []domain.PluginLockNode{{ID: "brainstorming", Kind: "adapter_contract", Digest: "sha256:aaa"}}
-	digest := plugins.DigestLockNodes(nodes)
+	digest := resolver.DigestLockNodes(nodes)
 	writePluginLockWithLockBlock(t, root, domain.PluginLock{SchemaVersion: pluginLockSchemaVersion, GraphDigest: digest, Nodes: nodes})
 
 	errs := checkPluginLockParity(root, map[string]string{})

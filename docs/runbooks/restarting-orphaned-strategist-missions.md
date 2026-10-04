@@ -140,3 +140,5 @@ private runtime and confirm the four canonical files exist under the configured
   handoff protocol.
 - `.strategist/contracts/machine/mission-status.yaml` — mission state model.
 - `docs/runbooks/role-invocation-failed.md` — provider invocation failures.
+- `docs/runbooks/pending-or-expired-invocation-requests.md` — a pending or expired embedded
+  invocation request record, a different case from an analysis stuck at `ranger_pending`.

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/provider"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -11,7 +12,7 @@ import (
 func TestDecodeStrictPluginYAMLRejectsMalformedSyntax(t *testing.T) {
 	t.Parallel()
 
-	err := domain.DecodeStrictPluginYAML([]byte("id: [unterminated"), &domain.PluginPackage{})
+	err := provider.DecodeStrictPluginYAML([]byte("id: [unterminated"), &domain.PluginPackage{})
 	require.ErrorContains(t, err, "plugin yaml decode")
 }
 

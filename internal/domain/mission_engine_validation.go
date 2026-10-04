@@ -6,7 +6,40 @@ func validateMissionStatus(status MissionEngineStatus) error {
 	if err := validateMissionIdentity(status); err != nil {
 		return err
 	}
+	if err := validateStageMetadata(status); err != nil {
+		return err
+	}
 	return validateMissionPhaseState(status)
+}
+
+func validateStageMetadata(status MissionEngineStatus) error {
+	if status.Stage == "" {
+		return validateAbsentStageMetadata(status)
+	}
+	if err := status.Stage.Validate(); err != nil {
+		return fmt.Errorf("mission engine: %w", err)
+	}
+	if status.Stage != StageShort || status.StageFeat != "critical_hit" {
+		return fmt.Errorf("mission engine: unsupported mission Stage metadata")
+	}
+	return validateCriticalHitStageMetadata(status)
+}
+
+func validateAbsentStageMetadata(status MissionEngineStatus) error {
+	if status.StageFeat != "" || status.StageCorrelationID != "" || status.StageGateRequired || status.StageGateApproved {
+		return fmt.Errorf("mission engine: Stage metadata is incomplete")
+	}
+	return nil
+}
+
+func validateCriticalHitStageMetadata(status MissionEngineStatus) error {
+	if status.StageCorrelationID == "" || !status.StageGateRequired {
+		return fmt.Errorf("mission engine: Critical Hit Stage metadata requires correlation and gate")
+	}
+	if status.StageGateApproved && status.State != StateExecution && status.State != StateDoneDelivery {
+		return fmt.Errorf("mission engine: approved Critical Hit Stage requires execution or completion state")
+	}
+	return nil
 }
 
 func validateMissionIdentity(status MissionEngineStatus) error {

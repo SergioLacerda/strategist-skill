@@ -15,7 +15,9 @@ import (
 // newWiredMissionCommand builds a fresh mission tree with the production
 // dependencies from adapter_deps.go, so wiring tests never share flag state.
 func newWiredMissionCommand() *cobra.Command {
-	return missionadapter.New(missionLifecycleDependencies(), missionViewDependencies(), missionNormalizeDependencies(), missionReportUsageDependencies())
+	composition := missionComposition()
+	composition.Invocation = missionadapter.InvocationDependencies{}
+	return missionadapter.New(composition)
 }
 
 // executeMission runs `mission <args...>` on a fresh wired tree and returns

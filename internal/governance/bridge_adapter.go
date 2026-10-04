@@ -9,42 +9,36 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
 
-// SDDBridge adapts the existing .sdd/ sync logic (RunSync/SyncReport) to the
-// governancebridge.GovernanceBridge interface (UNC-02 resolution: this
-// package is not renamed or generalized — it stays the concrete .sdd/
-// adapter; the interface itself lives in the new internal/governancebridge
-// package). RunSync and SyncReport are unchanged by this file — Evaluate is
-// purely additive, built on top of the existing, stable public contract.
-type SDDBridge struct {
-	// SkillRoot is the same skillRoot argument RunSync already takes.
-	SkillRoot string
-	// SDDDir is the same sddDir argument RunSync already takes.
-	SDDDir string
+// Bridge adapts any explicit governance.Source to the generic
+// governancebridge.GovernanceBridge contract. It performs a dry-run only and
+// never mutates the Strategist manifest while evaluating a policy question.
+type Bridge struct {
+	SkillRoot     string
+	GovernanceDir string
+	Source        Source
 }
 
-// NewSDDBridge returns an SDDBridge reading governance state from sddDir and
-// reconciling skillRoot/skill.yaml against it.
-func NewSDDBridge(skillRoot, sddDir string) SDDBridge {
-	return SDDBridge{SkillRoot: skillRoot, SDDDir: sddDir}
+// NewBridge creates a provider-neutral bridge over source.
+func NewBridge(skillRoot, governanceDir string, source Source) Bridge {
+	return Bridge{SkillRoot: skillRoot, GovernanceDir: governanceDir, Source: source}
 }
 
-// Evaluate answers request by running a dry-run sync against .sdd/ — Evaluate
-// never writes skill.yaml (RunSync is always called with dryRun=true here),
-// satisfying GovernanceBridge's read-only contract (acceptance check 6.7: no
-// concurrent auto-correction between Strategist and external governance).
-// Allowed is true only when every active mandate is already compliant or
-// partially compliant per SyncReport.MandatesMissing being empty.
-func (b SDDBridge) Evaluate(_ context.Context, request governancebridge.GovernanceRequest) (governancebridge.GovernanceDecision, error) {
-	report, err := RunSync(b.SkillRoot, b.SDDDir, true)
+// Evaluate returns the decision produced by the explicitly selected source.
+func (b Bridge) Evaluate(_ context.Context, request governancebridge.GovernanceRequest) (governancebridge.GovernanceDecision, error) {
+	report, err := RunSync(b.SkillRoot, b.Source, b.GovernanceDir, true)
 	if err != nil {
-		return governancebridge.GovernanceDecision{}, fmt.Errorf("sdd bridge: evaluate: %w", err)
+		return governancebridge.GovernanceDecision{}, fmt.Errorf("governance bridge: evaluate: %w", err)
 	}
 
+	correlationID := request.CorrelationID
+	if correlationID == "" {
+		correlationID = b.Source.Name() + ":" + report.GovernanceFingerprint
+	}
 	decision := governancebridge.GovernanceDecision{
 		Allowed:       len(report.MandatesMissing) == 0,
 		PolicyID:      report.GovernanceFingerprint,
-		Authority:     telemetry.AuthorityExternal("sdd"),
-		CorrelationID: request.CorrelationID,
+		Authority:     telemetry.AuthorityExternal(b.Source.Name()),
+		CorrelationID: correlationID,
 	}
 	if !decision.Allowed {
 		decision.Reason = "missing mandates: " + strings.Join(report.MandatesMissing, ", ")
@@ -52,4 +46,4 @@ func (b SDDBridge) Evaluate(_ context.Context, request governancebridge.Governan
 	return decision, nil
 }
 
-var _ governancebridge.GovernanceBridge = SDDBridge{}
+var _ governancebridge.GovernanceBridge = Bridge{}

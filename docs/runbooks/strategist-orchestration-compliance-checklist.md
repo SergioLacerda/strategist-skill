@@ -25,7 +25,7 @@ symptom.
    assume it did not, and run it now before continuing to Step 1.
 1. **Before invoking any ranked weapon's own CLI/tooling (a `skill_provider`
    slot, e.g. `openspec-propose`, `writing-plans`), resolve its scratch
-   root first.** Read `.strategist/skills/<provider_id>/skill.yaml`'s
+   root first.** Read the selected provider's catalog entry or custom adapter's
    `scratch_root` field. If it is `runtime`, per
    `.strategist/roles/archivist.yaml#canonical.resolve_weapon_scratch_root`:
    ensure `.strategist/weapon-runtime/<provider_id>/` exists, and `cd` into

@@ -107,6 +107,32 @@ func TestCheckCmd_JSON_DirectivesMissingIsAdvisoryOnly(t *testing.T) {
 	assert.Contains(t, result.Warnings[0], "reason=directives_missing")
 }
 
+func TestCheckCmd_JSON_CompatViewResidualIsAdvisoryOnly(t *testing.T) {
+	resetCheckFlags(t)
+	dir := minimalCheckRoot(t)
+	residualDir := filepath.Join(dir, "skills", "brainstorming")
+	require.NoError(t, os.MkdirAll(residualDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(residualDir, "skill.yaml"), []byte("risk_score: write_analysis\n"), 0o644))
+	uncatalogedDir := filepath.Join(dir, "skills", "hand-made")
+	require.NoError(t, os.MkdirAll(uncatalogedDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(uncatalogedDir, "skill.yaml"), []byte("risk_score: write_analysis\n"), 0o644))
+	checkRoot = dir
+	checkJSON = true
+
+	out := captureStdout(t, func() {
+		err := checkCmd.RunE(checkCmd, nil)
+		require.NoError(t, err)
+	})
+
+	var result domain.PreflightResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	assert.Equal(t, "ready", result.Status)
+	warnings := strings.Join(result.Warnings, "\n")
+	assert.Contains(t, warnings, "reason=compat_view_residual")
+	assert.Contains(t, warnings, "provider=brainstorming")
+	assert.NotContains(t, warnings, "provider=hand-made")
+}
+
 func TestCheckCmd_JSON_CodexBootstrapMissingIsAdvisoryOnly(t *testing.T) {
 	resetCheckFlags(t)
 	dir := minimalCheckRoot(t)

@@ -91,13 +91,35 @@ slots:
 
 The `mode` can be overridden per mission via `--mode=epic` without modifying this file.
 
+### Dojo base-path contract
+
+`base_path` is also the owning root for the public Dojo state contract. Dojo
+scenarios are read from `<base_path>/dojo/<scenario>/criteria.yaml`; checks
+retain their result, lesson, emit evidence, and aggregate history under
+`<base_path>/dojo/.last-run/<scenario>/` and `<base_path>/dojo/.history.jsonl`.
+
+The ownership classes are intentionally different even when the files share a
+directory: criteria, lessons, and history are durable workspace artifacts;
+`result.json` is retained latest-run evidence; and `emit.log` is replaceable
+diagnostic evidence. Back up the configured base path to preserve user-facing
+dojo learning. Reinstalling or regenerating `.strategist` is not a migration
+and must not be used as a substitute for that backup.
+
+`strategist dojo check` keeps checker verdicts separate from persistence
+warnings. It writes the latest result atomically, serializes concurrent state
+writes, and reports malformed or orphaned state without silently repairing it.
+There is currently no automatic migration, cleanup, symlink, or dual-write
+compatibility path. Any future relocation requires a separately accepted,
+read-preserving migration contract with preview, rollback, and partial-failure
+recovery semantics.
+
 The `slots:` defines the explicit provider binding and is required. It is equivalent to declaring providers in `roles_config`, but takes precedence when both are present. Local provider packages should be checked with `strategist provider validate <source>` and onboarded with `strategist provider add <source> --slot <slot>`; direct edits to generated provider mirrors or `plugins.lock` are not an onboarding path.
 
 The discovery route remains owned by the native Ranger role, whose role contract is
 `origin: native` and `extensibility: pluggable`. Ranger must invoke the selected
 discovery Weapon, normalize its untrusted result, and reject an unavailable or
-incompatible Weapon with `role_invocation_failed`. A catalog entry, `skill.yaml`,
-or static provider report is not invocation evidence, and Ranger never silently
+incompatible Weapon with `role_invocation_failed`. A catalog entry or static
+provider report is not invocation evidence, and Ranger never silently
 substitutes its native behavior for a selected Weapon.
 
 The `treasure_chests` field is optional. Each entry requires `id`, `path`, and `scope`. The `all` scope passes the chest to all slots; specific scopes (`discovery`, `refinement`, `execution`) restrict which slots receive the chest.
@@ -230,7 +252,7 @@ refinement: openspec-propose
 execution: sniper
 ```
 
-**Provider resolution:** the Strategist resolves the package/adapter contract and its persisted lock binding. The optional `<provider_id>/skill.yaml` file is a generated compatibility view, not the authority. If the selected provider is not materialized or its binding is absent, the pipeline stops with `slot_provider_not_found`.
+**Provider resolution:** the Strategist resolves a catalog entry, a bound custom package, or a native role contract. Provider `skill.yaml` compatibility views are no longer generated or consulted for authority. If the selected provider is not materialized or its binding is absent, the pipeline stops with `slot_provider_not_found`.
 
 **risk_score validation:** each slot has a required risk_score. Mismatches stop the pipeline with `slot_risk_mismatch`.
 

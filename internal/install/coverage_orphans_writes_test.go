@@ -45,6 +45,9 @@ func TestOrphanEntriesClassifyLegacyLayoutAndOrphans(t *testing.T) {
 
 	assert.False(t, isLegacyLayoutPath("skills/brainstorming@1.0.0/SKILL.md", map[string]bool{"brainstorming": true}))
 	assert.False(t, isLegacyLayoutPath("skills/brainstorming/skill.yaml", map[string]bool{"brainstorming": true}))
+	assert.True(t, isCompatViewPath("skills/brainstorming/skill.yaml", map[string]bool{"brainstorming": true}))
+	assert.True(t, isRetiredCompatViewPath("skills/brainstorming/skill.yaml", map[string]bool{"brainstorming": true}, 2))
+	assert.False(t, isRetiredCompatViewPath("skills/brainstorming/skill.yaml", map[string]bool{"brainstorming": true}, 1))
 	assert.False(t, isLegacyLayoutPath("short", nil))
 }
 

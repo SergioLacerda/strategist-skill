@@ -130,7 +130,7 @@ func TestApplyWizardConfig_WriteActiveYAMLFails(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
 	s := Service{
 		Extractor:      minimalExtractor{},
-		WizardPrompter: NewTextPrompter(strings.NewReader("en\nen\nen\nen\nepic\n.analysis\nbrainstorming\nopenspec-explore\nsdd-ask\n\n")),
+		WizardPrompter: NewTextPrompter(strings.NewReader("en\nen\nen\nen\nepic\n.analysis\nbrainstorming\nopenspec-explore\nfixture-provider\n\n")),
 	}
 	err := s.applyWizardConfig(context.Background(), dir, false)
 	require.Error(t, err)
@@ -142,7 +142,7 @@ func TestApplyWizardConfig_WriteKnowledgeIndexFails(t *testing.T) {
 	dir := t.TempDir()
 	writeWizardLevelingFixture(t, dir)
 	// Extract() is never called here, so knowledge.index.yaml never lands on disk.
-	input := "en\nen\nen\nen\nepic\n.analysis\nbrainstorming\nopenspec-explore\nsdd-ask\n.sdd/source\n"
+	input := "en\nen\nen\nen\nepic\n.analysis\nbrainstorming\nopenspec-explore\nfixture-provider\ngovernance/source\n"
 	s := Service{Extractor: minimalExtractor{}, WizardPrompter: NewTextPrompter(strings.NewReader(input))}
 	err := s.applyWizardConfig(context.Background(), dir, false)
 	require.Error(t, err)
@@ -154,7 +154,7 @@ func TestApplyWizardConfig_WriteTreasureChestManifestFails(t *testing.T) {
 	dir := t.TempDir()
 	writeWizardLevelingFixture(t, dir)
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "knowledge.index.yaml"), []byte("sources: []\n"), 0o644))
-	input := "en\nen\nen\nen\nepic\n.analysis\nbrainstorming\nopenspec-explore\nsdd-ask\n.sdd/source\n"
+	input := "en\nen\nen\nen\nepic\n.analysis\nbrainstorming\nopenspec-explore\nfixture-provider\ngovernance/source\n"
 	s := Service{Extractor: minimalExtractor{}, WizardPrompter: NewTextPrompter(strings.NewReader(input))}
 	err := s.applyWizardConfig(context.Background(), dir, false)
 	require.Error(t, err)
@@ -166,18 +166,6 @@ func writeWizardLevelingFixture(t *testing.T, dir string) {
 	raw, err := os.ReadFile(filepath.Join("..", "embed", "defaults", "leveling.yaml"))
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(filepath.Join(dir, levelingPolicyPath), raw, 0o600))
-}
-
-func TestWriteSelectedProviderManifest_WriteError(t *testing.T) {
-	t.Parallel()
-	skipIfPermissionTestUnsupported(t)
-	dir := t.TempDir()
-	require.NoError(t, os.Chmod(dir, 0o555))
-	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
-	s := Service{Extractor: minimalExtractor{}}
-	err := s.writeSelectedProviderManifest(dir, "brainstorming")
-	require.Error(t, err)
-	assert.ErrorContains(t, err, "write ")
 }
 
 func TestResolvePrompter_DefaultsToTUIWhenNoOverrides(t *testing.T) {
@@ -259,6 +247,6 @@ func TestApplySilentConfig_ActivatesRoleProviderBindings(t *testing.T) {
 	assert.Contains(t, string(lockData), "brainstorming")
 	assert.Contains(t, string(lockData), "openspec-propose")
 
-	assert.FileExists(t, filepath.Join(dir, ".strategist", "skills", "brainstorming", "skill.yaml"))
-	assert.FileExists(t, filepath.Join(dir, ".strategist", "skills", "openspec-propose", "skill.yaml"))
+	assert.NoFileExists(t, filepath.Join(dir, ".strategist", "skills", "brainstorming", "skill.yaml"))
+	assert.NoFileExists(t, filepath.Join(dir, ".strategist", "skills", "openspec-propose", "skill.yaml"))
 }

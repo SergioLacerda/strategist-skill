@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	internal "github.com/SergioLacerda/strategist-skill/internal/leveling"
+	internal "github.com/SergioLacerda/strategist-skill/internal/tools/leveling"
 	"github.com/spf13/cobra"
 )
 

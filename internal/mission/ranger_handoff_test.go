@@ -110,6 +110,44 @@ func TestRangerHandoffTelemetryDoesNotIncludeArtifactOrAnswers(t *testing.T) {
 	require.NotContains(t, events[0].Attributes, telemetry.AttrInvocationEvidence)
 }
 
+func TestRangerHandoffCompletionConsumesNoAttemptWhenChallengeRequired(t *testing.T) {
+	root, basePath := rangerHandoffFixture(t, rangerHandoffArtifact)
+	artifact := filepath.Join(basePath, "pending", "m-ranger-analysis.md")
+
+	require.NoError(t, EnsureRangerToArchivistOutcome(root, basePath, "m-ranger"))
+
+	next, err := handoff.NewOutcomeStore(root).NextAttemptFor("m-ranger", handoff.TransitionRangerToArchivist)
+	require.NoError(t, err)
+	require.Equal(t, 1, next, "normalization must not consume a bounded attempt: no answers can exist yet")
+	_, err = AuthorizeRangerToArchivist(root, basePath, "m-ranger")
+	require.ErrorContains(t, err, "handoff_outcome_missing", "the Archivist boundary stays closed until an explicit evaluation")
+
+	failed, err := EvaluateRangerToArchivist(root, artifact, "m-ranger", RangerHandoffInput{})
+	require.NoError(t, err)
+	require.Equal(t, 1, failed.Outcome.Attempt)
+	require.Equal(t, handoff.OutcomeFailed, failed.Outcome.Result)
+	passed, err := EvaluateRangerToArchivist(root, artifact, "m-ranger", RangerHandoffInput{Challenges: rangerChallenges()})
+	require.NoError(t, err)
+	require.Equal(t, 2, passed.Outcome.Attempt, "both bounded attempts remain available for real answers")
+	require.Equal(t, handoff.OutcomePassed, passed.Outcome.Result)
+}
+
+func TestRangerHandoffCompletionEmitsAwaitingEventWhenChallengeRequired(t *testing.T) {
+	root, basePath := rangerHandoffFixture(t, rangerHandoffArtifact)
+	sink := &rangerHandoffCapture{}
+
+	require.NoError(t, EnsureRangerToArchivistOutcomeWithTelemetry(context.Background(), root, basePath, "m-ranger", sink, "m-ranger"))
+
+	events := sink.eventsSnapshot()
+	require.Len(t, events, 1)
+	require.Equal(t, telemetry.RangerToArchivistEventName, events[0].Name)
+	require.Equal(t, RangerOutcomeAwaitingChallenge, events[0].Attributes[telemetry.AttrHandoffOutcome])
+	require.Equal(t, true, events[0].Attributes[telemetry.AttrHandoffRequired])
+	require.Equal(t, 0, events[0].Attributes[telemetry.AttrHandoffAttempt])
+	require.Equal(t, telemetry.SeverityInfo, events[0].SeverityNumber, "waiting for answers is not a failure")
+	require.NotContains(t, events[0].Attributes, telemetry.AttrReason)
+}
+
 func replaceRangerHandoffFacts(content, replacement string) string {
 	start := 0
 	for i, line := range splitRangerHandoffLines(content) {

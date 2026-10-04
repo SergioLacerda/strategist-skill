@@ -58,9 +58,9 @@ native behavior for the selected Weapon.
   required when `discovery_subtype: evaluation`
 - opportunity manifest summary when present
 - `evidence_pack_path` when the context-enrichment dossier's `source_cards` are non-empty (see `machine/context-enrichment.yaml#evidence_pack`); null otherwise, non-blocking
-- `relevant_sources_hint` produced by the Search ability during the Retrieval Cascade's
+- `relevant_sources_hint` produced by the Search Feat during the Retrieval Cascade's
   treasure-chest stage; reused by Archivist by default (see `04-refinement.md`)
-- `selected_runbooks_hint` produced by the select_runbook ability during the same
+- `selected_runbooks_hint` produced by the select_runbook Feat during the same
   Retrieval Cascade stage. Ranger always runs the command (stage 6 below), so the
   field is a list whenever discovery ran the cascade: an empty list means the command
   ran and nothing matched (non-blocking); null means it was not run, which is a gap
@@ -93,8 +93,11 @@ to this handoff's actual content, not a reuse of the Archivist → Sniper MVP's
 
 After Ranger normalization, Strategist may record an automatic `skipped`
 outcome only when the typed facts explicitly authorize an informational-only
-handoff. A required challenge without valid answers records `failed` and
-blocks the Archivist boundary until a bounded retry passes. Run
+handoff. When a challenge is required, normalization records no outcome and
+consumes no attempt, because the receiver's answers cannot exist yet; it emits an
+`awaiting_challenge` event instead, and the Archivist boundary stays closed
+(`handoff_outcome_missing`) until an explicit evaluation. An evaluation without
+valid answers records `failed`, and a bounded retry may follow. Run
 `strategist handoff evaluate-ranger` to inspect or submit the lifecycle-owned
 evaluation; the standalone `strategist handoff verify` command remains
 diagnostic-only and never authorizes refinement.
@@ -179,11 +182,11 @@ stage runs only if the previous stage did not reach `stop_when: sufficient_evide
 3. keyword search over the workspace
 4. symbol search (definitions, references)
 5. architecture / structure index, when one exists for the workspace
-6. treasure chests (`consult_treasure_chests`) — the **Search** ability runs as a
+6. treasure chests (`consult_treasure_chests`) — the **Search** Feat runs as a
    sub-routine of this stage, before `consult_treasure_chests` opens any chest: it
    filters candidate jewels/potions and produces `relevant_sources_hint`, so a whole
    chest is not paid for when a jewel/potion already summarizes what would be found
-   there (see `roles/ranger.yaml#canonical.search`). The **select_runbook** ability
+   there (see `roles/ranger.yaml#canonical.search`). The **select_runbook** Feat
    runs alongside Search, at the same point: it scores `docs/runbooks/*.runbook.yaml`
    sidecars against mission signals via `internal/runbook.Select()` and produces
    `selected_runbooks_hint` — a bounded, reasoned selection (at most one primary, at

@@ -76,7 +76,7 @@ include make/web.mk
 include make/workflows.mk
 include make/docs.mk
 
-ci-lint: lint-status fmt-check mod-check vet build quality-budget-gate workflow-catalog-gate
+ci-lint: lint-status fmt-check mod-check vet build quality-budget-gate workflow-catalog-gate taxonomy-inventory-gate
 
 ci-test: test-all golden convergence-check contract-consistency-gate coverage-manifest-check cover-gate docs-generated-gate docs-links-gate docs-index-ownership-gate release-tag-test release-script-test ci-script-test mutation-role-weapon
 

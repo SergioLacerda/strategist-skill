@@ -3,6 +3,7 @@ package metrics
 import (
 	"fmt"
 
+	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
 )
@@ -70,7 +71,7 @@ func RunHandoffRecord(cmd *cobra.Command, deps Dependencies, opts HandoffRecordO
 // unmeasured field is never recorded as a zero.
 func handoffLineFromFlags(cmd *cobra.Command, opts HandoffRecordOptions) telemetry.RefinementHandoffLine {
 	flags := cmd.Flags()
-	line := telemetry.RefinementHandoffLine{MissionID: opts.Mission}
+	line := application.HandoffMetricsLine{MissionID: opts.Mission}
 	if flags.Changed("reopens") {
 		line.RefinementReopens = &opts.Reopens
 	}
@@ -89,8 +90,13 @@ func handoffLineFromFlags(cmd *cobra.Command, opts HandoffRecordOptions) telemet
 	if flags.Changed("evidence-coverage-ratio") {
 		line.EvidenceCoverageRatio = &opts.EvidenceCoverage
 	}
-	line.Model, line.Effort, line.LevelSource = optionalString(opts.Model), optionalString(opts.Effort), optionalString(opts.LevelSource)
-	return line
+	line.Model, line.Effort, line.LevelSource = opts.Model, opts.Effort, opts.LevelSource
+	return telemetry.RefinementHandoffLine{
+		MissionID: line.MissionID, DiscoveryTokens: line.DiscoveryTokens, BriefTokens: line.BriefTokens,
+		BriefCompressionRatio: line.BriefCompressionRatio, RefinementReopens: line.RefinementReopens,
+		Revision: line.Revision, EvidenceCoverageRatio: line.EvidenceCoverageRatio,
+		Model: optionalString(line.Model), Effort: optionalString(line.Effort), LevelSource: optionalString(line.LevelSource),
+	}
 }
 
 func optionalString(v string) *string {

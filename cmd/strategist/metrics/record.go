@@ -3,6 +3,7 @@ package metrics
 import (
 	"fmt"
 
+	metricsapp "github.com/SergioLacerda/strategist-skill/internal/application/metrics"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
 )
@@ -56,10 +57,7 @@ func RunRecord(cmd *cobra.Command, deps Dependencies, opts RecordOptions) error 
 	return recordClaim(cmd, deps, root, producer, opts.ClaimFile)
 }
 func recordMissing(cmd *cobra.Command, producer telemetry.ConfidenceProducerAdapter, opts RecordOptions) error {
-	if opts.CorrelationKey == "" || opts.Reason == "" {
-		return fmt.Errorf("metrics record: --missing requires --correlation-key and --reason")
-	}
-	if err := producer.RecordMissing(opts.CorrelationKey, opts.Reason); err != nil {
+	if err := metricsapp.RecordMissingConfidence(producer, metricsapp.MissingConfidenceInput{CorrelationKey: opts.CorrelationKey, Reason: opts.Reason}); err != nil {
 		return fmt.Errorf("metrics record: %w", err)
 	}
 	_, err := fmt.Fprintf(cmd.OutOrStdout(), "missing-record recorded: agent=%s mission=%s correlation_key=%s\n", producer.Agent, producer.MissionID, opts.CorrelationKey)

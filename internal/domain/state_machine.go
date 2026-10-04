@@ -32,9 +32,11 @@ var stateTransitions = map[MissionState]map[TransitionEvent]MissionState{
 		EventSlotPermanent:    StateBlocked,
 	},
 	StateApprovalGate: {
-		EventGateDenied:   StateDoneAnalysis,
-		EventGateApproved: StateHandoffChallenge,
-		EventGateTimeout:  StateDoneAnalysis,
+		EventGateDenied:              StateDoneAnalysis,
+		EventGateApproved:            StateHandoffChallenge,
+		EventGateTimeout:             StateDoneAnalysis,
+		EventCriticalHitGateApproved: StateExecution,
+		EventCriticalHitGateDeclined: StateDoneAnalysis,
 		// Accepted, but with no documentation_target: analysis delivered.
 		EventGateApprovedAnalysisOnly: StateDoneAnalysis,
 		EventGateRevision:             StateRefinement, // D2: documented revision loop, now representable
@@ -47,10 +49,11 @@ var stateTransitions = map[MissionState]map[TransitionEvent]MissionState{
 		EventHandoffNotApplicable: StateDoneAnalysis,
 	},
 	StateExecution: {
-		EventSniperDone:      StateDoneDelivery,
-		EventSniperSideQuest: StateSideQuestGate,
-		EventSlotTransient:   StateRetryingExecution,
-		EventSlotPermanent:   StateBlocked,
+		EventSniperDone:                StateDoneDelivery,
+		EventSniperSideQuest:           StateSideQuestGate,
+		EventSlotTransient:             StateRetryingExecution,
+		EventSlotPermanent:             StateBlocked,
+		EventRefinementArtifactInvalid: StateRefinement,
 	},
 	StateDoneAnalysis: {
 		EventADRCriterionMet: StateADRGate1,

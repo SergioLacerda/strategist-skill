@@ -128,4 +128,13 @@ func TestValidateRunbook_CascadesToNestedCheckAndGate(t *testing.T) {
 	if !strings.Contains(err.Error(), "check_invalid") {
 		t.Errorf("expected check_invalid in error, got: %v", err)
 	}
+
+	badGate := strings.Replace(validSidecarYAML(), "id: root-cause-confirmed", "id:", 1)
+	_, err = ParseSidecar([]byte(badGate))
+	if err == nil {
+		t.Fatal("expected error to cascade from an invalid nested decision gate")
+	}
+	if !strings.Contains(err.Error(), "decision_gate_invalid") {
+		t.Errorf("expected decision_gate_invalid in error, got: %v", err)
+	}
 }

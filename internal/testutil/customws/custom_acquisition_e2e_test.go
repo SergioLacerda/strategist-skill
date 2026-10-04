@@ -248,12 +248,12 @@ func TestProviderAddAndWizardPublishTheSameCustomShapes(t *testing.T) {
 		rawPackage, err := os.ReadFile(filepath.Join(root, "providers", instance, "package.yaml"))
 		require.NoError(t, err)
 		var pkg domain.PluginPackage
-		require.NoError(t, domain.DecodeStrictPluginYAML(rawPackage, &pkg))
+		require.NoError(t, provider.DecodeStrictPluginYAML(rawPackage, &pkg))
 		require.NoError(t, pkg.Validate())
 		rawAdapter, err := os.ReadFile(filepath.Join(root, "providers", instance, "adapter.yaml"))
 		require.NoError(t, err)
 		var adapter domain.AdapterContract
-		require.NoError(t, domain.DecodeStrictPluginYAML(rawAdapter, &adapter))
+		require.NoError(t, provider.DecodeStrictPluginYAML(rawAdapter, &adapter))
 		require.NoError(t, adapter.Validate())
 		assert.Equal(t, []string{"host.prompt"}, adapter.Entrypoints)
 		assert.Equal(t, []string{"ranger"}, adapter.SupportedRoles)

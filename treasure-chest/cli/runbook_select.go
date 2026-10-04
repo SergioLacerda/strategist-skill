@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	selectrunbook "github.com/SergioLacerda/strategist-skill/internal/feats/select_runbook"
 	"github.com/SergioLacerda/strategist-skill/internal/runbook"
 	"github.com/spf13/cobra"
 )
@@ -39,7 +40,8 @@ var runbookSelectCmd = &cobra.Command{
 	Use:   "select",
 	Short: "Select applicable runbooks for the given mission signals",
 	Long: `Scores docs/runbooks/*.runbook.yaml sidecars against mission signals via
-internal/runbook.Select(), bounded by internal/runbook.DefaultSelectionPolicy()
+internal/feats/select_runbook.Select(), bounded by
+internal/feats/select_runbook.DefaultSelectionPolicy()
 (at most one primary, at most two supporting runbooks, each with a non-empty
 match reason). This is the select_runbook ability's concrete implementation
 (see .strategist/roles/ranger.yaml#canonical.select_runbook and
@@ -101,7 +103,7 @@ func runRunbookSelect(cmd *cobra.Command, _ []string, opts runbookSelectOptions)
 }
 
 func selectAndRenderRunbooks(candidates []runbook.Runbook, sourceDocByID map[string]string, signals []string, format string) error {
-	selections, rejections, err := runbook.Select(candidates, runbook.MissionSignals(signals), runbook.DefaultSelectionPolicy())
+	selections, rejections, err := selectrunbook.Select(candidates, selectrunbook.MissionSignals(signals), selectrunbook.DefaultSelectionPolicy())
 	if err != nil {
 		return fmt.Errorf("runbook select: %w", err)
 	}
@@ -137,7 +139,7 @@ func selectAndRenderRunbooks(candidates []runbook.Runbook, sourceDocByID map[str
 // auditability (design.md item 4) without disturbing --format json's stdout
 // contract, which callers parse as a bare selection array (see
 // runbook_select_test.go's TestRunbookSelect_MatchAssignsPrimaryAndSupportingWithReason).
-func printRunbookRejections(rejections []runbook.Rejection) {
+func printRunbookRejections(rejections []selectrunbook.Rejection) {
 	for _, r := range rejections {
 		fmt.Fprintf(os.Stderr, "[Strategist] runbook select: rejected %s reason=%s\n", r.RunbookID, r.Reason)
 	}

@@ -6,11 +6,13 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/leveling"
 	"github.com/SergioLacerda/strategist-skill/internal/missionview"
+	"github.com/SergioLacerda/strategist-skill/internal/roles/registry"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
+	"github.com/SergioLacerda/strategist-skill/internal/tools/leveling"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -56,6 +58,9 @@ func RunView(cmd *cobra.Command, deps ViewDependencies, rootInput, missionID, ru
 	if err != nil {
 		return fmt.Errorf("mission view: %w", err)
 	}
+	if _, err := application.QueryMission(status); err != nil {
+		return fmt.Errorf("mission view: %w", err)
+	}
 	view, err := LoadView(root, status, run, deps.Ledger, deps.FilterLevels)
 	if err != nil {
 		return fmt.Errorf("mission view: %w", err)
@@ -87,7 +92,7 @@ func LoadView(root string, status domain.MissionEngineStatus, run, ledger string
 	if filter == nil {
 		return missionview.View{}, fmt.Errorf("FilterLevels dependency is nil")
 	}
-	reg, regErr := domain.LoadRoleRegistry(filepath.Join(root, "roles"))
+	reg, regErr := roles.LoadRoleRegistry(filepath.Join(root, "roles"))
 	if regErr != nil {
 		reg = domain.DefaultRoleRegistry()
 	}
@@ -111,37 +116,6 @@ func LoadView(root string, status domain.MissionEngineStatus, run, ledger string
 		TokenUsage: tokenUsage, TokenUsageError: tokenUsageErr, DeclaredTokenBudget: declaredBudget,
 		HandoffMetrics: handoffMetrics, HandoffMetricsError: handoffMetricsErr,
 	}), nil
-}
-
-func readRefinementHandoffMetrics(root, missionID string) ([]telemetry.RefinementHandoffLine, error) {
-	all, err := telemetry.ReadRefinementHandoffLines(telemetry.HandoffMetricsPath(root))
-	if err != nil {
-		return nil, fmt.Errorf("read handoff metrics: %w", err)
-	}
-	filtered := make([]telemetry.RefinementHandoffLine, 0, len(all))
-	for _, line := range all {
-		if line.MissionID == missionID {
-			filtered = append(filtered, line)
-		}
-	}
-	return filtered, nil
-}
-
-// readMissionTokenUsage reads the mission-token-usage ledger and filters it
-// to missionID — the ledger is shared across every mission that has ever
-// called `mission report-usage` (F-T2, ADR-0057 § design.md task 3.3).
-func readMissionTokenUsage(root, missionID string) ([]telemetry.MissionTokenUsageRecord, error) {
-	all, err := telemetry.ReadMissionTokenUsage(telemetry.MissionTokenUsageHistoryPath(root))
-	if err != nil {
-		return nil, fmt.Errorf("read mission token usage: %w", err)
-	}
-	filtered := make([]telemetry.MissionTokenUsageRecord, 0, len(all))
-	for _, rec := range all {
-		if rec.MissionID == missionID {
-			filtered = append(filtered, rec)
-		}
-	}
-	return filtered, nil
 }
 
 // skillYAMLBudgetPolicy is the minimal shape this reads from skill.yaml —

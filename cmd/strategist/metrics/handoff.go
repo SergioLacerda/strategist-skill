@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
 )
@@ -32,15 +33,23 @@ func RunHandoff(cmd *cobra.Command, deps Dependencies, explicitRoot string) erro
 	if err != nil {
 		return err
 	}
-	records, err := telemetry.ReadHandoffChallenges(telemetry.HandoffChallengeHistoryPath(root))
+	report, err := application.ReportHandoffMetrics(root, handoffMetricsReportPorts())
 	if err != nil {
 		return fmt.Errorf("metrics handoff: %w", err)
 	}
-	labels, err := telemetry.ReadGroundTruthLabels(telemetry.GroundTruthLabelHistoryPath(root), telemetry.GroundTruthSubjectHandoffApplication)
-	if err != nil {
-		return fmt.Errorf("metrics handoff: %w", err)
+	return PrintHandoffMetrics(cmd.OutOrStdout(), telemetryHandoffMetrics(report))
+}
+
+func telemetryHandoffMetrics(report application.HandoffMetricsReport) telemetry.HandoffMetrics {
+	return telemetry.HandoffMetrics{
+		HandoffPassRate: report.HandoffPassRate, FirstAttemptPassRate: report.FirstAttemptPassRate,
+		CriticalConstraintRecall: report.CriticalConstraintRecall, DecisionClassificationAccuracy: report.DecisionClassificationAccuracy,
+		ScopeViolationRate: report.ScopeViolationRate, HandoffRepairRate: report.HandoffRepairRate,
+		SemanticLoss: telemetry.SemanticHandoffLoss{
+			Recall: report.SemanticLoss.Recall, Classification: report.SemanticLoss.Classification, Application: report.SemanticLoss.Application,
+		},
+		SampleSize: report.SampleSize, ApplicationSampleSize: report.ApplicationSampleSize,
 	}
-	return PrintHandoffMetrics(cmd.OutOrStdout(), telemetry.ApplyHandoffApplicationGroundTruth(telemetry.ComputeHandoffMetrics(records), labels))
 }
 
 // PrintHandoffMetrics formats and writes handoff metrics to the writer.

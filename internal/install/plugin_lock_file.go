@@ -37,12 +37,18 @@ func readPluginLockFile(strategistDir string) (domain.PluginLockFile, error) {
 	if err := yaml.Unmarshal(data, &f); err != nil {
 		return domain.PluginLockFile{}, fmt.Errorf("%s: %w", pluginLockFileName, err)
 	}
+	if err := domain.ValidateWeaponBindingArtifacts(f.Bindings, f.BindingArtifacts); err != nil {
+		return domain.PluginLockFile{}, fmt.Errorf("%s: invalid binding artifacts: %w", pluginLockFileName, err)
+	}
 	return f, nil
 }
 
 // writePluginLockFile atomically writes f as plugins.lock under strategistDir.
 func writePluginLockFile(strategistDir string, f domain.PluginLockFile) error {
 	f.SchemaVersion = domain.PluginLockFileSchemaVersion
+	if err := domain.ValidateWeaponBindingArtifacts(f.Bindings, f.BindingArtifacts); err != nil {
+		return fmt.Errorf("validate %s: %w", pluginLockFileName, err)
+	}
 	data, err := yaml.Marshal(f)
 	if err != nil {
 		return fmt.Errorf("marshal %s: %w", pluginLockFileName, err)

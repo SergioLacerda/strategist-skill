@@ -1,8 +1,7 @@
-// Package mechanisms loads and validates the Mechanisms registry: the single
-// machine-readable catalog of the tools Strategist gives an agent in a mission
-// (Mechanisms, and the Abilities they sit beside), each with when to use it and
-// how to invoke it. Its purpose is awareness: a role gets a compact, role-scoped
-// brief at phase start instead of having to remember what exists.
+// Package mechanisms loads and validates the compatibility registry of mission
+// primitives Strategist gives an agent: Tools, Mechanisms, and Feats, each with
+// when to use it and how to invoke it. Its purpose is awareness: a role gets a
+// compact, role-scoped brief at phase start instead of having to remember what exists.
 package mechanisms
 
 import (
@@ -18,10 +17,21 @@ import (
 // RegistryRelPath is the registry contract, relative to the .strategist root.
 const RegistryRelPath = "contracts/machine/mechanisms.yaml"
 
-// Families a registry row may belong to.
+// RegistrySchemaVersion identifies the compatibility catalog shape.
+const RegistrySchemaVersion = "1"
+
+// Families a registry row may belong to. The registry remains named
+// mechanisms.yaml for compatibility, but its identity vocabulary is the
+// canonical seven-family taxonomy. RoleLoadoutCapabilities deliberately
+// projects only Feats and Tools into a Role's executable loadout.
 const (
 	FamilyMechanism = "mechanism"
-	FamilyAbility   = "ability"
+	FamilyFeat      = "feat"
+	FamilyTool      = "tool"
+	FamilyRole      = "role"
+	FamilyWeapon    = "weapon"
+	FamilyStage     = "stage"
+	FamilyArtifact  = "artifact"
 )
 
 // AllRoles marks a row every role should see.
@@ -32,14 +42,18 @@ const AllRoles = "all"
 const OrchestratorRole = "orchestrator"
 
 var (
-	validFamilies = map[string]bool{FamilyMechanism: true, FamilyAbility: true}
-	validKinds    = map[string]bool{"code": true, "contract": true, "prose": true}
-	validTiers    = map[string]bool{"": true, "machine_enforced": true, "machine_observed": true, "agent_only": true}
+	validFamilies = map[string]bool{
+		FamilyMechanism: true, FamilyFeat: true, FamilyTool: true,
+		FamilyRole: true, FamilyWeapon: true, FamilyStage: true, FamilyArtifact: true,
+	}
+	validKinds = map[string]bool{"code": true, "contract": true, "prose": true}
+	validTiers = map[string]bool{"": true, "machine_enforced": true, "machine_observed": true, "agent_only": true}
 )
 
 // Row is one registry entry.
 type Row struct {
 	ID              string   `yaml:"id"`
+	Version         string   `yaml:"version,omitempty"`
 	DisplayName     string   `yaml:"display_name"`
 	Family          string   `yaml:"family"`
 	OwnerPackage    string   `yaml:"owner_package"`
@@ -54,6 +68,51 @@ type Row struct {
 	// JudgmentFacet names the agent-judgment side of a hybrid item; the row's
 	// Family is then its deterministic side.
 	JudgmentFacet string `yaml:"judgment_facet"`
+}
+
+// RoleLoadoutCapabilities projects the registry's permitted Feats and Tools
+// for a Role. Mechanisms stay in their enforcement boundary and are not
+// smuggled into the loadout as capabilities.
+func (r Registry) RoleLoadoutCapabilities(role, slot string) (feats, tools []domain.LoadoutCapability) {
+	for _, row := range r.ForRole(role) {
+		if slot != "" && !rowAppliesToSlot(row, slot) {
+			continue
+		}
+		capability := domain.LoadoutCapability{ID: row.ID, Availability: domain.CapabilityAvailable}
+		switch row.Family {
+		case FamilyFeat:
+			capability.Family = domain.TaxonomyFeat
+			feats = append(feats, capability)
+		case FamilyTool:
+			capability.Family = domain.TaxonomyTool
+			tools = append(tools, capability)
+		}
+	}
+	return feats, tools
+}
+
+// BuildRoleLoadout composes the validated registry projection with the pinned
+// Weapon plan. The registry contributes only Feats and Tools; Stage and
+// binding validation remain domain-owned.
+func (r Registry) BuildRoleLoadout(resolution domain.StageResolution, weapon domain.RoleInvocationPlan) (domain.RoleLoadout, error) {
+	feats, tools := r.RoleLoadoutCapabilities(weapon.Role, weapon.Slot)
+	loadout, err := domain.NewRoleLoadout(resolution, weapon, feats, tools)
+	if err != nil {
+		return domain.RoleLoadout{}, fmt.Errorf("build role loadout: %w", err)
+	}
+	return loadout, nil
+}
+
+func rowAppliesToSlot(row Row, slot string) bool {
+	if len(row.PhaseScope) == 0 {
+		return true
+	}
+	for _, phase := range row.PhaseScope {
+		if phase == "all" || phase == slot {
+			return true
+		}
+	}
+	return false
 }
 
 // Registry is the parsed catalog.
@@ -77,18 +136,8 @@ func Parse(raw []byte) (Registry, error) {
 	if err := yaml.Unmarshal(raw, &reg); err != nil {
 		return Registry{}, fmt.Errorf("mechanisms registry: decode: %w", err)
 	}
-	if len(reg.Rows) == 0 {
-		return Registry{}, errors.New("mechanisms registry: no rows")
-	}
-	seen := map[string]bool{}
-	for _, row := range reg.Rows {
-		if err := validateRow(row); err != nil {
-			return Registry{}, fmt.Errorf("mechanisms registry: row %q: %w", row.ID, err)
-		}
-		if seen[row.ID] {
-			return Registry{}, fmt.Errorf("mechanisms registry: duplicate id %q", row.ID)
-		}
-		seen[row.ID] = true
+	if err := reg.Validate(); err != nil {
+		return Registry{}, err
 	}
 	return reg, nil
 }

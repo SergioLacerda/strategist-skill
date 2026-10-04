@@ -15,12 +15,13 @@ const pluginCatalogPath = "plugins/catalog.yaml"
 const pluginCatalogSchemaVersion = domain.CurrentPluginCatalogSchemaVersion
 
 type pluginCatalog struct {
-	SchemaVersion  string                         `yaml:"schema_version"`
-	Providers      []pluginCatalogProvider        `yaml:"providers"`
-	Weapons        []domain.CompiledWeapon        `yaml:"weapons,omitempty"`
-	Roles          []domain.CompiledRole          `yaml:"roles,omitempty"`
-	Compatibility  []domain.CompiledCompatibility `yaml:"compatibility,omitempty"`
-	RankedBindings []domain.CompiledRankedBinding `yaml:"ranked_bindings,omitempty"`
+	SchemaVersion   string                         `yaml:"schema_version"`
+	TaxonomyVersion string                         `yaml:"taxonomy_version,omitempty"`
+	Providers       []pluginCatalogProvider        `yaml:"providers"`
+	Weapons         []domain.CompiledWeapon        `yaml:"weapons,omitempty"`
+	Roles           []domain.CompiledRole          `yaml:"roles,omitempty"`
+	Compatibility   []domain.CompiledCompatibility `yaml:"compatibility,omitempty"`
+	RankedBindings  []domain.CompiledRankedBinding `yaml:"ranked_bindings,omitempty"`
 }
 
 type pluginCatalogProvider struct {
@@ -140,6 +141,12 @@ func parseCatalogBytes(data []byte) (pluginCatalog, error) {
 	}
 	if err := validateCatalogSchemaVersion(catalog.SchemaVersion); err != nil {
 		return pluginCatalog{}, err
+	}
+	if err := domain.ValidateTaxonomyVersion(catalog.TaxonomyVersion); err != nil {
+		return pluginCatalog{}, fmt.Errorf("plugin catalog: %w", err)
+	}
+	if catalog.TaxonomyVersion == "" {
+		catalog.TaxonomyVersion = domain.CanonicalTaxonomyVersion
 	}
 	if err := validateParsedCatalog(catalog); err != nil {
 		return pluginCatalog{}, err

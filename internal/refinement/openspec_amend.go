@@ -3,6 +3,8 @@ package refinement
 import (
 	"fmt"
 	"time"
+
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
 
 // AmendInput identifies a post-publication amendment of a refined package: a new
@@ -22,6 +24,16 @@ type AmendInput struct {
 	AuthorizationRef string
 	// GateLabel is the mission's gate outcome label ("" when there is none).
 	GateLabel string
+	// PersistedStatus is the mission FSM snapshot read from missions/<id>.json.
+	// Amendment eligibility fails closed when it is absent or disagrees with the
+	// package frontmatter and gate telemetry.
+	PersistedStatus domain.MissionEngineStatus
+	// Reason is the operator's correction rationale. Empty uses the derived
+	// same-mission repair/amendment disposition.
+	Reason string
+	// SupersedesMissionID links this amendment to a prior mission when the
+	// operator is reconciling an equivalent replacement lineage.
+	SupersedesMissionID string
 	// Now is injected so tests are deterministic; nil uses the wall clock.
 	Now func() time.Time
 
@@ -50,8 +62,8 @@ func AmendOpenSpec(input AmendInput) (AmendResult, error) {
 	if err := plan.apply(); err != nil {
 		return AmendResult{}, err
 	}
-	if err := archiveChange(input.RuntimeRoot, plan.changeDir, input.ChangeID); err != nil {
-		return AmendResult{}, fmt.Errorf("openspec amend: amendment %03d applied but the change was not archived: %w", plan.number, err)
+	if err := cleanupOpenSpecScratch(plan.changeDir); err != nil {
+		return AmendResult{}, fmt.Errorf("openspec amend: amendment %03d applied but provider scratch cleanup failed: %w", plan.number, err)
 	}
 	return AmendResult{RefinedPath: plan.refined, AmendmentDir: plan.snapshotDir, Amendment: plan.number, ProviderChangeID: plan.original, Status: plan.status}, nil
 }

@@ -187,12 +187,16 @@ func TestLifecycle_ContextMaterializesAndChecksDigest(t *testing.T) {
 
 func TestNew_ComposesIsolatedCompleteTree(t *testing.T) {
 	build := func() *cobra.Command {
-		return mission.New(lifecycleDeps(t), testDeps(), mission.NormalizeDependencies{RootFlag: cliutil.FlagRoot}, mission.ReportUsageDependencies{RootFlag: cliutil.FlagRoot})
+		return mission.New(mission.Composition{
+			Lifecycle: lifecycleDeps(t), View: testDeps(),
+			Normalize: mission.NormalizeDependencies{RootFlag: cliutil.FlagRoot},
+			Usage:     mission.ReportUsageDependencies{RootFlag: cliutil.FlagRoot},
+		})
 	}
 	first, second := build(), build()
 	assert.NotSame(t, first, second)
-	require.Len(t, first.Commands(), 13)
-	for _, name := range []string{"start", "status", "submit", "route", "context", "view", "normalize-openspec", "report-usage", "accept-side-quest", "decline-side-quest", "adr-target"} {
+	require.Len(t, first.Commands(), 14)
+	for _, name := range []string{"start", "status", "submit", "route", "context", "view", "normalize-openspec", "report-usage", "accept-side-quest", "decline-side-quest", "adr-target", "requests"} {
 		a, _, err := first.Find([]string{name})
 		require.NoError(t, err)
 		b, _, err := second.Find([]string{name})

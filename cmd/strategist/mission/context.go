@@ -2,11 +2,23 @@ package mission
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
+	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/spf13/cobra"
 )
+
+type workspaceContextReader struct{ root string }
+
+func (r workspaceContextReader) ReadFile(ref string) ([]byte, error) {
+	raw, err := os.ReadFile(filepath.Join(r.root, filepath.FromSlash(ref))) //nolint:gosec // domain validates ref as relative
+	if err != nil {
+		return nil, fmt.Errorf("read context reference %q: %w", ref, err)
+	}
+	return raw, nil
+}
 
 // NewContext builds `mission context`.
 func NewContext(deps LifecycleDependencies) *cobra.Command {
@@ -35,9 +47,6 @@ func RunContext(cmd *cobra.Command, deps LifecycleDependencies, rootInput, missi
 	if err != nil {
 		return fmt.Errorf("mission context: %w", err)
 	}
-	if _, _, err := deps.Load(root, missionID); err != nil {
-		return fmt.Errorf("mission context: %w", err)
-	}
 	contextRefs := make([]domain.ContextReference, len(refs))
 	for i, ref := range refs {
 		contextRefs[i] = domain.ContextReference{Ref: ref, Kind: "context"}
@@ -45,7 +54,9 @@ func RunContext(cmd *cobra.Command, deps LifecycleDependencies, rootInput, missi
 			contextRefs[i].Digest = digests[i]
 		}
 	}
-	materialized, err := domain.MaterializeContext(filepath.Dir(root), contextRefs, maxRefs, maxBytes)
+	materialized, err := application.MaterializeMissionContext(
+		deps.Load, root, missionID, workspaceContextReader{root: filepath.Dir(root)}, contextRefs, maxRefs, maxBytes,
+	)
 	if err != nil {
 		return fmt.Errorf("mission context: %w", err)
 	}

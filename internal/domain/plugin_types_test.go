@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/provider"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -154,17 +155,17 @@ func TestDecodeStrictPluginYAMLRejectsUnknownFieldsAndOversize(t *testing.T) {
 	}, "\n"))
 
 	var pkg domain.PluginPackage
-	require.NoError(t, domain.DecodeStrictPluginYAML(valid, &pkg))
+	require.NoError(t, provider.DecodeStrictPluginYAML(valid, &pkg))
 	require.NoError(t, pkg.Validate())
 
 	withUnknown := append([]byte{}, valid...)
 	withUnknown = append(withUnknown, []byte("\nlocal_health: ready\n")...)
-	err := domain.DecodeStrictPluginYAML(withUnknown, &domain.PluginPackage{})
+	err := provider.DecodeStrictPluginYAML(withUnknown, &domain.PluginPackage{})
 	require.Error(t, err)
 	require.ErrorContains(t, err, "unknown field")
 
 	oversized := make([]byte, domain.MaxPluginManifestBytes+1)
-	err = domain.DecodeStrictPluginYAML(oversized, &domain.PluginPackage{})
+	err = provider.DecodeStrictPluginYAML(oversized, &domain.PluginPackage{})
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "exceeds")
 }

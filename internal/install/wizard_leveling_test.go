@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/leveling"
+	"github.com/SergioLacerda/strategist-skill/internal/tools/leveling"
 	"github.com/stretchr/testify/require"
 )
 

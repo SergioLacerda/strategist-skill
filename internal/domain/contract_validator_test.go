@@ -7,6 +7,13 @@ import (
 	"testing"
 )
 
+type testFilePresence struct{}
+
+func (testFilePresence) Exists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
 func TestValidateSlotWrite_AllowedPath(t *testing.T) {
 	t.Parallel()
 	scope := SlotWriteScope{
@@ -165,7 +172,7 @@ func TestValidateArchivistPackage_AllFilesPresent(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := ValidateArchivistPackage(dir); err != nil {
+	if err := ValidateArchivistPackage(dir, testFilePresence{}); err != nil {
 		t.Errorf("expected nil for complete package, got: %v", err)
 	}
 }
@@ -178,7 +185,7 @@ func TestValidateArchivistPackage_MissingAnalysis(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	err := ValidateArchivistPackage(dir)
+	err := ValidateArchivistPackage(dir, testFilePresence{})
 	if err == nil {
 		t.Fatal("expected error when analysis.md is missing")
 	}
@@ -196,7 +203,7 @@ func TestValidateArchivistPackage_MissingMultipleFiles(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "proposal.md"), []byte("content"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	err := ValidateArchivistPackage(dir)
+	err := ValidateArchivistPackage(dir, testFilePresence{})
 	if err == nil {
 		t.Fatal("expected error when multiple files are missing")
 	}
@@ -208,7 +215,7 @@ func TestValidateArchivistPackage_MissingMultipleFiles(t *testing.T) {
 func TestValidateArchivistPackage_EmptyDir(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	err := ValidateArchivistPackage(dir)
+	err := ValidateArchivistPackage(dir, testFilePresence{})
 	if err == nil {
 		t.Fatal("expected error for empty directory")
 	}

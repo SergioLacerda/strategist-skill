@@ -2,16 +2,14 @@ package check
 
 import (
 	"context"
-	"fmt"
-	"os"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/plugins/connectors"
-	"gopkg.in/yaml.v3"
+	"github.com/SergioLacerda/strategist-skill/internal/weapon"
 )
 
 // readinessFacets are the dimensions that depend on where a Weapon's manifest
-// lives: the generated compat view file, or the catalog entry.
+// lives: the catalog entry or a custom provider adapter.
 type readinessFacets struct {
 	descriptor domain.ReadinessCheck
 	source     domain.ReadinessCheck
@@ -24,20 +22,6 @@ type readinessFacets struct {
 	hostAPI     domain.ReadinessCheck
 	detail      string
 	conformance func(probe connectors.ConnectorResult) domain.ReadinessCheck
-}
-
-// skillProviderReadiness is the readiness of a provider known only through its
-// generated compat view (the transitional branch).
-func skillProviderReadiness(root, slot, provider, path string) domain.PluginReadinessVector {
-	return weaponReadiness(root, slot, provider, readinessFacets{
-		descriptor: domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "legacy_descriptor_valid", Detail: path},
-		source:     domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "local_manifest_present", Detail: path},
-		entrypoint: probeSkillEntrypoint(provider, path),
-		detail:     path,
-		conformance: func(probe connectors.ConnectorResult) domain.ReadinessCheck {
-			return customConformanceReadiness(root, slot, provider, path, probe)
-		},
-	})
 }
 
 func weaponReadiness(root, slot, provider string, facets readinessFacets) domain.PluginReadinessVector {
@@ -66,15 +50,6 @@ func weaponReadiness(root, slot, provider string, facets readinessFacets) domain
 	return vectorFromFacets(facets, facets.conformance(probe), trustCheck, grantCheck, customRuntimeReadiness(root, slot, provider), resolve, observe)
 }
 
-func skillProviderVector(path, provider string, conformance, trustCheck, grantCheck, dependencies domain.ReadinessCheck, resolve connectors.ConnectorResult, observe connectors.ObservationResult) domain.PluginReadinessVector {
-	facets := readinessFacets{
-		descriptor: domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "legacy_descriptor_valid", Detail: path},
-		source:     domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "local_manifest_present", Detail: path},
-		entrypoint: probeSkillEntrypoint(provider, path),
-	}
-	return vectorFromFacets(facets, conformance, trustCheck, grantCheck, dependencies, resolve, observe)
-}
-
 func vectorFromFacets(facets readinessFacets, conformance, trustCheck, grantCheck, dependencies domain.ReadinessCheck, resolve connectors.ConnectorResult, observe connectors.ObservationResult) domain.PluginReadinessVector {
 	return domain.PluginReadinessVector{
 		Descriptor:          facets.descriptor,
@@ -92,7 +67,7 @@ func vectorFromFacets(facets readinessFacets, conformance, trustCheck, grantChec
 }
 
 func requestedPermissions(root, provider string) []domain.PluginPermission {
-	facts, err := domain.ResolveWeaponFacts(root, provider)
+	facts, err := weapon.ResolveWeaponFacts(root, provider)
 	if err != nil {
 		return nil
 	}
@@ -116,49 +91,6 @@ func bindingIsRanked(lock domain.PluginLockFile, slot, provider string) bool {
 // evaluateRankedConformance, liveHostAPIDigest) lives in
 // check_ranked_readiness.go, split out to keep this file under the repo's
 // file-size budget.
-
-// probeSkillEntrypoint is the strongest entrypoint probe feasible for an
-// external skill plugin from a static CLI check. A *true* live-invocation
-// probe would mean actually running the skill through the Claude Code skill
-// loader (a separate process this CLI does not control and cannot safely or
-// deterministically invoke from `strategist check`), so this deliberately
-// does not fake that — instead it verifies everything about the entrypoint
-// manifest that a static check honestly can: the file this slot resolved to
-// exists, is non-empty, is parseable YAML, and declares an `id` consistent
-// with the provider it was resolved for. This replaces the previous
-// unconditional `Entrypoint: Unsupported` hardcode (which never actually
-// looked at the file) with a check that can and does return Blocked when the
-// manifest is missing, empty, unparseable, or self-inconsistent.
-func probeSkillEntrypoint(provider, path string) domain.ReadinessCheck {
-	info, statErr := os.Stat(path)
-	if statErr != nil {
-		return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: "entrypoint_file_missing", Detail: path}
-	}
-	if info.Size() == 0 {
-		return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: "entrypoint_file_empty", Detail: path}
-	}
-	raw, readErr := os.ReadFile(path) //nolint:gosec // G304: path is derived from the runtime skills directory
-	if readErr != nil {
-		return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: "entrypoint_file_unreadable", Detail: readErr.Error()}
-	}
-	var manifest struct {
-		ID string `yaml:"id"`
-	}
-	if yamlErr := yaml.Unmarshal(raw, &manifest); yamlErr != nil {
-		return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: "entrypoint_manifest_unparseable", Detail: yamlErr.Error()}
-	}
-	if manifest.ID == "" {
-		return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: "entrypoint_id_missing", Detail: path}
-	}
-	if manifest.ID != provider {
-		return domain.ReadinessCheck{
-			Status:     domain.ReadinessBlocked,
-			ReasonCode: "entrypoint_id_mismatch",
-			Detail:     fmt.Sprintf("manifest id=%q provider=%q", manifest.ID, provider),
-		}
-	}
-	return domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "entrypoint_manifest_verified", Detail: path}
-}
 
 // Blocked-readiness diagnostic aggregation (readinessDimension,
 // readinessDimensions, blockedReadinessErrors, blockedReadinessErrorsForSlots)

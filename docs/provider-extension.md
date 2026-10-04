@@ -4,9 +4,9 @@
 **Last Updated:** 2026-09-20
 
 This guide describes the local-only v1 path for adding a Strategist provider.
-It composes the existing package and adapter contracts; `skill.yaml` is only a
-read-only compatibility view and is never an authority for binding, trust, or
-lock state.
+It composes the existing package and adapter contracts. A legacy `skill.yaml`
+may remain in a source directory for migration evidence, but it is not copied
+to the runtime and is never an authority for binding, trust, or lock state.
 
 ## Source contract
 
@@ -15,7 +15,7 @@ An already-materialized provider directory contains:
 ```text
 package.yaml   # publisher-owned identity, digest, provenance, version
 adapter.yaml   # host compatibility, roles, slots, handoffs, permissions
-skill.yaml     # optional legacy/generated compatibility view
+skill.yaml     # optional legacy source evidence; never generated at runtime
 ```
 
 `package.yaml` must validate as `domain.PluginPackage`, and `adapter.yaml` as

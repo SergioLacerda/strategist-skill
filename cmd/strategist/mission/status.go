@@ -3,6 +3,7 @@ package mission
 import (
 	"fmt"
 
+	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/spf13/cobra"
 )
 
@@ -23,7 +24,7 @@ func RunStatus(cmd *cobra.Command, deps LifecycleDependencies, rootInput, missio
 	if err != nil {
 		return fmt.Errorf("mission status: %w", err)
 	}
-	_, status, err := deps.Load(root, missionID)
+	status, err := application.LoadMissionStatus(deps.Load, root, missionID)
 	if err != nil {
 		return fmt.Errorf("mission status: %w", err)
 	}

@@ -21,22 +21,6 @@ func TestReadNormalizedSilentConfigFailures(t *testing.T) {
 	require.ErrorContains(t, err, "install: normalize language")
 }
 
-func TestProviderManifestAndSelectionFailures(t *testing.T) {
-	t.Parallel()
-	_, err := providerManifestBytes(fixedFileExtractor{}, "brainstorming")
-	require.ErrorContains(t, err, "load plugin catalog for brainstorming")
-
-	_, err = providerManifestBytes(defaultsExtractor{}, "definitely-not-a-provider")
-	require.ErrorContains(t, err, "not found")
-
-	err = Service{Extractor: fixedFileExtractor{}}.writeSelectedProviderManifest(t.TempDir(), "brainstorming")
-	require.ErrorContains(t, err, "resolve installable providers for brainstorming")
-
-	require.NoError(t, Service{Extractor: defaultsExtractor{}}.writeSelectedProviderManifest(t.TempDir(), "not-installable-by-default"))
-	err = Service{Extractor: fixedFileExtractor{}}.writeSelectedProviderManifests(t.TempDir(), domain.WizardConfig{DiscoveryProvider: "brainstorming"})
-	require.Error(t, err)
-}
-
 func TestPersistWizardConfigFailures(t *testing.T) {
 	t.Parallel()
 	blocker := filepath.Join(t.TempDir(), "blocker")
@@ -45,8 +29,6 @@ func TestPersistWizardConfigFailures(t *testing.T) {
 	err := Service{Extractor: defaultsExtractor{}}.persistWizardConfig(blocker, wc)
 	require.ErrorContains(t, err, "install: write plugins.lock")
 
-	err = Service{Extractor: fixedFileExtractor{}}.persistWizardConfig(t.TempDir(), domain.WizardConfig{DiscoveryProvider: "brainstorming"})
-	require.ErrorContains(t, err, "install: write provider manifests")
 }
 
 func TestUpgradeFileOperationFailures(t *testing.T) {

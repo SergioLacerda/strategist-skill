@@ -10,7 +10,6 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-	"time"
 )
 
 // deltaHeader starts the part of an OpenSpec spec that states requirements and
@@ -98,17 +97,13 @@ func demoteHeadings(text string) string {
 	return strings.Join(lines, "\n")
 }
 
-// archiveChange moves a normalized change out of the active change list,
-// following OpenSpec's `changes/archive/<date>-<id>` layout. It is a plain move:
-// provider spec deltas are never merged into the runtime's specs.
-func archiveChange(runtimeRoot, changeDir, changeID string) error {
-	archiveDir := filepath.Join(runtimeRoot, "changes", "archive")
-	if err := os.MkdirAll(archiveDir, 0o750); err != nil {
-		return fmt.Errorf("openspec bridge: create archive: %w", err)
-	}
-	target := filepath.Join(archiveDir, time.Now().UTC().Format("2006-01-02")+"-"+changeID)
-	if err := os.Rename(changeDir, target); err != nil {
-		return fmt.Errorf("openspec bridge: archive change %s: %w", changeID, err)
+// removeOpenSpecScratch is a test seam for the final provider-scratch cleanup.
+// cleanupOpenSpecScratch receives only a changeDir built by validatedChangeDir.
+var removeOpenSpecScratch = os.RemoveAll
+
+func cleanupOpenSpecScratch(changeDir string) error {
+	if err := removeOpenSpecScratch(changeDir); err != nil {
+		return fmt.Errorf("remove private change: %w", err)
 	}
 	return nil
 }

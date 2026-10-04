@@ -1,6 +1,6 @@
 # active.yaml — epic standalone template
 # Generated from: templates/epic-standalone.yaml
-# Mode: standalone (no SDD integration)
+# Mode: standalone (no provisioned governance)
 
 mode: epic
 

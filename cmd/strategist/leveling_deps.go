@@ -12,8 +12,9 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	embedpkg "github.com/SergioLacerda/strategist-skill/internal/embed"
-	"github.com/SergioLacerda/strategist-skill/internal/leveling"
+	"github.com/SergioLacerda/strategist-skill/internal/roles/registry"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
+	"github.com/SergioLacerda/strategist-skill/internal/tools/leveling"
 )
 
 const roleLevelLedger = "role-levels.jsonl"
@@ -116,7 +117,7 @@ func readActiveLevelingConfig(root string) (domain.LevelingConfig, string) {
 // A broken role file degrades to the built-ins with a warning: labelling never
 // blocks a mission.
 func loadRoleRegistry(root string) (domain.RoleRegistry, string) {
-	reg, err := domain.LoadRoleRegistry(filepath.Join(root, "roles"))
+	reg, err := roles.LoadRoleRegistry(filepath.Join(root, "roles"))
 	if err != nil {
 		return domain.DefaultRoleRegistry(), err.Error()
 	}

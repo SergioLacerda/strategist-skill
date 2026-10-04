@@ -152,6 +152,106 @@ func TestAuthorizeExecutionAcceptsOnlyPassedOrAuthorizedSkips(t *testing.T) {
 	assert.Equal(t, OutcomePassed, outcome.Result)
 }
 
+func TestInvalidateLatestOutcomeRetainsEvidenceButDeniesExecution(t *testing.T) {
+	store := fixedStore(t)
+	outcome, err := store.Append(sampleOutcome(1, OutcomePassed))
+	require.NoError(t, err)
+
+	changed, err := store.InvalidateLatest("m1", "refinement_artifact_invalid")
+	require.NoError(t, err)
+	assert.True(t, changed)
+	got, err := store.Latest("m1")
+	require.NoError(t, err)
+	assert.Equal(t, outcome, got)
+
+	_, err = store.AuthorizeExecution(currentCheck())
+	require.ErrorContains(t, err, "handoff_outcome_invalidated")
+	invalidated, err := store.Invalidated(outcome)
+	require.NoError(t, err)
+	assert.True(t, invalidated)
+}
+
+func TestInvalidateLatestPropagatesInvalidationFailure(t *testing.T) {
+	store := fixedStore(t)
+	_, err := store.Append(sampleOutcome(1, OutcomePassed))
+	require.NoError(t, err)
+	_, err = store.InvalidateLatest("m1", "")
+	require.ErrorContains(t, err, "invalidation reason is required")
+}
+
+func TestLaterOutcomeUsesItsOwnConsumptionMarker(t *testing.T) {
+	store := fixedStore(t)
+	first, err := store.Append(sampleOutcome(1, OutcomePassed))
+	require.NoError(t, err)
+	require.NoError(t, store.Consume(first))
+	second, err := store.Append(sampleOutcome(2, OutcomePassed))
+	require.NoError(t, err)
+
+	_, err = store.AuthorizeExecution(currentCheck())
+	require.NoError(t, err)
+	require.NoError(t, store.Consume(second))
+	assert.FileExists(t, filepath.Join(store.Root, "missions", "handoff", "m1", "consumed.json"))
+	assert.FileExists(t, filepath.Join(store.Root, "missions", "handoff", "m1", "consumed-002.json"))
+}
+
+func TestInvalidateLatestOutcomeIsNoOpWhenNoOutcomeExists(t *testing.T) {
+	store := fixedStore(t)
+	changed, err := store.InvalidateLatest("m1", "refinement_artifact_invalid")
+	require.NoError(t, err)
+	assert.False(t, changed)
+}
+
+func TestInvalidateRequiresAReason(t *testing.T) {
+	store := fixedStore(t)
+	outcome, err := store.Append(sampleOutcome(1, OutcomePassed))
+	require.NoError(t, err)
+	require.ErrorContains(t, store.Invalidate(outcome, ""), "invalidation reason is required")
+}
+
+func TestInvalidationMarkerTamperingIsDetected(t *testing.T) {
+	store := fixedStore(t)
+	outcome, err := store.Append(sampleOutcome(1, OutcomePassed))
+	require.NoError(t, err)
+	require.NoError(t, store.Invalidate(outcome, "refinement_artifact_invalid"))
+	marker := filepath.Join(store.Root, "missions", "handoff", "m1", invalidatedFile(1))
+	require.NoError(t, os.WriteFile(marker, []byte("not-json\n"), 0o644))
+	_, err = store.Invalidated(outcome)
+	require.ErrorContains(t, err, "invalidation marker is not valid JSON")
+	require.NoError(t, os.WriteFile(marker, []byte(`{"outcome_integrity":"wrong","package_digest":"sha256:pkg","reason":"repair","invalidated_at":"2026-10-02T12:00:00Z"}
+`), 0o644))
+	_, err = store.Invalidated(outcome)
+	require.ErrorContains(t, err, "invalidation marker does not match")
+}
+
+func TestInvalidateRejectsAnOutcomeWithBrokenIntegrity(t *testing.T) {
+	store := fixedStore(t)
+	outcome := sampleOutcome(1, OutcomePassed)
+	outcome.Integrity = "sha256:tampered"
+	require.ErrorContains(t, store.Invalidate(outcome, "repair"), "integrity")
+}
+
+func TestInvalidationRejectsAnUnknownTransition(t *testing.T) {
+	store := fixedStore(t)
+	outcome := sampleOutcome(1, OutcomePassed)
+	outcome.Transition = "unknown"
+	outcome.Integrity, _ = outcome.digest()
+	require.ErrorContains(t, store.Invalidate(outcome, "repair"), "not lifecycle-owned")
+	require.ErrorContains(t, func() error {
+		_, err := store.Invalidated(outcome)
+		return err
+	}(), "not lifecycle-owned")
+}
+
+func TestInvalidateLatestReportsAnUnreadableOutcomeDirectory(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "missions", "handoff")
+	require.NoError(t, os.MkdirAll(dir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "m1"), []byte("not-a-directory"), 0o644))
+	store := NewOutcomeStore(root)
+	_, err := store.InvalidateLatest("m1", "repair")
+	require.ErrorContains(t, err, "list outcomes")
+}
+
 func TestAuthorizeExecutionSkipRequiresTheCurrentFactsToStillAuthorizeIt(t *testing.T) {
 	store := fixedStore(t)
 	_, err := store.Append(sampleOutcome(1, OutcomeSkipped))

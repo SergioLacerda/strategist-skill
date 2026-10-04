@@ -8,6 +8,7 @@ import (
 	"time"
 
 	missionadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
+	"github.com/SergioLacerda/strategist-skill/internal/catalog"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	strategistembed "github.com/SergioLacerda/strategist-skill/internal/embed"
 	missionruntime "github.com/SergioLacerda/strategist-skill/internal/mission"
@@ -101,7 +102,7 @@ func TestDiscoveryArtifactPathsRejectsWorkspaceEscape(t *testing.T) {
 func TestRequireRegistryMatchesBinary(t *testing.T) {
 	raw, err := (strategistembed.Extractor{}).ReadFile("plugins/catalog.yaml")
 	require.NoError(t, err)
-	registry, err := domain.ParseCompiledRegistryCatalog(raw)
+	registry, err := catalog.ParseCompiledRegistryCatalog(raw)
 	require.NoError(t, err)
 
 	require.NoError(t, requireRegistryMatchesBinary(registry))

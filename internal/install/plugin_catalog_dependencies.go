@@ -11,7 +11,7 @@ import (
 // .analysis/refined/20260913-role-skill-weapon-taxonomy/proposal.md § 3,
 // the brainstorming -> writing-plans example). Checked against both
 // AuxiliaryTools (a flat skill-id list) and Dependencies (the structured,
-// resolver-native form already consumed by plugins.Resolve via
+// resolver-native form already consumed by resolver.Resolve via
 // catalogDependencies) — a catalog entry may use either or both.
 type DependencyViolation struct {
 	ProviderID   string

@@ -32,12 +32,17 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `verify` — Verify a Handoff Challenge acknowledgment and record the result
 - `help` — Help about any command
 - `install` — Install the Strategist skill into a target repository
+- `integrations` — Inspect and change the optional external provider integration
+  - `disable` — Record the decision not to use the provider; recorded outcomes and settings are kept
+  - `doctor` — Report declared, bound, enabled, compatible and available state without calling the provider
+  - `enable` — Record the decision to use the provider (documented defaults, credential stays a reference)
+  - `probe` — Send one synthetic, non-mission message to record availability
 - `leveling` — Suggest model and effort by role
   - `label` — Resolve and record the model/effort label shown on a role's log lines
   - `suggest` — Suggest a model and effort for a role
   - `validate` — Validate the customer LEVELING policy
 - `mechanisms` — Inspect the Mechanisms registry
-  - `brief` — Print the tools (Mechanisms and Abilities) available to one role
+  - `brief` — Print the Tools, Mechanisms, and Feats available to one role
 - `metrics` — Report metrics computed from Strategist's own runtime memory
   - `confidence` — Report cross-agent confidence metrics
   - `gate-outcome` — Record the human Approval Gate outcome as ground truth
@@ -58,6 +63,7 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `invoke` — Invoke one embedded Weapon through a host bridge
   - `normalize-openspec` — Publish a completed OpenSpec change into the refined mission package
   - `report-usage` — Record real token usage for a mission, reported by the invoking agent
+  - `requests` — List embedded invocation requests (read-only; never prints payload or nonce)
   - `route` — Record Scout's route decision for a mission (JSON on stdin)
   - `start` — Start a mission
   - `status` — Inspect a mission status
@@ -74,7 +80,7 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `validate` — Validate a local provider package without changing workspace state
 - `runbook` — Operate on the typed docs/runbooks/*.runbook.yaml corpus
   - `select` — Select applicable runbooks for the given mission signals
-- `sync-governance` — Sync .strategist/skill.yaml with active SDD governance mandates
+- `sync-governance` — Sync .strategist/skill.yaml with explicitly provisioned governance
 - `treasure-chest` — Show treasure chest runtime status and index health
   - `add` — Register a new treasure chest across active/governed/indexed layers
   - `doctor` — Detect consistency drift across active.yaml, treasure-chests.yaml, and knowledge.index.yaml

@@ -1,6 +1,7 @@
 // Package runbook defines typed domain types for runbook sidecars
-// (docs/runbooks/*.runbook.yaml) and the selection/completion logic that
-// operates on them. It is additive to the existing markdown-only runbook
+// (docs/runbooks/*.runbook.yaml) and the artifact validation logic that
+// operates on them. Selection policy and matching live in the independent
+// internal/feats/select_runbook package. It is additive to the existing markdown-only runbook
 // corpus — internal/treasure.ScanRunbookDirectory keeps reading the
 // unchanged *.md files directly and never parses a sidecar. See
 // .analysis/refined/20260803-runbook-domain-and-cutover/design.md.
@@ -29,7 +30,8 @@ type Runbook struct {
 	// vocabulary (signal_vocabulary.go): each entry must be one of the
 	// CanonicalSignal values. It supplements AppliesWhen's free-text prose
 	// matching rather than replacing it — a sidecar with no Signals matches
-	// exactly as it did before this field existed (see select_runbook_match.go).
+	// exactly as it did before this field existed (see
+	// internal/feats/select_runbook/select_runbook_match.go).
 	Signals   []string `yaml:"signals,omitempty"`
 	Objective string   `yaml:"objective"`
 

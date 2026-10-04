@@ -30,6 +30,18 @@ If the Weapon bound to a Role slot cannot be invoked, emit
 
 ---
 
+## 1a. ACTIVATION BOUNDARY
+
+An ordinary request remains direct unless the user explicitly invokes Strategist
+through its dedicated skill, a registered host slash command, or a `strategist
+mission` CLI operation. A reference to `.analysis/refined/` does not activate a
+mission. A local execution context is a precondition only; it does not prove
+mission activation or approval. Only an explicit Strategist invocation
+transitions the request into an active mission, and only then does the
+mission-only role lock apply.
+
+---
+
 ## 1b. PARENT AGENT BOUNDARY
 
 The parent agent is the transport for Strategist, not an implementation substitute
@@ -66,6 +78,16 @@ They are guidance (`enforced_by: agent_only`), not a gate.
   usage record no waste or cost claim about a mission can be checked.
 - No CLI emits the intake checkpoint, so a missing intake checkpoint is not a condition to hold
   `intake_done`; submit it after `strategist mission route`.
+- When `strategist handoff evaluate` or `evaluate-ranger` prints a `delegation:` line, an enabled provider pre-checked
+  the handoff's input/output conformance. `approved` means that check is satisfied and recorded: skip your own
+  conformance self-check, but still supply the challenges and acknowledgment, which are never delegated. `signal`
+  and `fallback` mean the provider did not approve or did not answer: do the conformance check yourself as usual,
+  using the listed `hints` for a signal. No `delegation:` line means no integration is enabled. A provider result
+  never replaces the Approval Gate, integrity or authorization checks.
+- Write the output of `strategist mission invoke --json` to a file and read fields from it with `jq`;
+  do not pipe it through `head` or `cut`. Each call issues a new request, so truncating the output and
+  running the command again leaves the first request unfinished. Run it once per phase, then complete
+  that `request_id`.
 
 ---
 
@@ -167,8 +189,8 @@ produces `role_invocation_failed` without a native fallback. See
 
 Whenever the refinement slot is bound to an external Weapon (default:
 `{{.Slots.Refinement}}` — see `active.slots.refinement`), Archivist invokes the
-Weapon's declared runtime connector. Read `skills/<weapon>/skill.yaml#roles`
-and load `roles/archivist.yaml` for the Role contract before acting. For
+Weapon's declared runtime connector. Read the bound Weapon's catalog or custom
+adapter facts and load `roles/archivist.yaml` for the Role contract before acting. For
 Ranked `openspec_root`, the declared root is `.strategist/openspec`; the bundled
 launcher under `.strategist/weapon-runtime/openspec-propose/` is an executable
 asset, not a replacement project root.

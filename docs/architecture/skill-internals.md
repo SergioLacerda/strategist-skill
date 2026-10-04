@@ -271,7 +271,7 @@ Loads the active configuration (`active.yaml`, persona, roles) before any missio
 | | |
 |-|-|
 | **Inputs** | `skill_root`, `mode_override` (optional), `roles_override` (optional) |
-| **Outputs** | `active`, `persona`, `roles`, `sdd_injection` (optional) |
+| **Outputs** | `active`, `persona`, `roles`, `governance_injection` (optional) |
 | **Fast path** | `.strategist/.compiled/.config.gz` — if fresh, loads the compiled artifact directly |
 | **Fallback** | If `.config.gz` is corrupted: loads YAML directly, emits `bootstrap=standard_path` |
 

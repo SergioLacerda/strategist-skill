@@ -13,6 +13,7 @@ docs-generate:
 	bash scripts/generate-schema-index.sh
 	bash scripts/generate-contract-index.sh
 	bash scripts/generate-event-catalog.sh
+	bash scripts/generate-taxonomy-inventory.sh
 	bash scripts/generate-quality-budgets.sh
 	bash scripts/generate-coverage-policy.sh
 	bash scripts/generate-eval-scenarios.sh

@@ -41,3 +41,13 @@ This is an analysis/documentation decision only. No code was written or modified
 - Migrating existing sinks (`setup.go`, `outcome*.go`) into `internal/telemetry/sink/` risks regressing existing tests if not done incrementally; `legacy_compatibility: required` constrains this to a phased migration.
 - Decoupling `internal/governance` from `.sdd/` (task 7 / SQ-002) touches `cmd/strategist/sync_governance*.go` as well as `internal/governance/sync_test.go`, widening the blast radius slightly beyond the original `internal/governance` package boundary.
 - No strict-mode (blocking telemetry failure) parameter exists today; whether it belongs in this mission's MVP remains open (UNC-03).
+
+## Dated amendment — 2026-10-02
+
+The provider-specific `.sdd/` synchronization side quest in Decision 4 is
+resolved by the provider-neutral `internal/governance.Source` port and the
+explicit Providence adapter described by
+`docs/adr/0062-governance-compatibility-implementation.md`. The
+`GovernanceBridge` interface remains in `internal/governancebridge`, and its
+package placement is settled. Decisions 1–3 and the additive telemetry
+envelope remain unchanged.

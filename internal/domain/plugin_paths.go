@@ -1,31 +1,12 @@
 package domain
 
 import (
-	"bytes"
 	"fmt"
 	pathpkg "path"
 	"path/filepath"
 	"strconv"
 	"strings"
-
-	"gopkg.in/yaml.v3"
 )
-
-// DecodeStrictPluginYAML decodes bounded YAML and rejects unknown fields.
-func DecodeStrictPluginYAML[T any](data []byte, out *T) error {
-	if len(data) > MaxPluginManifestBytes {
-		return fmt.Errorf("plugin yaml exceeds %d bytes", MaxPluginManifestBytes)
-	}
-	decoder := yaml.NewDecoder(bytes.NewReader(data))
-	decoder.KnownFields(true)
-	if err := decoder.Decode(out); err != nil {
-		if strings.Contains(err.Error(), "field") && strings.Contains(err.Error(), "not found") {
-			return fmt.Errorf("plugin yaml unknown field: %w", err)
-		}
-		return fmt.Errorf("plugin yaml decode: %w", err)
-	}
-	return nil
-}
 
 // ValidatePluginRelativePath rejects absolute, escaping, empty, or oversized paths.
 func ValidatePluginRelativePath(path string) error {

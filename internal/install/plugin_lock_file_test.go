@@ -60,6 +60,36 @@ func TestWritePluginLockFile_RoundTrip(t *testing.T) {
 	assert.Equal(t, want.Bindings, got.Bindings)
 }
 
+func TestWritePluginLockFile_RoundTripsBindingArtifacts(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	binding := domain.SlotBinding{
+		SchemaVersion:       "strategist-plugin-binding/v1",
+		Slot:                "discovery",
+		InstalledInstanceID: "brainstorming@1.0.0",
+		Role:                "ranger",
+		WeaponVersion:       "1.0.0",
+		WeaponDigest:        "sha256:weapon",
+		SourceDigest:        "sha256:source",
+		BindingDigest:       "sha256:binding",
+		RuntimeKind:         "host",
+		ConnectorID:         "host",
+		Entrypoint:          "host.prompt",
+		Origin:              string(domain.WeaponOriginCustom),
+		Generation:          1,
+		Status:              "active",
+	}
+	artifact, err := domain.NewWeaponBindingArtifact(binding)
+	require.NoError(t, err)
+	want := domain.PluginLockFile{Bindings: []domain.SlotBinding{binding}, BindingArtifacts: []domain.WeaponBindingArtifact{artifact}}
+
+	require.NoError(t, writePluginLockFile(dir, want))
+	got, err := readPluginLockFile(dir)
+	require.NoError(t, err)
+	assert.Equal(t, want.Bindings, got.Bindings)
+	assert.Equal(t, want.BindingArtifacts, got.BindingArtifacts)
+}
+
 func TestWritePluginLockFile_StampsSchemaVersionRegardlessOfInput(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()

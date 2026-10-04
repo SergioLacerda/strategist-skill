@@ -27,11 +27,7 @@ func removeLegacyMirrorDirs(skills []IngestedSkill, defaultsRoot string) error {
 	return nil
 }
 
-func writeSkillMirror(catalog pluginCatalog, skill IngestedSkill, defaultsRoot string) error {
-	manifest, err := skillDigestManifest(catalog, skill)
-	if err != nil {
-		return fmt.Errorf("generate mirror for %s: %w", skill.ID, err)
-	}
+func writeSkillMirror(_ pluginCatalog, skill IngestedSkill, defaultsRoot string) error {
 	mirrorDir := filepath.Join(defaultsRoot, "skills", skillPayloadDirName(skill))
 	if err := os.MkdirAll(mirrorDir, 0o755); err != nil {
 		return fmt.Errorf("mkdir %s: %w", mirrorDir, err)
@@ -41,9 +37,11 @@ func writeSkillMirror(catalog pluginCatalog, skill IngestedSkill, defaultsRoot s
 			return fmt.Errorf("copy package for %s: %w", skill.ID, err)
 		}
 	}
-	mirrorPath := filepath.Join(mirrorDir, "skill.yaml")
-	if err := os.WriteFile(mirrorPath, manifest, 0o644); err != nil { //nolint:gosec // G306: generated manifest is not sensitive
-		return fmt.Errorf("write %s: %w", mirrorPath, err)
+	// skill.yaml remains a normalized-digest input, but is not part of the
+	// generation-2 embedded payload. A source package may contain the historic
+	// file; remove it from the generated tree rather than shipping it again.
+	if err := os.Remove(filepath.Join(mirrorDir, "skill.yaml")); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("remove compatibility view for %s: %w", skill.ID, err)
 	}
 	return nil
 }

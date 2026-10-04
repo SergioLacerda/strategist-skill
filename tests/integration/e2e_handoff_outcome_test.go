@@ -40,10 +40,10 @@ func startMissionAtHandoff(t *testing.T, workspace, missionID, facts, tasks stri
 	t.Helper()
 	start := runStrategistCLI(t, workspace, "mission", "start", "--mission-id", missionID)
 	require.Equal(t, 0, start.exitCode, start.output())
-	for _, event := range []string{"bootstrap_done", "intake_done", "discovery_done", "refinement_done"} {
-		res := runStrategistCLI(t, workspace, "mission", "submit", "--mission-id", missionID, "--event", event)
-		require.Equal(t, 0, res.exitCode, event+": "+res.output())
-	}
+	pending := filepath.Join(workspace, ".analysis", "pending")
+	require.NoError(t, os.MkdirAll(pending, 0o755))
+	discovery := "---\nschema_version: strategist-ranger-discovery/v1\nmission_id: " + missionID + "\nmission_status: ranger_pending\nsources_consulted: []\n---\n\n## mission_objective\nobjective\n## known_facts\nfacts\n## confidence_summary\nconfidence\n## handoff\nhandoff\n"
+	require.NoError(t, os.WriteFile(filepath.Join(pending, missionID+"-analysis.md"), []byte(discovery), 0o644))
 	dir := filepath.Join(workspace, ".analysis", "refined", missionID)
 	require.NoError(t, os.MkdirAll(dir, 0o755))
 	files := map[string]string{
@@ -52,6 +52,10 @@ func startMissionAtHandoff(t *testing.T, workspace, missionID, facts, tasks stri
 	}
 	for name, content := range files {
 		require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644))
+	}
+	for _, event := range []string{"bootstrap_done", "intake_done", "discovery_done", "refinement_done"} {
+		res := runStrategistCLI(t, workspace, "mission", "submit", "--mission-id", missionID, "--event", event)
+		require.Equal(t, 0, res.exitCode, event+": "+res.output())
 	}
 	res := runStrategistCLI(t, workspace, "mission", "submit", "--mission-id", missionID, "--event", "gate_approved")
 	require.Equal(t, 0, res.exitCode, res.output())

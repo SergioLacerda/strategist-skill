@@ -10,7 +10,7 @@ input:
   roles_default_yaml:
     discovery: brainstorming
     refinement: openspec-explore
-    execution: sdd-ask
+    execution: fixture-provider
   slot_output:
     status: failed
     failure_type: permanent

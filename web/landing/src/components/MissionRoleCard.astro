@@ -1,0 +1,16 @@
+---
+export interface Props {
+  glyph: string;
+  role: string;
+  klassPt: string;
+  klassEn: string;
+  badgePt?: string;
+  badgeEn?: string;
+}
+const { glyph, role, klassPt, klassEn, badgePt, badgeEn } = Astro.props;
+---
+<div class="mission-role-card">
+  <div class="mission-role-glyph" aria-hidden="true">{glyph}</div>
+  <div class="mission-role-name"><span>{role}</span>{badgePt && <em data-pt={badgePt} data-en={badgeEn ?? badgePt}>{badgePt}</em>}</div>
+  <div class="mission-role-class" data-pt={klassPt} data-en={klassEn}>{klassPt}</div>
+</div>

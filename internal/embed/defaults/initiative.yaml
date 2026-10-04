@@ -1,10 +1,10 @@
 version: "1"
-ability: initiative
+feat: initiative
 display_name: INITIATIVE
 mode: consultative
 authority:
   owns: [advice, diligence, alignment]
-  does_not_own: [model, provider, capability, effort, level_source, approval_gate, implementation_authorization]
+  does_not_own: [model, provider, capability, effort, level_source, role_binding, weapon_binding, stage, route, pipeline_bypass, approval_gate, implementation_authorization]
 records:
   path: .strategist/memory/initiative-records.jsonl
   append_only: true
