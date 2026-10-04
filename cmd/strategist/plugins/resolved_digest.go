@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/SergioLacerda/strategist-skill/internal/application"
+	"github.com/SergioLacerda/strategist-skill/internal/application/digest"
 	"github.com/SergioLacerda/strategist-skill/internal/install"
 	"github.com/spf13/cobra"
 )
@@ -59,17 +59,17 @@ trusted".`,
 // hashing --file), compares it against the catalog pin, prints the result,
 // and returns a non-nil error on mismatch so CI/scripts can gate on it.
 func RunResolvedDigest(out io.Writer, opts ResolvedDigestOptions) error {
-	digest, err := application.ResolveDigestInput(opts.Digest, opts.File, install.HashFileSHA256)
+	resolvedDigest, err := digest.ResolveDigestInput(opts.Digest, opts.File, install.HashFileSHA256)
 	if err != nil {
 		return fmt.Errorf("resolved-digest: %w", err)
 	}
-	result, err := application.CompareResolvedDigest(opts.Provider, digest, func(provider, resolved string) (application.ResolvedDigestComparison, error) {
+	result, err := digest.CompareResolvedDigest(opts.Provider, resolvedDigest, func(provider, resolved string) (digest.ResolvedDigestComparison, error) {
 		comparison, compareErr := install.CompareResolvedDigest(opts.Catalog, provider, resolved)
 		if compareErr != nil {
-			return application.ResolvedDigestComparison{}, fmt.Errorf("compare resolved digest: %w", compareErr)
+			return digest.ResolvedDigestComparison{}, fmt.Errorf("compare resolved digest: %w", compareErr)
 		}
-		return application.ResolvedDigestComparison{
-			Status: application.ResolvedDigestStatus(comparison.Status), Pin: comparison.Pin, Resolved: comparison.Resolved,
+		return digest.ResolvedDigestComparison{
+			Status: digest.ResolvedDigestStatus(comparison.Status), Pin: comparison.Pin, Resolved: comparison.Resolved,
 		}, nil
 	})
 	if err != nil {
@@ -79,7 +79,7 @@ func RunResolvedDigest(out io.Writer, opts ResolvedDigestOptions) error {
 		opts.Provider, result.Status, displayOrNone(result.Pin), displayOrNone(result.Resolved)); err != nil {
 		return fmt.Errorf("resolved-digest: write output: %w", err)
 	}
-	if result.Status == application.ResolvedDigestMismatch {
+	if result.Status == digest.ResolvedDigestMismatch {
 		return fmt.Errorf("resolved-digest: mismatch for provider %q", opts.Provider)
 	}
 	return nil

@@ -202,7 +202,7 @@ mechanisms:
   - id: locks_transactions
     display_name: Locks and transactions
     family: mechanism
-    owner_package: internal/plugins/lifecycle;internal/initiative
+    owner_package: internal/plugins/lifecycle;internal/feats/initiative
     contract_file: contracts/narrative/06-execution.md
     enforcement_kind: code
     enforcement_tier: machine_enforced
@@ -240,7 +240,7 @@ mechanisms:
   - id: leveling
     display_name: LEVELING
     family: tool
-    owner_package: internal/leveling
+    owner_package: internal/tools/leveling
     contract_file: leveling.yaml
     enforcement_kind: code
     enforcement_tier: machine_observed
@@ -253,7 +253,7 @@ mechanisms:
   - id: initiative
     display_name: INITIATIVE
     family: feat
-    owner_package: internal/initiative;internal/mission
+    owner_package: internal/feats/initiative;internal/mission
     contract_file: initiative.yaml;schemas/initiative-advice.schema.yaml
     enforcement_kind: code
     enforcement_tier: machine_observed
@@ -267,7 +267,7 @@ mechanisms:
   - id: critical_hit
     display_name: Critical Hit
     family: feat
-    owner_package: internal/domain
+    owner_package: internal/feats/critical_hit
     contract_file: contracts/machine/critical-hit.yaml;contracts/narrative/11-critical-hit.md
     enforcement_kind: contract
     enforcement_tier: agent_only
@@ -322,7 +322,7 @@ mechanisms:
   - id: select_runbook
     display_name: select_runbook
     family: feat
-    owner_package: internal/runbook
+    owner_package: internal/feats/select_runbook
     contract_file: roles/ranger.yaml#canonical.select_runbook;contracts/narrative/03-discovery.md
     enforcement_kind: contract
     enforcement_tier: agent_only

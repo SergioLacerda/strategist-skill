@@ -34,7 +34,7 @@ layout it is looking at.
 
 Three facts limit the design:
 
-1. The only version comparator (`internal/plugins/resolver_versions.go`) treats `dev` and
+1. The only version comparator (`internal/tools/resolver/resolver_versions.go`) treats `dev` and
    `-dirty` builds as zeros, so comparing binary semver would silently mislead.
 2. `prepare-embedded` re-marshals `plugins/catalog.yaml` and drops unknown header keys.
 3. `upgrade` reports an orphaned file only once, and `install` never reports it.

@@ -18,6 +18,10 @@ Strategist mission. Handle an ordinary request directly unless the user explicit
 Strategist through its dedicated skill, a registered host slash command, or a
 ` + "`" + `strategist mission` + "`" + ` CLI operation.
 
+A reference to a path under ` + "`" + `.analysis/refined/` + "`" + ` does not activate a
+mission. Local execution context is a precondition; it is not proof of
+mission activation or approval. Only after explicit activation does the mission-only role lock apply.
+
 ` + "`" + `strategist check --json` + "`" + ` is a static preflight diagnostic. It does not invoke a
 provider, start a mission, or authorize the Strategist pipeline.
 

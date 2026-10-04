@@ -39,7 +39,7 @@ func resolveRunbookActionRoot(cmd *cobra.Command, explicitRoot string) (strategi
 // chest-level metadata, not part of the sidecar schema, so ParseSidecar
 // never sets it (see runbook.Runbook.Trust's doc comment). A missing or
 // unreadable treasure-chests.yaml leaves Trust at its zero value, which
-// runbook.Select's MinTrust check treats as "no trust signal, do not
+// select_runbook.Select's MinTrust check treats as "no trust signal, do not
 // filter" — the same non-blocking posture LoadGoverned itself takes on a
 // missing file.
 func loadRunbookSidecars(strategistDir, projectRoot string) ([]runbook.Runbook, map[string]string, error) {

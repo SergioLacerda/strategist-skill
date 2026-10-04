@@ -1,3 +1,4 @@
+// Package plugins resolves plugin candidates into deterministic lock graphs.
 package plugins
 
 import (

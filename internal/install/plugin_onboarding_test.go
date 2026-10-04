@@ -9,6 +9,7 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/plugins"
 	"github.com/SergioLacerda/strategist-skill/internal/plugins/lifecycle"
+	"github.com/SergioLacerda/strategist-skill/internal/tools/resolver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -76,7 +77,7 @@ func TestPlanPluginOnboardingIncludesRoleProviderBindingLockNodes(t *testing.T) 
 		assert.NotEmpty(t, node.Digest)
 	}
 	assert.Equal(t, 3, roleNodes, "expected one role_provider_binding node per resolved slot")
-	assert.Equal(t, plugins.DigestLockNodes(plan.Lock.Nodes), plan.Lock.GraphDigest)
+	assert.Equal(t, resolver.DigestLockNodes(plan.Lock.Nodes), plan.Lock.GraphDigest)
 }
 
 // TestPlanPluginOnboardingRoleBindingLockNodesReplayDeterministically proves

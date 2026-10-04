@@ -2,7 +2,7 @@ package missionview
 
 import (
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/leveling"
+	"github.com/SergioLacerda/strategist-skill/internal/tools/leveling"
 )
 
 func buildJourney(reg domain.RoleRegistry, providers map[string]string) []JourneyEntry {

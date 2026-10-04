@@ -3,9 +3,9 @@ package leveling
 import (
 	"fmt"
 
-	"github.com/SergioLacerda/strategist-skill/internal/application"
+	levelingapp "github.com/SergioLacerda/strategist-skill/internal/application/leveling"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	internal "github.com/SergioLacerda/strategist-skill/internal/leveling"
+	internal "github.com/SergioLacerda/strategist-skill/internal/tools/leveling"
 )
 
 const (
@@ -25,7 +25,7 @@ func LabelRoleWith(reg domain.RoleRegistry, load internal.PolicyLoader, cfg doma
 }
 
 func labelRoleWithMax(reg domain.RoleRegistry, load internal.PolicyLoader, cfg domain.LevelingConfig, ledgerPath string, opts LabelOptions, maxRecords int) (LabelResult, error) {
-	result, err := application.ResolveLevel(reg, load, cfg, ledgerPath, application.LevelingInput{
+	result, err := levelingapp.ResolveLevel(reg, load, cfg, ledgerPath, levelingapp.LevelingInput{
 		Role: opts.Role, Provider: opts.Provider, Mission: opts.Mission, Run: opts.Run,
 		HostModel: opts.HostModel, HostEffort: opts.HostEffort, Ambiguity: opts.Ambiguity,
 		Risk: opts.Risk, Scope: opts.Scope, Evidence: opts.Evidence, Reason: opts.Reason,

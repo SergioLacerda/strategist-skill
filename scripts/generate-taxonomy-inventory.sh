@@ -75,17 +75,22 @@ for stage in ("FULL", "SHORT", "ROSTER"):
 
 artifact_sources = {
     "stage_resolution": "internal/domain/stage_resolution_artifact.go",
-    "weapon_roster": "internal/domain/roster_artifacts.go",
-    "weapon_selection": "internal/domain/roster_artifacts.go",
+    "weapon_roster": "internal/domain/roster/roster_artifacts.go",
+    "weapon_selection": "internal/domain/roster/roster_artifacts.go",
     "role_loadout": "internal/domain/role_loadout.go",
-    "install_plan": "internal/domain/install_plan.go",
+    "install_plan": "internal/domain/installplan/install_plan.go",
     "confidence_report": "internal/domain/confidence_report_artifact.go",
     "role_source": "internal/domain/role_source_artifact.go",
     "weapon_binding": "internal/domain/weapon_binding_artifacts.go",
 }
+artifact_owners = {
+    "weapon_roster": "internal/domain/roster",
+    "weapon_selection": "internal/domain/roster",
+    "install_plan": "internal/domain/installplan",
+}
 for artifact_id, source in artifact_sources.items():
     entities.append(entity(
-        "artifact", artifact_id, "internal/domain", [source],
+        "artifact", artifact_id, artifact_owners.get(artifact_id, "internal/domain"), [source],
         [".strategist/", "docs/generated/"], provenance="canonical",
     ))
 

@@ -38,7 +38,7 @@ const (
 	// TargetJewelTrust dispatches to domain.ValidateJewelTrust — the safeguard
 	// that a jewel's trust tier may never exceed its parent chest's trust tier.
 	TargetJewelTrust Target = "jewel_trust"
-	// TargetCriticalHitTrigger dispatches to domain.EvaluateCriticalHit — the
+	// TargetCriticalHitTrigger dispatches to criticalhit.EvaluateCriticalHit — the
 	// plain-move/closure-move trigger conditions from
 	// contracts/machine/critical-hit.yaml#trigger_conditions.
 	TargetCriticalHitTrigger Target = "critical_hit_trigger"

@@ -43,7 +43,7 @@ func ValidateArchivistPackage(refinedDir string, presence FilePresence) error {
 // The error message always contains "slot_write_scope_violation" so callers and
 // BDD scenarios can match on that token.
 func ValidateSlotWrite(scope SlotWriteScope, attemptedPath string) error {
-	if !slotWritePathAllowed(scope.AllowedPrefix, attemptedPath) {
+	if !PathWithin(scope.AllowedPrefix, attemptedPath) {
 		return fmt.Errorf("slot_write_scope_violation: %s attempted write to %q (allowed prefix: %q)",
 			scope.SlotName, attemptedPath, scope.AllowedPrefix)
 	}
@@ -54,7 +54,10 @@ func ValidateSlotWrite(scope SlotWriteScope, attemptedPath string) error {
 	return nil
 }
 
-func slotWritePathAllowed(allowedPrefix, attemptedPath string) bool {
+// PathWithin reports whether attemptedPath is the same path as allowedPrefix
+// or a descendant of it, using the host filesystem's path semantics. It is a
+// pure boundary primitive shared by domain validators and executable Feats.
+func PathWithin(allowedPrefix, attemptedPath string) bool {
 	if attemptedPath == "" || allowedPrefix == "" {
 		return false
 	}

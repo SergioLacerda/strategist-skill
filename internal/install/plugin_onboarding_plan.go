@@ -3,9 +3,10 @@ package install
 import (
 	"fmt"
 
-	"github.com/SergioLacerda/strategist-skill/internal/application"
+	"github.com/SergioLacerda/strategist-skill/internal/application/installplan"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/plugins"
+	"github.com/SergioLacerda/strategist-skill/internal/tools/resolver"
 )
 
 func planPluginOnboardingWithModes(extractor domain.FileExtractor, catalog pluginCatalog, slots, modes map[string]string) (pluginOnboardingPlan, error) {
@@ -22,7 +23,7 @@ func planPluginOnboardingWithModes(extractor domain.FileExtractor, catalog plugi
 	if err != nil {
 		return pluginOnboardingPlan{}, fmt.Errorf("build Weapon Roster: %w", err)
 	}
-	installPlan, err := application.PlanInstall(application.InstallPlanInput{
+	installPlan, err := installplan.PlanInstall(installplan.Input{
 		Stage: domain.StageRoster, Slots: slots, SlotModes: modes,
 		Lock: lock, Bindings: inputs.Bindings,
 	})
@@ -68,7 +69,7 @@ func resolvePluginOnboardingInputs(catalog pluginCatalog, slots, modes map[strin
 	if err != nil {
 		return pluginOnboardingInputs{}, err
 	}
-	lock, err := plugins.Resolve(requirements, catalogResolverCandidates(resolvedCatalog))
+	lock, err := resolver.Resolve(requirements, catalogResolverCandidates(resolvedCatalog))
 	if err != nil {
 		return pluginOnboardingInputs{}, fmt.Errorf("resolve plugin lock: %w", err)
 	}
@@ -84,13 +85,13 @@ func resolvePluginOnboardingInputs(catalog pluginCatalog, slots, modes map[strin
 
 func appendRoleMigrationToLock(lock domain.PluginLock, migration RoleProviderMigrationPreview) domain.PluginLock {
 	lock.Nodes = appendRoleMigrationNodes(lock.Nodes, migration)
-	lock.GraphDigest = plugins.DigestLockNodes(lock.Nodes)
+	lock.GraphDigest = resolver.DigestLockNodes(lock.Nodes)
 	lock.ResolutionID = lock.GraphDigest
 	return lock
 }
 
-func onboardingRequirements(catalog pluginCatalog, slots map[string]string) ([]plugins.Requirement, error) {
-	requirements := make([]plugins.Requirement, 0, len(slots))
+func onboardingRequirements(catalog pluginCatalog, slots map[string]string) ([]resolver.Requirement, error) {
+	requirements := make([]resolver.Requirement, 0, len(slots))
 	for _, slot := range sortedSlotNames(slots) {
 		provider := slots[slot]
 		if provider == "" {
@@ -102,7 +103,7 @@ func onboardingRequirements(catalog pluginCatalog, slots map[string]string) ([]p
 		}
 		// The requirement pins the resolved id@version, so the resolver can never
 		// pick "the highest" of several catalogued versions.
-		requirements = append(requirements, plugins.Requirement{ID: resolved.ID, Kind: "adapter_contract", Constraint: providerVersionOrDefault(resolved.Version)})
+		requirements = append(requirements, resolver.Requirement{ID: resolved.ID, Kind: "adapter_contract", Constraint: providerVersionOrDefault(resolved.Version)})
 	}
 	return requirements, nil
 }

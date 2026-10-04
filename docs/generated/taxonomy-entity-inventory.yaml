@@ -39,11 +39,11 @@ entities:
   - docs/generated/
 - family: artifact
   id: install_plan
-  owner: internal/domain
+  owner: internal/domain/installplan
   lifecycle: active
   provenance: canonical
   source_paths:
-  - internal/domain/install_plan.go
+  - internal/domain/installplan/install_plan.go
   generated_paths:
   - .strategist/
   - docs/generated/
@@ -89,27 +89,27 @@ entities:
   - docs/generated/
 - family: artifact
   id: weapon_roster
-  owner: internal/domain
+  owner: internal/domain/roster
   lifecycle: active
   provenance: canonical
   source_paths:
-  - internal/domain/roster_artifacts.go
+  - internal/domain/roster/roster_artifacts.go
   generated_paths:
   - .strategist/
   - docs/generated/
 - family: artifact
   id: weapon_selection
-  owner: internal/domain
+  owner: internal/domain/roster
   lifecycle: active
   provenance: canonical
   source_paths:
-  - internal/domain/roster_artifacts.go
+  - internal/domain/roster/roster_artifacts.go
   generated_paths:
   - .strategist/
   - docs/generated/
 - family: feat
   id: critical_hit
-  owner: internal/domain
+  owner: internal/feats/critical_hit
   lifecycle: active
   provenance: embedded
   source_paths:
@@ -120,7 +120,7 @@ entities:
   - .strategist/contracts/machine/mechanisms.yaml
 - family: feat
   id: initiative
-  owner: internal/initiative;internal/mission
+  owner: internal/feats/initiative;internal/mission
   lifecycle: active
   provenance: embedded
   source_paths:
@@ -175,7 +175,7 @@ entities:
   - .strategist/contracts/machine/mechanisms.yaml
 - family: feat
   id: select_runbook
-  owner: internal/runbook
+  owner: internal/feats/select_runbook
   lifecycle: active
   provenance: embedded
   source_paths:
@@ -274,7 +274,7 @@ entities:
   - .strategist/contracts/machine/mechanisms.yaml
 - family: mechanism
   id: locks_transactions
-  owner: internal/plugins/lifecycle;internal/initiative
+  owner: internal/plugins/lifecycle;internal/feats/initiative
   lifecycle: active
   provenance: embedded
   source_paths:
@@ -432,7 +432,7 @@ entities:
   - .strategist/contracts/machine/scout-routing.yaml
 - family: tool
   id: leveling
-  owner: internal/leveling
+  owner: internal/tools/leveling
   lifecycle: active
   provenance: embedded
   source_paths:

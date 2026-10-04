@@ -1,6 +1,6 @@
 package main
 
-import "github.com/SergioLacerda/strategist-skill/internal/leveling"
+import "github.com/SergioLacerda/strategist-skill/internal/tools/leveling"
 
 func filterMissionLevelRecords(records []leveling.Record, mission string) []leveling.Record {
 	out := records[:0:0]

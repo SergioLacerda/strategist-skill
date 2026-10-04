@@ -9,10 +9,10 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/leveling"
 	"github.com/SergioLacerda/strategist-skill/internal/missionview"
-	"github.com/SergioLacerda/strategist-skill/internal/roles"
+	"github.com/SergioLacerda/strategist-skill/internal/roles/registry"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
+	"github.com/SergioLacerda/strategist-skill/internal/tools/leveling"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )

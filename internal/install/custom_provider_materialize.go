@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/plugins"
+	"github.com/SergioLacerda/strategist-skill/internal/tools/resolver"
 )
 
 const (
@@ -87,7 +87,7 @@ func bindCustomPackage(lock domain.PluginLockFile, providerID string, facts doma
 	next.Inventory.Instances = renameCustomInstance(lock.Inventory.Instances, providerID, facts, resolution)
 	next.Bindings = replaceSlotBinding(append([]domain.SlotBinding(nil), lock.Bindings...), evidence.Binding)
 	next.Lock.Nodes = replaceCustomNodes(lock.Lock.Nodes, providerID, evidence.Nodes)
-	next.Lock.GraphDigest = plugins.DigestLockNodes(next.Lock.Nodes)
+	next.Lock.GraphDigest = resolver.DigestLockNodes(next.Lock.Nodes)
 	next.Lock.ResolutionID = next.Lock.GraphDigest
 	return next, nil
 }

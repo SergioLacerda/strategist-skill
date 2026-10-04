@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/SergioLacerda/strategist-skill/internal/plugins"
+	"github.com/SergioLacerda/strategist-skill/internal/tools/resolver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -120,12 +120,12 @@ func TestPluginCatalogFeedsDeterministicResolverLock(t *testing.T) {
 	require.NoError(t, err)
 	candidates := catalogResolverCandidates(catalog)
 
-	first, err := plugins.Resolve([]plugins.Requirement{
+	first, err := resolver.Resolve([]resolver.Requirement{
 		{ID: "brainstorming", Kind: "adapter_contract", Constraint: ">=1 <2"},
 		{ID: "openspec-explore", Kind: "adapter_contract", Constraint: ">=1 <2"},
 	}, candidates)
 	require.NoError(t, err)
-	second, err := plugins.Resolve([]plugins.Requirement{
+	second, err := resolver.Resolve([]resolver.Requirement{
 		{ID: "openspec-explore", Kind: "adapter_contract", Constraint: ">=1 <2"},
 		{ID: "brainstorming", Kind: "adapter_contract", Constraint: ">=1 <2"},
 	}, reverseCatalogCandidates(candidates))
@@ -135,7 +135,7 @@ func TestPluginCatalogFeedsDeterministicResolverLock(t *testing.T) {
 	assert.Equal(t, "strategist-plugin-lock/v1", first.SchemaVersion)
 	assert.Len(t, first.Nodes, 2)
 	assert.Regexp(t, `^sha256:[a-f0-9]{64}$`, first.GraphDigest)
-	require.NoError(t, plugins.VerifyLock(first, candidates))
+	require.NoError(t, resolver.VerifyLock(first, candidates))
 }
 
 func TestPluginCatalogCandidateDigestTracksNormalizedManifest(t *testing.T) {
@@ -154,8 +154,8 @@ func TestPluginCatalogCandidateDigestTracksNormalizedManifest(t *testing.T) {
 	assert.Equal(t, fmt.Sprintf("sha256:%x", sum), catalogProviderDigest(provider))
 }
 
-func reverseCatalogCandidates(in []plugins.Candidate) []plugins.Candidate {
-	out := append([]plugins.Candidate(nil), in...)
+func reverseCatalogCandidates(in []resolver.Candidate) []resolver.Candidate {
+	out := append([]resolver.Candidate(nil), in...)
 	for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
 		out[i], out[j] = out[j], out[i]
 	}

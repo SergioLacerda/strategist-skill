@@ -4,9 +4,10 @@ import (
 	"errors"
 	"testing"
 
+	levelingapp "github.com/SergioLacerda/strategist-skill/internal/application/leveling"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/handoff"
-	leveling "github.com/SergioLacerda/strategist-skill/internal/leveling"
+	leveling "github.com/SergioLacerda/strategist-skill/internal/tools/leveling"
 	"github.com/stretchr/testify/require"
 )
 
@@ -245,25 +246,25 @@ func TestResolveLevelCoversReuseAndHostPassthrough(t *testing.T) {
 		return leveling.Policy{}, errors.New("policy must not load")
 	}
 
-	first, err := ResolveLevel(domain.DefaultRoleRegistry(), loader, domain.LevelingConfig{Mode: domain.LevelingModeManual}, ledger, LevelingInput{
+	first, err := levelingapp.ResolveLevel(domain.DefaultRoleRegistry(), loader, domain.LevelingConfig{Mode: domain.LevelingModeManual}, ledger, levelingapp.LevelingInput{
 		Mission: "m-1", Role: "RANGER", HostModel: "claude-sonnet-5", HostEffort: "high",
 	}, 0)
 	require.NoError(t, err)
 	require.True(t, first.Recorded)
 
-	reused, err := ResolveLevel(domain.DefaultRoleRegistry(), loader, domain.LevelingConfig{Mode: domain.LevelingModeManual}, ledger, LevelingInput{
+	reused, err := levelingapp.ResolveLevel(domain.DefaultRoleRegistry(), loader, domain.LevelingConfig{Mode: domain.LevelingModeManual}, ledger, levelingapp.LevelingInput{
 		Mission: "m-1", Role: "ranger",
 	}, 1)
 	require.NoError(t, err)
 	require.True(t, reused.Reused)
 
-	forced, err := ResolveLevel(domain.DefaultRoleRegistry(), loader, domain.LevelingConfig{Mode: domain.LevelingModeManual}, ledger, LevelingInput{
+	forced, err := levelingapp.ResolveLevel(domain.DefaultRoleRegistry(), loader, domain.LevelingConfig{Mode: domain.LevelingModeManual}, ledger, levelingapp.LevelingInput{
 		Mission: "m-1", Role: "ranger", Reason: "escalated",
 	}, 1)
 	require.NoError(t, err)
 	require.True(t, forced.Recorded)
 
-	gate, err := ResolveLevel(domain.DefaultRoleRegistry(), loader, domain.LevelingConfig{Mode: domain.LevelingModeManual}, ledger, LevelingInput{
+	gate, err := levelingapp.ResolveLevel(domain.DefaultRoleRegistry(), loader, domain.LevelingConfig{Mode: domain.LevelingModeManual}, ledger, levelingapp.LevelingInput{
 		Mission: "m-2", Role: "gate",
 	}, 1)
 	require.NoError(t, err)

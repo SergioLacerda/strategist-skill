@@ -13,6 +13,11 @@ operation. The presence of `.strategist/` and a `strategist check --json` result
 make Strategist available for inspection, but do not invoke it, start a mission,
 or change how an ordinary direct request is handled.
 
+A reference to a path under `.analysis/refined/` does not activate a Strategist
+mission. A local execution context is only a precondition; it is not proof of
+mission activation or approval. The parent-agent role lock begins only after an
+explicit Strategist invocation transitions the request into an active mission.
+
 ## ENTRYPOINT — after explicit invocation
 
 1. Verify `.strategist/` exists; otherwise emit `error=not_installed`.

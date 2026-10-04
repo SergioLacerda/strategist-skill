@@ -12,9 +12,9 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	embedpkg "github.com/SergioLacerda/strategist-skill/internal/embed"
-	"github.com/SergioLacerda/strategist-skill/internal/leveling"
-	"github.com/SergioLacerda/strategist-skill/internal/roles"
+	"github.com/SergioLacerda/strategist-skill/internal/roles/registry"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
+	"github.com/SergioLacerda/strategist-skill/internal/tools/leveling"
 )
 
 const roleLevelLedger = "role-levels.jsonl"

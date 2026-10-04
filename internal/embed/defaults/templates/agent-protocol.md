@@ -30,6 +30,18 @@ If the Weapon bound to a Role slot cannot be invoked, emit
 
 ---
 
+## 1a. ACTIVATION BOUNDARY
+
+An ordinary request remains direct unless the user explicitly invokes Strategist
+through its dedicated skill, a registered host slash command, or a `strategist
+mission` CLI operation. A reference to `.analysis/refined/` does not activate a
+mission. A local execution context is a precondition only; it does not prove
+mission activation or approval. Only an explicit Strategist invocation
+transitions the request into an active mission, and only then does the
+mission-only role lock apply.
+
+---
+
 ## 1b. PARENT AGENT BOUNDARY
 
 The parent agent is the transport for Strategist, not an implementation substitute

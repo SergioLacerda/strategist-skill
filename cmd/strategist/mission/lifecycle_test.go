@@ -187,7 +187,11 @@ func TestLifecycle_ContextMaterializesAndChecksDigest(t *testing.T) {
 
 func TestNew_ComposesIsolatedCompleteTree(t *testing.T) {
 	build := func() *cobra.Command {
-		return mission.New(lifecycleDeps(t), testDeps(), mission.NormalizeDependencies{RootFlag: cliutil.FlagRoot}, mission.ReportUsageDependencies{RootFlag: cliutil.FlagRoot})
+		return mission.New(mission.Composition{
+			Lifecycle: lifecycleDeps(t), View: testDeps(),
+			Normalize: mission.NormalizeDependencies{RootFlag: cliutil.FlagRoot},
+			Usage:     mission.ReportUsageDependencies{RootFlag: cliutil.FlagRoot},
+		})
 	}
 	first, second := build(), build()
 	assert.NotSame(t, first, second)

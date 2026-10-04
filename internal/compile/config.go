@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SergioLacerda/strategist-skill/internal/roles"
+	"github.com/SergioLacerda/strategist-skill/internal/roles/registry"
 )
 
 // Config reads active.yaml, personas/*.yaml and roles/*.yaml from root

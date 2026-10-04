@@ -4,8 +4,8 @@ package missionview
 
 import (
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/leveling"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
+	"github.com/SergioLacerda/strategist-skill/internal/tools/leveling"
 )
 
 // SchemaVersion identifies the versioned machine-readable mission view.

@@ -8,7 +8,17 @@ contract: null
 
 ## Goal
 
-Make it explicit to the user that all progress is happening inside a governed mission.
+When a Strategist mission is active, make its progress explicit to the user.
+
+## Entry-State Boundary
+
+Strategist-mediated response rules apply only after explicit Strategist
+activation through its dedicated skill, a registered host slash command, or a
+`strategist mission` CLI operation. A response must not infer active-mission
+status from a refined artifact path or local preflight result. A local execution
+context is a precondition, not evidence of activation or approval. Before
+activation, an ordinary request remains direct and the mission-only role lock
+does not apply.
 
 ## Final Envelope
 

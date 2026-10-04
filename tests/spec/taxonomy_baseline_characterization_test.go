@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/SergioLacerda/strategist-skill/internal/application"
+	"github.com/SergioLacerda/strategist-skill/internal/application/installplan"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/stretchr/testify/require"
@@ -20,7 +20,7 @@ func TestTaxonomyBaselineCharacterizesCommandAndInstallSurfaces(t *testing.T) {
 		require.True(t, strings.Contains(commandTree, command), "command tree must retain %q", command)
 	}
 
-	input := application.InstallPlanInput{
+	input := installplan.Input{
 		Stage:     domain.StageRoster,
 		Mode:      "wizard",
 		BasePath:  "/workspace",
@@ -28,10 +28,10 @@ func TestTaxonomyBaselineCharacterizesCommandAndInstallSurfaces(t *testing.T) {
 		SlotModes: map[string]string{"discovery": domain.SlotBindingModeCustom},
 		Bindings:  []domain.SlotBinding{{Slot: "discovery", InstalledInstanceID: "brainstorming"}},
 	}
-	wizardPlan, err := application.PlanInstall(input)
+	wizardPlan, err := installplan.PlanInstall(input)
 	require.NoError(t, err)
 	input.Mode = "headless"
-	headlessPlan, err := application.PlanInstall(input)
+	headlessPlan, err := installplan.PlanInstall(input)
 	require.NoError(t, err)
 	require.NotEqual(t, wizardPlan.PlanDigest, headlessPlan.PlanDigest)
 	require.NoError(t, wizardPlan.Validate())

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	missionadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -17,7 +18,7 @@ func TestReadMissionCompletionRejectsTrailingJSON(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.SetIn(strings.NewReader(`{"request_id":"inv_12345678","result":"ok"}{"request_id":"inv_87654321","result":"extra"}`))
 
-	_, err := readMissionCompletion(cmd)
+	_, err := missionadapter.ReadCompletion(cmd)
 	require.Error(t, err)
 	require.ErrorContains(t, err, "more than one object")
 }
@@ -26,7 +27,7 @@ func TestReadMissionCompletionRejectsMalformedTrailingData(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.SetIn(strings.NewReader(`{"request_id":"inv_12345678","result":"ok"} trailing`))
 
-	_, err := readMissionCompletion(cmd)
+	_, err := missionadapter.ReadCompletion(cmd)
 	require.Error(t, err)
 	require.ErrorContains(t, err, "trailing data")
 }
@@ -35,7 +36,7 @@ func TestReadMissionCompletionAcceptsOneObject(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.SetIn(strings.NewReader(`{"request_id":"inv_12345678","result":"ok"}`))
 
-	got, err := readMissionCompletion(cmd)
+	got, err := missionadapter.ReadCompletion(cmd)
 	require.NoError(t, err)
 	require.Equal(t, domain.MissionInvocationCompletion{RequestID: "inv_12345678", Result: "ok"}, got)
 }
@@ -44,7 +45,7 @@ func TestReadMissionCompletionRejectsDuplicateAndUnknownFields(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.SetIn(strings.NewReader(`{"request_id":"inv_12345678","request_id":"inv_87654321","result":"ok"}`))
 
-	_, err := readMissionCompletion(cmd)
+	_, err := missionadapter.ReadCompletion(cmd)
 
 	require.ErrorContains(t, err, "duplicate field")
 }

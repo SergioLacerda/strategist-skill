@@ -175,59 +175,6 @@ func TestRoleSourceArtifactValidationErrorCoverage(t *testing.T) {
 	}
 }
 
-func TestInstallPlanValidationErrorCoverage(t *testing.T) {
-	validSlots := map[string]string{"discovery": "brainstorming"}
-	validModes := map[string]string{"discovery": SlotBindingModeRanked}
-	validBindings := []SlotBinding{{Slot: "discovery", InstalledInstanceID: "brainstorming"}}
-	newPlan := func() InstallPlan {
-		plan, err := NewInstallPlan(StageRoster, "silent", "/workspace", validSlots, validModes, PluginLock{}, validBindings)
-		require.NoError(t, err)
-		return plan
-	}
-
-	for name, build := range map[string]func() (InstallPlan, error){
-		"invalid stage": func() (InstallPlan, error) {
-			return NewInstallPlan(StageFull, "silent", "/workspace", validSlots, validModes, PluginLock{}, validBindings)
-		},
-		"missing slots": func() (InstallPlan, error) {
-			return NewInstallPlan(StageRoster, "silent", "/workspace", nil, validModes, PluginLock{}, validBindings)
-		},
-		"missing bindings": func() (InstallPlan, error) {
-			return NewInstallPlan(StageRoster, "silent", "/workspace", validSlots, validModes, PluginLock{}, nil)
-		},
-		"empty slot": func() (InstallPlan, error) {
-			return NewInstallPlan(StageRoster, "silent", "/workspace", map[string]string{"": "brainstorming"}, nil, PluginLock{}, validBindings)
-		},
-		"orphan mode": func() (InstallPlan, error) {
-			return NewInstallPlan(StageRoster, "silent", "/workspace", validSlots, map[string]string{"execution": SlotBindingModeRanked}, PluginLock{}, validBindings)
-		},
-		"invalid mode": func() (InstallPlan, error) {
-			return NewInstallPlan(StageRoster, "silent", "/workspace", validSlots, map[string]string{"discovery": "future"}, PluginLock{}, validBindings)
-		},
-		"orphan binding": func() (InstallPlan, error) {
-			return NewInstallPlan(StageRoster, "silent", "/workspace", validSlots, nil, PluginLock{}, []SlotBinding{{Slot: "execution", InstalledInstanceID: "sniper"}})
-		},
-		"empty binding": func() (InstallPlan, error) {
-			return NewInstallPlan(StageRoster, "silent", "/workspace", validSlots, nil, PluginLock{}, []SlotBinding{{Slot: "discovery"}})
-		},
-		"duplicate binding": func() (InstallPlan, error) {
-			return NewInstallPlan(StageRoster, "silent", "/workspace", validSlots, nil, PluginLock{}, append(validBindings, validBindings[0]))
-		},
-	} {
-		t.Run(name, func(t *testing.T) {
-			_, err := build()
-			require.Error(t, err)
-		})
-	}
-
-	plan := newPlan()
-	plan.PlanDigest = ""
-	require.ErrorContains(t, plan.Validate(), "plan_digest is required")
-	plan = newPlan()
-	plan.PlanDigest = "sha256:tampered"
-	require.ErrorContains(t, plan.Validate(), "plan_digest mismatch")
-}
-
 func TestRoleLoadoutValidationErrorCoverage(t *testing.T) {
 	resolution, err := ResolveStage(StageResolutionRequest{Route: MissionRouteFullPipeline, Role: "ranger"})
 	require.NoError(t, err)
@@ -323,41 +270,6 @@ func TestConfidenceReportAndSummaryCalibrationCoverage(t *testing.T) {
 		{SchemaVersion: ConfidenceReportArtifactSchemaVersion, TaxonomyVersion: CanonicalTaxonomyVersion, Status: ConfidenceReportIncompatible},
 	} {
 		require.Error(t, candidate.Validate())
-	}
-}
-
-func TestRosterAndSelectionArtifactValidationCoverage(t *testing.T) {
-	entry := WeaponRosterEntry{Role: "ranger", Slot: "discovery", WeaponID: "brainstorming"}
-	artifact, err := NewWeaponRosterArtifact([]WeaponRosterEntry{entry})
-	require.NoError(t, err)
-	require.NoError(t, artifact.Validate())
-
-	for _, candidate := range []WeaponRosterArtifact{
-		{SchemaVersion: "bad", TaxonomyVersion: CanonicalTaxonomyVersion, Stage: StageRoster, Entries: []WeaponRosterEntry{entry}},
-		{SchemaVersion: WeaponRosterArtifactSchemaVersion, TaxonomyVersion: "bad", Stage: StageRoster, Entries: []WeaponRosterEntry{entry}},
-		{SchemaVersion: WeaponRosterArtifactSchemaVersion, TaxonomyVersion: CanonicalTaxonomyVersion, Stage: StageFull, Entries: []WeaponRosterEntry{entry}},
-		{SchemaVersion: WeaponRosterArtifactSchemaVersion, TaxonomyVersion: CanonicalTaxonomyVersion, Stage: StageRoster},
-		{SchemaVersion: WeaponRosterArtifactSchemaVersion, TaxonomyVersion: CanonicalTaxonomyVersion, Stage: StageRoster, Entries: []WeaponRosterEntry{entry, entry}},
-		{SchemaVersion: WeaponRosterArtifactSchemaVersion, TaxonomyVersion: CanonicalTaxonomyVersion, Stage: StageRoster, Entries: []WeaponRosterEntry{{Role: "", Slot: "discovery", WeaponID: "brainstorming"}}},
-	} {
-		require.Error(t, candidate.Validate())
-	}
-	missingDigest := artifact
-	missingDigest.Digest = ""
-	require.ErrorContains(t, missingDigest.Validate(), "digest is required")
-	tampered := artifact
-	tampered.Digest = "sha256:tampered"
-	require.ErrorContains(t, tampered.Validate(), "digest mismatch")
-
-	validSelection := WeaponSelectionArtifact{SchemaVersion: WeaponSelectionArtifactSchemaVersion, TaxonomyVersion: CanonicalTaxonomyVersion, Stage: StageRoster, Role: "ranger", Slot: "discovery", Status: "selected"}
-	require.NoError(t, validSelection.Validate())
-	for _, candidate := range []WeaponSelectionArtifact{
-		{SchemaVersion: "bad", TaxonomyVersion: CanonicalTaxonomyVersion, Stage: StageRoster, Role: "ranger", Slot: "discovery", Status: "selected"},
-		{SchemaVersion: WeaponSelectionArtifactSchemaVersion, TaxonomyVersion: "bad", Stage: StageRoster, Role: "ranger", Slot: "discovery", Status: "selected"},
-		{SchemaVersion: WeaponSelectionArtifactSchemaVersion, TaxonomyVersion: CanonicalTaxonomyVersion, Stage: StageFull, Role: "ranger", Slot: "discovery", Status: "selected"},
-		{SchemaVersion: WeaponSelectionArtifactSchemaVersion, TaxonomyVersion: CanonicalTaxonomyVersion, Stage: StageRoster},
-	} {
-		assert.Error(t, candidate.Validate())
 	}
 }
 

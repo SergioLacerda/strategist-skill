@@ -5,9 +5,12 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/plugins"
+	"github.com/SergioLacerda/strategist-skill/internal/tools/resolver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+const resolverDigestB1 = "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
 
 func rangerRole() domain.RoleContract {
 	return domain.RoleContract{
@@ -171,8 +174,8 @@ func TestRoleBindingLockNodeIsDeterministicAndParticipatesInLockDigest(t *testin
 
 	// The binding node hashes into the same digest-pinned lock graph as any
 	// other resolved resource — no parallel lock store (Decision 4).
-	otherNode := domain.PluginLockNode{ID: "adapter/b", Kind: "adapter_contract", Digest: digestB1}
-	combined := plugins.DigestLockNodes([]domain.PluginLockNode{nodeA, otherNode})
+	otherNode := domain.PluginLockNode{ID: "adapter/b", Kind: "adapter_contract", Digest: resolverDigestB1}
+	combined := resolver.DigestLockNodes([]domain.PluginLockNode{nodeA, otherNode})
 	require.NotEmpty(t, combined)
 	assert.Regexp(t, `^sha256:[a-f0-9]{64}$`, combined)
 }

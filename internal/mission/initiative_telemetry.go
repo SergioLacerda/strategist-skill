@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/SergioLacerda/strategist-skill/internal/initiative"
+	"github.com/SergioLacerda/strategist-skill/internal/feats/initiative"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
 

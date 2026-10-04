@@ -6,7 +6,8 @@ import "strings"
 // signal vocabulary below (canonicalSignal consts + signalAliases). Bump it
 // whenever a canonical term is added, removed, or has its alias set
 // changed materially, so callers pinning behavior (e.g. the golden
-// selection tests in select_runbook_golden_test.go) have an explicit
+// selection tests in internal/feats/select_runbook/select_runbook_golden_test.go)
+// have an explicit
 // signal that the vocabulary — not just the code around it — has drifted.
 const SignalVocabularyVersion = 2
 
@@ -123,6 +124,13 @@ func canonicalSignalsIn(text string) map[CanonicalSignal]bool {
 	return found
 }
 
+// CanonicalSignalsIn resolves free text to the controlled signal vocabulary.
+// Selection Feats may use this domain-level normalization without owning the
+// runbook sidecar schema or duplicating the vocabulary.
+func CanonicalSignalsIn(text string) map[CanonicalSignal]bool {
+	return canonicalSignalsIn(text)
+}
+
 func canonicalSignalMatches(text string, canonical CanonicalSignal, aliases []string) bool {
 	if strings.Contains(text, string(canonical)) {
 		return true
@@ -144,4 +152,9 @@ func sharesCanonicalSignal(a, b map[CanonicalSignal]bool) bool {
 		}
 	}
 	return false
+}
+
+// SharesCanonicalSignal reports whether two resolved signal sets overlap.
+func SharesCanonicalSignal(a, b map[CanonicalSignal]bool) bool {
+	return sharesCanonicalSignal(a, b)
 }

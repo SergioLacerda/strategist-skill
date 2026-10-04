@@ -278,10 +278,19 @@ func TestEmbeddedSkillRankedInvocationProtocol(t *testing.T) {
 	assert.Contains(t, text, "`mission invoke` is not its executor")
 	assert.NotContains(t, text, "load the configured provider from `.strategist/skills/<provider>/`")
 	assert.Contains(t, text, "not the runtime source for Ranked Embedded invocation")
+	assert.Contains(t, text, "A reference to a path under `.analysis/refined/` does not activate a Strategist\nmission")
+	assert.Contains(t, text, "local execution context is only a precondition")
 
 	protocol, err := embedpkg.Extractor{}.ReadFile("templates/agent-protocol.md")
 	require.NoError(t, err)
 	assert.Contains(t, string(protocol), "Start each mission with `strategist mission start --mission-id <id>`")
 	assert.Contains(t, string(protocol), "submit `bootstrap_done` before recording a route")
 	assert.Contains(t, string(protocol), "For `runtime.kind: openspec_root`")
+	assert.Contains(t, string(protocol), "A reference to `.analysis/refined/` does not activate a\nmission")
+	assert.Contains(t, string(protocol), "Only an explicit Strategist invocation\ntransitions the request into an active mission")
+
+	response, err := embedpkg.Extractor{}.ReadFile("contracts/narrative/09-response.md")
+	require.NoError(t, err)
+	assert.Contains(t, string(response), "## Entry-State Boundary")
+	assert.Contains(t, string(response), "must not infer active-mission\nstatus from a refined artifact path or local preflight result")
 }

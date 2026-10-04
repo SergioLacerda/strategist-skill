@@ -19,6 +19,29 @@ Callers delegate a request to Strategist as a single skill. Strategist decides t
 
 **No code mutation, ever.** "Execution" in Strategist means materializing documentation, handoffs, or analysis artifacts. It never means changing source code or running git mutations.
 
+## System-boundary package ownership
+
+The six system-boundary packages are related by infrastructure context, not by
+one implementation responsibility. They may later be grouped under the
+`internal/system/<package>` namespace, but each remains an independent Go
+package with its own API, tests, and owner.
+
+`integrity` and `stale` are separate detectors. `integrity` checks trusted
+configuration and compiled-runtime integrity; `stale` checks derived-artifact
+and source-lineage freshness. Similar fingerprint inputs do not merge their
+detector ownership or semantics.
+
+`check` remains the Cobra-facing preflight orchestrator. It composes checks and
+reports readiness, but it is not a generic domain validator. `catalog` remains
+the catalog adapter: it decodes catalog data and delegates semantic validation
+to domain contracts; it does not become the validator implementation.
+
+`filelock` remains the lowest-level cross-platform process-lock mechanism, and
+`validate` remains the filesystem/YAML/configuration input boundary. No package
+may acquire sibling dependencies solely because these packages share a future
+namespace. Physical import-path relocation requires a separate approved
+migration and must preserve these ownership and isolation rules.
+
 ## Canonical Taxonomy
 
 The public vocabulary has seven families, fixed by

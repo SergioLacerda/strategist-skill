@@ -5,7 +5,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/SergioLacerda/strategist-skill/internal/application"
+	authorizationapp "github.com/SergioLacerda/strategist-skill/internal/application/authorization"
 	"github.com/SergioLacerda/strategist-skill/internal/authorization"
 	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
 	"github.com/spf13/cobra"
@@ -59,10 +59,10 @@ func RunAuthorize(out io.Writer, opts AuthorizeOptions) error {
 	if err != nil {
 		return fmt.Errorf("plugins authorize: resolve Strategist root: %w", err)
 	}
-	report, reportErr := application.Authorize(application.AuthorizationRequest{
+	report, reportErr := authorizationapp.Authorize(authorizationapp.AuthorizationRequest{
 		Root: root, Target: opts.Target, MissionID: opts.MissionID,
 		ApprovalGate: opts.ApprovalGate, ExecutionGate: opts.ExecutionGate,
-	}, func(request application.AuthorizationRequest) (application.AuthorizationReport, error) {
+	}, func(request authorizationapp.AuthorizationRequest) (authorizationapp.AuthorizationReport, error) {
 		authorizationReport, buildErr := authorization.Build(authorization.Request{
 			Root: request.Root, Target: request.Target, MissionID: request.MissionID,
 			ApprovalGate: request.ApprovalGate, ExecutionGate: request.ExecutionGate,
@@ -79,14 +79,14 @@ func RunAuthorize(out io.Writer, opts AuthorizeOptions) error {
 }
 
 //nolint:dupl // bidirectional DTO adapters intentionally mirror the report fields.
-func applicationAuthorizationReport(report authorization.Report) application.AuthorizationReport {
-	dimensions := mapAuthorizationDimensions(report.Dimensions, func(dimension authorization.Dimension) application.AuthorizationDimension {
-		return application.AuthorizationDimension{
+func applicationAuthorizationReport(report authorization.Report) authorizationapp.AuthorizationReport {
+	dimensions := mapAuthorizationDimensions(report.Dimensions, func(dimension authorization.Dimension) authorizationapp.AuthorizationDimension {
+		return authorizationapp.AuthorizationDimension{
 			Name: dimension.Name, Status: dimension.Status, EvidenceState: dimension.EvidenceState,
 			ReasonCode: dimension.ReasonCode, Detail: dimension.Detail, Required: dimension.Required,
 		}
 	})
-	return application.AuthorizationReport{
+	return authorizationapp.AuthorizationReport{
 		SchemaVersion: report.SchemaVersion, GeneratedAt: report.GeneratedAt, Root: report.Root,
 		Target: report.Target, MissionID: report.MissionID, Role: report.Role,
 		Provider: report.Provider, Permission: report.Permission, Decision: report.Decision,
@@ -96,8 +96,8 @@ func applicationAuthorizationReport(report authorization.Report) application.Aut
 }
 
 //nolint:dupl // bidirectional DTO adapters intentionally mirror the report fields.
-func authorizationReport(report application.AuthorizationReport) authorization.Report {
-	dimensions := mapAuthorizationDimensions(report.Dimensions, func(dimension application.AuthorizationDimension) authorization.Dimension {
+func authorizationReport(report authorizationapp.AuthorizationReport) authorization.Report {
+	dimensions := mapAuthorizationDimensions(report.Dimensions, func(dimension authorizationapp.AuthorizationDimension) authorization.Dimension {
 		return authorization.Dimension{
 			Name: dimension.Name, Status: dimension.Status, EvidenceState: dimension.EvidenceState,
 			ReasonCode: dimension.ReasonCode, Detail: dimension.Detail, Required: dimension.Required,

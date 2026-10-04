@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/SergioLacerda/strategist-skill/internal/plugins"
+	"github.com/SergioLacerda/strategist-skill/internal/tools/resolver"
 )
 
 func generateKnownProvidersYAML(catalog pluginCatalog) []byte {
@@ -24,14 +24,14 @@ func generateKnownProvidersYAML(catalog pluginCatalog) []byte {
 	return buf.Bytes()
 }
 
-func catalogResolverCandidates(catalog pluginCatalog) []plugins.Candidate {
+func catalogResolverCandidates(catalog pluginCatalog) []resolver.Candidate {
 	providers := append([]pluginCatalogProvider(nil), catalog.Providers...)
 	sort.Slice(providers, func(i, j int) bool {
 		return providers[i].ID < providers[j].ID
 	})
-	candidates := make([]plugins.Candidate, 0, len(providers))
+	candidates := make([]resolver.Candidate, 0, len(providers))
 	for _, provider := range providers {
-		candidates = append(candidates, plugins.Candidate{
+		candidates = append(candidates, resolver.Candidate{
 			ID:           provider.ID,
 			Kind:         "adapter_contract",
 			Version:      providerVersionOrDefault(provider.Version),
@@ -66,10 +66,10 @@ func catalogProviderDigest(provider pluginCatalogProvider) string {
 	return fmt.Sprintf("sha256:%x", sum)
 }
 
-func catalogDependencies(dependencies []pluginCatalogDependency) []plugins.Dependency {
-	out := make([]plugins.Dependency, 0, len(dependencies))
+func catalogDependencies(dependencies []pluginCatalogDependency) []resolver.Dependency {
+	out := make([]resolver.Dependency, 0, len(dependencies))
 	for _, dep := range dependencies {
-		out = append(out, plugins.Dependency{
+		out = append(out, resolver.Dependency{
 			ID:         dep.ID,
 			Kind:       dep.Kind,
 			Constraint: dep.Constraint,

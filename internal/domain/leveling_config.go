@@ -12,7 +12,7 @@ const (
 )
 
 // LevelingEffortTiers are the effort tiers accepted from a host report. They
-// mirror internal/leveling's tier catalog (a parity test guards drift).
+// mirror internal/tools/leveling's tier catalog (a parity test guards drift).
 var LevelingEffortTiers = []string{"none", "low", "medium", "high", "xhigh", "max"}
 
 // LevelingConfig is the optional `leveling:` block of active.yaml. An absent

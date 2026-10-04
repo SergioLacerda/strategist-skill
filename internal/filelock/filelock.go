@@ -1,7 +1,7 @@
 // Package filelock provides a cross-platform exclusive file lock used to
 // guard a read-modify-write critical section against concurrent CLI
 // invocations on the same machine. It is generalized from
-// internal/leveling's own ledger lock (ADR-0057 § D2) so mission-state
+// internal/tools/leveling's own ledger lock (ADR-0057 § D2) so mission-state
 // persistence and any future caller share one implementation instead of
 // duplicating the Unix/Windows split.
 //

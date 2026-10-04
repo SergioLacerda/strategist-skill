@@ -252,7 +252,7 @@ func TestRawCompletionJSONCannotCarryAnAdapterClaim(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.SetIn(strings.NewReader(`{"request_id":"inv_x","result":"body","execution_adapter":"codex_child","adapter":"claude_child","capability_isolation":"verified"}`))
 
-	completion, err := readMissionCompletion(cmd)
+	completion, err := missionadapter.ReadCompletion(cmd)
 
 	require.NoError(t, err)
 	require.Equal(t, domain.MissionInvocationCompletion{RequestID: "inv_x", Result: "body"}, completion)

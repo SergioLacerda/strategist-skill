@@ -9,8 +9,12 @@ import (
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/application"
+	"github.com/SergioLacerda/strategist-skill/internal/application/digest"
+	"github.com/SergioLacerda/strategist-skill/internal/application/installplan"
+	levelingapp "github.com/SergioLacerda/strategist-skill/internal/application/leveling"
+	metricsapp "github.com/SergioLacerda/strategist-skill/internal/application/metrics"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	leveling "github.com/SergioLacerda/strategist-skill/internal/leveling"
+	leveling "github.com/SergioLacerda/strategist-skill/internal/tools/leveling"
 	"github.com/stretchr/testify/require"
 )
 
@@ -93,17 +97,17 @@ func TestInvocationBoundaryFailureBranches(t *testing.T) {
 func TestLevelingFailureAndReuseBranches(t *testing.T) {
 	root := t.TempDir()
 	ledger := filepath.Join(root, "levels.jsonl")
-	_, err := application.ResolveLevel(domain.DefaultRoleRegistry(), func() (leveling.Policy, error) {
+	_, err := levelingapp.ResolveLevel(domain.DefaultRoleRegistry(), func() (leveling.Policy, error) {
 		return leveling.Policy{}, nil
-	}, domain.LevelingConfig{}, ledger, application.LevelingInput{Mission: "m-1", Role: "ranger"}, 1)
+	}, domain.LevelingConfig{}, ledger, levelingapp.LevelingInput{Mission: "m-1", Role: "ranger"}, 1)
 	require.NoError(t, err)
-	_, err = application.ResolveLevel(domain.DefaultRoleRegistry(), func() (leveling.Policy, error) {
+	_, err = levelingapp.ResolveLevel(domain.DefaultRoleRegistry(), func() (leveling.Policy, error) {
 		return leveling.Policy{}, errors.New("policy unavailable")
-	}, domain.LevelingConfig{}, filepath.Join(root, "broken", "levels.jsonl"), application.LevelingInput{Role: "ranger", Provider: "p"}, 1)
+	}, domain.LevelingConfig{}, filepath.Join(root, "broken", "levels.jsonl"), levelingapp.LevelingInput{Role: "ranger", Provider: "p"}, 1)
 	require.NoError(t, err)
 	badLedger := filepath.Join(root, "bad")
 	require.NoError(t, os.WriteFile(badLedger, []byte("not-json\n"), 0o600))
-	_, err = application.ResolveLevel(domain.DefaultRoleRegistry(), func() (leveling.Policy, error) { return leveling.Policy{}, nil }, domain.LevelingConfig{}, badLedger, application.LevelingInput{Mission: "m-1", Role: "ranger"}, 1)
+	_, err = levelingapp.ResolveLevel(domain.DefaultRoleRegistry(), func() (leveling.Policy, error) { return leveling.Policy{}, nil }, domain.LevelingConfig{}, badLedger, levelingapp.LevelingInput{Mission: "m-1", Role: "ranger"}, 1)
 	require.NoError(t, err)
 }
 
@@ -114,24 +118,24 @@ func (failingConfidenceRecorder) RecordMissing(string, string) error {
 }
 
 func TestApplicationAdapterFailureBranches(t *testing.T) {
-	_, err := application.PlanInstall(application.InstallPlanInput{Stage: domain.StageFull})
+	_, err := installplan.PlanInstall(installplan.Input{Stage: domain.StageFull})
 	require.Error(t, err)
 
-	require.Error(t, application.RecordMissingConfidence(nil, application.MissingConfidenceInput{}))
-	require.Error(t, application.RecordMissingConfidence(failingConfidenceRecorder{}, application.MissingConfidenceInput{
+	require.Error(t, metricsapp.RecordMissingConfidence(nil, metricsapp.MissingConfidenceInput{}))
+	require.Error(t, metricsapp.RecordMissingConfidence(failingConfidenceRecorder{}, metricsapp.MissingConfidenceInput{
 		CorrelationKey: "boundary", Reason: "not produced",
 	}))
 
-	_, err = application.ResolveDigestInput("", "skill.md", nil)
+	_, err = digest.ResolveDigestInput("", "skill.md", nil)
 	require.Error(t, err)
-	_, err = application.ResolveDigestInput("", "skill.md", func(string) (string, error) {
+	_, err = digest.ResolveDigestInput("", "skill.md", func(string) (string, error) {
 		return "", errors.New("hash failed")
 	})
 	require.Error(t, err)
-	got, err := application.ResolveDigestInput("sha256:flag", "  ", nil)
+	got, err := digest.ResolveDigestInput("sha256:flag", "  ", nil)
 	require.NoError(t, err)
 	require.Equal(t, "sha256:flag", got)
-	_, err = application.CompareResolvedDigest("provider", "digest", nil)
+	_, err = digest.CompareResolvedDigest("provider", "digest", nil)
 	require.Error(t, err)
 
 	_, err = application.RecordMissionTokenUsage("root", "base", application.MissionTokenUsageInput{}, time.Time{}, application.MissionTokenUsagePorts{})

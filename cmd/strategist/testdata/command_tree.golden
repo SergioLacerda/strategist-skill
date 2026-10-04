@@ -605,7 +605,8 @@ use: select
 short: Select applicable runbooks for the given mission signals
 long: |
   Scores docs/runbooks/*.runbook.yaml sidecars against mission signals via
-  internal/runbook.Select(), bounded by internal/runbook.DefaultSelectionPolicy()
+  internal/feats/select_runbook.Select(), bounded by
+  internal/feats/select_runbook.DefaultSelectionPolicy()
   (at most one primary, at most two supporting runbooks, each with a non-empty
   match reason). This is the select_runbook ability's concrete implementation
   (see .strategist/roles/ranger.yaml#canonical.select_runbook and

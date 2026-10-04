@@ -116,6 +116,39 @@ internal/
     testutil.go          MinimalRoot, temporary directory fixtures
 ```
 
+### System-boundary namespace contract
+
+The repository may use `internal/system/<package>` as a filesystem and import
+namespace for independently owned system-boundary packages. The bounded
+membership set is:
+
+| Package | Ownership |
+|---------|-----------|
+| `catalog` | YAML catalog adaptation and delegation to domain semantic contracts |
+| `check` | Cobra wiring and preflight orchestration |
+| `filelock` | Cross-platform process-lock mechanism |
+| `integrity` | Trusted configuration and compiled-runtime integrity detection |
+| `stale` | Derived-artifact and source-lineage detection |
+| `validate` | Filesystem, YAML, and configuration input validation |
+
+This is a namespace contract, not an aggregate Go package: each member keeps
+its own package API, tests, owner, and dependency direction. Membership is
+limited to a system-boundary package with an independently reviewable
+responsibility; new members require an explicit architecture decision and a
+written rationale. The namespace must not become a generic utilities bucket.
+
+Sibling isolation remains mandatory. Packages in the namespace must not import
+one another merely because they share a directory; dependencies must point to
+lower-level neutral primitives, domain contracts, or approved adapters. In
+particular, `integrity` and `stale` remain separate detectors, while `check`
+continues to orchestrate preflight and `catalog` continues to adapt catalog
+data rather than becoming a validator implementation.
+
+The physical relocation to this namespace is deliberately not performed by
+this evaluation. Current import paths remain authoritative until a separate,
+explicitly approved migration updates consumers, generated inventories, and
+architecture checks together.
+
 ---
 
 ## Installation Flow

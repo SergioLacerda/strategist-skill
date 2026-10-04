@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	domainroster "github.com/SergioLacerda/strategist-skill/internal/domain/roster"
 	"github.com/SergioLacerda/strategist-skill/internal/roster"
 	"github.com/stretchr/testify/require"
 )
@@ -11,13 +12,13 @@ import (
 func TestPlanIsReadOnlyAndValidatesSelectionArtifacts(t *testing.T) {
 	t.Parallel()
 
-	entries := []domain.WeaponRosterEntry{{
+	entries := []domainroster.WeaponRosterEntry{{
 		Role: "ranger", Slot: "discovery", WeaponID: "brainstorming",
 		WeaponVersion: "1.0.0", Source: "embedded", Materialization: "embedded",
 		Compatible: true, Selected: true,
 	}}
-	selections := []domain.WeaponSelectionArtifact{{
-		SchemaVersion:   domain.WeaponSelectionArtifactSchemaVersion,
+	selections := []domainroster.WeaponSelectionArtifact{{
+		SchemaVersion:   domainroster.WeaponSelectionArtifactSchemaVersion,
 		TaxonomyVersion: domain.CanonicalTaxonomyVersion, Stage: domain.StageRoster,
 		Role: "ranger", Slot: "discovery", WeaponID: "brainstorming",
 		WeaponVersion: "1.0.0", Status: "selected",
@@ -34,9 +35,9 @@ func TestPlanIsReadOnlyAndValidatesSelectionArtifacts(t *testing.T) {
 func TestPlanRejectsInvalidSelection(t *testing.T) {
 	t.Parallel()
 
-	_, _, err := roster.Plan([]domain.WeaponRosterEntry{{
+	_, _, err := roster.Plan([]domainroster.WeaponRosterEntry{{
 		Role: "ranger", Slot: "discovery", WeaponID: "brainstorming",
-	}}, []domain.WeaponSelectionArtifact{{Stage: domain.StageRoster}})
+	}}, []domainroster.WeaponSelectionArtifact{{Stage: domain.StageRoster}})
 	require.ErrorContains(t, err, "roster: validate selection")
 }
 

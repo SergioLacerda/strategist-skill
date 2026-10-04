@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	criticalhit "github.com/SergioLacerda/strategist-skill/internal/feats/critical_hit"
 	chestdomain "github.com/SergioLacerda/strategist-skill/treasure-chest/domain"
 )
 
@@ -78,8 +79,8 @@ func runJewelTrustScenario(s Scenario, res *ScenarioResult) {
 
 func runCriticalHitTriggerScenario(s Scenario, res *ScenarioResult) {
 	p := s.Input.Params
-	evidence := domain.CriticalHitEvidence{
-		Mode:                           domain.CriticalHitMode(paramString(p, "mode")),
+	evidence := criticalhit.Evidence{
+		Mode:                           criticalhit.Mode(paramString(p, "mode")),
 		TaskType:                       paramString(p, "task_type"),
 		SourcePath:                     paramString(p, "source_path"),
 		TargetPath:                     paramString(p, "target_path"),
@@ -93,7 +94,7 @@ func runCriticalHitTriggerScenario(s Scenario, res *ScenarioResult) {
 		PartialImplementationWithDeclaredResiduals: paramBool(p, "partial_implementation_with_declared_residuals"),
 	}
 
-	decision := domain.EvaluateCriticalHit(evidence)
+	decision := criticalhit.EvaluateCriticalHit(evidence)
 	actualStatus := "blocked"
 	if decision.Allowed {
 		actualStatus = "allowed"
