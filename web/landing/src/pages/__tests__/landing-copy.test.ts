@@ -115,6 +115,19 @@ describe('landing documentation-only copy', () => {
     }
   });
 
+  it('epic allies cards expose the supplied professional links', () => {
+    const source = readPage('src/pages/epic.astro');
+    for (const url of [
+      'https://www.linkedin.com/in/anderson-melo-b3439b3a/',
+      'https://github.com/Melo-Anderson',
+      'https://www.linkedin.com/in/raphael-vernil-0590a5142/',
+      'https://github.com/',
+    ]) {
+      expect(source).toContain(url);
+    }
+    expect(source).toContain('GitHub (perfil a localizar)');
+  });
+
   it('PT/EN parity: Scout badge, Index/Mine wording, and Jewels disclosure have both data-pt and data-en', () => {
     const source = readPage('src/pages/epic.astro');
     // crude parity check: every data-pt on a line introduced by this mission has a sibling data-en
