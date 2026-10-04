@@ -32,6 +32,11 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `verify` — Verify a Handoff Challenge acknowledgment and record the result
 - `help` — Help about any command
 - `install` — Install the Strategist skill into a target repository
+- `integrations` — Inspect and change the optional external provider integration
+  - `disable` — Record the decision not to use the provider; recorded outcomes and settings are kept
+  - `doctor` — Report declared, bound, enabled, compatible and available state without calling the provider
+  - `enable` — Record the decision to use the provider (documented defaults, credential stays a reference)
+  - `probe` — Send one synthetic, non-mission message to record availability
 - `leveling` — Suggest model and effort by role
   - `label` — Resolve and record the model/effort label shown on a role's log lines
   - `suggest` — Suggest a model and effort for a role
