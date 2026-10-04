@@ -103,7 +103,7 @@ describe('landing documentation-only copy', () => {
     // Scout's role card carries the "interno"/"internal" badge
     expect(source).toContain('badgePt="interno"');
     // The Mission Flow phase list (fase 0X) must not include Scout as a numbered phase
-    const missionFlowSection = source.split('data-panel="mission"')[1]?.split('</section>')[0] ?? '';
+    const missionFlowSection = source.split('<MissionPanel')[1]?.split('</section>')[0] ?? '';
     expect(missionFlowSection).not.toContain('>Scout<');
   });
 
@@ -121,11 +121,16 @@ describe('landing documentation-only copy', () => {
       'https://www.linkedin.com/in/anderson-melo-b3439b3a/',
       'https://github.com/Melo-Anderson',
       'https://www.linkedin.com/in/raphael-vernil-0590a5142/',
-      'https://github.com/',
+      'https://github.com/raphaelvro',
     ]) {
       expect(source).toContain(url);
     }
-    expect(source).toContain('GitHub (perfil a localizar)');
+  });
+
+  it('uses the canonical PT-BR spelling Riposte', () => {
+    const source = readFileSync(resolve(root, 'src/data/features.ts'), 'utf8');
+    expect(source).toContain('Acerto crítico & Riposte');
+    expect(source).not.toContain('Acerto crítico & Riposta');
   });
 
   it('PT/EN parity: Scout badge, Index/Mine wording, and Jewels disclosure have both data-pt and data-en', () => {
@@ -139,5 +144,23 @@ describe('landing documentation-only copy', () => {
     for (const line of disclosureLines) {
       expect(line, `line missing data-en: ${line}`).toContain('data-en=');
     }
+  });
+
+  it('removes legacy landing compatibility paths', () => {
+    const source = readPage('src/pages/epic.astro');
+    const styles = readFileSync(resolve(root, 'src/styles/global.css'), 'utf8');
+    const structure = readFileSync(resolve(root, 'src/data/structure.ts'), 'utf8');
+    const features = readFileSync(resolve(root, 'src/data/features.ts'), 'utf8');
+
+    expect(source).not.toContain('role-fixed');
+    expect(source).not.toContain('role.fixed');
+    expect(source).not.toContain("target.matches('nav button')");
+    expect(source).toContain('role.internal');
+    expect(styles).not.toContain('feature-party');
+    expect(styles).not.toContain('role-fixed');
+    expect(structure).not.toContain('fixed?:');
+    expect(structure).not.toContain('fixed: true');
+    expect(features).not.toContain('ROLE_GLYPHS');
+    expect(features).not.toContain('party:');
   });
 });

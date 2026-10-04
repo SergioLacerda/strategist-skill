@@ -11,7 +11,7 @@ describe('FeaturesPanel', () => {
   it('renders eight supported features and starts with the first one', () => {
     render(<FeaturesPanel />);
     expect(document.querySelectorAll('.feature-tile')).toHaveLength(8);
-    expect(screen.getByRole('heading', { name: /Baú do Tesouro/ })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /Baú do tesouro/i })).toBeTruthy();
   });
 
   it('persists the selected feature and falls back from an unknown id', () => {
@@ -25,6 +25,12 @@ describe('FeaturesPanel', () => {
   it('updates dynamic content when the language event is dispatched', async () => {
     render(<FeaturesPanel />);
     await act(async () => window.dispatchEvent(new CustomEvent('strategist:lang', { detail: 'en' })));
-    expect(screen.getByRole('heading', { name: /Treasure Chest/ })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /Treasure chest/i })).toBeTruthy();
+  });
+
+  it('selects a feature when another landing panel links to it', async () => {
+    render(<FeaturesPanel />);
+    await act(async () => window.dispatchEvent(new CustomEvent('strategist:feature', { detail: 'opportunity' })));
+    expect(screen.getByRole('heading', { name: /Ataque de oportunidade/i })).toBeTruthy();
   });
 });

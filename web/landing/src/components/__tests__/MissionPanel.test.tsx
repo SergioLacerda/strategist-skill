@@ -27,7 +27,8 @@ describe('MissionPanel', () => {
   it('renders Approval Gate details when its phase opens', () => {
     render(<MissionPanel />);
     fireEvent.click(screen.getAllByRole('button', { name: /fase|phase/i })[2]);
-    expect(document.querySelector('.gate-card strong')?.textContent).toBe('Approval Gate');
-    expect(screen.getByText(/Aceitação humana antes/)).toBeTruthy();
+    expect(document.querySelector('.gate-panel-visual')).toBeTruthy();
+    expect(screen.getByText(/REQUER ::/)).toBeTruthy();
+    expect(screen.getByText(/aceitação humana/)).toBeTruthy();
   });
 });
