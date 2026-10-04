@@ -1,0 +1,96 @@
+schema_version: "1"
+module: provider-integration
+type: mechanism_contract
+version: "0.1"
+
+provenance:
+  adr_ref: docs/adr/0065-provider-integration-mechanism.md
+  lifecycle: active
+  owner: governance
+
+description: >
+  The single Provider Integration Mechanism. For every call a consumer makes to an
+  external provider it re-evaluates enablement, binding, capability, credential, data
+  policy and provider health, selects a path deterministically (the provider when
+  eligible, `main` otherwise) and records why. A provider answer is data: only local,
+  deterministic policy decides, and nothing here replaces the Approval Gate, the
+  handoff challenge, integrity checks or authorization. The first provider is JEV
+  (HTTPS typed-question evaluator); the first consumer is the HANDOFF validation.
+
+status_note: >
+  The core (internal/integration) is wired to the two lifecycle handoff evaluations
+  (`handoff evaluate-ranger`, `handoff evaluate`, and the automatic Ranger skip at
+  mission completion), so its tier is machine_observed: a Go check runs on a reachable
+  path and reports (command output, call ledger) but never blocks. The operator wizard
+  and `integrations doctor` are a later wave; until then the operator edits
+  .strategist/integrations.yaml directly.
+
+handoff_consumer:
+  transitions: [ranger_to_archivist, archivist_to_sniper]
+  call_site: after the artifact digest is read and before the outcome is sealed
+  question_set: one aggregate `handoff_acceptable` choice (accept or reject) whose answer carries the confidence criterion, plus one noul per criterion of the transition catalog
+  approval_rule: the aggregate answer is `accept` with confidence strictly above approval_threshold (default 0.90); a noul answer or a missing aggregate never approves
+  on_approved: a delegation (provider, resolved model, binding digest, criterion, subject digest, confidence, threshold, usage) is attached to the outcome when valid for that revision
+  on_not_approved: main proceeds; the unsatisfied criteria are returned to the agent as repair hints and no delegation is recorded
+  call_budget: provider calls per mission and transition, default 2, independent of the handoff MaxAttempts and counted only for attempted calls
+  data_projection: only contract fields that the criteria catalog reads and the operator's data_policy allows; an empty or oversized projection is denied, never truncated
+  ledger: .strategist/memory/integration-calls.jsonl (path taken, reason, binding, resolved model, usage, latency; never content or secrets)
+
+states:
+  - disabled
+  - credential_missing
+  - authentication_failed
+  - forbidden
+  - unsupported_capability
+  - incompatible_contract
+  - timeout
+  - unavailable
+  - rate_limited
+  - invalid_response
+  - binding_integrity_failed
+  - data_policy_denied
+
+path_selection:
+  preferred: jev
+  fallback: main
+  rule: >
+    Each attempt evaluates, in order: enabled, binding, capability, credential, data
+    policy, circuit. The first failing state selects `main` and is recorded as the
+    reason. The provider never blocks a handoff: every state, including
+    binding_integrity_failed, falls back to `main`, which runs every deterministic
+    check. A binding integrity failure is flagged suspect so the consumer reports it,
+    and the tampered binding never serves a call. `disabled` is a configured choice
+    and is not reported as a fallback.
+
+capabilities:
+  - id: handoff.validate
+    support: criteria evaluation (typed questions); the consumer applies a local decision rule
+  - id: confidence.evaluate
+    support: contract only; its consumer is planned work
+  - id: handoff.project
+    support: unsupported by the documented API; reported as unsupported_capability
+
+configuration:
+  file: .strategist/integrations.yaml
+  schema_version: strategist-integrations/v1
+  owner: operator
+  rules:
+    - holds a credential reference (env: or dotenv:), never the secret
+    - endpoint is a plain https URL taken only from this file
+    - the provider model is pinned; the floating alias needs an explicit opt-in
+    - preserved by upgrade; written atomically with owner-only permissions
+
+invariants:
+  - A provider answer never creates authority, never changes policy and never passes a Gate
+  - Every failure maps to exactly one state and carries mission and consumer correlation
+  - Errors and logs never contain the credential or a provider body
+  - The credential is parsed in memory and never exported to the process environment
+  - Transport is HTTPS only, ignores proxy environment variables, denies redirects and enforces local size, timeout and concurrency limits
+  - Adapters are resolved by explicit provider and exact version from a compile-time registry
+  - The resolved provider model is part of the binding identity; a changed model is a binding integrity failure (main serves the call, flagged suspect)
+  - Integrity, Approval Gate evidence, authorization and policy facts are never delegated to a provider
+
+never_delegated:
+  - artifact integrity, digests, tamper-evident outcomes, replay and cross-mission binding
+  - Approval Gate evidence and authorization
+  - derivation of typed policy facts

@@ -62,3 +62,5 @@ web/landing/.astro/
 web/landing/coverage/
 .strategist/.upgrade-backups/
 
+# Local environment variables
+.env

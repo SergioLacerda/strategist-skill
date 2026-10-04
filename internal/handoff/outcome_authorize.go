@@ -115,7 +115,10 @@ func correlateOutcome(outcome Outcome, check ExecutionCheck) error {
 	if err := correlateRevision(outcome, check, expectedTransition); err != nil {
 		return err
 	}
-	return authorizeResult(outcome, check)
+	if err := authorizeResult(outcome, check); err != nil {
+		return err
+	}
+	return outcome.validateDelegation()
 }
 
 // correlateIdentity checks the outcome belongs to this mission, transition and

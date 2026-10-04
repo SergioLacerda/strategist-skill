@@ -32,7 +32,10 @@ func (s Service) applyConfig(ctx context.Context, strategistDir string, cfg doma
 	}()
 
 	if !cfg.Wizard {
-		return s.applySilentConfig(ctx, strategistDir, cfg)
+		if err := s.applySilentConfig(ctx, strategistDir, cfg); err != nil {
+			return err
+		}
+		return applyIntegrationChoice(strategistDir, cfg.Integration)
 	}
 	return s.applyWizardConfig(ctx, strategistDir, cfg.Verbose)
 }
@@ -119,7 +122,7 @@ func (s Service) persistWizardConfig(strategistDir string, wc domain.WizardConfi
 	if err := persistGovernanceState(strategistDir, wc.GovernancePolicy, wc.PermissionGrants); err != nil {
 		return fmt.Errorf("install: write governance state: %w", err)
 	}
-	return nil
+	return applyIntegrationChoice(strategistDir, wc.IntegrationChoice)
 }
 
 // resolvePrompter returns the Prompter to use for wizard mode.

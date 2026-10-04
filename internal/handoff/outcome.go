@@ -60,7 +60,11 @@ type Outcome struct {
 	GateObserved     string `json:"gate_observed"`
 	ChallengeStatus  string `json:"challenge_status,omitempty"`
 	CriticalFailures int    `json:"critical_failures,omitempty"`
-	CreatedAt        string `json:"created_at"`
+	// Delegation is the provenance of a check satisfied by an external
+	// provider. Absent for the main path, in which case the record is
+	// byte-identical to one written before the field existed.
+	Delegation *Delegation `json:"delegation,omitempty"`
+	CreatedAt  string      `json:"created_at"`
 	// Integrity is the digest of every other field; any edit breaks it.
 	Integrity string `json:"integrity"`
 }
@@ -123,7 +127,7 @@ func (o Outcome) validateShape() error {
 	case o.Result == OutcomeSkipped && o.Required:
 		return fmt.Errorf("handoff_outcome_invalid: a skipped outcome cannot be a required challenge")
 	}
-	return nil
+	return o.validateDelegation()
 }
 
 func knownOutcomeResult(result string) bool {

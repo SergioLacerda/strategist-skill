@@ -370,3 +370,16 @@ mechanisms:
     invoked_by: [orchestrator]
     how_to_invoke: "contracts/machine/keen-senses.yaml"
     phase_scope: [bootstrap]
+
+  - id: provider_integration
+    display_name: Provider Integration
+    family: mechanism
+    owner_package: internal/integration
+    contract_file: contracts/machine/provider-integration.yaml
+    enforcement_kind: code
+    enforcement_tier: machine_observed
+    summary: "decides per attempt whether an external provider serves a call or main does, and never grants authority to its answer."
+    when_to_use: at every lifecycle handoff evaluation (Ranger to Archivist, Archivist to Sniper) when an integration is enabled; a failure falls back to main and never blocks
+    invoked_by: [archivist, sniper]
+    how_to_invoke: "strategist handoff evaluate-ranger | handoff evaluate (automatic when .strategist/integrations.yaml enables a provider)"
+    phase_scope: [refinement, execution]

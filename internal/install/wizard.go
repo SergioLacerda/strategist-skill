@@ -3,8 +3,10 @@ package install
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/i18n"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"go.opentelemetry.io/otel/codes"
 	"gopkg.in/yaml.v3"
@@ -91,6 +93,10 @@ func runWizard(ctx context.Context, p Prompter, extractor domain.FileExtractor, 
 
 	providerRisk := loadKnownProviders(extractor)
 	wc, err := collectWizardConfig(p, catalog, providerRisk, extractor, verbose)
+	if err != nil {
+		return domain.WizardConfig{}, err
+	}
+	wc.IntegrationChoice, err = promptIntegration(p, i18n.BundleFor(wc.UILanguage), strategistDir, os.Stdout)
 	if err != nil {
 		return domain.WizardConfig{}, err
 	}

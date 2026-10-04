@@ -80,7 +80,8 @@ func recordRangerHandoffAfterPublish(ctx context.Context, input missionadapter.I
 	if record.Request.Role != "ranger" || record.Request.Slot != string(domain.SlotDiscovery) {
 		return nil
 	}
-	if err := missionruntime.EnsureRangerToArchivistOutcomeWithTelemetry(ctx, input.Root, input.BasePath, record.Request.MissionID, input.Sink, record.Request.MissionID); err != nil {
+	delegate := rangerDelegate(ctx, input.Root, input.BasePath, record.Request.MissionID)
+	if err := missionruntime.EnsureRangerToArchivistOutcomeWithDelegation(ctx, input.Root, input.BasePath, record.Request.MissionID, input.Sink, record.Request.MissionID, delegate); err != nil {
 		return fmt.Errorf("ranger-to-archivist handoff: %w", err)
 	}
 	return nil

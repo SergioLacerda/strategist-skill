@@ -235,3 +235,15 @@ func TestResolveTargetErrors(t *testing.T) {
 // installTestContextKey is a private context key type, so test values never
 // collide with keys set by other packages.
 type installTestContextKey struct{}
+
+func TestIntegrationFlagReachesTheInstallConfigAndDefaultsToNoSelection(t *testing.T) {
+	installer := &fakeInstaller{}
+	cmd := New(fakeDeps(installer))
+	require.NoError(t, cmd.RunE(cmd, nil))
+	assert.Empty(t, installer.cfg.Integration, "no flag, no selection: a new install records no decision")
+
+	cmd = New(fakeDeps(installer))
+	require.NoError(t, cmd.Flags().Set("integration", "enable"))
+	require.NoError(t, cmd.RunE(cmd, nil))
+	assert.Equal(t, "enable", installer.cfg.Integration)
+}

@@ -60,6 +60,7 @@ lookup by topic fast without moving any file.
 | [0062](0062-governance-compatibility-implementation.md) | Provider-agnostic governance compatibility implementation |
 | [0063](0063-governance-compatibility.md) | Provider-agnostic governance compatibility boundary |
 | [0064](0064-canonical-seven-family-taxonomy.md) | Canonical seven-family taxonomy and evidence-state model |
+| [0065](0065-provider-integration-mechanism.md) | Provider Integration Mechanism (JEV first, `main` fallback) |
 
 ### Knowledge & Jewels
 

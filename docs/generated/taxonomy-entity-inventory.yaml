@@ -328,6 +328,17 @@ entities:
   - .strategist/contracts/index.yaml
   - .strategist/contracts/machine/mechanisms.yaml
 - family: mechanism
+  id: provider_integration
+  owner: internal/integration
+  lifecycle: active
+  provenance: embedded
+  source_paths:
+  - internal/embed/defaults/contracts/machine/mechanisms.yaml
+  - internal/mechanisms/registry.go
+  generated_paths:
+  - .strategist/contracts/index.yaml
+  - .strategist/contracts/machine/mechanisms.yaml
+- family: mechanism
   id: role_contract
   owner: internal/domain
   lifecycle: active

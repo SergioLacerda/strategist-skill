@@ -20,6 +20,10 @@ type InstallConfig struct {
 	// (handled by the CLI), the wizard section headers and the role/provider
 	// migration preview. It never changes what is installed.
 	Verbose bool
+	// Integration is the optional silent selection for the external provider
+	// integration (enable, disable or keep). Empty means no selection: a new
+	// install records no decision and an upgrade preserves the existing one.
+	Integration string
 	// StrictCompile makes a CompileAll failure fatal (triggers rollback) instead of
 	// warning-only. Default false preserves the existing warning-only behavior.
 	StrictCompile bool
@@ -81,6 +85,9 @@ type WizardConfig struct {
 	// zero value means the wizard step was not answered (treated as automatic).
 	Leveling          LevelingConfig
 	TreasureChestPath string // optional: path to a knowledge source (e.g. governance/source)
+	// IntegrationChoice is the wizard's answer about the external provider
+	// integration (enable, disable or keep); empty when it was not asked.
+	IntegrationChoice string
 	// AdrCanonicalPath is the optional, project-relative destination Sniper writes ADRs
 	// to instead of the <base_path>/archived/<mission_id>-adr.md fallback (see
 	// contracts/narrative/07-adr.md § Canonical Destination Resolution). Empty means

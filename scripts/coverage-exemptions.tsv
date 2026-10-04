@@ -16,3 +16,4 @@ cmd/strategist/install	quality-maintainers	adapter extraction pending migration 
 cmd/strategist/metrics	quality-maintainers	adapter-local metrics suite is established; dedicated error-matrix coverage budget remains pending
 cmd/strategist/mission	quality-maintainers	adapter extraction pending migration of mission lifecycle fixtures to package-local tests
 cmd/strategist/plugins	quality-maintainers	adapter extraction (cmd-plugins-extraction) pending a dedicated package-local coverage budget; measured 84.9% on 2026-09-22
+internal/integration/jev/jevtest	quality-maintainers	test-only simulated JEV provider; exercised by the jev and mechanism suites, never imported by production code

@@ -76,6 +76,16 @@ are recorded in `scripts/coverage-exemptions.tsv`. Edit those sources, not this 
 | `internal/catalog` | 90% | YAML catalog adapter and domain-ranked stamp boundary |
 | `internal/roles/registry` | 90% | workspace role manifest adapter and domain registry boundary |
 | `internal/roster` | 90% | read-only ROSTER artifact planning and selection validation boundary |
+| `internal/integration` | 95% | provider integration contracts, typed errors and approved-adapter registry - measured 98.0% |
+| `internal/integration/config` | 80% | operator integration configuration, atomic persistence and binding parity - measured 85.6% |
+| `internal/integration/credential` | 75% | credential reference resolution, in-memory dotenv parsing and hygiene findings - measured 80.0% |
+| `internal/integration/jev` | 80% | JEV typed-question adapter and strict response validation - measured 85.8% |
+| `internal/integration/mechanism` | 90% | per-attempt path selection and fallback orchestration - measured 94.5% |
+| `internal/integration/policy` | 95% | deterministic path selection and circuit breaker rules - measured 100.0% |
+| `internal/integration/transport` | 90% | HTTPS-only transport with local limits and typed failures - measured 93.7% |
+| `internal/integration/handoffconsumer` | 85% | HANDOFF pre-check consumer: criteria catalog, data projection, approval rule and call ledger - measured 92.0% |
+| `internal/integration/setup` | 85% | single planner of the operator integration decision shared by wizard, silent install and commands - measured 87.3% |
+| `internal/integration/probe` | 85% | synthetic availability probe and the only source of the available claim - measured 88.2% |
 
 ## Reviewed Exemptions
 
@@ -98,3 +108,4 @@ These production packages are present in the inventory but intentionally have no
 | `cmd/strategist/metrics` | quality-maintainers | adapter-local metrics suite is established; dedicated error-matrix coverage budget remains pending |
 | `cmd/strategist/mission` | quality-maintainers | adapter extraction pending migration of mission lifecycle fixtures to package-local tests |
 | `cmd/strategist/plugins` | quality-maintainers | adapter extraction (cmd-plugins-extraction) pending a dedicated package-local coverage budget; measured 84.9% on 2026-09-22 |
+| `internal/integration/jev/jevtest` | quality-maintainers | test-only simulated JEV provider; exercised by the jev and mechanism suites, never imported by production code |

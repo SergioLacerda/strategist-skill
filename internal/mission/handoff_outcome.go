@@ -22,6 +22,11 @@ type ArchivistHandoffInput struct {
 	// an explicit missing-record is written instead; either way the record is
 	// persisted before the outcome, so a recording failure authorizes nothing.
 	ConfidenceSummary *domain.ConfidenceSummary
+	// Delegation is the optional provenance of a provider-satisfied conformance
+	// check, computed by the caller for the package digest it just read. It is
+	// attached only when valid for the revision recorded and never decides the
+	// outcome.
+	Delegation *handoff.Delegation
 }
 
 // ArchivistHandoffResult is the production evaluation of the
@@ -67,7 +72,7 @@ func EvaluateArchivistHandoff(strategistRoot, basePath string, status domain.Mis
 	if err := persistHandoffConfidence(strategistRoot, status.MissionID, attempt, input.ConfidenceSummary); err != nil {
 		return ArchivistHandoffResult{}, fmt.Errorf("evaluate handoff: handoff_outcome_persist_failed: %w", err)
 	}
-	outcome, err := store.Append(derived.outcome(status, attempt, result))
+	outcome, err := store.Append(derived.outcome(status, attempt, result).WithDelegation(input.Delegation))
 	if err != nil {
 		return ArchivistHandoffResult{}, fmt.Errorf("evaluate handoff: %w", err)
 	}

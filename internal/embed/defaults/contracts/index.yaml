@@ -64,6 +64,10 @@ machine:
     # separate section) so it still counts as referenced by the manifest.
     governance:
       - machine/architecture-rules.yaml
+    # Provider Integration Mechanism contract (ADR-0065). Not an agent-loaded pipeline phase:
+    # consumers reach it through their own phase contracts once wired.
+    integration:
+      - machine/provider-integration.yaml
     # Cross-cutting reference catalog (W7b): the normative source for error/blocked
     # token reason+action text. Loaded on demand when emitting or interpreting a
     # blocked state — not tied to a single pipeline phase.

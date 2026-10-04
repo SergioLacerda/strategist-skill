@@ -159,6 +159,7 @@ long: |
 flag: --allow-downgrade (bool) default="false" usage="let this binary replace normative runtime files installed by a newer binary (deliberate rollback; default: refuse with runtime_newer_than_binary)"
 flag: --force (bool) default="false" usage="overwrite all files, including user-modified ones (default: preserve customizations)"
 flag: --global (bool) default="false" usage="install into global root (default: local project)"
+flag: --integration (string) default="" usage="silent selection for the optional external provider integration: enable, disable or keep (default: no selection; a new install records no decision and an upgrade preserves the existing one)"
 flag: --no-shim (bool) default="false" usage="skip writing the SKILL.md shim under ~/.claude/skills (mutually exclusive with --shim-path)"
 flag: --shim-path (string) default="" usage="write the SKILL.md shim to this path instead of the default ~/.claude/skills/strategist/SKILL.md (mutually exclusive with --no-shim)"
 flag: --silent (bool) default="false" usage="silent install with epic defaults (default)"
@@ -166,6 +167,40 @@ flag: --strict-compile (bool) default="false" usage="fail install (and roll back
 flag: --target (string) default="" usage="target repository root (default: current directory)"
 flag: --verbose (bool) default="false" usage="show the INFO log lines, the wizard section headers and the role/provider migration preview that install hides by default"
 flag: --wizard (bool) default="false" usage="interactive wizard for configuration"
+
+== strategist integrations
+use: integrations
+short: Inspect and change the optional external provider integration
+long: |
+  Manage the optional provider integration (JEV) that pre-checks handoff conformance.
+  Strategist works unchanged without it: a provider that is disabled, unreachable or not
+  confident enough leaves every handoff on the main path. The operator decision lives in
+  .strategist/integrations.yaml; the credential is only a reference (env: or dotenv:) and is
+  never stored, printed or sent anywhere but the configured endpoint.
+
+== strategist integrations disable
+use: disable
+short: Record the decision not to use the provider; recorded outcomes and settings are kept
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist integrations doctor
+use: doctor
+short: Report declared, bound, enabled, compatible and available state without calling the provider
+flag: --json (bool) default="false" usage="emit machine-readable JSON"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist integrations enable
+use: enable
+short: Record the decision to use the provider (documented defaults, credential stays a reference)
+flag: --credential-ref (string) default="" usage="credential reference, env:NAME or dotenv:<path>#NAME (default: dotenv:.env#TYPESAFE_API_KEY)"
+flag: --endpoint (string) default="" usage="provider HTTPS endpoint (default: the documented JEV endpoint)"
+flag: --model (string) default="" usage="pinned provider model (default: the documented resolved model)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist integrations probe
+use: probe
+short: Send one synthetic, non-mission message to record availability
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
 
 == strategist leveling
 use: leveling

@@ -59,10 +59,13 @@ func runArchivistHandoff(cmd *cobra.Command, opts handoffEvaluateOptions) error 
 	if err != nil {
 		return fmt.Errorf("handoff evaluate: %w", err)
 	}
+	report := archivistPrecheck(commandContext(cmd), root, basePath, opts.MissionID)
+	input.Delegation = report.Delegation
 	evaluation, err := recordArchivistHandoffLocked(root, basePath, opts.MissionID, input)
 	if err != nil {
 		return fmt.Errorf("handoff evaluate: %w", err)
 	}
+	printDelegation(cmd, report)
 	if err := printArchivistHandoff(cmd, evaluation); err != nil {
 		return err
 	}

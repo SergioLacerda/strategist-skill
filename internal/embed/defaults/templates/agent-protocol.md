@@ -78,6 +78,12 @@ They are guidance (`enforced_by: agent_only`), not a gate.
   usage record no waste or cost claim about a mission can be checked.
 - No CLI emits the intake checkpoint, so a missing intake checkpoint is not a condition to hold
   `intake_done`; submit it after `strategist mission route`.
+- When `strategist handoff evaluate` or `evaluate-ranger` prints a `delegation:` line, an enabled provider pre-checked
+  the handoff's input/output conformance. `approved` means that check is satisfied and recorded: skip your own
+  conformance self-check, but still supply the challenges and acknowledgment, which are never delegated. `signal`
+  and `fallback` mean the provider did not approve or did not answer: do the conformance check yourself as usual,
+  using the listed `hints` for a signal. No `delegation:` line means no integration is enabled. A provider result
+  never replaces the Approval Gate, integrity or authorization checks.
 - Write the output of `strategist mission invoke --json` to a file and read fields from it with `jq`;
   do not pipe it through `head` or `cut`. Each call issues a new request, so truncating the output and
   running the command again leaves the first request unfinished. Run it once per phase, then complete

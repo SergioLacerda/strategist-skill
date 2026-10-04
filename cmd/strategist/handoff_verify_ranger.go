@@ -33,10 +33,13 @@ func runRangerHandoffEvaluate(cmd *cobra.Command, opts rangerHandoffEvaluateOpti
 	if err != nil {
 		return fmt.Errorf("handoff evaluate-ranger: %w", err)
 	}
+	report := rangerPrecheck(commandContext(cmd), root, basePath, opts.MissionID)
+	input.Delegation = report.Delegation
 	evaluation, err := evaluateRangerLocked(root, basePath, opts.MissionID, input)
 	if err != nil {
 		return fmt.Errorf("handoff evaluate-ranger: %w", err)
 	}
+	printDelegation(cmd, report)
 	if err := printRangerHandoffEvaluation(cmd, evaluation); err != nil {
 		return err
 	}

@@ -15,6 +15,10 @@ import (
 type RangerHandoffInput struct {
 	Challenges []handoff.Challenge
 	Ack        handoff.Acknowledgment
+	// Delegation is the optional provenance of a provider-satisfied conformance
+	// check. It is attached only when valid for the revision being recorded and
+	// never decides the outcome.
+	Delegation *handoff.Delegation
 }
 
 // RangerHandoffResult contains the persisted result and the deterministic
@@ -76,7 +80,7 @@ func recordRangerEvaluation(strategistRoot, artifactPath, missionID string, inpu
 	if !evaluation.policy.Enabled {
 		result = handoff.Result{Status: handoff.StatusSkipped, Passed: true}
 	}
-	outcome, err := appendRangerOutcome(strategistRoot, missionID, evaluation, result)
+	outcome, err := appendRangerOutcome(strategistRoot, missionID, evaluation, result, input.Delegation)
 	if err != nil {
 		return RangerHandoffResult{}, err
 	}
@@ -103,7 +107,7 @@ func prepareRangerEvaluation(strategistRoot, artifactPath, missionID string) (ra
 	return rangerEvaluationContext{facts: facts, policy: policy, digest: digest, attempt: attempt}, nil
 }
 
-func appendRangerOutcome(strategistRoot, missionID string, evaluation rangerEvaluationContext, result handoff.Result) (handoff.Outcome, error) {
+func appendRangerOutcome(strategistRoot, missionID string, evaluation rangerEvaluationContext, result handoff.Result, delegation *handoff.Delegation) (handoff.Outcome, error) {
 	outcomeResult := handoff.OutcomeFailed
 	if result.Passed {
 		outcomeResult = handoff.OutcomePassed
@@ -118,7 +122,7 @@ func appendRangerOutcome(strategistRoot, missionID string, evaluation rangerEval
 		Provenance:   handoff.RangerPolicyProvenance(evaluation.facts),
 		GateObserved: "ranger_normalized", ChallengeStatus: result.Status,
 		CriticalFailures: result.CriticalFailures,
-	})
+	}.WithDelegation(delegation))
 	if err != nil {
 		return handoff.Outcome{}, fmt.Errorf("evaluate Ranger-to-Archivist handoff: %w", err)
 	}
@@ -141,6 +145,15 @@ func EnsureRangerToArchivistOutcome(strategistRoot, basePath, missionID string) 
 // the CLI's terminal path emits the same lifecycle event as explicit evaluation.
 // When the challenge is required it emits RangerOutcomeAwaitingChallenge instead.
 func EnsureRangerToArchivistOutcomeWithTelemetry(ctx context.Context, strategistRoot, basePath, missionID string, sink telemetry.EventSink, runID string) error {
+	return EnsureRangerToArchivistOutcomeWithDelegation(ctx, strategistRoot, basePath, missionID, sink, runID, nil)
+}
+
+// EnsureRangerToArchivistOutcomeWithDelegation is the same boundary with an
+// optional provider pre-check. delegate is called only when an automatic skip is
+// about to be recorded, with the digest of the revision being skipped; a nil
+// result, or one that does not fit that revision, leaves the outcome exactly as
+// the main path records it.
+func EnsureRangerToArchivistOutcomeWithDelegation(ctx context.Context, strategistRoot, basePath, missionID string, sink telemetry.EventSink, runID string, delegate func(subject string) *handoff.Delegation) error {
 	artifactPath := filepath.Join(basePath, "pending", missionID+"-analysis.md")
 	evaluation, err := prepareRangerEvaluation(strategistRoot, artifactPath, missionID)
 	if err != nil {
@@ -153,6 +166,10 @@ func EnsureRangerToArchivistOutcomeWithTelemetry(ctx context.Context, strategist
 	if evaluation.policy.Enabled {
 		return newRangerTelemetry(ctx, sink, runID, missionID).awaitingChallenge()
 	}
-	_, err = EvaluateRangerToArchivistWithTelemetry(ctx, strategistRoot, artifactPath, missionID, RangerHandoffInput{}, sink, runID)
+	input := RangerHandoffInput{}
+	if delegate != nil {
+		input.Delegation = delegate(evaluation.digest)
+	}
+	_, err = EvaluateRangerToArchivistWithTelemetry(ctx, strategistRoot, artifactPath, missionID, input, sink, runID)
 	return err
 }
