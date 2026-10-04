@@ -69,7 +69,7 @@ for role in ("scout", "ranger", "archivist", "sniper"):
 for stage in ("FULL", "SHORT", "ROSTER"):
     entities.append(entity(
         "stage", stage, "internal/domain",
-        ["internal/domain/taxonomy.go", "internal/domain/stage_resolution_artifact.go"],
+        ["internal/domain/taxonomy_stage.go", "internal/domain/stage_resolution_artifact.go"],
         [".strategist/contracts/machine/scout-routing.yaml"], provenance="canonical",
     ))
 

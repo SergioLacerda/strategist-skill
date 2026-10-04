@@ -78,6 +78,10 @@ archivist_entry_policy:
     event: normalized_ranger_artifact
     outcome: missions/handoff/<mission_id>/ranger_to_archivist/attempt-N.json
     command: strategist handoff evaluate-ranger
+    on_normalization: >
+      records an automatic skipped outcome only when the typed facts authorize it;
+      when a challenge is required it records no outcome, consumes no attempt and
+      emits an awaiting_challenge event, leaving the consumer denied as missing
     standalone_verify_is_diagnostic_only: true
 
   consumer:

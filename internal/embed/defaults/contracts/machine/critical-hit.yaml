@@ -1,5 +1,5 @@
 module: critical-hit
-type: routing_decision
+type: feat_activation
 version: "0.3"
 
 provenance:
@@ -8,8 +8,12 @@ provenance:
   owner: governance
 
 description: >
-  Internal capability for workspace artifact management. When conditions are met,
-  routes directly to Sniper for a file move without Ranger/Archivist phases.
+  Contextual Feat activated by the Scout Role for workspace artifact management.
+  Its deterministic eligibility predicates are Mechanism-backed rules. When
+  conditions are met, the Feat returns a passive result and Scout submits an
+  explicit request for the SHORT Stage; the critical_hit route remains a
+  downstream compatibility representation for the current Sniper/bypass
+  integration. It does not select, open, or execute a Stage autonomously.
   Handles moving .md analysis artifacts between base_path analysis folders (plain
   move mode), and closing a pending/refined package into done/ once implementation
   is complete and evidence is supplied (closure mode). Not a route mutually
@@ -80,7 +84,16 @@ valid_moves:
   - "refined/<id>/             → done/<id>          # completed refined package, evidence supplied (closure)"
   - "any .md within pending/, refined/, archived/ between those three folders (plain)"
 
-route_assigned: direct_execute
+route_assigned: direct_execute  # compatibility representation; canonical target is Stage SHORT
+
+taxonomy:
+  family: feat
+  owner_role: scout
+  deterministic_policy: mechanism_backed
+  target_stage: SHORT
+  route_role: compatibility_only
+  compatibility_route: critical_hit
+  gate_required: true
 
 pipeline:
   omitted_phases: [discovery, refinement, opportunity_attack]

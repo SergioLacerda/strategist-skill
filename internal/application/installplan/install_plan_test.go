@@ -22,3 +22,16 @@ func TestPlanInstallProducesValidatedReadOnlyPlan(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, plan.Validate())
 }
+
+func TestPlanInstallWrapsDomainValidationErrors(t *testing.T) {
+	t.Parallel()
+
+	_, err := installplan.PlanInstall(installplan.Input{
+		Stage:    domain.StageFull,
+		Mode:     "silent",
+		BasePath: "/workspace",
+		Slots:    map[string]string{"discovery": "brainstorming"},
+		Bindings: []domain.SlotBinding{{Slot: "discovery", InstalledInstanceID: "brainstorming"}},
+	})
+	require.EqualError(t, err, "application install planning: install plan: stage must be ROSTER")
+}

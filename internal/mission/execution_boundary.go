@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	criticalhit "github.com/SergioLacerda/strategist-skill/internal/feats/critical_hit"
 	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
@@ -29,11 +30,23 @@ func parseRouteDecision(missionID string, raw []byte) (telemetry.RouteDecision, 
 	if decision.Timestamp == "" {
 		decision.Timestamp = time.Now().UTC().Format(time.RFC3339Nano)
 	}
-	resolution, err := domain.ResolveStage(domain.StageResolutionRequest{
+	stageRequest := domain.StageRequest{
 		Route:            decision.SelectedRoute,
 		PolicyVersion:    "route-resolution/v1",
+		MissionID:        decision.MissionID,
 		MissionExecution: true,
-	})
+	}
+	if decision.SelectedRoute == criticalhit.FeatID {
+		// Scout remains the intake owner during the compatibility migration.
+		// The route is retained only for downstream consumers; the domain
+		// resolution is still a SHORT Stage with explicit Feat context.
+		stageRequest.Role = "scout"
+		stageRequest.Feat = criticalhit.FeatID
+		stageRequest.MissionID = decision.MissionID
+		stageRequest.CorrelationKey = decision.MissionID + ":" + criticalhit.FeatID
+		stageRequest.GateRequired = true
+	}
+	resolution, err := domain.ResolveStage(stageRequest)
 	if err != nil {
 		return telemetry.RouteDecision{}, fmt.Errorf("resolve route Stage: %w", err)
 	}
@@ -45,6 +58,8 @@ func parseRouteDecision(missionID string, raw []byte) (telemetry.RouteDecision, 
 	decision.StageTrigger = artifact.Trigger
 	decision.StageRole = artifact.Role
 	decision.StageFeat = artifact.Feat
+	decision.StageCorrelationID = artifact.CorrelationKey
+	decision.StageGateRequired = artifact.GateRequired
 	decision.StagePolicyVersion = artifact.PolicyVersion
 	decision.StageReason = artifact.Reason
 	return decision, nil
@@ -141,7 +156,11 @@ func EvaluateExecutionEntry(strategistRoot, basePath string, status domain.Missi
 			return domain.PipelineBypassDecision{}, fmt.Errorf("validate Archivist handoff: %w", err)
 		}
 	}
-	gateApproved := status.State == domain.StateHandoffChallenge
+	// Full-pipeline execution is authorized by the handoff challenge. A
+	// Critical Hit SHORT execution is authorized by its explicit Stage gate and
+	// enters the ordinary StateExecution state, so it must not be mistaken for
+	// an unapproved DONE_ANALYSIS replay.
+	gateApproved := executionGateApproved(status)
 	stage := domain.Stage(decision.Stage)
 	route := domain.PipelineRouteForScoutRoute(decision.SelectedRoute)
 	if stage != "" {
@@ -156,10 +175,14 @@ func EvaluateExecutionEntry(strategistRoot, basePath string, status domain.Missi
 		DiscoveryPresent:   fileExists(filepath.Join(refined, "analysis.md")),
 		RefinementPresent:  fileExists(filepath.Join(refined, "proposal.md")) && fileExists(filepath.Join(refined, "design.md")),
 		TasksPresent:       fileExists(filepath.Join(refined, "tasks.md")),
-		GatePresented:      gateApproved,
+		GatePresented:      gateApproved || status.StageGateRequired,
 		GateApproved:       gateApproved,
 		DirectGateApproved: gateApproved,
 	}), nil
+}
+
+func executionGateApproved(status domain.MissionEngineStatus) bool {
+	return status.State == domain.StateHandoffChallenge || status.StageGateApproved
 }
 
 // recordedRoute returns the selected_route Scout recorded for the mission, or ""

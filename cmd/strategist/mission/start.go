@@ -34,6 +34,9 @@ type LifecycleDependencies struct {
 	// TelemetrySink selects the route-resolution sink. Nil keeps the adapter
 	// compatible with callers that only need durable route history.
 	TelemetrySink func() telemetry.EventSink
+	// ActivateCriticalHit persists the explicit route-to-gate transition after
+	// Scout records a Critical Hit SHORT resolution.
+	ActivateCriticalHit func(root, missionID string) (domain.MissionEngineStatus, error)
 	// RecordRoute is the application-facing route connector. The legacy
 	// TelemetrySink fallback remains for isolated adapter tests.
 	RecordRoute func(context.Context, string, string, []byte) (bool, error)

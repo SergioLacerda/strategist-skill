@@ -271,10 +271,10 @@ mechanisms:
     contract_file: contracts/machine/critical-hit.yaml;contracts/narrative/11-critical-hit.md
     enforcement_kind: contract
     enforcement_tier: agent_only
-    summary: moves or closes an analysis card without a full pipeline, only with an explicit request and evidence.
+    summary: contextual Feat activated by Scout; deterministic eligibility is Mechanism-backed, and eligible results request SHORT while preserving the critical_hit compatibility route.
     when_to_use: a plain move, or a closure move with a completion claim and evidence summary
     invoked_by: [scout]
-    how_to_invoke: "Scout selects selected_route=critical_hit per critical-hit.yaml#trigger_conditions"
+    how_to_invoke: "Scout evaluates the Critical Hit Feat and submits its typed StageRequest; selected_route=critical_hit remains a compatibility output per critical-hit.yaml#trigger_conditions"
     phase_scope: [intake]
 
   - id: opportunity_attack

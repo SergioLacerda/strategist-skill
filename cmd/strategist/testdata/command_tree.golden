@@ -429,6 +429,13 @@ flag: --root (string) default="" usage="path to .strategist/ root (default: auto
 flag: --tokens-in (int64) default="0" usage="real input token count from the invoking agent's own provider response (required, >= 0)"
 flag: --tokens-out (int64) default="0" usage="real output token count from the invoking agent's own provider response (required, >= 0)"
 
+== strategist mission requests
+use: requests
+short: List embedded invocation requests (read-only; never prints payload or nonce)
+flag: --json (bool) default="false" usage="emit machine-readable JSON"
+flag: --mission-id (string) default="" usage="only list the requests of this mission (default: every mission)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
 == strategist mission route
 use: route
 short: Record Scout's route decision for a mission (JSON on stdin)

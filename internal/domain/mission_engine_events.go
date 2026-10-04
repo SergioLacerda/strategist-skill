@@ -57,6 +57,14 @@ const (
 	MissionEventADRApproved MissionEngineEvent = "adr_approved"
 	// MissionEventADRDeclined declines the ADR gate.
 	MissionEventADRDeclined MissionEngineEvent = "adr_declined"
+	// MissionEventCriticalHitIntent records a Role-owned gated SHORT request.
+	MissionEventCriticalHitIntent MissionEngineEvent = "critical_hit_intent"
+	// MissionEventCriticalHitGateApproved enters the ordinary execution state
+	// after explicit Critical Hit approval.
+	MissionEventCriticalHitGateApproved MissionEngineEvent = "critical_hit_gate_approved"
+	// MissionEventCriticalHitGateDeclined closes the Critical Hit attempt
+	// without entering execution.
+	MissionEventCriticalHitGateDeclined MissionEngineEvent = "critical_hit_gate_declined"
 )
 
 func missionTransitionEvent(event MissionEngineEvent) (TransitionEvent, bool) {
@@ -71,7 +79,9 @@ func missionTransitionEvent(event MissionEngineEvent) (TransitionEvent, bool) {
 		MissionEventSlotTransient: EventSlotTransient, MissionEventSlotPermanent: EventSlotPermanent,
 		MissionEventRefinementArtifactInvalid: EventRefinementArtifactInvalid,
 		MissionEventADRCriterion:              EventADRCriterionMet, MissionEventADRApproved: EventADRApproved,
-		MissionEventADRDeclined: EventADRDeclined,
+		MissionEventADRDeclined:             EventADRDeclined,
+		MissionEventCriticalHitGateApproved: EventCriticalHitGateApproved,
+		MissionEventCriticalHitGateDeclined: EventCriticalHitGateDeclined,
 	}
 	value, ok := transitions[event]
 	return value, ok

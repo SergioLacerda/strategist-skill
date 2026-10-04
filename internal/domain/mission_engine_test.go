@@ -51,6 +51,70 @@ func TestMissionEngine_FullPipelineProgression(t *testing.T) {
 	}
 }
 
+func TestMissionEngine_CriticalHitStageProgressionUsesOrdinaryExecution(t *testing.T) {
+	engine, _, err := StartMission(MissionStartRequest{MissionID: "m-critical-hit"})
+	require.NoError(t, err)
+	submitMissionEvents(t, engine, []MissionEngineEvent{MissionEventBootstrapDone})
+	_, err = engine.RecordStageResolution(StageResolution{
+		SchemaVersion: StageResolutionArtifactSchemaVersion, TaxonomyVersion: CanonicalTaxonomyVersion,
+		Stage: StageShort, LegacyRoute: "critical_hit", Feat: "critical_hit", MissionID: "m-critical-hit",
+		CorrelationKey: "m-critical-hit:critical_hit", GateRequired: true,
+		PolicyVersion: "route-resolution/v1", Reason: "Critical Hit compatibility route bounded to SHORT",
+	})
+	require.NoError(t, err)
+	status, err := engine.Submit(MissionEventCriticalHitIntent)
+	require.NoError(t, err)
+	require.Equal(t, PhaseApprovalGate, status.Phase)
+	require.Equal(t, StateApprovalGate, status.State)
+	require.False(t, status.StageGateApproved)
+	_, err = engine.Submit(MissionEventGateApproved)
+	require.ErrorContains(t, err, "explicit Critical Hit gate event")
+
+	status, err = engine.Submit(MissionEventCriticalHitGateApproved)
+	require.NoError(t, err)
+	require.Equal(t, PhaseExecution, status.Phase)
+	require.Equal(t, StateExecution, status.State)
+	require.True(t, status.StageGateApproved)
+	require.Equal(t, CriticalHitStageApprovalDigest(status), status.ApprovalGatePackageDigest)
+
+	status, err = engine.Submit(MissionEventSniperDone)
+	require.NoError(t, err)
+	require.Equal(t, StateDoneDelivery, status.State)
+}
+
+func TestMissionEngine_CriticalHitIntentRequiresRecordedResolution(t *testing.T) {
+	engine, _, err := StartMission(MissionStartRequest{MissionID: "m-critical-hit-missing-resolution"})
+	require.NoError(t, err)
+	_, err = engine.Submit(MissionEventBootstrapDone)
+	require.NoError(t, err)
+	before := engine.Status()
+	_, err = engine.Submit(MissionEventCriticalHitIntent)
+	require.ErrorContains(t, err, "recorded gated SHORT resolution")
+	require.Equal(t, before, engine.Status())
+}
+
+func TestMissionEngine_CriticalHitDeclineNeverEntersExecution(t *testing.T) {
+	engine, _, err := StartMission(MissionStartRequest{MissionID: "m-critical-hit-decline"})
+	require.NoError(t, err)
+	submitMissionEvents(t, engine, []MissionEngineEvent{MissionEventBootstrapDone})
+	_, err = engine.RecordStageResolution(StageResolution{
+		SchemaVersion: StageResolutionArtifactSchemaVersion, TaxonomyVersion: CanonicalTaxonomyVersion,
+		Stage: StageShort, LegacyRoute: "critical_hit", Feat: "critical_hit", MissionID: "m-critical-hit-decline",
+		CorrelationKey: "m-critical-hit-decline:critical_hit", GateRequired: true,
+		PolicyVersion: "route-resolution/v1", Reason: "Critical Hit compatibility route bounded to SHORT",
+	})
+	require.NoError(t, err)
+	_, err = engine.Submit(MissionEventCriticalHitIntent)
+	require.NoError(t, err)
+	status, err := engine.Submit(MissionEventCriticalHitGateDeclined)
+	require.NoError(t, err)
+	require.Equal(t, PhaseDone, status.Phase)
+	require.Equal(t, StateDoneAnalysis, status.State)
+	require.False(t, status.StageGateApproved)
+	_, err = engine.Submit(MissionEventSniperDone)
+	require.Error(t, err)
+}
+
 func TestMissionEngine_InvalidRefinementArtifactReturnsToRefinement(t *testing.T) {
 	engine, _, err := StartMission(MissionStartRequest{MissionID: "m-artifact-repair"})
 	require.NoError(t, err)

@@ -57,13 +57,16 @@ func emitStageResolutionTelemetry(ctx context.Context, sink telemetry.EventSink,
 
 func stageResolutionArtifact(decision telemetry.RouteDecision) (domain.StageResolutionArtifact, error) {
 	artifact, err := domain.NewStageResolutionArtifact(domain.StageResolution{
-		SchemaVersion: domain.StageResolutionArtifactSchemaVersion,
-		Stage:         domain.Stage(decision.Stage),
-		LegacyRoute:   decision.SelectedRoute,
-		Role:          decision.StageRole,
-		Feat:          decision.StageFeat,
-		PolicyVersion: decision.StagePolicyVersion,
-		Reason:        decision.StageReason,
+		SchemaVersion:  domain.StageResolutionArtifactSchemaVersion,
+		Stage:          domain.Stage(decision.Stage),
+		LegacyRoute:    decision.SelectedRoute,
+		Role:           decision.StageRole,
+		Feat:           decision.StageFeat,
+		MissionID:      decision.MissionID,
+		CorrelationKey: decision.StageCorrelationID,
+		GateRequired:   decision.StageGateRequired,
+		PolicyVersion:  decision.StagePolicyVersion,
+		Reason:         decision.StageReason,
 	}, decision.StageTrigger)
 	if err != nil {
 		return domain.StageResolutionArtifact{}, fmt.Errorf("build Stage resolution artifact: %w", err)

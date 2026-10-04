@@ -37,5 +37,11 @@ func NewStageResolutionEvent(runID string, artifact domain.StageResolutionArtifa
 	if artifact.Feat != "" {
 		event.Attributes[AttrFeat] = artifact.Feat
 	}
+	if artifact.CorrelationKey != "" {
+		event.Attributes[AttrCorrelationID] = artifact.CorrelationKey
+	}
+	if artifact.GateRequired {
+		event.Attributes[AttrGateStatus] = "required"
+	}
 	return event
 }

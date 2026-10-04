@@ -32,12 +32,18 @@ func completeSniperInvocation(store missionruntime.InvocationStore, input missio
 	if err := store.Complete(record.Request.RequestID, digest); err != nil {
 		return domain.MissionInvocationOutcome{}, fmt.Errorf("complete mission invocation: %w", err)
 	}
+	if err := completeCriticalHitMission(input.Root, record.Request.MissionID); err != nil {
+		return domain.MissionInvocationOutcome{}, err
+	}
 	return domain.MissionInvocationOutcome{RequestID: input.RequestID, MissionID: record.Request.MissionID, Status: "verified", ArtifactPath: artifactPath, BindingDigest: record.Request.BindingDigest, SourceDigest: record.Request.SourceDigest}, nil
 }
 
 func verifySniperCompletion(input missionadapter.InvocationCompleteInput, record domain.MissionInvocationRecord) (string, []byte, error) {
 	if err := verifySniperAuthorization(input, record); err != nil {
 		return "", nil, err
+	}
+	if isCriticalHitInvocation(input.Root, record.Request.MissionID) {
+		return verifyCriticalHitCompletion(input, record)
 	}
 	refined := filepath.Join(input.BasePath, "refined", record.Request.MissionID)
 	targets, err := verifySniperLifecycleAndTasks(refined, record.Request.MissionID)

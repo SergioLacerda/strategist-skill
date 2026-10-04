@@ -167,6 +167,10 @@ func TestRecordRouteDecisionPersistsCanonicalStageProjection(t *testing.T) {
 	require.Len(t, decisions, 1)
 	assert.Equal(t, "SHORT", decisions[0].Stage)
 	assert.Equal(t, "general", decisions[0].StageTrigger)
+	assert.Equal(t, "scout", decisions[0].StageRole)
+	assert.Equal(t, "critical_hit", decisions[0].StageFeat)
+	assert.Equal(t, "stage-route:critical_hit", decisions[0].StageCorrelationID)
+	assert.True(t, decisions[0].StageGateRequired)
 	assert.Equal(t, "route-resolution/v1", decisions[0].StagePolicyVersion)
 	assert.Contains(t, decisions[0].StageReason, "Critical Hit")
 }
@@ -182,6 +186,8 @@ func TestRecordRouteDecisionWithTelemetryEmitsOnlyForNewDecision(t *testing.T) {
 	require.Len(t, sink.events, 1)
 	assert.Equal(t, telemetry.StageResolutionEventName, sink.events[0].Name)
 	assert.Equal(t, "SHORT", sink.events[0].Attributes[telemetry.AttrStage])
+	assert.Equal(t, "stage-event:critical_hit", sink.events[0].Attributes[telemetry.AttrCorrelationID])
+	assert.Equal(t, "required", sink.events[0].Attributes[telemetry.AttrGateStatus])
 
 	appended, err = RecordRouteDecisionWithTelemetry(context.Background(), root, "stage-event", []byte(raw), sink)
 	require.NoError(t, err)

@@ -2,12 +2,9 @@ package telemetry
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"os"
-
-	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
 
 // RouteDecision is the canonical JSON structure written to route-decisions.jsonl
@@ -31,6 +28,8 @@ type RouteDecision struct {
 	StageTrigger       string `json:"stage_trigger,omitempty"`
 	StageRole          string `json:"stage_role,omitempty"`
 	StageFeat          string `json:"stage_feat,omitempty"`
+	StageCorrelationID string `json:"stage_correlation_id,omitempty"`
+	StageGateRequired  bool   `json:"stage_gate_required,omitempty"`
 	StagePolicyVersion string `json:"stage_policy_version,omitempty"`
 	StageReason        string `json:"stage_reason,omitempty"`
 	Provider           string `json:"provider,omitempty"`
@@ -49,72 +48,6 @@ var allowedEvidenceStates = map[string]bool{
 	"explicit":           true,
 	"insufficient":       true,
 	"requires_discovery": true,
-}
-
-// ValidateRouteDecisionLine parses a single JSON line and checks required
-// fields and allowed values per scout-route-decision.schema.yaml.
-func ValidateRouteDecisionLine(line string) error {
-	var d RouteDecision
-	if err := json.Unmarshal([]byte(line), &d); err != nil {
-		return fmt.Errorf("route decision line is not valid JSON: %w", err)
-	}
-	var errs []error
-	errs = append(errs, requiredRouteField("mission_id", d.MissionID)...)
-	errs = append(errs, requiredRouteField("request_category", d.RequestCategory)...)
-	errs = append(errs, allowedRouteValue("selected_route", d.SelectedRoute, allowedSelectedRoutes)...)
-	errs = append(errs, requiredRouteField("route_reason", d.RouteReason)...)
-	errs = append(errs, routeConfidenceRange(d.RouteConfidence)...)
-	errs = append(errs, allowedRouteValue("evidence_state", d.EvidenceState, allowedEvidenceStates)...)
-	errs = append(errs, fallbackRouteValue(d.FallbackRoute)...)
-	errs = append(errs, stageProjectionValue(d)...)
-	errs = append(errs, requiredRouteField("timestamp", d.Timestamp)...)
-	return errors.Join(errs...)
-}
-
-func stageProjectionValue(d RouteDecision) []error {
-	if d.Stage == "" {
-		return nil // legacy history predates the canonical Stage projection
-	}
-	stage := domain.Stage(d.Stage)
-	if err := stage.Validate(); err != nil {
-		return []error{err}
-	}
-	var errs []error
-	errs = append(errs, requiredRouteField("stage_trigger", d.StageTrigger)...)
-	errs = append(errs, requiredRouteField("stage_policy_version", d.StagePolicyVersion)...)
-	errs = append(errs, requiredRouteField("stage_reason", d.StageReason)...)
-	return errs
-}
-
-func requiredRouteField(name, value string) []error {
-	if value == "" {
-		return []error{fmt.Errorf("%s is required", name)}
-	}
-	return nil
-}
-
-func allowedRouteValue(name, value string, allowed map[string]bool) []error {
-	if value == "" {
-		return []error{fmt.Errorf("%s is required", name)}
-	}
-	if !allowed[value] {
-		return []error{fmt.Errorf("%s %q is not an allowed value", name, value)}
-	}
-	return nil
-}
-
-func routeConfidenceRange(confidence float64) []error {
-	if confidence < 0.0 || confidence > 1.0 {
-		return []error{fmt.Errorf("route_confidence %v is out of range [0.0, 1.0]", confidence)}
-	}
-	return nil
-}
-
-func fallbackRouteValue(fallbackRoute string) []error {
-	if fallbackRoute != "" && fallbackRoute != "full_pipeline" {
-		return []error{fmt.Errorf("fallback_route %q must be full_pipeline", fallbackRoute)}
-	}
-	return nil
 }
 
 // AppendRouteDecisionLine validates line and appends it with a newline to

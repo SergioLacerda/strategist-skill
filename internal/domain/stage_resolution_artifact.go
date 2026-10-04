@@ -21,6 +21,9 @@ type StageResolutionArtifact struct {
 	Trigger         string `json:"trigger" yaml:"trigger"`
 	Role            string `json:"role,omitempty" yaml:"role,omitempty"`
 	Feat            string `json:"feat,omitempty" yaml:"feat,omitempty"`
+	MissionID       string `json:"mission_id,omitempty" yaml:"mission_id,omitempty"`
+	CorrelationKey  string `json:"correlation_key,omitempty" yaml:"correlation_key,omitempty"`
+	GateRequired    bool   `json:"gate_required,omitempty" yaml:"gate_required,omitempty"`
 	PolicyVersion   string `json:"policy_version" yaml:"policy_version"`
 	Reason          string `json:"reason" yaml:"reason"`
 	LegacyRoute     string `json:"legacy_route" yaml:"legacy_route"`
@@ -40,6 +43,9 @@ func NewStageResolutionArtifact(resolution StageResolution, trigger string) (Sta
 		Trigger:         strings.TrimSpace(trigger),
 		Role:            strings.TrimSpace(resolution.Role),
 		Feat:            strings.TrimSpace(resolution.Feat),
+		MissionID:       strings.TrimSpace(resolution.MissionID),
+		CorrelationKey:  strings.TrimSpace(resolution.CorrelationKey),
+		GateRequired:    resolution.GateRequired,
 		PolicyVersion:   strings.TrimSpace(resolution.PolicyVersion),
 		Reason:          strings.TrimSpace(resolution.Reason),
 		LegacyRoute:     strings.TrimSpace(resolution.LegacyRoute),
@@ -64,6 +70,9 @@ func (a StageResolutionArtifact) Resolution() (StageResolution, error) {
 		LegacyRoute:     a.LegacyRoute,
 		Role:            a.Role,
 		Feat:            a.Feat,
+		MissionID:       a.MissionID,
+		CorrelationKey:  a.CorrelationKey,
+		GateRequired:    a.GateRequired,
 		PolicyVersion:   a.PolicyVersion,
 		Reason:          a.Reason,
 	}, nil

@@ -93,8 +93,11 @@ to this handoff's actual content, not a reuse of the Archivist → Sniper MVP's
 
 After Ranger normalization, Strategist may record an automatic `skipped`
 outcome only when the typed facts explicitly authorize an informational-only
-handoff. A required challenge without valid answers records `failed` and
-blocks the Archivist boundary until a bounded retry passes. Run
+handoff. When a challenge is required, normalization records no outcome and
+consumes no attempt, because the receiver's answers cannot exist yet; it emits an
+`awaiting_challenge` event instead, and the Archivist boundary stays closed
+(`handoff_outcome_missing`) until an explicit evaluation. An evaluation without
+valid answers records `failed`, and a bounded retry may follow. Run
 `strategist handoff evaluate-ranger` to inspect or submit the lifecycle-owned
 evaluation; the standalone `strategist handoff verify` command remains
 diagnostic-only and never authorizes refinement.

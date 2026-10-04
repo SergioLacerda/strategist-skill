@@ -2,6 +2,10 @@ subject: contracts/machine/scout-routing.yaml
 version: "1.0"
 
 invariants:
+  - id: critical_hit_preserves_feat_stage_separation
+    description: Scout owns Critical Hit activation while the canonical target is SHORT
+    rule: critical_hit is compatibility route; Feat identity remains critical_hit and Stage is SHORT
+
   - id: never_bypass_approval_gate
     description: Scout never bypasses the Strategist Approval Gate on any route
     rule: gate_required == true regardless of selected_route

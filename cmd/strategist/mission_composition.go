@@ -39,6 +39,9 @@ func missionLifecycleDependencies() missionadapter.LifecycleDependencies {
 		WriteResult: missionadapter.WriteResult, Lock: lockMission, ADRCanonicalPath: adrCanonicalPath,
 		TelemetrySink: selectDiscoveryTelemetrySink,
 		RecordRoute:   recordMissionRoute,
+		ActivateCriticalHit: func(root, missionID string) (domain.MissionEngineStatus, error) {
+			return missionruntime.ActivateCriticalHitRoute(root, missionID, loadMission, saveMission)
+		},
 	}
 }
 
@@ -81,7 +84,8 @@ func missionInvocationDependencies() missionadapter.InvocationDependencies {
 			return status, err
 		},
 		Build: buildMissionInvocation, Complete: completeMissionInvocation,
-		ExecuteHost: executeMissionHost, WriteResult: missionadapter.WriteResult,
+		ListRequests: listMissionInvocationRequests,
+		ExecuteHost:  executeMissionHost, WriteResult: missionadapter.WriteResult,
 		ReadCompletion: missionadapter.ReadCompletion, TelemetrySink: selectDiscoveryTelemetrySink,
 	}
 }

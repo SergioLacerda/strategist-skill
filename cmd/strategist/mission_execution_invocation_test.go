@@ -12,6 +12,7 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	strategistembed "github.com/SergioLacerda/strategist-skill/internal/embed"
 	"github.com/SergioLacerda/strategist-skill/internal/handoff"
+	missionruntime "github.com/SergioLacerda/strategist-skill/internal/mission"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/stretchr/testify/require"
 )
@@ -47,6 +48,59 @@ func TestSniperCurrentHostInvocationCompletesWithMaterializationProof(t *testing
 
 	_, err = completeMissionInvocation(t.Context(), missionadapter.InvocationCompleteInput{Root: root, BasePath: basePath, RequestID: request.RequestID})
 	require.ErrorContains(t, err, "invocation_replay")
+}
+
+func TestCriticalHitCurrentHostInvocationCompletesWithoutRefinedPackage(t *testing.T) {
+	root, basePath := sniperInvocationWorkspace(t)
+	status := domain.MissionEngineStatus{
+		MissionID:          flowMissionID,
+		Phase:              domain.PhaseExecution,
+		State:              domain.StateExecution,
+		Stage:              domain.StageShort,
+		StageFeat:          "critical_hit",
+		StageCorrelationID: flowMissionID + ":critical_hit",
+		StageGateRequired:  true,
+		StageGateApproved:  true,
+	}
+	status.ApprovalGatePackageDigest = domain.CriticalHitStageApprovalDigest(status)
+	statusRaw, err := json.Marshal(status)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(root, "missions", flowMissionID+".json"), statusRaw, 0o600))
+	require.NoError(t, os.RemoveAll(filepath.Join(basePath, "refined", flowMissionID)))
+	require.NoError(t, os.MkdirAll(filepath.Join(basePath, "archived"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(basePath, "archived", flowMissionID+"-report.md"), []byte("critical hit report\n"), 0o600))
+
+	request, err := buildMissionInvocation(t.Context(), missionadapter.InvocationBuildInput{
+		Root: root, BasePath: basePath, MissionID: flowMissionID, Role: "sniper", Slot: "execution",
+	})
+	require.NoError(t, err)
+	require.Equal(t, flowMissionID+":critical_hit", request.Input["stage_correlation_id"])
+	_, err = completeMissionInvocation(t.Context(), missionadapter.InvocationCompleteInput{
+		Root: root, BasePath: basePath, RequestID: request.RequestID, Adapter: domain.ExecutionAdapterCurrentHost,
+		Completion: domain.MissionInvocationCompletion{RequestID: request.RequestID, Result: "invalid"},
+	})
+	require.Error(t, err)
+	_, unchanged, err := loadMission(root, flowMissionID)
+	require.NoError(t, err)
+	require.Equal(t, domain.StateExecution, unchanged.State)
+	pending, err := missionruntime.NewInvocationStore(root).Get(request.RequestID)
+	require.NoError(t, err)
+	require.Equal(t, domain.InvocationStatePending, pending.EffectiveState())
+
+	outcome, err := completeMissionInvocation(t.Context(), missionadapter.InvocationCompleteInput{
+		Root: root, BasePath: basePath, RequestID: request.RequestID, Adapter: domain.ExecutionAdapterCurrentHost,
+		Completion: domain.MissionInvocationCompletion{
+			RequestID: request.RequestID,
+			Result:    "sniper: done | report_path: .analysis/archived/flow-mission-report.md | mission_status: documentation_applied",
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "verified", outcome.Status)
+
+	_, completed, err := loadMission(root, flowMissionID)
+	require.NoError(t, err)
+	require.Equal(t, domain.StateDoneDelivery, completed.State)
+	require.Equal(t, domain.PhaseDone, completed.Phase)
 }
 
 func sniperInvocationWorkspace(t *testing.T) (string, string) {

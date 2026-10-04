@@ -51,10 +51,10 @@ type Decision struct {
 	FallbackRoute string
 }
 
-// EvaluateCriticalHit runs Critical Hit through its deterministic activation
-// flow. A mode must select one of the contract's declared trigger condition
-// sets; unknown modes fail closed to the full pipeline.
-func EvaluateCriticalHit(e Evidence) Decision {
+// EvaluateEligibility is the Mechanism-backed deterministic policy boundary.
+// It is deliberately pure so contextual Feat activation remains separate from
+// path, evidence, and safety predicates.
+func EvaluateEligibility(e Evidence) Decision {
 	switch e.Mode {
 	case ModePlain:
 		return evaluatePlainMove(e)
@@ -63,6 +63,13 @@ func EvaluateCriticalHit(e Evidence) Decision {
 	default:
 		return blockedCriticalHitDecision(e.Mode)
 	}
+}
+
+// EvaluateCriticalHit runs Critical Hit through its deterministic activation
+// flow. A mode must select one of the contract's declared trigger condition
+// sets; unknown modes fail closed to the full pipeline.
+func EvaluateCriticalHit(e Evidence) Decision {
+	return EvaluateEligibility(e)
 }
 
 func evaluatePlainMove(e Evidence) Decision {

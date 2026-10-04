@@ -16,6 +16,17 @@ func TestResolveDigestInputUsesExactlyOneSource(t *testing.T) {
 	require.Equal(t, "sha256:file", got)
 	_, err = digest.ResolveDigestInput("sha256:flag", "skill.md", func(string) (string, error) { return "", nil })
 	require.EqualError(t, err, "--resolved-digest and --file are mutually exclusive")
+
+	got, err = digest.ResolveDigestInput("sha256:flag", "", nil)
+	require.NoError(t, err)
+	require.Equal(t, "sha256:flag", got)
+
+	_, err = digest.ResolveDigestInput("", "skill.md", nil)
+	require.EqualError(t, err, "resolved-digest: file hash adapter is required")
+	_, err = digest.ResolveDigestInput("", "skill.md", func(string) (string, error) {
+		return "", errors.New("hash failed")
+	})
+	require.EqualError(t, err, "resolved-digest: hash failed")
 }
 
 func TestCompareResolvedDigestDelegatesCatalogAuthority(t *testing.T) {
@@ -33,4 +44,7 @@ func TestCompareResolvedDigestDelegatesCatalogAuthority(t *testing.T) {
 		return digest.ResolvedDigestComparison{}, errors.New("catalog unavailable")
 	})
 	require.ErrorContains(t, err, "catalog unavailable")
+
+	_, err = digest.CompareResolvedDigest("provider", "digest", nil)
+	require.EqualError(t, err, "resolved-digest: catalog comparison adapter is required")
 }

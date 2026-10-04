@@ -407,7 +407,7 @@ entities:
   provenance: canonical
   source_paths:
   - internal/domain/stage_resolution_artifact.go
-  - internal/domain/taxonomy.go
+  - internal/domain/taxonomy_stage.go
   generated_paths:
   - .strategist/contracts/machine/scout-routing.yaml
 - family: stage
@@ -417,7 +417,7 @@ entities:
   provenance: canonical
   source_paths:
   - internal/domain/stage_resolution_artifact.go
-  - internal/domain/taxonomy.go
+  - internal/domain/taxonomy_stage.go
   generated_paths:
   - .strategist/contracts/machine/scout-routing.yaml
 - family: stage
@@ -427,7 +427,7 @@ entities:
   provenance: canonical
   source_paths:
   - internal/domain/stage_resolution_artifact.go
-  - internal/domain/taxonomy.go
+  - internal/domain/taxonomy_stage.go
   generated_paths:
   - .strategist/contracts/machine/scout-routing.yaml
 - family: tool

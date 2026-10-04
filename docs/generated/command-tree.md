@@ -58,6 +58,7 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `invoke` — Invoke one embedded Weapon through a host bridge
   - `normalize-openspec` — Publish a completed OpenSpec change into the refined mission package
   - `report-usage` — Record real token usage for a mission, reported by the invoking agent
+  - `requests` — List embedded invocation requests (read-only; never prints payload or nonce)
   - `route` — Record Scout's route decision for a mission (JSON on stdin)
   - `start` — Start a mission
   - `status` — Inspect a mission status

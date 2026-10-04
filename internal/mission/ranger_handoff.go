@@ -32,6 +32,11 @@ type rangerEvaluationContext struct {
 	attempt int
 }
 
+// RangerOutcomeAwaitingChallenge is the telemetry outcome emitted when Ranger
+// normalization finds a required challenge. It is not a durable outcome and
+// consumes no bounded attempt: the receiver's answers cannot exist yet.
+const RangerOutcomeAwaitingChallenge = "awaiting_challenge"
+
 // EvaluateRangerToArchivist evaluates and persists one lifecycle-owned
 // Ranger-to-Archivist outcome. A required challenge with no input is recorded
 // as failed; it is never silently converted into a skip.
@@ -120,21 +125,34 @@ func appendRangerOutcome(strategistRoot, missionID string, evaluation rangerEval
 	return outcome, nil
 }
 
-// EnsureRangerToArchivistOutcome records the automatic skip or missing-input
-// failure after Ranger normalization. A missing facts block is intentionally
-// left without an outcome so the Archivist boundary reports the precise
-// indeterminate-facts denial instead of inventing policy.
+// EnsureRangerToArchivistOutcome records the automatic skip after Ranger
+// normalization when the typed facts authorize one. A required challenge is
+// recorded as nothing at all: no answers can exist yet, so recording a failed
+// attempt would only spend one of the bounded attempts. The Archivist boundary
+// stays closed (handoff_outcome_missing) until `handoff evaluate-ranger` records
+// a real attempt. A missing facts block is intentionally left without an outcome
+// so the Archivist boundary reports the precise indeterminate-facts denial
+// instead of inventing policy.
 func EnsureRangerToArchivistOutcome(strategistRoot, basePath, missionID string) error {
 	return EnsureRangerToArchivistOutcomeWithTelemetry(context.Background(), strategistRoot, basePath, missionID, nil, missionID)
 }
 
 // EnsureRangerToArchivistOutcomeWithTelemetry is used by mission completion so
 // the CLI's terminal path emits the same lifecycle event as explicit evaluation.
+// When the challenge is required it emits RangerOutcomeAwaitingChallenge instead.
 func EnsureRangerToArchivistOutcomeWithTelemetry(ctx context.Context, strategistRoot, basePath, missionID string, sink telemetry.EventSink, runID string) error {
 	artifactPath := filepath.Join(basePath, "pending", missionID+"-analysis.md")
-	_, err := EvaluateRangerToArchivistWithTelemetry(ctx, strategistRoot, artifactPath, missionID, RangerHandoffInput{}, sink, runID)
-	if err != nil && containsRangerFactsMissing(err) {
-		return nil
+	evaluation, err := prepareRangerEvaluation(strategistRoot, artifactPath, missionID)
+	if err != nil {
+		err = newRangerTelemetry(ctx, sink, runID, missionID).blocked(err)
+		if containsRangerFactsMissing(err) {
+			return nil
+		}
+		return err
 	}
+	if evaluation.policy.Enabled {
+		return newRangerTelemetry(ctx, sink, runID, missionID).awaitingChallenge()
+	}
+	_, err = EvaluateRangerToArchivistWithTelemetry(ctx, strategistRoot, artifactPath, missionID, RangerHandoffInput{}, sink, runID)
 	return err
 }

@@ -78,6 +78,10 @@ They are guidance (`enforced_by: agent_only`), not a gate.
   usage record no waste or cost claim about a mission can be checked.
 - No CLI emits the intake checkpoint, so a missing intake checkpoint is not a condition to hold
   `intake_done`; submit it after `strategist mission route`.
+- Write the output of `strategist mission invoke --json` to a file and read fields from it with `jq`;
+  do not pipe it through `head` or `cut`. Each call issues a new request, so truncating the output and
+  running the command again leaves the first request unfinished. Run it once per phase, then complete
+  that `request_id`.
 
 ---
 

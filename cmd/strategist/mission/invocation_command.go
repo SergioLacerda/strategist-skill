@@ -19,9 +19,12 @@ type InvocationDependencies struct {
 	LoadMission      func(root, missionID string) (domain.MissionEngineStatus, error)
 	Build            func(context.Context, InvocationBuildInput) (domain.MissionInvocationRequest, error)
 	Complete         func(context.Context, InvocationCompleteInput) (domain.MissionInvocationOutcome, error)
-	ExecuteHost      func(context.Context, string, string, string, domain.MissionInvocationRequest) (domain.MissionInvocationCompletion, error)
-	WriteResult      func(*cobra.Command, bool, any) error
-	ReadCompletion   func(*cobra.Command) (domain.MissionInvocationCompletion, error)
+	// ListRequests summarizes the request records of one mission, or of every
+	// mission when the id is empty. It is read-only.
+	ListRequests   func(root, missionID string) (domain.MissionInvocationListing, error)
+	ExecuteHost    func(context.Context, string, string, string, domain.MissionInvocationRequest) (domain.MissionInvocationCompletion, error)
+	WriteResult    func(*cobra.Command, bool, any) error
+	ReadCompletion func(*cobra.Command) (domain.MissionInvocationCompletion, error)
 	// TelemetrySink selects the discovery event sink when a completion runs.
 	// Production composition builds it from the existing telemetry
 	// configuration; tests inject capture or failing sinks. A nil function

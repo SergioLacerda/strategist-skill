@@ -1,10 +1,12 @@
 package mission
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
 	"github.com/SergioLacerda/strategist-skill/internal/application"
+	criticalhit "github.com/SergioLacerda/strategist-skill/internal/feats/critical_hit"
 	livemission "github.com/SergioLacerda/strategist-skill/internal/mission"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
@@ -44,11 +46,32 @@ func RunRoute(cmd *cobra.Command, deps LifecycleDependencies, rootInput, mission
 	if err != nil {
 		return fmt.Errorf("mission route: %w", err)
 	}
+	if err := activateSelectedCriticalHit(deps, root, missionID, raw); err != nil {
+		return fmt.Errorf("mission route: activate Critical Hit: %w", err)
+	}
 	status := routeStatus(appended)
 	if _, err := fmt.Fprintf(cmd.OutOrStdout(), "mission_id=%s route_decision=%s\n", missionID, status); err != nil {
 		return fmt.Errorf("mission route: write result: %w", err)
 	}
 	return nil
+}
+
+func activateSelectedCriticalHit(deps LifecycleDependencies, root, missionID string, raw []byte) error {
+	if selectedRoute(raw) != criticalhit.FeatID || deps.ActivateCriticalHit == nil {
+		return nil
+	}
+	_, err := deps.ActivateCriticalHit(root, missionID)
+	return err
+}
+
+func selectedRoute(raw []byte) string {
+	var decision struct {
+		SelectedRoute string `json:"selected_route"`
+	}
+	if err := json.Unmarshal(raw, &decision); err != nil {
+		return ""
+	}
+	return decision.SelectedRoute
 }
 
 func recordRoute(cmd *cobra.Command, deps LifecycleDependencies, root, missionID string, raw []byte) (bool, error) {

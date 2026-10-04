@@ -3,7 +3,10 @@ description: >
   Route decision emitted by Scout (Intake Router) before pipeline branching.
   This is a compact, auditable classification record — NOT a discovery report.
   It is logged and telemetered; it is not written as a pending/ analysis artifact.
-  The implementing skill decides the file/log format.
+  The implementing skill decides the file/log format. selected_route is a
+  compatibility selection outcome, not a taxonomy family: critical_hit carries
+  Critical Hit Feat context and resolves to the SHORT Stage downstream, with the
+  Strategist Approval Gate still required.
 
 required_fields:
   mission_id:
@@ -80,3 +83,12 @@ invariants:
   - discovery_subtype MUST be present whenever evidence_state=requires_discovery and
     selected_route=full_pipeline
   - fallback_route is always full_pipeline — conservatism is the safe default
+
+compatibility_semantics:
+  critical_hit:
+    taxonomy_family: feat
+    feat_id: critical_hit
+    canonical_stage: SHORT
+    gate_required: true
+    fallback_route: full_pipeline
+    migration_rule: preserve_until_separately_approved_route_removal

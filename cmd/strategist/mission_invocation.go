@@ -43,6 +43,7 @@ func buildMissionInvocation(ctx context.Context, input missionadapter.Invocation
 
 func newMissionInvocationRequest(ctx context.Context, input missionadapter.InvocationBuildInput, binding domain.RoleWeaponBinding, weapon domain.CompiledWeapon, payload []byte, sourceDigest string) (domain.MissionInvocationRequest, time.Time, error) {
 	approvalDigest := ""
+	stageCorrelationID := ""
 	executionContract, outputContract := "", ""
 	if input.Role == "ranger" {
 		executionContract, outputContract = provider.DiscoveryExecutionContract, provider.DiscoveryOutputContract
@@ -54,17 +55,34 @@ func newMissionInvocationRequest(ctx context.Context, input missionadapter.Invoc
 			return domain.MissionInvocationRequest{}, time.Time{}, fmt.Errorf("load Sniper mission authorization: %w", loadErr)
 		}
 		approvalDigest = status.ApprovalGatePackageDigest
+		stageCorrelationID = criticalHitStageCorrelation(status)
 	}
 	request, issued, err := application.NewInvocationRequest(ctx, application.InvocationRequestInput{
 		Root: input.Root, BasePath: input.BasePath, MissionID: input.MissionID, Role: input.Role, Slot: input.Slot,
 		RequestContext: input.RequestContext, Binding: binding, Weapon: weapon, Payload: payload,
-		SourceDigest: sourceDigest, ApprovalGatePackageDigest: approvalDigest,
+		SourceDigest: sourceDigest, ApprovalGatePackageDigest: approvalDigest, StageCorrelationID: stageCorrelationID,
 		ExecutionContract: executionContract, OutputContract: outputContract,
 	})
 	return request, issued, wrapMissionError(err)
 }
 
+func criticalHitStageCorrelation(status domain.MissionEngineStatus) string {
+	if status.Stage == domain.StageShort && status.StageFeat == "critical_hit" {
+		return status.StageCorrelationID
+	}
+	return ""
+}
+
 func newInvocationID() (string, error) {
 	id, err := application.NewInvocationID()
 	return id, wrapMissionError(err)
+}
+
+// listMissionInvocationRequests is the read-only composition of the request listing.
+func listMissionInvocationRequests(root, missionID string) (domain.MissionInvocationListing, error) {
+	listing, err := missionruntime.NewInvocationStore(root).List(missionID)
+	if err != nil {
+		return domain.MissionInvocationListing{}, fmt.Errorf("list mission invocation requests: %w", err)
+	}
+	return listing, nil
 }

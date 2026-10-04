@@ -92,6 +92,16 @@ func TestEvaluateCriticalHit_PlainMove_BlocksNonMarkdownFileType(t *testing.T) {
 	assert.False(t, decision.Allowed)
 }
 
+func TestEvaluateCriticalHit_PlainMove_BlocksMixedFileTypes(t *testing.T) {
+	t.Parallel()
+	e := validPlainMoveEvidence()
+	e.FileTypes = []string{".md", ".go"}
+
+	decision := criticalhit.EvaluateCriticalHit(e)
+
+	assert.False(t, decision.Allowed)
+}
+
 func TestEvaluateCriticalHit_PlainMove_BlocksHighRisk(t *testing.T) {
 	t.Parallel()
 	e := validPlainMoveEvidence()

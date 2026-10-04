@@ -43,6 +43,16 @@ func (t rangerTelemetry) terminal(outcome handoff.Outcome) error {
 	return nil
 }
 
+// awaitingChallenge reports that normalization found a required challenge and
+// recorded no attempt. It is informational: the decision comes from the
+// explicit evaluation that follows the receiver's answers.
+func (t rangerTelemetry) awaitingChallenge() error {
+	if err := emitRangerHandoffTelemetry(t.ctx, t.sink, t.runID, RangerOutcomeAwaitingChallenge, true, 0, "awaiting_answers", 0, ""); err != nil {
+		return fmt.Errorf("evaluate Ranger-to-Archivist handoff: emit telemetry: %w", err)
+	}
+	return nil
+}
+
 func containsRangerFactsMissing(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "ranger_handoff_policy_facts_missing")
 }

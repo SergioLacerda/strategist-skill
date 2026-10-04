@@ -331,6 +331,37 @@ func TestDirectJSONAndAuthorizationParserFailures(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestCriticalHitAuthorizationUsesApprovedStageEvidenceWithoutPackage(t *testing.T) {
+	root, basePath := sniperInvocationWorkspace(t)
+	status := domain.MissionEngineStatus{
+		MissionID:          flowMissionID,
+		Phase:              domain.PhaseExecution,
+		State:              domain.StateExecution,
+		Stage:              domain.StageShort,
+		StageFeat:          "critical_hit",
+		StageCorrelationID: flowMissionID + ":critical_hit",
+		StageGateRequired:  true,
+		StageGateApproved:  true,
+	}
+	status.ApprovalGatePackageDigest = domain.CriticalHitStageApprovalDigest(status)
+	statusRaw, err := json.Marshal(status)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(root, "missions", flowMissionID+".json"), statusRaw, 0o600))
+	require.NoError(t, os.RemoveAll(filepath.Join(basePath, "refined", flowMissionID)))
+
+	require.NoError(t, authorizeSniperEntry(missionadapter.InvocationBuildInput{
+		Root: root, BasePath: basePath, MissionID: flowMissionID, Role: "sniper", Slot: "execution",
+	}))
+
+	status.StageGateApproved = false
+	statusRaw, err = json.Marshal(status)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(root, "missions", flowMissionID+".json"), statusRaw, 0o600))
+	require.ErrorContains(t, authorizeSniperEntry(missionadapter.InvocationBuildInput{
+		Root: root, BasePath: basePath, MissionID: flowMissionID, Role: "sniper", Slot: "execution",
+	}), "explicit gate approval")
+}
+
 func TestAdditionalCommandBoundaryFailures(t *testing.T) {
 	_, err := createCodexOutputFile(filepath.Join(t.TempDir(), "missing"))
 	require.Error(t, err)

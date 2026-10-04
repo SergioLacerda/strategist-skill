@@ -2,6 +2,10 @@ subject: contracts/machine/critical-hit.yaml
 version: "1.0"
 
 invariants:
+  - id: feat_is_passive_and_requests_short
+    description: Critical Hit is a Feat; deterministic eligibility is Mechanism-backed and the Role submits SHORT
+    rule: Feat result carries identity, gate and correlation context; it never selects or executes a Stage
+
   - id: only_analysis_move
     description: Critical Hit only fires for the analysis_move task type
     rule: task_type != analysis_move → Critical Hit does not trigger

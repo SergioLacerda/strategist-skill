@@ -225,6 +225,40 @@ func TestSubmit_ScoutRouteDecisionNarrowsTheEvidenceRegime(t *testing.T) {
 	assert.Equal(t, domain.StateExecution, decodeStatus(t, out).State)
 }
 
+func TestCriticalHitRoutePersistsGateBeforeExecution(t *testing.T) {
+	root := setupViewRoot(t, domain.MissionEngineStatus{})
+	_, err := runLifecycle(t, mission.NewStart, "--root", root, "--mission-id", "m-critical-route")
+	require.NoError(t, err)
+	_, err = runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", "m-critical-route", "--event", string(domain.MissionEventBootstrapDone))
+	require.NoError(t, err)
+
+	deps := lifecycleDeps(t)
+	deps.ActivateCriticalHit = func(gotRoot, missionID string) (domain.MissionEngineStatus, error) {
+		return livemission.ActivateCriticalHitRoute(gotRoot, missionID, testLoadMission, func(root string, status domain.MissionEngineStatus) error {
+			writeMissionState(t, root, status)
+			return nil
+		})
+	}
+	cmd := mission.NewRoute(deps)
+	cmd.SetIn(strings.NewReader(`{"mission_id":"m-critical-route","request_category":"analysis_move","selected_route":"critical_hit","route_reason":"eligible","route_confidence":0.95,"evidence_state":"explicit","fallback_route":"full_pipeline"}`))
+	cmd.SetArgs([]string{"--root", root, "--mission-id", "m-critical-route"})
+	require.NoError(t, cmd.Execute())
+
+	out, err := runLifecycle(t, mission.NewStatus, "--root", root, "--mission-id", "m-critical-route")
+	require.NoError(t, err)
+	status := decodeStatus(t, out)
+	require.Equal(t, domain.StateApprovalGate, status.State)
+	require.Equal(t, domain.PhaseApprovalGate, status.Phase)
+	require.False(t, status.StageGateApproved)
+
+	out, err = runLifecycle(t, mission.NewSubmit, "--root", root, "--mission-id", "m-critical-route", "--event", string(domain.MissionEventCriticalHitGateApproved))
+	require.NoError(t, err)
+	status = decodeStatus(t, out)
+	require.Equal(t, domain.StateExecution, status.State)
+	require.Equal(t, domain.PhaseExecution, status.Phase)
+	require.True(t, status.StageGateApproved)
+}
+
 func TestRoute_RejectsDecisionForAnotherMission(t *testing.T) {
 	root := setupViewRoot(t, domain.MissionEngineStatus{})
 	decision := `{"mission_id":"someone-else","request_category":"general","selected_route":"full_pipeline","route_reason":"r","route_confidence":0.9,"evidence_state":"explicit","fallback_route":"full_pipeline"}`

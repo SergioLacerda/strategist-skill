@@ -14,12 +14,15 @@ func TestStageResolutionArtifactRoundTripsAndReconstructsResolution(t *testing.T
 
 	resolution, err := domain.ResolveStage(domain.StageResolutionRequest{
 		Route: domain.MissionRouteDirectExecute, Role: "sniper", Feat: "critical_hit",
-		PolicyVersion: "route-resolution/v1", MissionExecution: true,
+		PolicyVersion: "route-resolution/v1", MissionID: "mission-1",
+		CorrelationKey: "mission-1:critical_hit", GateRequired: true, MissionExecution: true,
 	})
 	require.NoError(t, err)
 	artifact, err := domain.NewStageResolutionArtifact(resolution, "analysis_move")
 	require.NoError(t, err)
 	assert.Equal(t, domain.CanonicalTaxonomyVersion, artifact.TaxonomyVersion)
+	assert.Equal(t, "mission-1:critical_hit", artifact.CorrelationKey)
+	assert.True(t, artifact.GateRequired)
 
 	raw, err := json.Marshal(artifact)
 	require.NoError(t, err)

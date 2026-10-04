@@ -28,6 +28,7 @@ type InvocationRequestInput struct {
 	Payload                   []byte
 	SourceDigest              string
 	ApprovalGatePackageDigest string
+	StageCorrelationID        string
 	ExecutionContract         string
 	OutputContract            string
 }
@@ -54,6 +55,7 @@ func NewInvocationRequest(ctx context.Context, input InvocationRequestInput) (do
 		requestInput["refined_package"] = filepath.ToSlash(filepath.Join(input.BasePath, "refined", input.MissionID))
 		requestInput["report_path"] = filepath.ToSlash(filepath.Join(input.BasePath, "archived", input.MissionID+"-report.md"))
 		requestInput["approval_gate_package_digest"] = input.ApprovalGatePackageDigest
+		addStageCorrelation(requestInput, input.StageCorrelationID)
 	}
 	if strings.TrimSpace(input.RequestContext) != "" {
 		requestInput["request_context"] = input.RequestContext
@@ -66,6 +68,12 @@ func NewInvocationRequest(ctx context.Context, input InvocationRequestInput) (do
 		ExecutionMode: input.Binding.ExecutionMode, Entrypoint: input.Binding.Entrypoint,
 		Payload: string(input.Payload), Input: requestInput, Nonce: NewPromptNonce(),
 	}, now, nil
+}
+
+func addStageCorrelation(requestInput map[string]any, correlationID string) {
+	if correlationID != "" {
+		requestInput["stage_correlation_id"] = correlationID
+	}
 }
 
 // NewInvocationID returns an opaque, collision-resistant request identifier.

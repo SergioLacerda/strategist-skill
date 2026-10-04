@@ -39,6 +39,7 @@ func New(composition Composition) *cobra.Command {
 		NewReportUsage(composition.Usage),
 		NewInvoke(composition.Invocation),
 		NewComplete(composition.Invocation),
+		NewRequests(composition.Invocation),
 		NewAcceptSideQuest(composition.Lifecycle),
 		NewDeclineSideQuest(composition.Lifecycle),
 		NewADRTarget(composition.Lifecycle),

@@ -16,14 +16,16 @@ Routes are not a taxonomy family: they are the Pipeline paths that Scout selects
 never a Role, Weapon, or provider. The current route names are
 `critical_hit`, `implementation_short_route`, and `full_pipeline`.
 
-- **Critical Hit** — internal capability for workspace artifact management
-  (`pending/`, `refined/`, `archived/`, `done/`). Not a route mutually exclusive with the
-  pipeline — may fire at intake or mid-mission. Two modes: plain move (no evaluation, no
-  evidence) and closure move (relocate a `pending/`/`refined/` package into `done/`,
-  requires an explicit completion/validation claim and a supplied evidence summary).
-  Reaching `documentation_applied` at the end of a `full_pipeline` is documentation
-  completion, not implementation/validation evidence, and does not by itself make a
-  package a closure candidate. Never infers implementation status on its own. See
+- **Critical Hit** — a contextual Feat owned by Scout for workspace artifact management
+  (`pending/`, `refined/`, `archived/`, `done/`). Its deterministic eligibility rules are
+  Mechanism-backed. An eligible result requests the `SHORT` Stage; `critical_hit` remains
+  a downstream compatibility route while bypass and telemetry consumers migrate. The Feat
+  is passive and does not select, open, or execute a Stage. Two modes: plain move (no
+  evaluation, no evidence) and closure move (relocate a `pending/`/`refined/` package into
+  `done/`, requires an explicit completion/validation claim and a supplied evidence
+  summary). Reaching `documentation_applied` at the end of a `full_pipeline` is
+  documentation completion, not implementation/validation evidence, and does not by itself
+  make a package a closure candidate. Never infers implementation status on its own. See
   `critical-hit.yaml` and `11-critical-hit.md`.
 - **Implementation Short Route** — for already-refined implementation/materialization requests
 - **Full Pipeline** — every other request
@@ -98,10 +100,11 @@ what does not qualify).
 
 ## Critical Hit Sequence
 
-`bootstrap → preflight → intake → critical_hit_gate → execution → learning`
+`bootstrap → preflight → intake → critical_hit_gate → SHORT execution → learning`
 
 Same sequence for both plain move and closure move; `critical_hit_gate` renders the mode-appropriate
-inline gate (see `11-critical-hit.md`).
+inline gate (see `11-critical-hit.md`). The current `critical_hit` route is only the compatibility
+adapter for this bounded SHORT request.
 
 ## Implementation Short Route
 

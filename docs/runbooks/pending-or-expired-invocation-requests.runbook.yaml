@@ -1,0 +1,40 @@
+schema_version: "1"
+runbook_id: pending-or-expired-invocation-requests
+runbook_type: analytical
+source_doc: docs/runbooks/pending-or-expired-invocation-requests.md
+
+applies_when:
+  - "A strategist mission invoke request (inv_<hex>) is still pending or has expired, sits beside a newer request for the same mission, role and slot, or a command reports invocation_request_expired or invocation_replay, and no phase is blocked"
+  - "An orphan embedded invocation request left unfinished after its mission invoke output was truncated or discarded and the command was run again"
+
+objective: Decide whether a pending or expired embedded invocation request needs any action, and avoid recreating it.
+
+preconditions:
+  - "The request record exists under .strategist/missions/invocations/ and its payload and nonce are not printed"
+
+analysis:
+  - "Read the request state, mission, role, slot, created_at and expires_at without the payload or nonce"
+  - "Compare expires_at with the current time and the request's mission with your own session"
+
+decision_gates:
+  - id: expired-request-needs-no-action
+    statement: "A pending request whose expires_at is in the past blocks nothing and is removed automatically; do not edit or delete it"
+  - id: unexpired-request-may-belong-to-another-session
+    statement: "A request that is not expired may be live in another session; never complete or discard a request you did not issue"
+
+checks:
+  - id: write-envelope-to-file
+    level: mandatory
+  - id: do-not-print-nonce
+    level: mandatory
+  - id: do-not-edit-runtime-state-by-hand
+    level: mandatory
+  - id: run-invoke-once-per-phase
+    level: recommended
+  - id: use-orphaned-missions-runbook
+    level: conditional
+    when: "an analysis artifact is stuck at mission_status: ranger_pending (a different case from a request record)"
+
+metadata:
+  version: 1
+  reviewed_at: "2026-10-04"

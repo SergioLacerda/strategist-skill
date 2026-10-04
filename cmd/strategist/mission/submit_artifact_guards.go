@@ -33,7 +33,8 @@ func validateSubmitArtifacts(basePath, missionID string, event domain.MissionEng
 		domain.MissionEventSlotTransient, domain.MissionEventSlotPermanent,
 		domain.MissionEventRefinementArtifactInvalid,
 		domain.MissionEventADRCriterion, domain.MissionEventADRApproved,
-		domain.MissionEventADRDeclined:
+		domain.MissionEventADRDeclined, domain.MissionEventCriticalHitIntent,
+		domain.MissionEventCriticalHitGateApproved, domain.MissionEventCriticalHitGateDeclined:
 		// These events either do not claim an artifact boundary or are
 		// validated by their owning handoff/execution guard.
 		return nil
