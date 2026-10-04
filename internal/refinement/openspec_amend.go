@@ -62,8 +62,8 @@ func AmendOpenSpec(input AmendInput) (AmendResult, error) {
 	if err := plan.apply(); err != nil {
 		return AmendResult{}, err
 	}
-	if err := archiveChange(input.RuntimeRoot, plan.changeDir, input.ChangeID); err != nil {
-		return AmendResult{}, fmt.Errorf("openspec amend: amendment %03d applied but the change was not archived: %w", plan.number, err)
+	if err := cleanupOpenSpecScratch(plan.changeDir); err != nil {
+		return AmendResult{}, fmt.Errorf("openspec amend: amendment %03d applied but provider scratch cleanup failed: %w", plan.number, err)
 	}
 	return AmendResult{RefinedPath: plan.refined, AmendmentDir: plan.snapshotDir, Amendment: plan.number, ProviderChangeID: plan.original, Status: plan.status}, nil
 }

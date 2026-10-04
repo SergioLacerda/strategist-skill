@@ -36,6 +36,34 @@ import (
 	"strings"
 )
 
+// PathResolver implements the domain runtime path port with local filesystem
+// canonicalization and identity checks.
+type PathResolver struct{}
+
+// Canonical returns the normalized, symlink-resolved form of path when it can
+// be resolved, falling back to the absolute or cleaned input otherwise.
+func (PathResolver) Canonical(path string) string {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return filepath.Clean(path)
+	}
+	if resolved, err := filepath.EvalSymlinks(abs); err == nil {
+		return resolved
+	}
+	return abs
+}
+
+// SameDirectory reports whether left and right identify the same filesystem
+// object.
+func (PathResolver) SameDirectory(left, right string) bool {
+	infoLeft, errLeft := os.Stat(left)
+	infoRight, errRight := os.Stat(right)
+	if errLeft != nil || errRight != nil {
+		return false
+	}
+	return os.SameFile(infoLeft, infoRight)
+}
+
 // gzTempFile is the subset of *os.File that WriteGzJSON needs. createGzTempFile
 // exists only so tests can substitute a fault-injecting fake for the file's
 // own Close call — a plain *os.File.Close() on a regular local file has no

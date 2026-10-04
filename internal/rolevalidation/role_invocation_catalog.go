@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/SergioLacerda/strategist-skill/internal/catalog"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
 
@@ -16,7 +17,7 @@ func readCatalogRankedStamp(root, providerID string) (domain.CatalogRankedStamp,
 	if err != nil {
 		return domain.CatalogRankedStamp{}, false, fmt.Errorf("read plugins/catalog.yaml: %w", err)
 	}
-	stamp, ok, err := domain.FindCatalogRankedStamp(raw, providerID)
+	stamp, ok, err := catalog.FindRankedStamp(raw, providerID)
 	if err != nil {
 		return domain.CatalogRankedStamp{}, false, fmt.Errorf("find catalog ranked stamp: %w", err)
 	}

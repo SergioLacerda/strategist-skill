@@ -13,6 +13,7 @@ index only and does not duplicate generated content.
 - [Quality Budgets](quality-budgets.md) — generated quality policy values.
 - [Coverage Policy](coverage-policy.md) — generated coverage manifest policy.
 - [Evaluation Scenarios](eval-scenarios.md) — generated evaluation scenario references.
+- [Taxonomy Entity Inventory](taxonomy-entity-inventory.yaml) — machine-readable canonical entities, ownership, provenance, and generated projections.
 
 ## Provenance
 

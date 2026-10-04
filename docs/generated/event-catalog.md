@@ -23,6 +23,11 @@ feed once that lands.
 | `AttrSelectedSkill` | `strategist.selected_skill` |
 | `AttrArtifact` | `strategist.artifact` |
 | `AttrArtifactPath` | `strategist.artifact.path` |
+| `AttrSchemaVersion` | `strategist.schema_version` |
+| `AttrTaxonomyVersion` | `strategist.taxonomy.version` |
+| `AttrDeprecationState` | `strategist.deprecation.state` |
+| `AttrDeprecatedValue` | `strategist.deprecation.legacy_value` |
+| `AttrCanonicalValue` | `strategist.deprecation.canonical_value` |
 | `AttrReason` | `strategist.reason` |
 | `AttrCacheHit` | `strategist.cache.hit` |
 | `AttrTarget` | `strategist.target` |
@@ -49,6 +54,10 @@ feed once that lands.
 | `AttrDecisionReason` | `strategist.decision_reason` |
 | `AttrRole` | `strategist.role` |
 | `AttrRoute` | `strategist.route` |
+| `AttrStage` | `strategist.stage` |
+| `AttrStageTrigger` | `strategist.stage.trigger` |
+| `AttrStagePolicyVersion` | `strategist.stage.policy_version` |
+| `AttrStageReason` | `strategist.stage.reason` |
 | `AttrRouteReason` | `strategist.route_reason` |
 | `AttrRouteConfidence` | `strategist.route_confidence` |
 | `AttrEvidenceState` | `strategist.evidence_state` |
@@ -98,6 +107,10 @@ feed once that lands.
 | `AttrConfidenceGroundTruthOutcome` | `strategist.confidence.ground_truth_outcome` |
 | `AttrConfidenceCoverageStatus` | `strategist.confidence.coverage_status` |
 | `AttrConfidenceViolation` | `strategist.confidence.violation` |
+| `AttrConfidenceReportStatus` | `strategist.confidence.report.status` |
+| `AttrConfidenceReportID` | `strategist.confidence.report.id` |
+| `AttrConfidenceReportSource` | `strategist.confidence.report.source` |
+| `AttrConfidenceReportReason` | `strategist.confidence.report.reason` |
 | `AttrIntakeToScoutMS` | `strategist.metrics.t_intake_to_scout_ms` |
 | `AttrScoutToRangerMS` | `strategist.metrics.t_scout_to_ranger_ms` |
 | `AttrRangerToArchivistMS` | `strategist.metrics.t_ranger_to_archivist_ms` |

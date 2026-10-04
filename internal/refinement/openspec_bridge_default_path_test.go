@@ -86,12 +86,10 @@ func TestNormalizeOpenSpecRefusesAnExistingPackageMissingAFile(t *testing.T) {
 	require.ErrorContains(t, err, "conflicting refined package")
 }
 
-// Re-running the same change over its own published package: the package is
-// identical, so the pending analysis is promoted (removed), but on the same day the
-// archive target <date>-<id> already exists and the rename fails, leaving the change
-// in the active list. Pinned as observed on 2026-09-26; it is a latent defect of the
-// default path, reported as a side quest and deliberately not fixed here.
-func TestNormalizeOpenSpecSameChangeAgainOverAnIdenticalPackageFailsAtTheArchiveStep(t *testing.T) {
+// Re-running an identical provider change retains idempotent publication
+// semantics and removes the newly supplied private scratch. No private archive
+// can make the result depend on the current date or a previous delivery.
+func TestNormalizeOpenSpecSameChangeAgainOverAnIdenticalPackageRemovesScratch(t *testing.T) {
 	f := newBridgeFixture(t)
 	f.change(t, "first", "v1")
 	_, err := f.normalize("first")
@@ -100,10 +98,9 @@ func TestNormalizeOpenSpecSameChangeAgainOverAnIdenticalPackageFailsAtTheArchive
 
 	_, err = f.normalize("first")
 
-	require.ErrorContains(t, err, "archive change first")
-	require.ErrorContains(t, err, "file exists")
+	require.NoError(t, err)
 	_, pendingErr := os.Stat(f.pending)
-	require.ErrorIs(t, pendingErr, os.ErrNotExist, "the pending analysis was already promoted before the archive step failed")
+	require.ErrorIs(t, pendingErr, os.ErrNotExist, "the pending analysis is promoted idempotently")
 	_, changeErr := os.Stat(filepath.Join(f.runtime, "changes", "first"))
-	assert.NoError(t, changeErr, "the change stays in the active list")
+	require.ErrorIs(t, changeErr, os.ErrNotExist, "the repeated provider scratch is removed")
 }

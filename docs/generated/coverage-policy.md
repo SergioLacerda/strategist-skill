@@ -61,6 +61,10 @@ are recorded in `scripts/coverage-exemptions.tsv`. Edit those sources, not this 
 | `internal/missionview` | 90% | read-only mission projection and deterministic renderer contract |
 | `internal/weapon` | 95% | Role-scoped Weapon resolution and composite invocation contract - measured 100.0% |
 | `internal/mechanisms` | 90% | Mechanisms registry: parsing, validation and role-scoped brief that reach agents in a mission |
+| `internal/application` | 90% | consumer-owned read-only application services and CLI boundary orchestration |
+| `internal/catalog` | 90% | YAML catalog adapter and domain-ranked stamp boundary |
+| `internal/roles` | 90% | workspace role manifest adapter and domain registry boundary |
+| `internal/roster` | 90% | read-only ROSTER artifact planning and selection validation boundary |
 
 ## Reviewed Exemptions
 

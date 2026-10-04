@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/weapon"
 	"gopkg.in/yaml.v3"
 )
 
@@ -33,7 +34,7 @@ type weaponBinding struct {
 // roster (DEC-001: brainstorming↔ranger, openspec-propose↔archivist),
 // never to every installed skill.
 func verifyEmbeddedWeaponBindings(root string) ([]weaponBinding, error) {
-	catalog, err := domain.ListCatalogWeaponFacts(root)
+	catalog, err := weapon.ListCatalogWeaponFacts(root)
 	if err != nil {
 		return nil, fmt.Errorf("weapon bindings: %w", err)
 	}

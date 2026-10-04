@@ -66,9 +66,44 @@ handoff
 	require.ErrorIs(t, err, os.ErrNotExist)
 	_, err = os.Stat(changeDir)
 	require.ErrorIs(t, err, os.ErrNotExist, "a published change leaves the active list")
-	archived, err := filepath.Glob(filepath.Join(runtime, "changes", "archive", "*-"+change))
-	require.NoError(t, err)
-	assert.Len(t, archived, 1, "it is moved to changes/archive/<date>-<id>")
+	_, err = os.Stat(filepath.Join(runtime, "changes", "archive"))
+	require.ErrorIs(t, err, os.ErrNotExist, "a delivered provider change leaves no private archive")
+}
+
+func TestNormalizeOpenSpecReportsScratchCleanupFailureAfterPublication(t *testing.T) {
+	project := t.TempDir()
+	base := filepath.Join(project, ".analysis")
+	runtime := filepath.Join(project, ".strategist", "openspec")
+	mission := "m-1"
+	change := "change"
+	pending := filepath.Join(base, "pending", mission+"-analysis.md")
+	changeDir := filepath.Join(runtime, "changes", change)
+	require.NoError(t, os.MkdirAll(filepath.Dir(pending), 0o755))
+	require.NoError(t, os.MkdirAll(changeDir, 0o755))
+	require.NoError(t, os.WriteFile(pending, []byte("---\nmission_id: m-1\nmission_status: archivist_pending\n---\n"), 0o644))
+	for _, name := range []string{"proposal.md", "design.md", "tasks.md"} {
+		require.NoError(t, os.WriteFile(filepath.Join(changeDir, name), canonicalTestArtifact(name, ""), 0o644))
+	}
+
+	original := removeOpenSpecScratch
+	removeOpenSpecScratch = func(string) error { return errors.New("cleanup unavailable") }
+	t.Cleanup(func() { removeOpenSpecScratch = original })
+	publicationRecorded := false
+
+	_, err := NormalizeOpenSpec(OpenSpecInput{
+		MissionID: mission, BasePath: base, RuntimeRoot: runtime, ChangeID: change,
+		PendingAnalysisPath: pending, RecordConfidence: noopConfidenceRecorder,
+		RecordPublication: func(PackagePublication) error {
+			publicationRecorded = true
+			return nil
+		},
+	})
+
+	require.ErrorContains(t, err, "provider scratch cleanup")
+	assert.True(t, publicationRecorded, "cleanup follows durable publication evidence")
+	assertFile(t, filepath.Join(base, "refined", mission, "analysis.md"), "mission_status: archivist_done")
+	_, statErr := os.Stat(changeDir)
+	require.NoError(t, statErr, "failed cleanup leaves provider scratch available for diagnosis")
 }
 
 func TestNormalizeOpenSpecRejectsEscapingAndPartialOutput(t *testing.T) {

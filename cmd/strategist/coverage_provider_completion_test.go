@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -60,18 +59,4 @@ func TestReadMissionCompletionRejectsMalformedInput(t *testing.T) {
 	require.ErrorContains(t, read(`{"request_id":"a"} {"request_id":"b"}`), "more than one object")
 	require.ErrorContains(t, read(`{"request_id":"a"} {broken`), "trailing data")
 	require.NoError(t, read(`{"request_id":"a"}`))
-}
-
-func TestWriteMissionArtifactFailures(t *testing.T) {
-	blocker := filepath.Join(t.TempDir(), "file")
-	require.NoError(t, os.WriteFile(blocker, nil, 0o644))
-	require.ErrorContains(t, writeMissionArtifact(filepath.Join(blocker, "sub", "a.md"), []byte("x")), "create directory")
-
-	dir := t.TempDir()
-	require.NoError(t, os.MkdirAll(filepath.Join(dir, "target"), 0o755))
-	require.ErrorContains(t, writeMissionArtifact(filepath.Join(dir, "target"), []byte("x")), "write normalized artifact")
-
-	path := filepath.Join(dir, "new", "a.md")
-	require.NoError(t, writeMissionArtifact(path, []byte("x")))
-	assert.FileExists(t, path)
 }

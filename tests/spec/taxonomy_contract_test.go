@@ -10,42 +10,31 @@ import (
 	"testing"
 )
 
-// ADR-0053 fixed six families. The live documents define exactly those and no longer
-// present Pipeline Services or Routes as families.
+// ADR-0064 defines the current seven-family taxonomy for canonical documentation.
+// ADR-0053 remains historical evidence and is intentionally outside this contract.
 func TestCanonicalTaxonomyDocumentationDefinesAllFamilies(t *testing.T) {
 	t.Parallel()
 
 	root := repoRoot(t)
-	paths := []string{
-		filepath.Join(root, "docs", "architecture", "strategist-concepts.md"),
-		filepath.Join(root, "README.md"),
-		filepath.Join(root, "internal", "embed", "defaults", "SKILL.md"),
+	requiredByPath := map[string][]string{
+		filepath.Join(root, "docs", "architecture", "strategist-concepts.md"): {
+			"public vocabulary has seven families",
+			"**Role**", "**Weapon**", "**Feat**", "**Tool**", "**Mechanism**", "**Stage**", "**Artifact**",
+		},
+		filepath.Join(root, "README.md"): {
+			"canonical taxonomy has seven families",
+			"Roles", "Weapons", "Feats", "Tools", "Mechanisms", "Stages", "Artifacts",
+		},
+		filepath.Join(root, "internal", "embed", "defaults", "SKILL.md"): {
+			"seven public families",
+			"Roles", "Weapons", "Feats", "Tools", "Mechanisms", "Stages", "Artifacts",
+		},
 	}
-	required := []string{
-		"Roles",
-		"Weapons",
-		"Abilities",
-		"Mechanisms",
-		"Pipeline",
-		"Artifacts",
-		"six",
-	}
-	retired := []string{
-		"Pipeline Services",
-		"seven canonical families",
-		"seven public families",
-		"seven families",
-	}
-	for _, path := range paths {
+	for path, required := range requiredByPath {
 		content := readFile(t, path)
 		for _, term := range required {
 			if !strings.Contains(content, term) {
 				t.Errorf("%s missing canonical taxonomy family %q", path, term)
-			}
-		}
-		for _, term := range retired {
-			if strings.Contains(content, term) {
-				t.Errorf("%s still uses retired taxonomy wording %q (ADR-0053)", path, term)
 			}
 		}
 	}
@@ -58,12 +47,14 @@ func TestTaxonomyDocumentsLevelingAndRoleBoundaries(t *testing.T) {
 	paths := []string{
 		filepath.Join(root, "docs", "architecture", "strategist-concepts.md"),
 		filepath.Join(root, "README.md"),
-		filepath.Join(root, "docs", "adr", "0034-role-and-skill-taxonomy.md"),
 		filepath.Join(root, "internal", "embed", "defaults", "SKILL.md"),
 	}
 	required := []string{
 		"LEVELING",
 		"INITIATIVE",
+		"Feat",
+		"Tool",
+		"Stage",
 		"immutable operational resolver",
 		"origin",
 		"extensibility",

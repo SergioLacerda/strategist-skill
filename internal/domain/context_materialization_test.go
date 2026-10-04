@@ -8,6 +8,12 @@ import (
 	"testing"
 )
 
+type testContextReader string
+
+func (r testContextReader) ReadFile(ref string) ([]byte, error) {
+	return os.ReadFile(filepath.Join(string(r), filepath.FromSlash(ref)))
+}
+
 func TestMaterializeContext_IsOrderedBoundedAndVerifiesDigest(t *testing.T) {
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "b.md"), []byte("bravo"), 0o644); err != nil {
@@ -17,7 +23,7 @@ func TestMaterializeContext_IsOrderedBoundedAndVerifiesDigest(t *testing.T) {
 		t.Fatal(err)
 	}
 	sum := sha256.Sum256([]byte("alpha"))
-	result, err := MaterializeContext(root, []ContextReference{
+	result, err := MaterializeContext(testContextReader(root), []ContextReference{
 		{Ref: "b.md", Kind: "context"},
 		{Ref: "a.md", Kind: "context", Digest: "sha256:" + hex.EncodeToString(sum[:])},
 	}, 2, 20)
@@ -49,7 +55,7 @@ func TestMaterializeContext_BlocksMissingDigestDuplicateAndBounds(t *testing.T) 
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if _, err := MaterializeContext(root, tc.refs, tc.maxRefs, tc.maxBytes); err == nil {
+			if _, err := MaterializeContext(testContextReader(root), tc.refs, tc.maxRefs, tc.maxBytes); err == nil {
 				t.Fatal("expected blocked materialization")
 			}
 		})

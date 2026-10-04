@@ -9,7 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/SergioLacerda/strategist-skill/internal/catalog"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
 )
 
 // rankedCertificationReadiness reports Trust and PermissionGrant as Ready
@@ -33,7 +35,7 @@ func certifiedRankedStamp(root, slot, provider string) (domain.CatalogRankedStam
 	if err != nil {
 		return domain.CatalogRankedStamp{}, domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: "ranked_catalog_unreadable", Detail: err.Error()}
 	}
-	stamp, ok, err := domain.FindCatalogRankedStamp(raw, provider)
+	stamp, ok, err := catalog.FindRankedStamp(raw, provider)
 	if err != nil {
 		return domain.CatalogRankedStamp{}, domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: "ranked_catalog_invalid", Detail: err.Error()}
 	}
@@ -158,7 +160,7 @@ func finishRankedRuntimeHealthcheck(ctx context.Context, cmd *exec.Cmd, runtimeR
 		}
 		return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: "ranked_runtime_healthcheck_failed", Detail: fmt.Sprintf("provider=%s root=%s error=%v output=%s", provider, runtimeRoot, err, strings.TrimSpace(string(output)))}
 	}
-	if err := domain.ValidateOpenSpecHealthcheck(output, runtimeRoot); err != nil {
+	if err := domain.ValidateOpenSpecHealthcheck(output, runtimeRoot, runtimefs.PathResolver{}); err != nil {
 		return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: "ranked_runtime_root_mismatch", Detail: fmt.Sprintf("provider=%s root=%s error=%v", provider, runtimeRoot, err)}
 	}
 	return domain.ReadinessCheck{Status: domain.ReadinessReady, ReasonCode: "ranked_runtime_healthy", Detail: runtimeRoot}

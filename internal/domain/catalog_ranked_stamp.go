@@ -2,8 +2,6 @@ package domain
 
 import (
 	"fmt"
-
-	"gopkg.in/yaml.v3"
 )
 
 // CatalogRankedStamp is the minimal certification data needed to resolve a
@@ -33,7 +31,10 @@ type CatalogRankedStamp struct {
 	Runtime          WeaponRuntime `yaml:"runtime"`
 }
 
-type catalogRankedStampFile struct {
+// CatalogRankedStampDocument is the decoded catalog contract. YAML and
+// filesystem decoding belong to an adapter; the domain validates this pure
+// document after decoding.
+type CatalogRankedStampDocument struct {
 	SchemaVersion string               `yaml:"schema_version"`
 	Providers     []CatalogRankedStamp `yaml:"providers"`
 }
@@ -43,17 +44,10 @@ type catalogRankedStampFile struct {
 // legacy runtime kinds and must be regenerated, never translated.
 const CurrentPluginCatalogSchemaVersion = "strategist-plugin-catalog/v2"
 
-// FindCatalogRankedStamp parses raw (a materialized plugins/catalog.yaml's
-// bytes) and returns the entry for providerID. rolevalidation and check
-// both call this instead of each parsing their own copy of the catalog
-// shape — see NewRoleInvocationPlanFromLock's own doc comment on why this
-// project avoids a second, parallel implementation of logic another part of
-// the codebase already owns.
-func FindCatalogRankedStamp(raw []byte, providerID string) (CatalogRankedStamp, bool, error) {
-	var file catalogRankedStampFile
-	if err := yaml.Unmarshal(raw, &file); err != nil {
-		return CatalogRankedStamp{}, false, fmt.Errorf("parse catalog: %w", err)
-	}
+// FindCatalogRankedStampInDocument returns the entry for providerID after the
+// catalog adapter has decoded the materialized document. rolevalidation and
+// check share this validation instead of maintaining parallel catalog rules.
+func FindCatalogRankedStampInDocument(file CatalogRankedStampDocument, providerID string) (CatalogRankedStamp, bool, error) {
 	if file.SchemaVersion != CurrentPluginCatalogSchemaVersion {
 		return CatalogRankedStamp{}, false, fmt.Errorf("%w: catalog schema_version %q is not supported (want %q); regenerate or reinstall the workspace", ErrLegacyWeaponState, file.SchemaVersion, CurrentPluginCatalogSchemaVersion)
 	}

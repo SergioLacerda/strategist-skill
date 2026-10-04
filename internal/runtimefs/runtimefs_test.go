@@ -22,6 +22,17 @@ func TestExists(t *testing.T) {
 	assert.True(t, runtimefs.Exists(dir))
 }
 
+func TestPathResolverCanonicalizesAndComparesDirectories(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	resolver := runtimefs.PathResolver{}
+	assert.Equal(t, root, resolver.Canonical(root))
+	assert.NotEmpty(t, resolver.Canonical(filepath.Join(root, "missing")))
+	assert.True(t, resolver.SameDirectory(root, root))
+	assert.False(t, resolver.SameDirectory(root, filepath.Join(root, "missing")))
+}
+
 func TestReadSHA256(t *testing.T) {
 	t.Parallel()
 

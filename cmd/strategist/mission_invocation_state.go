@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"reflect"
 
+	"github.com/SergioLacerda/strategist-skill/internal/catalog"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	strategistembed "github.com/SergioLacerda/strategist-skill/internal/embed"
 	"gopkg.in/yaml.v3"
@@ -32,7 +33,7 @@ func loadMissionInvocationState(root string) (domain.ActiveConfig, domain.Plugin
 	if err != nil {
 		return domain.ActiveConfig{}, domain.PluginLockFile{}, domain.CompiledRegistry{}, fmt.Errorf("read compiled catalog: %w", err)
 	}
-	registry, err := domain.ParseCompiledRegistryCatalog(catalogRaw)
+	registry, err := catalog.ParseCompiledRegistryCatalog(catalogRaw)
 	if err != nil {
 		return domain.ActiveConfig{}, domain.PluginLockFile{}, domain.CompiledRegistry{}, fmt.Errorf("parse compiled catalog: %w", err)
 	}
@@ -50,7 +51,7 @@ func requireRegistryMatchesBinary(workspace domain.CompiledRegistry) error {
 	if err != nil {
 		return fmt.Errorf("read embedded catalog: %w", err)
 	}
-	embedded, err := domain.ParseCompiledRegistryCatalog(raw)
+	embedded, err := catalog.ParseCompiledRegistryCatalog(raw)
 	if err != nil {
 		return fmt.Errorf("parse embedded catalog: %w", err)
 	}

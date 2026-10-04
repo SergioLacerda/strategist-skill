@@ -79,7 +79,7 @@ func submitLocked(deps LifecycleDependencies, root, basePath, missionID string, 
 		return domain.MissionEngineStatus{}, err
 	}
 	before := engine.Status()
-	status, err := applySubmit(engine, evt, pre.gateDigest)
+	status, err := applySubmit(engine, evt, pre.GateDigest)
 	if err != nil {
 		return domain.MissionEngineStatus{}, err
 	}
@@ -93,11 +93,11 @@ func commitSubmit(deps LifecycleDependencies, root, basePath, missionID string, 
 	if err := invalidateRepairEvidence(root, missionID, evt); err != nil {
 		return fmt.Errorf("mission submit: %w", err)
 	}
-	if err := retainRepairEvidence(basePath, before, status, pre.packageDigest, evt); err != nil {
+	if err := retainRepairEvidence(basePath, before, status, pre.PackageDigest, evt); err != nil {
 		return fmt.Errorf("mission submit: %w", err)
 	}
 	analysisPath := filepath.Join(basePath, "refined", missionID, "analysis.md")
-	original, changed, err := acceptGateAnalysis(analysisPath, evt, pre.gateDigest)
+	original, changed, err := acceptGateAnalysis(analysisPath, evt, pre.GateDigest)
 	if err != nil {
 		return fmt.Errorf("mission submit: %w", err)
 	}
@@ -108,14 +108,14 @@ func commitSubmit(deps LifecycleDependencies, root, basePath, missionID string, 
 	if err := persistCommitState(deps, root, status, analysisPath, original, changed, entry); err != nil {
 		return err
 	}
-	if err := finishSubmit(root, basePath, missionID, evt, pre.outcome, entry); err != nil {
+	if err := finishSubmit(root, basePath, missionID, evt, pre.Outcome, entry); err != nil {
 		return fmt.Errorf("mission submit: %w", err)
 	}
 	return nil
 }
 
 func prepareCommitEntry(root, missionID string, pre submitPreflight, status domain.MissionEngineStatus) (*executionEntry, error) {
-	entry, err := prepareExecutionEntry(root, missionID, pre.packageDigest, pre.claimTargets, pre.outcome, status)
+	entry, err := prepareExecutionEntry(root, missionID, pre.PackageDigest, pre.ClaimTargets, pre.Outcome, status)
 	if err != nil {
 		return nil, fmt.Errorf("mission submit: prepare execution entry: %w", err)
 	}

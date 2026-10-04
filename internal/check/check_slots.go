@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/weapon"
 	"gopkg.in/yaml.v3"
 )
 
@@ -64,7 +65,7 @@ func resolveSlotProvider(root, slot, provider string) (slotResolution, string) {
 // `provider add` is resolved by the next step, resolveFromCustomBinding (DEC-010
 // step 2).
 func resolveFromCatalog(root, slot, provider string) (slotResolution, string, bool) {
-	facts, found, err := domain.ResolveCatalogWeaponFacts(root, provider)
+	facts, found, err := weapon.ResolveCatalogWeaponFacts(root, provider)
 	if err != nil {
 		return slotResolution{}, fmt.Sprintf("slot %s: plugin catalog invalid: %v", slot, err), true
 	}

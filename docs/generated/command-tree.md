@@ -37,7 +37,7 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `suggest` — Suggest a model and effort for a role
   - `validate` — Validate the customer LEVELING policy
 - `mechanisms` — Inspect the Mechanisms registry
-  - `brief` — Print the tools (Mechanisms and Abilities) available to one role
+  - `brief` — Print the Tools, Mechanisms, and Feats available to one role
 - `metrics` — Report metrics computed from Strategist's own runtime memory
   - `confidence` — Report cross-agent confidence metrics
   - `gate-outcome` — Record the human Approval Gate outcome as ground truth

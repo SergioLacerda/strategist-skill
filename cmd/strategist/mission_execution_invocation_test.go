@@ -8,6 +8,7 @@ import (
 	"time"
 
 	missionadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
+	catalogadapter "github.com/SergioLacerda/strategist-skill/internal/catalog"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	strategistembed "github.com/SergioLacerda/strategist-skill/internal/embed"
 	"github.com/SergioLacerda/strategist-skill/internal/handoff"
@@ -58,7 +59,7 @@ func sniperInvocationWorkspace(t *testing.T) (string, string) {
 	catalog, err := (strategistembed.Extractor{}).ReadFile("plugins/catalog.yaml")
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins", "catalog.yaml"), catalog, 0o600))
-	registry, err := domain.ParseCompiledRegistryCatalog(catalog)
+	registry, err := catalogadapter.ParseCompiledRegistryCatalog(catalog)
 	require.NoError(t, err)
 	offers := registry.RankedBindingsFor("sniper", "execution")
 	require.Len(t, offers, 1)

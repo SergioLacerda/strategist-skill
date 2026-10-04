@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/roles"
 )
 
 // Config reads active.yaml, personas/*.yaml and roles/*.yaml from root
@@ -58,7 +58,7 @@ func compilePersonas(root string, sources map[string]int64) (map[string]any, err
 		return nil, err
 	}
 	injectPTBRRuntime(personasRaw)
-	registry, err := domain.LoadRoleRegistry(filepath.Join(root, "roles"))
+	registry, err := roles.LoadRoleRegistry(filepath.Join(root, "roles"))
 	if err != nil {
 		return nil, fmt.Errorf("compile config: role registry: %w", err)
 	}

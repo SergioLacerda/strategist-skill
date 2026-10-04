@@ -2,7 +2,6 @@ package domain
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 )
@@ -17,14 +16,20 @@ type SlotWriteScope struct {
 // requiredArchivistFiles lists the four files Archivist must produce in the refined package.
 var requiredArchivistFiles = []string{"analysis.md", "proposal.md", "design.md", "tasks.md"}
 
+// FilePresence is the filesystem port used by package completeness checks.
+// Concrete workspace access belongs to an adapter or caller.
+type FilePresence interface {
+	Exists(path string) bool
+}
+
 // ValidateArchivistPackage returns an error if the refined package directory is missing
 // any of the four required files. This enforces the four-file completeness invariant:
 // a package with analysis.md absent is incomplete even if the other three files exist.
-func ValidateArchivistPackage(refinedDir string) error {
+func ValidateArchivistPackage(refinedDir string, presence FilePresence) error {
 	var missing []string
 	for _, f := range requiredArchivistFiles {
 		path := filepath.Join(refinedDir, f)
-		if _, err := os.Stat(path); os.IsNotExist(err) {
+		if !presence.Exists(path) {
 			missing = append(missing, f)
 		}
 	}

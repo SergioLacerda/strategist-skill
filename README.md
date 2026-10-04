@@ -5,7 +5,7 @@
 
 [![Release](https://img.shields.io/github/v/release/SergioLacerda/strategist-skill?label=release)](https://github.com/SergioLacerda/strategist-skill/releases)
 [![CI](https://github.com/SergioLacerda/strategist-skill/actions/workflows/test.yml/badge.svg)](https://github.com/SergioLacerda/strategist-skill/actions/workflows/test.yml)
-[![Coverage](https://img.shields.io/badge/coverage-92.5%25-green)](docs/test-styles.md)
+[![Coverage](https://img.shields.io/badge/coverage-92.8%25-green)](docs/test-styles.md)
 [![Mutation](https://img.shields.io/badge/mutation-passing-brightgreen)](scripts/mutation-role-weapon.sh)
 [![Go](https://img.shields.io/badge/Go-1.26-blue)](https://go.dev)
 [![License](https://img.shields.io/github/license/SergioLacerda/strategist-skill)](LICENSE)
@@ -90,26 +90,28 @@ required input whose untrusted result Ranger normalizes before the handoff. A
 missing or incompatible Weapon fails closed with `role_invocation_failed` and
 does not silently fall back to native behavior.
 
-INITIATIVE is a consultative Mechanism that reads the immutable operational resolver
-output produced by LEVELING. It
+INITIATIVE is a consultative Feat that reads the immutable operational resolver
+output produced by the LEVELING Tool. It
 cannot select or mutate the model, provider, capability, effort, Approval Gate,
 or implementation authorization. Prompt Intake, Context Enrichment, Dossier
 Builder, Response Critic, and Learning Curator are Pipeline routines, not Roles.
 
 **PRECISE-SHOT** (`TIRO PRECISO` in pt-BR) is one item with two facets: the agent
-assesses its own confidence (an Ability), and a deterministic rule bounds the
+assesses its own confidence (a Feat), and a deterministic Mechanism bounds the
 request. It reports assessed, ceiling, and effective confidence and
 may request advisory LEVELING reconsideration; it never selects execution
 effort, invokes a provider, or bypasses the Approval Gate.
 
-The canonical taxonomy has six families: Roles (agent personas), Weapons (external
-skills), Abilities (Feats, judgment-based behavior), Mechanisms (deterministic
-rules such as LEVELING, INITIATIVE, Weapon Binding, Handoff, and the Approval Gate
-rules), Pipeline (fixed stages and routines, including the routes Scout selects),
-and Artifacts (generated results with internal value such as analysis, evidence
-packs, refined packages, ADRs, and runbooks). Mechanisms are not executable Roles
-or providers. The criterion is in
-[ADR-0053](docs/adr/0053-taxonomy-classification-criterion-and-sniper-extensibility.md). See the [canonical taxonomy and responsibility matrix](docs/architecture/strategist-concepts.md#canonical-taxonomy).
+The canonical taxonomy has seven families: Roles (agent personas), Weapons (external
+skills), Feats (judgment-based behavior), Tools (operations that produce results),
+Mechanisms (deterministic rules such as Weapon Binding, Handoff, and Approval Gate
+rules), Stages (governed operational flows such as FULL, SHORT, and ROSTER), and
+Artifacts (generated results with internal value such as analysis, evidence packs,
+refined packages, ADRs, and runbooks). Mechanisms are not executable Roles or
+providers. [ADR-0064](docs/adr/0064-canonical-seven-family-taxonomy.md) is the
+authority for canonical documentation; [ADR-0053](docs/adr/0053-taxonomy-classification-criterion-and-sniper-extensibility.md)
+remains historical evidence of the prior six-family model. See the [canonical
+taxonomy and responsibility matrix](docs/architecture/strategist-concepts.md#canonical-taxonomy).
 
 The historical phrases “internal role” and “external role” are compatibility
 notes only. Active documentation uses the independent `origin` and

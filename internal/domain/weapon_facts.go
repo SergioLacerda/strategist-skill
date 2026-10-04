@@ -2,6 +2,8 @@ package domain
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 )
 
 // Where a resolved Weapon manifest came from.
@@ -53,10 +55,10 @@ type WeaponFacts struct {
 	Entrypoints []string
 }
 
-// weaponFactsDoc is the subset of a catalog entry or adapter document that
-// WeaponFacts reads. The nested specialization_taxonomy shape is accepted for
-// compiled runtime copies.
-type weaponFactsDoc struct {
+// WeaponFactsDocument is the subset of a catalog entry that WeaponFacts reads.
+// The YAML tags describe the boundary document; decoding remains owned by the
+// catalog/filesystem adapter, not by domain.
+type WeaponFactsDocument struct {
 	ID                   string             `yaml:"id"`
 	Version              string             `yaml:"version"`
 	RiskScore            string             `yaml:"risk_score"`
@@ -78,7 +80,8 @@ type weaponFactsDoc struct {
 	} `yaml:"specialization_taxonomy"`
 }
 
-func (d weaponFactsDoc) manifest(source string) WeaponFacts {
+// WeaponFacts converts a decoded boundary document into domain facts.
+func (d WeaponFactsDocument) WeaponFacts(source string) WeaponFacts {
 	role := d.CanonicalRole
 	if role == "" {
 		role = d.SpecializationTaxonomy.CanonicalRole
@@ -96,39 +99,48 @@ func (d weaponFactsDoc) manifest(source string) WeaponFacts {
 	}
 }
 
-// ResolveWeaponFacts returns the manifest of provider under a .strategist
-// root. The catalog entry is the authority; the adapter.yaml of a package bound
-// with mode custom comes next. An unreadable catalog is an error: a broken
-// authority never silently falls back.
-func ResolveWeaponFacts(strategistRoot, provider string) (WeaponFacts, error) {
-	facts, found, err := factsFromCatalog(strategistRoot, provider)
-	if err != nil || found {
-		return facts, err
+// CatalogDocumentsForReference returns the catalog entries named by ref:
+// every version for a plain id, or the one version for an id@version ref.
+func CatalogDocumentsForReference(docs []WeaponFactsDocument, ref string) []WeaponFactsDocument {
+	id, version := ParseWeaponRef(ref)
+	var matches []WeaponFactsDocument
+	for _, entry := range docs {
+		if entry.ID == id && (version == "" || CatalogDocumentVersion(entry) == version) {
+			matches = append(matches, entry)
+		}
 	}
-	if facts, found, err = factsFromAdapter(strategistRoot, provider); err != nil || found {
-		return facts, err
-	}
-	return WeaponFacts{}, ErrWeaponFactsNotFound
+	return matches
 }
 
-// ResolveCatalogWeaponFacts returns the catalog entry of provider, if the
-// catalog lists it. Unlike ResolveWeaponFacts it never falls back to an
-// adapter.yaml; slot resolution uses it to tell a
-// cataloged Weapon from a provider the catalog does not know.
-func ResolveCatalogWeaponFacts(strategistRoot, provider string) (WeaponFacts, bool, error) {
-	return factsFromCatalog(strategistRoot, provider)
+// CatalogDocumentVersion returns the effective catalog version used by
+// identity matching. Legacy entries without a version are version 1.0.0.
+func CatalogDocumentVersion(doc WeaponFactsDocument) string {
+	if doc.Version == "" {
+		return DefaultWeaponVersion
+	}
+	return doc.Version
 }
 
-// ListCatalogWeaponFacts returns every entry of the plugin catalog, in catalog
-// order. An absent catalog yields none.
-func ListCatalogWeaponFacts(strategistRoot string) ([]WeaponFacts, error) {
-	docs, err := readCatalogDocs(strategistRoot)
-	if err != nil {
-		return nil, err
+// AmbiguousWeaponFactsError creates the stable error returned when an id names
+// multiple catalog versions.
+func AmbiguousWeaponFactsError(ref string, matches []WeaponFactsDocument) error {
+	names := make([]string, 0, len(matches))
+	for _, match := range matches {
+		names = append(names, WeaponIdentity(match.ID, CatalogDocumentVersion(match)))
 	}
-	out := make([]WeaponFacts, 0, len(docs))
-	for _, doc := range docs {
-		out = append(out, doc.manifest(WeaponFactsSourceCatalog))
+	return fmt.Errorf("%w: %q is catalogued as %s", ErrWeaponFactsAmbiguous, ref, strings.Join(names, ", "))
+}
+
+// WeaponFactsFromAdapter converts an already decoded custom adapter document
+// into domain facts. YAML and filesystem access stay outside domain.
+func WeaponFactsFromAdapter(provider string, adapter AdapterContract) WeaponFacts {
+	facts := WeaponFacts{
+		ID: provider, Source: WeaponFactsSourceAdapter, RiskScore: adapter.RiskScore, Roles: adapter.SupportedRoles,
+		ScratchRoot: adapter.ScratchRoot, SupportedSlots: adapter.SupportedSlots, RequestedPermissions: adapter.RequestedPermissions,
+		Entrypoints: adapter.Entrypoints,
 	}
-	return out, nil
+	if len(adapter.SupportedRoles) > 0 {
+		facts.CanonicalRole = adapter.SupportedRoles[0]
+	}
+	return facts
 }

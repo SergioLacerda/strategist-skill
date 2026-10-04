@@ -3,8 +3,8 @@ package mission
 import (
 	"fmt"
 
+	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
-	"github.com/SergioLacerda/strategist-skill/internal/refinement"
 	"github.com/spf13/cobra"
 )
 
@@ -51,7 +51,7 @@ func runAmend(cmd *cobra.Command, deps NormalizeDependencies, opts NormalizeOpti
 	if err != nil {
 		return err
 	}
-	result, err := refinement.AmendOpenSpec(refinement.AmendInput{
+	result, err := application.ApplyOpenSpecAmendment(application.AmendOpenSpecRequest{
 		MissionID: opts.MissionID, BasePath: basePath, RuntimeRoot: runtimeRoot, ChangeID: opts.ChangeID,
 		Amends: opts.Amends, AuthorizationRef: opts.AuthorizationRef, GateLabel: label, PersistedStatus: persisted, Reason: opts.Reason, SupersedesMissionID: opts.SupersedesMissionID,
 	})

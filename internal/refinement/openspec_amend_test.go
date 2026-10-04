@@ -234,16 +234,15 @@ func TestAmendOpenSpecRecordsAmendmentsInFrontmatterAndManifest(t *testing.T) {
 	assert.Equal(t, sha([]byte(tasks)), manifest.Files["tasks.md"].NewSHA256)
 }
 
-func TestAmendOpenSpecArchivesTheNewChangeAndChainsTheNextAmendment(t *testing.T) {
+func TestAmendOpenSpecRemovesTheNewScratchAndChainsTheNextAmendment(t *testing.T) {
 	f := publishedAt(t, "archivist_done", "")
 	f.newChange(t, "second", "v2")
 	_, err := AmendOpenSpec(f.amendInput("second", "first"))
 	require.NoError(t, err)
 	_, statErr := os.Stat(filepath.Join(f.runtime, "changes", "second"))
 	require.ErrorIs(t, statErr, os.ErrNotExist, "the amending change leaves the active list")
-	archived, err := filepath.Glob(filepath.Join(f.runtime, "changes", "archive", "*-second"))
-	require.NoError(t, err)
-	assert.Len(t, archived, 1)
+	_, statErr = os.Stat(filepath.Join(f.runtime, "changes", "archive"))
+	require.ErrorIs(t, statErr, os.ErrNotExist, "the amending scratch is not privately archived")
 
 	f.newChange(t, "third", "v3")
 	_, err = AmendOpenSpec(f.amendInput("third", "first"))

@@ -9,6 +9,7 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/plugins/connectors"
+	"github.com/SergioLacerda/strategist-skill/internal/weapon"
 	"gopkg.in/yaml.v3"
 )
 
@@ -23,7 +24,7 @@ func resolveFromCustomBinding(root, slot, provider string) (slotResolution, stri
 		return slotResolution{}, "", false
 	}
 	instance := binding.InstalledInstanceID
-	facts, found, err := domain.ResolveCustomPackageFacts(root, instance)
+	facts, found, err := weapon.ResolveCustomPackageFacts(root, instance)
 	if err != nil {
 		return slotResolution{}, fmt.Sprintf("slot %s: custom package %q unreadable: %v", slot, instance, err), true
 	}

@@ -1,0 +1,169 @@
+schema_version: strategist-taxonomy-release/v1
+clients:
+  - id: taxonomy-release-candidate
+    owner: release-gate
+    surface: tests/conformance
+    roles: [ranger]
+    provider_modes: [fresh, upgrade, downgrade, rollback, wizard, headless, offline-embedded, external-weapon, missing-dependency, full-ranked, full-custom, short-ranked, short-custom, roster-ranked, roster-custom, windows-compile]
+    unsupported_policy: structural-evidence-only
+rows:
+  - id: fresh-install
+    client: taxonomy-release-candidate
+    role: ranger
+    slot: roster
+    provider_mode: fresh
+    envelope_version: strategist-install-plan/v1
+    evidence_tier: structural
+    expected_state: certified
+    reason_code: fresh-install-fixture
+    authority_owner: install-transaction
+  - id: supported-upgrade
+    client: taxonomy-release-candidate
+    role: ranger
+    slot: roster
+    provider_mode: upgrade
+    envelope_version: strategist-install-plan/v1
+    evidence_tier: structural
+    expected_state: certified
+    reason_code: upgrade-fixture
+    authority_owner: install-transaction
+  - id: supported-downgrade
+    client: taxonomy-release-candidate
+    role: ranger
+    slot: roster
+    provider_mode: downgrade
+    envelope_version: strategist-install-plan/v1
+    evidence_tier: structural
+    expected_state: certified
+    reason_code: downgrade-fixture
+    authority_owner: install-transaction
+  - id: rollback
+    client: taxonomy-release-candidate
+    role: ranger
+    slot: roster
+    provider_mode: rollback
+    envelope_version: strategist-install-plan/v1
+    evidence_tier: structural
+    expected_state: certified
+    reason_code: rollback-fixture
+    authority_owner: install-transaction
+  - id: wizard
+    client: taxonomy-release-candidate
+    role: ranger
+    slot: roster
+    provider_mode: wizard
+    envelope_version: strategist-install-plan/v1
+    evidence_tier: structural
+    expected_state: certified
+    reason_code: wizard-headless-parity
+    authority_owner: application-install-planner
+  - id: headless
+    client: taxonomy-release-candidate
+    role: ranger
+    slot: roster
+    provider_mode: headless
+    envelope_version: strategist-install-plan/v1
+    evidence_tier: structural
+    expected_state: certified
+    reason_code: wizard-headless-parity
+    authority_owner: application-install-planner
+  - id: offline-embedded
+    client: taxonomy-release-candidate
+    role: ranger
+    slot: roster
+    provider_mode: offline-embedded
+    envelope_version: strategist-weapon-binding/v1
+    evidence_tier: structural
+    expected_state: certified
+    reason_code: embedded-source-parity
+    authority_owner: embedded-runtime
+  - id: external-weapon
+    client: taxonomy-release-candidate
+    role: ranger
+    slot: discovery
+    provider_mode: external-weapon
+    envelope_version: strategist-weapon-binding/v1
+    evidence_tier: structural
+    expected_state: certified
+    reason_code: external-weapon-boundary
+    authority_owner: connector
+  - id: missing-dependency
+    client: taxonomy-release-candidate
+    role: ranger
+    slot: discovery
+    provider_mode: missing-dependency
+    envelope_version: strategist-weapon-binding/v1
+    evidence_tier: structural
+    expected_state: blocked
+    reason_code: dependency-failure-fixture
+    authority_owner: readiness-check
+  - id: full-ranked
+    client: taxonomy-release-candidate
+    role: ranger
+    slot: discovery
+    provider_mode: full-ranked
+    envelope_version: strategist-stage-resolution/v1
+    evidence_tier: structural
+    expected_state: certified
+    reason_code: stage-provider-cross-product
+    authority_owner: stage-resolution
+  - id: full-custom
+    client: taxonomy-release-candidate
+    role: ranger
+    slot: discovery
+    provider_mode: full-custom
+    envelope_version: strategist-stage-resolution/v1
+    evidence_tier: structural
+    expected_state: certified
+    reason_code: stage-provider-cross-product
+    authority_owner: stage-resolution
+  - id: short-ranked
+    client: taxonomy-release-candidate
+    role: ranger
+    slot: refinement
+    provider_mode: short-ranked
+    envelope_version: strategist-stage-resolution/v1
+    evidence_tier: structural
+    expected_state: certified
+    reason_code: stage-provider-cross-product
+    authority_owner: stage-resolution
+  - id: short-custom
+    client: taxonomy-release-candidate
+    role: ranger
+    slot: refinement
+    provider_mode: short-custom
+    envelope_version: strategist-stage-resolution/v1
+    evidence_tier: structural
+    expected_state: certified
+    reason_code: stage-provider-cross-product
+    authority_owner: stage-resolution
+  - id: roster-ranked
+    client: taxonomy-release-candidate
+    role: ranger
+    slot: roster
+    provider_mode: roster-ranked
+    envelope_version: strategist-install-plan/v1
+    evidence_tier: structural
+    expected_state: certified
+    reason_code: stage-provider-cross-product
+    authority_owner: install-transaction
+  - id: roster-custom
+    client: taxonomy-release-candidate
+    role: ranger
+    slot: roster
+    provider_mode: roster-custom
+    envelope_version: strategist-install-plan/v1
+    evidence_tier: structural
+    expected_state: certified
+    reason_code: stage-provider-cross-product
+    authority_owner: install-transaction
+  - id: windows-compile
+    client: taxonomy-release-candidate
+    role: ranger
+    slot: roster
+    provider_mode: windows-compile
+    envelope_version: strategist-taxonomy/v1
+    evidence_tier: structural
+    expected_state: certified
+    reason_code: supported-platform-compile
+    authority_owner: build-gate

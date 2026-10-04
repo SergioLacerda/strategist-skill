@@ -2,6 +2,7 @@
 package provider
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +11,23 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"gopkg.in/yaml.v3"
 )
+
+// DecodeStrictPluginYAML decodes a bounded provider manifest and rejects
+// unknown fields. YAML decoding belongs to this provider adapter, not domain.
+func DecodeStrictPluginYAML[T any](data []byte, out *T) error {
+	if len(data) > domain.MaxPluginManifestBytes {
+		return fmt.Errorf("plugin yaml exceeds %d bytes", domain.MaxPluginManifestBytes)
+	}
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
+	decoder.KnownFields(true)
+	if err := decoder.Decode(out); err != nil {
+		if strings.Contains(err.Error(), "field") && strings.Contains(err.Error(), "not found") {
+			return fmt.Errorf("plugin yaml unknown field: %w", err)
+		}
+		return fmt.Errorf("plugin yaml decode: %w", err)
+	}
+	return nil
+}
 
 const (
 	packageManifestName = "package.yaml"
@@ -59,11 +77,11 @@ func loadSource(input string) (Source, []Reason) {
 func decodeSource(dir string, files map[string][]byte) (Source, []Reason) {
 	var reasons []Reason
 	var pkg domain.PluginPackage
-	if err := domain.DecodeStrictPluginYAML(files[packageManifestName], &pkg); err != nil {
+	if err := DecodeStrictPluginYAML(files[packageManifestName], &pkg); err != nil {
 		reasons = append(reasons, Reason{Code: "package_contract_invalid", Detail: err.Error()})
 	}
 	var adapter domain.AdapterContract
-	if err := domain.DecodeStrictPluginYAML(files[adapterManifestName], &adapter); err != nil {
+	if err := DecodeStrictPluginYAML(files[adapterManifestName], &adapter); err != nil {
 		reasons = append(reasons, Reason{Code: "adapter_contract_invalid", Detail: err.Error()})
 	}
 	view, reason := decodeLegacyView(files)

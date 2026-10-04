@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/SergioLacerda/strategist-skill/internal/catalog"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
 
@@ -22,7 +23,7 @@ func customRuntimeReadiness(root, slot, provider string) domain.ReadinessCheck {
 	if err != nil {
 		return notEvaluated
 	}
-	stamp, ok, err := domain.FindCatalogRankedStamp(raw, provider)
+	stamp, ok, err := catalog.FindRankedStamp(raw, provider)
 	if errors.Is(err, domain.ErrLegacyWeaponState) {
 		return domain.ReadinessCheck{Status: domain.ReadinessBlocked, ReasonCode: "ranked_catalog_invalid", Detail: err.Error()}
 	}

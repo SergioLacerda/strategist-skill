@@ -1,7 +1,7 @@
 .PHONY: \
 	analysis-structure-gate docs-governance-gate docs-generated-gate docs-links-gate docs-index-ownership-gate governance-check \
 	convergence-check contract-consistency-gate hooks-install \
-	workflow-catalog-gate
+	workflow-catalog-gate taxonomy-inventory-gate
 
 # workflow-catalog-gate fails when a workflow uses `continue-on-error: true`
 # without an owner/reason/removal-condition catalog comment, and runs the
@@ -44,6 +44,9 @@ docs-generated-gate: build
 
 contract-consistency-gate:
 	bash scripts/check-contract-consistency.sh
+
+taxonomy-inventory-gate:
+	bash scripts/check-taxonomy-inventory.sh
 
 convergence-check:
 	@bash scripts/check-convergence.sh

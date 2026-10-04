@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/spf13/cobra"
 )
@@ -38,33 +39,12 @@ func readMissionCompletion(cmd *cobra.Command) (domain.MissionInvocationCompleti
 // host-controlled metadata is untrusted and must not become authority, while
 // rejecting it would make harmless provider annotations a compatibility break.
 func validateCompletionObject(raw []byte) error {
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	first, err := decoder.Token()
-	if err != nil {
-		return fmt.Errorf("completion must be one JSON object: %w", err)
-	}
-	delim, ok := first.(json.Delim)
-	if !ok || delim != '{' {
-		return fmt.Errorf("completion must be one JSON object")
-	}
-	if err := validateCompletionFields(decoder); err != nil {
-		return err
-	}
-	return validateCompletionEnd(decoder)
+	return wrapMissionError(application.ValidateCompletionObject(raw))
 }
 
-func validateCompletionFields(decoder *json.Decoder) error {
-	seen := map[string]bool{}
-	for decoder.More() {
-		name, err := readCompletionField(decoder, seen)
-		if err != nil {
-			return err
-		}
-		seen[name] = true
-	}
-	return nil
-}
-
+// These two helpers remain only as package-main compatibility seams for the
+// existing focused tests; the complete host object validation lives in the
+// application package above.
 func readCompletionField(decoder *json.Decoder, seen map[string]bool) (string, error) {
 	key, err := decoder.Token()
 	if err != nil {

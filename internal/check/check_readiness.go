@@ -5,6 +5,7 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/plugins/connectors"
+	"github.com/SergioLacerda/strategist-skill/internal/weapon"
 )
 
 // readinessFacets are the dimensions that depend on where a Weapon's manifest
@@ -66,7 +67,7 @@ func vectorFromFacets(facets readinessFacets, conformance, trustCheck, grantChec
 }
 
 func requestedPermissions(root, provider string) []domain.PluginPermission {
-	facts, err := domain.ResolveWeaponFacts(root, provider)
+	facts, err := weapon.ResolveWeaponFacts(root, provider)
 	if err != nil {
 		return nil
 	}

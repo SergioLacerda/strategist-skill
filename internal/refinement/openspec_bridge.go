@@ -51,10 +51,10 @@ type OpenSpecResult struct {
 var canonicalFiles = []string{"analysis.md", "proposal.md", "design.md", "tasks.md"}
 
 // NormalizeOpenSpec validates a completed OpenSpec change and atomically
-// publishes its four canonical files. Provider spec files and archive history
+// publishes its four canonical files. Provider spec files and scratch history
 // are never copied as files; the specs' requirements and scenarios are carried
-// into design.md under "Acceptance scenarios". After publishing, the change is
-// moved to changes/archive/. Existing identical output is idempotent;
+// into design.md under "Acceptance scenarios". After durable publication, the
+// private change is removed. Existing identical output is idempotent;
 // conflicting output fails closed.
 func NormalizeOpenSpec(input OpenSpecInput) (OpenSpecResult, error) {
 	if err := validateInput(input); err != nil {
@@ -90,8 +90,8 @@ func publishOpenSpec(input OpenSpecInput, changeDir string, contents map[string]
 	if err := recordPackagePublication(input, contents, published); err != nil {
 		return OpenSpecResult{}, err
 	}
-	if err := archiveChange(input.RuntimeRoot, changeDir, input.ChangeID); err != nil {
-		return OpenSpecResult{}, err
+	if err := cleanupOpenSpecScratch(changeDir); err != nil {
+		return OpenSpecResult{}, fmt.Errorf("openspec bridge: provider scratch cleanup: %w", err)
 	}
 	return result(refined, input), nil
 }

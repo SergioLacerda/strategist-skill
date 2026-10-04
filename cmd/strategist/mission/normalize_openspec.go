@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/refinement"
 	"github.com/spf13/cobra"
@@ -104,17 +105,22 @@ func runPublish(cmd *cobra.Command, deps NormalizeDependencies, opts NormalizeOp
 	if deps.RecordConfidence == nil {
 		return fmt.Errorf("mission normalize-openspec: Archivist confidence recorder is unavailable")
 	}
-	result, err := refinement.NormalizeOpenSpec(refinement.OpenSpecInput{
+	result, err := application.PublishOpenSpec(application.NormalizeOpenSpecRequest{
 		MissionID: opts.MissionID, BasePath: basePath, RuntimeRoot: runtimeRoot,
 		ChangeID: opts.ChangeID, PendingAnalysisPath: pending, HandoffFacts: facts,
+	}, application.NormalizeOpenSpecPorts{
 		RecordConfidence: func(claim domain.ConfidenceClaim, evidence []domain.Evidence) error {
 			return deps.RecordConfidence(opts, claim, evidence)
 		},
-		RecordPublication: func(publication refinement.PackagePublication) error {
+		RecordPublication: func(publication application.NormalizeOpenSpecPublication) error {
 			if deps.RecordPublication == nil {
 				return nil
 			}
-			return deps.RecordPublication(opts, publication)
+			return deps.RecordPublication(opts, refinement.PackagePublication{
+				MissionID: publication.MissionID, ProviderChangeID: publication.ProviderChangeID,
+				SourceDigest: publication.SourceDigest, PackageDigest: publication.PackageDigest,
+				PublishedAt: publication.PublishedAt,
+			})
 		},
 	})
 	if err != nil {
@@ -123,7 +129,7 @@ func runPublish(cmd *cobra.Command, deps NormalizeDependencies, opts NormalizeOp
 	return reportPublished(cmd, opts, result, facts == nil)
 }
 
-func reportPublished(cmd *cobra.Command, opts NormalizeOptions, result refinement.OpenSpecResult, factsMissing bool) error {
+func reportPublished(cmd *cobra.Command, opts NormalizeOptions, result application.NormalizeOpenSpecResult, factsMissing bool) error {
 	if factsMissing {
 		if _, err := fmt.Fprintf(cmd.ErrOrStderr(), "[Strategist] warning=handoff_policy_facts_not_declared mission_id=%s: `strategist handoff evaluate` rejects this package until handoff_policy_facts is declared (--handoff-facts)\n", opts.MissionID); err != nil {
 			return fmt.Errorf("mission normalize-openspec: write output: %w", err)

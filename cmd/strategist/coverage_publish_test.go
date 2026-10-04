@@ -12,32 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDiscoveryArtifactPathsStayInsideTheWorkspace(t *testing.T) {
-	workspace := t.TempDir()
-	root := filepath.Join(workspace, ".strategist")
-	rel, abs, err := discoveryArtifactPaths(root, filepath.Join(workspace, ".analysis"), "m1")
-	require.NoError(t, err)
-	assert.Equal(t, ".analysis/pending/m1-analysis.md", rel)
-	assert.Equal(t, filepath.Join(workspace, ".analysis", "pending", "m1-analysis.md"), abs)
-
-	_, _, err = discoveryArtifactPaths(root, t.TempDir(), "m1")
-	require.ErrorContains(t, err, "escapes workspace")
-}
-
-func TestRequireTargetFreeRefusesUnownedArtifacts(t *testing.T) {
-	dir := t.TempDir()
-	require.NoError(t, requireTargetFree(filepath.Join(dir, "absent.md"), "r1"))
-	require.ErrorContains(t, requireTargetFree(dir, "r1"), "inspect existing discovery artifact")
-
-	plain := filepath.Join(dir, "plain.md")
-	require.NoError(t, os.WriteFile(plain, []byte("no frontmatter"), 0o644))
-	require.ErrorContains(t, requireTargetFree(plain, "r1"), "invocation_artifact_exists")
-
-	done := filepath.Join(dir, "done.md")
-	require.NoError(t, os.WriteFile(done, []byte("---\nmission_status: gate_analysis_accepted\n---\nbody\n"), 0o644))
-	require.ErrorContains(t, requireTargetFree(done, "r1"), "invocation_artifact_exists")
-}
-
 func TestResumeCommittedCompletionBranches(t *testing.T) {
 	store := missionruntime.NewInvocationStore(t.TempDir())
 	pending := domain.MissionInvocationRecord{}

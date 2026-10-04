@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/SergioLacerda/strategist-skill/internal/catalog"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/runtimefs"
 )
@@ -127,7 +128,7 @@ func (s Service) catalogRegistryDrifted(strategistDir string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("upgrade: read embedded %s: %w", pluginCatalogPath, err)
 	}
-	drifted, err := domain.CompiledRegistryDrift(workspaceRaw, embeddedRaw)
+	drifted, err := catalog.CompiledRegistryDrift(workspaceRaw, embeddedRaw)
 	return drifted || err != nil, nil // an unparseable workspace catalog cannot be trusted either
 }
 

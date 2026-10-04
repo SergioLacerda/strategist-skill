@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 	livemission "github.com/SergioLacerda/strategist-skill/internal/mission"
@@ -92,20 +93,6 @@ func loadExecutionEntry(path string) (executionEntry, error) {
 	return e, nil
 }
 
-func recoverExecutionState(root string, e *executionEntry, persisted domain.MissionEngineStatus) (bool, error) {
-	if e.StateSaved {
-		return true, nil
-	}
-	if !reflect.DeepEqual(e.DesiredStatus, persisted) {
-		return false, nil
-	}
-	e.StateSaved = true
-	if err := saveExecutionEntry(root, e); err != nil {
-		return false, fmt.Errorf("mark recovered state: %w", err)
-	}
-	return true, nil
-}
-
 func recoverExecutionOutcome(root string, e *executionEntry) error {
 	consumed, err := handoff.NewOutcomeStore(root).Consumed(e.Outcome)
 	if err != nil {
@@ -134,26 +121,40 @@ func recoverExecutionClaims(root, basePath, missionID string, e *executionEntry)
 // recoverExecutionEntry resumes the durable projections left by a returned
 // I/O error. Outcome and claim writes are idempotent by their recorded entry.
 func recoverExecutionEntry(root, basePath, missionID string, persisted domain.MissionEngineStatus) error {
-	e, recoverable, err := loadRecoverableExecutionEntry(root, missionID)
+	var entry executionEntry
+	err := application.RecoverMissionExecution(application.RecoverExecutionRequest{
+		Root: root, BasePath: basePath, MissionID: missionID, PersistedStatus: persisted,
+	}, application.RecoverExecutionPorts{
+		Load: func(root, missionID string) (application.ExecutionRecoverySnapshot, bool, error) {
+			loaded, recoverable, err := loadRecoverableExecutionEntry(root, missionID)
+			if err != nil || !recoverable {
+				return application.ExecutionRecoverySnapshot{}, recoverable, err
+			}
+			entry = loaded
+			return executionRecoverySnapshot(loaded), true, nil
+		},
+		MarkStateSaved: func(root string, _ application.ExecutionRecoverySnapshot) error {
+			entry.StateSaved = true
+			return saveExecutionEntry(root, &entry)
+		},
+		RecoverOutcome: func(root string, _ handoff.Outcome) error {
+			return recoverExecutionOutcome(root, &entry)
+		},
+		CompleteClaims: func(root, basePath, missionID string, _ application.ExecutionRecoverySnapshot) error {
+			return recoverExecutionClaims(root, basePath, missionID, &entry)
+		},
+	})
 	if err != nil {
-		return err
+		return fmt.Errorf("recover mission execution: %w", err)
 	}
-	if !recoverable {
-		return nil
+	return nil
+}
+
+func executionRecoverySnapshot(entry executionEntry) application.ExecutionRecoverySnapshot {
+	return application.ExecutionRecoverySnapshot{
+		ID: entry.ID, MissionID: entry.MissionID, Targets: append([]string(nil), entry.Targets...),
+		Outcome: entry.Outcome, DesiredStatus: entry.DesiredStatus, StateSaved: entry.StateSaved, Completed: entry.Completed,
 	}
-	// A failed FSM save leaves an intent but no execution transition. It must
-	// not consume authorization; the retried submit will reuse this entry.
-	ready, err := recoverExecutionState(root, &e, persisted)
-	if err != nil {
-		return err
-	}
-	if !ready {
-		return nil
-	}
-	if err := recoverExecutionOutcome(root, &e); err != nil {
-		return err
-	}
-	return recoverExecutionClaims(root, basePath, missionID, &e)
 }
 
 func loadRecoverableExecutionEntry(root, missionID string) (executionEntry, bool, error) {

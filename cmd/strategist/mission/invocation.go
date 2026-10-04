@@ -3,6 +3,7 @@ package mission
 import (
 	"fmt"
 
+	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/spf13/cobra"
 )
@@ -17,7 +18,7 @@ func RunInvoke(cmd *cobra.Command, deps InvocationDependencies, f *invocationFla
 		return err
 	}
 	if err := validateInvocationDispatch(f); err != nil {
-		return err
+		return fmt.Errorf("mission invoke: %w", err)
 	}
 	request, err := buildInvocationRequest(cmd, deps, f, root, basePath)
 	if err != nil {
@@ -28,18 +29,11 @@ func RunInvoke(cmd *cobra.Command, deps InvocationDependencies, f *invocationFla
 
 // validateInvocationDispatch runs before Build persists a single-use request.
 // Invalid child-host dispatch must not leave an orphan pending invocation.
+// The application service owns the rule; this wrapper preserves the adapter's
+// focused test seam and error contract.
 func validateInvocationDispatch(f *invocationFlags) error {
-	if f.host == "" {
-		return nil
-	}
-	if f.requestContext == "" {
-		return fmt.Errorf("mission invoke: --context is required with --host")
-	}
-	if f.slot == string(domain.SlotExecution) {
-		return fmt.Errorf("mission invoke: execution requires the current-host adapter; child host bridges are read-only")
-	}
-	if _, err := domain.ChildAdapterForHost(f.host); err != nil {
-		return fmt.Errorf("mission invoke: invocation_adapter_unknown: %w", err)
+	if err := application.ValidateInvocationDispatch(f.host, f.requestContext, f.slot); err != nil {
+		return fmt.Errorf("validate invocation dispatch: %w", err)
 	}
 	return nil
 }
@@ -55,23 +49,23 @@ func resolveInvocationRuntime(deps InvocationDependencies, f *invocationFlags) (
 	if err != nil {
 		return "", "", fmt.Errorf("mission invoke: %w", err)
 	}
-	if deps.LoadMission == nil {
-		return "", "", fmt.Errorf("mission invoke: mission lifecycle is unavailable")
-	}
-	status, err := deps.LoadMission(root, f.missionID)
-	if err != nil {
-		return "", "", fmt.Errorf("mission invoke: %w", err)
-	}
-	if err := validateInvocationPhase(status, f.slot); err != nil {
+	if err := application.PrepareInvocation(root, f.missionID, f.slot, deps.LoadMission); err != nil {
 		return "", "", fmt.Errorf("mission invoke: %w", err)
 	}
 	return root, basePath, nil
 }
 
+func validateInvocationPhase(status domain.MissionEngineStatus, slot string) error {
+	if err := application.ValidateInvocationPhase(status, slot); err != nil {
+		return fmt.Errorf("validate invocation phase: %w", err)
+	}
+	return nil
+}
+
 func buildInvocationRequest(cmd *cobra.Command, deps InvocationDependencies, f *invocationFlags, root, basePath string) (domain.MissionInvocationRequest, error) {
-	request, err := deps.Build(cmd.Context(), InvocationBuildInput{
+	request, err := application.BuildInvocation(cmd.Context(), application.InvocationBuildRequest{
 		Root: root, BasePath: basePath, MissionID: f.missionID, Role: f.role, Slot: f.slot, RequestContext: f.requestContext,
-	})
+	}, deps.Build)
 	if err != nil {
 		return domain.MissionInvocationRequest{}, fmt.Errorf("mission invoke: %w", err)
 	}
@@ -105,19 +99,4 @@ func executeHostInvocation(cmd *cobra.Command, deps InvocationDependencies, f *i
 		return fmt.Errorf("mission invoke: %w", err)
 	}
 	return deps.WriteResult(cmd, f.asJSON, outcome)
-}
-
-func validateInvocationPhase(status domain.MissionEngineStatus, slot string) error {
-	expected, ok := map[string]domain.PipelinePhase{
-		string(domain.SlotDiscovery):  domain.PhaseDiscovery,
-		string(domain.SlotRefinement): domain.PhaseRefinement,
-		string(domain.SlotExecution):  domain.PhaseExecution,
-	}[slot]
-	if !ok {
-		return fmt.Errorf("slot %q has no host invocation boundary", slot)
-	}
-	if status.Phase != expected {
-		return fmt.Errorf("slot %q requires phase %q, got %q", slot, expected, status.Phase)
-	}
-	return nil
 }

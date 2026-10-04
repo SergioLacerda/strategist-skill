@@ -50,35 +50,6 @@ func TestLoadMissionInvocationStateFailureLadder(t *testing.T) {
 	require.ErrorContains(t, requireRegistryMatchesBinary(domain.CompiledRegistry{}), "compiled_registry_drift")
 }
 
-func TestSaveAndLoadMissionFailureModes(t *testing.T) {
-	file := filepath.Join(t.TempDir(), "file")
-	require.NoError(t, os.WriteFile(file, nil, 0o644))
-	require.ErrorContains(t, saveMission(file, domain.MissionEngineStatus{MissionID: "m"}), "create mission directory")
-
-	root := t.TempDir()
-	require.NoError(t, os.MkdirAll(missionPath(root, "m"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(missionPath(root, "m"), "child"), nil, 0o644))
-	require.ErrorContains(t, saveMission(root, domain.MissionEngineStatus{MissionID: "m"}), "write mission state")
-	entries, err := os.ReadDir(filepath.Join(root, "missions"))
-	require.NoError(t, err)
-	for _, entry := range entries {
-		assert.NotContains(t, entry.Name(), ".tmp-", "a failed save leaves no temp file")
-	}
-
-	_, _, err = loadMission(root, "ghost")
-	require.ErrorContains(t, err, "not found")
-
-	bad := t.TempDir()
-	require.NoError(t, os.MkdirAll(filepath.Join(bad, "missions"), 0o755))
-	require.NoError(t, os.WriteFile(missionPath(bad, "m"), []byte("{nope"), 0o644))
-	_, _, err = loadMission(bad, "m")
-	require.ErrorContains(t, err, "invalid persisted state")
-
-	require.NoError(t, os.WriteFile(missionPath(bad, "m"), []byte(`{"mission_id":"m","phase":"NOPE","state":"NOPE"}`), 0o644))
-	_, _, err = loadMission(bad, "m")
-	require.ErrorContains(t, err, "restore mission state")
-}
-
 func TestRequireNoExistingMissionAndADRPath(t *testing.T) {
 	root := t.TempDir()
 	require.NoError(t, requireNoExistingMission(root, "fresh"))

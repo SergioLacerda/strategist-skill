@@ -177,12 +177,20 @@ func TestEmbeddedDefaults_ArchivistAndProtocolPreserveAutonomousPrivateRuntimeCo
 	assert.Contains(t, string(provider), "private launcher")
 	assert.Contains(t, string(provider), "ranked-runtimes.yaml")
 	assert.Contains(t, string(provider), "do not fall back to `PATH`")
+	assert.NotContains(t, string(provider), "openspec change validate")
 
 	protocol, err := extractor.ReadFile("templates/agent-protocol.md")
 	require.NoError(t, err)
 	assert.Contains(t, string(protocol), "AUTONOMY AND WEAPON AUTHORITY")
 	assert.Contains(t, string(protocol), "deterministic transition")
 	assert.Contains(t, string(protocol), "global skill with the same")
+
+	refinement, err := extractor.ReadFile("contracts/narrative/04-refinement.md")
+	require.NoError(t, err)
+	assert.Contains(t, string(refinement), "refined-package-publications.jsonl")
+	assert.Contains(t, string(refinement), "removes the private provider")
+	assert.Contains(t, string(refinement), "scratch change")
+	assert.NotContains(t, string(refinement), "changes/archive/")
 }
 
 // payloadDirName mirrors the versioned skills/<id>@<version>/ layout (ADR-0061

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/roster"
 )
 
 func buildRosterArtifacts(preview RoleProviderMigrationPreview) (domain.WeaponRosterArtifact, []domain.WeaponSelectionArtifact, error) {
@@ -17,11 +18,11 @@ func buildRosterArtifacts(preview RoleProviderMigrationPreview) (domain.WeaponRo
 		}
 		selections = append(selections, selection)
 	}
-	roster, err := domain.NewWeaponRosterArtifact(entries)
+	rosterArtifact, plannedSelections, err := roster.Plan(entries, selections)
 	if err != nil {
 		return domain.WeaponRosterArtifact{}, nil, fmt.Errorf("build Weapon roster artifact: %w", err)
 	}
-	return roster, selections, nil
+	return rosterArtifact, plannedSelections, nil
 }
 
 func rosterEntries(item RoleProviderPreviewEntry) []domain.WeaponRosterEntry {

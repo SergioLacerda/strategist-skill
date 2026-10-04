@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/weapon"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -44,7 +45,7 @@ func manifestRoot(t *testing.T, catalog string, compat map[string]string) string
 func TestResolveWeaponFactsReadsTheCatalogWithoutTheCompatView(t *testing.T) {
 	root := manifestRoot(t, manifestCatalog, nil)
 
-	manifest, err := domain.ResolveWeaponFacts(root, "cat-weapon")
+	manifest, err := weapon.ResolveWeaponFacts(root, "cat-weapon")
 
 	require.NoError(t, err)
 	assert.Equal(t, domain.WeaponFactsSourceCatalog, manifest.Source)
@@ -57,7 +58,7 @@ func TestResolveWeaponFactsReadsTheCatalogWithoutTheCompatView(t *testing.T) {
 func TestResolveWeaponFactsPrefersTheCatalogOverAStaleCompatView(t *testing.T) {
 	root := manifestRoot(t, manifestCatalog, map[string]string{"cat-weapon": "risk_score: write_analysis\ncanonical_role: ranger\n"})
 
-	manifest, err := domain.ResolveWeaponFacts(root, "cat-weapon")
+	manifest, err := weapon.ResolveWeaponFacts(root, "cat-weapon")
 
 	require.NoError(t, err)
 	assert.Equal(t, "controlled", manifest.RiskScore, "the compat view never overrides the catalog")
@@ -67,7 +68,7 @@ func TestResolveWeaponFactsPrefersTheCatalogOverAStaleCompatView(t *testing.T) {
 func TestResolveWeaponFactsRejectsAnUnlistedProviderEvenWhenACompatViewRemains(t *testing.T) {
 	root := manifestRoot(t, manifestCatalog, map[string]string{"custom": "risk_score: write_analysis\ncanonical_role: archivist\nscratch_root: runtime\n"})
 
-	_, err := domain.ResolveWeaponFacts(root, "custom")
+	_, err := weapon.ResolveWeaponFacts(root, "custom")
 
 	require.ErrorIs(t, err, domain.ErrWeaponFactsNotFound)
 }
@@ -75,7 +76,7 @@ func TestResolveWeaponFactsRejectsAnUnlistedProviderEvenWhenACompatViewRemains(t
 func TestResolveWeaponFactsRequiresCatalogOrBoundCustomPackage(t *testing.T) {
 	root := manifestRoot(t, "", map[string]string{"legacy": "risk_score: controlled\nroles: [sniper]\n"})
 
-	_, err := domain.ResolveWeaponFacts(root, "legacy")
+	_, err := weapon.ResolveWeaponFacts(root, "legacy")
 
 	require.ErrorIs(t, err, domain.ErrWeaponFactsNotFound)
 }
@@ -83,7 +84,7 @@ func TestResolveWeaponFactsRequiresCatalogOrBoundCustomPackage(t *testing.T) {
 func TestResolveWeaponFactsReportsAnUnknownProvider(t *testing.T) {
 	root := manifestRoot(t, manifestCatalog, nil)
 
-	_, err := domain.ResolveWeaponFacts(root, "nobody")
+	_, err := weapon.ResolveWeaponFacts(root, "nobody")
 
 	require.ErrorIs(t, err, domain.ErrWeaponFactsNotFound)
 }
@@ -91,7 +92,7 @@ func TestResolveWeaponFactsReportsAnUnknownProvider(t *testing.T) {
 func TestResolveWeaponFactsRejectsAMalformedCatalog(t *testing.T) {
 	root := manifestRoot(t, "providers: [unclosed", map[string]string{"legacy": "risk_score: controlled\n"})
 
-	_, err := domain.ResolveWeaponFacts(root, "legacy")
+	_, err := weapon.ResolveWeaponFacts(root, "legacy")
 
 	require.Error(t, err, "a broken authority is an error, not a silent fallback")
 }
@@ -99,7 +100,7 @@ func TestResolveWeaponFactsRejectsAMalformedCatalog(t *testing.T) {
 func TestResolveWeaponFactsNestedCanonicalRoleShape(t *testing.T) {
 	root := manifestRoot(t, "schema_version: strategist-plugin-catalog/v2\nproviders:\n  - id: nested\n    risk_score: write_analysis\n    specialization_taxonomy:\n      canonical_role: ranger\n", nil)
 
-	manifest, err := domain.ResolveWeaponFacts(root, "nested")
+	manifest, err := weapon.ResolveWeaponFacts(root, "nested")
 
 	require.NoError(t, err)
 	assert.Equal(t, []string{"ranger"}, manifest.Roles)
@@ -129,19 +130,19 @@ providers:
 `
 	root := manifestRoot(t, catalog, nil)
 
-	native, err := domain.ResolveWeaponFacts(root, "nat")
+	native, err := weapon.ResolveWeaponFacts(root, "nat")
 	require.NoError(t, err)
 	assert.Equal(t, "native_role", native.CompatibilitySource)
 	assert.False(t, native.Installable)
 
-	embedded, err := domain.ResolveWeaponFacts(root, "emb")
+	embedded, err := weapon.ResolveWeaponFacts(root, "emb")
 	require.NoError(t, err)
 	assert.Equal(t, "embedded", embedded.CompatibilitySource)
 	assert.True(t, embedded.Installable)
 	assert.Equal(t, "host", embedded.RuntimeKind)
 	assert.Equal(t, []string{"discovery"}, embedded.SupportedSlots)
 
-	rooted, err := domain.ResolveWeaponFacts(root, "oroot")
+	rooted, err := weapon.ResolveWeaponFacts(root, "oroot")
 	require.NoError(t, err)
 	assert.Equal(t, "openspec_root", rooted.RuntimeKind)
 	assert.Equal(t, ".strategist/openspec", rooted.RuntimeRoot)
@@ -160,7 +161,7 @@ func TestResolveWeaponFactsReadsTheAdapterOfACustomBinding(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins.lock"), []byte("schema_version: strategist-plugin-lock-file/v1\nbindings:\n  - slot: refinement\n    installed_instance_id: fixture-provider@1.0.0\n    mode: custom\n    status: active\n"), 0o644))
 	writeCustomPackage(t, root, "fixture-provider@1.0.0", customAdapter)
 
-	facts, err := domain.ResolveWeaponFacts(root, "fixture-provider")
+	facts, err := weapon.ResolveWeaponFacts(root, "fixture-provider")
 
 	require.NoError(t, err)
 	assert.Equal(t, domain.WeaponFactsSourceAdapter, facts.Source)
@@ -176,7 +177,7 @@ func TestResolveWeaponFactsIgnoresAnAdapterWithoutACustomBinding(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins.lock"), []byte("schema_version: strategist-plugin-lock-file/v1\nbindings:\n  - slot: refinement\n    installed_instance_id: fixture-provider@1.0.0\n    mode: ranked\n    status: active\n"), 0o644))
 	writeCustomPackage(t, root, "fixture-provider@1.0.0", customAdapter)
 
-	_, err := domain.ResolveWeaponFacts(root, "fixture-provider")
+	_, err := weapon.ResolveWeaponFacts(root, "fixture-provider")
 
 	require.ErrorIs(t, err, domain.ErrWeaponFactsNotFound, "a package that is staged but not bound as custom is not a resolved Weapon")
 }
@@ -186,7 +187,7 @@ func TestResolveWeaponFactsCatalogStillBeatsTheAdapter(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins.lock"), []byte("schema_version: strategist-plugin-lock-file/v1\nbindings:\n  - slot: execution\n    installed_instance_id: cat-weapon@1.0.0\n    mode: custom\n    status: active\n"), 0o644))
 	writeCustomPackage(t, root, "cat-weapon@1.0.0", customAdapter)
 
-	facts, err := domain.ResolveWeaponFacts(root, "cat-weapon")
+	facts, err := weapon.ResolveWeaponFacts(root, "cat-weapon")
 
 	require.NoError(t, err)
 	assert.Equal(t, domain.WeaponFactsSourceCatalog, facts.Source)
@@ -198,7 +199,7 @@ func TestResolveCustomPackageFactsReadsTheAdapterOfACustomBinding(t *testing.T) 
 	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins.lock"), []byte("schema_version: strategist-plugin-lock-file/v1\nbindings:\n  - slot: refinement\n    installed_instance_id: fixture-provider@1.0.0\n    mode: custom\n    status: active\n"), 0o644))
 	writeCustomPackage(t, root, "fixture-provider@1.0.0", customAdapter)
 
-	facts, found, err := domain.ResolveCustomPackageFacts(root, "fixture-provider@1.0.0")
+	facts, found, err := weapon.ResolveCustomPackageFacts(root, "fixture-provider@1.0.0")
 
 	require.NoError(t, err)
 	require.True(t, found)
@@ -213,7 +214,7 @@ func TestResolveCustomPackageFactsIgnoresARankedBinding(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins.lock"), []byte("schema_version: strategist-plugin-lock-file/v1\nbindings:\n  - slot: refinement\n    installed_instance_id: fixture-provider@1.0.0\n    mode: ranked\n    status: active\n"), 0o644))
 	writeCustomPackage(t, root, "fixture-provider@1.0.0", customAdapter)
 
-	_, found, err := domain.ResolveCustomPackageFacts(root, "fixture-provider@1.0.0")
+	_, found, err := weapon.ResolveCustomPackageFacts(root, "fixture-provider@1.0.0")
 
 	require.NoError(t, err)
 	assert.False(t, found, "a ranked binding is never a custom package")
@@ -223,7 +224,7 @@ func TestResolveCustomPackageFactsWithoutAStagedAdapterIsNotFound(t *testing.T) 
 	root := manifestRoot(t, manifestCatalog, nil)
 	require.NoError(t, os.WriteFile(filepath.Join(root, "plugins.lock"), []byte("schema_version: strategist-plugin-lock-file/v1\nbindings:\n  - slot: refinement\n    installed_instance_id: hand-made\n    status: active\n"), 0o644))
 
-	_, found, err := domain.ResolveCustomPackageFacts(root, "hand-made")
+	_, found, err := weapon.ResolveCustomPackageFacts(root, "hand-made")
 
 	require.NoError(t, err)
 	assert.False(t, found, "a legacy binding with no providers/ package falls through to the other resolvers")
@@ -250,12 +251,12 @@ providers:
 func TestResolveWeaponFactsResolvesAnIDAtVersionReference(t *testing.T) {
 	root := manifestRoot(t, versionedManifestCatalog, nil)
 
-	older, err := domain.ResolveWeaponFacts(root, "demo@1.4.0")
+	older, err := weapon.ResolveWeaponFacts(root, "demo@1.4.0")
 	require.NoError(t, err)
 	assert.Equal(t, "1.4.0", older.Version)
 	assert.Equal(t, "none", older.ScratchRoot)
 
-	newer, err := domain.ResolveWeaponFacts(root, "demo@2.0.0")
+	newer, err := weapon.ResolveWeaponFacts(root, "demo@2.0.0")
 	require.NoError(t, err)
 	assert.Equal(t, "2.0.0", newer.Version)
 	assert.Equal(t, "runtime", newer.ScratchRoot, "each version keeps its own manifest")
@@ -264,13 +265,13 @@ func TestResolveWeaponFactsResolvesAnIDAtVersionReference(t *testing.T) {
 func TestResolveWeaponFactsRefusesAPlainIDWithSeveralVersions(t *testing.T) {
 	root := manifestRoot(t, versionedManifestCatalog, nil)
 
-	_, err := domain.ResolveWeaponFacts(root, "demo")
+	_, err := weapon.ResolveWeaponFacts(root, "demo")
 
 	require.ErrorIs(t, err, domain.ErrWeaponFactsAmbiguous)
 	require.ErrorContains(t, err, "demo@1.4.0")
 	require.ErrorContains(t, err, "demo@2.0.0")
 
-	solo, err := domain.ResolveWeaponFacts(root, "solo")
+	solo, err := weapon.ResolveWeaponFacts(root, "solo")
 	require.NoError(t, err, "a plain id resolves while exactly one version exists")
 	assert.Equal(t, "1.0.0", solo.Version)
 }
@@ -278,7 +279,7 @@ func TestResolveWeaponFactsRefusesAPlainIDWithSeveralVersions(t *testing.T) {
 func TestResolveWeaponFactsReportsAnUncataloguedVersion(t *testing.T) {
 	root := manifestRoot(t, versionedManifestCatalog, nil)
 
-	_, err := domain.ResolveWeaponFacts(root, "demo@9.9.9")
+	_, err := weapon.ResolveWeaponFacts(root, "demo@9.9.9")
 
 	require.ErrorIs(t, err, domain.ErrWeaponFactsNotFound)
 }
@@ -286,7 +287,7 @@ func TestResolveWeaponFactsReportsAnUncataloguedVersion(t *testing.T) {
 func TestResolveWeaponFactsRejectsAnUnboundCustomNameAtVersion(t *testing.T) {
 	root := manifestRoot(t, versionedManifestCatalog, map[string]string{"team-skill@1.2.0": "id: team-skill\nrisk_score: write_analysis\ncanonical_role: ranger\n"})
 
-	_, err := domain.ResolveWeaponFacts(root, "team-skill@1.2.0")
+	_, err := weapon.ResolveWeaponFacts(root, "team-skill@1.2.0")
 
 	require.ErrorIs(t, err, domain.ErrWeaponFactsNotFound)
 }

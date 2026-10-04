@@ -1,11 +1,11 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"strings"
 
+	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/handoff"
@@ -59,12 +59,7 @@ func runArchivistHandoff(cmd *cobra.Command, opts handoffEvaluateOptions) error 
 	if err != nil {
 		return fmt.Errorf("handoff evaluate: %w", err)
 	}
-	var evaluation livemission.ArchivistHandoffResult
-	err = lockMission(root, opts.MissionID, func() error {
-		var evalErr error
-		evaluation, evalErr = recordArchivistHandoffLocked(root, basePath, opts.MissionID, input)
-		return evalErr
-	})
+	evaluation, err := recordArchivistHandoffLocked(root, basePath, opts.MissionID, input)
 	if err != nil {
 		return fmt.Errorf("handoff evaluate: %w", err)
 	}
@@ -77,23 +72,28 @@ func runArchivistHandoff(cmd *cobra.Command, opts handoffEvaluateOptions) error 
 	return nil
 }
 
-// recordArchivistHandoffLocked is the read-modify-write critical section, run
-// inside the mission lock `mission submit` also takes: load the mission,
-// reconcile, evaluate and record, then save. The save also happens when the
-// evaluation itself failed after a reconciliation changed the state.
+// recordArchivistHandoffLocked keeps the command's output-oriented adapter
+// while delegating mission lock/load/evaluate/save ordering to the
+// application service.
 func recordArchivistHandoffLocked(root, basePath, missionID string, input livemission.ArchivistHandoffInput) (livemission.ArchivistHandoffResult, error) {
-	engine, _, err := loadMission(root, missionID)
+	var evaluation livemission.ArchivistHandoffResult
+	err := application.RecordHandoffLifecycle(root, basePath, missionID, application.HandoffLifecyclePorts{
+		Lock: lockMission,
+		Load: loadMission,
+		Save: saveMission,
+		Evaluate: func(root, basePath string, engine *domain.MissionEngine) (domain.MissionEngineStatus, bool, error) {
+			var status domain.MissionEngineStatus
+			var changed bool
+			var evalErr error
+			evaluation, status, changed, evalErr = livemission.RecordArchivistHandoff(root, basePath, engine, input)
+			if evalErr != nil {
+				return status, changed, fmt.Errorf("record Archivist handoff: %w", evalErr)
+			}
+			return status, changed, nil
+		},
+	})
 	if err != nil {
-		return livemission.ArchivistHandoffResult{}, err
-	}
-	evaluation, status, changed, evalErr := livemission.RecordArchivistHandoff(root, basePath, engine, input)
-	if changed {
-		if err := saveMission(root, status); err != nil {
-			return livemission.ArchivistHandoffResult{}, errors.Join(evalErr, fmt.Errorf("handoff_state_persist_failed: save mission state: %w", err))
-		}
-	}
-	if evalErr != nil {
-		return evaluation, fmt.Errorf("record handoff: %w", evalErr)
+		return evaluation, fmt.Errorf("record handoff lifecycle: %w", err)
 	}
 	return evaluation, nil
 }

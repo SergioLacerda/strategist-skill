@@ -7,8 +7,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/SergioLacerda/strategist-skill/internal/catalog"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	embedpkg "github.com/SergioLacerda/strategist-skill/internal/embed"
+	"github.com/SergioLacerda/strategist-skill/internal/weapon"
 )
 
 // directivesRelPath mirrors identityRelPaths' convention (check_identity.go)
@@ -45,7 +47,7 @@ func compatViewResidualAdvisories(root string) []string {
 	if domain.RuntimeLayoutGeneration < 2 {
 		return nil
 	}
-	facts, err := domain.ListCatalogWeaponFacts(root)
+	facts, err := weapon.ListCatalogWeaponFacts(root)
 	if err != nil {
 		return nil
 	}
@@ -146,7 +148,7 @@ func registryDriftAdvisoriesAgainst(root string, readEmbedded func() ([]byte, er
 	if err != nil {
 		return nil
 	}
-	drifted, err := domain.CompiledRegistryDrift(workspaceRaw, embeddedRaw)
+	drifted, err := catalog.CompiledRegistryDrift(workspaceRaw, embeddedRaw)
 	if err != nil {
 		return []string{fmt.Sprintf("[Strategist] phase=preflight status=warn reason=compiled_registry_unreadable: %v (run `strategist upgrade`)", err)}
 	}

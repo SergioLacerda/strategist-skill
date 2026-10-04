@@ -1,8 +1,8 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -12,6 +12,7 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/initiative"
 	"github.com/SergioLacerda/strategist-skill/internal/leveling"
 	missionruntime "github.com/SergioLacerda/strategist-skill/internal/mission"
+	"github.com/SergioLacerda/strategist-skill/internal/roles"
 	"github.com/spf13/cobra"
 )
 
@@ -22,7 +23,16 @@ func missionLifecycleDependencies() missionadapter.LifecycleDependencies {
 		Save: saveMission, Load: loadMission, InitiativeStart: startInitiativeConsultation,
 		WriteResult: writeMissionResult, Lock: lockMission, ADRCanonicalPath: adrCanonicalPath,
 		TelemetrySink: selectDiscoveryTelemetrySink,
+		RecordRoute:   recordMissionRoute,
 	}
+}
+
+func recordMissionRoute(ctx context.Context, root, missionID string, raw []byte) (bool, error) {
+	appended, err := missionruntime.RecordRouteDecisionWithTelemetry(ctx, root, missionID, raw, selectDiscoveryTelemetrySink())
+	if err != nil {
+		return false, fmt.Errorf("record mission route: %w", err)
+	}
+	return appended, nil
 }
 
 func adrCanonicalPath(root string) (string, error) {
@@ -34,7 +44,7 @@ func adrCanonicalPath(root string) (string, error) {
 }
 
 func startInitiativeConsultation(root, missionID string) error {
-	registry, err := domain.LoadRoleRegistry(filepath.Join(root, "roles"))
+	registry, err := roles.LoadRoleRegistry(filepath.Join(root, "roles"))
 	if err != nil {
 		registry = domain.DefaultRoleRegistry()
 	}
@@ -113,10 +123,8 @@ func missionReportUsageDependencies() missionadapter.ReportUsageDependencies {
 }
 
 func requireNoExistingMission(root, missionID string) error {
-	if _, err := os.Stat(missionPath(root, missionID)); err == nil {
-		return fmt.Errorf("mission start: mission %q already exists", missionID)
-	} else if !os.IsNotExist(err) {
-		return fmt.Errorf("mission start: inspect existing state: %w", err)
+	if err := missionruntime.RequireNoExisting(root, missionID); err != nil {
+		return fmt.Errorf("mission start: %w", err)
 	}
 	return nil
 }

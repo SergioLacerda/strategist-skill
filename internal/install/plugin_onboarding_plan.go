@@ -3,6 +3,7 @@ package install
 import (
 	"fmt"
 
+	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/plugins"
 )
@@ -21,7 +22,10 @@ func planPluginOnboardingWithModes(extractor domain.FileExtractor, catalog plugi
 	if err != nil {
 		return pluginOnboardingPlan{}, fmt.Errorf("build Weapon Roster: %w", err)
 	}
-	installPlan, err := domain.NewInstallPlan(domain.StageRoster, "", "", slots, modes, lock, inputs.Bindings)
+	installPlan, err := application.PlanInstall(application.InstallPlanInput{
+		Stage: domain.StageRoster, Slots: slots, SlotModes: modes,
+		Lock: lock, Bindings: inputs.Bindings,
+	})
 	if err != nil {
 		return pluginOnboardingPlan{}, fmt.Errorf("build install plan: %w", err)
 	}

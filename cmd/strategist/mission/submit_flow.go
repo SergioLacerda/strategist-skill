@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 	livemission "github.com/SergioLacerda/strategist-skill/internal/mission"
@@ -22,13 +23,11 @@ func invalidateRepairEvidence(root, missionID string, event domain.MissionEngine
 }
 
 func persistSubmitState(deps LifecycleDependencies, root string, status domain.MissionEngineStatus, analysisPath string, original []byte, changed bool) error {
-	if err := deps.Save(root, status); err != nil {
-		if changed {
-			if restoreErr := handoff.RestoreAnalysis(analysisPath, original); restoreErr != nil {
-				return fmt.Errorf("mission submit: %v; rollback failed: %w", err, restoreErr)
-			}
-		}
-		return fmt.Errorf("mission submit: %w", err)
+	err := application.PersistMissionSubmitState(root, status, analysisPath, original, changed, application.MissionSubmitPersistencePorts{
+		Save: deps.Save, RestoreAnalysis: handoff.RestoreAnalysis,
+	})
+	if err != nil {
+		return fmt.Errorf("persist mission submit state: %w", err)
 	}
 	return nil
 }
@@ -44,40 +43,24 @@ func acceptGateAnalysis(path string, evt domain.MissionEngineEvent, gateDigest s
 	return original, changed, nil
 }
 
-type submitPreflight struct {
-	gateDigest    string
-	outcome       *handoff.Outcome
-	packageDigest string
-	claimTargets  []string
-}
+type submitPreflight = application.SubmitPreflightResult
 
 func preflightSubmit(root, basePath, missionID string, status domain.MissionEngineStatus, evt domain.MissionEngineEvent) (submitPreflight, error) {
-	if err := livemission.RequireNoAcceptedSideQuest(root, missionID, evt); err != nil {
-		return submitPreflight{}, fmt.Errorf("mission submit: rejected: %w", err)
-	}
-	if err := requireAuthoredPackageRepair(basePath, missionID, evt); err != nil {
-		return submitPreflight{}, fmt.Errorf("mission submit: rejected: %w", err)
-	}
-	if err := validateSubmitArtifacts(basePath, missionID, evt); err != nil {
-		return submitPreflight{}, fmt.Errorf("mission submit: rejected: %w", err)
-	}
-	gateDigest, err := approvalGatePackageDigest(basePath, status, evt)
+	result, err := application.PreflightSubmit(application.SubmitPreflightRequest{
+		Root: root, BasePath: basePath, MissionID: missionID, Status: status, Event: evt,
+	}, application.SubmitPreflightPorts{
+		RequireNoAcceptedSideQuest:   preflightSideQuestGuard,
+		RequireAuthoredPackageRepair: preflightRepairGuard,
+		ValidateArtifacts:            preflightArtifactGuard,
+		ApprovalGatePackageDigest:    preflightGateDigest,
+		RequireExecutionEvidence:     requireExecutionEvidence,
+		RepairPackageDigest:          repairPackageDigest,
+		PreflightSniperClaims:        preflightSniperClaims,
+	})
 	if err != nil {
-		return submitPreflight{}, fmt.Errorf("mission submit: rejected: %w", err)
+		return submitPreflight{}, fmt.Errorf("mission submit preflight: %w", err)
 	}
-	outcome, err := requireExecutionEvidence(root, basePath, status, evt)
-	if err != nil {
-		return submitPreflight{}, err
-	}
-	packageDigest, err := repairPackageDigest(basePath, missionID, evt)
-	if err != nil {
-		return submitPreflight{}, err
-	}
-	claimTargets, err := preflightSniperClaims(basePath, missionID, evt)
-	if err != nil {
-		return submitPreflight{}, err
-	}
-	return submitPreflight{gateDigest: gateDigest, outcome: outcome, packageDigest: packageDigest, claimTargets: claimTargets}, nil
+	return result, nil
 }
 
 // preflightSniperClaims validates every claim target before the FSM is
@@ -119,12 +102,9 @@ func retainRepairEvidence(basePath string, before, after domain.MissionEngineSta
 }
 
 func applySubmit(engine *domain.MissionEngine, evt domain.MissionEngineEvent, gateDigest string) (domain.MissionEngineStatus, error) {
-	status, err := engine.Submit(evt)
-	if err == nil && gateDigest != "" {
-		status, err = engine.RecordApprovalGatePackageDigest(gateDigest)
-	}
+	status, err := application.SubmitMission(engine, application.SubmitMissionRequest{Event: evt, GateDigest: gateDigest})
 	if err != nil {
-		return domain.MissionEngineStatus{}, fmt.Errorf("mission submit: rejected: %w", err)
+		return domain.MissionEngineStatus{}, fmt.Errorf("apply mission submit: %w", err)
 	}
 	return status, nil
 }
@@ -182,11 +162,20 @@ func persistExecutionOutcome(root string, outcome *handoff.Outcome, entry *execu
 }
 
 func commitExecutionEntry(root, basePath, missionID string, event domain.MissionEngineEvent, outcome *handoff.Outcome, entry *executionEntry) error {
-	if err := persistExecutionOutcome(root, outcome, entry); err != nil {
-		return err
+	err := application.CommitMissionExecution(application.SubmitExecutionCommitRequest{
+		Root: root, BasePath: basePath, MissionID: missionID, Event: event,
+		Outcome: outcome, EntryPresent: entry != nil,
+	}, application.SubmitExecutionCommitPorts{
+		PersistOutcome: func(root string, outcome handoff.Outcome) error {
+			return persistExecutionOutcome(root, &outcome, entry)
+		},
+		RecordEntryClaims: func(root, basePath, missionID string) error {
+			return recordExecutionEntryClaims(root, basePath, missionID, entry)
+		},
+		RecordSniperClaims: recordSniperClaimsOnHandoffPassed,
+	})
+	if err != nil {
+		return fmt.Errorf("commit mission execution: %w", err)
 	}
-	if entry != nil && event == domain.MissionEventHandoffSatisfied {
-		return recordExecutionEntryClaims(root, basePath, missionID, entry)
-	}
-	return recordSniperClaimsOnHandoffPassed(root, basePath, missionID, event)
+	return nil
 }

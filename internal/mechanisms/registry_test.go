@@ -144,6 +144,38 @@ func TestRoleLoadoutCapabilitiesSeparatesFeatsAndTools(t *testing.T) {
 	assert.Empty(t, tools)
 }
 
+func TestRoleLoadoutCapabilitiesFiltersSlotsAndSeparatesTools(t *testing.T) {
+	raw := validRegistry + `
+  - id: discovery-tool
+    family: tool
+    enforcement_kind: code
+    summary: discovery operation
+    invoked_by: [ranger]
+    how_to_invoke: discovery tool
+    phase_scope: [discovery]
+  - id: all-tool
+    family: tool
+    enforcement_kind: code
+    summary: universal operation
+    invoked_by: [ranger]
+    how_to_invoke: universal tool
+    phase_scope: [all]
+  - id: roster-tool
+    family: tool
+    enforcement_kind: code
+    summary: roster operation
+    invoked_by: [ranger]
+    how_to_invoke: roster tool
+    phase_scope: [roster]
+`
+	reg, err := Parse([]byte(raw))
+	require.NoError(t, err)
+
+	feats, tools := reg.RoleLoadoutCapabilities("ranger", "discovery")
+	assert.Equal(t, []string{"search"}, capabilityIDs(feats))
+	assert.Equal(t, []string{"discovery-tool", "all-tool"}, capabilityIDs(tools))
+}
+
 func TestBuildRoleLoadoutCombinesStageAndPinnedWeapon(t *testing.T) {
 	reg, err := Parse([]byte(validRegistry))
 	require.NoError(t, err)
@@ -157,6 +189,15 @@ func TestBuildRoleLoadoutCombinesStageAndPinnedWeapon(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, domain.StageFull, loadout.Resolution.Stage)
 	assert.Equal(t, []string{"search"}, capabilityIDs(loadout.Feats))
+}
+
+func TestBuildRoleLoadoutReportsDomainValidationError(t *testing.T) {
+	reg, err := Parse([]byte(validRegistry))
+	require.NoError(t, err)
+
+	_, err = reg.BuildRoleLoadout(domain.StageResolution{}, domain.RoleInvocationPlan{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "build role loadout")
 }
 
 func capabilityIDs(capabilities []domain.LoadoutCapability) []string {
@@ -214,6 +255,29 @@ func TestBriefForStageRejectsUnknownStage(t *testing.T) {
 	_, err = reg.BriefForStage("ranger", domain.Stage("UNKNOWN"))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "is not canonical")
+}
+
+func TestStagePhaseScopesCoversRosterAndUnknownStages(t *testing.T) {
+	assert.Equal(t, map[string]bool{"bootstrap": true, "roster": true}, stagePhaseScopes(domain.StageRoster))
+	assert.Nil(t, stagePhaseScopes(domain.Stage("UNKNOWN")))
+}
+
+func TestValidationHelpersReportMissingFields(t *testing.T) {
+	base := Row{
+		ID: "row", Family: FamilyMechanism, EnforcementKind: "code",
+		Summary: "summary", HowToInvoke: "invoke", InvokedBy: []string{"ranger"},
+	}
+	for name, row := range map[string]Row{
+		"missing summary":    func() Row { row := base; row.Summary = ""; return row }(),
+		"missing invocation": func() Row { row := base; row.HowToInvoke = ""; return row }(),
+		"missing roles":      func() Row { row := base; row.InvokedBy = nil; return row }(),
+	} {
+		require.Error(t, validateRow(row), name)
+	}
+
+	_, err := (Row{ID: "row", Family: "unknown"}).CanonicalIdentity()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown family")
 }
 
 func rowIDs(rows []Row) []string {

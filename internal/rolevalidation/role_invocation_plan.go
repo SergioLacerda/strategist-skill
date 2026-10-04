@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/SergioLacerda/strategist-skill/internal/catalog"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
 
@@ -64,7 +65,7 @@ func resolveCompiledRoleInvocationPlan(root, role, slot string, lock domain.Plug
 	if err != nil {
 		return domain.RoleInvocationPlan{}, false, nil
 	}
-	registry, err := domain.ParseCompiledRegistryCatalog(raw)
+	registry, err := catalog.ParseCompiledRegistryCatalog(raw)
 	if err != nil {
 		return domain.RoleInvocationPlan{}, false, nil
 	}

@@ -38,6 +38,39 @@ func TestDomainIsolation(t *testing.T) {
 	}
 }
 
+// TestApplicationBoundaryIsolation keeps consumer orchestration independent
+// from UI, provider, telemetry, and concrete adapter packages. Concrete
+// connectors are composed by cmd/strategist and passed through ports.
+func TestApplicationBoundaryIsolation(t *testing.T) {
+	t.Parallel()
+
+	assertNoForbiddenDeps(t, "github.com/SergioLacerda/strategist-skill/internal/application", []string{
+		"github.com/SergioLacerda/strategist-skill/cmd/strategist",
+		"github.com/SergioLacerda/strategist-skill/internal/telemetry",
+		"github.com/SergioLacerda/strategist-skill/internal/provider",
+		"github.com/SergioLacerda/strategist-skill/internal/plugins",
+		"github.com/spf13/cobra",
+	})
+}
+
+// TestDomainDoesNotDependOnRuntimeBoundaries rejects reverse imports from the
+// canonical domain into application, UI, telemetry, provider, or plugin
+// packages. Concrete filesystem and YAML adapters are also forbidden here;
+// domain may expose ports and decoded boundary documents, but cannot own I/O.
+func TestDomainDoesNotDependOnRuntimeBoundaries(t *testing.T) {
+	t.Parallel()
+
+	assertNoForbiddenDeps(t, "github.com/SergioLacerda/strategist-skill/internal/domain", []string{
+		"github.com/SergioLacerda/strategist-skill/internal/application",
+		"github.com/SergioLacerda/strategist-skill/internal/telemetry",
+		"github.com/SergioLacerda/strategist-skill/internal/provider",
+		"github.com/SergioLacerda/strategist-skill/internal/plugins",
+		"github.com/spf13/cobra",
+		"os",
+		"gopkg.in/yaml.v3",
+	})
+}
+
 // TestLateralIsolation verifies that internal business-logic packages do not
 // import each other. Each package depends only on internal/domain, never on a
 // peer. Lateral coupling creates hidden coordination costs and circular-dep risk.

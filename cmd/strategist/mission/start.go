@@ -1,8 +1,10 @@
 package mission
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
@@ -32,6 +34,9 @@ type LifecycleDependencies struct {
 	// TelemetrySink selects the route-resolution sink. Nil keeps the adapter
 	// compatible with callers that only need durable route history.
 	TelemetrySink func() telemetry.EventSink
+	// RecordRoute is the application-facing route connector. The legacy
+	// TelemetrySink fallback remains for isolated adapter tests.
+	RecordRoute func(context.Context, string, string, []byte) (bool, error)
 }
 
 // withMissionLock runs fn under deps.Lock when one is configured, or
@@ -103,28 +108,13 @@ func RunStart(cmd *cobra.Command, deps LifecycleDependencies, rootInput, mission
 // record. Extracted out of
 // RunStart's own lock closure for the same reason as submitLocked.
 func startLocked(deps LifecycleDependencies, root, missionID string) (domain.MissionEngineStatus, error) {
-	if err := deps.RequireNoExisting(root, missionID); err != nil {
-		return domain.MissionEngineStatus{}, err
-	}
-	engine, status, err := domain.StartMission(domain.MissionStartRequest{MissionID: missionID})
+	status, err := application.StartMission(root, missionID, application.MissionStartPorts{
+		RequireNoExisting: deps.RequireNoExisting,
+		InitiativeStart:   deps.InitiativeStart,
+		Save:              deps.Save,
+	})
 	if err != nil {
-		return domain.MissionEngineStatus{}, fmt.Errorf("mission start: %w", err)
-	}
-	if err := runInitiativeStart(deps, root, missionID); err != nil {
-		return domain.MissionEngineStatus{}, err
-	}
-	if err := deps.Save(root, engine.Status()); err != nil {
-		return domain.MissionEngineStatus{}, fmt.Errorf("mission start: %w", err)
+		return domain.MissionEngineStatus{}, fmt.Errorf("start mission: %w", err)
 	}
 	return status, nil
-}
-
-func runInitiativeStart(deps LifecycleDependencies, root, missionID string) error {
-	if deps.InitiativeStart == nil {
-		return nil
-	}
-	if err := deps.InitiativeStart(root, missionID); err != nil {
-		return fmt.Errorf("mission start: initiative consultation: %w", err)
-	}
-	return nil
 }

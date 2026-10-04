@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/plugins/lifecycle"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
@@ -42,7 +43,10 @@ type pluginProbeFunc func(domain.SlotBinding, domain.InstalledInstance) bool
 type pluginProbeResultFunc func(domain.SlotBinding, domain.InstalledInstance) lifecycle.ProbeOutcome
 
 func (p *pluginOnboardingPlan) bindInstallContext(mode, basePath string, slots, modes map[string]string) error {
-	installPlan, err := domain.NewInstallPlan(domain.StageRoster, mode, basePath, slots, modes, p.Lock, p.Bindings)
+	installPlan, err := application.PlanInstall(application.InstallPlanInput{
+		Stage: domain.StageRoster, Mode: mode, BasePath: basePath,
+		Slots: slots, SlotModes: modes, Lock: p.Lock, Bindings: p.Bindings,
+	})
 	if err != nil {
 		return fmt.Errorf("create install plan: %w", err)
 	}

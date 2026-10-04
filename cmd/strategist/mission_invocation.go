@@ -2,14 +2,11 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
-	"path/filepath"
-	"strings"
 	"time"
 
 	missionadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
+	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	missionruntime "github.com/SergioLacerda/strategist-skill/internal/mission"
@@ -62,7 +59,7 @@ func buildMissionInvocation(ctx context.Context, input missionadapter.Invocation
 	if err != nil {
 		return domain.MissionInvocationRequest{}, err
 	}
-	request, now, err := newMissionInvocationRequest(input, binding, weapon, payload, sourceDigest)
+	request, now, err := newMissionInvocationRequest(ctx, input, binding, weapon, payload, sourceDigest)
 	if err != nil {
 		return domain.MissionInvocationRequest{}, err
 	}
@@ -79,45 +76,30 @@ func buildMissionInvocation(ctx context.Context, input missionadapter.Invocation
 	return request, nil
 }
 
-func newMissionInvocationRequest(input missionadapter.InvocationBuildInput, binding domain.RoleWeaponBinding, weapon domain.CompiledWeapon, payload []byte, sourceDigest string) (domain.MissionInvocationRequest, time.Time, error) {
-	requestID, err := newInvocationID()
-	if err != nil {
-		return domain.MissionInvocationRequest{}, time.Time{}, err
-	}
-	now := time.Now().UTC()
-	requestInput := map[string]any{}
+func newMissionInvocationRequest(ctx context.Context, input missionadapter.InvocationBuildInput, binding domain.RoleWeaponBinding, weapon domain.CompiledWeapon, payload []byte, sourceDigest string) (domain.MissionInvocationRequest, time.Time, error) {
+	approvalDigest := ""
+	executionContract, outputContract := "", ""
 	if input.Role == "ranger" {
-		requestInput["execution_contract"] = provider.DiscoveryExecutionContract
-		requestInput["output_contract"] = provider.DiscoveryOutputContract
+		executionContract, outputContract = provider.DiscoveryExecutionContract, provider.DiscoveryOutputContract
 	}
 	if input.Role == "sniper" && input.Slot == string(domain.SlotExecution) {
+		executionContract, outputContract = provider.SniperExecutionContract, provider.SniperOutputContract
 		_, status, loadErr := loadMission(input.Root, input.MissionID)
 		if loadErr != nil {
 			return domain.MissionInvocationRequest{}, time.Time{}, fmt.Errorf("load Sniper mission authorization: %w", loadErr)
 		}
-		requestInput["execution_contract"] = provider.SniperExecutionContract
-		requestInput["output_contract"] = provider.SniperOutputContract
-		requestInput["refined_package"] = filepath.ToSlash(filepath.Join(input.BasePath, "refined", input.MissionID))
-		requestInput["report_path"] = filepath.ToSlash(filepath.Join(input.BasePath, "archived", input.MissionID+"-report.md"))
-		requestInput["approval_gate_package_digest"] = status.ApprovalGatePackageDigest
+		approvalDigest = status.ApprovalGatePackageDigest
 	}
-	if strings.TrimSpace(input.RequestContext) != "" {
-		requestInput["request_context"] = input.RequestContext
-	}
-	return domain.MissionInvocationRequest{
-		Protocol: domain.MissionInvocationProtocolVersion, RequestID: requestID,
-		MissionID: input.MissionID, Role: input.Role, Slot: input.Slot,
-		Weapon:        domain.MissionWeaponIdentity{ID: weapon.ID, Version: weapon.Version, Digest: weapon.Digest},
-		BindingDigest: binding.BindingDigest, SourceDigest: sourceDigest,
-		ExecutionMode: binding.ExecutionMode, Entrypoint: binding.Entrypoint,
-		Payload: string(payload), Input: requestInput, Nonce: newPromptNonce(),
-	}, now, nil
+	request, issued, err := application.NewInvocationRequest(ctx, application.InvocationRequestInput{
+		Root: input.Root, BasePath: input.BasePath, MissionID: input.MissionID, Role: input.Role, Slot: input.Slot,
+		RequestContext: input.RequestContext, Binding: binding, Weapon: weapon, Payload: payload,
+		SourceDigest: sourceDigest, ApprovalGatePackageDigest: approvalDigest,
+		ExecutionContract: executionContract, OutputContract: outputContract,
+	})
+	return request, issued, wrapMissionError(err)
 }
 
 func newInvocationID() (string, error) {
-	var raw [16]byte
-	if _, err := rand.Read(raw[:]); err != nil {
-		return "", fmt.Errorf("mission invocation: generate request id: %w", err)
-	}
-	return "inv_" + hex.EncodeToString(raw[:]), nil
+	id, err := application.NewInvocationID()
+	return id, wrapMissionError(err)
 }

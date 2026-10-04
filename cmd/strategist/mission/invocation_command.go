@@ -3,6 +3,7 @@ package mission
 import (
 	"context"
 
+	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/spf13/cobra"
@@ -28,15 +29,9 @@ type InvocationDependencies struct {
 	TelemetrySink func() telemetry.EventSink
 }
 
-// InvocationBuildInput identifies the immutable Weapon request to build.
-type InvocationBuildInput struct {
-	Root           string
-	BasePath       string
-	MissionID      string
-	Role           string
-	Slot           string
-	RequestContext string
-}
+// InvocationBuildInput remains a CLI-package alias for existing adapters and
+// tests; the application package owns the request contract.
+type InvocationBuildInput = application.InvocationBuildRequest
 
 // InvocationCompleteInput identifies and supplies one host completion.
 type InvocationCompleteInput struct {

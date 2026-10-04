@@ -8,6 +8,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type testRuntimePathResolver struct{}
+
+func (testRuntimePathResolver) Canonical(path string) string {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return filepath.Clean(path)
+	}
+	if resolved, err := filepath.EvalSymlinks(abs); err == nil {
+		return resolved
+	}
+	return abs
+}
+
+func (testRuntimePathResolver) SameDirectory(left, right string) bool {
+	leftInfo, leftErr := os.Stat(left)
+	rightInfo, rightErr := os.Stat(right)
+	return leftErr == nil && rightErr == nil && os.SameFile(leftInfo, rightInfo)
+}
+
 func TestValidateOpenSpecHealthcheckRejectsMalformedRootMatrix(t *testing.T) {
 	runtimeRoot := filepath.Join(t.TempDir(), ".strategist", "openspec")
 	expected := filepath.Dir(runtimeRoot)
@@ -23,7 +42,7 @@ func TestValidateOpenSpecHealthcheckRejectsMalformedRootMatrix(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Error(t, ValidateOpenSpecHealthcheck([]byte(tt.output), runtimeRoot))
+			require.Error(t, ValidateOpenSpecHealthcheck([]byte(tt.output), runtimeRoot, testRuntimePathResolver{}))
 		})
 	}
 }
@@ -31,13 +50,13 @@ func TestValidateOpenSpecHealthcheckRejectsMalformedRootMatrix(t *testing.T) {
 func TestValidateOpenSpecHealthcheckAcceptsSemanticContainerRoot(t *testing.T) {
 	runtimeRoot := filepath.Join(t.TempDir(), ".strategist", "openspec")
 	output := `{"root":{"path":"` + filepath.ToSlash(filepath.Dir(runtimeRoot)) + `"}}`
-	require.NoError(t, ValidateOpenSpecHealthcheck([]byte(output), runtimeRoot))
+	require.NoError(t, ValidateOpenSpecHealthcheck([]byte(output), runtimeRoot, testRuntimePathResolver{}))
 }
 
 func TestValidateOpenSpecHealthcheckAcceptsWarningPrefix(t *testing.T) {
 	runtimeRoot := filepath.Join(t.TempDir(), ".strategist", "openspec")
 	output := "Warning: Node experimental feature enabled\n" + `{"root":{"path":"` + filepath.ToSlash(filepath.Dir(runtimeRoot)) + `"}}`
-	require.NoError(t, ValidateOpenSpecHealthcheck([]byte(output), runtimeRoot))
+	require.NoError(t, ValidateOpenSpecHealthcheck([]byte(output), runtimeRoot, testRuntimePathResolver{}))
 }
 
 func TestValidateOpenSpecHealthcheckIsPathFormIndependent(t *testing.T) {
@@ -63,7 +82,7 @@ func TestValidateOpenSpecHealthcheckIsPathFormIndependent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.NoError(t, ValidateOpenSpecHealthcheck(output, tt.root))
+			require.NoError(t, ValidateOpenSpecHealthcheck(output, tt.root, testRuntimePathResolver{}))
 		})
 	}
 }
@@ -76,7 +95,7 @@ func TestValidateOpenSpecHealthcheckStillRejectsOtherDirectoryWhenRootIsRelative
 	t.Chdir(base)
 
 	output := []byte(`{"root":{"path":"` + filepath.ToSlash(other) + `"}}`)
-	err := ValidateOpenSpecHealthcheck(output, filepath.Join(".strategist", "openspec"))
+	err := ValidateOpenSpecHealthcheck(output, filepath.Join(".strategist", "openspec"), testRuntimePathResolver{})
 	require.ErrorContains(t, err, "semantic root mismatch")
 }
 
@@ -90,7 +109,7 @@ func TestValidateOpenSpecHealthcheckDriftPipelineRegression(t *testing.T) {
 	t.Chdir(base)
 
 	output := []byte(`{"root":{"path":"` + filepath.ToSlash(canonical) + `"}}`)
-	require.NoError(t, ValidateOpenSpecHealthcheck(output, ".strategist/openspec"))
+	require.NoError(t, ValidateOpenSpecHealthcheck(output, ".strategist/openspec", testRuntimePathResolver{}))
 }
 
 func TestOpenSpecRuntimeRootValidation(t *testing.T) {
