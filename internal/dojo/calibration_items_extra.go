@@ -12,7 +12,7 @@ import (
 // extraItems are the informational readings of an atomic profile and of a
 // cross-validated rule; a failing confirmation is already the status item.
 func extraItems(r calibration.Report) []domain.DojoCheckItem {
-	return append(crossValidationItems(r), criteriaItems(r)...)
+	return append(append(crossValidationItems(r), criterionItems(r)...), criteriaItems(r)...)
 }
 
 func crossValidationItems(r calibration.Report) []domain.DojoCheckItem {
@@ -49,4 +49,19 @@ func meansText(means map[string]float64) string {
 		parts[i] = fmt.Sprintf("%s %.2f", name, means[name])
 	}
 	return strings.Join(parts, ", ")
+}
+
+// criterionItems print one row per criterion read on its own; they are informational (the case
+// passes or fails on the aggregate), and each says what a hint from that criterion is worth.
+func criterionItems(r calibration.Report) []domain.DojoCheckItem {
+	var items []domain.DojoCheckItem
+	for _, c := range r.CriterionCalibration {
+		detail := fmt.Sprintf("%s: auc %.3f over %d golden parents and %d defects of %v; flag below %.2f, out of fold %d of %d golden flagged (upper %.1f%%), %d of %d defects caught (%.0f%%)",
+			c.Status, c.AUC, c.Golden, c.Defects, c.Operators, c.Threshold, c.FalseFlag.K, c.FalseFlag.N, 100*c.FalseFlag.Upper, c.Detection.K, c.Detection.N, 100*c.Detection.Value)
+		if c.Note != "" {
+			detail += " (" + c.Note + ")"
+		}
+		items = append(items, item("calibration criterion "+c.Criterion, true, "%s", detail))
+	}
+	return items
 }

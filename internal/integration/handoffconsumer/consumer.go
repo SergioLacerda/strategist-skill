@@ -24,6 +24,9 @@ const (
 	StatusSignal Status = "signal"
 	// StatusFallback: the provider did not serve the call; main proceeds.
 	StatusFallback Status = "fallback"
+	// StatusShadow: a shadow provider answered; the reading is in the ledger and
+	// nothing else uses it (no delegation, no hint), so main decides alone.
+	StatusShadow Status = "shadow"
 	// StatusDisabled: no integration is enabled; main proceeds silently.
 	StatusDisabled Status = "disabled"
 )
@@ -97,7 +100,7 @@ func (c *Consumer) Precheck(ctx context.Context, request Request) Report {
 	})
 	report := c.report(request, outcome)
 	c.record(request, report, outcome, c.now().Sub(started))
-	return report
+	return c.shadowed(report)
 }
 
 // refuse returns a state when the call budget is spent or cannot be read. The
@@ -129,9 +132,10 @@ func (c *Consumer) report(request Request, outcome mechanism.Outcome) Report {
 		}
 		return report
 	}
-	report.Calibration = withProbability(c.calibrationFor(request.Transition, outcome.Result.Model), *outcome.Result)
+	result := withAggregate(c.Provider.Profile, request.Transition, *outcome.Result)
+	report.Calibration = withProbability(c.calibrationFor(request.Transition, result.Model), result)
 	report.Threshold = c.threshold(report.Calibration)
-	verdict := Evaluate(request.Transition, *outcome.Result, report.Threshold)
+	verdict := Evaluate(request.Transition, result, report.Threshold)
 	report.Confidence, report.Hints = verdict.Confidence, verdict.Hints
 	if !verdict.Approved {
 		report.Status = StatusSignal
@@ -155,7 +159,7 @@ func (c *Consumer) record(request Request, report Report, outcome mechanism.Outc
 		FellBack: outcome.Decision.FellBack, Suspect: outcome.Decision.Suspect, Binding: outcome.Decision.Binding,
 		Attempted: outcome.Attempted, Approved: report.Status == StatusApproved, Confidence: report.Confidence,
 		Threshold: report.Threshold, LatencyMS: latency.Milliseconds(), Provider: c.Name,
-		Answered: outcome.Result != nil, Hints: hintKeys(report.Hints), Reused: report.Reused,
+		Answered: outcome.Result != nil, Shadow: c.Provider.Shadow, Hints: hintKeys(report.Hints), Reused: report.Reused,
 		CalibrationID: report.Calibration.ID, Calibrated: report.Calibration.Applied, CalibrationReason: report.Calibration.Reason,
 	}
 	if outcome.Result != nil {

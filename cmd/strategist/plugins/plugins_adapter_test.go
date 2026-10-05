@@ -37,7 +37,7 @@ func TestRegister_CommandTreeParity(t *testing.T) {
 	for _, sub := range parent.Commands() {
 		names = append(names, sub.Name())
 	}
-	assert.Equal(t, []string{"authorize", "evaluate-write", "prepare-embedded", "resolved-digest", "scaffold-sidecar"}, names)
+	assert.Equal(t, []string{"acquire-remote", "authorize", "evaluate-write", "prepare-embedded", "resolved-digest", "scaffold-sidecar"}, names)
 
 	want := map[string]map[string]string{
 		"authorize": {
@@ -57,6 +57,10 @@ func TestRegister_CommandTreeParity(t *testing.T) {
 			"catalog":  filepath.ToSlash(filepath.Join("internal", "embed", "defaults", "plugins", "catalog.yaml")),
 			"provider": "", "resolved-digest": "", "file": "",
 		},
+		"acquire-remote": {
+			"source": "git", "repository": "", "commit": "", "package-id": "",
+			"allow-network": "false", "quarantine-root": "",
+		},
 	}
 	for _, sub := range parent.Commands() {
 		got := map[string]string{}
@@ -68,8 +72,21 @@ func TestRegister_CommandTreeParity(t *testing.T) {
 func TestNew_ReturnsIsolatedTrees(t *testing.T) {
 	t.Parallel()
 	first, second := New(), New()
-	require.NoError(t, first.Commands()[0].Flags().Set("target", "docs/a.md"))
-	assert.Empty(t, second.Commands()[0].Flags().Lookup("target").Value.String())
+	var firstAuthorize, secondAuthorize *cobra.Command
+	for _, command := range first.Commands() {
+		if command.Name() == "authorize" {
+			firstAuthorize = command
+		}
+	}
+	for _, command := range second.Commands() {
+		if command.Name() == "authorize" {
+			secondAuthorize = command
+		}
+	}
+	require.NotNil(t, firstAuthorize)
+	require.NotNil(t, secondAuthorize)
+	require.NoError(t, firstAuthorize.Flags().Set("target", "docs/a.md"))
+	assert.Empty(t, secondAuthorize.Flags().Lookup("target").Value.String())
 }
 
 func runCommand(t *testing.T, args ...string) (string, error) {

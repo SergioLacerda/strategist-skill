@@ -18,8 +18,9 @@ func tasksPresent(f Fields) bool {
 }
 
 func verifiedTasks(f Fields) bool {
-	for _, i := range taskIndexes(f["implementation_plan"]) {
-		if verifyTail.MatchString(lines(f["implementation_plan"])[i]) {
+	all := lines(f["implementation_plan"])
+	for _, item := range typedTasks(f["implementation_plan"]) {
+		if verifyAfter.MatchString(item.text(all)) {
 			return true
 		}
 	}
@@ -45,7 +46,7 @@ func packageOperators() []Operator {
 		}),
 		graded(pkg("drop_task_verification", BandMajor, ExpectReject, []string{"validation_stated"}, verifiedTasks, dropVerification)),
 		pkg("relabel_implementation_as_documentation", BandMajor, ExpectReject, []string{"implementation_not_materialized"},
-			planHas(regexp.MustCompile(`\[implementation_handoff\]`)), relabelImplementation),
+			planHas(relabelTag), relabelImplementation),
 		pkg("empty_acceptance_checks", BandMajor, ExpectReject, []string{"acceptance_checkable"}, func(f Fields) bool { return hasField(f, "acceptance_checks") },
 			func(f Fields, _ Context) Fields { return with(f, "acceptance_checks", "") }),
 		pkg("truncate_plan", BandMinor, ExpectReject, []string{"validation_stated"}, func(f Fields) bool { return len(f["implementation_plan"]) > 200 },
@@ -61,18 +62,18 @@ func packageOperators() []Operator {
 
 func stripTaskTypes(f Fields, ctx Context) Fields {
 	return with(f, "implementation_plan", rewriteTasks(f["implementation_plan"], ctx, func(line string) string {
-		return taskLine.ReplaceAllString(line, "$1$3")
+		return stripTag.ReplaceAllString(line, "$1$2")
 	}))
 }
 
 func dropVerification(f Fields, ctx Context) Fields {
 	return with(f, "implementation_plan", rewriteTasks(f["implementation_plan"], ctx, func(line string) string {
-		return strings.TrimRight(verifyTail.ReplaceAllString(line, ""), " ") + "."
+		return strings.TrimRight(verifyAfter.ReplaceAllString(line, ""), " ") + "."
 	}))
 }
 
 func relabelImplementation(f Fields, ctx Context) Fields {
 	return with(f, "implementation_plan", rewriteTasks(f["implementation_plan"], ctx, func(line string) string {
-		return strings.Replace(line, "[implementation_handoff]", "[analysis_artifact]", 1)
+		return relabelTag.ReplaceAllString(line, "[${1}analysis_artifact]")
 	}))
 }

@@ -91,7 +91,7 @@ func (p Provider) validateLimits() error {
 // validateCalibration accepts only a pinned calibration id, never "latest" or a path.
 func (p Provider) validateCalibration() error {
 	if !calibration.KnownProfile(p.Profile) {
-		return errors.New("profile must be handoff-v1 or handoff-v2")
+		return errors.New("profile must be handoff-v1, handoff-v2 or handoff-atomic-v1")
 	}
 	if p.CalibrationID != "" && !calibration.ValidID(p.CalibrationID) {
 		return errors.New("calibration_id must be a calibration id (cal-YYYYMMDD-xxxxxxxx), never \"latest\"")

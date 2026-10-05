@@ -76,3 +76,32 @@ func atomicVerdictOf(transition string, outcome mechanism.Outcome, latency time.
 		Model: outcome.Result.Model, Latency: latency, InputTokens: outcome.Result.Usage.InputTokens, OutputTokens: outcome.Result.Usage.OutputTokens,
 	}
 }
+
+// withAggregate gives an atomic answer the aggregate answer the local rule reads: the lowest
+// criterion answer as the probability of accept, accept from the half line up. The criterion
+// answers stay as they are (they are the repair hints). Any other profile, and an atomic
+// answer that lacks a criterion, is returned unchanged, so the rule finds no aggregate and
+// never approves.
+func withAggregate(profile, transition string, result integration.Result) integration.Result {
+	if !calibration.IsAtomic(profile) {
+		return result
+	}
+	_, lowest, ok := atomicScores(transition, result)
+	if !ok {
+		return result
+	}
+	choice := OptionReject
+	if lowest >= satisfied {
+		choice = OptionAccept
+	}
+	answers := make(map[string]integration.Answer, len(result.Answers)+1)
+	for key, answer := range result.Answers {
+		answers[key] = answer
+	}
+	answers[AggregateKey] = integration.Answer{
+		Kind: integration.KindChoice, Choice: choice, Confidence: lowest, HasConfidence: true,
+		Probabilities: map[string]float64{OptionAccept: lowest, OptionReject: 1 - lowest},
+	}
+	result.Answers = answers
+	return result
+}

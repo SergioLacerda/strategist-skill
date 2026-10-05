@@ -16,12 +16,7 @@ type LocalCheck struct {
 	Flags    func(Fields) bool
 }
 
-var (
-	anyTask      = regexp.MustCompile(`(?m)^\s*- \[[ xX]\] \d+(?:\.\d+)* `)
-	docTask      = regexp.MustCompile(`(?m)^\s*- \[[ xX]\] \d+(?:\.\d+)* \[analysis_artifact\] .*$`)
-	codeMarker   = regexp.MustCompile(`(?i)\binternal/|\bcmd/|\.go\b|go test`)
-	untypedTasks = regexp.MustCompile(`(?m)^\s*- \[[ xX]\] \d+(?:\.\d+)* [^\[]`)
-)
+var codeMarker = regexp.MustCompile(`(?i)\binternal/|\bcmd/|\.go\b|go test`)
 
 // LocalChecks returns the reference local checks of every boundary, ordered by name.
 func LocalChecks() []LocalCheck {
@@ -29,7 +24,7 @@ func LocalChecks() []LocalCheck {
 		{"scope_missing", BoundaryPackage, func(f Fields) bool { return !hasField(f, "approved_scope") }},
 		{"acceptance_missing", BoundaryPackage, func(f Fields) bool { return !hasField(f, "acceptance_checks") }},
 		{"plan_missing", BoundaryPackage, func(f Fields) bool { return !hasField(f, "implementation_plan") }},
-		{"task_untyped", BoundaryPackage, func(f Fields) bool { return untypedTasks.MatchString(f["implementation_plan"]) }},
+		{"task_untyped", BoundaryPackage, taskUntyped},
 		{"task_unverified", BoundaryPackage, taskUnverified},
 		{"task_kind_mismatch", BoundaryPackage, kindMismatch},
 		{"objective_missing", BoundaryRanger, func(f Fields) bool { return !hasField(f, "objective") }},
@@ -41,23 +36,34 @@ func LocalChecks() []LocalCheck {
 	return checks
 }
 
-// taskUnverified flags a plan with a task that states no verification.
-func taskUnverified(f Fields) bool {
-	for _, line := range lines(f["implementation_plan"]) {
-		if anyTask.MatchString(line) && !strings.Contains(strings.ToLower(line), "verify") {
+// taskUntyped flags a plan with a task that carries no type tag.
+func taskUntyped(f Fields) bool {
+	for _, item := range parseTasks(f["implementation_plan"]) {
+		if item.Type == "" {
 			return true
 		}
 	}
 	return false
 }
 
-// kindMismatch flags a task declared as documentation work that names code to
-// build or run: its declared kind and its action disagree. It is deliberately
-// plain (path and command markers); the DOJO measures how many good packages it
-// wrongly flags before anyone relies on it.
+// taskUnverified flags a plan with a task, wrapped lines included, that states no verification.
+func taskUnverified(f Fields) bool {
+	all := lines(f["implementation_plan"])
+	for _, item := range parseTasks(f["implementation_plan"]) {
+		if !strings.Contains(strings.ToLower(item.text(all)), "verify") {
+			return true
+		}
+	}
+	return false
+}
+
+// kindMismatch flags a task declared as analysis work that names code to build or run:
+// its declared kind and its action disagree. It is deliberately plain (path and command
+// markers); the DOJO measures how many good packages it wrongly flags before anyone relies on it.
 func kindMismatch(f Fields) bool {
-	for _, line := range docTask.FindAllString(f["implementation_plan"], -1) {
-		if codeMarker.MatchString(line) {
+	all := lines(f["implementation_plan"])
+	for _, item := range parseTasks(f["implementation_plan"]) {
+		if item.Type == "analysis_artifact" && codeMarker.MatchString(item.text(all)) {
 			return true
 		}
 	}

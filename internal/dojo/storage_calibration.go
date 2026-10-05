@@ -36,7 +36,7 @@ var calibrationPolicies = []ArtifactPolicy{
 	{ArtifactEvidence, DurabilityRetained, "latest run evidence, including a passing run", ownerCaseOutput, "retained with the workspace when inspection history matters", "replace atomically on the next run"},
 	{ArtifactAudit, DurabilityDurable, "human or agent audit of generated negatives", ownerCaseOutput, "included with the workspace backup", "preserve valid lines; an audit never relabels a case"},
 	{ArtifactCalibration, DurabilityDurable, "calibration record pinned by id from operator configuration", "<base_path>/dojo/calibrations", "included with the workspace backup", "restore from the backup; a missing id makes the handoff use its default threshold"},
-	{ArtifactCorpusLabels, DurabilityDurable, "golden promotions and regression candidates", "<base_path>/dojo/corpus", "included with the workspace backup", "restore from the backup; never recreate a promotion silently"},
+	{ArtifactCorpusLabels, DurabilityDurable, "golden promotions, demotions and regression candidates", "<base_path>/dojo/corpus", "included with the workspace backup", "restore from the backup; never recreate a promotion silently"},
 	{ArtifactProposals, DurabilityDurable, "operator proposals pending approval", "<base_path>/dojo/mutations", "included with the workspace backup", "preserve until approved or rejected by a reviewed change"},
 }
 

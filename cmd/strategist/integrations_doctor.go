@@ -33,9 +33,11 @@ type doctorReport struct {
 	Credential    string `json:"credential"`
 	// Calibration is "calibrado (...)" when a pinned calibration is valid for the
 	// model and a question profile, otherwise "não calibrado" with the reason.
-	Calibration   string   `json:"calibration"`
-	CalibrationID string   `json:"calibration_id,omitempty"`
-	Findings      []string `json:"findings"`
+	Calibration   string `json:"calibration"`
+	CalibrationID string `json:"calibration_id,omitempty"`
+	// Shadow is true when the provider's readings are recorded but never decide.
+	Shadow   bool     `json:"shadow"`
+	Findings []string `json:"findings"`
 }
 
 func runIntegrationsDoctor(cmd *cobra.Command, opts integrationsOptions) error {
@@ -75,7 +77,7 @@ func buildDoctorReport(root string, file config.File, found bool, record probe.R
 		report.ValidUntil = validUntil.UTC().Format(time.RFC3339)
 	}
 	report.Credential, report.Findings = credentialState(root, provider)
-	report.CalibrationID = provider.CalibrationID
+	report.CalibrationID, report.Shadow = provider.CalibrationID, provider.Shadow
 	report.Calibration = calibrationState(root, provider, firstNonEmpty(report.ResolvedModel, provider.Model), now)
 	return report
 }
@@ -143,7 +145,7 @@ func doctorLines(r doctorReport) []string {
 			lines = append(lines, kv[0]+": "+kv[1])
 		}
 	}
-	return append(lines, "credential: "+r.Credential, "calibration: "+r.Calibration, "findings: "+findings)
+	return append(lines, "credential: "+r.Credential, "calibration: "+r.Calibration, "shadow: "+onOff(r.Shadow), "findings: "+findings)
 }
 
 func printDoctorJSON(cmd *cobra.Command, report doctorReport) error {
@@ -152,4 +154,11 @@ func printDoctorJSON(cmd *cobra.Command, report doctorReport) error {
 		return fmt.Errorf("integrations doctor: %w", err)
 	}
 	return printLines(cmd, string(raw))
+}
+
+func onOff(on bool) string {
+	if on {
+		return "on (readings are recorded, none decides)"
+	}
+	return "off"
 }

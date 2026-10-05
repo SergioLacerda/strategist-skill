@@ -69,6 +69,8 @@ func (d PersonaDiagnostics) runtimeErrors() []string {
 }
 
 // RoleSlotMap is the structure of roles/default.yaml — a slot-to-provider mapping.
+// cataloged/custom Weapons resolve through their authority files; native roles
+// resolve through roles/<provider>.yaml.
 type RoleSlotMap map[string]string
 
 // Validate returns an error if any of the three required slots is missing or empty.

@@ -29,6 +29,7 @@ internal/runtimefs	90	already above baseline via jewel loader/atomic lock test a
 treasure-chest	95	raised from 74.5% (SQ-005) to 88.2% (20260805-treasure-coverage-phase2) to 95.5% (20260806-treasure-coverage-95-plan), regressed to 94.1% by later feature work, closed again (20260901-coverage-standard-95) - measured 95.2%; path updated from internal/treasure after in-repo isolation move (ADR 0040)
 internal/governancebridge	0	pure interface/type declarations, no executable statements ("[no statements]") - see 20260830-pending-v3-disposition E4
 internal/plugins	95	raised from 85.8% to 98.6% (2026-08-30, resolver edge-case tests) - measured 98.6%
+internal/plugins/acquisition	95	immutable Skill-for-Hire quarantine and manifest contract - measured 95.7%
 internal/plugins/conformance	95	raised from 74.3% to 97.1% (2026-08-30, Validate/Stale/levelRank edge cases) - measured 97.1%
 internal/plugins/connectors	95	raised from 78.9% to 100.0% (2026-08-30, NativeRuntimeConnector branch coverage) - remeasured 99.0% after Weapon connector and provider-root tests (packageRelPath/readBoundedPackageData error branches still unreachable)
 internal/plugins/lifecycle	95	raised from 79.3% to 97.3% (2026-08-30, idempotency/error-path tests) - measured 97.3%
@@ -44,6 +45,7 @@ internal/testutil	95	raised from 0.0% to 100.0% (2026-08-30, direct helper tests
 internal/testutil/customws	95	provider-add workspace helper for rolevalidation/authorization regression tests (2026-09-25) - measured 100.0%
 internal/runtimepayload	75	embedded OpenSpec bundle verification/materialization gate - measured 79.6% (20260920-drift-a-windows-standalone-install)
 internal/tools/leveling	90	provider-neutral LEVELING policy, fallback, and digest contract
+internal/tools/prepare_runbook	95	deterministic Runbook candidate preparation and comparison contract - measured 97.6%
 internal/feats/initiative	95	consultative INITIATIVE advice, result, authority, and append-only ledger contract - raised to 95% after error-path tests, measured 97.0% (2026-09-23)
 internal/missionview	90	read-only mission projection and deterministic renderer contract
 internal/weapon	95	Role-scoped Weapon resolution and composite invocation contract - measured 100.0%
@@ -68,6 +70,7 @@ internal/integration/mechanism	90	per-attempt path selection and fallback orches
 internal/integration/policy	95	deterministic path selection and circuit breaker rules - measured 100.0%
 internal/integration/transport	90	HTTPS-only transport with local limits and typed failures - measured 93.7%
 internal/integration/handoffconsumer	85	HANDOFF pre-check consumer: criteria catalog, data projection, approval rule and call ledger - measured 92.0%
+internal/integration/runbookconsumer	95	Runbook/JEV consumer contract - measured 98.8%
 internal/integration/setup	85	single planner of the operator integration decision shared by wizard, silent install and commands - measured 87.3%
 internal/integration/probe	85	synthetic availability probe and the only source of the available claim - measured 88.2%
 internal/gatecriteria	80	read-only quality-criteria report: reuses existing records, every row filled - measured 83.3%

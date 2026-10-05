@@ -8,6 +8,7 @@ description: >
   Not a standalone phase — it is a post-refinement subsection before the completion signal.
   Opportunity Attack never closes, archives, or moves pending/refined analysis cards.
   Card closure is owned by Critical Hit.
+  Opportunity Attack never writes docs/runbooks/ directly, only surfaces the side quest.
 
 operation_boundary:
   select_runbook:

@@ -50,10 +50,15 @@ type Provider struct {
 	CalibrationID string `yaml:"calibration_id,omitempty"`
 	// Profile is the question profile of the handoff pre-check: handoff-v1 (default,
 	// only the fields the artifact has) or handoff-v2 (a missing field is shown as
-	// (absent)). A pinned calibration is valid only for its profile.
+	// (absent)) or handoff-atomic-v1 (one question per criterion; the lowest answer is the
+	// probability of accept). A pinned calibration is valid only for its profile.
 	Profile string `yaml:"profile,omitempty"`
 	// CalibrationMaxAgeDays bounds how old the pinned record may be. Zero means 90.
 	CalibrationMaxAgeDays int `yaml:"calibration_max_age_days,omitempty"`
+	// Shadow keeps the provider reading but never lets it decide: the pre-check is
+	// called and recorded in the call ledger (with what it would have decided), and the
+	// handoff proceeds on the main path with no delegation and no hint.
+	Shadow bool `yaml:"shadow,omitempty"`
 }
 
 const (

@@ -171,3 +171,26 @@ func TestMalformedLabelLinesAreReportedNotDropped(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 2, labels.Malformed)
 }
+
+func TestADemotionWithdrawsAPromotionAndALaterPromotionRestoresIt(t *testing.T) {
+	w := newWorkspace(t)
+	w.writePackage(t, "done", "good", 1, "documentation_applied")
+	corpus, err := dojo.BuildCorpus(w.base, policyCase(), handoffconsumer.Reader{})
+	require.NoError(t, err)
+	digest := corpus.Manifest.Entries[0].Digest
+
+	require.Error(t, dojo.AppendDemotion(w.base, dojo.Demotion{Digest: digest, Package: "good", ReviewedBy: "me", Reason: "x"}), "only a golden digest can be demoted")
+	require.NoError(t, dojo.AppendPromotion(w.base, dojo.Promotion{Digest: digest, Package: "good", ReviewedBy: "me", Oracle: "reads clean", At: "2026-10-05T10:00:00Z"}))
+
+	require.Error(t, dojo.AppendDemotion(w.base, dojo.Demotion{Digest: digest, Package: "good", ReviewedBy: "me"}), "a reason is required")
+	require.NoError(t, dojo.AppendDemotion(w.base, dojo.Demotion{Digest: digest, Package: "good", ReviewedBy: "me", Reason: "tasks state no verification", At: "2026-10-05T11:00:00Z"}))
+	corpus, err = dojo.BuildCorpus(w.base, policyCase(), handoffconsumer.Reader{})
+	require.NoError(t, err)
+	assert.Equal(t, "candidate", corpus.Manifest.Entries[0].Label, "a demoted package is a candidate again")
+	require.Error(t, dojo.AppendDemotion(w.base, dojo.Demotion{Digest: digest, Package: "good", ReviewedBy: "me", Reason: "again"}), "it is no longer golden")
+
+	require.NoError(t, dojo.AppendPromotion(w.base, dojo.Promotion{Digest: digest, Package: "good", ReviewedBy: "me", Oracle: "reviewed again", At: "2026-10-05T12:00:00Z"}))
+	corpus, err = dojo.BuildCorpus(w.base, policyCase(), handoffconsumer.Reader{})
+	require.NoError(t, err)
+	assert.Equal(t, "golden", corpus.Manifest.Entries[0].Label, "a promotion after the demotion wins")
+}

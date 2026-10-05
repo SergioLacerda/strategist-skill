@@ -62,6 +62,8 @@ type Report struct {
 	Sweep       []SweepRow `json:"sweep,omitempty"`
 	Selection   *SetResult `json:"selection,omitempty"`
 	HeldOut     *SetResult `json:"held_out,omitempty"`
+	// CriterionCalibration reads each criterion of an atomic profile on its own, out of fold.
+	CriterionCalibration []CriterionResult `json:"criterion_calibration,omitempty"`
 	// Criteria is the per-criterion answer of an atomic profile, by group of cases.
 	Criteria *CriteriaMatrix `json:"criteria,omitempty"`
 	// CrossValidation is the out-of-fold reading that confirms a threshold under gates-3.
@@ -101,6 +103,7 @@ func Evaluate(observations []Observation, cfg Config) Report {
 		Counts: counts(observations, stats, held), Operators: PairedResults(stats)}
 	report.AtCurrent = setResult(stats, cfg.Current, cfg.Policy.ClusterRho)
 	report.Criteria = BuildCriteriaMatrix(all)
+	report.CriterionCalibration = CriterionCalibration(all, cfg.Policy, cfg.Limits)
 	pos, neg := positives(stats), defects(stats)
 	report.AUC = AUC(scoresOf(pos), scoresOf(neg))
 	report.ECE, report.Brier = ECE(scored(pos, neg)), Brier(scored(pos, neg))

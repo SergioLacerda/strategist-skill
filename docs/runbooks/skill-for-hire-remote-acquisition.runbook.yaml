@@ -1,0 +1,47 @@
+schema_version: "1"
+runbook_id: skill-for-hire-remote-acquisition
+runbook_type: operational
+source_doc: docs/runbooks/skill-for-hire-remote-acquisition.runbook.yaml
+
+applies_when:
+  - "An operator explicitly requests acquisition of a Skill-for-Hire package from the approved upstream Git repository"
+  - "A full immutable commit SHA and package ID are available for review before import"
+
+objective: Acquire a pinned Skill-for-Hire package into an isolated quarantine, review its provenance and contents, and leave promotion to external-skills-source as an explicit operator action.
+
+preconditions:
+  - "Use a full 40-character Git commit SHA; branches, tags, latest and other mutable references are forbidden"
+  - "Pass --allow-network explicitly for the acquisition invocation; tests and ordinary preparation remain network-disabled"
+  - "Use an OS temporary quarantine root outside the workspace, .strategist and external-skills-source"
+  - "Confirm the package identity and the trust evidence required by the active ingestion policy before promotion"
+
+verification:
+  - "Run `strategist plugins acquire-remote --source git --repository <uri> --commit <full-sha> --package-id <id> --allow-network` and record the returned quarantine path"
+  - "Inspect acquisition.json for the exact repository URI, commit SHA, package ID, deterministic tree digest and validation result"
+  - "Confirm READY exists only after the transaction succeeds and that the quarantine contains root SKILL.md and strategist.yaml"
+  - "Review the package and trust evidence manually, then copy only the approved package into external-skills-source/<package-id>"
+  - "Run `make generate-embedded-check` before any approved promotion, and run `make generate-embedded` only as the separate authorized promotion step"
+  - "After promotion, verify the existing ingestion and trust checks; acquisition itself must not modify catalog, mirror, lockfile, active.yaml or .strategist"
+
+checks:
+  - id: immutable-git-commit-is-recorded
+    level: mandatory
+  - id: explicit-network-opt-in-is-present
+    level: mandatory
+  - id: quarantine-is-outside-managed-inputs
+    level: mandatory
+  - id: acquisition-manifest-and-ready-marker-reviewed
+    level: mandatory
+  - id: trust-evidence-reviewed-before-manual-promotion
+    level: mandatory
+  - id: generated-artifacts-are-checked-before-promotion
+    level: mandatory
+  - id: no-automatic-promotion-or-generated-writes-during-acquisition
+    level: mandatory
+  - id: failed-or-interrupted-transaction-is-rolled-back
+    level: conditional
+    when: "the acquisition reports a validation, extraction, commit-mismatch or incomplete-transaction failure"
+
+metadata:
+  version: 1
+  reviewed_at: "2026-10-05"

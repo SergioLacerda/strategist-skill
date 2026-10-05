@@ -11,17 +11,14 @@ const (
 	ProfileV2 = "handoff-v2"
 	// ProfileAtomicV1 asks one noul question per criterion and no aggregate choice;
 	// the probability of accept is the lowest of the criterion scores. It shows an
-	// absent field like v2. It exists to be measured in the DOJO: the handoff does
-	// not run it until a calibration of it is adopted.
+	// absent field like v2. A calibration is bound to it like to any profile.
 	ProfileAtomicV1 = "handoff-atomic-v1"
 )
 
-// KnownProfile reports whether id names a profile the handoff pre-check can run;
-// the empty id is the default (v1).
-func KnownProfile(id string) bool { return id == "" || id == ProfileV1 || id == ProfileV2 }
-
-// KnownCalibrationProfile reports whether id names a profile a DOJO case can measure.
-func KnownCalibrationProfile(id string) bool { return KnownProfile(id) || id == ProfileAtomicV1 }
+// KnownProfile reports whether id names a profile; the empty id is the default (v1).
+func KnownProfile(id string) bool {
+	return id == "" || id == ProfileV1 || id == ProfileV2 || id == ProfileAtomicV1
+}
 
 // IsAtomic reports whether the profile asks one question per criterion.
 func IsAtomic(id string) bool { return id == ProfileAtomicV1 }

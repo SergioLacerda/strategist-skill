@@ -202,3 +202,48 @@ func TestPinRefusesARecordOfAnotherProfileThanTheProvidersAndFollowsTheProvider(
 	require.NoError(t, err)
 	assert.Contains(t, out, "calibration: calibrado ("+v2.ID)
 }
+
+func TestAnAtomicRecordPinsOnAnAtomicProviderAndTheDoctorSaysCalibrated(t *testing.T) {
+	root := calibrationRig(t)
+	atomic := publish(t, root, 0.62, func(m *calibration.Meta, _ *calibration.Report) {
+		m.Profile = calibration.ProfileAtomicV1
+		m.ProfileVersion = handoffconsumer.ProfileVersionOf(calibration.ProfileAtomicV1, calibration.BoundaryPackage)
+		m.Seed = 9
+	})
+	_, err := runPin(t, root, atomic.ID, true)
+	require.ErrorContains(t, err, "another question profile", "the provider is still on v1")
+
+	file, _, err := config.Load(filepath.Join(root, config.FileName))
+	require.NoError(t, err)
+	provider := file.Providers["jev"]
+	provider.Profile = calibration.ProfileAtomicV1
+	file.Providers["jev"] = provider
+	require.NoError(t, config.Save(filepath.Join(root, config.FileName), file))
+
+	_, err = runPin(t, root, atomic.ID, true)
+	require.NoError(t, err)
+	out, err := runIntegrations(t, runIntegrationsDoctor, integrationsOptions{Root: root})
+	require.NoError(t, err)
+	assert.Contains(t, out, "calibration: calibrado ("+atomic.ID)
+}
+
+func TestShowPrintsTheCrossValidationAndTheCriterionReadings(t *testing.T) {
+	root := calibrationRig(t)
+	record := publish(t, root, 0.62, func(m *calibration.Meta, r *calibration.Report) {
+		m.Profile, m.ProfileVersion, m.Seed = calibration.ProfileAtomicV1, handoffconsumer.ProfileVersionOf(calibration.ProfileAtomicV1, calibration.BoundaryPackage), 11
+		r.HeldOut = nil
+		r.CrossValidation = &calibration.CrossValidation{Folds: 5, FalseApproval: calibration.NewRate(0, 150), FalseRejection: calibration.NewRate(0, 30)}
+		r.CriterionCalibration = []calibration.CriterionResult{
+			{Criterion: "acceptance_checkable", Status: calibration.CriterionReliable, AUC: 1, Threshold: 0.46, FalseFlag: calibration.NewRate(1, 21), Detection: calibration.NewRate(21, 21)},
+			{Criterion: "validation_stated", Status: calibration.CriterionUnreliable, AUC: 0.84, Threshold: 0.05, Note: "auc 0.840 below 0.90"},
+		}
+	})
+
+	out, err := runCalibrationCommand(t, func(c *cobraCmd) error { return runCalibrationShow(c, integrationsOptions{Root: root}, record.ID) })
+
+	require.NoError(t, err)
+	assert.Contains(t, out, "recommended threshold: 0.62 (cross-validation over 5 folds")
+	assert.Contains(t, out, "criterion acceptance_checkable: reliable (auc 1.000")
+	assert.Contains(t, out, "criterion validation_stated: unreliable")
+	assert.Contains(t, out, "auc 0.840 below 0.90")
+}

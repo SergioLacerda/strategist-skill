@@ -368,6 +368,26 @@ func TestPromoteNeedsAReviewerAndABelongingPackage(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestDemoteWithdrawsAGoldenPackageAndNeedsAReviewerAndAReason(t *testing.T) {
+	r := newRig(t, 2)
+	r.generate(t, "jev-handoff")
+	_, _, err := r.run(t, "demote", "jev-handoff", "--package", "pkg-000", "--reviewed-by", "me")
+	require.Error(t, err, "a reason is a required flag")
+	_, _, err = r.run(t, "demote", "jev-handoff", "--package", "pkg-000", "--reviewed-by", "me", "--reason", "not conforming")
+	require.ErrorContains(t, err, "not golden")
+	_, _, err = r.run(t, "promote", "jev-handoff", "--package", "pkg-000", "--reviewed-by", "me", "--oracle", "reads clean")
+	require.NoError(t, err)
+
+	_, _, err = r.run(t, "demote", "jev-handoff", "--package", "ghost", "--reviewed-by", "me", "--reason", "x")
+	require.ErrorContains(t, err, "not in the corpus")
+	out, _, err := r.run(t, "demote", "jev-handoff", "--package", "pkg-000", "--reviewed-by", "me", "--reason", "tasks state no verification")
+	require.NoError(t, err)
+	assert.Contains(t, out, "demoted pkg-000")
+	screen, _, err := r.run(t, "corpus", "jev-handoff")
+	require.NoError(t, err)
+	assert.NotContains(t, screen, "golden", "the demoted package is a candidate again")
+}
+
 func TestCandidateRecordsOnlyDisagreements(t *testing.T) {
 	t.Parallel()
 	r := newRig(t, 0)
@@ -754,4 +774,25 @@ func TestAPairCaseWithoutObservationsOrFixturesFailsClosed(t *testing.T) {
 	require.NoError(t, os.Remove(filepath.Join(r.base, "dojo", "pairs-lab", "pairs.yaml")))
 	_, _, err = r.run(t, "calibrate", "pairs-lab", "--dry-run")
 	require.Error(t, err)
+}
+
+func TestTheCorpusScreenListsPackagesWithTheirLocalFlagsAndNeverPromotes(t *testing.T) {
+	r := newRig(t, 6)
+	r.generate(t, "jev-handoff")
+
+	out, _, err := r.run(t, "corpus", "jev-handoff")
+	require.NoError(t, err)
+	assert.Contains(t, out, "case jev-handoff: 6 packages")
+	assert.Contains(t, out, "candidate")
+	assert.Contains(t, out, "strategist dojo promote jev-handoff --package <name> --reviewed-by <you>")
+
+	clean, _, err := r.run(t, "corpus", "jev-handoff", "--clean")
+	require.NoError(t, err)
+	assert.NotContains(t, clean, "flags:", "--clean lists only the unflagged packages")
+
+	again, _, err := r.run(t, "corpus", "jev-handoff")
+	require.NoError(t, err)
+	assert.Contains(t, again, "6 packages", "the screen promotes nothing")
+	assert.Contains(t, again, "candidate")
+	assert.NotContains(t, again, "golden")
 }

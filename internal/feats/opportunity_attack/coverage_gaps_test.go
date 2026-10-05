@@ -22,6 +22,27 @@ func TestEvaluateRejectsInvalidInputsAndEmptyArtifacts(t *testing.T) {
 	require.ErrorContains(t, err, "analysis.md is empty")
 }
 
+func TestTreasureChestSourceProjectionBranches(t *testing.T) {
+	assert.Equal(t, "source-id", sourceReference(SourceEvidence{ID: "source-id", Path: "source.md"}))
+	assert.Equal(t, "source.md", sourceReference(SourceEvidence{Path: "source.md"}))
+	assert.Nil(t, sourceEvidence("not a source list"))
+	projected := sourceEvidence([]any{
+		map[string]any{"id": "source-id", "source_path": "source.md", "coverage_status": "FULL"},
+		"ignored",
+		map[string]any{"source_path": "path-only", "coverage_status": "full"},
+	})
+	require.Len(t, projected, 2)
+	assert.Equal(t, "full", projected[0].CoverageStatus)
+	assert.Equal(t, "path-only", projected[1].Path)
+	assert.Equal(t, "path-only", firstUnregisteredSource(projected[1:], map[string]bool{}).SourceRef)
+	assert.False(t, firstUnregisteredSource(projected[1:], map[string]bool{"path-only": true}).Warranted)
+
+	_, err := evaluateChestOpportunity("body", t.TempDir(), func(string) (map[string]bool, error) {
+		return nil, nil
+	})
+	assert.ErrorContains(t, err, "frontmatter is missing")
+}
+
 func TestAnalysisFrontmatterValidation(t *testing.T) {
 	_, err := analysisFrontmatter([]byte("body"))
 	require.ErrorContains(t, err, "frontmatter is missing")

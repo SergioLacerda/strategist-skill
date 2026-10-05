@@ -13,6 +13,8 @@ import (
 // ActiveConfig is the structure of a standalone active.yaml template. Provider
 // resolution treats the catalog as the canonical authority for provider facts.
 type ActiveConfig struct {
+	// The provider catalog is the canonical provider authority; active.yaml
+	// records operator intent and never defines provider identity or capability.
 	Mode               string   `yaml:"mode"`
 	BasePath           string   `yaml:"base_path"`
 	DocumentationRoots []string `yaml:"documentation_roots,omitempty"`

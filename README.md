@@ -80,45 +80,9 @@ Sniper
 
 Acceptance at the Approval Gate authorizes only the declared documentation targets. Source code, tests, scripts, CI, and configuration changes remain a separate implementation handoff.
 
-### Runtime taxonomy
+### Canonical taxonomy
 
-The current runtime has four identity-bearing Roles: Scout (`native/fixed`),
-Ranger, Archivist and Sniper (`native/pluggable`). Sniper's ranked binding is the
-default and behaves as fixed; a custom Sniper Weapon needs an explicit user choice
-and stays documentation-only. Weapons are skill packages invoked by a Role; the selected Ranger discovery Weapon is
-required input whose untrusted result Ranger normalizes before the handoff. A
-missing or incompatible Weapon fails closed with `role_invocation_failed` and
-does not silently fall back to native behavior.
-
-INITIATIVE is a consultative Feat that reads the immutable operational resolver
-output produced by the LEVELING Tool. It
-cannot select or mutate the model, provider, capability, effort, Approval Gate,
-or implementation authorization. Prompt Intake, Context Enrichment, Dossier
-Builder, Response Critic, and Learning Curator are Pipeline routines, not Roles.
-
-**PRECISE-SHOT** (`TIRO PRECISO` in pt-BR) is one item with two facets: the agent
-assesses its own confidence (a Feat), and a deterministic Mechanism bounds the
-request. It reports assessed, ceiling, and effective confidence and
-may request advisory LEVELING reconsideration; it never selects execution
-effort, invokes a provider, or bypasses the Approval Gate.
-
-The canonical taxonomy has seven families: Roles (agent personas), Weapons (external
-skills), Feats (judgment-based behavior), Tools (operations that produce results),
-Mechanisms (deterministic rules such as Weapon Binding, Handoff, and Approval Gate
-rules), Stages (governed operational flows such as FULL, SHORT, and ROSTER), and
-Artifacts (generated results with internal value such as analysis, evidence packs,
-refined packages, ADRs, and runbooks). Mechanisms are not executable Roles or
-providers. [ADR-0064](docs/adr/0064-canonical-seven-family-taxonomy.md) is the
-authority for canonical documentation; [ADR-0053](docs/adr/0053-taxonomy-classification-criterion-and-sniper-extensibility.md)
-remains historical evidence of the prior six-family model. See the [canonical
-taxonomy and responsibility matrix](docs/architecture/strategist-concepts.md#canonical-taxonomy).
-
-The historical phrases “internal role” and “external role” are compatibility
-notes only. Active documentation uses the independent `origin` and
-`extensibility` properties. Proposed names such as Pathfinder, Cartographer,
-Jeweler, and Jewelcrafter are not active Roles.
-
-## Documentation
+The canonical taxonomy has seven families: Roles, Weapons, Feats, Tools, Mechanisms, Stages, and Artifacts. Routes are selection outcomes, not a family. `LEVELING` is an immutable operational resolver and a Tool; `INITIATIVE` is a Feat. Role `origin` and `extensibility` are independent properties. Pathfinder, Cartographer, Jeweler, and Jewelcrafter remain inactive proposals. The catalog is the provider authority.
 
 ### Getting started
 
@@ -130,6 +94,7 @@ Jeweler, and Jewelcrafter are not active Roles.
 - [CLI reference](docs/cli-reference.md)
 - [Configuration](docs/configuration.md)
 - [Architecture](docs/architecture/overview.md)
+- [Skill-for-Hire acquisition and import](docs/runbooks/skill-for-hire-remote-acquisition.md)
 - [Technical guide](docs/onboarding/readme-en.md)
 - [Detailed guide](docs/onboarding/readme-detailed-en.md)
 

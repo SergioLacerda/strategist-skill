@@ -38,6 +38,8 @@ type Candidate struct {
 type Labels struct {
 	Golden     map[string]Promotion
 	Candidates map[string][]Candidate
+	// Demoted lists the demotions read, by digest; a demoted digest is not in Golden unless promoted again later.
+	Demoted map[string]Demotion
 	// Malformed counts lines that could not be read; they are reported, never dropped silently.
 	Malformed int
 }
@@ -50,11 +52,14 @@ const (
 // LoadLabels reads the registry. A missing file is an empty registry.
 func LoadLabels(basePath string) (Labels, error) {
 	dir := filepath.Join(basePath, "dojo", DirCorpus)
-	labels := Labels{Golden: map[string]Promotion{}, Candidates: map[string][]Candidate{}}
+	labels := Labels{Golden: map[string]Promotion{}, Candidates: map[string][]Candidate{}, Demoted: map[string]Demotion{}}
 	if err := readJSONL(filepath.Join(dir, goldenFile), labels.acceptPromotion, &labels.Malformed); err != nil {
 		return Labels{}, err
 	}
 	if err := readJSONL(filepath.Join(dir, candidatesFile), labels.acceptCandidate, &labels.Malformed); err != nil {
+		return Labels{}, err
+	}
+	if err := readJSONL(filepath.Join(dir, demotedFile), labels.acceptDemotion, &labels.Malformed); err != nil {
 		return Labels{}, err
 	}
 	return labels, nil

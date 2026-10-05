@@ -42,7 +42,7 @@ func validateCalibrationScope(cal domain.DojoCalibration) []string {
 	if cal.Layer != "" && cal.Layer != "judge" && cal.Layer != "integration" && cal.Layer != "live" && cal.Layer != "pair" {
 		errs = append(errs, fmt.Sprintf("calibration: layer %q must be judge, integration, live or pair", cal.Layer))
 	}
-	if !calibration.KnownCalibrationProfile(cal.Profile) {
+	if !calibration.KnownProfile(cal.Profile) {
 		errs = append(errs, fmt.Sprintf("calibration: profile %q must be %s, %s or %s", cal.Profile, calibration.ProfileV1, calibration.ProfileV2, calibration.ProfileAtomicV1))
 	}
 	if cal.Provider != "" && cal.Provider != "jev" {

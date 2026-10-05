@@ -146,3 +146,21 @@ func TestPrecheckNeedsAMissionAndAnInstalledRoot(t *testing.T) {
 	cmd := &cobra.Command{}
 	require.ErrorContains(t, runHandoffPrecheck(cmd, handoffPrecheckOptions{}), "--mission-id")
 }
+
+func TestAShadowProviderIsCalledAndTheHandoffStaysOnTheMainPath(t *testing.T) {
+	root := informationalMission(t)
+	sim := jevtest.Start(t, jevtest.Reply(gateAnswer(t, "accept", 0.96)))
+	enableIntegration(t, root, sim, func(p *config.Provider) { p.Shadow = true })
+
+	out, err := runPrecheck(t, root)
+	require.NoError(t, err)
+	require.Contains(t, out, "delegation: shadow path=main reading=recorded would_approve=true")
+	require.NotContains(t, out, "delegation: approved")
+	require.Equal(t, 1, sim.Calls(), "the provider is still called")
+	require.Empty(t, providerClaims(t, root), "a shadow reading never reaches the confidence ledger")
+
+	readings, err := handoffconsumer.Ledger{Path: filepath.Join(root, "memory", ledgerFileName)}.Shadow()
+	require.NoError(t, err)
+	require.Len(t, readings, 1)
+	require.True(t, readings[0].Approved)
+}

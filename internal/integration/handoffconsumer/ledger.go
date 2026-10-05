@@ -46,6 +46,9 @@ type Record struct {
 	CalibrationID     string `json:"calibration_id,omitempty"`
 	Calibrated        bool   `json:"calibrated,omitempty"`
 	CalibrationReason string `json:"calibration_reason,omitempty"`
+	// Shadow marks a reading taken under a shadow provider: Approved then says what the
+	// provider would have decided, and nothing used it.
+	Shadow bool `json:"shadow,omitempty"`
 	// Integrity is the digest of every other field, so an edited record is not trusted.
 	Integrity string `json:"integrity,omitempty"`
 }

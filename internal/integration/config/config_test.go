@@ -158,3 +158,17 @@ func TestThresholdAndBudgetDefaultsAndValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestTheProfileIsOneTheHandoffCanRun(t *testing.T) {
+	for profile, ok := range map[string]bool{"": true, "handoff-v1": true, "handoff-v2": true, "handoff-atomic-v1": true, "handoff-v9": false} {
+		file := validFile()
+		provider := file.Providers["jev"]
+		provider.Profile = profile
+		file.Providers["jev"] = provider
+		if ok {
+			require.NoError(t, file.Validate(), profile)
+		} else {
+			require.ErrorContains(t, file.Validate(), "handoff-atomic-v1", profile)
+		}
+	}
+}

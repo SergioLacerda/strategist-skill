@@ -26,6 +26,8 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `candidate` — Record a regression candidate from a mission where the provider and the gate disagreed
   - `check` — Run offline checks for a dojo scenario
   - `compare` — Compare the latest observations of two cases, offline (a laboratory reading)
+  - `corpus` — List the packages of a case's corpus with an offline screen (no call)
+  - `demote` — Withdraw a package from the golden set (a human act)
   - `generate` — Write the skeleton of a judge calibration case
   - `list` — List available dojo scenarios
   - `promote` — Promote a reviewed package to golden (a human act)
@@ -51,6 +53,10 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `doctor` — Report declared, bound, enabled, compatible and available state without calling the provider
   - `enable` — Record the decision to use the provider (documented defaults, credential stays a reference)
   - `probe` — Send one synthetic, non-mission message to record availability
+  - `shadow` — Keep the provider reading without letting it decide (on, off, report)
+    - `off` — Turn shadow mode off (the provider decides again)
+    - `on` — Turn shadow mode on
+    - `report` — Summarize the recorded shadow readings
 - `leveling` — Suggest model and effort by role
   - `label` — Resolve and record the model/effort label shown on a role's log lines
   - `suggest` — Suggest a model and effort for a role
@@ -85,6 +91,7 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `usage` — Show per-phase lifecycle and token usage for one mission (read-only)
   - `view` — Render a read-only mission experience view
 - `plugins` — Inspect and evaluate Strategist plugin enforcement
+  - `acquire-remote` — Acquire a pinned Git Skill-for-Hire package into quarantine
   - `authorize` — Compose authorization evidence for a governed target
   - `evaluate-write` — Report whether a write to --target is enforceably allowed under the active connector
   - `prepare-embedded` — Ingest external-skills-source/ into the embedded plugin catalog

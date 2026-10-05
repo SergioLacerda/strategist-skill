@@ -44,7 +44,7 @@ func (c *Consumer) reusableRecord(request Request) (Record, bool) {
 		return Record{}, false
 	}
 	record, found, err := c.Ledger.Latest(request.MissionID, TransitionArchivistToGate, request.Subject)
-	if err != nil || !found || record.Provider != c.Name || !c.modelStillBound(record.Model) {
+	if err != nil || !found || record.Provider != c.Name || !c.modelStillBound(record.Model) || (record.Shadow && !c.Provider.Shadow) {
 		return Record{}, false
 	}
 	return record, true
@@ -52,6 +52,10 @@ func (c *Consumer) reusableRecord(request Request) (Record, bool) {
 
 // restate applies the current local rule to the recorded confidence.
 func (c *Consumer) restate(report *Report, record Record, subject string) {
+	if c.Provider.Shadow {
+		report.Status, report.WouldApprove = StatusShadow, record.Confidence > report.Threshold && len(record.Hints) == 0
+		return
+	}
 	if record.Confidence > report.Threshold && len(record.Hints) == 0 {
 		report.Status = StatusApproved
 		report.Delegation = c.delegationFrom(record, subject, report.Threshold, report.Calibration)

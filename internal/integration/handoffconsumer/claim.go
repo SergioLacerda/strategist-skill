@@ -17,10 +17,10 @@ import (
 // evidence is the provider's own report, which is explicit; the claim stays
 // uncalibrated until it is compared with the deterministic outcome. An enabled
 // provider that did not answer leaves an explicit missing record with the reason.
-// A disabled integration writes nothing, and a reuse writes nothing: the
+// A disabled integration writes nothing, a shadow reading writes nothing (it must not reach the gate rows), and a reuse writes nothing: the
 // original reading already recorded it once.
 func RecordConfidence(path string, request Request, report Report, run string) error {
-	if report.Status == StatusDisabled || report.Reused {
+	if report.Status == StatusDisabled || report.Status == StatusShadow || report.Reused {
 		return nil
 	}
 	producer, err := telemetry.NewConfidenceProducerAdapter(path, telemetry.ConfidenceAgentHandoffChallenge, request.MissionID)

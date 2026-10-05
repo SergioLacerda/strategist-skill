@@ -81,7 +81,8 @@ configuration:
     - holds a credential reference (env: or dotenv:), never the secret
     - endpoint is a plain https URL taken only from this file
     - the provider model is pinned; the floating alias needs an explicit opt-in
-    - profile is handoff-v1 (default) or handoff-v2 (a missing field is shown as absent); a pinned calibration is valid only for its profile
+    - profile is handoff-v1 (default), handoff-v2 (a missing field is shown as absent) or handoff-atomic-v1 (one question per criterion; the local rule reads the lowest criterion answer as the probability of accept, and a missing criterion answer never approves); a pinned calibration is valid only for its profile
+    - shadow (default off) keeps the provider reading without letting it decide: the pre-check is called and recorded in the call ledger with what it would have decided, and no handoff uses it (no delegation, no hint, no confidence claim; a recorded shadow reading is never reused as a delegation); `integrations shadow on|off|report`
     - preserved by upgrade; written atomically with owner-only permissions
 
 invariants:

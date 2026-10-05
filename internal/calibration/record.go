@@ -63,9 +63,11 @@ type Record struct {
 	Selection          *SetResult       `json:"selection,omitempty"`
 	HeldOut            *SetResult       `json:"held_out,omitempty"`
 	CrossValidation    *CrossValidation `json:"cross_validation,omitempty"`
-	AtCurrent          SetResult        `json:"at_current"`
-	Operators          []OperatorResult `json:"operators,omitempty"`
-	Integrity          string           `json:"integrity,omitempty"`
+	// CriterionCalibration is the reading of each criterion of an atomic profile; the aggregate threshold above is separate.
+	CriterionCalibration []CriterionResult `json:"criterion_calibration,omitempty"`
+	AtCurrent            SetResult         `json:"at_current"`
+	Operators            []OperatorResult  `json:"operators,omitempty"`
+	Integrity            string            `json:"integrity,omitempty"`
 }
 
 // NewRecord seals a report with its provenance.
@@ -79,7 +81,7 @@ func NewRecord(report Report, meta Meta) (Record, error) {
 		Seed: meta.Seed, Repetitions: meta.Repetitions, ObservationsDigest: meta.Observations, Status: report.Status,
 		FailingGate: report.FailingGate, Threshold: report.Threshold, Notes: report.Notes, Policy: report.Policy, Limits: report.Limits,
 		Counts: report.Counts, Gates: report.Gates, AUC: report.AUC, ECE: report.ECE, Brier: report.Brier, Selection: report.Selection,
-		HeldOut: report.HeldOut, CrossValidation: report.CrossValidation, AtCurrent: report.AtCurrent, Operators: report.Operators,
+		HeldOut: report.HeldOut, CrossValidation: report.CrossValidation, CriterionCalibration: report.CriterionCalibration, AtCurrent: report.AtCurrent, Operators: report.Operators,
 	}
 	digest, err := r.digest()
 	if err != nil {

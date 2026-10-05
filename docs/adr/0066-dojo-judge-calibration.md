@@ -65,7 +65,17 @@ generated negatives.
     cross-validation grouped by parent, judged on upper bounds, adds a threshold-band gate against the repetition noise and centers the
     threshold in its band; it is pre-registered before the real corpus and `gates-2` stays the default of a case without `gate_rule`.
     The profile `handoff-atomic-v1` asks one noul per criterion and takes the lowest answer, to be measured against `handoff-v2` on the
-    same packages; the handoff does not run it until a calibration of it is adopted.
+    same packages; the handoff runs it when the provider is configured with it (`profile: handoff-atomic-v1`); the local rule derives the aggregate from the lowest criterion answer, so a pinned calibration of it decides the threshold like any other, and a missing criterion answer never approves.
+
+13. **Shadow mode.** Before a calibration is trusted on real handoffs, `integrations shadow on` keeps the provider call but takes the
+    decision away from it: each reading is recorded in the call ledger with what it would have decided, the handoff proceeds on the main
+    path with no delegation, no hint and no confidence claim, and a shadow reading is never reused as a delegation. `integrations shadow
+    report` summarizes the readings (numbers only) and `dojo candidate --mission` compares a mission's reading with its gate outcome.
+
+14. **What the first real run taught.** On real packages the aggregate could not be certified (not_fit twice), because the reviewed golden packages did not
+    carry the schema's `acceptance_checks` and `approved_scope` and some lacked a verification per task; the judge itself separated the defects per criterion. The
+    DOJO therefore gained a tolerant task grammar for its local checks and operators, a human `dojo demote` (promotions stay append-only), an offline `dojo corpus`
+    screen, and a per-criterion calibration (rule criteria-1) that says which questions are reliable enough to raise a hint. The Archivist gap is a pending demand.
 
 ## Consequences
 

@@ -122,6 +122,29 @@ long: |
   calibration and no recommendation. Use it to see what a change of profile or operator set did.
 flag: --root (string) default="" usage="path to .strategist/ root (default: .strategist)"
 
+== strategist dojo corpus
+use: corpus <case>
+short: List the packages of a case's corpus with an offline screen (no call)
+long: |
+  List the packages the corpus of <case> would use, with their label and the result of the deterministic
+  local checks (missing fields, untyped or unverified tasks, a task type that does not match its action). The screen reads
+  files only and never calls a provider. A package with no flag is a candidate for review, not a golden: only
+  'strategist dojo promote', a human act, makes it one.
+flag: --clean (bool) default="false" usage="list only the packages no local check flags"
+flag: --root (string) default="" usage="path to .strategist/ root (default: .strategist)"
+
+== strategist dojo demote
+use: demote <case>
+short: Withdraw a package from the golden set (a human act)
+long: |
+  Record that a golden package no longer is: a reviewer and a reason (what in the package does not meet
+  the contract) are required. Promotions are append-only, so the demotion is its own record, bound to the package's
+  content digest; promoting the same content again makes it golden again. The DOJO agent never runs this command.
+flag: --package (string) default="" usage="package name to demote (required)"
+flag: --reason (string) default="" usage="what in the package does not meet the contract, in one sentence (required)"
+flag: --reviewed-by (string) default="" usage="name of the human reviewer (required)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: .strategist)"
+
 == strategist dojo generate
 use: generate <case>
 short: Write the skeleton of a judge calibration case
@@ -363,6 +386,31 @@ flag: --root (string) default="" usage="path to .strategist/ root (default: auto
 == strategist integrations probe
 use: probe
 short: Send one synthetic, non-mission message to record availability
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist integrations shadow
+use: shadow
+short: Keep the provider reading without letting it decide (on, off, report)
+long: |
+  In shadow mode the pre-check is still called and every reading is recorded in the call ledger together
+  with what it would have decided, but no handoff uses it: no delegation, no hint, no confidence claim, and the main
+  path decides alone. Use it to collect readings on real missions before a calibration is trusted.
+  'shadow report' summarizes the readings (counts and numbers only); to compare one mission's reading with its gate
+  outcome run 'strategist dojo candidate --mission <id>'.
+
+== strategist integrations shadow off
+use: off
+short: Turn shadow mode off (the provider decides again)
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist integrations shadow on
+use: on
+short: Turn shadow mode on
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist integrations shadow report
+use: report
+short: Summarize the recorded shadow readings
 flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
 
 == strategist leveling
@@ -703,6 +751,22 @@ flag: --run (string) default="" usage="select one explicit repeated role run"
 == strategist plugins
 use: plugins
 short: Inspect and evaluate Strategist plugin enforcement
+
+== strategist plugins acquire-remote
+use: acquire-remote
+short: Acquire a pinned Git Skill-for-Hire package into quarantine
+long: |
+  Fetches one full-commit Git reference into an isolated temporary
+  quarantine, validates the package shape and writes acquisition.json plus READY.
+  It never writes external-skills-source, .strategist, the embedded catalog or a
+  lockfile. Promotion remains a separate, reviewed operator action.
+  Network access is opt-in and tests should omit --allow-network.
+flag: --allow-network (bool) default="false" usage="explicitly authorize the Git fetch"
+flag: --commit (string) default="" usage="full 40-character lowercase commit SHA (required)"
+flag: --package-id (string) default="" usage="package ID expected for the imported skill (required)"
+flag: --quarantine-root (string) default="" usage="optional quarantine parent; must be outside the workspace"
+flag: --repository (string) default="" usage="Git repository URI or absolute local fixture path (required)"
+flag: --source (string) default="git" usage="remote source class (only git is supported)"
 
 == strategist plugins authorize
 use: authorize

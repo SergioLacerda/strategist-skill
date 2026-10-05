@@ -32,13 +32,14 @@ agent_mode:
     - strategist dojo calibrate <case> --consent (a judge case or the live case)
   never_runs:
     - strategist dojo promote
+    - strategist dojo demote
     - strategist dojo candidate
     - strategist integrations calibration pin
     - any change to a label, a golden promotion, a risk policy or a pinned calibration id
   rules:
     - the agent generates scenario skeletons, audits a sample of generated negatives, reads the evidence, writes lessons and proposes operators; every proposal waits for a reviewed change
     - an audit disagreement is recorded and the case is excluded from the golden metrics; the agent never relabels a case
-    - promotion to golden, a regression candidate and pinning a calibration are human acts with a reviewer name and an oracle
+    - promotion to golden, demotion from golden, a regression candidate and pinning a calibration are human acts with a reviewer name and an oracle or a reason; promotions are append-only and a demotion is its own record bound to the content digest
     - real package content is sent to a provider only by a run the author asked for with the explicit consent flag; a dry run prints the exact count, fields and bytes first
 
 vocabulary:
@@ -71,6 +72,7 @@ gate_rules:
 
 local_checks:
   what: deterministic checks over the projected fields (scope, acceptance checks, plan, task types, task verification, task kind against action for the package boundary; objective, sources, uncertainties and focus for the Ranger boundary); no provider is involved
+  task_grammar: 'a task is one checklist item with its wrapped lines, numbered or not, tagged `[type]` or `[task_type: type]`; the local checks and the mutation operators read all these forms (the old numbered form is unchanged byte for byte), and a plan with a task that has no tag or no verification is flagged'
   measured: each observation records which checks flagged its case; the report gives, per defect operator, how many cases the judge, the local checks and the policy as a whole catch, the false flag rate on golden parents, and the policy-level false approval and rejection
   delegation: a case can declare operators local_scope; the judge gates and rates do not read them and a local_coverage gate must show that the local checks catch each one (lower bound of the detection rate at least 0.80); the delegation is part of the record
   backfill: observations made before the local checks were recorded get their flags derived from the regenerated cases of the same corpus (same manifest digest); the ledger is never rewritten and the report says so
@@ -119,8 +121,14 @@ risk_policy:
 question_profiles:
   handoff-v1: the default; projects only the fields the artifact has, so a missing field is never seen by the provider
   handoff-v2: also shows an allowed catalog field the artifact lacks as (absent) and tells the provider that a criterion about an absent field does not hold; no content is added, and a field the data policy does not allow is never mentioned
-  handoff-atomic-v1: asks one noul question per criterion about one named field, with no aggregate choice, shows an absent field like v2, and takes the lowest criterion answer as the probability of accept (every criterion must hold); a criterion the catalog states negatively is asked positively with both readings defined (the first run answered one inverted on every intact package); a case can measure it, the handoff cannot run it yet, and its observations keep the per-criterion answers, numbers only, so recompute --exclude-criterion can re-read them without one criterion as an exploratory what-if (and recompute --judge-only reads a case without its delegation to the local checks, also exploratory)
+  handoff-atomic-v1: asks one noul question per criterion about one named field, with no aggregate choice, shows an absent field like v2, and takes the lowest criterion answer as the probability of accept (every criterion must hold); a criterion the catalog states negatively is asked positively with both readings defined (the first run answered one inverted on every intact package); the handoff pre-check runs it when the provider is configured with it (the local rule derives the aggregate answer from the lowest criterion answer; a missing criterion never approves), and its observations keep the per-criterion answers, numbers only, so recompute --exclude-criterion can re-read them without one criterion as an exploratory what-if (and recompute --judge-only reads a case without its delegation to the local checks, also exploratory)
   rule: a case chooses its profile (calibration.profile) independently of the provider's configured profile, to measure a variant before adopting it; a calibration is valid only for the profile and version it was measured with, and the v1 version is unchanged so existing records stay valid
+
+criterion_calibration:
+  what: 'for an atomic profile, each criterion is judged on its own (rule criteria-1, pre-registered): its answer must separate the golden parents from the defects that target it (auc at least 0.90), flag no more than the false rejection limit of golden parents out of fold, and catch the targeted defects with a one-sided lower bound of at least 0.50'
+  how: 'a five-fold cross-validation grouped by parent; the flag threshold of a fold is the lowest golden answer of the other folds; a hint is advisory, so the false-flag limit reads the observed out-of-fold rate and the upper bound is reported next to it'
+  use: 'it does not replace the aggregate threshold; it says which criteria are worth a hint (reliable), which are not (unreliable) and which cannot be read yet (not_measured, fewer golden parents than the sample rule); the readings are kept in the record and shown by integrations calibration show'
+  confirmation: 'a rule drawn from one corpus is confirmed on packages written after the Archivist emits the required fields, never on the corpus it came from'
 
 calibration_record:
   schema: strategist-calibration/v1

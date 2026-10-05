@@ -35,8 +35,8 @@ type DojoCalibration struct {
 	Layer string `yaml:"layer,omitempty"`
 	// Boundary is "package" or "ranger".
 	Boundary string `yaml:"boundary"`
-	// Profile is the question profile asked of the provider: handoff-v1 (default) or
-	// handoff-v2. It is independent of the provider's configured profile, so a variant
+	// Profile is the question profile asked of the provider: handoff-v1 (default), handoff-v2 or
+	// handoff-atomic-v1. It is independent of the provider's configured profile, so a variant
 	// is measured before it is adopted.
 	Profile string `yaml:"profile,omitempty"`
 	// Provider names the system under evaluation (default jev).
