@@ -12,13 +12,14 @@ import (
 
 // Dependencies defines injected dependencies for leveling commands.
 type Dependencies struct {
-	LoadPolicy    func() (internal.Policy, string, error)
-	WorkspaceRoot func() (string, error)
-	LoadConfig    func(root string) (domain.LevelingConfig, string)
-	LoadRegistry  func(root string) (domain.RoleRegistry, string)
-	LedgerName    string
-	RotateMax     int
-	EmitRoleLevel func(ctx context.Context, missionID, run string, level internal.Level, reason string)
+	LoadPolicy      func() (internal.Policy, string, error)
+	WorkspaceRoot   func() (string, error)
+	LoadConfig      func(root string) (domain.LevelingConfig, string)
+	LoadRegistry    func(root string) (domain.RoleRegistry, string)
+	LedgerName      string
+	RotateMax       int
+	EmitRoleLevel   func(ctx context.Context, missionID, run string, level internal.Level, reason string)
+	EmitBudgetEvent func(ctx context.Context, budget domain.EffortBudget, event internal.BudgetEventKind, reason string)
 }
 
 // NewParent creates the parent Cobra command for leveling.

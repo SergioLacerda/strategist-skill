@@ -74,7 +74,7 @@ func submitLocked(deps LifecycleDependencies, root, basePath, missionID string, 
 	if err := recoverExecutionEntry(root, basePath, missionID, persisted); err != nil {
 		return domain.MissionEngineStatus{}, fmt.Errorf("mission submit: %w", err)
 	}
-	pre, err := preflightSubmit(root, basePath, missionID, engine.Status(), evt)
+	pre, err := preflightSubmit(deps, root, basePath, missionID, engine.Status(), evt)
 	if err != nil {
 		return domain.MissionEngineStatus{}, err
 	}
@@ -108,6 +108,7 @@ func commitSubmit(deps LifecycleDependencies, root, basePath, missionID string, 
 	if err := persistCommitState(deps, root, status, analysisPath, original, changed, entry); err != nil {
 		return err
 	}
+	recordLifecycleBestEffort(deps, root, missionID, domain.LifecycleMarkersForTransition(evt, before, status))
 	if err := finishSubmit(root, basePath, missionID, evt, pre.Outcome, entry); err != nil {
 		return fmt.Errorf("mission submit: %w", err)
 	}

@@ -4,6 +4,8 @@ package missionview
 
 import (
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/feats/opportunity_attack"
+	"github.com/SergioLacerda/strategist-skill/internal/gatecriteria"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/SergioLacerda/strategist-skill/internal/tools/leveling"
 )
@@ -30,6 +32,8 @@ const (
 	ReasonMissionViewLevelingUnavailable       = "mission_view_leveling_unavailable"
 	ReasonMissionViewTokenUsageUnavailable     = "mission_view_token_usage_unavailable"
 	ReasonMissionViewHandoffMetricsUnavailable = "mission_view_handoff_metrics_unavailable"
+	ReasonMissionViewLifecycleUnavailable      = "mission_view_lifecycle_unavailable"
+	ReasonMissionViewUsageUnavailable          = "mission_view_usage_unavailable"
 )
 
 // Input contains values already loaded from their respective authorities.
@@ -41,6 +45,7 @@ type Input struct {
 	ConfidenceError     error
 	GateOutcome         string
 	GateError           error
+	Opportunities       []opportunity_attack.Candidate
 	Levels              []leveling.Record
 	LevelsError         error
 	Run                 string
@@ -49,20 +54,33 @@ type Input struct {
 	HandoffMetrics      []telemetry.RefinementHandoffLine
 	HandoffMetricsError error
 	DeclaredTokenBudget string
+	// Lifecycle holds this mission's lifecycle ledger records; LifecycleError
+	// marks the ledger as unreadable.
+	Lifecycle      []telemetry.MissionLifecycleRecord
+	LifecycleError error
+	// Usage holds this mission's usage ledger records; KnownInvocations lists
+	// the invocation ids Strategist issued, for the coverage counters.
+	Usage            []telemetry.MissionUsageRecord
+	UsageError       error
+	KnownInvocations []string
+	// Criteria is the optional quality-criteria report; nil keeps the view as before.
+	Criteria *gatecriteria.Report
 }
 
 // View is the complete read-only mission projection.
 type View struct {
-	Schema       string            `json:"schema"`
-	MissionID    string            `json:"mission_id"`
-	Run          string            `json:"run,omitempty"`
-	Lifecycle    Lifecycle         `json:"lifecycle"`
-	Journey      []JourneyEntry    `json:"journey"`
-	Confidence   ConfidenceSection `json:"confidence"`
-	ApprovalGate GateSection       `json:"approval_gate"`
-	Leveling     LevelingSection   `json:"leveling"`
-	TokenUsage   TokenUsageSection `json:"token_usage"`
-	Diagnostics  []Diagnostic      `json:"diagnostics"`
+	Schema        string            `json:"schema"`
+	MissionID     string            `json:"mission_id"`
+	Run           string            `json:"run,omitempty"`
+	Lifecycle     Lifecycle         `json:"lifecycle"`
+	Journey       []JourneyEntry    `json:"journey"`
+	Confidence    ConfidenceSection `json:"confidence"`
+	ApprovalGate  GateSection       `json:"approval_gate"`
+	Leveling      LevelingSection   `json:"leveling"`
+	TokenUsage    TokenUsageSection `json:"token_usage"`
+	PhaseTimeline PhaseTimeline     `json:"phase_timeline"`
+	Criteria      *CriteriaSection  `json:"criteria,omitempty"`
+	Diagnostics   []Diagnostic      `json:"diagnostics"`
 }
 
 // Lifecycle is the authoritative mission engine state included in a View.
@@ -91,8 +109,9 @@ type ConfidenceSection struct {
 
 // GateSection reports the recorded human Approval Gate outcome.
 type GateSection struct {
-	Availability string `json:"availability"`
-	Outcome      string `json:"outcome,omitempty"`
+	Availability  string                         `json:"availability"`
+	Outcome       string                         `json:"outcome,omitempty"`
+	Opportunities []opportunity_attack.Candidate `json:"opportunities,omitempty"`
 }
 
 // LevelingSection contains effective and historical LEVELING records.
@@ -124,9 +143,12 @@ func Build(in Input) View {
 		Lifecycle:    Lifecycle{Phase: string(in.Status.Phase), State: string(in.Status.State), HandoffAttempt: in.Status.HandoffAttempt, HandoffStatus: in.Status.HandoffStatus, HandoffNextAction: in.Status.HandoffNextAction},
 		Journey:      buildJourney(in.Registry, in.SlotProviders),
 		Confidence:   ConfidenceSection{Availability: confidenceAvailability(in.Confidence), Advisory: true, Review: &in.Confidence},
-		ApprovalGate: GateSection{Availability: Available, Outcome: in.GateOutcome},
+		ApprovalGate: GateSection{Availability: Available, Outcome: in.GateOutcome, Opportunities: in.Opportunities},
 		Leveling:     buildLevels(in.Registry, in.Levels, in.Run),
 		TokenUsage:   buildTokenUsage(in.TokenUsage, in.HandoffMetrics, in.DeclaredTokenBudget),
+		PhaseTimeline: BuildPhaseTimeline(in.Status, in.Lifecycle, in.LifecycleError).
+			WithUsage(SummarizeUsage(in.Usage, in.KnownInvocations), in.UsageError),
+		Criteria: buildCriteria(in.Criteria),
 	}
 	if in.ConfidenceError != nil {
 		v.Confidence = ConfidenceSection{Availability: Unavailable, Advisory: true}
@@ -146,6 +168,7 @@ func Build(in Input) View {
 		v.TokenUsage = TokenUsageSection{Availability: Unavailable, DeclaredTokenBudget: in.DeclaredTokenBudget}
 		v.Diagnostics = append(v.Diagnostics, Diagnostic{Reason: ReasonMissionViewTokenUsageUnavailable, Action: "inspect mission-token-usage ledger"})
 	}
+	v.Diagnostics = append(v.Diagnostics, timelineDiagnostics(in.LifecycleError, in.UsageError)...)
 	if in.HandoffMetricsError != nil {
 		v.TokenUsage.LedgerComparison = telemetry.TokenLedgerComparison{Status: telemetry.TokenLedgerReportedOnly}
 		v.Diagnostics = append(v.Diagnostics, Diagnostic{Reason: ReasonMissionViewHandoffMetricsUnavailable, Action: "inspect handoff-metrics ledger"})

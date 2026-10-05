@@ -57,17 +57,7 @@ func appendRecordUnlocked(path string, record Record) error {
 	if err != nil {
 		return fmt.Errorf("leveling: encode role level record: %w", err)
 	}
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600) //nolint:gosec // path is resolved below .strategist/memory
-	if err != nil {
-		return fmt.Errorf("leveling: open role level ledger: %w", err)
-	}
-	if _, err := f.Write(append(encoded, '\n')); err != nil {
-		return errors.Join(fmt.Errorf("leveling: write role level record: %w", err), f.Close())
-	}
-	if err := f.Close(); err != nil {
-		return fmt.Errorf("leveling: close role level ledger: %w", err)
-	}
-	return nil
+	return appendJSONLine(path, encoded, "role level")
 }
 
 // LatestRecord returns the most recent record of the default run for a mission

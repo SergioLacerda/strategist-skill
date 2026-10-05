@@ -20,6 +20,8 @@ type Dependencies struct {
 	// ResolveRoots maps an optional --root value to the .strategist/ root and
 	// the workspace base_path that holds the dojo scenarios.
 	ResolveRoots func(root string) (strategistRoot, basePath string, err error)
+	// Calibration supplies the provider-facing concerns of the judge calibration commands.
+	Calibration CalibrationDependencies
 }
 
 const rootFlagUsage = "path to .strategist/ root (default: .strategist)"
@@ -35,9 +37,14 @@ Run a scenario check:
   strategist dojo check <scenario>
 
 List available scenarios:
-  strategist dojo list`,
+  strategist dojo list
+
+Calibrate a judge (the provider handoff pre-check) against labeled cases:
+  strategist dojo calibrate <case> --dry-run
+  strategist dojo calibrate <case> --consent`,
 	}
 	parent.AddCommand(newCheck(deps), newList(deps))
+	parent.AddCommand(calibrationCommands(deps)...)
 	return parent
 }
 
@@ -97,6 +104,9 @@ func runCheck(cmd *cobra.Command, deps Dependencies, root string, filesOnly bool
 	criteria, err := internaldojo.LoadCriteria(scenarioDir)
 	if err != nil {
 		return fmt.Errorf("dojo check: %w", err)
+	}
+	if criteria.Kind == domain.KindJudgeCalibration {
+		return runCalibrationCheck(cmd, deps, root, scenario)
 	}
 
 	emitLogPath := paths.EmitLogPath
@@ -163,7 +173,7 @@ func writeListRows(w *tabwriter.Writer, dojoDir string, entries []os.DirEntry) e
 }
 
 func isScenarioEntry(dojoDir string, e os.DirEntry) bool {
-	if !e.IsDir() || e.Name() == ".last-run" {
+	if !e.IsDir() || e.Name() == ".last-run" || internaldojo.IsReservedName(e.Name()) {
 		return false
 	}
 	return internaldojo.ScenarioHasCriteria(dojoDir, e.Name())

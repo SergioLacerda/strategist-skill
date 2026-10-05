@@ -23,11 +23,16 @@ func Merge(defaults, override []byte) (Policy, error) {
 	if err := normalizeProviders(&custom); err != nil {
 		return Policy{}, err
 	}
+	budgetOverrides, err := parseBudgetOverrides(override)
+	if err != nil {
+		return Policy{}, fmt.Errorf("leveling: parse budget overrides: %w", err)
+	}
 	rankedOverrides, err := parseRankedOverrides(override)
 	if err != nil {
 		return Policy{}, fmt.Errorf("leveling: parse provider ranked flags: %w", err)
 	}
 	mergePolicy(&base, custom, rankedOverrides)
+	applyExplicitBudgetOverrides(&base, budgetOverrides)
 	return validateMergedPolicy(base)
 }
 
@@ -63,6 +68,7 @@ func mergeDefaults(base *Defaults, override Defaults) {
 	if override.Fallback.Reason != "" {
 		base.Fallback.Reason = override.Fallback.Reason
 	}
+	base.Budget = mergeBudgetPolicy(base.Budget, override.Budget)
 }
 
 func mergeRoles(base *map[string]Role, overrides map[string]Role) {
@@ -98,6 +104,7 @@ func mergeRole(base, override Role) Role {
 	if override.Escalation.Effort != "" {
 		base.Escalation.Effort = override.Escalation.Effort
 	}
+	base.Budget = mergeBudgetPolicy(base.Budget, override.Budget)
 	return base
 }
 

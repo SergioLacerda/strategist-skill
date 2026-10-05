@@ -3,6 +3,8 @@ package leveling
 import (
 	"fmt"
 	"strings"
+
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
 
 // Suggest resolves a role recommendation and translates it for a ranked provider.
@@ -28,18 +30,31 @@ func Suggest(policy Policy, provider, role string, signals Signals) (Suggestion,
 		result.Rationale = append(result.Rationale, "generic_provider_fallback")
 		return result, nil
 	}
+	model, err := rankedModel(profile, providerID, roleID, capability, effort)
+	if err != nil {
+		return Suggestion{}, err
+	}
+	result.Model = model
+	budgetPolicy := mergeBudgetPolicy(policy.Defaults.Budget, rolePolicy.Budget)
+	if !budgetPolicyEmpty(budgetPolicy) {
+		budget := domain.NewEffortBudget(budgetPolicy, roleID, providerID, model, capability, SourcePolicy, policy.Version, policy.Digest())
+		result.Budget = &budget
+	}
+	return result, nil
+}
+
+func rankedModel(profile Provider, providerID, roleID, capability, effort string) (string, error) {
 	if !profile.Ranked {
-		return Suggestion{}, fmt.Errorf("leveling_ranked_provider_ineligible: provider %q is not ranked", providerID)
+		return "", fmt.Errorf("leveling_ranked_provider_ineligible: provider %q is not ranked", providerID)
 	}
 	if !contains(profile.EffortTiers, effort) {
-		return Suggestion{}, fmt.Errorf("leveling_ranked_provider_ineligible: provider %q cannot execute effort %q for role %q", providerID, effort, roleID)
+		return "", fmt.Errorf("leveling_ranked_provider_ineligible: provider %q cannot execute effort %q for role %q", providerID, effort, roleID)
 	}
 	model := profile.Models[capability]
 	if model == "" {
-		return Suggestion{}, fmt.Errorf("leveling_mapping_invalid: provider %q has no model mapping for capability %q", providerID, capability)
+		return "", fmt.Errorf("leveling_mapping_invalid: provider %q has no model mapping for capability %q", providerID, capability)
 	}
-	result.Model = model
-	return result, nil
+	return model, nil
 }
 
 func validateSignals(signals Signals) error {
@@ -66,9 +81,10 @@ func validateSignals(signals Signals) error {
 
 func policyRole(policy Policy, roleID string) Role {
 	if role, ok := policy.Defaults.Roles[roleID]; ok {
+		role.Budget = mergeBudgetPolicy(policy.Defaults.Budget, role.Budget)
 		return role
 	}
-	return Role{Capability: policy.Defaults.Fallback.Capability, Effort: policy.Defaults.Fallback.Effort}
+	return Role{Capability: policy.Defaults.Fallback.Capability, Effort: policy.Defaults.Fallback.Effort, Budget: policy.Defaults.Budget}
 }
 
 func roleRecommendation(role Role, signals Signals) (string, string, []string) {

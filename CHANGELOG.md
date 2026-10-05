@@ -16,7 +16,43 @@ corresponding tag and GitHub Release.
 
 ## [Unreleased]
 
+### Added
+- `strategist mission usage` shows start, end, duration, runs and status per
+  phase for one mission (`--mission-id`, `--json`, `--details`). It reads a new
+  append-only mission lifecycle ledger (`memory/mission-lifecycle.jsonl`) whose
+  markers are derived from engine transitions and written best-effort after the
+  mission state is persisted; a write failure never fails the mission command.
+  Token columns stay unavailable until usage observations exist, an unobserved
+  value is never rendered as zero, and the legacy provider-reported ledger is
+  shown on its own row outside any total (ADR-0069). `mission view --json`
+  gains a `phase_timeline` section built by the same aggregation.
+
+- `strategist mission report-usage` now records one phase-attributed usage
+  observation per call into `memory/mission-usage.jsonl`. **Breaking:** it
+  requires `--phase` and `--role` and at least one of `--tokens-in` /
+  `--tokens-out`, and it no longer writes `mission-token-usage.jsonl`. New
+  flags declare `--invocation-id` / `--event-id` (idempotency), `--attempt`,
+  `--record-kind incremental|cumulative_snapshot` with `--session-id`,
+  `--source agent_report|estimator`, `--quality` (never stronger than the
+  source allows), `--scope`, `--phase-run-id`, `--provider`, `--model` and
+  the separate `--tokens-cache` / `--tokens-reasoning`. An omitted count is
+  stored as unobserved, never as zero; the CLI never records a provider- or
+  host-measured quality. A repeated key with the same counts is counted once,
+  with different counts it is a conflict.
+- `strategist mission usage` fills the per-phase token columns, the
+  unattributed row, the mission total, per-row quality (`mixed` when
+  qualities differ) and the invocation coverage counters; `--timeline` adds
+  the merged chronology of lifecycle markers and usage observations.
+  Cumulative snapshots contribute only the delta inside one session; a reset
+  or a new session yields no interval.
+
 ### Changed
+- `mission view` no longer sums the legacy provider-reported records
+  (`token_usage.total_tokens_in/out` removed, `semantics: unknown` added): the
+  records have no declared semantics and the old protocol asked for cumulative
+  reports. Use the `phase_timeline` section for usage figures.
+- The agent protocol now asks for one observation per completed invocation
+  with `--phase`, `--role` and `--invocation-id`, never a running total.
 - Governance synchronization now consumes an explicit provider-agnostic source
   and normalized snapshot. Providence is supported as an explicit reference
   adapter; no governance model or directory is auto-detected.

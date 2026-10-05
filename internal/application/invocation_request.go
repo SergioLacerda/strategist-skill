@@ -57,6 +57,7 @@ func NewInvocationRequest(ctx context.Context, input InvocationRequestInput) (do
 		requestInput["approval_gate_package_digest"] = input.ApprovalGatePackageDigest
 		addStageCorrelation(requestInput, input.StageCorrelationID)
 	}
+	addArchivistRefinementInput(requestInput, input)
 	if strings.TrimSpace(input.RequestContext) != "" {
 		requestInput["request_context"] = input.RequestContext
 	}
@@ -68,6 +69,16 @@ func NewInvocationRequest(ctx context.Context, input InvocationRequestInput) (do
 		ExecutionMode: input.Binding.ExecutionMode, Entrypoint: input.Binding.Entrypoint,
 		Payload: string(input.Payload), Input: requestInput, Nonce: NewPromptNonce(),
 	}, now, nil
+}
+
+// addArchivistRefinementInput tells an embedded Archivist Weapon where the
+// Ranger analysis it plans from lives; it is read-only input, never a write
+// destination (the publisher owns the refined package).
+func addArchivistRefinementInput(requestInput map[string]any, input InvocationRequestInput) {
+	if input.Role != "archivist" || input.Slot != string(domain.SlotRefinement) {
+		return
+	}
+	requestInput["analysis_artifact_path"] = filepath.ToSlash(filepath.Join(input.BasePath, "pending", input.MissionID+"-analysis.md"))
 }
 
 func addStageCorrelation(requestInput map[string]any, correlationID string) {

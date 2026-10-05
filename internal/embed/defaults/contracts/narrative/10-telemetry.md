@@ -260,11 +260,24 @@ validation, or downstream verification label; unlabeled records remain
 
 Mission timing emitted by the CLI is explicitly `scope=per_invocation`: it
 describes one process invocation and must not be rendered as elapsed time for
-the whole mission or for a phase spanning multiple invocations. Provider-
-reported mission usage (`mission-token-usage.jsonl`) and handoff-local token
-estimates (`handoff-metrics.jsonl`) remain separate authorities; mission view
-may report provenance and contradictions advisory-first, but never derives a
-budget, phase total, or numeric target from either ledger.
+the whole mission or for a phase spanning multiple invocations. Whole-mission
+and per-phase elapsed time may be rendered only when derived from the mission
+lifecycle ledger, an append-only record of mission and phase markers whose
+timestamps are chronological milestones; a missing end marker is shown as
+unavailable, never inferred. Until that ledger exists, no such figure is
+rendered.
+
+Token usage per phase or per mission may be rendered only when derived from the
+mission usage ledger, an append-only record of declared observations, and always
+with its measurement quality and coverage. A value that was not observed is
+rendered as unavailable, never as zero, and an estimate is never labeled as
+measured. Provider-reported mission usage (`mission-token-usage.jsonl`) and
+handoff-local token estimates (`handoff-metrics.jsonl`) remain separate
+authorities; mission view may report provenance and contradictions
+advisory-first, but never derives a budget, a phase total or a numeric target
+from either of them. Once the mission usage ledger exists, the provider-reported
+ledger is displayed on its own row and is never summed into phase rows or into
+that ledger's mission total.
 
 Confidence history is owned by the Strategist runtime at
 `.strategist/memory/confidence-records.jsonl`. The v1 calibrated state requires

@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/feats/initiative"
 	"github.com/SergioLacerda/strategist-skill/internal/tools/leveling"
 	"github.com/stretchr/testify/require"
@@ -72,7 +73,11 @@ func TestStartInitiativeConsultationUsesThePersistedLevelingSnapshot(t *testing.
 	path := filepath.Join(root, "memory", roleLevelLedger)
 	require.NoError(t, leveling.AppendRecord(path, leveling.Record{
 		MissionID: "mission-consult", Run: "mission-consult",
-		Level: leveling.Level{Role: "scout", Model: "Sonnet", Effort: "high", Source: leveling.SourceHost},
+		Level: leveling.Level{Role: "scout", Model: "Sonnet", Effort: "high", Source: leveling.SourceHost, Budget: &domain.EffortBudget{
+			SchemaVersion: domain.EffortBudgetSchemaVersion, MissionID: "mission-consult", RunID: "mission-consult", Role: "scout",
+			MaxDelegations: 1, MaxDepth: 1, Parallelism: 1, ContextBudget: "low", EvidenceDepth: "standard",
+			EscalationAllowed: true, MaxEscalations: 1,
+		}},
 	}))
 
 	require.NoError(t, startInitiativeConsultation(root, "mission-consult"))
@@ -86,6 +91,7 @@ func TestStartInitiativeConsultationUsesThePersistedLevelingSnapshot(t *testing.
 	require.NotNil(t, initiativeRecords[0].Advice.Leveling)
 	require.Equal(t, levelRecords[0].MissionID, initiativeRecords[0].Advice.MissionID)
 	require.Equal(t, levelRecords[0].Role, initiativeRecords[0].Advice.Leveling.Role)
+	require.Equal(t, 1, initiativeRecords[0].Advice.Leveling.Budget.MaxDelegations)
 	require.Equal(t, "leveling-mission-consult-mission-consult-"+levelRecords[0].Timestamp, initiativeRecords[0].Advice.Leveling.EventID)
 }
 

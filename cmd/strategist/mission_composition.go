@@ -36,9 +36,12 @@ func missionLifecycleDependencies() missionadapter.LifecycleDependencies {
 		RootFlag: cliutil.FlagRoot, RequireMissionID: requireMissionID,
 		ResolveBasePath: cliutil.ResolveActiveBasePath, RequireNoExisting: requireNoExistingMission,
 		Save: saveMission, Load: loadMission, InitiativeStart: startInitiativeConsultation,
-		WriteResult: missionadapter.WriteResult, Lock: lockMission, ADRCanonicalPath: adrCanonicalPath,
-		TelemetrySink: selectDiscoveryTelemetrySink,
-		RecordRoute:   recordMissionRoute,
+		WriteResult: missionadapter.WriteResult, Lock: lockMission, ADRCanonicalPath: adrCanonicalPath, RunbookCanonicalPath: runbookCanonicalPath,
+		TelemetrySink:   selectDiscoveryTelemetrySink,
+		PrepareRunbook:  prepareRunbookOpportunity,
+		RecordRoute:     recordMissionRoute,
+		RecordLifecycle: recordMissionLifecycle,
+		LifecycleWarn:   warnMissionLifecycle,
 		ActivateCriticalHit: func(root, missionID string) (domain.MissionEngineStatus, error) {
 			return missionruntime.ActivateCriticalHitRoute(root, missionID, loadMission, saveMission)
 		},
@@ -122,6 +125,14 @@ func adrCanonicalPath(root string) (string, error) {
 	return cfg.ADR.CanonicalPath, nil
 }
 
+func runbookCanonicalPath(root string) (string, error) {
+	cfg, err := cliutil.LoadActiveConfig(root)
+	if err != nil {
+		return "", fmt.Errorf("read runbooks.canonical_path: %w", err)
+	}
+	return cfg.Runbooks.CanonicalPath, nil
+}
+
 func startInitiativeConsultation(root, missionID string) error {
 	registry, err := roles.LoadRoleRegistry(filepath.Join(root, "roles"))
 	if err != nil {
@@ -164,7 +175,7 @@ func resolveMissionLeveling(root, missionID, role, runID string) (initiative.Lev
 		EventID: "leveling-" + missionID + "-" + runID + "-" + record.Timestamp,
 		Role:    record.Role, State: state, Model: record.Model, Provider: record.Provider,
 		Effort: initiative.EffortTier(record.Effort), Capability: record.Capability,
-		LevelSource: record.Source, PolicyDigest: record.PolicyDigest,
+		LevelSource: record.Source, PolicyDigest: record.PolicyDigest, Budget: record.Budget,
 	}, nil
 }
 

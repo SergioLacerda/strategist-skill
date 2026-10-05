@@ -10,6 +10,11 @@ import (
 // cross-boundary artifact. The existing Level remains the compatibility shape
 // used by labels and ledger records.
 func (l Level) EffortResolutionArtifact() (domain.EffortResolutionArtifact, error) {
+	var budget *domain.EffortBudget
+	if l.Budget != nil {
+		copyBudget := *l.Budget
+		budget = &copyBudget
+	}
 	artifact := domain.EffortResolutionArtifact{
 		SchemaVersion:   domain.EffortResolutionArtifactSchemaVersion,
 		TaxonomyVersion: domain.CanonicalTaxonomyVersion,
@@ -23,6 +28,7 @@ func (l Level) EffortResolutionArtifact() (domain.EffortResolutionArtifact, erro
 		FallbackReason:  l.FallbackReason,
 		PolicyVersion:   l.PolicyVersion,
 		PolicyDigest:    l.PolicyDigest,
+		Budget:          budget,
 	}
 	if err := artifact.Validate(); err != nil {
 		return domain.EffortResolutionArtifact{}, fmt.Errorf("leveling effort resolution: %w", err)

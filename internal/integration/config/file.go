@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/integration"
 	"gopkg.in/yaml.v3"
@@ -42,13 +43,29 @@ type Provider struct {
 	// CallBudget bounds provider calls per mission and consumer transition.
 	// Zero means DefaultCallBudget. It is independent of the handoff attempts.
 	CallBudget int `yaml:"call_budget,omitempty"`
+	// CalibrationID pins a published calibration record (a DOJO calibration case
+	// output) by id, never "latest". The consumer uses its threshold only while the
+	// record is valid for the resolved model and question profile; otherwise the
+	// approval threshold above applies. Written only by `integrations calibration pin`.
+	CalibrationID string `yaml:"calibration_id,omitempty"`
+	// Profile is the question profile of the handoff pre-check: handoff-v1 (default,
+	// only the fields the artifact has) or handoff-v2 (a missing field is shown as
+	// (absent)). A pinned calibration is valid only for its profile.
+	Profile string `yaml:"profile,omitempty"`
+	// CalibrationMaxAgeDays bounds how old the pinned record may be. Zero means 90.
+	CalibrationMaxAgeDays int `yaml:"calibration_max_age_days,omitempty"`
 }
 
 const (
-	// DefaultThreshold is the default approval threshold (strictly above 90%).
-	DefaultThreshold = 0.90
+	// DefaultThreshold is the default approval threshold: the confidence in
+	// acceptance must be strictly above it. 0.80 follows the first live check, where
+	// a well-formed handoff scored P(accept) 0.85; it is a starting point to be
+	// calibrated against labeled handoffs, not a measured optimum.
+	DefaultThreshold = 0.80
 	// DefaultCallBudget is the default number of provider calls per mission and transition.
 	DefaultCallBudget = 2
+	// DefaultCalibrationMaxAge is the default age limit of a pinned calibration.
+	DefaultCalibrationMaxAge = 90 * 24 * time.Hour
 )
 
 // Threshold returns the effective approval threshold.
@@ -57,6 +74,14 @@ func (p Provider) Threshold() float64 {
 		return DefaultThreshold
 	}
 	return p.ApprovalThreshold
+}
+
+// CalibrationMaxAge returns how old a pinned calibration may be.
+func (p Provider) CalibrationMaxAge() time.Duration {
+	if p.CalibrationMaxAgeDays == 0 {
+		return DefaultCalibrationMaxAge
+	}
+	return time.Duration(p.CalibrationMaxAgeDays) * 24 * time.Hour
 }
 
 // Budget returns the effective call budget.

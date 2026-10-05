@@ -8,7 +8,7 @@ import (
 )
 
 func dojoDependencies() dojoadapter.Dependencies {
-	return dojoadapter.Dependencies{ResolveRoots: resolveDojoRoots}
+	return dojoadapter.Dependencies{ResolveRoots: resolveDojoRoots, Calibration: calibrationDependencies()}
 }
 
 // resolveDojoRoots delegates to internal/cliutil (shared with internal/treasurecli

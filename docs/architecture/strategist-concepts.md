@@ -137,7 +137,7 @@ Critical Hit is a **Feat** with deterministic eligibility Mechanisms (see § Too
 
 ### Opportunity Attack
 
-Opportunity Attack is an **Archivist Feat** that evaluates ADR, Runbook, and Treasure Chest necessity after all four refined artifacts are written (see `contracts/machine/opportunity-attack.yaml`). Each of the three outputs is offered independently as its own side quest at the approval gate. Opportunity Attack is not a route selector — it does not decide between SHORT and FULL. Routing is owned by the intake/routing layer.
+Opportunity Attack is an **Archivist Feat** that evaluates ADR and Runbook necessity after all four refined artifacts are written (see `contracts/machine/opportunity-attack.yaml`). Each output is offered independently as its own side quest at the approval gate. Treasure Chest registration is owned by the root `treasure-chest/` module. Opportunity Attack is not a route selector — it does not decide between SHORT and FULL. Routing is owned by the intake/routing layer.
 
 ### Runbook Domain Model (typed sidecars)
 
@@ -516,7 +516,7 @@ entries from all three families until the implementation taxonomy is migrated.
 |------|---------|--------------|
 | **INITIATIVE** | Role entry and handoff boundaries | Applies contextual judgment to immutable LEVELING output and mission evidence. It may request a new resolution when permitted, but cannot mutate an existing resolution, select a provider, bypass the Approval Gate, or authorize execution. |
 | **Search** | Discovery (Ranger); cache reused by Refinement (Archivist) | Filters candidate Jewels and Potions before opening a Treasure Chest in full. |
-| **Opportunity Attack** | Refinement (Archivist), post-refinement | Detects whether refined work warrants an ADR, Runbook, or Treasure Chest registration, each surfaced independently at the gate. |
+| **Opportunity Attack** | Refinement (Archivist), post-refinement | Detects whether refined work warrants an ADR or Runbook, each surfaced independently at the gate. Treasure Chest registration belongs to the root `treasure-chest/` module. |
 | **Critical Hit** | Scout, before the main pipeline | Recognizes a bounded artifact-maintenance request; deterministic eligibility Mechanisms decide whether the Feat may activate. |
 | **Side Quest** | Discovery or Refinement | Detects adjacent work and surfaces it at the gate instead of silently expanding mission scope. |
 

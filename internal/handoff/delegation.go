@@ -53,6 +53,10 @@ type Delegation struct {
 	Threshold    float64  `json:"threshold"`
 	InputTokens  int      `json:"input_tokens"`
 	OutputTokens int      `json:"output_tokens"`
+	// CalibrationID is the pinned calibration whose threshold decided the approval,
+	// set only when that calibration was valid for this call; empty means the
+	// configured default threshold applied.
+	CalibrationID string `json:"calibration_id,omitempty"`
 }
 
 // Approved applies the fixed local rule: confidence strictly above the threshold.

@@ -31,6 +31,7 @@ type SubmitPreflightPorts struct {
 	RequireNoAcceptedSideQuest   func(root, missionID string, event domain.MissionEngineEvent) error
 	RequireAuthoredPackageRepair func(basePath, missionID string, event domain.MissionEngineEvent) error
 	ValidateArtifacts            func(basePath, missionID string, event domain.MissionEngineEvent) error
+	EnsureOpportunityAttack      func(root, basePath, missionID string, event domain.MissionEngineEvent) error
 	ApprovalGatePackageDigest    func(basePath string, status domain.MissionEngineStatus, event domain.MissionEngineEvent) (string, error)
 	RequireExecutionEvidence     func(root, basePath string, status domain.MissionEngineStatus, event domain.MissionEngineEvent) (*handoff.Outcome, error)
 	RepairPackageDigest          func(basePath, missionID string, event domain.MissionEngineEvent) (string, error)
@@ -56,6 +57,12 @@ func runSubmitPreflightGuards(request SubmitPreflightRequest, ports SubmitPrefli
 			return ports.RequireAuthoredPackageRepair(request.BasePath, request.MissionID, request.Event)
 		},
 		func() error { return ports.ValidateArtifacts(request.BasePath, request.MissionID, request.Event) },
+		func() error {
+			if ports.EnsureOpportunityAttack == nil {
+				return nil
+			}
+			return ports.EnsureOpportunityAttack(request.Root, request.BasePath, request.MissionID, request.Event)
+		},
 	}
 	for _, guard := range guards {
 		if err := guard(); err != nil {

@@ -2,6 +2,7 @@ package mission
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/application"
@@ -42,7 +43,7 @@ func runSideQuestDecision(cmd *cobra.Command, deps LifecycleDependencies, f *lif
 	if err != nil {
 		return fmt.Errorf("mission %s: %w", name, err)
 	}
-	canonical, err := configuredADRPath(deps, root)
+	canonical, err := configuredSideQuestPath(deps, root, sideQuest)
 	if err != nil {
 		return fmt.Errorf("mission %s: %w", name, err)
 	}
@@ -63,6 +64,19 @@ func configuredADRPath(deps LifecycleDependencies, root string) (string, error) 
 		return "", nil
 	}
 	return deps.ADRCanonicalPath(root)
+}
+
+func configuredSideQuestPath(deps LifecycleDependencies, root, sideQuest string) (string, error) {
+	if strings.HasPrefix(sideQuest, "OA-CHEST-") {
+		return "", nil
+	}
+	if strings.HasPrefix(sideQuest, "OA-RUNBOOK-") {
+		if deps.RunbookCanonicalPath == nil {
+			return "", nil
+		}
+		return deps.RunbookCanonicalPath(root)
+	}
+	return configuredADRPath(deps, root)
 }
 
 // ADRTargetResult is the JSON/text result of `mission adr-target`.

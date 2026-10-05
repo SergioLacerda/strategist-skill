@@ -55,7 +55,9 @@ type Request struct {
 }
 
 // Answer is one typed provider answer. Confidence is meaningful only when
-// HasConfidence is true: a noul answer never carries one.
+// HasConfidence is true: a noul answer never carries one. Probabilities is the
+// provider's belief per offered option on a choice answer; it is a separate
+// measure from Confidence.
 type Answer struct {
 	Kind          QuestionKind
 	Noul          float64
@@ -63,6 +65,7 @@ type Answer struct {
 	Score         float64
 	Confidence    float64
 	HasConfidence bool
+	Probabilities map[string]float64
 }
 
 // Usage is the provider-reported token usage of one call.

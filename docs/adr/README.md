@@ -61,6 +61,9 @@ lookup by topic fast without moving any file.
 | [0063](0063-governance-compatibility.md) | Provider-agnostic governance compatibility boundary |
 | [0064](0064-canonical-seven-family-taxonomy.md) | Canonical seven-family taxonomy and evidence-state model |
 | [0065](0065-provider-integration-mechanism.md) | Provider Integration Mechanism (JEV first, `main` fallback) |
+| [0066](0066-dojo-judge-calibration.md) | DOJO judge calibration (cases, observations, fitness gates, pinned calibration) |
+| [0067](0067-ranked-writing-plans-archivist.md) | Ranked embedded Archivist Weapon: `writing-plans` (third Ranked pairing, alongside `openspec-propose`) |
+| [0069](0069-mission-and-phase-token-telemetry-ledgers.md) | Mission and phase token telemetry: lifecycle ledger, usage ledger and shared read surface |
 
 ### Knowledge & Jewels
 

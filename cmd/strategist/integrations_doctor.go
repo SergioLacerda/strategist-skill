@@ -19,18 +19,22 @@ import (
 // available, because each is a different claim. "available" comes only from a
 // recorded, valid probe; the doctor itself never calls the provider.
 type doctorReport struct {
-	Provider      string   `json:"provider"`
-	Declared      bool     `json:"declared"`
-	Bound         bool     `json:"bound"`
-	Enabled       bool     `json:"enabled"`
-	Compatible    bool     `json:"compatible"`
-	Available     string   `json:"available"`
-	ObservedAt    string   `json:"observed_at,omitempty"`
-	ValidUntil    string   `json:"valid_until,omitempty"`
-	PinnedModel   string   `json:"pinned_model,omitempty"`
-	ResolvedModel string   `json:"resolved_model,omitempty"`
-	Endpoint      string   `json:"endpoint,omitempty"`
-	Credential    string   `json:"credential"`
+	Provider      string `json:"provider"`
+	Declared      bool   `json:"declared"`
+	Bound         bool   `json:"bound"`
+	Enabled       bool   `json:"enabled"`
+	Compatible    bool   `json:"compatible"`
+	Available     string `json:"available"`
+	ObservedAt    string `json:"observed_at,omitempty"`
+	ValidUntil    string `json:"valid_until,omitempty"`
+	PinnedModel   string `json:"pinned_model,omitempty"`
+	ResolvedModel string `json:"resolved_model,omitempty"`
+	Endpoint      string `json:"endpoint,omitempty"`
+	Credential    string `json:"credential"`
+	// Calibration is "calibrado (...)" when a pinned calibration is valid for the
+	// model and a question profile, otherwise "não calibrado" with the reason.
+	Calibration   string   `json:"calibration"`
+	CalibrationID string   `json:"calibration_id,omitempty"`
 	Findings      []string `json:"findings"`
 }
 
@@ -56,7 +60,7 @@ func runIntegrationsDoctor(cmd *cobra.Command, opts integrationsOptions) error {
 
 func buildDoctorReport(root string, file config.File, found bool, record probe.Record, probed bool, now time.Time) doctorReport {
 	provider, declared := file.Providers[integrationProvider]
-	report := doctorReport{Provider: integrationProvider, Declared: found && declared, Available: string(probe.Unknown), Credential: "not_configured", Findings: []string{}}
+	report := doctorReport{Provider: integrationProvider, Declared: found && declared, Available: string(probe.Unknown), Credential: "not_configured", Calibration: notCalibratedText, Findings: []string{}}
 	if !report.Declared {
 		return report
 	}
@@ -71,6 +75,8 @@ func buildDoctorReport(root string, file config.File, found bool, record probe.R
 		report.ValidUntil = validUntil.UTC().Format(time.RFC3339)
 	}
 	report.Credential, report.Findings = credentialState(root, provider)
+	report.CalibrationID = provider.CalibrationID
+	report.Calibration = calibrationState(root, provider, firstNonEmpty(report.ResolvedModel, provider.Model), now)
 	return report
 }
 
@@ -137,7 +143,7 @@ func doctorLines(r doctorReport) []string {
 			lines = append(lines, kv[0]+": "+kv[1])
 		}
 	}
-	return append(lines, "credential: "+r.Credential, "findings: "+findings)
+	return append(lines, "credential: "+r.Credential, "calibration: "+r.Calibration, "findings: "+findings)
 }
 
 func printDoctorJSON(cmd *cobra.Command, report doctorReport) error {

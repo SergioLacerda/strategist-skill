@@ -3,13 +3,36 @@ package install
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/i18n"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type documentationRootPrompter struct {
+	values []string
+}
+
+func (p *documentationRootPrompter) Select(_, defaultVal string, _ []string) (string, error) {
+	return defaultVal, nil
+}
+
+func (p *documentationRootPrompter) Input(_, _ string) (string, error) {
+	if len(p.values) == 0 {
+		return "", fmt.Errorf("documentationRootPrompter: no scripted value")
+	}
+	value := p.values[0]
+	p.values = p.values[1:]
+	return value, nil
+}
+
+func (p *documentationRootPrompter) SelectOrInput(_, defaultVal string, _ []string, _ string) (string, error) {
+	return defaultVal, nil
+}
 
 // skillYAMLExtractor returns a synthetic skill.yaml with the given active_config values.
 type skillYAMLExtractor struct {
@@ -83,6 +106,29 @@ func TestNormLang(t *testing.T) {
 	assert.Equal(t, "fr", normLang("fr"))
 }
 
+func TestPromptDocumentationRootsNormalizesAbsolutePathsWithinWorkspace(t *testing.T) {
+	workspace := t.TempDir()
+	prompter := &documentationRootPrompter{values: []string{
+		filepath.Join(workspace, ".analysis", "adr"),
+		filepath.Join(workspace, "docs", "runbooks"),
+	}}
+
+	adr, runbooks, err := promptDocumentationRoots(prompter, i18n.EN, filepath.Join(workspace, ".analysis"), workspace)
+	require.NoError(t, err)
+	assert.Equal(t, ".analysis/adr", adr)
+	assert.Equal(t, "docs/runbooks", runbooks)
+}
+
+func TestPromptDocumentationRootsRejectsAbsolutePathOutsideWorkspace(t *testing.T) {
+	workspace := t.TempDir()
+	prompter := &documentationRootPrompter{values: []string{filepath.Join(t.TempDir(), "adr")}}
+
+	_, _, err := promptDocumentationRoots(prompter, i18n.EN, ".analysis", workspace)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "adr.canonical_path")
+	assert.ErrorContains(t, err, "selected project workspace")
+}
+
 func TestValidateProvider(t *testing.T) {
 	t.Parallel()
 
@@ -104,25 +150,27 @@ func TestInstallableDefaultProviders(t *testing.T) {
 func TestRunWizard(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name           string
-		input          string
-		wantUILanguage string
-		wantDocLang    string
-		wantChatLang   string
-		wantCodeLang   string
-		wantMode       string
-		wantBase       string
-		wantDiscovery  string
-		wantRefinement string
-		wantExecution  string
-		wantExecMode   string
-		wantChestPath  string
+		name            string
+		input           string
+		wantUILanguage  string
+		wantDocLang     string
+		wantChatLang    string
+		wantCodeLang    string
+		wantMode        string
+		wantBase        string
+		wantDiscovery   string
+		wantRefinement  string
+		wantExecution   string
+		wantExecMode    string
+		wantChestPath   string
+		wantADRRoot     string
+		wantRunbookRoot string
 	}{
 		{
 			name: "all defaults (empty lines)",
-			// 10 prompts: ui/doc/chat/code/mode/base/discovery/refinement/execution/chest.
+			// 12 prompts: ui/doc/chat/code/mode/base/adr/runbook/discovery/refinement/execution/chest.
 			// The invalid extra value proves the removed LEVELING prompt does not consume input.
-			input:          "\n\n\n\n\n\n\n\n\n\nunexpected-leveling-answer\n",
+			input:          "\n\n\n\n\n\n\n\n\n\n\n\nunexpected-leveling-answer\n",
 			wantUILanguage: "en",
 			wantDocLang:    "en",
 			wantChatLang:   "en",
@@ -130,15 +178,17 @@ func TestRunWizard(t *testing.T) {
 			wantMode:       "epic",
 			wantBase:       ".analysis",
 			// Defaults select the embedded weapon affiliated with each fixed role.
-			wantDiscovery:  "brainstorming",
-			wantRefinement: "openspec-propose",
-			wantExecution:  "sniper",
-			wantExecMode:   domain.SlotBindingModeCustom,
-			wantChestPath:  "",
+			wantDiscovery:   "brainstorming",
+			wantRefinement:  "openspec-propose",
+			wantExecution:   "sniper",
+			wantExecMode:    domain.SlotBindingModeCustom,
+			wantChestPath:   "",
+			wantADRRoot:     ".analysis/adr",
+			wantRunbookRoot: ".analysis/runbooks",
 		},
 		{
 			name:           "en ui, custom languages and slots with chest",
-			input:          "en\nen\npt-BR\nen\nepic\n/workspace\nbrainstorming\narchivist\nbatata\ngovernance/source\n",
+			input:          "en\nen\npt-BR\nen\nepic\n/workspace\ndocs/decisions\ndocs/runbooks\nbrainstorming\narchivist\nbatata\ngovernance/source\n",
 			wantUILanguage: "en",
 			wantDocLang:    "en",
 			wantChatLang:   "pt-BR",
@@ -149,24 +199,28 @@ func TestRunWizard(t *testing.T) {
 			wantRefinement: "archivist",
 			// A non-ranked execution selection is retained as an explicit Custom
 			// binding; it is never silently replaced by the native Sniper role.
-			wantExecution: "batata",
-			wantExecMode:  domain.SlotBindingModeCustom,
-			wantChestPath: "governance/source",
+			wantExecution:   "batata",
+			wantExecMode:    domain.SlotBindingModeCustom,
+			wantChestPath:   "governance/source",
+			wantADRRoot:     "docs/decisions",
+			wantRunbookRoot: "docs/runbooks",
 		},
 		{
-			name:           "pt-BR ui language",
-			input:          "pt-BR\nen\npt-BR\nen\npragmatic\n.\n\n\n\n\n",
-			wantUILanguage: "pt-BR",
-			wantDocLang:    "en",
-			wantChatLang:   "pt-BR",
-			wantCodeLang:   "en",
-			wantMode:       "pragmatic",
-			wantBase:       ".",
-			wantDiscovery:  "brainstorming",
-			wantRefinement: "openspec-propose",
-			wantExecution:  "sniper",
-			wantExecMode:   domain.SlotBindingModeCustom,
-			wantChestPath:  "",
+			name:            "pt-BR ui language",
+			input:           "pt-BR\nen\npt-BR\nen\npragmatic\n.\n\n\n\n\n\n\n",
+			wantUILanguage:  "pt-BR",
+			wantDocLang:     "en",
+			wantChatLang:    "pt-BR",
+			wantCodeLang:    "en",
+			wantMode:        "pragmatic",
+			wantBase:        ".",
+			wantDiscovery:   "brainstorming",
+			wantRefinement:  "openspec-propose",
+			wantExecution:   "sniper",
+			wantExecMode:    domain.SlotBindingModeCustom,
+			wantChestPath:   "",
+			wantADRRoot:     "adr",
+			wantRunbookRoot: "runbooks",
 		},
 	}
 
@@ -186,6 +240,8 @@ func TestRunWizard(t *testing.T) {
 			assert.Equal(t, tt.wantExecution, wc.ExecutionProvider)
 			assert.Equal(t, tt.wantExecMode, wc.ExecutionMode)
 			assert.Equal(t, tt.wantChestPath, wc.TreasureChestPath)
+			assert.Equal(t, tt.wantADRRoot, wc.AdrCanonicalPath)
+			assert.Equal(t, tt.wantRunbookRoot, wc.RunbookCanonicalPath)
 			assert.Equal(t, domain.LevelingModeAutomatic, wc.Leveling.EffectiveMode())
 		})
 	}
@@ -210,13 +266,15 @@ func TestRunWizardBlocksOnUnreadableCatalog(t *testing.T) {
 func TestWizardDoesNotAskPermissionLevel(t *testing.T) {
 	t.Parallel()
 	// Input has no legacy execution_mode / apply_workspace / git_persistence_mode / adr tokens.
-	// 10 prompts: ui/doc/chat/code/mode/base/discovery/refinement/execution/chest
+	// 12 prompts: ui/doc/chat/code/mode/base/adr/runbook/discovery/refinement/execution/chest
 	// If the wizard still prompts for execution mode or ADR, the input will be exhausted and the test errors.
-	input := "en\nen\npt-BR\nen\nepic\n.analysis\nbrainstorming\nopenspec-explore\nsniper\n\n"
+	input := "en\nen\npt-BR\nen\nepic\n.analysis\n\n\nbrainstorming\nopenspec-explore\nsniper\n\n"
 	wc, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(input)), minimalExtractor{}, "", false)
 	require.NoError(t, err)
 	assert.Equal(t, "epic", wc.Mode)
 	assert.Equal(t, "brainstorming", wc.DiscoveryProvider)
+	assert.Equal(t, ".analysis/adr", wc.AdrCanonicalPath)
+	assert.Equal(t, ".analysis/runbooks", wc.RunbookCanonicalPath)
 }
 
 func TestValidateWizardRoleBindings_ReportsTheFailingEntrysResolutionError(t *testing.T) {

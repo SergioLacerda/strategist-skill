@@ -19,8 +19,10 @@ type ResultRecord struct {
 	FailCount  int                    `json:"fail_count"`
 	Reasons    []FailureReason        `json:"reasons,omitempty"`
 	Items      []domain.DojoCheckItem `json:"items"`
-	StartedAt  string                 `json:"started_at"`
-	FinishedAt string                 `json:"finished_at"`
+	// Calibration is present only for a judge_calibration case.
+	Calibration *domain.DojoCalibrationResult `json:"calibration,omitempty"`
+	StartedAt   string                        `json:"started_at"`
+	FinishedAt  string                        `json:"finished_at"`
 }
 
 // RunRecord is the compact form appended, one line per run, to
@@ -33,6 +35,8 @@ type RunRecord struct {
 	Reasons    []FailureReason `json:"reasons,omitempty"`
 	StartedAt  string          `json:"started_at"`
 	FinishedAt string          `json:"finished_at"`
+	// Calibration is the compact calibration line of a judge_calibration case.
+	Calibration *domain.DojoCalibrationResult `json:"calibration,omitempty"`
 }
 
 // PersistResult writes result.json under <base_path>/dojo/.last-run/<scenario>/ and
@@ -44,23 +48,25 @@ func PersistResult(basePath string, result domain.DojoCheckResult, startedAt, fi
 		return err
 	}
 	record := ResultRecord{
-		Scenario:   result.Scenario,
-		ScenarioID: paths.ScenarioID,
-		Passed:     result.Passed(),
-		FailCount:  result.FailCount(),
-		Reasons:    ClassifyFailures(result.Items),
-		Items:      result.Items,
-		StartedAt:  startedAt.UTC().Format(time.RFC3339),
-		FinishedAt: finishedAt.UTC().Format(time.RFC3339),
+		Scenario:    result.Scenario,
+		ScenarioID:  paths.ScenarioID,
+		Passed:      result.Passed(),
+		FailCount:   result.FailCount(),
+		Reasons:     ClassifyFailures(result.Items),
+		Items:       result.Items,
+		Calibration: result.Calibration,
+		StartedAt:   startedAt.UTC().Format(time.RFC3339),
+		FinishedAt:  finishedAt.UTC().Format(time.RFC3339),
 	}
 	entry := RunRecord{
-		Scenario:   record.Scenario,
-		ScenarioID: record.ScenarioID,
-		Passed:     record.Passed,
-		FailCount:  record.FailCount,
-		Reasons:    record.Reasons,
-		StartedAt:  record.StartedAt,
-		FinishedAt: record.FinishedAt,
+		Scenario:    record.Scenario,
+		ScenarioID:  record.ScenarioID,
+		Passed:      record.Passed,
+		FailCount:   record.FailCount,
+		Reasons:     record.Reasons,
+		StartedAt:   record.StartedAt,
+		FinishedAt:  record.FinishedAt,
+		Calibration: result.Calibration,
 	}
 	return withStorageLock(paths, func() error {
 		if err := writeResultJSON(paths, record); err != nil {

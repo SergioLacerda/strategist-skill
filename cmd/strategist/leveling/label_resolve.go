@@ -33,7 +33,7 @@ func labelRoleWithMax(reg domain.RoleRegistry, load internal.PolicyLoader, cfg d
 	if err != nil {
 		return LabelResult{}, fmt.Errorf("resolve level: %w", err)
 	}
-	return LabelResult{Level: result.Level, Reused: result.Reused, Recorded: result.Recorded, Warning: result.Warning, Reason: result.Reason}, nil
+	return LabelResult{Level: result.Level, Reused: result.Reused, Recorded: result.Recorded, Warning: result.Warning, Reason: result.Reason, Escalation: result.Escalation}, nil
 }
 
 func ledgerName(deps Dependencies) string {

@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/SergioLacerda/strategist-skill/internal/calibration"
 	"github.com/SergioLacerda/strategist-skill/internal/integration"
 )
 
@@ -83,6 +84,20 @@ func (p Provider) validateEnabled() error {
 func (p Provider) validateLimits() error {
 	if p.ApprovalThreshold < 0 || p.ApprovalThreshold > 1 || p.CallBudget < 0 {
 		return errors.New("approval_threshold must be in (0,1] and call_budget cannot be negative")
+	}
+	return p.validateCalibration()
+}
+
+// validateCalibration accepts only a pinned calibration id, never "latest" or a path.
+func (p Provider) validateCalibration() error {
+	if !calibration.KnownProfile(p.Profile) {
+		return errors.New("profile must be handoff-v1 or handoff-v2")
+	}
+	if p.CalibrationID != "" && !calibration.ValidID(p.CalibrationID) {
+		return errors.New("calibration_id must be a calibration id (cal-YYYYMMDD-xxxxxxxx), never \"latest\"")
+	}
+	if p.CalibrationMaxAgeDays < 0 {
+		return errors.New("calibration_max_age_days cannot be negative")
 	}
 	return nil
 }

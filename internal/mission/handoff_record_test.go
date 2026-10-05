@@ -210,3 +210,70 @@ func TestRecordArchivistHandoffPersistenceFailureDoesNotAdvanceTheMission(t *tes
 	assert.False(t, changed)
 	assert.Equal(t, before, status)
 }
+
+const packageSummaryBlock = `confidence_summary:
+  policy_version: v1
+  calibration_status: no_sample
+  sample_size: 0
+  open_questions:
+    - id: Q-001
+      statement: Is the handoff complete?
+      agent: archivist
+      correlation_key: question-1
+      claim_kind: question
+      confidence_percent: 40
+`
+
+func handoffConfidenceRecords(t *testing.T, root string) []telemetry.ConfidenceRecord {
+	t.Helper()
+	records, err := telemetry.ReadConfidenceRecords(telemetry.ConfidenceHistoryPath(root))
+	require.NoError(t, err)
+	return records
+}
+
+func TestAPackageThatAlreadyCarriesTheTypedSummaryFeedsTheHandoffRecord(t *testing.T) {
+	f := newRecordFixture(t, "rec-derived", recordFacts+packageSummaryBlock)
+
+	_, _, _, err := RecordArchivistHandoff(f.root, f.basePath, f.engine, recordChallenges())
+	require.NoError(t, err)
+	records := handoffConfidenceRecords(t, f.root)
+	require.Len(t, records, 1)
+	assert.Equal(t, "reported", records[0].CoverageStatus, "derived from the package, not an empty missing record")
+	assert.Equal(t, "Q-001", records[0].ClaimID)
+}
+
+func TestAPackageWithoutTheTypedSummaryGetsAnHonestMissingReason(t *testing.T) {
+	f := newRecordFixture(t, "rec-honest", recordFacts)
+
+	_, _, _, err := RecordArchivistHandoff(f.root, f.basePath, f.engine, recordChallenges())
+	require.NoError(t, err)
+	records := handoffConfidenceRecords(t, f.root)
+	require.Len(t, records, 1)
+	assert.Equal(t, "missing", records[0].CoverageStatus)
+	assert.Equal(t, "package_has_no_typed_confidence_summary", records[0].MissingReason, "the reason says what is true: the package has none, not that the caller forgot")
+}
+
+func TestAnInvalidPackageSummaryIsMissingWithItsOwnReasonNeverAGuess(t *testing.T) {
+	bad := "confidence_summary:\n  policy_version: not-a-version\n  sample_size: 0\n  calibration_status: no_sample\n  open_questions: []\n"
+	f := newRecordFixture(t, "rec-bad", recordFacts+bad)
+
+	_, _, _, err := RecordArchivistHandoff(f.root, f.basePath, f.engine, recordChallenges())
+	require.NoError(t, err, "a bad optional block never blocks the handoff")
+	records := handoffConfidenceRecords(t, f.root)
+	require.Len(t, records, 1)
+	assert.Equal(t, "missing", records[0].CoverageStatus)
+	assert.Equal(t, "package_confidence_summary_invalid", records[0].MissingReason)
+}
+
+func TestACallerSuppliedSummaryAlwaysWinsOverThePackageBlock(t *testing.T) {
+	f := newRecordFixture(t, "rec-wins", recordFacts+packageSummaryBlock)
+	input := recordChallenges()
+	input.ConfidenceSummary = openQuestionSummary("archivist")
+	input.ConfidenceSummary.OpenQuestions[0].ID = "Q-CALLER"
+
+	_, _, _, err := RecordArchivistHandoff(f.root, f.basePath, f.engine, input)
+	require.NoError(t, err)
+	records := handoffConfidenceRecords(t, f.root)
+	require.Len(t, records, 1)
+	assert.Equal(t, "Q-CALLER", records[0].ClaimID)
+}

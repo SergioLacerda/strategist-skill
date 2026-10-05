@@ -35,6 +35,7 @@ func New(composition Composition) *cobra.Command {
 		NewRoute(composition.Lifecycle),
 		NewContext(composition.Lifecycle),
 		NewView(composition.View),
+		NewUsage(composition.View),
 		NewNormalizeOpenSpec(composition.Normalize),
 		NewReportUsage(composition.Usage),
 		NewInvoke(composition.Invocation),

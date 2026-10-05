@@ -48,6 +48,15 @@ type Report struct {
 	Delegation *handoff.Delegation
 	Hints      []Hint
 	Attempted  bool
+	// Reused is true when the report restates an earlier answer for the same
+	// revision instead of a new provider call.
+	Reused bool
+	// Calibration says whether a valid pinned calibration decided the threshold.
+	Calibration CalibrationUse
+	// BudgetState describes the local LEVELING budget boundary when one applies
+	// to this delegation. It is presentation metadata, not provider evidence.
+	BudgetState  string
+	BudgetReason string
 }
 
 // Consumer runs pre-checks through the Integration Mechanism.
@@ -58,6 +67,8 @@ type Consumer struct {
 	Version   string
 	Ledger    Ledger
 	Now       func() time.Time
+	// Calibrations resolves the pinned calibration record; nil means none can be read.
+	Calibrations CalibrationResolver
 }
 
 func (c *Consumer) binding() integration.Binding {
@@ -67,14 +78,14 @@ func (c *Consumer) binding() integration.Binding {
 // Precheck asks the provider whether the artifact conforms and applies the local
 // approval rule. It never blocks: every failure becomes a fallback to main.
 func (c *Consumer) Precheck(ctx context.Context, request Request) Report {
-	questions := Questions(request.Transition)
+	questions := QuestionsFor(c.Provider.Profile, request.Transition)
 	if !c.Provider.Enabled || len(questions) == 0 {
 		return Report{Status: StatusDisabled, Reason: integration.StateDisabled}
 	}
 	if state := c.refuse(request); state != "" {
 		return c.fallback(request, state)
 	}
-	text, err := Project(request.Transition, request.Source, c.Provider.DataPolicy.AllowedFields, c.Provider.DataPolicy.MaxStateBytes)
+	text, err := ProjectFor(c.Provider.Profile, request.Transition, request.Source, c.Provider.DataPolicy.AllowedFields, c.Provider.DataPolicy.MaxStateBytes)
 	if err != nil {
 		state, _ := integration.StateOf(err)
 		return c.fallback(request, state)
@@ -118,6 +129,8 @@ func (c *Consumer) report(request Request, outcome mechanism.Outcome) Report {
 		}
 		return report
 	}
+	report.Calibration = withProbability(c.calibrationFor(request.Transition, outcome.Result.Model), *outcome.Result)
+	report.Threshold = c.threshold(report.Calibration)
 	verdict := Evaluate(request.Transition, *outcome.Result, report.Threshold)
 	report.Confidence, report.Hints = verdict.Confidence, verdict.Hints
 	if !verdict.Approved {
@@ -130,6 +143,7 @@ func (c *Consumer) report(request Request, outcome mechanism.Outcome) Report {
 		Capability: string(integration.CapHandoffValidate), Criterion: AggregateKey, Subject: request.Subject,
 		Checks: handoff.DelegableChecks(), Confidence: verdict.Confidence, Threshold: report.Threshold,
 		InputTokens: outcome.Result.Usage.InputTokens, OutputTokens: outcome.Result.Usage.OutputTokens,
+		CalibrationID: appliedID(report.Calibration),
 	}
 	return report
 }
@@ -140,7 +154,9 @@ func (c *Consumer) record(request Request, report Report, outcome mechanism.Outc
 		PreferredPath: string(policy.PathJEV), EffectivePath: string(outcome.Decision.Effective), Reason: string(report.Reason),
 		FellBack: outcome.Decision.FellBack, Suspect: outcome.Decision.Suspect, Binding: outcome.Decision.Binding,
 		Attempted: outcome.Attempted, Approved: report.Status == StatusApproved, Confidence: report.Confidence,
-		Threshold: report.Threshold, LatencyMS: latency.Milliseconds(),
+		Threshold: report.Threshold, LatencyMS: latency.Milliseconds(), Provider: c.Name,
+		Answered: outcome.Result != nil, Hints: hintKeys(report.Hints), Reused: report.Reused,
+		CalibrationID: report.Calibration.ID, Calibrated: report.Calibration.Applied, CalibrationReason: report.Calibration.Reason,
 	}
 	if outcome.Result != nil {
 		record.Model = outcome.Result.Model
@@ -156,4 +172,25 @@ func (c *Consumer) now() time.Time {
 		return c.Now()
 	}
 	return time.Now()
+}
+
+// appliedID is the calibration id only when that calibration decided the threshold.
+func appliedID(use CalibrationUse) string {
+	if use.Applied {
+		return use.ID
+	}
+	return ""
+}
+
+// withProbability drops a calibration when the answer has no probability of accept: a
+// calibrated threshold is a threshold on that quantity, and the documented confidence
+// is a different one, so the configured threshold applies and the reason is recorded.
+func withProbability(use CalibrationUse, result integration.Result) CalibrationUse {
+	if !use.Applied {
+		return use
+	}
+	if _, reported := result.Answers[AggregateKey].Probabilities[OptionAccept]; reported {
+		return use
+	}
+	return CalibrationUse{ID: use.ID, Reason: ReasonProbabilityUnavailable}
 }

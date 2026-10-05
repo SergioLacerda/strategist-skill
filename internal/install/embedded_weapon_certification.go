@@ -14,7 +14,10 @@ import (
 // docs/adr/0043-ranked-pipeline-pilot-implementation-decisions.md
 // Non-Goals); the second, Archivist↔openspec-propose, was added per
 // docs/adr/0045-ranked-testsuitedigest-shared-pin.md (see that ADR for
-// the TestSuiteDigest evidence caveat this pairing accepts). Extending
+// the TestSuiteDigest evidence caveat this pairing accepts). The third,
+// Archivist↔writing-plans (embedded prompt bridge), is
+// docs/adr/0067-ranked-writing-plans-archivist.md and inherits the same
+// caveat. Extending
 // Ranked to another pairing requires a deliberate addition here, never
 // automatic certification of every embedded candidate.
 //
@@ -25,6 +28,7 @@ var rankedCertificationPairs = map[string]string{
 	"brainstorming@1.0.0":  "ranger",
 	"openspec-propose@1.0": "archivist",
 	"sniper@0.0.0":         "sniper",
+	"writing-plans@1.0.0":  "archivist",
 }
 
 // certifyRankedCandidates stamps ranked/certification_digest (plus the
@@ -157,6 +161,18 @@ func validateRankedCandidate(provider pluginCatalogProvider, wantRole string) er
 	}
 	if err := provider.Runtime.Validate(); err != nil {
 		return fmt.Errorf("runtime contract invalid: %w", err)
+	}
+	return validateRankedRuntimeKind(provider)
+}
+
+// validateRankedRuntimeKind rejects, at certification time, the runtime kinds a
+// compiled Ranked binding can never carry (host and executable): certifying
+// one would only surface later as a registry validation failure, or as an
+// unservable binding (ADR-0067).
+func validateRankedRuntimeKind(provider pluginCatalogProvider) error {
+	switch kind := domain.NormalizeRankedRuntime(provider.Runtime).Kind; kind {
+	case domain.RankedRuntimeHost, domain.RankedRuntimeExecutable:
+		return fmt.Errorf("runtime kind %q cannot be certified as Ranked", kind)
 	}
 	return nil
 }

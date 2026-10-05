@@ -89,12 +89,11 @@ type WizardConfig struct {
 	// integration (enable, disable or keep); empty when it was not asked.
 	IntegrationChoice string
 	// AdrCanonicalPath is the optional, project-relative destination Sniper writes ADRs
-	// to instead of the <base_path>/archived/<mission_id>-adr.md fallback (see
-	// contracts/narrative/07-adr.md § Canonical Destination Resolution). Empty means
-	// absent — no default is invented here. Not currently collected by the interactive
-	// wizard (see TestWizardDoesNotAskPermissionLevel): set this field when constructing
-	// WizardConfig programmatically, or edit active.yaml by hand after install.
+	// to instead of the <base_path>/archived/<mission_id>-adr.md fallback.
 	AdrCanonicalPath string
+	// RunbookCanonicalPath is the optional, project-relative destination for accepted
+	// Runbooks. Empty preserves the legacy docs/runbooks compatibility behavior.
+	RunbookCanonicalPath string
 	// ResolvedPluginLock is the discovery/refinement role→weapon binding
 	// state resolved by the Role/Provider migration during this wizard run
 	// (docs/adr/0037-wizard-role-binding-persistence.md). Zero-value

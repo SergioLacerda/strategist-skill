@@ -5,6 +5,18 @@ defaults:
     capability: general
     effort: medium
     reason: generic_ranked_provider
+  budget:
+    max_delegations: 1
+    max_depth: 1
+    parallelism: 1
+    context_budget: low
+    evidence_depth: standard
+    permissions:
+      specialists: false
+      side_quests: false
+      deep_history: false
+    escalation_allowed: true
+    max_escalations: 1
   roles:
     scout:
       capability: economical
@@ -17,6 +29,18 @@ defaults:
       escalation:
         capability: reasoning
         effort: high
+      budget:
+        max_delegations: 0
+        max_depth: 0
+        parallelism: 1
+        context_budget: low
+        evidence_depth: standard
+        permissions:
+          specialists: false
+          side_quests: false
+          deep_history: false
+        escalation_allowed: true
+        max_escalations: 1
     ranger:
       capability: reasoning
       effort: high
@@ -28,6 +52,18 @@ defaults:
       escalation:
         capability: reasoning
         effort: xhigh
+      budget:
+        max_delegations: 2
+        max_depth: 2
+        parallelism: 1
+        context_budget: medium
+        evidence_depth: standard
+        permissions:
+          specialists: true
+          side_quests: false
+          deep_history: false
+        escalation_allowed: true
+        max_escalations: 1
     archivist:
       capability: reasoning
       effort: high
@@ -39,6 +75,18 @@ defaults:
       escalation:
         capability: reasoning
         effort: xhigh
+      budget:
+        max_delegations: 2
+        max_depth: 2
+        parallelism: 1
+        context_budget: medium
+        evidence_depth: deep
+        permissions:
+          specialists: true
+          side_quests: false
+          deep_history: true
+        escalation_allowed: true
+        max_escalations: 1
     sniper:
       capability: economical
       effort: medium
@@ -50,6 +98,18 @@ defaults:
       escalation:
         capability: reasoning
         effort: high
+      budget:
+        max_delegations: 1
+        max_depth: 1
+        parallelism: 1
+        context_budget: low
+        evidence_depth: minimal
+        permissions:
+          specialists: false
+          side_quests: false
+          deep_history: false
+        escalation_allowed: true
+        max_escalations: 1
 providers:
   CODEX:
     ranked: true

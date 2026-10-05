@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/handoff"
@@ -13,6 +14,8 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/integration/config"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/handoffconsumer"
 	"github.com/SergioLacerda/strategist-skill/internal/integration/jev/jevtest"
+	levelingtools "github.com/SergioLacerda/strategist-skill/internal/tools/leveling"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,11 +24,17 @@ const delegationKey = "sk-synthetic-cmd-key"
 // sniperAnswer is a documented-shape provider answer for the Archivist-to-Sniper pre-check.
 func sniperAnswer(t *testing.T, choice string, confidence float64) []byte {
 	t.Helper()
+	return answerFor(t, handoff.TransitionArchivistToSniper, choice, confidence)
+}
+
+// answerFor builds a documented-shape provider answer for any consuming boundary.
+func answerFor(t *testing.T, transition, choice string, confidence float64) []byte {
+	t.Helper()
 	answers := map[string]any{handoffconsumer.AggregateKey: map[string]any{
 		"type": "choice", "choice": choice, "confidence": confidence,
 		"probabilities": map[string]float64{"accept": confidence, "reject": 1 - confidence},
 	}}
-	for _, criterion := range handoffconsumer.Criteria(handoff.TransitionArchivistToSniper) {
+	for _, criterion := range handoffconsumer.Criteria(transition) {
 		answers[criterion.Key] = map[string]any{"type": "noul", "noul": 1.0}
 	}
 	raw, err := json.Marshal(map[string]any{"model": "jev-1.13.0", "answers": answers, "usage": map[string]int{"input_tokens": 80, "output_tokens": 9}})
@@ -49,7 +58,7 @@ func enableIntegration(t *testing.T, root string, sim *jevtest.Server, mutate fu
 	}))
 	t.Setenv("TYPESAFE_API_KEY", delegationKey)
 	delegationRoundTripper = sim.Transport()
-	t.Cleanup(func() { delegationRoundTripper = nil })
+	t.Cleanup(func() { delegationRoundTripper = networkGuard })
 }
 
 func informationalMission(t *testing.T) string {
@@ -75,7 +84,7 @@ func TestEvaluateRecordsAnApprovedDelegationAndTellsTheAgent(t *testing.T) {
 
 	out, err := runEvaluate(t, handoffEvaluateOptions{Root: root, MissionID: "m1"})
 	require.NoError(t, err)
-	require.Contains(t, out, "delegation: approved provider=jev model=jev-1.13.0 confidence=0.96 threshold=0.90")
+	require.Contains(t, out, "delegation: approved provider=jev model=jev-1.13.0 confidence=0.96 threshold=0.80")
 
 	outcome, err := handoff.NewOutcomeStore(root).Latest("m1")
 	require.NoError(t, err)
@@ -97,7 +106,7 @@ func TestEvaluateSignalsBelowThresholdAndRecordsNoDelegation(t *testing.T) {
 
 	out, err := runEvaluate(t, handoffEvaluateOptions{Root: root, MissionID: "m1"})
 	require.NoError(t, err, "a low confidence never blocks the handoff")
-	require.Contains(t, out, "delegation: signal confidence=0.70 threshold=0.90 path=main")
+	require.Contains(t, out, "delegation: signal confidence=0.70 threshold=0.80 path=main")
 
 	outcome, err := handoff.NewOutcomeStore(root).Latest("m1")
 	require.NoError(t, err)
@@ -116,6 +125,28 @@ func TestEvaluateFallsBackToMainWhenTheProviderFails(t *testing.T) {
 	outcome, err := handoff.NewOutcomeStore(root).Latest("m1")
 	require.NoError(t, err)
 	require.Equal(t, 1, outcome.Attempt)
+}
+
+func TestPrintDelegationDistinguishesBudgetUnavailabilityFromProviderFallback(t *testing.T) {
+	cmd := &cobra.Command{}
+	var output strings.Builder
+	cmd.SetOut(&output)
+
+	printDelegation(cmd, handoffconsumer.Report{
+		Status:       handoffconsumer.StatusFallback,
+		Reason:       integration.StateUnavailable,
+		BudgetState:  "unavailable",
+		BudgetReason: levelingtools.ReasonLevelingBudgetUnavailable,
+	})
+	require.Contains(t, output.String(), "budget=unavailable reason=leveling_budget_unavailable")
+
+	output.Reset()
+	printDelegation(cmd, handoffconsumer.Report{
+		Status:      handoffconsumer.StatusFallback,
+		Reason:      integration.StateUnavailable,
+		BudgetState: "granted",
+	})
+	require.Contains(t, output.String(), "reason=unavailable path=main budget=granted")
 }
 
 func TestEvaluateWithADisabledIntegrationMakesNoCall(t *testing.T) {
@@ -141,6 +172,7 @@ func TestAnUnreadableIntegrationFileFallsBackAndNeverBlocks(t *testing.T) {
 func TestRangerDelegateCallbackPreChecksTheArtifact(t *testing.T) {
 	root := filepath.Join(t.TempDir(), ".strategist")
 	require.NoError(t, os.MkdirAll(root, 0o755))
+	writeRangerBudget(t, root, rangerBudget("m1", "m1", 1))
 	basePath := filepath.Join(filepath.Dir(root), ".analysis")
 	pending := filepath.Join(basePath, "pending")
 	require.NoError(t, os.MkdirAll(pending, 0o755))

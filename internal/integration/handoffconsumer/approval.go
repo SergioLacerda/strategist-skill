@@ -24,17 +24,20 @@ type Verdict struct {
 const satisfied = 0.5
 
 // Evaluate applies the fixed local rule: the aggregate answer must be a choice
-// of accept whose confidence is strictly above the threshold. A noul answer has
-// no confidence and can never approve; a missing aggregate never approves. Hints
-// are returned only when the answer does not approve.
+// of accept whose confidence in acceptance is strictly above the threshold. That
+// confidence is the provider's probability of accept when it reports one (the
+// live provider's `confidence` is a separate, more conservative measure), and the
+// documented confidence otherwise. A noul answer has no confidence and can never
+// approve; a missing aggregate never approves. Hints are returned only when the
+// answer does not approve.
 func Evaluate(transition string, result integration.Result, threshold float64) Verdict {
 	aggregate, ok := result.Answers[AggregateKey]
 	verdict := Verdict{}
-	if ok && aggregate.HasConfidence {
-		verdict.Confidence = aggregate.Confidence
+	acceptance, known := acceptanceConfidence(aggregate)
+	if ok && known {
+		verdict.Confidence = acceptance
 	}
-	verdict.Approved = ok && aggregate.Kind == integration.KindChoice && aggregate.Choice == OptionAccept &&
-		aggregate.HasConfidence && aggregate.Confidence > threshold
+	verdict.Approved = ok && known && aggregate.Kind == integration.KindChoice && aggregate.Choice == OptionAccept && acceptance > threshold
 	if !verdict.Approved {
 		verdict.Hints = hints(transition, result)
 	}
@@ -50,4 +53,21 @@ func hints(transition string, result integration.Result) []Hint {
 	}
 	sort.Slice(found, func(i, j int) bool { return found[i].Criterion < found[j].Criterion })
 	return found
+}
+
+// acceptanceConfidence is the confidence that the handoff conforms, and whether
+// the answer carries one. The probability of accept wins when reported; otherwise
+// the confidence of the chosen option is converted: a reject at 99% is 1%.
+func acceptanceConfidence(aggregate integration.Answer) (float64, bool) {
+	if probability, reported := aggregate.Probabilities[OptionAccept]; reported {
+		return probability, true
+	}
+	switch {
+	case !aggregate.HasConfidence:
+		return 0, false
+	case aggregate.Choice == OptionAccept:
+		return aggregate.Confidence, true
+	default:
+		return 1 - aggregate.Confidence, true
+	}
 }

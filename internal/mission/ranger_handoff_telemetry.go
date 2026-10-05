@@ -3,6 +3,7 @@ package mission
 import (
 	"context"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/handoff"
@@ -30,14 +31,14 @@ func (t rangerTelemetry) blocked(err error) error {
 	if containsRangerFactsMissing(err) {
 		return err
 	}
-	if telemetryErr := emitRangerHandoffTelemetry(t.ctx, t.sink, t.runID, "indeterminate", false, 0, "blocked", 0, rangerHandoffReason(err)); telemetryErr != nil {
+	if telemetryErr := emitRangerHandoffTelemetry(t.ctx, t.sink, t.runID, "indeterminate", false, 0, "blocked", 0, rangerHandoffReason(err), telemetry.HandoffCriterion{}); telemetryErr != nil {
 		return fmt.Errorf("evaluate Ranger-to-Archivist handoff: emit telemetry: %w", telemetryErr)
 	}
 	return err
 }
 
 func (t rangerTelemetry) terminal(outcome handoff.Outcome) error {
-	if err := emitRangerHandoffTelemetry(t.ctx, t.sink, t.runID, outcome.Result, outcome.Required, outcome.Attempt, outcome.ChallengeStatus, outcome.CriticalFailures, ""); err != nil {
+	if err := emitRangerHandoffTelemetry(t.ctx, t.sink, t.runID, outcome.Result, outcome.Required, outcome.Attempt, outcome.ChallengeStatus, outcome.CriticalFailures, "", criterionOf(outcome)); err != nil {
 		return fmt.Errorf("evaluate Ranger-to-Archivist handoff: emit telemetry: %w", err)
 	}
 	return nil
@@ -47,7 +48,7 @@ func (t rangerTelemetry) terminal(outcome handoff.Outcome) error {
 // recorded no attempt. It is informational: the decision comes from the
 // explicit evaluation that follows the receiver's answers.
 func (t rangerTelemetry) awaitingChallenge() error {
-	if err := emitRangerHandoffTelemetry(t.ctx, t.sink, t.runID, RangerOutcomeAwaitingChallenge, true, 0, "awaiting_answers", 0, ""); err != nil {
+	if err := emitRangerHandoffTelemetry(t.ctx, t.sink, t.runID, RangerOutcomeAwaitingChallenge, true, 0, "awaiting_answers", 0, "", telemetry.HandoffCriterion{}); err != nil {
 		return fmt.Errorf("evaluate Ranger-to-Archivist handoff: emit telemetry: %w", err)
 	}
 	return nil
@@ -74,12 +75,27 @@ func rangerHandoffReason(err error) string {
 	return "ranger_handoff_failed"
 }
 
-func emitRangerHandoffTelemetry(ctx context.Context, sink telemetry.EventSink, runID, outcome string, required bool, attempt int, status string, criticalFailures int, reason string) error {
+func emitRangerHandoffTelemetry(ctx context.Context, sink telemetry.EventSink, runID, outcome string, required bool, attempt int, status string, criticalFailures int, reason string, criterion telemetry.HandoffCriterion) error {
 	if sink == nil {
 		return nil
 	}
-	if err := sink.Emit(ctx, telemetry.NewRangerToArchivistEvent(runID, outcome, required, attempt, status, criticalFailures, reason)); err != nil {
+	event := telemetry.WithHandoffCriterion(telemetry.NewRangerToArchivistEvent(runID, outcome, required, attempt, status, criticalFailures, reason), criterion)
+	if err := sink.Emit(ctx, event); err != nil {
 		return fmt.Errorf("emit Ranger-to-Archivist telemetry: %w", err)
 	}
 	return nil
+}
+
+// criterionOf projects the provider reading recorded on an outcome onto the
+// content-free event attributes. An outcome without a delegation was judged by
+// the main path alone, which the zero criterion states.
+func criterionOf(outcome handoff.Outcome) telemetry.HandoffCriterion {
+	d := outcome.Delegation
+	if d == nil {
+		return telemetry.HandoffCriterion{}
+	}
+	return telemetry.HandoffCriterion{
+		Provider: d.Provider, Model: d.Model, Approved: d.Approved(),
+		ConfidencePercent: int(math.Round(d.Confidence * 100)), ThresholdPercent: int(math.Round(d.Threshold * 100)),
+	}
 }

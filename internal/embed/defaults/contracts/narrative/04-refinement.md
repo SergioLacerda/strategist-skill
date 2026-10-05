@@ -77,10 +77,10 @@ Archivist (`refinement`)
   revised run and record the revised package with
   `strategist metrics handoff-record --mission <mission_id> --revision <n>` (`n` starts at 1) so
   each revision keeps its own metrics line and level row; the base line is left as recorded
-- when the invoking shell reports the token usage of the discovery run (the sub-role's own usage
-  summary, run at the gate and at DONE with `strategist mission report-usage`), pass it as
-  `--discovery-tokens`; omit the flag when nothing was reported. These counts are self-reported by
-  the invoking agent, so treat them as a weak signal, never as evidence of cost
+- when the invoking shell reported the token usage of the discovery invocation (one observation per
+  invocation, recorded with `strategist mission report-usage`), pass it as `--discovery-tokens`;
+  omit the flag when nothing was reported. These counts are self-reported by the invoking agent,
+  so treat them as a weak signal, never as evidence of cost
 - on completion, append one line to `.strategist/memory/handoff-metrics.jsonl`
   (skill.yaml#handoff_metrics_log) with `strategist metrics handoff-record --mission <mission_id>`
   (pass only the values that were measured; it never derives the two ratios, and a mission that

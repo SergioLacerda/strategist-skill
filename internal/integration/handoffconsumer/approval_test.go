@@ -59,10 +59,48 @@ func TestHintsAppearOnlyWhenNotApprovedAndListUnsatisfiedCriteria(t *testing.T) 
 	require.Equal(t, []string{"objective_clear", "uncertainties_explicit"}, hintKeys(signal.Hints), "sorted and only the unsatisfied ones")
 }
 
-func hintKeys(hints []Hint) []string {
-	keys := make([]string, 0, len(hints))
-	for _, hint := range hints {
-		keys = append(keys, hint.Criterion)
+func TestConfidenceIsTheConfidenceInAcceptanceNotInTheChosenOption(t *testing.T) {
+	reject := integration.Answer{Kind: integration.KindChoice, Choice: OptionReject, Confidence: 0.99, HasConfidence: true}
+	verdict := Evaluate(handoff.TransitionRangerToArchivist, result(reject), 0.90)
+	require.False(t, verdict.Approved)
+	require.InDelta(t, 0.01, verdict.Confidence, 1e-9, "a 99% reject is a 1% confidence that the handoff conforms")
+
+	verdict = Evaluate(handoff.TransitionRangerToArchivist, result(accept(0.95)), 0.90)
+	require.InDelta(t, 0.95, verdict.Confidence, 1e-9)
+}
+
+func choiceWithProbabilities(choice string, confidence, accepted float64) integration.Answer {
+	return integration.Answer{
+		Kind: integration.KindChoice, Choice: choice, Confidence: confidence, HasConfidence: true,
+		Probabilities: map[string]float64{OptionAccept: accepted, OptionReject: 1 - accepted},
 	}
-	return keys
+}
+
+func TestAcceptanceConfidenceIsTheProviderProbabilityOfAcceptWhenItIsReported(t *testing.T) {
+	// The live provider reported confidence 0.71 with P(accept) 0.85 for a well-formed handoff:
+	// `confidence` is a separate measure, and P(accept) is the belief that the handoff conforms.
+	for name, tc := range map[string]struct {
+		answer    integration.Answer
+		threshold float64
+		approved  bool
+		want      float64
+	}{
+		"P(accept) above the threshold approves":     {choiceWithProbabilities(OptionAccept, 0.71, 0.85), 0.80, true, 0.85},
+		"P(accept) exactly the threshold does not":   {choiceWithProbabilities(OptionAccept, 0.99, 0.80), 0.80, false, 0.80},
+		"P(accept) below the threshold does not":     {choiceWithProbabilities(OptionAccept, 0.99, 0.60), 0.80, false, 0.60},
+		"a reject choice never approves":             {choiceWithProbabilities(OptionReject, 0.99, 0.01), 0.80, false, 0.01},
+		"an inconsistent reject with high P(accept)": {choiceWithProbabilities(OptionReject, 0.60, 0.95), 0.80, false, 0.95},
+	} {
+		t.Run(name, func(t *testing.T) {
+			verdict := Evaluate(handoff.TransitionRangerToArchivist, result(tc.answer), tc.threshold)
+			require.Equal(t, tc.approved, verdict.Approved)
+			require.InDelta(t, tc.want, verdict.Confidence, 1e-9)
+		})
+	}
+}
+
+func TestWithoutProbabilitiesTheDocumentedConfidenceStillDecides(t *testing.T) {
+	verdict := Evaluate(handoff.TransitionRangerToArchivist, result(accept(0.95)), 0.80)
+	require.True(t, verdict.Approved, "an answer shape without probabilities keeps the confidence rule")
+	require.InDelta(t, 0.95, verdict.Confidence, 1e-9)
 }

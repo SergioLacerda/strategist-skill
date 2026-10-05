@@ -216,6 +216,45 @@ The runtime advisory projection is materialized by
 history. An empty, malformed, rejected, or incomplete history produces a
 review signal and is never interpreted as approval.
 
+## Quality Criteria at the Gate
+
+The gate shows one advisory block that reuses every quality criterion the earlier stages already
+computed, and nothing else: it never recomputes a criterion and never invents one. Before presenting
+the gate the shell runs, when an integration is enabled, `strategist handoff precheck --mission-id <id>`
+(the advisory Archivist to Gate provider reading, right after `refinement_done`), then
+`strategist handoff criteria --mission-id <id>`, and renders its rows. The numbers come from the
+command, never from the agent.
+
+```
+🔎 CRITÉRIOS DE QUALIDADE
+   <criterion>: <value>   (<source>)
+   ...
+```
+
+Rules, all `agent_only`:
+
+- Every row is always present and always filled. A row is a value with its source, `não avaliado`
+  (the stage that would produce it did not run or was not enabled) or `não sei` (data exists but cannot
+  support a statement: an uncalibrated sample, an unreadable or contradictory record, a provider
+  reading of another package revision). A blank, an omitted row and a default pass are all forbidden.
+- Rows: route confidence, claim confidence per boundary (scout, ranger, archivist), the confidence
+  review, the deterministic handoff outcome of each lifecycle transition, the critic score, the
+  mission-quality result, the refinement handoff metrics and the provider reading of each boundary
+  (`ranger → archivist`, `archivist → gate`, `archivist → sniper`).
+- A provider row reads `JEV confiança: X% (limiar Y%) — aprovado | abaixo do limiar, caminho main`
+  and ends with `calibrado (…)` or `não calibrado`, exactly as `strategist handoff criteria` prints it:
+  `calibrado` names the model, the question profile, the golden cases and the held-out false approval
+  of the pinned calibration that decided the threshold, and only when that calibration was valid for the
+  call; `não calibrado` (with the reason when a pinned calibration did not apply) is the default. It is
+  provider-reported, advisory and never an approval; it
+  never pre-selects `accept`. The `archivist → sniper` row is `não avaliado` at the gate because that
+  evaluation exists only after the gate; it reuses the `archivist → gate` reading when the package
+  digest is unchanged and asks again when it changed.
+- A provider reading is also a claim in the confidence ledger under the handoff producer, so the claim
+  rows above and `strategist metrics confidence` include it.
+- The block is advisory only: it never blocks, never substitutes the user's decision and never changes
+  `review_required`.
+
 ## Critic at the Gate (W8/P5)
 
 When the response-critic evaluated the refined package, its result is shown in the

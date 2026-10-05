@@ -2,6 +2,7 @@ package install
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -16,6 +17,56 @@ func TestSidecarScaffoldError_Formatting(t *testing.T) {
 
 	err := &SidecarScaffoldError{Code: "test_code", Detail: "test detail"}
 	assert.Equal(t, "test_code: test detail", err.Error())
+}
+
+func TestEmbeddedWeaponSourceDigest_ReadError(t *testing.T) {
+	t.Parallel()
+
+	_, err := embeddedWeaponSourceDigestAt(t.TempDir())
+	assert.Error(t, err)
+}
+
+func TestCustomProviderProjectionSkipsNonCustomAndEmptyModes(t *testing.T) {
+	t.Parallel()
+
+	catalog := pluginCatalog{Providers: []pluginCatalogProvider{{ID: "known"}}}
+	got, resolved, err := catalogWithCustomProviders(catalog, nil, nil)
+	require.NoError(t, err)
+	assert.Equal(t, catalog, got)
+	assert.Nil(t, resolved)
+	assert.False(t, needsCustomProjection(catalog, "", domain.SlotBindingModeCustom))
+	assert.False(t, needsCustomProjection(catalog, "known", domain.SlotBindingModeCustom))
+	assert.False(t, needsCustomProjection(catalog, "unknown", domain.SlotBindingModeRanked))
+	assert.True(t, needsCustomProjection(catalog, "unknown", domain.SlotBindingModeCustom))
+	assert.Len(t, catalogResolverCandidates(catalog), 1)
+}
+
+func TestRankedRuntimeAndGovernanceNoOpBranches(t *testing.T) {
+	// These are pure install-boundary branches; keep the executable lookup
+	// override local so this test never depends on the host PATH.
+	executable := rankedExecutable{name: "node", prefix: []string{"script.js"}}
+	assert.Equal(t, []string{"script.js", "--version"}, executable.args([]string{"--version"}))
+
+	originalFindHostNode := findHostNode
+	originalHostNodeVersion := hostNodeVersion
+	_, err := originalHostNodeVersion(t.Context(), t.TempDir(), "node")
+	require.Error(t, err)
+	findHostNode = func(string) (string, error) { return "", os.ErrNotExist }
+	t.Cleanup(func() {
+		findHostNode = originalFindHostNode
+		hostNodeVersion = originalHostNodeVersion
+	})
+	_, err = resolveHostNode(t.Context(), t.TempDir())
+	require.Error(t, err)
+
+	findHostNode = func(string) (string, error) { return "node", nil }
+	hostNodeVersion = func(context.Context, string, string) ([]byte, error) { return nil, os.ErrNotExist }
+	_, err = resolveHostNode(t.Context(), t.TempDir())
+	require.Error(t, err)
+	policy := &domain.TrustPolicy{}
+	require.Error(t, persistGovernanceState(t.TempDir(), policy, nil))
+	grants := &domain.PermissionGrantFile{Grants: []domain.PermissionGrant{{ID: ""}}}
+	assert.Error(t, persistGovernanceState(t.TempDir(), nil, grants))
 }
 
 func TestReplaceSidecar_ErrorPaths(t *testing.T) {

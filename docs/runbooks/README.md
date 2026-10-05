@@ -6,6 +6,57 @@
 accepted agent-facing runbooks. A runbook here has already been reviewed and
 accepted — it is not a candidate or a draft.
 
+## Discovery versus opportunity detection
+
+The workflow has two different Runbook operations:
+
+1. Ranger's `select_runbook` asks which existing Runbook should inform the current
+   mission. Its `selected_runbooks_hint` is retrieval context only.
+2. Archivist's Opportunity Attack asks whether the current mission's refined output
+   produced a new reusable Runbook or Playbook opportunity. It evaluates the written
+   proposal, design and tasks independently of Ranger's selection and surfaces a
+   proposed side quest at the Approval Gate.
+
+A selected Runbook does not create a new candidate, and the absence of a selected
+Runbook does not prevent a warranted candidate. Opportunity Attack never writes a
+candidate directly to this directory.
+
+## Configurable roots and migration
+
+The target configuration uses one explicit canonical root for each documentation
+family: `adr.canonical_path` for ADRs and `runbooks.canonical_path` for Runbooks.
+The wizard suggests `<base_path>/adr` and `<base_path>/runbooks`; with the current
+`.analysis` base, those defaults are `.analysis/adr` and `.analysis/runbooks`.
+An explicit project-relative override becomes the workspace standard.
+
+Existing `docs/adr/` and `docs/runbooks/` content remains readable during migration,
+but it is a compatibility location unless explicitly configured as the canonical
+root. The implementation handoff for this policy is separate from this document;
+an unconfigured workspace has not migrated, and runtime code must not write both
+locations in parallel.
+
+Opportunity Attack also evaluates fully covered sources against the configured
+Treasure Chest index. It emits an `OA-CHEST-<mission_id>` candidate when a source
+is not registered, but it never edits `knowledge.index.yaml` or
+`treasure-chests.yaml`; registration remains a separate accepted side quest.
+
+When `OA-RUNBOOK-<mission_id>` is warranted, `internal/tools/prepare_runbook`
+builds a reviewable candidate in the OA manifest. It compares the selected
+context and bounded configured sidecar inventory, records deterministic evidence,
+and binds the result to the refined package digest. Its statuses are
+`prepared`, `duplicate`, `insufficient_evidence`, and `needs_review`; none is a
+canonical write. The optional `confidence.evaluate` JEV reading is advisory,
+subject to the configured data policy and threshold, and always falls back to
+the local rules. Only an explicit Approval Gate decision can authorize later
+materialization.
+
+## Playbook vocabulary
+
+For the current taxonomy, “Playbook” is an alias for an operational Runbook: a
+procedure with execute-and-verify steps. It does not introduce a second path,
+sidecar schema or Treasure Chest family. A separate Playbook artifact requires an
+approved migration decision with its own lookup and gate rules.
+
 Each runbook documents a symptom, its root cause, and a verified resolution
 sequence, following the shape used across this directory: `Symptom`, `Root Cause`,
 `Resolution Steps`, `Reference`.

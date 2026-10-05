@@ -176,13 +176,13 @@ func TestAbilityContractNoStaleOpportunityAttackCrossRoleRule(t *testing.T) {
 	}
 }
 
-// TestAbilityContractOpportunityAttackIsADROnly ensures Opportunity Attack does
-// not become a second card-closure or implementation-audit mechanism. Since
-// strategist-ability-taxonomy-reorg (Decisions D3/D4), Opportunity Attack also
-// evaluates runbook- and chest-worthiness alongside ADR-worthiness — three
-// independent side quests — but none of the three may evaluate implementation
-// completion or move cards to done/; that remains Critical Hit's exclusive remit.
-func TestAbilityContractOpportunityAttackIsADROnly(t *testing.T) {
+// TestAbilityContractOpportunityAttackKeepsClosureBoundary ensures Opportunity
+// Attack does not become a second card-closure or implementation-audit mechanism.
+// Since strategist-ability-taxonomy-reorg (Decision D3), Opportunity Attack also
+// evaluates Runbook-worthiness alongside ADR-worthiness as independent side
+// quests, but neither may evaluate implementation completion or move cards to
+// done/; that remains Critical Hit's exclusive remit.
+func TestAbilityContractOpportunityAttackKeepsClosureBoundary(t *testing.T) {
 	t.Parallel()
 
 	paths := []string{

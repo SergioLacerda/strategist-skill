@@ -137,7 +137,7 @@ func NewStoragePaths(basePath, scenario string) (StoragePaths, error) {
 }
 
 func validScenarioName(scenario string) bool {
-	if scenario == "" || scenario == "." || scenario == ".." || filepath.IsAbs(scenario) {
+	if scenario == "" || scenario == "." || scenario == ".." || filepath.IsAbs(scenario) || IsReservedName(scenario) {
 		return false
 	}
 	if strings.ContainsAny(scenario, "/\\\x00") {

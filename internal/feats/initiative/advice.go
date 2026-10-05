@@ -5,17 +5,20 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strings"
+
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
 
 // Observation is the raw execution-level state reported for a role, as
 // resolved by LEVELING.
 type Observation struct {
-	State       ObservationState `json:"state" yaml:"state"`
-	Model       string           `json:"model,omitempty" yaml:"model,omitempty"`
-	Provider    string           `json:"provider,omitempty" yaml:"provider,omitempty"`
-	Effort      EffortTier       `json:"effort,omitempty" yaml:"effort,omitempty"`
-	Capability  string           `json:"capability,omitempty" yaml:"capability,omitempty"`
-	LevelSource string           `json:"level_source,omitempty" yaml:"level_source,omitempty"`
+	State       ObservationState     `json:"state" yaml:"state"`
+	Model       string               `json:"model,omitempty" yaml:"model,omitempty"`
+	Provider    string               `json:"provider,omitempty" yaml:"provider,omitempty"`
+	Effort      EffortTier           `json:"effort,omitempty" yaml:"effort,omitempty"`
+	Capability  string               `json:"capability,omitempty" yaml:"capability,omitempty"`
+	LevelSource string               `json:"level_source,omitempty" yaml:"level_source,omitempty"`
+	Budget      *domain.EffortBudget `json:"effort_budget,omitempty" yaml:"effort_budget,omitempty"`
 }
 
 // Recommendation is the capability and effort a Policy profile advises for
@@ -132,6 +135,10 @@ func buildAdvice(input AdviceInput, role string, profile Profile, policy Policy,
 	var resolution *LevelingResolution
 	if input.Leveling != nil {
 		copyResolution := *input.Leveling
+		if input.Leveling.Budget != nil {
+			copyBudget := *input.Leveling.Budget
+			copyResolution.Budget = &copyBudget
+		}
 		resolution = &copyResolution
 		observed = normalizeObservation(copyResolution.Observation())
 	}

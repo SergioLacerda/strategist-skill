@@ -27,6 +27,7 @@ field_rules:
 
 optional_fields:
   - adr.canonical_path
+  - leveling.budget_ledger_path
 
 unknown_fields_policy: warn
 # Fields not declared in required_fields or optional_fields are ignored by the agent.

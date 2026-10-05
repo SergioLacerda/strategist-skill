@@ -109,11 +109,17 @@ type packageSource struct{ tasks, analysis document }
 
 // NewPackageSource reads the tasks and analysis of a refined package.
 func NewPackageSource(dir string) (Source, error) {
-	tasks, err := readDocument(filepath.Join(dir, "tasks.md"))
+	return NewPackageSourceFiles(filepath.Join(dir, "tasks.md"), filepath.Join(dir, "analysis.md"))
+}
+
+// NewPackageSourceFiles reads a package from explicit files, so a snapshot of
+// the tasks (an amendment's before state) can be read with the package's analysis.
+func NewPackageSourceFiles(tasksPath, analysisPath string) (Source, error) {
+	tasks, err := readDocument(tasksPath)
 	if err != nil {
 		return nil, err
 	}
-	analysis, err := readDocument(filepath.Join(dir, "analysis.md"))
+	analysis, err := readDocument(analysisPath)
 	if err != nil {
 		return nil, err
 	}

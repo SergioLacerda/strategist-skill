@@ -31,6 +31,9 @@ type LifecycleDependencies struct {
 	// ADRCanonicalPath reads active.yaml#adr.canonical_path for the
 	// accept-side-quest command. Nil means no canonical path is configured.
 	ADRCanonicalPath func(root string) (string, error)
+	// RunbookCanonicalPath reads active.yaml#runbooks.canonical_path. It is
+	// optional until a Runbook materialization command consumes the root.
+	RunbookCanonicalPath func(root string) (string, error)
 	// TelemetrySink selects the route-resolution sink. Nil keeps the adapter
 	// compatible with callers that only need durable route history.
 	TelemetrySink func() telemetry.EventSink
@@ -40,6 +43,15 @@ type LifecycleDependencies struct {
 	// RecordRoute is the application-facing route connector. The legacy
 	// TelemetrySink fallback remains for isolated adapter tests.
 	RecordRoute func(context.Context, string, string, []byte) (bool, error)
+	// PrepareRunbook attaches advisory Runbook preparation evidence after OA
+	// detects a warranted Runbook opportunity. It never materializes a file.
+	PrepareRunbook func(root, basePath, missionID, packageDigest, candidateID string) error
+	// RecordLifecycle appends mission and phase lifecycle markers after a state
+	// change is persisted. It is best effort: a failure never fails the command.
+	// Nil disables marker recording.
+	RecordLifecycle func(root, missionID string, markers []domain.LifecycleMarker) error
+	// LifecycleWarn makes a marker write failure observable. Nil is silent.
+	LifecycleWarn func(missionID string, err error)
 }
 
 // withMissionLock runs fn under deps.Lock when one is configured, or
@@ -96,6 +108,7 @@ func RunStart(cmd *cobra.Command, deps LifecycleDependencies, rootInput, mission
 		if lockedErr != nil {
 			return lockedErr
 		}
+		recordLifecycleBestEffort(deps, root, missionID, domain.LifecycleMarkersForStart(s))
 		status = s
 		return nil
 	})

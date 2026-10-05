@@ -164,3 +164,12 @@ func TestAResponseThatEchoesTheCredentialIsRejectedWhereverItAppears(t *testing.
 	require.Equal(t, integration.StateInvalidResponse, state, "a provider echoing the bearer is never trusted, even in a field that would validate")
 	require.NotContains(t, err.Error(), "sk-synthetic")
 }
+
+func TestDecodeKeepsTheChoiceProbabilitiesForTheConsumerRule(t *testing.T) {
+	result, err := decodeResponse(fixture(t, "documented_response.json"), documentedQuestions())
+	require.NoError(t, err)
+	department := result.Answers["department"]
+	require.InDelta(t, 0.85, department.Probabilities["technical"], 1e-9)
+	require.InDelta(t, 0.15, department.Probabilities["billing"], 1e-9)
+	require.Empty(t, result.Answers["is_urgent"].Probabilities, "a noul answer has none")
+}

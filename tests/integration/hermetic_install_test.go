@@ -116,7 +116,7 @@ func TestE2E_CLI_WizardRankedInstallBootstrapsContainedRuntime(t *testing.T) {
 		"OPEN_SPEC_CONFIG": foreignConfig,
 	}
 	input := strings.Join([]string{
-		"en", "en", "en", "en", "epic", ".analysis",
+		"en", "en", "en", "en", "epic", ".analysis", "", "",
 		"brainstorming::ranked", "openspec-propose::ranked", "sniper::ranked", "", "",
 	}, "\n")
 	install := runStrategistCLIWithInput(t, workspace, env, input, "install", "--target", workspace, "--wizard", "--no-shim")

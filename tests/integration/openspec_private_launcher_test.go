@@ -20,7 +20,7 @@ func TestE2E_PrivateOpenSpecLauncherAvoidsNestedRoot(t *testing.T) {
 	foreignBefore := []byte("foreign: untouched\n")
 	require.NoError(t, os.WriteFile(foreignConfig, foreignBefore, 0o644))
 	input := strings.Join([]string{
-		"en", "en", "en", "en", "epic", ".analysis",
+		"en", "en", "en", "en", "epic", ".analysis", "", "",
 		"brainstorming::ranked", "openspec-propose::ranked", "sniper::ranked", "", "",
 	}, "\n")
 	install := runStrategistCLIWithInput(t, workspace, map[string]string{

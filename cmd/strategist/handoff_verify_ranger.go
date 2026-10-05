@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -66,7 +67,7 @@ func evaluateRangerLocked(root, basePath, missionID string, input livemission.Ra
 	err := lockMission(root, missionID, func() error {
 		artifact := filepath.Join(basePath, "pending", missionID+"-analysis.md")
 		var evalErr error
-		evaluation, evalErr = livemission.EvaluateRangerToArchivist(root, artifact, missionID, input)
+		evaluation, evalErr = livemission.EvaluateRangerToArchivistWithTelemetry(context.Background(), root, artifact, missionID, input, selectDiscoveryTelemetrySink(), missionID)
 		if evalErr != nil {
 			return fmt.Errorf("evaluate Ranger-to-Archivist handoff: %w", evalErr)
 		}

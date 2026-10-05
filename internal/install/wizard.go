@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/i18n"
@@ -92,7 +93,11 @@ func runWizard(ctx context.Context, p Prompter, extractor domain.FileExtractor, 
 	}
 
 	providerRisk := loadKnownProviders(extractor)
-	wc, err := collectWizardConfig(p, catalog, providerRisk, extractor, verbose)
+	workspaceRoot := ""
+	if strategistDir != "" {
+		workspaceRoot = filepath.Dir(strategistDir)
+	}
+	wc, err := collectWizardConfig(p, catalog, providerRisk, extractor, workspaceRoot, verbose)
 	if err != nil {
 		return domain.WizardConfig{}, err
 	}
@@ -109,13 +114,17 @@ func runWizard(ctx context.Context, p Prompter, extractor domain.FileExtractor, 
 	return wc, nil
 }
 
-func collectWizardConfig(p Prompter, catalog pluginCatalog, providerRisk map[string]string, extractor domain.FileExtractor, verbose bool) (domain.WizardConfig, error) {
+func collectWizardConfig(p Prompter, catalog pluginCatalog, providerRisk map[string]string, extractor domain.FileExtractor, workspaceRoot string, verbose bool) (domain.WizardConfig, error) {
 	skillCfg := loadSkillConfig(extractor)
 	uiLang, docLang, chatLang, codeLang, b, err := promptLanguages(p, skillCfg)
 	if err != nil {
 		return domain.WizardConfig{}, err
 	}
 	mode, basePath, err := promptWorkspace(p, b, skillCfg)
+	if err != nil {
+		return domain.WizardConfig{}, err
+	}
+	adrRoot, runbookRoot, err := promptDocumentationRoots(p, b, basePath, workspaceRoot)
 	if err != nil {
 		return domain.WizardConfig{}, err
 	}
@@ -131,7 +140,7 @@ func collectWizardConfig(p Prompter, catalog pluginCatalog, providerRisk map[str
 	// optional active.yaml block is absent. Existing explicit manual/automatic
 	// blocks remain readable by the runtime; the new-install wizard does not
 	// expose that compatibility setting as an operator choice.
-	return domain.WizardConfig{Mode: mode, BasePath: basePath, UILanguage: uiLang, DocLanguage: normLang(docLang), ChatLanguage: normLang(chatLang), CodeLanguage: normLang(codeLang), DiscoveryProvider: discovery, RefinementProvider: refinement, ExecutionProvider: execution, DiscoveryMode: discoveryMode, RefinementMode: refinementMode, ExecutionMode: executionMode, TreasureChestPath: chestPath}, nil
+	return domain.WizardConfig{Mode: mode, BasePath: basePath, UILanguage: uiLang, DocLanguage: normLang(docLang), ChatLanguage: normLang(chatLang), CodeLanguage: normLang(codeLang), DiscoveryProvider: discovery, RefinementProvider: refinement, ExecutionProvider: execution, DiscoveryMode: discoveryMode, RefinementMode: refinementMode, ExecutionMode: executionMode, TreasureChestPath: chestPath, AdrCanonicalPath: adrRoot, RunbookCanonicalPath: runbookRoot}, nil
 }
 
 // validateAndActivatePluginPlan runs every catalog-dependent Wizard check and

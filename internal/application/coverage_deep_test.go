@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/application/digest"
@@ -136,11 +135,6 @@ func TestApplicationAdapterFailureBranches(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "sha256:flag", got)
 	_, err = digest.CompareResolvedDigest("provider", "digest", nil)
-	require.Error(t, err)
-
-	_, err = application.RecordMissionTokenUsage("root", "base", application.MissionTokenUsageInput{}, time.Time{}, application.MissionTokenUsagePorts{})
-	require.Error(t, err)
-	_, err = application.RecordMissionTokenUsage("root", "base", application.MissionTokenUsageInput{MissionID: "m-1", TokensIn: -1}, time.Time{}, application.MissionTokenUsagePorts{})
 	require.Error(t, err)
 
 	loadErr := errors.New("load failed")

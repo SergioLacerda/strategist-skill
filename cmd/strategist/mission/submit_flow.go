@@ -45,17 +45,20 @@ func acceptGateAnalysis(path string, evt domain.MissionEngineEvent, gateDigest s
 
 type submitPreflight = application.SubmitPreflightResult
 
-func preflightSubmit(root, basePath, missionID string, status domain.MissionEngineStatus, evt domain.MissionEngineEvent) (submitPreflight, error) {
+func preflightSubmit(deps LifecycleDependencies, root, basePath, missionID string, status domain.MissionEngineStatus, evt domain.MissionEngineEvent) (submitPreflight, error) {
 	result, err := application.PreflightSubmit(application.SubmitPreflightRequest{
 		Root: root, BasePath: basePath, MissionID: missionID, Status: status, Event: evt,
 	}, application.SubmitPreflightPorts{
 		RequireNoAcceptedSideQuest:   preflightSideQuestGuard,
 		RequireAuthoredPackageRepair: preflightRepairGuard,
 		ValidateArtifacts:            preflightArtifactGuard,
-		ApprovalGatePackageDigest:    preflightGateDigest,
-		RequireExecutionEvidence:     requireExecutionEvidence,
-		RepairPackageDigest:          repairPackageDigest,
-		PreflightSniperClaims:        preflightSniperClaims,
+		EnsureOpportunityAttack: func(root, basePath, missionID string, event domain.MissionEngineEvent) error {
+			return ensureOpportunityAttack(deps, root, basePath, missionID, event)
+		},
+		ApprovalGatePackageDigest: preflightGateDigest,
+		RequireExecutionEvidence:  requireExecutionEvidence,
+		RepairPackageDigest:       repairPackageDigest,
+		PreflightSniperClaims:     preflightSniperClaims,
 	})
 	if err != nil {
 		return submitPreflight{}, fmt.Errorf("mission submit preflight: %w", err)

@@ -137,7 +137,7 @@ func TestParityReportsBindingsThatDriftFromConfiguration(t *testing.T) {
 
 func TestThresholdAndBudgetDefaultsAndValidation(t *testing.T) {
 	provider := validProvider()
-	require.InDelta(t, 0.90, provider.Threshold(), 1e-9)
+	require.InDelta(t, 0.80, provider.Threshold(), 1e-9)
 	require.Equal(t, 2, provider.Budget())
 
 	provider.ApprovalThreshold, provider.CallBudget = 0.95, 4

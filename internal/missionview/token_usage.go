@@ -16,12 +16,14 @@ import "github.com/SergioLacerda/strategist-skill/internal/telemetry"
 //
 // Split out of view.go to keep that file under the repo's file-size budget.
 type TokenUsageSection struct {
-	Availability        string                              `json:"availability"`
-	DeclaredTokenBudget string                              `json:"declared_token_budget,omitempty"`
-	TotalTokensIn       int64                               `json:"total_tokens_in"`
-	TotalTokensOut      int64                               `json:"total_tokens_out"`
-	Records             []telemetry.MissionTokenUsageRecord `json:"records,omitempty"`
-	LedgerComparison    telemetry.TokenLedgerComparison     `json:"ledger_comparison"`
+	Availability        string `json:"availability"`
+	DeclaredTokenBudget string `json:"declared_token_budget,omitempty"`
+	// Semantics is "unknown" whenever legacy records exist: they declare no
+	// record kind and the protocol asked for cumulative reports, so no total is
+	// computed (ADR-0069). Use the phase timeline for usage figures.
+	Semantics        string                              `json:"semantics,omitempty"`
+	Records          []telemetry.MissionTokenUsageRecord `json:"records,omitempty"`
+	LedgerComparison telemetry.TokenLedgerComparison     `json:"ledger_comparison"`
 }
 
 // buildTokenUsage sums the mission's reported token-usage records.
@@ -34,10 +36,7 @@ func buildTokenUsage(records []telemetry.MissionTokenUsageRecord, handoff []tele
 		return section
 	}
 	section.Availability = Available
+	section.Semantics = "unknown"
 	section.Records = records
-	for _, rec := range records {
-		section.TotalTokensIn += rec.TokensIn
-		section.TotalTokensOut += rec.TokensOut
-	}
 	return section
 }

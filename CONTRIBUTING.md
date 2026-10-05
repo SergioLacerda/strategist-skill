@@ -2,13 +2,13 @@
 
 ## Prerequisites
 
-- Go matching `go.mod` (`go 1.27.1`, toolchain `go1.27.1`)
+- Go matching `go.mod` (`go 1.27.2`, toolchain `go1.27.2`)
 - Node.js `>=20.19.0` (optional; only for the embedded OpenSpec runtime and the manual `promptfoo/` evals)
 - `make` (GNU Make)
 - A POSIX shell (Git Bash or WSL on Windows)
 
-Go versions are sourced from `go.mod`: `go 1.27.1` defines the language/module
-target and `toolchain go1.27.1` pins the patch toolchain used by CI-compatible
+Go versions are sourced from `go.mod`: `go 1.27.2` defines the language/module
+target and `toolchain go1.27.2` pins the patch toolchain used by CI-compatible
 local verification. Node is tooling-only (OpenSpec runtime and `promptfoo/`);
 this repository has no web build. Relax or bump these pins only through the
 toolchain policy in ADR-0014.

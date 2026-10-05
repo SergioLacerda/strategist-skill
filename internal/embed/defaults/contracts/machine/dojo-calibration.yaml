@@ -1,0 +1,151 @@
+schema_version: "1"
+module: dojo-calibration
+type: mechanism_contract
+version: "0.1"
+
+provenance:
+  adr_ref: docs/adr/0066-dojo-judge-calibration.md
+  lifecycle: active
+  owner: governance
+
+description: >
+  The DOJO is the behavior laboratory of the Strategist. Besides the pipeline health
+  scenarios it hosts calibration cases: a case measures one judge (the first is the
+  JEV handoff pre-check) against cases whose expected verdict is known, keeps raw
+  observations, and publishes a calibration record that the handoff looks up by a
+  pinned id. Nothing is trained: a calibration measures a judge and chooses a
+  threshold. The provider is one system under evaluation, never the owner of the tool.
+  This contract is not an agent-loaded pipeline phase; the DOJO agent reads it when it
+  runs a calibration case.
+
+agent_mode:
+  may_run:
+    - strategist dojo list
+    - strategist dojo check <scenario> [--files-only]
+    - strategist dojo calibrate <case> --dry-run
+    - strategist dojo calibrate <case> --recompute
+    - strategist dojo generate <case> --package <name>
+    - strategist dojo audit <case> [--sample N]
+    - strategist dojo audit <case> --record <case-id> --verdict agree|disagree --note <text>
+    - strategist dojo propose <operator> --description <text>
+  may_run_only_with_author_consent:
+    - strategist dojo calibrate <case> --consent (a judge case or the live case)
+  never_runs:
+    - strategist dojo promote
+    - strategist dojo candidate
+    - strategist integrations calibration pin
+    - any change to a label, a golden promotion, a risk policy or a pinned calibration id
+  rules:
+    - the agent generates scenario skeletons, audits a sample of generated negatives, reads the evidence, writes lessons and proposes operators; every proposal waits for a reviewed change
+    - an audit disagreement is recorded and the case is excluded from the golden metrics; the agent never relabels a case
+    - promotion to golden, a regression candidate and pinning a calibration are human acts with a reviewer name and an oracle
+    - real package content is sent to a provider only by a run the author asked for with the explicit consent flag; a dry run prints the exact count, fields and bytes first
+
+vocabulary:
+  use: [case, fixture, evaluation, calibration, observation, evidence]
+  avoid: [training, trained, fine-tuning]
+
+case_sources:
+  golden_positive: a candidate package (done or accepted, four canonical files) promoted by a reviewer with provenance and an oracle; threshold selection reads golden cases only
+  natural_negative: the before snapshot of an amendment, where a human requested a revision
+  synthetic_negative: a deterministic mutation of a package with a known expected criterion, severity band, seed and parent
+  boundary: graded levels of one defect and cases near the current threshold, with paired expectations
+  neutral: a perturbation that must not change the verdict (whitespace and layout), measuring false rejection
+  regression_candidate: a real mission where the provider answer and the later gate or handoff outcome disagree; reviewed before promotion
+
+operator_catalog:
+  stage_1: structural and lexical, generated deterministically, each with applicability preconditions
+  stage_2: semantic (contradiction between sections, false closure, provenance claims without evidence, scope drift, ambiguity); needs an audit sample and recorded disagreements before its items count
+
+layers:
+  judge: does the provider separate the cases for one question profile (the real provider)
+  integration: what the Strategist policy does with an answer (threshold, fallback to main, delegation provenance), measured with a scripted judge and no calls
+  live: the provider smoke check (authentication, documented answer shape, a well-formed and a vague synthetic handoff); synthetic text only, behind a consent term
+
+gate_rules:
+  gates-3: pre-registered for the real-corpus run and chosen by a case with gate_rule gates-3; keeps every gates-2 gate and replaces the single held-out split by a five-fold cross-validation grouped by parent (a package and its mutants share a fold, each fold's threshold is chosen on the other folds, and the pooled out-of-fold upper bounds must stay within the policy), adds a threshold_band gate (the feasible thresholds must span at least twice the p95 repetition noise) and places the threshold at the middle of its widest feasible band instead of at its edge; gates and sweep read the whole corpus
+  gates-2: the default and pre-registered before the real-corpus run; adds a margin gate (p10 of golden minus p90 of defects must reach 0.05), replaces zero inversions by an inversion rate whose exact upper bound on the effective number of steps must stay within 0.20 (not measured when too few steps), and treats mutants of one parent as correlated (design effect with an assumed intra-parent correlation of 0.25)
+  gates-1: what the first pilots ran under; recompute --gate-rule gates-1 reproduces that reading; the first pilots stay reported under it
+  populations: a golden positive is one parent; its neutral variants are measured as invariance and are not extra positives; defect negatives are reported with their parents and their effective sample, and the false approval bounds use the effective sample
+  separation_detail: the gate prints the value, the limit and the difference with four decimals, so a value that rounds to the limit is not mistaken for a tie
+
+local_checks:
+  what: deterministic checks over the projected fields (scope, acceptance checks, plan, task types, task verification, task kind against action for the package boundary; objective, sources, uncertainties and focus for the Ranger boundary); no provider is involved
+  measured: each observation records which checks flagged its case; the report gives, per defect operator, how many cases the judge, the local checks and the policy as a whole catch, the false flag rate on golden parents, and the policy-level false approval and rejection
+  delegation: a case can declare operators local_scope; the judge gates and rates do not read them and a local_coverage gate must show that the local checks catch each one (lower bound of the detection rate at least 0.80); the delegation is part of the record
+  backfill: observations made before the local checks were recorded get their flags derived from the regenerated cases of the same corpus (same manifest digest); the ledger is never rewritten and the report says so
+
+probability_contract:
+  rule: a calibrated threshold is a threshold on the probability of accept; the documented confidence is another quantity and is never substituted for it
+  consequence: an answer without a probability of accept is an unusable observation (state missing_probability) and a call under a pinned calibration falls back to the configured threshold with the reason probability_unavailable
+
+pair_layer:
+  what: a requirement-to-task laboratory; each pair has a mandatory requirement and a task (statement, declared kind, action, verification) and the provider is asked one atomic question per dimension (task_kind_consistent, obligation_preserved, verification_checks_task); the composition of dimensions is code
+  families: faithful, paraphrase, distractor_text (controls); weakened_obligation, wrong_kind, unrelated_verification (each breaks exactly one dimension)
+  evidence: per dimension AUC on the selection split, AUC on the final split by parent, margin, p95 repetition std and status fit, not_fit or insufficient_sample; per family the paired response against the faithful sibling
+  rules: the oracle, family, id and parent never reach the provider and a pair that names its own label is refused; the split is by parent; no calibration record and no pin come from this layer, it informs which dimensions the provider may be asked about
+  profile: atomic-v1, with its own question digest
+
+external_calls:
+  rule: the DOJO is the only sanctioned way to call an external provider for a check; no make target, test or CI workflow calls one by default
+  make_targets: live-jev and live-calibration are not in .PHONY, a dependency of nothing and refuse to run without STRATEGIST_LIVE_CONSENT=yes; the Go live tests skip without it
+  consent_term: the dry run prints a term (id, case, layer, provider, endpoint, data class, fields, cases, calls, bytes, estimated input tokens); a run needs --consent; --consent-term <id> binds the assent to exactly that plan and a changed plan is refused; the term as assented to is kept in the run's evidence
+  check_never_calls: the dojo check command never calls a provider; on a live case it refuses and points to calibrate
+  synthetic_corpus: a case can calibrate over synthetic fixture packages written under its own directory (dojo generate <case> --synthetic), golden by construction and under dojo/ only, so nothing real is sent
+
+observations:
+  file: <case output>/observations.jsonl
+  one_line_per_call: [case_id, parent_id, kind, operator, band, level, expected, decision, probabilities, confidence, run, model, profile, profile_version, latency_ms, state]
+  never_contains: [package content, provider body, credential]
+  use: thresholds, rates and variance are recomputed offline, so a new risk policy needs no new calls
+
+fitness_gates:
+  order: [separation, monotonic_response, stability]
+  rule: each gate must pass before the next is read and before any threshold is recommended; a judge that is not fit gets no recommendation and the record names the failing gate
+  monotonic_tolerance: a step is an inversion only when the score rises by more than the larger of the configured tolerance and noise_factor (default 2) times the measured repetition noise; the detail names the operators that invert and counts flat ladders, where the judge does not scale with that defect, as a limitation and not an inversion
+  what_if: an offline recompute can leave operators out (dojo calibrate <case> --recompute --exclude-operator X); it is labelled exploratory, persists nothing and never yields a record; dojo compare puts two cases side by side from stored observations, also offline
+
+statistics:
+  intervals: every rate carries a 95 percent exact confidence interval
+  selection: the threshold is the one that minimizes false rejection subject to the upper confidence bound of false approval being within the risk policy
+  calibration_error: expected calibration error and Brier score of the probability of accept
+  sample_size: with zero observed errors the one-sided 95 percent upper bound is about 3/n; certifying a 5 percent limit needs about 59 defect negatives and 15 percent needs about 19 golden positives; a smaller sample yields insufficient_sample and no recommendation
+  split: a deterministic held-out part by package digest, inherited by every mutation of the package; the threshold is chosen on the rest
+
+risk_policy:
+  default: {max_false_approval: 0.05, max_false_rejection: 0.15}
+  rule: false approval is measured on defect negatives, false rejection on golden positives and neutral perturbations; both are stated in the case, never implied
+
+question_profiles:
+  handoff-v1: the default; projects only the fields the artifact has, so a missing field is never seen by the provider
+  handoff-v2: also shows an allowed catalog field the artifact lacks as (absent) and tells the provider that a criterion about an absent field does not hold; no content is added, and a field the data policy does not allow is never mentioned
+  handoff-atomic-v1: asks one noul question per criterion about one named field, with no aggregate choice, shows an absent field like v2, and takes the lowest criterion answer as the probability of accept (every criterion must hold); a criterion the catalog states negatively is asked positively with both readings defined (the first run answered one inverted on every intact package); a case can measure it, the handoff cannot run it yet, and its observations keep the per-criterion answers, numbers only, so recompute --exclude-criterion can re-read them without one criterion as an exploratory what-if (and recompute --judge-only reads a case without its delegation to the local checks, also exploratory)
+  rule: a case chooses its profile (calibration.profile) independently of the provider's configured profile, to measure a variant before adopting it; a calibration is valid only for the profile and version it was measured with, and the v1 version is unchanged so existing records stay valid
+
+calibration_record:
+  schema: strategist-calibration/v1
+  location: <base_path>/dojo/calibrations/<id>.json
+  bound_to: [provider, resolved_model, question_profile, profile_version, corpus_digest, catalog_version, seed, risk_policy, created_at]
+  status: [recommended, not_fit, insufficient_sample, no_feasible_threshold]
+  operator_filter: the operator list a case restricted itself to is part of the record
+  rule: evidence, never configuration
+
+handoff_consumption:
+  config_key: calibration_id in the provider block of .strategist/integrations.yaml, written only by `strategist integrations calibration pin <id>` after the numbers and the risk policy are shown
+  never: 'the id "latest", an automatic pin, or a copy of the dataset'
+  resolution: at pre-check time, after the provider answered, the calibration is valid only when the resolved model, the question profile and its version match and it is younger than max_age (default 90 days); otherwise the configured default threshold applies and the gate and `integrations doctor` say `não calibrado`
+  display: '"calibrado (model, profile, golden cases, held-out false approval, date)" or "não calibrado"'
+
+storage:
+  durable: [criteria, observations, audit, calibrations, corpus labels, operator proposals, history, lesson]
+  retained: [result, evidence]
+  replaceable: [emit_log]
+  reserved_names: [corpus, mutations, calibrations]
+  case_output: each case configures its own output path; the default is <base_path>/dojo/<case>/; a configured path stays inside the workspace and outside refined, done, pending, todo, archived and .strategist; changing the output of an existing case needs the preview, preservation and rollback of docs/runbooks/dojo-runtime-state-location.md
+  passing_run: a passing run writes evidence, never a lesson
+
+invariants:
+  - A calibration never changes the approval rule, the Approval Gate or a default threshold by itself
+  - A provider answer used by a calibration is data; the case's expected verdict is the only label
+  - Persistence failure never changes a case verdict
+  - Observation records, evidence and calibration records never carry package content or a credential

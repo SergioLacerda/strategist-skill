@@ -2,10 +2,12 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"testing"
 
 	missionadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
@@ -31,27 +33,117 @@ func setupMissionReportUsageRoot(t *testing.T, missionID string) (strategistRoot
 	return strategistRoot
 }
 
-// reportUsageArgs builds `report-usage` args for executeMission.
+// reportUsageArgs builds `report-usage` args for executeMission, with the
+// required phase and role and both counts observed.
 func reportUsageArgs(root, missionID string, tokensIn, tokensOut int64) []string {
 	return []string{"report-usage", "--root", root, "--mission-id", missionID,
+		"--phase", "discovery", "--role", "ranger",
 		"--tokens-in", strconv.FormatInt(tokensIn, 10), "--tokens-out", strconv.FormatInt(tokensOut, 10)}
 }
 
-func TestMissionReportUsageCmd_RecordsRealTokenCounts(t *testing.T) {
+func readUsageLedger(t *testing.T, root string) []map[string]any {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join(root, "memory", "mission-usage.jsonl"))
+	require.NoError(t, err)
+	var out []map[string]any
+	for _, line := range strings.Split(strings.TrimSpace(string(data)), "\n") {
+		var rec map[string]any
+		require.NoError(t, json.Unmarshal([]byte(line), &rec))
+		out = append(out, rec)
+	}
+	return out
+}
+
+func TestMissionReportUsageCmd_RecordsAPhaseAttributedObservation(t *testing.T) {
 	root := setupMissionReportUsageRoot(t, "20260830-real-mission")
-	out, err := executeMission(t, reportUsageArgs(root, "20260830-real-mission", 4096, 2048)...)
+	args := append(reportUsageArgs(root, "20260830-real-mission", 4096, 2048), "--invocation-id", "inv_abc")
+	out, err := executeMission(t, args...)
 	require.NoError(t, err)
 	assert.Contains(t, out, "mission_id=20260830-real-mission")
+	assert.Contains(t, out, "phase=DISCOVERY")
 	assert.Contains(t, out, "tokens_in=4096")
-	assert.Contains(t, out, "tokens_out=2048")
+	assert.Contains(t, out, "quality=reported_unverified")
+	assert.Contains(t, out, "recorded")
 
-	data, err := os.ReadFile(filepath.Join(root, "memory", "mission-token-usage.jsonl"))
+	recs := readUsageLedger(t, root)
+	require.Len(t, recs, 1)
+	assert.Equal(t, "DISCOVERY", recs[0]["phase"])
+	assert.Equal(t, "ranger", recs[0]["role"])
+	assert.Equal(t, "inv_abc", recs[0]["invocation_id"])
+	assert.Equal(t, "incremental", recs[0]["record_kind"])
+	assert.Equal(t, "reported_unverified", recs[0]["measurement_quality"])
+	assert.EqualValues(t, 4096, recs[0]["tokens_input"])
+	_, legacy := os.Stat(filepath.Join(root, "memory", "mission-token-usage.jsonl"))
+	assert.True(t, os.IsNotExist(legacy), "the legacy ledger is no longer written")
+}
+
+func TestMissionReportUsageCmd_RepeatedDeliveryIsCountedOnce(t *testing.T) {
+	root := setupMissionReportUsageRoot(t, "20260830-dup-mission")
+	args := append(reportUsageArgs(root, "20260830-dup-mission", 100, 10), "--invocation-id", "inv_dup")
+	_, err := executeMission(t, args...)
 	require.NoError(t, err)
-	assert.Contains(t, string(data), `"mission_id":"20260830-real-mission"`)
-	assert.Contains(t, string(data), `"tokens_in":4096`)
-	assert.Contains(t, string(data), `"tokens_out":2048`)
-	assert.Contains(t, string(data), `"source":"agent_report"`)
-	assert.NotContains(t, string(data), `"tokens_in":0`)
+	out, err := executeMission(t, args...)
+	require.NoError(t, err)
+	assert.Contains(t, out, "duplicate")
+	assert.Len(t, readUsageLedger(t, root), 1)
+}
+
+func TestMissionReportUsageCmd_SameKeyWithDifferentCountsIsAConflict(t *testing.T) {
+	root := setupMissionReportUsageRoot(t, "20260830-conflict-mission")
+	_, err := executeMission(t, append(reportUsageArgs(root, "20260830-conflict-mission", 100, 10), "--invocation-id", "inv_c")...)
+	require.NoError(t, err)
+	_, err = executeMission(t, append(reportUsageArgs(root, "20260830-conflict-mission", 999, 10), "--invocation-id", "inv_c")...)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "conflicts")
+}
+
+func TestMissionReportUsageCmd_OmittedCountIsNeverRecordedAsZero(t *testing.T) {
+	root := setupMissionReportUsageRoot(t, "20260830-partial-mission")
+	out, err := executeMission(t, "report-usage", "--root", root, "--mission-id", "20260830-partial-mission",
+		"--phase", "execution", "--role", "sniper", "--tokens-out", "40", "--invocation-id", "inv_p")
+	require.NoError(t, err)
+	assert.Contains(t, out, "tokens_in=unavailable")
+	recs := readUsageLedger(t, root)
+	assert.Nil(t, recs[0]["tokens_input"])
+	assert.EqualValues(t, 40, recs[0]["tokens_output"])
+}
+
+func TestMissionReportUsageCmd_UnkeyedRecordIsFlagged(t *testing.T) {
+	root := setupMissionReportUsageRoot(t, "20260830-unkeyed-mission")
+	out, err := executeMission(t, reportUsageArgs(root, "20260830-unkeyed-mission", 5, 5)...)
+	require.NoError(t, err)
+	assert.Contains(t, out, "dedup_unavailable")
+	assert.Equal(t, true, readUsageLedger(t, root)[0]["dedup_unavailable"])
+}
+
+func TestMissionReportUsageCmd_CumulativeSnapshotNeedsASession(t *testing.T) {
+	root := setupMissionReportUsageRoot(t, "20260830-snap-mission")
+	_, err := executeMission(t, append(reportUsageArgs(root, "20260830-snap-mission", 5, 5), "--record-kind", "cumulative_snapshot")...)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--session-id")
+
+	_, err = executeMission(t, append(reportUsageArgs(root, "20260830-snap-mission", 5, 5),
+		"--record-kind", "cumulative_snapshot", "--session-id", "s1", "--scope", "session")...)
+	require.NoError(t, err)
+}
+
+func TestMissionReportUsageCmd_RefusesAMeasuredClaim(t *testing.T) {
+	root := setupMissionReportUsageRoot(t, "20260830-fake-mission")
+	_, err := executeMission(t, append(reportUsageArgs(root, "20260830-fake-mission", 5, 5), "--quality", "provider_measured")...)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "stronger")
+
+	_, err = executeMission(t, append(reportUsageArgs(root, "20260830-fake-mission", 5, 5), "--source", "provider_response")...)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not accepted by the CLI")
+}
+
+func TestMissionReportUsageCmd_ApprovalGateCarriesNoTokens(t *testing.T) {
+	root := setupMissionReportUsageRoot(t, "20260830-gate-mission")
+	_, err := executeMission(t, "report-usage", "--root", root, "--mission-id", "20260830-gate-mission",
+		"--phase", "approval_gate", "--role", "shell", "--tokens-in", "1")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "Approval Gate carries no tokens")
 }
 
 func TestMissionReportUsageCmd_RejectsUnknownMissionID(t *testing.T) {
@@ -82,12 +174,16 @@ func TestMissionReportUsageCmd_RequiresMissionID(t *testing.T) {
 	assert.Contains(t, err.Error(), "--mission-id is required")
 }
 
-func TestMissionReportUsageCmd_RequiresTokensInFlag(t *testing.T) {
+func TestMissionReportUsageCmd_RequiresPhaseRoleAndAtLeastOneCount(t *testing.T) {
 	root := setupMissionReportUsageRoot(t, "20260830-req-mission")
-	// --tokens-in deliberately left unset (Changed()==false).
-	_, err := executeMission(t, "report-usage", "--root", root, "--mission-id", "20260830-req-mission", "--tokens-out", "10")
+	_, err := executeMission(t, "report-usage", "--root", root, "--mission-id", "20260830-req-mission", "--tokens-in", "1")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "--tokens-in is required")
+	assert.Contains(t, err.Error(), "--phase is required")
+	assert.Contains(t, err.Error(), "--role is required")
+
+	_, err = executeMission(t, "report-usage", "--root", root, "--mission-id", "20260830-req-mission", "--phase", "discovery", "--role", "ranger")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "at least one of --tokens-in or --tokens-out")
 }
 
 // TestRunMissionReportUsage_WithMissionRunSetsSilent covers the wired

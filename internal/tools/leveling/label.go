@@ -3,6 +3,8 @@ package leveling
 import (
 	"fmt"
 	"strings"
+
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
 
 // Level sources recorded next to every resolved level, in precedence order.
@@ -19,19 +21,20 @@ type Host struct {
 
 // Level is the model and effort a role runs at, plus where the value came from.
 type Level struct {
-	Role           string `json:"role" yaml:"role"`
-	Model          string `json:"model" yaml:"model"`
-	Effort         string `json:"effort" yaml:"effort"`
-	Source         string `json:"level_source" yaml:"level_source"`
-	Provider       string `json:"provider,omitempty" yaml:"provider,omitempty"`
-	ProviderMatch  string `json:"provider_match,omitempty" yaml:"provider_match,omitempty"`
-	ModelSource    string `json:"model_source,omitempty" yaml:"model_source,omitempty"`
-	EffortSource   string `json:"effort_source,omitempty" yaml:"effort_source,omitempty"`
-	Capability     string `json:"capability,omitempty" yaml:"capability,omitempty"`
-	FallbackUsed   bool   `json:"fallback_used,omitempty" yaml:"fallback_used,omitempty"`
-	FallbackReason string `json:"fallback_reason,omitempty" yaml:"fallback_reason,omitempty"`
-	PolicyVersion  int    `json:"policy_version,omitempty" yaml:"policy_version,omitempty"`
-	PolicyDigest   string `json:"policy_digest,omitempty" yaml:"policy_digest,omitempty"`
+	Role           string               `json:"role" yaml:"role"`
+	Model          string               `json:"model" yaml:"model"`
+	Effort         string               `json:"effort" yaml:"effort"`
+	Source         string               `json:"level_source" yaml:"level_source"`
+	Provider       string               `json:"provider,omitempty" yaml:"provider,omitempty"`
+	ProviderMatch  string               `json:"provider_match,omitempty" yaml:"provider_match,omitempty"`
+	ModelSource    string               `json:"model_source,omitempty" yaml:"model_source,omitempty"`
+	EffortSource   string               `json:"effort_source,omitempty" yaml:"effort_source,omitempty"`
+	Capability     string               `json:"capability,omitempty" yaml:"capability,omitempty"`
+	FallbackUsed   bool                 `json:"fallback_used,omitempty" yaml:"fallback_used,omitempty"`
+	FallbackReason string               `json:"fallback_reason,omitempty" yaml:"fallback_reason,omitempty"`
+	PolicyVersion  int                  `json:"policy_version,omitempty" yaml:"policy_version,omitempty"`
+	PolicyDigest   string               `json:"policy_digest,omitempty" yaml:"policy_digest,omitempty"`
+	Budget         *domain.EffortBudget `json:"effort_budget,omitempty" yaml:"effort_budget,omitempty"`
 }
 
 // PolicyLoader loads the LEVELING policy. It is called at most once, and only
@@ -132,4 +135,5 @@ func applyPolicyProvenance(level *Level, suggestion Suggestion) {
 	level.Provider, level.Capability = suggestion.Provider, suggestion.Capability
 	level.FallbackUsed, level.FallbackReason = suggestion.FallbackUsed, suggestion.FallbackReason
 	level.PolicyVersion, level.PolicyDigest = suggestion.PolicyVersion, suggestion.PolicyDigest
+	level.Budget = suggestion.Budget
 }

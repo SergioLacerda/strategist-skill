@@ -66,6 +66,10 @@ producers:
     - {agent: mission_quality, owner: narrative/04-refinement.md#required-behavior}
     - {agent: handoff_challenge, owner: internal/mission/handoff_outcome.go}
     - {agent: sniper, owner: narrative/06-execution.md#required-behavior}
+  derived_producers:
+    ranger: "the claim is derived from the artifact's confidence_score at `mission complete` (single source); missing score, invalid score or no supporting evidence leaves an explicit missing record with the reason"
+    provider: "an enabled provider's conformance reading is a claim under the handoff_challenge producer (assertion, or question when low; explicit evidence is the provider's own report; the claim stays no_sample until a valid pinned calibration decided the threshold, then it is `observed` with that calibration's sample size and cites its record as a second explicit source, never `calibrated`, which needs a resolved ground truth); not answered leaves an explicit missing record with the reason; a disabled integration writes nothing"
+    handoff_challenge_summary: "handoff evaluate uses the caller's summary, else the package's own typed confidence_summary block, else an explicit missing record with the honest reason package_has_no_typed_confidence_summary or package_confidence_summary_invalid"
   silent_boundary: "A boundary that finishes without a record or an explicit missing-record is a coverage gap; the gate review reports missing records separately."
   gate_review: "strategist metrics confidence --mission <id> is the gate-time materializer (telemetry.LoadConfidenceGateReview). strategist metrics confidence --mission <id> --declared - (a handoff confidence_summary on stdin) appends a read-only comparison of the declared claims with the persisted records: declared_unpersisted, persisted_rejected, declared_mismatched, persisted_under_other_agent and declared_review; it never changes review_required."
   ground_truth: >

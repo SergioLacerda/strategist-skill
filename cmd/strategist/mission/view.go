@@ -9,6 +9,9 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/application"
 	"github.com/SergioLacerda/strategist-skill/internal/cliutil"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/feats/opportunity_attack"
+	"github.com/SergioLacerda/strategist-skill/internal/gatecriteria"
+	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 	"github.com/SergioLacerda/strategist-skill/internal/missionview"
 	"github.com/SergioLacerda/strategist-skill/internal/roles/registry"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
@@ -92,22 +95,20 @@ func LoadView(root string, status domain.MissionEngineStatus, run, ledger string
 	if filter == nil {
 		return missionview.View{}, fmt.Errorf("FilterLevels dependency is nil")
 	}
-	reg, regErr := roles.LoadRoleRegistry(filepath.Join(root, "roles"))
-	if regErr != nil {
-		reg = domain.DefaultRoleRegistry()
-	}
-	active, activeErr := cliutil.LoadActiveConfig(root)
-	if activeErr != nil {
-		active = domain.ActiveConfig{}
-	}
+	reg := loadViewRoleRegistry(root)
+	active := loadViewActiveConfig(root)
 	confidence, confidenceErr := telemetry.LoadConfidenceGateReviewForRun(root, status.MissionID, run)
 	gateOutcome, gateErr := telemetry.GateOutcomeFor(root, status.MissionID)
 	levels, levelsErr := leveling.ReadRecords(filepath.Join(root, "memory", ledger))
 	levels = filter(levels, status.MissionID)
 	tokenUsage, tokenUsageErr := readMissionTokenUsage(root, status.MissionID)
 	handoffMetrics, handoffMetricsErr := readRefinementHandoffMetrics(root, status.MissionID)
+	sources := loadUsageSources(root, status.MissionID)
 	declaredBudget, budgetErr := readDeclaredTokenBudget(root)
 	_ = budgetErr // absent/unparseable skill.yaml: display-only, not a diagnosed failure (no Diagnostic entry for it)
+	basePath := loadViewBasePath(root)
+	criteria := gatecriteria.Build(gatecriteria.Input{Root: root, BasePath: basePath, MissionID: status.MissionID})
+	candidates := loadViewOpportunities(root, basePath, status.MissionID)
 	return missionview.Build(missionview.Input{
 		Status: status, Registry: reg, SlotProviders: active.Slots,
 		Confidence: confidence, ConfidenceError: confidenceErr,
@@ -115,7 +116,47 @@ func LoadView(root string, status domain.MissionEngineStatus, run, ledger string
 		Levels: levels, LevelsError: levelsErr, Run: run,
 		TokenUsage: tokenUsage, TokenUsageError: tokenUsageErr, DeclaredTokenBudget: declaredBudget,
 		HandoffMetrics: handoffMetrics, HandoffMetricsError: handoffMetricsErr,
+		Lifecycle: sources.lifecycle, LifecycleError: sources.lifecycleErr,
+		Usage: sources.usage, UsageError: sources.usageErr, KnownInvocations: sources.invocationIDs,
+		Criteria:      &criteria,
+		Opportunities: candidates,
 	}), nil
+}
+
+func loadViewRoleRegistry(root string) domain.RoleRegistry {
+	reg, err := roles.LoadRoleRegistry(filepath.Join(root, "roles"))
+	if err != nil {
+		return domain.DefaultRoleRegistry()
+	}
+	return reg
+}
+
+func loadViewActiveConfig(root string) domain.ActiveConfig {
+	active, err := cliutil.LoadActiveConfig(root)
+	if err != nil {
+		return domain.ActiveConfig{}
+	}
+	return active
+}
+
+func loadViewBasePath(root string) string {
+	_, basePath, err := cliutil.ResolveActiveBasePath(root)
+	if err != nil {
+		return ""
+	}
+	return basePath
+}
+
+func loadViewOpportunities(root, basePath, missionID string) []opportunity_attack.Candidate {
+	manifest, err := opportunity_attack.LoadManifest(root, missionID)
+	if err != nil {
+		return nil
+	}
+	currentDigest, err := handoff.PackageDigest(filepath.Join(basePath, "refined", missionID))
+	if err != nil || opportunity_attack.VerifyDigest(manifest, currentDigest) != nil {
+		return nil
+	}
+	return manifest.Candidates
 }
 
 // skillYAMLBudgetPolicy is the minimal shape this reads from skill.yaml —

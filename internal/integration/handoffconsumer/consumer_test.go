@@ -118,7 +118,7 @@ func TestApprovedPrecheckYieldsAValidDelegationBoundToTheSubject(t *testing.T) {
 	require.Equal(t, "jev-1.13.0", report.Delegation.Model)
 	require.Equal(t, []string{handoff.CheckInputOutputConformance}, report.Delegation.Checks)
 	require.InDelta(t, 0.95, report.Delegation.Confidence, 1e-9)
-	require.InDelta(t, 0.90, report.Delegation.Threshold, 1e-9)
+	require.InDelta(t, 0.80, report.Delegation.Threshold, 1e-9)
 	require.Equal(t, 120, report.Delegation.InputTokens)
 	require.Equal(t, policy.PathJEV, report.Decision.Effective)
 
@@ -137,8 +137,8 @@ func TestBelowThresholdSignalsWithRepairHintsAndNoDelegation(t *testing.T) {
 	require.Equal(t, []string{"uncertainties_explicit"}, hintKeys(report.Hints))
 	require.InDelta(t, 0.60, report.Confidence, 1e-9)
 
-	exact := newRig(t, jevtest.Reply(answerJSON(t, handoff.TransitionRangerToArchivist, "jev-1.13.0", OptionAccept, 0.90)), nil)
-	require.Equal(t, StatusSignal, exact.consumer.Precheck(context.Background(), precheckRequest()).Status, "exactly 0.90 does not approve")
+	exact := newRig(t, jevtest.Reply(answerJSON(t, handoff.TransitionRangerToArchivist, "jev-1.13.0", OptionAccept, 0.80)), nil)
+	require.Equal(t, StatusSignal, exact.consumer.Precheck(context.Background(), precheckRequest()).Status, "exactly the threshold does not approve")
 
 	reject := newRig(t, jevtest.Reply(answerJSON(t, handoff.TransitionRangerToArchivist, "jev-1.13.0", OptionReject, 0.99)), nil)
 	require.Equal(t, StatusSignal, reject.consumer.Precheck(context.Background(), precheckRequest()).Status)
@@ -227,3 +227,17 @@ func TestLedgerRecordsPathReasonUsageAndNeverContentOrSecrets(t *testing.T) {
 	require.NotContains(t, string(raw), syntheticKey)
 	require.NotContains(t, string(raw), "Evaluate every refined package.", "the ledger records metadata, never artifact content")
 }
+
+func readFile(t *testing.T, path string) string {
+	t.Helper()
+	raw, err := os.ReadFile(path)
+	require.NoError(t, err)
+	return string(raw)
+}
+
+func writeFile(t *testing.T, path, content string) {
+	t.Helper()
+	require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
+}
+
+func replaceOnce(s, old, replacement string) string { return strings.Replace(s, old, replacement, 1) }

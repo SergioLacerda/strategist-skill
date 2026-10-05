@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const rankedWizardInput = "en\nen\nen\nen\nepic\n.analysis\nbrainstorming::ranked\nopenspec-propose::ranked\nsniper::ranked\n\n"
+const rankedWizardInput = "en\nen\nen\nen\nepic\n.analysis\n\n\nbrainstorming::ranked\nopenspec-propose::ranked\nsniper::ranked\n\n"
 
 // withoutHostOpenSpec removes Node from PATH, so the Ranked bootstrap hits
 // exactly the missing-executable failure a clean standalone client sees.

@@ -45,7 +45,7 @@ func hostSkill(t *testing.T, workspace string, withSidecar bool) string {
 
 func wizardInstall(t *testing.T, workspace string) error {
 	t.Helper()
-	input := "en\nen\nen\nen\nepic\n.analysis\n" + hostWeaponID + "\nopenspec-propose\nsniper\n\n"
+	input := "en\nen\nen\nen\nepic\n.analysis\n\n\n" + hostWeaponID + "\nopenspec-propose\nsniper\n\n"
 	svc := install.Service{Extractor: embed.Extractor{}, Compiler: noCompile{}, WizardPrompter: install.NewTextPrompter(strings.NewReader(input)), ShimHomeDir: t.TempDir()}
 	return svc.Install(context.Background(), domain.InstallConfig{Target: workspace, Wizard: true})
 }

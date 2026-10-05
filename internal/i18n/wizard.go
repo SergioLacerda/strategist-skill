@@ -2,19 +2,22 @@ package i18n
 
 // WizardStrings holds all user-visible strings for the install wizard.
 type WizardStrings struct {
-	PromptDocLang    string
-	PromptChatLang   string
-	PromptCodeLang   string
-	PromptMode       string
-	PromptBasePath   string
-	HeaderSlots      string
-	PromptDiscovery  string
-	PromptRefinement string
-	PromptExecution  string
-	HeaderChest      string
-	PromptChestPath  string
-	SkipChestHint    string
-	LabelCustomInput string
+	PromptDocLang     string
+	PromptChatLang    string
+	PromptCodeLang    string
+	PromptMode        string
+	PromptBasePath    string
+	PromptADRRoot     string
+	PromptRunbookRoot string
+	HeaderWorkspace   string
+	HeaderSlots       string
+	PromptDiscovery   string
+	PromptRefinement  string
+	PromptExecution   string
+	HeaderChest       string
+	PromptChestPath   string
+	SkipChestHint     string
+	LabelCustomInput  string
 	// HeaderIntegration, NoteIntegrationData (%[1]s endpoint, %[2]s data
 	// categories), PromptIntegration and NoteIntegrationPending belong to the
 	// optional external provider question.
@@ -35,6 +38,9 @@ var EN = WizardStrings{
 	PromptCodeLang:         "Code language",
 	PromptMode:             "Mode",
 	PromptBasePath:         "Base path for analysis workspace",
+	PromptADRRoot:          "  Canonical ADR root",
+	PromptRunbookRoot:      "  Canonical Runbook root",
+	HeaderWorkspace:        "\nWorkspace and documentation roots:",
 	HeaderSlots:            "\nSlot plugins - which skill fills each mission role:",
 	PromptDiscovery:        "  Ranger / discovery plugin",
 	PromptRefinement:       "  Archivist / refinement plugin",
@@ -57,6 +63,9 @@ var PT = WizardStrings{
 	PromptCodeLang:         "Idioma do código",
 	PromptMode:             "Modo",
 	PromptBasePath:         "Caminho base do workspace de análise",
+	PromptADRRoot:          "  Raiz canônica de ADRs",
+	PromptRunbookRoot:      "  Raiz canônica de Runbooks",
+	HeaderWorkspace:        "\nWorkspace e raízes de documentação:",
 	HeaderSlots:            "\nPlugins de slot - qual skill preenche cada papel da missão:",
 	PromptDiscovery:        "  Ranger / plugin de descoberta",
 	PromptRefinement:       "  Arquivista / plugin de refinamento",

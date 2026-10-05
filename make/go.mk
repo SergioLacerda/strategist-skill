@@ -1,6 +1,6 @@
 .PHONY: \
 	fmt fmt-check mod-tidy mod-check vet build \
-	test test-all integration spec eval golden \
+	test test-all integration spec eval golden leveling-integration \
 	validate-expanded validate-all \
 	test-lite test-telemetry-lite test-compile-cache test-domain-architecture \
 	bench validate-fixtures
@@ -39,6 +39,15 @@ test:
 
 test-all: test spec integration
 
+# leveling-integration is a deterministic, provider-free matrix for the
+# LEVELING budget and its first Ranger consumer. GOPROXY=off makes missing
+# dependencies fail instead of reaching the network; GOTOOLCHAIN=auto permits
+# the repository's required Go patch release when it is already installed.
+LEVELING_GOCACHE ?= /tmp/strategist-leveling-integration-cache
+leveling-integration:
+	GOCACHE="$(LEVELING_GOCACHE)" GOPROXY=off GOTOOLCHAIN=auto go test -count=1 ./internal/tools/leveling ./internal/application/leveling ./internal/feats/initiative ./internal/telemetry ./internal/domain ./cmd/strategist/leveling
+	GOCACHE="$(LEVELING_GOCACHE)" GOPROXY=off GOTOOLCHAIN=auto go test -count=1 ./cmd/strategist -run 'Test(RangerPrecheck|EmitRoleLevel|ResolveMissionLeveling|StartInitiativeConsultation)'
+
 integration:
 	GOCACHE="$(GOCACHE)" go test -race -tags=integration ./tests/integration/...
 
@@ -47,6 +56,27 @@ spec:
 
 eval:
 	GOCACHE="$(GOCACHE)" go test -race -tags=eval ./tests/evals/...
+
+# ---------------------------------------------------------------------------
+# External-call checks (LIVE). Deliberately NOT in .PHONY, in no dependency chain
+# and not reachable from test, test-all, ci, ci-test or build: nothing a plain
+# `make` target does ever calls an external endpoint.
+#
+# The sanctioned way to run a check against the real provider is the DOJO, which
+# prints a consent term (endpoint, data class, calls, bytes, estimated usage) and
+# needs an explicit --consent:
+#     strategist dojo calibrate jev-live --dry-run     # then --consent
+#     strategist dojo calibrate jev-pilot --dry-run    # then --consent
+# The two recipes below remain for developers who want the Go-level live tests;
+# they refuse to run unless STRATEGIST_LIVE_CONSENT=yes is set explicitly.
+# ---------------------------------------------------------------------------
+live-jev:
+	@test "$(STRATEGIST_LIVE_CONSENT)" = "yes" || { echo "refused: this calls the real provider; prefer 'strategist dojo calibrate jev-live --dry-run', or set STRATEGIST_LIVE_CONSENT=yes"; exit 1; }
+	STRATEGIST_LIVE_CONSENT=yes GOCACHE="$(GOCACHE)" go test -tags=live -count=1 -v ./internal/integration/live/...
+
+live-calibration:
+	@test "$(STRATEGIST_LIVE_CONSENT)" = "yes" || { echo "refused: this calls the real provider; prefer 'strategist dojo calibrate jev-pilot --dry-run', or set STRATEGIST_LIVE_CONSENT=yes"; exit 1; }
+	STRATEGIST_LIVE_CONSENT=yes GOCACHE="$(GOCACHE)" go test -tags=live -count=1 -v -timeout 30m -run TestLiveCalibrationPilot ./internal/integration/live/...
 
 # golden runs the deterministic artifact snapshot suite. Wired into ci-test
 # (see the top-level Makefile) per docs/adr/0026-deterministic-golden-testing.md's

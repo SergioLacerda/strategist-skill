@@ -30,6 +30,8 @@ func TestLevelingConfigValidate(t *testing.T) {
 		{"automatic is valid", domain.LevelingConfig{Mode: "automatic"}, ""},
 		{"manual needs nothing else", domain.LevelingConfig{Mode: "manual"}, ""},
 		{"unknown mode", domain.LevelingConfig{Mode: "smart"}, "leveling_mapping_invalid: leveling.mode"},
+		{"absolute budget ledger path", domain.LevelingConfig{BudgetLedgerPath: "/tmp/events.jsonl"}, "leveling_budget_ledger_path_invalid"},
+		{"traversal budget ledger path", domain.LevelingConfig{BudgetLedgerPath: "../events.jsonl"}, "leveling_budget_ledger_path_invalid"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -42,6 +44,11 @@ func TestLevelingConfigValidate(t *testing.T) {
 			assert.Contains(t, err.Error(), tc.wantErr)
 		})
 	}
+}
+
+func TestLevelingConfigBudgetLedgerPath(t *testing.T) {
+	assert.Equal(t, domain.DefaultBudgetLedgerPath, domain.LevelingConfig{}.EffectiveBudgetLedgerPath())
+	assert.Equal(t, "memory/custom/events.jsonl", domain.LevelingConfig{BudgetLedgerPath: " memory/custom/events.jsonl "}.EffectiveBudgetLedgerPath())
 }
 
 func TestActiveConfigValidatesLevelingBlock(t *testing.T) {

@@ -5,11 +5,21 @@ supported_slots:
   - refinement
 risk_score: write_analysis
 category: auxiliary
+# Ranked embedded Archivist Weapon (docs/adr/0067-ranked-writing-plans-archivist.md):
+# a prompt-only skill invoked through Strategist's embedded prompt bridge, like
+# brainstorming for the Ranger. It is selectable alongside openspec-propose,
+# which stays the default Archivist.
 runtime:
-  kind: host
-  host_api: strategist-host-skill/v1
+  kind: embedded
+  execution_mode: prompt_bridge
 default: false
 scratch_root: runtime
+weapon_contract:
+  role_owner: archivist
+  participation: required
+  invocation_evidence: required
+  unavailable_behavior: role_invocation_failed
+  native_substitution: forbidden
 upstream_repo: obra/superpowers
 upstream_skill_path: skills/writing-plans/SKILL.md
 upstream_version: 6.3.0

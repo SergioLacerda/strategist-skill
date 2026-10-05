@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
 
 // SkillName is the user-facing name of the model/effort selection skill.
@@ -37,17 +39,19 @@ type Policy struct {
 
 // Defaults contains generic role, effort, and provider-fallback policy.
 type Defaults struct {
-	EffortTiers []string        `yaml:"effort_tiers"`
-	Fallback    Fallback        `yaml:"fallback"`
-	Roles       map[string]Role `yaml:"roles"`
+	EffortTiers []string                  `yaml:"effort_tiers"`
+	Fallback    Fallback                  `yaml:"fallback"`
+	Budget      domain.EffortBudgetPolicy `yaml:"budget"`
+	Roles       map[string]Role           `yaml:"roles"`
 }
 
 // Role describes the normal and escalated recommendation for a Strategist role.
 type Role struct {
-	Capability string     `yaml:"capability"`
-	Effort     string     `yaml:"effort"`
-	Criteria   Criteria   `yaml:"criteria"`
-	Escalation Escalation `yaml:"escalation"`
+	Capability string                    `yaml:"capability"`
+	Effort     string                    `yaml:"effort"`
+	Criteria   Criteria                  `yaml:"criteria"`
+	Escalation Escalation                `yaml:"escalation"`
+	Budget     domain.EffortBudgetPolicy `yaml:"budget"`
 }
 
 // Criteria records the customer-editable signals used to assess a role.
@@ -137,16 +141,17 @@ type Signals struct {
 
 // Suggestion is the resolved model, capability, and effort recommendation.
 type Suggestion struct {
-	Provider       string   `json:"provider" yaml:"provider"`
-	Role           string   `json:"role" yaml:"role"`
-	Model          string   `json:"model" yaml:"model"`
-	Capability     string   `json:"capability" yaml:"capability"`
-	Effort         string   `json:"effort" yaml:"effort"`
-	Rationale      []string `json:"rationale" yaml:"rationale"`
-	FallbackUsed   bool     `json:"fallback_used" yaml:"fallback_used"`
-	FallbackReason string   `json:"fallback_reason,omitempty" yaml:"fallback_reason,omitempty"`
-	PolicyVersion  int      `json:"policy_version" yaml:"policy_version"`
-	PolicyDigest   string   `json:"policy_digest" yaml:"policy_digest"`
+	Provider       string               `json:"provider" yaml:"provider"`
+	Role           string               `json:"role" yaml:"role"`
+	Model          string               `json:"model" yaml:"model"`
+	Capability     string               `json:"capability" yaml:"capability"`
+	Effort         string               `json:"effort" yaml:"effort"`
+	Rationale      []string             `json:"rationale" yaml:"rationale"`
+	FallbackUsed   bool                 `json:"fallback_used" yaml:"fallback_used"`
+	FallbackReason string               `json:"fallback_reason,omitempty" yaml:"fallback_reason,omitempty"`
+	PolicyVersion  int                  `json:"policy_version" yaml:"policy_version"`
+	PolicyDigest   string               `json:"policy_digest" yaml:"policy_digest"`
+	Budget         *domain.EffortBudget `json:"effort_budget,omitempty" yaml:"effort_budget,omitempty"`
 }
 
 // Digest returns the stable SHA-256 identity of the normalized policy.

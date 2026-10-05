@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/handoff"
+	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/stretchr/testify/require"
 )
 
@@ -106,4 +107,59 @@ func TestArchivistEvaluationDropsAStaleDelegation(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, handoff.OutcomePassed, evaluation.Outcome.Result)
 	require.Nil(t, evaluation.Outcome.Delegation)
+}
+
+func TestRangerEventNamesTheCriterionSourceAndTheProviderReading(t *testing.T) {
+	root, basePath := rangerHandoffFixture(t, rangerHandoffArtifact)
+	artifact := filepath.Join(basePath, "pending", "m-ranger-analysis.md")
+	digest, err := handoff.RangerArtifactDigest(artifact)
+	require.NoError(t, err)
+
+	mainSink := &rangerHandoffCapture{}
+	_, err = EvaluateRangerToArchivistWithTelemetry(context.Background(), root, artifact, "m-ranger", RangerHandoffInput{Challenges: rangerChallenges()}, mainSink, "run-main")
+	require.NoError(t, err)
+	require.Equal(t, telemetry.CriterionSourceMain, mainSink.eventsSnapshot()[0].Attributes[telemetry.AttrHandoffCriterionSource])
+
+	root2, basePath2 := rangerHandoffFixture(t, rangerHandoffArtifact)
+	providerSink := &rangerHandoffCapture{}
+	_, err = EvaluateRangerToArchivistWithTelemetry(context.Background(), root2, filepath.Join(basePath2, "pending", "m-ranger-analysis.md"), "m-ranger",
+		RangerHandoffInput{Challenges: rangerChallenges(), Delegation: approvedDelegation(digest)}, providerSink, "run-provider")
+	require.NoError(t, err)
+	attrs := providerSink.eventsSnapshot()[0].Attributes
+	require.Equal(t, telemetry.CriterionSourceProvider, attrs[telemetry.AttrHandoffCriterionSource])
+	require.Equal(t, 95, attrs[telemetry.AttrHandoffProviderConfidencePercent])
+	require.Equal(t, 90, attrs[telemetry.AttrHandoffProviderThresholdPercent])
+	require.Equal(t, "jev", attrs[telemetry.AttrHandoffProvider])
+	require.Equal(t, true, attrs[telemetry.AttrHandoffProviderApproved])
+	require.NotContains(t, attrs, telemetry.AttrArtifactPath)
+}
+
+func TestArchivistEvaluationEmitsAContentFreeHandoffEventWithTheCriterion(t *testing.T) {
+	f := newRecordFixture(t, "rec-event", recordFacts)
+	digest, err := handoff.PackageDigest(filepath.Join(f.basePath, "refined", f.id))
+	require.NoError(t, err)
+	sink := &rangerHandoffCapture{}
+	input := recordChallenges()
+	input.Delegation = approvedDelegation(digest)
+	input.Sink = sink
+
+	evaluation, _, _, err := RecordArchivistHandoff(f.root, f.basePath, f.engine, input)
+	require.NoError(t, err)
+
+	events := sink.eventsSnapshot()
+	require.Len(t, events, 1)
+	require.Equal(t, telemetry.ArchivistToSniperEventName, events[0].Name)
+	require.Equal(t, evaluation.Outcome.Result, events[0].Attributes[telemetry.AttrHandoffOutcome])
+	require.Equal(t, telemetry.CriterionSourceProvider, events[0].Attributes[telemetry.AttrHandoffCriterionSource])
+	for key, value := range events[0].Attributes {
+		require.NotContains(t, key, "digest")
+		require.NotContains(t, key, "artifact")
+		require.NotEqual(t, digest, value, "the package digest never rides the event")
+	}
+}
+
+func TestArchivistEvaluationWithoutASinkStaysSilent(t *testing.T) {
+	f := newRecordFixture(t, "rec-silent", recordFacts)
+	_, _, _, err := RecordArchivistHandoff(f.root, f.basePath, f.engine, recordChallenges())
+	require.NoError(t, err)
 }

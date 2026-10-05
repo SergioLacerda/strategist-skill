@@ -63,6 +63,7 @@ type Runbook struct {
 const (
 	RunbookTypeAnalytical  = "analytical"
 	RunbookTypeOperational = "operational"
+	RunbookTypePlaybook    = "playbook"
 )
 
 var allowedRunbookTypes = stringSet(RunbookTypeAnalytical, RunbookTypeOperational)
@@ -83,10 +84,27 @@ func ParseSidecar(data []byte) (Runbook, error) {
 	if err := yaml.Unmarshal(data, &rb); err != nil {
 		return Runbook{}, fmt.Errorf("runbook_sidecar_invalid: %w", err)
 	}
+	// Playbook is a user-facing alias for an operational Runbook. It remains
+	// one family so Ranger lookup and OA detection do not fork taxonomy.
+	if rb.RunbookType == RunbookTypePlaybook {
+		rb.RunbookType = RunbookTypeOperational
+	}
 	if err := ValidateRunbook(rb); err != nil {
 		return Runbook{}, err
 	}
 	return rb, nil
+}
+
+// NormalizeRunbookType accepts the documented Playbook alias without creating
+// a second operational artifact family.
+func NormalizeRunbookType(value string) (string, error) {
+	if value == RunbookTypePlaybook {
+		return RunbookTypeOperational, nil
+	}
+	if _, ok := allowedRunbookTypes[value]; !ok {
+		return "", fmt.Errorf("runbook_invalid: runbook_type %q is not allowed", value)
+	}
+	return value, nil
 }
 
 // ValidateRunbook checks a Runbook against the required fields and allowed

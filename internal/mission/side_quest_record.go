@@ -16,8 +16,12 @@ const (
 	SideQuestAccepted = "accepted"
 	SideQuestDeclined = "declined"
 
-	// SideQuestKindOAADR is the only side-quest kind with a durable record.
+	// SideQuestKindOAADR records an ADR opportunity decision.
 	SideQuestKindOAADR = "oa_adr"
+	// SideQuestKindOARunbook records a Runbook opportunity decision.
+	SideQuestKindOARunbook = "oa_runbook"
+	// SideQuestKindOAChest records a Treasure Chest opportunity decision.
+	SideQuestKindOAChest = "oa_treasure_chest"
 
 	sideQuestSchemaVersion = 1
 )
@@ -61,6 +65,12 @@ type AcceptedSideQuest struct {
 // OAADRSideQuestID is the id the package must carry for the mission's ADR.
 func OAADRSideQuestID(missionID string) string { return "OA-ADR-" + missionID }
 
+// OARunbookSideQuestID is the independent Runbook opportunity id.
+func OARunbookSideQuestID(missionID string) string { return "OA-RUNBOOK-" + missionID }
+
+// OAChestSideQuestID is the independent Treasure Chest opportunity id.
+func OAChestSideQuestID(missionID string) string { return "OA-CHEST-" + missionID }
+
 func (r AcceptedSideQuest) digest() (string, error) {
 	r.Integrity = ""
 	raw, err := json.Marshal(r)
@@ -92,20 +102,29 @@ func (r AcceptedSideQuest) VerifyIntegrity() error {
 	return nil
 }
 
-func sideQuestRecordPath(strategistRoot, missionID string) (string, error) {
+func sideQuestRecordPath(strategistRoot, missionID, sideQuestID string) (string, error) {
 	if strategistRoot == "" {
 		return "", errors.New("side_quest_record_invalid: runtime root is required")
 	}
-	if missionID == "" || strings.ContainsAny(missionID, `/\`) || missionID == "." || missionID == ".." {
+	if missionID == "" || strings.ContainsAny(missionID, `/\`) || missionID == "." || missionID == ".." || sideQuestID == "" || strings.ContainsAny(sideQuestID, `/\`) {
 		return "", fmt.Errorf("side_quest_record_invalid: malformed mission id %q", missionID)
 	}
-	return filepath.Join(strategistRoot, "missions", "side-quests", missionID+".json"), nil
+	name := missionID + ".json"
+	if sideQuestID != OAADRSideQuestID(missionID) {
+		name = missionID + "-" + strings.ToLower(strings.TrimPrefix(sideQuestID, "OA-")) + ".json"
+	}
+	return filepath.Join(strategistRoot, "missions", "side-quests", name), nil
 }
 
 // LoadAcceptedSideQuest reads and verifies the mission's record. A mission
 // with no record reports found=false.
 func LoadAcceptedSideQuest(strategistRoot, missionID string) (rec AcceptedSideQuest, found bool, err error) {
-	path, err := sideQuestRecordPath(strategistRoot, missionID)
+	return LoadSideQuest(strategistRoot, missionID, OAADRSideQuestID(missionID))
+}
+
+// LoadSideQuest loads one independent opportunity decision.
+func LoadSideQuest(strategistRoot, missionID, sideQuestID string) (rec AcceptedSideQuest, found bool, err error) {
+	path, err := sideQuestRecordPath(strategistRoot, missionID, sideQuestID)
 	if err != nil {
 		return AcceptedSideQuest{}, false, err
 	}
@@ -131,7 +150,7 @@ func LoadAcceptedSideQuest(strategistRoot, missionID string) (rec AcceptedSideQu
 // saveAcceptedSideQuest seals the digest and writes the record atomically.
 // The caller must hold the mission lock.
 func saveAcceptedSideQuest(strategistRoot string, rec AcceptedSideQuest) (AcceptedSideQuest, error) {
-	path, err := sideQuestRecordPath(strategistRoot, rec.MissionID)
+	path, err := sideQuestRecordPath(strategistRoot, rec.MissionID, rec.SideQuestID)
 	if err != nil {
 		return AcceptedSideQuest{}, err
 	}

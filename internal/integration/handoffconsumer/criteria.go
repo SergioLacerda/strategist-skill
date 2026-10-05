@@ -5,9 +5,16 @@
 package handoffconsumer
 
 import (
+	"github.com/SergioLacerda/strategist-skill/internal/calibration"
 	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 	"github.com/SergioLacerda/strategist-skill/internal/integration"
 )
+
+// TransitionArchivistToGate names the advisory boundary evaluated on the refined
+// package after the Archivist publishes it and before the Approval Gate. It is
+// not a lifecycle transition and never an outcome: the lifecycle owns only
+// ranger_to_archivist and archivist_to_sniper.
+const TransitionArchivistToGate = "archivist_to_gate"
 
 // Aggregate question vocabulary.
 const (
@@ -39,13 +46,14 @@ var sniperCriteria = []Criterion{
 	{"acceptance_checkable", "acceptance_checks", "The acceptance checks can be confirmed against a command result or file content."},
 }
 
-// Criteria returns the criteria catalog of a lifecycle transition, empty for any
-// other transition: only the two lifecycle-owned transitions are consumers.
+// Criteria returns the criteria catalog of a consuming boundary, empty for any
+// other: the two lifecycle transitions and the advisory gate boundary are the
+// only consumers, and the last two read the same refined package.
 func Criteria(transition string) []Criterion {
 	switch transition {
 	case handoff.TransitionRangerToArchivist:
 		return rangerCriteria
-	case handoff.TransitionArchivistToSniper:
+	case handoff.TransitionArchivistToSniper, TransitionArchivistToGate:
 		return sniperCriteria
 	default:
 		return nil
@@ -70,9 +78,24 @@ func Fields(transition string) []string {
 // first, whose answer carries the confidence criterion, then one noul per
 // criterion, used only to explain a miss.
 func Questions(transition string) []integration.Question {
+	return QuestionsFor(calibration.ProfileV1, transition)
+}
+
+// absentRule is the projection rule of profile v2, kept in the profile version.
+const absentRule = "a catalog field the artifact lacks is shown as (absent)"
+
+// absentNote tells the provider what an (absent) field means; only profile v2 shows one.
+const absentNote = " A field shown as (absent) was not provided; a criterion about an absent field does not hold."
+
+// QuestionsFor builds the questions of a profile. Profile v2 adds to the aggregate
+// question what an (absent) field means.
+func QuestionsFor(profile, transition string) []integration.Question {
 	criteria := Criteria(transition)
 	if len(criteria) == 0 {
 		return nil
+	}
+	if calibration.IsAtomic(profile) {
+		return atomicQuestions(criteria)
 	}
 	description := "Every criterion holds:"
 	questions := []integration.Question{{}}
@@ -82,11 +105,18 @@ func Questions(transition string) []integration.Question {
 	}
 	questions[0] = integration.Question{
 		Key: AggregateKey, Kind: integration.KindChoice,
-		Instructions: "Does this handoff conform to its contract and give the receiving role enough to proceed?",
+		Instructions: "Does this handoff conform to its contract and give the receiving role enough to proceed?" + noteFor(profile),
 		Options: []integration.Option{
 			{Key: OptionAccept, Description: description},
 			{Key: OptionReject, Description: "At least one criterion does not hold."},
 		},
 	}
 	return questions
+}
+
+func noteFor(profile string) string {
+	if calibration.ResolveProfile(profile) == calibration.ProfileV2 {
+		return absentNote
+	}
+	return ""
 }

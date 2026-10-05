@@ -71,6 +71,7 @@ func withClosedStdout(t *testing.T, fn func()) {
 }
 
 func TestNew_KeepsCommandContract(t *testing.T) {
+	t.Parallel()
 	cmd := New(Dependencies{})
 
 	assert.Equal(t, "dojo", cmd.Use)
@@ -85,6 +86,7 @@ func TestNew_KeepsCommandContract(t *testing.T) {
 }
 
 func TestRegister_AttachesDojo(t *testing.T) {
+	t.Parallel()
 	root := &cobra.Command{Use: "strategist"}
 
 	Register(root, Dependencies{})
@@ -95,6 +97,7 @@ func TestRegister_AttachesDojo(t *testing.T) {
 }
 
 func TestCommands_FailClosedWithoutResolver(t *testing.T) {
+	t.Parallel()
 	for _, args := range [][]string{{"list"}, {"check", "sample-scenario"}} {
 		cmd := New(Dependencies{})
 		cmd.SetOut(&bytes.Buffer{})
@@ -109,6 +112,7 @@ func TestCommands_FailClosedWithoutResolver(t *testing.T) {
 }
 
 func TestIsScenarioEntry(t *testing.T) {
+	t.Parallel()
 	dojoDir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(dojoDir, "not-a-dir.txt"), []byte("x"), 0o644))
 	require.NoError(t, os.MkdirAll(filepath.Join(dojoDir, ".last-run"), 0o755))
@@ -128,6 +132,7 @@ func TestIsScenarioEntry(t *testing.T) {
 }
 
 func TestCheckCmd_AllPass(t *testing.T) {
+	t.Parallel()
 	root := setupDojoScenario(t, "sample-scenario",
 		"scenario: sample-scenario\nrun_dir: dojo/run\nfiles_created:\n  - path: todo/geral.md\n    must_contain: [KATA_RAPIDO]\n",
 		"ideia: KATA_RAPIDO test\n",
@@ -141,6 +146,7 @@ func TestCheckCmd_AllPass(t *testing.T) {
 }
 
 func TestCheckCmd_FileMissing(t *testing.T) {
+	t.Parallel()
 	root := setupDojoScenario(t, "sample-scenario",
 		"scenario: sample-scenario\nrun_dir: dojo/run\nfiles_created:\n  - path: todo/geral.md\n",
 		"",
@@ -154,6 +160,7 @@ func TestCheckCmd_FileMissing(t *testing.T) {
 }
 
 func TestCheckCmd_MissingActiveYAML(t *testing.T) {
+	t.Parallel()
 	_, err := execute(t, "check", "--root", filepath.Join(t.TempDir(), "nonexistent"), "sample-scenario")
 
 	require.Error(t, err)
@@ -161,6 +168,7 @@ func TestCheckCmd_MissingActiveYAML(t *testing.T) {
 }
 
 func TestCheckCmd_MissingCriteria(t *testing.T) {
+	t.Parallel()
 	root := setupDojoScenario(t, "sample-scenario", "scenario: sample-scenario\n", "")
 
 	_, err := execute(t, "check", "--root", root, "nonexistent-scenario")
@@ -169,6 +177,7 @@ func TestCheckCmd_MissingCriteria(t *testing.T) {
 }
 
 func TestCheckCmd_FilesOnlySkipsEmitLog(t *testing.T) {
+	t.Parallel()
 	root := setupDojoScenario(t, "sample-scenario",
 		"scenario: sample-scenario\nrun_dir: dojo/run\nfiles_created:\n  - path: todo/geral.md\nemit_log:\n  must_contain: [ranger_start]\n",
 		"ideia: content\n",
@@ -182,6 +191,7 @@ func TestCheckCmd_FilesOnlySkipsEmitLog(t *testing.T) {
 }
 
 func TestCheckCmd_FlagsDoNotLeakBetweenInvocations(t *testing.T) {
+	t.Parallel()
 	root := setupDojoScenario(t, "sample-scenario",
 		"scenario: sample-scenario\nrun_dir: dojo/run\nfiles_created:\n  - path: todo/geral.md\nemit_log:\n  must_contain: [ranger_start]\n",
 		"ideia: content\n",
@@ -196,6 +206,7 @@ func TestCheckCmd_FlagsDoNotLeakBetweenInvocations(t *testing.T) {
 }
 
 func TestCheckCmd_PersistsResultAndLesson(t *testing.T) {
+	t.Parallel()
 	root := setupDojoScenario(t, "sample-scenario",
 		"scenario: sample-scenario\nrun_dir: dojo/run\nfiles_created:\n  - path: todo/geral.md\n",
 		"",
@@ -214,6 +225,7 @@ func TestCheckCmd_PersistsResultAndLesson(t *testing.T) {
 }
 
 func TestCheckCmd_EmptyBasePath(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	strategistRoot := filepath.Join(dir, ".strategist")
 	require.NoError(t, os.MkdirAll(strategistRoot, 0o755))
@@ -227,6 +239,7 @@ func TestCheckCmd_EmptyBasePath(t *testing.T) {
 }
 
 func TestListCmd_ListsScenarios(t *testing.T) {
+	t.Parallel()
 	root := setupDojoScenario(t, "sample-scenario",
 		"scenario: sample-scenario\ndescription: \"sample scenario test\"\n", "")
 
@@ -245,6 +258,7 @@ func TestListCmd_ListsScenarios(t *testing.T) {
 }
 
 func TestListCmd_ExcludesRunDirectory(t *testing.T) {
+	t.Parallel()
 	root := setupDojoScenario(t, "sample-scenario",
 		"scenario: sample-scenario\ndescription: \"sample scenario test\"\n", "ideia: content\n")
 
@@ -259,6 +273,7 @@ func TestListCmd_ExcludesRunDirectory(t *testing.T) {
 }
 
 func TestListCmd_EmptyDojo(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	strategistRoot := filepath.Join(dir, ".strategist")
 	require.NoError(t, os.MkdirAll(strategistRoot, 0o755))
@@ -273,6 +288,7 @@ func TestListCmd_EmptyDojo(t *testing.T) {
 }
 
 func TestListCmd_MissingDojoDir(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	strategistRoot := filepath.Join(dir, ".strategist")
 	require.NoError(t, os.MkdirAll(strategistRoot, 0o755))
@@ -285,6 +301,7 @@ func TestListCmd_MissingDojoDir(t *testing.T) {
 }
 
 func TestListCmd_MissingActiveYAML(t *testing.T) {
+	t.Parallel()
 	_, err := execute(t, "list", "--root", filepath.Join(t.TempDir(), "nonexistent"))
 
 	require.Error(t, err)
@@ -353,6 +370,7 @@ func TestListCmd_FlushErrorOnClosedStdout(t *testing.T) {
 // MkdirAll calls at once; a failed result is required so WriteLesson actually
 // attempts its write.
 func TestPersistResult_WarnsOnPersistAndLessonErrors(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "dojo"), []byte("x"), 0o644))
 	result := domain.DojoCheckResult{Scenario: "sample", Items: []domain.DojoCheckItem{{Passed: false}}}
@@ -367,6 +385,7 @@ func TestPersistResult_WarnsOnPersistAndLessonErrors(t *testing.T) {
 // TestPersistResult_PassedResultSkipsLesson covers the WriteLesson early-return
 // branch (result.Passed()==true) separately from the persist-error branch.
 func TestPersistResult_PassedResultSkipsLesson(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "dojo"), []byte("x"), 0o644))
 	result := domain.DojoCheckResult{Scenario: "sample", Items: []domain.DojoCheckItem{{Passed: true}}}
@@ -381,6 +400,7 @@ func TestPersistResult_PassedResultSkipsLesson(t *testing.T) {
 // TestPrintResult_ClosedWriterErrors covers printResult's terminal Flush error
 // check with a writer that always fails.
 func TestPrintResult_ClosedWriterErrors(t *testing.T) {
+	t.Parallel()
 	result := domain.DojoCheckResult{
 		Scenario: "sample",
 		Items:    []domain.DojoCheckItem{{Passed: true, Label: "check-1"}},

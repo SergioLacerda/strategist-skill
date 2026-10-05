@@ -3,6 +3,8 @@ package leveling
 import (
 	"fmt"
 	"strings"
+
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 )
 
 // Validate rejects incomplete or unsafe LEVELING policy documents.
@@ -26,6 +28,10 @@ func validateDefaults(defaults Defaults) error {
 	if err := validateEffortTiers("defaults.effort_tiers", defaults.EffortTiers); err != nil {
 		return err
 	}
+	return validateDefaultFallback(defaults)
+}
+
+func validateDefaultFallback(defaults Defaults) error {
 	if err := validateCapability("defaults.fallback.capability", defaults.Fallback.Capability); err != nil {
 		return err
 	}
@@ -35,7 +41,14 @@ func validateDefaults(defaults Defaults) error {
 	if !contains(defaults.EffortTiers, defaults.Fallback.Effort) {
 		return fmt.Errorf("leveling_mapping_invalid: defaults.fallback.effort %q is not declared", defaults.Fallback.Effort)
 	}
-	return nil
+	return validateOptionalBudget("defaults.budget", defaults.Budget)
+}
+
+func validateOptionalBudget(path string, budget domain.EffortBudgetPolicy) error {
+	if budgetPolicyEmpty(budget) {
+		return nil
+	}
+	return validateBudgetPolicy(path, budget)
 }
 
 func validateRoles(roles map[string]Role, tiers []string) error {
@@ -66,7 +79,38 @@ func validateRole(id string, role Role, tiers []string) error {
 	if err := validateCriteria(id, role.Criteria); err != nil {
 		return err
 	}
+	if !budgetPolicyEmpty(role.Budget) {
+		if err := validateBudgetPolicy("defaults.roles."+id+".budget", role.Budget); err != nil {
+			return err
+		}
+	}
 	return validateRoleEscalation(id, role.Escalation, tiers)
+}
+
+func budgetPolicyEmpty(policy domain.EffortBudgetPolicy) bool {
+	return policy.MaxDelegations == 0 && policy.MaxDepth == 0 && policy.Parallelism == 0 &&
+		policy.ContextBudget == "" && policy.EvidenceDepth == "" &&
+		!policy.Permissions.Specialists && !policy.Permissions.SideQuests && !policy.Permissions.DeepHistory &&
+		!policy.EscalationAllowed && policy.MaxEscalations == 0
+}
+
+func validateBudgetPolicy(path string, policy domain.EffortBudgetPolicy) error {
+	if policy.MaxDelegations < 0 || policy.MaxDepth < 0 || policy.MaxEscalations < 0 {
+		return fmt.Errorf("%s: %s: limits must not be negative", ReasonLevelingBudgetInvalid, path)
+	}
+	if policy.Parallelism < 1 {
+		return fmt.Errorf("%s: %s.parallelism must be positive", ReasonLevelingBudgetInvalid, path)
+	}
+	if !contains([]string{"low", "medium", "high"}, strings.ToLower(strings.TrimSpace(policy.ContextBudget))) {
+		return fmt.Errorf("%s: %s.context_budget %q is invalid", ReasonLevelingBudgetInvalid, path, policy.ContextBudget)
+	}
+	if !contains([]string{"minimal", "standard", "deep"}, strings.ToLower(strings.TrimSpace(policy.EvidenceDepth))) {
+		return fmt.Errorf("%s: %s.evidence_depth %q is invalid", ReasonLevelingBudgetInvalid, path, policy.EvidenceDepth)
+	}
+	if !policy.EscalationAllowed && policy.MaxEscalations != 0 {
+		return fmt.Errorf("%s: %s.max_escalations must be zero when escalation is disabled", ReasonLevelingBudgetInvalid, path)
+	}
+	return nil
 }
 
 func validateRoleBasics(id string, role Role, tiers []string) error {
@@ -126,43 +170,4 @@ func validateCriteria(id string, criteria Criteria) error {
 		}
 	}
 	return nil
-}
-
-func validateProvider(id string, provider Provider) error {
-	if strings.TrimSpace(id) == "" || len(provider.Models) == 0 {
-		return fmt.Errorf("leveling_mapping_invalid: providers.%s requires models", id)
-	}
-	if err := validateProviderModels(id, provider.Models); err != nil {
-		return err
-	}
-	if err := validateProviderDisplay(id, provider.Display); err != nil {
-		return err
-	}
-	return validateEffortTiers("providers."+id+".effort_tiers", provider.EffortTiers)
-}
-
-func validateProviderModels(id string, models map[string]string) error {
-	for capability, model := range models {
-		if invalidProviderMapping(capability, model) {
-			return fmt.Errorf("leveling_mapping_invalid: %s mapping requires non-empty capability and model", providerPath(id))
-		}
-	}
-	return nil
-}
-
-func invalidProviderMapping(capability, model string) bool {
-	return capability != strings.TrimSpace(capability) || model != strings.TrimSpace(model) || strings.TrimSpace(capability) == "" || strings.TrimSpace(model) == ""
-}
-
-func validateProviderDisplay(id string, display map[string]string) error {
-	for model, name := range display {
-		if invalidProviderDisplay(model, name) {
-			return fmt.Errorf("leveling_mapping_invalid: %s display requires a non-empty single-line name for each model", providerPath(id))
-		}
-	}
-	return nil
-}
-
-func invalidProviderDisplay(model, name string) bool {
-	return strings.TrimSpace(model) == "" || strings.TrimSpace(name) == "" || strings.ContainsAny(name, "\r\n")
 }

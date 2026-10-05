@@ -30,9 +30,7 @@ func ValidateInvocationCompletion(record domain.MissionInvocationRecord, complet
 	if completion.RequestID != record.Request.RequestID {
 		return fmt.Errorf("invocation_binding_mismatch: completion request_id does not match pending request")
 	}
-	registered := (record.Request.Role == "ranger" && record.Request.Slot == string(domain.SlotDiscovery)) ||
-		(record.Request.Role == "sniper" && record.Request.Slot == string(domain.SlotExecution))
-	if !registered {
+	if !completionRegistered(record.Request.Role, record.Request.Slot) {
 		return fmt.Errorf("role_invocation_failed: completion normalization is not registered for %s/%s", record.Request.Role, record.Request.Slot)
 	}
 	return nil
@@ -57,4 +55,19 @@ func VerifyExecutionAdapter(record domain.MissionInvocationRecord, adapter domai
 		return fmt.Errorf("invocation_adapter_unknown: child request %q has no policy identity", record.Request.RequestID)
 	}
 	return nil
+}
+
+// completionRegistered lists the Role and slot pairs whose completion has a
+// registered normalizer. The completion dispatcher in cmd/strategist selects
+// its normalizer from the same pairs and fails closed for any other.
+func completionRegistered(role, slot string) bool {
+	switch {
+	case role == "ranger" && slot == string(domain.SlotDiscovery):
+		return true
+	case role == "archivist" && slot == string(domain.SlotRefinement):
+		return true
+	case role == "sniper" && slot == string(domain.SlotExecution):
+		return true
+	}
+	return false
 }

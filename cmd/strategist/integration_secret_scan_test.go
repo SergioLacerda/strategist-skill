@@ -140,7 +140,7 @@ func enableDotenvIntegration(t *testing.T, root string, sim *jevtest.Server, mut
 		SchemaVersion: config.SchemaVersion, Providers: map[string]config.Provider{"jev": provider},
 	}))
 	delegationRoundTripper = sim.Transport()
-	t.Cleanup(func() { delegationRoundTripper = nil })
+	t.Cleanup(func() { delegationRoundTripper = networkGuard })
 }
 
 // filesContaining lists every file under dir whose bytes contain needle, except

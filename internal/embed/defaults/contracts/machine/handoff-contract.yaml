@@ -239,6 +239,7 @@ delegated_validation:
   status: lifecycle_owned
   adr_ref: docs/adr/0065-provider-integration-mechanism.md
   applies_to: [ranger_to_archivist, archivist_to_sniper]
+  advisory_boundary: archivist_to_gate   # not a lifecycle transition and never an outcome; see provider-integration.yaml
   consumer: machine/provider-integration.yaml#handoff_consumer
   description: >
     An enabled external provider (the Provider Integration Mechanism, first provider
@@ -264,7 +265,7 @@ delegated_validation:
 
   decision_rule:
     owner: strategist (local, deterministic)
-    approved_when: confidence strictly above the configured threshold (default 0.90)
+    approved_when: the confidence in acceptance (the provider probability of accept when reported, else the documented confidence of the chosen option) is strictly above the threshold in force (a valid pinned calibration's, else the configured one; default 0.80, an uncalibrated starting point; see dojo-calibration.yaml)
     note: >
       Approved is derived locally from the recorded confidence and threshold, never read
       from the provider. A call that does not approve leaves the handoff on main and

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/handoff"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
 
@@ -11,7 +12,7 @@ import (
 // for one evaluation attempt under the handoff_challenge producer: the declared
 // claims and open questions, or an explicit missing-record when none was
 // supplied. A failure is returned so the caller persists no authorizing outcome.
-func persistHandoffConfidence(strategistRoot, missionID string, attempt int, summary *domain.ConfidenceSummary) error {
+func persistHandoffConfidence(strategistRoot, missionID string, attempt int, summary *domain.ConfidenceSummary, absentReason string) error {
 	path := telemetry.ConfidenceHistoryPath(strategistRoot)
 	producer, err := telemetry.NewConfidenceProducerAdapter(path, telemetry.ConfidenceAgentHandoffChallenge, missionID)
 	if err != nil {
@@ -19,7 +20,7 @@ func persistHandoffConfidence(strategistRoot, missionID string, attempt int, sum
 	}
 	producer = producer.WithRun(fmt.Sprintf("handoff-attempt-%d", attempt))
 	if summary == nil {
-		return recordMissingHandoffConfidence(producer, "confidence_summary_not_supplied")
+		return recordMissingHandoffConfidence(producer, orDefaultReason(absentReason, "confidence_summary_not_supplied"))
 	}
 	if err := domain.ValidateConfidenceSummary(*summary); err != nil {
 		return fmt.Errorf("validate confidence summary: %w", err)
@@ -50,4 +51,40 @@ func confidenceSummaryClaims(summary domain.ConfidenceSummary) []domain.Confiden
 	claims := make([]domain.ConfidenceClaim, 0, len(summary.Claims)+len(summary.OpenQuestions))
 	claims = append(claims, summary.Claims...)
 	return append(claims, summary.OpenQuestions...)
+}
+
+const (
+	packageSummaryKey           = "confidence_summary"
+	reasonPackageHasNoSummary   = "package_has_no_typed_confidence_summary"
+	reasonPackageSummaryInvalid = "package_confidence_summary_invalid"
+)
+
+func orDefaultReason(reason, fallback string) string {
+	if reason == "" {
+		return fallback
+	}
+	return reason
+}
+
+// packageConfidenceSummary chooses the summary recorded for the handoff. A
+// summary the caller supplied always wins. Otherwise the package's own typed
+// confidence_summary block is used when it declares one and it validates. When
+// there is none, or it is invalid, no summary is returned together with the
+// honest reason: the package has none, which is not the same as the caller
+// having forgotten to supply one. A bad optional block never blocks the handoff.
+func packageConfidenceSummary(refined string, supplied *domain.ConfidenceSummary) (*domain.ConfidenceSummary, string) {
+	if supplied != nil {
+		return supplied, ""
+	}
+	var summary domain.ConfidenceSummary
+	found, err := handoff.ReadPackageFrontmatterBlock(refined, packageSummaryKey, &summary)
+	switch {
+	case err != nil:
+		return nil, reasonPackageSummaryInvalid
+	case !found:
+		return nil, reasonPackageHasNoSummary
+	case domain.ValidateConfidenceSummary(summary) != nil:
+		return nil, reasonPackageSummaryInvalid
+	}
+	return &summary, ""
 }

@@ -33,9 +33,10 @@ func ValidateCriteria(c domain.DojoCriteria) error {
 	if strings.TrimSpace(c.Scenario) == "" {
 		errs = append(errs, "scenario is required")
 	}
-	if strings.TrimSpace(c.RunDir) == "" {
+	if c.Kind != domain.KindJudgeCalibration && strings.TrimSpace(c.RunDir) == "" {
 		errs = append(errs, "run_dir is required")
 	}
+	errs = append(errs, validateCalibration(c)...)
 	errs = append(errs, validateFileCheckPaths(c.FilesCreated)...)
 	errs = append(errs, validateManifestChecks(c.ManifestChecks)...)
 	errs = append(errs, validateTimingCriteria(c.TimingCriteria)...)

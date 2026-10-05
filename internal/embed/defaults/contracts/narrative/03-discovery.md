@@ -220,9 +220,14 @@ simultaneously (decision conflict) — see `00-routing.md`. `skill.yaml#budget_p
 
 ## Required Behavior
 
-- before finishing, persist this boundary's confidence: `strategist metrics record --mission <mission_id> --agent ranger --claim-file -` (claim piped on stdin, never a file under `<base_path>`; see `machine/confidence-governance.yaml#producers.claim_placement`),
-  or, when no confidence summary was produced, `strategist metrics record --mission <mission_id> --agent ranger --missing --correlation-key <key> --reason <why>`;
-  never finish silently (see `machine/confidence-governance.yaml#producers`)
+- before finishing, make sure this boundary's confidence is persisted. The artifact's `confidence_score`
+  is the single source of the Ranger confidence claim: `strategist mission complete` records the claim from
+  that score when the artifact is normalized (an absent or out-of-range score, or a score with no supporting
+  evidence, is recorded as an explicit missing record with its reason), so do not record a second Ranger
+  claim for the same number. Any further claim is recorded with `strategist metrics record --mission
+  <mission_id> --agent ranger --claim-file -` (claim piped on stdin, never a file under `<base_path>`; see
+  `machine/confidence-governance.yaml#producers.claim_placement`), or `--missing --correlation-key <key>
+  --reason <why>`; never finish silently (see `machine/confidence-governance.yaml#producers`)
 - consult treasure chests before analysis
 - follow the Retrieval Cascade above; do not skip stages out of order
 - cite `evidence_pack_path` in the analysis artifact when the dossier provides one

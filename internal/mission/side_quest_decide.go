@@ -12,7 +12,7 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/refinement"
 )
 
-// SideQuestDecision is one user decision about the mission's OA-ADR.
+// SideQuestDecision is one user decision about an Opportunity Attack candidate.
 type SideQuestDecision struct {
 	StrategistRoot string
 	BasePath       string
@@ -20,7 +20,7 @@ type SideQuestDecision struct {
 	SideQuestID    string
 	Decision       string
 	State          domain.MissionState
-	// CanonicalPath is active.yaml#adr.canonical_path (empty when absent).
+	// CanonicalPath is the configured root for this side-quest kind.
 	CanonicalPath string
 	Now           time.Time
 }
@@ -38,7 +38,10 @@ func ResolveDestinationRule(missionID, canonicalPath string) (DestinationRule, e
 	if isAbsoluteProjectPath(normalized) || clean == "." || clean == ".." || strings.HasPrefix(clean, "../") {
 		return DestinationRule{}, fmt.Errorf("adr_destination_invalid: adr.canonical_path %q must be a project-relative directory inside the workspace", canonicalPath)
 	}
-	rule.CanonicalPath = filepath.ToSlash(clean)
+	if err := domain.ValidateProjectRelativeDirectory(canonicalPath, "adr.canonical_path"); err != nil {
+		return DestinationRule{}, fmt.Errorf("adr_destination_invalid: %q must be a project-relative directory inside the workspace", canonicalPath)
+	}
+	rule.CanonicalPath = filepath.ToSlash(filepath.Clean(canonicalPath))
 	return rule, nil
 }
 
@@ -59,7 +62,7 @@ func DecideSideQuest(req SideQuestDecision) (AcceptedSideQuest, error) {
 	if err := validateDecisionRequest(req); err != nil {
 		return AcceptedSideQuest{}, err
 	}
-	existing, found, err := LoadAcceptedSideQuest(req.StrategistRoot, req.MissionID)
+	existing, found, err := LoadSideQuest(req.StrategistRoot, req.MissionID, req.SideQuestID)
 	if err != nil {
 		return AcceptedSideQuest{}, err
 	}
@@ -71,7 +74,7 @@ func DecideSideQuest(req SideQuestDecision) (AcceptedSideQuest, error) {
 		return AcceptedSideQuest{}, err
 	}
 	return saveAcceptedSideQuest(req.StrategistRoot, AcceptedSideQuest{
-		MissionID: req.MissionID, SideQuestID: req.SideQuestID, Kind: SideQuestKindOAADR,
+		MissionID: req.MissionID, SideQuestID: req.SideQuestID, Kind: sideQuestKind(req.SideQuestID),
 		Decision: req.Decision, Destination: rule, DecidedAt: nowStamp(req.Now),
 	})
 }
@@ -93,7 +96,7 @@ func checkExistingDecision(existing AcceptedSideQuest, found bool, decision stri
 
 func decisionRule(req SideQuestDecision, existing AcceptedSideQuest, found bool) (DestinationRule, error) {
 	if req.Decision == SideQuestAccepted {
-		return ResolveDestinationRule(req.MissionID, req.CanonicalPath)
+		return acceptedDecisionRule(req)
 	}
 	if found {
 		return existing.Destination, nil
@@ -101,12 +104,23 @@ func decisionRule(req SideQuestDecision, existing AcceptedSideQuest, found bool)
 	return DestinationRule{}, nil
 }
 
+func acceptedDecisionRule(req SideQuestDecision) (DestinationRule, error) {
+	if req.SideQuestID == OAChestSideQuestID(req.MissionID) {
+		return DestinationRule{}, nil
+	}
+	if req.SideQuestID == OARunbookSideQuestID(req.MissionID) {
+		rule, err := ResolveRunbookDestinationRule(req.MissionID, req.CanonicalPath)
+		return DestinationRule(rule), err
+	}
+	return ResolveDestinationRule(req.MissionID, req.CanonicalPath)
+}
+
 func validateDecisionRequest(req SideQuestDecision) error {
 	if req.Decision != SideQuestAccepted && req.Decision != SideQuestDeclined {
 		return fmt.Errorf("side_quest_decision_invalid: %q", req.Decision)
 	}
-	if want := OAADRSideQuestID(req.MissionID); req.SideQuestID != want {
-		return fmt.Errorf("side_quest_unknown: only %s can be recorded for this mission, got %q", want, req.SideQuestID)
+	if req.SideQuestID != OAADRSideQuestID(req.MissionID) && req.SideQuestID != OARunbookSideQuestID(req.MissionID) && req.SideQuestID != OAChestSideQuestID(req.MissionID) {
+		return fmt.Errorf("side_quest_unknown: unsupported opportunity for this mission, got %q", req.SideQuestID)
 	}
 	quests, err := refinement.ReadSideQuests(req.BasePath, req.MissionID)
 	if err != nil {
@@ -119,6 +133,16 @@ func validateDecisionRequest(req SideQuestDecision) error {
 		return fmt.Errorf("side_quest_wrong_state: a side quest is decided at the approval gate, mission is %s", req.State)
 	}
 	return nil
+}
+
+func sideQuestKind(sideQuestID string) string {
+	if strings.HasPrefix(sideQuestID, "OA-CHEST-") {
+		return SideQuestKindOAChest
+	}
+	if strings.HasPrefix(sideQuestID, "OA-RUNBOOK-") {
+		return SideQuestKindOARunbook
+	}
+	return SideQuestKindOAADR
 }
 
 // ErrGateEventConflictsWithSideQuest is the stable rejection of an
@@ -134,12 +158,14 @@ func RequireNoAcceptedSideQuest(strategistRoot, missionID string, event domain.M
 	if !domain.MissionEventRequiresNoDocumentationTargets(event) {
 		return nil
 	}
-	rec, found, err := LoadAcceptedSideQuest(strategistRoot, missionID)
-	if err != nil {
-		return err
-	}
-	if found && rec.Decision == SideQuestAccepted {
-		return fmt.Errorf("%w: %s is accepted — use gate_approved so Sniper materializes the ADR through the handoff challenge, not %s", ErrGateEventConflictsWithSideQuest, rec.SideQuestID, event)
+	for _, sideQuestID := range []string{OAADRSideQuestID(missionID), OARunbookSideQuestID(missionID), OAChestSideQuestID(missionID)} {
+		rec, found, err := LoadSideQuest(strategistRoot, missionID, sideQuestID)
+		if err != nil {
+			return err
+		}
+		if found && rec.Decision == SideQuestAccepted {
+			return fmt.Errorf("%w: %s is accepted — use gate_approved before %s", ErrGateEventConflictsWithSideQuest, rec.SideQuestID, event)
+		}
 	}
 	return nil
 }
@@ -151,7 +177,16 @@ func SealSideQuestOnGateApproval(strategistRoot, missionID string, event domain.
 	if event != domain.MissionEventGateApproved {
 		return nil
 	}
-	rec, found, err := LoadAcceptedSideQuest(strategistRoot, missionID)
+	for _, sideQuestID := range []string{OAADRSideQuestID(missionID), OARunbookSideQuestID(missionID), OAChestSideQuestID(missionID)} {
+		if err := sealSideQuest(strategistRoot, missionID, sideQuestID, now); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func sealSideQuest(strategistRoot, missionID, sideQuestID string, now time.Time) error {
+	rec, found, err := LoadSideQuest(strategistRoot, missionID, sideQuestID)
 	if err != nil || !found || rec.Sealed {
 		return err
 	}

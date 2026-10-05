@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
+	"github.com/SergioLacerda/strategist-skill/internal/feats/opportunity_attack"
 	"github.com/SergioLacerda/strategist-skill/internal/missionview"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 	"github.com/SergioLacerda/strategist-skill/internal/tools/leveling"
@@ -29,6 +30,18 @@ func TestBuildKeepsRegistryOrderAndGateSeparate(t *testing.T) {
 	assert.Equal(t, "latest_record", v.Leveling.Selection)
 }
 
+func TestBuildProjectsAllOpportunityCandidatesAtApprovalGate(t *testing.T) {
+	candidates := []opportunity_attack.Candidate{
+		{ID: "OA-ADR-m-1", Kind: opportunity_attack.KindADR, Warranted: false, Status: opportunity_attack.StatusProposed},
+		{ID: "OA-RUNBOOK-m-1", Kind: opportunity_attack.KindRunbook, Warranted: true, Status: opportunity_attack.StatusProposed},
+		{ID: "OA-CHEST-m-1", Kind: opportunity_attack.KindChest, Warranted: true, Status: opportunity_attack.StatusProposed},
+	}
+	v := missionview.Build(missionview.Input{Status: domain.MissionEngineStatus{MissionID: "m-1"}, Opportunities: candidates})
+	require.Len(t, v.ApprovalGate.Opportunities, 3)
+	assert.Equal(t, "OA-RUNBOOK-m-1", v.ApprovalGate.Opportunities[1].ID)
+	assert.Equal(t, "OA-CHEST-m-1", v.ApprovalGate.Opportunities[2].ID)
+}
+
 // TestBuild_TokenUsageNotApplicableWhenNoneReported covers F-T2 (ADR-0057 §
 // design.md task 3.3): a mission with no reported usage is NotApplicable,
 // not Unavailable — nothing has gone wrong, most missions never call
@@ -39,8 +52,7 @@ func TestBuild_TokenUsageNotApplicableWhenNoneReported(t *testing.T) {
 		Registry: domain.DefaultRoleRegistry(),
 	})
 	assert.Equal(t, missionview.NotApplicable, v.TokenUsage.Availability)
-	assert.Zero(t, v.TokenUsage.TotalTokensIn)
-	assert.Zero(t, v.TokenUsage.TotalTokensOut)
+	assert.Empty(t, v.TokenUsage.Semantics)
 	assert.Empty(t, v.TokenUsage.Records)
 }
 
@@ -60,8 +72,7 @@ func TestBuild_TokenUsageSumsReportedRecords(t *testing.T) {
 	})
 	assert.Equal(t, missionview.Available, v.TokenUsage.Availability)
 	assert.Equal(t, "high", v.TokenUsage.DeclaredTokenBudget)
-	assert.Equal(t, int64(300), v.TokenUsage.TotalTokensIn)
-	assert.Equal(t, int64(125), v.TokenUsage.TotalTokensOut)
+	assert.Equal(t, "unknown", v.TokenUsage.Semantics, "legacy records are never summed")
 	require.Len(t, v.TokenUsage.Records, 2)
 }
 
@@ -108,7 +119,8 @@ func TestRenderHumanIncludesAvailableTokenUsageDetails(t *testing.T) {
 	require.NoError(t, missionview.RenderHuman(&out, v))
 	rendered := out.String()
 	assert.Contains(t, rendered, "declared_token_budget: high")
-	assert.Contains(t, rendered, "total_tokens_in: 300\n  total_tokens_out: 125")
+	assert.Contains(t, rendered, "semantics: unknown (not summed")
+	assert.NotContains(t, rendered, "total_tokens_in")
 	assert.Contains(t, rendered, "ledger_inconsistency: reported mission usage contains contradictory totals")
 	assert.Contains(t, rendered, "2026-09-27T10:00:00Z: tokens_in=100 tokens_out=50 source=agent_report")
 	assert.Contains(t, rendered, "mission_view_leveling_unavailable")

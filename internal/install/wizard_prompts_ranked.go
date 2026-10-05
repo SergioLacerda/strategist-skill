@@ -15,6 +15,11 @@ import (
 // contract rather than inventing a second UI abstraction for one pilot.
 const rankedOptionSuffix = "::ranked"
 
+const (
+	rankedOptionLabel = " (Ranked)"
+	customOptionLabel = " (Custom)"
+)
+
 // withRankedOption prepends rankedID's synthetic, pre-selected option to
 // ids when rankedID is non-empty — DEC-002's "Ranked is pre-selected but
 // Customizado's full candidate list is still listed, never replaced." When
@@ -61,6 +66,35 @@ func withRankedOptions(options slotOptions) (menu []string, uiDefault string) {
 	return menu, options.rankedDefault + rankedOptionSuffix
 }
 
+// withRankedLabeledOptions keeps canonical values separate from the labels
+// shown by the interactive UI. A provider that is available in both modes is
+// therefore presented as two explicit choices instead of two identical ids.
+func withRankedLabeledOptions(options slotOptions) (menu []promptOption, uiDefault string) {
+	if len(options.rankedRefs) == 0 {
+		menu = make([]promptOption, 0, len(options.ids))
+		for _, ref := range options.ids {
+			menu = append(menu, promptOption{Label: ref, Value: ref})
+		}
+		return menu, options.defaultID
+	}
+
+	menu = make([]promptOption, 0, len(options.rankedRefs)+len(options.ids))
+	for _, ref := range options.rankedRefs {
+		menu = append(menu, promptOption{
+			Label: ref + rankedOptionLabel,
+			Value: ref + rankedOptionSuffix,
+		})
+	}
+	for _, ref := range options.ids {
+		label := ref
+		if containsString(options.rankedRefs, ref) {
+			label += customOptionLabel
+		}
+		menu = append(menu, promptOption{Label: label, Value: ref})
+	}
+	return menu, options.rankedDefault + rankedOptionSuffix
+}
+
 // splitRankedChoiceAmong inverts withRankedOptions. A "<ref>::ranked" choice is
 // Ranked only when ref is one of the offered certified references; every other
 // choice, including a free-typed id, is Custom and passes through unchanged.
@@ -78,8 +112,14 @@ func splitRankedChoiceAmong(choice string, rankedRefs []string) (provider, mode 
 // promptSlotOptions prompts for a slot's provider from versioned options and
 // returns the chosen reference plus the pipeline mode it resolved to.
 func promptSlotOptions(p Prompter, prompt string, options slotOptions, customLabel string, providerRisk map[string]string, expectedRisk, field string) (provider, mode string, err error) {
-	menu, uiDefault := withRankedOptions(options)
-	choice, err := p.SelectOrInput(prompt, uiDefault, menu, customLabel)
+	var choice string
+	if labeled, ok := p.(labeledPrompter); ok {
+		menu, uiDefault := withRankedLabeledOptions(options)
+		choice, err = labeled.selectOrInputWithLabels(prompt, uiDefault, menu, customLabel)
+	} else {
+		menu, uiDefault := withRankedOptions(options)
+		choice, err = p.SelectOrInput(prompt, uiDefault, menu, customLabel)
+	}
 	if err != nil {
 		return "", "", fmt.Errorf("wizard: %s: %w", field, err)
 	}

@@ -30,16 +30,9 @@ func LoadRoleRegistry(dir string) (domain.RoleRegistry, error) {
 }
 
 func readRoleConfigs(dir string) ([]domain.RoleConfig, error) {
-	info, err := os.Stat(dir)
+	entries, err := readRoleDirectory(dir)
 	if err != nil {
-		return nil, fmt.Errorf("role registry: stat %s: %w", dir, err)
-	}
-	if !info.IsDir() {
-		return nil, fmt.Errorf("role registry: %s is not a directory", dir)
-	}
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return nil, fmt.Errorf("role registry: read %s: %w", dir, err)
+		return nil, err
 	}
 	var configs []domain.RoleConfig
 	for _, entry := range entries {
@@ -53,6 +46,21 @@ func readRoleConfigs(dir string) ([]domain.RoleConfig, error) {
 		configs = append(configs, cfg)
 	}
 	return configs, nil
+}
+
+func readRoleDirectory(dir string) ([]os.DirEntry, error) {
+	info, err := os.Stat(dir)
+	if err != nil {
+		return nil, fmt.Errorf("role registry: stat %s: %w", dir, err)
+	}
+	if !info.IsDir() {
+		return nil, fmt.Errorf("role registry: %s is not a directory", dir)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, fmt.Errorf("role registry: read %s: %w", dir, err)
+	}
+	return entries, nil
 }
 
 func isRoleFile(entry os.DirEntry) bool {

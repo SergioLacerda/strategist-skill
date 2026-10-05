@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/SergioLacerda/strategist-skill/internal/application"
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	criticalhit "github.com/SergioLacerda/strategist-skill/internal/feats/critical_hit"
 	livemission "github.com/SergioLacerda/strategist-skill/internal/mission"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
@@ -60,8 +61,30 @@ func activateSelectedCriticalHit(deps LifecycleDependencies, root, missionID str
 	if selectedRoute(raw) != criticalhit.FeatID || deps.ActivateCriticalHit == nil {
 		return nil
 	}
-	_, err := deps.ActivateCriticalHit(root, missionID)
-	return err
+	before := statusBeforeActivation(deps, root, missionID)
+	after, err := deps.ActivateCriticalHit(root, missionID)
+	if err != nil {
+		return err
+	}
+	if before.Phase != "" {
+		markers := domain.LifecycleMarkersForTransition(domain.MissionEventCriticalHitIntent, before, after)
+		recordLifecycleBestEffort(deps, root, missionID, markers)
+	}
+	return nil
+}
+
+// statusBeforeActivation reads the mission status the activation will leave, so
+// the lifecycle markers can be derived. A load failure yields the zero status
+// and simply skips the markers; it never blocks the activation.
+func statusBeforeActivation(deps LifecycleDependencies, root, missionID string) domain.MissionEngineStatus {
+	if deps.Load == nil {
+		return domain.MissionEngineStatus{}
+	}
+	_, status, err := deps.Load(root, missionID)
+	if err != nil {
+		return domain.MissionEngineStatus{}
+	}
+	return status
 }
 
 func selectedRoute(raw []byte) string {

@@ -44,12 +44,8 @@ func buildMissionInvocation(ctx context.Context, input missionadapter.Invocation
 func newMissionInvocationRequest(ctx context.Context, input missionadapter.InvocationBuildInput, binding domain.RoleWeaponBinding, weapon domain.CompiledWeapon, payload []byte, sourceDigest string) (domain.MissionInvocationRequest, time.Time, error) {
 	approvalDigest := ""
 	stageCorrelationID := ""
-	executionContract, outputContract := "", ""
-	if input.Role == "ranger" {
-		executionContract, outputContract = provider.DiscoveryExecutionContract, provider.DiscoveryOutputContract
-	}
+	executionContract, outputContract := invocationContracts(input.Role, input.Slot)
 	if input.Role == "sniper" && input.Slot == string(domain.SlotExecution) {
-		executionContract, outputContract = provider.SniperExecutionContract, provider.SniperOutputContract
 		_, status, loadErr := loadMission(input.Root, input.MissionID)
 		if loadErr != nil {
 			return domain.MissionInvocationRequest{}, time.Time{}, fmt.Errorf("load Sniper mission authorization: %w", loadErr)
@@ -64,6 +60,21 @@ func newMissionInvocationRequest(ctx context.Context, input missionadapter.Invoc
 		ExecutionContract: executionContract, OutputContract: outputContract,
 	})
 	return request, issued, wrapMissionError(err)
+}
+
+// invocationContracts names the execution and output contract an embedded
+// Weapon invocation carries for a Role and slot; a pair without one issues an
+// envelope with neither.
+func invocationContracts(role, slot string) (executionContract, outputContract string) {
+	switch {
+	case role == "ranger":
+		return provider.DiscoveryExecutionContract, provider.DiscoveryOutputContract
+	case role == "archivist" && slot == string(domain.SlotRefinement):
+		return provider.ArchivistRefinementExecutionContract, provider.ArchivistRefinementOutputContract
+	case role == "sniper" && slot == string(domain.SlotExecution):
+		return provider.SniperExecutionContract, provider.SniperOutputContract
+	}
+	return "", ""
 }
 
 func criticalHitStageCorrelation(status domain.MissionEngineStatus) string {

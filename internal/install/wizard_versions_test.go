@@ -72,6 +72,23 @@ func TestWithRankedOptionsOffersOneRankedEntryPerCertifiedVersion(t *testing.T) 
 	assert.Equal(t, "brainstorming@1.4.0::ranked", uiDefault)
 }
 
+func TestWithRankedLabeledOptionsDistinguishesRankedAndCustomVersions(t *testing.T) {
+	t.Parallel()
+	options := compatibleSlotOptions(versionedRangerCatalog(), "ranger", "")
+
+	menu, uiDefault := withRankedLabeledOptions(options)
+
+	assert.Equal(t, []promptOption{
+		{Label: "brainstorming@1.4.0 (Ranked)", Value: "brainstorming@1.4.0::ranked"},
+		{Label: "brainstorming@2.0.0 (Ranked)", Value: "brainstorming@2.0.0::ranked"},
+		{Label: "brainstorming@1.4.0 (Custom)", Value: "brainstorming@1.4.0"},
+		{Label: "brainstorming@2.0.0 (Custom)", Value: "brainstorming@2.0.0"},
+		{Label: "brainstorming@2.1.0-rc1", Value: "brainstorming@2.1.0-rc1"},
+		{Label: "solo", Value: "solo"},
+	}, menu)
+	assert.Equal(t, "brainstorming@1.4.0::ranked", uiDefault)
+}
+
 func TestSplitRankedChoiceAmongResolvesOnlyOfferedCertifiedRefs(t *testing.T) {
 	t.Parallel()
 	refs := []string{"brainstorming@1.4.0", "brainstorming@2.0.0"}

@@ -28,6 +28,10 @@ type LevelingResult struct {
 	Recorded bool
 	Warning  string
 	Reason   string
+	// Escalation reports what a requested escalation (a non-empty
+	// LevelingInput.Reason on a mission with an issued budget) did to the effort
+	// budget. It is the zero value when no escalation was attempted.
+	Escalation EscalationOutcome
 }
 
 // ResolveLevel resolves, records, and rotates one role-level ledger entry.
@@ -42,6 +46,11 @@ func ResolveLevel(reg domain.RoleRegistry, load leveling.PolicyLoader, cfg domai
 		return result, nil
 	}
 	result := resolveLevel(reg, load, cfg, input)
+	escalation, err := escalateBudget(ledgerPath, input, &result.Level)
+	if err != nil {
+		return LevelingResult{}, err
+	}
+	result.Escalation = escalation
 	if err := recordLevel(ledgerPath, input, &result, maxRecords); err != nil {
 		return LevelingResult{}, err
 	}
@@ -82,6 +91,17 @@ func resolveLevel(reg domain.RoleRegistry, load leveling.PolicyLoader, cfg domai
 		return LevelingResult{Level: leveling.Level{Role: leveling.NormalizeRole(input.Role)}, Warning: joinLevelWarnings(append(rejected, err.Error()))}
 	}
 	level.Role = leveling.NormalizeRole(input.Role)
+	if level.Budget != nil {
+		budget := *level.Budget
+		budget.MissionID = input.Mission
+		budget.RunID = input.Run
+		if budget.RunID == "" {
+			budget.RunID = input.Mission
+		}
+		budget.Role = level.Role
+		budget.ResolutionID = leveling.BaseResolutionID(budget)
+		level.Budget = &budget
+	}
 	return LevelingResult{Level: level, Warning: joinLevelWarnings(rejected)}
 }
 

@@ -80,34 +80,18 @@ func publishOpenSpec(input OpenSpecInput, changeDir string, contents map[string]
 	if err != nil {
 		return OpenSpecResult{}, err
 	}
-	if err := recordArchivistConfidence(input); err != nil {
-		return OpenSpecResult{}, fmt.Errorf("openspec bridge: record Archivist confidence: %w", err)
-	}
-	published, err := publishOrPromote(refined, input.PendingAnalysisPath, contents)
+	err = publishTail(publishTailInput{
+		MissionID: input.MissionID, ProviderChangeID: input.ChangeID, Refined: refined,
+		Pending: input.PendingAnalysisPath, Contents: contents,
+		RecordConfidence: func() error { return recordArchivistConfidence(input) }, RecordPublication: input.RecordPublication,
+	})
 	if err != nil {
-		return OpenSpecResult{}, err
-	}
-	if err := recordPackagePublication(input, contents, published); err != nil {
 		return OpenSpecResult{}, err
 	}
 	if err := cleanupOpenSpecScratch(changeDir); err != nil {
 		return OpenSpecResult{}, fmt.Errorf("openspec bridge: provider scratch cleanup: %w", err)
 	}
 	return result(refined, input), nil
-}
-
-func recordPackagePublication(input OpenSpecInput, contents map[string][]byte, published bool) error {
-	if !published || input.RecordPublication == nil {
-		return nil
-	}
-	publication := PackagePublication{
-		MissionID: input.MissionID, ProviderChangeID: input.ChangeID,
-		SourceDigest: digest(contents["analysis.md"]), PackageDigest: canonicalPackageDigest(contents), PublishedAt: time.Now().UTC(),
-	}
-	if err := input.RecordPublication(publication); err != nil {
-		return fmt.Errorf("openspec bridge: record package publication: %w", err)
-	}
-	return nil
 }
 
 func publishOrPromote(refined, pending string, contents map[string][]byte) (bool, error) {

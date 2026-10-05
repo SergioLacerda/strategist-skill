@@ -17,12 +17,20 @@ func TestValidateInvocationCompletionRejectsInvalidRecords(t *testing.T) {
 	}{
 		{"empty completion", base, domain.MissionInvocationCompletion{}, "validate mission completion"},
 		{"wrong request", base, domain.MissionInvocationCompletion{RequestID: "other", Result: "ok"}, "invocation_binding_mismatch"},
-		{"unregistered role", domain.MissionInvocationRecord{Request: domain.MissionInvocationRequest{RequestID: "req", Role: "archivist", Slot: "refinement"}}, domain.MissionInvocationCompletion{RequestID: "req", Result: "ok"}, "not registered"},
+		{"unregistered role", domain.MissionInvocationRecord{Request: domain.MissionInvocationRequest{RequestID: "req", Role: "archivist", Slot: "execution"}}, domain.MissionInvocationCompletion{RequestID: "req", Result: "ok"}, "not registered"},
+		{"unregistered slot of a registered role", domain.MissionInvocationRecord{Request: domain.MissionInvocationRequest{RequestID: "req", Role: "ranger", Slot: "refinement"}}, domain.MissionInvocationCompletion{RequestID: "req", Result: "ok"}, "not registered"},
 	}
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
 			require.ErrorContains(t, ValidateInvocationCompletion(test.record, test.completion), test.want)
 		})
+	}
+}
+
+func TestValidateInvocationCompletionAcceptsEveryRegisteredRoleAndSlot(t *testing.T) {
+	for _, pair := range [][2]string{{"ranger", "discovery"}, {"archivist", "refinement"}, {"sniper", "execution"}} {
+		record := domain.MissionInvocationRecord{Request: domain.MissionInvocationRequest{RequestID: "req", Role: pair[0], Slot: pair[1]}}
+		require.NoError(t, ValidateInvocationCompletion(record, domain.MissionInvocationCompletion{RequestID: "req", Result: "ok"}), pair[0]+"/"+pair[1])
 	}
 }
 

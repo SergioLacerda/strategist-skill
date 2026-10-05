@@ -70,6 +70,9 @@ func TestRenderHumanFullyPopulatedViewIsDeterministic(t *testing.T) {
 		"  sniper: unknown\n" +
 		"Token Usage\n" +
 		"  availability: not_applicable\n" +
+		"Phases (lifecycle)\n" +
+		"  availability: not_applicable\n" +
+		"  no lifecycle recorded\n" +
 		"Diagnostics\n"
 
 	assert.Equal(t, want, out.String())
@@ -95,7 +98,7 @@ func TestViewJSONShapeIsStable(t *testing.T) {
 
 		assert.Equal(t, missionview.SchemaVersion, decoded["schema"])
 		assert.Equal(t, "m-json", decoded["mission_id"])
-		for _, key := range []string{"lifecycle", "journey", "confidence", "approval_gate", "leveling", "token_usage", "diagnostics"} {
+		for _, key := range []string{"lifecycle", "journey", "confidence", "approval_gate", "leveling", "token_usage", "phase_timeline", "diagnostics"} {
 			_, ok := decoded[key]
 			assert.Truef(t, ok, "expected top-level key %q in populated view JSON", key)
 		}

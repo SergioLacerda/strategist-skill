@@ -61,6 +61,7 @@ func runArchivistHandoff(cmd *cobra.Command, opts handoffEvaluateOptions) error 
 	}
 	report := archivistPrecheck(commandContext(cmd), root, basePath, opts.MissionID)
 	input.Delegation = report.Delegation
+	input.Sink = selectDiscoveryTelemetrySink()
 	evaluation, err := recordArchivistHandoffLocked(root, basePath, opts.MissionID, input)
 	if err != nil {
 		return fmt.Errorf("handoff evaluate: %w", err)

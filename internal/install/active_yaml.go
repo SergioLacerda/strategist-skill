@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/integrity"
@@ -18,11 +17,34 @@ import (
 // Every field emitted here must come from wc — this function fully regenerates
 // active.yaml from scratch on each call (no read-merge of an existing file), matching
 // how the rest of the wizard flow already behaves for every other field.
-// wc.AdrCanonicalPath is not currently populated by the interactive wizard (see
-// TestWizardDoesNotAskPermissionLevel), so it is a no-op unless a caller constructs
-// WizardConfig programmatically.
 func writeActiveYAML(strategistDir string, wc domain.WizardConfig) error {
-	content := fmt.Sprintf(`mode: %s
+	if err := validateDocumentationPaths(wc); err != nil {
+		return err
+	}
+	content := activeYAMLCore(wc)
+	content += documentationRootsYAML(wc.DocumentationRoots)
+	content += treasureChestYAML(wc.TreasureChestPath)
+	content += canonicalPathsYAML(wc)
+	levelingBlock, err := levelingActiveYAML(wc.Leveling)
+	if err != nil {
+		return err
+	}
+	content += levelingBlock
+	return writeActiveYAMLBytes(strategistDir, []byte(content))
+}
+
+func validateDocumentationPaths(wc domain.WizardConfig) error {
+	if err := domain.ValidateProjectRelativeDirectory(wc.AdrCanonicalPath, "adr.canonical_path"); err != nil {
+		return fmt.Errorf("validate adr.canonical_path: %w", err)
+	}
+	if err := domain.ValidateProjectRelativeDirectory(wc.RunbookCanonicalPath, "runbooks.canonical_path"); err != nil {
+		return fmt.Errorf("validate runbooks.canonical_path: %w", err)
+	}
+	return nil
+}
+
+func activeYAMLCore(wc domain.WizardConfig) string {
+	return fmt.Sprintf(`mode: %s
 base_path: %s
 knowledge_index_path: knowledge.index.yaml
 language:
@@ -40,37 +62,47 @@ slots:
 		wc.UILanguage, wc.DocLanguage, wc.ChatLanguage, wc.CodeLanguage,
 		wc.DiscoveryProvider, wc.RefinementProvider, wc.ExecutionProvider,
 	)
-	if len(wc.DocumentationRoots) > 0 {
-		content += "documentation_roots:\n"
-		for _, root := range wc.DocumentationRoots {
-			content += fmt.Sprintf("  - %s\n", root)
-		}
-	}
+}
 
-	if wc.TreasureChestPath != "" {
-		id := treasureChestID(wc.TreasureChestPath)
-		content += fmt.Sprintf(`
+func documentationRootsYAML(roots []string) string {
+	if len(roots) == 0 {
+		return ""
+	}
+	content := "documentation_roots:\n"
+	for _, root := range roots {
+		content += fmt.Sprintf("  - %s\n", root)
+	}
+	return content
+}
+
+func treasureChestYAML(path string) string {
+	if path == "" {
+		return ""
+	}
+	id := treasureChestID(path)
+	return fmt.Sprintf(`
 treasure_chests:
   - id: %s
     path: %s
     scope: all
-`, id, wc.TreasureChestPath)
-	}
+`, id, path)
+}
 
+func canonicalPathsYAML(wc domain.WizardConfig) string {
+	content := ""
 	if wc.AdrCanonicalPath != "" {
 		content += fmt.Sprintf(`
 adr:
   canonical_path: %s
 `, wc.AdrCanonicalPath)
 	}
-
-	levelingBlock, err := levelingActiveYAML(wc.Leveling)
-	if err != nil {
-		return err
+	if wc.RunbookCanonicalPath != "" {
+		content += fmt.Sprintf(`
+runbooks:
+  canonical_path: %s
+`, wc.RunbookCanonicalPath)
 	}
-	content += levelingBlock
-
-	return writeActiveYAMLBytes(strategistDir, []byte(content))
+	return content
 }
 
 // writeActiveYAMLBytes atomically writes active.yaml under strategistDir and
@@ -86,99 +118,4 @@ func writeActiveYAMLBytes(strategistDir string, data []byte) error {
 		fmt.Fprintf(os.Stderr, "[Strategist] WARN: could not write config lock: %v\n", err)
 	}
 	return nil
-}
-
-// writeKnowledgeIndexSource updates knowledge.index.yaml to include a source entry
-// for the wizard's TreasureChestPath. It replaces the "sources: []" placeholder
-// in the extracted template, preserving surrounding comments.
-// No-op when TreasureChestPath is empty.
-func writeKnowledgeIndexSource(strategistDir string, wc domain.WizardConfig) error {
-	if wc.TreasureChestPath == "" {
-		return nil
-	}
-	kiPath := filepath.Join(strategistDir, knowledgeIndexName)
-	data, err := os.ReadFile(kiPath) //nolint:gosec // G304: path constructed from install config
-	if err != nil {
-		return fmt.Errorf("read knowledge.index.yaml: %w", err)
-	}
-	id := treasureChestID(wc.TreasureChestPath)
-	entry := fmt.Sprintf("sources:\n  - id: %s\n    path: %s\n    tags: [all]", id, wc.TreasureChestPath)
-	updated, changed, err := substituteOrSkip(string(data), "sources: []", "sources:", entry)
-	if err != nil {
-		return fmt.Errorf("knowledge.index.yaml: %w", err)
-	}
-	if !changed {
-		return nil // already configured by a prior wizard run — not an error
-	}
-	if err := atomicWriteFile(kiPath, []byte(updated), 0o644); err != nil {
-		return fmt.Errorf("write knowledge.index.yaml: %w", err)
-	}
-	return nil
-}
-
-// writeTreasureChestManifest populates the chests: [] placeholder in treasure-chests.yaml
-// with a T1 chest entry for the wizard's TreasureChestPath. No-op when path is empty.
-func writeTreasureChestManifest(strategistDir string, wc domain.WizardConfig) error {
-	if wc.TreasureChestPath == "" {
-		return nil
-	}
-	tcPath := filepath.Join(strategistDir, treasureChestsName)
-	data, err := os.ReadFile(tcPath) //nolint:gosec // G304: path constructed from install config
-	if err != nil {
-		return fmt.Errorf("read treasure-chests.yaml: %w", err)
-	}
-	id := treasureChestID(wc.TreasureChestPath)
-	entry := fmt.Sprintf(`chests:
-  - id: %s
-    title: %s
-    path: %s
-    trust:
-      tier: T1
-      reviewed_by: human
-    routing:
-      task_types: [all]
-    retrieval:
-      strategy: selective
-      require_relevance_reason: true
-      allow_full_load: false`, id, id, wc.TreasureChestPath)
-	updated, changed, err := substituteOrSkip(string(data), "chests: []", "chests:", entry)
-	if err != nil {
-		return fmt.Errorf("treasure-chests.yaml: %w", err)
-	}
-	if !changed {
-		return nil // already configured by a prior wizard run — not an error
-	}
-	if err := atomicWriteFile(tcPath, []byte(updated), 0o644); err != nil {
-		return fmt.Errorf("write treasure-chests.yaml: %w", err)
-	}
-	return nil
-}
-
-// substituteOrSkip replaces the first occurrence of the one-liner placeholder
-// (e.g. "sources: []") with replacement. If the placeholder is absent but key
-// (e.g. "sources:") is present, the target was already substituted by a prior
-// install run — that is a legitimate re-run, not template drift, so it returns
-// the content unchanged with changed=false and no error. Only when neither the
-// placeholder nor the key is found does it report an error: that combination
-// means the template is missing the section entirely, which is genuine
-// corruption/drift this guard exists to catch.
-func substituteOrSkip(content, placeholder, key, replacement string) (updated string, changed bool, err error) {
-	if strings.Contains(content, placeholder) {
-		return strings.Replace(content, placeholder, replacement, 1), true, nil
-	}
-	if strings.Contains(content, key) {
-		return content, false, nil
-	}
-	return "", false, fmt.Errorf("placeholder %q not found and %q key absent — template may be corrupted", placeholder, key)
-}
-
-// treasureChestID derives a stable id from a path by taking the last non-empty segment.
-func treasureChestID(path string) string {
-	path = strings.TrimRight(path, "/")
-	for i := len(path) - 1; i >= 0; i-- {
-		if path[i] == '/' {
-			return path[i+1:]
-		}
-	}
-	return path
 }

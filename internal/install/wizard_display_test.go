@@ -31,7 +31,7 @@ func captureWizardStdout(t *testing.T, fn func()) string {
 }
 
 func wizardInputFor(lang string) string {
-	return lang + "\n" + lang + "\n" + lang + "\nen\nepic\n/workspace\nbrainstorming\narchivist\nfixture-provider\n\n"
+	return lang + "\n" + lang + "\n" + lang + "\nen\nepic\n/workspace\n\n\nbrainstorming\narchivist\nfixture-provider\n\n"
 }
 
 func runDisplayWizard(t *testing.T, lang string, verbose bool) string {
@@ -46,6 +46,7 @@ func TestWizardHidesTheSectionHeadersAndMigrationPreviewByDefault(t *testing.T) 
 	for lang, bundle := range map[string]i18n.WizardStrings{"en": i18n.EN, "pt-BR": i18n.PT} {
 		out := runDisplayWizard(t, lang, false)
 
+		assert.Contains(t, out, strings.TrimSpace(bundle.HeaderWorkspace), lang)
 		assert.NotContains(t, out, strings.TrimSpace(bundle.HeaderSlots), lang)
 		assert.NotContains(t, out, strings.TrimSpace(bundle.HeaderChest), lang)
 		assert.NotContains(t, out, "role/provider migration preview", lang)
@@ -69,4 +70,21 @@ func TestWizardPortugueseHeadersMatchTheRequestedStrings(t *testing.T) {
 
 	assert.Contains(t, out, "Plugins de slot - qual skill preenche cada papel da missão")
 	assert.Contains(t, out, "Baú do tesouro — base de conhecimento offline opcional para todos os slots:")
+}
+
+func TestWizardShowsDocumentationRootsBeforeSlotPrompts(t *testing.T) {
+	out := runDisplayWizard(t, "en", false)
+
+	header := strings.TrimSpace(i18n.EN.HeaderWorkspace)
+	adr := strings.TrimSpace(i18n.EN.PromptADRRoot)
+	runbooks := strings.TrimSpace(i18n.EN.PromptRunbookRoot)
+	discovery := strings.TrimSpace(i18n.EN.PromptDiscovery)
+	headerIndex := strings.Index(out, header)
+	adrIndex := strings.Index(out, adr)
+	runbooksIndex := strings.Index(out, runbooks)
+	discoveryIndex := strings.Index(out, discovery)
+	require.GreaterOrEqual(t, headerIndex, 0)
+	require.Greater(t, adrIndex, headerIndex)
+	require.Greater(t, runbooksIndex, adrIndex)
+	require.Greater(t, discoveryIndex, runbooksIndex)
 }

@@ -148,6 +148,42 @@ confirmation that Strategist emits them today.
 | `strategist.metrics.tokens_out` | int | tokens | Output tokens produced |
 | `strategist.metrics.lines_emitted` | int | lines | Total output lines emitted to the user |
 
+All `strategist.metrics.*` keys above are `scope=per_invocation`: they describe one process
+invocation and are not whole-mission or per-phase elapsed time or consumption. `tokens_in` and
+`tokens_out` there are the invocation's own self-reported values; zero can mean "not observed".
+
+### Mission lifecycle and usage ledgers
+
+The telemetry contract (`10-telemetry.md`) allows whole-mission and per-phase elapsed time and
+per-phase token usage to be rendered only from two dedicated append-only ledgers
+([ADR-0069](adr/0069-mission-and-phase-token-telemetry-ledgers.md)).
+
+- **Lifecycle ledger** (`memory/mission-lifecycle.jsonl`, implemented): one line per marker
+  (`mission_started`, `phase_started`, `phase_ended`, `mission_ended`) with `schema_version`,
+  `marker_id` (deterministic idempotency key), `marker_kind`, `mission_id`, canonical `phase`,
+  `phase_run_id`, `end_reason`, `stage` and UTC `observed_at`. Markers are derived from engine
+  transitions and written best-effort after the mission state is persisted. A missing end marker
+  is unavailable, never inferred. Read it with `strategist mission usage`.
+- **Usage ledger** (`memory/mission-usage.jsonl`, implemented): one line per declared observation
+  written by `strategist mission report-usage`, with `record_id` (idempotency key), `phase`,
+  `role`, `invocation_id`, `attempt`, `usage_scope`, `session_id`, `record_kind`
+  (`incremental` or `cumulative_snapshot`), nullable `tokens_input` / `tokens_output` (unobserved
+  is null, never zero), separate optional `tokens_cache` / `tokens_reasoning`,
+  `measurement_source` and `measurement_quality` (`provider_measured`, `host_measured`,
+  `reported_unverified`, `tokenizer_estimated`, `heuristic_estimated`, `unavailable`). The CLI
+  accepts only `agent_report` (always `reported_unverified` or weaker) and `estimator`: a measured
+  quality needs an adapter that observes a provider or host counter itself. A repeated key with the
+  same counts is a duplicate; with different counts it is a conflict. Totals add incremental
+  observations and, for cumulative snapshots, only the delta between two snapshots of one session;
+  a reset or a new session yields no interval. Read it with `strategist mission usage`.
+- **Canonical phases** are the pipeline phases (`BOOTSTRAP`, `INTAKE`, `DISCOVERY`,
+  `REFINEMENT`, `APPROVAL_GATE`, `EXECUTION`); Intake, Discovery, Refining, Gate and Delivery are
+  display labels only. The Approval Gate row carries duration and never tokens.
+- A value that was not observed is rendered as unavailable, never as zero; an estimate is
+  never labeled as measured; the provider-reported ledger
+  (`mission-token-usage.jsonl`) and the handoff-local estimates remain separate authorities and
+  are never summed into phase rows.
+
 ### Diagnostics
 
 | Key | Type | Description |

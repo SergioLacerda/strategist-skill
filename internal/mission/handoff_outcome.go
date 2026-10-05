@@ -27,6 +27,8 @@ type ArchivistHandoffInput struct {
 	// attached only when valid for the revision recorded and never decides the
 	// outcome.
 	Delegation *handoff.Delegation
+	// Sink optionally receives the content-free Archivist-to-Sniper handoff event.
+	Sink telemetry.EventSink
 }
 
 // ArchivistHandoffResult is the production evaluation of the
@@ -50,15 +52,9 @@ func refinedDir(basePath, missionID string) string {
 // verifies and consumes this outcome. If the outcome cannot be persisted it
 // returns handoff_outcome_persist_failed and nothing authorizes execution.
 func EvaluateArchivistHandoff(strategistRoot, basePath string, status domain.MissionEngineStatus, input ArchivistHandoffInput) (ArchivistHandoffResult, error) {
-	if status.State != domain.StateHandoffChallenge {
-		return ArchivistHandoffResult{}, fmt.Errorf("handoff_gate_not_observed: mission %q is in state %q; the Approval Gate must be accepted before the handoff is evaluated", status.MissionID, status.State)
-	}
-	derived, err := deriveHandoff(basePath, status.MissionID, input.RiskLevel)
+	derived, err := prepareArchivistEvaluation(basePath, status, input)
 	if err != nil {
-		return ArchivistHandoffResult{}, fmt.Errorf("evaluate handoff: %w", err)
-	}
-	if err := requireApprovedPackageDigest(status, derived.digest); err != nil {
-		return ArchivistHandoffResult{}, fmt.Errorf("evaluate handoff: %w", err)
+		return ArchivistHandoffResult{}, err
 	}
 	store := handoff.NewOutcomeStore(strategistRoot)
 	attempt, err := nextHandoffAttempt(store, status.MissionID, derived.digest, derived.policy)
@@ -69,12 +65,15 @@ func EvaluateArchivistHandoff(strategistRoot, basePath string, status domain.Mis
 	if err != nil {
 		return ArchivistHandoffResult{}, err
 	}
-	if err := persistHandoffConfidence(strategistRoot, status.MissionID, attempt, input.ConfidenceSummary); err != nil {
-		return ArchivistHandoffResult{}, fmt.Errorf("evaluate handoff: handoff_outcome_persist_failed: %w", err)
+	if err := recordHandoffConfidence(strategistRoot, basePath, status.MissionID, attempt, input); err != nil {
+		return ArchivistHandoffResult{}, err
 	}
 	outcome, err := store.Append(derived.outcome(status, attempt, result).WithDelegation(input.Delegation))
 	if err != nil {
 		return ArchivistHandoffResult{}, fmt.Errorf("evaluate handoff: %w", err)
+	}
+	if err := emitArchivistHandoff(input.Sink, outcome); err != nil {
+		return ArchivistHandoffResult{}, err
 	}
 	return ArchivistHandoffResult{Outcome: outcome, Result: result, Policy: derived.policy}, nil
 }

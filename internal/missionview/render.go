@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/SergioLacerda/strategist-skill/internal/feats/opportunity_attack"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
 
@@ -18,10 +19,16 @@ func RenderHuman(w io.Writer, v View) error {
 	if err := renderConfidenceAndGate(w, v); err != nil {
 		return err
 	}
+	if err := renderCriteria(w, v.Criteria); err != nil {
+		return err
+	}
 	if err := renderLevels(w, v.Leveling); err != nil {
 		return err
 	}
 	if err := renderTokenUsage(w, v.TokenUsage); err != nil {
+		return err
+	}
+	if err := RenderPhaseTimeline(w, v.PhaseTimeline, false); err != nil {
 		return err
 	}
 	return renderDiagnostics(w, v.Diagnostics)
@@ -48,8 +55,30 @@ func renderConfidenceAndGate(w io.Writer, v View) error {
 	if err := writef(w, "Confidence (advisory)\n  availability: %s\nApproval Gate\n  availability: %s\n", v.Confidence.Availability, v.ApprovalGate.Availability); err != nil {
 		return err
 	}
-	if v.ApprovalGate.Outcome != "" {
-		return writef(w, "  outcome: %s\n", v.ApprovalGate.Outcome)
+	if err := renderGateOutcome(w, v.ApprovalGate.Outcome); err != nil {
+		return err
+	}
+	return renderOpportunities(w, v.ApprovalGate.Opportunities)
+}
+
+func renderGateOutcome(w io.Writer, outcome string) error {
+	if outcome == "" {
+		return nil
+	}
+	return writef(w, "  outcome: %s\n", outcome)
+}
+
+func renderOpportunities(w io.Writer, opportunities []opportunity_attack.Candidate) error {
+	if len(opportunities) == 0 {
+		return nil
+	}
+	if err := writef(w, "Opportunity Attack\n"); err != nil {
+		return err
+	}
+	for _, candidate := range opportunities {
+		if err := writef(w, "  %s: kind=%s warranted=%t status=%s strategy=%s\n", candidate.ID, candidate.Kind, candidate.Warranted, candidate.Status, candidate.Strategy); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -99,7 +128,7 @@ func renderTokenUsageHeader(w io.Writer, usage TokenUsageSection) error {
 }
 
 func renderAvailableTokenUsage(w io.Writer, usage TokenUsageSection) error {
-	if err := writef(w, "  total_tokens_in: %d\n  total_tokens_out: %d\n", usage.TotalTokensIn, usage.TotalTokensOut); err != nil {
+	if err := writef(w, "  semantics: %s (not summed: use the phase timeline for usage)\n", usage.Semantics); err != nil {
 		return err
 	}
 	if err := writef(w, "  ledger_comparison: %s reported_records=%d handoff_records=%d\n", usage.LedgerComparison.Status, usage.LedgerComparison.ReportedRecordCount, usage.LedgerComparison.HandoffRecordCount); err != nil {

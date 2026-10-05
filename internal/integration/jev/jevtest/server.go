@@ -1,9 +1,11 @@
-// Package jevtest is a simulated JEV provider for tests: a TLS server that
-// records what it receives and replies with whatever the test supplies. It never
-// contacts the real service.
+// Package jevtest is a simulated JEV provider for tests: an HTTPS-shaped,
+// in-memory transport that records what it receives and replies with whatever
+// the test supplies. It never opens a socket or contacts the real service.
 package jevtest
 
 import (
+	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -14,18 +16,24 @@ import (
 
 // Server is a recording simulated provider.
 type Server struct {
-	server *httptest.Server
-	calls  atomic.Int32
-	mu     sync.Mutex
-	auth   string
-	body   string
+	handler http.Handler
+	url     string
+	host    string
+	calls   atomic.Int32
+	mu      sync.Mutex
+	auth    string
+	body    string
 }
 
-// Start serves handler over TLS and records each request.
+var serverSequence atomic.Uint64
+
+// Start serves handler through an in-memory HTTPS-shaped transport and records
+// each request.
 func Start(t *testing.T, handler http.HandlerFunc) *Server {
 	t.Helper()
-	sim := &Server{}
-	sim.server = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	host := fmt.Sprintf("jevtest-%d.invalid", serverSequence.Add(1))
+	sim := &Server{url: "https://" + host, host: host}
+	sim.handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		raw, err := io.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, "unreadable body", http.StatusBadRequest)
@@ -35,9 +43,9 @@ func Start(t *testing.T, handler http.HandlerFunc) *Server {
 		sim.auth, sim.body = r.Header.Get("Authorization"), string(raw)
 		sim.mu.Unlock()
 		sim.calls.Add(1)
+		r.Body = io.NopCloser(bytes.NewReader(raw))
 		handler(w, r)
-	}))
-	t.Cleanup(sim.server.Close)
+	})
 	return sim
 }
 
@@ -59,10 +67,33 @@ func Status(code int) http.HandlerFunc {
 }
 
 // URL is the base URL of the simulator.
-func (s *Server) URL() string { return s.server.URL }
+func (s *Server) URL() string { return s.url }
 
-// Transport trusts the simulator's certificate.
-func (s *Server) Transport() http.RoundTripper { return s.server.Client().Transport }
+// Transport dispatches requests to the simulator in memory. It never opens a
+// socket and therefore cannot reach a real provider or depend on IPv4/IPv6.
+func (s *Server) Transport() http.RoundTripper { return inMemoryTransport{server: s} }
+
+type inMemoryTransport struct{ server *Server }
+
+func (t inMemoryTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+	if request.URL.Scheme != "https" || request.URL.Host != t.server.host {
+		return nil, fmt.Errorf("jevtest: unsupported synthetic URL %q", request.URL.String())
+	}
+	responses := make(chan *http.Response, 1)
+	go func() {
+		recorder := httptest.NewRecorder()
+		t.server.handler.ServeHTTP(recorder, request)
+		response := recorder.Result()
+		response.Request = request
+		responses <- response
+	}()
+	select {
+	case response := <-responses:
+		return response, nil
+	case <-request.Context().Done():
+		return nil, fmt.Errorf("jevtest: request canceled: %w", request.Context().Err())
+	}
+}
 
 // Calls counts the requests received.
 func (s *Server) Calls() int { return int(s.calls.Load()) }

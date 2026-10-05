@@ -10,6 +10,8 @@ import (
 
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type sqFixture struct {
@@ -69,6 +71,42 @@ func TestDecideSideQuestRoundTripAndIdempotence(t *testing.T) {
 	if err != nil || again != rec {
 		t.Fatalf("idempotent re-accept: %v", err)
 	}
+}
+
+func TestDecideRunbookSideQuestUsesIndependentRecordAndDestination(t *testing.T) {
+	f := newSQFixture(t, "runbook")
+	path := filepath.Join(f.base, "refined", "runbook", "tasks.md")
+	require.NoError(t, os.WriteFile(path, []byte("# t\n```yaml\nside_quests_approved:\n  - {id: OA-RUNBOOK-runbook, description: procedure, strategy: execute_later, status: proposed}\n```\n"), 0o600))
+	rec, err := DecideSideQuest(SideQuestDecision{
+		StrategistRoot: f.root, BasePath: f.base, MissionID: "runbook", SideQuestID: OARunbookSideQuestID("runbook"),
+		Decision: SideQuestAccepted, State: domain.StateApprovalGate, CanonicalPath: "docs/runbooks", Now: time.Now(),
+	})
+	require.NoError(t, err)
+	assert.Equal(t, SideQuestKindOARunbook, rec.Kind)
+	assert.Equal(t, "docs/runbooks", rec.Destination.CanonicalPath)
+	assert.Equal(t, "docs/runbooks/runbook-runbook.md", rec.Destination.Fallback)
+	loaded, found, err := LoadSideQuest(f.root, "runbook", OARunbookSideQuestID("runbook"))
+	require.NoError(t, err)
+	assert.True(t, found)
+	assert.Equal(t, rec, loaded)
+}
+
+func TestDecideTreasureChestSideQuestUsesIndependentRecordWithoutDocumentationDestination(t *testing.T) {
+	f := newSQFixture(t, "chest")
+	path := filepath.Join(f.base, "refined", "chest", "tasks.md")
+	require.NoError(t, os.WriteFile(path, []byte("# t\n```yaml\nside_quests_approved:\n  - {id: OA-CHEST-chest, description: register source, strategy: execute_later, status: proposed}\n```\n"), 0o600))
+	rec, err := DecideSideQuest(SideQuestDecision{
+		StrategistRoot: f.root, BasePath: f.base, MissionID: "chest", SideQuestID: OAChestSideQuestID("chest"),
+		Decision: SideQuestAccepted, State: domain.StateApprovalGate, CanonicalPath: "docs/should-not-be-used", Now: time.Now(),
+	})
+	require.NoError(t, err)
+	assert.Equal(t, SideQuestKindOAChest, rec.Kind)
+	assert.Empty(t, rec.Destination.CanonicalPath)
+	assert.Empty(t, rec.Destination.Fallback)
+	loaded, found, err := LoadSideQuest(f.root, "chest", OAChestSideQuestID("chest"))
+	require.NoError(t, err)
+	assert.True(t, found)
+	assert.Equal(t, rec, loaded)
 }
 
 func TestDecideSideQuestRejectionsLeaveNoRecord(t *testing.T) {

@@ -19,7 +19,7 @@ func convertChoice(q integration.Question, raw wireAnswer) (integration.Answer, 
 	if !offered[*raw.Choice] || !probabilitiesWithin(raw.Probabilities, offered) {
 		return integration.Answer{}, invalid("choice or probabilities are outside the offered options")
 	}
-	return integration.Answer{Kind: integration.KindChoice, Choice: *raw.Choice, Confidence: *raw.Confidence, HasConfidence: true}, nil
+	return integration.Answer{Kind: integration.KindChoice, Choice: *raw.Choice, Confidence: *raw.Confidence, HasConfidence: true, Probabilities: raw.Probabilities}, nil
 }
 
 func offeredKeys(q integration.Question) map[string]bool {

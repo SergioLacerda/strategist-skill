@@ -107,9 +107,11 @@ func applyRoleProviderMigration(store *lifecycle.Store, preview RoleProviderMigr
 			Status:              "enabled",
 			Mode:                domain.SlotBindingModeCustom,
 		}
+		enrichRoleProviderBinding(&desired, entry.Resolved.Provider)
 		if err := applyPluginBindingWithResult(store, desired, probe); err != nil {
 			return fmt.Errorf("apply role/provider migration: slot %s: %w", entry.Slot, err)
 		}
+		persistRoleProviderBindingMetadata(store, entry)
 	}
 	return nil
 }
@@ -186,11 +188,10 @@ func seedRoleProviderMigrationEntry(store *lifecycle.Store, entry RoleProviderPr
 		}
 	}
 	if _, ok := store.Instance(entry.Resolved.Provider.ID); !ok {
-		store.Inventory.Instances = append(store.Inventory.Instances, domain.InstalledInstance{
-			ID: entry.Resolved.Provider.ID, State: lifecycle.StateActive,
-		})
+		store.Inventory.Instances = append(store.Inventory.Instances, domain.InstalledInstance{ID: entry.Resolved.Provider.ID, State: lifecycle.StateActive})
 	}
+	// The resolved Weapon's identity always comes from the current catalog: an
+	// instance persisted by an older binary (for example writing-plans before it
+	// became an embedded prompt bridge) must not keep a stale connector.
+	persistRoleProviderInstanceMetadata(store, entry)
 }
-
-// loadRoleSlotMap and loadRoleConfig live in role_provider_migration_loaders.go,
-// split out to keep this file under the repo's file-size budget.

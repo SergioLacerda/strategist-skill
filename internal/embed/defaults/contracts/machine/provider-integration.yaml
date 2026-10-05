@@ -27,9 +27,12 @@ status_note: >
 
 handoff_consumer:
   transitions: [ranger_to_archivist, archivist_to_sniper]
+  advisory_boundary: "archivist_to_gate: the refined package read before the Approval Gate (`strategist handoff precheck`); a ledger and claim record bound to the package digest, never a lifecycle outcome; archivist_to_sniper reuses it when the digest is unchanged and asks again when it changed"
+  confidence_ledger: "every reading becomes a claim under the handoff_challenge producer (see confidence-governance.yaml#producers.derived_producers.provider)"
+  telemetry: "handoff events carry content-free criterion attributes (source main|provider, provider, model, confidence and threshold percent, approved); an Archivist to Sniper event exists"
   call_site: after the artifact digest is read and before the outcome is sealed
   question_set: one aggregate `handoff_acceptable` choice (accept or reject) whose answer carries the confidence criterion, plus one noul per criterion of the transition catalog
-  approval_rule: the aggregate answer is `accept` with confidence strictly above approval_threshold (default 0.90); a noul answer or a missing aggregate never approves
+  approval_rule: the aggregate answer is `accept` and its confidence in acceptance (the provider probability of accept when reported, else the documented confidence) is strictly above the threshold in force (the pinned calibration's threshold when it is valid for the resolved model, the question profile and its age limit, otherwise approval_threshold, default 0.80, an uncalibrated starting point; see dojo-calibration.yaml); a noul answer or a missing aggregate never approves
   on_approved: a delegation (provider, resolved model, binding digest, criterion, subject digest, confidence, threshold, usage) is attached to the outcome when valid for that revision
   on_not_approved: main proceeds; the unsatisfied criteria are returned to the agent as repair hints and no delegation is recorded
   call_budget: provider calls per mission and transition, default 2, independent of the handoff MaxAttempts and counted only for attempted calls
@@ -78,6 +81,7 @@ configuration:
     - holds a credential reference (env: or dotenv:), never the secret
     - endpoint is a plain https URL taken only from this file
     - the provider model is pinned; the floating alias needs an explicit opt-in
+    - profile is handoff-v1 (default) or handoff-v2 (a missing field is shown as absent); a pinned calibration is valid only for its profile
     - preserved by upgrade; written atomically with owner-only permissions
 
 invariants:

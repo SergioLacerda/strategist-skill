@@ -51,6 +51,61 @@ long: |
   
   List available scenarios:
     strategist dojo list
+  
+  Calibrate a judge (the provider handoff pre-check) against labeled cases:
+    strategist dojo calibrate <case> --dry-run
+    strategist dojo calibrate <case> --consent
+
+== strategist dojo audit
+use: audit <case>
+short: Sample generated negatives for review, or record an audit verdict
+long: |
+  Without --record, print a deterministic sample of the generated negatives (operator, band, expected
+  criteria and the names of the fields that changed; never content) for a reviewer to check. With --record <case-id>
+  --verdict agree|disagree, append the verdict to the case's audit log. A disagreement excludes the case from the
+  metrics and appears in the lesson; an audit never relabels a case, and a stage 2 case counts only after an agree.
+flag: --by (string) default="" usage="reviewer name (with --record)"
+flag: --note (string) default="" usage="why, in one sentence (with --record)"
+flag: --record (string) default="" usage="case id to record a verdict for"
+flag: --root (string) default="" usage="path to .strategist/ root (default: .strategist)"
+flag: --sample (int) default="10" usage="number of generated negatives to sample"
+flag: --verdict (string) default="" usage="agree or disagree (with --record)"
+
+== strategist dojo calibrate
+use: calibrate <case>
+short: Run a judge calibration case against labeled cases
+long: |
+  Evaluate a judge (the provider handoff pre-check) against cases whose expected verdict is known,
+  keep every raw observation and publish a calibration record. Nothing is trained: the run measures the
+  judge and recommends a threshold only when the judge is fit and the sample supports it.
+  
+    --dry-run    print the exact cases, fields, bytes and estimated usage; no call is made
+    --recompute  evaluate the stored observations again, with no call
+    --consent    required to send real package fields to the provider
+flag: --all-sessions (bool) default="false" usage="with --recompute: use every stored session instead of the latest"
+flag: --boundary-margin (float64) default="0" usage="repeat cases whose score is within this margin of the current threshold"
+flag: --budget (int) default="0" usage="maximum provider calls for this run (0 means the case's budget)"
+flag: --consent (bool) default="false" usage="assent to the consent term: the run calls the external provider"
+flag: --consent-term (string) default="" usage="bind the assent to exactly the term id printed by --dry-run; a changed plan is refused"
+flag: --dry-run (bool) default="false" usage="print the plan and send nothing"
+flag: --exclude-criterion (stringSlice) default="[]" usage="with --recompute: read an atomic profile's stored answers without this criterion (an exploratory what-if over answers already given)"
+flag: --exclude-operator (stringSlice) default="[]" usage="with --recompute: leave an operator out of the evaluation (an exploratory what-if, labelled; no calibration is published from it)"
+flag: --gate-rule (string) default="" usage="with --recompute: read the observations under gates-1 (the first pilots' rule), gates-2 (default) or gates-3 (cross-validated)"
+flag: --judge-only (bool) default="false" usage="with --recompute: ignore the case's delegation to the local checks, so the judge alone answers for every operator (an exploratory what-if)"
+flag: --local-scope (stringSlice) default="[]" usage="with --recompute: delegate this operator to the local checks for the evaluation only (an exploratory what-if)"
+flag: --recompute (bool) default="false" usage="evaluate the stored observations again with no call"
+flag: --repetitions (int) default="0" usage="repetitions per case (0 means the case's value)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: .strategist)"
+
+== strategist dojo candidate
+use: candidate
+short: Record a regression candidate from a mission where the provider and the gate disagreed
+long: |
+  Read a mission's provider readings and its gate outcome and, where they disagreed, record a regression
+  candidate (content-free: mission, transition, confidence, outcome). A candidate is only flagged for review; it never
+  counts as golden until it is promoted. The DOJO agent never runs this command.
+flag: --mission (string) default="" usage="mission id (required)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: .strategist)"
 
 == strategist dojo check
 use: check <scenario>
@@ -58,9 +113,58 @@ short: Run offline checks for a dojo scenario
 flag: --files-only (bool) default="false" usage="skip checks that require an emit.log run (emit_log, timing, pipeline)"
 flag: --root (string) default="" usage="path to .strategist/ root (default: .strategist)"
 
+== strategist dojo compare
+use: compare <case-a> <case-b>
+short: Compare the latest observations of two cases, offline (a laboratory reading)
+long: |
+  Print, per operator and level, the mean probability of accept of two cases side by side, the AUC
+  and an exploratory operating sweep. It reads stored observations only: no call, nothing persisted, no
+  calibration and no recommendation. Use it to see what a change of profile or operator set did.
+flag: --root (string) default="" usage="path to .strategist/ root (default: .strategist)"
+
+== strategist dojo generate
+use: generate <case>
+short: Write the skeleton of a judge calibration case
+long: |
+  Write <base_path>/dojo/<case>/criteria.yaml for a judge_calibration case with its defaults and an
+  explicit risk policy. The skeleton holds no package content and never overwrites an existing case.
+flag: --boundary (string) default="package" usage="boundary to evaluate: package or ranger"
+flag: --exclude-operator (stringSlice) default="[]" usage="leave an operator out of the case (recorded in the case and in its calibration)"
+flag: --gate-rule (string) default="" usage="gate rule of the case: gates-2 (default) or gates-3 (cross-validated, pre-registered for the real corpus)"
+flag: --layer (string) default="judge" usage="judge (the real provider, needs consent), integration (the approval policy against scripted answers, no call) or live (the provider smoke check, needs consent)"
+flag: --local-scope (stringSlice) default="[]" usage="delegate this operator's protection to the local checks: the judge gates skip it and a local coverage gate must pass for it"
+flag: --package (stringSlice) default="[]" usage="restrict the corpus to this package (repeatable)"
+flag: --packages (int) default="8" usage="with --synthetic: how many fixture packages to write (up to 32)"
+flag: --profile (string) default="" usage="question profile: handoff-v1 (default), handoff-v2 (a missing field is shown as (absent)) or handoff-atomic-v1 (one question per criterion, the lowest answer decides)"
+flag: --repetitions (int) default="0" usage="repetitions per case (0 keeps the default of 3)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: .strategist)"
+flag: --synthetic (bool) default="false" usage="write synthetic fixture packages under the case and calibrate over them: golden by construction, nothing real is sent"
+
 == strategist dojo list
 use: list
 short: List available dojo scenarios
+flag: --root (string) default="" usage="path to .strategist/ root (default: .strategist)"
+
+== strategist dojo promote
+use: promote <case>
+short: Promote a reviewed package to golden (a human act)
+long: |
+  Record that a package is a golden positive for the corpus of <case>: a reviewer and an oracle (why it
+  is good) are required, and the promotion is bound to the package's content digest, so editing the package
+  voids it. The DOJO agent never runs this command.
+flag: --oracle (string) default="" usage="why this package is good, in one sentence (required)"
+flag: --package (string) default="" usage="package name to promote (required)"
+flag: --reviewed-by (string) default="" usage="name of the human reviewer (required)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: .strategist)"
+
+== strategist dojo propose
+use: propose <operator>
+short: Record an operator proposal pending a reviewed change
+long: |
+  Record a proposal for a new mutation operator under <base_path>/dojo/mutations. It adds nothing to the catalog: a proposal waits for a reviewed change.
+flag: --by (string) default="agent" usage="who proposes it"
+flag: --description (string) default="" usage="what the operator injects (required)"
+flag: --reason (string) default="" usage="which evasion or weak spot motivates it"
 flag: --root (string) default="" usage="path to .strategist/ root (default: .strategist)"
 
 == strategist eval
@@ -83,6 +187,20 @@ flag: --root (string) default="" usage="path to .strategist/ root (default: auto
 == strategist handoff
 use: handoff
 short: Run and record Handoff Challenge verification
+
+== strategist handoff criteria
+use: criteria
+short: Report the quality criteria already computed for a mission (read-only)
+long: |
+  Prints the quality criteria the Approval Gate shows, gathered only from records earlier
+  stages already wrote: route and claim confidence, the confidence review, the deterministic
+  handoff outcomes, the critic and mission-quality results, the refinement handoff metrics and
+  the provider (JEV) readings. Every row is always present and filled: a value, "não avaliado"
+  (the stage did not run or was not enabled) or "não sei" (data exists but cannot support a
+  statement). The command never calls the provider and never recomputes a criterion.
+flag: --json (bool) default="false" usage="emit machine-readable JSON"
+flag: --mission-id (string) default="" usage="mission whose criteria are reported (required)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
 
 == strategist handoff evaluate
 use: evaluate
@@ -113,6 +231,20 @@ short: Evaluate and persist the Ranger-to-Archivist lifecycle outcome
 flag: --ack (string) default="" usage="path to an acknowledgment YAML file when the typed facts require a challenge"
 flag: --challenges (string) default="" usage="path to a challenges YAML file when the typed facts require a challenge"
 flag: --mission-id (string) default="" usage="mission whose Ranger-to-Archivist handoff is evaluated (required)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist handoff precheck
+use: precheck
+short: Read the refined package with the provider before the Approval Gate (advisory)
+long: |
+  Asks the enabled provider whether the refined package conforms to its contract
+  criteria, before the Approval Gate is presented. This is the advisory Archivist to
+  Gate boundary: it records no lifecycle outcome and approves nothing. The reading is
+  written to the integration call ledger and to the confidence ledger, and the later
+  handoff evaluate reuses it when the package digest is unchanged, so the provider is
+  not asked twice for one revision. Without an enabled integration it prints
+  "delegation: disabled" and changes nothing.
+flag: --mission-id (string) default="" usage="mission whose refined package is read (required)"
 flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
 
 == strategist handoff verify
@@ -177,6 +309,37 @@ long: |
   confident enough leaves every handoff on the main path. The operator decision lives in
   .strategist/integrations.yaml; the credential is only a reference (env: or dotenv:) and is
   never stored, printed or sent anywhere but the configured endpoint.
+
+== strategist integrations calibration
+use: calibration
+short: List, show, pin and unpin the calibration the pre-check threshold follows
+long: |
+  The approval threshold stays operator configuration. A calibration published by a DOJO case
+  (strategist dojo calibrate) is pinned here by id, never "latest": the pre-check uses its threshold only
+  while it is valid for the resolved model and the question profile and is not too old, and otherwise
+  uses the configured threshold and reports "não calibrado". Nothing pins automatically.
+
+== strategist integrations calibration list
+use: list
+short: List the published calibrations
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist integrations calibration pin
+use: pin <id>
+short: Pin a calibration after showing its numbers; --confirm writes the pin
+flag: --confirm (bool) default="false" usage="write the pin after reviewing the numbers"
+flag: --max-age-days (int) default="0" usage="age limit of the pin in days (0 keeps the default of 90)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist integrations calibration show
+use: show [id]
+short: Show a calibration with its numbers and risk policy (default: the pinned one)
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist integrations calibration unpin
+use: unpin
+short: Remove the pin; the configured threshold applies
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
 
 == strategist integrations disable
 use: disable
@@ -436,33 +599,49 @@ flag: --supersedes-mission-id (string) default="" usage="with --amend: prior mis
 
 == strategist mission report-usage
 use: report-usage
-short: Record real token usage for a mission, reported by the invoking agent
+short: Record one token usage observation for a mission phase, declared by the invoking agent
 long: |
-  strategist mission report-usage records tokens_in/tokens_out for a
-  mission_id, as reported by the LLM agent (e.g. Claude Code) that invoked
-  this CLI.
+  strategist mission report-usage records ONE observation of token usage for a
+  mission, declared by the LLM agent (e.g. Claude Code) that invoked this CLI.
   
-  This binary is a CLI/contract layer: it never calls an LLM API itself and
-  has no direct visibility into how many tokens a model consumed. The
-  tokens_in/tokens_out values shown inline in persona chat templates
-  (mission_metrics diagnostics) are the agent's own self-reported estimate,
-  with no persisted record behind them until this command is run.
+  This binary never calls an LLM API and cannot verify the numbers: every record
+  is stored as reported_unverified (or as an explicit estimate with
+  --source estimator). It never claims provider_measured or host_measured; those
+  qualities need an adapter that observes a provider or host counter itself.
   
-  --tokens-in and --tokens-out must be the real counts the invoking agent
-  read from its own provider response for this mission (e.g. Claude's
-  usage.input_tokens / usage.output_tokens across the conversation turns
-  spent on this mission_id) — not another estimate. Only the agent has
-  access to those numbers; this binary cannot verify them and does not try
-  to.
+  Report each observation once, with the counts of that call alone (an
+  incremental record). Never report a running total as incremental: either use
+  --record-kind cumulative_snapshot with --session-id, so only the delta between
+  two snapshots of the same session is counted, or report the call's own counts.
+  Pass --invocation-id (the request id printed by 'mission invoke') or --event-id
+  so a repeated delivery is recognised and counted once; without one the record is
+  accepted but flagged dedup_unavailable. Omit a --tokens-* flag you did not
+  observe: unobserved is never recorded as zero.
   
-  The record is appended to .strategist/memory/mission-token-usage.jsonl,
-  one JSONL line per report. Comparing the reported total against
-  skill.yaml's declarative token_budget is a natural follow-up, not done by
-  this command.
-flag: --mission-id (string) default="" usage="mission_id to record usage against (required) — must match an existing pending/refined/archived artifact"
+  The command is refused until the mission has a pending, refined or archived
+  artifact; report earlier invocations afterwards with an explicit --phase.
+  The Approval Gate carries no tokens; use --phase unattributed for consumption
+  outside any phase. Records are appended to
+  .strategist/memory/mission-usage.jsonl and read by 'strategist mission usage'.
+flag: --attempt (int) default="1" usage="attempt of the invocation; a real retry that consumed tokens is a new attempt"
+flag: --event-id (string) default="" usage="caller-chosen idempotency key when there is no invocation id"
+flag: --invocation-id (string) default="" usage="the 'mission invoke' request id (inv_...) this usage belongs to; makes the record idempotent"
+flag: --mission-id (string) default="" usage="mission_id to record usage against (required) — must have a pending/refined/archived artifact"
+flag: --model (string) default="" usage="model that served the call, when known"
+flag: --phase (string) default="" usage="phase the usage belongs to (required): bootstrap, intake, discovery, refinement, execution or unattributed"
+flag: --phase-run-id (string) default="" usage="phase run (r1, r2, ...) the usage belongs to, when known"
+flag: --provider (string) default="" usage="provider that served the call, when known"
+flag: --quality (string) default="" usage="claimed quality, never stronger than --source allows (default: reported_unverified, or heuristic_estimated for an estimator)"
+flag: --record-kind (string) default="incremental" usage="incremental (this call's own counts) or cumulative_snapshot (a running total, needs --session-id)"
+flag: --role (string) default="" usage="role that consumed the tokens (required): scout, ranger, archivist, sniper, shell, ..."
 flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
-flag: --tokens-in (int64) default="0" usage="real input token count from the invoking agent's own provider response (required, >= 0)"
-flag: --tokens-out (int64) default="0" usage="real output token count from the invoking agent's own provider response (required, >= 0)"
+flag: --scope (string) default="invocation" usage="what the counts cover: invocation, session, phase, ..."
+flag: --session-id (string) default="" usage="session of a cumulative counter; deltas are only taken inside one session"
+flag: --source (string) default="agent_report" usage="origin of the numbers: agent_report or estimator"
+flag: --tokens-cache (int64) default="0" usage="cache tokens the provider reported; stored separately, never added to the total"
+flag: --tokens-in (int64) default="0" usage="input tokens observed for this call (omit when not observed)"
+flag: --tokens-out (int64) default="0" usage="output tokens observed for this call (omit when not observed)"
+flag: --tokens-reasoning (int64) default="0" usage="reasoning tokens the provider reported; stored separately, never added to the total"
 
 == strategist mission requests
 use: requests
@@ -499,6 +678,17 @@ flag: --event (string) default="" usage="mission event to submit (required)"
 flag: --json (bool) default="false" usage="emit machine-readable JSON"
 flag: --mission-id (string) default="" usage="mission identifier (required)"
 flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+
+== strategist mission usage
+use: usage
+short: Show per-phase lifecycle and token usage for one mission (read-only)
+long: |
+  Show start, end, duration, runs and status per phase for one mission, with the quality of every number stated. Unobserved values print as an unavailable marker, never as zero. The legacy provider-reported ledger is shown on its own row, outside any total.
+flag: --details (bool) default="false" usage="list every phase run and the legacy usage records"
+flag: --json (bool) default="false" usage="emit strategist-mission-usage/v1 JSON"
+flag: --mission-id (string) default="" usage="mission identifier (required)"
+flag: --root (string) default="" usage="path to .strategist/ root (default: auto-discovered from CWD)"
+flag: --timeline (bool) default="false" usage="add the merged chronology of lifecycle markers and usage observations"
 
 == strategist mission view
 use: view

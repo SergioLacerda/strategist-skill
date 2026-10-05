@@ -149,9 +149,12 @@ func TestEmbeddedDefaults_CompiledRoleWeaponRegistryIsComplete(t *testing.T) {
 	for _, role := range catalog.Roles {
 		roles[role.ID] = role.Slot
 	}
-	bindings := make(map[string]string, len(catalog.RankedBindings))
+	// A Role slot may offer several certified Weapons (the Archivist offers
+	// openspec-propose and writing-plans, ADR-0067).
+	bindings := make(map[string][]string, len(catalog.RankedBindings))
 	for _, binding := range catalog.RankedBindings {
-		bindings[binding.Role+"/"+binding.Slot] = binding.WeaponID
+		key := binding.Role + "/" + binding.Slot
+		bindings[key] = append(bindings[key], binding.WeaponID)
 	}
 
 	for _, want := range []struct {
@@ -159,11 +162,12 @@ func TestEmbeddedDefaults_CompiledRoleWeaponRegistryIsComplete(t *testing.T) {
 	}{
 		{"ranger", "discovery", "brainstorming"},
 		{"archivist", "refinement", "openspec-propose"},
+		{"archivist", "refinement", "writing-plans"},
 		{"sniper", "execution", "sniper"},
 	} {
 		require.Equal(t, want.slot, roles[want.role], "compiled Role %s", want.role)
 		require.True(t, weapons[want.weapon], "compiled Weapon %s", want.weapon)
-		assert.Equal(t, want.weapon, bindings[want.role+"/"+want.slot], "compiled Ranked binding %s/%s", want.role, want.slot)
+		assert.Contains(t, bindings[want.role+"/"+want.slot], want.weapon, "compiled Ranked binding %s/%s", want.role, want.slot)
 	}
 }
 

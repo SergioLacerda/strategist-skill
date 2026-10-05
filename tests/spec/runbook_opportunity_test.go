@@ -24,7 +24,7 @@ func TestOpportunityAttackRunbookIsExplicitGateOnly(t *testing.T) {
 		"never a trusted docs/runbooks/ entry without human review",
 		"writing directly to docs/runbooks/<slug>.md from *this* action",
 		"promoting the candidate to canonical without a gate approval",
-		"Opportunity Attack never writes docs/runbooks/ or treasure-chests.yaml directly, only surfaces the side quest",
+		"Opportunity Attack never writes docs/runbooks/ directly, only surfaces the side quest",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("%s missing explicit-gate-only term %q", path, needle)
@@ -53,9 +53,9 @@ func TestRunbookOpportunityContractIsRetired(t *testing.T) {
 // TestOpportunityAttackInheritsRunbookSignals verifies the planned migration
 // (strategist-ability-taxonomy-reorg T5, Decision D3): Opportunity Attack
 // must carry an equivalent runbook_worthy activation criterion and its own
-// OA-RUNBOOK side quest, while still keeping ADR, runbook, and chest
-// evaluation as independent outputs that never claim card-closure (Critical
-// Hit's exclusive remit).
+// OA-RUNBOOK side quest, while keeping ADR and Runbook evaluation as
+// independent outputs that never claim card-closure (Critical Hit's exclusive
+// remit).
 func TestOpportunityAttackInheritsRunbookSignals(t *testing.T) {
 	t.Parallel()
 

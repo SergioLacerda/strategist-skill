@@ -173,9 +173,18 @@ providers:
       canonical_role: archivist
       roles:
         - archivist
+      ranked: true
+      certification_digest: sha256:cfeb1f48975cef414eaf2b7e4664fbec6e6d988ccea49145ed18ff719930b782
+      ranked_binding_generation: 1
+      ranked_binding_status: active
+      host_api_digest: sha256:64fe73c30edb1ad336d200b327ea087ad035e91eafb530d461aa2be61b8098ad
+      connector_digest: sha256:713cbd1f26a65d73e74d8a0aceba98a181dd7f4e3b950ac419ce7bac3bfec13c
+      test_suite_digest: sha256:61bfd55e31ae3ae3501c5f5699e21e8c17873526a3b3ce8b7de2b47d946f1f92
+      policy_digest: sha256:29c491811afac9107cfcbc46c5fd75cc8ea28b9703f425cd841300af65ba4c84
+      conformance_level: C1
       runtime:
-        kind: host
-        host_api: strategist-host-skill/v1
+        kind: embedded
+        execution_mode: prompt_bridge
       supported_slots:
         - refinement
       upstream_repo: obra/superpowers
@@ -189,6 +198,12 @@ providers:
       legacy_manifest_path: skills/writing-plans@1.0.0/skill.yaml
       compatibility_source: embedded
       scratch_root: runtime
+      weapon_contract:
+        role_owner: archivist
+        participation: required
+        invocation_evidence: required
+        unavailable_behavior: role_invocation_failed
+        native_substitution: forbidden
 weapons:
     - id: archivist
       version: 0.0.0
@@ -288,13 +303,13 @@ weapons:
         - sniper
     - id: writing-plans
       version: 1.0.0
-      digest: sha256:e40bd0442cc9625a60b65888faf8eef36c097ed2214b4d59c25eb52362fa3a89
+      digest: sha256:be4bdfd5c5340f76c4bb1724fe64d15e115f20d43538015b035109672cfe19ea
       source_digest: sha256:ee4d7025f7a7df44ace6e22604e93126402117172baf94406a5bbd33c8f41d5c
       origin: embedded
       runtime:
-        kind: host
-        host_api: strategist-host-skill/v1
-      connector_id: strategist-host
+        kind: embedded
+        execution_mode: prompt_bridge
+      connector_id: strategist-embedded
       entrypoint: refine
       supported_roles:
         - archivist
@@ -324,7 +339,7 @@ compatibility:
       slot: refinement
       weapon_id: writing-plans
       weapon_version: 1.0.0
-      weapon_digest: sha256:e40bd0442cc9625a60b65888faf8eef36c097ed2214b4d59c25eb52362fa3a89
+      weapon_digest: sha256:be4bdfd5c5340f76c4bb1724fe64d15e115f20d43538015b035109672cfe19ea
       handoff_schema: schemas/handoff-archivist-to-sniper.schema.yaml
       source: declared
     - role: ranger
@@ -366,6 +381,23 @@ ranked_bindings:
         healthcheck: openspec context --json
         version: 1.13.0
         node_version: 22.23.2
+      entrypoint: refine
+      generation: 1
+      status: active
+    - role: archivist
+      slot: refinement
+      weapon_id: writing-plans
+      weapon_version: 1.0.0
+      weapon_digest: sha256:be4bdfd5c5340f76c4bb1724fe64d15e115f20d43538015b035109672cfe19ea
+      role_digest: sha256:3d2e2073af1cf8ae25f48476ce1b37e8f476b41f63d12f6b82005c12ade82903
+      binding_digest: sha256:4116c2cc6f67f0100114b87f57c8aa52499a080182b31552db8150ffd1d1c153
+      source_digest: sha256:ee4d7025f7a7df44ace6e22604e93126402117172baf94406a5bbd33c8f41d5c
+      execution_mode: prompt_bridge
+      certification_digest: sha256:cfeb1f48975cef414eaf2b7e4664fbec6e6d988ccea49145ed18ff719930b782
+      connector_id: strategist-embedded
+      runtime:
+        kind: embedded
+        execution_mode: prompt_bridge
       entrypoint: refine
       generation: 1
       status: active

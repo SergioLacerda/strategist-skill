@@ -15,28 +15,5 @@ const (
 // blocked/indeterminate result is an error event and carries only a stable
 // reason token, never raw artifact or challenge content.
 func NewRangerToArchivistEvent(runID, outcome string, required bool, attempt int, status string, criticalFailures int, reason string) Event {
-	severity := SeverityInfo
-	completeStatus := "done"
-	if outcome == "failed" || outcome == "indeterminate" {
-		severity = SeverityError
-		completeStatus = "blocked"
-	}
-	event := NewEvent(RangerToArchivistEventName, severity, runID, true)
-	event.Attributes = map[string]any{
-		AttrEventContractID:                  RangerToArchivistContractID,
-		AttrEventAuthority:                   AuthorityStrategistLocal,
-		AttrComponent:                        "handoff",
-		AttrPhase:                            "refinement",
-		AttrTransitionGroup:                  "ranger_to_archivist",
-		AttrStatus:                           completeStatus,
-		AttrHandoffOutcome:                   outcome,
-		AttrHandoffRequired:                  required,
-		AttrHandoffAttempt:                   attempt,
-		AttrHandoffChallengeStatus:           status,
-		AttrHandoffChallengeCriticalFailures: criticalFailures,
-	}
-	if reason != "" {
-		event.Attributes[AttrReason] = reason
-	}
-	return event
+	return newHandoffEvent(RangerToArchivistEventName, RangerToArchivistContractID, "refinement", "ranger_to_archivist", runID, outcome, required, attempt, status, criticalFailures, reason)
 }

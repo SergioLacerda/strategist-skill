@@ -56,9 +56,17 @@ func (p *TUIPrompter) Input(title, defaultVal string) (string, error) {
 // SelectOrInput renders a selection list that includes customLabel as the last entry.
 // When the user picks customLabel, a free-text Input is shown for arbitrary input.
 func (p *TUIPrompter) SelectOrInput(title, defaultVal string, options []string, customLabel string) (string, error) {
-	opts := make([]huh.Option[string], len(options)+1)
+	labeled := make([]promptOption, len(options))
 	for i, o := range options {
-		opts[i] = huh.NewOption(o, o)
+		labeled[i] = promptOption{Label: o, Value: o}
+	}
+	return p.selectOrInputWithLabels(title, defaultVal, labeled, customLabel)
+}
+
+func (p *TUIPrompter) selectOrInputWithLabels(title, defaultVal string, options []promptOption, customLabel string) (string, error) {
+	opts := make([]huh.Option[string], len(options)+1)
+	for i, option := range options {
+		opts[i] = huh.NewOption(option.Label, option.Value)
 	}
 	opts[len(options)] = huh.NewOption(customLabel, customSentinel)
 

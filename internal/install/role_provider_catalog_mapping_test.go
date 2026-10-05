@@ -22,6 +22,16 @@ func TestProviderContractFromCatalogEntryCarriesSupportedHandoffSchemas(t *testi
 	assert.Equal(t, []string{"openspec-native-change-schema"}, contract.SupportedHandoffSchemas)
 }
 
+func TestProviderContractFromCatalogEntryCarriesRuntimeIdentity(t *testing.T) {
+	t.Parallel()
+
+	contract := providerContractFromCatalogEntry(pluginCatalogProvider{
+		ID: "writing-plans", Runtime: domain.WeaponRuntime{Kind: domain.RankedRuntimeHost, HostAPI: "strategist-host-skill/v1"},
+	})
+	assert.Equal(t, domain.RankedRuntimeHost, contract.Runtime.Kind)
+	assert.Equal(t, "strategist-host-skill/v1", contract.Runtime.HostAPI)
+}
+
 func TestProviderContractFromCatalogEntryLeavesSupportedHandoffSchemasNilWhenUndeclared(t *testing.T) {
 	t.Parallel()
 

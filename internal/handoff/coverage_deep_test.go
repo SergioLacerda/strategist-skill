@@ -76,6 +76,22 @@ func TestReadPolicyFactsRejectsMalformedAnalysis(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestValidateRefinedAnalysisRejectsMissingAnalysis(t *testing.T) {
+	_, err := validateRefinedAnalysis(map[string][]byte{}, "m-1")
+	require.ErrorContains(t, err, "analysis.md: missing")
+}
+
+func TestValidateRefinedAnalysisRejectsMalformedAnalysis(t *testing.T) {
+	_, err := validateRefinedAnalysis(map[string][]byte{"analysis.md": []byte("not frontmatter\n")}, "m-1")
+	require.ErrorContains(t, err, "frontmatter is missing")
+}
+
+func TestValidateRefinedAnalysisRejectsWrongMission(t *testing.T) {
+	analysis := []byte("---\nmission_id: other\nmission_status: archivist_done\n---\n")
+	_, err := validateRefinedAnalysis(map[string][]byte{"analysis.md": analysis}, "m-1")
+	require.ErrorContains(t, err, "mission_id")
+}
+
 func TestVerificationMetadataRejectsMalformedDeclarations(t *testing.T) {
 	dir := t.TempDir()
 	minimalArchivistPackage(t, dir, "m-1")

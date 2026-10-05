@@ -48,8 +48,8 @@ func TestMonorepoAndToolchainPolicyADRExists(t *testing.T) {
 	for _, needle := range []string{
 		"Keep the Go CLI, embedded defaults, and docs in one repository",
 		"Go version authority is `go.mod`",
-		"`go 1.27.1` is the module/language target",
-		"`toolchain go1.27.1` is the exact patch toolchain",
+		"`go 1.27.2` is the module/language target and exact patch baseline",
+		"Local quality and vulnerability targets derive `GOTOOLCHAIN=go1.27.2` from",
 		"Node is tooling-only",
 		"`release-verify`",
 	} {

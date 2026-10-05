@@ -79,6 +79,10 @@ func classifyFailureLabel(label string) FailureReason {
 		return FailureTiming
 	case strings.HasPrefix(label, "pipeline"):
 		return FailurePipeline
+	case strings.HasPrefix(label, "calibration"):
+		return classifyCalibrationLabel(label)
+	case strings.HasPrefix(label, "live "):
+		return FailureLiveCheck
 	default:
 		return ""
 	}
@@ -119,7 +123,7 @@ func nextActionSection(reasons []FailureReason) string {
 	}
 	var lines []string
 	for _, r := range reasons {
-		if hint, ok := nextActionHints[r]; ok {
+		if hint, ok := hintFor(r); ok {
 			lines = append(lines, "- "+hint)
 		}
 	}
@@ -130,6 +134,12 @@ func nextActionSection(reasons []FailureReason) string {
 // failed run for human review. It never writes production source or jewel files, and is a
 // no-op for a passing result — a passing run has no lesson to teach.
 func WriteLesson(basePath string, result domain.DojoCheckResult) error {
+	return writeLessonContent(basePath, result, func() string {
+		return GenerateLesson(result, ClassifyFailures(result.Items))
+	})
+}
+
+func writeLessonContent(basePath string, result domain.DojoCheckResult, content func() string) error {
 	if result.Passed() {
 		return nil
 	}
@@ -137,12 +147,12 @@ func WriteLesson(basePath string, result domain.DojoCheckResult) error {
 	if err != nil {
 		return err
 	}
-	content := GenerateLesson(result, ClassifyFailures(result.Items))
+	text := content()
 	return withStorageLock(paths, func() error {
 		if err := os.MkdirAll(paths.LastRunDir, 0o755); err != nil { //nolint:gosec // G301: dojo storage domain, not source
 			return fmt.Errorf("dojo: create %s: %w", paths.LastRunDir, err)
 		}
-		if err := atomicWriteFile(paths.LessonPath, []byte(content), 0o644); err != nil { //nolint:gosec // G306: dojo storage domain
+		if err := atomicWriteFile(paths.LessonPath, []byte(text), 0o644); err != nil { //nolint:gosec // G306: dojo storage domain
 			return fmt.Errorf("dojo: write %s: %w", paths.LessonPath, err)
 		}
 		return nil

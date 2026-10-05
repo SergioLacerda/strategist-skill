@@ -41,9 +41,12 @@ else
 GOLANGCI_LINT       := $(shell which golangci-lint 2>/dev/null || echo $(GOPATH_BIN)/golangci-lint)
 endif
 
-# Pinned to go.mod's own `toolchain` line so AST/SSA-based tools (golangci-lint's
-# bundled go/types checker, govulncheck's x/tools SSA builder) always analyze
-# against the exact Go version they were built for. GOTOOLCHAIN=auto only
+# Pinned to go.mod's exact toolchain declaration so AST/SSA-based tools
+# (golangci-lint's bundled go/types checker, govulncheck's x/tools SSA builder)
+# always analyze against the exact Go version they were built for. Go 1.27.2's
+# `go` directive is already an exact patch target, and `go mod tidy` removes a
+# redundant matching `toolchain` directive, so fall back to `go` when needed.
+# GOTOOLCHAIN=auto only
 # upgrades when the system `go` is OLDER than this pin -- a system `go` that
 # races ahead of it (e.g. a distro shipping a very recent/prerelease point
 # release) is used as-is otherwise, which can make these tools panic on AST
@@ -52,7 +55,7 @@ endif
 # "unexpected expr: *ast.KeyValueExpr"). An explicit, non-"auto" GOTOOLCHAIN
 # value always switches to (downloading if needed) exactly that version, in
 # either direction, sidestepping the skew regardless of what the system `go` is.
-PINNED_GOTOOLCHAIN  := $(shell awk '/^toolchain /{print $$2}' go.mod)
+PINNED_GOTOOLCHAIN  := $(shell awk '/^toolchain /{print $$2; found=1; exit} /^go /{version=$$2} END{if (!found && version != "") print "go" version}' go.mod)
 GOVULNCHECK         := $(shell which govulncheck 2>/dev/null || echo $(GOPATH_BIN)/govulncheck)
 GOCOGNIT            := $(shell which gocognit 2>/dev/null || echo $(GOPATH_BIN)/gocognit)
 GORELEASER          := $(shell which goreleaser 2>/dev/null || echo $(GOPATH_BIN)/goreleaser)

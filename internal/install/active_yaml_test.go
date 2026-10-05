@@ -370,6 +370,15 @@ func TestWriteActiveYAML(t *testing.T) {
 			},
 		},
 		{
+			name: "with adr and runbook canonical paths",
+			cfg: domain.WizardConfig{
+				Mode: "epic", BasePath: ".analysis", UILanguage: "en", DocLanguage: "en", ChatLanguage: "en", CodeLanguage: "en",
+				DiscoveryProvider: "brainstorming", RefinementProvider: "openspec-explore", ExecutionProvider: "sniper",
+				AdrCanonicalPath: "adr", RunbookCanonicalPath: "runbooks",
+			},
+			wantContain: []string{"adr:", "canonical_path: adr", "runbooks:", "canonical_path: runbooks"},
+		},
+		{
 			name: "without adr canonical path — no adr block emitted",
 			cfg: domain.WizardConfig{
 				Mode:               "epic",
@@ -383,6 +392,16 @@ func TestWriteActiveYAML(t *testing.T) {
 				ExecutionProvider:  "sniper",
 			},
 			wantAbsent: []string{"adr:", "canonical_path"},
+		},
+		{
+			name: "with runbook canonical path only",
+			cfg: domain.WizardConfig{
+				Mode: "epic", BasePath: ".analysis", UILanguage: "en", DocLanguage: "en", ChatLanguage: "en", CodeLanguage: "en",
+				DiscoveryProvider: "brainstorming", RefinementProvider: "openspec-explore", ExecutionProvider: "sniper",
+				RunbookCanonicalPath: "docs/runbooks",
+			},
+			wantContain: []string{"runbooks:", "canonical_path: docs/runbooks"},
+			wantAbsent:  []string{"adr:"},
 		},
 	}
 

@@ -46,3 +46,11 @@ func printResult(out io.Writer, result domain.DojoCheckResult) error {
 	}
 	return nil
 }
+
+// say writes one formatted line to out, wrapping a write failure.
+func say(out io.Writer, format string, args ...any) error {
+	if _, err := fmt.Fprintf(out, format, args...); err != nil {
+		return fmt.Errorf("dojo: write output: %w", err)
+	}
+	return nil
+}

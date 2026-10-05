@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
 	missionadapter "github.com/SergioLacerda/strategist-skill/cmd/strategist/mission"
 	"github.com/SergioLacerda/strategist-skill/internal/application"
@@ -13,9 +14,10 @@ import (
 	"github.com/SergioLacerda/strategist-skill/internal/telemetry"
 )
 
-// completeMissionInvocation publishes the pending Ranger artifact for one
-// request. The publication target (mission, Role, slot) is leased before any
-// state or artifact is inspected, so two request IDs can never race over it.
+// completeMissionInvocation normalizes and publishes the completion of one
+// request through the normalizer of its Role and slot. The publication target
+// (mission, Role, slot) is leased before any state or artifact is inspected,
+// so two request IDs can never race over it.
 func completeMissionInvocation(ctx context.Context, input missionadapter.InvocationCompleteInput) (domain.MissionInvocationOutcome, error) {
 	store := missionruntime.NewInvocationStore(input.Root)
 	record, release, err := claimCompletableInvocation(store, input)
@@ -23,9 +25,27 @@ func completeMissionInvocation(ctx context.Context, input missionadapter.Invocat
 		return domain.MissionInvocationOutcome{}, err
 	}
 	defer release()
-	if record.Request.Role == "sniper" && record.Request.Slot == string(domain.SlotExecution) {
+	return dispatchCompletion(ctx, store, input, record)
+}
+
+// dispatchCompletion selects the normalizer by Role and slot. A pair without a
+// registered normalizer fails closed: a completion is never handed to another
+// Role's normalizer by default (ADR-0067). The registration in
+// application.ValidateInvocationCompletion lists the same pairs.
+func dispatchCompletion(ctx context.Context, store missionruntime.InvocationStore, input missionadapter.InvocationCompleteInput, record domain.MissionInvocationRecord) (domain.MissionInvocationOutcome, error) {
+	role, slot := record.Request.Role, record.Request.Slot
+	switch {
+	case role == "sniper" && slot == string(domain.SlotExecution):
 		return completeSniperInvocation(store, input, record)
+	case role == "archivist" && slot == string(domain.SlotRefinement):
+		return completeArchivistInvocation(store, input, record)
+	case role == "ranger" && slot == string(domain.SlotDiscovery):
+		return completeDiscoveryInvocation(ctx, store, input, record)
 	}
+	return domain.MissionInvocationOutcome{}, fmt.Errorf("role_invocation_failed: completion normalization is not registered for %s/%s", role, slot)
+}
+
+func completeDiscoveryInvocation(ctx context.Context, store missionruntime.InvocationStore, input missionadapter.InvocationCompleteInput, record domain.MissionInvocationRecord) (domain.MissionInvocationOutcome, error) {
 	if input.Sink == nil {
 		return domain.MissionInvocationOutcome{}, fmt.Errorf("invocation_telemetry_unavailable: mission completion requires a configured telemetry sink")
 	}
@@ -79,6 +99,10 @@ func verifyClaimedInvocation(store missionruntime.InvocationStore, input mission
 func recordRangerHandoffAfterPublish(ctx context.Context, input missionadapter.InvocationCompleteInput, record domain.MissionInvocationRecord) error {
 	if record.Request.Role != "ranger" || record.Request.Slot != string(domain.SlotDiscovery) {
 		return nil
+	}
+	artifact := filepath.Join(input.BasePath, "pending", record.Request.MissionID+"-analysis.md")
+	if err := missionruntime.RecordRangerConfidence(input.Root, artifact, record.Request.MissionID); err != nil {
+		return fmt.Errorf("ranger confidence: %w", err)
 	}
 	delegate := rangerDelegate(ctx, input.Root, input.BasePath, record.Request.MissionID)
 	if err := missionruntime.EnsureRangerToArchivistOutcomeWithDelegation(ctx, input.Root, input.BasePath, record.Request.MissionID, input.Sink, record.Request.MissionID, delegate); err != nil {

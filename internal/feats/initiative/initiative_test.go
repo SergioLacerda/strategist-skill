@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	"github.com/stretchr/testify/require"
 )
 
@@ -61,6 +62,12 @@ func TestAdvisorCopiesLevelingResolutionBeforeConsultation(t *testing.T) {
 		EventID: "level-1", Role: "ranger", State: ObservationKnown,
 		Model: "host-model", Provider: "host", Effort: EffortHigh,
 		Capability: "reasoning", LevelSource: "host",
+		Budget: &domain.EffortBudget{
+			SchemaVersion: domain.EffortBudgetSchemaVersion, Role: "ranger",
+			MaxDelegations: 1, MaxDepth: 1, Parallelism: 1,
+			ContextBudget: "medium", EvidenceDepth: "standard",
+			EscalationAllowed: true, MaxEscalations: 1,
+		},
 	}
 	advice, err := (Advisor{Policy: DefaultPolicy()}).Advise(AdviceInput{
 		MissionID: "m-level", Role: "ranger", RunID: "run", Trigger: TriggerInitial,
@@ -69,10 +76,13 @@ func TestAdvisorCopiesLevelingResolutionBeforeConsultation(t *testing.T) {
 	require.NoError(t, err)
 	resolution.Model = "mutated-after-consultation"
 	resolution.Provider = "mutated-provider"
+	resolution.Budget.MaxDelegations = 99
 	require.NotNil(t, advice.Leveling)
 	require.Equal(t, "host-model", advice.Leveling.Model)
 	require.Equal(t, "host", advice.Leveling.Provider)
 	require.Equal(t, "host-model", advice.Observed.Model)
+	require.Equal(t, 1, advice.Leveling.Budget.MaxDelegations)
+	require.Equal(t, 1, advice.Observed.Budget.MaxDelegations)
 }
 
 func TestAdvisorRejectsLevelingResolutionForAnotherRole(t *testing.T) {

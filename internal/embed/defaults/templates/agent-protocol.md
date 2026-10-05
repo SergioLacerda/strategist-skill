@@ -72,10 +72,20 @@ They are guidance (`enforced_by: agent_only`), not a gate.
   `strategist mission route` like any other decision, and the record shows the shell wrote it.
 - A pending note written directly by the shell on an explicit user request needs no Riposte
   capture metadata; Riposte's `origin: riposte` applies only to entries it captures itself.
-- Run `strategist mission report-usage --mission-id <id> --tokens-in <n> --tokens-out <n>` at the
-  gate and again at DONE, with the counts from your own provider response, and hand the discovery
-  run's usage to the Archivist for `--discovery-tokens` when the host reports it. Without a
-  usage record no waste or cost claim about a mission can be checked.
+- Run `strategist mission report-usage --mission-id <id> --phase <phase> --role <role>
+  --invocation-id <request_id> --tokens-in <n> --tokens-out <n>` once per completed
+  Strategist-issued invocation, only when your host reports usage for that call, with the counts of
+  that call alone (`--invocation-id` is the id `mission invoke` printed, which also makes a repeated
+  delivery count once). Never report a running total as incremental: a host that exposes only a
+  cumulative counter is reported with `--record-kind cumulative_snapshot --session-id <id>`, so
+  only the delta between two snapshots of one session is counted. Pass only the counts you
+  observed; an omitted `--tokens-*` is unobserved, not zero, and the record is stored as
+  `reported_unverified`, never as measured. The command is refused until the mission has an
+  artifact, so report earlier invocations after the first artifact exists, with their `--phase`.
+  When the host reports no usage, record nothing: an unobserved invocation is shown as unavailable
+  and is never replaced by an estimate. Hand the discovery run's usage to the Archivist for
+  `--discovery-tokens` when the host reports it. Without a usage record no waste or cost claim
+  about a mission can be checked.
 - No CLI emits the intake checkpoint, so a missing intake checkpoint is not a condition to hold
   `intake_done`; submit it after `strategist mission route`.
 - When `strategist handoff evaluate` or `evaluate-ranger` prints a `delegation:` line, an enabled provider pre-checked
@@ -84,6 +94,15 @@ They are guidance (`enforced_by: agent_only`), not a gate.
   and `fallback` mean the provider did not approve or did not answer: do the conformance check yourself as usual,
   using the listed `hints` for a signal. No `delegation:` line means no integration is enabled. A provider result
   never replaces the Approval Gate, integrity or authorization checks.
+- After `refinement_done`, when an integration is enabled, run `strategist handoff precheck --mission-id <id>`
+  (the advisory Archivist to Gate provider reading; it records no outcome and approves nothing). Before
+  presenting the gate, run `strategist handoff criteria --mission-id <id>` and render its rows as the
+  `🔎 CRITÉRIOS DE QUALIDADE` block: every row is shown filled with a value, `não avaliado` or `não sei`,
+  and a provider row ends with `calibrado (…)` or `não calibrado` exactly as the command prints it.
+  Never type those numbers or that status yourself.
+- When asked to run a DOJO calibration case, read `contracts/machine/dojo-calibration.yaml` first: the agent
+  generates skeletons, audits a sample, writes lessons and proposes operators, and never promotes a case,
+  changes a label, pins a calibration or sends real content without the author's explicit consent flag.
 - Write the output of `strategist mission invoke --json` to a file and read fields from it with `jq`;
   do not pipe it through `head` or `cut`. Each call issues a new request, so truncating the output and
   running the command again leaves the first request unfinished. Run it once per phase, then complete

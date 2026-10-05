@@ -30,6 +30,10 @@ invariants:
     description: A runbook candidate is never promoted to canonical without a gate approval and human review
     rule: promoting the candidate to canonical without a gate approval is forbidden; ADR, runbook and chest stay independent outputs
 
+  - id: chest_candidate_needs_gate_approval
+    description: A Treasure Chest candidate is independent and remains proposed
+    rule: full source coverage absent from the configured index surfaces OA-CHEST as proposed; registration before gate approval is forbidden
+
   - id: no_closure_role
     description: Opportunity Attack does not evaluate implementation completion or card closure
     rule: Opportunity Attack MUST NOT move cards to done/ — that is Critical Hit's remit
@@ -101,3 +105,14 @@ cases:
       runbook_worthy_signal: none
     expect:
       output: { runbook_warranted: false }
+
+  - name: chest_only_candidate
+    given:
+      role: archivist
+      four_refined_artifacts: present
+      full_coverage_source_not_in_chest: true
+      adr_candidates: 0
+      runbook_worthy_signal: none
+    expect:
+      action: add OA-CHEST-{mission_id} to the opportunity manifest as a proposed candidate
+      forbidden: registering the source before gate approval

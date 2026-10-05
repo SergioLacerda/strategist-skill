@@ -17,3 +17,6 @@ cmd/strategist/metrics	quality-maintainers	adapter-local metrics suite is establ
 cmd/strategist/mission	quality-maintainers	adapter extraction pending migration of mission lifecycle fixtures to package-local tests
 cmd/strategist/plugins	quality-maintainers	adapter extraction (cmd-plugins-extraction) pending a dedicated package-local coverage budget; measured 84.9% on 2026-09-22
 internal/integration/jev/jevtest	quality-maintainers	test-only simulated JEV provider; exercised by the jev and mechanism suites, never imported by production code
+internal/integration/live	quality-maintainers	opt-in live provider check: only build-tagged (live) tests, no production code, never part of the default suite
+internal/integration/runbookconsumer	quality-maintainers	provider-facing Runbook preparation projection; dedicated coverage budget remains pending
+internal/tools/prepare_runbook	quality-maintainers	reviewable Runbook candidate preparation tool; dedicated coverage budget remains pending

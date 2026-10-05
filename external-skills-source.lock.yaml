@@ -83,12 +83,12 @@ packages:
       version: 1.0.0
       kind: atomic
       origin: embedded
-      runtime_kind: host
-      digest: sha256:a5733669bb9419319aca304b0120868583bf4c7e923156c7d1fd9b87c806affd
+      runtime_kind: embedded
+      digest: sha256:fabc355daf59ce90a22ab4a8bfb9ce8bf8d234f0dcfb229b6ee745d59f1ed8a3
       source: external-skills-source/writing-plans
       contract_version: skill-package/v2
-      original_digest: sha256:a5733669bb9419319aca304b0120868583bf4c7e923156c7d1fd9b87c806affd
-      normalized_digest: sha256:9375b10b83bf2d6fbe192e7b0286ee21d480691c074ab083006d1a77c2898e40
+      original_digest: sha256:fabc355daf59ce90a22ab4a8bfb9ce8bf8d234f0dcfb229b6ee745d59f1ed8a3
+      normalized_digest: sha256:017e65721e008f155a874b7cb60e0fd6f28b026375cd0f7e8e628c393cbc1329
       transformation: none
       local_modifications: unknown
       verification_state: declared

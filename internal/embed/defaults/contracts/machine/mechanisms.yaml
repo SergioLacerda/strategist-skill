@@ -378,8 +378,8 @@ mechanisms:
     contract_file: contracts/machine/provider-integration.yaml
     enforcement_kind: code
     enforcement_tier: machine_observed
-    summary: "decides per attempt whether an external provider serves a call or main does, and never grants authority to its answer."
-    when_to_use: at every lifecycle handoff evaluation (Ranger to Archivist, Archivist to Sniper) when an integration is enabled; a failure falls back to main and never blocks
+    summary: "decides per attempt whether an external provider or main serves a call; its answer never grants authority."
+    when_to_use: at each lifecycle handoff evaluation and before the gate, when an integration is enabled; failures fall back to main
     invoked_by: [archivist, sniper]
-    how_to_invoke: "strategist handoff evaluate-ranger | handoff evaluate (automatic when .strategist/integrations.yaml enables a provider)"
+    how_to_invoke: "strategist handoff precheck | evaluate | criteria"
     phase_scope: [refinement, execution]

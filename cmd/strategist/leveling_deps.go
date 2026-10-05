@@ -23,13 +23,24 @@ const defaultLedgerMaxRecords = 2000
 
 func levelingAdapterDependencies() levelingadapter.Dependencies {
 	return levelingadapter.Dependencies{
-		LoadPolicy:    loadLevelingPolicy,
-		WorkspaceRoot: levelingWorkspaceRoot,
-		LoadConfig:    readActiveLevelingConfig,
-		LoadRegistry:  loadRoleRegistry,
-		LedgerName:    roleLevelLedger,
-		RotateMax:     defaultLedgerMaxRecords,
-		EmitRoleLevel: emitRoleLevel,
+		LoadPolicy:      loadLevelingPolicy,
+		WorkspaceRoot:   levelingWorkspaceRoot,
+		LoadConfig:      readActiveLevelingConfig,
+		LoadRegistry:    loadRoleRegistry,
+		LedgerName:      roleLevelLedger,
+		RotateMax:       defaultLedgerMaxRecords,
+		EmitRoleLevel:   emitRoleLevel,
+		EmitBudgetEvent: emitBudgetEvent,
+	}
+}
+
+func emitBudgetEvent(ctx context.Context, budget domain.EffortBudget, kind leveling.BudgetEventKind, reason string) {
+	event := telemetry.NewLevelingBudgetEvent(telemetry.LevelingBudgetEventKind(kind), budget.RunID, budget, telemetry.LevelingBudgetEventInput{
+		MissionID: budget.MissionID, Role: budget.Role, ResolutionID: budget.ResolutionID,
+		ParentResolutionID: budget.ParentResolutionID, Reason: reason,
+	})
+	if err := selectDiscoveryTelemetrySink().Emit(ctx, event); err != nil {
+		slog.WarnContext(ctx, "leveling budget telemetry was not recorded", "reason", err.Error())
 	}
 }
 

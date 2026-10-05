@@ -24,6 +24,20 @@ type Prompter interface {
 	SelectOrInput(title, defaultVal string, options []string, customLabel string) (string, error)
 }
 
+// promptOption separates what the interactive UI displays from the canonical
+// value returned to the wizard. It is intentionally kept outside Prompter so
+// existing test and integration prompters remain source-compatible.
+type promptOption struct {
+	Label string
+	Value string
+}
+
+// labeledPrompter is an optional extension used when a menu needs distinct
+// labels for entries that intentionally share a provider identity.
+type labeledPrompter interface {
+	selectOrInputWithLabels(title, defaultVal string, options []promptOption, customLabel string) (string, error)
+}
+
 // TextPrompter implements Prompter using plain stdin/stdout — used in tests
 // and when stdout is not a TTY.
 type TextPrompter struct {
@@ -87,5 +101,11 @@ func (p *TextPrompter) Input(title, defaultVal string) (string, error) {
 // SelectOrInput in text mode simply falls through to Input — the caller types
 // any value they want, including one of the listed options.
 func (p *TextPrompter) SelectOrInput(title, defaultVal string, _ []string, _ string) (string, error) {
+	return p.Input(title, defaultVal)
+}
+
+// selectOrInputWithLabels preserves text-mode behavior while allowing the
+// caller to supply labels for interactive implementations.
+func (p *TextPrompter) selectOrInputWithLabels(title, defaultVal string, _ []promptOption, _ string) (string, error) {
 	return p.Input(title, defaultVal)
 }

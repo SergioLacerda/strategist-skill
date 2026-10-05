@@ -22,8 +22,9 @@ migration (ILUSIONISTA surface `v0.1.0`) it is published by
 project, and the former in-repository Astro landing (`web/landing/`) and its
 design workspace (`web/design/`) were removed.
 
-The repository carries strict toolchain declarations: `go.mod` sets
-`go 1.27.1` and `toolchain go1.27.1`. Node.js is not part of the product; it
+The repository carries a strict Go toolchain declaration: `go.mod` sets
+`go 1.27.2`, and local quality gates derive the exact `go1.27.2` toolchain from
+that authority. Node.js is not part of the product; it
 is only a tooling prerequisite (see Toolchain policy).
 
 ## Decision
@@ -47,9 +48,10 @@ Toolchain policy:
 
 - Go version authority is `go.mod`. Workflows should use `go-version-file:
   "go.mod"` instead of restating the Go version.
-- `go 1.27.1` is the module/language target.
-- `toolchain go1.27.1` is the exact patch toolchain for CI-compatible local
-  verification.
+- `go 1.27.2` is the module/language target and exact patch baseline.
+- Local quality and vulnerability targets derive `GOTOOLCHAIN=go1.27.2` from
+  `go.mod` for CI-compatible verification; an explicit `toolchain` directive
+  overrides that fallback when a future patch policy requires one.
 - Node is tooling-only: the host Node `>=20.19.0` required by the embedded
   OpenSpec runtime, and the manual `promptfoo/` evals. It is not a product
   surface and has no application build in this repository.

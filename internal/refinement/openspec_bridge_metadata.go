@@ -9,9 +9,25 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// publicationMetadata is the provenance an Archivist publisher stamps into the
+// published analysis.md frontmatter. ChangeID may be a provider change or, for
+// an embedded Weapon, the invocation request that produced the completion.
+type publicationMetadata struct {
+	Provider, ChangeID, Runtime string
+}
+
 func addMetadata(content []byte, input OpenSpecInput) ([]byte, error) {
-	metadata := fmt.Sprintf("provider: openspec-propose\nprovider_change_id: %s\nprovider_runtime: %s\n", input.ChangeID, portableRuntimeRef(input))
-	facts, err := handoffFactsYAML(input.HandoffFacts)
+	return withPublicationMetadata(content, input.MissionID, publicationMetadata{
+		Provider: "openspec-propose", ChangeID: input.ChangeID, Runtime: portableRuntimeRef(input),
+	}, input.HandoffFacts)
+}
+
+// withPublicationMetadata moves the pending analysis to archivist_done and
+// injects the provenance and the typed handoff facts the Archivist declares at
+// publication. A pending analysis that already carries facts is rejected.
+func withPublicationMetadata(content []byte, missionID string, meta publicationMetadata, handoffFacts map[string]any) ([]byte, error) {
+	metadata := fmt.Sprintf("provider: %s\nprovider_change_id: %s\nprovider_runtime: %s\n", meta.Provider, meta.ChangeID, meta.Runtime)
+	facts, err := handoffFactsYAML(handoffFacts)
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +47,7 @@ func addMetadata(content []byte, input OpenSpecInput) ([]byte, error) {
 			return []byte(header + "\n" + metadata + text[pos:]), nil
 		}
 	}
-	return []byte("---\nmission_id: " + input.MissionID + "\nmission_status: archivist_done\n" + metadata + "---\n\n" + text), nil
+	return []byte("---\nmission_id: " + missionID + "\nmission_status: archivist_done\n" + metadata + "---\n\n" + text), nil
 }
 
 func frontmatterContainsKey(text, key string) (bool, error) {

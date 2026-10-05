@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	levelingapp "github.com/SergioLacerda/strategist-skill/internal/application/leveling"
 	"github.com/SergioLacerda/strategist-skill/internal/domain"
 	internal "github.com/SergioLacerda/strategist-skill/internal/tools/leveling"
 	"github.com/spf13/cobra"
@@ -36,15 +37,23 @@ func WriteLabelWarning(cmd *cobra.Command, warning string) error {
 func WriteJSONLabel(cmd *cobra.Command, result LabelResult, rendered string) error {
 	payload := struct {
 		internal.Level
-		Label    string `json:"label"`
-		Tag      string `json:"tag"`
-		Rendered string `json:"rendered"`
-		Reused   bool   `json:"reused"`
-	}{result.Level, result.Level.Label(), result.Level.Tag(), rendered, result.Reused}
+		Label      string                         `json:"label"`
+		Tag        string                         `json:"tag"`
+		Rendered   string                         `json:"rendered"`
+		Reused     bool                           `json:"reused"`
+		Escalation *levelingapp.EscalationOutcome `json:"escalation,omitempty"`
+	}{result.Level, result.Level.Label(), result.Level.Tag(), rendered, result.Reused, escalationPayload(result.Escalation)}
 	if err := json.NewEncoder(cmd.OutOrStdout()).Encode(payload); err != nil {
 		return fmt.Errorf("leveling: write label: %w", err)
 	}
 	return nil
+}
+
+func escalationPayload(outcome levelingapp.EscalationOutcome) *levelingapp.EscalationOutcome {
+	if !outcome.Attempted {
+		return nil
+	}
+	return &outcome
 }
 
 // WritePlainLabel writes the plain text label output.

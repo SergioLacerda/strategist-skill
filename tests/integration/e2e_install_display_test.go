@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	wizardInputEN = "en\nen\nen\nen\nepic\n.analysis\nbrainstorming\narchivist\nsniper\n\n"
-	wizardInputPT = "pt-BR\npt-BR\npt-BR\nen\nepic\n.analysis\nbrainstorming\narchivist\nsniper\n\n"
+	wizardInputEN = "en\nen\nen\nen\nepic\n.analysis\n\n\nbrainstorming\narchivist\nsniper\n\n"
+	wizardInputPT = "pt-BR\npt-BR\npt-BR\nen\nepic\n.analysis\n\n\nbrainstorming\narchivist\nsniper\n\n"
 )
 
 func TestE2E_CLI_InstallWizardIsQuietByDefault(t *testing.T) {

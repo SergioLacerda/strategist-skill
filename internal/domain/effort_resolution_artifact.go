@@ -14,18 +14,19 @@ const EffortResolutionArtifactSchemaVersion = "strategist-effort-resolution/v1"
 // state selected for a Role. Empty model/effort values are valid: they make an
 // unresolved host-only observation explicit instead of inventing confidence.
 type EffortResolutionArtifact struct {
-	SchemaVersion   string `json:"schema_version" yaml:"schema_version"`
-	TaxonomyVersion string `json:"taxonomy_version,omitempty" yaml:"taxonomy_version,omitempty"`
-	Role            string `json:"role" yaml:"role"`
-	Provider        string `json:"provider,omitempty" yaml:"provider,omitempty"`
-	Model           string `json:"model,omitempty" yaml:"model,omitempty"`
-	Effort          string `json:"effort,omitempty" yaml:"effort,omitempty"`
-	Source          string `json:"source,omitempty" yaml:"source,omitempty"`
-	Capability      string `json:"capability,omitempty" yaml:"capability,omitempty"`
-	FallbackUsed    bool   `json:"fallback_used,omitempty" yaml:"fallback_used,omitempty"`
-	FallbackReason  string `json:"fallback_reason,omitempty" yaml:"fallback_reason,omitempty"`
-	PolicyVersion   int    `json:"policy_version,omitempty" yaml:"policy_version,omitempty"`
-	PolicyDigest    string `json:"policy_digest,omitempty" yaml:"policy_digest,omitempty"`
+	SchemaVersion   string        `json:"schema_version" yaml:"schema_version"`
+	TaxonomyVersion string        `json:"taxonomy_version,omitempty" yaml:"taxonomy_version,omitempty"`
+	Role            string        `json:"role" yaml:"role"`
+	Provider        string        `json:"provider,omitempty" yaml:"provider,omitempty"`
+	Model           string        `json:"model,omitempty" yaml:"model,omitempty"`
+	Effort          string        `json:"effort,omitempty" yaml:"effort,omitempty"`
+	Source          string        `json:"source,omitempty" yaml:"source,omitempty"`
+	Capability      string        `json:"capability,omitempty" yaml:"capability,omitempty"`
+	FallbackUsed    bool          `json:"fallback_used,omitempty" yaml:"fallback_used,omitempty"`
+	FallbackReason  string        `json:"fallback_reason,omitempty" yaml:"fallback_reason,omitempty"`
+	PolicyVersion   int           `json:"policy_version,omitempty" yaml:"policy_version,omitempty"`
+	PolicyDigest    string        `json:"policy_digest,omitempty" yaml:"policy_digest,omitempty"`
+	Budget          *EffortBudget `json:"effort_budget,omitempty" yaml:"effort_budget,omitempty"`
 }
 
 // Validate checks the artifact envelope and the closed provenance vocabulary.
@@ -36,18 +37,28 @@ func (a EffortResolutionArtifact) Validate() error {
 	if err := ValidateTaxonomyVersion(a.TaxonomyVersion); err != nil {
 		return fmt.Errorf("effort resolution artifact: %w", err)
 	}
-	checks := []func() error{
-		func() error { return validateEffortRole(a.Role) },
-		func() error { return validateEffortValues(a.Effort, a.Source) },
-		func() error { return validateEffortPolicy(a.PolicyVersion, a.PolicyDigest) },
-		func() error { return validateEffortFallback(a.FallbackUsed, a.FallbackReason) },
+	if err := validateArtifactFields(a); err != nil {
+		return err
 	}
-	for _, check := range checks {
-		if err := check(); err != nil {
+	if a.Budget != nil {
+		if err := a.Budget.Validate(); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func validateArtifactFields(a EffortResolutionArtifact) error {
+	if err := validateEffortRole(a.Role); err != nil {
+		return err
+	}
+	if err := validateEffortValues(a.Effort, a.Source); err != nil {
+		return err
+	}
+	if err := validateEffortPolicy(a.PolicyVersion, a.PolicyDigest); err != nil {
+		return err
+	}
+	return validateEffortFallback(a.FallbackUsed, a.FallbackReason)
 }
 
 func validateEffortRole(role string) error {

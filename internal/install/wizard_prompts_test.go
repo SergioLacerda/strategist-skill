@@ -58,6 +58,21 @@ func TestCompatibleProviderOptionsReturnsEmptyWhenNoWeaponIsCompatible(t *testin
 	assert.Empty(t, excluded)
 }
 
+func TestCompatibleProviderOptionsReportsIncompatibleCandidates(t *testing.T) {
+	t.Parallel()
+
+	compatible, excluded := splitCompatibleCandidates([]domain.ProviderContract{
+		{ID: "wrong-role", CanonicalRole: "sniper", Source: domain.ProviderSourceEmbedded},
+	}, domain.RoleContract{
+		SchemaVersion: domain.RoleContractSchemaVersion,
+		Role:          "ranger",
+	})
+	assert.Empty(t, compatible)
+	require.Len(t, excluded, 1)
+	assert.Equal(t, "wrong-role", excluded[0].id)
+	assert.NotEmpty(t, excluded[0].reasons)
+}
+
 func TestCompatibleProviderOptionsReturnsRankedIDWhenCertified(t *testing.T) {
 	t.Parallel()
 

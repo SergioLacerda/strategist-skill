@@ -63,7 +63,15 @@ func TestResolveLevelHostWinsOverPolicy(t *testing.T) {
 	assert.Equal(t, "reasoning", level.Capability)
 	assert.NotEmpty(t, level.PolicyDigest)
 	assert.Equal(t, policy.Version, level.PolicyVersion)
-	assert.Equal(t, leveling.Level{Role: "ranger", Model: "Sonnet", Effort: "high", Source: leveling.SourceHost, Provider: "CLAUDE", ModelSource: leveling.SourceHost, EffortSource: leveling.SourceHost, Capability: "reasoning", PolicyVersion: policy.Version, PolicyDigest: policy.Digest()}, level)
+	assert.Equal(t, "ranger", level.Role)
+	assert.Equal(t, "Sonnet", level.Model)
+	assert.Equal(t, "high", level.Effort)
+	assert.Equal(t, leveling.SourceHost, level.Source)
+	assert.Equal(t, leveling.SourceHost, level.ModelSource)
+	assert.Equal(t, leveling.SourceHost, level.EffortSource)
+	require.NotNil(t, level.Budget)
+	assert.Equal(t, "ranger", level.Budget.Role)
+	assert.Equal(t, "CLAUDE", level.Budget.Provider)
 	assert.Equal(t, "Sonnet-High", level.Label())
 }
 

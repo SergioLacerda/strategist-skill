@@ -18,7 +18,7 @@ import (
 func TestInstall_WizardPath(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	svc := newSvcW(t, "en\nen\npt-BR\nen\nepic\n/workspace\nbrainstorming\narchivist\nfixture-provider\n\n")
+	svc := newSvcW(t, "en\nen\npt-BR\nen\nepic\n/workspace\n\n\nbrainstorming\narchivist\nfixture-provider\n\n")
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
 	require.NoError(t, err)
 
@@ -55,7 +55,7 @@ func TestInstall_WizardPath(t *testing.T) {
 func TestInstall_WizardPath_PersistsPluginLock(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	svc := newSvcW(t, "en\nen\npt-BR\nen\nepic\n/workspace\nbrainstorming\narchivist\nfixture-provider\n\n")
+	svc := newSvcW(t, "en\nen\npt-BR\nen\nepic\n/workspace\n\n\nbrainstorming\narchivist\nfixture-provider\n\n")
 	require.NoError(t, svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true}))
 
 	data, err := os.ReadFile(filepath.Join(dir, ".strategist", "plugins.lock"))
@@ -79,7 +79,7 @@ func TestInstall_WizardPath_PersistsPluginLock(t *testing.T) {
 func TestInstall_WizardPath_WithChest(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	svc := newSvcW(t, "en\nen\nen\nen\npragmatic\n.analysis\nbrainstorming\nopenspec-explore\nfixture-provider\ngovernance/source\n")
+	svc := newSvcW(t, "en\nen\nen\nen\npragmatic\n.analysis\n\n\nbrainstorming\nopenspec-explore\nfixture-provider\ngovernance/source\n")
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
 	require.NoError(t, err)
 
@@ -95,7 +95,7 @@ func TestInstall_WizardPath_WithChest(t *testing.T) {
 func TestInstall_WizardPath_Defaults(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	svc := newSvcW(t, "\n\n\n\n\n\n\n\n\n\n")
+	svc := newSvcW(t, "\n\n\n\n\n\n\n\n\n\n\n\n")
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
 	require.NoError(t, err)
 
@@ -129,7 +129,7 @@ func TestInstall_WizardPath_ExplicitDefaultProvidersDoNotMaterializeManifests(t 
 	t.Parallel()
 
 	dir := t.TempDir()
-	svc := newSvcW(t, "en\nen\nen\nen\nepic\n.analysis\nbrainstorming\nopenspec-explore\nfixture-provider\n\n")
+	svc := newSvcW(t, "en\nen\nen\nen\nepic\n.analysis\n\n\nbrainstorming\nopenspec-explore\nfixture-provider\n\n")
 	err := svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true})
 	require.NoError(t, err)
 
@@ -162,7 +162,7 @@ printf '{"root":{"path":"%s"},"members":[],"status":[]}\n' "$(dirname "$PWD")"
 `
 	require.NoError(t, os.WriteFile(openspecBin, []byte(fakeScript), 0o755))
 	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
-	input := "en\nen\nen\nen\nepic\n.analysis\nbrainstorming::ranked\nopenspec-propose::ranked\nsniper::ranked\n\n"
+	input := "en\nen\nen\nen\nepic\n.analysis\n\n\nbrainstorming::ranked\nopenspec-propose::ranked\nsniper::ranked\n\n"
 	svc := Service{Extractor: rankedWizardExtractor{}, Compiler: nopCompiler{}, WizardPrompter: NewTextPrompter(strings.NewReader(input)), ShimHomeDir: t.TempDir()}
 	require.NoError(t, svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true}))
 
@@ -186,7 +186,7 @@ func TestInstall_WizardRankedPathBootstrapsContainedOpenSpecRuntime(t *testing.T
 	dir := t.TempDir()
 	t.Setenv("OPEN_SPEC_CONFIG", filepath.Join(t.TempDir(), "foreign-config.yaml"))
 
-	input := "en\nen\nen\nen\nepic\n.analysis\nbrainstorming::ranked\nopenspec-propose::ranked\nsniper::ranked\n\n"
+	input := "en\nen\nen\nen\nepic\n.analysis\n\n\nbrainstorming::ranked\nopenspec-propose::ranked\nsniper::ranked\n\n"
 	svc := Service{Extractor: rankedWizardExtractor{}, Compiler: nopCompiler{}, WizardPrompter: NewTextPrompter(strings.NewReader(input)), ShimHomeDir: t.TempDir()}
 	require.NoError(t, svc.Install(context.Background(), domain.InstallConfig{Target: dir, Wizard: true}))
 
@@ -295,10 +295,12 @@ func TestRunWizard_EOFPrompts(t *testing.T) {
 		{name: "fourth code", input: "en\nen\nen\n", wantError: "code_language"},
 		{name: "fifth mode", input: "en\nen\nen\nen\n", wantError: "mode"},
 		{name: "sixth base path", input: "en\nen\nen\nen\npragmatic\n", wantError: "base_path"},
-		{name: "seventh discovery", input: "en\nen\nen\nen\npragmatic\n.\n", wantError: "discovery"},
-		{name: "eighth refinement", input: "en\nen\nen\nen\npragmatic\n.\nbrainstorming\n", wantError: "refinement"},
-		{name: "ninth execution", input: "en\nen\nen\nen\npragmatic\n.\nbrainstorming\nopenspec-explore\n", wantError: "execution"},
-		{name: "tenth chest", input: "en\nen\nen\nen\npragmatic\n.\nbrainstorming\nopenspec-explore\nfixture-provider\n", wantError: "treasure_chest"},
+		{name: "seventh adr root", input: "en\nen\nen\nen\npragmatic\n.\n", wantError: "adr.canonical_path"},
+		{name: "eighth runbook root", input: "en\nen\nen\nen\npragmatic\n.\nadr\n", wantError: "runbooks.canonical_path"},
+		{name: "ninth discovery", input: "en\nen\nen\nen\npragmatic\n.\nadr\nrunbooks\n", wantError: "discovery"},
+		{name: "tenth refinement", input: "en\nen\nen\nen\npragmatic\n.\nadr\nrunbooks\nbrainstorming\n", wantError: "refinement"},
+		{name: "eleventh execution", input: "en\nen\nen\nen\npragmatic\n.\nadr\nrunbooks\nbrainstorming\nopenspec-explore\n", wantError: "execution"},
+		{name: "twelfth chest", input: "en\nen\nen\nen\npragmatic\n.\nadr\nrunbooks\nbrainstorming\nopenspec-explore\nfixture-provider\n", wantError: "treasure_chest"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -361,7 +363,7 @@ func TestInstall_WizardPath_AwarenessRefresherCalled(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	called := false
-	svc := newSvcW(t, "en\nen\npt-BR\nen\nepic\n/workspace\nbrainstorming\nopenspec-propose\narchivist\nfixture-provider\n\n")
+	svc := newSvcW(t, "en\nen\npt-BR\nen\nepic\n/workspace\n\n\nbrainstorming\nopenspec-propose\narchivist\nfixture-provider\n\n")
 	svc.AwarenessRefresher = func(strategistRoot, projectRoot, _ string) bool {
 		called = true
 		assert.Equal(t, filepath.Join(dir, ".strategist"), strategistRoot)
@@ -405,7 +407,7 @@ func TestRunWizardBlocksOnUnresolvedCustomSkill(t *testing.T) {
 	homeDir := t.TempDir()
 	t.Setenv("HOME", homeDir) // no skill installed under homeDir — deliberately unresolvable
 
-	input := "en\nen\nen\nen\nepic\n.analysis\ndefinitely-not-a-real-installed-skill-id-xyz\nopenspec-explore\nfixture-provider\n\n"
+	input := "en\nen\nen\nen\nepic\n.analysis\n\n\ndefinitely-not-a-real-installed-skill-id-xyz\nopenspec-explore\nfixture-provider\n\n"
 	_, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(input)), minimalExtractor{}, "", false)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "configured_unverified")
@@ -415,7 +417,7 @@ func TestRunWizardBlocksOnUnresolvedCustomExecutionProvider(t *testing.T) {
 	homeDir := t.TempDir()
 	t.Setenv("HOME", homeDir)
 
-	input := "en\nen\nen\nen\nepic\n.analysis\nbrainstorming\nopenspec-propose\ncustom-execution\n\n"
+	input := "en\nen\nen\nen\nepic\n.analysis\n\n\nbrainstorming\nopenspec-propose\ncustom-execution\n\n"
 	_, err := runWizard(context.Background(), NewTextPrompter(strings.NewReader(input)), minimalExtractor{}, "", false)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "configured_unverified")

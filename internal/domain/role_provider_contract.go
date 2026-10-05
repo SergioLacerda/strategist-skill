@@ -142,11 +142,15 @@ type ProviderContract struct {
 	// computed once at certification time (`strategist plugin
 	// prepare-embedded`) and copied — never recomputed — by the Wizard's
 	// Ranked activation path.
-	RankedBindingGeneration       int64    `yaml:"ranked_binding_generation,omitempty"`
-	RankedBindingStatus           string   `yaml:"ranked_binding_status,omitempty"`
-	Capabilities                  []string `yaml:"capabilities,omitempty"`
-	Guarantees                    []string `yaml:"guarantees,omitempty"`
-	SupportedRoleContractVersions []string `yaml:"supported_role_contract_versions"`
+	RankedBindingGeneration int64    `yaml:"ranked_binding_generation,omitempty"`
+	RankedBindingStatus     string   `yaml:"ranked_binding_status,omitempty"`
+	Capabilities            []string `yaml:"capabilities,omitempty"`
+	Guarantees              []string `yaml:"guarantees,omitempty"`
+	// Runtime is the invocation boundary declared by the catalog. Keeping it
+	// on the provider contract lets role/provider activation preserve the same
+	// runtime identity used by OpenSpec and Ranked bindings.
+	Runtime                       WeaponRuntime `yaml:"runtime,omitempty"`
+	SupportedRoleContractVersions []string      `yaml:"supported_role_contract_versions"`
 	// SupportedHandoffSchemas declares which handoff_schema value(s)
 	// (RoleContract.HandoffSchema) this Provider's real output actually
 	// conforms to. Populated through the catalog/ingestion pipeline and

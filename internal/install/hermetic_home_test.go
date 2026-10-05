@@ -11,5 +11,5 @@ import (
 // home directory. The shim step resolves os.UserHomeDir() directly, so a test
 // that forgets to isolate HOME overwrites the developer's installation.
 func TestMain(m *testing.M) {
-	os.Exit(testutil.RunWithHomeGuard(m))
+	os.Exit(testutil.RunHermetic(m))
 }

@@ -21,18 +21,32 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `powershell` — Generate the autocompletion script for powershell
   - `zsh` — Generate the autocompletion script for zsh
 - `dojo` — Health-check scenarios for the Strategist skill
+  - `audit` — Sample generated negatives for review, or record an audit verdict
+  - `calibrate` — Run a judge calibration case against labeled cases
+  - `candidate` — Record a regression candidate from a mission where the provider and the gate disagreed
   - `check` — Run offline checks for a dojo scenario
+  - `compare` — Compare the latest observations of two cases, offline (a laboratory reading)
+  - `generate` — Write the skeleton of a judge calibration case
   - `list` — List available dojo scenarios
+  - `promote` — Promote a reviewed package to golden (a human act)
+  - `propose` — Record an operator proposal pending a reviewed change
 - `eval` — Strategist eval harness utilities
   - `harvest` — Copy real mission artifacts into tests/evals/regression/ as fixtures
   - `run` — Run the internal/eval scenario battery via go test
 - `handoff` — Run and record Handoff Challenge verification
+  - `criteria` — Report the quality criteria already computed for a mission (read-only)
   - `evaluate` — Evaluate the Archivist-to-Sniper handoff and record its outcome
   - `evaluate-ranger` — Evaluate and persist the Ranger-to-Archivist lifecycle outcome
+  - `precheck` — Read the refined package with the provider before the Approval Gate (advisory)
   - `verify` — Verify a Handoff Challenge acknowledgment and record the result
 - `help` — Help about any command
 - `install` — Install the Strategist skill into a target repository
 - `integrations` — Inspect and change the optional external provider integration
+  - `calibration` — List, show, pin and unpin the calibration the pre-check threshold follows
+    - `list` — List the published calibrations
+    - `pin` — Pin a calibration after showing its numbers; --confirm writes the pin
+    - `show` — Show a calibration with its numbers and risk policy (default: the pinned one)
+    - `unpin` — Remove the pin; the configured threshold applies
   - `disable` — Record the decision not to use the provider; recorded outcomes and settings are kept
   - `doctor` — Report declared, bound, enabled, compatible and available state without calling the provider
   - `enable` — Record the decision to use the provider (documented defaults, credential stays a reference)
@@ -62,12 +76,13 @@ Full command surface of the `strategist` CLI, walked from `bin/strategist --help
   - `decline-side-quest` — Record the user's decline of the mission's OA-ADR side quest at the Approval Gate
   - `invoke` — Invoke one embedded Weapon through a host bridge
   - `normalize-openspec` — Publish a completed OpenSpec change into the refined mission package
-  - `report-usage` — Record real token usage for a mission, reported by the invoking agent
+  - `report-usage` — Record one token usage observation for a mission phase, declared by the invoking agent
   - `requests` — List embedded invocation requests (read-only; never prints payload or nonce)
   - `route` — Record Scout's route decision for a mission (JSON on stdin)
   - `start` — Start a mission
   - `status` — Inspect a mission status
   - `submit` — Submit one authoritative mission event
+  - `usage` — Show per-phase lifecycle and token usage for one mission (read-only)
   - `view` — Render a read-only mission experience view
 - `plugins` — Inspect and evaluate Strategist plugin enforcement
   - `authorize` — Compose authorization evidence for a governed target

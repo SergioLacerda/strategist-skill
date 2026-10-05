@@ -102,6 +102,35 @@ func TestMergePreservesUntouchedDefaults(t *testing.T) {
 	assert.Contains(t, policy.Providers, "CODEX")
 }
 
+func TestMergeCanReduceBudgetWithExplicitZeroAndFalseValues(t *testing.T) {
+	raw, err := embed.Extractor{}.ReadFile("leveling.yaml")
+	require.NoError(t, err)
+	policy, err := leveling.Merge(raw, []byte(`version: 1
+defaults:
+  roles:
+    ranger:
+      budget:
+        max_delegations: 0
+        max_depth: 0
+        parallelism: 1
+        context_budget: low
+        evidence_depth: minimal
+        permissions:
+          specialists: false
+        escalation_allowed: false
+        max_escalations: 0
+`))
+	require.NoError(t, err)
+	budget := policy.Defaults.Roles["ranger"].Budget
+	assert.Equal(t, 0, budget.MaxDelegations)
+	assert.Equal(t, 0, budget.MaxDepth)
+	assert.Equal(t, "low", budget.ContextBudget)
+	assert.Equal(t, "minimal", budget.EvidenceDepth)
+	assert.False(t, budget.Permissions.Specialists)
+	assert.False(t, budget.EscalationAllowed)
+	assert.Equal(t, 0, budget.MaxEscalations)
+}
+
 func TestParseRejectsUnknownFieldAndTier(t *testing.T) {
 	raw := []byte("version: 1\ndefaults:\n  effort_tiers: [fast]\n  fallback: {capability: general, effort: fast, reason: test}\nproviders: {CODEX: {models: {general: x}, effort_tiers: [fast]}}\n")
 	_, err := leveling.Parse(raw)

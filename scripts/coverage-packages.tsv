@@ -1,7 +1,7 @@
 # package	minimum	reason
 internal/stale	90	staleness contract gate
 internal/compile	95	compiled artifact contract gate - raised to 95% (20260901-coverage-standard-95) - measured 96.1%
-internal/install	90	installer and runtime materialization gate
+internal/install	95	installer, Wizard workspace roots, and runtime materialization gate
 internal/embed	95	embedded defaults availability gate - raised to 95% (20260901-coverage-standard-95) - measured 96.5%
 internal/filelock	95	cross-platform exclusive file-lock primitive used by ledger writers
 internal/telemetry	90	governance telemetry gate
@@ -18,7 +18,8 @@ internal/governance/providence	95	provider adapter contract and deterministic so
 internal/handoff	95	widened cover-gate scope (T3) - raised to 95% (20260901-coverage-standard-95) - measured 96.2%
 internal/i18n	95	widened cover-gate scope (T3) - raised to 95% (20260901-coverage-standard-95) - measured 100.0%
 internal/runbook	90	widened cover-gate scope (T3) - measured 95.4%
-internal/feats/select_runbook	90	SELECT_RUNBOOK matching, policy, and rejection contract
+internal/feats/opportunity_attack	95	Opportunity Attack ADR/Runbook boundary and digest-bound manifest contract
+internal/feats/select_runbook	95	SELECT_RUNBOOK matching, policy, and rejection contract - measured 98.6%
 internal/feats/critical_hit	90	CRITICAL_HIT evidence-gated route decision contract
 internal/tools/resolver	90	plugin dependency resolution and digest-pinned lock replay contract
 internal/validate	95	widened cover-gate scope (T3) - raised to 95% (20260901-coverage-standard-95) - measured 100.0%
@@ -69,3 +70,5 @@ internal/integration/transport	90	HTTPS-only transport with local limits and typ
 internal/integration/handoffconsumer	85	HANDOFF pre-check consumer: criteria catalog, data projection, approval rule and call ledger - measured 92.0%
 internal/integration/setup	85	single planner of the operator integration decision shared by wizard, silent install and commands - measured 87.3%
 internal/integration/probe	85	synthetic availability probe and the only source of the available claim - measured 88.2%
+internal/gatecriteria	80	read-only quality-criteria report: reuses existing records, every row filled - measured 83.3%
+internal/calibration	90	DOJO judge calibration core: mutation catalog, evaluator, exact statistics, fitness gates and the calibration record (ADR-0066)

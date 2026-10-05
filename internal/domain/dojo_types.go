@@ -49,6 +49,10 @@ type DojoCriteria struct {
 	EmitLog        DojoEmitLog         `yaml:"emit_log"`
 	ManifestChecks []DojoManifestCheck `yaml:"manifest_checks"`
 	TimingCriteria *DojoTimingCriteria `yaml:"timing_criteria,omitempty"`
+	// Kind is empty for a pipeline scenario and KindJudgeCalibration for a
+	// calibration case, which carries a Calibration block instead of run checks.
+	Kind        string           `yaml:"kind,omitempty"`
+	Calibration *DojoCalibration `yaml:"calibration,omitempty"`
 }
 
 // DojoCheckItem is the result of one individual check within a scenario run.
@@ -62,6 +66,8 @@ type DojoCheckItem struct {
 type DojoCheckResult struct {
 	Scenario string
 	Items    []DojoCheckItem
+	// Calibration is set only by a judge_calibration case.
+	Calibration *DojoCalibrationResult
 }
 
 // Passed returns true if all items passed.

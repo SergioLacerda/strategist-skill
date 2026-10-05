@@ -160,15 +160,14 @@ func TestRunView_SurfacesReportedTokenUsageAndDeclaredBudget(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(out), &v))
 	assert.Equal(t, missionview.Available, v.TokenUsage.Availability)
 	assert.Equal(t, "high", v.TokenUsage.DeclaredTokenBudget)
-	assert.Equal(t, int64(300), v.TokenUsage.TotalTokensIn)
-	assert.Equal(t, int64(100), v.TokenUsage.TotalTokensOut)
+	assert.Equal(t, "unknown", v.TokenUsage.Semantics)
 	require.Len(t, v.TokenUsage.Records, 2)
 
 	humanOut, err := runView(t, "--root", root, "--mission-id", "m-tokens")
 	require.NoError(t, err)
 	assert.Contains(t, humanOut, "Token Usage")
 	assert.Contains(t, humanOut, "declared_token_budget: high")
-	assert.Contains(t, humanOut, "total_tokens_in: 300")
+	assert.Contains(t, humanOut, "semantics: unknown")
 }
 
 // TestRunView_NoTokenUsageReportedIsNotApplicable confirms a mission with no

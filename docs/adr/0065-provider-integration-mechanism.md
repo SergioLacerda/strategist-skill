@@ -52,7 +52,7 @@ result ([ADR-0064](0064-canonical-seven-family-taxonomy.md)).
 9. **First consumer.** The HANDOFF validation pre-checks input and output conformance at
    `ranger_to_archivist` and `archivist_to_sniper`. One aggregate question carries the
    confidence criterion; the fixed local rule approves only strictly above the threshold
-   (default 0.90). An approval is recorded as a `delegation` on the handoff outcome
+   (default 0.80, a starting point from the first live check; [ADR-0066](0066-dojo-judge-calibration.md) defines how a pinned calibration, measured by the DOJO, replaces it only while valid; the confidence in acceptance is the provider probability of accept when it reports one). An approval is recorded as a `delegation` on the handoff outcome
    ([handoff-contract](../../internal/embed/defaults/contracts/machine/handoff-contract.yaml)
    `delegated_validation`); anything else leaves the handoff on `main`.
 
