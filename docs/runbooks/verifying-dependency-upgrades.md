@@ -60,4 +60,4 @@ scoped behavior change.
 
 - Origin: `.analysis/archived/20260728-landing-preview-and-deps-report.md` —
   the mission where this procedure was first executed (Astro 5.18.2 → 7.1.5
-  in `web/landing/`, verified via before/after decoded-attribute diff).
+  in the former `web/landing/`, since removed, verified via before/after decoded-attribute diff).

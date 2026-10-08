@@ -72,7 +72,6 @@ include make/go.mk
 include make/quality.mk
 include make/governance.mk
 include make/release.mk
-include make/web.mk
 include make/workflows.mk
 include make/docs.mk
 

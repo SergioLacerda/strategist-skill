@@ -3,15 +3,15 @@
 ## Prerequisites
 
 - Go matching `go.mod` (`go 1.27.1`, toolchain `go1.27.1`)
-- Node.js 22 (for `web/landing/` only, matching CI)
+- Node.js `>=20.19.0` (optional; only for the embedded OpenSpec runtime and the manual `promptfoo/` evals)
 - `make` (GNU Make)
 - A POSIX shell (Git Bash or WSL on Windows)
 
 Go versions are sourced from `go.mod`: `go 1.27.1` defines the language/module
 target and `toolchain go1.27.1` pins the patch toolchain used by CI-compatible
-local verification. Node is intentionally scoped to `web/landing/`; CI uses
-Node 22 and the landing package declares `engines.node >= 22.12.0`. Relax or bump
-these pins only through the toolchain policy in ADR-0014.
+local verification. Node is tooling-only (OpenSpec runtime and `promptfoo/`);
+this repository has no web build. Relax or bump these pins only through the
+toolchain policy in ADR-0014.
 
 **On Windows, run `make` from Git Bash or WSL — never directly from
 PowerShell or `cmd.exe`.** The Makefile and every `scripts/*.sh` gate it
@@ -48,7 +48,6 @@ make build          # builds the CLI binary to bin/strategist
 | `make cover-html` | Generate `coverage/coverage.html` without opening a browser |
 | `make quality-budget-gate` | Enforce Go file-size and cognitive-complexity budgets |
 | `make compile-skill` | Compile the Strategist skill artifacts |
-| `make build-all` | Build CLI + landing site |
 
 > **Important:** `internal/embed/defaults/` is the single authoring source for
 > packaged Strategist defaults. After editing embedded defaults, run
@@ -81,18 +80,6 @@ not re-publishable through this workflow. Signed tags (`git tag -s`) are
 recommended but not enforced yet; see `docs/adr/0052-cicd-enforcement-policy.md`
 and `docs/runbooks/cicd-enforcement-settings.md` for the GitHub-side rules.
 
-### Landing page: build before preview
-
-`npm run preview` (Astro's own command) serves the contents of `dist/`,
-which only exists after a build — running `preview` without building first
-fails with "output directory ... does not exist". `make install-web` only
-runs `npm ci`; it does not build.
-
-```bash
-make build-site          # installs + builds web/landing/dist/
-cd web/landing && npm run preview
-```
-
 ## Running tests
 
 ```bash
@@ -113,7 +100,6 @@ internal/
   embed/defaults/    Embedded YAML/Markdown defaults packaged via go:embed
 .strategist/         Local runtime instance generated from embedded defaults
 docs/                Documentation
-web/landing/         Astro landing site
 ```
 
 ## Commit conventions

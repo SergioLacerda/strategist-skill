@@ -46,13 +46,12 @@ func TestMonorepoAndToolchainPolicyADRExists(t *testing.T) {
 	contributing := readFile(t, filepath.Join(root, "CONTRIBUTING.md"))
 
 	for _, needle := range []string{
-		"Keep the Go CLI, embedded defaults, docs, and landing site in one repository",
+		"Keep the Go CLI, embedded defaults, and docs in one repository",
 		"Go version authority is `go.mod`",
 		"`go 1.27.1` is the module/language target",
 		"`toolchain go1.27.1` is the exact patch toolchain",
-		"Node 22 is the supported major version for `web/landing/`",
+		"Node is tooling-only",
 		"`release-verify`",
-		"`ci-web`",
 	} {
 		if !strings.Contains(adr, needle) {
 			t.Fatalf("ADR-0014 missing monorepo/toolchain policy term %q", needle)
@@ -60,7 +59,7 @@ func TestMonorepoAndToolchainPolicyADRExists(t *testing.T) {
 	}
 	for _, needle := range []string{
 		"Relax or bump these pins only through the toolchain policy in ADR-0014",
-		"Node is intentionally scoped to `web/landing/`",
+		"Node is tooling-only (OpenSpec runtime and `promptfoo/`)",
 	} {
 		if !strings.Contains(normalizeWhitespace(contributing), needle) {
 			t.Fatalf("CONTRIBUTING.md missing toolchain policy term %q", needle)

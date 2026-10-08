@@ -25,6 +25,14 @@ corresponding tag and GitHub Release.
 - The breaking `v1.0.28` boundary removes the `--sdd` flag, SDD-specific
   aliases/defaults, implicit `.sdd` probing, dual-read, and silent governance
   fallback. Invalid explicit governance sources fail closed.
+- The in-repository Astro landing page (`web/landing/`), its design workspace
+  (`web/design/`), `make/web.mk` (`install-web`, `build-site`, `build-all`,
+  `lint-web`, `test-web`, `cover-web`, `ci-web`), the `site-build` CI job, the
+  CodeQL `javascript-typescript` leg and the npm Dependabot entry. The public site
+  is now published by `pages.yml` from the external ILUSIONISTA surface release
+  `v0.1.0` (`SergioLacerda/illusionist-web`) instead of being built in this
+  repository. If `main` still requires `site-build` or
+  `Analyze (javascript-typescript)`, remove those required checks.
 
 ### Added
 - `strategist mission normalize-openspec --amend --amends <change> --authorization-ref <ref>`,

@@ -33,14 +33,15 @@ its output before changing anything.
    ```
 
    Health Orchestrator jobs: `lint`, `test-windows`, `test`, `security`,
-   `validate`, `site-build`, `release-dry-run`. CodeQL is a separate workflow
-   whose matrix legs report as `Analyze (go)` and
-   `Analyze (javascript-typescript)`. Use the names the command prints.
+   `validate`, `release-dry-run`. CodeQL is a separate workflow
+   whose only matrix leg reports as `Analyze (go)`. If the ruleset still lists
+   `site-build` or `Analyze (javascript-typescript)`, remove them. Use the
+   names the command prints.
 
 3. **Branch ruleset for `main`** (target state):
    - require a pull request before merging;
-   - require status checks: the seven Health Orchestrator jobs and both CodeQL
-     legs, using the names from step 2;
+   - require status checks: the six Health Orchestrator jobs and the CodeQL
+     Go leg, using the names from step 2;
    - require one approving review, dismiss stale approvals on new commits, and
      require conversation resolution;
    - keep block deletion and block non-fast-forward;

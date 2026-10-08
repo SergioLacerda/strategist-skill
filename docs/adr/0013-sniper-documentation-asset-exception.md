@@ -68,3 +68,7 @@ rather than leaving it to per-mission improvisation.
 - Downstream: Sniper's earlier stop-and-report on
   `20260712-docs-landing-updates-treasure-scout`'s T8–T12/SQ-001(T15) can now
   be resumed in a separate, later Sniper claim on that mission package.
+
+> **Note (2026-10-07):** the `web/landing/` and `web/design/` paths cited above
+> were removed from the repository (see ADR-0014). The exception itself is
+> unchanged and remains historical context for the mission it names.

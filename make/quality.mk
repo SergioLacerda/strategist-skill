@@ -76,7 +76,7 @@ cover-gate:
 	bash scripts/check-coverage-gate.sh "$(COVERAGE_MANIFEST)" "$(COVERAGE_DIR)" "$(GOCACHE)" "$(COVERAGE_EXEMPTIONS)"
 
 # test-report prints one status row per test style (unit, spec, integration,
-# eval, eval-promptfoo, web) using the metric that fits each style.
+# eval, eval-promptfoo) using the metric that fits each style.
 test-report:
 	bash scripts/test-style-report.sh "$(COVERAGE_DIR)" "$(GOCACHE)"
 

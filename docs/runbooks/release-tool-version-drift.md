@@ -42,10 +42,8 @@ Current membership:
   (`.github/dependabot.yml`).
 - **B** — `golangci-lint-action` `version: v2.12.2` (`test.yml`), and
   `go install golang.org/x/vuln/cmd/govulncheck@v1.1.4` (`test.yml`). Also
-  `node-version: '22'`, hardcoded in both `test.yml` and `pages.yml` while
-  `web/landing/package.json` declares `engines.node >= 22.12.0` — two literals and a
-  range with nothing enforcing agreement. No incompatibility has been observed;
-  the risk is the duplicated source of truth, not a current break.
+  `node-version` in `test.yml` (host-Node floor for the OpenSpec smoke), which is
+  a literal with no other source of truth since the landing was removed.
 - **C** — `goreleaser/goreleaser-action` `with.version: "~> v2"` (`release.yml`).
   **This is the only member.**
 - **D** — every Go job's `go-version-file: "go.mod"`. `go.mod` declares the `go` and

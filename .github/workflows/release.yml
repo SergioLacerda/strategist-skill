@@ -64,14 +64,6 @@ jobs:
         with:
           version: v2.13.2
 
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: '22'
-          package-manager-cache: false   # no cache in the publishing workflow
-
-      - name: Local web gates
-        run: make ci-web
-
   release:
     needs: verify
     runs-on: ubuntu-latest

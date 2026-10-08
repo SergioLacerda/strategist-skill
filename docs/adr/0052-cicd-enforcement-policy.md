@@ -28,9 +28,10 @@ is added for it.
 
 ## Decision
 
-1. **Required checks.** `main` requires the seven Health Orchestrator jobs
-   (`lint`, `test-windows`, `test`, `security`, `validate`, `site-build`,
-   `release-dry-run`) and both CodeQL legs. The check names are confirmed from a
+1. **Required checks.** `main` requires the six Health Orchestrator jobs
+   (`lint`, `test-windows`, `test`, `security`, `validate`,
+   `release-dry-run`) and the CodeQL Go leg (`site-build` and the
+   `javascript-typescript` leg were removed with the landing page). The check names are confirmed from a
    real PR before the ruleset is changed.
 2. **One required review, with a maintainer bypass.** The `main` ruleset requires
    one approving review (applied by the maintainer), dismisses stale approvals and

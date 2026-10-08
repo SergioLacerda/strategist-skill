@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # test-style-report.sh — prints one status row per test style (unit, spec,
-# integration, eval, eval-promptfoo, web), using the metric that actually fits
+# integration, eval, eval-promptfoo), using the metric that actually fits
 # each style: line coverage % where suites exercise code paths directly,
 # scenario pass counts where they validate Gherkin/eval scenarios instead.
 # See .analysis/refined/20260804-test-coverage-visibility-by-style/design.md.
@@ -89,17 +89,3 @@ row "eval" "make eval" "scenarios" "${pass}/${total}" "$status"
 # Deliberately not run: standalone by design, requires a local LM Studio
 # endpoint. See .analysis/archived/20260804-promptfoo-ci-adapter-adr.md.
 row "eval-promptfoo" "make eval-promptfoo" "-" "-" "excluded (manual)"
-
-# --- web ----------------------------------------------------------------
-if [[ -d web/landing/node_modules ]]; then
-  output="$(cd web/landing && npm run cover 2>&1 || true)"
-  line="$(printf '%s\n' "$output" | grep -m1 '^All files')"
-  pct="$(printf '%s\n' "$line" | awk -F'|' '{gsub(/ /,"",$5); print $5}')"
-  if [[ -n "${pct:-}" ]]; then
-    row "web" "make cover-web" "line coverage" "${pct}%" "ok"
-  else
-    row "web" "make cover-web" "line coverage" "n/a" "FAIL"
-  fi
-else
-  row "web" "make cover-web" "line coverage" "n/a" "skipped (run make install-web)"
-fi

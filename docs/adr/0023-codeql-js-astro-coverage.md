@@ -1,6 +1,6 @@
 # ADR-0023 — CodeQL Coverage: `javascript-typescript` Matrix Leg for `web/landing/`
 
-**Status:** Accepted  
+**Status:** Superseded (2026-10-07) — `web/landing/` was removed and the CodeQL matrix is `go` only  
 **Date:** 2026-08-04  
 **Context:** `20260804-codeql-js-astro-coverage`
 

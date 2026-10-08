@@ -174,24 +174,6 @@ jobs:
       - name: Fixture and schema validation
         run: make validate-fixtures
 
-  site-build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: web/landing/package-lock.json
-
-      - name: Local web gates
-        run: make ci-web
-
   release-dry-run:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -242,7 +224,7 @@ jobs:
   # outcome) for every run: the data behind the promotion criteria in
   # docs/adr/0052-cicd-enforcement-policy.md. Reporting only; never required.
   ci-metrics:
-    needs: [lint, test-windows, test, security, validate, site-build, release-dry-run, workflow-lint]
+    needs: [lint, test-windows, test, security, validate, release-dry-run, workflow-lint]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5

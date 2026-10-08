@@ -1,10 +1,9 @@
 name: Deploy GitHub Pages
 
-# Experimental migration wave: the site is no longer built from web/landing/.
-# This workflow consumes an immutable-by-convention ILUSIONISTA surface release
-# (download -> verify -> extract -> sanity check -> deploy). web/landing/ stays
-# in the repository as the frozen baseline and rollback source.
-# Rollback: restore the previous version of this file and run it via workflow_dispatch.
+# The site is published from an external ILUSIONISTA surface release, not built
+# in this repository (download -> verify -> extract -> sanity check -> deploy).
+# Rollback: point the pins below at a previous release tag and run this workflow
+# via workflow_dispatch.
 on:
   workflow_dispatch:
 
@@ -31,10 +30,6 @@ jobs:
       contents: read
       pages: write   # actions/configure-pages
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
       - name: Announce surface version
         run: echo "Deploying ILUSIONISTA Strategist Surface ${ILLUSIONIST_SURFACE_VERSION}"
 

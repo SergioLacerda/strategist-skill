@@ -25,7 +25,7 @@ things that shaped scope:
    explicit forward-reference to this mission.
 2. `make eval` — Phase 1's own deterministic, Go-native eval harness — is
    not currently wired into CI (`.github/workflows/test.yml` runs
-   `ci-lint`, `ci-test`, `vuln-ci`, `validate-fixtures`, `ci-web`, never
+   `ci-lint`, `ci-test`, `vuln-ci`, `validate-fixtures` (and, at the time, `ci-web`), never
    `eval`). The card's title assumed CI integration was the point; this
    finding shows the sibling capability it would extend isn't there yet
    either.
@@ -67,7 +67,8 @@ target — not a dependency of `eval`, `test`, `test-all`, `ci-test`, or
   human-readable procedure and its warnings still apply in full — this
   formalization does not weaken or automate away the advisory-only framing.
 - `promptfoo/` introduces a new, narrowly-scoped Node.js dependency,
-  separate from `web/landing/`'s existing, unrelated Node subsystem.
+  separate from the OpenSpec runtime's host-Node requirement (the former
+  `web/landing/` subsystem was removed; see ADR-0014).
 - CI (`ci`, `ci-test`, `.github/workflows/test.yml`) is unaffected by this
   work. A future mission may reconsider CI wiring for `make eval` and
   `make eval-promptfoo` together, but that is not decided here.

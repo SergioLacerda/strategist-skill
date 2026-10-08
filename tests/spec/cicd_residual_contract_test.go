@@ -190,7 +190,7 @@ func TestDocumentationUsesCurrentRuntimePathModel(t *testing.T) {
 	}
 	for _, needle := range []string{
 		"Go matching `go.mod` (`go 1.27.1`, toolchain `go1.27.1`)",
-		"Node.js 22",
+		"Node.js `>=20.19.0`",
 		"`internal/embed/defaults/` is the single authoring source",
 	} {
 		if !strings.Contains(contributing, needle) {

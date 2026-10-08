@@ -116,7 +116,6 @@ Expected contracts:
 - `make ci-test` — runs the local test gates used by CI
 - `make validate-fixtures` — runs fixture/schema validation used by CI
 - `make vuln-ci` — installs the pinned vulnerability checker and runs it
-- `make ci-web` — runs landing page install, lint, test, and build gates
 - `make release-test` — validates GoReleaser config and local snapshot artifacts without publishing
 - `make release-dry-run` — installs the pinned GoReleaser version and runs `release-test`
 - `make bench` — runs benchmarks
@@ -135,7 +134,6 @@ make ci-lint
 make ci-test
 make validate-fixtures
 make vuln-ci
-make ci-web
 make release-test
 make release-dry-run
 make bench

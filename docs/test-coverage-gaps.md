@@ -24,7 +24,7 @@ below seems to need one, stop and re-read those ADRs before proceeding.
 |---|---|---|
 | T2 | done — `.github/workflows/test.yml` publishes `make test-report` to `$GITHUB_STEP_SUMMARY` (non-blocking, `if: always()`) | Publish `make test-report`'s table to `$GITHUB_STEP_SUMMARY` |
 | T3 | applied to the then-known `./internal/...` scope; current manifest completeness is a separate open refinement because newer production packages are not reconciled automatically | Widen `cover-gate`'s 90% scope from 6 packages to `./internal/...` |
-| T4 | done — `make/web.mk`'s `ci-web` target depends on `cover-web` | Wire `cover-web` into `ci-web` |
+| T4 | done, later obsolete — the `web` style and `ci-web` were removed together with `web/landing/` (2026-10-07) | Wire `cover-web` into `ci-web` |
 | T5 | done — `tests/evals/scenarios/treasure_chest_grading_test.go` + `internal/eval` dispatch Target; `go test -race -tags=eval ./tests/evals/...` passes (as of 2026-09-20, 9 test files remain in `tests/evals/`; the 9 duplicated FSM/critical-hit scenarios were removed, see `.analysis/refined/20260920-test-scenario-redundancy-review/`) | New `internal/eval` Target for treasure-chest grading functions |
 | T6 | done — `tests/spec/specs/e2e-critical-hit-closure.feature` kept as living documentation; its `strings.Contains` Go helper was removed on 2026-09-20 as tautological (it only checked the feature's own text) | New Gherkin feature for Critical Hit plain-move vs closure-move |
 | T7 | not_started (future mission) | Extract a pure Critical Hit trigger/closure function |
@@ -49,13 +49,13 @@ locally. `riposte-backlog.md` SQ-001.
 3. Keep this job non-blocking with respect to the existing per-style
    pass/fail jobs — it is a visibility addition, not a new gate.
 
-**Validation:** a CI run's "Summary" tab shows the same 6 rows
+**Validation:** a CI run's "Summary" tab shows the same 5 rows
 `scripts/test-style-report.sh` prints locally (unit/spec/integration/eval/
-eval-promptfoo/web), with matching STATUS values.
+eval-promptfoo), with matching STATUS values.
 
 **Stop condition:** if adding this step would require installing new
 dependencies beyond what `test-style-report.sh` already assumes (Go
-toolchain, `web/landing` node_modules), stop and report — that's scope
+toolchain), stop and report — that's scope
 creep beyond "publish what already runs."
 
 ---
@@ -98,6 +98,9 @@ owns that package, not to this change.
 ---
 
 ## T4 — Wire `cover-web` into `ci-web`
+
+> **Obsolete (2026-10-07):** `web/landing/`, `make/web.mk` and `ci-web` were removed.
+> The text below is kept as history.
 
 **Why:** `web/landing`'s Vitest coverage (100% today) is only ever measured
 locally (`make cover-web`); `ci-web: install-web lint-web test-web

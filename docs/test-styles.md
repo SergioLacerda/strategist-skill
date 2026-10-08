@@ -16,23 +16,21 @@ taxonomy explicitly so the gap is visible instead of implicit.
 | integration | `integration` | cross-component Go behavior (`go test -race -tags=integration ./tests/integration/...`) | none as its own view (it is folded in as a coverage *source* for `cover-html`, but not reported as its own number) |
 | eval | `eval` | prompt/artifact scenario correctness (`go test -race -tags=eval ./tests/evals/...`, 9 files across `contracts/` and `scenarios/`; not part of `test-all`/`ci-test`, run on demand with `make eval`) | none |
 | eval-promptfoo | `eval-promptfoo` | LLM-judged artifact quality (`npx promptfoo eval`) | none — deliberately standalone, not wired into `eval`/`test`/`test-all`/`ci-test`/`ci`; requires a local LM Studio endpoint. See `.analysis/archived/20260804-promptfoo-ci-adapter-adr.md`. |
-| web | `test-web` / `cover-web` | Vitest suite in `web/landing` | line coverage % via `cover-web` (`npm run cover`), not gated, and not wired into `ci-web` |
 
 ## Why coverage isn't uniform across styles
 
-Line-coverage percentage is the right metric for `unit`, `integration`, and
-`web` — they exercise code paths directly. It is the wrong metric for
+Line-coverage percentage is the right metric for `unit` and
+`integration` — they exercise code paths directly. It is the wrong metric for
 `spec` and `eval`: those suites validate scenarios/contracts (Given/When/Then
 behavior, prompt-quality scenarios), where "% of scenarios passing" is the
 meaningful signal, not "% of lines executed." Forcing a single blended
-coverage number across all six styles would misrepresent the scenario-driven
+coverage number across all five styles would misrepresent the scenario-driven
 suites rather than clarify them.
 
 ## Aggregators
 
-- `test-all: test spec integration` — omits `eval` and `web`
+- `test-all: test spec integration` — omits `eval`
 - `ci-test: test-all golden convergence-check contract-consistency-gate cover-gate`
-- `ci-web: install-web lint-web test-web cover-web build-site`
 - `.github/workflows/test.yml`'s `test` job runs `make ci-test` and then
   publishes `make test-report`'s unified per-style table to
   `$GITHUB_STEP_SUMMARY` (non-blocking, `if: always()`) — in addition to
@@ -59,4 +57,4 @@ suites rather than clarify them.
 See `.analysis/refined/20260805-test-coverage-mapping-and-offline-eval/`
 and `docs/test-coverage-gaps.md` for the mission that closed the previous
 round of gaps here (unified report publication, gated-scope widening,
-`cover-web` wired into `ci-web`, and new eval/spec trait scenarios).
+and new eval/spec trait scenarios).
