@@ -109,6 +109,7 @@ func TestNormalizedSkillDigestChangesWhenMaterializedOutputChanges(t *testing.T)
 }
 
 func TestCopySkillPackage_RejectsSymlinks(t *testing.T) {
+	requireSymlinkSupport(t)
 	t.Parallel()
 	sourceDir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "real.md"), []byte("x"), 0o644))
@@ -157,6 +158,7 @@ func TestCopySkillFile_WriteErrorPropagates(t *testing.T) {
 }
 
 func TestWriteCatalogAndMirrors_CopyPackageErrorPropagates(t *testing.T) {
+	requireSymlinkSupport(t)
 	t.Parallel()
 
 	sourceDir := t.TempDir()

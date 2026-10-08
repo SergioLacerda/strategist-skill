@@ -77,6 +77,16 @@ func (s OutcomeStore) attemptsFor(missionID, transition string) ([]int, error) {
 	if err != nil {
 		return nil, err
 	}
+	info, statErr := os.Stat(dir)
+	if errors.Is(statErr, os.ErrNotExist) {
+		return nil, nil
+	}
+	if statErr != nil {
+		return nil, fmt.Errorf("handoff_outcome_unreadable: list outcomes: %w", statErr)
+	}
+	if !info.IsDir() {
+		return nil, fmt.Errorf("handoff_outcome_unreadable: list outcomes: %s is not a directory", dir)
+	}
 	entries, err := os.ReadDir(dir)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, nil

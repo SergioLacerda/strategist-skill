@@ -15,7 +15,7 @@ func TestValidateSubmitArtifactsRequiresNormalizedDiscoveryArtifact(t *testing.T
 	err := validateSubmitArtifacts(base, "m-discovery", domain.MissionEventDiscoveryDone)
 
 	require.ErrorContains(t, err, "discovery artifact validation failed")
-	require.ErrorContains(t, err, "no such file or directory")
+	require.ErrorIs(t, err, os.ErrNotExist)
 }
 
 func TestValidateSubmitArtifactsRejectsMalformedDiscoveryArtifact(t *testing.T) {

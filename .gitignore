@@ -55,11 +55,7 @@ strategist-runtime-upgrade.*
 .tmp-go-cache
 .cache
 
-# Landing page runtime
-web/landing/node_modules
-web/landing/dist/
-web/landing/.astro/
-web/landing/coverage/
+# Strategist runtime backups
 .strategist/.upgrade-backups/
 
 # Local environment variables

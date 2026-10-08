@@ -133,6 +133,8 @@ func TestResolveTargetPaths(t *testing.T) {
 
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	// os.UserHomeDir uses USERPROFILE on Windows and HOME elsewhere.
+	t.Setenv("USERPROFILE", home)
 	global, err := ResolveTarget("", true, nil)
 	require.NoError(t, err)
 	assert.Equal(t, home, global)

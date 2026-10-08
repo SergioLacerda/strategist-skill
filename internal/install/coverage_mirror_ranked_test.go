@@ -11,6 +11,7 @@ import (
 )
 
 func TestCopySkillPackageRejectsUnsafeEntries(t *testing.T) {
+	requireSymlinkSupport(t)
 	t.Parallel()
 	src := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(src, "nested"), 0o755))

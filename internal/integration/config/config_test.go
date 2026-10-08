@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/integration"
@@ -35,6 +36,9 @@ func TestSaveThenLoadRoundTripsAndIsPrivate(t *testing.T) {
 
 	info, err := os.Stat(path)
 	require.NoError(t, err)
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows ACLs are not represented by POSIX permission bits")
+	}
 	require.Zero(t, info.Mode().Perm()&0o077, "the file is operator-private")
 }
 

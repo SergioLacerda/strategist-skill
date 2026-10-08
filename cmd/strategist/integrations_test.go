@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/handoff"
@@ -147,7 +148,9 @@ func TestDoctorReportsDotenvHygieneAndNeverTheSecret(t *testing.T) {
 
 	out, err := runIntegrations(t, runIntegrationsDoctor, integrationsOptions{Root: root})
 	require.NoError(t, err)
-	require.Contains(t, out, "dotenv_loose_permissions")
+	if runtime.GOOS != "windows" {
+		require.Contains(t, out, "dotenv_loose_permissions")
+	}
 	require.NotContains(t, out, doctorKey)
 	require.Contains(t, out, "credential: resolves")
 

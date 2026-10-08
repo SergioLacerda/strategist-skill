@@ -30,6 +30,13 @@ func LoadRoleRegistry(dir string) (domain.RoleRegistry, error) {
 }
 
 func readRoleConfigs(dir string) ([]domain.RoleConfig, error) {
+	info, err := os.Stat(dir)
+	if err != nil {
+		return nil, fmt.Errorf("role registry: stat %s: %w", dir, err)
+	}
+	if !info.IsDir() {
+		return nil, fmt.Errorf("role registry: %s is not a directory", dir)
+	}
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, fmt.Errorf("role registry: read %s: %w", dir, err)

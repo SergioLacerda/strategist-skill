@@ -3,6 +3,7 @@ package mission
 import (
 	"errors"
 	"fmt"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -32,12 +33,20 @@ func ResolveDestinationRule(missionID, canonicalPath string) (DestinationRule, e
 	if canonicalPath == "" {
 		return rule, nil
 	}
-	clean := filepath.Clean(canonicalPath)
-	if filepath.IsAbs(canonicalPath) || clean == "." || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
+	normalized := strings.ReplaceAll(canonicalPath, `\`, "/")
+	clean := path.Clean(normalized)
+	if isAbsoluteProjectPath(normalized) || clean == "." || clean == ".." || strings.HasPrefix(clean, "../") {
 		return DestinationRule{}, fmt.Errorf("adr_destination_invalid: adr.canonical_path %q must be a project-relative directory inside the workspace", canonicalPath)
 	}
 	rule.CanonicalPath = filepath.ToSlash(clean)
 	return rule, nil
+}
+
+func isAbsoluteProjectPath(value string) bool {
+	if path.IsAbs(value) || filepath.IsAbs(value) || strings.HasPrefix(value, "//") {
+		return true
+	}
+	return len(value) >= 3 && ((value[0] >= 'A' && value[0] <= 'Z') || (value[0] >= 'a' && value[0] <= 'z')) && value[1] == ':' && value[2] == '/'
 }
 
 // DecideSideQuest records the user's acceptance or decline of

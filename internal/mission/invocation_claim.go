@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -74,14 +73,6 @@ func (s InvocationStore) reclaimStale(path string) bool {
 		}
 	}
 	return os.Remove(path) == nil
-}
-
-func processAlive(pid int) bool {
-	process, err := os.FindProcess(pid)
-	if err != nil {
-		return false
-	}
-	return process.Signal(syscall.Signal(0)) == nil
 }
 
 func (s InvocationStore) targetLeasePath(missionID, role, slot string) (string, error) {

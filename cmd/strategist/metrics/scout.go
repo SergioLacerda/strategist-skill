@@ -26,6 +26,9 @@ func RunScout(cmd *cobra.Command, deps Dependencies, explicitRoot string) error 
 	if err != nil {
 		return err
 	}
+	if err := validateMetricsRoot(root); err != nil {
+		return fmt.Errorf("metrics scout: %w", err)
+	}
 	decisions, err := telemetry.ReadRouteDecisions(telemetry.RouteDecisionHistoryPath(root))
 	if err != nil {
 		return fmt.Errorf("metrics scout: %w", err)

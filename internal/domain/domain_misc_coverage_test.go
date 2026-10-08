@@ -37,7 +37,7 @@ func TestMaterializeContextRequestAndReferenceValidation(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "a.md"), []byte("hello"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	for _, ref := range []string{"", "/abs", "a/../a.md", ".", "..", "../x"} {
+	for _, ref := range []string{"", "/abs", `C:\abs`, "a/../a.md", ".", "..", "../x"} {
 		_, err := MaterializeContext(testContextReader(root), []ContextReference{{Ref: ref, Kind: "k"}}, 0, 0)
 		mustFail(t, err, "invalid relative reference")
 	}

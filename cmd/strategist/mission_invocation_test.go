@@ -153,6 +153,7 @@ func TestRunClaudePromptSendsPromptOnStdinAndSeparatesStderr(t *testing.T) {
 }
 
 func TestLinkCodexAuthLinksOnlyCredentials(t *testing.T) {
+	skipSymlinkFixture(t)
 	home, state := t.TempDir(), t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(home, "auth.json"), []byte("{}"), 0o600))
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte("x"), 0o600))
@@ -161,6 +162,14 @@ func TestLinkCodexAuthLinksOnlyCredentials(t *testing.T) {
 
 	require.FileExists(t, filepath.Join(state, "auth.json"))
 	require.NoFileExists(t, filepath.Join(state, "config.toml"))
+}
+
+func skipSymlinkFixture(t *testing.T) {
+	t.Helper()
+	target, link := t.TempDir(), filepath.Join(t.TempDir(), "link")
+	if err := os.Symlink(target, link); err != nil {
+		t.Skipf("symlink fixture requires Windows Developer Mode or symlink privilege: %v", err)
+	}
 }
 
 func TestLinkCodexAuthToleratesMissingCredentials(t *testing.T) {

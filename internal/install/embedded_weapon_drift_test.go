@@ -29,6 +29,7 @@ func TestDirectoriesHaveDrifted_GotDirMissingIsDrift(t *testing.T) {
 }
 
 func TestDirectoriesHaveDrifted_GotDirUnsupportedEntryErrors(t *testing.T) {
+	requireSymlinkSupport(t)
 	t.Parallel()
 	wantDir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(wantDir, "a.md"), []byte("x"), 0o644))

@@ -3,6 +3,7 @@ package domain
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -65,7 +66,9 @@ func TestValidateOpenSpecHealthcheckIsPathFormIndependent(t *testing.T) {
 	runtimeRoot := filepath.Join(physical, "openspec")
 	require.NoError(t, os.MkdirAll(runtimeRoot, 0o755))
 	link := filepath.Join(base, "link")
-	require.NoError(t, os.Symlink(filepath.Join(base, "real"), link))
+	if err := os.Symlink(filepath.Join(base, "real"), link); err != nil {
+		t.Skipf("symlink fixture requires Windows Developer Mode or symlink privilege: %v", err)
+	}
 	canonical, err := filepath.EvalSymlinks(physical)
 	require.NoError(t, err)
 	output := []byte(`{"root":{"path":"` + filepath.ToSlash(canonical) + `"}}`)
@@ -102,6 +105,9 @@ func TestValidateOpenSpecHealthcheckStillRejectsOtherDirectoryWhenRootIsRelative
 // Regression: drift_pipeline.txt recorded expected ".strategist" against an
 // absolute observed root for a healthy runtime.
 func TestValidateOpenSpecHealthcheckDriftPipelineRegression(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("relative healthcheck fixture is unstable when Windows cannot release the test working directory")
+	}
 	base := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(base, ".strategist", "openspec"), 0o755))
 	canonical, err := filepath.EvalSymlinks(filepath.Join(base, ".strategist"))

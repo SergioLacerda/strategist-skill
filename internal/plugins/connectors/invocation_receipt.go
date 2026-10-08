@@ -2,6 +2,7 @@ package connectors
 
 import (
 	"fmt"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -50,10 +51,18 @@ func validateInvocationReceiptIdentity(receipt InvocationReceipt) error {
 	if strings.TrimSpace(receipt.MissionID) == "" || strings.TrimSpace(receipt.Role) == "" || strings.TrimSpace(receipt.ProviderID) == "" {
 		return fmt.Errorf("invocation receipt identity is incomplete")
 	}
-	if strings.TrimSpace(receipt.ResolvedLocation) == "" || filepath.IsAbs(receipt.ResolvedLocation) {
+	if strings.TrimSpace(receipt.ResolvedLocation) == "" || isAbsoluteLocation(receipt.ResolvedLocation) {
 		return fmt.Errorf("invocation receipt location is invalid")
 	}
 	return nil
+}
+
+func isAbsoluteLocation(value string) bool {
+	normalized := strings.ReplaceAll(value, `\`, "/")
+	if path.IsAbs(normalized) || filepath.IsAbs(value) || strings.HasPrefix(normalized, "//") {
+		return true
+	}
+	return len(normalized) >= 3 && ((normalized[0] >= 'A' && normalized[0] <= 'Z') || (normalized[0] >= 'a' && normalized[0] <= 'z')) && normalized[1] == ':' && normalized[2] == '/'
 }
 
 // validateInvocationReceiptCompleteness checks the remaining self-contained

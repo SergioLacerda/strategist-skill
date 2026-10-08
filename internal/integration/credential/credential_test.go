@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/integration"
@@ -83,7 +84,9 @@ func TestDotenvParserHasNoShellExpansion(t *testing.T) {
 func TestHygieneFlagsLoosePermissionsAndMissingIgnore(t *testing.T) {
 	loose := writeEnv(t, "X=1\n", 0o644)
 	findings := Hygiene(loose, func(string) (bool, error) { return false, nil })
-	require.Contains(t, findings, FindingLoosePermissions)
+	if runtime.GOOS != "windows" {
+		require.Contains(t, findings, FindingLoosePermissions)
+	}
 	require.Contains(t, findings, FindingNotIgnored)
 
 	tight := writeEnv(t, "X=1\n", 0o600)

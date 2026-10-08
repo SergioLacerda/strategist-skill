@@ -3,6 +3,7 @@ package initiative
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -233,6 +234,9 @@ func TestCloseLedgerReportsACloseFailureWithoutMaskingAnEarlierError(t *testing.
 }
 
 func TestLockHelpersReportFailuresOnAClosedFile(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows closes invalid handles without POSIX-style lock errors")
+	}
 	closed, err := os.CreateTemp(t.TempDir(), "lock-*")
 	require.NoError(t, err)
 	require.NoError(t, closed.Close())

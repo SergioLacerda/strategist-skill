@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -400,6 +401,9 @@ func TestReplayingAConsumedOutcomeIsDenied(t *testing.T) {
 }
 
 func TestPersistenceFailureEmitsNoAuthorizingOutcomeAndADeterministicError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows ACLs do not honor chmod-based read-only fixtures")
+	}
 	root := handoffRoot(t, "m-persist", informationalFacts, analysisOnlyTasks)
 	if os.Geteuid() == 0 {
 		t.Skip("directory permissions do not constrain root")

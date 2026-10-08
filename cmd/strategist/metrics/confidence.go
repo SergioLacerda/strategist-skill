@@ -37,6 +37,9 @@ func RunConfidence(cmd *cobra.Command, deps Dependencies, explicitRoot, mission 
 	if err != nil {
 		return err
 	}
+	if err := validateMetricsRoot(root); err != nil {
+		return fmt.Errorf("metrics confidence: %w", err)
+	}
 	review, err := telemetry.LoadConfidenceGateReview(root, mission)
 	if err != nil {
 		return fmt.Errorf("metrics confidence: %w", err)

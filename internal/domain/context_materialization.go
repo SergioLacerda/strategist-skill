@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -116,7 +117,7 @@ func sortContextReferences(refs []ContextReference) []ContextReference {
 }
 
 func validateContextReference(ref ContextReference, seen map[string]struct{}) (string, error) {
-	if ref.Ref == "" || path.IsAbs(ref.Ref) || path.Clean(ref.Ref) != ref.Ref || ref.Ref == "." || ref.Ref == ".." || containsParentPathComponent(ref.Ref) {
+	if ref.Ref == "" || isAbsoluteReference(ref.Ref) || path.Clean(ref.Ref) != ref.Ref || ref.Ref == "." || ref.Ref == ".." || containsParentPathComponent(ref.Ref) {
 		return "", fmt.Errorf("context materialization: invalid relative reference %q", ref.Ref)
 	}
 	key := ref.Ref + "\x00" + ref.Kind
@@ -124,6 +125,18 @@ func validateContextReference(ref ContextReference, seen map[string]struct{}) (s
 		return "", fmt.Errorf("context materialization: duplicate reference %q", ref.Ref)
 	}
 	return key, nil
+}
+
+// isAbsoluteReference accepts the slash-based reference format while also
+// rejecting native absolute paths that can arrive from another platform.
+// In particular, path.IsAbs does not recognize a Windows drive path when the
+// caller is running on Unix, and filepath.IsAbs does not recognize one when a
+// Windows path is being validated on Unix.
+func isAbsoluteReference(ref string) bool {
+	if path.IsAbs(ref) || filepath.IsAbs(ref) || strings.HasPrefix(ref, `\\`) {
+		return true
+	}
+	return len(ref) >= 3 && ((ref[0] >= 'A' && ref[0] <= 'Z') || (ref[0] >= 'a' && ref[0] <= 'z')) && ref[1] == ':' && (ref[2] == '/' || ref[2] == '\\')
 }
 
 func containsParentPathComponent(ref string) bool {

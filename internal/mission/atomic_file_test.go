@@ -3,6 +3,7 @@ package mission
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -20,6 +21,9 @@ func TestWriteFileAtomicReplacesContentAndLeavesNoTemporaryFile(t *testing.T) {
 	require.Equal(t, "new", string(got))
 	info, err := os.Stat(path)
 	require.NoError(t, err)
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows ACLs are not represented by POSIX permission bits")
+	}
 	require.Equal(t, os.FileMode(0o640), info.Mode().Perm())
 	entries, err := os.ReadDir(dir)
 	require.NoError(t, err)

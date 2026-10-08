@@ -101,6 +101,10 @@ func DefaultGlobalProviderRoots(homeDir string) []ProviderRoot {
 func pathPresent(path string) (bool, error) {
 	info, err := os.Stat(path)
 	if os.IsNotExist(err) {
+		parent := filepath.Dir(path)
+		if parentInfo, parentErr := os.Stat(parent); parentErr == nil && !parentInfo.IsDir() {
+			return false, fmt.Errorf("stat %s: %w", path, err)
+		}
 		return false, nil
 	}
 	if err != nil {

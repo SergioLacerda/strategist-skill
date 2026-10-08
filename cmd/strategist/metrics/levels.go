@@ -41,6 +41,9 @@ func RunLevels(cmd *cobra.Command, deps Dependencies, opts LevelsOptions, ledger
 	if err != nil {
 		return err
 	}
+	if err := validateMetricsRoot(root); err != nil {
+		return fmt.Errorf("metrics levels: %w", err)
+	}
 	return WriteLevelsReport(cmd.OutOrStdout(), root, opts, ledger)
 }
 

@@ -46,7 +46,7 @@ func TestRegister_CommandTreeParity(t *testing.T) {
 		},
 		"evaluate-write": {"root": "", "target": ""},
 		"prepare-embedded": {
-			"source": "external-skills-source", "defaults-root": filepath.Join("internal", "embed", "defaults"),
+			"source": "external-skills-source", "defaults-root": filepath.ToSlash(filepath.Join("internal", "embed", "defaults")),
 			"lock": "external-skills-source.lock.yaml", "check": "false",
 		},
 		"scaffold-sidecar": {
@@ -54,7 +54,7 @@ func TestRegister_CommandTreeParity(t *testing.T) {
 			"default": "false", "force": "false", "check": "false",
 		},
 		"resolved-digest": {
-			"catalog":  filepath.Join("internal", "embed", "defaults", "plugins", "catalog.yaml"),
+			"catalog":  filepath.ToSlash(filepath.Join("internal", "embed", "defaults", "plugins", "catalog.yaml")),
 			"provider": "", "resolved-digest": "", "file": "",
 		},
 	}

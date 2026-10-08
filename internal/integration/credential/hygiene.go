@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 )
 
 // Hygiene finding identifiers.
@@ -23,7 +24,9 @@ func Hygiene(path string, ignored func(string) (bool, error)) []string {
 		return nil
 	}
 	var findings []string
-	if info.Mode().Perm()&0o077 != 0 {
+	// Windows does not expose POSIX permission bits through FileMode; checking
+	// them there would report every dotenv file as loose regardless of its ACL.
+	if runtime.GOOS != "windows" && info.Mode().Perm()&0o077 != 0 {
 		findings = append(findings, FindingLoosePermissions)
 	}
 	isIgnored, err := ignored(path)

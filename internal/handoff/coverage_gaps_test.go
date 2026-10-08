@@ -336,14 +336,10 @@ func TestOutcomeStoreDir_SlashInMissionIDReturnsError(t *testing.T) {
 
 func TestOutcomeStoreAttempts_UnreadableDirReturnsError(t *testing.T) {
 	t.Parallel()
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
 	store := fixedStore(t)
 	dir := filepath.Join(store.Root, "missions", "handoff", "m1")
-	require.NoError(t, os.MkdirAll(dir, 0o755))
-	require.NoError(t, os.Chmod(dir, 0o000))
-	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+	require.NoError(t, os.MkdirAll(filepath.Dir(dir), 0o755))
+	require.NoError(t, os.WriteFile(dir, []byte("not-a-directory"), 0o644))
 
 	_, err := store.NextAttempt("m1")
 	require.ErrorContains(t, err, "handoff_outcome_unreadable")
@@ -364,8 +360,8 @@ func TestOutcomeStoreAppend_UnwritableDirReturnsError(t *testing.T) {
 	require.NoError(t, err)
 
 	dir := filepath.Join(store.Root, "missions", "handoff", "m1")
-	require.NoError(t, os.Chmod(dir, 0o555)) // read+execute but not write
-	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+	require.NoError(t, os.RemoveAll(dir))
+	require.NoError(t, os.WriteFile(dir, []byte("not-a-directory"), 0o644))
 
 	_, err = store.Append(sampleOutcome(2, OutcomePassed))
 	require.Error(t, err)
@@ -392,17 +388,13 @@ func TestOutcomeStoreLatest_InvalidJSONIsDetectedAsTampering(t *testing.T) {
 
 func TestConsumed_UnreadableMarkerFileReturnsError(t *testing.T) {
 	t.Parallel()
-	if os.Getuid() == 0 {
-		t.Skip("permission tests do not apply when running as root")
-	}
 	store := fixedStore(t)
 	sealed, err := store.Append(sampleOutcome(1, OutcomePassed))
 	require.NoError(t, err)
 	// Write a consumed marker that is unreadable.
 	dir := filepath.Join(store.Root, "missions", "handoff", "m1")
 	markerPath := filepath.Join(dir, consumedFile)
-	require.NoError(t, os.WriteFile(markerPath, []byte("{}"), 0o000))
-	t.Cleanup(func() { _ = os.Chmod(markerPath, 0o644) })
+	require.NoError(t, os.Mkdir(markerPath, 0o755))
 
 	_, err = store.Consumed(sealed)
 	require.ErrorContains(t, err, "handoff_outcome_unreadable")

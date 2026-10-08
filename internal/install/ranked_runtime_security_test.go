@@ -10,7 +10,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func requireSymlinkSupport(t *testing.T) {
+	t.Helper()
+	target := t.TempDir()
+	link := filepath.Join(t.TempDir(), "link")
+	if err := os.Symlink(target, link); err != nil {
+		t.Skipf("symlink tests require Windows Developer Mode or symlink privilege: %v", err)
+	}
+}
+
 func TestPrepareRankedBindingRejectsRuntimeSymlinkEscape(t *testing.T) {
+	requireSymlinkSupport(t)
 	dir := t.TempDir()
 	strategist := filepath.Join(dir, ".strategist")
 	writeRankedRuntimeFixture(t, dir, "openspec-propose", "refinement", domain.WeaponRuntime{

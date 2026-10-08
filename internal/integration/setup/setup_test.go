@@ -3,6 +3,7 @@ package setup
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/SergioLacerda/strategist-skill/internal/integration"
@@ -145,6 +146,9 @@ func TestApplyWritesOnlyWhenThePlanSaysSo(t *testing.T) {
 	require.Equal(t, enable.File, loaded)
 	info, err := os.Stat(path)
 	require.NoError(t, err)
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows ACLs are not represented by POSIX permission bits")
+	}
 	require.Zero(t, info.Mode().Perm()&0o077)
 }
 
