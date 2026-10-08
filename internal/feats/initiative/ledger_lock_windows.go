@@ -8,7 +8,11 @@ import (
 )
 
 func openLedgerLock(path string) (*os.File, error) {
-	return os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0o600) //nolint:gosec // runtime memory path
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0o600) //nolint:gosec // runtime memory path
+	if err != nil {
+		return nil, fmt.Errorf("initiative: create ledger lock file: %w", err)
+	}
+	return file, nil
 }
 
 func removeLedgerLock(file *os.File) error {

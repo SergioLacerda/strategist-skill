@@ -1,10 +1,11 @@
 name: Deploy GitHub Pages
 
+# Experimental migration wave: the site is no longer built from web/landing/.
+# This workflow consumes an immutable-by-convention ILUSIONISTA surface release
+# (download -> verify -> extract -> sanity check -> deploy). web/landing/ stays
+# in the repository as the frozen baseline and rollback source.
+# Rollback: restore the previous version of this file and run it via workflow_dispatch.
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'web/landing/**'
   workflow_dispatch:
 
 # Deny by default; each job opts into exactly what it needs.
@@ -13,6 +14,15 @@ permissions: {}
 concurrency:
   group: "pages"
   cancel-in-progress: false
+
+env:
+  # Bump these together, in one reviewed change. Never consume latest/main.
+  ILLUSIONIST_REPOSITORY: SergioLacerda/illusionist-web
+  ILLUSIONIST_SURFACE_VERSION: v0.1.0
+  ILLUSIONIST_SURFACE_NAME: illusionist-strategist-surface
+  # The release is not marked immutable, so the hash of the tarball is pinned
+  # here as well; the downloaded .sha256 alone would not prove authenticity.
+  ILLUSIONIST_SURFACE_SHA256: a08f698d4e43b7ce88eee77e7d2c54dbd74c4b6bc5fda11b80f38f8816c23b31
 
 jobs:
   build:
@@ -25,14 +35,51 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: web/landing/package-lock.json
+      - name: Announce surface version
+        run: echo "Deploying ILUSIONISTA Strategist Surface ${ILLUSIONIST_SURFACE_VERSION}"
 
-      - name: Build
-        run: make build-site
+      - name: Download ILUSIONISTA surface
+        run: |
+          set -euo pipefail
+          asset="${ILLUSIONIST_SURFACE_NAME}-${ILLUSIONIST_SURFACE_VERSION}.tar.gz"
+          base="https://github.com/${ILLUSIONIST_REPOSITORY}/releases/download/${ILLUSIONIST_SURFACE_VERSION}"
+          mkdir -p "${RUNNER_TEMP}/illusionist-release"
+          cd "${RUNNER_TEMP}/illusionist-release"
+          curl --fail --silent --show-error --location --retry 3 -O "${base}/${asset}"
+          curl --fail --silent --show-error --location --retry 3 -O "${base}/${asset}.sha256"
+
+      - name: Verify checksum
+        run: |
+          set -euo pipefail
+          asset="${ILLUSIONIST_SURFACE_NAME}-${ILLUSIONIST_SURFACE_VERSION}.tar.gz"
+          cd "${RUNNER_TEMP}/illusionist-release"
+          # The .sha256 file holds a bare file name, so verify from this directory.
+          sha256sum -c "${asset}.sha256"
+          echo "${ILLUSIONIST_SURFACE_SHA256}  ${asset}" | sha256sum -c -
+
+      - name: Extract surface
+        run: |
+          set -euo pipefail
+          asset="${ILLUSIONIST_SURFACE_NAME}-${ILLUSIONIST_SURFACE_VERSION}.tar.gz"
+          archive="${RUNNER_TEMP}/illusionist-release/${asset}"
+          site="${RUNNER_TEMP}/strategist-site"
+          if tar -tzf "${archive}" | grep -E '^/|(^|/)\.\.(/|$)'; then
+            echo "::error::archive contains absolute or parent-relative paths"
+            exit 1
+          fi
+          rm -rf "${site}"
+          mkdir -p "${site}"
+          tar -xzf "${archive}" -C "${site}"
+
+      - name: Structural sanity check
+        run: |
+          set -euo pipefail
+          site="${RUNNER_TEMP}/strategist-site"
+          test -f "${site}/index.html"
+          test -f "${site}/epic/index.html"
+          test -f "${site}/pragmatic/index.html"
+          test -d "${site}/_assets"
+          test -d "${site}/fonts"
 
       - name: Setup Pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
@@ -40,7 +87,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
-          path: 'web/landing/dist'
+          path: ${{ runner.temp }}/strategist-site
 
   deploy:
     environment:
